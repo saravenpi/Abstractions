@@ -4,71 +4,61 @@ use bevy::prelude::*;
 
 use super::actions::SettingsAction;
 use super::field::{Bind, Field};
-use crate::ui::{button, button_with, label, row, theme};
+use crate::ui::{Tone, label, row_with, step_button, theme};
 
 /// Shows the live value of one setting.
 #[derive(Component)]
 pub struct Value(pub Field);
 
-/// Fixed-width label that keeps the columns aligned.
+/// Muted setting name on the left of a row.
 fn name(text: &str) -> impl Bundle {
-    (
-        label(text),
-        Node {
-            width: px(theme::LABEL_WIDTH),
-            ..default()
-        },
-    )
+    label(text, theme::FONT_BODY, Tone::Muted)
 }
 
-/// Row with minus and plus buttons around a live value.
+/// Live value text.
+fn value(field: Field) -> impl Bundle {
+    (label("", theme::FONT_BODY, Tone::Plain), Value(field))
+}
+
+/// Row with a value between minus and plus buttons.
 pub fn stepper(text: &str, field: Field) -> impl Bundle {
-    let value = (
-        label(""),
-        Value(field),
+    let cluster = (
         Node {
-            width: px(theme::VALUE_WIDTH),
-            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            column_gap: px(theme::SPACE / 2.0),
             ..default()
         },
-    );
-    (
-        row(),
         children![
-            name(text),
+            (step_button("<"), SettingsAction::Adjust(field, -1)),
             (
-                button("-", theme::STEP_WIDTH),
-                SettingsAction::Adjust(field, -1)
+                Node {
+                    width: px(theme::SPACE * 9.0),
+                    justify_content: JustifyContent::Center,
+                    ..default()
+                },
+                children![value(field)]
             ),
-            value,
-            (
-                button("+", theme::STEP_WIDTH),
-                SettingsAction::Adjust(field, 1)
-            ),
+            (step_button(">"), SettingsAction::Adjust(field, 1)),
         ],
+    );
+    (
+        row_with(1, name(text), cluster),
+        SettingsAction::Adjust(field, 1),
     )
 }
 
-/// Row with a single button that shows the value and flips it.
+/// Row whose value flips when activated.
 pub fn toggle(text: &str, field: Field) -> impl Bundle {
-    let shown = button_with(
-        theme::VALUE_WIDTH + 2.0 * theme::STEP_WIDTH,
-        (label(""), Value(field)),
-    );
     (
-        row(),
-        children![name(text), (shown, SettingsAction::Adjust(field, 1))],
+        row_with(1, name(text), value(field)),
+        SettingsAction::Adjust(field, 1),
     )
 }
 
-/// Row with a button that shows a key and waits for a new one when clicked.
+/// Row that shows a key and waits for a new one when activated.
 pub fn binding(text: &str, bind: Bind) -> impl Bundle {
-    let shown = button_with(
-        theme::VALUE_WIDTH + 2.0 * theme::STEP_WIDTH,
-        (label(""), Value(Field::Key(bind))),
-    );
     (
-        row(),
-        children![name(text), (shown, SettingsAction::Rebind(bind))],
+        row_with(1, name(text), value(Field::Key(bind))),
+        SettingsAction::Rebind(bind),
     )
 }

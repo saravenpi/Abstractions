@@ -5,7 +5,6 @@ use bevy::prelude::*;
 use super::Tab;
 use super::field::{Bind, Field};
 use super::rows::{binding, stepper, toggle};
-use crate::ui::theme;
 
 /// Marks the container of one tab.
 #[derive(Component)]
@@ -25,8 +24,8 @@ fn page(tab: Tab, active: Tab) -> impl Bundle {
     (
         Page(tab),
         Node {
+            width: percent(100),
             flex_direction: FlexDirection::Column,
-            row_gap: px(theme::GAP),
             display: display_for(tab, active),
             ..default()
         },
@@ -43,6 +42,12 @@ pub fn graphics(active: Tab) -> impl Bundle {
             toggle("Shadows", Field::Shadows),
             toggle("Vsync", Field::Vsync),
             toggle("Fullscreen", Field::Fullscreen),
+            toggle("Ambient occlusion", Field::AmbientOcclusion),
+            toggle("Bloom", Field::Bloom),
+            toggle("Clouds", Field::Clouds),
+            toggle("Show FPS", Field::ShowFps),
+            stepper("Color depth", Field::ColorLevels),
+            stepper("Field of view", Field::Fov),
         ],
     )
 }

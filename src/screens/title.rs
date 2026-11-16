@@ -1,23 +1,29 @@
-//! Title screen: the game name with the main menu on top.
+//! Title screen: a calm flat background and the version label under the main menu.
 
 use bevy::prelude::*;
 
 use super::Screen;
 use crate::menus::Menu;
-use crate::ui::{heading, theme};
+use crate::ui::{root_on, text, theme};
 
-/// Shows the game title and opens the main menu.
+/// Spawns the flat background and opens the main menu.
 fn enter(mut commands: Commands, mut menu: ResMut<NextState<Menu>>) {
     commands.spawn((
         DespawnOnExit(Screen::Title),
-        Node {
-            position_type: PositionType::Absolute,
-            top: percent(10),
-            width: percent(100),
-            justify_content: JustifyContent::Center,
-            ..default()
-        },
-        children![heading("Abstractions", theme::FONT_TITLE)],
+        root_on(theme::BACKGROUND, JustifyContent::FlexStart),
+        children![(
+            text(
+                format!("v{}", env!("CARGO_PKG_VERSION")),
+                theme::FONT_SMALL,
+                theme::MUTED
+            ),
+            Node {
+                position_type: PositionType::Absolute,
+                right: px(theme::EDGE),
+                bottom: px(theme::EDGE),
+                ..default()
+            }
+        )],
     ));
     menu.set(Menu::Main);
 }

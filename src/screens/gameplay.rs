@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use super::{Screen, playing};
 use crate::menus::Menu;
+use crate::ui::theme;
 
 /// Marks the crosshair dot.
 #[derive(Component)]
@@ -25,11 +26,11 @@ fn enter(mut commands: Commands) {
         children![(
             Crosshair,
             Node {
-                width: px(4),
-                height: px(4),
+                width: px(2),
+                height: px(2),
                 ..default()
             },
-            BackgroundColor(Color::srgba(1.0, 1.0, 1.0, 0.85)),
+            BackgroundColor(theme::CROSSHAIR),
         )],
     ));
 }

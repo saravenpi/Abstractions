@@ -3,6 +3,7 @@
 pub mod menus;
 pub mod player;
 pub mod render;
+pub mod saves;
 pub mod screens;
 pub mod settings;
 pub mod ui;
@@ -32,6 +33,7 @@ impl Plugin for AppPlugin {
             world::plugin,
             player::plugin,
             render::plugin,
+            saves::plugin,
         ));
     }
 }

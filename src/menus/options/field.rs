@@ -1,8 +1,8 @@
-//! Pure editing and formatting of individual settings.
+//! Pure editing of individual settings.
 
 use bevy::prelude::KeyCode;
 
-use crate::settings::Settings;
+use crate::settings::{Graphics, Settings};
 
 /// One rebindable player action.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,6 +23,12 @@ pub enum Field {
     Shadows,
     Vsync,
     Fullscreen,
+    AmbientOcclusion,
+    Bloom,
+    Clouds,
+    ShowFps,
+    ColorLevels,
+    Fov,
     Sensitivity,
     InvertY,
     Master,
@@ -41,25 +47,46 @@ fn bump_tenths(value: f32, dir: i32, lo: f32, hi: f32) -> f32 {
     (((value * 10.0).round() + dir as f32) / 10.0).clamp(lo, hi)
 }
 
-/// Steps a setting by `dir`. Toggles flip, numbers move and clamp, keys are untouched.
-pub fn step(settings: &mut Settings, field: Field, dir: i32) {
-    let (g, c, a) = (
-        &mut settings.graphics,
-        &mut settings.controls,
-        &mut settings.audio,
-    );
+/// Returns the on/off flag a graphics field edits, if it is a toggle.
+fn flag(graphics: &mut Graphics, field: Field) -> Option<&mut bool> {
+    match field {
+        Field::Shadows => Some(&mut graphics.shadows),
+        Field::Vsync => Some(&mut graphics.vsync),
+        Field::Fullscreen => Some(&mut graphics.fullscreen),
+        Field::AmbientOcclusion => Some(&mut graphics.ambient_occlusion),
+        Field::Bloom => Some(&mut graphics.bloom),
+        Field::Clouds => Some(&mut graphics.clouds),
+        Field::ShowFps => Some(&mut graphics.show_fps),
+        _ => None,
+    }
+}
+
+/// Steps a graphics setting by `dir`. Toggles flip and numbers move and clamp.
+fn step_graphics(g: &mut Graphics, field: Field, dir: i32) {
+    if let Some(flag) = flag(g, field) {
+        *flag = !*flag;
+        return;
+    }
     match field {
         Field::PixelSize => g.pixel_size = bump_int(g.pixel_size, dir, 1, 8),
         Field::RenderDistance => g.render_distance = bump_int(g.render_distance, dir, 2, 8),
-        Field::Shadows => g.shadows = !g.shadows,
-        Field::Vsync => g.vsync = !g.vsync,
-        Field::Fullscreen => g.fullscreen = !g.fullscreen,
+        Field::ColorLevels => g.color_levels = bump_int(g.color_levels, dir * 4, 8, 64),
+        Field::Fov => g.fov = bump_int(g.fov, dir * 5, 60, 110),
+        _ => {}
+    }
+}
+
+/// Steps a setting by `dir`. Toggles flip, numbers move and clamp, keys are untouched.
+pub fn step(settings: &mut Settings, field: Field, dir: i32) {
+    let (c, a) = (&mut settings.controls, &mut settings.audio);
+    step_graphics(&mut settings.graphics, field, dir);
+    match field {
         Field::Sensitivity => c.mouse_sensitivity = bump_tenths(c.mouse_sensitivity, dir, 0.1, 3.0),
         Field::InvertY => c.invert_y = !c.invert_y,
         Field::Master => a.master = bump_tenths(a.master, dir, 0.0, 1.0),
         Field::Music => a.music = bump_tenths(a.music, dir, 0.0, 1.0),
         Field::Effects => a.effects = bump_tenths(a.effects, dir, 0.0, 1.0),
-        Field::Key(_) => {}
+        _ => {}
     }
 }
 
@@ -74,49 +101,4 @@ pub fn set_key(settings: &mut Settings, bind: Bind, key: KeyCode) {
         Bind::Jump => keys.jump = key,
         Bind::Sprint => keys.sprint = key,
     }
-}
-
-/// Returns the key currently bound to an action.
-fn key_of(settings: &Settings, bind: Bind) -> KeyCode {
-    let keys = &settings.controls.keys;
-    match bind {
-        Bind::Forward => keys.forward,
-        Bind::Back => keys.back,
-        Bind::Left => keys.left,
-        Bind::Right => keys.right,
-        Bind::Jump => keys.jump,
-        Bind::Sprint => keys.sprint,
-    }
-}
-
-/// Formats a boolean as On or Off.
-fn on_off(value: bool) -> String {
-    if value { "On" } else { "Off" }.to_string()
-}
-
-/// Formats the current value of a setting for display.
-pub fn display(settings: &Settings, field: Field) -> String {
-    let (g, c, a) = (&settings.graphics, &settings.controls, &settings.audio);
-    match field {
-        Field::PixelSize => g.pixel_size.to_string(),
-        Field::RenderDistance => g.render_distance.to_string(),
-        Field::Shadows => on_off(g.shadows),
-        Field::Vsync => on_off(g.vsync),
-        Field::Fullscreen => on_off(g.fullscreen),
-        Field::Sensitivity => format!("{:.1}", c.mouse_sensitivity),
-        Field::InvertY => on_off(c.invert_y),
-        Field::Master => format!("{:.1}", a.master),
-        Field::Music => format!("{:.1}", a.music),
-        Field::Effects => format!("{:.1}", a.effects),
-        Field::Key(bind) => key_name(key_of(settings, bind)),
-    }
-}
-
-/// Returns a short readable name for a key.
-pub fn key_name(key: KeyCode) -> String {
-    let name = format!("{key:?}");
-    let short = name
-        .strip_prefix("Key")
-        .or_else(|| name.strip_prefix("Digit"));
-    short.unwrap_or(&name).to_string()
 }

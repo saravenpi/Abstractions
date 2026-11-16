@@ -2,6 +2,7 @@
 
 mod actions;
 mod field;
+mod format;
 mod pages;
 mod rebind;
 mod rows;
@@ -12,6 +13,8 @@ mod view;
 use bevy::prelude::*;
 
 use super::Menu;
+
+pub(super) use rebind::capturing;
 
 /// A section of the settings menu.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

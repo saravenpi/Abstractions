@@ -2,7 +2,8 @@
 
 use bevy::prelude::KeyCode;
 
-use super::field::{Bind, Field, display, key_name, set_key, step};
+use super::field::{Bind, Field, set_key, step};
+use super::format::{display, key_name};
 use crate::settings::Settings;
 
 /// Numbers clamp at both ends and toggles flip.
@@ -19,6 +20,34 @@ fn steps_clamp_and_toggle() {
     assert_eq!(s.controls.mouse_sensitivity, 3.0);
     step(&mut s, Field::Shadows, 1);
     assert!(!s.graphics.shadows);
+}
+
+/// New graphics fields flip or step in their own ranges.
+#[test]
+fn steps_new_graphics_fields() {
+    let mut s = Settings::default();
+    for _ in 0..30 {
+        step(&mut s, Field::ColorLevels, 1);
+        step(&mut s, Field::Fov, -1);
+    }
+    assert_eq!(s.graphics.color_levels, 64);
+    assert_eq!(s.graphics.fov, 60);
+    step(&mut s, Field::Bloom, 1);
+    step(&mut s, Field::Clouds, -1);
+    step(&mut s, Field::AmbientOcclusion, 1);
+    assert!(!s.graphics.bloom && !s.graphics.clouds && !s.graphics.ambient_occlusion);
+    assert_eq!(display(&s, Field::Bloom), "Off");
+    assert_eq!(display(&s, Field::Fov), "60 deg");
+}
+
+/// The frame rate toggle flips and displays as On or Off.
+#[test]
+fn toggles_show_fps() {
+    let mut s = Settings::default();
+    assert_eq!(display(&s, Field::ShowFps), "Off");
+    step(&mut s, Field::ShowFps, 1);
+    assert!(s.graphics.show_fps);
+    assert_eq!(display(&s, Field::ShowFps), "On");
 }
 
 /// Floats move by exactly one tenth and display with one decimal.

@@ -1,0 +1,49 @@
+//! Saved worlds: files on disk, the active world, and autosave.
+
+mod autosave;
+mod format;
+mod id;
+mod model;
+mod start;
+mod store;
+#[cfg(test)]
+mod store_tests;
+
+pub use autosave::SavedFlash;
+pub use format::{ago, play_time};
+pub use model::{WorldEntry, WorldSave};
+pub use start::Starter;
+pub use store::{delete, list, new_entry, now, write};
+
+use std::path::PathBuf;
+
+use bevy::prelude::*;
+
+use crate::screens::Screen;
+
+/// The world being played. Exists from the moment a world starts until the title screen returns.
+#[derive(Resource, Debug, Clone, PartialEq)]
+pub struct ActiveWorld(pub WorldEntry);
+
+/// Directory that holds the world files.
+#[derive(Resource, Debug, Clone)]
+pub struct SaveDir(pub PathBuf);
+
+impl Default for SaveDir {
+    fn default() -> Self {
+        let base = dirs::data_dir().unwrap_or_else(|| PathBuf::from("."));
+        Self(base.join("abstractions").join("worlds"))
+    }
+}
+
+/// Forgets the active world once the title screen is back.
+fn clear_active(mut commands: Commands) {
+    commands.remove_resource::<ActiveWorld>();
+}
+
+/// Registers the save directory, autosave and active world cleanup.
+pub(super) fn plugin(app: &mut App) {
+    app.init_resource::<SaveDir>()
+        .add_plugins(autosave::plugin)
+        .add_systems(OnEnter(Screen::Title), clear_active);
+}

@@ -6,8 +6,9 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
 use super::field::{Bind, Field, step};
-use super::rebind::Rebinding;
+use super::rebind::{Rebinding, capturing};
 use super::{SettingsTab, Tab};
+use crate::menus::Menu;
 use crate::settings::{Persistent, Settings};
 
 /// What a settings button does when activated.
@@ -46,7 +47,33 @@ fn on_activate(event: On<Activate>, actions: Query<&SettingsAction>, mut ctx: Ac
     }
 }
 
-/// Registers the settings button observer.
+/// Steps the focused row with Left and Right or A and D.
+fn adjust_with_keys(
+    keys: Res<ButtonInput<KeyCode>>,
+    focus: Res<InputFocus>,
+    actions: Query<&SettingsAction>,
+    mut settings: ResMut<Persistent<Settings>>,
+) {
+    let dir = i32::from(keys.any_just_pressed([KeyCode::ArrowRight, KeyCode::KeyD]))
+        - i32::from(keys.any_just_pressed([KeyCode::ArrowLeft, KeyCode::KeyA]));
+    let Some(SettingsAction::Adjust(field, _)) = focus.get().and_then(|e| actions.get(e).ok())
+    else {
+        return;
+    };
+    if dir != 0 {
+        let field = *field;
+        if let Err(error) = settings.update(|s| step(s, field, dir)) {
+            warn!("could not save settings: {error}");
+        }
+    }
+}
+
+/// Registers the settings button observer and key stepping.
 pub(super) fn plugin(app: &mut App) {
-    app.add_observer(on_activate);
+    app.add_observer(on_activate).add_systems(
+        Update,
+        adjust_with_keys
+            .run_if(in_state(Menu::Settings))
+            .run_if(not(capturing)),
+    );
 }

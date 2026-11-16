@@ -1,38 +1,47 @@
-//! Colors and sizes shared by every menu and screen.
+//! Palette, type scale and spacing shared by every menu and screen.
 
 use bevy::prelude::*;
 
 /// Game title text size.
-pub const FONT_TITLE: f32 = 72.0;
+pub const FONT_TITLE: f32 = 64.0;
 /// Section heading text size.
-pub const FONT_HEADING: f32 = 32.0;
-/// Body and button text size.
-pub const FONT_BODY: f32 = 20.0;
+pub const FONT_HEADING: f32 = 28.0;
+/// Body and menu item text size.
+pub const FONT_BODY: f32 = 18.0;
+/// Small label and hint text size.
+pub const FONT_SMALL: f32 = 14.0;
+/// Letter spacing of uppercase section labels, in pixels.
+pub const CAPS_SPACING: f32 = 3.0;
+/// Base unit of the spacing grid.
+pub const SPACE: f32 = 8.0;
+/// Width of a menu item column.
+pub const MENU_WIDTH: f32 = 300.0;
+/// Height of one settings row.
+pub const ROW_HEIGHT: f32 = 32.0;
+/// Horizontal shift of a highlighted menu item.
+pub const SHIFT: f32 = 6.0;
+/// Distance from the screen edge to the footer texts.
+pub const EDGE: f32 = 32.0;
 
-/// Spacing between stacked widgets.
-pub const GAP: f32 = 10.0;
-/// Inner padding of panels.
-pub const PAD: f32 = 24.0;
-/// Width of a menu button.
-pub const BUTTON_WIDTH: f32 = 260.0;
-/// Width of the small step buttons.
-pub const STEP_WIDTH: f32 = 44.0;
-/// Width of a settings label column.
-pub const LABEL_WIDTH: f32 = 240.0;
-/// Width of a settings value column.
-pub const VALUE_WIDTH: f32 = 90.0;
-
-/// Dimming layer behind a menu panel.
-pub const OVERLAY: Color = Color::srgba(0.0, 0.0, 0.0, 0.35);
-/// Panel background.
-pub const PANEL: Color = Color::srgba(0.05, 0.06, 0.08, 0.82);
-/// Idle button background.
-pub const BUTTON: Color = Color::srgba(0.16, 0.18, 0.22, 0.9);
-/// Hovered button background.
-pub const BUTTON_HOVER: Color = Color::srgba(0.26, 0.30, 0.38, 0.95);
-/// Pressed button background.
-pub const BUTTON_PRESSED: Color = Color::srgba(0.36, 0.52, 0.62, 1.0);
-/// Main text color.
-pub const TEXT: Color = Color::srgb(0.92, 0.94, 0.96);
-/// Muted text color.
-pub const TEXT_DIM: Color = Color::srgb(0.62, 0.66, 0.72);
+/// Solid ink background of full screens.
+pub const BACKGROUND: Color = Color::srgb(0.0549, 0.0667, 0.0863);
+/// Ink overlay laid over the world behind menus.
+pub const OVERLAY: Color = Color::srgba(0.0549, 0.0667, 0.0863, 0.72);
+/// Off-white main text.
+pub const TEXT: Color = Color::srgb(0.9255, 0.9098, 0.8745);
+/// Off-white text of an idle menu item.
+pub const ITEM: Color = Color::srgba(0.9255, 0.9098, 0.8745, 0.72);
+/// Off-white text of a pressed menu item.
+pub const ITEM_PRESSED: Color = Color::srgba(0.9255, 0.9098, 0.8745, 0.5);
+/// Muted grey text.
+pub const MUTED: Color = Color::srgb(0.5412, 0.5608, 0.5961);
+/// Warm sand accent.
+pub const ACCENT: Color = Color::srgb(0.8863, 0.7216, 0.4);
+/// Idle accent text.
+pub const ACCENT_REST: Color = Color::srgba(0.8863, 0.7216, 0.4, 0.85);
+/// Pressed accent text.
+pub const ACCENT_PRESSED: Color = Color::srgba(0.8863, 0.7216, 0.4, 0.6);
+/// Hairline rules.
+pub const HAIRLINE: Color = Color::srgba(1.0, 1.0, 1.0, 0.12);
+/// Crosshair dot.
+pub const CROSSHAIR: Color = Color::srgba(0.9255, 0.9098, 0.8745, 0.7);

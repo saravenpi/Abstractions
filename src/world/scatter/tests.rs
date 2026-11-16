@@ -1,6 +1,6 @@
 //! Tests of the plant tables and of the placement budgets.
 
-use super::rules::{check_pond, check_sea, underwater};
+use super::rules::{check_gaps, check_pond, check_sea, on_land, underwater};
 use super::*;
 use crate::world::propmesh::{BIG, TREES};
 use crate::world::{Biome, CHUNK_SIZE};
@@ -86,12 +86,11 @@ fn budgets_and_water_line_hold() {
             tris < TRI_BUDGET + 150,
             "chunk {coord} has {tris} triangles"
         );
-        for p in s
-            .props
-            .iter()
-            .chain(&s.grass)
-            .filter(|p| p.pos.y < SEA_LEVEL)
-        {
+        let wet = |p: &&Placement| {
+            let w = chunk_center(coord) + p.pos.xz();
+            t.height(w.x, w.y) < SEA_LEVEL
+        };
+        for p in s.props.iter().chain(&s.grass).filter(wet) {
             let top = if p.plant == Kelp {
                 p.scale + 1.0
             } else {
@@ -105,4 +104,40 @@ fn budgets_and_water_line_hold() {
             );
         }
     }
+}
+
+/// No two big props of a chunk stand closer than their rooms allow, and two trees keep 2.2 meters per unit of scale.
+#[test]
+fn big_props_keep_their_distance() {
+    let trees: usize = [1, 5, 9]
+        .into_iter()
+        .flat_map(|seed| {
+            let t = Terrain::new(seed);
+            chunks().map(move |c| check_gaps(&scatter_chunk(&t, c).props))
+        })
+        .sum();
+    assert!(trees > 100, "only {trees} trees sampled");
+}
+
+/// Land props stand on the visible terrain mesh, and rocks sit at or below it, never deeper than half their scale.
+#[test]
+fn land_props_touch_the_visible_ground() {
+    let (mut rocks, mut sunk) = (0, 0);
+    for seed in [1, 5] {
+        let t = Terrain::new(seed);
+        for (p, w) in chunks().flat_map(|c| on_land(&t, c)) {
+            let lift = p.pos.y - t.mesh_height(w.x, w.y);
+            if matches!(p.plant, Rock | IceRock | Sandstone) {
+                rocks += 1;
+                sunk += usize::from(lift < -0.05);
+                assert!(
+                    lift <= 1e-3 && lift >= -0.5 * p.scale - 1e-3,
+                    "rock at {lift}"
+                );
+            } else {
+                assert!(lift.abs() < 1e-3, "{:?} floats by {lift}", p.plant);
+            }
+        }
+    }
+    assert!(rocks > 20 && sunk > 0, "{rocks} rocks, {sunk} sunk");
 }

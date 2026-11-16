@@ -54,3 +54,32 @@ fn tri_counts_match() {
         );
     }
 }
+
+/// The weeping willow stays a cheap tree and stands taller than four meters.
+#[test]
+fn willow_is_tall_and_cheap() {
+    let kind = Plant::Willow as usize;
+    assert!(solid_tris(kind) <= 330, "{} triangles", solid_tris(kind));
+    for variant in 0..VARIANTS {
+        let tris = triangles(&big_mesh(kind, variant));
+        let top = tris.iter().flatten().map(|p| p.y).fold(f32::MIN, f32::max);
+        let low = tris.iter().flatten().map(|p| p.y).fold(f32::MAX, f32::min);
+        assert!(
+            top > 4.0 && low < -0.4,
+            "variant {variant} spans {low} to {top}"
+        );
+    }
+}
+
+/// Every tree, cactus and bamboo trunk starts below the ground so no slope shows its underside.
+#[test]
+fn trunks_are_buried() {
+    for kind in (0..=Plant::Saguaro as usize).filter(|k| *k != Plant::RoundCactus as usize) {
+        let low = triangles(&big_mesh(kind, 0))
+            .iter()
+            .flatten()
+            .map(|p| p.y)
+            .fold(f32::MAX, f32::min);
+        assert!(low < -0.4, "kind {kind} starts at {low}");
+    }
+}

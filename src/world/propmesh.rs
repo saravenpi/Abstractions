@@ -49,6 +49,9 @@ enum Part {
     Fronds([f32; 3], [f32; 5], [f32; 3]),
     /// Closed box: center, half sizes, roll around the x axis, color.
     Slab([f32; 3], [f32; 3], f32, [f32; 3]),
+    /// Double sided curtain of leaves hanging from a point, facing away from the trunk: top center, then width,
+    /// length and how far it swings outward, color.
+    Drape([f32; 3], [f32; 3], [f32; 3]),
 }
 
 use Part::*;
@@ -61,6 +64,7 @@ impl Part {
             Cone(..) => 14,
             Ball(..) => 20,
             Slab(..) => 12,
+            Drape(..) => 10,
             Fronds(_, f, _) => f[0] as usize * if f[3] == 0.0 { 2 } else { 6 },
         }
     }
@@ -89,6 +93,28 @@ fn spin(c: [f32; 3], kind: usize, variant: usize) -> [f32; 3] {
     [c[n % 3], c[(n + 1) % 3], c[(n + 2) % 3]]
 }
 
+/// Adds a tapering curtain hanging from `top`: `shape` holds its width, its length and its outward swing.
+fn drape(m: &mut FlatMesh, top: Vec3, shape: Vec3, color: [f32; 4]) {
+    let out = Vec3::new(top.x, 0.0, top.z).normalize_or(Vec3::X);
+    let side = Vec3::new(-out.z, 0.0, out.x) * shape.x * 0.5;
+    let at = |swing: f32, drop: f32| top + out * shape.z * swing - Vec3::Y * shape.y * drop;
+    let (mid, low, tip) = (at(1.0, 0.4), at(1.0, 0.8), at(0.9, 1.0));
+    let rim = [
+        (top - side, top + side),
+        (mid - side * 0.9, mid + side * 0.9),
+        (low - side * 0.55, low + side * 0.55),
+    ];
+    let mut both = |a: Vec3, b: Vec3, c: Vec3| {
+        m.tri(a, b, c, color);
+        m.tri(b, a, c, color);
+    };
+    for w in rim.windows(2) {
+        both(w[0].0, w[0].1, w[1].1);
+        both(w[0].0, w[1].1, w[1].0);
+    }
+    both(rim[2].0, rim[2].1, tip);
+}
+
 /// Appends part number `i` of plant `kind`, variant `variant`, to a mesh.
 fn add_part(m: &mut FlatMesh, kind: usize, variant: usize, i: usize) {
     let v = variant as f32 - 1.0;
@@ -104,6 +130,7 @@ fn add_part(m: &mut FlatMesh, kind: usize, variant: usize, i: usize) {
         }
         Fronds(a, f, c) => fan(m, at(a), f, variant as f32 * 0.8, paint(c)),
         Slab(a, h, roll, c) => slab(m, at(a), Vec3::from(h) * s, roll, paint(c)),
+        Drape(a, d, c) => drape(m, at(a), Vec3::from(d) * Vec3::new(s.x, s.y, s.x), paint(c)),
     }
 }
 

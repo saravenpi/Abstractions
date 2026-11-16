@@ -1,5 +1,6 @@
-//! Table rules shared by the scatter tests.
+//! Table and placement rules shared by the scatter tests.
 
+use super::spacing::room;
 use super::table::plants_for;
 use super::*;
 use crate::world::Biome;
@@ -64,4 +65,34 @@ pub fn check_pond(b: Biome) {
     for s in [Surface::Water, Surface::Shallows, Surface::Reef] {
         assert!(plants_for(b, s).iter().all(|e| !e.0.pond()));
     }
+}
+
+/// Returns the land placements of a chunk with the world position of each.
+pub fn on_land(t: &Terrain, coord: IVec2) -> Vec<(Placement, Vec2)> {
+    let s = scatter_chunk(t, coord);
+    s.props
+        .into_iter()
+        .chain(s.grass)
+        .map(|p| (p, chunk_center(coord) + p.pos.xz()))
+        .filter(|(_, w)| t.height(w.x, w.y) >= SEA_LEVEL)
+        .collect()
+}
+
+/// Asserts that the big props of one chunk keep their rooms apart and returns how many of them are trees.
+pub fn check_gaps(props: &[Placement]) -> usize {
+    for (i, a) in props.iter().enumerate() {
+        for b in &props[..i] {
+            let gap = a.pos.xz().distance(b.pos.xz());
+            assert!(
+                gap >= room(a) + room(b),
+                "{:?} and {:?} are {gap} m apart",
+                a.plant,
+                b.plant
+            );
+        }
+    }
+    let trees = props.iter().filter(|p| (p.plant as usize) < TREES);
+    trees
+        .inspect(|p| assert!((room(p) - 1.1 * p.scale).abs() < 1e-5))
+        .count()
 }

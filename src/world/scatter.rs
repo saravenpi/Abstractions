@@ -3,6 +3,7 @@
 mod density;
 #[cfg(test)]
 mod rules;
+mod spacing;
 mod table;
 #[cfg(test)]
 mod tests;
@@ -12,6 +13,7 @@ use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use self::density::{Fields, choose};
+use self::spacing::{crowded, ground};
 use self::table::plants_for;
 use super::propmesh::{Plant, VARIANTS};
 use super::props::small_tris;
@@ -95,6 +97,26 @@ impl Ctx<'_> {
             })
             .map(|plant| (plant, surface, height))
     }
+
+    /// Returns the prop the roll plants at chunk position `local`, if any, with its look drawn from `rng`.
+    fn place(&self, rng: &mut ChaCha8Rng, local: Vec2, roll: f32, big: bool) -> Option<Placement> {
+        let w = self.center + local;
+        let (plant, surface, height) = self.pick(w, roll, big)?;
+        let yaw = rng.random_range(0.0..std::f32::consts::TAU);
+        let scale = size(rng, plant, surface, height);
+        if height < SEA_LEVEL && -height < plant.draft() * scale {
+            return None;
+        }
+        let variant = rng.random_range(0..VARIANTS) as u8;
+        let y = ground(self.terrain, w, (plant, scale), height);
+        Some(Placement {
+            pos: Vec3::new(local.x, y, local.y),
+            yaw,
+            scale,
+            plant,
+            variant,
+        })
+    }
 }
 
 /// Returns the scale of a new plant, or the height of a kelp, which stops one to two meters under the surface.
@@ -106,7 +128,8 @@ fn size(rng: &mut ChaCha8Rng, plant: Plant, surface: Surface, height: f32) -> f3
     rng.random_range(0.8..1.3) * boulder
 }
 
-/// Draws `tries` random points of the chunk and plants what the biome, surface and density allow there.
+/// Draws `tries` random points of the chunk and plants what the biome, surface and density allow there, keeping big
+/// props apart.
 fn pass(ctx: &Ctx, rng: &mut ChaCha8Rng, tries: u32, big: bool) -> Vec<Placement> {
     let half = CHUNK_SIZE * 0.5;
     let mut out = Vec::new();
@@ -117,22 +140,12 @@ fn pass(ctx: &Ctx, rng: &mut ChaCha8Rng, tries: u32, big: bool) -> Vec<Placement
         if out.len() >= [SMALL_CAP, BIG_CAP][big as usize] || spent >= TRI_BUDGET {
             break;
         }
-        let Some((plant, surface, height)) = ctx.pick(ctx.center + local, roll, big) else {
+        let Some(placement) = ctx.place(rng, local, roll, big) else {
             continue;
         };
-        let yaw = rng.random_range(0.0..std::f32::consts::TAU);
-        let scale = size(rng, plant, surface, height);
-        if height < SEA_LEVEL && -height < plant.draft() * scale {
+        if big && crowded(&out, &placement) {
             continue;
         }
-        let variant = rng.random_range(0..VARIANTS) as u8;
-        let placement = Placement {
-            pos: Vec3::new(local.x, height, local.y),
-            yaw,
-            scale,
-            plant,
-            variant,
-        };
         spent += if big { 0 } else { small_tris(&placement) };
         out.push(placement);
     }

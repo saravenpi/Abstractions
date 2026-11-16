@@ -89,7 +89,10 @@ const CLOUD: Key = Key {
 
 impl Palette {
     /// Illuminance in lux of the moon when it stands high.
-    pub const MOON_LUX: f32 = 1_300.0;
+    pub const MOON_LUX: f32 = 350.0;
+
+    /// Ambient brightness at night, low enough that torches and lamps make visible pools of light.
+    pub const NIGHT_AMBIENT: f32 = 40.0;
 
     /// Returns the palette for a clock phase.
     pub fn at(phase: f32) -> Self {
@@ -102,7 +105,7 @@ impl Palette {
             zenith: ZENITH.at(day, dusk),
             horizon: HORIZON.at(day, dusk),
             ambient: AMBIENT.at(day, dusk),
-            ambient_brightness: 90.0 + 260.0 * day,
+            ambient_brightness: Self::NIGHT_AMBIENT + (350.0 - Self::NIGHT_AMBIENT) * day,
             sun_color: Vec3::new(1.0, 0.93, 0.78).lerp(Vec3::new(1.0, 0.55, 0.25), warmth),
             sun_lux: 12_000.0 * smoothstep(-0.02, 0.3, sun_dir.y),
             moon_lux: Self::MOON_LUX * smoothstep(-0.02, 0.3, moon_dir.y),
@@ -138,12 +141,15 @@ mod tests {
     use super::*;
 
     /// Noon is bright with a lit sun, midnight is dim with a lit moon and stars.
+    ///
+    /// The moon and the night ambient stay weak enough that a torch still shows at three meters.
     #[test]
     fn noon_and_midnight_differ() {
         let noon = Palette::at(0.25);
         let night = Palette::at(0.75);
         assert!(noon.sun_lux > 10_000.0 && noon.moon_lux < 1.0);
-        assert!(night.moon_lux > 1_000.0 && night.sun_lux < 1.0);
+        assert!(night.sun_lux < 1.0 && (250.0..=450.0).contains(&night.moon_lux));
+        assert!(night.ambient_brightness <= 45.0 && (noon.ambient_brightness - 350.0).abs() < 1.0);
         assert!(noon.horizon.length() > night.horizon.length() * 3.0);
         assert!(night.stars > 0.99 && noon.stars < 0.01);
     }

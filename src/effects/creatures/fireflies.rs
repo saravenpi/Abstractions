@@ -1,4 +1,4 @@
-//! Night fireflies: glowing bodies wandering in loose swarms, with real lights on the nearest few.
+//! Night fireflies: glowing bodies wandering in loose swarms, each of the nearest few carrying its own faint light.
 
 use std::f32::consts::TAU;
 
@@ -7,7 +7,7 @@ use bevy::prelude::*;
 
 use super::anim::blink;
 use super::env::{Ctx, Env, Sky};
-use super::gear::Gear;
+use super::gear::{Bind, Gear, rebind};
 use super::habitat::{Species, presence};
 use super::steer::{approach, step_toward};
 use super::wander::{PARKED, Roam, Wander, pick, place, strayed};
@@ -26,8 +26,17 @@ const SWARMS: usize = 4;
 /// Body diameter in meters.
 const SIZE: f32 = 0.09;
 
-/// Light power in lumens at full glow.
-const LIGHT_POWER: f32 = 900.0;
+/// Light power in lumens at full glow: a faint splash on the ground, the glowing body carries the look.
+const LIGHT_POWER: f32 = 300.0;
+
+/// Reach of a firefly light in meters.
+const LIGHT_RANGE: f32 = 3.0;
+
+/// Fireflies farther than this from the camera carry no light, in meters. It is inside the leash on purpose.
+const LIGHT_REACH: f32 = 22.0;
+
+/// How fast a light fades when it takes or leaves a firefly, in levels per second.
+const FADE: f32 = 3.0;
 
 /// How fireflies roam around their swarm.
 const ROAM: Roam = Roam {
@@ -40,41 +49,31 @@ const ROAM: Roam = Roam {
     speed: 0.5,
 };
 
-/// Transform, light and visibility of a firefly light.
+/// Transform, light, visibility and binding of a firefly light.
 type LightData = (
     &'static mut Transform,
     &'static mut PointLight,
     &'static mut Visibility,
+    &'static mut Bind,
 );
 
 /// Marks a firefly body.
 #[derive(Component, Debug, Clone, Copy)]
 pub struct Firefly;
 
-/// Marks one of the lights that follow the nearest fireflies.
-#[derive(Component, Debug, Clone, Copy)]
-pub struct FireflyLight;
-
 /// Anchor points of the swarms, on the XZ plane.
 #[derive(Resource, Debug, Clone, Copy, Default)]
 pub struct Swarms([Vec3; SWARMS]);
 
-/// The glowing fireflies closest to the camera.
-struct Nearest([(f32, Vec3, f32); LIGHTS]);
-
-impl Nearest {
-    /// Keeps the firefly at `at` when it is closer than the farthest one kept.
-    fn offer(&mut self, d2: f32, at: Vec3, glow: f32) {
-        let worst = self
-            .0
-            .iter()
-            .enumerate()
-            .max_by(|a, b| a.1.0.total_cmp(&b.1.0))
-            .map_or(0, |(i, _)| i);
-        if d2 < self.0[worst].0 {
-            self.0[worst] = (d2, at, glow);
-        }
-    }
+/// What the lights need to know about one firefly this frame.
+#[derive(Debug, Clone, Copy, Default)]
+struct Seen {
+    /// Where it is.
+    at: Vec3,
+    /// How brightly it shines, from 0 to 1.
+    glow: f32,
+    /// Distance to the camera while it is out and close enough to carry a light.
+    dist: Option<f32>,
 }
 
 /// What a firefly update needs to know about the sky.
@@ -101,12 +100,12 @@ pub fn spawn(commands: &mut Commands, gear: &Gear) {
     }
     for _ in 0..LIGHTS {
         commands.spawn((
-            FireflyLight,
+            Bind::default(),
             PointLight {
                 color: Color::srgb(0.8, 1.0, 0.35),
                 intensity: 0.0,
-                range: 4.0,
-                radius: 0.05,
+                range: LIGHT_RANGE,
+                radius: 0.12,
                 shadow_maps_enabled: false,
                 ..default()
             },
@@ -154,28 +153,26 @@ fn fly(wander: &mut Wander, at: &mut Transform, flight: &Flight, hub: Vec3, ctx:
     at.translation +=
         Vec3::new((p * 0.7).sin(), 0.5 * (p * 1.3).cos(), (p * 0.9).cos()) * 0.15 * dt;
     let glow = blink(p, sky.ambient.daylight) * wander.shown;
-    at.scale = Vec3::splat(SIZE * wander.shown * (0.4 + 0.6 * glow));
+    at.scale = Vec3::splat(SIZE * wander.shown * (0.15 + 0.85 * glow));
     glow
 }
 
-/// Moves the lights onto the nearest glowing fireflies and sets their power.
-fn light_up(
-    lights: &mut Query<LightData, (With<FireflyLight>, Without<Firefly>)>,
-    near: &Nearest,
-    dt: f32,
-) {
-    let follow = 1.0 - (-8.0 * dt).exp();
-    for ((mut at, mut light, mut visibility), &(_, spot, glow)) in lights.iter_mut().zip(&near.0) {
-        let lit = glow > 0.01;
-        if *visibility == Visibility::Hidden {
-            at.translation = spot;
+/// Keeps every light on its own firefly: it sits exactly on it and shines with its blink and its own fade.
+fn light_up(lights: &mut Query<LightData, Without<Firefly>>, seen: &[Seen; COUNT], dt: f32) {
+    let mut binds: Vec<Bind> = lights.iter().map(|(.., bind)| *bind).collect();
+    let dists = seen.map(|firefly| firefly.dist);
+    rebind(&mut binds, &dists, FADE * dt);
+    for ((mut at, mut light, mut visibility, mut bind), next) in lights.iter_mut().zip(binds) {
+        bind.set_if_neq(next);
+        let carried = next.target.and_then(|slot| seen.get(slot));
+        if let Some(firefly) = carried {
+            at.translation = firefly.at;
         }
-        at.translation = at.translation.lerp(spot, follow);
-        light.intensity = LIGHT_POWER * glow;
-        visibility.set_if_neq(if lit {
-            Visibility::Visible
-        } else {
-            Visibility::Hidden
+        let power = LIGHT_POWER * next.level * carried.map_or(0.0, |firefly| firefly.glow);
+        light.intensity = power;
+        visibility.set_if_neq(match power > 0.0 {
+            true => Visibility::Visible,
+            false => Visibility::Hidden,
         });
     }
 }
@@ -186,7 +183,7 @@ pub fn step(
     camera: Single<&GlobalTransform, With<GameCamera>>,
     mut swarms: ResMut<Swarms>,
     mut flies: Query<(&mut Wander, &mut Transform), With<Firefly>>,
-    mut lights: Query<LightData, (With<FireflyLight>, Without<Firefly>)>,
+    mut lights: Query<LightData, Without<Firefly>>,
 ) {
     let sky = env.sky(camera.translation());
     let flight = Flight {
@@ -199,18 +196,19 @@ pub fn step(
         rng: &mut rng,
     };
     gather(&mut swarms, &sky, &mut ctx);
-    let mut near = Nearest([(f32::INFINITY, Vec3::ZERO, 0.0); LIGHTS]);
+    let mut seen = [Seen::default(); COUNT];
     for (mut wander, mut at) in &mut flies {
         let hub = swarms.0[wander.slot % SWARMS];
         let glow = fly(&mut wander, &mut at, &flight, hub, &mut ctx);
-        if glow > 0.01 {
-            near.offer(
-                at.translation.distance_squared(sky.camera),
-                at.translation,
+        let dist = at.translation.distance(sky.camera);
+        if let Some(firefly) = seen.get_mut(wander.slot) {
+            *firefly = Seen {
+                at: at.translation,
                 glow,
-            );
+                dist: (wander.shown > 0.05 && dist < LIGHT_REACH).then_some(dist),
+            };
         }
     }
-    light_up(&mut lights, &near, sky.dt);
+    light_up(&mut lights, &seen, sky.dt);
     *env.rng = rng;
 }

@@ -1,11 +1,15 @@
-//! Tests that villages and camps carry the lights and fires they promise.
+//! Tests that villages and camps carry the lights and fires they promise, and of the flames and light strengths.
 
 use bevy::prelude::*;
+
+use bevy::mesh::Indices;
 
 use super::audit::{positions, signed_volume};
 use super::brush::Build;
 use super::camp::{Layout, draw_layout};
-use super::glow::LightKind;
+use super::flame::{emitter, pose, radiance, shells, teardrop};
+use super::flicker::power;
+use super::glow::{LightKind, WALL_REACH};
 use super::site::{CELL, Kind, structure_in_cell};
 use super::tests::built;
 use super::{DRAW, Terrain};
@@ -74,4 +78,81 @@ fn round_solids_wind_outward() {
         signed_volume(&positions(&b.mesh.clone().into_mesh())) > 0.0,
         "prism is inside out"
     );
+}
+
+/// Torches and lamps give 150 to 400 lux at 3 m, every light reaches past 5 m, and a wall torch burns off its wall.
+#[test]
+fn lights_make_visible_pools() {
+    let lux = |kind: LightKind| power(kind).0 / (4.0 * std::f32::consts::PI * 9.0);
+    for kind in [LightKind::Torch, LightKind::Lamp] {
+        assert!(
+            (150.0..=400.0).contains(&lux(kind)),
+            "{kind:?}: {} lux at 3 m",
+            lux(kind)
+        );
+    }
+    assert!(
+        lux(LightKind::Campfire) > lux(LightKind::Brazier)
+            && lux(LightKind::Candle) < lux(LightKind::Torch)
+    );
+    assert!(LightKind::ALL.iter().all(|kind| power(*kind).1 >= 6.0));
+    let t = Terrain::new(1);
+    let mut b = built(&t, Kind::Cabin, 3);
+    let wall = Vec3::new(1.0, 1.6, 2.0);
+    b.wall_torch(wall);
+    let out = (b.lights[0].pos - b.pt(wall)).dot(b.dir(Vec3::Z));
+    assert!(
+        WALL_REACH >= 0.35 && (out - WALL_REACH).abs() < 1e-4,
+        "torch is {out} m from its wall"
+    );
+}
+
+/// The flame shell and the ray traced emitter are closed, wind outward and only the emitter is ray traced.
+#[test]
+fn flame_meshes_are_closed_and_fit_ray_tracing() {
+    for (mesh, traced, tris) in [(teardrop(), false, 36), (emitter(), true, 8)] {
+        let verts = positions(&mesh);
+        assert_eq!(verts.len(), tris * 3);
+        assert!(signed_volume(&verts) > 0.0, "mesh is inside out");
+        assert_eq!(mesh.enable_raytracing, traced);
+        assert!(matches!(mesh.indices(), Some(Indices::U32(_))));
+        assert_eq!(mesh.attributes().count(), 4);
+    }
+    let (low, high) = positions(&teardrop())
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(lo, hi), p| {
+            (lo.min(p.y), hi.max(p.y))
+        });
+    assert_eq!((low, high), (0.0, 1.0));
+    let torch = radiance(LightKind::Torch);
+    assert!(torch.red > 50_000.0 && torch.red > torch.green && torch.green > torch.blue);
+}
+
+/// Every kind has nested shells, big fires have three tongues, and a shell moves without its base leaving its spot.
+#[test]
+fn flame_shells_nest_and_pivot_on_their_base() {
+    for kind in LightKind::ALL {
+        let flame = shells(kind, 1.3);
+        let big = matches!(kind, LightKind::Campfire | LightKind::Hearth);
+        assert!(flame.len() >= 3 && flame.len().is_multiple_of(3) && (!big || flame.len() == 9));
+        for tongue in flame.chunks(3) {
+            assert_eq!([tongue[0].0, tongue[1].0, tongue[2].0], [0, 1, 2]);
+            assert!(
+                tongue
+                    .windows(2)
+                    .all(|w| w[1].1.size.cmplt(w[0].1.size).all())
+            );
+        }
+        for (frame, (_, layer)) in (0..300).flat_map(|f| flame.iter().map(move |l| (f, l))) {
+            let at = pose(layer, frame as f32 * 0.05, Vec3::new(4.0, 0.0, -3.0));
+            let stretch = at.scale.y / layer.size.y;
+            assert_eq!(at.translation, layer.base);
+            assert!(
+                (0.7..=1.3).contains(&stretch) && at.rotation.is_normalized(),
+                "{kind:?}: {stretch}"
+            );
+        }
+    }
+    let lean = |seconds: f32| pose(&shells(LightKind::Torch, 0.0)[0].1, seconds, Vec3::ZERO);
+    assert!(lean(0.3).scale.y != lean(0.9).scale.y && lean(0.3).rotation != lean(0.9).rotation);
 }

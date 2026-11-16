@@ -1,4 +1,4 @@
-//! Fullscreen post-process that bands the colors of the low-resolution 3D view.
+//! Fullscreen post-process that bands the colors of the low-resolution 3D view, with an ordered dither.
 
 use bevy::asset::embedded_asset;
 use bevy::core_pipeline::fullscreen_material::{FullscreenMaterial, FullscreenMaterialPlugin};
@@ -61,4 +61,22 @@ impl FullscreenMaterial for Pixelate {
 pub(super) fn plugin(app: &mut App) {
     embedded_asset!(app, "pixelate.wgsl");
     app.add_plugins(FullscreenMaterialPlugin::<Pixelate>::default());
+}
+
+#[cfg(test)]
+mod tests {
+    /// The shader's dither matrix holds every value from 0 to 15 exactly once.
+    #[test]
+    fn dither_matrix_covers_every_level_once() {
+        let source = include_str!("pixelate.wgsl");
+        let start = source.find("array<f32, 16>(").expect("matrix") + "array<f32, 16>(".len();
+        let end = start + source[start..].find(");").expect("matrix end");
+        let mut values: Vec<u32> = source[start..end]
+            .split(',')
+            .filter_map(|v| v.trim().parse::<f32>().ok())
+            .map(|v| v as u32)
+            .collect();
+        values.sort_unstable();
+        assert_eq!(values, (0..16).collect::<Vec<u32>>());
+    }
 }

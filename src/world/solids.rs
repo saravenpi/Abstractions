@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use super::shapes::FlatMesh;
 
 /// Golden ratio used by the icosahedron vertices.
-const PHI: f32 = 1.618_034;
+const PHI: f32 = std::f32::consts::GOLDEN_RATIO;
 
 /// Icosahedron faces as indices into [`icosa_vertices`].
 const FACES: [[usize; 3]; 20] = [

@@ -40,7 +40,7 @@ const GR: &[Surface] = &[Surface::Grass, Surface::Rock];
 const GRS: &[Surface] = &[Surface::Grass, Surface::Rock, Surface::Sand];
 const GS: &[Surface] = &[Surface::Grass, Surface::Sand];
 const HIGH: &[Surface] = &[Surface::Rock, Surface::Snow];
-const COZY: &[Biome] = &[Biome::Meadow, Biome::Forest, Biome::Taiga];
+const CAMP: &[Surface] = &[Surface::Grass, Surface::Sand, Surface::Snow];
 
 const fn spec(
     radius: f32,
@@ -60,7 +60,7 @@ const fn spec(
     }
 }
 
-const SPECS: [Spec; 11] = [
+const SPECS: [Spec; 10] = [
     spec(
         9.0,
         G,
@@ -85,12 +85,14 @@ const SPECS: [Spec; 11] = [
     },
     spec(5.0, GS, &[Biome::Tropical], 1.0, Floor::Top(1.5)),
     spec(8.0, G, &[Biome::Cherry], 1.2, Floor::Top(0.0)),
-    spec(15.0, G, COZY, 1.4, Floor::Top(0.0)),
-    spec(5.0, G, COZY, 1.0, Floor::Center(0.0)),
+    Spec {
+        min_height: 0.25,
+        ..spec(5.5, CAMP, &[], 1.0, Floor::Center(0.0))
+    },
 ];
 
 impl Kind {
-    /// Returns the site requirements of this kind.
+    /// Returns the site requirements of this kind. Villages have their own placement and no spec.
     pub fn spec(self) -> &'static Spec {
         &SPECS[self as usize]
     }

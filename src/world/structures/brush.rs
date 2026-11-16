@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 
+use super::glow::LightPoint;
 use super::site::Site;
 use crate::world::Terrain;
 use crate::world::shapes::FlatMesh;
@@ -67,6 +68,11 @@ pub struct Build<'a> {
     pub base_y: f32,
     /// Quads drawn so far, used for tone variation.
     pub count: u32,
+    /// Light points placed so far, in chunk space.
+    pub lights: Vec<LightPoint>,
+    /// Closed boxes and double-sided sheets drawn so far, as vertex ranges.
+    #[cfg(test)]
+    pub audit: Vec<(super::audit::Piece, usize, usize)>,
 }
 
 impl<'a> Build<'a> {
@@ -82,6 +88,9 @@ impl<'a> Build<'a> {
             yaw: site.yaw,
             base_y: site.floor,
             count: 0,
+            lights: Vec::new(),
+            #[cfg(test)]
+            audit: Vec::new(),
         }
     }
 

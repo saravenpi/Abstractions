@@ -3,6 +3,8 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
+use super::detail::Detail;
+
 /// Chunks around the focus, in every direction, that carry colliders.
 const SOLID_RADIUS: i32 = 1;
 
@@ -44,6 +46,8 @@ pub struct Loaded {
     pub bodies: Option<Collider>,
     /// Whether the colliders are currently attached.
     pub solid: bool,
+    /// Level of detail, ground cover and structure state.
+    pub detail: Detail,
 }
 
 impl Loaded {
@@ -54,6 +58,7 @@ impl Loaded {
         }
         self.solid = on;
         let bodies = self.props.zip(self.bodies.as_ref());
+        let structure = self.detail.structure();
         match on {
             true => {
                 commands
@@ -62,11 +67,17 @@ impl Loaded {
                 if let Some((e, c)) = bodies {
                     commands.entity(e).try_insert(c.clone());
                 }
+                if let Some((e, c)) = structure {
+                    commands.entity(*e).try_insert(c.clone());
+                }
             }
             false => {
                 commands.entity(self.entity).try_remove::<Collider>();
                 if let Some((e, _)) = bodies {
                     commands.entity(e).try_remove::<Collider>();
+                }
+                if let Some((e, _)) = structure {
+                    commands.entity(*e).try_remove::<Collider>();
                 }
             }
         }

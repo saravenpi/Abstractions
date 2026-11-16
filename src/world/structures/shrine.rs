@@ -58,5 +58,8 @@ pub fn shrine(b: &mut Build) {
     lantern(b, -2.2, 2.0);
     lantern(b, 2.2, 2.0);
     b.ramp(Vec3::new(0.0, 0.0, 3.0), 2.2);
+    for x in [-1.9, 1.9] {
+        b.torch_post(Vec3::new(x, 0.0, 3.4));
+    }
     gate(b);
 }

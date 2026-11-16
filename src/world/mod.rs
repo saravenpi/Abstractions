@@ -80,7 +80,8 @@ fn streaming(screen: Res<State<Screen>>, terrain: Option<Res<Terrain>>) -> bool 
 
 /// Registers the world systems.
 pub(super) fn plugin(app: &mut App) {
-    app.init_resource::<chunks::Chunks>()
+    app.add_plugins((sea::plugin, structures::plugin))
+        .init_resource::<chunks::Chunks>()
         .add_systems(Startup, chunks::setup_assets)
         .add_systems(
             OnEnter(Screen::Loading),
@@ -89,11 +90,15 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(OnEnter(Screen::Title), end_world)
         .add_systems(
             Update,
-            chunks::add_instances.run_if(crate::render::ray_tracing::active),
+            (
+                chunks::add_instances.run_if(crate::render::ray_tracing::active),
+                chunks::retarget.run_if(resource_changed::<crate::render::RayTracing>),
+            ),
         )
         .add_systems(
             Update,
             (
+                chunks::rebuild.run_if(resource_changed::<crate::render::RayTracing>),
                 chunks::stream,
                 chunks::collect,
                 chunks::mark_ready,

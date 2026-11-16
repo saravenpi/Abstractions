@@ -7,6 +7,7 @@ use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use super::rules::{fit, water_yaw};
+use super::village::{self, REACH, SPAN, near_village, village_in_cell};
 use crate::world::{CHUNK_SIZE, Terrain};
 
 /// Side of one structure cell in meters.
@@ -19,7 +20,10 @@ const MARGIN: f32 = 24.0;
 const TRIES: u32 = 12;
 
 /// Chance that a cell tries to hold a structure at all.
-const CHANCE: f64 = 0.5;
+const CHANCE: f64 = 0.65;
+
+/// Chance that a spot tries a camp before any other kind.
+const CAMP_FIRST: f64 = 0.5;
 
 /// Every kind of structure, in table order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,10 +46,10 @@ pub enum Kind {
     StiltHut,
     /// Torii gate and small shrine.
     Shrine,
-    /// Three cabins around a well.
-    Village,
-    /// Tents around a fire ring.
+    /// Tents, shelters and fires, in several layouts.
     Camp,
+    /// A plaza with streets and many houses.
+    Village,
 }
 
 impl Kind {
@@ -60,7 +64,21 @@ impl Kind {
         Kind::Dock,
         Kind::StiltHut,
         Kind::Shrine,
+        Kind::Camp,
         Kind::Village,
+    ];
+
+    /// The kinds placed one per spot in a cell, everything except the village.
+    pub const SMALL: [Kind; 10] = [
+        Kind::StoneCircle,
+        Kind::Tower,
+        Kind::Cabin,
+        Kind::Lighthouse,
+        Kind::Pyramid,
+        Kind::Obelisk,
+        Kind::Dock,
+        Kind::StiltHut,
+        Kind::Shrine,
         Kind::Camp,
     ];
 }
@@ -105,28 +123,38 @@ fn try_kind(terrain: &Terrain, kind: Kind, p: Vec2, rng: &mut ChaCha8Rng) -> Opt
     })
 }
 
+/// Returns the first kind that fits at `p`, trying a camp first when `camp_first` is set.
+fn first_fit(terrain: &Terrain, p: Vec2, rng: &mut ChaCha8Rng, camp_first: bool) -> Option<Site> {
+    let count = Kind::SMALL.len();
+    let start = rng.random_range(0..count);
+    let order = camp_first.then_some(Kind::Camp).into_iter();
+    let rest = (0..count).map(|i| Kind::SMALL[(start + i) % count]);
+    order
+        .chain(rest)
+        .find_map(|kind| try_kind(terrain, kind, p, rng))
+}
+
 /// Returns the structure of a cell, if it has one. Depends only on the seed and the cell.
 pub fn structure_in_cell(terrain: &Terrain, cell: IVec2) -> Option<Site> {
+    if let Some(v) = village_in_cell(terrain, cell.div_euclid(IVec2::splat(SPAN)))
+        && (v.origin / CELL).floor().as_ivec2() == cell
+    {
+        return Some(v);
+    }
     let mut rng = cell_rng(terrain.seed(), cell);
     if !rng.random_bool(CHANCE) {
         return None;
     }
     let min = cell.as_vec2() * CELL;
-    let count = Kind::ALL.len();
-    for _ in 0..TRIES {
+    (0..TRIES).find_map(|_| {
         let span = MARGIN..CELL - MARGIN;
         let p = min + Vec2::new(rng.random_range(span.clone()), rng.random_range(span));
-        let start = rng.random_range(0..count);
-        if terrain.height(p.x, p.y) <= 0.0 {
-            continue;
-        }
-        for i in 0..count {
-            if let Some(site) = try_kind(terrain, Kind::ALL[(start + i) % count], p, &mut rng) {
-                return Some(site);
-            }
-        }
-    }
-    None
+        let camp_first = rng.random_bool(CAMP_FIRST);
+        let blocked = terrain.height(p.x, p.y) <= 0.0 || near_village(terrain, p);
+        (!blocked)
+            .then(|| first_fit(terrain, p, &mut rng, camp_first))
+            .flatten()
+    })
 }
 
 /// Returns the structures whose origin lies inside chunk `coord`.
@@ -144,18 +172,23 @@ pub fn sites_in_chunk(terrain: &Terrain, coord: IVec2) -> Vec<Site> {
         .collect()
 }
 
-/// Returns the origins of every structure standing in chunk `coord` or within `margin` of its edges.
+/// Returns the points to keep clear of plants around chunk `coord`: structure origins, and for
+/// villages the center, every lot and street samples.
 pub fn origins_near(terrain: &Terrain, coord: IVec2, margin: f32) -> Vec<Vec2> {
     let min = coord.as_vec2() * CHUNK_SIZE - Vec2::splat(margin);
     let max = min + Vec2::splat(CHUNK_SIZE + 2.0 * margin);
+    let (lo, hi) = (min - Vec2::splat(REACH), max + Vec2::splat(REACH));
     let (c0, c1) = (
-        (min / CELL).floor().as_ivec2(),
-        (max / CELL).floor().as_ivec2(),
+        (lo / CELL).floor().as_ivec2(),
+        (hi / CELL).floor().as_ivec2(),
     );
     (c0.x..=c1.x)
         .flat_map(|x| (c0.y..=c1.y).map(move |y| IVec2::new(x, y)))
         .filter_map(|cell| structure_in_cell(terrain, cell))
-        .map(|site| site.origin)
+        .flat_map(|site| match site.kind {
+            Kind::Village => village::points(terrain, site),
+            _ => vec![site.origin],
+        })
         .filter(|o| o.cmpge(min).all() && o.cmplt(max).all())
         .collect()
 }

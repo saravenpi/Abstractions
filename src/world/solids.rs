@@ -1,10 +1,16 @@
-//! Low-poly solids appended to a [`FlatMesh`]: cones, prisms and jittered icospheres.
+//! Low-poly solids appended to a [`FlatMesh`]: cones, prisms, boxes and jittered icospheres.
 
 use std::f32::consts::TAU;
 
 use bevy::prelude::*;
 
 use super::shapes::FlatMesh;
+
+mod slab;
+#[cfg(test)]
+pub(crate) mod tests;
+
+pub use slab::slab;
 
 /// Golden ratio used by the icosahedron vertices.
 const PHI: f32 = std::f32::consts::GOLDEN_RATIO;
@@ -79,7 +85,7 @@ pub fn cone(mesh: &mut FlatMesh, base: Vec3, size: Vec2, sides: u32, color: [f32
     }
 }
 
-/// Adds an upright prism with its bottom circle centered on `base`.
+/// Adds a closed upright prism with its bottom circle centered on `base`.
 pub fn prism(mesh: &mut FlatMesh, base: Vec3, size: Vec2, sides: u32, color: [f32; 4]) {
     let (radius, height) = (size.x, size.y);
     let at = |i: u32, y: f32| {
@@ -91,6 +97,8 @@ pub fn prism(mesh: &mut FlatMesh, base: Vec3, size: Vec2, sides: u32, color: [f3
         let (c, d) = (at(i, height), at(i + 1, height));
         mesh.tri(b, a, c, color);
         mesh.tri(b, c, d, color);
+        mesh.tri(a, b, base, color);
+        mesh.tri(d, c, base + Vec3::Y * height, color);
     }
 }
 
@@ -114,7 +122,7 @@ pub fn icosa(mesh: &mut FlatMesh, center: Vec3, radii: Vec3, shape: (f32, u32), 
     }
 }
 
-/// Adds an open six-sided tube from `from` to `to`, with the `radii` at the start and the end.
+/// Adds a closed six-sided tube from `from` to `to`, with the `radii` at the start and the end.
 pub fn frustum(mesh: &mut FlatMesh, from: Vec3, to: Vec3, radii: Vec2, color: [f32; 4]) {
     let axis = (to - from).normalize_or_zero();
     let u = axis.any_orthonormal_vector();
@@ -129,6 +137,8 @@ pub fn frustum(mesh: &mut FlatMesh, from: Vec3, to: Vec3, radii: Vec2, color: [f
         let tone = varied(color, i as usize);
         mesh.tri(b, a, c, tone);
         mesh.tri(b, c, d, tone);
+        mesh.tri(a, b, from, tone);
+        mesh.tri(d, c, to, tone);
     }
 }
 

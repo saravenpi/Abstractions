@@ -1,26 +1,25 @@
 //! Chunk streaming: builds terrain chunks off-thread around the anchor and drops far ones.
 
+mod build;
+mod detail;
 mod plan;
 mod raytrace;
+mod spawn;
 
 use std::collections::HashMap;
 
-use avian3d::prelude::*;
-use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
 
+use self::build::{ChunkData, generate};
+use self::detail::{Probe, refine};
 use self::plan::{Loaded, needs_collider, ring, select_batch};
-pub use self::raytrace::add_instances;
+pub use self::raytrace::{add_instances, rebuild, retarget};
+use self::spawn::{Spawner, spawn_chunk};
 use super::focus::Focus;
-use super::mesh::{chunk_heights, chunk_mesh};
-use super::propmesh::merge_props;
-use super::props::{Cover, PropAssets, body_collider, build_grass, spawn_props};
-use super::scatter::{Placement, chunk_center, scatter_chunk};
-use super::structures::{StructureData, build_chunk, origins_near, spawn_structures};
-use super::{CHUNK_SIZE, Terrain, WorldReady};
-use crate::render::RayTracing;
-use crate::screens::Screen;
+use super::mesh::{Lod, ring_distance};
+use super::props::PropAssets;
+use super::{Terrain, WorldReady};
 use crate::settings::{Persistent, Settings};
 
 /// Most chunk tasks running at the same time.
@@ -28,9 +27,6 @@ const MAX_PENDING: usize = 12;
 
 /// Finished chunks turned into entities per frame once the world is ready.
 const FRAME_BUDGET: usize = 2;
-
-/// Radius around a structure origin kept free of plants.
-const CLEARING: f32 = 11.0;
 
 /// Chunk radius used when the settings are missing.
 const DEFAULT_RADIUS: u32 = 4;
@@ -49,6 +45,20 @@ impl Chunks {
         *self = Self::default();
     }
 
+    /// Despawns every chunk and cancels running tasks, so the streamer builds them all again.
+    pub fn rebuild(&mut self, commands: &mut Commands) {
+        for loaded in self.loaded.values() {
+            commands.entity(loaded.entity).try_despawn();
+        }
+        self.clear();
+    }
+
+    /// Returns the chunks whose generation task is done.
+    fn finished(&self) -> Vec<IVec2> {
+        let done = self.pending.iter().filter(|(_, task)| task.is_finished());
+        done.map(|(c, _)| *c).collect()
+    }
+
     /// Despawns chunks and cancels tasks that lie beyond `radius` plus one from `center`.
     fn drop_far(&mut self, commands: &mut Commands, center: IVec2, radius: i32) {
         let far = |c: &IVec2| (*c - center).length_squared() > (radius + 1) * (radius + 1);
@@ -59,40 +69,6 @@ impl Chunks {
             }
         }
         self.pending.retain(|c, _| !far(c));
-    }
-}
-
-/// Everything a worker thread produces for one chunk.
-pub struct ChunkData {
-    heights: Collider,
-    mesh: Mesh,
-    grass: Option<Mesh>,
-    props: Option<Mesh>,
-    bodies: Option<Collider>,
-    structures: Option<StructureData>,
-}
-
-/// Generates the mesh, collider and merged props of chunk `coord`.
-pub fn generate(terrain: &Terrain, coord: IVec2) -> ChunkData {
-    let heights = chunk_heights(terrain, coord);
-    let mut scatter = scatter_chunk(terrain, coord);
-    let taken = origins_near(terrain, coord, CLEARING);
-    let center = chunk_center(coord);
-    let free = |p: &Placement| {
-        let at = center + Vec2::new(p.pos.x, p.pos.z);
-        taken.iter().all(|o| o.distance(at) > CLEARING)
-    };
-    scatter.props.retain(free);
-    scatter.grass.retain(free);
-    let mesh = chunk_mesh(terrain, coord, &heights);
-    let scale = Vec3::new(CHUNK_SIZE, 1.0, CHUNK_SIZE);
-    ChunkData {
-        mesh,
-        grass: (!scatter.grass.is_empty()).then(|| build_grass(&scatter)),
-        props: (!scatter.props.is_empty()).then(|| merge_props(&scatter.props)),
-        bodies: body_collider(&scatter.props),
-        structures: build_chunk(terrain, coord),
-        heights: Collider::heightfield(heights, scale),
     }
 }
 
@@ -135,56 +111,11 @@ pub fn stream(
     let room = MAX_PENDING.saturating_sub(chunks.pending.len());
     for coord in wanted.into_iter().take(room) {
         let terrain = terrain.clone();
-        chunks
-            .pending
-            .insert(coord, pool.spawn(async move { generate(&terrain, coord) }));
-    }
-}
-
-/// Meshes, the shared material and the ray tracing state, for spawning chunks.
-#[derive(SystemParam)]
-pub struct Spawner<'w> {
-    assets: Res<'w, PropAssets>,
-    meshes: ResMut<'w, Assets<Mesh>>,
-    ray_tracing: Res<'w, RayTracing>,
-}
-
-/// Spawns the entities of one finished chunk and returns what is needed to attach its colliders later.
-fn spawn_chunk(
-    commands: &mut Commands,
-    spawner: &mut Spawner,
-    coord: IVec2,
-    data: ChunkData,
-) -> Loaded {
-    let center = chunk_center(coord);
-    let material = &spawner.assets.material;
-    let entity = commands
-        .spawn((
-            Mesh3d(spawner.meshes.add(data.mesh)),
-            MeshMaterial3d(material.clone()),
-            Transform::from_xyz(center.x, 0.0, center.y),
-            RigidBody::Static,
-            DespawnOnEnter(Screen::Title),
-        ))
-        .id();
-    let cover = Cover {
-        props: data.props.map(|m| spawner.meshes.add(m)),
-        grass: data.grass.map(|m| spawner.meshes.add(m)),
-    };
-    let props = spawn_props(commands, entity, material, cover);
-    spawn_structures(
-        commands,
-        entity,
-        &spawner.assets,
-        &mut spawner.meshes,
-        data.structures,
-    );
-    Loaded {
-        entity,
-        props,
-        heights: data.heights,
-        bodies: data.bodies,
-        solid: false,
+        let lod = Lod::for_ring(ring_distance(coord, center));
+        chunks.pending.insert(
+            coord,
+            pool.spawn(async move { generate(&terrain, coord, lod) }),
+        );
     }
 }
 
@@ -194,19 +125,12 @@ pub fn collect(
     mut chunks: ResMut<Chunks>,
     mut spawner: Spawner,
     focus: Focus,
-    ready: Res<WorldReady>,
+    probe: Probe,
 ) {
     let Some(center) = focus.chunk() else {
         return;
     };
-    let budget = if ready.0 { FRAME_BUDGET } else { MAX_PENDING };
-    let finished = chunks
-        .pending
-        .iter()
-        .filter(|(_, task)| task.is_finished())
-        .map(|(c, _)| *c)
-        .collect();
-    for coord in select_batch(finished, center, budget) {
+    for coord in select_batch(chunks.finished(), center, spawner.budget()) {
         let Some(mut data) = chunks
             .pending
             .remove(&coord)
@@ -219,6 +143,13 @@ pub fn collect(
         loaded.set_solid(&mut commands, needs_collider(coord, center));
         chunks.loaded.insert(coord, loaded);
     }
+    refine(
+        &mut commands,
+        &mut chunks.loaded,
+        center,
+        &mut spawner,
+        &probe,
+    );
 }
 
 /// Flags the world ready once the 3x3 chunks around the focus all exist with colliders.

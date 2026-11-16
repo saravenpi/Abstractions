@@ -34,8 +34,6 @@ pub const GLASS: [f32; 3] = [1.0, 0.88, 0.45];
 pub const TORII: [f32; 3] = [0.80, 0.22, 0.15];
 /// Tent canvas.
 pub const CANVAS: [f32; 3] = [0.80, 0.72, 0.55];
-/// Flames.
-pub const FIRE: [f32; 3] = [1.0, 0.55, 0.15];
 /// Glowing runes.
 pub const RUNE: [f32; 3] = [0.35, 0.80, 0.85];
 /// Well water.

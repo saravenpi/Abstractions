@@ -94,13 +94,11 @@ impl Build<'_> {
             ([b[0], b[1], r[1], r[0]], front),
             ([a[1], a[0], r[0], r[1]], back),
         ] {
-            self.quad_out(quad, out, top);
-            self.quad_out(quad, -out, under);
+            self.sheet_quad(quad, out, [top, under]);
         }
         for (i, out) in [Vec3::NEG_X, Vec3::X].into_iter().enumerate() {
             let out = self.dir(out);
-            self.tri_out([a[i], b[i], r[i]], out, end);
-            self.tri_out([a[i], b[i], r[i]], -out, under);
+            self.sheet_tri([a[i], b[i], r[i]], out, [end, under]);
         }
     }
 
@@ -122,9 +120,9 @@ impl Build<'_> {
         let hyp = len.hypot(drop);
         let up = self.dir(Vec3::new(0.0, len, drop) / hyp);
         let (top_c, side_c) = (self.color(STONE, 1.0), self.color(STONE, 0.8));
-        self.quad_out([a, b, c, d], up, top_c);
-        self.tri_out([a, al, d], self.dir(Vec3::NEG_X), side_c);
-        self.tri_out([b, bl, c], self.dir(Vec3::X), side_c);
+        self.sheet_quad([a, b, c, d], up, [top_c, side_c]);
+        self.sheet_tri([a, al, d], self.dir(Vec3::NEG_X), [side_c, side_c]);
+        self.sheet_tri([b, bl, c], self.dir(Vec3::X), [side_c, side_c]);
         let tilt = Quat::from_rotation_y(self.yaw)
             * Quat::from_rotation_arc(Vec3::Z, Vec3::new(0.0, -drop, len) / hyp);
         let mid = self.pt(Vec3::new(at.x, at.y - drop * 0.5, at.z + len * 0.5)) - up * 0.25;

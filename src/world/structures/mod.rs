@@ -1,21 +1,39 @@
 //! Procedural structures: ruins, cabins, temples and more, placed per cell and merged per chunk.
 
+#[cfg(test)]
+mod audit;
 mod brush;
 mod cabin;
 mod camp;
+mod camp2;
 mod coast;
 mod desert;
 mod dock;
 mod draw;
+mod dress;
+mod fishing;
+mod flat;
+mod flicker;
+mod glow;
 mod hut;
+mod lights;
+mod lights_sys;
 mod palette;
 mod parts;
+mod roofs;
 mod ruins;
 mod rules;
 mod shrine;
 mod site;
+mod smoke;
+mod steps;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_lights;
+#[cfg(test)]
+mod tests_village;
+mod village;
 
 use avian3d::prelude::*;
 use bevy::prelude::*;
@@ -24,6 +42,7 @@ use super::Terrain;
 use super::props::PropAssets;
 use super::scatter::chunk_center;
 use brush::{Build, Part, Shape};
+use glow::LightPoint;
 use site::sites_in_chunk;
 
 pub use site::{CELL, Kind, Site, origins_near, structure_in_cell};
@@ -32,6 +51,7 @@ pub use site::{CELL, Kind, Site, origins_near, structure_in_cell};
 pub struct StructureData {
     mesh: Mesh,
     parts: Vec<Part>,
+    lights: Vec<LightPoint>,
 }
 
 impl StructureData {
@@ -52,8 +72,8 @@ const DRAW: [fn(&mut Build); 11] = [
     dock::dock,
     hut::stilt_hut,
     shrine::shrine,
-    cabin::village,
     camp::camp,
+    village::draw,
 ];
 
 /// Builds the structures whose origin lies in chunk `coord`, in chunk space. None when it has none.
@@ -67,6 +87,7 @@ pub fn build_chunk(terrain: &Terrain, coord: IVec2) -> Option<StructureData> {
     Some(StructureData {
         mesh: build.mesh.into_mesh(),
         parts: build.parts,
+        lights: build.lights,
     })
 }
 
@@ -81,6 +102,7 @@ pub fn spawn_structures(
     let Some(data) = data else {
         return;
     };
+    lights::spawn_lights(commands, chunk, &data.lights);
     let shapes = data.parts.iter().map(|p| {
         let shape = match p.shape {
             Shape::Cuboid(size) => Collider::cuboid(size.x, size.y, size.z),
@@ -98,4 +120,17 @@ pub fn spawn_structures(
             collider,
         ));
     });
+}
+
+/// Registers the structure lights: flame dressing, lamp choice, flicker and the smoke pool.
+pub fn plugin(app: &mut App) {
+    app.init_resource::<lights_sys::Fires>()
+        .add_systems(Startup, (lights::setup, smoke::spawn_puffs).chain())
+        .add_systems(Update, lights::dress)
+        .add_systems(
+            Update,
+            (lights_sys::select, lights_sys::animate, smoke::drift)
+                .chain()
+                .run_if(crate::screens::playing),
+        );
 }

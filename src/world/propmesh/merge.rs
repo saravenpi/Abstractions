@@ -1,68 +1,97 @@
-//! Merging every big prop of a chunk into one mesh, from geometry built once and shared by all workers.
+//! Merging solid props into one mesh, from geometry built once and shared by all workers.
 
 use std::sync::OnceLock;
 
 use bevy::mesh::VertexAttributeValues;
 use bevy::prelude::*;
 
-use super::{BIG, VARIANTS, big_mesh};
+use super::{BIG, PARTS, VARIANTS, big_mesh};
 use crate::world::scatter::Placement;
 use crate::world::shapes::textured_mesh;
 
-/// Vertex arrays of one prop variant, shared by every chunk worker.
-struct Base {
+/// Vertex arrays of a triangle soup.
+#[derive(Default)]
+struct Soup {
     positions: Vec<[f32; 3]>,
     normals: Vec<[f32; 3]>,
     uvs: Vec<[f32; 2]>,
 }
 
-/// Returns the shared geometry of big plant `kind`, variant `variant`, building all of them once.
-fn base(kind: usize, variant: usize) -> &'static Base {
-    static BASES: OnceLock<Vec<Base>> = OnceLock::new();
-    let bases = BASES.get_or_init(|| {
-        (0..BIG * VARIANTS)
-            .map(|i| {
-                let mesh = big_mesh(i / VARIANTS, i % VARIANTS);
-                let (
-                    Some(VertexAttributeValues::Float32x3(positions)),
-                    Some(VertexAttributeValues::Float32x3(normals)),
-                    Some(VertexAttributeValues::Float32x2(uvs)),
-                ) = (
-                    mesh.attribute(Mesh::ATTRIBUTE_POSITION),
-                    mesh.attribute(Mesh::ATTRIBUTE_NORMAL),
-                    mesh.attribute(Mesh::ATTRIBUTE_UV_0),
-                )
-                else {
-                    unreachable!("prop meshes always carry position, normal and uv")
-                };
-                Base {
-                    positions: positions.clone(),
-                    normals: normals.clone(),
-                    uvs: uvs.clone(),
-                }
-            })
-            .collect()
-    });
-    &bases[kind * VARIANTS + variant]
-}
+impl Soup {
+    /// Reads the vertex arrays of a mesh built by `FlatMesh`.
+    fn of(mesh: &Mesh) -> Self {
+        let (
+            Some(VertexAttributeValues::Float32x3(positions)),
+            Some(VertexAttributeValues::Float32x3(normals)),
+            Some(VertexAttributeValues::Float32x2(uvs)),
+        ) = (
+            mesh.attribute(Mesh::ATTRIBUTE_POSITION),
+            mesh.attribute(Mesh::ATTRIBUTE_NORMAL),
+            mesh.attribute(Mesh::ATTRIBUTE_UV_0),
+        )
+        else {
+            unreachable!("prop meshes always carry position, normal and uv")
+        };
+        Self {
+            positions: positions.clone(),
+            normals: normals.clone(),
+            uvs: uvs.clone(),
+        }
+    }
 
-/// Merges every placed big prop into one mesh in chunk space, with each transform baked into the vertices.
-pub fn merge_props(props: &[Placement]) -> Mesh {
-    let mut positions = Vec::new();
-    let mut normals = Vec::new();
-    let mut uvs = Vec::new();
-    for p in props {
+    /// Appends one placed prop with its transform baked into the vertices.
+    fn push(&mut self, p: &Placement) {
         let b = base(p.plant as usize, p.variant as usize);
         let rot = Quat::from_rotation_y(p.yaw);
-        positions.extend(
+        self.positions.extend(
             b.positions
                 .iter()
                 .map(|v| (p.pos + rot * (Vec3::from(*v) * p.scale)).to_array()),
         );
-        normals.extend(b.normals.iter().map(|n| (rot * Vec3::from(*n)).to_array()));
-        uvs.extend_from_slice(&b.uvs);
+        self.normals
+            .extend(b.normals.iter().map(|n| (rot * Vec3::from(*n)).to_array()));
+        self.uvs.extend_from_slice(&b.uvs);
     }
-    textured_mesh(positions, normals, uvs)
+
+    /// Converts the soup into a mesh.
+    fn into_mesh(self) -> Mesh {
+        textured_mesh(self.positions, self.normals, self.uvs)
+    }
+}
+
+/// Returns the shared geometry of solid plant `kind`, variant `variant`, building all of them once.
+fn base(kind: usize, variant: usize) -> &'static Soup {
+    static BASES: OnceLock<Vec<Soup>> = OnceLock::new();
+    let bases = BASES.get_or_init(|| {
+        (0..BIG)
+            .chain(PARTS)
+            .flat_map(|k| (0..VARIANTS).map(move |v| Soup::of(&big_mesh(k, v))))
+            .collect()
+    });
+    let slot = if kind < BIG {
+        kind
+    } else {
+        kind - PARTS.start + BIG
+    };
+    &bases[slot * VARIANTS + variant]
+}
+
+/// Merges every placed solid prop into one mesh in chunk space, with each transform baked into the vertices.
+pub fn merge_props(props: &[Placement]) -> Mesh {
+    merge_into(Soup::default(), props)
+}
+
+/// Appends every placed solid prop to a mesh built by `FlatMesh`.
+pub fn merge_with(mesh: Mesh, props: &[Placement]) -> Mesh {
+    merge_into(Soup::of(&mesh), props)
+}
+
+/// Appends every placed solid prop to a soup and converts it into a mesh.
+fn merge_into(mut soup: Soup, props: &[Placement]) -> Mesh {
+    for p in props {
+        soup.push(p);
+    }
+    soup.into_mesh()
 }
 
 #[cfg(test)]

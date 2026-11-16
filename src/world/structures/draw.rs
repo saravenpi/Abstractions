@@ -6,8 +6,13 @@ use super::brush::Mat;
 use super::brush::{Build, Part, Shape};
 use crate::world::shapes::srgb;
 
-/// Box faces as unit-cube corners, outward direction and tone. The bottom face is never drawn.
-const FACES: [([[f32; 3]; 4], Vec3, f32); 5] = [
+/// Box faces as unit-cube corners, outward direction and tone.
+const FACES: [([[f32; 3]; 4], Vec3, f32); 6] = [
+    (
+        [[0., 0., 0.], [1., 0., 0.], [1., 0., 1.], [0., 0., 1.]],
+        Vec3::NEG_Y,
+        0.6,
+    ),
     (
         [[0., 1., 0.], [1., 1., 0.], [1., 1., 1.], [0., 1., 1.]],
         Vec3::Y,
@@ -78,23 +83,20 @@ impl Build<'_> {
         });
     }
 
-    /// Adds an open-bottomed box between two local corners, with a collider when `mat` is solid.
+    /// Adds a closed box between two local corners, with a collider when `mat` is solid.
     pub fn cuboid(&mut self, lo: Vec3, hi: Vec3, mat: Mat) {
+        #[cfg(test)]
+        let start = self.vertex_mark();
         for (corners, out, tone) in FACES {
             let p = corners.map(|c| self.pt(lo + (hi - lo) * Vec3::from_array(c)));
             let color = self.color(mat.rgb, tone);
             let out = self.dir(out);
             self.quad_out(p, out, color);
         }
+        #[cfg(test)]
+        self.note(super::audit::Piece::Closed, start);
         if mat.solid {
             self.collider(lo, hi);
-        }
-    }
-
-    /// Adds several boxes of one material, each given as a pair of local corners.
-    pub fn boxes(&mut self, list: &[([f32; 3], [f32; 3])], mat: Mat) {
-        for (lo, hi) in list {
-            self.cuboid(Vec3::from_array(*lo), Vec3::from_array(*hi), mat);
         }
     }
 }

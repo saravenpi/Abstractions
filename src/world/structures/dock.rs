@@ -20,6 +20,9 @@ pub fn dock(b: &mut Build) {
         Vec3::new(2.4, 0.0, 16.0),
         Mat::solid(PLANK),
     );
+    for x in [-2.1, 2.1] {
+        b.torch_post(Vec3::new(x, 0.0, 15.6));
+    }
     for i in 0..6 {
         let z = 0.3 + i as f32 * 2.8;
         for x in [-1.0, 1.0] {

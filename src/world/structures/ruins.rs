@@ -5,6 +5,7 @@ use std::f32::consts::{PI, TAU};
 use bevy::prelude::*;
 
 use super::brush::{Build, Mat};
+use super::dress::on_ground;
 use super::palette::{RUNE, STONE, STONE_DARK, STONE_LIGHT};
 
 /// Distance from the tower center to the middle of its walls.
@@ -90,6 +91,10 @@ pub fn tower(b: &mut Build) {
     }
     b.begin(b.site);
     b.ramp(Vec3::new(0.0, 0.0, 4.9), 2.0);
+    for x in [-1.6, 1.6] {
+        let base = on_ground(b, x, 5.6);
+        b.torch_post(base);
+    }
     b.rock(3.2, 6.0, 0.6, 1);
     b.rock(-3.8, 5.6, 0.45, 2);
     b.rock(5.5, -1.0, 0.5, 3);

@@ -17,6 +17,10 @@ pub struct WaterMaterial {
     /// Values for the shader.
     #[uniform(0)]
     pub water: WaterUniform,
+    /// Sea floor depth map around the focus: depth in red and green, pond flag in blue.
+    #[texture(1)]
+    #[sampler(2)]
+    pub floor: Handle<Image>,
 }
 
 impl Material for WaterMaterial {

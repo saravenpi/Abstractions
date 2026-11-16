@@ -17,9 +17,12 @@ struct Water {
     wave_c: vec4<f32>,
     wave_d: vec4<f32>,
     params: vec4<f32>,
+    map: vec4<f32>,
 }
 
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> water: Water;
+@group(constants::MATERIAL_BIND_GROUP) @binding(1) var floor_map: texture_2d<f32>;
+@group(constants::MATERIAL_BIND_GROUP) @binding(2) var floor_sampler: sampler;
 
 const GRAVITY: f32 = 9.81;
 const FADE_START: f32 = 48.0;
@@ -31,22 +34,72 @@ const SHALLOW_COLOR: vec3<f32> = vec3<f32>(0.03, 0.55, 0.48);
 const DEEP_COLOR: vec3<f32> = vec3<f32>(0.002, 0.04, 0.16);
 const FOAM_COLOR: vec3<f32> = vec3<f32>(0.95, 0.98, 1.0);
 const MOON_COLOR: vec3<f32> = vec3<f32>(0.55, 0.68, 1.0);
+const MAP_SPAN: f32 = 256.0;
+const MAP_TEXEL: f32 = 2.0;
+const MAP_RANGE: f32 = 20.0;
+const MAP_LAND: f32 = 4.0;
+const MAP_FADE_START: f32 = 104.0;
+const MAP_FADE_END: f32 = 120.0;
+const MIN_BED_SLOPE: f32 = 0.03;
+const SHOAL_DEPTH: f32 = 2.5;
+const NOISE_PERIOD: f32 = 512.0;
+const EDGE_DEPTH: f32 = 0.05;
+const POND_CALM: f32 = 0.75;
+const SWASH_REACH: f32 = 0.9;
+const SWASH_BREATH: f32 = 0.15;
+const SWASH_RATE: f32 = 1.05;
+const SWASH_RAGGED: f32 = 0.3;
+const LINE_FAR: f32 = 5.0;
+const LINE_NEAR: f32 = 2.0;
+const LINE_RATE: f32 = 0.1;
+const LINE_HALF: f32 = 0.15;
+const FLECK_DEPTH: f32 = 2.0;
 
 fn hash21(p: vec2<f32>) -> f32 {
-    var q = fract(p * vec2<f32>(123.34, 456.21));
-    q = q + dot(q, q + vec2<f32>(45.32, 45.32));
-    return fract(q.x * q.y);
+    let q = bitcast<vec2<u32>>(vec2<i32>(p));
+    var h = q.x * 0x27d4eb2du + q.y * 0x165667b1u;
+    h = (h ^ (h >> 15u)) * 0x2c1b3c6du;
+    h = (h ^ (h >> 12u)) * 0x297a2d39u;
+    h = h ^ (h >> 15u);
+    return f32(h >> 8u) / 16777216.0;
 }
 
-fn value_noise(p: vec2<f32>) -> f32 {
-    let i = floor(p);
-    let f = fract(p);
+fn lattice(i: vec2<f32>, period: f32) -> f32 {
+    return hash21(i - floor(i / period) * period);
+}
+
+fn value_noise(p: vec2<f32>, freq: f32) -> f32 {
+    let period = NOISE_PERIOD * freq;
+    let x = (p - floor(p / NOISE_PERIOD) * NOISE_PERIOD) * freq;
+    let i = floor(x);
+    let f = x - i;
     let u = f * f * (vec2<f32>(3.0, 3.0) - 2.0 * f);
-    let a = hash21(i);
-    let b = hash21(i + vec2<f32>(1.0, 0.0));
-    let c = hash21(i + vec2<f32>(0.0, 1.0));
-    let d = hash21(i + vec2<f32>(1.0, 1.0));
+    let a = lattice(i, period);
+    let b = lattice(i + vec2<f32>(1.0, 0.0), period);
+    let c = lattice(i + vec2<f32>(0.0, 1.0), period);
+    let d = lattice(i + vec2<f32>(1.0, 1.0), period);
     return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+fn floor_tap(p: vec2<f32>) -> vec2<f32> {
+    let uv = (p + vec2<f32>(0.5 * MAP_TEXEL)) / MAP_SPAN;
+    let s = textureSampleLevel(floor_map, floor_sampler, uv, 0.0);
+    let depth = (s.r * 65280.0 + s.g * 255.0) / 65535.0 * MAP_RANGE - MAP_LAND;
+    return vec2<f32>(depth, s.b);
+}
+
+fn floor_valid(p: vec2<f32>) -> f32 {
+    let o = abs(p - water.map.xy);
+    return 1.0 - smoothstep(MAP_FADE_START, MAP_FADE_END, max(o.x, o.y));
+}
+
+fn shore(p: vec2<f32>) -> vec4<f32> {
+    let here = floor_tap(p);
+    let dx = floor_tap(p + vec2<f32>(MAP_TEXEL, 0.0)).x - here.x;
+    let dz = floor_tap(p + vec2<f32>(0.0, MAP_TEXEL)).x - here.x;
+    let slope = length(vec2<f32>(dx, dz)) / MAP_TEXEL;
+    let near = floor_valid(p);
+    return vec4<f32>(here.x / max(slope, MIN_BED_SLOPE), here.x, here.y * near, near);
 }
 
 fn rotate(d: vec2<f32>, angle: f32) -> vec2<f32> {
@@ -106,22 +159,37 @@ fn column_depth(frag: vec4<f32>, world: vec3<f32>) -> f32 {
     return depth;
 }
 
-fn foam_amount(p: vec2<f32>, depth: f32, t: f32) -> f32 {
-    let n = value_noise(p * 0.8 + vec2<f32>(t * 0.05, -t * 0.03));
-    let fine = value_noise(p * 2.6 - vec2<f32>(t * 0.2, 0.0));
-    let pulse = 0.5 + 0.5 * sin(t * 1.3 + n * 6.0);
-    let limit = 0.6 * (0.45 + 0.55 * pulse) + (n - 0.5) * 0.3;
-    let wash = step(depth, limit);
-    let reach = step(0.6, depth) * (1.0 - smoothstep(1.6, 2.5, depth));
-    let band = fract(depth * 0.8 + t * 0.2 + n * 0.5);
-    let lines = step(band, 0.16) * step(0.4, fine) * reach;
-    return max(wash, lines);
+fn swash(p: vec2<f32>, d: f32, pixel: f32, t: f32) -> f32 {
+    let n = value_noise(p + vec2<f32>(t * 0.1, -t * 0.06), 0.25);
+    let ragged = value_noise(p - vec2<f32>(t * 0.05, t * 0.08), 0.75);
+    let reach = SWASH_REACH + SWASH_BREATH * sin(t * SWASH_RATE + n * 3.0) + (ragged - 0.5) * SWASH_RAGGED;
+    let soft = clamp(pixel, 0.15, 0.8);
+    return (1.0 - smoothstep(reach - soft, reach + soft, d)) * smoothstep(0.15, 0.35, ragged);
+}
+
+fn foam_line(d: f32, phase: f32, soft: f32) -> f32 {
+    let at = mix(LINE_FAR, LINE_NEAR, phase);
+    let life = smoothstep(0.0, 0.25, phase) * (1.0 - smoothstep(0.7, 1.0, phase));
+    return (1.0 - smoothstep(LINE_HALF, LINE_HALF + soft, abs(d - at))) * life;
+}
+
+fn foam_lines(p: vec2<f32>, d: f32, pixel: f32, t: f32) -> f32 {
+    let phase = t * LINE_RATE + value_noise(p, 0.125) * 0.4;
+    let dash = smoothstep(0.4, 0.55, value_noise(p, 1.5));
+    let soft = clamp(pixel, 0.12, 0.6);
+    let lines = max(foam_line(d, fract(phase), soft), foam_line(d, fract(phase + 0.5), soft));
+    return lines * dash * (1.0 - smoothstep(0.6, 1.8, pixel));
+}
+
+fn shore_foam(p: vec2<f32>, bed: vec4<f32>, pixel: f32, t: f32) -> f32 {
+    let sea = bed.w * (1.0 - smoothstep(0.4, 0.6, bed.z));
+    return max(swash(p, bed.x, pixel, t), foam_lines(p, bed.x, pixel, t)) * sea;
 }
 
 fn crest_flecks(p: vec2<f32>, t: f32, wind: f32) -> f32 {
     let total = water.wave_a.w + water.wave_b.w + water.wave_c.w + water.wave_d.w;
     let crest = waves(p, t).x / max(total, 0.001);
-    let grain = value_noise(p * 3.5 + vec2<f32>(t * 0.4, 0.0));
+    let grain = value_noise(p + vec2<f32>(t * 0.114, 0.0), 3.5);
     return step(0.6, crest) * step(0.68, grain) * smoothstep(0.5, 0.9, wind);
 }
 
@@ -131,7 +199,7 @@ fn under_surface(v: vec3<f32>, n: vec3<f32>, p: vec2<f32>, t: f32) -> vec4<f32> 
     let window = smoothstep(0.62, 0.74, look);
     let dim = water.fog.rgb * 0.7;
     let bright = (water.fog.rgb * 1.6 + vec3<f32>(0.04, 0.16, 0.16)) * (0.35 + 0.65 * day);
-    let shimmer = step(0.78, value_noise(p * 0.9 + vec2<f32>(t * 0.35, t * 0.2))) * window * 0.35 * day;
+    let shimmer = step(0.78, value_noise(p + vec2<f32>(t * 0.4, t * 0.23), 0.875)) * window * 0.35 * day;
     return vec4<f32>(mix(dim, bright, window) + vec3<f32>(shimmer), 0.92);
 }
 
@@ -143,7 +211,9 @@ fn vertex(vertex_no_morph: Vertex) -> VertexOutput {
     var world = mesh_functions::mesh_position_local_to_world(world_from_local, vec4<f32>(vertex.position, 1.0));
     let edge = max(abs(vertex.position.x), abs(vertex.position.z));
     let fade = 1.0 - smoothstep(FADE_START, FADE_END, edge);
-    world.y = world.y + waves(world.xz, water.params.x).x * fade;
+    let bed = floor_tap(world.xz);
+    let calm = mix(1.0, smoothstep(0.0, SHOAL_DEPTH, bed.x) * (1.0 - bed.y), floor_valid(world.xz));
+    world.y = world.y + waves(world.xz, water.params.x).x * fade * calm;
     out.world_position = world;
     out.position = position_world_to_clip(world.xyz);
     out.world_normal = vec3<f32>(0.0, 1.0, 0.0);
@@ -162,7 +232,10 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let v = to_eye / max(dist, 0.001);
     let detail = 1.0 - smoothstep(60.0, 260.0, dist);
     let cell = floor(world.xz * DETAIL_CELLS);
-    let slope = surface_slope((cell + vec2<f32>(0.5, 0.5)) / DETAIL_CELLS, t, wind) * detail;
+    let bed = shore(world.xz);
+    let pixel = fwidth(bed.x);
+    let still = 1.0 - POND_CALM * bed.z;
+    let slope = surface_slope((cell + vec2<f32>(0.5, 0.5)) / DETAIL_CELLS, t, wind) * detail * still;
     var n = normalize(vec3<f32>(-slope.x, 1.0, -slope.y));
     let below = v.y < 0.0;
     if (below) {
@@ -175,7 +248,8 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     } else {
         let day = water.sun_color.w;
         let light = mix(vec3<f32>(0.07, 0.10, 0.22), mix(vec3<f32>(1.0), water.sun_color.rgb, 0.4), day);
-        let depth = column_depth(in.position, world);
+        let column = column_depth(in.position, world);
+        let depth = mix(column, max(bed.y, 0.0), bed.w);
         let shade = floor((1.0 - exp(-depth * 0.5)) * 6.0 + 0.5) / 6.0;
         let body = mix(SHALLOW_COLOR, DEEP_COLOR, shade) * light;
 
@@ -187,13 +261,15 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         let moon_glint = glitter(r, water.moon.xyz, cell, t) * water.moon.w * 0.5;
         color = color + (water.sun_color.rgb * sun_glint + MOON_COLOR * moon_glint) * detail;
 
-        let foam = max(foam_amount(world.xz, depth, t), crest_flecks(world.xz, t, wind) * detail);
-        let foam_light = FOAM_COLOR * mix(0.3, 1.0, day) * mix(vec3<f32>(1.0), water.sun_color.rgb, 0.35);
+        let open = mix(1.0, smoothstep(FLECK_DEPTH, FLECK_DEPTH + 1.0, bed.y), bed.w) * (1.0 - bed.z);
+        let flecks = crest_flecks(world.xz, t, wind) * detail * open;
+        let foam = max(shore_foam(world.xz, bed, pixel, t), flecks);
+        let foam_light = FOAM_COLOR * mix(0.07, 1.0, day) * mix(vec3<f32>(1.0), water.sun_color.rgb, 0.35);
         color = mix(color, foam_light, foam);
 
         let clear = mix(0.2, 0.95, shade);
         let opacity = mix(clear, 1.0, pow(1.0 - ndv, 3.0));
-        col = vec4<f32>(color, max(opacity, foam));
+        col = vec4<f32>(color, max(opacity, foam) * smoothstep(0.0, EDGE_DEPTH, column));
     }
 
     let fog_amount = clamp((dist - water.params.z) / max(water.params.w - water.params.z, 1.0), 0.0, 1.0);

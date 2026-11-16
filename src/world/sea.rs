@@ -1,6 +1,7 @@
 //! The sea: one wavy, foamy water mesh that follows the focus on a snapped grid.
 
 mod depth;
+mod floor;
 mod material;
 mod mesh;
 mod uniform;
@@ -12,6 +13,7 @@ use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy::pbr::DistanceFog;
 use bevy::prelude::*;
 
+use self::floor::SeaFloor;
 use self::material::WaterMaterial;
 use self::uniform::{FogLook, WaterUniform};
 use super::SEA_LEVEL;
@@ -20,8 +22,6 @@ use super::focus::Focus;
 use crate::render::{GameCamera, Palette};
 use crate::screens::Screen;
 use crate::wind::Wind;
-
-pub(super) use self::material::plugin;
 
 /// Marks the sea mesh.
 #[derive(Component, Debug, Clone, Copy)]
@@ -49,13 +49,19 @@ pub fn spawn_sea(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<WaterMaterial>>,
+    mut images: ResMut<Assets<Image>>,
     inputs: SeaInputs,
 ) {
     let water = inputs.uniform();
+    let floor = SeaFloor::new(&mut images);
     commands.spawn((
         Sea,
         Mesh3d(meshes.add(mesh::sea_mesh())),
-        MeshMaterial3d(materials.add(WaterMaterial { water })),
+        MeshMaterial3d(materials.add(WaterMaterial {
+            water,
+            floor: floor.image(),
+        })),
+        floor,
         Transform::from_xyz(0.0, SEA_LEVEL, 0.0),
         NotShadowCaster,
         NotShadowReceiver,
@@ -68,6 +74,7 @@ pub fn spawn_sea(
 type SeaItem = (
     &'static mut Transform,
     &'static MeshMaterial3d<WaterMaterial>,
+    &'static SeaFloor,
 );
 
 /// Keeps the sea query disjoint from the streaming anchor query.
@@ -81,13 +88,22 @@ pub fn follow_focus(
     mut materials: ResMut<Assets<WaterMaterial>>,
 ) {
     let water = inputs.uniform();
-    for (mut transform, handle) in &mut sea {
+    for (mut transform, handle, floor) in &mut sea {
         if let Some(p) = focus.position() {
             let snapped = mesh::snap(p);
             transform.translation = Vec3::new(snapped.x, SEA_LEVEL, snapped.y);
         }
         if let Some(mut material) = materials.get_mut(&handle.0) {
-            material.water = water;
+            material.water = WaterUniform {
+                map: floor.origin(),
+                ..water
+            };
         }
     }
+}
+
+/// Registers the water material and the system that keeps the sea floor map under the focus.
+pub(super) fn plugin(app: &mut App) {
+    app.add_plugins(material::plugin)
+        .add_systems(Update, floor::refresh);
 }

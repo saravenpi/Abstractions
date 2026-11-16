@@ -33,6 +33,8 @@ pub struct WaterUniform {
     pub wave_d: Vec4,
     /// Time in seconds, wind strength, fog start and fog end.
     pub params: Vec4,
+    /// World x and z of the sea floor map center; the rest is unused.
+    pub map: Vec4,
 }
 
 /// Distance fog of the camera, in the units the shader needs.
@@ -98,6 +100,7 @@ impl WaterUniform {
             wave_c: c,
             wave_d: d,
             params: Vec4::new(time, wind.strength, fog.start, fog.end),
+            map: Vec4::ZERO,
         }
     }
 }

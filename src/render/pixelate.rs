@@ -1,4 +1,4 @@
-//! Fullscreen post-process that snaps the 3D view to a coarse pixel grid and bands its colors.
+//! Fullscreen post-process that bands the colors of the low-resolution 3D view.
 
 use bevy::asset::embedded_asset;
 use bevy::core_pipeline::fullscreen_material::{FullscreenMaterial, FullscreenMaterialPlugin};
@@ -13,12 +13,12 @@ use bevy::shader::ShaderRef;
 /// Color levels per channel used when no setting says otherwise.
 const DEFAULT_LEVELS: u32 = 24;
 
-/// Pixelation settings of a camera, read by the post-process shader.
+/// Pixelation settings of a camera: the block size sizes its render target, the levels band its colors.
 #[derive(Component, ExtractComponent, Clone, Copy, Debug, ShaderType)]
 #[extract_app(RenderApp)]
 pub struct Pixelate {
     /// Width and height of one block, in window pixels.
-    pub pixel_size: f32,
+    pub pixel_size: u32,
     /// Number of color levels per channel.
     pub levels: f32,
 }
@@ -27,7 +27,7 @@ impl Pixelate {
     /// Builds the effect for a block size and color level count taken from the settings.
     pub fn new(pixel_size: u32, levels: u32) -> Self {
         Self {
-            pixel_size: pixel_size.max(1) as f32,
+            pixel_size: pixel_size.max(1),
             levels: levels.max(2) as f32,
         }
     }

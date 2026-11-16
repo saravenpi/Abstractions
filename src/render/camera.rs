@@ -1,7 +1,9 @@
-//! The game camera look: graphics options, projection and fog, including the underwater fog.
+//! The game camera look: render target, graphics options, projection and fog, including the underwater fog.
 
-use bevy::camera::{CameraMainTextureUsages, Hdr};
-use bevy::core_pipeline::prepass::{DepthPrepass, NormalPrepass};
+use bevy::camera::{CameraMainTextureUsages, Hdr, RenderTarget};
+use bevy::core_pipeline::prepass::{
+    DeferredPrepass, DepthPrepass, MotionVectorPrepass, NormalPrepass,
+};
 use bevy::ecs::system::SystemParam;
 use bevy::pbr::{DistanceFog, FogFalloff, ScreenSpaceAmbientOcclusion};
 use bevy::post_process::bloom::Bloom;
@@ -11,6 +13,7 @@ use bevy::render::view::{Msaa, Tonemapping};
 use bevy::solari::prelude::SolariLighting;
 
 use super::GameCamera;
+use super::lowres::LowRes;
 use super::palette::{Palette, srgb};
 use super::pixelate::Pixelate;
 use super::ray_tracing::RayTracing;
@@ -74,6 +77,7 @@ pub fn set_fov(projection: &mut Projection, fov: u32) {
 /// Adds or removes the camera effects that the graphics settings ask for.
 ///
 /// With `ray_tracing` the camera gets Solari lighting, which replaces ambient occlusion and needs HDR.
+/// Without it every component Solari added goes, so the camera is exactly the normal one.
 pub fn configure_camera(
     commands: &mut Commands,
     camera: Entity,
@@ -89,7 +93,14 @@ pub fn configure_camera(
     ));
     if ray_tracing {
         entity.insert(CameraMainTextureUsages::default().with(TextureUsages::STORAGE_BINDING));
-        entity.insert_if_new(SolariLighting::default());
+        entity.insert_if_new(SolariLighting {
+            restir: true,
+            confidence_weight_cap: 16.0,
+            ..default()
+        });
+    } else {
+        entity.insert(CameraMainTextureUsages::default());
+        entity.remove::<(SolariLighting, DeferredPrepass, MotionVectorPrepass)>();
     }
     match graphics.ambient_occlusion && !ray_tracing {
         true => entity.insert(ScreenSpaceAmbientOcclusion::default()),
@@ -111,6 +122,7 @@ struct Look<'w> {
     settings: Res<'w, Persistent<Settings>>,
     palette: Res<'w, Palette>,
     ray_tracing: Res<'w, RayTracing>,
+    target: Res<'w, LowRes>,
 }
 
 /// Gives the first-person camera its post-process, fog, field of view and effects.
@@ -122,6 +134,9 @@ fn setup_camera(
 ) {
     let graphics = &look.settings.graphics;
     configure_camera(&mut commands, add.entity, graphics, look.ray_tracing.0);
+    commands
+        .entity(add.entity)
+        .insert(RenderTarget::from(look.target.0.clone()));
     if let Ok(mut projection) = projections.get_mut(add.entity) {
         set_fov(&mut projection, graphics.fov);
     }

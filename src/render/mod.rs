@@ -1,10 +1,11 @@
-//! Pixelate post-process, day cycle, sky, lighting, fog and camera effects.
+//! Low-resolution game view, color banding, day cycle, sky, lighting, fog and camera effects.
 
 mod camera;
 mod celestial;
 mod clock;
 mod dome;
 mod lighting;
+mod lowres;
 mod palette;
 mod pixelate;
 pub mod ray_tracing;
@@ -14,6 +15,7 @@ pub use camera::{configure_camera, set_fov};
 pub use celestial::{daylight, moon_direction, sun_direction};
 pub use clock::DayClock;
 pub use lighting::{Moon, Sun};
+pub use lowres::LowRes;
 pub use palette::Palette;
 pub use pixelate::Pixelate;
 pub use ray_tracing::RayTracing;
@@ -30,6 +32,7 @@ pub struct GameCamera;
 pub(super) fn plugin(app: &mut App) {
     app.add_plugins((
         pixelate::plugin,
+        lowres::plugin,
         clock::plugin,
         palette::plugin,
         lighting::plugin,

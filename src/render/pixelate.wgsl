@@ -1,5 +1,5 @@
 struct Pixelate {
-    pixel_size: f32,
+    pixel_size: u32,
     levels: f32,
 }
 
@@ -13,11 +13,7 @@ struct VertexOutput {
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
-    let size = max(settings.pixel_size, 1.0);
-    let block = floor(in.position.xy / size);
-    let center = (block + vec2<f32>(0.5)) * size;
-    let dims = vec2<f32>(textureDimensions(screen_texture));
-    let texel = vec2<i32>(clamp(center, vec2<f32>(0.0), dims - vec2<f32>(1.0)));
+    let texel = vec2<i32>(in.position.xy);
     let color = textureLoad(screen_texture, texel, 0);
     let perceptual = pow(clamp(color.rgb, vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(1.0 / 2.2));
     let banded = floor(perceptual * settings.levels + vec3<f32>(0.5)) / settings.levels;

@@ -1,11 +1,11 @@
-//! The muted line under the graphics settings that explains what ray tracing needs.
+//! The muted line under the graphics settings that says whether ray tracing is on, off or not available.
 
 use bevy::prelude::*;
 
 use super::{SettingsTab, Tab};
 use crate::menus::Menu;
-use crate::render::ray_tracing::{RayTracingBoot, hint};
-use crate::settings::{Persistent, Settings};
+use crate::render::RayTracing;
+use crate::render::ray_tracing::{RayTracingBoot, status};
 use crate::ui::{text, theme};
 
 /// Marks the text of the hint line.
@@ -24,15 +24,15 @@ pub fn line() -> impl Bundle {
     )
 }
 
-/// Shows the ray tracing hint on the graphics tab and nothing elsewhere.
+/// Shows the ray tracing status on the graphics tab and nothing elsewhere.
 fn show_hint(
-    settings: Res<Persistent<Settings>>,
+    ray_tracing: Res<RayTracing>,
     boot: Res<RayTracingBoot>,
     tab: Res<SettingsTab>,
     mut lines: Query<&mut Text, With<HintLine>>,
 ) {
     let shown = match tab.0 {
-        Tab::Graphics => hint(settings.graphics.ray_tracing, *boot).unwrap_or_default(),
+        Tab::Graphics => status(*boot, ray_tracing.0),
         _ => "",
     };
     for mut line in &mut lines {

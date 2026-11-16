@@ -1,93 +1,95 @@
-//! The boot guard: a marker file that exists while a ray traced start is unproven.
+//! The boot guard: a marker file that exists while a start with the Solari plugins is unproven.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use bevy::app::AppExit;
 use bevy::prelude::*;
 
+use super::RayTracing;
 use crate::render::GameCamera;
+use crate::settings::config_dir;
 
 /// Name of the marker file, kept next to the settings file.
 pub const MARKER: &str = "ray-tracing-starting";
 
-/// Frames rendered with a game camera before a ray traced start counts as proven.
+/// Frames that count a start as proven.
 const PROVEN_FRAMES: u32 = 120;
 
 /// What the boot guard decided for this run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Start {
-    /// Ray tracing was not requested.
-    Off,
-    /// Ray tracing starts, and the marker file now exists.
-    On,
-    /// The previous ray traced start never finished, so this run skips it.
+    /// The Solari plugins start, and the marker file now exists.
+    Armed,
+    /// The last start with the plugins never finished, so this run skips them.
     Recovered,
+    /// The marker file could not be written, so this run skips the plugins.
+    Unwritable,
 }
 
-/// Where the marker file lives while a ray traced start is unproven.
-#[derive(Resource, Debug, Clone)]
-pub struct BootMarker(pub PathBuf);
+/// Present while a start is unproven; holds the frames counted toward the proof.
+#[derive(Resource, Debug, Clone, Default)]
+pub struct BootMarker(pub u32);
 
-/// Returns whether ray tracing may start: it is requested and no earlier attempt died.
-pub fn allowed(setting: bool, marker_exists: bool) -> bool {
-    setting && !marker_exists
+/// Writes the marker file in `dir`.
+fn arm(dir: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dir).and_then(|()| std::fs::write(dir.join(MARKER), b""))
 }
 
-/// Decides this run's start and leaves the marker file in `dir` when ray tracing starts.
-pub fn begin(setting: bool, dir: &Path) -> Start {
+/// Decides this run's start from the marker file in `dir` and leaves a new marker when the plugins may start.
+pub fn begin(dir: &Path) -> Start {
     let marker = dir.join(MARKER);
-    let exists = marker.exists();
-    if exists && let Err(error) = std::fs::remove_file(&marker) {
-        warn!("could not remove {}: {error}", marker.display());
-    }
-    if !setting {
-        return Start::Off;
-    }
-    if !allowed(setting, exists) {
-        warn!("the last ray traced start did not finish, so ray tracing is turned off");
+    if marker.exists() {
+        if let Err(error) = std::fs::remove_file(&marker) {
+            warn!("could not remove {}: {error}", marker.display());
+        }
+        warn!("the last start with the Solari plugins did not finish, so they are skipped");
         return Start::Recovered;
     }
-    let written = std::fs::create_dir_all(dir).and_then(|()| std::fs::write(&marker, b""));
-    match written {
-        Ok(()) => Start::On,
+    match arm(dir) {
+        Ok(()) => Start::Armed,
         Err(error) => {
-            warn!("could not write the boot marker, so ray tracing is turned off: {error}");
-            Start::Off
+            warn!("could not write the boot marker, so the Solari plugins are skipped: {error}");
+            Start::Unwritable
         }
     }
 }
 
+/// Starts a new proof when ray tracing is switched on while the game runs.
+pub fn rearm(commands: &mut Commands, dir: &Path) {
+    match arm(dir) {
+        Ok(()) => commands.insert_resource(BootMarker::default()),
+        Err(error) => warn!("could not write the boot marker: {error}"),
+    }
+}
+
 /// Removes the marker file and forgets it.
-fn clear(commands: &mut Commands, marker: &BootMarker) {
-    if let Err(error) = std::fs::remove_file(&marker.0) {
-        warn!("could not remove {}: {error}", marker.0.display());
+fn clear(commands: &mut Commands) {
+    let path = config_dir().join(MARKER);
+    if let Err(error) = std::fs::remove_file(&path) {
+        warn!("could not remove {}: {error}", path.display());
     }
     commands.remove_resource::<BootMarker>();
 }
 
-/// Clears the marker once a game camera has rendered enough frames.
+/// Counts frames and clears the marker once enough passed: with ray tracing on they must show a game camera.
 fn prove(
     mut commands: Commands,
-    marker: Res<BootMarker>,
+    mut marker: ResMut<BootMarker>,
     cameras: Query<(), With<GameCamera>>,
-    mut frames: Local<u32>,
+    ray_tracing: Res<RayTracing>,
 ) {
-    if !cameras.is_empty() {
-        *frames += 1;
+    if !ray_tracing.0 || !cameras.is_empty() {
+        marker.0 += 1;
     }
-    if *frames >= PROVEN_FRAMES {
-        clear(&mut commands, &marker);
+    if marker.0 >= PROVEN_FRAMES {
+        clear(&mut commands);
     }
 }
 
 /// Clears the marker when the game exits cleanly.
-fn clear_on_exit(
-    mut commands: Commands,
-    marker: Res<BootMarker>,
-    mut exits: MessageReader<AppExit>,
-) {
+fn clear_on_exit(mut commands: Commands, mut exits: MessageReader<AppExit>) {
     if exits.read().next().is_some() {
-        clear(&mut commands, &marker);
+        clear(&mut commands);
     }
 }
 
@@ -102,25 +104,15 @@ pub(super) fn plugin(app: &mut App) {
 mod tests {
     use super::*;
 
-    /// Only a requested start without a leftover marker is allowed.
-    #[test]
-    fn allowed_needs_a_request_and_no_marker() {
-        assert!(allowed(true, false));
-        assert!(!allowed(true, true));
-        assert!(!allowed(false, false));
-        assert!(!allowed(false, true));
-    }
-
     /// A start leaves a marker, a second start finds it and recovers, a third starts again.
     #[test]
     fn a_dead_start_is_recovered_once() {
         let dir = std::env::temp_dir().join(format!("abstractions-boot-{}", std::process::id()));
-        assert_eq!(begin(false, &dir), Start::Off);
-        assert_eq!(begin(true, &dir), Start::On);
+        assert_eq!(begin(&dir), Start::Armed);
         assert!(dir.join(MARKER).exists());
-        assert_eq!(begin(true, &dir), Start::Recovered);
+        assert_eq!(begin(&dir), Start::Recovered);
         assert!(!dir.join(MARKER).exists());
-        assert_eq!(begin(true, &dir), Start::On);
+        assert_eq!(begin(&dir), Start::Armed);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

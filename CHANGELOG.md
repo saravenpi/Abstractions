@@ -5,6 +5,33 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-17
+
+### Added
+
+- House interiors: tables on legs, beds, cupboards, chests, rugs, a fireplace under every chimney and a candle or lantern in every house. The smithy, barn, tower and hall get their own furniture.
+- Flames made of three glowing layers that sway with the wind, embers above campfires and braziers, and real lanterns on the lamp posts.
+- With ray tracing on, torches, lamps and fires now light their surroundings.
+
+### Changed
+
+- The plaza cross is replaced by a stone sundial.
+- Nights are darker, so torches, lamps and fires cast visible pools of light. Lights fade in and out instead of popping.
+- Shore foam follows the distance to the shore: a narrow band that breathes slowly and thin lines that drift in. Waves die out in shallow water and ponds stay calm.
+- The weeping willow is redrawn: a taller leaning trunk, a wide crown and hanging curtains of mixed lengths.
+- Trees and rocks keep a minimum distance from each other.
+- Camps are less frequent, so other structures show up more often.
+- Colors are dithered before they are reduced, which removes the hard rings around lights at night.
+
+### Fixed
+
+- Floating pieces in villages: benches and stones around the plaza tree, crop rows, hedges and fences, potted palms and door lanterns, roads and the plaza floor.
+- Trees, rocks and grass now stand on the visible ground, with trunks and rocks sunk into slopes.
+- Footpaths no longer run through houses or fields, and plants no longer grow on them.
+- Shore foam raced across shallow beaches and shifted when the camera moved.
+- Firefly lights slid across the ground from one firefly to another.
+- Water noise broke into flickering blocks far from the world origin.
+
 ## [0.4.0] - 2026-11-16
 
 ### Added

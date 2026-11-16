@@ -59,6 +59,12 @@ xattr -dr com.apple.quarantine /Applications/Abstractions.app
 
 You only need to do this once.
 
+## Ray tracing
+
+Settings > Graphics > Ray tracing (experimental) turns on ray traced lighting. It is off by default. It needs a GPU with hardware ray tracing, such as Apple Silicon or a recent NVIDIA or AMD card, and a restart of the game.
+
+It is experimental. Distance fog does not apply to the land while it is on. If the game fails to start with it on, start the game again: it turns ray tracing off by itself.
+
 ## Settings
 
 Settings live in `settings.toml` inside the `abstractions` folder of your config directory:

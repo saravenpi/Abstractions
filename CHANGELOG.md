@@ -5,6 +5,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-16
+
+### Added
+
+- Ray tracing as an experimental graphics setting, off by default. It needs a GPU with hardware ray tracing and a restart to apply.
+- A startup guard: if the game fails to start with ray tracing on, the next launch turns it off.
+
+### Changed
+
+- World colors come from a palette texture instead of vertex colors, which ray tracing requires.
+
+### Known limits
+
+- Ray tracing has never run on real hardware. With it on, distance fog and underwater fog do not apply to the land, and nights may be darker.
+
 ## [0.2.0] - 2026-11-16
 
 ### Added

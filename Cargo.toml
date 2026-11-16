@@ -1,7 +1,7 @@
 [package]
 name = "abstractions"
 authors = ["saravenpi"]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.97.1"
 description = "A pixelated low-poly island exploration game."
@@ -31,6 +31,7 @@ bevy = { version = "0.20.1", default-features = false, features = [
     "audio",
     "serialize",
     "tonemapping_luts",
+    "bevy_solari",
 ] }
 avian3d = { version = "0.8.0", default-features = false, features = [
     "3d",

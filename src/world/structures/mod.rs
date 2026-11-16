@@ -34,6 +34,13 @@ pub struct StructureData {
     parts: Vec<Part>,
 }
 
+impl StructureData {
+    /// Sets whether the merged mesh gets an acceleration structure.
+    pub fn set_raytracing(&mut self, on: bool) {
+        self.mesh.enable_raytracing = on;
+    }
+}
+
 /// Draw functions indexed by `Kind as usize`.
 const DRAW: [fn(&mut Build); 11] = [
     ruins::stone_circle,

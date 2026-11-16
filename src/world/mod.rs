@@ -2,6 +2,7 @@
 
 mod biome;
 mod chunks;
+mod colormap;
 mod focus;
 mod islands;
 mod mesh;
@@ -86,6 +87,10 @@ pub(super) fn plugin(app: &mut App) {
             (begin_world, sea::spawn_sea).chain(),
         )
         .add_systems(OnEnter(Screen::Title), end_world)
+        .add_systems(
+            Update,
+            chunks::add_instances.run_if(crate::render::ray_tracing::active),
+        )
         .add_systems(
             Update,
             (

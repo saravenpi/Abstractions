@@ -14,12 +14,11 @@ pub use model::{Audio, Controls, Graphics, Keymap, Settings, WorldPrefs};
 use bevy::prelude::*;
 use bevy_persistent::StorageFormat;
 
-/// Returns the settings file path inside the platform config directory.
-fn settings_path() -> std::path::PathBuf {
+/// Returns the game's directory inside the platform config directory.
+pub fn config_dir() -> std::path::PathBuf {
     dirs::config_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join("abstractions")
-        .join("settings.toml")
 }
 
 /// Loads settings from a file, falling back to defaults when missing or broken.
@@ -35,8 +34,14 @@ fn load_from(path: std::path::PathBuf) -> Persistent<Settings> {
         .expect("settings storage must be writable")
 }
 
-/// Inserts the persisted settings resource.
+/// Loads the saved settings from the config directory.
+///
+/// Call it once and insert the result as a resource before the plugins that read it.
+pub fn load() -> Persistent<Settings> {
+    load_from(config_dir().join("settings.toml"))
+}
+
+/// Registers the systems that apply the settings. The resource itself comes from [`load`].
 pub(super) fn plugin(app: &mut App) {
-    app.insert_resource(load_from(settings_path()));
     app.add_plugins(apply::plugin);
 }

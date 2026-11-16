@@ -7,6 +7,7 @@ mod dome;
 mod lighting;
 mod palette;
 mod pixelate;
+pub mod ray_tracing;
 mod sky;
 
 pub use camera::{configure_camera, set_fov};
@@ -15,6 +16,7 @@ pub use clock::DayClock;
 pub use lighting::{Moon, Sun};
 pub use palette::Palette;
 pub use pixelate::Pixelate;
+pub use ray_tracing::RayTracing;
 
 use bevy::prelude::*;
 
@@ -34,5 +36,6 @@ pub(super) fn plugin(app: &mut App) {
         sky::plugin,
         dome::plugin,
         camera::plugin,
+        ray_tracing::plugin,
     ));
 }

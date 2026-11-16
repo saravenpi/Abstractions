@@ -1,6 +1,7 @@
 //! Chunk streaming: builds terrain chunks off-thread around the anchor and drops far ones.
 
 mod plan;
+mod raytrace;
 
 use std::collections::HashMap;
 
@@ -10,6 +11,7 @@ use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
 
 use self::plan::{Loaded, needs_collider, ring, select_batch};
+pub use self::raytrace::add_instances;
 use super::focus::Focus;
 use super::mesh::{chunk_heights, chunk_mesh};
 use super::propmesh::merge_props;
@@ -17,6 +19,7 @@ use super::props::{Cover, PropAssets, body_collider, build_grass, spawn_props};
 use super::scatter::{Placement, chunk_center, scatter_chunk};
 use super::structures::{StructureData, build_chunk, origins_near, spawn_structures};
 use super::{CHUNK_SIZE, Terrain, WorldReady};
+use crate::render::RayTracing;
 use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
 
@@ -94,8 +97,12 @@ pub fn generate(terrain: &Terrain, coord: IVec2) -> ChunkData {
 }
 
 /// Creates the shared material.
-pub fn setup_assets(mut commands: Commands, mut mats: ResMut<Assets<StandardMaterial>>) {
-    commands.insert_resource(PropAssets::new(&mut mats));
+pub fn setup_assets(
+    mut commands: Commands,
+    mut mats: ResMut<Assets<StandardMaterial>>,
+    mut images: ResMut<Assets<Image>>,
+) {
+    commands.insert_resource(PropAssets::new(&mut mats, &mut images));
 }
 
 /// Starts tasks for missing chunks near the focus, drops chunks out of range and moves colliders with the focus.
@@ -134,11 +141,12 @@ pub fn stream(
     }
 }
 
-/// Meshes and the shared material, for spawning chunks.
+/// Meshes, the shared material and the ray tracing state, for spawning chunks.
 #[derive(SystemParam)]
 pub struct Spawner<'w> {
     assets: Res<'w, PropAssets>,
     meshes: ResMut<'w, Assets<Mesh>>,
+    ray_tracing: Res<'w, RayTracing>,
 }
 
 /// Spawns the entities of one finished chunk and returns what is needed to attach its colliders later.
@@ -199,13 +207,14 @@ pub fn collect(
         .map(|(c, _)| *c)
         .collect();
     for coord in select_batch(finished, center, budget) {
-        let Some(data) = chunks
+        let Some(mut data) = chunks
             .pending
             .remove(&coord)
             .and_then(|mut t| block_on(poll_once(&mut t)))
         else {
             continue;
         };
+        raytrace::prepare(&mut data, spawner.ray_tracing.0);
         let mut loaded = spawn_chunk(&mut commands, &mut spawner, coord, data);
         loaded.set_solid(&mut commands, needs_collider(coord, center));
         chunks.loaded.insert(coord, loaded);

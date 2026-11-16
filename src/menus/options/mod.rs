@@ -3,6 +3,7 @@
 mod actions;
 mod field;
 mod format;
+mod hint;
 mod pages;
 mod rebind;
 mod rows;
@@ -31,8 +32,12 @@ pub struct SettingsTab(pub Tab);
 
 /// Registers the settings menu systems.
 pub(super) fn plugin(app: &mut App) {
-    app.init_resource::<SettingsTab>()
-        .add_plugins((view::plugin, actions::plugin, rebind::plugin));
+    app.init_resource::<SettingsTab>().add_plugins((
+        view::plugin,
+        actions::plugin,
+        rebind::plugin,
+        hint::plugin,
+    ));
     app.add_systems(OnExit(Menu::Settings), reset_tab);
 }
 

@@ -50,6 +50,16 @@ fn toggles_show_fps() {
     assert_eq!(display(&s, Field::ShowFps), "On");
 }
 
+/// The ray tracing toggle flips, displays as On or Off and starts off.
+#[test]
+fn toggles_ray_tracing() {
+    let mut s = Settings::default();
+    assert_eq!(display(&s, Field::RayTracing), "Off");
+    step(&mut s, Field::RayTracing, 1);
+    assert!(s.graphics.ray_tracing);
+    assert_eq!(display(&s, Field::RayTracing), "On");
+}
+
 /// Floats move by exactly one tenth and display with one decimal.
 #[test]
 fn tenths_do_not_drift() {

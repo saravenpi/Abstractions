@@ -5,6 +5,7 @@ use bevy::light::{CascadeShadowConfigBuilder, DirectionalLight, DirectionalLight
 use bevy::prelude::*;
 
 use super::palette::{Palette, srgb};
+use super::ray_tracing::RayTracing;
 use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
 
@@ -89,10 +90,11 @@ fn spawn_lights(mut commands: Commands) {
 fn update_lights(
     palette: Res<Palette>,
     settings: Res<Persistent<Settings>>,
+    ray_tracing: Res<RayTracing>,
     mut suns: Query<LightParts, SunOnly>,
     mut moons: Query<LightParts, MoonOnly>,
 ) {
-    let shadows = settings.graphics.shadows;
+    let shadows = settings.graphics.shadows && !ray_tracing.0;
     for (mut transform, mut light) in &mut suns {
         let aim = Aim {
             dir: palette.sun_dir,

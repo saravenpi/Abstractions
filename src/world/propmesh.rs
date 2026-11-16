@@ -1,4 +1,4 @@
-//! The plant vocabulary and the vertex-colored meshes of the big props: trees, cacti, bushes, logs and rocks.
+//! The plant vocabulary and the meshes of the big props: trees, cacti, bushes, logs and rocks.
 
 mod merge;
 

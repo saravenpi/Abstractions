@@ -4,6 +4,7 @@ use avian3d::prelude::*;
 use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
+use super::colormap;
 use super::propmesh::{BIG, FLOWER, Plant};
 use super::scatter::{Placement, Scatter};
 use super::shapes::{FlatMesh, shade};
@@ -43,15 +44,16 @@ const BODIES: [[f32; 2]; BIG] = [
 /// The one material every world mesh shares.
 #[derive(Resource, Clone)]
 pub struct PropAssets {
-    /// Vertex-colored material used by terrain, props and grass.
+    /// Material colored by the lookup texture, used by terrain, props and grass.
     pub material: Handle<StandardMaterial>,
 }
 
 impl PropAssets {
-    /// Builds the vertex-color material.
-    pub fn new(materials: &mut Assets<StandardMaterial>) -> Self {
+    /// Builds the material around the color lookup texture.
+    pub fn new(materials: &mut Assets<StandardMaterial>, images: &mut Assets<Image>) -> Self {
         let material = materials.add(StandardMaterial {
             base_color: Color::WHITE,
+            base_color_texture: Some(images.add(colormap::image())),
             perceptual_roughness: 0.95,
             reflectance: 0.05,
             ..default()

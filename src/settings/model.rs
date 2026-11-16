@@ -43,6 +43,8 @@ pub struct Graphics {
     pub fov: u32,
     /// Whether the frame rate is shown in a corner.
     pub show_fps: bool,
+    /// Whether Solari ray traced lighting is requested; read once at startup.
+    pub ray_tracing: bool,
 }
 
 impl Default for Graphics {
@@ -59,6 +61,7 @@ impl Default for Graphics {
             color_levels: 24,
             fov: 75,
             show_fps: false,
+            ray_tracing: false,
         }
     }
 }

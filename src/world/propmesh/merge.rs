@@ -2,18 +2,18 @@
 
 use std::sync::OnceLock;
 
-use bevy::asset::RenderAssetUsages;
-use bevy::mesh::{PrimitiveTopology, VertexAttributeValues};
+use bevy::mesh::VertexAttributeValues;
 use bevy::prelude::*;
 
 use super::{BIG, VARIANTS, big_mesh};
 use crate::world::scatter::Placement;
+use crate::world::shapes::textured_mesh;
 
 /// Vertex arrays of one prop variant, shared by every chunk worker.
 struct Base {
     positions: Vec<[f32; 3]>,
     normals: Vec<[f32; 3]>,
-    colors: Vec<[f32; 4]>,
+    uvs: Vec<[f32; 2]>,
 }
 
 /// Returns the shared geometry of big plant `kind`, variant `variant`, building all of them once.
@@ -26,19 +26,19 @@ fn base(kind: usize, variant: usize) -> &'static Base {
                 let (
                     Some(VertexAttributeValues::Float32x3(positions)),
                     Some(VertexAttributeValues::Float32x3(normals)),
-                    Some(VertexAttributeValues::Float32x4(colors)),
+                    Some(VertexAttributeValues::Float32x2(uvs)),
                 ) = (
                     mesh.attribute(Mesh::ATTRIBUTE_POSITION),
                     mesh.attribute(Mesh::ATTRIBUTE_NORMAL),
-                    mesh.attribute(Mesh::ATTRIBUTE_COLOR),
+                    mesh.attribute(Mesh::ATTRIBUTE_UV_0),
                 )
                 else {
-                    unreachable!("prop meshes always carry position, normal and color")
+                    unreachable!("prop meshes always carry position, normal and uv")
                 };
                 Base {
                     positions: positions.clone(),
                     normals: normals.clone(),
-                    colors: colors.clone(),
+                    uvs: uvs.clone(),
                 }
             })
             .collect()
@@ -50,7 +50,7 @@ fn base(kind: usize, variant: usize) -> &'static Base {
 pub fn merge_props(props: &[Placement]) -> Mesh {
     let mut positions = Vec::new();
     let mut normals = Vec::new();
-    let mut colors = Vec::new();
+    let mut uvs = Vec::new();
     for p in props {
         let b = base(p.plant as usize, p.variant as usize);
         let rot = Quat::from_rotation_y(p.yaw);
@@ -60,15 +60,9 @@ pub fn merge_props(props: &[Placement]) -> Mesh {
                 .map(|v| (p.pos + rot * (Vec3::from(*v) * p.scale)).to_array()),
         );
         normals.extend(b.normals.iter().map(|n| (rot * Vec3::from(*n)).to_array()));
-        colors.extend_from_slice(&b.colors);
+        uvs.extend_from_slice(&b.uvs);
     }
-    Mesh::new(
-        PrimitiveTopology::TriangleList,
-        RenderAssetUsages::default(),
-    )
-    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
-    .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
-    .with_inserted_attribute(Mesh::ATTRIBUTE_COLOR, colors)
+    textured_mesh(positions, normals, uvs)
 }
 
 #[cfg(test)]

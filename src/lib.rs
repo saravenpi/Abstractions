@@ -17,15 +17,23 @@ pub struct AppPlugin;
 
 impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(DefaultPlugins.set(WindowPlugin {
+        let mut saved = settings::load();
+        let ray_tracing = render::ray_tracing::begin(&mut saved);
+        let mut defaults = DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Abstractions".into(),
                 ..default()
             }),
             ..default()
-        }))
-        .add_plugins(PhysicsPlugins::default())
-        .add_plugins((
+        });
+        if ray_tracing {
+            defaults = defaults.set(render::ray_tracing::render_plugin());
+        }
+        app.insert_resource(saved).add_plugins(defaults);
+        if ray_tracing {
+            render::ray_tracing::enable(app);
+        }
+        app.add_plugins(PhysicsPlugins::default()).add_plugins((
             settings::plugin,
             screens::plugin,
             menus::plugin,

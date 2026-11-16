@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use super::actions::SettingsAction;
 use super::field::Field;
 use super::format::display;
+use super::hint;
 use super::pages::{self, Page, display_for};
 use super::rebind::Rebinding;
 use super::rows::Value;
@@ -73,7 +74,7 @@ fn body(active: Tab) -> impl Bundle {
     (
         Node {
             width: percent(100),
-            height: px(theme::ROW_HEIGHT * 11.0),
+            height: px(theme::ROW_HEIGHT * 12.0),
             column_gap: px(theme::SPACE * 8.0),
             ..default()
         },
@@ -105,6 +106,7 @@ fn spawn(mut commands: Commands, tab: Res<SettingsTab>) {
                 }
             ),
             body(tab.0),
+            hint::line(),
             footer("Esc to go back. Left and right change a value"),
         ],
     ));

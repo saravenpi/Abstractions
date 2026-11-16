@@ -1,15 +1,19 @@
 //! The game camera look: graphics options, projection and fog, including the underwater fog.
 
-use bevy::camera::Hdr;
+use bevy::camera::{CameraMainTextureUsages, Hdr};
 use bevy::core_pipeline::prepass::{DepthPrepass, NormalPrepass};
+use bevy::ecs::system::SystemParam;
 use bevy::pbr::{DistanceFog, FogFalloff, ScreenSpaceAmbientOcclusion};
 use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
+use bevy::render::render_resource::TextureUsages;
 use bevy::render::view::{Msaa, Tonemapping};
+use bevy::solari::prelude::SolariLighting;
 
 use super::GameCamera;
 use super::palette::{Palette, srgb};
 use super::pixelate::Pixelate;
+use super::ray_tracing::RayTracing;
 use crate::settings::{Graphics, Persistent, Settings};
 use crate::world::{CHUNK_SIZE, SEA_LEVEL};
 
@@ -68,7 +72,14 @@ pub fn set_fov(projection: &mut Projection, fov: u32) {
 }
 
 /// Adds or removes the camera effects that the graphics settings ask for.
-pub fn configure_camera(commands: &mut Commands, camera: Entity, graphics: &Graphics) {
+///
+/// With `ray_tracing` the camera gets Solari lighting, which replaces ambient occlusion and needs HDR.
+pub fn configure_camera(
+    commands: &mut Commands,
+    camera: Entity,
+    graphics: &Graphics,
+    ray_tracing: bool,
+) {
     let mut entity = commands.entity(camera);
     entity.insert((
         Pixelate::new(graphics.pixel_size, graphics.color_levels),
@@ -76,35 +87,48 @@ pub fn configure_camera(commands: &mut Commands, camera: Entity, graphics: &Grap
         Msaa::Off,
         DepthPrepass,
     ));
-    match graphics.ambient_occlusion {
+    if ray_tracing {
+        entity.insert(CameraMainTextureUsages::default().with(TextureUsages::STORAGE_BINDING));
+        entity.insert_if_new(SolariLighting::default());
+    }
+    match graphics.ambient_occlusion && !ray_tracing {
         true => entity.insert(ScreenSpaceAmbientOcclusion::default()),
         false => entity.remove::<(ScreenSpaceAmbientOcclusion, NormalPrepass)>(),
     };
-    match graphics.bloom {
-        true => entity.insert(Bloom {
+    match (graphics.bloom, ray_tracing) {
+        (true, _) => entity.insert(Bloom {
             intensity: BLOOM_INTENSITY,
             ..Bloom::NATURAL
         }),
-        false => entity.remove::<(Bloom, Hdr)>(),
+        (false, true) => entity.remove::<Bloom>(),
+        (false, false) => entity.remove::<(Bloom, Hdr)>(),
     };
+}
+
+/// What a new game camera is configured from.
+#[derive(SystemParam)]
+struct Look<'w> {
+    settings: Res<'w, Persistent<Settings>>,
+    palette: Res<'w, Palette>,
+    ray_tracing: Res<'w, RayTracing>,
 }
 
 /// Gives the first-person camera its post-process, fog, field of view and effects.
 fn setup_camera(
     add: On<Add<GameCamera>>,
     mut commands: Commands,
-    settings: Res<Persistent<Settings>>,
-    palette: Res<Palette>,
+    look: Look,
     mut projections: Query<&mut Projection>,
 ) {
-    configure_camera(&mut commands, add.entity, &settings.graphics);
+    let graphics = &look.settings.graphics;
+    configure_camera(&mut commands, add.entity, graphics, look.ray_tracing.0);
     if let Ok(mut projection) = projections.get_mut(add.entity) {
-        set_fov(&mut projection, settings.graphics.fov);
+        set_fov(&mut projection, graphics.fov);
     }
     let key = FogKey {
         submerged: false,
-        color: palette.horizon,
-        render_distance: settings.graphics.render_distance,
+        color: look.palette.horizon,
+        render_distance: graphics.render_distance,
     };
     commands.entity(add.entity).insert(fog_for(key));
 }

@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy::window::{MonitorSelection, PresentMode, PrimaryWindow, WindowMode};
 
 use super::{Persistent, Settings};
-use crate::render::{GameCamera, configure_camera, set_fov};
+use crate::render::{GameCamera, RayTracing, configure_camera, set_fov};
 
 /// Applies vsync and fullscreen to the primary window.
 fn apply_window(
@@ -32,11 +32,12 @@ fn apply_audio(settings: Res<Persistent<Settings>>, mut volume: ResMut<GlobalVol
 /// Shadows and fog distance follow the settings through the lighting and fog systems.
 fn apply_graphics(
     settings: Res<Persistent<Settings>>,
+    ray_tracing: Res<RayTracing>,
     mut commands: Commands,
     mut cameras: Query<(Entity, &mut Projection), With<GameCamera>>,
 ) {
     for (camera, mut projection) in &mut cameras {
-        configure_camera(&mut commands, camera, &settings.graphics);
+        configure_camera(&mut commands, camera, &settings.graphics, ray_tracing.0);
         set_fov(&mut projection, settings.graphics.fov);
     }
 }

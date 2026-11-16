@@ -1,5 +1,6 @@
 //! Infinite procedural archipelago: terrain, chunk streaming, props and sea.
 
+mod biome;
 mod chunks;
 mod focus;
 mod islands;
@@ -10,14 +11,17 @@ mod scatter;
 mod sea;
 mod shapes;
 mod solids;
+pub mod structures;
 mod surface;
 mod terrain;
 
+pub use biome::Biome;
 pub use surface::Surface;
 pub use terrain::Terrain;
 
 use bevy::prelude::*;
 
+use crate::saves::ActiveWorld;
 use crate::screens::Screen;
 
 /// Height of the sea surface in world units.
@@ -31,6 +35,8 @@ pub const CHUNK_SIZE: f32 = 64.0;
 pub struct WorldSeed(pub u64);
 
 /// Where the player spawns, inserted by the world when entering `Screen::Loading`.
+///
+/// A resumed world uses its saved body position.
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct SpawnPoint(pub Vec3);
 
@@ -43,9 +49,17 @@ pub struct WorldReady(pub bool);
 pub struct StreamAnchor;
 
 /// Builds the terrain, spawn point and readiness flag from the world seed.
-fn begin_world(mut commands: Commands, seed: Option<Res<WorldSeed>>) {
+///
+/// A resumed world spawns at its saved position instead of the terrain spawn.
+fn begin_world(
+    mut commands: Commands,
+    seed: Option<Res<WorldSeed>>,
+    active: Option<Res<ActiveWorld>>,
+) {
     let terrain = Terrain::new(seed.map_or(0, |s| s.0));
-    commands.insert_resource(SpawnPoint(terrain.find_spawn()));
+    let saved = active.and_then(|active| active.0.save.position);
+    let spawn = saved.map_or_else(|| terrain.find_spawn(), Vec3::from);
+    commands.insert_resource(SpawnPoint(spawn));
     commands.insert_resource(terrain);
     commands.insert_resource(WorldReady(false));
 }

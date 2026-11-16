@@ -2,9 +2,10 @@
 
 use bevy::prelude::*;
 
+use super::biome::ground_rgb;
 use super::shapes::{FlatMesh, srgb};
 use super::surface::classify;
-use super::{CHUNK_SIZE, Surface, Terrain};
+use super::{Biome, CHUNK_SIZE, Terrain};
 
 /// Distance between two terrain vertices.
 pub const GRID_STEP: f32 = 2.0;
@@ -12,14 +13,12 @@ pub const GRID_STEP: f32 = 2.0;
 /// Number of vertices along one chunk edge.
 pub const GRID_POINTS: usize = (CHUNK_SIZE / GRID_STEP) as usize + 1;
 
-/// Returns the world position of the corner of chunk `coord` with the lowest `x` and `z`.
-fn origin(coord: IVec2) -> Vec2 {
-    coord.as_vec2() * CHUNK_SIZE
-}
+/// Half width of the biome border dither band in world units.
+const DITHER_REACH: f32 = 12.0;
 
 /// Samples ground heights at every grid vertex; the first index runs along `x`, the second along `z`.
 pub fn chunk_heights(terrain: &Terrain, coord: IVec2) -> Vec<Vec<f32>> {
-    let o = origin(coord);
+    let o = coord.as_vec2() * CHUNK_SIZE;
     (0..GRID_POINTS)
         .map(|i| {
             (0..GRID_POINTS)
@@ -27,17 +26,6 @@ pub fn chunk_heights(terrain: &Terrain, coord: IVec2) -> Vec<Vec<f32>> {
                 .collect()
         })
         .collect()
-}
-
-/// Returns the vertex color of a surface, lightened or darkened by a per-triangle factor near 1.
-fn surface_color(surface: Surface, tone: f32) -> [f32; 4] {
-    let (r, g, b) = match surface {
-        Surface::Water => (0.16, 0.22, 0.26),
-        Surface::Sand => (0.82, 0.74, 0.52),
-        Surface::Grass => (0.30, 0.56, 0.24),
-        Surface::Rock => (0.46, 0.45, 0.46),
-    };
-    srgb(r * tone, g * tone, b * tone)
 }
 
 /// Returns a stable value in `[0.92, 1.08]` for a grid cell and triangle index.
@@ -49,17 +37,18 @@ fn tone(i: usize, j: usize, half: usize) -> f32 {
     0.92 + ((h >> 10) & 0xFF) as f32 / 255.0 * 0.16
 }
 
-/// Adds one terrain triangle, coloring it by its centroid height and flat slope.
-fn push_tri(mesh: &mut FlatMesh, p: [Vec3; 3], i: usize, j: usize, half: usize) {
+/// Adds one terrain triangle, coloring it by its centroid height, flat slope and dithered biome.
+fn push_tri(mesh: &mut FlatMesh, p: [Vec3; 3], key: (usize, usize, usize), biome: Biome) {
     let normal = (p[1] - p[0]).cross(p[2] - p[0]).normalize_or_zero();
     let slope = (1.0 - normal.y * normal.y).max(0.0).sqrt() / normal.y.max(0.01);
     let height = (p[0].y + p[1].y + p[2].y) / 3.0;
-    let color = surface_color(classify(height, slope), tone(i, j, half));
-    mesh.tri(p[0], p[1], p[2], color);
+    let (r, g, b) = ground_rgb(classify(height, slope, biome), biome);
+    let t = tone(key.0, key.1, key.2);
+    mesh.tri(p[0], p[1], p[2], srgb(r * t, g * t, b * t));
 }
 
-/// Builds the mesh of chunk `coord`, with vertices relative to the chunk center on the XZ plane.
-pub fn chunk_mesh(heights: &[Vec<f32>]) -> Mesh {
+/// Builds the mesh from heights, asking `biome_at(i, j, half)` for the biome of each triangle.
+fn build(heights: &[Vec<f32>], biome_at: &dyn Fn(usize, usize, usize) -> Biome) -> Mesh {
     let mut mesh = FlatMesh::default();
     let half = CHUNK_SIZE * 0.5;
     let at = |i: usize, j: usize| {
@@ -72,11 +61,22 @@ pub fn chunk_mesh(heights: &[Vec<f32>]) -> Mesh {
     for i in 0..GRID_POINTS - 1 {
         for j in 0..GRID_POINTS - 1 {
             let (p00, p10, p01, p11) = (at(i, j), at(i + 1, j), at(i, j + 1), at(i + 1, j + 1));
-            push_tri(&mut mesh, [p00, p01, p10], i, j, 0);
-            push_tri(&mut mesh, [p10, p01, p11], i, j, 1);
+            push_tri(&mut mesh, [p00, p01, p10], (i, j, 0), biome_at(i, j, 0));
+            push_tri(&mut mesh, [p10, p01, p11], (i, j, 1), biome_at(i, j, 1));
         }
     }
     mesh.into_mesh()
+}
+
+/// Builds the mesh of chunk `coord`, coloring by biome with a per-triangle dither near biome borders.
+pub fn chunk_mesh(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>]) -> Mesh {
+    let o = coord.as_vec2() * CHUNK_SIZE;
+    build(heights, &|i, j, half| {
+        let jitter = |salt: usize| (tone(i + salt, j, half) - 1.0) / 0.08 * DITHER_REACH;
+        let x = o.x + (i as f32 + 0.5) * GRID_STEP + jitter(7919);
+        let z = o.y + (j as f32 + 0.5) * GRID_STEP + jitter(104_729);
+        terrain.biome(x, z)
+    })
 }
 
 #[cfg(test)]
@@ -105,7 +105,8 @@ mod tests {
     #[test]
     fn mesh_has_expected_vertices() {
         let t = Terrain::new(9);
-        let mesh = chunk_mesh(&chunk_heights(&t, IVec2::ZERO));
+        let heights = chunk_heights(&t, IVec2::ZERO);
+        let mesh = chunk_mesh(&t, IVec2::ZERO, &heights);
         assert_eq!(
             mesh.count_vertices(),
             (GRID_POINTS - 1) * (GRID_POINTS - 1) * 6

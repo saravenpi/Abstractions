@@ -52,6 +52,18 @@ fn icosa_vertices() -> [Vec3; 12] {
     .map(Vec3::normalize)
 }
 
+/// Number of sides of every frustum.
+const SIDES: u32 = 6;
+
+/// Shape of a fan of blades: count, horizontal reach, tip rise, mid-blade arch and blade width.
+pub type Fan = [f32; 5];
+
+/// Darkens a linear color by a small amount that depends on the face index.
+fn varied(color: [f32; 4], i: usize) -> [f32; 4] {
+    let k = 0.93 + 0.07 * ((i * 5) % 4) as f32 / 3.0;
+    [color[0] * k, color[1] * k, color[2] * k, color[3]]
+}
+
 /// Adds a cone with its base circle centered on `base`, pointing up.
 pub fn cone(mesh: &mut FlatMesh, base: Vec3, size: Vec2, sides: u32, color: [f32; 4]) {
     let (radius, height) = (size.x, size.y);
@@ -61,8 +73,9 @@ pub fn cone(mesh: &mut FlatMesh, base: Vec3, size: Vec2, sides: u32, color: [f32
     };
     let tip = base + Vec3::Y * height;
     for i in 0..sides {
-        mesh.tri(ring(i + 1), ring(i), tip, color);
-        mesh.tri(ring(i), ring(i + 1), base, color);
+        let tone = varied(color, i as usize);
+        mesh.tri(ring(i + 1), ring(i), tip, tone);
+        mesh.tri(ring(i), ring(i + 1), base, tone);
     }
 }
 
@@ -96,7 +109,48 @@ pub fn icosa(mesh: &mut FlatMesh, center: Vec3, radii: Vec3, shape: (f32, u32), 
         .enumerate()
         .map(|(i, v)| center + *v * radii * (1.0 + jitter(i, seed) * wobble))
         .collect();
-    for [a, b, c] in FACES {
-        mesh.tri(verts[a], verts[b], verts[c], color);
+    for (n, [a, b, c]) in FACES.into_iter().enumerate() {
+        mesh.tri(verts[a], verts[b], verts[c], varied(color, n));
+    }
+}
+
+/// Adds an open six-sided tube from `from` to `to`, with the `radii` at the start and the end.
+pub fn frustum(mesh: &mut FlatMesh, from: Vec3, to: Vec3, radii: Vec2, color: [f32; 4]) {
+    let axis = (to - from).normalize_or_zero();
+    let u = axis.any_orthonormal_vector();
+    let v = u.cross(axis);
+    let ring = |i: u32, at: Vec3, r: f32| {
+        let a = i as f32 / SIDES as f32 * TAU;
+        at + (u * a.cos() + v * a.sin()) * r
+    };
+    for i in 0..SIDES {
+        let (a, b) = (ring(i, from, radii.x), ring(i + 1, from, radii.x));
+        let (c, d) = (ring(i, to, radii.y), ring(i + 1, to, radii.y));
+        let tone = varied(color, i as usize);
+        mesh.tri(b, a, c, tone);
+        mesh.tri(b, c, d, tone);
+    }
+}
+
+/// Adds blades radiating from `base`, each visible from both sides and bent at mid-length when `arch` is set.
+pub fn fan(mesh: &mut FlatMesh, base: Vec3, spec: Fan, yaw: f32, color: [f32; 4]) {
+    let [count, reach, rise, arch, width] = spec;
+    let mut both = |a: Vec3, b: Vec3, c: Vec3| {
+        mesh.tri(a, b, c, color);
+        mesh.tri(b, a, c, color);
+    };
+    for k in 0..count as u32 {
+        let a = yaw + k as f32 / count * TAU;
+        let dir = Vec3::new(a.cos(), 0.0, a.sin());
+        let side = Vec3::new(-a.sin(), 0.0, a.cos()) * width * 0.5;
+        let tip = base + dir * reach + Vec3::Y * rise;
+        if arch == 0.0 {
+            both(base - side, base + side, tip);
+            continue;
+        }
+        let mid = base + dir * reach * 0.5 + Vec3::Y * (rise * 0.5 + arch);
+        both(base - side, base + side, mid + side * 0.7);
+        both(base - side, mid + side * 0.7, mid - side * 0.7);
+        both(mid - side * 0.7, mid + side * 0.7, tip);
     }
 }

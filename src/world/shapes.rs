@@ -9,6 +9,15 @@ pub fn srgb(r: f32, g: f32, b: f32) -> [f32; 4] {
     LinearRgba::from(Color::srgb(r, g, b)).to_f32_array()
 }
 
+/// Scales an sRGB color by `tone` and converts it to a linear RGBA vertex color.
+pub fn shade(rgb: [f32; 3], tone: f32) -> [f32; 4] {
+    srgb(
+        (rgb[0] * tone).min(1.0),
+        (rgb[1] * tone).min(1.0),
+        (rgb[2] * tone).min(1.0),
+    )
+}
+
 /// Non-indexed triangles with one flat normal per triangle.
 #[derive(Default, Clone)]
 pub struct FlatMesh {

@@ -10,8 +10,8 @@ use bevy::prelude::*;
 use bevy::render::{RenderApp, extract_component::ExtractComponent, render_resource::ShaderType};
 use bevy::shader::ShaderRef;
 
-/// Color levels per channel kept by the retro banding.
-pub const COLOR_LEVELS: f32 = 24.0;
+/// Color levels per channel used when no setting says otherwise.
+const DEFAULT_LEVELS: u32 = 24;
 
 /// Pixelation settings of a camera, read by the post-process shader.
 #[derive(Component, ExtractComponent, Clone, Copy, Debug, ShaderType)]
@@ -24,11 +24,11 @@ pub struct Pixelate {
 }
 
 impl Pixelate {
-    /// Builds the effect for a block size taken from the settings.
-    pub fn new(pixel_size: u32) -> Self {
+    /// Builds the effect for a block size and color level count taken from the settings.
+    pub fn new(pixel_size: u32, levels: u32) -> Self {
         Self {
             pixel_size: pixel_size.max(1) as f32,
-            levels: COLOR_LEVELS,
+            levels: levels.max(2) as f32,
         }
     }
 }
@@ -36,7 +36,7 @@ impl Pixelate {
 impl Default for Pixelate {
     /// Returns a 3 pixel block with the default color levels.
     fn default() -> Self {
-        Self::new(3)
+        Self::new(3, DEFAULT_LEVELS)
     }
 }
 

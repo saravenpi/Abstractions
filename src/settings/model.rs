@@ -31,6 +31,18 @@ pub struct Graphics {
     pub vsync: bool,
     /// Whether the window is borderless fullscreen.
     pub fullscreen: bool,
+    /// Whether screen-space ambient occlusion darkens creases.
+    pub ambient_occlusion: bool,
+    /// Whether bright areas glow.
+    pub bloom: bool,
+    /// Whether clouds are drawn in the sky.
+    pub clouds: bool,
+    /// Color levels per channel kept by the retro banding (8 to 64).
+    pub color_levels: u32,
+    /// Vertical field of view in degrees (60 to 110).
+    pub fov: u32,
+    /// Whether the frame rate is shown in a corner.
+    pub show_fps: bool,
 }
 
 impl Default for Graphics {
@@ -41,6 +53,12 @@ impl Default for Graphics {
             shadows: true,
             vsync: true,
             fullscreen: false,
+            ambient_occlusion: true,
+            bloom: true,
+            clouds: true,
+            color_levels: 24,
+            fov: 75,
+            show_fps: false,
         }
     }
 }

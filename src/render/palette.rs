@@ -1,0 +1,147 @@
+//! Sky, light and fog colors keyed on the day clock.
+
+use bevy::light::GlobalAmbientLight;
+use bevy::prelude::*;
+
+use super::DayClock;
+use super::celestial::{daylight, golden, moon_direction, smoothstep, sun_direction};
+use super::clock::START_PHASE;
+
+/// Everything that changes color or strength with the time of day.
+#[derive(Resource, Debug, Clone, Copy, PartialEq)]
+pub struct Palette {
+    /// Sky color straight up, in sRGB.
+    pub zenith: Vec3,
+    /// Sky color at the horizon, in sRGB. The distance fog uses it too.
+    pub horizon: Vec3,
+    /// Ambient light color, in sRGB.
+    pub ambient: Vec3,
+    /// Ambient light brightness.
+    pub ambient_brightness: f32,
+    /// Sun light color, in sRGB.
+    pub sun_color: Vec3,
+    /// Sun illuminance in lux.
+    pub sun_lux: f32,
+    /// Moon illuminance in lux.
+    pub moon_lux: f32,
+    /// Cloud color, in sRGB.
+    pub cloud: Vec3,
+    /// Star visibility from 0 to 1.
+    pub stars: f32,
+    /// Unit vector pointing at the sun.
+    pub sun_dir: Vec3,
+    /// Unit vector pointing at the moon.
+    pub moon_dir: Vec3,
+}
+
+/// Converts an sRGB triple to a color.
+pub fn srgb(v: Vec3) -> Color {
+    Color::srgb(v.x, v.y, v.z)
+}
+
+/// Night, noon and golden hour colors of one palette entry, in sRGB.
+struct Key {
+    night: Vec3,
+    noon: Vec3,
+    glow: Vec3,
+    glow_amount: f32,
+}
+
+impl Key {
+    /// Blends the three colors for a daylight factor and a golden hour weight.
+    fn at(&self, day: f32, dusk: f32) -> Vec3 {
+        let base = self.night.lerp(self.noon, day);
+        base.lerp(self.glow, dusk * self.glow_amount)
+    }
+}
+
+/// Sky color straight up.
+const ZENITH: Key = Key {
+    night: Vec3::new(0.015, 0.025, 0.08),
+    noon: Vec3::new(0.28, 0.52, 0.90),
+    glow: Vec3::new(0.36, 0.38, 0.68),
+    glow_amount: 0.6,
+};
+
+/// Sky color at the horizon.
+const HORIZON: Key = Key {
+    night: Vec3::new(0.05, 0.08, 0.18),
+    noon: Vec3::new(0.62, 0.78, 0.95),
+    glow: Vec3::new(1.0, 0.55, 0.32),
+    glow_amount: 1.0,
+};
+
+/// Ambient light color.
+const AMBIENT: Key = Key {
+    night: Vec3::new(0.35, 0.45, 0.9),
+    noon: Vec3::new(0.7, 0.8, 1.0),
+    glow: Vec3::new(1.0, 0.7, 0.6),
+    glow_amount: 0.6,
+};
+
+/// Cloud color.
+const CLOUD: Key = Key {
+    night: Vec3::new(0.12, 0.14, 0.24),
+    noon: Vec3::new(1.0, 1.0, 1.0),
+    glow: Vec3::new(1.0, 0.62, 0.45),
+    glow_amount: 0.9,
+};
+
+impl Palette {
+    /// Returns the palette for a clock phase.
+    pub fn at(phase: f32) -> Self {
+        let sun_dir = sun_direction(phase);
+        let moon_dir = moon_direction(phase);
+        let day = daylight(phase);
+        let dusk = golden(phase);
+        let warmth = 1.0 - smoothstep(0.0, 0.4, sun_dir.y);
+        Self {
+            zenith: ZENITH.at(day, dusk),
+            horizon: HORIZON.at(day, dusk),
+            ambient: AMBIENT.at(day, dusk),
+            ambient_brightness: 90.0 + 260.0 * day,
+            sun_color: Vec3::new(1.0, 0.93, 0.78).lerp(Vec3::new(1.0, 0.55, 0.25), warmth),
+            sun_lux: 12_000.0 * smoothstep(-0.02, 0.3, sun_dir.y),
+            moon_lux: 1_300.0 * smoothstep(-0.02, 0.3, moon_dir.y),
+            cloud: CLOUD.at(day, dusk),
+            stars: 1.0 - smoothstep(-0.2, 0.0, sun_dir.y),
+            sun_dir,
+            moon_dir,
+        }
+    }
+}
+
+/// Recomputes the palette from the clock and applies it to ambient light and the clear color.
+fn update_palette(
+    clock: Res<DayClock>,
+    mut palette: ResMut<Palette>,
+    mut ambient: ResMut<GlobalAmbientLight>,
+    mut clear: ResMut<ClearColor>,
+) {
+    *palette = Palette::at(clock.phase);
+    ambient.color = srgb(palette.ambient);
+    ambient.brightness = palette.ambient_brightness;
+    clear.0 = srgb(palette.horizon);
+}
+
+/// Registers the palette resource and its update.
+pub(super) fn plugin(app: &mut App) {
+    app.insert_resource(Palette::at(START_PHASE))
+        .add_systems(Update, update_palette.run_if(resource_changed::<DayClock>));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Noon is bright with a lit sun, midnight is dim with a lit moon and stars.
+    #[test]
+    fn noon_and_midnight_differ() {
+        let noon = Palette::at(0.25);
+        let night = Palette::at(0.75);
+        assert!(noon.sun_lux > 10_000.0 && noon.moon_lux < 1.0);
+        assert!(night.moon_lux > 1_000.0 && night.sun_lux < 1.0);
+        assert!(noon.horizon.length() > night.horizon.length() * 3.0);
+        assert!(night.stars > 0.99 && noon.stars < 0.01);
+    }
+}

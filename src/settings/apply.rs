@@ -1,13 +1,11 @@
 //! Applies saved settings to the window, audio and renderer whenever they change.
 
 use bevy::audio::{GlobalVolume, Volume};
-use bevy::light::DirectionalLight;
-use bevy::pbr::DistanceFog;
 use bevy::prelude::*;
 use bevy::window::{MonitorSelection, PresentMode, PrimaryWindow, WindowMode};
 
 use super::{Persistent, Settings};
-use crate::render::{Pixelate, Sun, fog_falloff};
+use crate::render::{GameCamera, configure_camera, set_fov};
 
 /// Applies vsync and fullscreen to the primary window.
 fn apply_window(
@@ -29,18 +27,17 @@ fn apply_audio(settings: Res<Persistent<Settings>>, mut volume: ResMut<GlobalVol
     volume.volume = Volume::Linear(settings.audio.master.clamp(0.0, 1.0));
 }
 
-/// Applies shadows, pixel size and fog distance to the sun and cameras.
+/// Applies pixel size, color levels, field of view, ambient occlusion and bloom to the game camera.
+///
+/// Shadows and fog distance follow the settings through the lighting and fog systems.
 fn apply_graphics(
     settings: Res<Persistent<Settings>>,
-    mut suns: Query<&mut DirectionalLight, With<Sun>>,
-    mut cameras: Query<(&mut Pixelate, &mut DistanceFog)>,
+    mut commands: Commands,
+    mut cameras: Query<(Entity, &mut Projection), With<GameCamera>>,
 ) {
-    for mut sun in &mut suns {
-        sun.shadow_maps_enabled = settings.graphics.shadows;
-    }
-    for (mut pixelate, mut fog) in &mut cameras {
-        *pixelate = Pixelate::new(settings.graphics.pixel_size);
-        fog.falloff = fog_falloff(settings.graphics.render_distance);
+    for (camera, mut projection) in &mut cameras {
+        configure_camera(&mut commands, camera, &settings.graphics);
+        set_fov(&mut projection, settings.graphics.fov);
     }
 }
 

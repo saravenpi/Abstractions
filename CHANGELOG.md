@@ -5,6 +5,35 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-16
+
+### Added
+
+- Villages: a plaza with a well or fountain, bending streets, 6 to 14 buildings from ten house kinds, lamp posts, wheat fields and footpaths, styled per biome.
+- Camps in five layouts, common enough to find one every few hundred metres.
+- Torches, lamps, campfires and braziers that give light and flicker, with smoke rising from fires.
+- Underwater world: a sandy shelf, coral reefs, kelp forests, seamounts, trenches down to about 40 m, and a few wrecks.
+- Ponds with water lilies, lotus, cattails and weeping willows.
+- New plants: birch, great oak, dead trees, bamboo, berry bushes, tall grass and more.
+- Water shader: wind-driven waves, sky reflection, sun glitter and foam where waves meet the shore.
+- Wind that drives the waves, the smoke and the particles.
+- Particles: falling leaves, cherry petals, snow, desert dust, bubbles and plankton.
+- Creatures: fireflies that light their surroundings at night, butterflies and flocks of birds by day.
+
+### Changed
+
+- The 3D view renders at the low resolution shown on screen instead of the full window resolution. On a high-density display this shades about 36 times fewer pixels.
+- Terrain uses three levels of detail by distance. Far grass is hidden.
+- Islands have bays, headlands, islet chains and cliffs. Biomes form larger regions with sensible neighbours.
+- The spawn point prefers a gentle coast on a large island.
+- Ray tracing applies without a restart, shows its real state in the settings and writes a diagnostic log. It now uses the engine's noise reduction.
+
+### Fixed
+
+- Ray tracing could quit the game at startup on M1 and M2 Macs, then switch itself off. The game now checks the GPU limits first and says why it is unavailable.
+- Logs, trunks, cactus arms and other cut shapes were see-through at the ends.
+- Floors, docks and awnings were invisible from below. Tent doors and ramps were one-sided.
+
 ## [0.3.0] - 2026-11-16
 
 ### Added

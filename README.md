@@ -1,6 +1,6 @@
 # Abstractions
 
-A first-person exploration game with a pixelated, low-poly look. You wake up in an endless ocean of procedurally generated islands. Cross six biomes, climb mountains, swim between islands and find ruins, cabins and lighthouses. The day lasts ten minutes, and so does the night.
+A first-person exploration game with a pixelated, low-poly look. You wake up in an endless ocean of procedurally generated islands. Cross six biomes, climb mountains, dive on coral reefs, and find villages, camps, ruins and lighthouses. The day lasts ten minutes, and so does the night.
 
 ## Controls
 
@@ -61,9 +61,16 @@ You only need to do this once.
 
 ## Ray tracing
 
-Settings > Graphics > Ray tracing (experimental) turns on ray traced lighting. It is off by default. It needs a GPU with hardware ray tracing, such as Apple Silicon or a recent NVIDIA or AMD card, and a restart of the game.
+Settings > Graphics > Ray tracing (experimental) turns on ray traced lighting: traced shadows from every plant and building, and bounce light. It is off by default and applies at once, without a restart. The line under the settings list shows its real state: on, off, or not available with the reason.
 
-It is experimental. Distance fog does not apply to the land while it is on. If the game fails to start with it on, start the game again: it turns ray tracing off by itself.
+What it needs:
+
+- A GPU with hardware ray tracing.
+- On a Mac: an M3 or later and macOS 15 or later. M1 and M2 cannot run it, because the engine's ray tracer needs a GPU limit they do not have.
+
+Limits while it is on: no distance fog on the land, and torches, lamps, campfires and fireflies do not light the ground. The image has a little grain, because the engine's only denoiser is for NVIDIA cards.
+
+It has run on a software renderer but never on a real GPU. If it does not turn on, the reason is in `ray-tracing.log`, next to the settings file. If the game fails to start with it on, start the game again: it turns ray tracing off by itself.
 
 ## Settings
 
@@ -84,5 +91,7 @@ A missing or broken file is replaced by the defaults.
 - `src/ui`: shared UI widgets.
 - `src/world`: terrain, biomes, chunk streaming, plants, structures and sea.
 - `src/player`: first-person movement, jump and swimming.
-- `src/render`: pixelate post-process, day clock, sun, moon, sky dome and fog.
+- `src/render`: low-resolution target, day clock, sun, moon, sky dome, fog and ray tracing.
+- `src/effects`: particles, fireflies, butterflies and birds.
+- `src/wind.rs`: the wind shared by water, smoke and particles.
 - `src/settings`: persisted settings and the code that applies them.

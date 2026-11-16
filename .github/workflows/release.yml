@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -22,12 +23,6 @@ jobs:
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             archive: zip
-          - target: aarch64-apple-darwin
-            os: macos-latest
-            archive: tar.gz
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            archive: tar.gz
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -46,8 +41,9 @@ jobs:
       - name: Package
         shell: bash
         env:
-          NAME: abstractions-${{ github.ref_name }}-${{ matrix.target }}
+          VERSION: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'dev' }}
         run: |
+          NAME="abstractions-$VERSION-${{ matrix.target }}"
           mkdir "$NAME"
           if [ "${{ matrix.archive }}" = "zip" ]; then
             cp target/${{ matrix.target }}/release/abstractions.exe "$NAME/"
@@ -59,6 +55,48 @@ jobs:
             echo "ASSET=$NAME.tar.gz" >> "$GITHUB_ENV"
           fi
       - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: ${{ env.ASSET }}
           generate_release_notes: true
+      - uses: actions/upload-artifact@v4
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        with:
+          name: ${{ matrix.target }}
+          path: ${{ env.ASSET }}
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: macos-universal
+      - run: cargo build --release --target aarch64-apple-darwin
+      - run: cargo build --release --target x86_64-apple-darwin
+      - name: Package
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION="${REF_NAME#v}"
+          else
+            VERSION=dev
+          fi
+          packaging/macos/bundle.sh "$VERSION" \
+            target/aarch64-apple-darwin/release/abstractions \
+            target/x86_64-apple-darwin/release/abstractions
+          echo "ASSET=Abstractions-$VERSION-macos-universal.dmg" >> "$GITHUB_ENV"
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: ${{ env.ASSET }}
+          generate_release_notes: true
+      - uses: actions/upload-artifact@v4
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        with:
+          name: macos-universal
+          path: ${{ env.ASSET }}

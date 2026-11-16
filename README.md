@@ -1,6 +1,6 @@
 # Abstractions
 
-A first-person exploration game with a pixelated, low-poly look. You wake up in an endless ocean of procedurally generated islands. Walk, swim and look around under a warm sun.
+A first-person exploration game with a pixelated, low-poly look. You wake up in an endless ocean of procedurally generated islands. Cross six biomes, climb mountains, swim between islands and find ruins, cabins and lighthouses. The day lasts ten minutes, and so does the night.
 
 ## Controls
 
@@ -9,10 +9,24 @@ A first-person exploration game with a pixelated, low-poly look. You wake up in 
 | W A S D | Move |
 | Mouse | Look |
 | Space | Jump, or swim up |
+| Look down + W | Dive while swimming |
 | Shift | Sprint |
-| Esc | Pause menu |
+| Esc | Pause menu, or back |
+| Arrows, Enter | Move and select in menus |
 
-Rebind every key in Settings > Controls. New game lets you type a seed, or leave it empty for a random world.
+Rebind every key in Settings > Controls.
+
+## Worlds
+
+New world asks for a name and a seed. Leave the seed empty for a random world. The same seed always gives the same world.
+
+The game saves your position, view and time of day when you pause, when you quit, and every minute. Continue on the main menu reopens the last world. Worlds lists all of them; press Delete on a world to remove it.
+
+Saves are one small file per world:
+
+- Linux: `~/.local/share/abstractions/worlds/`
+- macOS: `~/Library/Application Support/abstractions/worlds/`
+- Windows: `%APPDATA%\abstractions\worlds\`
 
 ## Run
 
@@ -29,14 +43,21 @@ Other tasks: `mise run test`, `mise run check`, `mise run build-release`.
 
 ## macOS
 
-Download the `aarch64-apple-darwin` archive (Apple Silicon) or `x86_64-apple-darwin` (Intel). The binary is unsigned, so remove the quarantine flag once, then run it:
+1. Download `Abstractions-<version>-macos-universal.dmg` from the latest release. It runs on Apple Silicon and Intel, macOS 11 or later.
+2. Open the .dmg.
+3. Drag Abstractions onto the Applications folder.
+
+The app is not notarized. Notarization needs a paid Apple Developer ID, so macOS blocks the first launch. Pick one way to open it:
+
+- macOS 14 and older: right-click Abstractions in Applications, choose Open, then click Open.
+- macOS 15 and later: try to open the app once. Then go to System Settings, Privacy & Security, scroll to "Abstractions was blocked" and click Open Anyway.
+- Terminal, any version:
 
 ```sh
-tar -xzf abstractions-*-apple-darwin.tar.gz
-cd abstractions-*-apple-darwin
-xattr -d com.apple.quarantine ./abstractions
-./abstractions
+xattr -dr com.apple.quarantine /Applications/Abstractions.app
 ```
+
+You only need to do this once.
 
 ## Settings
 
@@ -52,9 +73,10 @@ A missing or broken file is replaced by the defaults.
 
 - `src/lib.rs`: root plugin that wires every module together.
 - `src/screens`: the `Screen` state (title, loading, gameplay).
-- `src/menus`: title, pause and settings menus.
+- `src/menus`: main, worlds, new world, pause and settings menus.
+- `src/saves`: saved worlds and autosave.
 - `src/ui`: shared UI widgets.
-- `src/world`: terrain, chunk streaming, props and sea.
+- `src/world`: terrain, biomes, chunk streaming, plants, structures and sea.
 - `src/player`: first-person movement, jump and swimming.
-- `src/render`: pixelate post-process, sun, sky and fog.
+- `src/render`: pixelate post-process, day clock, sun, moon, sky dome and fog.
 - `src/settings`: persisted settings and the code that applies them.

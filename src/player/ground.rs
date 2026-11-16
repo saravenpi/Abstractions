@@ -1,0 +1,98 @@
+//! Ground detection with a downward shape cast, slope projection and ground snapping.
+
+use avian3d::prelude::*;
+use bevy::prelude::*;
+
+/// Smallest surface normal height that counts as walkable ground (about 50 degrees).
+const MIN_GROUND_NORMAL: f32 = 0.64;
+
+/// Longest distance below the capsule at which the body still sticks to the ground.
+pub(super) const SNAP_DISTANCE: f32 = 0.4;
+
+/// Upward speed above which the body is considered to be leaving the ground.
+pub(super) const RISING_SPEED: f32 = 0.5;
+
+/// Gap that is ignored when snapping, so the resting skin never causes motion.
+const SKIN: f32 = 0.03;
+
+/// Ground found under the capsule.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct Ground {
+    /// Surface normal at the contact.
+    pub(super) normal: Vec3,
+    /// Free distance between the capsule and the surface, measured straight down.
+    pub(super) gap: f32,
+}
+
+/// Casts the capsule straight down and returns the nearest surface within snap range.
+pub(super) fn probe(
+    query: &SpatialQuery,
+    collider: &Collider,
+    transform: &Transform,
+    filter: &SpatialQueryFilter,
+) -> Option<Ground> {
+    query
+        .cast_shape(
+            collider,
+            transform.translation,
+            transform.rotation,
+            Dir3::NEG_Y,
+            &ShapeCastConfig::from_max_distance(SNAP_DISTANCE),
+            filter,
+        )
+        .map(|hit| Ground {
+            normal: hit.normal1,
+            gap: hit.distance,
+        })
+}
+
+/// Keeps the ground only when it is flat enough to stand on and the body is not rising.
+pub(super) fn walkable(ground: Option<Ground>, rising: bool) -> Option<Ground> {
+    ground.filter(|ground| !rising && ground.normal.y >= MIN_GROUND_NORMAL)
+}
+
+/// Projects a horizontal velocity onto the ground plane and keeps its speed.
+pub(super) fn slope_velocity(flat: Vec3, normal: Vec3) -> Vec3 {
+    let along = flat - normal * flat.dot(normal);
+    along.normalize_or_zero() * flat.length()
+}
+
+/// Returns the downward speed that closes a gap to the ground within one step.
+pub(super) fn snap_velocity(gap: f32, dt: f32) -> f32 {
+    -(gap - SKIN).max(0.0) / dt
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Slope projection keeps speed, climbs uphill and descends downhill.
+    #[test]
+    fn slope_projection_keeps_speed() {
+        let normal = Vec3::new(-0.5, 0.866, 0.0).normalize();
+        let uphill = slope_velocity(Vec3::new(5.0, 0.0, 0.0), normal);
+        assert!((uphill.length() - 5.0).abs() < 1e-4);
+        assert!(uphill.dot(normal).abs() < 1e-4);
+        let downhill = slope_velocity(Vec3::new(-5.0, 0.0, 0.0), normal);
+        assert!(uphill.y > 0.0 && downhill.y < 0.0);
+        assert_eq!(slope_velocity(Vec3::ZERO, normal), Vec3::ZERO);
+    }
+
+    /// Steep ground and rising bodies are never grounded, and tiny gaps need no snap.
+    #[test]
+    fn walkable_and_snap_rules() {
+        let flat = Ground {
+            normal: Vec3::Y,
+            gap: 0.01,
+        };
+        let steep = Ground {
+            normal: Vec3::new(0.8, 0.6, 0.0),
+            gap: 0.0,
+        };
+        assert!(walkable(Some(flat), false).is_some());
+        assert!(walkable(Some(flat), true).is_none());
+        assert!(walkable(Some(steep), false).is_none());
+        assert_eq!(snap_velocity(flat.gap, 0.016), 0.0);
+        assert!(snap_velocity(0.3, 0.016) < -10.0);
+    }
+}

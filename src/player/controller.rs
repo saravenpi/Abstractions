@@ -6,8 +6,11 @@ use avian3d::prelude::*;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
+use super::dive::{SwimInput, swim_velocity, swim_wish};
+use super::ground::{Ground, RISING_SPEED, probe, slope_velocity, snap_velocity, walkable};
 use super::intent::{Intent, approach, land_vertical, read_intent};
 use super::{Player, swim};
+use crate::render::GameCamera;
 use crate::screens::playing;
 use crate::settings::{Persistent, Settings};
 
@@ -17,20 +20,17 @@ const WALK_SPEED: f32 = 5.0;
 /// Sprinting speed in meters per second.
 const SPRINT_SPEED: f32 = 8.5;
 
-/// Smallest surface normal height that counts as walkable ground (about 50 degrees).
-const MIN_GROUND_NORMAL: f32 = 0.64;
-
-/// Speed multiplier in water.
-const SWIM_FACTOR: f32 = 0.5;
-
 /// Horizontal acceleration rate on the ground.
 const GROUND_ACCEL: f32 = 14.0;
 
-/// Horizontal acceleration rate in the air and in water.
+/// Horizontal acceleration rate in the air.
 const AIR_ACCEL: f32 = 3.5;
 
 /// Longest simulated frame, to survive hitches.
 const MAX_DT: f32 = 0.05;
+
+/// Horizontal speed below which an idle body stops dead.
+const REST_SPEED: f32 = 0.05;
 
 /// Movement state owned by the controller.
 #[derive(Component, Debug, Default, Clone, Copy)]
@@ -41,6 +41,8 @@ pub struct Motion {
     pub grounded: bool,
     /// Remaining seconds in which a jump is still allowed.
     pub coyote: f32,
+    /// Whether the body is swimming instead of walking.
+    pub swimming: bool,
 }
 
 /// Services the controller needs besides the player query.
@@ -50,55 +52,134 @@ struct Env<'w, 's> {
     keys: Res<'w, ButtonInput<KeyCode>>,
     settings: Res<'w, Persistent<Settings>>,
     slide: MoveAndSlide<'w, 's>,
+    query: SpatialQuery<'w, 's>,
 }
 
 /// Returns the horizontal velocity for this step.
-fn horizontal(motion: &Motion, intent: &Intent, swimming: bool, dt: f32) -> Vec3 {
+fn horizontal(motion: &Motion, intent: &Intent, center_y: f32, dt: f32) -> Vec3 {
     let base = if intent.sprint {
         SPRINT_SPEED
     } else {
         WALK_SPEED
     };
-    let speed = if swimming { base * SWIM_FACTOR } else { base };
-    let rate = if motion.grounded && !swimming {
+    let rate = if motion.grounded {
         GROUND_ACCEL
     } else {
         AIR_ACCEL
     };
     let current = Vec3::new(motion.velocity.x, 0.0, motion.velocity.z);
-    approach(current, intent.wish * speed, rate, dt)
+    let next = approach(
+        current,
+        intent.wish * base * swim::wade_factor(center_y),
+        rate,
+        dt,
+    );
+    if intent.wish == Vec3::ZERO && next.length() < REST_SPEED {
+        Vec3::ZERO
+    } else {
+        next
+    }
 }
 
-/// Runs one step of input, gravity or buoyancy, and collision-aware movement.
-fn drive(env: Env, player: Single<(Entity, &mut Transform, &mut Motion, &Collider), With<Player>>) {
-    let (entity, mut transform, mut motion, collider) = player.into_inner();
-    let dt = env.time.delta_secs().min(MAX_DT);
-    let (yaw, _, _) = transform.rotation.to_euler(EulerRot::YXZ);
-    let intent = read_intent(&env.keys, &env.settings.controls.keys, yaw);
-    let swimming = swim::is_swimming(transform.translation.y);
-    let flat = horizontal(&motion, &intent, swimming, dt);
-    let vertical = if swimming {
-        swim::buoyancy_velocity(transform.translation.y, intent.jump)
-    } else {
-        land_vertical(&mut motion, &intent, dt)
+/// Returns the walking velocity for this step, glued to walkable ground.
+fn walk_step(
+    motion: &mut Motion,
+    intent: &Intent,
+    ground: Option<Ground>,
+    center_y: f32,
+    dt: f32,
+) -> Vec3 {
+    motion.grounded = ground.is_some();
+    let flat = horizontal(motion, intent, center_y, dt);
+    let vertical = land_vertical(motion, intent, dt);
+    match ground.filter(|_| motion.grounded) {
+        Some(ground) => {
+            slope_velocity(flat, ground.normal) + Vec3::Y * snap_velocity(ground.gap, dt)
+        }
+        None => flat + Vec3::Y * vertical,
+    }
+}
+
+/// Per-frame values shared by the movement steps.
+struct Frame {
+    dt: f32,
+    time: f32,
+    yaw: f32,
+    pitch: f32,
+    center_y: f32,
+}
+
+/// Chooses the swimming or walking velocity for this frame and updates the swim state.
+fn velocity_for(
+    motion: &mut Motion,
+    intent: &Intent,
+    floor: Option<Ground>,
+    frame: &Frame,
+) -> Vec3 {
+    let gap = walkable(floor, false).map(|ground| ground.gap);
+    motion.swimming = swim::next_swimming(motion.swimming, frame.center_y, gap);
+    if !motion.swimming {
+        let ground = walkable(floor, motion.velocity.y > RISING_SPEED);
+        return walk_step(motion, intent, ground, frame.center_y, frame.dt);
+    }
+    motion.grounded = false;
+    let input = SwimInput {
+        wish: swim_wish(intent.forward, intent.right, frame.yaw, frame.pitch),
+        sprint: intent.sprint,
+        up: intent.jump,
     };
-    let mut grounded = false;
+    swim_velocity(
+        motion.velocity,
+        &input,
+        frame.center_y,
+        frame.time,
+        frame.dt,
+    )
+}
+
+/// Returns the body yaw and the camera pitch.
+fn view_angles(body: &Transform, camera: &Transform) -> (f32, f32) {
+    let (yaw, _, _) = body.rotation.to_euler(EulerRot::YXZ);
+    let (_, pitch, _) = camera.rotation.to_euler(EulerRot::YXZ);
+    (yaw, pitch)
+}
+
+/// Runs one step of input, ground detection and collision-aware movement.
+fn drive(
+    env: Env,
+    player: Single<(Entity, &mut Transform, &mut Motion, &Collider), With<Player>>,
+    camera: Single<&Transform, (With<GameCamera>, Without<Player>)>,
+) {
+    let (entity, mut transform, mut motion, collider) = player.into_inner();
+    let (yaw, pitch) = view_angles(&transform, &camera);
+    let frame = Frame {
+        dt: env.time.delta_secs().min(MAX_DT),
+        time: env.time.elapsed_secs(),
+        yaw,
+        pitch,
+        center_y: transform.translation.y,
+    };
+    let intent = read_intent(&env.keys, &env.settings.controls.keys, yaw);
+    let filter = SpatialQueryFilter::from_excluded_entities([entity]);
+    let floor = probe(&env.query, collider, &transform, &filter);
+    let velocity = velocity_for(&mut motion, &intent, floor, &frame);
     let out = env.slide.move_and_slide(
         collider,
         transform.translation,
         transform.rotation,
-        flat + Vec3::Y * vertical,
-        Duration::from_secs_f32(dt),
+        velocity,
+        Duration::from_secs_f32(frame.dt),
         &MoveAndSlideConfig::default(),
-        &SpatialQueryFilter::from_excluded_entities([entity]),
-        |hit| {
-            grounded |= !hit.intersects() && hit.normal.y > MIN_GROUND_NORMAL;
-            MoveAndSlideHitResponse::Accept
-        },
+        &filter,
+        |_| MoveAndSlideHitResponse::Accept,
     );
     transform.translation = out.position;
-    motion.velocity = out.projected_velocity;
-    motion.grounded = grounded && vertical <= 0.0;
+    let moved = out.projected_velocity;
+    motion.velocity = if motion.grounded {
+        moved.with_y(0.0)
+    } else {
+        moved
+    };
 }
 
 /// Registers the controller system.

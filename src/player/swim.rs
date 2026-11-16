@@ -1,53 +1,83 @@
-//! Buoyancy: floating at the sea surface and swimming up.
+//! Swim state with hysteresis, the floating height with its bob, and wading speed.
 
-use super::EYE_OFFSET;
+use super::{BODY_LENGTH, BODY_RADIUS, EYE_OFFSET};
 use crate::world::SEA_LEVEL;
 
-/// Eye height relative to the sea surface while floating.
-const FLOAT_EYE: f32 = -0.15;
+/// Eye height above the sea surface while floating.
+const FLOAT_EYE: f32 = 0.3;
 
-/// Strength of the spring pulling the body to its floating height.
-const SPRING: f32 = 6.0;
+/// Amplitude of the floating bob in meters.
+const BOB_AMPLITUDE: f32 = 0.03;
 
-/// Largest vertical speed of the buoyancy spring.
-const MAX_SPRING_SPEED: f32 = 3.0;
+/// Angular speed of the floating bob in radians per second.
+const BOB_RATE: f32 = 2.0;
 
-/// Upward speed while the jump key is held in water.
-const SWIM_UP_SPEED: f32 = 4.0;
+/// Body center height above the sea below which a walking body starts to swim.
+const ENTER_CENTER: f32 = -0.55;
 
-/// Returns whether a body with this center height is in deep enough water to swim.
-pub(super) fn is_swimming(center_y: f32) -> bool {
-    center_y + EYE_OFFSET < SEA_LEVEL
+/// Body center height above the sea above which a swimming body near the floor walks again.
+const EXIT_CENTER: f32 = -0.5;
+
+/// Largest gap to the floor at which a swimming body switches back to walking.
+const EXIT_GAP: f32 = 0.08;
+
+/// Body center height above the sea at which a swimming body leaves the water into the air.
+const LEAVE_CENTER: f32 = 0.2;
+
+/// Feet depth in meters at which wading reaches its slowest speed.
+const WADE_DEPTH: f32 = 1.2;
+
+/// Slowest walking speed multiplier when wading.
+const WADE_MIN: f32 = 0.65;
+
+/// Returns the body center height at which the body floats, with the bob at a given time.
+pub(super) fn float_center(time: f32) -> f32 {
+    SEA_LEVEL + FLOAT_EYE - EYE_OFFSET + BOB_AMPLITUDE * (time * BOB_RATE).sin()
 }
 
-/// Returns the vertical velocity that floats the body at the surface, or swims up when asked.
-pub(super) fn buoyancy_velocity(center_y: f32, swim_up: bool) -> f32 {
-    let target = SEA_LEVEL + FLOAT_EYE - EYE_OFFSET;
-    let spring = ((target - center_y) * SPRING).clamp(-MAX_SPRING_SPEED, MAX_SPRING_SPEED);
-    if swim_up {
-        spring.max(SWIM_UP_SPEED)
-    } else {
-        spring
+/// Returns whether the body swims next frame, with hysteresis around every threshold.
+pub(super) fn next_swimming(swimming: bool, center_y: f32, floor_gap: Option<f32>) -> bool {
+    let height = center_y - SEA_LEVEL;
+    if !swimming {
+        return height < ENTER_CENTER;
     }
+    let on_floor = floor_gap.is_some_and(|gap| gap <= EXIT_GAP) && height > EXIT_CENTER;
+    !on_floor && height <= LEAVE_CENTER
+}
+
+/// Returns the walking speed multiplier for a body in shallow water.
+pub(super) fn wade_factor(center_y: f32) -> f32 {
+    let feet_depth = SEA_LEVEL - (center_y - BODY_LENGTH * 0.5 - BODY_RADIUS);
+    1.0 - (1.0 - WADE_MIN) * (feet_depth / WADE_DEPTH).clamp(0.0, 1.0)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// Deep bodies rise and a floating body is roughly still.
+    /// A body that stops swimming at the float height never starts again, and the reverse.
     #[test]
-    fn buoyancy_pulls_toward_surface() {
-        assert!(buoyancy_velocity(SEA_LEVEL - 3.0, false) > 0.0);
-        let floating = SEA_LEVEL + FLOAT_EYE - EYE_OFFSET;
-        assert!(buoyancy_velocity(floating, false).abs() < 1e-4);
-        assert!(buoyancy_velocity(floating, true) >= SWIM_UP_SPEED);
+    fn state_does_not_flicker_at_the_shore() {
+        for step in 0..60 {
+            let time = step as f32 * 0.1;
+            let swim_center = float_center(time);
+            for tenth in 0..30 {
+                let gap = tenth as f32 * 0.01;
+                if !next_swimming(true, swim_center, Some(gap)) {
+                    assert!(!next_swimming(false, swim_center - gap, None));
+                }
+            }
+        }
+        assert!(next_swimming(false, SEA_LEVEL - 1.0, None));
+        assert!(next_swimming(true, float_center(0.0), None));
+        assert!(!next_swimming(true, SEA_LEVEL + 0.5, None));
     }
 
-    /// Only bodies whose eyes are under water swim.
+    /// Wading slows the walk with depth and never below the minimum.
     #[test]
-    fn swimming_depends_on_eye_depth() {
-        assert!(is_swimming(SEA_LEVEL - EYE_OFFSET - 0.1));
-        assert!(!is_swimming(SEA_LEVEL + 1.0));
+    fn wading_slows_with_depth() {
+        assert_eq!(wade_factor(SEA_LEVEL + 3.0), 1.0);
+        assert!(wade_factor(SEA_LEVEL - 0.3) < wade_factor(SEA_LEVEL + 0.5));
+        assert!((wade_factor(SEA_LEVEL - 5.0) - WADE_MIN).abs() < 1e-5);
     }
 }

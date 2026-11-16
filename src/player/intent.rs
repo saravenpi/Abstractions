@@ -17,12 +17,11 @@ const COYOTE_TIME: f32 = 0.12;
 /// Fastest allowed fall speed.
 const TERMINAL_SPEED: f32 = 50.0;
 
-/// Downward speed that keeps the body glued to the ground while walking.
-const GROUND_STICK: f32 = 3.0;
-
 /// What the player asks for this frame.
 pub(super) struct Intent {
     pub(super) wish: Vec3,
+    pub(super) forward: f32,
+    pub(super) right: f32,
     pub(super) sprint: bool,
     pub(super) jump: bool,
 }
@@ -48,6 +47,8 @@ pub(super) fn read_intent(keys: &ButtonInput<KeyCode>, map: &Keymap, yaw: f32) -
     let right = axis(keys, map.right, map.left);
     Intent {
         wish: wish_direction(forward, right, yaw),
+        forward,
+        right,
         sprint: keys.pressed(map.sprint),
         jump: keys.pressed(map.jump),
     }
@@ -66,11 +67,7 @@ pub(super) fn land_vertical(motion: &mut Motion, intent: &Intent, dt: f32) -> f3
         return JUMP_SPEED;
     }
     if motion.grounded {
-        return if intent.wish == Vec3::ZERO {
-            0.0
-        } else {
-            -GROUND_STICK
-        };
+        return 0.0;
     }
     (motion.velocity.y - GRAVITY * dt).max(-TERMINAL_SPEED)
 }
@@ -94,6 +91,8 @@ mod tests {
     fn jump_requires_ground() {
         let intent = Intent {
             wish: Vec3::ZERO,
+            forward: 0.0,
+            right: 0.0,
             sprint: false,
             jump: true,
         };

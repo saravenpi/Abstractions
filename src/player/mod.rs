@@ -2,6 +2,8 @@
 
 mod camera;
 mod controller;
+mod dive;
+mod ground;
 mod intent;
 mod spawn;
 mod swim;

@@ -1,4 +1,4 @@
-//! The plaza center pieces: well, fountain, big tree with benches, and the market cross.
+//! The plaza center pieces: well, fountain and big tree with benches, each settled on its own ground.
 
 use std::f32::consts::{PI, TAU};
 
@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 use super::layout::Centre;
 use super::style::Style;
+use super::sundial::sundial;
 use crate::world::structures::brush::{Build, Mat};
 use crate::world::structures::dress::on_ground;
 use crate::world::structures::glow::LightKind;
@@ -14,15 +15,22 @@ use crate::world::structures::palette::{DARK_WOOD, STONE, STONE_DARK, STONE_LIGH
 /// Leaf green of the plaza tree.
 const LEAF: [f32; 3] = [0.3, 0.52, 0.22];
 
-/// Draws the center piece at the origin of the current frame.
+/// Draws the center piece at the origin of the current frame, raised to the highest ground under it.
 pub fn draw(b: &mut Build, centre: Centre, st: &Style) {
     let site = b.site;
+    let reach = match centre {
+        Centre::TreeRing => 0.0,
+        Centre::Well => 1.6,
+        Centre::Fountain | Centre::Sundial => 2.7,
+    };
+    b.settle(reach, 0.0);
     match centre {
         Centre::Well => well(b, st),
         Centre::Fountain => fountain(b),
         Centre::TreeRing => tree_ring(b),
-        Centre::Cross => cross(b),
+        Centre::Sundial => sundial(b),
     }
+    b.begin(site);
     if centre != Centre::Well {
         b.frame(Vec2::from_angle(0.4) * 5.4, 0.0);
         b.settle(1.6, 0.0);
@@ -30,7 +38,7 @@ pub fn draw(b: &mut Build, centre: Centre, st: &Style) {
     }
     b.begin(site);
     b.frame(Vec2::from_angle(0.4 + PI) * 5.4, 0.0);
-    b.settle(1.0, 0.0);
+    b.settle(0.3, 0.0);
     brazier(b);
     b.begin(site);
 }
@@ -38,8 +46,8 @@ pub fn draw(b: &mut Build, centre: Centre, st: &Style) {
 /// Draws a stone brazier on a stand with a lit fire.
 fn brazier(b: &mut Build) {
     b.pillar(
-        Vec3::Y * -0.1,
-        Vec2::new(0.3, 0.9),
+        Vec3::Y * -0.3,
+        Vec2::new(0.3, 1.1),
         6,
         Mat::solid(STONE_DARK),
     );
@@ -98,11 +106,39 @@ fn fountain(b: &mut Build) {
     b.spire(Vec3::Y * 2.15, Vec2::new(0.5, 0.7), 6, WATER);
 }
 
-/// Draws one big tree with four benches and a ring of stones.
+/// Draws bench `i` of the tree ring on its own ground, and returns the feet of its two legs.
+fn bench(b: &mut Build, i: u32) -> [Vec3; 2] {
+    let a = i as f32 / 4.0 * TAU + 0.4;
+    b.frame(Vec2::new(a.sin(), a.cos()) * 3.0, a);
+    b.settle(0.7, 0.0);
+    let feet = [-0.7, 0.7].map(|x| on_ground(b, x, 0.0) - Vec3::Y * 0.15);
+    for foot in feet {
+        let (lo, hi) = (Vec3::new(-0.08, 0.0, -0.2), Vec3::new(0.08, 0.0, 0.2));
+        b.cuboid(
+            foot + lo,
+            Vec3::new(foot.x, 0.3, 0.0) + hi,
+            Mat::deco(DARK_WOOD),
+        );
+    }
+    let (lo, hi) = (Vec3::new(-0.9, 0.3, -0.22), Vec3::new(0.9, 0.42, 0.22));
+    b.cuboid(lo, hi, Mat::deco(WOOD));
+    b.collider(Vec3::new(lo.x, -0.1, lo.z), hi);
+    feet
+}
+
+/// Returns the world position of every leg foot of the four tree-ring benches.
+#[cfg(test)]
+pub fn bench_feet(b: &mut Build) -> Vec<Vec3> {
+    let world = Vec3::new(b.center.x, 0.0, b.center.y);
+    let feet = |i| bench(b, i).map(|f| b.pt(f) + world);
+    (0..4).flat_map(feet).collect()
+}
+
+/// Draws one big tree with four benches and a ring of stones, the benches and stones each on their own ground.
 fn tree_ring(b: &mut Build) {
     b.pillar(
-        Vec3::Y * -0.2,
-        Vec2::new(0.55, 4.2),
+        Vec3::Y * -0.4,
+        Vec2::new(0.55, 4.4),
         7,
         Mat::solid(DARK_WOOD),
     );
@@ -112,44 +148,16 @@ fn tree_ring(b: &mut Build) {
     let top = b.pt(Vec3::new(0.4, 6.8, 0.3));
     crate::world::solids::icosa(&mut b.mesh, top, Vec3::new(2.2, 1.6, 2.2), (0.2, 9), crown);
     for i in 0..4 {
-        let a = i as f32 / 4.0 * TAU + 0.4;
-        b.frame(Vec2::new(a.sin(), a.cos()) * 3.0, a);
-        b.cuboid(
-            Vec3::new(-0.9, -0.1, -0.22),
-            Vec3::new(0.9, 0.42, 0.22),
-            Mat::solid(WOOD),
-        );
+        bench(b, i);
     }
     b.begin(b.site);
     for i in 0..10 {
         let a = i as f32 / 10.0 * TAU;
         b.pillar(
-            Vec3::new(a.sin() * 4.4, -0.1, a.cos() * 4.4),
+            on_ground(b, a.sin() * 4.4, a.cos() * 4.4) - Vec3::Y * 0.1,
             Vec2::new(0.25, 0.35),
             5,
             Mat::deco(STONE_DARK),
         );
     }
-}
-
-/// Draws a three-tier round base with a tall cross-shaped post.
-fn cross(b: &mut Build) {
-    b.round_foundation(2.6, 8, 0.3, Mat::solid(STONE));
-    b.pillar(
-        Vec3::Y * 0.3,
-        Vec2::new(1.8, 0.3),
-        8,
-        Mat::solid(STONE_LIGHT),
-    );
-    b.pillar(Vec3::Y * 0.6, Vec2::new(1.1, 0.3), 8, Mat::solid(STONE));
-    b.cuboid(
-        Vec3::new(-0.2, 0.9, -0.2),
-        Vec3::new(0.2, 4.2, 0.2),
-        Mat::solid(DARK_WOOD),
-    );
-    b.cuboid(
-        Vec3::new(-0.8, 3.3, -0.12),
-        Vec3::new(0.8, 3.65, 0.12),
-        Mat::deco(DARK_WOOD),
-    );
 }

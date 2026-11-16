@@ -20,13 +20,6 @@ fn square(t: &Terrain) -> Vec<Site> {
         .collect()
 }
 
-/// Draws village `site` into a fresh build centered on its origin.
-fn draw_village<'a>(t: &'a Terrain, site: Site) -> Build<'a> {
-    let mut b = Build::new(t, site.origin, site);
-    DRAW[Kind::Village as usize](&mut b);
-    b
-}
-
 /// Asserts that a village has at least five buildings of three kinds, all on dry ground.
 fn check_village(t: &Terrain, site: &Site) {
     let lots = village::houses(t, *site);
@@ -76,14 +69,15 @@ fn villages_fit_their_budgets() {
     for seed in 1..=3 {
         let t = Terrain::new(seed);
         for site in square(&t).into_iter().filter(|s| s.kind == Kind::Village) {
-            let b = draw_village(&t, site);
+            let mut b = Build::new(&t, site.origin, site);
+            DRAW[Kind::Village as usize](&mut b);
             let tris = b.mesh.clone().into_mesh().count_vertices() / 3;
             eprintln!(
                 "seed {seed} village: {tris} triangles, {} colliders",
                 b.parts.len()
             );
-            assert!((1500..=12000).contains(&tris), "{tris} triangles");
-            assert!(b.parts.len() <= 250, "{} colliders", b.parts.len());
+            assert!((1500..=17000).contains(&tris), "{tris} triangles");
+            assert!(b.parts.len() <= 320, "{} colliders", b.parts.len());
             sane_parts(&b);
         }
     }
@@ -147,4 +141,33 @@ fn meshes_wind_outward() {
             sane_parts(&b);
         }
     }
+}
+
+/// Over at least 12 villages of 2 seeds: bench legs stand on their own ground, every road vertex lies just above
+/// the terrain mesh and no road triangle is buried, no crop, hedge or post bottom hangs above it, and no door path crosses the circle of another lot.
+#[test]
+fn villages_follow_the_ground() {
+    let cells = || (-6..6).flat_map(|x| (-6..6).map(move |y| IVec2::new(x, y)));
+    let mut seen = 0;
+    for t in [1, 42].map(Terrain::new) {
+        let sites = cells().filter_map(|c| village::village_in_cell(&t, c));
+        for site in sites.take(8) {
+            let p = village::probe(&t, site);
+            let lift = |v: &Vec3| v.y - t.mesh_height(v.x, v.z);
+            let stands = |v: &Vec3| (v.y - t.height(v.x, v.z)).abs() <= 0.2;
+            assert!(p.benches.iter().all(stands), "bench of {site:?}");
+            let hugs = |v: &Vec3| (0.0..=0.15).contains(&lift(v));
+            assert!(p.roads.iter().all(hugs), "road of {site:?}");
+            let hangs = |v: &Vec3| (0.01..0.5).contains(&lift(v));
+            assert!(!p.crops.iter().any(hangs), "crop of {site:?}");
+            let sunk = |tri: &[Vec3; 3]| lift(&((tri[0] + tri[1] + tri[2]) / 3.0)) < -0.15;
+            assert!(
+                !p.roads.as_chunks::<3>().0.iter().any(sunk),
+                "buried road of {site:?}"
+            );
+            assert!(p.doors.iter().all(|m| *m >= 0.0), "door path of {site:?}");
+            seen += 1;
+        }
+    }
+    assert!(seen >= 12, "{seen} villages");
 }

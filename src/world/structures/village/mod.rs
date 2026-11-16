@@ -11,11 +11,13 @@ mod interior;
 mod kinds;
 mod layout;
 mod lots;
+mod paths;
 mod place;
 mod props;
 mod shell;
 mod streets;
 pub mod style;
+mod sundial;
 mod trace;
 
 use bevy::prelude::*;
@@ -41,7 +43,7 @@ pub fn draw(b: &mut Build) {
     }
 }
 
-/// Returns the world points a village covers: center, lots, street samples every 8 m, ends and fields.
+/// Returns the world points a village covers: center, lots, street and footpath samples every 8 m, ends and fields.
 pub fn points(terrain: &Terrain, site: Site) -> Vec<Vec2> {
     let lay = layout::build(terrain, site);
     let mut out = vec![site.origin];
@@ -53,7 +55,67 @@ pub fn points(terrain: &Terrain, site: Site) -> Vec<Vec2> {
     );
     out.extend(lay.ends.iter().map(|e| e.pos));
     out.extend(lay.fields.iter().map(|f| f.pos));
+    out.extend(paths::samples(&lay.paths));
     out
+}
+
+/// What the ground tests measure on one village, in world space.
+#[cfg(test)]
+pub struct Probe {
+    /// Leg feet of the benches a tree ring would have on this plaza.
+    pub benches: Vec<Vec3>,
+    /// Vertices of the plaza, the streets and the footpaths.
+    pub roads: Vec<Vec3>,
+    /// Lowest vertex of every column of the crop rows, hedges and fences.
+    pub crops: Vec<Vec3>,
+    /// For each door path, its distance to the nearest other lot minus the radius of that lot.
+    pub doors: Vec<f32>,
+}
+
+/// Returns, for each door path, its distance to the nearest other lot minus the radius of that lot.
+#[cfg(test)]
+fn door_margins(lay: &layout::Layout) -> Vec<f32> {
+    let margin = |i: usize, (a, c): (Vec2, Vec2)| {
+        let others = lay.lots.iter().enumerate().filter(|(j, _)| *j != i);
+        let free = others.map(|(_, l)| {
+            let k = (l.pos - a).dot(c - a) / (c - a).length_squared().max(1e-6);
+            a.lerp(c, k.clamp(0.0, 1.0)).distance(l.pos) - l.house.radius()
+        });
+        free.fold(f32::MAX, f32::min)
+    };
+    let doors = lay.paths[..lay.lots.len()].iter().enumerate();
+    doors.map(|(i, seg)| margin(i, *seg)).collect()
+}
+
+/// Draws the ground-hugging pieces of the village at `site` apart and returns their world positions.
+#[cfg(test)]
+pub fn probe(terrain: &Terrain, site: Site) -> Probe {
+    let lay = layout::build(terrain, site);
+    let fresh = || Build::new(terrain, site.origin, site);
+    let world = |b: &Build| -> Vec<Vec3> {
+        let verts = super::audit::positions(&b.mesh.clone().into_mesh());
+        let shift = Vec3::new(site.origin.x, 0.0, site.origin.y);
+        verts.into_iter().map(|p| p + shift).collect()
+    };
+    let (mut seats, mut roads, mut crops) = (fresh(), fresh(), fresh());
+    streets::surface(&mut roads, &lay);
+    for f in &lay.fields {
+        crops.stand(f.pos, f.yaw);
+        fields::crops(&mut crops, f);
+    }
+    let mut low = world(&crops);
+    low.sort_by(|a, b| {
+        a.x.total_cmp(&b.x)
+            .then(a.z.total_cmp(&b.z))
+            .then(a.y.total_cmp(&b.y))
+    });
+    low.dedup_by(|a, b| a.xz() == b.xz());
+    Probe {
+        benches: center::bench_feet(&mut seats),
+        roads: world(&roads),
+        crops: low,
+        doors: door_margins(&lay),
+    }
 }
 
 /// Returns the house kind and position of every lot.

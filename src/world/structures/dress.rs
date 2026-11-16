@@ -1,4 +1,4 @@
-//! Small props shared by camps and villages: crates, barrels, hay, seats, fires and fences.
+//! Small props shared by camps and villages: crates, barrels, hay, seats and fires.
 
 use std::f32::consts::TAU;
 
@@ -67,24 +67,4 @@ pub fn fire(b: &mut Build, base: Vec3, cold: bool) {
     } else {
         b.glow(LightKind::Campfire, base + Vec3::Y * 0.5);
     }
-}
-
-/// Adds a fence along local x from `x0` to `x1` at depth `z`, with a post every 1.2 m.
-pub fn fence(b: &mut Build, x0: f32, x1: f32, z: f32) {
-    let n = ((x1 - x0) / 1.2).ceil().max(1.0) as u32;
-    for i in 0..=n {
-        let x = x0 + (x1 - x0) * i as f32 / n as f32;
-        b.pillar(
-            on_ground(b, x, z) - Vec3::Y * 0.1,
-            Vec2::new(0.07, 1.1),
-            4,
-            Mat::deco(DARK_WOOD),
-        );
-    }
-    let y = on_ground(b, (x0 + x1) * 0.5, z).y + 0.75;
-    b.cuboid(
-        Vec3::new(x0, y, z - 0.04),
-        Vec3::new(x1, y + 0.1, z + 0.04),
-        Mat::deco(WOOD),
-    );
 }

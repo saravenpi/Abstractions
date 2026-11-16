@@ -23,7 +23,7 @@ const TRIES: u32 = 12;
 const CHANCE: f64 = 0.65;
 
 /// Chance that a spot tries a camp before any other kind.
-const CAMP_FIRST: f64 = 0.5;
+const CAMP_FIRST: f64 = 0.3;
 
 /// Every kind of structure, in table order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -173,7 +173,7 @@ pub fn sites_in_chunk(terrain: &Terrain, coord: IVec2) -> Vec<Site> {
 }
 
 /// Returns the points to keep clear of plants around chunk `coord`: structure origins, and for
-/// villages the center, every lot and street samples.
+/// villages the center, every lot, street and footpath samples.
 pub fn origins_near(terrain: &Terrain, coord: IVec2, margin: f32) -> Vec<Vec2> {
     let min = coord.as_vec2() * CHUNK_SIZE - Vec2::splat(margin);
     let max = min + Vec2::splat(CHUNK_SIZE + 2.0 * margin);

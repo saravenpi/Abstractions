@@ -10,61 +10,99 @@ use super::props;
 use super::style::Style;
 use crate::world::structures::brush::Build;
 
-/// Height of the ground strips above the terrain.
-const LIFT: f32 = 0.1;
+/// Height of the ground strips above the terrain mesh.
+const LIFT: f32 = 0.12;
 
-/// Returns the chunk-space point on the ground at `p`, lifted slightly.
-fn ground(b: &Build, p: Vec2) -> Vec3 {
-    b.world_pt(p, b.terrain.height(p.x, p.y) + LIFT)
+/// Extra height of the footpaths, so that they do not flicker where they meet a street.
+const OVER: f32 = 0.015;
+
+/// Longest edge of a ground quad, short enough to follow the 2 m terrain triangles.
+const EDGE: f32 = 1.15;
+
+/// Returns the chunk-space point on the visible ground at `p`, raised by `lift`.
+fn ground(b: &Build, p: Vec2, lift: f32) -> Vec3 {
+    b.world_pt(p, b.terrain.mesh_height(p.x, p.y) + lift)
 }
 
-/// Draws a flat ground quad between four world points, following the terrain.
-fn strip(b: &mut Build, c: [Vec2; 4], rgb: [f32; 3]) {
-    let color = b.color(rgb, 1.0);
-    b.quad_out(c.map(|p| ground(b, p)), Vec3::Y, color);
+/// Draws the ground between four world corners as `n.0` by `n.1` quads with every vertex on the terrain mesh.
+fn patch(b: &mut Build, c: [Vec2; 4], n: (u32, u32), coat: ([f32; 3], f32)) {
+    let color = b.color(coat.0, 1.0);
+    let at = |i: u32, j: u32| {
+        let (u, v) = (i as f32 / n.0 as f32, j as f32 / n.1 as f32);
+        ground(b, c[0].lerp(c[1], u).lerp(c[3].lerp(c[2], u), v), coat.1)
+    };
+    let grid: Vec<Vec<Vec3>> = (0..=n.0)
+        .map(|i| (0..=n.1).map(|j| at(i, j)).collect())
+        .collect();
+    for (lo, hi) in grid.iter().zip(&grid[1..]) {
+        for j in 0..n.1 as usize {
+            b.quad_out([lo[j], hi[j], hi[j + 1], lo[j + 1]], Vec3::Y, color);
+        }
+    }
 }
 
-/// Draws the packed-earth plaza disc around the village center.
+/// Draws the packed-earth plaza disc around the village center as rings of short quads.
 fn plaza(b: &mut Build, c: Vec2, st: &Style) {
-    let ring = |r: f32, i: u32| c + Vec2::from_angle(i as f32 / 12.0 * TAU) * r;
-    let color = b.color(st.road, 0.92);
-    for i in 0..12 {
-        b.quad_out(
-            [
-                ground(b, ring(0.0, i)),
-                ground(b, ring(3.2, i)),
-                ground(b, ring(3.2, i + 1)),
-                ground(b, ring(0.0, i + 1)),
-            ],
-            Vec3::Y,
-            color,
+    let rings = (PLAZA / EDGE).ceil() as u32;
+    for k in 0..rings {
+        let (r0, r1) = (
+            PLAZA * k as f32 / rings as f32,
+            PLAZA * (k + 1) as f32 / rings as f32,
         );
-        strip(
+        let n = (TAU * r1 / (EDGE * 1.2)).ceil() as u32;
+        let ring = |r: f32, i: u32| c + Vec2::from_angle(i as f32 / n as f32 * TAU) * r;
+        for i in 0..n {
+            let corners = [ring(r0, i), ring(r1, i), ring(r1, i + 1), ring(r0, i + 1)];
+            patch(b, corners, (1, 1), (st.road, LIFT));
+        }
+    }
+}
+
+/// Draws a street strip along `pts`, its edges joined at every sample.
+fn road(b: &mut Build, pts: &[Vec2], rgb: [f32; 3]) {
+    let last = pts.len() - 1;
+    let side = |i: usize| {
+        let dir = (pts[(i + 1).min(last)] - pts[i.saturating_sub(1)]).normalize_or_zero();
+        Vec2::new(-dir.y, dir.x) * ROAD_HALF
+    };
+    let across = (ROAD_HALF * 2.0 / EDGE).ceil() as u32;
+    for i in 0..last {
+        let (p, q, n, m) = (pts[i], pts[i + 1], side(i), side(i + 1));
+        let along = (p.distance(q) / EDGE).ceil().max(1.0) as u32;
+        patch(
             b,
-            [
-                ring(3.2, i),
-                ring(PLAZA, i),
-                ring(PLAZA, i + 1),
-                ring(3.2, i + 1),
-            ],
-            st.road,
+            [p - n, p + n, q + m, q - m],
+            (across, along),
+            (rgb, LIFT),
         );
     }
 }
 
-/// Draws a footpath of width 0.9 from `a` to `c`, one quad per 2 m following the terrain.
+/// Draws a footpath of width 0.9 from `a` to `c`, in quads short enough to follow the terrain.
 fn path(b: &mut Build, a: Vec2, c: Vec2, rgb: [f32; 3]) {
     let len = a.distance(c);
     if len < 0.6 {
         return;
     }
-    let dir = (c - a) / len;
-    let side = Vec2::new(-dir.y, dir.x) * 0.45;
-    let n = (len / 2.0).ceil() as u32;
-    for i in 0..n {
-        let p = a + dir * len * (i as f32 / n as f32);
-        let q = a + dir * len * ((i + 1) as f32 / n as f32);
-        strip(b, [p - side, p + side, q + side, q - side], rgb);
+    let side = Vec2::new(a.y - c.y, c.x - a.x) / len * 0.45;
+    let n = (len / EDGE).ceil() as u32;
+    patch(
+        b,
+        [a - side, a + side, c + side, c - side],
+        (1, n),
+        (rgb, LIFT + OVER),
+    );
+}
+
+/// Draws the visual-only ground of the village: the plaza, the streets and the footpaths.
+pub fn surface(b: &mut Build, lay: &Layout) {
+    plaza(b, lay.site.origin, &lay.style);
+    for pts in &lay.streets {
+        road(b, pts, lay.style.road);
+    }
+    let dust = lay.style.road.map(|c| c * 0.85);
+    for (from, to) in &lay.paths {
+        path(b, *from, *to, dust);
     }
 }
 
@@ -86,18 +124,7 @@ fn lamps(b: &mut Build, lay: &Layout) {
 
 /// Draws the plaza, the streets, the footpaths, the lamps and the closing props of the village.
 pub fn draw(b: &mut Build, lay: &Layout) {
-    plaza(b, lay.site.origin, &lay.style);
-    for pts in &lay.streets {
-        for w in pts.windows(2) {
-            let dir = (w[1] - w[0]).normalize();
-            let n = Vec2::new(-dir.y, dir.x) * ROAD_HALF;
-            strip(b, [w[0] - n, w[0] + n, w[1] + n, w[1] - n], lay.style.road);
-        }
-    }
-    let dust = lay.style.road.map(|c| c * 0.85);
-    for (from, to) in &lay.paths {
-        path(b, *from, *to, dust);
-    }
+    surface(b, lay);
     lamps(b, lay);
     for end in &lay.ends {
         props::end_prop(b, end);

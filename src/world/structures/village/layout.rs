@@ -8,6 +8,7 @@ use rand_chacha::ChaCha8Rng;
 
 use super::fields::{Field, fields};
 use super::lots::{Lot, Plan, place};
+use super::paths::paths_for;
 use super::style::{Style, style_for};
 use super::trace::street;
 use crate::world::Terrain;
@@ -25,8 +26,8 @@ pub enum Centre {
     Fountain,
     /// One big tree ringed by benches.
     TreeRing,
-    /// Stepped market cross.
-    Cross,
+    /// Stone sundial on a stepped base.
+    Sundial,
 }
 
 /// What stands at the end of a street.
@@ -69,7 +70,7 @@ pub struct Layout {
     pub ends: Vec<End>,
     /// Crop fields.
     pub fields: Vec<Field>,
-    /// Footpaths from street to door and from street to field, as world segments.
+    /// Footpaths as world segments: one per lot from its door to a street, in lot order, then the field paths.
     pub paths: Vec<(Vec2, Vec2)>,
 }
 
@@ -98,7 +99,7 @@ fn pick_centre(rng: &mut ChaCha8Rng) -> Centre {
         Centre::Well,
         Centre::Fountain,
         Centre::TreeRing,
-        Centre::Cross,
+        Centre::Sundial,
     ][rng.random_range(0..4)]
 }
 
@@ -146,31 +147,4 @@ fn end_of(pts: &[Vec2], roll: u32) -> End {
         yaw: super::trace::yaw_of(-dir),
         prop,
     }
-}
-
-/// Returns the street sample nearest to `p`.
-fn nearest(streets: &[Vec<Vec2>], p: Vec2) -> Option<Vec2> {
-    streets
-        .iter()
-        .flatten()
-        .copied()
-        .min_by(|a, b| a.distance(p).total_cmp(&b.distance(p)))
-}
-
-/// Lists the footpaths from every door to the nearest street and from the nearest street to every field.
-fn paths_for(streets: &[Vec<Vec2>], lots: &[Lot], fields: &[Field]) -> Vec<(Vec2, Vec2)> {
-    let doors = lots.iter().map(|l| {
-        let d = l.house.dims();
-        l.pos + Vec2::new(l.yaw.sin(), l.yaw.cos()) * (d.y + d.z + 2.4)
-    });
-    let edges = fields.iter().map(|f| f.pos);
-    let mut out = Vec::new();
-    for (i, from) in doors.chain(edges).enumerate() {
-        let Some(street) = nearest(streets, from) else {
-            continue;
-        };
-        let trim = if i < lots.len() { 0.0 } else { 6.0 };
-        out.push((from + (street - from).normalize_or_zero() * trim, street));
-    }
-    out
 }

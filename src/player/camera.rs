@@ -1,0 +1,93 @@
+//! Mouse look and cursor grabbing.
+
+use bevy::input::mouse::AccumulatedMouseMotion;
+use bevy::prelude::*;
+use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
+
+use super::Player;
+use crate::render::GameCamera;
+use crate::screens::playing;
+use crate::settings::{Persistent, Settings};
+
+/// Radians of rotation per mouse pixel at sensitivity 1.0.
+const RADIANS_PER_PIXEL: f32 = 0.0022;
+
+/// Largest look-up or look-down angle in radians (89 degrees).
+const PITCH_LIMIT: f32 = 89.0 * std::f32::consts::PI / 180.0;
+
+/// Returns the new yaw and pitch after a mouse movement, with pitch clamped.
+fn look_angles(yaw: f32, pitch: f32, delta: Vec2, scale: f32, invert_y: bool) -> (f32, f32) {
+    let y_sign = if invert_y { -1.0 } else { 1.0 };
+    let new_yaw = yaw - delta.x * scale;
+    let new_pitch = (pitch - delta.y * scale * y_sign).clamp(-PITCH_LIMIT, PITCH_LIMIT);
+    (new_yaw, new_pitch)
+}
+
+/// Turns the body with horizontal mouse motion and tilts the camera with vertical motion.
+fn mouse_look(
+    motion: Res<AccumulatedMouseMotion>,
+    settings: Res<Persistent<Settings>>,
+    mut body: Single<&mut Transform, (With<Player>, Without<GameCamera>)>,
+    mut camera: Single<&mut Transform, (With<GameCamera>, Without<Player>)>,
+) {
+    if motion.delta == Vec2::ZERO {
+        return;
+    }
+    let controls = &settings.controls;
+    let (yaw, _, _) = body.rotation.to_euler(EulerRot::YXZ);
+    let (_, pitch, _) = camera.rotation.to_euler(EulerRot::YXZ);
+    let scale = RADIANS_PER_PIXEL * controls.mouse_sensitivity;
+    let (yaw, pitch) = look_angles(yaw, pitch, motion.delta, scale, controls.invert_y);
+    body.rotation = Quat::from_rotation_y(yaw);
+    camera.rotation = Quat::from_rotation_x(pitch);
+}
+
+/// Locks and hides the cursor, or releases and shows it.
+fn set_cursor(cursor: &mut CursorOptions, grabbed: bool) {
+    let mode = if grabbed {
+        CursorGrabMode::Locked
+    } else {
+        CursorGrabMode::None
+    };
+    if cursor.grab_mode != mode || cursor.visible == grabbed {
+        cursor.grab_mode = mode;
+        cursor.visible = !grabbed;
+    }
+}
+
+/// Grabs the cursor while playing.
+fn grab_cursor(mut cursor: Single<&mut CursorOptions, With<PrimaryWindow>>) {
+    set_cursor(&mut cursor, true);
+}
+
+/// Releases the cursor everywhere else.
+fn release_cursor(mut cursor: Single<&mut CursorOptions, With<PrimaryWindow>>) {
+    set_cursor(&mut cursor, false);
+}
+
+/// Registers mouse look and cursor systems.
+pub(super) fn plugin(app: &mut App) {
+    app.add_systems(
+        Update,
+        (
+            mouse_look.run_if(playing),
+            grab_cursor.run_if(playing),
+            release_cursor.run_if(not(playing)),
+        ),
+    );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Pitch never passes the limit and inversion flips its sign.
+    #[test]
+    fn pitch_is_clamped_and_invertible() {
+        let (_, pitch) = look_angles(0.0, 0.0, Vec2::new(0.0, -100000.0), 1.0, false);
+        assert!((pitch - PITCH_LIMIT).abs() < 1e-5);
+        let (_, normal) = look_angles(0.0, 0.0, Vec2::new(0.0, 10.0), 0.01, false);
+        let (_, inverted) = look_angles(0.0, 0.0, Vec2::new(0.0, 10.0), 0.01, true);
+        assert!(normal < 0.0 && inverted > 0.0);
+    }
+}

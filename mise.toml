@@ -1,0 +1,27 @@
+[tools]
+rust = "1.98.1"
+
+[tasks.run]
+description = "Run the game in release mode"
+run = "cargo run --release"
+
+[tasks.dev]
+description = "Run the game with fast dev builds"
+run = "cargo run --features dev"
+
+[tasks.test]
+description = "Run the unit tests"
+run = "cargo test --features dev"
+
+[tasks.check]
+description = "Format check, clippy, tests and filet"
+run = [
+  "cargo fmt --check",
+  "cargo clippy --features dev --all-targets -- -D warnings",
+  "cargo test --features dev",
+  "filet check .",
+]
+
+[tasks.build-release]
+description = "Build the optimized binary"
+run = "cargo build --release"

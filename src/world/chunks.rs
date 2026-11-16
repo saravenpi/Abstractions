@@ -128,13 +128,11 @@ pub fn collect(
                 DespawnOnEnter(Screen::Title),
             ))
             .id();
-        spawn_props(
-            &mut commands,
-            entity,
-            &assets,
-            &data.scatter,
-            meshes.add(data.grass),
-        );
+        let grass = match data.scatter.grass.is_empty() {
+            true => Handle::default(),
+            false => meshes.add(data.grass),
+        };
+        spawn_props(&mut commands, entity, &assets, &data.scatter, grass);
         chunks.loaded.insert(coord, entity);
     }
 }

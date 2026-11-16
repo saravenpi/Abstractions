@@ -1,14 +1,20 @@
-//! Village houses, part two: the two-storey house, smithy, barn, tower house and the hall.
+//! Village houses, part two: the two-storey house, the smithy and the barn.
+
+use std::f32::consts::FRAC_PI_2;
 
 use bevy::prelude::*;
 
 use super::detail::{furnish, window};
 use super::houses::{roof, room};
+use super::houses3::ladder;
+use super::interior::{light, table};
+use super::lots::House;
 use super::shell::{Shell, T};
 use super::style::Style;
 use crate::world::structures::brush::{Build, Mat};
 use crate::world::structures::dress::{barrel, crate_at, hay, on_ground};
-use crate::world::structures::palette::{DARK_WOOD, PLANK, STONE, STONE_DARK};
+use crate::world::structures::glow::LightKind;
+use crate::world::structures::palette::{DARK_WOOD, PLANK, STONE, STONE_DARK, THATCH, WATER};
 
 /// Floor height of the upper storey of the two-storey house.
 const UPPER: f32 = 2.7;
@@ -58,11 +64,7 @@ fn outside_stair(b: &mut Build, s: &Shell, st: &Style) {
 
 /// Draws a house with an upper floor reached by an outside stair along the right wall.
 pub fn two_story(b: &mut Build, st: &Style) {
-    let s = Shell {
-        h: 2.5,
-        door_h: 2.2,
-        ..Shell::new(3.0, 2.4)
-    };
+    let s = House::TwoStory.shell();
     room(b, st, &s);
     let top = UPPER + 2.5;
     b.cuboid(
@@ -81,64 +83,72 @@ pub fn two_story(b: &mut Build, st: &Style) {
     furnish(b, &s, st);
 }
 
-/// Draws the forge, the tall chimney behind it, an anvil on a stump and goods outside.
+/// Draws the forge with its fire, the tall chimney behind it and a quench barrel beside it.
+/// One collider covers the forge and the barrel.
 fn forge(b: &mut Build, s: &Shell) {
     let (hx, hz) = (s.hx, s.hz);
-    b.cuboid(
-        Vec3::new(hx - T - 1.5, 0.0, -hz + T),
-        Vec3::new(hx - T, 1.0, -hz + T + 1.3),
-        Mat::solid(STONE),
-    );
+    let lo = Vec3::new(hx - T - 1.5, 0.0, -hz + T);
+    let hi = Vec3::new(hx - T, 1.0, -hz + T + 1.3);
+    b.cuboid(lo, hi, Mat::deco(STONE));
+    b.collider(lo - Vec3::X * 0.8, hi);
+    b.glow(LightKind::Hearth, (lo + hi) * 0.5 + Vec3::Y * 0.8);
     b.cuboid(
         Vec3::new(hx - 2.2, 0.0, -hz - 0.7),
         Vec3::new(hx - 0.8, s.h + 2.6, -hz + T),
         Mat::solid(STONE),
     );
-    b.pillar(
-        Vec3::new(-1.6, 0.0, -0.8),
-        Vec2::new(0.35, 0.6),
-        6,
-        Mat::solid(DARK_WOOD),
-    );
-    b.cuboid(
-        Vec3::new(-2.0, 0.6, -1.0),
-        Vec3::new(-1.2, 0.9, -0.6),
-        Mat::deco(STONE_DARK),
-    );
-    let base = on_ground(b, -hx - 1.0, 0.5);
-    barrel(b, base);
-    let base = on_ground(b, -hx - 1.1, -0.8);
-    crate_at(b, base, 0.7);
+    let tub = Vec3::new(lo.x - 0.42, 0.0, lo.z + 0.5);
+    b.pillar(tub, Vec2::new(0.36, 0.9), 6, Mat::deco(DARK_WOOD));
+    let water = Vec2::new(0.3, 0.02);
+    b.pillar(tub + Vec3::Y * 0.9, water, 6, Mat::deco(WATER));
 }
 
-/// Draws a workshop with an open front, an anvil, a forge and a tall chimney.
+/// Draws the anvil on its stump, a workbench against the left wall and a lantern above the bench.
+fn workshop(b: &mut Build, s: &Shell) {
+    let stump = Vec2::new(0.35, 0.6);
+    b.pillar(Vec3::new(-1.6, 0.0, -0.8), stump, 6, Mat::solid(DARK_WOOD));
+    let anvil = [
+        ([-1.75, 0.6, -0.9], [-1.45, 0.74, -0.7]),
+        ([-2.0, 0.74, -0.95], [-1.2, 0.9, -0.65]),
+    ];
+    b.boxes(&anvil, Mat::deco(STONE_DARK));
+    let x = -s.inner().x;
+    table(b, Vec2::new(x, 0.2), FRAC_PI_2, 1.6);
+    b.collider(Vec3::new(x, 0.0, -0.6), Vec3::new(x + 0.7, 0.8, 1.0));
+    light(b, Vec3::new(x + 0.35, s.h, 0.2), true);
+}
+
+/// Draws a workshop with an open front, an anvil, a workbench, a forge and a tall chimney.
 pub fn smithy(b: &mut Build, st: &Style) {
-    let s = Shell {
-        door: 0.4,
-        gap: 2.6,
-        door_h: 2.4,
-        ..Shell::new(3.4, 2.6)
-    };
+    let s = House::Smithy.shell();
     room(b, st, &s);
     roof(b, st, &s, 1.5);
     forge(b, &s);
+    workshop(b, &s);
+    let base = on_ground(b, -s.hx - 1.0, 0.5);
+    barrel(b, base);
+    let base = on_ground(b, -s.hx - 1.1, -0.8);
+    crate_at(b, base, 0.7);
 }
 
-/// Draws a big barn with a wide door and hay inside and out.
+/// Draws a big barn with a wide door, a hay pile, a loft ladder and a hanging lantern.
 pub fn barn(b: &mut Build, st: &Style) {
-    let s = Shell {
-        h: 3.4,
-        gap: 2.6,
-        door_h: 3.0,
-        ..Shell::new(4.2, 3.2)
-    };
+    let s = House::Barn.shell();
     let mut red = *st;
     red.wall[0] = [0.52, 0.17, 0.13];
     room(b, &red, &s);
     roof(b, st, &s, 2.2);
-    for (x, z) in [(-2.6, -2.0), (-1.4, -2.0), (2.4, -1.6)] {
-        hay(b, Vec3::new(x, 0.0, z));
-    }
+    let z = -s.inner().y;
+    let pile = [
+        ([-3.2, 0.0, z + 0.05], [-2.1, 0.7, z + 0.85]),
+        ([-2.05, 0.0, z + 0.05], [-0.95, 0.7, z + 0.85]),
+        ([-2.6, 0.7, z + 0.1], [-1.5, 1.4, z + 0.8]),
+    ];
+    b.boxes(&pile, Mat::deco(THATCH));
+    b.collider(Vec3::new(-3.2, 0.0, z), Vec3::new(-0.95, 0.7, z + 0.85));
+    hay(b, Vec3::new(2.4, 0.0, -1.6));
+    ladder(b, Vec3::new(1.2, 0.0, z), s.h - 0.3);
+    light(b, Vec3::new(0.0, s.h, 0.0), true);
     let base = on_ground(b, s.hx + 1.0, 1.0);
     hay(b, base);
     let base = on_ground(b, -s.hx - 1.0, 0.0);

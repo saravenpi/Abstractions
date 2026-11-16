@@ -1,11 +1,14 @@
-//! Small house details: windows with shutters, flower boxes, chimneys, awnings, palms, lanterns, furniture.
+//! Small house details: windows with shutters, flower boxes, chimneys and the living room layout.
+
+use std::f32::consts::FRAC_PI_2;
 
 use bevy::prelude::*;
 
+use super::interior::{bed, chest, cupboard, hearth, light, seats, table};
 use super::shell::{Shell, T};
 use super::style::{Flavor, Style};
 use crate::world::structures::brush::{Build, Mat};
-use crate::world::structures::palette::{DARK_WOOD, PLANK, STONE};
+use crate::world::structures::palette::STONE;
 
 /// Dark glass.
 const PANE: [f32; 3] = [0.1, 0.12, 0.15];
@@ -76,28 +79,64 @@ pub fn windows(b: &mut Build, s: &Shell, st: &Style) {
     front_windows(b, s, st, shutters);
 }
 
-/// Draws a stone chimney against the right end wall, rising `top` above the floor.
+/// Draws a stone chimney against the right end wall, rising `top` above the floor, and its fireplace inside.
+/// One collider covers the stack, the wall behind it and the fireplace.
 pub fn chimney(b: &mut Build, s: &Shell, top: f32) {
-    b.cuboid(
+    let (lo, hi) = (
         Vec3::new(s.hx, 0.0, -0.45),
         Vec3::new(s.hx + 0.8, top, 0.45),
-        Mat::solid(STONE),
     );
+    b.cuboid(lo, hi, Mat::deco(STONE));
+    b.collider(lo - Vec3::X * (T + 0.55), hi);
+    hearth(b, s);
 }
 
-/// Draws a table with a stool and a bed at the back of the room.
+/// Draws the bed with a chest at its foot in a back corner, and a second bed in the long house.
+/// `m` is 1 for a bed on the left wall and -1 for the mirrored room.
+fn beds(b: &mut Build, s: &Shell, st: &Style, m: f32) {
+    let Vec2 { x, y: z } = s.inner();
+    bed(b, st, Vec2::new(-m * x, -z + 0.5), m * FRAC_PI_2);
+    chest(b, st, Vec2::new(-m * (x - 2.0), -z + 0.5), m * FRAC_PI_2);
+    let mut solids = vec![(-x, 2.53 - x)];
+    if s.hx > 4.0 {
+        bed(b, st, Vec2::new(m * x, -z + 0.5), -m * FRAC_PI_2);
+        solids.push((x - 2.0, x));
+    }
+    for (x0, x1) in solids {
+        let p = Vec3::new(m * x0, 0.0, -z);
+        let q = Vec3::new(m * x1, 0.5, -z + 1.0);
+        b.collider(p.min(q), p.max(q));
+    }
+}
+
+/// Furnishes a living room along the back wall, mirrored by a roll: bed and chest, table with a seat,
+/// cupboard, rug and one light on or above the table. The long house gets a long table and two beds.
 pub fn furnish(b: &mut Build, s: &Shell, st: &Style) {
-    let (x0, z0) = (-s.hx + T + 0.3, -s.hz + T + 0.3);
-    b.cuboid(
-        Vec3::new(x0, 0.0, z0),
-        Vec3::new(x0 + 1.1, 0.8, z0 + 0.8),
-        Mat::solid(PLANK),
+    let Vec2 { x, y: z } = s.inner();
+    let m = if b.roll(21) < 0.5 { 1.0 } else { -1.0 };
+    let long = s.hx > 4.0;
+    let (tx, len) = if long { (0.0, 2.2) } else { (x - 1.65, 1.2) };
+    let end = tx + len * 0.5 + 1.05;
+    table(b, Vec2::new(m * tx, -z), 0.0, len);
+    cupboard(b, st, Vec2::new(m * (end - 0.5), -z), 0.0);
+    let p = Vec3::new(m * (tx - len * 0.5), 0.0, -z);
+    let q = Vec3::new(m * end, 0.9, -z + 0.7);
+    b.collider(p.min(q), p.max(q));
+    let bench = if long || b.roll(22) < 0.5 {
+        len * 0.8
+    } else {
+        0.4
+    };
+    seats(b, Vec2::new(m * tx, -z + 1.0), 0.0, bench);
+    let rug = st.cloth[(b.roll(26) * 3.0) as usize % 3];
+    b.floor_pane(
+        Vec2::new(-0.9, -z + 1.5),
+        Vec2::new(0.9, -z + 2.7),
+        0.05,
+        rug,
     );
-    b.cuboid(
-        Vec3::new(x0 + 1.5, 0.0, z0),
-        Vec3::new(x0 + 1.9, 0.45, z0 + 0.4),
-        Mat::deco(DARK_WOOD),
-    );
-    let bed = Vec3::new(s.hx - T - 1.1, 0.0, -s.hz + T);
-    b.cuboid(bed, bed + Vec3::new(1.1, 0.5, 2.0), Mat::deco(st.cloth[0]));
+    let hang = b.roll(23) < 0.5;
+    let y = if hang { s.h } else { 0.8 };
+    light(b, Vec3::new(m * (tx + len * 0.25), y, -z + 0.35), hang);
+    beds(b, s, st, m);
 }

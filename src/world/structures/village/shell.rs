@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 
+use super::kinds::House;
 use super::style::{Flavor, Style};
 use crate::world::structures::brush::{Build, Mat};
 use crate::world::structures::palette::PLANK;
@@ -32,17 +33,50 @@ pub struct Shell {
 }
 
 impl Shell {
-    /// A room of half sizes `hx` by `hz`, 2.7 m tall, with a 1.4 m doorway in the middle.
-    pub fn new(hx: f32, hz: f32) -> Self {
-        Self {
-            hx,
+    /// Returns the half sizes of the floor inside the walls, along x and z.
+    pub fn inner(&self) -> Vec2 {
+        Vec2::new(self.hx - T, self.hz - T)
+    }
+}
+
+impl House {
+    /// Returns the walled room of this kind. The two-storey room is 0.2 m shallower than its lot.
+    pub fn shell(self) -> Shell {
+        let d = self.dims();
+        let (h, door, gap, door_h) = match self {
+            House::Shed => (2.5, 0.0, 1.2, 2.2),
+            House::Stall => (2.7, 1.5, 1.2, DOOR_H),
+            House::TwoStory => (2.5, 0.0, 1.4, 2.2),
+            House::Smithy => (2.7, 0.4, 2.6, 2.4),
+            House::Barn => (3.4, 0.0, 2.6, 3.0),
+            House::Tower => (2.6, 0.0, 1.4, DOOR_H),
+            House::Hall => (3.4, 0.0, 2.0, 2.8),
+            House::Cottage | House::Long | House::Porch => (2.7, 0.0, 1.4, DOOR_H),
+        };
+        let hz = if self == House::TwoStory { 2.4 } else { d.y };
+        Shell {
+            hx: d.x,
             hz,
-            h: 2.7,
-            door: 0.0,
-            gap: 1.4,
-            door_h: DOOR_H,
-            front: 0.0,
+            h,
+            door,
+            gap,
+            door_h,
+            front: d.z,
         }
+    }
+
+    /// Draws this kind on the current site, turned by 0.3 rad, in the style of `biome` and lot `variant`.
+    #[cfg(test)]
+    pub fn draw_variant(self, b: &mut Build, biome: crate::world::Biome, variant: u32) {
+        let lot = super::lots::Lot {
+            pos: b.site.origin,
+            yaw: 0.3,
+            floor: b.site.floor,
+            depth: 2.0,
+            house: self,
+            variant,
+        };
+        super::houses::draw(b, &super::style::style_for(biome, variant), &lot);
     }
 }
 

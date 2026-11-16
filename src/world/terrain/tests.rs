@@ -25,6 +25,24 @@ fn heights_are_deterministic() {
     assert!(pts.iter().any(|&(x, z)| a.height(x, z) != c.height(x, z)));
 }
 
+/// The mesh height equals the true height on grid vertices and stays between its corners inside a cell.
+#[test]
+fn mesh_height_follows_the_grid() {
+    let t = Terrain::new(3);
+    for &(x, z) in &[(0.0, 0.0), (128.0, -64.0), (-902.0, 414.0)] {
+        assert_eq!(t.mesh_height(x, z), t.height(x, z));
+        let corners =
+            [(0.0, 0.0), (2.0, 0.0), (0.0, 2.0), (2.0, 2.0)].map(|(a, b)| t.height(x + a, z + b));
+        let (lo, hi) = corners
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(l, h), v| (l.min(*v), h.max(*v)));
+        for &(a, b) in &[(0.5, 0.5), (1.5, 1.2), (0.3, 1.9)] {
+            let m = t.mesh_height(x + a, z + b);
+            assert!(m >= lo - 1e-3 && m <= hi + 1e-3, "{m} outside {lo}..{hi}");
+        }
+    }
+}
+
 /// Every seed has mostly sea, most biomes, tall peaks, deep trenches, shallows and reefs.
 #[test]
 fn world_has_sea_biomes_peaks_and_reefs() {

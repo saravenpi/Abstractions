@@ -96,7 +96,10 @@ pub fn dress(
             LightKind::Lamp => (assets.lamp.clone(), assets.lamp_material.clone()),
             LightKind::Torch => (assets.flames[0].clone(), assets.flame_material.clone()),
             LightKind::Campfire => (assets.flames[1].clone(), assets.flame_material.clone()),
-            LightKind::Brazier => (assets.flames[2].clone(), assets.flame_material.clone()),
+            LightKind::Brazier | LightKind::Hearth => {
+                (assets.flames[2].clone(), assets.flame_material.clone())
+            }
+            LightKind::Candle => (assets.flames[0].clone(), assets.flame_material.clone()),
         };
         commands
             .entity(entity)

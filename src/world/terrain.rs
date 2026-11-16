@@ -41,6 +41,28 @@ impl Terrain {
         self.carve(x, z, self.shape.elevation(x, z, &self.climate))
     }
 
+    /// Returns the height the finest terrain mesh draws at `(x, z)`: its 2 m triangles, interpolated.
+    ///
+    /// Anything that must touch the visible ground stands on this, not on [`Terrain::height`].
+    pub fn mesh_height(&self, x: f32, z: f32) -> f32 {
+        let step = super::mesh::GRID_STEP;
+        let (i, j) = ((x / step).floor(), (z / step).floor());
+        let (u, v) = (x / step - i, z / step - j);
+        let h = |a: f32, b: f32| self.height((i + a) * step, (j + b) * step);
+        if u + v <= 1.0 {
+            h(0.0, 0.0) + u * (h(1.0, 0.0) - h(0.0, 0.0)) + v * (h(0.0, 1.0) - h(0.0, 0.0))
+        } else {
+            h(1.0, 1.0)
+                + (1.0 - u) * (h(0.0, 1.0) - h(1.0, 1.0))
+                + (1.0 - v) * (h(1.0, 0.0) - h(1.0, 1.0))
+        }
+    }
+
+    /// Returns true when `(x, z)` lies inside a pond basin.
+    pub fn pond_at(&self, x: f32, z: f32) -> bool {
+        self.in_pond(x, z)
+    }
+
     /// Returns what covers the ground at world position `(x, z)`.
     pub fn surface(&self, x: f32, z: f32) -> Surface {
         let h = self.height(x, z);

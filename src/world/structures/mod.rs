@@ -12,6 +12,7 @@ mod dock;
 mod draw;
 mod dress;
 mod fishing;
+mod flame;
 mod flat;
 mod flicker;
 mod glow;
@@ -29,6 +30,8 @@ mod smoke;
 mod steps;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_interior;
 #[cfg(test)]
 mod tests_lights;
 #[cfg(test)]

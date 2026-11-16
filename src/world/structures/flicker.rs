@@ -26,6 +26,8 @@ pub fn power(kind: LightKind) -> (f32, f32) {
         LightKind::Torch => (16_000.0, 6.0),
         LightKind::Campfire => (60_000.0, 10.0),
         LightKind::Brazier => (40_000.0, 9.0),
+        LightKind::Hearth => (30_000.0, 7.0),
+        LightKind::Candle => (8_000.0, 5.0),
     }
 }
 

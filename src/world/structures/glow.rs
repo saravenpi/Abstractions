@@ -16,6 +16,10 @@ pub enum LightKind {
     Campfire,
     /// Brazier on a stand.
     Brazier,
+    /// Fire in the hearth of a house.
+    Hearth,
+    /// Candle or small lantern inside a house.
+    Candle,
 }
 
 /// One light of a structure, in chunk space.

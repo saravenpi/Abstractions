@@ -7,6 +7,7 @@ mod fields;
 mod houses;
 mod houses2;
 mod houses3;
+mod interior;
 mod kinds;
 mod layout;
 mod lots;

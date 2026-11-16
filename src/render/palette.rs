@@ -88,6 +88,9 @@ const CLOUD: Key = Key {
 };
 
 impl Palette {
+    /// Illuminance in lux of the moon when it stands high.
+    pub const MOON_LUX: f32 = 1_300.0;
+
     /// Returns the palette for a clock phase.
     pub fn at(phase: f32) -> Self {
         let sun_dir = sun_direction(phase);
@@ -102,7 +105,7 @@ impl Palette {
             ambient_brightness: 90.0 + 260.0 * day,
             sun_color: Vec3::new(1.0, 0.93, 0.78).lerp(Vec3::new(1.0, 0.55, 0.25), warmth),
             sun_lux: 12_000.0 * smoothstep(-0.02, 0.3, sun_dir.y),
-            moon_lux: 1_300.0 * smoothstep(-0.02, 0.3, moon_dir.y),
+            moon_lux: Self::MOON_LUX * smoothstep(-0.02, 0.3, moon_dir.y),
             cloud: CLOUD.at(day, dusk),
             stars: 1.0 - smoothstep(-0.2, 0.0, sun_dir.y),
             sun_dir,

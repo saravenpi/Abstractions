@@ -92,7 +92,7 @@ impl WaterUniform {
             )),
             moon: palette
                 .moon_dir
-                .extend((palette.moon_lux / 1300.0).clamp(0.0, 1.0)),
+                .extend((palette.moon_lux / Palette::MOON_LUX).clamp(0.0, 1.0)),
             wave_a: a,
             wave_b: b,
             wave_c: c,

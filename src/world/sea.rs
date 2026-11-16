@@ -1,5 +1,6 @@
 //! The sea: one wavy, foamy water mesh that follows the focus on a snapped grid.
 
+mod depth;
 mod material;
 mod mesh;
 mod uniform;

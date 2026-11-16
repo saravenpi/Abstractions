@@ -1,7 +1,7 @@
 [package]
 name = "abstractions"
 authors = ["saravenpi"]
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.97.1"
 description = "A pixelated low-poly island exploration game."
@@ -43,6 +43,7 @@ dirs = "7.0.0"
 noise = "0.9.0"
 rand = "0.10.4"
 rand_chacha = "0.10.0"
+toml = "1.1"
 serde = { version = "1.0.229", features = ["derive"] }
 
 [profile.dev]
@@ -56,5 +57,4 @@ codegen-units = 1
 lto = "thin"
 strip = "symbols"
 
-[dev-dependencies]
-toml = "1.1"
+

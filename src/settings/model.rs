@@ -104,6 +104,8 @@ pub struct Keymap {
     pub jump: KeyCode,
     /// Run faster.
     pub sprint: KeyCode,
+    /// Ship controls, used while seated in the ship and to board it.
+    pub ship: ShipKeys,
 }
 
 impl Default for Keymap {
@@ -115,6 +117,62 @@ impl Default for Keymap {
             right: KeyCode::KeyD,
             jump: KeyCode::Space,
             sprint: KeyCode::ShiftLeft,
+            ship: ShipKeys::default(),
+        }
+    }
+}
+
+/// Key bindings of the ship.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[serde(default)]
+pub struct ShipKeys {
+    /// Push the throttle forward.
+    pub thrust: KeyCode,
+    /// Pull the throttle back, down to reverse.
+    pub brake: KeyCode,
+    /// Turn the nose left.
+    pub yaw_left: KeyCode,
+    /// Turn the nose right.
+    pub yaw_right: KeyCode,
+    /// Roll to the left.
+    pub roll_left: KeyCode,
+    /// Roll to the right.
+    pub roll_right: KeyCode,
+    /// Fire the vertical thrusters upward.
+    pub up: KeyCode,
+    /// Fire the vertical thrusters downward.
+    pub down: KeyCode,
+    /// Boost the main engine.
+    pub boost: KeyCode,
+    /// Switch the flight assist on or off.
+    pub assist: KeyCode,
+    /// Set the throttle to zero.
+    pub cut: KeyCode,
+    /// Spool the warp drive, or drop out of warp.
+    pub warp: KeyCode,
+    /// Switch between the cockpit and the chase view.
+    pub view: KeyCode,
+    /// Board the ship, or leave it.
+    pub board: KeyCode,
+}
+
+impl Default for ShipKeys {
+    fn default() -> Self {
+        Self {
+            thrust: KeyCode::KeyW,
+            brake: KeyCode::KeyS,
+            yaw_left: KeyCode::KeyA,
+            yaw_right: KeyCode::KeyD,
+            roll_left: KeyCode::KeyQ,
+            roll_right: KeyCode::KeyE,
+            up: KeyCode::Space,
+            down: KeyCode::ControlLeft,
+            boost: KeyCode::ShiftLeft,
+            assist: KeyCode::KeyZ,
+            cut: KeyCode::KeyX,
+            warp: KeyCode::KeyJ,
+            view: KeyCode::KeyV,
+            board: KeyCode::KeyF,
         }
     }
 }

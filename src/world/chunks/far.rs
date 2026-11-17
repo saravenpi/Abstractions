@@ -1,0 +1,99 @@
+//! The far planet: one baked mesh shown instead of the quadtree when the focus is in space.
+
+use bevy::prelude::*;
+use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
+
+use super::build::{NodeData, render_only};
+use super::nodes::Node;
+use super::spawn::Spawner;
+use super::{Chunks, raytrace};
+use crate::world::focus::Focus;
+use crate::world::globe::far::{Range, bake, range};
+use crate::world::globe::{ChunkId, Face};
+use crate::world::mesh::Frame;
+
+/// The baked mesh of the whole planet and whether it stands in for the quadtree.
+#[derive(Default)]
+pub struct FarView {
+    node: Option<Node>,
+    task: Option<Task<Mesh>>,
+    active: bool,
+}
+
+impl FarView {
+    /// Returns true while the baked planet replaces the quadtree.
+    pub fn active(&self) -> bool {
+        self.active
+    }
+
+    /// Despawns the baked planet and cancels its task.
+    pub fn clear(&mut self, commands: &mut Commands) {
+        if let Some(node) = &self.node {
+            commands.entity(node.entity).try_despawn();
+        }
+        *self = Self::default();
+    }
+
+    /// Bakes the planet off-thread once, and spawns it hidden when the mesh is done.
+    fn prepare(&mut self, commands: &mut Commands, spawner: &mut Spawner) {
+        if self.node.is_some() {
+            return;
+        }
+        let (globe, on) = (spawner.terrain.globe().clone(), spawner.ray_tracing.0);
+        let pool = AsyncComputeTaskPool::get();
+        let task = self
+            .task
+            .get_or_insert_with(|| pool.spawn(async move { render_only(bake(&globe), on) }));
+        if let Some(mesh) = block_on(poll_once(task)) {
+            let frame = Frame::PLANET;
+            self.node = Some(spawner.coarse(commands, NodeData { mesh, frame }));
+            self.task = None;
+        }
+    }
+
+    /// Shows or hides the baked planet.
+    fn set_visible(&mut self, commands: &mut Commands, visible: bool, ray_tracing: bool) {
+        if let Some(node) = self.node.as_mut().filter(|node| node.visible != visible) {
+            node.visible = visible;
+            raytrace::show(commands, node, ray_tracing);
+        }
+    }
+}
+
+/// Returns true when the six whole faces have a mesh, so the quadtree can draw the full globe.
+fn covered(chunks: &Chunks) -> bool {
+    Face::ALL.iter().all(|face| {
+        chunks.nodes.has(ChunkId {
+            face: *face,
+            level: 0,
+            x: 0,
+            y: 0,
+        })
+    })
+}
+
+/// Swaps between the quadtree and the baked planet with the distance of the focus: the baked
+/// planet beyond about three radii, nothing beyond twenty, where the sky draws the planet.
+pub fn watch_far(
+    mut commands: Commands,
+    mut chunks: ResMut<Chunks>,
+    focus: Focus,
+    mut spawner: Spawner,
+) {
+    let chunks = &mut *chunks;
+    chunks.far.prepare(&mut commands, &mut spawner);
+    let radius = spawner.terrain.globe().radius();
+    let seen = focus
+        .planet()
+        .map(|at| range(at.length() / radius, chunks.far.active));
+    let seen = seen.unwrap_or(Range::Beyond);
+    let far = seen != Range::Near && chunks.far.node.is_some();
+    if far && !chunks.far.active {
+        chunks.drop_near(&mut commands);
+    }
+    chunks.far.active = far;
+    let visible = seen != Range::Beyond && (far || !covered(chunks));
+    chunks
+        .far
+        .set_visible(&mut commands, visible, spawner.ray_tracing.0);
+}

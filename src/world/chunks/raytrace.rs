@@ -7,6 +7,7 @@ use bevy::solari::prelude::RaytracingMesh3d;
 
 use super::Chunks;
 use super::build::ChunkData;
+use super::nodes::{Coarse, Node};
 use crate::render::RayTracing;
 use crate::world::props::PropAssets;
 
@@ -30,11 +31,31 @@ pub fn swap(commands: &mut Commands, entity: Entity, mesh: Handle<Mesh>, on: boo
     chunk.try_insert(Mesh3d(mesh));
 }
 
+/// Applies the visibility of a coarse node. Solari ignores visibility, so with ray tracing `on`
+/// the node only has its ray tracing twin while it is drawn.
+pub fn show(commands: &mut Commands, node: &Node, on: bool) {
+    let mut entity = commands.entity(node.entity);
+    if node.visible {
+        entity.try_insert(Visibility::Inherited);
+    } else {
+        entity.try_insert(Visibility::Hidden);
+        entity.try_remove::<RaytracingMesh3d>();
+    }
+    if node.visible && on {
+        entity.try_insert(RaytracingMesh3d(node.mesh.clone()));
+    }
+}
+
+/// Entities that just got a mesh and are not coarse nodes.
+type NewMesh = (Added<Mesh3d>, Without<Coarse>);
+
 /// Gives every new world mesh entity a ray tracing mesh that shares its raster mesh.
+///
+/// Coarse nodes are left out: [`show`] gives them theirs while they are drawn.
 pub fn add_instances(
     mut commands: Commands,
     assets: Res<PropAssets>,
-    meshes: Query<(Entity, &Mesh3d, &MeshMaterial3d<StandardMaterial>), Added<Mesh3d>>,
+    meshes: Query<(Entity, &Mesh3d, &MeshMaterial3d<StandardMaterial>), NewMesh>,
 ) {
     for (entity, mesh, material) in &meshes {
         if material.0 == assets.material {

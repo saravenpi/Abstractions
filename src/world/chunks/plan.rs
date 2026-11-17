@@ -46,6 +46,8 @@ pub struct Loaded {
     pub bodies: Option<Collider>,
     /// Whether the colliders are currently attached.
     pub solid: bool,
+    /// Whether the chunk is drawn: false while a coarser node still covers its place.
+    pub shown: bool,
     /// Level of detail, ground cover and structure state.
     pub detail: Detail,
 }

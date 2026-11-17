@@ -1,6 +1,6 @@
 //! Picks the kind of a respawning particle from the surroundings.
 
-use super::kind::{Ambient, Kind};
+use super::kind::{Ambient, CEILING, Kind};
 use crate::world::{Biome, SEA_LEVEL, Surface};
 
 /// Camera height above sea level from which the air counts as snowy.
@@ -65,6 +65,8 @@ fn snowy(ambient: &Ambient) -> bool {
 pub fn pick(ambient: &Ambient, roll: f32) -> Kind {
     if ambient.height < SEA_LEVEL {
         choose(roll, &[(Kind::Bubble, 0.4), (Kind::Plankton, 0.6)])
+    } else if ambient.height > CEILING {
+        Kind::Hidden
     } else if over_sea(ambient) {
         let spray = if ambient.wind >= STRONG_WIND {
             0.15
@@ -111,5 +113,17 @@ mod tests {
         }
         assert_eq!(pick(&land(Biome::Forest, 0.0, 0.3), 0.1), Kind::Leaf);
         assert_eq!(pick(&land(Biome::Desert, 1.0, 0.9), 0.1), Kind::Dust);
+    }
+
+    /// High above every summit the air is empty, whatever lies below.
+    #[test]
+    fn nothing_drifts_above_the_ceiling() {
+        for biome in [Biome::Cherry, Biome::Taiga, Biome::Forest] {
+            let high = Ambient {
+                height: CEILING + 1.0,
+                ..land(biome, 1.0, 0.9)
+            };
+            assert_eq!(pick(&high, 0.1), Kind::Hidden);
+        }
     }
 }

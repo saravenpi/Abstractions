@@ -6,11 +6,13 @@ use bevy::prelude::*;
 
 use super::kind::Kind;
 use crate::screens::Screen;
+use crate::space::Rebased;
 
 /// Number of particle entities, created once per world.
 pub const POOL_SIZE: usize = 160;
 
-/// Half the width of the particle box around the camera, in meters.
+/// Half the width of the particle box around the camera, in meters. The box stands on the local
+/// vertical of the camera.
 pub const HALF_WIDTH: f32 = 14.0;
 
 /// Depth of the particle box below the camera, in meters.
@@ -52,7 +54,7 @@ pub struct Particle {
     pub life: f32,
     /// Personal phase for flutter, tumble and blink.
     pub phase: f32,
-    /// Height below which it respawns.
+    /// Height above sea level below which it respawns.
     pub floor: f32,
     /// False until its first placement, which may land anywhere in the box.
     pub primed: bool,
@@ -121,6 +123,8 @@ pub fn build(
 }
 
 /// Spawns the particles when gameplay starts, unless they already exist.
+///
+/// They are free entities in render space, so each is marked to follow anchor rebases.
 pub fn spawn(mut commands: Commands, pool: Res<Pool>, existing: Query<(), With<Particle>>) {
     if !existing.is_empty() {
         return;
@@ -138,6 +142,7 @@ pub fn spawn(mut commands: Commands, pool: Res<Pool>, existing: Query<(), With<P
             Mesh3d(pool.quad.clone()),
             MeshMaterial3d(pool.looks[0].1.clone()),
             Transform::from_scale(Vec3::ZERO),
+            Rebased,
             NotShadowCaster,
             DespawnOnEnter(Screen::Title),
         ));

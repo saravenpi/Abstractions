@@ -10,10 +10,10 @@ use super::env::{Ctx, Env, Sky};
 use super::gear::Gear;
 use super::habitat::{Species, presence};
 use super::steer::{approach, bearing, turn_toward, yaw};
-use super::wander::{PARKED, Roam, Wander, pick, place, strayed};
+use super::wander::{PARKED, Roam, Wander, dormant, pick, place, strayed};
 use super::wings::{Spec, Wing, pair, pose};
-use crate::render::GameCamera;
 use crate::screens::Screen;
+use crate::space::Rebased;
 
 /// Butterflies in the pool.
 const COUNT: usize = 12;
@@ -43,7 +43,8 @@ type MothData = (
 #[derive(Component, Debug, Clone, Copy)]
 pub struct Butterfly;
 
-/// Spawns the butterflies with their two wings each.
+/// Spawns the butterflies with their two wings each. They are free entities in render space,
+/// so each body is marked to follow anchor rebases; the wings are its children.
 pub fn spawn(commands: &mut Commands, gear: &Gear) {
     for slot in 0..COUNT {
         let wings = Spec {
@@ -59,6 +60,7 @@ pub fn spawn(commands: &mut Commands, gear: &Gear) {
             Mesh3d(gear.moth_body.clone()),
             MeshMaterial3d(gear.moth_dark.clone()),
             Transform::from_translation(PARKED).with_scale(Vec3::ZERO),
+            Rebased,
             NotShadowCaster,
             DespawnOnEnter(Screen::Title),
             pair(&wings),
@@ -77,20 +79,17 @@ fn arrive(wander: &mut Wander, at: &mut Transform, hub: Vec3, ctx: &mut Ctx) {
     }
 }
 
-/// Flutters one step toward the target with an erratic heading.
-fn flutter(wander: &mut Wander, at: &mut Transform, sky: &Sky) {
+/// Flutters one step along `to`, the local vector to the target, with an erratic heading.
+fn flutter(wander: &mut Wander, at: &mut Transform, sky: &Sky, to: Vec3) {
     let dt = sky.dt;
     let erratic = 0.9 * (sky.now * 5.0 + wander.slot as f32 * 1.7).sin();
-    let desired = bearing(at.translation, wander.target) + erratic;
+    let desired = bearing(Vec3::ZERO, to) + erratic;
     wander.heading = turn_toward(wander.heading, desired, 4.0 * dt);
-    let to = wander.target - at.translation;
     let speed = ROAM.speed.min(Vec2::new(to.x, to.z).length() * 2.0 + 0.4);
     let dir = Vec2::from_angle(wander.heading) * speed * dt;
-    at.translation.x += dir.x;
-    at.translation.z += dir.y;
-    at.translation.y =
-        approach(at.translation.y, wander.target.y, 0.8 * dt) + 0.4 * wander.phase.cos() * dt;
-    at.rotation = Quat::from_rotation_y(yaw(wander.heading));
+    let climb = approach(0.0, to.y, 0.8 * dt) + 0.4 * wander.phase.cos() * dt;
+    at.translation += sky.tilt * Vec3::new(dir.x, climb, dir.y);
+    at.rotation = sky.tilt * Quat::from_rotation_y(yaw(wander.heading));
 }
 
 /// Advances one butterfly and returns the wing angle to show.
@@ -101,8 +100,8 @@ fn live(wander: &mut Wander, at: &mut Transform, sky: &Sky, level: f32, ctx: &mu
     wander.shown = approach(wander.shown, want, dt * 0.4);
     let rate = 8.0 + (wander.slot % 5) as f32;
     wander.phase = (wander.phase + dt * TAU * rate) % TAU;
-    let to = wander.target - at.translation;
-    if strayed(at.translation, sky.camera, &ROAM) {
+    let to = ctx.ground.span(at.translation, wander.target);
+    if strayed(at.translation, ctx, &ROAM) {
         at.translation = place(wander, hub, &ROAM, ctx);
     } else if wander.landed {
         wander.wait -= dt;
@@ -113,7 +112,7 @@ fn live(wander: &mut Wander, at: &mut Transform, sky: &Sky, level: f32, ctx: &mu
     } else if Vec2::new(to.x, to.z).length() < 0.5 && to.y.abs() < 0.4 {
         arrive(wander, at, hub, ctx);
     } else {
-        flutter(wander, at, sky);
+        flutter(wander, at, sky, to);
     }
     at.scale = Vec3::splat(wander.shown);
     if wander.landed {
@@ -124,21 +123,23 @@ fn live(wander: &mut Wander, at: &mut Transform, sky: &Sky, level: f32, ctx: &mu
     }
 }
 
-/// Moves every butterfly and flaps its wings.
+/// Moves every butterfly that is out or wanted and flaps its wings. The others rest untouched.
 pub fn step(
     mut env: Env,
-    camera: Single<&GlobalTransform, With<GameCamera>>,
     mut moths: Query<MothData, (With<Butterfly>, Without<Wing>)>,
     mut wings: Query<(&mut Transform, &Wing)>,
 ) {
-    let sky = env.sky(camera.translation());
+    let sky = env.sky();
     let level = presence(Species::Butterfly, &sky.ambient) * COUNT as f32;
     let mut rng = *env.rng;
     let mut ctx = Ctx {
-        terrain: &env.terrain,
+        ground: env.ground(),
         rng: &mut rng,
     };
     for (mut wander, mut at, children) in &mut moths {
+        if dormant(&wander, level) {
+            continue;
+        }
         let angle = live(&mut wander, &mut at, &sky, level, &mut ctx);
         pose(&mut wings, children, angle);
     }

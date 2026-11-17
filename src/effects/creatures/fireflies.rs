@@ -10,9 +10,9 @@ use super::env::{Ctx, Env, Sky};
 use super::gear::{Bind, Gear, rebind};
 use super::habitat::{Species, presence};
 use super::steer::{approach, step_toward};
-use super::wander::{PARKED, Roam, Wander, pick, place, strayed};
-use crate::render::GameCamera;
+use super::wander::{PARKED, Roam, Wander, dormant, pick, place, strayed};
 use crate::screens::Screen;
+use crate::space::{Rebased, Shift};
 
 /// Fireflies in the pool.
 const COUNT: usize = 24;
@@ -39,7 +39,7 @@ const LIGHT_REACH: f32 = 22.0;
 const FADE: f32 = 3.0;
 
 /// How fireflies roam around their swarm.
-const ROAM: Roam = Roam {
+pub(super) const ROAM: Roam = Roam {
     radius: 6.0,
     reach: 4.0,
     leash: 28.0,
@@ -61,9 +61,18 @@ type LightData = (
 #[derive(Component, Debug, Clone, Copy)]
 pub struct Firefly;
 
-/// Anchor points of the swarms, on the XZ plane.
+/// Anchor points of the swarms, in render space. Only their place along the ground matters.
 #[derive(Resource, Debug, Clone, Copy, Default)]
 pub struct Swarms([Vec3; SWARMS]);
+
+impl Swarms {
+    /// Moves the anchor points with render space after an anchor rebase.
+    pub fn carry(&mut self, shift: &Shift) {
+        for anchor in &mut self.0 {
+            *anchor = shift.point(*anchor);
+        }
+    }
+}
 
 /// What the lights need to know about one firefly this frame.
 #[derive(Debug, Clone, Copy, Default)]
@@ -78,14 +87,16 @@ struct Seen {
 
 /// What a firefly update needs to know about the sky.
 #[derive(Debug, Clone, Copy)]
-struct Flight {
+pub(super) struct Flight {
     /// The frame's view of the world.
-    sky: Sky,
+    pub sky: Sky,
     /// Number of fireflies that should be out.
-    level: f32,
+    pub level: f32,
 }
 
-/// Spawns the fireflies and their lights.
+/// Spawns the fireflies and their lights. Fireflies are free entities in render space, so each
+/// is marked to follow anchor rebases. A light is put on its firefly every frame it shines, so
+/// it needs no mark.
 pub fn spawn(commands: &mut Commands, gear: &Gear) {
     for slot in 0..COUNT {
         commands.spawn((
@@ -94,6 +105,7 @@ pub fn spawn(commands: &mut Commands, gear: &Gear) {
             Mesh3d(gear.glow_mesh.clone()),
             MeshMaterial3d(gear.glow.clone()),
             Transform::from_translation(PARKED).with_scale(Vec3::ZERO),
+            Rebased,
             NotShadowCaster,
             DespawnOnEnter(Screen::Title),
         ));
@@ -119,16 +131,23 @@ pub fn spawn(commands: &mut Commands, gear: &Gear) {
 /// Moves swarm anchors that fell behind to a fresh spot near the camera.
 fn gather(swarms: &mut Swarms, sky: &Sky, ctx: &mut Ctx) {
     for anchor in &mut swarms.0 {
-        if strayed(*anchor, sky.camera, &ROAM) {
+        if strayed(*anchor, ctx, &ROAM) {
             let angle = ctx.rng.range(0.0, TAU);
             let reach = ctx.rng.range(6.0, 20.0);
-            *anchor = sky.camera + Vec3::new(angle.cos() * reach, 0.0, angle.sin() * reach);
+            *anchor =
+                sky.camera + sky.tilt * Vec3::new(angle.cos() * reach, 0.0, angle.sin() * reach);
         }
     }
 }
 
 /// Advances one firefly and returns how brightly it shines.
-fn fly(wander: &mut Wander, at: &mut Transform, flight: &Flight, hub: Vec3, ctx: &mut Ctx) -> f32 {
+pub(super) fn fly(
+    wander: &mut Wander,
+    at: &mut Transform,
+    flight: &Flight,
+    hub: Vec3,
+    ctx: &mut Ctx,
+) -> f32 {
     let Flight { sky, level } = *flight;
     let dt = sky.dt;
     wander.shown = approach(
@@ -137,7 +156,7 @@ fn fly(wander: &mut Wander, at: &mut Transform, flight: &Flight, hub: Vec3, ctx:
         dt * 0.4,
     );
     wander.phase = (wander.phase + dt * (1.1 + 0.1 * (wander.slot % 7) as f32)) % TAU;
-    if strayed(at.translation, sky.camera, &ROAM) {
+    if strayed(at.translation, ctx, &ROAM) {
         at.translation = place(wander, hub, &ROAM, ctx);
     } else if wander.wait > 0.0 {
         wander.wait -= dt;
@@ -150,8 +169,8 @@ fn fly(wander: &mut Wander, at: &mut Transform, flight: &Flight, hub: Vec3, ctx:
         at.translation = step_toward(at.translation, wander.target, ROAM.speed * dt);
     }
     let p = wander.phase;
-    at.translation +=
-        Vec3::new((p * 0.7).sin(), 0.5 * (p * 1.3).cos(), (p * 0.9).cos()) * 0.15 * dt;
+    let hover = Vec3::new((p * 0.7).sin(), 0.5 * (p * 1.3).cos(), (p * 0.9).cos());
+    at.translation += sky.tilt * hover * 0.15 * dt;
     let glow = blink(p, sky.ambient.daylight) * wander.shown;
     at.scale = Vec3::splat(SIZE * wander.shown * (0.15 + 0.85 * glow));
     glow
@@ -159,7 +178,10 @@ fn fly(wander: &mut Wander, at: &mut Transform, flight: &Flight, hub: Vec3, ctx:
 
 /// Keeps every light on its own firefly: it sits exactly on it and shines with its blink and its own fade.
 fn light_up(lights: &mut Query<LightData, Without<Firefly>>, seen: &[Seen; COUNT], dt: f32) {
-    let mut binds: Vec<Bind> = lights.iter().map(|(.., bind)| *bind).collect();
+    let mut binds = [Bind::default(); LIGHTS];
+    for (slot, (.., bind)) in binds.iter_mut().zip(lights.iter()) {
+        *slot = *bind;
+    }
     let dists = seen.map(|firefly| firefly.dist);
     rebind(&mut binds, &dists, FADE * dt);
     for ((mut at, mut light, mut visibility, mut bind), next) in lights.iter_mut().zip(binds) {
@@ -177,27 +199,28 @@ fn light_up(lights: &mut Query<LightData, Without<Firefly>>, seen: &[Seen; COUNT
     }
 }
 
-/// Moves the swarms, the fireflies and their lights.
+/// Moves the swarms, the fireflies that are out or wanted, and their lights. The other
+/// fireflies rest untouched.
 pub fn step(
     mut env: Env,
-    camera: Single<&GlobalTransform, With<GameCamera>>,
     mut swarms: ResMut<Swarms>,
     mut flies: Query<(&mut Wander, &mut Transform), With<Firefly>>,
     mut lights: Query<LightData, Without<Firefly>>,
 ) {
-    let sky = env.sky(camera.translation());
-    let flight = Flight {
-        sky,
-        level: presence(Species::Firefly, &sky.ambient) * COUNT as f32,
-    };
+    let sky = env.sky();
+    let level = presence(Species::Firefly, &sky.ambient) * COUNT as f32;
+    let flight = Flight { sky, level };
     let mut rng = *env.rng;
     let mut ctx = Ctx {
-        terrain: &env.terrain,
+        ground: env.ground(),
         rng: &mut rng,
     };
     gather(&mut swarms, &sky, &mut ctx);
     let mut seen = [Seen::default(); COUNT];
     for (mut wander, mut at) in &mut flies {
+        if dormant(&wander, level) {
+            continue;
+        }
         let hub = swarms.0[wander.slot % SWARMS];
         let glow = fly(&mut wander, &mut at, &flight, hub, &mut ctx);
         let dist = at.translation.distance(sky.camera);

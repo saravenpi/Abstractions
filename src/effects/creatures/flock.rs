@@ -25,9 +25,9 @@ const LOOKAHEAD: f32 = 25.0;
 /// One flock: where it is and where it heads.
 #[derive(Debug, Clone, Copy)]
 pub struct Flock {
-    /// Center of the formation.
+    /// Center of the formation, in render space.
     pub center: Vec3,
-    /// Direction of travel on the XZ plane.
+    /// Direction of travel on the local XZ plane of the camera.
     pub heading: f32,
     /// Smoothed turn rate in radians per second, positive to the right.
     pub turn: f32,
@@ -41,10 +41,13 @@ pub struct Flock {
     pub size: usize,
     /// Altitude above the ground in meters.
     cruise: f32,
-    /// Highest ground under or ahead of the flock.
+    /// Highest ground under or ahead of the flock, in meters above sea level.
     ground: f32,
     /// Seconds until the next terrain lookup.
     probe: f32,
+    /// True while a bird of the flock is still shown. A flock that is neither wanted nor shown
+    /// is not flown, so it costs no terrain lookup.
+    pub live: bool,
 }
 
 /// Both flocks.
@@ -65,12 +68,14 @@ impl Default for Flocks {
             cruise: 25.0,
             ground: 0.0,
             probe: 0.0,
+            live: false,
         };
         Self([parked; 2])
     }
 }
 
-/// Returns where the bird in `slot` flies relative to the flock center, in a loose V.
+/// Returns where the bird in `slot` flies relative to the flock center, in a loose V, in the
+/// local frame where `y` is up.
 pub fn formation(slot: usize, heading: f32) -> Vec3 {
     let dir = Vec2::from_angle(heading);
     let side = if slot % 2 == 1 { 1.0 } else { -1.0 };
@@ -80,16 +85,21 @@ pub fn formation(slot: usize, heading: f32) -> Vec3 {
 }
 
 impl Flock {
+    /// Returns the local heading from the flock toward the camera.
+    fn homeward(&self, sky: &Sky, ctx: &Ctx) -> f32 {
+        bearing(Vec3::ZERO, ctx.ground.span(self.center, sky.camera))
+    }
+
     /// Moves the flock out of sight beyond the camera, upwind, on a heading that crosses the area.
     fn reposition(&mut self, index: usize, sky: &Sky, ctx: &mut Ctx) {
         let back = -sky.wind;
         let lateral = Vec2::new(-back.y, back.x) * ctx.rng.range(-60.0, 60.0);
-        let flat =
-            Vec2::new(sky.camera.x, sky.camera.z) + back * ctx.rng.range(125.0, 140.0) + lateral;
+        let flat = back * ctx.rng.range(125.0, 140.0) + lateral;
+        let spot = sky.camera + ctx.ground.turn(Vec3::new(flat.x, 0.0, flat.y));
         self.cruise = ctx.rng.range(15.0, 45.0);
-        self.ground = ground(ctx, flat.x, flat.y);
-        self.center = Vec3::new(flat.x, self.ground + self.cruise, flat.y);
-        self.heading = bearing(self.center, sky.camera) + ctx.rng.range(-0.6, 0.6);
+        self.ground = ground(ctx, spot);
+        self.center = ctx.ground.raised(spot, self.ground + self.cruise);
+        self.heading = self.homeward(sky, ctx) + ctx.rng.range(-0.6, 0.6);
         let spread = (CAPACITY[index] - 2) as f32;
         self.size = (3 + (ctx.rng.next() * spread) as usize).min(CAPACITY[index]);
         self.circle = 0.0;
@@ -101,7 +111,7 @@ impl Flock {
     fn steer(&mut self, index: usize, far: f32, sky: &Sky, ctx: &mut Ctx) {
         let dt = sky.dt;
         if far > RETURN {
-            self.heading = turn_toward(self.heading, bearing(self.center, sky.camera), 0.4 * dt);
+            self.heading = turn_toward(self.heading, self.homeward(sky, ctx), 0.4 * dt);
             return;
         }
         self.calm -= dt;
@@ -123,29 +133,36 @@ impl Flock {
         self.heading = wrap_angle(self.heading + rate * dt);
     }
 
-    /// Flies the flock one frame.
-    pub fn advance(&mut self, index: usize, sky: &Sky, ctx: &mut Ctx) {
-        let dt = sky.dt.max(1e-4);
-        let far = Vec2::new(self.center.x - sky.camera.x, self.center.z - sky.camera.z).length();
-        if far > LEAVE {
-            self.reposition(index, sky, ctx);
-        }
+    /// Looks up the ground under and ahead of the flock twice per second.
+    fn probe(&mut self, dt: f32, ctx: &Ctx) {
         self.probe -= dt;
         if self.probe <= 0.0 {
             self.probe = 0.5;
-            let ahead =
-                self.center + Vec3::new(self.heading.cos(), 0.0, self.heading.sin()) * LOOKAHEAD;
-            let here = ground(ctx, self.center.x, self.center.z);
-            self.ground = here.max(ground(ctx, ahead.x, ahead.z));
+            let forward = Vec3::new(self.heading.cos(), 0.0, self.heading.sin());
+            let ahead = self.center + ctx.ground.turn(forward * LOOKAHEAD);
+            self.ground = ground(ctx, self.center).max(ground(ctx, ahead));
         }
+    }
+
+    /// Flies the flock one frame: along the local horizontal, at its cruise height over the
+    /// ground and the sea along the local vertical.
+    pub fn advance(&mut self, index: usize, sky: &Sky, ctx: &mut Ctx) {
+        let dt = sky.dt.max(1e-4);
+        let off = ctx.ground.span(sky.camera, self.center);
+        let far = Vec2::new(off.x, off.z).length();
+        if far > LEAVE {
+            self.reposition(index, sky, ctx);
+        }
+        self.probe(dt, ctx);
         let before = self.heading;
         self.steer(index, far, sky, ctx);
         let rate = wrap_angle(self.heading - before) / dt;
         self.turn += (rate - self.turn) * (1.0 - (-2.0 * dt).exp());
         let step = Vec2::from_angle(self.heading) * SPEED[index] * dt;
-        self.center.x += step.x;
-        self.center.z += step.y;
-        self.center.y = approach(self.center.y, self.ground + self.cruise, 3.0 * dt);
+        let moved = self.center + ctx.ground.turn(Vec3::new(step.x, 0.0, step.y));
+        let level = ctx.ground.altitude(moved);
+        let wanted = self.ground + self.cruise;
+        self.center = ctx.ground.raised(moved, approach(level, wanted, 3.0 * dt));
     }
 }
 

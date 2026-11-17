@@ -2,6 +2,10 @@
 
 use crate::world::{Biome, Surface};
 
+/// Height above sea level in meters, over every summit, above which the air holds no particle
+/// and no creature.
+pub const CEILING: f32 = 400.0;
+
 /// The sort of thing a particle currently is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
@@ -99,7 +103,7 @@ pub struct Ambient {
     pub biome: Biome,
     /// Surface under the camera.
     pub surface: Surface,
-    /// Camera height in world units.
+    /// Camera height above sea level in meters, along the local vertical.
     pub height: f32,
     /// Daylight from 0 (night) to 1.
     pub daylight: f32,

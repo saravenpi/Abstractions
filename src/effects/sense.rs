@@ -2,7 +2,9 @@
 
 use bevy::prelude::*;
 
-use crate::render::GameCamera;
+use super::eye::Eye;
+use super::ground::Ground;
+use crate::space::Anchor;
 use crate::world::{Biome, Surface, Terrain};
 
 /// Seconds between two samples.
@@ -27,11 +29,11 @@ impl Default for Sensed {
     }
 }
 
-/// Refreshes the sample every half second.
+/// Refreshes the sample every half second, reading the terrain view under the camera through
+/// the anchor, whichever cube face the view shows.
 pub fn sense(
     time: Res<Time>,
-    terrain: Res<Terrain>,
-    camera: Single<&GlobalTransform, With<GameCamera>>,
+    place: (Res<Anchor>, Res<Terrain>, Res<Eye>),
     mut sensed: ResMut<Sensed>,
     mut wait: Local<f32>,
 ) {
@@ -40,7 +42,8 @@ pub fn sense(
         return;
     }
     *wait = INTERVAL;
-    let at = camera.translation();
+    let (anchor, terrain, eye) = place;
+    let at = Ground::new(&anchor, &terrain, &eye).chart(eye.at);
     sensed.biome = terrain.biome(at.x, at.z);
     sensed.surface = terrain.surface(at.x, at.z);
 }

@@ -4,11 +4,12 @@ use std::f32::consts::TAU;
 
 use bevy::prelude::*;
 
+use super::ground::Ground;
 use super::kind::{Ambient, Kind};
 use super::pick::pick;
 use super::pool::{ABOVE, BELOW, HALF_WIDTH, Particle, Pool};
 use super::rng::Rng;
-use crate::world::{SEA_LEVEL, Terrain};
+use crate::world::SEA_LEVEL;
 
 /// Closest a fresh particle may appear to the camera, in meters.
 const NEAREST: f32 = 1.5;
@@ -20,12 +21,10 @@ const UPWIND_SHARE: f32 = 0.6;
 pub struct Spawn<'a> {
     /// What surrounds the camera.
     pub ambient: Ambient,
-    /// Camera position.
-    pub camera: Vec3,
-    /// Unit wind direction on the XZ plane.
+    /// The ground around the camera, for heights along the local vertical.
+    pub ground: Ground<'a>,
+    /// Unit wind direction in the local frame of the camera.
     pub wind: Vec2,
-    /// Terrain for ground heights.
-    pub terrain: &'a Terrain,
     /// Shared meshes and materials.
     pub pool: &'a Pool,
     /// Random numbers.
@@ -52,13 +51,14 @@ impl Spawn<'_> {
         at
     }
 
-    /// Returns the spawn height for a kind over ground at `ground`.
+    /// Returns the spawn height above sea level for a kind over ground at `ground`.
     fn height(&mut self, kind: Kind, ground: f32) -> f32 {
         let motion = kind.motion();
-        let top = self.camera.y + ABOVE;
+        let eye = self.ground.eye.altitude;
+        let top = eye + ABOVE;
         if kind.is_submerged() {
             let high = top.min(SEA_LEVEL - 0.3);
-            let low = ground.max(self.camera.y - BELOW).min(high - 0.1);
+            let low = ground.max(eye - BELOW).min(high - 0.1);
             return self.rng.range(low, high);
         }
         let floor = ground.max(SEA_LEVEL);
@@ -66,11 +66,26 @@ impl Spawn<'_> {
             return floor + self.rng.range(0.3, 2.0);
         }
         let rise = self.rng.next().sqrt();
-        (self.camera.y - BELOW + (BELOW + ABOVE) * rise).max(floor + 0.3)
+        (eye - BELOW + (BELOW + ABOVE) * rise).max(floor + 0.3)
+    }
+
+    /// Puts a visible particle of `kind` in the box and returns the height it dies at. This is
+    /// the one terrain lookup of a respawn.
+    fn settle(&mut self, kind: Kind, primed: bool, transform: &mut Transform) -> f32 {
+        let at = self.offset(primed);
+        let spot = self.ground.eye.at + self.ground.turn(Vec3::new(at.x, 0.0, at.y));
+        let bed = self.ground.height(spot);
+        let level = self.height(kind, bed);
+        transform.translation = self.ground.raised(spot, level);
+        match kind.is_submerged() {
+            true => bed,
+            false => bed.max(SEA_LEVEL),
+        }
     }
 }
 
-/// Re-rolls a particle's kind, position, life and look.
+/// Re-rolls a particle's kind, position, life and look. A hidden particle only gets a new life:
+/// it is not drawn, so it costs no terrain lookup.
 pub fn respawn(
     particle: &mut Particle,
     transform: &mut Transform,
@@ -79,23 +94,16 @@ pub fn respawn(
 ) {
     let kind = pick(&spawn.ambient, spawn.rng.next());
     let motion = kind.motion();
-    let at = spawn.offset(particle.primed);
-    let ground = spawn
-        .terrain
-        .height(spawn.camera.x + at.x, spawn.camera.z + at.y);
-    let y = spawn.height(kind, ground);
-    transform.translation = Vec3::new(spawn.camera.x + at.x, y, spawn.camera.z + at.y);
     transform.scale = Vec3::ZERO;
     particle.kind = kind;
     particle.age = 0.0;
     particle.life = spawn.rng.range(motion.life.0, motion.life.1);
     particle.phase = spawn.rng.range(0.0, TAU);
-    particle.floor = if kind.is_submerged() {
-        ground
-    } else {
-        ground.max(SEA_LEVEL)
-    };
-    particle.primed = true;
+    let primed = std::mem::replace(&mut particle.primed, true);
+    if kind == Kind::Hidden {
+        return;
+    }
+    particle.floor = spawn.settle(kind, primed, transform);
     let mesh = spawn.pool.mesh(kind);
     if look.0.0 != *mesh {
         look.0.0 = mesh.clone();

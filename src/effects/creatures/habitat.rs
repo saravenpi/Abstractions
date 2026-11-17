@@ -1,7 +1,7 @@
 //! Which creatures are out for a biome, a surface and the time of day.
 
 use super::anim::ramp;
-use crate::effects::kind::Ambient;
+use crate::effects::kind::{Ambient, CEILING};
 use crate::world::{Biome, SEA_LEVEL, Surface};
 
 /// The kinds of wandering creature.
@@ -66,13 +66,15 @@ fn gull_haunt(a: &Ambient) -> f32 {
     }
 }
 
-/// Returns the share of a species' pool that should be out, from 0 to 1.
+/// Returns the share of a species' pool that should be out, from 0 to 1: none under the sea
+/// and none above the ceiling of the air.
 pub fn presence(species: Species, a: &Ambient) -> f32 {
     if a.height < SEA_LEVEL {
         return 0.0;
     }
-    let day = ramp(0.35, 0.75, a.daylight);
-    let night = 1.0 - ramp(0.1, 0.4, a.daylight);
+    let low = 1.0 - ramp(CEILING - 100.0, CEILING, a.height);
+    let day = ramp(0.35, 0.75, a.daylight) * low;
+    let night = (1.0 - ramp(0.1, 0.4, a.daylight)) * low;
     match species {
         Species::Firefly => night * firefly_haunt(a),
         Species::Butterfly => day * butterfly_haunt(a),
@@ -119,5 +121,26 @@ mod tests {
             ..spot(Biome::Meadow, Surface::Grass, 1.0)
         };
         assert_eq!(presence(Species::Crow, &under), 0.0);
+    }
+
+    /// No creature is out for a camera above the ceiling, by day or by night.
+    #[test]
+    fn creatures_stay_under_the_ceiling() {
+        for daylight in [0.0, 1.0] {
+            let high = Ambient {
+                height: CEILING,
+                ..spot(Biome::Meadow, Surface::Grass, daylight)
+            };
+            let all = [
+                Species::Firefly,
+                Species::Butterfly,
+                Species::Crow,
+                Species::Gull,
+            ];
+            assert!(
+                all.into_iter()
+                    .all(|species| presence(species, &high) == 0.0)
+            );
+        }
     }
 }

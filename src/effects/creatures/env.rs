@@ -1,12 +1,15 @@
-//! What every creature system reads: time, sky, surroundings, terrain and random numbers.
+//! What every creature system reads: time, sky, surroundings, the ground and random numbers.
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
+use crate::effects::eye::Eye;
+use crate::effects::ground::Ground;
 use crate::effects::kind::Ambient;
 use crate::effects::rng::Rng;
 use crate::effects::sense::Sensed;
 use crate::render::{DayClock, daylight};
+use crate::space::Anchor;
 use crate::wind::Wind;
 use crate::world::Terrain;
 
@@ -17,8 +20,9 @@ pub struct Env<'w> {
     clock: Res<'w, DayClock>,
     sensed: Res<'w, Sensed>,
     wind: Res<'w, Wind>,
-    /// Terrain for ground heights.
-    pub terrain: Res<'w, Terrain>,
+    anchor: Res<'w, Anchor>,
+    terrain: Res<'w, Terrain>,
+    eye: Res<'w, Eye>,
     /// Shared random numbers.
     pub rng: ResMut<'w, Rng>,
 }
@@ -30,37 +34,45 @@ pub struct Sky {
     pub dt: f32,
     /// Wrapped seconds of game time.
     pub now: f32,
-    /// Camera position.
+    /// Camera position in render space.
     pub camera: Vec3,
-    /// Unit wind direction on the XZ plane.
+    /// Rotation from the local frame of the camera, with +Y up, to render axes.
+    pub tilt: Quat,
+    /// Unit wind direction in the local frame of the camera, on its XZ plane.
     pub wind: Vec2,
     /// What surrounds the camera.
     pub ambient: Ambient,
 }
 
-/// Terrain and random numbers for picking places.
+/// The ground and random numbers for picking places.
 pub struct Ctx<'a> {
-    /// Terrain for ground heights.
-    pub terrain: &'a Terrain,
+    /// The ground around the camera, for heights along the local vertical.
+    pub ground: Ground<'a>,
     /// Random numbers.
     pub rng: &'a mut Rng,
 }
 
 impl Env<'_> {
-    /// Returns this frame's view of the world around the camera at `camera`.
-    pub fn sky(&self, camera: Vec3) -> Sky {
+    /// Returns this frame's view of the world around the camera.
+    pub fn sky(&self) -> Sky {
         Sky {
             dt: self.time.delta_secs(),
             now: self.time.elapsed_secs_wrapped(),
-            camera,
+            camera: self.eye.at,
+            tilt: self.eye.tilt,
             wind: self.wind.direction,
             ambient: Ambient {
                 biome: self.sensed.biome,
                 surface: self.sensed.surface,
-                height: camera.y,
+                height: self.eye.altitude,
                 daylight: daylight(self.clock.phase),
                 wind: self.wind.strength,
             },
         }
+    }
+
+    /// Returns the ground around the camera of this frame.
+    pub fn ground(&self) -> Ground<'_> {
+        Ground::new(&self.anchor, &self.terrain, &self.eye)
     }
 }

@@ -584,3 +584,9 @@ footer a {
     transition: none;
   }
 }
+
+.soon a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}

@@ -75,10 +75,12 @@ impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
         let mut saved = settings::load();
         let start = render::ray_tracing::begin(&mut saved);
-        let defaults = DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(window()),
-            ..default()
-        });
+        let defaults = DefaultPlugins
+            .set(WindowPlugin {
+                primary_window: Some(window()),
+                ..default()
+            })
+            .set(render::ray_tracing::render_plugin());
         app.insert_resource(saved).add_plugins(defaults);
         render::ray_tracing::prepare(app, start);
         app.add_plugins(PhysicsPlugins::default());

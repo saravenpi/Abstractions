@@ -6,8 +6,9 @@ use bevy::render::renderer::RenderAdapterInfo;
 use bevy::solari::prelude::{RaytracingMesh3d, SolariLighting};
 
 use super::apply::Gpu;
-use super::gpu::{BINDING_ELEMENTS, FEATURES, Probe, SAMPLER_ELEMENTS, Support, missing};
+use super::gpu::{FEATURES, Probe, Support, TEXTURE_SLOTS, missing};
 use super::report::{StartInfo, ToggleInfo, append, start, toggle, write};
+use super::tier::Tier;
 use super::{RayTracing, RayTracingBoot, Start};
 use crate::render::GameCamera;
 use crate::settings::{Persistent, Settings, config_dir};
@@ -49,6 +50,7 @@ fn guard_word(start: Start) -> &'static str {
         Start::Armed => "armed",
         Start::Recovered => "recovered from a failed start, plugins skipped",
         Start::Unwritable => "marker not writable, plugins skipped",
+        Start::Disabled => "turned off by ABSTRACTIONS_RAY_TRACING, plugins skipped",
     }
 }
 
@@ -62,19 +64,26 @@ fn support_word(support: Support) -> &'static str {
     }
 }
 
-/// Returns the binding array limits of the probe next to what Solari binds.
+/// Returns the binding array limits of the probe and the array length Solari binds, each next to what is needed.
 fn limits(probe: Option<Probe>) -> Vec<(&'static str, u32, u32)> {
-    let have = |read: fn(&Probe) -> u32| probe.as_ref().map_or(0, read);
+    let Some(probe) = probe else {
+        return Vec::new();
+    };
     vec![
         (
             "max_binding_array_elements_per_shader_stage",
-            have(|p| p.binding_elements),
-            BINDING_ELEMENTS,
+            probe.binding_elements,
+            probe.elements_needed(),
         ),
         (
             "max_binding_array_sampler_elements_per_shader_stage",
-            have(|p| p.sampler_elements),
-            SAMPLER_ELEMENTS,
+            probe.sampler_elements,
+            TEXTURE_SLOTS,
+        ),
+        (
+            "texture and sampler slots Solari binds",
+            probe.texture_slots(),
+            TEXTURE_SLOTS,
         ),
     ]
 }
@@ -85,6 +94,7 @@ fn write_start(
     boot: Res<RayTracingBoot>,
     settings: Res<Persistent<Settings>>,
     ray_tracing: Res<RayTracing>,
+    workload: Res<Tier>,
 ) {
     let probe = gpu.probe();
     let absent = missing(probe.map_or(Default::default(), |p| p.features));
@@ -100,6 +110,7 @@ fn write_start(
         limits: limits(probe),
         hdr_storage: probe.is_some_and(|p| p.hdr_storage),
         support: support_word(boot.support).to_string(),
+        workload: workload.words(),
         added: boot.guard == Start::Armed,
         guard: guard_word(boot.guard).to_string(),
         setting: settings.graphics.ray_tracing,

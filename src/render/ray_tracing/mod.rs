@@ -2,11 +2,13 @@
 
 mod apply;
 mod boot;
+mod env;
 mod gpu;
 mod guard;
 mod report;
 mod sky;
 mod status;
+mod tier;
 mod trace;
 
 use bevy::prelude::*;
@@ -15,6 +17,7 @@ use bevy::solari::scene::RaytracingScenePlugin;
 
 use self::boot::BootMarker;
 pub use self::boot::Start;
+pub use self::env::render_plugin;
 pub use self::gpu::Support;
 use self::guard::Guarded;
 pub use self::status::status;
@@ -47,8 +50,12 @@ pub fn active(ray_tracing: Res<RayTracing>) -> bool {
 
 /// Runs the boot guard and returns what it decided.
 ///
-/// A start that never finished turns the setting off and saves it.
+/// A start that never finished turns the setting off and saves it. The `ABSTRACTIONS_RAY_TRACING=off`
+/// environment switch skips the plugins and leaves the setting alone.
 pub fn begin(settings: &mut Persistent<Settings>) -> Start {
+    if env::off() {
+        return Start::Disabled;
+    }
     let start = boot::begin(&config_dir());
     if start == Start::Recovered
         && let Err(error) = settings.update(|s| s.graphics.ray_tracing = false)
@@ -81,6 +88,7 @@ pub(super) fn plugin(app: &mut App) {
         boot::plugin,
         apply::plugin,
         sky::plugin,
+        tier::plugin,
         trace::plugin,
     ));
 }

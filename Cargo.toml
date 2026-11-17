@@ -63,4 +63,5 @@ codegen-units = 1
 lto = "thin"
 strip = "symbols"
 
-
+[patch.crates-io]
+bevy_solari = { path = "vendor/bevy_solari" }

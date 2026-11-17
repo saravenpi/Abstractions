@@ -24,6 +24,8 @@ pub enum Start {
     Recovered,
     /// The marker file could not be written, so this run skips the plugins.
     Unwritable,
+    /// The environment switch keeps the plugins out of this run.
+    Disabled,
 }
 
 /// Present while a start is unproven; holds the frames counted toward the proof.
@@ -87,8 +89,11 @@ fn prove(
 }
 
 /// Clears the marker when the game exits cleanly.
+///
+/// An exit with an error keeps it: Bevy quits that way on a render error, and the next start then skips the
+/// plugins and turns the setting off.
 fn clear_on_exit(mut commands: Commands, mut exits: MessageReader<AppExit>) {
-    if exits.read().next().is_some() {
+    if exits.read().next().is_some_and(AppExit::is_success) {
         clear(&mut commands);
     }
 }

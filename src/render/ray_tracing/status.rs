@@ -11,6 +11,9 @@ pub fn status(boot: RayTracingBoot, active: bool) -> &'static str {
         (Start::Unwritable, _) => {
             "Ray tracing is not available: the start guard could not be written"
         }
+        (Start::Disabled, _) => {
+            "Ray tracing is not available: turned off by ABSTRACTIONS_RAY_TRACING"
+        }
         (_, Support::NoHardware) => {
             "Ray tracing is not available: this GPU has no hardware ray tracing"
         }
@@ -44,5 +47,10 @@ mod tests {
         assert_eq!(status(ready, false), "Ray tracing is off");
         assert!(status(no_gpu, false).contains("no hardware ray tracing"));
         assert!(status(failed, false).contains("failed start"));
+        let switched = RayTracingBoot {
+            guard: Start::Disabled,
+            ..ready
+        };
+        assert!(status(switched, false).contains("ABSTRACTIONS_RAY_TRACING"));
     }
 }

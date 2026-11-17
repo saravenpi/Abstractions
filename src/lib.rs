@@ -4,6 +4,7 @@ pub mod audio;
 pub mod companion;
 pub mod computer;
 pub mod effects;
+pub mod home;
 pub mod menus;
 pub mod player;
 pub mod render;
@@ -53,5 +54,6 @@ impl Plugin for AppPlugin {
             audio::plugin,
             companion::plugin,
         ));
+        app.add_plugins(home::plugin);
     }
 }

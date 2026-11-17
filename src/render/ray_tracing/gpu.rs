@@ -2,7 +2,10 @@
 
 use bevy::render::render_resource::{TextureFormat, TextureFormatFeatureFlags};
 use bevy::render::renderer::{RenderAdapter, RenderDevice};
-use bevy::render::settings::WgpuFeatures;
+use bevy::render::settings::{Backends, WgpuFeatures};
+use bevy::solari::scene::texture_slot_capacity;
+
+use super::env;
 
 /// Every wgpu feature Solari needs, by name.
 pub const FEATURES: [(&str, WgpuFeatures); 5] = [
@@ -22,11 +25,11 @@ pub const FEATURES: [(&str, WgpuFeatures); 5] = [
     ),
 ];
 
-/// Binding array elements per shader stage Solari asks for: 5000 textures and 500 vertex and 500 index buffers.
-pub const BINDING_ELEMENTS: u32 = 6_000;
+/// Mesh slab buffers Solari binds in arrays: 500 vertex and 500 index buffers.
+pub const SLAB_ELEMENTS: u32 = 1_000;
 
-/// Sampler binding array elements per shader stage Solari asks for: one per texture.
-pub const SAMPLER_ELEMENTS: u32 = 5_000;
+/// Texture and sampler slots the game needs in Solari's arrays: it binds two textures, the rest is headroom.
+pub const TEXTURE_SLOTS: u32 = 16;
 
 /// The numbers read from the device and adapter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,6 +42,8 @@ pub struct Probe {
     pub sampler_elements: u32,
     /// Whether the HDR target format can be bound for reading and writing.
     pub hdr_storage: bool,
+    /// Whether the device is an Apple GPU on Metal, or the debug profile that imitates one.
+    pub apple: bool,
 }
 
 /// What the check found.
@@ -60,6 +65,7 @@ impl Probe {
     pub fn of(device: &RenderDevice, adapter: &RenderAdapter) -> Self {
         let limits = device.limits();
         let format = adapter.get_texture_format_features(TextureFormat::Rgba16Float);
+        let metal = Backends::from(adapter.get_info().backend).contains(Backends::METAL);
         Self {
             features: device.features(),
             binding_elements: limits.max_binding_array_elements_per_shader_stage,
@@ -67,7 +73,18 @@ impl Probe {
             hdr_storage: format
                 .flags
                 .contains(TextureFormatFeatureFlags::STORAGE_READ_WRITE),
+            apple: metal || env::apple8(),
         }
+    }
+
+    /// Returns the length of the texture and sampler arrays Solari binds on this device.
+    pub fn texture_slots(&self) -> u32 {
+        texture_slot_capacity(self.sampler_elements)
+    }
+
+    /// Returns the binding array elements per shader stage Solari binds on this device.
+    pub fn elements_needed(&self) -> u32 {
+        SLAB_ELEMENTS + 2 * self.texture_slots()
     }
 }
 
@@ -85,8 +102,8 @@ pub fn check(probe: &Probe) -> Support {
     if !missing(probe.features).is_empty() {
         return Support::NoHardware;
     }
-    let roomy = probe.binding_elements >= BINDING_ELEMENTS
-        && probe.sampler_elements >= SAMPLER_ELEMENTS
+    let roomy = probe.texture_slots() >= TEXTURE_SLOTS
+        && probe.binding_elements >= probe.elements_needed()
         && probe.hdr_storage;
     match roomy {
         true => Support::Ready,
@@ -95,39 +112,4 @@ pub fn check(probe: &Probe) -> Support {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use bevy::solari::SolariPlugins;
-
-    /// The names cover exactly the features Solari asks for.
-    #[test]
-    fn features_match_solari() {
-        let all = FEATURES
-            .iter()
-            .fold(WgpuFeatures::empty(), |all, (_, flag)| all | *flag);
-        assert_eq!(all, SolariPlugins::required_wgpu_features());
-    }
-
-    /// Missing features beat small limits, and small limits beat ready.
-    #[test]
-    fn check_names_the_blocker() {
-        let ready = Probe {
-            features: SolariPlugins::required_wgpu_features(),
-            binding_elements: 1_000_000,
-            sampler_elements: 500_000,
-            hdr_storage: true,
-        };
-        let small = Probe {
-            sampler_elements: 1024,
-            ..ready
-        };
-        let blind = Probe {
-            features: WgpuFeatures::empty(),
-            ..small
-        };
-        assert_eq!(check(&ready), Support::Ready);
-        assert_eq!(check(&small), Support::TooLimited);
-        assert_eq!(check(&blind), Support::NoHardware);
-        assert_eq!(missing(blind.features).len(), FEATURES.len());
-    }
-}
+mod tests;

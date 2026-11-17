@@ -25,6 +25,17 @@ pub mod world;
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
+/// Returns the window plugin with the game title.
+fn window() -> WindowPlugin {
+    WindowPlugin {
+        primary_window: Some(Window {
+            title: "Abstractions".into(),
+            ..default()
+        }),
+        ..default()
+    }
+}
+
 /// Root plugin wiring every game module together.
 pub struct AppPlugin;
 
@@ -32,13 +43,9 @@ impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
         let mut saved = settings::load();
         let start = render::ray_tracing::begin(&mut saved);
-        let defaults = DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Abstractions".into(),
-                ..default()
-            }),
-            ..default()
-        });
+        let defaults = DefaultPlugins
+            .set(window())
+            .set(render::ray_tracing::render_plugin());
         app.insert_resource(saved).add_plugins(defaults);
         render::ray_tracing::prepare(app, start);
         app.add_plugins(PhysicsPlugins::default()).add_plugins((

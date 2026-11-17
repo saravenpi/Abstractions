@@ -7,6 +7,7 @@ use bevy::render::renderer::{RenderAdapter, RenderAdapterInfo, RenderDevice};
 
 use super::boot;
 use super::gpu::{Probe, Support, check};
+use super::tier::{self, Tier};
 use super::{RayTracing, RayTracingBoot};
 use crate::settings::{Persistent, Settings, config_dir};
 
@@ -29,15 +30,18 @@ impl Gpu<'_> {
     }
 }
 
-/// Checks the device once and puts the default opaque method back to forward.
+/// Checks the device once, chooses its Solari workload and puts the default opaque method back to forward.
 ///
 /// The Solari plugin sets the default to deferred when it is built, even on a GPU that cannot run it.
 fn verify(
     gpu: Gpu,
     mut boot: ResMut<RayTracingBoot>,
+    mut workload: ResMut<Tier>,
     method: Option<ResMut<DefaultOpaqueRendererMethod>>,
 ) {
-    boot.support = gpu.probe().map_or(Support::Unchecked, |p| check(&p));
+    let probe = gpu.probe();
+    boot.support = probe.map_or(Support::Unchecked, |p| check(&p));
+    *workload = probe.map_or(Tier::Full, |p| tier::choose(&p));
     if let Some(mut method) = method {
         method.set_to_forward();
     }

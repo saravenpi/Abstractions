@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 use bevy::render::RenderApp;
+use bevy::render::mesh::allocator::MeshAllocatorSettings;
 use bevy::render::renderer::{RenderAdapter, RenderDevice};
 
 use super::gpu::{Probe, Support, check};
@@ -27,6 +28,24 @@ fn usable(app: &App) -> bool {
     check(&Probe::of(device, adapter)) == Support::Ready
 }
 
+/// Caps the mesh slab size at the largest storage buffer the device binds.
+///
+/// Solari binds every mesh slab whole as a storage buffer, and Bevy grows a slab up to 512 MiB: on a device
+/// with a smaller binding limit the bind group would fail validation once the world holds enough meshes.
+fn fit_slabs(app: &mut App) {
+    let Some(render) = app.get_sub_app_mut(RenderApp) else {
+        return;
+    };
+    let world = render.world_mut();
+    let Some(device) = world.get_resource::<RenderDevice>() else {
+        return;
+    };
+    let limit = device.limits().max_storage_buffer_binding_size;
+    if let Some(mut settings) = world.get_resource_mut::<MeshAllocatorSettings>() {
+        settings.max_slab_size = settings.max_slab_size.min(limit);
+    }
+}
+
 impl<P: Plugin> Plugin for Guarded<P> {
     /// Builds the wrapped plugin as usual: it only loads shaders and sets the render method.
     fn build(&self, app: &mut App) {
@@ -42,6 +61,7 @@ impl<P: Plugin> Plugin for Guarded<P> {
     fn finish(&self, app: &mut App) {
         if usable(app) {
             self.0.finish(app);
+            fit_slabs(app);
         } else {
             info!(
                 "{} is not finished: this device cannot run Solari",

@@ -23,6 +23,8 @@ pub struct StartInfo {
     pub hdr_storage: bool,
     /// The result of the GPU check.
     pub support: String,
+    /// The Solari workload chosen for the device.
+    pub workload: &'static str,
     /// Whether the Solari plugins were added.
     pub added: bool,
     /// What the boot guard decided.
@@ -71,6 +73,7 @@ pub fn start(info: &StartInfo) -> String {
         yes(info.hdr_storage)
     );
     let _ = writeln!(text, "gpu check: {}", info.support);
+    let _ = writeln!(text, "workload: {}", info.workload);
     let _ = writeln!(text, "plugins added: {}", yes(info.added));
     let _ = writeln!(text, "boot guard: {}", info.guard);
     let _ = writeln!(text, "setting: {}", if info.setting { "on" } else { "off" });
@@ -128,6 +131,7 @@ mod tests {
             limits: vec![("samplers", 1024, 5000)],
             hdr_storage: true,
             support: "too limited".into(),
+            workload: "light (no ray tracing hardware)",
             added: false,
             guard: "armed".into(),
             setting: true,
@@ -139,6 +143,7 @@ mod tests {
             "feature A: present",
             "feature B: missing",
             "limit samplers: 1024 (needs 5000)",
+            "workload: light",
             "plugins added: no",
             "setting: on",
             "ray tracing active: no",

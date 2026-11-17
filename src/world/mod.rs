@@ -4,6 +4,7 @@ mod biome;
 mod chunks;
 mod colormap;
 mod focus;
+pub mod globe;
 mod islands;
 mod mesh;
 mod propmesh;
@@ -17,6 +18,7 @@ mod surface;
 mod terrain;
 
 pub use biome::Biome;
+pub use globe::Globe;
 pub use surface::Surface;
 pub use terrain::Terrain;
 
@@ -24,6 +26,8 @@ use bevy::prelude::*;
 
 use crate::saves::ActiveWorld;
 use crate::screens::Screen;
+use crate::space::{Anchor, Location, Travel};
+use crate::universe::Universe;
 
 /// Height of the sea surface in world units.
 pub const SEA_LEVEL: f32 = 0.0;
@@ -49,7 +53,7 @@ pub struct WorldReady(pub bool);
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct StreamAnchor;
 
-/// Builds the terrain, spawn point and readiness flag from the world seed.
+/// Builds the universe, terrain, spawn point, anchor and readiness flag from the world seed.
 ///
 /// A resumed world spawns at its saved position instead of the terrain spawn.
 fn begin_world(
@@ -57,10 +61,18 @@ fn begin_world(
     seed: Option<Res<WorldSeed>>,
     active: Option<Res<ActiveWorld>>,
 ) {
-    let terrain = Terrain::new(seed.map_or(0, |s| s.0));
+    let seed = seed.map_or(0, |s| s.0);
+    let (universe, terrain) = (Universe::new(seed), Terrain::new(seed));
+    let home = universe.home();
     let saved = active.and_then(|active| active.0.save.position);
     let spawn = saved.map_or_else(|| terrain.find_spawn(), Vec3::from);
     commands.insert_resource(SpawnPoint(spawn));
+    commands.insert_resource(Anchor::surface(home, &terrain, spawn));
+    commands.insert_resource(Location {
+        body: home,
+        travel: Travel::OnFoot,
+    });
+    commands.insert_resource(universe);
     commands.insert_resource(terrain);
     commands.insert_resource(WorldReady(false));
 }
@@ -71,6 +83,9 @@ fn end_world(mut commands: Commands, mut chunks: ResMut<chunks::Chunks>) {
     commands.remove_resource::<Terrain>();
     commands.remove_resource::<SpawnPoint>();
     commands.remove_resource::<WorldReady>();
+    commands.remove_resource::<Universe>();
+    commands.remove_resource::<Anchor>();
+    commands.remove_resource::<Location>();
 }
 
 /// Run condition: the world exists and the player is loading or playing.

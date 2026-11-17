@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::Terrain;
+use crate::world::globe::Globe;
 use crate::world::islands::smooth;
 use crate::world::{Biome, SEA_LEVEL};
 
@@ -58,7 +58,7 @@ impl Pond {
     }
 }
 
-impl Terrain {
+impl Globe {
     /// Returns the pond candidate of `cell` when it is within reach of `p` and sits on good ground.
     fn pond_in_cell(&self, cell: IVec2, p: Vec2) -> Option<Pond> {
         let at = |k| 0.15 + 0.7 * mix(self.seed, cell, k);
@@ -66,7 +66,7 @@ impl Terrain {
         if center.distance(p) > REACH {
             return None;
         }
-        if mix(self.seed, cell, 2) > pond_chance(self.biome(center.x, center.y)) {
+        if mix(self.seed, cell, 2) > pond_chance(self.biome_flat(center.x, center.y)) {
             return None;
         }
         let ground = |q: Vec2| self.shape.elevation(q.x, q.y, &self.climate);
@@ -95,14 +95,14 @@ impl Terrain {
     }
 
     /// Returns the ground height at `(x, z)` with the ponds carved into the uncarved height `h`.
-    pub(super) fn carve(&self, x: f32, z: f32, h: f32) -> f32 {
+    pub(in crate::world) fn carve(&self, x: f32, z: f32, h: f32) -> f32 {
         let p = Vec2::new(x, z);
         self.ponds_near(x, z)
             .fold(h, |h, pond| h.min(h + (pond.floor - h) * pond.pull(p).0))
     }
 
     /// Returns true when `(x, z)` lies inside a pond basin.
-    pub(super) fn in_pond(&self, x: f32, z: f32) -> bool {
+    pub(in crate::world) fn in_pond(&self, x: f32, z: f32) -> bool {
         let p = Vec2::new(x, z);
         self.ponds_near(x, z).any(|pond| pond.pull(p).1)
     }

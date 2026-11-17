@@ -1,5 +1,8 @@
 //! Abstractions: a pixelated low-poly island exploration game.
 
+pub mod audio;
+pub mod companion;
+pub mod computer;
 pub mod effects;
 pub mod menus;
 pub mod player;
@@ -7,7 +10,10 @@ pub mod render;
 pub mod saves;
 pub mod screens;
 pub mod settings;
+pub mod ship;
+pub mod space;
 pub mod ui;
+pub mod universe;
 pub mod wind;
 pub mod world;
 
@@ -41,6 +47,11 @@ impl Plugin for AppPlugin {
             saves::plugin,
             wind::plugin,
             effects::plugin,
+            space::plugin,
+            ship::plugin,
+            computer::plugin,
+            audio::plugin,
+            companion::plugin,
         ));
     }
 }

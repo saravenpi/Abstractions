@@ -1,44 +1,50 @@
 //! The terrain height field: the single source of truth for where land is.
 
+use std::sync::Arc;
+
 use bevy::prelude::*;
 
-use super::SEA_LEVEL;
-use super::biome::{Biome, Climate};
-use super::islands::Shape;
-use super::surface::{Surface, classify};
+use super::biome::Biome;
+use super::globe::{Chart, Globe};
+use super::surface::Surface;
+use crate::universe::{HOME_GRAVITY, HOME_RADIUS};
 
 mod ponds;
 mod spawn;
+mod view;
 
-/// Finite difference step used to measure slopes.
-const SLOPE_STEP: f32 = 1.5;
-
-/// Deterministic infinite terrain built from a seed.
+/// A flat `(x, z)` view of the ground of one planet, deterministic for a seed.
+///
+/// The chart says how `(x, z)` maps onto the globe. Heights are metres above sea level.
 #[derive(Resource, Clone)]
 pub struct Terrain {
-    seed: u64,
-    shape: Shape,
-    climate: Climate,
+    globe: Arc<Globe>,
+    chart: Chart,
 }
 
 impl Terrain {
-    /// Builds the terrain for a seed. The same seed always gives the same world.
+    /// Builds the legacy flat terrain for a seed. The same seed always gives the same world.
     pub fn new(seed: u64) -> Self {
-        Self {
-            seed,
-            shape: Shape::new(seed),
-            climate: Climate::new(seed),
-        }
+        let globe = Globe::new(seed, HOME_RADIUS, HOME_GRAVITY);
+        Self::on(Arc::new(globe), Chart::Flat)
+    }
+
+    /// Builds the view of `globe` through `chart`.
+    pub fn on(globe: Arc<Globe>, chart: Chart) -> Self {
+        Self { globe, chart }
     }
 
     /// Returns the seed this terrain was built from.
     pub fn seed(&self) -> u64 {
-        self.seed
+        self.globe.seed()
     }
 
-    /// Returns the ground height at world position `(x, z)`.
+    /// Returns the ground height at chart position `(x, z)`.
     pub fn height(&self, x: f32, z: f32) -> f32 {
-        self.carve(x, z, self.shape.elevation(x, z, &self.climate))
+        match self.chart {
+            Chart::Flat => self.globe.height_flat(x, z),
+            chart => self.globe.height(chart.dir(x, z)),
+        }
     }
 
     /// Returns the height the finest terrain mesh draws at `(x, z)`: its 2 m triangles, interpolated.
@@ -60,24 +66,26 @@ impl Terrain {
 
     /// Returns true when `(x, z)` lies inside a pond basin.
     pub fn pond_at(&self, x: f32, z: f32) -> bool {
-        self.in_pond(x, z)
-    }
-
-    /// Returns what covers the ground at world position `(x, z)`.
-    pub fn surface(&self, x: f32, z: f32) -> Surface {
-        let h = self.height(x, z);
-        if h <= SEA_LEVEL && self.in_pond(x, z) {
-            return Surface::Pond;
+        match self.chart {
+            Chart::Flat => self.globe.pond_flat(x, z),
+            chart => self.globe.pond_at(chart.dir(x, z)),
         }
-        let e = SLOPE_STEP;
-        let dx = (self.height(x + e, z) - self.height(x - e, z)) / (2.0 * e);
-        let dz = (self.height(x, z + e) - self.height(x, z - e)) / (2.0 * e);
-        classify(h, dx.hypot(dz), self.biome(x, z))
     }
 
-    /// Returns the biome at world position `(x, z)`, also over water.
+    /// Returns what covers the ground at chart position `(x, z)`.
+    pub fn surface(&self, x: f32, z: f32) -> Surface {
+        match self.chart {
+            Chart::Flat => self.globe.surface_flat(x, z),
+            chart => self.globe.surface(chart.dir(x, z)),
+        }
+    }
+
+    /// Returns the biome at chart position `(x, z)`, also over water.
     pub fn biome(&self, x: f32, z: f32) -> Biome {
-        self.climate.biome(x, z, self.shape.base(x, z))
+        match self.chart {
+            Chart::Flat => self.globe.biome_flat(x, z),
+            chart => self.globe.biome(chart.dir(x, z)),
+        }
     }
 }
 

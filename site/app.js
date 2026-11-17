@@ -27,7 +27,7 @@
   }
 
   function link(button, assets) {
-    const asset = assets.find((item) => item.name.endsWith(button.dataset.match));
+    const asset = assets.find((item) => item.name === button.dataset.match);
     if (!asset || !String(asset.browser_download_url).startsWith(prefix)) return false;
     const meta = button.querySelector(".meta");
     button.href = asset.browser_download_url;
@@ -43,9 +43,7 @@
     document.getElementById("version").textContent = release.tag_name;
     released.dateTime = date.toISOString().slice(0, 10);
     released.textContent = date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
-    if (buttons.map((button) => link(button, assets)).every(Boolean)) {
-      document.getElementById("link-note").textContent = "Each button downloads the file from the latest release on GitHub.";
-    }
+    buttons.forEach((button) => link(button, assets));
   }
 
   highlight(detect());

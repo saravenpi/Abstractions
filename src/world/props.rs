@@ -5,14 +5,19 @@ use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
 use super::colormap;
-use super::propmesh::BIG;
-use super::scatter::Placement;
+use super::propmesh::{BIG, merge_parts_on};
+use super::scatter::{Placement, Rig, Scatter};
+use super::shapes::FlatMesh;
 
 mod cover;
 mod kelp;
 mod pond;
+#[cfg(test)]
+mod tests;
 
-pub use cover::{build_grass, small_tris};
+pub use cover::small_tris;
+
+use cover::{solids, sprout};
 
 /// Collider radius and height of every big plant, in `Plant` order; zero means no collider.
 #[rustfmt::skip]
@@ -53,20 +58,50 @@ pub struct Cover {
     pub grass: Option<Handle<Mesh>>,
 }
 
+/// Builds the merged mesh of every small plant of a scatter in chunk space: grass, flowers, kelp and small solids.
+pub fn build_grass(scatter: &Scatter) -> Mesh {
+    build_grass_on(scatter, &Rig::PLAIN)
+}
+
+/// Builds the merged mesh of every small plant of a scatter in the frame of `rig`.
+///
+/// Each plant is one rigid piece that stands along the local up at its origin: blades keep their true size,
+/// kelp rises its true height and pond plants reach the sea level sphere from the pond floor. It reads only
+/// its arguments and is safe on any thread.
+pub fn build_grass_on(scatter: &Scatter, rig: &Rig) -> Mesh {
+    let loose = scatter
+        .grass
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| !p.plant.solid());
+    let parts = loose.map(|(i, p)| {
+        let mut m = FlatMesh::default();
+        sprout(&mut m, i, p);
+        (p.pos, m)
+    });
+    merge_parts_on(parts, &solids(scatter), rig)
+}
+
 /// Returns the trunk, cactus, rock and wreck colliders of every big prop as one compound, in chunk space.
 pub fn body_collider(props: &[Placement]) -> Option<Collider> {
+    body_collider_on(props, &Rig::PLAIN)
+}
+
+/// Returns the trunk, cactus, rock and wreck colliders of every big prop as one compound, in the frame of `rig`.
+///
+/// Each cylinder keeps its true size and stands along the local up at the origin of its prop. It reads only
+/// its arguments and is safe on any thread.
+pub fn body_collider_on(props: &[Placement], rig: &Rig) -> Option<Collider> {
     let shapes: Vec<_> = props
         .iter()
         .filter_map(|p| {
             let [radius, height] = BODIES[p.plant as usize];
             let (radius, height) = (radius * p.scale, height * p.scale);
             (radius > 0.0).then(|| {
-                let at = p.pos + Vec3::Y * height * 0.5;
-                (
-                    at,
-                    Quat::from_rotation_y(p.yaw),
-                    Collider::cylinder(radius, height),
-                )
+                let (origin, turn) = rig.frame(p.pos);
+                let at = origin + turn * Vec3::Y * (height * 0.5);
+                let rot = turn * Quat::from_rotation_y(p.yaw);
+                (at, rot, Collider::cylinder(radius, height))
             })
         })
         .collect();

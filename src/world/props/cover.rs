@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use crate::world::propmesh::{BIG, FLOWER, Plant, merge_with, solid_tris};
+use crate::world::propmesh::{BIG, FLOWER, Plant, solid_tris};
 use crate::world::scatter::{Placement, Scatter};
 use crate::world::shapes::{FlatMesh, shade};
 use crate::world::solids::{Fan, fan};
@@ -70,35 +70,32 @@ pub fn small_tris(p: &Placement) -> usize {
     }
 }
 
-/// Builds the merged mesh of every small plant of a scatter: grass, flowers, kelp and small solids.
-pub fn build_grass(scatter: &Scatter) -> Mesh {
-    let mut m = FlatMesh::default();
-    for (i, p) in scatter.grass.iter().enumerate() {
-        let tone = 0.9 + (i % 5) as f32 * 0.05;
-        if p.plant == Plant::Kelp {
-            kelp(&mut m, p.pos, p.scale, p.yaw, shade(KELP, tone));
-        } else if p.plant.pond() {
-            pond(&mut m, p, tone);
-        } else if !p.plant.solid() {
-            for (spec, lift, color) in layers(p.plant) {
-                let [count, reach, rise, arch, width] = spec;
-                let s = p.scale;
-                let shape = [count, reach * s, rise * s, arch * s, width * s];
-                fan(
-                    &mut m,
-                    p.pos + Vec3::Y * lift * s,
-                    shape,
-                    p.yaw,
-                    shade(color, tone),
-                );
-            }
+/// Adds small plant `p`, number `i` of its chunk, to `m` in chunk space. Small solids add nothing: they are merged
+/// from shared geometry.
+pub fn sprout(m: &mut FlatMesh, i: usize, p: &Placement) {
+    let tone = 0.9 + (i % 5) as f32 * 0.05;
+    if p.plant == Plant::Kelp {
+        kelp(m, p.pos, p.scale, p.yaw, shade(KELP, tone));
+    } else if p.plant.pond() {
+        pond(m, p, tone);
+    } else if !p.plant.solid() {
+        for (spec, lift, color) in layers(p.plant) {
+            let [count, reach, rise, arch, width] = spec;
+            let s = p.scale;
+            let shape = [count, reach * s, rise * s, arch * s, width * s];
+            fan(
+                m,
+                p.pos + Vec3::Y * lift * s,
+                shape,
+                p.yaw,
+                shade(color, tone),
+            );
         }
     }
-    let solids: Vec<Placement> = scatter
-        .grass
-        .iter()
-        .filter(|p| p.plant.solid())
-        .copied()
-        .collect();
-    merge_with(m.into_mesh(), &solids)
+}
+
+/// Returns the small solids of a scatter, such as coral and mushrooms.
+pub fn solids(scatter: &Scatter) -> Vec<Placement> {
+    let solid = |p: &&Placement| p.plant.solid();
+    scatter.grass.iter().filter(solid).copied().collect()
 }

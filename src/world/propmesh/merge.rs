@@ -5,21 +5,24 @@ use std::sync::OnceLock;
 use bevy::mesh::VertexAttributeValues;
 use bevy::prelude::*;
 
-use super::{BIG, PARTS, VARIANTS, big_mesh};
-use crate::world::scatter::Placement;
+use super::{BIG, PARTS, VARIANTS, big_mesh, merge_props_on};
+use crate::world::scatter::{Placement, Rig};
 use crate::world::shapes::textured_mesh;
 
 /// Vertex arrays of a triangle soup.
 #[derive(Default)]
-struct Soup {
-    positions: Vec<[f32; 3]>,
-    normals: Vec<[f32; 3]>,
-    uvs: Vec<[f32; 2]>,
+pub(super) struct Soup {
+    /// Position of every vertex.
+    pub(super) positions: Vec<[f32; 3]>,
+    /// Normal of every vertex.
+    pub(super) normals: Vec<[f32; 3]>,
+    /// Color lookup coordinates of every vertex.
+    pub(super) uvs: Vec<[f32; 2]>,
 }
 
 impl Soup {
     /// Reads the vertex arrays of a mesh built by `FlatMesh`.
-    fn of(mesh: &Mesh) -> Self {
+    pub(super) fn of(mesh: &Mesh) -> Self {
         let (
             Some(VertexAttributeValues::Float32x3(positions)),
             Some(VertexAttributeValues::Float32x3(normals)),
@@ -39,14 +42,13 @@ impl Soup {
         }
     }
 
-    /// Appends one placed prop with its transform baked into the vertices.
-    fn push(&mut self, p: &Placement) {
+    /// Appends prop `p` as one rigid piece, its base at `origin` and its axes turned by `rot`.
+    pub(super) fn push(&mut self, p: &Placement, origin: Vec3, rot: Quat) {
         let b = base(p.plant as usize, p.variant as usize);
-        let rot = Quat::from_rotation_y(p.yaw);
         self.positions.extend(
             b.positions
                 .iter()
-                .map(|v| (p.pos + rot * (Vec3::from(*v) * p.scale)).to_array()),
+                .map(|v| (origin + rot * (Vec3::from(*v) * p.scale)).to_array()),
         );
         self.normals
             .extend(b.normals.iter().map(|n| (rot * Vec3::from(*n)).to_array()));
@@ -54,7 +56,7 @@ impl Soup {
     }
 
     /// Converts the soup into a mesh.
-    fn into_mesh(self) -> Mesh {
+    pub(super) fn into_mesh(self) -> Mesh {
         textured_mesh(self.positions, self.normals, self.uvs)
     }
 }
@@ -78,20 +80,7 @@ fn base(kind: usize, variant: usize) -> &'static Soup {
 
 /// Merges every placed solid prop into one mesh in chunk space, with each transform baked into the vertices.
 pub fn merge_props(props: &[Placement]) -> Mesh {
-    merge_into(Soup::default(), props)
-}
-
-/// Appends every placed solid prop to a mesh built by `FlatMesh`.
-pub fn merge_with(mesh: Mesh, props: &[Placement]) -> Mesh {
-    merge_into(Soup::of(&mesh), props)
-}
-
-/// Appends every placed solid prop to a soup and converts it into a mesh.
-fn merge_into(mut soup: Soup, props: &[Placement]) -> Mesh {
-    for p in props {
-        soup.push(p);
-    }
-    soup.into_mesh()
+    merge_props_on(props, &Rig::PLAIN)
 }
 
 #[cfg(test)]

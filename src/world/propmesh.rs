@@ -3,20 +3,25 @@
 mod land;
 mod merge;
 mod plant;
+mod rigid;
 mod sea;
 mod small;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_rigid;
 
 use std::ops::{Range, RangeInclusive};
 
 use bevy::prelude::*;
 
+use super::scatter::{Placement, Rig};
 use super::shapes::{FlatMesh, shade};
 use super::solids::{cone, fan, frustum, icosa, slab};
 
-pub use merge::{merge_props, merge_with};
+pub use merge::merge_props;
 pub use plant::Plant;
+pub use rigid::merge_parts_on;
 
 /// Number of mesh variants built for every solid plant.
 pub const VARIANTS: usize = 3;
@@ -141,4 +146,14 @@ pub fn big_mesh(kind: usize, variant: usize) -> Mesh {
         add_part(&mut m, kind, variant, i);
     }
     m.into_mesh()
+}
+
+/// Merges every placed solid prop into one mesh in the frame of `rig`.
+///
+/// Only the origin of each prop is embedded: its mesh keeps its true shape and size and stands along the local
+/// up there. It reads only its arguments and is safe on any thread.
+pub fn merge_props_on(props: &[Placement], rig: &Rig) -> Mesh {
+    let mut soup = merge::Soup::default();
+    soup.stand(props, rig);
+    soup.into_mesh()
 }

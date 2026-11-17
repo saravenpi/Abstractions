@@ -1,0 +1,64 @@
+//! Guards the legacy plane: its scatter and merged output must stay bit for bit what v0.5 produced.
+
+use bevy::mesh::VertexAttributeValues;
+
+use super::*;
+use crate::world::propmesh::merge_props;
+use crate::world::props::{body_collider, build_grass};
+
+/// Folds the bits of `values` into an FNV-1a digest.
+fn fold(digest: u64, values: impl IntoIterator<Item = u32>) -> u64 {
+    values.into_iter().fold(digest, |d, v| {
+        (d ^ u64::from(v)).wrapping_mul(0x0000_0100_0000_01B3)
+    })
+}
+
+/// Returns the bits of the vertex positions of a mesh.
+fn positions(mesh: &Mesh) -> Vec<u32> {
+    let Some(VertexAttributeValues::Float32x3(v)) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) else {
+        return Vec::new();
+    };
+    v.iter().flatten().map(|c| c.to_bits()).collect()
+}
+
+/// Returns the digest of everything the legacy entry points produce for a block of chunks of `seed`.
+fn digest(seed: u64) -> u64 {
+    let t = Terrain::new(seed);
+    let mut d = 0xCBF2_9CE4_8422_2325;
+    for coord in (-4..4).flat_map(|x| (-4..4).map(move |y| IVec2::new(x, y))) {
+        let s = scatter_chunk(&t, coord);
+        for p in s.props.iter().chain(&s.grass) {
+            let bits = [p.pos.x, p.pos.y, p.pos.z, p.yaw, p.scale].map(f32::to_bits);
+            d = fold(
+                d,
+                bits.into_iter()
+                    .chain([p.plant as u32, u32::from(p.variant)]),
+            );
+        }
+        d = fold(d, positions(&merge_props(&s.props)));
+        d = fold(d, positions(&build_grass(&s)));
+        d = fold(
+            d,
+            [body_collider(&s.props).map_or(0, |c| {
+                c.shape()
+                    .as_compound()
+                    .map_or(0, |c| c.shapes().len() as u32)
+            })],
+        );
+    }
+    d
+}
+
+/// The legacy plane scatters, merges and builds exactly what it did before the globe.
+#[test]
+fn flat_output_is_frozen() {
+    let frozen = [
+        (1, 0x515E_6225_7016_D0B8_u64),
+        (5, 0x1C59_CD13_0833_DDAF),
+        (42, 0xC579_A252_59BB_C1AE),
+    ];
+    for (seed, want) in frozen {
+        let got = digest(seed);
+        assert_eq!(got, want, "seed {seed} now gives {got:#018X}");
+    }
+}

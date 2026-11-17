@@ -1,18 +1,42 @@
 # Abstractions
 
-A first-person exploration game with a pixelated, low-poly look. You wake up in an endless ocean of procedurally generated islands. Cross six biomes, climb mountains, dive on coral reefs, and find villages, camps, ruins and lighthouses. The day lasts ten minutes, and so does the night.
+A space exploration game with a pixelated, low-poly look. You are a human in a control container on the planet Kodya, in the Vereya system, driving a small robot over a quantum link. A second robot floats along with you. Walk around whole planets, glide over them in a wingsuit, then take the ship through the clouds to other planets, stars and galaxies. Everything comes from one seed.
+
+Where the game is going: [ROADMAP.md](ROADMAP.md).
 
 ## Controls
+
+On foot:
 
 | Input | Action |
 | --- | --- |
 | W A S D | Move |
 | Mouse | Look |
-| Space | Jump, or swim up |
+| Space | Jump, or swim up. Held in the air: boot boosters, which slow a fall |
+| Shift | Sprint. Held with the wingsuit spread: boot boosters, which make you fly |
+| R | Spread or fold the wingsuit in the air |
+| V | First or third person |
+| F | Board the ship |
 | Look down + W | Dive while swimming |
-| Shift | Sprint |
 | Esc | Pause menu, or back |
-| Arrows, Enter | Move and select in menus |
+
+In the ship:
+
+| Input | Action |
+| --- | --- |
+| W S | Throttle up, throttle down to reverse |
+| Mouse, A D | Pitch and yaw |
+| Q E | Roll |
+| Space, Ctrl | Vertical thrusters up and down |
+| Shift | Boost |
+| X | Cut the throttle |
+| Z | Flight assist on or off |
+| J | Warp drive, away from a planet's gravity |
+| Tab | Board computer: places you have discovered |
+| G | Send the computer's destination to the autopilot |
+| Alt | Hold to look around |
+| V | First or third person |
+| F | Leave the ship |
 
 Rebind every key in Settings > Controls.
 
@@ -20,7 +44,7 @@ Rebind every key in Settings > Controls.
 
 New world asks for a name and a seed. Leave the seed empty for a random world. The same seed always gives the same world.
 
-The game saves your position, view and time of day when you pause, when you quit, and every minute. Continue on the main menu reopens the last world. Worlds lists all of them; press Delete on a world to remove it.
+The game saves where you are, your ship, what you have discovered and the time when you pause, when you quit, and every minute. Continue on the main menu reopens the last world. Worlds lists all of them, where you can rename, duplicate or delete a world.
 
 Saves are one small file per world:
 
@@ -93,11 +117,11 @@ Settings > Graphics > Ray tracing (experimental) turns on ray traced lighting: t
 What it needs:
 
 - A GPU with hardware ray tracing.
-- On a Mac: an M3 or later and macOS 15 or later. M1 and M2 cannot run it, because the engine's ray tracer needs a GPU limit they do not have.
+- On a Mac: Apple Silicon and macOS 15 or later. M1 and M2 run a lighter version.
 
 Limits while it is on: no distance fog on the land, and torches, lamps, campfires and fireflies do not light the ground. The image has a little grain, because the engine's only denoiser is for NVIDIA cards.
 
-It has run on a software renderer but never on a real GPU. If it does not turn on, the reason is in `ray-tracing.log`, next to the settings file. If the game fails to start with it on, start the game again: it turns ray tracing off by itself.
+It has run on a software renderer but not yet on a real GPU, and the M1 and M2 path is new in 0.6. If it does not turn on, the reason is in `ray-tracing.log`, next to the settings file. If the game fails to start with it on, start the game again: it turns ray tracing off by itself.
 
 ## Settings
 
@@ -112,13 +136,20 @@ A missing or broken file is replaced by the defaults.
 ## Source layout
 
 - `src/lib.rs`: root plugin that wires every module together.
-- `src/screens`: the `Screen` state (title, loading, gameplay).
-- `src/menus`: main, worlds, new world, pause and settings menus.
-- `src/saves`: saved worlds and autosave.
-- `src/ui`: shared UI widgets.
-- `src/world`: terrain, biomes, chunk streaming, plants, structures and sea.
-- `src/player`: first-person movement, jump and swimming.
-- `src/render`: low-resolution target, day clock, sun, moon, sky dome, fog and ray tracing.
-- `src/effects`: particles, fireflies, butterflies and birds.
-- `src/wind.rs`: the wind shared by water, smoke and particles.
-- `src/settings`: persisted settings and the code that applies them.
+- `src/universe`: galaxies, stars, systems and planets generated from the seed.
+- `src/space`: frames of reference, the floating origin and the clock.
+- `src/world`: planets as spheres, terrain, chunk streaming, plants, structures and sea.
+- `src/home`: the base on Kodya.
+- `src/player`, `src/avatar`, `src/gear`, `src/view`: movement, the robot body, the wingsuit and boots, the camera.
+- `src/ship`, `src/computer`: the ship, its autopilot and the board computer.
+- `src/companion`: the second robot.
+- `src/audio`: generated music and sounds.
+- `src/render`: low-resolution target, sun, sky, atmosphere, clouds, stars, fog and ray tracing.
+- `src/effects`, `src/wind`: particles, creatures and the shared wind.
+- `src/screens`, `src/menus`, `src/ui`: states, menus and widgets.
+- `src/saves`, `src/settings`: saved worlds and settings.
+- `vendor/bevy_solari`: the engine's ray tracer with two patches, listed in `vendor/bevy_solari/PATCHES.md`.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE). Font licences are in `LICENSES/`.

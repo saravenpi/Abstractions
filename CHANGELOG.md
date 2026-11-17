@@ -5,6 +5,39 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-17
+
+### Added
+
+- A universe: galaxies, spiral arms, star classes and solar systems with 2 to 8 planets, all from one seed.
+- Planets are true spheres, 3 to 40 km in radius, with their own gravity, day length and orbit. Every planet uses the island generator for now.
+- The home base on Kodya, in the Vereya system: the control container, a small station and a landing pad.
+- A ship with Newtonian flight, flight assist, landing gear, a warp drive and an autopilot.
+- A board computer that lists the systems and galaxies you have discovered and flies you there. Visiting a place reveals its neighbours.
+- A sky made of real things: the sun is the star, the atmosphere fades to black, a cloud layer to fly through, stars and galaxies in their true directions.
+- A humanoid robot body with a screen face, and first and third person views on foot and in the ship.
+- Boot boosters that slow a fall, a wingsuit that glides, and powered flight with both. Wind and trails in flight.
+- A floating robot companion with a screen face that follows you, reacts and lights the night a little.
+- Sound: ambient music generated for each planet and silent in space, wind, sea, footsteps, ship and interface sounds.
+- World management: rename, duplicate and delete.
+- Render distance steps up to Extreme for strong GPUs.
+- An app icon on Windows, macOS and Linux.
+- The MIT licence and a roadmap.
+
+### Changed
+
+- The interface is black and white, with the Undefined font, pixelarticons and blurred backdrops.
+- Terrain, plants, buildings and colliders are built off the main thread and arrive within a per-frame budget.
+- Ray tracing now starts on Apple M1 and M2, with a lighter workload.
+- A world from 0.5 still opens. It keeps its name and seed and starts again at the home base on Kodya.
+
+### Fixed
+
+- Door frames flickered against the wall they sat in.
+- Roofs floated above the walls inside houses.
+- Far water showed concentric rings.
+- The field of view value wrapped onto two lines in the options.
+
 ## [0.5.0] - 2026-11-17
 
 ### Added

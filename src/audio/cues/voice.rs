@@ -79,6 +79,8 @@ pub struct Voice {
     noise: Noise,
     /// Whether the voice is sounding or waiting to.
     live: bool,
+    /// Left and right gains: where the sound comes from.
+    pub sides: [f32; 2],
 }
 
 impl Voice {
@@ -95,6 +97,7 @@ impl Voice {
             filter: Svf::default(),
             noise: Noise::new(seed),
             live: false,
+            sides: [1.0; 2],
         }
     }
 

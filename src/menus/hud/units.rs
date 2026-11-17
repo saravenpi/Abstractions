@@ -16,7 +16,7 @@ pub fn speed(metres_per_second: f64) -> String {
     format!("{}/s", distance(metres_per_second.abs()))
 }
 
-/// Formats a fraction as a whole percentage: 0.654 reads "65 %", reverse thrust reads "-50 %".
+/// Formats a fraction as a whole percentage: 0.654 reads "65 %".
 pub fn percent(fraction: f64) -> String {
     format!("{:.0} %", fraction * 100.0)
 }

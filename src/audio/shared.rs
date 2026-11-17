@@ -43,10 +43,16 @@ pub enum Param {
     Boost,
     /// Flutter of the wingsuit cloth.
     Flutter,
+    /// Side of the shoreline: 0 left, 0.5 ahead, 1 right.
+    ShoreSide,
+    /// Side of the companion: 0 left, 0.5 ahead, 1 right.
+    BuddySide,
+    /// Nearness of the companion.
+    BuddyNear,
 }
 
 /// Number of [`Param`] values.
-pub const PARAMS: usize = 17;
+pub const PARAMS: usize = 20;
 
 impl Param {
     /// Every parameter, in index order.
@@ -68,6 +74,9 @@ impl Param {
         Param::Rush,
         Param::Boost,
         Param::Flutter,
+        Param::ShoreSide,
+        Param::BuddySide,
+        Param::BuddyNear,
     ];
 }
 
@@ -149,6 +158,9 @@ impl Shared {
         self.set(Param::Rush, unit(scene.rush * outside));
         self.set(Param::Boost, unit(scene.boost));
         self.set(Param::Flutter, unit(scene.flutter * outside));
+        self.set(Param::ShoreSide, unit(0.5 + 0.5 * scene.shore_side));
+        self.set(Param::BuddySide, unit(0.5 + 0.5 * scene.companion.x));
+        self.set(Param::BuddyNear, unit(scene.companion.y));
     }
 
     /// Queues a cue for the audio thread. Returns false when the queue is full and the cue is lost.

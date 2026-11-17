@@ -25,6 +25,10 @@ const SHELL_RADIUS: f32 = 60.0;
 /// Speed in metres per second at which cloud wisps start to streak and at which they are full.
 const WISP_SPEED: (f32, f32) = (8.0, 80.0);
 
+/// Brightness of the re-entry glow at the rim of the view. It stays a rim: a dive under power
+/// is fast and deep in the air too, and a brighter glow washed the whole view out to white.
+const GLOW_GAIN: f32 = 0.7;
+
 /// What the flight effects are drawn from. The ship writes it; everything is zero on foot.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
 pub struct FlightFx {
@@ -34,6 +38,9 @@ pub struct FlightFx {
     pub warp: f32,
     /// Speed in metres per second; 0 lets the sky measure the camera speed itself.
     pub speed: f32,
+    /// Unit vector along the nose of the ship in render axes, which the warp streams from. Zero
+    /// lets the effects stream from where the camera looks.
+    pub nose: Vec3,
 }
 
 /// Uniform block read by `entry.wesl`. Every field is a `vec4` so the layout never needs padding.
@@ -47,7 +54,7 @@ pub struct FxUniform {
     pub streak: Vec4,
     /// Linear wisp colour in xyz and its strength in w.
     pub wisp: Vec4,
-    /// Time in seconds, streak rate and wisp rate.
+    /// Time in seconds, streak rate, wisp rate and how far the streaks stretch from 0 to 1.
     pub params: Vec4,
 }
 
@@ -120,26 +127,26 @@ impl FxInputs<'_, '_> {
         } else {
             velocity.length()
         };
-        let ahead = self
-            .cameras
-            .iter()
-            .next()
-            .map_or(Vec3::NEG_Z, |c| *c.forward());
+        let seen = self.cameras.iter().next();
+        let ahead = flight
+            .nose
+            .try_normalize()
+            .unwrap_or_else(|| seen.map_or(Vec3::NEG_Z, |camera| *camera.forward()));
         let sink = -velocity.dot(self.vantage.up);
         let glow = entry_glow(flight.dynamic_pressure, sink);
-        let hot = Vec3::new(1.0, 0.32, 0.07).lerp(Vec3::new(1.0, 0.85, 0.6), glow) * 2.5;
+        let hot = Vec3::new(1.0, 0.32, 0.07).lerp(Vec3::new(1.0, 0.6, 0.3), glow) * GLOW_GAIN;
         let warp = flight.warp.clamp(0.0, 1.0);
         let wisps = self.crossing.depth * smoothstep(WISP_SPEED.0, WISP_SPEED.1, speed);
         FxUniform {
             heading: stream_heading(velocity, ahead, warp).extend(0.0),
             glow: hot.extend(glow),
-            streak: Vec3::new(0.7, 0.85, 1.6).extend(warp),
+            streak: Vec3::new(0.8, 0.9, 1.5).extend(smoothstep(0.0, 0.15, warp)),
             wisp: (linear(self.palette.cloud).truncate() * 0.6).extend(wisps),
             params: Vec4::new(
                 self.time.elapsed_secs(),
-                2.0 + 6.0 * warp,
+                0.15 + 1.1 * warp,
                 (speed / 40.0).clamp(0.5, 6.0),
-                0.0,
+                warp,
             ),
         }
     }

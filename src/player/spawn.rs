@@ -29,10 +29,8 @@ pub(super) const RESUME_LIFT: f32 = 0.05;
 /// Altitude below which the player is teleported back to the spawn point.
 const KILL_HEIGHT: f32 = -50.0;
 
-/// Returns the chart position of the body for a spawn point.
-pub(super) fn body_position(spawn: SpawnPoint) -> Vec3 {
-    spawn.0 + Vec3::Y * (SPAWN_LIFT + BODY_RADIUS + BODY_LENGTH * 0.5)
-}
+/// Depth of the body centre under the ground beyond which it is lifted back onto it, in metres.
+const SUNK: f32 = 2.5;
 
 /// Chart position and view angles a new body starts with.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -59,7 +57,7 @@ pub(super) fn start_pose(spawn: SpawnPoint, save: Option<&WorldSave>) -> Pose {
             pitch: save.pitch,
         },
         None => Pose {
-            position: body_position(spawn),
+            position: spawn.0 + Vec3::Y * (SPAWN_LIFT + BODY_RADIUS + BODY_LENGTH * 0.5),
             yaw: 0.0,
             pitch: 0.0,
         },
@@ -152,8 +150,21 @@ fn spawn_player(
         .with_child(eyes(&settings, pose.pitch));
 }
 
-/// Teleports the player back to the spawn point after falling out of the world: at rest, the
-/// flight gear folded, and with a cut of the camera.
+/// Returns where a body at render position `at` goes when it is lost: back `home` once it fell
+/// out of the world, or straight up onto the ground once it sank more than [`SUNK`] under it,
+/// as when the ground loaded after the body passed. Nothing while it is where a body can be.
+fn rescue(anchor: &Anchor, terrain: &Terrain, at: Vec3, home: DVec3) -> Option<Vec3> {
+    let height = altitude(anchor, terrain.globe(), at);
+    let chart = terrain.locate(anchor.to_frame(at));
+    let ground = terrain.height(chart.x, chart.z);
+    if height < KILL_HEIGHT {
+        return Some(anchor.to_render(home));
+    }
+    let stand = ground + BODY_RADIUS + BODY_LENGTH * 0.5 + RESUME_LIFT;
+    (height < ground - SUNK).then(|| at + up(anchor, at) * (stand - height))
+}
+
+/// Puts a lost player back: at rest, the flight gear folded, and with a cut of the camera.
 fn respawn_when_lost(
     anchor: Res<Anchor>,
     terrain: Res<Terrain>,
@@ -161,15 +172,16 @@ fn respawn_when_lost(
     mut cuts: MessageWriter<Cut>,
 ) {
     for (mut transform, mut motion, mut gear, home) in &mut player {
-        if altitude(&anchor, terrain.globe(), transform.translation) < KILL_HEIGHT {
-            transform.translation = anchor.to_render(home.0);
-            *motion = Motion {
-                yaw: motion.yaw,
-                ..default()
-            };
-            *gear = Gear::default();
-            cuts.write(Cut::default());
-        }
+        let Some(back) = rescue(&anchor, &terrain, transform.translation, home.0) else {
+            continue;
+        };
+        transform.translation = back;
+        *motion = Motion {
+            yaw: motion.yaw,
+            ..default()
+        };
+        *gear = Gear::default();
+        cuts.write(Cut::default());
     }
 }
 

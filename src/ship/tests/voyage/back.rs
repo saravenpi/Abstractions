@@ -86,13 +86,13 @@ pub fn resumes_in_flight(game: &mut Game, far: BodyId) {
     game.press(key(game, |keys| keys.ship.board));
     game.step(1);
     game.release(key(game, |keys| keys.ship.board));
-    game.press(key(game, |keys| keys.ship.up));
+    game.press(key(game, |keys| keys.ship.rise));
     game.pace(FLIGHT);
     game.until("the ship to climb", 600, |game| {
         game.get::<ShipTelemetry>().altitude_ground > 25.0
     });
     let entry = reload(game);
-    game.release(key(game, |keys| keys.ship.up));
+    game.release(key(game, |keys| keys.ship.rise));
     at_planet(game, &entry, far);
     let (saved, ship) = (record(&entry), game.ship());
     assert!(saved.seated && !saved.landed);

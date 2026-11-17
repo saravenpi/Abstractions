@@ -3,11 +3,22 @@
 /// Half extents of the rounded head-body in meters: about 45 cm wide with its hands.
 pub const HALF: [f32; 3] = [0.17, 0.16, 0.145];
 
-/// How far to the right of the eyes the companion rests, in meters: out at the edge of the view.
+/// How far to the right of the eyes the companion reappears, in meters.
 pub const SIDE: f32 = 1.5;
 
-/// How far ahead of the eyes the companion rests, in meters.
-pub const AHEAD: f32 = 1.7;
+/// How far from the eyes the companion rests, in meters.
+pub const REACH: f32 = 2.3;
+
+/// Smallest and largest angle between the way the player faces and a place the companion
+/// chooses, in radians: off to one side, never straight ahead.
+pub const PERCH_ARC: (f32, f32) = (0.6, 1.2);
+
+/// Seconds the companion stays out of place before it moves: behind a walking player or in its
+/// way, and behind the back of a player who stands.
+pub const PERCH_PATIENCE: (f32, f32) = (0.9, 3.5);
+
+/// Shortest and longest time the companion keeps one place before it picks another by itself, in seconds.
+pub const PERCH_REST: (f32, f32) = (10.0, 26.0);
 
 /// Height of the resting spot relative to the eyes, in meters: below the line of sight.
 pub const RISE: f32 = -0.3;

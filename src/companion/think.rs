@@ -20,6 +20,10 @@ use crate::computer::Atlas;
 use crate::ship::ShipEvent;
 use crate::universe::BodyId;
 
+/// Seconds the companion waits before it says the same thing again, and before it says
+/// anything else, so it never chatters.
+const QUIET: (f32, f32) = (10.0, 1.5);
+
 /// Head tilt in radians of the curious face.
 const CURIOUS_TILT: f32 = 0.17;
 
@@ -116,11 +120,13 @@ fn settle(brain: &mut Brain, face: &Face, bank: f32) {
     brain.pose.roll -= bank * BANK_SHARE * brain.flight;
 }
 
-/// Watches the player, advances the idle mind, the attention and the face, and sends the chirps.
+/// Watches the player, advances the idle mind, the attention and the face, and sends the
+/// chirps, with a pause after each one.
 pub fn think(
     around: Around,
     mut events: Events,
     bot: Single<(&mut Brain, &mut Face), With<Companion>>,
+    mut said: Local<Option<(ChirpKind, f32)>>,
 ) {
     let (mut brain, mut face) = bot.into_inner();
     let (dt, sense) = (around.dt(), *events.sense);
@@ -141,7 +147,15 @@ pub fn think(
     let changed = face.advance(wanted(&brain, &sense), dt);
     heard = heard.or(changed.and_then(chirp));
     settle(&mut brain, &face, sense.bank);
-    if let Some(kind) = heard {
+    let last = said.map(|(kind, ago)| (kind, ago + dt));
+    *said = last;
+    let wait = |kind: ChirpKind| match last {
+        Some((same, ago)) if same == kind => ago < QUIET.0,
+        Some((_, ago)) => ago < QUIET.1,
+        None => false,
+    };
+    if let Some(kind) = heard.filter(|kind| !wait(*kind)) {
+        *said = Some((kind, 0.0));
         events.chirps.write(CompanionChirp(kind));
     }
 }

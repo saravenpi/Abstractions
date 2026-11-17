@@ -11,6 +11,7 @@ struct Sky {
     rim: vec4<f32>,
     disc: vec4<f32>,
     core: vec4<f32>,
+    glow: vec4<f32>,
 }
 
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> sky: Sky;
@@ -104,7 +105,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     col = col + galaxy_band(v) * above_horizon;
 
     let sun_visible = sky.sun.w * above_horizon;
-    let sun_col = mix(vec3<f32>(1.0, 0.5, 0.2), vec3<f32>(1.0, 0.95, 0.8), smoothstep(0.0, 0.4, dot(sun_dir, sky.up.xyz)));
+    let sun_col = sky.glow.rgb;
     let sun_dist = 1.0 - dot(v, sun_dir);
     let sun_glow = exp(-sun_dist * 45.0) * 0.55 + exp(-sun_dist * 6.0) * 0.18;
     col = col + sun_col * sun_glow * sun_visible;

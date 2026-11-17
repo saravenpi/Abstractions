@@ -123,7 +123,7 @@ pub struct Keymap {
     pub left: KeyCode,
     /// Strafe right.
     pub right: KeyCode,
-    /// Jump, or swim up in water. Held in the air it fires the boot boosters.
+    /// Jump, or swim up in water. Pressed again in the air and held, it fires the boot boosters.
     pub jump: KeyCode,
     /// Run faster. Held with the wingsuit spread it fires the boot boosters.
     pub sprint: KeyCode,
@@ -133,8 +133,8 @@ pub struct Keymap {
     pub engage: KeyCode,
     /// Spread or fold the wingsuit in the air.
     pub wings: KeyCode,
-    /// Held in the ship: the mouse turns the camera around instead of steering.
-    pub orbit: KeyCode,
+    /// Switch between first and third person, in the ship and on foot.
+    pub view: KeyCode,
     /// Ship controls, used while seated in the ship and to board it.
     pub ship: ShipKeys,
 }
@@ -151,20 +151,24 @@ impl Default for Keymap {
             computer: KeyCode::Tab,
             engage: KeyCode::KeyG,
             wings: KeyCode::KeyR,
-            orbit: KeyCode::AltLeft,
+            view: KeyCode::KeyV,
             ship: ShipKeys::default(),
         }
     }
 }
 
-/// Key bindings of the ship.
+/// Key bindings of the ship. The keys steer it and the mouse only looks around.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 #[serde(default)]
 pub struct ShipKeys {
-    /// Push the throttle forward.
-    pub thrust: KeyCode,
-    /// Pull the throttle back, down to reverse.
-    pub brake: KeyCode,
+    /// Push the throttle forward. Held at full throttle it boosts the main engine.
+    pub throttle_up: KeyCode,
+    /// Pull the throttle back, down to idle.
+    pub throttle_down: KeyCode,
+    /// Push the nose down.
+    pub pitch_down: KeyCode,
+    /// Pull the nose up.
+    pub pitch_up: KeyCode,
     /// Turn the nose left.
     pub yaw_left: KeyCode,
     /// Turn the nose right.
@@ -174,19 +178,15 @@ pub struct ShipKeys {
     /// Roll to the right.
     pub roll_right: KeyCode,
     /// Fire the vertical thrusters upward.
-    pub up: KeyCode,
+    pub rise: KeyCode,
     /// Fire the vertical thrusters downward.
-    pub down: KeyCode,
-    /// Boost the main engine.
-    pub boost: KeyCode,
+    pub sink: KeyCode,
     /// Switch the flight assist on or off.
     pub assist: KeyCode,
     /// Set the throttle to zero.
     pub cut: KeyCode,
     /// Spool the warp drive, or drop out of warp.
     pub warp: KeyCode,
-    /// Switch between first and third person, in the ship and on foot.
-    pub view: KeyCode,
     /// Board the ship, or leave it.
     pub board: KeyCode,
 }
@@ -194,19 +194,19 @@ pub struct ShipKeys {
 impl Default for ShipKeys {
     fn default() -> Self {
         Self {
-            thrust: KeyCode::KeyW,
-            brake: KeyCode::KeyS,
+            throttle_up: KeyCode::ShiftLeft,
+            throttle_down: KeyCode::ControlLeft,
+            pitch_down: KeyCode::KeyW,
+            pitch_up: KeyCode::KeyS,
             yaw_left: KeyCode::KeyA,
             yaw_right: KeyCode::KeyD,
             roll_left: KeyCode::KeyQ,
             roll_right: KeyCode::KeyE,
-            up: KeyCode::Space,
-            down: KeyCode::ControlLeft,
-            boost: KeyCode::ShiftLeft,
+            rise: KeyCode::Space,
+            sink: KeyCode::KeyC,
             assist: KeyCode::KeyZ,
             cut: KeyCode::KeyX,
             warp: KeyCode::KeyJ,
-            view: KeyCode::KeyV,
             board: KeyCode::KeyF,
         }
     }

@@ -77,7 +77,7 @@ impl Walk {
             anchor: &self.anchor,
             terrain: &self.terrain,
         };
-        let rest = probe.clear(self.brain.stance.rest(), CLEARANCE);
+        let rest = probe.clear(self.brain.stance.rest(self.brain.perch.side), CLEARANCE);
         self.at.translation.distance(rest)
     }
 }

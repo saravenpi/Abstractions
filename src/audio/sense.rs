@@ -4,6 +4,8 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::scene::{AudioScene, altitude_fade, cloud_depth};
+use super::shore::{closeness, nearest};
+use crate::companion::Companion;
 use crate::gear::{FlightFx, GearSet};
 use crate::render::{DayClock, GameCamera, daylight, smoothstep};
 use crate::screens::Screen;
@@ -16,11 +18,8 @@ use crate::world::Terrain;
 /// Depth in metres of the head under the sea surface at which the sound is fully muffled.
 const HEAD_DEPTH: f32 = 0.35;
 
-/// Ground height in metres, above or below the sea, within which the shore is heard.
-const SHORE_REACH: f32 = 7.0;
-
-/// Height in metres above the sea at which the shore is no longer heard.
-const SHORE_CEILING: f32 = 45.0;
+/// Distance in metres at which the voice of the companion has lost half its level.
+const EARSHOT: f32 = 6.0;
 
 /// The planet the listener is at, kept so that its description is not rebuilt every frame.
 #[derive(Resource, Debug, Default)]
@@ -65,11 +64,37 @@ fn sense_place(
     scene.wind = wind.strength;
 }
 
-/// Returns how close the shoreline is to chart position `at`, `height` metres above the sea.
-fn shore(terrain: &Terrain, at: Vec3, height: f32) -> f32 {
-    let ground = terrain.height(at.x, at.z);
-    let near = 1.0 - (ground.abs() / SHORE_REACH).clamp(0.0, 1.0);
-    near * (1.0 - height / SHORE_CEILING).clamp(0.0, 1.0)
+/// Returns how close the nearest shoreline is to a listener at chart position `at`, `height`
+/// metres above the sea, and the render position of that shoreline. Nothing is heard inland
+/// or out at sea.
+fn shore(terrain: &Terrain, anchor: &Anchor, at: Vec3, height: f32) -> (f32, Vec3) {
+    let ground = |point: Vec2| terrain.height(point.x, point.y);
+    let Some(offset) = nearest(ground, Vec2::new(at.x, at.z)) else {
+        return (0.0, Vec3::ZERO);
+    };
+    let edge = terrain.embed(at.x + offset.x, 0.0, at.z + offset.y);
+    (closeness(offset.length(), height), anchor.to_render(edge))
+}
+
+/// Returns the side a sound at render position `from` is on for the `listener`: -1 at its
+/// left, 1 at its right, 0 ahead, behind or at the head itself.
+fn side(listener: &GlobalTransform, from: Vec3) -> f32 {
+    let toward = (from - listener.translation()).normalize_or_zero();
+    toward.dot(listener.right().as_vec3())
+}
+
+/// Writes where the companion is for the listener, so its voice comes from where it floats.
+fn sense_companion(
+    camera: Query<&GlobalTransform, With<GameCamera>>,
+    companion: Query<&GlobalTransform, With<Companion>>,
+    mut scene: ResMut<AudioScene>,
+) {
+    let (Ok(camera), Ok(companion)) = (camera.single(), companion.single()) else {
+        return;
+    };
+    let from = companion.translation();
+    let far = from.distance(camera.translation());
+    scene.companion = Vec2::new(side(camera, from), 1.0 / (1.0 + far / EARSHOT));
 }
 
 /// Writes the altitude fade, the water, the clouds and the shore into the scene from the camera.
@@ -103,7 +128,8 @@ fn sense_listener(
     scene.altitude_fade = altitude_fade(height, spec.atmosphere_height as f32);
     scene.submerged = (-height / HEAD_DEPTH).clamp(0.0, 1.0);
     scene.cloud_depth = cloud_depth(height, spec.cloud_base as f32, spec.cloud_top as f32);
-    scene.shore = shore(&terrain, chart, height);
+    let (level, edge) = shore(&terrain, &anchor, chart, height);
+    (scene.shore, scene.shore_side) = (level, side(camera, edge) * level.signum());
 }
 
 /// Airspeeds in metres per second between which the rush of air grows from nothing to full.
@@ -130,7 +156,7 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(OnExit(Screen::Gameplay), rest)
         .add_systems(
             Update,
-            (sense_place, sense_listener, sense_flight)
+            (sense_place, sense_listener, sense_flight, sense_companion)
                 .chain()
                 .in_set(super::Sensing)
                 .after(ShipSet::Place)

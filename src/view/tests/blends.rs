@@ -49,7 +49,7 @@ fn mode_switch_is_continuous() {
     }
 }
 
-/// The switch slides the camera along its own axis, from behind the head into the eyes, while
+/// The switch slides the camera along its own axis, from behind the head to the eyes on its face, while
 /// the body fades out; it takes about 0.35 s.
 #[test]
 fn mode_switch_slides_along_the_view_axis() {
@@ -60,9 +60,11 @@ fn mode_switch_slides_along_the_view_axis() {
     for frame in 0..24 {
         let now = run(&mut rig, &mut body, &world, 1);
         let (at, was) = (now.pose.position, last.pose.position);
-        assert!(at.z <= was.z && at.z >= -1.0e-5 && at.x >= -1.0e-5 && at.x <= was.x + 1.0e-6);
+        assert!(at.z <= was.z && at.z >= -0.16001 && at.x >= -1.0e-5 && at.x <= was.x + 1.0e-6);
         assert!(now.fade.0 <= last.fade.0);
-        assert!(frame < 22 || (now.fade.0 == 0.0 && at.distance(Vec3::Y * 1.6) < 1.0e-4));
+        assert!(
+            frame < 22 || (now.fade.0 == 0.0 && at.distance(Vec3::new(0.0, 1.6, -0.16)) < 1.0e-4)
+        );
         assert!(frame > 15 || at.z > 1.0e-3, "the switch ended early");
         last = now;
     }

@@ -40,8 +40,6 @@ pub enum Warp {
     },
     /// The ship moves along its heading at warp speed.
     Active {
-        /// Velocity the ship had when it engaged, relative to the nearest body then.
-        carried: DVec3,
         /// Current warp speed in metres per second.
         speed: f64,
     },
@@ -75,18 +73,11 @@ pub fn request(ship: &mut Ship, wells: &[Well]) -> bool {
     free
 }
 
-/// Stops the drive. A ship that was in warp gets back the velocity it engaged with,
-/// relative to the body that is nearest now.
+/// Stops the drive. A ship that was in warp is left at rest relative to the body that is
+/// nearest now, so it arrives beside its destination and stays there: the velocity it had
+/// when it engaged belonged to the place it left, and would carry it away from this one. A
+/// ship that was not in warp keeps its own velocity.
 pub fn drop_out(ship: &mut Ship, wells: &[Well]) {
-    if let Warp::Active { carried, .. } = ship.warp {
-        ship.vel = body_velocity(wells, ship.pos) + carried;
-    }
-    ship.warp = Warp::Off;
-}
-
-/// Switches the drive off for a save. A ship that was in warp is left at rest relative to the
-/// nearest body, and keeps its own velocity otherwise.
-pub fn halt(ship: &mut Ship, wells: &[Well]) {
     if matches!(ship.warp, Warp::Active { .. }) {
         ship.vel = body_velocity(wells, ship.pos);
     }
@@ -118,15 +109,9 @@ pub fn advance(ship: &mut Ship, wells: &[Well], cap: f64, dt: f64) {
         Warp::Off => {}
         Warp::Spooling { .. } if clearance(wells, ship.pos) <= 0.0 => ship.warp = Warp::Off,
         Warp::Spooling { left } if left > dt => ship.warp = Warp::Spooling { left: left - dt },
-        Warp::Spooling { .. } => {
-            let carried = ship.vel - body_velocity(wells, ship.pos);
-            ship.warp = Warp::Active {
-                carried,
-                speed: 0.0,
-            };
-        }
-        Warp::Active { carried, .. } => match cruise(ship, wells, cap, dt) {
-            Some(speed) => ship.warp = Warp::Active { carried, speed },
+        Warp::Spooling { .. } => ship.warp = Warp::Active { speed: 0.0 },
+        Warp::Active { .. } => match cruise(ship, wells, cap, dt) {
+            Some(speed) => ship.warp = Warp::Active { speed },
             None => drop_out(ship, wells),
         },
     }

@@ -1,7 +1,6 @@
-//! The helm: keyboard and mouse turned into what the pilot asks of the ship.
+//! The helm: the keyboard turned into what the pilot asks of the ship. The mouse only looks around.
 
 use bevy::ecs::system::SystemParam;
-use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
@@ -15,22 +14,11 @@ use crate::space::{Location, Travel};
 /// Throttle change per second while a throttle key is held.
 const THROTTLE_RATE: f64 = 0.8;
 
-/// Lowest throttle: reverse thrust.
-const REVERSE: f64 = -0.5;
-
-/// Stick deflection per mouse pixel at sensitivity 1.0.
-const STICK_PER_PIXEL: f32 = 0.004;
-
-/// Rate per second at which a released mouse stick returns to the centre.
-const STICK_RETURN: f32 = 3.0;
-
 /// What the pilot asks for, kept between frames.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
 pub struct Helm {
     /// Controls handed to the flight step.
     pub controls: Controls,
-    /// Virtual stick moved by the mouse: x rolls right, y pitches down, each from -1 to 1.
-    pub stick: Vec2,
     /// Whether the warp key was pressed, or the autopilot asks to switch the drive.
     pub warp: bool,
 }
@@ -40,8 +28,6 @@ pub struct Helm {
 pub struct Devices<'w> {
     /// Keyboard state.
     keys: Res<'w, ButtonInput<KeyCode>>,
-    /// Mouse motion of the frame.
-    mouse: Res<'w, AccumulatedMouseMotion>,
     /// Bindings and mouse options.
     settings: Res<'w, Persistent<Settings>>,
     /// Frame time.
@@ -64,37 +50,25 @@ impl Devices<'_> {
             - f64::from(u8::from(self.keys.pressed(negative)))
     }
 
-    /// Returns the mouse stick after this frame: pushed by the mouse, drifting back to the
-    /// centre. While the look key is held the mouse turns the camera and the stick only drifts.
-    fn stick(&self, stick: Vec2) -> Vec2 {
-        let controls = &self.settings.controls;
-        let free = f32::from(u8::from(!self.keys.pressed(controls.keys.orbit)));
-        let flip = if controls.invert_y { -1.0 } else { 1.0 };
-        let push = self.mouse.delta
-            * Vec2::new(1.0, flip)
-            * (STICK_PER_PIXEL * controls.mouse_sensitivity * free);
-        let eased = stick * (-STICK_RETURN * self.time.delta_secs()).exp();
-        (eased + push).clamp_length_max(1.0)
-    }
-
-    /// Returns the throttle after this frame.
+    /// Returns the throttle after this frame: from engines idle to full, never in reverse.
     fn throttle(&self, map: &Keymap, throttle: f64) -> f64 {
         if self.keys.just_pressed(map.ship.cut) {
             return 0.0;
         }
-        let push = self.axis(map.ship.thrust, map.ship.brake);
-        (throttle + push * THROTTLE_RATE * self.time.delta_secs_f64()).clamp(REVERSE, 1.0)
+        let push = self.axis(map.ship.throttle_up, map.ship.throttle_down);
+        (throttle + push * THROTTLE_RATE * self.time.delta_secs_f64()).clamp(0.0, 1.0)
     }
 
-    /// Returns the controls for the flight step from the keys and the mouse stick.
-    fn controls(&self, map: &Keymap, stick: Vec2) -> Controls {
+    /// Returns the controls for the flight step from the keys: the nose goes down and up, left
+    /// and right, the hull rolls, and the throttle key held at a `full` throttle boosts.
+    fn controls(&self, map: &Keymap, full: bool) -> Controls {
+        let pitch = self.axis(map.ship.pitch_up, map.ship.pitch_down);
         let yaw = self.axis(map.ship.yaw_left, map.ship.yaw_right);
-        let roll = self.axis(map.ship.roll_left, map.ship.roll_right) - f64::from(stick.x);
-        let turn = DVec3::new(f64::from(-stick.y), yaw, roll);
+        let roll = self.axis(map.ship.roll_left, map.ship.roll_right);
         Controls {
-            turn: turn.clamp(DVec3::NEG_ONE, DVec3::ONE),
-            lift: self.axis(map.ship.up, map.ship.down),
-            boost: self.keys.pressed(map.ship.boost),
+            turn: DVec3::new(pitch, yaw, roll),
+            lift: self.axis(map.ship.rise, map.ship.sink),
+            boost: full && self.keys.pressed(map.ship.throttle_up),
         }
     }
 }
@@ -113,8 +87,7 @@ pub fn read(
         return;
     }
     let map = devices.settings.controls.keys;
-    helm.stick = devices.stick(helm.stick);
-    helm.controls = devices.controls(&map, helm.stick);
+    helm.controls = devices.controls(&map, ship.throttle >= 1.0);
     helm.warp = devices.keys.just_pressed(map.ship.warp);
     if helm.warp {
         autopilot.cancel();

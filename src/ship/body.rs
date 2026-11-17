@@ -23,7 +23,7 @@ pub struct Ship {
     pub rot: DQuat,
     /// Angular velocity in radians per second around the body axes: pitch up, yaw left, roll left.
     pub spin: DVec3,
-    /// Main engine lever from -0.5 (reverse) to 1.
+    /// Main engine lever from 0 (idle) to 1.
     pub throttle: f64,
     /// True while the ship rests on its gear or floats at rest. A landed ship is not integrated.
     pub landed: bool,
@@ -94,7 +94,7 @@ impl Ship {
         let ship = Self {
             vel: DVec3::from_array(state.vel),
             spin: DVec3::from_array(state.spin),
-            throttle: state.throttle.clamp(-0.5, 1.0),
+            throttle: state.throttle.clamp(0.0, 1.0),
             damage: state.damage.clamp(0.0, 1.0),
             assist: !state.manual,
             landed: state.landed,
@@ -155,7 +155,7 @@ pub struct ShipState {
     /// Angular velocity around the body axes in radians per second.
     #[serde(default)]
     pub spin: [f64; 3],
-    /// Main engine lever from -0.5 to 1.
+    /// Main engine lever from 0 to 1.
     #[serde(default)]
     pub throttle: f64,
     /// Damage from hard landings, from 0 to 1.

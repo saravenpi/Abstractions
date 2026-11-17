@@ -66,12 +66,12 @@ pub(super) fn touching(mode: Mode, floor: Option<Ground>) -> bool {
 
 /// Returns what the gear is told this frame.
 ///
-/// The jump key held in the air fires the boots; with the wingsuit asked open the sprint key
-/// fires them too. The forward key pushes the nose down and the back key pulls it up.
+/// The jump key pressed again in the air and held fires the boots; with the wingsuit asked open
+/// the sprint key fires them too. The forward key pushes the nose down and the back key pulls it up.
 pub(super) fn input(motion: &Motion, intent: &Intent, air: &Air, on: (bool, bool)) -> GearInput {
     GearInput {
         deploy: motion.wings,
-        boost: intent.jump || (motion.wings && intent.sprint),
+        boost: motion.boots || (motion.wings && intent.sprint),
         pitch: -intent.forward,
         roll: intent.right,
         look: air.look,

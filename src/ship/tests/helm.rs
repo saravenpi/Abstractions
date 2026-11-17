@@ -44,7 +44,8 @@ fn cockpit() -> App {
     app
 }
 
-/// Runs `frames` frames while the mouse keeps moving, and returns the helm and the throttle.
+/// Runs `frames` frames while the mouse keeps moving, and returns the helm and how far the
+/// held key has pushed the nose down.
 fn steer(app: &mut App, frames: usize) -> (Helm, f64) {
     for _ in 0..frames {
         let delta = Vec2::new(40.0, -25.0);
@@ -52,32 +53,24 @@ fn steer(app: &mut App, frames: usize) -> (Helm, f64) {
         app.update();
     }
     let world = app.world_mut();
-    let throttle = world.query::<&Ship>().single(world).unwrap().throttle;
-    (*world.resource::<Helm>(), throttle)
+    let helm = *world.resource::<Helm>();
+    (helm, -helm.controls.turn.x)
 }
 
-/// With the computer closed the keys move the lever and the mouse moves the stick. While it
-/// is open both are ignored: the stick is let go and the lever stays where it was. Closing it
-/// gives the controls back.
+/// With the computer closed the keys steer the ship and the mouse steers nothing: the forward
+/// key pushes the nose down and nothing rolls. While the computer is open the keys are
+/// ignored. Closing it gives the controls back.
 #[test]
 fn helm_lets_go_while_the_computer_is_open() {
     let mut app = cockpit();
     let (flying, pushed) = steer(&mut app, 5);
-    assert!(pushed > 0.0 && flying.stick.length() > 0.1);
-    assert_ne!(flying.controls, Controls::default());
+    assert!(pushed > 0.99 && flying.controls.turn.z == 0.0 && flying.controls.turn.y == 0.0);
     let mut next = app.world_mut().resource_mut::<NextState<Computer>>();
     next.set(Computer::Open);
     let (reading, held) = steer(&mut app, 5);
-    assert_eq!(
-        (reading.controls, reading.stick),
-        (Controls::default(), Vec2::ZERO)
-    );
-    assert!(
-        held >= pushed && held < pushed + 0.05,
-        "the lever moved to {held}"
-    );
+    assert_eq!((reading.controls, held), (Controls::default(), 0.0));
     let mut next = app.world_mut().resource_mut::<NextState<Computer>>();
     next.set(Computer::Closed);
-    let (back, lever) = steer(&mut app, 5);
-    assert!(lever > held && back.stick.length() > 0.1);
+    let (_, back) = steer(&mut app, 5);
+    assert!(back > 0.99);
 }

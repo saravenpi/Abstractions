@@ -15,6 +15,7 @@ mod mind;
 mod mood;
 mod motion;
 mod orb;
+mod perch;
 mod pose;
 mod ride;
 mod rng;
@@ -42,6 +43,8 @@ mod tests_motion;
 mod tests_paint;
 #[cfg(test)]
 mod tests_parts;
+#[cfg(test)]
+mod tests_perch;
 
 pub use face::Expression;
 pub use mood::{ChirpKind, CompanionChirp};

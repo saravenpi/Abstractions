@@ -25,6 +25,7 @@ fn rebuild(time: Res<Time>, scene: Scene, mut board: ResMut<Board>, mut since: L
     }
     *since = 0.0;
     let (heading, lines) = scene.table(board.tab);
+    board.ship = scene.ship();
     board.fill(heading, lines);
 }
 
@@ -132,7 +133,7 @@ fn status(
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         Update,
-        (rebuild, rows, tabs, status)
+        (rebuild, rows, tabs, status, super::map::draw)
             .chain()
             .after(super::Input)
             .run_if(ready),

@@ -12,9 +12,10 @@ On foot:
 | --- | --- |
 | W A S D | Move |
 | Mouse | Look |
-| Space | Jump, or swim up. Held in the air: boot boosters, which slow a fall |
+| Space | Jump, or swim up. Pressed again in the air and held: boot boosters, which slow a fall |
 | Shift | Sprint. Held with the wingsuit spread: boot boosters, which make you fly |
 | R | Spread or fold the wingsuit in the air |
+| W A S D in the wingsuit | Dive, climb and turn. The mouse steers too |
 | V | First or third person |
 | F | Board the ship |
 | Look down + W | Dive while swimming |
@@ -24,19 +25,21 @@ In the ship:
 
 | Input | Action |
 | --- | --- |
-| W S | Throttle up, throttle down to reverse |
-| Mouse, A D | Pitch and yaw |
+| W S | Nose down, nose up |
+| A D | Turn left, turn right |
 | Q E | Roll |
-| Space, Ctrl | Vertical thrusters up and down |
-| Shift | Boost |
+| Shift, Ctrl | Throttle up, throttle down. Shift held at full throttle boosts |
+| Space, C | Vertical thrusters up and down |
+| Mouse | Look around. The view comes back to the nose by itself |
 | X | Cut the throttle |
 | Z | Flight assist on or off |
 | J | Warp drive, away from a planet's gravity |
 | Tab | Board computer: places you have discovered |
 | G | Send the computer's destination to the autopilot |
-| Alt | Hold to look around |
 | V | First or third person |
 | F | Leave the ship |
+
+A bar at the top of the screen points to the home base and to the ship while you are on their planet.
 
 Rebind every key in Settings > Controls.
 

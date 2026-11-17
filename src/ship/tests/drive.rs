@@ -77,8 +77,8 @@ fn warp_home(system: &SystemSpec, index: usize, ship: &mut Ship, dt: f64) -> Run
     run
 }
 
-/// A ship warping straight at a moving planet from the void drops out outside the lock sphere with
-/// the velocity it had relative to the planet when it engaged.
+/// A ship warping straight at a moving planet from the void drops out outside the lock sphere,
+/// at rest beside the planet whatever velocity it engaged with.
 #[test]
 fn warp_drops_out_at_the_lock_distance() {
     let (system, index, mut ship) = near_home(4000.0);
@@ -100,7 +100,7 @@ fn warp_drops_out_at_the_lock_distance() {
         "dropped at {gap} radii"
     );
     assert!(fastest > 1e6, "top speed {fastest}");
-    assert!((ship.vel - home.vel - entry).length() < 1e-6);
+    assert!(entry.is_finite() && (ship.vel - home.vel).length() < 1e-6);
 }
 
 /// Far from every body the drive reaches interstellar speed.
@@ -114,13 +114,7 @@ fn warp_is_fast_in_the_void() {
     assert!(request(&mut ship, &[]));
     advance(&mut ship, &[], CRUISE_CAP, SPOOL_TIME + 0.1);
     advance(&mut ship, &[], CRUISE_CAP, 1.0);
-    assert_eq!(
-        ship.warp,
-        Warp::Active {
-            carried: DVec3::ZERO,
-            speed: CRUISE_CAP
-        }
-    );
+    assert_eq!(ship.warp, Warp::Active { speed: CRUISE_CAP });
     assert!((ship.pos - DVec3::NEG_Z * CRUISE_CAP).length() < 1.0);
 }
 

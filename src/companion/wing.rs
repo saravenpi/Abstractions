@@ -12,10 +12,13 @@ const DIVE_SINK: f32 = 25.0;
 /// Share of the airspeed the sink rate must pass for a dive to count as steep: about 40 degrees.
 const DIVE_SLOPE: f32 = 0.64;
 
-/// Returns whether the gear in `state` carries the body through the air, its bank, and
-/// whether it dives steeply and fast.
+/// Airspeed in metres per second above which a body in the air without its wings counts as flying.
+const SWIFT: f32 = 18.0;
+
+/// Returns whether the gear in `state` flies the body, its bank, and whether it dives steeply
+/// and fast. A jump, or a hop on the boots, is not a flight: the wings are out or the fall is fast.
 pub fn aloft(state: &FlightState) -> (bool, f32, bool) {
-    let flying = state.mode.airborne();
+    let flying = state.mode.winged() || (state.mode.airborne() && state.airspeed > SWIFT);
     let steep = state.velocity.y < -DIVE_SINK && state.velocity.y < -DIVE_SLOPE * state.airspeed;
     (
         flying,

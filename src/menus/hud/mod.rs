@@ -1,8 +1,11 @@
-//! The in-game HUD: flight instruments in the ship, the interaction prompt and the location
-//! banner. Nothing is permanent on foot, and everything hides behind menus and the computer.
+//! The in-game HUD: flight instruments in the ship, the interaction prompt, the location
+//! banner and the compass that points home and to the ship. Everything hides behind menus and
+//! the computer.
 
 mod banner;
+mod compass;
 mod flight;
+mod needle;
 mod panel;
 mod prompt;
 #[cfg(test)]
@@ -39,7 +42,12 @@ fn spawn(mut commands: Commands) {
         },
         Pickable::IGNORE,
         Visibility::Hidden,
-        children![panel::block(), prompt::line(), banner::block()],
+        children![
+            panel::block(),
+            prompt::line(),
+            banner::block(),
+            compass::bar()
+        ],
     ));
 }
 
@@ -80,6 +88,7 @@ pub(super) fn plugin(app: &mut App) {
                     .run_if(seated)
                     .run_if(every),
                 prompt::update.run_if(in_control),
+                compass::update.run_if(in_control),
                 banner::watch.run_if(in_control),
                 banner::fade.run_if(banner::showing),
             )

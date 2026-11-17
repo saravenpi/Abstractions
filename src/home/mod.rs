@@ -34,6 +34,7 @@ mod tests_points;
 
 pub use base::Base;
 pub use tune::{FOOTPRINT, PAD_HALF, PAD_LIFT};
+pub use works::Works;
 
 use bevy::prelude::*;
 

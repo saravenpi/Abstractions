@@ -46,7 +46,7 @@ fn assert_clear(probe: &Probe, ground: Vec3) {
             forward,
             up,
         };
-        for spot in [stance.rest(), stance.behind()] {
+        for spot in [stance.rest(stance.right()), stance.behind()] {
             let gap = probe.gap(probe.clear(spot, CLEARANCE));
             assert!(gap >= CLEARANCE - 2e-3, "gap {gap} at {ground}");
         }
@@ -118,8 +118,7 @@ fn spot_clears_ground_on_a_sphere() {
 }
 
 /// A spot on the line of sight is pushed out to the edge of the clear cone, a spot already out
-/// of it or behind the eyes stays, and the resting spot is out of it whether the player looks
-/// ahead, down or up.
+/// of it or behind the eyes stays.
 #[test]
 fn yields_from_the_line_of_sight() {
     let stance = Stance {
@@ -132,12 +131,5 @@ fn yields_from_the_line_of_sight() {
     assert!((moved.z + 4.0).abs() < 1e-4 && (moved.x - 4.0 * YIELD).abs() < 1e-4);
     for kept in [Vec3::new(3.0, 0.0, -2.0), Vec3::new(0.0, 0.0, 1.0)] {
         assert_eq!(stance.aside(stance.eye + kept), stance.eye + kept);
-    }
-    for pitch in [-1.0f32, 0.0, 1.0] {
-        let look = Stance {
-            forward: Quat::from_rotation_x(pitch) * Vec3::NEG_Z,
-            ..stance
-        };
-        assert_eq!(look.aside(look.rest()), look.rest(), "pitch {pitch}");
     }
 }

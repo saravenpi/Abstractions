@@ -68,9 +68,9 @@ pub fn boards(game: &mut Game) {
 /// camera stays above the ground the landed ship stands on.
 pub fn looks_from_behind(game: &mut Game) {
     assert_eq!(game.get::<ViewPrefs>().ship, ViewMode::First);
-    game.press(key(game, |keys| keys.ship.view));
+    game.press(key(game, |keys| keys.view));
     game.step(1);
-    game.release(key(game, |keys| keys.ship.view));
+    game.release(key(game, |keys| keys.view));
     assert_eq!(game.get::<ViewPrefs>().ship, ViewMode::Third);
     assert_eq!(game.get::<ViewPrefs>().on_foot, ViewMode::First);
     for _ in 0..60 {

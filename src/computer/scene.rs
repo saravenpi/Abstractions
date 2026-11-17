@@ -28,7 +28,7 @@ pub(super) struct Scene<'w, 's> {
 
 impl Scene<'_, '_> {
     /// Returns where the ship is, taken from the camera that rides in it.
-    fn ship(&self) -> UniPos {
+    pub(super) fn ship(&self) -> UniPos {
         let eye = self
             .camera
             .iter()

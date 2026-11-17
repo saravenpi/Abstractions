@@ -35,6 +35,8 @@ pub struct SkyUniform {
     pub disc: Vec4,
     /// Direction of the galaxy center in xyz.
     pub core: Vec4,
+    /// Linear color of the star light the air lets through, which colors the glow around the star.
+    pub glow: Vec4,
 }
 
 /// What the dome is drawn from besides the palette, with directions in render axes.
@@ -89,6 +91,7 @@ impl SkyUniform {
             rim: linear(look.rim) * dry,
             disc: look.disc.extend(look.band * palette.stars * dry),
             core: look.core.extend(0.0),
+            glow: linear(palette.sun_color),
         }
     }
 }

@@ -90,6 +90,7 @@ impl Mixer {
         AirCtl {
             wind: self.at(Param::Wind),
             shore: self.at(Param::Shore),
+            shore_side: self.at(Param::ShoreSide) * 2.0 - 1.0,
             submerged: self.at(Param::Submerged),
             cabin: self.at(Param::Cabin),
             space: self.at(Param::Space),
@@ -121,6 +122,9 @@ impl Mixer {
         for param in Param::ALL {
             self.targets[param as usize] = self.shared.get(param);
         }
+        let buddy = self.targets[Param::BuddySide as usize] * 2.0 - 1.0;
+        self.cues
+            .locate(buddy, self.targets[Param::BuddyNear as usize]);
         while let Some(cue) = self.shared.pop() {
             self.cues.play(cue);
         }
@@ -150,14 +154,15 @@ impl Mixer {
         let music = self.music.frame();
         let air = self.air.frame(&self.air_ctl());
         let gear = self.suit.frame(&self.suit_ctl());
-        let mono = self.ship.frame(&self.ship_ctl()) + gear + self.cues.frame();
+        let mono = self.ship.frame(&self.ship_ctl()) + gear;
+        let cues = self.cues.frame();
         let (wide, fx) = (
             self.at(Param::Music) * MUSIC_GAIN,
             self.at(Param::Effects) * EFFECTS_GAIN,
         );
         let (master, r) = (self.at(Param::Master), self.r);
         [0, 1].map(|i| {
-            let sum = music[i] * wide + (air[i] + mono) * fx;
+            let sum = music[i] * wide + (air[i] + mono + cues[i]) * fx;
             limit(self.dc[i].run(sum * master, r))
         })
     }

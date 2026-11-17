@@ -8,13 +8,13 @@ use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::SunDir;
 use super::atmosphere::horizon_dip;
 use super::celestial::smoothstep;
 use super::clouds::CloudCrossing;
 use super::palette::Palette;
 use super::sky::{SkyLook, SkyMaterial, SkyUniform};
-use super::vantage::Vantage;
-use super::{DayClock, SunDir};
+use super::vantage::{LocalSystem, Vantage};
 use crate::screens::Screen;
 
 /// Radius of the dome in metres: behind the stars and every body, which are drawn nearer.
@@ -56,7 +56,7 @@ fn spawn_dome(
 #[derive(SystemParam)]
 struct SkyInputs<'w> {
     palette: Res<'w, Palette>,
-    clock: Res<'w, DayClock>,
+    local: Res<'w, LocalSystem>,
     vantage: Res<'w, Vantage>,
     sun: Res<'w, SunDir>,
     crossing: Res<'w, CloudCrossing>,
@@ -71,7 +71,7 @@ impl SkyInputs<'_> {
         let vantage = &*self.vantage;
         let to_render = vantage.observer.to_render;
         let leaving = smoothstep(1.0, 2.0, vantage.altitude / vantage.atmosphere.max(1.0));
-        let rim = Palette::at(self.clock.phase).horizon * RIM_GAIN;
+        let rim = Palette::under(&self.sun, vantage, &self.local).0.horizon * RIM_GAIN;
         SkyLook {
             up: vantage.up,
             dip: horizon_dip(vantage.altitude, vantage.radius),

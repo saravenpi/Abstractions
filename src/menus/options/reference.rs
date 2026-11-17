@@ -46,11 +46,11 @@ fn fixed(key: &str, action: &str) -> impl Bundle {
 const FOOT_FIXED: [(&str, &str); 3] = [
     ("Mouse", "Look around"),
     ("Wheel", "Zoom third person"),
-    ("Hold jump", "Boot boosters"),
+    ("Jump again in the air, hold", "Boot boosters"),
 ];
 
 /// What the mouse does in the ship.
-const SHIP_FIXED: [(&str, &str); 2] = [("Mouse", "Pitch and roll"), ("Wheel", "Zoom third person")];
+const SHIP_FIXED: [(&str, &str); 2] = [("Mouse", "Look around"), ("Wheel", "Zoom third person")];
 
 /// One half of the reference: a title, the fixed lines and the rebindable ones.
 fn half(

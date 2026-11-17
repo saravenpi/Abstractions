@@ -118,3 +118,35 @@ fn the_atlas_round_trips_through_toml() {
     }
     assert_eq!(toml::from_str::<Atlas>("").unwrap(), Atlas::default());
 }
+
+/// The system chart puts the star in the middle, every planet on the map at a growing
+/// distance, each on a dotted orbit, and the ship on it too.
+#[test]
+fn the_system_chart_fits_the_map() {
+    use super::chart::{Dot, chart};
+    let universe = Universe::new(11);
+    let atlas = Atlas::new(&universe);
+    let star = universe.home().star;
+    let ship = universe.star_position(star).unwrap() + bevy::math::DVec3::X * 3.0e9;
+    let view = View {
+        universe: &universe,
+        atlas: &atlas,
+        ship,
+        time: 50.0,
+    };
+    let lines = view.system(star);
+    let dots = chart(Tab::System, &lines, ship);
+    let rows: Vec<f32> = dots
+        .iter()
+        .filter(|(dot, _)| matches!(dot, Dot::Row(_)))
+        .map(|(_, at)| at.length())
+        .collect();
+    assert_eq!(rows.len(), lines.len());
+    assert!(rows[0] == 0.0 && rows.windows(2).all(|pair| pair[0] < pair[1]));
+    assert!(dots.iter().all(|(_, at)| at.length() <= 1.0));
+    let count = |kind: Dot| dots.iter().filter(|(dot, _)| *dot == kind).count();
+    assert_eq!(
+        (count(Dot::Ship), count(Dot::Orbit)),
+        (1, 40 * (lines.len() - 1))
+    );
+}

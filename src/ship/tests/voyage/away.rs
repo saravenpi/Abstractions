@@ -58,8 +58,8 @@ pub fn warps_to_another_planet(game: &mut Game, home: BodyId) -> BodyId {
     });
     assert_eq!(game.get::<RouteStatus>(), RouteStatus::Spooling);
     for key in [
-        key(game, |keys| keys.ship.up),
-        key(game, |keys| keys.ship.thrust),
+        key(game, |keys| keys.ship.rise),
+        key(game, |keys| keys.ship.throttle_up),
     ] {
         game.release(key);
     }
@@ -133,9 +133,9 @@ pub fn lands(game: &mut Game, far: BodyId) {
         Frame::Surface(far)
     );
     let before = game.get::<Log>().ship.len();
-    game.press(key(game, |keys| keys.ship.down));
+    game.press(key(game, |keys| keys.ship.sink));
     game.until("the ship to land", 900, |game| game.ship().landed);
-    game.release(key(game, |keys| keys.ship.down));
+    game.release(key(game, |keys| keys.ship.sink));
     game.step(2);
     let (log, telemetry) = (game.get::<Log>(), game.get::<ShipTelemetry>());
     let touched = log.ship[before..].iter().find_map(|event| match event {

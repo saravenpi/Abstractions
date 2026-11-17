@@ -6,7 +6,7 @@ use bevy::prelude::*;
 
 use super::body::{Ship, ShipState};
 use super::sky::Skies;
-use super::warp::halt;
+use super::warp::drop_out;
 use super::wells::Well;
 use crate::saves::ActiveWorld;
 use crate::space::{Location, Travel};
@@ -22,7 +22,7 @@ pub fn saved(active: Option<&ActiveWorld>) -> Option<ShipState> {
 /// drive is recorded off: a loaded world never starts mid-jump.
 pub fn record(ship: &Ship, wells: &[Well], seated: bool) -> ShipState {
     let mut still = ship.clone();
-    halt(&mut still, wells);
+    drop_out(&mut still, wells);
     ShipState {
         seated,
         ..still.state()

@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use super::attention::Attention;
 use super::idle::Idle;
 use super::mind::Mind;
+use super::perch::Perch;
 use super::pose::Pose;
 use super::sense::CompanionSense;
 use super::spot::Stance;
@@ -29,6 +30,8 @@ pub struct Brain {
     pub mind: Mind,
     /// What it looks at.
     pub attention: Attention,
+    /// The place around the player it chose for itself.
+    pub perch: Perch,
     /// Where the player's eyes were on the last frame.
     pub stance: Stance,
     /// Velocity of the player in render axes, in meters per second.
@@ -55,6 +58,7 @@ impl Brain {
         Self {
             mind: Mind::new(seed),
             attention: Attention::new(seed ^ 0x5EED),
+            perch: Perch::new(seed ^ 0x9E7C),
             stance: Stance {
                 eye: Vec3::ZERO,
                 forward: Vec3::NEG_Z,
@@ -87,6 +91,7 @@ impl Brain {
         let turn = self.stance.forward.angle_between(stance.forward) / dt;
         self.seen = Some((anchor.frame, at));
         self.stance = stance;
+        self.perch.advance(anchor, &stance, self.drift, dt);
         turn
     }
 
@@ -119,24 +124,25 @@ impl Brain {
         self.mind.idle == Some(Idle::Inspect) && self.mind.time < far
     }
 
-    /// Returns the spot to float at, out of the line of sight and before ground clearance, and
-    /// the clearance to keep there.
+    /// Returns the spot to float at before ground clearance, and the clearance to keep there. At
+    /// rest that is its own perch, which the view does not move; only an inspection and the
+    /// flight formation step out of the line of sight.
     pub fn goal(&self) -> (Vec3, f32) {
         if self.away() {
             let back = (self.stance.eye - self.inspect).normalize_or_zero();
             let near = self.inspect + back * 0.6 + self.stance.up * 0.3;
             return (self.stance.aside(near), LOW_CLEARANCE);
         }
-        let spot = self.stance.rest();
-        let wing = self.stance.formation(self.drift);
+        let spot = self.stance.rest(self.perch.side);
+        let wing = self.stance.aside(self.stance.formation(self.drift));
         let height = CLEARANCE + (FLIGHT_CLEARANCE - CLEARANCE) * self.flight;
-        (self.stance.aside(spot.lerp(wing, self.flight)), height)
+        (spot.lerp(wing, self.flight), height)
     }
 
     /// Returns the render position to look at: what the idle calls for, else where the attention is.
     pub fn focus(&self) -> Vec3 {
         let stance = &self.stance;
-        let ahead = stance.rest() + stance.level() * 6.0;
+        let ahead = stance.rest(self.perch.side) + stance.level() * 6.0;
         match (self.mind.dozing, self.mind.idle) {
             (true, _) => ahead - stance.up * 3.0,
             (false, Some(Idle::Inspect)) if self.away() => self.inspect,

@@ -68,7 +68,7 @@ fn first_and_third_person_on_foot() {
     let world = Boxes::default();
     let mut body = moment(Kind::OnFoot, ViewPrefs::default());
     let first = run(&mut Rig::default(), &mut body, &world, 1);
-    assert!(first.pose.position.distance(Vec3::Y * 1.6) < 1.0e-5);
+    assert!(first.pose.position.distance(Vec3::new(0.0, 1.6, -0.16)) < 1.0e-5);
     assert_eq!((first.fade.0, first.pose.fov), (0.0, FOV));
     body.prefs = third();
     let behind = run(&mut Rig::default(), &mut body, &world, 1);

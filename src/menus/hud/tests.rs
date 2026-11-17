@@ -8,6 +8,7 @@ use crate::computer::RouteStatus;
 use crate::ship::{ShipTelemetry, WarpState};
 use crate::space::{Frame, Travel};
 use crate::universe::{BodyId, StarId};
+use bevy::math::Vec3;
 
 /// Heights switch unit at 1000 of the smaller one, keep three digits and keep their sign.
 #[test]
@@ -140,4 +141,24 @@ fn the_banner_fades_in_and_out() {
     assert_eq!(opacity(0.0), 0.0);
     assert!(opacity(4.3) > 0.0 && opacity(4.3) < 1.0);
     assert!(opacity(0.2) > 0.0 && opacity(0.2) < 1.0);
+}
+
+/// A target to the right reads a quarter turn to the right and sits right of the middle, one
+/// straight ahead sits in the middle, and one behind waits at the end of its side.
+#[test]
+fn the_compass_points_at_its_target() {
+    use super::needle::{SPAN, bearing, beside, slot};
+    let (ahead, up) = (Vec3::NEG_Z, Vec3::Y);
+    let right = bearing(Vec3::new(30.0, 4.0, 0.0), ahead, up).unwrap();
+    assert!((right - std::f32::consts::FRAC_PI_2).abs() < 1e-5);
+    assert_eq!(slot(bearing(Vec3::NEG_Z * 9.0, ahead, up).unwrap()), 0.5);
+    assert!((slot(SPAN * 0.5) - 0.75).abs() < 1e-6);
+    let behind = bearing(Vec3::new(-1.0, 0.0, 9.0), ahead, up).unwrap();
+    assert_eq!((slot(behind), slot(right)), (0.0, 1.0));
+    assert_eq!(bearing(Vec3::Y, ahead, up), None);
+    assert_eq!(
+        (beside(0.0, Some(0.0)), beside(1.0, Some(1.0))),
+        (56.0, 304.0)
+    );
+    assert_eq!((beside(0.5, Some(0.0)), beside(0.5, None)), (180.0, 180.0));
 }

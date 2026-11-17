@@ -19,6 +19,7 @@ mod observer;
 mod palette;
 mod pixelate;
 pub mod ray_tracing;
+mod scatter;
 mod sky;
 mod starfield;
 mod sun;

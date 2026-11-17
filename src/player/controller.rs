@@ -44,6 +44,9 @@ pub struct Motion {
     pub swimming: bool,
     /// Whether the wingsuit is asked open. Only the air keeps it: landing and water fold it.
     pub wings: bool,
+    /// Whether the boots are fired: the jump key was pressed again in the air and is still held.
+    /// The press that jumps off the ground never fires them.
+    pub boots: bool,
     /// Whether the held jump key already fired the boots, and so starts no jump until let go.
     pub spent: bool,
     /// The heading the movement keys are read against.
@@ -82,7 +85,8 @@ impl Env<'_, '_> {
     }
 
     /// Reads the keys into what the player asks, against the heading the keys hold. The
-    /// wingsuit key only works in the air.
+    /// wingsuit key only works in the air, and so does the second press of the jump key that
+    /// fires the boots.
     fn intent(&self, motion: &mut Motion, step: &Step) -> Intent {
         let map = &self.settings.controls.keys;
         let axes = Vec2::new(
@@ -92,6 +96,8 @@ impl Env<'_, '_> {
         let yaw = motion.steer.step(step.view.yaw, self.look.yaw_delta, axes);
         let aloft = !motion.grounded && !motion.swimming;
         motion.wings ^= aloft && self.keys.just_pressed(map.wings);
+        let again = aloft && motion.coyote <= 0.0 && self.keys.just_pressed(map.jump);
+        motion.boots = self.keys.pressed(map.jump) && (motion.boots || again);
         read_intent(&self.keys, map, yaw)
     }
 

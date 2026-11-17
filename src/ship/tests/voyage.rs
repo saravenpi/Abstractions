@@ -32,7 +32,7 @@ fn here(game: &Game) -> (BodyId, PlanetSpec) {
 /// The vertical thrusters lift the landed ship off the ground, and the companion notices.
 fn lifts_off(game: &mut Game) {
     assert!(game.ship().landed && game.get::<ShipTelemetry>().landed);
-    game.press(key(game, |keys| keys.ship.up));
+    game.press(key(game, |keys| keys.ship.rise));
     game.until("the ship to leave the ground", 120, |game| {
         !game.ship().landed
     });
@@ -44,7 +44,7 @@ fn lifts_off(game: &mut Game) {
     assert!(log.chirps.contains(&CompanionChirp(ChirpKind::Surprised)));
     let ship = game.ship();
     assert!(ship.vel.dot(ship.pos.normalize()) > 1.0, "not climbing");
-    game.press(key(game, |keys| keys.ship.thrust));
+    game.press(key(game, |keys| keys.ship.throttle_up));
     game.pace(FLIGHT);
 }
 

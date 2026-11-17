@@ -2,9 +2,11 @@
 
 mod atlas;
 mod board;
+mod chart;
 mod format;
 mod keys;
 mod locate;
+mod map;
 mod open;
 mod reveal;
 mod route;

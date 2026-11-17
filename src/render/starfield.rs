@@ -15,6 +15,7 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
 
+use super::entry::FlightFx;
 use super::palette::Palette;
 use super::vantage::Vantage;
 use crate::screens::Screen;
@@ -84,10 +85,14 @@ fn spawn(mut commands: Commands, mut materials: ResMut<Assets<StarMaterial>>) {
     ));
 }
 
-/// Keeps the shell around the camera, turned with the galaxy, and fades the stars with the sky.
+/// Share of their light the stars keep at full warp, when the streaks take their place.
+const WARP_DIM: f32 = 0.2;
+
+/// Keeps the shell around the camera, turned with the galaxy, and fades the stars with the sky
+/// and with the warp: the stars that stand still give way to the ones that stream past.
 fn follow(
     vantage: Res<Vantage>,
-    palette: Res<Palette>,
+    (palette, flight): (Res<Palette>, Res<FlightFx>),
     mut fields: Query<
         (
             &mut Transform,
@@ -106,7 +111,7 @@ fn follow(
     for (mut transform, mut global, handle) in &mut fields {
         super::pin(pose, &mut transform, &mut global);
         if let Some(mut material) = materials.get_mut(&handle.0) {
-            material.stars.params.x = palette.stars;
+            material.stars.params.x = palette.stars * (1.0 - (1.0 - WARP_DIM) * flight.warp);
         }
     }
 }

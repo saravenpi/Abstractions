@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use super::world::Boxes;
 use super::{moment, run, third};
-use crate::view::tune::{EASE_SPEED, RADIUS};
+use crate::view::tune::{EASE_SPEED, HEAD_RADIUS, RADIUS, SKIN};
 use crate::view::{Kind, Moment, Rig, ViewPrefs};
 
 /// Returns the floor with a wall 1.5 m behind a body that stands at the origin and faces -Z.
@@ -69,9 +69,9 @@ fn narrow_obstacles_are_ignored() {
 }
 
 /// Walks a body through the building while the player swings the camera, and asserts on
-/// every frame that the camera keeps the radius of its sphere from every surface and never
+/// every frame that the camera keeps `margin` metres from every surface and never
 /// jumps by more than 0.3 m relative to the body.
-fn tour(prefs: ViewPrefs) {
+fn tour(prefs: ViewPrefs, margin: f32) {
     let world = Boxes::building();
     let mut rig = Rig::default();
     let mut body: Moment = moment(Kind::OnFoot, prefs);
@@ -91,7 +91,7 @@ fn tour(prefs: ViewPrefs) {
             body.look.pitch_delta = 0.9 * (frame * 0.013).sin() * body.dt;
             let at = run(&mut rig, &mut body, &world, 1).pose.position;
             let gap = world.clearance(at);
-            assert!(gap >= RADIUS - 1.0e-3, "{gap} m from a surface at {at}");
+            assert!(gap >= margin - 1.0e-3, "{gap} m from a surface at {at}");
             let beside: Vec3 = at - body.target.position;
             let jump = last.map_or(0.0, |was| beside.distance(was));
             assert!(jump <= 0.3, "the camera jumped by {jump} m at {at}");
@@ -105,8 +105,8 @@ fn tour(prefs: ViewPrefs) {
 /// first person.
 #[test]
 fn never_inside_geometry() {
-    tour(third());
-    tour(ViewPrefs::default());
+    tour(third(), RADIUS);
+    tour(ViewPrefs::default(), HEAD_RADIUS - SKIN);
 }
 
 /// Under a low ceiling the rig is shorter and lower than in the open.

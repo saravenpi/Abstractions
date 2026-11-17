@@ -3,6 +3,7 @@
 use super::dsp::filter::{Lag, Svf, pole};
 use super::dsp::osc::{Phasor, sine};
 use super::dsp::rand::Noise;
+use super::shore::stereo;
 
 /// Level of the wind at full strength.
 pub const WIND_LEVEL: f32 = 0.4;
@@ -35,6 +36,8 @@ pub struct AirCtl {
     pub wind: f32,
     /// Shore closeness.
     pub shore: f32,
+    /// Side the shore is on, from -1 (left) to 1 (right).
+    pub shore_side: f32,
     /// Depth under water.
     pub submerged: f32,
     /// 1 inside the ship cabin.
@@ -109,10 +112,11 @@ impl Air {
         let drone = self.deep.low(raw[0] + raw[1]) * ctl.submerged * DEEP_LEVEL;
         let blow = ctl.wind * ctl.wind.sqrt() * WIND_LEVEL;
         let outside = 1.0 - ctl.space;
+        let sea = stereo(ctl.shore_side, ctl.shore * SEA_LEVEL);
         let mut out = [0.0; 2];
         for side in 0..2 {
             let (low, band) = self.wind[side].run(raw[side]);
-            let wash = surge(self.wave.0 + 0.31 * side as f32) * ctl.shore * SEA_LEVEL;
+            let wash = surge(self.wave.0 + 0.31 * side as f32) * sea[side];
             let open = (low + 0.5 * band) * blow + self.sea[side].low(raw[1 - side]) * wash;
             out[side] = self.muffle[side].to(open * outside, self.k) + drone;
         }

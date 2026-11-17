@@ -26,6 +26,7 @@ pub use controller::Motion;
 pub use seat::{place, seat};
 pub(crate) use steer::wrap;
 pub use steer::{Lead, Steer, Turn};
+pub use wake::awake;
 
 use bevy::prelude::*;
 

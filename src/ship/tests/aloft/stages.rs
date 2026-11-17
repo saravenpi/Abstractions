@@ -39,7 +39,7 @@ pub fn boots(game: &mut Game, watch: &mut Watch) {
     let apex = game.body().height + 0.05;
     for frame in 0..240 {
         if frame == 100 {
-            game.tap(game.bound(|keys| keys.ship.view), watch);
+            game.tap(game.bound(|keys| keys.view), watch);
         }
         watch.step(game, 1);
         let height = game.body().height;
@@ -67,7 +67,7 @@ pub fn glides(game: &mut Game, watch: &mut Watch) {
     for second in 0..6 {
         if second == 2 {
             game.tap(game.bound(|keys| keys.ship.board), watch);
-            game.tap(game.bound(|keys| keys.ship.view), watch);
+            game.tap(game.bound(|keys| keys.view), watch);
         }
         watch.step(game, 30);
         let now = energy(&game.body(), g);
@@ -78,7 +78,8 @@ pub fn glides(game: &mut Game, watch: &mut Watch) {
     assert!(!game.walker().seated);
 }
 
-/// Wingsuit and boots together fly: pulling up climbs, and level flight holds its height.
+/// Wingsuit and boots together fly: the back key pulls the view and the nose up and climbs,
+/// the forward key brings them level again, and level flight holds its height.
 pub fn flies(game: &mut Game, watch: &mut Watch) {
     let boost = game.bound(|keys| keys.sprint);
     game.press(boost);
@@ -95,8 +96,13 @@ pub fn flies(game: &mut Game, watch: &mut Watch) {
         climbed > before,
         "pulling up sank from {before} m to {climbed} m"
     );
+    let forward = game.bound(|keys| keys.forward);
+    game.press(forward);
+    watch.step(game, 45);
+    game.release(forward);
+    let level = game.body().height;
     watch.step(game, 180);
-    let (body, kept) = (game.body(), climbed - 15.0);
+    let (body, kept) = (game.body(), level - 15.0);
     assert!(
         body.height > kept,
         "level flight sank to {} m under {kept} m",

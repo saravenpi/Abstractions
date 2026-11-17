@@ -38,14 +38,17 @@ pub(super) fn seat(shot: &Shot, bend: &Bend) -> Vec3 {
 /// Returns the boom of `shot` in the axes the camera looks along.
 ///
 /// Looking up shortens it and drops the camera; looking down lengthens it and raises the
-/// camera. Indoors it is shorter, lower and closer to the body. Speed stretches it.
+/// camera. Indoors it is shorter, lower and closer to the body. Speed stretches it. All of that
+/// applies by the share of third person in the shot: the eyes of a first person view keep their
+/// place on the head whatever the zoom.
 pub(super) fn boom(shot: &Shot, bend: &Bend) -> Vec3 {
-    let scale = bend.zoom * (1.0 + shot.pull * bend.rush);
-    let tight = 1.0 - INDOOR_SHORTEN * bend.indoor;
+    let third = shot.third;
+    let scale = 1.0 + (bend.zoom * (1.0 + shot.pull * bend.rush) - 1.0) * third;
+    let reach = (1.0 - INDOOR_SHORTEN * bend.indoor) * (1.0 - TILT_REACH * bend.tilt);
     Vec3::new(
         shot.boom.x * (1.0 - 0.5 * bend.indoor),
-        shot.boom.y * (1.0 - bend.indoor) - TILT_DROP * bend.tilt * shot.third,
-        shot.boom.z * tight * (1.0 - TILT_REACH * bend.tilt),
+        shot.boom.y * (1.0 - bend.indoor * third) - TILT_DROP * bend.tilt * third,
+        shot.boom.z * (1.0 + (reach - 1.0) * third),
     ) * scale
 }
 

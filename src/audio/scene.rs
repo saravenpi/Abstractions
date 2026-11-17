@@ -30,6 +30,11 @@ pub struct AudioScene {
     pub wind: f32,
     /// How close the shoreline is, from 0 (far) to 1 (at the water's edge).
     pub shore: f32,
+    /// Where the shoreline is for the listener, from -1 (left) to 1 (right).
+    pub shore_side: f32,
+    /// Where the companion is for the listener: its side from -1 (left) to 1 (right) in x, and
+    /// how near it is from 0 (out of earshot) to 1 (beside the head) in y.
+    pub companion: Vec2,
     /// Engine throttle from 0 to 1.
     pub throttle: f32,
     /// Dynamic pressure on the hull from 0 to 1, 1 being the strongest buffeting.
@@ -59,6 +64,8 @@ impl Default for AudioScene {
             submerged: 0.0,
             wind: 0.0,
             shore: 0.0,
+            shore_side: 0.0,
+            companion: Vec2::Y,
             throttle: 0.0,
             dynamic_pressure: 0.0,
             cloud_depth: 0.0,

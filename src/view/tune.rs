@@ -27,8 +27,11 @@ pub const FLIGHT_TIME: f32 = 0.5;
 /// Rate at which the third person orbit catches up with the look angles.
 pub const TRAIL_RATE: f32 = 30.0;
 
-/// Rate at which the free orbit around the ship springs back once the look key is released.
-pub const ORBIT_RETURN: f32 = 5.0;
+/// Seconds the free look around the ship holds after the mouse stopped, before it springs back.
+pub const ORBIT_HOLD: f32 = 1.6;
+
+/// Rate at which the free look around the ship springs back to the nose.
+pub const ORBIT_RETURN: f32 = 3.0;
 
 /// Seconds without camera input before the yaw starts to drift behind the direction of travel.
 pub const FOLLOW_DELAY: f32 = 1.2;
@@ -50,6 +53,12 @@ pub const ZOOM_RATE: f32 = 10.0;
 
 /// Radius of the sphere that keeps the camera body out of geometry. The near plane (0.1 m) fits inside it.
 pub const RADIUS: f32 = 0.3;
+
+/// Longest boom that stays inside the capsule of the body: the one from the neck to the eyes.
+pub const HEAD_REACH: f32 = 0.3;
+
+/// Radius of the sphere cast along such a boom. The near plane (0.05 m) fits inside it.
+pub const HEAD_RADIUS: f32 = 0.12;
 
 /// Gap kept between that sphere and what it touched.
 pub const SKIN: f32 = 0.02;

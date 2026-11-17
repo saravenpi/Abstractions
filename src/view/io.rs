@@ -70,8 +70,6 @@ pub struct Look {
     pub pitch_delta: f32,
     /// Wheel notches, positive toward the body.
     pub zoom_delta: f32,
-    /// Whether the look key is held. In the ship the mouse turns the camera only while it is.
-    pub orbit_held: bool,
 }
 
 impl Look {
@@ -84,7 +82,6 @@ impl Look {
             yaw_delta: -motion.x * scale,
             pitch_delta: -motion.y * scale * y_sign,
             zoom_delta: wheel,
-            orbit_held: false,
         }
     }
 }

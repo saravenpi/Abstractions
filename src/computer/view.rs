@@ -1,9 +1,10 @@
-//! Static layout of the computer screen: tabs, a fixed pool of table rows, the route line and
-//! the actions with their keys.
+//! Static layout of the computer screen: tabs, a fixed pool of table rows beside the map, the
+//! route line and the actions with their keys.
 
 use bevy::prelude::*;
 
 use super::board::{Board, Tab, VISIBLE_ROWS};
+use super::map::field;
 use super::open::Computer;
 use crate::menus::key_name;
 use crate::settings::{Persistent, Settings};
@@ -128,6 +129,18 @@ fn table() -> impl Bundle {
     )
 }
 
+/// The table and the map of the open tab, side by side.
+fn charted() -> impl Bundle {
+    (
+        Node {
+            column_gap: px(theme::GAP_M),
+            align_items: AlignItems::FlexStart,
+            ..default()
+        },
+        children![table(), field()],
+    )
+}
+
 /// The actions on the destination and the screen, each with its icon and its key.
 fn actions(engage: &str, close: &str) -> impl Bundle {
     (
@@ -166,7 +179,7 @@ pub(super) fn spawn(
                     heading("Board computer"),
                     tabs(),
                     (Summary, text("", theme::FONT_SMALL, theme::MUTED)),
-                    table(),
+                    charted(),
                     (
                         Status,
                         text("", theme::FONT_SMALL, theme::TEXT),

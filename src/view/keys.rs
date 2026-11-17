@@ -1,4 +1,4 @@
-//! The hand on the camera: the mouse, the wheel, the look key and the view key.
+//! The hand on the camera: the mouse, the wheel and the view key.
 
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::prelude::*;
@@ -8,11 +8,10 @@ use super::mode::ViewPrefs;
 use super::tune::PIXELS_PER_NOTCH;
 use crate::settings::{Persistent, Settings};
 
-/// Reads the mouse, the wheel and the look key into [`Look`], with the mouse settings applied.
+/// Reads the mouse and the wheel into [`Look`], with the mouse settings applied.
 pub(super) fn read_look(
     motion: Res<AccumulatedMouseMotion>,
     wheel: Res<AccumulatedMouseScroll>,
-    keys: Res<ButtonInput<KeyCode>>,
     settings: Res<Persistent<Settings>>,
     mut look: ResMut<Look>,
 ) {
@@ -21,15 +20,12 @@ pub(super) fn read_look(
         MouseScrollUnit::Line => wheel.delta.y,
         MouseScrollUnit::Pixel => wheel.delta.y / PIXELS_PER_NOTCH,
     };
-    *look = Look {
-        orbit_held: keys.pressed(controls.keys.orbit),
-        ..Look::from_mouse(
-            motion.delta,
-            notches,
-            controls.mouse_sensitivity,
-            controls.invert_y,
-        )
-    };
+    *look = Look::from_mouse(
+        motion.delta,
+        notches,
+        controls.mouse_sensitivity,
+        controls.invert_y,
+    );
 }
 
 /// Switches between first and third person for what the camera follows now, on foot or in
@@ -40,7 +36,7 @@ pub(super) fn toggle(
     target: Res<Target>,
     mut prefs: ResMut<ViewPrefs>,
 ) {
-    if keys.just_pressed(settings.controls.keys.ship.view) {
+    if keys.just_pressed(settings.controls.keys.view) {
         prefs.toggle(target.kind);
     }
 }

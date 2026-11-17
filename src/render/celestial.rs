@@ -33,12 +33,6 @@ pub fn daylight(phase: f32) -> f32 {
     smoothstep(-0.12, 0.25, sun_direction(phase).y)
 }
 
-/// Returns the weight of the golden hour glow, strongest when the sun sits on the horizon.
-pub fn golden(phase: f32) -> f32 {
-    let height = sun_direction(phase).y;
-    smoothstep(-0.18, 0.0, height) * (1.0 - smoothstep(0.0, 0.35, height))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -52,12 +46,10 @@ mod tests {
         assert!((sun_direction(0.1) + moon_direction(0.1)).length() < 1e-6);
     }
 
-    /// Daylight is full at noon, zero at midnight and golden light peaks at the horizon.
+    /// Daylight is full at noon and zero at midnight.
     #[test]
     fn daylight_follows_the_sun() {
         assert!(daylight(0.25) > 0.99);
         assert!(daylight(0.75) < 0.01);
-        assert!(golden(0.0) > 0.99);
-        assert!(golden(0.25) < 0.01);
     }
 }

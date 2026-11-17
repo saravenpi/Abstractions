@@ -23,7 +23,7 @@ fn every_cue_renders() {
     for cue in AudioCue::all() {
         let mut pool = Pool::new(RATE);
         pool.play(cue);
-        let buffer: Vec<f32> = (0..frames(5.0)).map(|_| pool.frame()).collect();
+        let buffer: Vec<f32> = (0..frames(5.0)).map(|_| pool.frame()[0]).collect();
         let peak = buffer.iter().fold(0.0_f32, |peak, x| peak.max(x.abs()));
         let jump = buffer
             .windows(2)

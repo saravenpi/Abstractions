@@ -104,7 +104,8 @@ fn animate(time: Res<Time>, mut bars: Query<&mut Node, With<Sweep>>) {
     }
 }
 
-/// Moves to gameplay, hidden behind the boot screen, once the world reports it is ready.
+/// Moves to gameplay, hidden behind the boot screen, once the world reports it is ready around
+/// the place the body starts at.
 fn wait_for_world(
     ready: Option<Res<WorldReady>>,
     mut screen: ResMut<NextState<Screen>>,
@@ -123,7 +124,8 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Screen::Loading), enter)
         .add_systems(
             Update,
-            (wait_for_world, animate).run_if(in_state(Screen::Loading)),
+            (wait_for_world.run_if(crate::player::awake), animate)
+                .run_if(in_state(Screen::Loading)),
         );
 }
 

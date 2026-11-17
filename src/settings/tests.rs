@@ -132,7 +132,7 @@ fn files_without_the_view_settings_load_with_defaults() {
         let parsed: Settings = toml::from_str(old).unwrap();
         assert_eq!(parsed.view, crate::view::ViewPrefs::default());
         let keys = parsed.controls.keys;
-        assert_eq!((keys.wings, keys.orbit), (KeyCode::KeyR, KeyCode::AltLeft));
+        assert_eq!((keys.wings, keys.view), (KeyCode::KeyR, KeyCode::KeyV));
     }
     assert_eq!(toml::from_str::<Settings>(&text).unwrap().audio.music, 0.3);
 }

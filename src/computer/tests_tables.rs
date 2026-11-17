@@ -112,6 +112,7 @@ fn a_long_table_keeps_the_cursor_in_view() {
         target: Target::Galaxy(GalaxyId::default()),
         distance: i as f64,
         visited: false,
+        at: default(),
     };
     let mut board = Board::default();
     board.show(Tab::Galaxy);
@@ -130,8 +131,7 @@ fn a_long_table_keeps_the_cursor_in_view() {
     assert_eq!(board.at(3).unwrap().title, "Star 491");
     assert_eq!(board.cursor, 491);
     board.fill(String::new(), (0..5).map(line).collect());
-    assert_eq!((board.cursor, board.top), (4, 0));
-    assert!(board.at(5).is_none());
+    assert!((board.cursor, board.top) == (4, 0) && board.at(5).is_none());
     assert_eq!(
         (Tab::System.step(-1), Tab::Universe.step(1)),
         (Tab::Universe, Tab::System)

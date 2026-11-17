@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::tune::{AHEAD, BEHIND, RISE, SIDE};
+use super::tune::{BEHIND, REACH, RISE, SIDE};
 use crate::space::{Anchor, altitude, up};
 use crate::world::{SEA_LEVEL, Terrain};
 
@@ -30,9 +30,10 @@ impl Stance {
         self.level().cross(self.up)
     }
 
-    /// Returns the comfortable spot beside and slightly ahead of the eyes, before any ground clearance.
-    pub fn rest(&self) -> Vec3 {
-        self.eye + self.right() * SIDE + self.level() * AHEAD + self.up * RISE
+    /// Returns the comfortable spot in the horizontal direction `side` of the eyes, the place
+    /// the companion chose, before any ground clearance.
+    pub fn rest(&self, side: Vec3) -> Vec3 {
+        self.eye + side * REACH + self.up * RISE
     }
 
     /// Returns the spot just behind the player where a companion left far behind reappears.

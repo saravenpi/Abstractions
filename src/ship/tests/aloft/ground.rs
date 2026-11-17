@@ -138,7 +138,7 @@ pub fn glides_into_the_sea(game: &mut Game, watch: &mut Watch) {
 /// camera following on its own the walk stays straight.
 pub fn walks_third_person(game: &mut Game, watch: &mut Watch) {
     if game.get::<ViewPrefs>().on_foot != ViewMode::Third {
-        game.tap(game.bound(|keys| keys.ship.view), watch);
+        game.tap(game.bound(|keys| keys.view), watch);
     }
     assert!(game.get::<ViewPrefs>().auto_follow);
     watch.step(game, 30);

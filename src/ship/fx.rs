@@ -8,6 +8,7 @@ use super::shake::{Buffet, FOLLOW, eased, roughness};
 use super::telemetry::{ShipTelemetry, WarpState};
 use crate::render::{CloudCrossing, FlightFx};
 use crate::space::{Location, Travel};
+use crate::view::Target;
 
 /// Rate per second at which the warp effect follows the drive.
 const WARP_RATE: f32 = 2.5;
@@ -37,6 +38,8 @@ pub struct Senses<'w> {
     clouds: Option<Res<'w, CloudCrossing>>,
     /// The flight effects of the sky, when the sky is drawn.
     fx: Option<ResMut<'w, FlightFx>>,
+    /// What the camera follows: the ship while the player is seated.
+    target: Res<'w, Target>,
     /// The shake of the view.
     buffet: ResMut<'w, Buffet>,
 }
@@ -60,6 +63,7 @@ pub fn feed(mut senses: Senses) {
         dynamic_pressure: pressure,
         warp: eased(fx.warp, warp_level(telemetry.warp) * gate, WARP_RATE, dt),
         speed: telemetry.surface_speed as f32 * gate,
+        nose: senses.target.forward * gate,
     };
     fx.set_if_neq(next);
 }

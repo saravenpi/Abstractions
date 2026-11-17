@@ -9,14 +9,14 @@ use super::basis::Stance;
 use super::io::{Heading, Kind, Moment};
 use super::smooth::{closed, trail, wrap};
 use super::tune::{
-    FOLLOW_DELAY, FOLLOW_RATE, FOLLOW_SPEED, ORBIT_RETURN, PITCH_LIMIT, THIRD_DOWN, THIRD_UP,
-    TRAIL_RATE,
+    FOLLOW_DELAY, FOLLOW_RATE, FOLLOW_SPEED, ORBIT_HOLD, ORBIT_RETURN, PITCH_LIMIT, THIRD_DOWN,
+    THIRD_UP, TRAIL_RATE,
 };
 
 /// The look angles and how they got there.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub(super) struct Aim {
-    /// What the player aims at. On foot it is the heading; in the ship, the free orbit around it.
+    /// What the player aims at. On foot it is the heading; in the ship, the free look around it.
     pub heading: Heading,
     /// How far the camera trails behind the heading, in yaw and in pitch.
     trail: Vec2,
@@ -33,9 +33,10 @@ impl Aim {
         }
     }
 
-    /// Returns the turn that springs the free orbit around the ship back behind it.
-    fn recentre(&mut self, held: bool, dt: f32) -> Vec2 {
-        if held {
+    /// Returns the turn that springs the free look around the ship back to its nose, once the
+    /// player has left the mouse alone for [`ORBIT_HOLD`].
+    fn recentre(&mut self, dt: f32) -> Vec2 {
+        if self.idle < ORBIT_HOLD {
             return Vec2::ZERO;
         }
         self.heading.yaw = wrap(self.heading.yaw);
@@ -59,16 +60,13 @@ impl Aim {
     /// Turns the aim by what the player asks, or by itself when the player asks nothing.
     pub(super) fn step(&mut self, moment: &Moment, stance: &Stance, third: f32) {
         let (look, ship) = (&moment.look, moment.target.kind == Kind::Ship);
-        let asked = match ship && !look.orbit_held {
-            true => Vec2::ZERO,
-            false => Vec2::new(look.yaw_delta, look.pitch_delta),
-        };
+        let asked = Vec2::new(look.yaw_delta, look.pitch_delta);
         self.idle = match asked == Vec2::ZERO {
             true => self.idle + stance.dt,
             false => 0.0,
         };
         let own = match ship {
-            true => self.recentre(look.orbit_held, stance.dt),
+            true => self.recentre(stance.dt),
             false => Vec2::X * self.follow(moment, stance, third),
         };
         let before = Vec2::new(self.heading.yaw, self.heading.pitch);

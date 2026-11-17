@@ -50,12 +50,12 @@ impl Tab {
     ];
 
     /// Returns the icon and the name shown on the tab. The icon pack has no spacecraft, so the
-    /// ship tab has a label only.
+    /// ship tab wears the paper plane that also marks the ship on the compass.
     pub fn face(self) -> (Option<Icon>, &'static str) {
         match self {
             Tab::Graphics => (Some(Icon::Monitor), "Graphics"),
             Tab::Controls => (Some(Icon::Keyboard), "Controls"),
-            Tab::Ship => (None, "Ship"),
+            Tab::Ship => (Some(Icon::Send), "Ship"),
             Tab::Audio => (Some(Icon::Volume), "Audio"),
             Tab::Help => (Some(Icon::Info), "Reference"),
         }

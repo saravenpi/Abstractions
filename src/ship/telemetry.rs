@@ -40,7 +40,7 @@ pub struct ShipTelemetry {
     pub surface_speed: f64,
     /// Speed relative to the centre of the body in metres per second, in a frame that does not turn.
     pub orbital_speed: f64,
-    /// Main engine lever from -0.5 to 1.
+    /// Main engine lever from 0 to 1.
     pub throttle: f64,
     /// Dynamic pressure of the air on the hull in pascals.
     pub dynamic_pressure: f64,

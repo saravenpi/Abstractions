@@ -22,6 +22,8 @@ pub struct Line {
     pub distance: f64,
     /// Whether the player has been there.
     pub visited: bool,
+    /// Where its centre is in the universe, for the map.
+    pub at: UniPos,
 }
 
 /// What ends the detail of a row whose target was visited.
@@ -67,6 +69,7 @@ impl View<'_> {
             target,
             distance: gap,
             visited,
+            at: place.0,
         }
     }
 

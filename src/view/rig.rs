@@ -11,7 +11,9 @@ use super::io::{BodyFade, CameraPose, Heading, Kind, Moment, Occluder, Shown, Ta
 use super::occlude::{self, Probe};
 use super::shot::Shot;
 use super::sway::Sway;
-use super::tune::{CEILING_BAND, CEILING_REACH, DT_RANGE, INDOOR_RATE, RADIUS};
+use super::tune::{
+    CEILING_BAND, CEILING_REACH, DT_RANGE, HEAD_RADIUS, HEAD_REACH, INDOOR_RATE, RADIUS, SKIN,
+};
 use crate::render::smoothstep;
 
 /// The state of the camera between frames.
@@ -112,12 +114,19 @@ impl Rig {
     }
 
     /// Returns where the camera goes on its way from `pivot` along `swing`, and how far from
-    /// the pivot that is. The boom pulls in fast and eases out slowly.
+    /// the pivot that is. The boom pulls in fast and eases out slowly. A boom that stays inside
+    /// the body, as the one from the neck to the eyes does, is cast with the small sphere of
+    /// the head and never eased: the body already keeps it off the walls.
     fn place(&mut self, probe: Option<Probe>, stance: &Stance, world: &impl Occluder) -> f32 {
         let Some(probe) = probe else {
             self.short = 0.0;
             return 0.0;
         };
+        if probe.max <= HEAD_REACH {
+            self.short = 0.0;
+            let free = world.cast(probe.origin, probe.dir, probe.max, HEAD_RADIUS);
+            return free.map_or(probe.max, |hit| (hit - SKIN).max(0.0));
+        }
         let hard = occlude::reach(world, &probe);
         let goal = probe.max - hard.min(occlude::feel(world, &probe));
         let short = match stance.fresh {

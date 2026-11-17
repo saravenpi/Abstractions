@@ -15,6 +15,7 @@ mod scene;
 mod sense;
 mod shared;
 mod ship;
+mod shore;
 mod source;
 mod steps;
 mod suit;

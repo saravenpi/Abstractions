@@ -7,8 +7,13 @@ use bevy::prelude::*;
 
 use super::io::{Kind, Target};
 
-/// Height of the eyes above the centre of the body capsule.
-const EYE: f32 = 0.7;
+/// Height of the neck joint above the centre of the body capsule: the pivot the head turns on.
+const NECK: f32 = 0.48;
+
+/// From the neck to the eyes in the axes the camera looks along: right, up, back. The eyes sit
+/// on the face of the head, ahead of the chest, so the view never looks down into the neck, and
+/// they swing forward over the chest when the head looks down.
+const FACE: Vec3 = Vec3::new(0.0, 0.22, -0.16);
 
 /// Height above the centre of the body of the pivot the third person camera orbits: just above the shoulders.
 const SHOULDERS: f32 = 0.8;
@@ -73,11 +78,12 @@ impl Shot {
     }
 }
 
-/// Returns the first person shot of a body: the eyes, with nothing automatic.
+/// Returns the first person shot of a body: the eyes on a head that turns at the neck, with
+/// nothing automatic.
 fn eyes() -> Shot {
     Shot {
-        seat: Vec3::Y * EYE,
-        boom: Vec3::ZERO,
+        seat: Vec3::Y * NECK,
+        boom: FACE,
         lag: 0.0,
         stiff: 14.0,
         turn: 30.0,
@@ -135,6 +141,7 @@ fn ship(third: bool, target: &Target) -> Shot {
     if !third {
         return Shot {
             seat: SEAT * target.radius,
+            boom: Vec3::ZERO,
             turn: 14.0,
             widen: 0.1,
             ..eyes()

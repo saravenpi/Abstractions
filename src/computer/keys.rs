@@ -113,7 +113,10 @@ impl Desk<'_, '_> {
     /// Runs an action of the screen.
     fn run(&mut self, act: Act) {
         match (act, self.destination.0) {
-            (Act::Engage, Some(target)) => self.commands.trigger(Engage(target)),
+            (Act::Engage, Some(target)) => {
+                self.commands.trigger(Engage(target));
+                self.next.set(Computer::Closed);
+            }
             (Act::Clear, Some(_)) => self.destination.0 = None,
             (Act::Close, _) => self.next.set(Computer::Closed),
             _ => {}

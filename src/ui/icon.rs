@@ -74,11 +74,15 @@ pub enum Icon {
     ChevronLeft,
     /// `chevron-right`
     ChevronRight,
+    /// `home`
+    Home,
+    /// `map`
+    Map,
 }
 
 impl Icon {
     /// Every icon, in declaration order.
-    pub const ALL: [Icon; 25] = [
+    pub const ALL: [Icon; 27] = [
         Icon::Play,
         Icon::Pause,
         Icon::Earth,
@@ -104,6 +108,8 @@ impl Icon {
         Icon::Eraser,
         Icon::ChevronLeft,
         Icon::ChevronRight,
+        Icon::Home,
+        Icon::Map,
     ];
 
     /// Returns the codepoint of the icon in the pixelarticons font.
@@ -134,6 +140,8 @@ impl Icon {
             Icon::Eraser => '\u{eb87}',
             Icon::ChevronLeft => '\u{eb14}',
             Icon::ChevronRight => '\u{eb16}',
+            Icon::Home => '\u{ebea}',
+            Icon::Map => '\u{ec7d}',
         }
     }
 

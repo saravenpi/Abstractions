@@ -9,7 +9,7 @@ use super::dsp::rand::Noise;
 pub const RUSH_LEVEL: f32 = 0.5;
 
 /// Level of the boosters at full push.
-pub const HUM_LEVEL: f32 = 0.12;
+pub const HUM_LEVEL: f32 = 0.07;
 
 /// Level of the cloth at full flutter.
 pub const FLUTTER_LEVEL: f32 = 0.25;
@@ -36,7 +36,7 @@ pub struct SuitCtl {
 pub struct Suit {
     /// Colour of the rush: it brightens with speed.
     rush: Svf,
-    /// Colour of the booster hiss.
+    /// Colour of the booster breath: a low, wide band, so the boots rumble and never whistle.
     hiss: Svf,
     /// Colour of the cloth.
     cloth: Svf,
@@ -67,7 +67,7 @@ impl Suit {
     /// Retunes the filters. Call it a few hundred times per second.
     pub fn tune(&mut self, ctl: &SuitCtl) {
         self.rush.tune(280.0 + 2400.0 * ctl.rush, 0.8, self.rate);
-        self.hiss.tune(900.0 + 1800.0 * ctl.boost, 0.9, self.rate);
+        self.hiss.tune(260.0 + 240.0 * ctl.boost, 0.6, self.rate);
         self.cloth.tune(700.0 + 500.0 * ctl.flutter, 1.4, self.rate);
     }
 
@@ -79,7 +79,7 @@ impl Suit {
         let step = (HUM_HZ.0 + HUM_HZ.1 * ctl.boost) / self.rate;
         let [root, fifth] = &mut self.hum;
         let tone = sine(root.tick(step)) + 0.5 * sine(fifth.tick(step * 1.498));
-        let hum = (tone + 1.4 * self.hiss.band(raw)) * ctl.boost * HUM_LEVEL;
+        let hum = (tone + 0.9 * self.hiss.band(raw)) * ctl.boost * HUM_LEVEL;
         let flap = sine(
             self.flap
                 .tick((FLAP_HZ.0 + FLAP_HZ.1 * ctl.flutter) / self.rate),

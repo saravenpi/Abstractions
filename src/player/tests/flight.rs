@@ -69,7 +69,7 @@ fn keys_map_to_the_gear() {
     assert_eq!((told.pitch, told.roll, told.wind), (-1.0, -1.0, Vec3::X));
     motion.wings = true;
     assert!(input(&motion, &intent, &air, (false, false)).boost);
-    (motion.wings, intent.sprint, intent.jump) = (false, false, true);
+    (motion.wings, intent.sprint, motion.boots) = (false, false, true);
     let told = input(&motion, &intent, &air, (true, true));
     assert!(told.boost && told.grounded && told.in_water);
 }

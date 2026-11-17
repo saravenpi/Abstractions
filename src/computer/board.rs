@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use super::rows::Line;
+use crate::space::UniPos;
 use crate::ui::Window;
 
 /// Number of rows drawn at once. A longer table scrolls through them.
@@ -55,6 +56,8 @@ pub struct Board {
     pub top: usize,
     /// True when the rows must be built again.
     pub stale: bool,
+    /// Where the ship was when the rows were built, for the map.
+    pub ship: UniPos,
 }
 
 impl Board {

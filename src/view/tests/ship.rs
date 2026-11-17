@@ -81,20 +81,20 @@ fn chase_keeps_the_ship_up_in_space_and_levels_near_a_planet() {
     assert!(nose.x.abs() < 1.0e-3 && ahead.x > 0.2 && ahead.x < 0.6);
 }
 
-/// The mouse orbits the ship only while the look key is held, and the camera springs back
-/// behind the ship once it is released.
+/// The mouse looks around the ship, the view holds for a moment once the mouse stops, and
+/// then the camera springs back behind the ship.
 #[test]
-fn orbit_needs_the_look_key_and_springs_back() {
+fn the_mouse_looks_around_and_the_view_springs_back() {
     let (mut rig, world) = (Rig::default(), Boxes::default());
     let mut ship = ship(4.5, third());
     ship.look.yaw_delta = 0.03;
-    assert_eq!(run(&mut rig, &mut ship, &world, 30).heading.yaw, 0.0);
-    ship.look.orbit_held = true;
     let orbit = run(&mut rig, &mut ship, &world, 30);
     assert!((orbit.heading.yaw - 0.9).abs() < 1.0e-4);
     assert!(seen(&orbit, &ship.target).0.x > 4.0);
-    ship.look.orbit_held = false;
-    let back = run(&mut rig, &mut ship, &world, 150);
+    ship.look.yaw_delta = 0.0;
+    let held = run(&mut rig, &mut ship, &world, 60);
+    assert!((held.heading.yaw - 0.9).abs() < 1.0e-4);
+    let back = run(&mut rig, &mut ship, &world, 400);
     assert!(back.heading.yaw.abs() < 1.0e-3 && seen(&back, &ship.target).0.x.abs() < 0.05);
 }
 
@@ -128,7 +128,6 @@ fn chase_never_clips_the_ground() {
     let (mut rig, mut ship) = (Rig::default(), ship(4.5, third()));
     ship.target.position = Vec3::Y * 1.2;
     ship.target.ground = Vec3::Y;
-    ship.look.orbit_held = true;
     for frame in 0..600 {
         ship.look.yaw_delta = 0.02;
         ship.look.pitch_delta = 0.03 * (frame as f32 * 0.02).sin();

@@ -66,10 +66,7 @@ fn a_ship_saved_in_warp_comes_back_dropped_out() {
     let near = wells[2];
     let pos = near.pos + DVec3::new(0.0, 1.0, 0.0) * near.lock * 4.0;
     let mut ship = flying(Frame::System(system.star.id), pos);
-    ship.warp = Warp::Active {
-        carried: DVec3::new(5.0, 6.0, 7.0),
-        speed: 3.0e9,
-    };
+    ship.warp = Warp::Active { speed: 3.0e9 };
     let (back, _) = reloaded(&ship, &wells, true);
     assert_eq!(
         (back.warp, back.pos, back.rot),
@@ -80,10 +77,7 @@ fn a_ship_saved_in_warp_comes_back_dropped_out() {
     let (back, _) = reloaded(&ship, &wells, true);
     assert_eq!((back.warp, back.vel), (Warp::Off, ship.vel));
     ship.frame = Frame::Galaxy(system.star.id.galaxy);
-    ship.warp = Warp::Active {
-        carried: DVec3::ZERO,
-        speed: 1.0e13,
-    };
+    ship.warp = Warp::Active { speed: 1.0e13 };
     assert_eq!(reloaded(&ship, &[], true).0.vel, DVec3::ZERO);
 }
 

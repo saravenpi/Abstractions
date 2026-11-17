@@ -12,7 +12,7 @@ use crate::settings::{Settings, ShipKeys};
 #[test]
 fn default_bindings_do_not_conflict() {
     let keys = Settings::default().controls.keys;
-    assert_eq!(keys.forward, keys.ship.thrust);
+    assert_eq!(keys.forward, keys.ship.pitch_down);
     assert_eq!(conflicts(&keys), Vec::new());
     assert_eq!(conflict_line(&keys), "");
 }
@@ -70,7 +70,7 @@ fn every_action_has_its_own_key() {
     }
     let ship = s.controls.keys.ship;
     let twelve = ShipKeys {
-        thrust: KeyCode::F12,
+        throttle_up: KeyCode::F12,
         ..ship
     };
     assert_eq!(ship, twelve);

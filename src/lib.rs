@@ -7,6 +7,7 @@ pub mod computer;
 pub mod effects;
 pub mod gear;
 pub mod home;
+pub mod icon;
 pub mod menus;
 pub mod player;
 pub mod render;

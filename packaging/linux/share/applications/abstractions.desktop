@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Abstractions
+Comment=A pixelated low-poly island exploration game
+Exec=abstractions
+Icon=abstractions
+Terminal=false
+Categories=Game;
+StartupWMClass=abstractions

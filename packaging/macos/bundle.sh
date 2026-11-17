@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Builds Abstractions-<version>-macos-universal.dmg from two release binaries.
+# Builds Abstractions-macos-universal.dmg from two release binaries.
 #
 # Usage: bundle.sh <version> <aarch64-binary> <x86_64-binary>
-# Run on macOS (needs lipo, codesign, hdiutil). Output lands in the current directory.
+# Run on macOS (needs lipo, iconutil, codesign, hdiutil). Output lands in the current directory.
+# The file name carries no version, so releases/latest/download/<name> stays a stable link.
+# The version goes into the bundle's Info.plist.
 # The app is ad-hoc signed only, not notarized.
 set -euo pipefail
 
@@ -21,7 +23,7 @@ trap 'rm -rf "$work"' EXIT
 
 app="$work/Abstractions.app"
 staging="$work/staging"
-dmg="$out/Abstractions-$version-macos-universal.dmg"
+dmg="$out/Abstractions-macos-universal.dmg"
 
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources" "$staging"
 
@@ -29,6 +31,7 @@ lipo -create "$arm_bin" "$x86_bin" -output "$app/Contents/MacOS/abstractions"
 chmod +x "$app/Contents/MacOS/abstractions"
 
 sed "s/__VERSION__/$version/g" "$here/Info.plist" > "$app/Contents/Info.plist"
+iconutil --convert icns --output "$app/Contents/Resources/AppIcon.icns" "$here/AppIcon.iconset"
 
 codesign --force --deep --sign - "$app"
 

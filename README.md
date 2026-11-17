@@ -41,9 +41,36 @@ mise run run
 
 Other tasks: `mise run test`, `mise run check`, `mise run build-release`.
 
-## macOS
+## Install
 
-1. Download `Abstractions-<version>-macos-universal.dmg` from the latest release. It runs on Apple Silicon and Intel, macOS 11 or later.
+Every release publishes the same three file names, so these links always fetch the latest version:
+
+- Linux, x86_64: https://github.com/saravenpi/Abstractions/releases/latest/download/abstractions-linux-x86_64.tar.gz
+- Windows, x86_64: https://github.com/saravenpi/Abstractions/releases/latest/download/abstractions-windows-x86_64.zip
+- macOS, Apple Silicon and Intel: https://github.com/saravenpi/Abstractions/releases/latest/download/Abstractions-macos-universal.dmg
+
+The version is in the folder name inside each archive, and in the app's Get Info window on macOS.
+
+### Linux
+
+Extract the archive and run `./abstractions` from its folder.
+
+A tarball cannot register a launcher entry or an icon. To add them, copy the binary onto your `PATH` and the `share` folder into your user data folder:
+
+```sh
+install -Dm755 abstractions ~/.local/bin/abstractions
+cp -R share ~/.local/
+```
+
+That installs `~/.local/share/applications/abstractions.desktop` and the icons under `~/.local/share/icons/hicolor/`. The desktop entry runs `abstractions`, so `~/.local/bin` must be on your `PATH`.
+
+### Windows
+
+Extract the zip and run `abstractions.exe`.
+
+### macOS
+
+1. Download `Abstractions-macos-universal.dmg`. It runs on Apple Silicon and Intel, macOS 11 or later.
 2. Open the .dmg.
 3. Drag Abstractions onto the Applications folder.
 

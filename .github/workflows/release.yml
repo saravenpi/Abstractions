@@ -19,10 +19,10 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            archive: tar.gz
+            platform: linux-x86_64
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            archive: zip
+            platform: windows-x86_64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -31,6 +31,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
+      - name: Check the committed icons
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python3 packaging/icon/make.py --check
+          python3 packaging/icon/test.py
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -42,18 +47,22 @@ jobs:
         shell: bash
         env:
           VERSION: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'dev' }}
+          TARGET: ${{ matrix.target }}
+          PLATFORM: ${{ matrix.platform }}
         run: |
-          NAME="abstractions-$VERSION-${{ matrix.target }}"
-          mkdir "$NAME"
-          if [ "${{ matrix.archive }}" = "zip" ]; then
-            cp target/${{ matrix.target }}/release/abstractions.exe "$NAME/"
-            7z a "$NAME.zip" "$NAME"
-            echo "ASSET=$NAME.zip" >> "$GITHUB_ENV"
+          DIR="abstractions-$VERSION-$PLATFORM"
+          mkdir "$DIR"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            ASSET="abstractions-$PLATFORM.zip"
+            cp "target/$TARGET/release/abstractions.exe" "$DIR/"
+            7z a "$ASSET" "$DIR"
           else
-            cp target/${{ matrix.target }}/release/abstractions "$NAME/"
-            tar -czf "$NAME.tar.gz" "$NAME"
-            echo "ASSET=$NAME.tar.gz" >> "$GITHUB_ENV"
+            ASSET="abstractions-$PLATFORM.tar.gz"
+            cp "target/$TARGET/release/abstractions" "$DIR/"
+            cp -R packaging/linux/share "$DIR/"
+            tar -czf "$ASSET" "$DIR"
           fi
+          echo "ASSET=$ASSET" >> "$GITHUB_ENV"
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
@@ -62,7 +71,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         with:
-          name: ${{ matrix.target }}
+          name: ${{ matrix.platform }}
           path: ${{ env.ASSET }}
 
   macos:
@@ -89,7 +98,7 @@ jobs:
           packaging/macos/bundle.sh "$VERSION" \
             target/aarch64-apple-darwin/release/abstractions \
             target/x86_64-apple-darwin/release/abstractions
-          echo "ASSET=Abstractions-$VERSION-macos-universal.dmg" >> "$GITHUB_ENV"
+          echo "ASSET=Abstractions-macos-universal.dmg" >> "$GITHUB_ENV"
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:

@@ -2,18 +2,8 @@
 
 use bevy::prelude::KeyCode;
 
+pub use super::binds::Bind;
 use crate::settings::{Graphics, Settings};
-
-/// One rebindable player action.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Bind {
-    Forward,
-    Back,
-    Left,
-    Right,
-    Jump,
-    Sprint,
-}
 
 /// One editable setting.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -94,13 +84,5 @@ pub fn step(settings: &mut Settings, field: Field, dir: i32) {
 
 /// Assigns a key to an action.
 pub fn set_key(settings: &mut Settings, bind: Bind, key: KeyCode) {
-    let keys = &mut settings.controls.keys;
-    match bind {
-        Bind::Forward => keys.forward = key,
-        Bind::Back => keys.back = key,
-        Bind::Left => keys.left = key,
-        Bind::Right => keys.right = key,
-        Bind::Jump => keys.jump = key,
-        Bind::Sprint => keys.sprint = key,
-    }
+    *bind.slot(&mut settings.controls.keys) = key;
 }

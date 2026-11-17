@@ -4,25 +4,36 @@ use bevy::input_focus::AutoFocus;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
+use super::recall::{Entry, LastEntry};
 use super::{Menu, Nav};
 use crate::saves::{SaveDir, Starter, WorldEntry, list};
-use crate::ui::{Tone, column, item, item_with, label, root, rule, text, theme};
+use crate::ui::{Icon, Tone, column, icon, item, item_with, label, root, rule, text, theme};
 
 /// Resumes the world stored in this component.
 #[derive(Component)]
 struct Continue(WorldEntry);
 
-/// The Continue item: its label and the muted name of the world it resumes.
+/// The entries below Continue, in order: icon, label and what each does.
+const ENTRIES: [(Icon, &str, Nav); 4] = [
+    (Icon::Earth, "Worlds", Nav::To(Menu::Worlds)),
+    (Icon::Plus, "New world", Nav::To(Menu::NewGame)),
+    (Icon::Settings, "Settings", Nav::To(Menu::Settings)),
+    (Icon::Power, "Quit", Nav::Quit),
+];
+
+/// The Continue item: its icon, its label and the muted name of the world it resumes.
 fn continue_item(name: &str) -> impl Bundle {
     item_with(
         0,
         (
             Node {
-                align_items: AlignItems::Baseline,
-                column_gap: px(theme::SPACE * 1.5),
+                align_items: AlignItems::Center,
+                column_gap: px(theme::GAP_S),
+                overflow: Overflow::clip(),
                 ..default()
             },
             children![
+                icon(Icon::Play, Tone::Plain),
                 label("Continue", theme::FONT_BODY, Tone::Plain),
                 label(name, theme::FONT_SMALL, Tone::Muted),
             ],
@@ -30,7 +41,7 @@ fn continue_item(name: &str) -> impl Bundle {
     )
 }
 
-/// The overlay root with the title and an accent rule.
+/// The overlay root with the title and a rule.
 fn frame() -> impl Bundle {
     (
         DespawnOnExit(Menu::Main),
@@ -39,33 +50,26 @@ fn frame() -> impl Bundle {
     )
 }
 
-/// Spawns the title, an accent rule and the menu items.
-fn spawn(mut commands: Commands, dir: Res<SaveDir>) {
+/// Spawns the title, a rule and the menu items, and focuses the entry used last.
+fn spawn(mut commands: Commands, dir: Res<SaveDir>, last: Res<LastEntry>) {
     let menu = commands.spawn(frame()).id();
     let items = commands
         .spawn((column(px(theme::MENU_WIDTH), 0.0), ChildOf(menu)))
         .id();
-    let resume = list(&dir.0).into_iter().next().map(|entry| {
-        commands
-            .spawn((
-                continue_item(&entry.save.name),
-                Continue(entry),
-                ChildOf(items),
-            ))
-            .id()
-    });
-    let worlds = commands
-        .spawn((item("Worlds", Tone::Plain), Nav::To(Menu::Worlds)))
-        .id();
+    let mut entries = Vec::new();
+    if let Some(entry) = list(&dir.0).into_iter().next() {
+        let resume = (continue_item(&entry.save.name), Continue(entry));
+        entries.push((0, commands.spawn((resume, Entry(0), ChildOf(items))).id()));
+    }
+    for (index, (symbol, name, nav)) in ENTRIES.into_iter().enumerate() {
+        let entry = (item(symbol, name, Tone::Plain), nav, Entry(index + 1));
+        entries.push((index + 1, commands.spawn((entry, ChildOf(items))).id()));
+    }
+    let wanted = last.of(Menu::Main, entries[0].0);
+    let found = entries.iter().find(|(index, _)| *index == wanted);
     commands
-        .entity(items)
-        .add_child(worlds)
-        .with_children(|parent| {
-            parent.spawn((item("New world", Tone::Plain), Nav::To(Menu::NewGame)));
-            parent.spawn((item("Settings", Tone::Plain), Nav::Settings));
-            parent.spawn((item("Quit", Tone::Plain), Nav::Quit));
-        });
-    commands.entity(resume.unwrap_or(worlds)).insert(AutoFocus);
+        .entity(found.unwrap_or(&entries[0]).1)
+        .insert(AutoFocus);
 }
 
 /// Resumes the most recent world.

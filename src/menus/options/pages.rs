@@ -1,4 +1,4 @@
-//! The three tabs of the settings menu.
+//! The pages of the settings menu, one for each tab.
 
 use bevy::prelude::*;
 
@@ -20,12 +20,13 @@ pub fn display_for(page: Tab, active: Tab) -> Display {
 }
 
 /// Column that holds the rows of one tab.
-fn page(tab: Tab, active: Tab) -> impl Bundle {
+pub fn page(tab: Tab, active: Tab) -> impl Bundle {
     (
         Page(tab),
         Node {
             width: percent(100),
             flex_direction: FlexDirection::Column,
+            flex_shrink: 0.0,
             display: display_for(tab, active),
             ..default()
         },
@@ -53,20 +54,24 @@ pub fn graphics(active: Tab) -> impl Bundle {
     )
 }
 
-/// Controls tab.
+/// Controls tab: the mouse and the keys used on foot.
 pub fn controls(active: Tab) -> impl Bundle {
     (
         page(Tab::Controls, active),
-        children![
-            stepper("Mouse sensitivity", Field::Sensitivity),
-            toggle("Invert Y", Field::InvertY),
-            binding("Forward", Bind::Forward),
-            binding("Back", Bind::Back),
-            binding("Left", Bind::Left),
-            binding("Right", Bind::Right),
-            binding("Jump", Bind::Jump),
-            binding("Sprint", Bind::Sprint),
-        ],
+        Children::spawn((
+            Spawn(stepper("Mouse sensitivity", Field::Sensitivity)),
+            Spawn(toggle("Invert Y", Field::InvertY)),
+            SpawnIter(Bind::FOOT.into_iter().map(binding)),
+        )),
+    )
+}
+
+/// Ship tab: the keys used while seated. Boarding is on the controls tab.
+pub fn ship(active: Tab) -> impl Bundle {
+    let seated = Bind::SHIP.into_iter().filter(|bind| *bind != Bind::Board);
+    (
+        page(Tab::Ship, active),
+        Children::spawn(SpawnIter(seated.map(binding))),
     )
 }
 

@@ -1,162 +1,171 @@
-//! The world rows: building, scrolling and showing their text.
+//! Filling the worlds table: the texts of the drawn rows and the lines around them.
 
-use bevy::ecs::system::SystemParam;
-use bevy::input_focus::{AutoFocus, InputFocus};
+use bevy::input_focus::{FocusCause, InputFocus};
 use bevy::prelude::*;
 
-use super::view::RowsBox;
-use super::{EXTRA_SLOT, Pending, Row, Scroll, Selected, VISIBLE_ROWS, WorldList};
-use crate::menus::slots::Slot;
-use crate::saves::{WorldEntry, ago, now, play_time};
-use crate::ui::{Tone, item_with, label, text, theme};
+use super::bars::{Bar, Choice};
+use super::view::{Empty, Hint, Invite, Summary};
+use super::when::relative;
+use super::{Listed, Mode, Notice, VISIBLE_ROWS, Worlds};
+use crate::menus::name::with_caret;
+use crate::saves::{now, play_time};
+use crate::ui::{Selected, Tone};
 
-/// Wraps one row so the whole row can be hidden when it scrolls out.
-#[derive(Component)]
-pub(super) struct Wrap(usize);
+/// A row button of the pool, counted from the top of the table.
+#[derive(Component, Debug, Clone, Copy)]
+pub(super) struct Row(pub usize);
 
-/// Which line of a row a text is.
-#[derive(Clone, Copy, PartialEq, Eq)]
+/// Which text of a row a cell is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Part {
-    Title,
-    Detail,
+    /// The name of the world.
+    Name,
+    /// The planet and the system the player is on.
+    Place,
+    /// The seed.
+    Seed,
+    /// The time played.
+    Played,
+    /// When the world was last played.
+    Last,
 }
 
-/// A text of the row at this index.
-#[derive(Component)]
-pub(super) struct RowText(usize, Part);
+/// A text of the row in this slot.
+#[derive(Component, Debug, Clone, Copy)]
+pub(super) struct Cell(pub usize, pub Part);
 
-/// What the rebuild needs to replace the rows.
-#[derive(SystemParam)]
-pub(super) struct Build<'w, 's> {
-    commands: Commands<'w, 's>,
-    boxes: Query<'w, 's, Entity, With<RowsBox>>,
-    extras: Query<'w, 's, (Entity, &'static Slot)>,
-    focus: ResMut<'w, InputFocus>,
-}
-
-/// Returns the muted detail line of a world.
-fn detail(entry: &WorldEntry, now: u64) -> String {
-    let save = &entry.save;
-    format!(
-        "seed {} - {} - {} played",
-        save.seed,
-        ago(now, save.last_played),
-        play_time(save.play_seconds)
-    )
-}
-
-/// The title and detail texts of a row.
-fn lines(index: usize) -> impl Bundle {
-    (
-        Node {
-            flex_direction: FlexDirection::Column,
-            ..default()
-        },
-        children![
-            (
-                label("", theme::FONT_BODY, Tone::Plain),
-                RowText(index, Part::Title)
-            ),
-            (
-                label("", theme::FONT_SMALL, Tone::Muted),
-                RowText(index, Part::Detail)
-            ),
-        ],
-    )
-}
-
-/// One row: a wrapper around a button with the name and the detail line.
-fn row(index: usize, select: bool) -> impl Bundle {
-    let button = (item_with(0, lines(index)), Row(index), Slot(index));
-    (
-        Wrap(index),
-        Node {
-            width: percent(100),
-            flex_direction: FlexDirection::Column,
-            ..default()
-        },
-        Children::spawn(SpawnWith(move |parent: &mut ChildSpawner| {
-            let mut entity = parent.spawn(button);
-            if select {
-                entity.insert(AutoFocus);
-            }
-        })),
-    )
-}
-
-/// Replaces the rows when the list changes, focusing the selected one.
-pub(super) fn rebuild(mut build: Build, list: Res<WorldList>, selected: Res<Selected>) {
-    let Ok(rows_box) = build.boxes.single() else {
-        return;
-    };
-    build
-        .commands
-        .entity(rows_box)
-        .despawn_related::<Children>();
-    let wanted = selected.0.min(list.0.len().saturating_sub(1));
-    for index in 0..list.0.len() {
-        build
-            .commands
-            .spawn((row(index, index == wanted), ChildOf(rows_box)));
-    }
-    if list.0.is_empty() {
-        build.commands.spawn((
-            text("No worlds yet", theme::FONT_BODY, theme::MUTED),
-            ChildOf(rows_box),
-        ));
-        let new_world = build.extras.iter().find(|(_, slot)| slot.0 == EXTRA_SLOT);
-        if let Some((entity, _)) = new_world {
-            build
-                .focus
-                .set(entity, bevy::input_focus::FocusCause::Navigated);
+/// Returns the text and the tone of one cell of `world`. The selected row shows the name being
+/// typed, or the delete question, in place of its name and place.
+pub(super) fn cell_text(
+    world: &Listed,
+    part: Part,
+    mode: Option<&Mode>,
+    stamp: u64,
+) -> (String, Tone) {
+    let save = &world.entry.save;
+    match (part, mode) {
+        (Part::Name, Some(Mode::Rename(typed))) => (with_caret(typed), Tone::Accent),
+        (Part::Place, Some(Mode::Rename(_))) => ("Type the new name".to_string(), Tone::Muted),
+        (Part::Name, Some(Mode::Delete { .. })) => (format!("Delete {}?", save.name), Tone::Danger),
+        (Part::Place, Some(Mode::Delete { .. })) => {
+            ("It cannot be brought back".to_string(), Tone::Muted)
         }
+        (Part::Name, _) => (save.name.clone(), Tone::Plain),
+        (Part::Place, _) => (world.place.clone(), Tone::Muted),
+        (Part::Seed, _) => (save.seed.to_string(), Tone::Muted),
+        (Part::Played, _) => (play_time(save.play_seconds), Tone::Muted),
+        (Part::Last, _) => (relative(stamp, save.last_played), Tone::Muted),
     }
 }
 
-/// Keeps the focused row inside the visible window and hides the others.
-pub(super) fn scroll(
-    focus: Res<InputFocus>,
-    list: Res<WorldList>,
-    rows: Query<&Row>,
-    mut offset: ResMut<Scroll>,
-    mut wraps: Query<(&Wrap, &mut Node)>,
-) {
-    let mut start = offset.0;
-    if let Some(Row(index)) = focus.get().and_then(|entity| rows.get(entity).ok()) {
-        start = start
-            .min(*index)
-            .max((index + 1).saturating_sub(VISIBLE_ROWS));
+/// Returns the line under the table: how many worlds there are, their order and which are drawn.
+pub(super) fn summary(worlds: &Worlds) -> String {
+    let (first, count) = (worlds.window.top + 1, worlds.list.len());
+    let last = (worlds.window.top + VISIBLE_ROWS).min(count);
+    let order = worlds.sort.label();
+    match count {
+        0 => String::new(),
+        1 => "1 world".to_string(),
+        n if n <= VISIBLE_ROWS => format!("{n} worlds, by {order}"),
+        n => format!("{n} worlds, by {order}, {first} to {last} shown"),
     }
-    start = start.min(list.0.len().saturating_sub(VISIBLE_ROWS));
-    offset.set_if_neq(Scroll(start));
-    for (wrap, mut node) in &mut wraps {
-        let shown = (start..start + VISIBLE_ROWS).contains(&wrap.0);
-        let display = if shown { Display::Flex } else { Display::None };
+}
+
+/// What the table is drawn from.
+type Source<'w> = (Res<'w, Worlds>, Res<'w, Mode>);
+
+/// Writes the texts of the drawn rows, hides the rows past the end of the list and marks the
+/// selected row. Does nothing while neither the list nor the mode changed.
+pub(super) fn show(
+    (worlds, mode): Source,
+    fresh: Query<(), Added<Row>>,
+    mut cells: Query<(&Cell, &mut Text, &mut Tone)>,
+    mut rows: Query<(&Row, &mut Node, &mut Selected)>,
+) {
+    if !(worlds.is_changed() || mode.is_changed() || !fresh.is_empty()) {
+        return;
+    }
+    let (stamp, chosen) = (now(), worlds.window.cursor - worlds.window.top);
+    for (Cell(slot, part), mut text, mut tone) in &mut cells {
+        let Some(world) = worlds.at(*slot) else {
+            continue;
+        };
+        let editing = (*slot == chosen).then_some(&*mode);
+        let (shown, wanted) = cell_text(world, *part, editing, stamp);
+        text.set_if_neq(Text(shown));
+        tone.set_if_neq(wanted);
+    }
+    for (row, mut node, mut selected) in &mut rows {
+        let display = match worlds.at(row.0) {
+            Some(_) => Display::Flex,
+            None => Display::None,
+        };
         if node.display != display {
             node.display = display;
         }
+        selected.set_if_neq(Selected(row.0 == chosen && !worlds.list.is_empty()));
     }
 }
 
-/// Writes each row's text, turning the pending row into its delete confirmation.
-pub(super) fn show_rows(
-    list: Res<WorldList>,
-    pending: Res<Pending>,
-    mut texts: Query<(&RowText, &mut Text, &mut Tone)>,
+/// The summary, the notice and the two choices of the delete question.
+type Lines<'w, 's> = (
+    Query<'w, 's, &'static mut Text, (With<Summary>, Without<Hint>)>,
+    Query<'w, 's, &'static mut Text, (With<Hint>, Without<Summary>)>,
+    Query<'w, 's, (&'static Choice, &'static mut Selected)>,
+);
+
+/// Writes the summary and the notice, and marks the choice Enter applies to a delete.
+pub(super) fn show_lines(
+    (worlds, mode): Source,
+    notice: Res<Notice>,
+    (mut summaries, mut hints, mut choices): Lines,
 ) {
-    let stamp = now();
-    for (RowText(index, part), mut text, mut tone) in &mut texts {
-        let Some(entry) = list.0.get(*index) else {
-            continue;
-        };
-        let asking = pending.0 == Some(*index);
-        let (shown, wanted) = match (part, asking) {
-            (Part::Title, true) => (format!("Delete {}?", entry.save.name), Tone::Accent),
-            (Part::Title, false) => (entry.save.name.clone(), Tone::Plain),
-            (Part::Detail, true) => ("Enter confirm, Esc cancel".to_string(), Tone::Muted),
-            (Part::Detail, false) => (detail(entry, stamp), Tone::Muted),
-        };
-        text.set_if_neq(Text(shown));
-        tone.set_if_neq(wanted);
+    if !(worlds.is_changed() || mode.is_changed() || notice.is_changed()) {
+        return;
+    }
+    for mut text in &mut summaries {
+        text.set_if_neq(Text(summary(&worlds)));
+    }
+    for mut text in &mut hints {
+        text.set_if_neq(Text(notice.0.clone()));
+    }
+    for (choice, mut selected) in &mut choices {
+        let armed = *mode == Mode::Delete { armed: choice.0 };
+        selected.set_if_neq(Selected(armed));
+    }
+}
+
+/// Returns the display of something drawn only when `shown`.
+fn display(shown: bool) -> Display {
+    if shown { Display::Flex } else { Display::None }
+}
+
+/// Shows the bar of actions that fits the mode, and the invitation to create a world, which
+/// takes the focus, when there is none.
+pub(super) fn show_bars(
+    (worlds, mode): Source,
+    mut bars: Query<(&Bar, &mut Node), Without<Empty>>,
+    mut blocks: Query<&mut Node, With<Empty>>,
+    invites: Query<Entity, With<Invite>>,
+    mut focus: ResMut<InputFocus>,
+) {
+    if !(worlds.is_changed() || mode.is_changed()) {
+        return;
+    }
+    let empty = worlds.list.is_empty();
+    for (bar, mut node) in &mut bars {
+        let wanted = display(bar.shown(&mode, empty));
+        if node.display != wanted {
+            node.display = wanted;
+        }
+    }
+    for mut node in &mut blocks {
+        if node.display != display(empty) {
+            node.display = display(empty);
+        }
+    }
+    let invite = invites.iter().next().filter(|_| empty);
+    if let Some(entity) = invite.filter(|entity| focus.get() != Some(*entity)) {
+        focus.set(entity, FocusCause::Navigated);
     }
 }

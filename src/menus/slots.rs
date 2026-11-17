@@ -1,4 +1,4 @@
-//! Keyboard order for menus whose letters are typed or whose lists scroll.
+//! Keyboard order for the menu whose letters are typed.
 
 use bevy::input_focus::{FocusCause, InputFocus};
 use bevy::prelude::*;
@@ -21,20 +21,17 @@ fn next_slot(len: usize, current: Option<usize>, dir: i32) -> usize {
 
 /// Run condition: the open menu moves focus by slots instead of by screen position.
 pub fn uses_slots(menu: Res<State<Menu>>) -> bool {
-    matches!(menu.get(), Menu::Worlds | Menu::NewGame)
+    *menu.get() == Menu::NewGame
 }
 
-/// Moves focus between slots with the arrow keys, and W and S where letters are not typed.
+/// Moves focus between slots with the arrow keys. Letters are typed, so W and S do not move.
 pub fn move_slots(
     keys: Res<ButtonInput<KeyCode>>,
-    menu: Res<State<Menu>>,
     mut focus: ResMut<InputFocus>,
     slots: Query<(Entity, &Slot)>,
 ) {
-    let letters = *menu.get() != Menu::NewGame;
-    let down =
-        keys.just_pressed(KeyCode::ArrowDown) || (letters && keys.just_pressed(KeyCode::KeyS));
-    let up = keys.just_pressed(KeyCode::ArrowUp) || (letters && keys.just_pressed(KeyCode::KeyW));
+    let down = keys.just_pressed(KeyCode::ArrowDown);
+    let up = keys.just_pressed(KeyCode::ArrowUp);
     if down == up {
         return;
     }

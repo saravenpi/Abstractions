@@ -1,7 +1,8 @@
-//! Key rebinding: click a row, then press a key.
+//! Key rebinding: activate a row, then press a key.
 
 use bevy::input::ButtonState;
 use bevy::input::keyboard::KeyboardInput;
+use bevy::input_focus::{FocusCause, InputFocus};
 use bevy::prelude::*;
 
 use super::field::{Bind, set_key};
@@ -9,29 +10,41 @@ use crate::menus::Menu;
 use crate::menus::nav::MenuKeys;
 use crate::settings::{Persistent, Settings};
 
-/// The action waiting for its next key press.
+/// The action waiting for its next key press, and the row that asked for it.
+///
+/// The row loses the focus meanwhile, so that Enter or Space can be bound without pressing it.
 #[derive(Resource, Default)]
-pub struct Rebinding(pub Option<Bind>);
+pub struct Rebinding(pub Option<(Bind, Entity)>);
+
+impl Rebinding {
+    /// Returns the action waiting for a key.
+    pub fn bind(&self) -> Option<Bind> {
+        self.0.map(|(bind, _)| bind)
+    }
+}
 
 /// Run condition: true while a row waits for its next key.
 pub fn capturing(rebinding: Res<Rebinding>) -> bool {
     rebinding.0.is_some()
 }
 
-/// Binds the next pressed key, or cancels on Escape. Keys of the frame that armed it are dropped.
+/// Binds the next pressed key, or cancels on Escape, then hands the focus back to the row.
+/// Keys of the frame that armed it are dropped.
 fn capture_key(
     mut keys: MessageReader<KeyboardInput>,
     mut rebinding: ResMut<Rebinding>,
     mut settings: ResMut<Persistent<Settings>>,
+    mut focus: ResMut<InputFocus>,
 ) {
     if rebinding.is_changed() {
         keys.clear();
         return;
     }
     for key in keys.read().filter(|key| key.state == ButtonState::Pressed) {
-        let Some(bind) = rebinding.0.take() else {
+        let Some((bind, row)) = rebinding.0.take() else {
             return;
         };
+        focus.set(row, FocusCause::Navigated);
         if key.key_code == KeyCode::Escape {
             return;
         }

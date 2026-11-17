@@ -12,7 +12,7 @@ use crate::menus::Menu;
 use crate::settings::{Persistent, Settings};
 
 /// What a settings button does when activated.
-#[derive(Component, Debug, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy, PartialEq)]
 pub enum SettingsAction {
     Adjust(Field, i32),
     Rebind(Bind),
@@ -40,7 +40,7 @@ fn on_activate(event: On<Activate>, actions: Query<&SettingsAction>, mut ctx: Ac
             }
         }
         SettingsAction::Rebind(bind) => {
-            ctx.rebinding.0 = Some(bind);
+            ctx.rebinding.0 = Some((bind, event.entity));
             ctx.focus.clear();
         }
         SettingsAction::Tab(tab) => ctx.tab.0 = tab,

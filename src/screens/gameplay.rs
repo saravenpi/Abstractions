@@ -2,8 +2,10 @@
 
 use bevy::prelude::*;
 
-use super::{Screen, playing};
+use super::{Screen, in_control, playing};
+use crate::computer::Computer;
 use crate::menus::Menu;
+use crate::space::{Location, Travel};
 use crate::ui::theme;
 
 /// Marks the crosshair dot.
@@ -31,23 +33,31 @@ fn enter(mut commands: Commands) {
                 ..default()
             },
             BackgroundColor(theme::CROSSHAIR),
+            Visibility::Hidden,
         )],
     ));
 }
 
 /// Opens the pause menu on Escape.
+///
+/// It runs only while the board computer is closed. The computer closes on the same key, and its
+/// state changes one frame later, so one press never does both.
 fn open_pause(keys: Res<ButtonInput<KeyCode>>, mut menu: ResMut<NextState<Menu>>) {
     if keys.just_pressed(KeyCode::Escape) {
         menu.set(Menu::Pause);
     }
 }
 
-/// Shows the crosshair only while no menu is open.
-fn crosshair_visibility(menu: Res<State<Menu>>, mut dots: Query<&mut Visibility, With<Crosshair>>) {
-    let wanted = if *menu.get() == Menu::None {
-        Visibility::Inherited
-    } else {
-        Visibility::Hidden
+/// Shows the crosshair only on foot, while the player controls the game.
+fn crosshair_visibility(
+    In(control): In<bool>,
+    location: Option<Res<Location>>,
+    mut dots: Query<&mut Visibility, With<Crosshair>>,
+) {
+    let on_foot = location.is_none_or(|location| location.travel == Travel::OnFoot);
+    let wanted = match control && on_foot {
+        true => Visibility::Inherited,
+        false => Visibility::Hidden,
     };
     for mut visibility in &mut dots {
         visibility.set_if_neq(wanted);
@@ -60,8 +70,12 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(
             Update,
             (
-                open_pause.run_if(playing),
-                crosshair_visibility.run_if(in_state(Screen::Gameplay)),
+                open_pause
+                    .run_if(playing)
+                    .run_if(in_state(Computer::Closed)),
+                in_control
+                    .pipe(crosshair_visibility)
+                    .run_if(in_state(Screen::Gameplay)),
             ),
         );
 }

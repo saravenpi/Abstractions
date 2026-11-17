@@ -104,6 +104,10 @@ pub struct Keymap {
     pub jump: KeyCode,
     /// Run faster.
     pub sprint: KeyCode,
+    /// Open and close the board computer while seated in the ship.
+    pub computer: KeyCode,
+    /// Hand the destination of the board computer to the autopilot.
+    pub engage: KeyCode,
     /// Ship controls, used while seated in the ship and to board it.
     pub ship: ShipKeys,
 }
@@ -117,6 +121,8 @@ impl Default for Keymap {
             right: KeyCode::KeyD,
             jump: KeyCode::Space,
             sprint: KeyCode::ShiftLeft,
+            computer: KeyCode::Tab,
+            engage: KeyCode::KeyG,
             ship: ShipKeys::default(),
         }
     }

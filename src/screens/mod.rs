@@ -1,11 +1,16 @@
-//! Full-page game states: title, loading and gameplay.
+//! Full-page game states: title, loading, the wake-up boot screen and gameplay.
 
+mod boot;
 mod gameplay;
 mod loading;
+#[cfg(test)]
+mod tests;
 mod title;
+mod wake;
 
 use bevy::prelude::*;
 
+use crate::computer::Computer;
 use crate::menus::Menu;
 
 /// The logical screen the game is showing.
@@ -16,17 +21,60 @@ pub enum Screen {
     Title,
     /// World generation around the spawn point.
     Loading,
-    /// The player is on the islands.
+    /// The player is in the world.
     Gameplay,
 }
 
-/// Run condition: true while the player is in the world and no menu is open.
-pub fn playing(screen: Res<State<Screen>>, menu: Res<State<Menu>>) -> bool {
-    *screen.get() == Screen::Gameplay && *menu.get() == Menu::None
+/// Whether the world is hidden behind the boot screen.
+///
+/// While `Hidden` the screen is `Screen::Gameplay`: the world is loaded, streamed and drawn,
+/// but the boot screen covers it and the player cannot act. It lasts a few seconds after every
+/// load. This is the time to draw each material once so that its pipeline exists before the
+/// world fades in: use `in_state(WarmUp::Hidden)`, `OnEnter(WarmUp::Hidden)` and
+/// `OnExit(WarmUp::Hidden)`.
+#[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum WarmUp {
+    /// No boot screen: the world is visible, or there is no world.
+    #[default]
+    Idle,
+    /// The boot screen covers the loaded world.
+    Hidden,
 }
 
-/// Registers the screen state and every screen plugin.
+/// Run condition: true while the player is in the world, past the boot screen, with no menu open.
+///
+/// The board computer does not stop play: use [`in_control`] for what reads the player's hands.
+pub fn playing(
+    screen: Res<State<Screen>>,
+    menu: Res<State<Menu>>,
+    warm: Option<Res<State<WarmUp>>>,
+) -> bool {
+    let hidden = warm.is_some_and(|warm| *warm.get() == WarmUp::Hidden);
+    *screen.get() == Screen::Gameplay && *menu.get() == Menu::None && !hidden
+}
+
+/// Run condition: true while the keyboard and the mouse drive the player or the ship: playing,
+/// and the board computer is closed.
+///
+/// While the computer is open the game goes on, so [`playing`] stays true, but keys and mouse
+/// belong to the computer screen. Movement, steering, boarding and the cursor grab use this.
+pub fn in_control(
+    screen: Res<State<Screen>>,
+    menu: Res<State<Menu>>,
+    warm: Option<Res<State<WarmUp>>>,
+    computer: Option<Res<State<Computer>>>,
+) -> bool {
+    let open = computer.is_some_and(|computer| *computer.get() == Computer::Open);
+    playing(screen, menu, warm) && !open
+}
+
+/// Registers the screen states and every screen plugin.
 pub(super) fn plugin(app: &mut App) {
-    app.init_state::<Screen>();
-    app.add_plugins((title::plugin, loading::plugin, gameplay::plugin));
+    app.init_state::<Screen>().init_state::<WarmUp>();
+    app.add_plugins((
+        title::plugin,
+        loading::plugin,
+        boot::plugin,
+        gameplay::plugin,
+    ));
 }

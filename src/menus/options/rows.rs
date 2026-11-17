@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use super::actions::SettingsAction;
 use super::field::{Bind, Field};
-use crate::ui::{Tone, label, row_with, step_button, theme};
+use crate::ui::{Icon, Tone, label, row_with, step_button, theme, value_cell};
 
 /// Shows the live value of one setting.
 #[derive(Component)]
@@ -16,8 +16,13 @@ fn name(text: &str) -> impl Bundle {
 }
 
 /// Live value text.
-fn value(field: Field) -> impl Bundle {
-    (label("", theme::FONT_BODY, Tone::Plain), Value(field))
+pub fn value(field: Field, size: f32) -> impl Bundle {
+    (label("", size, Tone::Plain), Value(field))
+}
+
+/// Live value at the right end of the fixed value column.
+fn ended(field: Field) -> impl Bundle {
+    value_cell(JustifyContent::FlexEnd, value(field, theme::FONT_BODY))
 }
 
 /// Row with a value between minus and plus buttons.
@@ -25,20 +30,19 @@ pub fn stepper(text: &str, field: Field) -> impl Bundle {
     let cluster = (
         Node {
             align_items: AlignItems::Center,
-            column_gap: px(theme::SPACE / 2.0),
+            column_gap: px(theme::GAP_XS),
             ..default()
         },
         children![
-            (step_button("<"), SettingsAction::Adjust(field, -1)),
             (
-                Node {
-                    width: px(theme::SPACE * 9.0),
-                    justify_content: JustifyContent::Center,
-                    ..default()
-                },
-                children![value(field)]
+                step_button(Icon::ChevronLeft),
+                SettingsAction::Adjust(field, -1)
             ),
-            (step_button(">"), SettingsAction::Adjust(field, 1)),
+            value_cell(JustifyContent::Center, value(field, theme::FONT_BODY)),
+            (
+                step_button(Icon::ChevronRight),
+                SettingsAction::Adjust(field, 1)
+            ),
         ],
     );
     (
@@ -50,15 +54,15 @@ pub fn stepper(text: &str, field: Field) -> impl Bundle {
 /// Row whose value flips when activated.
 pub fn toggle(text: &str, field: Field) -> impl Bundle {
     (
-        row_with(1, name(text), value(field)),
+        row_with(1, name(text), ended(field)),
         SettingsAction::Adjust(field, 1),
     )
 }
 
-/// Row that shows a key and waits for a new one when activated.
-pub fn binding(text: &str, bind: Bind) -> impl Bundle {
+/// Row that shows the key of an action and waits for a new one when activated.
+pub fn binding(bind: Bind) -> impl Bundle {
     (
-        row_with(1, name(text), value(Field::Key(bind))),
+        row_with(1, name(bind.label()), ended(Field::Key(bind))),
         SettingsAction::Rebind(bind),
     )
 }

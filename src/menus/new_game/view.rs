@@ -9,35 +9,43 @@ use super::{Action, Kind, NewWorld};
 use crate::menus::slots::Slot;
 use crate::menus::{Menu, Nav};
 use crate::ui::{
-    Look, Tone, caps, column, footer, hairline, item, item_with, label, link, root, text, theme,
+    Cancels, Icon, Look, Tone, caps, column, entry, footer, hairline, heading, item, item_with,
+    link, panel, root, text, theme,
 };
 
-/// Section label with a gap below it.
-fn heading(content: &str, gap: f32) -> impl Bundle {
+/// Width of a text field in pixels: wide enough for the longest name and seed.
+const FIELD_WIDTH: f32 = theme::MENU_WIDTH * 1.5;
+
+/// Field label with a small gap below it.
+fn field_name(content: &str) -> impl Bundle {
     (
         caps(content),
         Node {
-            margin: UiRect::bottom(px(gap)),
+            margin: UiRect::bottom(px(theme::GAP_XS)),
             ..default()
         },
     )
 }
 
 /// Underlined row that holds one text field. It takes focus but does not press like a button.
-fn field(kind: Kind, slot: usize, gap: f32) -> impl Bundle {
+fn field(kind: Kind, slot: usize) -> impl Bundle {
     (
         Node {
-            width: px(theme::MENU_WIDTH * 1.5),
-            height: px(theme::SPACE * 5.0),
+            width: px(FIELD_WIDTH),
+            max_width: percent(100),
+            height: px(theme::GAP_XL),
             align_items: AlignItems::Center,
             justify_content: JustifyContent::SpaceBetween,
-            border: UiRect::bottom(px(1)),
-            margin: UiRect::bottom(px(gap)),
+            padding: UiRect::horizontal(px(theme::GAP_S)),
+            border: UiRect::bottom(px(theme::LINE)),
+            margin: UiRect::bottom(px(theme::GAP_L)),
+            overflow: Overflow::clip(),
             ..default()
         },
         hairline(),
         Look::default(),
         Hovered::default(),
+        BackgroundColor(Color::NONE),
         TabIndex(0),
         Slot(slot),
         kind,
@@ -46,7 +54,11 @@ fn field(kind: Kind, slot: usize, gap: f32) -> impl Bundle {
 
 /// The typed text of a field.
 fn field_text(kind: Kind) -> impl Bundle {
-    (text("", theme::FONT_BODY, theme::TEXT), kind)
+    (
+        text("", theme::FONT_BODY, theme::TEXT),
+        TextLayout::no_wrap(),
+        kind,
+    )
 }
 
 /// The Create item and Back.
@@ -55,11 +67,47 @@ fn actions() -> impl Bundle {
         column(px(theme::MENU_WIDTH), 0.0),
         children![
             (
-                item_with(0, label("Create", theme::FONT_BODY, Tone::Accent)),
+                item_with(
+                    0,
+                    entry(Icon::Check, "Create", theme::FONT_BODY, Tone::Accent)
+                ),
                 Action::Create,
                 Slot(2)
             ),
-            (item("Back", Tone::Plain), Nav::To(Menu::Main), Slot(3)),
+            (
+                item(Icon::Back, "Back", Tone::Plain),
+                Nav::Back,
+                Cancels,
+                Slot(3)
+            ),
+        ],
+    )
+}
+
+/// The panel with both fields and the actions.
+fn card() -> impl Bundle {
+    (
+        panel(),
+        children![
+            heading("New world"),
+            field_name("Name"),
+            (
+                field(Kind::Name, 0),
+                AutoFocus,
+                children![field_text(Kind::Name)]
+            ),
+            field_name("Seed"),
+            (
+                field(Kind::Seed, 1),
+                children![
+                    field_text(Kind::Seed),
+                    (
+                        link(0, Icon::Shuffle, "Random", Tone::Muted),
+                        Action::Random
+                    )
+                ]
+            ),
+            actions(),
         ],
     )
 }
@@ -71,22 +119,7 @@ pub(super) fn spawn(mut commands: Commands, mut input: ResMut<NewWorld>) {
         DespawnOnExit(Menu::NewGame),
         root(),
         children![
-            heading("New world", theme::SPACE * 5.0),
-            heading("Name", theme::SPACE),
-            (
-                field(Kind::Name, 0, theme::SPACE * 3.0),
-                AutoFocus,
-                children![field_text(Kind::Name)]
-            ),
-            heading("Seed", theme::SPACE),
-            (
-                field(Kind::Seed, 1, theme::SPACE * 4.0),
-                children![
-                    field_text(Kind::Seed),
-                    (link(0, "Random", Tone::Muted), Action::Random)
-                ]
-            ),
-            actions(),
+            card(),
             footer("Tab or arrows switch fields. Enter creates. Esc goes back"),
         ],
     ));

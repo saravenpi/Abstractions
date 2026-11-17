@@ -5,24 +5,20 @@ use bevy::input_focus::AutoFocus;
 use bevy::prelude::*;
 
 use super::pause_hud::{saved_label, show_saved, world_corner};
+use super::recall::{Entry, LastEntry};
 use super::{Menu, Nav};
 use crate::saves::ActiveWorld;
 use crate::screens::Screen;
-use crate::ui::{Tone, caps, column, footer, item, root, theme};
+use crate::ui::{Icon, Tone, column, footer, heading, item, panel, root, theme};
 use crate::world::WorldSeed;
 
-/// The pause menu entries.
-fn entries() -> impl Bundle {
-    (
-        column(px(theme::MENU_WIDTH), 0.0),
-        children![
-            (item("Resume", Tone::Plain), Nav::Resume, AutoFocus),
-            (item("Settings", Tone::Plain), Nav::Settings),
-            (item("Save and quit to menu", Tone::Plain), Nav::ToTitle),
-            (item("Quit", Tone::Plain), Nav::Quit),
-        ],
-    )
-}
+/// The pause menu entries, in order: icon, label and what each does.
+const ENTRIES: [(Icon, &str, Nav); 4] = [
+    (Icon::Play, "Resume", Nav::Resume),
+    (Icon::Settings, "Settings", Nav::To(Menu::Settings)),
+    (Icon::LogOut, "Save and quit to menu", Nav::ToTitle),
+    (Icon::Power, "Save and quit the game", Nav::Quit),
+];
 
 /// Returns the corner text: the world name and seed, or the seed alone.
 fn corner_text(active: Option<&ActiveWorld>, seed: Option<&WorldSeed>) -> String {
@@ -33,26 +29,34 @@ fn corner_text(active: Option<&ActiveWorld>, seed: Option<&WorldSeed>) -> String
     }
 }
 
-/// Spawns the pause menu with the world name and seed in the corner.
-fn spawn(mut commands: Commands, seed: Option<Res<WorldSeed>>, active: Option<Res<ActiveWorld>>) {
+/// What the pause menu shows besides its entries.
+type Corner<'w> = (Option<Res<'w, WorldSeed>>, Option<Res<'w, ActiveWorld>>);
+
+/// Spawns the pause menu over the blurred game, with the world name and seed in the
+/// corner, and focuses the entry used last.
+fn spawn(mut commands: Commands, (seed, active): Corner, last: Res<LastEntry>) {
     let corner = corner_text(active.as_deref(), seed.as_deref());
-    commands.spawn((
-        DespawnOnExit(Menu::Pause),
-        root(),
-        children![
-            (
-                caps("Paused"),
-                Node {
-                    margin: UiRect::bottom(px(theme::SPACE * 2.0)),
-                    ..default()
-                }
-            ),
-            entries(),
-            footer("Esc to resume"),
-            world_corner(corner),
-            saved_label(),
-        ],
-    ));
+    let menu = commands
+        .spawn((
+            DespawnOnExit(Menu::Pause),
+            root(),
+            children![footer("Esc resumes"), world_corner(corner), saved_label()],
+        ))
+        .id();
+    let card = commands
+        .spawn((panel(), ChildOf(menu), children![heading("Paused")]))
+        .id();
+    let items = commands
+        .spawn((column(px(theme::MENU_WIDTH), 0.0), ChildOf(card)))
+        .id();
+    let wanted = last.of(Menu::Pause, 0);
+    for (index, (symbol, name, nav)) in ENTRIES.into_iter().enumerate() {
+        let entry = (item(symbol, name, Tone::Plain), nav, Entry(index));
+        let mut spawned = commands.spawn((entry, ChildOf(items)));
+        if index == wanted {
+            spawned.insert(AutoFocus);
+        }
+    }
 }
 
 /// Freezes physics.
@@ -65,20 +69,10 @@ fn thaw(mut time: ResMut<Time<Physics>>) {
     time.unpause();
 }
 
-/// Closes the pause menu on Escape.
-fn close_on_escape(keys: Res<ButtonInput<KeyCode>>, mut menu: ResMut<NextState<Menu>>) {
-    if keys.just_pressed(KeyCode::Escape) {
-        menu.set(Menu::None);
-    }
-}
-
-/// Registers the pause menu systems.
+/// Registers the pause menu systems. Escape closes the menu through the shared navigation.
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Menu::Pause), (spawn, freeze))
         .add_systems(OnEnter(Menu::None), thaw)
         .add_systems(OnExit(Screen::Gameplay), thaw)
-        .add_systems(
-            Update,
-            (close_on_escape, show_saved).run_if(in_state(Menu::Pause)),
-        );
+        .add_systems(Update, show_saved.run_if(in_state(Menu::Pause)));
 }

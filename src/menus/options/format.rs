@@ -2,21 +2,9 @@
 
 use bevy::prelude::KeyCode;
 
-use super::field::{Bind, Field};
+use super::field::Field;
 use crate::settings::{Graphics, Settings};
-
-/// Returns the key currently bound to an action.
-fn key_of(settings: &Settings, bind: Bind) -> KeyCode {
-    let keys = &settings.controls.keys;
-    match bind {
-        Bind::Forward => keys.forward,
-        Bind::Back => keys.back,
-        Bind::Left => keys.left,
-        Bind::Right => keys.right,
-        Bind::Jump => keys.jump,
-        Bind::Sprint => keys.sprint,
-    }
-}
+use crate::ui::theme;
 
 /// Formats a boolean as On or Off.
 pub fn on_off(value: bool) -> String {
@@ -64,16 +52,39 @@ pub fn display(settings: &Settings, field: Field) -> String {
         Field::Master => format!("{:.1}", a.master),
         Field::Music => format!("{:.1}", a.music),
         Field::Effects => format!("{:.1}", a.effects),
-        Field::Key(bind) => key_name(key_of(settings, bind)),
+        Field::Key(bind) => key_name(bind.key(&c.keys)),
         _ => String::new(),
     }
 }
 
-/// Returns a short readable name for a key.
+/// Most characters of a key name: the value column less the two of the conflict mark.
+pub const KEY_CHARS: usize = theme::VALUE_CHARS - 2;
+
+/// Readable names of keys whose code name is long or unclear.
+const NAMES: [(KeyCode, &str); 12] = [
+    (KeyCode::ShiftLeft, "Left Shift"),
+    (KeyCode::ShiftRight, "Right Shift"),
+    (KeyCode::ControlLeft, "Left Ctrl"),
+    (KeyCode::ControlRight, "Right Ctrl"),
+    (KeyCode::AltLeft, "Left Alt"),
+    (KeyCode::AltRight, "Right Alt"),
+    (KeyCode::ArrowUp, "Up"),
+    (KeyCode::ArrowDown, "Down"),
+    (KeyCode::ArrowLeft, "Left"),
+    (KeyCode::ArrowRight, "Right"),
+    (KeyCode::Backquote, "`"),
+    (KeyCode::NumpadEnter, "Num Enter"),
+];
+
+/// Returns a short readable name for a key, never longer than the value column holds.
 pub fn key_name(key: KeyCode) -> String {
+    if let Some((_, name)) = NAMES.iter().find(|(code, _)| *code == key) {
+        return name.to_string();
+    }
     let name = format!("{key:?}");
-    let short = name
-        .strip_prefix("Key")
-        .or_else(|| name.strip_prefix("Digit"));
-    short.unwrap_or(&name).to_string()
+    let short = ["Key", "Digit"]
+        .iter()
+        .find_map(|prefix| name.strip_prefix(prefix));
+    let short = short.unwrap_or(&name).replace("Numpad", "Num ");
+    short.chars().take(KEY_CHARS).collect()
 }

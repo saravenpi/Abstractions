@@ -1,84 +1,107 @@
-//! Keyboard and button handling of the worlds menu.
+//! Keyboard and wheel handling of the worlds menu while moving through the list.
 
-use bevy::ecs::system::SystemParam;
-use bevy::input_focus::InputFocus;
+use bevy::input::mouse::{AccumulatedMouseScroll, MouseScrollUnit};
+use bevy::input_focus::{FocusCause, InputFocus};
 use bevy::prelude::*;
-use bevy::ui_widgets::Activate;
 
-use super::{Pending, Row, Selected, WorldList};
-use crate::menus::Menu;
-use crate::saves::{SaveDir, Starter, delete};
+use super::act::{Act, Ctx};
+use super::rows::Row;
+use super::{VISIBLE_ROWS, Worlds};
+use crate::menus::{Menu, Trail};
+use crate::ui::theme;
 
-/// State the row buttons read and write.
-#[derive(SystemParam)]
-pub(super) struct Ctx<'w, 's> {
-    list: ResMut<'w, WorldList>,
-    pending: ResMut<'w, Pending>,
-    selected: ResMut<'w, Selected>,
-    dir: Res<'w, SaveDir>,
-    starter: Starter<'w, 's>,
-}
+/// Rows a jump to the first or the last row moves by: more than any list holds.
+const FAR: isize = 1_000_000;
 
-impl Ctx<'_, '_> {
-    /// Deletes the world file at `index` and drops it from the list.
-    fn remove(&mut self, index: usize) {
-        let Some(entry) = self.list.0.get(index) else {
-            return;
-        };
-        match delete(&self.dir.0, &entry.id) {
-            Ok(()) => {
-                self.list.0.remove(index);
-                self.selected.0 = index;
-            }
-            Err(error) => warn!("could not delete world {}: {error}", entry.id),
-        }
-    }
-}
+/// Rows the selection moves by for each key.
+const MOVES: [(KeyCode, isize); 8] = [
+    (KeyCode::ArrowUp, -1),
+    (KeyCode::KeyW, -1),
+    (KeyCode::ArrowDown, 1),
+    (KeyCode::KeyS, 1),
+    (KeyCode::PageUp, -(VISIBLE_ROWS as isize)),
+    (KeyCode::PageDown, VISIBLE_ROWS as isize),
+    (KeyCode::Home, -FAR),
+    (KeyCode::End, FAR),
+];
 
-/// Plays a row, or deletes it when it is waiting for confirmation.
-pub(super) fn on_activate(event: On<Activate>, rows: Query<&Row>, mut ctx: Ctx) {
-    let Ok(Row(index)) = rows.get(event.entity) else {
+/// The action of each key. Enter plays through the focused row itself.
+const ACTS: [(KeyCode, Act); 6] = [
+    (KeyCode::KeyR, Act::Rename),
+    (KeyCode::F2, Act::Rename),
+    (KeyCode::KeyC, Act::Duplicate),
+    (KeyCode::Delete, Act::Delete),
+    (KeyCode::Backspace, Act::Delete),
+    (KeyCode::KeyT, Act::Sort),
+];
+
+/// Selects the row the pointer gave focus to.
+pub(super) fn follow_focus(focus: Res<InputFocus>, rows: Query<&Row>, mut worlds: ResMut<Worlds>) {
+    let Some(row) = focus.get().and_then(|entity| rows.get(entity).ok()) else {
         return;
     };
-    if ctx.pending.0 == Some(*index) {
-        ctx.pending.0 = None;
-        ctx.remove(*index);
-    } else if let Some(entry) = ctx.list.0.get(*index).cloned() {
-        ctx.starter.start(entry);
+    let index = worlds.window.index(worlds.list.len(), row.0);
+    if let Some(index) = index.filter(|index| *index != worlds.window.cursor) {
+        worlds.window.cursor = index;
     }
 }
 
-/// Asks for a delete confirmation on Delete or Backspace, and drops it when focus moves away.
-pub(super) fn pending_keys(
+/// Opens the new world menu on N, one level deeper.
+pub(super) fn new_world(
     keys: Res<ButtonInput<KeyCode>>,
-    focus: Res<InputFocus>,
-    rows: Query<&Row>,
-    mut pending: ResMut<Pending>,
-) {
-    let current = focus
-        .get()
-        .and_then(|entity| rows.get(entity).ok())
-        .map(|row| row.0);
-    if pending.0.is_some() && pending.0 != current {
-        pending.0 = None;
-    }
-    if keys.any_just_pressed([KeyCode::Delete, KeyCode::Backspace]) && current.is_some() {
-        pending.0 = current;
-    }
-}
-
-/// Cancels a pending delete on Escape, or goes back to the main menu.
-pub(super) fn escape(
-    keys: Res<ButtonInput<KeyCode>>,
-    mut pending: ResMut<Pending>,
+    mut trail: ResMut<Trail>,
     mut menu: ResMut<NextState<Menu>>,
 ) {
-    if !keys.just_pressed(KeyCode::Escape) {
+    if keys.just_pressed(KeyCode::KeyN) {
+        trail.0.push(Menu::Worlds);
+        menu.set(Menu::NewGame);
+    }
+}
+
+/// Moves the selection with the arrows, W and S, Page Up and Down, Home, End and the wheel, and
+/// runs the action keys.
+pub(super) fn browse(
+    keys: Res<ButtonInput<KeyCode>>,
+    wheel: Res<AccumulatedMouseScroll>,
+    mut ctx: Ctx,
+) {
+    let pressed = MOVES.iter().filter(|(key, _)| keys.just_pressed(*key));
+    let by: isize = pressed.map(|(_, by)| by).sum();
+    if by != 0 {
+        ctx.worlds.step(by);
+    }
+    let notches = match wheel.unit {
+        MouseScrollUnit::Line => wheel.delta.y,
+        MouseScrollUnit::Pixel => wheel.delta.y / theme::ROW_HEIGHT,
+    };
+    if notches.round() != 0.0 {
+        let len = ctx.worlds.list.len();
+        ctx.worlds
+            .window
+            .scroll(len, VISIBLE_ROWS, -notches.round() as isize);
+    }
+    if let Some((_, act)) = ACTS.iter().find(|(key, _)| keys.just_pressed(*key)) {
+        ctx.run(*act);
+    }
+}
+
+/// Gives keyboard focus to the row of the selected world whenever that row changes.
+pub(super) fn focus_cursor(
+    worlds: Res<Worlds>,
+    rows: Query<(Entity, &Row)>,
+    mut focus: ResMut<InputFocus>,
+    mut last: Local<Option<(Entity, usize)>>,
+) {
+    if worlds.list.is_empty() {
         return;
     }
-    if pending.0.is_some() {
-        pending.0 = None;
-    } else {
-        menu.set(Menu::Main);
+    let slot = worlds.window.cursor - worlds.window.top;
+    let row = rows.iter().find(|(_, row)| row.0 == slot);
+    let wanted = row.map(|(entity, _)| (entity, slot));
+    if let Some((entity, _)) = wanted
+        && (wanted != *last || focus.get().is_none())
+    {
+        *last = wanted;
+        focus.set(entity, FocusCause::Navigated);
     }
 }

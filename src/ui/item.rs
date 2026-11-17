@@ -5,98 +5,91 @@ use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
 use bevy::ui_widgets::Button;
 
-use super::style::{Look, Shift, Tone};
+use super::icon::{Icon, icon, icon_slot};
+use super::style::{Look, Tone};
 use super::theme;
-use super::widgets::hairline;
 
-/// Text that follows the look of the button around it.
-pub fn label(content: impl Into<String>, size: f32, tone: Tone) -> impl Bundle {
-    (Text::new(content), TextFont::from_font_size(size), tone)
+/// What every button carries: the widget, its hover state, its look and its background.
+pub fn frame() -> impl Bundle {
+    (
+        Button,
+        Hovered::default(),
+        Look::default(),
+        BackgroundColor(Color::NONE),
+    )
 }
 
-/// Marker glyph that appears left of an active item.
-fn marker() -> impl Bundle {
+/// Text that follows the look of the button around it. It never wraps.
+pub fn label(content: impl Into<String>, size: f32, tone: Tone) -> impl Bundle {
     (
-        label(">", theme::FONT_BODY, Tone::Marker),
+        Text::new(content),
+        TextFont::from_font_size(size),
+        TextLayout::no_wrap(),
+        tone,
+    )
+}
+
+/// The room of an icon followed by a label. Without an icon the room stays empty.
+pub fn entry(symbol: impl Into<Option<Icon>>, content: &str, size: f32, tone: Tone) -> impl Bundle {
+    (
         Node {
-            position_type: PositionType::Absolute,
-            left: px(-theme::SPACE * 2.5),
+            align_items: AlignItems::Center,
+            column_gap: px(theme::GAP_S),
             ..default()
         },
+        children![icon_slot(symbol.into(), tone), label(content, size, tone)],
     )
 }
 
 /// Full-width menu row that wraps `content`. `group` orders it for keyboard navigation.
+///
+/// A chevron shows at its right end while it is the current row.
 pub fn item_with(group: i32, content: impl Bundle) -> impl Bundle {
     (
-        Button,
-        Hovered::default(),
+        frame(),
         TabIndex(group),
-        Look::default(),
-        Shift,
         Node {
             width: percent(100),
             align_items: AlignItems::Center,
-            padding: UiRect::vertical(px(theme::SPACE)),
+            justify_content: JustifyContent::SpaceBetween,
+            column_gap: px(theme::GAP_S),
+            padding: UiRect::axes(px(theme::GAP_S), px(theme::GAP_XS)),
+            overflow: Overflow::clip(),
             ..default()
         },
-        children![marker(), content],
+        children![content, icon(Icon::ChevronRight, Tone::Marker)],
     )
 }
 
-/// Full-width menu row with body text.
-pub fn item(content: &str, tone: Tone) -> impl Bundle {
-    item_with(0, label(content, theme::FONT_BODY, tone))
+/// Full-width menu row with an icon and body text.
+pub fn item(symbol: impl Into<Option<Icon>>, content: &str, tone: Tone) -> impl Bundle {
+    item_with(0, entry(symbol, content, theme::FONT_BODY, tone))
 }
 
-/// Small text action that sizes to its text.
-pub fn link(group: i32, content: &str, tone: Tone) -> impl Bundle {
+/// Small action that sizes to its content and takes keyboard focus.
+pub fn link(group: i32, symbol: impl Into<Option<Icon>>, content: &str, tone: Tone) -> impl Bundle {
     (
-        Button,
-        Hovered::default(),
+        frame(),
         TabIndex(group),
-        Look::default(),
         Node {
-            padding: UiRect::axes(px(theme::SPACE), px(theme::SPACE / 2.0)),
+            padding: UiRect::axes(px(theme::GAP_S), px(theme::GAP_XS)),
             ..default()
         },
-        children![label(content, theme::FONT_SMALL, tone)],
+        children![entry(symbol, content, theme::FONT_SMALL, tone)],
     )
 }
 
-/// Small square button for stepping a value, reachable by pointer only.
-pub fn step_button(content: &str) -> impl Bundle {
+/// Small square icon button for stepping a value, reachable by pointer only.
+pub fn step_button(symbol: Icon) -> impl Bundle {
     (
-        Button,
-        Hovered::default(),
-        Look::default(),
+        frame(),
         Node {
-            width: px(theme::SPACE * 3.0),
-            height: px(theme::SPACE * 3.0),
+            width: px(theme::ICON),
+            height: px(theme::ICON),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
             ..default()
         },
-        children![label(content, theme::FONT_BODY, Tone::Muted)],
-    )
-}
-
-/// Settings row with a name on the left and a value on the right, closed by a hairline.
-pub fn row_with(group: i32, name: impl Bundle, value: impl Bundle) -> impl Bundle {
-    (
-        Button,
-        Hovered::default(),
-        TabIndex(group),
-        Look::default(),
-        Node {
-            width: percent(100),
-            height: px(theme::ROW_HEIGHT),
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::SpaceBetween,
-            border: UiRect::bottom(px(1)),
-            ..default()
-        },
-        hairline(),
-        children![marker(), name, value],
+        children![icon(symbol, Tone::Muted)],
     )
 }

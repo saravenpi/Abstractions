@@ -36,8 +36,8 @@ pub(super) fn spawn(mut commands: Commands) {
         TextColor(theme::MUTED),
         Node {
             position_type: PositionType::Absolute,
-            top: px(theme::SPACE),
-            right: px(theme::SPACE),
+            top: px(theme::GAP_S),
+            right: px(theme::GAP_S),
             ..default()
         },
         Visibility::Hidden,

@@ -21,8 +21,8 @@ fn focused_kind(focus: &InputFocus, kinds: &Query<&Kind>) -> Option<Kind> {
 /// Returns the text and color a field shows.
 fn shown(kind: Kind, value: &str, focused: bool) -> (String, Color) {
     match (focused, value.is_empty(), kind) {
-        (true, _, _) => (format!("{value}_"), theme::TEXT),
-        (false, false, _) => (value.to_string(), theme::ITEM),
+        (true, _, _) => (name::with_caret(value), theme::INK),
+        (false, false, _) => (value.to_string(), theme::TEXT),
         (false, true, Kind::Name) => ("name your world".to_string(), theme::MUTED),
         (false, true, Kind::Seed) => ("leave empty for a random world".to_string(), theme::MUTED),
     }

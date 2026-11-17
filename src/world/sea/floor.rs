@@ -2,17 +2,14 @@
 
 use std::collections::VecDeque;
 
-use bevy::asset::RenderAssetUsages;
-use bevy::image::{ImageAddressMode, ImageSampler, ImageSamplerDescriptor};
 use bevy::prelude::*;
-use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 
-use super::depth;
-use crate::world::Terrain;
-use crate::world::focus::Focus;
+use super::bed::Bed;
+use super::depth::{self, blank};
 
-/// Texels sampled per frame, so a full refill spreads over a few frames.
-const BUDGET: usize = 2048;
+/// Texels sampled per frame, so a full refill spreads over half a second. A texel costs up to
+/// four ground samples near the shore of a globe.
+const BUDGET: usize = 512;
 
 /// The depth map of the sea entity, following the focus.
 #[derive(Component, Debug, Clone)]
@@ -21,30 +18,8 @@ pub struct SeaFloor {
     image: Handle<Image>,
     /// Texel the map is centered on, once the focus is known.
     centre: Option<IVec2>,
-    /// World texels inside the map that still hold no sample.
+    /// Chart texels inside the map that still hold no sample.
     pending: VecDeque<IVec2>,
-}
-
-/// Builds the map image filled with deep water: wrapping, linear filtering, no color space.
-fn blank() -> Image {
-    let side = depth::SIZE as u32;
-    let mut image = Image::new_fill(
-        Extent3d {
-            width: side,
-            height: side,
-            depth_or_array_layers: 1,
-        },
-        TextureDimension::D2,
-        &depth::BLANK,
-        TextureFormat::Rgba8Unorm,
-        RenderAssetUsages::default(),
-    );
-    image.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
-        address_mode_u: ImageAddressMode::Repeat,
-        address_mode_v: ImageAddressMode::Repeat,
-        ..ImageSamplerDescriptor::linear()
-    });
-    image
 }
 
 impl SeaFloor {
@@ -62,11 +37,17 @@ impl SeaFloor {
         self.image.clone()
     }
 
-    /// Returns the world x and z of the map center, for the shader to fade the map out at its rim.
+    /// Returns the chart x and z of the map center, for the shader to fade the map out at its rim.
     pub fn origin(&self) -> Vec4 {
         (self.centre.unwrap_or_default().as_vec2() * depth::TEXEL)
             .extend(0.0)
             .extend(0.0)
+    }
+
+    /// Forgets every sample, for a map whose chart was replaced: the next move refills it all.
+    pub fn restart(&mut self) {
+        self.centre = None;
+        self.pending.clear();
     }
 
     /// Moves the map center and queues the texels that scrolled in.
@@ -80,41 +61,32 @@ impl SeaFloor {
     }
 
     /// Samples the next queued texels into the image bytes and blanks the ones still waiting.
-    fn drain(&mut self, terrain: &Terrain, data: &mut [u8]) {
+    fn drain(&mut self, bed: &impl Bed, data: &mut [u8]) {
         let mut write = |texel: IVec2, bytes: [u8; 4]| {
             let at = depth::offset(texel);
             data[at..at + bytes.len()].copy_from_slice(&bytes);
         };
         let count = BUDGET.min(self.pending.len());
         for texel in self.pending.drain(..count) {
-            write(texel, depth::sample(terrain, texel));
+            write(texel, bed.texel(texel));
         }
         for &texel in &self.pending {
             write(texel, depth::BLANK);
         }
     }
-}
 
-/// Keeps the map centered on the focus and samples the terrain for the texels that scrolled in.
-pub fn refresh(
-    focus: Focus,
-    terrain: Option<Res<Terrain>>,
-    mut images: ResMut<Assets<Image>>,
-    mut floors: Query<&mut SeaFloor>,
-) {
-    let (Some(terrain), Some(p)) = (terrain, focus.position()) else {
-        return;
-    };
-    for mut floor in &mut floors {
-        floor.retarget(depth::centre_texel(p));
-        if floor.pending.is_empty() {
-            continue;
+    /// Centers the map on `centre` and samples `bed` for a budget of the texels that scrolled
+    /// in. The image is only touched while texels wait.
+    pub fn follow(&mut self, centre: IVec2, bed: &impl Bed, images: &mut Assets<Image>) {
+        self.retarget(centre);
+        if self.pending.is_empty() {
+            return;
         }
-        let Some(mut image) = images.get_mut(&floor.image) else {
-            continue;
+        let Some(mut image) = images.get_mut(&self.image) else {
+            return;
         };
         if let Some(data) = image.data.as_mut() {
-            floor.drain(&terrain, data);
+            self.drain(bed, data);
         }
     }
 }
@@ -122,6 +94,7 @@ pub fn refresh(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::Terrain;
 
     /// A fresh map fills over a few frames, then a one texel step costs one row of samples.
     #[test]

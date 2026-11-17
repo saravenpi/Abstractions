@@ -9,6 +9,8 @@ use crate::render::Palette;
 use crate::wind::Wind;
 
 /// Uniform block read by `water.wesl`. Every field is a `vec4` so the layout never needs padding.
+///
+/// Wave directions are in sea coordinates, the chart of the seat, not in render axes.
 #[derive(Clone, Copy, Debug, Default, ShaderType)]
 pub struct WaterUniform {
     /// Linear sky color straight up.
@@ -33,8 +35,13 @@ pub struct WaterUniform {
     pub wave_d: Vec4,
     /// Time in seconds, wind strength, fog start and fog end.
     pub params: Vec4,
-    /// World x and z of the sea floor map center; the rest is unused.
+    /// Sea coordinates of the floor map center in xy and of the mesh center in zw.
     pub map: Vec4,
+    /// Render position of the planet center in xyz and the sea level radius in w.
+    pub globe: Vec4,
+    /// Render direction of sea coordinate x at the seat in xyz, and in w the distance from the
+    /// camera at which the near sea has faded out.
+    pub frame: Vec4,
 }
 
 /// Distance fog of the camera, in the units the shader needs.
@@ -78,7 +85,8 @@ impl FogLook {
 }
 
 impl WaterUniform {
-    /// Builds the uniform for a palette, the wind, a time in seconds and the camera fog.
+    /// Builds the uniform for a palette, the wind in sea coordinates, a time in seconds and the
+    /// camera fog. The map, globe and frame values are left for the caller.
     pub fn new(palette: &Palette, wind: &Wind, time: f32, fog: &FogLook) -> Self {
         let [a, b, c, d] = waves_for(wind).map(|wave| wave.packed());
         let sun_up = smooth(-0.05, 0.12, palette.sun_dir.y);
@@ -101,6 +109,8 @@ impl WaterUniform {
             wave_d: d,
             params: Vec4::new(time, wind.strength, fog.start, fog.end),
             map: Vec4::ZERO,
+            globe: Vec4::ZERO,
+            frame: Vec4::ZERO,
         }
     }
 }

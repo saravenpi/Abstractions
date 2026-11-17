@@ -1,26 +1,39 @@
-//! The sea: one wavy, foamy water mesh that follows the focus on a snapped grid.
+//! The sea: one wavy, foamy water mesh wrapped on the planet around the focus, laid out in a
+//! chart fixed to the planet, and handed over to the coarse planet mesh from high up.
 
+mod bed;
 mod depth;
 mod floor;
+mod follow;
 mod material;
 mod mesh;
+mod seat;
 mod uniform;
 mod waves;
+
+#[cfg(test)]
+mod tests_curve;
+#[cfg(test)]
+mod tests_globe;
+
+pub use self::follow::follow_focus;
 
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::ecs::system::SystemParam;
 use bevy::light::{NotShadowCaster, NotShadowReceiver};
+use bevy::math::{DQuat, DVec3};
 use bevy::pbr::DistanceFog;
 use bevy::prelude::*;
 
 use self::floor::SeaFloor;
 use self::material::WaterMaterial;
+use self::seat::Seat;
 use self::uniform::{FogLook, WaterUniform};
-use super::SEA_LEVEL;
-use super::StreamAnchor;
 use super::focus::Focus;
+use super::{Planet, SEA_LEVEL};
 use crate::render::{GameCamera, Palette};
 use crate::screens::Screen;
+use crate::space::Placed;
 use crate::wind::Wind;
 
 /// Marks the sea mesh.
@@ -37,73 +50,53 @@ pub struct SeaInputs<'w, 's> {
 }
 
 impl SeaInputs<'_, '_> {
-    /// Returns the shader values for the current sky, wind, time and camera fog.
-    fn uniform(&self) -> WaterUniform {
+    /// Returns the shader values for the current sky, wind, time and camera fog, for a seat
+    /// whose axes are turned by `pose` in render space.
+    fn uniform(&self, pose: Quat) -> WaterUniform {
         let fog = FogLook::from_fog(self.fog.iter().next(), self.palette.horizon);
-        WaterUniform::new(&self.palette, &self.wind, self.time.elapsed_secs(), &fog)
+        let wind = follow::wind_in_seat(&self.wind, pose);
+        WaterUniform::new(&self.palette, &wind, self.time.elapsed_secs(), &fog)
     }
 }
 
-/// Spawns the sea when the world starts loading.
+/// Spawns the sea when the world starts loading, seated under the focus of the streamed planet.
+///
+/// The mesh and the material are built once. From then on only the pose and the shader values
+/// change, also when the anchor is rebased.
 pub fn spawn_sea(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<WaterMaterial>>,
     mut images: ResMut<Assets<Image>>,
-    inputs: SeaInputs,
+    world: (SeaInputs, Focus, Option<Res<Planet>>),
 ) {
-    let water = inputs.uniform();
+    let (inputs, focus, planet) = world;
+    let Some(planet) = planet else {
+        return;
+    };
+    let seat = Seat::at(&planet.globe, focus.planet().unwrap_or(DVec3::Y));
     let floor = SeaFloor::new(&mut images);
+    let water = MeshMaterial3d(materials.add(WaterMaterial {
+        water: inputs.uniform(Quat::IDENTITY),
+        floor: floor.image(),
+    }));
+    let placed = Placed {
+        pos: DVec3::ZERO,
+        rot: DQuat::IDENTITY,
+    };
     commands.spawn((
-        Sea,
-        Mesh3d(meshes.add(mesh::sea_mesh())),
-        MeshMaterial3d(materials.add(WaterMaterial {
-            water,
-            floor: floor.image(),
-        })),
-        floor,
+        (Sea, Mesh3d(meshes.add(mesh::sea_mesh())), water, floor),
+        (seat.sited(), placed, seat),
         Transform::from_xyz(0.0, SEA_LEVEL, 0.0),
-        NotShadowCaster,
-        NotShadowReceiver,
-        NoFrustumCulling,
+        Visibility::Hidden,
+        (NotShadowCaster, NotShadowReceiver, NoFrustumCulling),
         DespawnOnEnter(Screen::Title),
     ));
 }
 
-/// What the follow system reads from the sea entity.
-type SeaItem = (
-    &'static mut Transform,
-    &'static MeshMaterial3d<WaterMaterial>,
-    &'static SeaFloor,
-);
-
-/// Keeps the sea query disjoint from the streaming anchor query.
-type SeaFilter = (With<Sea>, Without<StreamAnchor>);
-
-/// Moves the sea under the focus on the fine grid and refreshes the shader values.
-pub fn follow_focus(
-    focus: Focus,
-    inputs: SeaInputs,
-    mut sea: Query<SeaItem, SeaFilter>,
-    mut materials: ResMut<Assets<WaterMaterial>>,
-) {
-    let water = inputs.uniform();
-    for (mut transform, handle, floor) in &mut sea {
-        if let Some(p) = focus.position() {
-            let snapped = mesh::snap(p);
-            transform.translation = Vec3::new(snapped.x, SEA_LEVEL, snapped.y);
-        }
-        if let Some(mut material) = materials.get_mut(&handle.0) {
-            material.water = WaterUniform {
-                map: floor.origin(),
-                ..water
-            };
-        }
-    }
-}
-
-/// Registers the water material and the system that keeps the sea floor map under the focus.
+/// Registers the water material and the system that keeps the seat and the sea floor map under
+/// the focus, before the planet-fixed poses are written so that a new seat is placed at once.
 pub(super) fn plugin(app: &mut App) {
     app.add_plugins(material::plugin)
-        .add_systems(Update, floor::refresh);
+        .add_systems(Update, follow::refresh.before(super::chunks::place));
 }

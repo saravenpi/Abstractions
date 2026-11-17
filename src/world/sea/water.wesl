@@ -1,4 +1,4 @@
-import bevy_pbr::render::forward_io::{Vertex, VertexOutput, decompress_vertex};
+import bevy_pbr::render::forward_io::{Vertex, decompress_vertex};
 import bevy_pbr::render::mesh_functions;
 import bevy_pbr::render::mesh_view_bindings::view;
 import bevy_pbr::render::view_transformations::{position_world_to_clip, depth_ndc_to_view_z};
@@ -18,6 +18,14 @@ struct Water {
     wave_d: vec4<f32>,
     params: vec4<f32>,
     map: vec4<f32>,
+    globe: vec4<f32>,
+    frame: vec4<f32>,
+}
+
+struct SeaVertex {
+    @builtin(position) position: vec4<f32>,
+    @location(0) world_position: vec4<f32>,
+    @location(1) chart: vec2<f32>,
 }
 
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> water: Water;
@@ -54,6 +62,13 @@ const LINE_NEAR: f32 = 2.0;
 const LINE_RATE: f32 = 0.1;
 const LINE_HALF: f32 = 0.15;
 const FLECK_DEPTH: f32 = 2.0;
+const HAND_SOFT: f32 = 0.83;
+const WAVE_TOP: f32 = 0.5;
+const TAU: f32 = 6.2831853;
+const KEEP_START: f32 = 0.15;
+const KEEP_END: f32 = 0.5;
+const SPARK_START: f32 = 0.4;
+const SPARK_END: f32 = 1.2;
 
 fn hash21(p: vec2<f32>) -> f32 {
     let q = bitcast<vec2<u32>>(vec2<i32>(p));
@@ -102,6 +117,13 @@ fn shore(p: vec2<f32>) -> vec4<f32> {
     return vec4<f32>(here.x / max(slope, MIN_BED_SLOPE), here.x, here.y * near, near);
 }
 
+fn lift(p: vec2<f32>, radius: f32) -> vec3<f32> {
+    let angle = length(p) / radius;
+    let reach = sin(angle) / max(angle, 0.000001);
+    let half = sin(0.5 * angle);
+    return vec3<f32>(p.x * reach, -2.0 * radius * half * half, p.y * reach);
+}
+
 fn rotate(d: vec2<f32>, angle: f32) -> vec2<f32> {
     let c = cos(angle);
     let s = sin(angle);
@@ -121,21 +143,33 @@ fn waves(p: vec2<f32>, t: f32) -> vec3<f32> {
         + wave_term(water.wave_d, p, t, 4.9);
 }
 
+fn keep(k: f32, foot: f32) -> f32 {
+    return 1.0 - smoothstep(KEEP_START, KEEP_END, foot * k / TAU);
+}
+
+fn wave_slope(w: vec4<f32>, p: vec2<f32>, t: f32, seed: f32, foot: f32) -> vec2<f32> {
+    return wave_term(w, p, t, seed).yz * keep(w.z, foot);
+}
+
 fn ripple(dir: vec2<f32>, k: f32, slope: f32, p: vec2<f32>, t: f32, seed: f32) -> vec2<f32> {
     let phase = k * dot(dir, p) - sqrt(GRAVITY * k) * t + seed;
     return dir * (slope * cos(phase));
 }
 
-fn surface_slope(p: vec2<f32>, t: f32, wind: f32) -> vec2<f32> {
+fn surface_slope(p: vec2<f32>, t: f32, wind: f32, foot: f32) -> vec2<f32> {
     let dir = water.wave_a.xy;
     let gain = 0.5 + wind;
-    return waves(p, t).yz * SLOPE_GAIN
-        + ripple(rotate(dir, 0.7), 3.3, 0.09 * gain, p, t, 2.1)
-        + ripple(rotate(dir, -1.1), 5.7, 0.06 * gain, p, t, 4.3);
+    let swell = wave_slope(water.wave_a, p, t, 0.0, foot)
+        + wave_slope(water.wave_b, p, t, 1.7, foot)
+        + wave_slope(water.wave_c, p, t, 3.1, foot)
+        + wave_slope(water.wave_d, p, t, 4.9, foot);
+    return swell * SLOPE_GAIN
+        + ripple(rotate(dir, 0.7), 3.3, 0.09 * gain, p, t, 2.1) * keep(3.3, foot)
+        + ripple(rotate(dir, -1.1), 5.7, 0.06 * gain, p, t, 4.3) * keep(5.7, foot);
 }
 
-fn sky_color(d: vec3<f32>) -> vec3<f32> {
-    return mix(water.horizon.rgb, water.zenith.rgb, pow(clamp(d.y, 0.0, 1.0), 0.5));
+fn sky_color(rise: f32) -> vec3<f32> {
+    return mix(water.horizon.rgb, water.zenith.rgb, pow(clamp(rise, 0.0, 1.0), 0.5));
 }
 
 fn glitter(r: vec3<f32>, light: vec3<f32>, cell: vec2<f32>, t: f32) -> f32 {
@@ -146,14 +180,13 @@ fn glitter(r: vec3<f32>, light: vec3<f32>, cell: vec2<f32>, t: f32) -> f32 {
     return sparks * 3.0 + path;
 }
 
-fn column_depth(frag: vec4<f32>, world: vec3<f32>) -> f32 {
+fn column_depth(frag: vec4<f32>, eye_above: f32) -> f32 {
     var depth = DEEP;
     @if(DEPTH_PREPASS) {
         let raw = prepass_depth(frag, 0u);
         if (raw > 0.0) {
             let ratio = depth_ndc_to_view_z(raw) / depth_ndc_to_view_z(frag.z);
-            let scene_y = view.world_position.y + (world.y - view.world_position.y) * ratio;
-            depth = clamp(world.y - scene_y, 0.0, DEEP);
+            depth = clamp(eye_above * (ratio - 1.0), 0.0, DEEP);
         }
     }
     return depth;
@@ -204,51 +237,61 @@ fn under_surface(v: vec3<f32>, n: vec3<f32>, p: vec2<f32>, t: f32) -> vec4<f32> 
 }
 
 @vertex
-fn vertex(vertex_no_morph: Vertex) -> VertexOutput {
-    var out: VertexOutput;
+fn vertex(vertex_no_morph: Vertex) -> SeaVertex {
+    var out: SeaVertex;
     let vertex = decompress_vertex(vertex_no_morph, vertex_no_morph.instance_index);
     let world_from_local = mesh_functions::get_world_from_local(vertex_no_morph.instance_index);
-    var world = mesh_functions::mesh_position_local_to_world(world_from_local, vec4<f32>(vertex.position, 1.0));
+    let p = water.map.zw + vertex.position.xz;
+    let radius = water.globe.w;
     let edge = max(abs(vertex.position.x), abs(vertex.position.z));
     let fade = 1.0 - smoothstep(FADE_START, FADE_END, edge);
-    let bed = floor_tap(world.xz);
-    let calm = mix(1.0, smoothstep(0.0, SHOAL_DEPTH, bed.x) * (1.0 - bed.y), floor_valid(world.xz));
-    world.y = world.y + waves(world.xz, water.params.x).x * fade * calm;
+    let bed = floor_tap(p);
+    let calm = mix(1.0, smoothstep(0.0, SHOAL_DEPTH, bed.x) * (1.0 - bed.y), floor_valid(p));
+    let still = lift(p, radius);
+    let outward = normalize(still + vec3<f32>(0.0, radius, 0.0));
+    let local = still + outward * (waves(p, water.params.x).x * fade * calm);
+    let world = mesh_functions::mesh_position_local_to_world(world_from_local, vec4<f32>(local, 1.0));
     out.world_position = world;
     out.position = position_world_to_clip(world.xyz);
-    out.world_normal = vec3<f32>(0.0, 1.0, 0.0);
-    @if(VERTEX_OUTPUT_INSTANCE_INDEX)
-    out.instance_index = vertex_no_morph.instance_index;
+    out.chart = p;
     return out;
 }
 
 @fragment
-fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
+fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
     let t = water.params.x;
     let wind = water.params.y;
     let world = in.world_position.xyz;
+    let p = in.chart;
+    let up = normalize(world - water.globe.xyz);
+    let east = normalize(water.frame.xyz - up * dot(water.frame.xyz, up));
+    let south = cross(east, up);
     let to_eye = view.world_position - world;
     let dist = length(to_eye);
     let v = to_eye / max(dist, 0.001);
+    let eye_height = length(view.world_position - water.globe.xyz) - water.globe.w;
     let detail = 1.0 - smoothstep(60.0, 260.0, dist);
-    let cell = floor(world.xz * DETAIL_CELLS);
-    let bed = shore(world.xz);
+    let cell = floor(p * DETAIL_CELLS);
+    let bed = shore(p);
     let pixel = fwidth(bed.x);
+    let foot = max(length(dpdx(p)), length(dpdy(p)));
+    let fine = detail * (1.0 - smoothstep(SPARK_START, SPARK_END, foot));
     let still = 1.0 - POND_CALM * bed.z;
-    let slope = surface_slope((cell + vec2<f32>(0.5, 0.5)) / DETAIL_CELLS, t, wind) * detail * still;
-    var n = normalize(vec3<f32>(-slope.x, 1.0, -slope.y));
-    let below = v.y < 0.0;
+    let slope = surface_slope((cell + vec2<f32>(0.5, 0.5)) / DETAIL_CELLS, t, wind, foot) * detail * still;
+    var n = normalize(up - east * slope.x - south * slope.y);
+    let rise = dot(v, up);
+    let below = rise < 0.0;
     if (below) {
         n = -n;
     }
 
     var col: vec4<f32>;
     if (below) {
-        col = under_surface(v, n, world.xz, t);
+        col = under_surface(v, n, p, t);
     } else {
         let day = water.sun_color.w;
         let light = mix(vec3<f32>(0.07, 0.10, 0.22), mix(vec3<f32>(1.0), water.sun_color.rgb, 0.4), day);
-        let column = column_depth(in.position, world);
+        let column = column_depth(in.position, rise * dist);
         let depth = mix(column, max(bed.y, 0.0), bed.w);
         let shade = floor((1.0 - exp(-depth * 0.5)) * 6.0 + 0.5) / 6.0;
         let body = mix(SHALLOW_COLOR, DEEP_COLOR, shade) * light;
@@ -256,14 +299,14 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         let ndv = max(dot(n, v), 0.0);
         let fresnel = 0.05 + 0.95 * pow(1.0 - ndv, 4.0);
         let r = reflect(-v, n);
-        var color = mix(body, sky_color(r), fresnel);
+        var color = mix(body, sky_color(dot(r, up)), fresnel);
         let sun_glint = glitter(r, water.sun.xyz, cell, t) * water.sun.w;
         let moon_glint = glitter(r, water.moon.xyz, cell, t) * water.moon.w * 0.5;
-        color = color + (water.sun_color.rgb * sun_glint + MOON_COLOR * moon_glint) * detail;
+        color = color + (water.sun_color.rgb * sun_glint + MOON_COLOR * moon_glint) * fine;
 
         let open = mix(1.0, smoothstep(FLECK_DEPTH, FLECK_DEPTH + 1.0, bed.y), bed.w) * (1.0 - bed.z);
-        let flecks = crest_flecks(world.xz, t, wind) * detail * open;
-        let foam = max(shore_foam(world.xz, bed, pixel, t), flecks);
+        let flecks = crest_flecks(p, t, wind) * fine * open;
+        let foam = max(shore_foam(p, bed, pixel, t), flecks);
         let foam_light = FOAM_COLOR * mix(0.07, 1.0, day) * mix(vec3<f32>(1.0), water.sun_color.rgb, 0.35);
         color = mix(color, foam_light, foam);
 
@@ -273,5 +316,8 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     }
 
     let fog_amount = clamp((dist - water.params.z) / max(water.params.w - water.params.z, 1.0), 0.0, 1.0);
-    return vec4<f32>(mix(col.rgb, water.fog.rgb, fog_amount), mix(col.a, 1.0, fog_amount));
+    let near = 1.0 - smoothstep(water.frame.w * HAND_SOFT, water.frame.w, dist);
+    let far_side = f32(below) * step(WAVE_TOP, eye_height);
+    let alpha = mix(col.a, 1.0, fog_amount) * near * (1.0 - far_side);
+    return vec4<f32>(mix(col.rgb, water.fog.rgb, fog_amount), alpha);
 }

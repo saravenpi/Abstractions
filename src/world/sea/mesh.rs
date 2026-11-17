@@ -1,4 +1,5 @@
-//! The sea mesh: one grid with 2 m cells near the focus and a few huge cells out to the horizon.
+//! The sea mesh: one flat grid in chart metres, with 2 m cells near the focus and wider and wider
+//! cells out to where the coarse planet mesh takes over. The shader wraps it onto the sphere.
 
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
@@ -10,15 +11,37 @@ pub const CELL: f32 = 2.0;
 /// Half side in meters of the fine zone.
 pub const FINE_HALF: f32 = 96.0;
 
-/// Half side in meters of the whole sea.
-pub const SEA_HALF: f32 = 2048.0;
+/// Cell width in meters and number of cells of each ring around the fine zone, inside out.
+/// They take the half side of the whole sea to 1552 m.
+///
+/// A straight cell edge sags below the sphere by its length squared over eight radii. The 14 m
+/// cells keep that under 2 cm out to 208 m on the smallest planet, and the widest cells stay
+/// above the flat sea of the coarse planet mesh.
+const RINGS: [(f32, usize); 7] = [
+    (4.0, 1),
+    (8.0, 1),
+    (16.0, 1),
+    (14.0, 6),
+    (32.0, 2),
+    (64.0, 2),
+    (128.0, 9),
+];
 
-/// Returns the grid lines along one axis: the sea edges with a fine line every cell between.
-fn lines() -> Vec<f32> {
+/// Returns the grid lines along one axis, in rising order: a fine line every cell, then the rings.
+pub fn lines() -> Vec<f32> {
     let steps = (2.0 * FINE_HALF / CELL) as usize;
-    let mut lines = vec![-SEA_HALF];
+    let widths = RINGS
+        .iter()
+        .flat_map(|&(width, count)| std::iter::repeat_n(width, count));
+    let outer: Vec<f32> = widths
+        .scan(FINE_HALF, |edge, width| {
+            *edge += width;
+            Some(*edge)
+        })
+        .collect();
+    let mut lines: Vec<f32> = outer.iter().rev().map(|edge| -edge).collect();
     lines.extend((0..=steps).map(|i| -FINE_HALF + i as f32 * CELL));
-    lines.push(SEA_HALF);
+    lines.extend(outer);
     lines
 }
 
@@ -48,7 +71,7 @@ pub fn sea_mesh() -> Mesh {
     .with_inserted_indices(Indices::U32(indices))
 }
 
-/// Snaps a position to the fine grid so vertices never swim while the sea follows the focus.
+/// Snaps a chart position to the fine grid so vertices never swim while the sea follows the focus.
 pub fn snap(p: Vec3) -> Vec2 {
     Vec2::new((p.x / CELL).round() * CELL, (p.z / CELL).round() * CELL)
 }

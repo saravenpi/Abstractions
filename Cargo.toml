@@ -6,6 +6,7 @@ edition = "2024"
 rust-version = "1.97.1"
 description = "A pixelated low-poly island exploration game."
 repository = "https://github.com/saravenpi/Abstractions"
+license = "MIT"
 publish = false
 
 [features]

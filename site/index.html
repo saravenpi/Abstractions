@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Abstractions, a pixelated low-poly exploration game</title>
+<meta name="description" content="Abstractions is a free first-person exploration game with a pixelated, low-poly look. Download it for Linux, Windows and macOS.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f3efe6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d1220" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://abstractions.facile.studio/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Abstractions">
+<meta property="og:title" content="Abstractions, a pixelated low-poly exploration game">
+<meta property="og:description" content="Wake up in an endless ocean of procedural islands. Free for Linux, Windows and macOS.">
+<meta property="og:url" content="https://abstractions.facile.studio/">
+<meta property="og:image" content="https://abstractions.facile.studio/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A pixel art island with a lighthouse and a palm tree under a low sun.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%230d1220'/%3E%3Crect x='9' y='2' width='4' height='4' fill='%23f2c14e'/%3E%3Crect x='5' y='8' width='6' height='1' fill='%235f9e5a'/%3E%3Crect x='3' y='9' width='10' height='1' fill='%235f9e5a'/%3E%3Crect x='2' y='10' width='12' height='1' fill='%23e3cf9c'/%3E%3Crect y='11' width='16' height='5' fill='%232f6f9f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#download">Skip to downloads</a>
+<main>
+  <header class="hero">
+    <svg class="scene" viewBox="0 0 64 32" role="img" aria-labelledby="scene-title" shape-rendering="crispEdges">
+      <title id="scene-title">A pixel art island with a lighthouse and a palm tree.</title>
+      <g class="star">
+        <rect x="5" y="4" width="1" height="1"/><rect x="13" y="9" width="1" height="1"/>
+        <rect x="22" y="3" width="1" height="1"/><rect x="34" y="6" width="1" height="1"/>
+        <rect x="40" y="2" width="1" height="1"/><rect x="57" y="5" width="1" height="1"/>
+        <rect x="60" y="13" width="1" height="1"/><rect x="8" y="15" width="1" height="1"/>
+        <rect x="54" y="17" width="1" height="1"/>
+      </g>
+      <g class="orb">
+        <rect x="46" y="4" width="4" height="8"/><rect x="45" y="5" width="6" height="6"/>
+        <rect x="44" y="6" width="8" height="4"/>
+      </g>
+      <rect class="sea" y="24" width="64" height="8"/>
+      <g class="glint">
+        <rect x="45" y="25" width="6" height="1"/><rect x="47" y="27" width="3" height="1"/>
+        <rect x="46" y="29" width="2" height="1"/>
+      </g>
+      <g class="foam">
+        <rect x="3" y="26" width="4" height="1"/><rect x="9" y="29" width="3" height="1"/>
+        <rect x="24" y="28" width="5" height="1"/><rect x="36" y="30" width="3" height="1"/>
+        <rect x="56" y="27" width="4" height="1"/>
+      </g>
+      <g class="sand">
+        <rect x="14" y="23" width="26" height="1"/><rect x="12" y="24" width="30" height="1"/>
+        <rect x="52" y="23" width="6" height="1"/><rect x="51" y="24" width="8" height="1"/>
+      </g>
+      <g class="grass">
+        <rect x="16" y="22" width="22" height="1"/><rect x="18" y="21" width="18" height="1"/>
+        <rect x="21" y="20" width="13" height="1"/><rect x="25" y="19" width="8" height="1"/>
+        <rect x="53" y="22" width="4" height="1"/>
+      </g>
+      <rect class="trunk" x="20" y="16" width="1" height="5"/>
+      <g class="leaf">
+        <rect x="19" y="14" width="3" height="1"/><rect x="18" y="15" width="5" height="1"/>
+        <rect x="17" y="16" width="2" height="1"/><rect x="22" y="16" width="2" height="1"/>
+      </g>
+      <rect class="wall" x="28" y="11" width="3" height="8"/>
+      <g class="stripe">
+        <rect x="28" y="14" width="3" height="1"/><rect x="28" y="17" width="3" height="1"/>
+        <rect x="29" y="8" width="1" height="1"/>
+      </g>
+      <rect class="lamp" x="28" y="9" width="3" height="2"/>
+    </svg>
+    <h1>Abstractions</h1>
+    <p class="lead">A first-person exploration game with a pixelated, low-poly look. You wake up in an endless ocean of procedurally generated islands.</p>
+  </header>
+
+  <section id="download" aria-labelledby="download-title">
+    <h2 id="download-title">Download</h2>
+    <p class="release">Latest release: <strong id="version">v0.5.0</strong>, <time id="released" datetime="2026-11-17">17 November 2026</time>. Free.</p>
+    <ul class="platforms">
+      <li>
+        <a class="button" data-os="linux" data-match="unknown-linux-gnu.tar.gz" href="https://github.com/saravenpi/Abstractions/releases/latest">
+          <span class="os">Linux</span>
+          <span class="meta">x86_64, .tar.gz</span>
+        </a>
+      </li>
+      <li>
+        <a class="button" data-os="windows" data-match="pc-windows-msvc.zip" href="https://github.com/saravenpi/Abstractions/releases/latest">
+          <span class="os">Windows</span>
+          <span class="meta">x86_64, .zip</span>
+        </a>
+      </li>
+      <li>
+        <a class="button" data-os="macos" data-match="macos-universal.dmg" href="https://github.com/saravenpi/Abstractions/releases/latest">
+          <span class="os">macOS</span>
+          <span class="meta">Apple Silicon and Intel, .dmg</span>
+        </a>
+      </li>
+    </ul>
+    <p class="note" id="link-note">Each button opens the latest release on GitHub. Pick the file for your system there.</p>
+    <details>
+      <summary>First launch on macOS</summary>
+      <p>The app is not notarized, so macOS blocks the first launch. It needs macOS 11 or later. Open the .dmg, drag Abstractions onto Applications, then pick one way to open it:</p>
+      <ul>
+        <li>macOS 14 and older: right-click Abstractions in Applications, choose Open, then click Open.</li>
+        <li>macOS 15 and later: try to open the app once. Then go to System Settings, Privacy &amp; Security, scroll to "Abstractions was blocked" and click Open Anyway.</li>
+        <li>Terminal, any version: <code>xattr -dr com.apple.quarantine /Applications/Abstractions.app</code></li>
+      </ul>
+      <p>You only need to do this once.</p>
+    </details>
+  </section>
+
+  <section aria-labelledby="now-title">
+    <h2 id="now-title">In the game today</h2>
+    <ul class="features">
+      <li>An endless ocean of procedural islands. The same seed always gives the same world.</li>
+      <li>Six biomes, with mountains to climb and coral reefs to dive on.</li>
+      <li>Villages, camps, ruins and lighthouses to find, with furnished houses.</li>
+      <li>A ten-minute day and a ten-minute night, lit by torches, lamps and fireflies.</li>
+      <li>Fireflies, butterflies and flocks of birds, and a wind that moves the waves and the smoke.</li>
+      <li>Free to download. The source code is public on GitHub.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="next-title">
+    <h2 id="next-title">Coming in 0.6</h2>
+    <p>Version 0.6 is in development and not released yet. It takes the game off the islands and into space. You wake up as a small robot on the planet Kodya.</p>
+    <ul class="features">
+      <li>True sphere planets you can circle on foot.</li>
+      <li>Seamless takeoff through the clouds to space, Newtonian flight and warp.</li>
+      <li>A procedural universe of galaxies that opens as you explore.</li>
+      <li>A floating robot companion.</li>
+      <li>Procedural ambient music, unique to each planet.</li>
+    </ul>
+  </section>
+
+  <section id="screenshots" aria-labelledby="shots-title" hidden>
+    <h2 id="shots-title">Screenshots</h2>
+    <ul class="shots"></ul>
+  </section>
+
+  <section aria-labelledby="controls-title">
+    <h2 id="controls-title">Controls</h2>
+    <dl class="controls">
+      <div><dt><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></dt><dd>Move</dd></div>
+      <div><dt>Mouse</dt><dd>Look</dd></div>
+      <div><dt><kbd>Space</kbd></dt><dd>Jump, or swim up</dd></div>
+      <div><dt><kbd>Shift</kbd></dt><dd>Sprint</dd></div>
+      <div><dt><kbd>Esc</kbd></dt><dd>Pause menu, or back</dd></div>
+    </dl>
+    <p class="note">You can rebind every key in Settings, Controls.</p>
+  </section>
+</main>
+<footer>
+  <p>Made by saravenpi. <a href="https://github.com/saravenpi/Abstractions">Source code</a>, <a href="https://github.com/saravenpi/Abstractions/blob/main/CHANGELOG.md">changelog</a> and <a href="https://github.com/saravenpi/Abstractions/releases">all releases</a> are on GitHub.</p>
+  <p>This page sets no cookies and does no tracking.</p>
+</footer>
+</body>
+</html>

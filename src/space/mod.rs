@@ -1,6 +1,7 @@
 //! Where things are: universe positions, coordinate frames and the render anchor.
 
 mod anchor;
+mod clock;
 mod frame;
 mod gravity;
 mod local;
@@ -10,6 +11,7 @@ mod pos;
 mod tests;
 
 pub use anchor::{Anchor, Frame};
+pub use clock::Clock;
 pub use local::{altitude, up};
 pub use pos::UniPos;
 
@@ -54,5 +56,5 @@ pub struct Location {
 
 /// Registers the space systems.
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins((frame::plugin, gravity::plugin));
+    app.add_plugins((clock::plugin, frame::plugin, gravity::plugin));
 }

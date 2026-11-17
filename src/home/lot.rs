@@ -6,11 +6,20 @@ use bevy::math::{Affine3A, DMat3, DVec2, DVec3};
 use bevy::prelude::*;
 
 use super::tune::Spot;
-use crate::world::globe::{Chart, Tangent};
+use crate::world::globe::{Chart, Face, Tangent};
 use crate::world::{Globe, Terrain};
 
 /// Passes that walk a point of the flat frame onto the ground along the local vertical.
 const PASSES: u32 = 3;
+
+/// Returns the view of `globe` through the chart of the cube face that holds the planet position
+/// `pos`: the chart the chunk meshes the game draws there are built in.
+fn drawn(globe: &Arc<Globe>, pos: DVec3) -> Terrain {
+    Terrain::on(
+        globe.clone(),
+        globe.face_chart(Face::locate(pos.normalize()).0),
+    )
+}
 
 /// The frame of the base: origin on the ground at the base centre, +x east, +y up there and
 /// +z south, with the metric view of the ground around it.
@@ -31,8 +40,11 @@ impl Lot {
     pub fn new(globe: &Arc<Globe>, dir: DVec3, east: DVec3) -> Self {
         let tangent = Tangent::new(dir, east, globe.radius(), DVec2::ZERO);
         let view = Terrain::on(globe.clone(), Chart::Tangent(tangent));
+        let centre = view.embed(0.0, 0.0, 0.0);
+        let drawn = drawn(globe, centre);
+        let at = drawn.locate(centre);
         Self {
-            origin: view.embed(0.0, view.mesh_height(0.0, 0.0), 0.0),
+            origin: drawn.embed(at.x, drawn.mesh_height(at.x, at.z), at.z),
             axes: DMat3::from_cols(tangent.east, tangent.origin, -tangent.north),
             view,
         }
@@ -54,11 +66,14 @@ impl Lot {
         self.origin + self.axes * local.as_dvec3()
     }
 
-    /// Returns the height in the frame of the drawn ground under the frame point `(x, z)`.
+    /// Returns the height in the frame of the drawn ground under the frame point `(x, z)`: the
+    /// terrain mesh of the chunks, which lives on the cube face charts, not the grid of the view.
     pub fn ground(&self, x: f32, z: f32) -> f32 {
         (0..PASSES).fold(0.0, |y, _| {
-            let at = self.view.locate(self.planet(Vec3::new(x, y, z)));
-            y + self.view.mesh_height(at.x, at.z) - at.y
+            let p = self.planet(Vec3::new(x, y, z));
+            let drawn = drawn(self.view.globe(), p);
+            let at = drawn.locate(p);
+            y + drawn.mesh_height(at.x, at.z) - at.y
         })
     }
 

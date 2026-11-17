@@ -19,6 +19,7 @@ use super::scatter::{Placement, Rig};
 use super::shapes::{FlatMesh, shade};
 use super::solids::{cone, fan, frustum, icosa, slab};
 
+#[cfg(test)]
 pub use merge::merge_props;
 pub use plant::Plant;
 pub use rigid::merge_parts_on;

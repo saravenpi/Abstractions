@@ -13,8 +13,8 @@ use crate::world::shapes::FlatMesh;
 
 /// Adds the terrain of quadtree node `id`, cut into `n` cells per side, to `mesh` in `frame`.
 ///
-/// `terrain` must be the face chart view of the face of the node. Nodes above the leaf level get
-/// a flat sea, and skirts when `skirts` is set.
+/// `terrain` must be the face chart view of the face of the node. Every node gets a flat sea, and
+/// skirts when `skirts` is set.
 pub fn fill_node(
     mesh: &mut FlatMesh,
     terrain: &Terrain,
@@ -26,8 +26,7 @@ pub fn fill_node(
     let span = Span::node(terrain, id, n);
     let coarse = Style::coarse(span.step());
     let style = Style {
-        floor: [Style::DETAIL.floor, coarse.floor]
-            [usize::from(id.level < terrain.globe().leaf_level())],
+        floor: coarse.floor,
         skirt: [0.0, coarse.skirt][usize::from(skirts)],
     };
     let patch = Patch::new(&span, frame, &span.heights(), style.floor);
@@ -41,10 +40,17 @@ pub fn node_frame(terrain: &Terrain, id: ChunkId) -> Frame {
     Frame::at(terrain, Span::node(terrain, id, 1).center())
 }
 
-/// Builds the terrain-only mesh of quadtree node `id`, a patch of `GRID_POINTS` vertices per side.
+/// Returns the cells along one side of the mesh of a node `above` levels above the leaves: the
+/// leaves get the 8 m grid of a far detail chunk, coarser nodes twice and four times as many cells.
+pub fn node_cells(above: u8) -> usize {
+    (GRID_POINTS - 1) >> 2u8.saturating_sub(above)
+}
+
+/// Builds the terrain-only mesh of quadtree node `id`, with [`node_cells`] cells per side.
 pub fn node_mesh(terrain: &Terrain, id: ChunkId) -> Mesh {
     let mut mesh = FlatMesh::default();
     let frame = node_frame(terrain, id);
-    fill_node(&mut mesh, terrain, (id, GRID_POINTS - 1), &frame, true);
+    let cells = node_cells(terrain.globe().leaf_level().saturating_sub(id.level));
+    fill_node(&mut mesh, terrain, (id, cells), &frame, true);
     mesh.into_mesh()
 }

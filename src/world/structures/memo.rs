@@ -29,6 +29,7 @@ struct Key {
     radius: u64,
     face: u8,
     scale: u64,
+    reserved: bool,
     grid: Grid,
     cell: IVec2,
 }
@@ -49,6 +50,7 @@ fn key(terrain: &Terrain, grid: Grid, cell: IVec2) -> Option<Key> {
         radius: terrain.globe().radius().to_bits(),
         face,
         scale,
+        reserved: terrain.globe().reserve().is_some(),
         grid,
         cell,
     })

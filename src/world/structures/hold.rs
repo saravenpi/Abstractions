@@ -8,6 +8,7 @@ use super::canvas::{Hold, join};
 use super::carry::{Carry, Target};
 use super::geo::transfer;
 use super::glow::LightPoint;
+#[cfg(test)]
 use crate::world::globe::Chart;
 
 /// What one site adds to its chunk: triangles, solid parts and lights, all in the space of the target.
@@ -48,17 +49,20 @@ impl<'a> Build<'a> {
 
     /// Ends the build and returns its output carried to `target`. On the flat chart, chunk space already is
     /// the target and nothing moves.
-    pub fn finish(mut self, target: Target<'a>) -> Output {
+    pub fn finish(mut self, target: Target) -> Output {
         self.seal();
+        #[cfg(test)]
         let same = matches!(
-            (self.terrain.chart(), target),
+            (self.terrain.chart(), &target),
             (Chart::Flat, Target::Chart { .. })
         );
+        #[cfg(not(test))]
+        let same = false;
         let (mut parts, mut lights) = (self.parts, self.lights);
         let (mut from, mut meshes) = ((0, 0), Vec::new());
         for mut run in self.mesh.into_runs() {
             if !same {
-                let carry = Carry::new(self.terrain, self.center, run.hold, target);
+                let carry = Carry::new(self.terrain, self.center, run.hold, target.clone());
                 carry.mesh(&mut run.mesh);
                 carry.solids(
                     &mut parts[from.0..run.parts],

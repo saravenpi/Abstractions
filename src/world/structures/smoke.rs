@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use super::lights::FireAssets;
 use super::lights_sys::Fires;
+use crate::space::{Anchor, up};
 use crate::wind::Wind;
 
 /// Number of smoke puffs, created once.
@@ -86,15 +87,23 @@ pub fn spawn_puffs(mut commands: Commands, assets: Res<FireAssets>) {
     }
 }
 
+/// Returns the turn from the vertical of the render anchor to the vertical at the render position `at`:
+/// smoke rises along the local up and the wind blows in the local ground plane.
+fn tilt(anchor: Option<&Anchor>, at: Vec3) -> Quat {
+    anchor.map_or(Quat::IDENTITY, |anchor| {
+        Quat::from_rotation_arc(Vec3::Y, up(anchor, at))
+    })
+}
+
 /// Moves every ember up from its fire: it shrinks as it cools and dies before the smoke thins.
-fn glint(embers: &mut Embers, fires: &[Vec3], t: f32, wind: Vec3) {
+fn glint(embers: &mut Embers, fires: &[Vec3], t: f32, (wind, anchor): (Vec3, Option<&Anchor>)) {
     for (ember, mut transform, mut vis) in embers {
         let Some(source) = fires.get(ember.0 as usize % fires.len().max(1)) else {
             vis.set_if_neq(Visibility::Hidden);
             continue;
         };
         let age = (t * (0.5 + 0.05 * (ember.0 % 5) as f32) + ember.0 as f32 * 0.37).fract();
-        transform.translation = *source + ember_path(age, ember.0, wind);
+        transform.translation = *source + tilt(anchor, *source) * ember_path(age, ember.0, wind);
         transform.scale = Vec3::splat(EMBER_SIZE * 0.5 * (1.0 - age * age));
         vis.set_if_neq(Visibility::Inherited);
     }
@@ -102,10 +111,10 @@ fn glint(embers: &mut Embers, fires: &[Vec3], t: f32, wind: Vec3) {
 
 /// Moves every puff and ember up from its fire, bending with the wind, and hides the pools without fires.
 ///
-/// A puff darkens to soot near the fire and pales as it ages.
+/// A puff darkens to soot near the fire and pales as it ages. Everything rises along the local up of its fire.
 pub fn drift(
     time: Res<Time>,
-    wind: Res<Wind>,
+    (wind, anchor): (Res<Wind>, Option<Res<Anchor>>),
     fires: Res<Fires>,
     assets: Res<FireAssets>,
     mut pools: (Puffs, Embers),
@@ -119,13 +128,18 @@ pub fn drift(
         let age = (t * 0.3 + puff.0 as f32 / POOL as f32).fract();
         let turn = puff.0 as f32;
         let sway = Vec3::new((t + turn).sin(), 0.0, (t * 0.7 + turn).cos()) * 0.15;
-        transform.translation =
-            *source + Vec3::Y * (0.7 + age * 3.5) + wind.velocity() * age * age * 0.6 + sway;
+        let rise = Vec3::Y * (0.7 + age * 3.5) + wind.velocity() * age * age * 0.6 + sway;
+        transform.translation = *source + tilt(anchor.as_deref(), *source) * rise;
         transform.scale = Vec3::splat(puff_size(age));
         material.set_if_neq(MeshMaterial3d(assets.smoke[puff_shade(age)].clone()));
         vis.set_if_neq(Visibility::Inherited);
     }
-    glint(&mut pools.1, &fires.0, t, wind.velocity());
+    glint(
+        &mut pools.1,
+        &fires.0,
+        t,
+        (wind.velocity(), anchor.as_deref()),
+    );
 }
 
 #[cfg(test)]

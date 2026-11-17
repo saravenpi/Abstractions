@@ -23,11 +23,14 @@ mod sky;
 mod starfield;
 mod sun;
 mod vantage;
+mod warm;
 
 #[cfg(test)]
 mod schedule_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_dither;
 
 pub use camera::{configure_camera, set_fov};
 pub use celestial::{daylight, moon_direction, smoothstep, sun_direction};
@@ -42,8 +45,10 @@ pub use palette::Palette;
 pub use pixelate::Pixelate;
 pub use ray_tracing::RayTracing;
 pub use sun::SunDir;
+pub use warm::{WARM_FRAMES, Warm, Warmed, warm_material};
 
 use bevy::prelude::*;
+use bevy::render::render_asset::RenderAssetBytesPerFrame;
 
 /// Marker for the player's first-person 3D camera.
 ///
@@ -89,10 +94,22 @@ pub(super) fn sky(app: &mut App) {
         starfield::plugin,
         bodies::plugin,
         entry::plugin,
+        warm::plugin,
     ));
+    warm_material::<clouds::CloudMaterial>(app);
+    warm_material::<sky::SkyMaterial>(app);
+    warm_material::<atmosphere::HaloMaterial>(app);
+    warm_material::<entry::FxMaterial>(app);
+    warm_material::<starfield::StarMaterial>(app);
+    warm_material::<bodies::BodyMaterial>(app);
 }
+
+/// Most bytes of meshes and images uploaded to the GPU in one frame. A burst of streamed chunks
+/// spreads over a few frames instead of stalling one.
+const UPLOAD_BYTES: usize = 16 << 20;
 
 /// Registers the render plugins.
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins((pixelate::plugin, lowres::plugin, ray_tracing::plugin, sky));
+    app.insert_resource(RenderAssetBytesPerFrame::new(UPLOAD_BYTES))
+        .add_plugins((pixelate::plugin, lowres::plugin, ray_tracing::plugin, sky));
 }

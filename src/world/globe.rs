@@ -7,6 +7,7 @@ mod flat;
 mod ground;
 mod id;
 pub mod quadtree;
+mod reserve;
 mod site;
 mod sphere;
 mod tangent;
@@ -17,6 +18,7 @@ mod tests;
 pub use chart::Chart;
 pub use cube::Face;
 pub use id::ChunkId;
+pub use reserve::Reserve;
 pub(in crate::world) use site::Site;
 pub use tangent::Tangent;
 
@@ -34,6 +36,7 @@ pub struct Globe {
     gravity: f64,
     pub(in crate::world) shape: Shape,
     pub(in crate::world) climate: Climate,
+    reserve: Option<Reserve>,
 }
 
 impl Globe {
@@ -46,6 +49,7 @@ impl Globe {
             gravity,
             shape: Shape::new(seed),
             climate: Climate::new(seed),
+            reserve: None,
         }
     }
 

@@ -25,7 +25,7 @@ const SLACK: f32 = 1.3;
 /// The sites and built floors around one point of a planet. Plain data in the frame of the planet.
 #[derive(Default, Clone)]
 pub struct Survey {
-    planet: (u64, u64),
+    planet: (u64, u64, bool),
     center: DVec3,
     sites: Vec<Nearby>,
     pads: Vec<Pad>,
@@ -102,7 +102,11 @@ impl Survey {
 pub fn survey(terrain: &Terrain, center: DVec3, radius: f32) -> Survey {
     let globe = terrain.globe();
     let mut out = Survey {
-        planet: (globe.seed(), globe.radius().to_bits()),
+        planet: (
+            globe.seed(),
+            globe.radius().to_bits(),
+            globe.reserve().is_some(),
+        ),
         center,
         ..default()
     };
@@ -145,7 +149,12 @@ pub fn watch(around: ResMut<Surroundings>, terrain: Option<Res<Terrain>>, focus:
     let (Some(terrain), Some(at)) = (terrain, focus.planet()) else {
         return;
     };
-    let planet = (terrain.seed(), terrain.globe().radius().to_bits());
+    let globe = terrain.globe();
+    let planet = (
+        globe.seed(),
+        globe.radius().to_bits(),
+        globe.reserve().is_some(),
+    );
     let known = &around.survey;
     let fresh = known.planet == planet && known.center.distance(at) <= f64::from(DRIFT);
     if around.task.is_none() && fresh {

@@ -3,6 +3,7 @@
 mod caps;
 mod center;
 mod detail;
+mod drape;
 mod dressing;
 mod fields;
 mod floors;

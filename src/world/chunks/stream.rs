@@ -5,15 +5,15 @@ use std::collections::{HashMap, HashSet};
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, block_on, futures_lite::future::poll_once};
 
+use super::budget::Spend;
 use super::build::generate;
 use super::near::Around;
 use super::plan::{ring, select_batch};
 use super::spawn::{Spawner, spawn_chunk};
-use super::{Chunks, DEFAULT_RADIUS, MAX_PENDING, Settled, raytrace};
-use crate::settings::{Persistent, Settings};
+use super::{Chunks, Settled, raytrace};
 use crate::world::focus::Focus;
 use crate::world::globe::{Chart, ChunkId};
-use crate::world::mesh::{Lod, leaf_coord, ring_distance};
+use crate::world::mesh::leaf_coord;
 use crate::world::{Terrain, WorldReady};
 
 impl Chunks {
@@ -32,6 +32,7 @@ impl Chunks {
             .copied()
             .filter(|id| !kept.contains(id))
             .collect();
+        self.stamp += stale.len() as u64;
         for id in stale {
             if let Some(l) = self.loaded.remove(&id) {
                 commands.entity(l.entity).try_despawn();
@@ -40,15 +41,19 @@ impl Chunks {
         self.pending.retain(|id, _| kept.contains(id));
     }
 
-    /// Starts generation tasks for the leaves of `wanted`, in order, while there is room.
+    /// Starts generation tasks for the leaves of `wanted`, in order, while there is room. A chunk
+    /// within a ring of the ground cover is generated with it, the others get it when the focus
+    /// comes near.
     fn start(&mut self, wanted: Vec<ChunkId>, around: &Around, spawner: &Spawner) {
         let pool = AsyncComputeTaskPool::get();
-        let room = MAX_PENDING.saturating_sub(self.pending.len());
+        let (reach, rings) = (spawner.reach(), spawner.rings());
+        let room = reach.tasks().saturating_sub(self.pending.len());
         for id in wanted.into_iter().take(room) {
             let terrain = spawner.view(id.face);
-            let lod = Lod::for_ring(ring_distance(around.coord(id), around.center));
-            let task = pool.spawn(async move { generate(&terrain, leaf_coord(id), lod) });
-            self.pending.insert(id, task);
+            let rank = around.rank(id);
+            let (lod, turfed) = (rings.lod(rank), rank <= reach.cover() + 1);
+            let build = async move { generate(&terrain, leaf_coord(id), lod, turfed) };
+            self.pending.insert(id, pool.spawn(build));
         }
     }
 }
@@ -80,20 +85,14 @@ fn wanted(chunks: &Chunks, leaves: Vec<ChunkId>, around: &Around, radius: i32) -
 
 /// Starts tasks for missing detail chunks near the focus, drops chunks out of range and moves colliders with the
 /// focus.
-pub fn stream(
-    mut commands: Commands,
-    mut chunks: ResMut<Chunks>,
-    focus: Focus,
-    settings: Option<Res<Persistent<Settings>>>,
-    spawner: Spawner,
-) {
+pub fn stream(mut commands: Commands, mut chunks: ResMut<Chunks>, focus: Focus, spawner: Spawner) {
     let Some(around) = focus
         .planet()
         .and_then(|at| Around::new(&spawner.terrain, at))
     else {
         return;
     };
-    let radius = settings.map_or(DEFAULT_RADIUS, |s| s.graphics.render_distance) as i32;
+    let radius = spawner.reach().rings;
     let key = key(&chunks, &around, spawner.terrain.chart(), radius);
     if chunks.settled == Some(key) {
         return;
@@ -114,7 +113,8 @@ pub fn stream(
     chunks.start(wanted, &around, &spawner);
 }
 
-/// Turns the nearest finished chunk tasks into entities, a few per frame once the world is ready.
+/// Turns the nearest finished chunk tasks into entities, within the count and the time budget of
+/// the frame. The chunks that must be solid under the focus always go through.
 pub fn collect(
     mut commands: Commands,
     mut chunks: ResMut<Chunks>,
@@ -132,19 +132,23 @@ pub fn collect(
         .into_iter()
         .map(|id| (around.coord(id), id))
         .collect();
-    for coord in select_batch(
-        done.keys().copied().collect(),
-        around.center,
-        spawner.budget(),
-    ) {
-        let task = chunks.pending.remove(&done[&coord]);
+    let reach = spawner.reach();
+    let count = [reach.tasks(), reach.per_frame()][usize::from(spawner.ready.0)];
+    let mut spend = Spend::of(spawner.shares().chunks);
+    for coord in select_batch(done.keys().copied().collect(), around.center, count) {
+        let id = done[&coord];
+        if !around.solid(id) && !spend.more() {
+            continue;
+        }
+        let task = chunks.pending.remove(&id);
         let Some(mut data) = task.and_then(|mut t| block_on(poll_once(&mut t))) else {
             continue;
         };
         raytrace::prepare(&mut data, spawner.ray_tracing.0);
         let mut loaded = spawn_chunk(&mut commands, &mut spawner, data);
-        loaded.set_solid(&mut commands, around.solid(done[&coord]));
-        chunks.loaded.insert(done[&coord], loaded);
+        loaded.set_solid(&mut commands, around.solid(id));
+        chunks.loaded.insert(id, loaded);
+        chunks.touch();
     }
 }
 

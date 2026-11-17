@@ -18,7 +18,7 @@ use crate::world::props::PropAssets;
 use crate::world::{Planet, SpawnPoint, Terrain, WorldReady};
 
 /// Returns an app with a new world begun and the streaming chain, without a window or a screen.
-fn world() -> App {
+pub(super) fn world() -> App {
     let mut app = App::new();
     let mut materials = Assets::<StandardMaterial>::default();
     let mut images = Assets::<Image>::default();
@@ -71,7 +71,7 @@ fn go(app: &mut App, to: Option<DVec3>, what: &str, done: impl Fn(&World) -> boo
 }
 
 /// Returns true when every node has its mesh and no detail chunk is missing or being built.
-fn idle(world: &World) -> bool {
+pub(super) fn idle(world: &World) -> bool {
     let chunks = world.resource::<Chunks>();
     let whole = chunks.tree.leaves().iter().all(|id| chunks.nodes.has(*id));
     whole && chunks.settled.is_some() && chunks.pending.is_empty()

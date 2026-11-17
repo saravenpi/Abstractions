@@ -3,6 +3,9 @@
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use crate::world::Terrain;
+use crate::world::globe::Face;
+
 use super::glow::{Glow, Mood, flash};
 use super::lights::{noticed, swell};
 use super::plan::{draw, plan};
@@ -16,7 +19,8 @@ const FOOT_GAP: f32 = 0.03;
 const TILT: f64 = 0.1;
 
 /// On 20 seeds every leg, cable rest and pad point is within 3 cm of the drawn ground along the
-/// local vertical: nothing floats and nothing is buried.
+/// local vertical: the terrain mesh of the chunks, on its cube face chart. Nothing floats and
+/// nothing is buried.
 #[test]
 fn every_foot_meets_the_ground() {
     for seed in 1..=20 {
@@ -25,8 +29,14 @@ fn every_foot_meets_the_ground() {
         let feet = draw(&lot).feet;
         assert!(feet.len() > 150, "seed {seed}: {} feet", feet.len());
         for foot in feet {
-            let at = lot.view().locate(lot.planet(foot));
-            let gap = (at.y - lot.view().mesh_height(at.x, at.z)).abs();
+            let planet = lot.planet(foot);
+            let globe = lot.view().globe();
+            let drawn = Terrain::on(
+                globe.clone(),
+                globe.face_chart(Face::locate(planet.normalize()).0),
+            );
+            let at = drawn.locate(planet);
+            let gap = (at.y - drawn.mesh_height(at.x, at.z)).abs();
             assert!(gap < FOOT_GAP, "seed {seed}: foot {foot} is {gap} m off");
         }
     }

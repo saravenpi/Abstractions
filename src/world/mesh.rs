@@ -5,6 +5,7 @@ mod lattice;
 mod lod;
 mod node;
 mod patch;
+mod rings;
 mod sample;
 mod skirt;
 mod span;
@@ -17,9 +18,10 @@ mod tris;
 use bevy::prelude::*;
 
 pub use self::frame::Frame;
-pub use self::lod::{Lod, next_lod, ring_distance, subsample};
+pub use self::lod::{Lod, ring_distance, subsample};
 pub use self::node::{fill_node, node_frame, node_mesh};
 pub use self::patch::Patch;
+pub use self::rings::Rings;
 pub use self::span::{Span, leaf_coord};
 use self::tris::{Style, fill, tone};
 use super::shapes::FlatMesh;
@@ -47,19 +49,29 @@ pub(super) fn dithered(terrain: &Terrain, span: &Span, cell: [usize; 3]) -> Biom
     terrain.biome(at.x, at.y)
 }
 
-/// Returns the vertices of chunk `coord` at `heights`, in the frame of the chunk.
-pub fn chunk_patch(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>]) -> Patch {
+/// Returns the vertices of chunk `coord` at `heights`, in the frame of the chunk, none lower than `floor`.
+fn patch_above(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>], floor: f32) -> Patch {
     let span = Span::leaf(terrain, coord, heights.len() - 1);
     let frame = Frame::at(terrain, span.center());
-    Patch::new(&span, &frame, heights, Style::DETAIL.floor)
+    Patch::new(&span, &frame, heights, floor)
+}
+
+/// Returns the vertices of chunk `coord` at `heights`, in the frame of the chunk.
+pub fn chunk_patch(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>]) -> Patch {
+    patch_above(terrain, coord, heights, Style::DETAIL.floor)
 }
 
 /// Builds the mesh of chunk `coord` from `heights` sampled at the stride of `lod`, with a per-triangle biome dither.
+/// The distant level draws a flat sea over the sea bed, like a coarse node.
 pub fn chunk_mesh(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>], lod: Lod) -> Mesh {
     let span = Span::leaf(terrain, coord, (GRID_POINTS - 1) / lod.stride());
-    let patch = chunk_patch(terrain, coord, heights);
+    let style = match lod {
+        Lod::Distant => Style::coarse(span.step()),
+        _ => Style::DETAIL,
+    };
+    let patch = patch_above(terrain, coord, heights, style.floor);
     let mut mesh = FlatMesh::default();
-    fill(&mut mesh, &patch, Style::DETAIL, &|i, j, half| {
+    fill(&mut mesh, &patch, style, &|i, j, half| {
         dithered(terrain, &span, [i, j, half])
     });
     mesh.into_mesh()

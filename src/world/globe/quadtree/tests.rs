@@ -16,6 +16,7 @@ fn view(focus: DVec3) -> View {
         deepest: 7,
         reach: 370.0,
         budget: MAX_SPLITS,
+        split: SPLIT,
     }
 }
 
@@ -101,6 +102,7 @@ fn surface_focus_reaches_the_leaf_level() {
         deepest: 10,
         reach: 9.0 * 61.4,
         budget: MAX_SPLITS,
+        split: SPLIT,
     };
     let mut tree = Tree::default();
     settle(&mut tree, &largest);

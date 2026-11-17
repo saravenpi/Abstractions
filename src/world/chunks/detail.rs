@@ -1,146 +1,91 @@
-//! Per-chunk level of detail: terrain mesh swaps, ground cover visibility, and the structures and lights of a new
-//! chunk moved onto the globe.
+//! Per-chunk level of detail: terrain mesh swaps and ground cover on demand.
 
 use std::collections::HashMap;
 
 use avian3d::prelude::*;
-use bevy::ecs::system::SystemParam;
-use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
 
 use super::Chunks;
-use super::build::terrain_mesh;
-use super::embed::Embedding;
+use super::budget::Spend;
+use super::build::{ground_cover, terrain_mesh};
 use super::near::Around;
 use super::plan::Loaded;
 use super::raytrace;
 use super::spawn::Spawner;
+use super::turf::Turf;
+use crate::world::Terrain;
 use crate::world::focus::Focus;
 use crate::world::globe::ChunkId;
-use crate::world::mesh::{Lod, leaf_coord, next_lod, ring_distance};
+use crate::world::mesh::{Lod, Rings, leaf_coord};
 
-/// Most terrain meshes rebuilt at the same time.
+/// Most terrain meshes and ground covers rebuilt at the same time.
 const MAX_REMESH: usize = 4;
-
-/// Chunks within this many rings show their grass and flowers.
-const COVER_RINGS: i32 = 3;
 
 /// Detail state of one loaded chunk.
 pub struct Detail {
     lod: Lod,
-    grass: Option<Entity>,
-    shown: bool,
+    /// The grass and flowers of the chunk.
+    pub turf: Turf,
     structure: Option<(Entity, Collider)>,
-    adopted: bool,
     remesh: Option<(Lod, Task<Mesh>)>,
 }
 
 impl Detail {
-    /// Starts at level `lod`; `children` tells whether the chunk spawned child entities to look up.
-    pub fn new(lod: Lod, children: bool) -> Self {
+    /// Starts at level `lod` with its ground cover and the structure child and its collider.
+    pub fn new(lod: Lod, turf: Turf, structure: Option<(Entity, Collider)>) -> Self {
         Self {
             lod,
-            grass: None,
-            shown: true,
-            structure: None,
-            adopted: !children,
+            turf,
+            structure,
             remesh: None,
         }
     }
 
-    /// Returns the structure child and its collider, once found.
+    /// Returns the structure child and its collider, when the chunk has solid structures.
     pub fn structure(&self) -> Option<&(Entity, Collider)> {
         self.structure.as_ref()
     }
-}
 
-/// What the detail pass reads from a child of a chunk.
-type Part = (
-    Option<&'static Mesh3d>,
-    Option<&'static Collider>,
-    Has<NotShadowCaster>,
-    &'static Transform,
-);
-
-/// Reads the children of chunk entities.
-#[derive(SystemParam)]
-pub struct Probe<'w, 's> {
-    children: Query<'w, 's, &'static Children>,
-    parts: Query<'w, 's, Part>,
-}
-
-/// Moves the structure child onto the globe: its mesh, and its collider, kept only while solid.
-fn fit(
-    commands: &mut Commands,
-    l: &mut Loaded,
-    child: Entity,
-    collider: Option<&Collider>,
-    warp: &Embedding,
-) {
-    l.detail.structure = collider.map(|collider| (child, warp.collider(collider)));
-    match l.detail.structure().filter(|_| l.solid) {
-        Some((_, collider)) => commands.entity(child).try_insert(collider.clone()),
-        None => commands.entity(child).try_remove::<Collider>(),
-    };
-}
-
-/// Finds the children of a new chunk once they exist. The grass is remembered, the structure
-/// mesh, its collider and the lights, all built in chart coordinates, are embedded on the globe.
-fn adopt(
-    commands: &mut Commands,
-    l: &mut Loaded,
-    probe: &Probe,
-    fitter: (&Embedding, &mut Assets<Mesh>),
-) {
-    let Ok(children) = probe.children.get(l.entity) else {
-        return;
-    };
-    let ((warp, meshes), props) = (fitter, l.props);
-    for child in children.iter().filter(|c| Some(*c) != props) {
-        match probe.parts.get(child) {
-            Ok((_, _, true, _)) => l.detail.grass = Some(child),
-            Ok((Some(mesh), collider, false, _)) => {
-                if let Some(mut mesh) = meshes.get_mut(&mesh.0) {
-                    warp.mesh(&mut mesh);
-                }
-                fit(commands, l, child, collider, warp);
+    /// Starts the task that does `work` for the chunk at `coord` of the chart `terrain`, with the
+    /// ray tracing flag `on`.
+    fn begin(
+        &mut self,
+        work: Work,
+        (terrain, coord): (Terrain, IVec2),
+        on: bool,
+        pool: &AsyncComputeTaskPool,
+    ) {
+        match work {
+            Work::Terrain(lod) => {
+                let task = pool.spawn(async move { terrain_mesh(&terrain, coord, lod, on) });
+                self.remesh = Some((lod, task));
             }
-            Ok((None, _, false, at)) => {
-                let (translation, rotation) = warp.pose(at.translation, at.rotation);
-                let moved = Transform {
-                    translation,
-                    rotation,
-                    ..*at
-                };
-                commands.entity(child).try_insert(moved);
-            }
-            Err(_) => {}
+            Work::Cover => self
+                .turf
+                .start(pool.spawn(async move { ground_cover(&terrain, coord, on) })),
         }
     }
-    l.detail.adopted = true;
+
+    /// Returns true while a task rebuilds the terrain or the ground cover of the chunk.
+    fn busy(&self) -> bool {
+        self.remesh.is_some() || self.turf.building()
+    }
 }
 
-/// Shows ground cover within `COVER_RINGS` of the focus and hides it beyond.
-fn show_cover(commands: &mut Commands, l: &mut Loaded, ring: i32) {
-    let show = ring <= COVER_RINGS;
-    let Some(grass) = l.detail.grass.filter(|_| show != l.detail.shown) else {
-        return;
-    };
-    l.detail.shown = show;
-    let visibility = if show {
-        Visibility::Inherited
-    } else {
-        Visibility::Hidden
-    };
-    commands.entity(grass).try_insert(visibility);
-}
-
-/// Swaps in a finished terrain mesh.
-fn swap_finished(commands: &mut Commands, l: &mut Loaded, spawner: &mut Spawner) {
+/// Swaps in a finished terrain mesh, the budget allowing.
+fn swap_finished(
+    commands: &mut Commands,
+    l: &mut Loaded,
+    spawner: &mut Spawner,
+    spend: &mut Spend,
+) {
     let Some((lod, task)) = l.detail.remesh.as_mut() else {
         return;
     };
+    if !task.is_finished() || !spend.more() {
+        return;
+    }
     let lod = *lod;
     let Some(mesh) = block_on(poll_once(task)) else {
         return;
@@ -151,42 +96,59 @@ fn swap_finished(commands: &mut Commands, l: &mut Loaded, spawner: &mut Spawner)
     raytrace::swap(commands, l.entity, handle, spawner.ray_tracing.0);
 }
 
-/// Starts terrain rebuilds for chunks whose wanted level changed, nearest first, while `room` allows.
-fn start_remesh(
+/// What a loaded chunk should rebuild: its terrain at another level, or its ground cover.
+enum Work {
+    /// The terrain mesh at this level.
+    Terrain(Lod),
+    /// The ground cover.
+    Cover,
+}
+
+/// Returns what chunk `l` at `rank` rings should rebuild now, if anything.
+fn stale(l: &Loaded, rank: i32, rings: &Rings, cover: i32) -> Option<Work> {
+    if l.detail.busy() {
+        return None;
+    }
+    let next = rings.next(l.detail.lod, rank);
+    if next != l.detail.lod {
+        return Some(Work::Terrain(next));
+    }
+    l.detail.turf.wanted(rank, cover).then_some(Work::Cover)
+}
+
+/// Starts rebuilds for chunks whose wanted level changed or whose ground cover is missing,
+/// nearest first, while `room` allows.
+fn start_work(
     loaded: &mut HashMap<ChunkId, Loaded>,
     around: &Around,
     spawner: &Spawner,
     room: usize,
 ) {
-    let mut stale: Vec<(i32, ChunkId, Lod)> = loaded
+    let (reach, rings) = (spawner.reach(), spawner.rings());
+    let mut todo: Vec<(i32, ChunkId, Work)> = loaded
         .iter()
-        .filter(|(_, l)| l.detail.remesh.is_none())
-        .map(|(id, l)| {
-            let d = ring_distance(around.coord(*id), around.center);
-            (d, *id, next_lod(l.detail.lod, d), l.detail.lod)
+        .filter_map(|(id, l)| {
+            let rank = around.rank(*id);
+            stale(l, rank, &rings, reach.cover()).map(|work| (rank, *id, work))
         })
-        .filter(|(_, _, next, now)| next != now)
-        .map(|(d, id, next, _)| (d, id, next))
         .collect();
-    stale.sort_by_key(|(d, ..)| *d);
+    todo.sort_by_key(|(rank, ..)| *rank);
     let pool = AsyncComputeTaskPool::get();
-    for (_, id, lod) in stale.into_iter().take(room) {
+    for (_, id, work) in todo.into_iter().take(room) {
         let (terrain, on) = (spawner.view(id.face), spawner.ray_tracing.0);
-        let task = pool.spawn(async move { terrain_mesh(&terrain, leaf_coord(id), lod, on) });
         if let Some(l) = loaded.get_mut(&id) {
-            l.detail.remesh = Some((lod, task));
+            l.detail.begin(work, (terrain, leaf_coord(id)), on, pool);
         }
     }
 }
 
-/// Runs the per-frame detail work for every loaded chunk: new children are found and embedded
-/// in the frame they spawn, ground cover follows the rings and terrain meshes follow their level.
+/// Runs the per-frame detail work for every loaded chunk: ground cover follows the rings and
+/// terrain meshes follow their level, within the swap budget of the frame.
 pub fn refine(
     mut commands: Commands,
     mut chunks: ResMut<Chunks>,
     mut spawner: Spawner,
     focus: Focus,
-    probe: Probe,
 ) {
     let Some(around) = focus
         .planet()
@@ -194,20 +156,17 @@ pub fn refine(
     else {
         return;
     };
+    let cover = spawner.reach().cover();
+    let mut spend = Spend::of(spawner.shares().swaps);
     let mut busy = 0;
     for (id, l) in chunks.loaded.iter_mut() {
-        if !l.detail.adopted {
-            let warp = Embedding::of(&spawner.view(id.face), leaf_coord(*id));
-            adopt(&mut commands, l, &probe, (&warp, &mut spawner.meshes));
-        }
-        show_cover(
-            &mut commands,
-            l,
-            ring_distance(around.coord(*id), around.center),
-        );
-        swap_finished(&mut commands, l, &mut spawner);
-        busy += usize::from(l.detail.remesh.is_some());
+        let rings = (around.rank(*id), cover);
+        let entity = l.entity;
+        let turf = &mut l.detail.turf;
+        turf.tend(&mut commands, entity, rings, (&mut spawner, &mut spend));
+        swap_finished(&mut commands, l, &mut spawner, &mut spend);
+        busy += usize::from(l.detail.busy());
     }
     let room = MAX_REMESH.saturating_sub(busy);
-    start_remesh(&mut chunks.loaded, &around, &spawner, room);
+    start_work(&mut chunks.loaded, &around, &spawner, room);
 }

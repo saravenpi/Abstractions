@@ -23,6 +23,8 @@ pub struct View {
     pub reach: f64,
     /// Most splits one selection may ask for.
     pub budget: usize,
+    /// How many times its width away a node splits: [`SPLIT`] at the default render distance.
+    pub split: f64,
 }
 
 /// Returns the node of `level` that holds unit direction `dir`.
@@ -52,7 +54,7 @@ impl View {
     /// Returns the distance under which `id` splits.
     fn range(&self, id: ChunkId) -> f64 {
         let arc = self.arc(id.level);
-        (arc * SPLIT).max(self.reach + arc * HALF_DIAGONAL)
+        (arc * self.split).max(self.reach + arc * HALF_DIAGONAL)
     }
 
     /// Returns true when the leaf `id` should split.

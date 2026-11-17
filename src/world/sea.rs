@@ -99,4 +99,5 @@ pub fn spawn_sea(
 pub(super) fn plugin(app: &mut App) {
     app.add_plugins(material::plugin)
         .add_systems(Update, follow::refresh.before(super::chunks::place));
+    crate::render::warm_material::<WaterMaterial>(app);
 }

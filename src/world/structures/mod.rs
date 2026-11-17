@@ -151,7 +151,7 @@ fn build(terrain: &Terrain, coord: IVec2, target: Target) -> Option<StructureDat
         build.count = count;
         DRAW[site.kind as usize](&mut build);
         count = build.count;
-        let out = build.finish(target);
+        let out = build.finish(target.clone());
         meshes.push(out.mesh);
         parts.extend(out.parts);
         lights.extend(out.lights);
@@ -171,9 +171,14 @@ fn build(terrain: &Terrain, coord: IVec2, target: Target) -> Option<StructureDat
 /// On the globe every building is laid out rigid and upright at its own origin and then written in chart
 /// coordinates, so that the point by point warp of `chunks::embed` puts it back where it belongs. Prefer
 /// [`build_in`], which needs no warp. Runs on any thread and reads no world.
+#[cfg(test)]
 pub fn build_chunk(terrain: &Terrain, coord: IVec2) -> Option<StructureData> {
     let center = chunk_center(coord);
-    build(terrain, coord, Target::Chart { terrain, center })
+    let chart = Target::Chart {
+        terrain: terrain.clone(),
+        center,
+    };
+    build(terrain, coord, chart)
 }
 
 /// Builds the structures whose origin lies in chunk `coord` of the chart of `terrain` directly in `frame`,
@@ -185,32 +190,28 @@ pub fn build_in(terrain: &Terrain, coord: IVec2, frame: &Frame) -> Option<Struct
     build(terrain, coord, Target::Frame(*frame))
 }
 
-/// Spawns the structure mesh with its compound collider as a child of the chunk, and its lights.
+/// Spawns the structure mesh and the lights of `data` as children of the chunk. Returns the mesh child and
+/// the compound collider it carries while the chunk is solid, which the caller attaches.
 pub fn spawn_structures(
     commands: &mut Commands,
     chunk: Entity,
     assets: &PropAssets,
     meshes: &mut Assets<Mesh>,
     data: Option<StructureData>,
-) {
-    let Some(data) = data else {
-        return;
-    };
+) -> Option<(Entity, Option<Collider>)> {
+    let data = data?;
     lights::spawn_lights(commands, chunk, &data.lights, data.rigid);
-    let mesh = meshes.add(data.mesh);
-    commands.entity(chunk).with_children(|c| {
-        let mut child = c.spawn((
-            Mesh3d(mesh),
-            MeshMaterial3d(assets.material.clone()),
-            Transform::default(),
-        ));
-        if let Some(collider) = data.collider {
-            child.insert(collider);
-        }
-        if data.rigid {
-            child.insert(Embedded);
-        }
-    });
+    let part = (
+        Mesh3d(meshes.add(data.mesh)),
+        MeshMaterial3d(assets.material.clone()),
+        Transform::default(),
+        ChildOf(chunk),
+    );
+    let mut child = commands.spawn(part);
+    if data.rigid {
+        child.insert(Embedded);
+    }
+    Some((child.id(), data.collider))
 }
 
 /// Registers the structure lights: flame dressing, lamp choice, flicker and the smoke pool.

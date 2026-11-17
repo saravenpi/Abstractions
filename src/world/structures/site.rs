@@ -119,7 +119,8 @@ fn cell_rng(seed: u64, cell: IVec2) -> ChaCha8Rng {
 /// its footprint keeps `EDGE` meters away from the cube edges, which lie `room` meters from `p`.
 fn try_kind(terrain: &Terrain, kind: Kind, at: (Vec2, f32), rng: &mut ChaCha8Rng) -> Option<Site> {
     let (p, room) = at;
-    if room < kind.reach() + EDGE {
+    let kept = terrain.embed(p.x, 0.0, p.y);
+    if room < kind.reach() + EDGE || terrain.globe().reserved(kept, f64::from(kind.reach())) {
         return None;
     }
     let (floor, depth) = fit(terrain, kind, p)?;

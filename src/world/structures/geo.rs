@@ -2,6 +2,7 @@
 
 use std::f64::consts::SQRT_2;
 
+#[cfg(test)]
 use bevy::math::{DVec2, DVec3};
 use bevy::prelude::*;
 
@@ -55,6 +56,7 @@ pub fn transfer(from: &Terrain, to: &Terrain, p: Vec2) -> Vec2 {
 
 /// Returns the chart position of the planet position `pos` in 64 bits, so that an offset from a nearby chart
 /// point keeps its precision far from the middle of a cube face.
+#[cfg(test)]
 pub fn chart_point(terrain: &Terrain, pos: DVec3) -> DVec2 {
     match terrain.chart() {
         Chart::Face { face, scale } => {

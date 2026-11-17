@@ -13,7 +13,7 @@ use bevy::shader::ShaderRef;
 use super::GameCamera;
 use super::celestial::smoothstep;
 use super::clouds::CloudCrossing;
-use super::glow::entry_glow;
+use super::glow::{entry_glow, stream_heading};
 use super::palette::Palette;
 use super::sky::linear;
 use super::vantage::Vantage;
@@ -118,8 +118,7 @@ struct FxInputs<'w, 's> {
 
 impl FxInputs<'_, '_> {
     /// Returns the shader values: the glow grows with dynamic pressure while sinking, the streaks with the warp
-    /// and the wisps with the depth in the clouds and the speed. Without motion the effects
-    /// point where the camera looks.
+    /// and the wisps with the depth in the clouds and the speed, all streaming from [`stream_heading`].
     fn uniform(&self) -> FxUniform {
         let flight = *self.flight;
         let velocity = self.vantage.velocity;
@@ -139,7 +138,7 @@ impl FxInputs<'_, '_> {
         let warp = flight.warp.clamp(0.0, 1.0);
         let wisps = self.crossing.depth * smoothstep(WISP_SPEED.0, WISP_SPEED.1, speed);
         FxUniform {
-            heading: velocity.try_normalize().unwrap_or(ahead).extend(0.0),
+            heading: stream_heading(velocity, ahead, warp).extend(0.0),
             glow: hot.extend(glow),
             streak: Vec3::new(0.7, 0.85, 1.6).extend(warp),
             wisp: (linear(self.palette.cloud).truncate() * 0.6).extend(wisps),

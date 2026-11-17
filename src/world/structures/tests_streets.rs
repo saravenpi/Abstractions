@@ -14,7 +14,7 @@ const HUG: (f32, f32) = (-0.002, 0.15);
 
 /// Deepest a road triangle may lie under the terrain mesh at its middle, in meters. A flat quad whose corners
 /// hug the mesh still dips under a sharp crease between them, on flat land as on a globe.
-const SUNK: f32 = -0.25;
+const SUNK: f32 = -0.15;
 
 /// Returns how far the planet position `p` lies above the terrain mesh of the chart `face`, read on the chart.
 fn lift(face: &Terrain, p: DVec3) -> f32 {

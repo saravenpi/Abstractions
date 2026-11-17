@@ -7,19 +7,21 @@ use bevy::prelude::*;
 
 use super::brush::Part;
 use super::canvas::Hold;
+#[cfg(test)]
 use super::geo::chart_point;
 use super::glow::LightPoint;
 use crate::world::Terrain;
 use crate::world::mesh::Frame;
 
 /// Where finished geometry goes.
-#[derive(Clone, Copy)]
-pub enum Target<'a> {
+#[derive(Clone)]
+pub enum Target {
     /// The chunk space of a chart: `(x, z)` are chart offsets from `center` and `y` is the height above sea
-    /// level. `chunks::embed` warps this space onto the globe point by point.
+    /// level. The tests warp this space onto the globe point by point to compare it with [`Target::Frame`].
+    #[cfg(test)]
     Chart {
         /// The chart the chunk belongs to.
-        terrain: &'a Terrain,
+        terrain: Terrain,
         /// Chart position of the middle of the chunk.
         center: Vec2,
     },
@@ -27,10 +29,11 @@ pub enum Target<'a> {
     Frame(Frame),
 }
 
-impl Target<'_> {
+impl Target {
     /// Returns where the planet position `planet` lies in the target.
     fn place(&self, planet: DVec3) -> Vec3 {
         match self {
+            #[cfg(test)]
             Target::Chart { terrain, center } => {
                 let flat = (chart_point(terrain, planet) - center.as_dvec2()).as_vec2();
                 Vec3::new(flat.x, terrain.locate(planet).y, flat.y)
@@ -39,11 +42,13 @@ impl Target<'_> {
         }
     }
 
-    /// Returns the rotation from planet axes to the axes of the target at its point `at`.
-    fn axes(&self, at: Vec3) -> DQuat {
+    /// Returns the rotation from planet axes to the axes of the target at its point `_at`, which only a chart
+    /// target depends on.
+    fn axes(&self, _at: Vec3) -> DQuat {
         match self {
+            #[cfg(test)]
             Target::Chart { terrain, center } => {
-                Frame::at(terrain, *center + at.xz()).rot.inverse()
+                Frame::at(terrain, *center + _at.xz()).rot.inverse()
             }
             Target::Frame(frame) => frame.rot.inverse(),
         }
@@ -55,12 +60,12 @@ pub struct Carry<'a> {
     view: &'a Terrain,
     center: Vec2,
     anchor: Option<(Vec2, Frame)>,
-    target: Target<'a>,
+    target: Target,
 }
 
 impl<'a> Carry<'a> {
     /// Returns the way to `target` of a run held by `hold`, drawn on `view` around the chart point `center`.
-    pub fn new(view: &'a Terrain, center: Vec2, hold: Hold, target: Target<'a>) -> Self {
+    pub fn new(view: &'a Terrain, center: Vec2, hold: Hold, target: Target) -> Self {
         let anchor = match hold {
             Hold::Rigid(at) => Some((at, Frame::at(view, at))),
             Hold::Ground => None,

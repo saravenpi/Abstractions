@@ -39,9 +39,14 @@ pub fn visible(tree: &Tree, has: &dyn Fn(ChunkId) -> bool) -> HashSet<ChunkId> {
 }
 
 /// Shows the nodes of the draw cut and hides the others. A detail chunk replaces the coarse
-/// mesh of its node, and stays hidden until its node is on the cut.
+/// mesh of its node, and stays hidden until its node is on the cut. Nothing is looked at again
+/// until a node or a chunk appears or goes.
 pub fn show(mut commands: Commands, mut chunks: ResMut<Chunks>, ray_tracing: Res<RayTracing>) {
+    if chunks.drawn == Some(chunks.stamp) {
+        return;
+    }
     let chunks = &mut *chunks;
+    chunks.drawn = Some(chunks.stamp);
     let cut = visible(&chunks.tree, &|id| chunks.nodes.has(id));
     for (id, node) in chunks.nodes.live.iter_mut() {
         let wanted = cut.contains(id) && !chunks.loaded.contains_key(id);

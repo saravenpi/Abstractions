@@ -5,8 +5,8 @@ use std::sync::OnceLock;
 use bevy::mesh::VertexAttributeValues;
 use bevy::prelude::*;
 
-use super::{BIG, PARTS, VARIANTS, big_mesh, merge_props_on};
-use crate::world::scatter::{Placement, Rig};
+use super::{BIG, PARTS, VARIANTS, big_mesh};
+use crate::world::scatter::Placement;
 use crate::world::shapes::textured_mesh;
 
 /// Vertex arrays of a triangle soup.
@@ -79,8 +79,9 @@ fn base(kind: usize, variant: usize) -> &'static Soup {
 }
 
 /// Merges every placed solid prop into one mesh in chunk space, with each transform baked into the vertices.
+#[cfg(test)]
 pub fn merge_props(props: &[Placement]) -> Mesh {
-    merge_props_on(props, &Rig::PLAIN)
+    super::merge_props_on(props, &crate::world::scatter::Rig::PLAIN)
 }
 
 #[cfg(test)]

@@ -1,17 +1,21 @@
 //! Chunk streaming: a quadtree of coarse terrain nodes over the whole planet, and detail chunks
 //! with props, structures and colliders built off-thread around the focus.
 
+mod budget;
 mod build;
+mod calm;
 mod cut;
 mod detail;
 mod embed;
 mod face;
 mod far;
+mod grow;
 mod near;
 mod nodes;
 mod place;
 mod plan;
 mod raytrace;
+mod reach;
 mod spawn;
 mod stream;
 #[cfg(test)]
@@ -19,37 +23,39 @@ mod tests;
 #[cfg(test)]
 mod tests_embed;
 #[cfg(test)]
+mod tests_reach;
+#[cfg(test)]
 mod tests_stream;
+mod turf;
 
 use std::collections::HashMap;
 
 use bevy::prelude::*;
 use bevy::tasks::Task;
 
+pub use self::budget::{Budget, follow_setting, set_budget};
 use self::build::ChunkData;
+pub use self::calm::{Calm, watch_calm};
 pub use self::cut::show;
 pub use self::detail::refine;
 pub use self::face::{follow_face, rehome};
 use self::far::FarView;
 pub use self::far::watch_far;
+pub use self::grow::grow;
+pub use self::near::leaf_arc;
 use self::nodes::Nodes;
-pub use self::nodes::grow;
 pub use self::place::{Sited, place};
 use self::plan::Loaded;
 pub use self::raytrace::{add_instances, rebuild, retarget};
+pub use self::reach::{Reach, STEPS};
 pub use self::stream::{collect, mark_ready, stream};
 use super::globe::quadtree::Tree;
 use super::globe::{ChunkId, Face};
 use super::props::PropAssets;
 
-/// Most chunk tasks running at the same time.
-const MAX_PENDING: usize = 12;
-
-/// Finished chunks turned into entities per frame once the world is ready.
+/// Finished chunks turned into entities per frame once the world is ready, at the default render
+/// distance and the time budget allowing.
 const FRAME_BUDGET: usize = 2;
-
-/// Chunk radius used when the settings are missing.
-const DEFAULT_RADIUS: u32 = 4;
 
 /// What the detail chunks were last settled for: nothing to do until one of these changes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -70,6 +76,9 @@ pub struct Chunks {
     loaded: HashMap<ChunkId, Loaded>,
     pending: HashMap<ChunkId, Task<ChunkData>>,
     settled: Option<Settled>,
+    stamp: u64,
+    grown: Option<(IVec3, u64, i32)>,
+    drawn: Option<u64>,
 }
 
 impl Chunks {
@@ -96,6 +105,11 @@ impl Chunks {
     pub fn rebuild(&mut self, commands: &mut Commands) {
         self.drop_near(commands);
         self.far.clear(commands);
+    }
+
+    /// Notes that a node or a chunk appeared or went: the draw cut and the quadtree look again.
+    fn touch(&mut self) {
+        self.stamp += 1;
     }
 
     /// Returns the chunks whose generation task is done.

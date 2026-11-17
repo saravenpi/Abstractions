@@ -18,6 +18,8 @@ const BAYER: array<f32, 16> = array<f32, 16>(
     15.0, 7.0, 13.0, 5.0
 );
 
+const WHITE_DITHER: f32 = 0.9;
+
 fn dither(texel: vec2<i32>) -> f32 {
     var cells = BAYER;
     let cell = (texel.y & 3) * 4 + (texel.x & 3);
@@ -29,7 +31,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let texel = vec2<i32>(in.position.xy);
     let color = textureLoad(screen_texture, texel, 0);
     let perceptual = pow(clamp(color.rgb, vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(1.0 / 2.2));
-    let strength = mix(1.0, 0.4, max(perceptual.r, max(perceptual.g, perceptual.b)));
+    let strength = mix(1.0, WHITE_DITHER, max(perceptual.r, max(perceptual.g, perceptual.b)));
     let offset = 0.5 + (dither(texel) - 0.5) * strength;
     let banded = floor(perceptual * settings.levels + vec3<f32>(offset)) / settings.levels;
     return vec4<f32>(pow(banded, vec3<f32>(2.2)), color.a);

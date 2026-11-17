@@ -83,7 +83,10 @@ fn search(terrain: &Terrain, vcell: IVec2) -> Option<Site> {
             variant: rng.random_range(0..u32::MAX),
         };
         let view = terrain.around(p.x, p.y);
-        let clear = edge_distance(terrain, p) >= REACH + EDGE;
+        let kept = terrain
+            .globe()
+            .reserved(terrain.embed(p.x, 0.0, p.y), f64::from(REACH));
+        let clear = !kept && edge_distance(terrain, p) >= REACH + EDGE;
         (clear && suitable(&view, p, radius) && viable(&view, site)).then_some(site)
     })
 }

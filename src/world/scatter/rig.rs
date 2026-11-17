@@ -18,6 +18,7 @@ pub struct Rig<'a> {
     pub turn: &'a (dyn Fn(Vec3) -> Quat + Sync),
 }
 
+#[cfg(test)]
 impl Rig<'static> {
     /// The rig of chunk space itself: nothing moves and nothing turns. It gives the legacy output, which a
     /// point by point warp can still carry onto the globe.

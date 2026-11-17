@@ -7,8 +7,10 @@ mod focus;
 pub mod globe;
 mod islands;
 mod mesh;
+mod meter;
 mod propmesh;
 mod props;
+mod reserve;
 mod scatter;
 mod sea;
 mod shapes;
@@ -18,9 +20,10 @@ mod surface;
 mod terrain;
 
 pub use biome::Biome;
-pub use chunks::Sited;
+pub use chunks::{Calm, Reach, STEPS as RENDER_STEPS, Sited, leaf_arc};
 pub use focus::{Link, spin};
 pub use globe::Globe;
+pub use meter::{Cost, Meter, STEPS as METER_STEPS};
 pub use surface::Surface;
 pub use terrain::Terrain;
 
@@ -169,6 +172,10 @@ fn streaming(
 pub(super) fn plugin(app: &mut App) {
     app.add_plugins((sea::plugin, structures::plugin))
         .init_resource::<chunks::Chunks>()
+        .init_resource::<chunks::Budget>()
+        .init_resource::<chunks::Calm>()
+        .insert_resource(chunks::Reach::of(None))
+        .init_resource::<Meter>()
         .add_systems(Startup, chunks::setup_assets)
         .add_systems(
             OnEnter(Screen::Loading),
@@ -192,23 +199,28 @@ pub(super) fn plugin(app: &mut App) {
 /// player wakes there: the ground that must be solid is the ground of the base.
 fn stream_systems(app: &mut App) {
     let based = resource_exists::<Base>.and_then(not(resource_added::<Base>));
-    let founded = not(unplayed).or_else(based);
+    let ready = chunks::mark_ready.run_if(not(unplayed).or_else(based));
+    let planet = (
+        (meter::start, chunks::set_budget, chunks::follow_setting),
+        chunks::rebuild.run_if(resource_changed::<crate::render::RayTracing>),
+        follow_body,
+        reserve::keep_base,
+        chunks::change_planet.run_if(resource_exists_and_changed::<Planet>),
+        meter::lap::<0>,
+    );
     app.add_systems(
         Update,
         (
-            chunks::rebuild.run_if(resource_changed::<crate::render::RayTracing>),
-            follow_body,
-            chunks::change_planet.run_if(resource_exists_and_changed::<Planet>),
-            chunks::follow_face,
-            chunks::watch_far,
-            chunks::grow,
-            chunks::stream,
-            chunks::collect,
-            chunks::refine,
-            chunks::show,
-            chunks::mark_ready.run_if(founded),
-            chunks::place,
-            sea::follow_focus,
+            planet.chain(),
+            (chunks::follow_face, meter::lap::<1>).chain(),
+            (chunks::watch_far, meter::lap::<2>).chain(),
+            (chunks::grow.run_if(reserve::settled), meter::lap::<3>).chain(),
+            (chunks::stream.run_if(reserve::settled), meter::lap::<4>).chain(),
+            (chunks::collect, meter::lap::<5>).chain(),
+            (chunks::refine, meter::lap::<6>).chain(),
+            (chunks::show, chunks::watch_calm, meter::lap::<7>).chain(),
+            (ready, chunks::place, meter::lap::<8>).chain(),
+            (sea::follow_focus, meter::lap::<9>).chain(),
         )
             .chain()
             .run_if(streaming),

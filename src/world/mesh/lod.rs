@@ -2,11 +2,8 @@
 
 use bevy::prelude::*;
 
-/// Ring distance (Chebyshev) of the last chunk drawn with the finest grid.
-const NEAR_RINGS: i32 = 1;
-
-/// Ring distance of the last chunk drawn with the middle grid.
-const MID_RINGS: i32 = 3;
+#[cfg(test)]
+use super::rings::Rings;
 
 /// How coarse the terrain grid of a chunk is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -17,6 +14,8 @@ pub enum Lod {
     Mid,
     /// Every fourth grid point, an 8 m grid.
     Far,
+    /// The 8 m grid with a flat sea drawn in, for chunks the near sea does not reach.
+    Distant,
 }
 
 impl Lod {
@@ -25,30 +24,23 @@ impl Lod {
         match self {
             Lod::Near => 1,
             Lod::Mid => 2,
-            Lod::Far => 4,
+            Lod::Far | Lod::Distant => 4,
         }
     }
 
-    /// Returns the level wanted for a chunk `ring` chunks away from the focus.
+    /// Returns the level wanted for a chunk `ring` chunks away from the focus at the default
+    /// render distance.
+    #[cfg(test)]
     pub fn for_ring(ring: i32) -> Lod {
-        if ring <= NEAR_RINGS {
-            Lod::Near
-        } else if ring <= MID_RINGS {
-            Lod::Mid
-        } else {
-            Lod::Far
-        }
+        Rings::DEFAULT.lod(ring)
     }
 }
 
-/// Returns the level a chunk at `ring` should use now: finer levels apply at once, coarser ones one ring later.
+/// Returns the level a chunk at `ring` should use now at the default render distance: finer levels
+/// apply at once, coarser ones one ring later.
+#[cfg(test)]
 pub fn next_lod(current: Lod, ring: i32) -> Lod {
-    let wanted = Lod::for_ring(ring);
-    if wanted < current {
-        wanted
-    } else {
-        current.max(Lod::for_ring(ring - 1))
-    }
+    Rings::DEFAULT.next(current, ring)
 }
 
 /// Returns the Chebyshev distance in chunks between `coord` and `center`.

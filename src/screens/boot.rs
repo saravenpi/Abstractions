@@ -9,10 +9,15 @@ use bevy::text::LetterSpacing;
 use super::loading::Arrival;
 use super::wake::{FADE, STATUS_DELAY, line_time, script, timeline};
 use super::{Screen, WarmUp};
+use crate::render::Warmed;
 use crate::ui::{cell, root_on, text, theme, warm_up};
+use crate::world::Calm;
 
 /// Width of the label column of the boot lines, in pixels.
 const LABEL_WIDTH: f32 = 250.0;
+
+/// Seconds after which the boot screen lifts even if the world around the player is not complete.
+const HOLD_LIMIT: f32 = 20.0;
 
 /// The clock of the boot screen.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Default)]
@@ -112,11 +117,16 @@ type Buttons<'w> = (
     Option<Res<'w, ButtonInput<MouseButton>>>,
 );
 
+/// What the fade waits for: every pipeline drawn once and the world around the player complete.
+type Readiness<'w> = (Option<Res<'w, Warmed>>, Option<Res<'w, Calm>>);
+
 /// Advances the clock, jumps to the fade on any key or click, and hands the world over when
-/// the fade ends.
+/// the fade ends. The fade does not start before the warm-up has run and the streaming has caught
+/// up, or [`HOLD_LIMIT`] seconds have passed.
 fn advance(
     time: Res<Time>,
     (keys, mouse): Buttons,
+    (warmed, calm): Readiness,
     mut boot: ResMut<Boot>,
     mut warm: ResMut<NextState<WarmUp>>,
 ) {
@@ -124,6 +134,10 @@ fn advance(
     let skip = keys.get_just_pressed().next().is_some() || clicked;
     boot.clock += time.delta_secs();
     if skip && boot.clock < boot.fade_at {
+        boot.fade_at = boot.clock;
+    }
+    let ready = warmed.is_none_or(|w| w.done) && calm.is_none_or(|c| c.0);
+    if !ready && boot.clock < HOLD_LIMIT && boot.clock >= boot.fade_at {
         boot.fade_at = boot.clock;
     }
     if boot.clock >= boot.fade_at + FADE {

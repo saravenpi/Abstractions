@@ -59,6 +59,7 @@ pub struct Cover {
 }
 
 /// Builds the merged mesh of every small plant of a scatter in chunk space: grass, flowers, kelp and small solids.
+#[cfg(test)]
 pub fn build_grass(scatter: &Scatter) -> Mesh {
     build_grass_on(scatter, &Rig::PLAIN)
 }
@@ -83,6 +84,7 @@ pub fn build_grass_on(scatter: &Scatter, rig: &Rig) -> Mesh {
 }
 
 /// Returns the trunk, cactus, rock and wreck colliders of every big prop as one compound, in chunk space.
+#[cfg(test)]
 pub fn body_collider(props: &[Placement]) -> Option<Collider> {
     body_collider_on(props, &Rig::PLAIN)
 }
@@ -108,22 +110,24 @@ pub fn body_collider_on(props: &[Placement], rig: &Rig) -> Option<Collider> {
     (!shapes.is_empty()).then(|| Collider::compound(shapes))
 }
 
-/// Spawns the merged props and ground cover as children of the chunk and returns the props entity.
+/// Spawns the merged props and the ground cover as children of the chunk and returns the props entity and
+/// the ground cover entity.
 pub fn spawn_props(
     commands: &mut Commands,
     chunk: Entity,
     material: &Handle<StandardMaterial>,
     cover: Cover,
-) -> Option<Entity> {
-    let mut props = None;
+) -> [Option<Entity>; 2] {
+    let mut spawned = [None, None];
     commands.entity(chunk).with_children(|c| {
         let mat = || MeshMaterial3d(material.clone());
         if let Some(mesh) = cover.props {
-            props = Some(c.spawn((Mesh3d(mesh), mat(), Transform::default())).id());
+            spawned[0] = Some(c.spawn((Mesh3d(mesh), mat(), Transform::default())).id());
         }
         if let Some(mesh) = cover.grass {
-            c.spawn((Mesh3d(mesh), mat(), Transform::default(), NotShadowCaster));
+            let part = (Mesh3d(mesh), mat(), Transform::default(), NotShadowCaster);
+            spawned[1] = Some(c.spawn(part).id());
         }
     });
-    props
+    spawned
 }

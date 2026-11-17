@@ -1,4 +1,7 @@
-//! The re-entry glow: when the air is thick and the fall is fast enough for the hull to glow.
+//! The shape of the flight effects: when the air is thick and the fall is fast enough for the hull
+//! to glow, and which way the effects stream.
+
+use bevy::prelude::*;
 
 use super::celestial::smoothstep;
 
@@ -22,4 +25,12 @@ const GLOW_SINK: (f32, f32) = (30.0, 110.0);
 pub fn entry_glow(pressure: f32, sink: f32) -> f32 {
     smoothstep(GLOW_PRESSURE.0, GLOW_PRESSURE.1, pressure)
         * smoothstep(GLOW_SINK.0, GLOW_SINK.1, sink)
+}
+
+/// Returns where the effects stream from: along `velocity`, or along `ahead`, where the camera
+/// looks, without motion and in proportion to `warp`. In a star frame the velocity still carries the
+/// orbit of the planet the ship left, which would sweep the warp streaks sideways.
+pub fn stream_heading(velocity: Vec3, ahead: Vec3, warp: f32) -> Vec3 {
+    let moving = velocity.try_normalize().unwrap_or(ahead);
+    moving.lerp(ahead, warp).try_normalize().unwrap_or(ahead)
 }

@@ -10,7 +10,7 @@ use super::palette::{Palette, srgb};
 use super::vantage::Vantage;
 use crate::settings::{Persistent, Settings};
 use crate::space::{Anchor, Frame, altitude};
-use crate::world::{CHUNK_SIZE, Planet};
+use crate::world::{CHUNK_SIZE, Planet, Reach};
 
 /// Fog and sky color seen from below the surface, in sRGB.
 pub const UNDERWATER: Vec3 = Vec3::new(0.04, 0.27, 0.35);
@@ -53,7 +53,13 @@ impl FogKey {
 /// farther with `altitude` once above every summit, and without limit as the share of `air` left
 /// goes to zero.
 pub fn fog_reach(render_distance: u32, altitude: f32, air: f32) -> f32 {
-    let ground = render_distance as f32 * CHUNK_SIZE;
+    fog_sight(render_distance as f32 * CHUNK_SIZE, altitude, air)
+}
+
+/// Returns the distance in meters the fog lets the camera see when the detail of the ground
+/// ends `ground` meters away: farther with `altitude` once above every summit, and without limit
+/// as the share of `air` left goes to zero.
+pub fn fog_sight(ground: f32, altitude: f32, air: f32) -> f32 {
     (ground + (altitude - CLIMB_FLOOR).max(0.0) * CLIMB_SIGHT) / air.max(THIN_AIR)
 }
 
@@ -114,11 +120,10 @@ fn update_fog(
     mut last: Local<Option<FogKey>>,
 ) {
     let (vantage, crossing) = (&depths.vantage, &depths.crossing);
-    let clear = fog_reach(
-        settings.graphics.render_distance,
-        vantage.altitude,
-        vantage.air,
-    );
+    let reach = Reach::of(Some(settings.graphics.render_distance));
+    let planet = depths.planet.as_deref();
+    let ground = planet.map_or(reach.rings as f32 * CHUNK_SIZE, |p| reach.sight(&p.globe));
+    let clear = fog_sight(ground, vantage.altitude, vantage.air);
     for (at, mut fog) in &mut cameras {
         let key = FogKey {
             submerged: depths.submerged(at.translation()),

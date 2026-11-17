@@ -1,8 +1,8 @@
 //! Relief above the coast: rolling hills, terraced plateaus, foothills and ridged mountains.
 
-use noise::{Fbm, MultiFractal, NoiseFn, Perlin, RidgedMulti};
+use noise::{Fbm, MultiFractal, Perlin, RidgedMulti};
 
-use super::{smooth, sub_seed};
+use super::{Point, smooth, sub_seed};
 
 /// Snaps `v` to steps of `step` with steep risers, giving terraced cliffs.
 fn terrace(v: f32, step: f32) -> f32 {
@@ -36,12 +36,12 @@ impl Relief {
     }
 
     /// Returns the height added above the coast profile at the warped position, `s` being the inland measure.
-    pub fn above(&self, wx: f64, wz: f64, s: f32) -> f32 {
-        let m = self.mount.get([wx, wz]) as f32;
+    pub fn above<P: Point>(&self, w: P, s: f32) -> f32 {
+        let m = w.get(&self.mount) as f32;
         let h = smooth(
             0.2,
             0.8,
-            (self.hills.get([wx, wz]) as f32 * 0.5 + 0.5).clamp(0.0, 1.0),
+            (w.get(&self.hills) as f32 * 0.5 + 0.5).clamp(0.0, 1.0),
         );
         let rolling = h * (4.0 + 20.0 * smooth(-0.1, 0.25, m));
         let plateau = terrace(h * 25.0, 8.0);
@@ -51,7 +51,7 @@ impl Relief {
         if mt <= 0.0 {
             return low * lift;
         }
-        let r = ((self.ridge.get([wx, wz]) as f32 + 1.0) * 0.5).clamp(0.0, 1.0);
+        let r = ((w.get(&self.ridge) as f32 + 1.0) * 0.5).clamp(0.0, 1.0);
         low * lift + mt * (24.0 + 90.0 * r * r)
     }
 }

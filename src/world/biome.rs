@@ -1,9 +1,9 @@
 //! Biomes: the climate regions that decide ground colors, plants and structures.
 
-use noise::{Fbm, MultiFractal, NoiseFn, Perlin};
+use noise::{Fbm, MultiFractal, Perlin};
 
 use super::Surface;
-use super::islands::{smooth, sub_seed};
+use super::islands::{Point, smooth, sub_seed};
 
 /// The climate region of a point on land.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -54,16 +54,16 @@ impl Climate {
         }
     }
 
-    /// Returns the temperature noise at `(x, z)`, above 0 in warm water and on warm land.
-    pub fn warmth(&self, x: f32, z: f32) -> f32 {
-        self.temperature.get([x as f64, z as f64]) as f32
+    /// Returns the temperature noise at `p`, above 0 in warm water and on warm land.
+    pub fn warmth<P: Point>(&self, p: P) -> f32 {
+        p.get(&self.temperature) as f32
     }
 
-    /// Returns the biome at `(x, z)`, `base` being the continent measure that grows inland.
-    pub fn biome(&self, x: f32, z: f32, base: f32) -> Biome {
-        let t = self.warmth(x, z);
+    /// Returns the biome at `p`, `base` being the continent measure that grows inland.
+    pub fn biome<P: Point>(&self, p: P, base: f32) -> Biome {
+        let t = self.warmth(p);
         let coast = 1.0 - smooth(-0.05, 0.45, base);
-        let m = self.moisture.get([x as f64, z as f64]) as f32 + 0.2 * coast;
+        let m = p.get(&self.moisture) as f32 + 0.2 * coast;
         if t < -0.4 {
             Biome::Taiga
         } else if t > 0.3 {

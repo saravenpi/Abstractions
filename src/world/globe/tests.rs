@@ -7,6 +7,10 @@ use bevy::math::{DVec2, DVec3};
 use super::*;
 use crate::world::Terrain;
 
+mod frozen;
+mod seams;
+mod sphere;
+
 /// Returns evenly spread coordinates strictly inside -1 to 1.
 fn spread() -> impl Iterator<Item = f64> {
     (0..=20).map(|i| -0.99 + 0.099 * f64::from(i))

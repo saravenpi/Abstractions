@@ -4,8 +4,10 @@ mod chart;
 mod cube;
 pub mod far;
 mod flat;
+mod ground;
 mod id;
 pub mod quadtree;
+mod site;
 mod sphere;
 mod tangent;
 
@@ -15,6 +17,7 @@ mod tests;
 pub use chart::Chart;
 pub use cube::Face;
 pub use id::ChunkId;
+pub(in crate::world) use site::Site;
 pub use tangent::Tangent;
 
 use super::biome::Climate;

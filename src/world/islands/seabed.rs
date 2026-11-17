@@ -1,8 +1,8 @@
 //! The sea floor: sandy shelf with bars, reef bumps, rolling deep floor, seamounts and canyons.
 
-use noise::{Fbm, MultiFractal, NoiseFn, Perlin};
+use noise::{Fbm, MultiFractal, Perlin};
 
-use super::{smooth, sub_seed};
+use super::{Point, smooth, sub_seed};
 
 /// Mean height of the deep sea floor.
 const DEEP: f32 = -15.0;
@@ -38,23 +38,23 @@ impl Seabed {
 
     /// Returns the floor height `d` away from the coast measure, `cliff` steepening the shelf and
     /// `warmth` (temperature noise) allowing reefs in warm water.
-    pub fn floor(&self, p: [f64; 2], d: f32, cliff: f32, warmth: f32) -> f32 {
+    pub fn floor<P: Point>(&self, p: P, d: f32, cliff: f32, warmth: f32) -> f32 {
         let width = 0.15 - 0.1 * cliff;
         let top = smooth(0.0, width, d);
-        let ripple = self.dune.get([p[0] / 26.0, p[1] / 26.0]) as f32 * 0.5 * smooth(0.01, 0.05, d);
+        let ripple = if top < 1.0 {
+            p.div(26.0).get(&self.dune) as f32 * 0.5 * smooth(0.01, 0.05, d)
+        } else {
+            0.0
+        };
         let shelf = SHELF_DEPTH * top + ripple * (1.0 - top * top);
         let deep = DEEP
-            + 3.5 * self.rolling.get(p) as f32
-            + 0.9 * self.dune.get([p[0] / 17.0 + 40.0, p[1] / 17.0]) as f32;
+            + 3.5 * p.get(&self.rolling) as f32
+            + 0.9 * p.div(17.0).add([40.0, 0.0, 0.0]).get(&self.dune) as f32;
         let mut h = shelf + (deep - shelf) * smooth(width, width + 0.22, d);
         let open = smooth(0.3, 0.6, d);
         if open > 0.0 {
-            let q = self.canyon.get([p[0] / 420.0, p[1] / 420.0]).abs() as f32;
-            let peak = smooth(
-                0.3,
-                0.6,
-                self.mount.get([p[0] / 320.0, p[1] / 320.0]) as f32,
-            );
+            let q = p.div(420.0).get(&self.canyon).abs() as f32;
+            let peak = smooth(0.3, 0.6, p.div(320.0).get(&self.mount) as f32);
             h += open * (-26.0 * smooth(0.1, 0.0, q) + (-1.5 - deep) * peak);
         }
         if top > 0.2 && warmth > 0.0 {
@@ -64,13 +64,13 @@ impl Seabed {
     }
 
     /// Returns the coral bump height added to the shelf in warm water.
-    fn reef(&self, p: [f64; 2], warmth: f32) -> f32 {
-        let patch = smooth(0.0, 0.25, self.patch.get([p[0] / 70.0, p[1] / 70.0]) as f32)
-            * smooth(0.0, 0.2, warmth);
+    fn reef<P: Point>(&self, p: P, warmth: f32) -> f32 {
+        let patch =
+            smooth(0.0, 0.25, p.div(70.0).get(&self.patch) as f32) * smooth(0.0, 0.2, warmth);
         if patch <= 0.0 {
             return 0.0;
         }
-        let k = 1.0 - self.bump.get([p[0] / 11.0, p[1] / 11.0]).abs() as f32;
+        let k = 1.0 - p.div(11.0).get(&self.bump).abs() as f32;
         patch * 2.2 * k * k
     }
 }

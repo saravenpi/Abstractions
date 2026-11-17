@@ -3,6 +3,8 @@
 use bevy::prelude::*;
 use noise::{NoiseFn, Perlin};
 
+use crate::world::Terrain;
+use crate::world::globe::Chart;
 use crate::world::propmesh::{BIG, FLOWER, Plant, TREES};
 
 /// Shallowest water in which kelp grows.
@@ -25,6 +27,31 @@ pub struct Density {
     pub edge: f32,
 }
 
+/// A place where the density fields can be read.
+///
+/// A bare `Vec2` is a position of the legacy plane. A terrain view with a chart position reads
+/// the fields at the 3D point of the globe, so the density shows no seam between cube faces.
+pub trait Spot: Copy {
+    /// Returns the value of `field` at this place, `freq` being its frequency per metre.
+    fn read(self, field: &Perlin, freq: f64) -> f64;
+}
+
+impl Spot for Vec2 {
+    fn read(self, field: &Perlin, freq: f64) -> f64 {
+        field.get([self.x as f64 * freq, self.y as f64 * freq])
+    }
+}
+
+impl Spot for (&Terrain, Vec2) {
+    fn read(self, field: &Perlin, freq: f64) -> f64 {
+        let (terrain, w) = self;
+        if terrain.chart() == Chart::Flat {
+            return w.read(field, freq);
+        }
+        field.get((terrain.embed(w.x, 0.0, w.y) * freq).to_array())
+    }
+}
+
 /// The low-frequency noise fields behind [`Density`].
 pub struct Fields([Perlin; 4]);
 
@@ -34,9 +61,11 @@ impl Fields {
         Self([0x51, 0xA3, 0x7B, 0xC9].map(|salt| Perlin::new(seed as u32 ^ salt)))
     }
 
-    /// Returns the densities at world position `w` over a floor `depth` meters below the sea, negative on land.
-    pub fn density(&self, w: Vec2, depth: f32) -> Density {
-        let at = |i: usize, freq: f64| self.0[i].get([w.x as f64 * freq, w.y as f64 * freq]) as f32;
+    /// Returns the densities at `w` over a floor `depth` meters below the sea, negative on land.
+    ///
+    /// `w` is a world position of the legacy plane, or a terrain view with a chart position.
+    pub fn density(&self, w: impl Spot, depth: f32) -> Density {
+        let at = |i: usize, freq: f64| w.read(&self.0[i], freq) as f32;
         let soft = |n: f32| (n * 2.0 + 0.5).clamp(0.0, 1.0);
         let shore = (1.0 - depth / 6.0).clamp(0.0, 1.0);
         let window = ((depth - KELP_TOP) / 1.5).clamp(0.0, 1.0)
@@ -84,4 +113,39 @@ pub fn choose(table: &[(Plant, f32)], roll: f32, d: &Density, big: bool) -> Opti
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use super::*;
+    use crate::world::globe::{Face, Globe};
+
+    /// The flat view reads the plane, and two face charts give the same density on their shared edge.
+    #[test]
+    fn density_has_no_seam() {
+        let fields = Fields::new(7);
+        let w = Vec2::new(130.5, -77.25);
+        let flat = Terrain::new(7);
+        assert_eq!(
+            fields.density((&flat, w), 2.0).grove,
+            fields.density(w, 2.0).grove
+        );
+        let globe = Arc::new(Globe::new(7, 6000.0, 22.0));
+        let view = |face| Terrain::on(globe.clone(), globe.face_chart(face));
+        let (a, b) = (view(Face::PosY), view(Face::PosX));
+        for i in 0..200 {
+            let dir = Face::PosY.dir(0.999, -0.95 + 0.0095 * f64::from(i));
+            let (pa, pb) = (a.chart().locate(dir), b.chart().locate(dir));
+            let (da, db) = (fields.density((&a, pa), 8.0), fields.density((&b, pb), 8.0));
+            let gap = (da.grove - db.grove)
+                .abs()
+                .max((da.forest - db.forest).abs());
+            assert!(
+                gap < 1e-3,
+                "density differs by {gap} across the edge at {dir}"
+            );
+        }
+    }
 }

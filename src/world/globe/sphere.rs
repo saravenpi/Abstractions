@@ -1,8 +1,8 @@
-//! The ground by direction: each cube face shows its own stretch of the legacy plane.
+//! The ground by direction: every field is read at the 3D point `dir * radius`, so nothing shows a seam.
 
 use std::f64::consts::FRAC_PI_4;
 
-use bevy::math::{DVec3, Vec2};
+use bevy::math::DVec3;
 
 use super::{Chart, Face, Globe};
 use crate::world::CHUNK_SIZE;
@@ -10,39 +10,30 @@ use crate::world::biome::Biome;
 use crate::world::surface::Surface;
 
 impl Globe {
-    /// Returns the plane position that stands for unit direction `dir`.
-    ///
-    /// Each face maps to a square of the plane, metric at the face centre, so the ground does
-    /// not match across face edges.
-    fn plane(&self, dir: DVec3) -> Vec2 {
-        let (face, u, v) = Face::locate(dir);
-        let half = self.radius() * FRAC_PI_4;
-        let shift = 2.0 * self.radius() * (face as u8 as f64 - 2.0);
-        Vec2::new((u * half + shift) as f32, (v * half) as f32)
+    /// Returns the point of the sea level sphere, in metres from the centre, in unit direction `dir`.
+    fn at(&self, dir: DVec3) -> DVec3 {
+        dir * self.radius()
     }
 
     /// Returns the ground height in metres above sea level in unit direction `dir`.
     pub fn height(&self, dir: DVec3) -> f32 {
-        let p = self.plane(dir);
-        self.height_flat(p.x, p.y)
+        self.ground(self.at(dir))
     }
 
     /// Returns the biome in unit direction `dir`, also over water.
     pub fn biome(&self, dir: DVec3) -> Biome {
-        let p = self.plane(dir);
-        self.biome_flat(p.x, p.y)
+        self.biome_on(self.at(dir))
     }
 
-    /// Returns what covers the ground in unit direction `dir`.
+    /// Returns what covers the ground in unit direction `dir`, the slope being measured along two
+    /// tangent directions.
     pub fn surface(&self, dir: DVec3) -> Surface {
-        let p = self.plane(dir);
-        self.surface_flat(p.x, p.y)
+        self.cover(self.at(dir))
     }
 
     /// Returns true when unit direction `dir` lies inside a pond basin.
     pub fn pond_at(&self, dir: DVec3) -> bool {
-        let p = self.plane(dir);
-        self.pond_flat(p.x, p.y)
+        self.in_pond(self.at(dir))
     }
 
     /// Returns the quadtree level whose nodes are closest to `CHUNK_SIZE` metres wide.

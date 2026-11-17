@@ -2,8 +2,9 @@ FROM nginx:1.29-alpine
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY security-headers.conf /etc/nginx/security-headers.conf
-COPY index.html style.css app.js og.png /usr/share/nginx/html/
-COPY screenshots /usr/share/nginx/html/screenshots
+COPY index.html style.css app.js field.js og.png /usr/share/nginx/html/
+COPY fonts /usr/share/nginx/html/fonts
+COPY licenses /usr/share/nginx/html/licenses
 
 EXPOSE 80
 

@@ -1,9 +1,11 @@
 //! Saved worlds: files on disk, the active world, and autosave.
 
 mod autosave;
+mod capture;
 mod format;
 mod id;
 mod model;
+mod resume;
 mod start;
 mod store;
 #[cfg(test)]
@@ -11,7 +13,7 @@ mod store_tests;
 
 pub use autosave::SavedFlash;
 pub use format::{ago, play_time};
-pub use model::{WorldEntry, WorldSave};
+pub use model::{Place, SAVE_VERSION, WorldEntry, WorldSave};
 pub use start::Starter;
 pub use store::{delete, list, new_entry, now, write};
 

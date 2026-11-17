@@ -3,6 +3,7 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
+use super::capture::Site;
 use super::store::{now, write};
 use super::{ActiveWorld, SaveDir};
 use crate::menus::Menu;
@@ -31,22 +32,24 @@ struct Snapshot<'w, 's> {
     active: Option<ResMut<'w, ActiveWorld>>,
     clock: Res<'w, DayClock>,
     flash: ResMut<'w, SavedFlash>,
+    site: Site<'w>,
     player: Query<'w, 's, &'static Transform, (With<Player>, Without<GameCamera>)>,
     camera: Query<'w, 's, &'static Transform, (With<GameCamera>, Without<Player>)>,
 }
 
 impl Snapshot<'_, '_> {
-    /// Captures the pose and clock into the active world and writes its file.
+    /// Captures the pose, the clocks and the atlas into the active world and writes its file.
     fn save(&mut self) {
         let Some(active) = self.active.as_deref_mut() else {
             return;
         };
         let save = &mut active.0.save;
         if let (Ok(body), Ok(eyes)) = (self.player.single(), self.camera.single()) {
-            save.position = Some(body.translation.to_array());
+            self.site.stand(save, body.translation);
             save.yaw = body.rotation.to_euler(EulerRot::YXZ).0;
             save.pitch = eyes.rotation.to_euler(EulerRot::YXZ).1;
         }
+        self.site.record(save);
         save.day_phase = self.clock.phase;
         save.last_played = now();
         match write(&self.dir.0, &active.0.id, save) {

@@ -1,10 +1,41 @@
 //! The on-disk record of one world.
 
+use bevy::math::DVec3;
 use serde::{Deserialize, Serialize};
 
+use crate::computer::Atlas;
 use crate::render::DayClock;
+use crate::universe::BodyId;
 
-/// Everything a world file stores. Missing keys fall back to their defaults.
+/// Version written into world files. Files from before v0.6 carry none and read as 0.
+pub const SAVE_VERSION: u32 = 1;
+
+/// A spot on a planet: a direction from its centre and a height above its sea level.
+///
+/// Unlike render or chart coordinates, it means the same thing in every session.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Default)]
+#[serde(default)]
+pub struct Place {
+    /// The planet.
+    pub body: BodyId,
+    /// Direction from the planet centre in the frame that turns with the planet.
+    pub dir: [f64; 3],
+    /// Height above sea level in metres.
+    pub altitude: f64,
+}
+
+impl Place {
+    /// Returns the position in metres from the centre of a planet of sea level `radius`.
+    ///
+    /// Returns nothing when the direction has no length, as in a damaged file.
+    pub fn position(&self, radius: f64) -> Option<DVec3> {
+        let dir = DVec3::from(self.dir).try_normalize()?;
+        Some(dir * (radius + self.altitude))
+    }
+}
+
+/// Everything a world file stores. Missing keys fall back to their defaults and unknown keys
+/// are ignored, so files from older and newer versions both load.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
 pub struct WorldSave {
@@ -12,7 +43,12 @@ pub struct WorldSave {
     pub name: String,
     /// Seed the whole world is generated from.
     pub seed: u64,
-    /// Body position when the world was last saved, if the player ever entered it.
+    /// Format version of the file, 0 when the file has none.
+    #[serde(default)]
+    pub version: u32,
+    /// Body position on the legacy flat world, if the player ever entered it.
+    ///
+    /// A world on a globe stores [`WorldSave::place`] instead.
     pub position: Option<[f32; 3]>,
     /// Body yaw in radians.
     pub yaw: f32,
@@ -26,6 +62,14 @@ pub struct WorldSave {
     pub created: u64,
     /// Last play time in unix seconds.
     pub last_played: u64,
+    /// Universe time in seconds, which places every planet on its orbit and spin.
+    pub clock_seconds: f64,
+    /// Where the player last stood on a planet.
+    pub place: Option<Place>,
+    /// What the player has discovered. A file without it gets the atlas of a new game.
+    pub atlas: Option<Atlas>,
+    /// State of the ship, written and read by the ship itself.
+    pub ship: Option<toml::Value>,
 }
 
 impl Default for WorldSave {
@@ -33,6 +77,7 @@ impl Default for WorldSave {
         Self {
             name: "New world".to_string(),
             seed: 0,
+            version: SAVE_VERSION,
             position: None,
             yaw: 0.0,
             pitch: 0.0,
@@ -40,6 +85,10 @@ impl Default for WorldSave {
             play_seconds: 0.0,
             created: 0,
             last_played: 0,
+            clock_seconds: 0.0,
+            place: None,
+            atlas: None,
+            ship: None,
         }
     }
 }
@@ -70,6 +119,7 @@ mod tests {
             play_seconds: 5025.5,
             created: 1_700_000_000,
             last_played: 1_700_000_500,
+            ..WorldSave::default()
         };
         let text = toml::to_string(&save).unwrap();
         assert_eq!(toml::from_str::<WorldSave>(&text).unwrap(), save);

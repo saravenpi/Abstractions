@@ -99,7 +99,9 @@ struct Fix {
 }
 
 /// Returns the ship measured against the planet it is on or the nearest body of its system.
-fn fix(ship: &Ship, skies: &Skies) -> Option<Fix> {
+///
+/// The bodies were sampled `lag` seconds before now, so each is moved on to where it is now.
+fn fix(ship: &Ship, skies: &Skies, lag: f64) -> Option<Fix> {
     match ship.frame {
         Frame::Surface(_) => {
             let planet = skies.planet()?;
@@ -115,7 +117,8 @@ fn fix(ship: &Ship, skies: &Skies) -> Option<Fix> {
         }
         Frame::System(_) => {
             let well = nearest(&skies.wells, ship.pos)?;
-            let (pos, vel) = (ship.pos - well.pos, ship.vel - well.vel);
+            let centre = well.pos + well.vel * lag;
+            let (pos, vel) = (ship.pos - centre, ship.vel - well.vel);
             Some(Fix {
                 pos,
                 orbital: vel,
@@ -157,7 +160,7 @@ pub fn update(
         periapsis: None,
         ..*telemetry
     };
-    if let Some(fix) = fix(&ship, &skies) {
+    if let Some(fix) = fix(&ship, &skies, pace.lag) {
         let path = apsides(fix.pos, fix.orbital, fix.mu).filter(|_| !ship.landed);
         next.altitude_sea = fix.pos.length() - fix.radius;
         next.altitude_ground = pace.report.radar.min(next.altitude_sea);

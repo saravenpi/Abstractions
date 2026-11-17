@@ -4,10 +4,10 @@ use std::f64::consts::TAU;
 
 use bevy::math::{DQuat, DVec3};
 
-use super::{above_pole, fly, planet};
+use super::{above_pole, fly, planet, two_steps};
 use crate::ship::body::Ship;
 use crate::ship::drag::{DRAG, density};
-use crate::ship::flight::{Controls, STEP, Scene, step};
+use crate::ship::flight::{Controls, STEP};
 use crate::ship::frames::{planet_velocity, spin_rate, to_surface, to_system};
 use crate::ship::orbit::apsides;
 use crate::ship::transit::{catch_up, reframe};
@@ -58,16 +58,7 @@ fn system_frame_orbit_keeps_its_radius() {
     ship.vel = planet_velocity(planet, 0.0) + DVec3::X * speed;
     let (mut worst, mut time) = (0.0f64, 0.0);
     for _ in 0..(10.0 * TAU * r / speed / (2.0 * STEP)) as usize {
-        let wells = system_wells(&system, time);
-        for sub in 0..2 {
-            let scene = Scene {
-                planet: None,
-                ground: &|_| 0.0,
-                wells: &wells,
-                elapsed: f64::from(sub) * STEP,
-            };
-            step(&mut ship, &Controls::default(), &scene, STEP);
-        }
+        two_steps(&mut ship, &system_wells(&system, time));
         time += 2.0 * STEP;
         worst = worst.max(((ship.pos - planet.position(time)).length() / r - 1.0).abs());
     }

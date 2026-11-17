@@ -13,6 +13,12 @@ use crate::space::Clock;
 use crate::universe::Universe;
 use crate::world::WorldSeed;
 
+/// Run condition: the world being loaded has never been played on a planet, so it starts as a
+/// new game. True for a new world, for a file from before v0.6, and without any world file.
+pub fn unplayed(active: Option<Res<ActiveWorld>>) -> bool {
+    active.is_none_or(|active| active.0.save.place.is_none())
+}
+
 /// Starts worlds: inserts their resources and moves to the loading screen.
 #[derive(SystemParam)]
 pub struct Starter<'w, 's> {

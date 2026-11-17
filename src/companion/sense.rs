@@ -1,21 +1,25 @@
-//! What the companion senses: one resource other modules may write, filled here as far as public state allows.
+//! What the companion senses: one resource other modules may write, filled here from the day
+//! clock, the player's eyes and the ship.
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
+use super::aboard::{Aboard, read};
 use super::spot::{Probe, Stance};
 use crate::render::{DayClock, GameCamera, daylight};
 use crate::space::{Anchor, Frame, Location, Travel, altitude, up};
-use crate::universe::{BodyId, Universe};
 use crate::world::Terrain;
+use crate::world::structures::Surroundings;
 
 /// Longest frame time the companion simulates, in seconds, so a hitch never throws it around.
 const MAX_STEP: f32 = 0.05;
 
+/// Distance in meters within which the nearest structure is looked for.
+const STRUCTURE_REACH: f32 = 60.0;
+
 /// What happens around the player, as far as the companion cares.
 ///
-/// `fill` writes every field but `structure` and `delight` each frame. Those two wait for a
-/// producer and keep their defaults until one writes them.
+/// `fill` writes every field each frame but `delight`, which a producer raises.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Default)]
 pub struct CompanionSense {
     /// How dark it is, from 0 (day) to 1 (night). Filled from the day clock.
@@ -24,11 +28,12 @@ pub struct CompanionSense {
     pub depth: f32,
     /// True while the player is seated in the ship. Filled from `Location`.
     pub seated: bool,
-    /// Climb rate of the seated player in meters per second. Filled from the camera altitude.
+    /// Climb rate of the flying ship in meters per second while the player is seated. Filled
+    /// from the ship's altimeter.
     pub climb: f32,
-    /// True while the seated player crosses the cloud layer. Filled from the planet's cloud heights.
+    /// True while the seated player crosses the cloud layer. Filled from the sky's cloud crossing.
     pub in_clouds: bool,
-    /// Render position of the nearest structure or village, refreshed every frame. Needs a producer.
+    /// Render position of the nearest structure or village, refreshed every frame.
     pub structure: Option<Vec3>,
     /// Count of discoveries worth a delighted face: add one for each. Needs a producer.
     pub delight: u32,
@@ -47,6 +52,8 @@ pub struct Around<'w, 's> {
     pub location: Res<'w, Location>,
     /// The player's eyes.
     pub camera: Single<'w, 's, &'static GlobalTransform, With<GameCamera>>,
+    /// The structures the world has surveyed around the player.
+    sites: Option<Res<'w, Surroundings>>,
 }
 
 impl Around<'_, '_> {
@@ -99,61 +106,37 @@ impl Around<'_, '_> {
     }
 }
 
-/// Returns the depth under water, the climb rate and whether the clouds are being crossed.
-///
-/// `was` and `now` are the altitudes of the eyes on the last frame and this one, `clouds` the base
-/// and the top of the cloud layer. Climbing and clouds only count while `seated`.
-pub fn read(
-    was: Option<f32>,
-    now: Option<f32>,
-    clouds: (f32, f32),
-    seated: bool,
-    dt: f32,
-) -> (f32, f32, bool) {
-    let Some(height) = now else {
-        return (0.0, 0.0, false);
+/// Returns the render position of the structure or village nearest to the eyes, for
+/// [`CompanionSense::structure`], from what the world has surveyed around the player.
+fn nearest_structure(around: &Around) -> Option<Vec3> {
+    let Frame::Surface(_) = around.anchor.frame else {
+        return None;
     };
-    let climb = was.map_or(0.0, |was| (height - was) / dt.max(1e-4));
-    let cloudy = (clouds.0..=clouds.1).contains(&height);
-    (
-        (-height).max(0.0),
-        if seated { climb } else { 0.0 },
-        seated && cloudy,
-    )
+    let eye = around.anchor.to_frame(around.camera.translation());
+    let near = around.sites.as_deref()?.nearest(eye, STRUCTURE_REACH)?;
+    Some(around.anchor.to_render(near.pos))
 }
 
-/// What `fill` remembers between frames.
-#[derive(Default)]
-pub struct Memo {
-    /// Altitude of the eyes on the last frame.
-    was: Option<f32>,
-    /// The planet the cloud heights were read for, with its cloud base and top in meters.
-    clouds: Option<(BodyId, (f32, f32))>,
-}
-
-/// Fills the sensed values that public resources give: night, depth, seat, climb and clouds.
+/// Fills the sensed values: night from the day clock, depth from the eyes, and the seat, the
+/// climb and the clouds from the ship.
 pub fn fill(
     around: Around,
+    aboard: Aboard,
     clock: Res<DayClock>,
-    universe: Res<Universe>,
     mut sense: ResMut<CompanionSense>,
-    mut memo: Local<Memo>,
+    mut was: Local<Option<f64>>,
 ) {
-    let body = around.location.body;
-    let (_, clouds) = *memo
-        .clouds
-        .filter(|(known, _)| *known == body)
-        .get_or_insert_with(|| {
-            let spec = universe.planet(body);
-            (body, (spec.cloud_base as f32, spec.cloud_top as f32))
-        });
-    memo.clouds = Some((body, clouds));
-    let (now, seated) = (around.altitude(), around.seated());
-    let (depth, climb, in_clouds) = read(memo.was, now, clouds, seated, around.dt());
-    memo.was = now;
-    sense.night = 1.0 - daylight(clock.phase);
-    sense.seated = seated;
-    sense.depth = depth;
-    sense.climb = climb;
-    sense.in_clouds = in_clouds;
+    let flight = aboard.flight(around.seated());
+    let (depth, climb, in_clouds) = read(around.altitude(), *was, &flight, around.dt());
+    *was = flight.height;
+    let next = CompanionSense {
+        night: 1.0 - daylight(clock.phase),
+        seated: flight.seated,
+        depth,
+        climb,
+        in_clouds,
+        structure: nearest_structure(&around),
+        delight: sense.delight,
+    };
+    sense.set_if_neq(next);
 }

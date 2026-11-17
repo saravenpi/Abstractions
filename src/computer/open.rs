@@ -1,19 +1,24 @@
-//! Opening and closing the computer, and the pointer while it is open.
+//! Opening and closing the computer.
+//!
+//! While the screen is open the keyboard and the mouse belong to it. The ship and the player
+//! look at [`Computer`], or at `screens::in_control`, and let go of their controls; the pause
+//! menu does not open. The player module frees the pointer.
 
 use bevy::ecs::system::SystemParam;
-use bevy::input::InputSystems;
 use bevy::input_focus::InputFocus;
 use bevy::prelude::*;
-use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 
 use super::atlas::Atlas;
 use super::view;
+use crate::audio::AudioCue;
 use crate::menus::Menu;
 use crate::screens::Screen;
+use crate::settings::{Persistent, Settings};
 use crate::space::{Anchor, Location, Travel};
 use crate::universe::Universe;
 
-/// Key that opens and closes the computer.
+/// Default key that opens and closes the computer. The key in use is the setting
+/// `controls.keys.computer`.
 pub const OPEN_KEY: KeyCode = KeyCode::Tab;
 
 /// Whether the computer screen is open. The game keeps running under it.
@@ -26,9 +31,11 @@ pub enum Computer {
     Open,
 }
 
-/// What decides whether the computer can be used.
+/// What decides whether the computer opens or closes.
 #[derive(SystemParam)]
 struct Seat<'w> {
+    keys: Res<'w, ButtonInput<KeyCode>>,
+    settings: Res<'w, Persistent<Settings>>,
     screen: Res<'w, State<Screen>>,
     menu: Res<'w, State<Menu>>,
     location: Option<Res<'w, Location>>,
@@ -41,33 +48,49 @@ impl Seat<'_> {
         let seated = self.location.as_deref().map(|location| location.travel);
         playing && seated == Some(Travel::InShip)
     }
-}
 
-/// Opens the computer on its key while seated, and closes it on the same key, on Escape or
-/// when the player leaves the seat. Escape is used up so that it does not also open the pause menu.
-fn toggle(
-    mut keys: ResMut<ButtonInput<KeyCode>>,
-    state: Res<State<Computer>>,
-    mut next: ResMut<NextState<Computer>>,
-    seat: Seat,
-) {
-    let open = *state.get() == Computer::Open;
-    let escape =
-        open && keys.just_pressed(KeyCode::Escape) && keys.clear_just_pressed(KeyCode::Escape);
-    let pressed = escape || keys.just_pressed(OPEN_KEY);
-    match (open, seat.taken()) {
-        (true, false) => next.set(Computer::Closed),
-        (true, true) if pressed => next.set(Computer::Closed),
-        (false, true) if pressed => next.set(Computer::Open),
-        _ => {}
+    /// Returns whether the key of the computer and Escape were pressed this frame.
+    fn pressed(&self) -> (bool, bool) {
+        let key = self.settings.controls.keys.computer;
+        (
+            self.keys.just_pressed(key),
+            self.keys.just_pressed(KeyCode::Escape),
+        )
     }
 }
 
-/// Releases and shows the pointer while the screen is open. Gameplay grabs it again afterwards.
-fn free_cursor(mut cursor: Single<&mut CursorOptions, With<PrimaryWindow>>) {
-    if cursor.grab_mode != CursorGrabMode::None || !cursor.visible {
-        cursor.grab_mode = CursorGrabMode::None;
-        cursor.visible = true;
+/// Returns the state the screen moves to, if any: it opens on its key while seated, and closes
+/// on the same key, on Escape or when the player leaves the seat.
+pub(super) fn next_state(open: bool, seated: bool, key: bool, escape: bool) -> Option<Computer> {
+    match (open, seated) {
+        (true, false) => Some(Computer::Closed),
+        (true, true) if key || escape => Some(Computer::Closed),
+        (false, true) if key => Some(Computer::Open),
+        _ => None,
+    }
+}
+
+/// Opens and closes the computer. Closing on its key sounds a cancel; Escape already does.
+///
+/// The state changes on the next frame. The pause menu opens only while the computer is
+/// closed, so the Escape that closes the screen does not also pause the game.
+fn toggle(
+    seat: Seat,
+    state: Res<State<Computer>>,
+    mut next: ResMut<NextState<Computer>>,
+    mut cues: MessageWriter<AudioCue>,
+) {
+    let open = *state.get() == Computer::Open;
+    let (key, escape) = seat.pressed();
+    let Some(wanted) = next_state(open, seat.taken(), key, escape) else {
+        return;
+    };
+    next.set(wanted);
+    if key && !escape {
+        cues.write(match wanted {
+            Computer::Open => AudioCue::UiConfirm,
+            Computer::Closed => AudioCue::UiCancel,
+        });
     }
 }
 
@@ -91,8 +114,7 @@ pub(super) fn ready(
 /// Registers the open state and its systems.
 pub(super) fn plugin(app: &mut App) {
     app.init_state::<Computer>()
-        .add_systems(PreUpdate, toggle.after(InputSystems))
+        .add_systems(Update, toggle.before(super::Input))
         .add_systems(OnEnter(Computer::Open), view::spawn)
-        .add_systems(OnExit(Computer::Open), leave)
-        .add_systems(PostUpdate, free_cursor.run_if(in_state(Computer::Open)));
+        .add_systems(OnExit(Computer::Open), leave);
 }

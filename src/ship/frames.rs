@@ -2,20 +2,16 @@
 
 use std::f64::consts::TAU;
 
-use bevy::math::{DQuat, DVec3};
+use bevy::math::DVec3;
 
 use super::body::Ship;
 use crate::space::Frame;
 use crate::universe::{PlanetSpec, StarSpec};
+use crate::world::Link;
 
 /// Returns the angular speed of a planet around its +Y axis in radians per second.
 pub fn spin_rate(planet: &PlanetSpec) -> f64 {
     TAU / planet.day_seconds
-}
-
-/// Returns the rotation from the surface frame of a planet to system axes at `time` seconds.
-pub fn spin(planet: &PlanetSpec, time: f64) -> DQuat {
-    crate::world::spin(planet.day_seconds, time)
 }
 
 /// Returns the velocity of a planet in the system frame at `time` seconds, in metres per second.
@@ -27,20 +23,21 @@ pub fn planet_velocity(planet: &PlanetSpec, time: f64) -> DVec3 {
 ///
 /// The velocity gains the ground speed of the turning planet and its orbital velocity.
 pub fn to_system(ship: &mut Ship, planet: &PlanetSpec, time: f64) {
-    let turn = spin(planet, time);
+    let link = Link::orbiting(planet, time);
     let omega = DVec3::Y * spin_rate(planet);
     ship.spin += ship.rot.inverse() * omega;
-    ship.vel = planet_velocity(planet, time) + turn * (ship.vel + omega.cross(ship.pos));
-    ship.pos = planet.position(time) + turn * ship.pos;
-    ship.rot = (turn * ship.rot).normalize();
+    ship.vel = planet_velocity(planet, time) + link.turn * (ship.vel + omega.cross(ship.pos));
+    ship.pos = link.to_anchor(ship.pos);
+    ship.rot = (link.turn * ship.rot).normalize();
     ship.frame = Frame::System(planet.id.star);
 }
 
 /// Moves a ship from the frame of the star of `planet` to the surface frame of `planet`.
 pub fn to_surface(ship: &mut Ship, planet: &PlanetSpec, time: f64) {
-    let back = spin(planet, time).inverse();
+    let link = Link::orbiting(planet, time);
+    let back = link.turn.inverse();
     let omega = DVec3::Y * spin_rate(planet);
-    ship.pos = back * (ship.pos - planet.position(time));
+    ship.pos = link.to_planet(ship.pos);
     ship.vel = back * (ship.vel - planet_velocity(planet, time)) - omega.cross(ship.pos);
     ship.rot = (back * ship.rot).normalize();
     ship.spin -= ship.rot.inverse() * omega;

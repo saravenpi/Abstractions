@@ -10,6 +10,7 @@ use super::locate::whereabouts;
 use super::reveal::systems_around;
 use super::route::{Destination, RouteStatus, Target, remember};
 use crate::screens::Screen;
+use crate::ship::ShipSet;
 use crate::space::Anchor;
 use crate::universe::{StarId, Universe};
 use crate::world::WorldSeed;
@@ -94,8 +95,15 @@ fn charting(
     universe.is_some() && anchor.is_some() && atlas.is_some()
 }
 
-/// Registers the discovery systems.
+/// Registers the discovery systems. They run once the ship has put the anchor where it is
+/// this frame, so a system or a galaxy counts as visited the frame the ship enters it.
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Screen::Loading), reset)
-        .add_systems(Update, (track, chart, remember).chain().run_if(charting));
+        .add_systems(
+            Update,
+            (track, chart, remember)
+                .chain()
+                .after(ShipSet::Place)
+                .run_if(charting),
+        );
 }

@@ -36,7 +36,7 @@ fn settings(name: &str) -> Persistent<Settings> {
 }
 
 /// Builds a headless app with the audio plugin and what it reads, at sixty frames per second.
-fn app(name: &str) -> App {
+pub(super) fn app(name: &str) -> App {
     let mut app = App::new();
     app.add_plugins((
         MinimalPlugins,
@@ -57,7 +57,7 @@ fn app(name: &str) -> App {
 }
 
 /// Puts a flat world, a player standing on its spawn and a camera in the app, and starts playing.
-fn enter_world(app: &mut App) -> Entity {
+pub(super) fn enter_world(app: &mut App) -> Entity {
     let (universe, terrain) = (Universe::new(7), Terrain::new(7));
     let spawn = terrain.find_spawn();
     let feet = terrain.height(spawn.x, spawn.z) + 0.5 * BODY_LENGTH + BODY_RADIUS;

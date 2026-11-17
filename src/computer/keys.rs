@@ -1,17 +1,21 @@
 //! Keyboard, wheel and button handling of the computer screen.
 
+use bevy::ecs::system::SystemParam;
 use bevy::input::mouse::{AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::input_focus::{FocusCause, InputFocus};
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
 use super::board::{Board, VISIBLE_ROWS};
-use super::open::ready;
+use super::open::{Computer, ready};
 use super::route::{Destination, Engage};
 use super::view::{Act, Slot, TabLink};
+use crate::audio::AudioCue;
+use crate::settings::{Persistent, Settings};
 use crate::ui::theme;
 
-/// Key that hands the destination to the autopilot.
+/// Default key that hands the destination to the autopilot. The key in use is the setting
+/// `controls.keys.engage`.
 pub const ENGAGE_KEY: KeyCode = KeyCode::KeyG;
 
 /// Rows a jump to the first or the last row moves by: more than any table holds.
@@ -48,16 +52,22 @@ fn follow_focus(focus: Res<InputFocus>, slots: Query<&Slot>, mut board: ResMut<B
 }
 
 /// Moves the cursor with the arrows, Page Up and Down, Home and End, changes tab with Left and
-/// Right, and scrolls with the wheel.
+/// Right, and scrolls with the wheel. A move that scrolls the table under a cursor that stays
+/// on the same drawn row is sounded here, since the focus does not move.
 fn navigate(
     keys: Res<ButtonInput<KeyCode>>,
     wheel: Res<AccumulatedMouseScroll>,
     mut board: ResMut<Board>,
+    mut cues: MessageWriter<AudioCue>,
 ) {
     let pressed = MOVES.iter().filter(|(key, _)| keys.just_pressed(*key));
     let by: isize = pressed.map(|(_, by)| by).sum();
     if by != 0 {
+        let (cursor, slot) = (board.cursor, board.cursor - board.top);
         board.step(by);
+        if board.cursor != cursor && board.cursor - board.top == slot {
+            cues.write(AudioCue::UiMove);
+        }
     }
     let turn = isize::from(keys.just_pressed(KeyCode::ArrowRight))
         - isize::from(keys.just_pressed(KeyCode::ArrowLeft));
@@ -94,38 +104,58 @@ fn focus_cursor(
     }
 }
 
-/// Hands the destination to the autopilot on the engage key.
-fn engage_key(
+/// What the actions of the screen read and write.
+#[derive(SystemParam)]
+struct Desk<'w, 's> {
+    board: ResMut<'w, Board>,
+    destination: ResMut<'w, Destination>,
+    next: ResMut<'w, NextState<Computer>>,
+    commands: Commands<'w, 's>,
+}
+
+impl Desk<'_, '_> {
+    /// Runs an action of the screen.
+    fn run(&mut self, act: Act) {
+        match (act, self.destination.0) {
+            (Act::Engage, Some(target)) => self.commands.trigger(Engage(target)),
+            (Act::Clear, Some(_)) => self.destination.0 = None,
+            (Act::Close, _) => self.next.set(Computer::Closed),
+            _ => {}
+        }
+    }
+}
+
+/// Hands the destination to the autopilot on the engage key of the settings, and forgets the
+/// destination on Delete.
+fn action_keys(
     keys: Res<ButtonInput<KeyCode>>,
-    destination: Res<Destination>,
-    mut commands: Commands,
+    settings: Res<Persistent<Settings>>,
+    mut desk: Desk,
 ) {
-    if let (true, Some(target)) = (keys.just_pressed(ENGAGE_KEY), destination.0) {
-        commands.trigger(Engage(target));
+    if keys.just_pressed(settings.controls.keys.engage) {
+        desk.run(Act::Engage);
+    }
+    if keys.just_pressed(KeyCode::Delete) {
+        desk.run(Act::Clear);
     }
 }
 
 /// Applies an activated button: a row sets the destination, a tab opens, an action runs.
-fn on_activate(
-    event: On<Activate>,
-    roles: Query<Role>,
-    mut board: ResMut<Board>,
-    mut destination: ResMut<Destination>,
-    mut commands: Commands,
-) {
+fn on_activate(event: On<Activate>, roles: Query<Role>, mut desk: Desk) {
     let Ok((slot, link, act)) = roles.get(event.entity) else {
         return;
     };
-    if let Some(line) = slot.and_then(|slot| board.at(slot.0)) {
-        destination.0 = Some(line.target);
+    if let Some(target) = slot
+        .and_then(|slot| desk.board.at(slot.0))
+        .map(|line| line.target)
+    {
+        desk.destination.0 = Some(target);
     }
     if let Some(TabLink(tab)) = link {
-        board.show(*tab);
+        desk.board.show(*tab);
     }
-    match (act, destination.0) {
-        (Some(Act::Engage), Some(target)) => commands.trigger(Engage(target)),
-        (Some(Act::Clear), _) => destination.0 = None,
-        _ => {}
+    if let Some(act) = act {
+        desk.run(*act);
     }
 }
 
@@ -133,7 +163,7 @@ fn on_activate(
 pub(super) fn plugin(app: &mut App) {
     app.add_observer(on_activate).add_systems(
         Update,
-        (follow_focus, navigate, focus_cursor, engage_key)
+        (follow_focus, navigate, focus_cursor, action_keys)
             .chain()
             .in_set(super::Input)
             .run_if(ready),

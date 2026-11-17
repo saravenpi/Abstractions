@@ -7,7 +7,7 @@ use bevy::prelude::*;
 
 use crate::space::{Anchor, Frame};
 use crate::universe::{PlanetSpec, StarSpec};
-use crate::world::SEA_LEVEL;
+use crate::world::{Link, SEA_LEVEL};
 
 /// Latitude in radians the legacy flat world stands at, which leans the sun path the way the old sky did.
 const FLAT_LATITUDE: f64 = 0.5;
@@ -48,15 +48,15 @@ impl Observer {
         star: &StarSpec,
         time: f64,
     ) -> Self {
-        let center = planet.position(time);
-        let spin = DQuat::from_rotation_y(TAU * time / planet.day_seconds);
+        let link = Link::orbiting(planet, time);
+        let (center, spin) = (link.offset, link.turn);
         if anchor.flat {
             let height = planet.radius + f64::from(camera.y - SEA_LEVEL);
             return Self::flat(center, spin, height);
         }
         let at = anchor.to_frame(camera);
         let (eye, to_render) = match anchor.frame {
-            Frame::Surface(_) => (center + spin * at, anchor.rotation * spin.inverse()),
+            Frame::Surface(_) => (link.to_anchor(at), anchor.rotation * spin.inverse()),
             Frame::System(_) => (at, anchor.rotation),
             Frame::Galaxy(_) => (at - star.pos, anchor.rotation),
         };

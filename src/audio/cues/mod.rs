@@ -1,6 +1,8 @@
 //! One-shot sounds: a fixed pool of blip voices fed by cues.
 
+mod chirps;
 pub(super) mod sounds;
+mod steps;
 pub(super) mod voice;
 
 use voice::Voice;

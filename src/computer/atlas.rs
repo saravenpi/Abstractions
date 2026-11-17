@@ -24,6 +24,9 @@ pub struct Atlas {
     pub bodies: Vec<BodyId>,
     /// Where the computer is set to go, copied from [`super::Destination`].
     pub destination: Option<Target>,
+    /// Planets the player has walked on, oldest first. The companion celebrates each new one
+    /// once, in any session. A file from before this list has none.
+    pub walked: Vec<BodyId>,
 }
 
 impl Atlas {
@@ -35,7 +38,18 @@ impl Atlas {
             systems: vec![home.star],
             bodies: vec![home],
             destination: None,
+            walked: vec![home],
         }
+    }
+
+    /// Records that the player walks on `body`. Returns true the first time on a planet that
+    /// is not the first of the list: a world whose list is empty takes the planet silently.
+    pub fn walk(&mut self, body: BodyId) -> bool {
+        if self.walked.contains(&body) {
+            return false;
+        }
+        self.walked.push(body);
+        self.walked.len() > 1
     }
 
     /// Returns true when the player has been at `target`.

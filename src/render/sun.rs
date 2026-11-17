@@ -7,7 +7,7 @@ use bevy::transform::TransformSystems;
 
 use super::atmosphere::shadow;
 use super::celestial::sun_direction;
-use super::clock::{START_PHASE, catch_up};
+use super::clock::{START_PHASE, Settled, catch_up};
 use super::observer::Observer;
 use super::vantage::{LocalSystem, Nearby, Vantage};
 use super::{DayClock, GameCamera};
@@ -80,6 +80,7 @@ pub(super) struct Tracked<'w> {
     sun: ResMut<'w, SunDir>,
     day: ResMut<'w, DayClock>,
     local: ResMut<'w, LocalSystem>,
+    settled: ResMut<'w, Settled>,
 }
 
 /// What the tracking remembers from the frame before.
@@ -113,7 +114,8 @@ impl Memory {
 /// Finds the camera in its star system and derives the sun direction, the vantage and the day phase.
 ///
 /// A phase written by anybody else moves universe time forward to that time of day, as long as
-/// the camera stands on a planet. Runs after transform propagation so the camera pose is this frame's.
+/// the camera stands on a planet. The phase a resumed world starts with is settled and moves
+/// nothing. Runs after transform propagation so the camera pose is this frame's.
 pub(super) fn track(
     mut space: Space,
     cameras: Query<&GlobalTransform, With<GameCamera>>,
@@ -130,16 +132,13 @@ pub(super) fn track(
     if out.local.0.as_ref().is_none_or(|l| l.id != body.star) {
         out.local.0 = Some(Nearby::read(universe, body.star));
     }
-    let Some((local, planet)) = out
-        .local
-        .0
-        .as_ref()
-        .and_then(|l| Some((l, l.planet(body.index)?)))
-    else {
+    let settled = std::mem::take(&mut out.settled.0);
+    let wanted = memory.request(out.day.phase).filter(|_| !settled);
+    let known = out.local.0.as_ref();
+    let Some((local, planet)) = known.and_then(|l| Some((l, l.planet(body.index)?))) else {
         return;
     };
     let star = &local.system.star;
-    let wanted = memory.request(out.day.phase);
     let mut observer = Observer::new(&anchor, camera, planet, star, space.clock.seconds);
     if let Some(wanted) = wanted.filter(|_| matches!(anchor.frame, Frame::Surface(_))) {
         space.clock.seconds += catch_up(observer.phase(), wanted, planet);

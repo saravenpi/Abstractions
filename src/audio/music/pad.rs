@@ -19,13 +19,13 @@ const OCTAVE: [f32; VOICES] = [0.3, 0.0, 0.0, 0.0, 0.0];
 const DRIFT_HZ: [f32; VOICES] = [0.011, 0.047, 0.031, 0.059, 0.023];
 
 /// Turns per second of the slow swell of each voice.
-const BREATH_HZ: [f32; VOICES] = [0.043, 0.071, 0.089, 0.061, 0.103];
+const SWELL_HZ: [f32; VOICES] = [0.043, 0.071, 0.089, 0.061, 0.103];
 
 /// How far the stereo drift moves a voice from the centre, 0.5 being hard left and right.
 const DRIFT_WIDTH: f32 = 0.34;
 
 /// Depth of the slow swell, as a fraction of the voice level.
-const BREATH_DEPTH: f32 = 0.22;
+const SWELL_DEPTH: f32 = 0.22;
 
 /// The oscillators of one voice.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -35,7 +35,7 @@ struct Tone {
     /// Stereo drift.
     drift: Phasor,
     /// Slow swell.
-    breath: Phasor,
+    swell: Phasor,
 }
 
 /// One chord held by the pad.
@@ -67,8 +67,7 @@ impl Layer {
             let pair = 0.5 * (sine(a.tick(step * sharp)) + sine(b.tick(step / sharp)));
             let soft = timbre.triangle * triangle(c.tick(step));
             let high = (timbre.shimmer + OCTAVE[v]) * sine(d.tick(step * 2.0));
-            let swell =
-                1.0 - BREATH_DEPTH * (0.5 + 0.5 * sine(tone.breath.tick(BREATH_HZ[v] / rate)));
+            let swell = 1.0 - SWELL_DEPTH * (0.5 + 0.5 * sine(tone.swell.tick(SWELL_HZ[v] / rate)));
             let pan = 0.5 + DRIFT_WIDTH * sine(tone.drift.tick(DRIFT_HZ[v] / rate));
             let voice = (pair + soft + high) * gains[v] * swell * curve;
             out = [out[0] + voice * (1.0 - pan), out[1] + voice * pan];
@@ -95,7 +94,7 @@ impl Pad {
         let mut tone = || Tone {
             partials: [0; 4].map(|_| Phasor(rand.unit())),
             drift: Phasor(rand.unit()),
-            breath: Phasor(rand.unit()),
+            swell: Phasor(rand.unit()),
         };
         let mut layer = || Layer {
             tones: [0; VOICES].map(|_| tone()),

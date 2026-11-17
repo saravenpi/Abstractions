@@ -1,5 +1,6 @@
 //! The starfield: the real stars near the camera and the far galaxies, as one mesh on a far shell.
 
+mod build;
 mod specks;
 
 #[cfg(test)]
@@ -14,25 +15,22 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
 
-pub use specks::{Speck, galaxy_speck, mesh, star_speck};
-
 use super::palette::Palette;
-use super::vantage::{Scene, Vantage};
+use super::vantage::Vantage;
 use crate::screens::Screen;
-use crate::space::UniPos;
-use crate::universe::{GLY, GalaxyId, SECTOR_GLY, Universe};
+use crate::universe::GalaxyId;
 
 /// Radius of the star shell in metres: behind every body, in front of the dome.
 pub const STAR_SHELL: f32 = 3.0e6;
 
 /// Distance in game light-years up to which stars are drawn.
-const REACH_GLY: f64 = 40.0;
+pub(super) const REACH_GLY: f64 = 40.0;
 
 /// Most stars drawn, the nearest ones.
-const MOST_STARS: usize = 4000;
+pub(super) const MOST_STARS: usize = 4000;
 
 /// Galaxy grid cells searched for galaxies around the camera's own.
-const GALAXY_CELLS: i32 = 2;
+pub(super) const GALAXY_CELLS: i32 = 2;
 
 /// Uniform block read by `starfield.wesl`.
 #[derive(Clone, Copy, Debug, Default, ShaderType)]
@@ -73,25 +71,6 @@ pub struct Starfield {
     pub built: Option<(GalaxyId, DVec3)>,
 }
 
-/// Returns every speck seen from `at` metres from the centre of `galaxy`: the stars within reach
-/// except the one of the current system, which is drawn as a body, and the galaxies around.
-pub fn gather(universe: &Universe, galaxy: GalaxyId, at: DVec3, own: DVec3) -> Vec<Speck> {
-    let stars = universe.stars_near(galaxy, at, REACH_GLY);
-    let away = |pos: DVec3| pos.distance_squared(own) > 1.0;
-    let stars = stars.iter().filter(|star| away(star.pos));
-    let mut specks: Vec<Speck> = stars
-        .take(MOST_STARS)
-        .map(|star| star_speck(star, at))
-        .collect();
-    let Some(here) = universe.galaxy(galaxy).map(|spec| spec.locate(at)) else {
-        return specks;
-    };
-    let others = universe.galaxies_near(galaxy, GALAXY_CELLS);
-    let seen = |other: &_| galaxy_speck(other, UniPos::new(other.id.0, other.center) - here);
-    specks.extend(others.iter().filter_map(seen));
-    specks
-}
-
 /// Spawns the starfield without a mesh when the world starts loading.
 fn spawn(mut commands: Commands, mut materials: ResMut<Assets<StarMaterial>>) {
     commands.spawn((
@@ -103,41 +82,6 @@ fn spawn(mut commands: Commands, mut materials: ResMut<Assets<StarMaterial>>) {
         NoFrustumCulling,
         DespawnOnEnter(Screen::Title),
     ));
-}
-
-/// Rebuilds the mesh when the camera has moved more than a sector since the last build.
-///
-/// Waits for the star system of the world to be known, so a stale place is never built for.
-fn refresh(
-    mut commands: Commands,
-    scene: Scene,
-    universe: Option<Res<Universe>>,
-    mut fields: Query<(Entity, &mut Starfield, &mut Visibility)>,
-    mut meshes: ResMut<Assets<Mesh>>,
-) {
-    let (Some(universe), Some(_)) = (universe, scene.local.0.as_ref()) else {
-        return;
-    };
-    let vantage = &scene.vantage;
-    let (galaxy, at) = (vantage.galaxy, vantage.galactic);
-    let near =
-        |(built, was): (GalaxyId, DVec3)| built == galaxy && was.distance(at) < SECTOR_GLY * GLY;
-    for (entity, mut field, mut visibility) in &mut fields {
-        if field.built.is_some_and(near) {
-            continue;
-        }
-        field.built = Some((galaxy, at));
-        let own = vantage.galactic - vantage.observer.eye;
-        let specks = gather(&universe, galaxy, at, own);
-        if specks.is_empty() {
-            *visibility = Visibility::Hidden;
-            continue;
-        }
-        *visibility = Visibility::Visible;
-        commands
-            .entity(entity)
-            .try_insert(Mesh3d(meshes.add(mesh(&specks))));
-    }
 }
 
 /// Keeps the shell around the camera, turned with the galaxy, and fades the stars with the sky.
@@ -172,5 +116,10 @@ pub(super) fn plugin(app: &mut App) {
     embedded_asset!(app, "starfield.wesl");
     app.add_plugins(MaterialPlugin::<StarMaterial>::default())
         .add_systems(OnEnter(Screen::Loading), spawn)
-        .add_systems(PostUpdate, (refresh, follow).after(super::sun::track));
+        .add_systems(
+            PostUpdate,
+            (build::adopt, build::launch, follow)
+                .chain()
+                .after(super::sun::track),
+        );
 }

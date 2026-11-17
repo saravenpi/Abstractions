@@ -12,6 +12,7 @@ use super::pilot::Autopilot;
 use super::sky::Skies;
 use super::transit::{catch_up, change_galaxy, enter_system, leave_system, reframe};
 use super::warp::Warp;
+use crate::home::Base;
 use crate::space::{Clock, Frame};
 use crate::universe::Universe;
 use crate::world::Planet;
@@ -34,6 +35,8 @@ pub struct Cosmos<'w> {
     pub clock: Res<'w, Clock>,
     /// The planet the world streams.
     pub planet: Option<Res<'w, Planet>>,
+    /// The home base, once it is found.
+    pub base: Option<Res<'w, Base>>,
 }
 
 /// Bookkeeping of the fixed step.
@@ -43,6 +46,9 @@ pub struct Pace {
     pub carry: f64,
     /// What the last step did.
     pub report: Report,
+    /// Seconds of universe time the flight steps of this frame cover: the bodies around the
+    /// ship were sampled that long before now.
+    pub lag: f64,
     /// Universe time when the ship was last looked at.
     seen: Option<f64>,
 }
@@ -62,6 +68,12 @@ fn arrive(ship: &mut Ship, universe: &Universe, autopilot: &Autopilot, skies: &m
 }
 
 /// Switches the frame of the ship where it has to and looks up what surrounds it.
+///
+/// Universe time is the time at the end of the frame, which everything is drawn at, and the
+/// ship was last stepped up to the time of the frame before. So the frame changes and the
+/// bodies are taken at that earlier moment, and the flight steps then carry the ship to now.
+/// Taking them at the new time instead would move every planet a frame ahead of the ship, at
+/// kilometres per second.
 pub fn survey(
     cosmos: Cosmos,
     autopilot: Res<Autopilot>,
@@ -71,14 +83,16 @@ pub fn survey(
 ) {
     let (universe, time) = (&*cosmos.universe, cosmos.clock.seconds);
     let gap = pace.seen.replace(time).map_or(0.0, |seen| time - seen);
+    pace.lag = gap.clamp(0.0, MAX_FRAME);
+    let then = time - pace.lag;
     match ship.frame {
-        Frame::Surface(body) => reframe(&mut ship, skies.system(universe, body.star), time),
+        Frame::Surface(body) => reframe(&mut ship, skies.system(universe, body.star), then),
         Frame::System(star) => {
             let system = skies.system(universe, star);
             if gap > GAP {
-                catch_up(&mut ship, system, time, gap);
+                catch_up(&mut ship, system, then, gap - pace.lag);
             }
-            reframe(&mut ship, system, time);
+            reframe(&mut ship, system, then);
             leave_system(&mut ship, &system.star);
         }
         Frame::Galaxy(galaxy) => {
@@ -86,7 +100,8 @@ pub fn survey(
             arrive(&mut ship, universe, &autopilot, &mut skies);
         }
     }
-    skies.refresh(universe, cosmos.planet.as_deref(), &ship, time);
+    skies.base = cosmos.base.as_deref().copied();
+    skies.refresh(universe, cosmos.planet.as_deref(), &ship, then);
 }
 
 /// The resources the fixed step reads and writes.
@@ -102,7 +117,32 @@ pub struct Flight<'w> {
     pace: ResMut<'w, Pace>,
 }
 
-/// Steps the ship at a fixed rate through the frame time. In warp only its attitude moves.
+impl Flight<'_> {
+    /// Steps `ship` at the fixed rate through `dt` seconds of frame time and returns the
+    /// fastest touchdown of these steps in metres per second, zero without one.
+    fn advance(&mut self, ship: &mut Ship, dt: f64) -> f64 {
+        let skies = &*self.skies;
+        let ground = |pos: DVec3| skies.height(pos);
+        let (mut elapsed, mut impact) = (0.0, 0.0f64);
+        self.pace.carry += dt;
+        while self.pace.carry >= STEP {
+            let scene = Scene {
+                planet: skies.planet(),
+                ground: &ground,
+                wells: &skies.wells,
+                elapsed,
+            };
+            self.pace.report = step(ship, &self.helm.controls, &scene, STEP);
+            impact = impact.max(self.pace.report.impact);
+            elapsed += STEP;
+            self.pace.carry -= STEP;
+        }
+        impact
+    }
+}
+
+/// Steps the ship at a fixed rate through the frame time, and tells when it leaves the ground
+/// and when it touches it. In warp only its attitude moves.
 pub fn simulate(
     mut flight: Flight,
     mut ship: Single<&mut Ship>,
@@ -113,25 +153,15 @@ pub fn simulate(
         rotate(&mut ship, flight.helm.controls.turn, DVec3::ZERO, dt);
         *flight.pace = Pace {
             seen: flight.pace.seen,
+            lag: flight.pace.lag,
             ..Pace::default()
         };
         return;
     }
-    let skies = &*flight.skies;
-    let ground = |pos: DVec3| skies.height(pos);
-    let (mut elapsed, mut impact) = (0.0, 0.0f64);
-    flight.pace.carry += dt;
-    while flight.pace.carry >= STEP {
-        let scene = Scene {
-            planet: skies.planet(),
-            ground: &ground,
-            wells: &skies.wells,
-            elapsed,
-        };
-        flight.pace.report = step(&mut ship, &flight.helm.controls, &scene, STEP);
-        impact = impact.max(flight.pace.report.impact);
-        elapsed += STEP;
-        flight.pace.carry -= STEP;
+    let parked = ship.landed;
+    let impact = flight.advance(&mut ship, dt);
+    if parked && !ship.landed {
+        events.write(ShipEvent::Liftoff);
     }
     if impact > QUIET {
         events.write(ShipEvent::Touchdown {

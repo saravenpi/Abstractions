@@ -10,12 +10,14 @@ mod start;
 mod store;
 #[cfg(test)]
 mod store_tests;
+mod writer;
 
 pub use autosave::SavedFlash;
 pub use format::{ago, play_time};
 pub use model::{Place, SAVE_VERSION, WorldEntry, WorldSave};
-pub use start::Starter;
+pub use start::{Starter, unplayed};
 pub use store::{delete, list, new_entry, now, write};
+pub use writer::Writer;
 
 use std::path::PathBuf;
 
@@ -46,6 +48,6 @@ fn clear_active(mut commands: Commands) {
 /// Registers the save directory, autosave and active world cleanup.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<SaveDir>()
-        .add_plugins(autosave::plugin)
+        .add_plugins((autosave::plugin, writer::plugin))
         .add_systems(OnEnter(Screen::Title), clear_active);
 }

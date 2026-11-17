@@ -78,6 +78,38 @@ fn next(ship: &Ship, blocked: bool, aligned: bool) -> (Phase, bool) {
     }
 }
 
+/// Returns the destination `to` metres from `pos` as a body with a lock sphere and no pull.
+fn beacon(pos: DVec3, to: DVec3, lock: f64) -> Well {
+    Well {
+        pos: pos + to,
+        vel: DVec3::ZERO,
+        mu: 0.0,
+        radius: lock,
+        lock,
+    }
+}
+
+/// Turns the ship onto the course to a destination `to` metres away with a lock sphere of
+/// `lock` metres, asks for the drive once aligned and returns what the autopilot is doing.
+///
+/// While the drive is locked the pilot keeps the controls.
+fn hold(ship: &mut Ship, helm: &mut Helm, wells: &[Well], (to, lock): (DVec3, f64)) -> Phase {
+    let distance = to.length();
+    let surface = matches!(ship.frame, Frame::Surface(_));
+    let blocked = ship.landed || surface || clearance(wells, ship.pos) <= 0.0;
+    let course = detour(wells, ship.pos, to / distance, distance - lock);
+    let (phase, switch) = next(ship, blocked, ship.forward().dot(course) > ALIGNED);
+    if phase != Phase::Waiting {
+        helm.controls = Controls {
+            turn: aim(ship.rot, course),
+            ..Controls::default()
+        };
+        helm.warp |= switch;
+        (ship.throttle, ship.assist) = (0.0, true);
+    }
+    phase
+}
+
 /// Flies the route: steers onto the course, asks for the warp drive and ends the route on arrival.
 pub fn fly(
     cosmos: Cosmos,
@@ -98,38 +130,18 @@ pub fn fly(
     let Some((here, there)) = here.zip(target_position(universe, goal.target, time)) else {
         return autopilot.cancel();
     };
-    let (to, warping) = (there - here, ship.warp != Warp::Off);
-    let distance = to.length();
-    if distance <= goal.arrival {
-        helm.warp = warping;
+    let to = there - here;
+    if to.length() <= goal.arrival {
+        helm.warp = ship.warp != Warp::Off;
         *autopilot = Autopilot {
             phase: Phase::Arrived,
             ..Autopilot::default()
         };
         return;
     }
-    autopilot.jump = distance > JUMP_DISTANCE;
-    let beacon = Well {
-        pos: ship.pos + to,
-        vel: DVec3::ZERO,
-        mu: 0.0,
-        radius: goal.lock,
-        lock: goal.lock,
-    };
-    skies.beacon = autopilot.jump.then_some(beacon);
-    let surface = matches!(ship.frame, Frame::Surface(_));
-    let blocked = ship.landed || surface || clearance(&skies.wells, ship.pos) <= 0.0;
-    let course = detour(&skies.wells, ship.pos, to / distance, distance - goal.lock);
-    let (phase, switch) = next(&ship, blocked, ship.forward().dot(course) > ALIGNED);
-    autopilot.phase = phase;
-    if phase != Phase::Waiting {
-        helm.controls = Controls {
-            turn: aim(ship.rot, course),
-            ..Controls::default()
-        };
-        helm.warp |= switch;
-        (ship.throttle, ship.assist) = (0.0, true);
-    }
+    autopilot.jump = to.length() > JUMP_DISTANCE;
+    skies.beacon = autopilot.jump.then(|| beacon(ship.pos, to, goal.lock));
+    autopilot.phase = hold(&mut ship, &mut helm, &skies.wells, (to, goal.lock));
 }
 
 /// Starts a route when the board computer hands over a destination.

@@ -41,31 +41,54 @@ fn warp_refuses_inside_the_lock_sphere() {
     assert_eq!(ship.warp, Warp::Off);
 }
 
+/// What a warp toward the home planet did.
+struct Run {
+    /// Seconds it lasted.
+    time: f64,
+    /// Fastest warp speed in metres per second.
+    fastest: f64,
+    /// Velocity relative to the planet when the drive engaged.
+    entry: DVec3,
+}
+
+/// Warps `ship` straight at planet `index` of `system` in steps of `dt` seconds until the drive
+/// stops, checking that it never enters a lock sphere.
+fn warp_home(system: &SystemSpec, index: usize, ship: &mut Ship, dt: f64) -> Run {
+    let mut run = Run {
+        time: 0.0,
+        fastest: 0.0,
+        entry: DVec3::ZERO,
+    };
+    while ship.warp != Warp::Off && run.time < 600.0 {
+        let wells = system_wells(system, run.time);
+        let home = wells[index + 1];
+        ship.rot = DQuat::from_rotation_arc(DVec3::NEG_Z, (home.pos - ship.pos).normalize());
+        if matches!(ship.warp, Warp::Spooling { .. }) {
+            run.entry = ship.vel - home.vel;
+        }
+        advance(ship, &wells, CRUISE_CAP, dt);
+        run.time += dt;
+        let clear = clearance(&system_wells(system, run.time), ship.pos);
+        assert!(clear > 0.0, "inside a lock at {}", run.time);
+        if let Warp::Active { speed, .. } = ship.warp {
+            run.fastest = run.fastest.max(speed);
+        }
+    }
+    run
+}
+
 /// A ship warping straight at a moving planet from the void drops out outside the lock sphere with
 /// the velocity it had relative to the planet when it engaged.
 #[test]
 fn warp_drops_out_at_the_lock_distance() {
     let (system, index, mut ship) = near_home(4000.0);
     assert!(request(&mut ship, &system_wells(&system, 0.0)));
-    let (mut time, mut fastest, dt) = (0.0, 0.0f64, 1.0 / 30.0);
-    let mut entry = DVec3::ZERO;
-    while ship.warp != Warp::Off && time < 600.0 {
-        let wells = system_wells(&system, time);
-        let home = wells[index + 1];
-        ship.rot = DQuat::from_rotation_arc(DVec3::NEG_Z, (home.pos - ship.pos).normalize());
-        if matches!(ship.warp, Warp::Spooling { .. }) {
-            entry = ship.vel - home.vel;
-        }
-        advance(&mut ship, &wells, CRUISE_CAP, dt);
-        time += dt;
-        assert!(
-            clearance(&system_wells(&system, time), ship.pos) > 0.0,
-            "inside a lock at {time}"
-        );
-        if let Warp::Active { speed, .. } = ship.warp {
-            fastest = fastest.max(speed);
-        }
-    }
+    let dt = 1.0 / 30.0;
+    let Run {
+        time,
+        fastest,
+        entry,
+    } = warp_home(&system, index, &mut ship, dt);
     let home = Well::planet(&system.planets[index], time - dt);
     let gap = home.pos.distance(ship.pos) / home.radius;
     assert!(
@@ -140,17 +163,14 @@ fn aim_turns_the_nose_onto_the_course() {
         wells: &[],
         elapsed: 0.0,
     };
+    let frame = Frame::System(Default::default());
     for course in [
         DVec3::Z,
         DVec3::X,
         DVec3::new(-0.4, 0.8, -0.2).normalize(),
         DVec3::NEG_Y,
     ] {
-        let mut ship = Ship::at_rest(
-            Frame::System(Default::default()),
-            DVec3::ZERO,
-            DQuat::IDENTITY,
-        );
+        let mut ship = Ship::at_rest(frame, DVec3::ZERO, DQuat::IDENTITY);
         for _ in 0..(8.0 / STEP) as usize {
             let controls = Controls {
                 turn: aim(ship.rot, course),

@@ -11,6 +11,8 @@ mod clock;
 mod clouds;
 mod dome;
 mod entry;
+mod fog;
+mod glow;
 mod lighting;
 mod lowres;
 mod observer;
@@ -28,12 +30,14 @@ mod schedule_tests;
 mod tests;
 
 pub use camera::{configure_camera, set_fov};
-pub use celestial::{daylight, moon_direction, sun_direction};
+pub use celestial::{daylight, moon_direction, smoothstep, sun_direction};
 pub use clock::DayClock;
 pub use clouds::CloudCrossing;
 pub use entry::FlightFx;
+pub use glow::entry_glow;
 pub use lighting::{Moon, Sun};
 pub use lowres::LowRes;
+pub use observer::Observer;
 pub use palette::Palette;
 pub use pixelate::Pixelate;
 pub use ray_tracing::RayTracing;
@@ -66,11 +70,10 @@ fn pin(pose: Transform, transform: &mut Transform, global: &mut GlobalTransform)
     *global = pose.into();
 }
 
-/// Registers the render plugins.
-pub(super) fn plugin(app: &mut App) {
+/// Registers the sky and the camera effects, which need neither a game view nor a GPU: the day
+/// clock, the sun, the lights, the clouds, the stars, the bodies and the flight effects.
+pub(super) fn sky(app: &mut App) {
     app.add_plugins((
-        pixelate::plugin,
-        lowres::plugin,
         clock::plugin,
         sun::plugin,
         palette::plugin,
@@ -78,7 +81,7 @@ pub(super) fn plugin(app: &mut App) {
         sky::plugin,
         dome::plugin,
         camera::plugin,
-        ray_tracing::plugin,
+        fog::plugin,
     ))
     .add_plugins((
         atmosphere::plugin,
@@ -87,4 +90,9 @@ pub(super) fn plugin(app: &mut App) {
         bodies::plugin,
         entry::plugin,
     ));
+}
+
+/// Registers the render plugins.
+pub(super) fn plugin(app: &mut App) {
+    app.add_plugins((pixelate::plugin, lowres::plugin, ray_tracing::plugin, sky));
 }

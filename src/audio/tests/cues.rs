@@ -5,8 +5,9 @@ use crate::audio::cue::{AudioCue, ChirpKind, StepSurface};
 use crate::audio::cues::Pool;
 use crate::audio::scene::AudioScene;
 use crate::audio::shared::Shared;
-use crate::audio::steps::step_surface;
+use crate::audio::steps::{floor_surface, step_surface};
 use crate::world::Surface;
+use crate::world::structures::FloorKind;
 
 /// A scene with no music and no ambience, so that only cues sound.
 fn quiet() -> AudioScene {
@@ -77,11 +78,11 @@ fn cues_round_trip() {
         assert_eq!(shared.pop(), Some(*cue));
     }
     assert_eq!(shared.pop(), None);
-    assert_eq!(AudioCue::all().count(), 16);
+    assert_eq!(AudioCue::all().count(), 20);
     assert!(cues.contains(&AudioCue::Chirp(ChirpKind::Sleepy)));
 }
 
-/// Ground covers map to footstep sounds and sea floors to none.
+/// Ground covers and built floors map to footstep sounds, and sea floors to none.
 #[test]
 fn surfaces_map_to_steps() {
     assert_eq!(step_surface(Surface::Sand), Some(StepSurface::Sand));
@@ -89,4 +90,7 @@ fn surfaces_map_to_steps() {
     assert_eq!(step_surface(Surface::Rock), Some(StepSurface::Rock));
     assert_eq!(step_surface(Surface::Snow), Some(StepSurface::Snow));
     assert_eq!(step_surface(Surface::Water), None);
+    assert_eq!(floor_surface(FloorKind::Wood), StepSurface::Wood);
+    assert_eq!(floor_surface(FloorKind::Stone), StepSurface::Rock);
+    assert_eq!(floor_surface(FloorKind::Earth), StepSurface::Sand);
 }

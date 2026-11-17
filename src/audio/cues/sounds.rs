@@ -1,11 +1,13 @@
 //! The recipe of every cue: a few blips each.
 
+use super::chirps::chirp;
+use super::steps::step;
 use super::voice::{Blip, Wave};
-use crate::audio::cue::{AudioCue, ChirpKind, StepSurface};
+use crate::audio::cue::AudioCue;
 use crate::audio::dsp::rand::Rand;
 
 /// Builds a pitched blip gliding from `from` to `to` hertz.
-const fn tone(from: f32, to: f32, seconds: f32, delay: f32, gain: f32) -> Blip {
+pub(super) const fn tone(from: f32, to: f32, seconds: f32, delay: f32, gain: f32) -> Blip {
     Blip {
         from,
         to,
@@ -17,7 +19,7 @@ const fn tone(from: f32, to: f32, seconds: f32, delay: f32, gain: f32) -> Blip {
 }
 
 /// Builds a noise burst centred on `hz` with a fade-in of `attack` seconds.
-const fn noise(hz: f32, seconds: f32, attack: f32, delay: f32, gain: f32) -> Blip {
+pub(super) const fn noise(hz: f32, seconds: f32, attack: f32, delay: f32, gain: f32) -> Blip {
     Blip {
         wave: Wave::Noise,
         from: hz,
@@ -41,7 +43,7 @@ const fn swelling(blip: Blip) -> Blip {
 }
 
 /// Makes a blip a pure sine with a slow start, for booms and thuds.
-const fn deep(blip: Blip) -> Blip {
+pub(super) const fn deep(blip: Blip) -> Blip {
     Blip {
         wave: Wave::Sine,
         attack: 0.012,
@@ -61,36 +63,6 @@ const UI_CONFIRM: [Blip; 2] = [
 /// Refused or closed: one low falling note.
 const UI_CANCEL: [Blip; 1] = [tone(277.2, 196.0, 0.2, 0.0, 0.15)];
 
-/// Sand: a dull, slow scuff.
-const STEP_SAND: [Blip; 2] = [
-    noise(850.0, 0.11, 0.012, 0.0, 0.2),
-    noise(260.0, 0.07, 0.006, 0.0, 0.16),
-];
-
-/// Grass: a brush over a soft thump.
-const STEP_GRASS: [Blip; 2] = [
-    noise(2400.0, 0.08, 0.008, 0.0, 0.13),
-    noise(380.0, 0.06, 0.004, 0.0, 0.16),
-];
-
-/// Rock: a short hard tap.
-const STEP_ROCK: [Blip; 2] = [
-    noise(1900.0, 0.035, 0.002, 0.0, 0.2),
-    noise(4200.0, 0.02, 0.002, 0.0, 0.1),
-];
-
-/// Wood: a hollow knock.
-const STEP_WOOD: [Blip; 2] = [
-    deep(tone(150.0, 95.0, 0.09, 0.0, 0.16)),
-    noise(700.0, 0.04, 0.003, 0.0, 0.14),
-];
-
-/// Snow: a long squeaky crunch.
-const STEP_SNOW: [Blip; 2] = [
-    noise(3100.0, 0.13, 0.018, 0.0, 0.18),
-    noise(1100.0, 0.1, 0.02, 0.015, 0.1),
-];
-
 /// Landing: a low thud with some grit.
 const LAND: [Blip; 2] = [
     deep(tone(88.0, 40.0, 0.38, 0.0, 0.32)),
@@ -104,7 +76,7 @@ const WARP_SPOOL: [Blip; 3] = [
     swelling(tone(140.0, 1040.0, 3.2, 0.0, 0.06)),
 ];
 
-/// Warp firing: a soft boom and a falling sigh.
+/// Warp firing: a soft boom and a falling tone.
 const WARP_ENGAGE: [Blip; 3] = [
     deep(tone(72.0, 30.0, 1.7, 0.0, 0.32)),
     noise(130.0, 1.2, 0.02, 0.0, 0.18),
@@ -118,69 +90,17 @@ const WARP_EXIT: [Blip; 3] = [
     noise(210.0, 0.5, 0.02, 0.0, 0.12),
 ];
 
-/// Happy: three quick rising blips.
-const CHIRP_HAPPY: [Blip; 3] = [
-    tone(920.0, 1280.0, 0.07, 0.0, 0.13),
-    tone(1180.0, 1660.0, 0.07, 0.085, 0.13),
-    tone(1560.0, 2300.0, 0.1, 0.17, 0.13),
-];
-
-/// Curious: a short note, then a longer one gliding up like a question.
-const CHIRP_CURIOUS: [Blip; 2] = [
-    tone(1020.0, 1080.0, 0.08, 0.0, 0.13),
-    tone(1080.0, 1900.0, 0.18, 0.12, 0.13),
-];
-
-/// Worried: three falling, hurried blips.
-const CHIRP_WORRIED: [Blip; 3] = [
-    tone(1500.0, 1120.0, 0.08, 0.0, 0.13),
-    tone(1380.0, 1000.0, 0.08, 0.095, 0.13),
-    tone(1250.0, 780.0, 0.14, 0.19, 0.13),
-];
-
-/// Sleepy: two slow, low, falling notes.
-const CHIRP_SLEEPY: [Blip; 2] = [
-    Blip {
-        attack: 0.05,
-        ..tone(700.0, 430.0, 0.5, 0.0, 0.1)
-    },
-    Blip {
-        attack: 0.05,
-        ..tone(460.0, 300.0, 0.6, 0.42, 0.08)
-    },
-];
-
-/// Returns the blips of a footstep.
-fn step(surface: StepSurface) -> &'static [Blip] {
-    match surface {
-        StepSurface::Sand => &STEP_SAND,
-        StepSurface::Grass => &STEP_GRASS,
-        StepSurface::Rock => &STEP_ROCK,
-        StepSurface::Wood => &STEP_WOOD,
-        StepSurface::Snow => &STEP_SNOW,
-    }
-}
-
-/// Returns the blips of a companion chirp.
-fn chirp(kind: ChirpKind) -> &'static [Blip] {
-    match kind {
-        ChirpKind::Happy => &CHIRP_HAPPY,
-        ChirpKind::Curious => &CHIRP_CURIOUS,
-        ChirpKind::Worried => &CHIRP_WORRIED,
-        ChirpKind::Sleepy => &CHIRP_SLEEPY,
-    }
-}
-
 /// Returns the blips of a cue with the pitch factor and the level to play them at.
 ///
-/// Footsteps and chirps vary a little each time so that they never sound stamped.
+/// Footsteps and chirps vary a little each time so that they never sound stamped. The steps of
+/// a machine vary less than those of a walker would.
 pub fn recipe(cue: AudioCue, rand: &mut Rand) -> (&'static [Blip], f32, f32) {
     match cue {
         AudioCue::UiMove => (&UI_MOVE, 1.0, 1.0),
         AudioCue::UiConfirm => (&UI_CONFIRM, 1.0, 1.0),
         AudioCue::UiCancel => (&UI_CANCEL, 1.0, 1.0),
         AudioCue::Footstep(surface) => {
-            (step(surface), rand.range(0.86, 1.14), rand.range(0.7, 1.0))
+            (step(surface), rand.range(0.94, 1.06), rand.range(0.75, 1.0))
         }
         AudioCue::Land(strength) => (&LAND, 1.0, 0.25 + 0.75 * strength.clamp(0.0, 1.0)),
         AudioCue::WarpSpool => (&WARP_SPOOL, 1.0, 1.0),

@@ -2,10 +2,11 @@
 
 use bevy::prelude::*;
 
+use super::aboard::{Flight, read};
 use super::face::machine::{BLINK_EVERY, BLINK_SECONDS, Face, SHIFT_SECONDS};
 use super::face::{Expression, Lid};
 use super::mood::{ChirpKind, ambient, chirp};
-use super::sense::{CompanionSense, read};
+use super::sense::CompanionSense;
 use super::tune::{SLEEPY_NIGHT, TAKEOFF_CLIMB, WORRY_DEPTH};
 
 /// Frame time of the simulated screen.
@@ -114,22 +115,36 @@ fn mood_follows_the_surroundings() {
     assert_eq!(chirp(Expression::Love), Some(ChirpKind::Delight));
 }
 
-/// Depth comes from the altitude under the sea, climb and clouds only count in the ship, and
-/// nothing is sensed away from a planet surface.
+/// Depth comes from the altitude of the eyes under the sea, the climb from the altimeter of the
+/// flying ship and the clouds from the layer the sky draws, both only while seated, and nothing
+/// is sensed away from a planet surface.
 #[test]
-fn senses_read_altitude() {
-    let clouds = (900.0, 1500.0);
+fn senses_read_the_eyes_and_the_ship() {
+    let on_foot = Flight::default();
+    assert_eq!(read(Some(-3.0), None, &on_foot, DT), (3.0, 0.0, false));
+    let walking = Flight {
+        height: Some(10.5),
+        cloud: 0.8,
+        ..on_foot
+    };
     assert_eq!(
-        read(Some(-1.0), Some(-3.0), clouds, false, DT),
-        (3.0, 0.0, false)
-    );
-    assert_eq!(
-        read(Some(10.0), Some(10.5), clouds, false, 0.05),
+        read(Some(10.0), Some(10.0), &walking, 0.05),
         (0.0, 0.0, false)
     );
-    let (depth, climb, cloudy) = read(Some(10.0), Some(10.5), clouds, true, 0.05);
-    assert!(depth == 0.0 && (climb - 10.0).abs() < 1e-3 && !cloudy);
-    assert!(read(None, Some(1000.0), clouds, true, DT).2);
-    assert!(!read(None, Some(1000.0), clouds, false, DT).2);
-    assert_eq!(read(Some(5.0), None, clouds, true, DT), (0.0, 0.0, false));
+    let flying = Flight {
+        seated: true,
+        ..walking
+    };
+    let (depth, climb, cloudy) = read(Some(10.0), Some(10.0), &flying, 0.05);
+    assert!(depth == 0.0 && (climb - 10.0).abs() < 1e-3 && cloudy);
+    let clear = Flight {
+        cloud: 0.0,
+        ..flying
+    };
+    assert_eq!(read(None, None, &clear, DT), (0.0, 0.0, false));
+    let parked = Flight {
+        height: None,
+        ..clear
+    };
+    assert_eq!(read(Some(5.0), Some(900.0), &parked, DT), (0.0, 0.0, false));
 }

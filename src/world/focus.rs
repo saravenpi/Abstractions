@@ -9,7 +9,7 @@ use bevy::prelude::*;
 
 use super::{Planet, SpawnPoint, StreamAnchor};
 use crate::space::{Anchor, Clock, Frame};
-use crate::universe::Universe;
+use crate::universe::{PlanetSpec, Universe};
 
 /// Returns the rotation from the axes of a planet to the axes of its system at `time` seconds.
 ///
@@ -28,14 +28,26 @@ pub struct Link {
 }
 
 impl Link {
+    /// The link from the frame of a planet to itself.
+    pub const SAME: Self = Self {
+        offset: DVec3::ZERO,
+        turn: DQuat::IDENTITY,
+    };
+
+    /// Returns the link from the frame of the planet `spec` to the frame of its star at `time`
+    /// seconds: where it is on its orbit and how far it has turned.
+    pub fn orbiting(spec: &PlanetSpec, time: f64) -> Self {
+        Self {
+            offset: spec.position(time),
+            turn: spin(spec.day_seconds, time),
+        }
+    }
+
     /// Returns the link from the frame of `planet` to `frame` at `time` seconds: the identity on
     /// the surface frame of the planet, its orbit and spin in the frame of its star, else nothing.
     pub fn between(frame: Frame, planet: &Planet, universe: &Universe, time: f64) -> Option<Self> {
         match frame {
-            Frame::Surface(body) if body == planet.body => Some(Self {
-                offset: DVec3::ZERO,
-                turn: DQuat::IDENTITY,
-            }),
+            Frame::Surface(body) if body == planet.body => Some(Self::SAME),
             Frame::System(star) if star == planet.body.star => Some(Self {
                 offset: universe.planet_position(planet.body, time),
                 turn: spin(planet.day_seconds, time),

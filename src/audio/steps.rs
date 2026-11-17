@@ -6,6 +6,7 @@ use super::cue::{AudioCue, StepSurface};
 use crate::player::{BODY_LENGTH, BODY_RADIUS, Player};
 use crate::screens::playing;
 use crate::space::{Anchor, Location, Travel, up};
+use crate::world::structures::{FloorKind, Surroundings};
 use crate::world::{Surface, Terrain};
 
 /// Metres walked between two footsteps at a standstill start.
@@ -44,6 +45,16 @@ pub(super) fn step_surface(surface: Surface) -> Option<StepSurface> {
     }
 }
 
+/// Returns the footstep sound of a built floor: planks knock, masonry rings like rock, and
+/// sandstone and packed earth are as dull as sand.
+pub(super) fn floor_surface(floor: FloorKind) -> StepSurface {
+    match floor {
+        FloorKind::Wood => StepSurface::Wood,
+        FloorKind::Stone => StepSurface::Rock,
+        FloorKind::Sand | FloorKind::Earth => StepSurface::Sand,
+    }
+}
+
 /// Returns the ground cover under a body at chart position `at`, when its feet touch dry or
 /// shallow ground.
 fn footing(terrain: &Terrain, at: Vec3) -> Option<StepSurface> {
@@ -53,15 +64,21 @@ fn footing(terrain: &Terrain, at: Vec3) -> Option<StepSurface> {
     step_surface(terrain.surface(at.x, at.z)).filter(|_| touching)
 }
 
-/// Adds the distance walked on the ground this frame and writes a cue at every stride.
+/// Adds the distance walked on the ground or on a built floor this frame and writes a cue at
+/// every stride.
 fn footsteps(
     time: Res<Time>,
-    world: (Res<Location>, Res<Anchor>, Res<Terrain>),
+    world: (
+        Res<Location>,
+        Res<Anchor>,
+        Res<Terrain>,
+        Option<Res<Surroundings>>,
+    ),
     players: Query<&Transform, With<Player>>,
     mut walk: Local<Walk>,
     mut cues: MessageWriter<AudioCue>,
 ) {
-    let (location, anchor, terrain) = world;
+    let (location, anchor, terrain, floors) = world;
     let (Ok(body), Travel::OnFoot) = (players.single(), location.travel) else {
         walk.last = None;
         return;
@@ -69,7 +86,10 @@ fn footsteps(
     let pos = body.translation;
     let moved = pos - walk.last.replace(pos).unwrap_or(pos);
     let flat = moved - up(&anchor, pos) * moved.dot(up(&anchor, pos));
-    let surface = footing(&terrain, terrain.locate(anchor.to_frame(pos)));
+    let feet = pos - up(&anchor, pos) * (0.5 * BODY_LENGTH + BODY_RADIUS);
+    let built = floors.and_then(|floors| floors.floor_at(anchor.to_frame(feet)));
+    let ground = || footing(&terrain, terrain.locate(anchor.to_frame(pos)));
+    let surface = built.map(floor_surface).or_else(ground);
     let (Some(surface), true) = (surface, flat.length() < MAX_MOVE) else {
         return;
     };

@@ -59,13 +59,16 @@ impl Site<'_> {
         }
     }
 
-    /// Writes where the player body at render position `at` stands. Seated in the ship the
-    /// body does not move, so the last place on foot is kept and the ship state says the rest.
-    pub(super) fn stand(&self, save: &mut WorldSave, at: Vec3) {
+    /// Returns true while the player walks or swims, and the view angles are the player's own.
+    pub(super) fn walking(&self) -> bool {
         let travel = self.location.as_deref().map(|location| location.travel);
-        if travel == Some(Travel::InShip) {
-            return;
-        }
+        travel != Some(Travel::InShip)
+    }
+
+    /// Writes where the player body at render position `at` stands. A seated body sits in
+    /// the ship, so near a planet this is the place of the ship, and in space the last place
+    /// on a planet is kept.
+    pub(super) fn stand(&self, save: &mut WorldSave, at: Vec3) {
         let terrain = self.terrain.as_deref();
         let radius = terrain.map_or(HOME_RADIUS, |terrain| terrain.globe().radius());
         stand(save, self.anchor.as_deref(), radius, at);

@@ -1,11 +1,17 @@
 //! Starfield tests: the mesh faces the camera and the stars come from the real universe.
 
+use std::time::{Duration, Instant};
+
 use bevy::math::DVec3;
 use bevy::mesh::{Indices, VertexAttributeValues};
 use bevy::prelude::*;
 
-use super::{Speck, gather, mesh, star_speck};
-use crate::universe::{GLY, Universe};
+use super::Starfield;
+use super::build::{Building, adopt, gather, launch};
+use super::specks::{Speck, mesh, star_speck};
+use crate::render::vantage::{LocalSystem, Nearby, Vantage};
+use crate::space::Clock;
+use crate::universe::{GLY, GalaxyId, StarId, Universe};
 
 /// The starfield mesh has one inward-facing quad per speck and stays out of the ray tracing scene.
 #[test]
@@ -53,4 +59,52 @@ fn stars_come_from_the_universe() {
         seen.iter()
             .all(|speck| speck.dir.is_normalized() && speck.size > 0.0)
     );
+}
+
+/// Returns an app that builds the starfield of a camera at `place`, and its starfield entity.
+fn sky_at(place: (GalaxyId, DVec3), star: StarId) -> (App, Entity) {
+    let universe = Universe::new(7);
+    let vantage = Vantage {
+        galaxy: place.0,
+        galactic: place.1,
+        ..Vantage::default()
+    };
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins)
+        .init_resource::<Assets<Mesh>>()
+        .init_resource::<Clock>()
+        .insert_resource(universe)
+        .insert_resource(LocalSystem(Some(Nearby::read(&universe, star))))
+        .insert_resource(vantage)
+        .add_systems(Update, (adopt, launch).chain());
+    let field = (Starfield::default(), Visibility::Hidden);
+    let field = app.world_mut().spawn(field).id();
+    (app, field)
+}
+
+/// The mesh is built off the main thread: the frame that asks for it gets none, a later frame
+/// swaps it in, and no second build starts while the camera stays where it was.
+#[test]
+fn starfield_is_built_in_the_background() {
+    let universe = Universe::new(7);
+    let star = universe.system(universe.home().star).star;
+    let place = (star.id.galaxy, star.pos);
+    let (mut app, field) = sky_at(place, star.id);
+    app.update();
+    let world = app.world();
+    assert!(world.get::<Building>(field).is_some() && world.get::<Mesh3d>(field).is_none());
+    let start = Instant::now();
+    while app.world().get::<Mesh3d>(field).is_none() {
+        assert!(start.elapsed() < Duration::from_secs(60), "never built");
+        std::thread::sleep(Duration::from_millis(2));
+        app.update();
+    }
+    app.update();
+    let world = app.world();
+    assert_eq!(world.get::<Starfield>(field).unwrap().built, Some(place));
+    assert!(
+        world.get::<Building>(field).is_none(),
+        "a second build started"
+    );
+    assert_eq!(world.get::<Visibility>(field), Some(&Visibility::Visible));
 }

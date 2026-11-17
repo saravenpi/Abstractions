@@ -49,10 +49,25 @@ pub fn catch_up(now: f32, wanted: f32, planet: &PlanetSpec) -> f64 {
     f64::from(ahead) * solar_day(planet)
 }
 
+/// Whether the phase the day clock holds is only a display value: universe time already says
+/// what time it is, so the sky must not move it to reach that phase.
+#[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct Settled(pub bool);
+
 /// Asks for the saved phase of the active world, or the early morning without one.
-fn reset(mut clock: ResMut<DayClock>, active: Option<Res<ActiveWorld>>) {
-    let saved = active.map(|active| active.0.save.day_phase);
-    clock.phase = saved
+///
+/// A world resumed on a planet comes with its universe time, which places the star exactly
+/// where it was: its phase is settled and asks for nothing. Moving time to reach it would move
+/// every planet away from a ship saved in space.
+fn reset(
+    mut clock: ResMut<DayClock>,
+    mut settled: ResMut<Settled>,
+    active: Option<Res<ActiveWorld>>,
+) {
+    let save = active.as_ref().map(|active| &active.0.save);
+    settled.0 = save.is_some_and(|save| save.place.is_some());
+    clock.phase = save
+        .map(|save| save.day_phase)
         .filter(|phase| phase.is_finite())
         .map_or(START_PHASE, f32::fract);
 }
@@ -60,5 +75,6 @@ fn reset(mut clock: ResMut<DayClock>, active: Option<Res<ActiveWorld>>) {
 /// Registers the clock, which the sun tracking keeps in step with the sky.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<DayClock>()
+        .init_resource::<Settled>()
         .add_systems(OnEnter(Screen::Loading), reset);
 }

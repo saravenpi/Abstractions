@@ -1,13 +1,20 @@
 //! Ship tests: pure flight, ground and drive checks that need no window.
 
+mod crossing;
 mod drive;
+mod fx;
 mod ground;
+mod helm;
+mod resume;
+mod rig;
 mod space;
+mod voyage;
 
 use bevy::math::{DQuat, DVec3};
 
 use super::body::Ship;
 use super::flight::{Controls, Report, STEP, Scene, step};
+use super::wells::Well;
 use crate::space::Frame;
 use crate::universe::{PlanetSpec, Universe};
 
@@ -49,5 +56,23 @@ fn fly(
     for _ in 0..(seconds / STEP).round() as usize {
         let report = step(ship, controls, &scene, STEP);
         each(ship, &report);
+    }
+}
+
+/// Steps `ship` over `planet` for `seconds` without watching it.
+fn coast(ship: &mut Ship, controls: &Controls, land: super::atmo::Land, seconds: f64) {
+    fly(ship, controls, land, seconds, |_, _| {});
+}
+
+/// Steps `ship` twice among `wells`, which were sampled at the start of the first step.
+fn two_steps(ship: &mut Ship, wells: &[Well]) {
+    for sub in 0..2 {
+        let scene = Scene {
+            planet: None,
+            ground: &|_| 0.0,
+            wells,
+            elapsed: f64::from(sub) * STEP,
+        };
+        step(ship, &Controls::default(), &scene, STEP);
     }
 }

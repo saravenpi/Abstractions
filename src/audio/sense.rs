@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use super::scene::{AudioScene, altitude_fade, cloud_depth};
 use crate::render::{DayClock, GameCamera, daylight};
 use crate::screens::Screen;
+use crate::ship::ShipSet;
 use crate::space::{Anchor, Frame, Location, Travel, altitude};
 use crate::universe::{PlanetSpec, Universe};
 use crate::wind::Wind;
@@ -109,7 +110,8 @@ fn rest(mut scene: ResMut<AudioScene>) {
     *scene = AudioScene::default();
 }
 
-/// Registers the sensing systems, which run while a world is on screen.
+/// Registers the sensing systems, which run while a world is on screen, once the ship has put
+/// the anchor where it is this frame.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Here>()
         .add_systems(OnExit(Screen::Gameplay), rest)
@@ -118,6 +120,7 @@ pub(super) fn plugin(app: &mut App) {
             (sense_place, sense_listener)
                 .chain()
                 .in_set(super::Sensing)
+                .after(ShipSet::Place)
                 .run_if(in_state(Screen::Gameplay)),
         );
 }

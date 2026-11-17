@@ -7,6 +7,7 @@ use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 use super::Player;
 use super::controller::Motion;
 use super::upright::pitch_of;
+use crate::computer::Computer;
 use crate::render::GameCamera;
 use crate::screens::playing;
 use crate::settings::{Persistent, Settings};
@@ -58,24 +59,25 @@ fn set_cursor(cursor: &mut CursorOptions, grabbed: bool) {
     }
 }
 
-/// Grabs the cursor while playing.
+/// Grabs the cursor while playing, unless a screen that needs the pointer is open.
 fn grab_cursor(mut cursor: Single<&mut CursorOptions, With<PrimaryWindow>>) {
     set_cursor(&mut cursor, true);
 }
 
-/// Releases the cursor everywhere else.
+/// Releases the cursor everywhere else, and while the board computer is open.
 fn release_cursor(mut cursor: Single<&mut CursorOptions, With<PrimaryWindow>>) {
     set_cursor(&mut cursor, false);
 }
 
 /// Registers mouse look and cursor systems.
 pub(super) fn plugin(app: &mut App) {
+    let pointing = in_state(Computer::Open);
     app.add_systems(
         Update,
         (
             mouse_look.run_if(playing).run_if(on_foot),
-            grab_cursor.run_if(playing),
-            release_cursor.run_if(not(playing)),
+            grab_cursor.run_if(playing.and_then(not(pointing.clone()))),
+            release_cursor.run_if(not(playing).or_else(pointing)),
         ),
     );
 }

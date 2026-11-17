@@ -74,23 +74,35 @@ impl Ship {
             vel: self.vel.to_array(),
             rot: self.rot.to_array(),
             landed: self.landed,
+            spin: self.spin.to_array(),
+            throttle: self.throttle,
+            damage: self.damage,
+            manual: !self.assist,
+            seated: false,
         }
     }
 
-    /// Rebuilds a ship from a saved record: engines idle, drive off, assist on, no spin.
-    pub fn from_state(state: &ShipState) -> Self {
-        let rot = DQuat::from_array(state.rot);
-        let rot = if rot.length_squared() > 1e-12 {
-            rot.normalize()
-        } else {
-            DQuat::IDENTITY
+    /// Rebuilds a ship from a saved record, with the drive off. A record that holds a number
+    /// that is not finite gives nothing.
+    pub fn from_state(state: &ShipState) -> Option<Self> {
+        let read = DQuat::from_array(state.rot);
+        let rot = match read.length_squared() {
+            unit if (unit - 1.0).abs() < 1e-12 => read,
+            long if long > 1e-12 => read.normalize(),
+            _ => DQuat::IDENTITY,
         };
-        Self {
+        let ship = Self {
             vel: DVec3::from_array(state.vel),
+            spin: DVec3::from_array(state.spin),
+            throttle: state.throttle.clamp(-0.5, 1.0),
+            damage: state.damage.clamp(0.0, 1.0),
+            assist: !state.manual,
             landed: state.landed,
             touching: state.landed,
             ..Self::at_rest(state.frame.into(), DVec3::from_array(state.pos), rot)
-        }
+        };
+        let sound = ship.pos.is_finite() && ship.vel.is_finite() && ship.spin.is_finite();
+        (sound && ship.throttle.is_finite() && ship.damage.is_finite()).then_some(ship)
     }
 }
 
@@ -140,4 +152,19 @@ pub struct ShipState {
     pub rot: [f64; 4],
     /// Whether the ship rests on the ground or on the sea.
     pub landed: bool,
+    /// Angular velocity around the body axes in radians per second.
+    #[serde(default)]
+    pub spin: [f64; 3],
+    /// Main engine lever from -0.5 to 1.
+    #[serde(default)]
+    pub throttle: f64,
+    /// Damage from hard landings, from 0 to 1.
+    #[serde(default)]
+    pub damage: f64,
+    /// Whether the flight assist is off.
+    #[serde(default)]
+    pub manual: bool,
+    /// Whether the player sat in the ship when the record was taken.
+    #[serde(default)]
+    pub seated: bool,
 }

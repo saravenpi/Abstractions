@@ -7,6 +7,7 @@ mod harmony;
 mod mix;
 mod music;
 mod scene;
+mod wire;
 
 use std::sync::Arc;
 

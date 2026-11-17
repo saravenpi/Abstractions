@@ -1,7 +1,8 @@
 //! Sound: procedural music, ambience and effects, all synthesised in code.
 //!
 //! Other modules talk to this one through two things only: they write [`AudioCue`] messages for
-//! one-shot sounds and they set fields of the [`AudioScene`] resource for continuous ones.
+//! one-shot sounds and they set fields of the [`AudioScene`] resource for continuous ones. The
+//! ship and the companion need neither: `wire` reads their instruments and messages.
 
 mod ambience;
 mod cue;
@@ -16,6 +17,7 @@ mod shared;
 mod ship;
 mod source;
 mod steps;
+mod wire;
 
 #[cfg(test)]
 mod tests;
@@ -37,5 +39,5 @@ pub(super) fn plugin(app: &mut App) {
     app.add_message::<AudioCue>()
         .init_resource::<AudioScene>()
         .add_audio_source::<source::Synth>()
-        .add_plugins((feed::plugin, sense::plugin, steps::plugin));
+        .add_plugins((feed::plugin, sense::plugin, steps::plugin, wire::plugin));
 }

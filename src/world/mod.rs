@@ -28,7 +28,8 @@ use std::sync::Arc;
 
 use bevy::prelude::*;
 
-use crate::saves::ActiveWorld;
+use crate::home::Base;
+use crate::saves::{ActiveWorld, WorldSave, unplayed};
 use crate::screens::Screen;
 use crate::space::{Anchor, Location, Travel};
 use crate::universe::{BodyId, Universe};
@@ -101,26 +102,39 @@ fn follow_body(
     }
 }
 
-/// Builds the universe, the home planet, its terrain view, the spawn point, the anchor and the
-/// readiness flag from the world seed.
+/// Returns the view of the cube face that holds the spot `save` was taken at, or `north`
+/// when there is no such spot.
+fn saved_view(north: &Terrain, save: Option<&WorldSave>) -> Terrain {
+    let globe = north.globe();
+    let place = save.and_then(|save| save.place);
+    let Some(at) = place.and_then(|place| place.position(globe.radius())) else {
+        return north.clone();
+    };
+    let face = Face::locate(at.normalize()).0;
+    Terrain::on(globe.clone(), globe.face_chart(face))
+}
+
+/// Builds the universe, the planet the world starts on, its terrain view, the spawn point, the
+/// anchor and the readiness flag from the world seed.
 ///
-/// The terrain is the chart of the cube face that holds the spawn. A resumed world spawns at its
-/// saved position instead of the terrain spawn.
+/// A new world starts on the home planet at the terrain spawn. A resumed world starts on the
+/// planet and at the spot its save names. The terrain is the chart of the cube face that holds
+/// the spawn.
 fn begin_world(
     mut commands: Commands,
     seed: Option<Res<WorldSeed>>,
     active: Option<Res<ActiveWorld>>,
 ) {
     let universe = Universe::new(seed.map_or(0, |s| s.0));
-    let home = universe.home();
-    let north = enter_planet(&mut commands, &universe, home);
-    let saved = active.and_then(|active| active.0.save.position);
-    let found = saved.map_or_else(|| north.find_spawn(), Vec3::from);
-    let (terrain, spawn) = chunks::rehome(&north, found);
+    let save = active.as_ref().map(|active| &active.0.save);
+    let body = save.map_or_else(|| universe.home(), |save| save.body(&universe));
+    let view = saved_view(&enter_planet(&mut commands, &universe, body), save);
+    let found = save.map_or_else(|| view.find_spawn(), |save| save.spawn(&view));
+    let (terrain, spawn) = chunks::rehome(&view, found);
     commands.insert_resource(SpawnPoint(spawn));
-    commands.insert_resource(Anchor::surface(home, &terrain, spawn));
+    commands.insert_resource(Anchor::surface(body, &terrain, spawn));
     commands.insert_resource(Location {
-        body: home,
+        body,
         travel: Travel::OnFoot,
     });
     commands.insert_resource(universe);
@@ -173,7 +187,12 @@ pub(super) fn plugin(app: &mut App) {
 
 /// Registers the streaming chain: the planet and face under the focus, the quadtree, the detail
 /// chunks, what is drawn, and the poses, in that order.
+///
+/// A new game is not ready before the home base is found and the frame after, in which the
+/// player wakes there: the ground that must be solid is the ground of the base.
 fn stream_systems(app: &mut App) {
+    let based = resource_exists::<Base>.and_then(not(resource_added::<Base>));
+    let founded = not(unplayed).or_else(based);
     app.add_systems(
         Update,
         (
@@ -187,7 +206,7 @@ fn stream_systems(app: &mut App) {
             chunks::collect,
             chunks::refine,
             chunks::show,
-            chunks::mark_ready,
+            chunks::mark_ready.run_if(founded),
             chunks::place,
             sea::follow_focus,
         )

@@ -36,11 +36,17 @@ use bevy::prelude::*;
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 struct Input;
 
-/// Registers the computer resources and systems.
-pub(super) fn plugin(app: &mut App) {
+/// Registers what the computer knows and how it learns it, without its screen: the
+/// destination, the route status, the chart and the discovery systems.
+pub(super) fn logic(app: &mut App) {
     app.init_resource::<Destination>()
         .init_resource::<RouteStatus>()
         .init_resource::<Board>()
         .init_resource::<Known>()
-        .add_plugins((open::plugin, track::plugin, keys::plugin, show::plugin));
+        .add_plugins(track::plugin);
+}
+
+/// Registers the computer resources and systems.
+pub(super) fn plugin(app: &mut App) {
+    app.add_plugins((logic, open::plugin, keys::plugin, show::plugin));
 }

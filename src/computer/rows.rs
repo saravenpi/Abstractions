@@ -24,6 +24,18 @@ pub struct Line {
     pub visited: bool,
 }
 
+/// What ends the detail of a row whose target was visited.
+const VISITED: &str = " - visited";
+
+impl Line {
+    /// Returns the facts of the row alone: the detail without its leading distance and without
+    /// the visited mark.
+    pub fn facts(&self) -> &str {
+        let rest = self.detail.split_once(" - ").map_or("", |(_, rest)| rest);
+        rest.strip_suffix(VISITED).unwrap_or(rest)
+    }
+}
+
 /// Orders rows by distance, nearest first.
 fn nearest_first(mut lines: Vec<Line>) -> Vec<Line> {
     lines.sort_by(|a, b| a.distance.total_cmp(&b.distance));
@@ -48,7 +60,7 @@ impl View<'_> {
     fn line(&self, title: &str, target: Target, place: (UniPos, f64), facts: String) -> Line {
         let gap = (place.0.distance(self.ship) - place.1).max(0.0);
         let visited = self.atlas.visited(target);
-        let mark = if visited { " - visited" } else { "" };
+        let mark = if visited { VISITED } else { "" };
         Line {
             title: title.to_string(),
             detail: format!("{} - {facts}{mark}", distance(gap)),

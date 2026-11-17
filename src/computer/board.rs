@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use super::rows::Line;
+use crate::ui::Window;
 
 /// Number of rows drawn at once. A longer table scrolls through them.
 pub const VISIBLE_ROWS: usize = 12;
@@ -76,20 +77,22 @@ impl Board {
 
     /// Moves the cursor by `by` rows, stopping at both ends, and scrolls to keep it drawn.
     pub fn step(&mut self, by: isize) {
-        let last = self.lines.len().saturating_sub(1);
-        let deepest = self.lines.len().saturating_sub(VISIBLE_ROWS);
-        self.cursor = self.cursor.saturating_add_signed(by).min(last);
-        let lowest = (self.cursor + 1).saturating_sub(VISIBLE_ROWS);
-        self.top = self.top.min(deepest).min(self.cursor).max(lowest);
+        let mut window = Window {
+            cursor: self.cursor,
+            top: self.top,
+        };
+        window.step(self.lines.len(), VISIBLE_ROWS, by);
+        (self.cursor, self.top) = (window.cursor, window.top);
     }
 
     /// Scrolls by `by` rows, stopping at both ends, and drags the cursor to keep it drawn.
     pub fn scroll(&mut self, by: isize) {
-        let last = self.lines.len().saturating_sub(1);
-        let deepest = self.lines.len().saturating_sub(VISIBLE_ROWS);
-        self.top = self.top.saturating_add_signed(by).min(deepest);
-        let bottom = self.top + VISIBLE_ROWS - 1;
-        self.cursor = self.cursor.clamp(self.top, bottom).min(last);
+        let mut window = Window {
+            cursor: self.cursor,
+            top: self.top,
+        };
+        window.scroll(self.lines.len(), VISIBLE_ROWS, by);
+        (self.cursor, self.top) = (window.cursor, window.top);
     }
 
     /// Returns the row drawn in `slot`, counted from the top of the screen.

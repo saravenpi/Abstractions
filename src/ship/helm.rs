@@ -8,6 +8,7 @@ use bevy::prelude::*;
 use super::body::Ship;
 use super::flight::Controls;
 use super::pilot::Autopilot;
+use crate::computer::Computer;
 use crate::settings::{Keymap, Persistent, Settings};
 use crate::space::{Location, Travel};
 
@@ -47,9 +48,18 @@ pub struct Devices<'w> {
     settings: Res<'w, Persistent<Settings>>,
     /// Frame time.
     time: Res<'w, Time>,
+    /// Whether the board computer is open.
+    computer: Option<Res<'w, State<Computer>>>,
 }
 
 impl Devices<'_> {
+    /// Returns true while the board computer is open: it owns the keyboard and the mouse.
+    fn taken(&self) -> bool {
+        self.computer
+            .as_deref()
+            .is_some_and(|state| *state.get() == Computer::Open)
+    }
+
     /// Returns -1, 0 or 1 from a pair of held keys.
     fn axis(&self, positive: KeyCode, negative: KeyCode) -> f64 {
         f64::from(u8::from(self.keys.pressed(positive)))
@@ -89,7 +99,8 @@ impl Devices<'_> {
     }
 }
 
-/// Reads the helm while the player is seated, and lets go of every control while on foot.
+/// Reads the helm while the player is seated, and lets go of every control while on foot or
+/// while the board computer is open. The throttle lever stays where it was.
 pub fn read(
     devices: Devices,
     location: Res<Location>,
@@ -97,9 +108,12 @@ pub fn read(
     mut autopilot: ResMut<Autopilot>,
     mut ship: Single<&mut Ship>,
 ) {
-    if location.travel != Travel::InShip {
-        helm.controls = Controls::default();
-        helm.stick = Vec2::ZERO;
+    if location.travel != Travel::InShip || devices.taken() {
+        let idle = Helm {
+            chase: helm.chase,
+            ..Helm::default()
+        };
+        helm.set_if_neq(idle);
         return;
     }
     let map = devices.settings.controls.keys;

@@ -1,16 +1,17 @@
 //! Placing the ship: its render pose, the render anchor while flying and the planet the world streams.
 
 use bevy::ecs::system::SystemParam;
-use bevy::math::{DQuat, DVec3};
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::body::Ship;
+use super::mooring::anchor_for;
 use super::sim::{Cosmos, Pace};
 use super::sky::Skies;
 use super::warp::Warp;
 use super::wells::Well;
 use crate::player::Player;
-use crate::space::{Anchor, Frame, Location, Placed, Rebased, Shift, Travel, rebased};
+use crate::space::{Anchor, Clock, Frame, Location, Placed, Rebased, Shift, Travel};
 use crate::universe::{BodyId, PlanetSpec};
 use crate::world::enter_planet;
 
@@ -21,30 +22,6 @@ const BODY_SWITCH: f64 = 25.0;
 fn shown(ship: &Ship, carry: f64) -> DVec3 {
     let still = ship.landed || matches!(ship.warp, Warp::Active { .. });
     ship.pos + ship.vel * if still { 0.0 } else { carry }
-}
-
-/// Returns the anchor for a ship drawn at `pos`: on a planet of sea level `radius` a tangent
-/// frame with +Y up under the ship, kept until the ship is too far from it, and elsewhere the
-/// axes of the frame with the origin at the ship.
-fn anchor_for(anchor: &Anchor, frame: Frame, pos: DVec3, radius: Option<f64>) -> Anchor {
-    let (Frame::Surface(_), Some(radius)) = (frame, radius) else {
-        return Anchor {
-            frame,
-            origin: pos,
-            rotation: DQuat::IDENTITY,
-            flat: false,
-        };
-    };
-    if anchor.frame == frame {
-        return rebased(anchor, radius, anchor.to_render(pos)).unwrap_or(*anchor);
-    }
-    let up = pos.normalize();
-    Anchor {
-        frame,
-        origin: up * radius,
-        rotation: DQuat::from_rotation_arc(up, DVec3::Y),
-        flat: false,
-    }
 }
 
 /// Filter of the free root entities of a planet, without the player body, which the view places.
@@ -59,6 +36,8 @@ pub struct Berth<'w> {
     skies: Res<'w, Skies>,
     /// Bookkeeping of the fixed step.
     pace: Res<'w, Pace>,
+    /// Universe time.
+    clock: Res<'w, Clock>,
 }
 
 /// Keeps the render anchor at the ship while the player is seated, and carries the free
@@ -72,8 +51,8 @@ pub fn moor(
     if berth.location.travel != Travel::InShip || anchor.flat {
         return;
     }
-    let radius = berth.skies.planet().map(|planet| planet.radius);
-    let next = anchor_for(&anchor, ship.frame, shown(&ship, berth.pace.carry), radius);
+    let at = (ship.frame, shown(&ship, berth.pace.carry));
+    let next = anchor_for(&anchor, at, berth.skies.planet(), berth.clock.seconds);
     if next == *anchor {
         return;
     }

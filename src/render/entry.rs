@@ -13,6 +13,7 @@ use bevy::shader::ShaderRef;
 use super::GameCamera;
 use super::celestial::smoothstep;
 use super::clouds::CloudCrossing;
+use super::glow::entry_glow;
 use super::palette::Palette;
 use super::sky::linear;
 use super::vantage::Vantage;
@@ -21,9 +22,6 @@ use crate::settings::{Persistent, Settings};
 
 /// Radius in metres of the shell the effects are drawn on, around the camera and the ship.
 const SHELL_RADIUS: f32 = 60.0;
-
-/// Dynamic pressure in pascals at which the glow starts and at which it is full.
-const GLOW_PRESSURE: (f32, f32) = (5.0e3, 6.0e4);
 
 /// Speed in metres per second at which cloud wisps start to streak and at which they are full.
 const WISP_SPEED: (f32, f32) = (8.0, 80.0);
@@ -119,7 +117,7 @@ struct FxInputs<'w, 's> {
 }
 
 impl FxInputs<'_, '_> {
-    /// Returns the shader values: the glow grows with dynamic pressure, the streaks with the warp
+    /// Returns the shader values: the glow grows with dynamic pressure while sinking, the streaks with the warp
     /// and the wisps with the depth in the clouds and the speed. Without motion the effects
     /// point where the camera looks.
     fn uniform(&self) -> FxUniform {
@@ -135,7 +133,8 @@ impl FxInputs<'_, '_> {
             .iter()
             .next()
             .map_or(Vec3::NEG_Z, |c| *c.forward());
-        let glow = smoothstep(GLOW_PRESSURE.0, GLOW_PRESSURE.1, flight.dynamic_pressure);
+        let sink = -velocity.dot(self.vantage.up);
+        let glow = entry_glow(flight.dynamic_pressure, sink);
         let hot = Vec3::new(1.0, 0.32, 0.07).lerp(Vec3::new(1.0, 0.85, 0.6), glow) * 2.5;
         let warp = flight.warp.clamp(0.0, 1.0);
         let wisps = self.crossing.depth * smoothstep(WISP_SPEED.0, WISP_SPEED.1, speed);

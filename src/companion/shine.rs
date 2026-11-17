@@ -6,6 +6,8 @@ use bevy::prelude::*;
 use bevy::solari::prelude::RaytracingMesh3d;
 
 use super::Companion;
+use super::brain::Brain;
+use super::face::Expression;
 use super::face::machine::Face;
 use super::motion::blend;
 use super::orb::{orb, orb_area};
@@ -28,6 +30,17 @@ pub struct Lamp;
 #[derive(Component, Debug, Clone, Copy)]
 pub struct Emitter;
 
+/// Returns how brightly the screen and the light glow for a face, from 0 to 1.
+///
+/// The sleepy face is dim only while the companion really dozes. Awake at night it wears the
+/// same face and glows like a calm one, so the night light keeps its full strength.
+pub fn glow(expr: Expression, dozing: bool) -> f32 {
+    match (expr, dozing) {
+        (Expression::Sleepy, false) => Expression::Neutral.glow(),
+        _ => expr.glow(),
+    }
+}
+
 /// Returns the light power in lumens for a night level from 0 (day) to 1 (night).
 pub fn lumens(night: f32) -> f32 {
     LIGHT_POWER * (LIGHT_DAY_SHARE + (1.0 - LIGHT_DAY_SHARE) * night.clamp(0.0, 1.0))
@@ -48,17 +61,18 @@ fn hdr(tint: Vec3, gain: f32) -> Color {
 
 /// Eases the colour toward the expression's and applies it to the screen, the glowing parts and the light.
 ///
-/// The light has no shadows and weakens by day. Its ray traced twin gets the same power and colour.
+/// The light has no shadows, weakens by day and is at full strength at night. Its ray traced
+/// twin gets the same power and colour.
 pub fn shine(
     time: Res<Time>,
     sense: Res<CompanionSense>,
-    bot: Single<(&Face, &mut Display), With<Companion>>,
+    bot: Single<(&Face, &Brain, &mut Display), With<Companion>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut lamp: Single<&mut PointLight, With<Lamp>>,
 ) {
-    let (face, mut display) = bot.into_inner();
+    let (face, brain, mut display) = bot.into_inner();
     let expr = face.shown();
-    let want = expr.tint() * expr.glow();
+    let want = expr.tint() * glow(expr, brain.mind.dozing);
     let tint = display.tint.lerp(want, blend(TINT_RATE, time.delta_secs()));
     let power = lumens(sense.night);
     lamp.color = hdr(tint, 1.0);

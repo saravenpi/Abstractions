@@ -2,7 +2,7 @@
 
 use bevy::math::DVec3;
 
-use super::{above_pole, fly, planet};
+use super::{above_pole, coast, fly, planet};
 use crate::ship::berth::{landing_spot, parked};
 use crate::ship::body::{Ship, ShipState};
 use crate::ship::flight::Controls;
@@ -22,13 +22,7 @@ fn landed_ship_holds_on_a_slope() {
     let ground = slope(&planet, 10.0);
     let mut ship = above_pole(&planet, 200.0 + GEAR_DROP + 0.3);
     let start = ship.pos;
-    fly(
-        &mut ship,
-        &Controls::default(),
-        (&planet, &ground),
-        6.0,
-        |_, _| {},
-    );
+    coast(&mut ship, &Controls::default(), (&planet, &ground), 6.0);
     assert!(ship.landed, "still moving at {}", ship.vel.length());
     assert!(
         (ship.pos - start).length() < 1.5,
@@ -40,13 +34,7 @@ fn landed_ship_holds_on_a_slope() {
         (ship.rot * DVec3::Y).dot(DVec3::Y).acos().to_degrees(),
     );
     assert!((tilt - 10.0).abs() < 3.0, "tilted by {tilt}");
-    fly(
-        &mut ship,
-        &Controls::default(),
-        (&planet, &ground),
-        60.0,
-        |_, _| {},
-    );
+    coast(&mut ship, &Controls::default(), (&planet, &ground), 60.0);
     assert!(ship.landed && (ship.pos - rested).length() < 1e-3);
     assert_eq!(ship.damage, 0.0);
 }
@@ -100,13 +88,7 @@ fn assist_hovers_and_lands_softly() {
     let planet = planet(6000.0, 4000.0, 1200.0);
     let mut ship = above_pole(&planet, 60.0);
     ship.assist = true;
-    fly(
-        &mut ship,
-        &Controls::default(),
-        (&planet, &|_| 0.0),
-        10.0,
-        |_, _| {},
-    );
+    coast(&mut ship, &Controls::default(), (&planet, &|_| 0.0), 10.0);
     let held = ship.pos.length() - planet.radius;
     assert!(
         (held - 60.0).abs() < 1.0 && ship.vel.length() < 0.1,
@@ -164,7 +146,7 @@ fn state_round_trips_through_toml() {
     let text = toml::to_string(&ship.state()).unwrap();
     let state: ShipState = toml::from_str(&text).unwrap();
     assert_eq!(state, ship.state());
-    assert_eq!(Ship::from_state(&state), ship);
+    assert_eq!(Ship::from_state(&state), Some(ship));
 }
 
 /// A new ship stands on its gear on dry, level ground near the spawn point, not in the bay beside it.

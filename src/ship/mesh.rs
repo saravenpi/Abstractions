@@ -81,20 +81,8 @@ fn lathe(solid: &mut Solid, stations: &[[f32; 4]], ends: (Vec3, Vec3), sides: u3
     }
 }
 
-/// Adds the fuselage, the wings and the nose trim.
-fn airframe(hull: &mut Solid, trim: &mut Solid) {
-    lathe(
-        hull,
-        &FUSELAGE[1..],
-        (Vec3::new(0.0, 0.05, -1.8), Vec3::new(0.0, 0.2, 3.3)),
-        SIDES,
-    );
-    lathe(
-        trim,
-        &FUSELAGE[..2],
-        (Vec3::new(0.0, -0.1, -4.2), Vec3::new(0.0, 0.05, -1.8)),
-        SIDES,
-    );
+/// Adds both wings with their upturned tips.
+fn wings(hull: &mut Solid, trim: &mut Solid) {
     for side in [-1.0, 1.0] {
         let wing = [
             Vec3::new(0.9 * side, -0.1, -0.2),
@@ -111,6 +99,23 @@ fn airframe(hull: &mut Solid, trim: &mut Solid) {
         ];
         trim.plate(tip, Vec3::X * 0.08 * side);
     }
+}
+
+/// Adds the fuselage, the wings, the nose trim and the tail fin.
+fn airframe(hull: &mut Solid, trim: &mut Solid) {
+    lathe(
+        hull,
+        &FUSELAGE[1..],
+        (Vec3::new(0.0, 0.05, -1.8), Vec3::new(0.0, 0.2, 3.3)),
+        SIDES,
+    );
+    lathe(
+        trim,
+        &FUSELAGE[..2],
+        (Vec3::new(0.0, -0.1, -4.2), Vec3::new(0.0, 0.05, -1.8)),
+        SIDES,
+    );
+    wings(hull, trim);
     let fin = [
         Vec3::new(0.0, 0.7, 1.5),
         Vec3::new(0.0, 0.7, 3.2),

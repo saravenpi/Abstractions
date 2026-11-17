@@ -9,6 +9,7 @@ mod seat;
 mod spawn;
 mod swim;
 mod upright;
+mod wake;
 
 #[cfg(test)]
 mod tests;
@@ -36,5 +37,10 @@ pub(crate) const EYE_OFFSET: f32 = 0.7;
 
 /// Registers the player systems.
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins((spawn::plugin, controller::plugin, camera::plugin));
+    app.add_plugins((
+        spawn::plugin,
+        controller::plugin,
+        camera::plugin,
+        wake::plugin,
+    ));
 }

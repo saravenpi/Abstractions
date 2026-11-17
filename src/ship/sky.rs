@@ -7,6 +7,7 @@ use bevy::prelude::*;
 
 use super::body::Ship;
 use super::wells::{Well, system_wells};
+use crate::home::Base;
 use crate::space::Frame;
 use crate::universe::{
     BodyId, GalaxyId, PlanetSpec, StarId, StarSpec, SystemSpec, Universe, sector_of,
@@ -41,6 +42,8 @@ pub struct Skies {
     /// The destination of a long jump in the frame of the ship. While it is set, the stars on
     /// the way are ignored between the stars.
     pub beacon: Option<Well>,
+    /// The home base, whose landing pad is ground the ship can stand on.
+    pub base: Option<Base>,
 }
 
 impl Skies {
@@ -88,15 +91,19 @@ impl Skies {
         self.land.as_ref().map(|land| &land.spec)
     }
 
-    /// Returns the terrain height in metres above sea level at a position in the frame of the
-    /// planet under the ship, zero without one.
+    /// Returns the height in metres above sea level of what the ship can stand on at a position
+    /// in the frame of the planet under it: the terrain, or the landing pad of the home base
+    /// where it is higher. Zero without a planet.
     pub fn height(&self, pos: DVec3) -> f64 {
-        let Some(dir) = pos.try_normalize() else {
+        let (Some(dir), Some(land)) = (pos.try_normalize(), self.land.as_ref()) else {
             return 0.0;
         };
-        self.land
-            .as_ref()
-            .map_or(0.0, |land| f64::from(land.globe.height(dir)))
+        let ground = f64::from(land.globe.height(dir));
+        let on_pad = |base: &Base| base.body == land.body && base.on_pad(pos);
+        let pad = self.base.filter(on_pad);
+        pad.map_or(ground, |base| {
+            ground.max(base.pad.length() - land.spec.radius)
+        })
     }
 
     /// Looks up what surrounds `ship` at `time` seconds and samples the wells.

@@ -8,8 +8,7 @@ pub const TITLE_SEED: u64 = 0x00AB_5712_AC71_0115;
 /// What the listener's surroundings sound like right now.
 ///
 /// The audio module fills the fields it can read from the world itself every frame while the game
-/// is played. `throttle`, `dynamic_pressure` and `warping` have no source there: whoever owns
-/// that state writes them.
+/// is played, and `throttle`, `dynamic_pressure` and `warping` from the instruments of the ship.
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct AudioScene {
     /// Seed of the planet whose music plays.

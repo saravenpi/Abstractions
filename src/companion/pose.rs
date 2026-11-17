@@ -100,7 +100,7 @@ pub fn idle_pose(idle: Idle, t: f32, len: f32) -> Pose {
     lively(idle, t, len, e).unwrap_or(quiet)
 }
 
-/// Returns the pose after `t` seconds of dozing: sunk, tilted and breathing slowly.
+/// Returns the pose after `t` seconds of dozing: sunk, tilted and bobbing slowly.
 pub fn doze_pose(t: f32) -> Pose {
     let e = ramp(0.0, 3.0, t);
     Pose {

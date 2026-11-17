@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 use super::body::Ship;
 use super::helm::Helm;
+use super::shake::{Buffet, shake};
 use crate::player::Player;
 use crate::render::GameCamera;
 use crate::space::{Anchor, Frame, Location, Placed, Travel};
@@ -43,10 +44,12 @@ pub struct Sight<'w> {
     helm: Res<'w, Helm>,
     /// The render anchor.
     anchor: Res<'w, Anchor>,
+    /// How hard the air shakes the view.
+    buffet: Res<'w, Buffet>,
 }
 
 /// Puts the player body and its camera in the ship: the body takes the pose of the camera and
-/// the camera sits on it without offset.
+/// the camera sits on it, moved only by the shake of rough air.
 pub fn look(
     sight: Sight,
     mut view: ResMut<View>,
@@ -63,5 +66,6 @@ pub fn look(
     let offset = if chase { rot * CHASE } else { ship.rot * SEAT };
     body.translation = anchor.to_render(ship.pos + offset);
     body.rotation = anchor.rotation_to_render(rot);
-    eyes.set_if_neq(Transform::IDENTITY);
+    let (offset, tilt) = shake(sight.time.elapsed_secs_wrapped(), sight.buffet.level);
+    eyes.set_if_neq(Transform::from_translation(offset).with_rotation(tilt));
 }

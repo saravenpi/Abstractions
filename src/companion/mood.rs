@@ -5,27 +5,7 @@ use bevy::prelude::*;
 use super::face::Expression;
 use super::sense::CompanionSense;
 use super::tune::{SLEEPY_NIGHT, TAKEOFF_CLIMB, WORRY_DEPTH};
-
-/// The kind of sound a change of mood asks for. The audio module decides what each one sounds like.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ChirpKind {
-    /// A pleased note.
-    Happy,
-    /// A rising, questioning note.
-    Curious,
-    /// A short startled note.
-    Surprised,
-    /// A slow yawn.
-    Sleepy,
-    /// A low wavering note.
-    Worried,
-    /// A bright trill for a discovery.
-    Delight,
-    /// The start of a hummed tune.
-    Hum,
-    /// A startled note on waking up.
-    Wake,
-}
+pub use crate::audio::ChirpKind;
 
 /// Sent when the companion's face changes in a way worth a sound.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]

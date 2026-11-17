@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-/// What the player is walking on.
+/// What the robot the player controls is walking on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StepSurface {
     /// Beach, desert or a shallow sandy floor.
@@ -17,17 +17,26 @@ pub enum StepSurface {
     Snow,
 }
 
-/// A mood of the robot companion, said as a short phrase of blips.
+/// What the robot companion says, as a short phrase of blips. The companion picks the kind
+/// and the audio gives each one its sound: the two modules share this one vocabulary.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ChirpKind {
-    /// Three quick rising blips.
+    /// Pleased: three quick rising blips.
     Happy,
-    /// Two blips, the second gliding up like a question.
+    /// Questioning: two blips, the second gliding up.
     Curious,
-    /// Three falling, hurried blips.
-    Worried,
-    /// Two slow, low, falling notes.
+    /// Startled: one fast blip that jumps up.
+    Surprised,
+    /// Drowsy: two slow, low, falling notes.
     Sleepy,
+    /// Uneasy: three falling, hurried blips.
+    Worried,
+    /// A discovery: a bright rising trill.
+    Delight,
+    /// The start of a hummed tune: four soft notes.
+    Hum,
+    /// Waking up: a low blip, then a quick rise.
+    Wake,
 }
 
 /// A one-shot sound. Write it with `MessageWriter<AudioCue>` from any system.
@@ -63,11 +72,15 @@ const SURFACES: [StepSurface; 5] = [
 ];
 
 /// Every chirp, in code order.
-const CHIRPS: [ChirpKind; 4] = [
+const CHIRPS: [ChirpKind; 8] = [
     ChirpKind::Happy,
     ChirpKind::Curious,
-    ChirpKind::Worried,
+    ChirpKind::Surprised,
     ChirpKind::Sleepy,
+    ChirpKind::Worried,
+    ChirpKind::Delight,
+    ChirpKind::Hum,
+    ChirpKind::Wake,
 ];
 
 /// Steps a landing strength is stored in.

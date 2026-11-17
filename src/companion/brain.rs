@@ -11,7 +11,6 @@ use super::sense::CompanionSense;
 use super::spot::Stance;
 use super::tune::{CLEARANCE, CURIOUS_REACH, LOW_CLEARANCE};
 use crate::space::{Anchor, Frame};
-use crate::universe::BodyId;
 
 /// Share of the inspect idle spent away, before it heads back to the player.
 const INSPECT_AWAY: f32 = 0.62;
@@ -41,8 +40,6 @@ pub struct Brain {
     pub pose: Pose,
     /// Frame and position in it of the player's eyes on the last frame.
     seen: Option<(Frame, DVec3)>,
-    /// Planets the player has walked on since the companion appeared.
-    visited: Vec<BodyId>,
     /// The discovery count already celebrated.
     delight: u32,
 }
@@ -63,7 +60,6 @@ impl Brain {
             inspect: Vec3::ZERO,
             pose: Pose::default(),
             seen: None,
-            visited: Vec::new(),
             delight: 0,
         }
     }
@@ -87,17 +83,12 @@ impl Brain {
         turn
     }
 
-    /// Returns true once for every discovery: the first steps on a new planet, or a producer's count going up.
-    ///
-    /// The planet the companion first appears on is not a discovery.
-    pub fn discovered(&mut self, sense: &CompanionSense, body: BodyId) -> bool {
-        let fresh = !sense.seated && !self.visited.contains(&body);
-        if fresh {
-            self.visited.push(body);
-        }
+    /// Returns true once for every discovery: `fresh` first steps on a planet, or a producer's
+    /// count going up.
+    pub fn discovered(&mut self, sense: &CompanionSense, fresh: bool) -> bool {
         let told = sense.delight != self.delight;
         self.delight = sense.delight;
-        told || (fresh && self.visited.len() > 1)
+        told || fresh
     }
 
     /// Returns the structure close enough to be curious about, if any.

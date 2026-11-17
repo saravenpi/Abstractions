@@ -27,8 +27,9 @@ fn running(screen: Option<Res<State<Screen>>>, menu: Option<Res<State<Menu>>>) -
     on_screen && menu.is_some_and(|menu| *menu.get() == Menu::None)
 }
 
-/// Registers the universe clock.
+/// Registers the universe clock. It moves before `Update`, so that every system of a frame
+/// reads the same time.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Clock>()
-        .add_systems(Update, advance.run_if(running));
+        .add_systems(PreUpdate, advance.run_if(running));
 }

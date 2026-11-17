@@ -84,6 +84,15 @@ pub fn drop_out(ship: &mut Ship, wells: &[Well]) {
     ship.warp = Warp::Off;
 }
 
+/// Switches the drive off for a save. A ship that was in warp is left at rest relative to the
+/// nearest body, and keeps its own velocity otherwise.
+pub fn halt(ship: &mut Ship, wells: &[Well]) {
+    if matches!(ship.warp, Warp::Active { .. }) {
+        ship.vel = body_velocity(wells, ship.pos);
+    }
+    ship.warp = Warp::Off;
+}
+
 /// Moves a ship in warp along its heading for `dt` seconds, at most at `cap` metres per second.
 ///
 /// Speed is the clearance over the ramp time, so it falls to zero at the edge of a lock sphere, and

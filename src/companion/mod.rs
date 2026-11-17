@@ -4,6 +4,7 @@
 //! `mood`, `face`), driven by a few systems. Other modules talk to it through [`CompanionSense`],
 //! which they may write, and [`CompanionChirp`], which they may read.
 
+mod aboard;
 mod attention;
 mod body;
 mod brain;
@@ -46,6 +47,7 @@ pub use sense::CompanionSense;
 use bevy::prelude::*;
 
 use crate::screens::playing;
+use crate::ship::ShipEvent;
 use crate::space::{Anchor, Location};
 use crate::universe::Universe;
 use crate::world::Terrain;
@@ -68,6 +70,7 @@ fn ready(
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<CompanionSense>()
         .add_message::<CompanionChirp>()
+        .add_message::<ShipEvent>()
         .add_systems(
             Update,
             (

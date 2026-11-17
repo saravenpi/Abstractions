@@ -10,8 +10,8 @@ use bevy::render::render_resource::{
 };
 use bevy::shader::ShaderRef;
 
-use super::camera::UNDERWATER;
 use super::celestial::smoothstep;
+use super::fog::UNDERWATER;
 use super::palette::Palette;
 
 /// Uniform block read by `sky.wesl`. Every field is a `vec4` so the layout never needs padding.

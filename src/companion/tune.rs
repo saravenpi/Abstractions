@@ -114,5 +114,8 @@ pub const CURIOUS_REACH: f32 = 14.0;
 /// Seconds the delighted face stays after a discovery.
 pub const DELIGHT_SECONDS: f32 = 6.0;
 
+/// Seconds the wide-eyed face stays after the ship leaves the ground.
+pub const TAKEOFF_SECONDS: f32 = 2.5;
+
 /// Seconds the surprised face stays after waking up.
 pub const WAKE_SECONDS: f32 = 1.4;

@@ -3,12 +3,14 @@
 use bevy::prelude::*;
 
 use super::brain::Brain;
+use super::face::Expression;
 use super::limbs::{hand_pose, trail};
 use super::motion::lean;
 use super::pose::Pose;
 use super::sense::CompanionSense;
-use super::shine::{lumens, radiance};
+use super::shine::{self, lumens, radiance};
 use super::tune::{HAND_LAG, LIGHT_DAY_SHARE, LIGHT_POWER, TILT};
+use crate::computer::Atlas;
 use crate::universe::BodyId;
 
 /// The body leans into its travel, the hands trail behind it, both within their limits, and a
@@ -48,10 +50,33 @@ fn light_is_weak_and_follows_the_night() {
     assert!(glow.red > 0.0 && (glow.green / glow.red - 0.5).abs() < 1e-4);
 }
 
+/// Night alone never dims the companion: awake, the sleepy face of the night glows like a calm
+/// one and the light is at full power. Only a real doze dims it.
+#[test]
+fn night_light_dims_only_while_dozing() {
+    let calm = Expression::Neutral.glow();
+    assert_eq!(shine::glow(Expression::Sleepy, false), calm);
+    assert!(shine::glow(Expression::Sleepy, true) < 0.7 * calm);
+    assert_eq!(lumens(1.0), LIGHT_POWER);
+    for expr in Expression::ALL {
+        assert!(shine::glow(expr, false) >= shine::glow(expr, true));
+        assert!(
+            shine::glow(expr, false) >= 0.7,
+            "{expr:?} is dim while awake"
+        );
+    }
+}
+
+/// Returns whether the first steps on `body` are a discovery, the way the thinking system asks.
+fn steps(brain: &mut Brain, sense: &CompanionSense, atlas: &mut Atlas, body: BodyId) -> bool {
+    let fresh = !sense.seated && !atlas.walked.contains(&body) && atlas.walk(body);
+    brain.discovered(sense, fresh)
+}
+
 /// The planet it first appears on is no discovery; the first steps on another one are, once.
 #[test]
 fn celebrates_a_new_planet_once() {
-    let mut brain = Brain::new(1);
+    let (mut brain, mut atlas) = (Brain::new(1), Atlas::default());
     let home = BodyId::default();
     let other = BodyId {
         index: home.index + 1,
@@ -64,18 +89,51 @@ fn celebrates_a_new_planet_once() {
             ..default()
         },
     );
-    assert!(!brain.discovered(&on_foot, home));
+    assert!(!steps(&mut brain, &on_foot, &mut atlas, home));
     assert!(
-        !brain.discovered(&seated, other),
+        !steps(&mut brain, &seated, &mut atlas, other),
         "flying over is not landing"
     );
-    assert!(brain.discovered(&on_foot, other));
-    assert!(!brain.discovered(&on_foot, other));
-    assert!(!brain.discovered(&on_foot, home));
+    assert!(steps(&mut brain, &on_foot, &mut atlas, other));
+    assert!(!steps(&mut brain, &on_foot, &mut atlas, other));
+    assert!(!steps(&mut brain, &on_foot, &mut atlas, home));
     let told = CompanionSense {
         delight: 1,
         ..default()
     };
-    assert!(brain.discovered(&told, home));
-    assert!(!brain.discovered(&told, home));
+    assert!(steps(&mut brain, &told, &mut atlas, home));
+    assert!(!steps(&mut brain, &told, &mut atlas, home));
+}
+
+/// A new companion that reads the saved atlas, as after a reload, does not celebrate a planet
+/// already walked on, and still celebrates the next new one.
+#[test]
+fn a_reloaded_companion_does_not_celebrate_again() {
+    let (mut brain, mut atlas) = (Brain::new(1), Atlas::default());
+    let home = BodyId::default();
+    let planet = |index: u8| BodyId { index, ..home };
+    let on_foot = CompanionSense::default();
+    assert!(!steps(&mut brain, &on_foot, &mut atlas, home));
+    assert!(steps(
+        &mut brain,
+        &on_foot,
+        &mut atlas,
+        planet(home.index + 1)
+    ));
+    let saved = toml::to_string(&atlas).unwrap();
+    let mut loaded: Atlas = toml::from_str(&saved).unwrap();
+    let mut reborn = Brain::new(2);
+    assert!(!steps(
+        &mut reborn,
+        &on_foot,
+        &mut loaded,
+        planet(home.index + 1)
+    ));
+    assert!(!steps(&mut reborn, &on_foot, &mut loaded, home));
+    assert!(steps(
+        &mut reborn,
+        &on_foot,
+        &mut loaded,
+        planet(home.index + 2)
+    ));
 }

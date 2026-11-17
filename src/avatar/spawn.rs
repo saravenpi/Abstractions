@@ -51,16 +51,16 @@ pub struct Plume;
 #[derive(SystemParam)]
 pub struct Stock<'w> {
     /// Mesh assets.
-    meshes: ResMut<'w, Assets<Mesh>>,
+    pub(super) meshes: ResMut<'w, Assets<Mesh>>,
     /// Material assets.
-    materials: ResMut<'w, Assets<StandardMaterial>>,
+    pub(super) materials: ResMut<'w, Assets<StandardMaterial>>,
     /// Image assets.
     images: ResMut<'w, Assets<Image>>,
 }
 
 /// Returns a forward material: `lit` for the matte shell coloured by the vertex colours, or unlit,
 /// which shows its base colour as it is and so can glow through bloom.
-fn paint(base: Color, lit: bool, picture: Option<Handle<Image>>) -> StandardMaterial {
+pub(super) fn paint(base: Color, lit: bool, picture: Option<Handle<Image>>) -> StandardMaterial {
     StandardMaterial {
         base_color: base,
         base_color_texture: picture,
@@ -73,7 +73,7 @@ fn paint(base: Color, lit: bool, picture: Option<Handle<Image>>) -> StandardMate
 }
 
 /// Creates the picture and the materials that follow the face and the thrust.
-fn kit(stock: &mut Stock) -> Kit {
+pub(super) fn kit(stock: &mut Stock) -> Kit {
     let image = stock.images.add(picture(&Frame::default()));
     Kit {
         visor: stock
@@ -163,11 +163,7 @@ fn burners(commands: &mut Commands, stock: &mut Stock, kit: &Kit, bones: &[Entit
 /// Spawns the three panels of fabric under `root`, folded and hidden.
 fn cloth(commands: &mut Commands, stock: &mut Stock, root: Entity) {
     let accent = Color::srgb(ACCENT[0], ACCENT[1], ACCENT[2]);
-    let material = stock.materials.add(StandardMaterial {
-        double_sided: true,
-        cull_mode: None,
-        ..paint(accent, true, None)
-    });
+    let material = stock.materials.add(super::warm::sheet(accent));
     for panel in Panel::ALL {
         let mesh = Mesh3d(stock.meshes.add(fabric()));
         let sheet = (

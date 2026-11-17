@@ -119,19 +119,18 @@ impl Brain {
         self.mind.idle == Some(Idle::Inspect) && self.mind.time < far
     }
 
-    /// Returns the spot to float at, before ground clearance, and the clearance to keep there.
+    /// Returns the spot to float at, out of the line of sight and before ground clearance, and
+    /// the clearance to keep there.
     pub fn goal(&self) -> (Vec3, f32) {
         if self.away() {
             let back = (self.stance.eye - self.inspect).normalize_or_zero();
-            return (
-                self.inspect + back * 0.6 + self.stance.up * 0.3,
-                LOW_CLEARANCE,
-            );
+            let near = self.inspect + back * 0.6 + self.stance.up * 0.3;
+            return (self.stance.aside(near), LOW_CLEARANCE);
         }
         let spot = self.stance.rest();
         let wing = self.stance.formation(self.drift);
         let height = CLEARANCE + (FLIGHT_CLEARANCE - CLEARANCE) * self.flight;
-        (spot.lerp(wing, self.flight), height)
+        (self.stance.aside(spot.lerp(wing, self.flight)), height)
     }
 
     /// Returns the render position to look at: what the idle calls for, else where the attention is.

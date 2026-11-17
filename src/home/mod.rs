@@ -37,6 +37,7 @@ pub use tune::{FOOTPRINT, PAD_HALF, PAD_LIFT};
 
 use bevy::prelude::*;
 
+use crate::render::Warm;
 use crate::screens::Screen;
 use crate::universe::Universe;
 
@@ -75,5 +76,6 @@ fn systems(app: &mut App) {
 /// Registers the home base systems.
 pub(super) fn plugin(app: &mut App) {
     systems(app);
-    app.add_systems(OnEnter(Screen::Title), forget);
+    app.add_systems(OnEnter(Screen::Title), forget)
+        .add_systems(Startup, works::warm.run_if(resource_exists::<Warm>));
 }

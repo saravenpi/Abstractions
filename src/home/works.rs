@@ -11,6 +11,8 @@ use super::base::Base;
 use super::draft::Block;
 use super::glow::{Glow, Mood};
 use super::plan::{Plan, plan};
+use super::soup::Soup;
+use crate::render::Warm;
 use crate::universe::Universe;
 use crate::world::{Globe, Planet};
 
@@ -85,6 +87,16 @@ impl Stock<'_> {
             lamps: plan.lamps,
         }
     }
+}
+
+/// Hands the two materials of the base and its vertex layout to the pipeline warm-up, so they
+/// are ready whenever the base is spawned, before or after the warm-up ran.
+pub fn warm(mut warm: ResMut<Warm>, mut stock: Stock) {
+    let mut soup = Soup::default();
+    soup.slab(Vec3::ZERO, Vec3::ONE, [1.0; 3]);
+    let mesh = stock.meshes.add(soup.into_mesh());
+    warm.add(mesh.clone(), stock.materials.add(metal()));
+    warm.add(mesh, stock.materials.add(unlit(Glow::ALL[0])));
 }
 
 /// Finds the base of the world in a task and inserts it once found. Runs while the world has

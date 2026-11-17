@@ -49,6 +49,7 @@ pub use sense::CompanionSense;
 
 use bevy::prelude::*;
 
+use crate::render::Warm;
 use crate::screens::playing;
 use crate::ship::ShipEvent;
 use crate::space::{Anchor, Location};
@@ -71,7 +72,9 @@ fn ready(
 
 /// Registers the companion: its inputs, its chirps, its spawn and the systems that run it.
 pub(super) fn plugin(app: &mut App) {
+    let rendered = resource_exists::<Warm>.and_then(resource_exists::<Assets<Image>>);
     app.init_resource::<CompanionSense>()
+        .add_systems(Startup, spawn::warm.run_if(rendered))
         .add_message::<CompanionChirp>()
         .add_message::<ShipEvent>()
         .add_systems(

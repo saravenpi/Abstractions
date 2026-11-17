@@ -14,6 +14,8 @@ mod wander;
 mod wings;
 
 #[cfg(test)]
+mod tests_fireflies;
+#[cfg(test)]
 mod tests_globe;
 #[cfg(test)]
 mod tests_rebase;

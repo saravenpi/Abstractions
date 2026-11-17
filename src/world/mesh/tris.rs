@@ -12,8 +12,9 @@ use crate::world::{Biome, SEA_LEVEL};
 /// How far below sea level a coarse mesh draws its flat sea, so that the real sea covers it.
 const SEA_DROP: f32 = 1.5;
 
-/// sRGB colour of the flat sea of a coarse mesh.
-const SEA_RGB: [f32; 3] = [0.09, 0.33, 0.5];
+/// sRGB colour of the flat sea of a coarse mesh. Lit by day it reads like the near sea at the
+/// hand-over, whose deep water mostly shows the sky (measured from 900 m up).
+const SEA_RGB: [f32; 3] = [0.23, 0.6, 0.76];
 
 /// How a patch is drawn.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -50,9 +51,24 @@ pub fn tone(i: usize, j: usize, half: usize) -> f32 {
     0.92 + ((h >> 10) & 0xFF) as f32 / 255.0 * 0.16
 }
 
+/// Returns the sRGB colour of ground at `height` and `slope` in the biome `base` of its cell,
+/// tinted by the biome `near` dithered across a border when that biome covers it the same way.
+///
+/// The surface always follows `base`: a dithered biome that would turn sand into grass or grass
+/// into rock would leave single triangles of the wrong surface on a border.
+pub fn ground(height: f32, slope: f32, base: Biome, near: Biome) -> (f32, f32, f32) {
+    let surface = classify(height, slope, base);
+    let tint = match classify(height, slope, near) == surface {
+        true => near,
+        false => base,
+    };
+    ground_rgb(surface, tint)
+}
+
 /// Returns the colour of the triangle over vertices `c`: sea when all of it lies on the floor,
-/// else the ground for its mean height, its slope against the local up and `biome`.
-fn shade(patch: &Patch, c: [[usize; 2]; 3], floor: f32, ground: (Biome, f32)) -> [f32; 4] {
+/// else the ground for its mean height and its slope against the local up, in the biome of its
+/// cell and the biome dithered for it.
+fn shade(patch: &Patch, c: [[usize; 2]; 3], floor: f32, ground: ([Biome; 2], f32)) -> [f32; 4] {
     let p = c.map(|[i, j]| patch.at(i, j));
     let h = c.map(|[i, j]| patch.height(i, j));
     if h.iter().all(|h| *h <= floor) {
@@ -61,18 +77,18 @@ fn shade(patch: &Patch, c: [[usize; 2]; 3], floor: f32, ground: (Biome, f32)) ->
     let normal = (p[1] - p[0]).cross(p[2] - p[0]).normalize_or_zero();
     let cos = normal.dot(patch.up(c[0][0], c[0][1]));
     let slope = (1.0 - cos * cos).max(0.0).sqrt() / cos.max(0.01);
-    let (biome, t) = ground;
-    let (r, g, b) = ground_rgb(classify((h[0] + h[1] + h[2]) / 3.0, slope, biome), biome);
+    let ([base, near], t) = ground;
+    let (r, g, b) = self::ground((h[0] + h[1] + h[2]) / 3.0, slope, base, near);
     srgb(r * t, g * t, b * t)
 }
 
-/// Adds the triangles and skirts of `patch` to `mesh`, asking `biome_at(i, j, half)` for the
-/// biome of each triangle.
+/// Adds the triangles and skirts of `patch` to `mesh`, asking `biome_at(i, j)` for the biome of
+/// each cell, then the biome dithered for each of its two triangles.
 pub fn fill(
     mesh: &mut FlatMesh,
     patch: &Patch,
     style: Style,
-    biome_at: &dyn Fn(usize, usize, usize) -> Biome,
+    biome_at: &dyn Fn(usize, usize) -> [Biome; 3],
 ) {
     let n = patch.cells();
     let mut colors = Vec::with_capacity(n * n);
@@ -82,8 +98,9 @@ pub fn fill(
             [[i + 1, j], [i, j + 1], [i + 1, j + 1]],
         ];
         let mut pair = [[0.0; 4]; 2];
+        let [base, first, second] = biome_at(i, j);
         for (half, c) in halves.into_iter().enumerate() {
-            let ground = (biome_at(i, j, half), tone(i, j, half));
+            let ground = ([base, [first, second][half]], tone(i, j, half));
             pair[half] = shade(patch, c, style.floor, ground);
             let [a, b, c] = c.map(|[i, j]| patch.at(i, j));
             mesh.tri(a, b, c, pair[half]);

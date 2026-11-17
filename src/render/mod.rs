@@ -31,6 +31,8 @@ mod schedule_tests;
 mod tests;
 #[cfg(test)]
 mod tests_dither;
+#[cfg(test)]
+mod tests_fog;
 
 pub use camera::{configure_camera, set_fov};
 pub use celestial::{daylight, moon_direction, smoothstep, sun_direction};

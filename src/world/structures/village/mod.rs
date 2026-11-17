@@ -32,7 +32,7 @@ use crate::world::Terrain;
 use crate::world::structures::geo::transfer;
 use crate::world::structures::site::Site;
 
-pub use floors::floors;
+pub use floors::{Entry, entries, floors};
 #[cfg(test)]
 pub use lots::{House, Lot};
 pub use place::{REACH, SPAN, near_village, village_in_cell};

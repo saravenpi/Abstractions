@@ -3,14 +3,18 @@
 /// Half extents of the rounded head-body in meters: about 45 cm wide with its hands.
 pub const HALF: [f32; 3] = [0.17, 0.16, 0.145];
 
-/// How far to the right of the eyes the companion rests, in meters.
-pub const SIDE: f32 = 0.85;
+/// How far to the right of the eyes the companion rests, in meters: out at the edge of the view.
+pub const SIDE: f32 = 1.5;
 
 /// How far ahead of the eyes the companion rests, in meters.
-pub const AHEAD: f32 = 1.35;
+pub const AHEAD: f32 = 1.7;
 
-/// Height of the resting spot relative to the eyes, in meters.
-pub const RISE: f32 = -0.12;
+/// Height of the resting spot relative to the eyes, in meters: below the line of sight.
+pub const RISE: f32 = -0.3;
+
+/// Tangent of the half angle of the cone around the line of sight it keeps out of, so it never
+/// floats in front of what the player looks at: about 24 degrees.
+pub const YIELD: f32 = 0.45;
 
 /// How far behind the eyes it reappears after being left behind, in meters.
 pub const BEHIND: f32 = 2.0;
@@ -40,8 +44,15 @@ pub const FEED: f32 = 0.5;
 pub const LEASH: f32 = 60.0;
 
 /// Where it rides in the cockpit, in the space of the pilot seat: right, up and back (negative
-/// is ahead), in meters.
-pub const SEAT: [f32; 3] = [0.52, -0.2, -0.95];
+/// is ahead), in meters. It perches on the right of the dashboard, inside the canopy, below the
+/// horizon of the pilot.
+pub const SEAT: [f32; 3] = [0.4, -0.33, -0.62];
+
+/// Its size in the cockpit, as a share of its size outside, so it stays a small part of the view.
+pub const SEAT_SCALE: f32 = 0.33;
+
+/// How fast it grows or shrinks between its cockpit size and its own, per second.
+pub const SCALE_RATE: f32 = 6.0;
 
 /// Spring rate of the ride in the cockpit.
 pub const SEAT_RATE: f32 = 7.0;

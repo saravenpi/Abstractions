@@ -74,7 +74,10 @@ impl Occluder for Sight<'_, '_> {
                 .cast_ray_predicate(origin, dir, max, true, &filter, &seen);
             return hit.map(|hit| hit.distance);
         }
-        let config = ShapeCastConfig::from_max_distance(max);
+        let config = ShapeCastConfig {
+            ignore_origin_penetration: true,
+            ..ShapeCastConfig::from_max_distance(max)
+        };
         let fresh = (radius != RADIUS).then(|| Collider::sphere(radius));
         let ball = fresh.as_ref().unwrap_or(&self.ball.0);
         self.query

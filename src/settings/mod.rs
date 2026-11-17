@@ -10,7 +10,7 @@ mod prefs;
 mod tests;
 
 pub use bevy_persistent::Persistent;
-pub use model::{Audio, Controls, Graphics, Keymap, Settings, ShipKeys, WorldPrefs};
+pub use model::{Audio, Controls, Graphics, Keymap, Settings, ShipKeys, WorldPrefs, render_step};
 
 use bevy::prelude::*;
 use bevy_persistent::StorageFormat;

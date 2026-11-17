@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::view::ViewPrefs;
+use crate::world::RENDER_STEPS;
 
 /// Every user setting, saved to `settings.toml` in the config directory.
 #[derive(Resource, Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
@@ -27,7 +28,9 @@ pub struct Settings {
 pub struct Graphics {
     /// Size of one screen pixel block, in window pixels (1 to 8).
     pub pixel_size: u32,
-    /// Chunk radius streamed around the player (2 to 8).
+    /// Chunk radius streamed around the player: the rings of one of the named steps of
+    /// [`RENDER_STEPS`]. Any other number in a file moves to the nearest step when read.
+    #[serde(deserialize_with = "nearest_step")]
     pub render_distance: u32,
     /// Whether the sun casts shadows.
     pub shadows: bool,
@@ -49,6 +52,22 @@ pub struct Graphics {
     pub show_fps: bool,
     /// Whether Solari ray traced lighting is requested; it takes effect at once when the GPU supports it.
     pub ray_tracing: bool,
+}
+
+/// Returns the index in [`RENDER_STEPS`] of the step nearest to a detail radius of `rings` chunks; a
+/// radius halfway between two steps takes the lower one.
+pub fn render_step(rings: u32) -> usize {
+    let gap = |(_, step): &(&str, u32)| step.abs_diff(rings);
+    (0..RENDER_STEPS.len())
+        .min_by_key(|&i| gap(&RENDER_STEPS[i]))
+        .unwrap_or(0)
+}
+
+/// Reads a render distance and moves it to the nearest named step, so that files written before
+/// the steps existed still load.
+fn nearest_step<'de, D: serde::Deserializer<'de>>(reader: D) -> Result<u32, D::Error> {
+    let rings = u32::deserialize(reader)?;
+    Ok(RENDER_STEPS[render_step(rings)].1)
 }
 
 impl Default for Graphics {

@@ -4,13 +4,29 @@ use bevy::prelude::*;
 
 use super::rng::Rng;
 use super::spot::Stance;
-use super::tune::{PLAYER_SHARE, STARE_AFTER, STARE_REACH, STARE_TURN};
+use super::tune::{PLAYER_SHARE, STARE_AFTER, STARE_REACH, STARE_TURN, YIELD};
 
 /// Angle in radians from straight ahead beyond which the eyes turn toward a target.
 const GLANCE: f32 = 0.3;
 
 /// Distance in meters of the point it looks at when it looks where the player is heading.
 const HORIZON: f32 = 9.0;
+
+impl Stance {
+    /// Returns `pos` pushed sideways out of the cone around the line of sight, so the companion
+    /// never floats in front of what the player looks at. Spots behind the eyes stay put.
+    pub fn aside(&self, pos: Vec3) -> Vec3 {
+        let offset = pos - self.eye;
+        let along = offset.dot(self.forward);
+        let across = offset - self.forward * along;
+        let least = along * YIELD;
+        if along <= 0.0 || across.length() >= least {
+            return pos;
+        }
+        let side = across.try_normalize().unwrap_or_else(|| self.right());
+        self.eye + self.forward * along + side * least
+    }
+}
 
 /// What the companion looks at.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]

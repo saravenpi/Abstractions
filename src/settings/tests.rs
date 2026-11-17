@@ -136,3 +136,33 @@ fn files_without_the_view_settings_load_with_defaults() {
     }
     assert_eq!(toml::from_str::<Settings>(&text).unwrap().audio.music, 0.3);
 }
+
+/// A render distance from a file written before the named steps moves to the nearest step, the
+/// lower one when it lies halfway; a step itself stays.
+#[test]
+fn old_render_distances_move_to_the_nearest_step() {
+    let read = |rings: u32| {
+        let text = format!("[graphics]\nrender_distance = {rings}\n");
+        toml::from_str::<Settings>(&text)
+            .unwrap()
+            .graphics
+            .render_distance
+    };
+    let pairs = [
+        (1, 3),
+        (2, 3),
+        (5, 4),
+        (6, 4),
+        (7, 8),
+        (12, 8),
+        (13, 16),
+        (20, 16),
+        (30, 24),
+    ];
+    for (old, step) in pairs {
+        assert_eq!(read(old), step, "{old}");
+    }
+    for step in [3, 4, 8, 16, 24] {
+        assert_eq!(read(step), step);
+    }
+}

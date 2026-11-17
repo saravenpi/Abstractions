@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use crate::avatar::dress::{dress, mode, shown};
+use crate::avatar::show::{ARMS_PITCH, drawn};
 use crate::avatar::{AvatarPose, Mode, Shown};
 use crate::gear::{FlightState, Mode as Flight};
 
@@ -82,4 +83,23 @@ fn the_camera_chooses_what_is_drawn() {
     assert_eq!(shown(false, 0.0), Shown::FirstPerson);
     assert_eq!(shown(false, 0.3), Shown::FirstPerson);
     assert_eq!(shown(false, 1.0), Shown::Full);
+}
+
+/// In first person the arms go when the view looks up, past the arms pitch, and stay when it
+/// looks ahead or down; the full view keeps them at any pitch.
+#[test]
+fn first_person_hides_the_arms_looking_up() {
+    let (on, off) = (Visibility::Inherited, Visibility::Hidden);
+    for pitch in [-1.4, -0.5, 0.0, ARMS_PITCH] {
+        let parts = drawn(Shown::FirstPerson, pitch);
+        assert_eq!(
+            (parts.body, parts.head, parts.arms),
+            (on, off, on),
+            "{pitch}"
+        );
+    }
+    for pitch in [ARMS_PITCH + 0.01, 1.1, 1.5] {
+        assert_eq!(drawn(Shown::FirstPerson, pitch).arms, off, "{pitch}");
+        assert_eq!(drawn(Shown::Full, pitch).arms, on, "{pitch}");
+    }
 }

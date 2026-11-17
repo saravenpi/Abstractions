@@ -30,8 +30,8 @@ pub fn fill_node(
         skirt: [0.0, coarse.skirt][usize::from(skirts)],
     };
     let patch = Patch::new(&span, frame, &span.heights(), style.floor);
-    fill(mesh, &patch, style, &|i, j, half| {
-        dithered(terrain, &span, [i, j, half])
+    fill(mesh, &patch, style, &|i, j| {
+        dithered(terrain, &span, (i, j))
     });
 }
 

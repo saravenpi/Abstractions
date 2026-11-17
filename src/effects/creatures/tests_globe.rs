@@ -7,7 +7,6 @@ use bevy::prelude::*;
 
 use super::carry::moved;
 use super::env::{Ctx, Sky};
-use super::fireflies::{self, Flight};
 use super::flock::{CAPACITY, Flocks, formation};
 use super::wander::{Wander, dormant, ground};
 use crate::effects::eye::Eye;
@@ -29,17 +28,17 @@ const DT: f32 = 1.0 / 30.0;
 const PACE: f32 = 5.0;
 
 /// A camera walking over the test planet, rebased like the frame systems rebase the player.
-struct Walk {
-    terrain: Terrain,
-    anchor: Anchor,
-    camera: Vec3,
-    rebases: usize,
-    walked: f32,
+pub(super) struct Walk {
+    pub(super) terrain: Terrain,
+    pub(super) anchor: Anchor,
+    pub(super) camera: Vec3,
+    pub(super) rebases: usize,
+    pub(super) walked: f32,
 }
 
 impl Walk {
     /// Starts at the spawn point of the test planet, seen through the face that holds it.
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         let globe = Arc::new(Globe::new(1, RADIUS, 22.0));
         let north = Terrain::on(globe.clone(), globe.face_chart(Face::PosY));
         let spawn = north.find_spawn();
@@ -53,7 +52,7 @@ impl Walk {
     }
 
     /// Returns the eye of the camera.
-    fn eye(&self) -> Eye {
+    pub(super) fn eye(&self) -> Eye {
         Eye::new(
             &self.anchor,
             self.terrain.globe(),
@@ -64,7 +63,7 @@ impl Walk {
 
     /// Walks one frame along the ground, eye 1.7 m over the ground or the sea, and returns the
     /// motion of render space when that took the anchor past its rebase limit.
-    fn step(&mut self) -> Option<Shift> {
+    pub(super) fn step(&mut self) -> Option<Shift> {
         let eye = self.eye();
         let ground = Ground::new(&self.anchor, &self.terrain, &eye);
         let ahead = self.camera + ground.turn(Vec3::X * PACE * DT);
@@ -80,7 +79,7 @@ impl Walk {
 }
 
 /// Returns the frame view of the sky around `eye` at `frame`, at night with a west wind.
-fn sky(eye: &Eye, frame: usize) -> Sky {
+pub(super) fn sky(eye: &Eye, frame: usize) -> Sky {
     Sky {
         dt: DT,
         now: frame as f32 * DT,
@@ -148,53 +147,6 @@ fn birds_stay_above_ground_and_sea_on_a_small_globe() {
         walk.rebases
     );
     assert!(lowest > 5.0, "a bird flew {lowest} m over the ground");
-}
-
-/// While the camera walks 500 m over a 3 km globe at night, every firefly stays near the
-/// ground: within its flight band over the ground or the sea, give or take its hover.
-#[test]
-fn fireflies_stay_near_the_ground_on_a_small_globe() {
-    let (mut walk, mut rng) = (Walk::new(), Rng::default());
-    let mut flies: Vec<(Wander, Transform)> = (0..24)
-        .map(|slot| {
-            (
-                Wander::new(slot),
-                Transform::from_translation(super::wander::PARKED),
-            )
-        })
-        .collect();
-    let (mut low, mut high) = (f32::MAX, f32::MIN);
-    for frame in 0..3100 {
-        let shift = walk.step();
-        let eye = walk.eye();
-        let flight = Flight {
-            sky: sky(&eye, frame),
-            level: 24.0,
-        };
-        let mut ctx = Ctx {
-            ground: Ground::new(&walk.anchor, &walk.terrain, &eye),
-            rng: &mut rng,
-        };
-        for (wander, at) in &mut flies {
-            if let Some(shift) = shift {
-                at.translation = shift.point(at.translation);
-                wander.target = shift.point(wander.target);
-            }
-            fireflies::fly(wander, at, &flight, eye.at, &mut ctx);
-            let over = ctx.ground.altitude(at.translation) - ground(&ctx, at.translation);
-            (low, high) = (low.min(over), high.max(over));
-        }
-    }
-    assert!(
-        walk.walked >= 500.0 && walk.rebases >= 10,
-        "{}",
-        walk.rebases
-    );
-    let band = fireflies::ROAM.band;
-    assert!(
-        low > band.0 - 1.5 && high < band.1 + 1.5,
-        "{low} to {high} m"
-    );
 }
 
 /// A flyer that is neither shown nor wanted is left alone, so it reads no terrain.

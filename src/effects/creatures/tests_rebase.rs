@@ -90,7 +90,14 @@ fn planet_points(world: &mut World, scatter: bool) -> Vec<DVec3> {
             points.push(anchor.to_frame(wander.target));
         }
     }
+    points.extend(flock_points(world, &anchor, scatter));
+    points
+}
+
+/// Scatters the flock centers when `scatter` is set and returns their planet positions under `anchor`.
+fn flock_points(world: &mut World, anchor: &Anchor, scatter: bool) -> Vec<DVec3> {
     let mut flocks = world.resource_mut::<Flocks>();
+    let mut points = Vec::new();
     for (index, flock) in flocks.0.iter_mut().enumerate() {
         flock.center = match scatter {
             true => Vec3::new(120.0, 30.0 + index as f32, 14.0),

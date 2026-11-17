@@ -26,6 +26,7 @@ mod rig;
 mod show;
 mod spawn;
 pub mod tune;
+mod warm;
 mod water;
 mod wing;
 
@@ -37,6 +38,7 @@ pub use marks::Marks;
 use bevy::prelude::*;
 
 use crate::player::PlayerSet;
+use crate::render::Warm;
 use crate::screens::playing;
 use crate::view::ViewSet;
 
@@ -151,7 +153,9 @@ pub struct Avatar;
 
 /// Adds the resources and the systems of the body, with no run condition.
 fn systems(app: &mut App) {
+    let rendered = resource_exists::<Warm>.and_then(resource_exists::<Assets<Image>>);
     app.init_resource::<AvatarPose>()
+        .add_systems(Startup, warm::warm.run_if(rendered))
         .init_resource::<Shown>()
         .init_resource::<Marks>()
         .configure_sets(Update, AvatarSet::Animate.after(AvatarSet::Fill))

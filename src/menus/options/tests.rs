@@ -4,6 +4,7 @@ use bevy::prelude::KeyCode;
 
 use super::field::{Bind, Field, set_key, step};
 use super::format::{display, key_name};
+use super::hint::graphics_line;
 use crate::settings::Settings;
 
 /// Numbers clamp at both ends and toggles flip.
@@ -99,4 +100,31 @@ fn view_rows_switch_and_name_their_mode() {
     step(&mut s, Field::AutoFollow, 1);
     assert!(!s.view.head_bob && !s.view.auto_follow);
     assert_eq!(display(&s, Field::AutoFollow), "Off");
+}
+
+/// The render distance walks the named steps from Low to Extreme and back, shows their names,
+/// stays on the ends, and the two highest steps add a note on the GPU to the graphics line.
+#[test]
+fn render_distance_walks_the_named_steps() {
+    let mut s = Settings::default();
+    (0..6).for_each(|_| step(&mut s, Field::RenderDistance, -1));
+    let mut seen = vec![(
+        s.graphics.render_distance,
+        display(&s, Field::RenderDistance),
+    )];
+    for _ in 0..5 {
+        step(&mut s, Field::RenderDistance, 1);
+        seen.push((
+            s.graphics.render_distance,
+            display(&s, Field::RenderDistance),
+        ));
+    }
+    let names = ["Low", "Medium", "High", "Ultra", "Extreme", "Extreme"];
+    let rings = [3, 4, 8, 16, 24, 24];
+    for (k, (got, name)) in seen.iter().enumerate() {
+        assert_eq!((*got, name.as_str()), (rings[k], names[k]));
+    }
+    assert_eq!(graphics_line(8, "Off"), "Off");
+    assert_eq!(graphics_line(16, "Off"), "Ultra needs a strong GPU. Off");
+    assert_eq!(graphics_line(24, "Off"), "Extreme needs a strong GPU. Off");
 }

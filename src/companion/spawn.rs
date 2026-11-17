@@ -16,7 +16,7 @@ use super::orb::{orb, screen};
 use super::screen::{Display, picture};
 use super::shine::{Emitter, Lamp};
 use super::tune::{HALF, LIGHT_RANGE, SIDE};
-use crate::render::GameCamera;
+use crate::render::{GameCamera, Warm};
 use crate::screens::Screen;
 use crate::space::Rebased;
 
@@ -123,6 +123,16 @@ fn dress(rig: &mut ChildSpawnerCommands, stock: &mut Stock, display: &Display) {
         ));
     }
     glows(rig, ball, display);
+}
+
+/// Hands one of each mesh layout and material of the companion to the pipeline warm-up. It
+/// only appears once play begins, after the warm-up ran.
+pub fn warm(mut warm: ResMut<Warm>, mut stock: Stock) {
+    let display = display(&mut stock);
+    let shell = stock.materials.add(matte());
+    warm.add(stock.meshes.add(body(ANTENNA_TIP)), shell);
+    warm.add(stock.meshes.add(screen()), display.face);
+    warm.add(stock.meshes.add(orb(ORB_RADIUS, false)), display.glow);
 }
 
 /// Spawns the companion beside the player's eyes when there is none. It leaves with the title screen.

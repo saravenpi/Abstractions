@@ -3,9 +3,10 @@
 use bevy::prelude::KeyCode;
 
 use super::field::Field;
-use crate::settings::{Graphics, Settings};
+use crate::settings::{Graphics, Settings, render_step};
 use crate::ui::theme;
 use crate::view::{ViewMode, ViewPrefs};
+use crate::world::RENDER_STEPS;
 
 /// Formats a boolean as On or Off.
 pub fn on_off(value: bool) -> String {
@@ -34,7 +35,7 @@ fn display_graphics(g: &Graphics, field: Field) -> Option<String> {
     }
     match field {
         Field::PixelSize => Some(g.pixel_size.to_string()),
-        Field::RenderDistance => Some(g.render_distance.to_string()),
+        Field::RenderDistance => Some(RENDER_STEPS[render_step(g.render_distance)].0.to_string()),
         Field::ColorLevels => Some(g.color_levels.to_string()),
         Field::Fov => Some(format!("{} deg", g.fov)),
         _ => None,

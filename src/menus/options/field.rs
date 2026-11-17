@@ -3,8 +3,9 @@
 use bevy::prelude::KeyCode;
 
 pub use super::binds::Bind;
-use crate::settings::{Graphics, Settings};
+use crate::settings::{Graphics, Settings, render_step};
 use crate::view::ViewPrefs;
+use crate::world::RENDER_STEPS;
 
 /// One editable setting.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,6 +39,13 @@ fn bump_int(value: u32, dir: i32, lo: u32, hi: u32) -> u32 {
     value.saturating_add_signed(dir).clamp(lo, hi)
 }
 
+/// Moves a render distance to the named step `dir` steps away, staying on the first and last.
+fn bump_step(rings: u32, dir: i32) -> u32 {
+    let last = RENDER_STEPS.len() as i32 - 1;
+    let at = (render_step(rings) as i32 + dir).clamp(0, last);
+    RENDER_STEPS[at as usize].1
+}
+
 /// Moves a value by `dir` tenths inside `lo..=hi`.
 fn bump_tenths(value: f32, dir: i32, lo: f32, hi: f32) -> f32 {
     (((value * 10.0).round() + dir as f32) / 10.0).clamp(lo, hi)
@@ -66,7 +74,7 @@ fn step_graphics(g: &mut Graphics, field: Field, dir: i32) {
     }
     match field {
         Field::PixelSize => g.pixel_size = bump_int(g.pixel_size, dir, 1, 8),
-        Field::RenderDistance => g.render_distance = bump_int(g.render_distance, dir, 2, 8),
+        Field::RenderDistance => g.render_distance = bump_step(g.render_distance, dir),
         Field::ColorLevels => g.color_levels = bump_int(g.color_levels, dir * 4, 8, 64),
         Field::Fov => g.fov = bump_int(g.fov, dir * 5, 60, 110),
         _ => {}

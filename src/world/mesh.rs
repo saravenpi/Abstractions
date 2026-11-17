@@ -41,12 +41,16 @@ pub fn chunk_heights(terrain: &Terrain, coord: IVec2, stride: usize) -> Vec<Vec<
     Span::leaf(terrain, coord, (GRID_POINTS - 1) / stride).heights()
 }
 
-/// Returns the biome of triangle `half` of cell `(i, j)` of `span`, dithered across biome borders.
-pub(super) fn dithered(terrain: &Terrain, span: &Span, cell: [usize; 3]) -> Biome {
-    let [i, j, half] = cell;
-    let jitter = |salt: usize| (tone(i + salt, j, half) - 1.0) / 0.08 * DITHER_REACH;
-    let at = span.chart(i, j, 0.5) + Vec2::new(jitter(7919), jitter(104_729));
-    terrain.biome(at.x, at.y)
+/// Returns the biome of cell `(i, j)` of `span`, then the biomes of its two triangles, dithered
+/// across biome borders.
+pub(super) fn dithered(terrain: &Terrain, span: &Span, (i, j): (usize, usize)) -> [Biome; 3] {
+    let centre = span.chart(i, j, 0.5);
+    let near = |half: usize| {
+        let jitter = |salt: usize| (tone(i + salt, j, half) - 1.0) / 0.08 * DITHER_REACH;
+        let at = centre + Vec2::new(jitter(7919), jitter(104_729));
+        terrain.biome(at.x, at.y)
+    };
+    [terrain.biome(centre.x, centre.y), near(0), near(1)]
 }
 
 /// Returns the vertices of chunk `coord` at `heights`, in the frame of the chunk, none lower than `floor`.
@@ -71,8 +75,8 @@ pub fn chunk_mesh(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>], lod: Lo
     };
     let patch = patch_above(terrain, coord, heights, style.floor);
     let mut mesh = FlatMesh::default();
-    fill(&mut mesh, &patch, style, &|i, j, half| {
-        dithered(terrain, &span, [i, j, half])
+    fill(&mut mesh, &patch, style, &|i, j| {
+        dithered(terrain, &span, (i, j))
     });
     mesh.into_mesh()
 }

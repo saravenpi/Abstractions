@@ -6,8 +6,24 @@ use super::globes::{RADII, faces, villages};
 use super::site::{Kind, Site, structure_in_cell};
 use super::{FloorKind, StructureData, Survey, Terrain, survey, village};
 
+/// Asserts that every walled house of the village `site` laid out on `view` has its doorway on
+/// the edge of its wooden floor, as `seen` knows the floors.
+fn check_doors(seen: &Survey, view: &Terrain, site: Site) {
+    for (middle, door, out) in super::entries(view, &site) {
+        let lift = middle.normalize() * 0.02;
+        assert_eq!(seen.floor_at(middle + lift), Some(FloorKind::Wood));
+        assert_eq!(
+            seen.floor_at(door - out * 0.6 + lift),
+            Some(FloorKind::Wood)
+        );
+        assert!((1.5..6.0).contains(&door.distance(middle)));
+        assert!((door - middle).dot(out) > 1.0);
+    }
+}
+
 /// Asserts that `survey` knows the village `site` of the chart `face`: it is the nearest site from its
-/// plaza, the middle of every house floor is wood, the plaza is a built floor and the sky above is not.
+/// plaza, the middle of every house floor is wood, every walled house has its doorway on the edge of its
+/// wooden floor ([`check_doors`]), the plaza is a built floor and the sky above is not.
 fn check_survey(face: &Terrain, site: Site) {
     let view = face.around(site.origin.x, site.origin.y);
     let at = |p: Vec2, y: f32| view.embed(p.x, y, p.y);
@@ -31,6 +47,7 @@ fn check_survey(face: &Terrain, site: Site) {
         );
         assert!(floor.is_some(), "{lot:?} has no built floor");
     }
+    check_doors(&seen, &view, site);
     assert!(
         seen.floor_at(plaza).is_some(),
         "the plaza is not a built floor"

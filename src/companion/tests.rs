@@ -6,7 +6,7 @@ use bevy::prelude::*;
 
 use super::spot::{Probe, Stance};
 use super::spring::{rate, step, stiffness};
-use super::tune::{CLEARANCE, FOLLOW_RATE};
+use super::tune::{CLEARANCE, FOLLOW_RATE, YIELD};
 use crate::space::Anchor;
 use crate::universe::{BodyId, HOME_GRAVITY, HOME_RADIUS};
 use crate::world::globe::Face;
@@ -114,5 +114,30 @@ fn spot_clears_ground_on_a_sphere() {
         assert!(probe.gap(at).abs() < 0.05, "gap {}", probe.gap(at));
         assert_clear(&probe, at);
         assert_clear(&probe, at + Vec3::new(40.0, 0.0, -25.0));
+    }
+}
+
+/// A spot on the line of sight is pushed out to the edge of the clear cone, a spot already out
+/// of it or behind the eyes stays, and the resting spot is out of it whether the player looks
+/// ahead, down or up.
+#[test]
+fn yields_from_the_line_of_sight() {
+    let stance = Stance {
+        eye: Vec3::new(3.0, 2.0, 1.0),
+        forward: Vec3::NEG_Z,
+        up: Vec3::Y,
+    };
+    let ahead = stance.eye + Vec3::new(0.1, 0.0, -4.0);
+    let moved = stance.aside(ahead) - stance.eye;
+    assert!((moved.z + 4.0).abs() < 1e-4 && (moved.x - 4.0 * YIELD).abs() < 1e-4);
+    for kept in [Vec3::new(3.0, 0.0, -2.0), Vec3::new(0.0, 0.0, 1.0)] {
+        assert_eq!(stance.aside(stance.eye + kept), stance.eye + kept);
+    }
+    for pitch in [-1.0f32, 0.0, 1.0] {
+        let look = Stance {
+            forward: Quat::from_rotation_x(pitch) * Vec3::NEG_Z,
+            ..stance
+        };
+        assert_eq!(look.aside(look.rest()), look.rest(), "pitch {pitch}");
     }
 }

@@ -8,7 +8,7 @@ use super::atmosphere::{air, horizon_dip, shadow};
 use super::bodies::{FAR, place};
 use super::clock::{catch_up, solar_day};
 use super::clouds::crossing_depth;
-use super::fog::fog_reach;
+use super::fog::{Height, fog_sight};
 use super::observer::Observer;
 use super::sun::SunDir;
 use crate::space::{Anchor, Frame};
@@ -121,10 +121,13 @@ fn air_thins_with_height() {
     assert!(levels.windows(2).all(|pair| pair[1] < pair[0]));
     assert_eq!(horizon_dip(0.0, 6000.0), 0.0);
     assert!((horizon_dip(4000.0, 6000.0) - 0.8).abs() < 1e-5);
-    assert_eq!(fog_reach(4, 0.0, 1.0), 256.0);
-    assert!(fog_reach(4, 250.0, air(250.0, height)) < 260.0);
-    assert!(fog_reach(4, 1500.0, air(1500.0, height)) > 12_000.0);
-    assert!(fog_reach(4, height, air(height, height)) > 1.0e7);
+    let space = Height {
+        altitude: 4200.0,
+        clearance: 4000.0,
+        radius: 3000.0,
+        air: air(4200.0, height),
+    };
+    assert!(fog_sight(256.0, &space) > 1.0e7);
     let (sun, radius) = (DVec3::X, 6000.0);
     assert_eq!(shadow(DVec3::new(7000.0, 0.0, 0.0), sun, radius), 1.0);
     assert_eq!(shadow(DVec3::new(-7000.0, 100.0, 0.0), sun, radius), 0.0);

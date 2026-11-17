@@ -53,6 +53,7 @@ pub use warp::Warp;
 use bevy::prelude::*;
 
 use crate::home::Base;
+use crate::render::Warm;
 use crate::saves::unplayed;
 use crate::screens::{Screen, playing};
 use crate::view::ViewSet;
@@ -179,7 +180,8 @@ pub(super) fn plugin(app: &mut App) {
             Update,
             stages.run_if(playing).run_if(any_with_component::<Ship>),
         )
-        .add_systems(Update, spawn::spawn.run_if(resource_added::<SpawnPoint>));
+        .add_systems(Update, spawn::spawn.run_if(resource_added::<SpawnPoint>))
+        .add_systems(Startup, spawn::warm.run_if(resource_exists::<Warm>));
     let founding = resource_exists::<Base>
         .and_then(unplayed)
         .and_then(in_state(Screen::Loading));

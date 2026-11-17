@@ -10,7 +10,7 @@ use super::spot::Probe;
 use super::spring::{rate, step};
 use super::tune::{
     BOB, CLEARANCE, FEED, FEED_FLIGHT, FLIGHT_LEASH, FLIGHT_STIFFNESS, FLOOR, LEASH, LOOK_AHEAD,
-    SEAT, SEAT_RATE, TILT, TURN_RATE,
+    SCALE_RATE, SEAT, SEAT_RATE, SEAT_SCALE, TILT, TURN_RATE,
 };
 use crate::player::Player;
 
@@ -46,6 +46,17 @@ pub fn lean(local: Vec3) -> Quat {
     Quat::from_rotation_x(tilt.y) * Quat::from_rotation_z(-tilt.x)
 }
 
+/// Eases the size of the body toward `size` times its own.
+fn grow(at: &mut Transform, size: f32, dt: f32) {
+    let want = Vec3::splat(size);
+    if at.scale != want {
+        at.scale = at.scale.lerp(want, blend(SCALE_RATE, dt));
+        if at.scale.distance(want) < 1e-3 {
+            at.scale = want;
+        }
+    }
+}
+
 /// Follows the player: a spring toward the goal, carried partly by the player's own velocity on
 /// foot and wholly in flight, so that it keeps its place in the formation at any speed.
 ///
@@ -72,10 +83,11 @@ pub fn follow(probe: &Probe, brain: &Brain, at: &mut Transform, float: &mut Floa
     }
     let want = facing(brain.look - at.translation, probe.up(at.translation));
     at.rotation = at.rotation.slerp(want, blend(TURN_RATE, dt));
+    grow(at, 1.0, dt);
 }
 
 /// Rides in the cockpit: a spring toward the seat in the space of the pilot seat, looking at
-/// `look` in that space.
+/// `look` in that space, shrunk to its cockpit size.
 pub fn ride(look: Vec3, at: &mut Transform, float: &mut Float, dt: f32) {
     let seat = Vec3::from_array(SEAT);
     let (offset, vel) = step(at.translation - seat, float.vel, SEAT_RATE, dt);
@@ -83,6 +95,7 @@ pub fn ride(look: Vec3, at: &mut Transform, float: &mut Float, dt: f32) {
     float.vel = vel;
     let want = facing(look - at.translation, Vec3::Y);
     at.rotation = at.rotation.slerp(want, blend(TURN_RATE, dt));
+    grow(at, SEAT_SCALE, dt);
 }
 
 /// Bobs, leans and poses the rig on top of where the body floats.

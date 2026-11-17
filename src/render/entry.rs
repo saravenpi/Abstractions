@@ -1,4 +1,4 @@
-//! Flight effects around the view: the glow of re-entry, warp streaks with a field-of-view pull,
+//! Flight effects around the view: the glow of re-entry, warp streaks (the camera rig opens the view),
 //! and cloud wisps streaking past inside the cloud layer.
 
 use bevy::asset::embedded_asset;
@@ -18,19 +18,12 @@ use super::palette::Palette;
 use super::sky::linear;
 use super::vantage::Vantage;
 use crate::screens::Screen;
-use crate::settings::{Persistent, Settings};
 
 /// Radius in metres of the shell the effects are drawn on, around the camera and the ship.
 const SHELL_RADIUS: f32 = 60.0;
 
 /// Speed in metres per second at which cloud wisps start to streak and at which they are full.
 const WISP_SPEED: (f32, f32) = (8.0, 80.0);
-
-/// Degrees the field of view opens by at full warp.
-const WARP_FOV: f32 = 28.0;
-
-/// Widest field of view in degrees the warp may reach.
-const WIDEST_FOV: f32 = 150.0;
 
 /// What the flight effects are drawn from. The ship writes it; everything is zero on foot.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
@@ -182,32 +175,11 @@ fn follow(
     }
 }
 
-/// Opens the field of view with the warp, and puts the setting back once the warp is over.
-fn pull_fov(
-    flight: Res<FlightFx>,
-    settings: Res<Persistent<Settings>>,
-    mut cameras: Query<&mut Projection, With<GameCamera>>,
-    mut pulled: Local<bool>,
-) {
-    let warp = flight.warp.clamp(0.0, 1.0);
-    if warp <= 0.0 && !*pulled {
-        return;
-    }
-    *pulled = warp > 0.0;
-    let fov = settings.graphics.fov as f32 + WARP_FOV * smoothstep(0.0, 1.0, warp);
-    for mut projection in &mut cameras {
-        if let Projection::Perspective(perspective) = &mut *projection {
-            perspective.fov = fov.min(WIDEST_FOV).to_radians();
-        }
-    }
-}
-
 /// Embeds the shader, registers the material and runs the effects once the clouds are known.
 pub(super) fn plugin(app: &mut App) {
     embedded_asset!(app, "entry.wesl");
     app.add_plugins(MaterialPlugin::<FxMaterial>::default())
         .init_resource::<FlightFx>()
         .add_systems(OnEnter(Screen::Loading), spawn)
-        .add_systems(Update, pull_fov)
         .add_systems(PostUpdate, follow.after(super::clouds::drift));
 }

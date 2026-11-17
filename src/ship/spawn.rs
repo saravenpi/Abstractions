@@ -12,6 +12,7 @@ use super::landing::GEAR_DROP;
 use super::mesh::{NOZZLE_Z, Skin, hull_meshes, material, plume_mesh};
 use super::save::saved;
 use crate::home::Base;
+use crate::render::Warm;
 use crate::saves::ActiveWorld;
 use crate::screens::Screen;
 use crate::space::{Frame, Location, Placed, Travel};
@@ -80,6 +81,17 @@ fn dress(entity: &mut EntityCommands, yard: &mut Yard, skins: [Handle<StandardMa
         MeshMaterial3d(glow),
         Transform::from_xyz(0.0, 0.0, NOZZLE_Z).with_scale(Vec3::new(1.0, 1.0, 0.02)),
     ));
+}
+
+/// Hands every part of the ship to the pipeline warm-up, so its pipelines are ready whenever
+/// it is spawned, before or after the warm-up ran.
+pub fn warm(mut warm: ResMut<Warm>, mut yard: Yard) {
+    let skins = Skin::ALL.map(|skin| yard.materials.add(material(skin)));
+    let glow = skins[Skin::Glow as usize].clone();
+    for (mesh, skin) in hull_meshes().into_iter().zip(skins) {
+        warm.add(yard.meshes.add(mesh), skin);
+    }
+    warm.add(yard.meshes.add(plume_mesh()), glow);
 }
 
 /// Marks a ship that already took its place on the landing pad of the home base.

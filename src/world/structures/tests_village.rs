@@ -144,7 +144,8 @@ fn meshes_wind_outward() {
 }
 
 /// Over at least 12 villages of 2 seeds: bench legs stand on their own ground, every road vertex lies just above
-/// the terrain mesh and no road triangle is buried, no crop, hedge or post bottom hangs above it, and no door path crosses the circle of another lot.
+/// the terrain mesh and no road triangle is buried, no crop, hedge or post bottom hangs above it, and no door
+/// path crosses the circle of another lot.
 #[test]
 fn villages_follow_the_ground() {
     let cells = || (-6..6).flat_map(|x| (-6..6).map(move |y| IVec2::new(x, y)));

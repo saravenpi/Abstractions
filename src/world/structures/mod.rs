@@ -90,6 +90,7 @@ use site::sites_in_chunk;
 pub use around::{AROUND, Surroundings, Survey, survey};
 pub use pads::{FloorKind, Nearby};
 pub use site::{CELL, Kind, Site, origins_near, structure_in_cell};
+pub use village::{Entry, entries};
 
 /// The merged mesh, the collider and the lights of every structure in one chunk. Plain data, built off the
 /// main thread.

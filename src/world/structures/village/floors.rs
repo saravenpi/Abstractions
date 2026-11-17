@@ -1,5 +1,6 @@
 //! The built floors of a village: house floors and platforms, the plaza, the streets and the footpaths.
 
+use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::kinds::House;
@@ -7,6 +8,7 @@ use super::layout::{self, Layout, PLAZA};
 use super::lots::{Lot, ROAD_HALF};
 use super::style::Flavor;
 use crate::world::Terrain;
+use crate::world::mesh::Frame;
 use crate::world::structures::pads::{FloorKind, Pad, Slab, Strip};
 use crate::world::structures::site::Site;
 
@@ -82,4 +84,24 @@ pub fn floors(view: &Terrain, site: &Site) -> (Vec<Pad>, Vec<Strip>) {
     let plaza: Slab = (true, [0.0; 2], [PLAZA, 0.0], [-1.5, 1.5], road);
     pads.push(Pad::new(view, (site.origin, site.yaw, site.floor), &plaza));
     (pads, strips(view, &lay, road))
+}
+
+/// A walled house of a village in planet positions: the middle of its ground floor, the middle
+/// of its doorway on the threshold, and the unit direction out through the door.
+pub type Entry = (DVec3, DVec3, DVec3);
+
+/// Returns every walled house of the village at `site`, laid out on `view`, the metric view
+/// around its center: what a tour or a test needs to stand at a door or under a roof.
+pub fn entries(view: &Terrain, site: &Site) -> Vec<Entry> {
+    let lay = layout::build(view, *site);
+    let walled = lay.lots.into_iter().filter(|lot| lot.house != House::Stall);
+    walled
+        .map(|lot| {
+            let s = lot.house.shell();
+            let frame = Frame::at(view, lot.pos);
+            let rot = frame.rot * DQuat::from_rotation_y(f64::from(lot.yaw));
+            let at = |x: f32, z: f32| frame.origin + rot * Vec3::new(x, lot.floor, z).as_dvec3();
+            (at(0.0, 0.0), at(s.door, s.hz), rot * DVec3::Z)
+        })
+        .collect()
 }

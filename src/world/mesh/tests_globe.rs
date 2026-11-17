@@ -86,3 +86,21 @@ fn coarse_nodes_draw_a_flat_sea() {
         "lowest vertex at {lowest} m"
     );
 }
+
+/// A triangle dithered into the biome across a border takes its tint only when that biome
+/// covers it with the same surface: a grass triangle never lands alone in desert sand, a sand
+/// one never in tropical grass, while two grass biomes still blend.
+#[test]
+fn dithered_biomes_never_change_the_surface() {
+    use crate::world::Biome;
+    use crate::world::biome::ground_rgb;
+    use crate::world::surface::classify;
+    let ground = super::tris::ground;
+    let sand = ground_rgb(classify(3.0, 0.1, Biome::Desert), Biome::Desert);
+    assert_eq!(ground(3.0, 0.1, Biome::Desert, Biome::Tropical), sand);
+    let grass = ground_rgb(classify(3.0, 0.1, Biome::Tropical), Biome::Tropical);
+    assert_eq!(ground(3.0, 0.1, Biome::Tropical, Biome::Desert), grass);
+    let blended = ground_rgb(classify(3.0, 0.1, Biome::Meadow), Biome::Forest);
+    assert_eq!(ground(3.0, 0.1, Biome::Meadow, Biome::Forest), blended);
+    assert_ne!(blended, ground(3.0, 0.1, Biome::Meadow, Biome::Meadow));
+}

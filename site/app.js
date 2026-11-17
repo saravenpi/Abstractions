@@ -19,7 +19,7 @@
     label.className = "yours";
     label.textContent = "Your system";
     button.classList.add("is-yours");
-    (button.querySelector(".label") || button).append(label);
+    (button.querySelector(".text") || button).append(label);
   }
 
   function megabytes(size) {

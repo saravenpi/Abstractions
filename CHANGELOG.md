@@ -5,6 +5,36 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-18
+
+### Added
+
+- A compass at the top of the screen: one mark for the home base and one for the ship, each with its distance, while you are on their planet.
+- A map in the board computer, beside the table: the system with its orbits, the known stars of the galaxy and the known galaxies, with the ship, the selected row and the destination marked.
+
+### Changed
+
+- The ship is steered with the keys: W and S move the nose, A and D turn, Q and E roll, Shift and Ctrl move the throttle, Space and C fire the vertical thrusters. The mouse only looks around, and the view comes back to the nose by itself. Saved ship bindings are reset to these keys.
+- The ship no longer has reverse thrust.
+- The boots fire when you press jump again in the air, not on the jump itself.
+- W, A, S and D steer the wingsuit: dive, climb and turn.
+- Sunlight, sky, clouds and ambient light take their colour and strength from the real height of the star and from its own colour, not from the hour.
+- The companion picks its own place beside you and keeps it when you turn your head. It moves when you leave it behind your back, when it is in your way, or when it feels like it.
+- The companion speaks for real flights only, not for every jump, and waits between two chirps. Its voice comes from where it floats.
+- Waves are heard near a shoreline only, from the side the shoreline is on.
+- The boots hum lower and softer.
+- The warp streaks start as points along the nose of the ship and stretch as the drive engages, and the stars dim behind them.
+- A ship that drops out of warp stays at rest beside its destination.
+- The board computer closes when you engage the autopilot.
+
+### Fixed
+
+- The first person view looked down into the neck of the robot. The eyes now sit on the face and swing forward when you look down.
+- A new game could start under the ground: play began before the ground under the home base was loaded.
+- A fast dive in the ship turned the whole view white.
+- A body that sinks under the ground is put back on it.
+- The Ship tab of the settings had no icon.
+
 ## [0.6.0] - 2026-11-17
 
 ### Added

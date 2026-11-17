@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::shell::{DOOR_H, Shell};
+use super::shell::Shell;
 use super::style::{Flavor, Style};
 use crate::world::solids::fan;
 use crate::world::structures::brush::{Build, Mat};
@@ -23,8 +23,8 @@ fn awning(b: &mut Build, s: &Shell, st: &Style) {
     let (d0, d1) = (s.door - s.gap * 0.5 - 0.3, s.door + s.gap * 0.5 + 0.3);
     let rgb = st.cloth[b.site.variant as usize % 3];
     let (lo, hi) = (
-        Vec3::new(d0, DOOR_H + 0.4, s.hz),
-        Vec3::new(d1, DOOR_H + 0.4, s.hz + 1.3),
+        Vec3::new(d0, s.door_h + 0.15, s.hz),
+        Vec3::new(d1, s.door_h + 0.15, s.hz + 1.3),
     );
     b.lean_to(lo, hi, 0.35, Mat::deco(rgb));
     let at = foot(b, s, Vec2::new(d1 + 0.9, s.hz + 0.9), 0.25);

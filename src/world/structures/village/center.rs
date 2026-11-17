@@ -11,6 +11,7 @@ use crate::world::structures::brush::{Build, Mat};
 use crate::world::structures::dress::on_ground;
 use crate::world::structures::glow::LightKind;
 use crate::world::structures::palette::{DARK_WOOD, STONE, STONE_DARK, STONE_LIGHT, WATER, WOOD};
+use crate::world::structures::tags::Tag;
 
 /// Leaf green of the plaza tree.
 const LEAF: [f32; 3] = [0.3, 0.52, 0.22];
@@ -71,17 +72,16 @@ fn bucket(b: &mut Build) {
     );
 }
 
-/// Draws a stone well: ring of stones, roof on two posts, a crossbar with rope and bucket, two torches.
+/// Draws a stone well: ring of stones, a roof whose ridge rests on two posts, a crossbar with rope and bucket,
+/// two torches.
 fn well(b: &mut Build, st: &Style) {
     b.round_foundation(1.3, 8, 0.7, Mat::solid(STONE));
     b.spire(Vec3::Y * 0.72, Vec2::new(0.95, 0.001), 6, WATER);
     for x in [-1.0, 1.0] {
-        b.pillar(
-            Vec3::new(x, 0.7, 0.0),
-            Vec2::new(0.1, 1.9),
-            4,
-            Mat::solid(DARK_WOOD),
-        );
+        let (foot, size) = (Vec3::new(x, 0.7, 0.0), Vec2::new(0.1, 2.8));
+        b.tagged(Tag::Post, |b| {
+            b.pillar(foot, size, 4, Mat::solid(DARK_WOOD))
+        });
     }
     let (lo, hi) = (Vec3::new(-1.4, 2.6, -1.0), Vec3::new(1.4, 2.6, 1.0));
     b.gable(lo, hi, 0.9, Mat::deco(st.roof[0]));

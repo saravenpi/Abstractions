@@ -3,7 +3,9 @@
 use bevy::prelude::*;
 
 use super::brush::{Build, Mat};
+use super::doors::Doorway;
 use super::palette::{DARK_WOOD, PLANK, THATCH, WOOD};
+use super::tags::Tag;
 
 /// Wall boxes of the hut: back, left, right, two door sides and the lintel.
 const WALLS: [([f32; 3], [f32; 3]); 6] = [
@@ -38,7 +40,13 @@ pub fn stilt_hut(b: &mut Build) {
             Mat::deco(DARK_WOOD),
         );
     }
-    b.boxes(&WALLS, Mat::solid(WOOD));
+    b.tagged(Tag::Wall, |b| b.boxes(&WALLS, Mat::solid(WOOD)));
+    let door = Doorway {
+        x: (-0.7, 0.7),
+        top: 2.0,
+        z: (1.65, 1.8),
+    };
+    b.door_frame(&door, DARK_WOOD);
     b.spire(Vec3::Y * 2.2, Vec2::new(3.6, 2.2), 6, THATCH);
     b.ramp(Vec3::new(0.0, 0.0, 2.2), 1.4);
 }

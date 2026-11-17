@@ -63,7 +63,6 @@ pub fn fire(b: &mut Build, base: Vec3, cold: bool) {
     if cold {
         let ash = base - Vec3::Y * 0.1;
         b.spire(ash, Vec2::new(0.5, 0.2), 5, [0.18; 3]);
-        b.spire(ash, Vec2::new(0.3, 0.1), 5, [0.12; 3]);
     } else {
         b.glow(LightKind::Campfire, base + Vec3::Y * 0.5);
     }

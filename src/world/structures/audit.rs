@@ -16,7 +16,7 @@ pub enum Piece {
 impl Build<'_> {
     /// Returns the number of vertices drawn so far.
     pub fn vertex_mark(&self) -> usize {
-        self.mesh.clone().into_mesh().count_vertices()
+        self.mesh.count()
     }
 
     /// Records the vertices drawn since `start` as one piece.

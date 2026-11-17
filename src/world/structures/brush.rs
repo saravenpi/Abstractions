@@ -2,10 +2,10 @@
 
 use bevy::prelude::*;
 
+use super::canvas::{Canvas, Hold};
 use super::glow::LightPoint;
 use super::site::Site;
 use crate::world::Terrain;
-use crate::world::shapes::FlatMesh;
 
 /// Collider shape of one solid part.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -48,14 +48,21 @@ impl Mat {
     }
 }
 
-/// Merged mesh and colliders of every structure of one chunk, drawn in a local frame.
+/// Merged mesh and colliders of the structures of one site, drawn in a local frame.
+///
+/// Chunk space is the chart of `terrain` moved to `center`, with `y` the height above sea level. On the
+/// globe `terrain` is the metric view around the site, and [`Build::finish`] carries the result to the planet.
 pub struct Build<'a> {
-    /// Terrain used to sit things on the ground.
+    /// Terrain every layout and height decision reads: the metric view around the site.
     pub terrain: &'a Terrain,
-    /// World position of the chunk center.
+    /// The chart of the chunk, whose terrain mesh is the visible ground.
+    pub ground: &'a Terrain,
+    /// Position of the chunk center on the chart of `terrain`.
     pub center: Vec2,
     /// Triangles in chunk space.
-    pub mesh: FlatMesh,
+    pub mesh: Canvas,
+    /// How the run being drawn is carried onto the planet.
+    pub hold: Hold,
     /// Solid parts in chunk space.
     pub parts: Vec<Part>,
     /// Structure being drawn.
@@ -73,15 +80,29 @@ pub struct Build<'a> {
     /// Closed boxes and double-sided sheets drawn so far, as vertex ranges.
     #[cfg(test)]
     pub audit: Vec<(super::audit::Piece, usize, usize)>,
+    /// Roles of the pieces drawn so far, as vertex ranges.
+    #[cfg(test)]
+    pub tags: Vec<(super::tags::Tag, usize, usize)>,
 }
 
 impl<'a> Build<'a> {
-    /// Starts an empty build for the chunk centered at `center`.
+    /// Starts an empty build for the chunk centered at `center`, on a terrain that is both the view of the
+    /// site and the chart of the chunk.
+    #[cfg(test)]
     pub fn new(terrain: &'a Terrain, center: Vec2, site: Site) -> Self {
+        Self::on((terrain, terrain), center, site)
+    }
+
+    /// Starts an empty build on `charts`, the chart of the chunk then the metric view around the site, for
+    /// the chunk centered at `center` on that view.
+    pub fn on(charts: (&'a Terrain, &'a Terrain), center: Vec2, site: Site) -> Self {
+        let (ground, terrain) = charts;
         Self {
             terrain,
+            ground,
             center,
-            mesh: FlatMesh::default(),
+            mesh: Canvas::default(),
+            hold: Hold::Rigid(site.origin),
             parts: Vec::new(),
             site,
             pos: site.origin,
@@ -91,11 +112,15 @@ impl<'a> Build<'a> {
             lights: Vec::new(),
             #[cfg(test)]
             audit: Vec::new(),
+            #[cfg(test)]
+            tags: Vec::new(),
         }
     }
 
-    /// Moves to the frame of another structure.
+    /// Moves to the frame of another structure, which stands as one rigid piece at its own origin.
     pub fn begin(&mut self, site: Site) {
+        self.seal();
+        self.hold = Hold::Rigid(site.origin);
         self.site = site;
         self.pos = site.origin;
         self.yaw = site.yaw;
@@ -120,12 +145,5 @@ impl<'a> Build<'a> {
     pub fn ground_at(&self, x: f32, z: f32) -> f32 {
         let r = Quat::from_rotation_y(self.yaw) * Vec3::new(x, 0.0, z);
         self.terrain.height(self.pos.x + r.x, self.pos.y + r.z)
-    }
-
-    /// Returns a stable pseudo-random value in `[0, 1)` for this structure and an index.
-    pub fn roll(&self, i: u32) -> f32 {
-        let h = (self.site.variant ^ i.wrapping_mul(0x9E37_79B9)).wrapping_mul(0x85EB_CA6B);
-        let h = (h ^ (h >> 13)).wrapping_mul(0xC2B2_AE35);
-        ((h >> 8) & 0xFFFF) as f32 / 65536.0
     }
 }

@@ -80,10 +80,11 @@ pub fn windows(b: &mut Build, s: &Shell, st: &Style) {
 }
 
 /// Draws a stone chimney against the right end wall, rising `top` above the floor, and its fireplace inside.
+/// The stack starts just inside the wall face, so that it shows in front of the gable fill above the wall.
 /// One collider covers the stack, the wall behind it and the fireplace.
 pub fn chimney(b: &mut Build, s: &Shell, top: f32) {
     let (lo, hi) = (
-        Vec3::new(s.hx, 0.0, -0.45),
+        Vec3::new(s.hx - 0.02, 0.0, -0.45),
         Vec3::new(s.hx + 0.8, top, 0.45),
     );
     b.cuboid(lo, hi, Mat::deco(STONE));
@@ -137,6 +138,6 @@ pub fn furnish(b: &mut Build, s: &Shell, st: &Style) {
     );
     let hang = b.roll(23) < 0.5;
     let y = if hang { s.h } else { 0.8 };
-    light(b, Vec3::new(m * (tx + len * 0.25), y, -z + 0.35), hang);
+    light(b, s, Vec3::new(m * (tx + len * 0.25), y, -z + 0.35), hang);
     beds(b, s, st, m);
 }

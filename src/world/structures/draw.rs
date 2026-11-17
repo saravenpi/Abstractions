@@ -46,6 +46,13 @@ impl Build<'_> {
         Quat::from_rotation_y(self.yaw) * v
     }
 
+    /// Returns a stable pseudo-random value in `[0, 1)` for this structure and an index.
+    pub fn roll(&self, i: u32) -> f32 {
+        let h = (self.site.variant ^ i.wrapping_mul(0x9E37_79B9)).wrapping_mul(0x85EB_CA6B);
+        let h = (h ^ (h >> 13)).wrapping_mul(0xC2B2_AE35);
+        ((h >> 8) & 0xFFFF) as f32 / 65536.0
+    }
+
     /// Returns a vertex color: the base color scaled by `tone` and a small per-quad variation.
     pub fn color(&mut self, rgb: [f32; 3], tone: f32) -> [f32; 4] {
         self.count = self.count.wrapping_add(1);

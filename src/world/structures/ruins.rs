@@ -81,16 +81,16 @@ fn tower_wall(b: &mut Build, i: u32) {
     b.cuboid(Vec3::new(-half, 0.0, -t), Vec3::new(half, h, t), mat);
 }
 
-/// Draws a broken round tower with an open doorway and a walkable floor.
+/// Draws a broken round tower with an open doorway and a walkable floor that reaches under every wall corner.
 pub fn tower(b: &mut Build) {
-    b.round_foundation(5.0, 12, 0.0, Mat::solid(STONE_DARK));
+    b.round_foundation(5.3, 12, 0.0, Mat::solid(STONE_DARK));
     for i in 0..TOWER_SIDES {
         let a = i as f32 / TOWER_SIDES as f32 * TAU;
         b.frame(Vec2::new(a.sin(), a.cos()) * TOWER_R, a);
         tower_wall(b, i);
     }
     b.begin(b.site);
-    b.ramp(Vec3::new(0.0, 0.0, 4.9), 2.0);
+    b.ramp(Vec3::new(0.0, 0.0, 5.1), 2.0);
     for x in [-1.6, 1.6] {
         let base = on_ground(b, x, 5.6);
         b.torch_post(base);

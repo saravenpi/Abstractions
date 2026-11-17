@@ -3,7 +3,10 @@
 use bevy::prelude::*;
 
 use super::brush::{Build, Mat};
-use super::palette::{DARK_WOOD, PLANK, ROOF, SNOW, STONE, STONE_DARK, WOOD};
+use super::doors::Doorway;
+use super::eaves::Cap;
+use super::palette::{DARK_WOOD, PLANK, ROOF, STONE, STONE_DARK, WOOD};
+use super::tags::Tag;
 use crate::world::Biome;
 
 /// Half length of a cabin along x.
@@ -31,20 +34,21 @@ const WALLS: [([f32; 3], [f32; 3]); 6] = [
 /// Draws the cabin in the current frame, door toward +z.
 pub fn cabin(b: &mut Build) {
     b.foundation(Vec2::new(HX + 0.3, HZ + 0.3), Mat::solid(STONE_DARK));
-    b.boxes(&WALLS, Mat::solid(WOOD));
-    let (lo, hi) = (
-        Vec3::new(-HX - 0.5, H, -HZ - 0.5),
-        Vec3::new(HX + 0.5, H, HZ + 0.5),
-    );
-    b.gable(lo, hi, 1.8, Mat::deco(ROOF));
-    if b.terrain.biome(b.pos.x, b.pos.y) == Biome::Taiga {
-        b.gable(
-            lo + Vec3::Y * 0.12,
-            hi + Vec3::Y * 0.12,
-            1.8,
-            Mat::deco(SNOW),
-        );
-    }
+    b.tagged(Tag::Wall, |b| b.boxes(&WALLS, Mat::solid(WOOD)));
+    let cap = Cap {
+        roof: ROOF,
+        wall: WOOD,
+        hip: false,
+        snow: b.terrain.biome(b.pos.x, b.pos.y) == Biome::Taiga,
+    };
+    let walls = (Vec3::new(-HX, H, -HZ), Vec3::new(HX, H, HZ));
+    b.pitched_over(walls, 0.5, 1.8, &cap);
+    let door = Doorway {
+        x: (-0.8, 0.8),
+        top: 2.0,
+        z: (HZ - T, HZ),
+    };
+    b.door_frame(&door, DARK_WOOD);
     b.ramp(Vec3::new(0.0, 0.0, HZ + 0.3), 1.6);
     b.wall_torch(Vec3::new(1.4, 1.6, HZ));
     furnish(b);
@@ -53,7 +57,7 @@ pub fn cabin(b: &mut Build) {
 /// Adds the chimney, corner posts, a table and a bed to a cabin.
 fn furnish(b: &mut Build) {
     b.cuboid(
-        Vec3::new(HX, 0.0, -0.5),
+        Vec3::new(HX - 0.02, 0.0, -0.5),
         Vec3::new(HX + 0.8, H + 2.2, 0.5),
         Mat::solid(STONE),
     );

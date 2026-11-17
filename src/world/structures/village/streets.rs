@@ -21,7 +21,7 @@ const EDGE: f32 = 1.15;
 
 /// Returns the chunk-space point on the visible ground at `p`, raised by `lift`.
 fn ground(b: &Build, p: Vec2, lift: f32) -> Vec3 {
-    b.world_pt(p, b.terrain.mesh_height(p.x, p.y) + lift)
+    b.world_pt(p, b.mesh_y(p) + lift)
 }
 
 /// Draws the ground between four world corners as `n.0` by `n.1` quads with every vertex on the terrain mesh.
@@ -94,8 +94,10 @@ fn path(b: &mut Build, a: Vec2, c: Vec2, rgb: [f32; 3]) {
     );
 }
 
-/// Draws the visual-only ground of the village: the plaza, the streets and the footpaths.
+/// Draws the visual-only ground of the village: the plaza, the streets and the footpaths. Every vertex
+/// follows the ground on its own.
 pub fn surface(b: &mut Build, lay: &Layout) {
+    b.hug();
     plaza(b, lay.site.origin, &lay.style);
     for pts in &lay.streets {
         road(b, pts, lay.style.road);
@@ -104,6 +106,7 @@ pub fn surface(b: &mut Build, lay: &Layout) {
     for (from, to) in &lay.paths {
         path(b, *from, *to, dust);
     }
+    b.stiffen();
 }
 
 /// Draws street lamps every 12 m along both sides in turn, and four around the plaza.

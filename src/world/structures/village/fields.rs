@@ -129,7 +129,7 @@ fn ribbon(b: &mut Build, hx: f32, z: f32, sect: Vec3, rgb: [f32; 3]) {
         let x = -hx + hx * 2.0 * i as f32 / n as f32;
         let low = [-sect.x, sect.x].map(|dz| {
             let p = b.pt(Vec3::new(x, 0.0, z + dz));
-            b.terrain.mesh_height(p.x + b.center.x, p.z + b.center.y) - b.base_y
+            b.mesh_y(p.xz() + b.center) - b.base_y
         });
         let at = |dz: f32, y: f32| b.pt(Vec3::new(x, low[0].min(low[1]) + y, z + dz));
         [(-1.0, sect.y), (-1.0, sect.z), (1.0, sect.z), (1.0, sect.y)]
@@ -155,7 +155,7 @@ fn fence(b: &mut Build, hx: f32, z: f32) {
     for i in 0..=n {
         let x = -hx + hx * 2.0 * i as f32 / n as f32;
         let p = b.pt(Vec3::new(x, 0.0, z));
-        let y = b.terrain.mesh_height(p.x + b.center.x, p.z + b.center.y) - b.base_y;
+        let y = b.mesh_y(p.xz() + b.center) - b.base_y;
         let (foot, size) = (Vec3::new(x, y - DIG, z), Vec2::new(0.07, 1.1 + DIG));
         b.pillar(foot, size, 4, Mat::deco(DARK_WOOD));
     }
@@ -164,6 +164,7 @@ fn fence(b: &mut Build, hx: f32, z: f32) {
 
 /// Draws the crop rows and a hedge or a fence along both long sides, every piece following the ground.
 pub fn crops(b: &mut Build, f: &Field) {
+    b.hug();
     let n = (f.half.y * 2.0 / 1.1) as i32;
     for i in 0..n {
         let z = -f.half.y + 0.55 + i as f32 * 1.1;
@@ -183,6 +184,7 @@ pub fn crops(b: &mut Build, f: &Field) {
             false => fence(b, f.half.x, z),
         }
     }
+    b.stiffen();
 }
 
 /// Draws a scarecrow on a post at the end of the rows.

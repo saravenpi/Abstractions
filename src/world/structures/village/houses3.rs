@@ -34,7 +34,7 @@ fn study(b: &mut Build, s: &Shell, st: &Style) {
     table(b, Vec2::new(x, -0.25), FRAC_PI_2, 1.2);
     b.collider(Vec3::new(x, 0.0, -z), Vec3::new(x + 0.7, 0.9, 0.35));
     seats(b, Vec2::new(x + 0.85, -0.25), FRAC_PI_2, 0.4);
-    light(b, Vec3::new(x + 0.35, 0.8, -0.55), false);
+    light(b, s, Vec3::new(x + 0.35, 0.8, -0.55), false);
     ladder(b, Vec3::new(1.0, 0.0, -z), s.h);
     b.floor_pane(
         Vec2::new(-0.6, -0.7),
@@ -67,7 +67,7 @@ fn banquet(b: &mut Build, s: &Shell, st: &Style) {
     } else {
         Vec3::new(0.9, 0.8, 0.0)
     };
-    light(b, at, hang);
+    light(b, s, at, hang);
 }
 
 /// Draws a narrow tower house: a furnished ground room under a tall windowed block and a pointed roof.
@@ -90,20 +90,23 @@ pub fn tower(b: &mut Build, st: &Style) {
         window(b, out * 1.9, out, st, false);
     }
     b.base_y -= 3.4;
-    b.cap_roof(
-        st,
-        (Vec3::new(-2.3, 7.4, -2.3), Vec3::new(2.3, 7.4, 2.3)),
-        2.6,
-        0.9,
-    );
+    let block = (Vec3::new(-1.9, 7.4, -1.9), Vec3::new(1.9, 7.4, 1.9));
+    b.cap_roof(st, block, 2.6, 0.9);
 }
 
-/// Draws the bell turret above the hall door.
+/// Draws the bell turret above the hall door, on a gallery floor that reaches the front and both end walls.
+/// The turret stands a little out of the front wall, so that its face is not in the plane of the wall.
 fn turret(b: &mut Build, s: &Shell, st: &Style) {
     let z = s.hz - 0.2;
+    let Vec2 { x: gx, y: gz } = s.inner();
+    b.cuboid(
+        Vec3::new(-gx, s.h - 0.2, z - 1.8),
+        Vec3::new(gx, s.h, gz),
+        Mat::deco(st.trim),
+    );
     b.cuboid(
         Vec3::new(-0.9, s.h, z - 1.6),
-        Vec3::new(0.9, 7.0, z + 0.2),
+        Vec3::new(0.9, 7.0, z + 0.25),
         Mat::deco(st.wall[1]),
     );
     b.spire(
@@ -112,7 +115,7 @@ fn turret(b: &mut Build, s: &Shell, st: &Style) {
         4,
         st.roof[0],
     );
-    let corner = |x: f32, y: f32| Vec3::new(x, y, z + 0.22);
+    let corner = |x: f32, y: f32| Vec3::new(x, y, z + 0.27);
     b.pane(
         [
             corner(-0.45, 5.2),
@@ -129,11 +132,7 @@ fn turret(b: &mut Build, s: &Shell, st: &Style) {
 pub fn hall(b: &mut Build, st: &Style) {
     let s = House::Hall.shell();
     room(b, st, &s);
-    let (lo, hi) = (
-        Vec3::new(-s.hx - 0.5, s.h, -s.hz - 0.5),
-        Vec3::new(s.hx + 0.5, s.h, s.hz + 0.5),
-    );
-    b.cap_roof(st, (lo, hi), 2.6, 0.0);
+    b.cap_roof(st, s.tops(s.h), 2.6, 0.0);
     turret(b, &s, st);
     banquet(b, &s, st);
 }

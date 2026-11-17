@@ -55,6 +55,8 @@ pub const WALL_REACH: f32 = 0.4;
 pub struct LightPoint {
     /// Position of the flame or lamp.
     pub pos: Vec3,
+    /// Rotation that stands the light upright where it is.
+    pub rot: Quat,
     /// Which kind of light.
     pub kind: LightKind,
 }
@@ -63,7 +65,11 @@ impl Build<'_> {
     /// Records a light of `kind` at the local point `at`.
     pub fn glow(&mut self, kind: LightKind, at: Vec3) {
         let pos = self.pt(at);
-        self.lights.push(LightPoint { pos, kind });
+        self.lights.push(LightPoint {
+            pos,
+            rot: Quat::IDENTITY,
+            kind,
+        });
     }
 
     /// Adds a standing torch on a wooden post whose foot is at the local point `base`.

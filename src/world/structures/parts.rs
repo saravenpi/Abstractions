@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 use super::brush::{Build, Mat, Part, Shape};
 use super::palette::STONE;
+use super::tags::Tag;
 use crate::world::solids::{cone, icosa, prism};
 
 /// Steepest walkable ramp slope, rise over run.
@@ -33,7 +34,7 @@ impl Build<'_> {
     pub fn pillar(&mut self, base: Vec3, size: Vec2, sides: u32, mat: Mat) {
         let color = self.color(mat.rgb, 1.0);
         let at = self.pt(base);
-        prism(&mut self.mesh, at, size, sides, color);
+        self.tagged(Tag::Round, |b| prism(&mut b.mesh, at, size, sides, color));
         if mat.solid {
             let pos = self.pt(base + Vec3::Y * size.y * 0.5);
             self.parts.push(Part {
@@ -48,7 +49,7 @@ impl Build<'_> {
     pub fn spire(&mut self, base: Vec3, size: Vec2, sides: u32, rgb: [f32; 3]) {
         let color = self.color(rgb, 1.0);
         let at = self.pt(base);
-        cone(&mut self.mesh, at, size, sides, color);
+        self.tagged(Tag::Round, |b| cone(&mut b.mesh, at, size, sides, color));
     }
 
     /// Adds a boulder on the ground at the local point `(x, z)`.
@@ -73,33 +74,6 @@ impl Build<'_> {
         });
         let top = ring.fold(self.ground_at(0.0, 0.0), f32::max);
         self.base_y = top + lift;
-    }
-
-    /// Adds a gabled roof with its ridge along local x. Eaves sit at `lo.y`, between `lo.z` and `hi.z`.
-    pub fn gable(&mut self, lo: Vec3, hi: Vec3, rise: f32, mat: Mat) {
-        let (mid, half) = ((lo.z + hi.z) * 0.5, (hi.z - lo.z) * 0.5);
-        let a = [lo.x, hi.x].map(|x| self.pt(Vec3::new(x, lo.y, lo.z)));
-        let b = [lo.x, hi.x].map(|x| self.pt(Vec3::new(x, lo.y, hi.z)));
-        let r = [lo.x, hi.x].map(|x| self.pt(Vec3::new(x, lo.y + rise, mid)));
-        let (front, back) = (
-            self.dir(Vec3::new(0.0, half, rise)),
-            self.dir(Vec3::new(0.0, half, -rise)),
-        );
-        let (top, under, end) = (
-            self.color(mat.rgb, 1.05),
-            self.color(mat.rgb, 0.65),
-            self.color(mat.rgb, 0.85),
-        );
-        for (quad, out) in [
-            ([b[0], b[1], r[1], r[0]], front),
-            ([a[1], a[0], r[0], r[1]], back),
-        ] {
-            self.sheet_quad(quad, out, [top, under]);
-        }
-        for (i, out) in [Vec3::NEG_X, Vec3::X].into_iter().enumerate() {
-            let out = self.dir(out);
-            self.sheet_tri([a[i], b[i], r[i]], out, [end, under]);
-        }
     }
 
     /// Adds a ramp from the local point `at`, heading along local +z down to the ground.

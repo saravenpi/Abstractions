@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use bevy::render::render_resource::Face;
 use bevy::solari::prelude::RaytracingMesh3d;
 
+use super::Embedded;
 use super::flame::{SHELL_COLORS, emitter, pose, radiance, shells, teardrop};
 use super::flicker::power;
 use super::glow::{LightKind, LightPoint};
@@ -111,12 +112,13 @@ pub fn setup(
     });
 }
 
-/// Spawns one switched-off light entity per point as a child of `chunk`.
-pub fn spawn_lights(commands: &mut Commands, chunk: Entity, points: &[LightPoint]) {
+/// Spawns one switched-off light entity per point as a child of `chunk`, marked [`Embedded`] when the
+/// points already are in the frame of the chunk.
+pub fn spawn_lights(commands: &mut Commands, chunk: Entity, points: &[LightPoint], rigid: bool) {
     commands.entity(chunk).with_children(|c| {
         for p in points {
             let phase = (p.pos.x * 12.9898 + p.pos.z * 78.233).sin() * 43.0;
-            c.spawn((
+            let mut light = c.spawn((
                 Glow {
                     kind: p.kind,
                     phase,
@@ -131,9 +133,12 @@ pub fn spawn_lights(commands: &mut Commands, chunk: Entity, points: &[LightPoint
                     shadow_maps_enabled: false,
                     ..default()
                 },
-                Transform::from_translation(p.pos),
+                Transform::from_translation(p.pos).with_rotation(p.rot),
                 Visibility::Hidden,
             ));
+            if rigid {
+                light.insert(Embedded);
+            }
         }
     });
 }

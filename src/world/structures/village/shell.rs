@@ -5,7 +5,10 @@ use bevy::prelude::*;
 use super::kinds::House;
 use super::style::{Flavor, Style};
 use crate::world::structures::brush::{Build, Mat};
+use crate::world::structures::doors::Doorway;
+use crate::world::structures::eaves::Walls;
 use crate::world::structures::palette::PLANK;
+use crate::world::structures::tags::Tag;
 
 /// Wall thickness.
 pub const T: f32 = 0.3;
@@ -36,6 +39,14 @@ impl Shell {
     /// Returns the half sizes of the floor inside the walls, along x and z.
     pub fn inner(&self) -> Vec2 {
         Vec2::new(self.hx - T, self.hz - T)
+    }
+
+    /// Returns the outer wall faces at height `y`, the corners a roof rests on.
+    pub fn tops(&self, y: f32) -> Walls {
+        (
+            Vec3::new(-self.hx, y, -self.hz),
+            Vec3::new(self.hx, y, self.hz),
+        )
     }
 }
 
@@ -84,17 +95,15 @@ impl House {
 pub fn walls(b: &mut Build, s: &Shell, mat: Mat) {
     let (hx, hz, h) = (s.hx, s.hz, s.h);
     let (d0, d1) = (s.door - s.gap * 0.5, s.door + s.gap * 0.5);
-    b.boxes(
-        &[
-            ([-hx, 0.0, -hz], [hx, h, -hz + T]),
-            ([-hx, 0.0, -hz + T], [-hx + T, h, hz]),
-            ([hx - T, 0.0, -hz + T], [hx, h, hz]),
-            ([-hx + T, 0.0, hz - T], [d0, h, hz]),
-            ([d1, 0.0, hz - T], [hx - T, h, hz]),
-            ([d0, s.door_h, hz - T], [d1, h, hz]),
-        ],
-        mat,
-    );
+    let list = [
+        ([-hx, 0.0, -hz], [hx, h, -hz + T]),
+        ([-hx, 0.0, -hz + T], [-hx + T, h, hz]),
+        ([hx - T, 0.0, -hz + T], [hx, h, hz]),
+        ([-hx + T, 0.0, hz - T], [d0, h, hz]),
+        ([d1, 0.0, hz - T], [hx - T, h, hz]),
+        ([d0, s.door_h, hz - T], [d1, h, hz]),
+    ];
+    b.tagged(Tag::Wall, |b| b.boxes(&list, mat));
 }
 
 /// Draws the foundation platform (or a stilt deck on posts) and the plank floor inside.
@@ -129,7 +138,7 @@ pub fn plinth(b: &mut Build, s: &Shell, st: &Style) {
     );
 }
 
-/// Draws the stairs down from the doorway and the door frame.
+/// Draws the stairs down from the front of the platform, in line with the doorway.
 pub fn entrance(b: &mut Build, s: &Shell, st: &Style) {
     let z = s.hz + s.front + 0.5;
     let low = b.ground_at(s.door, z + 1.6) - b.base_y;
@@ -141,23 +150,14 @@ pub fn entrance(b: &mut Build, s: &Shell, st: &Style) {
             Mat::solid(st.base),
         );
     }
-    let (d0, d1) = (s.door - s.gap * 0.5, s.door + s.gap * 0.5);
-    let t = Mat::deco(st.trim);
-    b.boxes(
-        &[
-            (
-                [d0 - 0.12, 0.0, s.hz - T - 0.02],
-                [d0, s.door_h, s.hz + 0.06],
-            ),
-            (
-                [d1, 0.0, s.hz - T - 0.02],
-                [d1 + 0.12, s.door_h, s.hz + 0.06],
-            ),
-            (
-                [d0 - 0.12, s.door_h, s.hz - T - 0.02],
-                [d1 + 0.12, s.door_h + 0.12, s.hz + 0.06],
-            ),
-        ],
-        t,
-    );
+}
+
+/// Draws the door frame around the doorway of the walls.
+pub fn frame(b: &mut Build, s: &Shell, st: &Style) {
+    let door = Doorway {
+        x: (s.door - s.gap * 0.5, s.door + s.gap * 0.5),
+        top: s.door_h,
+        z: (s.hz - T, s.hz),
+    };
+    b.door_frame(&door, st.trim);
 }

@@ -118,11 +118,19 @@ pub fn hearth(b: &mut Build, s: &Shell) {
     b.glow(LightKind::Hearth, Vec3::new(x - 0.32, 0.45, 0.0));
 }
 
-/// Draws the room light: a lantern hanging from the ceiling point `at` when `hang`, else a candle standing on `at`.
+/// Draws the room light: when `hang`, a lantern on a chain under a tie beam that spans the room of `s` from the
+/// back wall to the front wall at the height of `at`, else a candle standing on `at`.
 /// The lantern glass closes around its flame, so the light only reaches the room.
-pub fn light(b: &mut Build, at: Vec3, hang: bool) {
+pub fn light(b: &mut Build, s: &Shell, at: Vec3, hang: bool) {
     let half = Vec3::new(0.1, 0.0, 0.1);
     if hang {
+        let (beam, z) = (Vec3::new(0.07, 0.14, 0.0), Vec3::Z * s.inner().y);
+        let top = Vec3::new(at.x, at.y - 0.005, 0.0);
+        b.cuboid(
+            top - beam - z,
+            top + Vec3::X * beam.x + z,
+            Mat::deco(DARK_WOOD),
+        );
         let chain = Vec2::new(0.02, 0.4);
         b.pillar(at - Vec3::Y * 0.4, chain, 4, Mat::deco(DARK_WOOD));
         b.cuboid(

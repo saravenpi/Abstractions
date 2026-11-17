@@ -5,6 +5,8 @@ use bevy::prelude::*;
 use super::brush::{Build, Mat};
 use super::dress::{barrel, crate_at, fire, on_ground, seat};
 use super::palette::{CANVAS, DARK_WOOD, STONE_DARK, WOOD};
+use super::roofs::lean_height;
+use super::tags::Tag;
 use crate::world::solids::{frustum, icosa};
 
 /// Rug and awning stripe colors of the caravan.
@@ -43,7 +45,7 @@ fn log_pile(b: &mut Build) {
     ];
     for (i, (y, z)) in rows.into_iter().enumerate() {
         let base = on_ground(b, -2.0, -4.0 + z);
-        let len = 1.1 + (i % 2) as f32 * 0.1;
+        let len = 1.06 + i as f32 * 0.035;
         let (lo, hi) = (
             Vec3::new(-len, y - 0.1, -0.22),
             Vec3::new(len, y + 0.4, 0.22),
@@ -63,7 +65,7 @@ fn stump(b: &mut Build) {
     );
     let handle = (Vec3::new(-0.04, 0.5, -0.5), Vec3::new(0.04, 0.6, 0.3));
     b.cuboid(at + handle.0, at + handle.1, Mat::deco(WOOD));
-    let head = (Vec3::new(-0.04, 0.5, 0.1), Vec3::new(0.04, 0.78, 0.4));
+    let head = (Vec3::new(-0.05, 0.48, 0.1), Vec3::new(0.05, 0.78, 0.4));
     b.cuboid(at + head.0, at + head.1, Mat::deco(STONE_DARK));
 }
 
@@ -87,21 +89,17 @@ pub fn hunter(b: &mut Build) {
     seat(b, base, 1.4);
 }
 
-/// Adds the striped awning on four poles.
+/// Adds the striped awning on four poles that reach up to it.
 fn awning(b: &mut Build) {
+    let (lo, hi) = (Vec3::new(-2.9, 2.3, -2.1), Vec3::new(2.9, 2.3, 2.1));
     for (x, z) in [(-2.8, -1.9), (2.8, -1.9), (-2.8, 1.9), (2.8, 1.9)] {
-        b.pillar(
-            Vec3::new(x, -0.3, z),
-            Vec2::new(0.09, 2.7),
-            4,
-            Mat::solid(DARK_WOOD),
-        );
+        let (foot, top) = (Vec3::new(x, -0.3, z), lean_height(lo, hi, 0.5, z));
+        let size = Vec2::new(0.09, top + 0.3);
+        b.tagged(Tag::Post, |b| {
+            b.pillar(foot, size, 4, Mat::solid(DARK_WOOD))
+        });
     }
-    for (i, rgb) in STRIPES.iter().enumerate() {
-        let x = -2.9 + i as f32 * 1.45;
-        let (lo, hi) = (Vec3::new(x, 2.3, -2.1), Vec3::new(x + 1.45, 2.3, 2.1));
-        b.lean_to(lo, hi, 0.5, Mat::deco(*rgb));
-    }
+    b.awning(lo, hi, 0.5, &STRIPES);
 }
 
 /// Adds an awning on poles with crates, a barrel and two rugs.

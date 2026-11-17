@@ -5,6 +5,7 @@ use std::f32::consts::TAU;
 use bevy::prelude::*;
 
 use super::site::Kind;
+use super::village::REACH;
 use crate::world::{Biome, Surface, Terrain};
 
 /// How the floor height of a structure is chosen.
@@ -91,10 +92,22 @@ const SPECS: [Spec; 10] = [
     },
 ];
 
+/// Length of the pier, which reaches farther from its origin than its footprint radius.
+const PIER: f32 = 16.0;
+
 impl Kind {
     /// Returns the site requirements of this kind. Villages have their own placement and no spec.
     pub fn spec(self) -> &'static Spec {
         &SPECS[self as usize]
+    }
+
+    /// Returns how far, in meters, a site of this kind reaches from its origin.
+    pub fn reach(self) -> f32 {
+        match self {
+            Kind::Village => REACH,
+            Kind::Dock => PIER,
+            _ => self.spec().radius,
+        }
     }
 }
 

@@ -6,14 +6,18 @@ mod frame;
 mod gravity;
 mod local;
 mod pos;
+mod rebase;
 
 #[cfg(test)]
 mod tests;
 
 pub use anchor::{Anchor, Frame};
 pub use clock::Clock;
+pub use frame::{FrameSet, on_foot};
+pub use gravity::local_gravity;
 pub use local::{altitude, up};
 pub use pos::UniPos;
+pub use rebase::{Shift, rebase_limit, rebased};
 
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;

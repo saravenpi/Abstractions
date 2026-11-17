@@ -1,7 +1,6 @@
 //! Swim state with hysteresis, the floating height with its bob, and wading speed.
 
 use super::{BODY_LENGTH, BODY_RADIUS, EYE_OFFSET};
-use crate::world::SEA_LEVEL;
 
 /// Eye height above the sea surface while floating.
 const FLOAT_EYE: f32 = 0.3;
@@ -30,14 +29,15 @@ const WADE_DEPTH: f32 = 1.2;
 /// Slowest walking speed multiplier when wading.
 const WADE_MIN: f32 = 0.65;
 
-/// Returns the body center height at which the body floats, with the bob at a given time.
+/// Returns the body center height above the sea at which the body floats, with the bob at a given time.
 pub(super) fn float_center(time: f32) -> f32 {
-    SEA_LEVEL + FLOAT_EYE - EYE_OFFSET + BOB_AMPLITUDE * (time * BOB_RATE).sin()
+    FLOAT_EYE - EYE_OFFSET + BOB_AMPLITUDE * (time * BOB_RATE).sin()
 }
 
 /// Returns whether the body swims next frame, with hysteresis around every threshold.
-pub(super) fn next_swimming(swimming: bool, center_y: f32, floor_gap: Option<f32>) -> bool {
-    let height = center_y - SEA_LEVEL;
+///
+/// `height` is the altitude of the body center above the sea.
+pub(super) fn next_swimming(swimming: bool, height: f32, floor_gap: Option<f32>) -> bool {
     if !swimming {
         return height < ENTER_CENTER;
     }
@@ -45,9 +45,9 @@ pub(super) fn next_swimming(swimming: bool, center_y: f32, floor_gap: Option<f32
     !on_floor && height <= LEAVE_CENTER
 }
 
-/// Returns the walking speed multiplier for a body in shallow water.
-pub(super) fn wade_factor(center_y: f32) -> f32 {
-    let feet_depth = SEA_LEVEL - (center_y - BODY_LENGTH * 0.5 - BODY_RADIUS);
+/// Returns the walking speed multiplier for a body in shallow water, from the altitude of its center.
+pub(super) fn wade_factor(height: f32) -> f32 {
+    let feet_depth = BODY_LENGTH * 0.5 + BODY_RADIUS - height;
     1.0 - (1.0 - WADE_MIN) * (feet_depth / WADE_DEPTH).clamp(0.0, 1.0)
 }
 
@@ -68,16 +68,16 @@ mod tests {
                 }
             }
         }
-        assert!(next_swimming(false, SEA_LEVEL - 1.0, None));
+        assert!(next_swimming(false, -1.0, None));
         assert!(next_swimming(true, float_center(0.0), None));
-        assert!(!next_swimming(true, SEA_LEVEL + 0.5, None));
+        assert!(!next_swimming(true, 0.5, None));
     }
 
     /// Wading slows the walk with depth and never below the minimum.
     #[test]
     fn wading_slows_with_depth() {
-        assert_eq!(wade_factor(SEA_LEVEL + 3.0), 1.0);
-        assert!(wade_factor(SEA_LEVEL - 0.3) < wade_factor(SEA_LEVEL + 0.5));
-        assert!((wade_factor(SEA_LEVEL - 5.0) - WADE_MIN).abs() < 1e-5);
+        assert_eq!(wade_factor(3.0), 1.0);
+        assert!(wade_factor(-0.3) < wade_factor(0.5));
+        assert!((wade_factor(-5.0) - WADE_MIN).abs() < 1e-5);
     }
 }

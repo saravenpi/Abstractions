@@ -53,3 +53,109 @@ fn globe_anchor_is_upright_at_its_spot() {
         assert!(turn.angle_between(Quat::IDENTITY) < 1e-5);
     }
 }
+
+/// Gravity is the surface value at and below sea level, a quarter of it at two radii, and
+/// points down the local vertical.
+#[test]
+fn gravity_follows_the_inverse_square() {
+    let globe = Arc::new(Globe::new(4, 3000.0, 17.5));
+    let terrain = Terrain::on(globe.clone(), globe.face_chart(Face::NegZ)).around(10.0, 20.0);
+    let anchor = Anchor::surface(
+        Universe::new(4).home(),
+        &terrain,
+        Vec3::new(10.0, 0.0, 20.0),
+    );
+    let surface = Vec3::new(10.0, 0.0, 20.0);
+    let pull = local_gravity(&anchor, &globe, surface);
+    assert!((pull.length() - 17.5).abs() < 1e-4);
+    assert!((pull.normalize() + up(&anchor, surface)).length() < 1e-6);
+    let high = surface + up(&anchor, surface) * 3000.0;
+    assert!((local_gravity(&anchor, &globe, high).length() - 17.5 / 4.0).abs() < 1e-3);
+    let deep = surface - up(&anchor, surface) * 40.0;
+    assert!((local_gravity(&anchor, &globe, deep).length() - 17.5).abs() < 1e-4);
+    let flat = Anchor::surface(Universe::new(4).home(), &Terrain::new(4), Vec3::ZERO);
+    assert_eq!(
+        local_gravity(&flat, &globe, Vec3::new(5.0, 0.0, 5.0)),
+        Vec3::NEG_Y * 17.5
+    );
+}
+
+/// Returns an app that only copies placed poses, a surface anchor on a 6 km globe that is not
+/// in the app yet, and a pose near the anchored spot.
+fn placing() -> (App, Anchor, Placed) {
+    let globe = Arc::new(Globe::new(4, 6000.0, 22.0));
+    let terrain = Terrain::on(globe.clone(), globe.face_chart(Face::PosX)).around(300.0, 80.0);
+    let anchor = Anchor::surface(
+        Universe::new(4).home(),
+        &terrain,
+        Vec3::new(300.0, 4.0, 80.0),
+    );
+    let pose = Placed {
+        pos: terrain.embed(312.0, 9.0, 71.0),
+        rot: DQuat::from_rotation_x(0.4),
+    };
+    let mut app = App::new();
+    app.add_systems(Update, frame::sync_placed);
+    (app, anchor, pose)
+}
+
+/// A placed entity lands at the render pose of its planet-frame pose and keeps its scale. Without
+/// an anchor nothing moves.
+#[test]
+fn placed_poses_reach_transforms() {
+    let (mut app, anchor, pose) = placing();
+    let scaled = Transform::from_scale(Vec3::splat(2.0));
+    let entity = app.world_mut().spawn((pose, scaled)).id();
+    app.update();
+    assert_eq!(*app.world().get::<Transform>(entity).unwrap(), scaled);
+    app.insert_resource(anchor);
+    app.update();
+    let expected = Transform {
+        translation: anchor.to_render(pose.pos),
+        rotation: anchor.rotation_to_render(pose.rot),
+        scale: Vec3::splat(2.0),
+    };
+    assert_eq!(*app.world().get::<Transform>(entity).unwrap(), expected);
+}
+
+/// A placed entity follows a new anchor and a new pose, and is left alone otherwise.
+#[test]
+fn placed_poses_follow_changes() {
+    let (mut app, anchor, pose) = placing();
+    app.insert_resource(anchor);
+    let entity = app.world_mut().spawn((pose, Transform::default())).id();
+    app.update();
+    let moved = rebased(&anchor, 6000.0, Vec3::new(390.0, 0.0, 80.0)).unwrap();
+    app.insert_resource(moved);
+    app.update();
+    let seen = *app.world().get::<Transform>(entity).unwrap();
+    assert_eq!(seen.translation, moved.to_render(pose.pos));
+    let next = DVec3::new(0.0, 6001.0, 0.0);
+    app.world_mut().get_mut::<Placed>(entity).unwrap().pos = next;
+    app.update();
+    let seen = *app.world().get::<Transform>(entity).unwrap();
+    assert_eq!(seen.translation, moved.to_render(next));
+    app.world_mut()
+        .get_mut::<Transform>(entity)
+        .unwrap()
+        .translation = Vec3::ONE;
+    app.update();
+    assert_eq!(
+        app.world().get::<Transform>(entity).unwrap().translation,
+        Vec3::ONE
+    );
+}
+
+/// The frame systems fit their schedules: a frame and a fixed tick run before any world exists.
+#[test]
+fn frame_systems_run_without_a_world() {
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, plugin));
+    let entity = app.world_mut().spawn(Transform::default()).id();
+    app.update();
+    app.world_mut().run_schedule(FixedFirst);
+    assert_eq!(
+        *app.world().get::<Transform>(entity).unwrap(),
+        Transform::default()
+    );
+}

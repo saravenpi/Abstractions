@@ -5,14 +5,23 @@ mod controller;
 mod dive;
 mod ground;
 mod intent;
+mod seat;
 mod spawn;
 mod swim;
+mod upright;
+
+#[cfg(test)]
+mod tests;
+
+pub use controller::Motion;
+pub use seat::{place, seat};
 
 use bevy::prelude::*;
 
 /// Marker for the player body entity.
 ///
-/// The body origin is the capsule center. The camera is a child at [`EYE_OFFSET`] above it.
+/// The body origin is the capsule center and its +Y is the local up. The camera, marked
+/// [`crate::render::GameCamera`], is a child at [`EYE_OFFSET`] above it.
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct Player;
 

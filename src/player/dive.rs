@@ -4,7 +4,6 @@ use bevy::prelude::*;
 
 use super::intent::approach;
 use super::swim::float_center;
-use crate::world::SEA_LEVEL;
 
 /// Swimming speed in meters per second.
 const SWIM_SPEED: f32 = 3.5;
@@ -30,7 +29,7 @@ const SWIM_UP_SPEED: f32 = 4.0;
 /// Upward speed while the jump key is held near the surface.
 const SURFACE_HOP_SPEED: f32 = 6.5;
 
-/// Depth of the body center below the sea at which the surface hop starts.
+/// Depth of the body center below the sea above which the surface hop starts.
 const HOP_DEPTH: f32 = 0.6;
 
 /// What the swimmer asks for this frame.
@@ -46,12 +45,12 @@ pub(super) fn swim_wish(forward: f32, right: f32, yaw: f32, pitch: f32) -> Vec3 
     (view * Vec3::new(right, 0.0, -forward)).normalize_or_zero()
 }
 
-/// Returns the vertical speed the body aims for.
-fn vertical_target(center_y: f32, stroke_y: f32, up: bool, time: f32) -> f32 {
+/// Returns the vertical speed the body aims for, from the altitude `height` of its center above the sea.
+fn vertical_target(height: f32, stroke_y: f32, up: bool, time: f32) -> f32 {
     let target = float_center(time);
-    let spring = ((target - center_y) * SPRING).clamp(-MAX_SPRING_SPEED, MAX_SPRING_SPEED);
+    let spring = ((target - height) * SPRING).clamp(-MAX_SPRING_SPEED, MAX_SPRING_SPEED);
     if up {
-        let hop = if center_y > SEA_LEVEL - HOP_DEPTH {
+        let hop = if height > -HOP_DEPTH {
             SURFACE_HOP_SPEED
         } else {
             SWIM_UP_SPEED
@@ -61,17 +60,19 @@ fn vertical_target(center_y: f32, stroke_y: f32, up: bool, time: f32) -> f32 {
     if stroke_y < 0.0 {
         return stroke_y;
     }
-    if stroke_y > 0.0 && center_y < target {
+    if stroke_y > 0.0 && height < target {
         return spring.max(stroke_y);
     }
     spring
 }
 
-/// Returns the swimming velocity for this step.
+/// Returns the swimming velocity for this step, in the upright frame of the body.
+///
+/// `height` is the altitude of the body center above the sea.
 pub(super) fn swim_velocity(
     current: Vec3,
     input: &SwimInput,
-    center_y: f32,
+    height: f32,
     time: f32,
     dt: f32,
 ) -> Vec3 {
@@ -87,7 +88,7 @@ pub(super) fn swim_velocity(
         SWIM_ACCEL,
         dt,
     );
-    let wanted = vertical_target(center_y, stroke.y, input.up, time);
+    let wanted = vertical_target(height, stroke.y, input.up, time);
     let vertical = current.y + (wanted - current.y) * (1.0 - (-VERTICAL_RATE * dt).exp());
     Vec3::new(flat.x, vertical, flat.z)
 }
@@ -109,7 +110,7 @@ mod tests {
     /// An idle swimmer rises toward the float height and the jump key swims up.
     #[test]
     fn buoyancy_and_swim_up() {
-        let deep = SEA_LEVEL - 3.0;
+        let deep = -3.0;
         assert!(vertical_target(deep, 0.0, false, 0.0) > 0.0);
         assert!(vertical_target(deep, 0.0, false, 0.0) <= MAX_SPRING_SPEED);
         assert_eq!(vertical_target(deep, 0.0, true, 0.0), SWIM_UP_SPEED);

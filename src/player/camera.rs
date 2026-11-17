@@ -5,9 +5,12 @@ use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 
 use super::Player;
+use super::controller::Motion;
+use super::upright::pitch_of;
 use crate::render::GameCamera;
 use crate::screens::playing;
 use crate::settings::{Persistent, Settings};
+use crate::space::on_foot;
 
 /// Radians of rotation per mouse pixel at sensitivity 1.0.
 const RADIANS_PER_PIXEL: f32 = 0.0022;
@@ -23,22 +26,22 @@ fn look_angles(yaw: f32, pitch: f32, delta: Vec2, scale: f32, invert_y: bool) ->
     (new_yaw, new_pitch)
 }
 
-/// Turns the body with horizontal mouse motion and tilts the camera with vertical motion.
-fn mouse_look(
+/// Turns the heading around the local up with horizontal mouse motion and tilts the camera with
+/// vertical motion. The controller turns the body to the heading in the same frame.
+pub(super) fn mouse_look(
     motion: Res<AccumulatedMouseMotion>,
     settings: Res<Persistent<Settings>>,
-    mut body: Single<&mut Transform, (With<Player>, Without<GameCamera>)>,
-    mut camera: Single<&mut Transform, (With<GameCamera>, Without<Player>)>,
+    mut heading: Single<&mut Motion, With<Player>>,
+    mut camera: Single<&mut Transform, With<GameCamera>>,
 ) {
     if motion.delta == Vec2::ZERO {
         return;
     }
     let controls = &settings.controls;
-    let (yaw, _, _) = body.rotation.to_euler(EulerRot::YXZ);
-    let (_, pitch, _) = camera.rotation.to_euler(EulerRot::YXZ);
+    let (yaw, pitch) = (heading.yaw, pitch_of(&camera));
     let scale = RADIANS_PER_PIXEL * controls.mouse_sensitivity;
     let (yaw, pitch) = look_angles(yaw, pitch, motion.delta, scale, controls.invert_y);
-    body.rotation = Quat::from_rotation_y(yaw);
+    heading.yaw = yaw;
     camera.rotation = Quat::from_rotation_x(pitch);
 }
 
@@ -70,7 +73,7 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         Update,
         (
-            mouse_look.run_if(playing),
+            mouse_look.run_if(playing).run_if(on_foot),
             grab_cursor.run_if(playing),
             release_cursor.run_if(not(playing)),
         ),

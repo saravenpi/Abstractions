@@ -5,9 +5,6 @@ use bevy::prelude::*;
 use super::controller::Motion;
 use crate::settings::Keymap;
 
-/// Gravity in meters per second squared.
-const GRAVITY: f32 = 22.0;
-
 /// Upward speed of a jump.
 const JUMP_SPEED: f32 = 7.0;
 
@@ -54,8 +51,9 @@ pub(super) fn read_intent(keys: &ButtonInput<KeyCode>, map: &Keymap, yaw: f32) -
     }
 }
 
-/// Returns the vertical speed on land and updates the coyote timer.
-pub(super) fn land_vertical(motion: &mut Motion, intent: &Intent, dt: f32) -> f32 {
+/// Returns the vertical speed on land under `gravity`, in meters per second squared, and updates
+/// the coyote timer.
+pub(super) fn land_vertical(motion: &mut Motion, intent: &Intent, gravity: f32, dt: f32) -> f32 {
     motion.coyote = if motion.grounded {
         COYOTE_TIME
     } else {
@@ -69,7 +67,7 @@ pub(super) fn land_vertical(motion: &mut Motion, intent: &Intent, dt: f32) -> f3
     if motion.grounded {
         return 0.0;
     }
-    (motion.velocity.y - GRAVITY * dt).max(-TERMINAL_SPEED)
+    (motion.velocity.y - gravity * dt).max(-TERMINAL_SPEED)
 }
 
 #[cfg(test)]
@@ -100,11 +98,14 @@ mod tests {
             coyote: -1.0,
             ..default()
         };
-        assert!(land_vertical(&mut airborne, &intent, 0.016) < JUMP_SPEED);
+        assert!(land_vertical(&mut airborne, &intent, 22.0, 0.016) < JUMP_SPEED);
         let mut grounded = Motion {
             grounded: true,
             ..default()
         };
-        assert_eq!(land_vertical(&mut grounded, &intent, 0.016), JUMP_SPEED);
+        assert_eq!(
+            land_vertical(&mut grounded, &intent, 22.0, 0.016),
+            JUMP_SPEED
+        );
     }
 }

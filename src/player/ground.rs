@@ -1,4 +1,6 @@
-//! Ground detection with a downward shape cast, slope projection and ground snapping.
+//! Ground detection with a shape cast down the local vertical, slope projection and ground snapping.
+//!
+//! Normals and velocities here are in the upright frame of the body, where +Y is the local up.
 
 use avian3d::prelude::*;
 use bevy::prelude::*;
@@ -24,24 +26,28 @@ pub(super) struct Ground {
     pub(super) gap: f32,
 }
 
-/// Casts the capsule straight down and returns the nearest surface within snap range.
+/// Casts the capsule down the local vertical and returns the nearest surface within snap range.
+///
+/// `tilt` turns the upright frame of the body into render space.
 pub(super) fn probe(
     query: &SpatialQuery,
     collider: &Collider,
     transform: &Transform,
+    tilt: Quat,
     filter: &SpatialQueryFilter,
 ) -> Option<Ground> {
+    let down = Dir3::new(tilt * Vec3::NEG_Y).unwrap_or(Dir3::NEG_Y);
     query
         .cast_shape(
             collider,
             transform.translation,
             transform.rotation,
-            Dir3::NEG_Y,
+            down,
             &ShapeCastConfig::from_max_distance(SNAP_DISTANCE),
             filter,
         )
         .map(|hit| Ground {
-            normal: hit.normal1,
+            normal: tilt.inverse() * hit.normal1,
             gap: hit.distance,
         })
 }

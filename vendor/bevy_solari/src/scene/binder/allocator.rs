@@ -242,4 +242,21 @@ mod tests {
         assert!(!bindings.contains(&7));
         assert_eq!(bindings.acquire(8, 2, || 22), Some(0));
     }
+    #[test]
+    fn retained_binding_array_never_hands_out_a_slot_past_capacity() {
+        let mut bindings = RetainedBindingArray::new();
+
+        for key in 0..4 {
+            assert_eq!(bindings.acquire(key, 4, || key), Some(key));
+        }
+        assert_eq!(bindings.acquire(4, 4, || 4), None);
+        assert_eq!(bindings.iter().count(), 4);
+
+        // A key that already holds a slot is still shared at capacity
+        assert_eq!(bindings.acquire(2, 4, || 99), Some(2));
+
+        // A freed slot is reused, so the index stays below the capacity
+        bindings.release(&0);
+        assert_eq!(bindings.acquire(5, 4, || 5), Some(0));
+    }
 }

@@ -21,6 +21,27 @@ use core::num::NonZeroU32;
 use tracing::{info_span, warn};
 
 pub const MAX_TEXTURE_COUNT: NonZeroU32 = NonZeroU32::new(5_000).unwrap();
+
+/// Texture and sampler slots bound on a device whose sampler binding array limit is below
+/// [`MAX_TEXTURE_COUNT`].
+///
+/// Apple7 and Apple8 GPUs (M1, M2) allow 996 samplers per stage from an argument buffer in Apple's
+/// Metal Feature Set Tables, while wgpu 30 reports 1024 for them. 256 stays under both, and leaves
+/// room for the samplers of the other bind groups of the same stage.
+pub const CONSTRAINED_TEXTURE_COUNT: u32 = 256;
+
+/// Length of the texture and sampler binding arrays for a device, given its
+/// `max_binding_array_sampler_elements_per_shader_stage` limit.
+///
+/// Devices that allow [`MAX_TEXTURE_COUNT`] samplers get exactly that. Any other device gets at
+/// most [`CONSTRAINED_TEXTURE_COUNT`], and never more than its own limit.
+pub fn texture_slot_capacity(sampler_array_limit: u32) -> u32 {
+    if sampler_array_limit >= MAX_TEXTURE_COUNT.get() {
+        MAX_TEXTURE_COUNT.get()
+    } else {
+        sampler_array_limit.min(CONSTRAINED_TEXTURE_COUNT)
+    }
+}
 const TEXTURE_MAP_NONE: u32 = u32::MAX;
 
 /// The four textures a [`StandardMaterial`] can reference, in [`GpuMaterial`] field order.
@@ -46,6 +67,8 @@ impl_atomic_pod!(GpuMaterial, GpuMaterialBlob);
 
 /// Stable material and texture slots, plus the retry state for assets that aren't ready yet.
 pub struct AssetState {
+    /// Length of the texture and sampler binding arrays in the bind group layout.
+    texture_capacity: u32,
     pub textures: RetainedBindingArray<AssetId<Image>, (TextureView, Sampler)>,
     pub materials: AtomicSparseBufferVec<GpuMaterial>,
     pub material_slots: SlotAllocator<AssetId<StandardMaterial>>,
@@ -58,8 +81,9 @@ pub struct AssetState {
 }
 
 impl AssetState {
-    pub fn new() -> Self {
+    pub fn new(texture_capacity: u32) -> Self {
         Self {
+            texture_capacity,
             textures: RetainedBindingArray::new(),
             materials: AtomicSparseBufferVec::new(BufferUsages::STORAGE, "solari_materials".into()),
             material_slots: SlotAllocator::new(),
@@ -153,33 +177,31 @@ impl AssetState {
             *slot = Some(image_id);
         }
 
-        if self.new_texture_count(&textures) > self.textures.vacancies(MAX_TEXTURE_COUNT.get()) {
+        if self.new_texture_count(&textures) > self.textures.vacancies(self.texture_capacity) {
             // At the limit, release the old set once so a replacement can reuse those slots
             self.release_material_textures(material_id);
             self.material_textures.remove(&material_id);
 
-            if self.new_texture_count(&textures) > self.textures.vacancies(MAX_TEXTURE_COUNT.get())
+            if self.new_texture_count(&textures) > self.textures.vacancies(self.texture_capacity)
             {
                 once!(warn!(
                     "Solari scene needs more than {} textures. Materials past that limit will not \
                      be rendered.",
-                    MAX_TEXTURE_COUNT.get()
+                    self.texture_capacity
                 ));
                 self.defer_material(material_id, instances);
                 return;
             }
         }
 
+        let texture_capacity = self.texture_capacity;
         let mut texture_ids = [TEXTURE_MAP_NONE; 4];
         for (texture_id, image_id) in texture_ids.iter_mut().zip(textures) {
             let Some(image_id) = image_id else { continue };
             let image = texture_assets.get(image_id).unwrap();
-            if let Some(slot) = self
-                .textures
-                .acquire(image_id, MAX_TEXTURE_COUNT.get(), || {
-                    (image.texture_view.clone(), image.sampler.clone())
-                })
-            {
+            if let Some(slot) = self.textures.acquire(image_id, texture_capacity, || {
+                (image.texture_view.clone(), image.sampler.clone())
+            }) {
                 *texture_id = slot;
             }
         }
@@ -261,5 +283,21 @@ impl AssetState {
         for image_id in textures.into_iter().flatten() {
             self.textures.release(&image_id);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{texture_slot_capacity, CONSTRAINED_TEXTURE_COUNT, MAX_TEXTURE_COUNT};
+
+    #[test]
+    fn texture_slot_capacity_never_exceeds_the_device_limit() {
+        assert_eq!(texture_slot_capacity(500_000), MAX_TEXTURE_COUNT.get());
+        assert_eq!(texture_slot_capacity(5_000), MAX_TEXTURE_COUNT.get());
+        assert_eq!(texture_slot_capacity(4_999), CONSTRAINED_TEXTURE_COUNT);
+        assert_eq!(texture_slot_capacity(1_024), CONSTRAINED_TEXTURE_COUNT);
+        assert_eq!(texture_slot_capacity(996), CONSTRAINED_TEXTURE_COUNT);
+        assert_eq!(texture_slot_capacity(128), 128);
+        assert_eq!(texture_slot_capacity(0), 0);
     }
 }

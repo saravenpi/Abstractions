@@ -6,7 +6,8 @@ mod lights;
 mod tlas;
 mod tlas_build;
 
-use self::assets::{AssetState, MAX_TEXTURE_COUNT};
+pub use self::assets::texture_slot_capacity;
+use self::assets::AssetState;
 pub use self::bind_group::prepare_raytracing_scene_bind_group;
 use self::bind_group::{BindGroupCacheState, GpuEnvironmentMapLight};
 use self::instances::{
@@ -31,6 +32,7 @@ use bevy_render::{
     renderer::{RenderDevice, RenderQueue},
     texture::GpuImage,
 };
+use core::num::NonZeroU32;
 use tracing::info_span;
 
 /// Insert this resource into the render world to make the raytracing scene retain the previous
@@ -66,6 +68,15 @@ impl FromWorld for RaytracingSceneBindings {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
 
+        // Size the texture and sampler arrays from the device, so the layout passes validation on
+        // GPUs whose sampler binding array limit is below `MAX_TEXTURE_COUNT` (Apple M1 and M2)
+        let texture_count = NonZeroU32::new(texture_slot_capacity(
+            render_device
+                .limits()
+                .max_binding_array_sampler_elements_per_shader_stage,
+        ))
+        .unwrap_or(NonZeroU32::MIN);
+
         let bind_group_layout = BindGroupLayoutDescriptor::new(
             "raytracing_scene_bind_group_layout",
             &BindGroupLayoutEntries::sequential(
@@ -73,9 +84,8 @@ impl FromWorld for RaytracingSceneBindings {
                 (
                     storage_buffer_read_only_sized(false, None).count(MAX_MESH_SLAB_COUNT),
                     storage_buffer_read_only_sized(false, None).count(MAX_MESH_SLAB_COUNT),
-                    texture_2d(TextureSampleType::Float { filterable: true })
-                        .count(MAX_TEXTURE_COUNT),
-                    sampler(SamplerBindingType::Filtering).count(MAX_TEXTURE_COUNT),
+                    texture_2d(TextureSampleType::Float { filterable: true }).count(texture_count),
+                    sampler(SamplerBindingType::Filtering).count(texture_count),
                     storage_buffer_read_only_sized(false, None),
                     acceleration_structure(),
                     acceleration_structure(),
@@ -112,7 +122,7 @@ impl FromWorld for RaytracingSceneBindings {
         Self {
             bind_group: None,
             bind_group_layout,
-            assets: AssetState::new(),
+            assets: AssetState::new(texture_count.get()),
             instances: InstanceState::new(),
             lights: LightState::new(),
             tlas: TlasState::new(render_device),

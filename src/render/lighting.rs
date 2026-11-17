@@ -1,15 +1,16 @@
-//! The sun and moon directional lights, rotated and tinted by the day clock.
+//! The sun and moon directional lights, aimed by the real star and tinted by the palette.
 
 use bevy::camera::visibility::Visibility;
 use bevy::light::{CascadeShadowConfigBuilder, DirectionalLight, DirectionalLightShadowMap};
 use bevy::prelude::*;
 
+use super::SunDir;
 use super::palette::{Palette, srgb};
 use super::ray_tracing::RayTracing;
 use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
 
-/// Lowest light height, as a vector component, at which shadows are still cast.
+/// Lowest light height above the horizon, as a sine, at which shadows are still cast.
 const SHADOW_HEIGHT: f32 = 0.02;
 
 /// Marker for the world's directional sun light.
@@ -32,6 +33,7 @@ type MoonOnly = (With<Moon>, Without<Sun>);
 /// What one light should look like this frame.
 struct Aim {
     dir: Vec3,
+    height: f32,
     color: Color,
     lux: f32,
     shadows: bool,
@@ -43,7 +45,7 @@ impl Aim {
         transform.look_to(-self.dir, Vec3::Y);
         light.color = self.color;
         light.illuminance = self.lux;
-        let shadows = self.shadows && self.dir.y > SHADOW_HEIGHT;
+        let shadows = self.shadows && self.height > SHADOW_HEIGHT;
         if light.shadow_maps_enabled != shadows {
             light.shadow_maps_enabled = shadows;
         }
@@ -86,18 +88,21 @@ fn spawn_lights(mut commands: Commands) {
     ));
 }
 
-/// Rotates and tints both lights from the palette and applies the shadow setting.
+/// Aims the sun at the star and the moon away from it, tints both from the palette and applies
+/// the shadow setting.
 fn update_lights(
-    palette: Res<Palette>,
+    sky: (Res<Palette>, Res<SunDir>),
     settings: Res<Persistent<Settings>>,
     ray_tracing: Res<RayTracing>,
     mut suns: Query<LightParts, SunOnly>,
     mut moons: Query<LightParts, MoonOnly>,
 ) {
+    let (palette, sun) = sky;
     let shadows = settings.graphics.shadows && !ray_tracing.0;
     for (mut transform, mut light) in &mut suns {
         let aim = Aim {
-            dir: palette.sun_dir,
+            dir: sun.dir,
+            height: sun.height,
             color: srgb(palette.sun_color),
             lux: palette.sun_lux,
             shadows,
@@ -106,7 +111,8 @@ fn update_lights(
     }
     for (mut transform, mut light) in &mut moons {
         let aim = Aim {
-            dir: palette.moon_dir,
+            dir: -sun.dir,
+            height: -sun.height,
             color: Color::srgb(0.62, 0.72, 1.0),
             lux: palette.moon_lux,
             shadows,

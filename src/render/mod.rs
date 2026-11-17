@@ -1,24 +1,43 @@
 //! Low-resolution game view, color banding, day cycle, sky, lighting, fog and camera effects.
+//!
+//! The sky is a real place: the sun stands where the star is, the air thins with height, and the
+//! clouds, the stars and the other bodies of the system are drawn around the camera.
 
+mod atmosphere;
+mod bodies;
 mod camera;
 mod celestial;
 mod clock;
+mod clouds;
 mod dome;
+mod entry;
 mod lighting;
 mod lowres;
+mod observer;
 mod palette;
 mod pixelate;
 pub mod ray_tracing;
 mod sky;
+mod starfield;
+mod sun;
+mod vantage;
+
+#[cfg(test)]
+mod schedule_tests;
+#[cfg(test)]
+mod tests;
 
 pub use camera::{configure_camera, set_fov};
 pub use celestial::{daylight, moon_direction, sun_direction};
 pub use clock::DayClock;
+pub use clouds::CloudCrossing;
+pub use entry::FlightFx;
 pub use lighting::{Moon, Sun};
 pub use lowres::LowRes;
 pub use palette::Palette;
 pub use pixelate::Pixelate;
 pub use ray_tracing::RayTracing;
+pub use sun::SunDir;
 
 use bevy::prelude::*;
 
@@ -28,17 +47,44 @@ use bevy::prelude::*;
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct GameCamera;
 
+/// Returns a unit sphere that never enters the ray tracing scene, turned inside out when it is
+/// only ever seen from within.
+fn shell(inside: bool) -> Mesh {
+    let mut mesh = Sphere::new(1.0).mesh().uv(48, 24);
+    mesh.enable_raytracing = false;
+    if inside && let Err(error) = mesh.invert_winding() {
+        warn!("could not turn a sky shell inside out: {error}");
+    }
+    mesh
+}
+
+/// Writes a pose into both transforms of an entity without a parent.
+///
+/// The sky follows the camera after transform propagation, so the global transform is set by hand.
+fn pin(pose: Transform, transform: &mut Transform, global: &mut GlobalTransform) {
+    *transform = pose;
+    *global = pose.into();
+}
+
 /// Registers the render plugins.
 pub(super) fn plugin(app: &mut App) {
     app.add_plugins((
         pixelate::plugin,
         lowres::plugin,
         clock::plugin,
+        sun::plugin,
         palette::plugin,
         lighting::plugin,
         sky::plugin,
         dome::plugin,
         camera::plugin,
         ray_tracing::plugin,
+    ))
+    .add_plugins((
+        atmosphere::plugin,
+        clouds::plugin,
+        starfield::plugin,
+        bodies::plugin,
+        entry::plugin,
     ));
 }

@@ -10,6 +10,7 @@ use bevy::render::render_resource::{
 
 use super::RayTracing;
 use crate::render::Palette;
+use crate::render::vantage::Vantage;
 
 /// Share of the ambient color that comes up from the ground.
 const GROUND: f32 = 0.6;
@@ -20,15 +21,25 @@ fn texel(color: Vec3) -> [u8; 4] {
     [byte(color.x), byte(color.y), byte(color.z), 255]
 }
 
-/// Returns the six cube faces in the order +X, -X, +Y, -Y, +Z, -Z: ambient color around and above, dimmer below.
-pub fn faces(palette: &Palette) -> Vec<u8> {
-    let side = texel(palette.ambient);
-    let down = texel(palette.ambient * GROUND);
-    [side, side, side, down, side, side].concat()
+/// Returns the six cube faces in the order +X, -X, +Y, -Y, +Z, -Z: ambient color around and above,
+/// dimmer on the faces that look down, away from the local `up`.
+pub fn faces(palette: &Palette, up: Vec3) -> Vec<u8> {
+    let normals = [
+        Vec3::X,
+        Vec3::NEG_X,
+        Vec3::Y,
+        Vec3::NEG_Y,
+        Vec3::Z,
+        Vec3::NEG_Z,
+    ];
+    let shade = |normal: Vec3| 1.0 - (1.0 - GROUND) * (-normal.dot(up)).max(0.0);
+    normals
+        .map(|normal| texel(palette.ambient * shade(normal)))
+        .concat()
 }
 
-/// Builds the one-texel-per-face sky cube from the palette.
-fn cube(palette: &Palette) -> Image {
+/// Builds the one-texel-per-face sky cube from the palette and the local up.
+fn cube(palette: &Palette, up: Vec3) -> Image {
     let mut image = Image::new(
         Extent3d {
             width: 1,
@@ -36,7 +47,7 @@ fn cube(palette: &Palette) -> Image {
             depth_or_array_layers: 6,
         },
         TextureDimension::D2,
-        faces(palette),
+        faces(palette, up),
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::default(),
     );
@@ -51,13 +62,14 @@ fn cube(palette: &Palette) -> Image {
 #[derive(Resource, Default)]
 struct SkyCube(Option<Handle<Image>>);
 
-/// Returns the sky cube, creating it on first use, with its texels matching the palette.
-fn paint(images: &mut Assets<Image>, sky: &mut SkyCube, palette: &Palette) -> Handle<Image> {
+/// Returns the sky cube, creating it on first use, with its texels matching the palette and the local up.
+fn paint(images: &mut Assets<Image>, sky: &mut SkyCube, look: (&Palette, Vec3)) -> Handle<Image> {
+    let (palette, up) = look;
     let handle = sky
         .0
-        .get_or_insert_with(|| images.add(cube(palette)))
+        .get_or_insert_with(|| images.add(cube(palette, up)))
         .clone();
-    let bytes = faces(palette);
+    let bytes = faces(palette, up);
     if let Some(mut image) = images.get_mut(&handle)
         && image.data.as_deref() != Some(bytes.as_slice())
     {
@@ -69,15 +81,17 @@ fn paint(images: &mut Assets<Image>, sky: &mut SkyCube, palette: &Palette) -> Ha
 /// Gives the overlay camera the sky light, or refreshes it.
 ///
 /// Solari reads the environment map of any active camera. The overlay camera draws no 3D, so the game
-/// camera and the forward lighting of creatures and particles stay exactly as they are.
+/// camera and the forward lighting of creatures and particles stay exactly as they are. The palette
+/// already carries the real sun direction and the thinning of the light with height.
 fn show(
     mut commands: Commands,
-    palette: Res<Palette>,
+    look: (Res<Palette>, Res<Vantage>),
     mut images: ResMut<Assets<Image>>,
     mut sky: ResMut<SkyCube>,
     mut cameras: Query<(Entity, Option<&mut EnvironmentMapLight>), With<Camera2d>>,
 ) {
-    let handle = paint(&mut images, &mut sky, &palette);
+    let (palette, vantage) = look;
+    let handle = paint(&mut images, &mut sky, (&palette, vantage.up));
     let light = EnvironmentMapLight {
         diffuse_map: handle.clone(),
         specular_map: handle,
@@ -126,7 +140,7 @@ mod tests {
     /// The cube has six texels, with a dimmer one below.
     #[test]
     fn faces_are_dimmer_below() {
-        let bytes = faces(&Palette::at(START_PHASE));
+        let bytes = faces(&Palette::at(START_PHASE), Vec3::Y);
         assert_eq!(bytes.len(), 24);
         assert!(bytes[12] < bytes[8]);
         assert_eq!(&bytes[8..12], &bytes[0..4]);

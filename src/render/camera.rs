@@ -13,12 +13,14 @@ use bevy::render::view::{Msaa, Tonemapping};
 use bevy::solari::prelude::SolariLighting;
 
 use super::GameCamera;
+use super::clouds::CloudCrossing;
 use super::lowres::LowRes;
 use super::palette::{Palette, srgb};
 use super::pixelate::Pixelate;
 use super::ray_tracing::RayTracing;
+use super::vantage::Vantage;
 use crate::settings::{Graphics, Persistent, Settings};
-use crate::world::{CHUNK_SIZE, SEA_LEVEL};
+use crate::world::CHUNK_SIZE;
 
 /// Fog and sky color seen from below the surface, in sRGB.
 pub const UNDERWATER: Vec3 = Vec3::new(0.04, 0.27, 0.35);
@@ -29,29 +31,47 @@ const UNDERWATER_VISIBILITY: f32 = 25.0;
 /// Strength of the bloom glow.
 const BLOOM_INTENSITY: f32 = 0.12;
 
+/// Height above sea level in meters, over every summit, from which the fog starts to open up.
+const CLIMB_FLOOR: f32 = 300.0;
+
+/// Meters of sight gained per meter climbed above that height, so the planet below shows from high up.
+const CLIMB_SIGHT: f32 = 10.0;
+
+/// Least share of air the fog still counts: above the air the fog reaches a thousand times farther.
+const THIN_AIR: f32 = 1.0e-3;
+
+/// Distance in meters at which the middle of the cloud layer hides everything.
+const WHITEOUT_VISIBILITY: f32 = 70.0;
+
 /// What the fog looks like, so the camera is only written when it changes.
 #[derive(Clone, Copy, PartialEq)]
 struct FogKey {
     submerged: bool,
     color: Vec3,
-    render_distance: u32,
+    reach: f32,
 }
 
-/// Returns true when the camera is below the sea surface.
-pub fn submerged(camera: &GlobalTransform) -> bool {
-    camera.translation().y < SEA_LEVEL
-}
-
-/// Returns linear fog that fades terrain out before the last streamed chunk.
-fn fog_falloff(render_distance: u32) -> FogFalloff {
-    let reach = render_distance as f32 * CHUNK_SIZE;
-    FogFalloff::Linear {
-        start: reach * 0.35,
-        end: reach * 0.9,
+impl FogKey {
+    /// Builds the key for a camera in clear air on the ground.
+    fn ground(color: Vec3, render_distance: u32) -> Self {
+        Self {
+            submerged: false,
+            color,
+            reach: fog_reach(render_distance, 0.0, 1.0),
+        }
     }
 }
 
-/// Builds the camera fog for a key.
+/// Returns the distance in meters the fog lets the camera see: the streamed terrain on foot,
+/// farther with `altitude` once above every summit, and without limit as the share of `air` left
+/// goes to zero.
+pub fn fog_reach(render_distance: u32, altitude: f32, air: f32) -> f32 {
+    let ground = render_distance as f32 * CHUNK_SIZE;
+    (ground + (altitude - CLIMB_FLOOR).max(0.0) * CLIMB_SIGHT) / air.max(THIN_AIR)
+}
+
+/// Builds the camera fog for a key: dense water fog below the surface, or linear fog that fades
+/// the terrain out before its reach.
 fn fog_for(key: FogKey) -> DistanceFog {
     match key.submerged {
         true => DistanceFog {
@@ -61,7 +81,10 @@ fn fog_for(key: FogKey) -> DistanceFog {
         },
         false => DistanceFog {
             color: srgb(key.color),
-            falloff: fog_falloff(key.render_distance),
+            falloff: FogFalloff::Linear {
+                start: key.reach * 0.35,
+                end: key.reach * 0.9,
+            },
             ..default()
         },
     }
@@ -140,27 +163,31 @@ fn setup_camera(
     if let Ok(mut projection) = projections.get_mut(add.entity) {
         set_fov(&mut projection, graphics.fov);
     }
-    let key = FogKey {
-        submerged: false,
-        color: look.palette.horizon,
-        render_distance: graphics.render_distance,
-    };
+    let key = FogKey::ground(look.palette.horizon, graphics.render_distance);
     commands.entity(add.entity).insert(fog_for(key));
 }
 
-/// Matches the fog to the sky horizon, or to dense water fog below the surface.
+/// Matches the fog to the sky horizon and the height of the camera, to the whiteout inside the
+/// cloud layer, or to dense water fog below the surface.
 fn update_fog(
     palette: Res<Palette>,
     settings: Res<Persistent<Settings>>,
-    mut cameras: Query<(&GlobalTransform, &mut DistanceFog), With<GameCamera>>,
+    place: (Res<Vantage>, Res<CloudCrossing>),
+    mut cameras: Query<&mut DistanceFog, With<GameCamera>>,
     mut last: Local<Option<FogKey>>,
 ) {
-    for (transform, mut fog) in &mut cameras {
-        let key = FogKey {
-            submerged: submerged(transform),
-            color: palette.horizon,
-            render_distance: settings.graphics.render_distance,
-        };
+    let (vantage, crossing) = place;
+    let clear = fog_reach(
+        settings.graphics.render_distance,
+        vantage.altitude,
+        vantage.air,
+    );
+    let key = FogKey {
+        submerged: vantage.altitude < 0.0,
+        color: palette.horizon.lerp(palette.cloud, crossing.depth),
+        reach: clear * (WHITEOUT_VISIBILITY / clear).powf(crossing.depth),
+    };
+    for mut fog in &mut cameras {
         if *last != Some(key) {
             *last = Some(key);
             *fog = fog_for(key);

@@ -3,9 +3,10 @@
 use bevy::light::GlobalAmbientLight;
 use bevy::prelude::*;
 
-use super::DayClock;
 use super::celestial::{daylight, golden, moon_direction, smoothstep, sun_direction};
 use super::clock::START_PHASE;
+use super::vantage::Vantage;
+use super::{DayClock, SunDir};
 
 /// Everything that changes color or strength with the time of day.
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
@@ -94,6 +95,15 @@ impl Palette {
     /// Ambient brightness at night, low enough that torches and lamps make visible pools of light.
     pub const NIGHT_AMBIENT: f32 = 40.0;
 
+    /// Illuminance in lux of the star in open space, where no air dims it.
+    pub const SPACE_LUX: f32 = 12_000.0;
+
+    /// Share of the ambient light left in space, enough to read a cockpit by.
+    pub const SPACE_AMBIENT: f32 = 0.2;
+
+    /// Sunlight color in space, in sRGB.
+    pub const SPACE_SUN: Vec3 = Vec3::new(1.0, 0.96, 0.9);
+
     /// Returns the palette for a clock phase.
     pub fn at(phase: f32) -> Self {
         let sun_dir = sun_direction(phase);
@@ -115,16 +125,34 @@ impl Palette {
             moon_dir,
         }
     }
+
+    /// Returns this palette as seen from the camera: the sun and moon stand where the star really is,
+    /// and with `air` going from 1 at the ground to 0 in space the sky turns black, the stars come
+    /// out and the star shines undimmed unless the planet hides it.
+    pub fn seen(mut self, sun: &SunDir, air: f32) -> Self {
+        self.sun_dir = sun.dir;
+        self.moon_dir = -sun.dir;
+        self.zenith *= air;
+        self.horizon *= air;
+        self.ambient_brightness *= Self::SPACE_AMBIENT + (1.0 - Self::SPACE_AMBIENT) * air;
+        self.sun_color = Self::SPACE_SUN.lerp(self.sun_color, air);
+        self.sun_lux = Self::SPACE_LUX * sun.lit * (1.0 - air) + self.sun_lux * air;
+        self.moon_lux *= air;
+        self.stars = self.stars.max(1.0 - air);
+        self
+    }
 }
 
-/// Recomputes the palette from the clock and applies it to ambient light and the clear color.
+/// Recomputes the palette from the clock and the camera's place, and applies it to ambient light
+/// and the clear color.
 fn update_palette(
     clock: Res<DayClock>,
+    place: (Res<SunDir>, Res<Vantage>),
     mut palette: ResMut<Palette>,
     mut ambient: ResMut<GlobalAmbientLight>,
     mut clear: ResMut<ClearColor>,
 ) {
-    *palette = Palette::at(clock.phase);
+    *palette = Palette::at(clock.phase).seen(&place.0, place.1.air);
     ambient.color = srgb(palette.ambient);
     ambient.brightness = palette.ambient_brightness;
     clear.0 = srgb(palette.horizon);

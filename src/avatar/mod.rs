@@ -12,12 +12,14 @@ mod air;
 mod animate;
 mod blend;
 mod clock;
+mod dress;
 mod face;
 mod fill;
 mod flight;
 mod fx;
 mod gait;
 mod ground;
+mod marks;
 mod mesh;
 mod pose;
 mod rig;
@@ -30,9 +32,13 @@ mod wing;
 #[cfg(test)]
 mod tests;
 
+pub use marks::Marks;
+
 use bevy::prelude::*;
 
+use crate::player::PlayerSet;
 use crate::screens::playing;
+use crate::view::ViewSet;
 
 /// What the body is doing, which chooses its pose.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -147,6 +153,7 @@ pub struct Avatar;
 fn systems(app: &mut App) {
     app.init_resource::<AvatarPose>()
         .init_resource::<Shown>()
+        .init_resource::<Marks>()
         .configure_sets(Update, AvatarSet::Animate.after(AvatarSet::Fill))
         .add_systems(Update, fill::fill.in_set(AvatarSet::Fill))
         .add_systems(
@@ -154,6 +161,7 @@ fn systems(app: &mut App) {
             (
                 spawn::spawn,
                 animate::animate,
+                marks::mark,
                 fx::wings,
                 fx::boots,
                 fx::face,
@@ -164,11 +172,22 @@ fn systems(app: &mut App) {
         );
 }
 
-/// Registers the avatar: its input, its visibility setting and the systems that run it while playing.
+/// Registers the avatar: its input, its visibility setting and the systems that run it while
+/// playing. The pose is filled once the controller moved the body, then dressed with the gear
+/// and the view once the camera rig ran.
 pub(super) fn plugin(app: &mut App) {
     systems(app);
     app.configure_sets(
         Update,
         (AvatarSet::Fill, AvatarSet::Animate).run_if(playing),
+    )
+    .configure_sets(Update, AvatarSet::Fill.after(PlayerSet::Move))
+    .add_systems(
+        Update,
+        dress::wear
+            .after(AvatarSet::Fill)
+            .after(ViewSet::Rig)
+            .before(AvatarSet::Animate)
+            .run_if(playing),
     );
 }

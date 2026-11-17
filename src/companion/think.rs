@@ -10,8 +10,12 @@ use super::face::machine::Face;
 use super::idle::Idle;
 use super::mind::{Cue, Input};
 use super::mood::{ChirpKind, CompanionChirp, ambient, chirp};
+use super::motion::blend;
 use super::sense::{Around, CompanionSense};
-use super::tune::{DELIGHT_SECONDS, SLEEPY_NIGHT, STILL_SPEED, TAKEOFF_SECONDS, WAKE_SECONDS};
+use super::tune::{
+    BANK_SHARE, DELIGHT_SECONDS, FLIGHT_RATE, SLEEPY_NIGHT, STILL_SPEED, TAKEOFF_SECONDS,
+    WAKE_SECONDS,
+};
 use crate::computer::Atlas;
 use crate::ship::ShipEvent;
 use crate::universe::BodyId;
@@ -79,12 +83,19 @@ impl Events<'_, '_> {
     }
 
     /// Reacts to what just happened around the companion: a delighted face for a discovery,
-    /// a wide-eyed one with its chirp when the ship lifts off.
+    /// a happy one with a delighted chirp when the player takes off with the gear, and a
+    /// wide-eyed one with its chirp when the ship lifts off.
     fn stir(&mut self, brain: &mut Brain, face: &mut Face, body: BodyId) -> Option<ChirpKind> {
         let sense = *self.sense;
         let fresh = self.first_steps(body);
         if brain.discovered(&sense, fresh) {
             face.react(Expression::Love, DELIGHT_SECONDS);
+        }
+        let took_off = sense.flying && !brain.aloft;
+        brain.aloft = sense.flying;
+        if took_off {
+            face.react(Expression::Happy, TAKEOFF_SECONDS);
+            return Some(ChirpKind::Delight);
         }
         if !self.liftoff() {
             return None;
@@ -94,13 +105,15 @@ impl Events<'_, '_> {
     }
 }
 
-/// Points the eyes and poses the body for the idle in progress and the face shown.
-fn settle(brain: &mut Brain, face: &Face) {
+/// Points the eyes and poses the body for the idle in progress and the face shown, and banks
+/// it with a flying player.
+fn settle(brain: &mut Brain, face: &Face, bank: f32) {
     brain.look = brain.focus();
     brain.pose = brain.mind.pose();
     if face.shown() == Expression::Curious {
         brain.pose.roll += CURIOUS_TILT;
     }
+    brain.pose.roll -= bank * BANK_SHARE * brain.flight;
 }
 
 /// Watches the player, advances the idle mind, the attention and the face, and sends the chirps.
@@ -112,6 +125,8 @@ pub fn think(
     let (mut brain, mut face) = bot.into_inner();
     let (dt, sense) = (around.dt(), *events.sense);
     let turn = brain.observe(&around.anchor, around.stance(), dt);
+    let flying = f32::from(u8::from(sense.flying));
+    brain.flight += (flying - brain.flight) * blend(FLIGHT_RATE, dt);
     let speed = brain.drift.length();
     let input = Input {
         speed,
@@ -125,7 +140,7 @@ pub fn think(
     heard = heard.or(events.stir(&mut brain, &mut face, around.location.body));
     let changed = face.advance(wanted(&brain, &sense), dt);
     heard = heard.or(changed.and_then(chirp));
-    settle(&mut brain, &face);
+    settle(&mut brain, &face, sense.bank);
     if let Some(kind) = heard {
         events.chirps.write(CompanionChirp(kind));
     }

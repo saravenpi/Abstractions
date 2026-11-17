@@ -15,6 +15,9 @@ fn storm() -> AudioScene {
         dynamic_pressure: 1.0,
         cloud_depth: 1.0,
         cabin: 1.0,
+        rush: 1.0,
+        boost: 1.0,
+        flutter: 1.0,
         ..planet(5)
     }
 }
@@ -67,7 +70,8 @@ fn alone(change: impl Fn(&mut AudioScene)) -> f64 {
     level(scene)
 }
 
-/// Each ambience voice is heard on its own, without music, and wind adds to the music.
+/// Each ambience and flight gear voice is heard on its own, without music, and wind adds to
+/// the music.
 #[test]
 fn each_air_voice_sounds_alone() {
     assert_eq!(alone(|_| ()), 0.0);
@@ -75,6 +79,9 @@ fn each_air_voice_sounds_alone() {
     assert!(alone(|scene| scene.submerged = 1.0) > 0.005);
     assert!(alone(|scene| scene.cloud_depth = 1.0) > 0.005);
     assert!(alone(|scene| scene.dynamic_pressure = 1.0) > 0.005);
+    assert!(alone(|scene| scene.rush = 1.0) > 0.005);
+    assert!(alone(|scene| scene.boost = 1.0) > 0.005);
+    assert!(alone(|scene| scene.flutter = 1.0) > 0.005);
     let windy = AudioScene {
         wind: 1.0,
         ..AudioScene::default()
@@ -92,6 +99,8 @@ fn space_is_silent_outside_the_cabin() {
         cloud_depth: 1.0,
         dynamic_pressure: 1.0,
         throttle: 0.6,
+        rush: 1.0,
+        flutter: 1.0,
         ..AudioScene::default()
     };
     assert_eq!(level(space), 0.0);

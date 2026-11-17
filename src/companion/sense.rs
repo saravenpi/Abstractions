@@ -4,8 +4,12 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
+use super::Companion;
 use super::aboard::{Aboard, read};
 use super::spot::{Probe, Stance};
+use super::wing::aloft;
+use crate::gear::Gear;
+use crate::player::{EYE_OFFSET, Player};
 use crate::render::{DayClock, GameCamera, daylight};
 use crate::space::{Anchor, Frame, Location, Travel, altitude, up};
 use crate::world::Terrain;
@@ -37,6 +41,12 @@ pub struct CompanionSense {
     pub structure: Option<Vec3>,
     /// Count of discoveries worth a delighted face: add one for each. Needs a producer.
     pub delight: u32,
+    /// True while the flight gear carries the player through the air. Filled from the gear.
+    pub flying: bool,
+    /// Bank of the flying player in radians, positive with the right side down. Filled from the gear.
+    pub bank: f32,
+    /// True while the player dives steeply and fast. Filled from the gear.
+    pub diving: bool,
 }
 
 /// The world around the player that every companion system reads.
@@ -50,8 +60,11 @@ pub struct Around<'w, 's> {
     pub terrain: Res<'w, Terrain>,
     /// Where the player is.
     pub location: Res<'w, Location>,
-    /// The player's eyes.
+    /// The game camera, which tells where the player looks.
     pub camera: Single<'w, 's, &'static GlobalTransform, With<GameCamera>>,
+    /// The player body. On foot the eyes are above its centre; seated it sits at the eye point
+    /// of the pilot, turned with the ship.
+    pub body: Single<'w, 's, &'static Transform, (With<Player>, Without<Companion>)>,
     /// The structures the world has surveyed around the player.
     sites: Option<Res<'w, Surroundings>>,
 }
@@ -72,15 +85,20 @@ impl Around<'_, '_> {
         self.location.travel == Travel::InShip
     }
 
-    /// Returns where the player's eyes are and look. A seated player's vertical is the cockpit's.
+    /// Returns where the player's eyes are and look, from the body, so that a camera behind it
+    /// changes nothing. Seated, the eyes, the vertical and the view are the cockpit's.
     pub fn stance(&self) -> Stance {
-        let eye = self.camera.translation();
-        let vertical = match self.seated() {
-            true => self.camera.up().as_vec3(),
-            false => up(&self.anchor, eye),
-        };
+        let body = *self.body;
+        if self.seated() {
+            return Stance {
+                eye: body.translation,
+                forward: body.forward().as_vec3(),
+                up: body.up().as_vec3(),
+            };
+        }
+        let vertical = up(&self.anchor, body.translation);
         Stance {
-            eye,
+            eye: body.translation + vertical * EYE_OFFSET,
             forward: self.camera.forward().as_vec3(),
             up: vertical,
         }
@@ -96,13 +114,8 @@ impl Around<'_, '_> {
 
     /// Returns the altitude of the eyes above sea level, or nothing away from a planet surface.
     pub fn altitude(&self) -> Option<f32> {
-        matches!(self.anchor.frame, Frame::Surface(_)).then(|| {
-            altitude(
-                &self.anchor,
-                self.terrain.globe(),
-                self.camera.translation(),
-            )
-        })
+        matches!(self.anchor.frame, Frame::Surface(_))
+            .then(|| altitude(&self.anchor, self.terrain.globe(), self.stance().eye))
     }
 }
 
@@ -112,20 +125,22 @@ fn nearest_structure(around: &Around) -> Option<Vec3> {
     let Frame::Surface(_) = around.anchor.frame else {
         return None;
     };
-    let eye = around.anchor.to_frame(around.camera.translation());
+    let eye = around.anchor.to_frame(around.stance().eye);
     let near = around.sites.as_deref()?.nearest(eye, STRUCTURE_REACH)?;
     Some(around.anchor.to_render(near.pos))
 }
 
-/// Fills the sensed values: night from the day clock, depth from the eyes, and the seat, the
-/// climb and the clouds from the ship.
+/// Fills the sensed values: night from the day clock, depth from the eyes, the seat, the
+/// climb and the clouds from the ship, and the flight from the gear.
 pub fn fill(
     around: Around,
     aboard: Aboard,
-    clock: Res<DayClock>,
+    (clock, gear): (Res<DayClock>, Query<&Gear, With<Player>>),
     mut sense: ResMut<CompanionSense>,
     mut was: Local<Option<f64>>,
 ) {
+    let state = gear.single().map(|gear| gear.state).unwrap_or_default();
+    let (flying, bank, diving) = aloft(&state);
     let flight = aboard.flight(around.seated());
     let (depth, climb, in_clouds) = read(around.altitude(), *was, &flight, around.dt());
     *was = flight.height;
@@ -137,6 +152,9 @@ pub fn fill(
         in_clouds,
         structure: nearest_structure(&around),
         delight: sense.delight,
+        flying: flying && !flight.seated,
+        bank,
+        diving: diving && !flight.seated,
     };
     sense.set_if_neq(next);
 }

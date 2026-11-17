@@ -11,10 +11,11 @@ use super::store::now;
 use super::writer::Writer;
 use super::{ActiveWorld, SaveDir};
 use crate::menus::Menu;
-use crate::player::{Motion, Player};
-use crate::render::{DayClock, GameCamera};
+use crate::player::Player;
+use crate::render::DayClock;
 use crate::screens::{Screen, playing};
 use crate::ship::Logbook;
+use crate::view::Heading;
 
 /// Seconds of play between two automatic saves.
 const INTERVAL: f32 = 60.0;
@@ -30,13 +31,13 @@ pub struct SavedFlash(pub f32);
 #[derive(Resource)]
 struct AutoTimer(Timer);
 
-/// The body and the eyes of the player.
+/// The body of the player and the look angles of the camera rig.
 #[derive(SystemParam)]
 struct Poses<'w, 's> {
-    /// The body, with the heading it stores.
-    body: Query<'w, 's, (&'static Transform, &'static Motion), With<Player>>,
-    /// The camera, a child of the body that only looks up and down.
-    eyes: Query<'w, 's, &'static Transform, (With<GameCamera>, Without<Player>)>,
+    /// The body.
+    body: Query<'w, 's, &'static Transform, With<Player>>,
+    /// The look angles: on foot the heading and the pitch of the view.
+    heading: Res<'w, Heading>,
 }
 
 /// Everything needed to capture the world state and hand it to the writer.
@@ -61,17 +62,17 @@ struct Snapshot<'w, 's> {
 impl Snapshot<'_, '_> {
     /// Captures the pose, the ship, the clocks and the atlas into the active world.
     ///
-    /// The heading is the stored one of the body, never read back from its orientation. Seated
-    /// in the ship the view angles on foot are kept.
+    /// The heading and the pitch are those the camera rig holds, never read back from a
+    /// transform, so a third person camera saves the same angles as the eyes. Seated in the
+    /// ship the view angles on foot are kept.
     fn capture(&mut self) -> Option<&ActiveWorld> {
         let active = self.active.as_deref_mut()?;
         let save = &mut active.0.save;
-        if let (Ok((body, motion)), Ok(eyes)) = (self.poses.body.single(), self.poses.eyes.single())
-        {
+        if let Ok(body) = self.poses.body.single() {
             self.site.stand(save, body.translation);
             if self.site.walking() {
-                save.yaw = motion.yaw;
-                save.pitch = eyes.rotation.to_euler(EulerRot::YXZ).1;
+                save.yaw = self.poses.heading.yaw;
+                save.pitch = self.poses.heading.pitch;
             }
         }
         if let Some(ship) = self.ship.record() {

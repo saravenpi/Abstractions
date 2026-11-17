@@ -1,5 +1,11 @@
 //! Player tests on a sphere: walking around the planet, rebasing the view, and the ship hand-over.
 
+mod eyes;
+mod flight;
+mod lead;
+mod spawn;
+mod steer;
+
 use std::f64::consts::TAU;
 
 use avian3d::prelude::*;

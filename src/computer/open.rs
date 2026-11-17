@@ -17,10 +17,6 @@ use crate::settings::{Persistent, Settings};
 use crate::space::{Anchor, Location, Travel};
 use crate::universe::Universe;
 
-/// Default key that opens and closes the computer. The key in use is the setting
-/// `controls.keys.computer`.
-pub const OPEN_KEY: KeyCode = KeyCode::Tab;
-
 /// Whether the computer screen is open. The game keeps running under it.
 #[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Computer {

@@ -33,8 +33,6 @@ pub struct Helm {
     pub stick: Vec2,
     /// Whether the warp key was pressed, or the autopilot asks to switch the drive.
     pub warp: bool,
-    /// Whether the chase view is on instead of the cockpit view.
-    pub chase: bool,
 }
 
 /// Input devices and settings the helm reads.
@@ -66,13 +64,15 @@ impl Devices<'_> {
             - f64::from(u8::from(self.keys.pressed(negative)))
     }
 
-    /// Returns the mouse stick after this frame: pushed by the mouse, drifting back to the centre.
+    /// Returns the mouse stick after this frame: pushed by the mouse, drifting back to the
+    /// centre. While the look key is held the mouse turns the camera and the stick only drifts.
     fn stick(&self, stick: Vec2) -> Vec2 {
         let controls = &self.settings.controls;
+        let free = f32::from(u8::from(!self.keys.pressed(controls.keys.orbit)));
         let flip = if controls.invert_y { -1.0 } else { 1.0 };
         let push = self.mouse.delta
             * Vec2::new(1.0, flip)
-            * (STICK_PER_PIXEL * controls.mouse_sensitivity);
+            * (STICK_PER_PIXEL * controls.mouse_sensitivity * free);
         let eased = stick * (-STICK_RETURN * self.time.delta_secs()).exp();
         (eased + push).clamp_length_max(1.0)
     }
@@ -109,17 +109,12 @@ pub fn read(
     mut ship: Single<&mut Ship>,
 ) {
     if location.travel != Travel::InShip || devices.taken() {
-        let idle = Helm {
-            chase: helm.chase,
-            ..Helm::default()
-        };
-        helm.set_if_neq(idle);
+        helm.set_if_neq(Helm::default());
         return;
     }
     let map = devices.settings.controls.keys;
     helm.stick = devices.stick(helm.stick);
     helm.controls = devices.controls(&map, helm.stick);
-    helm.chase ^= devices.keys.just_pressed(map.ship.view);
     helm.warp = devices.keys.just_pressed(map.ship.warp);
     if helm.warp {
         autopilot.cancel();

@@ -5,6 +5,7 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::FlightFx;
+use crate::avatar::Marks;
 use crate::gear::aero::grip;
 use crate::gear::servo::ease;
 use crate::gear::state::FlightState;
@@ -12,6 +13,7 @@ use crate::gear::{Gear, Mode};
 use crate::player::Player;
 use crate::render::{GameCamera, smoothstep as smooth};
 use crate::space::{Anchor, altitude, on_foot, up};
+use crate::view::{CameraPose, Enabled};
 use crate::world::Terrain;
 
 /// Height of the boot soles under the body centre, in metres.
@@ -25,6 +27,29 @@ const FLUTTER_SPEED: (f32, f32) = (10.0, 60.0);
 
 /// Airspeeds between which the rush of air closes in on the view.
 const RUSH_SPEED: (f32, f32) = (55.0, 110.0);
+
+/// Where the gear sits on the body as it is drawn, in render space. Left comes first.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Limbs {
+    /// The wingtips.
+    pub tips: [Vec3; 2],
+    /// The nozzles under the soles.
+    pub soles: [Vec3; 2],
+    /// Unit direction the exhaust leaves the boots along.
+    pub jet: Vec3,
+}
+
+impl Limbs {
+    /// Returns the marks of the drawn body, which stands at `pose`, in render space.
+    fn of(marks: &Marks, pose: &Transform) -> Self {
+        let jet = pose.rotation * (marks.jets[0] + marks.jets[1]);
+        Self {
+            tips: marks.tips.map(|tip| pose.transform_point(tip)),
+            soles: marks.soles.map(|sole| pose.transform_point(sole)),
+            jet: jet.normalize_or(pose.rotation * Vec3::NEG_Y),
+        }
+    }
+}
 
 /// The body, the air and the camera of this frame, in render space.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Default)]
@@ -51,6 +76,9 @@ pub struct Scene {
     pub wet: bool,
     /// Seconds since the last frame.
     pub dt: f32,
+    /// Where the gear sits on the drawn body, when a body is drawn. Without one the effects
+    /// fall back on fixed offsets in the frame of the gear.
+    pub limbs: Option<Limbs>,
 }
 
 impl Scene {
@@ -86,6 +114,27 @@ pub struct Sight<'w, 's> {
     player: Query<'w, 's, (&'static Transform, &'static Gear), With<Player>>,
     /// The game camera.
     camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
+    /// The marks of the drawn body, when the game draws one.
+    marks: Option<Res<'w, Marks>>,
+    /// The camera the rig placed this frame.
+    rig: Option<Res<'w, CameraPose>>,
+    /// Whether the rig drives the camera.
+    driven: Option<Res<'w, Enabled>>,
+}
+
+impl Sight<'_, '_> {
+    /// Returns where the camera is this frame: the pose the rig made, which the transforms
+    /// only show from the next frame, or else the camera itself, or else the body.
+    fn camera(&self, pose: &Transform) -> Transform {
+        let driven = self.driven.as_deref().is_some_and(|on| on.0);
+        if let Some(rig) = self.rig.as_deref().filter(|_| driven) {
+            return Transform::from_translation(rig.position).with_rotation(rig.rotation);
+        }
+        self.camera
+            .single()
+            .map(|at| at.compute_transform())
+            .unwrap_or(*pose)
+    }
 }
 
 /// Returns the scene of a body at `pose` with `gear`, or an inactive one without a world.
@@ -97,11 +146,7 @@ fn read(sight: &Sight, pose: &Transform, gear: &Gear) -> Scene {
     let tilt = DQuat::from_rotation_arc(DVec3::Y, vertical).as_quat();
     let sea = altitude(anchor, terrain.globe(), pose.translation) - SOLES;
     let ground = gear.input.clearance;
-    let camera = sight
-        .camera
-        .single()
-        .map(|at| at.compute_transform())
-        .unwrap_or(*pose);
+    let camera = sight.camera(pose);
     Scene {
         active: true,
         state: gear.state,
@@ -114,6 +159,7 @@ fn read(sight: &Sight, pose: &Transform, gear: &Gear) -> Scene {
         clearance: ground.min(sea).max(0.0),
         wet: sea < ground,
         dt: sight.time.delta_secs(),
+        limbs: sight.marks.as_deref().map(|marks| Limbs::of(marks, pose)),
     }
 }
 
@@ -142,13 +188,17 @@ fn publish(scene: &Scene, last: &FlightFx) -> FlightFx {
 
 /// Reads the player, the air and the camera into [`Scene`] and publishes [`FlightFx`].
 ///
-/// Without a player on foot both go back to their defaults, so every effect dies down.
+/// Without a player on foot, and while a menu or the boot screen is up, both go back to their
+/// defaults, so every effect and every sound of the flight dies down. The gear itself keeps
+/// its state: the flight goes on where it was when the game does.
 pub fn observe(
+    In(live): In<bool>,
     sight: Sight,
     walking: Option<Res<crate::space::Location>>,
     mut out: (ResMut<Scene>, ResMut<FlightFx>),
 ) {
-    let seen = sight.player.single().ok().filter(|_| on_foot(walking));
+    let seen = sight.player.single().ok();
+    let seen = seen.filter(|_| live && on_foot(walking));
     let scene = seen.map_or_else(Scene::default, |(pose, gear)| read(&sight, pose, gear));
     let fx = publish(&scene, &out.1);
     out.0.set_if_neq(scene);

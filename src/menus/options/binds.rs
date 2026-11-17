@@ -13,6 +13,7 @@ pub enum Bind {
     Right,
     Jump,
     Sprint,
+    Wings,
     Board,
     Thrust,
     Brake,
@@ -27,24 +28,27 @@ pub enum Bind {
     Cut,
     Warp,
     View,
+    Orbit,
     Computer,
     Engage,
 }
 
 impl Bind {
-    /// The actions used on foot, in display order.
-    pub const FOOT: [Bind; 7] = [
+    /// The actions used on foot, in display order. The view and board keys work in the ship too.
+    pub const FOOT: [Bind; 9] = [
         Bind::Forward,
         Bind::Back,
         Bind::Left,
         Bind::Right,
         Bind::Jump,
         Bind::Sprint,
+        Bind::Wings,
+        Bind::View,
         Bind::Board,
     ];
 
     /// The actions used while seated in the ship, in display order.
-    pub const SHIP: [Bind; 16] = [
+    pub const SHIP: [Bind; 17] = [
         Bind::Thrust,
         Bind::Brake,
         Bind::YawLeft,
@@ -58,6 +62,7 @@ impl Bind {
         Bind::Cut,
         Bind::Warp,
         Bind::View,
+        Bind::Orbit,
         Bind::Board,
         Bind::Computer,
         Bind::Engage,
@@ -72,6 +77,7 @@ impl Bind {
             Bind::Right => "Right",
             Bind::Jump => "Jump",
             Bind::Sprint => "Sprint",
+            Bind::Wings => "Wingsuit",
             Bind::Board => "Board or leave ship",
             Bind::Thrust => "Throttle up",
             Bind::Brake => "Throttle down",
@@ -86,6 +92,7 @@ impl Bind {
             Bind::Cut => "Cut throttle",
             Bind::Warp => "Warp drive",
             Bind::View => "Switch view",
+            Bind::Orbit => "Look around ship",
             Bind::Computer => "Board computer",
             Bind::Engage => "Engage autopilot",
         }
@@ -100,6 +107,7 @@ impl Bind {
             Bind::Right => &mut keys.right,
             Bind::Jump => &mut keys.jump,
             Bind::Sprint => &mut keys.sprint,
+            Bind::Wings => &mut keys.wings,
             Bind::Board => &mut keys.ship.board,
             Bind::Thrust => &mut keys.ship.thrust,
             Bind::Brake => &mut keys.ship.brake,
@@ -114,6 +122,7 @@ impl Bind {
             Bind::Cut => &mut keys.ship.cut,
             Bind::Warp => &mut keys.ship.warp,
             Bind::View => &mut keys.ship.view,
+            Bind::Orbit => &mut keys.orbit,
             Bind::Computer => &mut keys.computer,
             Bind::Engage => &mut keys.engage,
         }

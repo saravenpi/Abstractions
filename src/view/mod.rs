@@ -29,6 +29,7 @@ mod basis;
 mod blend;
 mod curve;
 mod io;
+mod keys;
 mod mode;
 mod occlude;
 mod rig;
@@ -44,7 +45,7 @@ mod tests;
 pub use io::{BodyFade, CameraPose, Heading, Kind, Look, Moment, Occluder, Shown, Target};
 pub use mode::{ViewMode, ViewPrefs};
 pub use rig::Rig;
-pub use system::{Cut, Enabled, ORBIT_KEY, Unseen, ViewSet, enabled};
+pub use system::{Cut, Enabled, Unseen, ViewSet, enabled};
 
 use bevy::prelude::*;
 

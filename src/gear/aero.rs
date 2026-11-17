@@ -5,7 +5,7 @@
 use bevy::prelude::*;
 
 use super::state::FlightState;
-use super::tune::{AERO, BODY_DRAG, BREATH, SEA_DENSITY, WING_DRAG};
+use super::tune::{AERO, BODY_DRAG, SEA_DENSITY, THIN_AIR, WING_DRAG};
 
 /// Returns how well the gear bites air of `density` kilograms per cubic metre: 0 in vacuum,
 /// 1 at sea level.
@@ -13,10 +13,10 @@ use super::tune::{AERO, BODY_DRAG, BREATH, SEA_DENSITY, WING_DRAG};
 /// Lift, drag, thrust and brake all scale with it. It is not the plain density ratio: the
 /// scale height of these small planets is a few hundred metres, and a suit that lost half its
 /// lift over the first hill would not be a suit. The grip holds up through the lower air and
-/// then lets go: `1 - exp(-ratio / BREATH)`. Because thrust and drag share it, the top speed is
+/// then lets go: `1 - exp(-ratio / THIN_AIR)`. Because thrust and drag share it, the top speed is
 /// the same at any height, and the ceiling is where the wing can no longer carry the weight.
 pub(super) fn grip(density: f32) -> f32 {
-    1.0 - (-(density / SEA_DENSITY).max(0.0) / BREATH).exp()
+    1.0 - (-(density / SEA_DENSITY).max(0.0) / THIN_AIR).exp()
 }
 
 /// Returns the drag coefficients along the right, dorsal and nose axes for a wing `spread`.

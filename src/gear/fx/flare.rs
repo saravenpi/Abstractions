@@ -64,8 +64,23 @@ pub fn pose(side: f32, push: f32, seconds: f32) -> Transform {
     }
 }
 
-/// Places the flares under the boots of the body as the gear poses it, sized to the booster
-/// push. They rest at zero scale while the boosters are off.
+/// Returns where the flare `local` of the boot on `side` goes in render space: under the
+/// nozzle of the drawn boot, along its exhaust, or under the body as the gear poses it when no
+/// body is drawn.
+fn placed(side: f32, local: &Transform, scene: &Scene) -> (Vec3, Quat) {
+    let Some(limbs) = scene.limbs else {
+        return (scene.at(local.translation), scene.rot * local.rotation);
+    };
+    let sole = limbs.soles[usize::from(side > 0.0)];
+    let hang = Quat::from_rotation_arc(Vec3::NEG_Y, limbs.jet);
+    (
+        sole + limbs.jet * (local.scale.y * 0.5),
+        hang * local.rotation,
+    )
+}
+
+/// Places the flares under the boots of the body, sized to the booster push. They rest at zero
+/// scale while the boosters are off.
 pub fn draw(time: Res<Time>, scene: Res<Scene>, mut flares: Query<(&Flare, &mut Transform)>) {
     let push = scene.push();
     for (flare, mut transform) in &mut flares {
@@ -73,9 +88,10 @@ pub fn draw(time: Res<Time>, scene: Res<Scene>, mut flares: Query<(&Flare, &mut 
             continue;
         }
         let local = pose(flare.0, push, time.elapsed_secs());
+        let (translation, rotation) = placed(flare.0, &local, &scene);
         *transform = Transform {
-            translation: scene.at(local.translation),
-            rotation: scene.rot * local.rotation,
+            translation,
+            rotation,
             scale: local.scale,
         };
     }

@@ -1,4 +1,8 @@
-//! Boarding and leaving the ship with the player: the companion becomes a child of the camera and back.
+//! Boarding and leaving the ship with the player: the companion becomes a child of the player
+//! body, which sits in the pilot seat, and back.
+//!
+//! It rides with the seat, not with the camera, so it sits in the same place in the cockpit
+//! whether the view is from the seat or from behind the ship.
 
 use bevy::prelude::*;
 
@@ -6,7 +10,7 @@ use super::Companion;
 use super::motion::Float;
 use super::sense::CompanionSense;
 use super::tune::BOARD_REACH;
-use crate::render::GameCamera;
+use crate::player::Player;
 use crate::space::Rebased;
 
 /// Returns the pose in the space of `eye` of a body at the render pose `at`, pulled within reach of the seat.
@@ -28,14 +32,19 @@ pub fn leaving(eye: &Transform, at: &Transform) -> Transform {
     }
 }
 
-/// Attaches the companion to the camera when the player sits in the ship, and frees it when the player leaves.
+/// Filter of the player body, which carries the seat, and is not the companion.
+type Seat = (With<Player>, Without<Companion>);
+
+/// Attaches the companion to the player body when the player sits in the ship, and frees it
+/// when the player leaves.
 ///
-/// Seated, it rides in camera space and the anchor no longer moves it. On leaving it keeps the
-/// render pose it had in the cockpit, so it pops out of the ship and follows the player again.
+/// Seated, it rides in the space of the seat and the anchor no longer moves it. On leaving it
+/// keeps the render pose it had in the cockpit, so it pops out of the ship and follows the
+/// player again.
 pub fn switch(
     mut commands: Commands,
     sense: Res<CompanionSense>,
-    camera: Single<(Entity, &GlobalTransform), With<GameCamera>>,
+    seat: Single<(Entity, &Transform), Seat>,
     bot: Single<(Entity, &mut Transform, &mut Float), With<Companion>>,
 ) {
     let (entity, mut at, mut float) = bot.into_inner();
@@ -43,7 +52,7 @@ pub fn switch(
         return;
     }
     float.seated = sense.seated;
-    let (seat, eye) = (camera.0, camera.1.compute_transform());
+    let (seat, eye) = (seat.0, *seat.1);
     if sense.seated {
         *at = boarding(&eye, &at);
         float.vel = eye.rotation.inverse() * float.vel;

@@ -5,6 +5,7 @@
 
 mod apply;
 mod model;
+mod prefs;
 #[cfg(test)]
 mod tests;
 
@@ -43,5 +44,5 @@ pub fn load() -> Persistent<Settings> {
 
 /// Registers the systems that apply the settings. The resource itself comes from [`load`].
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins(apply::plugin);
+    app.add_plugins((apply::plugin, prefs::plugin));
 }

@@ -1,4 +1,4 @@
-//! The body on a sphere: its upright frame, its yaw around the local up and the camera pitch.
+//! The body on a sphere: its upright frame and its yaw around the local up.
 //!
 //! The upright frame at a point is render space turned by the smallest rotation that takes
 //! render +Y to the local up. The controller thinks in that frame, where +Y is always up.
@@ -24,9 +24,4 @@ pub(super) fn facing(up: Vec3, yaw: f32) -> Quat {
 pub(super) fn yaw_toward(toward: Vec3, up: Vec3) -> f32 {
     let local = tilt(up).inverse() * toward;
     (-local.x).atan2(-local.z)
-}
-
-/// Returns the pitch of the camera, a child of the body that only looks up and down.
-pub(super) fn pitch_of(camera: &Transform) -> f32 {
-    camera.rotation.to_euler(EulerRot::YXZ).1
 }

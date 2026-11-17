@@ -11,33 +11,38 @@ use bevy::prelude::*;
 use super::controller::Motion;
 use super::upright::facing;
 use super::{BODY_LENGTH, BODY_RADIUS, EYE_OFFSET, Player};
+use crate::gear::Gear;
 use crate::render::GameCamera;
 use crate::saves::{ActiveWorld, WorldSave};
 use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
 use crate::space::{Anchor, Rebased, altitude, on_foot, up};
+use crate::view::{Cut, Heading};
 use crate::world::{SpawnPoint, StreamAnchor, Terrain};
 
 /// Height above the spawn point where the body appears.
 const SPAWN_LIFT: f32 = 2.0;
 
 /// Height above the spawn point where a resumed body appears: the point is its saved center.
-const RESUME_LIFT: f32 = 0.05;
+pub(super) const RESUME_LIFT: f32 = 0.05;
 
 /// Altitude below which the player is teleported back to the spawn point.
 const KILL_HEIGHT: f32 = -50.0;
 
 /// Returns the chart position of the body for a spawn point.
-fn body_position(spawn: SpawnPoint) -> Vec3 {
+pub(super) fn body_position(spawn: SpawnPoint) -> Vec3 {
     spawn.0 + Vec3::Y * (SPAWN_LIFT + BODY_RADIUS + BODY_LENGTH * 0.5)
 }
 
 /// Chart position and view angles a new body starts with.
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct Pose {
-    position: Vec3,
-    yaw: f32,
-    pitch: f32,
+pub(super) struct Pose {
+    /// Chart position of the body centre.
+    pub(super) position: Vec3,
+    /// Heading around the local up.
+    pub(super) yaw: f32,
+    /// Pitch of the view.
+    pub(super) pitch: f32,
 }
 
 /// Position in the planet frame the body returns to after falling out of the world.
@@ -46,7 +51,7 @@ pub(super) struct Home(pub(super) DVec3);
 
 /// Returns the starting pose. A resumed world stands on the spawn point, which is then the saved
 /// body center, with the saved angles. A new world drops in from above the spawn point.
-fn start_pose(spawn: SpawnPoint, save: Option<&WorldSave>) -> Pose {
+pub(super) fn start_pose(spawn: SpawnPoint, save: Option<&WorldSave>) -> Pose {
     match save.filter(|save| save.position.is_some() || save.place.is_some()) {
         Some(save) => Pose {
             position: spawn.0 + Vec3::Y * RESUME_LIFT,
@@ -76,7 +81,8 @@ impl Site<'_> {
     }
 }
 
-/// Returns the first-person camera, a child of the body that looks up and down by `pitch`.
+/// Returns the game camera, a child of the body. It starts at the eyes, looking up or down by
+/// `pitch`; from the first frame of play the camera rig places it.
 fn eyes(settings: &Settings, pitch: f32) -> impl Bundle {
     (
         Name::new("PlayerCamera"),
@@ -92,13 +98,39 @@ fn eyes(settings: &Settings, pitch: f32) -> impl Bundle {
     )
 }
 
-/// Spawns the player body with its first-person camera once the spawn point exists.
+/// Returns the player body, standing at `at` with its home at the planet-frame `home` and its
+/// heading from `pose`.
+fn body(home: DVec3, pose: &Pose, at: Transform) -> impl Bundle {
+    (
+        (
+            Name::new("Player"),
+            Player,
+            StreamAnchor,
+            Rebased,
+            Home(home),
+        ),
+        Motion {
+            yaw: pose.yaw,
+            ..default()
+        },
+        Gear::default(),
+        DespawnOnEnter(Screen::Title),
+        RigidBody::Kinematic,
+        CustomPositionIntegration,
+        Collider::capsule(BODY_RADIUS, BODY_LENGTH),
+        at,
+        Visibility::default(),
+    )
+}
+
+/// Spawns the player body with its camera once the spawn point exists, and has the camera rig
+/// start on the angles of the pose: a new body is a cut, not a move.
 fn spawn_player(
     mut commands: Commands,
     site: Site,
-    active: Option<Res<ActiveWorld>>,
-    settings: Res<Persistent<Settings>>,
+    (active, settings): (Option<Res<ActiveWorld>>, Res<Persistent<Settings>>),
     existing: Query<(), With<Player>>,
+    mut cuts: MessageWriter<Cut>,
 ) {
     if !existing.is_empty() {
         return;
@@ -106,38 +138,37 @@ fn spawn_player(
     let pose = start_pose(*site.spawn, active.as_ref().map(|active| &active.0.save));
     let home = site.frame(pose.position);
     let position = site.anchor.to_render(home);
+    let heading = Heading {
+        yaw: pose.yaw,
+        pitch: pose.pitch,
+    };
+    cuts.write(Cut {
+        heading: Some(heading),
+    });
+    let at = Transform::from_translation(position)
+        .with_rotation(facing(up(&site.anchor, position), pose.yaw));
     commands
-        .spawn((
-            Name::new("Player"),
-            Player,
-            StreamAnchor,
-            Rebased,
-            Home(home),
-            Motion {
-                yaw: pose.yaw,
-                ..default()
-            },
-            DespawnOnEnter(Screen::Title),
-            RigidBody::Kinematic,
-            CustomPositionIntegration,
-            Collider::capsule(BODY_RADIUS, BODY_LENGTH),
-            Transform::from_translation(position)
-                .with_rotation(facing(up(&site.anchor, position), pose.yaw)),
-            Visibility::default(),
-        ))
+        .spawn(body(home, &pose, at))
         .with_child(eyes(&settings, pose.pitch));
 }
 
-/// Teleports the player back to the spawn point after falling out of the world.
+/// Teleports the player back to the spawn point after falling out of the world: at rest, the
+/// flight gear folded, and with a cut of the camera.
 fn respawn_when_lost(
     anchor: Res<Anchor>,
     terrain: Res<Terrain>,
-    mut player: Query<(&mut Transform, &mut Motion, &Home), With<Player>>,
+    mut player: Query<(&mut Transform, &mut Motion, &mut Gear, &Home), With<Player>>,
+    mut cuts: MessageWriter<Cut>,
 ) {
-    for (mut transform, mut motion, home) in &mut player {
+    for (mut transform, mut motion, mut gear, home) in &mut player {
         if altitude(&anchor, terrain.globe(), transform.translation) < KILL_HEIGHT {
             transform.translation = anchor.to_render(home.0);
-            motion.velocity = Vec3::ZERO;
+            *motion = Motion {
+                yaw: motion.yaw,
+                ..default()
+            };
+            *gear = Gear::default();
+            cuts.write(Cut::default());
         }
     }
 }
@@ -151,28 +182,4 @@ pub(super) fn plugin(app: &mut App) {
             respawn_when_lost.run_if(on_foot),
         ),
     );
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A resumed world stands on the spawn point with its saved angles; a new one drops in.
-    #[test]
-    fn resumed_pose_keeps_spot_and_angles() {
-        let spawn = SpawnPoint(Vec3::new(1.0, 2.0, 3.0));
-        let fresh = start_pose(spawn, None);
-        assert_eq!(fresh.position, body_position(spawn));
-        let save = WorldSave {
-            position: Some([5.0, 6.0, 7.0]),
-            yaw: 1.0,
-            pitch: -0.5,
-            ..WorldSave::default()
-        };
-        let pose = start_pose(spawn, Some(&save));
-        assert_eq!(pose.position, Vec3::new(1.0, 2.0 + RESUME_LIFT, 3.0));
-        assert_eq!((pose.yaw, pose.pitch), (1.0, -0.5));
-        let unplayed = WorldSave::default();
-        assert_eq!(start_pose(spawn, Some(&unplayed)), fresh);
-    }
 }

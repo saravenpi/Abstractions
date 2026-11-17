@@ -59,6 +59,7 @@ fn crosses_the_clouds(game: &mut Game) {
             break;
         }
         game.step(1);
+        assert!(game.hull_in_view(), "the climbing ship left the frame");
         peak = peak.max(game.get::<CloudCrossing>().depth);
         shake = shake.max(game.get::<Buffet>().level);
         heard = heard.max(game.get::<AudioScene>().cloud_depth);
@@ -81,6 +82,8 @@ fn reaches_space(game: &mut Game) -> BodyId {
     let mut last = game.get::<ShipTelemetry>();
     for _ in 0..3000 {
         game.step(1);
+        let framed = game.hull_in_view();
+        assert!(framed, "the ship left the frame on its way out");
         let now = game.get::<ShipTelemetry>();
         if now.frame == system {
             break;
@@ -106,6 +109,12 @@ fn reaches_space(game: &mut Game) -> BodyId {
     home
 }
 
+/// In space the chase view still shows the whole ship.
+fn frames_the_ship(game: &mut Game) {
+    game.step(10);
+    assert!(game.hull_in_view(), "the ship is not all in view in space");
+}
+
 /// Runs one stage of the voyage and prints how long it took.
 fn stage<T>(name: &str, game: &mut Game, run: impl FnOnce(&mut Game) -> T) -> T {
     let start = std::time::Instant::now();
@@ -114,20 +123,23 @@ fn stage<T>(name: &str, game: &mut Game, run: impl FnOnce(&mut Game) -> T) -> T 
     out
 }
 
-/// A new game: on foot on Kodya, into the ship, up through the clouds into space, by warp to
+/// A new game: on foot on Kodya, into the ship and its chase view, up through the clouds into
+/// space with the whole hull in the frame, by warp to
 /// another planet of the system, down onto it, out on foot, and back to the same place from the
 /// save. Then into the air again, and back in the seat from a save taken in flight.
 #[test]
 fn a_new_game_flies_to_another_planet_and_resumes() {
-    let mut game = Game::new("voyage");
+    let mut game = Game::full("voyage");
     let game = &mut game;
     stage("load", game, |game| game.start("Voyage", None));
     stage("stand", game, ground::stands_on_kodya);
     stage("base", game, ground::starts_at_the_base);
     stage("board", game, ground::boards);
+    stage("chase view", game, ground::looks_from_behind);
     stage("lift off", game, lifts_off);
     stage("clouds", game, crosses_the_clouds);
     let home = stage("space", game, reaches_space);
+    stage("space view", game, frames_the_ship);
     let far = stage("warp", game, |game| {
         away::warps_to_another_planet(game, home)
     });

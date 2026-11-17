@@ -8,7 +8,8 @@ pub const TITLE_SEED: u64 = 0x00AB_5712_AC71_0115;
 /// What the listener's surroundings sound like right now.
 ///
 /// The audio module fills the fields it can read from the world itself every frame while the game
-/// is played, and `throttle`, `dynamic_pressure` and `warping` from the instruments of the ship.
+/// is played, `throttle`, `dynamic_pressure` and `warping` from the instruments of the ship, and
+/// `rush`, `boost` and `flutter` from the flight gear.
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct AudioScene {
     /// Seed of the planet whose music plays.
@@ -37,6 +38,12 @@ pub struct AudioScene {
     pub cloud_depth: f32,
     /// 1 while the listener sits in the ship cabin, 0 outside.
     pub cabin: f32,
+    /// Rush of the air past the flying body, from 0 (still) to 1 (very fast).
+    pub rush: f32,
+    /// Push of the boot boosters from 0 to 1.
+    pub boost: f32,
+    /// Flutter of the wingsuit cloth from 0 to 1.
+    pub flutter: f32,
 }
 
 impl Default for AudioScene {
@@ -56,6 +63,9 @@ impl Default for AudioScene {
             dynamic_pressure: 0.0,
             cloud_depth: 0.0,
             cabin: 0.0,
+            rush: 0.0,
+            boost: 0.0,
+            flutter: 0.0,
         }
     }
 }

@@ -13,7 +13,7 @@ use super::motion::blend;
 use super::orb::{orb, orb_area};
 use super::screen::Display;
 use super::sense::CompanionSense;
-use super::tune::{GLOW_HDR, LIGHT_DAY_SHARE, LIGHT_POWER, SCREEN_HDR};
+use super::tune::{GLOW_HDR, LIGHT_DAY_SHARE, LIGHT_POWER, SCREEN_HDR, THRUST_GLOW};
 use crate::render::RayTracing;
 
 /// How fast the colour follows the expression, per second.
@@ -62,7 +62,8 @@ fn hdr(tint: Vec3, gain: f32) -> Color {
 /// Eases the colour toward the expression's and applies it to the screen, the glowing parts and the light.
 ///
 /// The light has no shadows, weakens by day and is at full strength at night. Its ray traced
-/// twin gets the same power and colour.
+/// twin gets the same power and colour. In flight the thruster and the antenna glow brighter,
+/// so the companion leaves a spark in the air beside the player.
 pub fn shine(
     time: Res<Time>,
     sense: Res<CompanionSense>,
@@ -73,17 +74,22 @@ pub fn shine(
     let (face, brain, mut display) = bot.into_inner();
     let expr = face.shown();
     let want = expr.tint() * glow(expr, brain.mind.dozing);
-    let tint = display.tint.lerp(want, blend(TINT_RATE, time.delta_secs()));
+    let share = blend(TINT_RATE, time.delta_secs());
+    let tint = display.tint.lerp(want, share);
+    let flying = f32::from(u8::from(sense.flying));
+    let thrust = display.thrust + (flying - display.thrust) * share;
     let power = lumens(sense.night);
     lamp.color = hdr(tint, 1.0);
     lamp.intensity = power;
-    if tint.distance(display.tint) < 1e-4 && (power - display.power).abs() < 1.0 {
+    let still = (thrust - display.thrust).abs() < 1e-3;
+    if still && tint.distance(display.tint) < 1e-4 && (power - display.power).abs() < 1.0 {
         return;
     }
-    (display.tint, display.power) = (tint, power);
+    (display.tint, display.power, display.thrust) = (tint, power, thrust);
+    let flare = GLOW_HDR * (1.0 + THRUST_GLOW * thrust);
     let paints = [
         (&display.face, hdr(tint, SCREEN_HDR), LinearRgba::BLACK),
-        (&display.glow, hdr(tint, GLOW_HDR), LinearRgba::BLACK),
+        (&display.glow, hdr(tint, flare), LinearRgba::BLACK),
         (&display.emitter, Color::BLACK, radiance(tint, power)),
     ];
     for (handle, base, emissive) in paints {

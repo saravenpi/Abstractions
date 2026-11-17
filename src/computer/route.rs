@@ -17,10 +17,16 @@ pub enum Target {
     Galaxy(GalaxyId),
 }
 
+/// What the home planet is called after its name, wherever the player can pick it.
+pub const HOME_LABEL: &str = "(Home)";
+
 impl Target {
-    /// Returns the display name of the target.
+    /// Returns the display name of the target. The home planet, where the base stands, says so.
     pub fn name(self, universe: &Universe) -> String {
         let named = match self {
+            Target::Body(id) if id == universe.home() => {
+                Some(format!("{} {HOME_LABEL}", universe.planet(id).name))
+            }
             Target::Body(id) => Some(universe.planet(id).name),
             Target::Star(id) => universe.star(id).map(|star| star.name),
             Target::Galaxy(id) => universe.galaxy(id).map(|galaxy| galaxy.name),

@@ -3,6 +3,7 @@
 
 mod drive;
 mod look;
+mod sight;
 mod worlds;
 
 use std::path::PathBuf;
@@ -115,8 +116,10 @@ fn engine(app: &mut App, dir: &std::path::Path) {
 }
 
 impl Game {
-    /// Builds the game on the title screen, with its files in a scratch directory named after `tag`.
-    pub fn new(tag: &str) -> Self {
+    /// Builds the game on the title screen, with its files in a scratch directory named after
+    /// `tag`. The body, the flight gear and the camera rig are in, the rig driving the game
+    /// camera as it does in the game.
+    pub fn full(tag: &str) -> Self {
         let name = format!("abstractions-voyage-{tag}-{}", std::process::id());
         let dir = std::env::temp_dir().join(name);
         let _ = std::fs::remove_dir_all(&dir);
@@ -136,6 +139,12 @@ impl Game {
         ))
         .add_systems(Update, start_playing.run_if(in_state(Screen::Loading)))
         .add_systems(Last, record);
+        app.add_plugins((
+            crate::avatar::plugin,
+            crate::gear::plugin,
+            crate::view::plugin,
+        ))
+        .insert_resource(crate::view::Enabled(true));
         app.finish();
         app.cleanup();
         Self { app, dir }

@@ -26,11 +26,14 @@ mod spot;
 mod spring;
 mod think;
 pub mod tune;
+mod wing;
 
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tests_face;
+#[cfg(test)]
+mod tests_flight;
 #[cfg(test)]
 mod tests_idle;
 #[cfg(test)]

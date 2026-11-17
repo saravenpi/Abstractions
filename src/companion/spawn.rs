@@ -77,6 +77,7 @@ fn display(stock: &mut Stock) -> Display {
         shown: None,
         tint: Vec3::ZERO,
         power: 0.0,
+        thrust: 0.0,
     }
 }
 

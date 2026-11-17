@@ -29,6 +29,8 @@ pub struct Display {
     pub tint: Vec3,
     /// Light power in lumens as last applied to the ray traced emitter.
     pub power: f32,
+    /// How hard the thruster works, from 0 at rest to 1 in flight, as last applied to the glow.
+    pub thrust: f32,
 }
 
 /// Builds the picture for `frame`: nearest sampling, no mipmaps, so the pixels stay sharp.

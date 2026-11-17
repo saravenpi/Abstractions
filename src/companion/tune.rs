@@ -39,13 +39,14 @@ pub const FEED: f32 = 0.5;
 /// Distance from its spot beyond which it quietly reappears behind the player, in meters.
 pub const LEASH: f32 = 60.0;
 
-/// Where it rides in the cockpit, in camera space: right, up and back (negative is ahead), in meters.
+/// Where it rides in the cockpit, in the space of the pilot seat: right, up and back (negative
+/// is ahead), in meters.
 pub const SEAT: [f32; 3] = [0.52, -0.2, -0.95];
 
 /// Spring rate of the ride in the cockpit.
 pub const SEAT_RATE: f32 = 7.0;
 
-/// Farthest it may be from the camera when the player sits down, in meters, before it is pulled in.
+/// Farthest it may be from the seat when the player sits down, in meters, before it is pulled in.
 pub const BOARD_REACH: f32 = 3.0;
 
 /// How fast the screen turns toward what it looks at, per second.
@@ -119,3 +120,34 @@ pub const TAKEOFF_SECONDS: f32 = 2.5;
 
 /// Seconds the surprised face stays after waking up.
 pub const WAKE_SECONDS: f32 = 1.4;
+
+/// Where it flies beside a flying player, in metres: to the left, behind and above the eyes.
+pub const WING: (f32, f32, f32) = (2.6, 2.4, 0.4);
+
+/// Speed in metres per second above which the formation lines up with the course of the flight.
+pub const WING_SPEED: f32 = 3.0;
+
+/// Share of the velocity of the player it carries along on foot, and in flight.
+pub const FEED_FLIGHT: f32 = 1.0;
+
+/// Spring rate in flight, in radians per second: stiff enough that a player stopping dead from
+/// full speed carries it barely past its place, never back and forth.
+pub const FLIGHT_STIFFNESS: f32 = 10.0;
+
+/// Seconds ahead it looks for the ground and the water at speed.
+pub const LOOK_AHEAD: f32 = 0.8;
+
+/// Height it keeps above the ground and the water in flight, in metres.
+pub const FLIGHT_CLEARANCE: f32 = 1.6;
+
+/// Distance in metres past which it reappears behind a flying player.
+pub const FLIGHT_LEASH: f32 = 160.0;
+
+/// Rate per second at which it moves between following on foot and flying in formation.
+pub const FLIGHT_RATE: f32 = 2.5;
+
+/// Roll it takes of the bank of the flying player.
+pub const BANK_SHARE: f32 = 0.7;
+
+/// How much brighter its thruster glows in flight.
+pub const THRUST_GLOW: f32 = 1.8;

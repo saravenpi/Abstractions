@@ -14,10 +14,6 @@ use crate::audio::AudioCue;
 use crate::settings::{Persistent, Settings};
 use crate::ui::theme;
 
-/// Default key that hands the destination to the autopilot. The key in use is the setting
-/// `controls.keys.engage`.
-pub const ENGAGE_KEY: KeyCode = KeyCode::KeyG;
-
 /// Rows a jump to the first or the last row moves by: more than any table holds.
 const FAR: isize = 1_000_000;
 

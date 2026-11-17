@@ -3,6 +3,7 @@
 mod app;
 mod blending;
 mod body;
+mod dressing;
 mod face;
 mod filling;
 mod gait;

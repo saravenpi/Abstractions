@@ -43,10 +43,11 @@ mod tests;
 
 pub use board::{Hatch, near_hatch};
 pub use body::{SavedFrame, Ship, ShipState};
+pub use drag::{SEA_DENSITY, density};
 pub use pilot::{Autopilot, Phase};
 pub use save::Logbook;
 pub use telemetry::{ShipTelemetry, WarpState};
-pub use view::seated;
+pub use view::{HULL_RADIUS, SEAT, seated};
 pub use warp::Warp;
 
 use bevy::prelude::*;
@@ -54,6 +55,7 @@ use bevy::prelude::*;
 use crate::home::Base;
 use crate::saves::unplayed;
 use crate::screens::{Screen, playing};
+use crate::view::ViewSet;
 use crate::world::SpawnPoint;
 
 /// Something that happened to the ship. Read it with `MessageReader<ShipEvent>`.
@@ -90,7 +92,8 @@ pub enum ShipSet {
     Input,
     /// Frame changes, the warp drive and the fixed flight steps.
     Flight,
-    /// The planet the world streams, the render anchor, the pose of the ship and the camera.
+    /// The planet the world streams, the render anchor, the pose of the ship and the seat the
+    /// camera rig follows.
     Place,
     /// Instruments, route status, engine glow and the save record.
     Report,
@@ -101,7 +104,6 @@ fn reset(commands: &mut Commands) {
     commands.insert_resource(helm::Helm::default());
     commands.insert_resource(sky::Skies::default());
     commands.insert_resource(sim::Pace::default());
-    commands.insert_resource(view::View::default());
     commands.insert_resource(Autopilot::default());
     commands.insert_resource(ShipTelemetry::default());
     commands.insert_resource(Hatch::default());
@@ -113,7 +115,6 @@ fn resources(app: &mut App) {
     app.init_resource::<helm::Helm>()
         .init_resource::<sky::Skies>()
         .init_resource::<sim::Pace>()
-        .init_resource::<view::View>()
         .init_resource::<Autopilot>()
         .init_resource::<ShipTelemetry>()
         .init_resource::<Hatch>()
@@ -145,7 +146,7 @@ fn display(app: &mut App) {
         place::track,
         place::moor,
         place::pose,
-        view::look.run_if(seated),
+        view::carry.run_if(seated),
     );
     let report = (
         (telemetry::update, fx::feed).chain(),
@@ -157,8 +158,10 @@ fn display(app: &mut App) {
         (
             place.chain().in_set(ShipSet::Place),
             report.in_set(ShipSet::Report),
+            view::buffet.after(ViewSet::Rig).run_if(seated),
         ),
-    );
+    )
+    .configure_sets(Update, ViewSet::Rig.after(ShipSet::Place));
 }
 
 /// Registers the ship resources, messages and systems.

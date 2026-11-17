@@ -34,6 +34,9 @@ pub struct GearInput {
     pub clearance: f32,
     /// Strength of the ground assist from 0 (off) to 1.
     pub assist: f32,
+    /// Velocity of the air over the ground in metres per second. The gear flies through this
+    /// air: lift, drag and airspeed all count from it. Zero is still air.
+    pub wind: Vec3,
 }
 
 impl Default for GearInput {
@@ -51,6 +54,7 @@ impl Default for GearInput {
             gravity: super::tune::REF_GRAVITY,
             clearance: f32::INFINITY,
             assist: 1.0,
+            wind: Vec3::ZERO,
         }
     }
 }

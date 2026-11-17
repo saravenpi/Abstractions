@@ -10,7 +10,7 @@ use crate::settings::Settings;
 use crate::ui::theme;
 
 /// Every setting that is not a key.
-const FIELDS: [Field; 17] = [
+const FIELDS: [Field; 21] = [
     Field::PixelSize,
     Field::RenderDistance,
     Field::Shadows,
@@ -28,6 +28,10 @@ const FIELDS: [Field; 17] = [
     Field::Master,
     Field::Music,
     Field::Effects,
+    Field::ViewFoot,
+    Field::ViewShip,
+    Field::HeadBob,
+    Field::AutoFollow,
 ];
 
 /// Keys with long names, among them the widest ones a keyboard has.

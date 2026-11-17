@@ -17,6 +17,7 @@ mod shared;
 mod ship;
 mod source;
 mod steps;
+mod suit;
 mod wire;
 
 #[cfg(test)]

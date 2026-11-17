@@ -5,6 +5,7 @@ use bevy::prelude::KeyCode;
 use super::field::Field;
 use crate::settings::{Graphics, Settings};
 use crate::ui::theme;
+use crate::view::{ViewMode, ViewPrefs};
 
 /// Formats a boolean as On or Off.
 pub fn on_off(value: bool) -> String {
@@ -40,10 +41,30 @@ fn display_graphics(g: &Graphics, field: Field) -> Option<String> {
     }
 }
 
+/// Returns the name of a view mode.
+pub fn view_name(mode: ViewMode) -> &'static str {
+    match mode {
+        ViewMode::First => "First person",
+        ViewMode::Third => "Third person",
+    }
+}
+
+/// Formats a camera setting, or `None` when the field is not a camera one.
+fn display_view(view: &ViewPrefs, field: Field) -> Option<String> {
+    match field {
+        Field::ViewFoot => Some(view_name(view.on_foot).to_string()),
+        Field::ViewShip => Some(view_name(view.ship).to_string()),
+        Field::HeadBob => Some(on_off(view.head_bob)),
+        Field::AutoFollow => Some(on_off(view.auto_follow)),
+        _ => None,
+    }
+}
+
 /// Formats the current value of a setting for display.
 pub fn display(settings: &Settings, field: Field) -> String {
     let (c, a) = (&settings.controls, &settings.audio);
-    if let Some(shown) = display_graphics(&settings.graphics, field) {
+    let known = display_graphics(&settings.graphics, field);
+    if let Some(shown) = known.or_else(|| display_view(&settings.view, field)) {
         return shown;
     }
     match field {

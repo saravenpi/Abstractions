@@ -37,10 +37,16 @@ pub enum Param {
     Space,
     /// Whether the planet is the home planet.
     Home,
+    /// Rush of air past a flying body.
+    Rush,
+    /// Push of the boot boosters.
+    Boost,
+    /// Flutter of the wingsuit cloth.
+    Flutter,
 }
 
 /// Number of [`Param`] values.
-pub const PARAMS: usize = 14;
+pub const PARAMS: usize = 17;
 
 impl Param {
     /// Every parameter, in index order.
@@ -59,6 +65,9 @@ impl Param {
         Param::Cabin,
         Param::Space,
         Param::Home,
+        Param::Rush,
+        Param::Boost,
+        Param::Flutter,
     ];
 }
 
@@ -136,6 +145,10 @@ impl Shared {
         self.set(Param::Cabin, unit(scene.cabin));
         self.set(Param::Space, flag(scene.in_space || scene.warping));
         self.set(Param::Home, flag(scene.home));
+        let outside = 1.0 - flag(scene.in_space || scene.warping);
+        self.set(Param::Rush, unit(scene.rush * outside));
+        self.set(Param::Boost, unit(scene.boost));
+        self.set(Param::Flutter, unit(scene.flutter * outside));
     }
 
     /// Queues a cue for the audio thread. Returns false when the queue is full and the cue is lost.

@@ -98,10 +98,41 @@ fn a_v05_file_loads_with_the_new_keys_defaulted() {
     std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
 }
 
-/// The default bindings of the computer match the constants the computer documents.
+/// The board computer opens on Tab and engages on G by default.
 #[test]
 fn computer_keys_default_to_tab_and_g() {
     let keys = Settings::default().controls.keys;
-    assert_eq!(keys.computer, crate::computer::OPEN_KEY);
-    assert_eq!(keys.engage, crate::computer::ENGAGE_KEY);
+    assert_eq!(keys.computer, KeyCode::Tab);
+    assert_eq!(keys.engage, KeyCode::KeyG);
+}
+
+/// A file written before the camera and flight settings existed, and a v0.5 file, get the
+/// default view preferences and the default wingsuit and look keys, and keep everything else.
+#[test]
+fn files_without_the_view_settings_load_with_defaults() {
+    let mut text = toml::to_string(&Settings {
+        audio: crate::settings::Audio {
+            music: 0.3,
+            ..Default::default()
+        },
+        ..Settings::default()
+    })
+    .unwrap();
+    let start = text.find("[view]").unwrap();
+    let end = text[start + 1..]
+        .find("\n[")
+        .map_or(text.len(), |at| start + 1 + at);
+    text.replace_range(start..end, "");
+    let text: String = text
+        .lines()
+        .filter(|line| !line.starts_with("wings =") && !line.starts_with("orbit ="))
+        .map(|line| format!("{line}\n"))
+        .collect();
+    for old in [text.as_str(), V05] {
+        let parsed: Settings = toml::from_str(old).unwrap();
+        assert_eq!(parsed.view, crate::view::ViewPrefs::default());
+        let keys = parsed.controls.keys;
+        assert_eq!((keys.wings, keys.orbit), (KeyCode::KeyR, KeyCode::AltLeft));
+    }
+    assert_eq!(toml::from_str::<Settings>(&text).unwrap().audio.music, 0.3);
 }

@@ -8,7 +8,11 @@ use super::pose::Pose;
 use super::sense::Around;
 use super::spot::Probe;
 use super::spring::{rate, step};
-use super::tune::{BOB, CLEARANCE, FEED, FLOOR, LEASH, SEAT, SEAT_RATE, TILT, TURN_RATE};
+use super::tune::{
+    BOB, CLEARANCE, FEED, FEED_FLIGHT, FLIGHT_LEASH, FLIGHT_STIFFNESS, FLOOR, LEASH, LOOK_AHEAD,
+    SEAT, SEAT_RATE, TILT, TURN_RATE,
+};
+use crate::player::Player;
 
 /// How fast the body takes a new pose, per second.
 const POSE_RATE: f32 = 9.0;
@@ -18,7 +22,7 @@ const POSE_RATE: f32 = 9.0;
 pub struct Float {
     /// Velocity in the axes its transform is expressed in, in meters per second.
     pub vel: Vec3,
-    /// True while it rides in the cockpit as a child of the camera.
+    /// True while it rides in the cockpit as a child of the player body in the pilot seat.
     pub seated: bool,
 }
 
@@ -42,29 +46,36 @@ pub fn lean(local: Vec3) -> Quat {
     Quat::from_rotation_x(tilt.y) * Quat::from_rotation_z(-tilt.x)
 }
 
-/// Follows the player on foot: a spring toward the goal, carried partly by the player's own velocity.
+/// Follows the player: a spring toward the goal, carried partly by the player's own velocity on
+/// foot and wholly in flight, so that it keeps its place in the formation at any speed.
 ///
-/// The goal and the body both stay clear of the ground and the water. Left very far behind, it
+/// The spring is critically damped in the frame of the player, so an abrupt stop or a fold of
+/// the wings never makes it swing. The goal and the body both stay clear of the ground and the
+/// water, at speed where they will be as well as where they are. Left very far behind, it
 /// reappears behind the player at rest.
 pub fn follow(probe: &Probe, brain: &Brain, at: &mut Transform, float: &mut Float, dt: f32) {
     let (goal, clearance) = brain.goal();
-    let target = probe.clear(goal, clearance);
-    let lead = brain.drift * FEED;
+    let flight = brain.flight;
+    let lead = brain.drift * (FEED + (FEED_FLIGHT - FEED) * flight);
+    let target = probe.clear_ahead(goal, lead, (LOOK_AHEAD * flight, clearance));
     let offset = at.translation + lead * dt - target;
-    if offset.length() > LEASH {
+    if offset.length() > LEASH + (FLIGHT_LEASH - LEASH) * flight {
         at.translation = probe.clear(brain.stance.behind(), CLEARANCE);
         float.vel = Vec3::ZERO;
     } else {
         let slip = float.vel - lead;
-        let (offset, vel) = step(offset, slip, rate(offset, slip), dt);
-        at.translation = probe.clear(target + offset, FLOOR);
+        let stiff = rate(offset, slip).max(FLIGHT_STIFFNESS * flight);
+        let (offset, vel) = step(offset, slip, stiff, dt);
+        at.translation =
+            probe.clear_ahead(target + offset, vel + lead, (LOOK_AHEAD * flight, FLOOR));
         float.vel = vel + lead;
     }
     let want = facing(brain.look - at.translation, probe.up(at.translation));
     at.rotation = at.rotation.slerp(want, blend(TURN_RATE, dt));
 }
 
-/// Rides in the cockpit: a spring toward the seat in camera space, looking at `look` in that space.
+/// Rides in the cockpit: a spring toward the seat in the space of the pilot seat, looking at
+/// `look` in that space.
 pub fn ride(look: Vec3, at: &mut Transform, float: &mut Float, dt: f32) {
     let seat = Vec3::from_array(SEAT);
     let (offset, vel) = step(at.translation - seat, float.vel, SEAT_RATE, dt);
@@ -82,18 +93,21 @@ fn sway(rig: &mut Transform, pose: &Pose, local: Vec3, (now, dt): (f32, f32)) {
     rig.translation.y += (lift - rig.translation.y) * share;
 }
 
+/// Filter of the rig, which is neither the companion root nor the player body.
+type RigOnly = (With<Rig>, Without<Companion>, Without<Player>);
+
 /// Moves the companion: following on foot or riding in the ship, then the bob, the lean and the pose.
 pub fn float(
     around: Around,
     bot: Single<(&mut Transform, &mut Float, &Brain), With<Companion>>,
-    mut rig: Single<&mut Transform, (With<Rig>, Without<Companion>)>,
+    mut rig: Single<&mut Transform, RigOnly>,
 ) {
     let (mut at, mut float, brain) = bot.into_inner();
     let dt = around.dt();
     if float.seated {
         let look = around
-            .camera
-            .affine()
+            .body
+            .compute_affine()
             .inverse()
             .transform_point3(brain.look);
         ride(look, &mut at, &mut float, dt);

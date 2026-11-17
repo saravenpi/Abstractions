@@ -31,6 +31,7 @@ dependencies = [
  "rand_chacha",
  "serde",
  "toml",
+ "winit",
  "winresource",
 ]
 

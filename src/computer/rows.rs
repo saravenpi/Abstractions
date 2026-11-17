@@ -79,12 +79,9 @@ impl View<'_> {
             play_time(planet.day_seconds)
         );
         let at = origin + planet.position(self.time);
-        self.line(
-            &planet.name,
-            Target::Body(planet.id),
-            (at, planet.radius),
-            facts,
-        )
+        let target = Target::Body(planet.id);
+        let title = target.name(self.universe);
+        self.line(&title, target, (at, planet.radius), facts)
     }
 
     /// Returns the row of a star at `at`. The planet count shows only once the system is visited.

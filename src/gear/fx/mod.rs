@@ -3,7 +3,8 @@
 //! Everything drawn here is pooled: the entities, meshes and materials are made once and only
 //! moved afterwards. Free entities are `Rebased`, the rush ring is a child of the camera, and
 //! the trail ribbons keep their points in the planet frame, so an anchor rebase leaves nothing
-//! behind. Everything is placed from the gear's own attitude, not from the body transform.
+//! behind. The wingtip trails and the boot exhaust leave from the limbs of the drawn body
+//! ([`crate::avatar::Marks`]); the rest is placed from the gear's own attitude.
 
 mod flare;
 mod haze;
@@ -56,32 +57,54 @@ pub struct FlightFx {
     pub rush: f32,
 }
 
-/// Registers the effects.
+/// Returns true while the game is on its gameplay screen with no menu over it and the boot
+/// screen gone. An app without those states, as in a test of the effects alone, always plays.
+pub fn live(
+    screen: Option<Res<State<Screen>>>,
+    menu: Option<Res<State<crate::menus::Menu>>>,
+    warm: Option<Res<State<WarmUp>>>,
+) -> bool {
+    let shown = screen.is_none_or(|screen| *screen.get() == Screen::Gameplay);
+    let free = menu.is_none_or(|menu| *menu.get() == crate::menus::Menu::None);
+    shown && free && warm.is_none_or(|warm| *warm.get() == WarmUp::Idle)
+}
+
+/// Registers the effects: their resources and order, then their systems.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<FlightFx>()
         .init_resource::<scene::Scene>()
-        .configure_sets(Update, (GearSet::Publish, GearSet::Draw).chain())
+        .configure_sets(
+            Update,
+            (GearSet::Publish, GearSet::Draw)
+                .chain()
+                .after(crate::avatar::AvatarSet::Animate),
+        )
         .add_systems(Startup, kit::build)
-        .add_systems(
-            OnEnter(Screen::Gameplay),
-            (trails::spawn, streaks::spawn, motes::spawn, flare::spawn),
-        )
-        .add_systems(
-            Update,
-            (flare::equip, haze::fit, scene::observe).in_set(GearSet::Publish),
-        )
-        .add_systems(
-            Update,
-            (
-                trails::draw,
-                streaks::draw,
-                haze::draw,
-                flare::draw,
-                motes::step,
-            )
-                .in_set(GearSet::Draw)
-                .run_if(playing),
-        )
         .add_systems(Update, warm::show.run_if(in_state(WarmUp::Hidden)))
         .add_systems(OnExit(WarmUp::Hidden), warm::hide);
+    systems(app);
+}
+
+/// Registers the systems that spawn, publish and draw the effects.
+fn systems(app: &mut App) {
+    app.add_systems(
+        OnEnter(Screen::Gameplay),
+        (trails::spawn, streaks::spawn, motes::spawn, flare::spawn),
+    )
+    .add_systems(
+        Update,
+        (flare::equip, haze::fit, live.pipe(scene::observe)).in_set(GearSet::Publish),
+    )
+    .add_systems(
+        Update,
+        (
+            trails::draw,
+            streaks::draw,
+            haze::draw,
+            flare::draw,
+            motes::step,
+        )
+            .in_set(GearSet::Draw)
+            .run_if(playing),
+    );
 }

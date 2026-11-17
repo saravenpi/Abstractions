@@ -19,7 +19,8 @@ const TIP_LIFE: f32 = 1.5;
 /// Seconds the exhaust glows for.
 const EXHAUST_LIFE: f32 = 0.7;
 
-/// Wingtips in the body model frame: +Y the head, so they sit to each side of the shoulders.
+/// Wingtips in the body model frame, used when no body is drawn: +Y the head, so they sit to
+/// each side of the shoulders.
 const TIPS: [Vec3; 2] = [Vec3::new(-0.85, 0.35, 0.0), Vec3::new(0.85, 0.35, 0.0)];
 
 /// Linear HDR colour of the exhaust: warm orange.
@@ -107,9 +108,15 @@ pub fn tip_heat(scene: &Scene) -> f32 {
 
 /// Returns where `source` is in render space and how strongly it glows.
 fn emitter(source: Source, scene: &Scene) -> (Vec3, f32) {
+    let at = match (source, scene.limbs) {
+        (Source::Tip(side), Some(limbs)) => limbs.tips[side],
+        (Source::Tip(side), None) => scene.at(TIPS[side]),
+        (Source::Boots, Some(limbs)) => (limbs.soles[0] + limbs.soles[1]) * 0.5,
+        (Source::Boots, None) => scene.at(Vec3::NEG_Y * SOLES),
+    };
     match source {
-        Source::Tip(side) => (scene.at(TIPS[side]), tip_heat(scene)),
-        Source::Boots => (scene.at(Vec3::NEG_Y * SOLES), scene.push()),
+        Source::Tip(_) => (at, tip_heat(scene)),
+        Source::Boots => (at, scene.push()),
     }
 }
 

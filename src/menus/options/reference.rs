@@ -42,13 +42,27 @@ fn fixed(key: &str, action: &str) -> impl Bundle {
     line(text(key, theme::FONT_SMALL, theme::TEXT), action)
 }
 
+/// What the mouse and held keys do on foot, which no row can rebind.
+const FOOT_FIXED: [(&str, &str); 3] = [
+    ("Mouse", "Look around"),
+    ("Wheel", "Zoom third person"),
+    ("Hold jump", "Boot boosters"),
+];
+
+/// What the mouse does in the ship.
+const SHIP_FIXED: [(&str, &str); 2] = [("Mouse", "Pitch and roll"), ("Wheel", "Zoom third person")];
+
 /// One half of the reference: a title, the fixed lines and the rebindable ones.
-fn half(title: &str, mouse: &str, binds: &'static [Bind]) -> impl Bundle {
+fn half(
+    title: &str,
+    lines: &'static [(&'static str, &'static str)],
+    binds: &'static [Bind],
+) -> impl Bundle {
     (
         column(px(HALF_WIDTH), 0.0),
         Children::spawn((
             Spawn(caps(title)),
-            Spawn(fixed("Mouse", mouse)),
+            SpawnIter(lines.iter().map(|(key, action)| fixed(key, action))),
             SpawnIter(binds.iter().copied().map(bound)),
             Spawn(fixed("Esc", "Pause or go back")),
         )),
@@ -67,8 +81,8 @@ pub fn help(active: Tab) -> impl Bundle {
                 ..default()
             },
             children![
-                half("On foot", "Look around", &Bind::FOOT),
-                half("In the ship", "Pitch and roll", &Bind::SHIP),
+                half("On foot", &FOOT_FIXED, &Bind::FOOT),
+                half("In the ship", &SHIP_FIXED, &Bind::SHIP),
             ],
         )],
     )

@@ -1,6 +1,7 @@
-//! Kinematic first-person character controller built on avian's move and slide.
+//! Kinematic character controller built on avian's move and slide.
 //!
-//! The movement rules run in the upright frame of the body, where +Y is the local up.
+//! The movement rules run in the upright frame of the body, where +Y is the local up. The
+//! flight gear takes the body over in the air; walking and swimming are the rules of `walk`.
 
 use std::time::Duration;
 
@@ -8,42 +9,32 @@ use avian3d::prelude::*;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use super::camera::mouse_look;
-use super::dive::{SwimInput, swim_velocity, swim_wish};
-use super::ground::{Ground, RISING_SPEED, probe, slope_velocity, snap_velocity, walkable};
-use super::intent::{Intent, approach, land_vertical, read_intent};
-use super::upright::{facing, pitch_of, tilt};
-use super::{Player, swim};
-use crate::render::GameCamera;
+use super::flight::{Air, clearance, density, settle};
+use super::ground::probe;
+use super::intent::{Intent, axis, read_intent};
+use super::lead::{View, lead};
+use super::steer::{Steer, Turn};
+use super::upright::{facing, tilt};
+use super::walk::{Step, velocity};
+use super::{Player, PlayerSet};
+use crate::gear::Gear;
 use crate::screens::playing;
 use crate::settings::{Persistent, Settings};
 use crate::space::{Anchor, altitude, local_gravity, on_foot, up};
+use crate::view::{Heading, Look, ViewPrefs, ViewSet};
+use crate::wind::Wind;
 use crate::world::Terrain;
-
-/// Walking speed in meters per second.
-const WALK_SPEED: f32 = 5.0;
-
-/// Sprinting speed in meters per second.
-const SPRINT_SPEED: f32 = 8.5;
-
-/// Horizontal acceleration rate on the ground.
-const GROUND_ACCEL: f32 = 14.0;
-
-/// Horizontal acceleration rate in the air.
-const AIR_ACCEL: f32 = 3.5;
 
 /// Longest simulated frame, to survive hitches.
 const MAX_DT: f32 = 0.05;
-
-/// Horizontal speed below which an idle body stops dead.
-const REST_SPEED: f32 = 0.05;
 
 /// Movement state owned by the controller.
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct Motion {
     /// Current velocity in the upright frame of the body: +Y is the local up.
     pub velocity: Vec3,
-    /// Heading in radians around the local up. The body orientation follows it.
+    /// Heading of the body in radians around the local up. The body orientation follows it. In
+    /// first person it is the heading of the view; in third person the body turns to where it goes.
     pub yaw: f32,
     /// Whether walkable ground was touched on the last step.
     pub grounded: bool,
@@ -51,6 +42,14 @@ pub struct Motion {
     pub coyote: f32,
     /// Whether the body is swimming instead of walking.
     pub swimming: bool,
+    /// Whether the wingsuit is asked open. Only the air keeps it: landing and water fold it.
+    pub wings: bool,
+    /// Whether the held jump key already fired the boots, and so starts no jump until let go.
+    pub spent: bool,
+    /// The heading the movement keys are read against.
+    pub steer: Steer,
+    /// How the body turns to its heading.
+    pub turn: Turn,
 }
 
 /// Services the controller needs besides the player query.
@@ -61,132 +60,129 @@ struct Env<'w, 's> {
     settings: Res<'w, Persistent<Settings>>,
     anchor: Res<'w, Anchor>,
     terrain: Res<'w, Terrain>,
+    wind: Option<Res<'w, Wind>>,
+    heading: Res<'w, Heading>,
+    look: Res<'w, Look>,
+    prefs: Res<'w, ViewPrefs>,
     slide: MoveAndSlide<'w, 's>,
     query: SpatialQuery<'w, 's>,
 }
 
-/// Per-frame values shared by the movement steps.
-struct Step {
-    /// Simulated seconds.
-    dt: f32,
-    /// Seconds since startup, for the floating bob.
-    time: f32,
-    /// Body yaw around the local up.
-    yaw: f32,
-    /// Camera pitch.
-    pitch: f32,
-    /// Altitude of the body center above the sea.
-    height: f32,
-    /// Gravity at the body in meters per second squared.
-    gravity: f32,
-}
-
-/// Returns the horizontal velocity for this step.
-fn horizontal(motion: &Motion, intent: &Intent, step: &Step) -> Vec3 {
-    let base = if intent.sprint {
-        SPRINT_SPEED
-    } else {
-        WALK_SPEED
-    };
-    let rate = if motion.grounded {
-        GROUND_ACCEL
-    } else {
-        AIR_ACCEL
-    };
-    let current = Vec3::new(motion.velocity.x, 0.0, motion.velocity.z);
-    let next = approach(
-        current,
-        intent.wish * base * swim::wade_factor(step.height),
-        rate,
-        step.dt,
-    );
-    if intent.wish == Vec3::ZERO && next.length() < REST_SPEED {
-        Vec3::ZERO
-    } else {
-        next
-    }
-}
-
-/// Returns the walking velocity for this step, glued to walkable ground.
-fn walk_step(motion: &mut Motion, intent: &Intent, ground: Option<Ground>, step: &Step) -> Vec3 {
-    motion.grounded = ground.is_some();
-    let flat = horizontal(motion, intent, step);
-    let vertical = land_vertical(motion, intent, step.gravity, step.dt);
-    match ground.filter(|_| motion.grounded) {
-        Some(ground) => {
-            slope_velocity(flat, ground.normal) + Vec3::Y * snap_velocity(ground.gap, step.dt)
+impl Env<'_, '_> {
+    /// Reads the per-frame values of a body at render position `at`.
+    fn step(&self, at: Vec3) -> Step {
+        let globe = self.terrain.globe();
+        Step {
+            dt: self.time.delta_secs().min(MAX_DT),
+            time: self.time.elapsed_secs(),
+            view: View::ahead(&self.heading, &self.look, self.prefs.on_foot),
+            height: altitude(&self.anchor, globe, at),
+            gravity: local_gravity(&self.anchor, globe, at).length(),
         }
-        None => flat + Vec3::Y * vertical,
+    }
+
+    /// Reads the keys into what the player asks, against the heading the keys hold. The
+    /// wingsuit key only works in the air.
+    fn intent(&self, motion: &mut Motion, step: &Step) -> Intent {
+        let map = &self.settings.controls.keys;
+        let axes = Vec2::new(
+            axis(&self.keys, map.forward, map.back),
+            axis(&self.keys, map.right, map.left),
+        );
+        let yaw = motion.steer.step(step.view.yaw, self.look.yaw_delta, axes);
+        let aloft = !motion.grounded && !motion.swimming;
+        motion.wings ^= aloft && self.keys.just_pressed(map.wings);
+        read_intent(&self.keys, map, yaw)
+    }
+
+    /// Reads the air around a body with `free` metres of height under its soles.
+    ///
+    /// The wind blows along the tangent plane of the anchor in render axes; carried to the
+    /// body by the tilt of its vertical, it has the same components in the upright frame.
+    fn air(&self, free: f32, step: &Step) -> Air {
+        let wind = self.wind.as_deref().map_or(Vec3::ZERO, Wind::velocity);
+        Air {
+            density: density(self.terrain.globe(), step.height),
+            wind: wind.with_y(0.0),
+            clearance: free,
+            look: step.view.direction(),
+            gravity: step.gravity,
+        }
+    }
+
+    /// Moves a body at `from` by `velocity`, given in render axes, for `dt` seconds, sliding
+    /// along what it meets.
+    fn moved(
+        &self,
+        (collider, from): (&Collider, &Transform),
+        velocity: Vec3,
+        dt: f32,
+        filter: &SpatialQueryFilter,
+    ) -> MoveAndSlideOutput {
+        self.slide.move_and_slide(
+            collider,
+            from.translation,
+            from.rotation,
+            velocity,
+            Duration::from_secs_f32(dt),
+            &MoveAndSlideConfig::default(),
+            filter,
+            |_| MoveAndSlideHitResponse::Accept,
+        )
     }
 }
 
-/// Chooses the swimming or walking velocity for this frame and updates the swim state.
-fn velocity_for(motion: &mut Motion, intent: &Intent, floor: Option<Ground>, step: &Step) -> Vec3 {
-    let gap = walkable(floor, false).map(|ground| ground.gap);
-    motion.swimming = swim::next_swimming(motion.swimming, step.height, gap);
-    if !motion.swimming {
-        let ground = walkable(floor, motion.velocity.y > RISING_SPEED);
-        return walk_step(motion, intent, ground, step);
-    }
-    motion.grounded = false;
-    let input = SwimInput {
-        wish: swim_wish(intent.forward, intent.right, step.yaw, step.pitch),
-        sprint: intent.sprint,
-        up: intent.jump,
-    };
-    swim_velocity(motion.velocity, &input, step.height, step.time, step.dt)
-}
+/// The parts of the player body the controller moves.
+type Body = (
+    Entity,
+    &'static mut Transform,
+    &'static mut Motion,
+    &'static Collider,
+    &'static mut Gear,
+);
 
-/// Reads the per-frame values of a body at render position `at` heading `yaw`, seen through `camera`.
-fn read_step(env: &Env, at: Vec3, yaw: f32, camera: &Transform) -> Step {
-    let globe = env.terrain.globe();
-    Step {
-        dt: env.time.delta_secs().min(MAX_DT),
-        time: env.time.elapsed_secs(),
-        yaw,
-        pitch: pitch_of(camera),
-        height: altitude(&env.anchor, globe, at),
-        gravity: local_gravity(&env.anchor, globe, at).length(),
-    }
-}
-
-/// Runs one step of input, ground detection and collision-aware movement.
-fn drive(
-    env: Env,
-    player: Single<(Entity, &mut Transform, &mut Motion, &Collider), With<Player>>,
-    camera: Single<&Transform, (With<GameCamera>, Without<Player>)>,
-) {
-    let (entity, mut transform, mut motion, collider) = player.into_inner();
-    let step = read_step(&env, transform.translation, motion.yaw, &camera);
+/// Runs one step of input, ground detection, flight gear and collision-aware movement.
+///
+/// The free height under the body is only measured off the ground, where the gear reads it.
+fn drive(env: Env, player: Single<Body, With<Player>>) {
+    let (entity, mut transform, mut motion, collider, mut gear) = player.into_inner();
+    let step = env.step(transform.translation);
     let to_render = tilt(up(&env.anchor, transform.translation));
-    let intent = read_intent(&env.keys, &env.settings.controls.keys, step.yaw);
+    let intent = env.intent(&mut motion, &step);
     let filter = SpatialQueryFilter::from_excluded_entities([entity]);
     let floor = probe(&env.query, collider, &transform, to_render, &filter);
-    let velocity = velocity_for(&mut motion, &intent, floor, &step);
-    let out = env.slide.move_and_slide(
-        collider,
-        transform.translation,
-        transform.rotation,
-        to_render * velocity,
-        Duration::from_secs_f32(step.dt),
-        &MoveAndSlideConfig::default(),
-        &filter,
-        |_| MoveAndSlideHitResponse::Accept,
-    );
-    transform.translation = out.position;
-    transform.rotation = facing(up(&env.anchor, out.position), step.yaw);
-    let moved = to_render.inverse() * out.projected_velocity;
-    motion.velocity = if motion.grounded {
-        moved.with_y(0.0)
-    } else {
-        moved
+    let down = to_render * Vec3::NEG_Y;
+    let free = match motion.grounded {
+        true => 0.0,
+        false => clearance(&env.query, transform.translation, down, &filter),
     };
+    let air = env.air(free, &step);
+    let wanted = velocity((&mut motion, &mut gear), &intent, floor, &air, &step);
+    let out = env.moved((collider, &transform), to_render * wanted, step.dt, &filter);
+    let moved = to_render.inverse() * out.projected_velocity;
+    motion.velocity = match (gear.state.mode.drives(), motion.grounded) {
+        (true, _) => settle(&mut gear, moved),
+        (false, true) => moved.with_y(0.0),
+        (false, false) => moved,
+    };
+    let toward = lead(&motion, &gear, &intent, &step.view);
+    let body = &mut *motion;
+    body.yaw = body.turn.step(body.yaw, toward, step.dt);
+    transform.translation = out.position;
+    transform.rotation = facing(up(&env.anchor, out.position), motion.yaw);
 }
 
-/// Registers the controller system.
+/// Registers the controller system: after the mouse is read, before the camera rig runs.
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(
+    app.configure_sets(
         Update,
-        drive.after(mouse_look).run_if(playing).run_if(on_foot),
+        PlayerSet::Move.after(ViewSet::Input).before(ViewSet::Rig),
+    )
+    .add_systems(
+        Update,
+        drive
+            .in_set(PlayerSet::Move)
+            .run_if(playing)
+            .run_if(on_foot),
     );
 }

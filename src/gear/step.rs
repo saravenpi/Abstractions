@@ -43,7 +43,19 @@ fn drive(state: &FlightState, input: &GearInput, h: f32) -> (Vec3, f32) {
     }
 }
 
+/// Returns the wind a body in `mode` flies through: the wind of `input` in the air, none on
+/// the ground, where the feet hold against it.
+fn airflow(mode: Mode, input: &GearInput) -> Vec3 {
+    match mode.airborne() && input.wind.is_finite() {
+        true => input.wind,
+        false => Vec3::ZERO,
+    }
+}
+
 /// Advances the gear by one substep of `h` seconds.
+///
+/// The attitude and the air work on the velocity through the air, which is the velocity over
+/// the ground less the wind; the mode and the result are over the ground.
 fn substep(state: &FlightState, input: &GearInput, h: f32) -> FlightState {
     let mut out = *state;
     out.mode = next(state, input);
@@ -59,11 +71,14 @@ fn substep(state: &FlightState, input: &GearInput, h: f32) -> FlightState {
         input.boost && out.mode.airborne(),
         h / THRUST_TIME,
     );
+    let wind = airflow(out.mode, input);
+    out.velocity -= wind;
     let target = aim(&out, input);
     turn(&mut out, &target, h);
     (out.velocity, out.load) = drive(&out, input, h);
     out.airspeed = out.velocity.length();
     out.aoa = angle_of_attack(&out, out.velocity);
+    out.velocity += wind;
     out
 }
 

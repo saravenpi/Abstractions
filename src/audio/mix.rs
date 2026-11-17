@@ -9,6 +9,7 @@ use super::dsp::limit::{DcBlock, limit};
 use super::music::{Music, MusicCtl};
 use super::shared::{PARAMS, Param, Shared};
 use super::ship::{Ship, ShipCtl};
+use super::suit::{Suit, SuitCtl};
 
 /// Frames between two readings of the shared values.
 pub const BLOCK: u32 = 32;
@@ -42,6 +43,8 @@ pub struct Mixer {
     air: Air,
     /// Ship voices.
     ship: Ship,
+    /// Flight gear voices.
+    suit: Suit,
     /// One-shot voices.
     cues: Pool,
     /// Offset removal, left and right.
@@ -68,6 +71,7 @@ impl Mixer {
             music,
             air: Air::new(rate),
             ship: Ship::new(rate),
+            suit: Suit::new(rate),
             cues: Pool::new(rate),
             dc: [DcBlock::default(); 2],
             count: 0,
@@ -103,6 +107,15 @@ impl Mixer {
         }
     }
 
+    /// Returns what the flight gear follows.
+    fn suit_ctl(&self) -> SuitCtl {
+        SuitCtl {
+            rush: self.at(Param::Rush),
+            boost: self.at(Param::Boost),
+            flutter: self.at(Param::Flutter),
+        }
+    }
+
     /// Reads the shared values, starts waiting cues and retunes every filter.
     fn control(&mut self) {
         for param in Param::ALL {
@@ -122,6 +135,7 @@ impl Mixer {
         self.music.steer(&orders, dt);
         self.air.tune(&self.air_ctl(), dt);
         self.ship.tune(&self.ship_ctl());
+        self.suit.tune(&self.suit_ctl());
     }
 
     /// Renders one stereo frame, always within full scale.
@@ -135,7 +149,8 @@ impl Mixer {
         }
         let music = self.music.frame();
         let air = self.air.frame(&self.air_ctl());
-        let mono = self.ship.frame(&self.ship_ctl()) + self.cues.frame();
+        let gear = self.suit.frame(&self.suit_ctl());
+        let mono = self.ship.frame(&self.ship_ctl()) + gear + self.cues.frame();
         let (wide, fx) = (
             self.at(Param::Music) * MUSIC_GAIN,
             self.at(Param::Effects) * EFFECTS_GAIN,

@@ -79,3 +79,24 @@ fn rebinds_and_names_keys() {
     assert_eq!(key_name(KeyCode::Digit4), "4");
     assert_eq!(key_name(KeyCode::Space), "Space");
 }
+
+/// The two view rows switch between first and third person, each on its own, and the comfort
+/// options flip.
+#[test]
+fn view_rows_switch_and_name_their_mode() {
+    let mut s = Settings::default();
+    assert_eq!(display(&s, Field::ViewFoot), "First person");
+    step(&mut s, Field::ViewFoot, 1);
+    assert_eq!(display(&s, Field::ViewFoot), "Third person");
+    assert_eq!(display(&s, Field::ViewShip), "First person");
+    step(&mut s, Field::ViewShip, -1);
+    step(&mut s, Field::ViewFoot, -1);
+    assert_eq!(display(&s, Field::ViewShip), "Third person");
+    assert_eq!(display(&s, Field::ViewFoot), "First person");
+    assert_eq!(display(&s, Field::HeadBob), "On");
+    assert_eq!(display(&s, Field::AutoFollow), "On");
+    step(&mut s, Field::HeadBob, 1);
+    step(&mut s, Field::AutoFollow, 1);
+    assert!(!s.view.head_bob && !s.view.auto_follow);
+    assert_eq!(display(&s, Field::AutoFollow), "Off");
+}

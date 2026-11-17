@@ -9,7 +9,7 @@ use super::mind::Mind;
 use super::pose::Pose;
 use super::sense::CompanionSense;
 use super::spot::Stance;
-use super::tune::{CLEARANCE, CURIOUS_REACH, LOW_CLEARANCE};
+use super::tune::{CLEARANCE, CURIOUS_REACH, FLIGHT_CLEARANCE, LOW_CLEARANCE};
 use crate::space::{Anchor, Frame};
 
 /// Share of the inspect idle spent away, before it heads back to the player.
@@ -18,8 +18,9 @@ const INSPECT_AWAY: f32 = 0.62;
 /// How far ahead of the player the ground it inspects lies, in meters.
 const INSPECT_REACH: f32 = 3.2;
 
-/// Speed in meters per second above which the player was moved rather than moving, and carries nothing along.
-const MAX_DRIFT: f32 = 60.0;
+/// Speed in meters per second above which the player was moved rather than moving, and carries
+/// nothing along: well above the fastest flight.
+const MAX_DRIFT: f32 = 200.0;
 
 /// Decisions and memory of the companion, read by the systems that move and draw it.
 #[derive(Component, Debug, Clone)]
@@ -38,6 +39,10 @@ pub struct Brain {
     pub inspect: Vec3,
     /// How the body is posed on top of following.
     pub pose: Pose,
+    /// How far it has moved from following on foot, 0, to flying in formation, 1.
+    pub flight: f32,
+    /// Whether the player was flying on the last frame.
+    pub aloft: bool,
     /// Frame and position in it of the player's eyes on the last frame.
     seen: Option<(Frame, DVec3)>,
     /// The discovery count already celebrated.
@@ -59,6 +64,8 @@ impl Brain {
             look: Vec3::ZERO,
             inspect: Vec3::ZERO,
             pose: Pose::default(),
+            flight: 0.0,
+            aloft: false,
             seen: None,
             delight: 0,
         }
@@ -121,7 +128,10 @@ impl Brain {
                 LOW_CLEARANCE,
             );
         }
-        (self.stance.rest(), CLEARANCE)
+        let spot = self.stance.rest();
+        let wing = self.stance.formation(self.drift);
+        let height = CLEARANCE + (FLIGHT_CLEARANCE - CLEARANCE) * self.flight;
+        (spot.lerp(wing, self.flight), height)
     }
 
     /// Returns the render position to look at: what the idle calls for, else where the attention is.

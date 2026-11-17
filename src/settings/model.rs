@@ -3,6 +3,8 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::view::ViewPrefs;
+
 /// Every user setting, saved to `settings.toml` in the config directory.
 #[derive(Resource, Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[serde(default)]
@@ -15,6 +17,8 @@ pub struct Settings {
     pub audio: Audio,
     /// World generation options.
     pub world: WorldPrefs,
+    /// Camera options: first or third person on foot and in the ship, and the comfort options.
+    pub view: ViewPrefs,
 }
 
 /// Rendering options.
@@ -100,14 +104,18 @@ pub struct Keymap {
     pub left: KeyCode,
     /// Strafe right.
     pub right: KeyCode,
-    /// Jump, or swim up in water.
+    /// Jump, or swim up in water. Held in the air it fires the boot boosters.
     pub jump: KeyCode,
-    /// Run faster.
+    /// Run faster. Held with the wingsuit spread it fires the boot boosters.
     pub sprint: KeyCode,
     /// Open and close the board computer while seated in the ship.
     pub computer: KeyCode,
     /// Hand the destination of the board computer to the autopilot.
     pub engage: KeyCode,
+    /// Spread or fold the wingsuit in the air.
+    pub wings: KeyCode,
+    /// Held in the ship: the mouse turns the camera around instead of steering.
+    pub orbit: KeyCode,
     /// Ship controls, used while seated in the ship and to board it.
     pub ship: ShipKeys,
 }
@@ -123,6 +131,8 @@ impl Default for Keymap {
             sprint: KeyCode::ShiftLeft,
             computer: KeyCode::Tab,
             engage: KeyCode::KeyG,
+            wings: KeyCode::KeyR,
+            orbit: KeyCode::AltLeft,
             ship: ShipKeys::default(),
         }
     }
@@ -156,7 +166,7 @@ pub struct ShipKeys {
     pub cut: KeyCode,
     /// Spool the warp drive, or drop out of warp.
     pub warp: KeyCode,
-    /// Switch between the cockpit and the chase view.
+    /// Switch between first and third person, in the ship and on foot.
     pub view: KeyCode,
     /// Board the ship, or leave it.
     pub board: KeyCode,

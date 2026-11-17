@@ -1,28 +1,27 @@
-//! The view from the ship: a cockpit camera with a slight lag, and a chase camera behind it.
+//! The ship as the camera rig sees it: the seat the body sits in, the target the rig follows,
+//! and the shake of rough air on top of the view the rig made.
 
 use bevy::ecs::system::SystemParam;
-use bevy::math::{DQuat, DVec3};
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::body::Ship;
-use super::helm::Helm;
 use super::shake::{Buffet, shake};
+use super::telemetry::{ShipTelemetry, WarpState};
 use crate::player::Player;
-use crate::render::GameCamera;
-use crate::space::{Anchor, Frame, Location, Placed, Travel};
+use crate::render::{GameCamera, smoothstep};
+use crate::space::{Anchor, Frame, Location, Placed, Travel, up};
+use crate::view::{Kind, Target};
 
-/// Eye point of the pilot in body axes, under the canopy.
-const SEAT: DVec3 = DVec3::new(0.0, 0.9, -1.3);
+/// Eye point of the pilot in body axes, under the canopy. The body of the player sits there.
+pub const SEAT: DVec3 = DVec3::new(0.0, 0.9, -1.3);
 
-/// Place of the chase camera in the axes it lags behind with: above and behind the ship.
-const CHASE: DVec3 = DVec3::new(0.0, 3.4, 13.0);
+/// Radius of the sphere that holds the whole hull, in metres.
+pub const HULL_RADIUS: f32 = 4.5;
 
-/// Rates per second at which the cockpit and the chase camera catch up with the ship.
-const CATCH_UP: (f64, f64) = (14.0, 4.5);
-
-/// The orientation the camera had last frame, and the frame it was expressed in.
-#[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
-pub struct View(Option<(Frame, DQuat)>);
+/// Heights above the ground in metres between which the chase camera goes from trailing
+/// level with the ground to trailing the ship freely.
+const GROUND_BAND: (f32, f32) = (150.0, 2500.0);
 
 /// Run condition: a world exists and the player is seated in the ship.
 pub fn seated(location: Option<Res<Location>>) -> bool {
@@ -32,40 +31,79 @@ pub fn seated(location: Option<Res<Location>>) -> bool {
 /// Filter of the player body, which is not the camera.
 type OnlyBody = (With<Player>, Without<GameCamera>);
 
-/// Filter of the camera, a child of the player body.
-type OnlyEyes = (With<GameCamera>, Without<Player>);
-
-/// What the camera reads.
+/// What the seat and the target are read from.
 #[derive(SystemParam)]
-pub struct Sight<'w> {
-    /// Frame time.
-    time: Res<'w, Time>,
-    /// Which view is on.
-    helm: Res<'w, Helm>,
+pub struct Cockpit<'w> {
     /// The render anchor.
     anchor: Res<'w, Anchor>,
-    /// How hard the air shakes the view.
-    buffet: Res<'w, Buffet>,
+    /// The instruments.
+    telemetry: Res<'w, ShipTelemetry>,
 }
 
-/// Puts the player body and its camera in the ship: the body takes the pose of the camera and
-/// the camera sits on it, moved only by the shake of rough air.
-pub fn look(
-    sight: Sight,
-    mut view: ResMut<View>,
-    ship: Single<&Placed, With<Ship>>,
+impl Cockpit<'_> {
+    /// Returns how near a surface the ship flies, as the local up scaled from 1 low in an
+    /// atmosphere to 0 high above it or in open space.
+    fn ground(&self, at: Vec3) -> Vec3 {
+        let Frame::Surface(_) = self.anchor.frame else {
+            return Vec3::ZERO;
+        };
+        let height = self.telemetry.altitude_ground as f32;
+        up(&self.anchor, at) * (1.0 - smoothstep(GROUND_BAND.0, GROUND_BAND.1, height))
+    }
+
+    /// Returns the velocity of the ship relative to its surroundings in render axes, or the
+    /// warp speed along its nose during a warp.
+    fn velocity(&self, ship: &Ship, nose: Vec3) -> Vec3 {
+        if let WarpState::Active(speed) = self.telemetry.warp {
+            return nose * speed as f32;
+        }
+        let along = (self.anchor.rotation * ship.vel)
+            .as_vec3()
+            .normalize_or_zero();
+        along * self.telemetry.surface_speed as f32
+    }
+}
+
+/// Seats the player body in the pilot seat, turned with the hull, and tells the camera rig to
+/// follow the ship. The rig places the camera; the body only carries it.
+pub fn carry(
+    cockpit: Cockpit,
+    ship: Single<(&Ship, &Placed)>,
     mut body: Single<&mut Transform, OnlyBody>,
-    mut eyes: Single<&mut Transform, OnlyEyes>,
+    mut target: ResMut<Target>,
 ) {
-    let (anchor, chase) = (*sight.anchor, sight.helm.chase);
-    let rate = if chase { CATCH_UP.1 } else { CATCH_UP.0 };
-    let kept = view.0.filter(|(frame, _)| *frame == anchor.frame);
-    let from = kept.map_or(ship.rot, |(_, rot)| rot);
-    let rot = from.slerp(ship.rot, 1.0 - (-rate * sight.time.delta_secs_f64()).exp());
-    view.0 = Some((anchor.frame, rot));
-    let offset = if chase { rot * CHASE } else { ship.rot * SEAT };
-    body.translation = anchor.to_render(ship.pos + offset);
-    body.rotation = anchor.rotation_to_render(rot);
-    let (offset, tilt) = shake(sight.time.elapsed_secs_wrapped(), sight.buffet.level);
-    eyes.set_if_neq(Transform::from_translation(offset).with_rotation(tilt));
+    let (ship, placed) = *ship;
+    let anchor = &*cockpit.anchor;
+    let rot = anchor.rotation_to_render(placed.rot);
+    let centre = anchor.to_render(placed.pos);
+    body.translation = anchor.to_render(placed.pos + placed.rot * SEAT);
+    body.rotation = rot;
+    let spin = (anchor.rotation * placed.rot * ship.spin).as_vec3();
+    *target = Target {
+        position: centre,
+        up: rot * Vec3::Y,
+        forward: rot * Vec3::NEG_Z,
+        velocity: cockpit.velocity(ship, rot * Vec3::NEG_Z),
+        spin,
+        ground: cockpit.ground(centre),
+        radius: HULL_RADIUS,
+        kind: Kind::Ship,
+        bank: 0.0,
+    };
+}
+
+/// Shakes the view the rig made in rough air: a small offset and tilt on top of it. The rig
+/// writes the whole camera pose every frame, so the shake never adds up.
+pub fn buffet(
+    time: Res<Time>,
+    level: Res<Buffet>,
+    mut eyes: Single<&mut Transform, With<GameCamera>>,
+) {
+    if level.level <= 0.0 {
+        return;
+    }
+    let (offset, tilt) = shake(time.elapsed_secs_wrapped(), level.level);
+    let turned = eyes.rotation * offset;
+    eyes.translation += turned;
+    eyes.rotation = (eyes.rotation * tilt).normalize();
 }

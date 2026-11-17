@@ -15,6 +15,7 @@ const COYOTE_TIME: f32 = 0.12;
 const TERMINAL_SPEED: f32 = 50.0;
 
 /// What the player asks for this frame.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct Intent {
     pub(super) wish: Vec3,
     pub(super) forward: f32,

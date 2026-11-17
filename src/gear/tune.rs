@@ -27,7 +27,17 @@ pub const WING_DRAG: Vec3 = Vec3::new(0.6, 2.04, 0.0634);
 pub const BODY_DRAG: f32 = 0.035;
 
 /// Density ratio to sea level at which the gear still has 63 percent of its grip on the air.
-pub const BREATH: f32 = 0.15;
+///
+/// It sets the ceiling of powered flight: see [`CEILING_SHARE`].
+pub const THIN_AIR: f32 = 0.15;
+
+/// Height above the sea, as a share of the atmosphere height, up to which powered flight still
+/// holds its height: about 1,150 m on the home planet, inside the cloud layer.
+///
+/// It is not a limit applied anywhere: it is what [`THIN_AIR`] and the wing give, written down
+/// and held by a test. To let the wingsuit climb higher, lower [`THIN_AIR`] and raise this
+/// number with it.
+pub const CEILING_SHARE: f32 = 0.29;
 
 /// Booster thrust in powered flight, as a share of the local weight.
 pub const THRUST_G: f32 = 0.75;

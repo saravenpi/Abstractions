@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use super::{here, key};
 use crate::audio::AudioScene;
+use crate::avatar::Shown;
 use crate::home::Base;
 use crate::player::place;
 use crate::ship::landing::GEAR_DROP;
@@ -12,6 +13,7 @@ use crate::ship::tests::rig::{Game, Log};
 use crate::ship::{Hatch, ShipEvent};
 use crate::space::{Anchor, Location, Placed, Travel};
 use crate::universe::{HOME_PLANET_NAME, Universe};
+use crate::view::{ViewMode, ViewPrefs};
 
 /// A new game wakes the player at the home base and parks the ship on its pad, nose along the
 /// pad heading.
@@ -60,4 +62,22 @@ pub fn boards(game: &mut Game) {
     assert!(game.walker().seated && !game.get::<Hatch>().near);
     assert!(game.get::<Log>().ship.contains(&ShipEvent::Boarded));
     assert_eq!(game.get::<AudioScene>().cabin, 1.0);
+}
+
+/// In the seat, the view key moves the camera behind the ship, which it shows whole, and the
+/// camera stays above the ground the landed ship stands on.
+pub fn looks_from_behind(game: &mut Game) {
+    assert_eq!(game.get::<ViewPrefs>().ship, ViewMode::First);
+    game.press(key(game, |keys| keys.ship.view));
+    game.step(1);
+    game.release(key(game, |keys| keys.ship.view));
+    assert_eq!(game.get::<ViewPrefs>().ship, ViewMode::Third);
+    assert_eq!(game.get::<ViewPrefs>().on_foot, ViewMode::First);
+    for _ in 0..60 {
+        game.step(1);
+        let height = game.camera_height();
+        assert!(height > 0.3, "the camera is {height} m over the ground");
+    }
+    assert!(game.hull_in_view(), "the landed ship is not all in view");
+    assert_eq!(game.get::<Shown>(), Shown::Hidden);
 }

@@ -56,6 +56,27 @@ fn thin_air_sets_a_ceiling() {
     assert!(!holds(0.6 * top), "must not hold height near the top");
 }
 
+/// Level flight holds its height just under the documented ceiling and not just above it.
+#[test]
+fn the_ceiling_is_the_documented_share_of_the_atmosphere() {
+    let kept = |share: f32| {
+        let mut flight = Flight::new(Mode::Fly, Vec3::new(0.0, 0.0, -70.0));
+        let input = GearInput {
+            density: air_density(1.0, share),
+            ..flying(0.05)
+        };
+        flight.run(&input, 60.0);
+        flight.pos.y
+    };
+    let share = crate::gear::tune::CEILING_SHARE;
+    assert!(
+        kept(share - 0.05) > 0.0,
+        "sank {} below the ceiling",
+        kept(share - 0.05)
+    );
+    assert!(kept(share + 0.07) < 0.0, "climbed above the ceiling");
+}
+
 /// Returns nothing: it only compiles for types that own no heap memory.
 const fn plain<T: Copy>() {}
 

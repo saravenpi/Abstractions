@@ -13,13 +13,16 @@ pub struct CompanionChirp(pub ChirpKind);
 
 /// Returns the face the surroundings call for when no reaction is running.
 ///
-/// From the most to the least urgent: worried under water, wide-eyed on takeoff and in the clouds,
-/// the face of the idle in progress, sleepy at night, curious near a structure, else neutral.
+/// From the most to the least urgent: worried under water and in a steep dive, wide-eyed on
+/// takeoff and in the clouds, delighted while flying with the player, the face of the idle in
+/// progress, sleepy at night, curious near a structure, else neutral.
 pub fn ambient(sense: &CompanionSense, idle: Option<Expression>, curious: bool) -> Expression {
-    if sense.depth > WORRY_DEPTH {
+    if sense.depth > WORRY_DEPTH || sense.diving {
         Expression::Worried
     } else if sense.in_clouds || sense.climb > TAKEOFF_CLIMB {
         Expression::Surprised
+    } else if sense.flying {
+        Expression::Happy
     } else if let Some(face) = idle {
         face
     } else if sense.night > SLEEPY_NIGHT {

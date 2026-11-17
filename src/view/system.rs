@@ -5,13 +5,13 @@
 
 use avian3d::prelude::*;
 use bevy::ecs::system::SystemParam;
-use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::prelude::*;
 
 use super::io::{BodyFade, CameraPose, Heading, Look, Moment, Occluder, Target};
+use super::keys::{read_look, toggle};
 use super::mode::ViewPrefs;
 use super::rig::Rig;
-use super::tune::{PIXELS_PER_NOTCH, RADIUS};
+use super::tune::RADIUS;
 use crate::player::Player;
 use crate::render::GameCamera;
 use crate::screens::{in_control, playing};
@@ -44,9 +44,6 @@ pub enum ViewSet {
     /// The rig runs and moves the camera. Write [`Target`] before this set.
     Rig,
 }
-
-/// Key that frees the camera around the ship while held, until the settings name one.
-pub const ORBIT_KEY: KeyCode = KeyCode::AltLeft;
 
 /// The sphere the camera casts.
 #[derive(Resource, Debug, Clone)]
@@ -89,30 +86,6 @@ impl Occluder for Sight<'_, '_> {
 /// Run condition: the rig drives the game camera.
 pub fn enabled(on: Res<Enabled>) -> bool {
     on.0
-}
-
-/// Reads the mouse, the wheel and the look key into [`Look`], with the mouse settings applied.
-fn read_look(
-    motion: Res<AccumulatedMouseMotion>,
-    wheel: Res<AccumulatedMouseScroll>,
-    keys: Res<ButtonInput<KeyCode>>,
-    settings: Res<Persistent<Settings>>,
-    mut look: ResMut<Look>,
-) {
-    let controls = &settings.controls;
-    let notches = match wheel.unit {
-        MouseScrollUnit::Line => wheel.delta.y,
-        MouseScrollUnit::Pixel => wheel.delta.y / PIXELS_PER_NOTCH,
-    };
-    *look = Look {
-        orbit_held: keys.pressed(ORBIT_KEY),
-        ..Look::from_mouse(
-            motion.delta,
-            notches,
-            controls.mouse_sensitivity,
-            controls.invert_y,
-        )
-    };
 }
 
 /// What the rig writes for the rest of the game.
@@ -217,7 +190,9 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(
             Update,
             (
-                read_look.run_if(in_control).in_set(ViewSet::Input),
+                (read_look, toggle)
+                    .run_if(in_control)
+                    .in_set(ViewSet::Input),
                 (drive, apply).chain().in_set(ViewSet::Rig),
             ),
         );

@@ -4,7 +4,8 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::scene::{AudioScene, altitude_fade, cloud_depth};
-use crate::render::{DayClock, GameCamera, daylight};
+use crate::gear::{FlightFx, GearSet};
+use crate::render::{DayClock, GameCamera, daylight, smoothstep};
 use crate::screens::Screen;
 use crate::ship::ShipSet;
 use crate::space::{Anchor, Frame, Location, Travel, altitude};
@@ -105,6 +106,18 @@ fn sense_listener(
     scene.shore = shore(&terrain, chart, height);
 }
 
+/// Airspeeds in metres per second between which the rush of air grows from nothing to full.
+const RUSH_SPEED: (f32, f32) = (6.0, 75.0);
+
+/// Writes the flight gear into the scene: the rush of air by airspeed, the boosters by their
+/// push and the flutter of the cloth. The gear publishes nothing while nobody is on foot.
+fn sense_flight(flight: Option<Res<FlightFx>>, mut scene: ResMut<AudioScene>) {
+    let fx = flight.as_deref().copied().unwrap_or_default();
+    scene.rush = smoothstep(RUSH_SPEED.0, RUSH_SPEED.1, fx.airspeed);
+    scene.boost = fx.thrust;
+    scene.flutter = fx.flutter;
+}
+
 /// Puts the scene back to the title screen.
 fn rest(mut scene: ResMut<AudioScene>) {
     *scene = AudioScene::default();
@@ -117,10 +130,11 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(OnExit(Screen::Gameplay), rest)
         .add_systems(
             Update,
-            (sense_place, sense_listener)
+            (sense_place, sense_listener, sense_flight)
                 .chain()
                 .in_set(super::Sensing)
                 .after(ShipSet::Place)
+                .after(GearSet::Publish)
                 .run_if(in_state(Screen::Gameplay)),
         );
 }

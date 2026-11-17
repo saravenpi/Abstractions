@@ -54,21 +54,28 @@ pub fn graphics(active: Tab) -> impl Bundle {
     )
 }
 
-/// Controls tab: the mouse and the keys used on foot.
+/// Controls tab: the mouse, the camera and the keys used on foot.
 pub fn controls(active: Tab) -> impl Bundle {
     (
         page(Tab::Controls, active),
         Children::spawn((
             Spawn(stepper("Mouse sensitivity", Field::Sensitivity)),
             Spawn(toggle("Invert Y", Field::InvertY)),
+            Spawn(toggle("View on foot", Field::ViewFoot)),
+            Spawn(toggle("View in ship", Field::ViewShip)),
+            Spawn(toggle("Head bob", Field::HeadBob)),
+            Spawn(toggle("Camera auto-follow", Field::AutoFollow)),
             SpawnIter(Bind::FOOT.into_iter().map(binding)),
         )),
     )
 }
 
-/// Ship tab: the keys used while seated. Boarding is on the controls tab.
+/// Ship tab: the keys used while seated. Boarding and the view key are on the controls tab.
 pub fn ship(active: Tab) -> impl Bundle {
-    let seated = Bind::SHIP.into_iter().filter(|bind| *bind != Bind::Board);
+    let shared = [Bind::Board, Bind::View];
+    let seated = Bind::SHIP
+        .into_iter()
+        .filter(move |bind| !shared.contains(bind));
     (
         page(Tab::Ship, active),
         Children::spawn(SpawnIter(seated.map(binding))),

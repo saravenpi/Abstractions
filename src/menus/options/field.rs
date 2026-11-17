@@ -4,6 +4,7 @@ use bevy::prelude::KeyCode;
 
 pub use super::binds::Bind;
 use crate::settings::{Graphics, Settings};
+use crate::view::ViewPrefs;
 
 /// One editable setting.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,6 +26,10 @@ pub enum Field {
     Master,
     Music,
     Effects,
+    ViewFoot,
+    ViewShip,
+    HeadBob,
+    AutoFollow,
     Key(Bind),
 }
 
@@ -68,10 +73,23 @@ fn step_graphics(g: &mut Graphics, field: Field, dir: i32) {
     }
 }
 
+/// Steps a camera setting: the two views switch between first and third person, the comfort
+/// options flip.
+fn step_view(view: &mut ViewPrefs, field: Field) {
+    match field {
+        Field::ViewFoot => view.on_foot = view.on_foot.toggled(),
+        Field::ViewShip => view.ship = view.ship.toggled(),
+        Field::HeadBob => view.head_bob = !view.head_bob,
+        Field::AutoFollow => view.auto_follow = !view.auto_follow,
+        _ => {}
+    }
+}
+
 /// Steps a setting by `dir`. Toggles flip, numbers move and clamp, keys are untouched.
 pub fn step(settings: &mut Settings, field: Field, dir: i32) {
     let (c, a) = (&mut settings.controls, &mut settings.audio);
     step_graphics(&mut settings.graphics, field, dir);
+    step_view(&mut settings.view, field);
     match field {
         Field::Sensitivity => c.mouse_sensitivity = bump_tenths(c.mouse_sensitivity, dir, 0.1, 3.0),
         Field::InvertY => c.invert_y = !c.invert_y,

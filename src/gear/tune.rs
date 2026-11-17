@@ -1,0 +1,167 @@
+//! Tuning constants of the flight gear. Speeds are quoted for the home planet at sea level.
+
+use bevy::prelude::*;
+
+/// Air density at sea level in kilograms per cubic metre, the same as the ship uses.
+pub const SEA_DENSITY: f32 = 1.2;
+
+/// Gravity in metres per second squared the quoted speeds are measured under.
+pub const REF_GRAVITY: f32 = 22.0;
+
+/// Longest internal integration step in seconds. Longer frames are cut into equal substeps.
+pub const MAX_STEP: f32 = 1.0 / 120.0;
+
+/// Most substeps one call may take.
+pub const MAX_SUBSTEPS: f32 = 8.0;
+
+/// Drag area over twice the mass at sea level density, per metre.
+pub const AERO: f32 = 0.0453;
+
+/// Drag coefficients of the spread wingsuit along the right, dorsal and nose axes.
+///
+/// The dorsal one is the wing itself: it makes the lift. Dorsal over nose sets the glide ratio:
+/// `(dorsal - nose) / (2 * sqrt(dorsal * nose))`, 2.75 here.
+pub const WING_DRAG: Vec3 = Vec3::new(0.6, 2.04, 0.0634);
+
+/// Drag coefficient of the folded body, the same on every axis.
+pub const BODY_DRAG: f32 = 0.035;
+
+/// Density ratio to sea level at which the gear still has 63 percent of its grip on the air.
+pub const BREATH: f32 = 0.15;
+
+/// Booster thrust in powered flight, as a share of the local weight.
+pub const THRUST_G: f32 = 0.75;
+
+/// Largest vertical force the boosters top up to at rest, as a share of the weight. Well below
+/// 1, so that the body can never hover or rise on the boosters alone.
+pub const SUPPORT_G: f32 = 0.8;
+
+/// Extra share of the weight the top-up reaches once the body runs forward through the air.
+/// With [`SUPPORT_G`] it stays below 1.
+pub const SUPPORT_RUN: f32 = 0.16;
+
+/// Ground speeds between which the forward run earns [`SUPPORT_RUN`], in metres per second.
+pub const SUPPORT_RUN_SPEED: (f32, f32) = (4.0, 16.0);
+
+/// Airspeeds between which the low speed support fades out, in metres per second.
+pub const SUPPORT_FADE: (f32, f32) = (24.0, 38.0);
+
+/// Share of the angle between the nose and the look direction the thrust turns by.
+pub const VECTORING: f32 = 0.35;
+
+/// Largest tangent of the thrust vectoring angle (about 20 degrees).
+pub const VECTOR_LIMIT: f32 = 0.36;
+
+/// Descent speed the boots brake a fall to under [`REF_GRAVITY`], in metres per second.
+pub const BOOT_DESCENT: f32 = 5.0;
+
+/// Slowest and fastest braked descent on any planet, in metres per second.
+pub const BOOT_DESCENT_RANGE: (f32, f32) = (4.0, 6.0);
+
+/// Largest upward push of the braking boots, as a multiple of the weight.
+pub const BRAKE_MAX_G: f32 = 2.6;
+
+/// Horizontal acceleration the braking boots give, in metres per second squared.
+pub const BOOT_AIR_ACCEL: f32 = 6.0;
+
+/// Horizontal damping of the braking boots per second. Their top drift is accel over damping.
+pub const BOOT_AIR_DAMP: f32 = 0.6;
+
+/// Horizontal acceleration of a free falling body leaning into the air, at sea level.
+pub const FALL_AIR_ACCEL: f32 = 2.0;
+
+/// Seconds the wings take to spread or fold.
+pub const WING_TIME: f32 = 0.3;
+
+/// Seconds the boosters take to spool up or down.
+pub const THRUST_TIME: f32 = 0.25;
+
+/// Natural frequency of the critically damped pitch response, in radians per second.
+pub const PITCH_RATE: f32 = 9.0;
+
+/// Natural frequency of the critically damped bank response, in radians per second.
+pub const BANK_RATE: f32 = 6.0;
+
+/// Natural frequency of the critically damped turn between upright and prone, in radians per second.
+pub const PRONE_RATE: f32 = 4.5;
+
+/// Rate at which the nose heading follows its target while the wings are spread, per second.
+pub const YAW_RATE: f32 = 12.0;
+
+/// Steepest nose angle above or below the horizon, in radians.
+pub const MAX_PITCH: f32 = 1.4;
+
+/// Steepest bank angle, in radians.
+pub const MAX_BANK: f32 = 1.13;
+
+/// Bank angle per radian of heading error between the look direction and the flight path.
+pub const BANK_GAIN: f32 = 1.6;
+
+/// Pitch a full stick adds to the look direction, in radians.
+pub const PITCH_AUTHORITY: f32 = 0.5;
+
+/// Bank a full stick adds, in radians.
+pub const ROLL_AUTHORITY: f32 = 0.9;
+
+/// Largest angle of attack the nose may hold above the flight path, in radians (18 degrees).
+pub const AOA_MAX: f32 = 0.314;
+
+/// Largest angle the nose may hold below the flight path, in radians.
+pub const AOA_MIN: f32 = 0.17;
+
+/// Largest load in g the pitch limits let the wing pull.
+pub const MAX_LOAD: f32 = 4.0;
+
+/// Largest nose-up trim that holds the flight path on the look direction, in radians.
+pub const TRIM_MAX: f32 = 0.2;
+
+/// Largest load factor the trim compensates for in a banked turn.
+pub const TRIM_LOAD: f32 = 2.5;
+
+/// Horizontal speeds between which the nose heading leaves the look direction for the flight path.
+pub const FOLLOW_SPEED: (f32, f32) = (4.0, 14.0);
+
+/// Airspeeds between which the wings start to bank.
+pub const BANK_SPEED: (f32, f32) = (8.0, 20.0);
+
+/// Airspeeds between which the pitch limits around the flight path come in.
+pub const LIMIT_SPEED: (f32, f32) = (3.0, 12.0);
+
+/// Airspeeds between which the body turns from upright to prone.
+pub const PRONE_SPEED: (f32, f32) = (6.0, 20.0);
+
+/// Seconds to impact between which the ground assist goes from full to none.
+pub const FLARE_TIME: (f32, f32) = (0.6, 2.0);
+
+/// Sines of the descent angle between which the ground assist comes in.
+pub const FLARE_STEEP: (f32, f32) = (0.2, 0.6);
+
+/// Largest nose-up bias of the ground assist, in radians.
+pub const FLARE_PITCH: f32 = 0.45;
+
+/// Speed lost into a surface above which a touchdown may be a landing roll, in metres per second.
+pub const ROLL_SINK: f32 = 9.0;
+
+/// Share of the speed that must go into the ground for a landing roll (sine of 30 degrees).
+pub const ROLL_SINE: f32 = 0.5;
+
+/// Seconds a landing roll lasts.
+pub const ROLL_TIME: f32 = 0.7;
+
+/// Rate at which a landing roll sheds speed, per second.
+pub const ROLL_DAMP: f32 = 5.0;
+
+/// Ground speed above which a touchdown becomes a slide, in metres per second.
+pub const SLIDE_ENTER: f32 = 9.5;
+
+/// Ground speed at which a slide hands over to the run, in metres per second.
+pub const SLIDE_EXIT: f32 = 8.0;
+
+/// Friction of a slide as a share of the weight.
+pub const SLIDE_G: f32 = 0.35;
+
+/// Extra slide deceleration per metre per second of speed, per second.
+pub const SLIDE_DRAG: f32 = 0.5;
+
+/// Extra share of the speed a wall or cliff hit costs per unit of impact sine.
+pub const SCRUB: f32 = 0.3;

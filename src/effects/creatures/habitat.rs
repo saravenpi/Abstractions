@@ -2,6 +2,8 @@
 
 use super::anim::ramp;
 use crate::effects::kind::{Ambient, CEILING};
+use crate::effects::planet::{lifeless, seen};
+use crate::universe::PlanetRecord;
 use crate::world::{Biome, SEA_LEVEL, Surface};
 
 /// The kinds of wandering creature.
@@ -81,6 +83,16 @@ pub fn presence(species: Species, a: &Ambient) -> f32 {
         Species::Crow => day * crow_haunt(a),
         Species::Gull => day * gull_haunt(a),
     }
+}
+
+/// Returns the share of a species' pool that should be out on a planet of `record`: none on a world
+/// without air or without life, no gull without a sea, and at home what [`presence`] gives.
+pub fn presence_on(record: &PlanetRecord, species: Species, a: &Ambient) -> f32 {
+    let stranded = species == Species::Gull && record.ocean <= 0.0;
+    if lifeless(record) || stranded {
+        return 0.0;
+    }
+    presence(species, &seen(record, a))
 }
 
 #[cfg(test)]

@@ -10,6 +10,7 @@ use crate::effects::rng::Rng;
 use crate::effects::sense::Sensed;
 use crate::render::{DayClock, daylight};
 use crate::space::Anchor;
+use crate::universe::PlanetRecord;
 use crate::wind::Wind;
 use crate::world::Terrain;
 
@@ -69,6 +70,11 @@ impl Env<'_> {
                 wind: self.wind.strength,
             },
         }
+    }
+
+    /// Returns the record of the planet under the camera.
+    pub fn record(&self) -> &PlanetRecord {
+        self.terrain.globe().record()
     }
 
     /// Returns the ground around the camera of this frame.

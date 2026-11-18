@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use crate::world::globe::Chart;
-use crate::world::{Biome, SEA_LEVEL, Surface, Terrain};
+use crate::world::{Biome, Surface, Terrain};
 
 /// Spacing of the spawn search rings.
 const SPAWN_STEP: f32 = 16.0;
@@ -26,9 +26,10 @@ const ISLAND_SAMPLES: u32 = 12;
 impl Terrain {
     /// Returns true when `(x, z)` is gentle dry ground of grass or sand with dry neighbours.
     fn good_spawn(&self, x: f32, z: f32) -> bool {
-        let dry = |dx: f32, dz: f32| self.height(x + dx, z + dz) > SEA_LEVEL + 1.5;
+        let sea = self.globe().sea_level();
+        let dry = |dx: f32, dz: f32| self.height(x + dx, z + dz) > sea + 1.5;
         matches!(self.surface(x, z), Surface::Grass | Surface::Sand)
-            && self.height(x, z) >= SEA_LEVEL + 2.0
+            && self.height(x, z) >= sea + 2.0
             && (self.height(x + 6.0, z) - self.height(x - 6.0, z)).abs() < 2.5
             && (self.height(x, z + 6.0) - self.height(x, z - 6.0)).abs() < 2.5
             && [(6.0, 0.0), (-6.0, 0.0), (0.0, 6.0), (0.0, -6.0)]
@@ -47,10 +48,11 @@ impl Terrain {
     /// Returns true when land surrounds `(x, z)` out to about two hectares.
     fn on_island(&self, x: f32, z: f32) -> bool {
         let total = (ISLAND_RADII.len() as u32 * ISLAND_SAMPLES) as f32;
+        let sea = self.globe().sea_level();
         let dry = ISLAND_RADII
             .iter()
             .flat_map(|&r| self.ring_heights(x, z, r))
-            .filter(|&h| h > SEA_LEVEL)
+            .filter(|&h| h > sea)
             .count();
         dry as f32 / total >= ISLAND_SHARE
     }
@@ -58,7 +60,8 @@ impl Terrain {
     /// Returns a penalty in metres for a spawn that is inland, high or in an harsh biome.
     fn spawn_penalty(&self, x: f32, z: f32) -> f32 {
         let harsh = matches!(self.biome(x, z), Biome::Desert | Biome::Taiga);
-        let coastal = self.ring_heights(x, z, 70.0).any(|h| h <= SEA_LEVEL);
+        let sea = self.globe().sea_level();
+        let coastal = self.ring_heights(x, z, 70.0).any(|h| h <= sea);
         let high = self.height(x, z) > 10.0;
         300.0 * f32::from(harsh) + 200.0 * f32::from(!coastal) + 100.0 * f32::from(high)
     }

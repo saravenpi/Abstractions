@@ -72,7 +72,7 @@ impl Globe {
         if mix(self.seed, cell, 2) > pond_chance(self.biome_on(center)) {
             return None;
         }
-        let ground = |q: S| self.shape.elevation(q.point(), &self.climate);
+        let ground = |q: S| self.uncarved(q);
         let h = ground(center);
         let firm = |dir: Vec2| {
             let rim = ground(center.moved(dir * MARGIN));
@@ -96,7 +96,7 @@ impl Globe {
 
     /// Returns the ground height at `p` with the ponds carved into the uncarved height `h`.
     pub(in crate::world) fn carve<S: Site>(&self, p: S, h: f32) -> f32 {
-        if h <= BELOW_PONDS {
+        if h <= BELOW_PONDS || !self.lands().ponds() {
             return h;
         }
         self.ponds_near(p)
@@ -105,6 +105,6 @@ impl Globe {
 
     /// Returns true when `p` lies inside a pond basin.
     pub(in crate::world) fn in_pond<S: Site>(&self, p: S) -> bool {
-        self.ponds_near(p).any(|pond| pond.pull(p).1)
+        self.lands().ponds() && self.ponds_near(p).any(|pond| pond.pull(p).1)
     }
 }

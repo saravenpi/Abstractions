@@ -2,11 +2,13 @@
 
 mod chart;
 mod cube;
+mod datum;
 pub mod far;
 mod flat;
 mod ground;
 mod id;
 pub mod quadtree;
+mod record;
 mod reserve;
 mod site;
 mod sphere;
@@ -14,6 +16,10 @@ mod tangent;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_datum;
+#[cfg(test)]
+mod tests_record;
 
 pub use chart::Chart;
 pub use cube::Face;
@@ -24,9 +30,10 @@ pub use tangent::Tangent;
 
 use super::biome::Climate;
 use super::islands::Shape;
-use crate::universe::PlanetSpec;
+use super::lands::Lands;
+use crate::universe::{PlanetRecord, PlanetSpec};
 
-/// A planet: its size, its pull and the noise fields that shape its ground.
+/// A planet: its size, its pull, its record and the noise fields that shape its ground.
 ///
 /// Shared behind an `Arc` by every [`super::Terrain`] view of the planet.
 #[derive(Clone)]
@@ -37,12 +44,20 @@ pub struct Globe {
     pub(in crate::world) shape: Shape,
     pub(in crate::world) climate: Climate,
     reserve: Option<Reserve>,
+    /// What the physics says about the planet, and its class.
+    record: PlanetRecord,
+    /// Raw ground height of the sea level, in metres: what every height is measured from.
+    datum: f32,
+    /// The ground rules the record gives.
+    lands: Lands,
 }
 
 impl Globe {
     /// Builds the globe for a terrain seed, a sea level radius in metres and a surface gravity
-    /// in metres per second squared. The same values always give the same planet.
+    /// in metres per second squared, with the record of the home planet. The same values always give
+    /// the same planet.
     pub fn new(seed: u64, radius: f64, gravity: f64) -> Self {
+        let record = PlanetRecord::TEMPERATE;
         Self {
             seed,
             radius,
@@ -50,12 +65,15 @@ impl Globe {
             shape: Shape::new(seed),
             climate: Climate::new(seed),
             reserve: None,
+            record,
+            datum: 0.0,
+            lands: Lands::of(&record),
         }
     }
 
-    /// Builds the globe of a planet of the universe.
+    /// Builds the globe of a planet of the universe, with its own record.
     pub fn of(spec: &PlanetSpec) -> Self {
-        Self::new(spec.seed, spec.radius, spec.gravity)
+        Self::new(spec.seed, spec.radius, spec.gravity).with_record(spec.record)
     }
 
     /// Returns the seed the ground is generated from.

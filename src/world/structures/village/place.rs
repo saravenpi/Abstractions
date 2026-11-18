@@ -58,14 +58,15 @@ fn viable(terrain: &Terrain, site: Site) -> bool {
     lots.len() >= 6 && kinds.len() >= 3
 }
 
-/// Searches village cell `vcell` for a village. Each candidate center is judged and laid out on the metric
-/// view around it, and must keep the whole village `EDGE` meters away from the cube edges.
+/// Searches village cell `vcell` for a village, on a planet people live on. Each candidate center is judged
+/// and laid out on the metric view around it, and must keep the whole village `EDGE` meters away from the
+/// cube edges.
 fn search(terrain: &Terrain, vcell: IVec2) -> Option<Site> {
     let mix = (vcell.x as u32 as u64) << 32 | vcell.y as u32 as u64;
     let mut rng = ChaCha8Rng::seed_from_u64(
         terrain.seed().wrapping_mul(0xA24B_AED4_963E_E407) ^ mix ^ 0x0711_A6E5,
     );
-    if !rng.random_bool(CHANCE) {
+    if !terrain.globe().lands().settled() || !rng.random_bool(CHANCE) {
         return None;
     }
     let size = SPAN as f32 * CELL;

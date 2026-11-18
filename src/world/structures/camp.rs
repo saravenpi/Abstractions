@@ -47,10 +47,11 @@ const TENTS: [[f32; 3]; 4] = [
 /// Returns the direction angle of the nearest open water within 30 m, if any.
 fn water_angle(b: &Build) -> Option<f32> {
     let p = b.site.origin;
+    let sea = b.terrain.globe().sea_level();
     (0..16).map(|i| i as f32 / 16.0 * TAU).find(|a| {
         [12.0, 20.0, 28.0]
             .iter()
-            .any(|m| b.terrain.height(p.x + a.sin() * m, p.y + a.cos() * m) <= 0.0)
+            .any(|m| b.terrain.height(p.x + a.sin() * m, p.y + a.cos() * m) <= sea)
     })
 }
 

@@ -8,11 +8,9 @@ use super::density::{Fields, choose};
 use super::metric::Metric;
 use super::relief::Relief;
 use super::spacing::{crowded, ground, rock, room, sunk};
-use super::table::plants_for;
-use super::{BIG_CAP, DEEP_LIMIT, Placement, SMALL_CAP, TRI_BUDGET};
+use super::{BIG_CAP, Placement, SMALL_CAP, TRI_BUDGET, deep};
 use crate::world::propmesh::{Plant, VARIANTS};
 use crate::world::props::small_tris;
-use crate::world::surface::classify;
 use crate::world::{Biome, CHUNK_SIZE, SEA_LEVEL, Surface, Terrain};
 
 /// Highest ground a willow may stand on.
@@ -60,9 +58,10 @@ impl Ctx<'_> {
     /// Returns the ground at chart position `w`, or nothing where the floor is too deep for anything.
     fn look(&self, w: Vec2) -> Option<Ground> {
         let (x, z) = (w.x, w.y);
+        let (deep, lands) = (deep(self.terrain), self.terrain.globe().lands());
         let Some(relief) = &self.relief else {
             let height = self.terrain.height(x, z);
-            return (height >= -DEEP_LIMIT).then(|| Ground {
+            return (height >= deep).then(|| Ground {
                 height,
                 slope: 0.0,
                 surface: self.terrain.surface(x, z),
@@ -70,10 +69,10 @@ impl Ctx<'_> {
             });
         };
         let (height, grade) = relief.at(w);
-        (height >= -DEEP_LIMIT).then(|| {
+        (height >= deep).then(|| {
             let (slope, biome) = (self.metric.slope(grade), self.terrain.biome(x, z));
             let pond = height <= SEA_LEVEL && self.terrain.pond_at(x, z);
-            let surface = [classify(height, slope, biome), Surface::Pond][usize::from(pond)];
+            let surface = [lands.surface(height, slope, biome), Surface::Pond][usize::from(pond)];
             Ground {
                 height,
                 slope,
@@ -83,10 +82,11 @@ impl Ctx<'_> {
         })
     }
 
-    /// Returns the plant the roll lands on at `w` and the ground it grows on, if any.
+    /// Returns the plant the roll lands on at `w` and the ground it grows on, if any. A sea floor only
+    /// carries something where the sea has life.
     fn pick(&self, w: Vec2, roll: f32, big: bool) -> Option<(Plant, Ground)> {
         let at = self.look(w)?;
-        let table = plants_for(at.biome, at.surface);
+        let table = self.terrain.globe().lands().plants(at.biome, at.surface);
         let density = self.fields.density((self.terrain, w), -at.height);
         choose(table, roll, &density, big)
             .filter(|&plant| {

@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use super::anim::{glide, wing_angle};
 use super::env::{Ctx, Env, Sky};
 use super::gear::Gear;
-use super::habitat::{Species, presence};
+use super::habitat::{Species, presence_on};
 use super::steer::{approach, bearing, turn_toward, yaw};
 use super::wander::{PARKED, Roam, Wander, dormant, pick, place, strayed};
 use super::wings::{Spec, Wing, pair, pose};
@@ -130,7 +130,7 @@ pub fn step(
     mut wings: Query<(&mut Transform, &Wing)>,
 ) {
     let sky = env.sky();
-    let level = presence(Species::Butterfly, &sky.ambient) * COUNT as f32;
+    let level = presence_on(env.record(), Species::Butterfly, &sky.ambient) * COUNT as f32;
     let mut rng = *env.rng;
     let mut ctx = Ctx {
         ground: env.ground(),

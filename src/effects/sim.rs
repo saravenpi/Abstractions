@@ -118,6 +118,7 @@ pub fn step(
     let mut rng = *env.rng;
     let mut spawn = Spawn {
         ambient: ambient_of(&env, env.eye.altitude),
+        record: *env.terrain.globe().record(),
         ground,
         wind: env.wind.direction,
         pool: &env.pool,

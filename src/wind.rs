@@ -11,8 +11,10 @@ use bevy::prelude::*;
 pub use self::air::{NO_AIR, THICKEST, Thickness, breeze, thickness};
 #[cfg(test)]
 pub use self::air::{PRESSURES, samples};
+use self::follow::{to_render, weathered};
 use crate::space::{Anchor, Frame, Shift};
 use crate::universe::{BodyId, Universe};
+use crate::weather::{Forecast, Weather};
 
 /// Seconds for the wind direction to turn a full circle.
 const TURN_SECONDS: f32 = 900.0;
@@ -117,30 +119,40 @@ fn weigh(
     }
 }
 
-/// Advances the wind with the game clock, keeps it turned with the render anchor and lets it
-/// blow as hard as the air of the planet carries it.
+/// Advances the wind with the game clock, keeps it turned with the render anchor, leans it
+/// toward the prevailing wind of the weather and its storm gusts, and lets it blow as hard as
+/// the air of the planet carries it.
 fn blow(
     time: Res<Time>,
-    anchor: Option<Res<Anchor>>,
+    place: (Option<Res<Anchor>>, Option<Res<Weather>>),
     air: Res<Thickness>,
     mut veer: Local<Veer>,
     mut wind: ResMut<Wind>,
 ) {
     let clock = wind_at(time.elapsed_secs());
-    let direction = match anchor {
-        Some(anchor) => veer.track(&anchor, clock.direction),
+    let (anchor, weather) = place;
+    let direction = match anchor.as_deref() {
+        Some(anchor) => veer.track(anchor, clock.direction),
         None => clock.direction,
     };
-    *wind = carried(Wind { direction, ..clock }, air.0);
+    let turned = Wind { direction, ..clock };
+    let blown = match (anchor.as_deref(), weather.as_deref()) {
+        (Some(anchor), Some(sky)) => weathered(turned, to_render(anchor, sky.wind), sky.storm),
+        _ => turned,
+    };
+    *wind = carried(blown, air.0);
 }
 
 /// Registers the wind and air resources and their systems.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Wind>()
         .init_resource::<Thickness>()
-        .add_systems(Update, (weigh, blow).chain());
+        .add_systems(Update, (weigh, blow).chain().after(Forecast));
 }
 
 mod air;
+mod follow;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_follow;

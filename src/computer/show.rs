@@ -140,7 +140,9 @@ pub(super) fn plugin(app: &mut App) {
             tabs,
             status,
             super::readout::write,
+            super::pointer::plot,
             super::map::draw,
+            super::pointer::slide,
         )
             .chain()
             .after(super::Input)

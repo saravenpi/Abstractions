@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::board::{Board, VISIBLE_ROWS};
-use super::detail::readout;
+use super::detail::{LINES, readout};
 use super::map::field;
 use crate::ui::{text, theme};
 
@@ -33,7 +33,20 @@ pub(super) fn pane() -> impl Bundle {
             overflow: Overflow::clip(),
             ..default()
         },
-        children![field(), (Readout, text("", theme::FONT_SMALL, theme::TEXT))],
+        children![field(), (Readout, lines())],
+    )
+}
+
+/// The text of the readout: the room of the longest readout, cut past it.
+fn lines() -> impl Bundle {
+    (
+        text("", theme::FONT_SMALL, theme::TEXT),
+        Node {
+            height: px(LINES as f32 * LINE_HEIGHT),
+            flex_shrink: 0.0,
+            overflow: Overflow::clip(),
+            ..default()
+        },
     )
 }
 

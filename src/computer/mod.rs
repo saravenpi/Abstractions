@@ -6,9 +6,11 @@ mod chart;
 mod detail;
 mod format;
 mod keys;
+mod lens;
 mod locate;
 mod map;
 mod open;
+mod pointer;
 mod readout;
 mod reveal;
 mod route;
@@ -24,9 +26,15 @@ mod tests;
 #[cfg(test)]
 mod tests_detail;
 #[cfg(test)]
+mod tests_lens;
+#[cfg(test)]
+mod tests_pointer;
+#[cfg(test)]
 mod tests_screen;
 #[cfg(test)]
 mod tests_tables;
+#[cfg(test)]
+mod tests_wheel;
 #[cfg(test)]
 mod tests_words;
 
@@ -58,5 +66,11 @@ pub(super) fn logic(app: &mut App) {
 
 /// Registers the computer resources and systems.
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins((logic, open::plugin, keys::plugin, show::plugin));
+    app.add_plugins((
+        logic,
+        open::plugin,
+        keys::plugin,
+        pointer::plugin,
+        show::plugin,
+    ));
 }

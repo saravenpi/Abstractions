@@ -41,7 +41,7 @@ pub const fn mark(class: PlanetClass) -> &'static [[u8; 4]] {
             [0, 2, 1, 1],
             [2, 2, 1, 1],
         ],
-        PlanetClass::Lava => &[[0, 1, 3, 1], [1, 0, 1, 3]],
+        PlanetClass::Lava => &[[0, 1, 3, 1], [1, 0, 1, 1], [1, 2, 1, 1]],
         PlanetClass::Barren => &[[1, 1, 1, 1]],
     }
 }

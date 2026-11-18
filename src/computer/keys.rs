@@ -1,4 +1,4 @@
-//! Keyboard, wheel and button handling of the computer screen.
+//! Keyboard, wheel and button handling of the table of the computer screen.
 
 use bevy::ecs::system::SystemParam;
 use bevy::input::mouse::{AccumulatedMouseScroll, MouseScrollUnit};
@@ -8,6 +8,7 @@ use bevy::ui_widgets::Activate;
 
 use super::board::{Board, VISIBLE_ROWS};
 use super::open::{Computer, ready};
+use super::pointer::MapView;
 use super::route::{Destination, Engage};
 use super::view::{Act, Slot, TabLink};
 use crate::audio::AudioCue;
@@ -38,7 +39,7 @@ type Role = (
 );
 
 /// Moves the cursor to the row the pointer gave focus to.
-fn follow_focus(focus: Res<InputFocus>, slots: Query<&Slot>, mut board: ResMut<Board>) {
+pub(super) fn follow_focus(focus: Res<InputFocus>, slots: Query<&Slot>, mut board: ResMut<Board>) {
     let Some(slot) = focus.get().and_then(|entity| slots.get(entity).ok()) else {
         return;
     };
@@ -48,11 +49,12 @@ fn follow_focus(focus: Res<InputFocus>, slots: Query<&Slot>, mut board: ResMut<B
 }
 
 /// Moves the cursor with the arrows, Page Up and Down, Home and End, changes tab with Left and
-/// Right, and scrolls with the wheel. A move that scrolls the table under a cursor that stays
-/// on the same drawn row is sounded here, since the focus does not move.
-fn navigate(
+/// Right, and scrolls with the wheel unless the pointer is over the map. A move that scrolls
+/// the table under a cursor that stays on the same drawn row is sounded here, since the focus
+/// does not move.
+pub(super) fn navigate(
     keys: Res<ButtonInput<KeyCode>>,
-    wheel: Res<AccumulatedMouseScroll>,
+    (wheel, view): (Res<AccumulatedMouseScroll>, Res<MapView>),
     mut board: ResMut<Board>,
     mut cues: MessageWriter<AudioCue>,
 ) {
@@ -75,7 +77,7 @@ fn navigate(
         MouseScrollUnit::Line => wheel.delta.y * WHEEL_ROWS,
         MouseScrollUnit::Pixel => wheel.delta.y / theme::ROW_HEIGHT,
     };
-    if rows.round() != 0.0 {
+    if rows.round() != 0.0 && !view.over {
         board.scroll(-rows.round() as isize);
     }
 }
@@ -102,7 +104,7 @@ fn focus_cursor(
 
 /// What the actions of the screen read and write.
 #[derive(SystemParam)]
-struct Desk<'w, 's> {
+pub(super) struct Desk<'w, 's> {
     board: ResMut<'w, Board>,
     destination: ResMut<'w, Destination>,
     next: ResMut<'w, NextState<Computer>>,
@@ -140,7 +142,7 @@ fn action_keys(
 }
 
 /// Applies an activated button: a row sets the destination, a tab opens, an action runs.
-fn on_activate(event: On<Activate>, roles: Query<Role>, mut desk: Desk) {
+pub(super) fn on_activate(event: On<Activate>, roles: Query<Role>, mut desk: Desk) {
     let Ok((slot, link, act)) = roles.get(event.entity) else {
         return;
     };

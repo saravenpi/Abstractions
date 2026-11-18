@@ -17,7 +17,8 @@ use crate::ui::{
 const WIDTHS: [f32; 4] = [20.0, 190.0, 100.0, 360.0];
 
 /// Key hints shown at the bottom of the screen.
-const HINT: &str = "Up and down select. Left and right change tab. Enter sets the destination";
+const HINT: &str = "Up and down select. Left and right change tab. Enter sets the destination. \
+                    On the map the wheel zooms, a drag pans and Backspace shows it all";
 
 /// A row button of the pool, counted from the top of the screen.
 #[derive(Component, Debug, Clone, Copy)]

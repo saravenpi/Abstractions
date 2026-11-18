@@ -3,7 +3,8 @@
 use bevy::math::Vec2;
 
 use super::chart::Dot;
-use super::lens::{Lens, MAX_ZOOM, hit};
+use super::chart::hit;
+use super::lens::{Lens, MAX_ZOOM};
 use super::map::SIZE;
 
 /// Returns true when two points are less than a thousandth apart.

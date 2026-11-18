@@ -10,6 +10,7 @@ use super::keys::navigate;
 use super::lens::Lens;
 use super::map::SIZE;
 use super::pointer::{MapView, RESET_KEY, ZOOM_STEP, plot, zoom};
+use super::semantic::DIVE;
 use super::tests_pointer::{pixel, point, rig};
 use super::*;
 
@@ -34,7 +35,7 @@ fn the_wheel_scrolls_the_table_or_zooms_the_map() {
     board.fill("Long table".to_string(), long);
     app.world_mut().resource_mut::<MapView>().dots.clear();
     let state = |app: &App| {
-        let lens = app.world().resource::<MapView>().lens;
+        let lens = app.world().resource::<MapView>().goal;
         (app.world().resource::<Board>().top, lens)
     };
     turn(&mut app, -1.0);
@@ -53,30 +54,30 @@ fn the_wheel_scrolls_the_table_or_zooms_the_map() {
     assert_eq!(state(&app), (6, Lens::default()));
 }
 
-/// The reset key shows the whole chart again, another tab starts from the whole chart, and
+/// The reset key shows the whole chart again, the chart around this one opens close on the
+/// ship, and
 /// a cursor moved with the keyboard to a row off the map brings that row into view.
 #[test]
 fn the_map_follows_the_reset_key_the_tab_and_the_cursor() {
     let mut app = rig();
     let star = pixel(&app, Dot::Row(0));
     let closer = Lens::default().zoomed(star, 16.0);
-    let look = |app: &mut App, lens: Lens| app.world_mut().resource_mut::<MapView>().lens = lens;
+    let look = |app: &mut App, lens: Lens| {
+        let mut view = app.world_mut().resource_mut::<MapView>();
+        (view.lens, view.goal) = (lens, lens);
+    };
     look(&mut app, closer);
     let last = app.world().resource::<Board>().lines.len() - 1;
-    let off = pixel(&app, Dot::Row(last));
-    assert!(off.min_element() < 0.0 || off.max_element() > SIZE, "{off}");
+    let inside = |at: Vec2| at.min_element() >= 0.0 && at.max_element() <= SIZE;
+    assert!(!inside(pixel(&app, Dot::Row(last))));
     app.world_mut().resource_mut::<Board>().step(last as isize);
     app.world_mut().run_system_once(plot).unwrap();
-    let shown = pixel(&app, Dot::Row(last));
-    assert!(
-        shown.min_element() >= 0.0 && shown.max_element() <= SIZE,
-        "{shown}"
-    );
-    assert_eq!(app.world().resource::<MapView>().lens.zoom, closer.zoom);
+    assert!(inside(pixel(&app, Dot::Row(last))));
+    assert_eq!(app.world().resource::<MapView>().goal.zoom, closer.zoom);
     let mut keys = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
     keys.press(RESET_KEY);
     app.world_mut().run_system_once(zoom).unwrap();
-    assert_eq!(app.world().resource::<MapView>().lens, Lens::default());
+    assert_eq!(app.world().resource::<MapView>().goal, Lens::default());
     look(&mut app, closer);
     let lines = app.world().resource::<Board>().lines.clone();
     let mut board = app.world_mut().resource_mut::<Board>();
@@ -84,5 +85,5 @@ fn the_map_follows_the_reset_key_the_tab_and_the_cursor() {
     board.fill("Galaxy".to_string(), lines);
     app.world_mut().run_system_once(plot).unwrap();
     let view = app.world().resource::<MapView>();
-    assert_eq!((view.lens, view.tab), (Lens::default(), Tab::Galaxy));
+    assert!(view.lens.zoom == DIVE && view.goal.zoom < DIVE && view.tab == Tab::Galaxy);
 }

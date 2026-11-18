@@ -1,16 +1,18 @@
 //! The lens of the map: how far it is zoomed in and where it looks, the pixel of a chart
-//! point, and which mark the pointer is on.
+//! point, and the way from one lens to another.
 //!
 //! Chart points run from -1 to 1 on both axes with north up. Pixels are counted from the top
 //! left corner of the map, which is `SIZE` pixels wide and high.
 
 use bevy::math::Vec2;
 
-use super::chart::Dot;
 use super::map::SIZE;
 
 /// Closest zoom: the whole chart seen 32 times larger.
 pub const MAX_ZOOM: f32 = 32.0;
+
+/// How close to its goal an easing lens snaps onto it: a quarter of a pixel.
+const SNAP: f32 = 0.002;
 
 /// Share of the visible map kept between a revealed mark and the edge.
 const MARGIN: f32 = 0.15;
@@ -77,6 +79,18 @@ impl Lens {
         .clamped()
     }
 
+    /// Returns the lens `share` of the way to `goal`: the zoom by ratio, so each step looks the
+    /// same size, and the centre in a straight line. Close enough, it is the goal itself.
+    pub fn toward(self, goal: Lens, share: f32) -> Lens {
+        let zoom = self.zoom * (goal.zoom / self.zoom).powf(share);
+        let centre = self.centre.lerp(goal.centre, share);
+        let off = centre.distance(goal.centre) * zoom + (zoom / goal.zoom).ln().abs();
+        match off < SNAP || share >= 1.0 {
+            true => goal,
+            false => Lens { zoom, centre },
+        }
+    }
+
     /// Returns the lens moved by the least that shows the chart point `at` with a margin
     /// around it. A point already in view leaves the lens as it is.
     pub fn revealing(self, at: Vec2) -> Lens {
@@ -88,15 +102,4 @@ impl Lens {
         }
         .clamped()
     }
-}
-
-/// Returns the mark under the pointer at `pixel`: the row or the ship drawn nearest to it,
-/// within `radius` pixels. The dots of the orbits are not marks.
-pub fn hit(dots: &[(Dot, Vec2)], lens: Lens, pixel: Vec2, radius: f32) -> Option<Dot> {
-    let marks = dots.iter().filter(|(dot, _)| *dot != Dot::Orbit);
-    let near = marks.map(|(dot, at)| (*dot, lens.to_map(*at).distance(pixel)));
-    let inside = near.filter(|(_, gap)| *gap <= radius);
-    inside
-        .min_by(|a, b| a.1.total_cmp(&b.1))
-        .map(|(dot, _)| dot)
 }

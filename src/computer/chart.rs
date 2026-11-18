@@ -10,6 +10,7 @@ use std::f32::consts::TAU;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::lens::Lens;
 use super::rows::Line;
 use super::tab::Tab;
 use crate::space::UniPos;
@@ -97,6 +98,17 @@ fn field(lines: &[Line], ship: UniPos) -> Vec<(Dot, Vec2)> {
     let mut dots: Vec<(Dot, Vec2)> = lines.iter().enumerate().map(place).collect();
     dots.push((Dot::Ship, Vec2::ZERO));
     dots
+}
+
+/// Returns the mark under the pointer at `pixel`: the row or the ship drawn nearest to it,
+/// within `radius` pixels. The dots of the orbits are not marks.
+pub fn hit(dots: &[(Dot, Vec2)], lens: Lens, pixel: Vec2, radius: f32) -> Option<Dot> {
+    let marks = dots.iter().filter(|(dot, _)| *dot != Dot::Orbit);
+    let near = marks.map(|(dot, at)| (*dot, lens.to_map(*at).distance(pixel)));
+    let inside = near.filter(|(_, gap)| *gap <= radius);
+    inside
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(dot, _)| dot)
 }
 
 /// Returns the metres one chart unit stands for on the chart of `tab`, or nothing for a system

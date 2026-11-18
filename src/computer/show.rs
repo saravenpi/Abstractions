@@ -164,9 +164,9 @@ pub(super) fn plugin(app: &mut App) {
             tabs,
             status,
             super::readout::write,
-            super::pointer::plot,
+            (super::pointer::plot, super::glide::ease).chain(),
             super::draw::draw,
-            (super::pointer::slide, super::pointer::rule),
+            (super::glide::slide, super::glide::rule),
             (super::chrome::fit, super::chrome::offer),
         )
             .chain()

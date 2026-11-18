@@ -8,6 +8,7 @@ mod course;
 mod detail;
 mod draw;
 mod format;
+mod glide;
 mod keys;
 mod labels;
 mod layout;
@@ -21,6 +22,7 @@ mod reveal;
 mod route;
 mod rows;
 mod scene;
+mod semantic;
 mod show;
 mod sift;
 mod tab;
@@ -46,6 +48,8 @@ mod tests_rig;
 #[cfg(test)]
 mod tests_screen;
 #[cfg(test)]
+mod tests_semantic;
+#[cfg(test)]
 mod tests_sift;
 #[cfg(test)]
 mod tests_tables;
@@ -56,17 +60,18 @@ mod tests_words;
 
 pub use atlas::Atlas;
 pub use board::{Board, VISIBLE_ROWS};
-pub use chart::{Dot, GRID, chart, mark, span};
+pub use chart::{Dot, GRID, chart, hit, mark, span};
 pub use draw::side;
 pub use format::{distance, gravity};
 pub use labels::{keep, priority, room, scale_bar};
-pub use lens::{Lens, MAX_ZOOM, hit};
+pub use lens::{Lens, MAX_ZOOM};
 pub use locate::{SYSTEM_REACH, ship_position, target_position, whereabouts};
 pub use map::{Field, SIZE, Sheet, body, field, frame, name, ring, ship, spot};
 pub use open::Computer;
 pub use reveal::{HOME_NEIGHBOURS, REVEAL_CELLS, REVEAL_GLY};
 pub use route::{Destination, Engage, RouteStatus, Target};
 pub use rows::{Line, View};
+pub use semantic::{DIVE, entry, shift};
 pub use sift::Sort;
 pub use tab::Tab;
 pub use track::Known;

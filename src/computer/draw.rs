@@ -178,11 +178,8 @@ pub(super) fn draw(
     sheets: Query<Entity, With<Sheet>>,
     mut last: Local<(Option<Dot>, Lens)>,
 ) {
-    let lens = if view.held.is_none() {
-        view.lens
-    } else {
-        last.1
-    };
+    let rest = view.held.is_none() && view.lens == view.goal;
+    let lens = if rest { view.lens } else { last.1 };
     let now = (view.hover, lens);
     if !(board.is_changed() || chosen.is_changed() || *last != now || !fresh.is_empty()) {
         return;

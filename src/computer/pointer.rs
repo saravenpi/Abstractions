@@ -7,12 +7,11 @@ use bevy::ui::RelativeCursorPosition;
 use bevy::ui_widgets::Activate;
 
 use super::board::Board;
-use super::chart::{Dot, chart, span};
-use super::format::distance;
-use super::labels::scale_bar;
-use super::lens::{Lens, hit};
-use super::map::{Field, SIZE, ScaleBar, ScaleText, Sheet};
+use super::chart::{Dot, chart, hit, span};
+use super::lens::Lens;
+use super::map::{Field, SIZE};
 use super::open::Computer;
+use super::semantic::{entry, shift};
 use super::tab::Tab;
 use super::view::Slot;
 use crate::ui::theme;
@@ -35,8 +34,10 @@ pub(super) const RESET_KEY: KeyCode = KeyCode::Digit0;
 /// How the map is looked at and what the pointer does on it.
 #[derive(Resource, Debug, Clone, Default, PartialEq)]
 pub(super) struct MapView {
-    /// The zoom and the centre of the map.
+    /// The zoom and the centre of the map as it is drawn.
     pub lens: Lens,
+    /// The zoom and the centre the map eases to.
+    pub goal: Lens,
     /// The tab the lens belongs to. Another tab starts from the whole chart.
     pub tab: Tab,
     /// Every dot of the chart with its chart point, kept from the last time the table changed.
@@ -103,7 +104,7 @@ pub(super) fn tap(view: &mut MapView, board: &mut Board, now: f32) -> bool {
             false
         }
         None if again && last.is_some_and(|(_, then)| now - then < DOUBLE_CLICK) => {
-            (view.lens, view.clicked) = (Lens::default(), None);
+            (view.goal, view.clicked) = (Lens::default(), None);
             false
         }
         _ => false,
@@ -128,6 +129,7 @@ pub(super) fn press(
     if buttons.pressed(MouseButton::Left) {
         if view.dragged || from.distance(view.at) > SLOP {
             view.lens = view.lens.panned(view.at - from);
+            view.goal = view.lens;
             (view.held, view.dragged) = (Some(view.at), true);
         }
         return;
@@ -143,25 +145,35 @@ pub(super) fn press(
 }
 
 /// Zooms around the pointer with the wheel while the pointer is over the map, and shows the
-/// whole chart again on the reset key.
+/// whole chart again on the reset key. Past the ends of the zoom the wheel changes chart.
 pub(super) fn zoom(
     wheel: Res<AccumulatedMouseScroll>,
     keys: Res<ButtonInput<KeyCode>>,
+    mut board: ResMut<Board>,
     mut view: ResMut<MapView>,
 ) {
     if keys.just_pressed(RESET_KEY) {
-        view.lens = Lens::default();
+        view.goal = Lens::default();
     }
     let notches = match wheel.unit {
         MouseScrollUnit::Line => wheel.delta.y,
         MouseScrollUnit::Pixel => wheel.delta.y / theme::ROW_HEIGHT,
     };
-    if view.over && notches != 0.0 {
-        view.lens = view.lens.zoomed(view.at, ZOOM_STEP.powf(notches));
+    if !view.over || notches == 0.0 {
+        return;
+    }
+    let pointed = match view.hover {
+        Some(Dot::Row(index)) => board.lines.get(index).map(|line| line.target),
+        _ => None,
+    };
+    let home = pointed.is_some() && board.here.contains(&pointed);
+    match shift(board.tab, view.goal.zoom, notches, home) {
+        Some(tab) => board.show(tab),
+        None => view.goal = view.goal.zoomed(view.at, ZOOM_STEP.powf(notches)),
     }
 }
 
-/// Lays the chart out again when the table changed. Another tab starts from the whole chart,
+/// Lays the chart out again when the table changed. Another tab opens as the way there asks,
 /// and a cursor that moved to a row outside the map brings that row into view.
 pub(super) fn plot(board: Res<Board>, mut view: ResMut<MapView>) {
     if !board.is_changed() {
@@ -170,7 +182,8 @@ pub(super) fn plot(board: Res<Board>, mut view: ResMut<MapView>) {
     view.dots = chart(board.tab, &board.lines, board.ship);
     view.span = span(board.tab, &board.lines, board.ship);
     if view.tab != board.tab {
-        (view.tab, view.lens) = (board.tab, Lens::default());
+        (view.lens, view.goal) = entry(view.tab, board.tab);
+        view.tab = board.tab;
         (view.hover, view.clicked) = (None, None);
     }
     if view.cursor == board.cursor {
@@ -179,50 +192,7 @@ pub(super) fn plot(board: Res<Board>, mut view: ResMut<MapView>) {
     view.cursor = board.cursor;
     let row = Dot::Row(board.cursor);
     if let Some((_, at)) = view.dots.iter().find(|(dot, _)| *dot == row) {
-        view.lens = view.lens.revealing(*at);
-    }
-}
-
-/// Moves and sizes the sheet the chart is drawn on, so the map shows what the lens looks at.
-pub(super) fn slide(view: Res<MapView>, mut sheets: Query<&mut Node, With<Sheet>>) {
-    let corner = view.lens.to_map(Vec2::new(-1.0, 1.0)) / SIZE * 100.0;
-    let side = percent(view.lens.zoom * 100.0);
-    for mut node in &mut sheets {
-        let wanted = (percent(corner.x), percent(corner.y), side, side);
-        if (node.left, node.top, node.width, node.height) != wanted {
-            (node.left, node.top, node.width, node.height) = wanted;
-        }
-    }
-}
-
-/// What the scale of the map says on a chart whose distances are not drawn true.
-pub(super) const NOT_TO_SCALE: &str = "orbits not to scale";
-
-/// Writes the scale of the map when the zoom, the size of the map or the chart changed: a
-/// round distance and a bar of that length.
-pub(super) fn rule(
-    view: Res<MapView>,
-    fresh: Query<(), Added<ScaleText>>,
-    mut bars: Query<&mut Node, With<ScaleBar>>,
-    mut texts: Query<&mut Text, With<ScaleText>>,
-    mut last: Local<(f32, Option<f64>)>,
-) {
-    let now = (view.lens.zoom * view.side, view.span);
-    if *last == now && fresh.is_empty() {
-        return;
-    }
-    *last = now;
-    let true_scale = view.span.filter(|_| now.0 > 0.0);
-    let bar = true_scale.map(|span| scale_bar(span * 2.0 / f64::from(now.0)));
-    let (width, words) = match bar {
-        Some((pixels, metres)) => (pixels, distance(metres)),
-        None => (0.0, NOT_TO_SCALE.to_string()),
-    };
-    for mut node in &mut bars {
-        node.width = px(width);
-    }
-    for mut text in &mut texts {
-        text.set_if_neq(Text(words.clone()));
+        view.goal = view.goal.revealing(*at);
     }
 }
 
@@ -231,6 +201,7 @@ pub(super) fn plugin(app: &mut App) {
     let whole = |mut view: ResMut<MapView>| {
         *view = MapView {
             side: view.side,
+            tab: view.tab,
             ..default()
         }
     };

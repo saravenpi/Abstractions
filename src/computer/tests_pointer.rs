@@ -54,7 +54,7 @@ pub(super) fn rig() -> App {
 pub(super) fn pixel(app: &App, dot: Dot) -> Vec2 {
     let view = app.world().resource::<MapView>();
     let found = view.dots.iter().find(|(other, _)| *other == dot).unwrap();
-    view.lens.to_map(found.1)
+    view.goal.to_map(found.1)
 }
 
 /// Moves the pointer to `at`, a pixel of the map.
@@ -151,7 +151,7 @@ fn a_drag_pans_and_a_double_click_shows_the_whole_chart() {
     let mut app = rig();
     let closer = Lens::default().zoomed(Vec2::splat(SIZE * 0.5), 4.0);
     let mut view = app.world_mut().resource_mut::<MapView>();
-    (view.lens, view.dots) = (closer, Vec::new());
+    (view.lens, view.goal, view.dots) = (closer, closer, Vec::new());
     point(&mut app, Vec2::new(40.0, 40.0));
     click(&mut app, Vec2::new(30.0, 0.0));
     let view = app.world().resource::<MapView>().clone();
@@ -161,15 +161,15 @@ fn a_drag_pans_and_a_double_click_shows_the_whole_chart() {
     assert_eq!(app.world().resource::<Board>().cursor, 0);
     let mut board = Board::default();
     let mut slow = MapView {
-        lens: closer,
+        goal: closer,
         ..default()
     };
     assert!(!tap(&mut slow, &mut board, 1.0));
     assert!(!tap(&mut slow, &mut board, 1.0 + 2.0 * DOUBLE_CLICK));
-    assert_eq!(slow.lens, closer);
+    assert_eq!(slow.goal, closer);
     assert!(!tap(&mut slow, &mut board, 1.0 + 2.5 * DOUBLE_CLICK));
-    assert_eq!((slow.lens, slow.clicked), (Lens::default(), None));
+    assert_eq!((slow.goal, slow.clicked), (Lens::default(), None));
     click(&mut app, Vec2::ZERO);
     click(&mut app, Vec2::ZERO);
-    assert_eq!(app.world().resource::<MapView>().lens, Lens::default());
+    assert_eq!(app.world().resource::<MapView>().goal, Lens::default());
 }

@@ -6,7 +6,7 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::body::Ship;
-use super::shake::{Buffet, shake};
+use super::shake::{Buffet, JOLT, shake};
 use super::telemetry::{ShipTelemetry, WarpState};
 use crate::player::Player;
 use crate::render::{GameCamera, smoothstep};
@@ -92,17 +92,18 @@ pub fn carry(
     };
 }
 
-/// Shakes the view the rig made in rough air: a small offset and tilt on top of it. The rig
+/// Shakes the view the rig made in rough air and after a crash: an offset and a tilt on top of it. The rig
 /// writes the whole camera pose every frame, so the shake never adds up.
 pub fn buffet(
     time: Res<Time>,
     level: Res<Buffet>,
     mut eyes: Single<&mut Transform, With<GameCamera>>,
 ) {
-    if level.level <= 0.0 {
+    let strength = level.level + level.jolt * JOLT.0;
+    if strength <= 0.0 {
         return;
     }
-    let (offset, tilt) = shake(time.elapsed_secs_wrapped(), level.level);
+    let (offset, tilt) = shake(time.elapsed_secs_wrapped(), strength);
     let turned = eyes.rotation * offset;
     eyes.translation += turned;
     eyes.rotation = (eyes.rotation * tilt).normalize();

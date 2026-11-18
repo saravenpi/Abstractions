@@ -4,7 +4,6 @@ use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::ShipEvent;
 use super::body::Ship;
 use super::flight::{Report, STEP, Scene, rotate, step};
 use super::helm::Helm;
@@ -12,6 +11,7 @@ use super::pilot::Autopilot;
 use super::sky::Skies;
 use super::transit::{catch_up, change_galaxy, enter_system, leave_system, reframe};
 use super::warp::Warp;
+use super::{Impact, ShipEvent};
 use crate::home::Base;
 use crate::space::{Clock, Frame};
 use crate::universe::Universe;
@@ -119,11 +119,12 @@ pub struct Flight<'w> {
 
 impl Flight<'_> {
     /// Steps `ship` at the fixed rate through `dt` seconds of frame time and returns the
-    /// fastest touchdown of these steps in metres per second, zero without one.
-    fn advance(&mut self, ship: &mut Ship, dt: f64) -> f64 {
+    /// fastest touchdown of these steps in metres per second, zero without one, and the crash
+    /// of these steps, if one was.
+    fn advance(&mut self, ship: &mut Ship, dt: f64) -> (f64, Option<Impact>) {
         let skies = &*self.skies;
         let ground = |pos: DVec3| skies.height(pos);
-        let (mut elapsed, mut impact) = (0.0, 0.0f64);
+        let (mut elapsed, mut impact, mut crash) = (0.0, 0.0f64, None);
         self.pace.carry += dt;
         while self.pace.carry >= STEP {
             let scene = Scene {
@@ -133,20 +134,29 @@ impl Flight<'_> {
                 elapsed,
             };
             self.pace.report = step(ship, &self.helm.controls, &scene, STEP);
-            impact = impact.max(self.pace.report.impact);
+            let report = self.pace.report;
+            impact = impact.max(report.impact);
+            crash = report
+                .crash
+                .map(|at| Impact {
+                    speed: report.impact,
+                    at,
+                })
+                .or(crash);
             elapsed += STEP;
             self.pace.carry -= STEP;
         }
-        impact
+        (impact, crash)
     }
 }
 
-/// Steps the ship at a fixed rate through the frame time, and tells when it leaves the ground
-/// and when it touches it. In warp only its attitude moves.
+/// Steps the ship at a fixed rate through the frame time, and tells when it leaves the ground,
+/// when it touches it and when it crashes. In warp only its attitude moves.
 pub fn simulate(
     mut flight: Flight,
     mut ship: Single<&mut Ship>,
     mut events: MessageWriter<ShipEvent>,
+    mut impacts: MessageWriter<Impact>,
 ) {
     let dt = flight.time.delta_secs_f64().min(MAX_FRAME);
     if matches!(ship.warp, Warp::Active { .. }) {
@@ -159,7 +169,10 @@ pub fn simulate(
         return;
     }
     let parked = ship.landed;
-    let impact = flight.advance(&mut ship, dt);
+    let (impact, crash) = flight.advance(&mut ship, dt);
+    if let Some(crash) = crash {
+        impacts.write(crash);
+    }
     if parked && !ship.landed {
         events.write(ShipEvent::Liftoff);
     }

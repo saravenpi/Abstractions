@@ -4,7 +4,8 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use super::shake::{Buffet, FOLLOW, eased, roughness};
+use super::Impact;
+use super::shake::{Buffet, FOLLOW, eased, jolted, roughness};
 use super::telemetry::{ShipTelemetry, WarpState};
 use super::warp::fraction;
 use crate::render::{CloudCrossing, FlightFx, Sequence};
@@ -34,7 +35,7 @@ pub fn pace(warp: WarpState) -> f32 {
 
 /// What the effects are read from and written to.
 #[derive(SystemParam)]
-pub struct Senses<'w> {
+pub struct Senses<'w, 's> {
     /// Frame time.
     time: Res<'w, Time>,
     /// Whether the player is seated.
@@ -51,10 +52,12 @@ pub struct Senses<'w> {
     target: Res<'w, Target>,
     /// The shake of the view.
     buffet: ResMut<'w, Buffet>,
+    /// The crashes of the frame, which jolt the view.
+    impacts: MessageReader<'w, 's, Impact>,
 }
 
 /// Feeds the flight effects and the shake from the instruments while the player is seated,
-/// and lets both fade to nothing on foot.
+/// jolts the view on a crash, and lets both fade to nothing on foot.
 pub fn feed(mut senses: Senses) {
     let dt = senses.time.delta_secs();
     let seated = senses.location.travel == Travel::InShip;
@@ -65,7 +68,13 @@ pub fn feed(mut senses: Senses) {
     let tremor = senses.sequence.as_deref().map_or(0.0, Sequence::tremor);
     let rough = (roughness(depth, pressure) * gate).max(tremor);
     let level = eased(senses.buffet.level, rough, FOLLOW, dt);
-    senses.buffet.set_if_neq(Buffet { level });
+    let hit = senses
+        .impacts
+        .read()
+        .map(|impact| impact.speed)
+        .reduce(f64::max);
+    let jolt = jolted(senses.buffet.jolt, hit.filter(|_| seated), dt);
+    senses.buffet.set_if_neq(Buffet { level, jolt });
     let Some(mut fx) = senses.fx else {
         return;
     };

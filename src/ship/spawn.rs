@@ -9,7 +9,8 @@ use super::berth::{landing_spot, parked};
 use super::body::Ship;
 use super::glow::{Engine, Plume};
 use super::landing::GEAR_DROP;
-use super::mesh::{NOZZLE_Z, Skin, hull_meshes, material, plume_mesh};
+use super::legs::Leg;
+use super::mesh::{NOZZLE_Z, Skin, hinges, hull_meshes, leg_mesh, material, plume_mesh};
 use super::save::saved;
 use crate::home::Base;
 use crate::render::Warm;
@@ -70,9 +71,21 @@ pub struct Yard<'w> {
     materials: ResMut<'w, Assets<StandardMaterial>>,
 }
 
-/// Adds the hull and the exhaust to the ship entity, each part with its skin.
+/// Adds the hull, the legs of the gear and the exhaust to the ship entity, each part with its skin.
 fn dress(entity: &mut EntityCommands, yard: &mut Yard, skins: [Handle<StandardMaterial>; 5]) {
     let glow = skins[Skin::Glow as usize].clone();
+    let (leg, dark) = (
+        yard.meshes.add(leg_mesh()),
+        skins[Skin::Dark as usize].clone(),
+    );
+    for hinge in hinges() {
+        entity.with_child((
+            Leg,
+            Mesh3d(leg.clone()),
+            MeshMaterial3d(dark.clone()),
+            Transform::from_translation(hinge),
+        ));
+    }
     for (mesh, skin) in hull_meshes().into_iter().zip(skins) {
         entity.with_child((Mesh3d(yard.meshes.add(mesh)), MeshMaterial3d(skin)));
     }
@@ -89,6 +102,10 @@ fn dress(entity: &mut EntityCommands, yard: &mut Yard, skins: [Handle<StandardMa
 pub fn warm(mut warm: ResMut<Warm>, mut yard: Yard) {
     let skins = Skin::ALL.map(|skin| yard.materials.add(material(skin)));
     let glow = skins[Skin::Glow as usize].clone();
+    warm.add(
+        yard.meshes.add(leg_mesh()),
+        skins[Skin::Dark as usize].clone(),
+    );
     for (mesh, skin) in hull_meshes().into_iter().zip(skins) {
         warm.add(yard.meshes.add(mesh), skin);
     }

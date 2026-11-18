@@ -5,6 +5,7 @@
 use bevy::math::DVec3;
 
 use super::body::Ship;
+use super::gear::stow;
 use super::landing::{Contact, GEAR_DROP, contact};
 use crate::universe::{PlanetClass, PlanetSpec};
 
@@ -44,6 +45,22 @@ pub fn touch(ship: &Ship, planet: &PlanetSpec, ground: &dyn Fn(DVec3) -> f64) ->
         radar: ship.pos.length() - planet.radius - FLOOR - GEAR_DROP,
         ..Contact::default()
     }
+}
+
+/// Returns what the ground and the sea of `planet` do to the ship over a step of `h` seconds,
+/// after giving it the hits of the step: they change its velocity and its spin at once and set
+/// a ship that is already in the ground back on it. The gear moves with the height it reads.
+pub fn meet(
+    ship: &mut Ship,
+    planet: &PlanetSpec,
+    ground: &dyn Fn(DVec3) -> f64,
+    h: f64,
+) -> Contact {
+    let touch = touch(ship, planet, ground);
+    (ship.vel, ship.spin) = (ship.vel + touch.kick, ship.spin + touch.twist);
+    ship.pos += touch.normal * touch.sunk;
+    stow(ship, touch.radar, h);
+    touch
 }
 
 /// Returns `down`, the weight of the ship at `pos` over `planet`, with the lift of the air of

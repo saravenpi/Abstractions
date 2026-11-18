@@ -1,19 +1,18 @@
 //! Ground contact: gear and hull points pressed against the terrain and floated by the sea.
+//!
+//! A point that hits the ground faster than it can take loses that speed at once, in
+//! [`strike`](super::strike), and the springs only ever push a point back out slowly, so a
+//! hard landing or a crash stops dead instead of bouncing.
 
 use bevy::math::DVec3;
 
 use super::body::Ship;
+use super::gear::{feet, locked};
+use super::strike::{Motion, absorb, note};
 use crate::universe::PlanetSpec;
 
-/// Feet of the landing gear in body axes: nose, left and right.
-pub const GEAR: [DVec3; 3] = [
-    DVec3::new(0.0, -1.25, -2.4),
-    DVec3::new(-1.9, -1.25, 1.5),
-    DVec3::new(1.9, -1.25, 1.5),
-];
-
 /// Hull points that can hit the ground in body axes: belly, nose, tail, wing tips and roof.
-const HULL: [DVec3; 6] = [
+pub const HULL: [DVec3; 6] = [
     DVec3::new(0.0, -0.65, 0.0),
     DVec3::new(0.0, -0.1, -4.2),
     DVec3::new(0.0, 0.2, 3.4),
@@ -29,10 +28,12 @@ pub const GEAR_DROP: f64 = 1.25;
 const REACH: f64 = 12.0;
 
 /// Spring, damper and safe touchdown speed of a gear foot and of a hull point, per unit of mass.
-const SPRINGS: [(f64, f64, f64); 2] = [(50.0, 8.0, 6.0), (120.0, 10.0, 2.0)];
+/// Three feet together damp a heave at 0.98 of the critical damping.
+pub const SPRINGS: [(f64, f64, f64); 2] = [(50.0, 8.0, 6.0), (120.0, 10.0, 2.0)];
 
-/// Share of the damping that is left while the ship bounces after a hard landing.
-const BOUNCE_DAMPING: f64 = 0.2;
+/// Fastest speed in metres per second at which the springs push a point back out of the
+/// ground: the spring fades to nothing as the point leaves faster, so no landing bounces.
+const REBOUND: f64 = 0.5;
 
 /// Friction coefficient of the ground: the ship holds on slopes whose tangent is below it.
 pub const FRICTION: f64 = 0.6;
@@ -42,9 +43,6 @@ const GRIP: f64 = 8.0;
 
 /// Buoyancy per metre of depth, the depth at which it stops growing and the drag of water, per point.
 const WATER: (f64, f64, f64) = (14.0, 1.5, 1.2);
-
-/// Squared radius of gyration of the ship in square metres: how hard a force off centre turns it.
-const GYRATION: f64 = 4.0;
 
 /// Half width in metres of the stencil that measures the ground slope.
 const SLOPE_STEP: f64 = 2.0;
@@ -56,8 +54,16 @@ pub struct Contact {
     pub accel: DVec3,
     /// Angular acceleration around the body axes, in radians per second squared.
     pub torque: DVec3,
+    /// Change of velocity the hits of this step give at once, in frame axes.
+    pub kick: DVec3,
+    /// Change of spin the hits of this step give at once, around the body axes.
+    pub twist: DVec3,
+    /// How far in metres along `normal` the hits of this step left the ship in the ground.
+    pub sunk: f64,
     /// Number of gear feet on the ground.
     pub gear: u8,
+    /// Number of points of any kind on the ground.
+    pub points: u8,
     /// Whether any point touches the ground.
     pub ground: bool,
     /// Whether any point is in the sea.
@@ -66,26 +72,44 @@ pub struct Contact {
     pub impact: f64,
     /// How far that speed is above the safe speed of its point, in metres per second.
     pub excess: f64,
+    /// Whether that approach is a crash for the kind of point that took it.
+    pub crash: bool,
+    /// Where that point is, in frame axes.
+    pub at: DVec3,
     /// Height of the gear above the ground or the sea in metres.
     pub radar: f64,
     /// Tangent of the ground slope under the ship.
     pub slope: f64,
+    /// Unit normal of the ground under the ship, zero when it is out of reach.
+    pub normal: DVec3,
 }
 
 /// The ground under the ship, shared by every contact point.
-struct Rig<'a> {
+pub struct Rig<'a> {
     /// Sea level radius of the planet in metres.
-    radius: f64,
+    pub radius: f64,
     /// Terrain height in metres above sea level at a position in the planet frame.
-    ground: &'a dyn Fn(DVec3) -> f64,
+    pub ground: &'a dyn Fn(DVec3) -> f64,
     /// Unit direction away from the planet centre at the ship.
-    up: DVec3,
+    pub up: DVec3,
     /// Unit normal of the ground under the ship.
-    normal: DVec3,
-    /// Share of the damping in use.
-    damping: f64,
+    pub normal: DVec3,
     /// Whether the planet has a sea to float on.
-    sea: bool,
+    pub sea: bool,
+}
+
+/// A contact point and the ground under it, sampled once per step.
+pub struct Point {
+    /// Position in body axes.
+    pub body: DVec3,
+    /// Kind: 0 for a foot of the locked gear, 1 for the hull.
+    pub kind: usize,
+    /// Terrain height under the point in metres above sea level.
+    pub height: f64,
+    /// Distance of the point from the planet centre in metres.
+    pub r: f64,
+    /// How deep the point is in the ground along its normal, in metres.
+    pub depth: f64,
 }
 
 /// Returns the unit normal of the ground around `pos`, from heights sampled on a cross.
@@ -98,32 +122,51 @@ fn normal(ground: &dyn Fn(DVec3) -> f64, pos: DVec3, up: DVec3) -> DVec3 {
     (up - east * rise(east) - north * rise(north)).normalize()
 }
 
-/// Adds to `out` what the ground and the sea do to the contact point `body` of kind `kind` (0 gear, 1 hull).
-fn touch(ship: &Ship, rig: &Rig, body: DVec3, kind: usize, out: &mut Contact) {
-    let arm = ship.rot * body;
-    let at = ship.pos + arm;
-    let (height, r) = ((rig.ground)(at), at.length());
-    let vel = ship.vel + ship.rot * ship.spin.cross(body);
-    let (spring, damper, safe) = SPRINGS[kind];
-    let depth = (rig.radius + height - r) * rig.normal.dot(rig.up);
+/// Returns the contact points of `ship` over `rig`: the gear feet where the gear is, then the hull.
+fn points(ship: &Ship, rig: &Rig) -> [Point; 9] {
+    let (feet, kind) = (feet(ship), usize::from(!locked(ship)));
+    std::array::from_fn(|i| {
+        let (body, kind) = if i < 3 {
+            (feet[i], kind)
+        } else {
+            (HULL[i - 3], 1)
+        };
+        let at = ship.pos + ship.rot * body;
+        let (height, r) = ((rig.ground)(at), at.length());
+        let depth = (rig.radius + height - r) * rig.normal.dot(rig.up);
+        Point {
+            body,
+            kind,
+            height,
+            r,
+            depth,
+        }
+    })
+}
+
+/// Adds to `out` what the ground and the sea do to the point `p` of a ship moving as `motion`.
+fn touch(ship: &Ship, rig: &Rig, p: &Point, motion: &Motion, out: &mut Contact) {
+    let arm = ship.rot * p.body;
+    let vel = motion.at(ship, p.body);
+    let (spring, damper, _) = SPRINGS[p.kind];
     let mut accel = DVec3::ZERO;
-    if depth > 0.0 {
+    if p.depth > 0.0 {
         let closing = -vel.dot(rig.normal);
-        let press = (spring * depth + damper * rig.damping * closing).max(0.0);
+        let fade = (1.0 + closing / REBOUND).clamp(0.0, 1.0);
+        let press = (spring * p.depth + damper * closing).max(0.0) * fade;
         let slip = vel + rig.normal * closing;
         let grip = GRIP.min(FRICTION * press / slip.length().max(1e-9));
         accel += rig.normal * press - slip * grip;
         out.ground = true;
-        out.gear += u8::from(kind == 0);
-        out.impact = out.impact.max(closing);
-        out.excess = out.excess.max(closing - safe);
+        out.gear += u8::from(p.kind == 0);
+        out.points += 1;
     }
-    if rig.sea && height < 0.0 && r < rig.radius {
-        accel += rig.up * (WATER.0 * (rig.radius - r).min(WATER.1)) - vel * WATER.2;
+    if rig.sea && p.height < 0.0 && p.r < rig.radius {
+        accel += rig.up * (WATER.0 * (rig.radius - p.r).min(WATER.1)) - vel * WATER.2;
         out.wet = true;
     }
     out.accel += accel;
-    out.torque += ship.rot.inverse() * arm.cross(accel) / GYRATION;
+    out.torque += ship.rot.inverse() * arm.cross(accel) / super::strike::GYRATION;
 }
 
 /// Returns what the ground and the sea of `planet` do to the ship, which is in its surface frame.
@@ -143,19 +186,21 @@ pub fn contact(ship: &Ship, planet: &PlanetSpec, ground: &dyn Fn(DVec3) -> f64) 
     let normal = normal(ground, ship.pos, up);
     let cos = normal.dot(up).max(1e-6);
     out.slope = (1.0 - cos * cos).max(0.0).sqrt() / cos;
+    out.normal = normal;
     let rig = Rig {
         radius: planet.radius,
         ground,
         up,
         normal,
-        damping: if ship.bounce > 0.0 {
-            BOUNCE_DAMPING
-        } else {
-            1.0
-        },
         sea,
     };
-    GEAR.iter().for_each(|&p| touch(ship, &rig, p, 0, &mut out));
-    HULL.iter().for_each(|&p| touch(ship, &rig, p, 1, &mut out));
+    let points = points(ship, &rig);
+    let mut motion = Motion::of(ship);
+    points.iter().for_each(|p| note(ship, &rig, p, &mut out));
+    out.sunk = absorb(ship, &rig, &points, &mut motion);
+    points
+        .iter()
+        .for_each(|p| touch(ship, &rig, p, &motion, &mut out));
+    (out.kick, out.twist) = (motion.vel - ship.vel, motion.spin - ship.spin);
     out
 }

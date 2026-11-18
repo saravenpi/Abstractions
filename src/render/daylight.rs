@@ -11,7 +11,6 @@ use bevy::prelude::*;
 
 use super::celestial::smoothstep;
 use super::scatter::{luminance, peak, transmit};
-use super::sky::linear;
 
 mod place;
 mod track;
@@ -47,13 +46,6 @@ pub struct Daylight {
     pub risen: f32,
     /// Share of the day sky over the point, from 0 at night to 1 in full day.
     pub sky: f32,
-}
-
-impl Daylight {
-    /// Returns the linear colour of the direct light, as a share of the star in open space.
-    pub fn sun(&self) -> Vec3 {
-        linear(self.tint).truncate() * (self.through * self.risen)
-    }
 }
 
 /// Returns the daylight at a point where a star of linear colour `star` stands at the sine

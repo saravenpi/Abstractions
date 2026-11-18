@@ -5,7 +5,7 @@ use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
 use super::colormap;
-use super::ground::GroundMaterial;
+use super::ground::{Daylit, GroundMaterial, place_map};
 use super::propmesh::{BIG, merge_parts_on};
 use super::scatter::{Placement, Rig, Scatter};
 use super::shapes::FlatMesh;
@@ -35,10 +35,12 @@ const BODIES: [[f32; 2]; BIG] = [
 pub struct PropAssets {
     /// Material colored by the lookup texture, used by terrain, props and grass.
     pub material: Handle<GroundMaterial>,
+    /// Texture the material reads the light of the planet under the camera from.
+    pub place: Handle<Image>,
 }
 
 impl PropAssets {
-    /// Builds the material around the color lookup texture.
+    /// Builds the material around the color lookup texture and the texture of its light.
     pub fn new(materials: &mut Assets<GroundMaterial>, images: &mut Assets<Image>) -> Self {
         let base = StandardMaterial {
             base_color: Color::WHITE,
@@ -47,11 +49,12 @@ impl PropAssets {
             reflectance: 0.05,
             ..default()
         };
-        let material = materials.add(GroundMaterial {
-            base,
-            extension: default(),
-        });
-        Self { material }
+        let place = images.add(place_map());
+        let extension = Daylit {
+            place: place.clone(),
+        };
+        let material = materials.add(GroundMaterial { base, extension });
+        Self { material, place }
     }
 }
 

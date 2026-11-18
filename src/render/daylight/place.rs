@@ -61,6 +61,28 @@ pub struct PlaceUniform {
     pub eye_sky: Vec4,
 }
 
+impl PlaceUniform {
+    /// Fields of the block, each one texel where a shader reads it from a texture.
+    pub const FIELDS: usize = 7;
+
+    /// Bytes of the block as texels of four 32 bit floats.
+    pub const BYTES: usize = 16 * Self::FIELDS;
+
+    /// Returns the fields in the order of the block, which `place_from` in `daylight.wesl`
+    /// reads texel by texel.
+    pub fn fields(&self) -> [Vec4; Self::FIELDS] {
+        [
+            self.centre,
+            self.star,
+            self.colour,
+            self.air,
+            self.day,
+            self.eye_sun,
+            self.eye_sky,
+        ]
+    }
+}
+
 /// Returns the share of starlight that reaches a point `altitude` metres above the sea level of
 /// a planet of `radius` metres, where the star stands at the sine `height` over level ground:
 /// [`crate::render::atmosphere::shadow`] for a point given by those two numbers.

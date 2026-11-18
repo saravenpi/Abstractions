@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use super::{Daylight, NIGHT_EDGE, SKY_EDGE, SUN_EDGE, daylight};
+use super::{Daylight, NIGHT_EDGE, PlaceUniform, SKY_EDGE, SUN_EDGE, daylight};
 use crate::render::atmosphere::SHADOW_EDGE;
 use crate::render::celestial::smoothstep;
 use crate::render::palette::{NIGHT_AMBIENT_COLOR, Palette};
@@ -48,7 +48,6 @@ fn daylight_never_falls_as_the_star_climbs() {
                 assert!(share(&pair[1]) >= share(&pair[0]), "{star} {depth}");
                 assert!(pair[1].sky >= pair[0].sky, "{star} {depth}");
                 assert_eq!(pair[1].tint.max_element(), 1.0, "{star} {depth}");
-                assert!(pair[1].sun().max_element() <= share(&pair[1]) + 1.0e-6);
             }
         }
     }
@@ -61,7 +60,7 @@ fn no_direct_light_under_the_horizon() {
     for star in STARS {
         for height in [-1.0, -0.5, -0.1, SUN_EDGE.0] {
             let dark = daylight(height, star, 1.0);
-            assert_eq!((dark.risen, dark.sun()), (0.0, Vec3::ZERO), "{height}");
+            assert_eq!((dark.risen, share(&dark)), (0.0, 0.0), "{height}");
         }
         assert!(share(&daylight(SUN_EDGE.0 + 0.01, star, 1.0)) > 0.0);
         assert_eq!(daylight(SUN_EDGE.1, star, 1.0).risen, 1.0);
@@ -94,6 +93,41 @@ fn daylight_is_the_light_the_palette_had() {
             assert_eq!(palette.moon_lux, 350.0 * smoothstep(-0.02, 0.3, -height));
         }
     }
+}
+
+/// The shader reads the block from a texture one field per texel, in the order of the fields
+/// of the Rust block, which is the order of the fields of its own structure.
+#[test]
+fn the_shader_reads_the_block_in_its_order() {
+    let names = [
+        "centre", "star", "colour", "air", "day", "eye_sun", "eye_sky",
+    ];
+    assert_eq!(names.len(), PlaceUniform::FIELDS);
+    for (texel, name) in names.iter().enumerate() {
+        let read = format!("place.{name} = textureLoad(map, vec2<i32>({texel}, 0), 0);");
+        assert!(SHADER.contains(&read), "{name}");
+    }
+    let block = PlaceUniform {
+        star: Vec4::X,
+        day: Vec4::Y,
+        eye_sun: Vec4::Z,
+        ..default()
+    };
+    let fields = block.fields();
+    assert_eq!(
+        (fields[1], fields[4], fields[5]),
+        (Vec4::X, Vec4::Y, Vec4::Z)
+    );
+    assert_eq!(declared_fields(), names);
+}
+
+/// Returns the names of the fields of the block as the shader declares them, in order.
+fn declared_fields() -> Vec<&'static str> {
+    let block = SHADER.split("struct Place {").nth(1);
+    let body = block.and_then(|rest| rest.split('}').next());
+    let lines = body.unwrap_or("").lines();
+    let names = lines.filter_map(|line| line.trim().split(':').next());
+    names.filter(|name| !name.is_empty()).collect()
 }
 
 /// Every constant the shader shares with the Rust side holds the same numbers under the same name.

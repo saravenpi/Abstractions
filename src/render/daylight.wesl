@@ -41,6 +41,18 @@ const DAY_AMBIENT: f32 = 350.0;
 const SPACE_AMBIENT: f32 = 0.2;
 const SPACE_LUX: f32 = 12000.0;
 
+fn place_from(map: texture_2d<f32>) -> Place {
+    var place: Place;
+    place.centre = textureLoad(map, vec2<i32>(0, 0), 0);
+    place.star = textureLoad(map, vec2<i32>(1, 0), 0);
+    place.colour = textureLoad(map, vec2<i32>(2, 0), 0);
+    place.air = textureLoad(map, vec2<i32>(3, 0), 0);
+    place.day = textureLoad(map, vec2<i32>(4, 0), 0);
+    place.eye_sun = textureLoad(map, vec2<i32>(5, 0), 0);
+    place.eye_sky = textureLoad(map, vec2<i32>(6, 0), 0);
+    return place;
+}
+
 fn air_mass(height: f32) -> f32 {
     return 1.0 / (max(height, 0.0) + 1.0 / HORIZON_MASS);
 }

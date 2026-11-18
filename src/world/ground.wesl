@@ -3,9 +3,9 @@ import bevy_pbr::render::pbr_fragment::pbr_input_from_standard_material;
 import bevy_pbr::render::pbr_functions::{alpha_discard, apply_pbr_lighting, main_pass_post_lighting_processing};
 @if(VISIBILITY_RANGE_DITHER)
 import bevy_pbr::render::pbr_functions::visibility_range_dither;
-import package::render::daylight::{Place, relit};
+import package::render::daylight::{place_from, relit};
 
-@group(constants::MATERIAL_BIND_GROUP) @binding(100) var<uniform> place: Place;
+@group(constants::MATERIAL_BIND_GROUP) @binding(100) var place_map: texture_2d<f32>;
 
 @fragment
 fn fragment(vertex_output: VertexOutput, @builtin(front_facing) is_front: bool) -> FragmentOutput {
@@ -19,7 +19,7 @@ fn fragment(vertex_output: VertexOutput, @builtin(front_facing) is_front: bool) 
         pbr_input.material.base_color
     );
     var out: FragmentOutput;
-    out.color = relit(pbr_input, apply_pbr_lighting(pbr_input), place);
+    out.color = relit(pbr_input, apply_pbr_lighting(pbr_input), place_from(place_map));
     out.color = main_pass_post_lighting_processing(pbr_input, out.color);
     return out;
 }

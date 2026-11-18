@@ -106,9 +106,9 @@ fn turns(aim: Vec2, state: &FlightState, hands: &Hands, (asked, dt): (Vec2, f32)
     }
 }
 
-/// Returns `stick` after `dt` seconds of `hands` on a body in `state`, and the turn of the
-/// view. The keys turn the aim and the view alike; the mouse steers only while the steer
-/// button is held, see [`turns`].
+/// Returns `stick` after `dt` seconds of `hands` on a body in `state`, whose velocity is the
+/// one through the air, see `Gear::in_air`, and the turn of the view. The keys turn the aim
+/// and the view alike; the mouse steers only while the steer button is held, see [`turns`].
 pub fn steer(stick: &Stick, state: &FlightState, hands: &Hands, dt: f32) -> Steered {
     let asked = keys(stick, state, hands, dt);
     let (turn, aim) = turns(stick.aim, state, hands, (asked, dt));

@@ -6,7 +6,8 @@ use bevy::prelude::*;
 use super::pilot::{Pilot, keys};
 use super::{DT, Flight, gliding, looking};
 use crate::gear::aim::wrap;
-use crate::gear::{GearInput, Mode};
+use crate::gear::stick::{Stick, steer};
+use crate::gear::{Gear, GearInput, Mode};
 
 /// Slowest and fastest turn rate in radians per second a held roll key gives a settled glide.
 const RATE: (f32, f32) = (0.45, 0.8);
@@ -130,4 +131,43 @@ fn an_aim_to_one_side_banks_and_turns_onto_it() {
     assert!((heading + 1.2).abs() < 0.1, "heading {heading}");
     assert!(bank.abs() < 0.05, "wings not level: {bank}");
     assert!(widest <= looking(-1.2, 0.0).x + 0.03, "swung past the aim");
+}
+
+/// Flies a glide in a cross wind for `frames` frames with the roll key at `roll`, the stick
+/// reading the path through the air, and returns the largest bank on the way.
+fn in_wind(gear: &mut Gear, stick: &mut Stick, roll: f32, frames: u32) -> f32 {
+    let mut most = 0.0_f32;
+    for _ in 0..frames {
+        *stick = steer(stick, &gear.in_air(), &keys(0.0, roll), DT).stick;
+        let input = GearInput {
+            roll,
+            wind: Vec3::new(9.0, 0.0, 0.0),
+            aim: Some(stick.aim),
+            ..gliding(0.0)
+        };
+        gear.drive(gear.state.velocity, input, DT);
+        most = most.max(gear.state.bank.abs());
+    }
+    most
+}
+
+/// In a cross wind a held roll key turns as fast one way as the other: the aim rides the path
+/// through the air, which is the one the wings turn, not the track over the ground.
+#[test]
+fn a_cross_wind_does_not_bias_a_held_turn() {
+    let turned = |roll: f32| {
+        let mut gear = Gear {
+            state: settled().flight.state,
+            ..Gear::default()
+        };
+        let mut stick = Stick::at(Vec2::new(0.0, SLOPE));
+        in_wind(&mut gear, &mut stick, 0.0, 600);
+        let from = gear.state.servo.yaw;
+        let bank = in_wind(&mut gear, &mut stick, roll, 180);
+        (wrap(gear.state.servo.yaw - from).abs(), bank)
+    };
+    let (left, right) = (turned(-1.0), turned(1.0));
+    assert!(left.0 > 1.0 && right.0 > 1.0, "{left:?} and {right:?}");
+    assert!((left.0 - right.0).abs() < 0.25, "{left:?} and {right:?}");
+    assert!((left.1 - right.1).abs() < 0.08, "{left:?} and {right:?}");
 }

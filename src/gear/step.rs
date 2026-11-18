@@ -44,7 +44,7 @@ fn drive(state: &FlightState, input: &GearInput, h: f32) -> (Vec3, f32) {
 
 /// Returns the wind a body in `mode` flies through: the wind of `input` in the air, none on
 /// the ground, where the feet hold against it.
-fn airflow(mode: Mode, input: &GearInput) -> Vec3 {
+pub(super) fn airflow(mode: Mode, input: &GearInput) -> Vec3 {
     match mode.airborne() && input.wind.is_finite() {
         true => input.wind,
         false => Vec3::ZERO,

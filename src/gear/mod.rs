@@ -72,6 +72,17 @@ impl Gear {
         self.state = step(&self.state, &input, dt);
     }
 
+    /// Returns the state with its velocity taken through the air of the last step instead of
+    /// over the ground. The wings turn that one, so the stick reads the flight path from it:
+    /// in a cross wind the two paths head different ways.
+    pub fn in_air(&self) -> FlightState {
+        let wind = step::airflow(self.state.mode, &self.input);
+        FlightState {
+            velocity: self.state.velocity - wind,
+            ..self.state
+        }
+    }
+
     /// Takes the velocity the physics left after move and slide, in the upright frame.
     pub fn collide(&mut self, moved: Vec3) {
         self.state = slid(&self.state, moved);

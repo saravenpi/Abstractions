@@ -105,7 +105,7 @@ pub(super) fn steer(
         mouse,
         view,
     };
-    let steered = stick::steer(&wing.stick, &gear.state, &hands, dt);
+    let steered = stick::steer(&wing.stick, &gear.in_air(), &hands, dt);
     wing.stick = steered.stick;
     wing.idle = match hands.held || mouse != Vec2::ZERO {
         true => 0.0,

@@ -4,8 +4,11 @@
 
 use bevy::prelude::*;
 
-/// Power of the Doppler factor the brightness of a star follows. Physics has 3 to 4, which
-/// would leave one white blot ahead; this keeps the eye on the stars.
+/// Power of the Doppler factor the brightness of a star follows. Physics has `D^(3-α)` for the
+/// light of a point source at one frequency and `D^4` for all of it
+/// (https://en.wikipedia.org/wiki/Relativistic_beaming), which at the cap would leave one
+/// white blot ahead and nothing behind; this softer power keeps the eye on the stars, and
+/// [`BEAM_RANGE`] bounds it.
 pub const BEAM: f32 = 1.5;
 
 /// Least and most light a star keeps through the beaming, so the sky behind is dark but not
@@ -27,7 +30,8 @@ pub const SPREAD: f32 = 0.6;
 /// `beta`, a share of the speed of light, when its true angle has the cosine `cos`.
 ///
 /// At rest it is `cos`. The angle shrinks as the speed rises, and the points straight ahead
-/// and straight behind stay where they are.
+/// and straight behind stay where they are. It is `cos θ' = (cos θ + β) / (1 + β cos θ)`
+/// (https://en.wikipedia.org/wiki/Relativistic_aberration).
 pub fn aberrate(cos: f32, beta: f32) -> f32 {
     ((cos + beta) / (1.0 + beta * cos)).clamp(-1.0, 1.0)
 }

@@ -2,9 +2,10 @@ FROM nginx:1.29-alpine
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY security-headers.conf /etc/nginx/security-headers.conf
-COPY index.html style.css app.js reveal.js og.png grain.png favicon.png apple-touch-icon.png /usr/share/nginx/html/
+COPY index.html style.css app.js reveal.js copy.js server.sh og.png grain.png favicon.png apple-touch-icon.png /usr/share/nginx/html/
 COPY fonts /usr/share/nginx/html/fonts
 COPY licenses /usr/share/nginx/html/licenses
+COPY server /usr/share/nginx/html/server
 
 EXPOSE 80
 

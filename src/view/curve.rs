@@ -1,7 +1,7 @@
 //! The pitch curve: one number from looking fully down to fully up that drives the length of
 //! the boom, the height of the camera and the field of view together, so the framing holds.
 
-use std::f32::consts::FRAC_PI_2;
+use std::f32::consts::{FRAC_PI_2, PI};
 
 use bevy::prelude::*;
 
@@ -26,8 +26,15 @@ pub(super) struct Bend {
 }
 
 /// Returns the pitch curve at `pitch`: -1 looking fully down, 0 level, 1 looking fully up, flat at both ends.
+///
+/// A view past the vertical, on its back in a loop, reads as the same angle from the other
+/// horizon, so the curve has no step anywhere on the way round.
 pub(super) fn tilt(pitch: f32) -> f32 {
-    ((pitch / PITCH_LIMIT).clamp(-1.0, 1.0) * FRAC_PI_2).sin()
+    let folded = match pitch.abs() > FRAC_PI_2 {
+        true => pitch.signum() * PI - pitch,
+        false => pitch,
+    };
+    ((folded / PITCH_LIMIT).clamp(-1.0, 1.0) * FRAC_PI_2).sin()
 }
 
 /// Returns the pivot of `shot` in the axes of the target: lower indoors.

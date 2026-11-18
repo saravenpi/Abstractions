@@ -5,7 +5,6 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::air::Air;
-use super::dome::cloud_cover;
 use super::fog::{Height, fog_sight};
 use super::observer::Observer;
 use super::vantage::{LocalSystem, Nearby, Vantage};
@@ -50,7 +49,7 @@ fn home_record_is_the_home_air() {
         assert_eq!(home.stain(base, Vec3::new(1.0, 0.5, 0.3)), base);
     }
     for step in 0..200 {
-        let drift = cloud_cover(step as f32 / 200.0);
+        let drift = step as f32 / 200.0;
         assert_eq!(home.cover(drift), drift);
     }
     assert_eq!(home.halo(Vec3::ONE), Vec4::new(0.32, 0.55, 1.0, 1.0));

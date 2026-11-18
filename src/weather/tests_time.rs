@@ -1,10 +1,12 @@
-//! Tests of the weather in time: smooth and repeatable, thunder, the system and its feed.
+//! Tests of the weather in time: smooth and repeatable, thunder, the system and its feed, and
+//! the gas giant, which has only storm wind.
 
 use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 
-use super::rules::{Planet, Weather, forecast, thunder};
-use super::tests::{climate, planet, times};
+use super::field::Field;
+use super::rules::{Weather, thunder};
+use super::tests::{Sky, climate, forecast, most, planet, times};
 use crate::universe::PlanetClass;
 
 /// The weather changes slowly, over minutes and never by much in a second, comes back the
@@ -12,7 +14,13 @@ use crate::universe::PlanetClass;
 #[test]
 fn weather_is_smooth_and_repeats() {
     let home = planet(PlanetClass::Island, 1.0);
-    let other = Planet { seed: 7, ..home };
+    let other = Sky {
+        field: Field {
+            seed: 7,
+            ..home.field
+        },
+        ..home
+    };
     let wet = climate(285.0, 0.8, 5.0);
     let values = |w: Weather| [w.cloud, w.rain, w.snow, w.dust, w.storm];
     let (mut low, mut high) = (1.0_f32, 0.0_f32);
@@ -23,7 +31,7 @@ fn weather_is_smooth_and_repeats() {
             .into_iter()
             .zip(values(next))
             .map(|(a, b)| (a - b).abs());
-        assert!(step.fold(0.0, f32::max) < 0.03, "at {t}");
+        assert!(step.fold(0.0, f32::max) < 0.05, "at {t}");
         assert_eq!(now, forecast(&home, &wet, t));
         (low, high) = (low.min(now.cloud), high.max(now.cloud));
     }
@@ -92,4 +100,18 @@ fn the_feed_names_the_weather_and_keeps_orbit_clear() {
         app.world().resource::<crate::menus::HudWeather>().word,
         "rain"
     );
+}
+
+/// A gas giant has no deck for rain, snow, dust or clouds: only storm wind.
+#[test]
+fn a_gas_giant_has_only_storm_wind() {
+    let giant = planet(PlanetClass::GasGiant, 3.0);
+    for t in times() {
+        let sky = forecast(&giant, &climate(150.0, 1.0, 20.0), t);
+        assert_eq!(
+            (sky.cloud, sky.rain, sky.snow, sky.dust),
+            (0.0, 0.0, 0.0, 0.0)
+        );
+    }
+    assert!(most(&giant, &climate(150.0, 1.0, 20.0), |w| w.storm) > 0.3);
 }

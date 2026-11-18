@@ -1,6 +1,6 @@
-//! The local weather as the sky draws it: how much cloud, how wet and how dusty the air is
-//! where the camera stands. Without a weather report the sky keeps the look of the planet's
-//! class, so the sky of a planet with no weather is the sky it had before weather existed.
+//! The local weather as the palette of the sky draws it: how wet and how dusty the air is
+//! where the camera stands. Without a weather report the sky is calm. The clouds themselves
+//! are not here: both cloud shells read them from the cover map of the cloud field.
 
 use bevy::prelude::*;
 
@@ -23,9 +23,6 @@ const RAIN_DARK: f32 = 0.55;
 /// Share of the sky colour a full storm turns grey at the same brightness.
 const RAIN_GREY: f32 = 0.5;
 
-/// Share of its height a full storm takes from the bottom of the cloud layer.
-const RAIN_LOWER: f32 = 0.35;
-
 /// How many more times the fog closes in under full dust.
 const DUST_FOG: f32 = 3.0;
 
@@ -35,38 +32,18 @@ const RAIN_FOG: f32 = 1.0;
 /// What the weather at the camera does to the sky, each value from 0 to 1.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct WeatherLook {
-    /// Share of the sky under cloud on average, which the cloud cover of the day drifts around.
-    pub cover: f32,
-    /// Rain and storm: dark, low clouds and a grey, closer horizon.
+    /// Rain and storm: dark clouds and a grey, closer horizon.
     pub haze: f32,
     /// Lifted dust: an ochre sky and a fog that closes in, in the colour of the dust.
     pub dust: f32,
 }
 
 impl WeatherLook {
-    /// Returns calm weather under the mean cloud of `air`, the look of the planet's class.
-    pub fn of(air: &Air) -> Self {
-        Self {
-            cover: air.clouds,
-            haze: 0.0,
-            dust: 0.0,
-        }
-    }
-
-    /// Returns the cloud cover the shader draws when the cover of the day drifts to `drift`
-    /// under `air`: the class cover of that air with this weather's cover as its mean.
-    pub fn cover(&self, air: &Air, drift: f32) -> f32 {
-        let weathered = Air {
-            clouds: self.cover,
-            ..*air
-        };
-        weathered.cover(drift)
-    }
-
-    /// Returns the height in metres of the bottom of the cloud layer, lowered by rain from `base`.
-    pub fn base(&self, base: f32) -> f32 {
-        base * (1.0 - RAIN_LOWER * self.haze)
-    }
+    /// Calm weather: no rain, no storm and no dust in the air.
+    pub const CALM: Self = Self {
+        haze: 0.0,
+        dust: 0.0,
+    };
 
     /// Returns the share of the clear sight the fog still leaves under this weather.
     pub fn sight(&self) -> f32 {
@@ -102,13 +79,14 @@ fn stained(color: Vec3, rain: f32, dust: f32) -> Vec3 {
 
 /// The weather reported at the camera, if anything reports it.
 ///
-/// Empty, the sky keeps the class look of the planet below.
+/// Empty, the sky is calm.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
 pub struct LocalWeather(pub Option<WeatherLook>);
 
 impl LocalWeather {
-    /// Returns the weather to draw over a planet of `air`.
-    pub fn look(&self, air: &Air) -> WeatherLook {
-        self.0.unwrap_or(WeatherLook::of(air))
+    /// Returns the weather to draw, calm when nothing is reported. The air of the planet
+    /// no longer changes it: the argument is kept for the palette, which still passes it.
+    pub fn look(&self, _air: &Air) -> WeatherLook {
+        self.0.unwrap_or(WeatherLook::CALM)
     }
 }

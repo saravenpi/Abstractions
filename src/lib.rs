@@ -21,6 +21,7 @@ pub mod space;
 pub mod ui;
 pub mod universe;
 pub mod view;
+pub mod weather;
 pub mod wind;
 pub mod world;
 
@@ -67,6 +68,7 @@ fn modules(app: &mut App) {
         view::plugin,
         icon::plugin,
         sim::plugin,
+        weather::plugin,
     ))
     .insert_resource(view::Enabled(true));
 }

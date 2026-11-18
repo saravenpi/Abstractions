@@ -22,7 +22,7 @@ pub const BELOW: f32 = 5.0;
 pub const ABOVE: f32 = 9.0;
 
 /// Colors per kind as linear-ish sRGB triples, and whether the material is unlit.
-const LOOKS: [(Kind, [f32; 3], bool); 18] = [
+const LOOKS: [(Kind, [f32; 3], bool); 19] = [
     (Kind::Hidden, [0.0, 0.0, 0.0], false),
     (Kind::Leaf, [0.25, 0.5, 0.14], false),
     (Kind::Leaf, [0.35, 0.58, 0.18], false),
@@ -41,6 +41,7 @@ const LOOKS: [(Kind, [f32; 3], bool); 18] = [
     (Kind::Plankton, [0.4, 0.7, 0.8], true),
     (Kind::Pollen, [1.0, 0.92, 0.5], false),
     (Kind::Pollen, [0.95, 0.85, 0.4], false),
+    (Kind::Rain, [0.72, 0.78, 0.88], false),
 ];
 
 /// One pooled particle.

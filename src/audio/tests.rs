@@ -11,6 +11,7 @@ mod music;
 mod planet;
 mod scene;
 mod sensing;
+mod weather;
 mod wire;
 
 use std::sync::Arc;

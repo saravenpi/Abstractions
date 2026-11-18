@@ -29,6 +29,8 @@ pub enum Kind {
     Plankton,
     /// Floating pollen speck.
     Pollen,
+    /// Falling rain streak.
+    Rain,
 }
 
 /// How a kind of particle moves and looks.
@@ -82,6 +84,7 @@ impl Kind {
             Kind::Bubble => m(-0.6, 0.0, 0.15, 3.0, 0.0, 0.05, (6.0, 10.0)),
             Kind::Plankton => m(0.03, 0.0, 0.12, 0.8, 0.0, 0.03, (10.0, 16.0)),
             Kind::Pollen => m(0.05, 0.4, 0.3, 1.0, 0.0, 0.04, (8.0, 14.0)),
+            Kind::Rain => m(7.5, 0.5, 0.0, 1.0, 0.0, 0.5, (2.0, 3.0)),
         }
     }
 

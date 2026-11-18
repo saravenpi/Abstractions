@@ -15,6 +15,7 @@ mod respawn;
 mod rng;
 mod sense;
 mod sim;
+mod sky;
 
 use bevy::prelude::*;
 

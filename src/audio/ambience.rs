@@ -1,4 +1,4 @@
-//! The air around the listener: wind, sea wash and the muffled drone of being under water.
+//! The air around the listener: wind, sea wash, rain, blowing dust and the drone under water.
 
 use super::dsp::filter::{Lag, Svf, pole};
 use super::dsp::osc::{Phasor, sine};
@@ -13,6 +13,21 @@ pub const SEA_LEVEL: f32 = 0.5;
 
 /// Level of the drone under water.
 pub const DEEP_LEVEL: f32 = 0.6;
+
+/// Level of the rain at its hardest, in the open.
+pub const RAIN_LEVEL: f32 = 0.35;
+
+/// Level of the rain drumming on the hull at its hardest, heard from the cabin.
+pub const HULL_LEVEL: f32 = 0.5;
+
+/// Level of the dust hiss at its thickest.
+pub const DUST_LEVEL: f32 = 0.2;
+
+/// Centre in hertz of the rain patter in the open and of its drum on the hull.
+const RAIN_HZ: (f32, f32) = (2600.0, 650.0);
+
+/// Centre in hertz of the dust hiss.
+const DUST_HZ: f32 = 5200.0;
 
 /// Corner in hertz of the sea colour between two waves and what a breaking wave adds, for
 /// water and for molten rock: lava is a rumble with nothing above the bass.
@@ -60,6 +75,10 @@ pub struct AirCtl {
     pub cabin: f32,
     /// 1 in space, where nothing outside is heard.
     pub space: f32,
+    /// How hard it rains.
+    pub rain: f32,
+    /// How much dust blows past.
+    pub dust: f32,
 }
 
 /// The ambience voices.
@@ -69,6 +88,10 @@ pub struct Air {
     wind: [Svf; 2],
     /// Sea colour, left and right.
     sea: [Svf; 2],
+    /// Rain colour, left and right.
+    rain: [Svf; 2],
+    /// Dust colour, left and right.
+    dust: [Svf; 2],
     /// Under water drone colour.
     deep: Svf,
     /// Muffling of everything outside, left and right.
@@ -97,6 +120,8 @@ impl Air {
         Self {
             wind: [Svf::default(); 2],
             sea: [Svf::default(); 2],
+            rain: [Svf::default(); 2],
+            dust: [Svf::default(); 2],
             deep: Svf::default(),
             muffle: [Lag::default(); 2],
             k: 1.0,
@@ -118,10 +143,23 @@ impl Air {
             let wash = surge(wave + 0.31 * side as f32);
             let (calm, breaking) = WASH_HZ[usize::from(ctl.molten)];
             self.sea[side].tune(calm + breaking * wash, 0.7, self.rate);
+            let patter = RAIN_HZ.0 + (RAIN_HZ.1 - RAIN_HZ.0) * ctl.cabin;
+            self.rain[side].tune(patter * lean, 1.2, self.rate);
+            self.dust[side].tune(DUST_HZ * lean, 0.8, self.rate);
         }
         self.deep.tune(130.0, 0.8, self.rate);
         let closed = ctl.submerged.max(CABIN_MUFFLE * ctl.cabin);
         self.k = pole(OPEN_HZ * (MUFFLED_HZ / OPEN_HZ).powf(closed), self.rate);
+    }
+
+    /// Returns the rain and the dust of one side from the noise `raw`: what is heard in the open,
+    /// and the drum of the rain on the hull, which the cabin does not muffle. Spiky noise makes
+    /// the rain patter where the dust only hisses.
+    fn weather(&mut self, side: usize, raw: f32, ctl: &AirCtl) -> (f32, f32) {
+        let drops = self.rain[side].band(raw * raw.abs() * 2.0) * ctl.rain;
+        let hiss = self.dust[side].band(raw) * ctl.dust * DUST_LEVEL;
+        let open = drops * RAIN_LEVEL * (1.0 - ctl.cabin) + hiss;
+        (open, drops * HULL_LEVEL * ctl.cabin)
     }
 
     /// Renders one stereo frame.
@@ -136,8 +174,10 @@ impl Air {
         for side in 0..2 {
             let (low, band) = self.wind[side].run(raw[side]);
             let wash = surge(self.wave.0 + 0.31 * side as f32) * sea[side];
+            let (weather, hull) = self.weather(side, raw[1 - side], ctl);
             let open = (low + 0.5 * band) * blow + self.sea[side].low(raw[1 - side]) * wash;
-            out[side] = self.muffle[side].to(open * outside, self.k) + drone;
+            let heard = self.muffle[side].to((open + weather) * outside, self.k);
+            out[side] = heard + hull * outside + drone;
         }
         out
     }

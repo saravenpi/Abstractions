@@ -52,10 +52,14 @@ pub enum Param {
     BuddyNear,
     /// Class of the planet, as [`code`] writes it.
     Class,
+    /// How hard it rains around the listener.
+    Rain,
+    /// How much dust blows past the listener.
+    Dust,
 }
 
 /// Number of [`Param`] values.
-pub const PARAMS: usize = 21;
+pub const PARAMS: usize = 23;
 
 impl Param {
     /// Every parameter, in index order.
@@ -81,6 +85,8 @@ impl Param {
         Param::BuddySide,
         Param::BuddyNear,
         Param::Class,
+        Param::Rain,
+        Param::Dust,
     ];
 }
 
@@ -168,6 +174,9 @@ impl Shared {
         self.set(Param::ShoreSide, unit(0.5 + 0.5 * scene.shore_side));
         self.set(Param::BuddySide, unit(0.5 + 0.5 * scene.companion.x));
         self.set(Param::BuddyNear, unit(scene.companion.y));
+        for (param, level) in [(Param::Rain, scene.rain), (Param::Dust, scene.dust)] {
+            self.set(param, unit(level * scene.altitude_fade * outside));
+        }
     }
 
     /// Queues a cue for the audio thread. Returns false when the queue is full and the cue is lost.

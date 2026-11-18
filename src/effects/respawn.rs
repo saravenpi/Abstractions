@@ -6,9 +6,10 @@ use bevy::prelude::*;
 
 use super::ground::Ground;
 use super::kind::{Ambient, Kind};
-use super::planet::drift;
+use super::planet::{drift, seen};
 use super::pool::{ABOVE, BELOW, HALF_WIDTH, Particle, Pool};
 use super::rng::Rng;
+use super::sky::{Sky, fall};
 use crate::universe::PlanetRecord;
 use crate::world::SEA_LEVEL;
 
@@ -24,6 +25,8 @@ pub struct Spawn<'a> {
     pub ambient: Ambient,
     /// The record of the planet, which says what its air and its liquid can carry.
     pub record: PlanetRecord,
+    /// What the weather drops around the camera.
+    pub sky: Sky,
     /// The ground around the camera, for heights along the local vertical.
     pub ground: Ground<'a>,
     /// Unit wind direction in the local frame of the camera.
@@ -87,6 +90,20 @@ impl Spawn<'_> {
     }
 }
 
+/// Returns the kind of a respawning particle: what the weather drops first, then what the
+/// surroundings call for. Under a clear sky it draws the same one roll as before the weather.
+fn pick(spawn: &mut Spawn) -> Kind {
+    let weather = match spawn.sky.falling() {
+        true => fall(
+            &spawn.sky,
+            &seen(&spawn.record, &spawn.ambient),
+            spawn.rng.next(),
+        ),
+        false => None,
+    };
+    weather.unwrap_or_else(|| drift(&spawn.record, &spawn.ambient, spawn.rng.next()))
+}
+
 /// Re-rolls a particle's kind, position, life and look. A hidden particle only gets a new life:
 /// it is not drawn, so it costs no terrain lookup.
 pub fn respawn(
@@ -95,7 +112,7 @@ pub fn respawn(
     look: (&mut Mesh3d, &mut MeshMaterial3d<StandardMaterial>),
     spawn: &mut Spawn,
 ) {
-    let kind = drift(&spawn.record, &spawn.ambient, spawn.rng.next());
+    let kind = pick(spawn);
     let motion = kind.motion();
     transform.scale = Vec3::ZERO;
     particle.kind = kind;

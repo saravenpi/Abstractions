@@ -15,6 +15,7 @@ mod slots;
 mod tests;
 mod worlds;
 
+pub use hud::HudWeather;
 pub use nav::{Nav, Trail};
 pub use options::key_name;
 

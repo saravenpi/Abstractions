@@ -18,6 +18,8 @@ mod tests_climate;
 mod tests_deck;
 mod units;
 
+pub use climate::HudWeather;
+
 use std::time::Duration;
 
 use bevy::prelude::*;

@@ -1,5 +1,6 @@
 //! Drawing the space view: the system chart on its sheet, with the marks of the board
-//! computer at the size of the minimap, moons and rings included.
+//! computer at the size of the minimap, moons and rings included, and turning the arrows of
+//! the minimap to where the player faces.
 //!
 //! The chart is drawn again only when a mark moved by a pixel or the destination changed, and
 //! it is looked at a few times per second: nothing moves fast on a system chart.
@@ -10,13 +11,13 @@ use bevy::prelude::*;
 
 use super::orbit::{Scene, scene, signature};
 use super::pose::Reader;
-use super::widget::{Caption, Chart, MARK};
+use super::widget::{Caption, Chart, MARK, Needle, STEP};
 use crate::computer::{
-    Atlas, Destination, Dot, SIZE, View, body, frame, is_moon, ring, satellites, seen,
-    ship_position, side, spot,
+    Atlas, Destination, Dot, SIZE, View, arrow, bearing, body, frame, is_moon, ring, satellites,
+    seen, ship_position, side, spot,
 };
 use crate::space::{Clock, Frame};
-use crate::ui::{Icon, Tone, icon_sized, theme};
+use crate::ui::theme;
 use crate::universe::Universe;
 
 /// Dots of the line that shows the course.
@@ -88,7 +89,7 @@ fn course(sheet: &mut ChildSpawnerCommands, scene: &Scene) {
         let node = spot(at, Vec2::splat(-0.5), Vec2::splat(1.0));
         sheet.spawn((Dash, node, BackgroundColor(theme::MUTED)));
     }
-    frame(sheet, to, CHOSEN);
+    frame(sheet, to, (CHOSEN, theme::TEXT));
 }
 
 /// Spawns the chart: the orbits, the moons and rings of the planets, the course, the star,
@@ -112,9 +113,12 @@ fn draw(sheet: &mut ChildSpawnerCommands, scene: &Scene) {
         body(sheet, at, (side(line.target, false), color), world);
     }
     if let Some(at) = scene.place(Dot::Ship) {
-        let node = spot(at, Vec2::splat(-0.5 * MARK), Vec2::splat(MARK));
-        let symbol = icon_sized(Icon::Send, Tone::Plain, MARK);
-        sheet.spawn(node).with_child(symbol);
+        let node = Node {
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            ..spot(at, Vec2::splat(-0.5 * MARK), Vec2::splat(MARK))
+        };
+        sheet.spawn(node).with_child((Needle, arrow(STEP)));
     }
 }
 
@@ -136,6 +140,23 @@ fn slide(node: &mut Node, scene: Option<&Scene>) {
 fn title(scene: Option<&Scene>) -> String {
     let named = scene.and_then(|scene| scene.lines.first());
     named.map_or(QUIET.to_string(), |star| star.title.clone())
+}
+
+/// Turns every arrow of the minimap, every frame, to where the player faces: on the ground by
+/// the turn from the view to the body, in space by where the nose points on the chart.
+pub fn steer(reader: Reader, mut needles: Query<&mut UiTransform, With<Needle>>) {
+    let angle = match reader.pose() {
+        Some(pose) => Some(pose.needle),
+        None => reader.facing().map(|(nose, top)| bearing(nose, top)),
+    };
+    let Some(wanted) = angle.map(Rot2::radians) else {
+        return;
+    };
+    for mut needle in &mut needles {
+        if needle.rotation != wanted {
+            needle.rotation = wanted;
+        }
+    }
 }
 
 /// Draws the system chart while the player is in space, clears it on a planet, and says so

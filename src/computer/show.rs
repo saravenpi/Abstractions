@@ -72,13 +72,13 @@ pub(super) fn cell_text(line: &Line, part: Part, (chosen, here): (bool, bool)) -
 /// What the rows are drawn from.
 type Source<'w> = (Res<'w, Board>, Res<'w, Destination>);
 
-/// Writes the texts of the drawn rows, hides the rows past the end of the table, and marks the
-/// row under the cursor. Does nothing while neither the table nor the destination changed.
+/// Writes the texts of the drawn rows and hides the rows past the end of the table. Does
+/// nothing while neither the table nor the destination changed.
 fn rows(
     (board, destination): Source,
     fresh: Query<(), Added<Slot>>,
     mut cells: Query<(&Cell, &mut Text, &mut Tone)>,
-    mut slots: Query<(&Slot, &mut Node, &mut Selected)>,
+    mut slots: Query<(&Slot, &mut Node)>,
 ) {
     if !(board.is_changed() || destination.is_changed() || !fresh.is_empty()) {
         return;
@@ -95,7 +95,7 @@ fn rows(
         text.set_if_neq(Text(shown));
         tone.set_if_neq(wanted);
     }
-    for (slot, mut node, mut selected) in &mut slots {
+    for (slot, mut node) in &mut slots {
         let display = match board.at(slot.0) {
             Some(_) if slot.0 < board.window() => Display::Flex,
             _ => Display::None,
@@ -103,7 +103,6 @@ fn rows(
         if node.display != display {
             node.display = display;
         }
-        selected.set_if_neq(Selected(board.top + slot.0 == board.cursor));
     }
 }
 
@@ -179,7 +178,8 @@ pub(super) fn plugin(app: &mut App) {
             (super::pointer::plot, super::glide::ease).chain(),
             super::draw::draw,
             (super::glide::slide, super::glide::rule),
-            (super::chrome::fit, super::chrome::offer),
+            (super::arrow::turn, super::hover::light),
+            (super::chrome::fit, super::primary::offer),
         )
             .chain()
             .after(super::Input)

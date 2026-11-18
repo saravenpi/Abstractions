@@ -6,6 +6,7 @@ mod chart;
 mod ground;
 mod hud;
 mod modes;
+mod needle;
 mod read;
 mod refill;
 mod rig;

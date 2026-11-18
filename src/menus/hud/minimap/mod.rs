@@ -53,7 +53,7 @@ fn cycle(
 pub(super) fn plugin(app: &mut App) {
     let chart = space::chart.run_if(on_timer(Duration::from_secs_f32(CHART_EVERY)));
     let ground = (scope::fresh, scope::track, scope::refill, scope::collect);
-    let shown = (cycle, marks::place, marks::caption, chart);
+    let shown = (cycle, marks::place, marks::caption, chart, space::steer);
     app.init_resource::<scope::Scope>().add_systems(
         Update,
         (ground.chain(), shown.chain().run_if(in_control))

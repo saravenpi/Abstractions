@@ -1,8 +1,8 @@
 //! Drawing the chart on the sheet of the map: the orbits, the course, the marks and the names.
 //!
 //! The hierarchy is black and white: orbits are hairlines, a star is larger than a planet and
-//! a planet larger than a moon, the row under the cursor or the pointer wears a frame, the
-//! destination a pin, and the course is a dotted line from the ship with the distance on it.
+//! a planet larger than a moon, the selected row wears a white frame and the mark under the
+//! pointer a dim one, the destination a pin, and the course is a dotted line from the ship with the distance on it.
 //! A name that would cover a more important one is not drawn, nor a moon too close to its
 //! planet to tell apart.
 
@@ -55,9 +55,10 @@ struct Picture<'a> {
 }
 
 impl Picture<'_> {
-    /// Returns true when the row `index` is under the cursor or under the pointer, or when one
-    /// of its moons is and the zoom hides that moon: the planet then carries the frame.
-    fn under(&self, index: usize) -> bool {
+    /// Returns the colour of the frame of the row `index`: white when it is selected, dim when
+    /// the pointer is on it, none otherwise. A moon the zoom hides passes both to its planet,
+    /// which then carries the frame.
+    fn marked(&self, index: usize) -> Option<Color> {
         let lines = &self.board.lines;
         let hover = match self.view.hover {
             Some(Dot::Row(row)) => Some(row),
@@ -67,7 +68,14 @@ impl Picture<'_> {
             true => row,
             false => host(lines, row).unwrap_or(row),
         };
-        shown(self.board.cursor) == index || hover.map(shown) == Some(index)
+        match (
+            shown(self.board.cursor) == index,
+            hover.map(shown) == Some(index),
+        ) {
+            (true, _) => Some(theme::TEXT),
+            (false, true) => Some(theme::MUTED),
+            _ => None,
+        }
     }
 
     /// Returns the chart point of `dot`, when the chart has it.
@@ -133,8 +141,8 @@ fn course(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
     );
 }
 
-/// Spawns the ship and the mark of every row. The row under the cursor or the pointer is
-/// larger and framed, and a place never visited is dimmed.
+/// Spawns the ship and the mark of every row. The selected row and the one under the pointer
+/// are larger and framed, and a place never visited is dimmed.
 fn marks(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
     let (board, zoom) = (picture.board, picture.view.lens.zoom);
     let shown = picture.view.dots.iter();
@@ -150,15 +158,17 @@ fn marks(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
         let Some((index, line)) = row else {
             continue;
         };
-        let under = picture.under(index);
-        let color = match line.visited || under {
-            true => theme::TEXT,
-            false => theme::MUTED,
-        };
+        let ring = picture.marked(index);
+        let color = [theme::MUTED, theme::TEXT][usize::from(line.visited || ring.is_some())];
         let world = board.worlds.get(index).and_then(Option::as_ref);
-        body(sheet, *at, (side(line.target, under), color), world);
-        if under {
-            frame(sheet, *at, FRAME);
+        body(
+            sheet,
+            *at,
+            (side(line.target, ring.is_some()), color),
+            world,
+        );
+        if let Some(tone) = ring {
+            frame(sheet, *at, (FRAME, tone));
         }
     }
 }
@@ -182,7 +192,7 @@ fn labels(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
         };
         if let Some(line) = board.lines.get(index) {
             let chosen = Some(line.target) == picture.chosen;
-            let rank = priority(picture.under(index), chosen, line.visited);
+            let rank = priority(picture.marked(index).is_some(), chosen, line.visited);
             wanted.push((rank, *at, line.title.as_str()));
         }
     }

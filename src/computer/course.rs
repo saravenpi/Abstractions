@@ -1,5 +1,5 @@
-//! The words of the header and the footer: where the ship is, which actions the footer
-//! offers, and the course with its distance and a rough time to arrival.
+//! The words of the header and the footer: where the ship is, what the main button does,
+//! and the course with its distance and a rough time to arrival.
 
 use super::format::distance;
 use super::route::{RouteStatus, Target};
@@ -21,13 +21,25 @@ pub fn crumbs(names: &[String]) -> String {
     }
 }
 
-/// Returns true when the footer offers `act`, for the target of the row under the cursor and
-/// the course that is set. Only one of setting the course and engaging shows at a time.
-pub fn offered(act: Act, cursor: Option<Target>, course: Option<Target>) -> bool {
+/// Returns what the main button does for the target of the selected row, the course that is
+/// set and the state of the route: set the course to a row that is not the course yet, else
+/// engage the autopilot on a course it does not fly yet, else clear the course. Nothing when
+/// there is no row and no course.
+pub fn primary(cursor: Option<Target>, course: Option<Target>, status: RouteStatus) -> Option<Act> {
+    match (cursor, course) {
+        (Some(_), _) if cursor != course => Some(Act::Set),
+        (_, None) => None,
+        _ if status == RouteStatus::Idle => Some(Act::Engage),
+        _ => Some(Act::Clear),
+    }
+}
+
+/// Returns what the main button says for `act`, with `name` the name of the selected row.
+pub fn words(act: Act, name: &str) -> String {
     match act {
-        Act::Set => cursor.is_some() && cursor != course,
-        Act::Engage => course.is_some() && (cursor == course || cursor.is_none()),
-        Act::Clear => course.is_some(),
+        Act::Set => format!("Set course to {name}"),
+        Act::Engage => "Engage autopilot".to_string(),
+        Act::Clear => "Clear course".to_string(),
     }
 }
 
@@ -41,7 +53,7 @@ pub fn arrival(gap: f64, speed: f64) -> Option<String> {
 /// time to get there at `speed` metres per second, and the state of the route.
 pub fn course(to: Option<(&str, f64)>, speed: f64, status: RouteStatus) -> String {
     let Some((name, gap)) = to else {
-        return "No course set. Pick a row and press Enter".to_string();
+        return "No course set. Select a place, then set course".to_string();
     };
     let eta = arrival(gap, speed).map_or(String::new(), |eta| format!(" - {eta}"));
     format!(

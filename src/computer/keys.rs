@@ -38,16 +38,6 @@ type Role = (
     Option<&'static Act>,
 );
 
-/// Moves the cursor to the row the pointer gave focus to.
-pub(super) fn follow_focus(focus: Res<InputFocus>, slots: Query<&Slot>, mut board: ResMut<Board>) {
-    let Some(slot) = focus.get().and_then(|entity| slots.get(entity).ok()) else {
-        return;
-    };
-    if board.top + slot.0 != board.cursor && board.at(slot.0).is_some() {
-        board.pick(slot.0);
-    }
-}
-
 /// Moves the cursor with the arrows, Page Up and Down, Home and End, changes tab with Left and
 /// Right, and scrolls with the wheel unless the pointer is over the map. A move that scrolls
 /// the table under a cursor that stays on the same drawn row is sounded here, since the focus
@@ -111,7 +101,8 @@ pub(super) struct Desk<'w, 's> {
 }
 
 impl Desk<'_, '_> {
-    /// Runs an action of the screen.
+    /// Runs an action of the screen: the course goes to the selected row, to the autopilot or
+    /// away.
     fn run(&mut self, act: Act) {
         match (act, self.destination.0) {
             (Act::Set, _) => {
@@ -125,13 +116,17 @@ impl Desk<'_, '_> {
     }
 }
 
-/// Hands the destination to the autopilot on the engage key of the settings, unless a filter
-/// is being typed, and forgets the destination on Delete.
+/// Sets the course to the selected row on Enter, hands the destination to the autopilot on the
+/// engage key of the settings, unless a filter is being typed, and forgets the destination on
+/// Delete.
 fn action_keys(
     keys: Res<ButtonInput<KeyCode>>,
     settings: Res<Persistent<Settings>>,
     mut desk: Desk,
 ) {
+    if keys.just_pressed(KeyCode::Enter) {
+        desk.run(Act::Set);
+    }
     if keys.just_pressed(settings.controls.keys.engage) && desk.board.filter.is_empty() {
         desk.run(Act::Engage);
     }
@@ -140,16 +135,14 @@ fn action_keys(
     }
 }
 
-/// Applies an activated button: a row sets the destination, a tab opens, an action runs.
+/// Applies an activated button: a row is selected, a tab opens, an action runs. Enter on the
+/// focused row selects it again; `action_keys` sets the course.
 pub(super) fn on_activate(event: On<Activate>, roles: Query<Role>, mut desk: Desk) {
     let Ok((slot, link, act)) = roles.get(event.entity) else {
         return;
     };
-    if let Some(target) = slot
-        .and_then(|slot| desk.board.at(slot.0))
-        .map(|line| line.target)
-    {
-        desk.destination.0 = Some(target);
+    if let Some(Slot(slot)) = slot {
+        desk.board.pick(*slot);
     }
     if let Some(TabLink(tab)) = link {
         desk.board.show(*tab);
@@ -164,7 +157,6 @@ pub(super) fn plugin(app: &mut App) {
     app.add_observer(on_activate).add_systems(
         Update,
         (
-            follow_focus,
             navigate,
             focus_cursor,
             action_keys,

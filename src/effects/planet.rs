@@ -30,8 +30,12 @@ pub fn seen(record: &PlanetRecord, ambient: &Ambient) -> Ambient {
 }
 
 /// Returns true when a planet of `class` has `kind` in its air or its liquid: spray, bubbles and plankton
-/// need water, and snow does not fall on the hot classes.
+/// need water, and snow does not fall on the hot classes. A gas giant has no ground for leaves, petals,
+/// pollen or dust to come from, and no water: it carries none.
 fn carried(class: PlanetClass, kind: Kind) -> bool {
+    if class == PlanetClass::GasGiant {
+        return false;
+    }
     let water = matches!(
         class,
         PlanetClass::Ocean | PlanetClass::Island | PlanetClass::Desert

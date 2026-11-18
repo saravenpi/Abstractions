@@ -10,6 +10,7 @@ use super::{BODY_LENGTH, BODY_RADIUS, Player};
 use crate::gear::Gear;
 use crate::space::{Anchor, up};
 use crate::view::{Cut, Heading};
+use crate::world::Planet;
 
 /// Gap left between the feet and the point the body is placed on.
 const PLACE_LIFT: f32 = 0.05;
@@ -27,10 +28,13 @@ type Placed<'a> = (
 /// folded. The spot becomes the place the body returns to if it falls out of the world, and
 /// the camera cuts to the new view instead of gliding there.
 ///
-/// Does nothing without a world or a body. Queue it from a system with
-/// `commands.queue(move |world: &mut World| place(world, feet, toward))`.
+/// Does nothing without a world or a body, and on a planet without ground, where no body can stand.
+/// Queue it from a system with `commands.queue(move |world: &mut World| place(world, feet, toward))`.
 pub fn place(world: &mut World, feet: Vec3, toward: Vec3) {
-    let Some(anchor) = world.get_resource::<Anchor>().copied() else {
+    let deck = world
+        .get_resource::<Planet>()
+        .is_some_and(|p| !p.globe.has_ground());
+    let Some(anchor) = world.get_resource::<Anchor>().copied().filter(|_| !deck) else {
         return;
     };
     let vertical = up(&anchor, feet);

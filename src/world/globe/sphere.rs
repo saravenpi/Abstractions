@@ -9,6 +9,9 @@ use crate::world::CHUNK_SIZE;
 use crate::world::biome::Biome;
 use crate::world::surface::Surface;
 
+/// Levels a deck stops above the leaf level: its deepest nodes are 64 chunks, about 4 km, wide.
+const DECK_DROP: u8 = 6;
+
 impl Globe {
     /// Returns the point of the sea level sphere, in metres from the centre, in unit direction `dir`.
     fn at(&self, dir: DVec3) -> DVec3 {
@@ -40,6 +43,15 @@ impl Globe {
     pub fn leaf_level(&self) -> u8 {
         let nodes = 2.0 * self.radius() * FRAC_PI_4 / f64::from(CHUNK_SIZE);
         nodes.log2().round().clamp(0.0, 20.0) as u8
+    }
+
+    /// Returns the deepest level the quadtree splits to: the leaf level on a planet with ground, where
+    /// detail chunks take over, and [`DECK_DROP`] levels less on a smooth deck, which needs no finer node.
+    pub fn deepest_level(&self) -> u8 {
+        match self.has_ground() {
+            true => self.leaf_level(),
+            false => self.leaf_level().saturating_sub(DECK_DROP),
+        }
     }
 
     /// Returns the chart of `face` in which a node of [`Globe::leaf_level`] is `CHUNK_SIZE` wide.

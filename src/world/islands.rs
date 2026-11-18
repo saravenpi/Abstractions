@@ -15,6 +15,7 @@ mod tests;
 use noise::{Fbm, MultiFractal, Perlin};
 
 pub use point::{Point, plus};
+pub(in crate::world) use solid::gradient;
 
 use super::biome::Climate;
 use relief::Relief;

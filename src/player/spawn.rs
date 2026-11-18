@@ -153,8 +153,12 @@ fn spawn_player(
 /// Returns where a body at render position `at` goes when it is lost: back `home` once it fell
 /// out of the world, or straight up onto the ground once it sank more than [`SUNK`] under it,
 /// as when the ground loaded after the body passed. Nothing while it is where a body can be:
-/// a body on or over the ground never fell out, however deep the dry basin it stands in.
+/// a body on or over the ground never fell out, however deep the dry basin it stands in. Nothing
+/// on a planet without ground either: there is no ground to put it back on.
 pub(super) fn rescue(anchor: &Anchor, terrain: &Terrain, at: Vec3, home: DVec3) -> Option<Vec3> {
+    if !terrain.globe().has_ground() {
+        return None;
+    }
     let height = altitude(anchor, terrain.globe(), at);
     let chart = terrain.locate(anchor.to_frame(at));
     let ground = terrain.height(chart.x, chart.z);

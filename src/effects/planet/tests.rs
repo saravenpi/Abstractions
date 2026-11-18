@@ -77,3 +77,22 @@ fn a_dry_basin_has_no_bubbles() {
     }
     assert_eq!(seen(&PlanetRecord::TEMPERATE, &place(-12.0)).height, -12.0);
 }
+
+/// A gas giant has no ground to shed leaves, petals, pollen or dust and no water: nothing drifts there
+/// in any surroundings, though it has air and no creature lives there.
+#[test]
+fn a_giant_carries_nothing() {
+    let giant = record(PlanetClass::GasGiant, 1.0, 0.6);
+    assert!(!airless(&giant) && lifeless(&giant));
+    let meadow = Ambient {
+        biome: Biome::Meadow,
+        surface: Surface::Grass,
+        ..place(5.0)
+    };
+    for step in 0..40 {
+        let roll = step as f32 / 40.0;
+        for ambient in [place(5.0), place(-3.0), meadow] {
+            assert_eq!(drift(&giant, &ambient, roll), Kind::Hidden);
+        }
+    }
+}

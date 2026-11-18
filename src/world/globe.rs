@@ -19,6 +19,8 @@ mod tests;
 #[cfg(test)]
 mod tests_datum;
 #[cfg(test)]
+pub(in crate::world) mod tests_deck;
+#[cfg(test)]
 mod tests_record;
 
 pub use chart::Chart;

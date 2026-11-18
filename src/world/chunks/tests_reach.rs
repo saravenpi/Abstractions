@@ -17,13 +17,23 @@ use crate::world::{Globe, Planet, SpawnPoint, Terrain};
 
 /// What a settled world holds.
 #[derive(Default)]
-struct Load {
-    nodes: usize,
-    chunks: usize,
-    triangles: usize,
-    colliders: usize,
+pub(super) struct Load {
+    /// Quadtree nodes, hidden parents included.
+    pub(super) nodes: usize,
+    /// Detail chunks.
+    pub(super) chunks: usize,
+    /// Triangles drawn.
+    pub(super) triangles: usize,
+    /// Colliders.
+    pub(super) colliders: usize,
+    /// Megabytes of meshes.
     megabytes: f64,
+    /// Seconds until settled.
     seconds: f64,
+    /// Frames run until settled.
+    pub(super) frames: u32,
+    /// Seconds the frames took on the main thread, together and the longest one.
+    pub(super) main: (f64, f64),
 }
 
 /// Swaps the streamed planet for one of `radius` metres, with its spawn and anchor.
@@ -82,26 +92,40 @@ fn measure(app: &mut App, seconds: f64) -> Load {
         colliders,
         megabytes: megabytes as f64 / 1.0e6,
         seconds,
+        ..Load::default()
     }
 }
 
 /// Settles a world of `radius` metres at `rings`, waits for the last fade to end and returns
 /// what it holds.
 fn settle(radius: f64, rings: u32) -> Load {
+    settle_on(rings, &|app| resize(app, radius))
+}
+
+/// Settles a world whose streamed body `enter` sets, at `rings`, waits for the last fade to end
+/// and returns what it holds, with the time its frames took on the main thread.
+pub(super) fn settle_on(rings: u32, enter: &dyn Fn(&mut App)) -> Load {
     let mut app = world();
     app.insert_resource(Reach::of(Some(rings)));
-    resize(&mut app, radius);
-    let start = Instant::now();
-    app.update();
-    while !(idle(app.world()) && app.world().resource::<Chunks>().fades.idle()) {
+    enter(&mut app);
+    let (start, mut frames, mut main) = (Instant::now(), 0, (0.0, 0.0f64));
+    while frames == 0 || !(idle(app.world()) && app.world().resource::<Chunks>().fades.idle()) {
         assert!(
             start.elapsed() < Duration::from_secs(900),
             "{rings} rings never settled"
         );
+        let frame = Instant::now();
         app.update();
+        let took = frame.elapsed().as_secs_f64();
+        (frames, main) = (frames + 1, (main.0 + took, main.1.max(took)));
         std::thread::sleep(Duration::from_millis(1));
     }
-    measure(&mut app, start.elapsed().as_secs_f64())
+    let load = measure(&mut app, start.elapsed().as_secs_f64());
+    Load {
+        frames,
+        main,
+        ..load
+    }
 }
 
 /// Prints what every render distance step costs on a 6 km and a 40 km planet, and checks that the

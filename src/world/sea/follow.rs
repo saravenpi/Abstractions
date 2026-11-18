@@ -64,13 +64,15 @@ pub fn placing(
 /// Keeps the seat of the sea on the streamed planet near the focus, and the floor map centered
 /// on the focus with the texels that scrolled in sampled.
 ///
-/// A new seat restarts the map. An anchor rebase or a change of cube face changes nothing here.
+/// A new seat restarts the map. An anchor rebase or a change of cube face changes nothing here,
+/// and a planet without ground leaves the map as it is.
 pub fn refresh(
     focus: Focus,
     planet: Option<Res<Planet>>,
     mut images: ResMut<Assets<Image>>,
     mut seas: Query<(&mut SeaFloor, &mut Seat, &mut Sited)>,
 ) {
+    let planet = planet.filter(|planet| planet.globe.has_ground());
     let (Some(planet), Some(at)) = (planet, focus.planet()) else {
         return;
     };
@@ -88,7 +90,7 @@ pub fn refresh(
 
 /// Refreshes the shader values of the sea with the liquid of the planet it sits on, and hides it once the
 /// focus is above the hand-over altitude, where the coarse planet mesh draws the sea, and on a planet
-/// without a sea.
+/// without a sea, which a planet without ground never has.
 pub fn follow_focus(
     focus: Focus,
     inputs: SeaInputs,
@@ -96,7 +98,9 @@ pub fn follow_focus(
     mut sea: Query<SeaItem, With<Sea>>,
     mut materials: ResMut<Assets<WaterMaterial>>,
 ) {
-    let at = focus.planet();
+    let at = focus
+        .planet()
+        .filter(|_| planet.as_ref().is_none_or(|p| p.globe.has_sea()));
     let liquid = planet.map_or(Liquid::WATER, |planet| Liquid::of(&planet.globe));
     for (pose, handle, floor, seat, mut visibility) in &mut sea {
         let radius = seat.radius();

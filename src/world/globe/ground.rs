@@ -12,8 +12,12 @@ use crate::world::surface::Surface;
 const SLOPE_STEP: f32 = 1.5;
 
 impl Globe {
-    /// Returns the ground height in metres above sea level at `at`, ponds carved in.
+    /// Returns the ground height in metres above sea level at `at`, ponds carved in. A planet without
+    /// ground is its smooth deck, at height 0 everywhere, read without sampling any noise.
     pub(in crate::world) fn ground<S: Site>(&self, at: S) -> f32 {
+        if !self.has_ground() {
+            return SEA_LEVEL;
+        }
         self.carve(at, self.uncarved(at))
     }
 

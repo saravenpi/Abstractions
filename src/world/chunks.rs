@@ -29,6 +29,8 @@ mod stretch;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_bodies;
+#[cfg(test)]
 mod tests_embed;
 #[cfg(test)]
 mod tests_fade;
@@ -139,8 +141,12 @@ impl Chunks {
     }
 
     /// Returns the chunk coordinates around a focus at planet position `at`, with the lane to
-    /// the point it will reach at its speed and the detail its pace leaves time for.
+    /// the point it will reach at its speed and the detail its pace leaves time for. A planet
+    /// without ground has no detail chunk, so nothing around any focus.
     fn around(&self, spawner: &Spawner, at: DVec3) -> Option<Around> {
+        if !spawner.terrain.globe().has_ground() {
+            return None;
+        }
         let course = Course {
             ahead: self.motion.ahead(at, spawner.terrain.globe().radius()),
             rings: spawner.reach().rings,

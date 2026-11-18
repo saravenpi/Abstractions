@@ -70,18 +70,19 @@ impl Chunks {
 
 /// Returns the path the quadtree is selected for: from planet position `at` to the point the
 /// focus will reach, with `reach`. New ground only splits down to the leaves within the detail
-/// radius the pace of the focus leaves.
+/// radius the pace of the focus leaves. A deck has no detail radius: its nodes split by their
+/// width alone.
 fn path_of(chunks: &Chunks, spawner: &Spawner, at: DVec3, reach: &Reach) -> Path {
     let globe = spawner.terrain.globe();
     let mut view = View {
         focus: at,
         radius: globe.radius(),
-        deepest: globe.leaf_level(),
+        deepest: globe.deepest_level(),
         reach: 0.0,
         budget: reach.node_cap().saturating_sub(chunks.tree.count()) / 4,
         split: reach.split(),
     };
-    let leaf = view.arc(view.deepest);
+    let leaf = view.arc(view.deepest) * f64::from(u8::from(globe.has_ground()));
     view.reach = f64::from(reach.rings + 1) * leaf;
     Path {
         view,

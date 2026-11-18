@@ -1,5 +1,6 @@
 //! Flat-shaded terrain meshes: detail chunks and coarse quadtree nodes, stored in their own frame on the globe.
 
+mod bands;
 mod frame;
 mod lattice;
 mod lod;
@@ -9,6 +10,8 @@ mod rings;
 mod sample;
 mod skirt;
 mod span;
+#[cfg(test)]
+mod tests_bands;
 #[cfg(test)]
 mod tests_edges;
 #[cfg(test)]

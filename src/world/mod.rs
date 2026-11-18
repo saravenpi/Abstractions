@@ -3,6 +3,7 @@
 mod biome;
 mod chunks;
 mod colormap;
+mod enter;
 mod focus;
 pub mod globe;
 mod islands;
@@ -22,6 +23,7 @@ mod terrain;
 
 pub use biome::Biome;
 pub use chunks::{Calm, Reach, STEPS as RENDER_STEPS, Sited, leaf_arc};
+pub use enter::enter_planet;
 pub use focus::{Link, spin};
 pub use globe::Globe;
 pub use meter::{Cost, Meter, STEPS as METER_STEPS};
@@ -31,6 +33,8 @@ pub use terrain::Terrain;
 use std::sync::Arc;
 
 use bevy::prelude::*;
+
+use enter::{ashore, follow_body};
 
 use crate::home::Base;
 use crate::saves::{ActiveWorld, WorldSave, unplayed};
@@ -74,38 +78,6 @@ pub struct Planet {
     pub day_seconds: f64,
 }
 
-/// Makes `body` the streamed planet: swaps the globe and the terrain view, and has every chunk
-/// of the previous planet dropped.
-///
-/// The caller still owns the `Anchor` and `Location`. The terrain starts on the north face and
-/// follows the focus from the next frame on.
-pub fn enter_planet(commands: &mut Commands, universe: &Universe, body: BodyId) -> Terrain {
-    let spec = universe.planet(body);
-    let globe = Arc::new(Globe::of(&spec));
-    let terrain = Terrain::on(globe.clone(), globe.face_chart(Face::PosY));
-    commands.insert_resource(terrain.clone());
-    commands.insert_resource(Planet {
-        body,
-        globe,
-        day_seconds: spec.day_seconds,
-    });
-    terrain
-}
-
-/// Enters the planet named by `Location` whenever it is not the streamed one.
-fn follow_body(
-    mut commands: Commands,
-    location: Option<Res<Location>>,
-    universe: Option<Res<Universe>>,
-    planet: Res<Planet>,
-) {
-    if let (Some(location), Some(universe)) = (location, universe)
-        && location.body != planet.body
-    {
-        enter_planet(&mut commands, &universe, location.body);
-    }
-}
-
 /// Returns the view of the cube face that holds the spot `save` was taken at, or `north`
 /// when there is no such spot.
 fn saved_view(north: &Terrain, save: Option<&WorldSave>) -> Terrain {
@@ -122,14 +94,19 @@ fn saved_view(north: &Terrain, save: Option<&WorldSave>) -> Terrain {
 /// anchor and the readiness flag from the world seed.
 ///
 /// A new world starts on the home planet at the terrain spawn. A resumed world starts on the
-/// planet and at the spot its save names. The terrain is the chart of the cube face that holds
-/// the spawn.
+/// planet and at the spot its save names, unless that is a body without ground: then it starts
+/// as a new world. The terrain is the chart of the cube face that holds the spawn.
 fn begin_world(
     mut commands: Commands,
     seed: Option<Res<WorldSeed>>,
-    active: Option<Res<ActiveWorld>>,
+    mut active: Option<ResMut<ActiveWorld>>,
 ) {
     let universe = Universe::new(seed.map_or(0, |s| s.0));
+    if let Some(active) = active.as_mut() {
+        ashore(active, |body| {
+            !Globe::of(&universe.planet(body)).has_ground()
+        });
+    }
     let save = active.as_ref().map(|active| &active.0.save);
     let body = save.map_or_else(|| universe.home(), |save| save.body(&universe));
     let view = saved_view(&enter_planet(&mut commands, &universe, body), save);

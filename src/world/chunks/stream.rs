@@ -153,12 +153,17 @@ pub fn collect(
 }
 
 /// Flags the world ready once the chunk under the focus and the chunks that touch it all exist with colliders.
+/// A planet without ground has nothing that must be solid: it is ready at once.
 pub fn mark_ready(
     chunks: Res<Chunks>,
     focus: Focus,
     terrain: Res<Terrain>,
     mut ready: ResMut<WorldReady>,
 ) {
+    if !terrain.globe().has_ground() {
+        ready.set_if_neq(WorldReady(true));
+        return;
+    }
     let Some(around) = focus.planet().and_then(|at| Around::new(&terrain, at)) else {
         return;
     };

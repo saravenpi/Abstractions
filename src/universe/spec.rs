@@ -113,13 +113,15 @@ impl Orbit {
 /// The rings of a planet, flat in the plane of its equator.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Rings {
-    /// Inner radius in metres from the centre of the planet.
+    /// Inner radius in metres from the centre of the planet, 1.2 to 1.6 planet radii and above
+    /// the air.
     pub inner: f64,
-    /// Outer radius in metres from the centre of the planet.
+    /// Outer radius in metres from the centre of the planet, at least 0.3 planet radii past the
+    /// inner one and at most 2.4: inside the Roche limit and inside the innermost moon.
     pub outer: f64,
-    /// Share of the light the rings stop, from 0 to 1.
+    /// Share of the light the rings stop, from 0.2 to 0.9.
     pub density: f32,
-    /// Linear RGB colour of the ring material.
+    /// Linear RGB colour of the ring material: pale ice on a planet under 220 K, dust above.
     pub color: bevy::math::Vec3,
 }
 
@@ -138,6 +140,7 @@ pub struct PlanetSpec {
     /// Surface gravity in metres per second squared.
     pub gravity: f64,
     /// Seconds for one turn around the +Y axis of the planet, which is one day and night.
+    /// Negative for a moon, which turns the other way, the way its orbit goes.
     pub day_seconds: f64,
     /// Radius of the circular orbit around the star in metres.
     pub orbit_radius: f64,
@@ -155,7 +158,8 @@ pub struct PlanetSpec {
     pub record: PlanetRecord,
     /// For a moon, the orbit of its planet around the star. Nothing for a planet.
     pub host: Option<Orbit>,
-    /// Number of moons, 0 for a moon.
+    /// Number of moons: 2 to 6 for a gas giant, 0 to 2 for a solid planet, 0 for the home planet
+    /// and for a moon.
     pub moons: u8,
     /// The rings, if the planet has any.
     pub rings: Option<Rings>,

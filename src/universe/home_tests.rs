@@ -105,3 +105,36 @@ fn home_orbit_earns_its_record() {
         assert!(planets.iter().all(|p| p.orbit_radius < ORBIT.1));
     }
 }
+
+/// Kodya has no moons and no rings, and the outermost planet of the home system is a gas giant
+/// with at least two moons, all of them solid ground to land on, for every seed. The home
+/// systems of seeds 0 to 20 are printed: class, moons and rings of each planet.
+#[test]
+fn home_has_a_giant_with_moons() {
+    for seed in 0..200 {
+        let u = Universe::new(seed);
+        let system = u.system(u.home().star);
+        let kodya = u.planet(u.home());
+        assert_eq!((kodya.moons, kodya.rings), (0, None), "seed {seed}");
+        assert!(u.moons(u.home()).is_empty());
+        let outer = system.planets.last().expect("the home system has planets");
+        assert_eq!(outer.record.class, PlanetClass::GasGiant, "seed {seed}");
+        assert_eq!(outer.record.zone, Zone::Cold, "seed {seed}");
+        let moons = moon::of(&system.star, outer);
+        assert!(moons.len() >= 2, "seed {seed}");
+        let solid = |m: &PlanetSpec| m.record.class != PlanetClass::GasGiant;
+        assert!(
+            moons
+                .iter()
+                .all(|m| solid(m) && m.radius <= PLANET_RADIUS.1)
+        );
+        let entry = |p: &PlanetSpec| {
+            let ring = if p.rings.is_some() { " ringed" } else { "" };
+            format!("{} {}m{ring}", p.record.class.label(), p.moons)
+        };
+        let entries: Vec<String> = system.planets.iter().map(entry).collect();
+        if seed <= 20 {
+            println!("seed {seed}: {}", entries.join(", "));
+        }
+    }
+}

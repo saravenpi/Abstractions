@@ -5,9 +5,9 @@ use std::f64::consts::TAU;
 use super::hash::{self, Rng};
 use super::home::{HOME_GRAVITY, HOME_RADIUS};
 use super::ids::BodyId;
-use super::names;
 use super::record::PlanetRecord;
 use super::spec::{PlanetSpec, StarSpec};
+use super::{giant, moon, names, rings};
 
 /// Smallest and largest sea level radius of a planet in metres.
 pub const PLANET_RADIUS: (f64, f64) = (3000.0, 40_000.0);
@@ -22,7 +22,7 @@ pub const PLANET_GRAVITY: (f64, f64) = (0.3, 1.8);
 pub const PLANET_DAY: (f64, f64) = (600.0, 3600.0);
 
 /// Child of the planet seed the record draws from, so the draws of the body itself never shift.
-const RECORD_STREAM: u64 = 1;
+pub(super) const RECORD_STREAM: u64 = 1;
 
 /// Atmosphere top, cloud base and cloud top of the home planet, in metres above sea level.
 const HOME_AIR: [f64; 3] = [4000.0, 900.0, 1500.0];
@@ -42,17 +42,42 @@ pub fn orbit_seconds(mu: f64, radius: f64) -> f64 {
     TAU * (radius * radius * radius / mu).sqrt()
 }
 
+/// Returns the surface gravity in Earth gravities of a body at `size`, its place from 0 to 1 on
+/// the log scale of [`PLANET_RADIUS`], for a draw `roll` from 0 to 1: half of it follows the size.
+pub(super) fn earths(size: f64, roll: f64) -> f64 {
+    let pull = 0.5 * (size + roll);
+    PLANET_GRAVITY.0 + (PLANET_GRAVITY.1 - PLANET_GRAVITY.0) * pull
+}
+
 /// Builds planet number `index` of a star on an orbit of `orbit` metres.
+///
+/// The planet is first built solid, then turns into a gas giant when [`giant::forms`] says so
+/// or when `giant` asks for one, and last gets its rings and the count of its moons. Each step
+/// draws from its own child of the seed, so a planet that stays solid keeps every value it had
+/// before giants, rings and moons existed.
+pub(super) fn build(star: &StarSpec, index: u8, orbit: f64, seed: u64, giant: bool) -> PlanetSpec {
+    let body = solid(star, index, orbit, seed);
+    let body = match giant || giant::forms(star, body.record.flux, seed) {
+        true => giant::grow(star, body, hash::child(seed, RECORD_STREAM)),
+        false => body,
+    };
+    PlanetSpec {
+        rings: rings::of(&body),
+        moons: moon::count(star, &body),
+        ..body
+    }
+}
+
+/// Builds the solid planet number `index` of a star on an orbit of `orbit` metres.
 ///
 /// Radii are spread evenly on a log scale, so small planets are the common ones, and half of
 /// the gravity follows the size. The record follows from the star, the orbit, the gravity and
 /// the size, with its own draws from a child of the seed.
-pub(super) fn build(star: &StarSpec, index: u8, orbit: f64, seed: u64) -> PlanetSpec {
+fn solid(star: &StarSpec, index: u8, orbit: f64, seed: u64) -> PlanetSpec {
     let mut rng = Rng::new(seed);
     let size = rng.unit();
     let radius = PLANET_RADIUS.0 * (PLANET_RADIUS.1 / PLANET_RADIUS.0).powf(size);
-    let pull = 0.5 * (size + rng.unit());
-    let earths = PLANET_GRAVITY.0 + (PLANET_GRAVITY.1 - PLANET_GRAVITY.0) * pull;
+    let earths = earths(size, rng.unit());
     let [atmosphere_height, cloud_base, cloud_top] = air(radius);
     let draws = hash::child(seed, RECORD_STREAM);
     PlanetSpec {

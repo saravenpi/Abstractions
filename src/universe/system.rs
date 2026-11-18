@@ -17,7 +17,8 @@ pub const ORBIT: (f64, f64) = (5e6, 5e8);
 /// each one is strictly larger than the one before. With `world` set this is the home system:
 /// it has at least 5 planets, the third is the home planet, whose terrain seed is `world`, and
 /// the orbits are those of [`home::orbit`], which keep the order and put the home planet where
-/// its star gives it a flux of 1.
+/// its star gives it a flux of 1. The outermost planet of the home system is always a gas
+/// giant, so a new player has a giant and its moons to fly to.
 pub(super) fn planets(star: &StarSpec, world: Option<u64>) -> Vec<PlanetSpec> {
     let mut rng = Rng::new(hash::child(star.seed, 2));
     let least = if world.is_some() {
@@ -31,7 +32,7 @@ pub(super) fn planets(star: &StarSpec, world: Option<u64>) -> Vec<PlanetSpec> {
         let band = (f64::from(index) + rng.range(0.15, 0.85)) / f64::from(count);
         *slot = (band, rng.next());
     }
-    let home = world.map(|world| (world, drawn[usize::from(home::HOME_INDEX)].0));
+    let home = world.map(|world| (world, drawn[usize::from(home::HOME_INDEX)].0, count - 1));
     let members = (0..count).zip(drawn);
     members
         .map(|(index, drawn)| member(star, index, drawn, home))
@@ -39,19 +40,19 @@ pub(super) fn planets(star: &StarSpec, world: Option<u64>) -> Vec<PlanetSpec> {
 }
 
 /// Returns planet `index` of `star` from the place `band` it drew in the span of orbits, 0 to 1 on
-/// the log scale, and its seed. In the home system `home` gives the world seed and the place the
-/// home planet drew.
+/// the log scale, and its seed. In the home system `home` gives the world seed, the place the
+/// home planet drew and the index of the outermost planet.
 fn member(
     star: &StarSpec,
     index: u8,
     (band, seed): (f64, u64),
-    home: Option<(u64, f64)>,
+    home: Option<(u64, f64, u8)>,
 ) -> PlanetSpec {
-    let Some((world, at)) = home else {
+    let Some((world, at, last)) = home else {
         let orbit = ORBIT.0 * (ORBIT.1 / ORBIT.0).powf(band);
-        return planet::build(star, index, orbit, seed);
+        return planet::build(star, index, orbit, seed, false);
     };
-    let planet = planet::build(star, index, home::orbit(band, at), seed);
+    let planet = planet::build(star, index, home::orbit(band, at), seed, index == last);
     match index == home::HOME_INDEX {
         true => home::planet(planet, world),
         false => planet,

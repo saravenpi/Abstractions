@@ -21,6 +21,9 @@ const GREEK: [&str; 10] = [
     "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Sigma", "Omega",
 ];
 
+/// Roman numerals of the moons of a planet, from the closest one out.
+const NUMERALS: [&str; 6] = ["I", "II", "III", "IV", "V", "VI"];
+
 /// Name of the home planet, the same for every seed.
 pub const HOME_PLANET_NAME: &str = "Kodya";
 
@@ -85,4 +88,11 @@ pub(super) fn galaxy(seed: u64, is_home: bool) -> String {
 /// Returns the name of planet number `index` of a star: the star name and a letter from `b` on.
 pub(super) fn planet(star: &str, index: u8) -> String {
     format!("{star} {}", char::from(b'b' + index))
+}
+
+/// Returns the name of moon number `rank`, from 1, of a planet: the planet name and a Roman
+/// numeral, as astronomers number the moons of Jupiter.
+pub(super) fn moon(planet: &str, rank: u8) -> String {
+    let numeral = NUMERALS[usize::from(rank.clamp(1, 6)) - 1];
+    format!("{planet} {numeral}")
 }

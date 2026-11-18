@@ -7,7 +7,9 @@ mod class;
 mod climate;
 mod density;
 mod galaxy;
+mod giant;
 mod hash;
+mod hill;
 mod home;
 mod ids;
 mod look;
@@ -16,6 +18,7 @@ mod names;
 mod orbit;
 mod planet;
 mod record;
+mod rings;
 mod sector;
 mod spec;
 mod star;
@@ -27,23 +30,34 @@ mod class_tests;
 #[cfg(test)]
 mod climate_tests;
 #[cfg(test)]
+mod giant_tests;
+#[cfg(test)]
 mod home_tests;
+#[cfg(test)]
+mod moon_tests;
+#[cfg(test)]
+mod range_moon_tests;
 #[cfg(test)]
 mod range_tests;
 #[cfg(test)]
 mod record_tests;
+#[cfg(test)]
+mod ring_tests;
 #[cfg(test)]
 mod tests;
 
 pub use air::NO_AIR;
 pub use class::MOLTEN;
 pub use galaxy::{ARMS, CENTER_SPAN, RADIUS_GLY};
+pub use giant::{GIANT_GRAVITY, GIANT_RADIUS};
+pub use hill::MOON_RADIUS;
 pub use home::{HOME_DAY_SECONDS, HOME_GRAVITY, HOME_RADIUS};
 pub use ids::{BodyId, GalaxyId, StarId};
 pub use look::Look;
 pub use names::{HOME_PLANET_NAME, HOME_STAR_NAME};
 pub use planet::{PLANET_DAY, PLANET_GRAVITY, PLANET_RADIUS, air, orbit_seconds};
 pub use record::{PlanetClass, PlanetRecord, Water, Zone};
+pub use rings::{RING_OUTER, ROCHE};
 pub use sector::{SECTOR_STARS, sector_of};
 pub use spec::{
     GRAVITATION, GalaxyKind, GalaxySpec, Orbit, PlanetSpec, Rings, StarClass, StarSpec, SystemSpec,
@@ -122,17 +136,11 @@ impl Universe {
     /// Returns one planet or moon. An index past the last planet gives the outermost one, and a
     /// moon that does not exist gives its planet.
     pub fn planet(&self, id: BodyId) -> PlanetSpec {
-        let mut planets = self.system(id.star).planets;
+        let SystemSpec { star, mut planets } = self.system(id.star);
         let last = planets.len() - 1;
         let planet = planets.swap_remove(usize::from(id.index).min(last));
-        let moon = usize::from(id.moon).checked_sub(1);
-        let star = moon.map(|_| self.system(id.star).star);
-        match moon.zip(star) {
-            Some((rank, star)) => moon::of(&star, &planet)
-                .into_iter()
-                .nth(rank)
-                .unwrap_or(planet),
-            None => planet,
-        }
+        let rank = usize::from(id.moon).checked_sub(1);
+        let moon = rank.and_then(|rank| moon::of(&star, &planet).into_iter().nth(rank));
+        moon.unwrap_or(planet)
     }
 }

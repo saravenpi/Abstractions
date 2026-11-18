@@ -106,7 +106,8 @@ pub(super) fn orbit(band: f64, home: f64) -> f64 {
 /// Turns a generated planet into the home planet, Kodya: fixed size, gravity, day and record, and the world seed.
 ///
 /// Its record is [`PlanetRecord::TEMPERATE`], the same temperate world for every seed, and its
-/// orbit, see [`orbit`], is the one that gives it the flux of that record.
+/// orbit, see [`orbit`], is the one that gives it the flux of that record. It has no moons and
+/// no rings, so its sky stays the same for every seed.
 pub(super) fn planet(planet: PlanetSpec, world: u64) -> PlanetSpec {
     let [atmosphere_height, cloud_base, cloud_top] = planet::air(HOME_RADIUS);
     PlanetSpec {
@@ -119,6 +120,8 @@ pub(super) fn planet(planet: PlanetSpec, world: u64) -> PlanetSpec {
         cloud_base,
         cloud_top,
         record: PlanetRecord::TEMPERATE,
+        moons: 0,
+        rings: None,
         ..planet
     }
 }

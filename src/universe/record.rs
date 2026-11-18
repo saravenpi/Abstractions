@@ -120,11 +120,29 @@ impl PlanetRecord {
     /// Ranges: flux 0.005 to 58,000, tilt 0 to a quarter turn, pressure 0 to 5, albedo 0.08 to
     /// 0.6, greenhouse 0 to 1,500 K, temperature 40 to 6,000 K, ocean 0 to 1.
     pub(super) fn derive(star: &StarSpec, orbit: f64, gravity: f64, size: f64, seed: u64) -> Self {
+        Self::heated(star, orbit, [gravity, size], seed, 0.0)
+    }
+
+    /// Returns the record of a body lit like a planet on an orbit of `orbit` metres, which also
+    /// warms from inside by `tide`, a heat flow in units of the starlight the home planet gets.
+    ///
+    /// `body` holds the gravity and the radius over those of the home planet, `seed` gives the
+    /// draws of [`PlanetRecord::derive`]. The heat adds to the starlight the ground absorbs, so
+    /// it warms the climate, but neither the flux nor the zone, which are the starlight alone,
+    /// nor the air, which the star blows away and the inner heat does not. A tide of 0 is the
+    /// record of a planet, bit for bit.
+    pub(super) fn heated(
+        star: &StarSpec,
+        orbit: f64,
+        body: [f64; 2],
+        seed: u64,
+        tide: f64,
+    ) -> Self {
         let mut rng = Rng::new(seed);
         let flux = zone::flux(star.luminosity, orbit);
-        let pressure = air::pressure(rng.unit(), gravity, size, flux);
+        let pressure = air::pressure(rng.unit(), body[0], body[1], flux);
         let wet = rng.unit();
-        let climate = climate::settle(flux, pressure, wet);
+        let climate = climate::settle(flux + tide, pressure, wet);
         let record = Self {
             class: PlanetClass::Barren,
             zone: zone::zone(star.temperature, flux),
@@ -140,6 +158,34 @@ impl PlanetRecord {
         Self {
             class: class::classify(&record),
             ..record
+        }
+    }
+
+    /// Returns the record of a gas giant on an orbit of `orbit` metres, read at its cloud deck.
+    ///
+    /// `seed` gives the same three draws as [`PlanetRecord::derive`]; the gas stock goes unused,
+    /// since a giant holds all of it. The pressure is the cap, the ground nothing: no liquid
+    /// covers it and its water is ice, steam or nothing as [`climate::deck`] finds it.
+    ///
+    /// Ranges: flux 0.005 to 0.14 (up to 0.26 for the giant of the home system), pressure 5,
+    /// albedo 0.34, greenhouse 74 K, temperature 140 to 260 K, ocean 0.
+    pub(super) fn giant(star: &StarSpec, orbit: f64, seed: u64) -> Self {
+        let mut rng = Rng::new(seed);
+        let flux = zone::flux(star.luminosity, orbit);
+        let _stock = rng.unit();
+        let wet = rng.unit();
+        let climate = climate::deck(flux, wet);
+        Self {
+            class: PlanetClass::GasGiant,
+            zone: zone::zone(star.temperature, flux),
+            flux,
+            tilt: tilt(rng.unit()),
+            pressure: air::PRESSURE_CAP,
+            albedo: climate.albedo,
+            greenhouse: climate.greenhouse,
+            temperature: climate.temperature,
+            water: climate.water,
+            ocean: 0.0,
         }
     }
 }

@@ -72,13 +72,32 @@ fn systems_stay_in_range() {
     }
 }
 
-/// Every planet of the sample has a radius, gravity, day, year and air inside its range.
+/// Radius, gravity, cloud base and cloud top ranges of a solid planet, then of a gas giant.
+const RANGES: [[(f64, f64); 4]; 2] = [
+    [
+        PLANET_RADIUS,
+        PLANET_GRAVITY,
+        (630.0, 2330.0),
+        (1050.0, 3880.0),
+    ],
+    [
+        GIANT_RADIUS,
+        GIANT_GRAVITY,
+        (2840.0, 4500.0),
+        (4740.0, 7500.0),
+    ],
+];
+
+/// Every planet of the sample has a radius, gravity, day, year and air inside its range, those
+/// of solid worlds or those of gas giants. It has no host and at most 6 moons.
 #[test]
 fn planets_stay_in_range() {
     for (u, star) in sample() {
         for p in u.system(star.id).planets {
-            assert!(within(p.radius, PLANET_RADIUS), "{p:?}");
-            assert!(within(p.gravity / HOME_GRAVITY, PLANET_GRAVITY), "{p:?}");
+            let giant = p.record.class == PlanetClass::GasGiant;
+            let [radius, gravity, base, top] = RANGES[usize::from(giant)];
+            assert!(within(p.radius, radius), "{p:?}");
+            assert!(within(p.gravity / HOME_GRAVITY, gravity), "{p:?}");
             assert!(within(p.day_seconds, PLANET_DAY), "{p:?}");
             assert!(within(p.orbit_phase, (0.0, std::f64::consts::TAU)));
             assert_eq!(p.orbit_seconds, orbit_seconds(star.mu(), p.orbit_radius));
@@ -86,9 +105,13 @@ fn planets_stay_in_range() {
                 [p.atmosphere_height, p.cloud_base, p.cloud_top],
                 air(p.radius)
             );
-            assert!(within(p.cloud_base, (630.0, 2330.0)) && within(p.cloud_top, (1050.0, 3880.0)));
+            assert!(
+                within(p.cloud_base, base) && within(p.cloud_top, top),
+                "{p:?}"
+            );
             assert!(p.cloud_base < p.cloud_top && p.cloud_top < p.atmosphere_height);
             assert!(p.name.starts_with(&star.name) || p.id == u.home());
+            assert!(p.host.is_none() && p.moons <= 6 && !p.id.is_moon());
         }
     }
 }

@@ -6,6 +6,7 @@ import bevy_pbr::render::pbr_types::{PbrInput, pbr_input_new};
 import bevy_pbr::render::pbr_functions::{apply_pbr_lighting, calculate_view};
 @if(DEPTH_PREPASS)
 import bevy_pbr::prepass::utils::prepass_depth;
+import package::render::daylight::{Place, relit, height_at, sky_gain};
 
 struct Water {
     zenith: vec4<f32>,
@@ -38,6 +39,7 @@ struct SeaVertex {
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> water: Water;
 @group(constants::MATERIAL_BIND_GROUP) @binding(1) var floor_map: texture_2d<f32>;
 @group(constants::MATERIAL_BIND_GROUP) @binding(2) var floor_sampler: sampler;
+@group(constants::MATERIAL_BIND_GROUP) @binding(3) var<uniform> place: Place;
 
 const GRAVITY: f32 = 9.81;
 const FADE_START: f32 = 48.0;
@@ -79,6 +81,8 @@ const MAP_LOW: f32 = 30.0;
 const MAP_HIGH: f32 = 120.0;
 const COARSE_ROUGHNESS: f32 = 0.95;
 const COARSE_REFLECTANCE: f32 = 0.05;
+const DAY_EDGE: vec2<f32> = vec2<f32>(-0.1, 0.3);
+const SUN_UP_EDGE: vec2<f32> = vec2<f32>(-0.05, 0.12);
 
 fn hash21(p: vec2<f32>) -> f32 {
     let q = bitcast<vec2<u32>>(vec2<i32>(p));
@@ -257,7 +261,19 @@ fn coarse_sea(world: vec3<f32>, up: vec3<f32>, frag: vec4<f32>) -> vec3<f32> {
     input.world_normal = up;
     input.N = up;
     input.V = calculate_view(vec4<f32>(world, 1.0), false);
-    return apply_pbr_lighting(input).rgb;
+    return relit(input, apply_pbr_lighting(input), place).rgb;
+}
+
+fn daytime(world: vec3<f32>) -> vec3<f32> {
+    if (place.air.z <= 0.0) {
+        return vec3<f32>(water.sun_color.w, water.sun.w, 1.0);
+    }
+    let here = height_at(place, world).x;
+    let eye = height_at(place, view.world_position).x;
+    let day = smoothstep(DAY_EDGE.x, DAY_EDGE.y, here) - smoothstep(DAY_EDGE.x, DAY_EDGE.y, eye);
+    let up = smoothstep(SUN_UP_EDGE.x, SUN_UP_EDGE.y, here) - smoothstep(SUN_UP_EDGE.x, SUN_UP_EDGE.y, eye);
+    let gain = sky_gain(place, world, view.world_position);
+    return vec3<f32>(saturate(water.sun_color.w + day), saturate(water.sun.w + up), gain);
 }
 
 fn afar(to_eye: vec3<f32>, eye_height: f32) -> f32 {
@@ -318,7 +334,8 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
     if (below) {
         col = under_surface(v, n, p, t);
     } else {
-        let day = water.sun_color.w;
+        let time = daytime(world);
+        let day = time.x;
         let light = mix(vec3<f32>(0.07, 0.10, 0.22), mix(vec3<f32>(1.0), water.sun_color.rgb, 0.4), day);
         let column = column_depth(in.position, rise * dist);
         let shelf = smoothstep(SHELF_START, SHELF_END, column);
@@ -330,8 +347,8 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
         let ndv = max(dot(n, v), 0.0);
         let fresnel = (0.05 + 0.95 * pow(1.0 - ndv, 4.0)) * water.deep.w;
         let r = reflect(-v, n);
-        var color = mix(body, sky_color(dot(r, up)), fresnel);
-        let sun_glint = glitter(r, water.sun.xyz, cell, t) * water.sun.w;
+        var color = mix(body, sky_color(dot(r, up)) * time.z, fresnel);
+        let sun_glint = glitter(r, water.sun.xyz, cell, t) * time.y;
         let moon_glint = glitter(r, water.moon.xyz, cell, t) * water.moon.w * 0.5;
         color = color + (water.sun_color.rgb * sun_glint + MOON_COLOR * moon_glint) * fine * water.deep.w;
 

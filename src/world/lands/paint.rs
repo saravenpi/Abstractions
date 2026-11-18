@@ -42,7 +42,7 @@ impl Lands {
         match surface {
             Surface::Rock => land * ROCK_SHADE,
             Surface::Water => self.basin() * 0.6,
-            Surface::Shallows | Surface::Reef => self.basin() * 0.9,
+            Surface::Shallows | Surface::Reef | Surface::River => self.basin() * 0.9,
             Surface::Pond => self.basin() * 0.8,
             Surface::Sand | Surface::Grass if low => self.basin(),
             _ => land,

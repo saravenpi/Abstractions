@@ -38,7 +38,9 @@ struct Walk {
 /// Returns the footstep sound of a ground cover, or nothing for a sea floor.
 pub(super) fn step_surface(surface: Surface) -> Option<StepSurface> {
     match surface {
-        Surface::Sand | Surface::Shallows | Surface::Pond => Some(StepSurface::Sand),
+        Surface::Sand | Surface::Shallows | Surface::Pond | Surface::River => {
+            Some(StepSurface::Sand)
+        }
         Surface::Grass => Some(StepSurface::Grass),
         Surface::Rock => Some(StepSurface::Rock),
         Surface::Snow => Some(StepSurface::Snow),

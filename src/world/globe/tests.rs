@@ -7,6 +7,7 @@ use bevy::math::{DVec2, DVec3};
 use super::*;
 use crate::world::Terrain;
 
+mod cost;
 mod frozen;
 mod seams;
 mod sphere;

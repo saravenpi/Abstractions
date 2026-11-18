@@ -41,8 +41,10 @@ pub enum Surface {
     Grass,
     /// Steep or high land.
     Rock,
-    /// Snow on cold or very high land.
+    /// Snow on cold or very high land, and the frozen sea of a world of ice.
     Snow,
+    /// The bed of a river: wet ground that reads as shallow water, though no sea lies over it.
+    River,
 }
 
 /// Returns the snow line height above sea level for a biome.

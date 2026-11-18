@@ -4,6 +4,8 @@ use super::field::Field;
 use super::point::{Point, plus};
 
 impl Point for [f64; 3] {
+    const SOLID: bool = true;
+
     fn get(self, field: &impl Field) -> f64 {
         field.solid(self)
     }

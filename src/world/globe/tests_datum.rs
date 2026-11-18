@@ -1,5 +1,7 @@
 //! Tests of the sea datum: the mapping from the ocean share to the sea height, and what it does to the ground.
 
+use bevy::math::DVec3;
+
 use super::Globe;
 use super::datum::datum;
 use super::tests_record::{globe, sphere_dirs};
@@ -47,14 +49,18 @@ fn the_sea_covers_the_share_it_is_given() {
     }
 }
 
-/// Raising or lowering the sea moves every height by the datum and nothing else, away from the ponds.
+/// Raising or lowering the sea moves every height by the datum and nothing else, away from the ponds and
+/// the river channels, which follow the sea down to its new shore.
 #[test]
 fn the_datum_is_a_constant_shift() {
     let home = Globe::new(7, 6000.0, 9.8);
     for share in [0.25, 0.9] {
         let moved = globe(PlanetClass::Island, share);
         let shift = datum(share).unwrap_or(0.0);
-        for dir in sphere_dirs(1500).filter(|&d| !home.pond_at(d) && !moved.pond_at(d)) {
+        let plain = |g: &Globe, d: DVec3| {
+            !g.pond_at(d) && g.uncarved(d * g.radius()) == g.shaped(d * g.radius())
+        };
+        for dir in sphere_dirs(1500).filter(|&d| plain(&home, d) && plain(&moved, d)) {
             let (was, is) = (home.height(dir), moved.height(dir));
             let off = (is - (was - shift)).abs();
             assert!(

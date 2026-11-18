@@ -40,3 +40,7 @@ pub trait Host {
 
 /// Ticks per second of the server loop.
 pub const TICK_HZ: f64 = 30.0;
+
+/// Most bytes one datagram batch may hold. Quinn measured 1162 on loopback; this leaves room
+/// for paths with a smaller limit.
+pub const DATAGRAM_BUDGET: usize = 1100;

@@ -1,0 +1,116 @@
+//! The room: the server's logic with no network in it. Messages and datagrams go in, messages
+//! and datagrams come out. The server and a game open to LAN run the same room.
+//!
+//! The room never simulates and never decodes a state body. It owns the world (seed, clock,
+//! log, atlas, player records), lets players in, keeps the latest state of each player and
+//! kind, and copies it to the others every tick: at the full rate around the same star, once
+//! a second elsewhere.
+
+mod conn;
+mod host;
+mod join;
+mod play;
+mod relay;
+mod seat;
+
+#[cfg(test)]
+mod join_tests;
+#[cfg(test)]
+mod kit;
+#[cfg(test)]
+mod play_tests;
+#[cfg(test)]
+mod relay_tests;
+
+use std::collections::HashMap;
+
+use conn::Conn;
+use seat::{KINDS, Seat, Sent};
+
+use crate::host::{ConnId, DATAGRAM_BUDGET};
+use crate::log::PlayerId;
+use crate::store::World;
+use crate::wire::PlayerInfo;
+
+/// What the owner of a server chose.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RoomConfig {
+    /// Name of the server, shown in the server list.
+    pub name: String,
+    /// Password a player must give to join, or nothing for an open server.
+    pub password: Option<String>,
+    /// Most players in the world at once.
+    pub cap: u8,
+    /// Version of the server program, such as `0.9.0`.
+    pub version: String,
+}
+
+/// The server's logic. It implements [`crate::host::Host`].
+#[derive(Debug)]
+pub struct Room {
+    /// What the owner chose.
+    config: RoomConfig,
+    /// The world as loaded, with the log and the player records kept up to date.
+    world: World,
+    /// Network time when the room started, which matches `world.clock`.
+    start: f64,
+    /// Every open connection, joined or not.
+    conns: HashMap<ConnId, Conn>,
+    /// One seat per player the room takes, empty when free.
+    seats: Vec<Option<Seat>>,
+    /// What each seat last got of each other seat and kind: `sent[to][from][kind]`.
+    sent: Vec<Vec<[Sent; KINDS]>>,
+    /// The id each identity key had this session, so a player who comes back keeps it.
+    ids: HashMap<[u8; 32], PlayerId>,
+    /// The next id never given yet. It starts at 1: 0 is the single-player id.
+    next_id: u32,
+    /// The datagram batch being filled, reused every tick.
+    batch: Vec<u8>,
+    /// Number of the last state record kept, so newer records compare greater.
+    seq: u64,
+}
+
+impl Room {
+    /// Returns a room for `world` with nobody in it. `now` is the network time, so the
+    /// universe clock reads `world.clock` at that moment.
+    pub fn new(config: RoomConfig, world: World, now: f64) -> Self {
+        let cap = usize::from(config.cap);
+        Self {
+            config,
+            world,
+            start: now,
+            conns: HashMap::new(),
+            seats: (0..cap).map(|_| None).collect(),
+            sent: vec![vec![[Sent::NONE; KINDS]; cap]; cap],
+            ids: HashMap::new(),
+            next_id: 1,
+            batch: Vec::with_capacity(2 * DATAGRAM_BUDGET),
+            seq: 0,
+        }
+    }
+
+    /// Returns the world to save: the universe clock advanced to `now` and every record kept.
+    pub fn snapshot(&self, now: f64) -> World {
+        World {
+            clock: self.clock(now),
+            ..self.world.clone()
+        }
+    }
+
+    /// Returns the players in the world now, by id.
+    pub fn players(&self) -> Vec<PlayerInfo> {
+        let mut players: Vec<PlayerInfo> = self
+            .seats
+            .iter()
+            .flatten()
+            .map(|seat| seat.info.clone())
+            .collect();
+        players.sort_by_key(|player| player.id.0);
+        players
+    }
+
+    /// Returns the universe time at network time `now`. It never pauses.
+    fn clock(&self, now: f64) -> f64 {
+        self.world.clock + (now - self.start)
+    }
+}

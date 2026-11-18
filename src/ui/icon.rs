@@ -80,11 +80,61 @@ pub enum Icon {
     Home,
     /// `map`
     Map,
+    /// `users`
+    Users,
+    /// `user`
+    User,
+    /// `server`
+    Server,
+    /// `wifi`
+    Wifi,
+    /// `reload`
+    Reload,
+    /// `link`
+    Link,
 }
+
+/// Every icon with its codepoint in the pixelarticons font, in declaration order.
+pub(super) const CODEPOINTS: [(Icon, char); 34] = [
+    (Icon::Play, '\u{ecd3}'),
+    (Icon::Pause, '\u{ecc0}'),
+    (Icon::Earth, '\u{eb85}'),
+    (Icon::Moon, '\u{eca1}'),
+    (Icon::Plus, '\u{ecd8}'),
+    (Icon::Settings, '\u{ed3d}'),
+    (Icon::LogOut, '\u{ec70}'),
+    (Icon::Power, '\u{ece0}'),
+    (Icon::Pencil, '\u{ecc5}'),
+    (Icon::Copy, '\u{eb49}'),
+    (Icon::Trash, '\u{edbe}'),
+    (Icon::Sort, '\u{ed4b}'),
+    (Icon::Back, '\u{ea70}'),
+    (Icon::Check, '\u{eb0a}'),
+    (Icon::Close, '\u{eb30}'),
+    (Icon::Monitor, '\u{eca0}'),
+    (Icon::Keyboard, '\u{ec15}'),
+    (Icon::Volume, '\u{edea}'),
+    (Icon::Info, '\u{eb20}'),
+    (Icon::Star, '\u{ed6d}'),
+    (Icon::Send, '\u{ed1e}'),
+    (Icon::MapPin, '\u{ec7b}'),
+    (Icon::Shuffle, '\u{ed31}'),
+    (Icon::Eraser, '\u{eb87}'),
+    (Icon::ChevronLeft, '\u{eb14}'),
+    (Icon::ChevronRight, '\u{eb16}'),
+    (Icon::Home, '\u{ebea}'),
+    (Icon::Map, '\u{ec7d}'),
+    (Icon::Users, '\u{ede1}'),
+    (Icon::User, '\u{eddf}'),
+    (Icon::Server, '\u{ed20}'),
+    (Icon::Wifi, '\u{ee01}'),
+    (Icon::Reload, '\u{ecfa}'),
+    (Icon::Link, '\u{ec5f}'),
+];
 
 impl Icon {
     /// Every icon, in declaration order.
-    pub const ALL: [Icon; 28] = [
+    pub const ALL: [Icon; 34] = [
         Icon::Play,
         Icon::Pause,
         Icon::Earth,
@@ -113,40 +163,17 @@ impl Icon {
         Icon::ChevronRight,
         Icon::Home,
         Icon::Map,
+        Icon::Users,
+        Icon::User,
+        Icon::Server,
+        Icon::Wifi,
+        Icon::Reload,
+        Icon::Link,
     ];
 
     /// Returns the codepoint of the icon in the pixelarticons font.
     pub const fn codepoint(self) -> char {
-        match self {
-            Icon::Play => '\u{ecd3}',
-            Icon::Pause => '\u{ecc0}',
-            Icon::Earth => '\u{eb85}',
-            Icon::Moon => '\u{eca1}',
-            Icon::Plus => '\u{ecd8}',
-            Icon::Settings => '\u{ed3d}',
-            Icon::LogOut => '\u{ec70}',
-            Icon::Power => '\u{ece0}',
-            Icon::Pencil => '\u{ecc5}',
-            Icon::Copy => '\u{eb49}',
-            Icon::Trash => '\u{edbe}',
-            Icon::Sort => '\u{ed4b}',
-            Icon::Back => '\u{ea70}',
-            Icon::Check => '\u{eb0a}',
-            Icon::Close => '\u{eb30}',
-            Icon::Monitor => '\u{eca0}',
-            Icon::Keyboard => '\u{ec15}',
-            Icon::Volume => '\u{edea}',
-            Icon::Info => '\u{eb20}',
-            Icon::Star => '\u{ed6d}',
-            Icon::Send => '\u{ed1e}',
-            Icon::MapPin => '\u{ec7b}',
-            Icon::Shuffle => '\u{ed31}',
-            Icon::Eraser => '\u{eb87}',
-            Icon::ChevronLeft => '\u{eb14}',
-            Icon::ChevronRight => '\u{eb16}',
-            Icon::Home => '\u{ebea}',
-            Icon::Map => '\u{ec7d}',
-        }
+        CODEPOINTS[self as usize].1
     }
 
     /// Returns the icon as the text of a node that uses [`ICON_FONT`].

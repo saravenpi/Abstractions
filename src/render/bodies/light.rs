@@ -93,6 +93,16 @@ fn dress(
     uniform.map.z = uniform.glow.w * detail(angle);
 }
 
+/// Turns the spin axis of `planet` and the storm of a giant into render axes through
+/// `to_render` at `time` seconds of universe time.
+fn orient(uniform: &mut BodyUniform, planet: &PlanetSpec, to_render: DQuat, time: f64) {
+    uniform.axis = (to_render * DVec3::Y).as_vec3().extend(uniform.axis.w);
+    if let Some(giant) = Giant::of(&planet.record, planet.seed) {
+        let spot = to_render * (spin(planet.day_seconds, time) * giant.spot);
+        uniform.storm = spot.as_vec3().extend(giant.size);
+    }
+}
+
 /// Lights every planet and moon from the direction of its star, dimmed where another body of
 /// its planet hides the star, and turns its spin axis, its surface, its clouds and the storm of
 /// a giant into render axes. Each is lit through its own air, and the one under the camera
@@ -123,11 +133,7 @@ pub(super) fn planets(
         material.place = lit_by(planet, near.system.star.color, toward, stars);
         let uniform = &mut material.body;
         uniform.light = toward.extend(near.eclipse(pos, planet.id, time));
-        uniform.axis = (to_render * DVec3::Y).as_vec3().extend(uniform.axis.w);
-        if let Some(giant) = Giant::of(&planet.record, planet.seed) {
-            let spot = to_render * (spin(planet.day_seconds, time) * giant.spot);
-            uniform.storm = spot.as_vec3().extend(giant.size);
-        }
+        orient(uniform, planet, to_render, time);
         let to_fixed = (to_render * Link::orbiting(planet, time).turn).inverse();
         let angle = (planet.radius / pos.distance(vantage.observer.eye).max(1.0)) as f32;
         let map = skies.map(planet, vantage.is(planet.id) || detail(angle) > 0.0);

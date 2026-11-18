@@ -42,7 +42,7 @@ fn a_gas_giant_card_says_it_has_no_ground() {
     };
     let card = readout(&line, Some(&ringed));
     assert_eq!(card.len(), LINES);
-    assert_eq!(card[0], "gas giant - -150 C - tilt 0 deg");
+    assert_eq!(card[0], "gas giant - -150 C - tilt 23 deg");
     assert_eq!(card[1], "no ground to land on - deck pressure 5.00");
     assert_eq!(card[2], "3 moons - rings 80.0 Mm to 140 Mm");
     assert_eq!(card[4], "radius 6.00 km - gravity 1.00 g");

@@ -1,24 +1,31 @@
-//! The star and the planets of the current system, drawn as spheres in their true directions.
+//! The star, the planets and the moons of the current system, drawn as spheres in their true
+//! directions, with the rings of the planets that have them.
 
+mod giant;
+mod light;
 mod material;
+mod rings;
+mod spawn;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_app;
+#[cfg(test)]
+mod tests_giant;
 
 use bevy::asset::embedded_asset;
-use bevy::camera::visibility::NoFrustumCulling;
-use bevy::ecs::system::SystemParam;
-use bevy::light::NotShadowCaster;
 use bevy::math::DVec3;
 use bevy::pbr::MaterialPlugin;
 use bevy::prelude::*;
 
 pub use material::BodyMaterial;
+pub use rings::RingMaterial;
 
 use super::air::Air;
-use super::atmosphere::{HALO_SCALE, HaloMaterial};
-use super::vantage::{LocalSystem, Scene};
+use super::atmosphere::HALO_SCALE;
+use super::vantage::{LocalSystem, Scene, Vantage};
 use super::warp::Lens;
-use crate::screens::Screen;
+use crate::universe::{BodyId, PlanetSpec};
 
 /// Distance in metres past which a body is pulled in: farther than anything the terrain streams.
 pub const FAR: f32 = 1.0e6;
@@ -38,10 +45,12 @@ const PLANET_ANGLE: f32 = 0.0035;
 pub enum Body {
     /// The star.
     Star,
-    /// The planet of this rank.
-    Planet(usize),
-    /// The halo of air around the planet of this rank.
-    Halo(usize),
+    /// A planet or a moon.
+    Planet(BodyId),
+    /// The halo of air around a planet or a moon.
+    Halo(BodyId),
+    /// The rings of a planet.
+    Rings(BodyId),
 }
 
 /// Where a body is drawn: an offset from the camera and the factor its size shrinks by.
@@ -72,7 +81,6 @@ pub fn place(offset: DVec3) -> Drawn {
         scale: scale as f32,
     }
 }
-
 /// A body ready to be placed.
 struct Orb {
     pos: DVec3,
@@ -82,92 +90,69 @@ struct Orb {
     shown: bool,
 }
 
+/// Returns the star of the current system ready to be placed.
+fn star(scene: &Scene) -> Option<Orb> {
+    let radius = scene.local.0.as_ref()?.system.star.radius;
+    Some(Orb {
+        pos: DVec3::ZERO,
+        radius,
+        solid: radius,
+        least_angle: STAR_ANGLE,
+        shown: true,
+    })
+}
+
 impl Body {
     /// Returns where this body is in the star system, its size and whether the sky draws it now.
-    ///
-    /// The planet below the camera is left to the terrain within [`HANDOVER`] radii, and its halo
-    /// only shows from above its air. A planet without air has no halo.
     fn orb(self, scene: &Scene) -> Option<Orb> {
-        let vantage = &scene.vantage;
-        let (index, halo) = match self {
-            Body::Star => {
-                return Some(Orb {
-                    pos: DVec3::ZERO,
-                    radius: scene.local.0.as_ref()?.system.star.radius,
-                    solid: scene.local.0.as_ref()?.system.star.radius,
-                    least_angle: STAR_ANGLE,
-                    shown: true,
-                });
-            }
-            Body::Planet(index) => (index, false),
-            Body::Halo(index) => (index, true),
+        let id = match self {
+            Body::Star => return star(scene),
+            Body::Planet(id) | Body::Halo(id) | Body::Rings(id) => id,
         };
-        let (planet, pos) = scene.planet(index)?;
-        let below = index == vantage.body;
-        let away = pos.distance(vantage.observer.eye) > HANDOVER * planet.radius;
-        let grow = if halo { HALO_SCALE } else { 1.0 };
-        let airy = planet.atmosphere_height > 0.0 && Air::of(&planet.record).share() > 0.0;
+        let (planet, pos) = scene.body(id)?;
+        let (radius, grow) = self.reach(planet)?;
         Some(Orb {
             pos,
-            radius: planet.radius * f64::from(grow),
+            radius,
             solid: planet.radius,
             least_angle: PLANET_ANGLE * grow,
-            shown: match halo {
-                true => airy && (!below || vantage.air <= 0.0),
-                false => !below || away,
-            },
+            shown: self.shown(planet, pos, &scene.vantage),
         })
     }
-}
 
-/// The asset stores the bodies are built in.
-#[derive(SystemParam)]
-struct Stores<'w> {
-    meshes: ResMut<'w, Assets<Mesh>>,
-    bodies: ResMut<'w, Assets<BodyMaterial>>,
-    halos: ResMut<'w, Assets<HaloMaterial>>,
-}
-
-/// Replaces the bodies when the camera enters another star system.
-fn populate(
-    mut commands: Commands,
-    local: Res<LocalSystem>,
-    old: Query<Entity, With<Body>>,
-    mut stores: Stores,
-) {
-    for entity in &old {
-        commands.entity(entity).despawn();
+    /// Returns the radius in metres of what this body draws around `planet`, and that radius
+    /// over the radius of the planet, or nothing for the rings of a planet without rings.
+    fn reach(self, planet: &PlanetSpec) -> Option<(f64, f32)> {
+        match self {
+            Body::Halo(_) => Some((planet.radius * f64::from(HALO_SCALE), HALO_SCALE)),
+            Body::Rings(_) => planet
+                .rings
+                .map(|rings| (rings.outer, (rings.outer / planet.radius) as f32)),
+            _ => Some((planet.radius, 1.0)),
+        }
     }
-    let Some(local) = local.0.as_ref() else {
-        return;
-    };
-    let ball = stores.meshes.add(super::shell(false));
-    let common = || {
-        (
-            Mesh3d(ball.clone()),
-            Transform::default(),
-            Visibility::Hidden,
-            NotShadowCaster,
-            NoFrustumCulling,
-            DespawnOnEnter(Screen::Title),
-        )
-    };
-    let star = BodyMaterial::star(&local.system.star);
-    commands.spawn((
-        Body::Star,
-        MeshMaterial3d(stores.bodies.add(star)),
-        common(),
-    ));
-    for (index, planet) in local.system.planets.iter().enumerate() {
-        let lit = stores.bodies.add(BodyMaterial::planet(planet));
-        let halo = stores.halos.add(HaloMaterial::default());
-        commands.spawn((Body::Planet(index), MeshMaterial3d(lit), common()));
-        commands.spawn((Body::Halo(index), MeshMaterial3d(halo), common()));
+
+    /// Returns whether the sky draws this body of `planet`, at `pos` metres from the star, now.
+    ///
+    /// The planet or moon below the camera is left to the terrain within [`HANDOVER`] radii,
+    /// and its halo only shows from above its air. A body without air has no halo. Rings show
+    /// from everywhere, the deck of their own planet included.
+    fn shown(self, planet: &PlanetSpec, pos: DVec3, vantage: &Vantage) -> bool {
+        let below = vantage.is(planet.id);
+        match self {
+            Body::Halo(_) => {
+                let airy = planet.atmosphere_height > 0.0 && Air::of(&planet.record).share() > 0.0;
+                airy && (!below || vantage.air <= 0.0)
+            }
+            Body::Rings(_) => true,
+            _ => !below || pos.distance(vantage.observer.eye) > HANDOVER * planet.radius,
+        }
     }
 }
 
 /// Places every body where it is seen from the camera, never smaller than its least angle: in
-/// its true direction at rest, and through the warp lens at speed, a halo with its planet.
+/// its true direction at rest, and through the warp lens at speed, a halo and rings with their
+/// planet. Rings lie in the plane of the equator, which is the plane of the system.
 fn follow(
     scene: Scene,
     lens: Res<Lens>,
@@ -183,7 +168,11 @@ fn follow(
         let drawn = place(seen.offset);
         let size = orb.radius as f32 * drawn.scale * seen.scale;
         let size = size.max(orb.least_angle * drawn.at.length());
-        let pose = Transform::from_translation(vantage.camera + drawn.at);
+        let turn = match body {
+            Body::Rings(_) => observer.to_render.as_quat(),
+            _ => Quat::IDENTITY,
+        };
+        let pose = Transform::from_translation(vantage.camera + drawn.at).with_rotation(turn);
         super::pin(
             pose.with_scale(Vec3::splat(size)),
             &mut transform,
@@ -196,36 +185,22 @@ fn follow(
     }
 }
 
-/// Lights every planet from the direction of its star.
-fn light_planets(
-    scene: Scene,
-    planets: Query<(&Body, &MeshMaterial3d<BodyMaterial>)>,
-    mut materials: ResMut<Assets<BodyMaterial>>,
-) {
-    for (body, handle) in &planets {
-        let Body::Planet(index) = *body else {
-            continue;
-        };
-        let Some((_, pos)) = scene.planet(index) else {
-            continue;
-        };
-        if let Some(mut material) = materials.get_mut(&handle.0) {
-            material.body.light = scene.vantage.sunward(pos).extend(0.0);
-        }
-    }
-}
-
-/// Embeds the shader, registers the material and runs the bodies once the camera is tracked.
+/// Embeds the shaders, registers the materials and runs the bodies once the camera is tracked.
 pub(super) fn plugin(app: &mut App) {
     embedded_asset!(app, "bodies.wesl");
-    app.add_plugins(MaterialPlugin::<BodyMaterial>::default())
-        .add_systems(
-            PostUpdate,
-            (
-                populate.run_if(resource_changed::<LocalSystem>),
-                follow.after(super::warp::run),
-                light_planets,
-            )
-                .after(super::sun::track),
-        );
+    embedded_asset!(app, "rings.wesl");
+    app.add_plugins((
+        MaterialPlugin::<BodyMaterial>::default(),
+        MaterialPlugin::<RingMaterial>::default(),
+    ))
+    .add_systems(
+        PostUpdate,
+        (
+            spawn::populate.run_if(resource_changed::<LocalSystem>),
+            follow.after(super::warp::run),
+            light::planets,
+            light::rings,
+        )
+            .after(super::sun::track),
+    );
 }

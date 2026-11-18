@@ -88,15 +88,15 @@ fn light_halos(
     let local = scene.local.0.as_ref();
     let star = local.map_or(Vec3::ONE, |near| near.system.star.color);
     for (body, handle) in &halos {
-        let Body::Halo(index) = *body else {
+        let Body::Halo(id) = *body else {
             continue;
         };
-        let Some((planet, pos)) = scene.planet(index) else {
+        let Some((planet, pos)) = scene.body(id) else {
             continue;
         };
         let glow = Air::of(&planet.record).halo(star);
         let leaving = smoothstep(1.0, 1.5, vantage.altitude / vantage.atmosphere.max(1.0));
-        let strength = if index == vantage.body { leaving } else { 1.0 };
+        let strength = if vantage.is(id) { leaving } else { 1.0 };
         if let Some(mut material) = materials.get_mut(&handle.0) {
             material.halo = HaloUniform {
                 color: glow.truncate().extend(glow.w * strength),

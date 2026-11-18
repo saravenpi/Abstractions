@@ -8,6 +8,7 @@ use super::air::Air;
 use super::atmosphere::horizon_dip;
 use super::celestial::{smoothstep, sun_direction};
 use super::clock::START_PHASE;
+use super::moonlight::{Moonlight, moonlit};
 use super::scatter::{luminance, peak, scattered, transmit};
 use super::vantage::{LocalSystem, Vantage};
 
@@ -152,22 +153,22 @@ impl Palette {
             .as_ref()
             .map_or(Vec3::ONE, |near| near.system.star.color);
         let dip = horizon_dip(vantage.altitude, vantage.radius);
-        let air = local.air(vantage.body);
+        let air = local.air_below(vantage);
         (Self::through(sun.height + dip, star, &air), star)
     }
 }
 
-/// Recomputes the palette from where the star stands for the camera, and applies it to the
-/// ambient light and the clear color.
+/// Recomputes the palette from where the star stands for the camera and the real moon that
+/// lights its night, and applies it to the ambient light and the clear color.
 fn update_palette(
-    place: (Res<SunDir>, Res<Vantage>, Res<LocalSystem>),
+    place: (Res<SunDir>, Res<Vantage>, Res<LocalSystem>, Res<Moonlight>),
     mut palette: ResMut<Palette>,
     mut ambient: ResMut<GlobalAmbientLight>,
     mut clear: ResMut<ClearColor>,
 ) {
-    let (sun, vantage, local) = place;
+    let (sun, vantage, local, moon) = place;
     let (ground, star) = Palette::under(&sun, &vantage, &local);
-    *palette = ground.seen(&sun, vantage.air, star);
+    *palette = moonlit(ground.seen(&sun, vantage.air, star), &moon);
     ambient.color = srgb(palette.ambient);
     ambient.brightness = palette.ambient_brightness;
     clear.0 = srgb(palette.horizon);

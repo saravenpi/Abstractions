@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
 
+use super::giant::Giant;
 use crate::universe::{PlanetRecord, PlanetSpec, StarSpec};
 
 /// Brightness of a star against plain white, enough for bloom to catch it.
@@ -27,10 +28,21 @@ const EMBER_FLOOR: f32 = 0.15;
 pub struct BodyUniform {
     /// Linear colour in xyz and the glow gain in w: above 0 the body shines by itself.
     pub color: Vec4,
-    /// Unit vector from the body toward its star, in render axes.
+    /// Unit vector from the body toward its star, in render axes, and in w the share of the
+    /// starlight the other bodies of its planet let through to it.
     pub light: Vec4,
     /// Linear colour the body gives off on top of the light it receives, night side included.
     pub ember: Vec4,
+    /// Spin axis in render axes, and in w the number of bands of a gas giant, 0 for any other body.
+    pub axis: Vec4,
+    /// Linear colour of the dark belts of a gas giant, and in w the phase of its bands.
+    pub tone: Vec4,
+    /// Unit vector toward the storm of a gas giant in render axes, and in w the cosine of its radius.
+    pub storm: Vec4,
+    /// Linear colour of the storm of a gas giant.
+    pub spot: Vec4,
+    /// Inner and outer radius of the rings in planet radii and their density, 0 without rings.
+    pub rings: Vec4,
 }
 
 /// Material of a star or a far planet.
@@ -51,7 +63,7 @@ pub struct Far {
 }
 
 /// Returns two shares from 0 to 1 drawn from the seed of a planet.
-fn shares(seed: u64) -> (f32, f32) {
+pub(super) fn shares(seed: u64) -> (f32, f32) {
     let mixed = (seed ^ (seed >> 29)).wrapping_mul(0x9E37_79B9_7F4A_7C15);
     let unit = |bits: u64| (bits & 0xFFF) as f32 / 4096.0;
     (unit(mixed >> 52), unit(mixed >> 40))
@@ -82,14 +94,27 @@ impl BodyMaterial {
         }
     }
 
-    /// Builds the material of a planet, which shows only its own glow until it is lit.
+    /// Builds the material of a planet or moon, which shows only its own glow until it is lit.
+    ///
+    /// A gas giant shows its bands and its storm instead of land and sea; ringed planets carry
+    /// the size of their rings, whose shadow falls on them.
     pub fn planet(planet: &PlanetSpec) -> Self {
         let far = far(&planet.record, planet.seed);
+        let giant = Giant::of(&planet.record, planet.seed);
+        let rings = planet.rings.map_or(Vec4::ZERO, |rings| {
+            let (inner, outer) = (rings.inner / planet.radius, rings.outer / planet.radius);
+            Vec4::new(inner as f32, outer as f32, rings.density, 0.0)
+        });
         Self {
             body: BodyUniform {
-                color: far.color.extend(0.0),
+                color: giant.map_or(far.color, |giant| giant.first).extend(0.0),
                 light: Vec4::ZERO,
                 ember: far.ember.extend(0.0),
+                axis: Vec4::new(0.0, 1.0, 0.0, giant.map_or(0.0, |giant| giant.bands)),
+                tone: giant.map_or(Vec4::ZERO, |giant| giant.second.extend(giant.phase)),
+                storm: giant.map_or(Vec4::ZERO, |giant| giant.spot.as_vec3().extend(giant.size)),
+                spot: giant.map_or(Vec4::ZERO, |giant| giant.storm.extend(0.0)),
+                rings,
             },
         }
     }

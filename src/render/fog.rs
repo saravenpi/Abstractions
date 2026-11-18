@@ -170,7 +170,7 @@ fn update_fog(
             altitude: vantage.altitude,
             clearance: depths.clearance(camera, vantage.altitude),
             radius: vantage.radius,
-            air: vantage.air * depths.local.air(vantage.body).haze(),
+            air: vantage.air * depths.local.air_below(vantage).haze(),
         };
         let clear = fog_sight(ground, &height);
         let liquid = depths.submerged(camera);

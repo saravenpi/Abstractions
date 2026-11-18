@@ -16,7 +16,10 @@ mod fog;
 mod glow;
 mod lighting;
 mod lowres;
+mod moonlight;
+mod moons;
 mod murk;
+mod nearby;
 mod observer;
 mod palette;
 mod pixelate;
@@ -40,9 +43,13 @@ mod tests_dither;
 #[cfg(test)]
 mod tests_fog;
 #[cfg(test)]
+mod tests_moons;
+#[cfg(test)]
 mod tests_murk;
 #[cfg(test)]
 mod tests_palette;
+#[cfg(test)]
+mod tests_rings;
 #[cfg(test)]
 mod tests_sky;
 
@@ -111,6 +118,7 @@ pub(super) fn sky(app: &mut App) {
         clouds::plugin,
         starfield::plugin,
         bodies::plugin,
+        moonlight::plugin,
         entry::plugin,
         warm::plugin,
     ));
@@ -120,6 +128,7 @@ pub(super) fn sky(app: &mut App) {
     warm_material::<entry::FxMaterial>(app);
     warm_material::<starfield::StarMaterial>(app);
     warm_material::<bodies::BodyMaterial>(app);
+    warm_material::<bodies::RingMaterial>(app);
 }
 
 /// Most bytes of meshes and images uploaded to the GPU in one frame. A burst of streamed chunks

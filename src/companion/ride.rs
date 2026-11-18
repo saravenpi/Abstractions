@@ -7,6 +7,7 @@
 use bevy::prelude::*;
 
 use super::Companion;
+use super::brain::Brain;
 use super::motion::Float;
 use super::sense::CompanionSense;
 use super::tune::BOARD_REACH;
@@ -45,7 +46,7 @@ pub fn switch(
     mut commands: Commands,
     sense: Res<CompanionSense>,
     seat: Single<(Entity, &Transform), Seat>,
-    bot: Single<(Entity, &mut Transform, &mut Float), With<Companion>>,
+    bot: Single<(Entity, &mut Transform, &mut Float), (With<Companion>, With<Brain>)>,
 ) {
     let (entity, mut at, mut float) = bot.into_inner();
     if sense.seated == float.seated {

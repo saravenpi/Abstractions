@@ -112,14 +112,19 @@ fn follows_softly_and_stays_clear() {
     );
 }
 
-/// Left very far behind, it reappears at rest just behind the player instead of racing across the map.
+/// Left very far behind, it starts again just behind the player, while no camera is known,
+/// instead of racing across the map, and flies to its place from there.
 #[test]
-fn reappears_behind_when_left_far_behind() {
+fn starts_again_behind_when_left_far_behind() {
     let mut walk = Walk::new(42, Vec2::new(10.0, 10.0));
     walk.step(Vec2::X);
     walk.player += Vec2::new(900.0, -400.0);
     walk.step(Vec2::X);
-    assert_eq!(walk.float.vel, Vec3::ZERO);
+    assert!(
+        walk.float.vel.length() < 30.0,
+        "it races at {}",
+        walk.float.vel
+    );
     let away = walk.at.translation - walk.eye();
     assert!(away.length() < 12.0, "{away}");
     assert!(away.x < 0.0, "it should be behind a player heading +X");

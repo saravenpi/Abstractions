@@ -13,9 +13,7 @@ use super::mood::{ChirpKind, CompanionChirp, ambient, chirp};
 use super::motion::{Float, blend};
 use super::sense::{Around, CompanionSense};
 use super::sights::Sights;
-use super::tune::{
-    BANK_SHARE, DELIGHT_SECONDS, FLIGHT_RATE, SLEEPY_NIGHT, TAKEOFF_SECONDS, WAKE_SECONDS,
-};
+use super::tune::{DELIGHT_SECONDS, FLIGHT_RATE, SLEEPY_NIGHT, TAKEOFF_SECONDS, WAKE_SECONDS};
 use crate::computer::Atlas;
 use crate::ship::ShipEvent;
 use crate::universe::BodyId;
@@ -110,8 +108,8 @@ impl Events<'_, '_> {
 }
 
 /// Moves the attention on by `dt` seconds, points the eyes and poses the body for the idle in
-/// progress and the face shown, and banks it with a flying player.
-fn settle(brain: &mut Brain, face: &Face, bank: f32, dt: f32) {
+/// progress and the face shown. Its bank in flight is its own: see `soar`.
+fn settle(brain: &mut Brain, face: &Face, dt: f32) {
     let scene = brain.scene;
     brain.attention.advance(&scene, dt);
     brain.look = brain.focus();
@@ -119,7 +117,6 @@ fn settle(brain: &mut Brain, face: &Face, bank: f32, dt: f32) {
     if face.shown() == Expression::Curious {
         brain.pose.roll += CURIOUS_TILT;
     }
-    brain.pose.roll -= bank * BANK_SHARE * brain.flight;
 }
 
 /// Watches the player, advances the idle mind, the attention and the face, and sends the
@@ -148,7 +145,7 @@ pub fn think(
     heard = heard.or(events.stir(&mut brain, &mut face, around.location.body));
     let changed = face.advance(wanted(&brain, &sense), dt);
     heard = heard.or(changed.and_then(chirp));
-    settle(&mut brain, &face, sense.bank, dt);
+    settle(&mut brain, &face, dt);
     let last = said.map(|(kind, ago)| (kind, ago + dt));
     *said = last;
     let wait = |kind: ChirpKind| match last {

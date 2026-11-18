@@ -10,18 +10,16 @@ use super::Body;
 use super::giant::Giant;
 use super::material::{BodyMaterial, BodyUniform};
 use super::rings::RingMaterial;
-use crate::render::DayClock;
 use crate::render::air::Air;
 use crate::render::celestial::smoothstep;
-use crate::render::clock::START_PHASE;
-use crate::render::dome::cloud_cover;
+use crate::render::clouds::{CloudMaps, toward_second};
 use crate::render::palette::Palette;
 use crate::render::scatter::peak;
 use crate::render::sky::linear;
 use crate::render::vantage::Scene;
-use crate::render::weather::{LocalWeather, WeatherLook};
 use crate::settings::{Persistent, Settings};
 use crate::universe::PlanetSpec;
+use crate::weather::drift;
 use crate::world::{Link, spin};
 
 /// Angular radii in radians between which a baked body goes from a dot in the mean colour of
@@ -43,41 +41,42 @@ pub fn star_light(star: Vec3) -> Vec3 {
 /// What the clouds of the bodies are drawn from.
 #[derive(SystemParam)]
 pub(super) struct Skies<'w> {
-    time: Res<'w, Time>,
-    clock: Option<Res<'w, DayClock>>,
     settings: Option<Res<'w, Persistent<Settings>>>,
-    weather: Option<Res<'w, LocalWeather>>,
+    maps: Option<ResMut<'w, CloudMaps>>,
 }
 
 impl Skies<'_> {
-    /// Returns the cloud cover the shader draws over `body`: the cover of its class as the day
-    /// drifts it, under the weather around the camera when the camera is `below` on that body,
-    /// and none with clouds switched off.
-    fn cover(&self, body: &PlanetSpec, below: bool) -> f32 {
-        if self.settings.as_ref().is_some_and(|s| !s.graphics.clouds) {
-            return 0.0;
+    /// Returns the cover map of `body` once it is ready, and asks for it to be kept, while the
+    /// body `shows` its clouds: under the camera or big enough on screen. Nothing with clouds
+    /// switched off, and nothing for a body without clouds.
+    fn map(&mut self, body: &PlanetSpec, shows: bool) -> Option<Handle<Image>> {
+        let off = self.settings.as_ref().is_some_and(|s| !s.graphics.clouds);
+        match shows && !off {
+            true => self.maps.as_mut()?.want(body.id),
+            false => None,
         }
-        let air = Air::of(&body.record);
-        let local = self.weather.as_ref().filter(|_| below);
-        let look = local.map_or(WeatherLook::of(&air), |weather| weather.look(&air));
-        let phase = self.clock.as_ref().map_or(START_PHASE, |clock| clock.phase);
-        look.cover(&air, cloud_cover(phase))
     }
 }
 
 /// Writes into `uniform` what the baked ball of `planet` is drawn from this frame: the rotation
-/// `to_fixed` from render axes to its own, and from `sky` the light of its star, the cover of
-/// its clouds, the radians its radius covers, which say how much of the surface shows, and
-/// the seconds that drift the clouds.
-fn dress(uniform: &mut BodyUniform, planet: &PlanetSpec, to_fixed: DQuat, sky: (Vec3, [f32; 3])) {
-    let (star, [cover, angle, seconds]) = sky;
+/// `to_fixed` from render axes to its own, the light `star` of its star, the radians `angle`
+/// its radius covers, which say how much of the surface shows, and for its clouds whether
+/// their cover map is ready and the `seconds` of universe time that drift and morph them.
+fn dress(
+    uniform: &mut BodyUniform,
+    planet: &PlanetSpec,
+    to_fixed: DQuat,
+    sky: (Vec3, f32, bool, f64),
+) {
+    let (star, angle, cloudy, seconds) = sky;
     let fixed = Mat3::from_quat(to_fixed.as_quat());
     uniform.fixed_x = fixed.x_axis.extend(0.0);
     uniform.fixed_y = fixed.y_axis.extend(0.0);
     uniform.fixed_z = fixed.z_axis.extend(0.0);
-    uniform.sun = star_light(star).extend(cover);
+    uniform.sun = star_light(star).extend(f32::from(u8::from(cloudy)));
     let clouds = Air::of(&planet.record).clouds_from_space();
-    uniform.cloud = clouds.extend(seconds);
+    uniform.cloud = clouds.extend(toward_second(seconds));
+    uniform.drift = drift(seconds).extend(0.0);
     uniform.map.z = uniform.glow.w * detail(angle);
 }
 
@@ -86,7 +85,7 @@ fn dress(uniform: &mut BodyUniform, planet: &PlanetSpec, to_fixed: DQuat, sky: (
 /// a giant into render axes.
 pub(super) fn planets(
     scene: Scene,
-    skies: Skies,
+    mut skies: Skies,
     planets: Query<(&Body, &MeshMaterial3d<BodyMaterial>)>,
     mut materials: ResMut<Assets<BodyMaterial>>,
 ) {
@@ -114,9 +113,10 @@ pub(super) fn planets(
         }
         let to_fixed = (to_render * Link::orbiting(planet, time).turn).inverse();
         let angle = (planet.radius / pos.distance(vantage.observer.eye).max(1.0)) as f32;
-        let cover = skies.cover(planet, vantage.is(planet.id));
-        let sky = [cover, angle, skies.time.elapsed_secs()];
-        dress(uniform, planet, to_fixed, (near.system.star.color, sky));
+        let map = skies.map(planet, vantage.is(planet.id) || detail(angle) > 0.0);
+        let sky = (near.system.star.color, angle, map.is_some(), time);
+        dress(uniform, planet, to_fixed, sky);
+        material.cover = map;
     }
 }
 

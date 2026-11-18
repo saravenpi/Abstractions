@@ -12,18 +12,32 @@ use crate::ship::shake::{REACH, eased, roughness, shake};
 use crate::ship::telemetry::WarpState;
 use crate::universe::PlanetSpec;
 
-/// Returns the strongest glow of a flight of `seconds` that starts `height` metres above the
-/// sea of `planet` at velocity `vel`, nose first, with the lever at `throttle` and `controls`.
+/// Returns the strongest glow of a flight of `seconds` with the assist on that starts `height`
+/// metres above the sea of `planet` at velocity `vel`, nose first, with the lever at `throttle`
+/// and `controls`.
 fn brightest(
     planet: &PlanetSpec,
     start: (f64, DVec3),
     power: (f64, Controls),
     seconds: f64,
 ) -> f32 {
+    glow_of(planet, start, power, (seconds, true))
+}
+
+/// Returns the strongest glow of the same flight, of `run.0` seconds, with the assist on or
+/// off as `run.1` says. With the assist on and the engines idle the ship stops in the air, so
+/// only a ship without assist falls in from the top of the air.
+fn glow_of(
+    planet: &PlanetSpec,
+    start: (f64, DVec3),
+    power: (f64, Controls),
+    run: (f64, bool),
+) -> f32 {
+    let (seconds, assist) = run;
     let mut ship = above_pole(planet, start.0);
     ship.vel = start.1;
     ship.rot = DQuat::from_rotation_arc(DVec3::NEG_Z, start.1.normalize_or(DVec3::NEG_Z));
-    (ship.throttle, ship.assist) = (power.0, true);
+    (ship.throttle, ship.assist) = (power.0, assist);
     let mut glow = 0.0f32;
     fly(
         &mut ship,
@@ -66,8 +80,8 @@ fn powered_flight_and_approaches_never_glow() {
     assert_eq!(glow, 0.0, "a landing approach glows");
 }
 
-/// Falling in from the top of the air glows, at any speed around the orbital one, and so does
-/// a steep dive under power.
+/// Falling in from the top of the air without assist glows, at any speed around the orbital
+/// one, and so does a steep dive under power with it.
 #[test]
 fn a_fast_descent_glows() {
     let planet = planet(6000.0, 4000.0, 1200.0);
@@ -80,7 +94,7 @@ fn a_fast_descent_glows() {
     ];
     for (speed, steep, least) in entries {
         let entry = (3900.0, sinking(orbital * speed, steep));
-        let glow = brightest(&planet, entry, (0.0, Controls::default()), 60.0);
+        let glow = glow_of(&planet, entry, (0.0, Controls::default()), (60.0, false));
         assert!(
             glow > least,
             "entry at {speed} orbital, slope {steep}: {glow}"

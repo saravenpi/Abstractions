@@ -2,9 +2,10 @@
 
 use bevy::math::{DQuat, DVec3};
 
-use super::assist::{Hold, LIFT_ACCEL, NEUTRAL, steer};
+use super::assist::{LIFT_ACCEL, steer};
 use super::atmo;
 use super::body::Ship;
+use super::cruise::Cruise;
 use super::wells::{Well, gravity, nearest};
 use crate::space::Frame;
 use crate::universe::PlanetSpec;
@@ -27,7 +28,7 @@ pub struct Controls {
     pub lift: f64,
     /// Whether the boost is held.
     pub boost: bool,
-    /// Whether the brake is held: with the flight assist, the ship sheds its speed in space.
+    /// Whether the brake is held: with the flight assist, the ship stops harder than at idle.
     pub brake: bool,
 }
 
@@ -67,10 +68,34 @@ impl Default for Report {
     }
 }
 
-/// Returns the acceleration of the main engine in body axes.
-pub fn main_engine(ship: &Ship, controls: &Controls) -> DVec3 {
+/// Returns the acceleration of the engines of a ship flown without assist, in frame axes: the
+/// lever is the thrust of the main engine and the vertical stick the thrust along the roof.
+pub fn thrusters(ship: &Ship, controls: &Controls) -> DVec3 {
     let boost = if controls.boost { BOOST } else { 1.0 };
-    DVec3::NEG_Z * (ship.throttle * MAIN_ACCEL * boost)
+    let main = DVec3::NEG_Z * (ship.throttle * MAIN_ACCEL * boost);
+    ship.rot * (main + DVec3::Y * (controls.lift * LIFT_ACCEL))
+}
+
+/// Returns what the speed hold of the assist sees in space: the ship as it moves past the
+/// body it is nearest to, and how far it is from the surface of that body.
+fn hold(ship: &Ship, controls: &Controls, scene: &Scene) -> Cruise {
+    let near = nearest(scene.wells, ship.pos).map(|well| {
+        let centre = well.pos + well.vel * scene.elapsed;
+        (well.vel, centre.distance(ship.pos) - well.radius)
+    });
+    let (around, clearance) = near.unwrap_or((DVec3::ZERO, f64::INFINITY));
+    Cruise {
+        vel: ship.vel - around,
+        nose: ship.forward(),
+        rise: ship.rot * DVec3::Y,
+        up: DVec3::ZERO,
+        throttle: ship.throttle,
+        lift: controls.lift,
+        boost: controls.boost,
+        brake: controls.brake,
+        clearance,
+        grip: 1.0,
+    }
 }
 
 /// Turns the ship for `h` seconds: attitude thrusters, then `torque` around the body axes.
@@ -80,23 +105,19 @@ pub fn rotate(ship: &mut Ship, stick: DVec3, torque: DVec3, h: f64) {
 }
 
 /// Advances a ship in a star frame by `h` seconds with semi-implicit Euler: velocity first, then position.
+///
+/// Without assist the engines push and every body pulls, so the ship coasts and orbits. With
+/// it the engines fly the ship to the speed the lever asks for beside the nearest body, and
+/// cancel the pull of every body in full: the ship hangs where it is left.
 fn orbit(ship: &mut Ship, controls: &Controls, scene: &Scene, h: f64) -> Report {
-    let engines =
-        ship.rot * (main_engine(ship, controls) + DVec3::Y * (controls.lift * LIFT_ACCEL));
-    let around = nearest(scene.wells, ship.pos).map_or(DVec3::ZERO, |well| well.vel);
-    let hold = Hold {
-        drift: ship.vel - around,
-        nose: ship.rot * DVec3::NEG_Z,
-        thrusting: ship.throttle > NEUTRAL,
-        braking: controls.brake,
+    let pull = gravity(scene.wells, ship.pos, scene.elapsed);
+    let (engines, held) = if ship.assist {
+        (hold(ship, controls, scene).push(h), -pull)
+    } else {
+        (thrusters(ship, controls), DVec3::ZERO)
     };
-    let thrust = engines
-        + if ship.assist {
-            hold.push(h)
-        } else {
-            DVec3::ZERO
-        };
-    ship.vel += (gravity(scene.wells, ship.pos, scene.elapsed) + thrust) * h;
+    let thrust = engines + held;
+    ship.vel += (pull + thrust) * h;
     ship.pos += ship.vel * h;
     rotate(ship, controls.turn, DVec3::ZERO, h);
     Report {

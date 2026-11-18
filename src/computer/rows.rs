@@ -100,20 +100,24 @@ impl View<'_> {
         self.line(&star.name, target, (at, star.radius), facts)
     }
 
-    /// Returns the rows of the system tab: the star, then its planets ordered outward.
+    /// Returns the rows of the system tab: the star, then its planets ordered outward, each
+    /// followed by its moons ordered outward once the system is visited.
     pub fn system(&self, star: StarId) -> Vec<Line> {
         let system = self.universe.system(star);
         let origin = self
             .universe
             .star_position(system.star.id)
             .unwrap_or_default();
+        let charted = self.atlas.visited(Target::Star(system.star.id));
         let mut lines = vec![self.star(origin, &system.star)];
-        lines.extend(
-            system
-                .planets
-                .iter()
-                .map(|planet| self.planet(origin, planet)),
-        );
+        for planet in &system.planets {
+            lines.push(self.planet(origin, planet));
+            let moons = match charted && planet.moons > 0 {
+                true => self.universe.moons(planet.id),
+                false => Vec::new(),
+            };
+            lines.extend(moons.iter().map(|moon| self.planet(origin, moon)));
+        }
         lines
     }
 

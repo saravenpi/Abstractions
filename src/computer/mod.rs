@@ -8,6 +8,7 @@ mod course;
 mod detail;
 mod draw;
 mod format;
+mod giant;
 mod glide;
 mod keys;
 mod labels;
@@ -15,7 +16,9 @@ mod layout;
 mod lens;
 mod locate;
 mod map;
+mod moons;
 mod open;
+mod orbits;
 mod pointer;
 mod readout;
 mod reveal;
@@ -36,9 +39,13 @@ mod tests;
 #[cfg(test)]
 mod tests_detail;
 #[cfg(test)]
+mod tests_giant;
+#[cfg(test)]
 mod tests_labels;
 #[cfg(test)]
 mod tests_lens;
+#[cfg(test)]
+mod tests_moons;
 #[cfg(test)]
 mod tests_panel;
 #[cfg(test)]
@@ -67,7 +74,9 @@ pub use labels::{keep, priority, room, scale_bar};
 pub use lens::{Lens, MAX_ZOOM};
 pub use locate::{SYSTEM_REACH, ship_position, target_position, whereabouts};
 pub use map::{Field, SIZE, Sheet, body, field, frame, name, ring, ship, spot};
+pub use moons::{MOON_STEP, MOON_ZOOM, is_moon, seen};
 pub use open::Computer;
+pub use orbits::satellites;
 pub use reveal::{HOME_NEIGHBOURS, REVEAL_CELLS, REVEAL_GLY};
 pub use route::{Destination, Engage, RouteStatus, Target};
 pub use rows::{Line, View};

@@ -11,6 +11,7 @@ use bevy::ui::RelativeCursorPosition;
 
 use super::chart::{GRID, mark};
 use super::layout::{SMALLEST, map_side};
+use super::orbits::{cell, circle};
 use crate::ui::{Icon, Tone, column, icon, text, theme};
 use crate::universe::PlanetSpec;
 
@@ -142,7 +143,8 @@ pub fn name(sheet: &mut ChildSpawnerCommands, at: Vec2, gap: f32, title: &str) {
 }
 
 /// Spawns a star, a galaxy or a planet at `at` in `color`: a square `side` pixels wide, or
-/// the mark of the class of `world`, on cells half as wide, when its record is known.
+/// the mark of the class of `world` when its record is known, on cells half as wide, or
+/// wider for a gas giant.
 pub fn body(
     sheet: &mut ChildSpawnerCommands,
     at: Vec2,
@@ -154,7 +156,7 @@ pub fn body(
         sheet.spawn((node, BackgroundColor(color)));
         return;
     };
-    let unit = side * 0.5;
+    let unit = cell(side, planet);
     let corner = Vec2::splat(-0.5 * unit * f32::from(GRID));
     for [x, y, w, h] in mark(planet.record.class).iter().copied() {
         let from = corner + Vec2::new(f32::from(x), f32::from(y)) * unit;
@@ -180,15 +182,5 @@ pub fn ship(sheet: &mut ChildSpawnerCommands, at: Vec2, pointed: bool) {
 /// Returns the hairline of an orbit `radius` chart units around the middle of the chart. It
 /// is the one round thing of the interface: an orbit is a circle.
 pub fn ring(radius: f32) -> impl Bundle {
-    let node = Node {
-        position_type: PositionType::Absolute,
-        left: percent((0.5 - radius * 0.5) * 100.0),
-        top: percent((0.5 - radius * 0.5) * 100.0),
-        width: percent(radius * 100.0),
-        height: percent(radius * 100.0),
-        border: UiRect::all(px(theme::LINE)),
-        border_radius: BorderRadius::MAX,
-        ..default()
-    };
-    (node, BorderColor::all(theme::HAIRLINE))
+    circle(Vec2::ZERO, radius)
 }

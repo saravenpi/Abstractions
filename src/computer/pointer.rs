@@ -10,6 +10,7 @@ use super::board::Board;
 use super::chart::{Dot, chart, hit, span};
 use super::lens::Lens;
 use super::map::{Field, SIZE};
+use super::moons;
 use super::open::Computer;
 use super::semantic::{entry, shift};
 use super::tab::Tab;
@@ -80,7 +81,12 @@ pub(super) fn aim(
     if still || view.held.is_some() {
         return;
     }
-    let hover = hit(&view.dots, view.lens, at, REACH).filter(|_| over);
+    let zoom = view.lens.zoom;
+    let shown = view
+        .dots
+        .iter()
+        .filter(|(dot, _)| moons::seen(*dot, &board.lines, zoom));
+    let hover = hit(shown, view.lens, at, REACH).filter(|_| over);
     if hover == view.hover {
         return;
     }

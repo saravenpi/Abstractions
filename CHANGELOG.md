@@ -5,6 +5,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-11-18
+
+### Changed
+
+- In the ship and on the wingsuit, A and D roll and Q and E turn. Saved bindings for these four keys are reset.
+- The wingsuit flies whole loops: hold S and the body goes over the top and round. The view follows it.
+- In space the flight assist makes the ship go where it points under thrust, instead of sliding on its old course. Ctrl held at idle throttle brakes. With the engine idle the ship coasts as before, so an orbit stays an orbit.
+- The flight assist stops and starts a turn of the ship faster.
+
 ## [0.7.0] - 2026-11-18
 
 ### Added

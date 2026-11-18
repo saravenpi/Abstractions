@@ -41,8 +41,9 @@ impl Start<'_> {
         let height = |pos: DVec3| f64::from(globe.height(pos.normalize()));
         let at = self.spawn.0;
         let near = self.terrain.embed(at.x, at.y, at.z).normalize() * globe.radius();
-        let spot = landing_spot(&height, near);
-        parked(self.location.body, &height, spot, globe.radius())
+        let sea = f64::from(globe.sea_level());
+        let spot = landing_spot(&height, near, sea);
+        parked(self.location.body, (&height, sea), spot, globe.radius())
     }
 
     /// Returns the ship a world starts with: the saved one exactly where it was, landed, flying

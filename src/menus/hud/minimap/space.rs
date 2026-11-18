@@ -13,8 +13,8 @@ use super::orbit::{Scene, scene, signature};
 use super::pose::Reader;
 use super::widget::{Caption, Chart, MARK, Needle, STEP};
 use crate::computer::{
-    Atlas, Destination, Dot, SIZE, View, arrow, bearing, body, frame, is_moon, ring, satellites,
-    seen, ship_position, side, spot,
+    Atlas, Destination, Dot, HOME_LABEL, SIZE, View, arrow, bearing, body, frame, is_moon, ring,
+    satellites, seen, ship_position, side, spot,
 };
 use crate::space::{Clock, Frame};
 use crate::ui::theme;
@@ -136,10 +136,12 @@ fn slide(node: &mut Node, scene: Option<&Scene>) {
     (node.width, node.height) = (side, side);
 }
 
-/// Returns what the corner says for `scene`: the name of its star, or that there is no chart.
+/// Returns what the corner says for `scene`: the name of its star alone, without the word
+/// the board computer adds to the home star, or that there is no chart.
 fn title(scene: Option<&Scene>) -> String {
     let named = scene.and_then(|scene| scene.lines.first());
-    named.map_or(QUIET.to_string(), |star| star.title.clone())
+    let bare = |title: &str| title.trim_end_matches(HOME_LABEL).trim_end().to_string();
+    named.map_or(QUIET.to_string(), |star| bare(&star.title))
 }
 
 /// Turns every arrow of the minimap, every frame, to where the player faces: on the ground by

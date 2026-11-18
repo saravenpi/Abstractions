@@ -12,6 +12,7 @@ mod draw;
 mod format;
 mod giant;
 mod glide;
+mod home;
 mod hover;
 mod inset;
 mod keys;
@@ -27,6 +28,7 @@ mod pointer;
 mod primary;
 mod readout;
 mod reveal;
+mod rim;
 mod route;
 mod rows;
 mod scene;
@@ -49,6 +51,10 @@ mod tests_detail;
 #[cfg(test)]
 mod tests_giant;
 #[cfg(test)]
+mod tests_home;
+#[cfg(test)]
+mod tests_homeward;
+#[cfg(test)]
 mod tests_inset;
 #[cfg(test)]
 mod tests_labels;
@@ -64,6 +70,8 @@ mod tests_panel;
 mod tests_pointer;
 #[cfg(test)]
 mod tests_rig;
+#[cfg(test)]
+mod tests_rim;
 #[cfg(test)]
 mod tests_screen;
 #[cfg(test)]
@@ -83,15 +91,17 @@ pub use board::{Board, VISIBLE_ROWS};
 pub use chart::{Dot, GRID, chart, hit, mark, span};
 pub use draw::side;
 pub use format::{distance, gravity};
+pub use home::{arranged, away, beacon, homes, homeward, pinned, tab_of, toward};
 pub use labels::{keep, priority, room, scale_bar};
 pub use lens::{Lens, MAX_ZOOM};
-pub use locate::{SYSTEM_REACH, ship_position, target_position, whereabouts};
+pub use locate::{SYSTEM_REACH, here, ship_position, target_position, whereabouts};
 pub use map::{Field, SIZE, Sheet, body, field, frame, name, ring, ship, spot};
 pub use moons::{MOON_STEP, MOON_ZOOM, is_moon, seen};
 pub use open::Computer;
 pub use orbits::satellites;
 pub use reveal::{HOME_NEIGHBOURS, REVEAL_CELLS, REVEAL_GLY};
-pub use route::{Destination, Engage, RouteStatus, Target};
+pub use rim::{APART, home_row, rank, rim, spread};
+pub use route::{Destination, Engage, HOME_LABEL, RouteStatus, Target};
 pub use rows::{Line, View};
 pub use semantic::{DIVE, entry, shift};
 pub use sift::Sort;

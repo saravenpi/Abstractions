@@ -69,6 +69,7 @@ fn glyph(act: Act) -> Icon {
         Act::Set => Icon::MapPin,
         Act::Engage => Icon::Send,
         Act::Clear => Icon::Eraser,
+        Act::Home => Icon::Home,
     }
 }
 
@@ -78,6 +79,7 @@ fn key(act: Act, engage: KeyCode) -> String {
         Act::Set => "Enter".to_string(),
         Act::Engage => key_name(engage),
         Act::Clear => "Del".to_string(),
+        Act::Home => "Home".to_string(),
     }
 }
 

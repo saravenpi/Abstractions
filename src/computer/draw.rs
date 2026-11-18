@@ -2,9 +2,9 @@
 //!
 //! The hierarchy is black and white: orbits are hairlines, a star is larger than a planet and
 //! a planet larger than a moon, the selected row wears a white frame and the mark under the
-//! pointer a dim one, the destination a pin, and the course is a dotted line from the ship with the distance on it.
-//! A name that would cover a more important one is not drawn, nor a moon too close to its
-//! planet to tell apart.
+//! pointer a dim one, the destination a pin, home a house, and the course is a dotted line
+//! from the ship with the distance on it. A name that would cover a more important one is not
+//! drawn, nor a moon too close to its planet to tell apart. The name of home is always drawn.
 
 use bevy::prelude::*;
 
@@ -17,6 +17,7 @@ use super::map::{SIZE, Sheet, body, frame, name, ring, ship, spot};
 use super::moons::{host, is_moon, seen};
 use super::orbits::satellites;
 use super::pointer::MapView;
+use super::rim::{badge, home_row, rank};
 use super::route::{Destination, Target};
 use super::tab::Tab;
 use crate::ui::{Icon, Tone, icon, theme};
@@ -177,11 +178,7 @@ fn marks(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
 /// a name that would cover one already drawn is left out.
 fn labels(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
     let (view, board) = (picture.view, picture.board);
-    let scale = if view.side > 0.0 {
-        view.side / SIZE
-    } else {
-        1.0
-    };
+    let scale = [1.0, view.side / SIZE][usize::from(view.side > 0.0)];
     let pixel = |at: Vec2| view.lens.to_map(at);
     let inside = |at: Vec2| pixel(at).min_element() >= 0.0 && pixel(at).max_element() <= SIZE;
     let drawn = |dot: Dot, at: Vec2| inside(at) && seen(dot, &board.lines, view.lens.zoom);
@@ -192,7 +189,8 @@ fn labels(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
         };
         if let Some(line) = board.lines.get(index) {
             let chosen = Some(line.target) == picture.chosen;
-            let rank = priority(picture.marked(index).is_some(), chosen, line.visited);
+            let base = priority(picture.marked(index).is_some(), chosen, line.visited);
+            let rank = rank(home_row(board) == Some(index), base);
             wanted.push((rank, *at, line.title.as_str()));
         }
     }
@@ -238,6 +236,7 @@ pub(super) fn draw(
             rings(sheet, &picture);
             course(sheet, &picture);
             marks(sheet, &picture);
+            badge(sheet, board, view);
             labels(sheet, &picture);
         });
     }

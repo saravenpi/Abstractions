@@ -40,6 +40,7 @@ pub fn words(act: Act, name: &str) -> String {
         Act::Set => format!("Set course to {name}"),
         Act::Engage => "Engage autopilot".to_string(),
         Act::Clear => "Clear course".to_string(),
+        Act::Home => "Set course home".to_string(),
     }
 }
 

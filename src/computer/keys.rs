@@ -7,13 +7,17 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
 use super::board::{Board, VISIBLE_ROWS};
+use super::home::{tab_of, toward};
+use super::locate::here;
 use super::open::ready;
 use super::pointer::MapView;
 use super::route::{Destination, Engage};
 use super::view::{Act, Slot, TabLink};
 use crate::audio::AudioCue;
 use crate::settings::{Persistent, Settings};
+use crate::space::Anchor;
 use crate::ui::theme;
+use crate::universe::Universe;
 
 /// Rows a jump to the first or the last row moves by: more than any table holds.
 const FAR: isize = 1_000_000;
@@ -21,15 +25,19 @@ const FAR: isize = 1_000_000;
 /// Rows scrolled by one notch of the wheel.
 const WHEEL_ROWS: f32 = 3.0;
 
-/// Rows the cursor moves by for each key.
-const MOVES: [(KeyCode, isize); 6] = [
+/// Rows the cursor moves by for each key. The Home key is not one of them: it sets the
+/// course home.
+const MOVES: [(KeyCode, isize); 5] = [
     (KeyCode::ArrowUp, -1),
     (KeyCode::ArrowDown, 1),
     (KeyCode::PageUp, -(VISIBLE_ROWS as isize)),
     (KeyCode::PageDown, VISIBLE_ROWS as isize),
-    (KeyCode::Home, -FAR),
     (KeyCode::End, FAR),
 ];
+
+/// The key that sets the course home. It is not a letter, so that typing "home" still
+/// narrows the list.
+pub(super) const HOME_KEY: KeyCode = KeyCode::Home;
 
 /// The components that say what an activated button of the screen does.
 type Role = (
@@ -38,7 +46,7 @@ type Role = (
     Option<&'static Act>,
 );
 
-/// Moves the cursor with the arrows, Page Up and Down, Home and End, changes tab with Left and
+/// Moves the cursor with the arrows, Page Up and Down and End, changes tab with Left and
 /// Right, and scrolls with the wheel unless the pointer is over the map. A move that scrolls
 /// the table under a cursor that stays on the same drawn row is sounded here, since the focus
 /// does not move.
@@ -98,13 +106,28 @@ pub(super) struct Desk<'w, 's> {
     board: ResMut<'w, Board>,
     destination: ResMut<'w, Destination>,
     commands: Commands<'w, 's>,
+    world: Option<(Res<'w, Universe>, Res<'w, Anchor>)>,
 }
 
 impl Desk<'_, '_> {
-    /// Runs an action of the screen: the course goes to the selected row, to the autopilot or
-    /// away.
+    /// Sets the course to the next place on the way home from where the ship is: the home
+    /// galaxy, then the home star, then the home planet. The tab that lists it opens with
+    /// the cursor on its row.
+    fn home(&mut self) {
+        let Some((universe, anchor)) = &self.world else {
+            return;
+        };
+        let target = toward(here(universe, anchor.frame, anchor.origin), universe);
+        self.destination.0 = Some(target);
+        self.board.show(tab_of(target));
+        self.board.seek = Some(target);
+    }
+
+    /// Runs an action of the screen: the course goes to the selected row, home, to the
+    /// autopilot or away.
     fn run(&mut self, act: Act) {
         match (act, self.destination.0) {
+            (Act::Home, _) => self.home(),
             (Act::Set, _) => {
                 let row = self.board.lines.get(self.board.cursor);
                 self.destination.0 = row.map(|line| line.target).or(self.destination.0);
@@ -117,8 +140,8 @@ impl Desk<'_, '_> {
 }
 
 /// Sets the course to the selected row on Enter, hands the destination to the autopilot on the
-/// engage key of the settings, unless a filter is being typed, and forgets the destination on
-/// Delete.
+/// engage key of the settings, unless a filter is being typed, forgets the destination on
+/// Delete and sets the course home on the Home key.
 fn action_keys(
     keys: Res<ButtonInput<KeyCode>>,
     settings: Res<Persistent<Settings>>,
@@ -132,6 +155,9 @@ fn action_keys(
     }
     if keys.just_pressed(KeyCode::Delete) {
         desk.run(Act::Clear);
+    }
+    if keys.just_pressed(HOME_KEY) {
+        desk.run(Act::Home);
     }
 }
 

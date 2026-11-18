@@ -40,6 +40,12 @@ pub struct Board {
     pub sort: Sort,
     /// The planet, the system and the galaxy the ship is inside.
     pub here: [Option<Target>; 3],
+    /// The home planet, its star and its galaxy, in the same order.
+    pub home: [Option<Target>; 3],
+    /// The next place on the way home and where its centre is, or nothing on the home planet.
+    pub beacon: Option<(Target, UniPos)>,
+    /// A row the cursor moves to the next time the rows are replaced, when the table has it.
+    pub seek: Option<Target>,
 }
 
 impl Board {
@@ -63,12 +69,18 @@ impl Board {
         };
     }
 
-    /// Replaces the rows, keeping the cursor and the scroll offset inside the new table.
+    /// Replaces the rows, keeping the cursor and the scroll offset inside the new table, then
+    /// moves the cursor to the row that was asked for, if any.
     pub fn fill(&mut self, heading: String, lines: Vec<Line>) {
         self.heading = heading;
         self.lines = lines;
         self.stale = false;
         self.step(0);
+        let wanted = |line: &Line| Some(line.target) == self.seek;
+        if let Some(row) = self.lines.iter().position(wanted) {
+            self.step(row as isize - self.cursor as isize);
+        }
+        self.seek = None;
     }
 
     /// Moves the cursor by `by` rows, stopping at both ends, and scrolls to keep it drawn.

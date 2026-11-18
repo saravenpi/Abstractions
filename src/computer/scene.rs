@@ -8,7 +8,8 @@ use super::arrow::bearing;
 use super::atlas::Atlas;
 use super::course::{course, crumbs};
 use super::detail::worlds;
-use super::locate::{ship_position, target_position, whereabouts};
+use super::home::away;
+use super::locate::{here, ship_position, target_position};
 use super::route::{RouteStatus, Target};
 use super::rows::{Line, View};
 use super::tab::Tab;
@@ -22,12 +23,12 @@ use crate::world::{Planet, spin};
 /// The world as the computer sees it. Only valid while a world is loaded.
 #[derive(SystemParam)]
 pub(super) struct Scene<'w, 's> {
-    universe: Res<'w, Universe>,
+    pub(super) universe: Res<'w, Universe>,
     atlas: Res<'w, Atlas>,
     known: Res<'w, Known>,
     location: Res<'w, Location>,
     anchor: Res<'w, Anchor>,
-    clock: Res<'w, Clock>,
+    pub(super) clock: Res<'w, Clock>,
     telemetry: Option<Res<'w, ShipTelemetry>>,
     planet: Option<Res<'w, Planet>>,
     camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
@@ -99,20 +100,16 @@ impl Scene<'_, '_> {
 
     /// Returns the planet, the system and the galaxy the ship is inside.
     pub(super) fn here(&self) -> [Option<Target>; 3] {
-        let (body, star, galaxy) =
-            whereabouts(&self.universe, self.anchor.frame, self.anchor.origin);
-        [
-            body.map(Target::Body),
-            star.map(Target::Star),
-            galaxy.map(Target::Galaxy),
-        ]
+        here(&self.universe, self.anchor.frame, self.anchor.origin)
     }
 
-    /// Returns the breadcrumb of where the ship is, from the galaxy down to the planet.
+    /// Returns the breadcrumb of where the ship is, from the galaxy down to the planet, then
+    /// how far from home that is when the ship is outside the home system.
     pub(super) fn place(&self) -> String {
         let inside = self.here().into_iter().rev().flatten();
         let names: Vec<String> = inside.map(|at| at.name(&self.universe)).collect();
-        crumbs(&names)
+        let far = away(&self.universe, self.here(), self.ship());
+        far.map_or(crumbs(&names), |far| format!("{} - {far}", crumbs(&names)))
     }
 
     /// Returns the course line: the destination, its distance, a rough time to get there at

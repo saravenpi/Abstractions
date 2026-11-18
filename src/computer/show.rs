@@ -4,12 +4,13 @@ use bevy::prelude::*;
 
 use super::board::Board;
 use super::format::distance;
+use super::home::{arranged, beacon, homes, pinned};
 use super::moons::is_moon;
 use super::open::ready;
-use super::route::{Destination, RouteStatus, Target};
+use super::route::{Destination, HOME_LABEL, RouteStatus, Target};
 use super::rows::Line;
 use super::scene::Scene;
-use super::sift::{self, arrange};
+use super::sift;
 use super::tab::Tab;
 use super::view::{Cell, Crumbs, Part, Slot, Status, Summary, TabLink};
 use crate::ui::{Icon, Selected, Tone};
@@ -19,18 +20,23 @@ use crate::ui::{Icon, Selected, Tone};
 const REFRESH: f32 = 0.5;
 
 /// Builds the rows when the tab asks for them, when the chart of known systems is finished,
-/// and twice a second on the system tab.
+/// when the ship enters or leaves a system or a galaxy, and twice a second on the system tab.
+/// The row of home is pinned first while the ship is away from it.
 fn rebuild(time: Res<Time>, scene: Scene, mut board: ResMut<Board>, mut since: Local<f32>) {
     *since += time.delta_secs();
     let moving = board.tab == Tab::System && *since >= REFRESH;
-    if !(board.stale || moving || scene.charted()) {
+    let here = scene.here();
+    if !(board.stale || moving || scene.charted() || here != board.here) {
         return;
     }
     *since = 0.0;
     let (heading, lines) = scene.table(board.tab);
-    let lines = arrange(lines, &board.filter, board.sort);
+    let pin = pinned(board.tab, here, &scene.universe);
+    let lines = arranged(lines, pin, &board.filter, board.sort);
     board.ship = scene.ship();
-    board.here = scene.here();
+    board.here = here;
+    board.home = homes(&scene.universe);
+    board.beacon = beacon(&scene.universe, here, scene.clock.seconds);
     board.worlds = scene.worlds(&lines);
     board.fill(heading, lines);
 }
@@ -52,7 +58,8 @@ fn sign(target: Target, chosen: bool, here: bool) -> Icon {
 }
 
 /// Returns the text and the tone of one cell of `line`. The destination and the place of the
-/// ship are marked, a place never visited is dimmed, and the name of a moon is indented under
+/// ship are marked, a row that says home in its name wears the house unless it is the
+/// destination, a place never visited is dimmed, and the name of a moon is indented under
 /// its planet.
 pub(super) fn cell_text(line: &Line, part: Part, (chosen, here): (bool, bool)) -> (String, Tone) {
     let seen = match (chosen, line.visited || here) {
@@ -61,6 +68,7 @@ pub(super) fn cell_text(line: &Line, part: Part, (chosen, here): (bool, bool)) -
         (false, false) => Tone::Muted,
     };
     match part {
+        Part::Mark if !chosen && line.title.ends_with(HOME_LABEL) => (Icon::Home.glyph(), seen),
         Part::Mark => (sign(line.target, chosen, here).glyph(), seen),
         Part::Title if is_moon(line.target) => (format!("{INDENT}{}", line.title), seen),
         Part::Title => (line.title.clone(), seen),
@@ -178,7 +186,7 @@ pub(super) fn plugin(app: &mut App) {
                 .chain(),
             (super::pointer::plot, super::glide::ease).chain(),
             super::draw::draw,
-            (super::glide::slide, super::glide::rule),
+            (super::glide::slide, super::glide::rule, super::rim::place),
             (super::arrow::turn, super::hover::light),
             (super::chrome::fit, super::primary::offer),
         )

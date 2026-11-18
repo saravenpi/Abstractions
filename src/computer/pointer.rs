@@ -14,6 +14,7 @@ use super::lens::Lens;
 use super::map::{Field, SIZE};
 use super::moons;
 use super::open::Computer;
+use super::rim::{home_row, spread};
 use super::route::Destination;
 use super::semantic::{entry, shift};
 use super::tab::Tab;
@@ -177,14 +178,21 @@ pub(super) fn zoom(
     }
 }
 
-/// Lays the chart out again when the table changed. Another tab opens as the way there asks,
-/// and a cursor that moved to a row outside the map brings that row into view.
+/// Lays the chart out again when the table changed, to its near rows when home is far
+/// beyond them. Another tab opens as the way there asks, and a cursor that moved to a row
+/// outside the map brings that row into view.
 pub(super) fn plot(board: Res<Board>, mut view: ResMut<MapView>) {
     if !board.is_changed() {
         return;
     }
     view.dots = chart(board.tab, &board.lines, board.ship);
     view.span = span(board.tab, &board.lines, board.ship);
+    let (view, far) = (&mut *view, board.tab != Tab::System);
+    spread(
+        &mut view.dots,
+        &mut view.span,
+        home_row(&board).filter(|_| far),
+    );
     if view.tab != board.tab {
         (view.lens, view.goal) = entry(view.tab, board.tab);
         view.tab = board.tab;

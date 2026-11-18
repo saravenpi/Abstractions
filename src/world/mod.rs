@@ -168,23 +168,19 @@ fn streaming(
 
 /// Registers the world systems.
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins((
-        ground::plugin,
-        sea::plugin,
-        structures::plugin,
-        calendar::plugin,
-    ))
-    .init_resource::<chunks::Chunks>()
-    .init_resource::<chunks::Budget>()
-    .init_resource::<chunks::Calm>()
-    .insert_resource(chunks::Reach::of(None))
-    .init_resource::<Meter>()
-    .add_systems(Startup, chunks::setup_assets)
-    .add_systems(
-        OnEnter(Screen::Loading),
-        (begin_world, sea::spawn_sea).chain(),
-    )
-    .add_systems(OnEnter(Screen::Title), end_world);
+    app.add_plugins((sea::plugin, structures::plugin, calendar::plugin))
+        .init_resource::<chunks::Chunks>()
+        .init_resource::<chunks::Budget>()
+        .init_resource::<chunks::Calm>()
+        .insert_resource(chunks::Reach::of(None))
+        .init_resource::<Meter>()
+        .add_systems(Startup, chunks::setup_assets)
+        .add_systems(
+            OnEnter(Screen::Loading),
+            (begin_world, sea::spawn_sea).chain(),
+        )
+        .add_systems(OnEnter(Screen::Title), end_world);
+    app.add_plugins(ground::plugin);
     stream_systems(app);
 }
 

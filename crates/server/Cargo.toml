@@ -1,0 +1,14 @@
+[package]
+name = "abstractions-server"
+authors = ["saravenpi"]
+version = "0.9.0"
+edition = "2024"
+rust-version = "1.97.1"
+description = "The self-hosted server of Abstractions."
+repository = "https://github.com/saravenpi/Abstractions"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "abstractions-server"
+path = "src/main.rs"

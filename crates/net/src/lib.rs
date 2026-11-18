@@ -1,0 +1,22 @@
+//! The multiplayer of Abstractions without the game: what a player and a server say to each
+//! other, and the server's logic.
+//!
+//! The game and the self-hosted server both build on this crate, so they cannot disagree on a
+//! byte. It does not depend on Bevy. The `ecs` feature only adds the derives the game needs to
+//! use [`log::PlayerId`] as a component and [`log::Changes`] as a resource.
+//!
+//! - [`ids`] names galaxies, stars, planets and moons.
+//! - [`log`] is the list of what players changed in a world.
+//! - [`clock`] and [`jitter`] keep players in time and remote bodies smooth.
+//! - [`room`] is the server's logic and [`store`] its world file.
+//! - [`io`], [`trust`] and [`lan`] are the network itself: QUIC, certificates and the LAN beacon.
+
+pub mod clock;
+pub mod ids;
+pub mod io;
+pub mod jitter;
+pub mod lan;
+pub mod log;
+pub mod room;
+pub mod store;
+pub mod trust;

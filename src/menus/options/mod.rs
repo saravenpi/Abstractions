@@ -1,4 +1,4 @@
-//! Settings menu with graphics, controls, ship and audio tabs, and a controls reference.
+//! Settings menu with graphics, controls, ship, audio and general tabs, and a controls reference.
 
 mod actions;
 mod binds;
@@ -36,16 +36,18 @@ pub enum Tab {
     Controls,
     Ship,
     Audio,
+    General,
     Help,
 }
 
 impl Tab {
     /// Every tab, in display order.
-    pub const ALL: [Tab; 5] = [
+    pub const ALL: [Tab; 6] = [
         Tab::Graphics,
         Tab::Controls,
         Tab::Ship,
         Tab::Audio,
+        Tab::General,
         Tab::Help,
     ];
 
@@ -57,6 +59,7 @@ impl Tab {
             Tab::Controls => (Some(Icon::Keyboard), "Controls"),
             Tab::Ship => (Some(Icon::Send), "Ship"),
             Tab::Audio => (Some(Icon::Volume), "Audio"),
+            Tab::General => (Some(Icon::Home), "General"),
             Tab::Help => (Some(Icon::Info), "Reference"),
         }
     }

@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::update::UpdatePrefs;
 use crate::view::ViewPrefs;
 use crate::world::RENDER_STEPS;
 
@@ -20,6 +21,8 @@ pub struct Settings {
     pub world: WorldPrefs,
     /// Camera options: first or third person on foot and in the ship, and the comfort options.
     pub view: ViewPrefs,
+    /// Update options: whether the game looks for a newer release at launch.
+    pub updates: UpdatePrefs,
 }
 
 /// Rendering options.

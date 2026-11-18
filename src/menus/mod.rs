@@ -1,4 +1,4 @@
-//! Menu overlays: main, worlds, new world, settings and pause, and the in-game HUD.
+//! Menu overlays: main, worlds, new world, settings, update and pause, and the in-game HUD.
 
 mod hud;
 mod main_menu;
@@ -13,6 +13,7 @@ mod seed;
 mod slots;
 #[cfg(test)]
 mod tests;
+mod update;
 mod worlds;
 
 pub use hud::HudWeather;
@@ -37,6 +38,8 @@ pub enum Menu {
     Settings,
     /// Pause menu during gameplay.
     Pause,
+    /// A newer release: its notes, its download and the restart.
+    Update,
 }
 
 /// Registers the menu state and every menu plugin.
@@ -52,5 +55,6 @@ pub(super) fn plugin(app: &mut App) {
         new_game::plugin,
         options::plugin,
         pause::plugin,
+        update::plugin,
     ));
 }

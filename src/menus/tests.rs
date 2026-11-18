@@ -7,6 +7,7 @@ mod heard;
 mod look;
 mod schedules;
 mod settings;
+mod update;
 mod worlds;
 
 use std::path::PathBuf;

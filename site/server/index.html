@@ -64,13 +64,12 @@
       <p>Start it:</p>
       <div class="cmd"><pre><code>abstractions-server</code></pre></div>
       <p>The first start creates a <code>data</code> folder where you run it, with a new world and a random seed. Then it prints something like this:</p>
-      <pre class="sample" aria-label="Sample output"><code>Abstractions server 0.10.0
-Name      My universe
-Seed      482190773615204871
-Port      24650 (UDP)
-LAN       192.168.1.20:24650
-Key       7F3A-91C2-0B5E
-To let friends in from the internet, forward UDP 24650 on your router.</code></pre>
+      <pre class="sample" aria-label="Sample output"><code>Abstractions server v0.10.0
+World     My universe (seed 482190773615204871)   ./data/world.toml
+Listening UDP 24650 on all addresses (0.0.0.0)
+Join at   192.168.1.20:24650
+Key       7F3A-91C2-0B5E   players see this the first time they join
+Internet  forward UDP port 24650 to this machine, or point a domain at it</code></pre>
       <p>Stop it with Ctrl-C. It saves the world first.</p>
       <p>The script puts the server in <code>~/.local/bin</code>, or in <code>/usr/local/bin</code> when run as root. It checks the download against its SHA-256 checksum. <a class="inline" href="/server.sh">Read the script</a>.</p>
     </div>

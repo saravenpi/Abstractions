@@ -97,7 +97,7 @@ fn porch(b: &mut Build, st: &Style) {
     b.cuboid(
         Vec3::new(-s.hx + 0.5, 0.0, z - 0.3),
         Vec3::new(-s.hx + 1.8, 0.5, z + 0.1),
-        Mat::deco(st.trim),
+        Mat::solid(st.trim),
     );
     furnish(b, &s, st);
 }
@@ -118,7 +118,7 @@ fn shed(b: &mut Build, st: &Style) {
     );
     for (x, z) in [(-1.2, -0.9), (-0.6, -0.95)] {
         let sack = Vec2::new(0.26, 0.5);
-        b.pillar(Vec3::new(x, 0.0, z), sack, 6, Mat::deco(CANVAS));
+        b.pillar(Vec3::new(x, 0.0, z), sack, 6, Mat::solid(CANVAS));
     }
     let base = on_ground(b, s.hx + 1.0, 0.4);
     crate_at(b, base, 0.8);
@@ -134,7 +134,7 @@ fn stall_frame(b: &mut Build, s: &Shell, st: &Style, roof: (Vec3, Vec3)) {
     for (sx, sz) in corners {
         let at = Vec3::new(sx * (s.hx - 0.2), 0.0, sz * (s.hz - 0.2));
         let size = Vec2::new(0.08, lean_height(roof.0, roof.1, AWNING_RISE, at.z));
-        b.tagged(Tag::Post, |b| b.pillar(at, size, 4, Mat::deco(DARK_WOOD)));
+        b.tagged(Tag::Post, |b| b.pillar(at, size, 4, Mat::solid(DARK_WOOD)));
     }
     let back = (
         Vec3::new(-s.hx, 0.0, -s.hz),

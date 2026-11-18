@@ -30,6 +30,8 @@ mod tests;
 #[cfg(test)]
 mod tests_app;
 #[cfg(test)]
+mod tests_cover;
+#[cfg(test)]
 mod tests_found;
 #[cfg(test)]
 mod tests_ground;

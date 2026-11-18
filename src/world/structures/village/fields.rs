@@ -13,6 +13,7 @@ use super::style::Flavor;
 use crate::world::structures::brush::{Build, Mat};
 use crate::world::structures::dress::{hay, on_ground};
 use crate::world::structures::palette::{DARK_WOOD, PLANK, ROOF, WOOD};
+use crate::world::structures::tags::Tag;
 use crate::world::{Surface, Terrain};
 
 /// Longest span of a row, hedge or rail drawn at one slope.
@@ -204,12 +205,13 @@ fn scarecrow(b: &mut Build, f: &Field) {
     b.cuboid(post + hat.0, post + hat.1, Mat::deco(ROOF));
 }
 
-/// Draws field number `index`: rows, border, and a scarecrow, hay bales or a cart by turn.
+/// Draws field number `index`: rows, border, and a scarecrow, hay bales or a cart by turn. The crops, the
+/// hedges and the scarecrow of straw are soft: a body wades through them, and through the thin fence rails.
 pub fn draw(b: &mut Build, f: &Field, index: usize) {
     b.stand(f.pos, f.yaw);
-    crops(b, f);
+    b.tagged(Tag::Soft, |b| crops(b, f));
     match index % 3 {
-        0 => scarecrow(b, f),
+        0 => b.tagged(Tag::Soft, |b| scarecrow(b, f)),
         1 => {
             hay(b, on_ground(b, f.half.x + 1.0, -1.0));
             hay(b, on_ground(b, f.half.x + 1.2, 0.4));

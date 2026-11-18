@@ -17,6 +17,11 @@ pub enum Tag {
     Post,
     /// An upright prism or cone.
     Round,
+    /// Leaves, cloth, straw, fish and the glass around a flame: what a body passes through, so it needs no
+    /// collider.
+    Soft,
+    /// Streets, footpaths and plazas painted on the ground, which carries them.
+    Paved,
 }
 
 impl Build<'_> {

@@ -8,6 +8,7 @@ use crate::world::solids::fan;
 use crate::world::structures::brush::{Build, Mat};
 use crate::world::structures::dress::on_ground;
 use crate::world::structures::palette::{DARK_WOOD, GLASS};
+use crate::world::structures::tags::Tag;
 
 /// Returns where a prop of radius `r` at local `(x, z)` stands: on the plinth when it fits on it, else on the ground.
 fn foot(b: &Build, s: &Shell, at: Vec2, r: f32) -> Vec3 {
@@ -28,7 +29,7 @@ fn awning(b: &mut Build, s: &Shell, st: &Style) {
     );
     b.lean_to(lo, hi, 0.35, Mat::deco(rgb));
     let at = foot(b, s, Vec2::new(d1 + 0.9, s.hz + 0.9), 0.25);
-    b.pillar(at, Vec2::new(0.25, 0.45), 6, Mat::deco(DARK_WOOD));
+    b.pillar(at, Vec2::new(0.25, 0.45), 6, Mat::solid(DARK_WOOD));
     b.pillar(
         at + Vec3::Y * 0.4,
         Vec2::new(0.07, 1.1),
@@ -37,7 +38,9 @@ fn awning(b: &mut Build, s: &Shell, st: &Style) {
     );
     let color = b.color([0.2, 0.5, 0.2], 1.0);
     let top = b.pt(at + Vec3::Y * 1.5);
-    fan(&mut b.mesh, top, [6.0, 1.2, 0.5, 0.35, 0.5], 0.3, color);
+    b.tagged(Tag::Soft, |b| {
+        fan(&mut b.mesh, top, [6.0, 1.2, 0.5, 0.35, 0.5], 0.3, color)
+    });
 }
 
 /// Draws two lanterns on posts beside the door; a post off the plinth reaches down to the ground.
@@ -46,11 +49,11 @@ fn lanterns(b: &mut Build, s: &Shell) {
     for x in [d0, d1] {
         let at = foot(b, s, Vec2::new(x, s.hz + 0.6), 0.06);
         b.pillar(at, Vec2::new(0.06, 2.0 - at.y), 4, Mat::deco(DARK_WOOD));
-        b.cuboid(
+        let glass = (
             Vec3::new(x - 0.15, 1.9, s.hz + 0.45),
             Vec3::new(x + 0.15, 2.25, s.hz + 0.75),
-            Mat::deco(GLASS),
         );
+        b.tagged(Tag::Soft, |b| b.cuboid(glass.0, glass.1, Mat::deco(GLASS)));
     }
 }
 

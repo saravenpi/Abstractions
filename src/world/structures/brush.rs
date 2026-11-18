@@ -14,6 +14,10 @@ pub enum Shape {
     Cuboid(Vec3),
     /// Upright cylinder with radius and height.
     Cylinder(f32, f32),
+    /// Upright cone with the radius of its base and its height, centered at half its height.
+    Cone(f32, f32),
+    /// The convex body around six points, given from the place of the part: a roof or a pyramid.
+    Hull([Vec3; 6]),
 }
 
 /// One solid piece in chunk space.
@@ -42,7 +46,8 @@ impl Mat {
         Self { rgb, solid: true }
     }
 
-    /// A colored piece the player walks through.
+    /// A colored piece without a collider of its own: trim on a solid piece, a rod too thin to run into, or
+    /// a piece of a group that shares one collider. `tests_cover` fails when such a piece is left bare.
     pub fn deco(rgb: [f32; 3]) -> Self {
         Self { rgb, solid: false }
     }

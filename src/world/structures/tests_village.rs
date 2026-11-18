@@ -77,7 +77,7 @@ fn villages_fit_their_budgets() {
                 b.parts.len()
             );
             assert!((1500..=17000).contains(&tris), "{tris} triangles");
-            assert!(b.parts.len() <= 320, "{} colliders", b.parts.len());
+            assert!(b.parts.len() <= 360, "{} colliders", b.parts.len());
             sane_parts(&b);
         }
     }
@@ -89,7 +89,13 @@ fn sane_parts(b: &Build) {
         assert!(p.pos.is_finite() && p.rot.is_finite(), "{p:?}");
         let ok = match p.shape {
             Shape::Cuboid(s) => s.is_finite() && s.min_element() > 1e-3,
-            Shape::Cylinder(r, h) => r.is_finite() && h.is_finite() && r > 1e-3 && h > 1e-3,
+            Shape::Cylinder(r, h) | Shape::Cone(r, h) => {
+                r.is_finite() && h.is_finite() && r > 1e-3 && h > 1e-3
+            }
+            Shape::Hull(points) => {
+                let tall = points.iter().map(|c| c.y).fold(0.0, f32::max);
+                points.iter().all(|c| c.is_finite()) && tall > 1e-3
+            }
         };
         assert!(ok, "{p:?}");
     }

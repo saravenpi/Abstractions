@@ -52,7 +52,7 @@ fn brazier(b: &mut Build) {
         6,
         Mat::solid(STONE_DARK),
     );
-    b.pillar(Vec3::Y * 0.8, Vec2::new(0.55, 0.25), 8, Mat::deco(STONE));
+    b.pillar(Vec3::Y * 0.8, Vec2::new(0.55, 0.25), 8, Mat::solid(STONE));
     b.glow(LightKind::Brazier, Vec3::Y * 1.3);
 }
 
@@ -68,7 +68,7 @@ fn bucket(b: &mut Build) {
     b.cuboid(
         Vec3::new(-0.2, 1.4, -0.2),
         Vec3::new(0.2, 1.7, 0.2),
-        Mat::deco(WOOD),
+        Mat::solid(WOOD),
     );
 }
 
@@ -102,7 +102,7 @@ fn fountain(b: &mut Build) {
         6,
         Mat::solid(STONE_LIGHT),
     );
-    b.pillar(Vec3::Y * 1.9, Vec2::new(0.9, 0.25), 8, Mat::deco(STONE));
+    b.pillar(Vec3::Y * 1.9, Vec2::new(0.9, 0.25), 8, Mat::solid(STONE));
     b.spire(Vec3::Y * 2.15, Vec2::new(0.5, 0.7), 6, WATER);
 }
 
@@ -144,9 +144,11 @@ fn tree_ring(b: &mut Build) {
     );
     let crown = b.color(LEAF, 1.0);
     let low = b.pt(Vec3::new(0.0, 5.2, 0.0));
-    crate::world::solids::icosa(&mut b.mesh, low, Vec3::new(3.6, 2.4, 3.6), (0.2, 5), crown);
     let top = b.pt(Vec3::new(0.4, 6.8, 0.3));
-    crate::world::solids::icosa(&mut b.mesh, top, Vec3::new(2.2, 1.6, 2.2), (0.2, 9), crown);
+    b.tagged(Tag::Soft, |b| {
+        crate::world::solids::icosa(&mut b.mesh, low, Vec3::new(3.6, 2.4, 3.6), (0.2, 5), crown);
+        crate::world::solids::icosa(&mut b.mesh, top, Vec3::new(2.2, 1.6, 2.2), (0.2, 9), crown);
+    });
     for i in 0..4 {
         bench(b, i);
     }
@@ -157,7 +159,7 @@ fn tree_ring(b: &mut Build) {
             on_ground(b, a.sin() * 4.4, a.cos() * 4.4) - Vec3::Y * 0.1,
             Vec2::new(0.25, 0.35),
             5,
-            Mat::deco(STONE_DARK),
+            Mat::solid(STONE_DARK),
         );
     }
 }

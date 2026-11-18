@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
 use super::recall::{Entry, LastEntry};
+use super::update::{check_item, offer};
 use super::{Menu, Nav};
 use crate::saves::{SaveDir, Starter, WorldEntry, list};
 use crate::ui::{Icon, Tone, column, icon, item, item_with, label, root, rule, text, theme};
@@ -13,13 +14,16 @@ use crate::ui::{Icon, Tone, column, icon, item, item_with, label, root, rule, te
 #[derive(Component)]
 struct Continue(WorldEntry);
 
-/// The entries below Continue, in order: icon, label and what each does.
-const ENTRIES: [(Icon, &str, Nav); 4] = [
+/// The entries below Continue, in order: icon, label and what each does. The update check and
+/// Quit come after them.
+const ENTRIES: [(Icon, &str, Nav); 3] = [
     (Icon::Earth, "Worlds", Nav::To(Menu::Worlds)),
     (Icon::Plus, "New world", Nav::To(Menu::NewGame)),
     (Icon::Settings, "Settings", Nav::To(Menu::Settings)),
-    (Icon::Power, "Quit", Nav::Quit),
 ];
+
+/// Position of the "Check for updates" entry. Quit is the one after it.
+const CHECK: usize = ENTRIES.len() + 1;
 
 /// The Continue item: its icon, its label and the muted name of the world it resumes.
 fn continue_item(name: &str) -> impl Bundle {
@@ -50,21 +54,37 @@ fn frame() -> impl Bundle {
     )
 }
 
-/// Spawns the title, a rule and the menu items, and focuses the entry used last.
+/// Spawns `entry` as entry `index` of the column `items`, and returns it with its index.
+fn add(
+    commands: &mut Commands,
+    items: Entity,
+    index: usize,
+    entry: impl Bundle,
+) -> (usize, Entity) {
+    let spawned = commands.spawn((entry, Entry(index), ChildOf(items)));
+    (index, spawned.id())
+}
+
+/// Spawns the title, a rule and the menu items, and focuses the entry used last. The line about
+/// a newer release sits above the items, hidden until there is one, and never takes the focus.
 fn spawn(mut commands: Commands, dir: Res<SaveDir>, last: Res<LastEntry>) {
     let menu = commands.spawn(frame()).id();
     let items = commands
         .spawn((column(px(theme::MENU_WIDTH), 0.0), ChildOf(menu)))
         .id();
+    commands.spawn((offer(), ChildOf(items)));
     let mut entries = Vec::new();
     if let Some(entry) = list(&dir.0).into_iter().next() {
         let resume = (continue_item(&entry.save.name), Continue(entry));
-        entries.push((0, commands.spawn((resume, Entry(0), ChildOf(items))).id()));
+        entries.push(add(&mut commands, items, 0, resume));
     }
     for (index, (symbol, name, nav)) in ENTRIES.into_iter().enumerate() {
-        let entry = (item(symbol, name, Tone::Plain), nav, Entry(index + 1));
-        entries.push((index + 1, commands.spawn((entry, ChildOf(items))).id()));
+        let entry = (item(symbol, name, Tone::Plain), nav);
+        entries.push(add(&mut commands, items, index + 1, entry));
     }
+    entries.push(add(&mut commands, items, CHECK, check_item()));
+    let quit = (item(Icon::Power, "Quit", Tone::Plain), Nav::Quit);
+    entries.push(add(&mut commands, items, CHECK + 1, quit));
     let wanted = last.of(Menu::Main, entries[0].0);
     let found = entries.iter().find(|(index, _)| *index == wanted);
     commands

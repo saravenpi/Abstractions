@@ -83,6 +83,7 @@ fn body(active: Tab) -> impl Bundle {
                         pages::controls(active),
                         pages::ship(active),
                         pages::audio(active),
+                        pages::general(active),
                         reference::help(active),
                     ]
                 )]

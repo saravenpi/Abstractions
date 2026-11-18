@@ -82,6 +82,14 @@ pub fn ship(active: Tab) -> impl Bundle {
     )
 }
 
+/// General tab: what is neither picture, controls nor sound.
+pub fn general(active: Tab) -> impl Bundle {
+    (
+        page(Tab::General, active),
+        children![toggle("Check for updates at launch", Field::CheckUpdates)],
+    )
+}
+
 /// Audio tab.
 pub fn audio(active: Tab) -> impl Bundle {
     (

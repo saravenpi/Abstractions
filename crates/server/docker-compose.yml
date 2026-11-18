@@ -1,0 +1,13 @@
+services:
+  abstractions-server:
+    image: ghcr.io/saravenpi/abstractions-server:latest
+    ports:
+      - "24650:24650/udp"
+    volumes:
+      - abstractions-data:/data
+    environment:
+      ABSTRACTIONS_NAME: "My Abstractions server"
+    restart: unless-stopped
+
+volumes:
+  abstractions-data:

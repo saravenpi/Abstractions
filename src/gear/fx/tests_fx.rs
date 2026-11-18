@@ -1,4 +1,5 @@
-//! Tests of the pure parts of the wind, rush, nozzle and particle effects.
+//! Tests of the pure parts of the wind, rush, nozzle and particle effects, and of what lies
+//! under the boots.
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -10,10 +11,13 @@ use super::scene::Scene;
 use super::streaks::{SPEED, noise, strength};
 use super::trail::Trail;
 use super::trails::tip_heat;
+use super::under::under;
 use crate::gear::{FlightState, Mode};
+use crate::universe::{PlanetClass, PlanetRecord};
+use crate::world::Globe;
 
 /// Returns an active scene of a body in `mode` at `airspeed` under `load` g, in sea level air.
-fn scene(mode: Mode, airspeed: f32, load: f32) -> Scene {
+pub(super) fn scene(mode: Mode, airspeed: f32, load: f32) -> Scene {
     let winged = f32::from(u8::from(mode.winged()));
     Scene {
         active: true,
@@ -120,4 +124,24 @@ fn trail_breaks_on_jumps_and_dies_out() {
         trail.feed(DVec3::X * (9000.0 + f64::from(step)), 0.0, 1.0 / 60.0);
     }
     assert!(!trail.live(1.5));
+}
+
+/// Over a sea the nearer of ground and water counts, as it always did; a planet without a
+/// sea has only ground, even in a basin below the datum, so the boots raise dust there.
+#[test]
+fn a_dry_basin_raises_dust_not_spray() {
+    let home = Globe::new(7, 6000.0, 9.8);
+    assert_eq!(under(&home, 5.0, 2.0), (2.0, true));
+    assert_eq!(under(&home, 1.0, 40.0), (1.0, false));
+    assert_eq!(under(&home, 3.0, -0.5), (0.0, true));
+    let record = PlanetRecord {
+        class: PlanetClass::Desert,
+        ocean: 0.0,
+        ..PlanetRecord::TEMPERATE
+    };
+    let dry = home.clone().with_record(record);
+    assert!(!dry.has_sea());
+    assert_eq!(under(&dry, 1.0, -30.0), (1.0, false));
+    assert_eq!(under(&dry, 5.0, 2.0), (5.0, false));
+    assert_eq!(under(&dry, f32::INFINITY, -4.0), (f32::INFINITY, false));
 }

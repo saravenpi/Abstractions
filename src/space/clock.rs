@@ -15,6 +15,11 @@ pub struct Clock {
     pub seconds: f64,
 }
 
+/// The step of `PreUpdate` that moves universe time. What corrects it, such as the clock of a
+/// session, runs after it.
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ClockStep;
+
 /// Moves universe time forward by the frame time while the game is being played.
 fn advance(time: Res<Time>, mut clock: ResMut<Clock>) {
     clock.seconds += time.delta_secs_f64();
@@ -38,5 +43,5 @@ fn running(
 /// reads the same time.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Clock>()
-        .add_systems(PreUpdate, advance.run_if(running));
+        .add_systems(PreUpdate, advance.run_if(running).in_set(ClockStep));
 }

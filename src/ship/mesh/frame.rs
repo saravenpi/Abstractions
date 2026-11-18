@@ -1,5 +1,6 @@
-//! The airframe of the ship: the fuselage, the wings, the fin and the canopy. Every part goes
-//! into the part that carries it, so that no plate hangs beside the hull.
+//! The airframe of the ship: the outline of the fuselage and of the canopy, the wings and the
+//! fin. Every part goes into the part that carries it, so that no plate hangs beside the hull.
+//! The fuselage and the canopy that are drawn are open over the cockpit: see `shell`.
 
 use std::f32::consts::TAU;
 
@@ -8,10 +9,10 @@ use bevy::prelude::*;
 use crate::ship::solid::Solid;
 
 /// Sides of the fuselage.
-const SIDES: u32 = 8;
+pub(super) const SIDES: u32 = 8;
 
 /// Stations of the fuselage from nose to tail: z, half width, half height and height of the centre.
-const FUSELAGE: [[f32; 4]; 5] = [
+pub(super) const FUSELAGE: [[f32; 4]; 5] = [
     [-3.2, 0.42, 0.3, -0.05],
     [-1.8, 0.85, 0.55, 0.05],
     [0.4, 1.0, 0.65, 0.1],
@@ -19,8 +20,21 @@ const FUSELAGE: [[f32; 4]; 5] = [
     [3.2, 0.6, 0.45, 0.2],
 ];
 
+/// The tip of the nose, the middle of the joint between the nose and the body, and the end of the tail.
+pub(super) const SPINE: [Vec3; 3] = [
+    Vec3::new(0.0, -0.1, -4.2),
+    Vec3::new(0.0, 0.05, -1.8),
+    Vec3::new(0.0, 0.2, 3.3),
+];
+
 /// Stations of the canopy bubble, like [`FUSELAGE`].
-const CANOPY: [[f32; 4]; 2] = [[-2.1, 0.5, 0.42, 0.62], [-1.0, 0.58, 0.5, 0.72]];
+pub(super) const CANOPY: [[f32; 4]; 2] = [[-2.1, 0.5, 0.42, 0.62], [-1.0, 0.58, 0.5, 0.72]];
+
+/// Where the canopy bubble ends in the hull, in front and behind.
+pub(super) const CANOPY_ENDS: (Vec3, Vec3) = (Vec3::new(0.0, 0.25, -2.9), Vec3::new(0.0, 0.6, 0.2));
+
+/// Sides of the canopy bubble.
+pub(super) const CANOPY_SIDES: u32 = 6;
 
 /// Outline of the right wing from above: the root at the front and at the back, then the tip
 /// at the back and at the front. The root is 0.2 m or more inside the fuselage.
@@ -49,7 +63,7 @@ const FIN: [Vec3; 4] = [
 ];
 
 /// Returns the point of a station of a lathe along z at corner `i` of `sides`.
-fn ring([z, w, h, y]: [f32; 4], i: u32, sides: u32) -> Vec3 {
+pub(super) fn ring([z, w, h, y]: [f32; 4], i: u32, sides: u32) -> Vec3 {
     let a = i as f32 / sides as f32 * TAU;
     Vec3::new(a.cos() * w, y + a.sin() * h, z)
 }
@@ -81,11 +95,13 @@ pub fn lathe(solid: &mut Solid, stations: &[[f32; 4]], ends: (Vec3, Vec3), sides
     }
 }
 
-/// Returns the two closed halves of the fuselage: the body behind the cockpit and the nose.
+/// Returns the outline of the fuselage as two closed halves, the body and the nose: what the
+/// fit tests hold every part against. The hull that is drawn is the same outline, open over
+/// the cockpit.
+#[cfg(test)]
 pub fn fuselage() -> [Solid; 2] {
     let (mut body, mut nose) = (Solid::default(), Solid::default());
-    let (tip, joint) = (Vec3::new(0.0, -0.1, -4.2), Vec3::new(0.0, 0.05, -1.8));
-    let tail = Vec3::new(0.0, 0.2, 3.3);
+    let [tip, joint, tail] = SPINE;
     lathe(&mut body, &FUSELAGE[1..], (joint, tail), SIDES);
     lathe(&mut nose, &FUSELAGE[..2], (tip, joint), SIDES);
     [body, nose]
@@ -107,10 +123,11 @@ pub fn fin() -> Solid {
     fin
 }
 
-/// Returns the canopy bubble. Its rim and both of its ends are inside the fuselage.
+/// Returns the outline of the canopy as a closed bubble. Its rim and both of its ends are
+/// inside the fuselage. The glass that is drawn is the part of it above the hull.
+#[cfg(test)]
 pub fn canopy() -> Solid {
     let mut glass = Solid::default();
-    let ends = (Vec3::new(0.0, 0.25, -2.9), Vec3::new(0.0, 0.6, 0.2));
-    lathe(&mut glass, &CANOPY, ends, 6);
+    lathe(&mut glass, &CANOPY, CANOPY_ENDS, CANOPY_SIDES);
     glass
 }

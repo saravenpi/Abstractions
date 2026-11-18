@@ -88,7 +88,9 @@ fn the_system_and_universe_tables_follow_the_atlas() {
         time: 0.0,
     };
     let system = view.system(home.star);
-    assert_eq!(system.len(), 1 + universe.system(home.star).planets.len());
+    let planets = universe.system(home.star).planets;
+    let moons: usize = planets.iter().map(|planet| usize::from(planet.moons)).sum();
+    assert_eq!(system.len(), 1 + planets.len() + moons);
     let visited = system.iter().filter(|line| line.visited);
     let visited: Vec<Target> = visited.map(|line| line.target).collect();
     assert_eq!(visited, [Target::Star(home.star), Target::Body(home)]);

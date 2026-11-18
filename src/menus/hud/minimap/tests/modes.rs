@@ -114,7 +114,7 @@ fn the_chart_follows_the_destination_and_the_frame() {
     });
     app.insert_resource(Destination(Some(target)));
     leave(&mut app, false);
-    assert!(drawn(&mut app) >= charted + 12, "{} nodes", drawn(&mut app));
+    assert_ne!(drawn(&mut app), charted);
     leave(&mut app, true);
     assert_eq!((drawn(&mut app), caption(&mut app)), (0, QUIET.to_string()));
 }

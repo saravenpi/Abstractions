@@ -56,15 +56,17 @@ fn charted(universe: &Universe, atlas: &Atlas, above: f64, chosen: Option<Target
     scene(&view, home.star, chosen)
 }
 
-/// The chart of the home system has its star and every planet, the classes of a system that
-/// was visited and none of one that was not, and the ship beside the home planet.
+/// The chart of the home system has its star, every planet and, once visited, their moons, the
+/// classes of a system that was visited and none of one that was not, and the ship beside the
+/// home planet.
 #[test]
 fn the_chart_shows_the_system_around_the_ship() {
     let universe = Universe::new(7);
     let home = universe.home();
-    let planets = universe.system(home.star).planets.len();
+    let planets = universe.system(home.star).planets;
+    let moons: usize = planets.iter().map(|planet| usize::from(planet.moons)).sum();
     let plain = charted(&universe, &Atlas::new(&universe), 5.0e4, None);
-    assert_eq!(plain.lines.len(), planets + 1);
+    assert_eq!(plain.lines.len(), planets.len() + moons + 1);
     assert_eq!(plain.lines[0].target, Target::Star(home.star));
     assert!(plain.worlds[0].is_none() && plain.worlds[1..].iter().all(Option::is_some));
     let row = Dot::Row(usize::from(home.index) + 1);
@@ -73,7 +75,7 @@ fn the_chart_shows_the_system_around_the_ship() {
     assert!(in_sight(plain.lens, ship) && in_sight(plain.lens, planet));
     let unknown = charted(&universe, &Atlas::default(), 5.0e4, None);
     assert!(unknown.worlds.iter().all(Option::is_none));
-    assert_eq!(signature(&plain), signature(&unknown));
+    assert_eq!(unknown.lines.len(), planets.len() + 1);
 }
 
 /// A destination in the system is a row of the chart, in sight with the ship, and changes

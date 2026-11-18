@@ -101,5 +101,7 @@ fn moons_and_rings_follow_their_planet() {
     }
     let mut bodies = app.world_mut().query::<&Body>();
     let all: Vec<Body> = bodies.iter(app.world()).copied().collect();
-    assert_eq!(all.len(), 1 + 2 * (near.system.planets.len() + 1) + 1);
+    let ringed = near.bodies().filter(|body| body.rings.is_some()).count();
+    let bodies = near.system.planets.len() + near.moons.len();
+    assert_eq!(all.len(), 1 + 2 * bodies + ringed);
 }

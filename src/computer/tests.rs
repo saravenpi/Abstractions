@@ -136,17 +136,21 @@ fn the_system_chart_fits_the_map() {
     };
     let lines = view.system(star);
     let dots = chart(Tab::System, &lines, ship);
+    let moon = |row: usize| matches!(lines[row].target, Target::Body(body) if body.is_moon());
     let rows: Vec<f32> = dots
         .iter()
-        .filter(|(dot, _)| matches!(dot, Dot::Row(_)))
-        .map(|(_, at)| at.length())
+        .filter_map(|(dot, at)| match dot {
+            Dot::Row(row) if !moon(*row) => Some(at.length()),
+            _ => None,
+        })
         .collect();
-    assert_eq!(rows.len(), lines.len());
+    let planets = (0..lines.len()).filter(|row| !moon(*row)).count();
+    assert_eq!(rows.len(), planets);
     assert!(rows[0] == 0.0 && rows.windows(2).all(|pair| pair[0] < pair[1]));
     assert!(dots.iter().all(|(_, at)| at.length() <= 1.0));
     let count = |kind: Dot| dots.iter().filter(|(dot, _)| *dot == kind).count();
     assert_eq!(
         (count(Dot::Ship), count(Dot::Orbit)),
-        (1, 40 * (lines.len() - 1))
+        (1, 40 * (planets - 1))
     );
 }

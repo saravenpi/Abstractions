@@ -30,14 +30,14 @@ const BARE: [Vec3; 4] = [
 ];
 
 /// Returns the home planet of seed 7.
-fn home() -> PlanetSpec {
+pub(super) fn home() -> PlanetSpec {
     let universe = Universe::new(7);
     let body = universe.home();
     Nearby::read(&universe, body.star).system.planets[usize::from(body.index)].clone()
 }
 
 /// Returns a spot on flat ground at `latitude` radians and `altitude` metres.
-fn spot(latitude: f32, altitude: f32) -> Spot {
+pub(super) fn spot(latitude: f32, altitude: f32) -> Spot {
     Spot {
         dir: DVec3::new(f64::from(latitude.cos()), f64::from(latitude.sin()), 0.0),
         altitude,

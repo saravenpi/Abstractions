@@ -40,6 +40,11 @@ const LEAF_GAIN: f32 = 6.0;
 /// Steps per unit the season look is rounded to, so the texture is only repainted now and then.
 const STEPS: f32 = 64.0;
 
+/// Heights in metres above the ground up to which the season shows in full and from which it
+/// does not show at all. Every mesh in view shares one texture, so from the air and from orbit
+/// the planet keeps its mean colours instead of the season of the one place under the camera.
+const NEAR: (f32, f32) = (150.0, 600.0);
+
 /// What the season does to the ground at one place, each value from 0 to 1.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SeasonLook {
@@ -64,6 +69,16 @@ impl SeasonLook {
         Self {
             autumn: autumn(latitude, season, setting.tilt),
             snow: if air { snow(temperature) } else { 0.0 },
+        }
+    }
+
+    /// Returns this look as a camera `height` metres above the ground sees it: in full near the
+    /// ground, fading to [`SeasonLook::NONE`] over [`NEAR`].
+    pub fn seen(self, height: f32) -> Self {
+        let share = 1.0 - smoothstep(NEAR.0, NEAR.1, height);
+        Self {
+            autumn: self.autumn * share,
+            snow: self.snow * share,
         }
     }
 

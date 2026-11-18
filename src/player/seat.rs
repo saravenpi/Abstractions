@@ -8,6 +8,7 @@ use super::spawn::Home;
 use super::upright::{facing, yaw_toward};
 use super::{BODY_LENGTH, BODY_RADIUS, Player};
 use crate::gear::Gear;
+use crate::sim::PlayerId;
 use crate::space::{Anchor, up};
 use crate::view::{Cut, Heading};
 use crate::world::Planet;
@@ -17,13 +18,14 @@ const PLACE_LIFT: f32 = 0.05;
 
 /// The parts of the player body that are put somewhere.
 type Placed<'a> = (
+    &'a PlayerId,
     &'a mut Transform,
     &'a mut Motion,
     &'a mut Home,
     Option<&'a mut Gear>,
 );
 
-/// Stands the player body with its feet at render position `feet`, upright along the local
+/// Stands the body of the local player with its feet at render position `feet`, upright along the local
 /// vertical and looking along the render direction `toward`, at rest, with the flight gear
 /// folded. The spot becomes the place the body returns to if it falls out of the world, and
 /// the camera cuts to the new view instead of gliding there.
@@ -42,7 +44,10 @@ pub fn place(world: &mut World, feet: Vec3, toward: Vec3) {
     let yaw = yaw_toward(toward, vertical);
     let home = Home(anchor.to_frame(center));
     let mut bodies = world.query_filtered::<Placed, With<Player>>();
-    for (mut transform, mut motion, mut back, gear) in bodies.iter_mut(world) {
+    let mine = bodies
+        .iter_mut(world)
+        .filter(|body| *body.0 == PlayerId::LOCAL);
+    for (_, mut transform, mut motion, mut back, gear) in mine {
         *back = home;
         transform.translation = center;
         transform.rotation = facing(vertical, yaw);
@@ -56,14 +61,15 @@ pub fn place(world: &mut World, feet: Vec3, toward: Vec3) {
     }
 }
 
-/// Switches the player body off while `seated` in the ship and back on when not: a seated body
+/// Switches the body of the local player off while `seated` in the ship and back on when not: a seated body
 /// has no collider, so nothing hits it and no query finds it. Taking the seat also folds the
 /// flight gear and stops the body, whatever it was doing.
 ///
 /// The body keeps its transform. The player systems themselves stop with `Travel::InShip`.
 pub fn seat(world: &mut World, seated: bool) {
-    let mut bodies = world.query_filtered::<Entity, With<Player>>();
-    let found: Vec<Entity> = bodies.iter(world).collect();
+    let mut bodies = world.query_filtered::<(Entity, &PlayerId), With<Player>>();
+    let mine = bodies.iter(world).filter(|(_, id)| **id == PlayerId::LOCAL);
+    let found: Vec<Entity> = mine.map(|(body, _)| body).collect();
     for body in found {
         let mut entity = world.entity_mut(body);
         if !seated {

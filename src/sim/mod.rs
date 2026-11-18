@@ -4,11 +4,28 @@
 //! the rules read instead of the keyboard, so a remote player is the same message from another
 //! source. Every rule takes a player by [`PlayerId`]; only the camera, the interface and the
 //! input code may assume there is one player.
+//!
+//! The rules that must agree between players run in [`SimSet`], in `FixedUpdate`, at
+//! [`STEPS_PER_SECOND`]: whatever changes the shared world from intents, the seed and the log
+//! alone, such as the harvests, crafts and strikes of later versions. A rule there reads
+//! intents, the seed and the log, takes the step length, never the frame time, and never reads
+//! the keyboard, the camera or the clock of the machine. Nothing runs there yet: the bodies move
+//! in `Update`, where avian's spatial queries are valid, and physics keeps avian's own schedule.
 
+mod intent;
+mod log;
+mod step;
+
+pub use intent::{Intent, IntentOf};
+pub use step::SimSet;
+
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// A player of the world. The local player of a single-player game is [`PlayerId::LOCAL`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+///
+/// Every player body carries its id, and the rules find a player's body by it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize, Component)]
 pub struct PlayerId(pub u32);
 
 impl PlayerId {
@@ -41,7 +58,7 @@ pub struct Entry {
 }
 
 /// The append-only log of changes, saved with the world.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, bevy::prelude::Resource)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Resource)]
 pub struct Changes {
     /// Every change, oldest first.
     pub entries: Vec<Entry>,
@@ -56,4 +73,11 @@ impl Changes {
             change,
         });
     }
+}
+
+/// Registers the intents, the fixed simulation step and the log of first visits.
+pub(super) fn plugin(app: &mut App) {
+    app.init_resource::<Changes>()
+        .add_message::<IntentOf>()
+        .add_plugins((step::plugin, log::plugin));
 }

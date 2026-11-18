@@ -27,8 +27,8 @@ pub fn awake(
     !fresh || works.is_none() || (base.is_some() && sleepers.is_empty())
 }
 
-/// Stands the player of a new game at the wake point of the home base, facing the hatch of the
-/// container, once the base is found while the world loads.
+/// Wakes the bodies of a new game and stands the local player at the wake point of the home
+/// base, facing the hatch of the container, once the base is found while the world loads.
 ///
 /// The base is found in the background and the loading screen waits for it. Moving the body
 /// takes the readiness of the world back: the ground under the base has to load before play.
@@ -38,10 +38,12 @@ fn wake_at_base(
     anchor: Res<Anchor>,
     sleepers: Query<Entity, (With<Player>, Without<Woken>)>,
 ) {
-    let Ok(body) = sleepers.single() else {
+    if sleepers.is_empty() {
         return;
-    };
-    commands.entity(body).insert(Woken);
+    }
+    for body in &sleepers {
+        commands.entity(body).insert(Woken);
+    }
     if anchor.frame != Frame::Surface(base.body) {
         return;
     }

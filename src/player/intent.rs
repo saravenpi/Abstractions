@@ -1,9 +1,8 @@
-//! Pure movement rules: input to direction, smoothing and vertical speed on land.
+//! Pure movement rules: what a body is asked, its direction, smoothing and vertical speed on land.
 
 use bevy::prelude::*;
 
 use super::controller::Motion;
-use crate::settings::Keymap;
 
 /// Upward speed of a jump.
 const JUMP_SPEED: f32 = 7.0;
@@ -37,19 +36,6 @@ pub(super) fn axis(keys: &ButtonInput<KeyCode>, positive: KeyCode, negative: Key
 /// Moves a horizontal velocity toward a target with exponential smoothing.
 pub(super) fn approach(current: Vec3, target: Vec3, rate: f32, dt: f32) -> Vec3 {
     current.lerp(target, 1.0 - (-rate * dt).exp())
-}
-
-/// Reads the keyboard into an intent for a given yaw.
-pub(super) fn read_intent(keys: &ButtonInput<KeyCode>, map: &Keymap, yaw: f32) -> Intent {
-    let forward = axis(keys, map.forward, map.back);
-    let right = axis(keys, map.right, map.left);
-    Intent {
-        wish: wish_direction(forward, right, yaw),
-        forward,
-        right,
-        sprint: keys.pressed(map.sprint),
-        jump: keys.pressed(map.jump),
-    }
 }
 
 /// Returns the vertical speed on land under `gravity`, in meters per second squared, and updates

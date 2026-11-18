@@ -4,8 +4,10 @@ mod basin;
 mod deck;
 mod eyes;
 mod flight;
+mod intents;
 mod lead;
 mod spawn;
+mod stage;
 mod steer;
 
 use std::f64::consts::TAU;

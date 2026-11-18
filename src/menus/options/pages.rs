@@ -47,7 +47,6 @@ pub fn graphics(active: Tab) -> impl Bundle {
             toggle("Bloom", Field::Bloom),
             toggle("Clouds", Field::Clouds),
             toggle("Show FPS", Field::ShowFps),
-            toggle("Ray tracing (experimental)", Field::RayTracing),
             stepper("Color depth", Field::ColorLevels),
             stepper("Field of view", Field::Fov),
         ],

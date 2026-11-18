@@ -19,19 +19,23 @@ const MAX_BUILDING: usize = 16;
 /// Finished coarse nodes turned into entities per frame, the time budget allowing.
 const NODE_BUDGET: usize = 8;
 
-/// Marks the entity of a coarse node or of the far planet, whose ray tracing twin follows its
-/// visibility.
-#[derive(Component, Debug, Clone, Copy)]
-pub struct Coarse;
-
 /// A spawned coarse mesh.
 pub struct Node {
     /// The mesh entity.
     pub entity: Entity,
-    /// Its mesh, kept to add and remove the ray tracing twin.
-    pub mesh: Handle<Mesh>,
     /// Whether it is drawn now.
     pub visible: bool,
+}
+
+impl Node {
+    /// Applies the visibility of the node to its entity.
+    pub fn show(&self, commands: &mut Commands) {
+        let visibility = match self.visible {
+            true => Visibility::Inherited,
+            false => Visibility::Hidden,
+        };
+        commands.entity(self.entity).try_insert(visibility);
+    }
 }
 
 /// Coarse nodes that exist and coarse nodes still being generated.
@@ -76,11 +80,10 @@ impl Nodes {
     /// Starts tasks for the nodes of `wanted`, in order, while there is room.
     pub(super) fn start(&mut self, wanted: Vec<ChunkId>, spawner: &Spawner) {
         let pool = AsyncComputeTaskPool::get();
-        let on = spawner.ray_tracing.0;
         let room = MAX_BUILDING.saturating_sub(self.building.len());
         for id in wanted.into_iter().take(room) {
             let terrain = spawner.view(id.face);
-            let task = pool.spawn(async move { coarse(&terrain, id, on) });
+            let task = pool.spawn(async move { coarse(&terrain, id) });
             self.building.insert(id, task);
         }
     }

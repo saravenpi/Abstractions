@@ -22,7 +22,6 @@ use bevy_persistent::StorageFormat;
 use crate::audio::AudioCue;
 use crate::companion::CompanionChirp;
 use crate::menus::Menu;
-use crate::render::RayTracing;
 use crate::saves::SaveDir;
 use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
@@ -109,7 +108,6 @@ fn engine(app: &mut App, dir: &std::path::Path) {
     .init_resource::<GlobalAmbientLight>()
     .init_resource::<ClearColor>()
     .init_resource::<Wind>()
-    .init_resource::<RayTracing>()
     .init_resource::<Log>()
     .init_state::<Screen>()
     .init_state::<Menu>();

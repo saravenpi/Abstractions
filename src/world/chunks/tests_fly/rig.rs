@@ -9,7 +9,6 @@ use bevy::prelude::*;
 use bevy::time::TimeUpdateStrategy;
 
 use super::STEP;
-use crate::render::RayTracing;
 use crate::world::Planet;
 use crate::world::chunks::{self, Chunks};
 use crate::world::props::PropAssets;
@@ -113,7 +112,6 @@ pub fn rig() -> App {
         .insert_resource(materials)
         .insert_resource(images)
         .init_resource::<Assets<Mesh>>()
-        .init_resource::<RayTracing>()
         .init_resource::<Chunks>()
         .init_resource::<Laps>()
         .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs_f64(

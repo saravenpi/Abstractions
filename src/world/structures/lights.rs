@@ -1,17 +1,14 @@
-//! Light entities of structures: point lights spawned per chunk, dressed with layered flames, ray traced on demand.
+//! Light entities of structures: point lights spawned per chunk, dressed with layered flames.
 
-use bevy::ecs::system::SystemParam;
 use bevy::light::{NotShadowCaster, PointLight};
 use bevy::material::OpaqueRendererMethod;
 use bevy::prelude::*;
 use bevy::render::render_resource::Face;
-use bevy::solari::prelude::RaytracingMesh3d;
 
 use super::Embedded;
-use super::flame::{SHELL_COLORS, emitter, pose, radiance, shells, teardrop};
+use super::flame::{SHELL_COLORS, pose, shells, teardrop};
 use super::flicker::power;
 use super::glow::{LightKind, LightPoint};
-use crate::render::RayTracing;
 
 /// Radius of every structure light in meters, which softens its highlights close to a wall.
 const LIGHT_RADIUS: f32 = 0.15;
@@ -39,27 +36,12 @@ pub struct FireAssets {
     pub flame: Handle<Mesh>,
     /// Unlit HDR flame materials from the outer shell to the core.
     pub shells: [Handle<StandardMaterial>; 3],
-    /// Emissive materials of the ray traced emitters, indexed by `LightKind as usize`.
-    pub emitters: [Handle<StandardMaterial>; 6],
     /// Smoke puff and ember mesh.
     pub puff: Handle<Mesh>,
     /// Lit smoke materials from young to old.
     pub smoke: [Handle<StandardMaterial>; 3],
     /// Unlit HDR ember material.
     pub ember: Handle<StandardMaterial>,
-}
-
-/// The ray tracing side of the lights: the switch, the emitter mesh while it is on and every light.
-#[derive(SystemParam)]
-pub struct Tracer<'w, 's> {
-    /// Whether ray traced lighting is active.
-    ray_tracing: Res<'w, RayTracing>,
-    /// Mesh assets, to create the emitter mesh.
-    meshes: ResMut<'w, Assets<Mesh>>,
-    /// The emitter mesh. It exists only while ray tracing is active, so no acceleration structure is built without it.
-    emitter: Local<'s, Option<Handle<Mesh>>>,
-    /// Every light and whether it is in the ray traced scene.
-    lights: Query<'w, 's, (Entity, &'static Glow, Has<RaytracingMesh3d>)>,
 }
 
 /// Returns an unlit forward material of a linear HDR color that shows the faces not culled by `cull`.
@@ -95,17 +77,9 @@ pub fn setup(
 ) {
     let culls = [Face::Front, Face::Front, Face::Back];
     let shells = [0, 1, 2].map(|i| materials.add(bright(SHELL_COLORS[i], culls[i])));
-    let emitters = LightKind::ALL.map(|kind| {
-        materials.add(StandardMaterial {
-            base_color: Color::BLACK,
-            emissive: radiance(kind),
-            ..default()
-        })
-    });
     commands.insert_resource(FireAssets {
         flame: meshes.add(teardrop()),
         shells,
-        emitters,
         puff: meshes.add(Sphere::new(1.0).mesh().uv(6, 4)),
         smoke: SMOKE.map(|shade| materials.add(smoke(shade))),
         ember: materials.add(bright([6.0, 1.8, 0.2], Face::Back)),
@@ -143,39 +117,11 @@ pub fn spawn_lights(commands: &mut Commands, chunk: Entity, points: &[LightPoint
     });
 }
 
-/// Puts the lit lights in the ray traced scene as small emissive meshes, and takes them out when they go dark.
-///
-/// Solari has no point lights and ignores visibility, so a light exists there only through this mesh.
-fn trace(commands: &mut Commands, assets: &FireAssets, tracer: &mut Tracer) {
-    let on = tracer.ray_tracing.0;
-    if !on {
-        *tracer.emitter = None;
-    }
-    for (entity, glow, traced) in &tracer.lights {
-        let wanted = on && glow.level > 0.0;
-        if wanted && !traced {
-            let mesh = tracer
-                .emitter
-                .get_or_insert_with(|| tracer.meshes.add(emitter()))
-                .clone();
-            let material = assets.emitters[glow.kind as usize].clone();
-            commands
-                .entity(entity)
-                .try_insert((RaytracingMesh3d(mesh), MeshMaterial3d(material)));
-        } else if traced && !wanted {
-            commands
-                .entity(entity)
-                .try_remove::<(RaytracingMesh3d, MeshMaterial3d<StandardMaterial>)>();
-        }
-    }
-}
-
-/// Gives every new light its flame shells, which cast no shadow, and keeps the ray traced emitters in step.
+/// Gives every new light its flame shells, which cast no shadow.
 pub fn dress(
     mut commands: Commands,
     assets: Res<FireAssets>,
     added: Query<(Entity, &Glow), Added<Glow>>,
-    mut tracer: Tracer,
 ) {
     for (entity, glow) in &added {
         commands.entity(entity).with_children(|c| {
@@ -190,5 +136,4 @@ pub fn dress(
             }
         });
     }
-    trace(&mut commands, &assets, &mut tracer);
 }

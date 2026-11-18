@@ -99,7 +99,6 @@ pub(super) fn plugin(app: &mut App) {
                 limbs::limbs,
                 screen::repaint,
                 shine::shine,
-                shine::trace,
             )
                 .chain()
                 .run_if(playing)

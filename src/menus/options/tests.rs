@@ -51,16 +51,6 @@ fn toggles_show_fps() {
     assert_eq!(display(&s, Field::ShowFps), "On");
 }
 
-/// The ray tracing toggle flips, displays as On or Off and starts off.
-#[test]
-fn toggles_ray_tracing() {
-    let mut s = Settings::default();
-    assert_eq!(display(&s, Field::RayTracing), "Off");
-    step(&mut s, Field::RayTracing, 1);
-    assert!(s.graphics.ray_tracing);
-    assert_eq!(display(&s, Field::RayTracing), "On");
-}
-
 /// Floats move by exactly one tenth and display with one decimal.
 #[test]
 fn tenths_do_not_drift() {
@@ -124,7 +114,7 @@ fn render_distance_walks_the_named_steps() {
     for (k, (got, name)) in seen.iter().enumerate() {
         assert_eq!((*got, name.as_str()), (rings[k], names[k]));
     }
-    assert_eq!(graphics_line(8, "Off"), "Off");
-    assert_eq!(graphics_line(16, "Off"), "Ultra needs a strong GPU. Off");
-    assert_eq!(graphics_line(24, "Off"), "Extreme needs a strong GPU. Off");
+    assert_eq!(graphics_line(8), "");
+    assert_eq!(graphics_line(16), "Ultra needs a strong GPU.");
+    assert_eq!(graphics_line(24), "Extreme needs a strong GPU.");
 }

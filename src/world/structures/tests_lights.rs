@@ -7,7 +7,7 @@ use bevy::mesh::Indices;
 use super::audit::{positions, signed_volume};
 use super::brush::Build;
 use super::camp::{Layout, draw_layout};
-use super::flame::{emitter, pose, radiance, shells, teardrop};
+use super::flame::{pose, shells, teardrop};
 use super::flicker::power;
 use super::glow::{LightKind, WALL_REACH};
 use super::site::{CELL, Kind, structure_in_cell};
@@ -107,25 +107,21 @@ fn lights_make_visible_pools() {
     );
 }
 
-/// The flame shell and the ray traced emitter are closed, wind outward and only the emitter is ray traced.
+/// The flame shell is closed and winds outward.
 #[test]
-fn flame_meshes_are_closed_and_fit_ray_tracing() {
-    for (mesh, traced, tris) in [(teardrop(), false, 36), (emitter(), true, 8)] {
-        let verts = positions(&mesh);
-        assert_eq!(verts.len(), tris * 3);
-        assert!(signed_volume(&verts) > 0.0, "mesh is inside out");
-        assert_eq!(mesh.enable_raytracing, traced);
-        assert!(matches!(mesh.indices(), Some(Indices::U32(_))));
-        assert_eq!(mesh.attributes().count(), 4);
-    }
+fn flame_mesh_is_closed() {
+    let mesh = teardrop();
+    let verts = positions(&mesh);
+    assert_eq!(verts.len(), 36 * 3);
+    assert!(signed_volume(&verts) > 0.0, "mesh is inside out");
+    assert!(matches!(mesh.indices(), Some(Indices::U32(_))));
+    assert_eq!(mesh.attributes().count(), 4);
     let (low, high) = positions(&teardrop())
         .iter()
         .fold((f32::MAX, f32::MIN), |(lo, hi), p| {
             (lo.min(p.y), hi.max(p.y))
         });
     assert_eq!((low, high), (0.0, 1.0));
-    let torch = radiance(LightKind::Torch);
-    assert!(torch.red > 50_000.0 && torch.red > torch.green && torch.green > torch.blue);
 }
 
 /// Every kind has nested shells, big fires have three tongues, and a shell moves without its base leaving its spot.

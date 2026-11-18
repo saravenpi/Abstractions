@@ -7,7 +7,6 @@ use bevy::prelude::*;
 
 use super::reach::Reach;
 use super::sight::Eye;
-use crate::render::RayTracing;
 use crate::world::Terrain;
 use crate::world::focus::Focus;
 
@@ -20,7 +19,6 @@ pub struct Scene<'w, 's> {
     meshes: Query<'w, 's, &'static Mesh3d>,
     terrain: Option<Res<'w, Terrain>>,
     reach: Option<Res<'w, Reach>>,
-    ray_tracing: Option<Res<'w, RayTracing>>,
 }
 
 impl Scene<'_, '_> {
@@ -42,13 +40,11 @@ impl Scene<'_, '_> {
     }
 
     /// Returns what the focus can see through the fog, or nothing without a focus on a planet.
-    /// With ray tracing on it sees nothing, so nothing fades: the traced image ignores dither.
     pub fn eye(&self) -> Option<Eye> {
         let (at, terrain) = (self.at()?, self.terrain.as_ref()?);
         let reach = self.reach.as_deref().copied().unwrap_or(Reach::of(None));
-        let traced = self.ray_tracing.as_ref().is_some_and(|on| on.0);
         let ground = f64::from(reach.sight(terrain.globe()));
-        Some(Eye::of(terrain.globe(), at, ground, !traced))
+        Some(Eye::of(terrain.globe(), at, ground))
     }
 
     /// Returns the mesh `entity` draws.

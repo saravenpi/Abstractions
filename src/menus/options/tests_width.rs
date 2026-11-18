@@ -10,7 +10,7 @@ use crate::settings::Settings;
 use crate::ui::theme;
 
 /// Every setting that is not a key.
-const FIELDS: [Field; 22] = [
+const FIELDS: [Field; 21] = [
     Field::PixelSize,
     Field::RenderDistance,
     Field::Shadows,
@@ -20,7 +20,6 @@ const FIELDS: [Field; 22] = [
     Field::Bloom,
     Field::Clouds,
     Field::ShowFps,
-    Field::RayTracing,
     Field::ColorLevels,
     Field::Fov,
     Field::Sensitivity,
@@ -90,7 +89,7 @@ fn the_value_column_holds_its_budget_at_the_smallest_window() {
     let glyph = theme::GLYPH_ASPECT * theme::FONT_BODY;
     assert!(theme::VALUE_CHARS as f32 * glyph <= theme::VALUE_WIDTH);
     let stepper = theme::VALUE_WIDTH + 2.0 * (theme::GAP_L + theme::GAP_XS);
-    let name = "Ray tracing (experimental)".len() as f32 * glyph;
+    let name = "Camera auto-follow".len() as f32 * glyph;
     let page = theme::MENU_WIDTH * 2.0;
     assert!(name + theme::GAP_M + stepper + 2.0 * theme::GAP_S <= page);
     let sidebar = theme::MENU_WIDTH * 0.6 + theme::GAP_XL;

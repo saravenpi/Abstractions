@@ -23,7 +23,8 @@ pub enum LightKind {
 }
 
 impl LightKind {
-    /// Every kind, in declaration order, so `kind as usize` indexes per-kind tables.
+    /// Every kind, in declaration order, for the tests that go over all of them.
+    #[cfg(test)]
     pub const ALL: [LightKind; 6] = [
         LightKind::Lamp,
         LightKind::Torch,

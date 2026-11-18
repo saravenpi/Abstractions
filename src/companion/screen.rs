@@ -22,14 +22,10 @@ pub struct Display {
     pub face: Handle<StandardMaterial>,
     /// Unlit material of the antenna tip and the thruster.
     pub glow: Handle<StandardMaterial>,
-    /// Emissive material of the emitter that stands for the light in the ray traced scene.
-    pub emitter: Handle<StandardMaterial>,
     /// The frame painted last.
     pub shown: Option<Frame>,
     /// Linear face colour times its brightness, as last applied to the materials and the light.
     pub tint: Vec3,
-    /// Light power in lumens as last applied to the ray traced emitter.
-    pub power: f32,
     /// How hard the thruster works, from 0 at rest to 1 in flight, as last applied to the glow.
     pub thrust: f32,
 }

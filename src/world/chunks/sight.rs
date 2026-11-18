@@ -58,15 +58,15 @@ pub struct Eye {
 impl Eye {
     /// Returns the eye of a focus at planet position `at` over `globe`, where the fog on foot
     /// lets it see `ground` metres. Thin air lets it see farther and thick air less, as the
-    /// drawn fog does. With `fades` off it sees nothing: everything appears at once.
-    pub fn of(globe: &Globe, at: DVec3, ground: f64, fades: bool) -> Self {
+    /// drawn fog does.
+    pub fn of(globe: &Globe, at: DVec3, ground: f64) -> Self {
         let air = render::Air::of(globe.record());
         let thick = f64::from((air.share() * air.haze()).max(render::THIN_AIR));
         let veil = veil(ground, &Height::of(globe, at)) / thick;
         Self {
             at,
             radius: globe.radius(),
-            veil: [f64::NEG_INFINITY, veil][usize::from(fades)],
+            veil,
         }
     }
 
@@ -111,8 +111,7 @@ mod tests {
         assert!(heights.collect::<Vec<_>>().windows(2).all(|w| w[0] <= w[1]));
     }
 
-    /// The eye sees a node whose near edge is within the fog, not one beyond it, and nothing
-    /// at all with the fades off.
+    /// The eye sees a node whose near edge is within the fog, not one beyond it.
     #[test]
     fn eye_sees_what_is_within_the_fog() {
         let globe = Globe::new(7, 6000.0, 9.81);
@@ -122,9 +121,8 @@ mod tests {
             x: leaf.x + steps,
             ..leaf
         };
-        let eye = Eye::of(&globe, at, 230.0, true);
+        let eye = Eye::of(&globe, at, 230.0);
         assert!(eye.sees(leaf) && eye.sees(along(2)));
         assert!(!eye.sees(along(6)));
-        assert!(!Eye::of(&globe, at, 230.0, false).sees(leaf));
     }
 }

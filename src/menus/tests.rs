@@ -25,8 +25,7 @@ use bevy::ui_widgets::Activate;
 use bevy_persistent::StorageFormat;
 
 use crate::audio::AudioCue;
-use crate::render::ray_tracing::{RayTracingBoot, Start, Support};
-use crate::render::{LowRes, RayTracing};
+use crate::render::LowRes;
 use crate::saves::{SaveDir, SavedFlash};
 use crate::settings::{Persistent, Settings};
 use crate::ship::ShipTelemetry;
@@ -50,7 +49,7 @@ fn stored(dir: &std::path::Path) -> Persistent<Settings> {
 }
 
 /// Inserts what the UI reads from the other modules: settings, the save directory, the render
-/// target, the ray tracing status, the ship instruments, the physics clock and the sound cues,
+/// target, the ship instruments, the physics clock and the sound cues,
 /// which are kept for the tests to read.
 fn stubs(app: &mut App, dir: &std::path::Path) {
     let frame = Duration::from_millis(16);
@@ -58,11 +57,6 @@ fn stubs(app: &mut App, dir: &std::path::Path) {
         .insert_resource(stored(dir))
         .insert_resource(SaveDir(dir.join("worlds")))
         .insert_resource(LowRes(Handle::default()))
-        .insert_resource(RayTracing(false))
-        .insert_resource(RayTracingBoot {
-            guard: Start::Armed,
-            support: Support::Unchecked,
-        })
         .init_resource::<SavedFlash>()
         .init_resource::<ShipTelemetry>()
         .init_resource::<Time<Physics>>()

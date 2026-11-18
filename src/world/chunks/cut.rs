@@ -6,10 +6,8 @@ use bevy::prelude::*;
 
 use super::Chunks;
 use super::dither::Way;
-use super::raytrace;
 use super::scene::Scene;
 use super::sight::Eye;
-use crate::render::RayTracing;
 use crate::world::globe::quadtree::{Tree, children, parent};
 use crate::world::globe::{ChunkId, Face};
 
@@ -45,7 +43,6 @@ pub fn visible(tree: &Tree, has: &dyn Fn(ChunkId) -> bool) -> HashSet<ChunkId> {
 struct Swap<'a> {
     eye: Option<Eye>,
     now: f64,
-    ray_tracing: bool,
     cut: &'a HashSet<ChunkId>,
 }
 
@@ -75,7 +72,7 @@ impl Swap<'_> {
                     .begin(commands, node.entity, vec![node.entity], at);
             } else {
                 chunks.fades.cancel(commands, node.entity);
-                raytrace::show(commands, node, self.ray_tracing);
+                node.show(commands);
             }
         }
     }
@@ -100,7 +97,7 @@ impl Swap<'_> {
                 continue;
             };
             node.visible = true;
-            raytrace::show(commands, node, self.ray_tracing);
+            node.show(commands);
             if split {
                 let at = (Way::In, self.now);
                 chunks
@@ -136,12 +133,7 @@ impl Swap<'_> {
 /// mesh of its node, and stays hidden until its node is on the cut. What changes where the
 /// player can see it fades over a moment; the fades run every frame, and the cut is only looked
 /// at again when a node or a chunk appears or goes.
-pub fn show(
-    mut commands: Commands,
-    mut chunks: ResMut<Chunks>,
-    ray_tracing: Res<RayTracing>,
-    scene: Scene,
-) {
+pub fn show(mut commands: Commands, mut chunks: ResMut<Chunks>, scene: Scene) {
     let chunks = &mut *chunks;
     chunks.fades.run(&mut commands, scene.now());
     if chunks.drawn == Some(chunks.stamp) {
@@ -152,7 +144,6 @@ pub fn show(
     let swap = Swap {
         eye: scene.eye(),
         now: scene.now(),
-        ray_tracing: ray_tracing.0,
         cut: &cut,
     };
     swap.hide_nodes(&mut commands, chunks);

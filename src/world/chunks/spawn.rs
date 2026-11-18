@@ -7,12 +7,11 @@ use bevy::prelude::*;
 use super::budget::{Budget, COVERED, Shares};
 use super::build::{ChunkData, NodeData};
 use super::detail::Detail;
-use super::nodes::{Coarse, Node};
+use super::nodes::Node;
 use super::place::{Sited, pose};
 use super::plan::Loaded;
 use super::reach::Reach;
 use super::turf::Turf;
-use crate::render::RayTracing;
 use crate::screens::Screen;
 use crate::space::Placed;
 use crate::world::focus::Frames;
@@ -22,12 +21,11 @@ use crate::world::props::{Cover, PropAssets, spawn_props};
 use crate::world::structures::spawn_structures;
 use crate::world::{Terrain, WorldReady};
 
-/// Meshes, the shared material, terrain and ray tracing state, for spawning and refining chunks.
+/// Meshes, the shared material and terrain, for spawning and refining chunks.
 #[derive(SystemParam)]
 pub struct Spawner<'w> {
     pub(super) assets: Res<'w, PropAssets>,
     pub(super) meshes: ResMut<'w, Assets<Mesh>>,
-    pub(super) ray_tracing: Res<'w, RayTracing>,
     pub(super) terrain: Res<'w, Terrain>,
     pub(super) ready: Res<'w, WorldReady>,
     reach: Option<Res<'w, Reach>>,
@@ -88,11 +86,10 @@ impl Spawner<'_> {
     pub fn coarse(&mut self, commands: &mut Commands, data: NodeData) -> Node {
         let mesh = self.meshes.add(data.mesh);
         let material = MeshMaterial3d(self.assets.material.clone());
-        let bundle = (Mesh3d(mesh.clone()), material, self.sited(data.frame));
-        let hidden = (Coarse, Visibility::Hidden, DespawnOnEnter(Screen::Title));
+        let bundle = (Mesh3d(mesh), material, self.sited(data.frame));
+        let hidden = (Visibility::Hidden, DespawnOnEnter(Screen::Title));
         Node {
             entity: commands.spawn((bundle, hidden)).id(),
-            mesh,
             visible: false,
         }
     }

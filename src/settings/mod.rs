@@ -8,6 +8,8 @@ mod model;
 mod prefs;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_removed;
 
 pub use bevy_persistent::Persistent;
 pub use model::{Audio, Controls, Graphics, Keymap, Settings, ShipKeys, WorldPrefs, render_step};

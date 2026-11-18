@@ -7,7 +7,6 @@ use bevy::prelude::*;
 use super::SunDir;
 use super::moonlight::Moonlight;
 use super::palette::{Palette, srgb};
-use super::ray_tracing::RayTracing;
 use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
 
@@ -94,12 +93,11 @@ fn spawn_lights(mut commands: Commands) {
 fn update_lights(
     sky: (Res<Palette>, Res<SunDir>, Res<Moonlight>),
     settings: Res<Persistent<Settings>>,
-    ray_tracing: Res<RayTracing>,
     mut suns: Query<LightParts, SunOnly>,
     mut moons: Query<LightParts, MoonOnly>,
 ) {
     let (palette, sun, moon) = sky;
-    let shadows = settings.graphics.shadows && !ray_tracing.0;
+    let shadows = settings.graphics.shadows;
     for (mut transform, mut light) in &mut suns {
         let aim = Aim {
             dir: sun.dir,

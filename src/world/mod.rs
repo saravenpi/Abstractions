@@ -177,14 +177,7 @@ pub(super) fn plugin(app: &mut App) {
             OnEnter(Screen::Loading),
             (begin_world, sea::spawn_sea).chain(),
         )
-        .add_systems(OnEnter(Screen::Title), end_world)
-        .add_systems(
-            Update,
-            (
-                chunks::add_instances.run_if(crate::render::ray_tracing::active),
-                chunks::retarget.run_if(resource_changed::<crate::render::RayTracing>),
-            ),
-        );
+        .add_systems(OnEnter(Screen::Title), end_world);
     stream_systems(app);
 }
 
@@ -198,7 +191,6 @@ fn stream_systems(app: &mut App) {
     let ready = chunks::mark_ready.run_if(not(unplayed).or_else(based));
     let planet = (
         (meter::start, chunks::set_budget, chunks::follow_setting),
-        chunks::rebuild.run_if(resource_changed::<crate::render::RayTracing>),
         follow_body,
         reserve::keep_base,
         chunks::change_planet.run_if(resource_exists_and_changed::<Planet>),

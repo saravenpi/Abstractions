@@ -8,7 +8,7 @@ use super::limbs::{hand_pose, trail};
 use super::motion::lean;
 use super::pose::Pose;
 use super::sense::CompanionSense;
-use super::shine::{self, lumens, radiance};
+use super::shine::{self, lumens};
 use super::tune::{HAND_LAG, LIGHT_DAY_SHARE, LIGHT_POWER, TILT};
 use crate::computer::Atlas;
 use crate::universe::BodyId;
@@ -36,7 +36,7 @@ fn lean_and_hands_stay_within_limits() {
     assert!((left.translation.x + rest.translation.x).abs() < 1e-5);
 }
 
-/// The light is weak, weaker by day, and its ray traced twin carries the same colour.
+/// The light is weak and weaker by day.
 #[test]
 fn light_is_weak_and_follows_the_night() {
     assert!((lumens(1.0) - LIGHT_POWER).abs() < 1e-3);
@@ -46,8 +46,6 @@ fn light_is_weak_and_follows_the_night() {
         lumens(1.0) < 26_000.0 / 4.0,
         "weaker than a quarter of a torch"
     );
-    let glow = radiance(Vec3::new(1.0, 0.5, 0.25), 1000.0);
-    assert!(glow.red > 0.0 && (glow.green / glow.red - 0.5).abs() < 1e-4);
 }
 
 /// Night alone never dims the companion: awake, the sleepy face of the night glows like a calm

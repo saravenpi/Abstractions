@@ -14,7 +14,7 @@ use super::limbs::{HAND, Hand, THRUSTER, Thruster};
 use super::motion::{Float, Head, Rig};
 use super::orb::{orb, screen};
 use super::screen::{Display, picture};
-use super::shine::{Emitter, Lamp};
+use super::shine::Lamp;
 use super::tune::{HALF, LIGHT_RANGE, SIDE};
 use crate::render::{GameCamera, Warm};
 use crate::screens::Screen;
@@ -70,24 +70,19 @@ fn display(stock: &mut Stock) -> Display {
     Display {
         face: stock.materials.add(unlit(Some(image.clone()))),
         glow: stock.materials.add(unlit(None)),
-        emitter: stock
-            .materials
-            .add(StandardMaterial::from_color(Color::BLACK)),
         image,
         shown: None,
         tint: Vec3::ZERO,
-        power: 0.0,
         thrust: 0.0,
     }
 }
 
-/// Spawns the glowing parts of the head as its children: antenna tip, ray traced emitter and light.
+/// Spawns the glowing parts of the head as its children: antenna tip and light.
 fn glows(head: &mut ChildSpawnerCommands, ball: Mesh3d, display: &Display) {
     let glow = MeshMaterial3d(display.glow.clone());
     let front = Transform::from_translation(Vec3::NEG_Z * (SCREEN_FRONT + LAMP_REACH));
     let tip = Transform::from_translation(ANTENNA_TIP);
     head.spawn((ball, glow, tip, NotShadowCaster));
-    head.spawn((Emitter, front, Visibility::default()));
     let light = PointLight {
         intensity: 0.0,
         range: LIGHT_RANGE,
@@ -102,7 +97,7 @@ fn glows(head: &mut ChildSpawnerCommands, ball: Mesh3d, display: &Display) {
 /// glowing parts, and on the body the hands and the thruster.
 fn dress(rig: &mut ChildSpawnerCommands, stock: &mut Stock, display: &Display) {
     let shell = MeshMaterial3d(stock.materials.add(matte()));
-    let ball = Mesh3d(stock.meshes.add(orb(ORB_RADIUS, false)));
+    let ball = Mesh3d(stock.meshes.add(orb(ORB_RADIUS)));
     let parts = (
         Mesh3d(stock.meshes.add(body(ANTENNA_TIP))),
         Mesh3d(stock.meshes.add(screen())),
@@ -138,7 +133,7 @@ pub fn warm(mut warm: ResMut<Warm>, mut stock: Stock) {
     let shell = stock.materials.add(matte());
     warm.add(stock.meshes.add(body(ANTENNA_TIP)), shell);
     warm.add(stock.meshes.add(screen()), display.face);
-    warm.add(stock.meshes.add(orb(ORB_RADIUS, false)), display.glow);
+    warm.add(stock.meshes.add(orb(ORB_RADIUS)), display.glow);
 }
 
 /// Spawns the companion beside the player's eyes when there is none. It leaves with the title screen.

@@ -13,7 +13,7 @@ use crate::screens::Screen;
 fn sky_systems_can_be_built() {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default()));
-    app.add_plugins((super::ray_tracing::plugin, super::sky));
+    app.add_plugins(super::sky);
     let labels = [
         Update.intern(),
         PostUpdate.intern(),

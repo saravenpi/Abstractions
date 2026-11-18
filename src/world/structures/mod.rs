@@ -116,13 +116,6 @@ pub struct StructureData {
     rigid: bool,
 }
 
-impl StructureData {
-    /// Sets whether the merged mesh gets an acceleration structure.
-    pub fn set_raytracing(&mut self, on: bool) {
-        self.mesh.enable_raytracing = on;
-    }
-}
-
 /// Marks the structure mesh and the lights of a chunk built by [`build_in`]: their geometry already is in
 /// the frame of the chunk, so nothing may warp it again.
 #[derive(Component, Debug, Clone, Copy)]

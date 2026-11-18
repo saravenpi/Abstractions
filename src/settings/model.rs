@@ -53,8 +53,6 @@ pub struct Graphics {
     pub fov: u32,
     /// Whether the frame rate is shown in a corner.
     pub show_fps: bool,
-    /// Whether Solari ray traced lighting is requested; it takes effect at once when the GPU supports it.
-    pub ray_tracing: bool,
 }
 
 /// Returns the index in [`RENDER_STEPS`] of the step nearest to a detail radius of `rings` chunks; a
@@ -87,7 +85,6 @@ impl Default for Graphics {
             color_levels: 24,
             fov: 75,
             show_fps: false,
-            ray_tracing: false,
         }
     }
 }

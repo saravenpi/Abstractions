@@ -14,12 +14,11 @@ use super::nearby::Nearby;
 use super::vantage::Vantage;
 use crate::universe::{BodyId, PlanetSpec, Rings};
 
-/// Angular radius in radians of the moon disc the sky draws on a planet without moons: a real
-/// body seen this large lights the night as that moon does.
+/// Angular radius in radians of the moon the sky once painted: a real body seen this large and
+/// full gives [`super::Palette::MOON_LUX`].
 const MOON_ANGLE: f64 = 0.045;
 
-/// Most a body lights the night against the moon of a planet without moons, however much of
-/// the sky it fills.
+/// Most a body lights the night against that full moon, however much of the sky it fills.
 const GIANT_GAIN: f64 = 3.0;
 
 /// Ringlets across the width of the rings.
@@ -38,8 +37,8 @@ pub struct Glow {
     pub dir: Vec3,
     /// Sine of its height above the horizon.
     pub height: f32,
-    /// Its light against the moon of a planet without moons, high in the sky and full: its
-    /// phase, its size, the shadows on it and how high it stands, together.
+    /// Its light against a full moon of [`MOON_ANGLE`] high in the sky: its phase, its size, the
+    /// shadows on it and how high it stands, together.
     pub share: f32,
 }
 
@@ -121,8 +120,7 @@ fn glow(vantage: &Vantage, near: &Nearby, body: &PlanetSpec, time: f64) -> Glow 
 }
 
 /// Returns the body that lights the night of the camera at `vantage` most: the brightest of
-/// the planet and moons around it but the one it stands on. A planet without moons has none,
-/// and keeps the moon the sky has always drawn opposite the star.
+/// the planet and moons around it but the one it stands on. A planet without moons has none.
 pub fn moonlight(vantage: &Vantage, near: &Nearby, time: f64) -> Option<Glow> {
     let index = u8::try_from(vantage.body).ok()?;
     near.family(index)

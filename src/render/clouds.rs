@@ -23,10 +23,7 @@ use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
 
 /// Width in metres of one cell of the cloud noise.
-const CELL: f32 = 450.0;
-
-/// Distance in planet radii past which the shell is no longer drawn.
-const HIDE_RADII: f32 = 20.0;
+pub(super) const CELL: f32 = 450.0;
 
 /// How deep the camera is in the cloud layer: 0 outside it, 1 in the middle of the band.
 ///
@@ -175,7 +172,7 @@ type ShellParts = (
 
 /// Measures how deep the camera is in the cloud layer, wraps the shell around the planet halfway
 /// up the band, whose bottom rain lowers, and refreshes the shader values. A sky without clouds
-/// has no shell and no crossing.
+/// has no shell and no crossing, and past the hand-over the far body draws its own clouds.
 pub(super) fn drift(
     inputs: CloudInputs,
     mut crossing: ResMut<CloudCrossing>,
@@ -192,7 +189,9 @@ pub(super) fn drift(
     };
     crossing.set_if_neq(CloudCrossing { depth });
     let radius = vantage.radius + 0.5 * (base + vantage.cloud_top);
-    let shown = on && vantage.radius + vantage.altitude < HIDE_RADII * vantage.radius;
+    let limit = inputs.local.0.as_ref().map(|near| near.handover(vantage));
+    let within = limit.is_none_or(|limit| f64::from(vantage.radius + vantage.altitude) < limit);
+    let shown = on && within;
     let center = vantage
         .observer
         .place(vantage.observer.center, vantage.camera);

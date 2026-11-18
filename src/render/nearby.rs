@@ -3,7 +3,9 @@
 use bevy::math::DVec3;
 
 use super::moons::eclipse;
+use super::vantage::Vantage;
 use crate::universe::{BodyId, PlanetSpec, StarId, SystemSpec, Universe};
+use crate::world::globe::far::handover;
 
 /// The star system around the camera, read from the universe once per system.
 #[derive(Debug, Clone, PartialEq)]
@@ -58,6 +60,15 @@ impl Nearby {
     /// the planet of `own` and its moons at `time`, the globe of `own` itself left out.
     pub fn eclipse(&self, at: DVec3, own: BodyId, time: f64) -> f32 {
         eclipse(at, self.family(own.index), own, time)
+    }
+
+    /// Returns the metres from the centre of the body under the camera of `vantage` past which
+    /// the sky draws that body, clouds included, instead of the world.
+    pub fn handover(&self, vantage: &Vantage) -> f64 {
+        let body = u8::try_from(vantage.body)
+            .ok()
+            .and_then(|index| self.body(index, vantage.moon));
+        body.map_or(f64::MAX, |body| handover(body.radius, body.rings))
     }
 
     /// Returns every planet, then every moon.

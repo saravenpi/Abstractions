@@ -1,6 +1,10 @@
 //! Far planets: the coarse sphere drawn for a globe seen from space, and the distance at which
 //! the world hands it to the sky.
 
+mod ball;
+#[cfg(test)]
+mod tests_ball;
+
 use std::sync::Arc;
 
 use bevy::math::DVec3;
@@ -11,6 +15,8 @@ use crate::universe::Rings;
 use crate::world::Terrain;
 use crate::world::mesh::{Frame, fill_node};
 use crate::world::shapes::FlatMesh;
+
+pub use self::ball::{Ball, TRIANGLES, ball};
 
 /// Quadtree level of the nodes baked into the far mesh: sixteen per face.
 pub const LEVEL: u8 = 2;

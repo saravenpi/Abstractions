@@ -1,4 +1,5 @@
-//! The sun and moon directional lights, aimed by the real star and tinted by the palette.
+//! The sun and moon directional lights, aimed by the real star and the real moon and tinted by
+//! the palette. A night without a moon leaves the moon light dark.
 
 use bevy::camera::visibility::Visibility;
 use bevy::light::{CascadeShadowConfigBuilder, DirectionalLight, DirectionalLightShadowMap};
@@ -88,8 +89,8 @@ fn spawn_lights(mut commands: Commands) {
     ));
 }
 
-/// Aims the sun at the star and the moon at the real moon, or away from the star on a planet
-/// without moons, tints both from the palette and applies the shadow setting.
+/// Aims the sun at the star and the moon light at the real moon, which the palette leaves dark
+/// on a planet without moons, tints both from the palette and applies the shadow setting.
 fn update_lights(
     sky: (Res<Palette>, Res<SunDir>, Res<Moonlight>),
     settings: Res<Persistent<Settings>>,
@@ -110,8 +111,8 @@ fn update_lights(
     }
     for (mut transform, mut light) in &mut moons {
         let aim = Aim {
-            dir: moon.0.map_or(-sun.dir, |glow| glow.dir),
-            height: moon.0.map_or(-sun.height, |glow| glow.height),
+            dir: moon.0.map_or(Vec3::X, |glow| glow.dir),
+            height: moon.0.map_or(0.0, |glow| glow.height),
             color: Color::srgb(0.62, 0.72, 1.0),
             lux: palette.moon_lux,
             shadows,
@@ -124,5 +125,5 @@ fn update_lights(
 pub(super) fn plugin(app: &mut App) {
     app.insert_resource(DirectionalLightShadowMap { size: 2048 })
         .add_systems(OnEnter(Screen::Loading), spawn_lights)
-        .add_systems(Update, update_lights);
+        .add_systems(Update, (update_lights, super::shade::split).chain());
 }

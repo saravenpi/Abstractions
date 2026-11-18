@@ -2,7 +2,9 @@
 //! chart fixed to the planet, and handed over to the coarse planet mesh from high up.
 
 mod bed;
+mod blend;
 mod depth;
+mod ember;
 mod floor;
 mod follow;
 mod liquid;
@@ -17,6 +19,7 @@ mod tests_curve;
 #[cfg(test)]
 mod tests_globe;
 
+pub use self::ember::ember as sea_glow;
 pub use self::follow::follow_focus;
 
 use bevy::camera::visibility::NoFrustumCulling;
@@ -99,6 +102,7 @@ pub fn spawn_sea(
 /// the focus, before the planet-fixed poses are written so that a new seat is placed at once.
 pub(super) fn plugin(app: &mut App) {
     app.add_plugins(material::plugin)
-        .add_systems(Update, follow::refresh.before(super::chunks::place));
+        .add_systems(Update, follow::refresh.before(super::chunks::place))
+        .add_systems(Update, ember::kindle);
     crate::render::warm_material::<WaterMaterial>(app);
 }

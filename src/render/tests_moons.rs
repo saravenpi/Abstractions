@@ -1,11 +1,11 @@
 //! Moon tests: a moon in the body list goes where its planet goes, shows the phase the star
-//! gives it, and lights the night where it stands; a planet without moons keeps the old moon.
+//! gives it, and lights the night where it stands; a planet without moons has starlight only.
 
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
-use super::moonlight::{Moonlight, moonlit};
-use super::moons::{moonlight, phase};
+use super::moonlight::{Moonlight, STARLIGHT, moonlit};
+use super::moons::{Glow, moonlight, phase};
 use super::observer::Observer;
 use super::palette::Palette;
 use super::vantage::{Nearby, Vantage};
@@ -84,7 +84,7 @@ fn phase_follows_the_star() {
 
 /// Under a moon high in the sky the night light comes from where it stands, never more than its
 /// phase allows; over one orbit it waxes and wanes, and below the horizon it gives no light.
-/// A planet without moons keeps the moon opposite the star, its palette untouched.
+/// A planet without moons has no moon light at all.
 #[test]
 fn moonlight_follows_real_moons() {
     let (near, index) = with_moon();
@@ -115,5 +115,30 @@ fn moonlight_follows_real_moons() {
     let alone = Nearby::read(&Universe::new(7), near.id);
     let home = standing(&alone, index, at(0.0), 0.0);
     assert_eq!(moonlight(&home, &alone, 0.0), None);
-    assert_eq!(moonlit(palette, &Moonlight(None)), palette);
+    assert_eq!(moonlit(palette, &Moonlight(None)).moon_lux, 0.0);
+}
+
+/// A night without a moon is lit by the stars alone: no moon light, and an ambient light of 65,
+/// under the 130 the painted moon gave and above the bare night. A full moon leaves no room for
+/// the stars, a thin one lets them fill in, and the day is left bit for bit.
+#[test]
+fn a_moonless_night_is_lit_by_the_stars() {
+    let (night, noon) = (Palette::at(0.75), Palette::at(0.25));
+    let dark = moonlit(night, &Moonlight(None));
+    let starlit = Palette::NIGHT_AMBIENT + STARLIGHT;
+    assert!((dark.ambient_brightness - starlit).abs() < 0.5 && dark.moon_lux == 0.0);
+    assert!((60.0..=70.0).contains(&dark.ambient_brightness));
+    assert_eq!((dark.zenith, dark.ambient), (night.zenith, night.ambient));
+    assert_eq!(moonlit(noon, &Moonlight(None)), noon);
+    let glow = |share: f32| Glow {
+        dir: Vec3::Y,
+        height: 1.0,
+        share,
+    };
+    let full = moonlit(night, &Moonlight(Some(glow(1.0))));
+    let thin = moonlit(night, &Moonlight(Some(glow(0.2))));
+    assert_eq!(full.ambient_brightness, night.ambient_brightness);
+    assert!((full.moon_lux - night.moon_lux).abs() < 1.0e-3);
+    assert!(thin.ambient_brightness > full.ambient_brightness);
+    assert!(thin.ambient_brightness < dark.ambient_brightness);
 }

@@ -41,6 +41,11 @@ pub const THIN_AIR: f32 = 1.0e-3;
 /// Distance in meters at which the middle of the cloud layer hides everything.
 const WHITEOUT_VISIBILITY: f32 = 70.0;
 
+/// Height of the game camera above the ground or the sea under it, in metres, as the fog last
+/// measured it. The lights read it to fade the shadows out before their maps run out.
+#[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
+pub struct Clearance(pub f32);
+
 /// What the fog looks like, so the camera is only written when it changes.
 #[derive(Clone, Copy, PartialEq)]
 pub(super) struct FogKey {
@@ -125,6 +130,8 @@ struct Depths<'w> {
     planet: Option<Res<'w, Planet>>,
     /// The weather at the camera, whose rain and dust close the fog in.
     weather: Res<'w, LocalWeather>,
+    /// The height above the ground the lights read.
+    aloft: ResMut<'w, Clearance>,
 }
 
 impl Depths<'_> {
@@ -160,16 +167,15 @@ impl Depths<'_> {
 fn update_fog(
     palette: Res<Palette>,
     settings: Res<Persistent<Settings>>,
-    depths: Depths,
+    mut depths: Depths,
     mut cameras: Query<(&GlobalTransform, &mut DistanceFog, &mut Projection), With<GameCamera>>,
     mut last: Local<Option<FogKey>>,
 ) {
     let (vantage, crossing) = (&depths.vantage, &depths.crossing);
     let reach = Reach::of(Some(settings.graphics.render_distance));
-    let planet = depths.planet.as_deref();
-    let ground = planet.map_or(reach.rings as f32 * CHUNK_SIZE, |p| reach.sight(&p.globe));
+    let flat = reach.rings as f32 * CHUNK_SIZE;
+    let ground = (depths.planet.as_deref()).map_or(flat, |p| reach.sight(&p.globe));
     let below = depths.local.air_below(vantage);
-    let weathered = depths.weather.look(&below).sight();
     for (at, mut fog, mut projection) in &mut cameras {
         let camera = at.translation();
         let height = Height {
@@ -178,7 +184,8 @@ fn update_fog(
             radius: vantage.radius,
             air: vantage.air * below.haze(),
         };
-        let clear = fog_sight(ground, &height) * weathered;
+        depths.aloft.set_if_neq(Clearance(height.clearance));
+        let clear = fog_sight(ground, &height) * depths.weather.look(&below).sight();
         let liquid = depths.submerged(camera);
         let air = palette.horizon.lerp(palette.cloud, crossing.depth);
         let key = FogKey {
@@ -198,5 +205,6 @@ fn update_fog(
 
 /// Registers the fog update.
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(Update, update_fog);
+    app.init_resource::<Clearance>()
+        .add_systems(Update, update_fog);
 }

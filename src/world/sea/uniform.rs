@@ -4,10 +4,13 @@ use bevy::pbr::{DistanceFog, FogFalloff};
 use bevy::prelude::*;
 use bevy::render::render_resource::ShaderType;
 
+use super::blend;
 use super::liquid::Liquid;
 use super::waves::waves_for;
 use crate::render::Palette;
+use crate::universe::PlanetRecord;
 use crate::wind::Wind;
+use crate::world::lands::Lands;
 
 /// Uniform block read by `water.wesl`. Every field is a `vec4` so the layout never needs padding.
 ///
@@ -49,6 +52,11 @@ pub struct WaterUniform {
     pub deep: Vec4,
     /// Linear colour of the foam in xyz, and in w the least opacity of the surface.
     pub foam: Vec4,
+    /// Linear colour of the flat sea of the coarse planet mesh before it is lit, which the near sea turns
+    /// into from afar.
+    pub far: Vec4,
+    /// The hand-over, see [`blend::packed`].
+    pub blend: Vec4,
 }
 
 /// Distance fog of the camera, in the units the shader needs.
@@ -115,9 +123,20 @@ impl WaterUniform {
             wave_c: c,
             wave_d: d,
             params: Vec4::new(time, wind.strength, fog.start, fog.end),
+            blend: blend::packed(),
             ..Self::default()
         };
-        water.of(&Liquid::WATER)
+        water
+            .of(&Liquid::WATER)
+            .over(Lands::of(&PlanetRecord::TEMPERATE))
+    }
+
+    /// Returns these values over the coarse sea of `lands` in place of the one they had.
+    pub fn over(self, lands: Lands) -> Self {
+        Self {
+            far: lands.sea_shown().extend(1.0),
+            ..self
+        }
     }
 
     /// Returns these values drawing `liquid` in place of the liquid they had.
@@ -170,5 +189,8 @@ mod tests {
             (hot.sun, hot.wave_a, hot.zenith),
             (water.sun, water.wave_a, water.zenith)
         );
+        assert_eq!((hot.far, hot.blend), (water.far, blend::packed()));
+        let home = Lands::of(&PlanetRecord::TEMPERATE);
+        assert_eq!(water.far, home.sea_shown().extend(1.0));
     }
 }

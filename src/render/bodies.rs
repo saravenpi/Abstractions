@@ -1,6 +1,7 @@
 //! The star, the planets and the moons of the current system, drawn as spheres in their true
 //! directions, with the rings of the planets that have them.
 
+mod bake;
 mod giant;
 mod light;
 mod material;
@@ -11,10 +12,12 @@ mod tests;
 #[cfg(test)]
 mod tests_app;
 #[cfg(test)]
+mod tests_bake;
+#[cfg(test)]
 mod tests_giant;
 
 use bevy::asset::embedded_asset;
-use bevy::math::DVec3;
+use bevy::math::{DQuat, DVec3};
 use bevy::pbr::MaterialPlugin;
 use bevy::prelude::*;
 
@@ -26,6 +29,7 @@ use super::atmosphere::HALO_SCALE;
 use super::vantage::{LocalSystem, Scene, Vantage};
 use super::warp::Lens;
 use crate::universe::{BodyId, PlanetSpec};
+use crate::world::Link;
 use crate::world::globe::far::handover;
 
 pub use crate::world::globe::far::FAR;
@@ -81,6 +85,7 @@ pub fn place(offset: DVec3) -> Drawn {
 /// A body ready to be placed.
 struct Orb {
     pos: DVec3,
+    turn: DQuat,
     radius: f64,
     solid: f64,
     least_angle: f32,
@@ -92,6 +97,7 @@ fn star(scene: &Scene) -> Option<Orb> {
     let radius = scene.local.0.as_ref()?.system.star.radius;
     Some(Orb {
         pos: DVec3::ZERO,
+        turn: DQuat::IDENTITY,
         radius,
         solid: radius,
         least_angle: STAR_ANGLE,
@@ -108,8 +114,13 @@ impl Body {
         };
         let (planet, pos) = scene.body(id)?;
         let (radius, grow) = self.reach(planet)?;
+        let turn = match self {
+            Body::Planet(_) => Link::orbiting(planet, scene.clock.seconds).turn,
+            _ => DQuat::IDENTITY,
+        };
         Some(Orb {
             pos,
+            turn,
             radius,
             solid: planet.radius,
             least_angle: PLANET_ANGLE * grow,
@@ -151,7 +162,8 @@ impl Body {
 
 /// Places every body where it is seen from the camera, never smaller than its least angle: in
 /// its true direction at rest, and through the warp lens at speed, a halo and rings with their
-/// planet. Rings lie in the plane of the equator, which is the plane of the system.
+/// planet. Rings lie in the plane of the equator, which is the plane of the system, and a
+/// planet or a moon is turned as its day turns it, so its baked surface faces the right way.
 fn follow(
     scene: Scene,
     lens: Res<Lens>,
@@ -168,7 +180,7 @@ fn follow(
         let size = orb.radius as f32 * drawn.scale * seen.scale;
         let size = size.max(orb.least_angle * drawn.at.length());
         let turn = match body {
-            Body::Rings(_) => observer.to_render.as_quat(),
+            Body::Rings(_) | Body::Planet(_) => (observer.to_render * orb.turn).as_quat(),
             _ => Quat::IDENTITY,
         };
         let pose = Transform::from_translation(vantage.camera + drawn.at).with_rotation(turn);
@@ -196,6 +208,7 @@ pub(super) fn plugin(app: &mut App) {
         PostUpdate,
         (
             spawn::populate.run_if(resource_changed::<LocalSystem>),
+            bake::finish,
             follow.after(super::warp::run),
             light::planets,
             light::rings,

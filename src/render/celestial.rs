@@ -1,4 +1,4 @@
-//! Pure helpers for the sun and moon path and the daylight factor.
+//! Pure helpers for the sun path and the daylight factor.
 
 use std::f32::consts::TAU;
 
@@ -23,11 +23,6 @@ pub fn sun_direction(phase: f32) -> Vec3 {
     )
 }
 
-/// Returns the unit vector pointing at the moon, always opposite the sun.
-pub fn moon_direction(phase: f32) -> Vec3 {
-    -sun_direction(phase)
-}
-
 /// Returns 0 at night and 1 in full day, with a smooth ramp across dawn and dusk.
 pub fn daylight(phase: f32) -> f32 {
     smoothstep(-0.12, 0.25, sun_direction(phase).y)
@@ -37,13 +32,11 @@ pub fn daylight(phase: f32) -> f32 {
 mod tests {
     use super::*;
 
-    /// The sun is up at noon, the moon at midnight, and they are always opposite.
+    /// The sun is up at noon and down at midnight.
     #[test]
-    fn sun_and_moon_swap_places() {
+    fn the_sun_rises_and_sets() {
         assert!(sun_direction(0.25).y > 0.8);
-        assert!(moon_direction(0.75).y > 0.8);
         assert!(sun_direction(0.75).y < -0.8);
-        assert!((sun_direction(0.1) + moon_direction(0.1)).length() < 1e-6);
     }
 
     /// Daylight is full at noon and zero at midnight.

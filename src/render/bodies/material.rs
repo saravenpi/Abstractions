@@ -1,4 +1,5 @@
-//! The material of a body seen from afar: a glowing star or a planet lit by its star.
+//! The material of a body seen from afar: a glowing star, or a planet lit by its star as the ground
+//! is, drawn from the baked ball of its real surface once that is ready.
 
 use bevy::pbr::Material;
 use bevy::prelude::*;
@@ -43,6 +44,24 @@ pub struct BodyUniform {
     pub spot: Vec4,
     /// Inner and outer radius of the rings in planet radii and their density, 0 without rings.
     pub rings: Vec4,
+    /// In z how much of the baked surface shows, from 0 for a dot in its mean colour to 1 for a
+    /// disc, and 0 until the ball is baked; in w the cells of the cloud noise along the radius of
+    /// the cloud shell.
+    pub map: Vec4,
+    /// Linear light the flat sea of the baked surface gives off by itself, and in w 1 once the
+    /// mesh is the baked ball, whose vertices carry the colours of the surface.
+    pub glow: Vec4,
+    /// Linear colour of the light of the star times its illuminance in lux, as the sun light of
+    /// the ground has it in space, and in w the cloud cover, 0 without clouds.
+    pub sun: Vec4,
+    /// Linear colour of the sunlit clouds, and in w the seconds that drift them.
+    pub cloud: Vec4,
+    /// First column of the rotation from render axes to the axes fixed to the body.
+    pub fixed_x: Vec4,
+    /// Second column of that rotation.
+    pub fixed_y: Vec4,
+    /// Third column of that rotation.
+    pub fixed_z: Vec4,
 }
 
 /// Material of a star or a far planet.
@@ -115,6 +134,7 @@ impl BodyMaterial {
                 storm: giant.map_or(Vec4::ZERO, |giant| giant.spot.as_vec3().extend(giant.size)),
                 spot: giant.map_or(Vec4::ZERO, |giant| giant.storm.extend(0.0)),
                 rings,
+                ..default()
             },
         }
     }

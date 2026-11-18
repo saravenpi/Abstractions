@@ -9,8 +9,10 @@ use super::material::WaterMaterial;
 use super::seat::Seat;
 use super::uniform::WaterUniform;
 use super::{Sea, SeaInputs, depth, mesh};
+use crate::universe::PlanetRecord;
 use crate::wind::Wind;
 use crate::world::focus::Focus;
+use crate::world::lands::Lands;
 use crate::world::{Planet, Sited};
 
 /// Distance from the camera in meters at which the near sea has faded out completely, leaving
@@ -101,7 +103,10 @@ pub fn follow_focus(
     let at = focus
         .planet()
         .filter(|_| planet.as_ref().is_none_or(|p| p.globe.has_sea()));
-    let liquid = planet.map_or(Liquid::WATER, |planet| Liquid::of(&planet.globe));
+    let liquid = planet
+        .as_ref()
+        .map_or(Liquid::WATER, |planet| Liquid::of(&planet.globe));
+    let home = Lands::of(&PlanetRecord::TEMPERATE);
     for (pose, handle, floor, seat, mut visibility) in &mut sea {
         let radius = seat.radius();
         let low = |at: &DVec3| at.length() < f64::from(radius + HANDOVER);
@@ -115,7 +120,8 @@ pub fn follow_focus(
         };
         if let Some(mut material) = materials.get_mut(&handle.0) {
             let map = floor.origin().truncate().truncate();
-            let water = inputs.uniform(pose.rotation).of(&liquid);
+            let lands = planet.as_ref().map_or(home, |planet| planet.globe.lands());
+            let water = inputs.uniform(pose.rotation).of(&liquid).over(lands);
             material.water = placing(water, pose, radius, map, seat.coords(at));
         }
     }

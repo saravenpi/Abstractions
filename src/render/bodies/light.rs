@@ -1,45 +1,122 @@
 //! Lighting the bodies each frame: every planet and moon from its star through the shadows of
-//! its family, the storm of a gas giant turning with it, and the rings from their star.
+//! its family, with the light the ground gets, its clouds drifting over the ball of its real
+//! surface, the storm of a gas giant turning with it, and the rings from their star.
 
-use bevy::math::DVec3;
+use bevy::ecs::system::SystemParam;
+use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::Body;
 use super::giant::Giant;
-use super::material::BodyMaterial;
+use super::material::{BodyMaterial, BodyUniform};
 use super::rings::RingMaterial;
+use crate::render::DayClock;
+use crate::render::air::Air;
+use crate::render::celestial::smoothstep;
+use crate::render::clock::START_PHASE;
+use crate::render::dome::cloud_cover;
+use crate::render::palette::Palette;
+use crate::render::scatter::peak;
+use crate::render::sky::linear;
 use crate::render::vantage::Scene;
-use crate::world::spin;
+use crate::render::weather::{LocalWeather, WeatherLook};
+use crate::settings::{Persistent, Settings};
+use crate::universe::PlanetSpec;
+use crate::world::{Link, spin};
+
+/// Angular radii in radians between which a baked body goes from a dot in the mean colour of
+/// its surface to a disc that shows the surface and its clouds: from about one pixel of the
+/// game view to three, under which single triangles would flicker.
+pub const DETAIL: (f32, f32) = (0.004, 0.012);
+
+/// Returns how much of its baked surface a body shows when its radius covers `angle` radians.
+pub fn detail(angle: f32) -> f32 {
+    smoothstep(DETAIL.0, DETAIL.1, angle)
+}
+
+/// Returns the linear colour of the light of a star of linear colour `star` times its
+/// illuminance in lux: what the sun light of the ground carries in open space.
+pub fn star_light(star: Vec3) -> Vec3 {
+    linear(peak(star)).truncate() * Palette::SPACE_LUX
+}
+
+/// What the clouds of the bodies are drawn from.
+#[derive(SystemParam)]
+pub(super) struct Skies<'w> {
+    time: Res<'w, Time>,
+    clock: Option<Res<'w, DayClock>>,
+    settings: Option<Res<'w, Persistent<Settings>>>,
+    weather: Option<Res<'w, LocalWeather>>,
+}
+
+impl Skies<'_> {
+    /// Returns the cloud cover the shader draws over `body`: the cover of its class as the day
+    /// drifts it, under the weather around the camera when the camera is `below` on that body,
+    /// and none with clouds switched off.
+    fn cover(&self, body: &PlanetSpec, below: bool) -> f32 {
+        if self.settings.as_ref().is_some_and(|s| !s.graphics.clouds) {
+            return 0.0;
+        }
+        let air = Air::of(&body.record);
+        let local = self.weather.as_ref().filter(|_| below);
+        let look = local.map_or(WeatherLook::of(&air), |weather| weather.look(&air));
+        let phase = self.clock.as_ref().map_or(START_PHASE, |clock| clock.phase);
+        look.cover(&air, cloud_cover(phase))
+    }
+}
+
+/// Writes into `uniform` what the baked ball of `planet` is drawn from this frame: the rotation
+/// `to_fixed` from render axes to its own, and from `sky` the light of its star, the cover of
+/// its clouds, the radians its radius covers, which say how much of the surface shows, and
+/// the seconds that drift the clouds.
+fn dress(uniform: &mut BodyUniform, planet: &PlanetSpec, to_fixed: DQuat, sky: (Vec3, [f32; 3])) {
+    let (star, [cover, angle, seconds]) = sky;
+    let fixed = Mat3::from_quat(to_fixed.as_quat());
+    uniform.fixed_x = fixed.x_axis.extend(0.0);
+    uniform.fixed_y = fixed.y_axis.extend(0.0);
+    uniform.fixed_z = fixed.z_axis.extend(0.0);
+    uniform.sun = star_light(star).extend(cover);
+    let clouds = Air::of(&planet.record).clouds_from_space();
+    uniform.cloud = clouds.extend(seconds);
+    uniform.map.z = uniform.glow.w * detail(angle);
+}
 
 /// Lights every planet and moon from the direction of its star, dimmed where another body of
-/// its planet hides the star, and turns its spin axis and the storm of a giant into render axes.
+/// its planet hides the star, and turns its spin axis, its surface, its clouds and the storm of
+/// a giant into render axes.
 pub(super) fn planets(
     scene: Scene,
+    skies: Skies,
     planets: Query<(&Body, &MeshMaterial3d<BodyMaterial>)>,
     mut materials: ResMut<Assets<BodyMaterial>>,
 ) {
     let Some(near) = scene.local.0.as_ref() else {
         return;
     };
-    let (to_render, time) = (scene.vantage.observer.to_render, scene.clock.seconds);
+    let (vantage, time) = (&*scene.vantage, scene.clock.seconds);
+    let to_render = vantage.observer.to_render;
     for (body, handle) in &planets {
-        let Body::Planet(id) = *body else {
-            continue;
+        let found = match *body {
+            Body::Planet(id) => scene.body(id).zip(materials.get_mut(&handle.0)),
+            _ => None,
         };
-        let Some((planet, pos)) = scene.body(id) else {
-            continue;
-        };
-        let Some(mut material) = materials.get_mut(&handle.0) else {
+        let Some(((planet, pos), mut material)) = found else {
             continue;
         };
         let uniform = &mut material.body;
-        let lit = near.eclipse(pos, id, time);
-        uniform.light = scene.vantage.sunward(pos).extend(lit);
+        uniform.light = vantage
+            .sunward(pos)
+            .extend(near.eclipse(pos, planet.id, time));
         uniform.axis = (to_render * DVec3::Y).as_vec3().extend(uniform.axis.w);
         if let Some(giant) = Giant::of(&planet.record, planet.seed) {
             let spot = to_render * (spin(planet.day_seconds, time) * giant.spot);
             uniform.storm = spot.as_vec3().extend(giant.size);
         }
+        let to_fixed = (to_render * Link::orbiting(planet, time).turn).inverse();
+        let angle = (planet.radius / pos.distance(vantage.observer.eye).max(1.0)) as f32;
+        let cover = skies.cover(planet, vantage.is(planet.id));
+        let sky = [cover, angle, skies.time.elapsed_secs()];
+        dress(uniform, planet, to_fixed, (near.system.star.color, sky));
     }
 }
 

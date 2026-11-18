@@ -26,6 +26,7 @@ mod pixelate;
 mod scatter;
 mod season;
 mod seasons;
+mod shade;
 mod sky;
 mod starfield;
 mod sun;
@@ -65,7 +66,7 @@ mod tests_weather;
 
 pub use air::Air;
 pub use camera::{configure_camera, set_fov};
-pub use celestial::{daylight, moon_direction, smoothstep, sun_direction};
+pub use celestial::{daylight, smoothstep, sun_direction};
 pub use clock::DayClock;
 pub use clouds::CloudCrossing;
 pub use entry::FlightFx;
@@ -131,6 +132,7 @@ pub(super) fn sky(app: &mut App) {
         entry::plugin,
         warm::plugin,
         seasons::plugin,
+        shade::plugin,
     ));
     warm_material::<clouds::CloudMaterial>(app);
     warm_material::<sky::SkyMaterial>(app);

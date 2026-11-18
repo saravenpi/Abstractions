@@ -28,7 +28,8 @@ pub struct Palette {
     pub sun_color: Vec3,
     /// Sun illuminance in lux.
     pub sun_lux: f32,
-    /// Moon illuminance in lux.
+    /// Illuminance in lux of the moon that lights the night. Until [`moonlit`] has weighed the real
+    /// moons it is what a full moon high in the sky would give, and no moon gives none.
     pub moon_lux: f32,
     /// Cloud color, in sRGB.
     pub cloud: Vec3,
@@ -36,7 +37,7 @@ pub struct Palette {
     pub stars: f32,
     /// Unit vector pointing at the sun.
     pub sun_dir: Vec3,
-    /// Unit vector pointing at the moon.
+    /// Unit vector pointing at the moon that lights the night, when there is one.
     pub moon_dir: Vec3,
 }
 
@@ -62,7 +63,7 @@ const NIGHT_CLOUD: Vec3 = Vec3::new(0.12, 0.14, 0.24);
 const HAZE: f32 = 0.6;
 
 impl Palette {
-    /// Illuminance in lux of the moon when it stands high.
+    /// Illuminance in lux of a full moon as large as the old painted one when it stands high.
     pub const MOON_LUX: f32 = 350.0;
 
     /// Ambient brightness at night, low enough that torches and lamps make visible pools of light.
@@ -118,23 +119,22 @@ impl Palette {
         }
     }
 
-    /// Returns the palette for a clock phase under a white star, with the sun on its plain path.
+    /// Returns the palette for a clock phase under a white star, with the sun on its plain path
+    /// and the light of a full moon by night, before the real moons are weighed.
     pub fn at(phase: f32) -> Self {
         let sun_dir = sun_direction(phase);
         Self {
             sun_dir,
-            moon_dir: -sun_dir,
             ..Self::lit(sun_dir.y, Vec3::ONE)
         }
     }
 
-    /// Returns this palette as seen from the camera: the sun and moon stand where the star really is,
+    /// Returns this palette as seen from the camera: the sun stands where the star really is,
     /// and with `air` going from 1 under a whole home sky to 0 in space or on a planet without
     /// air, the sky turns black, the stars come out and the star shines in its own colour
     /// `star`, undimmed unless the planet hides it.
     pub fn seen(mut self, sun: &SunDir, air: f32, star: Vec3) -> Self {
         self.sun_dir = sun.dir;
-        self.moon_dir = -sun.dir;
         self.zenith *= air;
         self.horizon *= air;
         self.ambient_brightness *= Self::SPACE_AMBIENT + (1.0 - Self::SPACE_AMBIENT) * air;
@@ -160,7 +160,8 @@ impl Palette {
 }
 
 /// Recomputes the palette from where the star stands for the camera, the weather around it and
-/// the real moon that lights its night, and applies it to the ambient light and the clear color.
+/// the real moon that lights its night, or the stars alone, and applies it to the ambient light
+/// and the clear color.
 fn update_palette(
     place: (Res<SunDir>, Res<Vantage>, Res<LocalSystem>, Res<Moonlight>),
     weather: Res<LocalWeather>,

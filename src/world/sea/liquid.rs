@@ -70,6 +70,11 @@ impl Liquid {
             ..water
         }
     }
+
+    /// Returns the linear light the open liquid gives off by itself, none for water.
+    pub fn ember(&self) -> Vec3 {
+        self.deep * self.glow
+    }
 }
 
 #[cfg(test)]

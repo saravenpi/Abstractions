@@ -1,5 +1,5 @@
 //! The sky material: an unlit dome shader with a gradient that fades with height, the glow of the
-//! sun, the moon, the horizon rim and the band of the galaxy.
+//! sun, the horizon rim and the band of the galaxy. Moons are real bodies, drawn with the planets.
 
 use bevy::asset::embedded_asset;
 use bevy::mesh::MeshVertexBufferLayoutRef;
@@ -22,8 +22,6 @@ pub struct SkyUniform {
     pub horizon: Vec4,
     /// Sun direction in xyz and the strength of its glow in the air in w.
     pub sun: Vec4,
-    /// Moon direction in xyz and its visibility in w.
-    pub moon: Vec4,
     /// Linear cloud color in xyz and how much of the view the cloud whiteout takes in w.
     pub cloud: Vec4,
     /// Local up in xyz and the sine of the angle the horizon drops by in w.
@@ -79,7 +77,7 @@ impl SkyUniform {
     /// Builds the uniform for a palette and what the camera's place adds to it.
     ///
     /// Below the surface of a sea the dome is the one flat colour of the liquid, without sun,
-    /// moon, rim or band.
+    /// rim or band.
     pub fn new(palette: &Palette, look: &SkyLook) -> Self {
         let dry = if look.murk.is_some() { 0.0 } else { 1.0 };
         let (zenith, horizon) = match look.murk {
@@ -87,12 +85,10 @@ impl SkyUniform {
             None => (palette.zenith, palette.horizon),
         };
         let glow = smoothstep(-0.15, 0.05, look.sun_height) * look.air * dry;
-        let moon = smoothstep(-0.15, 0.05, -look.sun_height) * look.air * dry;
         Self {
             zenith: linear(zenith),
             horizon: linear(horizon),
             sun: palette.sun_dir.extend(glow),
-            moon: palette.moon_dir.extend(moon),
             cloud: linear(palette.cloud).truncate().extend(look.whiteout * dry),
             up: look.up.extend(look.dip),
             rim: linear(look.rim) * dry,

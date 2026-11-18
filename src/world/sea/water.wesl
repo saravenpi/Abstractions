@@ -2,6 +2,8 @@ import bevy_pbr::render::forward_io::{Vertex, decompress_vertex};
 import bevy_pbr::render::mesh_functions;
 import bevy_pbr::render::mesh_view_bindings::view;
 import bevy_pbr::render::view_transformations::{position_world_to_clip, depth_ndc_to_view_z};
+import bevy_pbr::render::pbr_types::{PbrInput, pbr_input_new};
+import bevy_pbr::render::pbr_functions::{apply_pbr_lighting, calculate_view};
 @if(DEPTH_PREPASS)
 import bevy_pbr::prepass::utils::prepass_depth;
 
@@ -23,6 +25,8 @@ struct Water {
     shallow: vec4<f32>,
     deep: vec4<f32>,
     foam: vec4<f32>,
+    far: vec4<f32>,
+    blend: vec4<f32>,
 }
 
 struct SeaVertex {
@@ -69,6 +73,12 @@ const KEEP_START: f32 = 0.15;
 const KEEP_END: f32 = 0.5;
 const SPARK_START: f32 = 0.4;
 const SPARK_END: f32 = 1.2;
+const SHELF_START: f32 = 1.1;
+const SHELF_END: f32 = 1.4;
+const MAP_LOW: f32 = 30.0;
+const MAP_HIGH: f32 = 120.0;
+const COARSE_ROUGHNESS: f32 = 0.95;
+const COARSE_REFLECTANCE: f32 = 0.05;
 
 fn hash21(p: vec2<f32>) -> f32 {
     let q = bitcast<vec2<u32>>(vec2<i32>(p));
@@ -236,6 +246,25 @@ fn under_surface(v: vec3<f32>, n: vec3<f32>, p: vec2<f32>, t: f32) -> vec4<f32> 
     return vec4<f32>(mix(dim, bright, window) + vec3<f32>(shimmer), 0.92);
 }
 
+fn coarse_sea(world: vec3<f32>, up: vec3<f32>, frag: vec4<f32>) -> vec3<f32> {
+    var input: PbrInput = pbr_input_new();
+    input.material.base_color = vec4<f32>(water.far.rgb, 1.0);
+    input.material.emissive = vec4<f32>(water.deep.rgb * water.shallow.w, 0.0);
+    input.material.perceptual_roughness = COARSE_ROUGHNESS;
+    input.material.reflectance = vec3<f32>(COARSE_REFLECTANCE);
+    input.frag_coord = frag;
+    input.world_position = vec4<f32>(world, 1.0);
+    input.world_normal = up;
+    input.N = up;
+    input.V = calculate_view(vec4<f32>(world, 1.0), false);
+    return apply_pbr_lighting(input).rgb;
+}
+
+fn afar(to_eye: vec3<f32>, eye_height: f32) -> f32 {
+    let reach = smoothstep(water.blend.x, water.blend.y, length(to_eye));
+    return max(reach, smoothstep(water.blend.z, water.blend.w, eye_height));
+}
+
 @vertex
 fn vertex(vertex_no_morph: Vertex) -> SeaVertex {
     var out: SeaVertex;
@@ -292,7 +321,9 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
         let day = water.sun_color.w;
         let light = mix(vec3<f32>(0.07, 0.10, 0.22), mix(vec3<f32>(1.0), water.sun_color.rgb, 0.4), day);
         let column = column_depth(in.position, rise * dist);
-        let depth = mix(column, max(bed.y, 0.0), bed.w);
+        let shelf = smoothstep(SHELF_START, SHELF_END, column);
+        let mapped = bed.w * (1.0 - smoothstep(MAP_LOW, MAP_HIGH, eye_height));
+        let depth = mix(mix(column, DEEP, shelf), max(bed.y, 0.0), mapped);
         let shade = floor((1.0 - exp(-depth * 0.5)) * 6.0 + 0.5) / 6.0;
         let body = mix(water.shallow.rgb, water.deep.rgb, shade) * (light + vec3<f32>(water.shallow.w));
 
@@ -310,9 +341,13 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
         let foam_light = water.foam.rgb * mix(0.07, 1.0, day) * mix(vec3<f32>(1.0), water.sun_color.rgb, 0.35);
         color = mix(color, foam_light, foam);
 
-        let clear = mix(0.2, 0.95, shade);
+        let clear = select(mix(0.2, 0.95, shade), 1.0, shade >= 1.0);
         let opacity = max(mix(clear, 1.0, pow(1.0 - ndv, 3.0)), water.foam.w);
         col = vec4<f32>(color, max(opacity, foam) * smoothstep(0.0, EDGE_DEPTH, column));
+        let turned = afar(to_eye, eye_height);
+        if (turned > 0.0) {
+            col = mix(col, vec4<f32>(coarse_sea(world, up, in.position), shelf), turned);
+        }
     }
 
     let fog_amount = clamp((dist - water.params.z) / max(water.params.w - water.params.z, 1.0), 0.0, 1.0);

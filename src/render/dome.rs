@@ -12,7 +12,6 @@ use super::SunDir;
 use super::atmosphere::horizon_dip;
 use super::celestial::smoothstep;
 use super::clouds::CloudCrossing;
-use super::moonlight::Moonlight;
 use super::palette::Palette;
 use super::sky::{SkyLook, SkyMaterial, SkyUniform};
 use super::vantage::{LocalSystem, Vantage};
@@ -63,7 +62,6 @@ struct SkyInputs<'w> {
     sun: Res<'w, SunDir>,
     crossing: Res<'w, CloudCrossing>,
     lens: Res<'w, Lens>,
-    moon: Res<'w, Moonlight>,
 }
 
 impl SkyInputs<'_> {
@@ -107,10 +105,7 @@ fn update_dome(
     >,
     mut materials: ResMut<Assets<SkyMaterial>>,
 ) {
-    let mut sky = SkyUniform::new(&inputs.palette, &inputs.look());
-    if inputs.moon.0.is_some() {
-        sky.moon.w = 0.0;
-    }
+    let sky = SkyUniform::new(&inputs.palette, &inputs.look());
     let pose =
         Transform::from_translation(inputs.vantage.camera).with_scale(Vec3::splat(DOME_RADIUS));
     for (mut transform, mut global, handle) in &mut domes {
@@ -128,7 +123,6 @@ pub(super) fn plugin(app: &mut App) {
             PostUpdate,
             update_dome
                 .after(super::clouds::drift)
-                .after(super::moonlight::shine)
                 .after(super::warp::run),
         );
 }

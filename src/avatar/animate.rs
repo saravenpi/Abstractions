@@ -4,8 +4,9 @@ use std::f32::consts::PI;
 
 use bevy::prelude::*;
 
-use super::blend::{Weights, blended};
+use super::blend::{Weights, asked, blended};
 use super::clock::Clock;
+use super::neck::Neck;
 use super::pose::Pose;
 use super::rig::{Seg, locals};
 use super::{Avatar, AvatarPose, Mode};
@@ -26,6 +27,8 @@ pub struct Anim {
     /// Pitch of the flight path the winged poses lie along: the one asked, on the turn the body
     /// has reached, so that a loop is followed all the way round.
     pub path: f32,
+    /// Where the head looks, inside the reach of the neck.
+    pub neck: Neck,
 }
 
 /// Returns whether the winged modes hold none of the weight of a blend, and whether they hold all of it.
@@ -65,7 +68,9 @@ impl Anim {
             pitch: self.path,
             ..*input
         };
-        self.pose = blended(&self.weights, &flown, &self.clock);
+        let look = asked(&self.weights, &flown, &self.clock);
+        let look = self.neck.step(look, dt);
+        self.pose = blended(&self.weights, &AvatarPose { look, ..flown }, &self.clock);
         self.pose
     }
 }

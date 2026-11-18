@@ -3,12 +3,14 @@
 mod app;
 mod blending;
 mod body;
+mod diving;
 mod dressing;
 mod face;
 mod filling;
 mod flown;
 mod gait;
 mod loops;
+mod neck;
 mod poses;
 mod wings;
 

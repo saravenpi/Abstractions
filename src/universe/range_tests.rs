@@ -6,7 +6,7 @@ use super::density::Region;
 use super::*;
 
 /// Returns at least 2,000 stars: the neighbourhood of several homes and a block of each dense core.
-fn sample() -> Vec<(Universe, StarSpec)> {
+pub(super) fn sample() -> Vec<(Universe, StarSpec)> {
     let mut stars = Vec::new();
     for seed in 0..6 {
         let u = Universe::new(seed);

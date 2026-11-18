@@ -1,4 +1,4 @@
-//! Home name tests: Kodya and Vereya are fixed for every seed and no other object carries them.
+//! Home tests: Kodya and Vereya keep their names, their star temperature and their record for every seed.
 
 use super::*;
 
@@ -45,5 +45,26 @@ fn home_names_are_unique() {
         }
         let galaxies = u.galaxies_near(home.star.galaxy, 2);
         assert!(galaxies.iter().all(|g| !reserved(&g.name)));
+    }
+}
+
+/// The home star is at 5,780 K and the home planet keeps the temperate record, for every seed.
+///
+/// The classes of the home system are printed for seeds 0 to 20, the home planet in capitals.
+#[test]
+fn home_record_is_temperate() {
+    for seed in 0..200 {
+        let u = Universe::new(seed);
+        let system = u.system(u.home().star);
+        assert_eq!(system.star.temperature, 5780.0);
+        assert_eq!(u.planet(u.home()).record, PlanetRecord::TEMPERATE);
+        let label = |p: &PlanetSpec| match p.id == u.home() {
+            true => p.record.class.label().to_uppercase(),
+            false => p.record.class.label().to_string(),
+        };
+        let classes: Vec<String> = system.planets.iter().map(label).collect();
+        if seed <= 20 {
+            println!("seed {seed}: {}", classes.join(", "));
+        }
     }
 }

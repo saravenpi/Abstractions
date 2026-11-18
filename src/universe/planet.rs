@@ -2,7 +2,7 @@
 
 use std::f64::consts::TAU;
 
-use super::hash::Rng;
+use super::hash::{self, Rng};
 use super::home::{HOME_GRAVITY, HOME_RADIUS};
 use super::ids::BodyId;
 use super::names;
@@ -20,6 +20,9 @@ pub const PLANET_GRAVITY: (f64, f64) = (0.3, 1.8);
 
 /// Shortest and longest day of a planet in seconds.
 pub const PLANET_DAY: (f64, f64) = (600.0, 3600.0);
+
+/// Child of the planet seed the record draws from, so the draws of the body itself never shift.
+const RECORD_STREAM: u64 = 1;
 
 /// Atmosphere top, cloud base and cloud top of the home planet, in metres above sea level.
 const HOME_AIR: [f64; 3] = [4000.0, 900.0, 1500.0];
@@ -42,7 +45,8 @@ pub fn orbit_seconds(mu: f64, radius: f64) -> f64 {
 /// Builds planet number `index` of a star on an orbit of `orbit` metres.
 ///
 /// Radii are spread evenly on a log scale, so small planets are the common ones, and half of
-/// the gravity follows the size.
+/// the gravity follows the size. The record follows from the star, the orbit, the gravity and
+/// the size, with its own draws from a child of the seed.
 pub(super) fn build(star: &StarSpec, index: u8, orbit: f64, seed: u64) -> PlanetSpec {
     let mut rng = Rng::new(seed);
     let size = rng.unit();
@@ -50,6 +54,7 @@ pub(super) fn build(star: &StarSpec, index: u8, orbit: f64, seed: u64) -> Planet
     let pull = 0.5 * (size + rng.unit());
     let earths = PLANET_GRAVITY.0 + (PLANET_GRAVITY.1 - PLANET_GRAVITY.0) * pull;
     let [atmosphere_height, cloud_base, cloud_top] = air(radius);
+    let draws = hash::child(seed, RECORD_STREAM);
     PlanetSpec {
         id: BodyId {
             star: star.id,
@@ -66,6 +71,6 @@ pub(super) fn build(star: &StarSpec, index: u8, orbit: f64, seed: u64) -> Planet
         atmosphere_height,
         cloud_base,
         cloud_top,
-        record: PlanetRecord::TEMPERATE,
+        record: PlanetRecord::derive(star, orbit, earths, radius / HOME_RADIUS, draws),
     }
 }

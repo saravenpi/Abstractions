@@ -2,6 +2,9 @@
 //!
 //! Everything here is 64-bit and free of game systems. Distances are metres, times are seconds.
 
+mod air;
+mod class;
+mod climate;
 mod density;
 mod galaxy;
 mod hash;
@@ -16,11 +19,18 @@ mod sector;
 mod spec;
 mod star;
 mod system;
+mod zone;
 
+#[cfg(test)]
+mod class_tests;
+#[cfg(test)]
+mod climate_tests;
 #[cfg(test)]
 mod home_tests;
 #[cfg(test)]
 mod range_tests;
+#[cfg(test)]
+mod record_tests;
 #[cfg(test)]
 mod tests;
 

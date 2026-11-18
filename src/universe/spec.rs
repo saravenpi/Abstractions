@@ -76,6 +76,8 @@ pub struct StarSpec {
     pub luminosity: f64,
     /// Radius in metres.
     pub radius: f64,
+    /// Surface temperature in kelvin, the home star being at 5,780.
+    pub temperature: f64,
     /// Linear RGB colour of the light, each channel from 0 to 1.
     pub color: Vec3,
     /// Position in metres from the galaxy centre.

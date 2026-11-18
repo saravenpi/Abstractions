@@ -1,6 +1,9 @@
 //! Moon tests: moons repeat, fit inside the Hill sphere without crossing and face their planet.
 
+use std::f64::consts::TAU;
 use std::time::Instant;
+
+use bevy::math::DQuat;
 
 use super::giant_tests::{giant, systems};
 use super::hill::{HILL_SHARE, INNERMOST, SPACING, hill};
@@ -62,13 +65,13 @@ fn moon_orbits_fit_inside_the_hill_sphere() {
     }
 }
 
-/// A moon turns once per orbit around its planet, on an orbit set by the pull of its planet,
+/// A moon turns once per orbit around its planet, the way its orbit goes, on an orbit set by the pull of its planet,
 /// and it carries the orbit of its planet as its host. It has no moons and no rings.
 #[test]
 fn moons_are_tidally_locked() {
     for (star, p, moons) in hosts() {
         for (rank, m) in (1..).zip(&moons) {
-            assert_eq!(m.day_seconds, m.orbit_seconds);
+            assert_eq!(m.day_seconds, -m.orbit_seconds);
             assert_eq!(m.orbit_seconds, orbit_seconds(p.mu(), m.orbit_radius));
             assert_eq!(m.host, Some(p.orbit()));
             assert_eq!(m.id, BodyId { moon: rank, ..p.id });
@@ -79,7 +82,27 @@ fn moons_are_tidally_locked() {
     }
 }
 
-/// Gas giants have 2 to 6 moons and solid planets 0 to 2, most of them none and the bigger ones
+/// Seen from a moon's own turning ground, the direction to its planet stays fixed over a whole
+/// orbit: the ground turns as the world turns a body, `day_seconds` per turn about +Y.
+#[test]
+fn moons_keep_one_face_to_their_planet() {
+    for (_, _, moons) in hosts().into_iter().take(300) {
+        for m in &moons {
+            let seen = |time: f64| {
+                let spin = DQuat::from_rotation_y(TAU * time / m.day_seconds);
+                spin.inverse() * -m.orbit().at(time).normalize()
+            };
+            let first = seen(0.0);
+            for step in 1..=8 {
+                let time = m.orbit_seconds * f64::from(step) / 8.0;
+                assert!(seen(time).distance(first) < 1e-9, "{m:?}");
+            }
+        }
+    }
+}
+
+/// Every planet counts as many moons as `moon::of` gives it. Gas giants have 2 to 6 moons and
+/// solid planets 0 to 2, most of them none and the bigger ones
 /// more often. Counts are printed.
 #[test]
 fn moon_counts_follow_the_planet() {
@@ -87,6 +110,7 @@ fn moon_counts_follow_the_planet() {
     let (mut small, mut big) = ((0, 0), (0, 0));
     for system in systems() {
         for p in &system.planets {
+            assert_eq!(usize::from(p.moons), moon::of(&system.star, p).len());
             match giant(p) {
                 true => giants[usize::from(p.moons)] += 1,
                 false => solid[usize::from(p.moons)] += 1,

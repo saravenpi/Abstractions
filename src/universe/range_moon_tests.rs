@@ -10,7 +10,7 @@ fn within(x: f64, range: (f64, f64)) -> bool {
 }
 
 /// Every moon of the sample has a radius of 3 to 15 km, inside the range of solid planets, a
-/// gravity inside the planet range, a day as long as its orbit and a record inside its ranges.
+/// gravity inside the planet range, a day as long as its orbit, turning the other way, and a record inside its ranges.
 #[test]
 fn moons_stay_in_range() {
     for (star, p, moons) in hosts() {
@@ -22,7 +22,7 @@ fn moons_stay_in_range() {
             );
             assert!(within(m.gravity / HOME_GRAVITY, PLANET_GRAVITY), "{m:?}");
             assert!(within(m.orbit_phase, (0.0, std::f64::consts::TAU)));
-            assert!(within(m.day_seconds, (600.0, 250_000.0)), "{m:?}");
+            assert!(within(-m.day_seconds, (600.0, 250_000.0)), "{m:?}");
             assert_eq!(
                 [m.atmosphere_height, m.cloud_base, m.cloud_top],
                 air(m.radius)

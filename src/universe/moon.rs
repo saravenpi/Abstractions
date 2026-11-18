@@ -52,8 +52,10 @@ pub(super) fn tide(planet: &PlanetSpec, orbit: f64) -> f64 {
 ///
 /// A moon is a small planet: its gravity follows its size as a planet's does, it turns once per
 /// orbit, so it always shows the same face to its planet, and its record is lit by the star
-/// at the orbit of its planet and warmed by [`tide`]. Its day, its orbit, runs from about 800 s
-/// close to a light planet to 220,000 s far out around a heavy one.
+/// at the orbit of its planet and warmed by [`tide`]. Its day is its orbit with the sign
+/// flipped: an orbit turns from +X toward +Z, the opposite way to a positive spin, so a moon
+/// spins the negative way to keep its near side on its planet. It runs from about -800 s close
+/// to a light planet to -220,000 s far out around a heavy one.
 fn build(star: &StarSpec, planet: &PlanetSpec, rank: u8, place: Place) -> PlanetSpec {
     let mut rng = Rng::new(place.seed);
     let span = (PLANET_RADIUS.1 / PLANET_RADIUS.0).ln();
@@ -72,7 +74,7 @@ fn build(star: &StarSpec, planet: &PlanetSpec, rank: u8, place: Place) -> Planet
         name: names::moon(&planet.name, rank),
         radius: place.radius,
         gravity: earths * HOME_GRAVITY,
-        day_seconds: seconds,
+        day_seconds: -seconds,
         orbit_radius: place.orbit,
         orbit_seconds: seconds,
         orbit_phase: rng.range(0.0, TAU),

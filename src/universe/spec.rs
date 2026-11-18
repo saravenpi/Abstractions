@@ -140,6 +140,7 @@ pub struct PlanetSpec {
     /// Surface gravity in metres per second squared.
     pub gravity: f64,
     /// Seconds for one turn around the +Y axis of the planet, which is one day and night.
+    /// Negative for a moon, which turns the other way, the way its orbit goes.
     pub day_seconds: f64,
     /// Radius of the circular orbit around the star in metres.
     pub orbit_radius: f64,

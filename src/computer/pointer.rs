@@ -7,9 +7,11 @@ use bevy::ui::RelativeCursorPosition;
 use bevy::ui_widgets::Activate;
 
 use super::board::Board;
-use super::chart::{Dot, chart};
+use super::chart::{Dot, chart, span};
+use super::format::distance;
+use super::labels::scale_bar;
 use super::lens::{Lens, hit};
-use super::map::{Field, SIZE, Sheet};
+use super::map::{Field, SIZE, ScaleBar, ScaleText, Sheet};
 use super::open::Computer;
 use super::tab::Tab;
 use super::view::Slot;
@@ -53,6 +55,10 @@ pub(super) struct MapView {
     pub clicked: Option<(Option<Dot>, f32)>,
     /// The row the map last brought into view.
     pub cursor: usize,
+    /// Side of the map on screen in pixels, or 0 before the window sized it.
+    pub side: f32,
+    /// Metres one chart unit stands for, or nothing on a chart that is not to scale.
+    pub span: Option<f64>,
 }
 
 /// Follows the pointer: finds the mark under it when it moves, and gives the table cursor to
@@ -162,6 +168,7 @@ pub(super) fn plot(board: Res<Board>, mut view: ResMut<MapView>) {
         return;
     }
     view.dots = chart(board.tab, &board.lines, board.ship);
+    view.span = span(board.tab, &board.lines, board.ship);
     if view.tab != board.tab {
         (view.tab, view.lens) = (board.tab, Lens::default());
         (view.hover, view.clicked) = (None, None);
@@ -188,9 +195,45 @@ pub(super) fn slide(view: Res<MapView>, mut sheets: Query<&mut Node, With<Sheet>
     }
 }
 
+/// What the scale of the map says on a chart whose distances are not drawn true.
+pub(super) const NOT_TO_SCALE: &str = "orbits not to scale";
+
+/// Writes the scale of the map when the zoom, the size of the map or the chart changed: a
+/// round distance and a bar of that length.
+pub(super) fn rule(
+    view: Res<MapView>,
+    fresh: Query<(), Added<ScaleText>>,
+    mut bars: Query<&mut Node, With<ScaleBar>>,
+    mut texts: Query<&mut Text, With<ScaleText>>,
+    mut last: Local<(f32, Option<f64>)>,
+) {
+    let now = (view.lens.zoom * view.side, view.span);
+    if *last == now && fresh.is_empty() {
+        return;
+    }
+    *last = now;
+    let true_scale = view.span.filter(|_| now.0 > 0.0);
+    let bar = true_scale.map(|span| scale_bar(span * 2.0 / f64::from(now.0)));
+    let (width, words) = match bar {
+        Some((pixels, metres)) => (pixels, distance(metres)),
+        None => (0.0, NOT_TO_SCALE.to_string()),
+    };
+    for mut node in &mut bars {
+        node.width = px(width);
+    }
+    for mut text in &mut texts {
+        text.set_if_neq(Text(words.clone()));
+    }
+}
+
 /// Registers the lens and the systems of the pointer. An opened screen shows the whole chart.
 pub(super) fn plugin(app: &mut App) {
-    let whole = |mut view: ResMut<MapView>| *view = MapView::default();
+    let whole = |mut view: ResMut<MapView>| {
+        *view = MapView {
+            side: view.side,
+            ..default()
+        }
+    };
     app.init_resource::<MapView>()
         .add_systems(OnEnter(Computer::Open), whole)
         .add_systems(

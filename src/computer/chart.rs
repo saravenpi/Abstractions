@@ -99,6 +99,14 @@ fn field(lines: &[Line], ship: UniPos) -> Vec<(Dot, Vec2)> {
     dots
 }
 
+/// Returns the metres one chart unit stands for on the chart of `tab`, or nothing for a system
+/// chart, whose orbits are drawn closer together than they are.
+pub fn span(tab: Tab, lines: &[Line], ship: UniPos) -> Option<f64> {
+    let gap = |line: &Line| flat(line.at - ship).length();
+    let reach = lines.iter().map(gap).fold(1.0, f32::max);
+    (tab != Tab::System).then_some(f64::from(reach / FILL))
+}
+
 /// Returns every dot of the chart of `tab` with its place on the map, from -1 to 1 on both
 /// axes with north up, for the rows `lines` and a ship at `ship`.
 pub fn chart(tab: Tab, lines: &[Line], ship: UniPos) -> Vec<(Dot, Vec2)> {

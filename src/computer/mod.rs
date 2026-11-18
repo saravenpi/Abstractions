@@ -6,8 +6,10 @@ mod chart;
 mod chrome;
 mod course;
 mod detail;
+mod draw;
 mod format;
 mod keys;
+mod labels;
 mod layout;
 mod lens;
 mod locate;
@@ -32,6 +34,8 @@ mod tests;
 #[cfg(test)]
 mod tests_detail;
 #[cfg(test)]
+mod tests_labels;
+#[cfg(test)]
 mod tests_lens;
 #[cfg(test)]
 mod tests_panel;
@@ -52,10 +56,13 @@ mod tests_words;
 
 pub use atlas::Atlas;
 pub use board::{Board, VISIBLE_ROWS};
-pub use chart::{Dot, GRID, chart, mark};
+pub use chart::{Dot, GRID, chart, mark, span};
+pub use draw::side;
 pub use format::{distance, gravity};
+pub use labels::{keep, priority, room, scale_bar};
 pub use lens::{Lens, MAX_ZOOM, hit};
 pub use locate::{SYSTEM_REACH, ship_position, target_position, whereabouts};
+pub use map::{Field, SIZE, Sheet, body, field, frame, name, ring, ship, spot};
 pub use open::Computer;
 pub use reveal::{HOME_NEIGHBOURS, REVEAL_CELLS, REVEAL_GLY};
 pub use route::{Destination, Engage, RouteStatus, Target};

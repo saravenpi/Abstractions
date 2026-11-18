@@ -8,6 +8,7 @@ use super::board::Board;
 use super::course::offered;
 use super::layout::{SMALLEST, map_side, panel_width, rows_that_fit};
 use super::map::Field;
+use super::pointer::MapView;
 use super::route::Destination;
 use super::view::{Act, Panel};
 
@@ -20,6 +21,7 @@ pub(super) fn fit(
     windows: Query<&Window, With<PrimaryWindow>>,
     mut nodes: Query<(&mut Node, Has<Field>), Sized>,
     mut board: ResMut<Board>,
+    mut view: ResMut<MapView>,
 ) {
     let size = |window: &Window| Vec2::new(window.width(), window.height());
     let window = windows.iter().next().map_or(SMALLEST, size);
@@ -33,6 +35,9 @@ pub(super) fn fit(
         if (node.width, node.height) != wanted {
             (node.width, node.height) = wanted;
         }
+    }
+    if view.side != map_side(window) {
+        view.side = map_side(window);
     }
     let rows = rows_that_fit(window);
     if board.fit != rows {

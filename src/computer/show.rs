@@ -165,8 +165,8 @@ pub(super) fn plugin(app: &mut App) {
             status,
             super::readout::write,
             super::pointer::plot,
-            super::map::draw,
-            super::pointer::slide,
+            super::draw::draw,
+            (super::pointer::slide, super::pointer::rule),
             (super::chrome::fit, super::chrome::offer),
         )
             .chain()

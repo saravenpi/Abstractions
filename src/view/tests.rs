@@ -2,6 +2,7 @@
 
 mod app;
 mod blends;
+mod cockpit;
 mod comfort;
 mod cuts;
 mod framing;

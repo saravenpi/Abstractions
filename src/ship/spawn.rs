@@ -8,10 +8,9 @@ use bevy::prelude::*;
 use super::berth::{landing_spot, parked};
 use super::body::Ship;
 use super::gear::infer;
-use super::glow::{Engine, Plume};
+use super::glow::Engine;
 use super::landing::GEAR_DROP;
-use super::legs::Leg;
-use super::mesh::{NOZZLE_Z, Skin, hinges, hull_meshes, leg_mesh, material, plume_mesh};
+use super::mesh::{Looks, Skin, dress, material};
 use super::save::saved;
 use crate::home::Base;
 use crate::render::Warm;
@@ -79,54 +78,35 @@ impl Start<'_> {
     }
 }
 
-/// The asset stores the ship parts go into.
+/// The asset stores the ship parts go into, and the shared look once it is made.
 #[derive(SystemParam)]
 pub struct Yard<'w> {
     /// Mesh assets.
     meshes: ResMut<'w, Assets<Mesh>>,
     /// Material assets.
     materials: ResMut<'w, Assets<StandardMaterial>>,
+    /// The meshes and materials every ship shares, once the first one asked for them.
+    looks: Option<Res<'w, Looks>>,
 }
 
-/// Adds the hull, the legs of the gear and the exhaust to the ship entity, each part with its skin.
-fn dress(entity: &mut EntityCommands, yard: &mut Yard, skins: [Handle<StandardMaterial>; 5]) {
-    let glow = skins[Skin::Glow as usize].clone();
-    let (leg, dark) = (
-        yard.meshes.add(leg_mesh()),
-        skins[Skin::Dark as usize].clone(),
-    );
-    for hinge in hinges() {
-        entity.with_child((
-            Leg,
-            Mesh3d(leg.clone()),
-            MeshMaterial3d(dark.clone()),
-            Transform::from_translation(hinge),
-        ));
+impl Yard<'_> {
+    /// Returns the look every ship shares. It is made the first time and kept as a resource.
+    pub fn looks(&mut self, commands: &mut Commands) -> Looks {
+        if let Some(looks) = self.looks.as_deref() {
+            return looks.clone();
+        }
+        let looks = Looks::new(&mut self.meshes, &mut self.materials);
+        commands.insert_resource(looks.clone());
+        looks
     }
-    for (mesh, skin) in hull_meshes().into_iter().zip(skins) {
-        entity.with_child((Mesh3d(yard.meshes.add(mesh)), MeshMaterial3d(skin)));
-    }
-    entity.with_child((
-        Plume,
-        Mesh3d(yard.meshes.add(plume_mesh())),
-        MeshMaterial3d(glow),
-        Transform::from_xyz(0.0, 0.0, NOZZLE_Z).with_scale(Vec3::new(1.0, 1.0, 0.02)),
-    ));
 }
 
 /// Hands every part of the ship to the pipeline warm-up, so its pipelines are ready whenever
 /// it is spawned, before or after the warm-up ran.
-pub fn warm(mut warm: ResMut<Warm>, mut yard: Yard) {
-    let skins = Skin::ALL.map(|skin| yard.materials.add(material(skin)));
-    let glow = skins[Skin::Glow as usize].clone();
-    warm.add(
-        yard.meshes.add(leg_mesh()),
-        skins[Skin::Dark as usize].clone(),
-    );
-    for (mesh, skin) in hull_meshes().into_iter().zip(skins) {
-        warm.add(yard.meshes.add(mesh), skin);
+pub fn warm(mut commands: Commands, mut warm: ResMut<Warm>, mut yard: Yard) {
+    for (mesh, material) in yard.looks(&mut commands).parts() {
+        warm.add(mesh, material);
     }
-    warm.add(yard.meshes.add(plume_mesh()), glow);
 }
 
 /// Marks a ship that already took its place on the landing pad of the home base.
@@ -158,7 +138,8 @@ pub fn berth_at_base(
     };
 }
 
-/// Spawns the ship with its parts once the spawn point exists, and resets the flight state.
+/// Spawns the ship with its parts once the spawn point exists, and resets the flight state. Its
+/// engine glow is the one material of its own: its colour follows its own engine.
 pub fn spawn(
     mut commands: Commands,
     mut start: Start,
@@ -169,8 +150,8 @@ pub fn spawn(
         return;
     }
     let ship = start.ship();
-    let skins = Skin::ALL.map(|skin| yard.materials.add(material(skin)));
-    let glow = skins[Skin::Glow as usize].clone();
+    let looks = yard.looks(&mut commands);
+    let glow = yard.materials.add(material(Skin::Glow));
     let root = (
         Name::new("Ship"),
         Placed {
@@ -178,13 +159,13 @@ pub fn spawn(
             rot: ship.rot,
         },
         ship,
-        Engine { glow },
+        Engine { glow: glow.clone() },
         Transform::default(),
         Visibility::default(),
         DespawnOnEnter(Screen::Title),
         RigidBody::Kinematic,
         Collider::cuboid(HULL_BOX.x, HULL_BOX.y, HULL_BOX.z),
     );
-    dress(&mut commands.spawn(root), &mut yard, skins);
+    dress(&mut commands.spawn(root), &looks, glow);
     super::reset(&mut commands);
 }

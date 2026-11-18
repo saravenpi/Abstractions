@@ -11,6 +11,7 @@ mod berth;
 mod board;
 mod body;
 mod clear;
+pub mod cockpit;
 mod cruise;
 mod deck;
 mod drag;
@@ -51,6 +52,7 @@ mod tests;
 pub use board::{Hatch, near_hatch};
 pub use body::{SavedFrame, Ship, ShipState};
 pub use drag::{SEA_DENSITY, density};
+pub use mesh::{Looks, dress};
 pub use pilot::{Autopilot, Phase};
 pub use save::Logbook;
 pub use telemetry::{ShipTelemetry, WarpState};
@@ -208,4 +210,5 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(Update, spawn::berth_at_base.run_if(founding));
     flight(app);
     display(app);
+    cockpit::plugin(app);
 }

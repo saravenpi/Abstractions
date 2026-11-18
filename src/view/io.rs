@@ -99,8 +99,9 @@ pub struct CameraPose {
 
 /// How much of the body of the player to draw: 0 hides it, 1 draws it fully.
 ///
-/// It is 0 in first person and falls to 0 when the third person camera comes close to the head.
-/// It stays 1 for the ship, whose hull the cockpit view shows.
+/// It is 0 in first person, on foot and in the pilot seat of the ship, and falls to 0 when the
+/// third person camera comes close to the head. At 0 the head is hidden and the rest of the
+/// body stays: the pilot sees their own arms and legs.
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct BodyFade(pub f32);
 

@@ -3,25 +3,37 @@
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::prelude::*;
 
-use super::io::{Look, Target};
+use super::io::{Kind, Look, Target};
 use super::mode::ViewPrefs;
 use super::tune::PIXELS_PER_NOTCH;
 use crate::settings::{Persistent, Settings};
 
-/// Reads the mouse and the wheel into [`Look`], with the mouse settings applied.
+/// Returns the mouse movement the view takes: all of it, except in the ship while the button
+/// that steers it is `held`, when the mouse turns the hull and the view stays where it is.
+pub(super) fn free(motion: Vec2, kind: Kind, held: bool) -> Vec2 {
+    match kind == Kind::Ship && held {
+        true => Vec2::ZERO,
+        false => motion,
+    }
+}
+
+/// Reads the mouse and the wheel into [`Look`], with the mouse settings applied. In the ship
+/// the mouse looks around only while the left button is up: held, it steers the hull.
 pub(super) fn read_look(
-    motion: Res<AccumulatedMouseMotion>,
-    wheel: Res<AccumulatedMouseScroll>,
+    (motion, wheel): (Res<AccumulatedMouseMotion>, Res<AccumulatedMouseScroll>),
+    buttons: Option<Res<ButtonInput<MouseButton>>>,
+    target: Res<Target>,
     settings: Res<Persistent<Settings>>,
     mut look: ResMut<Look>,
 ) {
+    let held = buttons.is_some_and(|buttons| buttons.pressed(MouseButton::Left));
     let controls = &settings.controls;
     let notches = match wheel.unit {
         MouseScrollUnit::Line => wheel.delta.y,
         MouseScrollUnit::Pixel => wheel.delta.y / PIXELS_PER_NOTCH,
     };
     *look = Look::from_mouse(
-        motion.delta,
+        free(motion.delta, target.kind, held),
         notches,
         controls.mouse_sensitivity,
         controls.invert_y,

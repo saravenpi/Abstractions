@@ -171,6 +171,11 @@ pub(super) fn plugin(app: &mut App) {
             tabs,
             status,
             super::readout::write,
+            (
+                super::inset::fresh,
+                super::inset::plan,
+                super::inset::collect,
+            ),
             (super::pointer::plot, super::glide::ease).chain(),
             super::draw::draw,
             (super::glide::slide, super::glide::rule),

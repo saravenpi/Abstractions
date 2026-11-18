@@ -3,6 +3,7 @@
 //! behind menus and the computer.
 
 mod banner;
+mod climate;
 mod compass;
 mod flight;
 mod minimap;
@@ -11,6 +12,8 @@ mod panel;
 mod prompt;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_climate;
 #[cfg(test)]
 mod tests_deck;
 mod units;
@@ -26,6 +29,9 @@ use crate::space::{Location, Travel};
 
 /// Seconds between two refreshes of the flight instruments.
 const REFRESH: f32 = 0.1;
+
+/// Seconds between two refreshes of the climate line.
+const CLIMATE_EVERY: f32 = 0.5;
 
 /// Marks the root of the HUD.
 #[derive(Component)]
@@ -50,6 +56,7 @@ fn spawn(mut commands: Commands) {
             prompt::line(),
             banner::block(),
             compass::bar(),
+            climate::line(),
             minimap::frame()
         ],
     ));
@@ -94,6 +101,9 @@ pub(super) fn plugin(app: &mut App) {
                     .run_if(every),
                 prompt::update.run_if(in_control),
                 compass::update.run_if(in_control),
+                climate::update
+                    .run_if(in_control)
+                    .run_if(on_timer(Duration::from_secs_f32(CLIMATE_EVERY))),
                 banner::watch.run_if(in_control),
                 banner::fade.run_if(banner::showing),
             )

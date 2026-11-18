@@ -9,6 +9,7 @@ use bevy::input_focus::InputFocus;
 use bevy::prelude::*;
 
 use super::atlas::Atlas;
+use super::board::Board;
 use super::view;
 use crate::audio::AudioCue;
 use crate::menus::Menu;
@@ -67,6 +68,7 @@ pub(super) fn next_state(open: bool, seated: bool, key: bool, escape: bool) -> O
 }
 
 /// Opens and closes the computer. Closing on its key sounds a cancel; Escape already does.
+/// While a filter is typed, Escape clears the filter and leaves the panel open.
 ///
 /// The state changes on the next frame. The pause menu opens only while the computer is
 /// closed, so the Escape that closes the screen does not also pause the game.
@@ -74,10 +76,12 @@ fn toggle(
     seat: Seat,
     state: Res<State<Computer>>,
     mut next: ResMut<NextState<Computer>>,
+    board: Res<Board>,
     mut cues: MessageWriter<AudioCue>,
 ) {
     let open = *state.get() == Computer::Open;
     let (key, escape) = seat.pressed();
+    let escape = escape && board.filter.is_empty();
     let Some(wanted) = next_state(open, seat.taken(), key, escape) else {
         return;
     };

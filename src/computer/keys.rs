@@ -125,14 +125,14 @@ impl Desk<'_, '_> {
     }
 }
 
-/// Hands the destination to the autopilot on the engage key of the settings, and forgets the
-/// destination on Delete.
+/// Hands the destination to the autopilot on the engage key of the settings, unless a filter
+/// is being typed, and forgets the destination on Delete.
 fn action_keys(
     keys: Res<ButtonInput<KeyCode>>,
     settings: Res<Persistent<Settings>>,
     mut desk: Desk,
 ) {
-    if keys.just_pressed(settings.controls.keys.engage) {
+    if keys.just_pressed(settings.controls.keys.engage) && desk.board.filter.is_empty() {
         desk.run(Act::Engage);
     }
     if keys.just_pressed(KeyCode::Delete) {
@@ -163,7 +163,13 @@ pub(super) fn on_activate(event: On<Activate>, roles: Query<Role>, mut desk: Des
 pub(super) fn plugin(app: &mut App) {
     app.add_observer(on_activate).add_systems(
         Update,
-        (follow_focus, navigate, focus_cursor, action_keys)
+        (
+            follow_focus,
+            navigate,
+            focus_cursor,
+            action_keys,
+            super::typing::type_filter,
+        )
             .chain()
             .in_set(super::Input)
             .run_if(ready),

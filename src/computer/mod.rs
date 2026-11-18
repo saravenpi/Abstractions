@@ -20,8 +20,10 @@ mod route;
 mod rows;
 mod scene;
 mod show;
+mod sift;
 mod tab;
 mod track;
+mod typing;
 mod view;
 mod words;
 
@@ -40,6 +42,8 @@ mod tests_rig;
 #[cfg(test)]
 mod tests_screen;
 #[cfg(test)]
+mod tests_sift;
+#[cfg(test)]
 mod tests_tables;
 #[cfg(test)]
 mod tests_wheel;
@@ -56,6 +60,7 @@ pub use open::Computer;
 pub use reveal::{HOME_NEIGHBOURS, REVEAL_CELLS, REVEAL_GLY};
 pub use route::{Destination, Engage, RouteStatus, Target};
 pub use rows::{Line, View};
+pub use sift::Sort;
 pub use tab::Tab;
 pub use track::Known;
 pub use view::Act;

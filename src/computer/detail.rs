@@ -42,11 +42,23 @@ pub fn worlds(universe: &Universe, atlas: &Atlas, lines: &[Line]) -> Vec<Option<
     lines.iter().map(world).collect()
 }
 
+/// Returns what to do to learn more about a row the computer knows little about.
+pub fn advice(target: Target, visited: bool) -> Option<&'static str> {
+    match (target, visited) {
+        (Target::Body(_), _) => Some("Visit this system to chart its planets"),
+        (Target::Star(_), false) => Some("Visit this system to chart its planets"),
+        (Target::Galaxy(_), false) => Some("Visit this galaxy to chart its systems"),
+        _ => None,
+    }
+}
+
 /// Returns the lines of the readout of `line`: the record of `world` when the row is a planet
-/// with a known record, and the facts of the row otherwise.
+/// with a known record, and otherwise the facts of the row and what to do to learn more.
 pub fn readout(line: &Line, world: Option<&PlanetSpec>) -> Vec<String> {
     let Some(planet) = world else {
-        return vec![line.facts().to_string()];
+        let known = std::iter::once(line.facts().to_string());
+        let hint = advice(line.target, line.visited).map(str::to_string);
+        return known.chain(hint).collect();
     };
     let record = &planet.record;
     let (radius, pull) = (distance(planet.radius), gravity(planet.gravity));

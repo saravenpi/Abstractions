@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use super::route::Target;
 use super::rows::Line;
+use super::sift::Sort;
 use super::tab::Tab;
 use crate::space::UniPos;
 use crate::ui::Window;
@@ -33,6 +34,10 @@ pub struct Board {
     pub ship: UniPos,
     /// Rows the window has room for, or 0 before the panel was sized.
     pub fit: usize,
+    /// The letters typed to narrow the list to the names that hold them.
+    pub filter: String,
+    /// How the rows are ordered.
+    pub sort: Sort,
     /// The planet, the system and the galaxy the ship is inside.
     pub here: [Option<Target>; 3],
 }
@@ -53,6 +58,7 @@ impl Board {
             tab,
             stale: true,
             fit: self.fit,
+            sort: self.sort,
             ..default()
         };
     }

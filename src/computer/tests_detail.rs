@@ -106,7 +106,8 @@ fn the_readout_says_the_whole_record_of_each_class() {
     let home = readout(&line, Some(&planet));
     assert_eq!(home[4], "radius 6.00 km - gravity 1.00 g");
     assert_eq!(home[5], "day 24 min - year 3 h 20 min");
-    assert_eq!(readout(&line, None), [line.facts()]);
+    let advice = "Visit this system to chart its planets";
+    assert_eq!(readout(&line, None), [line.facts(), advice]);
 }
 
 /// Returns the rows of the system of `star` seen from far away, and the planets whose record

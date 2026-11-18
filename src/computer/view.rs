@@ -22,7 +22,7 @@ use crate::ui::{
 const WIDTHS: [f32; 4] = [24.0, 130.0, 76.0, 200.0];
 
 /// Key hints shown at the bottom of the panel.
-const HINT: &str = "On the map: wheel zooms, drag pans, 0 shows it all";
+const HINT: &str = "Type to filter. F2 sorts. Map: wheel, drag, 0";
 
 /// Marks the panel, which the window sizes.
 #[derive(Component)]

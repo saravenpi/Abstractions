@@ -5,9 +5,10 @@ use bevy::prelude::*;
 use super::board::Board;
 use super::format::distance;
 use super::open::ready;
-use super::route::{Destination, RouteStatus};
+use super::route::{Destination, RouteStatus, Target};
 use super::rows::Line;
 use super::scene::Scene;
+use super::sift::{self, arrange};
 use super::tab::Tab;
 use super::view::{Cell, Crumbs, Part, Slot, Status, Summary, TabLink};
 use crate::ui::{Icon, Selected, Tone};
@@ -26,23 +27,38 @@ fn rebuild(time: Res<Time>, scene: Scene, mut board: ResMut<Board>, mut since: L
     }
     *since = 0.0;
     let (heading, lines) = scene.table(board.tab);
+    let lines = arrange(lines, &board.filter, board.sort);
     board.ship = scene.ship();
     board.here = scene.here();
     board.worlds = scene.worlds(&lines);
     board.fill(heading, lines);
 }
 
-/// Returns the text and the tone of one cell of `line`. The destination wears a pin, and a
-/// visited place a check.
-pub(super) fn cell_text(line: &Line, part: Part, chosen: bool) -> (String, Tone) {
-    match (part, chosen, line.visited) {
-        (Part::Mark, true, _) => (Icon::MapPin.glyph(), Tone::Accent),
-        (Part::Mark, false, true) => (Icon::Check.glyph(), Tone::Muted),
-        (Part::Mark, false, false) => (String::new(), Tone::Muted),
-        (Part::Title, true, _) => (line.title.clone(), Tone::Accent),
-        (Part::Title, false, _) => (line.title.clone(), Tone::Plain),
-        (Part::Distance, _, _) => (distance(line.distance), Tone::Plain),
-        (Part::Detail, _, _) => (line.facts().to_string(), Tone::Muted),
+/// Returns the icon of a row: a pin on the destination, the ship where the ship is, and
+/// otherwise what the row is, a star, a planet or a galaxy.
+fn sign(target: Target, chosen: bool, here: bool) -> Icon {
+    match (chosen, here, target) {
+        (true, _, _) => Icon::MapPin,
+        (_, true, _) => Icon::Send,
+        (_, _, Target::Star(_)) => Icon::Star,
+        (_, _, Target::Body(_)) => Icon::Earth,
+        (_, _, Target::Galaxy(_)) => Icon::Map,
+    }
+}
+
+/// Returns the text and the tone of one cell of `line`. The destination and the place of the
+/// ship are marked, and a place never visited is dimmed.
+pub(super) fn cell_text(line: &Line, part: Part, (chosen, here): (bool, bool)) -> (String, Tone) {
+    let seen = match (chosen, line.visited || here) {
+        (true, _) => Tone::Accent,
+        (false, true) => Tone::Plain,
+        (false, false) => Tone::Muted,
+    };
+    match part {
+        Part::Mark => (sign(line.target, chosen, here).glyph(), seen),
+        Part::Title => (line.title.clone(), seen),
+        Part::Distance => (distance(line.distance), Tone::Plain),
+        Part::Detail => (line.facts().to_string(), Tone::Muted),
     }
 }
 
@@ -64,7 +80,11 @@ fn rows(
         let Some(line) = board.at(*slot) else {
             continue;
         };
-        let (shown, wanted) = cell_text(line, *part, destination.0 == Some(line.target));
+        let marks = (
+            destination.0 == Some(line.target),
+            board.here.contains(&Some(line.target)),
+        );
+        let (shown, wanted) = cell_text(line, *part, marks);
         text.set_if_neq(Text(shown));
         tone.set_if_neq(wanted);
     }
@@ -80,14 +100,12 @@ fn rows(
     }
 }
 
-/// Returns the line under the tabs: the table name and which rows of it are drawn.
+/// Returns the line under the tabs: which rows are drawn, their order and the filter.
 fn summary(board: &Board) -> String {
     let (first, count) = (board.top + 1, board.lines.len());
     let last = (board.top + board.window()).min(count);
-    match count {
-        0 => format!("{} - nothing charted yet", board.heading),
-        _ => format!("{} - {first} to {last} of {count}", board.heading),
-    }
+    let view = (board.filter.as_str(), board.sort);
+    sift::summary(&board.heading, (first, last, count), view)
 }
 
 /// Selects the open tab and writes the summary line, when the table changed.

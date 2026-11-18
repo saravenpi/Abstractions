@@ -30,7 +30,10 @@ fn the_screen_shows_the_readout_of_the_cursor_row() {
     let mut board = app.world_mut().resource_mut::<Board>();
     board.worlds = vec![None, Some(planet)];
     board.fill("Vereya system".to_string(), vec![star, planet_row]);
-    assert_eq!(read(&mut app), "class G - 5 planets");
+    assert_eq!(
+        read(&mut app),
+        "class G - 5 planets\nVisit this system to chart its planets"
+    );
     app.world_mut().resource_mut::<Board>().step(1);
     let board = app.world().resource::<Board>().clone();
     let shown_now = read(&mut app);

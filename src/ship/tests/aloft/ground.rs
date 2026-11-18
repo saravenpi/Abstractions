@@ -46,19 +46,25 @@ pub fn jumps(game: &mut Game, watch: &mut Watch) -> DVec3 {
     feet
 }
 
-/// Stands the body 1.5 m over the start, facing away from the ship, once the ground there has
-/// streamed in.
+/// Length of the ground that must be solid ahead of a landing before it starts, in steps of 5 m.
+const STRIP: i32 = 12;
+
+/// Stands the body 1.5 m over the start, facing away from the ship, once the ground is solid
+/// there and along the strip ahead. The body is put back at the end: while the ground streams
+/// in it falls, for as many frames as the load of the machine decides.
 fn over_the_start(game: &mut Game, watch: &mut Watch, feet: DVec3) {
     let anchor = game.get::<Anchor>();
     let spot = anchor.to_render(feet);
     let vertical = up(&anchor, spot);
     let away = (spot - game.hull()).reject_from(vertical).normalize();
     crate::player::place(game.app.world_mut(), spot + vertical * 1.5, away);
-    watch.cut();
     game.wait("the ground to stream in", |game| {
         let here = game.get::<Anchor>().to_render(feet);
-        game.has_ground(here)
+        (0..=STRIP).all(|step| game.has_ground(here + away * (step * 5) as f32))
     });
+    let spot = game.get::<Anchor>().to_render(feet);
+    crate::player::place(game.app.world_mut(), spot + vertical * 1.5, away);
+    watch.cut();
 }
 
 /// Gliding in shallow and fast just over the ground near the start with the run keys held,
@@ -70,7 +76,7 @@ pub fn lands_running(game: &mut Game, watch: &mut Watch, feet: DVec3) {
         game.bound(|keys| keys.sprint),
     ];
     run.iter().for_each(|key| game.press(*key));
-    glide_in(game, 14.0, -1.0);
+    glide_in(game, 22.0, -1.0);
     watch.cut();
     game.until("the body to touch down", 90, |game| {
         !game.body().gear.state.mode.airborne()

@@ -62,11 +62,16 @@ jobs:
             cp -R packaging/linux/share "$DIR/"
             tar -czf "$ASSET" "$DIR"
           fi
+          NAMED="${ASSET/abstractions-/abstractions-$VERSION-}"
+          cp "$ASSET" "$NAMED"
           echo "ASSET=$ASSET" >> "$GITHUB_ENV"
+          echo "NAMED=$NAMED" >> "$GITHUB_ENV"
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: ${{ env.ASSET }}
+          files: |
+            ${{ env.ASSET }}
+            ${{ env.NAMED }}
           generate_release_notes: true
       - uses: actions/upload-artifact@v4
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
@@ -98,11 +103,16 @@ jobs:
           packaging/macos/bundle.sh "$VERSION" \
             target/aarch64-apple-darwin/release/abstractions \
             target/x86_64-apple-darwin/release/abstractions
+          NAMED="Abstractions-$REF_NAME-macos-universal.dmg"
+          cp Abstractions-macos-universal.dmg "$NAMED"
           echo "ASSET=Abstractions-macos-universal.dmg" >> "$GITHUB_ENV"
+          echo "NAMED=$NAMED" >> "$GITHUB_ENV"
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: ${{ env.ASSET }}
+          files: |
+            ${{ env.ASSET }}
+            ${{ env.NAMED }}
           generate_release_notes: true
       - uses: actions/upload-artifact@v4
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}

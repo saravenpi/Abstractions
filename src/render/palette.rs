@@ -175,7 +175,7 @@ fn update_palette(
 ) {
     let (sun, vantage, local, moon) = place;
     let (ground, star) = Palette::under(&sun, &vantage, &local);
-    let look = weather.look(&local.air_below(&vantage));
+    let look = weather.look();
     *palette = moonlit(look.sky(ground).seen(&sun, vantage.air, star), &moon);
     ambient.color = srgb(palette.ambient);
     ambient.brightness = palette.ambient_brightness;

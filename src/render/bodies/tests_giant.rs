@@ -103,7 +103,7 @@ fn giant_sky_from_the_deck() {
     assert!(blue(day.zenith) < 0.5 * blue(home.zenith), "{day:?}");
     assert!(day.horizon.x > day.horizon.z, "{day:?}");
     assert!(air.share() == 1.0 && air.depth() > 2.0);
-    assert_eq!(air.cover(0.4), 0.0);
+    assert_eq!(air.clouds, 0.0);
 }
 
 /// Returns whether the world and the sky leave `planet` to the sky, seen from `away` metres

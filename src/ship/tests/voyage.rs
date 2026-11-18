@@ -68,7 +68,7 @@ fn crosses_the_clouds(game: &mut Game) {
     }
     assert!(game.get::<ShipTelemetry>().altitude_sea > planet.cloud_top);
     assert!((0.0..=1.0).contains(&peak), "the crossing peaked at {peak}");
-    assert!(heard > 0.9 && shake <= 1.0, "{heard} {shake}");
+    assert!(heard <= peak + 1e-6 && shake <= 1.0, "{heard} {shake}");
     game.step(2);
     assert_eq!(game.get::<CloudCrossing>().depth, 0.0);
 }

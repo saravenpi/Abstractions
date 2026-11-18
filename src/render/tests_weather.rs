@@ -28,7 +28,7 @@ fn calm_weather_keeps_the_old_sky() {
     ];
     for class in PlanetClass::ALL {
         let air = air(class);
-        let look = LocalWeather::default().look(&air);
+        let look = LocalWeather::default().look();
         assert_eq!(look, WeatherLook::CALM, "{class:?}");
         assert_eq!(look.sight(), 1.0, "{class:?}");
         for step in 0..=200 {
@@ -39,7 +39,7 @@ fn calm_weather_keeps_the_old_sky() {
             }
         }
     }
-    let home = LocalWeather::default().look(&Air::HOME);
+    let home = LocalWeather::default().look();
     assert_eq!(
         home.sky(Palette::lit(0.4, Vec3::ONE)),
         Palette::lit(0.4, Vec3::ONE)

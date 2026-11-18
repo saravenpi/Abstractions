@@ -124,7 +124,7 @@ fn the_sky_blends_into_the_local_weather() {
     };
     let drawn = |step: u16| {
         let air = f32::from(step) / 2000.0;
-        LocalWeather(seen(&storm, air)).look(&crate::render::Air::HOME)
+        LocalWeather(seen(&storm, air)).look()
     };
     let values = |look: WeatherLook| [look.haze, look.dust, look.sight()];
     for step in 0..2000 {

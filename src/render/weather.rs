@@ -4,7 +4,6 @@
 
 use bevy::prelude::*;
 
-use super::air::Air;
 use super::palette::Palette;
 use super::scatter::luminance;
 
@@ -84,9 +83,8 @@ fn stained(color: Vec3, rain: f32, dust: f32) -> Vec3 {
 pub struct LocalWeather(pub Option<WeatherLook>);
 
 impl LocalWeather {
-    /// Returns the weather to draw, calm when nothing is reported. The air of the planet
-    /// no longer changes it: the argument is kept for the palette, which still passes it.
-    pub fn look(&self, _air: &Air) -> WeatherLook {
+    /// Returns the weather to draw, calm when nothing is reported.
+    pub fn look(&self) -> WeatherLook {
         self.0.unwrap_or(WeatherLook::CALM)
     }
 }

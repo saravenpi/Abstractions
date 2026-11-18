@@ -1,17 +1,19 @@
 //! The map of the computer screen: the chart of the open tab drawn as dots beside the table.
 //!
 //! The dots are plain squares on a black field, like the rest of the interface. The row under
-//! the cursor is drawn larger with its name, and the destination wears a frame.
+//! the cursor is drawn larger with its name, and the destination wears a frame. A planet whose
+//! record is known is drawn as the mark of its class.
 
 use bevy::prelude::*;
 
 use super::board::Board;
-use super::chart::{Dot, chart};
+use super::chart::{Dot, GRID, chart, mark};
 use super::route::Destination;
 use crate::ui::{Icon, Tone, icon, text, theme};
+use crate::universe::PlanetSpec;
 
 /// Width and height of the map in pixels.
-pub(super) const SIZE: f32 = 300.0;
+pub(super) const SIZE: f32 = 240.0;
 
 /// Sides in pixels of an orbit dot, a body, the body under the cursor and the frame of the destination.
 const SIDES: [f32; 4] = [1.0, 4.0, 8.0, 16.0];
@@ -47,6 +49,37 @@ fn square(at: Vec2, side: f32) -> Node {
         width: px(side),
         height: px(side),
         ..default()
+    }
+}
+
+/// Returns the node of one block of a class mark centred on the chart point `at`, on a grid
+/// whose cells are `unit` pixels wide.
+fn block(at: Vec2, unit: f32, [x, y, w, h]: [u8; 4]) -> Node {
+    let corner = (Vec2::new(at.x, -at.y) * 0.5 + 0.5) * SIZE - f32::from(GRID) * unit * 0.5;
+    Node {
+        position_type: PositionType::Absolute,
+        left: px(corner.x + f32::from(x) * unit),
+        top: px(corner.y + f32::from(y) * unit),
+        width: px(f32::from(w) * unit),
+        height: px(f32::from(h) * unit),
+        ..default()
+    }
+}
+
+/// Spawns a star, a galaxy or a planet at `at` in `color`: a square `side` pixels wide, or
+/// the mark of the class of `world`, on cells half as wide, when its record is known.
+fn body(
+    field: &mut ChildSpawnerCommands,
+    at: Vec2,
+    (side, color): (f32, Color),
+    world: Option<&PlanetSpec>,
+) {
+    let Some(planet) = world else {
+        field.spawn((square(at, side), BackgroundColor(color)));
+        return;
+    };
+    for cells in mark(planet.record.class) {
+        field.spawn((block(at, side * 0.5, *cells), BackgroundColor(color)));
     }
 }
 
@@ -96,7 +129,8 @@ fn dot(
     } else {
         theme::MUTED
     };
-    field.spawn((square(at, side), BackgroundColor(color)));
+    let world = board.worlds.get(index).and_then(Option::as_ref);
+    body(field, at, (side, color), world);
     if chosen.0 == Some(line.target) {
         frame(field, at);
     }

@@ -3,11 +3,13 @@
 mod atlas;
 mod board;
 mod chart;
+mod detail;
 mod format;
 mod keys;
 mod locate;
 mod map;
 mod open;
+mod readout;
 mod reveal;
 mod route;
 mod rows;
@@ -15,11 +17,18 @@ mod scene;
 mod show;
 mod track;
 mod view;
+mod words;
 
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_detail;
+#[cfg(test)]
+mod tests_screen;
+#[cfg(test)]
 mod tests_tables;
+#[cfg(test)]
+mod tests_words;
 
 pub use atlas::Atlas;
 pub use board::{Board, Tab, VISIBLE_ROWS};

@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use super::atlas::Atlas;
 use super::board::Tab;
+use super::detail::worlds;
 use super::format::distance;
 use super::locate::{ship_position, target_position};
 use super::route::{RouteStatus, Target};
@@ -12,7 +13,7 @@ use super::rows::{Line, View};
 use super::track::Known;
 use crate::render::GameCamera;
 use crate::space::{Anchor, Clock, Location, UniPos};
-use crate::universe::Universe;
+use crate::universe::{PlanetSpec, Universe};
 
 /// The world as the computer sees it. Only valid while a world is loaded.
 #[derive(SystemParam)]
@@ -66,6 +67,11 @@ impl Scene<'_, '_> {
             }
             Tab::Universe => ("Known universe".to_string(), view.universe()),
         }
+    }
+
+    /// Returns, for each of `lines`, the planet whose record the computer knows.
+    pub(super) fn worlds(&self, lines: &[Line]) -> Vec<Option<PlanetSpec>> {
+        worlds(&self.universe, &self.atlas, lines)
     }
 
     /// Returns the line that names the destination, its distance and the state of the route.

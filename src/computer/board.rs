@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use super::rows::Line;
 use crate::space::UniPos;
 use crate::ui::Window;
+use crate::universe::PlanetSpec;
 
 /// Number of rows drawn at once. A longer table scrolls through them.
 pub const VISIBLE_ROWS: usize = 12;
@@ -50,6 +51,8 @@ pub struct Board {
     pub heading: String,
     /// Every row of the table. Only [`VISIBLE_ROWS`] of them are drawn.
     pub lines: Vec<Line>,
+    /// For each row, the planet whose record is known, for the readout and the map.
+    pub worlds: Vec<Option<PlanetSpec>>,
     /// Index of the selected row.
     pub cursor: usize,
     /// Index of the first drawn row.

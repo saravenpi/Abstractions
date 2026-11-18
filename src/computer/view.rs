@@ -1,11 +1,11 @@
-//! Static layout of the computer screen: tabs, a fixed pool of table rows beside the map, the
-//! route line and the actions with their keys.
+//! Static layout of the computer screen: tabs, a fixed pool of table rows beside the map and
+//! the readout, the route line and the actions with their keys.
 
 use bevy::prelude::*;
 
 use super::board::{Board, Tab, VISIBLE_ROWS};
-use super::map::field;
 use super::open::Computer;
+use super::readout::pane;
 use crate::menus::key_name;
 use crate::settings::{Persistent, Settings};
 use crate::ui::{
@@ -129,7 +129,7 @@ fn table() -> impl Bundle {
     )
 }
 
-/// The table and the map of the open tab, side by side.
+/// The table of the open tab beside its map and the readout of the selected row.
 fn charted() -> impl Bundle {
     (
         Node {
@@ -137,7 +137,7 @@ fn charted() -> impl Bundle {
             align_items: AlignItems::FlexStart,
             ..default()
         },
-        children![table(), field()],
+        children![table(), pane()],
     )
 }
 

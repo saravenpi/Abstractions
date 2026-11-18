@@ -9,7 +9,7 @@ const UNITS: [(f64, &str); 2] = [(1e3, "km"), (1e6, "Mm")];
 const UNIT_LIMIT: f64 = 999.5;
 
 /// Formats a number with three significant digits under 100 and no decimals above.
-fn short(value: f64) -> String {
+pub(super) fn short(value: f64) -> String {
     match value {
         v if v < 9.995 => format!("{v:.2}"),
         v if v < 99.95 => format!("{v:.1}"),

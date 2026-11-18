@@ -13,12 +13,38 @@ use bevy::prelude::*;
 use super::board::Tab;
 use super::rows::Line;
 use crate::space::UniPos;
+use crate::universe::PlanetClass;
 
 /// Share of the half width of the map the farthest thing is drawn at.
 const FILL: f32 = 0.88;
 
 /// Dots that trace one orbit.
 const ORBIT_DOTS: usize = 40;
+
+/// Cells along one side of the grid a class mark is drawn on.
+pub const GRID: u8 = 3;
+
+/// Returns the mark of a class on the map: filled blocks of the grid, each given as the
+/// column and the row of its corner, then its width and its height in cells.
+///
+/// An island world is a full square, an ocean world a ring, a desert a flat bar, an ice world
+/// five flakes, a lava world a cross and a barren world a speck.
+pub const fn mark(class: PlanetClass) -> &'static [[u8; 4]] {
+    match class {
+        PlanetClass::Island => &[[0, 0, 3, 3]],
+        PlanetClass::Ocean => &[[0, 0, 3, 1], [0, 2, 3, 1], [0, 1, 1, 1], [2, 1, 1, 1]],
+        PlanetClass::Desert => &[[0, 1, 3, 1]],
+        PlanetClass::Ice => &[
+            [0, 0, 1, 1],
+            [2, 0, 1, 1],
+            [1, 1, 1, 1],
+            [0, 2, 1, 1],
+            [2, 2, 1, 1],
+        ],
+        PlanetClass::Lava => &[[0, 1, 3, 1], [1, 0, 1, 3]],
+        PlanetClass::Barren => &[[1, 1, 1, 1]],
+    }
+}
 
 /// What a dot of the chart stands for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

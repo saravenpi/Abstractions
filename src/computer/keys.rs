@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
 use super::board::{Board, VISIBLE_ROWS};
-use super::open::{Computer, ready};
+use super::open::ready;
 use super::pointer::MapView;
 use super::route::{Destination, Engage};
 use super::view::{Act, Slot, TabLink};
@@ -107,7 +107,6 @@ fn focus_cursor(
 pub(super) struct Desk<'w, 's> {
     board: ResMut<'w, Board>,
     destination: ResMut<'w, Destination>,
-    next: ResMut<'w, NextState<Computer>>,
     commands: Commands<'w, 's>,
 }
 
@@ -115,12 +114,12 @@ impl Desk<'_, '_> {
     /// Runs an action of the screen.
     fn run(&mut self, act: Act) {
         match (act, self.destination.0) {
-            (Act::Engage, Some(target)) => {
-                self.commands.trigger(Engage(target));
-                self.next.set(Computer::Closed);
+            (Act::Set, _) => {
+                let row = self.board.lines.get(self.board.cursor);
+                self.destination.0 = row.map(|line| line.target).or(self.destination.0);
             }
+            (Act::Engage, Some(target)) => self.commands.trigger(Engage(target)),
             (Act::Clear, Some(_)) => self.destination.0 = None,
-            (Act::Close, _) => self.next.set(Computer::Closed),
             _ => {}
         }
     }

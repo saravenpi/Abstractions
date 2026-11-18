@@ -1,33 +1,41 @@
-//! Static layout of the computer screen: tabs, a fixed pool of table rows beside the map and
-//! the readout, the route line and the actions with their keys.
+//! Static layout of the computer panel on the right edge of the window: the header with the
+//! breadcrumb and the tabs, the map, a fixed pool of list rows, the card of the selected row
+//! and the footer with the course, the actions and the key hints.
+//!
+//! The game stays visible and keeps running to the left of the panel.
 
 use bevy::prelude::*;
 
-use super::board::{Board, Tab, VISIBLE_ROWS};
+use super::board::VISIBLE_ROWS;
+use super::layout::{PAD, SMALLEST, panel_width};
+use super::map::field;
 use super::open::Computer;
-use super::readout::pane;
+use super::readout::card;
+use super::tab::Tab;
 use crate::menus::key_name;
 use crate::settings::{Persistent, Settings};
 use crate::ui::{
-    Icon, Selected, Tone, action, cell, column, footer, head, heading, icon, label, link, panel,
-    root, strip, table_head, table_row, text, theme,
+    Icon, Overlay, Selected, Tone, action, cell, column, icon, label, link, table_row, text, theme,
 };
 
-/// Widths in pixels of the mark, name, distance and facts columns.
-const WIDTHS: [f32; 4] = [20.0, 190.0, 100.0, 360.0];
+/// Widths in pixels of the icon, name, distance and facts columns of a row.
+const WIDTHS: [f32; 4] = [24.0, 130.0, 76.0, 200.0];
 
-/// Key hints shown at the bottom of the screen.
-const HINT: &str = "Up and down select. Left and right change tab. Enter sets the destination. \
-                    On the map the wheel zooms, a drag pans and Backspace shows it all";
+/// Key hints shown at the bottom of the panel.
+const HINT: &str = "On the map: wheel zooms, drag pans, 0 shows it all";
 
-/// A row button of the pool, counted from the top of the screen.
+/// Marks the panel, which the window sizes.
+#[derive(Component)]
+pub(super) struct Panel;
+
+/// A row button of the pool, counted from the top of the list.
 #[derive(Component, Debug, Clone, Copy)]
 pub(super) struct Slot(pub usize);
 
 /// Which text of a row a cell is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Part {
-    /// The icon that marks the destination or a visited place.
+    /// The icon that says what the row is, or marks the destination or the place of the ship.
     Mark,
     /// The name.
     Title,
@@ -45,22 +53,26 @@ pub(super) struct Cell(pub usize, pub Part);
 #[derive(Component, Debug, Clone, Copy)]
 pub(super) struct TabLink(pub Tab);
 
-/// A button that acts on the destination or on the screen.
+/// A button of the footer that acts on the course.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Act {
-    /// Hand the destination to the autopilot.
+pub enum Act {
+    /// Set the course to the row under the cursor.
+    Set,
+    /// Hand the course to the autopilot.
     Engage,
-    /// Forget the destination.
+    /// Forget the course.
     Clear,
-    /// Close the screen.
-    Close,
 }
 
-/// Marks the line that names the table and counts its rows.
+/// Marks the line that says where the ship is.
+#[derive(Component)]
+pub(super) struct Crumbs;
+
+/// Marks the line that names the list and counts its rows.
 #[derive(Component)]
 pub(super) struct Summary;
 
-/// Marks the line that shows the destination and the route state.
+/// Marks the line that shows the course and the route state.
 #[derive(Component)]
 pub(super) struct Status;
 
@@ -69,17 +81,13 @@ fn row(slot: usize) -> impl Bundle {
     let small =
         move |part: Part, tone: Tone| (label("", theme::FONT_SMALL, tone), Cell(slot, part));
     let mark = (icon(Icon::Check, Tone::Muted), Cell(slot, Part::Mark));
-    let title = (
-        label("", theme::FONT_BODY, Tone::Plain),
-        Cell(slot, Part::Title),
-    );
     (
         table_row(
             0,
             theme::ROW_COMPACT,
             children![
                 cell(WIDTHS[0], mark),
-                cell(WIDTHS[1], title),
+                cell(WIDTHS[1], small(Part::Title, Tone::Plain)),
                 cell(WIDTHS[2], small(Part::Distance, Tone::Plain)),
                 cell(WIDTHS[3], small(Part::Detail, Tone::Muted)),
             ],
@@ -89,110 +97,100 @@ fn row(slot: usize) -> impl Bundle {
     )
 }
 
-/// Returns the icon shown on a tab: a planet for the system, a star for the galaxy of stars.
-/// The icon pack has no galaxy, so the universe tab has a label only.
-fn tab_icon(tab: Tab) -> Option<Icon> {
+/// Returns the icon shown on a tab: a planet for the system, a star for the galaxy of stars
+/// and a map for the universe, since the icon pack has no galaxy.
+fn tab_icon(tab: Tab) -> Icon {
     match tab {
-        Tab::System => Some(Icon::Earth),
-        Tab::Galaxy => Some(Icon::Star),
-        Tab::Universe => None,
+        Tab::System => Icon::Earth,
+        Tab::Galaxy => Icon::Star,
+        Tab::Universe => Icon::Map,
     }
 }
 
-/// The buttons that open each tab, with their icons. The open one is selected.
-fn tabs() -> impl Bundle {
+/// The header: where the ship is, the tabs with their icons, and the line that counts the rows.
+fn header() -> impl Bundle {
     let tab = |tab: Tab| {
-        (
-            link(1, tab_icon(tab), tab.label(), Tone::Muted),
-            TabLink(tab),
-            Selected(false),
-        )
+        let button = link(1, tab_icon(tab), tab.label(), Tone::Muted);
+        (button, TabLink(tab), Selected(false))
     };
-    (
-        strip(),
-        Children::spawn(SpawnIter(Tab::ALL.into_iter().map(tab))),
-    )
-}
-
-/// The column names and the pool of rows.
-fn table() -> impl Bundle {
-    (
-        column(px(WIDTHS.iter().sum::<f32>() + theme::GAP_M * 4.0), 0.0),
-        Children::spawn((
-            Spawn(table_head(children![
-                head(WIDTHS[0], ""),
-                head(WIDTHS[1], "Name"),
-                head(WIDTHS[2], "Distance"),
-                head(WIDTHS[3], "Facts"),
-            ])),
-            SpawnIter((0..VISIBLE_ROWS).map(row)),
-        )),
-    )
-}
-
-/// The table of the open tab beside its map and the readout of the selected row.
-fn charted() -> impl Bundle {
-    (
+    let tabs = (
         Node {
-            column_gap: px(theme::GAP_M),
-            align_items: AlignItems::FlexStart,
+            column_gap: px(theme::GAP_S),
             ..default()
         },
-        children![table(), pane()],
-    )
-}
-
-/// The actions on the destination and the screen, each with its icon and its key.
-fn actions(engage: &str, close: &str) -> impl Bundle {
+        Children::spawn(SpawnIter(Tab::ALL.into_iter().map(tab))),
+    );
     (
-        strip(),
+        column(percent(100), theme::GAP_XS),
         children![
-            (
-                action(Icon::Send, "Engage", engage, Tone::Accent),
-                Act::Engage
-            ),
-            (
-                action(Icon::Eraser, "Clear destination", "Del", Tone::Plain),
-                Act::Clear
-            ),
-            (action(Icon::Close, "Close", close, Tone::Muted), Act::Close),
+            (Crumbs, text("", theme::FONT_SMALL, theme::TEXT)),
+            tabs,
+            (Summary, text("", theme::FONT_SMALL, theme::MUTED)),
         ],
     )
 }
 
-/// Spawns the screen over the blurred game and asks for the rows of the open tab.
+/// The pool of rows of the list. Only the rows that fit the window are shown.
+fn list() -> impl Bundle {
+    (
+        column(percent(100), 0.0),
+        Children::spawn(SpawnIter((0..VISIBLE_ROWS).map(row))),
+    )
+}
+
+/// The footer: the course, the actions on it with their keys, and the key hints.
+fn footer(engage: &str) -> impl Bundle {
+    let set = action(Icon::MapPin, "Set course", "Enter", Tone::Accent);
+    let go = action(Icon::Send, "Engage autopilot", engage, Tone::Accent);
+    let clear = action(Icon::Eraser, "Clear course", "Del", Tone::Plain);
+    let actions = (
+        Node {
+            column_gap: px(theme::GAP_S),
+            height: px(theme::ROW_HEIGHT),
+            ..default()
+        },
+        children![(set, Act::Set), (go, Act::Engage), (clear, Act::Clear)],
+    );
+    (
+        column(percent(100), theme::GAP_XS),
+        children![
+            (Status, text("", theme::FONT_SMALL, theme::TEXT)),
+            actions,
+            (
+                text(HINT, theme::FONT_SMALL, theme::MUTED),
+                TextLayout::no_wrap()
+            ),
+        ],
+    )
+}
+
+/// Spawns the panel on the right edge of the window and asks for the rows of the open tab.
 pub(super) fn spawn(
     mut commands: Commands,
-    mut board: ResMut<Board>,
+    mut board: ResMut<super::board::Board>,
     settings: Res<Persistent<Settings>>,
 ) {
     let tab = board.tab;
     board.show(tab);
-    let keys = &settings.controls.keys;
-    let close = format!("{} or Esc", key_name(keys.computer));
+    let node = Node {
+        position_type: PositionType::Absolute,
+        top: px(0),
+        right: px(0),
+        bottom: px(0),
+        width: px(panel_width(SMALLEST.x)),
+        flex_direction: FlexDirection::Column,
+        row_gap: px(theme::GAP_S),
+        padding: UiRect::all(px(PAD)),
+        border: UiRect::left(px(theme::LINE)),
+        overflow: Overflow::clip(),
+        ..default()
+    };
+    let engage = key_name(settings.controls.keys.engage);
     commands.spawn((
         DespawnOnExit(Computer::Open),
-        root(),
-        children![
-            (
-                panel(),
-                children![
-                    heading("Board computer"),
-                    tabs(),
-                    (Summary, text("", theme::FONT_SMALL, theme::MUTED)),
-                    charted(),
-                    (
-                        Status,
-                        text("", theme::FONT_SMALL, theme::TEXT),
-                        Node {
-                            margin: UiRect::top(px(theme::GAP_S)),
-                            ..default()
-                        },
-                    ),
-                    actions(&key_name(keys.engage), &close),
-                ]
-            ),
-            footer(HINT),
-        ],
+        (Panel, Overlay, node),
+        BackgroundColor(theme::SCRIM),
+        BorderColor::all(theme::HAIRLINE),
+        children![header(), field(), list(), card(), footer(&engage)],
     ));
 }

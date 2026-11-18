@@ -3,9 +3,12 @@
 mod atlas;
 mod board;
 mod chart;
+mod chrome;
+mod course;
 mod detail;
 mod format;
 mod keys;
+mod layout;
 mod lens;
 mod locate;
 mod map;
@@ -17,6 +20,7 @@ mod route;
 mod rows;
 mod scene;
 mod show;
+mod tab;
 mod track;
 mod view;
 mod words;
@@ -28,7 +32,11 @@ mod tests_detail;
 #[cfg(test)]
 mod tests_lens;
 #[cfg(test)]
+mod tests_panel;
+#[cfg(test)]
 mod tests_pointer;
+#[cfg(test)]
+mod tests_rig;
 #[cfg(test)]
 mod tests_screen;
 #[cfg(test)]
@@ -39,14 +47,18 @@ mod tests_wheel;
 mod tests_words;
 
 pub use atlas::Atlas;
-pub use board::{Board, Tab, VISIBLE_ROWS};
+pub use board::{Board, VISIBLE_ROWS};
+pub use chart::{Dot, GRID, chart, mark};
 pub use format::{distance, gravity};
+pub use lens::{Lens, MAX_ZOOM, hit};
 pub use locate::{SYSTEM_REACH, ship_position, target_position, whereabouts};
 pub use open::Computer;
 pub use reveal::{HOME_NEIGHBOURS, REVEAL_CELLS, REVEAL_GLY};
 pub use route::{Destination, Engage, RouteStatus, Target};
 pub use rows::{Line, View};
+pub use tab::Tab;
 pub use track::Known;
+pub use view::Act;
 
 use bevy::prelude::*;
 

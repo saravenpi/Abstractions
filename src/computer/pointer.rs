@@ -6,11 +6,12 @@ use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 use bevy::ui_widgets::Activate;
 
-use super::board::{Board, Tab};
+use super::board::Board;
 use super::chart::{Dot, chart};
 use super::lens::{Lens, hit};
 use super::map::{Field, SIZE, Sheet};
 use super::open::Computer;
+use super::tab::Tab;
 use super::view::Slot;
 use crate::ui::theme;
 
@@ -27,7 +28,7 @@ pub(super) const ZOOM_STEP: f32 = 1.25;
 pub(super) const DOUBLE_CLICK: f32 = 0.4;
 
 /// The key that shows the whole chart again.
-pub(super) const RESET_KEY: KeyCode = KeyCode::Backspace;
+pub(super) const RESET_KEY: KeyCode = KeyCode::Digit0;
 
 /// How the map is looked at and what the pointer does on it.
 #[derive(Resource, Debug, Clone, Default, PartialEq)]
@@ -64,7 +65,7 @@ pub(super) fn aim(
     let seen = fields.iter().next();
     let pointer = seen.and_then(|field| Some((field.cursor_over, field.normalized?)));
     let (over, at) = match pointer {
-        Some((over, share)) => (over, (share + 0.5) * SIZE - theme::LINE),
+        Some((over, share)) => (over, (share + 0.5) * SIZE),
         None => (false, view.at),
     };
     let still = at == view.at && over == view.over;
@@ -177,10 +178,10 @@ pub(super) fn plot(board: Res<Board>, mut view: ResMut<MapView>) {
 
 /// Moves and sizes the sheet the chart is drawn on, so the map shows what the lens looks at.
 pub(super) fn slide(view: Res<MapView>, mut sheets: Query<&mut Node, With<Sheet>>) {
-    let corner = view.lens.to_map(Vec2::new(-1.0, 1.0));
-    let side = px(SIZE * view.lens.zoom);
+    let corner = view.lens.to_map(Vec2::new(-1.0, 1.0)) / SIZE * 100.0;
+    let side = percent(view.lens.zoom * 100.0);
     for mut node in &mut sheets {
-        let wanted = (px(corner.x), px(corner.y), side, side);
+        let wanted = (percent(corner.x), percent(corner.y), side, side);
         if (node.left, node.top, node.width, node.height) != wanted {
             (node.left, node.top, node.width, node.height) = wanted;
         }

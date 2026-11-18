@@ -1,52 +1,29 @@
-//! The pane beside the table: the map, and under it the readout of the row under the cursor.
+//! The card of the panel: the readout of the row under the cursor.
 
 use bevy::prelude::*;
 
-use super::board::{Board, VISIBLE_ROWS};
-use super::detail::{LINES, readout};
-use super::map::field;
+use super::board::Board;
+use super::detail::readout;
+use super::layout::CARD;
 use crate::ui::{text, theme};
-
-/// Width of the pane in pixels: the room of one readout line.
-pub(super) const WIDTH: f32 = 300.0;
-
-/// Height of the pane in pixels: the height of a full table, so the pane never makes the
-/// screen taller than a long table already does.
-pub(super) const HEIGHT: f32 = theme::ROW_COMPACT * (VISIBLE_ROWS + 1) as f32;
-
-/// Height of one line of readout text in pixels: the small font at Bevy's line height of 1.2.
-pub(super) const LINE_HEIGHT: f32 = theme::FONT_SMALL * 1.2;
 
 /// Marks the text that shows the readout.
 #[derive(Component)]
 pub(super) struct Readout;
 
-/// The map with the empty readout under it. `write` fills the readout.
-pub(super) fn pane() -> impl Bundle {
+/// The empty card under a rule: the room of the longest readout, cut past it. `write` fills it.
+pub(super) fn card() -> impl Bundle {
     (
         Node {
-            width: px(WIDTH),
-            height: px(HEIGHT),
+            height: px(CARD),
             flex_shrink: 0.0,
-            flex_direction: FlexDirection::Column,
-            row_gap: px(theme::GAP_XS),
+            padding: UiRect::top(px(theme::GAP_S)),
+            border: UiRect::top(px(theme::LINE)),
             overflow: Overflow::clip(),
             ..default()
         },
-        children![field(), (Readout, lines())],
-    )
-}
-
-/// The text of the readout: the room of the longest readout, cut past it.
-fn lines() -> impl Bundle {
-    (
-        text("", theme::FONT_SMALL, theme::TEXT),
-        Node {
-            height: px(LINES as f32 * LINE_HEIGHT),
-            flex_shrink: 0.0,
-            overflow: Overflow::clip(),
-            ..default()
-        },
+        BorderColor::all(theme::HAIRLINE),
+        children![(Readout, text("", theme::FONT_SMALL, theme::TEXT))],
     )
 }
 

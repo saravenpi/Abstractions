@@ -12,13 +12,15 @@ use bevy::ui::RelativeCursorPosition;
 
 use super::board::Board;
 use super::chart::{Dot, GRID, mark};
+use super::layout::{SMALLEST, map_side};
 use super::pointer::MapView;
 use super::route::Destination;
 use crate::ui::{Icon, Tone, icon, text, theme};
 use crate::universe::PlanetSpec;
 
-/// Width and height of the map in pixels.
-pub(super) const SIZE: f32 = 240.0;
+/// Width and height of the map in the units the lens counts in. The map is drawn at the size
+/// the window leaves it, and its pixels are shares of that size.
+pub const SIZE: f32 = 240.0;
 
 /// Sides in pixels of an orbit dot, a body, the body under the cursor and the frame of the destination.
 const SIDES: [f32; 4] = [1.0, 4.0, 8.0, 16.0];
@@ -42,17 +44,19 @@ pub(super) struct Sheet;
 pub(super) fn field() -> impl Bundle {
     let sheet = Node {
         position_type: PositionType::Absolute,
-        width: px(SIZE),
-        height: px(SIZE),
+        width: percent(100),
+        height: percent(100),
         ..default()
     };
+    let side = px(map_side(SMALLEST));
     (
         Field,
         RelativeCursorPosition::default(),
         Node {
-            width: px(SIZE),
-            height: px(SIZE),
+            width: side,
+            height: side,
             flex_shrink: 0.0,
+            align_self: AlignSelf::Center,
             border: UiRect::all(px(theme::LINE)),
             overflow: Overflow::clip(),
             ..default()

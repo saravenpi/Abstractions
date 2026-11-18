@@ -10,8 +10,8 @@ use std::f32::consts::TAU;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::board::Tab;
 use super::rows::Line;
+use super::tab::Tab;
 use crate::space::UniPos;
 use crate::universe::PlanetClass;
 

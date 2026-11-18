@@ -2,13 +2,14 @@
 
 use bevy::prelude::*;
 
-use super::board::{Board, Tab, VISIBLE_ROWS};
+use super::board::Board;
 use super::format::distance;
 use super::open::ready;
 use super::route::{Destination, RouteStatus};
 use super::rows::Line;
 use super::scene::Scene;
-use super::view::{Cell, Part, Slot, Status, Summary, TabLink};
+use super::tab::Tab;
+use super::view::{Cell, Crumbs, Part, Slot, Status, Summary, TabLink};
 use crate::ui::{Icon, Selected, Tone};
 
 /// Seconds between two refreshes of what changes while flying: the distances of the system tab
@@ -26,6 +27,7 @@ fn rebuild(time: Res<Time>, scene: Scene, mut board: ResMut<Board>, mut since: L
     *since = 0.0;
     let (heading, lines) = scene.table(board.tab);
     board.ship = scene.ship();
+    board.here = scene.here();
     board.worlds = scene.worlds(&lines);
     board.fill(heading, lines);
 }
@@ -68,8 +70,8 @@ fn rows(
     }
     for (slot, mut node, mut selected) in &mut slots {
         let display = match board.at(slot.0) {
-            Some(_) => Display::Flex,
-            None => Display::None,
+            Some(_) if slot.0 < board.window() => Display::Flex,
+            _ => Display::None,
         };
         if node.display != display {
             node.display = display;
@@ -81,7 +83,7 @@ fn rows(
 /// Returns the line under the tabs: the table name and which rows of it are drawn.
 fn summary(board: &Board) -> String {
     let (first, count) = (board.top + 1, board.lines.len());
-    let last = (board.top + VISIBLE_ROWS).min(count);
+    let last = (board.top + board.window()).min(count);
     match count {
         0 => format!("{} - nothing charted yet", board.heading),
         _ => format!("{} - {first} to {last} of {count}", board.heading),
@@ -109,24 +111,28 @@ fn tabs(
 /// What the route line is drawn from.
 type Route<'w> = (Res<'w, Destination>, Res<'w, RouteStatus>);
 
-/// Writes the destination, its distance and the state of the route: when one of them changes,
-/// and twice a second for the distance.
+/// The lines the course and the place of the ship are written on.
+type Written = Or<(With<Status>, With<Crumbs>)>;
+
+/// Writes the course with its distance and the state of the route, and where the ship is:
+/// when the course or the route changes, and twice a second for the distance.
 fn status(
     time: Res<Time>,
     scene: Scene,
     (destination, route): Route,
     mut since: Local<f32>,
-    mut lines: Query<&mut Text, With<Status>>,
+    mut lines: Query<(&mut Text, Has<Crumbs>), Written>,
 ) {
     *since += time.delta_secs();
-    let empty = lines.iter().any(|text| text.0.is_empty());
+    let empty = lines.iter().any(|(text, _)| text.0.is_empty());
     if !(destination.is_changed() || route.is_changed() || empty || *since >= REFRESH) {
         return;
     }
     *since = 0.0;
-    let shown = scene.route(destination.0, *route);
-    for mut text in &mut lines {
-        text.set_if_neq(Text(shown.clone()));
+    let (shown, place) = (scene.route(destination.0, *route), scene.place());
+    for (mut text, crumbs) in &mut lines {
+        let wanted = if crumbs { &place } else { &shown };
+        text.set_if_neq(Text(wanted.clone()));
     }
 }
 
@@ -143,6 +149,7 @@ pub(super) fn plugin(app: &mut App) {
             super::pointer::plot,
             super::map::draw,
             super::pointer::slide,
+            (super::chrome::fit, super::chrome::offer),
         )
             .chain()
             .after(super::Input)

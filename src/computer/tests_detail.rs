@@ -7,9 +7,7 @@ use bevy::prelude::*;
 
 use super::chart::{GRID, mark};
 use super::detail::{LINES, UNCHARTED, brief, readout, worlds};
-use super::readout::{HEIGHT, LINE_HEIGHT, WIDTH};
 use super::*;
-use crate::ui::theme;
 use crate::universe::{PlanetClass, PlanetRecord, PlanetSpec, StarId, Universe, Water, Zone};
 
 /// One hand-built record per class, in the order of `PlanetClass::ALL`, none the home record.
@@ -87,7 +85,7 @@ fn every_class_has_a_short_brief() {
 fn the_readout_says_the_whole_record_of_each_class() {
     let lines = records().map(|record| {
         let (line, planet) = world(record);
-        readout(&line, Some(&planet))[1..5].join(" | ")
+        readout(&line, Some(&planet))[..4].join(" | ")
     });
     let expected = [
         "ocean - 22 C - tilt 11 deg | air like home, pressure 1.20 | \
@@ -106,34 +104,9 @@ fn the_readout_says_the_whole_record_of_each_class() {
     assert_eq!(lines, expected);
     let (line, planet) = world(PlanetRecord::TEMPERATE);
     let home = readout(&line, Some(&planet));
-    assert_eq!(home[0], "Kodya");
-    assert_eq!(home[5], "radius 6.00 km - gravity 1.00 g");
-    assert_eq!(home[6], "day 24 min - year 3 h 20 min");
-}
-
-/// Every readout line fits the pane without wrapping, the readout fits under the map inside
-/// the height of a full table, and a row without a record shows its name and its facts.
-#[test]
-fn the_readout_fits_under_the_map() {
-    let room = (WIDTH / (theme::FONT_SMALL * theme::GLYPH_ASPECT)).floor() as usize;
-    for record in records() {
-        let (line, planet) = world(record);
-        let slow = PlanetSpec {
-            radius: 12_300.0,
-            day_seconds: 3599.0,
-            orbit_seconds: 172_799.0,
-            ..planet
-        };
-        let lines = readout(&line, Some(&slow));
-        assert_eq!(lines.len(), LINES);
-        let longest = lines.iter().map(String::len).max().unwrap();
-        assert!(longest <= room, "{lines:?}");
-        assert!(line.facts().len() <= 42, "{}", line.facts());
-    }
-    let used = map::SIZE + theme::GAP_XS + LINES as f32 * LINE_HEIGHT;
-    assert!(used <= HEIGHT && map::SIZE <= WIDTH, "{used}");
-    let (line, _) = world(PlanetRecord::TEMPERATE);
-    assert_eq!(readout(&line, None), ["Kodya", line.facts()]);
+    assert_eq!(home[4], "radius 6.00 km - gravity 1.00 g");
+    assert_eq!(home[5], "day 24 min - year 3 h 20 min");
+    assert_eq!(readout(&line, None), [line.facts()]);
 }
 
 /// Returns the rows of the system of `star` seen from far away, and the planets whose record

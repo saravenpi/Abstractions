@@ -14,7 +14,6 @@ use super::pointer::{DOUBLE_CLICK, MapView, aim, plot, press, tap};
 use super::view::Slot;
 use super::*;
 use crate::audio::AudioCue;
-use crate::ui::theme;
 use crate::universe::Universe;
 
 /// Builds an app that holds the open screen of the home system without drawing it: the
@@ -60,7 +59,7 @@ pub(super) fn pixel(app: &App, dot: Dot) -> Vec2 {
 
 /// Moves the pointer to `at`, a pixel of the map.
 pub(super) fn point(app: &mut App, at: Vec2) {
-    let share = (at + theme::LINE) / SIZE - 0.5;
+    let share = at / SIZE - 0.5;
     let over = share.abs().max_element() <= 0.5;
     let mut fields = app.world_mut().query::<&mut RelativeCursorPosition>();
     for mut field in fields.iter_mut(app.world_mut()) {

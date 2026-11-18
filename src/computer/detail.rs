@@ -9,7 +9,7 @@ use crate::saves::play_time;
 use crate::universe::{PlanetRecord, PlanetSpec, Universe};
 
 /// Most lines a readout has.
-pub const LINES: usize = 7;
+pub const LINES: usize = 6;
 
 /// What a row says in place of the class and the temperature while the record is unknown.
 pub const UNCHARTED: &str = "uncharted";
@@ -42,17 +42,16 @@ pub fn worlds(universe: &Universe, atlas: &Atlas, lines: &[Line]) -> Vec<Option<
     lines.iter().map(world).collect()
 }
 
-/// Returns the lines of the readout of `line`: its name, then the record of `world` when the
-/// row is a planet with a known record, and the facts of the row otherwise.
+/// Returns the lines of the readout of `line`: the record of `world` when the row is a planet
+/// with a known record, and the facts of the row otherwise.
 pub fn readout(line: &Line, world: Option<&PlanetSpec>) -> Vec<String> {
     let Some(planet) = world else {
-        return vec![line.title.clone(), line.facts().to_string()];
+        return vec![line.facts().to_string()];
     };
     let record = &planet.record;
     let (radius, pull) = (distance(planet.radius), gravity(planet.gravity));
     let (day, orbit) = (play_time(planet.day_seconds), year(planet.orbit_seconds));
     vec![
-        line.title.clone(),
         format!("{} - tilt {}", brief(Some(record)), tilt(record.tilt)),
         format!("air {}", air(record.pressure)),
         format!("water {}", water(record)),

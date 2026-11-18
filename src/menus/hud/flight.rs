@@ -87,12 +87,22 @@ pub fn reading(gauge: Gauge, flight: &Flight) -> Option<String> {
         Gauge::Altitude => near.then(|| height(t.altitude_ground)),
         Gauge::Speed => Some(speed_text(flight)),
         Gauge::Throttle => Some(percent(t.throttle)),
-        Gauge::Assist => Some(if t.assist { "on" } else { "off" }.to_string()),
+        Gauge::Assist => Some(assist_text(t).to_string()),
         Gauge::Frame => Some(frame_name(t.frame).to_string()),
         Gauge::Apoapsis => t.apoapsis.filter(|_| in_orbit).map(height),
         Gauge::Periapsis => t.periapsis.filter(|_| in_orbit).map(height),
         Gauge::Warp => warp_text(t.warp),
         Gauge::Destination => destination_text(flight),
+    }
+}
+
+/// Returns the text of the assist instrument. A landed ship under the assist only takes off on
+/// the rise key, so the instrument says it.
+fn assist_text(t: &ShipTelemetry) -> &'static str {
+    match (t.assist, t.landed) {
+        (true, true) => "on - rise to take off",
+        (true, false) => "on",
+        (false, _) => "off",
     }
 }
 

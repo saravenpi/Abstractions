@@ -78,7 +78,8 @@ fn flying(frame: Frame) -> Flight {
     }
 }
 
-/// In the air the speed is the surface speed and no orbit shows; in space the orbit shows.
+/// In the air the speed is the surface speed and no orbit shows; in space the orbit shows. A
+/// landed ship under the assist says that the rise key takes it off.
 #[test]
 fn instruments_follow_the_frame() {
     let air = flying(Frame::Surface(BodyId::default()));
@@ -90,6 +91,12 @@ fn instruments_follow_the_frame() {
     assert_eq!(reading(Gauge::Apoapsis, &air), None);
     assert_eq!(reading(Gauge::Warp, &air), None);
     assert_eq!(reading(Gauge::Destination, &air), None);
+    let mut landed = flying(Frame::Surface(BodyId::default()));
+    landed.telemetry.landed = true;
+    assert_eq!(
+        reading(Gauge::Assist, &landed).unwrap(),
+        "on - rise to take off"
+    );
     let space = flying(Frame::System(StarId::default()));
     assert_eq!(reading(Gauge::Speed, &space).unwrap(), "7.80 km/s orbital");
     assert_eq!(reading(Gauge::Frame, &space).unwrap(), "orbit");

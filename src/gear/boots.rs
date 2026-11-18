@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::aero::drag;
+use super::aero::{bite, drag, grip};
 use super::aim::look_yaw;
 use super::input::GearInput;
 use super::state::FlightState;
@@ -49,14 +49,15 @@ fn thrust_direction(state: &FlightState, look: Vec3) -> Vec3 {
     (nose + lead.clamp_length_max(VECTOR_LIMIT) * look.length().min(1.0)).normalize_or(nose)
 }
 
-/// Returns the acceleration of the boots with the wings spread, in air of grip `sigma`.
+/// Returns the acceleration of the boots with the wings spread, at a height where they have
+/// the grip `sigma`.
 ///
 /// Thrust along the nose, plus a vertical top-up at low airspeed that carries most of the weight
 /// until the wings do. The top-up never brings the vertical force to the weight. Thrust and
-/// top-up thin with the air exactly as the drag does.
+/// top-up thin with height exactly as the drag does.
 fn flying(state: &FlightState, input: &GearInput, sigma: f32) -> Vec3 {
     let thrust = thrust_direction(state, input.look) * (THRUST_G * input.gravity * sigma);
-    let carried = thrust.y + drag(state, state.velocity, sigma).y;
+    let carried = thrust.y + drag(state, state.velocity, bite(input)).y;
     let flat = state.velocity.with_y(0.0).length();
     let run = smooth(SUPPORT_RUN_SPEED.0, SUPPORT_RUN_SPEED.1, flat);
     let cap = (SUPPORT_G + SUPPORT_RUN * run) * input.gravity;
@@ -64,13 +65,19 @@ fn flying(state: &FlightState, input: &GearInput, sigma: f32) -> Vec3 {
     thrust + Vec3::Y * ((cap - carried).clamp(0.0, cap) * fade * sigma)
 }
 
-/// Returns the acceleration the boots and the leaning body give in air of grip `sigma`.
+/// Returns the acceleration the boots and the leaning body give in the air of `input`.
 ///
 /// The brake and the thrust blend with the wing spread, and both scale with the booster spool,
-/// so that switching anything mid-air changes the push smoothly.
-pub(super) fn push(state: &FlightState, input: &GearInput, sigma: f32) -> Vec3 {
+/// so that switching anything mid-air changes the push smoothly. The boots follow the height
+/// alone, so they brake as well on a planet without air. Thrust along the nose needs wings that
+/// carry: where the air is thinner than at home the spread wings hand that much of the push
+/// back to the brake, so the top speed is the same in thin air and no flight runs away without
+/// drag. The lean of a falling body is a force of the air and fades with it.
+pub(super) fn push(state: &FlightState, input: &GearInput) -> Vec3 {
     let (spread, power) = (state.spread(), state.power());
+    let (sigma, air) = (grip(input.density), bite(input));
     let brake = braking(state, input) * sigma;
-    let lean = FALL_AIR_ACCEL * sigma.min(1.0) * (1.0 - spread) * (1.0 - power);
-    brake.lerp(flying(state, input, sigma), spread) * power + wish(state, input) * lean
+    let lean = FALL_AIR_ACCEL * air.min(1.0) * (1.0 - spread) * (1.0 - power);
+    let winged = spread * input.air.clamp(0.0, 1.0);
+    brake.lerp(flying(state, input, sigma), winged) * power + wish(state, input) * lean
 }

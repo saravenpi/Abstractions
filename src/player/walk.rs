@@ -9,7 +9,7 @@ use super::ground::{Ground, RISING_SPEED, slope_velocity, snap_velocity, walkabl
 use super::intent::{Intent, approach, land_vertical};
 use super::lead::View;
 use super::swim;
-use crate::gear::Gear;
+use crate::gear::{Gear, GearInput};
 
 /// Walking speed in meters per second.
 const WALK_SPEED: f32 = 5.0;
@@ -38,6 +38,8 @@ pub(super) struct Step {
     pub(super) height: f32,
     /// Gravity at the body in meters per second squared.
     pub(super) gravity: f32,
+    /// How thick the air of the planet is against the home planet, 0 without air.
+    pub(super) air: f32,
 }
 
 /// Returns the horizontal velocity for this step.
@@ -112,7 +114,11 @@ pub(super) fn velocity(
     let ground = walkable(floor, motion.velocity.y > RISING_SPEED);
     motion.swimming = swim::next_swimming(motion.swimming, step.height, gap);
     let on = (touching(gear.state.mode, ground), motion.swimming);
-    gear.drive(motion.velocity, input(motion, intent, air, on), step.dt);
+    let told = GearInput {
+        air: step.air,
+        ..input(motion, intent, air, on)
+    };
+    gear.drive(motion.velocity, told, step.dt);
     motion.spent = intent.jump && (motion.spent || gear.state.mode.airborne());
     let Some(velocity) = carried(gear, ground, step.dt) else {
         motion.wings &= !(on.0 || on.1);

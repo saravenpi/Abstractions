@@ -1,5 +1,6 @@
 //! Tests of the flight gear: pure runs of the model, no window.
 
+mod air;
 mod assist;
 mod boots;
 mod fly;

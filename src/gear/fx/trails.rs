@@ -103,7 +103,11 @@ pub fn tip_heat(scene: &Scene) -> f32 {
         return 0.0;
     }
     let load = 0.3 + 0.7 * smooth(1.1, 2.5, state.load) + 0.5 * smooth(50.0, 85.0, state.airspeed);
-    state.spread() * smooth(18.0, 40.0, state.airspeed) * scene.sigma.min(1.0) * load
+    state.spread()
+        * smooth(18.0, 40.0, state.airspeed)
+        * scene.sigma.min(1.0)
+        * (1.0 - scene.thin)
+        * load
 }
 
 /// Returns where `source` is in render space and how strongly it glows.

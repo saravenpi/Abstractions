@@ -68,8 +68,12 @@ pub struct Scene {
     pub eye: Vec3,
     /// Camera orientation.
     pub view: Quat,
-    /// Grip of the gear on the air, from 0 in vacuum to 1 at sea level.
+    /// Grip of the gear at this height, from 0 above the air to 1 at sea level. The boots
+    /// follow it alone.
     pub sigma: f32,
+    /// How much thinner than at home the air of the planet is: 0 with the home air or thicker,
+    /// 1 without air. What the air shows, sounds and feels like is `sigma * (1 - thin)`.
+    pub thin: f32,
     /// Free height under the boot soles down to the ground or the sea, in metres.
     pub clearance: f32,
     /// Whether the sea is what lies nearest under the boots.
@@ -92,7 +96,7 @@ impl Scene {
         self.tilt * self.state.velocity
     }
 
-    /// Returns how hard the boosters push, from 0 to 1, in this air.
+    /// Returns how hard the boosters push, from 0 to 1, at this height.
     pub fn push(&self) -> f32 {
         match self.active && self.state.mode.airborne() {
             true => self.state.power() * self.sigma,
@@ -156,6 +160,7 @@ fn read(sight: &Sight, pose: &Transform, gear: &Gear) -> Scene {
         eye: camera.translation,
         view: camera.rotation,
         sigma: grip(gear.input.density),
+        thin: 1.0 - gear.input.air.clamp(0.0, 1.0),
         clearance: ground.min(sea).max(0.0),
         wet: sea < ground,
         dt: sight.time.delta_secs(),
@@ -168,7 +173,7 @@ fn publish(scene: &Scene, last: &FlightFx) -> FlightFx {
     if !scene.active {
         return FlightFx::default();
     }
-    let (state, air) = (&scene.state, scene.sigma.min(1.0));
+    let (state, air) = (&scene.state, scene.sigma.min(1.0) * (1.0 - scene.thin));
     let load = if state.mode == Mode::Off {
         1.0
     } else {

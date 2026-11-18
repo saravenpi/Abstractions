@@ -4,7 +4,7 @@ use std::f32::consts::{PI, TAU};
 
 use bevy::prelude::*;
 
-use super::aero::{grip, lift_slope};
+use super::aero::{bite, lift_slope};
 use super::assist::flare;
 use super::input::GearInput;
 use super::state::FlightState;
@@ -71,7 +71,7 @@ fn path_offset(state: &FlightState, yaw: f32) -> f32 {
 /// Returns the largest angle of attack the wing may take at this speed: the stall angle, and
 /// less at high speed, where the same angle would pull more than [`MAX_LOAD`] g.
 fn lead(state: &FlightState, input: &GearInput) -> f32 {
-    let slope = lift_slope(state.velocity.length(), grip(input.density));
+    let slope = lift_slope(state.velocity.length(), bite(input));
     AOA_MAX.min(MAX_LOAD * input.gravity / slope.max(1e-3))
 }
 
@@ -81,7 +81,7 @@ fn pull(state: &FlightState, input: &GearInput) -> f32 {
     let speed = state.velocity.length();
     let level = state.velocity.with_y(0.0).length() / speed.max(1e-3);
     let load = (level / state.bank.cos().max(0.1)).min(TRIM_LOAD);
-    let slope = lift_slope(speed, grip(input.density));
+    let slope = lift_slope(speed, bite(input));
     let trim = (input.gravity * load / slope.max(1e-3)).min(TRIM_MAX);
     let stick = input.pitch.clamp(-1.0, 1.0) * PITCH_AUTHORITY;
     ((trim + stick) * state.spread()).clamp(-AOA_MIN, lead(state, input))

@@ -81,6 +81,7 @@ pub(super) fn input(motion: &Motion, intent: &Intent, air: &Air, on: (bool, bool
         grounded: on.0,
         in_water: on.1,
         density: air.density,
+        air: 1.0,
         gravity: air.gravity,
         clearance: air.clearance,
         assist: 1.0,

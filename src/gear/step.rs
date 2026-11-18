@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::aero::{angle_of_attack, grip, slow};
+use super::aero::{angle_of_attack, bite, slow};
 use super::aim::aim;
 use super::boots::push;
 use super::input::GearInput;
@@ -25,10 +25,9 @@ fn ramp(value: f32, on: bool, amount: f32) -> f32 {
 /// Boosters and gravity are added first, then the air slows the result implicitly. The load is
 /// everything but gravity, over the weight.
 fn fly(state: &FlightState, input: &GearInput, h: f32) -> (Vec3, f32) {
-    let sigma = grip(input.density);
-    let pushed = push(state, input, sigma);
+    let pushed = push(state, input);
     let free = state.velocity + (pushed - Vec3::Y * input.gravity) * h;
-    let slowed = slow(state, free, sigma, h);
+    let slowed = slow(state, free, bite(input), h);
     let felt = pushed + (slowed - free) / h;
     (slowed, felt.length() / input.gravity.max(1e-3))
 }

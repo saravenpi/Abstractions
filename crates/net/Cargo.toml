@@ -1,7 +1,7 @@
 [package]
 name = "abstractions-net"
 authors = ["saravenpi"]
-version = "0.9.0"
+version.workspace = true
 edition = "2024"
 rust-version = "1.97.1"
 description = "The multiplayer protocol of Abstractions: shared types, packing, messages and the room."

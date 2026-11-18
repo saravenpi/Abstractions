@@ -1,11 +1,13 @@
 // Backdrop of a menu: the low-resolution game image behind the node, blurred and darkened.
 //
-// The node covers the screen, so its UV is the screen UV. The source image is already small,
+// The image is read at the place of the pixel on the screen, so a node of any size and place
+// shows the part of the game that lies behind it. The source image is already small,
 // so a disc of taps spread by the golden angle gives a wide blur for the cost of a few dozen
 // samples per pixel of the menu, and nothing when no menu is open. The disc is turned by a
 // different angle on every pixel, which trades the ghost copies of a fixed pattern for a fine
 // grain, so the game reads as frosted glass and never as a picture.
 
+import bevy_render::view::View;
 import bevy_ui_render::ui_vertex_output::UiVertexOutput;
 
 struct Backdrop {
@@ -13,6 +15,8 @@ struct Backdrop {
     params: vec4<f32>,
 }
 
+@group(0) @binding(0)
+var<uniform> view: View;
 @group(1) @binding(0)
 var<uniform> backdrop: Backdrop;
 @group(1) @binding(1)
@@ -35,12 +39,13 @@ fn grain(pixel: vec2<f32>) -> f32 {
 fn fragment(in: UiVertexOutput) -> @location(0) vec4<f32> {
     let size = vec2<f32>(textureDimensions(world));
     let reach = vec2<f32>(backdrop.params.y * size.y / size.x, backdrop.params.y);
+    let screen = in.position.xy / view.viewport.zw;
     let start = 6.2831853 * grain(in.position.xy);
     var sum = vec3<f32>(0.0);
     for (var i = 0; i < TAPS; i++) {
         let far = sqrt((f32(i) + 0.5) / f32(TAPS));
         let turn = start + GOLDEN * f32(i);
-        let at = in.uv + vec2<f32>(cos(turn), sin(turn)) * far * reach;
+        let at = screen + vec2<f32>(cos(turn), sin(turn)) * far * reach;
         sum += textureSampleLevel(world, world_sampler, at, 0.0).rgb;
     }
     let blurred = sum / f32(TAPS);

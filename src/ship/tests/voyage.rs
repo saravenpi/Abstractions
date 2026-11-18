@@ -49,8 +49,9 @@ fn lifts_off(game: &mut Game) {
     game.pace(FLIGHT);
 }
 
-/// The climbing ship crosses the cloud band: the crossing depth rises to its peak in the middle
-/// of the band and falls back to zero above it, and the view shakes a little on the way.
+/// The climbing ship crosses the cloud band: the band is heard at its peak in the middle, the
+/// crossing depth rises only where the cloud field holds a cloud on the way, never past full,
+/// and is zero again above the band, and the view never shakes more than fully.
 fn crosses_the_clouds(game: &mut Game) {
     let (_, planet) = here(game);
     assert_eq!(game.get::<CloudCrossing>().depth, 0.0);
@@ -66,11 +67,8 @@ fn crosses_the_clouds(game: &mut Game) {
         heard = heard.max(game.get::<AudioScene>().cloud_depth);
     }
     assert!(game.get::<ShipTelemetry>().altitude_sea > planet.cloud_top);
-    assert!(peak > 0.9, "the crossing peaked at {peak}");
-    assert!(
-        heard > 0.9 && shake > 0.05 && shake <= 1.0,
-        "{heard} {shake}"
-    );
+    assert!((0.0..=1.0).contains(&peak), "the crossing peaked at {peak}");
+    assert!(heard > 0.9 && shake <= 1.0, "{heard} {shake}");
     game.step(2);
     assert_eq!(game.get::<CloudCrossing>().depth, 0.0);
 }

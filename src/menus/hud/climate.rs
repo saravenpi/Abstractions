@@ -5,8 +5,9 @@ use bevy::math::{DVec3, Vec2};
 use bevy::prelude::*;
 
 use super::minimap::Reader;
+use crate::climate::season as orbit_season;
 use crate::climate::{self, Setting, Spot};
-use crate::computer::{orbit_season, temperature};
+use crate::computer::temperature;
 use crate::space::Clock;
 use crate::ui::{text, theme};
 use crate::universe::{PlanetSpec, Universe};

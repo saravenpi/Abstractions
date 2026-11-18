@@ -20,15 +20,6 @@ const FLAT_TILT: f64 = 0.05;
 /// Longitudes and latitudes the span of temperatures is sampled at.
 const SAMPLES: (usize, usize) = (8, 9);
 
-/// Returns how far round the star a planet or moon is at `time`, from 0 to 1: the angle of its
-/// place on its orbit, or for a moon of the orbit of its planet.
-///
-/// Stands in for `climate::season` until the climate field has it.
-pub fn orbit_season(spec: &PlanetSpec, time: f64) -> f32 {
-    let at = spec.host.unwrap_or(spec.orbit()).at(time);
-    (at.z.atan2(at.x) / TAU).rem_euclid(1.0) as f32
-}
-
 /// Returns the season of the north in plain words, such as "northern summer", or "no seasons"
 /// when the spin axis stands almost straight.
 pub fn season_words(tilt: f64, season: f32) -> String {

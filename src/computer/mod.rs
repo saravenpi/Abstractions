@@ -87,7 +87,6 @@ pub use orbits::satellites;
 pub use reveal::{HOME_NEIGHBOURS, REVEAL_CELLS, REVEAL_GLY};
 pub use route::{Destination, Engage, RouteStatus, Target};
 pub use rows::{Line, View};
-pub use season::orbit_season;
 pub use semantic::{DIVE, entry, shift};
 pub use sift::Sort;
 pub use tab::Tab;

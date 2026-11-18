@@ -4,7 +4,8 @@
 use std::collections::HashSet;
 
 use super::climap::{BYTES, COLS, ROWS, SEA, WHITE, grid, mapped, tone};
-use super::season::{climate_line, orbit_season, season_words, span_words};
+use super::season::{climate_line, season_words, span_words};
+use crate::climate::season as orbit_season;
 use crate::universe::{Orbit, PlanetClass, PlanetSpec, Universe};
 use crate::world::Biome;
 

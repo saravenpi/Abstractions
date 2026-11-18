@@ -4,14 +4,12 @@
 //! The ground is coloured through a lookup texture of flat colours, so the season repaints
 //! that texture for the place under the camera and no mesh is ever built again.
 
-use std::f64::consts::TAU;
-
 use bevy::prelude::*;
 
 use super::celestial::smoothstep;
 use super::weather::alike;
 use crate::climate::{self, Setting, Spot};
-use crate::universe::{NO_AIR, PlanetSpec};
+use crate::universe::NO_AIR;
 
 /// Temperatures in kelvin from which snow lies on all the flat ground down to none at all.
 const FREEZE: (f32, f32) = (269.0, 275.0);
@@ -76,13 +74,6 @@ impl SeasonLook {
             snow: (self.snow * STEPS).round() / STEPS,
         }
     }
-}
-
-/// Returns how far round its orbit the planet or moon `spec` is at `time`, from 0 to 1: the
-/// season, 0 being midsummer in the north.
-pub fn phase(spec: &PlanetSpec, time: f64) -> f32 {
-    let at = spec.position(time);
-    (at.z.atan2(at.x) / TAU).rem_euclid(1.0) as f32
 }
 
 /// Returns how far the leaves have turned at `latitude` radians at `season` on a planet whose

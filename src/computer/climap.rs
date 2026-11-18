@@ -32,25 +32,6 @@ pub const SEA: u8 = 0;
 /// Grey of snow.
 pub const WHITE: u8 = 255;
 
-/// Returns the biome of a climate, until `climate::biome` gives it: ordered rules over the
-/// temperature and the moisture, the first that matches wins.
-fn biome(climate: &Climate) -> Biome {
-    let (warmth, wet) = (climate.temperature, climate.moisture);
-    if warmth < 273.15 {
-        Biome::Taiga
-    } else if wet < 0.25 {
-        Biome::Desert
-    } else if warmth > 295.0 {
-        Biome::Tropical
-    } else if wet > 0.8 {
-        Biome::Forest
-    } else if warmth > 290.0 {
-        Biome::Cherry
-    } else {
-        Biome::Meadow
-    }
-}
-
 /// Returns the grey a biome is drawn in: the denser its plants, the darker.
 pub fn tone(biome: Biome) -> u8 {
     match biome {
@@ -68,7 +49,7 @@ pub fn grey(climate: &Climate, sea: bool) -> u8 {
     match (sea, climate.temperature < SNOW) {
         (true, _) => SEA,
         (false, true) => WHITE,
-        (false, false) => tone(biome(climate)),
+        (false, false) => tone(crate::climate::biome(climate, 0.0)),
     }
 }
 

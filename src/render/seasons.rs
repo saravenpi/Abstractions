@@ -5,7 +5,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::season::{SeasonLook, phase, repaint};
+use super::season::{SeasonLook, repaint};
 use super::vantage::{LocalSystem, Vantage};
 use crate::climate::{Setting, Spot};
 use crate::space::Clock;
@@ -86,7 +86,7 @@ impl Here<'_> {
             inland: 0.0,
             slope: Vec2::ZERO,
         };
-        let season = phase(spec, self.clock.seconds);
+        let season = crate::climate::season(spec, self.clock.seconds);
         Some(SeasonLook::at(&Setting::of(spec), &spot, season).steps())
     }
 }

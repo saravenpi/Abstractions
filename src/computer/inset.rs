@@ -13,7 +13,8 @@ use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::po
 
 use super::board::Board;
 use super::climap::{BYTES, COLS, ROWS, grid, mapped};
-use super::season::{climate_line, orbit_season};
+use super::season::climate_line;
+use crate::climate::season as orbit_season;
 use crate::space::Clock;
 use crate::ui::{text, theme};
 use crate::universe::BodyId;

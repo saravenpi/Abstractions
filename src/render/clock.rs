@@ -32,9 +32,14 @@ impl Default for DayClock {
     }
 }
 
-/// Returns the seconds from one noon to the next on a planet: its turn and its orbit add up.
+/// Returns the seconds from one noon to the next on a planet or moon: its turn and its trip
+/// round the star add up. A moon goes round the star with its planet, and its own day is
+/// negative, so its noons can come the other way round: the result is then negative.
 pub fn solar_day(planet: &PlanetSpec) -> f64 {
-    1.0 / (1.0 / planet.day_seconds + 1.0 / planet.orbit_seconds)
+    let year = planet
+        .host
+        .map_or(planet.orbit_seconds, |host| host.seconds);
+    1.0 / (1.0 / planet.day_seconds + 1.0 / year)
 }
 
 /// Returns the seconds universe time must move forward for the phase `now` to become `wanted`.
@@ -42,11 +47,17 @@ pub fn solar_day(planet: &PlanetSpec) -> f64 {
 /// A wanted phase less than [`PHASE_SLACK`] behind counts as reached, so asking for the current
 /// phase again does not skip a whole day.
 pub fn catch_up(now: f32, wanted: f32, planet: &PlanetSpec) -> f64 {
+    let day = solar_day(planet);
     let ahead = (wanted - now).rem_euclid(1.0);
+    let ahead = if day < 0.0 {
+        (1.0 - ahead).fract()
+    } else {
+        ahead
+    };
     if ahead > 1.0 - PHASE_SLACK {
         return 0.0;
     }
-    f64::from(ahead) * solar_day(planet)
+    f64::from(ahead) * day.abs()
 }
 
 /// Whether the phase the day clock holds is only a display value: universe time already says

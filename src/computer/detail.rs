@@ -65,7 +65,10 @@ pub fn readout(line: &Line, world: Option<&PlanetSpec>) -> Vec<String> {
     };
     let record = &planet.record;
     let (radius, pull) = (distance(planet.radius), gravity(planet.gravity));
-    let (day, orbit) = (play_time(planet.day_seconds), year(planet.orbit_seconds));
+    let (day, orbit) = (
+        play_time(planet.day_seconds.abs()),
+        year(planet.orbit_seconds),
+    );
     let turn = if planet.id.is_moon() { "orbit" } else { "year" };
     let [ground, sea] = surface(planet);
     vec![

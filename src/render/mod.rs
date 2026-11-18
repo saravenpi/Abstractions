@@ -43,6 +43,8 @@ mod tests_dither;
 #[cfg(test)]
 mod tests_fog;
 #[cfg(test)]
+mod tests_moonday;
+#[cfg(test)]
 mod tests_moons;
 #[cfg(test)]
 mod tests_murk;

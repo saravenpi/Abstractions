@@ -37,8 +37,6 @@ pub struct Ship {
     pub gear: f64,
     /// Whether the gear is on its way up or folded, rather than on its way down or down.
     pub stowed: bool,
-    /// Whether the flight assist flies the ship in the hover regime rather than in the flight one.
-    pub hover: bool,
     /// Whether any contact point touched the ground on the last step.
     pub touching: bool,
     /// Seconds the ship has been slow and held by the ground or the sea, before it comes to rest.
@@ -61,7 +59,6 @@ impl Ship {
             warp: Warp::Off,
             gear: 1.0,
             stowed: false,
-            hover: true,
             touching: false,
             calm: 0.0,
         }
@@ -85,6 +82,7 @@ impl Ship {
             damage: self.damage,
             manual: !self.assist,
             seated: false,
+            gear: Some(self.gear),
         }
     }
 
@@ -105,10 +103,13 @@ impl Ship {
             assist: !state.manual,
             landed: state.landed,
             touching: state.landed,
+            gear: state.gear.map_or(1.0, |gear| gear.clamp(0.0, 1.0)),
+            stowed: state.gear.is_some_and(|gear| gear < 1.0),
             ..Self::at_rest(state.frame.into(), DVec3::from_array(state.pos), rot)
         };
         let sound = ship.pos.is_finite() && ship.vel.is_finite() && ship.spin.is_finite();
-        (sound && ship.throttle.is_finite() && ship.damage.is_finite()).then_some(ship)
+        let level = ship.throttle.is_finite() && ship.damage.is_finite() && ship.gear.is_finite();
+        (sound && level).then_some(ship)
     }
 }
 
@@ -173,4 +174,8 @@ pub struct ShipState {
     /// Whether the player sat in the ship when the record was taken.
     #[serde(default)]
     pub seated: bool,
+    /// Extension of the landing gear from 0 (folded) to 1 (down). A record written before the
+    /// gear folded does not hold it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gear: Option<f64>,
 }

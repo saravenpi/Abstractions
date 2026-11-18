@@ -7,6 +7,7 @@ use bevy::prelude::*;
 
 use super::berth::{landing_spot, parked};
 use super::body::Ship;
+use super::gear::infer;
 use super::glow::{Engine, Plume};
 use super::landing::GEAR_DROP;
 use super::legs::Leg;
@@ -47,14 +48,30 @@ impl Start<'_> {
         parked(self.location.body, (&height, sea), spot, globe.radius())
     }
 
+    /// Returns the height in metres of the gear of `ship` above the ground or the sea of the
+    /// planet the world starts on, infinite when the ship is not in the frame of that planet.
+    fn radar(&self, ship: &Ship) -> f64 {
+        let globe = self.terrain.globe();
+        if ship.frame != Frame::Surface(self.location.body) {
+            return f64::INFINITY;
+        }
+        let floor = globe.height(ship.pos.normalize()).max(globe.sea_level());
+        ship.pos.length() - globe.radius() - f64::from(floor) - GEAR_DROP
+    }
+
     /// Returns the ship a world starts with: the saved one exactly where it was, landed, flying
-    /// or in space, else the ship of a new game. A player saved in the seat starts seated.
+    /// or in space, else the ship of a new game. A record that does not hold the gear gets the
+    /// gear its height implies. A player saved in the seat starts seated.
     fn ship(&mut self) -> Ship {
         let state = saved(self.active.as_deref());
         let kept = state.and_then(|state| Some((Ship::from_state(&state)?, state.seated)));
-        let Some((ship, seated)) = kept else {
+        let Some((mut ship, seated)) = kept else {
             return self.fresh();
         };
+        if state.is_some_and(|state| state.gear.is_none()) {
+            let radar = self.radar(&ship);
+            infer(&mut ship, radar);
+        }
         if seated {
             self.location.travel = Travel::InShip;
         }

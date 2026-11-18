@@ -4,6 +4,7 @@ use bevy::math::{DQuat, DVec3, IVec3};
 
 use super::{above_pole, planet};
 use crate::ship::body::{Ship, ShipState};
+use crate::ship::gear::{HEIGHTS, infer};
 use crate::ship::save::record;
 use crate::ship::warp::Warp;
 use crate::ship::wells::{Well, system_wells};
@@ -103,4 +104,47 @@ fn old_and_broken_records_are_handled() {
         ..ship.state()
     };
     assert_eq!(Ship::from_state(&broken), None);
+}
+
+/// A ship saved in flight with its gear folded comes back with it folded, and a ship that came
+/// to rest on a gear that was part way down comes back on that gear, not on full legs.
+#[test]
+fn the_gear_comes_back_as_it_was_saved() {
+    let home = Universe::new(7).home();
+    let mut aloft = flying(Frame::Surface(home), DVec3::Y * 6900.0);
+    (aloft.gear, aloft.stowed) = (0.0, true);
+    assert_eq!(reloaded(&aloft, &[], true).0, aloft);
+    let mut wreck = Ship::at_rest(Frame::Surface(home), DVec3::Y * 6000.5, DQuat::IDENTITY);
+    (wreck.landed, wreck.touching, wreck.gear) = (true, true, 0.375);
+    let back = reloaded(&wreck, &[], false).0;
+    assert_eq!((back.gear, back.landed), (0.375, true));
+    let broken = ShipState {
+        gear: Some(f64::NAN),
+        ..aloft.state()
+    };
+    assert_eq!(Ship::from_state(&broken), None);
+}
+
+/// A record written before the gear was saved still reads, with the gear down, and the gear
+/// then follows the height of the ship: folded in flight and in space, down when the ship is
+/// landed or under the height at which the gear comes down.
+#[test]
+fn a_record_without_the_gear_gets_the_gear_its_height_implies() {
+    let ship = flying(Frame::Surface(Universe::new(7).home()), DVec3::Y * 6900.0);
+    let mut value = toml::Value::try_from(ship.state()).unwrap();
+    assert!(value.as_table_mut().unwrap().remove("gear").is_some());
+    let old: ShipState = value.try_into().unwrap();
+    let mut back = Ship::from_state(&old).unwrap();
+    assert_eq!((old.gear, back.gear, back.stowed), (None, 1.0, false));
+    let cases = [
+        (900.0, false, 0.0),
+        (f64::INFINITY, false, 0.0),
+        (HEIGHTS.1 - 1.0, false, 1.0),
+        (900.0, true, 1.0),
+    ];
+    for (radar, landed, gear) in cases {
+        back.landed = landed;
+        infer(&mut back, radar);
+        assert_eq!((back.gear, back.stowed), (gear, gear == 0.0), "{radar}");
+    }
 }

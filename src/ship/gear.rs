@@ -37,6 +37,13 @@ pub fn stow(ship: &mut Ship, radar: f64, h: f64) {
     ship.gear = (ship.gear + way * h / TRAVEL).clamp(0.0, 1.0);
 }
 
+/// Sets the gear of a ship read from a record that does not hold it, `radar` metres above the
+/// ground: down when it is landed or low enough for the gear to come down, folded anywhere else.
+pub fn infer(ship: &mut Ship, radar: f64) {
+    ship.stowed = !ship.landed && radar >= HEIGHTS.1;
+    ship.gear = if ship.stowed { 0.0 } else { 1.0 };
+}
+
 /// Returns the share of the strut length a leg shows for a gear extension from 0 (folded) to 1.
 pub fn reach(extension: f64) -> f64 {
     FOLDED + (1.0 - FOLDED) * extension.clamp(0.0, 1.0)

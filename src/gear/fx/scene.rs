@@ -5,6 +5,7 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::FlightFx;
+use super::under::under;
 use crate::avatar::Marks;
 use crate::gear::aero::grip;
 use crate::gear::servo::ease;
@@ -148,8 +149,8 @@ fn read(sight: &Sight, pose: &Transform, gear: &Gear) -> Scene {
     };
     let vertical = up(anchor, pose.translation).as_dvec3();
     let tilt = DQuat::from_rotation_arc(DVec3::Y, vertical).as_quat();
-    let sea = altitude(anchor, terrain.globe(), pose.translation) - SOLES;
-    let ground = gear.input.clearance;
+    let height = altitude(anchor, terrain.globe(), pose.translation) - SOLES;
+    let (clearance, wet) = under(terrain.globe(), gear.input.clearance, height);
     let camera = sight.camera(pose);
     Scene {
         active: true,
@@ -161,8 +162,8 @@ fn read(sight: &Sight, pose: &Transform, gear: &Gear) -> Scene {
         view: camera.rotation,
         sigma: grip(gear.input.density),
         thin: 1.0 - gear.input.air.clamp(0.0, 1.0),
-        clearance: ground.min(sea).max(0.0),
-        wet: sea < ground,
+        clearance,
+        wet,
         dt: sight.time.delta_secs(),
         limbs: sight.marks.as_deref().map(|marks| Limbs::of(marks, pose)),
     }

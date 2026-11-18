@@ -17,11 +17,26 @@ use crate::space::Anchor;
 const TIP_LIFE: f32 = 1.5;
 
 /// Seconds the exhaust glows for.
-const EXHAUST_LIFE: f32 = 0.7;
+pub const EXHAUST_LIFE: f32 = 0.7;
+
+/// Speeds over the ground between which the exhaust starts to trail and trails fully, in
+/// metres per second. A trail is laid by distance: slower than this the glow would span one or
+/// two points, a slab as wide as it is long hanging over the ground where the boots braked.
+pub const EXHAUST_SPEED: (f32, f32) = (12.0, 24.0);
 
 /// Wingtips in the body model frame, used when no body is drawn: +Y the head, so they sit to
 /// each side of the shoulders.
 const TIPS: [Vec3; 2] = [Vec3::new(-0.85, 0.35, 0.0), Vec3::new(0.85, 0.35, 0.0)];
+
+/// How far the exhaust must point back along the path before it trails, as the cosine of the
+/// angle between the two: nothing across the path or into it, all of it from 60 degrees. Boots
+/// that brake a fall blow ahead of the body, which then falls through its own trail.
+pub const EXHAUST_BEHIND: (f32, f32) = (0.0, 0.5);
+
+/// Width of the exhaust at the end of its life, as a share of its width at the nozzles. Under
+/// 1, so that it tapers to a point like a flame: a trail that widened as it dimmed lay over the
+/// ground as a broad see-through sheet.
+pub const EXHAUST_TAPER: f32 = 0.3;
 
 /// Linear HDR colour of the exhaust: warm orange.
 const EXHAUST: Vec3 = Vec3::new(3.8, 1.3, 0.16);
@@ -110,6 +125,20 @@ pub fn tip_heat(scene: &Scene) -> f32 {
         * load
 }
 
+/// Returns how strongly the exhaust trails: the booster push, once the body travels fast enough
+/// to draw a line and leaves its exhaust behind. Boots that brake a fall or hold a slow flight
+/// show their flares alone.
+pub fn exhaust_heat(scene: &Scene) -> f32 {
+    let velocity = scene.velocity();
+    let jet = scene
+        .limbs
+        .map_or(scene.rot * Vec3::NEG_Y, |limbs| limbs.jet);
+    let behind = -jet.dot(velocity.normalize_or_zero());
+    scene.push()
+        * smooth(EXHAUST_SPEED.0, EXHAUST_SPEED.1, velocity.length())
+        * smooth(EXHAUST_BEHIND.0, EXHAUST_BEHIND.1, behind)
+}
+
 /// Returns where `source` is in render space and how strongly it glows.
 fn emitter(source: Source, scene: &Scene) -> (Vec3, f32) {
     let at = match (source, scene.limbs) {
@@ -120,12 +149,13 @@ fn emitter(source: Source, scene: &Scene) -> (Vec3, f32) {
     };
     match source {
         Source::Tip(_) => (at, tip_heat(scene)),
-        Source::Boots => (at, scene.push()),
+        Source::Boots => (at, exhaust_heat(scene)),
     }
 }
 
-/// Returns how `source` is drawn: thin sky-tinted wingtip lines, a wider warm exhaust.
-fn look(source: Source, eye: Vec3, palette: Option<&Palette>) -> Look {
+/// Returns how `source` is drawn: thin sky-tinted wingtip lines that widen like a vortex, a
+/// wider warm exhaust that tapers.
+pub fn look(source: Source, eye: Vec3, palette: Option<&Palette>) -> Look {
     let sky = palette.map_or(Vec3::ONE, |palette| {
         let zenith = Color::srgb(palette.zenith.x, palette.zenith.y, palette.zenith.z).to_linear();
         Vec3::new(zenith.red, zenith.green, zenith.blue)
@@ -141,7 +171,7 @@ fn look(source: Source, eye: Vec3, palette: Option<&Palette>) -> Look {
         Source::Boots => Look {
             eye,
             width: 0.11,
-            spread: 2.5,
+            spread: EXHAUST_TAPER,
             life: EXHAUST_LIFE,
             tint: EXHAUST,
         },

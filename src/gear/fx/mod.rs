@@ -15,10 +15,13 @@ mod scene;
 mod streaks;
 mod trail;
 mod trails;
+mod under;
 mod warm;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_exhaust;
 #[cfg(test)]
 mod tests_fx;
 

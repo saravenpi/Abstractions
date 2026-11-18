@@ -3,7 +3,7 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use super::planet::{Surf, loudness, surf};
+use super::planet::{Surf, loudness, surf, wind as heard};
 use super::scene::{AudioScene, altitude_fade, cloud_depth};
 use super::shore::{closeness, nearest};
 use crate::companion::Companion;
@@ -39,7 +39,7 @@ struct Place<'w> {
 }
 
 /// Writes the planet, the frame, the cabin, the daylight and the wind into the scene. The wind
-/// is not heard on a planet without air.
+/// is not heard on a planet without air and never dies down on a gas giant.
 fn sense_place(
     place: Place,
     clock: Res<DayClock>,
@@ -66,8 +66,7 @@ fn sense_place(
     scene.in_space = !matches!(anchor.frame, Frame::Surface(_));
     scene.cabin = f32::from(u8::from(location.travel == Travel::InShip));
     scene.daylight = daylight(clock.phase);
-    let still = record.is_some_and(|record| loudness(&record) <= 0.0);
-    scene.wind = if still { 0.0 } else { wind.strength };
+    scene.wind = record.map_or(wind.strength, |record| heard(&record, wind.strength));
 }
 
 /// Returns how close the nearest shoreline is to a listener at chart position `at`, `height`

@@ -22,6 +22,10 @@ const WASH_HZ: [(f32, f32); 2] = [(450.0, 1500.0), (55.0, 85.0)];
 /// carries little, and the rumble would be lost under the wind.
 const MOLTEN_GAIN: f32 = 3.0;
 
+/// Corner in hertz of the wind colour in calm air and what full wind adds, in the air of a
+/// solid planet and in the deep air of a gas giant, which only roars low.
+const WIND_HZ: [(f32, f32); 2] = [(240.0, 1000.0), (60.0, 160.0)];
+
 /// Seconds between two waves washing ashore.
 const WAVE_SECONDS: f32 = 8.3;
 
@@ -48,6 +52,8 @@ pub struct AirCtl {
     pub shore_side: f32,
     /// Whether the shore is molten rock, which rumbles where water would wash.
     pub molten: bool,
+    /// Whether the wind blows in the deep air of a gas giant, which only roars low.
+    pub deep: bool,
     /// Depth under water.
     pub submerged: f32,
     /// 1 inside the ship cabin.
@@ -105,9 +111,10 @@ impl Air {
     pub fn tune(&mut self, ctl: &AirCtl, dt: f32) {
         let gust = sine(self.gust.tick(dt / GUST_SECONDS));
         let wave = self.wave.tick(dt / WAVE_SECONDS);
+        let (calm, gale) = WIND_HZ[usize::from(ctl.deep)];
         for side in 0..2 {
             let lean = 1.0 + 0.2 * gust * (1.0 - 2.0 * side as f32);
-            self.wind[side].tune((240.0 + 1000.0 * ctl.wind) * lean, 0.9, self.rate);
+            self.wind[side].tune((calm + gale * ctl.wind) * lean, 0.9, self.rate);
             let wash = surge(wave + 0.31 * side as f32);
             let (calm, breaking) = WASH_HZ[usize::from(ctl.molten)];
             self.sea[side].tune(calm + breaking * wash, 0.7, self.rate);

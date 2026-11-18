@@ -6,6 +6,7 @@ use super::cue::{AudioCue, StepSurface};
 use crate::player::{BODY_LENGTH, BODY_RADIUS, Player};
 use crate::screens::playing;
 use crate::space::{Anchor, Location, Travel, up};
+use crate::universe::PlanetClass;
 use crate::world::structures::{FloorKind, Surroundings};
 use crate::world::{Surface, Terrain};
 
@@ -56,8 +57,12 @@ pub(super) fn floor_surface(floor: FloorKind) -> StepSurface {
 }
 
 /// Returns the ground cover under a body at chart position `at`, when its feet touch dry or
-/// shallow ground. Where the globe has no sea, ground below sea level is as dry as any.
+/// shallow ground. Where the globe has no sea, ground below sea level is as dry as any, and a
+/// gas giant has no ground to step on.
 pub(super) fn footing(terrain: &Terrain, at: Vec3) -> Option<StepSurface> {
+    if terrain.globe().record().class == PlanetClass::GasGiant {
+        return None;
+    }
     let feet = at.y - 0.5 * BODY_LENGTH - BODY_RADIUS;
     let ground = terrain.height(at.x, at.z);
     let touching = feet - ground < CONTACT && feet - terrain.globe().sea_level() > -WADE_DEPTH;

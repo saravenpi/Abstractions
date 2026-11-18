@@ -89,11 +89,13 @@ impl Mixer {
 
     /// Returns what the ambience follows.
     fn air_ctl(&self) -> AirCtl {
+        let world = class(self.targets[Param::Class as usize]);
         AirCtl {
             wind: self.at(Param::Wind),
             shore: self.at(Param::Shore),
             shore_side: self.at(Param::ShoreSide) * 2.0 - 1.0,
-            molten: class(self.targets[Param::Class as usize]) == PlanetClass::Lava,
+            molten: world == PlanetClass::Lava,
+            deep: world == PlanetClass::GasGiant,
             submerged: self.at(Param::Submerged),
             cabin: self.at(Param::Cabin),
             space: self.at(Param::Space),

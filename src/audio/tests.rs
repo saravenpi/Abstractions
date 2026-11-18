@@ -4,6 +4,7 @@ mod app;
 mod basin;
 mod cues;
 mod dsp;
+mod giant;
 mod harmony;
 mod mix;
 mod music;

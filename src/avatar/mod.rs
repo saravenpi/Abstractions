@@ -25,6 +25,7 @@ mod mesh;
 mod neck;
 mod pose;
 mod rig;
+mod seated;
 mod show;
 mod spawn;
 pub mod tune;
@@ -187,6 +188,7 @@ fn systems(app: &mut App) {
                 .chain()
                 .in_set(AvatarSet::Animate),
         );
+    seated::systems(app);
 }
 
 /// Registers the avatar: its input, its visibility setting and the systems that run it while

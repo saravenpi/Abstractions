@@ -56,10 +56,20 @@ fn scale_of(particle: &Particle, distance: f32) -> Vec3 {
         .min((particle.life - particle.age) * 2.0)
         .clamp(0.0, 1.0);
     let s = size * grow * ramp(0.6, 1.2, distance);
-    match particle.kind.is_leafy() {
-        true => Vec3::new(s * 0.55, s, 1.0),
-        false => Vec3::new(s, s, 1.0),
+    match particle.kind {
+        Kind::Rain => Vec3::new(s * 0.06, s, 1.0),
+        kind if kind.is_leafy() => Vec3::new(s * 0.55, s, 1.0),
+        _ => Vec3::new(s, s, 1.0),
     }
+}
+
+/// Returns the turn of a streak at `at` that stands along the local vertical and faces the eye
+/// as well as it can.
+fn upright(eye: &Eye, at: Vec3) -> Quat {
+    let up = eye.tilt * Vec3::Y;
+    let toward = eye.at - at;
+    let back = (toward - up * toward.dot(up)).normalize_or(eye.rot * Vec3::Z);
+    Quat::from_mat3(&Mat3::from_cols(up.cross(back), up, back))
 }
 
 /// Advances one live particle by `dt` seconds: the wind blows along the local horizontal and
@@ -75,12 +85,13 @@ fn drift(particle: &mut Particle, transform: &mut Transform, env: &Env) {
     let velocity = env.wind.velocity() * motion.wind + flutter - Vec3::Y * motion.fall;
     transform.translation += env.eye.tilt * velocity * dt;
     transform.scale = scale_of(particle, transform.translation.distance(env.eye.at));
-    transform.rotation = match motion.spin > 0.0 {
-        true => {
+    transform.rotation = match (particle.kind, motion.spin > 0.0) {
+        (Kind::Rain, _) => upright(&env.eye, transform.translation),
+        (_, true) => {
             let spin = particle.phase + particle.age * motion.spin;
             Quat::from_euler(EulerRot::XYZ, spin, spin * 0.7 + 1.7, spin * 0.4 + 0.3)
         }
-        false => env.eye.rot,
+        (_, false) => env.eye.rot,
     };
 }
 
@@ -103,6 +114,19 @@ fn ambient_of(env: &Env, height: f32) -> Ambient {
     }
 }
 
+/// Returns what the respawns of this frame read: the surroundings and the weather of the eye.
+fn spawner<'a>(env: &'a Env, ground: Ground<'a>, rng: &'a mut Rng) -> Spawn<'a> {
+    Spawn {
+        ambient: ambient_of(env, env.eye.altitude),
+        record: *env.terrain.globe().record(),
+        sky: env.sensed.sky,
+        ground,
+        wind: env.wind.direction,
+        pool: &env.pool,
+        rng,
+    }
+}
+
 /// Moves the whole pool around the eye of this frame.
 pub fn step(
     mut env: Env,
@@ -116,14 +140,7 @@ pub fn step(
     let ground = Ground::new(&env.anchor, &env.terrain, &env.eye);
     let mut budget = MAX_RESPAWNS;
     let mut rng = *env.rng;
-    let mut spawn = Spawn {
-        ambient: ambient_of(&env, env.eye.altitude),
-        record: *env.terrain.globe().record(),
-        ground,
-        wind: env.wind.direction,
-        pool: &env.pool,
-        rng: &mut rng,
-    };
+    let mut spawn = spawner(&env, ground, &mut rng);
     for (mut particle, mut transform, mut mesh, mut material) in &mut particles {
         let due = !particle.primed
             || particle.age >= particle.life

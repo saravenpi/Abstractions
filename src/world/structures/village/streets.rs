@@ -10,6 +10,7 @@ use super::lots::ROAD_HALF;
 use super::props;
 use super::style::Style;
 use crate::world::structures::brush::Build;
+use crate::world::structures::tags::Tag;
 
 /// Height of the ground strips above the terrain mesh.
 const LIFT: f32 = 0.12;
@@ -79,14 +80,16 @@ fn path(b: &mut Build, a: Vec2, c: Vec2, rgb: [f32; 3]) {
 /// follows the ground on its own.
 pub fn surface(b: &mut Build, lay: &Layout) {
     b.hug();
-    plaza(b, lay.site.origin, &lay.style);
-    for pts in &lay.streets {
-        road(b, pts, lay.style.road);
-    }
     let dust = lay.style.road.map(|c| c * 0.85);
-    for (from, to) in &lay.paths {
-        path(b, *from, *to, dust);
-    }
+    b.tagged(Tag::Paved, |b| {
+        plaza(b, lay.site.origin, &lay.style);
+        lay.streets
+            .iter()
+            .for_each(|pts| road(b, pts, lay.style.road));
+        lay.paths
+            .iter()
+            .for_each(|(from, to)| path(b, *from, *to, dust));
+    });
     b.stiffen();
 }
 

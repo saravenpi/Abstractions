@@ -70,7 +70,7 @@ fn pick(b: &Build) -> Layout {
     }
 }
 
-/// Draws one tent of canvas `rgb` whose open end faces local +x, collapsed when `ruin` is set.
+/// Draws one tent of canvas `rgb` whose open end faces local +x. Its gable is its collider.
 pub fn tent(b: &mut Build, off: Vec2, turn: f32, rgb: [f32; 3]) {
     b.frame(off, turn);
     b.settle(1.2, 0.0);
@@ -89,7 +89,6 @@ pub fn tent(b: &mut Build, off: Vec2, turn: f32, rgb: [f32; 3]) {
     let color = b.color(DARK_WOOD, 0.6);
     let out = b.dir(Vec3::X);
     b.sheet_tri(door.map(|p| b.pt(p)), out, [color, color]);
-    b.collider(Vec3::new(-1.1, -0.7, -0.9), Vec3::new(1.1, 0.9, 0.9));
 }
 
 /// Draws the hiker camp: tents around a fire, seats and a tripod.
@@ -125,7 +124,7 @@ fn abandoned(b: &mut Build) {
     b.cuboid(
         Vec3::new(-2.0, 0.0, 1.2),
         Vec3::new(1.2, 0.12, 1.34),
-        Mat::deco(WOOD),
+        Mat::solid(WOOD),
     );
     b.frame(Vec2::ZERO, 0.0);
     let base = on_ground(b, 1.4, 1.9);

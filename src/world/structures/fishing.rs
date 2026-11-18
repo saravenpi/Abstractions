@@ -38,14 +38,14 @@ fn rack(b: &mut Build) {
     b.cuboid(
         Vec3::new(-4.3, 1.8, 2.34),
         Vec3::new(-2.5, 1.9, 2.46),
-        Mat::deco(WOOD),
+        Mat::solid(WOOD),
     );
     for x in [-3.8, -3.2] {
         let c = b.color([0.5, 0.65, 0.7], 1.0);
         let fish = [(0.0, 1.8), (0.12, 1.45), (0.0, 1.2), (-0.12, 1.45)];
         let p = fish.map(|(dx, y)| b.pt(Vec3::new(x + dx, y, 2.4)));
         let out = b.dir(Vec3::Z);
-        b.sheet_quad(p, out, [c, c]);
+        b.tagged(Tag::Soft, |b| b.sheet_quad(p, out, [c, c]));
     }
 }
 
@@ -60,17 +60,17 @@ fn boat(b: &mut Build, y: f32) {
     b.cuboid(
         Vec3::new(x0, y + 0.2, z0 - 0.02),
         Vec3::new(x0 + 0.14, y + 0.75, z1),
-        Mat::deco(WOOD),
+        Mat::solid(WOOD),
     );
     b.cuboid(
         Vec3::new(x1 - 0.14, y + 0.2, z0 - 0.02),
         Vec3::new(x1, y + 0.75, z1),
-        Mat::deco(WOOD),
+        Mat::solid(WOOD),
     );
     b.cuboid(
         Vec3::new(x0 + 0.14, y + 0.2, z0),
         Vec3::new(x1 - 0.14, y + 0.75, z0 + 0.14),
-        Mat::deco(WOOD),
+        Mat::solid(WOOD),
     );
 }
 

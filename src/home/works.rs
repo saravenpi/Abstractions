@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
 
 use super::base::Base;
-use super::draft::Block;
+use super::block::Block;
 use super::glow::{Glow, Mood};
 use super::plan::{Plan, plan};
 use super::soup::Soup;
@@ -24,7 +24,7 @@ pub struct Kit {
     pub paint: Handle<StandardMaterial>,
     /// Mesh and material of each glowing part, in the order of [`Glow::ALL`].
     pub glows: [(Handle<Mesh>, Handle<StandardMaterial>); 6],
-    /// Boxes nothing walks through.
+    /// Boxes nothing passes through.
     pub blocks: Vec<Block>,
     /// Where each light that is cast sits.
     pub lamps: Vec<(Glow, Vec3)>,

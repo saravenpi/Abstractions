@@ -31,7 +31,7 @@ pub fn dock(b: &mut Build) {
                 Vec3::new(x, low, z),
                 Vec2::new(0.16, 0.35 - low),
                 5,
-                Mat::deco(DARK_WOOD),
+                Mat::solid(DARK_WOOD),
             );
         }
     }

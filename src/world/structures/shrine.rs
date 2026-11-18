@@ -15,7 +15,7 @@ fn lantern(b: &mut Build, x: f32, z: f32) {
     b.cuboid(
         Vec3::new(x - 0.4, 0.8, z - 0.4),
         Vec3::new(x + 0.4, 1.3, z + 0.4),
-        Mat::deco(STONE_LIGHT),
+        Mat::solid(STONE_LIGHT),
     );
     b.gable(
         Vec3::new(x - 0.5, 1.3, z - 0.5),
@@ -41,7 +41,7 @@ fn gate(b: &mut Build) {
             ([-3.4, 4.3, 6.7], [3.4, 4.7, 7.3]),
             ([-2.1, 3.4, 6.8], [2.1, 3.7, 7.2]),
         ],
-        Mat::deco(TORII),
+        Mat::solid(TORII),
     );
 }
 

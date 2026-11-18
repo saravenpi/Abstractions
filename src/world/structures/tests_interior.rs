@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::Terrain;
-use super::brush::{Build, Shape};
+use super::brush::{Build, Part, Shape};
 use super::glow::LightKind;
 use super::site::Kind;
 use super::tests::built;
@@ -45,18 +45,25 @@ fn local(p: Vec3) -> Vec3 {
 /// Returns the low and high corners, in the house frame, of the box around every solid part.
 fn solids(b: &Build) -> Vec<(Vec3, Vec3)> {
     let back = Quat::from_rotation_y(-YAW);
-    let span = |rot: Quat, shape: Shape| match shape {
-        Shape::Cylinder(r, h) => Vec3::new(r, h * 0.5, r),
+    let span = |turn: Quat, shape: Shape| match shape {
+        Shape::Cylinder(r, h) | Shape::Cone(r, h) => (Vec3::ZERO, Vec3::new(r, h * 0.5, r)),
         Shape::Cuboid(s) => {
-            let m = Mat3::from_quat(back * rot);
-            (m.x_axis.abs() * s.x + m.y_axis.abs() * s.y + m.z_axis.abs() * s.z) * 0.5
+            let m = Mat3::from_quat(turn);
+            let half = m.x_axis.abs() * s.x + m.y_axis.abs() * s.y + m.z_axis.abs() * s.z;
+            (Vec3::ZERO, half * 0.5)
+        }
+        Shape::Hull(points) => {
+            let turned = points.map(|c| turn * c);
+            let lo = turned.into_iter().fold(Vec3::MAX, Vec3::min);
+            let hi = turned.into_iter().fold(Vec3::MIN, Vec3::max);
+            ((lo + hi) * 0.5, (hi - lo) * 0.5)
         }
     };
-    b.parts
-        .iter()
-        .map(|p| (local(p.pos), span(p.rot, p.shape)))
-        .map(|(c, half)| (c - half, c + half))
-        .collect()
+    let around = |p: &Part| {
+        let (middle, half) = span(back * p.rot, p.shape);
+        (local(p.pos) + middle - half, local(p.pos) + middle + half)
+    };
+    b.parts.iter().map(around).collect()
 }
 
 /// Draws `house` in the style of `biome` with the lot variation `variant`.

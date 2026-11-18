@@ -1,9 +1,12 @@
-//! Flat-shaded triangles with one colour each: what every piece of the base is drawn with.
+//! Flat-shaded triangles with one colour each: what every piece of the base is drawn with. Every box and
+//! bar drawn is also kept as a box, which the draft makes solid.
 
 use bevy::asset::RenderAssetUsages;
 use bevy::math::Affine3A;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
+
+use super::block::Block;
 
 /// An sRGB colour.
 pub type Rgb = [f32; 3];
@@ -24,6 +27,8 @@ const BOX_FACES: [[usize; 4]; 6] = [
 pub struct Soup {
     /// Corners and colour of every triangle.
     tris: Vec<([Vec3; 3], Rgb)>,
+    /// The box of every box, bar and free shape drawn.
+    boxes: Vec<Block>,
 }
 
 impl Soup {
@@ -52,6 +57,7 @@ impl Soup {
         }
         self.quad(rim.map(|p| a + p), -along, rgb);
         self.quad(rim.map(|p| b + p), along, rgb);
+        self.boxes.push(Block::along(a, b, side, other));
     }
 
     /// Adds a closed box between two corners.
@@ -62,9 +68,20 @@ impl Soup {
             let p = face.map(corner);
             self.quad(p, (p[0] + p[2] - lo - hi) * 0.5, rgb);
         }
+        self.boxes.push(Block::between(lo, hi));
     }
 
-    /// Adds the triangles of `other`, moved by `pose`.
+    /// Records the box between two corners as the body of a shape drawn from single triangles and quads.
+    pub fn body(&mut self, lo: Vec3, hi: Vec3) {
+        self.boxes.push(Block::between(lo, hi));
+    }
+
+    /// Returns the box of every box, bar and free shape drawn so far.
+    pub fn boxes(&self) -> &[Block] {
+        &self.boxes
+    }
+
+    /// Adds the triangles of `other`, moved by `pose`. Its boxes stay behind.
     pub fn merge(&mut self, other: &Soup, pose: Affine3A) {
         let moved = |(tri, rgb): &([Vec3; 3], Rgb)| (tri.map(|p| pose.transform_point3(p)), *rgb);
         self.tris.extend(other.tris.iter().map(moved));

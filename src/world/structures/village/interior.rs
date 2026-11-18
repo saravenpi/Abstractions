@@ -9,6 +9,7 @@ use super::style::Style;
 use crate::world::structures::brush::{Build, Mat};
 use crate::world::structures::glow::LightKind;
 use crate::world::structures::palette::{DARK_WOOD, GLASS, PLANK, STONE, STONE_LIGHT, WHITE, WOOD};
+use crate::world::structures::tags::Tag;
 
 /// Pale mattress linen.
 const LINEN: [f32; 3] = [0.87, 0.83, 0.74];
@@ -59,7 +60,7 @@ pub fn table(b: &mut Build, at: Vec2, turn: f32, len: f32) {
     );
 }
 
-/// Draws a bench `len` long, or a stool when short, with its back edge centered on `at`.
+/// Draws a solid bench `len` long, or a stool when short, with its back edge centered on `at`.
 pub fn seats(b: &mut Build, at: Vec2, turn: f32, len: f32) {
     let x = len * 0.5;
     let leg = |sx: f32| {
@@ -68,6 +69,9 @@ pub fn seats(b: &mut Build, at: Vec2, turn: f32, len: f32) {
     };
     let top = ([-x, 0.4, 0.0], [x, 0.46, 0.3], PLANK);
     put(b, at, turn, &[top, leg(-1.0), leg(1.0)]);
+    b.frame(at, turn);
+    b.collider(Vec3::new(-x, 0.0, 0.0), Vec3::new(x, 0.46, 0.3));
+    b.frame(Vec2::ZERO, 0.0);
 }
 
 /// Draws a 1 m by 2 m bed with its headboard centered on `at`: frame, mattress, blanket and pillow.
@@ -129,15 +133,14 @@ pub fn light(b: &mut Build, s: &Shell, at: Vec3, hang: bool) {
         b.cuboid(
             top - beam - z,
             top + Vec3::X * beam.x + z,
-            Mat::deco(DARK_WOOD),
+            Mat::solid(DARK_WOOD),
         );
         let chain = Vec2::new(0.02, 0.4);
         b.pillar(at - Vec3::Y * 0.4, chain, 4, Mat::deco(DARK_WOOD));
-        b.cuboid(
-            at - half - Vec3::Y * 0.74,
-            at + half - Vec3::Y * 0.4,
-            Mat::deco(GLASS),
-        );
+        b.tagged(Tag::Soft, |b| {
+            let (lo, hi) = (at - half - Vec3::Y * 0.74, at + half - Vec3::Y * 0.4);
+            b.cuboid(lo, hi, Mat::deco(GLASS));
+        });
         b.glow(LightKind::Candle, at - Vec3::Y * 0.57);
     } else {
         b.cuboid(

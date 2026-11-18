@@ -24,10 +24,10 @@ pub fn fill_node(
 ) {
     let (id, n) = node;
     let span = Span::node(terrain, id, n);
-    let coarse = Style::coarse(span.step());
+    let coarse = Style::coarse(span.step(), terrain.globe().lands());
     let style = Style {
-        floor: coarse.floor,
         skirt: [0.0, coarse.skirt][usize::from(skirts)],
+        ..coarse
     };
     let patch = Patch::new(&span, frame, &span.heights(), style.floor);
     fill(mesh, &patch, style, &|i, j| {

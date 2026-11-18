@@ -6,6 +6,7 @@ mod colormap;
 mod focus;
 pub mod globe;
 mod islands;
+mod lands;
 mod mesh;
 mod meter;
 mod propmesh;

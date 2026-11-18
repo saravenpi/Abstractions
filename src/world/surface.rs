@@ -70,11 +70,9 @@ fn seabed(height: f32, slope: f32, biome: Biome) -> Surface {
     }
 }
 
-/// Returns the surface for a ground height, a slope (rise over run) and a biome.
-pub fn classify(height: f32, slope: f32, biome: Biome) -> Surface {
-    if height <= SEA_LEVEL {
-        seabed(height, slope, biome)
-    } else if slope > ROCK_SLOPE {
+/// Returns the surface of dry ground at `height` for a slope (rise over run) and a biome.
+pub fn land(height: f32, slope: f32, biome: Biome) -> Surface {
+    if slope > ROCK_SLOPE {
         Surface::Rock
     } else if height > SEA_LEVEL + snow_line(biome) {
         Surface::Snow
@@ -84,5 +82,24 @@ pub fn classify(height: f32, slope: f32, biome: Biome) -> Surface {
         Surface::Sand
     } else {
         Surface::Grass
+    }
+}
+
+/// Returns the surface of a floor under a liquid nothing lives in: shallows near the surface, deep below.
+pub fn bare_bed(height: f32) -> Surface {
+    if height > SHALLOWS_BOTTOM {
+        Surface::Shallows
+    } else {
+        Surface::Water
+    }
+}
+
+/// Returns the surface for a ground height, a slope (rise over run) and a biome on a world of seas
+/// and islands.
+pub fn classify(height: f32, slope: f32, biome: Biome) -> Surface {
+    if height <= SEA_LEVEL {
+        seabed(height, slope, biome)
+    } else {
+        land(height, slope, biome)
     }
 }

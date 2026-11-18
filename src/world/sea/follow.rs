@@ -1,8 +1,10 @@
 //! Keeping the sea under the focus: its seat on the planet, its floor map and its shader values.
 
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::floor::SeaFloor;
+use super::liquid::Liquid;
 use super::material::WaterMaterial;
 use super::seat::Seat;
 use super::uniform::WaterUniform;
@@ -84,18 +86,22 @@ pub fn refresh(
     }
 }
 
-/// Refreshes the shader values of the sea and hides it once the focus is above the hand-over
-/// altitude, where the coarse planet mesh draws the sea.
+/// Refreshes the shader values of the sea with the liquid of the planet it sits on, and hides it once the
+/// focus is above the hand-over altitude, where the coarse planet mesh draws the sea, and on a planet
+/// without a sea.
 pub fn follow_focus(
     focus: Focus,
     inputs: SeaInputs,
+    planet: Option<Res<Planet>>,
     mut sea: Query<SeaItem, With<Sea>>,
     mut materials: ResMut<Assets<WaterMaterial>>,
 ) {
     let at = focus.planet();
+    let liquid = planet.map_or(Liquid::WATER, |planet| Liquid::of(&planet.globe));
     for (pose, handle, floor, seat, mut visibility) in &mut sea {
         let radius = seat.radius();
-        let near = at.filter(|at| at.length() < f64::from(radius + HANDOVER));
+        let low = |at: &DVec3| at.length() < f64::from(radius + HANDOVER);
+        let near = at.filter(|at| liquid.shown && low(at));
         visibility.set_if_neq(match near {
             Some(_) => Visibility::Inherited,
             None => Visibility::Hidden,
@@ -105,7 +111,7 @@ pub fn follow_focus(
         };
         if let Some(mut material) = materials.get_mut(&handle.0) {
             let map = floor.origin().truncate().truncate();
-            let water = inputs.uniform(pose.rotation);
+            let water = inputs.uniform(pose.rotation).of(&liquid);
             material.water = placing(water, pose, radius, map, seat.coords(at));
         }
     }

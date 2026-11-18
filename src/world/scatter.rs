@@ -12,6 +12,8 @@ mod table;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_class;
+#[cfg(test)]
 mod tests_cost;
 #[cfg(test)]
 mod tests_edge;
@@ -34,8 +36,6 @@ use self::density::Fields;
 use self::metric::Metric;
 use self::pass::{Ctx, pass};
 use self::relief::Relief;
-#[cfg(test)]
-use self::table::plants_for;
 use super::globe::Chart;
 use super::mesh::chunk_heights;
 use super::propmesh::Plant;
@@ -46,6 +46,7 @@ use super::{CHUNK_SIZE, Terrain};
 use super::{SEA_LEVEL, Surface};
 
 pub use self::rig::Rig;
+pub use self::table::plants_for;
 
 /// Most big props on one chunk of `CHUNK_SIZE` metres, sea floor ones included.
 const BIG_CAP: usize = 55;
@@ -97,12 +98,23 @@ pub fn chunk_center(coord: IVec2) -> Vec2 {
     (coord.as_vec2() + Vec2::splat(0.5)) * CHUNK_SIZE
 }
 
+/// Returns the height below which a floor gets nothing: the deep limit under the sea, and no limit on a
+/// planet without a sea.
+fn deep(terrain: &Terrain) -> f32 {
+    terrain.globe().sea_level() - DEEP_LIMIT
+}
+
+/// Returns true when nothing is scattered on the planet at all.
+fn bare(terrain: &Terrain) -> bool {
+    terrain.globe().lands().growth() <= 0.0
+}
+
 /// Returns true when one of 25 points spread over chunk `coord` has a floor above the deep limit.
 fn shallow(terrain: &Terrain, coord: IVec2) -> bool {
     let corner = chunk_center(coord) - Vec2::splat(CHUNK_SIZE * 0.5);
     (0..25).any(|i| {
         let p = corner + Vec2::new((i % 5) as f32, (i / 5) as f32) * CHUNK_SIZE / 4.0;
-        terrain.height(p.x, p.y) > -DEEP_LIMIT
+        terrain.height(p.x, p.y) > deep(terrain)
     })
 }
 
@@ -117,7 +129,8 @@ fn stream(terrain: &Terrain, coord: IVec2) -> ChaCha8Rng {
     ChaCha8Rng::seed_from_u64(seed ^ mix ^ face)
 }
 
-/// Runs the two passes of chunk `coord`: the big props, then the ground cover.
+/// Runs the two passes of chunk `coord`: the big props, then the ground cover, each with the share of the
+/// tries of home that the class of the planet lets grow.
 fn run(terrain: &Terrain, coord: IVec2, relief: Option<Relief>) -> Scatter {
     let center = chunk_center(coord);
     let mut rng = stream(terrain, coord);
@@ -128,9 +141,11 @@ fn run(terrain: &Terrain, coord: IVec2, relief: Option<Relief>) -> Scatter {
         metric: Metric::of(terrain, center),
         relief,
     };
+    let growth = terrain.globe().lands().growth();
+    let thin = |tries: usize| (tries as f32 * growth) as usize;
     Scatter {
-        props: pass(&ctx, &mut rng, BIG_TRIES, true),
-        grass: pass(&ctx, &mut rng, SMALL_TRIES, false),
+        props: pass(&ctx, &mut rng, thin(BIG_TRIES), true),
+        grass: pass(&ctx, &mut rng, thin(SMALL_TRIES), false),
     }
 }
 
@@ -140,7 +155,7 @@ fn run(terrain: &Terrain, coord: IVec2, relief: Option<Relief>) -> Scatter {
 /// metres and every decision reads the visible terrain mesh, which this call samples itself: a caller that
 /// already holds the heights of the chunk calls [`scatter_over`] instead and saves that work.
 pub fn scatter_chunk(terrain: &Terrain, coord: IVec2) -> Scatter {
-    if !shallow(terrain, coord) {
+    if bare(terrain) || !shallow(terrain, coord) {
         return Scatter::default();
     }
     if terrain.chart() == Chart::Flat {
@@ -160,7 +175,7 @@ pub fn scatter_over(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>]) -> Sc
         return scatter_chunk(terrain, coord);
     }
     let relief = Relief::new(coord, heights);
-    if !relief.shallow(-DEEP_LIMIT) {
+    if bare(terrain) || !relief.shallow(deep(terrain)) {
         return Scatter::default();
     }
     run(terrain, coord, Some(relief))

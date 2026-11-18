@@ -101,6 +101,14 @@ impl Kind {
         &SPECS[self as usize]
     }
 
+    /// Returns true for the ruins, which also stand on planets nobody lives on.
+    pub fn ruin(self) -> bool {
+        matches!(
+            self,
+            Kind::StoneCircle | Kind::Tower | Kind::Pyramid | Kind::Obelisk
+        )
+    }
+
     /// Returns how far, in meters, a site of this kind reaches from its origin.
     pub fn reach(self) -> f32 {
         match self {
@@ -124,22 +132,24 @@ fn samples(p: Vec2, r: f32) -> Vec<Vec2> {
 
 /// Returns true when open water lies 14 to 24 m from `p` in some direction.
 fn near_water(terrain: &Terrain, p: Vec2) -> bool {
+    let sea = terrain.globe().sea_level();
     (0..8).any(|i| {
         let d = Vec2::from_angle(i as f32 / 8.0 * TAU);
         [14.0, 24.0]
             .iter()
-            .any(|m| terrain.height(p.x + d.x * m, p.y + d.y * m) <= 0.0)
+            .any(|m| terrain.height(p.x + d.x * m, p.y + d.y * m) <= sea)
     })
 }
 
 /// Returns a yaw whose local +z points from `p` toward deep water, scanning from direction `start`.
 pub fn water_yaw(terrain: &Terrain, p: Vec2, start: u32) -> Option<f32> {
     let angles = (0..16).map(|i| ((start + i) % 16) as f32 / 16.0 * TAU);
+    let deep = terrain.globe().sea_level() - 0.6;
     angles.into_iter().find(|a| {
         let d = Vec2::new(a.sin(), a.cos());
         [9.0, 15.0]
             .iter()
-            .all(|m| terrain.height(p.x + d.x * m, p.y + d.y * m) < -0.6)
+            .all(|m| terrain.height(p.x + d.x * m, p.y + d.y * m) < deep)
     })
 }
 

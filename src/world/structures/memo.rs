@@ -30,6 +30,8 @@ struct Key {
     face: u8,
     scale: u64,
     reserved: bool,
+    class: u8,
+    ocean: u64,
     grid: Grid,
     cell: IVec2,
 }
@@ -45,12 +47,15 @@ fn key(terrain: &Terrain, grid: Grid, cell: IVec2) -> Option<Key> {
         Chart::Face { face, scale } => (face as u8, scale.to_bits()),
         Chart::Tangent(_) => return None,
     };
+    let globe = terrain.globe();
     Some(Key {
         seed: terrain.seed(),
-        radius: terrain.globe().radius().to_bits(),
+        radius: globe.radius().to_bits(),
         face,
         scale,
-        reserved: terrain.globe().reserve().is_some(),
+        reserved: globe.reserve().is_some(),
+        class: globe.record().class as u8,
+        ocean: globe.record().ocean.to_bits(),
         grid,
         cell,
     })

@@ -62,16 +62,17 @@ fn patch_above(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>], floor: f32
 
 /// Returns the vertices of chunk `coord` at `heights`, in the frame of the chunk.
 pub fn chunk_patch(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>]) -> Patch {
-    patch_above(terrain, coord, heights, Style::DETAIL.floor)
+    patch_above(terrain, coord, heights, f32::NEG_INFINITY)
 }
 
 /// Builds the mesh of chunk `coord` from `heights` sampled at the stride of `lod`, with a per-triangle biome dither.
 /// The distant level draws a flat sea over the sea bed, like a coarse node.
 pub fn chunk_mesh(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>], lod: Lod) -> Mesh {
     let span = Span::leaf(terrain, coord, (GRID_POINTS - 1) / lod.stride());
+    let lands = terrain.globe().lands();
     let style = match lod {
-        Lod::Distant => Style::coarse(span.step()),
-        _ => Style::DETAIL,
+        Lod::Distant => Style::coarse(span.step(), lands),
+        _ => Style::detail(lands),
     };
     let patch = patch_above(terrain, coord, heights, style.floor);
     let mut mesh = FlatMesh::default();

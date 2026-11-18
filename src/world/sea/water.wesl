@@ -20,6 +20,9 @@ struct Water {
     map: vec4<f32>,
     globe: vec4<f32>,
     frame: vec4<f32>,
+    shallow: vec4<f32>,
+    deep: vec4<f32>,
+    foam: vec4<f32>,
 }
 
 struct SeaVertex {
@@ -38,9 +41,6 @@ const FADE_END: f32 = 90.0;
 const DEEP: f32 = 12.0;
 const DETAIL_CELLS: f32 = 2.5;
 const SLOPE_GAIN: f32 = 2.5;
-const SHALLOW_COLOR: vec3<f32> = vec3<f32>(0.03, 0.55, 0.48);
-const DEEP_COLOR: vec3<f32> = vec3<f32>(0.002, 0.04, 0.16);
-const FOAM_COLOR: vec3<f32> = vec3<f32>(0.95, 0.98, 1.0);
 const MOON_COLOR: vec3<f32> = vec3<f32>(0.55, 0.68, 1.0);
 const MAP_SPAN: f32 = 256.0;
 const MAP_TEXEL: f32 = 2.0;
@@ -294,24 +294,24 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
         let column = column_depth(in.position, rise * dist);
         let depth = mix(column, max(bed.y, 0.0), bed.w);
         let shade = floor((1.0 - exp(-depth * 0.5)) * 6.0 + 0.5) / 6.0;
-        let body = mix(SHALLOW_COLOR, DEEP_COLOR, shade) * light;
+        let body = mix(water.shallow.rgb, water.deep.rgb, shade) * (light + vec3<f32>(water.shallow.w));
 
         let ndv = max(dot(n, v), 0.0);
-        let fresnel = 0.05 + 0.95 * pow(1.0 - ndv, 4.0);
+        let fresnel = (0.05 + 0.95 * pow(1.0 - ndv, 4.0)) * water.deep.w;
         let r = reflect(-v, n);
         var color = mix(body, sky_color(dot(r, up)), fresnel);
         let sun_glint = glitter(r, water.sun.xyz, cell, t) * water.sun.w;
         let moon_glint = glitter(r, water.moon.xyz, cell, t) * water.moon.w * 0.5;
-        color = color + (water.sun_color.rgb * sun_glint + MOON_COLOR * moon_glint) * fine;
+        color = color + (water.sun_color.rgb * sun_glint + MOON_COLOR * moon_glint) * fine * water.deep.w;
 
         let open = mix(1.0, smoothstep(FLECK_DEPTH, FLECK_DEPTH + 1.0, bed.y), bed.w) * (1.0 - bed.z);
         let flecks = crest_flecks(p, t, wind) * fine * open;
         let foam = max(shore_foam(p, bed, pixel, t), flecks);
-        let foam_light = FOAM_COLOR * mix(0.07, 1.0, day) * mix(vec3<f32>(1.0), water.sun_color.rgb, 0.35);
+        let foam_light = water.foam.rgb * mix(0.07, 1.0, day) * mix(vec3<f32>(1.0), water.sun_color.rgb, 0.35);
         color = mix(color, foam_light, foam);
 
         let clear = mix(0.2, 0.95, shade);
-        let opacity = mix(clear, 1.0, pow(1.0 - ndv, 3.0));
+        let opacity = max(mix(clear, 1.0, pow(1.0 - ndv, 3.0)), water.foam.w);
         col = vec4<f32>(color, max(opacity, foam) * smoothstep(0.0, EDGE_DEPTH, column));
     }
 

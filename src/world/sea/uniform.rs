@@ -4,6 +4,7 @@ use bevy::pbr::{DistanceFog, FogFalloff};
 use bevy::prelude::*;
 use bevy::render::render_resource::ShaderType;
 
+use super::liquid::Liquid;
 use super::waves::waves_for;
 use crate::render::Palette;
 use crate::wind::Wind;
@@ -42,6 +43,12 @@ pub struct WaterUniform {
     /// Render direction of sea coordinate x at the seat in xyz, and in w the distance from the
     /// camera at which the near sea has faded out.
     pub frame: Vec4,
+    /// Linear colour of the liquid over a shallow floor in xyz, and in w the light it gives off by itself.
+    pub shallow: Vec4,
+    /// Linear colour of the liquid over a deep floor in xyz, and in w the share of the sky it mirrors.
+    pub deep: Vec4,
+    /// Linear colour of the foam in xyz, and in w the least opacity of the surface.
+    pub foam: Vec4,
 }
 
 /// Distance fog of the camera, in the units the shader needs.
@@ -86,11 +93,11 @@ impl FogLook {
 
 impl WaterUniform {
     /// Builds the uniform for a palette, the wind in sea coordinates, a time in seconds and the
-    /// camera fog. The map, globe and frame values are left for the caller.
+    /// camera fog, drawing the water of home. The map, globe and frame values are left for the caller.
     pub fn new(palette: &Palette, wind: &Wind, time: f32, fog: &FogLook) -> Self {
         let [a, b, c, d] = waves_for(wind).map(|wave| wave.packed());
         let sun_up = smooth(-0.05, 0.12, palette.sun_dir.y);
-        Self {
+        let water = Self {
             zenith: linear(palette.zenith),
             horizon: linear(palette.horizon),
             fog: fog.color,
@@ -108,9 +115,18 @@ impl WaterUniform {
             wave_c: c,
             wave_d: d,
             params: Vec4::new(time, wind.strength, fog.start, fog.end),
-            map: Vec4::ZERO,
-            globe: Vec4::ZERO,
-            frame: Vec4::ZERO,
+            ..Self::default()
+        };
+        water.of(&Liquid::WATER)
+    }
+
+    /// Returns these values drawing `liquid` in place of the liquid they had.
+    pub fn of(self, liquid: &Liquid) -> Self {
+        Self {
+            shallow: liquid.shallow.extend(liquid.glow),
+            deep: liquid.deep.extend(liquid.mirror),
+            foam: liquid.foam.extend(liquid.cover),
+            ..self
         }
     }
 }
@@ -133,5 +149,26 @@ mod tests {
         let night = WaterUniform::new(&Palette::at(0.75), &Wind::default(), 0.0, &fog);
         assert!(noon.sun.w > 0.99 && noon.moon.w < 0.01);
         assert!(night.sun.w < 0.01 && night.moon.w > 0.9);
+    }
+
+    /// A fresh uniform draws the water of home, and another liquid only changes the liquid values.
+    #[test]
+    fn the_uniform_carries_the_liquid() {
+        let fog = FogLook::from_fog(None, Vec3::ONE);
+        let water = WaterUniform::new(&Palette::at(0.25), &Wind::default(), 0.0, &fog);
+        assert_eq!(water.shallow, Vec4::new(0.03, 0.55, 0.48, 0.0));
+        assert_eq!(water.deep, Vec4::new(0.002, 0.04, 0.16, 1.0));
+        assert_eq!(water.foam, Vec4::new(0.95, 0.98, 1.0, 0.0));
+        let lava = Liquid {
+            glow: 4.0,
+            cover: 1.0,
+            ..Liquid::WATER
+        };
+        let hot = water.of(&lava);
+        assert_eq!((hot.shallow.w, hot.foam.w), (4.0, 1.0));
+        assert_eq!(
+            (hot.sun, hot.wave_a, hot.zenith),
+            (water.sun, water.wave_a, water.zenith)
+        );
     }
 }

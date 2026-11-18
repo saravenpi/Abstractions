@@ -28,6 +28,9 @@ const CHANCE: f64 = 0.65;
 /// villages that reach a chunk: the size of a chart unit changes a little from that point to the village.
 const SLACK: f32 = 1.3;
 
+/// Share of the cells that would hold a structure which still hold a ruin on a planet nobody lives on.
+const RUINS: f64 = 0.15;
+
 /// Chance that a spot tries a camp before any other kind.
 const CAMP_FIRST: f64 = 0.3;
 
@@ -116,11 +119,14 @@ fn cell_rng(seed: u64, cell: IVec2) -> ChaCha8Rng {
 }
 
 /// Returns the site of `kind` at `p` when the ground of the metric view `terrain` around `p` allows it and
-/// its footprint keeps `EDGE` meters away from the cube edges, which lie `room` meters from `p`.
+/// its footprint keeps `EDGE` meters away from the cube edges, which lie `room` meters from `p`. A planet
+/// nobody lives on only takes ruins.
 fn try_kind(terrain: &Terrain, kind: Kind, at: (Vec2, f32), rng: &mut ChaCha8Rng) -> Option<Site> {
     let (p, room) = at;
     let kept = terrain.embed(p.x, 0.0, p.y);
-    if room < kind.reach() + EDGE || terrain.globe().reserved(kept, f64::from(kind.reach())) {
+    let globe = terrain.globe();
+    let empty = !globe.lands().settled() && !kind.ruin();
+    if empty || room < kind.reach() + EDGE || globe.reserved(kept, f64::from(kind.reach())) {
         return None;
     }
     let (floor, depth) = fit(terrain, kind, p)?;
@@ -162,7 +168,8 @@ pub fn structure_in_cell(terrain: &Terrain, cell: IVec2) -> Option<Site> {
 }
 
 /// Searches `cell` for a village origin or a small structure. Each candidate spot is judged on the metric
-/// view around it, and must keep its footprint clear of the cube edges.
+/// view around it, and must keep its footprint clear of the cube edges. A planet nobody lives on keeps
+/// few of its cells.
 fn search(terrain: &Terrain, cell: IVec2) -> Option<Site> {
     if let Some(v) = village_in_cell(terrain, cell.div_euclid(IVec2::splat(SPAN)))
         && (v.origin / CELL).floor().as_ivec2() == cell
@@ -170,7 +177,8 @@ fn search(terrain: &Terrain, cell: IVec2) -> Option<Site> {
         return Some(v);
     }
     let mut rng = cell_rng(terrain.seed(), cell);
-    if !rng.random_bool(CHANCE) {
+    let empty = !terrain.globe().lands().settled();
+    if !rng.random_bool(CHANCE) || (empty && !rng.random_bool(RUINS)) {
         return None;
     }
     let min = cell.as_vec2() * CELL;

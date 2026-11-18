@@ -5,6 +5,7 @@ mod bed;
 mod depth;
 mod floor;
 mod follow;
+mod liquid;
 mod material;
 mod mesh;
 mod seat;

@@ -8,13 +8,14 @@ use bevy::prelude::*;
 use super::GameCamera;
 use super::celestial::smoothstep;
 use super::clouds::CloudCrossing;
+use super::murk::{clearance, murk};
 use super::palette::{Palette, srgb};
 use super::vantage::{LocalSystem, Vantage};
 use crate::settings::{Persistent, Settings};
 use crate::space::{Anchor, Frame, altitude};
 use crate::world::{CHUNK_SIZE, Planet, Reach};
 
-/// Fog and sky color seen from below the surface, in sRGB.
+/// Fog and sky color seen from below the surface of water, in sRGB.
 pub const UNDERWATER: Vec3 = Vec3::new(0.04, 0.27, 0.35);
 
 /// Distance in meters at which the water hides everything.
@@ -85,12 +86,12 @@ pub fn cull_distance(reach: f32) -> f32 {
     reach.max(NEAR_FAR)
 }
 
-/// Builds the camera fog for a key: dense water fog below the surface, or linear fog that fades
-/// the terrain out before its reach.
+/// Builds the camera fog for a key: dense fog in the colour of the liquid below its surface, or
+/// linear fog that fades the terrain out before its reach.
 pub(super) fn fog_for(key: FogKey) -> DistanceFog {
     match key.submerged {
         true => DistanceFog {
-            color: srgb(UNDERWATER),
+            color: srgb(key.color),
             falloff: FogFalloff::from_visibility(UNDERWATER_VISIBILITY),
             ..default()
         },
@@ -121,16 +122,16 @@ struct Depths<'w> {
 }
 
 impl Depths<'_> {
-    /// Returns true when the render position `camera` is under the sea of the streamed planet.
+    /// Returns the colour of the liquid around the render position `camera` when it is under
+    /// the sea of the streamed planet, or nothing.
     ///
     /// The height comes from [`altitude`], which is this frame's, on the planet the anchor is
-    /// fixed to. Away from its surface nothing is under water.
-    fn submerged(&self, camera: Vec3) -> bool {
-        let (Some(anchor), Some(planet)) = (self.anchor.as_deref(), self.planet.as_deref()) else {
-            return false;
-        };
+    /// fixed to. Away from its surface, and on a planet without a sea, nothing is submerged.
+    fn submerged(&self, camera: Vec3) -> Option<Vec3> {
+        let (anchor, planet) = (self.anchor.as_deref()?, self.planet.as_deref()?);
         let here = anchor.flat || anchor.frame == Frame::Surface(planet.body);
-        here && altitude(anchor, &planet.globe, camera) < 0.0
+        let under = here && altitude(anchor, &planet.globe, camera) < 0.0;
+        murk(planet.record()).filter(|_| under)
     }
 
     /// Returns the height of the render position `camera` above the ground or the sea under it,
@@ -143,7 +144,7 @@ impl Depths<'_> {
             return altitude;
         }
         let dir = anchor.to_frame(camera).normalize_or(DVec3::Y);
-        altitude - planet.globe.height(dir).max(0.0)
+        clearance(&planet.globe, dir, altitude)
     }
 }
 
@@ -169,9 +170,11 @@ fn update_fog(
             air: vantage.air * depths.local.air(vantage.body).haze(),
         };
         let clear = fog_sight(ground, &height);
+        let liquid = depths.submerged(camera);
+        let air = palette.horizon.lerp(palette.cloud, crossing.depth);
         let key = FogKey {
-            submerged: depths.submerged(camera),
-            color: palette.horizon.lerp(palette.cloud, crossing.depth),
+            submerged: liquid.is_some(),
+            color: liquid.unwrap_or(air),
             reach: clear * (WHITEOUT_VISIBILITY / clear).powf(crossing.depth),
         };
         if *last != Some(key) {

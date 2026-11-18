@@ -5,6 +5,7 @@
 use bevy::prelude::*;
 
 use super::scatter::{luminance, peak};
+use super::sky::linear;
 use crate::universe::PlanetRecord;
 
 /// Pressure under which a planet has no air to speak of, the home planet having 1.
@@ -17,8 +18,12 @@ const THICKEN: f32 = 1.5;
 /// How fast a coloured air tint takes the sky over from the blue of clean air.
 const DUST: f32 = 2.5;
 
-/// Brightness of a dusty sky against the clean sky it replaces.
-const DUST_LEVEL: f32 = 1.2;
+/// Brightness of a dusty sky against the clean sky it replaces, both as the sRGB values the
+/// palette holds. At 1.2 a desert zenith at noon came out at 0.167 of white in linear light,
+/// under the 0.187 of the blue it stands for: a tan dark enough to read as mud. At 1.3 it is
+/// 0.20, as bright as that blue and a little more, as dust scatters more light than clean air,
+/// and the horizon of the same sky still peaks at 0.90, short of white.
+const DUST_LEVEL: f32 = 1.3;
 
 /// Cloud share of the home planet, which the cloud shader was tuned for.
 const HOME_CLOUDS: f32 = 0.5;
@@ -91,6 +96,12 @@ impl Air {
     /// the home planet: the same there, none without clouds, more under a heavier sky.
     pub fn cover(&self, drift: f32) -> f32 {
         drift * (self.clouds / HOME_CLOUDS)
+    }
+
+    /// Returns the linear colour of the sunlit clouds seen from space: white in clean air, and
+    /// stained by the tint of the air like the clouds seen from below.
+    pub fn clouds_from_space(&self) -> Vec3 {
+        linear(self.tint).truncate()
     }
 
     /// Returns the halo of this air seen from space under a star of colour `star`: its linear

@@ -85,7 +85,7 @@ impl SkyInputs<'_> {
             disc: (to_render * DVec3::Y).as_vec3(),
             core: (to_render * (-vantage.galactic).normalize_or_zero()).as_vec3(),
             band: vantage.band,
-            submerged: vantage.altitude < 0.0,
+            murk: super::murk::under(&self.local, vantage),
             heading: self.lens.heading,
             beta: self.lens.beta,
         }

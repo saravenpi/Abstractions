@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use super::air::Air;
 use super::palette::Palette;
 use super::scatter::luminance;
+use super::sky::linear;
 use super::sun::SunDir;
 use crate::universe::{PlanetClass, PlanetRecord};
 
@@ -126,4 +127,24 @@ fn air_tint_stains_the_sky() {
         assert_eq!(tinted.sun_color, home.sun_color);
         assert_eq!(tinted.sun_lux, home.sun_lux);
     }
+}
+
+/// At noon the dusty zenith of a desert is as bright in linear light as the blue zenith it
+/// replaces, and no more than a quarter brighter; its horizon stays short of white; and it is
+/// the colour of its air, more red than green and more green than blue by a clear step.
+#[test]
+fn desert_sky_is_butterscotch_not_mud() {
+    let light = |sky: Vec3| luminance(linear(sky).truncate());
+    let home = standing(&PlanetRecord::TEMPERATE, 1.0);
+    let desert = standing(&world(PlanetClass::Desert, 1.0), 1.0);
+    let (dusty, clean) = (light(desert.zenith), light(home.zenith));
+    assert!(
+        dusty >= clean && dusty < 1.25 * clean,
+        "{dusty} against {clean}"
+    );
+    assert!((0.85..0.95).contains(&desert.horizon.max_element()));
+    let zenith = desert.zenith;
+    assert!(zenith.x > 0.54 && zenith.y < 0.87 * zenith.x && zenith.z < 0.83 * zenith.y);
+    let barren = standing(&world(PlanetClass::Barren, 1.0), 1.0);
+    assert_eq!((barren.zenith, barren.horizon), (home.zenith, home.horizon));
 }

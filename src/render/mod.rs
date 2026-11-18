@@ -16,6 +16,7 @@ mod fog;
 mod glow;
 mod lighting;
 mod lowres;
+mod murk;
 mod observer;
 mod palette;
 mod pixelate;
@@ -38,6 +39,8 @@ mod tests_air;
 mod tests_dither;
 #[cfg(test)]
 mod tests_fog;
+#[cfg(test)]
+mod tests_murk;
 #[cfg(test)]
 mod tests_palette;
 #[cfg(test)]

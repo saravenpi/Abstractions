@@ -51,7 +51,7 @@ fn the_noise_and_the_puffs_match_the_shader() {
     );
     assert!(near(space_noise(Vec3::splat(0.5)), 0.342_043_56));
     assert!(near(space_noise(a), 0.490_168_23));
-    assert!(near(space_noise(b), 0.490_336_82));
+    assert!(near(space_noise(b), 0.490_336_8));
     assert!(near(fbm(a, 4), 0.405_665));
     assert!(near(fbm(b, 4), 0.525_343_83));
     assert!(near(fbm(c, 4), 0.554_901_6));

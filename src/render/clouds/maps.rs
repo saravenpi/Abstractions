@@ -101,8 +101,11 @@ fn build(spec: &PlanetSpec, globe: Option<Arc<Globe>>, field: Field, seconds: f6
 /// What the maps are built from: the bodies, universe time and the planet the world streams.
 #[derive(SystemParam)]
 pub(super) struct Sources<'w> {
+    /// The star system around the camera and universe time.
     scene: Scene<'w>,
+    /// The universe of the world being played, which names the home planet.
     universe: Option<Res<'w, Universe>>,
+    /// The planet the world streams, whose globe is already built.
     planet: Option<Res<'w, Planet>>,
 }
 

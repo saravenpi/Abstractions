@@ -41,7 +41,9 @@ pub fn star_light(star: Vec3) -> Vec3 {
 /// What the clouds of the bodies are drawn from.
 #[derive(SystemParam)]
 pub(super) struct Skies<'w> {
+    /// The settings, which can switch the clouds off.
     settings: Option<Res<'w, Persistent<Settings>>>,
+    /// The cover maps of the bodies whose clouds show.
     maps: Option<ResMut<'w, CloudMaps>>,
 }
 

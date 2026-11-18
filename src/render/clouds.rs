@@ -58,13 +58,21 @@ fn spawn_shell(
 /// Everything the cloud layer is computed from.
 #[derive(SystemParam)]
 pub(super) struct CloudInputs<'w> {
+    /// Where the camera is.
     vantage: Res<'w, Vantage>,
+    /// The star system around it, for the planet below.
     local: Res<'w, LocalSystem>,
+    /// The colours of the sky and the direction of the star.
     palette: Res<'w, Palette>,
+    /// Universe time, which drifts and morphs the clouds.
     clock: Res<'w, Clock>,
+    /// The settings, which can switch the clouds off.
     settings: Res<'w, Persistent<Settings>>,
+    /// Frame time, which the cloud around the camera eases over.
     time: Res<'w, Time>,
+    /// The weather at the camera, whose cloud is the broad cover of the field there.
     weather: Option<Res<'w, Weather>>,
+    /// The cover maps, which the shell asks for the map of the planet below.
     maps: ResMut<'w, CloudMaps>,
 }
 

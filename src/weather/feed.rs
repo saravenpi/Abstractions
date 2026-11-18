@@ -50,7 +50,7 @@ pub fn local(weather: &Weather) -> WeatherLook {
 pub fn seen(weather: &Weather, air: f32) -> Option<WeatherLook> {
     let share = ramp(BAND.0, BAND.1, air);
     let here = local(weather);
-    (share > 0.0).then(|| WeatherLook {
+    (share > 0.0).then_some(WeatherLook {
         haze: here.haze * share,
         dust: here.dust * share,
     })

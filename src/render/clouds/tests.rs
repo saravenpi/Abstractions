@@ -68,7 +68,7 @@ fn the_map_draws_the_cover_the_weather_reads() {
 #[test]
 fn replacing_a_snapshot_never_steps() {
     let (_, mut map) = map();
-    let patches: Vec<Patch> = places().map(|dir| Patch::around(dir)).collect();
+    let patches: Vec<Patch> = places().map(Patch::around).collect();
     let frame = 1.0 / 60.0;
     map.advance(0.0, 0);
     let mut last: Vec<f32> = patches.iter().map(|p| drawn(&map, p, 0.0)).collect();

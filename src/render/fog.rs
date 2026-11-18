@@ -11,6 +11,7 @@ use super::clouds::CloudCrossing;
 use super::murk::{clearance, murk};
 use super::palette::{Palette, srgb};
 use super::vantage::{LocalSystem, Vantage};
+use super::weather::LocalWeather;
 use crate::settings::{Persistent, Settings};
 use crate::space::{Anchor, Frame, altitude};
 use crate::world::{CHUNK_SIZE, Planet, Reach};
@@ -122,6 +123,8 @@ struct Depths<'w> {
     anchor: Option<Res<'w, Anchor>>,
     /// The planet the world streams, whose sea the camera may be under.
     planet: Option<Res<'w, Planet>>,
+    /// The weather at the camera, whose rain and dust close the fog in.
+    weather: Res<'w, LocalWeather>,
 }
 
 impl Depths<'_> {
@@ -151,8 +154,9 @@ impl Depths<'_> {
     }
 }
 
-/// Matches the fog to the sky horizon and the height of the camera, to the whiteout inside the
-/// cloud layer, or to dense water fog below the surface, and culls the view where the fog ends.
+/// Matches the fog to the sky horizon and the height of the camera, closer under rain and dust,
+/// to the whiteout inside the cloud layer, or to dense water fog below the surface, and culls
+/// the view where the fog ends.
 fn update_fog(
     palette: Res<Palette>,
     settings: Res<Persistent<Settings>>,
@@ -164,15 +168,17 @@ fn update_fog(
     let reach = Reach::of(Some(settings.graphics.render_distance));
     let planet = depths.planet.as_deref();
     let ground = planet.map_or(reach.rings as f32 * CHUNK_SIZE, |p| reach.sight(&p.globe));
+    let below = depths.local.air_below(vantage);
+    let weathered = depths.weather.look(&below).sight();
     for (at, mut fog, mut projection) in &mut cameras {
         let camera = at.translation();
         let height = Height {
             altitude: vantage.altitude,
             clearance: depths.clearance(camera, vantage.altitude),
             radius: vantage.radius,
-            air: vantage.air * depths.local.air_below(vantage).haze(),
+            air: vantage.air * below.haze(),
         };
-        let clear = fog_sight(ground, &height);
+        let clear = fog_sight(ground, &height) * weathered;
         let liquid = depths.submerged(camera);
         let air = palette.horizon.lerp(palette.cloud, crossing.depth);
         let key = FogKey {

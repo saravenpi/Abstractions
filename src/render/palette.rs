@@ -11,6 +11,7 @@ use super::clock::START_PHASE;
 use super::moonlight::{Moonlight, moonlit};
 use super::scatter::{luminance, peak, scattered, transmit};
 use super::vantage::{LocalSystem, Vantage};
+use super::weather::LocalWeather;
 
 /// Everything that changes color or strength with the height of the star.
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
@@ -158,17 +159,19 @@ impl Palette {
     }
 }
 
-/// Recomputes the palette from where the star stands for the camera and the real moon that
-/// lights its night, and applies it to the ambient light and the clear color.
+/// Recomputes the palette from where the star stands for the camera, the weather around it and
+/// the real moon that lights its night, and applies it to the ambient light and the clear color.
 fn update_palette(
     place: (Res<SunDir>, Res<Vantage>, Res<LocalSystem>, Res<Moonlight>),
+    weather: Res<LocalWeather>,
     mut palette: ResMut<Palette>,
     mut ambient: ResMut<GlobalAmbientLight>,
     mut clear: ResMut<ClearColor>,
 ) {
     let (sun, vantage, local, moon) = place;
     let (ground, star) = Palette::under(&sun, &vantage, &local);
-    *palette = moonlit(ground.seen(&sun, vantage.air, star), &moon);
+    let look = weather.look(&local.air_below(&vantage));
+    *palette = moonlit(look.sky(ground).seen(&sun, vantage.air, star), &moon);
     ambient.color = srgb(palette.ambient);
     ambient.brightness = palette.ambient_brightness;
     clear.0 = srgb(palette.horizon);
@@ -177,5 +180,6 @@ fn update_palette(
 /// Registers the palette resource and its update.
 pub(super) fn plugin(app: &mut App) {
     app.insert_resource(Palette::at(START_PHASE))
+        .init_resource::<LocalWeather>()
         .add_systems(Update, update_palette);
 }

@@ -18,6 +18,7 @@ use super::dome::cloud_cover;
 use super::palette::Palette;
 use super::sky::linear;
 use super::vantage::{LocalSystem, Vantage};
+use super::weather::LocalWeather;
 use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
 
@@ -130,13 +131,14 @@ pub(super) struct CloudInputs<'w> {
     clock: Res<'w, DayClock>,
     settings: Res<'w, Persistent<Settings>>,
     time: Res<'w, Time>,
+    weather: Res<'w, LocalWeather>,
 }
 
 impl CloudInputs<'_> {
     /// Returns the shader values for a shell of `radius` metres and a camera `depth` deep in the band.
     ///
     /// The noise is read in planet-fixed axes, so the clouds turn with the ground below them,
-    /// and the cover of the day is scaled by how cloudy the planet is.
+    /// and the cover of the day is scaled by how cloudy the weather makes the planet.
     fn uniform(&self, radius: f32, depth: f32) -> CloudUniform {
         let vantage = &*self.vantage;
         let observer = &vantage.observer;
@@ -146,7 +148,10 @@ impl CloudInputs<'_> {
             (distance * distance - ground).max(0.0).sqrt() + (radius * radius - ground).sqrt();
         let fixed = Mat3::from_quat((observer.to_render * observer.spin).inverse().as_quat());
         let air = self.local.air_below(vantage);
-        let cover = air.cover(cloud_cover(self.clock.phase));
+        let cover = self
+            .weather
+            .look(&air)
+            .cover(&air, cloud_cover(self.clock.phase));
         CloudUniform {
             light: self.palette.sun_dir.extend(vantage.air),
             color: linear(self.palette.cloud).truncate().extend(cover),
@@ -169,7 +174,8 @@ type ShellParts = (
 );
 
 /// Measures how deep the camera is in the cloud layer, wraps the shell around the planet halfway
-/// up the band and refreshes the shader values. A planet without clouds has no shell and no crossing.
+/// up the band, whose bottom rain lowers, and refreshes the shader values. A sky without clouds
+/// has no shell and no crossing.
 pub(super) fn drift(
     inputs: CloudInputs,
     mut crossing: ResMut<CloudCrossing>,
@@ -177,14 +183,15 @@ pub(super) fn drift(
     mut materials: ResMut<Assets<CloudMaterial>>,
 ) {
     let vantage = &*inputs.vantage;
-    let cloudy = inputs.local.air_below(vantage).clouds > 0.0;
-    let on = inputs.settings.graphics.clouds && cloudy && vantage.cloud_top > vantage.cloud_base;
+    let look = inputs.weather.look(&inputs.local.air_below(vantage));
+    let base = look.base(vantage.cloud_base);
+    let on = inputs.settings.graphics.clouds && look.cover > 0.0 && vantage.cloud_top > base;
     let depth = match on {
-        true => crossing_depth(vantage.altitude, vantage.cloud_base, vantage.cloud_top),
+        true => crossing_depth(vantage.altitude, base, vantage.cloud_top),
         false => 0.0,
     };
     crossing.set_if_neq(CloudCrossing { depth });
-    let radius = vantage.radius + 0.5 * (vantage.cloud_base + vantage.cloud_top);
+    let radius = vantage.radius + 0.5 * (base + vantage.cloud_top);
     let shown = on && vantage.radius + vantage.altitude < HIDE_RADII * vantage.radius;
     let center = vantage
         .observer

@@ -25,12 +25,15 @@ mod palette;
 mod pixelate;
 pub mod ray_tracing;
 mod scatter;
+mod season;
+mod seasons;
 mod sky;
 mod starfield;
 mod sun;
 mod vantage;
 mod warm;
 mod warp;
+mod weather;
 
 #[cfg(test)]
 mod schedule_tests;
@@ -53,7 +56,11 @@ mod tests_palette;
 #[cfg(test)]
 mod tests_rings;
 #[cfg(test)]
+mod tests_season;
+#[cfg(test)]
 mod tests_sky;
+#[cfg(test)]
+mod tests_weather;
 
 pub use air::Air;
 pub use camera::{configure_camera, set_fov};
@@ -72,6 +79,7 @@ pub use ray_tracing::RayTracing;
 pub use sun::SunDir;
 pub use warm::{WARM_FRAMES, Warm, Warmed, warm_material};
 pub use warp::{CARRIED, Drive, Lens, Phase, Sequence};
+pub use weather::{LocalWeather, WeatherLook};
 
 use bevy::prelude::*;
 use bevy::render::render_asset::RenderAssetBytesPerFrame;
@@ -123,6 +131,7 @@ pub(super) fn sky(app: &mut App) {
         moonlight::plugin,
         entry::plugin,
         warm::plugin,
+        seasons::plugin,
     ));
     warm_material::<clouds::CloudMaterial>(app);
     warm_material::<sky::SkyMaterial>(app);

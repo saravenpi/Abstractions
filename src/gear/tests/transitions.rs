@@ -81,12 +81,12 @@ fn stopping_mid_air_is_ballistic_then_boots_catch() {
     assert_smooth(&flight);
 }
 
-/// Flying up out of the air on a climb set along the path: lift, drag and thrust fade and the
-/// body goes ballistic, smoothly.
+/// Flying up out of the air on a climb the frame already lies along: lift, drag and thrust
+/// fade and the body goes ballistic, smoothly.
 #[test]
 fn running_out_of_air_is_smooth() {
     let mut flight = Flight::new(Mode::Fly, Vec3::new(0.0, 20.0, -60.0));
-    (flight.state.pitch, flight.state.servo.course) = (0.32, 0.32);
+    flight.state.pitch = 0.32;
     for frame in 0..1200 {
         let density = 1.2 * (-(frame as f32) / 150.0).exp();
         let input = GearInput {

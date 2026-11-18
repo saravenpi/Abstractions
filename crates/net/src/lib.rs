@@ -8,6 +8,7 @@
 //! - [`ids`] names galaxies, stars, planets and moons.
 //! - [`log`] is the list of what players changed in a world.
 //! - [`pack`] shrinks rotations, positions and small numbers to a few bytes.
+//! - [`wire`] is the protocol: state records, messages and how they sit on a stream.
 //! - [`clock`] and [`jitter`] keep players in time and remote bodies smooth.
 //! - [`room`] is the server's logic and [`store`] its world file.
 //! - [`io`], [`trust`] and [`lan`] are the network itself: QUIC, certificates and the LAN beacon.
@@ -22,3 +23,4 @@ pub mod pack;
 pub mod room;
 pub mod store;
 pub mod trust;
+pub mod wire;

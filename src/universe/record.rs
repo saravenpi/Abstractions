@@ -96,12 +96,13 @@ impl PlanetRecord {
     /// the island generator puts it.
     pub const BALANCED_OCEAN: f64 = 0.6;
 
-    /// The record of the home planet: a temperate world of seas and islands.
+    /// The record of the home planet: a temperate world of seas and islands, tilted like the
+    /// Earth so that it has seasons.
     pub const TEMPERATE: Self = Self {
         class: PlanetClass::Island,
         zone: Zone::Habitable,
         flux: 1.0,
-        tilt: 0.0,
+        tilt: 0.409,
         pressure: 1.0,
         albedo: 0.3,
         greenhouse: 33.0,

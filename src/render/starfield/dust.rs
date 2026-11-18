@@ -34,6 +34,5 @@ pub fn mesh() -> Mesh {
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_1, grains);
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, vec![[0.55, 0.55, 0.55, 0.6]; count]);
     mesh.insert_indices(Indices::U32(indices));
-    mesh.enable_raytracing = false;
     mesh
 }

@@ -23,7 +23,6 @@ mod nearby;
 mod observer;
 mod palette;
 mod pixelate;
-pub mod ray_tracing;
 mod scatter;
 mod season;
 mod seasons;
@@ -77,7 +76,6 @@ pub use lowres::LowRes;
 pub use observer::Observer;
 pub use palette::Palette;
 pub use pixelate::Pixelate;
-pub use ray_tracing::RayTracing;
 pub use sun::SunDir;
 pub use vantage::{LocalSystem, Vantage};
 pub use warm::{WARM_FRAMES, Warm, Warmed, warm_material};
@@ -93,11 +91,9 @@ use bevy::render::render_asset::RenderAssetBytesPerFrame;
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct GameCamera;
 
-/// Returns a unit sphere that never enters the ray tracing scene, turned inside out when it is
-/// only ever seen from within.
+/// Returns a unit sphere, turned inside out when it is only ever seen from within.
 fn shell(inside: bool) -> Mesh {
     let mut mesh = Sphere::new(1.0).mesh().uv(48, 24);
-    mesh.enable_raytracing = false;
     if inside && let Err(error) = mesh.invert_winding() {
         warn!("could not turn a sky shell inside out: {error}");
     }
@@ -152,5 +148,5 @@ const UPLOAD_BYTES: usize = 16 << 20;
 /// Registers the render plugins.
 pub(super) fn plugin(app: &mut App) {
     app.insert_resource(RenderAssetBytesPerFrame::new(UPLOAD_BYTES))
-        .add_plugins((pixelate::plugin, lowres::plugin, ray_tracing::plugin, sky));
+        .add_plugins((pixelate::plugin, lowres::plugin, sky));
 }

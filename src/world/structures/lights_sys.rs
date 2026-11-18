@@ -13,7 +13,7 @@ use crate::wind::Wind;
 /// Seconds between two choices of the active lights.
 const CHOOSE_EVERY: f32 = 0.25;
 
-/// Smallest scale of a fading light. Its ray traced emitter shares the scale and must never collapse to a point.
+/// Smallest scale of a fading light. A light must never collapse to a point.
 const MIN_SCALE: f32 = 0.05;
 
 /// Fires that smoke rises from: the nearest few campfires and braziers, in world space.

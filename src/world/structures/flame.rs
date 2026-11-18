@@ -1,10 +1,9 @@
 //! Flame and lantern meshes: layered low-poly fire shapes shared by every torch, fire and lamp.
 
-use std::f32::consts::{PI, TAU};
+use std::f32::consts::TAU;
 
 use bevy::prelude::*;
 
-use super::flicker::power;
 use super::glow::LightKind;
 use crate::world::shapes::textured_mesh;
 
@@ -19,9 +18,6 @@ const SHELLS: [(f32, f32); 3] = [(1.0, 1.0), (0.68, 0.74), (0.38, 0.5)];
 
 /// Linear HDR colors of the shells from the outside in: deep orange-red, orange and a pale yellow core.
 pub const SHELL_COLORS: [[f32; 3]; 3] = [[1.7, 0.2, 0.03], [3.2, 1.05, 0.12], [7.0, 4.6, 1.6]];
-
-/// Radius in meters of the octahedron that emits a light's power in the ray traced scene.
-const EMITTER_RADIUS: f32 = 0.08;
 
 /// One shell of a flame: a teardrop child of a light, scaled and leaned about its base.
 #[derive(Component, Debug, Clone, Copy, PartialEq)]
@@ -59,37 +55,19 @@ fn lathe(sides: u32, rings: &[(f32, f32)], ends: (f32, f32)) -> Vec<[Vec3; 3]> {
     tris
 }
 
-/// Builds a flat-shaded mesh in the layout Solari accepts; only a `traced` mesh gets an acceleration structure.
-fn solid(tris: &[[Vec3; 3]], traced: bool) -> Mesh {
+/// Builds a flat-shaded mesh.
+fn solid(tris: &[[Vec3; 3]]) -> Mesh {
     let positions = tris.iter().flatten().map(|p| p.to_array()).collect();
     let normals = tris
         .iter()
         .flat_map(|[a, b, c]| [(*b - *a).cross(*c - *a).normalize_or_zero().to_array(); 3])
         .collect();
-    let mut mesh = textured_mesh(positions, normals, vec![[0.5, 0.5]; tris.len() * 3]);
-    mesh.enable_raytracing = traced;
-    mesh
+    textured_mesh(positions, normals, vec![[0.5, 0.5]; tris.len() * 3])
 }
 
 /// Builds the unit flame shell: base at the origin, tip at height 1, widest radius 1.
 pub fn teardrop() -> Mesh {
-    solid(&lathe(SIDES, &PROFILE, (0.0, 1.0)), false)
-}
-
-/// Builds the small octahedron that stands for a light in the ray traced scene.
-pub fn emitter() -> Mesh {
-    let r = EMITTER_RADIUS;
-    solid(&lathe(4, &[(r, 0.0)], (-r, r)), true)
-}
-
-/// Returns the radiance in nits the emitter of a light kind needs to give off the power of its point light.
-///
-/// A convex emitter of area `A` and radiance `L` shines `L * A / 4` candela on average, a point light `lm / 4 pi`.
-pub fn radiance(kind: LightKind) -> LinearRgba {
-    let area = 4.0 * 3.0_f32.sqrt() * EMITTER_RADIUS * EMITTER_RADIUS;
-    let nits = power(kind).0 / (PI * area);
-    let tint = LinearRgba::from(kind.tint());
-    LinearRgba::rgb(tint.red * nits, tint.green * nits, tint.blue * nits)
+    solid(&lathe(SIDES, &PROFILE, (0.0, 1.0)))
 }
 
 /// Returns how far the flame base sits under the light, how lively it is and its tongues as x, z, radius, height.

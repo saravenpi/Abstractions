@@ -54,15 +54,14 @@ impl Solid {
             .extend(other.tris.iter().map(|tri| tri.map(|p| p + offset)));
     }
 
-    /// Converts the triangles into a mesh in the layout the ray tracer accepts, without asking
-    /// for an acceleration structure: positions, flat normals, one UV, tangents and `u32` indices.
+    /// Converts the triangles into a mesh: positions, flat normals, one UV, tangents and `u32` indices.
     pub fn into_mesh(self) -> Mesh {
         let count = self.tris.len() * 3;
         let normal =
             |[a, b, c]: &[Vec3; 3]| (*b - *a).cross(*c - *a).normalize_or_zero().to_array();
         let normals: Vec<[f32; 3]> = self.tris.iter().flat_map(|tri| [normal(tri); 3]).collect();
         let positions: Vec<[f32; 3]> = self.tris.iter().flatten().map(|p| p.to_array()).collect();
-        let mut mesh = Mesh::new(
+        Mesh::new(
             PrimitiveTopology::TriangleList,
             RenderAssetUsages::default(),
         )
@@ -70,8 +69,6 @@ impl Solid {
         .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
         .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0.5, 0.5]; count])
         .with_inserted_attribute(Mesh::ATTRIBUTE_TANGENT, vec![[1.0, 0.0, 0.0, 1.0]; count])
-        .with_inserted_indices(Indices::U32((0..count as u32).collect()));
-        mesh.enable_raytracing = false;
-        mesh
+        .with_inserted_indices(Indices::U32((0..count as u32).collect()))
     }
 }

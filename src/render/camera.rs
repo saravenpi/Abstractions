@@ -1,23 +1,18 @@
 //! The game camera look: render target, graphics options and projection.
 
-use bevy::camera::{CameraMainTextureUsages, Hdr, RenderTarget};
-use bevy::core_pipeline::prepass::{
-    DeferredPrepass, DepthPrepass, MotionVectorPrepass, NormalPrepass,
-};
+use bevy::camera::{Hdr, RenderTarget};
+use bevy::core_pipeline::prepass::{DepthPrepass, NormalPrepass};
 use bevy::ecs::system::SystemParam;
 use bevy::pbr::ScreenSpaceAmbientOcclusion;
 use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
-use bevy::render::render_resource::TextureUsages;
 use bevy::render::view::{Msaa, Tonemapping};
-use bevy::solari::prelude::SolariLighting;
 
 use super::GameCamera;
 use super::fog::{FogKey, fog_for};
 use super::lowres::LowRes;
 use super::palette::Palette;
 use super::pixelate::Pixelate;
-use super::ray_tracing::RayTracing;
 use crate::settings::{Graphics, Persistent, Settings};
 
 /// Strength of the bloom glow.
@@ -31,15 +26,7 @@ pub fn set_fov(projection: &mut Projection, fov: u32) {
 }
 
 /// Adds or removes the camera effects that the graphics settings ask for.
-///
-/// With `ray_tracing` the camera gets Solari lighting, which replaces ambient occlusion and needs HDR.
-/// Without it every component Solari added goes, so the camera is exactly the normal one.
-pub fn configure_camera(
-    commands: &mut Commands,
-    camera: Entity,
-    graphics: &Graphics,
-    ray_tracing: bool,
-) {
+pub fn configure_camera(commands: &mut Commands, camera: Entity, graphics: &Graphics) {
     let mut entity = commands.entity(camera);
     entity.insert((
         Pixelate::new(graphics.pixel_size, graphics.color_levels),
@@ -47,28 +34,16 @@ pub fn configure_camera(
         Msaa::Off,
         DepthPrepass,
     ));
-    if ray_tracing {
-        entity.insert(CameraMainTextureUsages::default().with(TextureUsages::STORAGE_BINDING));
-        entity.insert_if_new(SolariLighting {
-            restir: true,
-            confidence_weight_cap: 16.0,
-            ..default()
-        });
-    } else {
-        entity.insert(CameraMainTextureUsages::default());
-        entity.remove::<(SolariLighting, DeferredPrepass, MotionVectorPrepass)>();
-    }
-    match graphics.ambient_occlusion && !ray_tracing {
+    match graphics.ambient_occlusion {
         true => entity.insert(ScreenSpaceAmbientOcclusion::default()),
         false => entity.remove::<(ScreenSpaceAmbientOcclusion, NormalPrepass)>(),
     };
-    match (graphics.bloom, ray_tracing) {
-        (true, _) => entity.insert(Bloom {
+    match graphics.bloom {
+        true => entity.insert(Bloom {
             intensity: BLOOM_INTENSITY,
             ..Bloom::NATURAL
         }),
-        (false, true) => entity.remove::<Bloom>(),
-        (false, false) => entity.remove::<(Bloom, Hdr)>(),
+        false => entity.remove::<(Bloom, Hdr)>(),
     };
 }
 
@@ -77,7 +52,6 @@ pub fn configure_camera(
 struct Look<'w> {
     settings: Res<'w, Persistent<Settings>>,
     palette: Res<'w, Palette>,
-    ray_tracing: Res<'w, RayTracing>,
     target: Option<Res<'w, LowRes>>,
 }
 
@@ -90,7 +64,7 @@ fn setup_camera(
     mut projections: Query<&mut Projection>,
 ) {
     let graphics = &look.settings.graphics;
-    configure_camera(&mut commands, add.entity, graphics, look.ray_tracing.0);
+    configure_camera(&mut commands, add.entity, graphics);
     if let Some(target) = look.target {
         commands
             .entity(add.entity)

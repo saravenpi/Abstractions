@@ -32,7 +32,6 @@ bevy = { version = "0.20.1", default-features = false, features = [
     "audio",
     "serialize",
     "tonemapping_luts",
-    "bevy_solari",
 ] }
 avian3d = { version = "0.8.0", default-features = false, features = [
     "3d",
@@ -62,6 +61,3 @@ opt-level = 3
 codegen-units = 1
 lto = "thin"
 strip = "symbols"
-
-[patch.crates-io]
-bevy_solari = { path = "vendor/bevy_solari" }

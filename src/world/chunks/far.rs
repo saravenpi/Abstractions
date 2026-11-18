@@ -3,12 +3,12 @@
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
 
+use super::Chunks;
 use super::build::{NodeData, render_only};
 use super::nodes::Node;
 use super::scene::Scene;
 use super::spawn::Spawner;
 use super::stretch::Stretch;
-use super::{Chunks, raytrace};
 use crate::world::globe::far::{Range, bake, seen};
 use crate::world::globe::{ChunkId, Face};
 use crate::world::mesh::Frame;
@@ -40,11 +40,11 @@ impl FarView {
         if self.node.is_some() {
             return;
         }
-        let (globe, on) = (spawner.terrain.globe().clone(), spawner.ray_tracing.0);
+        let globe = spawner.terrain.globe().clone();
         let pool = AsyncComputeTaskPool::get();
         let task = self
             .task
-            .get_or_insert_with(|| pool.spawn(async move { render_only(bake(&globe), on) }));
+            .get_or_insert_with(|| pool.spawn(async move { render_only(bake(&globe)) }));
         if let Some(mesh) = block_on(poll_once(task)) {
             let frame = Frame::PLANET;
             self.node = Some(spawner.coarse(commands, NodeData { mesh, frame }));
@@ -53,10 +53,10 @@ impl FarView {
     }
 
     /// Shows or hides the baked planet.
-    fn set_visible(&mut self, commands: &mut Commands, visible: bool, ray_tracing: bool) {
+    fn set_visible(&mut self, commands: &mut Commands, visible: bool) {
         if let Some(node) = self.node.as_mut().filter(|node| node.visible != visible) {
             node.visible = visible;
-            raytrace::show(commands, node, ray_tracing);
+            node.show(commands);
         }
     }
 }
@@ -100,7 +100,5 @@ pub fn watch_far(
     }
     chunks.far.active = far;
     let visible = seen != Range::Beyond && (far || !covered(chunks));
-    chunks
-        .far
-        .set_visible(&mut commands, visible, spawner.ray_tracing.0);
+    chunks.far.set_visible(&mut commands, visible);
 }

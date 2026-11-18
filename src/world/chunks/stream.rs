@@ -11,7 +11,7 @@ use super::near::Around;
 use super::plan::batch;
 use super::scene::Scene;
 use super::spawn::{Spawner, spawn_chunk};
-use super::{Chunks, Settled, raytrace};
+use super::{Chunks, Settled};
 use crate::world::focus::Focus;
 use crate::world::globe::{Chart, ChunkId};
 use crate::world::mesh::leaf_coord;
@@ -141,10 +141,9 @@ pub fn collect(
             continue;
         }
         let task = chunks.pending.remove(&id);
-        let Some(mut data) = task.and_then(|mut t| block_on(poll_once(&mut t))) else {
+        let Some(data) = task.and_then(|mut t| block_on(poll_once(&mut t))) else {
             continue;
         };
-        raytrace::prepare(&mut data, spawner.ray_tracing.0);
         let mut loaded = spawn_chunk(&mut commands, &mut spawner, data);
         loaded.set_solid(&mut commands, around.solid(id));
         chunks.loaded.insert(id, loaded);

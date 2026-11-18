@@ -86,7 +86,6 @@ pub fn annulus(inner: f32) -> Mesh {
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0.0, 1.0, 0.0]; count]);
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
     mesh.insert_indices(Indices::U32(indices));
-    mesh.enable_raytracing = false;
     mesh
 }
 

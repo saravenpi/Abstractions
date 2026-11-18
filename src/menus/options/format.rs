@@ -23,7 +23,6 @@ fn flag_value(g: &Graphics, field: Field) -> Option<bool> {
         Field::Bloom => Some(g.bloom),
         Field::Clouds => Some(g.clouds),
         Field::ShowFps => Some(g.show_fps),
-        Field::RayTracing => Some(g.ray_tracing),
         _ => None,
     }
 }

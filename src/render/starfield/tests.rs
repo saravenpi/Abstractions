@@ -13,7 +13,7 @@ use crate::render::vantage::{LocalSystem, Nearby, Vantage};
 use crate::space::Clock;
 use crate::universe::{GLY, GalaxyId, StarId, Universe};
 
-/// The starfield mesh has one inward-facing quad per speck and stays out of the ray tracing scene.
+/// The starfield mesh has one inward-facing quad per speck.
 #[test]
 fn starfield_faces_the_camera() {
     let dirs = [Vec3::X, Vec3::NEG_Y, Vec3::new(0.6, 0.0, -0.8)];
@@ -32,7 +32,6 @@ fn starfield_faces_the_camera() {
         panic!("indices missing");
     };
     assert_eq!((points.len(), indices.len()), (12, 18));
-    assert!(!built.enable_raytracing);
     for corner in indices.chunks(3) {
         let [a, b, c] = [0, 1, 2].map(|i| Vec3::from(points[corner[i] as usize]));
         let inward = (b - a)

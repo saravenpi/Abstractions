@@ -43,25 +43,24 @@ pub struct NodeData {
     pub(super) frame: Frame,
 }
 
-/// Drops the CPU copy of a mesh once it is uploaded to the GPU and sets its ray tracing flag.
-pub fn render_only(mut mesh: Mesh, on: bool) -> Mesh {
+/// Drops the CPU copy of a mesh once it is uploaded to the GPU.
+pub fn render_only(mut mesh: Mesh) -> Mesh {
     mesh.asset_usage = RenderAssetUsages::RENDER_WORLD;
-    mesh.enable_raytracing = on;
     mesh
 }
 
-/// Builds the terrain mesh of chunk `coord` at level `lod` with the ray tracing flag `on`.
-pub fn terrain_mesh(terrain: &Terrain, coord: IVec2, lod: Lod, on: bool) -> Mesh {
+/// Builds the terrain mesh of chunk `coord` at level `lod`.
+pub fn terrain_mesh(terrain: &Terrain, coord: IVec2, lod: Lod) -> Mesh {
     let heights = chunk_heights(terrain, coord, lod.stride());
-    render_only(chunk_mesh(terrain, coord, &heights, lod), on)
+    render_only(chunk_mesh(terrain, coord, &heights, lod))
 }
 
-/// Builds the terrain-only mesh of quadtree node `id` with the ray tracing flag `on`.
+/// Builds the terrain-only mesh of quadtree node `id`.
 ///
 /// `terrain` must be the face chart view of the face of the node.
-pub fn coarse(terrain: &Terrain, id: ChunkId, on: bool) -> NodeData {
+pub fn coarse(terrain: &Terrain, id: ChunkId) -> NodeData {
     NodeData {
-        mesh: render_only(node_mesh(terrain, id), on),
+        mesh: render_only(node_mesh(terrain, id)),
         frame: node_frame(terrain, id),
     }
 }
@@ -108,16 +107,16 @@ fn planted(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>]) -> (Scatter, E
     (scatter, warp)
 }
 
-/// Builds the ground cover mesh of chunk `coord` alone, with the ray tracing flag `on`, for a
-/// chunk that was generated without it. None when nothing small grows there.
-pub fn ground_cover(terrain: &Terrain, coord: IVec2, on: bool) -> Option<Mesh> {
+/// Builds the ground cover mesh of chunk `coord` alone, for a chunk that was generated without
+/// it. None when nothing small grows there.
+pub fn ground_cover(terrain: &Terrain, coord: IVec2) -> Option<Mesh> {
     let (scatter, warp) = planted(terrain, coord, &chunk_heights(terrain, coord, 1));
     let (embed, turn) = (|p| warp.point(p), |p| warp.turn(p));
     let rig = Rig {
         embed: &embed,
         turn: &turn,
     };
-    (!scatter.grass.is_empty()).then(|| render_only(build_grass_on(&scatter, &rig), on))
+    (!scatter.grass.is_empty()).then(|| render_only(build_grass_on(&scatter, &rig)))
 }
 
 /// Generates the mesh at level `lod`, the colliders, the merged props and the structures of chunk
@@ -134,11 +133,11 @@ pub fn generate(terrain: &Terrain, coord: IVec2, lod: Lod, turfed: bool) -> Chun
         embed: &embed,
         turn: &turn,
     };
-    let grass = || render_only(build_grass_on(&scatter, &rig), false);
-    let props = || render_only(merge_props_on(&scatter.props, &rig), false);
+    let grass = || render_only(build_grass_on(&scatter, &rig));
+    let props = || render_only(merge_props_on(&scatter.props, &rig));
     let frame = warp.frame();
     ChunkData {
-        mesh: render_only(mesh, false),
+        mesh: render_only(mesh),
         grass: (turfed && !scatter.grass.is_empty()).then(grass),
         props: (!scatter.props.is_empty()).then(props),
         bodies: body_collider_on(&scatter.props, &rig),

@@ -70,8 +70,7 @@ impl Soup {
         self.tris.extend(other.tris.iter().map(moved));
     }
 
-    /// Converts the triangles into a mesh with flat normals and linear vertex colours. The mesh
-    /// asks for no ray tracing acceleration structure.
+    /// Converts the triangles into a mesh with flat normals and linear vertex colours.
     pub fn into_mesh(self) -> Mesh {
         let count = self.tris.len() as u32 * 3;
         let flat = |[a, b, c]: &[Vec3; 3]| (*b - *a).cross(*c - *a).normalize_or_zero().to_array();
@@ -92,12 +91,10 @@ impl Soup {
             .flat_map(|(_, rgb)| [linear(*rgb); 3])
             .collect();
         let usage = RenderAssetUsages::default();
-        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, usage)
+        Mesh::new(PrimitiveTopology::TriangleList, usage)
             .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
             .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
             .with_inserted_attribute(Mesh::ATTRIBUTE_COLOR, colors)
-            .with_inserted_indices(Indices::U32((0..count).collect()));
-        mesh.enable_raytracing = false;
-        mesh
+            .with_inserted_indices(Indices::U32((0..count).collect()))
     }
 }

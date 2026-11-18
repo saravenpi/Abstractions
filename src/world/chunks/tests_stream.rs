@@ -10,7 +10,6 @@ use bevy::prelude::*;
 use super::cut::visible;
 use super::place::{Sited, pose};
 use super::{Chunks, FRAME_BUDGET};
-use crate::render::RayTracing;
 use crate::space::Anchor;
 use crate::world::focus::Link;
 use crate::world::globe::{Chart, Face};
@@ -27,7 +26,6 @@ pub(super) fn world() -> App {
         .insert_resource(materials)
         .insert_resource(images)
         .init_resource::<Assets<Mesh>>()
-        .init_resource::<RayTracing>()
         .init_resource::<Chunks>();
     let begun = app.world_mut().run_system_once(crate::world::begin_world);
     begun.expect("the world begins");

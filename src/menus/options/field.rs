@@ -19,7 +19,6 @@ pub enum Field {
     Bloom,
     Clouds,
     ShowFps,
-    RayTracing,
     ColorLevels,
     Fov,
     Sensitivity,
@@ -61,7 +60,6 @@ fn flag(graphics: &mut Graphics, field: Field) -> Option<&mut bool> {
         Field::Bloom => Some(&mut graphics.bloom),
         Field::Clouds => Some(&mut graphics.clouds),
         Field::ShowFps => Some(&mut graphics.show_fps),
-        Field::RayTracing => Some(&mut graphics.ray_tracing),
         _ => None,
     }
 }

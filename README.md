@@ -115,19 +115,6 @@ xattr -dr com.apple.quarantine /Applications/Abstractions.app
 
 You only need to do this once.
 
-## Ray tracing
-
-Settings > Graphics > Ray tracing (experimental) turns on ray traced lighting: traced shadows from every plant and building, and bounce light. It is off by default and applies at once, without a restart. The line under the settings list shows its real state: on, off, or not available with the reason.
-
-What it needs:
-
-- A GPU with hardware ray tracing.
-- On a Mac: Apple Silicon and macOS 15 or later. M1 and M2 run a lighter version.
-
-Limits while it is on: no distance fog on the land, and torches, lamps, campfires and fireflies do not light the ground. The image has a little grain, because the engine's only denoiser is for NVIDIA cards.
-
-It has run on a software renderer but not yet on a real GPU, and the M1 and M2 path is new in 0.6. If it does not turn on, the reason is in `ray-tracing.log`, next to the settings file. If the game fails to start with it on, start the game again: it turns ray tracing off by itself.
-
 ## Settings
 
 Settings live in `settings.toml` inside the `abstractions` folder of your config directory:
@@ -149,11 +136,10 @@ A missing or broken file is replaced by the defaults.
 - `src/ship`, `src/computer`: the ship, its autopilot and the board computer.
 - `src/companion`: the second robot.
 - `src/audio`: generated music and sounds.
-- `src/render`: low-resolution target, sun, sky, atmosphere, clouds, stars, fog and ray tracing.
+- `src/render`: low-resolution target, sun, sky, atmosphere, clouds, stars and fog.
 - `src/effects`, `src/wind`: particles, creatures and the shared wind.
 - `src/screens`, `src/menus`, `src/ui`: states, menus and widgets.
 - `src/saves`, `src/settings`: saved worlds and settings.
-- `vendor/bevy_solari`: the engine's ray tracer with two patches, listed in `vendor/bevy_solari/PATCHES.md`.
 
 ## Licence
 

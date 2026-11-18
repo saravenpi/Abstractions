@@ -19,8 +19,7 @@ use crate::audio::AudioCue;
 use crate::computer::Atlas;
 use crate::menus::Menu;
 use crate::menus::hud::minimap::scope::Scope;
-use crate::render::ray_tracing::{RayTracingBoot, Start, Support};
-use crate::render::{GameCamera, LowRes, RayTracing};
+use crate::render::{GameCamera, LowRes};
 use crate::saves::{SaveDir, SavedFlash};
 use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
@@ -64,11 +63,6 @@ fn stubs(app: &mut App, tag: &str) {
     .insert_resource(stored)
     .insert_resource(SaveDir(dir.join("worlds")))
     .insert_resource(LowRes(Handle::default()))
-    .insert_resource(RayTracing(false))
-    .insert_resource(RayTracingBoot {
-        guard: Start::Armed,
-        support: Support::Unchecked,
-    })
     .init_resource::<SavedFlash>()
     .init_resource::<ShipTelemetry>()
     .init_resource::<Time<Physics>>()

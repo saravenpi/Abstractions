@@ -45,7 +45,7 @@ impl FlatMesh {
     }
 }
 
-/// Builds the mesh Solari accepts from non-indexed triangles: position, normal, uv, tangent and `u32` indices.
+/// Builds a mesh from non-indexed triangles: position, normal, uv, tangent and `u32` indices.
 pub fn textured_mesh(positions: Vec<[f32; 3]>, normals: Vec<[f32; 3]>, uvs: Vec<[f32; 2]>) -> Mesh {
     let count = positions.len();
     Mesh::new(

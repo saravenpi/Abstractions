@@ -10,7 +10,6 @@ use super::build::{ground_cover, terrain_mesh};
 use super::dither::Way;
 use super::fade::Fades;
 use super::plan::Loaded;
-use super::raytrace;
 use super::scene::Scene;
 use super::spawn::Spawner;
 use super::turf::Turf;
@@ -47,23 +46,21 @@ impl Detail {
         self.structure.as_ref()
     }
 
-    /// Starts the task that does `work` for the chunk at `coord` of the chart `terrain`, with the
-    /// ray tracing flag `on`.
+    /// Starts the task that does `work` for the chunk at `coord` of the chart `terrain`.
     pub(super) fn begin(
         &mut self,
         work: Work,
         (terrain, coord): (Terrain, IVec2),
-        on: bool,
         pool: &AsyncComputeTaskPool,
     ) {
         match work {
             Work::Terrain(lod) => {
-                let task = pool.spawn(async move { terrain_mesh(&terrain, coord, lod, on) });
+                let task = pool.spawn(async move { terrain_mesh(&terrain, coord, lod) });
                 self.remesh = Some((lod, task));
             }
             Work::Cover => self
                 .turf
-                .start(pool.spawn(async move { ground_cover(&terrain, coord, on) })),
+                .start(pool.spawn(async move { ground_cover(&terrain, coord) })),
         }
     }
 
@@ -93,7 +90,7 @@ fn swap_finished(
     l.detail.remesh = None;
     l.detail.lod = lod;
     let handle = spawner.meshes.add(mesh);
-    raytrace::swap(commands, l.entity, handle, spawner.ray_tracing.0);
+    commands.entity(l.entity).try_insert(Mesh3d(handle));
     true
 }
 

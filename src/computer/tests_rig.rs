@@ -16,8 +16,7 @@ use bevy_persistent::StorageFormat;
 use super::Atlas;
 use crate::audio::AudioCue;
 use crate::menus::Menu;
-use crate::render::ray_tracing::{RayTracingBoot, Start, Support};
-use crate::render::{LowRes, RayTracing};
+use crate::render::LowRes;
 use crate::saves::{SaveDir, SavedFlash};
 use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
@@ -39,18 +38,12 @@ fn stubs(app: &mut App, tag: &str) {
         .default(Settings::default())
         .build()
         .unwrap();
-    let boot = RayTracingBoot {
-        guard: Start::Armed,
-        support: Support::Unchecked,
-    };
     app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
         16,
     )))
     .insert_resource(settings)
     .insert_resource(SaveDir(dir.join("worlds")))
     .insert_resource(LowRes(Handle::default()))
-    .insert_resource(RayTracing(false))
-    .insert_resource(boot)
     .init_resource::<SavedFlash>()
     .init_resource::<ShipTelemetry>()
     .init_resource::<Time<Physics>>()

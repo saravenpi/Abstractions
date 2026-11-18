@@ -14,6 +14,8 @@
 
 mod intent;
 mod log;
+#[cfg(test)]
+mod log_tests;
 mod step;
 
 pub use intent::{Intent, IntentOf};

@@ -6,7 +6,8 @@
 //! ([`AvatarSet::Fill`]), anything ordered after it may overwrite the result, and
 //! [`AvatarSet::Animate`] turns it into joint angles. [`Shown`] chooses how much of the body is drawn.
 //!
-//! The pose math is pure (`gait`, `ground`, `air`, `water`, `flight`, `blend`, `rig`, `wing`, `face`).
+//! The pose math is pure (`gait`, `ground`, `air`, `water`, `flight`, `blend`, `neck`, `rig`, `wing`,
+//! `face`).
 
 mod air;
 mod animate;
@@ -21,6 +22,7 @@ mod gait;
 mod ground;
 mod marks;
 mod mesh;
+mod neck;
 mod pose;
 mod rig;
 mod show;
@@ -102,6 +104,11 @@ impl Mode {
     /// in a loop.
     pub fn winged(self) -> bool {
         matches!(self, Mode::Glide | Mode::Fly)
+    }
+
+    /// Returns whether the mode swims and lies along its way through the water.
+    pub fn wet(self) -> bool {
+        matches!(self, Mode::Swim | Mode::Dive)
     }
 }
 

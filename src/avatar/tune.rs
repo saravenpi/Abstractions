@@ -146,3 +146,21 @@ pub const LANDING_FACE: f32 = 1.3;
 
 /// Landing hardness above which the face winces instead of smiling.
 pub const WINCE_ABOVE: f32 = 0.5;
+
+/// How far the head turns toward the view: 70 degrees to each side, 40 up and down.
+pub const NECK_REACH: (f32, f32) = (1.221_73, 0.698_13);
+
+/// How far past the side reach the head eases back to the front, in radians of view yaw.
+pub const NECK_FADE: f32 = 0.6;
+
+/// Spring rate of the head turning toward where it looks, per second.
+pub const NECK_RATE: f32 = 8.0;
+
+/// Steepest the body pitches along its way through the water: 70 degrees head down or up.
+pub const DIP_LIMIT: f32 = 1.221_73;
+
+/// Speeds through the water between which the body goes from upright to lying along its way.
+pub const DIP_SPEED: (f32, f32) = (0.3, 2.5);
+
+/// Spring rate of the body pitching along its way through the water, per second.
+pub const DIP_RATE: f32 = 4.0;

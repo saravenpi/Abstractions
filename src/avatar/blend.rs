@@ -74,7 +74,7 @@ pub fn pose_of(mode: Mode, input: &AvatarPose, clock: &Clock) -> Pose {
         Mode::Fall => air::fall(clock),
         Mode::Land => ground::land(clock),
         Mode::Swim => water::swim(input, clock),
-        Mode::Dive => water::dive(input, clock),
+        Mode::Dive => water::dive(clock),
         Mode::Seated => ground::seated(clock),
         Mode::BootFall => air::boot_fall(input, clock),
         Mode::Glide => flight::glide(input, clock),
@@ -88,14 +88,30 @@ pub fn looking(pose: Pose, look: Vec2) -> Pose {
         .with(Core::HeadPitch, pose.core(Core::HeadPitch) + look.y)
 }
 
-/// Returns the pose of a body whose modes weigh `weights`, looking where `input` says.
+/// Returns where the view asks the head to look, relative to the trunk: the view of `input`
+/// less the pitch the trunk already lies at along a flight path or a way through the water.
+pub fn asked(weights: &Weights, input: &AvatarPose, clock: &Clock) -> Vec2 {
+    let weighed = Mode::ALL.into_iter().zip(weights.eased());
+    let wing: f32 = weighed
+        .filter(|(mode, _)| mode.winged())
+        .map(|(_, w)| w)
+        .sum();
+    let lain = wing * input.pitch + clock.dip;
+    match lain == 0.0 {
+        true => input.look,
+        false => input.look.with_y(wrap(input.look.y - lain)),
+    }
+}
+
+/// Returns the pose of a body whose modes weigh `weights`, with the head turned by the look of
+/// `input`, relative to the trunk.
 ///
 /// The lean of the winged poses is left free, so the body follows a flight path all the way round
 /// in a loop: the pitch of `input` may be on any turn. Every other joint, and the lean of every
-/// other pose, stays inside its limits. The head turns by what the view asks beyond the flight
-/// path, since the trunk of a winged body already points along it.
+/// other pose, stays inside its limits. The pitch of a body along its way through the water comes
+/// on top of them: it is eased by itself, so it never adds to the step of a change of mode.
 pub fn blended(weights: &Weights, input: &AvatarPose, clock: &Clock) -> Pose {
-    let (mut pose, mut free, mut wing) = (Pose::default(), 0.0, 0.0);
+    let (mut pose, mut free) = (Pose::default(), 0.0);
     for (mode, weight) in Mode::ALL.into_iter().zip(weights.eased()) {
         if weight <= 0.0 {
             continue;
@@ -104,14 +120,9 @@ pub fn blended(weights: &Weights, input: &AvatarPose, clock: &Clock) -> Pose {
         pose = pose.plus(&part, weight);
         if mode.winged() {
             free += part.core(Core::Pitch) * weight;
-            wing += weight;
         }
     }
-    let look = match wing > 0.0 {
-        true => input.look.with_y(wrap(input.look.y - wing * input.pitch)),
-        false => input.look,
-    };
     let rest = pose.core(Core::Pitch) - free;
-    let held = looking(pose.with(Core::Pitch, rest), look).bounded();
-    held.with(Core::Pitch, held.core(Core::Pitch) + free)
+    let held = looking(pose.with(Core::Pitch, rest), input.look).bounded();
+    held.with(Core::Pitch, held.core(Core::Pitch) + free - clock.dip)
 }

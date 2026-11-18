@@ -142,7 +142,7 @@ pub fn face(
     }
     visor.was = input.mode;
     visor.advance(ambient(&input, anim.clock.still), dt);
-    repaint(&mut stores.0, &mut kit, visor.frame(gaze(input.look)));
+    repaint(&mut stores.0, &mut kit, visor.frame(gaze(anim.neck.look)));
     let tint = kit
         .tint
         .lerp(visor.shown().tint(), 1.0 - (-TINT_RATE * dt).exp());

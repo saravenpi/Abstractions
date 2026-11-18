@@ -59,6 +59,12 @@ pub fn dress(pose: &mut AvatarPose, state: &FlightState, look: Vec2, deep: bool)
     pose.look = look;
 }
 
+/// Returns where the view of `heading` points relative to a body turned to `yaw`. The neck of
+/// the body decides how much of it the head follows.
+pub fn looked(heading: &Heading, yaw: f32) -> Vec2 {
+    Vec2::new(wrap(heading.yaw - yaw), level(heading.pitch))
+}
+
 /// Returns how much of the body to draw: nothing seated in the ship, whose hull would show
 /// it, all of it when the camera stands off, and all but the head at the eyes.
 pub fn shown(seated: bool, fade: f32) -> Shown {
@@ -95,10 +101,7 @@ pub fn wear(worn: Worn, mut pose: ResMut<AvatarPose>, mut drawn: ResMut<Shown>) 
     let height = above_sea(&worn.anchor, worn.terrain.globe(), transform.translation);
     let look = match seated {
         true => Vec2::ZERO,
-        false => Vec2::new(
-            wrap(worn.heading.yaw - motion.yaw),
-            level(worn.heading.pitch),
-        ),
+        false => looked(&worn.heading, motion.yaw),
     };
     dress(&mut pose, &gear.state, look, height < DIVE_BELOW);
     drawn.set_if_neq(shown(seated, worn.fade.0));

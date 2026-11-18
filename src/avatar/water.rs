@@ -5,9 +5,7 @@ use std::f32::consts::FRAC_PI_2;
 use super::AvatarPose;
 use super::clock::{Clock, ramp};
 use super::pose::{Core, Limb, Pose};
-
-/// Steepest dive or climb the diving pose follows, in radians.
-const DIVE_LIMIT: f32 = 0.6;
+use super::tune::DIP_SPEED;
 
 /// Returns the legs of a flutter kick of `size` radians at the swim angle `stroke`, toes pointed.
 fn kick(pose: Pose, stroke: f32, size: f32) -> Pose {
@@ -43,19 +41,21 @@ fn crawl(clock: &Clock) -> Pose {
     kick(pose, clock.stroke, 0.3)
 }
 
-/// Returns the swimming pose: treading when slow, level with a kick and a stroke when moving.
+/// Returns the swimming pose: treading when slow, level with a kick and a stroke when moving,
+/// whichever way it moves. The blend pitches it along its way.
 pub fn swim(input: &AvatarPose, clock: &Clock) -> Pose {
-    let glide = ramp(0.3, 2.5, input.speed.abs());
+    let speed = input.speed.hypot(input.vertical_speed);
+    let glide = ramp(DIP_SPEED.0, DIP_SPEED.1, speed);
     Pose::default()
         .plus(&tread(clock), 1.0 - glide)
         .plus(&crawl(clock), glide)
 }
 
-/// Returns the diving pose: head first along the path, arms together ahead, legs kicking.
-pub fn dive(input: &AvatarPose, clock: &Clock) -> Pose {
-    let path = input.pitch.clamp(-DIVE_LIMIT, DIVE_LIMIT);
+/// Returns the diving pose: level and head first, arms together ahead, legs kicking. The blend
+/// pitches it along its way.
+pub fn dive(clock: &Clock) -> Pose {
     let pose = Pose::default()
-        .with(Core::Pitch, FRAC_PI_2 - path)
+        .with(Core::Pitch, FRAC_PI_2)
         .with(Core::HeadPitch, 0.5)
         .both(Limb::Shoulder, 2.95)
         .both(Limb::ArmOut, 0.1)

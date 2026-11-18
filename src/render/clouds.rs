@@ -145,7 +145,7 @@ impl CloudInputs<'_> {
         let rim =
             (distance * distance - ground).max(0.0).sqrt() + (radius * radius - ground).sqrt();
         let fixed = Mat3::from_quat((observer.to_render * observer.spin).inverse().as_quat());
-        let air = self.local.air(vantage.body);
+        let air = self.local.air_below(vantage);
         let cover = air.cover(cloud_cover(self.clock.phase));
         CloudUniform {
             light: self.palette.sun_dir.extend(vantage.air),
@@ -177,7 +177,7 @@ pub(super) fn drift(
     mut materials: ResMut<Assets<CloudMaterial>>,
 ) {
     let vantage = &*inputs.vantage;
-    let cloudy = inputs.local.air(vantage.body).clouds > 0.0;
+    let cloudy = inputs.local.air_below(vantage).clouds > 0.0;
     let on = inputs.settings.graphics.clouds && cloudy && vantage.cloud_top > vantage.cloud_base;
     let depth = match on {
         true => crossing_depth(vantage.altitude, vantage.cloud_base, vantage.cloud_top),

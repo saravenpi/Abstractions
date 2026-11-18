@@ -5,6 +5,7 @@ use bevy::light::{CascadeShadowConfigBuilder, DirectionalLight, DirectionalLight
 use bevy::prelude::*;
 
 use super::SunDir;
+use super::moonlight::Moonlight;
 use super::palette::{Palette, srgb};
 use super::ray_tracing::RayTracing;
 use crate::screens::Screen;
@@ -88,16 +89,16 @@ fn spawn_lights(mut commands: Commands) {
     ));
 }
 
-/// Aims the sun at the star and the moon away from it, tints both from the palette and applies
-/// the shadow setting.
+/// Aims the sun at the star and the moon at the real moon, or away from the star on a planet
+/// without moons, tints both from the palette and applies the shadow setting.
 fn update_lights(
-    sky: (Res<Palette>, Res<SunDir>),
+    sky: (Res<Palette>, Res<SunDir>, Res<Moonlight>),
     settings: Res<Persistent<Settings>>,
     ray_tracing: Res<RayTracing>,
     mut suns: Query<LightParts, SunOnly>,
     mut moons: Query<LightParts, MoonOnly>,
 ) {
-    let (palette, sun) = sky;
+    let (palette, sun, moon) = sky;
     let shadows = settings.graphics.shadows && !ray_tracing.0;
     for (mut transform, mut light) in &mut suns {
         let aim = Aim {
@@ -111,8 +112,8 @@ fn update_lights(
     }
     for (mut transform, mut light) in &mut moons {
         let aim = Aim {
-            dir: -sun.dir,
-            height: -sun.height,
+            dir: moon.0.map_or(-sun.dir, |glow| glow.dir),
+            height: moon.0.map_or(-sun.height, |glow| glow.height),
             color: Color::srgb(0.62, 0.72, 1.0),
             lux: palette.moon_lux,
             shadows,

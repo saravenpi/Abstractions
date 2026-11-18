@@ -135,7 +135,7 @@ pub(super) fn track(
     let settled = std::mem::take(&mut out.settled.0);
     let wanted = memory.request(out.day.phase).filter(|_| !settled);
     let known = out.local.0.as_ref();
-    let Some((local, planet)) = known.and_then(|l| Some((l, l.planet(body.index)?))) else {
+    let Some((local, planet)) = known.and_then(|l| Some((l, l.find(body)?))) else {
         return;
     };
     let star = &local.system.star;
@@ -147,6 +147,7 @@ pub(super) fn track(
     let velocity = memory.velocity(&anchor, camera, space.time.delta_secs_f64());
     *out.vantage = Vantage::of(&observer, local, planet, camera).moving(velocity);
     *out.sun = SunDir::of(&observer, planet.radius);
+    out.sun.lit *= local.eclipse(observer.eye, planet.id, space.clock.seconds);
     out.day.phase = observer.phase();
     memory.phase = Some(out.day.phase);
 }

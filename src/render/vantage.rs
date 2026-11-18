@@ -6,37 +6,10 @@ use bevy::prelude::*;
 
 use super::air::Air;
 use super::atmosphere::air;
+pub use super::nearby::Nearby;
 use super::observer::Observer;
 use crate::space::Clock;
-use crate::universe::{GalaxyId, PlanetSpec, StarId, SystemSpec, Universe};
-
-/// The star system around the camera, read from the universe once per system.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Nearby {
-    /// Star the system was asked for.
-    pub id: StarId,
-    /// The star and its planets.
-    pub system: SystemSpec,
-    /// Radius of the star disc of the galaxy in metres.
-    pub galaxy_radius: f64,
-}
-
-impl Nearby {
-    /// Reads the system of a star and the size of its galaxy from the universe.
-    pub fn read(universe: &Universe, id: StarId) -> Self {
-        Self {
-            id,
-            system: universe.system(id),
-            galaxy_radius: universe.galaxy(id.galaxy).map_or(1.0, |g| g.radius),
-        }
-    }
-
-    /// Returns planet number `index`, or the outermost one past the end.
-    pub fn planet(&self, index: u8) -> Option<&PlanetSpec> {
-        let planets = &self.system.planets;
-        planets.get(usize::from(index)).or(planets.last())
-    }
-}
+use crate::universe::{BodyId, GalaxyId, PlanetSpec};
 
 /// The star system the sky is drawn for, empty outside a world.
 #[derive(Resource, Debug, Default, Clone, PartialEq)]
@@ -48,6 +21,17 @@ impl LocalSystem {
         let near = self.0.as_ref();
         let planet = near.and_then(|near| near.planet(u8::try_from(body).ok()?));
         planet.map_or(Air::HOME, |planet| Air::of(&planet.record))
+    }
+
+    /// Returns the air of the body under the camera of `vantage`, planet or moon, or the home
+    /// air outside a world.
+    pub fn air_below(&self, vantage: &Vantage) -> Air {
+        if vantage.moon == 0 {
+            return self.air(vantage.body);
+        }
+        let near = self.0.as_ref();
+        let body = near.and_then(|near| near.body(u8::try_from(vantage.body).ok()?, vantage.moon));
+        body.map_or(Air::HOME, |body| Air::of(&body.record))
     }
 }
 
@@ -67,8 +51,10 @@ pub struct Vantage {
     /// Share of a home atmosphere left above the camera: 1 at the ground of a planet with at
     /// least the home pressure, less in thinner air, 0 in space and on a planet without air.
     pub air: f32,
-    /// Rank of the planet around its star.
+    /// Rank around the star of the planet the camera is on or near, or whose moon it is on.
     pub body: usize,
+    /// Rank of the moon under the camera around that planet, 0 when it is the planet itself.
+    pub moon: u8,
     /// Sea level radius of the planet in metres.
     pub radius: f32,
     /// Height above sea level in metres where the air ends.
@@ -96,6 +82,7 @@ impl Default for Vantage {
             altitude: 0.0,
             air: 1.0,
             body: 0,
+            moon: 0,
             radius: 1.0,
             atmosphere: 0.0,
             cloud_base: 0.0,
@@ -121,6 +108,7 @@ impl Vantage {
             altitude,
             air: air(altitude, planet.atmosphere_height as f32) * Air::of(&planet.record).share(),
             body: usize::from(planet.id.index),
+            moon: planet.id.moon,
             radius: planet.radius as f32,
             atmosphere: planet.atmosphere_height as f32,
             cloud_base: planet.cloud_base as f32,
@@ -134,6 +122,11 @@ impl Vantage {
     /// Returns this vantage with the camera moving at `velocity` metres per second in render axes.
     pub fn moving(self, velocity: Vec3) -> Self {
         Self { velocity, ..self }
+    }
+
+    /// Returns true when `id` is the planet or moon under the camera.
+    pub fn is(&self, id: BodyId) -> bool {
+        usize::from(id.index) == self.body && id.moon == self.moon
     }
 
     /// Returns the unit vector in render axes from a point `pos` metres from the star toward the star.
@@ -154,9 +147,9 @@ pub struct Scene<'w> {
 }
 
 impl Scene<'_> {
-    /// Returns planet number `index` of the current system with its position in metres from the star.
-    pub fn planet(&self, index: usize) -> Option<(&PlanetSpec, DVec3)> {
-        let planet = self.local.0.as_ref()?.system.planets.get(index)?;
-        Some((planet, planet.position(self.clock.seconds)))
+    /// Returns a planet or moon of the current system with its position in metres from the star.
+    pub fn body(&self, id: BodyId) -> Option<(&PlanetSpec, DVec3)> {
+        let body = self.local.0.as_ref()?.find(id)?;
+        Some((body, body.position(self.clock.seconds)))
     }
 }

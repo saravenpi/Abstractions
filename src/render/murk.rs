@@ -39,7 +39,7 @@ pub fn under(local: &LocalSystem, vantage: &Vantage) -> Option<Vec3> {
         return None;
     }
     let rank = u8::try_from(vantage.body).ok();
-    let planet = rank.and_then(|rank| local.0.as_ref()?.planet(rank));
+    let planet = rank.and_then(|rank| local.0.as_ref()?.body(rank, vantage.moon));
     murk(planet.map_or(&PlanetRecord::TEMPERATE, |planet| &planet.record))
 }
 

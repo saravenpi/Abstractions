@@ -10,6 +10,7 @@ mod loops;
 mod measure;
 mod pilot;
 mod rate;
+mod spread;
 mod stall;
 mod stick;
 mod transitions;

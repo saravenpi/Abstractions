@@ -54,16 +54,16 @@ fn boosters_and_wings_switch_mid_flight() {
     assert_eq!(end.state.mode, Mode::Fly);
 }
 
-/// Stopping flight mid-air: the wings fold in about 0.3 s, the velocity carries on
+/// Stopping flight mid-air: the wings fold in about 0.4 s, the velocity carries on
 /// ballistically, and the boots then catch the fall.
 #[test]
 fn stopping_mid_air_is_ballistic_then_boots_catch() {
     let mut flight = Flight::new(Mode::Fly, Vec3::new(0.0, 0.0, -70.0));
     flight.run(&flying(0.0), 2.0);
     let before = flight.state.velocity;
-    flight.run(&GearInput::default(), 0.35);
+    flight.run(&GearInput::default(), 0.45);
     assert_eq!(flight.state.mode, Mode::Fall);
-    assert_eq!(flight.state.wings, 0.0, "wings still open after 0.35 s");
+    assert_eq!(flight.state.wings, 0.0, "wings still open after 0.45 s");
     assert!(flight.state.velocity.with_y(0.0).length() > 0.8 * before.length());
     let folded = flight.state.velocity;
     flight.tick(&GearInput::default(), DT);

@@ -76,7 +76,9 @@ impl Default for FlightState {
 }
 
 impl FlightState {
-    /// Returns how much of the wing works, eased from the spread progress.
+    /// Returns how much of the wing is spread, from 0 to 1: the progress eased so that the
+    /// motion starts and ends at rest. The lift, the drag and the drawn wing all read this one
+    /// value, so the body is carried by exactly the wing the eye sees.
     pub fn spread(&self) -> f32 {
         smooth(0.0, 1.0, self.wings)
     }

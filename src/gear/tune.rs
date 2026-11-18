@@ -88,8 +88,8 @@ pub const BOOT_AIR_DAMP: f32 = 0.6;
 /// Horizontal acceleration of a free falling body leaning into the air, at sea level.
 pub const FALL_AIR_ACCEL: f32 = 2.0;
 
-/// Seconds the wings take to spread or fold.
-pub const WING_TIME: f32 = 0.3;
+/// Seconds the wings take to spread or fold: one eased motion, see `FlightState::spread`.
+pub const WING_TIME: f32 = 0.4;
 
 /// Seconds the boosters take to spool up or down.
 pub const THRUST_TIME: f32 = 0.25;

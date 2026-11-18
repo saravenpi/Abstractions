@@ -46,7 +46,7 @@ In 0.6 every planet uses the same island generator. Planets differ by seed, size
 
 A pass on how the game plays once you are in it: a ship steered with the keys, roll and loops on the wingsuit, a flight assist that makes the ship go where it points, a compass and a map, and light derived from the real star.
 
-## 0.8: physical planets (0.8.0 released)
+## 0.8: physical planets (released)
 
 Planets get a kind, and the kind comes from physics.
 

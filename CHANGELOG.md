@@ -5,6 +5,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-18
+
+### Added
+
+- Gas giants: huge worlds of deep cloud in the cold outer reaches of many systems, with bands of cloud and a storm that turns with the planet.
+- Moons: gas giants have 2 to 6 and some rocky planets 1 or 2. Each is a small world you can fly to, land on and walk on, and each shows the same face to its planet.
+- Tidal heat: the closest moons of the biggest giants can be molten or hold liquid water.
+- Rings of ice or dust around 4 in 10 gas giants and a few rocky planets, with the planet's shadow across them.
+- Moons in the sky with real phases. Nights on a planet with moons are lit by them, brighter at full moon. A moon passing in front of the star darkens the land behind it.
+- The board computer lists each planet's moons under it once you have visited the system, and a gas giant's card gives its cloud deck pressure, its moons and its rings.
+- The system map and the minimap draw moons on small orbits around their planet when you zoom in, tick marks for them when zoomed out, and a line for rings. Click a moon to set a course to it.
+- The autopilot can take you to a moon and stops beside it, clear of its planet.
+- Gas giants can be flown into down to the cloud deck, where the flight assist holds you. Below the deck the air thickens, shakes the hull and pushes the ship back up.
+- Gas giants have a deep, low wind.
+
+### Changed
+
+- The outermost planet of the home system is always a gas giant with moons to visit.
+- Fewer ice worlds in outer systems: many of those planets formed as gas giants instead.
+- You cannot land on a gas giant or step out of the ship over one. Over a giant the altitude reads height above the cloud deck.
+- A save made on a planet that is now a gas giant starts again at the home base with a new ship berthed there.
+
 ## [0.8.0] - 2026-11-18
 
 ### Added

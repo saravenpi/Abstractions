@@ -1,5 +1,8 @@
 //! Every number of the companion the owner may want to tune, in one place.
 
+/// Longest frame time a companion simulates, in seconds, so a hitch never throws it around.
+pub const MAX_STEP: f32 = 0.05;
+
 /// Half extents of the rounded head-body in meters: about 45 cm wide with its hands.
 pub const HALF: [f32; 3] = [0.17, 0.16, 0.145];
 
@@ -51,8 +54,14 @@ pub const CATCH_SPAN: (f32, f32) = (1.0, 5.0);
 /// Share of the player's velocity it is carried with, from 0 (pure spring) to 1 (rigid).
 pub const FEED: f32 = 0.5;
 
-/// Distance from its spot beyond which it quietly reappears behind the player, in meters.
+/// Distance from its spot beyond which it was truly left behind, by a fast travel, and starts
+/// again out of view, in meters. Following never takes it that far.
 pub const LEASH: f32 = 60.0;
+
+/// Where it starts again once left behind: how far to the side of the camera and how far
+/// behind it, in meters. That is outside any view narrower than 140 degrees, and close enough
+/// that it flies into the picture within a second.
+pub const ENTRY: (f32, f32) = (7.0, 2.5);
 
 /// Where it rides in the cockpit, in the space of the pilot seat: right, up and back (negative
 /// is ahead), in meters. It perches on the right of the dashboard, inside the canopy, below the
@@ -162,8 +171,9 @@ pub const WAKE_SECONDS: f32 = 1.4;
 /// Where it flies beside a flying player, in metres: to the left, behind and above the eyes.
 pub const WING: (f32, f32, f32) = (2.6, 2.4, 0.4);
 
-/// Speed in metres per second above which the formation lines up with the course of the flight.
-pub const WING_SPEED: f32 = 3.0;
+/// Speeds in metres per second between which the formation turns from the view of a hovering
+/// player to the course of the flight.
+pub const WING_SPEED: (f32, f32) = (2.0, 7.0);
 
 /// Share of the velocity of the player it carries along on foot, and in flight.
 pub const FEED_FLIGHT: f32 = 1.0;
@@ -178,14 +188,35 @@ pub const LOOK_AHEAD: f32 = 0.8;
 /// Height it keeps above the ground and the water in flight, in metres.
 pub const FLIGHT_CLEARANCE: f32 = 1.6;
 
-/// Distance in metres past which it reappears behind a flying player.
+/// Distance in metres past which it counts as left behind by a flying player.
 pub const FLIGHT_LEASH: f32 = 160.0;
 
 /// Rate per second at which it moves between following on foot and flying in formation.
 pub const FLIGHT_RATE: f32 = 2.5;
 
-/// Roll it takes of the bank of the flying player.
-pub const BANK_SHARE: f32 = 0.7;
+/// Push it needs against the air per metre per second of its speed, in metres per second
+/// squared: what tips its nose down in flight, 25 degrees at 30 m/s and 52 at 80.
+pub const SOAR_DRAG: f32 = 0.155;
+
+/// Farthest its flying pose tips from the vertical, in radians: about 57 degrees.
+pub const SOAR_LIMIT: f32 = 1.0;
+
+/// Rate per second at which the change of its velocity is eased before the flying pose leans
+/// along it, so a turn banks it over a few frames and frame noise never shakes it.
+pub const GAIN_RATE: f32 = 5.0;
+
+/// Half width of its trail in metres: under a fifth of the boot exhaust of the wingsuit, and
+/// thinner than a wingtip trail, so it reads as the smaller of the two.
+pub const TAIL_WIDTH: f32 = 0.02;
+
+/// Seconds a point of its trail glows for: a third of a wingtip trail.
+pub const TAIL_LIFE: f32 = 0.5;
+
+/// Its speeds in metres per second between which the trail appears: none while it hovers.
+pub const TAIL_SPEED: (f32, f32) = (8.0, 22.0);
+
+/// Brightness of the trail, as a multiple of the colour of its light, so bloom catches it.
+pub const TAIL_GAIN: f32 = 1.5;
 
 /// How much brighter its thruster glows in flight.
 pub const THRUST_GLOW: f32 = 1.8;

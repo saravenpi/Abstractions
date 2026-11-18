@@ -3,6 +3,7 @@
 use bevy::mesh::VertexAttributeValues;
 use bevy::prelude::*;
 
+use super::Mode;
 use super::animate::Anim;
 use super::face::machine::Visor;
 use super::face::paint::{paint, rgba};
@@ -11,7 +12,6 @@ use super::rig::globals;
 use super::spawn::{Kit, Lamp, Plume};
 use super::tune::{LANDING_FACE, LIGHT_POWER, NOZZLE, PLUME, PLUME_HDR, SCREEN_HDR};
 use super::wing::{Panel, RIM, fan, flutter, rim, stretch};
-use super::{Avatar, AvatarPose, Mode};
 
 /// How fast the screen colour follows the face, per second.
 const TINT_RATE: f32 = 6.0;
@@ -55,49 +55,59 @@ fn drape(mesh: &mut Mesh, triangles: &[[Vec3; 3]; RIM]) {
     }
 }
 
-/// Stretches the fabric between the joints while the wingsuit is out, and hides it when folded.
+/// Stretches the fabric of every body between its joints while its wingsuit is out, and hides
+/// it when folded.
 pub fn wings(
-    input: Res<AvatarPose>,
-    body: Single<&Anim, With<Avatar>>,
-    mut panels: Query<(&Panel, &Mesh3d, &mut Visibility)>,
+    bodies: Query<&Anim>,
+    mut panels: Query<(&Panel, &Mesh3d, &mut Visibility, &ChildOf)>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
-    let open = stretch(body.clock.unfold);
-    let joints = globals(&body.pose);
-    for (panel, mesh, mut visibility) in &mut panels {
+    for (panel, mesh, mut visibility, parent) in &mut panels {
+        let Ok(body) = bodies.get(parent.parent()) else {
+            continue;
+        };
+        let open = stretch(body.clock.unfold);
         let folded = open <= 0.0;
         visibility.set_if_neq(if folded {
             Visibility::Hidden
         } else {
             Visibility::Inherited
         });
-        let wave =
-            body.clock.wave(13.0, *panel as u8 as f32 * 2.1) + 0.5 * body.clock.wave(23.0, 1.0);
-        let bulge = flutter(input.airspeed, wave / 1.5, open);
         if folded {
             continue;
         }
+        let wave =
+            body.clock.wave(13.0, *panel as u8 as f32 * 2.1) + 0.5 * body.clock.wave(23.0, 1.0);
+        let bulge = flutter(body.input.airspeed, wave / 1.5, open);
         if let Some(mut mesh) = meshes.get_mut(&mesh.0) {
+            let joints = globals(&body.pose);
             drape(&mut mesh, &fan(&rim(*panel, &joints, open), bulge));
         }
     }
 }
 
-/// Lengthens and brightens the boot plumes with the thrust. They flicker a little and vanish at rest.
+/// Returns the thrust of a body as the plumes show it: from 0 to 1, and 0 for a value that is
+/// not a number.
+fn pushed(body: &Anim) -> f32 {
+    match body.input.thrust.is_finite() {
+        true => body.input.thrust.clamp(0.0, 1.0),
+        false => 0.0,
+    }
+}
+
+/// Lengthens and brightens the boot plumes of every body with its thrust. They flicker a
+/// little and vanish at rest.
 pub fn boots(
-    input: Res<AvatarPose>,
-    body: Single<(&Anim, &mut Kit), With<Avatar>>,
-    mut plumes: Query<(&mut Transform, &mut Visibility), With<Plume>>,
+    mut bodies: Query<(&Anim, &mut Kit)>,
+    mut plumes: Query<(&Plume, &mut Transform, &mut Visibility)>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let (anim, mut kit) = body.into_inner();
-    let thrust = if input.thrust.is_finite() {
-        input.thrust.clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
-    let flicker = 1.0 + 0.08 * anim.clock.wave(47.0, 0.0);
-    for (mut transform, mut visibility) in &mut plumes {
+    for (plume, mut transform, mut visibility) in &mut plumes {
+        let Ok((anim, _)) = bodies.get(plume.0) else {
+            continue;
+        };
+        let thrust = pushed(anim);
+        let flicker = 1.0 + 0.08 * anim.clock.wave(47.0, 0.0);
         let width = NOZZLE.0 * (0.7 + 0.25 * thrust);
         transform.scale = Vec3::new(width, plume_length(thrust) * flicker, width);
         visibility.set_if_neq(if thrust > 0.01 {
@@ -106,12 +116,15 @@ pub fn boots(
             Visibility::Hidden
         });
     }
-    if (thrust - kit.thrust).abs() < 1e-3 {
-        return;
-    }
-    kit.thrust = thrust;
-    if let Some(mut material) = materials.get_mut(&kit.glow) {
-        material.base_color = plume_color(thrust);
+    for (anim, mut kit) in &mut bodies {
+        let thrust = pushed(anim);
+        if (thrust - kit.thrust).abs() < 1e-3 {
+            continue;
+        }
+        kit.thrust = thrust;
+        if let Some(mut material) = materials.get_mut(&kit.glow) {
+            material.base_color = plume_color(thrust);
+        }
     }
 }
 
@@ -126,34 +139,38 @@ fn repaint(images: &mut Assets<Image>, kit: &mut Kit, frame: Frame) {
     }
 }
 
-/// Runs the face: notices landings, repaints the screen when the frame changes and eases its
-/// colour, which also colours the faint light in front of it.
+/// Runs the face of every body: notices landings, repaints the screen when the frame changes
+/// and eases its colour, which also colours the faint light in front of it.
 pub fn face(
     time: Res<Time>,
-    input: Res<AvatarPose>,
-    body: Single<(&Anim, &mut Visor, &mut Kit), With<Avatar>>,
+    mut bodies: Query<(&Anim, &mut Visor, &mut Kit)>,
     mut stores: (ResMut<Assets<Image>>, ResMut<Assets<StandardMaterial>>),
-    mut lamp: Single<&mut PointLight, With<Lamp>>,
+    mut lamps: Query<(&Lamp, &mut PointLight)>,
 ) {
-    let (anim, mut visor, mut kit) = body.into_inner();
     let dt = time.delta_secs();
-    if input.mode == Mode::Land && visor.was != Mode::Land {
-        visor.react(landing(input.landed_hard), LANDING_FACE);
-    }
-    visor.was = input.mode;
-    visor.advance(ambient(&input, anim.clock.still), dt);
-    repaint(&mut stores.0, &mut kit, visor.frame(gaze(anim.neck.look)));
-    let tint = kit
-        .tint
-        .lerp(visor.shown().tint(), 1.0 - (-TINT_RATE * dt).exp());
-    lamp.color = Color::linear_rgb(tint.x, tint.y, tint.z);
-    lamp.intensity = LIGHT_POWER;
-    if tint.distance(kit.tint) < 1e-4 {
-        return;
-    }
-    kit.tint = tint;
-    if let Some(mut material) = stores.1.get_mut(&kit.visor) {
-        let lit = tint * SCREEN_HDR;
-        material.base_color = Color::linear_rgb(lit.x, lit.y, lit.z);
+    for (lamp, mut light) in &mut lamps {
+        let Ok((anim, mut visor, mut kit)) = bodies.get_mut(lamp.0) else {
+            continue;
+        };
+        let input = &anim.input;
+        if input.mode == Mode::Land && visor.was != Mode::Land {
+            visor.react(landing(input.landed_hard), LANDING_FACE);
+        }
+        visor.was = input.mode;
+        visor.advance(ambient(input, anim.clock.still), dt);
+        repaint(&mut stores.0, &mut kit, visor.frame(gaze(anim.neck.look)));
+        let tint = kit
+            .tint
+            .lerp(visor.shown().tint(), 1.0 - (-TINT_RATE * dt).exp());
+        light.color = Color::linear_rgb(tint.x, tint.y, tint.z);
+        light.intensity = LIGHT_POWER;
+        if tint.distance(kit.tint) < 1e-4 {
+            continue;
+        }
+        kit.tint = tint;
+        if let Some(mut material) = stores.1.get_mut(&kit.visor) {
+            let lit = tint * SCREEN_HDR;
+            material.base_color = Color::linear_rgb(lit.x, lit.y, lit.z);
+        }
     }
 }

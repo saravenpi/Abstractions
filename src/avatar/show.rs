@@ -2,7 +2,8 @@
 
 use bevy::prelude::*;
 
-use super::animate::Bone;
+use super::animate::{Bone, Skeleton};
+use super::own::Own;
 use super::rig::Seg;
 use super::{Avatar, AvatarPose, Shown};
 
@@ -57,16 +58,28 @@ fn arm(seg: Seg) -> bool {
     )
 }
 
-/// Applies the visibility setting to the root of the body, its head and its arms.
+/// Applies the visibility setting to the body at this machine: its root, its head and its
+/// arms. Any other body is drawn whole.
 pub fn show(
     shown: Res<Shown>,
-    input: Res<AvatarPose>,
-    mut root: Single<&mut Visibility, (With<Avatar>, Without<Bone>)>,
+    own: Own,
+    bodies: Query<(&AvatarPose, &Skeleton)>,
+    mut roots: Query<&mut Visibility, (With<Avatar>, Without<Bone>)>,
     mut bones: Query<(&Bone, &mut Visibility), Without<Avatar>>,
 ) {
+    let Some((_, body)) = own.body() else {
+        return;
+    };
+    let (Ok((input, skeleton)), Ok(mut root)) = (bodies.get(body), roots.get_mut(body)) else {
+        return;
+    };
     let parts = drawn(*shown, input.look.y);
     root.set_if_neq(parts.body);
-    for (bone, mut visibility) in &mut bones {
+    let mut bones = bones.iter_many_mut(skeleton.0);
+    while let Some(found) = bones.fetch_next() {
+        let Ok((bone, mut visibility)) = found else {
+            continue;
+        };
         match bone.0 {
             Seg::Head => visibility.set_if_neq(parts.head),
             seg if arm(seg) => visibility.set_if_neq(parts.arms),

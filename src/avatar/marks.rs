@@ -5,8 +5,8 @@
 
 use bevy::prelude::*;
 
-use super::Avatar;
 use super::animate::Anim;
+use super::own::Own;
 use super::pose::Pose;
 use super::rig::{Seg, globals};
 use super::tune::{ANKLE_RISE, NOZZLE};
@@ -44,7 +44,11 @@ impl Default for Marks {
     }
 }
 
-/// Publishes the marks of the pose applied this frame.
-pub fn mark(body: Single<&Anim, With<Avatar>>, mut marks: ResMut<Marks>) {
-    marks.set_if_neq(Marks::of(&body.pose));
+/// Publishes the marks of the pose applied this frame to the body at this machine: the gear
+/// effects that leave from them are the ones of the local player.
+pub fn mark(own: Own, bodies: Query<&Anim>, mut marks: ResMut<Marks>) {
+    let body = own.body().and_then(|(_, body)| bodies.get(body).ok());
+    if let Some(body) = body {
+        marks.set_if_neq(Marks::of(&body.pose));
+    }
 }

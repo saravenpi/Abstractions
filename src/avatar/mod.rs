@@ -6,24 +6,30 @@
 //! ([`AvatarSet::Fill`]), anything ordered after it may overwrite the result, and
 //! [`AvatarSet::Animate`] turns it into joint angles. [`Shown`] chooses how much of the body is drawn.
 //!
-//! The pose math is pure (`gait`, `ground`, `air`, `water`, `flight`, `blend`, `neck`, `rig`, `wing`,
-//! `face`).
+//! The pose math is pure (`gait`, `ground`, `leap`, `air`, `water`, `flight`, `blend`, `neck`, `rig`,
+//! `wing`, `face`).
 
 mod air;
 mod animate;
 mod blend;
 mod clock;
 mod dress;
+mod dust;
 mod face;
 mod fill;
 mod flight;
 mod fx;
 mod gait;
 mod ground;
+mod kick;
+mod leap;
+mod looks;
 mod marks;
 mod mesh;
 mod neck;
+mod own;
 mod pose;
+mod puffs;
 mod rig;
 mod seated;
 mod show;
@@ -36,7 +42,9 @@ mod wing;
 #[cfg(test)]
 mod tests;
 
+pub use looks::Looks;
 pub use marks::Marks;
+pub use spawn::{Stock, puppet};
 
 use bevy::prelude::*;
 
@@ -113,8 +121,10 @@ impl Mode {
     }
 }
 
-/// Everything the body needs to know to pose itself. Angles are radians, speeds meters per second.
-#[derive(Resource, Debug, Clone, Copy, PartialEq, Default)]
+/// Everything a body needs to know to pose itself, on the root of that body. Angles are
+/// radians, speeds meters per second. The filler and the dresser write the one of the player at
+/// this machine; whatever writes the one of another body makes that body move the same way.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Default)]
 pub struct AvatarPose {
     /// What the body is doing.
     pub mode: Mode,
@@ -138,6 +148,20 @@ pub struct AvatarPose {
     pub look: Vec2,
     /// How hard the last landing was, from 0 (soft) to 1 (hard). Read when the mode turns to `Land`.
     pub landed_hard: f32,
+    /// Speed along the local up the body lost in its last touch-down, in meters per second.
+    pub impact: f32,
+    /// True for a moment after any touch-down, at a run too: the knees take the landing in.
+    pub absorb: bool,
+    /// How fast the ground speed grows, eased, in meters per second squared. Negative brakes.
+    pub gain: f32,
+    /// How fast the heading turns to the left on the ground, eased, in radians per second.
+    pub turn: f32,
+    /// Free height under the body down to the ground, in meters. Zero on the ground.
+    pub clearance: f32,
+    /// How prone the flight gear lays the body, from 0 (upright) to 1 (flat along its nose).
+    pub prone: f32,
+    /// Felt load in g while the gear carries the body: 1 in steady flight, more in a pull-up.
+    pub load: f32,
 }
 
 /// How much of the body is drawn. Hidden parts cast no shadow either.
@@ -168,8 +192,7 @@ pub struct Avatar;
 /// Adds the resources and the systems of the body, with no run condition.
 fn systems(app: &mut App) {
     let rendered = resource_exists::<Warm>.and_then(resource_exists::<Assets<Image>>);
-    app.init_resource::<AvatarPose>()
-        .add_systems(Startup, warm::warm.run_if(rendered))
+    app.add_systems(Startup, warm::warm.run_if(rendered))
         .init_resource::<Shown>()
         .init_resource::<Marks>()
         .configure_sets(Update, AvatarSet::Animate.after(AvatarSet::Fill))
@@ -177,9 +200,10 @@ fn systems(app: &mut App) {
         .add_systems(
             Update,
             (
-                spawn::spawn,
+                (spawn::spawn, puffs::spawn),
                 animate::animate,
                 marks::mark,
+                (kick::kick, kick::fly).chain().run_if(puffs::ready),
                 fx::wings,
                 fx::boots,
                 fx::face,

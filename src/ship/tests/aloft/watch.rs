@@ -82,7 +82,9 @@ impl Watch {
     /// Checks one frame against the one before it.
     fn check(&mut self, game: &mut Game) {
         let now = seen(game);
-        let mode = game.get::<AvatarPose>().mode;
+        let mut poses = game.app.world_mut().query::<&AvatarPose>();
+        let pose = poses.iter(game.app.world()).next();
+        let mode = pose.map_or(Mode::Idle, |pose| pose.mode);
         if self.modes.last() != Some(&mode) {
             self.modes.push(mode);
         }

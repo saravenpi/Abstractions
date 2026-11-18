@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use super::clock::Clock;
 use super::pose::{Core, Pose};
 use super::tune::BLEND_SECONDS;
-use super::{AvatarPose, Mode, air, flight, ground, water};
+use super::{AvatarPose, Mode, air, flight, ground, leap, water};
 use crate::player::wrap;
 
 /// Number of modes.
@@ -70,8 +70,8 @@ pub fn pose_of(mode: Mode, input: &AvatarPose, clock: &Clock) -> Pose {
     match mode {
         Mode::Idle => ground::idle(clock),
         Mode::Walk | Mode::Run => ground::stride(input, clock),
-        Mode::Jump => air::jump(input),
-        Mode::Fall => air::fall(clock),
+        Mode::Jump => leap::jump(clock),
+        Mode::Fall => air::fall(input, clock),
         Mode::Land => ground::land(clock),
         Mode::Swim => water::swim(input, clock),
         Mode::Dive => water::dive(clock),

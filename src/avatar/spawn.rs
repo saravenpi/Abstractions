@@ -3,20 +3,21 @@
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::ecs::system::SystemParam;
 use bevy::light::NotShadowCaster;
-use bevy::material::OpaqueRendererMethod;
 use bevy::prelude::*;
 
-use super::Avatar;
-use super::animate::{Anim, Bone};
+use super::animate::{Anim, Bone, Skeleton};
 use super::face::Frame;
 use super::face::machine::Visor;
 use super::face::paint::picture;
 use super::fx::plume_color;
-use super::mesh::{SCREEN_FRONT, fabric, glow, screen, segment};
+use super::kick::Kick;
+use super::looks::{Looks, paint};
+use super::mesh::{SCREEN_FRONT, fabric};
 use super::pose::Pose;
 use super::rig::{SEGS, Seg, locals};
-use super::tune::{ACCENT, ANKLE_RISE, HEAD, LIGHT_RANGE, NECK, NOZZLE};
+use super::tune::{ANKLE_RISE, HEAD, LIGHT_RANGE, NECK, NOZZLE};
 use super::wing::Panel;
+use super::{Avatar, AvatarPose};
 use crate::player::Player;
 
 /// How far in front of the screen the light sits, in meters, so it does not burn a spot on the bezel.
@@ -39,13 +40,13 @@ pub struct Kit {
     pub thrust: f32,
 }
 
-/// Marks the faint light in front of the screen.
+/// Marks the faint light in front of the screen of the body whose root it names.
 #[derive(Component, Debug, Clone, Copy)]
-pub struct Lamp;
+pub struct Lamp(pub Entity);
 
-/// Marks the plume under a boot.
+/// Marks the plume under a boot of the body whose root it names.
 #[derive(Component, Debug, Clone, Copy)]
-pub struct Plume;
+pub struct Plume(pub Entity);
 
 /// The asset stores the parts are created in.
 #[derive(SystemParam)]
@@ -56,20 +57,6 @@ pub struct Stock<'w> {
     pub(super) materials: ResMut<'w, Assets<StandardMaterial>>,
     /// Image assets.
     images: ResMut<'w, Assets<Image>>,
-}
-
-/// Returns a forward material: `lit` for the matte shell coloured by the vertex colours, or unlit,
-/// which shows its base colour as it is and so can glow through bloom.
-pub(super) fn paint(base: Color, lit: bool, picture: Option<Handle<Image>>) -> StandardMaterial {
-    StandardMaterial {
-        base_color: base,
-        base_color_texture: picture,
-        unlit: !lit,
-        perceptual_roughness: 0.85,
-        reflectance: 0.2,
-        opaque_render_method: OpaqueRendererMethod::Forward,
-        ..default()
-    }
 }
 
 /// Creates the picture and the materials that follow the face and the thrust.
@@ -90,22 +77,15 @@ pub(super) fn kit(stock: &mut Stock) -> Kit {
 /// Spawns the fifteen segments under `root`, each a child of its parent segment, and returns them.
 ///
 /// Every part states its visibility itself, so the body does not depend on the renderer adding it.
-fn bones(commands: &mut Commands, stock: &mut Stock, root: Entity) -> [Entity; SEGS] {
-    let shell = stock.materials.add(paint(Color::WHITE, true, None));
+fn bones(commands: &mut Commands, looks: &Looks, root: Entity) -> [Entity; SEGS] {
     let rest = locals(&Pose::default());
-    let mut shapes: Vec<Handle<Mesh>> = Vec::with_capacity(SEGS);
     let mut all = [root; SEGS];
     for seg in Seg::ALL {
-        let shape = match seg.side() {
-            Some(1) => shapes[seg as usize - 1].clone(),
-            _ => stock.meshes.add(segment(seg).into_mesh()),
-        };
-        shapes.push(shape.clone());
         let parent = seg.parent().map_or(root, |parent| all[parent as usize]);
         let bone = (
             Bone(seg),
-            Mesh3d(shape),
-            MeshMaterial3d(shell.clone()),
+            Mesh3d(looks.segments[seg as usize].clone()),
+            MeshMaterial3d(looks.shell.clone()),
             rest[seg as usize],
             Visibility::default(),
         );
@@ -114,10 +94,16 @@ fn bones(commands: &mut Commands, stock: &mut Stock, root: Entity) -> [Entity; S
     all
 }
 
-/// Spawns the glowing parts: the screen on the head, the light in front of it, and the boot burners.
-fn glows(commands: &mut Commands, stock: &mut Stock, kit: &Kit, bones: &[Entity; SEGS]) {
+/// Spawns the glowing parts of the body `root`: the screen on the head, the light in front of
+/// it, and the boot burners.
+fn glows(
+    commands: &mut Commands,
+    looks: &Looks,
+    kit: &Kit,
+    (root, bones): (Entity, &[Entity; SEGS]),
+) {
     let face = (
-        Mesh3d(stock.meshes.add(screen())),
+        Mesh3d(looks.screen.clone()),
         MeshMaterial3d(kit.visor.clone()),
         Visibility::default(),
     );
@@ -130,75 +116,85 @@ fn glows(commands: &mut Commands, stock: &mut Stock, kit: &Kit, bones: &[Entity;
         ..default()
     };
     let ahead = Transform::from_xyz(NECK[0], NECK[1] + HEAD.0, -(SCREEN_FRONT + LAMP_REACH));
-    commands.spawn((Lamp, light, ahead, ChildOf(bones[Seg::Torso as usize])));
-    burners(commands, stock, kit, bones);
-}
-
-/// Spawns a nozzle glow and a hidden plume under each boot.
-fn burners(commands: &mut Commands, stock: &mut Stock, kit: &Kit, bones: &[Entity; SEGS]) {
-    let (disc, cone) = (stock.meshes.add(glow(0.0)), stock.meshes.add(glow(1.0)));
+    let torso = bones[Seg::Torso as usize];
+    commands.spawn((Lamp(root), light, ahead, ChildOf(torso)));
     let burn = MeshMaterial3d(kit.glow.clone());
     for boot in [bones[Seg::BootL as usize], bones[Seg::BootR as usize]] {
         let under = Transform::from_xyz(0.0, -ANKLE_RISE + 0.004, NOZZLE.1);
         let rim = under.with_scale(Vec3::splat(NOZZLE.0 * 0.85));
-        commands.spawn((
-            Mesh3d(disc.clone()),
-            burn.clone(),
-            rim,
-            Visibility::default(),
-            NotShadowCaster,
-            ChildOf(boot),
-        ));
-        let plume = (
-            Plume,
-            Mesh3d(cone.clone()),
-            burn.clone(),
-            under,
-            Visibility::Hidden,
-        );
-        commands.spawn((plume, NotShadowCaster, ChildOf(boot)));
+        let disc = (Mesh3d(looks.disc.clone()), burn.clone(), rim);
+        commands.spawn((disc, Visibility::default(), NotShadowCaster, ChildOf(boot)));
+        let plume = (Plume(root), Mesh3d(looks.cone.clone()), burn.clone(), under);
+        commands.spawn((plume, Visibility::Hidden, NotShadowCaster, ChildOf(boot)));
     }
 }
 
-/// Spawns the three panels of fabric under `root`, folded and hidden.
-fn cloth(commands: &mut Commands, stock: &mut Stock, root: Entity) {
-    let accent = Color::srgb(ACCENT[0], ACCENT[1], ACCENT[2]);
-    let material = stock.materials.add(super::warm::sheet(accent));
+/// Spawns the three panels of fabric under `root`, folded and hidden. Each body drapes its own
+/// meshes; the material is shared.
+fn cloth(commands: &mut Commands, stock: &mut Stock, looks: &Looks, root: Entity) {
     for panel in Panel::ALL {
-        let mesh = Mesh3d(stock.meshes.add(fabric()));
         let sheet = (
             panel,
-            mesh,
-            MeshMaterial3d(material.clone()),
+            Mesh3d(stock.meshes.add(fabric())),
+            MeshMaterial3d(looks.cloth.clone()),
             Visibility::Hidden,
         );
         commands.spawn((sheet, NoFrustumCulling, ChildOf(root)));
     }
 }
 
-/// Spawns the body as a child of the player when the player has none. It is despawned with the player.
-pub fn spawn(
-    mut commands: Commands,
-    mut stock: Stock,
-    players: Query<Entity, With<Player>>,
-    existing: Query<(), With<Avatar>>,
-) {
-    let Some(player) = players.iter().next().filter(|_| existing.is_empty()) else {
-        return;
-    };
-    let kit = kit(&mut stock);
+/// Spawns the look of a robot, with no player and no controller, and returns its root: the
+/// segments from the shared `looks`, the screen, the fabric, the plumes and the light, posed
+/// every frame from the [`AvatarPose`] on the root. Whatever writes that pose drives the body:
+/// the controller of the player at this machine, or a pose received from somewhere else.
+///
+/// The root is made a child of `parent` when one is given, and is despawned with it.
+pub fn puppet(
+    commands: &mut Commands,
+    stock: &mut Stock,
+    looks: &Looks,
+    parent: Option<Entity>,
+) -> Entity {
+    let kit = kit(stock);
     let body = (
         Avatar,
+        AvatarPose::default(),
         Anim::default(),
+        Kick::default(),
         Visor::default(),
         Transform::default(),
         Visibility::default(),
     );
-    let root = commands
-        .spawn((Name::new("Avatar"), body, ChildOf(player)))
-        .id();
-    let bones = bones(&mut commands, &mut stock, root);
-    glows(&mut commands, &mut stock, &kit, &bones);
-    cloth(&mut commands, &mut stock, root);
-    commands.entity(root).insert(kit);
+    let root = commands.spawn((Name::new("Avatar"), body)).id();
+    if let Some(parent) = parent {
+        commands.entity(root).insert(ChildOf(parent));
+    }
+    let bones = bones(commands, looks, root);
+    glows(commands, looks, &kit, (root, &bones));
+    cloth(commands, stock, looks, root);
+    commands.entity(root).insert((kit, Skeleton(bones)));
+    root
+}
+
+/// Gives every player that has no body one, as its child, from the shared look, which is
+/// built on the first call. A body is despawned with its player.
+pub fn spawn(
+    mut commands: Commands,
+    mut stock: Stock,
+    looks: Option<Res<Looks>>,
+    players: Query<Entity, With<Player>>,
+    existing: Query<&ChildOf, With<Avatar>>,
+) {
+    let bare = |player: &Entity| !existing.iter().any(|body| body.parent() == *player);
+    if !players.iter().any(|player| bare(&player)) {
+        return;
+    }
+    let looks = match looks {
+        Some(looks) => looks.clone(),
+        None => Looks::new(&mut stock.meshes, &mut stock.materials),
+    };
+    for player in players.iter().filter(bare) {
+        puppet(&mut commands, &mut stock, &looks, Some(player));
+    }
+    commands.insert_resource(looks);
 }

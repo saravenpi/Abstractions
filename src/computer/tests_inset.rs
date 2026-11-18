@@ -33,14 +33,16 @@ fn card() -> App {
     app
 }
 
-/// Runs `plan` and returns whether it started painting a map, then waits for the map.
+/// Runs `plan` and returns whether it started painting a map, then runs `collect` until the
+/// map is in, as the screen does every frame.
 fn step(app: &mut App) -> bool {
     app.world_mut().run_system_once(plan).unwrap();
     let started = app.world().resource::<Inset>().job.is_some();
     let until = Instant::now() + Duration::from_secs(20);
+    app.world_mut().run_system_once(collect).unwrap();
     while app.world().resource::<Inset>().job.is_some() && Instant::now() < until {
-        app.world_mut().run_system_once(collect).unwrap();
         std::thread::sleep(Duration::from_millis(1));
+        app.world_mut().run_system_once(collect).unwrap();
     }
     started
 }

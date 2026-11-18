@@ -11,9 +11,11 @@ mod watch;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_ground;
+#[cfg(test)]
 mod tests_time;
 
-pub use feed::word;
+pub use feed::{seen, word};
 pub use rules::{THUNDER_SECONDS, Weather, thunder};
 
 use bevy::prelude::*;
@@ -25,11 +27,11 @@ use crate::screens::Screen;
 pub struct Forecast;
 
 /// Registers the weather resource, the system that keeps it at the camera, and the one that
-/// hands it to the sky and the HUD.
+/// hands it to the sky and the HUD. The weather owns [`Weather`] and the word of the HUD; the
+/// sky owns `render::LocalWeather`, which the weather only writes.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Weather>()
         .init_resource::<crate::menus::HudWeather>()
-        .init_resource::<crate::render::LocalWeather>()
         .add_systems(OnExit(Screen::Gameplay), watch::clear)
         .add_systems(
             Update,

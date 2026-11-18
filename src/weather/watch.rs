@@ -5,10 +5,11 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::rules::{Planet, Weather, forecast};
-use crate::render::GameCamera;
+use crate::menus::HudWeather;
+use crate::render::{GameCamera, LocalWeather};
 use crate::space::{Anchor, Clock, Frame};
 use crate::universe::{PlanetSpec, Universe};
-use crate::world::Planet as Streamed;
+use crate::world::{Biome, Planet as Streamed};
 
 /// Seconds between two readings of the weather.
 const INTERVAL: f32 = 0.25;
@@ -28,9 +29,10 @@ pub struct Sky<'w, 's> {
     camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
 }
 
-/// The planet under the camera, kept so that its spec is not rebuilt at every reading.
+/// The planet under the camera and whether it is the home planet, kept so that neither is
+/// worked out again at every reading.
 #[derive(Default)]
-pub struct Here(Option<(Universe, PlanetSpec)>);
+pub struct Here(Option<(Universe, PlanetSpec, bool)>);
 
 /// Returns the unit direction and the height above the sea level radius of render position `at` on a
 /// planet of `radius` metres. The legacy flat world is a place on the equator.
@@ -42,7 +44,8 @@ fn place(anchor: &Anchor, radius: f64, at: Vec3) -> (DVec3, f32) {
     }
 }
 
-/// Returns the weather at the camera, or nothing away from any planet.
+/// Returns the weather at the camera, or nothing away from any planet. The ground gives dust
+/// only where it is bare, and the home planet keeps its calm opening.
 fn read(sky: &Sky, here: &mut Here) -> Option<Weather> {
     let (anchor, universe) = (sky.anchor.as_deref()?, sky.universe.as_deref()?);
     let Frame::Surface(body) = anchor.frame else {
@@ -50,19 +53,21 @@ fn read(sky: &Sky, here: &mut Here) -> Option<Weather> {
     };
     let planet = sky.planet.as_deref().filter(|planet| planet.body == body)?;
     let camera = sky.camera.single().ok()?;
-    let known = |(of, spec): &(Universe, PlanetSpec)| of == universe && spec.id == body;
+    let known = |(of, spec, _): &(Universe, PlanetSpec, bool)| of == universe && spec.id == body;
     if !here.0.as_ref().is_some_and(known) {
-        here.0 = Some((*universe, universe.planet(body)));
+        here.0 = Some((*universe, universe.planet(body), body == universe.home()));
     }
-    let (_, spec) = here.0.as_ref()?;
+    let (_, spec, home) = here.0.as_ref()?;
     let seconds = sky.clock.as_deref().map_or(0.0, |clock| clock.seconds);
     let (dir, altitude) = place(anchor, spec.radius, camera.translation());
     let air = planet.globe.air(dir, altitude);
-    Some(forecast(
-        &Planet::of(&spec.record, spec.seed),
-        &air,
-        seconds,
-    ))
+    let base = Planet::of(&spec.record, spec.seed);
+    let ground = Planet {
+        bare: base.bare || planet.globe.biome(dir) == Biome::Desert,
+        home: *home,
+        ..base
+    };
+    Some(forecast(&ground, &air, seconds))
 }
 
 /// Reads the weather at the camera every [`INTERVAL`] seconds. Away from any planet the sky is
@@ -82,7 +87,14 @@ pub fn watch(
     weather.set_if_neq(read(&sky, &mut here).unwrap_or_default());
 }
 
-/// Clears the weather when the world is left.
-pub fn clear(mut weather: ResMut<Weather>) {
+/// Clears the weather when the world is left, with what the sky and the HUD were told of it:
+/// the title screen and the next world start under a sky nothing has reported on.
+pub fn clear(
+    mut weather: ResMut<Weather>,
+    mut sky: ResMut<LocalWeather>,
+    mut hud: ResMut<HudWeather>,
+) {
     weather.set_if_neq(Weather::default());
+    sky.set_if_neq(LocalWeather::default());
+    hud.set_if_neq(HudWeather::default());
 }

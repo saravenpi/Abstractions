@@ -73,7 +73,11 @@ pub(super) fn game(tag: &str) -> App {
     let core = (MinimalPlugins, AssetPlugin::default(), StatesPlugin);
     app.add_plugins((core, InputPlugin, InputFocusPlugin));
     stubs(&mut app, tag);
-    let game = (crate::screens::plugin, crate::menus::plugin);
+    let game = (
+        crate::screens::plugin,
+        crate::menus::plugin,
+        crate::net::plugin,
+    );
     app.add_plugins((game, crate::ui::plugin, super::plugin));
     run(&mut app, 3);
     seat(&mut app);

@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use crate::menus::Menu;
+use crate::net::{Session, in_session};
 use crate::screens::Screen;
 
 /// Seconds of universe time since the world was created.
@@ -19,12 +20,18 @@ fn advance(time: Res<Time>, mut clock: ResMut<Clock>) {
     clock.seconds += time.delta_secs_f64();
 }
 
-/// Run condition: the game is being played, with no menu open.
+/// Run condition: the game is being played, with no menu open. In a session the universe never
+/// pauses, so a menu open there keeps the clock running.
 ///
 /// False when the screen states do not exist, as in a headless test app.
-fn running(screen: Option<Res<State<Screen>>>, menu: Option<Res<State<Menu>>>) -> bool {
+fn running(
+    screen: Option<Res<State<Screen>>>,
+    menu: Option<Res<State<Menu>>>,
+    session: Option<Res<Session>>,
+) -> bool {
     let on_screen = screen.is_some_and(|screen| *screen.get() == Screen::Gameplay);
-    on_screen && menu.is_some_and(|menu| *menu.get() == Menu::None)
+    let closed = menu.is_some_and(|menu| *menu.get() == Menu::None);
+    on_screen && (closed || in_session(session))
 }
 
 /// Registers the universe clock. It moves before `Update`, so that every system of a frame

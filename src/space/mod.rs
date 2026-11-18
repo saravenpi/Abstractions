@@ -2,6 +2,8 @@
 
 mod anchor;
 mod clock;
+#[cfg(test)]
+mod clock_tests;
 mod frame;
 mod gravity;
 mod local;

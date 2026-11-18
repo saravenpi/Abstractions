@@ -46,7 +46,12 @@ fn start(tag: &str, fake: &Arc<Fake>, at_launch: bool, exe: &str) -> (App, PathB
     let saved = settings.update(|settings| settings.updates.check_at_launch = at_launch);
     saved.unwrap();
     app.insert_resource(Updates::new(fake.clone(), place, "0.9.0"));
-    app.add_plugins((screens::plugin, menus::plugin, ui::plugin));
+    app.add_plugins((
+        screens::plugin,
+        menus::plugin,
+        ui::plugin,
+        crate::net::plugin,
+    ));
     app.add_plugins(computer::plugin);
     crate::update::systems(&mut app);
     for _ in 0..3 {

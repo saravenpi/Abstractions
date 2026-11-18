@@ -115,6 +115,7 @@ pub fn app(tag: &str) -> App {
         crate::menus::plugin,
         crate::ui::plugin,
         crate::computer::plugin,
+        crate::net::plugin,
     ));
     app.update();
     world(&mut app);

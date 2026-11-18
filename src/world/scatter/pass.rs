@@ -95,7 +95,7 @@ impl Ctx<'_> {
         let mut density = self.fields.density((self.terrain, w), -at.height);
         let dry = at.height > self.terrain.globe().sea_level();
         if let Some(air) = self.air.as_ref().filter(|_| dry).map(|air| air.at(w)) {
-            (density.vigor, density.frozen) = (vigor(at.biome, air), frozen(air));
+            (density.vigor, density.frozen) = (vigor(at.biome, air), frozen(at.biome, air));
         }
         choose(table, roll, &density, big)
             .filter(|&plant| {

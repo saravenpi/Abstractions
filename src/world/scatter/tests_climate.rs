@@ -9,8 +9,9 @@ use super::zones::{Zone, chunks};
 use super::*;
 use crate::climate::SNOW_LINE as FROST;
 use crate::universe::{PlanetClass, PlanetRecord};
+use crate::world::biome::Biome;
 use crate::world::globe::Globe;
-use crate::world::lands::thrive::climate_at;
+use crate::world::lands::thrive::{TREE_LINE, climate_at};
 
 /// Returns a 6 km globe of seed 5 with the home record changed into `class`, `ocean` and
 /// `temperature` kelvin, under `pressure` times the air of home.
@@ -41,7 +42,8 @@ fn land(globe: &Arc<Globe>, want: usize) -> Vec<(Terrain, Vec2, Placement)> {
 }
 
 /// On a world much colder than home every land prop under the snow line of the climate is a stone,
-/// and the stones still lie there. The same planet gives the same props twice.
+/// except the pines of the taiga, which stand down to its tree line, and the stones still lie
+/// there. The same planet gives the same props twice.
 #[test]
 fn nothing_grows_above_the_snow_line() {
     let cold = globe(
@@ -57,7 +59,11 @@ fn nothing_grows_above_the_snow_line() {
     );
     for (terrain, w, p) in &found {
         let air = climate_at(terrain, *w).expect("a globe has a climate");
-        let ok = stone(p.plant) || air.temperature >= FROST - 0.5;
+        let line = match terrain.biome(w.x, w.y) {
+            Biome::Taiga => TREE_LINE,
+            _ => FROST,
+        };
+        let ok = stone(p.plant) || air.temperature >= line - 0.5;
         assert!(ok, "{:?} grows in {} K", p.plant, air.temperature);
     }
     let again = land(&cold, 8).into_iter().map(|(_, _, p)| p);

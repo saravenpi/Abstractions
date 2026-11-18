@@ -22,6 +22,10 @@ pub const VILLAGE_AIR: (f32, f32) = (265.0, 315.0);
 /// its heart, where nobody camps.
 pub const DUNE_SEA: (f32, f32) = (295.0, 0.15);
 
+/// Temperature in kelvin under which even the pines of the taiga stop: the tree line of the cold.
+/// Above it a taiga is a forest of snow pines, colder than the snow line of the other biomes.
+pub const TREE_LINE: f32 = 255.0;
+
 /// Share of its plants a biome keeps at the far edge of its warmth and in the driest air.
 const FLOOR: f32 = 0.3;
 
@@ -93,10 +97,14 @@ pub fn vigor(biome: Biome, air: &Climate) -> f32 {
     warmth * (FLOOR + (1.0 - FLOOR) * (air.moisture / wet).clamp(0.0, 1.0))
 }
 
-/// Returns true when `air` is under the snow line of the climate, where nothing grows and only
-/// stones lie.
-pub fn frozen(air: &Climate) -> bool {
-    climate::snow(air)
+/// Returns true when nothing grows in `biome` where the climate is `air` and only stones lie:
+/// under the snow line of the climate, or under the tree line in the taiga, whose pines stand
+/// in the snow.
+pub fn frozen(biome: Biome, air: &Climate) -> bool {
+    match biome {
+        Biome::Taiga => air.temperature < TREE_LINE,
+        _ => climate::snow(air),
+    }
 }
 
 /// Returns true when `air` is neither too cold nor too hot for a village.

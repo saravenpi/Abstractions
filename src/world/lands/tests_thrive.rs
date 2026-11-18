@@ -5,7 +5,9 @@ use std::sync::Arc;
 
 use bevy::math::Vec2;
 
-use super::thrive::{DUNE_SEA, VILLAGE_AIR, climate_at, dune_sea, frozen, livable, vigor};
+use super::thrive::{
+    DUNE_SEA, TREE_LINE, VILLAGE_AIR, climate_at, dune_sea, frozen, livable, vigor,
+};
 use crate::climate::{Climate, SNOW_LINE as FROST};
 use crate::universe::{PlanetClass, PlanetRecord};
 use crate::world::Terrain;
@@ -76,10 +78,14 @@ fn a_forest_thins_towards_the_steppe() {
     assert!(vigor(Biome::Desert, &air(305.0, 0.1)) > 2.0 * forest(0.1));
 }
 
-/// The snow line, the village range and the desert heart sit exactly at their numbers.
+/// The snow line, the tree line of the taiga, the village range and the desert heart sit
+/// exactly at their numbers.
 #[test]
 fn the_limits_sit_at_their_numbers() {
-    assert!(frozen(&air(FROST - 0.01, 1.0)) && !frozen(&air(FROST, 1.0)));
+    let meadow = |t: f32| frozen(Biome::Meadow, &air(t, 1.0));
+    assert!(meadow(FROST - 0.01) && !meadow(FROST));
+    let taiga = |t: f32| frozen(Biome::Taiga, &air(t, 1.0));
+    assert!(!taiga(FROST - 10.0) && taiga(TREE_LINE - 0.01) && !taiga(TREE_LINE));
     let (cold, hot) = VILLAGE_AIR;
     assert!(livable(&air(cold, 0.5)) && livable(&air(hot, 0.5)));
     assert!(!livable(&air(cold - 0.01, 0.5)) && !livable(&air(hot + 0.01, 0.5)));

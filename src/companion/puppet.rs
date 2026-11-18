@@ -40,12 +40,15 @@ pub fn moved(anchor: &Anchor, was: Option<(Frame, DVec3)>, now: DVec3, dt: f32) 
     }
 }
 
+/// Filter of the companions that nothing here drives: they have no brain.
+type Brainless = (With<Companion>, Without<Brain>);
+
 /// Measures how every companion without a brain moves, from its pose alone: its velocity, how
 /// fast that changes, and how far it is into flight, which is how fast it goes.
 pub fn track(
     time: Res<Time>,
     anchor: Res<Anchor>,
-    mut bots: Query<(&Transform, &mut Float, &mut Tracked), (With<Companion>, Without<Brain>)>,
+    mut bots: Query<(&Transform, &mut Float, &mut Tracked), Brainless>,
 ) {
     let dt = time.delta_secs().min(MAX_STEP);
     for (at, mut float, mut tracked) in &mut bots {

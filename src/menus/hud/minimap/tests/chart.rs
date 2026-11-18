@@ -69,7 +69,11 @@ fn the_chart_shows_the_system_around_the_ship() {
     assert_eq!(plain.lines.len(), planets.len() + moons + 1);
     assert_eq!(plain.lines[0].target, Target::Star(home.star));
     assert!(plain.worlds[0].is_none() && plain.worlds[1..].iter().all(Option::is_some));
-    let row = Dot::Row(usize::from(home.index) + 1);
+    let index = plain
+        .lines
+        .iter()
+        .position(|line| line.target == Target::Body(home));
+    let row = Dot::Row(index.expect("home has a row"));
     let (ship, planet) = (plain.place(Dot::Ship).unwrap(), plain.place(row).unwrap());
     assert!(ship.distance(planet) < 0.02 && plain.chosen.is_none());
     assert!(in_sight(plain.lens, ship) && in_sight(plain.lens, planet));

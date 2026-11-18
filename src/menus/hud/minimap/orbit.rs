@@ -4,14 +4,14 @@
 
 use bevy::math::{IVec2, Vec2};
 
-use crate::computer::{Dot, Lens, Line, Tab, Target, View, chart};
+use crate::computer::{Dot, Lens, Line, MOON_ZOOM, Tab, Target, View, chart};
 use crate::universe::{PlanetSpec, StarId};
 
 /// Share of the half width of the map the ship, the nearest body and the destination span.
 const FILLED: f32 = 0.7;
 
 /// Closest zoom of the minimap, which keeps the neighbours in sight while the ship orbits.
-pub const CLOSEST: f32 = 6.0;
+pub const CLOSEST: f32 = MOON_ZOOM;
 
 /// The chart of one system, ready to draw.
 #[derive(Debug, Clone, PartialEq)]

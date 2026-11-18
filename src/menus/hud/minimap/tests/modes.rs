@@ -8,7 +8,7 @@ use super::read::{at, caption, drawn, part};
 use super::rig::{RADIUS, app, settle, tap};
 use crate::computer::{Destination, Target};
 use crate::menus::hud::minimap::scope::Scope;
-use crate::menus::hud::minimap::space::QUIET;
+use crate::menus::hud::minimap::space::{DASHES, Dash, QUIET};
 use crate::menus::hud::minimap::widget::Part;
 use crate::space::{Anchor, Frame};
 use crate::universe::{BodyId, Universe};
@@ -115,6 +115,8 @@ fn the_chart_follows_the_destination_and_the_frame() {
     app.insert_resource(Destination(Some(target)));
     leave(&mut app, false);
     assert_ne!(drawn(&mut app), charted);
+    let mut dashes = app.world_mut().query_filtered::<(), With<Dash>>();
+    assert_eq!(dashes.iter(app.world()).count(), DASHES - 1);
     leave(&mut app, true);
     assert_eq!((drawn(&mut app), caption(&mut app)), (0, QUIET.to_string()));
 }

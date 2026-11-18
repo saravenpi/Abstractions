@@ -14,7 +14,7 @@ use super::format::distance;
 use super::labels::{keep, priority, room};
 use super::lens::Lens;
 use super::map::{SIZE, Sheet, body, frame, name, ring, ship, spot};
-use super::moons::{is_moon, seen};
+use super::moons::{host, is_moon, seen};
 use super::orbits::satellites;
 use super::pointer::MapView;
 use super::route::{Destination, Target};
@@ -55,9 +55,19 @@ struct Picture<'a> {
 }
 
 impl Picture<'_> {
-    /// Returns true when the row `index` is under the cursor or under the pointer.
+    /// Returns true when the row `index` is under the cursor or under the pointer, or when one
+    /// of its moons is and the zoom hides that moon: the planet then carries the frame.
     fn under(&self, index: usize) -> bool {
-        index == self.board.cursor || self.view.hover == Some(Dot::Row(index))
+        let lines = &self.board.lines;
+        let hover = match self.view.hover {
+            Some(Dot::Row(row)) => Some(row),
+            _ => None,
+        };
+        let shown = |row: usize| match seen(Dot::Row(row), lines, self.view.lens.zoom) {
+            true => row,
+            false => host(lines, row).unwrap_or(row),
+        };
+        shown(self.board.cursor) == index || hover.map(shown) == Some(index)
     }
 
     /// Returns the chart point of `dot`, when the chart has it.

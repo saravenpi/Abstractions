@@ -76,12 +76,15 @@ pub(super) fn aim(
         Some((over, share)) => (over, (share + 0.5) * SIZE),
         None => (false, view.at),
     };
-    let still = at == view.at && over == view.over;
+    let zoom = view.lens.zoom;
+    let hidden = view
+        .hover
+        .is_some_and(|dot| !moons::seen(dot, &board.lines, zoom));
+    let still = at == view.at && over == view.over && !hidden;
     (view.over, view.at) = (over, at);
     if still || view.held.is_some() {
         return;
     }
-    let zoom = view.lens.zoom;
     let shown = view
         .dots
         .iter()

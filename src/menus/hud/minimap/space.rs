@@ -20,7 +20,11 @@ use crate::ui::{Icon, Tone, icon_sized, theme};
 use crate::universe::Universe;
 
 /// Dots of the line that shows the course.
-const DASHES: usize = 12;
+pub const DASHES: usize = 12;
+
+/// Marks one dot of the line that shows the course.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct Dash;
 
 /// Side in pixels of the frame around the destination.
 const CHOSEN: f32 = 12.0;
@@ -82,7 +86,7 @@ fn course(sheet: &mut ChildSpawnerCommands, scene: &Scene) {
     for step in 1..DASHES {
         let at = from.lerp(to, step as f32 / DASHES as f32);
         let node = spot(at, Vec2::splat(-0.5), Vec2::splat(1.0));
-        sheet.spawn((node, BackgroundColor(theme::MUTED)));
+        sheet.spawn((Dash, node, BackgroundColor(theme::MUTED)));
     }
     frame(sheet, to, CHOSEN);
 }

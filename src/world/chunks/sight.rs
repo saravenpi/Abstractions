@@ -98,8 +98,8 @@ mod tests {
             clearance,
             radius: 6000.0,
         };
-        assert_eq!(veil(200.0, &at(2.0)), 180.0);
-        assert_eq!(veil(200.0, &at(15.0)), 180.0);
+        assert!((veil(200.0, &at(2.0)) - 180.0).abs() < 1e-3);
+        assert!((veil(200.0, &at(15.0)) - 180.0).abs() < 1e-3);
         assert!(veil(200.0, &at(30.0)) < 230.0);
         assert!(veil(200.0, &at(1000.0)) > 8000.0);
         let heights = (0..80).map(|i| veil(200.0, &at(f64::from(i) * 5.0)));

@@ -7,30 +7,56 @@ use bevy::prelude::*;
 
 use super::base::Base;
 use super::container;
+use super::ground::starts;
 use super::lot::Lot;
-use super::site;
+use super::site::{self, SLACK};
 use super::tune::{CONTAINER, PAD, PAD_LIFT, SEARCH, WAKE};
 use crate::universe::BodyId;
-use crate::world::globe::Face;
 use crate::world::{Globe, Terrain};
 
 impl Base {
     /// Returns the base of the home planet `body` whose ground is `globe`: near the spawn the
-    /// terrain finds for a new game. The same globe always gives the same base.
+    /// terrain finds around a mild northern latitude, at a longitude the seed picks, or around the
+    /// next longitude when no ground near that spawn takes the base. Every spawn is tried within
+    /// the relief limits before any is tried with the looser ones. The same globe always gives the
+    /// same base.
     pub fn on(globe: &Arc<Globe>, body: BodyId) -> Self {
-        let north = Terrain::on(globe.clone(), globe.face_chart(Face::PosY));
-        let at = north.find_spawn();
-        Self::near(globe, body, north.embed(at.x, at.y, at.z))
+        let mut spawns = Vec::new();
+        let strict = starts(globe.seed()).find_map(|dir| {
+            let spawn = spawn_of(Self::around(globe, dir).view());
+            spawns.push(spawn);
+            Self::near(globe, body, spawn, SLACK[0])
+        });
+        let loose = || {
+            let mut each = spawns.iter();
+            each.find_map(|spawn| Self::near(globe, body, *spawn, SLACK[1]))
+        };
+        strict.or_else(loose).unwrap_or_else(|| {
+            let first = spawns.first().copied().unwrap_or(DVec3::Y * globe.radius());
+            let view = Self::around(globe, first).view().clone();
+            Self::settled(&view, body, Vec2::X * SEARCH.0)
+        })
     }
 
-    /// Returns the base on the best site around the planet position `spawn`.
-    pub fn near(globe: &Arc<Globe>, body: BodyId, spawn: DVec3) -> Self {
+    /// Returns the base on the best site around the planet position `spawn` within `slack` times
+    /// the relief limits, or nothing when no ground within reach takes it.
+    pub fn near(globe: &Arc<Globe>, body: BodyId, spawn: DVec3, slack: f32) -> Option<Self> {
+        let around = Self::around(globe, spawn);
+        let at = site::find(around.view(), slack)?;
+        Some(Self::settled(around.view(), body, at))
+    }
+
+    /// Returns the lot around the planet position `spawn`, with any east, in which the site is
+    /// looked for.
+    fn around(globe: &Arc<Globe>, spawn: DVec3) -> Lot {
         let dir = spawn.normalize();
-        let around = Lot::new(globe, dir, dir.any_orthonormal_vector());
-        let view = around.view();
-        let at = site::find(view).unwrap_or(Vec2::X * SEARCH.0);
-        let lot = Lot::new(globe, view.up(at.x, at.y), view.chart().east(at.x, at.y));
-        Self::laid(&lot, body)
+        Lot::new(globe, dir, dir.any_orthonormal_vector())
+    }
+
+    /// Returns the base laid out at the point `at` of the metric `view` it was looked for in.
+    fn settled(view: &Terrain, body: BodyId, at: Vec2) -> Self {
+        let (up, east) = (view.up(at.x, at.y), view.chart().east(at.x, at.y));
+        Self::laid(&Lot::new(view.globe(), up, east), body)
     }
 
     /// Returns the lot of the base on `globe`, which must be the ground of its planet.
@@ -56,4 +82,10 @@ impl Base {
             door: lot.planet(container::pose(lot).transform_point3(container::DOOR)),
         }
     }
+}
+
+/// Returns the planet position of the spawn the terrain finds around the origin of `view`.
+fn spawn_of(view: &Terrain) -> DVec3 {
+    let at = view.find_spawn();
+    view.embed(at.x, at.y, at.z)
 }

@@ -9,6 +9,7 @@ mod container;
 mod draft;
 mod found;
 mod glow;
+mod ground;
 mod lights;
 mod lot;
 mod pad;
@@ -27,6 +28,8 @@ mod works;
 mod tests;
 #[cfg(test)]
 mod tests_app;
+#[cfg(test)]
+mod tests_found;
 #[cfg(test)]
 mod tests_ground;
 #[cfg(test)]

@@ -27,6 +27,18 @@ pub const PAD_RELIEF: f32 = 1.5;
 /// candidates and the number of rings searched.
 pub const SEARCH: (f32, f32, u32) = (44.0, 16.0, 45);
 
+/// Radius in metres of the circle whose ground must all be of the biome of a taiga or a desert site
+/// for that site to lie in the heart of it, where the base is not built.
+pub const HEART: f32 = 300.0;
+
+/// Radius in metres of the circle the robot first walks around the base, and the metres of
+/// distance a site gives up to have no taiga or desert on it.
+pub const HARSH: (f32, f32) = (60.0, 300.0);
+
+/// Latitude in degrees north of the places the base is looked for around, mild on a tilted home
+/// world whose pole is its coldest place, and how many of them lie around that circle.
+pub const STARTS: (f32, u32) = (32.0, 8);
+
 /// Metres of distance a site may give up for one metre less relief under the footprint, and
 /// under the pad.
 pub const RELIEF_COST: (f32, f32) = (40.0, 80.0);

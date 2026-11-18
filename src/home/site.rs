@@ -1,4 +1,5 @@
-//! The site search: a dry, gentle, inland spot near the terrain spawn, clear of the cube edges.
+//! The site search: a dry, gentle, inland spot near the terrain spawn, clear of the cube edges and
+//! out of the heart of a taiga or a desert.
 
 use std::f32::consts::TAU;
 use std::f64::consts::SQRT_2;
@@ -6,6 +7,7 @@ use std::f64::consts::SQRT_2;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::ground::{firm, fringe, harsh};
 use super::tune::{
     DRY, EDGE_CLEAR, FOOTPRINT, MAX_RELIEF, PAD, PAD_HALF, PAD_RELIEF, RELIEF_COST, SEARCH,
     SHORE_CLEAR,
@@ -21,7 +23,7 @@ const SHORE: (u32, f32) = (4, 6.0);
 
 /// How many times the relief limits a later pass of the search allows, when a stricter pass
 /// found nothing.
-const SLACK: [f32; 2] = [1.0, 2.0];
+pub const SLACK: [f32; 2] = [1.0, 2.0];
 
 /// Returns `count` points evenly spaced on the circle of `radius` around `at`.
 fn circle(at: Vec2, radius: f32, count: u32) -> impl Iterator<Item = Vec2> {
@@ -67,7 +69,8 @@ pub fn inland(view: &Terrain, at: Vec2) -> bool {
 }
 
 /// Returns what a site at `at` costs in metres, its distance plus its relief, or nothing when
-/// the ground there cannot take the base with `slack` times the relief limits.
+/// the ground there cannot take the base with `slack` times the relief limits, is not firm, or
+/// lies in the heart of a taiga or a desert. Taiga or desert near the site adds to its cost.
 fn cost(view: &Terrain, at: Vec2, slack: f32) -> Option<f32> {
     let edge = edge_distance(view.up(at.x, at.y), view.globe().radius());
     if edge < FOOTPRINT + EDGE_CLEAR || view.height(at.x, at.y) < DRY {
@@ -75,7 +78,9 @@ fn cost(view: &Terrain, at: Vec2, slack: f32) -> Option<f32> {
     }
     let pad = relief(view, at + PAD.at, PAD_HALF * 1.5, PAD_RELIEF * slack)?;
     let whole = relief(view, at, FOOTPRINT as f32, MAX_RELIEF * slack)?;
-    inland(view, at).then_some(at.length() + whole * RELIEF_COST.0 + pad * RELIEF_COST.1)
+    let ground = inland(view, at) && !harsh(view, at) && firm(view, at);
+    let relief = whole * RELIEF_COST.0 + pad * RELIEF_COST.1;
+    ground.then(|| at.length() + relief + fringe(view, at))
 }
 
 /// Returns the cheapest site on rings around the origin of `view`, with `slack` times the
@@ -94,9 +99,8 @@ fn search(view: &Terrain, slack: f32) -> Option<Vec2> {
     best.map(|(_, at)| at)
 }
 
-/// Returns the site of the base in the metric `view` centred on the terrain spawn: the cheapest
-/// fit within the relief limits, else within twice the limits, or nothing when no ground within
-/// reach can take the base.
-pub fn find(view: &Terrain) -> Option<Vec2> {
-    SLACK.into_iter().find_map(|slack| search(view, slack))
+/// Returns the site of the base in the metric `view` centred on a terrain spawn: the cheapest fit
+/// within `slack` times the relief limits, or nothing when no ground within reach takes the base.
+pub fn find(view: &Terrain, slack: f32) -> Option<Vec2> {
+    search(view, slack)
 }

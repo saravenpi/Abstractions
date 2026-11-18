@@ -37,6 +37,18 @@ pub(super) fn of(star: &StarSpec, planet: &PlanetSpec) -> Vec<PlanetSpec> {
         .collect()
 }
 
+/// Returns moon number `rank` of `planet`, a planet of `star`, the same spec [`of`] lists at
+/// `rank - 1`, or nothing when it has no such moon. Only that moon is built: the orbits are
+/// placed once and the moons inside it are skipped.
+pub(super) fn ranked(star: &StarSpec, planet: &PlanetSpec, rank: u8) -> Option<PlanetSpec> {
+    let (places, used) = hill::places(star, planet);
+    let kept = used.min(usize::from(planet.moons));
+    let index = usize::from(rank)
+        .checked_sub(1)
+        .filter(|index| *index < kept)?;
+    Some(build(star, planet, rank, places[index]))
+}
+
 /// Returns the inner heat of a moon on an orbit of `orbit` metres around `planet`, in units of
 /// the starlight the home planet gets.
 ///

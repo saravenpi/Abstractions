@@ -1,5 +1,6 @@
 //! The autopilot: the route the board computer hands to the ship and how far along it is.
 
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::moons::Standoff;
@@ -27,33 +28,40 @@ pub enum Phase {
 }
 
 /// The destination the autopilot flies to, with the distances that depend on it.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(super) struct Goal {
     /// The body flown to. A galaxy is replaced by a star near its centre.
     pub(super) target: Target,
     /// Radius of the lock sphere of the destination in metres.
     pub(super) lock: f64,
     /// Distance in metres at which the ship drops out: from the centre of a planet or a star,
-    /// from the point beside a moon.
+    /// and from the point beside a moon, where [`Standoff::reached`] also counts the space
+    /// around the moon.
     pub(super) arrival: f64,
     /// For a moon, the point beside it the route ends at.
     pub(super) beyond: Option<Standoff>,
 }
 
 impl Goal {
-    /// Returns the universe position the route ends at, at `time` seconds: the centre of the
-    /// destination, or the point beside a moon.
-    pub(super) fn point(&self, universe: &Universe, time: f64) -> Option<UniPos> {
-        let centre = target_position(universe, self.target, time)?;
-        Some(
-            self.beyond
-                .map_or(centre, |beyond| centre + beyond.offset(time)),
-        )
+    /// Returns the metres from a ship at `here` to where the route ends at `time` seconds, the
+    /// centre of the destination or the point beside a moon, and whether the ship has arrived.
+    pub(super) fn reached(
+        &self,
+        universe: &Universe,
+        here: UniPos,
+        time: f64,
+    ) -> Option<(DVec3, bool)> {
+        let Some(beyond) = &self.beyond else {
+            let to = target_position(universe, self.target, time)? - here;
+            return Some((to, to.length() <= self.arrival));
+        };
+        let pos = here - universe.star_position(beyond.moon.id.star)?;
+        Some((beyond.point(time) - pos, beyond.reached(pos, time)))
     }
 }
 
 /// The autopilot. The board computer sets a destination with [`Autopilot::engage`].
-#[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
+#[derive(Resource, Debug, Default, Clone, PartialEq)]
 pub struct Autopilot {
     /// Destination asked for, while a route is flown.
     pub(super) target: Option<Target>,
@@ -94,7 +102,7 @@ impl Autopilot {
 
     /// Returns the star of the destination, once the route is resolved to a body or a star.
     pub fn star(&self) -> Option<StarId> {
-        match self.goal?.target {
+        match self.goal.as_ref()?.target {
             Target::Body(id) => Some(id.star),
             Target::Star(id) => Some(id),
             Target::Galaxy(_) => None,

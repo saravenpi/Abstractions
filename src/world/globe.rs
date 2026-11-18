@@ -52,6 +52,8 @@ pub struct Globe {
     datum: f32,
     /// The ground rules the record gives.
     lands: Lands,
+    /// Metres from the centre past which the sky draws the planet instead of the world.
+    handover: f64,
 }
 
 impl Globe {
@@ -70,12 +72,17 @@ impl Globe {
             record,
             datum: 0.0,
             lands: Lands::of(&record),
+            handover: far::handover(radius, None),
         }
     }
 
-    /// Builds the globe of a planet of the universe, with its own record.
+    /// Builds the globe of a planet of the universe, with its own record and the hand-over
+    /// its size and its rings give.
     pub fn of(spec: &PlanetSpec) -> Self {
-        Self::new(spec.seed, spec.radius, spec.gravity).with_record(spec.record)
+        Self {
+            handover: far::handover(spec.radius, spec.rings),
+            ..Self::new(spec.seed, spec.radius, spec.gravity).with_record(spec.record)
+        }
     }
 
     /// Returns the seed the ground is generated from.
@@ -91,5 +98,11 @@ impl Globe {
     /// Returns the surface gravity in metres per second squared.
     pub fn gravity(&self) -> f64 {
         self.gravity
+    }
+
+    /// Returns the metres from the centre past which the sky draws the planet, see
+    /// [`far::handover`].
+    pub fn handover(&self) -> f64 {
+        self.handover
     }
 }

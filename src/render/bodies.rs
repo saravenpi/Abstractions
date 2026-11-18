@@ -26,12 +26,9 @@ use super::atmosphere::HALO_SCALE;
 use super::vantage::{LocalSystem, Scene, Vantage};
 use super::warp::Lens;
 use crate::universe::{BodyId, PlanetSpec};
+use crate::world::globe::far::handover;
 
-/// Distance in metres past which a body is pulled in: farther than anything the terrain streams.
-pub const FAR: f32 = 1.0e6;
-
-/// Distance in planet radii up to which the planet below is drawn by the terrain, not here.
-const HANDOVER: f64 = 20.0;
+pub use crate::world::globe::far::FAR;
 
 /// Smallest angular radius in radians the star is drawn with, the size of the old sun disc.
 const STAR_ANGLE: f32 = 0.04;
@@ -134,7 +131,7 @@ impl Body {
 
     /// Returns whether the sky draws this body of `planet`, at `pos` metres from the star, now.
     ///
-    /// The planet or moon below the camera is left to the terrain within [`HANDOVER`] radii,
+    /// The planet or moon below the camera is left to the terrain within its [`handover`],
     /// and its halo only shows from above its air. A body without air has no halo. Rings show
     /// from everywhere, the deck of their own planet included.
     fn shown(self, planet: &PlanetSpec, pos: DVec3, vantage: &Vantage) -> bool {
@@ -145,7 +142,9 @@ impl Body {
                 airy && (!below || vantage.air <= 0.0)
             }
             Body::Rings(_) => true,
-            _ => !below || pos.distance(vantage.observer.eye) > HANDOVER * planet.radius,
+            _ => {
+                !below || pos.distance(vantage.observer.eye) > handover(planet.radius, planet.rings)
+            }
         }
     }
 }

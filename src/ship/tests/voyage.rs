@@ -4,6 +4,7 @@
 mod away;
 mod back;
 mod ground;
+mod stranded;
 
 use bevy::prelude::*;
 

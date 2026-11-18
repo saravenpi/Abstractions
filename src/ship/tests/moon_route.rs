@@ -13,10 +13,23 @@ use crate::ship::route::hold;
 use crate::ship::warp::{CRUISE_CAP, Warp, advance, drop_out, request};
 use crate::ship::wells::{PLANET_LOCK, Well, system_wells};
 use crate::space::Frame;
-use crate::universe::{BodyId, SystemSpec, Universe};
+use crate::universe::{BodyId, PlanetSpec, SystemSpec, Universe};
 
 /// Seconds of one frame of the test voyage.
 const DT: f64 = 1.0 / 30.0;
+
+/// Sides a route to a moon starts from: degrees from the line out through the moon in the
+/// orbit plane, then degrees toward +Y.
+const SIDES: [(i16, i16); 8] = [
+    (130, 0),
+    (0, 0),
+    (60, 0),
+    (180, 0),
+    (250, 0),
+    (130, 50),
+    (180, -40),
+    (0, 90),
+];
 
 /// Flies one frame: the drive switches when the helm asks, a ship in warp only turns, and
 /// otherwise four flight steps carry it among `wells`.
@@ -44,19 +57,26 @@ fn frame(ship: &mut Ship, helm: &mut Helm, wells: &[Well]) {
 }
 
 /// Flies the autopilot along `goal` to the moon of `system`, the last of its bodies, until it
-/// arrives, as the route system does, and returns the time of arrival.
-fn voyage(system: &SystemSpec, goal: &Goal, ship: &mut Ship) -> f64 {
-    let (moon, beyond) = (system.planets.last().unwrap(), goal.beyond.unwrap());
-    let (mut helm, mut time) = (Helm::default(), 0.0);
+/// arrives, as the route system does, and returns the time of arrival and how many times the
+/// drive spooled up on the way.
+pub(super) fn voyage(system: &SystemSpec, goal: &Goal, ship: &mut Ship) -> (f64, u32) {
+    let beyond = goal.beyond.as_ref().unwrap();
+    let (mut helm, mut time, mut spools) = (Helm::default(), 0.0, 0);
     while time < 1200.0 {
         let wells = system_wells(system, time);
-        let to = moon.position(time) + beyond.offset(time) - ship.pos;
-        if to.length() <= goal.arrival {
+        if beyond.reached(ship.pos, time) {
             drop_out(ship, &wells);
-            return time;
+            return (time, spools);
         }
-        hold(ship, &mut helm, &wells, (to, goal.lock));
+        let idle = !matches!(ship.warp, Warp::Spooling { .. });
+        hold(
+            ship,
+            &mut helm,
+            &wells,
+            (beyond.point(time) - ship.pos, goal.lock),
+        );
         frame(ship, &mut helm, &wells);
+        spools += u32::from(idle && matches!(ship.warp, Warp::Spooling { .. }));
         time += DT;
     }
     panic!("the route to the moon never arrived");
@@ -78,7 +98,7 @@ fn a_route_to_a_moon_ends_at_rest_beside_it() {
         rot,
     );
     ship.vel = start.vel;
-    let time = voyage(&system, &route, &mut ship);
+    let (time, _) = voyage(&system, &route, &mut ship);
     let wells = system_wells(&system, time);
     let (host, own) = (wells[index + 1], *wells.last().unwrap());
     assert_eq!(ship.warp, Warp::Off);
@@ -90,6 +110,49 @@ fn a_route_to_a_moon_ends_at_rest_beside_it() {
     assert!(own.clearance(ship.pos) > 0.0 && host.clearance(ship.pos) > 0.0);
     let air = giant.radius + giant.atmosphere_height;
     assert!(host.pos.distance(ship.pos) > air);
+}
+
+/// Returns a ship at rest beside `moon` at time 0, 100 km from it, its nose on the moon, along
+/// `out`, the line from its giant through it, turned by `side.0` degrees in the orbit plane and
+/// then by `side.1` degrees toward +Y.
+fn beside_moon(moon: &PlanetSpec, out: DVec3, side: (i16, i16)) -> Ship {
+    let (turn, up) = (
+        f64::from(side.0).to_radians(),
+        f64::from(side.1).to_radians(),
+    );
+    let flat = DQuat::from_rotation_y(turn) * out;
+    let dir = (flat * up.cos() + DVec3::Y * up.sin()).normalize();
+    let well = Well::planet(moon, 0.0);
+    let rot = DQuat::from_rotation_arc(DVec3::NEG_Z, -dir);
+    let mut ship = Ship::at_rest(Frame::System(moon.id.star), well.pos + dir * 1.0e5, rot);
+    ship.vel = well.vel;
+    ship
+}
+
+/// A route to a moon far from its giant arrives from any side, the side of the giant at 130
+/// degrees from the line out through the moon included, and above and below the orbit plane:
+/// one spool, one warp, and the ship left at rest beside the moon, clear of both locks.
+#[test]
+fn a_route_to_a_moon_arrives_from_every_side() {
+    let (system, index) = giant_system(40.0);
+    let (giant, moon) = (&system.planets[index], system.planets.last().unwrap());
+    let out = (moon.position(0.0) - giant.position(0.0)).normalize();
+    for side in SIDES {
+        let mut ship = beside_moon(moon, out, side);
+        let (time, spools) = voyage(&system, &goal(moon, giant), &mut ship);
+        let wells = system_wells(&system, time);
+        let (host, own) = (wells[index + 1], *wells.last().unwrap());
+        assert!(
+            time < 300.0 && spools == 1,
+            "{side:?}: {time} s, {spools} spools"
+        );
+        assert!(
+            (ship.vel - own.vel).length() < 1e-9,
+            "{side:?}: not at rest"
+        );
+        assert!(own.clearance(ship.pos) > 0.0 && host.clearance(ship.pos) > 0.0);
+        assert!(own.pos.distance(ship.pos) <= own.lock * 1.45, "{side:?}");
+    }
 }
 
 /// The point beside a moon clears the air of its giant when that reaches past the lock, and

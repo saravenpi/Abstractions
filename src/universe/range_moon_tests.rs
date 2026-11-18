@@ -35,3 +35,37 @@ fn moons_stay_in_range() {
         }
     }
 }
+
+/// Looking one moon up by its id builds the same spec as listing every moon of its planet,
+/// for every planet of the sample with moons and every rank, and a rank past the last moon
+/// gives the planet. Prints how long one lookup of a moon takes.
+#[test]
+fn a_moon_looked_up_is_the_moon_listed() {
+    let (mut looked, mut time) = (0u32, std::time::Duration::ZERO);
+    for (universe, star) in super::range_tests::sample().into_iter().take(40) {
+        for planet in universe
+            .system(star.id)
+            .planets
+            .iter()
+            .filter(|p| p.moons > 0)
+        {
+            let moons = universe.moons(planet.id);
+            for rank in 1..=planet.moons + 1 {
+                let id = BodyId {
+                    moon: rank,
+                    ..planet.id
+                };
+                let start = std::time::Instant::now();
+                let found = universe.planet(id);
+                (looked, time) = (looked + 1, time + start.elapsed());
+                let listed = moons.get(usize::from(rank) - 1).unwrap_or(planet);
+                assert_eq!(&found, listed, "{id:?}");
+            }
+        }
+    }
+    assert!(looked > 20, "only {looked} lookups");
+    println!(
+        "Universe::planet(moon): {:?} each over {looked}",
+        time / looked
+    );
+}

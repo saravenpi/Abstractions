@@ -15,6 +15,8 @@ mod tests_app;
 mod tests_bake;
 #[cfg(test)]
 mod tests_giant;
+#[cfg(test)]
+mod tests_star;
 
 use bevy::asset::embedded_asset;
 use bevy::math::{DQuat, DVec3};
@@ -28,14 +30,17 @@ use super::air::Air;
 use super::atmosphere::HALO_SCALE;
 use super::vantage::{LocalSystem, Scene, Vantage};
 use super::warp::Lens;
+use crate::computer::SYSTEM_REACH;
 use crate::universe::{BodyId, PlanetSpec};
 use crate::world::Link;
 use crate::world::globe::far::handover;
 
 pub use crate::world::globe::far::FAR;
 
-/// Smallest angular radius in radians the star is drawn with, the size of the old sun disc.
-const STAR_ANGLE: f32 = 0.04;
+/// Angular radius in radians under which the disc of the star is not drawn: a ball under two
+/// pixels across cannot be drawn steadily. The star is then the point the star field draws
+/// for it, which is already far wider and brighter than a disc that small.
+pub const STAR_POINT: f32 = 0.0009;
 
 /// Smallest angular radius in radians a planet is drawn with: about one pixel of the game view,
 /// so a far planet stays a steady dot.
@@ -92,7 +97,15 @@ struct Orb {
     shown: bool,
 }
 
-/// Returns the star of the current system ready to be placed.
+/// Returns the angular radius in radians of a ball of `radius` metres seen from `distance`
+/// metres: the radius over the distance, the size the star is drawn with at any distance.
+pub fn angle(radius: f64, distance: f64) -> f32 {
+    (radius / distance.max(1.0e-9)) as f32
+}
+
+/// Returns the star of the current system ready to be placed: a disc of its true angular size,
+/// which shrinks as the camera leaves it and is gone once it is under [`STAR_POINT`]. No star
+/// is drawn larger than it is, so between the stars there is no sun.
 fn star(scene: &Scene) -> Option<Orb> {
     let radius = scene.local.0.as_ref()?.system.star.radius;
     Some(Orb {
@@ -100,8 +113,8 @@ fn star(scene: &Scene) -> Option<Orb> {
         turn: DQuat::IDENTITY,
         radius,
         solid: radius,
-        least_angle: STAR_ANGLE,
-        shown: true,
+        least_angle: 0.0,
+        shown: angle(radius, scene.vantage.observer.eye.length()) >= STAR_POINT,
     })
 }
 
@@ -144,9 +157,14 @@ impl Body {
     ///
     /// The planet or moon below the camera is left to the terrain within its [`handover`],
     /// and its halo only shows from above its air. A body without air has no halo. Rings show
-    /// from everywhere, the deck of their own planet included.
+    /// from everywhere, the deck of their own planet included. Nothing of a planet shows from
+    /// outside its star system: from there it is far under a pixel, and the dot it is kept at
+    /// inside would pile up with the others into a false light where the star is.
     fn shown(self, planet: &PlanetSpec, pos: DVec3, vantage: &Vantage) -> bool {
         let below = vantage.is(planet.id);
+        if vantage.observer.eye.length() > SYSTEM_REACH {
+            return false;
+        }
         match self {
             Body::Halo(_) => {
                 let airy = planet.atmosphere_height > 0.0 && Air::of(&planet.record).share() > 0.0;

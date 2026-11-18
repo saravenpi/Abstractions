@@ -12,7 +12,7 @@ use crate::menus::{Menu, Nav, Trail};
 use crate::ui::{Cancels, Overlay};
 
 /// Returns the open menu.
-fn menu(app: &App) -> Menu {
+pub(super) fn menu(app: &App) -> Menu {
     *app.world().resource::<State<Menu>>().get()
 }
 
@@ -33,12 +33,15 @@ fn roots(app: &mut App) -> usize {
 }
 
 /// The menus that can be opened.
-const MENUS: [Menu; 5] = [
+const MENUS: [Menu; 8] = [
     Menu::Main,
     Menu::Worlds,
     Menu::NewGame,
     Menu::Settings,
     Menu::Pause,
+    Menu::Multiplayer,
+    Menu::Joining,
+    Menu::Players,
 ];
 
 /// Every menu opens with one focused button, runs, and leaves nothing behind when it closes.
@@ -103,7 +106,7 @@ fn the_last_entry_is_remembered() {
         app.world().get::<Nav>(focused),
         Some(&Nav::To(Menu::Settings))
     );
-    assert_eq!(app.world().get::<Entry>(focused), Some(&Entry(3)));
+    assert_eq!(app.world().get::<Entry>(focused), Some(&Entry(4)));
 }
 
 /// A button sounds one confirm, a back button and Escape one cancel, a focus move one move.

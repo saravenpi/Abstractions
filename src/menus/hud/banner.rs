@@ -1,7 +1,9 @@
-//! The location banner: the name of a planet and of its system, shown briefly on arrival.
+//! The banner: the name of a planet and of its system, shown briefly on arrival, and the line
+//! that says a player joined or left the session.
 
 use bevy::prelude::*;
 
+use crate::net::{PlayerJoined, PlayerLeft};
 use crate::space::Location;
 use crate::ui::{caps, text, theme};
 use crate::universe::{BodyId, Universe};
@@ -105,6 +107,42 @@ pub(super) fn watch(
     }
     for mut text in &mut systems {
         text.set_if_neq(Text(format!("{star} system").to_uppercase()));
+    }
+}
+
+/// Returns the banner line of a player who joined, or left when `joined` is false.
+pub fn presence(name: &str, joined: bool) -> String {
+    match joined {
+        true => format!("{name} joined"),
+        false => format!("{name} left"),
+    }
+}
+
+/// The players who joined and left since the last frame.
+type Presence<'w, 's> = (
+    MessageReader<'w, 's, PlayerJoined>,
+    MessageReader<'w, 's, PlayerLeft>,
+);
+
+/// Shows the last player who joined or left in the banner, in place of the planet name.
+pub(super) fn announce(
+    (mut joins, mut leaves): Presence,
+    mut banner: ResMut<Banner>,
+    (mut planets, mut systems): Names,
+) {
+    let joined = joins.read().map(|player| presence(&player.name, true));
+    let lines: Vec<String> = joined
+        .chain(leaves.read().map(|player| presence(&player.name, false)))
+        .collect();
+    let Some(line) = lines.last() else {
+        return;
+    };
+    banner.left = SECONDS;
+    for mut text in &mut planets {
+        text.set_if_neq(Text(line.clone()));
+    }
+    for mut text in &mut systems {
+        text.set_if_neq(Text(String::new()));
     }
 }
 

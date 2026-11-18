@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
 use super::Menu;
+use super::multiplayer::typing;
 use super::options::capturing;
 use super::slots::{move_slots, uses_slots};
 use super::worlds::editing;
@@ -42,7 +43,8 @@ impl Trail {
     }
 }
 
-/// Keyboard systems of every open menu. They pause while a key is being rebound or a name typed.
+/// Keyboard systems of every open menu. They pause while a key is being rebound, a name typed
+/// or a server form filled.
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub(super) struct MenuKeys;
 
@@ -105,7 +107,8 @@ pub(super) fn plugin(app: &mut App) {
             MenuKeys
                 .run_if(not(in_state(Menu::None)))
                 .run_if(not(capturing))
-                .run_if(not(editing)),
+                .run_if(not(editing))
+                .run_if(not(typing)),
         )
         .add_systems(
             Update,

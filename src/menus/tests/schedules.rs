@@ -12,13 +12,16 @@ use crate::menus::Menu;
 use crate::screens::{Screen, WarmUp};
 
 /// Every menu state.
-const MENUS: [Menu; 6] = [
+const MENUS: [Menu; 9] = [
     Menu::None,
     Menu::Main,
     Menu::NewGame,
     Menu::Worlds,
     Menu::Settings,
     Menu::Pause,
+    Menu::Multiplayer,
+    Menu::Joining,
+    Menu::Players,
 ];
 
 /// Returns every schedule the screens, the menus, the UI and the computer add systems to.

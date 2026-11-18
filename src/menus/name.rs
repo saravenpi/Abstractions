@@ -5,12 +5,17 @@ pub const MAX_CHARS: usize = 24;
 
 /// Appends the printable characters of `text` and removes one when `backspace` is set.
 pub fn edit(name: &mut String, backspace: bool, text: &str) {
+    edit_to(name, backspace, text, MAX_CHARS);
+}
+
+/// Edits `value` as [`edit`] does, keeping it to at most `cap` characters.
+pub fn edit_to(value: &mut String, backspace: bool, text: &str, cap: usize) {
     if backspace {
-        name.pop();
+        value.pop();
     }
     for c in text.chars().filter(|c| !c.is_control()) {
-        if name.chars().count() < MAX_CHARS {
-            name.push(c);
+        if value.chars().count() < cap {
+            value.push(c);
         }
     }
 }

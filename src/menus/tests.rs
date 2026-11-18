@@ -4,8 +4,11 @@
 mod computer;
 mod flow;
 mod heard;
+mod kept;
 mod look;
+mod multiplayer;
 mod schedules;
+mod session;
 mod settings;
 mod update;
 mod worlds;
@@ -82,6 +85,7 @@ fn app(tag: &str) -> App {
         crate::menus::plugin,
         crate::ui::plugin,
         crate::computer::plugin,
+        crate::net::plugin,
     ));
     for _ in 0..3 {
         app.update();

@@ -1,5 +1,5 @@
-//! The in-game HUD: flight instruments in the ship, the interaction prompt, the location
-//! banner, the compass that points home and to the ship, and the minimap. Everything hides
+//! The in-game HUD: flight instruments in the ship, the interaction prompt, the location and
+//! presence banner, the compass that points home and to the ship, and the minimap. Everything hides
 //! behind menus and the computer.
 
 mod banner;
@@ -12,6 +12,8 @@ mod panel;
 mod prompt;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_banner;
 #[cfg(test)]
 mod tests_climate;
 #[cfg(test)]
@@ -107,6 +109,7 @@ pub(super) fn plugin(app: &mut App) {
                     .run_if(in_control)
                     .run_if(on_timer(Duration::from_secs_f32(CLIMATE_EVERY))),
                 banner::watch.run_if(in_control),
+                banner::announce,
                 banner::fade.run_if(banner::showing),
             )
                 .chain()

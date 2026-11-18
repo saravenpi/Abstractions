@@ -6,9 +6,10 @@ use super::clock::Clock;
 use super::pose::{Core, Limb, Pose};
 use super::tune::{FLUTTER_SPEED, PRONE};
 
-/// Returns the prone trunk: pitched along the flight path, banked into the turn, head up to look ahead.
+/// Returns the prone trunk: pitched along the flight path, all the way round in a loop, banked
+/// into the turn, head up to look ahead.
 fn prone(input: &AvatarPose) -> Pose {
-    let path = input.pitch.clamp(-STEER_LIMIT.1, STEER_LIMIT.1);
+    let path = input.pitch;
     Pose::default()
         .with(Core::Pitch, PRONE - path)
         .with(Core::Roll, input.bank.clamp(-STEER_LIMIT.0, STEER_LIMIT.0))

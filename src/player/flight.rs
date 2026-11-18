@@ -30,6 +30,8 @@ pub(super) struct Air {
     pub(super) clearance: f32,
     /// Unit direction the camera looks along.
     pub(super) look: Vec3,
+    /// Heading and pitch of the view. The pitch passes the vertical in a loop.
+    pub(super) aim: Vec2,
     /// Gravity in metres per second squared.
     pub(super) gravity: f32,
 }
@@ -75,6 +77,7 @@ pub(super) fn input(motion: &Motion, intent: &Intent, air: &Air, on: (bool, bool
         pitch: -intent.forward,
         roll: intent.right,
         look: air.look,
+        aim: Some(air.aim),
         grounded: on.0,
         in_water: on.1,
         density: air.density,

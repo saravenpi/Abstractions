@@ -3,6 +3,8 @@
 //! The player always wins. The rig only turns the camera by itself once the player has left
 //! it alone, and any input takes it back at once.
 
+use std::f32::consts::{FRAC_PI_2, PI};
+
 use bevy::prelude::*;
 
 use super::basis::Stance;
@@ -22,6 +24,24 @@ pub(super) struct Aim {
     trail: Vec2,
     /// Seconds since the player last turned the camera.
     idle: f32,
+}
+
+/// Returns the look angles `yaw` and `pitch` kept where the view may go. A flying body may
+/// look past the vertical and all the way round, which is how it loops. Anything else looks
+/// up or down as far as [`PITCH_LIMIT`]; a view left on its back by a flight is put back on
+/// its feet, facing the way it was looking.
+fn bound(flying: bool, turned: Vec2) -> Heading {
+    let (mut yaw, mut pitch) = (turned.x, turned.y);
+    if flying && pitch.abs() > PI {
+        pitch = wrap(pitch);
+    } else if !flying && pitch.abs() > FRAC_PI_2 + 0.05 {
+        (yaw, pitch) = (yaw + PI, pitch.signum() * PI - pitch);
+    }
+    let limit = if flying { PI } else { PITCH_LIMIT };
+    Heading {
+        yaw,
+        pitch: pitch.clamp(-limit, limit),
+    }
 }
 
 impl Aim {
@@ -70,8 +90,8 @@ impl Aim {
             false => Vec2::X * self.follow(moment, stance, third),
         };
         let before = Vec2::new(self.heading.yaw, self.heading.pitch);
-        self.heading.yaw += asked.x + own.x;
-        self.heading.pitch = (before.y + asked.y + own.y).clamp(-PITCH_LIMIT, PITCH_LIMIT);
+        let turned = before + asked + own;
+        self.heading = bound(moment.target.kind == Kind::Flying, turned);
         let turned = Vec2::new(self.heading.yaw, self.heading.pitch) - before;
         self.trail = trail(self.trail, turned, TRAIL_RATE, stance.dt);
     }

@@ -5,6 +5,7 @@ mod boots;
 mod fly;
 mod glide;
 mod ground;
+mod loops;
 mod measure;
 mod rate;
 mod stall;

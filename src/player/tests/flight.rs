@@ -54,6 +54,7 @@ fn keys_map_to_the_gear() {
         wind: Vec3::X,
         clearance: 9.0,
         look: Vec3::NEG_Z,
+        aim: Vec2::ZERO,
         gravity: 22.0,
     };
     let mut intent = Intent {

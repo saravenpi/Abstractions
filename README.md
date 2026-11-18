@@ -15,7 +15,9 @@ On foot:
 | Space | Jump, or swim up. Pressed again in the air and held: boot boosters, which slow a fall |
 | Shift | Sprint. Held with the wingsuit spread: boot boosters, which make you fly |
 | R | Spread or fold the wingsuit in the air |
-| W A S D in the wingsuit | Dive, climb and turn. The mouse steers too |
+| W S in the wingsuit | Dive and climb. Hold S to fly a loop |
+| A D in the wingsuit | Roll into a banked turn |
+| Q E in the wingsuit | Turn |
 | V | First or third person |
 | F | Board the ship |
 | Look down + W | Dive while swimming |
@@ -26,9 +28,9 @@ In the ship:
 | Input | Action |
 | --- | --- |
 | W S | Nose down, nose up |
-| A D | Turn left, turn right |
-| Q E | Roll |
-| Shift, Ctrl | Throttle up, throttle down. Shift held at full throttle boosts |
+| A D | Roll |
+| Q E | Turn left, turn right |
+| Shift, Ctrl | Throttle up, throttle down. Shift held at full throttle boosts. Ctrl held at idle brakes in space |
 | Space, C | Vertical thrusters up and down |
 | Mouse | Look around. The view comes back to the nose by itself |
 | X | Cut the throttle |

@@ -60,15 +60,18 @@ impl Devices<'_> {
     }
 
     /// Returns the controls for the flight step from the keys: the nose goes down and up, left
-    /// and right, the hull rolls, and the throttle key held at a `full` throttle boosts.
-    fn controls(&self, map: &Keymap, full: bool) -> Controls {
+    /// and right, the hull rolls, the throttle key held at full `throttle` boosts and the
+    /// throttle-down key held at idle brakes.
+    fn controls(&self, map: &Keymap, throttle: f64) -> Controls {
+        let full = throttle >= 1.0;
         let pitch = self.axis(map.ship.pitch_up, map.ship.pitch_down);
-        let yaw = self.axis(map.ship.yaw_left, map.ship.yaw_right);
-        let roll = self.axis(map.ship.roll_left, map.ship.roll_right);
+        let yaw = self.axis(map.ship.turn_left, map.ship.turn_right);
+        let roll = self.axis(map.ship.bank_left, map.ship.bank_right);
         Controls {
             turn: DVec3::new(pitch, yaw, roll),
             lift: self.axis(map.ship.rise, map.ship.sink),
             boost: full && self.keys.pressed(map.ship.throttle_up),
+            brake: throttle <= 0.0 && self.keys.pressed(map.ship.throttle_down),
         }
     }
 }
@@ -87,7 +90,7 @@ pub fn read(
         return;
     }
     let map = devices.settings.controls.keys;
-    helm.controls = devices.controls(&map, ship.throttle >= 1.0);
+    helm.controls = devices.controls(&map, ship.throttle);
     helm.warp = devices.keys.just_pressed(map.ship.warp);
     if helm.warp {
         autopilot.cancel();

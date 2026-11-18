@@ -5,6 +5,8 @@
 //! of the gear only poses the body: the trunk lies prone and banks inside the player entity,
 //! which itself stays upright, so neither the physics body nor the camera ever rolls.
 
+use std::f32::consts::PI;
+
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
@@ -46,7 +48,11 @@ pub fn dress(pose: &mut AvatarPose, state: &FlightState, look: Vec2, deep: bool)
     let airborne = state.mode.airborne();
     pose.mode = mode(pose.mode, state, deep);
     pose.bank = if airborne { state.bank } else { 0.0 };
-    pose.pitch = if airborne { state.pitch } else { 0.0 };
+    pose.pitch = match (airborne, state.pitch.abs() > PI) {
+        (false, _) => 0.0,
+        (true, false) => state.pitch,
+        (true, true) => wrap(state.pitch),
+    };
     pose.thrust = state.power();
     pose.wings = state.spread();
     if airborne {

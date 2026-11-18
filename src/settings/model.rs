@@ -163,20 +163,20 @@ impl Default for Keymap {
 pub struct ShipKeys {
     /// Push the throttle forward. Held at full throttle it boosts the main engine.
     pub throttle_up: KeyCode,
-    /// Pull the throttle back, down to idle.
+    /// Pull the throttle back, down to idle. Held at idle with the flight assist on, it brakes.
     pub throttle_down: KeyCode,
     /// Push the nose down.
     pub pitch_down: KeyCode,
     /// Pull the nose up.
     pub pitch_up: KeyCode,
-    /// Turn the nose left.
-    pub yaw_left: KeyCode,
-    /// Turn the nose right.
-    pub yaw_right: KeyCode,
+    /// Turn the nose left, in the ship and on the wingsuit.
+    pub turn_left: KeyCode,
+    /// Turn the nose right, in the ship and on the wingsuit.
+    pub turn_right: KeyCode,
     /// Roll to the left.
-    pub roll_left: KeyCode,
+    pub bank_left: KeyCode,
     /// Roll to the right.
-    pub roll_right: KeyCode,
+    pub bank_right: KeyCode,
     /// Fire the vertical thrusters upward.
     pub rise: KeyCode,
     /// Fire the vertical thrusters downward.
@@ -198,10 +198,10 @@ impl Default for ShipKeys {
             throttle_down: KeyCode::ControlLeft,
             pitch_down: KeyCode::KeyW,
             pitch_up: KeyCode::KeyS,
-            yaw_left: KeyCode::KeyA,
-            yaw_right: KeyCode::KeyD,
-            roll_left: KeyCode::KeyQ,
-            roll_right: KeyCode::KeyE,
+            turn_left: KeyCode::KeyQ,
+            turn_right: KeyCode::KeyE,
+            bank_left: KeyCode::KeyA,
+            bank_right: KeyCode::KeyD,
             rise: KeyCode::Space,
             sink: KeyCode::KeyC,
             assist: KeyCode::KeyZ,

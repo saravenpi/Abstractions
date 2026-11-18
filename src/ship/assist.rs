@@ -9,7 +9,7 @@ pub const TURN_ACCEL: DVec3 = DVec3::new(2.4, 1.6, 3.6);
 pub const TURN_RATE: DVec3 = DVec3::new(1.1, 0.7, 1.8);
 
 /// How much harder than the pilot the assist may fire the attitude thrusters.
-const ASSIST_GAIN: f64 = 1.5;
+const ASSIST_GAIN: f64 = 2.5;
 
 /// Acceleration of the vertical thrusters in metres per second squared.
 pub const LIFT_ACCEL: f64 = 55.0;
@@ -41,6 +41,46 @@ pub fn steer(spin: DVec3, stick: DVec3, assist: bool, h: f64) -> DVec3 {
     }
     let reach = TURN_ACCEL * (ASSIST_GAIN * h);
     spin + (stick * TURN_RATE - spin).clamp(-reach, reach)
+}
+
+/// Rate per second at which the assist turns the drift of a thrusting ship onto its nose in
+/// space, and the hardest it pushes for that, in metres per second squared.
+const GRIP: (f64, f64) = (2.5, 160.0);
+
+/// Deceleration of the brake in space, in metres per second squared.
+const BRAKE_ACCEL: f64 = 90.0;
+
+/// What the assist holds in space, where no air turns the flight path: the ship as it drifts
+/// past the body it is nearest to.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Hold {
+    /// Velocity relative to the nearest body, in the axes of the frame.
+    pub drift: DVec3,
+    /// Unit direction of the nose, in the axes of the frame.
+    pub nose: DVec3,
+    /// Whether the main engine pushes.
+    pub thrusting: bool,
+    /// Whether the brake is held.
+    pub braking: bool,
+}
+
+impl Hold {
+    /// Returns the acceleration the assist adds over a step of `h` seconds.
+    ///
+    /// Under thrust it sheds the part of the drift that is not along the nose, so the ship goes
+    /// where it points instead of sliding on the way it went before. With the brake it sheds
+    /// all of the drift. With the engine idle it does nothing, so an orbit stays an orbit.
+    pub fn push(&self, h: f64) -> DVec3 {
+        if self.braking {
+            let most = self.drift.length() / h.max(1e-9);
+            return -self.drift.normalize_or_zero() * BRAKE_ACCEL.min(most);
+        }
+        if !self.thrusting {
+            return DVec3::ZERO;
+        }
+        let slide = self.drift - self.nose * self.drift.dot(self.nose).max(0.0);
+        (-slide * GRIP.0).clamp_length_max(GRIP.1)
+    }
 }
 
 /// What the hover needs to know about the ship.

@@ -2,10 +2,10 @@
 
 use bevy::math::{DQuat, DVec3};
 
-use super::assist::{LIFT_ACCEL, steer};
+use super::assist::{Hold, LIFT_ACCEL, NEUTRAL, steer};
 use super::atmo;
 use super::body::Ship;
-use super::wells::{Well, gravity};
+use super::wells::{Well, gravity, nearest};
 use crate::space::Frame;
 use crate::universe::PlanetSpec;
 
@@ -27,6 +27,8 @@ pub struct Controls {
     pub lift: f64,
     /// Whether the boost is held.
     pub boost: bool,
+    /// Whether the brake is held: with the flight assist, the ship sheds its speed in space.
+    pub brake: bool,
 }
 
 /// What surrounds the ship during one step.
@@ -79,7 +81,21 @@ pub fn rotate(ship: &mut Ship, stick: DVec3, torque: DVec3, h: f64) {
 
 /// Advances a ship in a star frame by `h` seconds with semi-implicit Euler: velocity first, then position.
 fn orbit(ship: &mut Ship, controls: &Controls, scene: &Scene, h: f64) -> Report {
-    let thrust = ship.rot * (main_engine(ship, controls) + DVec3::Y * (controls.lift * LIFT_ACCEL));
+    let engines =
+        ship.rot * (main_engine(ship, controls) + DVec3::Y * (controls.lift * LIFT_ACCEL));
+    let around = nearest(scene.wells, ship.pos).map_or(DVec3::ZERO, |well| well.vel);
+    let hold = Hold {
+        drift: ship.vel - around,
+        nose: ship.rot * DVec3::NEG_Z,
+        thrusting: ship.throttle > NEUTRAL,
+        braking: controls.brake,
+    };
+    let thrust = engines
+        + if ship.assist {
+            hold.push(h)
+        } else {
+            DVec3::ZERO
+        };
     ship.vel += (gravity(scene.wells, ship.pos, scene.elapsed) + thrust) * h;
     ship.pos += ship.vel * h;
     rotate(ship, controls.turn, DVec3::ZERO, h);

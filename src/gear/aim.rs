@@ -14,6 +14,9 @@ use super::tune::{
 };
 use crate::render::smoothstep as smooth;
 
+/// Shares of the speed that is ground speed between which the flight path has a heading.
+const STEEP: (f32, f32) = (0.2, 0.5);
+
 /// The attitude the gear steers toward.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct Aim {
@@ -42,21 +45,27 @@ pub(super) fn look_yaw(look: Vec3, fallback: f32) -> f32 {
     (-look.x).atan2(-look.z)
 }
 
-/// Returns how far the flight path heading lies from `yaw`, zero for a body with no ground speed.
-fn path_offset(velocity: Vec3, yaw: f32) -> f32 {
-    if velocity.with_y(0.0).length_squared() < 1.0 {
-        return 0.0;
-    }
-    wrap((-velocity.x).atan2(-velocity.z) - yaw)
+/// Returns the heading and the pitch the view asks for: the angles the caller gave, or the
+/// ones of the look direction.
+fn asked(state: &FlightState, input: &GearInput) -> Vec2 {
+    let level = look_yaw(input.look, state.servo.yaw);
+    input
+        .aim
+        .unwrap_or_else(|| Vec2::new(level, input.look.normalize_or_zero().y.asin()))
 }
 
-/// Returns the nose-up trim that keeps the flight path on the look direction at this speed and bank.
-fn trim(state: &FlightState, input: &GearInput) -> f32 {
-    let speed = state.velocity.length();
-    let level = state.velocity.with_y(0.0).length() / speed.max(1e-3);
-    let load = (level / state.bank.cos().max(0.1)).min(TRIM_LOAD);
-    let slope = lift_slope(speed, grip(input.density));
-    (input.gravity * load / slope.max(1e-3)).min(TRIM_MAX)
+/// Returns how far the flight path heading lies from `yaw`, zero for a body with no ground
+/// speed. A body on its back, past the vertical of a loop, flies against its heading, so its path is read the other way
+/// round, and a path that goes straight up or down has no heading to be off: the offset fades
+/// there, or the top of a loop would read as a half turn to make.
+fn path_offset(state: &FlightState, yaw: f32) -> f32 {
+    let along = state.velocity * state.pitch.cos().signum();
+    let flat = along.with_y(0.0).length();
+    if flat < 1.0 {
+        return 0.0;
+    }
+    let steep = smooth(STEEP.0, STEEP.1, flat / along.length());
+    wrap((-along.x).atan2(-along.z) - yaw) * steep
 }
 
 /// Returns the largest angle of attack the wing may take at this speed: the stall angle, and
@@ -66,10 +75,16 @@ fn lead(state: &FlightState, input: &GearInput) -> f32 {
     AOA_MAX.min(MAX_LOAD * input.gravity / slope.max(1e-3))
 }
 
-/// Returns the pull target: the trim plus the stick, inside what the wing may take.
+/// Returns the pull target: the nose-up trim that keeps the flight path on the look direction
+/// at this speed and bank, plus the stick, inside what the wing may take.
 fn pull(state: &FlightState, input: &GearInput) -> f32 {
+    let speed = state.velocity.length();
+    let level = state.velocity.with_y(0.0).length() / speed.max(1e-3);
+    let load = (level / state.bank.cos().max(0.1)).min(TRIM_LOAD);
+    let slope = lift_slope(speed, grip(input.density));
+    let trim = (input.gravity * load / slope.max(1e-3)).min(TRIM_MAX);
     let stick = input.pitch.clamp(-1.0, 1.0) * PITCH_AUTHORITY;
-    ((trim(state, input) + stick) * state.spread()).clamp(-AOA_MIN, lead(state, input))
+    ((trim + stick) * state.spread()).clamp(-AOA_MIN, lead(state, input))
 }
 
 /// Returns the pitch target: the look direction and the assist, held near the flight path at speed.
@@ -77,14 +92,27 @@ fn pull(state: &FlightState, input: &GearInput) -> f32 {
 /// With the pull, the nose may lead the path by [`lead`] at most. The limits do not wait for
 /// the wings: with them folded the flight frame already lies along the fall, so that spreading
 /// them never meets the air flat on.
+///
+/// Every angle is taken on the turn nearest the pitch the body has, so the nose can follow the
+/// view over the top of a loop and round again. Only a caller that gives a look direction, which
+/// cannot pass the vertical, is held under [`MAX_PITCH`].
 fn pitch(state: &FlightState, input: &GearInput, pull: f32) -> f32 {
-    let wanted = input.look.normalize_or_zero().y.asin() + flare(state, input);
+    let near = |angle: f32| state.pitch + wrap(angle - state.pitch);
+    let wanted = near(asked(state, input).y + flare(state, input));
     let speed = state.velocity.length();
-    let path = (state.velocity.y / speed.max(1e-3)).clamp(-1.0, 1.0).asin();
+    let flat = state.velocity.with_y(0.0).length() * state.pitch.cos().signum();
+    let path = match speed > 1e-3 {
+        true => near(state.velocity.y.atan2(flat)),
+        false => state.pitch,
+    };
     let room = (lead(state, input) - pull).max(0.0);
     let held = wanted.clamp(path - AOA_MIN, path + room);
     let weight = smooth(LIMIT_SPEED.0, LIMIT_SPEED.1, speed);
-    (wanted + (held - wanted) * weight).clamp(-MAX_PITCH, MAX_PITCH)
+    let free = wanted + (held - wanted) * weight;
+    match input.aim {
+        Some(_) => free,
+        None => free.clamp(-MAX_PITCH, MAX_PITCH),
+    }
 }
 
 /// Returns the attitude target for this state and input.
@@ -94,8 +122,8 @@ fn pitch(state: &FlightState, input: &GearInput, pull: f32) -> f32 {
 /// coordinated turn, no rudder) and the body lies prone.
 pub(super) fn aim(state: &FlightState, input: &GearInput) -> Aim {
     let (spread, speed) = (state.spread(), state.velocity.length());
-    let heading = look_yaw(input.look, state.servo.yaw);
-    let offset = path_offset(state.velocity, heading);
+    let heading = asked(state, input).x;
+    let offset = path_offset(state, heading);
     let flat = state.velocity.with_y(0.0).length();
     let follow = spread * smooth(FOLLOW_SPEED.0, FOLLOW_SPEED.1, flat);
     let turn = BANK_GAIN * offset + input.roll.clamp(-1.0, 1.0) * ROLL_AUTHORITY;

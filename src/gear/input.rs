@@ -22,6 +22,10 @@ pub struct GearInput {
     pub roll: f32,
     /// Unit direction the camera looks along. Zero keeps the current heading and a level nose.
     pub look: Vec3,
+    /// Heading and pitch of the view in radians, when the caller has them. The pitch may pass
+    /// the vertical, which a direction cannot say: past it the view is on its back, and the
+    /// wings follow it over the top of a loop. Without it both angles come from `look`.
+    pub aim: Option<Vec2>,
     /// Whether the controller found walkable ground under the body this frame.
     pub grounded: bool,
     /// Whether the body is in water deep enough to swim.
@@ -48,6 +52,7 @@ impl Default for GearInput {
             pitch: 0.0,
             roll: 0.0,
             look: Vec3::NEG_Z,
+            aim: None,
             grounded: false,
             in_water: false,
             density: SEA_DENSITY,

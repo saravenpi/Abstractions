@@ -22,12 +22,14 @@ pub(super) struct View {
 
 impl View {
     /// Returns the view the camera rig will show this frame: the angles it holds, turned by
-    /// what the mouse asks, which the rig applies after the controller ran.
+    /// what the mouse asks, which the rig applies after the controller ran. A view that is
+    /// already past the vertical, as in a loop on the wings, is left where it is.
     pub(super) fn ahead(heading: &Heading, look: &Look, mode: ViewMode) -> Self {
         let pitch = heading.pitch + look.pitch_delta;
+        let bound = PITCH_LIMIT.max(heading.pitch.abs());
         Self {
             yaw: heading.yaw + look.yaw_delta,
-            pitch: pitch.clamp(-PITCH_LIMIT, PITCH_LIMIT),
+            pitch: pitch.clamp(-bound, bound),
             third: mode == ViewMode::Third,
         }
     }

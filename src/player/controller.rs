@@ -112,6 +112,7 @@ impl Env<'_, '_> {
             wind: wind.with_y(0.0),
             clearance: free,
             look: step.view.direction(),
+            aim: Vec2::new(step.view.yaw, step.view.pitch),
             gravity: step.gravity,
         }
     }

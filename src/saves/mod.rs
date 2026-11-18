@@ -5,6 +5,8 @@ mod capture;
 mod format;
 mod id;
 mod model;
+#[cfg(test)]
+mod moon_tests;
 mod resume;
 mod start;
 mod store;

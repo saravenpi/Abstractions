@@ -6,9 +6,10 @@ use bevy::prelude::*;
 
 use super::ground::Ground;
 use super::kind::{Ambient, Kind};
-use super::pick::pick;
+use super::planet::drift;
 use super::pool::{ABOVE, BELOW, HALF_WIDTH, Particle, Pool};
 use super::rng::Rng;
+use crate::universe::PlanetRecord;
 use crate::world::SEA_LEVEL;
 
 /// Closest a fresh particle may appear to the camera, in meters.
@@ -21,6 +22,8 @@ const UPWIND_SHARE: f32 = 0.6;
 pub struct Spawn<'a> {
     /// What surrounds the camera.
     pub ambient: Ambient,
+    /// The record of the planet, which says what its air and its liquid can carry.
+    pub record: PlanetRecord,
     /// The ground around the camera, for heights along the local vertical.
     pub ground: Ground<'a>,
     /// Unit wind direction in the local frame of the camera.
@@ -61,7 +64,7 @@ impl Spawn<'_> {
             let low = ground.max(eye - BELOW).min(high - 0.1);
             return self.rng.range(low, high);
         }
-        let floor = ground.max(SEA_LEVEL);
+        let floor = ground.max(self.ground.sea_level());
         if motion.low {
             return floor + self.rng.range(0.3, 2.0);
         }
@@ -79,7 +82,7 @@ impl Spawn<'_> {
         transform.translation = self.ground.raised(spot, level);
         match kind.is_submerged() {
             true => bed,
-            false => bed.max(SEA_LEVEL),
+            false => bed.max(self.ground.sea_level()),
         }
     }
 }
@@ -92,7 +95,7 @@ pub fn respawn(
     look: (&mut Mesh3d, &mut MeshMaterial3d<StandardMaterial>),
     spawn: &mut Spawn,
 ) {
-    let kind = pick(&spawn.ambient, spawn.rng.next());
+    let kind = drift(&spawn.record, &spawn.ambient, spawn.rng.next());
     let motion = kind.motion();
     transform.scale = Vec3::ZERO;
     particle.kind = kind;

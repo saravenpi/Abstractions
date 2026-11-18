@@ -18,6 +18,8 @@ mod tests_fireflies;
 #[cfg(test)]
 mod tests_globe;
 #[cfg(test)]
+mod tests_planet;
+#[cfg(test)]
 mod tests_rebase;
 
 use bevy::prelude::*;

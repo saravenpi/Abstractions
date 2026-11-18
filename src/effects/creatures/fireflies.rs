@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use super::anim::blink;
 use super::env::{Ctx, Env, Sky};
 use super::gear::{Bind, Gear, rebind};
-use super::habitat::{Species, presence};
+use super::habitat::{Species, presence_on};
 use super::steer::{approach, step_toward};
 use super::wander::{PARKED, Roam, Wander, dormant, pick, place, strayed};
 use crate::screens::Screen;
@@ -208,7 +208,7 @@ pub fn step(
     mut lights: Query<LightData, Without<Firefly>>,
 ) {
     let sky = env.sky();
-    let level = presence(Species::Firefly, &sky.ambient) * COUNT as f32;
+    let level = presence_on(env.record(), Species::Firefly, &sky.ambient) * COUNT as f32;
     let flight = Flight { sky, level };
     let mut rng = *env.rng;
     let mut ctx = Ctx {

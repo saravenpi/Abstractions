@@ -9,7 +9,7 @@ use super::anim::{glide, wing_angle};
 use super::env::{Ctx, Env, Sky};
 use super::flock::{CAPACITY, Flock, Flocks, formation};
 use super::gear::Gear;
-use super::habitat::{Species, presence};
+use super::habitat::{Species, presence_on};
 use super::steer::{approach, yaw};
 use super::wander::PARKED;
 use super::wings::{Spec, Wing, pair, pose};
@@ -87,7 +87,9 @@ pub fn step(
     mut wings: Query<(&mut Transform, &Wing)>,
 ) {
     let sky = env.sky();
-    let levels = [Species::Crow, Species::Gull].map(|species| presence(species, &sky.ambient));
+    let record = *env.record();
+    let levels =
+        [Species::Crow, Species::Gull].map(|species| presence_on(&record, species, &sky.ambient));
     let mut rng = *env.rng;
     let mut ctx = Ctx {
         ground: env.ground(),

@@ -5,7 +5,6 @@ use std::f32::consts::TAU;
 use bevy::prelude::*;
 
 use super::env::Ctx;
-use crate::world::SEA_LEVEL;
 
 /// Where a small flyer is going and what it is doing.
 #[derive(Component, Debug, Clone, Copy)]
@@ -67,9 +66,9 @@ pub struct Roam {
 }
 
 /// Returns the height above sea level of the ground under render position `at`, with the sea
-/// surface as a floor. This samples the terrain.
+/// surface as a floor where the planet has a sea. This samples the terrain.
 pub fn ground(ctx: &Ctx, at: Vec3) -> f32 {
-    ctx.ground.height(at).max(SEA_LEVEL)
+    ctx.ground.height(at).max(ctx.ground.sea_level())
 }
 
 /// Returns the render position `reach` meters from `base` along local heading `angle`, lifted

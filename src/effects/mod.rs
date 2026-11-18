@@ -9,6 +9,7 @@ mod eye;
 mod ground;
 mod kind;
 mod pick;
+mod planet;
 mod pool;
 mod respawn;
 mod rng;

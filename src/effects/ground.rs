@@ -47,6 +47,12 @@ impl<'a> Ground<'a> {
         self.terrain.height(at.x, at.z)
     }
 
+    /// Returns the height of the liquid surface of the planet, which is below any ground where the planet
+    /// has no sea: the floor under whatever floats or flies.
+    pub fn sea_level(&self) -> f32 {
+        self.terrain.globe().sea_level()
+    }
+
     /// Returns `pos` moved along its vertical to `level` meters above sea level.
     pub fn raised(&self, pos: Vec3, level: f32) -> Vec3 {
         pos + up(self.anchor, pos) * (level - self.altitude(pos))

@@ -3,6 +3,7 @@
 
 use bevy::prelude::*;
 
+use super::shader::streak;
 use super::{DROP_TIME, Drive, ENGAGED, Phase, Sequence};
 
 /// Seconds the drive of the script spools.
@@ -38,14 +39,13 @@ fn play(dt: f32, cut: f32, seconds: f32) -> Vec<Sequence> {
 }
 
 /// Returns the largest change between two frames of `states` of any value the sky, the view
-/// and the engines draw from a state.
+/// and the engines draw from a state. The streak is the one of a near star, a light-year abeam.
 fn largest_step(states: &[Sequence]) -> f32 {
     let drawn = |state: &Sequence| {
         let lens = state.lens(Vec3::NEG_Z);
         let felt = [lens.stars, state.tremor(), state.thrust()];
-        [lens.beta, lens.streak, lens.core, lens.flash]
-            .into_iter()
-            .chain(felt)
+        let near = streak(lens.streak, 1.0, 1.0, 1.0);
+        [lens.beta, near, lens.flash].into_iter().chain(felt)
     };
     let step = |pair: &[Sequence]| {
         let changes = drawn(&pair[0]).zip(drawn(&pair[1]));
@@ -95,10 +95,14 @@ fn the_streak_grows_from_the_star_through_engage() {
     );
     let grown = &states[engage - 1..engage + 120];
     for pair in grown.windows(2) {
-        let step = pair[1].streak() - pair[0].streak();
-        assert!((0.0..0.002).contains(&step), "{step}");
+        let (was, now) = (pair[0].streak(), pair[1].streak());
+        assert!(now >= was && now <= was * 1.25 + 1.0e-7, "{was} {now}");
     }
-    assert!(states[engage].streak() < 0.002 && states[engage + 119].streak() > 0.05);
+    let (first, later) = (states[engage].streak(), states[engage + 119].streak());
+    assert!(
+        first < 1.0e-8 && later > 2.0 * first && later > 0.0,
+        "{first} {later}"
+    );
     assert_eq!(states[engage].phase, Phase::Engage);
 }
 

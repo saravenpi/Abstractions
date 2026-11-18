@@ -1,5 +1,6 @@
 //! The mesh of the dust of a warp: one quad per grain, built once. The quads carry nothing but
-//! their grain number; `starfield.wesl` places, streaks and lights every grain from the flow.
+//! their grain number; `starfield.wesl` places every grain from the flow and draws it as a
+//! thin grey line.
 
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
@@ -32,7 +33,7 @@ pub fn mesh() -> Mesh {
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[0.0, 0.0, -1.0]; count]);
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_1, grains);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, vec![[0.55, 0.55, 0.55, 0.6]; count]);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, vec![[1.0, 1.0, 1.0, 0.6]; count]);
     mesh.insert_indices(Indices::U32(indices));
     mesh
 }

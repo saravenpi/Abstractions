@@ -4,7 +4,8 @@
 //!
 //! The state moves at bounded rates in seconds, never per frame, so a slow frame or a fast
 //! clock gives the same sequence, and a warp cut short falls back from wherever it stands.
-//! The dust of the warp runs by the same clock, at a rate the velocity sets.
+//! The dust of the warp runs by the same clock, at a rate the velocity sets. Nothing in it
+//! runs on a cycle: a star moves on the sky only as far as the flight of the ship moves it.
 
 mod dust;
 mod lens;
@@ -18,13 +19,21 @@ mod tests;
 #[cfg(test)]
 mod tests_dust;
 #[cfg(test)]
+mod tests_grain;
+#[cfg(test)]
 mod tests_optics;
 #[cfg(test)]
 mod tests_sequence;
+#[cfg(test)]
+mod tests_streak;
 
-pub use dust::{LAPS, MOTES};
+pub use dust::MOTES;
+#[cfg(test)]
+pub use dust::{GRAIN, GRAIN_LIGHT};
 pub use lens::Lens;
 pub use optics::CARRIED;
+#[cfg(test)]
+pub use shader::{SIGHT, daylit};
 
 use bevy::prelude::*;
 
@@ -101,6 +110,9 @@ impl Drive {
 }
 
 impl Sequence {
+    /// Seconds a drop-out takes on screen from a full charge, for whoever waits for it to end.
+    pub const DROP: f32 = DROP_TIME;
+
     /// Returns the state `dt` seconds later under `drive`.
     ///
     /// The charge and the velocity follow the drive at bounded rates, falling faster than

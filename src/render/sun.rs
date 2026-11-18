@@ -148,6 +148,7 @@ pub(super) fn track(
     *out.vantage = Vantage::of(&observer, local, planet, camera).moving(velocity);
     *out.sun = SunDir::of(&observer, planet.radius);
     out.sun.lit *= local.eclipse(observer.eye, planet.id, space.clock.seconds);
+    out.sun.lit *= super::starfield::sunlight(observer.center.length(), observer.eye.length());
     out.day.phase = observer.phase();
     memory.phase = Some(out.day.phase);
 }

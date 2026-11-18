@@ -1,6 +1,7 @@
 //! Headless flyovers: the focus flies over a planet at a fixed 60 Hz step while the whole
 //! streaming chain runs, and a probe notes what a player would see load.
 
+mod climb;
 mod fast;
 mod gaps;
 mod probe;

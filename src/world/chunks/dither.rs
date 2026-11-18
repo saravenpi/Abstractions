@@ -3,8 +3,13 @@
 //!
 //! A visibility range fades a mesh with the distance of the camera. A fade over time is the same
 //! range with a margin so wide that the distance no longer matters, moved one level at a time.
+//!
+//! Bevy chooses the dithered pipeline of a mesh once, by whether it has a visibility range then,
+//! and chooses again only when the mesh changes. A dithered pipeline with no range discards every
+//! pixel, so a range that comes or goes marks the mesh changed.
 
 use bevy::camera::visibility::VisibilityRange;
+use bevy::prelude::*;
 
 /// Seconds a fade lasts.
 pub const FADE_SECONDS: f32 = 0.4;
@@ -50,4 +55,20 @@ pub fn range(way: Way, level: u8) -> VisibilityRange {
             use_aabb: false,
         },
     }
+}
+
+/// Gives `part` the visibility range `range`, or takes its range away, and marks its mesh
+/// changed so that Bevy draws it with or without the dither from the next frame on.
+pub fn redither(commands: &mut Commands, part: Entity, range: Option<VisibilityRange>) {
+    commands
+        .entity(part)
+        .queue_silenced(move |mut entity: EntityWorldMut| {
+            match range {
+                Some(range) => entity.insert(range),
+                None => entity.remove::<VisibilityRange>(),
+            };
+            if let Some(mut mesh) = entity.get_mut::<Mesh3d>() {
+                mesh.set_changed();
+            }
+        });
 }

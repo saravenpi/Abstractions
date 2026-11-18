@@ -4,10 +4,9 @@
 
 use std::collections::HashMap;
 
-use bevy::camera::visibility::VisibilityRange;
 use bevy::prelude::*;
 
-use super::dither::{LEVELS, Way, level, range};
+use super::dither::{LEVELS, Way, level, range, redither};
 
 /// One thing that fades: its mesh entities, which way it goes and where it stands.
 struct Fade {
@@ -56,7 +55,7 @@ impl Fades {
         let (way, start) = at;
         self.cancel(commands, root);
         for part in &parts {
-            commands.entity(*part).try_insert(range(way, 0));
+            redither(commands, *part, Some(range(way, 0)));
         }
         let fade = Fade {
             parts,
@@ -77,7 +76,7 @@ impl Fades {
     /// Stops the fade of `root` where it stands and draws it whole again.
     pub fn cancel(&mut self, commands: &mut Commands, root: Entity) {
         for part in self.live.remove(&root).iter().flat_map(|fade| &fade.parts) {
-            commands.entity(*part).try_remove::<VisibilityRange>();
+            redither(commands, *part, None);
         }
     }
 

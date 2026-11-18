@@ -63,8 +63,8 @@ fn threshold(cover: f32) -> f32 {
 }
 
 fn density(noise: f32, cover: f32) -> f32 {
-    let from = threshold(cover);
-    return smoothstep(from, from + EDGE, noise);
+    let start = threshold(cover);
+    return smoothstep(start, start + EDGE, noise);
 }
 
 fn broad_cover(map: texture_cube<f32>, map_sampler: sampler, dir: vec3<f32>, toward_second: f32) -> f32 {

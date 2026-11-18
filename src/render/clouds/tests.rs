@@ -1,10 +1,8 @@
-//! Tests of the cover map and of the cloud crossing: the map holds the cloud field, what the
-//! shaders read from it is what the weather reads, it never steps when a snapshot is replaced,
-//! and the camera is in cloud only where the field holds a cloud.
+//! Tests of the cover map: it holds the cloud field, what the shaders read from it is what the
+//! weather reads, and it never steps when a snapshot is replaced.
 
 use bevy::math::DVec3;
 
-use super::cross::{EASE, crossing_depth, eased};
 use super::map::{CHANNELS, CoverMap, budget, toward_second};
 use crate::universe::{HOME_RADIUS, PlanetRecord};
 use crate::weather::{FACE, Field, Patch, SNAPSHOT, TEXELS, texel};
@@ -108,27 +106,4 @@ fn a_jump_in_time_rebuilds_the_map() {
             "{rate}"
         );
     }
-}
-
-/// The camera is in cloud only where the field holds a cloud: in clear air the depth stays
-/// zero in the very middle of the band, the edge of a puff comes in over about a third of a
-/// second without a flash at any frame rate, and out of the band nothing lingers.
-#[test]
-fn the_whiteout_needs_a_real_cloud() {
-    let band = crossing_depth(1200.0, 900.0, 1500.0);
-    assert_eq!(band, 1.0);
-    assert_eq!(band * eased(0.0, 0.0, band, 0.016), 0.0);
-    for rate in [30.0_f32, 60.0, 144.0] {
-        let (mut around, mut worst) = (0.0_f32, 0.0_f32);
-        for _ in 0..(EASE * rate) as u32 {
-            let next = eased(around, 1.0, band, 1.0 / rate);
-            (worst, around) = (worst.max(next - around), next);
-        }
-        assert!(
-            worst < 0.12 && (0.55..0.7).contains(&around),
-            "{rate}: {worst} {around}"
-        );
-    }
-    assert_eq!(eased(1.0, 0.0, 0.0, 0.016), 0.0);
-    assert_eq!(eased(0.4, 0.4, 1.0, 0.016), 0.4);
 }

@@ -7,6 +7,8 @@ mod maps;
 mod material;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_cross;
 
 use bevy::asset::embedded_asset;
 use bevy::camera::visibility::NoFrustumCulling;
@@ -14,7 +16,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::light::NotShadowCaster;
 use bevy::pbr::MaterialPlugin;
 use bevy::prelude::*;
-use bevy::shader::load_shader_library;
+use bevy::shader::{Shader, load_shader_library};
 
 pub use cross::{CloudCrossing, crossing_depth};
 pub(super) use map::toward_second;
@@ -169,10 +171,13 @@ pub(super) fn drift(
 }
 
 /// Embeds the shaders, registers the material and the cover maps, and runs the layer once the
-/// camera is tracked.
+/// camera is tracked. The module both cloud shaders import is loaded wherever shaders are: a
+/// world without a renderer, as in the tests, has none to load.
 pub(super) fn plugin(app: &mut App) {
     embedded_asset!(app, "clouds.wesl");
-    load_shader_library!(app, "cloud_field.wesl");
+    if app.world().contains_resource::<Assets<Shader>>() {
+        load_shader_library!(app, "cloud_field.wesl");
+    }
     app.add_plugins(MaterialPlugin::<CloudMaterial>::default())
         .init_resource::<CloudCrossing>()
         .init_resource::<CloudMaps>()

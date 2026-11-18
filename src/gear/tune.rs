@@ -19,9 +19,17 @@ pub const AERO: f32 = 0.0453;
 
 /// Drag coefficients of the spread wingsuit along the right, dorsal and nose axes.
 ///
-/// The dorsal one is the wing itself: it makes the lift. Dorsal over nose sets the glide ratio:
-/// `(dorsal - nose) / (2 * sqrt(dorsal * nose))`, 2.75 here.
-pub const WING_DRAG: Vec3 = Vec3::new(0.6, 2.04, 0.0634);
+/// The dorsal one is the wing itself: it makes the lift. On a flow at angle of attack `a` they
+/// give a lift coefficient `(dorsal - nose) * sin(a) * cos(a)` and a drag coefficient
+/// `nose * cos(a)^2 + dorsal * sin(a)^2`, so the best glide ratio is
+/// `(dorsal - nose) / (2 * sqrt(dorsal * nose))`, 4.3 here, at about 7 degrees.
+///
+/// Real suits glide at about 2.5 to 3, forward at up to 28 m/s and down at 11 m/s and more
+/// (https://www.jafmonline.net/article_2307_6211080fa89981f66b1a0c9d55c61d0f.pdf,
+/// https://thaiskyadventures.com/blog/wingsuit-flying/). The game is kinder: under
+/// [`REF_GRAVITY`] the hands-off glide of [`GLIDE_REST`] flies at about 30 m/s and sinks at
+/// about 7, the wing stalls under about 15 m/s at [`AOA_MAX`], and a dive runs past 50 m/s.
+pub const WING_DRAG: Vec3 = Vec3::new(0.6, 6.95, 0.091);
 
 /// Drag coefficient of the folded body, the same on every axis.
 pub const BODY_DRAG: f32 = 0.035;
@@ -32,15 +40,15 @@ pub const BODY_DRAG: f32 = 0.035;
 pub const THIN_AIR: f32 = 0.15;
 
 /// Height above the sea, as a share of the atmosphere height, up to which powered flight still
-/// holds its height: about 1,150 m on the home planet, inside the cloud layer.
+/// holds its height: about 1,500 m on the home planet.
 ///
-/// It is not a limit applied anywhere: it is what [`THIN_AIR`] and the wing give, written down
-/// and held by a test. To let the wingsuit climb higher, lower [`THIN_AIR`] and raise this
-/// number with it.
-pub const CEILING_SHARE: f32 = 0.29;
+/// It is not a limit applied anywhere: it is what [`THIN_AIR`], the wing and the thrust give,
+/// written down and held by a test. To let the wingsuit climb higher, lower [`THIN_AIR`] and
+/// raise this number with it.
+pub const CEILING_SHARE: f32 = 0.38;
 
 /// Booster thrust in powered flight, as a share of the local weight.
-pub const THRUST_G: f32 = 0.75;
+pub const THRUST_G: f32 = 0.9;
 
 /// Largest vertical force the boosters top up to at rest, as a share of the weight. Well below
 /// 1, so that the body can never hover or rise on the boosters alone.
@@ -89,6 +97,10 @@ pub const THRUST_TIME: f32 = 0.25;
 /// Natural frequency of the critically damped pitch response, in radians per second.
 pub const PITCH_RATE: f32 = 9.0;
 
+/// Natural frequency of the critically damped pull, in radians per second: the angle of
+/// attack answers faster than the flight frame turns, as a wing does.
+pub const PULL_RATE: f32 = 18.0;
+
 /// Natural frequency of the critically damped bank response, in radians per second.
 pub const BANK_RATE: f32 = 6.0;
 
@@ -104,14 +116,27 @@ pub const MAX_PITCH: f32 = 1.4;
 /// Steepest bank angle, in radians.
 pub const MAX_BANK: f32 = 1.13;
 
-/// Bank angle per radian of heading error between the look direction and the flight path.
-pub const BANK_GAIN: f32 = 1.6;
-
 /// Pitch a full stick adds to the look direction, in radians.
 pub const PITCH_AUTHORITY: f32 = 0.5;
 
-/// Bank a full stick adds, in radians.
-pub const ROLL_AUTHORITY: f32 = 0.9;
+/// Bank a full roll stick holds, in radians (40 degrees): a turn of about 0.6 rad/s in a glide.
+pub const ROLL_AUTHORITY: f32 = 0.7;
+
+/// Glide ratio of the flight path a body on its wings alone eases back to with the keys let
+/// go: just under the best, on its fast side, where the speed holds steady by itself.
+pub const GLIDE_REST: f32 = 4.0;
+
+/// Steepest climb in radians powered flight holds with the keys let go.
+pub const CLIMB_HOLD: f32 = 0.5;
+
+/// Rate in radians per second at which a held pitch key turns the course.
+pub const COURSE_RATE: f32 = 1.2;
+
+/// Rate per second at which the course eases back to rest with the keys let go.
+pub const COURSE_EASE: f32 = 1.5;
+
+/// Farthest the course may lead the flight frame, in radians.
+pub const COURSE_LEASH: f32 = 0.9;
 
 /// Largest angle of attack the nose may hold above the flight path, in radians (18 degrees).
 pub const AOA_MAX: f32 = 0.314;
@@ -124,6 +149,9 @@ pub const MAX_LOAD: f32 = 4.0;
 
 /// Largest nose-up trim that holds the flight path on the look direction, in radians.
 pub const TRIM_MAX: f32 = 0.2;
+
+/// Load in g per radian the wings pull to bring the flight path onto the asked pitch.
+pub const PATH_LOAD: f32 = 4.0;
 
 /// Largest load factor the trim compensates for in a banked turn.
 pub const TRIM_LOAD: f32 = 2.5;

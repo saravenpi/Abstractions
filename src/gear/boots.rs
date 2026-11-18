@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use super::aero::{bite, drag, grip};
 use super::aim::look_yaw;
+use super::course::ahead;
 use super::input::GearInput;
 use super::state::FlightState;
 use super::tune::{
@@ -42,11 +43,11 @@ fn braking(state: &FlightState, input: &GearInput) -> Vec3 {
     drift + Vec3::Y * brake(state.velocity.y, input.gravity)
 }
 
-/// Returns the unit direction of the thrust: the nose, turned a little toward the look direction.
-fn thrust_direction(state: &FlightState, look: Vec3) -> Vec3 {
+/// Returns the unit direction of the thrust: the nose, turned a little toward the course.
+fn thrust_direction(state: &FlightState) -> Vec3 {
     let nose = state.nose();
-    let lead = (look.normalize_or_zero() - nose) * VECTORING;
-    (nose + lead.clamp_length_max(VECTOR_LIMIT) * look.length().min(1.0)).normalize_or(nose)
+    let lead = (ahead(state) - nose) * VECTORING;
+    (nose + lead.clamp_length_max(VECTOR_LIMIT)).normalize_or(nose)
 }
 
 /// Returns the acceleration of the boots with the wings spread, at a height where they have
@@ -56,7 +57,7 @@ fn thrust_direction(state: &FlightState, look: Vec3) -> Vec3 {
 /// until the wings do. The top-up never brings the vertical force to the weight. Thrust and
 /// top-up thin with height exactly as the drag does.
 fn flying(state: &FlightState, input: &GearInput, sigma: f32) -> Vec3 {
-    let thrust = thrust_direction(state, input.look) * (THRUST_G * input.gravity * sigma);
+    let thrust = thrust_direction(state) * (THRUST_G * input.gravity * sigma);
     let carried = thrust.y + drag(state, state.velocity, bite(input)).y;
     let flat = state.velocity.with_y(0.0).length();
     let run = smooth(SUPPORT_RUN_SPEED.0, SUPPORT_RUN_SPEED.1, flat);

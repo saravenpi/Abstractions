@@ -55,6 +55,12 @@ pub(super) fn lift_slope(speed: f32, sigma: f32) -> f32 {
     AERO * sigma * speed * speed * (WING_DRAG.y - WING_DRAG.z)
 }
 
+/// Returns the angle of attack of the best glide of the spread wing, in radians: where the
+/// lift over the drag of [`WING_DRAG`] is largest.
+pub(super) fn best_aoa() -> f32 {
+    (WING_DRAG.z / WING_DRAG.y).sqrt().atan()
+}
+
 /// Returns the angle of attack of `velocity` on the flight frame, zero at rest.
 pub(super) fn angle_of_attack(state: &FlightState, velocity: Vec3) -> f32 {
     if velocity.length_squared() < 1.0 {

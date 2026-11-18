@@ -21,10 +21,11 @@ pub struct GearInput {
     /// Roll stick from -1 (left) to 1 (right). With the boots alone it strafes.
     pub roll: f32,
     /// Unit direction the camera looks along. Zero keeps the current heading and a level nose.
+    /// On the wings it steers nothing: the sticks do, and the view looks around freely.
     pub look: Vec3,
     /// Heading and pitch of the view in radians, when the caller has them. The pitch may pass
-    /// the vertical, which a direction cannot say: past it the view is on its back, and the
-    /// wings follow it over the top of a loop. Without it both angles come from `look`.
+    /// the vertical, which a direction cannot say: past it the view is on its back. Without it
+    /// both angles come from `look`. Like `look`, it steers nothing on the wings.
     pub aim: Option<Vec2>,
     /// Whether the controller found walkable ground under the body this frame.
     pub grounded: bool,

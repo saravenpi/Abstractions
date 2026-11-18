@@ -23,15 +23,22 @@ fn level_flight_is_sustainable() {
     assert!(flight.state.velocity.y.abs() < 0.5);
 }
 
-/// Looking up climbs 200 m, in well under a minute.
+/// The back key tapped for a quarter second sets a climb that holds: 200 m in well under a
+/// minute.
 #[test]
 fn powered_flight_climbs() {
     let mut flight = Flight::new(Mode::Fly, Vec3::new(0.0, 0.0, -40.0));
-    flight.run(&flying(0.3), 25.0);
+    let pull = GearInput {
+        pitch: 1.0,
+        ..flying(0.0)
+    };
+    flight.run(&pull, 0.25);
+    flight.run(&flying(0.0), 25.0);
     assert!(flight.pos.y > 200.0, "climbed {}", flight.pos.y);
 }
 
-/// The level top speed is inside the documented range, set by drag, and a dive is faster.
+/// The level top speed is inside the documented range, set by drag, and a dive held with the
+/// forward key half way is faster.
 #[test]
 fn top_speed_is_in_range() {
     let (level, climb) = settled_flight(0.0);
@@ -41,7 +48,11 @@ fn top_speed_is_in_range() {
     );
     assert!(climb.abs() < 0.5, "not level: {climb}");
     let mut dive = Flight::new(Mode::Fly, Vec3::new(0.0, 0.0, -40.0));
-    dive.run(&flying(-0.9), 30.0);
+    let pushed = GearInput {
+        pitch: -0.5,
+        ..flying(0.0)
+    };
+    dive.run(&pushed, 30.0);
     assert!(
         dive.state.airspeed > level + 15.0,
         "dive {}",
@@ -94,18 +105,19 @@ fn take_off_from_a_jump() {
     }
 }
 
-/// Thrust vectoring turns a slow body toward the look direction faster than its wings could.
+/// The view steers nothing under power either: a slow body looking far to one side flies on
+/// exactly as one looking ahead.
 #[test]
-fn slow_flight_turns_toward_the_look() {
-    let mut flight = Flight::new(Mode::Fly, Vec3::new(0.0, 0.0, -6.0));
-    let input = GearInput {
-        look: looking(1.2, 0.0),
+fn powered_flight_ignores_the_view() {
+    let ahead = |input: GearInput| {
+        let mut flight = Flight::new(Mode::Fly, Vec3::new(0.0, 0.0, -6.0));
+        flight.run(&input, 1.5);
+        flight.state
+    };
+    let aside = GearInput {
+        look: looking(1.2, 0.4),
+        aim: Some(Vec2::new(1.2, 0.4)),
         ..flying(0.0)
     };
-    flight.run(&input, 1.5);
-    assert!(
-        flight.state.velocity.x < -6.0,
-        "velocity {}",
-        flight.state.velocity
-    );
+    assert_eq!(ahead(aside), ahead(flying(0.0)));
 }

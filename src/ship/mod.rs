@@ -10,6 +10,7 @@ mod atmo;
 mod berth;
 mod board;
 mod body;
+mod clear;
 mod cruise;
 mod deck;
 mod drag;
@@ -17,9 +18,11 @@ mod drive;
 mod flight;
 mod frames;
 mod fx;
+mod gear;
 mod glow;
 mod helm;
 mod landing;
+mod legs;
 mod mesh;
 mod moons;
 mod mooring;
@@ -35,6 +38,7 @@ mod sky;
 mod solid;
 mod spawn;
 mod steer;
+mod strike;
 mod telemetry;
 mod transit;
 mod view;
@@ -89,6 +93,17 @@ pub enum ShipEvent {
     Left,
 }
 
+/// A crash: a touchdown at or above the crash speed of the point that took it, 25 m/s on the
+/// locked gear and 10 m/s on the hull or a folded gear. Nothing damages the ship for it yet;
+/// read it with `MessageReader<Impact>`.
+#[derive(Message, Debug, Clone, Copy, PartialEq)]
+pub struct Impact {
+    /// Approach speed of the point that hit, in metres per second along the ground normal.
+    pub speed: f64,
+    /// Where it hit, in the axes of the surface frame of the planet the ship is on.
+    pub at: bevy::math::DVec3,
+}
+
 /// The stages of the ship systems, in this order in `Update`, while playing with a ship.
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ShipSet {
@@ -123,7 +138,8 @@ fn resources(app: &mut App) {
         .init_resource::<ShipTelemetry>()
         .init_resource::<Hatch>()
         .init_resource::<shake::Buffet>()
-        .add_message::<ShipEvent>();
+        .add_message::<ShipEvent>()
+        .add_message::<Impact>();
 }
 
 /// Registers the systems that read the pilot and fly the ship.
@@ -154,6 +170,7 @@ fn display(app: &mut App) {
     );
     let report = (
         (telemetry::update, fx::feed).chain(),
+        legs::fold,
         route::report,
         glow::glow,
     );

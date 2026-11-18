@@ -3,7 +3,7 @@
 use bevy::mesh::VertexAttributeValues;
 use bevy::prelude::*;
 
-use super::{Skin, hull_meshes, material, plume_mesh};
+use super::{Skin, hinges, hull_meshes, leg_mesh, material, plume_mesh};
 
 /// Returns the positions of a mesh.
 fn positions(mesh: &Mesh) -> Vec<Vec3> {
@@ -19,9 +19,9 @@ fn positions(mesh: &Mesh) -> Vec<Vec3> {
 #[test]
 fn ship_is_low_poly() {
     let meshes = hull_meshes();
-    let plume = plume_mesh();
+    let (plume, leg) = (plume_mesh(), leg_mesh());
     let mut triangles = 0;
-    for mesh in meshes.iter().chain([&plume]) {
+    for mesh in meshes.iter().chain([&plume, &leg, &leg, &leg]) {
         let points = positions(mesh);
         assert!(!points.is_empty() && points.len().is_multiple_of(3));
         triangles += points.len() / 3;
@@ -38,15 +38,16 @@ fn ship_is_low_poly() {
 /// The hull is symmetric, sits above its gear feet and its parts face outward.
 #[test]
 fn hull_faces_outward() {
-    let [hull, _, dark, _, _] = hull_meshes();
+    let [hull, _, _, _, _] = hull_meshes();
+    let (leg, hinge) = (leg_mesh(), hinges()[0]);
     let points = positions(&hull);
     let (low, high) = points.iter().fold((Vec3::MAX, Vec3::MIN), |(lo, hi), p| {
         (lo.min(*p), hi.max(*p))
     });
     assert!((low.x + high.x).abs() < 1e-4, "{low} {high}");
-    let feet = positions(&dark)
+    let feet = positions(&leg)
         .iter()
-        .map(|p| p.y)
+        .map(|p| p.y + hinge.y)
         .fold(f32::MAX, f32::min);
     assert!((feet - super::GEAR[0].y as f32).abs() < 1e-4 && low.y > feet + 0.3);
     let centre = Vec3::new(0.0, 0.1, 0.4);

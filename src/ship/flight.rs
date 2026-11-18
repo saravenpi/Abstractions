@@ -6,6 +6,7 @@ use super::assist::{LIFT_ACCEL, steer};
 use super::atmo;
 use super::body::Ship;
 use super::cruise::Cruise;
+use super::gear::stow;
 use super::wells::{Well, beside, gravity};
 use crate::space::Frame;
 use crate::universe::PlanetSpec;
@@ -51,6 +52,8 @@ pub struct Report {
     pub proper: DVec3,
     /// Speed of a new touchdown in metres per second, zero without one.
     pub impact: f64,
+    /// Where the ship hit the ground, in frame axes, when that touchdown is a crash.
+    pub crash: Option<DVec3>,
     /// Dynamic pressure of the air in pascals.
     pub pressure: f64,
     /// Height of the gear above the ground or the sea in metres, infinite away from a surface.
@@ -62,6 +65,7 @@ impl Default for Report {
         Self {
             proper: DVec3::ZERO,
             impact: 0.0,
+            crash: None,
             pressure: 0.0,
             radar: f64::INFINITY,
         }
@@ -94,6 +98,7 @@ fn hold(ship: &Ship, controls: &Controls, scene: &Scene) -> Cruise {
         boost: controls.boost,
         brake: controls.brake,
         clearance,
+        ground: false,
         grip: 1.0,
     }
 }
@@ -111,6 +116,7 @@ pub fn rotate(ship: &mut Ship, stick: DVec3, torque: DVec3, h: f64) {
 /// cancel the pull of every body in full: the ship hangs where it is left.
 fn orbit(ship: &mut Ship, controls: &Controls, scene: &Scene, h: f64) -> Report {
     let pull = gravity(scene.wells, ship.pos, scene.elapsed);
+    stow(ship, f64::INFINITY, h);
     let (engines, held) = if ship.assist {
         (hold(ship, controls, scene).push(h), -pull)
     } else {

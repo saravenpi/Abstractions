@@ -3,8 +3,9 @@
 
 use bevy::math::{DQuat, DVec3};
 
-use super::assist::{NEUTRAL, airless, level};
+use super::assist::{NEUTRAL, TURN_RATE, airless, level};
 use super::body::Ship;
+use super::clear::guard;
 use super::cruise::{AIR_GRIP, Cruise};
 use super::deck::{self, grounded};
 use super::drag::{density, pressure, slow, stability};
@@ -54,20 +55,45 @@ fn engines(ship: &Ship, controls: &Controls, touch: &Contact, hold: (DVec3, f64)
         boost: controls.boost,
         brake: controls.brake,
         clearance: touch.radar,
+        ground: touch.normal != DVec3::ZERO,
         grip: hold.1,
     };
     cruise.push(h) - hold.0
 }
 
-/// Returns the stick the attitude thrusters get: the one of the pilot, or with the assist on,
-/// the engines idle and the stick released in the air, the one that levels the ship.
+/// Height in metres of the gear above the ground and speed in metres per second under which
+/// the assist also levels a ship under way once the stick is released, and the largest tilt
+/// in radians it levels from there: a steeper climb or dive is kept, as Elite Dangerous does
+/// within 30 degrees of the horizon (https://community.elitedangerous.com/en/node/348).
+const AUTO_LEVEL: (f64, f64, f64) = (150.0, 30.0, std::f64::consts::FRAC_PI_6);
+
+/// Share of the yaw rate of the attitude thrusters a landed or touching ship turns on the spot
+/// at, on the yaw or the roll keys: 0.6 radians per second.
+const TAXI: f64 = 0.85;
+
+/// Returns true when the assist levels a ship whose stick is released: always with the
+/// engines idle, and under way when it is near the ground, slow and within [`AUTO_LEVEL`].
+fn levels(ship: &Ship, touch: &Contact) -> bool {
+    let up = ship.pos.normalize();
+    let tilt = (ship.rot * DVec3::Y).dot(up).clamp(-1.0, 1.0).acos();
+    let near = touch.radar < AUTO_LEVEL.0 && ship.vel.length() < AUTO_LEVEL.1;
+    ship.throttle < NEUTRAL || (near && tilt < AUTO_LEVEL.2)
+}
+
+/// Returns the stick the attitude thrusters get. Without assist it is the pilot's. With it a
+/// ship on the ground only turns on the spot, a released stick levels the ship where
+/// [`levels`] says so, and near the ground no part of the stick swings the hull into it.
 fn stick(ship: &Ship, controls: &Controls, touch: &Contact) -> DVec3 {
-    let idle = ship.throttle < NEUTRAL && controls.turn == DVec3::ZERO;
-    if ship.assist && idle && !touch.ground {
-        level(ship.rot, ship.pos.normalize())
-    } else {
-        controls.turn
+    if !ship.assist {
+        return controls.turn;
     }
+    if touch.ground {
+        return DVec3::Y * (controls.turn.y + controls.turn.z).clamp(-1.0, 1.0) * TAXI;
+    }
+    if controls.turn == DVec3::ZERO && levels(ship, touch) {
+        return level(ship.rot, ship.pos.normalize());
+    }
+    guard(ship, touch, controls.turn)
 }
 
 /// Turns an assisted ship in the air and its path with the local vertical over the `h` seconds
@@ -82,8 +108,13 @@ fn follow(ship: &mut Ship, touch: &Contact, h: f64) {
     ship.rot = (turn * ship.rot).normalize();
 }
 
-/// Returns the report of a ship at rest on the ground: it feels the ground push against its weight.
-fn parked(ship: &Ship, planet: &PlanetSpec) -> Report {
+/// Returns the report of a ship at rest on the ground, which the assist turns on the spot on
+/// the yaw or roll keys for `h` seconds: it feels the ground push against its weight.
+fn parked(ship: &mut Ship, controls: &Controls, planet: &PlanetSpec, h: f64) -> Report {
+    if ship.assist {
+        let rate = (controls.turn.y + controls.turn.z).clamp(-1.0, 1.0) * TAXI * TURN_RATE.y;
+        ship.rot = (DQuat::from_axis_angle(ship.rot * DVec3::Y, rate * h) * ship.rot).normalize();
+    }
     Report {
         proper: -weight(planet, ship.pos),
         radar: 0.0,
@@ -91,17 +122,38 @@ fn parked(ship: &Ship, planet: &PlanetSpec) -> Report {
     }
 }
 
+/// Books the touchdown of the step on the ship and returns the report of the step, given
+/// `felt`, the acceleration the crew feels and the density of the air.
+fn report(
+    ship: &mut Ship,
+    touch: &Contact,
+    controls: &Controls,
+    felt: (DVec3, f64),
+    h: f64,
+) -> Report {
+    let impact = settle(ship, touch, controls, h);
+    Report {
+        proper: felt.0,
+        impact,
+        crash: (impact > 0.0 && touch.crash).then_some(touch.at),
+        pressure: pressure(felt.1, ship.vel.length()),
+        radar: touch.radar,
+    }
+}
+
 /// Advances a ship in the surface frame of a planet by `h` seconds.
 ///
 /// Semi-implicit Euler: forces from the old position give the new velocity, which moves the ship.
 /// The Coriolis force is applied as an exact turn of the velocity, so it cannot add energy.
+/// The hits of the step change the velocity and the spin at once, before anything else, and
+/// set a ship that is already in the ground back on it.
 pub fn step(ship: &mut Ship, controls: &Controls, land: Land, h: f64) -> Report {
     let (planet, ground) = land;
     if ship.landed && !wakes(ship, controls) && grounded(Some(planet)) {
-        return parked(ship, planet);
+        return parked(ship, controls, planet, h);
     }
     ship.landed = false;
-    let touch = deck::touch(ship, planet, ground);
+    let touch = deck::meet(ship, planet, ground, h);
     let air = density(planet, ship.pos.length() - planet.radius);
     let pull = weight(planet, ship.pos);
     let down = deck::weigh(planet, pull, ship.pos, air);
@@ -119,10 +171,6 @@ pub fn step(ship: &mut Ship, controls: &Controls, land: Land, h: f64) -> Report 
     let turn = stick(ship, controls, &touch);
     rotate(ship, turn, torque, h);
     follow(ship, &touch, h);
-    Report {
-        proper: pushed + (down - pull) + (ship.vel - free) / h,
-        impact: settle(ship, &touch, controls, h),
-        pressure: pressure(air, ship.vel.length()),
-        radar: touch.radar,
-    }
+    let felt = pushed + (down - pull) + (ship.vel - free) / h;
+    report(ship, &touch, controls, (felt, air), h)
 }

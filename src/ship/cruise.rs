@@ -24,6 +24,19 @@ const CLIMB_SHARE: f64 = 0.3;
 /// ship reaches that far under its gear. Above that it grows like the top speed.
 const SINK: (f64, f64) = (1.8, 3.0);
 
+/// Height in metres of the gear above the ground under which a hovering ship that is not sunk
+/// on purpose climbs back, and the climb in metres per second for each metre it is under:
+/// ground that rises under a hovering ship lifts it instead of running into it.
+const FLOOR: (f64, f64) = (1.5, 4.0);
+
+/// Steady climb and sink in metres per second of the vertical stick over a ground with the
+/// lever idle, slowed only by [`descent`] near the ground.
+pub const HOVER_RATES: (f64, f64) = (10.0, 6.0);
+
+/// Height in metres of the gear above the ground up to which those rates hold: above it they
+/// grow with the height, as the top speed does, so that a climb to space does not take all day.
+pub const HOVER_CEILING: f64 = 150.0;
+
 /// Seconds in which the assist closes most of a speed error: after that long, 63 percent is gone.
 const SETTLE: f64 = 0.25;
 
@@ -51,6 +64,12 @@ pub const AIR_GRIP: f64 = 0.6;
 /// nearest surface: slow near the ground or a body, fast in open space.
 pub fn top_speed(clearance: f64) -> f64 {
     (SLOW.0 + clearance.max(0.0) / SLOW.1).min(FAST)
+}
+
+/// Returns the fastest descent in metres per second the assist flies `clearance` metres above
+/// the ground: under the speed that harms the hull near it, faster higher up.
+pub fn descent(clearance: f64) -> f64 {
+    SINK.0 + (clearance - SINK.1).max(0.0) / SLOW.1
 }
 
 /// Returns the acceleration that closes the speed error `err` over a step of `h` seconds
@@ -84,6 +103,9 @@ pub struct Cruise {
     pub brake: bool,
     /// Metres to the nearest surface.
     pub clearance: f64,
+    /// Whether that surface is ground or sea within reach of the gear, which a hovering ship
+    /// keeps off.
+    pub ground: bool,
     /// Share of the push across the nose that is used, from [`AIR_GRIP`] to 1.
     pub grip: f64,
 }
@@ -95,17 +117,37 @@ impl Cruise {
         self.throttle < NEUTRAL || self.brake
     }
 
+    /// Returns the climb in metres per second the vertical stick asks for with a top speed of
+    /// `top`: over a ground with the lever idle the steady rates of [`HOVER_RATES`] up to
+    /// their ceiling and more above it, else a share of the top speed.
+    fn climb(&self, top: f64) -> f64 {
+        if !self.idle() || self.up == DVec3::ZERO {
+            return self.lift * top * CLIMB_SHARE;
+        }
+        let rate = if self.lift > 0.0 {
+            HOVER_RATES.0
+        } else {
+            HOVER_RATES.1
+        };
+        let high = (self.clearance - HOVER_CEILING).max(0.0) / SLOW.1;
+        self.lift * (rate + high * CLIMB_SHARE)
+    }
+
     /// Returns the velocity the pilot asks for: the lever along the nose and the vertical
-    /// stick along `rise`, both as shares of the top speed. Toward the ground it is never
-    /// faster than a descent the gear can take.
+    /// stick along `rise`. Toward the ground it is never faster than a descent the gear can
+    /// take, and a hovering ship that is not sunk keeps its gear [`FLOOR`] above the ground.
     pub fn target(&self) -> DVec3 {
         let boost = if self.boost { BOOST_SPEED } else { 1.0 };
         let top = top_speed(self.clearance) * boost;
         let ahead = if self.idle() { 0.0 } else { self.throttle };
-        let asked = self.nose * (ahead * top) + self.rise * (self.lift * top * CLIMB_SHARE);
-        let room = (self.clearance - SINK.1).max(0.0);
-        let sink = -asked.dot(self.up) - (SINK.0 + room / SLOW.1);
-        asked + self.up * sink.max(0.0)
+        let asked = self.nose * (ahead * top) + self.rise * self.climb(top);
+        let sink = -asked.dot(self.up) - descent(self.clearance);
+        let held = asked + self.up * sink.max(0.0);
+        if !(self.ground && self.idle() && self.lift >= 0.0) {
+            return held;
+        }
+        let floor = (FLOOR.0 - self.clearance) * FLOOR.1;
+        held + self.up * (floor - held.dot(self.up)).max(0.0)
     }
 
     /// Returns the acceleration the assist adds over a step of `h` seconds, gravity and drag

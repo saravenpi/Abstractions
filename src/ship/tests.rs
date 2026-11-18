@@ -3,12 +3,15 @@
 mod air;
 mod airless;
 mod aloft;
+mod crash;
 mod crossing;
 mod cruise;
 mod drive;
 mod fx;
+mod gearing;
 mod giant;
 mod ground;
+mod handling;
 mod helm;
 mod hover;
 mod landed;

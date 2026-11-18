@@ -33,8 +33,12 @@ pub struct Ship {
     pub assist: bool,
     /// State of the warp drive.
     pub warp: Warp,
-    /// Seconds left during which the gear damps weakly, after a landing above the safe speed.
-    pub bounce: f64,
+    /// Extension of the landing gear, from 0 (folded into the hull) to 1 (down and locked).
+    pub gear: f64,
+    /// Whether the gear is on its way up or folded, rather than on its way down or down.
+    pub stowed: bool,
+    /// Whether the flight assist flies the ship in the hover regime rather than in the flight one.
+    pub hover: bool,
     /// Whether any contact point touched the ground on the last step.
     pub touching: bool,
     /// Seconds the ship has been slow and held by the ground or the sea, before it comes to rest.
@@ -55,7 +59,9 @@ impl Ship {
             damage: 0.0,
             assist: true,
             warp: Warp::Off,
-            bounce: 0.0,
+            gear: 1.0,
+            stowed: false,
+            hover: true,
             touching: false,
             calm: 0.0,
         }

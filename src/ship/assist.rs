@@ -52,3 +52,27 @@ pub fn level(rot: DQuat, up: DVec3) -> DVec3 {
     let turn = axis.try_normalize().unwrap_or(DVec3::Z);
     turn * (angle * LEVEL_GAIN).min(1.0)
 }
+
+/// Seconds a held turn key takes to bring its axis from nothing to full deflection.
+pub const RAMP: f64 = 0.35;
+
+/// Returns how far each turn key has been held after `dt` more seconds, from -1 to 1, for keys
+/// that ask for `keys` (-1, 0 or 1 per axis). A released key, or one pressed the other way,
+/// starts again from nothing.
+pub fn ramp(held: DVec3, keys: DVec3, dt: f64) -> DVec3 {
+    let one = |held: f64, key: f64| {
+        let kept = if held * key > 0.0 { held } else { 0.0 };
+        (kept + key * dt / RAMP).clamp(-1.0, 1.0)
+    };
+    DVec3::new(
+        one(held.x, keys.x),
+        one(held.y, keys.y),
+        one(held.z, keys.z),
+    )
+}
+
+/// Returns the stick for keys held as far as `held`: it eases in, so that a tap of a tenth of
+/// a second deflects the stick by under a tenth and a key held for [`RAMP`] fully.
+pub fn eased(held: DVec3) -> DVec3 {
+    held * held.abs()
+}

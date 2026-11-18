@@ -56,9 +56,10 @@ fn steep_slope_lets_the_ship_slide() {
     assert!(!ship.landed && (ship.pos - start).length() > 5.0);
 }
 
-/// A drop from 40 metres bounces and reports damage, and the ship is still in one piece on the ground.
+/// A drop from 40 metres stops dead on the ground instead of bouncing, reports damage, and the
+/// ship is still in one piece on the ground. Until 0.9 it bounced back up at over 2 m/s.
 #[test]
-fn hard_landing_bounces_and_damages() {
+fn hard_landing_stops_dead_and_damages() {
     let planet = planet(6000.0, 4000.0, 1200.0);
     let mut ship = above_pole(&planet, 40.0);
     let (mut hit, mut rebound) = (0.0f64, 0.0f64);
@@ -73,7 +74,7 @@ fn hard_landing_bounces_and_damages() {
         },
     );
     assert!(hit > 20.0, "touched down at {hit}");
-    assert!(rebound > 2.0, "rebound of {rebound}");
+    assert!(rebound < 1.0, "rebound of {rebound}");
     assert!(
         ship.damage > 0.2 && ship.damage <= 1.0,
         "damage {}",

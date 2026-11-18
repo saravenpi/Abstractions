@@ -1,4 +1,5 @@
-//! The shake of the view in rough air: small, smooth and never a jolt.
+//! The shake of the view: in rough air small, smooth and never a jolt, and after a crash a
+//! short hard jolt that dies out in half a second.
 
 use bevy::prelude::*;
 
@@ -16,11 +17,29 @@ const CLOUD_SHARE: f32 = 0.6;
 /// Rate per second at which the shake follows the air.
 pub const FOLLOW: f32 = 3.0;
 
-/// How hard the view shakes, from 0 to 1, eased so that it never steps.
+/// How many times the full shake of rough air a crash shakes the view, and the seconds the
+/// jolt takes to die out.
+pub const JOLT: (f32, f32) = (5.0, 0.5);
+
+/// Crash speed in metres per second that gives the full jolt; slower crashes give less.
+const JOLT_SPEED: f64 = 50.0;
+
+/// How hard the view shakes.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
 pub struct Buffet {
-    /// Strength of the shake.
+    /// Strength of the shake of rough air, from 0 to 1, eased so that it never steps.
     pub level: f32,
+    /// What is left of the jolt of the last crash, from 0 to 1.
+    pub jolt: f32,
+}
+
+/// Returns the jolt after `dt` seconds: what was left of `jolt`, dying out over the time of
+/// [`JOLT`], or the jolt of a crash at `speed` metres per second if one happened.
+pub fn jolted(jolt: f32, speed: Option<f64>, dt: f32) -> f32 {
+    let left = (jolt - dt / JOLT.1).max(0.0);
+    speed.map_or(left, |speed| {
+        left.max((speed / JOLT_SPEED).clamp(0.5, 1.0) as f32)
+    })
 }
 
 /// Returns how hard the air shakes the ship, from 0 to 1, for a depth in the cloud layer from

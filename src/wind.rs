@@ -8,7 +8,11 @@ use std::f32::consts::{PI, TAU};
 
 use bevy::prelude::*;
 
-use crate::space::{Anchor, Shift};
+pub use self::air::{NO_AIR, THICKEST, Thickness, breeze, thickness};
+#[cfg(test)]
+pub use self::air::{PRESSURES, samples};
+use crate::space::{Anchor, Frame, Shift};
+use crate::universe::{BodyId, Universe};
 
 /// Seconds for the wind direction to turn a full circle.
 const TURN_SECONDS: f32 = 900.0;
@@ -78,10 +82,41 @@ impl Veer {
     }
 }
 
-/// Advances the wind with the game clock and keeps it turned with the render anchor.
+/// Returns `wind` as it blows in air of `thickness` against the home planet: its strength
+/// follows [`breeze`], so it is still without air and unchanged at home.
+pub fn carried(wind: Wind, thickness: f32) -> Wind {
+    Wind {
+        strength: (wind.strength * breeze(thickness)).clamp(0.0, 1.0),
+        ..wind
+    }
+}
+
+/// Keeps [`Thickness`] on the air of the planet under the render anchor. The planet is looked
+/// up only when the anchor changes planet or the universe changes.
+fn weigh(
+    anchor: Option<Res<Anchor>>,
+    universe: Option<Res<Universe>>,
+    mut seen: Local<Option<(Universe, BodyId)>>,
+    mut air: ResMut<Thickness>,
+) {
+    let on = anchor.as_deref().map(|anchor| anchor.frame);
+    let (Some(Frame::Surface(body)), Some(universe)) = (on, universe) else {
+        *seen = None;
+        air.set_if_neq(Thickness::default());
+        return;
+    };
+    if *seen != Some((*universe, body)) {
+        *seen = Some((*universe, body));
+        air.set_if_neq(Thickness(thickness(&universe.planet(body).record) as f32));
+    }
+}
+
+/// Advances the wind with the game clock, keeps it turned with the render anchor and lets it
+/// blow as hard as the air of the planet carries it.
 fn blow(
     time: Res<Time>,
     anchor: Option<Res<Anchor>>,
+    air: Res<Thickness>,
     mut veer: Local<Veer>,
     mut wind: ResMut<Wind>,
 ) {
@@ -90,13 +125,16 @@ fn blow(
         Some(anchor) => veer.track(&anchor, clock.direction),
         None => clock.direction,
     };
-    *wind = Wind { direction, ..clock };
+    *wind = carried(Wind { direction, ..clock }, air.0);
 }
 
-/// Registers the wind resource and its system.
+/// Registers the wind and air resources and their systems.
 pub(super) fn plugin(app: &mut App) {
-    app.init_resource::<Wind>().add_systems(Update, blow);
+    app.init_resource::<Wind>()
+        .init_resource::<Thickness>()
+        .add_systems(Update, (weigh, blow).chain());
 }
 
+mod air;
 #[cfg(test)]
 mod tests;

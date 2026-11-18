@@ -14,6 +14,14 @@ pub const SEA_LEVEL: f32 = 0.5;
 /// Level of the drone under water.
 pub const DEEP_LEVEL: f32 = 0.6;
 
+/// Corner in hertz of the sea colour between two waves and what a breaking wave adds, for
+/// water and for molten rock: lava is a rumble with nothing above the bass.
+const WASH_HZ: [(f32, f32); 2] = [(450.0, 1500.0), (55.0, 85.0)];
+
+/// How many times louder than waves the molten shore is driven: so narrow a band of noise
+/// carries little, and the rumble would be lost under the wind.
+const MOLTEN_GAIN: f32 = 3.0;
+
 /// Seconds between two waves washing ashore.
 const WAVE_SECONDS: f32 = 8.3;
 
@@ -38,6 +46,8 @@ pub struct AirCtl {
     pub shore: f32,
     /// Side the shore is on, from -1 (left) to 1 (right).
     pub shore_side: f32,
+    /// Whether the shore is molten rock, which rumbles where water would wash.
+    pub molten: bool,
     /// Depth under water.
     pub submerged: f32,
     /// 1 inside the ship cabin.
@@ -99,7 +109,8 @@ impl Air {
             let lean = 1.0 + 0.2 * gust * (1.0 - 2.0 * side as f32);
             self.wind[side].tune((240.0 + 1000.0 * ctl.wind) * lean, 0.9, self.rate);
             let wash = surge(wave + 0.31 * side as f32);
-            self.sea[side].tune(450.0 + 1500.0 * wash, 0.7, self.rate);
+            let (calm, breaking) = WASH_HZ[usize::from(ctl.molten)];
+            self.sea[side].tune(calm + breaking * wash, 0.7, self.rate);
         }
         self.deep.tune(130.0, 0.8, self.rate);
         let closed = ctl.submerged.max(CABIN_MUFFLE * ctl.cabin);
@@ -112,7 +123,8 @@ impl Air {
         let drone = self.deep.low(raw[0] + raw[1]) * ctl.submerged * DEEP_LEVEL;
         let blow = ctl.wind * ctl.wind.sqrt() * WIND_LEVEL;
         let outside = 1.0 - ctl.space;
-        let sea = stereo(ctl.shore_side, ctl.shore * SEA_LEVEL);
+        let drive = if ctl.molten { MOLTEN_GAIN } else { 1.0 };
+        let sea = stereo(ctl.shore_side, ctl.shore * SEA_LEVEL * drive);
         let mut out = [0.0; 2];
         for side in 0..2 {
             let (low, band) = self.wind[side].run(raw[side]);

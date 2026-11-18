@@ -2,7 +2,7 @@
 
 use bevy::math::{DQuat, DVec3};
 
-use super::assist::{Hover, NEUTRAL, lift};
+use super::assist::{Hold, Hover, NEUTRAL, airless, lift};
 use super::body::Ship;
 use super::drag::{density, pressure, slow, stability};
 use super::flight::{Controls, Report, main_engine, rotate};
@@ -10,6 +10,7 @@ use super::frames::spin_rate;
 use super::landing::{Contact, contact};
 use super::rest::{settle, wakes};
 use crate::universe::PlanetSpec;
+use crate::wind::thickness;
 
 /// A planet and the terrain height in metres above its sea level at a position in its frame.
 pub type Land<'a> = (&'a PlanetSpec, &'a dyn Fn(DVec3) -> f64);
@@ -36,6 +37,20 @@ fn engines(ship: &Ship, controls: &Controls, touch: &Contact, down: DVec3) -> DV
     ship.rot * (main_engine(ship, controls) + DVec3::Y * lift(&hover))
 }
 
+/// Returns what the assist adds over `h` seconds where the air of `planet` is too thin to turn
+/// and slow the ship: the rules it follows in space, against the ground instead of a body.
+/// Nothing in home air or thicker, and nothing with the assist off.
+fn held(ship: &Ship, controls: &Controls, planet: &PlanetSpec, h: f64) -> Option<DVec3> {
+    let share = airless(thickness(&planet.record));
+    let hold = Hold {
+        drift: ship.vel,
+        nose: ship.rot * DVec3::NEG_Z,
+        thrusting: ship.throttle > NEUTRAL,
+        braking: controls.brake,
+    };
+    (ship.assist && share > 0.0).then(|| hold.push(h) * share)
+}
+
 /// Returns the report of a ship at rest on the ground: it feels the ground push against its weight.
 fn parked(ship: &Ship, planet: &PlanetSpec) -> Report {
     Report {
@@ -57,7 +72,8 @@ pub fn step(ship: &mut Ship, controls: &Controls, land: Land, h: f64) -> Report 
     ship.landed = false;
     let touch = contact(ship, planet, ground);
     let down = weight(planet, ship.pos);
-    let pushed = engines(ship, controls, &touch, down) + touch.accel;
+    let driven = engines(ship, controls, &touch, down) + touch.accel;
+    let pushed = held(ship, controls, planet, h).map_or(driven, |hold| driven + hold);
     let air = density(planet, ship.pos.length() - planet.radius);
     let coriolis = DQuat::from_rotation_y(-2.0 * spin_rate(planet) * h);
     let free = coriolis * (ship.vel + (down + pushed) * h);

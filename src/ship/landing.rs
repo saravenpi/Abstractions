@@ -84,6 +84,8 @@ struct Rig<'a> {
     normal: DVec3,
     /// Share of the damping in use.
     damping: f64,
+    /// Whether the planet has a sea to float on.
+    sea: bool,
 }
 
 /// Returns the unit normal of the ground around `pos`, from heights sampled on a cross.
@@ -116,7 +118,7 @@ fn touch(ship: &Ship, rig: &Rig, body: DVec3, kind: usize, out: &mut Contact) {
         out.impact = out.impact.max(closing);
         out.excess = out.excess.max(closing - safe);
     }
-    if height < 0.0 && r < rig.radius {
+    if rig.sea && height < 0.0 && r < rig.radius {
         accel += rig.up * (WATER.0 * (rig.radius - r).min(WATER.1)) - vel * WATER.2;
         out.wet = true;
     }
@@ -128,8 +130,8 @@ fn touch(ship: &Ship, rig: &Rig, body: DVec3, kind: usize, out: &mut Contact) {
 ///
 /// `ground` gives the terrain height in metres above sea level at a position in the planet frame.
 pub fn contact(ship: &Ship, planet: &PlanetSpec, ground: &dyn Fn(DVec3) -> f64) -> Contact {
-    let r = ship.pos.length();
-    let floor = ground(ship.pos).max(0.0);
+    let (r, sea) = (ship.pos.length(), planet.record.ocean > 0.0);
+    let floor = ground(ship.pos).max(if sea { 0.0 } else { f64::NEG_INFINITY });
     let mut out = Contact {
         radar: r - planet.radius - floor - GEAR_DROP,
         ..Contact::default()
@@ -151,6 +153,7 @@ pub fn contact(ship: &Ship, planet: &PlanetSpec, ground: &dyn Fn(DVec3) -> f64) 
         } else {
             1.0
         },
+        sea,
     };
     GEAR.iter().for_each(|&p| touch(ship, &rig, p, 0, &mut out));
     HULL.iter().for_each(|&p| touch(ship, &rig, p, 1, &mut out));

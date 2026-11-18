@@ -3,6 +3,7 @@
 use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 
 use super::cue::AudioCue;
+use super::planet::code;
 use super::scene::AudioScene;
 use crate::settings::Audio as Volumes;
 
@@ -49,10 +50,12 @@ pub enum Param {
     BuddySide,
     /// Nearness of the companion.
     BuddyNear,
+    /// Class of the planet, as [`code`] writes it.
+    Class,
 }
 
 /// Number of [`Param`] values.
-pub const PARAMS: usize = 20;
+pub const PARAMS: usize = 21;
 
 impl Param {
     /// Every parameter, in index order.
@@ -77,6 +80,7 @@ impl Param {
         Param::ShoreSide,
         Param::BuddySide,
         Param::BuddyNear,
+        Param::Class,
     ];
 }
 
@@ -113,6 +117,15 @@ impl Default for Shared {
     }
 }
 
+/// Returns `value` held between 0 and 1, and 0 for a value that is not a number.
+fn unit(value: f32) -> f32 {
+    if value.is_finite() {
+        value.clamp(0.0, 1.0)
+    } else {
+        0.0
+    }
+}
+
 impl Shared {
     /// Stores one value.
     pub fn set(&self, param: Param, value: f32) {
@@ -132,14 +145,8 @@ impl Shared {
     /// Stores the whole scene and the volume settings.
     pub fn publish(&self, scene: &AudioScene, volumes: &Volumes) {
         let flag = |on: bool| f32::from(u8::from(on));
-        let unit = |value: f32| {
-            if value.is_finite() {
-                value.clamp(0.0, 1.0)
-            } else {
-                0.0
-            }
-        };
         self.seed.store(scene.planet_seed, Ordering::Relaxed);
+        self.set(Param::Class, code(scene.class));
         self.set(Param::Master, unit(volumes.master));
         self.set(Param::Music, unit(volumes.music));
         self.set(Param::Effects, unit(volumes.effects));

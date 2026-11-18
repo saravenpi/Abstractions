@@ -4,6 +4,7 @@
 
 use bevy::prelude::*;
 
+use super::input::GearInput;
 use super::state::FlightState;
 use super::tune::{AERO, BODY_DRAG, SEA_DENSITY, THIN_AIR, WING_DRAG};
 
@@ -17,6 +18,15 @@ use super::tune::{AERO, BODY_DRAG, SEA_DENSITY, THIN_AIR, WING_DRAG};
 /// the same at any height, and the ceiling is where the wing can no longer carry the weight.
 pub(super) fn grip(density: f32) -> f32 {
     1.0 - (-(density / SEA_DENSITY).max(0.0) / THIN_AIR).exp()
+}
+
+/// Returns how well the wings and the body bite the air `input` describes: the [`grip`] at this
+/// height times the thickness of the air of the planet. Zero without air, where the wings give
+/// nothing; above 1 in thick air, which carries more and slows more.
+///
+/// Every force of the air is a product with it and nothing is divided by it.
+pub(super) fn bite(input: &GearInput) -> f32 {
+    grip(input.density) * input.air.max(0.0)
 }
 
 /// Returns the drag coefficients along the right, dorsal and nose axes for a wing `spread`.

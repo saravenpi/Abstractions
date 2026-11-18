@@ -94,7 +94,7 @@ pub fn draw(
     mut lines: Query<(&Streak, &mut Transform)>,
 ) {
     let shown = match scene.active {
-        true => strength(scene.state.airspeed, scene.sigma),
+        true => strength(scene.state.airspeed, scene.sigma * (1.0 - scene.thin)),
         false => 0.0,
     };
     *travel = (*travel + scene.state.airspeed * scene.dt / DEPTH).fract();

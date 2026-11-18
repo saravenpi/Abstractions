@@ -145,6 +145,7 @@ impl Rig {
         let stance = Stance::of(target, dt, self.begin(moment));
         self.blend.step(target.kind, &moment.prefs, dt);
         let shot = Shot::of(target, self.blend.person(), self.blend.flight());
+        self.aim.flight = self.blend.flight();
         self.aim.step(moment, &stance, shot.third);
         let look = self.look(target, &stance, &shot);
         self.sway.step(moment, &stance, &shot, look);

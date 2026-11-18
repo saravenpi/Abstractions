@@ -1,4 +1,4 @@
-//! Tests of the wind: its range and its direction across a rebase.
+//! Tests of the wind: its range, its direction across a rebase and how it follows the air.
 
 use std::f64::consts::PI as PI64;
 use std::sync::Arc;
@@ -7,7 +7,7 @@ use bevy::math::{DQuat, DVec3};
 
 use super::*;
 use crate::space::rebased;
-use crate::universe::Universe;
+use crate::universe::{PlanetRecord, Universe};
 use crate::world::globe::Face;
 use crate::world::{Globe, Terrain};
 
@@ -54,4 +54,72 @@ fn wind_is_continuous_across_a_rebase() {
         assert!(change.abs() < 1e-3, "{before} -> {after}");
         assert_eq!(veer.track(&next, blowing), veer.track(&next, blowing));
     }
+}
+
+/// Returns the home record with another air pressure.
+fn air(pressure: f64) -> PlanetRecord {
+    PlanetRecord {
+        pressure,
+        ..PlanetRecord::TEMPERATE
+    }
+}
+
+/// The thickness is the pressure: nothing under the limit, exactly 1 at home, held at the
+/// thickest, never falling as the pressure grows, and nothing for a pressure that is no number.
+#[test]
+fn thickness_follows_the_pressure() {
+    let seen = PRESSURES.map(|pressure| thickness(&air(pressure)));
+    assert_eq!(seen, [0.0, 0.0, 0.3, 1.0, 3.0]);
+    assert_eq!(thickness(&air(40.0)), THICKEST);
+    assert_eq!(thickness(&air(NO_AIR)), NO_AIR);
+    assert_eq!(thickness(&air(f64::NAN)), 0.0);
+    assert_eq!(thickness(&air(-2.0)), 0.0);
+    assert!(seen.windows(2).all(|pair| pair[0] <= pair[1]));
+    let classes = samples().map(|record| thickness(&record) > 0.0);
+    assert_eq!(classes, [true, true, true, true, true, false]);
+}
+
+/// In home air the wind is what the clock gives, bit for bit. Without air it is still, and in
+/// between it never falls as the air thickens. Its direction is never touched.
+#[test]
+fn the_wind_blows_as_hard_as_the_air_carries_it() {
+    for step in 0..500 {
+        let clock = wind_at(step as f32 * 7.3);
+        let blown = PRESSURES.map(|pressure| carried(clock, thickness(&air(pressure)) as f32));
+        assert_eq!(blown[3], clock);
+        assert_eq!((blown[0].strength, blown[1].strength), (0.0, 0.0));
+        assert!(
+            blown
+                .windows(2)
+                .all(|pair| pair[0].strength <= pair[1].strength)
+        );
+        assert!(blown.iter().all(|wind| wind.direction == clock.direction));
+        assert!(
+            blown
+                .iter()
+                .all(|wind| (0.0..=1.0).contains(&wind.strength))
+        );
+    }
+    let gust = Wind {
+        strength: 0.5,
+        ..wind_at(0.0)
+    };
+    assert!(carried(gust, 0.3).strength < 0.5 && carried(gust, 3.0).strength > 0.5);
+    assert_eq!(carried(gust, f32::NAN).strength, 0.0);
+}
+
+/// Without a planet under the anchor the air is the home air, and the wind system leaves the
+/// clock wind as it is.
+#[test]
+fn the_wind_system_keeps_the_home_wind() {
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins).add_plugins(plugin);
+    app.update();
+    app.update();
+    let seconds = app.world().resource::<Time>().elapsed_secs();
+    assert_eq!(*app.world().resource::<Thickness>(), Thickness(1.0));
+    assert_eq!(*app.world().resource::<Wind>(), wind_at(seconds));
+    app.world_mut().insert_resource(Thickness(0.0));
+    app.world_mut().run_system_cached(blow).unwrap();
+    assert_eq!(app.world().resource::<Wind>().strength, 0.0);
 }

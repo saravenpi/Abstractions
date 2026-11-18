@@ -22,7 +22,7 @@ use crate::screens::playing;
 use crate::settings::{Persistent, Settings};
 use crate::space::{Anchor, altitude, local_gravity, on_foot, up};
 use crate::view::{Heading, Look, ViewPrefs, ViewSet};
-use crate::wind::Wind;
+use crate::wind::{Thickness, Wind};
 use crate::world::Terrain;
 
 /// Longest simulated frame, to survive hitches.
@@ -64,6 +64,7 @@ struct Env<'w, 's> {
     anchor: Res<'w, Anchor>,
     terrain: Res<'w, Terrain>,
     wind: Option<Res<'w, Wind>>,
+    air: Option<Res<'w, Thickness>>,
     heading: Res<'w, Heading>,
     look: Res<'w, Look>,
     prefs: Res<'w, ViewPrefs>,
@@ -81,6 +82,7 @@ impl Env<'_, '_> {
             view: View::ahead(&self.heading, &self.look, self.prefs.on_foot),
             height: altitude(&self.anchor, globe, at),
             gravity: local_gravity(&self.anchor, globe, at).length(),
+            air: self.air.as_deref().map_or(1.0, |air| air.0),
         }
     }
 

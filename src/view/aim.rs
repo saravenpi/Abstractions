@@ -24,6 +24,9 @@ pub(super) struct Aim {
     trail: Vec2,
     /// Seconds since the player last turned the camera.
     idle: f32,
+    /// How far the view is that of a flying body, from 0 to 1. Such a view may look all the
+    /// way round, so the third person camera goes over the poles with it.
+    pub flight: f32,
 }
 
 /// Returns the look angles `yaw` and `pitch` kept where the view may go. A flying body may
@@ -93,14 +96,18 @@ impl Aim {
         let turned = before + asked + own;
         self.heading = bound(moment.target.kind == Kind::Flying, turned);
         let turned = Vec2::new(self.heading.yaw, self.heading.pitch) - before;
+        let turned = Vec2::new(turned.x, wrap(turned.y));
         self.trail = trail(self.trail, turned, TRAIL_RATE, stance.dt);
     }
 
     /// Returns the yaw and pitch the camera shows, `third` of the way to a third person view:
     /// first person shows the aim itself, third person trails it and stops short of the poles.
+    /// Behind a flying body it does not stop: a camera held at a pole while the view goes over
+    /// the top of a loop would jump to the other pole when the view comes round.
     pub(super) fn shown(&self, third: f32) -> (f32, f32) {
         let yaw = self.heading.yaw - self.trail.x * third;
         let pitch = self.heading.pitch - self.trail.y * third;
-        (yaw, pitch.lerp(pitch.clamp(-THIRD_DOWN, THIRD_UP), third))
+        let short = pitch.clamp(-THIRD_DOWN, THIRD_UP);
+        (yaw, pitch.lerp(short, third * (1.0 - self.flight)))
     }
 }

@@ -3,6 +3,7 @@
 pub(super) mod bells;
 pub(super) mod harmony;
 pub(super) mod mode;
+pub(super) mod mood;
 pub(super) mod pad;
 pub(super) mod piece;
 pub(super) mod roots;
@@ -15,6 +16,7 @@ use piece::Piece;
 
 use super::dsp::filter::{Lag, Svf, glide, pole};
 use super::dsp::reverb::Reverb;
+use crate::universe::PlanetClass;
 
 /// Seconds for the music level to cover 63 percent of a change: a fade lasts about four times this.
 pub const FADE_SECONDS: f32 = 0.9;
@@ -59,6 +61,8 @@ pub struct Music {
     rate: f32,
     /// The piece being played.
     piece: Piece,
+    /// The class of the planet the listener is at, whose mood the next piece takes.
+    class: PlanetClass,
     /// Its chord progression.
     harmony: Harmony,
     /// Its pad.
@@ -90,6 +94,7 @@ impl Music {
         let mut music = Self {
             rate,
             piece,
+            class: PlanetClass::Island,
             harmony: Harmony::new(piece.scale, piece.lift, seed),
             pad: Pad::new(rate, seed),
             bells: Bells::new(rate, seed, piece.pace.bell_gap),
@@ -108,7 +113,7 @@ impl Music {
 
     /// Replaces the piece in place. Only called while the music is silent.
     fn load(&mut self, seed: u64, home: bool) {
-        self.piece = Piece::new(seed, home);
+        self.piece = Piece::of(seed, home, self.class);
         self.harmony = Harmony::new(self.piece.scale, self.piece.lift, seed);
         self.pad = Pad::new(self.rate, seed);
         self.pad.play(&self.harmony.chord());
@@ -120,11 +125,18 @@ impl Music {
         self.until = self.piece.pace.chord * self.rate;
     }
 
+    /// Tells the engine the class of the planet the listener is at. A piece of another class
+    /// is replaced at the next orders, like the piece of another planet.
+    pub fn dress(&mut self, class: PlanetClass) {
+        self.class = class;
+    }
+
     /// Takes new orders. Call it every `dt` seconds, a few hundred times per second.
     ///
     /// A different planet fades the current piece out, swaps it while silent and fades back in.
     pub fn steer(&mut self, ctl: &MusicCtl, dt: f32) {
-        let other = ctl.seed != self.piece.seed || ctl.home != self.piece.home;
+        let place = (ctl.seed, ctl.home, self.class);
+        let other = place != (self.piece.seed, self.piece.home, self.piece.class);
         if other && self.level.0 == 0.0 {
             self.load(ctl.seed, ctl.home);
         }

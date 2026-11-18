@@ -11,6 +11,7 @@ mod dsp;
 mod feed;
 mod mix;
 mod music;
+mod planet;
 mod scene;
 mod sense;
 mod shared;

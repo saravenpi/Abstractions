@@ -30,8 +30,13 @@ pub struct GearInput {
     pub grounded: bool,
     /// Whether the body is in water deep enough to swim.
     pub in_water: bool,
-    /// Air density in kilograms per cubic metre. See [`air_density`].
+    /// Density in kilograms per cubic metre that home air would have at this height. See
+    /// [`air_density`]. It says how high the gear still works: the boots follow it alone.
     pub density: f32,
+    /// How thick the air of the planet is against the home planet: 0 without air, 1 at home.
+    /// The wings and every other force of the air scale with it on top of `density`; the boots
+    /// do not, so they brake a fall on a planet without air.
+    pub air: f32,
     /// Gravity in metres per second squared, a magnitude.
     pub gravity: f32,
     /// Free height under the body in metres, for the ground assist. Infinite when unknown.
@@ -56,6 +61,7 @@ impl Default for GearInput {
             grounded: false,
             in_water: false,
             density: SEA_DENSITY,
+            air: 1.0,
             gravity: super::tune::REF_GRAVITY,
             clearance: f32::INFINITY,
             assist: 1.0,

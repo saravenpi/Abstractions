@@ -69,10 +69,12 @@ mod tests {
         let calm = waves_for(&Wind {
             direction: Vec2::X,
             strength: 0.0,
+            air: 1.0,
         });
         let gust = waves_for(&Wind {
             direction: Vec2::new(0.6, 0.8),
             strength: 1.0,
+            air: 1.0,
         });
         let sum = |w: &[Wave; WAVE_COUNT]| w.iter().map(|w| w.amplitude).sum::<f32>();
         assert!((sum(&calm) - 0.05).abs() < 1e-6 && (sum(&gust) - 0.18).abs() < 1e-6);

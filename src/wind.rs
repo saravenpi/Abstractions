@@ -27,6 +27,9 @@ pub struct Wind {
     pub direction: Vec2,
     /// Strength from 0 (still) to 1 (strong gust).
     pub strength: f32,
+    /// Share of the standing breeze the air of the planet carries: 0 without air, 1 in the home
+    /// air and in thicker air. It is what leaves smoke, flames and leaves still on a bare rock.
+    pub air: f32,
 }
 
 impl Default for Wind {
@@ -38,9 +41,10 @@ impl Default for Wind {
 impl Wind {
     /// Returns the wind as a velocity in meters per second along the tangent plane of the
     /// anchor, in render axes. Turn it by the tilt of the local vertical for a place away from
-    /// the render origin.
+    /// the render origin. In air it never drops under the standing breeze of 1 m/s; without
+    /// air it is zero.
     pub fn velocity(&self) -> Vec3 {
-        Vec3::new(self.direction.x, 0.0, self.direction.y) * (1.0 + 5.0 * self.strength)
+        Vec3::new(self.direction.x, 0.0, self.direction.y) * (self.air + 5.0 * self.strength)
     }
 }
 
@@ -52,6 +56,7 @@ pub fn wind_at(seconds: f32) -> Wind {
     Wind {
         direction: Vec2::from_angle(angle),
         strength: (0.45 + 0.3 * gust + 0.2 * swell).clamp(0.0, 1.0),
+        air: 1.0,
     }
 }
 
@@ -82,11 +87,12 @@ impl Veer {
     }
 }
 
-/// Returns `wind` as it blows in air of `thickness` against the home planet: its strength
-/// follows [`breeze`], so it is still without air and unchanged at home.
+/// Returns `wind` as it blows in air of `thickness` against the home planet: its strength and
+/// its standing breeze follow [`breeze`], so it is still without air and unchanged at home.
 pub fn carried(wind: Wind, thickness: f32) -> Wind {
     Wind {
         strength: (wind.strength * breeze(thickness)).clamp(0.0, 1.0),
+        air: breeze(thickness).min(1.0),
         ..wind
     }
 }

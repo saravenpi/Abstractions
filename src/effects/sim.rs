@@ -63,13 +63,13 @@ fn scale_of(particle: &Particle, distance: f32) -> Vec3 {
 }
 
 /// Advances one live particle by `dt` seconds: the wind blows along the local horizontal and
-/// the fall follows the local vertical.
+/// the fall follows the local vertical. Without air nothing blows and nothing flutters.
 fn drift(particle: &mut Particle, transform: &mut Transform, env: &Env) {
     let dt = env.time.delta_secs();
     let motion = particle.kind.motion();
     particle.age += dt;
     let t = particle.phase + particle.age * motion.rate;
-    let gust = 0.6 + env.wind.strength;
+    let gust = 0.6 * env.wind.air + env.wind.strength;
     let flutter =
         Vec3::new(t.sin(), 0.4 * (1.7 * t).cos(), (0.8 * t + 1.0).cos()) * motion.sway * gust;
     let velocity = env.wind.velocity() * motion.wind + flutter - Vec3::Y * motion.fall;

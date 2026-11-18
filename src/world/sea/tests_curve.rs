@@ -110,6 +110,7 @@ fn the_sea_is_placed_in_its_seat() {
     let wind = Wind {
         direction: Vec2::X,
         strength: 0.4,
+        air: 1.0,
     };
     let seen = wind_in_seat(&wind, pose.rotation);
     let back = pose.rotation * Vec3::new(seen.direction.x, 0.0, seen.direction.y);

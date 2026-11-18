@@ -1,11 +1,31 @@
 //! Climate: what the planet record means at one place and season, as a pure field.
 //!
 //! Nothing is stored or simulated: every value is a function of the planet, the place and the
-//! season, cheap enough to sample for every vertex and every prop.
+//! season, cheap enough to sample for every vertex and every prop. Tables and rules follow
+//! davudk, procedural-world-generation,
+//! <https://github.com/davudk/procedural-world-generation/blob/main/docs/research/03-climate-biomes.md>.
 
-use bevy::math::{DVec3, Vec2};
+mod bands;
+mod biome;
+mod heat;
+mod rain;
+mod season;
+
+#[cfg(test)]
+mod tests;
+#[cfg(test)]
+mod tests_air;
+#[cfg(test)]
+mod tests_biome;
+#[cfg(test)]
+mod tests_cost;
+
+use bevy::math::{DVec3, Vec2, Vec3};
 
 use crate::universe::PlanetSpec;
+
+pub use biome::{SNOW_LINE, biome, snow};
+pub use season::season;
 
 /// The planet as the climate sees it: its record and the parts of its spec that shape weather.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -26,11 +46,19 @@ pub struct Setting {
     pub radius: f32,
     /// Seed the small variations of the climate are drawn from.
     pub seed: u64,
+    /// For a tidally locked moon, the unit direction in its frame that always faces its planet,
+    /// the centre of its warm side. Nothing for a planet.
+    pub near: Option<Vec3>,
 }
 
 impl Setting {
     /// Returns the setting of a planet or moon.
+    ///
+    /// A moon turns once per orbit, the other way to a planet, so in its own frame its planet
+    /// stays at `-(cos phase, 0, sin phase)`, `phase` being its angle on its orbit at time 0.
     pub fn of(spec: &PlanetSpec) -> Self {
+        let phase = spec.orbit_phase as f32;
+        let locked = spec.host.is_some() && spec.day_seconds < 0.0;
         Self {
             temperature: spec.record.temperature as f32,
             pressure: spec.record.pressure as f32,
@@ -40,6 +68,7 @@ impl Setting {
             gravity: spec.gravity as f32,
             radius: spec.radius as f32,
             seed: spec.seed,
+            near: locked.then(|| -Vec3::new(phase.cos(), 0.0, phase.sin())),
         }
     }
 }
@@ -71,12 +100,15 @@ pub struct Climate {
 /// Returns the climate at `spot` on the planet of `setting` when it is `season` of the way
 /// round its orbit, from 0 to 1.
 ///
-/// Until the climate agent fills it, this is the planet mean everywhere.
+/// The latitude is read from the spin axis and warped by up to 3 degrees of slow noise; the
+/// wind bands follow it, the wetness follows the wind and the belts, and the temperature the
+/// latitude, the season and the height. See the `heat`, `bands` and `rain` modules.
 pub fn at(setting: &Setting, spot: &Spot, season: f32) -> Climate {
-    let _ = (spot, season);
+    let lat = heat::latitude(setting, spot.dir.as_vec3());
+    let wind = bands::wind(setting, lat);
     Climate {
-        temperature: setting.temperature,
-        moisture: setting.ocean,
-        wind: Vec2::ZERO,
+        temperature: heat::temperature(setting, spot, lat, season),
+        moisture: rain::moisture(setting, spot, lat, wind),
+        wind,
     }
 }

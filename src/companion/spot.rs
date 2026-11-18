@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use super::tune::{BEHIND, REACH, RISE, SIDE};
 use crate::space::{Anchor, altitude, up};
-use crate::world::{SEA_LEVEL, Terrain};
+use crate::world::Terrain;
 
 /// Where the player's eyes are and which way they look, in render space.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -65,7 +65,10 @@ impl Probe<'_> {
     /// Returns the height in meters of `pos` above the ground or the water surface, whichever is higher.
     pub fn gap(&self, pos: Vec3) -> f32 {
         let at = self.terrain.locate(self.anchor.to_frame(pos));
-        let floor = self.terrain.height(at.x, at.z).max(SEA_LEVEL);
+        let floor = self
+            .terrain
+            .height(at.x, at.z)
+            .max(self.terrain.globe().sea_level());
         altitude(self.anchor, self.terrain.globe(), pos) - floor
     }
 

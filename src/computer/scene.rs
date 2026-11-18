@@ -4,15 +4,17 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::atlas::Atlas;
-use super::board::Tab;
-use super::format::distance;
-use super::locate::{ship_position, target_position};
+use super::course::{course, crumbs};
+use super::detail::worlds;
+use super::locate::{ship_position, target_position, whereabouts};
 use super::route::{RouteStatus, Target};
 use super::rows::{Line, View};
+use super::tab::Tab;
 use super::track::Known;
 use crate::render::GameCamera;
+use crate::ship::ShipTelemetry;
 use crate::space::{Anchor, Clock, Location, UniPos};
-use crate::universe::Universe;
+use crate::universe::{PlanetSpec, Universe};
 
 /// The world as the computer sees it. Only valid while a world is loaded.
 #[derive(SystemParam)]
@@ -23,6 +25,7 @@ pub(super) struct Scene<'w, 's> {
     location: Res<'w, Location>,
     anchor: Res<'w, Anchor>,
     clock: Res<'w, Clock>,
+    telemetry: Option<Res<'w, ShipTelemetry>>,
     camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
 }
 
@@ -68,15 +71,40 @@ impl Scene<'_, '_> {
         }
     }
 
-    /// Returns the line that names the destination, its distance and the state of the route.
+    /// Returns, for each of `lines`, the planet whose record the computer knows.
+    pub(super) fn worlds(&self, lines: &[Line]) -> Vec<Option<PlanetSpec>> {
+        worlds(&self.universe, &self.atlas, lines)
+    }
+
+    /// Returns the planet, the system and the galaxy the ship is inside.
+    pub(super) fn here(&self) -> [Option<Target>; 3] {
+        let (body, star, galaxy) =
+            whereabouts(&self.universe, self.anchor.frame, self.anchor.origin);
+        [
+            body.map(Target::Body),
+            star.map(Target::Star),
+            galaxy.map(Target::Galaxy),
+        ]
+    }
+
+    /// Returns the breadcrumb of where the ship is, from the galaxy down to the planet.
+    pub(super) fn place(&self) -> String {
+        let inside = self.here().into_iter().rev().flatten();
+        let names: Vec<String> = inside.map(|at| at.name(&self.universe)).collect();
+        crumbs(&names)
+    }
+
+    /// Returns the course line: the destination, its distance, a rough time to get there at
+    /// the speed of the ship, and the state of the route.
     pub(super) fn route(&self, destination: Option<Target>, status: RouteStatus) -> String {
-        let Some(target) = destination else {
-            return format!("No destination - route {}", status.label());
-        };
-        let name = target.name(&self.universe);
-        let gap = target_position(&self.universe, target, self.clock.seconds)
-            .map(|at| distance(at.distance(self.ship())))
-            .unwrap_or_default();
-        format!("Destination {name}, {gap} - route {}", status.label())
+        let name = destination.map(|target| target.name(&self.universe));
+        let at = destination
+            .and_then(|target| target_position(&self.universe, target, self.clock.seconds));
+        let gap = at.map_or(0.0, |at| at.distance(self.ship()));
+        let speed = self
+            .telemetry
+            .as_ref()
+            .map_or(0.0, |ship| ship.orbital_speed);
+        course(name.as_deref().map(|name| (name, gap)), speed, status)
     }
 }

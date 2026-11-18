@@ -2,44 +2,16 @@
 
 use bevy::prelude::*;
 
+use super::route::Target;
 use super::rows::Line;
+use super::sift::Sort;
+use super::tab::Tab;
 use crate::space::UniPos;
 use crate::ui::Window;
+use crate::universe::PlanetSpec;
 
-/// Number of rows drawn at once. A longer table scrolls through them.
+/// Most rows drawn at once. A longer table scrolls through them.
 pub const VISIBLE_ROWS: usize = 12;
-
-/// The three tables of the computer.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Tab {
-    /// The star and planets of the current system.
-    #[default]
-    System,
-    /// The known systems of the current galaxy.
-    Galaxy,
-    /// The known galaxies.
-    Universe,
-}
-
-impl Tab {
-    /// Every tab, in display order.
-    pub const ALL: [Tab; 3] = [Tab::System, Tab::Galaxy, Tab::Universe];
-
-    /// Returns the name shown on the tab.
-    pub fn label(self) -> &'static str {
-        match self {
-            Tab::System => "System",
-            Tab::Galaxy => "Galaxy",
-            Tab::Universe => "Universe",
-        }
-    }
-
-    /// Returns the tab `by` places to the right, wrapping around.
-    pub fn step(self, by: isize) -> Tab {
-        let count = Tab::ALL.len() as isize;
-        Tab::ALL[(self as isize + by).rem_euclid(count) as usize]
-    }
-}
 
 /// What the computer screen shows.
 #[derive(Resource, Debug, Clone, PartialEq, Default)]
@@ -50,6 +22,8 @@ pub struct Board {
     pub heading: String,
     /// Every row of the table. Only [`VISIBLE_ROWS`] of them are drawn.
     pub lines: Vec<Line>,
+    /// For each row, the planet whose record is known, for the readout and the map.
+    pub worlds: Vec<Option<PlanetSpec>>,
     /// Index of the selected row.
     pub cursor: usize,
     /// Index of the first drawn row.
@@ -58,14 +32,33 @@ pub struct Board {
     pub stale: bool,
     /// Where the ship was when the rows were built, for the map.
     pub ship: UniPos,
+    /// Rows the window has room for, or 0 before the panel was sized.
+    pub fit: usize,
+    /// The letters typed to narrow the list to the names that hold them.
+    pub filter: String,
+    /// How the rows are ordered.
+    pub sort: Sort,
+    /// The planet, the system and the galaxy the ship is inside.
+    pub here: [Option<Target>; 3],
 }
 
 impl Board {
+    /// Returns how many rows are drawn at once: what the window has room for, and never
+    /// more than [`VISIBLE_ROWS`].
+    pub fn window(&self) -> usize {
+        match self.fit {
+            0 => VISIBLE_ROWS,
+            fit => fit.min(VISIBLE_ROWS),
+        }
+    }
+
     /// Opens `tab` at its first row and asks for its rows.
     pub fn show(&mut self, tab: Tab) {
         *self = Board {
             tab,
             stale: true,
+            fit: self.fit,
+            sort: self.sort,
             ..default()
         };
     }
@@ -84,7 +77,7 @@ impl Board {
             cursor: self.cursor,
             top: self.top,
         };
-        window.step(self.lines.len(), VISIBLE_ROWS, by);
+        window.step(self.lines.len(), self.window(), by);
         (self.cursor, self.top) = (window.cursor, window.top);
     }
 
@@ -94,7 +87,7 @@ impl Board {
             cursor: self.cursor,
             top: self.top,
         };
-        window.scroll(self.lines.len(), VISIBLE_ROWS, by);
+        window.scroll(self.lines.len(), self.window(), by);
         (self.cursor, self.top) = (window.cursor, window.top);
     }
 

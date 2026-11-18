@@ -92,7 +92,7 @@ fn the_system_and_universe_tables_follow_the_atlas() {
     let visited = system.iter().filter(|line| line.visited);
     let visited: Vec<Target> = visited.map(|line| line.target).collect();
     assert_eq!(visited, [Target::Star(home.star), Target::Body(home)]);
-    assert!(system[1].detail.contains(" - radius ") && system[1].detail.contains(" g - day "));
+    assert!(system[1].detail.contains(" C - radius ") && system[1].detail.contains(" g"));
     let galaxies = view.universe();
     assert_eq!(galaxies.len(), 1 + HOME_NEIGHBOURS);
     assert_eq!(galaxies[0].target, Target::Galaxy(home.star.galaxy));

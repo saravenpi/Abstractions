@@ -2,13 +2,15 @@
 
 use bevy::prelude::*;
 
-use super::board::{Board, Tab, VISIBLE_ROWS};
+use super::board::Board;
 use super::format::distance;
 use super::open::ready;
-use super::route::{Destination, RouteStatus};
+use super::route::{Destination, RouteStatus, Target};
 use super::rows::Line;
 use super::scene::Scene;
-use super::view::{Cell, Part, Slot, Status, Summary, TabLink};
+use super::sift::{self, arrange};
+use super::tab::Tab;
+use super::view::{Cell, Crumbs, Part, Slot, Status, Summary, TabLink};
 use crate::ui::{Icon, Selected, Tone};
 
 /// Seconds between two refreshes of what changes while flying: the distances of the system tab
@@ -25,21 +27,38 @@ fn rebuild(time: Res<Time>, scene: Scene, mut board: ResMut<Board>, mut since: L
     }
     *since = 0.0;
     let (heading, lines) = scene.table(board.tab);
+    let lines = arrange(lines, &board.filter, board.sort);
     board.ship = scene.ship();
+    board.here = scene.here();
+    board.worlds = scene.worlds(&lines);
     board.fill(heading, lines);
 }
 
-/// Returns the text and the tone of one cell of `line`. The destination wears a pin, and a
-/// visited place a check.
-pub(super) fn cell_text(line: &Line, part: Part, chosen: bool) -> (String, Tone) {
-    match (part, chosen, line.visited) {
-        (Part::Mark, true, _) => (Icon::MapPin.glyph(), Tone::Accent),
-        (Part::Mark, false, true) => (Icon::Check.glyph(), Tone::Muted),
-        (Part::Mark, false, false) => (String::new(), Tone::Muted),
-        (Part::Title, true, _) => (line.title.clone(), Tone::Accent),
-        (Part::Title, false, _) => (line.title.clone(), Tone::Plain),
-        (Part::Distance, _, _) => (distance(line.distance), Tone::Plain),
-        (Part::Detail, _, _) => (line.facts().to_string(), Tone::Muted),
+/// Returns the icon of a row: a pin on the destination, the ship where the ship is, and
+/// otherwise what the row is, a star, a planet or a galaxy.
+fn sign(target: Target, chosen: bool, here: bool) -> Icon {
+    match (chosen, here, target) {
+        (true, _, _) => Icon::MapPin,
+        (_, true, _) => Icon::Send,
+        (_, _, Target::Star(_)) => Icon::Star,
+        (_, _, Target::Body(_)) => Icon::Earth,
+        (_, _, Target::Galaxy(_)) => Icon::Map,
+    }
+}
+
+/// Returns the text and the tone of one cell of `line`. The destination and the place of the
+/// ship are marked, and a place never visited is dimmed.
+pub(super) fn cell_text(line: &Line, part: Part, (chosen, here): (bool, bool)) -> (String, Tone) {
+    let seen = match (chosen, line.visited || here) {
+        (true, _) => Tone::Accent,
+        (false, true) => Tone::Plain,
+        (false, false) => Tone::Muted,
+    };
+    match part {
+        Part::Mark => (sign(line.target, chosen, here).glyph(), seen),
+        Part::Title => (line.title.clone(), seen),
+        Part::Distance => (distance(line.distance), Tone::Plain),
+        Part::Detail => (line.facts().to_string(), Tone::Muted),
     }
 }
 
@@ -61,14 +80,18 @@ fn rows(
         let Some(line) = board.at(*slot) else {
             continue;
         };
-        let (shown, wanted) = cell_text(line, *part, destination.0 == Some(line.target));
+        let marks = (
+            destination.0 == Some(line.target),
+            board.here.contains(&Some(line.target)),
+        );
+        let (shown, wanted) = cell_text(line, *part, marks);
         text.set_if_neq(Text(shown));
         tone.set_if_neq(wanted);
     }
     for (slot, mut node, mut selected) in &mut slots {
         let display = match board.at(slot.0) {
-            Some(_) => Display::Flex,
-            None => Display::None,
+            Some(_) if slot.0 < board.window() => Display::Flex,
+            _ => Display::None,
         };
         if node.display != display {
             node.display = display;
@@ -77,14 +100,12 @@ fn rows(
     }
 }
 
-/// Returns the line under the tabs: the table name and which rows of it are drawn.
+/// Returns the line under the tabs: which rows are drawn, their order and the filter.
 fn summary(board: &Board) -> String {
     let (first, count) = (board.top + 1, board.lines.len());
-    let last = (board.top + VISIBLE_ROWS).min(count);
-    match count {
-        0 => format!("{} - nothing charted yet", board.heading),
-        _ => format!("{} - {first} to {last} of {count}", board.heading),
-    }
+    let last = (board.top + board.window()).min(count);
+    let view = (board.filter.as_str(), board.sort);
+    sift::summary(&board.heading, (first, last, count), view)
 }
 
 /// Selects the open tab and writes the summary line, when the table changed.
@@ -108,24 +129,28 @@ fn tabs(
 /// What the route line is drawn from.
 type Route<'w> = (Res<'w, Destination>, Res<'w, RouteStatus>);
 
-/// Writes the destination, its distance and the state of the route: when one of them changes,
-/// and twice a second for the distance.
+/// The lines the course and the place of the ship are written on.
+type Written = Or<(With<Status>, With<Crumbs>)>;
+
+/// Writes the course with its distance and the state of the route, and where the ship is:
+/// when the course or the route changes, and twice a second for the distance.
 fn status(
     time: Res<Time>,
     scene: Scene,
     (destination, route): Route,
     mut since: Local<f32>,
-    mut lines: Query<&mut Text, With<Status>>,
+    mut lines: Query<(&mut Text, Has<Crumbs>), Written>,
 ) {
     *since += time.delta_secs();
-    let empty = lines.iter().any(|text| text.0.is_empty());
+    let empty = lines.iter().any(|(text, _)| text.0.is_empty());
     if !(destination.is_changed() || route.is_changed() || empty || *since >= REFRESH) {
         return;
     }
     *since = 0.0;
-    let shown = scene.route(destination.0, *route);
-    for mut text in &mut lines {
-        text.set_if_neq(Text(shown.clone()));
+    let (shown, place) = (scene.route(destination.0, *route), scene.place());
+    for (mut text, crumbs) in &mut lines {
+        let wanted = if crumbs { &place } else { &shown };
+        text.set_if_neq(Text(wanted.clone()));
     }
 }
 
@@ -133,7 +158,17 @@ fn status(
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         Update,
-        (rebuild, rows, tabs, status, super::map::draw)
+        (
+            rebuild,
+            rows,
+            tabs,
+            status,
+            super::readout::write,
+            (super::pointer::plot, super::glide::ease).chain(),
+            super::draw::draw,
+            (super::glide::slide, super::glide::rule),
+            (super::chrome::fit, super::chrome::offer),
+        )
             .chain()
             .after(super::Input)
             .run_if(ready),

@@ -3,9 +3,9 @@
 use bevy::math::DVec3;
 
 use super::atlas::Atlas;
+use super::detail::{brief, charted};
 use super::format::{distance, gravity};
 use super::route::Target;
-use crate::saves::play_time;
 use crate::space::UniPos;
 use crate::universe::{GalaxyId, GalaxySpec, PlanetSpec, StarId, StarSpec, Universe};
 
@@ -73,16 +73,18 @@ impl View<'_> {
         }
     }
 
-    /// Returns the row of a planet whose star is at `origin`.
+    /// Returns the row of a planet whose star is at `origin`. Its class and its temperature
+    /// show only once the system is visited.
     fn planet(&self, origin: UniPos, planet: &PlanetSpec) -> Line {
+        let target = Target::Body(planet.id);
+        let record = charted(self.atlas, target).then_some(&planet.record);
         let facts = format!(
-            "radius {} - {} - day {}",
+            "{} - radius {} - {}",
+            brief(record),
             distance(planet.radius),
-            gravity(planet.gravity),
-            play_time(planet.day_seconds)
+            gravity(planet.gravity)
         );
         let at = origin + planet.position(self.time);
-        let target = Target::Body(planet.id);
         let title = target.name(self.universe);
         self.line(&title, target, (at, planet.radius), facts)
     }

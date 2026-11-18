@@ -10,15 +10,42 @@ use std::f32::consts::TAU;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::board::Tab;
+use super::lens::Lens;
 use super::rows::Line;
+use super::tab::Tab;
 use crate::space::UniPos;
+use crate::universe::PlanetClass;
 
 /// Share of the half width of the map the farthest thing is drawn at.
 const FILL: f32 = 0.88;
 
 /// Dots that trace one orbit.
 const ORBIT_DOTS: usize = 40;
+
+/// Cells along one side of the grid a class mark is drawn on.
+pub const GRID: u8 = 3;
+
+/// Returns the mark of a class on the map: filled blocks of the grid, each given as the
+/// column and the row of its corner, then its width and its height in cells.
+///
+/// An island world is a full square, an ocean world a ring, a desert a flat bar, an ice world
+/// five flakes, a lava world a cross and a barren world a speck.
+pub const fn mark(class: PlanetClass) -> &'static [[u8; 4]] {
+    match class {
+        PlanetClass::Island => &[[0, 0, 3, 3]],
+        PlanetClass::Ocean => &[[0, 0, 3, 1], [0, 2, 3, 1], [0, 1, 1, 1], [2, 1, 1, 1]],
+        PlanetClass::Desert => &[[0, 1, 3, 1]],
+        PlanetClass::Ice => &[
+            [0, 0, 1, 1],
+            [2, 0, 1, 1],
+            [1, 1, 1, 1],
+            [0, 2, 1, 1],
+            [2, 2, 1, 1],
+        ],
+        PlanetClass::Lava => &[[0, 1, 3, 1], [1, 0, 1, 1], [1, 2, 1, 1]],
+        PlanetClass::Barren => &[[1, 1, 1, 1]],
+    }
+}
 
 /// What a dot of the chart stands for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,6 +98,25 @@ fn field(lines: &[Line], ship: UniPos) -> Vec<(Dot, Vec2)> {
     let mut dots: Vec<(Dot, Vec2)> = lines.iter().enumerate().map(place).collect();
     dots.push((Dot::Ship, Vec2::ZERO));
     dots
+}
+
+/// Returns the mark under the pointer at `pixel`: the row or the ship drawn nearest to it,
+/// within `radius` pixels. The dots of the orbits are not marks.
+pub fn hit(dots: &[(Dot, Vec2)], lens: Lens, pixel: Vec2, radius: f32) -> Option<Dot> {
+    let marks = dots.iter().filter(|(dot, _)| *dot != Dot::Orbit);
+    let near = marks.map(|(dot, at)| (*dot, lens.to_map(*at).distance(pixel)));
+    let inside = near.filter(|(_, gap)| *gap <= radius);
+    inside
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(dot, _)| dot)
+}
+
+/// Returns the metres one chart unit stands for on the chart of `tab`, or nothing for a system
+/// chart, whose orbits are drawn closer together than they are.
+pub fn span(tab: Tab, lines: &[Line], ship: UniPos) -> Option<f64> {
+    let gap = |line: &Line| flat(line.at - ship).length();
+    let reach = lines.iter().map(gap).fold(1.0, f32::max);
+    (tab != Tab::System).then_some(f64::from(reach / FILL))
 }
 
 /// Returns every dot of the chart of `tab` with its place on the map, from -1 to 1 on both

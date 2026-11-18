@@ -80,11 +80,15 @@ mod tests_river;
 #[cfg(test)]
 mod tests_roofs;
 #[cfg(test)]
+mod tests_stall;
+#[cfg(test)]
 mod tests_streets;
 #[cfg(test)]
 mod tests_survey;
 #[cfg(test)]
 mod tests_village;
+#[cfg(test)]
+pub(crate) mod touch;
 mod village;
 
 use avian3d::prelude::*;

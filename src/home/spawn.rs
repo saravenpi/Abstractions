@@ -6,6 +6,7 @@ use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
 use super::base::Base;
+use super::draft::Block;
 use super::glow::Glow;
 use super::tune::SIGHT;
 use super::works::{Kit, Works};
@@ -62,9 +63,9 @@ impl Sight<'_, '_> {
     }
 }
 
-/// Returns the solid boxes of `kit` as one collider in the frame of the base.
-fn solid(kit: &Kit) -> Collider {
-    let shape = |block: &super::draft::Block| {
+/// Returns the solid boxes `blocks` as one collider in the frame of the base.
+pub(super) fn solid(blocks: &[Block]) -> Collider {
+    let shape = |block: &Block| {
         let size = block.size.max(Vec3::splat(0.02));
         (
             block.at,
@@ -72,7 +73,7 @@ fn solid(kit: &Kit) -> Collider {
             Collider::cuboid(size.x, size.y, size.z),
         )
     };
-    Collider::compound(kit.blocks.iter().map(shape).collect())
+    Collider::compound(blocks.iter().map(shape).collect())
 }
 
 /// Returns the root of the base: its pose on the planet, in the anchor frame and on screen, and
@@ -95,7 +96,7 @@ fn root(base: &Base, kit: &Kit, anchor: &Anchor, link: &Link) -> impl Bundle {
         Name::new("Home base"),
         Home::default(),
         (sited, placed, transform, Visibility::default()),
-        (RigidBody::Static, solid(kit)),
+        (RigidBody::Static, solid(&kit.blocks)),
         DespawnOnEnter(Screen::Title),
     )
 }

@@ -2,7 +2,7 @@
 
 Abstractions is growing from an island game into a universe you explore as a small robot, with a second robot for company. This file says what each version adds and in what order.
 
-Versions after 0.6 are plans, not promises. Order and scope can change.
+Versions after 0.8 are plans, not promises. Order and scope can change.
 
 ## The setting
 
@@ -21,7 +21,7 @@ You are a human who never leaves a control container on the planet Kodya, in the
 
 An endless seeded archipelago on a flat world: six biomes, villages with interiors, ruins and camps, a sea with reefs and kelp, a day and night cycle, birds, butterflies and fireflies.
 
-## 0.6: the universe (in development)
+## 0.6: the universe (released)
 
 The foundation for everything after it.
 
@@ -42,7 +42,11 @@ The foundation for everything after it.
 
 In 0.6 every planet uses the same island generator. Planets differ by seed, size, gravity, day length, star and music, not by kind.
 
-## 0.7: physical planets
+## 0.7: flight and feel (released)
+
+A pass on how the game plays once you are in it: a ship steered with the keys, roll and loops on the wingsuit, a flight assist that makes the ship go where it points, a compass and a map, and light derived from the real star.
+
+## 0.8: physical planets (in development)
 
 Planets get a kind, and the kind comes from physics.
 
@@ -54,9 +58,11 @@ Planets get a kind, and the kind comes from physics.
 - **Planet classes.** Ocean, island, desert, ice, lava, barren and gas giant, each with its own palette, sea level and sky.
 - **Moons and rings.** Moons you can land on. Tidal heating gives a moon a second route to being warm.
 
+0.8.0 brings the record, the habitable zone and the six solid classes, with their ground, sea, sky, flight and sound. 0.8.1 adds gas giants, moons and rings.
+
 One record per planet feeds everything below it. This is the version that makes the tenth landing different from the first.
 
-## 0.8: climate and terrain
+## 0.9: climate and terrain
 
 The planet record shapes the ground.
 
@@ -71,7 +77,7 @@ The planet record shapes the ground.
 
 Terrain parameters become functions of the planet record, not constants.
 
-## 0.9: ecosystems
+## 0.10: ecosystems
 
 Life that fits its planet.
 
@@ -86,7 +92,7 @@ Life that fits its planet.
 
 Species are generated once per planet, then placed by the same scatter rules that place trees today.
 
-## 0.10: life odds
+## 0.11: life odds
 
 A realistic universe would be almost empty. This one is tuned to be worth exploring.
 
@@ -97,7 +103,7 @@ A realistic universe would be almost empty. This one is tuned to be worth explor
 
 The dice are biased, not the physics. Every planet stays coherent; living ones are just more common than in reality.
 
-## 0.11: sapient species
+## 0.12: sapient species
 
 Some worlds have people.
 
@@ -108,7 +114,7 @@ Some worlds have people.
 - **Villages and cities** take their style from the culture, not from the biome.
 - **Technology levels** from stone to spaceflight.
 
-## 0.12: religion and history
+## 0.13: religion and history
 
 What a people believes and remembers, shown in the world.
 
@@ -118,7 +124,7 @@ What a people believes and remembers, shown in the world.
 - **Told through things:** shrines, ruins, murals, inscriptions, festivals, the way a temple is built.
 - **A myth can shape the land.** A story about a fallen star can put a crater where the story says.
 
-## 0.13: contact
+## 0.14: contact
 
 Meeting them.
 
@@ -141,5 +147,5 @@ This builds on the board computer and the discovery atlas from 0.6.
 
 ## Research behind this
 
-The techniques and sources for 0.7 to 0.12 are in the research report:
+The techniques and sources for 0.8 to 0.13 are in the research report:
 https://mycelium.facile.studio/artifacts/2026-11-17-procedural-universe-for-abstractions-research-and-roadmap-november-2026-5fb680

@@ -28,11 +28,13 @@ pub(super) enum Gauge {
     Warp,
     /// Where the board computer is set to go.
     Destination,
+    /// Landing gear.
+    Gear,
 }
 
 impl Gauge {
     /// Every instrument, in display order, with its label.
-    pub(super) const ALL: [(Gauge, &'static str); 9] = [
+    pub(super) const ALL: [(Gauge, &'static str); 10] = [
         (Gauge::Altitude, "ALT"),
         (Gauge::Speed, "SPD"),
         (Gauge::Throttle, "THR"),
@@ -42,6 +44,7 @@ impl Gauge {
         (Gauge::Periapsis, "PERI"),
         (Gauge::Warp, "WARP"),
         (Gauge::Destination, "DEST"),
+        (Gauge::Gear, "GEAR"),
     ];
 }
 
@@ -56,6 +59,8 @@ pub struct Flight {
     pub destination: Option<(String, f64)>,
     /// Whether the ship flies over a gas giant, which has a cloud deck and no ground.
     pub giant: bool,
+    /// Extension of the landing gear, from 0 (folded) to 1 (down and locked), with a ship.
+    pub gear: Option<f64>,
 }
 
 /// Returns the text of the speed instrument: the warp speed in warp, the speed over the surface
@@ -79,8 +84,21 @@ fn destination_text(flight: &Flight) -> Option<String> {
     })
 }
 
+/// Returns the text of the gear instrument near a planet with ground: up while folded, down
+/// once locked, moving on its way. Nothing in space or over a gas giant, where no gear helps.
+fn gear_text(flight: &Flight) -> Option<&'static str> {
+    let near = matches!(flight.telemetry.frame, Frame::Surface(_)) && !flight.giant;
+    let gear = flight.gear.filter(|_| near)?;
+    Some(match gear {
+        folded if folded <= 0.0 => "up",
+        locked if locked >= 1.0 => "down",
+        _ => "moving",
+    })
+}
+
 /// Returns what an instrument shows, or nothing when it has nothing to show: no orbit outside
-/// space, no warp line while the drive is off, no destination until one is set.
+/// space, no warp line while the drive is off, no destination until one is set, no gear away
+/// from a planet.
 pub fn reading(gauge: Gauge, flight: &Flight) -> Option<String> {
     let t = &flight.telemetry;
     let in_orbit = matches!(t.frame, Frame::System(_)) && !t.landed;
@@ -95,6 +113,7 @@ pub fn reading(gauge: Gauge, flight: &Flight) -> Option<String> {
         Gauge::Periapsis => t.periapsis.filter(|_| in_orbit).map(height),
         Gauge::Warp => warp_text(t.warp),
         Gauge::Destination => destination_text(flight),
+        Gauge::Gear => gear_text(flight).map(str::to_string),
     }
 }
 

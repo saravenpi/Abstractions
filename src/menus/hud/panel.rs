@@ -122,6 +122,7 @@ impl Source<'_, '_> {
             route: *self.route,
             destination,
             giant,
+            gear: self.ships.iter().next().map(|ship| ship.gear),
         }
     }
 }

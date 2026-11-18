@@ -64,20 +64,37 @@ jobs:
           fi
           NAMED="${ASSET/abstractions-/abstractions-$VERSION-}"
           cp "$ASSET" "$NAMED"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            PLAIN="abstractions-$VERSION-$PLATFORM.exe"
+            cp "target/$TARGET/release/abstractions.exe" "$PLAIN"
+          else
+            PLAIN="abstractions-$VERSION-$PLATFORM"
+            cp "target/$TARGET/release/abstractions" "$PLAIN"
+          fi
+          SUMS="SHA256SUMS-$PLATFORM-$VERSION.txt"
+          sha256sum "$ASSET" "$NAMED" "$PLAIN" > "$SUMS"
+          cat "$SUMS"
           echo "ASSET=$ASSET" >> "$GITHUB_ENV"
           echo "NAMED=$NAMED" >> "$GITHUB_ENV"
+          echo "PLAIN=$PLAIN" >> "$GITHUB_ENV"
+          echo "SUMS=$SUMS" >> "$GITHUB_ENV"
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
             ${{ env.ASSET }}
             ${{ env.NAMED }}
+            ${{ env.PLAIN }}
+            ${{ env.SUMS }}
           generate_release_notes: true
       - uses: actions/upload-artifact@v4
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         with:
           name: ${{ matrix.platform }}
-          path: ${{ env.ASSET }}
+          path: |
+            ${{ env.ASSET }}
+            ${{ env.PLAIN }}
+            ${{ env.SUMS }}
 
   macos:
     runs-on: macos-latest
@@ -105,17 +122,24 @@ jobs:
             target/x86_64-apple-darwin/release/abstractions
           NAMED="Abstractions-v$VERSION-macos-universal.dmg"
           cp Abstractions-macos-universal.dmg "$NAMED"
+          SUMS="SHA256SUMS-macos-universal-v$VERSION.txt"
+          shasum -a 256 Abstractions-macos-universal.dmg "$NAMED" > "$SUMS"
+          cat "$SUMS"
           echo "ASSET=Abstractions-macos-universal.dmg" >> "$GITHUB_ENV"
           echo "NAMED=$NAMED" >> "$GITHUB_ENV"
+          echo "SUMS=$SUMS" >> "$GITHUB_ENV"
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
             ${{ env.ASSET }}
             ${{ env.NAMED }}
+            ${{ env.SUMS }}
           generate_release_notes: true
       - uses: actions/upload-artifact@v4
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         with:
           name: macos-universal
-          path: ${{ env.ASSET }}
+          path: |
+            ${{ env.ASSET }}
+            ${{ env.SUMS }}

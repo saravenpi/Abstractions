@@ -76,7 +76,8 @@ fn air_without_water_is_desert() {
     }
 }
 
-/// The look table follows the class order: only lava glows, only barren has a clear sky.
+/// The look table follows the class order: only lava glows, and only barren worlds and gas
+/// giants, whose banded deck is their cloud, have no separate cloud layer.
 #[test]
 fn looks_follow_the_class_order() {
     for class in PlanetClass::ALL {
@@ -84,7 +85,7 @@ fn looks_follow_the_class_order() {
         assert_eq!(look.glow > 0.0, class == PlanetClass::Lava, "{class:?}");
         assert_eq!(
             look.clouds == 0.0,
-            class == PlanetClass::Barren,
+            matches!(class, PlanetClass::Barren | PlanetClass::GasGiant),
             "{class:?}"
         );
     }

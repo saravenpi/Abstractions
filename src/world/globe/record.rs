@@ -1,8 +1,9 @@
-//! The record a globe carries: the class of the planet, its sea level and whether it has a sea at all.
+//! The record a globe carries: the class of the planet, its sea level, whether it has a sea at all and
+//! whether it has ground.
 
 use super::Globe;
 use super::datum::datum;
-use crate::universe::PlanetRecord;
+use crate::universe::{PlanetClass, PlanetRecord};
 use crate::world::lands::Lands;
 use crate::world::{Planet, SEA_LEVEL};
 
@@ -21,9 +22,16 @@ impl Globe {
         &self.record
     }
 
-    /// Returns true when a liquid fills the low ground. Without one, ground below height 0 is dry.
+    /// Returns true when the planet has ground to stand on. A gas giant has none: its deck is a smooth
+    /// sphere at the sea level radius, height 0 everywhere, that nothing walks, grows or is built on.
+    pub fn has_ground(&self) -> bool {
+        self.record.class != PlanetClass::GasGiant
+    }
+
+    /// Returns true when a liquid fills the low ground. Without one, ground below height 0 is dry, and a
+    /// planet without ground has no sea either.
     pub fn has_sea(&self) -> bool {
-        self.lands.has_sea()
+        self.has_ground() && self.lands.has_sea()
     }
 
     /// Returns the height of the liquid surface for comparing ground heights: [`SEA_LEVEL`] on a planet with

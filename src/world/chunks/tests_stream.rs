@@ -52,7 +52,7 @@ pub(super) fn world() -> App {
 
 /// Moves the focus to planet position `to`, when given, and runs frames until `done` holds. Fails
 /// after three minutes.
-fn go(app: &mut App, to: Option<DVec3>, what: &str, done: impl Fn(&World) -> bool) {
+pub(super) fn go(app: &mut App, to: Option<DVec3>, what: &str, done: impl Fn(&World) -> bool) {
     if let Some(at) = to {
         let anchor = *app.world().resource::<Anchor>();
         let spawn = SpawnPoint(anchor.to_render(at));
@@ -70,15 +70,17 @@ fn go(app: &mut App, to: Option<DVec3>, what: &str, done: impl Fn(&World) -> boo
     }
 }
 
-/// Returns true when every node has its mesh and no detail chunk is missing or being built.
+/// Returns true when every node has its mesh and no detail chunk is missing or being built. A
+/// planet without ground never wants a detail chunk: its quadtree only has to be grown.
 pub(super) fn idle(world: &World) -> bool {
     let chunks = world.resource::<Chunks>();
     let whole = chunks.tree.leaves().iter().all(|id| chunks.nodes.has(*id));
-    whole && chunks.settled.is_some() && chunks.pending.is_empty()
+    let deck = !world.resource::<Terrain>().globe().has_ground() && chunks.grown.is_some();
+    whole && (chunks.settled.is_some() || deck) && chunks.pending.is_empty()
 }
 
 /// Asserts that what is drawn covers the globe exactly once and sits where the anchor puts it.
-fn assert_drawn_once(app: &mut App) {
+pub(super) fn assert_drawn_once(app: &mut App) {
     let chunks = app.world().resource::<Chunks>();
     let cut = visible(&chunks.tree, &|id| chunks.nodes.has(id));
     let area: f64 = cut.iter().map(|id| 0.25f64.powi(i32::from(id.level))).sum();
@@ -110,7 +112,7 @@ fn assert_drawn_once(app: &mut App) {
 }
 
 /// Gets the world ready around the spawn, then lets it settle within the frame budget.
-fn settle_at_spawn(app: &mut App) {
+pub(super) fn settle_at_spawn(app: &mut App) {
     go(app, None, "the spawn chunks", |w| {
         w.resource::<WorldReady>().0
     });

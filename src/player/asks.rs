@@ -11,6 +11,10 @@ use super::lead::View;
 use super::walk::Step;
 use crate::sim::{self, IntentOf, PlayerId};
 
+/// Sink in metres per second past which a held run key fires the boots without a new press.
+/// It is faster than a jump on flat ground comes down, so a running jump never fires them.
+const PLUNGE: f32 = 10.0;
+
 /// The intents of one player for the step in progress, on its body.
 #[derive(Component, Debug, Default, Clone, Copy, PartialEq)]
 pub struct Intents {
@@ -28,6 +32,8 @@ pub struct Intents {
     held: bool,
     /// Whether the run, or the boost, is held.
     boost: bool,
+    /// Whether the run was held on the step before.
+    ran: bool,
     /// Whether the wingsuit was asked to spread or fold this step.
     wings: bool,
 }
@@ -39,6 +45,7 @@ impl Intents {
             look: self.look,
             behind: self.behind,
             held: self.jump,
+            ran: self.boost,
             ..Self::default()
         }
     }
@@ -86,13 +93,18 @@ pub(super) fn gather(
 }
 
 /// Returns what the player asks of a body this step, against the heading the movement keys
-/// hold. The wingsuit only answers in the air, and so does the second jump that fires the boots.
+/// hold.
+///
+/// The gear only answers in the air. There a new press of the jump spreads or folds the
+/// wingsuit, as the wings intent does. The run held fires the boots once it is pressed in the
+/// air, the wings are out or the fall is past [`PLUNGE`], and keeps them on until let go.
 pub(super) fn ask(motion: &mut Motion, asks: &Intents, step: &Step) -> Intent {
     let yaw = motion.steer.step(step.view.yaw, asks.turn, asks.axes);
     let aloft = !motion.grounded && !motion.swimming;
-    motion.wings ^= aloft && asks.wings;
-    let again = aloft && motion.coyote <= 0.0 && asks.jump && !asks.held;
-    motion.boots = asks.jump && (motion.boots || again);
+    let again = motion.coyote <= 0.0 && asks.jump && !asks.held;
+    motion.wings ^= aloft && (asks.wings || again);
+    let fired = motion.boots || motion.wings || !asks.ran || motion.velocity.y < -PLUNGE;
+    motion.boots = aloft && asks.boost && fired;
     Intent {
         wish: wish_direction(asks.axes.x, asks.axes.y, yaw),
         forward: asks.axes.x,

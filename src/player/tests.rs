@@ -9,6 +9,7 @@ mod lead;
 mod spawn;
 mod stage;
 mod steer;
+mod wings;
 
 use std::f64::consts::TAU;
 

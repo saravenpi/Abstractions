@@ -46,10 +46,11 @@ pub struct Motion {
     pub swimming: bool,
     /// Whether the wingsuit is asked open. Only the air keeps it: landing and water fold it.
     pub wings: bool,
-    /// Whether the boots are fired: the jump key was pressed again in the air and is still held.
-    /// The press that jumps off the ground never fires them.
+    /// Whether the boots are fired: the run key is held in the air, pressed there, on the wings
+    /// or in a fast fall. A run that only carries on through a jump never fires them.
     pub boots: bool,
-    /// Whether the held jump key already fired the boots, and so starts no jump until let go.
+    /// Whether the held jump key already worked the gear in the air, and so starts no jump
+    /// until let go.
     pub spent: bool,
     /// The heading the movement keys are read against.
     pub steer: Steer,

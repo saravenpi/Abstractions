@@ -71,8 +71,22 @@ pub const SEAT_RATE: f32 = 7.0;
 /// Farthest it may be from the seat when the player sits down, in meters, before it is pulled in.
 pub const BOARD_REACH: f32 = 3.0;
 
-/// How fast the screen turns toward what it looks at, per second.
-pub const TURN_RATE: f32 = 5.0;
+/// Fastest the head turns toward what it looks at, in radians per second: about 200 degrees.
+pub const HEAD_RATE: f32 = 3.5;
+
+/// Spring rate of the head turning toward what it looks at, in radians per second.
+pub const HEAD_SPRING: f32 = 7.0;
+
+/// Fastest the body turns after its head on its own, in radians per second. The neck range
+/// may push it faster, never faster than the head.
+pub const BODY_RATE: f32 = 3.0;
+
+/// Spring rate of the body following its head, in radians per second: it trails, then settles.
+pub const BODY_SPRING: f32 = 5.5;
+
+/// Farthest the head turns from the body, sideways and up or down, in radians: about 52 and
+/// 30 degrees. Past that the body has to turn with it.
+pub const NECK: (f32, f32) = (0.9, 0.5);
 
 /// Height of the hover bob in meters and its rate in radians per second.
 pub const BOB: (f32, f32) = (0.035, 2.1);
@@ -110,17 +124,19 @@ pub const IDLE_REST: (f32, f32) = (2.0, 5.5);
 /// Seconds the player stands still before the companion dozes off.
 pub const DOZE_AFTER: f32 = 50.0;
 
-/// Seconds of a steady view before the companion looks at what the player stares at.
-pub const STARE_AFTER: f32 = 1.6;
+/// Weights of what it may look at when its eyes move on: the player, the way a fast player
+/// runs, the ship, the door of the home base, a structure, and a look around at nothing.
+pub const GAZE_WEIGHT: [f32; 6] = [3.0, 9.0, 1.6, 1.2, 1.4, 2.4];
 
-/// Camera turn rate in radians per second under which the view counts as steady.
-pub const STARE_TURN: f32 = 0.35;
+/// Player speed in metres per second above which the companion looks where the player runs.
+pub const FAST_SPEED: f32 = 5.0;
 
-/// Distance in meters of the point the player is taken to stare at.
-pub const STARE_REACH: f32 = 7.0;
+/// Distance in metres within which the ship and the door of the home base catch its eye.
+pub const SIGHT_REACH: (f32, f32) = (45.0, 35.0);
 
-/// Chance that a fresh glance goes to the player rather than ahead.
-pub const PLAYER_SHARE: f32 = 0.6;
+/// Seconds a still player must keep the camera on the companion before it looks back at the
+/// camera, and seconds before it may do that again.
+pub const WATCHED: (f32, f32) = (2.5, 15.0);
 
 /// Night level, from 0 (day) to 1 (night), above which the companion is sleepy.
 pub const SLEEPY_NIGHT: f32 = 0.75;

@@ -4,13 +4,14 @@ use bevy::prelude::*;
 
 use super::Companion;
 use super::brain::Brain;
+use super::neck::Neck;
 use super::pose::Pose;
 use super::sense::Around;
 use super::spot::Probe;
 use super::spring::{rate, step};
 use super::tune::{
     BOB, CLEARANCE, FEED, FEED_FLIGHT, FLIGHT_LEASH, FLIGHT_STIFFNESS, FLOOR, LEASH, LOOK_AHEAD,
-    SCALE_RATE, SEAT, SEAT_RATE, SEAT_SCALE, TILT, TURN_RATE,
+    SCALE_RATE, SEAT, SEAT_RATE, SEAT_SCALE, TILT,
 };
 use crate::player::Player;
 
@@ -24,20 +25,21 @@ pub struct Float {
     pub vel: Vec3,
     /// True while it rides in the cockpit as a child of the player body in the pilot seat.
     pub seated: bool,
+    /// How the head is turned from the body, which follows it.
+    pub neck: Neck,
 }
 
 /// Marks the part of the companion that bobs, leans and poses: the parent of everything visible.
 #[derive(Component, Debug, Clone, Copy)]
 pub struct Rig;
 
+/// Marks the head on the rig: the shell with its screen and antenna, turned by the neck.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct Head;
+
 /// Returns the share of the way to a target covered in `dt` seconds at `rate` per second.
 pub fn blend(rate: f32, dt: f32) -> f32 {
     1.0 - (-rate * dt).exp()
-}
-
-/// Returns the rotation that points the screen, which faces -Z, along `dir` with `up` upward.
-pub fn facing(dir: Vec3, up: Vec3) -> Quat {
-    Transform::IDENTITY.looking_to(dir, up).rotation
 }
 
 /// Returns the lean of a body moving at `local` meters per second in its own axes: into its direction of travel.
@@ -81,8 +83,10 @@ pub fn follow(probe: &Probe, brain: &Brain, at: &mut Transform, float: &mut Floa
             probe.clear_ahead(target + offset, vel + lead, (LOOK_AHEAD * flight, FLOOR));
         float.vel = vel + lead;
     }
-    let want = facing(brain.look - at.translation, probe.up(at.translation));
-    at.rotation = at.rotation.slerp(want, blend(TURN_RATE, dt));
+    let up = probe.up(at.translation);
+    at.rotation = float
+        .neck
+        .turn(at.rotation, brain.look - at.translation, up, dt);
     grow(at, 1.0, dt);
 }
 
@@ -93,8 +97,8 @@ pub fn ride(look: Vec3, at: &mut Transform, float: &mut Float, dt: f32) {
     let (offset, vel) = step(at.translation - seat, float.vel, SEAT_RATE, dt);
     at.translation = seat + offset;
     float.vel = vel;
-    let want = facing(look - at.translation, Vec3::Y);
-    at.rotation = at.rotation.slerp(want, blend(TURN_RATE, dt));
+    let toward = look - at.translation;
+    at.rotation = float.neck.turn(at.rotation, toward, Vec3::Y, dt);
     grow(at, SEAT_SCALE, dt);
 }
 
@@ -109,11 +113,23 @@ fn sway(rig: &mut Transform, pose: &Pose, local: Vec3, (now, dt): (f32, f32)) {
 /// Filter of the rig, which is neither the companion root nor the player body.
 type RigOnly = (With<Rig>, Without<Companion>, Without<Player>);
 
-/// Moves the companion: following on foot or riding in the ship, then the bob, the lean and the pose.
+/// Filter of the head, which is neither the rig, the companion root nor the player body.
+type HeadOnly = (
+    With<Head>,
+    Without<Rig>,
+    Without<Companion>,
+    Without<Player>,
+);
+
+/// Moves the companion: following on foot or riding in the ship, the head turned ahead of the
+/// body, then the bob, the lean and the pose.
 pub fn float(
     around: Around,
     bot: Single<(&mut Transform, &mut Float, &Brain), With<Companion>>,
-    mut rig: Single<&mut Transform, RigOnly>,
+    (mut rig, mut head): (
+        Single<&mut Transform, RigOnly>,
+        Single<&mut Transform, HeadOnly>,
+    ),
 ) {
     let (mut at, mut float, brain) = bot.into_inner();
     let dt = around.dt();
@@ -127,6 +143,7 @@ pub fn float(
     } else {
         follow(&around.probe(), brain, &mut at, &mut float, dt);
     }
+    head.rotation = float.neck.rotation();
     let local = at.rotation.inverse() * float.vel;
     sway(&mut rig, &brain.pose, local, (around.now(), dt));
 }

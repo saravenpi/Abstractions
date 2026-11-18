@@ -10,11 +10,11 @@ use super::face::machine::Face;
 use super::idle::Idle;
 use super::mind::{Cue, Input};
 use super::mood::{ChirpKind, CompanionChirp, ambient, chirp};
-use super::motion::blend;
+use super::motion::{Float, blend};
 use super::sense::{Around, CompanionSense};
+use super::sights::Sights;
 use super::tune::{
-    BANK_SHARE, DELIGHT_SECONDS, FLIGHT_RATE, SLEEPY_NIGHT, STILL_SPEED, TAKEOFF_SECONDS,
-    WAKE_SECONDS,
+    BANK_SHARE, DELIGHT_SECONDS, FLIGHT_RATE, SLEEPY_NIGHT, TAKEOFF_SECONDS, WAKE_SECONDS,
 };
 use crate::computer::Atlas;
 use crate::ship::ShipEvent;
@@ -109,9 +109,11 @@ impl Events<'_, '_> {
     }
 }
 
-/// Points the eyes and poses the body for the idle in progress and the face shown, and banks
-/// it with a flying player.
-fn settle(brain: &mut Brain, face: &Face, bank: f32) {
+/// Moves the attention on by `dt` seconds, points the eyes and poses the body for the idle in
+/// progress and the face shown, and banks it with a flying player.
+fn settle(brain: &mut Brain, face: &Face, bank: f32, dt: f32) {
+    let scene = brain.scene;
+    brain.attention.advance(&scene, dt);
     brain.look = brain.focus();
     brain.pose = brain.mind.pose();
     if face.shown() == Expression::Curious {
@@ -123,14 +125,15 @@ fn settle(brain: &mut Brain, face: &Face, bank: f32) {
 /// Watches the player, advances the idle mind, the attention and the face, and sends the
 /// chirps, with a pause after each one.
 pub fn think(
-    around: Around,
+    (around, sights): (Around, Sights),
     mut events: Events,
-    bot: Single<(&mut Brain, &mut Face), With<Companion>>,
+    bot: Single<(&mut Brain, &mut Face, &Transform, &Float), With<Companion>>,
     mut said: Local<Option<(ChirpKind, f32)>>,
 ) {
-    let (mut brain, mut face) = bot.into_inner();
+    let (mut brain, mut face, at, float) = bot.into_inner();
     let (dt, sense) = (around.dt(), *events.sense);
-    let turn = brain.observe(&around.anchor, around.stance(), dt);
+    brain.observe(&around.anchor, around.stance(), dt);
+    brain.scene = sights.scene(&around, at, float, brain.drift);
     brain.side = around.body.right().as_vec3();
     let flying = f32::from(u8::from(sense.flying));
     brain.flight += (flying - brain.flight) * blend(FLIGHT_RATE, dt);
@@ -141,12 +144,11 @@ pub fn think(
         dt,
     };
     let cue = brain.mind.advance(&input);
-    brain.attention.advance(turn, input.speed < STILL_SPEED, dt);
     let mut heard = cue.and_then(|cue| react(cue, &mut brain, &mut face, &sense));
     heard = heard.or(events.stir(&mut brain, &mut face, around.location.body));
     let changed = face.advance(wanted(&brain, &sense), dt);
     heard = heard.or(changed.and_then(chirp));
-    settle(&mut brain, &face, sense.bank);
+    settle(&mut brain, &face, sense.bank, dt);
     let last = said.map(|(kind, ago)| (kind, ago + dt));
     *said = last;
     let wait = |kind: ChirpKind| match last {

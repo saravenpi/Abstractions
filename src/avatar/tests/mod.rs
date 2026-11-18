@@ -6,7 +6,9 @@ mod body;
 mod dressing;
 mod face;
 mod filling;
+mod flown;
 mod gait;
+mod loops;
 mod poses;
 mod wings;
 

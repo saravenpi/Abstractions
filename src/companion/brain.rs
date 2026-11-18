@@ -36,6 +36,9 @@ pub struct Brain {
     pub stance: Stance,
     /// Velocity of the player in render axes, in meters per second.
     pub drift: Vec3,
+    /// Right of the player's body in render axes, zero until it is seen: the side of the
+    /// formation, which a loop does not turn.
+    pub side: Vec3,
     /// Render position it looks at.
     pub look: Vec3,
     /// Render position of what it inspects during the inspect idle.
@@ -65,6 +68,7 @@ impl Brain {
                 up: Vec3::Y,
             },
             drift: Vec3::ZERO,
+            side: Vec3::ZERO,
             look: Vec3::ZERO,
             inspect: Vec3::ZERO,
             pose: Pose::default(),
@@ -134,7 +138,9 @@ impl Brain {
             return (self.stance.aside(near), LOW_CLEARANCE);
         }
         let spot = self.stance.rest(self.perch.side);
-        let wing = self.stance.aside(self.stance.formation(self.drift));
+        let wing = self
+            .stance
+            .aside(self.stance.formation(self.drift, self.side));
         let height = CLEARANCE + (FLIGHT_CLEARANCE - CLEARANCE) * self.flight;
         (spot.lerp(wing, self.flight), height)
     }

@@ -38,6 +38,8 @@ mod tests_flight;
 #[cfg(test)]
 mod tests_idle;
 #[cfg(test)]
+mod tests_loop;
+#[cfg(test)]
 mod tests_motion;
 #[cfg(test)]
 mod tests_paint;

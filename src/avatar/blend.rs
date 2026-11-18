@@ -10,6 +10,7 @@ use super::clock::Clock;
 use super::pose::{Core, Pose};
 use super::tune::BLEND_SECONDS;
 use super::{AvatarPose, Mode, air, flight, ground, water};
+use crate::player::wrap;
 
 /// Number of modes.
 pub const MODES: usize = Mode::ALL.len();
@@ -87,14 +88,30 @@ pub fn looking(pose: Pose, look: Vec2) -> Pose {
         .with(Core::HeadPitch, pose.core(Core::HeadPitch) + look.y)
 }
 
-/// Returns the pose of a body whose modes weigh `weights`, looking where `input` says, with
-/// every joint inside its limits.
+/// Returns the pose of a body whose modes weigh `weights`, looking where `input` says.
+///
+/// The lean of the winged poses is left free, so the body follows a flight path all the way round
+/// in a loop: the pitch of `input` may be on any turn. Every other joint, and the lean of every
+/// other pose, stays inside its limits. The head turns by what the view asks beyond the flight
+/// path, since the trunk of a winged body already points along it.
 pub fn blended(weights: &Weights, input: &AvatarPose, clock: &Clock) -> Pose {
-    let mut pose = Pose::default();
+    let (mut pose, mut free, mut wing) = (Pose::default(), 0.0, 0.0);
     for (mode, weight) in Mode::ALL.into_iter().zip(weights.eased()) {
-        if weight > 0.0 {
-            pose = pose.plus(&pose_of(mode, input, clock), weight);
+        if weight <= 0.0 {
+            continue;
+        }
+        let part = pose_of(mode, input, clock);
+        pose = pose.plus(&part, weight);
+        if mode.winged() {
+            free += part.core(Core::Pitch) * weight;
+            wing += weight;
         }
     }
-    looking(pose, input.look).bounded()
+    let look = match wing > 0.0 {
+        true => input.look.with_y(wrap(input.look.y - wing * input.pitch)),
+        false => input.look,
+    };
+    let rest = pose.core(Core::Pitch) - free;
+    let held = looking(pose.with(Core::Pitch, rest), look).bounded();
+    held.with(Core::Pitch, held.core(Core::Pitch) + free)
 }

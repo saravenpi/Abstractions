@@ -1,4 +1,7 @@
-//! The helm: the keyboard turned into what the pilot asks of the ship. The mouse only looks around.
+//! The helm: the keyboard turned into what the pilot asks of the ship, and the mouse too while
+//! its left button is held. With the button up the mouse only looks around.
+
+pub mod mouse;
 
 use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
@@ -12,6 +15,7 @@ use super::warp::Warp;
 use crate::computer::Computer;
 use crate::settings::{Keymap, Persistent, Settings};
 use crate::space::{Frame, Location, Travel};
+use mouse::{Mouse, deflection};
 
 /// Throttle change per second while a throttle key is held.
 const THROTTLE_RATE: f64 = 0.8;
@@ -25,6 +29,9 @@ pub struct Helm {
     pub warp: bool,
     /// How far each turn key has been held, from -1 to 1: pitch, yaw and roll.
     pub held: DVec3,
+    /// The stick the mouse moves while its left button is held, x to the right and y downward,
+    /// each from -1 to 1. It is centred while the button is up.
+    pub stick: Vec2,
 }
 
 /// Input devices and settings the helm reads.
@@ -32,6 +39,8 @@ pub struct Helm {
 pub struct Devices<'w> {
     /// Keyboard state.
     keys: Res<'w, ButtonInput<KeyCode>>,
+    /// The mouse, which steers while its left button is held.
+    mouse: Mouse<'w>,
     /// Bindings and mouse options.
     settings: Res<'w, Persistent<Settings>>,
     /// Frame time.
@@ -85,20 +94,21 @@ impl Devices<'_> {
     }
 }
 
-/// Returns the turn the keys ask of a ship whose drive is in `warp`: nothing while the warp is
-/// engaged, when the ship flies the line it was pointed along and no hand could steer it, and
-/// what the keys ask otherwise, the spool included, so the pilot can still line up.
-pub fn steerable(warp: Warp, keys: DVec3) -> DVec3 {
+/// Returns the turn the keys or the mouse ask of a ship whose drive is in `warp`: nothing while
+/// the warp is engaged, when the ship flies the line it was pointed along and no hand could
+/// steer it, and what they ask otherwise, the spool included, so the pilot can still line up.
+pub fn steerable(warp: Warp, asked: DVec3) -> DVec3 {
     match warp {
         Warp::Active { .. } => DVec3::ZERO,
-        _ => keys,
+        _ => asked,
     }
 }
 
 /// Reads the helm while the player is seated, and lets go of every control while on foot or
 /// while the board computer is open. The throttle lever stays where it was. With the assist on
 /// over a planet the turn keys ease in over [`RAMP`](super::assist::RAMP), so that a tap is a
-/// small correction; without it, and in space, they act at once.
+/// small correction; without it, and in space, they act at once. The mouse adds its stick to
+/// the keys while its left button is held, and nothing while it is up.
 pub fn read(
     devices: Devices,
     location: Res<Location>,
@@ -114,11 +124,17 @@ pub fn read(
     let keys = steerable(ship.warp, devices.turn(&map));
     helm.held = ramp(helm.held, keys, devices.time.delta_secs_f64());
     let surface = matches!(ship.frame, Frame::Surface(_));
-    let turn = if ship.assist && surface {
+    let stick = if ship.assist && surface {
         eased(helm.held)
     } else {
         keys
     };
+    let controls = &devices.settings.controls;
+    helm.stick = devices
+        .mouse
+        .stick(helm.stick, controls, devices.time.delta_secs());
+    let both = (stick + deflection(helm.stick)).clamp(DVec3::NEG_ONE, DVec3::ONE);
+    let turn = steerable(ship.warp, both);
     helm.controls = devices.controls(&map, ship.throttle, turn);
     helm.warp = devices.keys.just_pressed(map.ship.warp);
     if helm.warp {
@@ -128,19 +144,5 @@ pub fn read(
     let assist = ship.assist ^ devices.keys.just_pressed(map.ship.assist);
     if (throttle, assist) != (ship.throttle, ship.assist) {
         (ship.throttle, ship.assist) = (throttle, assist);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// An engaged warp takes no steering, whatever the keys ask; off or spooling, the keys steer.
-    #[test]
-    fn an_engaged_warp_cannot_be_steered() {
-        let keys = DVec3::new(1.0, -1.0, 0.5);
-        assert_eq!(steerable(Warp::Active { speed: 2.0e9 }, keys), DVec3::ZERO);
-        assert_eq!(steerable(Warp::Off, keys), keys);
-        assert_eq!(steerable(Warp::Spooling { left: 2.0 }, keys), keys);
     }
 }

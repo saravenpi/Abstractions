@@ -1,5 +1,5 @@
 //! Drawing the space view: the system chart on its sheet, with the marks of the board
-//! computer at the size of the minimap.
+//! computer at the size of the minimap, moons and rings included.
 //!
 //! The chart is drawn again only when a mark moved by a pixel or the destination changed, and
 //! it is looked at a few times per second: nothing moves fast on a system chart.
@@ -12,7 +12,8 @@ use super::orbit::{Scene, scene, signature};
 use super::pose::Reader;
 use super::widget::{Caption, Chart, MARK};
 use crate::computer::{
-    Atlas, Destination, Dot, SIZE, View, body, frame, ring, ship_position, side, spot,
+    Atlas, Destination, Dot, SIZE, View, body, frame, is_moon, ring, satellites, seen,
+    ship_position, side, spot,
 };
 use crate::space::{Clock, Frame};
 use crate::ui::{Icon, Tone, icon_sized, theme};
@@ -86,18 +87,22 @@ fn course(sheet: &mut ChildSpawnerCommands, scene: &Scene) {
     frame(sheet, to, CHOSEN);
 }
 
-/// Spawns the chart: the orbits, the course, the star and the planets, then the ship over them.
+/// Spawns the chart: the orbits, the moons and rings of the planets, the course, the star,
+/// the planets and the moons that the zoom parts from their planet, then the ship over them.
 fn draw(sheet: &mut ChildSpawnerCommands, scene: &Scene) {
+    let (lines, zoom) = (scene.lines.as_slice(), scene.lens.zoom);
     let rows = scene.dots.iter().filter_map(|(dot, at)| match dot {
         Dot::Row(index) => Some((*index, *at)),
         _ => None,
     });
-    for (_, at) in rows.clone().filter(|(index, _)| *index > 0) {
+    let planet = |index: usize| index > 0 && !is_moon(lines[index].target);
+    for (_, at) in rows.clone().filter(|(index, _)| planet(*index)) {
         sheet.spawn(ring(at.length()));
     }
+    satellites(sheet, (&scene.dots, lines, &scene.worlds), zoom);
     course(sheet, scene);
-    for (index, at) in rows {
-        let line = &scene.lines[index];
+    for (index, at) in rows.filter(|(index, _)| seen(Dot::Row(*index), lines, zoom)) {
+        let line = &lines[index];
         let color = [theme::MUTED, theme::TEXT][usize::from(line.visited)];
         let world = scene.worlds.get(index).and_then(Option::as_ref);
         body(sheet, at, (side(line.target, false), color), world);

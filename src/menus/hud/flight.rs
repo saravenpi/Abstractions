@@ -54,6 +54,8 @@ pub struct Flight {
     pub route: RouteStatus,
     /// Name of the destination and distance to it in metres, when one is set.
     pub destination: Option<(String, f64)>,
+    /// Whether the ship flies over a gas giant, which has a cloud deck and no ground.
+    pub giant: bool,
 }
 
 /// Returns the text of the speed instrument: the warp speed in warp, the speed over the surface
@@ -84,11 +86,11 @@ pub fn reading(gauge: Gauge, flight: &Flight) -> Option<String> {
     let in_orbit = matches!(t.frame, Frame::System(_)) && !t.landed;
     let near = !matches!(t.frame, Frame::Galaxy(_)) && !matches!(t.warp, WarpState::Active(_));
     match gauge {
-        Gauge::Altitude => near.then(|| height(t.altitude_ground)),
+        Gauge::Altitude => near.then(|| altitude_text(flight)),
         Gauge::Speed => Some(speed_text(flight)),
         Gauge::Throttle => Some(percent(t.throttle)),
         Gauge::Assist => Some(assist_text(t).to_string()),
-        Gauge::Frame => Some(frame_name(t.frame).to_string()),
+        Gauge::Frame => Some(frame_text(flight)),
         Gauge::Apoapsis => t.apoapsis.filter(|_| in_orbit).map(height),
         Gauge::Periapsis => t.periapsis.filter(|_| in_orbit).map(height),
         Gauge::Warp => warp_text(t.warp),
@@ -106,13 +108,26 @@ fn assist_text(t: &ShipTelemetry) -> &'static str {
     }
 }
 
-/// Returns the word for the frame the ship is measured in.
-fn frame_name(frame: Frame) -> &'static str {
-    match frame {
+/// Returns the text of the altitude instrument: the height above the ground, or above the
+/// cloud deck of a gas giant, which is its sea level.
+fn altitude_text(flight: &Flight) -> String {
+    let t = &flight.telemetry;
+    match flight.giant && matches!(t.frame, Frame::Surface(_)) {
+        true => format!("{} above deck", height(t.altitude_sea)),
+        false => height(t.altitude_ground),
+    }
+}
+
+/// Returns the words for the frame the ship is measured in. The frame of a moon is its
+/// surface, as on a planet, and over a gas giant the ship says it cannot land.
+fn frame_text(flight: &Flight) -> String {
+    let name = match flight.telemetry.frame {
+        Frame::Surface(_) if flight.giant => "surface - no ground, cannot land",
         Frame::Surface(_) => "surface",
         Frame::System(_) => "orbit",
         Frame::Galaxy(_) => "deep space",
-    }
+    };
+    name.to_string()
 }
 
 /// Returns the text of the warp instrument, or nothing while the drive is off.

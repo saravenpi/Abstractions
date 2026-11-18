@@ -11,6 +11,8 @@ mod panel;
 mod prompt;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_deck;
 mod units;
 
 use std::time::Duration;

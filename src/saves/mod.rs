@@ -10,6 +10,7 @@ mod model;
 #[cfg(test)]
 mod moon_tests;
 mod resume;
+mod snapshot;
 mod start;
 mod store;
 #[cfg(test)]
@@ -19,9 +20,10 @@ mod upgrade;
 mod upgrade_tests;
 mod writer;
 
-pub use autosave::SavedFlash;
+pub use autosave::{SaveSet, SavedFlash};
 pub use format::{ago, play_time};
 pub use model::{Place, SAVE_VERSION, WorldEntry, WorldSave};
+pub use snapshot::Snapshot;
 pub use start::{Starter, unplayed};
 pub use store::{delete, list, new_entry, now, write};
 pub use writer::Writer;
@@ -35,6 +37,11 @@ use crate::screens::Screen;
 /// The world being played. Exists from the moment a world starts until the title screen returns.
 #[derive(Resource, Debug, Clone, PartialEq)]
 pub struct ActiveWorld(pub WorldEntry);
+
+/// Marks an active world that lives on a server: it is played as any other, but never written
+/// to the local saves folder.
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Unsaved;
 
 /// Directory that holds the world files.
 #[derive(Resource, Debug, Clone)]
@@ -50,6 +57,7 @@ impl Default for SaveDir {
 /// Forgets the active world once the title screen is back.
 fn clear_active(mut commands: Commands) {
     commands.remove_resource::<ActiveWorld>();
+    commands.remove_resource::<Unsaved>();
 }
 
 /// Registers the save directory, autosave and active world cleanup.

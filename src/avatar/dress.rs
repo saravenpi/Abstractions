@@ -9,6 +9,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::air::level;
+use super::own::Own;
 use super::{AvatarPose, Mode, Shown};
 use crate::gear::{FlightState, Gear, Mode as Flight};
 use crate::player::{Motion, Player, above_sea, wrap};
@@ -50,6 +51,8 @@ pub fn dress(pose: &mut AvatarPose, state: &FlightState, look: Vec2, deep: bool)
     pose.pitch = if airborne { level(state.pitch) } else { 0.0 };
     pose.thrust = state.power();
     pose.wings = state.spread();
+    pose.prone = state.prone;
+    pose.load = if airborne { state.load } else { 1.0 };
     if airborne {
         pose.airspeed = state.airspeed;
     }
@@ -78,8 +81,10 @@ pub fn shown(seated: bool, fade: f32) -> Shown {
 /// What the dresser reads.
 #[derive(SystemParam)]
 pub struct Worn<'w, 's> {
-    /// The player body.
-    player: Single<'w, 's, (&'static Transform, &'static Motion, &'static Gear), With<Player>>,
+    /// Which body is the one of the player at this machine.
+    own: Own<'w, 's>,
+    /// The player bodies.
+    players: Query<'w, 's, (&'static Transform, &'static Motion, &'static Gear), With<Player>>,
     /// The look angles of the camera rig.
     heading: Res<'w, Heading>,
     /// How much of the body the camera wants drawn.
@@ -92,11 +97,20 @@ pub struct Worn<'w, 's> {
     terrain: Res<'w, Terrain>,
 }
 
-/// Dresses the pose input from the gear and the view, and chooses what is drawn.
-pub fn wear(worn: Worn, mut pose: ResMut<AvatarPose>, mut drawn: ResMut<Shown>) {
-    let (transform, motion, gear) = *worn.player;
+/// Dresses the pose input of the body at this machine from its gear and the view, and chooses
+/// what is drawn of it.
+pub fn wear(worn: Worn, mut poses: Query<&mut AvatarPose>, mut drawn: ResMut<Shown>) {
+    let Some((player, body)) = worn.own.body() else {
+        return;
+    };
+    let (Ok((transform, motion, gear)), Ok(mut pose)) =
+        (worn.players.get(player), poses.get_mut(body))
+    else {
+        return;
+    };
     let seated = worn
         .location
+        .as_deref()
         .is_some_and(|location| location.travel == Travel::InShip);
     let height = above_sea(&worn.anchor, worn.terrain.globe(), transform.translation);
     let look = match seated {
@@ -104,5 +118,9 @@ pub fn wear(worn: Worn, mut pose: ResMut<AvatarPose>, mut drawn: ResMut<Shown>) 
         false => looked(&worn.heading, motion.yaw),
     };
     dress(&mut pose, &gear.state, look, height < DIVE_BELOW);
+    pose.clearance = match motion.grounded {
+        true => 0.0,
+        false => gear.input.clearance,
+    };
     drawn.set_if_neq(shown(seated, worn.fade.0));
 }

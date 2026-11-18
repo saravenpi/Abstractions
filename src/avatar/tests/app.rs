@@ -16,18 +16,24 @@ use crate::player::{Motion, Player};
 
 /// The state an integration system writes over what the filler found.
 #[derive(Resource, Debug, Clone, Copy)]
-struct Forced(AvatarPose);
+pub struct Forced(pub AvatarPose);
+
+/// Marks a body the forced state leaves alone, so a test can drive it by itself.
+#[derive(Component)]
+pub struct Free;
 
 /// Overwrites the pose input, the way the integration is meant to: after the fill, before the animation.
-fn force(forced: Res<Forced>, mut pose: ResMut<AvatarPose>) {
-    *pose = AvatarPose {
-        stride_distance: pose.stride_distance + forced.0.speed * FRAME,
-        ..forced.0
-    };
+fn force(forced: Res<Forced>, mut poses: Query<&mut AvatarPose, Without<Free>>) {
+    for mut pose in &mut poses {
+        *pose = AvatarPose {
+            stride_distance: pose.stride_distance + forced.0.speed * FRAME,
+            ..forced.0
+        };
+    }
 }
 
 /// Returns an app with the avatar systems, a fixed frame time and a player standing somewhere tilted.
-fn world() -> (App, Entity) {
+pub fn world() -> (App, Entity) {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, TransformPlugin))
         .init_resource::<Assets<Mesh>>()
@@ -57,7 +63,7 @@ fn world() -> (App, Entity) {
 }
 
 /// Returns the number of entities that carry the component `C`.
-fn count<C: Component>(app: &mut App) -> usize {
+pub fn count<C: Component>(app: &mut App) -> usize {
     app.world_mut().query::<&C>().iter(app.world()).count()
 }
 
@@ -126,7 +132,9 @@ fn body_steps_through_every_mode() {
         (0..12).for_each(|_| app.update());
         assert_whole(&mut app, &format!("{mode:?} at {k}"));
     }
-    assert_eq!(app.world().resource::<AvatarPose>().mode, Mode::Walk);
+    let mut poses = app.world_mut().query::<&AvatarPose>();
+    let pose = poses.single(app.world()).expect("one body");
+    assert_eq!(pose.mode, Mode::Walk);
     let parts = (
         count::<Avatar>(&mut app),
         count::<Bone>(&mut app),

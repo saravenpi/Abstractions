@@ -105,6 +105,42 @@ pub const CROUCH: (f32, f32) = (0.06, 0.22);
 /// Spring rate of the landing crouch in radians per second.
 pub const CROUCH_RATE: f32 = 16.0;
 
+/// Impact speeds in meters per second between which a soft landing goes from half its depth,
+/// a step down, to all of it.
+pub const CROUCH_SOFT: (f32, f32) = (2.0, 9.0);
+
+/// How much slower the knees push the body back up after the hardest landing than after a
+/// soft one: the recovery takes 0.3 s soft and 0.5 s hard.
+pub const RECOVER_SLOW: f32 = 0.6;
+
+/// How deep the knees fold when a jump starts, in meters, and for how many seconds: a short
+/// dip while the body already rises, so the jump itself is never delayed.
+pub const PUSH_OFF: (f32, f32) = (0.035, 0.09);
+
+/// Fastest the climb speed the air poses read may change, in meters per second squared:
+/// well above any fall, so only a bounce off the ground is spread over a few frames.
+pub const RISE_RATE: f32 = 60.0;
+
+/// Forward lean per meter per second squared the ground speed gains, in radians, and the most
+/// it adds or takes: the body leans into a start and back into a stop.
+pub const LEAN_GAIN: (f32, f32) = (0.01, 0.06);
+
+/// Bank into a turn on the ground per radian per second of turn and meter per second of
+/// speed, in radians, and the most it banks.
+pub const TURN_BANK: (f32, f32) = (0.012, 0.09);
+
+/// Seconds before the ground under a falling body within which the legs reach for it: they
+/// start to reach at the longer time and are fully out at the shorter one.
+pub const REACH_TIME: (f32, f32) = (0.12, 0.45);
+
+/// Felt loads in g between which the flying body arches: level at the first, fully arched in
+/// a hard pull-up at the second.
+pub const ARCH_LOAD: (f32, f32) = (1.3, 3.0);
+
+/// Sines of the descent angle between which the gliding body tucks its arms and legs in:
+/// from 20 degrees down to 57.
+pub const TUCK_DIVE: (f32, f32) = (0.34, 0.84);
+
 /// Forward lean of the prone flight poses in radians, before the flight path pitch.
 pub const PRONE: f32 = 1.45;
 

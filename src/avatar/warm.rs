@@ -3,22 +3,15 @@
 
 use bevy::prelude::*;
 
+use super::looks::{paint, sheet};
 use super::mesh::{fabric, glow, screen, segment};
+use super::puffs;
 use super::rig::Seg;
-use super::spawn::{Stock, kit, paint};
+use super::spawn::{Stock, kit};
 use crate::render::Warm;
 
-/// Returns the material of the fabric: lit `accent` seen from both sides.
-pub(super) fn sheet(accent: Color) -> StandardMaterial {
-    StandardMaterial {
-        double_sided: true,
-        cull_mode: None,
-        ..paint(accent, true, None)
-    }
-}
-
-/// Hands one of each mesh layout and material of the body to the pipeline warm-up. The body
-/// only appears once play begins, after the warm-up ran.
+/// Hands one of each mesh layout and material of the body and of the puffs it kicks up to the
+/// pipeline warm-up. The body only appears once play begins, after the warm-up ran.
 pub fn warm(mut warm: ResMut<Warm>, mut stock: Stock) {
     let kit = kit(&mut stock);
     let shell = stock.materials.add(paint(Color::WHITE, true, None));
@@ -27,4 +20,6 @@ pub fn warm(mut warm: ResMut<Warm>, mut stock: Stock) {
     warm.add(stock.meshes.add(screen()), kit.visor);
     warm.add(stock.meshes.add(glow(1.0)), kit.glow);
     warm.add(stock.meshes.add(fabric()), cloth);
+    let dust = stock.materials.add(puffs::material([1.0; 4]));
+    warm.add(stock.meshes.add(Rectangle::new(1.0, 1.0)), dust);
 }

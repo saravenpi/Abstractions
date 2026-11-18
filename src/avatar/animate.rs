@@ -8,12 +8,16 @@ use super::blend::{Weights, asked, blended};
 use super::clock::Clock;
 use super::neck::Neck;
 use super::pose::Pose;
-use super::rig::{Seg, locals};
-use super::{Avatar, AvatarPose, Mode};
+use super::rig::{SEGS, Seg, locals};
+use super::{AvatarPose, Mode};
 use crate::player::wrap;
 
 /// Longest simulated frame in seconds, to survive hitches.
 const MAX_DT: f32 = 0.1;
+
+/// Fastest the flight path pitch, the bank and the load the poses read may change, per second:
+/// faster than any flight turns them, so only the step at a touch-down is spread out.
+const TRIM_RATE: f32 = 8.0;
 
 /// The animation state of the body.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Default)]
@@ -29,6 +33,11 @@ pub struct Anim {
     pub path: f32,
     /// Where the head looks, inside the reach of the neck.
     pub neck: Neck,
+    /// The state posed last, for what reads the body after it is posed.
+    pub input: AvatarPose,
+    /// The bank and the felt load the poses read: the real ones, followed at a bounded rate,
+    /// because the gear drops both in one step when the body touches down.
+    pub trim: Vec2,
 }
 
 /// Returns whether the winged modes hold none of the weight of a blend, and whether they hold all of it.
@@ -59,13 +68,21 @@ pub fn followed(held: f32, asked: f32, (none, leaving): (bool, bool)) -> f32 {
 impl Anim {
     /// Advances the animation by `dt` seconds of the state `input` and returns the new pose.
     pub fn step(&mut self, input: &AvatarPose, dt: f32) -> Pose {
+        self.input = *input;
         self.clock.tick(input, dt);
         let (none, whole) = winged(&self.weights);
         let leaving = whole && !input.mode.winged();
-        self.path = followed(self.path, input.pitch, (none, leaving));
+        let goal = followed(self.path, input.pitch, (none, leaving));
+        self.path = if leaving { wrap(self.path) } else { self.path };
+        let turn = if none { f32::MAX } else { TRIM_RATE * dt };
+        self.path += (goal - self.path).clamp(-turn, turn);
+        let want = Vec2::new(input.bank, input.load);
+        self.trim += (want - self.trim).clamp_length_max(TRIM_RATE * dt);
         self.weights.step(input.mode, dt);
         let flown = AvatarPose {
             pitch: self.path,
+            bank: self.trim.x,
+            load: self.trim.y,
             ..*input
         };
         let look = asked(&self.weights, &flown, &self.clock);
@@ -79,16 +96,23 @@ impl Anim {
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Bone(pub Seg);
 
-/// Poses the body: every segment turns in its joint, nothing else moves.
+/// The segment entities of one body, on its root, in the order of [`Seg::ALL`].
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Skeleton(pub [Entity; SEGS]);
+
+/// Poses every body from its own input: every segment turns in its joint, nothing else moves.
 pub fn animate(
     time: Res<Time>,
-    input: Res<AvatarPose>,
-    mut body: Single<&mut Anim, With<Avatar>>,
-    mut bones: Query<(&Bone, &mut Transform)>,
+    mut bodies: Query<(&mut Anim, &AvatarPose, &Skeleton)>,
+    mut bones: Query<&mut Transform, With<Bone>>,
 ) {
-    let pose = body.step(&input, time.delta_secs().min(MAX_DT));
-    let frames = locals(&pose);
-    for (bone, mut transform) in &mut bones {
-        *transform = frames[bone.0 as usize];
+    let dt = time.delta_secs().min(MAX_DT);
+    for (mut anim, input, skeleton) in &mut bodies {
+        let frames = locals(&anim.step(input, dt));
+        for (bone, frame) in skeleton.0.into_iter().zip(frames) {
+            if let Ok(mut transform) = bones.get_mut(bone) {
+                *transform = frame;
+            }
+        }
     }
 }

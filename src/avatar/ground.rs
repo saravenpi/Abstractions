@@ -6,7 +6,7 @@ use super::AvatarPose;
 use super::clock::{Clock, ramp};
 use super::gait::{Foot, bob, foot, leg_ik, run};
 use super::pose::{Core, Limb, Pose};
-use super::tune::{ANKLE_RISE, HIP, LEAN, PELVIS, SHIN, SINK, SOLE_Y, THIGH};
+use super::tune::{ANKLE_RISE, HIP, LEAN, LEAN_GAIN, PELVIS, SHIN, SINK, SOLE_Y, THIGH, TURN_BANK};
 
 /// Distance from the ankle to the toes in meters, with a margin: it bounds how far lifted toes may dip.
 const TOE_REACH: f32 = 0.2;
@@ -22,27 +22,35 @@ pub struct Stance {
     pub sway: f32,
     /// Where the left and the right ankle are.
     pub feet: [Foot; 2],
+    /// Roll of the pelvis into a turn, in radians: positive drops the right hip.
+    pub roll: f32,
 }
 
 /// Returns the hip swing, knee bend and ankle pitch that put one ankle where `foot` says.
 ///
 /// The hip sits under the leaning pelvis, the leg is solved in the frame of the pelvis and the
 /// boot is kept level while it is planted. In the air the toes dip as far as the lift allows.
-fn leg(stance: &Stance, foot: &Foot) -> [f32; 3] {
+/// `rise` is how far the roll of the pelvis lifts this hip, in meters.
+fn leg(stance: &Stance, foot: &Foot, rise: f32) -> [f32; 3] {
     let (sin, cos) = stance.lean.sin_cos();
-    let hip = (PELVIS[1] + stance.lift + HIP[1] * cos, -HIP[1] * sin);
+    let hip = (PELVIS[1] + stance.lift + HIP[1] * cos + rise, -HIP[1] * sin);
     let (y, z) = (SOLE_Y + ANKLE_RISE + foot.lift - hip.0, -foot.ahead - hip.1);
     let (swing, knee) = leg_ik(-(y * sin + z * cos), -(y * cos - z * sin));
     let dip = (foot.lift / TOE_REACH).min(0.85).asin();
     [swing, knee, swing - knee - stance.lean + dip]
 }
 
-/// Returns the pose of a pelvis held by `stance`, with both legs reaching their feet.
+/// Returns the pose of a pelvis held by `stance`, with both legs reaching their feet. A rolled
+/// pelvis lifts one hip and drops the other: each leg is solved from where its own hip is and
+/// hangs straight down, so both feet stay on the ground.
 pub fn planted(stance: &Stance) -> Pose {
-    let [left, right] = stance.feet.map(|foot| leg(stance, &foot));
-    let lean_out = stance.sway / (THIGH + SHIN);
+    let rise = HIP[0] * stance.roll.sin();
+    let left = leg(stance, &stance.feet[0], rise);
+    let right = leg(stance, &stance.feet[1], -rise);
+    let lean_out = stance.sway / (THIGH + SHIN) - stance.roll;
     Pose::default()
         .with(Core::Lift, stance.lift)
+        .with(Core::Roll, stance.roll)
         .with(Core::Pitch, stance.lean)
         .with(Core::Sway, stance.sway)
         .pair(Limb::Hip, left[0], right[0])
@@ -76,20 +84,30 @@ pub fn idle(clock: &Clock) -> Pose {
         .both(Limb::Elbow, 0.16 + 0.03 * breath)
 }
 
-/// Returns the walking and running pose: legs on the cycle, arms swinging against them, a lean and a bob.
+/// Returns how far the striding body leans forward: more the faster it goes, further into a
+/// start and back into a stop, by the speed it really gains or loses.
+fn lean(input: &AvatarPose) -> f32 {
+    let push = (LEAN_GAIN.0 * input.gain).clamp(-LEAN_GAIN.1, LEAN_GAIN.1);
+    LEAN.0 + LEAN.1 * input.speed.abs() + push * ramp(0.5, 3.0, input.speed.abs())
+}
+
+/// Returns the walking and running pose: legs on the cycle, arms swinging against them, the
+/// shoulders turning against the hips, a bob, a lean with the speed it gains and a bank into
+/// the turn it makes. The knees keep taking a landing in while the legs run on.
 pub fn stride(input: &AvatarPose, clock: &Clock) -> Pose {
     let (speed, pace) = (input.speed, run(input.speed));
     let stance = Stance {
         lift: -SINK.1 + bob(clock.phase, speed) - 0.3 * clock.crouch,
-        lean: LEAN.0 + LEAN.1 * speed.abs(),
+        lean: lean(input),
         sway: 0.0,
         feet: [foot(clock.phase, speed), foot(clock.phase + 0.5, speed)],
+        roll: (-TURN_BANK.0 * input.turn * speed).clamp(-TURN_BANK.1, TURN_BANK.1),
     };
     let beat = (TAU * (clock.phase - 0.08)).cos();
-    let swing = 0.3 * beat;
+    let swing = (0.24 + 0.2 * pace) * beat;
     planted(&stance)
         .with(Core::Spine, 0.03 + 0.03 * pace)
-        .with(Core::Twist, 0.1 * beat)
+        .with(Core::Twist, (0.08 + 0.08 * pace) * beat)
         .with(Core::HeadPitch, 0.5 * stance.lean)
         .pair(
             Limb::Shoulder,

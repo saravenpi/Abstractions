@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use super::Companion;
 use super::aboard::{Aboard, read};
 use super::spot::{Probe, Stance};
+use super::tune::MAX_STEP;
 use super::wing::aloft;
 use crate::gear::Gear;
 use crate::player::{EYE_OFFSET, Player, above_sea};
@@ -14,9 +15,6 @@ use crate::render::{DayClock, GameCamera, daylight};
 use crate::space::{Anchor, Frame, Location, Travel, up};
 use crate::world::Terrain;
 use crate::world::structures::Surroundings;
-
-/// Longest frame time the companion simulates, in seconds, so a hitch never throws it around.
-const MAX_STEP: f32 = 0.05;
 
 /// Distance in meters within which the nearest structure is looked for.
 const STRUCTURE_REACH: f32 = 60.0;
@@ -43,8 +41,6 @@ pub struct CompanionSense {
     pub delight: u32,
     /// True while the flight gear carries the player through the air. Filled from the gear.
     pub flying: bool,
-    /// Bank of the flying player in radians, positive with the right side down. Filled from the gear.
-    pub bank: f32,
     /// True while the player dives steeply and fast. Filled from the gear.
     pub diving: bool,
 }
@@ -73,11 +69,6 @@ impl Around<'_, '_> {
     /// Returns the frame time in seconds, capped so a hitch never throws the companion around.
     pub fn dt(&self) -> f32 {
         self.time.delta_secs().min(MAX_STEP)
-    }
-
-    /// Returns wrapped seconds of game time.
-    pub fn now(&self) -> f32 {
-        self.time.elapsed_secs_wrapped()
     }
 
     /// Returns true while the player is seated in the ship.
@@ -141,7 +132,7 @@ pub fn fill(
     mut was: Local<Option<f64>>,
 ) {
     let state = gear.single().map(|gear| gear.state).unwrap_or_default();
-    let (flying, bank, diving) = aloft(&state);
+    let (flying, diving) = aloft(&state);
     let flight = aboard.flight(around.seated());
     let (depth, climb, in_clouds) = read(around.afloat(), *was, &flight, around.dt());
     *was = flight.height;
@@ -154,7 +145,6 @@ pub fn fill(
         structure: nearest_structure(&around),
         delight: sense.delight,
         flying: flying && !flight.seated,
-        bank,
         diving: diving && !flight.seated,
     };
     sense.set_if_neq(next);

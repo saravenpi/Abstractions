@@ -158,3 +158,29 @@ fn looks_ahead_for_the_ground_at_speed() {
     }
     assert!(lowest > 0.2, "it came within {lowest} m of the ground");
 }
+
+/// Skimming four metres over hills at 60 m/s, the player climbing over every rise, the body
+/// never moves against the player by more than the ground moved under the two of them, plus
+/// what its spring does in a frame. The ground ahead only moves the place it aims for: it used
+/// to lift the body itself, in one step, by whatever rose 48 m ahead.
+#[test]
+fn never_jumps_skimming_the_ground() {
+    let mut flight = Flight::new(9);
+    let course = Vec3::new(1.0, 0.0, 0.3).normalize();
+    let floor = |terrain: &Terrain, at: Vec3| terrain.height(at.x, at.z).max(0.0);
+    let (mut worst, mut was) = (f32::MIN, None::<(Vec3, f32)>);
+    for _ in 0..(20.0 / DT) as usize {
+        let under = floor(&flight.terrain, flight.eye);
+        flight.eye.y = under + 4.0;
+        flight.step(course * 60.0);
+        let beside = flight.at.translation - flight.eye;
+        let ground = under + floor(&flight.terrain, flight.at.translation);
+        if let Some((last, level)) = was.replace((beside, ground)) {
+            worst = worst.max(last.distance(beside) - 2.0 * (ground - level).abs());
+        }
+    }
+    assert!(
+        worst < 4.0,
+        "it jumps {worst} m more than the ground in a frame"
+    );
+}

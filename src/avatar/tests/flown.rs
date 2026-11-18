@@ -40,7 +40,8 @@ fn gear(mode: Mode, pitch: f32) -> FlightState {
         mode: flight,
         pitch,
         airspeed: 40.0,
-        wings: f32::from(u8::from(flight.winged())),
+        wings: 1.0,
+        prone: 1.0,
         ..FlightState::default()
     }
 }

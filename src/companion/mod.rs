@@ -19,18 +19,24 @@ mod neck;
 mod orb;
 mod perch;
 mod pose;
+mod puppet;
+mod ribbon;
 mod ride;
 mod rng;
 mod scene;
 mod screen;
 mod sense;
+mod shapes;
 mod shine;
 mod sights;
+mod soar;
 mod spawn;
 mod spot;
 mod spring;
+mod tail;
 mod think;
 pub mod tune;
+mod wake;
 mod wing;
 
 #[cfg(test)]
@@ -39,6 +45,8 @@ mod tests;
 mod tests_face;
 #[cfg(test)]
 mod tests_flight;
+#[cfg(test)]
+mod tests_follow;
 #[cfg(test)]
 mod tests_gaze;
 #[cfg(test)]
@@ -53,13 +61,21 @@ mod tests_paint;
 mod tests_parts;
 #[cfg(test)]
 mod tests_perch;
+#[cfg(test)]
+mod tests_place;
+#[cfg(test)]
+mod tests_soar;
+#[cfg(test)]
+mod tests_tour;
 
 pub use face::Expression;
 pub use mood::{ChirpKind, CompanionChirp};
 pub use sense::CompanionSense;
+pub use spawn::{Stock, look};
 
 use bevy::prelude::*;
 
+use crate::player::PlayerSet;
 use crate::render::Warm;
 use crate::screens::playing;
 use crate::ship::ShipEvent;
@@ -96,11 +112,15 @@ pub(super) fn plugin(app: &mut App) {
                 ride::switch,
                 think::think,
                 motion::float,
+                puppet::track,
+                puppet::pose,
                 limbs::limbs,
                 screen::repaint,
                 shine::shine,
+                tail::draw,
             )
                 .chain()
+                .after(PlayerSet::Move)
                 .run_if(playing)
                 .run_if(ready),
         );

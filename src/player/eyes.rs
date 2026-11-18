@@ -3,28 +3,24 @@
 use bevy::prelude::*;
 
 use super::controller::Motion;
-use super::intent::axis;
 use super::upright::tilt;
 use super::{Player, PlayerSet, local, wrap};
 use crate::gear::{FlightState, Gear};
 use crate::screens::{in_control, playing};
-use crate::settings::{Persistent, Settings};
 use crate::sim::PlayerId;
 use crate::space::{Anchor, on_foot, up};
 use crate::view::{Heading, Kind, Look, Target, ViewSet};
 
-/// Turn of the view in radians per second a held key gives a body on its wings: around the
-/// local up, and up or down.
-const WING_TURN: Vec2 = Vec2::new(1.2, 0.9);
+/// Seconds the wings must have been open and the mouse left alone before the view drifts back
+/// behind the body: long enough to look around, and to see where the wings opened.
+const SETTLE: f32 = 2.5;
 
-/// Farthest the view may pitch away from the nose of a body on its wings, in radians. The
-/// nose follows the view only as fast as the wings can turn the flight, so a view that ran
-/// ahead would come round to the other side of the nose and call it back the short way: this
-/// leash is what lets a held key pull the body through a whole loop.
-const LEASH: f32 = 0.9;
+/// Rate per second at which the view drifts back behind a body on its wings.
+const RETURN: f32 = 4.0;
 
-/// Share of that turn the roll keys give: they bank the body, and the view follows the banked turn.
-const BANKED: f32 = 0.7;
+/// Fastest the view drifts back, in radians per second: a view left far round swings back
+/// steadily instead of whipping a third person camera across.
+const SWING: f32 = 2.5;
 
 /// Airspeed in metres per second above which a body the gear carries is framed as flying even
 /// with the wings folded: a fast fall.
@@ -40,37 +36,39 @@ pub(super) fn kind(state: &FlightState) -> Kind {
     }
 }
 
-/// Lets the keys steer a body on its wings. The wings follow the view, so the keys turn the
-/// view the way the mouse does: the turn keys of the ship turn it, the left and right keys
-/// roll the body into a banked turn that the view follows, forward dives and back climbs, as
-/// far round as a loop, and neither the mouse nor the keys take the view farther than
-/// [`LEASH`] from the nose; a view that is already farther is left where it is. Without this
-/// the keys only lean the body and the flight never leaves the line of the view.
-fn steer(
+/// Lets the view of a body on its wings look around freely and drift back behind it.
+///
+/// The keys steer the body itself and the mouse steers nothing, so the view is only a way of
+/// looking. Once the wings have been open and the mouse left alone for [`SETTLE`] the view
+/// eases back to the nose heading and the pitch of the flight frame, all the way round a
+/// loop, at [`RETURN`] and never faster than [`SWING`].
+fn follow(
     time: Res<Time>,
-    (keys, settings): (Res<ButtonInput<KeyCode>>, Res<Persistent<Settings>>),
     players: Query<(&PlayerId, &Gear), With<Player>>,
     heading: Res<Heading>,
     mut look: ResMut<Look>,
+    mut idle: Local<f32>,
 ) {
     let Some(gear) = local(players.iter().map(|(id, gear)| (*id, gear))) else {
         return;
     };
-    if !gear.state.mode.winged() {
+    let dt = time.delta_secs();
+    let moved = look.yaw_delta != 0.0 || look.pitch_delta != 0.0;
+    *idle = match moved || !gear.state.mode.winged() {
+        true => 0.0,
+        false => *idle + dt,
+    };
+    if *idle < SETTLE {
         return;
     }
-    let map = &settings.controls.keys;
-    let flat = axis(&keys, map.ship.turn_left, map.ship.turn_right);
-    let banked = axis(&keys, map.left, map.right) * BANKED;
-    let turn = Vec2::new(
-        (flat + banked).clamp(-1.0, 1.0),
-        axis(&keys, map.back, map.forward),
-    ) * WING_TURN
-        * time.delta_secs();
+    let state = &gear.state;
+    let gap = Vec2::new(
+        wrap(state.servo.yaw - heading.yaw),
+        wrap(state.pitch - heading.pitch),
+    );
+    let turn = (gap * (1.0 - (-RETURN * dt).exp())).clamp_length_max(SWING * dt);
     look.yaw_delta += turn.x;
-    let was = wrap(heading.pitch - gear.state.pitch);
-    let led = was + look.pitch_delta + turn.y;
-    look.pitch_delta = led.clamp(was.min(-LEASH), was.max(LEASH)) - was;
+    look.pitch_delta += turn.y;
 }
 
 /// The parts of a player body the camera rig follows.
@@ -109,13 +107,13 @@ pub(super) fn aim(
     };
 }
 
-/// Registers the steering of the wings by the keys, before the intents are sent, and the feed of
+/// Registers the drift of the view behind the wings, before the intents are sent, and the feed of
 /// the camera rig, after the controller moved the body and before the rig.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Target>().add_systems(
         Update,
         (
-            steer
+            follow
                 .after(ViewSet::Input)
                 .before(PlayerSet::Intend)
                 .run_if(in_control),

@@ -57,13 +57,20 @@ impl View {
         (arc * self.split).max(self.reach + arc * HALF_DIAGONAL)
     }
 
-    /// Returns true when the leaf `id` should split.
-    pub fn splits(&self, id: ChunkId) -> bool {
-        id.level < self.deepest && self.distance(id) < self.range(id)
+    /// Returns true when the leaf `id`, `near` metres from where detail is wanted, should split.
+    pub fn splits_from(&self, id: ChunkId, near: f64) -> bool {
+        id.level < self.deepest && near < self.range(id)
     }
 
-    /// Returns true when the split node `id` should merge.
-    pub fn merges(&self, id: ChunkId) -> bool {
-        self.distance(id) > self.range(id) * (MERGE / SPLIT)
+    /// Returns true when the split node `id`, `near` metres from where detail is wanted, should
+    /// merge.
+    pub fn merges_from(&self, id: ChunkId, near: f64) -> bool {
+        near > self.range(id) * (MERGE / SPLIT)
+    }
+
+    /// Returns true when the leaf `id` should split.
+    #[cfg(test)]
+    pub fn splits(&self, id: ChunkId) -> bool {
+        self.splits_from(id, self.distance(id))
     }
 }

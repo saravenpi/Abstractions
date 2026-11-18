@@ -5,9 +5,10 @@ use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::po
 
 use super::build::{NodeData, render_only};
 use super::nodes::Node;
+use super::scene::Scene;
 use super::spawn::Spawner;
+use super::stretch::Stretch;
 use super::{Chunks, raytrace};
-use crate::world::focus::Focus;
 use crate::world::globe::far::{Range, bake, range};
 use crate::world::globe::{ChunkId, Face};
 use crate::world::mesh::Frame;
@@ -74,18 +75,25 @@ fn covered(chunks: &Chunks) -> bool {
 
 /// Swaps between the quadtree and the baked planet with the distance of the focus: the baked
 /// planet beyond about three radii, nothing beyond twenty, where the sky draws the planet.
+///
+/// As the first step of the chain that sees the focus, it also notes how the focus moves and
+/// how far the budget of the frame stretches for the work that waits.
 pub fn watch_far(
     mut commands: Commands,
     mut chunks: ResMut<Chunks>,
-    focus: Focus,
+    scene: Scene,
     mut spawner: Spawner,
 ) {
     let chunks = &mut *chunks;
+    let (at, waiting) = (
+        scene.at(),
+        chunks.pending.len() + chunks.nodes.building.len(),
+    );
+    chunks.motion.advance(at, scene.delta());
+    chunks.stretch = Stretch::of(waiting, scene.delta());
     chunks.far.prepare(&mut commands, &mut spawner);
     let radius = spawner.terrain.globe().radius();
-    let seen = focus
-        .planet()
-        .map(|at| range(at.length() / radius, chunks.far.active));
+    let seen = at.map(|at| range(at.length() / radius, chunks.far.active));
     let seen = seen.unwrap_or(Range::Beyond);
     let far = seen != Range::Near && chunks.far.node.is_some();
     if far && !chunks.far.active {

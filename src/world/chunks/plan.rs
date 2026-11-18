@@ -4,6 +4,8 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use super::detail::Detail;
+#[cfg(test)]
+use super::lane::Lane;
 
 /// Chunks around the focus, in every direction, that carry colliders.
 const SOLID_RADIUS: i32 = 1;
@@ -14,24 +16,30 @@ pub fn needs_collider(coord: IVec2, center: IVec2) -> bool {
     d.x <= SOLID_RADIUS && d.y <= SOLID_RADIUS
 }
 
-/// Picks the finished chunks to turn into entities now: the `budget` nearest, plus any that need colliders.
-pub fn select_batch(mut done: Vec<IVec2>, center: IVec2, budget: usize) -> Vec<IVec2> {
-    done.sort_by_key(|c| (*c - center).length_squared());
+/// Picks the finished chunks to turn into entities now, each given with its build cost: the
+/// `budget` cheapest, plus any that need colliders.
+pub fn batch(mut done: Vec<(f32, IVec2)>, center: IVec2, budget: usize) -> Vec<IVec2> {
+    done.sort_by(|a, b| a.0.total_cmp(&b.0));
     done.into_iter()
         .enumerate()
-        .filter(|(i, c)| *i < budget || needs_collider(*c, center))
-        .map(|(_, c)| c)
+        .filter(|(i, (_, c))| *i < budget || needs_collider(*c, center))
+        .map(|(_, (_, c))| c)
         .collect()
 }
 
+/// Picks the finished chunks to turn into entities now around a focus that stands still: the
+/// `budget` nearest, plus any that need colliders.
+#[cfg(test)]
+pub fn select_batch(done: Vec<IVec2>, center: IVec2, budget: usize) -> Vec<IVec2> {
+    let lane = Lane::new(center, Vec2::ZERO, 0);
+    let costs = done.into_iter().map(|c| (lane.cost(c), c)).collect();
+    batch(costs, center, budget)
+}
+
 /// Returns the chunks within `radius` of `center`, nearest first.
+#[cfg(test)]
 pub fn ring(center: IVec2, radius: i32) -> Vec<IVec2> {
-    let mut all: Vec<IVec2> = (-radius..=radius)
-        .flat_map(|dx| (-radius..=radius).map(move |dz| center + IVec2::new(dx, dz)))
-        .filter(|c| (*c - center).length_squared() <= radius * radius)
-        .collect();
-    all.sort_by_key(|c| (*c - center).length_squared());
-    all
+    Lane::new(center, Vec2::ZERO, radius).cells()
 }
 
 /// A spawned chunk with the colliders it carries while the player is near.

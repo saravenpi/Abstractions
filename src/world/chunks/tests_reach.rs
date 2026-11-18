@@ -27,7 +27,7 @@ struct Load {
 }
 
 /// Swaps the streamed planet for one of `radius` metres, with its spawn and anchor.
-fn resize(app: &mut App, radius: f64) {
+pub(super) fn resize(app: &mut App, radius: f64) {
     let globe = Arc::new(Globe::new(7, radius, 9.81));
     let north = Terrain::on(globe.clone(), globe.face_chart(Face::PosY));
     let (terrain, spawn) = rehome(&north, north.find_spawn());
@@ -85,14 +85,15 @@ fn measure(app: &mut App, seconds: f64) -> Load {
     }
 }
 
-/// Settles a world of `radius` metres at `rings` and returns what it holds.
+/// Settles a world of `radius` metres at `rings`, waits for the last fade to end and returns
+/// what it holds.
 fn settle(radius: f64, rings: u32) -> Load {
     let mut app = world();
     app.insert_resource(Reach::of(Some(rings)));
     resize(&mut app, radius);
     let start = Instant::now();
     app.update();
-    while !idle(app.world()) {
+    while !(idle(app.world()) && app.world().resource::<Chunks>().fades.idle()) {
         assert!(
             start.elapsed() < Duration::from_secs(900),
             "{rings} rings never settled"

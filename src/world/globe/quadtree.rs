@@ -1,11 +1,19 @@
 //! The chunk quadtree: which nodes of each face are split around the focus.
 
+mod path;
+mod pick;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_path;
 mod view;
 
 use std::collections::HashSet;
 
+pub use self::path::Path;
+#[cfg(test)]
+pub use self::pick::select;
+pub use self::pick::select_along;
 pub use self::view::{View, leaf_at};
 use super::{ChunkId, Face};
 
@@ -86,7 +94,7 @@ impl Tree {
     }
 
     /// Returns the split nodes whose four children are all leaves.
-    fn tips(&self) -> impl Iterator<Item = ChunkId> + '_ {
+    pub(super) fn tips(&self) -> impl Iterator<Item = ChunkId> + '_ {
         let leafy = |id: &ChunkId| children(*id).iter().all(|c| !self.is_split(*c));
         self.split.iter().copied().filter(leafy)
     }
@@ -97,27 +105,5 @@ impl Tree {
         for id in &changes.merges {
             self.split.remove(id);
         }
-    }
-}
-
-/// Returns the splits and merges that bring `tree` closer to what `view` wants.
-///
-/// Only leaves accepted by `ready` split, nearest first and at most `MAX_SPLITS` or the budget of
-/// the view. A node merges once the focus is `MERGE / SPLIT` times farther than where it splits,
-/// so a focus that hovers around a boundary changes nothing.
-pub fn select(tree: &Tree, view: &View, ready: &dyn Fn(ChunkId) -> bool) -> Changes {
-    let merges: Vec<ChunkId> = tree.tips().filter(|id| view.merges(*id)).collect();
-    let kept = |id: &ChunkId| parent(*id).is_none_or(|p| !merges.contains(&p));
-    let mut near: Vec<(f64, ChunkId)> = tree
-        .leaves()
-        .into_iter()
-        .filter(|id| view.splits(*id) && kept(id) && ready(*id))
-        .map(|id| (view.distance(id), id))
-        .collect();
-    near.sort_by(|a, b| a.0.total_cmp(&b.0));
-    let budget = view.budget.min(MAX_SPLITS);
-    Changes {
-        splits: near.into_iter().take(budget).map(|(_, id)| id).collect(),
-        merges,
     }
 }

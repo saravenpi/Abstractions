@@ -3,6 +3,7 @@
 //! view on the ground. The camera, the body and the companion are watched on every frame.
 
 mod ground;
+mod loops;
 mod stages;
 mod watch;
 

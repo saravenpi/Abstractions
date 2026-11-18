@@ -4,7 +4,7 @@ use std::f32::consts::{PI, TAU};
 
 use bevy::prelude::*;
 
-use super::{DT, Flight, flying};
+use super::{DT, Flight, flying, gliding};
 use crate::gear::{GearInput, Mode};
 
 /// Pitch rate of the view in radians per second, as the back key gives it.
@@ -53,4 +53,42 @@ fn pulling_up_flies_a_whole_loop() {
     assert!((state.pitch - TAU).abs() < 0.3, "pitch {}", state.pitch);
     assert!(state.velocity.z < -30.0 && state.servo.yaw.abs() < 0.2);
     assert!(flight.twist < 0.2, "the body snapped by {}", flight.twist);
+}
+
+/// From a plain glide, far too slow for a round loop, a held pitch stick still takes the body
+/// all the way round, up and over or down and under: the wing pulls while it can, then the
+/// body turns on through the stall and falls through. It never hangs with the nose tied to a
+/// falling path, never spins and never snaps. Without the stick the same view leaves the nose
+/// on the path, as before.
+#[test]
+fn a_held_stick_turns_a_slow_glide_all_the_way_round() {
+    let mut glide = Flight::new(Mode::Glide, Vec3::new(0.0, -12.0, -36.0));
+    glide.run(&gliding(-0.2), 20.0);
+    let turned = |stick: f32, sign: f32| {
+        let (mut flight, start) = (glide, glide.state.pitch);
+        let (mut view, mut round) = (start, 0.0);
+        for _ in 0..1200 {
+            if round >= TAU {
+                break;
+            }
+            let led = sign * (view - start) + PULL * DT;
+            view = start + sign * led.min(round + LEASH);
+            let input = GearInput {
+                aim: Some(Vec2::new(0.0, view)),
+                pitch: stick,
+                ..gliding(0.0)
+            };
+            flight.tick(&input, DT);
+            round = sign * (flight.state.pitch - start);
+        }
+        assert!(flight.twist < 0.2, "{stick}: snapped by {}", flight.twist);
+        round
+    };
+    assert!(
+        glide.state.airspeed < 45.0,
+        "a glide at {}",
+        glide.state.airspeed
+    );
+    assert!(turned(1.0, 1.0) >= TAU && turned(-1.0, -1.0) >= TAU);
+    assert!(turned(0.0, 1.0) < 2.0, "the nose left the path by itself");
 }

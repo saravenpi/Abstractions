@@ -1,8 +1,6 @@
 //! Routes that must not disturb the drive, and the rule a route waits by: the destination
 //! already flown to changes nothing, and a new one waits for the drop-out only when the drive ran.
 
-use bevy::prelude::*;
-
 use super::retarget::{DT, STILL, Seen, flight, frames};
 use crate::computer::Target;
 use crate::ship::pilot::{Autopilot, Phase, SETTLE, Settle};

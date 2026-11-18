@@ -43,7 +43,7 @@ fn a_grain_is_a_short_line() {
         assert!(long >= wide * GRAIN_ASPECT && long <= GRAIN_REACH, "{long}");
     }
     assert!(line(0.03).1 > line(0.02).1 && line(1.0).1 == GRAIN_REACH);
-    assert!(GRAIN_REACH < 0.05, "a grain is a short line");
+    const { assert!(GRAIN_REACH < 0.05, "a grain is a short line") };
 }
 
 /// The dust is the medium of a galaxy: all of it inside the star disc, less as the camera
@@ -92,7 +92,7 @@ fn the_shader_draws_the_grains_by_these_rules() {
             "starfield.wesl lacks `{line}`"
         );
     }
-    assert!(MOTES <= 200, "{MOTES} grains is a star field");
+    const { assert!(MOTES <= 200, "a few grains, not a star field") };
 }
 
 /// Nothing in the sky of a warp runs on a cycle: the shader reads no clock, and the sway of

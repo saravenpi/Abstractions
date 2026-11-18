@@ -13,13 +13,14 @@ use super::{Chunks, FRAME_BUDGET};
 use crate::space::Anchor;
 use crate::world::focus::Link;
 use crate::world::globe::{Chart, Face};
+use crate::world::ground::GroundMaterial;
 use crate::world::props::PropAssets;
 use crate::world::{Planet, SpawnPoint, Terrain, WorldReady};
 
 /// Returns an app with a new world begun and the streaming chain, without a window or a screen.
 pub(super) fn world() -> App {
     let mut app = App::new();
-    let mut materials = Assets::<StandardMaterial>::default();
+    let mut materials = Assets::<GroundMaterial>::default();
     let mut images = Assets::<Image>::default();
     app.add_plugins(MinimalPlugins)
         .insert_resource(PropAssets::new(&mut materials, &mut images))

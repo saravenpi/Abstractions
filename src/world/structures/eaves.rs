@@ -30,6 +30,19 @@ pub struct Cap {
     pub snow: bool,
 }
 
+/// Returns the corners of the wall tops of `walls`, in the order front left, front right, back right and back
+/// left: each wall top runs from one to the next.
+fn ring(walls: Walls) -> [Vec3; 4] {
+    let (lo, hi) = walls;
+    let corner = |x: f32, z: f32| Vec3::new(x, lo.y, z);
+    [
+        corner(lo.x, hi.z),
+        corner(hi.x, hi.z),
+        corner(hi.x, lo.z),
+        corner(lo.x, lo.z),
+    ]
+}
+
 impl Build<'_> {
     /// Adds a pitched roof resting on `walls`, its eaves `over` meters outside them at the height of the wall
     /// tops and its ridge `rise` above along local x, with the fill that carries it.
@@ -76,7 +89,8 @@ impl Build<'_> {
     }
 
     /// Adds a single slope over the box `roof`, high at its low z and `rise` lower at its high z, resting on
-    /// `walls` with the fill that carries it. `coat` is the roofing and the wall color.
+    /// `walls` with the fill that carries it, solid where it rises out of reach of the walls. `coat` is the
+    /// roofing and the wall color.
     pub fn lean_over(
         &mut self,
         walls: Walls,
@@ -94,19 +108,16 @@ impl Build<'_> {
             &[(0.0, back), (1.0, front)],
         ];
         self.fill(walls, profiles, coat.1);
+        let ring = ring(walls);
+        for (i, profile) in profiles.into_iter().enumerate() {
+            self.end_stack(ring[i], ring[(i + 1) % 4], profile);
+        }
     }
 
     /// Adds the fill above the four wall tops of `walls`, in the order front, right, back and left, each up to
     /// its profile.
     fn fill(&mut self, walls: Walls, profiles: [Profile; 4], rgb: [f32; 3]) {
-        let (lo, hi) = walls;
-        let corner = |x: f32, z: f32| Vec3::new(x, lo.y, z);
-        let ring = [
-            corner(lo.x, hi.z),
-            corner(hi.x, hi.z),
-            corner(hi.x, lo.z),
-            corner(lo.x, lo.z),
-        ];
+        let ring = ring(walls);
         self.tagged(Tag::Fill, |s| {
             for (i, profile) in profiles.into_iter().enumerate() {
                 s.fill_face(ring[i], ring[(i + 1) % 4], profile, rgb);

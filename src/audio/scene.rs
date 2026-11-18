@@ -104,9 +104,3 @@ pub fn altitude_fade(altitude: f32, top: f32) -> f32 {
     let left = 1.0 - (altitude / top.max(1.0)).clamp(0.0, 1.0);
     left * left
 }
-
-/// Returns how deep inside a cloud layer `altitude` is: 0 outside it, 1 at its middle.
-pub fn cloud_depth(altitude: f32, base: f32, top: f32) -> f32 {
-    let (middle, half) = (0.5 * (base + top), (0.5 * (top - base)).max(1.0));
-    (1.0 - ((altitude - middle) / half).abs()).clamp(0.0, 1.0)
-}

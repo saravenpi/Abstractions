@@ -5,7 +5,6 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::air::Air;
-use super::dome::cloud_cover;
 use super::fog::{Height, fog_sight};
 use super::observer::Observer;
 use super::vantage::{LocalSystem, Nearby, Vantage};
@@ -49,10 +48,7 @@ fn home_record_is_the_home_air() {
     for base in [Vec3::new(0.18, 0.4, 0.92), Vec3::ZERO, Vec3::splat(0.7)] {
         assert_eq!(home.stain(base, Vec3::new(1.0, 0.5, 0.3)), base);
     }
-    for step in 0..200 {
-        let drift = cloud_cover(step as f32 / 200.0);
-        assert_eq!(home.cover(drift), drift);
-    }
+    assert_eq!(home.clouds, 0.5);
     assert_eq!(home.halo(Vec3::ONE), Vec4::new(0.32, 0.55, 1.0, 1.0));
     let (vantage, local) = at_sea_level(PlanetRecord::TEMPERATE);
     assert_eq!(vantage.air, 1.0);
@@ -94,12 +90,12 @@ fn vantage_air_is_the_share_of_the_planet() {
     }
 }
 
-/// The cover the shader gets is the cover of the day at the home share of clouds, none for a
-/// class without clouds, and it rises with the share of the class.
+/// The mean cloud share of a class is the home share on an island world, none on a barren one,
+/// and it rises with the share of the class.
 #[test]
 fn cloud_cover_follows_the_class() {
-    let cover = |class: PlanetClass| Air::of(&world(class, 1.0)).cover(0.55);
-    assert_eq!(cover(PlanetClass::Island), 0.55);
+    let cover = |class: PlanetClass| Air::of(&world(class, 1.0)).clouds;
+    assert_eq!(cover(PlanetClass::Island), 0.5);
     assert_eq!(cover(PlanetClass::Barren), 0.0);
     assert_eq!(Air::of(&world(PlanetClass::Barren, 1.0)).clouds, 0.0);
     let ranked = [
@@ -113,7 +109,7 @@ fn cloud_cover_follows_the_class() {
     for pair in ranked.windows(2) {
         assert!(cover(pair[1]) > cover(pair[0]), "{pair:?}");
     }
-    assert!((cover(PlanetClass::Ocean) - 0.77).abs() < 1e-5);
+    assert!((cover(PlanetClass::Ocean) - 0.7).abs() < 1e-5);
 }
 
 /// A planet without air has no halo. The halo grows with the pressure without blowing out,

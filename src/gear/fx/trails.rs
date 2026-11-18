@@ -47,6 +47,14 @@ const TIP_WHITE: f32 = 0.55;
 /// Brightness of the wingtip colour, above 1 so that bloom catches it.
 const TIP_GAIN: f32 = 2.4;
 
+/// Airspeeds between which the wingtips start to trail and trail fully, in metres per second:
+/// from under the stall of the wing to the slowest glide it holds. A band set higher left the
+/// plain glide, at about 30 m/s, with a trail too faint to see.
+pub const TIP_SPEED: (f32, f32) = (12.0, 24.0);
+
+/// Glow of a wingtip in steady flight, before load and speed add theirs.
+pub const TIP_STEADY: f32 = 0.6;
+
 /// What lays a trail.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Source {
@@ -82,8 +90,9 @@ pub struct Canvas<'w> {
 
 /// Spawns the three ribbons when gameplay starts, unless they already exist.
 ///
-/// A ribbon stays at the render origin: its vertices are rewritten in render space each frame
-/// from points kept in the planet frame, which is what carries it through a rebase.
+/// A ribbon is moved to the head of its trail each frame and its vertices are rewritten around
+/// it from points kept in the planet frame, which is what carries it through a rebase. It has
+/// no bounds, so the renderer sorts it among the see-through things by where the entity is.
 pub fn spawn(
     mut commands: Commands,
     kit: Res<Kit>,
@@ -110,16 +119,18 @@ pub fn spawn(
     }
 }
 
-/// Returns how strongly a wingtip glows: nothing slow or folded, faint in steady flight, bright
-/// under load in pull-ups and tight turns and in fast dives, like a wingtip vortex.
+/// Returns how strongly a wingtip glows: nothing slow or folded, plain in steady flight,
+/// brighter under load in pull-ups and tight turns and in fast dives, like a wingtip vortex.
 pub fn tip_heat(scene: &Scene) -> f32 {
     let state = &scene.state;
     if !scene.active || !state.mode.airborne() {
         return 0.0;
     }
-    let load = 0.3 + 0.7 * smooth(1.1, 2.5, state.load) + 0.5 * smooth(50.0, 85.0, state.airspeed);
+    let load = TIP_STEADY
+        + (1.0 - TIP_STEADY) * smooth(1.1, 2.5, state.load)
+        + 0.5 * smooth(50.0, 85.0, state.airspeed);
     state.spread()
-        * smooth(18.0, 40.0, state.airspeed)
+        * smooth(TIP_SPEED.0, TIP_SPEED.1, state.airspeed)
         * scene.sigma.min(1.0)
         * (1.0 - scene.thin)
         * load
@@ -178,31 +189,50 @@ pub fn look(source: Source, eye: Vec3, palette: Option<&Palette>) -> Look {
     }
 }
 
-/// Feeds every trail from its emitter and rewrites the meshes of the ones that glow.
+/// Feeds `ribbon` from its emitter and fills `strip` with it around the head of its trail.
+/// Returns the render position of that head, or nothing when there is nothing to write.
 ///
+/// A trail nobody feeds, with the player in the ship or gone, is emptied: left as it was it
+/// would hang where it was last drawn and, fed again from another place, run straight there.
 /// A trail with nothing left to show is written once more, to clear it, and then left alone.
-pub fn draw(mut canvas: Canvas, mut ribbons: Query<(&mut Ribbon, &Mesh3d)>) {
-    let Some(anchor) = canvas.anchor.as_deref().filter(|_| canvas.scene.active) else {
-        return;
-    };
-    let mut strip = Strip::default();
-    for (mut ribbon, handle) in &mut ribbons {
-        let (at, heat) = emitter(ribbon.source, &canvas.scene);
-        ribbon
-            .trail
-            .feed(anchor.to_frame(at), heat, canvas.scene.dt);
-        let style = look(ribbon.source, canvas.scene.eye, canvas.palette.as_deref());
-        let live = ribbon.trail.live(style.life);
-        if !live && !ribbon.drawn {
-            continue;
+fn lay(ribbon: &mut Ribbon, canvas: &Canvas, strip: &mut Strip) -> Option<Vec3> {
+    let (anchor, scene) = (canvas.anchor.as_deref()?, &canvas.scene);
+    match scene.active {
+        true => {
+            let (at, heat) = emitter(ribbon.source, scene);
+            ribbon.trail.feed(anchor.to_frame(at), heat, scene.dt);
         }
-        ribbon.drawn = live;
-        fill(
-            &ribbon.trail,
-            &style,
-            |point| anchor.to_render(point),
-            &mut strip,
-        );
+        false => ribbon.trail = Trail::default(),
+    }
+    let style = look(ribbon.source, scene.eye, canvas.palette.as_deref());
+    let live = ribbon.trail.live(style.life);
+    if !live && !ribbon.drawn {
+        return None;
+    }
+    ribbon.drawn = live;
+    let head = anchor.to_render(ribbon.trail.tip().at);
+    let around = Look {
+        eye: style.eye - head,
+        ..style
+    };
+    fill(
+        &ribbon.trail,
+        &around,
+        |point| anchor.to_render(point) - head,
+        strip,
+    );
+    Some(head)
+}
+
+/// Feeds every trail from its emitter, moves each ribbon to the head of its trail and rewrites
+/// the meshes of the ones that glow.
+pub fn draw(mut canvas: Canvas, mut ribbons: Query<(&mut Ribbon, &Mesh3d, &mut Transform)>) {
+    let mut strip = Strip::default();
+    for (mut ribbon, handle, mut transform) in &mut ribbons {
+        let Some(head) = lay(&mut ribbon, &canvas, &mut strip) else {
+            continue;
+        };
+        transform.translation = head;
         if let Some(mut mesh) = canvas.meshes.get_mut(&handle.0) {
             write(&mut mesh, &strip);
         }

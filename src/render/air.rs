@@ -92,12 +92,6 @@ impl Air {
         )
     }
 
-    /// Returns the cloud cover the shader draws when the cover of the day drifts to `drift` on
-    /// the home planet: the same there, none without clouds, more under a heavier sky.
-    pub fn cover(&self, drift: f32) -> f32 {
-        drift * (self.clouds / HOME_CLOUDS)
-    }
-
     /// Returns the linear colour of the sunlit clouds seen from space: white in clean air, and
     /// stained by the tint of the air like the clouds seen from below.
     pub fn clouds_from_space(&self) -> Vec3 {

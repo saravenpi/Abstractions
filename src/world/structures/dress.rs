@@ -4,7 +4,7 @@ use std::f32::consts::TAU;
 
 use bevy::prelude::*;
 
-use super::brush::{Build, Mat};
+use super::brush::{Build, Mat, Part, Shape};
 use super::glow::LightKind;
 use super::palette::{DARK_WOOD, PLANK, STONE_DARK, THATCH, WOOD};
 
@@ -53,13 +53,18 @@ pub fn seat(b: &mut Build, base: Vec3, len: f32) {
     );
 }
 
-/// Adds a ring of stones on `base`, with flames unless the fire is `cold`.
+/// Adds a ring of stones on `base`, solid as one low drum, with flames unless the fire is `cold`.
 pub fn fire(b: &mut Build, base: Vec3, cold: bool) {
     for i in 0..6 {
         let a = i as f32 / 6.0 * TAU;
         let at = base + Vec3::new(a.sin() * 0.8, -0.1, a.cos() * 0.8);
         b.pillar(at, Vec2::new(0.24, 0.38), 5, Mat::deco(STONE_DARK));
     }
+    b.parts.push(Part {
+        pos: b.pt(base + Vec3::Y * 0.09),
+        rot: Quat::IDENTITY,
+        shape: Shape::Cylinder(1.04, 0.38),
+    });
     if cold {
         let ash = base - Vec3::Y * 0.1;
         b.spire(ash, Vec2::new(0.5, 0.2), 5, [0.18; 3]);

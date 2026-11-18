@@ -83,7 +83,7 @@ pub fn tower(b: &mut Build, st: &Style) {
     b.cuboid(
         Vec3::new(-1.9, 3.0, -1.9),
         Vec3::new(1.9, 7.4, 1.9),
-        Mat::deco(st.wall[0]),
+        Mat::solid(st.wall[0]),
     );
     b.base_y += 3.4;
     for out in [Vec3::X, Vec3::NEG_X, Vec3::Z, Vec3::NEG_Z] {
@@ -102,12 +102,12 @@ fn turret(b: &mut Build, s: &Shell, st: &Style) {
     b.cuboid(
         Vec3::new(-gx, s.h - 0.2, z - 1.8),
         Vec3::new(gx, s.h, gz),
-        Mat::deco(st.trim),
+        Mat::solid(st.trim),
     );
     b.cuboid(
         Vec3::new(-0.9, s.h, z - 1.6),
         Vec3::new(0.9, 7.0, z + 0.25),
-        Mat::deco(st.wall[1]),
+        Mat::solid(st.wall[1]),
     );
     b.spire(
         Vec3::new(0.0, 7.0, z - 0.7),

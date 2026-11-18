@@ -124,7 +124,7 @@ pub fn plinth(b: &mut Build, s: &Shell, st: &Style) {
                 Vec3::new(x, low, z),
                 Vec2::new(0.2, -0.35 - low),
                 5,
-                Mat::deco(st.trim),
+                Mat::solid(st.trim),
             );
         }
     } else {

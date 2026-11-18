@@ -7,6 +7,7 @@ use crate::world::structures::brush::{Build, Mat};
 use crate::world::structures::dress::{barrel, crate_at, on_ground, seat};
 use crate::world::structures::glow::LightKind;
 use crate::world::structures::palette::{DARK_WOOD, PLANK, STONE, STONE_DARK, WOOD};
+use crate::world::structures::tags::Tag;
 
 /// Where the lantern hangs from the post arm, in the lamp frame.
 const LANTERN: Vec3 = Vec3::new(0.0, 2.92, 0.5);
@@ -33,20 +34,21 @@ fn lantern(b: &mut Build, at: Vec3) {
     b.spire(at + Vec3::Y * 0.25, Vec2::new(0.25, 0.16), 4, IRON);
 }
 
-/// Draws a lamp post with a short arm and a lantern hanging from it.
+/// Draws a solid lamp post with a short arm and a lantern hanging from it: thin iron around a flame, above
+/// every head, which nothing runs into.
 fn lamp(b: &mut Build) {
     b.pillar(
         Vec3::Y * -0.1,
         Vec2::new(0.09, 3.6),
         5,
-        Mat::deco(DARK_WOOD),
+        Mat::solid(DARK_WOOD),
     );
     b.cuboid(
         Vec3::new(-0.04, 3.38, -0.12),
         Vec3::new(0.04, 3.46, LANTERN.z + 0.08),
         Mat::deco(DARK_WOOD),
     );
-    lantern(b, LANTERN);
+    b.tagged(Tag::Soft, |b| lantern(b, LANTERN));
     b.glow(LightKind::Lamp, LANTERN);
 }
 
@@ -63,7 +65,7 @@ fn bench(b: &mut Build) {
     b.cuboid(
         Vec3::new(-0.9, 0.4, -0.3),
         Vec3::new(0.9, 0.9, -0.2),
-        Mat::deco(WOOD),
+        Mat::solid(WOOD),
     );
 }
 
@@ -78,13 +80,13 @@ pub fn cart(b: &mut Build) {
         Vec3::new(-0.9, 0.0, -0.5),
         Vec2::new(0.35, 0.1),
         8,
-        Mat::deco(DARK_WOOD),
+        Mat::solid(DARK_WOOD),
     );
     b.pillar(
         Vec3::new(-0.9, 0.0, 0.5),
         Vec2::new(0.35, 0.1),
         8,
-        Mat::deco(DARK_WOOD),
+        Mat::solid(DARK_WOOD),
     );
     b.cuboid(
         Vec3::new(0.8, 0.45, -0.05),

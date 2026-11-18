@@ -1,8 +1,9 @@
-//! The dust of a warp: a sparse field of near grains of the interstellar medium that the ship
-//! flies through. A real flight at a steady speed shows a still, aberrated sky, which reads as
-//! frozen; near grains rushing past give the eye the motion it expects. `starfield.wesl` places
-//! every grain by these rules on the GPU, from a hash of the grain and of its lap along the
-//! line of flight, so nothing is allocated per frame; here they are written again to be tested.
+//! The dust of a warp: a few faint grey grains of the interstellar medium of a galaxy that the
+//! ship flies through. A grain is a thin short line along its own motion across the view, lit
+//! only while it moves and always far dimmer than a star, so it is never taken for one, and
+//! there is none between the galaxies. `starfield.wesl` places every grain by these rules on
+//! the GPU, from a hash of the grain and of its lap along the line of flight, so nothing is
+//! allocated per frame; here they are written again to be tested.
 
 #[cfg(test)]
 use bevy::prelude::*;
@@ -11,7 +12,7 @@ use super::Sequence;
 use crate::render::celestial::smoothstep;
 
 /// Grains in the field: one quad each in a mesh built once.
-pub const MOTES: u32 = 2048;
+pub const MOTES: u32 = 160;
 
 /// Distances along the heading, in radii of the tube of grains, at which a grain starts its lap
 /// ahead and ends it behind the camera.
@@ -37,6 +38,27 @@ pub const WRAP: f32 = 1024.0;
 /// Shares of its lap over which a grain fades in far ahead and out behind the camera.
 #[cfg(test)]
 pub const FADE: (f32, f32) = (0.2, 0.85);
+
+/// Half the width of a grain in radians: under the radius of the smallest star.
+#[cfg(test)]
+pub const GRAIN: f32 = 0.002;
+
+/// Least length of a grain over its width: it is a line, never a dot.
+#[cfg(test)]
+pub const GRAIN_ASPECT: f32 = 4.0;
+
+/// Most half length of a grain in radians, so that it stays a short line.
+#[cfg(test)]
+pub const GRAIN_REACH: f32 = 0.02;
+
+/// Most light a grain shows, a grey level: under a third of the faintest star the sky draws.
+#[cfg(test)]
+pub const GRAIN_LIGHT: f32 = 0.08;
+
+/// Angle in radians a grain crosses during one exposure at which it shows its full light. A
+/// grain that does not move across the view shows none.
+#[cfg(test)]
+pub const GRAIN_PACE: f32 = 0.01;
 
 impl Sequence {
     /// Returns the laps per second the dust of the warp runs: nothing outside a warp, a creep
@@ -83,6 +105,23 @@ pub fn window(t: f32) -> f32 {
     rise * rise * (3.0 - 2.0 * rise) * fall * fall * (3.0 - 2.0 * fall)
 }
 
+/// Returns the grey level a grain shows when the share `light` of it is in and it crosses
+/// `span` radians of the view during one exposure: nothing while it stands still on the view,
+/// rising with its angular speed, and never above [`GRAIN_LIGHT`].
+#[cfg(test)]
+pub fn shown(light: f32, span: f32) -> f32 {
+    GRAIN_LIGHT * light.clamp(0.0, 1.0) * smoothstep(0.0, GRAIN_PACE, span)
+}
+
+/// Returns the half width and the half length in radians of the line a grain is drawn as when
+/// it crosses `span` radians during one exposure: the path it crosses, kept between a line
+/// [`GRAIN_ASPECT`] times as long as it is wide and [`GRAIN_REACH`].
+#[cfg(test)]
+pub fn line(span: f32) -> (f32, f32) {
+    let least = GRAIN * GRAIN_ASPECT;
+    (GRAIN, (0.5 * span).clamp(least, GRAIN_REACH))
+}
+
 /// Returns two unit vectors at right angles to the unit vector `axis` and to each other, picked
 /// the way `starfield.wesl` picks them.
 #[cfg(test)]
@@ -120,16 +159,4 @@ pub fn mote(index: u32, phase: f32, density: f32, heading: Vec3) -> Mote {
         light,
         lap: t,
     }
-}
-
-/// Returns how far the stars sway out along their streaks at the share `c` of their cycle,
-/// from 0 to 1: a slow slide out, then an eased return, with no step anywhere.
-#[cfg(test)]
-pub fn crawl(c: f32) -> f32 {
-    let c = c - c.floor();
-    if c < 0.8 {
-        return c / 0.8;
-    }
-    let back = ((c - 0.8) / 0.2).clamp(0.0, 1.0);
-    1.0 - back * back * (3.0 - 2.0 * back)
 }

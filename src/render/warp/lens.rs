@@ -15,17 +15,20 @@ pub struct Lens {
     pub level: f32,
     /// Speed the sky is seen through, as a share of the speed of light.
     pub beta: f32,
-    /// Length in radians of the streak of a star at right angles to the heading.
+    /// Game light-years flown during one exposure: every star streaks by the angle that moves
+    /// it, from its own distance and bearing.
     pub streak: f32,
-    /// Brightness of the light ahead.
+    /// Brightness of a light ahead. It is always nothing: no light stands ahead of a ship in
+    /// warp but the stars, which brighten there by themselves, and a glow drawn on the heading
+    /// read as a sun that followed the ship.
     pub core: f32,
     /// Brightness of the flash of the drop-out.
     pub flash: f32,
     /// Share of their light single stars keep.
     pub stars: f32,
-    /// Laps per second the dust runs, the rate the whole sky flows at.
+    /// Laps per second the dust runs.
     pub flow: f32,
-    /// Share of the dust that is in, from 0 to 1.
+    /// Share of the dust that is in where there is dust at all, from 0 to 1.
     pub dust: f32,
     /// Laps the dust has run, wrapped at [`WRAP`].
     pub phase: f32,
@@ -67,6 +70,13 @@ impl Seen {
 }
 
 impl Lens {
+    /// Returns the share of the dust that is in for a camera that sits `band` deep in the star
+    /// disc of its galaxy, 1 inside and 0 well outside: the dust is the medium of a galaxy, so
+    /// it thins with the disc and a warp between the galaxies shows none.
+    pub fn medium(&self, band: f32) -> f32 {
+        self.dust * band.clamp(0.0, 1.0)
+    }
+
     /// Returns `next` with the laps the dust has run carried on from this lens over `dt`
     /// seconds at the mean of the two flows, so the dust moves by time, never by frame.
     pub fn carry(&self, next: Lens, dt: f32) -> Lens {

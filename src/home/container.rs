@@ -46,7 +46,8 @@ pub fn pose(lot: &Lot) -> Affine3A {
 }
 
 /// Adds a bevelled box section from `x.0` to `x.1`, `grow` metres larger than the box all
-/// round, closed at both ends. The flat sides take the first colour and the bevels the second.
+/// round, closed at both ends, with the box around it as its body. The flat sides take the first
+/// colour and the bevels the second.
 fn hull(soup: &mut Soup, x: (f32, f32), grow: f32, rgb: [Rgb; 2]) {
     let (w, lo, hi, c) = (SIZE.z * 0.5 + grow, -grow, SIZE.y + grow, CHAMFER);
     let outline = [
@@ -76,9 +77,10 @@ fn hull(soup: &mut Soup, x: (f32, f32), grow: f32, rgb: [Rgb; 2]) {
             soup.tri([ring(end, 0), ring(end, i), ring(end, i + 1)], out, rgb[0]);
         }
     }
+    soup.body(Vec3::new(x.0, lo, -w), Vec3::new(x.1, hi, w));
 }
 
-/// Adds the box, its end frames, its legs and the roof vent, and makes the box solid.
+/// Adds the box, its end frames, its legs and the roof vent.
 fn shell(draft: &mut Draft) {
     let half = SIZE.x * 0.5;
     draft.draw(|soup| {
@@ -94,11 +96,6 @@ fn shell(draft: &mut Draft) {
         Vec3::new(-1.6, top, -0.5),
         Vec3::new(-0.7, top + 0.12, 0.3),
         TRIM,
-    );
-    let low = draft.lowest(&FEET);
-    draft.block(
-        Vec3::new(-half, low, -SIZE.z * 0.5),
-        Vec3::new(half, top, SIZE.z * 0.5),
     );
 }
 
@@ -148,7 +145,7 @@ fn window(draft: &mut Draft) {
 }
 
 /// Adds a six-sided dish of `radius` centred on `centre`, open along `axis`, with its feed
-/// and the strut that holds it from `foot`.
+/// and the strut that holds it from `foot`, and the box around the dish as its body.
 fn dish(soup: &mut Soup, centre: Vec3, axis: Vec3, foot: Vec3) {
     let (radius, side) = (0.38, axis.any_orthonormal_vector());
     let rim = |i: u32| {
@@ -163,6 +160,7 @@ fn dish(soup: &mut Soup, centre: Vec3, axis: Vec3, foot: Vec3) {
     }
     soup.beam(foot, centre - axis * 0.14, 0.03, DARK);
     soup.beam(centre - axis * 0.07, centre + axis * 0.22, 0.012, DARK);
+    soup.body(centre - Vec3::splat(radius), centre + Vec3::splat(radius));
 }
 
 /// Adds the antenna cluster of the quantum link on the roof: a mast with its pulsing light, a

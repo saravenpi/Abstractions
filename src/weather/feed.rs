@@ -5,11 +5,12 @@ use bevy::prelude::*;
 use super::Weather;
 use crate::menus::HudWeather;
 use crate::render::smoothstep as ramp;
-use crate::render::{LocalSystem, LocalWeather, Vantage, WeatherLook};
+use crate::render::{LocalWeather, Vantage, WeatherLook};
 
-/// Shares of the air above the camera under which the sky draws the planet's mean look, and
-/// from which it draws the weather of the place: from orbit the clouds are the planet's, not
-/// the weather at one place, and on the way down one turns into the other without a step.
+/// Shares of the air above the camera under which the sky draws no haze or dust of the place,
+/// and from which it draws all of it: the palette of the sky from orbit is the planet's, and on
+/// the way down the weather of the place comes in without a step. The clouds need no such
+/// blend: they are the same field from every height.
 const BAND: (f32, f32) = (0.05, 0.3);
 
 /// Level from which something that happens is worth the word of the HUD.
@@ -34,26 +35,24 @@ pub fn word(weather: &Weather) -> &'static str {
     }
 }
 
-/// Returns what `weather` does to the sky where it is: its cloud, its dust, and the haze of
-/// its rain or of the storm under its clouds.
+/// Returns what `weather` does to the sky where it is: its dust, and the haze of its rain or
+/// of the storm under its clouds.
 pub fn local(weather: &Weather) -> WeatherLook {
     WeatherLook {
-        cover: weather.cloud,
         haze: weather.rain.max(weather.squall()),
         dust: weather.dust,
     }
 }
 
-/// Returns the weather the sky draws with `air` of the atmosphere left above the camera, over
-/// a planet whose class look is `mean`: nothing, which is the class look, out of the air and
-/// in its thin top, then the class look turning into `weather` over [`BAND`].
-pub fn seen(weather: &Weather, mean: WeatherLook, air: f32) -> Option<WeatherLook> {
+/// Returns the weather the sky draws with `air` of the atmosphere left above the camera:
+/// nothing out of the air and in its thin top, then the calm sky turning into `weather` over
+/// [`BAND`].
+pub fn seen(weather: &Weather, air: f32) -> Option<WeatherLook> {
     let share = ramp(BAND.0, BAND.1, air);
     let here = local(weather);
-    (share > 0.0).then(|| WeatherLook {
-        cover: mean.cover.lerp(here.cover, share),
-        haze: mean.haze.lerp(here.haze, share),
-        dust: mean.dust.lerp(here.dust, share),
+    (share > 0.0).then_some(WeatherLook {
+        haze: here.haze * share,
+        dust: here.dust * share,
     })
 }
 
@@ -61,14 +60,10 @@ pub fn seen(weather: &Weather, mean: WeatherLook, air: f32) -> Option<WeatherLoo
 pub(super) fn feed(
     weather: Res<Weather>,
     vantage: Option<Res<Vantage>>,
-    system: Option<Res<LocalSystem>>,
     mut sky: ResMut<LocalWeather>,
     mut hud: ResMut<HudWeather>,
 ) {
-    let look = vantage.zip(system).and_then(|(vantage, system)| {
-        let mean = WeatherLook::of(&system.air_below(&vantage));
-        seen(&weather, mean, vantage.air)
-    });
+    let look = vantage.and_then(|vantage| seen(&weather, vantage.air));
     if sky.0 != look {
         sky.0 = look;
     }

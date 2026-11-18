@@ -5,6 +5,7 @@ use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
 use super::colormap;
+use super::ground::{Daylit, GroundMaterial, place_map};
 use super::propmesh::{BIG, merge_parts_on};
 use super::scatter::{Placement, Rig, Scatter};
 use super::shapes::FlatMesh;
@@ -33,20 +34,27 @@ const BODIES: [[f32; 2]; BIG] = [
 #[derive(Resource, Clone)]
 pub struct PropAssets {
     /// Material colored by the lookup texture, used by terrain, props and grass.
-    pub material: Handle<StandardMaterial>,
+    pub material: Handle<GroundMaterial>,
+    /// Texture the material reads the light of the planet under the camera from.
+    pub place: Handle<Image>,
 }
 
 impl PropAssets {
-    /// Builds the material around the color lookup texture.
-    pub fn new(materials: &mut Assets<StandardMaterial>, images: &mut Assets<Image>) -> Self {
-        let material = materials.add(StandardMaterial {
+    /// Builds the material around the color lookup texture and the texture of its light.
+    pub fn new(materials: &mut Assets<GroundMaterial>, images: &mut Assets<Image>) -> Self {
+        let base = StandardMaterial {
             base_color: Color::WHITE,
             base_color_texture: Some(images.add(colormap::image())),
             perceptual_roughness: 0.95,
             reflectance: 0.05,
             ..default()
-        });
-        Self { material }
+        };
+        let place = images.add(place_map());
+        let extension = Daylit {
+            place: place.clone(),
+        };
+        let material = materials.add(GroundMaterial { base, extension });
+        Self { material, place }
     }
 }
 
@@ -115,7 +123,7 @@ pub fn body_collider_on(props: &[Placement], rig: &Rig) -> Option<Collider> {
 pub fn spawn_props(
     commands: &mut Commands,
     chunk: Entity,
-    material: &Handle<StandardMaterial>,
+    material: &Handle<GroundMaterial>,
     cover: Cover,
 ) -> [Option<Entity>; 2] {
     let mut spawned = [None, None];

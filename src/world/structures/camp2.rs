@@ -29,8 +29,9 @@ pub fn tripod(b: &mut Build, at: Vec2) {
         frustum(&mut b.mesh, from, to, Vec2::new(0.05, 0.04), color);
     }
     let pot = b.color(STONE_DARK, 1.0);
-    let at = b.pt(top - Vec3::Y * 0.5);
-    icosa(&mut b.mesh, at, Vec3::new(0.3, 0.25, 0.3), (0.1, 3), pot);
+    let (at, radii) = (b.pt(top - Vec3::Y * 0.5), Vec3::new(0.3, 0.25, 0.3));
+    icosa(&mut b.mesh, at, radii, (0.1, 3), pot);
+    b.boulder(at, radii);
 }
 
 /// Adds the stacked log pile.
@@ -81,7 +82,6 @@ pub fn hunter(b: &mut Build) {
     let color = b.color(DARK_WOOD, 0.6);
     let out = b.dir(Vec3::X);
     b.sheet_tri(door.map(|p| b.pt(p)), out, [color, color]);
-    b.collider(Vec3::new(-1.2, -0.3, -1.2), Vec3::new(1.2, 1.5, 1.2));
     log_pile(b);
     stump(b);
     fire(b, on_ground(b, 3.4, -0.4), false);
@@ -106,8 +106,10 @@ fn awning(b: &mut Build) {
 pub fn caravan(b: &mut Build) {
     b.settle(3.0, 0.1);
     awning(b);
-    b.floor_pane(Vec2::new(-2.0, -1.2), Vec2::new(0.2, 1.2), 0.03, STRIPES[0]);
-    b.floor_pane(Vec2::new(0.6, -1.0), Vec2::new(2.2, 1.0), 0.03, STRIPES[2]);
+    b.tagged(Tag::Soft, |b| {
+        b.floor_pane(Vec2::new(-2.0, -1.2), Vec2::new(0.2, 1.2), 0.03, STRIPES[0]);
+        b.floor_pane(Vec2::new(0.6, -1.0), Vec2::new(2.2, 1.0), 0.03, STRIPES[2]);
+    });
     for (x, z, s) in [(-2.2, -1.4, 0.8), (-1.2, -1.5, 0.6), (2.0, -1.2, 0.7)] {
         let base = on_ground(b, x, z);
         crate_at(b, base, s);

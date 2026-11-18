@@ -25,7 +25,7 @@ impl Build<'_> {
             s.sheet_quad([b[0], b[1], r[1], r[0]], front, colors);
             s.sheet_quad([a[1], a[0], r[0], r[1]], back, colors);
         });
-        self.pitch_plates(lo, hi, rise);
+        self.roof_body(lo, hi, rise, 0.0);
     }
 
     /// Adds a gabled roof with its ridge along local x and both ends closed by a triangle.
@@ -58,7 +58,7 @@ impl Build<'_> {
             s.sheet_tri([a[0], b[0], r[0]], left, end);
             s.sheet_tri([a[1], b[1], r[1]], right, end);
         });
-        self.hip_plates(lo, hi, rise);
+        self.roof_body(lo, hi, rise, half);
     }
 
     /// Adds a single slope that is high at `lo.z` and falls to `lo.y` at `hi.z`, with open sides.
@@ -87,6 +87,8 @@ impl Build<'_> {
             let tri = corners.map(|(y, z)| self.pt(Vec3::new(x, y, z)));
             let out = self.dir(out);
             self.sheet_tri(tri, out, [under, under]);
+            let ends = (Vec3::new(x, lo.y, lo.z), Vec3::new(x, lo.y, hi.z));
+            self.end_stack(ends.0, ends.1, &[(0.0, rise), (1.0, 0.0)]);
         }
     }
 
@@ -109,6 +111,8 @@ impl Build<'_> {
             let tri = corners.map(|(y, z)| self.pt(Vec3::new(x, y, z)));
             let out = self.dir(out);
             self.sheet_tri(tri, out, [under, under]);
+            let ends = (Vec3::new(x, lo.y, lo.z), Vec3::new(x, lo.y, hi.z));
+            self.end_stack(ends.0, ends.1, &[(0.0, rise), (1.0, 0.0)]);
         }
     }
 

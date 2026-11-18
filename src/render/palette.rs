@@ -8,8 +8,9 @@ use super::air::Air;
 use super::atmosphere::horizon_dip;
 use super::celestial::{smoothstep, sun_direction};
 use super::clock::START_PHASE;
+use super::daylight::{NIGHT_EDGE, daylight};
 use super::moonlight::{Moonlight, moonlit};
-use super::scatter::{luminance, peak, scattered, transmit};
+use super::scatter::{peak, scattered, transmit};
 use super::vantage::{LocalSystem, Vantage};
 use super::weather::LocalWeather;
 
@@ -53,7 +54,7 @@ const NIGHT_ZENITH: Vec3 = Vec3::new(0.015, 0.025, 0.08);
 const NIGHT_HORIZON: Vec3 = Vec3::new(0.05, 0.08, 0.18);
 
 /// Ambient light color at night, in sRGB.
-const NIGHT_AMBIENT_COLOR: Vec3 = Vec3::new(0.35, 0.45, 0.9);
+pub const NIGHT_AMBIENT_COLOR: Vec3 = Vec3::new(0.35, 0.45, 0.9);
 
 /// Cloud color at night, in sRGB.
 const NIGHT_CLOUD: Vec3 = Vec3::new(0.12, 0.14, 0.24);
@@ -68,6 +69,9 @@ impl Palette {
 
     /// Ambient brightness at night, low enough that torches and lamps make visible pools of light.
     pub const NIGHT_AMBIENT: f32 = 40.0;
+
+    /// Ambient brightness of the full day.
+    pub const DAY_AMBIENT: f32 = 350.0;
 
     /// Illuminance in lux of the star in open space, and straight overhead through the air.
     pub const SPACE_LUX: f32 = 12_000.0;
@@ -88,11 +92,13 @@ impl Palette {
     /// path, so it reddens and dims as the star sinks, the more so the thicker the air; the sky
     /// is what the air scatters out of it, stained by what the air carries; the ambient light
     /// and the clouds take their colour from both. Thin air is left to [`Palette::seen`].
+    ///
+    /// The direct light and the share of day sky come from [`daylight`], the rule the shaders
+    /// of the ground, the sea and the far bodies apply at every point they draw.
     pub fn through(height: f32, star: Vec3, air: &Air) -> Self {
         let depth = air.depth();
-        let through = star * transmit(height, depth);
-        let tint = peak(through);
-        let day = smoothstep(-0.12, 0.25, height);
+        let light = daylight(height, star, depth);
+        let (tint, day) = (light.tint, light.sky);
         let dusk = smoothstep(-0.2, 0.1, height);
         let white = HAZE + (1.0 - HAZE) * (1.0 - 1.0 / depth);
         let blue =
@@ -101,17 +107,15 @@ impl Palette {
         let zenith = air.stain(NIGHT_ZENITH.lerp(blue * 0.92, day), star);
         let horizon = air.stain(NIGHT_HORIZON.lerp(haze * 0.95, dusk), star);
         let sky = peak(zenith + horizon).lerp(Vec3::ONE, 0.4);
-        let full = luminance(star * transmit(1.0, 1.0)).max(1.0e-6);
+        let swing = Self::DAY_AMBIENT - Self::NIGHT_AMBIENT;
         Self {
             zenith,
             horizon,
             ambient: NIGHT_AMBIENT_COLOR.lerp(sky, day),
-            ambient_brightness: Self::NIGHT_AMBIENT + (350.0 - Self::NIGHT_AMBIENT) * day,
+            ambient_brightness: Self::NIGHT_AMBIENT + swing * day,
             sun_color: tint,
-            sun_lux: Self::SPACE_LUX
-                * (luminance(through) / full).min(1.0)
-                * smoothstep(-0.06, 0.03, height),
-            moon_lux: Self::MOON_LUX * smoothstep(-0.02, 0.3, -height),
+            sun_lux: Self::SPACE_LUX * light.through * light.risen,
+            moon_lux: Self::MOON_LUX * smoothstep(NIGHT_EDGE.0, NIGHT_EDGE.1, -height),
             cloud: NIGHT_CLOUD.lerp(tint.lerp(Vec3::ONE, 0.35), day) * air.tint,
             stars: 1.0 - smoothstep(-0.2, 0.0, height),
             sun_dir: Vec3::Y,
@@ -171,7 +175,7 @@ fn update_palette(
 ) {
     let (sun, vantage, local, moon) = place;
     let (ground, star) = Palette::under(&sun, &vantage, &local);
-    let look = weather.look(&local.air_below(&vantage));
+    let look = weather.look();
     *palette = moonlit(look.sky(ground).seen(&sun, vantage.air, star), &moon);
     ambient.color = srgb(palette.ambient);
     ambient.brightness = palette.ambient_brightness;

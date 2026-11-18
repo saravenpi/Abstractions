@@ -20,7 +20,7 @@ struct Seen {
     dir: vec3<f32>,
     along: vec3<f32>,
     factor: f32,
-    sin: f32,
+    turn: f32,
 }
 
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> stars: Stars;
@@ -34,11 +34,10 @@ const BEAM_MOST: f32 = 3.0;
 const SHIFT_SPAN: f32 = 2.0;
 const BLUE: vec3<f32> = vec3<f32>(0.8, 0.92, 1.25);
 const RED: vec3<f32> = vec3<f32>(1.2, 0.8, 0.55);
-const SPREAD: f32 = 0.6;
 const FOUR_OVER_PI: f32 = 1.2732395;
 const TAU: f32 = 6.2831853;
 const DUST: f32 = -100.0;
-const MOTES: u32 = 2048u;
+const MOTES: u32 = 160u;
 const DEPTH_AHEAD: f32 = 8.0;
 const DEPTH_BEHIND: f32 = -2.0;
 const TUBE_NEAR: f32 = 0.12;
@@ -46,14 +45,15 @@ const TUBE_FAR: f32 = 1.0;
 const FADE_IN: f32 = 0.2;
 const FADE_OUT: f32 = 0.85;
 const EXPOSURE: f32 = 0.041666668;
-const GRAIN: f32 = 0.003;
-const GRAIN_MOST: f32 = 0.012;
-const GRAIN_LIGHT: f32 = 1.6;
-const STREAK_MOST: f32 = 0.3;
-const CRAWL: f32 = 0.015;
-const CRAWL_LAPS: f32 = 2.0;
-const TWINKLE: f32 = 0.35;
-const SCATTER: vec3<f32> = vec3<f32>(127.1, 311.7, 74.7);
+const GRAIN: f32 = 0.002;
+const GRAIN_ASPECT: f32 = 4.0;
+const GRAIN_REACH: f32 = 0.02;
+const GRAIN_LIGHT: f32 = 0.08;
+const GRAIN_PACE: f32 = 0.01;
+const STREAK_MOST: f32 = 0.25;
+const SIGHT: f32 = 40.0;
+const SIGHT_FADE: f32 = 2.5;
+const DAY_FLUX: f32 = 1.0;
 
 fn shine(flux: f32) -> vec2<f32> {
     let bright = clamp((flux + 4.6) / 5.0, 0.08, 1.0);
@@ -93,13 +93,8 @@ fn see(dir: vec3<f32>) -> Seen {
     seen.dir = axis * cos_seen + outward * sin_seen;
     seen.along = outward * cos_seen - axis * sin_seen;
     seen.factor = (1.0 + beta * cos_true) / lorentz;
-    seen.sin = sin_seen;
+    seen.turn = sin_true;
     return seen;
-}
-
-fn crawl(c: f32) -> f32 {
-    let back = smoothstep(0.0, 1.0, (c - 0.8) / 0.2);
-    return select(1.0 - back, c / 0.8, c < 0.8);
 }
 
 fn window(t: f32) -> f32 {
@@ -108,16 +103,19 @@ fn window(t: f32) -> f32 {
     return rise * fall;
 }
 
+fn beamed(factor: f32, half: f32) -> vec3<f32> {
+    let beam = clamp(pow(factor, BEAM), BEAM_LEAST, BEAM_MOST);
+    return tint(factor) * (beam / (1.0 + half * FOUR_OVER_PI));
+}
+
 fn emit(seen: Seen, corner: vec2<f32>, size: f32, reach: f32, light: vec4<f32>) -> StarVertex {
     var out: StarVertex;
     let half = reach / size;
     let across = cross(seen.dir, seen.along);
     let place = seen.dir + across * (corner.x * size) + seen.along * (corner.y * (size + reach));
-    let beam = clamp(pow(seen.factor, BEAM), BEAM_LEAST, BEAM_MOST);
-    let energy = pow(1.0 + half * FOUR_OVER_PI, -SPREAD);
     out.position = vec4<f32>(place, 1.0);
     out.spot = vec2<f32>(corner.x, corner.y * (1.0 + half));
-    out.color = vec4<f32>(light.rgb * tint(seen.factor) * beam * energy, light.a);
+    out.color = light;
     out.half = half;
     return out;
 }
@@ -136,21 +134,21 @@ fn star(vertex: UncompressedVertex, world_from_local: mat4x4<f32>, corner: vec2<
     let far = built * range - stars.drift.xyz;
     let now = max(length(far), 0.0001);
     let was = shine(vertex.uv_b.y);
-    let lit = shine(vertex.uv_b.y - 2.0 * log(now / range) / LOG10);
+    let flux = vertex.uv_b.y - 2.0 * log(now / range) / LOG10;
+    let lit = shine(flux);
     let drawn = length(vertex.position - built) * 0.70710678;
     let galaxy = vec2<f32>(min(drawn * range / now, GALAXY_ANGLE), 1.0);
     let sized = mix(vec2<f32>(lit.x, lit.y / was.y), galaxy, extended);
 
-    var seen = see(normalize((world_from_local * vec4<f32>(far / now, 0.0)).xyz));
-    let seed = dot(far / now, SCATTER);
-    let sway = crawl(fract(seed + stars.flow.x * CRAWL_LAPS));
-    let share = stars.flow.w * (1.0 - extended);
-    seen.dir = normalize(seen.dir + seen.along * (CRAWL * share * seen.sin * sway));
-    let twinkle = 1.0 - TWINKLE * share * (1.0 - sway);
+    let seen = see(normalize((world_from_local * vec4<f32>(far / now, 0.0)).xyz));
     let size = sized.x * mix(1.0, 1.0 / seen.factor, extended);
-    let reach = 0.5 * stars.params.y * seen.sin;
-    let light = sized.y * stars.params.x * mix(stars.params.z, 1.0, extended) * twinkle;
-    return emit(seen, corner, size, reach, vec4<f32>(vertex.color.rgb * light, vertex.color.a));
+    let reach = min(0.5 * stars.params.y * seen.turn / (now * seen.factor), STREAK_MOST);
+    let near = 1.0 - smoothstep(SIGHT - SIGHT_FADE, SIGHT, now);
+    let share = mix(stars.params.z * near, 1.0, extended);
+    let day = smoothstep(DAY_FLUX, DAY_FLUX + 1.0, flux) * (1.0 - extended);
+    let sky = mix(stars.params.x, 1.0, day);
+    let glow = vertex.color.rgb * (sized.y * sky * share) * beamed(seen.factor, reach / size);
+    return emit(seen, corner, size, reach, vec4<f32>(glow, vertex.color.a));
 }
 
 fn dust(vertex: UncompressedVertex, corner: vec2<f32>) -> StarVertex {
@@ -171,15 +169,15 @@ fn dust(vertex: UncompressedVertex, corner: vec2<f32>) -> StarVertex {
     let speed = stars.flow.y * (DEPTH_AHEAD - DEPTH_BEHIND);
     let before = see(normalize(offset + axis * (speed * EXPOSURE)));
     let now = see(normalize(offset));
-    let middle = normalize(before.dir + now.dir);
     let swept = now.dir - before.dir;
     let span = length(swept);
     var seen = now;
-    seen.dir = middle;
+    seen.dir = normalize(before.dir + now.dir);
     seen.along = select(now.along, swept / max(span, 0.000001), span > 0.000001);
-    let size = clamp(GRAIN / length(offset), GRAIN, GRAIN_MOST);
-    let glow = vertex.color.rgb * (GRAIN_LIGHT * light * stars.params.x);
-    return emit(seen, corner, size, min(0.5 * span, STREAK_MOST), vec4<f32>(glow, vertex.color.a));
+    let half = clamp(0.5 * span, GRAIN * GRAIN_ASPECT, GRAIN_REACH);
+    let moving = smoothstep(0.0, GRAIN_PACE, span);
+    let grey = GRAIN_LIGHT * light * moving * stars.params.x * stars.params.z;
+    return emit(seen, corner, GRAIN, half, vec4<f32>(vec3<f32>(grey), vertex.color.a));
 }
 
 @vertex

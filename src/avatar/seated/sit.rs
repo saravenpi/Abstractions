@@ -1,0 +1,96 @@
+//! The systems of the seat: how much of the seated body is drawn, and the seated pose written
+//! over the animated one, hands on the controls of the ship the body sits in.
+
+use bevy::prelude::*;
+
+use super::{held, offset, seated};
+use crate::avatar::animate::{Anim, Bone};
+use crate::avatar::neck::reach;
+use crate::avatar::pose::{Core, Pose};
+use crate::avatar::rig::locals;
+use crate::avatar::{Avatar, Mode, Shown};
+use crate::player::wrap;
+use crate::ship::cockpit::{Cockpit, Levers};
+use crate::sim::PlayerId;
+use crate::space::{Location, Travel};
+use crate::view::{BodyFade, Heading};
+
+/// Share of the body fade above which the whole body is drawn, head and screen included.
+const SHOW_HEAD: f32 = 0.5;
+
+/// Returns where the head of the pilot looks and how much of the body is drawn, for the look
+/// angles `heading` of the view around the nose and the body `fade` of the camera rig: at the
+/// eyes the head follows the view and is hidden, behind the ship it faces ahead and is drawn.
+pub fn piloting(heading: &Heading, fade: f32) -> (Vec2, Shown) {
+    let fade = fade.clamp(0.0, 1.0);
+    let look = Vec2::new(wrap(heading.yaw), heading.pitch) * (1.0 - fade);
+    let shown = match fade > SHOW_HEAD {
+        true => Shown::Full,
+        false => Shown::FirstPerson,
+    };
+    (look, shown)
+}
+
+/// Draws the body of the player at this machine while it sits in the ship, over what the
+/// dresser chose: whole from outside, without its head at the eyes.
+pub fn shown(
+    location: Option<Res<Location>>,
+    fade: Option<Res<BodyFade>>,
+    mut drawn: ResMut<Shown>,
+) {
+    let aboard = location.is_some_and(|location| location.travel == Travel::InShip);
+    if let Some(fade) = fade.filter(|_| aboard) {
+        drawn.set_if_neq(piloting(&Heading::default(), fade.0).1);
+    }
+}
+
+/// Returns the pose of a body whose animation gives `animated`, `share` of the way into the
+/// seat with its hands on the controls `levers` and its head turned to `look` as far as the
+/// neck reaches.
+pub fn posed(animated: &Pose, levers: &Levers, look: Vec2, share: f32) -> Pose {
+    let head = reach(look);
+    let sat = seated(held(levers))
+        .with(Core::HeadYaw, head.x)
+        .with(Core::HeadPitch, head.y);
+    animated.plus(animated, -share).plus(&sat, share)
+}
+
+/// What the seat reads besides the body.
+type View<'w> = (Option<Res<'w, Heading>>, Option<Res<'w, BodyFade>>);
+
+/// Seats the body: while its player is the pilot of a ship the root of the body is in the
+/// seat and the pose is the seated one, hands on the controls of that ship. The head of the
+/// player at this machine turns with the view. After leaving, the pose blends back out with
+/// the weight the animation still gives the seat.
+pub fn sit(
+    view: View,
+    cockpits: Query<&Cockpit>,
+    players: Query<&PlayerId>,
+    body: Single<(&Anim, &mut Transform, &ChildOf), With<Avatar>>,
+    mut bones: Query<(&Bone, &mut Transform), Without<Avatar>>,
+) {
+    let (anim, mut root, parent) = body.into_inner();
+    let player = parent.parent();
+    let cockpit = cockpits.iter().find(|ship| ship.pilot == Some(player));
+    let place = cockpit.map_or(Vec3::ZERO, |_| offset());
+    if root.translation != place {
+        root.translation = place;
+    }
+    let share = match cockpit {
+        Some(_) => 1.0,
+        None => anim.weights.eased()[Mode::Seated as usize],
+    };
+    if share <= 0.0 {
+        return;
+    }
+    let local = players.get(player).is_ok_and(|id| *id == PlayerId::LOCAL);
+    let look = match (view, local && cockpit.is_some()) {
+        ((Some(heading), Some(fade)), true) => piloting(&heading, fade.0).0,
+        _ => Vec2::ZERO,
+    };
+    let levers = cockpit.map_or(Levers::default(), |ship| ship.shown);
+    let frames = locals(&posed(&anim.pose, &levers, look, share));
+    for (bone, mut transform) in &mut bones {
+        *transform = frames[bone.0 as usize];
+    }
+}

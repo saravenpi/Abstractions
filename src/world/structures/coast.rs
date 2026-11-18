@@ -26,7 +26,7 @@ pub fn lighthouse(b: &mut Build) {
         Mat::solid(STONE_DARK),
     );
     b.spire(Vec3::Y * 14.1, Vec2::new(2.5, 0.001), 8, STONE_DARK);
-    b.pillar(Vec3::Y * 14.1, Vec2::new(1.1, 1.6), 8, Mat::deco(GLASS));
+    b.pillar(Vec3::Y * 14.1, Vec2::new(1.1, 1.6), 8, Mat::solid(GLASS));
     b.spire(Vec3::Y * 15.7, Vec2::new(1.6, 1.4), 8, RED);
     let face = BASE * FRAC_PI_8.cos();
     let toward = ((b.site.yaw / FRAC_PI_4).floor() + 0.5) * FRAC_PI_4;

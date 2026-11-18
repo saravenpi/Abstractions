@@ -1,7 +1,5 @@
 //! The sky dome entity: a huge sphere that follows the camera and feeds the sky shader.
 
-use std::f32::consts::TAU;
-
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::ecs::system::SystemParam;
 use bevy::light::{NotShadowCaster, NotShadowReceiver};
@@ -27,11 +25,6 @@ const RIM_GAIN: f32 = 0.9;
 /// Marks the sky dome.
 #[derive(Component, Debug, Clone, Copy)]
 pub struct SkyDome;
-
-/// Returns how much of the sky the clouds cover, drifting slowly over the day.
-pub fn cloud_cover(phase: f32) -> f32 {
-    0.55 + 0.12 * (phase * TAU * 3.0).sin()
-}
 
 /// Spawns the dome when the world starts loading.
 fn spawn_dome(
@@ -125,18 +118,4 @@ pub(super) fn plugin(app: &mut App) {
                 .after(super::clouds::drift)
                 .after(super::warp::run),
         );
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Cloud cover stays within a sensible band over the whole cycle.
-    #[test]
-    fn cloud_cover_stays_in_range() {
-        for step in 0..100 {
-            let cover = cloud_cover(step as f32 / 100.0);
-            assert!((0.4..=0.7).contains(&cover));
-        }
-    }
 }

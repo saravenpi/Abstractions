@@ -46,12 +46,7 @@ pub fn pose(lot: &Lot) -> Affine3A {
 fn shelter(draft: &mut Draft) {
     let top = HEIGHTS.0;
     for post in POSTS {
-        let (low, half) = (draft.ground(post), Vec2::splat(0.06));
-        draft.leg(post, top, half.x, TRIM);
-        draft.block(
-            (post - half).extend(low).xzy(),
-            (post + half).extend(top).xzy(),
-        );
+        draft.leg(post, top, 0.06, TRIM);
     }
     draft.deck(
         Vec3::new(-2.2, top, -1.8),
@@ -67,7 +62,7 @@ fn shelter(draft: &mut Draft) {
     });
 }
 
-/// Adds the bench of the charging dock on its four legs, and makes it solid.
+/// Adds the bench of the charging dock on its four legs.
 fn bench(draft: &mut Draft) {
     let top = HEIGHTS.1;
     for foot in BENCH {
@@ -77,11 +72,6 @@ fn bench(draft: &mut Draft) {
         Vec3::new(-0.6, top, -1.45),
         Vec3::new(1.5, top + 0.07, -0.75),
         TRIM,
-    );
-    let low = draft.lowest(&BENCH);
-    draft.block(
-        Vec3::new(-0.6, low, -1.45),
-        Vec3::new(1.5, top + 0.07, -0.75),
     );
 }
 
@@ -135,10 +125,6 @@ fn crates(draft: &mut Draft) {
         Vec3::new(lo.x + 0.6, lid + 0.35, lo.y + 0.6),
         HATCH,
     );
-    draft.block(
-        lo.extend(draft.lowest(&corners)).xzy(),
-        hi.extend(lid).xzy(),
-    );
 }
 
 /// Adds the short mast with the beacon that marks home from afar.
@@ -158,11 +144,6 @@ fn mast(draft: &mut Draft) {
         (MAST + half).extend(top + 0.26).xzy(),
     );
     draft.lamp(Glow::Beacon, MAST.extend(top + 0.13).xzy());
-    let low = draft.ground(MAST);
-    draft.block(
-        (MAST - half * 0.6).extend(low).xzy(),
-        (MAST + half * 0.6).extend(top).xzy(),
-    );
 }
 
 /// Draws the station at its spot.

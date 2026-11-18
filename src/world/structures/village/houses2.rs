@@ -109,7 +109,7 @@ fn workshop(b: &mut Build, s: &Shell) {
         ([-1.75, 0.6, -0.9], [-1.45, 0.74, -0.7]),
         ([-2.0, 0.74, -0.95], [-1.2, 0.9, -0.65]),
     ];
-    b.boxes(&anvil, Mat::deco(STONE_DARK));
+    b.boxes(&anvil, Mat::solid(STONE_DARK));
     let x = -s.inner().x;
     table(b, Vec2::new(x, 0.2), FRAC_PI_2, 1.6);
     b.collider(Vec3::new(x, 0.0, -0.6), Vec3::new(x + 0.7, 0.8, 1.0));
@@ -144,6 +144,7 @@ pub fn barn(b: &mut Build, st: &Style) {
     ];
     b.boxes(&pile, Mat::deco(THATCH));
     b.collider(Vec3::new(-3.2, 0.0, z), Vec3::new(-0.95, 0.7, z + 0.85));
+    b.collider(Vec3::new(-2.6, 0.7, z + 0.1), Vec3::new(-1.5, 1.4, z + 0.8));
     hay(b, Vec3::new(2.4, 0.0, -1.6));
     ladder(b, Vec3::new(1.2, 0.0, z), s.h - 0.3);
     light(b, &s, Vec3::new(0.0, s.h, 0.0), true);

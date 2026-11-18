@@ -10,6 +10,8 @@ mod camp2;
 mod canvas;
 mod carry;
 mod coast;
+#[cfg(test)]
+pub(crate) mod cover;
 mod desert;
 mod dock;
 mod doors;
@@ -45,6 +47,7 @@ mod rules;
 mod shrine;
 mod site;
 mod smoke;
+mod stack;
 mod steps;
 mod tags;
 #[cfg(test)]
@@ -54,6 +57,8 @@ mod tests_air;
 #[cfg(test)]
 mod tests_class;
 #[cfg(test)]
+mod tests_cover;
+#[cfg(test)]
 mod tests_doors;
 #[cfg(test)]
 mod tests_edges;
@@ -61,6 +66,8 @@ mod tests_edges;
 mod tests_embed;
 #[cfg(test)]
 mod tests_faces;
+#[cfg(test)]
+mod tests_fast;
 #[cfg(test)]
 mod tests_globe;
 #[cfg(test)]
@@ -80,11 +87,15 @@ mod tests_river;
 #[cfg(test)]
 mod tests_roofs;
 #[cfg(test)]
+mod tests_stall;
+#[cfg(test)]
 mod tests_streets;
 #[cfg(test)]
 mod tests_survey;
 #[cfg(test)]
 mod tests_village;
+#[cfg(test)]
+pub(crate) mod touch;
 mod village;
 
 use avian3d::prelude::*;
@@ -94,11 +105,12 @@ use super::Terrain;
 use super::mesh::Frame;
 use super::props::PropAssets;
 use super::scatter::chunk_center;
-use brush::{Build, Part, Shape};
+use brush::Build;
 use canvas::join;
 use carry::Target;
 use glow::LightPoint;
 use site::sites_in_chunk;
+use stack::compound;
 
 pub use around::{AROUND, Surroundings, Survey, survey};
 #[cfg(test)]
@@ -135,18 +147,6 @@ const DRAW: [fn(&mut Build); 11] = [
     camp::camp,
     village::draw,
 ];
-
-/// Returns the compound collider of `parts`, or nothing when there is no solid part.
-fn compound(parts: &[Part]) -> Option<Collider> {
-    let shapes = parts.iter().map(|p| {
-        let shape = match p.shape {
-            Shape::Cuboid(size) => Collider::cuboid(size.x, size.y, size.z),
-            Shape::Cylinder(radius, height) => Collider::cylinder(radius, height),
-        };
-        (p.pos, p.rot, shape)
-    });
-    (!parts.is_empty()).then(|| Collider::compound(shapes.collect()))
-}
 
 /// Builds the structures whose origin lies in chunk `coord` of the chart of `terrain`, carried to `target`.
 /// Each site is drawn on the metric view around its own origin.

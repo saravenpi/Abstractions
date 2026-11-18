@@ -22,3 +22,5 @@ quinn = { version = "0.11.12", default-features = false, features = ["rustls-rin
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 rcgen = { version = "0.14", default-features = false, features = ["crypto", "ring", "pem"] }
 smol = "2"
+sha2 = { version = "0.11.1", default-features = false }
+toml = "1.1"

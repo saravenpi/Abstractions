@@ -25,7 +25,8 @@ struct Plan {
     behind: bool,
 }
 
-/// Returns the script for `frame`: walks, a run, turns, a jump, the boots, the wings, a walk back.
+/// Returns the script for `frame`: walks, a run, turns, a jump, a second press that spreads the
+/// wings, the boost, the wings key that folds them, a walk back.
 fn plan(frame: usize) -> Plan {
     let axes = match frame {
         0..60 => Vec2::X,
@@ -38,9 +39,9 @@ fn plan(frame: usize) -> Plan {
     Plan {
         axes,
         keys: (
-            held(90, 96) || held(200, 206) || held(214, 240),
-            held(60, 100),
-            frame == 222,
+            held(90, 96) || held(200, 206) || held(212, 216),
+            held(60, 100) || held(214, 240),
+            frame == 226,
         ),
         turn: 0.02 * f32::from(u8::from(held(130, 170))),
         behind: frame >= 150,
@@ -108,14 +109,14 @@ fn both(keys: &mut App, told: &mut App, plan: Plan) -> (f32, bool) {
     assert_eq!(bits(a.1.velocity), bits(b.1.velocity));
     assert!(a.1.velocity.is_finite() && a.0.rotation == b.0.rotation);
     assert_eq!(
-        (a.1.yaw.to_bits(), a.1.boots),
-        (b.1.yaw.to_bits(), b.1.boots)
+        (a.1.yaw.to_bits(), a.1.boots, a.1.wings),
+        (b.1.yaw.to_bits(), b.1.boots, b.1.wings)
     );
     (a.0.translation.y, a.2.state.mode.airborne() && a.1.boots)
 }
 
-/// Over 300 frames of walking, running, turning, jumping, firing the boots and spreading the
-/// wings, the body moved by the keys and the body moved by intents built by hand are in the
+/// Over 300 frames of walking, running, turning, jumping, spreading the wings with a second
+/// press, boosting and folding them, the body moved by the keys and the body moved by intents built by hand are in the
 /// same place, bit for bit, on every frame.
 #[test]
 fn intents_drive_the_body_exactly_as_the_keys_did() {

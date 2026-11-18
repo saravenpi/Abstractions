@@ -26,15 +26,15 @@ fn north(game: &mut Game) -> Vec3 {
     Quat::from_rotation_arc(Vec3::Y, vertical) * Vec3::NEG_Z
 }
 
-/// High above the ground, holding the jump key fires the boots: the fall eases to their
+/// High above the ground, holding the run key fires the boots: the fall eases to their
 /// descent rate and the body never rises above where they took it.
 pub fn boots(game: &mut Game, watch: &mut Watch) {
     let toward = north(game);
     game.lift(260.0, toward);
     watch.cut();
     watch.step(game, 2);
-    let jump = game.bound(|keys| keys.jump);
-    game.press(jump);
+    let run = game.bound(|keys| keys.sprint);
+    game.press(run);
     game.until_mode(Mode::BootFall, 30, watch);
     let apex = game.body().height + 0.05;
     for frame in 0..240 {
@@ -59,7 +59,7 @@ pub fn boots(game: &mut Game, watch: &mut Watch) {
 
 /// The wingsuit alone glides and always loses energy. Trying to board in the air does nothing.
 pub fn glides(game: &mut Game, watch: &mut Watch) {
-    game.release(game.bound(|keys| keys.jump));
+    game.release(game.bound(|keys| keys.sprint));
     game.tap(game.bound(|keys| keys.wings), watch);
     game.until_mode(Mode::Glide, 30, watch);
     let g = gravity(game);
@@ -128,8 +128,8 @@ pub fn folds(game: &mut Game, watch: &mut Watch) {
         was = now;
     }
     assert_eq!(game.body().gear.state.mode, Mode::Fall);
-    let jump = game.bound(|keys| keys.jump);
-    game.press(jump);
+    let run = game.bound(|keys| keys.sprint);
+    game.press(run);
     game.until_mode(Mode::BootFall, 10, watch);
     watch.step(game, 240);
     let sink = -game.body().motion.velocity.y;
@@ -138,6 +138,6 @@ pub fn folds(game: &mut Game, watch: &mut Watch) {
         (sink - target).abs() < 1.5,
         "the boots sink at {sink} m/s, not {target}"
     );
-    game.release(jump);
+    game.release(run);
     watch.near = false;
 }

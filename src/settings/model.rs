@@ -123,15 +123,16 @@ pub struct Keymap {
     pub left: KeyCode,
     /// Strafe right.
     pub right: KeyCode,
-    /// Jump, or swim up in water. Pressed again in the air and held, it fires the boot boosters.
+    /// Jump, or swim up in water. Pressed again in the air, it spreads or folds the wingsuit.
     pub jump: KeyCode,
-    /// Run faster. Held with the wingsuit spread it fires the boot boosters.
+    /// Run faster. Held in the air it fires the boot boosters: they brake a fall with the
+    /// wingsuit folded and push with it spread.
     pub sprint: KeyCode,
     /// Open and close the board computer while seated in the ship.
     pub computer: KeyCode,
     /// Hand the destination of the board computer to the autopilot.
     pub engage: KeyCode,
-    /// Spread or fold the wingsuit in the air.
+    /// Spread or fold the wingsuit in the air, as the jump key pressed again there does.
     pub wings: KeyCode,
     /// Switch between first and third person, in the ship and on foot.
     pub view: KeyCode,

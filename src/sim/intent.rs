@@ -28,11 +28,13 @@ pub enum Intent {
         /// Whether the player sees the body from behind, so that it turns to where it goes.
         behind: bool,
     },
-    /// Jump, swim up, or fire the boots when asked again in the air. Sent while held.
+    /// Jump or swim up. Asked again in the air it spreads or folds the wingsuit. Sent while held.
     Jump,
-    /// Run, or fire the boots with the wingsuit spread. Sent while held.
+    /// Run. In the air it fires the boots: a brake with the wingsuit folded, the boost with it
+    /// spread. Sent while held.
     Boost,
-    /// Spread or fold the wingsuit. Sent on the step the key goes down.
+    /// Spread or fold the wingsuit, as a jump asked again in the air does. Sent on the step the
+    /// key goes down.
     Wings,
     /// Take the seat of the ship.
     Board,

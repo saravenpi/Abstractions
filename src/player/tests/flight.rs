@@ -45,7 +45,7 @@ fn the_gear_touches_down_on_contact_and_slides_along_the_ground() {
     assert_eq!(settle(&mut sliding, Vec3::new(1.0, -3.0, -9.0)).y, 0.0);
 }
 
-/// The jump key fires the boots, the sprint key only with the wingsuit asked open, and the
+/// Fired boots reach the gear, the sprint key alone only with the wingsuit asked open, and the
 /// forward key pushes the nose down.
 #[test]
 fn keys_map_to_the_gear() {

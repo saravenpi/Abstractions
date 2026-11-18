@@ -4,18 +4,19 @@ use std::f64::consts::FRAC_PI_2;
 
 use bevy::math::DVec3;
 
+use crate::render;
 use crate::world::Globe;
 use crate::world::globe::ChunkId;
 
 /// Heights above the ground in metres between which the fog opens from the edge of the detailed
-/// ground to the horizon. The same numbers as `render::fog`, which draws the fog.
-const OPEN: (f64, f64) = (15.0, 300.0);
+/// ground to the horizon, read from `render::fog`, which draws the fog.
+const OPEN: (f64, f64) = (render::FOG_OPEN.0 as f64, render::FOG_OPEN.1 as f64);
 
-/// Fog reach in horizon distances once open, as `render::fog` has it.
-const HORIZON_SHARE: f64 = 2.5;
+/// Fog reach in horizon distances once open.
+const HORIZON_SHARE: f64 = render::HORIZON_SHARE as f64;
 
-/// Share of the fog reach at which the linear fog hides everything, as `render::fog` has it.
-const FOG_END: f64 = 0.9;
+/// Share of the fog reach at which the linear fog hides everything.
+const FOG_END: f64 = render::FOG_END as f64;
 
 /// Where the focus is over the planet.
 #[derive(Debug, Clone, Copy, PartialEq)]

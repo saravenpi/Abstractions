@@ -2,6 +2,9 @@
 //! in the world is drawn once, tiny, in front of the camera, so that no shader pipeline compiles
 //! the first time something appears in play.
 //!
+//! Each material is drawn twice: once whole and once halfway through a dithered fade, because
+//! a fading mesh (see `world::chunks::dither`) selects another pipeline variant.
+//!
 //! Materials of type `StandardMaterial` are covered here. A module with its own material type
 //! calls [`warm_material`] once; meshes that only appear later go into [`Warm::add`].
 
@@ -9,7 +12,7 @@ use std::collections::HashSet;
 
 use bevy::asset::UntypedAssetId;
 use bevy::camera::primitives::Aabb;
-use bevy::camera::visibility::NoFrustumCulling;
+use bevy::camera::visibility::{NoFrustumCulling, VisibilityRange};
 use bevy::light::NotShadowCaster;
 use bevy::mesh::MeshVertexAttributeId;
 use bevy::prelude::*;
@@ -22,6 +25,16 @@ const SPECK: f32 = 0.01;
 
 /// Distance in front of the camera of the warm-up copies, in metres.
 const AHEAD: f32 = 1.5;
+
+/// A visibility range whose fade spans the place of the copies, so the dithered variant of each
+/// pipeline is drawn.
+fn halfway() -> VisibilityRange {
+    VisibilityRange {
+        start_margin: 0.0..AHEAD * 2.0,
+        end_margin: f32::MAX..f32::MAX,
+        use_aabb: false,
+    }
+}
 
 /// Frames the copies stay on screen: pipelines compile on other threads over several frames.
 pub const WARM_FRAMES: u32 = 30;
@@ -91,13 +104,9 @@ fn copy<M: Material>(
     for (mesh, material, aabb) in &drawn {
         if seen.insert((material.0.id().untyped(), layout(&mesh.0))) {
             let scale = Transform::from_scale(Vec3::splat(shrink(aabb)));
-            commands.spawn((
-                mesh.clone(),
-                material.clone(),
-                scale,
-                NoFrustumCulling,
-                ChildOf(*root),
-            ));
+            let copy = (mesh.clone(), material.clone(), scale, NoFrustumCulling);
+            commands.spawn((copy.clone(), ChildOf(*root)));
+            commands.spawn((copy, halfway(), ChildOf(*root)));
         }
     }
     warmed.copies += seen.len();

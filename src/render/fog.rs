@@ -23,10 +23,13 @@ const UNDERWATER_VISIBILITY: f32 = 25.0;
 
 /// Heights above the ground in metres between which the fog opens from the edge of the detailed
 /// ground to the horizon: shut on foot, open a few hundred metres up.
-const OPEN: (f32, f32) = (15.0, 300.0);
+pub const OPEN: (f32, f32) = (15.0, 300.0);
 
 /// Fog reach in horizon distances once open, so the horizon itself shows through light haze.
-const HORIZON_SHARE: f32 = 2.5;
+pub const HORIZON_SHARE: f32 = 2.5;
+
+/// Share of the fog reach at which the linear fog hides everything.
+pub const FOG_END: f32 = 0.9;
 
 /// Distance in metres the camera culls at least, as Bevy does by default.
 const NEAR_FAR: f32 = 1000.0;
@@ -99,7 +102,7 @@ pub(super) fn fog_for(key: FogKey) -> DistanceFog {
             color: srgb(key.color),
             falloff: FogFalloff::Linear {
                 start: key.reach * 0.35,
-                end: key.reach * 0.9,
+                end: key.reach * FOG_END,
             },
             ..default()
         },

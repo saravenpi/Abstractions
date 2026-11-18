@@ -51,6 +51,7 @@ pub use celestial::{daylight, moon_direction, smoothstep, sun_direction};
 pub use clock::DayClock;
 pub use clouds::CloudCrossing;
 pub use entry::FlightFx;
+pub use fog::{FOG_END, HORIZON_SHARE, OPEN as FOG_OPEN};
 pub use glow::entry_glow;
 pub use lighting::{Moon, Sun};
 pub use lowres::LowRes;

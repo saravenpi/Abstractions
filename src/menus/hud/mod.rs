@@ -1,10 +1,11 @@
 //! The in-game HUD: flight instruments in the ship, the interaction prompt, the location
-//! banner and the compass that points home and to the ship. Everything hides behind menus and
-//! the computer.
+//! banner, the compass that points home and to the ship, and the minimap. Everything hides
+//! behind menus and the computer.
 
 mod banner;
 mod compass;
 mod flight;
+mod minimap;
 mod needle;
 mod panel;
 mod prompt;
@@ -46,7 +47,8 @@ fn spawn(mut commands: Commands) {
             panel::block(),
             prompt::line(),
             banner::block(),
-            compass::bar()
+            compass::bar(),
+            minimap::frame()
         ],
     ));
 }
@@ -78,6 +80,7 @@ fn show(
 pub(super) fn plugin(app: &mut App) {
     let every = on_timer(Duration::from_secs_f32(REFRESH));
     app.init_resource::<banner::Banner>()
+        .add_plugins(minimap::plugin)
         .add_systems(OnEnter(Screen::Gameplay), spawn)
         .add_systems(
             Update,

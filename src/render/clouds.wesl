@@ -6,6 +6,7 @@ struct Clouds {
     color: vec4<f32>,
     haze: vec4<f32>,
     params: vec4<f32>,
+    space: vec4<f32>,
     fixed_x: vec4<f32>,
     fixed_y: vec4<f32>,
     fixed_z: vec4<f32>,
@@ -14,7 +15,6 @@ struct Clouds {
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> clouds: Clouds;
 
 const WIND: vec3<f32> = vec3<f32>(0.011, 0.0, 0.0045);
-const SPACE_COLOR: vec3<f32> = vec3<f32>(1.0, 1.0, 1.0);
 const NIGHT_SIDE: f32 = 0.04;
 const EDGE: f32 = 0.12;
 const GRAZE: f32 = 0.08;
@@ -94,7 +94,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let relief = clamp(0.6 + (here - toward_light * 1.25) * 8.0, 0.0, 1.0);
     let body = select(mix(1.0, 0.72, density), mix(0.82, 1.05, density), facing > 0.0);
     let day = smoothstep(-0.2, 0.25, dot(n, light));
-    let from_space = SPACE_COLOR * mix(NIGHT_SIDE, 1.0, day);
+    let from_space = clouds.space.rgb * mix(NIGHT_SIDE, 1.0, day);
     let base = mix(from_space, clouds.color.rgb, air);
     var col = mix(base * 0.55, base * 1.05, relief) * body;
     col = mix(col, clouds.haze.rgb, far * air * 0.8);

@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use crate::universe::{GALAXY_CELL, GLY, GalaxyKind, GalaxySpec, StarSpec};
 
 /// Largest angular radius in radians a galaxy is drawn with.
-const GALAXY_ANGLE: f32 = 0.35;
+pub const GALAXY_ANGLE: f32 = 0.35;
 
 /// One point of light on the sky shell.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -23,19 +23,32 @@ pub struct Speck {
     pub soft: f32,
 }
 
+/// Returns the distance in game light-years of a star seen from `from`, both in metres from the
+/// galaxy centre, and the light that arrives from it: the base 10 logarithm of its light output
+/// over the squared distance.
+pub fn star_light(star: &StarSpec, from: DVec3) -> (f64, f32) {
+    let distance = ((star.pos - from).length() / GLY).max(1e-3);
+    let flux = (star.luminosity / (distance * distance)).max(1e-9).log10() as f32;
+    (distance, flux)
+}
+
+/// Returns the angular radius in radians and the strength of the colour a star is drawn with
+/// when the light `flux` arrives from it, on a log scale, like magnitudes. `starfield.wesl`
+/// repeats this rule, so a star keeps the right size while the camera closes on it.
+pub fn shine(flux: f32) -> (f32, f32) {
+    let bright = ((flux + 4.6) / 5.0).clamp(0.08, 1.0);
+    (0.0035 + 0.0055 * bright, 0.45 + 2.6 * bright * bright)
+}
+
 /// Returns the speck of a star seen from `from`, both in metres from the galaxy centre.
 ///
-/// Brightness follows the light output over the squared distance on a log scale, like magnitudes:
-/// it sets both the size and the strength, and the class gives the colour.
+/// The light that arrives sets both the size and the strength, and the class gives the colour.
 pub fn star_speck(star: &StarSpec, from: DVec3) -> Speck {
-    let offset = star.pos - from;
-    let distance = (offset.length() / GLY).max(1e-3);
-    let flux = (star.luminosity / (distance * distance)).max(1e-9).log10() as f32;
-    let bright = ((flux + 4.6) / 5.0).clamp(0.08, 1.0);
+    let (size, gain) = shine(star_light(star, from).1);
     Speck {
-        dir: offset.normalize_or(DVec3::Y).as_vec3(),
-        size: 0.0035 + 0.0055 * bright,
-        color: star.color * (0.45 + 2.6 * bright * bright),
+        dir: (star.pos - from).normalize_or(DVec3::Y).as_vec3(),
+        size,
+        color: star.color * gain,
         soft: 0.6,
     }
 }

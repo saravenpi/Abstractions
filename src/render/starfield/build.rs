@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use bevy::tasks::futures_lite::future::poll_once;
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on};
 
-use super::specks::{Speck, galaxy_speck, mesh, star_speck};
+use super::depth::{Sighted, lit};
 use super::{GALAXY_CELLS, MOST_STARS, REACH_GLY, Starfield};
 use crate::render::vantage::Scene;
 use crate::space::UniPos;
@@ -23,19 +23,19 @@ pub struct Building {
 
 /// Returns every speck seen from `at` metres from the centre of `galaxy`: the stars within reach
 /// except the one of the current system, which is drawn as a body, and the galaxies around.
-pub fn gather(universe: &Universe, galaxy: GalaxyId, at: DVec3, own: DVec3) -> Vec<Speck> {
+pub fn gather(universe: &Universe, galaxy: GalaxyId, at: DVec3, own: DVec3) -> Vec<Sighted> {
     let stars = universe.stars_near(galaxy, at, REACH_GLY);
     let away = |pos: DVec3| pos.distance_squared(own) > 1.0;
     let stars = stars.iter().filter(|star| away(star.pos));
-    let mut specks: Vec<Speck> = stars
+    let mut specks: Vec<Sighted> = stars
         .take(MOST_STARS)
-        .map(|star| star_speck(star, at))
+        .map(|star| Sighted::star(star, at))
         .collect();
     let Some(here) = universe.galaxy(galaxy).map(|spec| spec.locate(at)) else {
         return specks;
     };
     let others = universe.galaxies_near(galaxy, GALAXY_CELLS);
-    let seen = |other: &_| galaxy_speck(other, UniPos::new(other.id.0, other.center) - here);
+    let seen = |other: &_| Sighted::galaxy(other, UniPos::new(other.id.0, other.center) - here);
     specks.extend(others.iter().filter_map(seen));
     specks
 }
@@ -65,7 +65,7 @@ pub fn launch(
         }
         let task = AsyncComputeTaskPool::get().spawn(async move {
             let specks = gather(&universe, galaxy, at, own);
-            (!specks.is_empty()).then(|| mesh(&specks))
+            (!specks.is_empty()).then(|| lit(&specks))
         });
         let place = (galaxy, at);
         commands.entity(entity).try_insert(Building { place, task });

@@ -4,7 +4,7 @@ import bevy_pbr::render::mesh_view_bindings::view;
 struct Fx {
     heading: vec4<f32>,
     glow: vec4<f32>,
-    streak: vec4<f32>,
+    core: vec4<f32>,
     wisp: vec4<f32>,
     params: vec4<f32>,
 }
@@ -12,8 +12,10 @@ struct Fx {
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> fx: Fx;
 
 const TAU: f32 = 6.2831853;
-const STREAK_LANES: f32 = 220.0;
 const WISP_LANES: f32 = 22.0;
+const CORE_TIGHT: f32 = 60.0;
+const CORE_WIDE: f32 = 5.0;
+const FLASH_WIDE: f32 = 1.5;
 
 fn hash11(x: f32) -> f32 {
     var h = bitcast<u32>(i32(x)) * 0x27d4eb2du;
@@ -34,18 +36,6 @@ fn lanes(turn: f32, along: f32, count: f32, width: f32, travel: f32) -> f32 {
     return line * lit * step(0.45, seed);
 }
 
-fn streak_field(turn: f32, along: f32, travel: f32, stretch: f32) -> f32 {
-    let scaled = turn * STREAK_LANES;
-    let lane = floor(scaled);
-    let seed = hash11(lane);
-    let across = abs(scaled - lane - 0.5);
-    let line = 1.0 - smoothstep(0.08, 0.2, across);
-    let head = fract(along * (0.7 + seed) + travel * (0.5 + seed) + seed * 9.0);
-    let tail = mix(0.015, 0.5, stretch * stretch) * (0.5 + seed);
-    let lit = smoothstep(0.0, 0.01, head) * (1.0 - smoothstep(0.0, tail, head));
-    return line * lit * step(0.62, hash11(lane + 311.0)) * (0.4 + 0.6 * seed);
-}
-
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let v = normalize(in.world_position.xyz - view.world_position);
@@ -62,15 +52,18 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let turn = atan2(dot(radial, rise), dot(radial, side)) / TAU + 0.5;
     let open = smoothstep(0.04, 0.3, spread);
 
-    let streaks = streak_field(turn, along, time * fx.params.y, fx.params.w) * open;
     let wisps = lanes(turn, along, WISP_LANES, 0.5, time * fx.params.z) * open;
 
     let edge = smoothstep(0.42, 0.95, 1.0 - dot(v, forward));
     let flicker = 0.8 + 0.2 * hash11(floor(turn * 40.0) + floor(time * 12.0) * 57.0);
     let heat = edge * flicker;
 
+    let off = 1.0 - along;
+    let ahead = 0.6 * exp(-off * CORE_TIGHT) + 0.4 * exp(-off * CORE_WIDE);
+    let flash = fx.params.y * exp(-off * FLASH_WIDE);
+
     var col = fx.glow.rgb * (fx.glow.w * heat);
-    col = col + fx.streak.rgb * (fx.streak.w * streaks);
+    col = col + fx.core.rgb * (fx.core.w * ahead + flash);
     col = col + fx.wisp.rgb * (fx.wisp.w * wisps);
     return vec4<f32>(col, 0.0);
 }

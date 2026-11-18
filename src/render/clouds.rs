@@ -58,6 +58,8 @@ pub struct CloudUniform {
     pub haze: Vec4,
     /// Time in seconds, noise cells per shell radius and the distance in metres to the far rim of the shell.
     pub params: Vec4,
+    /// Linear colour of the sunlit clouds seen from space.
+    pub space: Vec4,
     /// First column of the rotation from render axes to planet-fixed axes.
     pub fixed_x: Vec4,
     /// Second column of that rotation.
@@ -143,15 +145,14 @@ impl CloudInputs<'_> {
         let rim =
             (distance * distance - ground).max(0.0).sqrt() + (radius * radius - ground).sqrt();
         let fixed = Mat3::from_quat((observer.to_render * observer.spin).inverse().as_quat());
-        let cover = self
-            .local
-            .air(vantage.body)
-            .cover(cloud_cover(self.clock.phase));
+        let air = self.local.air(vantage.body);
+        let cover = air.cover(cloud_cover(self.clock.phase));
         CloudUniform {
             light: self.palette.sun_dir.extend(vantage.air),
             color: linear(self.palette.cloud).truncate().extend(cover),
             haze: linear(self.palette.horizon).truncate().extend(depth),
             params: Vec4::new(self.time.elapsed_secs(), radius / CELL, rim, 0.0),
+            space: air.clouds_from_space().extend(0.0),
             fixed_x: fixed.x_axis.extend(0.0),
             fixed_y: fixed.y_axis.extend(0.0),
             fixed_z: fixed.z_axis.extend(0.0),

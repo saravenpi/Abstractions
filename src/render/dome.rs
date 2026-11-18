@@ -15,6 +15,7 @@ use super::clouds::CloudCrossing;
 use super::palette::Palette;
 use super::sky::{SkyLook, SkyMaterial, SkyUniform};
 use super::vantage::{LocalSystem, Vantage};
+use super::warp::Lens;
 use crate::screens::Screen;
 
 /// Radius of the dome in metres: behind the stars and every body, which are drawn nearer.
@@ -60,6 +61,7 @@ struct SkyInputs<'w> {
     vantage: Res<'w, Vantage>,
     sun: Res<'w, SunDir>,
     crossing: Res<'w, CloudCrossing>,
+    lens: Res<'w, Lens>,
 }
 
 impl SkyInputs<'_> {
@@ -83,7 +85,9 @@ impl SkyInputs<'_> {
             disc: (to_render * DVec3::Y).as_vec3(),
             core: (to_render * (-vantage.galactic).normalize_or_zero()).as_vec3(),
             band: vantage.band,
-            submerged: vantage.altitude < 0.0,
+            murk: super::murk::under(&self.local, vantage),
+            heading: self.lens.heading,
+            beta: self.lens.beta,
         }
     }
 }
@@ -115,7 +119,12 @@ fn update_dome(
 /// Registers the dome systems; the update runs once the camera is tracked and the clouds are known.
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Screen::Loading), spawn_dome)
-        .add_systems(PostUpdate, update_dome.after(super::clouds::drift));
+        .add_systems(
+            PostUpdate,
+            update_dome
+                .after(super::clouds::drift)
+                .after(super::warp::run),
+        );
 }
 
 #[cfg(test)]

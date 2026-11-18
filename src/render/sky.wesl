@@ -12,6 +12,7 @@ struct Sky {
     disc: vec4<f32>,
     core: vec4<f32>,
     glow: vec4<f32>,
+    warp: vec4<f32>,
 }
 
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> sky: Sky;
@@ -20,6 +21,9 @@ const MOON_RADIUS: f32 = 0.045;
 const RIM_SHARPNESS: f32 = 26.0;
 const BAND_COLOR: vec3<f32> = vec3<f32>(0.5, 0.56, 0.78);
 const BAND_GAIN: f32 = 0.07;
+const BEAM: f32 = 1.5;
+const BEAM_LEAST: f32 = 0.08;
+const BEAM_MOST: f32 = 3.0;
 
 fn hash21(p: vec2<f32>) -> f32 {
     var q = fract(p * vec2<f32>(123.34, 456.21));
@@ -74,6 +78,19 @@ fn galaxy_band(v: vec3<f32>) -> vec3<f32> {
     return BAND_COLOR * (band * lanes * (0.35 + 0.65 * toward) * BAND_GAIN * sky.disc.w);
 }
 
+fn warped_band(v: vec3<f32>) -> vec3<f32> {
+    let axis = sky.warp.xyz;
+    let beta = sky.warp.w;
+    let cos_seen = dot(v, axis);
+    let lorentz = sqrt(max(1.0 - beta * beta, 0.000001));
+    let shrink = 1.0 - beta * cos_seen;
+    let bent = axis * ((cos_seen - beta) / shrink) + (v - axis * cos_seen) * (lorentz / shrink);
+    let moving = beta > 0.0;
+    let dir = select(v, normalize(bent), moving);
+    let factor = select(1.0, lorentz / shrink, moving);
+    return galaxy_band(dir) * clamp(pow(factor, BEAM), BEAM_LEAST, BEAM_MOST);
+}
+
 fn moon_disc(v: vec3<f32>, m: vec3<f32>) -> vec4<f32> {
     let t = normalize(cross(vec3<f32>(0.0, 1.0, 0.0), m));
     let b = cross(m, t);
@@ -102,7 +119,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 
     var col = mix(sky.horizon.rgb, sky.zenith.rgb, pow(clamp(height, 0.0, 1.0), 0.5));
     col = col + sky.rim.rgb * exp(-abs(over_limb) * RIM_SHARPNESS);
-    col = col + galaxy_band(v) * above_horizon;
+    col = col + warped_band(v) * above_horizon;
 
     let sun_visible = sky.sun.w * above_horizon;
     let sun_col = sky.glow.rgb;

@@ -11,7 +11,6 @@ use bevy::render::render_resource::{
 use bevy::shader::ShaderRef;
 
 use super::celestial::smoothstep;
-use super::fog::UNDERWATER;
 use super::palette::Palette;
 
 /// Uniform block read by `sky.wesl`. Every field is a `vec4` so the layout never needs padding.
@@ -37,6 +36,9 @@ pub struct SkyUniform {
     pub core: Vec4,
     /// Linear color of the star light the air lets through, which colors the glow around the star.
     pub glow: Vec4,
+    /// Unit vector of the direction of travel in xyz and, in w, the speed the sky is seen
+    /// through in a warp as a share of the speed of light: the band crowds ahead with the stars.
+    pub warp: Vec4,
 }
 
 /// What the dome is drawn from besides the palette, with directions in render axes.
@@ -60,8 +62,12 @@ pub struct SkyLook {
     pub core: Vec3,
     /// Strength of the galaxy band.
     pub band: f32,
-    /// Whether the camera is below the sea surface.
-    pub submerged: bool,
+    /// sRGB colour of the liquid around a camera below the surface of a sea.
+    pub murk: Option<Vec3>,
+    /// Unit vector of the direction of travel.
+    pub heading: Vec3,
+    /// Speed the sky is seen through in a warp, as a share of the speed of light.
+    pub beta: f32,
 }
 
 /// Converts an sRGB triple to a linear color vector.
@@ -72,12 +78,13 @@ pub fn linear(v: Vec3) -> Vec4 {
 impl SkyUniform {
     /// Builds the uniform for a palette and what the camera's place adds to it.
     ///
-    /// Underwater the dome is one flat color without sun, moon, rim or band.
+    /// Below the surface of a sea the dome is the one flat colour of the liquid, without sun,
+    /// moon, rim or band.
     pub fn new(palette: &Palette, look: &SkyLook) -> Self {
-        let dry = if look.submerged { 0.0 } else { 1.0 };
-        let (zenith, horizon) = match look.submerged {
-            true => (UNDERWATER, UNDERWATER),
-            false => (palette.zenith, palette.horizon),
+        let dry = if look.murk.is_some() { 0.0 } else { 1.0 };
+        let (zenith, horizon) = match look.murk {
+            Some(liquid) => (liquid, liquid),
+            None => (palette.zenith, palette.horizon),
         };
         let glow = smoothstep(-0.15, 0.05, look.sun_height) * look.air * dry;
         let moon = smoothstep(-0.15, 0.05, -look.sun_height) * look.air * dry;
@@ -92,6 +99,7 @@ impl SkyUniform {
             disc: look.disc.extend(look.band * palette.stars * dry),
             core: look.core.extend(0.0),
             glow: linear(palette.sun_color),
+            warp: look.heading.extend(look.beta),
         }
     }
 }

@@ -1,25 +1,29 @@
 //! The starfield: the real stars near the camera and the far galaxies, as one mesh on a far shell.
 
 mod build;
+mod depth;
+mod material;
 mod specks;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_depth;
 
 use bevy::asset::embedded_asset;
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::light::NotShadowCaster;
 use bevy::math::DVec3;
-use bevy::pbr::{Material, MaterialPlugin};
+use bevy::pbr::MaterialPlugin;
 use bevy::prelude::*;
-use bevy::render::render_resource::{AsBindGroup, ShaderType};
-use bevy::shader::ShaderRef;
 
-use super::entry::FlightFx;
+pub use material::{StarMaterial, StarUniform};
+
 use super::palette::Palette;
 use super::vantage::Vantage;
+use super::warp::Lens;
 use crate::screens::Screen;
-use crate::universe::GalaxyId;
+use crate::universe::{GLY, GalaxyId};
 
 /// Radius of the star shell in metres: behind every body, in front of the dome.
 pub const STAR_SHELL: f32 = 3.0e6;
@@ -33,43 +37,25 @@ pub(super) const MOST_STARS: usize = 4000;
 /// Galaxy grid cells searched for galaxies around the camera's own.
 pub(super) const GALAXY_CELLS: i32 = 2;
 
-/// Uniform block read by `starfield.wesl`.
-#[derive(Clone, Copy, Debug, Default, ShaderType)]
-pub struct StarUniform {
-    /// Visibility of the stars from 0 to 1 in x; the rest is unused.
-    pub params: Vec4,
-}
-
-/// Material of the starfield.
-#[derive(Asset, TypePath, AsBindGroup, Debug, Clone, Default)]
-pub struct StarMaterial {
-    /// Values for the shader.
-    #[uniform(0)]
-    pub stars: StarUniform,
-}
-
-impl Material for StarMaterial {
-    /// Points at the shader embedded in the binary.
-    fn fragment_shader() -> ShaderRef {
-        "embedded://abstractions/render/starfield.wesl".into()
-    }
-
-    /// Starlight adds to the sky behind it.
-    fn alpha_mode(&self) -> AlphaMode {
-        AlphaMode::Add
-    }
-
-    /// The stars stay out of the depth prepass.
-    fn enable_prepass() -> bool {
-        false
-    }
-}
-
 /// The starfield entity, with the place its mesh was last built for.
 #[derive(Component, Debug, Default, Clone, Copy, PartialEq)]
 pub struct Starfield {
     /// Galaxy and position in metres from its centre of the last build, if any.
     pub built: Option<(GalaxyId, DVec3)>,
+}
+
+impl Starfield {
+    /// Returns how far a camera at `vantage` is from the place the mesh was built for, in game
+    /// light-years in galaxy axes: the shader slides every star by it. Without a mesh, or with
+    /// the mesh of another galaxy, it is nothing.
+    pub fn drift(&self, vantage: &Vantage) -> Vec3 {
+        match self.built {
+            Some((galaxy, at)) if galaxy == vantage.galaxy => {
+                ((vantage.galactic - at) / GLY).as_vec3()
+            }
+            _ => Vec3::ZERO,
+        }
+    }
 }
 
 /// Spawns the starfield without a mesh when the world starts loading.
@@ -85,22 +71,17 @@ fn spawn(mut commands: Commands, mut materials: ResMut<Assets<StarMaterial>>) {
     ));
 }
 
-/// Share of their light the stars keep at full warp, when the streaks take their place.
-const WARP_DIM: f32 = 0.2;
-
-/// Keeps the shell around the camera, turned with the galaxy, and fades the stars with the sky
-/// and with the warp: the stars that stand still give way to the ones that stream past.
+/// Keeps the shell around the camera, turned with the galaxy, fades the stars with the sky and
+/// hands the shader the warp lens: the same stars crowd ahead, streak and come back to rest.
 fn follow(
     vantage: Res<Vantage>,
-    (palette, flight): (Res<Palette>, Res<FlightFx>),
-    mut fields: Query<
-        (
-            &mut Transform,
-            &mut GlobalTransform,
-            &MeshMaterial3d<StarMaterial>,
-        ),
-        With<Starfield>,
-    >,
+    (palette, lens): (Res<Palette>, Res<Lens>),
+    mut fields: Query<(
+        &Starfield,
+        &mut Transform,
+        &mut GlobalTransform,
+        &MeshMaterial3d<StarMaterial>,
+    )>,
     mut materials: ResMut<Assets<StarMaterial>>,
 ) {
     let pose = Transform {
@@ -108,15 +89,20 @@ fn follow(
         rotation: vantage.observer.to_render.as_quat(),
         scale: Vec3::splat(STAR_SHELL),
     };
-    for (mut transform, mut global, handle) in &mut fields {
+    for (field, mut transform, mut global, handle) in &mut fields {
         super::pin(pose, &mut transform, &mut global);
         if let Some(mut material) = materials.get_mut(&handle.0) {
-            material.stars.params.x = palette.stars * (1.0 - (1.0 - WARP_DIM) * flight.warp);
+            material.stars = StarUniform {
+                params: Vec4::new(palette.stars, lens.streak, lens.stars, 0.0),
+                heading: lens.heading.extend(lens.beta),
+                drift: field.drift(&vantage).extend(0.0),
+            };
         }
     }
 }
 
-/// Embeds the shader, registers the material and runs the starfield once the camera is tracked.
+/// Embeds the shader, registers the material and runs the starfield once the camera is tracked
+/// and the warp sequence has moved on.
 pub(super) fn plugin(app: &mut App) {
     embedded_asset!(app, "starfield.wesl");
     app.add_plugins(MaterialPlugin::<StarMaterial>::default())
@@ -125,6 +111,7 @@ pub(super) fn plugin(app: &mut App) {
             PostUpdate,
             (build::adopt, build::launch, follow)
                 .chain()
-                .after(super::sun::track),
+                .after(super::sun::track)
+                .after(super::warp::run),
         );
 }

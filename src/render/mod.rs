@@ -16,6 +16,7 @@ mod fog;
 mod glow;
 mod lighting;
 mod lowres;
+mod murk;
 mod observer;
 mod palette;
 mod pixelate;
@@ -26,6 +27,7 @@ mod starfield;
 mod sun;
 mod vantage;
 mod warm;
+mod warp;
 
 #[cfg(test)]
 mod schedule_tests;
@@ -37,6 +39,8 @@ mod tests_air;
 mod tests_dither;
 #[cfg(test)]
 mod tests_fog;
+#[cfg(test)]
+mod tests_murk;
 #[cfg(test)]
 mod tests_palette;
 #[cfg(test)]
@@ -56,6 +60,7 @@ pub use pixelate::Pixelate;
 pub use ray_tracing::RayTracing;
 pub use sun::SunDir;
 pub use warm::{WARM_FRAMES, Warm, Warmed, warm_material};
+pub use warp::{CARRIED, Drive, Lens, Phase, Sequence};
 
 use bevy::prelude::*;
 use bevy::render::render_asset::RenderAssetBytesPerFrame;
@@ -97,6 +102,7 @@ pub(super) fn sky(app: &mut App) {
         dome::plugin,
         camera::plugin,
         fog::plugin,
+        warp::plugin,
     ))
     .add_plugins((
         atmosphere::plugin,

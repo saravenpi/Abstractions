@@ -6,13 +6,19 @@
 mod apply;
 mod model;
 mod prefs;
+mod servers;
+mod ship_keys;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tests_removed;
+#[cfg(test)]
+mod tests_servers;
 
 pub use bevy_persistent::Persistent;
-pub use model::{Audio, Controls, Graphics, Keymap, Settings, ShipKeys, WorldPrefs, render_step};
+pub use model::{Audio, Controls, Graphics, Keymap, Settings, WorldPrefs, render_step};
+pub use servers::{SavedServer, default_servers};
+pub use ship_keys::ShipKeys;
 
 use bevy::prelude::*;
 use bevy_persistent::StorageFormat;

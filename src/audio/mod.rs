@@ -17,6 +17,7 @@ mod sense;
 mod shared;
 mod ship;
 mod shore;
+mod sky;
 mod source;
 mod steps;
 mod suit;
@@ -26,6 +27,7 @@ mod wire;
 mod tests;
 
 pub use cue::{AudioCue, ChirpKind, StepSurface};
+pub(crate) use dsp::rand::Rand;
 pub use scene::{AudioScene, altitude_fade};
 
 use bevy::audio::AddAudioSource;
@@ -42,5 +44,11 @@ pub(super) fn plugin(app: &mut App) {
     app.add_message::<AudioCue>()
         .init_resource::<AudioScene>()
         .add_audio_source::<source::Synth>()
-        .add_plugins((feed::plugin, sense::plugin, steps::plugin, wire::plugin));
+        .add_plugins((
+            feed::plugin,
+            sense::plugin,
+            sky::plugin,
+            steps::plugin,
+            wire::plugin,
+        ));
 }

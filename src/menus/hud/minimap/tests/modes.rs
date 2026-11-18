@@ -7,12 +7,14 @@ use bevy::prelude::*;
 use super::read::{at, caption, drawn, part};
 use super::rig::{RADIUS, app, settle, tap};
 use crate::computer::{Destination, Target};
-use crate::menus::hud::minimap::KEY;
 use crate::menus::hud::minimap::scope::Scope;
 use crate::menus::hud::minimap::space::QUIET;
 use crate::menus::hud::minimap::widget::Part;
 use crate::space::{Anchor, Frame};
 use crate::universe::{BodyId, Universe};
+
+/// The default key of the minimap.
+const KEY: KeyCode = KeyCode::KeyM;
 
 /// Presses the minimap key, waits for the map to come to rest, and returns its range and
 /// what the corner says.

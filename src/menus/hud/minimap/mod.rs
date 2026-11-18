@@ -30,17 +30,19 @@ use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
 use crate::screens::{Screen, in_control};
-
-/// The key that cycles the minimap: the range follows the speed, then each fixed range from
-/// the nearest, then off. It is not in the settings yet.
-pub const KEY: KeyCode = KeyCode::KeyM;
+use crate::settings::{Persistent, Settings};
 
 /// Seconds between two looks at the system chart.
 const CHART_EVERY: f32 = 0.2;
 
-/// Moves the minimap to its next mode when its key is pressed.
-fn cycle(keys: Res<ButtonInput<KeyCode>>, mut scope: ResMut<scope::Scope>) {
-    if keys.just_pressed(KEY) {
+/// Moves the minimap to its next mode when its key is pressed: the range follows the speed,
+/// then each fixed range from the nearest, then off.
+fn cycle(
+    keys: Res<ButtonInput<KeyCode>>,
+    settings: Res<Persistent<Settings>>,
+    mut scope: ResMut<scope::Scope>,
+) {
+    if keys.just_pressed(settings.controls.keys.minimap) {
         scope.mode = scope.mode.next();
     }
 }

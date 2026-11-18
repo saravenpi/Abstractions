@@ -31,11 +31,12 @@ pub enum Bind {
     View,
     Computer,
     Engage,
+    Minimap,
 }
 
 impl Bind {
     /// The actions used on foot, in display order. The view and board keys work in the ship too.
-    pub const FOOT: [Bind; 9] = [
+    pub const FOOT: [Bind; 10] = [
         Bind::Forward,
         Bind::Back,
         Bind::Left,
@@ -45,6 +46,7 @@ impl Bind {
         Bind::Wings,
         Bind::View,
         Bind::Board,
+        Bind::Minimap,
     ];
 
     /// The actions used while seated in the ship, in display order.
@@ -95,6 +97,7 @@ impl Bind {
             Bind::View => "Switch view",
             Bind::Computer => "Board computer",
             Bind::Engage => "Engage autopilot",
+            Bind::Minimap => "Minimap",
         }
     }
 
@@ -125,6 +128,7 @@ impl Bind {
             Bind::View => &mut keys.view,
             Bind::Computer => &mut keys.computer,
             Bind::Engage => &mut keys.engage,
+            Bind::Minimap => &mut keys.minimap,
         }
     }
 

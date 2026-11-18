@@ -135,6 +135,8 @@ pub struct Keymap {
     pub wings: KeyCode,
     /// Switch between first and third person, in the ship and on foot.
     pub view: KeyCode,
+    /// Step the minimap through its ranges, then off.
+    pub minimap: KeyCode,
     /// Ship controls, used while seated in the ship and to board it.
     pub ship: ShipKeys,
 }
@@ -152,6 +154,7 @@ impl Default for Keymap {
             engage: KeyCode::KeyG,
             wings: KeyCode::KeyR,
             view: KeyCode::KeyV,
+            minimap: KeyCode::KeyM,
             ship: ShipKeys::default(),
         }
     }

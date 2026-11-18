@@ -23,7 +23,7 @@ mod widgets;
 pub use backdrop::{Backdrop, Blurred, backdrop_luminance, contrast, warm_up};
 pub use chrome::{action, footer, heading, key_cap, notice, strip};
 pub use focus::move_focus;
-pub use icon::{ICON_FONT, ICONS_VERSION, Icon, icon, icon_slot};
+pub use icon::{ICON_FONT, ICONS_VERSION, Icon, icon, icon_sized, icon_slot};
 pub use item::{entry, frame, item, item_with, label, link, step_button};
 pub use list::Window;
 pub use scroll::{Scroller, scroller};

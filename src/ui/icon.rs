@@ -153,13 +153,18 @@ impl Icon {
 
 /// One icon on its 24 pixel grid, whose colour follows `tone` and the button around it.
 pub fn icon(icon: Icon, tone: Tone) -> impl Bundle {
+    icon_sized(icon, tone, theme::ICON)
+}
+
+/// One icon drawn `size` pixels high, for marks that must stay out of the way.
+pub fn icon_sized(icon: Icon, tone: Tone, size: f32) -> impl Bundle {
     (
         Text::new(icon.glyph()),
-        TextFont::from_font_size(theme::ICON).with_font(ICON_FONT),
+        TextFont::from_font_size(size).with_font(ICON_FONT),
         TextLayout::no_wrap(),
         tone,
         Node {
-            min_width: px(theme::ICON),
+            min_width: px(size),
             flex_shrink: 0.0,
             ..default()
         },

@@ -14,10 +14,13 @@ use crate::home::Base;
 use crate::render::GameCamera;
 use crate::ship::Ship;
 use crate::space::{Anchor, Frame, Location, Travel, up};
-use crate::ui::{Icon, Tone, icon, text, theme};
+use crate::ui::{Icon, Tone, icon_sized, text, theme};
 
 /// Width in pixels of the room of one mark, which is centred on its place on the bar.
 const ROOM: f32 = 96.0;
+
+/// Height in pixels of the icon of a mark, small enough to leave the view clear.
+const MARK: f32 = 14.0;
 
 /// Distance in metres under which a target is here and its mark is hidden.
 const HERE: f32 = 12.0;
@@ -53,7 +56,7 @@ fn mark(mark: Mark, symbol: Icon) -> impl Bundle {
             ..default()
         },
         children![
-            icon(symbol, Tone::Plain),
+            icon_sized(symbol, Tone::Plain, MARK),
             (Far(mark), text("", theme::FONT_SMALL, theme::MUTED)),
         ],
     )
@@ -66,7 +69,7 @@ fn rule(left: f32, size: Vec2, color: Color) -> impl Bundle {
         Node {
             position_type: PositionType::Absolute,
             left: percent(left),
-            top: px(theme::ICON + theme::GAP_XS),
+            top: px(MARK + theme::GAP_XS),
             width: px(size.x),
             height: px(size.y),
             ..default()
@@ -90,7 +93,7 @@ pub(super) fn bar() -> impl Bundle {
             Visibility::Hidden,
             Node {
                 width: px(WIDTH),
-                height: px(theme::ICON * 2.0 + theme::GAP_M),
+                height: px(MARK * 2.0 + theme::GAP_M),
                 ..default()
             },
             children![

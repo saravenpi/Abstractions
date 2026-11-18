@@ -1,7 +1,7 @@
 //! The backdrop of menus shown over the game: the game image, blurred and darkened.
 //!
 //! Bevy UI has no backdrop blur. The game is already drawn into a small image
-//! ([`LowRes`]) that fills the window, so blurring it costs a few samples of a small texture
+//! ([`LowRes`]) that fills the window, so blurring it costs a few dozen samples of a small texture
 //! in one material shared by every menu. Nothing is drawn while no menu is open, and no pass
 //! is added over the full-resolution frame. Where the material is not available (no world on
 //! screen, no renderer) the root keeps a plain dark veil of the same darkness.
@@ -14,8 +14,9 @@ use bevy::shader::ShaderRef;
 use super::theme;
 use crate::render::{GameCamera, LowRes};
 
-/// Blur radius as a fraction of the screen height.
-const RADIUS: f32 = 0.012;
+/// Blur radius as a fraction of the screen height: wide enough that no shape of the game
+/// survives, so a menu sits on frosted glass and not on a darkened picture.
+const RADIUS: f32 = 0.05;
 
 /// Marks a node that shows the blurred game behind it once the material is available.
 #[derive(Component, Debug, Clone, Copy, Default)]

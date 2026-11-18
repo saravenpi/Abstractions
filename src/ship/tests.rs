@@ -13,6 +13,7 @@ mod giant;
 mod ground;
 mod handling;
 mod helm;
+mod hull;
 mod hover;
 mod landed;
 mod lever;

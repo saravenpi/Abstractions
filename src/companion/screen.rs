@@ -11,6 +11,7 @@ use super::brain::Brain;
 use super::face::Frame;
 use super::face::machine::Face;
 use super::face::paint::{HEIGHT, WIDTH, paint, rgba};
+use super::motion::Head;
 
 /// The picture and the materials of the companion, and what they currently show.
 #[derive(Component, Debug, Clone)]
@@ -51,12 +52,14 @@ pub fn picture(frame: &Frame) -> Image {
     image
 }
 
-/// Repaints the screen when the face frame changed. The eyes turn toward what the companion looks at.
+/// Repaints the screen when the face frame changed. The eyes turn toward what the companion
+/// looks at, from where the head points.
 pub fn repaint(
-    bot: Single<(&GlobalTransform, &Brain, &Face, &mut Display), With<Companion>>,
+    bot: Single<(&Brain, &Face, &mut Display), With<Companion>>,
+    at: Single<&GlobalTransform, With<Head>>,
     mut images: ResMut<Assets<Image>>,
 ) {
-    let (at, brain, face, mut display) = bot.into_inner();
+    let (brain, face, mut display) = bot.into_inner();
     let local = at.rotation().inverse() * (brain.look - at.translation());
     let gaze = match brain.mind.dozing {
         true => IVec2::ZERO,

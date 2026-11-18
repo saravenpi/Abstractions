@@ -3,11 +3,12 @@
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::attention::Attention;
+use super::gaze::Attention;
 use super::idle::Idle;
 use super::mind::Mind;
 use super::perch::Perch;
 use super::pose::Pose;
+use super::scene::Scene;
 use super::sense::CompanionSense;
 use super::spot::Stance;
 use super::tune::{CLEARANCE, CURIOUS_REACH, FLIGHT_CLEARANCE, LOW_CLEARANCE};
@@ -49,6 +50,8 @@ pub struct Brain {
     pub flight: f32,
     /// Whether the player was flying on the last frame.
     pub aloft: bool,
+    /// What it sees around it this frame.
+    pub scene: Scene,
     /// Frame and position in it of the player's eyes on the last frame.
     seen: Option<(Frame, DVec3)>,
     /// The discovery count already celebrated.
@@ -74,16 +77,17 @@ impl Brain {
             pose: Pose::default(),
             flight: 0.0,
             aloft: false,
+            scene: Scene::default(),
             seen: None,
             delight: 0,
         }
     }
 
-    /// Records where the player's eyes are and returns how fast the view turns, in radians per second.
+    /// Records where the player's eyes are.
     ///
     /// The player's velocity is measured in the anchor frame, so a rebase of the anchor never
     /// reads as movement. It is zero on the frame the frame itself changes or the player is teleported.
-    pub fn observe(&mut self, anchor: &Anchor, stance: Stance, dt: f32) -> f32 {
+    pub fn observe(&mut self, anchor: &Anchor, stance: Stance, dt: f32) {
         let dt = dt.max(1e-4);
         let at = anchor.to_frame(stance.eye);
         let moved = match self.seen {
@@ -92,11 +96,9 @@ impl Brain {
         };
         let drift = (anchor.rotation * moved).as_vec3() / dt;
         self.drift = drift * f32::from(drift.length() < MAX_DRIFT);
-        let turn = self.stance.forward.angle_between(stance.forward) / dt;
         self.seen = Some((anchor.frame, at));
         self.stance = stance;
         self.perch.advance(anchor, &stance, self.drift, dt);
-        turn
     }
 
     /// Returns true once for every discovery: `fresh` first steps on a planet, or a producer's
@@ -114,11 +116,10 @@ impl Brain {
             .filter(|at| at.distance(self.stance.eye) < CURIOUS_REACH)
     }
 
-    /// Chooses what the inspect idle looks at: the nearby structure, else the ground ahead of the player.
+    /// Chooses what the inspect idle looks at: the nearby structure, else the ground in front
+    /// of the player the way the companion itself faces.
     pub fn choose_inspect(&mut self, sense: &CompanionSense) {
-        let ground = self.stance.eye + self.stance.level() * INSPECT_REACH
-            - self.stance.right() * 0.8
-            - self.stance.up * 1.4;
+        let ground = self.stance.eye + self.scene.ahead() * INSPECT_REACH - self.stance.up * 1.4;
         self.inspect = self.nearby(sense).unwrap_or(ground);
     }
 
@@ -145,16 +146,17 @@ impl Brain {
         (spot.lerp(wing, self.flight), height)
     }
 
-    /// Returns the render position to look at: what the idle calls for, else where the attention is.
+    /// Returns the render position to look at: what the idle calls for, else where the
+    /// attention is. Dozing it lowers its eyes and peeking at the sky it raises them, both the
+    /// way it already faces.
     pub fn focus(&self) -> Vec3 {
-        let stance = &self.stance;
-        let ahead = stance.rest(self.perch.side) + stance.level() * 6.0;
+        let up = self.scene.up;
+        let ahead = self.scene.here + self.scene.ahead() * 6.0;
         match (self.mind.dozing, self.mind.idle) {
-            (true, _) => ahead - stance.up * 3.0,
+            (true, _) => ahead - up * 3.0,
             (false, Some(Idle::Inspect)) if self.away() => self.inspect,
-            (false, Some(Idle::SkyPeek)) => ahead + stance.up * 14.0,
-            (false, Some(Idle::LookAround | Idle::Spin | Idle::Dance)) => ahead,
-            _ => self.attention.point(stance),
+            (false, Some(Idle::SkyPeek)) => ahead + up * 14.0,
+            _ => self.attention.point(&self.scene),
         }
     }
 }

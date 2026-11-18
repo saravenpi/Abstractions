@@ -11,7 +11,7 @@ use super::brain::Brain;
 use super::face::Frame;
 use super::face::machine::Face;
 use super::limbs::{HAND, Hand, THRUSTER, Thruster};
-use super::motion::{Float, Rig};
+use super::motion::{Float, Head, Rig};
 use super::orb::{orb, screen};
 use super::screen::{Display, picture};
 use super::shine::{Emitter, Lamp};
@@ -81,15 +81,13 @@ fn display(stock: &mut Stock) -> Display {
     }
 }
 
-/// Spawns the glowing parts as children of the rig: antenna tip, thruster, ray traced emitter and light.
-fn glows(rig: &mut ChildSpawnerCommands, ball: Mesh3d, display: &Display) {
+/// Spawns the glowing parts of the head as its children: antenna tip, ray traced emitter and light.
+fn glows(head: &mut ChildSpawnerCommands, ball: Mesh3d, display: &Display) {
     let glow = MeshMaterial3d(display.glow.clone());
     let front = Transform::from_translation(Vec3::NEG_Z * (SCREEN_FRONT + LAMP_REACH));
     let tip = Transform::from_translation(ANTENNA_TIP);
-    let under = Transform::from_xyz(0.0, -HALF[1] - 0.03, 0.0).with_scale(THRUSTER);
-    rig.spawn((ball.clone(), glow.clone(), tip, NotShadowCaster));
-    rig.spawn((Thruster, ball, glow, under, NotShadowCaster));
-    rig.spawn((Emitter, front, Visibility::default()));
+    head.spawn((ball, glow, tip, NotShadowCaster));
+    head.spawn((Emitter, front, Visibility::default()));
     let light = PointLight {
         intensity: 0.0,
         range: LIGHT_RANGE,
@@ -97,19 +95,25 @@ fn glows(rig: &mut ChildSpawnerCommands, ball: Mesh3d, display: &Display) {
         shadow_maps_enabled: false,
         ..default()
     };
-    rig.spawn((Lamp, light, front));
+    head.spawn((Lamp, light, front));
 }
 
-/// Spawns everything visible as children of the rig: shell, screen, hands and the glowing parts.
+/// Spawns everything visible as children of the rig: the head with its shell, screen and
+/// glowing parts, and on the body the hands and the thruster.
 fn dress(rig: &mut ChildSpawnerCommands, stock: &mut Stock, display: &Display) {
     let shell = MeshMaterial3d(stock.materials.add(matte()));
     let ball = Mesh3d(stock.meshes.add(orb(ORB_RADIUS, false)));
-    rig.spawn((Mesh3d(stock.meshes.add(body(ANTENNA_TIP))), shell.clone()));
-    rig.spawn((
+    let parts = (
+        Mesh3d(stock.meshes.add(body(ANTENNA_TIP))),
         Mesh3d(stock.meshes.add(screen())),
-        MeshMaterial3d(display.face.clone()),
-        NotShadowCaster,
-    ));
+    );
+    rig.spawn((Head, Transform::default(), Visibility::default()))
+        .with_children(|head| {
+            head.spawn((parts.0, shell.clone()));
+            let face = MeshMaterial3d(display.face.clone());
+            head.spawn((parts.1, face, NotShadowCaster));
+            glows(head, ball.clone(), display);
+        });
     for side in [1.0, -1.0] {
         let hand = Hand {
             side,
@@ -122,7 +126,9 @@ fn dress(rig: &mut ChildSpawnerCommands, stock: &mut Stock, display: &Display) {
             Transform::from_scale(HAND),
         ));
     }
-    glows(rig, ball, display);
+    let under = Transform::from_xyz(0.0, -HALF[1] - 0.03, 0.0).with_scale(THRUSTER);
+    let glow = MeshMaterial3d(display.glow.clone());
+    rig.spawn((Thruster, ball, glow, under, NotShadowCaster));
 }
 
 /// Hands one of each mesh layout and material of the companion to the pipeline warm-up. It

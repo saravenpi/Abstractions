@@ -1,27 +1,31 @@
 //! The companion: a small floating robot with a face on a screen, which follows the player.
 //!
 //! The logic lives in pure functions (`spring`, `spot`, `idle`, `pose`, `mind`, `attention`,
-//! `mood`, `face`), driven by a few systems. Other modules talk to it through [`CompanionSense`],
-//! which they may write, and [`CompanionChirp`], which they may read.
+//! `gaze`, `neck`, `mood`, `face`), driven by a few systems. Other modules talk to it through
+//! [`CompanionSense`], which they may write, and [`CompanionChirp`], which they may read.
 
 mod aboard;
 mod attention;
 mod body;
 mod brain;
 mod face;
+mod gaze;
 mod idle;
 mod limbs;
 mod mind;
 mod mood;
 mod motion;
+mod neck;
 mod orb;
 mod perch;
 mod pose;
 mod ride;
 mod rng;
+mod scene;
 mod screen;
 mod sense;
 mod shine;
+mod sights;
 mod spawn;
 mod spot;
 mod spring;
@@ -35,6 +39,8 @@ mod tests;
 mod tests_face;
 #[cfg(test)]
 mod tests_flight;
+#[cfg(test)]
+mod tests_gaze;
 #[cfg(test)]
 mod tests_idle;
 #[cfg(test)]

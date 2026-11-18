@@ -4,6 +4,7 @@
 //! near it on the home planet, and gives it a little life.
 
 mod base;
+mod block;
 mod cables;
 mod container;
 mod draft;

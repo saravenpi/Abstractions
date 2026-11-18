@@ -6,7 +6,7 @@ use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
 use super::base::Base;
-use super::draft::Block;
+use super::block::Block;
 use super::glow::Glow;
 use super::tune::SIGHT;
 use super::works::{Kit, Works};

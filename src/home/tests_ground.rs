@@ -72,7 +72,8 @@ fn base_fits_its_budgets() {
         let triangles = plan.glows.iter().map(count).sum::<usize>() + count(&plan.lit);
         assert!((800..2500).contains(&triangles), "{triangles} triangles");
         assert!(plan.glows.iter().all(|mesh| count(mesh) >= 12));
-        assert!(plan.blocks.len() <= 12 && plan.lamps.len() == 3);
+        eprintln!("seed {seed}: {} solid boxes", plan.blocks.len());
+        assert!(plan.blocks.len() <= 48 && plan.lamps.len() == 3);
         let reach = |p: &Vec3| f64::from(p.xz().length());
         assert!(draft.feet.iter().all(|foot| reach(foot) <= FOOTPRINT));
         assert!(

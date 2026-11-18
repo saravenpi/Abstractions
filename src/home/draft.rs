@@ -3,21 +3,11 @@
 use bevy::math::Affine3A;
 use bevy::prelude::*;
 
+use super::block::{Block, FLUSH};
 use super::glow::Glow;
 use super::lot::Lot;
 use super::soup::Soup;
 use super::tune::Spot;
-
-/// A solid box nothing walks through, in the frame of the base.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Block {
-    /// Centre of the box.
-    pub at: Vec3,
-    /// Turn of the box around the vertical.
-    pub rot: Quat,
-    /// Width, height and depth of the box.
-    pub size: Vec3,
-}
 
 /// The base while it is drawn. Pieces draw in the frame set by [`Draft::stand`]; everything is
 /// kept in the frame of the base.
@@ -30,7 +20,8 @@ pub struct Draft<'a> {
     pub lit: Soup,
     /// The glowing parts, one soup per [`Glow`].
     pub glows: [Soup; 6],
-    /// Boxes nothing walks through.
+    /// Boxes nothing passes through, in the frame of the base: one for each box and bar drawn lit that is
+    /// large enough to run into and stands clear of the ground.
     pub blocks: Vec<Block>,
     /// Where each leg and each thing lying on the ground meets the ground.
     pub feet: Vec<Vec3>,
@@ -74,11 +65,22 @@ impl<'a> Draft<'a> {
         self.lot.ground(root.x, root.z) - self.pose.translation.y
     }
 
-    /// Adds what `paint` draws in the frame of the piece to the lit part of the base.
+    /// Returns true when the box `block` of the piece rises above what the ground itself carries.
+    fn proud(&self, block: &Block) -> bool {
+        let corners = block.corners();
+        let top = corners.iter().map(|c| c.y).fold(f32::MIN, f32::max);
+        top - self.lowest(&corners.map(|c| c.xz())) > FLUSH.0
+    }
+
+    /// Adds what `paint` draws in the frame of the piece to the lit part of the base, and makes every box
+    /// and bar of it solid that is large enough to run into and rises clear of the ground.
     pub fn draw(&mut self, paint: impl FnOnce(&mut Soup)) {
         let mut soup = Soup::default();
         paint(&mut soup);
         self.lit.merge(&soup, self.pose);
+        let solid = soup.boxes().iter().filter(|b| b.bulky() && self.proud(b));
+        let moved: Vec<Block> = solid.map(|block| block.moved(self.pose)).collect();
+        self.blocks.extend(moved);
     }
 
     /// Adds what `paint` draws in the frame of the piece to the glowing part `glow`.

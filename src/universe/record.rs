@@ -1,5 +1,11 @@
 //! The planet record: what the physics of a planet says about its air, heat and water.
 
+use std::f64::consts::FRAC_PI_2;
+
+use super::hash::Rng;
+use super::spec::StarSpec;
+use super::{air, class, climate, zone};
+
 /// The kind of world a planet is, decided by its record.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PlanetClass {
@@ -100,4 +106,45 @@ impl PlanetRecord {
         water: Water::Liquid,
         ocean: Self::BALANCED_OCEAN,
     };
+
+    /// Returns the record of a planet on an orbit of `orbit` metres around `star`.
+    ///
+    /// `gravity` and `size` are the surface gravity and the radius over those of the home
+    /// planet. `seed` gives three draws: the gas the planet was born with, its water and its
+    /// tilt. Starlight, air, climate and class then follow in that order, each from the ones
+    /// before, so the same planet always gets the same record.
+    ///
+    /// Ranges: flux 0.005 to 58,000, tilt 0 to a quarter turn, pressure 0 to 5, albedo 0.08 to
+    /// 0.6, greenhouse 0 to 1,500 K, temperature 40 to 6,000 K, ocean 0 to 1.
+    pub(super) fn derive(star: &StarSpec, orbit: f64, gravity: f64, size: f64, seed: u64) -> Self {
+        let mut rng = Rng::new(seed);
+        let flux = zone::flux(star.luminosity, orbit);
+        let pressure = air::pressure(rng.unit(), gravity, size, flux);
+        let wet = rng.unit();
+        let climate = climate::settle(flux, pressure, wet);
+        let record = Self {
+            class: PlanetClass::Barren,
+            zone: zone::zone(star.temperature, flux),
+            flux,
+            tilt: tilt(rng.unit()),
+            pressure,
+            albedo: climate.albedo,
+            greenhouse: climate.greenhouse,
+            temperature: climate.temperature,
+            water: climate.water,
+            ocean: class::liquid(pressure, &climate, wet),
+        };
+        Self {
+            class: class::classify(&record),
+            ..record
+        }
+    }
+}
+
+/// Returns the tilt in radians of a spin axis for a draw `roll` from 0 to 1.
+///
+/// The tilt is a quarter turn times the cube of the draw: 7 planets in 10 lean by less than
+/// 30 degrees and 1 in 25 lies on its side, past 80 degrees.
+fn tilt(roll: f64) -> f64 {
+    FRAC_PI_2 * roll.powi(3)
 }

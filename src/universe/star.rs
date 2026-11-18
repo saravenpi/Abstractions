@@ -4,7 +4,7 @@ use bevy::math::{DVec3, Vec3};
 
 use super::density::Region;
 use super::hash::{self, Rng};
-use super::home::{HOME_STAR_MASS, HOME_STAR_RADIUS};
+use super::home::{HOME_STAR_MASS, HOME_STAR_RADIUS, HOME_STAR_TEMPERATURE};
 use super::ids::StarId;
 use super::spec::{StarClass, StarSpec};
 use super::{GLY, SECTOR_GLY, names};
@@ -102,6 +102,14 @@ fn pick(rng: &mut Rng, region: Region) -> &'static Kind {
     KINDS.iter().find(hit).unwrap_or(&KINDS[6])
 }
 
+/// Returns the surface temperature in kelvin of a star of `light` home luminosities and `size` home radii.
+///
+/// A surface radiates as the fourth power of its temperature, so the temperature follows the
+/// light per unit of surface: the home star, 1 and 1, is at exactly 5,780 K.
+pub(super) fn temperature(light: f64, size: f64) -> f64 {
+    HOME_STAR_TEMPERATURE * (light / (size * size)).powf(0.25)
+}
+
 /// Builds the star `id` from its own seed and the region of its sector.
 pub(super) fn build(id: StarId, seed: u64, region: Region) -> StarSpec {
     let mut rng = Rng::new(seed);
@@ -117,6 +125,7 @@ pub(super) fn build(id: StarId, seed: u64, region: Region) -> StarSpec {
         mass: blend(kind.mass) * HOME_STAR_MASS,
         luminosity: blend(kind.light),
         radius: blend(kind.size) * HOME_STAR_RADIUS,
+        temperature: temperature(blend(kind.light), blend(kind.size)),
         color: kind.color,
         pos: (id.sector.as_dvec3() + within) * SECTOR_GLY * GLY,
     }

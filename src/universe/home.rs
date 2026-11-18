@@ -6,6 +6,7 @@ use bevy::math::{DVec3, IVec3, Vec3};
 
 use super::hash::{self, Rng};
 use super::ids::{BodyId, GalaxyId, StarId};
+use super::record::PlanetRecord;
 use super::spec::{GRAVITATION, PlanetSpec, StarClass, StarSpec};
 use super::{SECTOR_GLY, galaxy, names, planet};
 
@@ -33,6 +34,9 @@ pub(super) const HOME_STAR_MASS: f64 = HOME_MU / GRAVITATION;
 /// Radius of the home star in metres, the unit of the star class table.
 pub(super) const HOME_STAR_RADIUS: f64 = 1.85e5;
 
+/// Surface temperature of the home star in kelvin, the unit star temperatures are scaled from.
+pub(super) const HOME_STAR_TEMPERATURE: f64 = 5780.0;
+
 /// Returns the sector of the home star in the home galaxy of radius `radius` game light-years.
 ///
 /// The sector lies on the middle plane of the disc, between 40 and 60 percent of the radius.
@@ -57,7 +61,7 @@ pub(super) fn body(universe: u64) -> BodyId {
     }
 }
 
-/// Turns the first star of the home sector into the home star, Vereya: a yellow star of unit mass and light.
+/// Turns the first star of the home sector into the home star, Vereya: a yellow star of unit mass and light at 5,780 K.
 pub(super) fn star(star: StarSpec) -> StarSpec {
     StarSpec {
         name: names::HOME_STAR_NAME.to_string(),
@@ -65,12 +69,16 @@ pub(super) fn star(star: StarSpec) -> StarSpec {
         mass: HOME_STAR_MASS,
         luminosity: 1.0,
         radius: HOME_STAR_RADIUS,
+        temperature: HOME_STAR_TEMPERATURE,
         color: Vec3::new(1.0, 0.96, 0.88),
         ..star
     }
 }
 
-/// Turns a generated planet into the home planet, Kodya: fixed size, gravity and day, and the world seed.
+/// Turns a generated planet into the home planet, Kodya: fixed size, gravity, day and record, and the world seed.
+///
+/// Its record is [`PlanetRecord::TEMPERATE`] whatever its orbit says, so the starting world is
+/// the same temperate one for every seed.
 pub(super) fn planet(planet: PlanetSpec, world: u64) -> PlanetSpec {
     let [atmosphere_height, cloud_base, cloud_top] = planet::air(HOME_RADIUS);
     PlanetSpec {
@@ -82,6 +90,7 @@ pub(super) fn planet(planet: PlanetSpec, world: u64) -> PlanetSpec {
         atmosphere_height,
         cloud_base,
         cloud_top,
+        record: PlanetRecord::TEMPERATE,
         ..planet
     }
 }

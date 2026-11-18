@@ -13,6 +13,7 @@ use super::flight::{Air, clearance, density, settle};
 use super::ground::probe;
 use super::intent::{Intent, axis, read_intent};
 use super::lead::{View, lead};
+use super::sea::above_sea;
 use super::steer::{Steer, Turn};
 use super::upright::{facing, tilt};
 use super::walk::{Step, velocity};
@@ -81,6 +82,7 @@ impl Env<'_, '_> {
             time: self.time.elapsed_secs(),
             view: View::ahead(&self.heading, &self.look, self.prefs.on_foot),
             height: altitude(&self.anchor, globe, at),
+            afloat: above_sea(&self.anchor, globe, at),
             gravity: local_gravity(&self.anchor, globe, at).length(),
             air: self.air.as_deref().map_or(1.0, |air| air.0),
         }

@@ -9,9 +9,9 @@ use super::aboard::{Aboard, read};
 use super::spot::{Probe, Stance};
 use super::wing::aloft;
 use crate::gear::Gear;
-use crate::player::{EYE_OFFSET, Player};
+use crate::player::{EYE_OFFSET, Player, above_sea};
 use crate::render::{DayClock, GameCamera, daylight};
-use crate::space::{Anchor, Frame, Location, Travel, altitude, up};
+use crate::space::{Anchor, Frame, Location, Travel, up};
 use crate::world::Terrain;
 use crate::world::structures::Surroundings;
 
@@ -112,10 +112,11 @@ impl Around<'_, '_> {
         }
     }
 
-    /// Returns the altitude of the eyes above sea level, or nothing away from a planet surface.
-    pub fn altitude(&self) -> Option<f32> {
+    /// Returns the height of the eyes above the liquid surface, infinite on a dry world, or nothing away
+    /// from a planet surface.
+    pub fn afloat(&self) -> Option<f32> {
         matches!(self.anchor.frame, Frame::Surface(_))
-            .then(|| altitude(&self.anchor, self.terrain.globe(), self.stance().eye))
+            .then(|| above_sea(&self.anchor, self.terrain.globe(), self.stance().eye))
     }
 }
 
@@ -142,7 +143,7 @@ pub fn fill(
     let state = gear.single().map(|gear| gear.state).unwrap_or_default();
     let (flying, bank, diving) = aloft(&state);
     let flight = aboard.flight(around.seated());
-    let (depth, climb, in_clouds) = read(around.altitude(), *was, &flight, around.dt());
+    let (depth, climb, in_clouds) = read(around.afloat(), *was, &flight, around.dt());
     *was = flight.height;
     let next = CompanionSense {
         night: 1.0 - daylight(clock.phase),

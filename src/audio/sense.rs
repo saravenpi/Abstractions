@@ -8,6 +8,7 @@ use super::scene::{AudioScene, altitude_fade, cloud_depth};
 use super::shore::{closeness, nearest};
 use crate::companion::Companion;
 use crate::gear::{FlightFx, GearSet};
+use crate::player::above_sea;
 use crate::render::{DayClock, GameCamera, daylight, smoothstep};
 use crate::screens::Screen;
 use crate::ship::ShipSet;
@@ -71,9 +72,10 @@ fn sense_place(
 
 /// Returns how close the nearest shoreline is to a listener at chart position `at`, `height`
 /// metres above the sea, and the render position of that shoreline. Nothing is heard inland
-/// or out at sea.
+/// or out at sea, and a globe without a sea is all inland.
 fn shore(terrain: &Terrain, anchor: &Anchor, at: Vec3, height: f32) -> (f32, Vec3) {
-    let ground = |point: Vec2| terrain.height(point.x, point.y);
+    let sea = terrain.globe().sea_level();
+    let ground = |point: Vec2| terrain.height(point.x, point.y) - sea;
     let Some(offset) = nearest(ground, Vec2::new(at.x, at.z)) else {
         return (0.0, Vec3::ZERO);
     };
@@ -105,8 +107,8 @@ fn sense_companion(
 /// Writes the altitude fade, the water, the clouds and the shore into the scene from the camera.
 ///
 /// In space there is no air, no water and no shore: all four are zero. On a planet the whoosh
-/// of the clouds follows how loud its air is, and the sea is only heard, from above or from
-/// under its surface, where the planet has a liquid one.
+/// of the clouds follows how loud its air is. The sound is muffled under the liquid of the globe
+/// and never in a dry basin, and the shore is heard where the record says something breaks on it.
 fn sense_listener(
     here: Res<Here>,
     anchor: Option<Res<Anchor>>,
@@ -133,14 +135,14 @@ fn sense_listener(
     let height = altitude(&anchor, terrain.globe(), pos);
     let chart = terrain.locate(anchor.to_frame(pos));
     scene.altitude_fade = altitude_fade(height, spec.atmosphere_height as f32);
-    let (air, sea) = (loudness(&spec.record), surf(&spec.record) != Surf::Silent);
     let depth = cloud_depth(height, spec.cloud_base as f32, spec.cloud_top as f32);
-    scene.cloud_depth = depth * air;
-    if !sea {
-        (scene.submerged, scene.shore, scene.shore_side) = (0.0, 0.0, 0.0);
+    scene.cloud_depth = depth * loudness(&spec.record);
+    let afloat = above_sea(&anchor, terrain.globe(), pos);
+    scene.submerged = (-afloat / HEAD_DEPTH).clamp(0.0, 1.0);
+    if surf(&spec.record) == Surf::Silent {
+        (scene.shore, scene.shore_side) = (0.0, 0.0);
         return;
     }
-    scene.submerged = (-height / HEAD_DEPTH).clamp(0.0, 1.0);
     let (level, edge) = shore(&terrain, &anchor, chart, height);
     (scene.shore, scene.shore_side) = (level, side(camera, edge) * level.signum());
 }

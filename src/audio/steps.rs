@@ -3,8 +3,6 @@
 use bevy::prelude::*;
 
 use super::cue::{AudioCue, StepSurface};
-use super::planet::{Surf, surf};
-use super::sense::Here;
 use crate::player::{BODY_LENGTH, BODY_RADIUS, Player};
 use crate::screens::playing;
 use crate::space::{Anchor, Location, Travel, up};
@@ -58,18 +56,18 @@ pub(super) fn floor_surface(floor: FloorKind) -> StepSurface {
 }
 
 /// Returns the ground cover under a body at chart position `at`, when its feet touch dry or
-/// shallow ground. Where the planet has no `sea`, ground below sea level is as dry as any.
-fn footing(terrain: &Terrain, at: Vec3, sea: bool) -> Option<StepSurface> {
+/// shallow ground. Where the globe has no sea, ground below sea level is as dry as any.
+pub(super) fn footing(terrain: &Terrain, at: Vec3) -> Option<StepSurface> {
     let feet = at.y - 0.5 * BODY_LENGTH - BODY_RADIUS;
     let ground = terrain.height(at.x, at.z);
-    let touching = feet - ground < CONTACT && (feet > -WADE_DEPTH || !sea);
+    let touching = feet - ground < CONTACT && feet - terrain.globe().sea_level() > -WADE_DEPTH;
     step_surface(terrain.surface(at.x, at.z)).filter(|_| touching)
 }
 
 /// Adds the distance walked on the ground or on a built floor this frame and writes a cue at
 /// every stride.
 fn footsteps(
-    (time, here): (Res<Time>, Res<Here>),
+    time: Res<Time>,
     world: (
         Res<Location>,
         Res<Anchor>,
@@ -81,8 +79,6 @@ fn footsteps(
     mut cues: MessageWriter<AudioCue>,
 ) {
     let (location, anchor, terrain, floors) = world;
-    let dry = |(_, spec): &(_, crate::universe::PlanetSpec)| surf(&spec.record) == Surf::Silent;
-    let sea = !here.0.as_ref().is_some_and(dry);
     let (Ok(body), Travel::OnFoot) = (players.single(), location.travel) else {
         walk.last = None;
         return;
@@ -92,7 +88,7 @@ fn footsteps(
     let flat = moved - up(&anchor, pos) * moved.dot(up(&anchor, pos));
     let feet = pos - up(&anchor, pos) * (0.5 * BODY_LENGTH + BODY_RADIUS);
     let built = floors.and_then(|floors| floors.floor_at(anchor.to_frame(feet)));
-    let ground = || footing(&terrain, terrain.locate(anchor.to_frame(pos)), sea);
+    let ground = || footing(&terrain, terrain.locate(anchor.to_frame(pos)));
     let surface = built.map(floor_surface).or_else(ground);
     let (Some(surface), true) = (surface, flat.length() < MAX_MOVE) else {
         return;
@@ -113,7 +109,6 @@ pub(super) fn plugin(app: &mut App) {
             .run_if(playing)
             .run_if(resource_exists::<Location>)
             .run_if(resource_exists::<Anchor>)
-            .run_if(resource_exists::<Terrain>)
-            .run_if(resource_exists::<Here>),
+            .run_if(resource_exists::<Terrain>),
     );
 }

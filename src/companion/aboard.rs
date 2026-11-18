@@ -24,9 +24,10 @@ pub struct Flight {
 
 /// Returns the depth under water, the climb rate and whether the clouds are being crossed.
 ///
-/// `eyes` is the altitude of the player's eyes, `was` the height the ship reported on the last
-/// frame and `flight` what it reports now. Climbing and clouds only count while seated: the
-/// climb is the change of the ship's own altimeter and the clouds are the layer the sky draws.
+/// `eyes` is the height of the player's eyes above the liquid surface, infinite on a dry world,
+/// `was` the height the ship reported on the last frame and `flight` what it reports now.
+/// Climbing and clouds only count while seated: the climb is the change of the ship's own
+/// altimeter and the clouds are the layer the sky draws.
 pub fn read(eyes: Option<f32>, was: Option<f64>, flight: &Flight, dt: f32) -> (f32, f32, bool) {
     let depth = eyes.map_or(0.0, |height| (-height).max(0.0));
     let climbed = flight.height.zip(was).map_or(0.0, |(now, was)| now - was);

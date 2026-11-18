@@ -21,17 +21,20 @@ pub enum PlanetClass {
     Lava,
     /// No air to speak of: bare rock under a black sky.
     Barren,
+    /// A massive world of deep air with no ground to stand on, only cloud decks to skim.
+    GasGiant,
 }
 
 impl PlanetClass {
     /// Every class, in a stable order.
-    pub const ALL: [PlanetClass; 6] = [
+    pub const ALL: [PlanetClass; 7] = [
         PlanetClass::Ocean,
         PlanetClass::Island,
         PlanetClass::Desert,
         PlanetClass::Ice,
         PlanetClass::Lava,
         PlanetClass::Barren,
+        PlanetClass::GasGiant,
     ];
 }
 

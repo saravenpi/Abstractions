@@ -96,11 +96,11 @@ fn bare_classes_have_one_biome() {
 #[test]
 fn life_follows_the_class() {
     let growth = PlanetClass::ALL.map(|class| lands(class, 0.5).growth());
-    assert_eq!(growth, [1.0, 1.0, 0.5, 0.4, 0.0, 0.0]);
+    assert_eq!(growth, [1.0, 1.0, 0.5, 0.4, 0.0, 0.0, 0.0]);
     let settled = PlanetClass::ALL.map(|class| lands(class, 0.5).settled());
-    assert_eq!(settled, [true, true, true, true, false, false]);
+    assert_eq!(settled, [true, true, true, true, false, false, false]);
     let sea_life = PlanetClass::ALL.map(|class| lands(class, 0.5).sea_life());
-    assert_eq!(sea_life, [true, true, false, false, false, false]);
+    assert_eq!(sea_life, [true, true, false, false, false, false, false]);
     let ponds = PlanetClass::ALL.map(|class| lands(class, 0.5).ponds());
-    assert_eq!(ponds, [true, true, true, false, false, false]);
+    assert_eq!(ponds, [true, true, true, false, false, false, false]);
 }

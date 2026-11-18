@@ -12,7 +12,11 @@ pub fn airless(record: &PlanetRecord) -> bool {
 
 /// Returns true when no creature lives on the planet: no air, molten rock or bare rock.
 pub fn lifeless(record: &PlanetRecord) -> bool {
-    airless(record) || matches!(record.class, PlanetClass::Lava | PlanetClass::Barren)
+    airless(record)
+        || matches!(
+            record.class,
+            PlanetClass::Lava | PlanetClass::Barren | PlanetClass::GasGiant
+        )
 }
 
 /// Returns the surroundings as the rules of home must read them: on a planet without a sea the camera is

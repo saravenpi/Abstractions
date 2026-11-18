@@ -67,7 +67,7 @@ fn the_class_sets_the_mood_of_the_piece() {
         for home in [false, true] {
             let drawn = Piece::new(seed, home);
             assert_eq!(Piece::of(seed, home, PlanetClass::Island), drawn);
-            let [ocean, _, desert, ice, lava, barren] =
+            let [ocean, _, desert, ice, lava, barren, _] =
                 PlanetClass::ALL.map(|kind| Piece::of(seed, home, kind));
             assert!(ice.timbre.bright > ocean.timbre.bright);
             assert!(ocean.timbre.bright > drawn.timbre.bright);

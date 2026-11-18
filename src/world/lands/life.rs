@@ -13,7 +13,7 @@ impl Lands {
             PlanetClass::Ocean | PlanetClass::Island => 1.0,
             PlanetClass::Desert => 0.5,
             PlanetClass::Ice => 0.4,
-            PlanetClass::Lava | PlanetClass::Barren => 0.0,
+            PlanetClass::Lava | PlanetClass::Barren | PlanetClass::GasGiant => 0.0,
         }
     }
 
@@ -35,6 +35,9 @@ impl Lands {
     /// Returns true when people live on the planet: villages, camps, cabins, docks and lighthouses.
     /// The other planets keep only ruins.
     pub fn settled(self) -> bool {
-        !matches!(self.class, PlanetClass::Lava | PlanetClass::Barren)
+        !matches!(
+            self.class,
+            PlanetClass::Lava | PlanetClass::Barren | PlanetClass::GasGiant
+        )
     }
 }

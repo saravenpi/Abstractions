@@ -17,6 +17,7 @@ fn record(class: PlanetClass) -> PlanetRecord {
         PlanetClass::Ice => (0.7, 0.0, Water::Ice),
         PlanetClass::Lava => (3.0, 0.25, Water::Steam),
         PlanetClass::Barren => (0.0, 0.0, Water::None),
+        PlanetClass::GasGiant => (5.0, 0.0, Water::None),
     };
     PlanetRecord {
         class,

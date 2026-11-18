@@ -55,7 +55,10 @@ impl Lands {
         match self.class {
             PlanetClass::Ocean | PlanetClass::Island => None,
             PlanetClass::Ice => Some(Biome::Taiga),
-            PlanetClass::Desert | PlanetClass::Lava | PlanetClass::Barren => Some(Biome::Desert),
+            PlanetClass::Desert
+            | PlanetClass::Lava
+            | PlanetClass::Barren
+            | PlanetClass::GasGiant => Some(Biome::Desert),
         }
     }
 

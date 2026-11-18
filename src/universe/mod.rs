@@ -11,6 +11,7 @@ mod hash;
 mod home;
 mod ids;
 mod look;
+mod moon;
 mod names;
 mod orbit;
 mod planet;
@@ -44,7 +45,9 @@ pub use names::{HOME_PLANET_NAME, HOME_STAR_NAME};
 pub use planet::{PLANET_DAY, PLANET_GRAVITY, PLANET_RADIUS, air, orbit_seconds};
 pub use record::{PlanetClass, PlanetRecord, Water, Zone};
 pub use sector::{SECTOR_STARS, sector_of};
-pub use spec::{GRAVITATION, GalaxyKind, GalaxySpec, PlanetSpec, StarClass, StarSpec, SystemSpec};
+pub use spec::{
+    GRAVITATION, GalaxyKind, GalaxySpec, Orbit, PlanetSpec, Rings, StarClass, StarSpec, SystemSpec,
+};
 pub use system::{ORBIT, PLANETS};
 
 use bevy::math::IVec3;
@@ -116,10 +119,20 @@ impl Universe {
         }
     }
 
-    /// Returns one planet. An index past the last planet gives the outermost one.
+    /// Returns one planet or moon. An index past the last planet gives the outermost one, and a
+    /// moon that does not exist gives its planet.
     pub fn planet(&self, id: BodyId) -> PlanetSpec {
         let mut planets = self.system(id.star).planets;
         let last = planets.len() - 1;
-        planets.swap_remove(usize::from(id.index).min(last))
+        let planet = planets.swap_remove(usize::from(id.index).min(last));
+        let moon = usize::from(id.moon).checked_sub(1);
+        let star = moon.map(|_| self.system(id.star).star);
+        match moon.zip(star) {
+            Some((rank, star)) => moon::of(&star, &planet)
+                .into_iter()
+                .nth(rank)
+                .unwrap_or(planet),
+            None => planet,
+        }
     }
 }

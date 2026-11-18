@@ -91,7 +91,40 @@ impl StarSpec {
     }
 }
 
-/// One planet.
+/// A circular orbit around the star.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Orbit {
+    /// Radius in metres.
+    pub radius: f64,
+    /// Seconds for one turn.
+    pub seconds: f64,
+    /// Angle along the orbit at time 0, in radians.
+    pub phase: f64,
+}
+
+impl Orbit {
+    /// Returns the position at `time` seconds in metres from the centre, on the XZ plane.
+    pub fn at(&self, time: f64) -> DVec3 {
+        let angle = self.phase + std::f64::consts::TAU * time / self.seconds;
+        DVec3::new(angle.cos(), 0.0, angle.sin()) * self.radius
+    }
+}
+
+/// The rings of a planet, flat in the plane of its equator.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Rings {
+    /// Inner radius in metres from the centre of the planet.
+    pub inner: f64,
+    /// Outer radius in metres from the centre of the planet.
+    pub outer: f64,
+    /// Share of the light the rings stop, from 0 to 1.
+    pub density: f32,
+    /// Linear RGB colour of the ring material.
+    pub color: bevy::math::Vec3,
+}
+
+/// One planet or moon. For a moon the orbit fields describe its turn around its planet, and
+/// [`PlanetSpec::host`] the orbit of that planet around the star.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlanetSpec {
     /// Identifier.
@@ -120,6 +153,12 @@ pub struct PlanetSpec {
     pub cloud_top: f64,
     /// What the physics says about its air, heat and water, and the class that follows.
     pub record: PlanetRecord,
+    /// For a moon, the orbit of its planet around the star. Nothing for a planet.
+    pub host: Option<Orbit>,
+    /// Number of moons, 0 for a moon.
+    pub moons: u8,
+    /// The rings, if the planet has any.
+    pub rings: Option<Rings>,
 }
 
 impl PlanetSpec {
@@ -128,10 +167,20 @@ impl PlanetSpec {
         self.gravity * self.radius * self.radius
     }
 
-    /// Returns the position at `time` seconds in metres from the star, on the XZ plane of the system.
+    /// Returns its own orbit: around the star for a planet, around its planet for a moon.
+    pub fn orbit(&self) -> Orbit {
+        Orbit {
+            radius: self.orbit_radius,
+            seconds: self.orbit_seconds,
+            phase: self.orbit_phase,
+        }
+    }
+
+    /// Returns the position at `time` seconds in metres from the star, on the XZ plane of the
+    /// system. A moon is where its planet is, plus its own place on its orbit around it.
     pub fn position(&self, time: f64) -> DVec3 {
-        let angle = self.orbit_phase + std::f64::consts::TAU * time / self.orbit_seconds;
-        DVec3::new(angle.cos(), 0.0, angle.sin()) * self.orbit_radius
+        let around = self.host.map_or(DVec3::ZERO, |host| host.at(time));
+        around + self.orbit().at(time)
     }
 }
 

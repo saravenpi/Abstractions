@@ -59,6 +59,7 @@ pub(super) fn build(star: &StarSpec, index: u8, orbit: f64, seed: u64) -> Planet
         id: BodyId {
             star: star.id,
             index,
+            moon: 0,
         },
         seed,
         name: names::planet(&star.name, index),
@@ -72,5 +73,8 @@ pub(super) fn build(star: &StarSpec, index: u8, orbit: f64, seed: u64) -> Planet
         cloud_base,
         cloud_top,
         record: PlanetRecord::derive(star, orbit, earths, radius / HOME_RADIUS, draws),
+        host: None,
+        moons: 0,
+        rings: None,
     }
 }

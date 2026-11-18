@@ -64,6 +64,7 @@ pub(super) fn body(universe: u64) -> BodyId {
     BodyId {
         star,
         index: HOME_INDEX,
+        moon: 0,
     }
 }
 

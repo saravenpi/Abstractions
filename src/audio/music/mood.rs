@@ -25,6 +25,7 @@ pub fn mood(class: PlanetClass) -> Mood {
         PlanetClass::Ice => (Some(Mode::Lydian), 1.3),
         PlanetClass::Lava => (Some(Mode::Aeolian), 0.6),
         PlanetClass::Barren => (Some(Mode::Pentatonic), 0.7),
+        PlanetClass::GasGiant => (Some(Mode::Dorian), 0.75),
     };
     Mood { mode, bright }
 }

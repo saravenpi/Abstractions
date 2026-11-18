@@ -31,7 +31,7 @@ const fn look(land: [f32; 3], sea: [f32; 3], air: [f32; 3], clouds: f32, glow: f
 }
 
 /// The look of every class, in the order of [`PlanetClass::ALL`].
-const LOOKS: [Look; 6] = [
+const LOOKS: [Look; 7] = [
     look(
         [0.10, 0.30, 0.12],
         [0.03, 0.16, 0.40],
@@ -74,6 +74,13 @@ const LOOKS: [Look; 6] = [
         0.0,
         0.0,
     ),
+    look(
+        [0.72, 0.60, 0.44],
+        [0.55, 0.42, 0.30],
+        [1.0, 0.90, 0.74],
+        1.0,
+        0.0,
+    ),
 ];
 
 impl PlanetClass {
@@ -91,6 +98,7 @@ impl PlanetClass {
             Self::Ice => "ice",
             Self::Lava => "lava",
             Self::Barren => "barren",
+            Self::GasGiant => "gas giant",
         }
     }
 }

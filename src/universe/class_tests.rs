@@ -91,7 +91,15 @@ fn looks_follow_the_class_order() {
     let labels = PlanetClass::ALL.map(PlanetClass::label);
     assert_eq!(
         labels,
-        ["ocean", "island", "desert", "ice", "lava", "barren"]
+        [
+            "ocean",
+            "island",
+            "desert",
+            "ice",
+            "lava",
+            "barren",
+            "gas giant"
+        ]
     );
     assert_eq!(PlanetClass::Ice.look().land.x, 0.80);
 }

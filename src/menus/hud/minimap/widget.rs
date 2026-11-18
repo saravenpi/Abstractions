@@ -7,7 +7,7 @@
 use bevy::prelude::*;
 use bevy::ui::widget::NodeImageMode;
 
-use crate::computer::spot;
+use crate::computer::{arrow, spot};
 use crate::ui::{Blurred, Icon, Tone, icon_sized, text, theme};
 
 /// Side of the map in pixels in a window 1080 pixels high. It grows and shrinks with the
@@ -30,7 +30,7 @@ pub enum Part {
     Frame,
     /// The image of the ground.
     Ground,
-    /// The player in the middle, an arrow that always points up.
+    /// The player in the middle, an arrow that points where the body or the ship faces.
     Arrow,
     /// The mark of the home base.
     Home,
@@ -39,6 +39,14 @@ pub enum Part {
     /// The letter that says where north is.
     North,
 }
+
+/// Marks an arrow that turns to where the player faces: the one in the middle of the ground
+/// view and the ship on the system chart.
+#[derive(Component)]
+pub struct Needle;
+
+/// Pixels of the thinnest step of an arrow.
+pub const STEP: f32 = 2.0;
 
 /// Marks the sheet the system chart is drawn on.
 #[derive(Component)]
@@ -68,24 +76,6 @@ fn mark(part: Part, content: impl Bundle) -> impl Bundle {
         ..spot(Vec2::ZERO, Vec2::splat(-0.5 * BOX), Vec2::splat(BOX))
     };
     (part, node, BackgroundColor(theme::INK), children![content])
-}
-
-/// The shape of the player: three bars that widen downward, a triangle drawn with squares.
-fn arrow() -> impl Bundle {
-    let bar = |width: f32| {
-        let node = Node {
-            width: px(width),
-            height: px(3),
-            ..default()
-        };
-        (node, BackgroundColor(theme::TEXT))
-    };
-    let node = Node {
-        flex_direction: FlexDirection::Column,
-        align_items: AlignItems::Center,
-        ..default()
-    };
-    (node, children![bar(2.0), bar(6.0), bar(10.0)])
 }
 
 /// The text in the bottom left corner, on a dark strip.
@@ -151,7 +141,7 @@ pub fn frame() -> impl Bundle {
             mark(Part::Home, symbol(Icon::Home)),
             mark(Part::Ship, symbol(Icon::Send)),
             mark(Part::North, north),
-            mark(Part::Arrow, arrow()),
+            mark(Part::Arrow, (Needle, arrow(STEP))),
             caption(),
         ],
     )

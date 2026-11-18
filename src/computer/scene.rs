@@ -1,8 +1,10 @@
 //! What the computer reads from the world to fill its screen.
 
 use bevy::ecs::system::SystemParam;
+use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
+use super::arrow::bearing;
 use super::atlas::Atlas;
 use super::course::{course, crumbs};
 use super::detail::worlds;
@@ -12,9 +14,10 @@ use super::rows::{Line, View};
 use super::tab::Tab;
 use super::track::Known;
 use crate::render::GameCamera;
-use crate::ship::ShipTelemetry;
-use crate::space::{Anchor, Clock, Location, UniPos};
+use crate::ship::{Ship, ShipTelemetry};
+use crate::space::{Anchor, Clock, Frame, Location, UniPos};
 use crate::universe::{PlanetSpec, Universe};
+use crate::world::{Planet, spin};
 
 /// The world as the computer sees it. Only valid while a world is loaded.
 #[derive(SystemParam)]
@@ -26,7 +29,9 @@ pub(super) struct Scene<'w, 's> {
     anchor: Res<'w, Anchor>,
     clock: Res<'w, Clock>,
     telemetry: Option<Res<'w, ShipTelemetry>>,
+    planet: Option<Res<'w, Planet>>,
     camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
+    ships: Query<'w, 's, &'static Ship>,
 }
 
 impl Scene<'_, '_> {
@@ -39,6 +44,22 @@ impl Scene<'_, '_> {
             .map_or(Vec3::ZERO, |at| at.translation());
         let at = self.anchor.to_frame(eye);
         ship_position(&self.universe, self.anchor.frame, at, self.clock.seconds).unwrap_or_default()
+    }
+
+    /// Returns the clockwise turn from north in radians of the arrow of the ship on the charts:
+    /// where its nose points, turned from the axes of a spinning planet to those of its system.
+    pub(super) fn facing(&self) -> Option<f32> {
+        let frame = self.anchor.frame;
+        let ship = self.ships.iter().find(|ship| ship.frame == frame)?;
+        let day = self
+            .planet
+            .as_deref()
+            .filter(|planet| Frame::Surface(planet.body) == frame);
+        let turn = day.map_or(DQuat::IDENTITY, |planet| {
+            spin(planet.day_seconds, self.clock.seconds)
+        });
+        let rot = turn * ship.rot;
+        Some(bearing(rot * DVec3::NEG_Z, rot * DVec3::Y))
     }
 
     /// Returns true on the frame the chart of known systems is finished.

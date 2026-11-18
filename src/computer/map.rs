@@ -9,10 +9,11 @@
 use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
+use super::arrow::{ShipArrow, arrow};
 use super::chart::{GRID, mark};
-use super::layout::{SMALLEST, map_side};
+use super::layout::{SMALLEST, measure};
 use super::orbits::{cell, circle};
-use crate::ui::{Icon, Tone, column, icon, text, theme};
+use crate::ui::{column, text, theme};
 use crate::universe::PlanetSpec;
 
 /// Width and height of the map in the units the lens counts in. The map is drawn at the size
@@ -21,6 +22,9 @@ pub const SIZE: f32 = 240.0;
 
 /// Side in pixels of the frame around the ship while the pointer is on it.
 const SHIP_FRAME: f32 = 28.0;
+
+/// Pixels of the thinnest step of the arrow of the ship.
+const ARROW: f32 = 3.0;
 
 /// The name the map gives the ship.
 const SHIP: &str = "Ship";
@@ -75,8 +79,8 @@ fn legend() -> impl Bundle {
     )
 }
 
-/// The empty map: a framed square that cuts what leaves it, holding the sheet under the
-/// legend. `draw` fills the sheet.
+/// The empty map: a dark square with no frame that cuts what leaves it, holding the sheet
+/// under the legend. `draw` fills the sheet.
 pub fn field() -> impl Bundle {
     let sheet = Node {
         position_type: PositionType::Absolute,
@@ -84,7 +88,7 @@ pub fn field() -> impl Bundle {
         height: percent(100),
         ..default()
     };
-    let side = px(map_side(SMALLEST));
+    let side = px(measure(SMALLEST).map);
     (
         Field,
         RelativeCursorPosition::default(),
@@ -93,11 +97,9 @@ pub fn field() -> impl Bundle {
             height: side,
             flex_shrink: 0.0,
             align_self: AlignSelf::Center,
-            border: UiRect::all(px(theme::LINE)),
             overflow: Overflow::clip(),
             ..default()
         },
-        BorderColor::all(theme::HAIRLINE),
         BackgroundColor(theme::STRIP),
         children![(Sheet, sheet), legend()],
     )
@@ -122,13 +124,13 @@ pub fn spot(at: Vec2, corner: Vec2, size: Vec2) -> Node {
     }
 }
 
-/// Spawns a frame `side` pixels wide around the chart point `at`.
-pub fn frame(sheet: &mut ChildSpawnerCommands, at: Vec2, side: f32) {
+/// Spawns a frame `side` pixels wide in `color` around the chart point `at`.
+pub fn frame(sheet: &mut ChildSpawnerCommands, at: Vec2, (side, color): (f32, Color)) {
     let node = Node {
         border: UiRect::all(px(theme::LINE)),
         ..spot(at, Vec2::splat(-0.5 * side), Vec2::splat(side))
     };
-    sheet.spawn((node, BorderColor::all(theme::TEXT)));
+    sheet.spawn((node, BorderColor::all(color)));
 }
 
 /// Spawns `title` to the right of the chart point `at`, `gap` pixels away.
@@ -165,16 +167,18 @@ pub fn body(
     }
 }
 
-/// Spawns the ship at `at`, framed and named while the pointer is on it.
+/// Spawns the ship at `at`, an arrow that `arrow::turn` points where the nose points, framed
+/// and named while the pointer is on it.
 pub fn ship(sheet: &mut ChildSpawnerCommands, at: Vec2, pointed: bool) {
-    let node = spot(
-        at,
-        Vec2::splat(-0.5 * theme::ICON),
-        Vec2::splat(theme::ICON),
-    );
-    sheet.spawn(node).with_child(icon(Icon::Send, Tone::Plain));
+    let side = 5.0 * ARROW;
+    let node = Node {
+        justify_content: JustifyContent::Center,
+        align_items: AlignItems::Center,
+        ..spot(at, Vec2::splat(-0.5 * side), Vec2::splat(side))
+    };
+    sheet.spawn(node).with_child((ShipArrow, arrow(ARROW)));
     if pointed {
-        frame(sheet, at, SHIP_FRAME);
+        frame(sheet, at, (SHIP_FRAME, theme::MUTED));
         name(sheet, at, 0.5 * SHIP_FRAME + theme::GAP_XS, SHIP);
     }
 }

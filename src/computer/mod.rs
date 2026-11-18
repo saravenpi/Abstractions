@@ -1,5 +1,6 @@
 //! The board computer: the atlas of discovered systems and galaxies, and fast travel.
 
+mod arrow;
 mod atlas;
 mod board;
 mod chart;
@@ -11,6 +12,7 @@ mod draw;
 mod format;
 mod giant;
 mod glide;
+mod hover;
 mod inset;
 mod keys;
 mod labels;
@@ -22,6 +24,7 @@ mod moons;
 mod open;
 mod orbits;
 mod pointer;
+mod primary;
 mod readout;
 mod reveal;
 mod route;
@@ -54,6 +57,8 @@ mod tests_lens;
 #[cfg(test)]
 mod tests_moons;
 #[cfg(test)]
+mod tests_nav;
+#[cfg(test)]
 mod tests_panel;
 #[cfg(test)]
 mod tests_pointer;
@@ -72,6 +77,7 @@ mod tests_wheel;
 #[cfg(test)]
 mod tests_words;
 
+pub use arrow::{arrow, bearing};
 pub use atlas::Atlas;
 pub use board::{Board, VISIBLE_ROWS};
 pub use chart::{Dot, GRID, chart, hit, mark, span};

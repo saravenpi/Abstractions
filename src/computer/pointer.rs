@@ -1,10 +1,12 @@
 //! The pointer on the map: pointing at a mark, clicking it, dragging the chart and zooming it
 //! with the wheel.
+//!
+//! Pointing at a mark only lights it and names it. A click selects its row, and a second
+//! click on the selected mark, or a double click, sets the course to it.
 
 use bevy::input::mouse::{AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
-use bevy::ui_widgets::Activate;
 
 use super::board::Board;
 use super::chart::{Dot, chart, hit, span};
@@ -12,9 +14,9 @@ use super::lens::Lens;
 use super::map::{Field, SIZE};
 use super::moons;
 use super::open::Computer;
+use super::route::Destination;
 use super::semantic::{entry, shift};
 use super::tab::Tab;
-use super::view::Slot;
 use crate::ui::theme;
 
 /// Pixels around a mark within which the pointer is on it.
@@ -63,11 +65,11 @@ pub(super) struct MapView {
     pub span: Option<f64>,
 }
 
-/// Follows the pointer: finds the mark under it when it moves, and gives the table cursor to
-/// the row of that mark. A resting pointer leaves the cursor to the keyboard.
+/// Follows the pointer: finds the mark under it when it moves. The mark is only lit: the
+/// selection stays where it is.
 pub(super) fn aim(
     fields: Query<&RelativeCursorPosition, With<Field>>,
-    mut board: ResMut<Board>,
+    board: Res<Board>,
     mut view: ResMut<MapView>,
 ) {
     let seen = fields.iter().next();
@@ -90,19 +92,14 @@ pub(super) fn aim(
         .iter()
         .filter(|(dot, _)| moons::seen(*dot, &board.lines, zoom));
     let hover = hit(shown, view.lens, at, REACH).filter(|_| over);
-    if hover == view.hover {
-        return;
-    }
-    view.hover = hover;
-    if let Some(Dot::Row(index)) = hover {
-        let by = index as isize - board.cursor as isize;
-        board.step(by);
+    if hover != view.hover {
+        view.hover = hover;
     }
 }
 
-/// Applies one click at `now` seconds. A click on the mark of a row gives it the cursor, and
-/// returns true when the row already had it from the click before: the row is then chosen.
-/// Two quick clicks on empty map show the whole chart again.
+/// Applies one click at `now` seconds. A click on the mark of a row selects it, and returns
+/// true when the row was already selected by the click before, slow or quick: the course is
+/// then set to it. Two quick clicks on empty map show the whole chart again.
 pub(super) fn tap(view: &mut MapView, board: &mut Board, now: f32) -> bool {
     let last = view.clicked.replace((view.hover, now));
     let again = last.is_some_and(|(mark, _)| mark == view.hover);
@@ -121,13 +118,12 @@ pub(super) fn tap(view: &mut MapView, board: &mut Board, now: f32) -> bool {
 }
 
 /// Drags the chart while the left button is held from the map, and on a release that did
-/// not drag, clicks: the second click on a mark activates its row as a click on the row does.
+/// not drag, clicks: the second click on the selected mark sets the course to its row.
 pub(super) fn press(
     (buttons, time): (Res<ButtonInput<MouseButton>>, Res<Time>),
-    slots: Query<(Entity, &Slot)>,
     mut board: ResMut<Board>,
     mut view: ResMut<MapView>,
-    mut commands: Commands,
+    mut course: ResMut<Destination>,
 ) {
     if buttons.just_pressed(MouseButton::Left) && view.over {
         (view.held, view.dragged) = (Some(view.at), false);
@@ -147,9 +143,8 @@ pub(super) fn press(
     if view.dragged || !tap(&mut view, &mut board, time.elapsed_secs()) {
         return;
     }
-    let drawn = board.cursor - board.top;
-    if let Some((entity, _)) = slots.iter().find(|(_, slot)| slot.0 == drawn) {
-        commands.trigger(Activate { entity });
+    if let Some(line) = board.lines.get(board.cursor) {
+        course.0 = Some(line.target);
     }
 }
 
@@ -221,7 +216,6 @@ pub(super) fn plugin(app: &mut App) {
             (aim, press, zoom)
                 .chain()
                 .in_set(super::Input)
-                .after(super::keys::follow_focus)
                 .before(super::keys::navigate)
                 .run_if(super::open::ready),
         );

@@ -69,7 +69,7 @@ pub(super) fn point(app: &mut App, at: Vec2) {
 }
 
 /// Holds the left button down for a frame, moves the pointer by `drag`, then lets go.
-fn click(app: &mut App, drag: Vec2) {
+pub(super) fn click(app: &mut App, drag: Vec2) {
     let at = app.world().resource::<MapView>().at;
     let mut buttons = app.world_mut().resource_mut::<ButtonInput<MouseButton>>();
     buttons.press(MouseButton::Left);
@@ -89,10 +89,10 @@ fn click(app: &mut App, drag: Vec2) {
         .clear();
 }
 
-/// Pointing at the mark of a row gives that row the cursor, a resting pointer leaves the
-/// cursor to the keyboard, and the ship and empty map take no row.
+/// Pointing at the mark of a row only lights it: the cursor stays where the keyboard left it
+/// while the pointer moves over marks, the ship and empty map.
 #[test]
-fn pointing_at_a_mark_gives_its_row_the_cursor() {
+fn pointing_at_a_mark_lights_it_and_selects_nothing() {
     let mut app = rig();
     let state = |app: &App| {
         let hover = app.world().resource::<MapView>().hover;
@@ -101,8 +101,8 @@ fn pointing_at_a_mark_gives_its_row_the_cursor() {
     assert_eq!(state(&app), (0, None));
     let planet = pixel(&app, Dot::Row(2));
     point(&mut app, planet + Vec2::new(3.0, -4.0));
-    assert_eq!(state(&app), (2, Some(Dot::Row(2))));
-    app.world_mut().resource_mut::<Board>().step(-1);
+    assert_eq!(state(&app), (0, Some(Dot::Row(2))));
+    app.world_mut().resource_mut::<Board>().step(1);
     app.world_mut().run_system_once(aim).unwrap();
     assert_eq!(state(&app), (1, Some(Dot::Row(2))));
     let ship = pixel(&app, Dot::Ship);
@@ -112,7 +112,7 @@ fn pointing_at_a_mark_gives_its_row_the_cursor() {
     assert_eq!(state(&app), (1, None));
     point(&mut app, planet);
     point(&mut app, planet - Vec2::splat(SIZE * 2.0));
-    assert_eq!(state(&app), (2, None));
+    assert_eq!(state(&app), (1, None));
 }
 
 /// A click on a mark moves the cursor to its row, the second click sets the destination as a

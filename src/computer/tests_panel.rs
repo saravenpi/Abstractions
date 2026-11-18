@@ -5,10 +5,9 @@ use avian3d::prelude::{Physics, PhysicsTime};
 use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 
-use super::course::{NOWHERE, arrival, course, crumbs, offered};
+use super::course::{NOWHERE, arrival, course, crumbs, primary, words};
 use super::detail::{LINES, readout};
-use super::layout::{CHROME, MIN_ROWS, PAD, PANEL_WIDTH, SMALLEST};
-use super::layout::{map_side, panel_width, rows_that_fit};
+use super::layout::{CONTENT, MIN_ROWS, Measures, ROW, SMALLEST, chrome, measure};
 use super::tests_detail::{records, world};
 use super::tests_rig::{game, run, tap};
 use super::view::{Panel, Slot};
@@ -17,42 +16,50 @@ use crate::menus::Menu;
 use crate::screens::{in_control, playing};
 use crate::ui::theme;
 use crate::universe::{GalaxyId, PlanetSpec};
+use bevy::math::IVec3;
 
-/// The panel takes four tenths of the window between its narrowest and its widest, and at
-/// every window size the map and the rows of the list fit the height that is left.
+/// At every window size the sections, the map and the rows fit the height with the same
+/// margin around and between them, at least 24 pixels from 1080 pixels up. The map is as wide
+/// as the panel inside its margins, unless the card needs the panel wider than the map.
 #[test]
 fn the_panel_fits_every_window() {
-    let widths = [
-        (960.0, 420.0),
-        (1280.0, 512.0),
-        (1920.0, 640.0),
-        (3840.0, 640.0),
-    ];
-    for (window, panel) in widths {
-        assert_eq!(panel_width(window), panel);
-    }
-    for height in [540.0, 600.0, 720.0, 900.0, 1080.0, 1440.0, 2160.0] {
-        for width in [960.0, 1280.0, 1920.0, 3840.0] {
+    for height in [540.0, 600.0, 720.0, 900.0, 1080.0, 1200.0, 1440.0, 2160.0] {
+        for width in [960.0, 1280.0, 1920.0, 2560.0, 3840.0] {
             let window = Vec2::new(width, height);
-            let (side, rows) = (map_side(window), rows_that_fit(window));
-            let used = CHROME + side + rows as f32 * theme::ROW_COMPACT;
+            let fit = measure(window);
+            let used = chrome(fit.margin) + fit.map + fit.rows as f32 * ROW;
+            let inside = fit.panel - 2.0 * fit.margin;
             assert!(used <= height, "{window}: {used}");
+            assert!(fit.map >= 120.0 && inside >= CONTENT.0, "{window}: {fit:?}");
             assert!(
-                side >= 120.0 && side <= panel_width(width) - 2.0 * PAD,
-                "{window}"
+                fit.map == inside || inside == CONTENT.0,
+                "{window}: {fit:?}"
             );
-            assert!((MIN_ROWS..=VISIBLE_ROWS).contains(&rows), "{window}");
+            assert!((MIN_ROWS..=VISIBLE_ROWS).contains(&fit.rows), "{window}");
+            assert!(fit.margin >= 12.0 && (height < 1080.0 || fit.margin >= 24.0));
         }
     }
-    assert_eq!(rows_that_fit(SMALLEST), MIN_ROWS);
-    assert_eq!(rows_that_fit(Vec2::new(1920.0, 1080.0)), VISIBLE_ROWS);
+    let smallest = Measures {
+        margin: 12.0,
+        panel: 420.0,
+        map: 121.0,
+        rows: MIN_ROWS,
+    };
+    assert_eq!(measure(SMALLEST), smallest);
+    let full = Measures {
+        margin: 24.0,
+        panel: 473.0,
+        map: 425.0,
+        rows: 7,
+    };
+    assert_eq!(measure(Vec2::new(1920.0, 1080.0)), full);
 }
 
 /// Every line of the readout of every class fits the narrowest panel without wrapping.
 #[test]
 fn the_card_fits_the_narrowest_panel() {
     let glyph = theme::FONT_SMALL * theme::GLYPH_ASPECT;
-    let room = ((PANEL_WIDTH.0 - 2.0 * PAD) / glyph).floor() as usize;
+    let room = (CONTENT.0 / glyph).floor() as usize;
     for record in records() {
         let (line, planet) = world(record);
         let slow = PlanetSpec {
@@ -68,24 +75,29 @@ fn the_card_fits_the_narrowest_panel() {
     }
 }
 
-/// The breadcrumb joins the names from the galaxy down, the footer offers one main action at
-/// a time, and the course line gives a time to arrival only while the ship moves.
+/// The breadcrumb joins the names from the galaxy down, the main button offers the next
+/// thing to do with the course, and the course line gives a time to arrival only while the
+/// ship moves.
 #[test]
 fn the_header_and_the_footer_say_the_right_words() {
     let names = ["Aru".to_string(), "Vereya".to_string(), "Kodya".to_string()];
     assert_eq!(crumbs(&names), "Aru > Vereya > Kodya");
     assert_eq!(crumbs(&names[..1]), "Aru");
     assert_eq!(crumbs(&[]), NOWHERE);
-    let (here, there) = (Target::Galaxy(GalaxyId::default()), None);
-    let shown =
-        |cursor, set| [Act::Set, Act::Engage, Act::Clear].map(|act| offered(act, cursor, set));
-    assert_eq!(shown(Some(here), there), [true, false, false]);
-    assert_eq!(shown(Some(here), Some(here)), [false, true, true]);
-    assert_eq!(shown(None, Some(here)), [false, true, true]);
-    assert_eq!(shown(None, None), [false, false, false]);
+    let here = Some(Target::Galaxy(GalaxyId::default()));
+    let there = Some(Target::Galaxy(GalaxyId(IVec3::X)));
+    let (idle, flying) = (RouteStatus::Idle, RouteStatus::InWarp);
+    assert_eq!(primary(here, None, idle), Some(Act::Set));
+    assert_eq!(primary(here, here, idle), Some(Act::Engage));
+    assert_eq!(primary(None, here, idle), Some(Act::Engage));
+    assert_eq!(primary(here, here, flying), Some(Act::Clear));
+    assert_eq!(primary(there, here, flying), Some(Act::Set));
+    assert_eq!(primary(None, None, idle), None);
+    assert_eq!(words(Act::Set, "Kodya b"), "Set course to Kodya b");
+    assert_eq!(words(Act::Engage, "Kodya b"), "Engage autopilot");
+    assert_eq!(words(Act::Clear, ""), "Clear course");
     assert_eq!(arrival(6000.0, 100.0).as_deref(), Some("about 1 min"));
     assert_eq!(arrival(6000.0, 0.5), None);
-    let idle = RouteStatus::Idle;
     assert_eq!(
         course(Some(("Kodya", 1500.0)), 0.0, idle),
         "Course Kodya - 1.50 km - idle"

@@ -6,6 +6,9 @@ use super::body::Ship;
 use super::wells::{Well, nearest};
 use crate::universe::GLY;
 
+#[cfg(test)]
+mod tests;
+
 /// Seconds the drive spools before it engages.
 pub const SPOOL_TIME: f64 = 4.0;
 
@@ -26,6 +29,13 @@ const DROP_MARGIN: f64 = 0.1;
 
 /// Radii from a body inside which it carries the warp bubble fully, and beyond which not at all.
 const CARRY: (f64, f64) = (50.0, 100.0);
+
+/// Returns the warp speed `speed`, in metres per second, as a share of the top speed of the
+/// drive, from 0 to 1. Warp speeds span ten decades, so the share is taken on a logarithmic
+/// scale, from the slowest warp to the fastest jump: a tenfold speed is always the same step.
+pub fn fraction(speed: f64) -> f64 {
+    ((speed / FLOOR).max(1.0).ln() / (JUMP_CAP / FLOOR).ln()).min(1.0)
+}
 
 /// State of the warp drive.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]

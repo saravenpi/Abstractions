@@ -37,6 +37,9 @@ pub struct SkyUniform {
     pub core: Vec4,
     /// Linear color of the star light the air lets through, which colors the glow around the star.
     pub glow: Vec4,
+    /// Unit vector of the direction of travel in xyz and, in w, the speed the sky is seen
+    /// through in a warp as a share of the speed of light: the band crowds ahead with the stars.
+    pub warp: Vec4,
 }
 
 /// What the dome is drawn from besides the palette, with directions in render axes.
@@ -62,6 +65,10 @@ pub struct SkyLook {
     pub band: f32,
     /// Whether the camera is below the sea surface.
     pub submerged: bool,
+    /// Unit vector of the direction of travel.
+    pub heading: Vec3,
+    /// Speed the sky is seen through in a warp, as a share of the speed of light.
+    pub beta: f32,
 }
 
 /// Converts an sRGB triple to a linear color vector.
@@ -92,6 +99,7 @@ impl SkyUniform {
             disc: look.disc.extend(look.band * palette.stars * dry),
             core: look.core.extend(0.0),
             glow: linear(palette.sun_color),
+            warp: look.heading.extend(look.beta),
         }
     }
 }

@@ -17,6 +17,7 @@ pub use material::BodyMaterial;
 use super::air::Air;
 use super::atmosphere::{HALO_SCALE, HaloMaterial};
 use super::vantage::{LocalSystem, Scene};
+use super::warp::Lens;
 use crate::screens::Screen;
 
 /// Distance in metres past which a body is pulled in: farther than anything the terrain streams.
@@ -76,6 +77,7 @@ pub fn place(offset: DVec3) -> Drawn {
 struct Orb {
     pos: DVec3,
     radius: f64,
+    solid: f64,
     least_angle: f32,
     shown: bool,
 }
@@ -92,6 +94,7 @@ impl Body {
                 return Some(Orb {
                     pos: DVec3::ZERO,
                     radius: scene.local.0.as_ref()?.system.star.radius,
+                    solid: scene.local.0.as_ref()?.system.star.radius,
                     least_angle: STAR_ANGLE,
                     shown: true,
                 });
@@ -107,6 +110,7 @@ impl Body {
         Some(Orb {
             pos,
             radius: planet.radius * f64::from(grow),
+            solid: planet.radius,
             least_angle: PLANET_ANGLE * grow,
             shown: match halo {
                 true => airy && (!below || vantage.air <= 0.0),
@@ -162,9 +166,11 @@ fn populate(
     }
 }
 
-/// Places every body in its true direction from the camera, never smaller than its least angle.
+/// Places every body where it is seen from the camera, never smaller than its least angle: in
+/// its true direction at rest, and through the warp lens at speed, a halo with its planet.
 fn follow(
     scene: Scene,
+    lens: Res<Lens>,
     mut bodies: Query<(&Body, &mut Transform, &mut GlobalTransform, &mut Visibility)>,
 ) {
     let vantage = &scene.vantage;
@@ -173,8 +179,10 @@ fn follow(
         let Some(orb) = body.orb(&scene) else {
             continue;
         };
-        let drawn = place(observer.to_render * (orb.pos - observer.eye));
-        let size = (orb.radius as f32 * drawn.scale).max(orb.least_angle * drawn.at.length());
+        let seen = lens.body(observer.to_render * (orb.pos - observer.eye), orb.solid);
+        let drawn = place(seen.offset);
+        let size = orb.radius as f32 * drawn.scale * seen.scale;
+        let size = size.max(orb.least_angle * drawn.at.length());
         let pose = Transform::from_translation(vantage.camera + drawn.at);
         super::pin(
             pose.with_scale(Vec3::splat(size)),
@@ -215,7 +223,7 @@ pub(super) fn plugin(app: &mut App) {
             PostUpdate,
             (
                 populate.run_if(resource_changed::<LocalSystem>),
-                follow,
+                follow.after(super::warp::run),
                 light_planets,
             )
                 .after(super::sun::track),

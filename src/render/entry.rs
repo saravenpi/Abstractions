@@ -1,5 +1,6 @@
-//! Flight effects around the view: the glow of re-entry, warp streaks (the camera rig opens the view),
-//! and cloud wisps streaking past inside the cloud layer.
+//! Flight effects around the view: the glow of re-entry, the light ahead and the flash of a
+//! warp (the stars themselves streak, the camera rig opens the view), and cloud wisps streaking
+//! past inside the cloud layer.
 
 use bevy::asset::embedded_asset;
 use bevy::camera::visibility::NoFrustumCulling;
@@ -17,6 +18,7 @@ use super::glow::{entry_glow, stream_heading};
 use super::palette::Palette;
 use super::sky::linear;
 use super::vantage::Vantage;
+use super::warp::Lens;
 use crate::screens::Screen;
 
 /// Radius in metres of the shell the effects are drawn on, around the camera and the ship.
@@ -24,6 +26,9 @@ const SHELL_RADIUS: f32 = 60.0;
 
 /// Speed in metres per second at which cloud wisps start to streak and at which they are full.
 const WISP_SPEED: (f32, f32) = (8.0, 80.0);
+
+/// Linear colour of the light ahead in a warp and of the flash of its drop-out: blue-white.
+const CORE_COLOR: Vec3 = Vec3::new(0.8, 0.9, 1.3);
 
 /// Brightness of the re-entry glow at the rim of the view. It stays a rim: a dive under power
 /// is fast and deep in the air too, and a brighter glow washed the whole view out to white.
@@ -34,8 +39,11 @@ const GLOW_GAIN: f32 = 0.7;
 pub struct FlightFx {
     /// Dynamic pressure of the air on the hull in pascals: half the density times the speed squared.
     pub dynamic_pressure: f32,
-    /// How far the warp drive is engaged, from 0 to 1.
+    /// How far the warp drive is on: 0 when off, below 1 while it spools, 1 once it is engaged.
+    /// The warp sequence of the sky follows it.
     pub warp: f32,
+    /// Speed of an engaged warp drive as a share of its top speed, from 0 to 1.
+    pub pace: f32,
     /// Speed in metres per second; 0 lets the sky measure the camera speed itself.
     pub speed: f32,
     /// Unit vector along the nose of the ship in render axes, which the warp streams from. Zero
@@ -50,11 +58,11 @@ pub struct FxUniform {
     pub heading: Vec4,
     /// Linear glow colour in xyz and its strength in w.
     pub glow: Vec4,
-    /// Linear warp streak colour in xyz and its strength in w.
-    pub streak: Vec4,
+    /// Linear colour of the light ahead in a warp in xyz and its strength in w.
+    pub core: Vec4,
     /// Linear wisp colour in xyz and its strength in w.
     pub wisp: Vec4,
-    /// Time in seconds, streak rate, wisp rate and how far the streaks stretch from 0 to 1.
+    /// Time in seconds, the strength of the flash of a warp drop-out and the wisp rate.
     pub params: Vec4,
 }
 
@@ -112,13 +120,15 @@ struct FxInputs<'w, 's> {
     vantage: Res<'w, Vantage>,
     crossing: Res<'w, CloudCrossing>,
     palette: Res<'w, Palette>,
+    lens: Res<'w, Lens>,
     time: Res<'w, Time>,
     cameras: Query<'w, 's, &'static GlobalTransform, (With<GameCamera>, Without<FxShell>)>,
 }
 
 impl FxInputs<'_, '_> {
-    /// Returns the shader values: the glow grows with dynamic pressure while sinking, the streaks with the warp
-    /// and the wisps with the depth in the clouds and the speed, all streaming from [`stream_heading`].
+    /// Returns the shader values: the glow grows with dynamic pressure while sinking, the light
+    /// ahead and the flash come from the warp lens and the wisps grow with the depth in the
+    /// clouds and the speed, all streaming from [`stream_heading`].
     fn uniform(&self) -> FxUniform {
         let flight = *self.flight;
         let velocity = self.vantage.velocity;
@@ -128,25 +138,24 @@ impl FxInputs<'_, '_> {
             velocity.length()
         };
         let seen = self.cameras.iter().next();
-        let ahead = flight
-            .nose
-            .try_normalize()
-            .unwrap_or_else(|| seen.map_or(Vec3::NEG_Z, |camera| *camera.forward()));
+        let lens = *self.lens;
+        let looking = seen.map_or(Vec3::NEG_Z, |camera| *camera.forward());
+        let nose = flight.nose.try_normalize().unwrap_or(looking);
+        let ahead = if lens.level > 0.0 { lens.heading } else { nose };
         let sink = -velocity.dot(self.vantage.up);
         let glow = entry_glow(flight.dynamic_pressure, sink);
         let hot = Vec3::new(1.0, 0.32, 0.07).lerp(Vec3::new(1.0, 0.6, 0.3), glow) * GLOW_GAIN;
-        let warp = flight.warp.clamp(0.0, 1.0);
         let wisps = self.crossing.depth * smoothstep(WISP_SPEED.0, WISP_SPEED.1, speed);
         FxUniform {
-            heading: stream_heading(velocity, ahead, warp).extend(0.0),
+            heading: stream_heading(velocity, ahead, lens.level).extend(0.0),
             glow: hot.extend(glow),
-            streak: Vec3::new(0.8, 0.9, 1.5).extend(smoothstep(0.0, 0.15, warp)),
+            core: CORE_COLOR.extend(lens.core),
             wisp: (linear(self.palette.cloud).truncate() * 0.6).extend(wisps),
             params: Vec4::new(
                 self.time.elapsed_secs(),
-                0.15 + 1.1 * warp,
+                lens.flash,
                 (speed / 40.0).clamp(0.5, 6.0),
-                warp,
+                0.0,
             ),
         }
     }
@@ -167,7 +176,7 @@ fn follow(
     mut materials: ResMut<Assets<FxMaterial>>,
 ) {
     let fx = inputs.uniform();
-    let shown = fx.glow.w + fx.streak.w + fx.wisp.w > 0.0;
+    let shown = fx.glow.w + fx.core.w + fx.wisp.w + fx.params.y > 0.0;
     let pose =
         Transform::from_translation(inputs.vantage.camera).with_scale(Vec3::splat(SHELL_RADIUS));
     for (mut transform, mut global, mut visibility, handle) in &mut shells {
@@ -188,5 +197,8 @@ pub(super) fn plugin(app: &mut App) {
     app.add_plugins(MaterialPlugin::<FxMaterial>::default())
         .init_resource::<FlightFx>()
         .add_systems(OnEnter(Screen::Loading), spawn)
-        .add_systems(PostUpdate, follow.after(super::clouds::drift));
+        .add_systems(
+            PostUpdate,
+            follow.after(super::clouds::drift).after(super::warp::run),
+        );
 }

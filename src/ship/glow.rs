@@ -6,6 +6,7 @@ use super::body::Ship;
 use super::flight::BOOST;
 use super::helm::Helm;
 use super::warp::Warp;
+use crate::render::Sequence;
 
 /// The glowing parts of a ship.
 #[derive(Component, Debug, Clone)]
@@ -48,16 +49,18 @@ fn level(ship: &Ship, boost: bool) -> f32 {
     }
 }
 
-/// Sets the glow color and the exhaust length when the engine level changes.
+/// Sets the glow color and the exhaust length when the engine level changes. The warp sequence
+/// lights the engines as the drive charges and lets them fade as it drops out.
 pub fn glow(
-    helm: Res<Helm>,
+    (helm, sequence): (Res<Helm>, Option<Res<Sequence>>),
     ship: Single<(&Ship, &Engine)>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut plumes: Query<&mut Transform, With<Plume>>,
     mut shown: Local<Option<f32>>,
 ) {
     let (ship, engine) = *ship;
-    let level = level(ship, helm.controls.boost);
+    let charged = sequence.as_deref().map_or(0.0, Sequence::thrust);
+    let level = level(ship, helm.controls.boost).max(WARP_LEVEL * charged);
     if shown.is_some_and(|old| (old - level).abs() < 0.01) {
         return;
     }

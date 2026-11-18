@@ -1,10 +1,12 @@
-//! The readout of the row under the cursor: the whole record of a planet in plain words.
+//! The readout of the row under the cursor: the whole record of a planet or a moon in plain
+//! words.
 
 use super::atlas::Atlas;
 use super::format::{distance, gravity};
+use super::giant::{company, surface};
 use super::route::Target;
 use super::rows::Line;
-use super::words::{air, flux, temperature, tilt, water, year, zone};
+use super::words::{flux, temperature, tilt, year, zone};
 use crate::saves::play_time;
 use crate::universe::{PlanetRecord, PlanetSpec, Universe};
 
@@ -26,8 +28,8 @@ pub fn brief(record: Option<&PlanetRecord>) -> String {
     }
 }
 
-/// Returns true when the record of `target` is known: it is a planet whose system was
-/// visited, the rule the planet count of a star follows.
+/// Returns true when the record of `target` is known: it is a planet or a moon whose system
+/// was visited, the rule the planet count of a star follows.
 pub fn charted(atlas: &Atlas, target: Target) -> bool {
     matches!(target, Target::Body(id) if atlas.visited(Target::Star(id.star)))
 }
@@ -53,7 +55,8 @@ pub fn advice(target: Target, visited: bool) -> Option<&'static str> {
 }
 
 /// Returns the lines of the readout of `line`: the record of `world` when the row is a planet
-/// with a known record, and otherwise the facts of the row and what to do to learn more.
+/// or a moon with a known record, and otherwise the facts of the row and what to do to learn
+/// more. The year of a moon is its turn around its planet.
 pub fn readout(line: &Line, world: Option<&PlanetSpec>) -> Vec<String> {
     let Some(planet) = world else {
         let known = std::iter::once(line.facts().to_string());
@@ -63,12 +66,14 @@ pub fn readout(line: &Line, world: Option<&PlanetSpec>) -> Vec<String> {
     let record = &planet.record;
     let (radius, pull) = (distance(planet.radius), gravity(planet.gravity));
     let (day, orbit) = (play_time(planet.day_seconds), year(planet.orbit_seconds));
+    let turn = if planet.id.is_moon() { "orbit" } else { "year" };
+    let [ground, sea] = surface(planet);
     vec![
         format!("{} - tilt {}", brief(Some(record)), tilt(record.tilt)),
-        format!("air {}", air(record.pressure)),
-        format!("water {}", water(record)),
+        ground,
+        sea,
         format!("light {}, zone {}", flux(record.flux), zone(record.zone)),
-        format!("radius {radius} - gravity {pull}"),
-        format!("day {day} - year {orbit}"),
+        format!("radius {radius} - gravity {pull}{}", company(planet)),
+        format!("day {day} - {turn} {orbit}"),
     ]
 }

@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use super::board::Board;
 use super::format::distance;
+use super::moons::is_moon;
 use super::open::ready;
 use super::route::{Destination, RouteStatus, Target};
 use super::rows::Line;
@@ -34,6 +35,9 @@ fn rebuild(time: Res<Time>, scene: Scene, mut board: ResMut<Board>, mut since: L
     board.fill(heading, lines);
 }
 
+/// What the name of a moon starts with, so that it reads as part of its planet.
+const INDENT: &str = "  ";
+
 /// Returns the icon of a row: a pin on the destination, the ship where the ship is, and
 /// otherwise what the row is, a star, a planet or a galaxy.
 fn sign(target: Target, chosen: bool, here: bool) -> Icon {
@@ -47,7 +51,8 @@ fn sign(target: Target, chosen: bool, here: bool) -> Icon {
 }
 
 /// Returns the text and the tone of one cell of `line`. The destination and the place of the
-/// ship are marked, and a place never visited is dimmed.
+/// ship are marked, a place never visited is dimmed, and the name of a moon is indented under
+/// its planet.
 pub(super) fn cell_text(line: &Line, part: Part, (chosen, here): (bool, bool)) -> (String, Tone) {
     let seen = match (chosen, line.visited || here) {
         (true, _) => Tone::Accent,
@@ -56,6 +61,7 @@ pub(super) fn cell_text(line: &Line, part: Part, (chosen, here): (bool, bool)) -
     };
     match part {
         Part::Mark => (sign(line.target, chosen, here).glyph(), seen),
+        Part::Title if is_moon(line.target) => (format!("{INDENT}{}", line.title), seen),
         Part::Title => (line.title.clone(), seen),
         Part::Distance => (distance(line.distance), Tone::Plain),
         Part::Detail => (line.facts().to_string(), Tone::Muted),

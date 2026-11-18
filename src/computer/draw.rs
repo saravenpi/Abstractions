@@ -1,9 +1,10 @@
 //! Drawing the chart on the sheet of the map: the orbits, the course, the marks and the names.
 //!
-//! The hierarchy is black and white: orbits are hairlines, a star is larger than a planet, the
-//! row under the cursor or the pointer wears a frame, the destination a pin, and the course
-//! is a dotted line from the ship with the distance on it. A name that would cover a more
-//! important one is not drawn.
+//! The hierarchy is black and white: orbits are hairlines, a star is larger than a planet and
+//! a planet larger than a moon, the row under the cursor or the pointer wears a frame, the
+//! destination a pin, and the course is a dotted line from the ship with the distance on it.
+//! A name that would cover a more important one is not drawn, nor a moon too close to its
+//! planet to tell apart.
 
 use bevy::prelude::*;
 
@@ -13,6 +14,8 @@ use super::format::distance;
 use super::labels::{keep, priority, room};
 use super::lens::Lens;
 use super::map::{SIZE, Sheet, body, frame, name, ring, ship, spot};
+use super::moons::{is_moon, seen};
+use super::orbits::satellites;
 use super::pointer::MapView;
 use super::route::{Destination, Target};
 use super::tab::Tab;
@@ -28,13 +31,16 @@ const GAP: f32 = 10.0;
 const FRAME: f32 = 18.0;
 
 /// Returns the side in pixels of the mark of a star, a planet or a galaxy, larger while it is
-/// under the cursor or the pointer. A star is drawn larger than the planets around it.
+/// under the cursor or the pointer. A star is drawn larger than the planets around it, and a
+/// planet larger than its moons.
 pub fn side(target: Target, under: bool) -> f32 {
-    match (target, under) {
-        (Target::Star(_), false) => 8.0,
-        (Target::Star(_), true) => 10.0,
-        (_, false) => 4.0,
-        (_, true) => 8.0,
+    match (target, is_moon(target), under) {
+        (Target::Star(_), _, false) => 8.0,
+        (Target::Star(_), _, true) => 10.0,
+        (_, true, false) => 3.0,
+        (_, true, true) => 6.0,
+        (_, false, false) => 4.0,
+        (_, false, true) => 8.0,
     }
 }
 
@@ -61,16 +67,28 @@ impl Picture<'_> {
     }
 }
 
-/// Spawns the orbit of every planet of a system chart as a hairline around the star.
+/// Spawns the orbit of every planet of a system chart as a hairline around the star, then
+/// what each planet carries: its rings and its moons.
 fn rings(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
-    if picture.board.tab != Tab::System {
+    let (board, view) = (picture.board, picture.view);
+    if board.tab != Tab::System {
         return;
     }
-    for (dot, at) in &picture.view.dots {
-        if matches!(dot, Dot::Row(index) if *index > 0) {
+    let planet = |index: usize| {
+        let target = board.lines.get(index).map(|line| line.target);
+        target.is_some_and(|target| matches!(target, Target::Body(_)) && !is_moon(target))
+    };
+    for (dot, at) in &view.dots {
+        if matches!(dot, Dot::Row(index) if planet(*index)) {
             sheet.spawn(ring(at.length()));
         }
     }
+    let chart = (
+        view.dots.as_slice(),
+        board.lines.as_slice(),
+        board.worlds.as_slice(),
+    );
+    satellites(sheet, chart, view.lens.zoom);
 }
 
 /// Spawns the pin on the destination, and the dotted line from the ship to it with the
@@ -108,8 +126,9 @@ fn course(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
 /// Spawns the ship and the mark of every row. The row under the cursor or the pointer is
 /// larger and framed, and a place never visited is dimmed.
 fn marks(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
-    let board = picture.board;
-    for (dot, at) in &picture.view.dots {
+    let (board, zoom) = (picture.board, picture.view.lens.zoom);
+    let shown = picture.view.dots.iter();
+    for (dot, at) in shown.filter(|(dot, _)| seen(*dot, &board.lines, zoom)) {
         let row = match *dot {
             Dot::Row(index) => board.lines.get(index).map(|line| (index, line)),
             Dot::Ship => {
@@ -144,9 +163,10 @@ fn labels(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
         1.0
     };
     let pixel = |at: Vec2| view.lens.to_map(at);
-    let seen = |at: Vec2| pixel(at).min_element() >= 0.0 && pixel(at).max_element() <= SIZE;
+    let inside = |at: Vec2| pixel(at).min_element() >= 0.0 && pixel(at).max_element() <= SIZE;
+    let drawn = |dot: Dot, at: Vec2| inside(at) && seen(dot, &board.lines, view.lens.zoom);
     let mut wanted: Vec<(u8, Vec2, &str)> = Vec::new();
-    for (dot, at) in view.dots.iter().filter(|(_, at)| seen(*at)) {
+    for (dot, at) in view.dots.iter().filter(|(dot, at)| drawn(*dot, *at)) {
         let Dot::Row(index) = *dot else {
             continue;
         };

@@ -6,9 +6,9 @@ use bevy::prelude::*;
 use super::flight::{Flight, Gauge, reading};
 use crate::computer::{Destination, RouteStatus, ship_position, target_position};
 use crate::ship::{Ship, ShipTelemetry, WarpState};
-use crate::space::Clock;
+use crate::space::{Clock, Frame};
 use crate::ui::{cell, text, theme};
-use crate::universe::Universe;
+use crate::universe::{PlanetClass, Universe};
 
 /// Width of the label column of the instruments, in pixels.
 const LABEL_WIDTH: f32 = 64.0;
@@ -111,10 +111,17 @@ impl Source<'_, '_> {
             let there = target_position(universe, target, time)?;
             Some((target.name(universe), there.distance(here)))
         });
+        let giant = match (self.telemetry.frame, self.universe.as_deref()) {
+            (Frame::Surface(body), Some(universe)) => {
+                universe.planet(body).record.class == PlanetClass::GasGiant
+            }
+            _ => false,
+        };
         Flight {
             telemetry: *self.telemetry,
             route: *self.route,
             destination,
+            giant,
         }
     }
 }

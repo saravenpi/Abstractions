@@ -1,5 +1,6 @@
 //! Narrowing and ordering the list: the filter typed on the keyboard and the sort order.
 
+use super::route::Target;
 use super::rows::Line;
 
 /// Most characters the filter holds.
@@ -48,13 +49,42 @@ pub fn matches(title: &str, filter: &str) -> bool {
     title.to_lowercase().contains(&filter.to_lowercase())
 }
 
-/// Returns the rows whose name holds `filter`, in the order `sort` asks for.
-pub fn arrange(mut lines: Vec<Line>, filter: &str, sort: Sort) -> Vec<Line> {
-    lines.retain(|line| matches(&line.title, filter));
-    if sort == Sort::Name {
-        lines.sort_by_key(|line| line.title.to_lowercase());
+/// Returns true when the rows `a` and `b` are a planet and one of its moons, either way.
+fn kin(a: &Line, b: &Line) -> bool {
+    match (a.target, b.target) {
+        (Target::Body(x), Target::Body(y)) => {
+            x != y && x.planet() == y.planet() && !(x.is_moon() && y.is_moon())
+        }
+        _ => false,
     }
-    lines
+}
+
+/// Returns what a row is sorted on by name: the name of its planet for a moon, then whether
+/// it is a moon, then its own name, so that each moon follows its planet.
+fn key(lines: &[Line], line: &Line) -> (String, bool, String) {
+    let own = line.title.to_lowercase();
+    let moon = matches!(line.target, Target::Body(id) if id.is_moon());
+    let planet = lines.iter().find(|other| moon && kin(line, other));
+    let family = planet.map_or_else(|| own.clone(), |planet| planet.title.to_lowercase());
+    (family, moon, own)
+}
+
+/// Returns the rows whose name holds `filter`, in the order `sort` asks for. A planet stays
+/// with its moons: the filter keeps a moon when its planet's name holds it and a planet when
+/// one of its moons' does.
+pub fn arrange(lines: Vec<Line>, filter: &str, sort: Sort) -> Vec<Line> {
+    let kept = |line: &Line| {
+        let near = |other: &Line| kin(line, other) && matches(&other.title, filter);
+        matches(&line.title, filter) || lines.iter().any(near)
+    };
+    let keep: Vec<bool> = lines.iter().map(kept).collect();
+    let keys: Vec<_> = lines.iter().map(|line| key(&lines, line)).collect();
+    let mut rows: Vec<_> = keys.into_iter().zip(lines).zip(keep).collect();
+    rows.retain(|(_, keep)| *keep);
+    if sort == Sort::Name {
+        rows.sort_by(|a, b| a.0.0.cmp(&b.0.0));
+    }
+    rows.into_iter().map(|((_, line), _)| line).collect()
 }
 
 /// Returns the line of the header that names the list: which rows are drawn, the order, and

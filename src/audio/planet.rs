@@ -1,4 +1,5 @@
-//! What a planet sounds like: how loud its air is and what breaks on its shore.
+//! What a planet sounds like: how loud its air is, how hard its wind blows and what breaks on
+//! its shore.
 
 use crate::universe::{PlanetClass, PlanetRecord, Water};
 use crate::wind::thickness;
@@ -16,13 +17,13 @@ pub enum Surf {
 
 /// Returns what the shore of a planet sounds like.
 ///
-/// A world with no liquid on its surface has no shore to hear. Molten rock rumbles on a lava
-/// world whatever its water does. Anywhere else only liquid water makes waves: ice, steam and
-/// no water are silent.
+/// A world with no liquid on its surface has no shore to hear, and a gas giant has no surface
+/// at all. Molten rock rumbles on a lava world whatever its water does. Anywhere else only
+/// liquid water makes waves: ice, steam and no water are silent.
 pub fn surf(record: &PlanetRecord) -> Surf {
     let liquid = record.ocean > 0.0;
     match (liquid, record.class, record.water) {
-        (false, _, _) => Surf::Silent,
+        (false, _, _) | (_, PlanetClass::GasGiant, _) => Surf::Silent,
         (true, PlanetClass::Lava, _) => Surf::Molten,
         (true, _, Water::Liquid) => Surf::Waves,
         (true, _, _) => Surf::Silent,
@@ -34,6 +35,19 @@ pub fn surf(record: &PlanetRecord) -> Surf {
 /// are multiplied by it; engines, boots, footsteps and the interface are not.
 pub fn loudness(record: &PlanetRecord) -> f32 {
     thickness(record).min(1.0) as f32
+}
+
+/// Least wind strength heard in the deep air of a gas giant, which is never still.
+pub const GIANT_WIND: f32 = 0.6;
+
+/// Returns the wind strength heard on a planet for a wind of `strength`: none without air, at
+/// least [`GIANT_WIND`] on a gas giant, and the wind itself anywhere else.
+pub fn wind(record: &PlanetRecord, strength: f32) -> f32 {
+    match record.class {
+        _ if loudness(record) <= 0.0 => 0.0,
+        PlanetClass::GasGiant => strength.max(GIANT_WIND),
+        _ => strength,
+    }
 }
 
 /// Returns the number that carries a planet class to the audio thread.

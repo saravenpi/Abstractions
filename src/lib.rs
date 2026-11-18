@@ -2,6 +2,7 @@
 
 pub mod audio;
 pub mod avatar;
+pub mod climate;
 pub mod companion;
 pub mod computer;
 pub mod effects;
@@ -15,6 +16,7 @@ pub mod saves;
 pub mod screens;
 pub mod settings;
 pub mod ship;
+pub mod sim;
 pub mod space;
 pub mod ui;
 pub mod universe;

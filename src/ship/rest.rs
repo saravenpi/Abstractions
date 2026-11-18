@@ -21,9 +21,10 @@ const DAMAGE_SPAN: f64 = 30.0;
 /// Seconds the gear damps weakly after a landing above the safe speed.
 const BOUNCE_TIME: f64 = 1.5;
 
-/// Returns true when the controls ask a landed ship to move again.
+/// Returns true when the controls ask a landed ship to move again: without assist the lever
+/// or the rise, with it only the rise, so that a take-off is always meant.
 pub fn wakes(ship: &Ship, controls: &Controls) -> bool {
-    ship.throttle.abs() >= NEUTRAL || controls.lift > 0.0
+    (!ship.assist && ship.throttle.abs() >= NEUTRAL) || controls.lift > 0.0
 }
 
 /// Seconds a ship must stay slow and held before it comes to rest.

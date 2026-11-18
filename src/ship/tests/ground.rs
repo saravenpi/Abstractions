@@ -158,13 +158,13 @@ fn ship_starts_on_dry_flat_ground() {
         let from = (p.normalize() * planet.radius).distance(near);
         if from < 40.0 { -3.0 } else { 5.0 + 0.02 * from }
     };
-    let spot = landing_spot(&ground, near);
+    let spot = landing_spot(&ground, near, 0.0);
     let from = spot.distance(near);
     assert!(from > 44.0 && from < 120.0, "spot {from} m away");
-    let ship = parked(planet.id, &ground, spot, planet.radius);
+    let ship = parked(planet.id, (&ground, 0.0), spot, planet.radius);
     let up = spot.normalize();
     assert!(ship.landed && (ship.rot * DVec3::Y).dot(up) > 0.999_999);
     assert!((ship.pos.length() - planet.radius - ground(spot) - GEAR_DROP).abs() < 1e-6);
-    let wet = landing_spot(&|_| -3.0, near);
+    let wet = landing_spot(&|_| -3.0, near, 0.0);
     assert!(wet.distance(near) < 20.0 && (wet.length() - planet.radius).abs() < 1e-6);
 }

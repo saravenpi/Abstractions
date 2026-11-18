@@ -45,7 +45,8 @@ fn surface_frame_orbit_keeps_its_radius() {
     assert!(worst < 0.01, "radius drifted by {worst}");
 }
 
-/// The same orbit in the frame of the star, around the moving planet, keeps its radius and its apsides.
+/// The same orbit in the frame of the star, around the moving planet, keeps its radius and its
+/// apsides. The assist is off: with it on, a ship with idle engines stops beside the planet.
 #[test]
 fn system_frame_orbit_keeps_its_radius() {
     let universe = Universe::new(7);
@@ -54,6 +55,7 @@ fn system_frame_orbit_keeps_its_radius() {
     let r = planet.radius * 1.2;
     let speed = circular_speed(planet.mu(), r);
     let mut ship = Ship::at_rest(Frame::System(planet.id.star), DVec3::ZERO, DQuat::IDENTITY);
+    ship.assist = false;
     ship.pos = planet.position(0.0) + DVec3::Y * r;
     ship.vel = planet_velocity(planet, 0.0) + DVec3::X * speed;
     let (mut worst, mut time) = (0.0f64, 0.0);

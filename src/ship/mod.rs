@@ -10,6 +10,7 @@ mod atmo;
 mod berth;
 mod board;
 mod body;
+mod cruise;
 mod drag;
 mod drive;
 mod flight;

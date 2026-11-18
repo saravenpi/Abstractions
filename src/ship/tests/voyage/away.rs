@@ -114,7 +114,7 @@ fn hover_over_land(game: &mut Game, far: BodyId) {
     let spawn = north.find_spawn();
     let height = |pos: DVec3| f64::from(globe.height(pos.normalize()));
     let near = north.embed(spawn.x, 0.0, spawn.z);
-    let up = landing_spot(&height, near).normalize();
+    let up = landing_spot(&height, near, 0.0).normalize();
     let ground = globe.radius() + height(up).max(0.0);
     game.with_ship(|ship| {
         ship.frame = Frame::Surface(far);

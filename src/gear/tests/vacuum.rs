@@ -88,7 +88,7 @@ fn step_cannot_allocate() {
     plain::<GearInput>();
     plain::<Gear>();
     assert!(
-        size_of::<FlightState>() <= 96,
+        size_of::<FlightState>() <= 112,
         "state grew to {}",
         size_of::<FlightState>()
     );

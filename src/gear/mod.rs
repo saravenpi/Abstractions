@@ -11,6 +11,9 @@
 //! - The wingsuit alone glides and always loses energy.
 //! - Both together fly.
 //!
+//! On the wings the pitch and roll sticks steer the body itself, see `course`; the view only
+//! looks around.
+//!
 //! The effects in `fx` read the [`Gear`] component and publish [`FlightFx`] for the camera,
 //! the audio and the companion.
 
@@ -19,6 +22,7 @@ mod aim;
 mod assist;
 mod boots;
 mod contact;
+mod course;
 mod fx;
 mod input;
 mod mode;

@@ -1,26 +1,45 @@
-//! Wingsuit alone: a real glide that always loses energy.
+//! Wingsuit alone: a real glide that always loses energy, steered by the keys.
 
 use bevy::prelude::*;
 
-use super::measure::settled_glide;
+use super::measure::{dive, settled_glide};
 use super::{DT, Flight, gliding, looking};
 use crate::gear::{GearInput, Mode};
 
-/// The documented range of the best glide ratio.
-const BEST_GLIDE: (f32, f32) = (2.5, 3.0);
-
-/// Returns the best glide ratio over every look angle from 40 degrees down to 10 up.
-fn best_glide() -> f32 {
-    (-40..=10)
-        .map(|degrees| settled_glide((degrees as f32).to_radians()).0)
-        .fold(0.0, f32::max)
+/// Returns an input holding the wings open with the pitch and roll sticks at `pitch` and
+/// `roll`, the view straight ahead.
+pub(super) fn sticks(pitch: f32, roll: f32) -> GearInput {
+    GearInput {
+        pitch,
+        roll,
+        ..gliding(0.0)
+    }
 }
 
-/// The best glide ratio is inside the documented range.
+/// The range of the hands-off glide ratio under the home gravity and air.
+const GLIDE: (f32, f32) = (3.5, 4.5);
+
+/// The range of the hands-off sink rate under the home gravity and air, in metres per second.
+const SINK: (f32, f32) = (6.0, 8.0);
+
+/// Speed in metres per second a dive must reach.
+const DIVE: f32 = 50.0;
+
+/// Let go, the wings settle on a glide of about four to one that sinks at about 7 m/s, at about
+/// 30 m/s, wherever the view looks.
 #[test]
-fn best_glide_ratio_is_in_range() {
-    let best = best_glide();
-    assert!((BEST_GLIDE.0..=BEST_GLIDE.1).contains(&best), "best {best}");
+fn hands_off_glide_is_about_four_to_one() {
+    let (ratio, speed, sink) = settled_glide(&gliding(0.0));
+    assert!((GLIDE.0..=GLIDE.1).contains(&ratio), "ratio {ratio}");
+    assert!((SINK.0..=SINK.1).contains(&sink), "sink {sink}");
+    assert!((25.0..=36.0).contains(&speed), "speed {speed}");
+    for look in [looking(1.2, 0.8), looking(-2.0, -1.0)] {
+        let looked = settled_glide(&GearInput {
+            look,
+            ..gliding(0.0)
+        });
+        assert_eq!(looked, (ratio, speed, sink), "the view steered");
+    }
 }
 
 /// Returns the look and sticks of a restless pilot at `time`: dives, pull-ups and turns.
@@ -52,66 +71,64 @@ fn glide_never_gains_energy() {
     }
 }
 
-/// Pulling up out of a dive climbs for a while, and the climb still costs energy.
+/// The forward key held a second and let go dives past 50 m/s, and the body pulls out by itself.
 #[test]
-fn pull_up_climbs_but_ends_lower_in_energy() {
-    let mut flight = Flight::new(Mode::Glide, Vec3::new(0.0, -12.0, -36.0));
-    flight.run(&gliding(-0.8), 20.0);
-    let before = flight.energy(22.0);
-    let mut heights = [0.0_f64; 600];
-    for height in &mut heights {
-        flight.tick(&gliding(0.7), DT);
-        *height = flight.pos.y;
-    }
-    let bottom = heights[..300].iter().copied().fold(f64::MAX, f64::min);
-    let top = heights[150..450].iter().copied().fold(f64::MIN, f64::max);
-    assert!(top > bottom + 15.0, "climbed only {}", top - bottom);
-    assert!(flight.energy(22.0) < before, "the pull-up gained energy");
-    assert!(flight.pos.y < top - 20.0, "the climb did not end");
+fn a_dive_trades_height_for_speed() {
+    let mut flight = dive(1.2);
+    assert!(
+        flight.state.airspeed > DIVE,
+        "dive {}",
+        flight.state.airspeed
+    );
+    flight.run(&gliding(0.0), 30.0);
+    let (ratio, _, sink) = settled_glide(&gliding(0.0));
+    let v = flight.state.velocity;
+    assert!((v.with_y(0.0).length() / -v.y - ratio).abs() < 0.3, "{v}");
+    assert!((-v.y - sink).abs() < 1.0, "{v}");
 }
 
-/// Diving gains speed, and no look angle holds height without the boosters.
+/// The back key held 2.2 s out of a dive pulls out and climbs 15 m and more above the bottom
+/// of the pull-out, then the wing stalls under 18 m/s, drops its nose and gathers speed again.
+/// The climb still costs energy.
+#[test]
+fn pull_up_climbs_then_stalls_and_recovers() {
+    let mut flight = dive(1.2);
+    let before = flight.energy(22.0);
+    let mut track = [(0.0_f64, 0.0_f32); 600];
+    for (frame, at) in track.iter_mut().enumerate() {
+        let stick = f32::from(u8::from(frame < 132));
+        flight.tick(&sticks(stick, 0.0), DT);
+        *at = (flight.pos.y, flight.state.airspeed);
+    }
+    let low = (0..120).min_by(|a, b| track[*a].0.total_cmp(&track[*b].0));
+    let bottom = track[low.unwrap_or(0)].0;
+    let top = track
+        .iter()
+        .map(|at| at.0)
+        .skip(low.unwrap_or(0))
+        .fold(f64::MIN, f64::max);
+    let slowest = track.iter().map(|at| at.1).fold(f32::MAX, f32::min);
+    assert!(top > bottom + 15.0, "climbed only {}", top - bottom);
+    assert!(slowest < 18.0, "never stalled: {slowest}");
+    assert!(flight.state.airspeed > slowest + 8.0, "no speed back");
+    assert!(flight.energy(22.0) < before, "the pull-up gained energy");
+    assert!(
+        flight.pos.y < top - 20.0 && flight.twist < 0.09,
+        "the climb did not end"
+    );
+}
+
+/// No key held steadily holds height without the boosters. The slowest sink, about 5 m/s,
+/// comes with the back key held a little: the wing flies slow near its stall angle.
 #[test]
 fn glide_cannot_hold_height() {
-    let (_, dive) = settled_glide(-0.8);
-    let (_, cruise) = settled_glide(-0.35);
-    assert!(dive > cruise + 15.0, "dive {dive} cruise {cruise}");
-    for degrees in [-10, 0, 10, 30, 60] {
+    for stick in [-1.0, -0.3, 0.0, 0.3, 1.0] {
         let mut flight = Flight::new(Mode::Glide, Vec3::new(0.0, 0.0, -40.0));
-        flight.run(&gliding((degrees as f32).to_radians()), 60.0);
+        flight.run(&sticks(stick, 0.0), 60.0);
         assert!(
-            flight.pos.y < -300.0,
-            "look {degrees}: lost only {}",
+            flight.pos.y < -240.0,
+            "stick {stick}: lost only {}",
             -flight.pos.y
         );
     }
-}
-
-/// Looking to one side banks the wings that way and turns the flight path to the look
-/// direction, without swinging past it.
-#[test]
-fn bank_turns_the_flight_path() {
-    let mut flight = Flight::new(Mode::Glide, Vec3::new(0.0, -12.0, -36.0));
-    let input = GearInput {
-        look: looking(-1.2, -0.35),
-        ..gliding(0.0)
-    };
-    flight.run(&input, 0.5);
-    assert!(flight.state.bank > 0.2, "looking right must bank right");
-    let mut widest = 0.0_f32;
-    for _ in 0..900 {
-        flight.tick(&input, DT);
-        widest = widest.max(flight.state.velocity.with_y(0.0).normalize().x);
-    }
-    let heading = flight.state.velocity.with_y(0.0).normalize();
-    assert!(heading.dot(looking(-1.2, 0.0)) > 0.995, "heading {heading}");
-    assert!(
-        flight.state.bank.abs() < 0.05,
-        "wings not level: {}",
-        flight.state.bank
-    );
-    assert!(
-        widest <= looking(-1.2, 0.0).x + 0.03,
-        "swung past the look direction"
-    );
 }

@@ -26,8 +26,13 @@
     return Math.round(size / 1048576) + " MB";
   }
 
-  function link(button, assets) {
-    const asset = assets.find((item) => item.name === button.dataset.match);
+  function versioned(name, tag) {
+    return name.replace(/^(abstractions-)/i, "$1" + tag + "-");
+  }
+
+  function link(button, assets, tag) {
+    const wanted = [versioned(button.dataset.match, tag), button.dataset.match];
+    const asset = wanted.map((name) => assets.find((item) => item.name === name)).find(Boolean);
     if (!asset || !String(asset.browser_download_url).startsWith(prefix)) return false;
     const meta = button.querySelector(".meta");
     button.href = asset.browser_download_url;
@@ -43,7 +48,7 @@
     document.getElementById("version").textContent = release.tag_name;
     released.dateTime = date.toISOString().slice(0, 10);
     released.textContent = date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
-    buttons.forEach((button) => link(button, assets));
+    buttons.forEach((button) => link(button, assets, release.tag_name));
   }
 
   highlight(detect());

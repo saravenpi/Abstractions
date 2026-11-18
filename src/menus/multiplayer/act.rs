@@ -4,6 +4,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
+use super::password::Retry;
 use super::rows::Row;
 use super::{Form, FormKind, Mode, Notice, Servers, Waiting, ops};
 use crate::menus::{Menu, Trail};
@@ -38,6 +39,7 @@ pub(super) struct Ctx<'w> {
     pub(super) mode: ResMut<'w, Mode>,
     notice: ResMut<'w, Notice>,
     waiting: ResMut<'w, Waiting>,
+    retry: ResMut<'w, Retry>,
     settings: ResMut<'w, Persistent<Settings>>,
     join: MessageWriter<'w, JoinServer>,
     refresh: MessageWriter<'w, RefreshLobby>,
@@ -54,7 +56,7 @@ impl Ctx<'_> {
                 .servers
                 .selected()
                 .cloned()
-                .map_or(Ok(()), |row| self.join(row.address, row.key)),
+                .map_or(Ok(()), |row| self.join(row.address, row.key, None)),
             (Act::Direct, Mode::Browse) => self.open(FormKind::Direct),
             (Act::Add, Mode::Browse) => self.open(FormKind::Add),
             (Act::Edit, Mode::Browse) => self
@@ -75,13 +77,20 @@ impl Ctx<'_> {
         }
     }
 
-    /// Asks the network to join `address`, with the key a LAN beacon announced, if any.
-    fn join(&mut self, address: String, expected_key: Option<[u8; 32]>) -> Result<(), String> {
+    /// Asks the network to join `address`, with the key a LAN beacon announced and the
+    /// password typed, if any.
+    fn join(
+        &mut self,
+        address: String,
+        expected_key: Option<[u8; 32]>,
+        password: Option<String>,
+    ) -> Result<(), String> {
         *self.mode = Mode::Browse;
         self.waiting.0 = true;
         self.join.write(JoinServer {
             address,
             expected_key,
+            password,
         });
         Ok(())
     }
@@ -97,7 +106,7 @@ impl Ctx<'_> {
                     (server.name.clone(), server.address.clone())
                 }),
             FormKind::Player => (self.settings.player_name.clone(), String::new()),
-            FormKind::Direct | FormKind::Add => Default::default(),
+            FormKind::Direct | FormKind::Add | FormKind::Password => Default::default(),
         };
         *self.mode = Mode::Form(Form::new(kind, name, address));
         Ok(())
@@ -117,7 +126,13 @@ impl Ctx<'_> {
     fn confirm(&mut self, form: Form) -> Result<(), String> {
         match form.kind {
             FormKind::Player => self.settings.player_name = ops::player(&form.name)?,
-            FormKind::Direct => return self.join(ops::address(&form.address)?, None),
+            FormKind::Direct => return self.join(ops::address(&form.address)?, None, None),
+            FormKind::Password => {
+                let Some((address, key)) = self.retry.0.take() else {
+                    return Ok(());
+                };
+                return self.join(address, key, Some(form.name));
+            }
             FormKind::Add | FormKind::Edit(_) => {
                 let server = ops::server(&form.name, &form.address)?;
                 let at = match form.kind {
@@ -131,9 +146,13 @@ impl Ctx<'_> {
         self.persist()
     }
 
-    /// Drops the form. Dropping the player name leaves the menu, which needs one.
+    /// Drops the form. Dropping the player name leaves the menu, which needs one; dropping the
+    /// password forgets the server that asked for it.
     fn cancel(&mut self, kind: FormKind) -> Result<(), String> {
         *self.mode = Mode::Browse;
+        if kind == FormKind::Password {
+            self.retry.0 = None;
+        }
         if kind == FormKind::Player {
             let back = self.trail.back(Menu::Multiplayer);
             self.menu.set(back);

@@ -7,6 +7,7 @@ mod heard;
 mod kept;
 mod look;
 mod multiplayer;
+mod password;
 mod schedules;
 mod session;
 mod settings;

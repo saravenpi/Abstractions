@@ -14,7 +14,7 @@ mod rebase;
 mod tests;
 
 pub use anchor::{Anchor, Frame};
-pub use clock::Clock;
+pub use clock::{Clock, ClockStep};
 pub use frame::{FrameSet, on_foot};
 pub use gravity::local_gravity;
 pub use local::{altitude, up};

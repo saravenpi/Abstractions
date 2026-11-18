@@ -49,6 +49,16 @@ pub struct Lobby {
     pub lan: Vec<ServerRow>,
 }
 
+impl Lobby {
+    /// Returns the row of `address`, saved or found on the network.
+    pub fn find(&self, address: &str) -> Option<&ServerRow> {
+        self.saved
+            .iter()
+            .chain(&self.lan)
+            .find(|row| row.address == address)
+    }
+}
+
 /// The players of the session: an id and a name each.
 #[derive(Resource, Debug, Clone, PartialEq, Eq, Default)]
 pub struct Players(pub Vec<(u32, String)>);

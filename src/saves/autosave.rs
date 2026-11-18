@@ -1,22 +1,13 @@
 //! Saving the active world: periodic, on pause, on leaving and on exit.
 //!
-//! A save is captured on the main thread, which is cheap, and handed to [`Writer`], which
+//! A save is captured on the main thread, which is cheap, and handed to [`super::Writer`], which
 //! writes the file on the I/O task pool. No frame waits for the disk.
 
-use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use super::capture::Site;
-use super::store::now;
-use super::writer::Writer;
-use super::{ActiveWorld, SaveDir};
+use super::snapshot::Snapshot;
 use crate::menus::Menu;
-use crate::player::{Player, local};
-use crate::render::DayClock;
 use crate::screens::{Screen, playing};
-use crate::ship::Logbook;
-use crate::sim::PlayerId;
-use crate::view::Heading;
 
 /// Seconds of play between two automatic saves.
 const INTERVAL: f32 = 60.0;
@@ -32,75 +23,10 @@ pub struct SavedFlash(pub f32);
 #[derive(Resource)]
 struct AutoTimer(Timer);
 
-/// The body of the local player and the look angles of the camera rig.
-#[derive(SystemParam)]
-struct Poses<'w, 's> {
-    /// The player bodies.
-    bodies: Query<'w, 's, (&'static PlayerId, &'static Transform), With<Player>>,
-    /// The look angles: on foot the heading and the pitch of the view.
-    heading: Res<'w, Heading>,
-}
-
-/// Everything needed to capture the world state and hand it to the writer.
-#[derive(SystemParam)]
-struct Snapshot<'w, 's> {
-    /// Where the world files are.
-    dir: Res<'w, SaveDir>,
-    /// The world being played.
-    active: Option<ResMut<'w, ActiveWorld>>,
-    /// The time of day shown.
-    clock: Res<'w, DayClock>,
-    /// Writes the files off the main thread.
-    writer: ResMut<'w, Writer>,
-    /// Where and when the player is.
-    site: Site<'w>,
-    /// The body and the eyes of the player.
-    poses: Poses<'w, 's>,
-    /// The record of the ship.
-    ship: Logbook<'w, 's>,
-}
-
-impl Snapshot<'_, '_> {
-    /// Captures the pose, the ship, the clocks and the atlas into the active world.
-    ///
-    /// The heading and the pitch are those the camera rig holds, never read back from a
-    /// transform, so a third person camera saves the same angles as the eyes. Seated in the
-    /// ship the view angles on foot are kept.
-    fn capture(&mut self) -> Option<&ActiveWorld> {
-        let active = self.active.as_deref_mut()?;
-        let save = &mut active.0.save;
-        let bodies = self.poses.bodies.iter().map(|(id, body)| (*id, body));
-        if let Some(body) = local(bodies) {
-            self.site.stand(save, body.translation);
-            if self.site.walking() {
-                save.yaw = self.poses.heading.yaw;
-                save.pitch = self.poses.heading.pitch;
-            }
-        }
-        if let Some(ship) = self.ship.record() {
-            save.ship = Some(ship);
-        }
-        self.site.record(save);
-        save.day_phase = self.clock.phase;
-        save.last_played = now();
-        Some(active)
-    }
-
-    /// Captures the world and queues its file to be written off the main thread.
-    fn save(&mut self) {
-        if let Some(world) = self.capture().cloned() {
-            self.writer.queue(world);
-        }
-    }
-
-    /// Captures the world and writes its file before returning. Only for the last frame of the
-    /// application, when no later frame could finish a queued write.
-    fn save_and_wait(&mut self) {
-        self.save();
-        let dir = self.dir.0.clone();
-        self.writer.finish(&dir);
-    }
-}
+/// The systems that write the active world: on pause, on leaving, on exit and every
+/// interval. Code that must change the world before it is saved runs before this set.
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SaveSet;
 
 /// Saves without waiting for the disk.
 fn save_now(mut snapshot: Snapshot) {
@@ -138,8 +64,8 @@ pub(super) fn plugin(app: &mut App) {
             INTERVAL,
             TimerMode::Repeating,
         )))
-        .add_systems(OnEnter(Menu::Pause), save_now)
-        .add_systems(OnExit(Screen::Gameplay), save_now)
-        .add_systems(Update, (tick.run_if(playing), tick_flash))
-        .add_systems(Last, save_on_exit);
+        .add_systems(OnEnter(Menu::Pause), save_now.in_set(SaveSet))
+        .add_systems(OnExit(Screen::Gameplay), save_now.in_set(SaveSet))
+        .add_systems(Update, (tick.run_if(playing).in_set(SaveSet), tick_flash))
+        .add_systems(Last, save_on_exit.in_set(SaveSet));
 }

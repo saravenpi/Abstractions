@@ -20,6 +20,7 @@ mod step;
 
 pub use abstractions_net::log::{Change, Changes, Entry, PlayerId};
 pub use intent::{Intent, IntentOf};
+pub use log::ShareChange;
 pub use step::SimSet;
 
 use bevy::prelude::*;

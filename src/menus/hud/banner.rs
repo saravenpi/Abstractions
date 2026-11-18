@@ -1,9 +1,9 @@
 //! The banner: the name of a planet and of its system, shown briefly on arrival, and the line
-//! that says a player joined or left the session.
+//! that says a player joined or left the session, or what the network has to say.
 
 use bevy::prelude::*;
 
-use crate::net::{PlayerJoined, PlayerLeft};
+use crate::net::{PlayerJoined, PlayerLeft, SessionNotice};
 use crate::space::Location;
 use crate::ui::{caps, text, theme};
 use crate::universe::{BodyId, Universe};
@@ -118,21 +118,24 @@ pub fn presence(name: &str, joined: bool) -> String {
     }
 }
 
-/// The players who joined and left since the last frame.
+/// The players who joined and left since the last frame, and the lines of the network.
 type Presence<'w, 's> = (
     MessageReader<'w, 's, PlayerJoined>,
     MessageReader<'w, 's, PlayerLeft>,
+    MessageReader<'w, 's, SessionNotice>,
 );
 
-/// Shows the last player who joined or left in the banner, in place of the planet name.
+/// Shows the last player who joined or left, or the last line of the network, in the banner,
+/// in place of the planet name.
 pub(super) fn announce(
-    (mut joins, mut leaves): Presence,
+    (mut joins, mut leaves, mut notices): Presence,
     mut banner: ResMut<Banner>,
     (mut planets, mut systems): Names,
 ) {
     let joined = joins.read().map(|player| presence(&player.name, true));
     let lines: Vec<String> = joined
         .chain(leaves.read().map(|player| presence(&player.name, false)))
+        .chain(notices.read().map(|notice| notice.line.clone()))
         .collect();
     let Some(line) = lines.last() else {
         return;

@@ -15,6 +15,7 @@ impl Form {
     pub(super) fn new(kind: FormKind, name: String, address: String) -> Self {
         let field = match kind {
             FormKind::Direct => Field::Address,
+            FormKind::Password => Field::Password,
             _ => Field::Name,
         };
         Self {
@@ -31,6 +32,7 @@ impl Form {
             self.field = match self.field {
                 Field::Name => Field::Address,
                 Field::Address => Field::Name,
+                Field::Password => Field::Password,
             };
         }
     }
@@ -38,7 +40,9 @@ impl Form {
     /// Types `letters` into the current field, after one backspace when `backspace` is set.
     pub(super) fn type_text(&mut self, backspace: bool, letters: &str) {
         match self.field {
-            Field::Name => name::edit_to(&mut self.name, backspace, letters, MAX_CHARS),
+            Field::Name | Field::Password => {
+                name::edit_to(&mut self.name, backspace, letters, MAX_CHARS)
+            }
             Field::Address => name::edit_to(&mut self.address, backspace, letters, ADDRESS_CHARS),
         }
     }

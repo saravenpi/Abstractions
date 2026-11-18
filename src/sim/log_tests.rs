@@ -1,13 +1,15 @@
 //! Tests of the log of first visits: what a visit appends, and that the atlas a world brings
-//! is never logged, whether it is loaded first or after another world.
+//! is never logged, whether it is loaded first or after another world, and that a session
+//! hands visits to the network instead.
 
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 
 use super::log::plugin;
-use super::{Change, Changes, PlayerId};
+use super::{Change, Changes, PlayerId, ShareChange};
 use crate::computer::{Atlas, Target};
 use crate::menus::Menu;
+use crate::net::Session;
 use crate::saves::{ActiveWorld, Starter, WorldEntry, WorldSave};
 use crate::screens::Screen;
 use crate::space::Clock;
@@ -108,4 +110,37 @@ fn a_world_started_after_another_logs_nothing() {
     assert_eq!(app.world().resource::<ActiveWorld>().0.id, "b");
     assert_eq!(app.world().resource::<Atlas>().bodies.len(), 4);
     assert!(app.world().resource::<Changes>().entries.is_empty());
+}
+
+/// Keeps the changes the logger hands to the network.
+fn keep_shared(mut shares: MessageReader<ShareChange>, mut kept: ResMut<Shared>) {
+    kept.0.extend(shares.read().map(|share| share.0.clone()));
+}
+
+/// The changes the logger handed to the network.
+#[derive(Resource, Default)]
+struct Shared(Vec<Change>);
+
+/// In a session a first visit is handed to the network, once, and the local log is left to
+/// the server.
+#[test]
+fn a_first_visit_in_a_session_is_shared_not_logged() {
+    let mut app = app(10.0);
+    app.insert_resource(Session::Hosting {
+        lan_address: "192.168.1.20:24650".to_string(),
+        key: "7F3A-91C2-0B5E".to_string(),
+    })
+    .init_resource::<Shared>()
+    .add_systems(Last, keep_shared);
+    let other = BodyId {
+        moon: 2,
+        ..Universe::new(9).home()
+    };
+    for _ in 0..2 {
+        let mut atlas = app.world_mut().resource_mut::<Atlas>();
+        atlas.visit(Target::Body(other));
+        app.update();
+    }
+    assert!(app.world().resource::<Changes>().entries.is_empty());
+    assert_eq!(app.world().resource::<Shared>().0, [Change::Visited(other)]);
 }

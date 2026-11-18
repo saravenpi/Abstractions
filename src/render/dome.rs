@@ -65,12 +65,13 @@ struct SkyInputs<'w> {
 impl SkyInputs<'_> {
     /// Returns what the camera's place adds to the palette.
     ///
-    /// The rim along the horizon shows once the sky above has thinned, and hands over to the halo
-    /// shell of the planet above the air.
+    /// The rim along the horizon shows once the sky above has thinned by height, as bright as
+    /// the air of the planet makes it, and hands over to the halo shell of the planet above the air.
     fn look(&self) -> SkyLook {
         let vantage = &*self.vantage;
         let to_render = vantage.observer.to_render;
         let leaving = smoothstep(1.0, 2.0, vantage.altitude / vantage.atmosphere.max(1.0));
+        let share = self.local.air(vantage.body).share();
         let rim = Palette::under(&self.sun, vantage, &self.local).0.horizon * RIM_GAIN;
         SkyLook {
             up: vantage.up,
@@ -78,7 +79,7 @@ impl SkyInputs<'_> {
             sun_height: self.sun.height,
             air: vantage.air,
             whiteout: self.crossing.depth,
-            rim: rim * (1.0 - vantage.air) * (1.0 - leaving),
+            rim: rim * (share - vantage.air) * (1.0 - leaving),
             disc: (to_render * DVec3::Y).as_vec3(),
             core: (to_render * (-vantage.galactic).normalize_or_zero()).as_vec3(),
             band: vantage.band,

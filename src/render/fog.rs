@@ -9,7 +9,7 @@ use super::GameCamera;
 use super::celestial::smoothstep;
 use super::clouds::CloudCrossing;
 use super::palette::{Palette, srgb};
-use super::vantage::Vantage;
+use super::vantage::{LocalSystem, Vantage};
 use crate::settings::{Persistent, Settings};
 use crate::space::{Anchor, Frame, altitude};
 use crate::world::{CHUNK_SIZE, Planet, Reach};
@@ -64,7 +64,8 @@ pub struct Height {
     pub clearance: f32,
     /// Sea level radius of the planet in metres.
     pub radius: f32,
-    /// Share of the air left above the camera, from 1 at the ground to 0 in space.
+    /// Share of a home atmosphere of haze left above the camera: 1 at the ground of the home
+    /// planet, 0 in space and without air, above 1 in thicker air.
     pub air: f32,
 }
 
@@ -109,6 +110,8 @@ pub(super) fn fog_for(key: FogKey) -> DistanceFog {
 struct Depths<'w> {
     /// Where the camera is in the sky.
     vantage: Res<'w, Vantage>,
+    /// The star system around it, for the air of the planet below.
+    local: Res<'w, LocalSystem>,
     /// How deep the camera is in the cloud layer.
     crossing: Res<'w, CloudCrossing>,
     /// The render anchor.
@@ -163,7 +166,7 @@ fn update_fog(
             altitude: vantage.altitude,
             clearance: depths.clearance(camera, vantage.altitude),
             radius: vantage.radius,
-            air: vantage.air,
+            air: vantage.air * depths.local.air(vantage.body).haze(),
         };
         let clear = fog_sight(ground, &height);
         let key = FogKey {

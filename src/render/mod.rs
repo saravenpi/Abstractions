@@ -3,6 +3,7 @@
 //! The sky is a real place: the sun stands where the star is, the air thins with height, and the
 //! clouds, the stars and the other bodies of the system are drawn around the camera.
 
+mod air;
 mod atmosphere;
 mod bodies;
 mod camera;
@@ -31,9 +32,15 @@ mod schedule_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_air;
+#[cfg(test)]
 mod tests_dither;
 #[cfg(test)]
 mod tests_fog;
+#[cfg(test)]
+mod tests_palette;
+#[cfg(test)]
+mod tests_sky;
 
 pub use camera::{configure_camera, set_fov};
 pub use celestial::{daylight, moon_direction, smoothstep, sun_direction};

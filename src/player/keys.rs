@@ -37,6 +37,9 @@ fn intents(
     ]
 }
 
+/// The gear of every player body, among which the local one is found.
+type Bodies<'w, 's> = Query<'w, 's, (&'static PlayerId, &'static Gear), With<Player>>;
+
 /// Sends what the keys and the view ask this frame as intents of the local player.
 ///
 /// The look is the view the camera rig will show: the angles it holds, turned by what the mouse
@@ -46,7 +49,7 @@ fn intents(
 pub(super) fn send(
     (keys, settings): (Res<ButtonInput<KeyCode>>, Res<Persistent<Settings>>),
     (heading, look, prefs): (Res<Heading>, Res<Look>, Res<ViewPrefs>),
-    (wing, players): (Res<WingAim>, Query<(&PlayerId, &Gear), With<Player>>),
+    (wing, players): (Res<WingAim>, Bodies),
     mut out: MessageWriter<IntentOf>,
 ) {
     let seen = View::ahead(&heading, &look, prefs.on_foot);

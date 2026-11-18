@@ -6,11 +6,14 @@ use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 
 use super::stage::settings;
+use crate::gear::stick::Stick;
 use crate::gear::{FlightState, Gear, Mode};
 use crate::player::Player;
 use crate::player::eyes::*;
+use crate::player::keys::send;
 use crate::settings::{Persistent, Settings};
-use crate::view::{Heading, Kind, Look};
+use crate::sim::{Intent, IntentOf};
+use crate::view::{Heading, Kind, Look, ViewPrefs};
 
 /// Wings out or a fast fall are framed as flying; walking, the boots and a slide as on foot.
 #[test]
@@ -143,4 +146,35 @@ fn the_aim_is_the_view_until_the_wings_spread() {
         view.x > 0.14 && aim.distance(view) < 1e-6,
         "{aim} for {view}"
     );
+}
+
+/// The look the local player sends is the aim while the body is on its wings, wherever the
+/// view looks, and the view itself once the wings are folded.
+#[test]
+fn the_look_sent_on_the_wings_is_the_aim() {
+    let mut world = gliding();
+    world.init_resource::<ViewPrefs>();
+    world.init_resource::<Messages<IntentOf>>();
+    *world.resource_mut::<Heading>() = Heading {
+        yaw: 1.0,
+        pitch: 0.3,
+    };
+    let aim = Vec2::new(0.4, -0.2);
+    world.resource_mut::<WingAim>().stick = Stick::at(aim);
+    let sent = |world: &mut World| {
+        world.resource_mut::<Messages<IntentOf>>().clear();
+        world.run_system_once(send).expect("the intents are sent");
+        let mut looks = world.resource_mut::<Messages<IntentOf>>();
+        let found = looks.drain().find_map(|message| match message.intent {
+            Intent::Look { yaw, pitch, .. } => Some(Vec2::new(yaw, pitch)),
+            _ => None,
+        });
+        found.expect("a look")
+    };
+    assert_eq!(sent(&mut world), aim);
+    let mut bodies = world.query::<&mut Gear>();
+    for mut gear in bodies.iter_mut(&mut world) {
+        gear.state.mode = Mode::Fall;
+    }
+    assert_eq!(sent(&mut world), Vec2::new(1.0, 0.3));
 }

@@ -15,7 +15,8 @@ use super::tab::Tab;
 use crate::menus::key_name;
 use crate::settings::{Persistent, Settings};
 use crate::ui::{
-    Icon, Overlay, Selected, Tone, action, cell, column, icon, label, link, table_row, text, theme,
+    Blurred, Icon, Overlay, Selected, Tone, action, cell, column, icon, label, link, table_row,
+    text, theme,
 };
 
 /// Widths in pixels of the icon, name, distance and facts columns of a row.
@@ -188,7 +189,7 @@ pub(super) fn spawn(
     let engage = key_name(settings.controls.keys.engage);
     commands.spawn((
         DespawnOnExit(Computer::Open),
-        (Panel, Overlay, node),
+        (Panel, Overlay, Blurred, node),
         BackgroundColor(theme::SCRIM),
         BorderColor::all(theme::HAIRLINE),
         children![header(), field(), list(), card(), footer(&engage)],

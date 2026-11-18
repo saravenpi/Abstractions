@@ -7,7 +7,7 @@ use super::pilot::Goal;
 use super::route::ARRIVAL;
 use super::wells::PLANET_LOCK;
 use crate::computer::Target;
-use crate::universe::{Orbit, PlanetSpec, SystemSpec, Universe};
+use crate::universe::{PlanetSpec, SystemSpec, Universe};
 
 /// Share of the lock radius of a moon within which the ship has reached the point beside it.
 /// It keeps the ship outside the lock sphere of the moon, past the margin at which a warp
@@ -28,13 +28,16 @@ pub fn with_moons(universe: &Universe, mut system: SystemSpec) -> SystemSpec {
     system
 }
 
-/// Where a route to a moon ends: on the line from its planet through the moon, beyond the moon.
-#[derive(Debug, Clone, Copy, PartialEq)]
+/// Where a route to a moon ends: on the line from its planet through the moon, beyond the moon,
+/// or anywhere near enough to the moon and clear of its planet.
+#[derive(Debug, Clone, PartialEq)]
 pub struct Standoff {
-    /// The orbit of the moon around its planet, which turns the line.
-    pub orbit: Orbit,
+    /// The moon, kept from when the route was resolved so its place is not looked up again.
+    pub moon: PlanetSpec,
     /// Metres from the centre of the moon to the point, away from the planet.
     pub gap: f64,
+    /// Metres from the centre of the planet under which the ship is in its lock or its air.
+    pub shelter: f64,
 }
 
 impl Standoff {
@@ -45,19 +48,37 @@ impl Standoff {
         let own = moon.radius * PLANET_LOCK * ARRIVAL;
         let shelter = (host.radius * PLANET_LOCK).max(host.radius + host.atmosphere_height);
         Self {
-            orbit: moon.orbit(),
+            moon: moon.clone(),
             gap: own.max(shelter * ARRIVAL - moon.orbit_radius),
+            shelter,
         }
     }
 
     /// Returns the offset at `time` seconds from the centre of the moon to the point.
     pub fn offset(&self, time: f64) -> DVec3 {
-        self.orbit.at(time).normalize_or_zero() * self.gap
+        self.moon.orbit().at(time).normalize_or_zero() * self.gap
+    }
+
+    /// Returns the point at `time` seconds, in metres from the star.
+    pub fn point(&self, time: f64) -> DVec3 {
+        self.moon.position(time) + self.offset(time)
+    }
+
+    /// Returns true when a ship at `pos` metres from the star has arrived at `time` seconds:
+    /// within a small share of the lock radius of the moon from the point, or anywhere within
+    /// the arrival distance of the moon that is clear of the lock and the air of its planet.
+    /// The second keeps a ship that the warp drops out on the near side of the moon there,
+    /// instead of spooling again for the far side.
+    pub fn reached(&self, pos: DVec3, time: f64) -> bool {
+        let lock = self.moon.radius * PLANET_LOCK;
+        let host = self.moon.host.map_or(DVec3::ZERO, |host| host.at(time));
+        let near = pos.distance(self.moon.position(time)) <= lock * ARRIVAL;
+        pos.distance(self.point(time)) <= lock * NEAR || (near && pos.distance(host) > self.shelter)
     }
 }
 
-/// Returns the goal of a route to `moon`, whose planet is `host`: the point beside it, reached
-/// within a small share of its lock radius.
+/// Returns the goal of a route to `moon`, whose planet is `host`: the point beside it, or the
+/// space around the moon clear of its planet, see [`Standoff::reached`].
 pub fn goal(moon: &PlanetSpec, host: &PlanetSpec) -> Goal {
     let lock = moon.radius * PLANET_LOCK;
     Goal {

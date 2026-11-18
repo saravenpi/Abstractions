@@ -1,16 +1,23 @@
 //! Gas giant tests: the bands and the storm of a giant keep to cloud colours, its material
-//! carries them with its rings, and its sky seen from the deck is its own.
+//! carries them with its rings, its sky seen from the deck is its own, and the world hands it
+//! to the sky before anything the sky pulls in could show in front of it.
 
 use std::f32::consts::PI;
 
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::Body;
 use super::giant::Giant;
 use super::material::{BodyMaterial, far};
 use crate::render::air::Air;
+use crate::render::observer::Observer;
 use crate::render::palette::Palette;
 use crate::render::smoothstep;
-use crate::universe::{PlanetClass, PlanetRecord, Rings, Universe, Water};
+use crate::render::vantage::Vantage;
+use crate::universe::{PlanetClass, PlanetRecord, PlanetSpec, RING_OUTER, Rings, Universe, Water};
+use crate::world::Globe;
+use crate::world::globe::far::{ENTER, FAR, Range, handover, seen};
 
 /// Returns the record of a gas giant.
 fn giant() -> PlanetRecord {
@@ -82,8 +89,8 @@ fn giant_material_draws_bands_and_rings() {
     assert!((body.rings - Vec4::new(1.5, 2.5, 0.7, 0.0)).length() < 1.0e-5);
 }
 
-/// Inside the air of a giant the sky is its own: its zenith far less blue than home and its horizon warm, starless by day
-/// and starry at night, and the clouds close over it.
+/// Inside the air of a giant the sky is its own: its zenith far less blue than home and its
+/// horizon warm, starless by day and starry at night, and the clouds close over it.
 #[test]
 fn giant_sky_from_the_deck() {
     let air = Air::of(&giant());
@@ -96,4 +103,54 @@ fn giant_sky_from_the_deck() {
     assert!(day.horizon.x > day.horizon.z, "{day:?}");
     assert!(air.share() == 1.0 && air.depth() > 2.0);
     assert!(air.cover(0.4) >= 0.8);
+}
+
+/// Returns whether the world and the sky leave `planet` to the sky, seen from `away` metres
+/// off its centre: the world past its hand-over, the sky when it draws the planet below.
+fn handed_over(planet: &PlanetSpec, away: f64) -> (bool, bool) {
+    let dir = DVec3::new(0.6, 0.0, 0.8);
+    let world = seen(&Globe::of(planet), dir * away, true) == Range::Beyond;
+    let pos = planet.position(0.0);
+    let vantage = Vantage {
+        observer: Observer {
+            eye: pos + dir * away,
+            ..Observer::default()
+        },
+        body: usize::from(planet.id.index),
+        moon: planet.id.moon,
+        ..Vantage::default()
+    };
+    (world, Body::Planet(planet.id).shown(planet, pos, &vantage))
+}
+
+/// For planets of 6, 40, 60 and 150 km, with and without the widest rings, the world and the
+/// sky hand the planet over at the same distance, the world still draws its baked sphere for a
+/// while, and the planet and its rings, drawn at their true distances up to there, end short of
+/// the distance past which the sky pulls bodies in, so no ring or moon shows in front of it.
+#[test]
+fn the_world_and_the_sky_agree_on_the_handover() {
+    let universe = Universe::new(7);
+    let home = universe.planet(universe.home());
+    for radius in [6.0e3, 4.0e4, 6.0e4, 1.5e5] {
+        for outer in [None, Some(RING_OUTER * radius)] {
+            let rings = outer.map(|outer| Rings {
+                inner: 1.5 * radius,
+                outer,
+                density: 0.5,
+                color: Vec3::ONE,
+            });
+            let planet = PlanetSpec {
+                radius,
+                rings,
+                ..home.clone()
+            };
+            let at = handover(radius, rings);
+            let reach = outer.unwrap_or(radius);
+            assert!(at + reach <= f64::from(FAR), "{radius} {outer:?}: {at}");
+            assert!(at > ENTER * radius, "{radius} {outer:?}: {at}");
+            assert_eq!(handed_over(&planet, at * 0.999), (false, false));
+            assert_eq!(handed_over(&planet, at * 1.001), (true, true));
+        }
+    }
+    assert_eq!(handover(home.radius, None), 20.0 * home.radius);
 }

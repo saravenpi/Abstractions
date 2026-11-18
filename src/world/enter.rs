@@ -52,8 +52,10 @@ pub(super) fn follow_body(
 }
 
 /// Forgets where the save of `active` stands when `deck` says that is on a body without ground, which
-/// no body can stand on: the world then begins as a new game does, at the home base. A save it keeps
-/// is not touched, nor marked changed.
+/// no body can stand on: the world then begins as a new game does, at the home base, with a fresh
+/// ship berthed on its pad. The saved ship is dropped too, since it was left beside that body; with
+/// no ship in the save, the day clock that moves to its saved phase has nothing in space to strand.
+/// A save it keeps is not touched, nor marked changed.
 pub(super) fn ashore<A>(active: &mut A, deck: impl Fn(BodyId) -> bool)
 where
     A: DerefMut<Target = ActiveWorld>,
@@ -62,23 +64,30 @@ where
         let save = &mut active.0.save;
         save.place = None;
         save.position = None;
+        save.ship = None;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::saves::{Place, WorldEntry, WorldSave};
+    use bevy::math::{DQuat, DVec3};
 
-    /// Returns a world whose save stands on `body`.
+    use crate::saves::{Place, WorldEntry, WorldSave};
+    use crate::ship::Ship;
+    use crate::space::Frame;
+
+    /// Returns a world whose save stands on `body`, its ship flying low over that body.
     fn standing_on(body: BodyId) -> ActiveWorld {
         let place = Place {
             body,
             dir: [0.0, 1.0, 0.0],
             altitude: 3.0,
         };
+        let ship = Ship::at_rest(Frame::Surface(body), DVec3::Y * 9.0e4, DQuat::IDENTITY);
         let save = WorldSave {
             place: Some(place),
+            ship: Some(toml::Value::try_from(ship.state()).unwrap()),
             ..WorldSave::default()
         };
         ActiveWorld(WorldEntry {
@@ -87,7 +96,8 @@ mod tests {
         })
     }
 
-    /// A save on a body without ground loses its place and begins at home; any other save is kept.
+    /// A save on a body without ground loses its place and its ship and begins at home as a new
+    /// game, so the ship is a fresh one berthed at the base; any other save is kept.
     #[test]
     fn a_save_on_a_deck_resumes_at_home() {
         let giant = BodyId {
@@ -96,10 +106,8 @@ mod tests {
         };
         let mut stranded = standing_on(giant);
         ashore(&mut &mut stranded, |body| body == giant);
-        assert_eq!(
-            (stranded.0.save.place, stranded.0.save.position),
-            (None, None)
-        );
+        let save = &stranded.0.save;
+        assert_eq!((save.place, save.position, &save.ship), (None, None, &None));
         let mut kept = standing_on(BodyId::default());
         ashore(&mut &mut kept, |body| body == giant);
         assert_eq!(kept, standing_on(BodyId::default()));

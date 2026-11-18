@@ -31,9 +31,10 @@ fn weight(planet: &PlanetSpec, pos: DVec3) -> DVec3 {
 ///
 /// Without assist the lever and the stick are thrusts. With it they ask for speeds against
 /// the ground, and the weight and the drag are cancelled in full, so a ship that is let go
-/// hangs still and a ship under way flies the speed asked for in any air. A ship that touches
-/// the ground or the sea with idle engines is left to settle on it, unless the stick asks to
-/// rise.
+/// hangs still and a ship under way flies the speed asked for in any air. The lift of the deep
+/// air of a giant is not in `hold.0`: the assist leaves it to float the ship back up. A ship
+/// that touches the ground or the sea with idle engines is left to settle on it, unless the
+/// stick asks to rise.
 fn engines(ship: &Ship, controls: &Controls, touch: &Contact, hold: (DVec3, f64), h: f64) -> DVec3 {
     if !ship.assist {
         return thrusters(ship, controls);
@@ -102,10 +103,12 @@ pub fn step(ship: &mut Ship, controls: &Controls, land: Land, h: f64) -> Report 
     ship.landed = false;
     let touch = deck::touch(ship, planet, ground);
     let air = density(planet, ship.pos.length() - planet.radius);
-    let down = deck::weigh(planet, weight(planet, ship.pos), ship.pos, air);
+    let pull = weight(planet, ship.pos);
+    let down = deck::weigh(planet, pull, ship.pos, air);
     let grip = AIR_GRIP + (1.0 - AIR_GRIP) * airless(thickness(&planet.record));
     let lost = (slow(ship.rot, ship.vel, air, h) - ship.vel) / h;
-    let pushed = engines(ship, controls, &touch, (down + lost, grip), h) + touch.accel;
+    let held = engines(ship, controls, &touch, (pull + lost, grip), h);
+    let pushed = deck::buoyed(planet, ship, held, [pull, lost, down - pull]) + touch.accel;
     let coriolis = DQuat::from_rotation_y(-2.0 * spin_rate(planet) * h);
     let free = coriolis * (ship.vel + (down + pushed) * h);
     let calm = air.min(density(planet, 0.0));
@@ -117,7 +120,7 @@ pub fn step(ship: &mut Ship, controls: &Controls, land: Land, h: f64) -> Report 
     rotate(ship, turn, torque, h);
     follow(ship, &touch, h);
     Report {
-        proper: pushed + (ship.vel - free) / h,
+        proper: pushed + (down - pull) + (ship.vel - free) / h,
         impact: settle(ship, &touch, controls, h),
         pressure: pressure(air, ship.vel.length()),
         radar: touch.radar,

@@ -139,8 +139,6 @@ impl Universe {
         let SystemSpec { star, mut planets } = self.system(id.star);
         let last = planets.len() - 1;
         let planet = planets.swap_remove(usize::from(id.index).min(last));
-        let rank = usize::from(id.moon).checked_sub(1);
-        let moon = rank.and_then(|rank| moon::of(&star, &planet).into_iter().nth(rank));
-        moon.unwrap_or(planet)
+        moon::ranked(&star, &planet, id.moon).unwrap_or(planet)
     }
 }

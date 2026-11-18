@@ -12,7 +12,7 @@ use crate::ship::deck::{FLOOR, grounded};
 use crate::ship::drag::density;
 use crate::ship::flight::{Controls, STEP, Scene, step};
 use crate::ship::landing::GEAR_DROP;
-use crate::universe::PlanetSpec;
+use crate::universe::{HOME_GRAVITY, PlanetSpec};
 
 /// Returns the hand-built gas giant.
 fn giant() -> PlanetSpec {
@@ -142,5 +142,42 @@ fn the_deep_air_floats_a_ship_back_up() {
     assert!(
         risen > deepest + 1000.0 && risen < 0.0,
         "{deepest} m, then {risen} m"
+    );
+}
+
+/// With the assist on and the controls let go, a ship started three scale heights under the
+/// deck of a giant is floated up by the air to the floor within seven minutes and held there.
+/// Past the first second the g readout shows the weight the ship feels, never the push of the
+/// air against the engines that held it still before.
+#[test]
+fn the_deep_air_floats_an_assisted_ship_to_the_floor() {
+    let giant = giant();
+    let scale = giant.atmosphere_height / 8.0;
+    let mut ship = above_pole(&giant, -3.0 * scale);
+    (ship.assist, ship.throttle) = (true, 0.0);
+    let (mut time, mut risen, mut most) = (0.0, None, 0.0f64);
+    let land: super::super::atmo::Land = (&giant, &|_| 0.0);
+    fly(
+        &mut ship,
+        &Controls::default(),
+        land,
+        480.0,
+        |ship, report| {
+            time += STEP;
+            let felt = report.proper.length() / HOME_GRAVITY;
+            most = most.max(if time > 1.0 { felt } else { 0.0 });
+            if risen.is_none() && gear(&giant, ship.pos) > FLOOR - 1.0 {
+                risen = Some(time);
+            }
+        },
+    );
+    let held = gear(&giant, ship.pos);
+    println!("floated to the floor after {risen:?} s, then at most {most} g, held at {held} m");
+    assert!(risen.is_some_and(|time| time < 420.0), "still at {held} m");
+    assert!((held - FLOOR).abs() < 1.0, "held at {held} m");
+    let weight = giant.gravity * (giant.radius / (giant.radius - 3.0 * scale)).powi(2);
+    assert!(
+        most < 1.2 * weight / HOME_GRAVITY,
+        "the readout showed {most} g"
     );
 }

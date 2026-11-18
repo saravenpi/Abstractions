@@ -140,15 +140,15 @@ pub fn fly(
     let Some(target) = autopilot.target else {
         return;
     };
-    let goal = *autopilot
+    let goal = autopilot
         .goal
         .get_or_insert_with(|| resolve(universe, target));
+    let lock = goal.lock;
     let here = ship_position(universe, ship.frame, ship.pos, time);
-    let Some((here, there)) = here.zip(goal.point(universe, time)) else {
+    let Some((to, arrived)) = here.and_then(|here| goal.reached(universe, here, time)) else {
         return autopilot.cancel();
     };
-    let to = there - here;
-    if to.length() <= goal.arrival {
+    if arrived {
         helm.warp = ship.warp != Warp::Off;
         *autopilot = Autopilot {
             phase: Phase::Arrived,
@@ -157,8 +157,8 @@ pub fn fly(
         return;
     }
     autopilot.jump = to.length() > JUMP_DISTANCE;
-    skies.beacon = autopilot.jump.then(|| beacon(ship.pos, to, goal.lock));
-    autopilot.phase = hold(&mut ship, &mut helm, &skies.wells, (to, goal.lock));
+    skies.beacon = autopilot.jump.then(|| beacon(ship.pos, to, lock));
+    autopilot.phase = hold(&mut ship, &mut helm, &skies.wells, (to, lock));
 }
 
 /// Starts a route when the board computer hands over a destination.

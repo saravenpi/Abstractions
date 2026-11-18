@@ -9,7 +9,7 @@ use super::scene::Scene;
 use super::spawn::Spawner;
 use super::stretch::Stretch;
 use super::{Chunks, raytrace};
-use crate::world::globe::far::{Range, bake, range};
+use crate::world::globe::far::{Range, bake, seen};
 use crate::world::globe::{ChunkId, Face};
 use crate::world::mesh::Frame;
 
@@ -74,7 +74,7 @@ fn covered(chunks: &Chunks) -> bool {
 }
 
 /// Swaps between the quadtree and the baked planet with the distance of the focus: the baked
-/// planet beyond about three radii, nothing beyond twenty, where the sky draws the planet.
+/// planet beyond about three radii, nothing beyond the hand-over, where the sky draws the planet.
 ///
 /// As the first step of the chain that sees the focus, it also notes how the focus moves and
 /// how far the budget of the frame stretches for the work that waits.
@@ -92,9 +92,8 @@ pub fn watch_far(
     chunks.motion.advance(at, scene.delta());
     chunks.stretch = Stretch::of(waiting, scene.delta());
     chunks.far.prepare(&mut commands, &mut spawner);
-    let radius = spawner.terrain.globe().radius();
-    let seen = at.map(|at| range(at.length() / radius, chunks.far.active));
-    let seen = seen.unwrap_or(Range::Beyond);
+    let globe = spawner.terrain.globe();
+    let seen = at.map_or(Range::Beyond, |at| seen(globe, at, chunks.far.active));
     let far = seen != Range::Near && chunks.far.node.is_some();
     if far && !chunks.far.active {
         chunks.drop_near(&mut commands);

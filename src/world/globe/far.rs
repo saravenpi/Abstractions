@@ -1,10 +1,13 @@
-//! Far planets: the coarse sphere drawn for a globe seen from space.
+//! Far planets: the coarse sphere drawn for a globe seen from space, and the distance at which
+//! the world hands it to the sky.
 
 use std::sync::Arc;
 
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::{ChunkId, Face, Globe};
+use crate::universe::Rings;
 use crate::world::Terrain;
 use crate::world::mesh::{Frame, fill_node};
 use crate::world::shapes::FlatMesh;
@@ -23,6 +26,10 @@ pub const LEAVE: f64 = 3.0;
 
 /// Distance from the planet centre, in radii, beyond which the planet is no longer drawn here.
 pub const LIMIT: f64 = 20.0;
+
+/// Distance in metres past which the sky pulls a body in: farther than anything the terrain
+/// streams, see [`handover`].
+pub const FAR: f32 = 1.0e6;
 
 /// How a planet is drawn for a focus at some distance.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,6 +52,27 @@ pub fn range(radii: f64, far: bool) -> Range {
         Range::Far
     } else {
         Range::Near
+    }
+}
+
+/// Returns the distance in metres from the centre of a planet of `radius` metres with `rings`
+/// beyond which the world no longer draws it and the sky does: [`LIMIT`] radii, or nearer for a
+/// large planet, so that the planet and its rings end short of [`FAR`]. Within that distance the
+/// sky draws the rings and the moons around it at their true distances, and nothing it pulls in
+/// can show in front of the planet. The world and the sky both read it from here.
+pub fn handover(radius: f64, rings: Option<Rings>) -> f64 {
+    let reach = rings.map_or(radius, |rings| rings.outer.max(radius));
+    (LIMIT * radius).min(f64::from(FAR) - reach)
+}
+
+/// Returns how to draw `globe` for a focus at `at` metres from its centre: as [`range`] says,
+/// and not at all past its [`handover`].
+pub fn seen(globe: &Globe, at: DVec3, far: bool) -> Range {
+    let distance = at.length();
+    if distance > globe.handover() {
+        Range::Beyond
+    } else {
+        range(distance / globe.radius(), far)
     }
 }
 

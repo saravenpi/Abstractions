@@ -1,7 +1,9 @@
 //! A planet's piece: every musical choice, drawn from the planet seed.
 
 use super::mode::{Mode, Scale};
+use super::mood::mood;
 use crate::audio::dsp::rand::Rand;
+use crate::universe::PlanetClass;
 
 /// Lowest tonic, as a MIDI note in the bass register: C2, 65 Hz.
 const LOW_TONIC: i32 = 36;
@@ -62,6 +64,8 @@ pub struct Piece {
     pub seed: u64,
     /// Whether this is the warm variant played on the home planet.
     pub home: bool,
+    /// The planet class whose mood the piece took.
+    pub class: PlanetClass,
     /// Tonic and mode.
     pub scale: Scale,
     /// Semitones from the bass to the middle upper voice.
@@ -126,7 +130,8 @@ fn pace(rand: &mut Rand, home: bool) -> Pace {
 }
 
 impl Piece {
-    /// Draws the piece of a planet. `home` narrows every choice toward a warm, settled sound.
+    /// Draws the piece of an island world, the class of the home planet. `home` narrows every
+    /// choice toward a warm, settled sound.
     pub fn new(seed: u64, home: bool) -> Self {
         let rand = &mut Rand::new(seed, 1);
         let scale = scale(rand, home);
@@ -134,11 +139,32 @@ impl Piece {
         Self {
             seed,
             home,
+            class: PlanetClass::Island,
             scale,
             lift: if home { 17 } else { lift },
             timbre: timbre(rand, home),
             room: room(rand, home),
             pace: pace(rand, home),
+        }
+    }
+
+    /// Draws the piece of a planet of `class`: the piece of its seed, in the mode and with the
+    /// brightness the class asks for. An island world keeps the piece exactly as drawn.
+    pub fn of(seed: u64, home: bool, class: PlanetClass) -> Self {
+        let (piece, mood) = (Self::new(seed, home), mood(class));
+        let mode = mood.mode.unwrap_or(piece.scale.mode);
+        let bright = piece.timbre.bright * mood.bright;
+        Self {
+            class,
+            scale: Scale {
+                mode,
+                ..piece.scale
+            },
+            timbre: Timbre {
+                bright,
+                ..piece.timbre
+            },
+            ..piece
         }
     }
 }

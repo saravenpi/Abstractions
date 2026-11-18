@@ -6,7 +6,9 @@ mod dsp;
 mod harmony;
 mod mix;
 mod music;
+mod planet;
 mod scene;
+mod sensing;
 mod wire;
 
 use std::sync::Arc;

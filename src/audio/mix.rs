@@ -7,9 +7,11 @@ use super::cues::Pool;
 use super::dsp::filter::{Lag, glide, pole};
 use super::dsp::limit::{DcBlock, limit};
 use super::music::{Music, MusicCtl};
+use super::planet::class;
 use super::shared::{PARAMS, Param, Shared};
 use super::ship::{Ship, ShipCtl};
 use super::suit::{Suit, SuitCtl};
+use crate::universe::PlanetClass;
 
 /// Frames between two readings of the shared values.
 pub const BLOCK: u32 = 32;
@@ -91,6 +93,7 @@ impl Mixer {
             wind: self.at(Param::Wind),
             shore: self.at(Param::Shore),
             shore_side: self.at(Param::ShoreSide) * 2.0 - 1.0,
+            molten: class(self.targets[Param::Class as usize]) == PlanetClass::Lava,
             submerged: self.at(Param::Submerged),
             cabin: self.at(Param::Cabin),
             space: self.at(Param::Space),
@@ -136,6 +139,7 @@ impl Mixer {
             day: self.targets[Param::Day as usize],
             submerged: self.targets[Param::Submerged as usize],
         };
+        self.music.dress(class(self.targets[Param::Class as usize]));
         self.music.steer(&orders, dt);
         self.air.tune(&self.air_ctl(), dt);
         self.ship.tune(&self.ship_ctl());

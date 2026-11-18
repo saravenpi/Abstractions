@@ -2,6 +2,8 @@
 
 use bevy::prelude::*;
 
+use crate::universe::PlanetClass;
+
 /// Seed of the piece played on the title screen, before any world exists.
 pub const TITLE_SEED: u64 = 0x00AB_5712_AC71_0115;
 
@@ -16,6 +18,8 @@ pub struct AudioScene {
     pub planet_seed: u64,
     /// Whether that planet is the home planet, which gets the warm variant of its piece.
     pub home: bool,
+    /// The class of that planet: it sets the mood of the piece and what its shore sounds like.
+    pub class: PlanetClass,
     /// How much air is left around the listener: 1 on the ground, 0 at the top of the atmosphere.
     pub altitude_fade: f32,
     /// Whether the listener is in space, outside any atmosphere.
@@ -57,6 +61,7 @@ impl Default for AudioScene {
         Self {
             planet_seed: TITLE_SEED,
             home: true,
+            class: PlanetClass::Island,
             altitude_fade: 1.0,
             in_space: false,
             warping: false,

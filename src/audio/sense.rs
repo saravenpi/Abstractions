@@ -3,6 +3,7 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
+use super::planet::{Surf, loudness, surf};
 use super::scene::{AudioScene, altitude_fade, cloud_depth};
 use super::shore::{closeness, nearest};
 use crate::companion::Companion;
@@ -23,7 +24,7 @@ const EARSHOT: f32 = 6.0;
 
 /// The planet the listener is at, kept so that its description is not rebuilt every frame.
 #[derive(Resource, Debug, Default)]
-struct Here(Option<(Universe, PlanetSpec)>);
+pub(super) struct Here(pub(super) Option<(Universe, PlanetSpec)>);
 
 /// Where the player is, when a world exists.
 #[derive(SystemParam)]
@@ -36,7 +37,8 @@ struct Place<'w> {
     universe: Option<Res<'w, Universe>>,
 }
 
-/// Writes the planet, the frame, the cabin, the daylight and the wind into the scene.
+/// Writes the planet, the frame, the cabin, the daylight and the wind into the scene. The wind
+/// is not heard on a planet without air.
 fn sense_place(
     place: Place,
     clock: Res<DayClock>,
@@ -57,11 +59,14 @@ fn sense_place(
         .0
         .as_ref()
         .map_or(scene.planet_seed, |(_, spec)| spec.seed);
+    let record = here.0.as_ref().map(|(_, spec)| spec.record);
+    scene.class = record.map_or(scene.class, |record| record.class);
     scene.home = location.body == universe.home();
     scene.in_space = !matches!(anchor.frame, Frame::Surface(_));
     scene.cabin = f32::from(u8::from(location.travel == Travel::InShip));
     scene.daylight = daylight(clock.phase);
-    scene.wind = wind.strength;
+    let still = record.is_some_and(|record| loudness(&record) <= 0.0);
+    scene.wind = if still { 0.0 } else { wind.strength };
 }
 
 /// Returns how close the nearest shoreline is to a listener at chart position `at`, `height`
@@ -99,7 +104,9 @@ fn sense_companion(
 
 /// Writes the altitude fade, the water, the clouds and the shore into the scene from the camera.
 ///
-/// In space there is no air, no water and no shore: all four are zero.
+/// In space there is no air, no water and no shore: all four are zero. On a planet the whoosh
+/// of the clouds follows how loud its air is, and the sea is only heard, from above or from
+/// under its surface, where the planet has a liquid one.
 fn sense_listener(
     here: Res<Here>,
     anchor: Option<Res<Anchor>>,
@@ -126,8 +133,14 @@ fn sense_listener(
     let height = altitude(&anchor, terrain.globe(), pos);
     let chart = terrain.locate(anchor.to_frame(pos));
     scene.altitude_fade = altitude_fade(height, spec.atmosphere_height as f32);
+    let (air, sea) = (loudness(&spec.record), surf(&spec.record) != Surf::Silent);
+    let depth = cloud_depth(height, spec.cloud_base as f32, spec.cloud_top as f32);
+    scene.cloud_depth = depth * air;
+    if !sea {
+        (scene.submerged, scene.shore, scene.shore_side) = (0.0, 0.0, 0.0);
+        return;
+    }
     scene.submerged = (-height / HEAD_DEPTH).clamp(0.0, 1.0);
-    scene.cloud_depth = cloud_depth(height, spec.cloud_base as f32, spec.cloud_top as f32);
     let (level, edge) = shore(&terrain, &anchor, chart, height);
     (scene.shore, scene.shore_side) = (level, side(camera, edge) * level.signum());
 }
@@ -135,11 +148,16 @@ fn sense_listener(
 /// Airspeeds in metres per second between which the rush of air grows from nothing to full.
 const RUSH_SPEED: (f32, f32) = (6.0, 75.0);
 
-/// Writes the flight gear into the scene: the rush of air by airspeed, the boosters by their
-/// push and the flutter of the cloth. The gear publishes nothing while nobody is on foot.
-fn sense_flight(flight: Option<Res<FlightFx>>, mut scene: ResMut<AudioScene>) {
+/// Writes the flight gear into the scene: the rush of air by airspeed and by how loud the air
+/// of the planet is, the boosters by their push and the flutter of the cloth. The gear
+/// publishes nothing while nobody is on foot.
+fn sense_flight(here: Res<Here>, flight: Option<Res<FlightFx>>, mut scene: ResMut<AudioScene>) {
     let fx = flight.as_deref().copied().unwrap_or_default();
-    scene.rush = smoothstep(RUSH_SPEED.0, RUSH_SPEED.1, fx.airspeed);
+    let air = here
+        .0
+        .as_ref()
+        .map_or(1.0, |(_, spec)| loudness(&spec.record));
+    scene.rush = smoothstep(RUSH_SPEED.0, RUSH_SPEED.1, fx.airspeed) * air;
     scene.boost = fx.thrust;
     scene.flutter = fx.flutter;
 }

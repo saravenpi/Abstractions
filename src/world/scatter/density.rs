@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 use noise::{NoiseFn, Perlin};
 
+use super::spacing::stone;
 use crate::world::Terrain;
 use crate::world::globe::Chart;
 use crate::world::propmesh::{BIG, FLOWER, Plant, TREES};
@@ -25,6 +26,10 @@ pub struct Density {
     pub forest: f32,
     /// Reeds and cattails, which only grow where the water is shallower than half a meter.
     pub edge: f32,
+    /// Share of the land plants the climate lets grow, 1 where it is not read.
+    pub vigor: f32,
+    /// True above the snow line of the climate, where only stones lie.
+    pub frozen: bool,
 }
 
 /// A place where the density fields can be read.
@@ -77,6 +82,8 @@ impl Fields {
         };
         Density {
             edge,
+            vigor: 1.0,
+            frozen: false,
             grove: soft(at(0, 0.045)),
             bloom: soft(at(1, 0.07)),
             patch: (at(2, 0.06) * 4.0 + 0.2).clamp(0.0, 1.6) * (0.6 + 0.8 * shore),
@@ -85,10 +92,12 @@ impl Fields {
     }
 }
 
-/// Returns the multiplier a plant's table chance gets from the local density.
+/// Returns the multiplier a plant's table chance gets from the local density, and from the climate
+/// unless it is a stone.
 fn gain(plant: Plant, d: &Density) -> f32 {
     let i = plant as usize;
-    if matches!(plant, Plant::Reed | Plant::Cattail) {
+    let grow = [d.vigor, 1.0][usize::from(stone(plant))];
+    grow * if matches!(plant, Plant::Reed | Plant::Cattail) {
         d.edge
     } else if plant == Plant::Kelp {
         d.forest
@@ -106,7 +115,8 @@ fn gain(plant: Plant, d: &Density) -> f32 {
 /// Picks the plant a roll in `[0, 1)` lands on among the big or the small plants of a table.
 pub fn choose(table: &[(Plant, f32)], roll: f32, d: &Density, big: bool) -> Option<Plant> {
     let mut acc = 0.0;
-    for &(plant, chance) in table.iter().filter(|(p, _)| ((*p as usize) < BIG) == big) {
+    let kept = |p: &Plant| ((*p as usize) < BIG) == big && (!d.frozen || stone(*p));
+    for &(plant, chance) in table.iter().filter(|(p, _)| kept(p)) {
         acc += chance * gain(plant, d);
         if roll < acc {
             return Some(plant);

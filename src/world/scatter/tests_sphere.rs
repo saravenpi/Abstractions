@@ -54,10 +54,11 @@ fn gaps(tile: &Tile) -> Vec<(f32, f32)> {
 }
 
 /// Big props keep the distance of their rooms in true metres on both globes, wherever the chart is squeezed.
+/// Twelve chunks per zone are checked, as the climate thins the big props away from the heart of a biome.
 #[test]
 fn big_props_keep_true_distance_on_a_sphere() {
     let mut pairs = 0;
-    for (zone, tile) in tiles(15, 6) {
+    for (zone, tile) in tiles(15, 12) {
         for (gap, rule) in gaps(&tile) {
             assert!(
                 gap >= rule - 1e-3,

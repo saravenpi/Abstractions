@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use super::air::calm;
 use super::zones::{Tile, Zone, chunks, globes, trio};
 use super::*;
 use crate::world::globe::Globe;
@@ -60,16 +61,17 @@ fn grass_density(globe: &Arc<Globe>, zone: Zone) -> [Option<f64>; 6] {
 }
 
 /// Like for like, the grass of one biome carries the same number of props per true square metre at a face
-/// centre as at an edge midpoint and next to a corner, within 10 percent, on both globes.
+/// centre as at an edge midpoint and next to a corner, within 10 percent, on both globes. The climate is
+/// held still, as it differs by latitude between the places compared: only the chart is measured.
 #[test]
 fn density_is_even_across_a_face() {
     let mut compared = 0;
     for globe in globes() {
-        let centre = grass_density(&globe, Zone::Centre);
+        let centre = calm(|| grass_density(&globe, Zone::Centre));
         for zone in [Zone::Edge, Zone::Corner] {
             let pairs = centre
                 .into_iter()
-                .zip(grass_density(&globe, zone))
+                .zip(calm(|| grass_density(&globe, zone)))
                 .zip(Biome::ALL);
             for ((a, b), biome) in pairs.filter_map(|((a, b), biome)| Some(((a?, b?), biome))) {
                 let off = (a / b - 1.0).abs();

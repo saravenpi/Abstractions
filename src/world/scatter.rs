@@ -1,5 +1,7 @@
-//! Deterministic placement of plants, rocks and sea life inside one chunk, by biome, surface, depth and patch density.
+//! Deterministic placement of plants, rocks and sea life inside one chunk, by biome, surface, depth, patch
+//! density and climate.
 
+mod air;
 mod density;
 mod metric;
 mod pass;
@@ -13,6 +15,8 @@ mod table;
 mod tests;
 #[cfg(test)]
 mod tests_class;
+#[cfg(test)]
+mod tests_climate;
 #[cfg(test)]
 mod tests_cost;
 #[cfg(test)]
@@ -32,6 +36,7 @@ use bevy::prelude::*;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
+use self::air::{Air, still};
 use self::density::Fields;
 use self::metric::Metric;
 use self::pass::{Ctx, pass};
@@ -139,6 +144,10 @@ fn run(terrain: &Terrain, coord: IVec2, relief: Option<Relief>) -> Scatter {
         center,
         fields: Fields::new(terrain.seed()),
         metric: Metric::of(terrain, center),
+        air: relief
+            .as_ref()
+            .filter(|_| !still())
+            .map(|relief| Air::new(terrain, coord, relief)),
         relief,
     };
     let growth = terrain.globe().lands().growth();

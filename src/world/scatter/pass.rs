@@ -4,11 +4,13 @@ use bevy::prelude::*;
 use rand::RngExt;
 use rand_chacha::ChaCha8Rng;
 
+use super::air::Air;
 use super::density::{Fields, choose};
 use super::metric::Metric;
 use super::relief::Relief;
 use super::spacing::{crowded, ground, rock, room, sunk};
 use super::{BIG_CAP, Placement, SMALL_CAP, TRI_BUDGET, deep};
+use crate::world::lands::thrive::{frozen, vigor};
 use crate::world::propmesh::{Plant, VARIANTS};
 use crate::world::props::small_tris;
 use crate::world::{Biome, CHUNK_SIZE, SEA_LEVEL, Surface, Terrain};
@@ -31,6 +33,8 @@ pub struct Ctx<'a> {
     pub metric: Metric,
     /// Visible ground of the chunk. The legacy plane has none and reads the analytic ground.
     pub relief: Option<Relief<'a>>,
+    /// Climate over the chunk. The legacy plane has none and grows as it always did.
+    pub air: Option<Air>,
 }
 
 /// The ground under one try.
@@ -83,11 +87,16 @@ impl Ctx<'_> {
     }
 
     /// Returns the plant the roll lands on at `w` and the ground it grows on, if any. A sea floor only
-    /// carries something where the sea has life.
+    /// carries something where the sea has life. Dry land grows as thick as its climate lets it, and
+    /// only stones lie above the snow line.
     fn pick(&self, w: Vec2, roll: f32, big: bool) -> Option<(Plant, Ground)> {
         let at = self.look(w)?;
         let table = self.terrain.globe().lands().plants(at.biome, at.surface);
-        let density = self.fields.density((self.terrain, w), -at.height);
+        let mut density = self.fields.density((self.terrain, w), -at.height);
+        let dry = at.height > self.terrain.globe().sea_level();
+        if let Some(air) = self.air.as_ref().filter(|_| dry).map(|air| air.at(w)) {
+            (density.vigor, density.frozen) = (vigor(at.biome, air), frozen(air));
+        }
         choose(table, roll, &density, big)
             .filter(|&plant| {
                 plant != Plant::Willow || (at.height < WILLOW_CEILING && self.near_pond(w))

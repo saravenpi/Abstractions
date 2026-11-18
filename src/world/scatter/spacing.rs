@@ -26,6 +26,11 @@ pub fn rock(plant: Plant) -> bool {
     matches!(plant, Plant::Rock | Plant::IceRock | Plant::Sandstone)
 }
 
+/// Returns true for the stones that still lie above the snow line of the climate, where nothing grows.
+pub fn stone(plant: Plant) -> bool {
+    rock(plant) || plant == Plant::Pebbles
+}
+
 /// Returns the radius of the circle a big prop keeps free of other big props.
 pub fn room(p: &Placement) -> f32 {
     let base = if (p.plant as usize) < TREES {

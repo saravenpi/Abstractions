@@ -6,6 +6,9 @@ mod paint;
 mod tests;
 #[cfg(test)]
 mod tests_paint;
+#[cfg(test)]
+mod tests_thrive;
+pub(in crate::world) mod thrive;
 
 use super::SEA_LEVEL;
 use super::biome::Biome;

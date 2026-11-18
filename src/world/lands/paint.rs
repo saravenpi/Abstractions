@@ -45,7 +45,7 @@ impl Lands {
             Surface::Shallows | Surface::Reef => self.basin() * 0.9,
             Surface::Pond => self.basin() * 0.8,
             Surface::Sand | Surface::Grass if low => self.basin(),
-            Surface::Sand | Surface::Grass | Surface::Snow => land,
+            _ => land,
         }
     }
 

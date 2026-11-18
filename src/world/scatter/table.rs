@@ -92,7 +92,11 @@ const TABLE: [[&[(Plant, f32)]; 8]; 6] = [
         ROCKY, SNOWY],
 ];
 
-/// Returns the plants that may grow on a surface of a biome, with their chance per try.
+/// Returns the plants that may grow on a surface of a biome, with their chance per try. A surface the
+/// table has no column for, such as a river bed, grows nothing.
 pub fn plants_for(biome: Biome, surface: Surface) -> &'static [(Plant, f32)] {
-    TABLE[biome as usize][surface as usize]
+    TABLE[biome as usize]
+        .get(surface as usize)
+        .copied()
+        .unwrap_or_default()
 }

@@ -35,8 +35,9 @@ pub const LINE_HEIGHT: f32 = theme::FONT_SMALL * 1.2;
 /// Height in pixels of the header: the breadcrumb, the tabs and the line that counts the rows.
 pub const HEADER: f32 = 2.0 * LINE_HEIGHT + theme::ROW_HEIGHT + 2.0 * theme::GAP_XS;
 
-/// Height in pixels of the card: its rule, its margin and the lines of the longest readout.
-pub const CARD: f32 = theme::LINE + theme::GAP_S + LINES as f32 * LINE_HEIGHT;
+/// Height in pixels of the card: its rule, its margin, the lines of the longest readout and the
+/// climate line under them.
+pub const CARD: f32 = theme::LINE + theme::GAP_S + (LINES + 1) as f32 * LINE_HEIGHT;
 
 /// Height in pixels of the footer: the course line, the actions and the key hints.
 pub const FOOTER: f32 = 2.0 * LINE_HEIGHT + theme::ROW_HEIGHT + 2.0 * theme::GAP_XS;

@@ -22,6 +22,7 @@ mod tone;
 mod view;
 mod widget;
 
+pub(super) use pose::Reader;
 pub(super) use widget::frame;
 
 use std::time::Duration;

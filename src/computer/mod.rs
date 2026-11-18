@@ -4,12 +4,14 @@ mod atlas;
 mod board;
 mod chart;
 mod chrome;
+mod climap;
 mod course;
 mod detail;
 mod draw;
 mod format;
 mod giant;
 mod glide;
+mod inset;
 mod keys;
 mod labels;
 mod layout;
@@ -25,6 +27,7 @@ mod reveal;
 mod route;
 mod rows;
 mod scene;
+mod season;
 mod semantic;
 mod show;
 mod sift;
@@ -37,9 +40,13 @@ mod words;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_climate;
+#[cfg(test)]
 mod tests_detail;
 #[cfg(test)]
 mod tests_giant;
+#[cfg(test)]
+mod tests_inset;
 #[cfg(test)]
 mod tests_labels;
 #[cfg(test)]
@@ -80,11 +87,13 @@ pub use orbits::satellites;
 pub use reveal::{HOME_NEIGHBOURS, REVEAL_CELLS, REVEAL_GLY};
 pub use route::{Destination, Engage, RouteStatus, Target};
 pub use rows::{Line, View};
+pub use season::orbit_season;
 pub use semantic::{DIVE, entry, shift};
 pub use sift::Sort;
 pub use tab::Tab;
 pub use track::Known;
 pub use view::Act;
+pub use words::temperature;
 
 use bevy::prelude::*;
 
@@ -104,7 +113,7 @@ pub(super) fn logic(app: &mut App) {
 
 /// Registers the computer resources and systems.
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins((
+    app.init_resource::<inset::Inset>().add_plugins((
         logic,
         open::plugin,
         keys::plugin,

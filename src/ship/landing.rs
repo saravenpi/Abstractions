@@ -80,7 +80,8 @@ pub struct Contact {
     pub radar: f64,
     /// Tangent of the ground slope under the ship.
     pub slope: f64,
-    /// Unit normal of the ground under the ship, zero when it is out of reach.
+    /// Unit normal of the surface `radar` is measured to, zero when it is out of reach: the
+    /// ground under the ship, or straight up over a sea whose bed no point touches.
     pub normal: DVec3,
 }
 
@@ -145,15 +146,17 @@ fn points(ship: &Ship, rig: &Rig) -> [Point; 9] {
 }
 
 /// Adds to `out` what the ground and the sea do to the point `p` of a ship moving as `motion`.
+/// The springs press with the depth the point keeps once the ship is set back by `out.sunk`:
+/// the depth a fast ship had when its hit was seen is not theirs to give back.
 fn touch(ship: &Ship, rig: &Rig, p: &Point, motion: &Motion, out: &mut Contact) {
     let arm = ship.rot * p.body;
     let vel = motion.at(ship, p.body);
     let (spring, damper, _) = SPRINGS[p.kind];
-    let mut accel = DVec3::ZERO;
-    if p.depth > 0.0 {
+    let (mut accel, depth) = (DVec3::ZERO, p.depth - out.sunk);
+    if depth > 0.0 {
         let closing = -vel.dot(rig.normal);
         let fade = (1.0 + closing / REBOUND).clamp(0.0, 1.0);
-        let press = (spring * p.depth + damper * closing).max(0.0) * fade;
+        let press = (spring * depth + damper * closing).max(0.0) * fade;
         let slip = vel + rig.normal * closing;
         let grip = GRIP.min(FRICTION * press / slip.length().max(1e-9));
         accel += rig.normal * press - slip * grip;
@@ -169,12 +172,30 @@ fn touch(ship: &Ship, rig: &Rig, p: &Point, motion: &Motion, out: &mut Contact) 
     out.torque += ship.rot.inverse() * arm.cross(accel) / super::strike::GYRATION;
 }
 
+/// Books on `out` what the ground and the sea of `rig` do to `ship` during one step: the hits
+/// first, then the springs, the grip and the water on what the hits left.
+fn press(ship: &Ship, rig: &Rig, out: &mut Contact) {
+    let cos = rig.normal.dot(rig.up).max(1e-6);
+    out.slope = (1.0 - cos * cos).max(0.0).sqrt() / cos;
+    let points = points(ship, rig);
+    let mut motion = Motion::of(ship);
+    points.iter().for_each(|p| note(ship, rig, p, out));
+    out.sunk = absorb(ship, rig, &points, &mut motion);
+    points
+        .iter()
+        .for_each(|p| touch(ship, rig, p, &motion, out));
+    (out.kick, out.twist) = (motion.vel - ship.vel, motion.spin - ship.spin);
+}
+
 /// Returns what the ground and the sea of `planet` do to the ship, which is in its surface frame.
 ///
 /// `ground` gives the terrain height in metres above sea level at a position in the planet frame.
+/// Over a sea whose bed no point touches, the normal handed back is the vertical: the radar
+/// reads the water there, and the slope of the bed under it is no plane to stay clear of.
 pub fn contact(ship: &Ship, planet: &PlanetSpec, ground: &dyn Fn(DVec3) -> f64) -> Contact {
     let (r, sea) = (ship.pos.length(), planet.record.ocean > 0.0);
-    let floor = ground(ship.pos).max(if sea { 0.0 } else { f64::NEG_INFINITY });
+    let bed = ground(ship.pos);
+    let floor = bed.max(if sea { 0.0 } else { f64::NEG_INFINITY });
     let mut out = Contact {
         radar: r - planet.radius - floor - GEAR_DROP,
         ..Contact::default()
@@ -183,24 +204,15 @@ pub fn contact(ship: &Ship, planet: &PlanetSpec, ground: &dyn Fn(DVec3) -> f64) 
         return out;
     }
     let up = ship.pos / r;
-    let normal = normal(ground, ship.pos, up);
-    let cos = normal.dot(up).max(1e-6);
-    out.slope = (1.0 - cos * cos).max(0.0).sqrt() / cos;
-    out.normal = normal;
     let rig = Rig {
         radius: planet.radius,
         ground,
         up,
-        normal,
+        normal: normal(ground, ship.pos, up),
         sea,
     };
-    let points = points(ship, &rig);
-    let mut motion = Motion::of(ship);
-    points.iter().for_each(|p| note(ship, &rig, p, &mut out));
-    out.sunk = absorb(ship, &rig, &points, &mut motion);
-    points
-        .iter()
-        .for_each(|p| touch(ship, &rig, p, &motion, &mut out));
-    (out.kick, out.twist) = (motion.vel - ship.vel, motion.spin - ship.spin);
+    press(ship, &rig, &mut out);
+    let afloat = floor > bed && !out.ground;
+    out.normal = if afloat { up } else { rig.normal };
     out
 }

@@ -10,6 +10,7 @@ use crate::ship::gear::feet;
 use crate::ship::landing::{GEAR_DROP, HULL};
 use crate::ship::strike::CRASH;
 use crate::universe::PlanetSpec;
+use crate::wind::samples;
 
 /// Height in metres above sea level of the ground at the +Y pole in every drop.
 const BASE: f64 = 200.0;
@@ -50,18 +51,22 @@ fn clearance(ship: &Ship, planet: &PlanetSpec, height: &dyn Fn(DVec3) -> f64) ->
 }
 
 /// Drops a ship without assist, its gear `gear` extended, at `vel` onto a ground of `degrees`
-/// from 0.3 m above it, and watches it for eight seconds.
+/// from 0.3 m above it on the home planet, and watches it for eight seconds.
 fn drop(vel: DVec3, degrees: f64, gear: f64) -> Drop {
-    let planet = planet(6000.0, 4000.0, 1200.0);
-    let height = ground(&planet, degrees);
-    let mut ship = above_pole(&planet, BASE + GEAR_DROP + 0.3);
+    drop_on(&planet(6000.0, 4000.0, 1200.0), vel, (degrees, gear))
+}
+
+/// Drops a ship as [`drop`] does, on `planet` and a ground of `degrees` with its gear `gear` extended.
+fn drop_on(planet: &PlanetSpec, vel: DVec3, (degrees, gear): (f64, f64)) -> Drop {
+    let height = ground(planet, degrees);
+    let mut ship = above_pole(planet, BASE + GEAR_DROP + 0.3);
     (ship.vel, ship.gear) = (vel, gear);
     let (mut seen, mut time, mut first) = (Drop::default(), 0.0, None::<f64>);
     seen.finite = true;
     fly(
         &mut ship,
         &Controls::default(),
-        (&planet, &height),
+        (planet, &height),
         8.0,
         |ship, report| {
             time += 1.0 / 120.0;
@@ -69,7 +74,7 @@ fn drop(vel: DVec3, degrees: f64, gear: f64) -> Drop {
             seen.crashes.extend(report.crash.map(|_| report.impact));
             seen.finite &= ship.pos.is_finite() && ship.vel.is_finite() && ship.spin.is_finite();
             if first.is_some() {
-                seen.rebound = seen.rebound.max(clearance(ship, &planet, &height));
+                seen.rebound = seen.rebound.max(clearance(ship, planet, &height));
             }
             if ship.landed && seen.rest.is_none() {
                 seen.rest = first.map(|at| time - at);
@@ -115,4 +120,31 @@ fn a_belly_landing_is_a_crash_sooner() {
     assert_eq!(belly.crashes.len(), 1, "{:?}", belly.crashes);
     assert!(belly.rebound < REBOUND && belly.rest.is_some_and(|rest| rest < SETTLE));
     assert!(drop(DVec3::NEG_Y * 15.0, 0.0, 1.0).crashes.is_empty());
+}
+
+/// On the belly or on a gear that is not locked yet, at 60, 150 and 300 m/s, in the air of home
+/// and on a body without air: the ship is deep in the ground when the hit is seen, and still no
+/// point rises 0.1 m after the touchdown, the ship is landed within 2 seconds and the crash is
+/// told once.
+#[test]
+fn a_fast_crash_on_the_hull_does_not_bounce() {
+    let home = planet(6000.0, 4000.0, 1200.0);
+    let bare = PlanetSpec {
+        record: samples()[5],
+        ..home.clone()
+    };
+    for (world, gear) in [(&home, 0.0), (&home, 0.5), (&bare, 0.0)] {
+        for down in [60.0, 150.0, 300.0] {
+            let seen = drop_on(world, DVec3::NEG_Y * down, (0.0, gear));
+            let label = format!("{down} m/s, gear {gear}, air {}", world.record.pressure);
+            assert!(seen.finite, "{label}: not finite");
+            assert!(seen.rebound < REBOUND, "{label}: rose {} m", seen.rebound);
+            assert!(
+                seen.rest.is_some_and(|rest| rest < SETTLE),
+                "{label}: {:?}",
+                seen.rest
+            );
+            assert_eq!(seen.crashes.len(), 1, "{label}: {:?}", seen.crashes);
+        }
+    }
 }

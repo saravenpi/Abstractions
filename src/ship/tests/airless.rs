@@ -5,9 +5,10 @@ use bevy::math::DVec3;
 use super::air::{air, world};
 use super::{above_pole, coast};
 use crate::ship::assist::airless;
+use crate::ship::clear::guard;
 use crate::ship::drag::pressure;
 use crate::ship::flight::Controls;
-use crate::ship::landing::contact;
+use crate::ship::landing::{GEAR_DROP, contact};
 use crate::universe::PlanetRecord;
 use crate::wind::samples;
 
@@ -67,4 +68,29 @@ fn a_dry_world_has_no_sea_to_float_on() {
         let expected = if dry { 17.75 } else { -2.25 };
         assert!((touch.radar - expected).abs() < 1e-6, "{}", touch.radar);
     }
+}
+
+/// Over the sea the turn is guarded against the water, not against the seabed far under it: a
+/// level ship 2 m above the water over a seabed that climbs at 30 degrees keeps every part of
+/// its stick, as it does over a flat seabed. On a dry world the same basin is ground, and its
+/// slope is the plane the ship is kept clear of.
+#[test]
+fn over_the_sea_a_turn_is_kept_clear_of_the_water() {
+    let (sea, dry) = (world(PlanetRecord::TEMPERATE), world(samples()[5]));
+    let rise = 30f64.to_radians().tan();
+    let seabed = |p: DVec3| -400.0 + sea.radius * p.x.atan2(p.y) * rise;
+    let ship = above_pole(&sea, GEAR_DROP + 2.0);
+    let touch = contact(&ship, &sea, &seabed);
+    assert!((touch.radar - 2.0).abs() < 1e-6 && !touch.ground);
+    assert_eq!(touch.normal, DVec3::Y);
+    for axis in [DVec3::X, DVec3::Y, DVec3::Z] {
+        for stick in [axis, -axis] {
+            assert_eq!(guard(&ship, &touch, stick), stick, "{stick}");
+        }
+    }
+    let low = above_pole(&dry, GEAR_DROP + 2.0 - 400.0);
+    let basin = contact(&low, &dry, &seabed);
+    assert!((basin.radar - 2.0).abs() < 1e-6);
+    assert!((basin.normal.dot(DVec3::Y) - 30f64.to_radians().cos()).abs() < 0.01);
+    assert_ne!(guard(&low, &basin, DVec3::NEG_Z), DVec3::NEG_Z);
 }

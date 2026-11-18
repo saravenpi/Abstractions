@@ -22,8 +22,9 @@ pub const CRASH: [f64; 2] = [25.0, 10.0];
 /// Friction coefficient of a hit: the share of the stopping impulse that brakes the slide.
 const SCRAPE: f64 = 0.8;
 
-/// Depth in metres a hit point is left in the ground when the ship is set back on it, so that
-/// it keeps touching and the rest of the ship coming down is the same touchdown, not a new one.
+/// Depth in metres the deepest hit point is left in the ground when the ship is set back on it,
+/// so that it keeps touching and the rest of the ship coming down is the same touchdown, not a
+/// new one.
 const SKIN: f64 = 0.02;
 
 /// Times the hits of one step are worked over, each point in turn: stopping one point turns
@@ -99,8 +100,8 @@ fn strike(ship: &Ship, rig: &Rig, p: &Point, motion: &mut Motion, taken: &mut Op
 /// safe speed, and brakes the slide of the ship by up to [`SCRAPE`] times what stopped it. The
 /// brake acts on the whole ship and does not turn it: a crash slides to a stop, it does not
 /// tumble. Returns how far in metres the caller has to move the ship out along the normal to
-/// set it back on the ground, without lifting any point that touches off it: a fast ship is
-/// already well in when the hit is seen.
+/// set its deepest hit point back on the ground, [`SKIN`] deep: a fast ship is already well in
+/// when the hit is seen, and whatever depth were left to the springs would come back as a bounce.
 pub fn absorb(ship: &Ship, rig: &Rig, points: &[Point; 9], motion: &mut Motion) -> f64 {
     let mut taken = [None; 9];
     for _ in 0..ROUNDS {
@@ -118,7 +119,5 @@ pub fn absorb(ship: &Ship, rig: &Rig, points: &[Point; 9], motion: &mut Motion) 
         .iter()
         .zip(taken)
         .filter(|(_, taken)| taken.is_some());
-    let deepest = hit.map(|(p, _)| p.depth).fold(0.0, f64::max);
-    let touching = points.iter().map(|p| p.depth).filter(|depth| *depth > 0.0);
-    (deepest.min(touching.fold(f64::INFINITY, f64::min)) - SKIN).max(0.0)
+    (hit.map(|(p, _)| p.depth).fold(0.0, f64::max) - SKIN).max(0.0)
 }

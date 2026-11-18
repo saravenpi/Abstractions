@@ -13,6 +13,8 @@ use super::rings::RingMaterial;
 use crate::render::air::Air;
 use crate::render::celestial::smoothstep;
 use crate::render::clouds::{CloudMaps, toward_second};
+use crate::render::daylight::{PlaceUniform, Sky, starlight};
+use crate::render::moonlight::{Moonlight, STARLIGHT};
 use crate::render::palette::Palette;
 use crate::render::scatter::peak;
 use crate::render::sky::linear;
@@ -36,6 +38,15 @@ pub fn detail(angle: f32) -> f32 {
 /// illuminance in lux: what the sun light of the ground carries in open space.
 pub fn star_light(star: Vec3) -> Vec3 {
     linear(peak(star)).truncate() * Palette::SPACE_LUX
+}
+
+/// Returns the block the shader lights the ball of `planet` with: its own air under a star of
+/// linear colour `star` in the direction `toward`, on nights the stars light by `stars`. The
+/// ball is lit point by point by the rule that lights its ground, whatever the camera stands in.
+fn lit_by(planet: &PlanetSpec, star: Vec3, toward: Vec3, stars: f32) -> PlaceUniform {
+    let size = (planet.radius as f32, planet.atmosphere_height as f32);
+    let sky = Sky::of(star, &Air::of(&planet.record), size, stars);
+    sky.uniform(Vec3::ZERO, toward, (1.0, 0.0))
 }
 
 /// What the clouds of the bodies are drawn from.
@@ -84,10 +95,12 @@ fn dress(
 
 /// Lights every planet and moon from the direction of its star, dimmed where another body of
 /// its planet hides the star, and turns its spin axis, its surface, its clouds and the storm of
-/// a giant into render axes.
+/// a giant into render axes. Each is lit through its own air, and the one under the camera
+/// shares the night of the ground, under `moon`.
 pub(super) fn planets(
     scene: Scene,
     mut skies: Skies,
+    moon: Option<Res<Moonlight>>,
     planets: Query<(&Body, &MeshMaterial3d<BodyMaterial>)>,
     mut materials: ResMut<Assets<BodyMaterial>>,
 ) {
@@ -104,10 +117,12 @@ pub(super) fn planets(
         let Some(((planet, pos), mut material)) = found else {
             continue;
         };
+        let toward = vantage.sunward(pos);
+        let below = moon.as_deref().filter(|_| vantage.is(planet.id));
+        let stars = below.map_or(STARLIGHT, starlight);
+        material.place = lit_by(planet, near.system.star.color, toward, stars);
         let uniform = &mut material.body;
-        uniform.light = vantage
-            .sunward(pos)
-            .extend(near.eclipse(pos, planet.id, time));
+        uniform.light = toward.extend(near.eclipse(pos, planet.id, time));
         uniform.axis = (to_render * DVec3::Y).as_vec3().extend(uniform.axis.w);
         if let Some(giant) = Giant::of(&planet.record, planet.seed) {
             let spot = to_render * (spin(planet.day_seconds, time) * giant.spot);

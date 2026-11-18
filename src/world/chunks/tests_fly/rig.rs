@@ -11,6 +11,7 @@ use bevy::time::TimeUpdateStrategy;
 use super::STEP;
 use crate::world::Planet;
 use crate::world::chunks::{self, Chunks};
+use crate::world::ground::GroundMaterial;
 use crate::world::props::PropAssets;
 
 /// The steps of the streaming chain that are timed, in the order they run.
@@ -105,7 +106,7 @@ fn chain(app: &mut App) {
 /// Returns an app with a new world begun, whose time advances one [`STEP`] per frame.
 pub fn rig() -> App {
     let mut app = App::new();
-    let mut materials = Assets::<StandardMaterial>::default();
+    let mut materials = Assets::<GroundMaterial>::default();
     let mut images = Assets::<Image>::default();
     app.add_plugins(MinimalPlugins)
         .insert_resource(PropAssets::new(&mut materials, &mut images))

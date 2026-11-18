@@ -59,6 +59,14 @@ pub struct WaterUniform {
     pub blend: Vec4,
 }
 
+/// Sines of the height of the star between which the water goes from its night look to its day
+/// look. `water.wesl` holds the same pair under the same name, for the water far from the camera.
+pub const DAY_EDGE: (f32, f32) = (-0.1, 0.3);
+
+/// Sines of the height of the star between which its glitter on the water comes on, the same
+/// pair as in `water.wesl`.
+pub const SUN_UP_EDGE: (f32, f32) = (-0.05, 0.12);
+
 /// Distance fog of the camera, in the units the shader needs.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FogLook {
@@ -104,15 +112,15 @@ impl WaterUniform {
     /// camera fog, drawing the water of home. The map, globe and frame values are left for the caller.
     pub fn new(palette: &Palette, wind: &Wind, time: f32, fog: &FogLook) -> Self {
         let [a, b, c, d] = waves_for(wind).map(|wave| wave.packed());
-        let sun_up = smooth(-0.05, 0.12, palette.sun_dir.y);
+        let sun_up = smooth(SUN_UP_EDGE.0, SUN_UP_EDGE.1, palette.sun_dir.y);
         let water = Self {
             zenith: linear(palette.zenith),
             horizon: linear(palette.horizon),
             fog: fog.color,
             sun: palette.sun_dir.extend(sun_up),
             sun_color: linear(palette.sun_color).truncate().extend(smooth(
-                -0.1,
-                0.3,
+                DAY_EDGE.0,
+                DAY_EDGE.1,
                 palette.sun_dir.y,
             )),
             moon: palette

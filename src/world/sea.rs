@@ -18,10 +18,13 @@ mod waves;
 mod tests_curve;
 #[cfg(test)]
 mod tests_globe;
+#[cfg(test)]
+mod tests_light;
 
 pub use self::ember::ember as sea_glow;
 pub use self::follow::follow_focus;
 
+use bevy::asset::AssetEventSystems;
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::ecs::system::SystemParam;
 use bevy::light::{NotShadowCaster, NotShadowReceiver};
@@ -35,7 +38,7 @@ use self::seat::Seat;
 use self::uniform::{FogLook, WaterUniform};
 use super::focus::Focus;
 use super::{Planet, SEA_LEVEL};
-use crate::render::{GameCamera, Palette};
+use crate::render::{GameCamera, Palette, PlaceLit};
 use crate::screens::Screen;
 use crate::space::Placed;
 use crate::wind::Wind;
@@ -83,6 +86,7 @@ pub fn spawn_sea(
     let water = MeshMaterial3d(materials.add(WaterMaterial {
         water: inputs.uniform(Quat::IDENTITY),
         floor: floor.image(),
+        place: default(),
     }));
     let placed = Placed {
         pos: DVec3::ZERO,
@@ -99,10 +103,15 @@ pub fn spawn_sea(
 }
 
 /// Registers the water material and the system that keeps the seat and the sea floor map under
-/// the focus, before the planet-fixed poses are written so that a new seat is placed at once.
+/// the focus, before the planet-fixed poses are written so that a new seat is placed at once,
+/// and hands the sea the light of the planet once the camera is tracked.
 pub(super) fn plugin(app: &mut App) {
     app.add_plugins(material::plugin)
         .add_systems(Update, follow::refresh.before(super::chunks::place))
-        .add_systems(Update, ember::kindle);
+        .add_systems(Update, ember::kindle)
+        .add_systems(
+            PostUpdate,
+            follow::light.after(PlaceLit).before(AssetEventSystems),
+        );
     crate::render::warm_material::<WaterMaterial>(app);
 }

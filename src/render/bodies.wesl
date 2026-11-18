@@ -1,7 +1,7 @@
 import bevy_pbr::render::forward_io::VertexOutput;
 import bevy_pbr::render::mesh_view_bindings::view;
-import bevy_pbr::render::pbr_ambient::ambient_light;
 import package::render::cloud_field::{broad_cover, day_side, dither, puff, shade};
+import package::render::daylight::{Place, light_at, ambient_response};
 
 struct Body {
     color: vec4<f32>,
@@ -25,6 +25,7 @@ struct Body {
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> body: Body;
 @group(constants::MATERIAL_BIND_GROUP) @binding(1) var cover_map: texture_cube<f32>;
 @group(constants::MATERIAL_BIND_GROUP) @binding(2) var cover_sampler: sampler;
+@group(constants::MATERIAL_BIND_GROUP) @binding(10) var<uniform> place: Place;
 
 const PI: f32 = 3.14159265;
 const TAU: f32 = 6.2831853;
@@ -114,8 +115,9 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let albedo = mix(surface(n), in.color.rgb, body.map.z);
     let ember = mix(body.ember.rgb, body.glow.rgb * in.color.a, body.map.z);
     let limb = select(1.0, mix(LIMB, 1.0, sqrt(facing)), body.axis.w > 0.0);
-    let direct = body.sun.rgb * (sunlit(n, v, l) * ring_shade(n, l) * body.light.w);
-    let around = ambient_light(in.world_position, n, v, max(facing, 0.0001), albedo, vec3<f32>(F0), ROUGHNESS, vec3<f32>(1.0));
+    let here = light_at(place, dot(n, l), 0.0);
+    let direct = here.sun * (sunlit(n, v, l) * ring_shade(n, l) * body.light.w * place.air.z);
+    let around = ambient_response(albedo, vec3<f32>(F0), ROUGHNESS, max(facing, 0.0001)) * here.sky * place.air.z;
     let lit = (albedo * direct + around) * limb * view.exposure + ember;
     return vec4<f32>(lit, 1.0);
 }

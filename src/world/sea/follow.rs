@@ -9,6 +9,7 @@ use super::material::WaterMaterial;
 use super::seat::Seat;
 use super::uniform::WaterUniform;
 use super::{Sea, SeaInputs, depth, mesh};
+use crate::render::PlaceLight;
 use crate::universe::PlanetRecord;
 use crate::wind::Wind;
 use crate::world::focus::Focus;
@@ -123,6 +124,24 @@ pub fn follow_focus(
             let lands = planet.as_ref().map_or(home, |planet| planet.globe.lands());
             let water = inputs.uniform(pose.rotation).of(&liquid).over(lands);
             material.water = placing(water, pose, radius, map, seat.coords(at));
+        }
+    }
+}
+
+/// Hands the sea the light of the planet under the camera whenever it changed, so that water
+/// seen from far is lit by the star as it stands there and not as it stands for the camera.
+pub fn light(
+    place: Res<PlaceLight>,
+    seas: Query<&MeshMaterial3d<WaterMaterial>, With<Sea>>,
+    mut materials: ResMut<Assets<WaterMaterial>>,
+) {
+    for handle in &seas {
+        let same = |material: &WaterMaterial| material.place == place.0;
+        if materials.get(&handle.0).is_none_or(same) {
+            continue;
+        }
+        if let Some(mut material) = materials.get_mut(&handle.0) {
+            material.place = place.0;
         }
     }
 }

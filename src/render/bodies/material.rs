@@ -7,6 +7,7 @@ use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
 
 use super::giant::Giant;
+use crate::render::daylight::PlaceUniform;
 use crate::universe::{PlanetRecord, PlanetSpec, StarSpec};
 
 /// Brightness of a star against plain white, enough for bloom to catch it.
@@ -79,6 +80,10 @@ pub struct BodyMaterial {
     #[texture(1, dimension = "cube")]
     #[sampler(2)]
     pub cover: Option<Handle<Image>>,
+    /// The star and the air the body is lit through, so its day and its night are its own and
+    /// not those of the camera. All zero, a planet stays unlit and shows only its own glow.
+    #[uniform(10)]
+    pub place: PlaceUniform,
 }
 
 /// A planet seen from afar, in linear colours.
@@ -120,6 +125,7 @@ impl BodyMaterial {
                 ..default()
             },
             cover: None,
+            place: default(),
         }
     }
 
@@ -147,6 +153,7 @@ impl BodyMaterial {
                 ..default()
             },
             cover: None,
+            place: default(),
         }
     }
 }

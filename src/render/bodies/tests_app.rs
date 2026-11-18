@@ -6,6 +6,8 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::Body;
+use super::material::BodyMaterial;
+use crate::render::air::Air;
 use crate::render::observer::Observer;
 use crate::render::vantage::{LocalSystem, Nearby, Vantage};
 use crate::render::warp::Lens;
@@ -104,4 +106,35 @@ fn moons_and_rings_follow_their_planet() {
     let ringed = near.bodies().filter(|body| body.rings.is_some()).count();
     let bodies = near.system.planets.len() + near.moons.len();
     assert_eq!(all.len(), 1 + 2 * bodies + ringed);
+}
+
+/// Every planet and moon is lit through its own air by its own star, from where that star
+/// stands for it: its shader gets the block of its own place, and nothing of the camera's.
+#[test]
+fn every_body_is_lit_as_its_own_place() {
+    let (near, giant, _) = system();
+    let mut app = sky(&near, &giant);
+    app.update();
+    app.update();
+    let star = near.system.star.color;
+    let mut lit = app
+        .world_mut()
+        .query::<(&Body, &MeshMaterial3d<BodyMaterial>)>();
+    let materials = app.world().resource::<Assets<BodyMaterial>>();
+    let mut planets = 0;
+    for (body, handle) in lit.iter(app.world()) {
+        let Body::Planet(id) = *body else {
+            continue;
+        };
+        let material = materials.get(&handle.0).expect("a body has its material");
+        let spec = near.find(id).expect("a drawn body is in the system");
+        let air = Air::of(&spec.record);
+        let toward = material.body.light.truncate();
+        assert_eq!(material.place.star, toward.extend(air.depth()), "{id:?}");
+        assert_eq!(material.place.colour, star.extend(air.share()), "{id:?}");
+        assert_eq!(material.place.air.x, spec.atmosphere_height as f32);
+        assert_eq!(material.place.air.z, 1.0);
+        planets += 1;
+    }
+    assert!(planets >= 2, "{planets}");
 }

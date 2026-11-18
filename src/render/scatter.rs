@@ -10,10 +10,10 @@ use bevy::prelude::*;
 pub const DEPTH: Vec3 = Vec3::new(0.045, 0.10, 0.23);
 
 /// Air masses on the path to a star on the horizon. Straight up is one.
-const HORIZON_MASS: f32 = 12.5;
+pub const HORIZON_MASS: f32 = 12.5;
 
 /// Weights of red, green and blue in the brightness of a light.
-const LUMA: Vec3 = Vec3::new(0.2126, 0.7152, 0.0722);
+pub const LUMA: Vec3 = Vec3::new(0.2126, 0.7152, 0.0722);
 
 /// Returns the air masses light crosses from a star whose height above the horizon has the
 /// sine `height`. Under the horizon the path is the one of the horizon.

@@ -10,14 +10,14 @@ use super::season::{SeasonLook, repaint};
 use super::vantage::{LocalSystem, Vantage};
 use crate::climate::{Setting, Spot};
 use crate::space::Clock;
-use crate::world::{Planet, Sited};
+use crate::world::{GroundMaterial, Planet, Sited};
 
 /// The colour lookup texture of the ground, its colours as the world made them, and the
 /// season look it shows.
 #[derive(Resource, Debug, Default)]
 struct Lut {
     /// Material of the ground that samples the texture.
-    material: Option<Handle<StandardMaterial>>,
+    material: Option<Handle<GroundMaterial>>,
     /// The texture.
     image: Option<Handle<Image>>,
     /// Its bytes before any season touched them.
@@ -29,8 +29,8 @@ struct Lut {
 /// Finds the lookup texture through the material of the first new ground entity whose material
 /// is not the one already known, and keeps a copy of its colours.
 fn find(
-    new: Query<&MeshMaterial3d<StandardMaterial>, Added<Sited>>,
-    materials: Res<Assets<StandardMaterial>>,
+    new: Query<&MeshMaterial3d<GroundMaterial>, Added<Sited>>,
+    materials: Res<Assets<GroundMaterial>>,
     images: Res<Assets<Image>>,
     mut lut: ResMut<Lut>,
 ) {
@@ -40,7 +40,7 @@ fn find(
         }
         let texture = materials
             .get(&handle.0)
-            .and_then(|m| m.base_color_texture.clone());
+            .and_then(|m| m.base.base_color_texture.clone());
         let Some((texture, image)) = texture.and_then(|t| Some((t.clone(), images.get(&t)?)))
         else {
             continue;

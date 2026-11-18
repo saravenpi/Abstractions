@@ -18,7 +18,7 @@ pub fn saved(active: Option<&ActiveWorld>) -> Option<ShipState> {
 
 /// Returns the record of `ship` among the bodies `wells`, with the player `seated` in it or not.
 ///
-/// A ship in warp is recorded dropped out, at rest relative to the nearest body, and a spooling
+/// A ship in warp is recorded dropped out, at rest relative to the body it is beside, and a spooling
 /// drive is recorded off: a loaded world never starts mid-jump.
 pub fn record(ship: &Ship, wells: &[Well], seated: bool) -> ShipState {
     let mut still = ship.clone();

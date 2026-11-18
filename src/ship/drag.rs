@@ -2,6 +2,7 @@
 
 use bevy::math::{DQuat, DVec3};
 
+use super::deck::{DEEPEST, giant};
 use crate::universe::PlanetSpec;
 use crate::wind::thickness;
 
@@ -28,12 +29,15 @@ const SPIN_DRAG: f64 = 0.0125;
 /// `density = rho0 * thickness * exp(-altitude / scale_height)` below the top of the atmosphere,
 /// zero above it. The thickness is the pressure of the planet against the home planet, so thin
 /// air drags less, thick air more, and a planet without air has no density at any height.
+/// Under the sea level of a solid planet the density stays the one at sea level. Under the
+/// cloud deck of a gas giant it keeps growing, down to [`DEEPEST`] scale heights.
 pub fn density(planet: &PlanetSpec, altitude: f64) -> f64 {
     if altitude >= planet.atmosphere_height {
         return 0.0;
     }
     let scale = planet.atmosphere_height * SCALE_SHARE;
-    SEA_DENSITY * thickness(&planet.record) * (-altitude.max(0.0) / scale).exp()
+    let low = if giant(planet) { -DEEPEST * scale } else { 0.0 };
+    SEA_DENSITY * thickness(&planet.record) * (-altitude.max(low) / scale).exp()
 }
 
 /// Returns the dynamic pressure in pascals at a density and an airspeed.

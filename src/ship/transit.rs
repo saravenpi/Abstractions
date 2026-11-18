@@ -19,8 +19,8 @@ const REACH_MARGIN: f64 = 1.05;
 /// Radii from a planet inside which it carries a ship across a gap in time.
 const ESCORT: f64 = 100.0;
 
-/// Moves a ship between the surface frame of a planet and the frame of its star: up above the
-/// top of the atmosphere, down below it. A landed ship stays where it is.
+/// Moves a ship between the surface frame of a planet or a moon and the frame of its star: up
+/// above the top of the atmosphere, down below it. A landed ship stays where it is.
 pub fn reframe(ship: &mut Ship, system: &SystemSpec, time: f64) {
     match ship.frame {
         Frame::Surface(body) if !ship.landed => {
@@ -77,12 +77,17 @@ pub fn enter_system<'a>(ship: &mut Ship, stars: impl IntoIterator<Item = &'a Sta
 }
 
 /// Carries a ship in the frame of a star across `gap` seconds in which it was not simulated,
-/// such as a pause: a ship near a planet keeps its place and speed beside it.
+/// such as a pause: a ship near a planet or a moon keeps its place and speed beside it. Of the
+/// bodies near enough, the one nearest in its own radii carries it, so a moon does beside its
+/// planet.
 pub fn catch_up(ship: &mut Ship, system: &SystemSpec, time: f64, gap: f64) {
-    let near = |planet: &&PlanetSpec| {
-        planet.position(time - gap).distance(ship.pos) < planet.radius * ESCORT
-    };
-    if let Some(planet) = system.planets.iter().find(near) {
+    let radii =
+        |planet: &PlanetSpec| planet.position(time - gap).distance(ship.pos) / planet.radius;
+    let near = system
+        .planets
+        .iter()
+        .filter(|planet| radii(planet) < ESCORT);
+    if let Some(planet) = near.min_by(|a, b| radii(a).total_cmp(&radii(b))) {
         let (then, now) = (Well::planet(planet, time - gap), Well::planet(planet, time));
         ship.pos += now.pos - then.pos;
         ship.vel += now.vel - then.vel;

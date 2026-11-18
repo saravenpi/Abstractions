@@ -3,7 +3,7 @@
 use bevy::math::DVec3;
 
 use super::body::Ship;
-use super::wells::{Well, nearest};
+use super::wells::{Well, beside, nearest};
 use crate::universe::GLY;
 
 #[cfg(test)]
@@ -60,9 +60,10 @@ pub fn clearance(wells: &[Well], pos: DVec3) -> f64 {
     nearest(wells, pos).map_or(f64::INFINITY, |well| well.clearance(pos))
 }
 
-/// Returns the velocity of the nearest body, or zero without wells.
+/// Returns the velocity of the body whose surface is nearest, or zero without wells. Beside a
+/// moon that is the moon, even inside the lock sphere of its planet.
 fn body_velocity(wells: &[Well], pos: DVec3) -> DVec3 {
-    nearest(wells, pos).map_or(DVec3::ZERO, |well| well.vel)
+    beside(wells, pos).map_or(DVec3::ZERO, |well| well.vel)
 }
 
 /// Returns the velocity a nearby moving body gives the warp bubble, so a planet can be reached.
@@ -83,8 +84,8 @@ pub fn request(ship: &mut Ship, wells: &[Well]) -> bool {
     free
 }
 
-/// Stops the drive. A ship that was in warp is left at rest relative to the body that is
-/// nearest now, so it arrives beside its destination and stays there: the velocity it had
+/// Stops the drive. A ship that was in warp is left at rest relative to the body it is beside
+/// now, so it arrives beside its destination and stays there: the velocity it had
 /// when it engaged belonged to the place it left, and would carry it away from this one. A
 /// ship that was not in warp keeps its own velocity.
 pub fn drop_out(ship: &mut Ship, wells: &[Well]) {

@@ -10,7 +10,7 @@ use crate::world::globe::Chart;
 /// A coordinate frame positions are expressed in. All frames use metres.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Frame {
-    /// Fixed to a planet and turning with it: origin at the planet centre, +Y its spin axis.
+    /// Fixed to a planet or a moon and turning with it: origin at its centre, +Y its spin axis.
     Surface(BodyId),
     /// Inertial, origin at a star, planets orbiting on the XZ plane.
     System(StarId),

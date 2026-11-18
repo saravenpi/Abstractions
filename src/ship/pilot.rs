@@ -2,8 +2,10 @@
 
 use bevy::prelude::*;
 
-use crate::computer::Target;
-use crate::universe::StarId;
+use super::moons::Standoff;
+use crate::computer::{Target, target_position};
+use crate::space::UniPos;
+use crate::universe::{StarId, Universe};
 
 /// What the autopilot is doing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -31,8 +33,23 @@ pub(super) struct Goal {
     pub(super) target: Target,
     /// Radius of the lock sphere of the destination in metres.
     pub(super) lock: f64,
-    /// Distance from its centre in metres at which the ship drops out.
+    /// Distance in metres at which the ship drops out: from the centre of a planet or a star,
+    /// from the point beside a moon.
     pub(super) arrival: f64,
+    /// For a moon, the point beside it the route ends at.
+    pub(super) beyond: Option<Standoff>,
+}
+
+impl Goal {
+    /// Returns the universe position the route ends at, at `time` seconds: the centre of the
+    /// destination, or the point beside a moon.
+    pub(super) fn point(&self, universe: &Universe, time: f64) -> Option<UniPos> {
+        let centre = target_position(universe, self.target, time)?;
+        Some(
+            self.beyond
+                .map_or(centre, |beyond| centre + beyond.offset(time)),
+        )
+    }
 }
 
 /// The autopilot. The board computer sets a destination with [`Autopilot::engage`].
@@ -49,7 +66,7 @@ pub struct Autopilot {
 }
 
 impl Autopilot {
-    /// Starts a route to `target`: a planet, a star or a galaxy.
+    /// Starts a route to `target`: a planet, a moon, a star or a galaxy.
     pub fn engage(&mut self, target: Target) {
         *self = Self {
             target: Some(target),
@@ -75,7 +92,7 @@ impl Autopilot {
         self.phase
     }
 
-    /// Returns the star of the destination, once the route is resolved to a planet or a star.
+    /// Returns the star of the destination, once the route is resolved to a body or a star.
     pub fn star(&self) -> Option<StarId> {
         match self.goal?.target {
             Target::Body(id) => Some(id.star),

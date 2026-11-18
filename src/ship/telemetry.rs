@@ -9,7 +9,7 @@ use super::orbit::apsides;
 use super::sim::Pace;
 use super::sky::Skies;
 use super::warp::{SPOOL_TIME, Warp};
-use super::wells::nearest;
+use super::wells::beside;
 use crate::space::Frame;
 use crate::universe::{BodyId, HOME_GRAVITY};
 
@@ -27,8 +27,8 @@ pub enum WarpState {
 
 /// Read-only instruments of the ship, refreshed every frame of play.
 ///
-/// Heights and speeds are measured against the planet the ship is on, or in space against the
-/// body whose lock sphere is nearest. Between the stars they keep their last values.
+/// Heights and speeds are measured against the planet or moon the ship is on, or in space
+/// against the body whose surface is nearest. Between the stars they keep their last values.
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct ShipTelemetry {
     /// Height of the landing gear above the ground or the sea in metres. Away from a surface it
@@ -98,7 +98,7 @@ struct Fix {
     radius: f64,
 }
 
-/// Returns the ship measured against the planet it is on or the nearest body of its system.
+/// Returns the ship measured against the body it is on or the body of its system it is beside.
 ///
 /// The bodies were sampled `lag` seconds before now, so each is moved on to where it is now.
 fn fix(ship: &Ship, skies: &Skies, lag: f64) -> Option<Fix> {
@@ -116,7 +116,7 @@ fn fix(ship: &Ship, skies: &Skies, lag: f64) -> Option<Fix> {
             })
         }
         Frame::System(_) => {
-            let well = nearest(&skies.wells, ship.pos)?;
+            let well = beside(&skies.wells, ship.pos)?;
             let centre = well.pos + well.vel * lag;
             let (pos, vel) = (ship.pos - centre, ship.vel - well.vel);
             Some(Fix {

@@ -1,14 +1,16 @@
-//! Flight in the surface frame of a planet: gravity, the turning frame, air, hover and ground contact.
+//! Flight in the surface frame of a planet or a moon: gravity, the turning frame, air, hover and
+//! ground contact, or over a gas giant the floor and the deep air of `deck`.
 
 use bevy::math::{DQuat, DVec3};
 
 use super::assist::{NEUTRAL, airless, level};
 use super::body::Ship;
 use super::cruise::{AIR_GRIP, Cruise};
+use super::deck::{self, grounded};
 use super::drag::{density, pressure, slow, stability};
 use super::flight::{Controls, Report, rotate, thrusters};
 use super::frames::spin_rate;
-use super::landing::{Contact, contact};
+use super::landing::Contact;
 use super::rest::{settle, wakes};
 use crate::universe::PlanetSpec;
 use crate::wind::thickness;
@@ -94,20 +96,22 @@ fn parked(ship: &Ship, planet: &PlanetSpec) -> Report {
 /// The Coriolis force is applied as an exact turn of the velocity, so it cannot add energy.
 pub fn step(ship: &mut Ship, controls: &Controls, land: Land, h: f64) -> Report {
     let (planet, ground) = land;
-    if ship.landed && !wakes(ship, controls) {
+    if ship.landed && !wakes(ship, controls) && grounded(Some(planet)) {
         return parked(ship, planet);
     }
     ship.landed = false;
-    let touch = contact(ship, planet, ground);
-    let down = weight(planet, ship.pos);
-    let grip = AIR_GRIP + (1.0 - AIR_GRIP) * airless(thickness(&planet.record));
+    let touch = deck::touch(ship, planet, ground);
     let air = density(planet, ship.pos.length() - planet.radius);
+    let down = deck::weigh(planet, weight(planet, ship.pos), ship.pos, air);
+    let grip = AIR_GRIP + (1.0 - AIR_GRIP) * airless(thickness(&planet.record));
     let lost = (slow(ship.rot, ship.vel, air, h) - ship.vel) / h;
     let pushed = engines(ship, controls, &touch, (down + lost, grip), h) + touch.accel;
     let coriolis = DQuat::from_rotation_y(-2.0 * spin_rate(planet) * h);
     let free = coriolis * (ship.vel + (down + pushed) * h);
-    let torque = touch.torque + stability(ship.rot, free, ship.spin, air);
+    let calm = air.min(density(planet, 0.0));
+    let torque = touch.torque + stability(ship.rot, free, ship.spin, calm);
     ship.vel = slow(ship.rot, free, air, h);
+    deck::floor(ship, planet, h);
     ship.pos += ship.vel * h;
     let turn = stick(ship, controls, &touch);
     rotate(ship, turn, torque, h);

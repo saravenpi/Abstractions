@@ -7,6 +7,7 @@ use bevy::prelude::*;
 
 use super::ShipEvent;
 use super::body::Ship;
+use super::deck::grounded;
 use super::sky::Skies;
 use crate::computer::Computer;
 use crate::player::{EYE_OFFSET, Player, place, seat};
@@ -99,7 +100,8 @@ pub fn reseat(
 }
 
 /// Seats the player near the landed ship on the board key, and on the same key puts the player
-/// back on the ground beside the hatch. The key does nothing while the board computer is open.
+/// back on the ground beside the hatch. The key does nothing while the board computer is open,
+/// and nothing over a gas giant, where there is no ground to step out on.
 pub fn board(
     mut dock: Dock,
     mut commands: Commands,
@@ -113,7 +115,8 @@ pub fn board(
     let pressed = dock
         .keys
         .just_pressed(dock.settings.controls.keys.ship.board);
-    if !pressed || dock.busy() || !ship.landed || dock.anchor.frame != ship.frame {
+    let docked = ship.landed && grounded(dock.skies.planet());
+    if !pressed || dock.busy() || !docked || dock.anchor.frame != ship.frame {
         return;
     }
     if dock.location.travel == Travel::InShip {

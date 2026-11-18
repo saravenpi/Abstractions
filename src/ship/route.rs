@@ -6,21 +6,22 @@ use bevy::prelude::*;
 use super::body::Ship;
 use super::flight::Controls;
 use super::helm::Helm;
+use super::moons;
 use super::pilot::{Autopilot, Goal, Phase};
 use super::sim::Cosmos;
 use super::sky::Skies;
 use super::steer::{aim, detour};
 use super::warp::{Warp, clearance};
 use super::wells::{PLANET_LOCK, STAR_LOCK, Well};
-use crate::computer::{Engage, RouteStatus, Target, ship_position, target_position};
+use crate::computer::{Engage, RouteStatus, Target, ship_position};
 use crate::space::Frame;
-use crate::universe::{GLY, Universe};
+use crate::universe::{BodyId, GLY, Universe};
 
 /// Distance in metres beyond which a route is a long jump: faster, and blind to the stars on the way.
 const JUMP_DISTANCE: f64 = 50.0 * GLY;
 
 /// Lock radii from a planet at which the autopilot drops out, a safe distance for an orbit.
-const ARRIVAL: f64 = 1.3;
+pub(super) const ARRIVAL: f64 = 1.3;
 
 /// Pull of a star in metres per second squared at the distance where the autopilot drops out.
 const SAFE_PULL: f64 = 0.5;
@@ -28,18 +29,27 @@ const SAFE_PULL: f64 = 0.5;
 /// Cosine of the largest angle between the nose and the course at which the drive may spool.
 const ALIGNED: f64 = 0.9994;
 
+/// Returns the goal for a planet, dropped out at a safe distance from its centre, or for a
+/// moon, left beside it.
+fn body(universe: &Universe, id: BodyId) -> Goal {
+    let planet = universe.planet(id);
+    if id.is_moon() {
+        return moons::goal(&planet, &universe.planet(id.planet()));
+    }
+    let lock = planet.radius * PLANET_LOCK;
+    Goal {
+        target: Target::Body(id),
+        lock,
+        arrival: lock * ARRIVAL,
+        beyond: None,
+    }
+}
+
 /// Returns the goal for a target: its lock sphere and where to drop out. A galaxy becomes the
 /// star nearest to its centre, or its centre when no star is near.
 fn resolve(universe: &Universe, target: Target) -> Goal {
     match target {
-        Target::Body(id) => {
-            let lock = universe.planet(id).radius * PLANET_LOCK;
-            Goal {
-                target,
-                lock,
-                arrival: lock * ARRIVAL,
-            }
-        }
+        Target::Body(id) => body(universe, id),
         Target::Star(id) => {
             let star = universe.star(id);
             let lock = star.as_ref().map_or(GLY, |star| star.radius * STAR_LOCK);
@@ -48,6 +58,7 @@ fn resolve(universe: &Universe, target: Target) -> Goal {
                 target,
                 lock,
                 arrival: calm.max(lock * ARRIVAL),
+                beyond: None,
             }
         }
         Target::Galaxy(id) => match universe.stars_near(id, DVec3::ZERO, 30.0).first() {
@@ -56,6 +67,7 @@ fn resolve(universe: &Universe, target: Target) -> Goal {
                 target,
                 lock: GLY,
                 arrival: GLY * ARRIVAL,
+                beyond: None,
             },
         },
     }
@@ -93,7 +105,12 @@ fn beacon(pos: DVec3, to: DVec3, lock: f64) -> Well {
 /// `lock` metres, asks for the drive once aligned and returns what the autopilot is doing.
 ///
 /// While the drive is locked the pilot keeps the controls.
-fn hold(ship: &mut Ship, helm: &mut Helm, wells: &[Well], (to, lock): (DVec3, f64)) -> Phase {
+pub(super) fn hold(
+    ship: &mut Ship,
+    helm: &mut Helm,
+    wells: &[Well],
+    (to, lock): (DVec3, f64),
+) -> Phase {
     let distance = to.length();
     let surface = matches!(ship.frame, Frame::Surface(_));
     let blocked = ship.landed || surface || clearance(wells, ship.pos) <= 0.0;
@@ -127,7 +144,7 @@ pub fn fly(
         .goal
         .get_or_insert_with(|| resolve(universe, target));
     let here = ship_position(universe, ship.frame, ship.pos, time);
-    let Some((here, there)) = here.zip(target_position(universe, goal.target, time)) else {
+    let Some((here, there)) = here.zip(goal.point(universe, time)) else {
         return autopilot.cancel();
     };
     let to = there - here;

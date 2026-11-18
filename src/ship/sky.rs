@@ -1,4 +1,5 @@
-//! What surrounds the ship: the planet under it, the bodies of its system and the stars nearby.
+//! What surrounds the ship: the planet or moon under it, the bodies of its system and the stars
+//! nearby.
 
 use std::sync::Arc;
 
@@ -6,6 +7,7 @@ use bevy::math::{DVec3, IVec3};
 use bevy::prelude::*;
 
 use super::body::Ship;
+use super::moons::with_moons;
 use super::wells::{Well, system_wells};
 use crate::home::Base;
 use crate::space::Frame;
@@ -30,7 +32,8 @@ struct Land {
 /// The surroundings of the ship, looked up once and kept while they stay the same.
 #[derive(Resource, Default)]
 pub struct Skies {
-    /// The system the ship is in, with the star that was asked for.
+    /// The system the ship is in, with the star that was asked for. Its `planets` list the
+    /// moons of the planets after the planets, so the moons are bodies like any other.
     system: Option<(StarId, SystemSpec)>,
     /// The planet whose surface frame the ship is in.
     land: Option<Land>,
@@ -47,13 +50,12 @@ pub struct Skies {
 }
 
 impl Skies {
-    /// Returns the system of `star`, looked up when it is not the one kept.
+    /// Returns the system of `star` with the moons after the planets, looked up when it is not
+    /// the one kept.
     pub fn system(&mut self, universe: &Universe, star: StarId) -> &SystemSpec {
         let kept = self.system.take().filter(|(id, _)| *id == star);
-        &self
-            .system
-            .insert(kept.unwrap_or_else(|| (star, universe.system(star))))
-            .1
+        let fresh = || (star, with_moons(universe, universe.system(star)));
+        &self.system.insert(kept.unwrap_or_else(fresh)).1
     }
 
     /// Returns the stars within a few light-years of `pos` in `galaxy`, looked up again when the
@@ -68,8 +70,8 @@ impl Skies {
         &self.stars.insert(kept.unwrap_or_else(fresh)).2
     }
 
-    /// Keeps the planet `body` as the land under the ship, with the globe of the streamed planet
-    /// when it is the same one.
+    /// Keeps the planet or moon `body` as the land under the ship, with the globe of the streamed
+    /// planet when it is the same one.
     fn land(&mut self, universe: &Universe, streamed: Option<&Planet>, body: BodyId) {
         if self.land.as_ref().is_some_and(|land| land.body == body) {
             return;

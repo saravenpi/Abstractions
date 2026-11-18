@@ -109,7 +109,7 @@ impl Ship {
 /// The frame of a saved ship: [`Frame`] in a form a save file can hold.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SavedFrame {
-    /// Fixed to a planet and turning with it.
+    /// Fixed to a planet or a moon and turning with it.
     Surface(BodyId),
     /// Inertial, origin at a star.
     System(StarId),

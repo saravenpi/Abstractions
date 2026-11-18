@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::glide::sticks;
+use super::pilot::{Pilot, keys};
 use super::{DT, Flight, gliding};
 use crate::gear::Mode;
 
@@ -11,14 +11,17 @@ const STALL: f32 = 15.0;
 
 /// Pulls `flight` up with the back key until it is slower than [`STALL`], and returns the
 /// frames it took. Fails if the speed never drops that far.
-fn pull_to_stall(flight: &mut Flight) -> u32 {
+fn pull_to_stall(pilot: &mut Pilot) -> u32 {
     for frame in 0..600 {
-        if flight.state.airspeed < STALL {
+        if pilot.flight.state.airspeed < STALL {
             return frame;
         }
-        flight.tick(&sticks(1.0, 0.0), DT);
+        pilot.tick(&keys(1.0, 0.0), &gliding(0.0), DT);
     }
-    panic!("never slowed under {STALL}: {}", flight.state.airspeed);
+    panic!(
+        "never slowed under {STALL}: {}",
+        pilot.flight.state.airspeed
+    );
 }
 
 /// A pull-up held into a stall and let go: the nose comes back down below the horizon, the
@@ -27,13 +30,15 @@ fn pull_to_stall(flight: &mut Flight) -> u32 {
 fn stall_drops_the_nose_and_recovers_speed() {
     let mut flight = Flight::new(Mode::Glide, Vec3::new(0.0, -10.0, -45.0));
     flight.run(&gliding(0.0), 1.0);
-    pull_to_stall(&mut flight);
+    let mut pilot = Pilot::on(flight, 0.0);
+    pull_to_stall(&mut pilot);
     let (mut slowest, mut lowest) = (f32::MAX, f32::MAX);
     for _ in 0..360 {
-        flight.tick(&gliding(0.0), DT);
-        slowest = slowest.min(flight.state.airspeed);
-        lowest = lowest.min(flight.state.pitch);
+        pilot.tick(&keys(0.0, 0.0), &gliding(0.0), DT);
+        slowest = slowest.min(pilot.flight.state.airspeed);
+        lowest = lowest.min(pilot.flight.state.pitch);
     }
+    let flight = pilot.flight;
     assert!(lowest < 0.0, "the nose stayed up: {lowest}");
     assert!(
         flight.state.airspeed > slowest + 8.0,
@@ -48,16 +53,21 @@ fn stall_drops_the_nose_and_recovers_speed() {
     assert!(flight.twist < 0.09, "tumbled by {}", flight.twist);
 }
 
-/// A stall entered in a bank levels the wings one way only: the roll rate never changes sign
-/// and the bank never crosses to the other side. No spin.
+/// A stall entered in a bank, by a pilot who aims along the flight path and so asks for no
+/// turn, levels the wings one way only: the roll rate never changes sign and the bank never
+/// crosses to the other side. No spin.
 #[test]
 fn stall_never_spins() {
     for bank in [0.6, -0.6, 0.15] {
         let mut flight = Flight::new(Mode::Glide, Vec3::new(0.0, -8.0, -30.0));
         flight.state.bank = bank;
+        let mut pilot = Pilot::on(flight, 0.0);
         for frame in 0..1200 {
             let stick = f32::from(u8::from(frame < 90));
-            flight.tick(&sticks(stick, 0.0), DT);
+            let v = pilot.flight.state.velocity;
+            pilot.stick.aim.x = (-v.x).atan2(-v.z);
+            pilot.tick(&keys(stick, 0.0), &gliding(0.0), DT);
+            let flight = &pilot.flight;
             let rate = flight.state.servo.rates.y;
             assert!(
                 rate * bank <= 1e-4,
@@ -69,7 +79,7 @@ fn stall_never_spins() {
             );
         }
         assert!(
-            flight.state.bank.abs() < 0.02,
+            pilot.flight.state.bank.abs() < 0.02,
             "wings not level after the stall"
         );
     }
@@ -78,10 +88,11 @@ fn stall_never_spins() {
 /// A level stall with the roll stick centred stays exactly symmetric: no roll at all.
 #[test]
 fn level_stall_stays_level() {
-    let mut flight = Flight::new(Mode::Glide, Vec3::new(0.0, -8.0, -30.0));
+    let mut pilot = Pilot::on(Flight::new(Mode::Glide, Vec3::new(0.0, -8.0, -30.0)), 0.0);
     for frame in 0..1200 {
         let stick = f32::from(u8::from(frame < 90));
-        flight.tick(&sticks(stick, 0.0), DT);
-        assert!(flight.state.bank.abs() < 1e-4 && flight.state.velocity.x.abs() < 1e-3);
+        pilot.tick(&keys(stick, 0.0), &gliding(0.0), DT);
+        let state = pilot.flight.state;
+        assert!(state.bank.abs() < 1e-4 && state.velocity.x.abs() < 1e-3);
     }
 }

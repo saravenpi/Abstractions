@@ -12,7 +12,10 @@ pub const POINTS: usize = 64;
 pub const SPACING: f64 = 1.75;
 
 /// Jump in metres above which the trail starts over instead of streaking across the world.
-pub const BREAK: f64 = 60.0;
+/// No flight covers that much in one frame: the fastest dive moves under 6 m in the longest
+/// step the controller takes. Anything longer is a body that was put somewhere else, and a
+/// straight ribbon from the old place to the new one would cut through whatever lies between.
+pub const BREAK: f64 = 12.0;
 
 /// One point of a trail.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]

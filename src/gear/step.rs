@@ -1,11 +1,10 @@
-//! One step of the flight gear: mode, spool, course, attitude, then velocity.
+//! One step of the flight gear: mode, spool, attitude, then velocity.
 
 use bevy::prelude::*;
 
 use super::aero::{angle_of_attack, bite, slow};
 use super::aim::aim;
 use super::boots::push;
-use super::course::steer;
 use super::input::GearInput;
 use super::mode::Mode;
 use super::modes::{next, roll, slide};
@@ -45,7 +44,7 @@ fn drive(state: &FlightState, input: &GearInput, h: f32) -> (Vec3, f32) {
 
 /// Returns the wind a body in `mode` flies through: the wind of `input` in the air, none on
 /// the ground, where the feet hold against it.
-fn airflow(mode: Mode, input: &GearInput) -> Vec3 {
+pub(super) fn airflow(mode: Mode, input: &GearInput) -> Vec3 {
     match mode.airborne() && input.wind.is_finite() {
         true => input.wind,
         false => Vec3::ZERO,
@@ -73,7 +72,6 @@ fn substep(state: &FlightState, input: &GearInput, h: f32) -> FlightState {
     );
     let wind = airflow(out.mode, input);
     out.velocity -= wind;
-    out.servo.course = steer(&out, input.pitch, h);
     let target = aim(&out, input);
     turn(&mut out, &target, h);
     (out.velocity, out.load) = drive(&out, input, h);

@@ -11,10 +11,11 @@ use super::store::now;
 use super::writer::Writer;
 use super::{ActiveWorld, SaveDir};
 use crate::menus::Menu;
-use crate::player::Player;
+use crate::player::{Player, local};
 use crate::render::DayClock;
 use crate::screens::{Screen, playing};
 use crate::ship::Logbook;
+use crate::sim::PlayerId;
 use crate::view::Heading;
 
 /// Seconds of play between two automatic saves.
@@ -31,11 +32,11 @@ pub struct SavedFlash(pub f32);
 #[derive(Resource)]
 struct AutoTimer(Timer);
 
-/// The body of the player and the look angles of the camera rig.
+/// The body of the local player and the look angles of the camera rig.
 #[derive(SystemParam)]
 struct Poses<'w, 's> {
-    /// The body.
-    body: Query<'w, 's, &'static Transform, With<Player>>,
+    /// The player bodies.
+    bodies: Query<'w, 's, (&'static PlayerId, &'static Transform), With<Player>>,
     /// The look angles: on foot the heading and the pitch of the view.
     heading: Res<'w, Heading>,
 }
@@ -68,7 +69,8 @@ impl Snapshot<'_, '_> {
     fn capture(&mut self) -> Option<&ActiveWorld> {
         let active = self.active.as_deref_mut()?;
         let save = &mut active.0.save;
-        if let Ok(body) = self.poses.body.single() {
+        let bodies = self.poses.bodies.iter().map(|(id, body)| (*id, body));
+        if let Some(body) = local(bodies) {
             self.site.stand(save, body.translation);
             if self.site.walking() {
                 save.yaw = self.poses.heading.yaw;

@@ -4,6 +4,8 @@ mod autosave;
 mod capture;
 mod format;
 mod id;
+#[cfg(test)]
+mod log_tests;
 mod model;
 #[cfg(test)]
 mod moon_tests;

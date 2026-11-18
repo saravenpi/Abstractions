@@ -30,7 +30,7 @@ pub struct Starter<'w, 's> {
 impl Starter<'_, '_> {
     /// Makes `entry` the active world and begins loading it.
     ///
-    /// The universe clock, the atlas and the destination are restored here. The planet and the
+    /// The universe clock, the atlas, the destination and the log of changes are restored here. The planet and the
     /// spot on it are read from the save by the world, through [`super::WorldSave::body`] and
     /// [`super::WorldSave::spawn`]. A file from before v0.6 starts at the home planet spawn.
     pub fn start(&mut self, mut entry: WorldEntry) {
@@ -42,6 +42,7 @@ impl Starter<'_, '_> {
         self.commands
             .insert_resource(Destination(atlas.destination));
         self.commands.insert_resource(atlas);
+        self.commands.insert_resource(entry.save.changes.clone());
         self.commands.insert_resource(Clock {
             seconds: entry.save.clock_seconds,
         });

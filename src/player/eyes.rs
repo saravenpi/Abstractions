@@ -5,10 +5,11 @@ use bevy::prelude::*;
 use super::controller::Motion;
 use super::intent::axis;
 use super::upright::tilt;
-use super::{Player, PlayerSet, wrap};
+use super::{Player, PlayerSet, local, wrap};
 use crate::gear::{FlightState, Gear};
 use crate::screens::{in_control, playing};
 use crate::settings::{Persistent, Settings};
+use crate::sim::PlayerId;
 use crate::space::{Anchor, on_foot, up};
 use crate::view::{Heading, Kind, Look, Target, ViewSet};
 
@@ -48,10 +49,13 @@ pub(super) fn kind(state: &FlightState) -> Kind {
 fn steer(
     time: Res<Time>,
     (keys, settings): (Res<ButtonInput<KeyCode>>, Res<Persistent<Settings>>),
-    gear: Single<&Gear, With<Player>>,
+    players: Query<(&PlayerId, &Gear), With<Player>>,
     heading: Res<Heading>,
     mut look: ResMut<Look>,
 ) {
+    let Some(gear) = local(players.iter().map(|(id, gear)| (*id, gear))) else {
+        return;
+    };
     if !gear.state.mode.winged() {
         return;
     }
@@ -69,15 +73,28 @@ fn steer(
     look.pitch_delta = led.clamp(was.min(-LEASH), was.max(LEASH)) - was;
 }
 
-/// Tells the camera rig what it follows: the body, upright, with the velocity the controller
+/// The parts of a player body the camera rig follows.
+type Followed = (
+    &'static PlayerId,
+    &'static Transform,
+    &'static Motion,
+    &'static Gear,
+);
+
+/// Tells the camera rig what it follows: the local body, upright, with the velocity the controller
 /// just gave it. The forward direction is the north of the upright frame, because the rig
 /// owns the heading of the view.
-fn aim(
+pub(super) fn aim(
     anchor: Res<Anchor>,
-    player: Single<(&Transform, &Motion, &Gear), With<Player>>,
+    players: Query<Followed, With<Player>>,
     mut target: ResMut<Target>,
 ) {
-    let (transform, motion, gear) = *player;
+    let followed = players
+        .iter()
+        .map(|(id, transform, motion, gear)| (*id, (transform, motion, gear)));
+    let Some((transform, motion, gear)) = local(followed) else {
+        return;
+    };
     let vertical = up(&anchor, transform.translation);
     let to_render = tilt(vertical);
     let airborne = gear.state.mode.airborne();
@@ -92,7 +109,7 @@ fn aim(
     };
 }
 
-/// Registers the steering of the wings by the keys, before the controller, and the feed of
+/// Registers the steering of the wings by the keys, before the intents are sent, and the feed of
 /// the camera rig, after the controller moved the body and before the rig.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Target>().add_systems(
@@ -100,7 +117,7 @@ pub(super) fn plugin(app: &mut App) {
         (
             steer
                 .after(ViewSet::Input)
-                .before(PlayerSet::Move)
+                .before(PlayerSet::Intend)
                 .run_if(in_control),
             aim.after(PlayerSet::Move).before(ViewSet::Rig),
         )

@@ -66,6 +66,7 @@ fn modules(app: &mut App) {
         gear::plugin,
         view::plugin,
         icon::plugin,
+        sim::plugin,
     ))
     .insert_resource(view::Enabled(true));
 }

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::computer::Atlas;
 use crate::render::DayClock;
+use crate::sim::Changes;
 use crate::universe::BodyId;
 
 /// Version written into world files. Files from before v0.6 carry none and read as 0.
@@ -70,6 +71,9 @@ pub struct WorldSave {
     pub atlas: Option<Atlas>,
     /// State of the ship, written and read by the ship itself.
     pub ship: Option<toml::Value>,
+    /// What the players changed, oldest first. A file from before 0.9 has an empty log.
+    #[serde(default)]
+    pub changes: Changes,
 }
 
 impl Default for WorldSave {
@@ -89,6 +93,7 @@ impl Default for WorldSave {
             place: None,
             atlas: None,
             ship: None,
+            changes: Changes::default(),
         }
     }
 }

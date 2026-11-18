@@ -16,6 +16,7 @@ use crate::render::GameCamera;
 use crate::saves::{ActiveWorld, WorldSave};
 use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
+use crate::sim::PlayerId;
 use crate::space::{Anchor, Rebased, altitude, on_foot, up};
 use crate::view::{Cut, Heading};
 use crate::world::{SpawnPoint, StreamAnchor, Terrain};
@@ -121,16 +122,16 @@ fn body(home: DVec3, pose: &Pose, at: Transform) -> impl Bundle {
     )
 }
 
-/// Spawns the player body with its camera once the spawn point exists, and has the camera rig
+/// Spawns the body of the local player with its camera once the spawn point exists, and has the camera rig
 /// start on the angles of the pose: a new body is a cut, not a move.
 fn spawn_player(
     mut commands: Commands,
     site: Site,
     (active, settings): (Option<Res<ActiveWorld>>, Res<Persistent<Settings>>),
-    existing: Query<(), With<Player>>,
+    existing: Query<&PlayerId, With<Player>>,
     mut cuts: MessageWriter<Cut>,
 ) {
-    if !existing.is_empty() {
+    if existing.iter().any(|id| *id == PlayerId::LOCAL) {
         return;
     }
     let pose = start_pose(*site.spawn, active.as_ref().map(|active| &active.0.save));
@@ -169,14 +170,24 @@ pub(super) fn rescue(anchor: &Anchor, terrain: &Terrain, at: Vec3, home: DVec3) 
     (height < ground - SUNK).then(|| at + up(anchor, at) * (stand - height))
 }
 
-/// Puts a lost player back: at rest, the flight gear folded, and with a cut of the camera.
+/// The parts of a player body that are put back when lost.
+type Lost = (
+    &'static PlayerId,
+    &'static mut Transform,
+    &'static mut Motion,
+    &'static mut Gear,
+    &'static Home,
+);
+
+/// Puts every lost player back: at rest, the flight gear folded, and with a cut of the camera
+/// when it is the local one.
 fn respawn_when_lost(
     anchor: Res<Anchor>,
     terrain: Res<Terrain>,
-    mut player: Query<(&mut Transform, &mut Motion, &mut Gear, &Home), With<Player>>,
+    mut player: Query<Lost, With<Player>>,
     mut cuts: MessageWriter<Cut>,
 ) {
-    for (mut transform, mut motion, mut gear, home) in &mut player {
+    for (id, mut transform, mut motion, mut gear, home) in &mut player {
         let Some(back) = rescue(&anchor, &terrain, transform.translation, home.0) else {
             continue;
         };
@@ -186,7 +197,9 @@ fn respawn_when_lost(
             ..default()
         };
         *gear = Gear::default();
-        cuts.write(Cut::default());
+        if *id == PlayerId::LOCAL {
+            cuts.write(Cut::default());
+        }
     }
 }
 

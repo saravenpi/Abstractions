@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use super::model::{Place, SAVE_VERSION, WorldSave};
 use crate::computer::Atlas;
+use crate::sim::Changes;
 use crate::space::{Anchor, Clock, Frame, Location, Travel};
 use crate::universe::HOME_RADIUS;
 use crate::world::Terrain;
@@ -47,15 +48,19 @@ pub(super) struct Site<'w> {
     location: Option<Res<'w, Location>>,
     terrain: Option<Res<'w, Terrain>>,
     atlas: Option<Res<'w, Atlas>>,
+    changes: Option<Res<'w, Changes>>,
 }
 
 impl Site<'_> {
-    /// Writes the format version, the universe time and the atlas into `save`.
+    /// Writes the format version, the universe time, the atlas and the log into `save`.
     pub(super) fn record(&self, save: &mut WorldSave) {
         save.version = SAVE_VERSION;
         save.clock_seconds = self.clock.seconds;
         if let Some(atlas) = self.atlas.as_deref() {
             save.atlas = Some(atlas.clone());
+        }
+        if let Some(changes) = self.changes.as_deref() {
+            save.changes = changes.clone();
         }
     }
 

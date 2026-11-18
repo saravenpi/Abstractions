@@ -66,6 +66,8 @@ pub enum Act {
     Engage,
     /// Forget the course.
     Clear,
+    /// Set the course to the next place on the way home.
+    Home,
 }
 
 /// Marks the line that says where the ship is.
@@ -185,21 +187,22 @@ fn list() -> impl Bundle {
     )
 }
 
-/// The footer: the course, the main button with the small one that clears the course beside
-/// it, and the key hints.
+/// The footer: the course, the main button with the small ones that set the course home and
+/// clear it beside it, and the key hints.
 fn footer() -> impl Bundle {
     let spare = (
         action(Icon::Eraser, "", "Del", Tone::Plain),
         Act::Clear,
         Spare,
     );
+    let home = (action(Icon::Home, "Course", "Home", Tone::Plain), Act::Home);
     let actions = (
         Node {
             column_gap: px(theme::GAP_S),
             height: px(BUTTON),
             ..default()
         },
-        children![button(), spare],
+        children![button(), home, spare],
     );
     let line = |words: &'static str, color: Color| {
         (text(words, theme::FONT_SMALL, color), TextLayout::no_wrap())

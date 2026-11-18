@@ -5,7 +5,8 @@ use bevy::math::DVec3;
 use super::atlas::Atlas;
 use super::detail::{brief, charted};
 use super::format::{distance, gravity};
-use super::route::Target;
+use super::home::homes;
+use super::route::{HOME_LABEL, Target};
 use crate::space::UniPos;
 use crate::universe::{GalaxyId, GalaxySpec, PlanetSpec, StarId, StarSpec, Universe};
 
@@ -59,12 +60,19 @@ pub struct View<'a> {
 
 impl View<'_> {
     /// Builds a row for something whose centre is `at` and whose surface is `radius` metres out.
+    /// The home star and the home galaxy say so after their name, as the home planet does.
     fn line(&self, title: &str, target: Target, place: (UniPos, f64), facts: String) -> Line {
         let gap = (place.0.distance(self.ship) - place.1).max(0.0);
         let visited = self.atlas.visited(target);
         let mark = if visited { VISITED } else { "" };
+        let ours = homes(self.universe)[1..].contains(&Some(target));
+        let label = if ours {
+            format!(" {HOME_LABEL}")
+        } else {
+            String::new()
+        };
         Line {
-            title: title.to_string(),
+            title: format!("{title}{label}"),
             detail: format!("{} - {facts}{mark}", distance(gap)),
             target,
             distance: gap,
@@ -122,10 +130,13 @@ impl View<'_> {
     }
 
     /// Returns the rows of the galaxy tab: the stars of `galaxy` among `known`, nearest first.
+    /// The home star is always one of them.
     pub fn galaxy(&self, galaxy: GalaxyId, known: impl Iterator<Item = StarId>) -> Vec<Line> {
         let Some(spec) = self.universe.galaxy(galaxy) else {
             return Vec::new();
         };
+        let home = self.universe.home().star;
+        let known = known.filter(|id| *id != home).chain([home]);
         let stars = known
             .filter(|id| id.galaxy == galaxy)
             .filter_map(|id| self.universe.star(id));

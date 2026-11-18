@@ -13,6 +13,7 @@ use super::arrow::{ShipArrow, arrow};
 use super::chart::{GRID, mark};
 use super::layout::{SMALLEST, measure};
 use super::orbits::{cell, circle};
+use super::rim::pin;
 use crate::ui::{column, text, theme};
 use crate::universe::PlanetSpec;
 
@@ -80,7 +81,7 @@ fn legend() -> impl Bundle {
 }
 
 /// The empty map: a dark square with no frame that cuts what leaves it, holding the sheet
-/// under the legend. `draw` fills the sheet.
+/// under the legend and the pin that points home. `draw` fills the sheet.
 pub fn field() -> impl Bundle {
     let sheet = Node {
         position_type: PositionType::Absolute,
@@ -101,7 +102,7 @@ pub fn field() -> impl Bundle {
             ..default()
         },
         BackgroundColor(theme::STRIP),
-        children![(Sheet, sheet), legend()],
+        children![(Sheet, sheet), legend(), pin()],
     )
 }
 

@@ -89,13 +89,15 @@ impl Atlas {
         known
     }
 
-    /// Returns every system of `galaxy` the player knows: the visited ones and those within
-    /// [`super::REVEAL_GLY`] game light-years of a visited one.
+    /// Returns every system of `galaxy` the player knows: the visited ones, those within
+    /// [`super::REVEAL_GLY`] game light-years of a visited one, and always the home star.
     pub fn known_systems(&self, universe: &Universe, galaxy: GalaxyId) -> Vec<StarSpec> {
         let mut known = Vec::new();
         for &id in self.systems.iter().filter(|id| id.galaxy == galaxy) {
             known.extend(systems_around(universe, id));
         }
+        let home = universe.home().star;
+        known.extend(universe.star(home).filter(|_| home.galaxy == galaxy));
         let mut seen = HashSet::new();
         known.retain(|star| seen.insert(star.id));
         known

@@ -51,3 +51,14 @@ pub fn whereabouts(
         }
     }
 }
+
+/// Returns the planet, the system and the galaxy that the point `at` of `frame` lies inside,
+/// as targets.
+pub fn here(universe: &Universe, frame: Frame, at: DVec3) -> [Option<Target>; 3] {
+    let (body, star, galaxy) = whereabouts(universe, frame, at);
+    [
+        body.map(Target::Body),
+        star.map(Target::Star),
+        galaxy.map(Target::Galaxy),
+    ]
+}

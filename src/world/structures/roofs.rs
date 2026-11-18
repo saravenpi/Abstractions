@@ -25,6 +25,7 @@ impl Build<'_> {
             s.sheet_quad([b[0], b[1], r[1], r[0]], front, colors);
             s.sheet_quad([a[1], a[0], r[0], r[1]], back, colors);
         });
+        self.pitch_plates(lo, hi, rise);
     }
 
     /// Adds a gabled roof with its ridge along local x and both ends closed by a triangle.
@@ -57,6 +58,7 @@ impl Build<'_> {
             s.sheet_tri([a[0], b[0], r[0]], left, end);
             s.sheet_tri([a[1], b[1], r[1]], right, end);
         });
+        self.hip_plates(lo, hi, rise);
     }
 
     /// Adds a single slope that is high at `lo.z` and falls to `lo.y` at `hi.z`, with open sides.
@@ -72,6 +74,8 @@ impl Build<'_> {
         self.tagged(Tag::Roof, |s| {
             s.sheet_quad([top[0], top[1], low[0], low[1]], out, colors)
         });
+        let eave = (Vec3::new(lo.x, lo.y, hi.z), Vec3::new(hi.x, lo.y, hi.z));
+        self.plate(eave.0, eave.1, Vec3::new(0.0, rise, lo.z - hi.z));
     }
 
     /// Adds a single slope that is high at `lo.z` and falls to `lo.y` at `hi.z`, its two sides closed down to `lo.y`.
@@ -89,12 +93,15 @@ impl Build<'_> {
     /// Adds a sloping awning over `lo..hi` cut along x into one strip per color of `stripes`, its two outer
     /// sides closed down to `lo.y`.
     pub fn awning(&mut self, lo: Vec3, hi: Vec3, rise: f32, stripes: &[[f32; 3]]) {
-        let width = (hi.x - lo.x) / stripes.len() as f32;
+        let (width, solid) = ((hi.x - lo.x) / stripes.len() as f32, self.parts.len());
         for (i, rgb) in stripes.iter().enumerate() {
             let x = lo.x + width * i as f32;
             let (from, to) = (Vec3::new(x, lo.y, lo.z), Vec3::new(x + width, lo.y, hi.z));
             self.slope(from, to, rise, Mat::deco(*rgb));
         }
+        self.parts.truncate(solid);
+        let eave = (Vec3::new(lo.x, lo.y, hi.z), Vec3::new(hi.x, lo.y, hi.z));
+        self.plate(eave.0, eave.1, Vec3::new(0.0, rise, lo.z - hi.z));
         let ends = [(lo.x, Vec3::NEG_X, 0), (hi.x, Vec3::X, stripes.len() - 1)];
         for (x, out, stripe) in ends {
             let under = self.color(stripes[stripe], 0.65);
@@ -117,7 +124,8 @@ impl Build<'_> {
         ];
         self.tagged(Tag::Roof, |s| {
             s.cuboid(l, Vec3::new(h.x, top, h.z), mat);
-            s.boxes(&ring, Mat::deco(mat.rgb.map(|c| c * 0.85)));
+            s.boxes(&ring, Mat::solid(mat.rgb.map(|c| c * 0.85)));
         });
+        self.collider(l, Vec3::new(h.x, top, h.z));
     }
 }

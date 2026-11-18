@@ -36,6 +36,7 @@ mod memo;
 mod pads;
 mod palette;
 mod parts;
+mod plates;
 #[cfg(test)]
 mod probe;
 mod roofs;
@@ -67,7 +68,11 @@ mod tests_hang;
 #[cfg(test)]
 mod tests_interior;
 #[cfg(test)]
+mod tests_landing;
+#[cfg(test)]
 mod tests_lights;
+#[cfg(test)]
+mod tests_plates;
 #[cfg(test)]
 mod tests_river;
 #[cfg(test)]

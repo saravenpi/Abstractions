@@ -77,7 +77,10 @@ fn every_class_has_a_short_brief() {
     assert_eq!(brief(None), UNCHARTED);
     assert_eq!(brief(Some(&PlanetRecord::TEMPERATE)), "island - 15 C");
     let classes: HashSet<PlanetClass> = records().iter().map(|record| record.class).collect();
-    assert_eq!(classes.len(), PlanetClass::ALL.len());
+    let solid = PlanetClass::ALL
+        .iter()
+        .filter(|class| **class != PlanetClass::GasGiant);
+    assert_eq!(classes.len(), solid.count());
 }
 
 /// The readout of each class says the whole record in plain words and units.

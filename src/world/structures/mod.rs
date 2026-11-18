@@ -67,6 +67,8 @@ mod tests_embed;
 #[cfg(test)]
 mod tests_faces;
 #[cfg(test)]
+mod tests_fast;
+#[cfg(test)]
 mod tests_globe;
 #[cfg(test)]
 mod tests_hang;

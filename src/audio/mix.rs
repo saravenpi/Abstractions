@@ -99,6 +99,8 @@ impl Mixer {
             submerged: self.at(Param::Submerged),
             cabin: self.at(Param::Cabin),
             space: self.at(Param::Space),
+            rain: self.at(Param::Rain),
+            dust: self.at(Param::Dust),
         }
     }
 

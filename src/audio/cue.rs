@@ -60,6 +60,8 @@ pub enum AudioCue {
     WarpExit,
     /// The robot companion speaks.
     Chirp(ChirpKind),
+    /// Thunder rolls far away. The level runs from 0 (barely heard) to 1 (a near storm).
+    Thunder(f32),
 }
 
 /// Every surface, in code order.
@@ -83,11 +85,12 @@ const CHIRPS: [ChirpKind; 8] = [
     ChirpKind::Wake,
 ];
 
-/// Steps a landing strength is stored in.
+/// Steps a landing strength or a thunder level is stored in.
 const STRENGTH_STEPS: f32 = 1000.0;
 
 impl AudioCue {
-    /// Returns every cue once, landing at full strength. Used to audition and to test.
+    /// Returns every cue the player sets off once, landing at full strength. Thunder comes from
+    /// the weather and is auditioned on its own. Used to audition and to test.
     pub fn all() -> impl Iterator<Item = AudioCue> {
         let plain = [
             AudioCue::UiMove,
@@ -115,6 +118,7 @@ impl AudioCue {
             AudioCue::WarpEngage => (7, 0),
             AudioCue::WarpExit => (8, 0),
             AudioCue::Chirp(kind) => (9, kind as u32),
+            AudioCue::Thunder(level) => (10, (level.clamp(0.0, 1.0) * STRENGTH_STEPS) as u32),
         };
         kind | (arg << 8)
     }
@@ -132,6 +136,7 @@ impl AudioCue {
             7 => Some(AudioCue::WarpEngage),
             8 => Some(AudioCue::WarpExit),
             9 => CHIRPS.get(arg).copied().map(AudioCue::Chirp),
+            10 => Some(AudioCue::Thunder(arg as f32 / STRENGTH_STEPS)),
             _ => None,
         }
     }

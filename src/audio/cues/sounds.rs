@@ -90,6 +90,13 @@ const WARP_EXIT: [Blip; 3] = [
     noise(210.0, 0.5, 0.02, 0.0, 0.12),
 ];
 
+/// Far thunder: a long low roll that swells in, with a rumble of noise trailing it.
+const THUNDER: [Blip; 3] = [
+    deep(tone(62.0, 34.0, 3.2, 0.0, 0.3)),
+    noise(110.0, 2.8, 0.35, 0.05, 0.3),
+    noise(70.0, 3.6, 0.6, 0.4, 0.25),
+];
+
 /// Returns the blips of a cue with the pitch factor and the level to play them at.
 ///
 /// Footsteps and chirps vary a little each time so that they never sound stamped. The steps of
@@ -107,5 +114,6 @@ pub fn recipe(cue: AudioCue, rand: &mut Rand) -> (&'static [Blip], f32, f32) {
         AudioCue::WarpEngage => (&WARP_ENGAGE, 1.0, 1.0),
         AudioCue::WarpExit => (&WARP_EXIT, 1.0, 1.0),
         AudioCue::Chirp(kind) => (chirp(kind), rand.range(0.95, 1.06), 1.0),
+        AudioCue::Thunder(level) => (&THUNDER, rand.range(0.85, 1.1), level.clamp(0.0, 1.0)),
     }
 }

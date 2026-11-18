@@ -23,6 +23,9 @@ const ICE: f64 = 0.55;
 /// Share of the starlight clouds send back.
 const CLOUD: f64 = 0.6;
 
+/// Share of the starlight the cloud deck of a gas giant sends back: the Bond albedo of Jupiter.
+const DECK: f64 = 0.34;
+
 /// Water stock, from 0 to 1, under which a planet has no water at all.
 const DRY: f64 = 0.1;
 
@@ -143,4 +146,20 @@ pub fn settle(flux: f64, pressure: f64, wet: f64) -> Climate {
         water: Water::None,
     };
     (0..ROUNDS).fold(bare, |was, _| step(flux, pressure, wet, &was))
+}
+
+/// Returns the climate at the cloud deck of a gas giant receiving `flux`, for a water stock `wet`.
+///
+/// The deck sends back 34 percent of the light whatever lies under it, and the air above it is
+/// at the pressure cap, so it warms by the steady greenhouse of 74 K with no feedback to run.
+/// Water there is in the state [`state`] gives at that heat and pressure.
+pub fn deck(flux: f64, wet: f64) -> Climate {
+    let greenhouse = air::greenhouse(air::PRESSURE_CAP);
+    let temperature = BLACK_BODY * (flux * (1.0 - DECK)).powf(0.25) + greenhouse;
+    Climate {
+        albedo: DECK,
+        greenhouse,
+        temperature,
+        water: state(temperature, air::PRESSURE_CAP, wet),
+    }
 }

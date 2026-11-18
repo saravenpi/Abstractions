@@ -7,12 +7,18 @@ use super::climate::FREEZING;
 use super::range_tests::sample;
 use super::*;
 
-/// Returns every planet of the star sample but the pinned home planets, each with its star.
+/// Returns every solid planet of the star sample but the pinned home planets, each with its star.
+///
+/// Gas giants have records of their own, checked in `giant_tests`.
 fn survey() -> Vec<(StarSpec, PlanetSpec)> {
     let mut planets = Vec::new();
     for (u, star) in sample() {
         let system = u.system(star.id);
-        let free = system.planets.into_iter().filter(|p| p.id != u.home());
+        let solid = |p: &PlanetSpec| p.record.class != PlanetClass::GasGiant;
+        let free = system
+            .planets
+            .into_iter()
+            .filter(|p| p.id != u.home() && solid(p));
         planets.extend(free.map(|p| (star.clone(), p)));
     }
     assert!(planets.len() >= 5000, "only {} planets", planets.len());
@@ -29,7 +35,8 @@ fn shares(planets: &[(StarSpec, PlanetSpec)], keep: impl Fn(&StarSpec) -> bool) 
     (counts.map(|n| (1000.0 * n / total).round() / 10.0), total)
 }
 
-/// Every class is between 5 and 40 percent of the planets. Shares are printed per star class.
+/// Every solid class is between 5 and 40 percent of the solid planets. Shares are printed per
+/// star class.
 #[test]
 fn every_class_has_its_share() {
     let planets = survey();

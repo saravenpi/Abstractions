@@ -8,8 +8,9 @@ use crate::render::DayClock;
 use crate::sim::Changes;
 use crate::universe::BodyId;
 
-/// Version written into world files. Files from before v0.6 carry none and read as 0.
-pub const SAVE_VERSION: u32 = 1;
+/// Version written into world files. Files from before v0.6 carry none and read as 0, files
+/// from v0.6 to 0.8.1 carry 1, and 2 is the ground of 0.9: a moved home base and new relief.
+pub const SAVE_VERSION: u32 = 2;
 
 /// A spot on a planet: a direction from its centre and a height above its sea level.
 ///

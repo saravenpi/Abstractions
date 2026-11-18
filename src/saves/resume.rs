@@ -1,25 +1,13 @@
-//! Resuming a world: bringing an old file up to date and finding where the player starts.
+//! Resuming a world: finding the planet and the spot where the player starts.
 
 use bevy::prelude::*;
 
-use super::model::{SAVE_VERSION, WorldSave};
+use super::model::WorldSave;
 use crate::universe::{BodyId, Universe};
 use crate::world::Terrain;
 use crate::world::globe::Chart;
 
 impl WorldSave {
-    /// Brings a file from an older version up to date.
-    ///
-    /// A file from before v0.6 holds a position on the flat world, which means nothing on a
-    /// globe: it is dropped, so the world starts at the home planet spawn. The name, the seed,
-    /// the play time and the creation date are kept.
-    pub fn upgrade(&mut self) {
-        if self.version < SAVE_VERSION {
-            self.position = None;
-            self.version = SAVE_VERSION;
-        }
-    }
-
     /// Returns the planet the world starts on: the one the player last stood on, or the home planet.
     pub fn body(&self, universe: &Universe) -> BodyId {
         self.place

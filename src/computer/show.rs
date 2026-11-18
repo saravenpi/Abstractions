@@ -45,6 +45,7 @@ fn sign(target: Target, chosen: bool, here: bool) -> Icon {
         (true, _, _) => Icon::MapPin,
         (_, true, _) => Icon::Send,
         (_, _, Target::Star(_)) => Icon::Star,
+        (_, _, Target::Body(body)) if body.is_moon() => Icon::Moon,
         (_, _, Target::Body(_)) => Icon::Earth,
         (_, _, Target::Galaxy(_)) => Icon::Map,
     }

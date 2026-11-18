@@ -30,6 +30,8 @@ pub enum Icon {
     Pause,
     /// `earth`
     Earth,
+    /// `moon`
+    Moon,
     /// `plus`
     Plus,
     /// `sliders`
@@ -82,10 +84,11 @@ pub enum Icon {
 
 impl Icon {
     /// Every icon, in declaration order.
-    pub const ALL: [Icon; 27] = [
+    pub const ALL: [Icon; 28] = [
         Icon::Play,
         Icon::Pause,
         Icon::Earth,
+        Icon::Moon,
         Icon::Plus,
         Icon::Settings,
         Icon::LogOut,
@@ -118,6 +121,7 @@ impl Icon {
             Icon::Play => '\u{ecd3}',
             Icon::Pause => '\u{ecc0}',
             Icon::Earth => '\u{eb85}',
+            Icon::Moon => '\u{eca1}',
             Icon::Plus => '\u{ecd8}',
             Icon::Settings => '\u{ed3d}',
             Icon::LogOut => '\u{ec70}',

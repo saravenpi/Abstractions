@@ -6,7 +6,11 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use crate::ship::body::Ship;
-use crate::ship::flight::{Controls, Report, STEP, Scene, step};
+use bevy::ecs::system::RunSystemOnce;
+
+use crate::ship::flight::{Controls, Report, STEP, Scene};
+use crate::ship::hull_cast::{Built, Solids};
+use crate::ship::sim::stride;
 use crate::space::{Anchor, Frame};
 use crate::universe::PlanetSpec;
 
@@ -55,27 +59,32 @@ pub fn stage(blocks: &[Block]) -> App {
 }
 
 /// Flies `ship` over `planet`, whose ground is flat at `ground` metres above the sea, among the
-/// solids of `app` for `seconds` with `controls`, and returns the ship and the report after
-/// every step.
+/// solids of `app` for `seconds` with `controls`, the way the flight systems step it, and
+/// returns the ship and the report after every step.
 pub fn flown(
-    _app: &mut App,
+    app: &mut App,
     mut ship: Ship,
     controls: Controls,
     (planet, ground): (PlanetSpec, f64),
     seconds: f64,
 ) -> Vec<(Ship, Report)> {
-    let land = move |_: DVec3| ground;
-    let scene = Scene {
-        planet: Some(&planet),
-        ground: &land,
-        wells: &[],
-        elapsed: 0.0,
-    };
+    app.insert_resource(Built(Some(anchor(&planet))));
     let steps = (seconds / STEP).round() as usize;
-    (0..steps)
-        .map(|_| {
-            let report = step(&mut ship, &controls, &scene, STEP);
+    let fly = move |solids: Solids| {
+        let land = move |_: DVec3| ground;
+        let scene = Scene {
+            planet: Some(&planet),
+            ground: &land,
+            wells: &[],
+            elapsed: 0.0,
+        };
+        let mut each = || {
+            let report = stride(&mut ship, &controls, &scene, Some(&solids));
             (ship.clone(), report)
-        })
-        .collect()
+        };
+        (0..steps).map(|_| each()).collect::<Vec<_>>()
+    };
+    app.world_mut()
+        .run_system_once(fly)
+        .expect("the flight runs")
 }

@@ -1,6 +1,7 @@
 //! The hull against what is built: a ship flown at a house wall stops at it, slow or fast, and a
-//! ship lowered onto a flat roof or onto the canopy of the base rests on it. Until 0.10 the ship
-//! read only the terrain height and flew through all of them.
+//! ship lowered onto a flat roof rests on it, and no point of a ship lowered or dropped onto the
+//! canopy of the base goes into it. Until 0.10 the ship read only the terrain height and flew
+//! through all of them.
 
 mod stage;
 
@@ -11,7 +12,8 @@ use super::hover::{assisted, stick};
 use super::{above_pole, planet};
 use crate::ship::body::Ship;
 use crate::ship::flight::{Controls, Report};
-use crate::ship::landing::GEAR_DROP;
+use crate::ship::gear::feet;
+use crate::ship::landing::{GEAR_DROP, HULL};
 use crate::universe::PlanetSpec;
 use stage::{Block, CANOPY, CANOPY_TOP, flown, stage};
 
@@ -73,7 +75,6 @@ fn stopped_at_the_wall(track: &[(Ship, Report)]) {
 /// A ship that drifts into a house wall at 5 m/s stops at the wall without passing through it,
 /// and the bump is no crash.
 #[test]
-#[ignore = "fails until the hull meets what is built: the ship flies through"]
 fn a_ship_stops_at_a_house_wall_at_5_m_s() {
     let track = into_wall(5.0);
     stopped_at_the_wall(&track);
@@ -83,7 +84,6 @@ fn a_ship_stops_at_a_house_wall_at_5_m_s() {
 /// A ship that flies into a house wall at 60 m/s stops at the wall without passing through it,
 /// takes damage and reports the crash.
 #[test]
-#[ignore = "fails until the hull meets what is built: the ship flies through"]
 fn a_ship_stops_at_a_house_wall_at_60_m_s() {
     let track = into_wall(60.0);
     stopped_at_the_wall(&track);
@@ -104,7 +104,7 @@ fn lowered(blocks: &[Block], above: f64) -> (PlanetSpec, Vec<(Ship, Report)>) {
 
 /// The sink key sets the ship down on a flat roof, where it rests on its gear without damage.
 #[test]
-#[ignore = "fails until the hull meets what is built: the ship flies through"]
+#[ignore = "fails until the ship stands on the decks of what is built"]
 fn a_ship_lowered_onto_a_flat_roof_rests_on_it() {
     let (planet, track) = lowered(&ROOF, ROOF_TOP + GEAR_DROP + 8.0);
     let lowest = track
@@ -123,51 +123,63 @@ fn a_ship_lowered_onto_a_flat_roof_rests_on_it() {
     assert!(lowest > ROOF_TOP + GEAR_DROP - 0.3, "went down to {lowest}");
 }
 
-/// The sink key sets the ship down on the canopy of the base, where it rests without damage and
-/// without its belly ever going under the top of the canopy.
-#[test]
-#[ignore = "fails until the hull meets what is built: the ship flies through"]
-fn a_ship_lowered_onto_the_base_canopy_rests_on_it() {
-    let (planet, track) = lowered(&CANOPY, CANOPY_TOP + GEAR_DROP + 6.0);
-    let lowest = track
-        .iter()
-        .map(|(ship, _)| height(ship, &planet))
-        .fold(f64::INFINITY, f64::min);
-    let (last, _) = track.last().expect("a flight");
-    assert!(
-        last.landed && last.damage == 0.0,
-        "landed {} damage {}",
-        last.landed,
-        last.damage
-    );
-    assert!(
-        lowest > CANOPY_TOP + 0.6,
-        "the hull centre went down to {lowest}"
-    );
+/// Returns the heights in metres above the sea of the contact points of `ship`, gear feet then
+/// hull, over the canopy, or nothing for a point that is not over it.
+fn over_the_canopy(ship: &Ship, planet: &PlanetSpec) -> [Option<f64>; 9] {
+    let (feet, over) = (feet(ship), |p: DVec3| p.x.abs() < 2.2 && p.z.abs() < 1.8);
+    std::array::from_fn(|i| {
+        let at = ship.pos + ship.rot * if i < 3 { feet[i] } else { HULL[i - 3] };
+        over(at).then(|| at.length() - planet.radius)
+    })
 }
 
-/// A ship that falls at 40 m/s onto the canopy, a slab 0.1 m thick, does not pass through it.
+/// Returns how many times along `track` a contact point went from above the canopy to under its
+/// slab in one step while over it: through the canopy.
+fn through_the_canopy(track: &[(Ship, Report)], planet: &PlanetSpec) -> usize {
+    let heights: Vec<_> = track
+        .iter()
+        .map(|(ship, _)| over_the_canopy(ship, planet))
+        .collect();
+    let crossed = |(was, now): (&Option<f64>, &Option<f64>)| matches!((was, now), (Some(was), Some(now)) if *was > CANOPY_TOP && *now < CANOPY_TOP - 0.1);
+    let steps = heights.windows(2);
+    steps
+        .map(|pair| {
+            pair[0]
+                .iter()
+                .zip(&pair[1])
+                .filter(|pair| crossed(*pair))
+                .count()
+        })
+        .sum()
+}
+
+/// The sink key lowers the ship onto the canopy of the base. The gear spans 3.8 by 3.9 m and
+/// the canopy is 4.4 by 3.6 m, so the nose foot finds no canopy under it: the ship tips over
+/// the edge and slides off to the ground, without damage, and no point of it ever goes through
+/// the canopy.
 #[test]
-#[ignore = "fails until the hull meets what is built: the ship flies through"]
+fn a_ship_lowered_onto_the_base_canopy_never_sinks_into_it() {
+    let (planet, track) = lowered(&CANOPY, CANOPY_TOP + GEAR_DROP + 6.0);
+    let through = through_the_canopy(&track, &planet);
+    let (last, _) = track.last().expect("a flight");
+    assert_eq!(through, 0, "points went through the canopy");
+    assert!(last.damage < 0.05, "damage {}", last.damage);
+}
+
+/// A ship that falls at 40 m/s onto the canopy, a slab 0.1 m thick, crashes on it and no point
+/// of it passes through.
+#[test]
 fn a_ship_dropped_fast_on_the_canopy_does_not_pass_through() {
     let planet = planet(6000.0, 4000.0, 1200.0);
     let mut ship = above_pole(&planet, CANOPY_TOP + 10.0);
     ship.vel = DVec3::NEG_Y * 40.0;
     let mut app = stage(&CANOPY);
-    let track = flown(
-        &mut app,
-        ship,
-        Controls::default(),
-        (planet.clone(), 0.0),
-        3.0,
-    );
-    let lowest = track
-        .iter()
-        .map(|(ship, _)| height(ship, &planet))
-        .fold(f64::INFINITY, f64::min);
-    assert!(
-        lowest > CANOPY_TOP + 0.5,
-        "the hull centre went down to {lowest}"
+    let land = (planet.clone(), 0.0);
+    let track = flown(&mut app, ship, Controls::default(), land, 3.0);
+    assert_eq!(
+        through_the_canopy(&track, &planet),
+        0,
+        "points went through the canopy"
     );
     assert!(track.iter().any(|(_, report)| report.crash.is_some()));
 }

@@ -51,13 +51,14 @@ fn slope_at(view: &Terrain, x: f32, z: f32) -> f32 {
     dx.hypot(dz)
 }
 
-/// The spawn of a globe view is dry walkable beach or meadow on its own face, for 10 seeds.
+/// The spawn of a globe view is dry walkable beach or meadow on its own face, for 10 seeds, on the four
+/// faces around the equator: the polar faces are taiga under snow now that biomes follow the latitude.
 #[test]
 fn globe_spawn_is_dry_and_walkable() {
     for seed in 1..=10 {
         let radius = [3000.0, 6000.0, 40_000.0][seed as usize % 3];
         let globe = Arc::new(Globe::new(seed, radius, 22.0));
-        let face = Face::ALL[seed as usize % 6];
+        let face = [Face::PosX, Face::NegX, Face::PosZ, Face::NegZ][seed as usize % 4];
         let view = Terrain::on(globe.clone(), globe.face_chart(face));
         let p = view.find_spawn();
         assert_eq!(p.y, view.height(p.x, p.z));

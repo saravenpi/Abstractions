@@ -7,6 +7,10 @@ use super::field::Field;
 /// `[f64; 2]` is a point of the legacy plane. `[f64; 3]` is a point of a sphere around the planet
 /// centre. Every ground formula is written once over this trait, so both read the same world rules.
 pub trait Point: Copy {
+    /// True for a point of a sphere: the rules only the globe follows, such as the relief its gravity
+    /// allows, read this so that the legacy plane never changes.
+    const SOLID: bool;
+
     /// Returns the value of `field` at this point.
     fn get(self, field: &impl Field) -> f64;
 

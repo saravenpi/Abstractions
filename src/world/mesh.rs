@@ -26,9 +26,10 @@ pub use self::node::{fill_node, node_frame, node_mesh};
 pub use self::patch::Patch;
 pub use self::rings::Rings;
 pub use self::span::{Span, leaf_coord};
-use self::tris::{Style, fill, tone};
+use self::tris::{Cell, Style, fill, tone};
+use super::globe::Chart;
 use super::shapes::FlatMesh;
-use super::{Biome, CHUNK_SIZE, Terrain};
+use super::{CHUNK_SIZE, Terrain};
 
 /// Distance between two terrain vertices.
 pub const GRID_STEP: f32 = 2.0;
@@ -45,15 +46,19 @@ pub fn chunk_heights(terrain: &Terrain, coord: IVec2, stride: usize) -> Vec<Vec<
 }
 
 /// Returns the biome of cell `(i, j)` of `span`, then the biomes of its two triangles, dithered
-/// across biome borders.
-pub(super) fn dithered(terrain: &Terrain, span: &Span, (i, j): (usize, usize)) -> [Biome; 3] {
+/// across biome borders, and the channel bed at its middle on a globe.
+pub(super) fn dithered(terrain: &Terrain, span: &Span, (i, j): (usize, usize)) -> Cell {
     let centre = span.chart(i, j, 0.5);
     let near = |half: usize| {
         let jitter = |salt: usize| (tone(i + salt, j, half) - 1.0) / 0.08 * DITHER_REACH;
         let at = centre + Vec2::new(jitter(7919), jitter(104_729));
         terrain.biome(at.x, at.y)
     };
-    [terrain.biome(centre.x, centre.y), near(0), near(1)]
+    let bed = match terrain.chart() {
+        Chart::Flat => None,
+        _ => terrain.globe().mark(terrain.up(centre.x, centre.y)),
+    };
+    ([terrain.biome(centre.x, centre.y), near(0), near(1)], bed)
 }
 
 /// Returns the vertices of chunk `coord` at `heights`, in the frame of the chunk, none lower than `floor`.

@@ -1,15 +1,23 @@
 //! The globe: one planet as a function of the direction from its centre.
 
+mod atlas;
 mod chart;
+mod climate;
+mod craters;
 mod cube;
 mod datum;
 pub mod far;
 mod flat;
+mod flows;
 mod ground;
 mod id;
+mod landform;
 pub mod quadtree;
 mod record;
 mod reserve;
+mod roll;
+mod scale;
+mod season;
 mod site;
 mod sphere;
 mod tangent;
@@ -17,11 +25,19 @@ mod tangent;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_climate;
+#[cfg(test)]
 mod tests_datum;
 #[cfg(test)]
 pub(in crate::world) mod tests_deck;
 #[cfg(test)]
+mod tests_flows;
+#[cfg(test)]
+mod tests_landform;
+#[cfg(test)]
 mod tests_record;
+#[cfg(test)]
+mod tests_relief;
 
 pub use chart::Chart;
 pub use cube::Face;
@@ -30,9 +46,15 @@ pub use reserve::Reserve;
 pub(in crate::world) use site::Site;
 pub use tangent::Tangent;
 
+use std::sync::Arc;
+
+use atlas::Atlas;
+use season::Season;
+
 use super::biome::Climate;
 use super::islands::Shape;
 use super::lands::Lands;
+use crate::climate::Setting;
 use crate::universe::{PlanetRecord, PlanetSpec};
 
 /// A planet: its size, its pull, its record and the noise fields that shape its ground.
@@ -54,6 +76,12 @@ pub struct Globe {
     lands: Lands,
     /// Metres from the centre past which the sky draws the planet instead of the world.
     handover: f64,
+    /// The planet as its climate sees it.
+    setting: Setting,
+    /// How far round its orbit the planet is now, for the climate of the moment.
+    season: Season,
+    /// The coarse cells of the sphere, their height grids and their flows, shared by every copy.
+    atlas: Arc<Atlas>,
 }
 
 impl Globe {
@@ -62,18 +90,23 @@ impl Globe {
     /// the same planet.
     pub fn new(seed: u64, radius: f64, gravity: f64) -> Self {
         let record = PlanetRecord::TEMPERATE;
+        let (gain, continent) = scale::scale(radius, gravity);
         Self {
             seed,
             radius,
             gravity,
-            shape: Shape::new(seed),
+            shape: Shape::new(seed).scaled(gain, continent),
             climate: Climate::new(seed),
             reserve: None,
             record,
             datum: 0.0,
             lands: Lands::of(&record),
             handover: far::handover(radius, None),
+            setting: climate::setting(seed, radius, gravity),
+            season: Season::default(),
+            atlas: Arc::new(Atlas::new(0)),
         }
+        .charted()
     }
 
     /// Builds the globe of a planet of the universe, with its own record and the hand-over
@@ -81,8 +114,10 @@ impl Globe {
     pub fn of(spec: &PlanetSpec) -> Self {
         Self {
             handover: far::handover(spec.radius, spec.rings),
+            setting: Setting::of(spec),
             ..Self::new(spec.seed, spec.radius, spec.gravity).with_record(spec.record)
         }
+        .charted()
     }
 
     /// Returns the seed the ground is generated from.

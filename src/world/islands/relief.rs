@@ -35,8 +35,9 @@ impl Relief {
         }
     }
 
-    /// Returns the height added above the coast profile at the warped position, `s` being the inland measure.
-    pub fn above<P: Point>(&self, w: P, s: f32) -> f32 {
+    /// Returns the height added above the coast profile at the warped position, `s` being the inland measure
+    /// and `gain` the factor on the height of the mountains.
+    pub fn above<P: Point>(&self, w: P, s: f32, gain: f32) -> f32 {
         let m = w.get(&self.mount) as f32;
         let h = smooth(
             0.2,
@@ -52,6 +53,6 @@ impl Relief {
             return low * lift;
         }
         let r = ((w.get(&self.ridge) as f32 + 1.0) * 0.5).clamp(0.0, 1.0);
-        low * lift + mt * (24.0 + 90.0 * r * r)
+        low * lift + mt * (24.0 + 90.0 * r * r) * gain
     }
 }

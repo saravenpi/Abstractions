@@ -22,16 +22,24 @@ impl Globe {
     }
 
     /// Returns the ground height in metres above sea level at `at` before any pond is carved: the shape
-    /// of the land, moved by the sea datum of the planet.
+    /// of the land, moved by the sea datum of the planet. On the sphere the landform of the class shapes it
+    /// and the flows cut their channels.
     pub(in crate::world) fn uncarved<S: Site>(&self, at: S) -> f32 {
-        self.shape.elevation(at.point(), &self.climate) - self.datum
+        match at.ball() {
+            Some(p) => self.flowed(p, self.shaped(p)),
+            None => self.shape.elevation(at.point(), &self.climate) - self.datum,
+        }
     }
 
-    /// Returns the biome at `at`, also over water: the one biome of the class, or what the climate says.
+    /// Returns the biome at `at`, also over water: the one biome of the class, or else on the sphere what
+    /// the annual mean climate gives, and on the legacy plane what its climate noise says.
     pub(in crate::world) fn biome_on<S: Site>(&self, at: S) -> Biome {
-        self.lands.biome().unwrap_or_else(|| {
-            let p = at.point();
-            self.climate.biome(p, self.shape.base(p))
+        self.lands.biome().unwrap_or_else(|| match at.ball() {
+            Some(p) => self.biome_at(p),
+            None => {
+                let p = at.point();
+                self.climate.biome(p, self.shape.base(p))
+            }
         })
     }
 
@@ -44,6 +52,7 @@ impl Globe {
         let e = SLOPE_STEP;
         let rise = |by: Vec2| (self.ground(at.moved(by)) - self.ground(at.moved(-by))) / (2.0 * e);
         let (dx, dz) = (rise(Vec2::new(e, 0.0)), rise(Vec2::new(0.0, e)));
-        self.lands.surface(h, dx.hypot(dz), self.biome_on(at))
+        let surface = self.lands.surface(h, dx.hypot(dz), self.biome_on(at));
+        at.ball().and_then(|p| self.marked(p, h)).unwrap_or(surface)
     }
 }

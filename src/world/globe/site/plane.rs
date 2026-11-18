@@ -1,6 +1,6 @@
 //! Sites of the legacy plane.
 
-use bevy::math::{IVec2, IVec3, Vec2};
+use bevy::math::{DVec3, IVec2, IVec3, Vec2};
 
 use super::Site;
 use crate::world::islands::plus;
@@ -27,5 +27,9 @@ impl Site for Vec2 {
 
     fn moved(self, by: Vec2) -> Self {
         Vec2::new(plus(self.x, by.x), plus(self.y, by.y))
+    }
+
+    fn ball(self) -> Option<DVec3> {
+        None
     }
 }

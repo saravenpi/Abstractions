@@ -14,7 +14,8 @@ impl Globe {
         self.record = record;
         self.datum = datum(record.ocean).unwrap_or(0.0);
         self.lands = Lands::of(&record);
-        self
+        self.setting = super::climate::recorded(self.setting, &record);
+        self.charted()
     }
 
     /// Returns the physical record of the planet.

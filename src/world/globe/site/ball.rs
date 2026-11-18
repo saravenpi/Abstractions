@@ -40,4 +40,8 @@ impl Site for DVec3 {
         let step = east * f64::from(by.x) + south * f64::from(by.y);
         (self + step).normalize() * self.length()
     }
+
+    fn ball(self) -> Option<DVec3> {
+        Some(self)
+    }
 }

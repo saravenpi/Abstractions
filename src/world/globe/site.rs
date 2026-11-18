@@ -3,7 +3,7 @@
 mod ball;
 mod plane;
 
-use bevy::math::{IVec3, Vec2};
+use bevy::math::{DVec3, IVec3, Vec2};
 
 use crate::world::islands::Point;
 
@@ -33,4 +33,8 @@ pub trait Site: Copy {
 
     /// Returns the site `by` metres away along the two axes of the local frame of this site.
     fn moved(self, by: Vec2) -> Self;
+
+    /// Returns the sphere point of this site, or nothing on the legacy plane, which follows none of the
+    /// rules only the globe has.
+    fn ball(self) -> Option<DVec3>;
 }

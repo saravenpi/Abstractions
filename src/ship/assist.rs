@@ -64,6 +64,15 @@ pub struct Hold {
     pub braking: bool,
 }
 
+/// Returns the share of the space rules the assist applies over a planet whose air is
+/// `thickness` times the home air: all of them without air, none in home air or thicker.
+///
+/// Air turns the flight path onto the nose and slows the ship. Where it is missing the assist
+/// makes up for it, so the ship handles over an airless planet as it does in space.
+pub fn airless(thickness: f64) -> f64 {
+    (1.0 - thickness).clamp(0.0, 1.0)
+}
+
 impl Hold {
     /// Returns the acceleration the assist adds over a step of `h` seconds.
     ///

@@ -1,5 +1,7 @@
 //! Ship tests: pure flight, ground and drive checks that need no window.
 
+mod air;
+mod airless;
 mod aloft;
 mod crossing;
 mod drive;

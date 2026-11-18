@@ -12,10 +12,9 @@ use super::hover::{assisted, stick};
 use super::{above_pole, planet};
 use crate::ship::body::Ship;
 use crate::ship::flight::{Controls, Report};
-use crate::ship::gear::feet;
-use crate::ship::landing::{GEAR_DROP, HULL};
+use crate::ship::landing::GEAR_DROP;
 use crate::universe::PlanetSpec;
-use stage::{Block, CANOPY, CANOPY_TOP, flown, stage};
+use stage::{Block, CANOPY, CANOPY_TOP, flown, stage, through_the_canopy};
 
 /// A house 8 m wide and 5 m high, its front wall at z = -10 m, the ship coming at it along -z.
 const HOUSE: [Block; 1] = [(Vec3::new(0.0, 2.5, -14.0), Vec3::new(8.0, 5.0, 8.0))];
@@ -104,7 +103,6 @@ fn lowered(blocks: &[Block], above: f64) -> (PlanetSpec, Vec<(Ship, Report)>) {
 
 /// The sink key sets the ship down on a flat roof, where it rests on its gear without damage.
 #[test]
-#[ignore = "fails until the ship stands on the decks of what is built"]
 fn a_ship_lowered_onto_a_flat_roof_rests_on_it() {
     let (planet, track) = lowered(&ROOF, ROOF_TOP + GEAR_DROP + 8.0);
     let lowest = track
@@ -121,36 +119,6 @@ fn a_ship_lowered_onto_a_flat_roof_rests_on_it() {
     );
     assert!(rest.abs() < 0.3, "rests {rest} m off the roof");
     assert!(lowest > ROOF_TOP + GEAR_DROP - 0.3, "went down to {lowest}");
-}
-
-/// Returns the heights in metres above the sea of the contact points of `ship`, gear feet then
-/// hull, over the canopy, or nothing for a point that is not over it.
-fn over_the_canopy(ship: &Ship, planet: &PlanetSpec) -> [Option<f64>; 9] {
-    let (feet, over) = (feet(ship), |p: DVec3| p.x.abs() < 2.2 && p.z.abs() < 1.8);
-    std::array::from_fn(|i| {
-        let at = ship.pos + ship.rot * if i < 3 { feet[i] } else { HULL[i - 3] };
-        over(at).then(|| at.length() - planet.radius)
-    })
-}
-
-/// Returns how many times along `track` a contact point went from above the canopy to under its
-/// slab in one step while over it: through the canopy.
-fn through_the_canopy(track: &[(Ship, Report)], planet: &PlanetSpec) -> usize {
-    let heights: Vec<_> = track
-        .iter()
-        .map(|(ship, _)| over_the_canopy(ship, planet))
-        .collect();
-    let crossed = |(was, now): (&Option<f64>, &Option<f64>)| matches!((was, now), (Some(was), Some(now)) if *was > CANOPY_TOP && *now < CANOPY_TOP - 0.1);
-    let steps = heights.windows(2);
-    steps
-        .map(|pair| {
-            pair[0]
-                .iter()
-                .zip(&pair[1])
-                .filter(|pair| crossed(*pair))
-                .count()
-        })
-        .sum()
 }
 
 /// The sink key lowers the ship onto the canopy of the base. The gear spans 3.8 by 3.9 m and

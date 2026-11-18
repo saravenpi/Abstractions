@@ -1,6 +1,6 @@
 //! The built solids the ship meets: houses, roofs, stalls and the base, as the static colliders
-//! the world streams near the player. The hull shape is swept against them, in the render
-//! space the collider trees were last built in.
+//! the world streams near the player. The hull shape is swept against them and rays find the
+//! decks under the contact points, in the render space the collider trees were last built in.
 //! The terrain keeps its own height: its colliders are left out.
 
 use avian3d::prelude::*;
@@ -11,6 +11,12 @@ use bevy::prelude::*;
 use super::gear::GEAR;
 use super::hull::{Hit, SKIN};
 use crate::space::{Anchor, Frame};
+
+/// Metres above a contact point a deck ray starts: more than a fast ship sinks in one step.
+const LIFT: f64 = 1.0;
+
+/// Metres under a contact point a deck ray looks, so that the radar reads a roof under the ship.
+const DEPTH: f64 = 30.0;
 
 /// The parts of the hull shape in body axes: centre, then full width, height and length. The
 /// fuselage from the nose tip to the tail and from the belly to the roof, then the wings with
@@ -90,6 +96,27 @@ impl Solids<'_, '_> {
         self.built
             .0
             .filter(|anchor| anchor.frame == frame && !anchor.flat)
+    }
+
+    /// Returns the height in metres above a sea level `radius` metres from the planet centre of
+    /// the top of a built solid under `pos` in the surface frame `frame`, from [`LIFT`] above it
+    /// to [`DEPTH`] under it. Without one it is minus infinity.
+    pub fn top(&self, frame: Frame, pos: DVec3, radius: f64) -> f64 {
+        let (Some(anchor), Some(up)) = (self.view(frame), pos.try_normalize()) else {
+            return f64::NEG_INFINITY;
+        };
+        let Ok(down) = Dir3::new((anchor.rotation * -up).as_vec3()) else {
+            return f64::NEG_INFINITY;
+        };
+        let (start, reach) = (anchor.to_render(pos + up * LIFT), (LIFT + DEPTH) as f32);
+        let filter = SpatialQueryFilter::default();
+        let keeps = |entity| self.keeps(entity);
+        let hit = self
+            .query
+            .cast_ray_predicate(start, down, reach, true, &filter, &keeps);
+        hit.map_or(f64::NEG_INFINITY, |hit| {
+            (pos + up * (LIFT - f64::from(hit.distance))).length() - radius
+        })
     }
 
     /// Returns where the solid `entity` bears on a hull centred at `centre`, in render space:

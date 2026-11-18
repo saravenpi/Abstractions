@@ -122,6 +122,21 @@ pub struct Flight<'w, 's> {
     solids: Option<Solids<'w, 's>>,
 }
 
+/// Returns the height in metres above sea level of what a ship in `frame` stands on at a
+/// position in the frame of the planet under it, whose sea level is `radius` metres from its
+/// centre: the ground `land` gives, or the top of a built solid of `solids` where it is higher.
+pub fn floor<'a>(
+    land: impl Fn(DVec3) -> f64 + 'a,
+    radius: f64,
+    solids: Option<&'a Solids>,
+    frame: Frame,
+) -> impl Fn(DVec3) -> f64 + 'a {
+    move |pos| {
+        let ground = land(pos);
+        solids.map_or(ground, |solids| ground.max(solids.top(frame, pos, radius)))
+    }
+}
+
 /// Advances `ship` by one fixed step in `scene`, then sweeps its hull along that step against
 /// the built `solids` and books what it met on the report of the step.
 pub fn stride(
@@ -144,7 +159,8 @@ impl Flight<'_, '_> {
     /// of these steps, if one was.
     fn advance(&mut self, ship: &mut Ship, dt: f64) -> (f64, Option<Impact>) {
         let (skies, solids) = (&*self.skies, self.solids.as_ref());
-        let ground = |pos: DVec3| skies.height(pos);
+        let radius = skies.planet().map_or(0.0, |planet| planet.radius);
+        let ground = floor(|pos| skies.height(pos), radius, solids, ship.frame);
         let (mut elapsed, mut impact, mut crash) = (0.0, 0.0f64, None);
         self.pace.carry += dt;
         while self.pace.carry >= STEP {

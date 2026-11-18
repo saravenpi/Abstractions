@@ -2,15 +2,16 @@
 //! canopy of the base, around the +Y pole of a planet, and a ship flown among them step by step.
 
 use avian3d::prelude::*;
+use bevy::ecs::system::RunSystemOnce;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use crate::ship::body::Ship;
-use bevy::ecs::system::RunSystemOnce;
-
 use crate::ship::flight::{Controls, Report, STEP, Scene};
+use crate::ship::gear::feet;
 use crate::ship::hull_cast::{Built, Solids};
-use crate::ship::sim::stride;
+use crate::ship::landing::HULL;
+use crate::ship::sim::{floor, stride};
 use crate::space::{Anchor, Frame};
 use crate::universe::PlanetSpec;
 
@@ -71,7 +72,7 @@ pub fn flown(
     app.insert_resource(Built(Some(anchor(&planet))));
     let steps = (seconds / STEP).round() as usize;
     let fly = move |solids: Solids| {
-        let land = move |_: DVec3| ground;
+        let land = floor(|_| ground, planet.radius, Some(&solids), ship.frame);
         let scene = Scene {
             planet: Some(&planet),
             ground: &land,
@@ -87,4 +88,34 @@ pub fn flown(
     app.world_mut()
         .run_system_once(fly)
         .expect("the flight runs")
+}
+
+/// Returns the heights in metres above the sea of the contact points of `ship`, gear feet then
+/// hull, over the canopy, or nothing for a point that is not over it.
+fn over_the_canopy(ship: &Ship, planet: &PlanetSpec) -> [Option<f64>; 9] {
+    let (feet, over) = (feet(ship), |p: DVec3| p.x.abs() < 2.2 && p.z.abs() < 1.8);
+    std::array::from_fn(|i| {
+        let at = ship.pos + ship.rot * if i < 3 { feet[i] } else { HULL[i - 3] };
+        over(at).then(|| at.length() - planet.radius)
+    })
+}
+
+/// Returns how many times along `track` a contact point went from above the canopy to under its
+/// slab in one step while over it: through the canopy.
+pub fn through_the_canopy(track: &[(Ship, Report)], planet: &PlanetSpec) -> usize {
+    let heights: Vec<_> = track
+        .iter()
+        .map(|(ship, _)| over_the_canopy(ship, planet))
+        .collect();
+    let crossed = |(was, now): (&Option<f64>, &Option<f64>)| matches!((was, now), (Some(was), Some(now)) if *was > CANOPY_TOP && *now < CANOPY_TOP - 0.1);
+    let steps = heights.windows(2);
+    steps
+        .map(|pair| {
+            pair[0]
+                .iter()
+                .zip(&pair[1])
+                .filter(|pair| crossed(*pair))
+                .count()
+        })
+        .sum()
 }

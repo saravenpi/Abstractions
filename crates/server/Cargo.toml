@@ -12,3 +12,8 @@ publish = false
 [[bin]]
 name = "abstractions-server"
 path = "src/main.rs"
+
+[dependencies]
+abstractions-net = { path = "../net" }
+async-signal = "0.2.14"
+smol = "2"

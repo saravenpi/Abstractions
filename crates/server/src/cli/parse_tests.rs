@@ -92,7 +92,7 @@ fn bad_flags_are_refused() {
     assert!(error.starts_with("ABSTRACTIONS_PORT:"), "{error}");
 }
 
-/// `version`, `--help` anywhere in `run`, and `ping` with exactly one address.
+/// `version`, `--help` anywhere in `run`, and `ping` with one address or none.
 #[test]
 fn subcommands_are_read() {
     assert_eq!(parse(&args("version"), none), Ok(Command::Version));
@@ -102,6 +102,14 @@ fn subcommands_are_read() {
         parse(&args("ping example.com:24650"), none),
         Ok(Command::Ping("example.com:24650".to_string()))
     );
-    assert!(parse(&args("ping"), none).is_err());
+    assert_eq!(
+        parse(&args("ping"), none),
+        Ok(Command::Ping("127.0.0.1:24650".to_string()))
+    );
+    let port = |name: &str| (name == "ABSTRACTIONS_PORT").then(|| "24700".to_string());
+    assert_eq!(
+        parse(&args("ping"), port),
+        Ok(Command::Ping("127.0.0.1:24700".to_string()))
+    );
     assert!(parse(&args("ping a b"), none).is_err());
 }

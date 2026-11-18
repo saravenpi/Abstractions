@@ -60,7 +60,7 @@ pub fn parse(args: &[String], env: impl Fn(&str) -> Option<String>) -> Result<Co
     match args.first().map(String::as_str) {
         None => run(args, &env),
         Some("run") => run(&args[1..], &env),
-        Some("ping") => ping(&args[1..]),
+        Some("ping") => ping(&args[1..], &env),
         Some("version" | "--version" | "-V") => Ok(Command::Version),
         Some("help" | "--help" | "-h") => Ok(Command::Help),
         Some(flag) if flag.starts_with("--") => run(args, &env),
@@ -127,12 +127,14 @@ fn number<T: FromStr + PartialOrd + Default>(flag: &str, text: &str) -> Result<T
         .ok_or_else(|| format!("{flag} takes a whole number from 1 up, not `{text}`"))
 }
 
-/// Reads the one address of `ping`.
-fn ping(args: &[String]) -> Result<Command, String> {
+/// Reads the address of `ping`. Without one it asks this machine, on the port the
+/// environment sets, so a health check follows the server's own port.
+fn ping(args: &[String], env: &impl Fn(&str) -> Option<String>) -> Result<Command, String> {
     match args {
+        [] => Ok(Command::Ping(format!("127.0.0.1:{}", defaults(env)?.port))),
         [address] => Ok(Command::Ping(address.clone())),
         _ => Err(
-            "ping takes one address, such as `ping 127.0.0.1` or `ping example.com:24650`"
+            "ping takes at most one address, such as `ping 127.0.0.1` or `ping example.com:24650`"
                 .to_string(),
         ),
     }

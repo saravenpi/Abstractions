@@ -3,7 +3,7 @@
 /// What `abstractions-server --help` prints.
 pub const USAGE: &str = "\
 Usage: abstractions-server [run] [options]
-       abstractions-server ping <address>
+       abstractions-server ping [address]   (this machine when none)
        abstractions-server version
 
 Options (a flag wins over its environment variable):

@@ -19,7 +19,7 @@ VOLUME /data
 EXPOSE 24650/udp
 USER 10001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --start-interval=2s \
-    CMD ["/abstractions-server", "ping", "127.0.0.1"]
+    CMD ["/abstractions-server", "ping"]
 ENTRYPOINT ["/abstractions-server"]
 
 FROM base AS prebuilt

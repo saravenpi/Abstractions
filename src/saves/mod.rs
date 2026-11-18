@@ -14,6 +14,9 @@ mod start;
 mod store;
 #[cfg(test)]
 mod store_tests;
+mod upgrade;
+#[cfg(test)]
+mod upgrade_tests;
 mod writer;
 
 pub use autosave::SavedFlash;

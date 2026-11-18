@@ -125,7 +125,7 @@ fn warp_and_destination_show_only_when_needed() {
         reading(Gauge::Destination, &flight).unwrap(),
         "Kodya  1.20 Mm  spooling"
     );
-    assert_eq!(Gauge::ALL.len(), 9);
+    assert_eq!(Gauge::ALL.len(), 10);
 }
 
 /// The prompt shows at the hatch of the landed ship and inside it, and nowhere else.

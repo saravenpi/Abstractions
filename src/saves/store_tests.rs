@@ -157,7 +157,7 @@ fn unknown_fields_do_not_break_the_load() {
     fs::create_dir_all(&dir).unwrap();
     fs::write(
         dir.join("voyage.toml"),
-        future.replace("version = 1", "version = 99"),
+        future.replace(&format!("version = {SAVE_VERSION}"), "version = 99"),
     )
     .unwrap();
     let loaded = list(&dir).remove(0).save;

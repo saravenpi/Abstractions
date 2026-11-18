@@ -22,8 +22,10 @@ pub enum Intent {
         yaw: f32,
         /// Pitch of the view in radians, positive upward.
         pitch: f32,
-        /// The part of the heading the player's own hand turned this step, which the movement
-        /// keys follow while they stay held. What a camera does by itself is not in it.
+        /// How far the heading was turned this step before the camera rig took it, which the
+        /// movement keys follow while they stay held: the mouse, and the drift that brings
+        /// the view back behind a body on its wings. What the rig adds afterwards by itself,
+        /// such as its drift behind the direction of travel, is not in it.
         turn: f32,
         /// Whether the player sees the body from behind, so that it turns to where it goes.
         behind: bool,

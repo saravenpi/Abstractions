@@ -8,7 +8,7 @@ use crate::audio::cues::Pool;
 use crate::audio::mix::Mixer;
 use crate::audio::scene::AudioScene;
 use crate::audio::shared::Shared;
-use crate::audio::sky::clap;
+use crate::audio::sky::{LastSlot, clap};
 use crate::settings::Audio as Volumes;
 use crate::weather::Weather;
 
@@ -111,4 +111,31 @@ fn thunder_rolls_cleanly() {
     let shared = Shared::default();
     assert!(shared.push(AudioCue::Thunder(0.5)));
     assert_eq!(shared.pop(), Some(AudioCue::Thunder(0.5)));
+}
+
+/// The thunder slot last listened to is forgotten when the world is left: the next world
+/// starts as one that has heard nothing, whatever its universe time.
+#[test]
+fn leaving_the_world_forgets_the_thunder_slot() {
+    use bevy::prelude::*;
+    use bevy::state::app::StatesPlugin;
+
+    use crate::screens::Screen;
+    let mut app = App::new();
+    app.add_plugins((StatesPlugin, crate::audio::sky::plugin))
+        .init_state::<Screen>()
+        .init_resource::<AudioScene>()
+        .init_resource::<Weather>()
+        .add_message::<AudioCue>()
+        .insert_resource(crate::space::Clock { seconds: 950.0 });
+    let go = |app: &mut App, screen: Screen| {
+        app.world_mut()
+            .resource_mut::<NextState<Screen>>()
+            .set(screen);
+        app.update();
+    };
+    go(&mut app, Screen::Gameplay);
+    assert_eq!(*app.world().resource::<LastSlot>(), LastSlot(Some(105)));
+    go(&mut app, Screen::Title);
+    assert_eq!(*app.world().resource::<LastSlot>(), LastSlot(None));
 }

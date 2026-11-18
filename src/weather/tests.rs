@@ -1,5 +1,6 @@
 //! Tests of the weather rules: no weather without air, snow only in the cold, dust only where
 //! dry and windy, nothing but storm wind on a gas giant, smooth and repeatable in time.
+//! The tests of bare ground, of the calm opening at home and of the feed are in `tests_ground`.
 
 use bevy::prelude::*;
 

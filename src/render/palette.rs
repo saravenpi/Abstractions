@@ -177,7 +177,9 @@ fn update_palette(
     clear.0 = srgb(palette.horizon);
 }
 
-/// Registers the palette resource and its update.
+/// Registers the palette resource and its update, and the weather report the sky draws: the
+/// sky owns [`LocalWeather`] and this is the one place that creates it. The weather module
+/// writes it and clears it.
 pub(super) fn plugin(app: &mut App) {
     app.insert_resource(Palette::at(START_PHASE))
         .init_resource::<LocalWeather>()

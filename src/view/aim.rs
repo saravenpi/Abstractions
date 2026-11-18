@@ -69,11 +69,13 @@ impl Aim {
     /// Returns the yaw that drifts a third person camera behind the direction of travel.
     ///
     /// Nothing drifts before the player has left the camera alone for [`FOLLOW_DELAY`], while
-    /// the body stands, or when it comes toward the camera.
+    /// the body stands, or when it comes toward the camera. Nothing drifts behind a flying
+    /// body either: its view is free to look around, and the player module brings it back
+    /// behind the wings in its own time.
     fn follow(&self, moment: &Moment, stance: &Stance, third: f32) -> f32 {
         let pace = Vec2::new(stance.drift.x, stance.drift.z);
-        let waits = self.idle < FOLLOW_DELAY || !moment.prefs.auto_follow;
-        if waits || pace.length() < FOLLOW_SPEED {
+        let free = moment.target.kind == Kind::Flying || !moment.prefs.auto_follow;
+        if free || self.idle < FOLLOW_DELAY || pace.length() < FOLLOW_SPEED {
             return 0.0;
         }
         let gap = wrap((-pace.x).atan2(-pace.y) - self.heading.yaw);
@@ -109,5 +111,48 @@ impl Aim {
         let pitch = self.heading.pitch - self.trail.y * third;
         let short = pitch.clamp(-THIRD_DOWN, THIRD_UP);
         (yaw, pitch.lerp(short, third * (1.0 - self.flight)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::view::{Look, Target, ViewMode, ViewPrefs};
+
+    /// Returns the yaw of a third person view left alone for `seconds` behind a body of `kind`
+    /// that moves ahead and to its right at 20 metres per second.
+    fn left_alone(kind: Kind, seconds: f32) -> f32 {
+        let target = Target {
+            velocity: Vec3::new(1.0, 0.0, -1.0).normalize() * 20.0,
+            kind,
+            ..default()
+        };
+        let moment = Moment {
+            target,
+            look: Look::default(),
+            prefs: ViewPrefs {
+                on_foot: ViewMode::Third,
+                ..default()
+            },
+            fov: 1.3,
+            dt: 1.0 / 60.0,
+        };
+        let stance = Stance::of(&target, moment.dt, false);
+        let mut aim = Aim::default();
+        for _ in 0..(seconds * 60.0) as usize {
+            aim.step(&moment, &stance, 1.0);
+        }
+        aim.heading.yaw
+    }
+
+    /// The rig drifts behind the direction of travel of a body on foot once the camera has
+    /// been left alone, and never behind a flying body, whose free look is the player module's.
+    #[test]
+    fn the_rig_does_not_follow_a_flying_body() {
+        assert_eq!(left_alone(Kind::OnFoot, 1.0), 0.0);
+        assert!(left_alone(Kind::OnFoot, 2.4).abs() > 0.2);
+        for seconds in [1.0, 2.4, 10.0] {
+            assert_eq!(left_alone(Kind::Flying, seconds), 0.0, "{seconds}");
+        }
     }
 }

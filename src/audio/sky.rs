@@ -32,30 +32,45 @@ pub fn clap(
         .then_some(AudioCue::Thunder(level * scene.altitude_fade))
 }
 
+/// The thunder slot last listened to, nothing until one was heard in the world being played.
+#[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct LastSlot(pub Option<i64>);
+
 /// Rolls far thunder in a storm, at most once per slot of [`THUNDER_SECONDS`].
 fn rumble(
     clock: Option<Res<Clock>>,
     weather: Option<Res<Weather>>,
     scene: Res<AudioScene>,
-    mut last: Local<Option<i64>>,
+    mut last: ResMut<LastSlot>,
     mut cues: MessageWriter<AudioCue>,
 ) {
     let (Some(clock), Some(weather)) = (clock, weather) else {
         return;
     };
-    if let Some(cue) = clap(&mut last, clock.seconds, &weather, &scene) {
+    let mut slot = last.0;
+    let cue = clap(&mut slot, clock.seconds, &weather, &scene);
+    last.set_if_neq(LastSlot(slot));
+    if let Some(cue) = cue {
         cues.write(cue);
     }
 }
 
+/// Forgets the slot last listened to when the world is left, so that the first slot of the
+/// next world is its first one heard and never claps against the time of another world.
+fn forget(mut last: ResMut<LastSlot>) {
+    last.set_if_neq(LastSlot::default());
+}
+
 /// Registers the weather sounds, which follow the weather once it is read.
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(
-        Update,
-        (sense_weather, rumble)
-            .chain()
-            .in_set(super::Sensing)
-            .after(Forecast)
-            .run_if(in_state(Screen::Gameplay)),
-    );
+    app.init_resource::<LastSlot>()
+        .add_systems(OnExit(Screen::Gameplay), forget)
+        .add_systems(
+            Update,
+            (sense_weather, rumble)
+                .chain()
+                .in_set(super::Sensing)
+                .after(Forecast)
+                .run_if(in_state(Screen::Gameplay)),
+        );
 }

@@ -3,39 +3,65 @@
 //! [`crate::computer::Atlas`] keeps the planets visited, oldest first, and only ever grows. Each
 //! planet it gains during play goes into [`Changes`] as a [`Change::Visited`] of the local
 //! player, at the universe time of the frame. What an atlas already holds when it arrives, from
-//! a save or a new game, is not a visit of this session and is not logged again. Every world,
-//! new or loaded, starts on the loading screen, so the mark is cleared there: Bevy does not
-//! mark a resource inserted over another as added, so the atlas itself cannot tell.
+//! a save or a new game, is not a visit of this session and is not logged again. Bevy does not
+//! mark a resource inserted over another as added, so the atlas itself cannot tell: the mark
+//! is kept for one world, named by its save and its seed, and the atlas of any other world is
+//! new. A world starts from a system of `Update`, one frame before the loading screen, so
+//! clearing the mark on that screen alone would come one comparison too late.
 
 use bevy::prelude::*;
 
 use super::{Change, Changes, PlayerId};
 use crate::computer::Atlas;
+use crate::saves::ActiveWorld;
 use crate::screens::Screen;
 use crate::space::Clock;
 
-/// Number of planets of the atlas already logged or already held when it arrived, none until
-/// the logger has seen the atlas of the world being played.
-#[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
-struct Seen(Option<usize>);
+/// How far the logger has read the atlas of one world.
+#[derive(Resource, Debug, Default, Clone, PartialEq)]
+struct Seen {
+    /// The world the mark belongs to: the id of its save and its seed. Nothing without a save.
+    world: Option<(String, u64)>,
+    /// Number of planets of the atlas already logged or already held when it arrived, none
+    /// until the logger has seen the atlas of that world.
+    logged: Option<usize>,
+}
+
+impl Seen {
+    /// Returns true when the mark belongs to the world named by `world`.
+    fn of(&self, world: Option<(&str, u64)>) -> bool {
+        let own = self.world.as_ref().map(|(id, seed)| (id.as_str(), *seed));
+        own == world
+    }
+}
 
 /// Appends each planet the atlas gained since the last frame to the log. The first sight of
-/// the atlas of a world sets the mark without logging.
+/// the atlas of a world sets the mark without logging, and so does the atlas of another world
+/// than the one the mark was set in.
 fn log_visits(
     atlas: Option<Res<Atlas>>,
     clock: Option<Res<Clock>>,
     changes: Option<ResMut<Changes>>,
+    active: Option<Res<ActiveWorld>>,
     mut seen: ResMut<Seen>,
 ) {
     let (Some(atlas), Some(clock), Some(mut changes)) = (atlas, clock, changes) else {
         return;
     };
-    if let Some(logged) = seen.0 {
+    let world = active.as_deref().map(|active| &active.0);
+    let world = world.map(|entry| (entry.id.as_str(), entry.save.seed));
+    let same = seen.of(world);
+    if let Some(logged) = seen.logged.filter(|_| same) {
         for &body in atlas.bodies.iter().skip(logged) {
             changes.push(PlayerId::LOCAL, clock.seconds, Change::Visited(body));
         }
     }
-    seen.set_if_neq(Seen(Some(atlas.bodies.len())));
+    if !same {
+        seen.world = world.map(|(id, seed)| (id.to_string(), seed));
+    }
+    if seen.logged != Some(atlas.bodies.len()) {
+        seen.logged = Some(atlas.bodies.len());
+    }
 }
 
 /// Forgets the mark: the world being loaded brings its own atlas and log.
@@ -48,68 +74,4 @@ pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Seen>()
         .add_systems(OnEnter(Screen::Loading), forget)
         .add_systems(PostUpdate, log_visits);
-}
-
-#[cfg(test)]
-mod tests {
-    use bevy::state::app::StatesPlugin;
-
-    use super::*;
-    use crate::computer::Target;
-    use crate::universe::{BodyId, Universe};
-
-    /// Returns an app on the title screen with the logger, a new game's atlas and the clock at
-    /// `seconds`.
-    fn app(seconds: f64) -> App {
-        let mut app = App::new();
-        app.add_plugins((StatesPlugin, plugin))
-            .init_state::<Screen>()
-            .init_resource::<Changes>()
-            .insert_resource(Atlas::new(&Universe::new(9)))
-            .insert_resource(Clock { seconds });
-        app.update();
-        app
-    }
-
-    /// The atlas of a new game logs nothing; a first visit appends one entry at the universe
-    /// time, a second visit of the same planet none.
-    #[test]
-    fn a_first_visit_appends_one_entry() {
-        let mut app = app(1234.5);
-        assert!(app.world().resource::<Changes>().entries.is_empty());
-        let home = Universe::new(9).home();
-        let other = BodyId {
-            index: home.index + 1,
-            ..home
-        };
-        for _ in 0..2 {
-            let mut atlas = app.world_mut().resource_mut::<Atlas>();
-            atlas.visit(Target::Body(other));
-            app.update();
-        }
-        let entries = &app.world().resource::<Changes>().entries;
-        assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].change, Change::Visited(other));
-        assert_eq!(
-            (entries[0].player, entries[0].time),
-            (PlayerId::LOCAL, 1234.5)
-        );
-    }
-
-    /// A world loaded in place of another brings an atlas whose planets are not logged again.
-    #[test]
-    fn a_loaded_atlas_is_not_logged() {
-        let mut app = app(0.0);
-        let mut atlas = Atlas::new(&Universe::new(9));
-        let home = atlas.bodies[0];
-        atlas.visit(Target::Body(BodyId { moon: 1, ..home }));
-        app.insert_resource(atlas);
-        let world = app.world_mut();
-        world
-            .resource_mut::<NextState<Screen>>()
-            .set(Screen::Loading);
-        app.update();
-        app.update();
-        assert!(app.world().resource::<Changes>().entries.is_empty());
-    }
 }

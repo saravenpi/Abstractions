@@ -1,4 +1,4 @@
-//! HUD tests: the flight instruments over a gas giant and on a moon.
+//! HUD tests: the flight instruments over a gas giant and on a moon, and the landing gear.
 
 use super::flight::{Flight, Gauge, reading};
 use crate::ship::ShipTelemetry;
@@ -45,4 +45,32 @@ fn a_gas_giant_has_a_deck_and_a_moon_a_surface() {
         ..flying(Frame::System(StarId::default()))
     };
     assert_eq!(reading(Gauge::Frame, &space).unwrap(), "orbit");
+}
+
+/// The gear instrument reads up, moving and down near a planet with ground, and shows nothing
+/// in space, over a gas giant or without a ship.
+#[test]
+fn the_gear_reads_up_moving_and_down_near_a_planet() {
+    let mut near = flying(Frame::Surface(BodyId::default()));
+    assert_eq!(reading(Gauge::Gear, &near), None);
+    for (gear, shown) in [
+        (0.0, "up"),
+        (0.01, "moving"),
+        (0.99, "moving"),
+        (1.0, "down"),
+    ] {
+        near.gear = Some(gear);
+        assert_eq!(reading(Gauge::Gear, &near).unwrap(), shown, "{gear}");
+    }
+    let giant = Flight {
+        giant: true,
+        ..near.clone()
+    };
+    assert_eq!(reading(Gauge::Gear, &giant), None);
+    let space = Flight {
+        gear: Some(1.0),
+        ..flying(Frame::System(StarId::default()))
+    };
+    assert_eq!(reading(Gauge::Gear, &space), None);
+    assert!(Gauge::ALL.contains(&(Gauge::Gear, "GEAR")));
 }

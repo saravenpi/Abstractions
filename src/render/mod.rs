@@ -58,6 +58,8 @@ mod tests_rings;
 #[cfg(test)]
 mod tests_season;
 #[cfg(test)]
+mod tests_seasons;
+#[cfg(test)]
 mod tests_sky;
 #[cfg(test)]
 mod tests_weather;
@@ -77,7 +79,7 @@ pub use palette::Palette;
 pub use pixelate::Pixelate;
 pub use ray_tracing::RayTracing;
 pub use sun::SunDir;
-pub use vantage::Vantage;
+pub use vantage::{LocalSystem, Vantage};
 pub use warm::{WARM_FRAMES, Warm, Warmed, warm_material};
 pub use warp::{CARRIED, Drive, Lens, Phase, Sequence};
 pub use weather::{LocalWeather, WeatherLook};

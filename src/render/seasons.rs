@@ -1,5 +1,6 @@
 //! Repaints the colour lookup texture of the ground for the season at the place under the
-//! camera, whenever the rounded look of the season changes.
+//! camera, whenever the rounded look of the season changes. Every mesh that shows shares the
+//! texture, so the season fades out as the camera leaves the ground.
 
 use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
@@ -57,6 +58,24 @@ fn find(
     }
 }
 
+/// Seconds between two readings of the season under the camera, the pace of the weather.
+const INTERVAL: f32 = 0.25;
+
+/// Returns the season look the texture takes for a camera `altitude` metres above sea level
+/// over the ground `ground` of the planet of `setting` at `season`: the season of that ground,
+/// read at the height of the ground and never at the height of the camera, faded out by the
+/// height of the camera above it and rounded to the steps of the texture.
+pub(super) fn look_over(
+    setting: &Setting,
+    ground: &Spot,
+    altitude: f32,
+    season: f32,
+) -> SeasonLook {
+    SeasonLook::at(setting, ground, season)
+        .seen(altitude - ground.altitude)
+        .steps()
+}
+
 /// Where the camera is and when, for the season.
 #[derive(SystemParam)]
 struct Here<'w> {
@@ -87,14 +106,31 @@ impl Here<'_> {
         };
         let spot = streamed.map_or(sea, |planet| planet.globe.spot(dir));
         let season = crate::climate::season(spec, self.clock.seconds);
-        Some(SeasonLook::at(&Setting::of(spec), &spot, season).steps())
+        Some(look_over(
+            &Setting::of(spec),
+            &spot,
+            vantage.altitude,
+            season,
+        ))
     }
 }
 
 /// Repaints the lookup texture when the season look under the camera changes, and back to the
-/// colours without seasons outside a world. The texture
+/// colours without seasons outside a world. The ground is read every [`INTERVAL`] seconds, and
+/// at once for a texture that shows nothing yet. The texture
 /// keeps its size, so the GPU copy is written over in place and the material stays bound to it.
-fn paint(here: Here, mut lut: ResMut<Lut>, mut images: ResMut<Assets<Image>>) {
+fn paint(
+    time: Res<Time>,
+    mut wait: Local<f32>,
+    here: Here,
+    mut lut: ResMut<Lut>,
+    mut images: ResMut<Assets<Image>>,
+) {
+    *wait -= time.delta_secs();
+    if *wait > 0.0 && lut.shown.is_some() {
+        return;
+    }
+    *wait = INTERVAL;
     let look = here.look().unwrap_or(SeasonLook::NONE);
     let Lut {
         image,

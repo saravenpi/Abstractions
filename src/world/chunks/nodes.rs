@@ -9,8 +9,9 @@ use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::po
 use super::budget::Spend;
 use super::build::{NodeData, coarse};
 use super::spawn::Spawner;
+use super::stretch::Stretch;
 use crate::world::globe::ChunkId;
-use crate::world::globe::quadtree::View;
+use crate::world::globe::quadtree::Path;
 
 /// Most coarse node tasks running at the same time.
 const MAX_BUILDING: usize = 16;
@@ -38,7 +39,8 @@ pub struct Node {
 pub struct Nodes {
     /// Spawned nodes, shown or hidden.
     pub live: HashMap<ChunkId, Node>,
-    building: HashMap<ChunkId, Task<NodeData>>,
+    /// Nodes being generated.
+    pub(super) building: HashMap<ChunkId, Task<NodeData>>,
 }
 
 impl Nodes {
@@ -47,12 +49,10 @@ impl Nodes {
         self.live.contains_key(&id)
     }
 
-    /// Despawns `id` or cancels its task.
-    pub fn remove(&mut self, commands: &mut Commands, id: ChunkId) {
+    /// Forgets `id` and cancels its task, and returns its entity for the caller to dispose of.
+    pub fn take(&mut self, id: ChunkId) -> Option<Node> {
         self.building.remove(&id);
-        if let Some(node) = self.live.remove(&id) {
-            commands.entity(node.entity).try_despawn();
-        }
+        self.live.remove(&id)
     }
 
     /// Despawns every node and cancels every task.
@@ -85,20 +85,20 @@ impl Nodes {
         }
     }
 
-    /// Turns finished tasks into hidden entities, nearest to the focus of `view` first, within
-    /// the count and the time budget of the frame. Returns how many it spawned.
+    /// Turns finished tasks into hidden entities, the cheapest of `path` first, within the
+    /// stretched count and time budget of the frame. Returns how many it spawned.
     pub(super) fn collect(
         &mut self,
         commands: &mut Commands,
         spawner: &mut Spawner,
-        view: &View,
+        (path, stretch): (&Path, Stretch),
     ) -> usize {
         let done = self.building.iter().filter(|(_, task)| task.is_finished());
-        let mut done: Vec<(f64, ChunkId)> = done.map(|(id, _)| (view.distance(*id), *id)).collect();
+        let mut done: Vec<(f64, ChunkId)> = done.map(|(id, _)| (path.cost(*id), *id)).collect();
         done.sort_by(|a, b| a.0.total_cmp(&b.0));
-        let mut spend = Spend::of(spawner.shares().nodes);
+        let mut spend = Spend::of(stretch.millis(spawner.shares().nodes));
         let mut spawned = 0;
-        for (_, id) in done.into_iter().take(NODE_BUDGET) {
+        for (_, id) in done.into_iter().take(stretch.count(NODE_BUDGET)) {
             if !spend.more() {
                 break;
             }

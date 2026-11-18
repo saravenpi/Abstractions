@@ -1,7 +1,5 @@
 //! Per-chunk level of detail: terrain mesh swaps and ground cover on demand.
 
-use std::collections::HashMap;
-
 use avian3d::prelude::*;
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
@@ -9,22 +7,24 @@ use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::po
 use super::Chunks;
 use super::budget::Spend;
 use super::build::{ground_cover, terrain_mesh};
-use super::near::Around;
+use super::dither::Way;
+use super::fade::Fades;
 use super::plan::Loaded;
 use super::raytrace;
+use super::scene::Scene;
 use super::spawn::Spawner;
 use super::turf::Turf;
+use super::work::start_work;
 use crate::world::Terrain;
-use crate::world::focus::Focus;
-use crate::world::globe::ChunkId;
-use crate::world::mesh::{Lod, Rings, leaf_coord};
+use crate::world::mesh::Lod;
 
 /// Most terrain meshes and ground covers rebuilt at the same time.
 const MAX_REMESH: usize = 4;
 
 /// Detail state of one loaded chunk.
 pub struct Detail {
-    lod: Lod,
+    /// The level of its terrain mesh.
+    pub(super) lod: Lod,
     /// The grass and flowers of the chunk.
     pub turf: Turf,
     structure: Option<(Entity, Collider)>,
@@ -49,7 +49,7 @@ impl Detail {
 
     /// Starts the task that does `work` for the chunk at `coord` of the chart `terrain`, with the
     /// ray tracing flag `on`.
-    fn begin(
+    pub(super) fn begin(
         &mut self,
         work: Work,
         (terrain, coord): (Terrain, IVec2),
@@ -68,105 +68,111 @@ impl Detail {
     }
 
     /// Returns true while a task rebuilds the terrain or the ground cover of the chunk.
-    fn busy(&self) -> bool {
+    pub(super) fn busy(&self) -> bool {
         self.remesh.is_some() || self.turf.building()
     }
 }
 
-/// Swaps in a finished terrain mesh, the budget allowing.
+/// Swaps in a finished terrain mesh, the budget allowing. Returns true when it did.
 fn swap_finished(
     commands: &mut Commands,
     l: &mut Loaded,
     spawner: &mut Spawner,
     spend: &mut Spend,
-) {
+) -> bool {
     let Some((lod, task)) = l.detail.remesh.as_mut() else {
-        return;
+        return false;
     };
     if !task.is_finished() || !spend.more() {
-        return;
+        return false;
     }
     let lod = *lod;
     let Some(mesh) = block_on(poll_once(task)) else {
-        return;
+        return false;
     };
     l.detail.remesh = None;
     l.detail.lod = lod;
     let handle = spawner.meshes.add(mesh);
     raytrace::swap(commands, l.entity, handle, spawner.ray_tracing.0);
+    true
 }
 
 /// What a loaded chunk should rebuild: its terrain at another level, or its ground cover.
-enum Work {
+pub(super) enum Work {
     /// The terrain mesh at this level.
     Terrain(Lod),
     /// The ground cover.
     Cover,
 }
 
-/// Returns what chunk `l` at `rank` rings should rebuild now, if anything.
-fn stale(l: &Loaded, rank: i32, rings: &Rings, cover: i32) -> Option<Work> {
-    if l.detail.busy() {
-        return None;
-    }
-    let next = rings.next(l.detail.lod, rank);
-    if next != l.detail.lod {
-        return Some(Work::Terrain(next));
-    }
-    l.detail.turf.wanted(rank, cover).then_some(Work::Cover)
+/// What changed on a chunk in one frame.
+struct Changed {
+    /// The ground cover that came into view.
+    grass: Option<Entity>,
+    /// The mesh the chunk drew before its terrain was rebuilt.
+    terrain: Option<Handle<Mesh>>,
 }
 
-/// Starts rebuilds for chunks whose wanted level changed or whose ground cover is missing,
-/// nearest first, while `room` allows.
-fn start_work(
-    loaded: &mut HashMap<ChunkId, Loaded>,
-    around: &Around,
-    spawner: &Spawner,
-    room: usize,
+/// Fades what `changed` on `chunk`, which the player can see, from `now` on: new ground cover
+/// fades in, and rebuilt terrain fades in while a ghost that draws the old mesh fades out and
+/// goes. A chunk that is still fading in swaps its terrain at once.
+fn soften(
+    commands: &mut Commands,
+    fades: &mut Fades,
+    chunk: Entity,
+    changed: Changed,
+    (material, now): (&Handle<StandardMaterial>, f64),
 ) {
-    let (reach, rings) = (spawner.reach(), spawner.rings());
-    let mut todo: Vec<(i32, ChunkId, Work)> = loaded
-        .iter()
-        .filter_map(|(id, l)| {
-            let rank = around.rank(*id);
-            stale(l, rank, &rings, reach.cover()).map(|work| (rank, *id, work))
-        })
-        .collect();
-    todo.sort_by_key(|(rank, ..)| *rank);
-    let pool = AsyncComputeTaskPool::get();
-    for (_, id, work) in todo.into_iter().take(room) {
-        let (terrain, on) = (spawner.view(id.face), spawner.ray_tracing.0);
-        if let Some(l) = loaded.get_mut(&id) {
-            l.detail.begin(work, (terrain, leaf_coord(id)), on, pool);
-        }
+    if let Some(grass) = changed.grass {
+        fades.begin(commands, grass, vec![grass], (Way::In, now));
     }
+    let Some(old) = changed.terrain.filter(|_| fades.way(chunk).is_none()) else {
+        return;
+    };
+    let ghost = (
+        Mesh3d(old),
+        MeshMaterial3d(material.clone()),
+        ChildOf(chunk),
+    );
+    let ghost = commands.spawn(ghost).id();
+    fades.cross(commands, chunk, ghost, now);
 }
 
 /// Runs the per-frame detail work for every loaded chunk: ground cover follows the rings and
-/// terrain meshes follow their level, within the swap budget of the frame.
+/// terrain meshes follow their level, within the swap budget of the frame. What changes where
+/// the player can see it fades over a moment.
 pub fn refine(
     mut commands: Commands,
     mut chunks: ResMut<Chunks>,
     mut spawner: Spawner,
-    focus: Focus,
+    scene: Scene,
 ) {
-    let Some(around) = focus
-        .planet()
-        .and_then(|at| Around::new(&spawner.terrain, at))
-    else {
+    let Some(around) = scene.at().and_then(|at| chunks.around(&spawner, at)) else {
         return;
     };
     let cover = spawner.reach().cover();
-    let mut spend = Spend::of(spawner.shares().swaps);
+    let mut spend = Spend::of(chunks.stretch.millis(spawner.shares().swaps));
+    let (eye, now) = (scene.eye(), scene.now());
+    let Chunks { loaded, fades, .. } = &mut *chunks;
     let mut busy = 0;
-    for (id, l) in chunks.loaded.iter_mut() {
+    for (id, l) in loaded.iter_mut() {
         let rings = (around.rank(*id), cover);
-        let entity = l.entity;
         let turf = &mut l.detail.turf;
-        turf.tend(&mut commands, entity, rings, (&mut spawner, &mut spend));
-        swap_finished(&mut commands, l, &mut spawner, &mut spend);
+        let grass = turf.tend(&mut commands, l.entity, rings, (&mut spawner, &mut spend));
+        let swapped = swap_finished(&mut commands, l, &mut spawner, &mut spend);
+        let changed = l.shown && (swapped || grass.is_some());
+        if changed && eye.is_some_and(|eye| eye.sees(*id)) {
+            let terrain = scene.mesh(l.entity).filter(|_| swapped);
+            let with = (&spawner.assets.material, now);
+            soften(
+                &mut commands,
+                fades,
+                l.entity,
+                Changed { grass, terrain },
+                with,
+            );
+        }
         busy += usize::from(l.detail.busy());
     }
-    let room = MAX_REMESH.saturating_sub(busy);
-    start_work(&mut chunks.loaded, &around, &spawner, room);
+    start_work(loaded, &around, &spawner, MAX_REMESH.saturating_sub(busy));
 }

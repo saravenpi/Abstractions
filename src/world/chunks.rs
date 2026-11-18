@@ -6,30 +6,46 @@ mod build;
 mod calm;
 mod cut;
 mod detail;
+mod dither;
 mod embed;
 mod face;
+mod fade;
 mod far;
 mod grow;
+mod lane;
+mod motion;
 mod near;
 mod nodes;
+mod pace;
 mod place;
 mod plan;
 mod raytrace;
 mod reach;
+mod scene;
+mod sight;
 mod spawn;
 mod stream;
+mod stretch;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tests_embed;
 #[cfg(test)]
+mod tests_fade;
+#[cfg(test)]
+mod tests_fly;
+#[cfg(test)]
+mod tests_lane;
+#[cfg(test)]
 mod tests_reach;
 #[cfg(test)]
 mod tests_stream;
 mod turf;
+mod work;
 
 use std::collections::HashMap;
 
+use bevy::math::DVec3;
 use bevy::prelude::*;
 use bevy::tasks::Task;
 
@@ -39,16 +55,22 @@ pub use self::calm::{Calm, watch_calm};
 pub use self::cut::show;
 pub use self::detail::refine;
 pub use self::face::{follow_face, rehome};
+use self::fade::Fades;
 use self::far::FarView;
 pub use self::far::watch_far;
 pub use self::grow::grow;
+use self::lane::Lane;
+use self::motion::Motion;
 pub use self::near::leaf_arc;
+use self::near::{Around, Course};
 use self::nodes::Nodes;
 pub use self::place::{Sited, place};
 use self::plan::Loaded;
 pub use self::raytrace::{add_instances, rebuild, retarget};
 pub use self::reach::{Reach, STEPS};
+use self::spawn::Spawner;
 pub use self::stream::{collect, mark_ready, stream};
+use self::stretch::Stretch;
 use super::globe::quadtree::Tree;
 use super::globe::{ChunkId, Face};
 use super::props::PropAssets;
@@ -58,11 +80,11 @@ use super::props::PropAssets;
 const FRAME_BUDGET: usize = 2;
 
 /// What the detail chunks were last settled for: nothing to do until one of these changes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct Settled {
     face: Option<Face>,
-    center: IVec2,
-    radius: i32,
+    lane: Lane,
+    rings: i32,
     revision: u64,
 }
 
@@ -77,8 +99,11 @@ pub struct Chunks {
     pending: HashMap<ChunkId, Task<ChunkData>>,
     settled: Option<Settled>,
     stamp: u64,
-    grown: Option<(IVec3, u64, i32)>,
+    grown: Option<((IVec3, IVec3), u64, i32)>,
     drawn: Option<u64>,
+    motion: Motion,
+    fades: Fades,
+    stretch: Stretch,
 }
 
 impl Chunks {
@@ -93,6 +118,7 @@ impl Chunks {
             commands.entity(loaded.entity).try_despawn();
         }
         self.nodes.clear(commands);
+        self.fades.clear(commands);
         let far = std::mem::take(&mut self.far);
         *self = Self {
             far,
@@ -110,6 +136,17 @@ impl Chunks {
     /// Notes that a node or a chunk appeared or went: the draw cut and the quadtree look again.
     fn touch(&mut self) {
         self.stamp += 1;
+    }
+
+    /// Returns the chunk coordinates around a focus at planet position `at`, with the lane to
+    /// the point it will reach at its speed and the detail its pace leaves time for.
+    fn around(&self, spawner: &Spawner, at: DVec3) -> Option<Around> {
+        let course = Course {
+            ahead: self.motion.ahead(at, spawner.terrain.globe().radius()),
+            rings: spawner.reach().rings,
+            pace: self.motion.pace,
+        };
+        Around::along(&spawner.terrain, at, &course)
     }
 
     /// Returns the chunks whose generation task is done.

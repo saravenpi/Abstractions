@@ -44,6 +44,20 @@ impl Turf {
         matches!(self.state, State::Missing) && rank <= cover + 1
     }
 
+    /// Returns the cover entity once the cover is built, or nothing inside when nothing grows.
+    #[cfg(test)]
+    pub fn grown(&self) -> Option<Option<Entity>> {
+        match self.state {
+            State::Ready(grass) => Some(grass),
+            _ => None,
+        }
+    }
+
+    /// Returns true when the cover has a mesh and shows it.
+    pub fn drawn(&self) -> bool {
+        matches!(self.state, State::Ready(Some(_))) && self.shown
+    }
+
     /// Returns true while the cover is being built.
     pub fn building(&self) -> bool {
         matches!(self.state, State::Building(_))
@@ -68,21 +82,22 @@ impl Turf {
         (self.state, self.shown) = (State::Ready(child), true);
     }
 
-    /// Runs the cover of `chunk` at `rank` rings from the focus: a finished mesh is spawned while
-    /// `spend` allows, the cover shows within `cover` rings and is dropped far beyond.
+    /// Runs the cover of `chunk` at `rank` rings from the line of flight: a finished mesh is
+    /// spawned while `spend` allows, the cover shows within `cover` rings and is dropped far
+    /// beyond. Returns the cover entity when it came into view just now.
     pub fn tend(
         &mut self,
         commands: &mut Commands,
         chunk: Entity,
         rings: (i32, i32),
         (spawner, spend): (&mut Spawner, &mut Spend),
-    ) {
-        let (rank, cover) = rings;
+    ) -> Option<Entity> {
+        let ((rank, cover), before) = (rings, self.drawn());
         if matches!(&self.state, State::Building(task) if task.is_finished()) && spend.more() {
             self.adopt(commands, chunk, spawner);
         }
         let State::Ready(Some(grass)) = self.state else {
-            return;
+            return None;
         };
         if rank > cover + DROP {
             commands.entity(grass).try_despawn();
@@ -92,5 +107,6 @@ impl Turf {
             let visibility = [Visibility::Hidden, Visibility::Inherited][usize::from(self.shown)];
             commands.entity(grass).try_insert(visibility);
         }
+        (self.drawn() && !before).then_some(grass)
     }
 }

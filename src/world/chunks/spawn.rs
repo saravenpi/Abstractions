@@ -74,14 +74,14 @@ impl Spawner<'_> {
         (sited, placed, transform)
     }
 
-    /// Spawns the terrain entity of a detail chunk around `mesh`, stored in `frame`.
+    /// Spawns the terrain entity of a detail chunk around `mesh`, stored in `frame`. It stays
+    /// hidden until the draw cut shows it.
     fn terrain(&mut self, commands: &mut Commands, frame: Frame, mesh: Mesh) -> Entity {
         let mesh = self.meshes.add(mesh);
         let material = self.assets.material.clone();
         let bundle = (Mesh3d(mesh), MeshMaterial3d(material), self.sited(frame));
-        commands
-            .spawn((bundle, RigidBody::Static, DespawnOnEnter(Screen::Title)))
-            .id()
+        let hidden = (Visibility::Hidden, DespawnOnEnter(Screen::Title));
+        commands.spawn((bundle, RigidBody::Static, hidden)).id()
     }
 
     /// Spawns the hidden entity of a coarse node, or of the far planet, around its mesh.
@@ -122,7 +122,7 @@ pub fn spawn_chunk(commands: &mut Commands, spawner: &mut Spawner, data: ChunkDa
         heights: data.heights,
         bodies: data.bodies,
         solid: false,
-        shown: true,
+        shown: false,
         detail: Detail::new(data.lod, Turf::new(grass, data.turfed), structure),
     }
 }

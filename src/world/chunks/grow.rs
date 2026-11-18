@@ -1,25 +1,64 @@
-//! Growing the quadtree: splits and merges around the focus, and the coarse mesh of every node.
+//! Growing the quadtree: splits and merges along the path of the focus, and the coarse mesh of
+//! every node.
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::Chunks;
+use super::dither::Way;
 use super::reach::Reach;
+use super::scene::Scene;
 use super::spawn::Spawner;
-use crate::world::focus::Focus;
-use crate::world::globe::quadtree::{Changes, View, children, select};
+use crate::world::globe::ChunkId;
+use crate::world::globe::quadtree::{Changes, MAX_SPLITS, Path, View, children, select_along};
 
 /// Distance in metres the focus moves before a settled quadtree is selected again.
 const STILL: f64 = 4.0;
 
+/// Distance in metres the point ahead of the focus moves before a settled quadtree is selected
+/// again: it only steers what is built far away.
+const STILL_AHEAD: f64 = 16.0;
+
 impl Chunks {
+    /// Forgets the node `child` of a merged node, with its detail chunk and its tasks. Returns
+    /// true when it left a mesh that fades out from `fade` seconds; else it is gone at once.
+    fn retire(&mut self, commands: &mut Commands, child: ChunkId, fade: Option<f64>) -> bool {
+        self.pending.remove(&child);
+        if let Some(loaded) = self.loaded.remove(&child) {
+            commands.entity(loaded.entity).try_despawn();
+        }
+        let Some(node) = self.nodes.take(child) else {
+            return false;
+        };
+        match fade.filter(|_| node.visible) {
+            Some(now) => {
+                let at = (Way::Leave, now);
+                self.fades
+                    .begin(commands, node.entity, vec![node.entity], at);
+            }
+            None => commands.entity(node.entity).try_despawn(),
+        }
+        fade.is_some() && node.visible
+    }
+
     /// Applies a selection: merged nodes lose their children, with their detail and their tasks.
-    fn reshape(&mut self, commands: &mut Commands, changes: &Changes) {
-        for child in changes.merges.iter().flat_map(|id| children(*id)) {
-            self.nodes.remove(commands, child);
-            self.pending.remove(&child);
-            if let Some(loaded) = self.loaded.remove(&child) {
-                commands.entity(loaded.entity).try_despawn();
+    /// Where `fade` gives the time, the drawn children fade out from then while their parent
+    /// fades in; a merge that takes detail chunks away is never faded, the chunks go at once.
+    fn reshape(
+        &mut self,
+        commands: &mut Commands,
+        changes: &Changes,
+        fade: &dyn Fn(ChunkId) -> Option<f64>,
+    ) {
+        for id in &changes.merges {
+            let kids = children(*id);
+            let plain = kids.iter().any(|kid| self.loaded.contains_key(kid));
+            let fade = fade(*id).filter(|_| !plain);
+            let left = kids.map(|kid| self.retire(commands, kid, fade));
+            let parent = self.nodes.live.get(id).map(|node| node.entity);
+            if let Some((now, parent)) = fade.zip(parent).filter(|_| left.contains(&true)) {
+                self.fades
+                    .begin(commands, parent, vec![parent], (Way::In, now));
             }
         }
         self.tree.apply(changes);
@@ -29,8 +68,10 @@ impl Chunks {
     }
 }
 
-/// Returns what the quadtree is selected for at planet position `at` with `reach`.
-fn view_of(chunks: &Chunks, spawner: &Spawner, at: DVec3, reach: &Reach) -> View {
+/// Returns the path the quadtree is selected for: from planet position `at` to the point the
+/// focus will reach, with `reach`. New ground only splits down to the leaves within the detail
+/// radius the pace of the focus leaves.
+fn path_of(chunks: &Chunks, spawner: &Spawner, at: DVec3, reach: &Reach) -> Path {
     let globe = spawner.terrain.globe();
     let mut view = View {
         focus: at,
@@ -40,37 +81,51 @@ fn view_of(chunks: &Chunks, spawner: &Spawner, at: DVec3, reach: &Reach) -> View
         budget: reach.node_cap().saturating_sub(chunks.tree.count()) / 4,
         split: reach.split(),
     };
-    view.reach = f64::from(reach.rings + 1) * view.arc(view.deepest);
-    view
+    let leaf = view.arc(view.deepest);
+    view.reach = f64::from(reach.rings + 1) * leaf;
+    Path {
+        view,
+        ahead: chunks.motion.ahead(at, globe.radius()),
+        reach: f64::from(chunks.motion.pace.rings(reach.rings) + 1) * leaf,
+    }
 }
 
-/// Splits and merges the quadtree around the focus, a few nodes per frame, and builds the mesh
-/// of every node. A node only splits once its own mesh exists, so a merge shows it at once.
+/// Splits and merges the quadtree along the path of the focus, a few nodes per frame, and builds
+/// the mesh of every node. A node only splits once its own mesh exists, so a merge shows it at
+/// once.
 ///
-/// Once the tree fits the focus nothing is selected again until the focus moves by
-/// [`STILL`] metres or a node appears.
+/// Once the tree fits the path nothing is selected again until the focus moves by [`STILL`]
+/// metres, the point ahead by [`STILL_AHEAD`], or a node appears.
 pub fn grow(
     mut commands: Commands,
     mut chunks: ResMut<Chunks>,
-    focus: Focus,
+    scene: Scene,
     mut spawner: Spawner,
 ) {
-    let Some(at) = focus.planet().filter(|_| !chunks.far.active()) else {
+    let Some(at) = scene.at().filter(|_| !chunks.far.active()) else {
         return;
     };
     let reach = spawner.reach();
-    let view = view_of(&chunks, &spawner, at, &reach);
-    let spawned = chunks.nodes.collect(&mut commands, &mut spawner, &view);
+    let path = path_of(&chunks, &spawner, at, &reach);
+    let stretch = chunks.stretch;
+    let spawned = chunks
+        .nodes
+        .collect(&mut commands, &mut spawner, (&path, stretch));
     chunks.stamp += spawned as u64;
-    let key = |chunks: &Chunks| ((at / STILL).floor().as_ivec3(), chunks.stamp, reach.rings);
+    let cell = |p: DVec3, step: f64| (p / step).floor().as_ivec3();
+    let place = (cell(at, STILL), cell(path.ahead, STILL_AHEAD));
+    let key = |chunks: &Chunks| (place, chunks.stamp, reach.rings);
     if chunks.grown == Some(key(&chunks)) && chunks.nodes.idle() {
         return;
     }
-    let changes = select(&chunks.tree, &view, &|id| chunks.nodes.has(id));
-    chunks.reshape(&mut commands, &changes);
+    let ready = |id| chunks.nodes.has(id);
+    let changes = select_along(&chunks.tree, &path, &ready, stretch.count(MAX_SPLITS));
+    let (eye, now) = (scene.eye(), scene.now());
+    let fade = |id| eye.filter(|eye| eye.sees(id)).map(|_| now);
+    chunks.reshape(&mut commands, &changes, &fade);
     let mut wanted = chunks.tree.leaves();
     wanted.retain(|id| chunks.nodes.missing(*id));
-    wanted.sort_by(|a, b| view.distance(*a).total_cmp(&view.distance(*b)));
+    wanted.sort_by(|a, b| path.cost(*a).total_cmp(&path.cost(*b)));
     let settled = changes == Changes::default() && wanted.is_empty();
     chunks.grown = settled.then(|| key(&chunks));
     chunks.nodes.start(wanted, &spawner);

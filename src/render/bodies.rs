@@ -1,6 +1,8 @@
 //! The star and the planets of the current system, drawn as spheres in their true directions.
 
 mod material;
+#[cfg(test)]
+mod tests;
 
 use bevy::asset::embedded_asset;
 use bevy::camera::visibility::NoFrustumCulling;
@@ -12,6 +14,7 @@ use bevy::prelude::*;
 
 pub use material::BodyMaterial;
 
+use super::air::Air;
 use super::atmosphere::{HALO_SCALE, HaloMaterial};
 use super::vantage::{LocalSystem, Scene};
 use crate::screens::Screen;
@@ -81,7 +84,7 @@ impl Body {
     /// Returns where this body is in the star system, its size and whether the sky draws it now.
     ///
     /// The planet below the camera is left to the terrain within [`HANDOVER`] radii, and its halo
-    /// only shows from above its air.
+    /// only shows from above its air. A planet without air has no halo.
     fn orb(self, scene: &Scene) -> Option<Orb> {
         let vantage = &scene.vantage;
         let (index, halo) = match self {
@@ -100,12 +103,13 @@ impl Body {
         let below = index == vantage.body;
         let away = pos.distance(vantage.observer.eye) > HANDOVER * planet.radius;
         let grow = if halo { HALO_SCALE } else { 1.0 };
+        let airy = planet.atmosphere_height > 0.0 && Air::of(&planet.record).share() > 0.0;
         Some(Orb {
             pos,
             radius: planet.radius * f64::from(grow),
             least_angle: PLANET_ANGLE * grow,
             shown: match halo {
-                true => planet.atmosphere_height > 0.0 && (!below || vantage.air <= 0.0),
+                true => airy && (!below || vantage.air <= 0.0),
                 false => !below || away,
             },
         })

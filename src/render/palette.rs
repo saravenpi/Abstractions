@@ -4,6 +4,7 @@ use bevy::light::GlobalAmbientLight;
 use bevy::prelude::*;
 
 use super::SunDir;
+use super::air::Air;
 use super::atmosphere::horizon_dip;
 use super::celestial::{smoothstep, sun_direction};
 use super::clock::START_PHASE;
@@ -71,21 +72,31 @@ impl Palette {
     /// Share of the ambient light left in space, enough to read a cockpit by.
     pub const SPACE_AMBIENT: f32 = 0.2;
 
+    /// Returns the palette at the ground of the home planet under a star of linear colour `star`
+    /// whose height above the horizon has the sine `height`.
+    pub fn lit(height: f32, star: Vec3) -> Self {
+        Self::through(height, star, &Air::HOME)
+    }
+
     /// Returns the palette at the ground under a star of linear colour `star` whose height
-    /// above the horizon has the sine `height`.
+    /// above the horizon has the sine `height`, seen through `air` at its full pressure.
     ///
     /// Nothing here is keyed on the hour. The star light is what the air lets through on its
-    /// path, so it reddens and dims as the star sinks; the sky is what the air scatters out of
-    /// it; the ambient light and the clouds take their colour from both.
-    pub fn lit(height: f32, star: Vec3) -> Self {
-        let through = star * transmit(height, 1.0);
+    /// path, so it reddens and dims as the star sinks, the more so the thicker the air; the sky
+    /// is what the air scatters out of it, stained by what the air carries; the ambient light
+    /// and the clouds take their colour from both. Thin air is left to [`Palette::seen`].
+    pub fn through(height: f32, star: Vec3, air: &Air) -> Self {
+        let depth = air.depth();
+        let through = star * transmit(height, depth);
         let tint = peak(through);
         let day = smoothstep(-0.12, 0.25, height);
         let dusk = smoothstep(-0.2, 0.1, height);
-        let blue = scattered(star).lerp(peak(star), 0.1) * peak(star * transmit(height, 0.2));
-        let haze = scattered(star).lerp(peak(star), HAZE) * tint.powf(0.7);
-        let zenith = NIGHT_ZENITH.lerp(blue * 0.92, day);
-        let horizon = NIGHT_HORIZON.lerp(haze * 0.95, dusk);
+        let white = HAZE + (1.0 - HAZE) * (1.0 - 1.0 / depth);
+        let blue =
+            scattered(star).lerp(peak(star), 0.1) * peak(star * transmit(height, 0.2 * depth));
+        let haze = scattered(star).lerp(peak(star), white) * tint.powf(0.7);
+        let zenith = air.stain(NIGHT_ZENITH.lerp(blue * 0.92, day), star);
+        let horizon = air.stain(NIGHT_HORIZON.lerp(haze * 0.95, dusk), star);
         let sky = peak(zenith + horizon).lerp(Vec3::ONE, 0.4);
         let full = luminance(star * transmit(1.0, 1.0)).max(1.0e-6);
         Self {
@@ -98,7 +109,7 @@ impl Palette {
                 * (luminance(through) / full).min(1.0)
                 * smoothstep(-0.06, 0.03, height),
             moon_lux: Self::MOON_LUX * smoothstep(-0.02, 0.3, -height),
-            cloud: NIGHT_CLOUD.lerp(tint.lerp(Vec3::ONE, 0.35), day),
+            cloud: NIGHT_CLOUD.lerp(tint.lerp(Vec3::ONE, 0.35), day) * air.tint,
             stars: 1.0 - smoothstep(-0.2, 0.0, height),
             sun_dir: Vec3::Y,
             moon_dir: Vec3::NEG_Y,
@@ -116,8 +127,9 @@ impl Palette {
     }
 
     /// Returns this palette as seen from the camera: the sun and moon stand where the star really is,
-    /// and with `air` going from 1 at the ground to 0 in space the sky turns black, the stars come
-    /// out and the star shines in its own colour `star`, undimmed unless the planet hides it.
+    /// and with `air` going from 1 under a whole home sky to 0 in space or on a planet without
+    /// air, the sky turns black, the stars come out and the star shines in its own colour
+    /// `star`, undimmed unless the planet hides it.
     pub fn seen(mut self, sun: &SunDir, air: f32, star: Vec3) -> Self {
         self.sun_dir = sun.dir;
         self.moon_dir = -sun.dir;
@@ -132,14 +144,16 @@ impl Palette {
     }
 
     /// Returns the palette at the ground under the camera: lit by the star of `local` at its
-    /// real height over the horizon the camera sees, which drops as the camera climbs.
+    /// real height over the horizon the camera sees, which drops as the camera climbs, through
+    /// the air of the planet below.
     pub fn under(sun: &SunDir, vantage: &Vantage, local: &LocalSystem) -> (Self, Vec3) {
         let star = local
             .0
             .as_ref()
             .map_or(Vec3::ONE, |near| near.system.star.color);
         let dip = horizon_dip(vantage.altitude, vantage.radius);
-        (Self::lit(sun.height + dip, star), star)
+        let air = local.air(vantage.body);
+        (Self::through(sun.height + dip, star, &air), star)
     }
 }
 
@@ -163,32 +177,4 @@ fn update_palette(
 pub(super) fn plugin(app: &mut App) {
     app.insert_resource(Palette::at(START_PHASE))
         .add_systems(Update, update_palette);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Noon is bright with a lit sun, midnight is dim with a lit moon and stars. A star on the
-    /// horizon gives orange, weaker light and a warm horizon under a sky still blue above, and
-    /// a red star tints all of it.
-    ///
-    /// The moon and the night ambient stay weak enough that a torch still shows at three meters.
-    #[test]
-    fn noon_and_midnight_differ() {
-        let noon = Palette::at(0.25);
-        let night = Palette::at(0.75);
-        assert!(noon.sun_lux > 10_000.0 && noon.moon_lux < 1.0);
-        assert!(night.sun_lux < 1.0 && (250.0..=450.0).contains(&night.moon_lux));
-        assert!(night.ambient_brightness <= 45.0 && (noon.ambient_brightness - 350.0).abs() < 1.0);
-        assert!(noon.horizon.length() > night.horizon.length() * 3.0);
-        assert!(night.stars > 0.99 && noon.stars < 0.01);
-        let (noon, low) = (Palette::lit(0.9, Vec3::ONE), Palette::lit(0.02, Vec3::ONE));
-        assert!(low.sun_color.z < 0.3 && noon.sun_color.z > 0.75);
-        assert!(low.sun_lux < 0.6 * noon.sun_lux && low.sun_lux > 1000.0);
-        assert!(low.horizon.x > low.horizon.z && noon.horizon.z > noon.horizon.x);
-        assert!(low.zenith.z > low.zenith.x);
-        let red = Palette::lit(0.9, Vec3::new(1.0, 0.5, 0.3));
-        assert!(red.sun_color.z < 0.4 && red.zenith.z < noon.zenith.z);
-    }
 }

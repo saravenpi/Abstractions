@@ -4,6 +4,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::air::Air;
 use super::atmosphere::air;
 use super::observer::Observer;
 use crate::space::Clock;
@@ -41,6 +42,15 @@ impl Nearby {
 #[derive(Resource, Debug, Default, Clone, PartialEq)]
 pub struct LocalSystem(pub Option<Nearby>);
 
+impl LocalSystem {
+    /// Returns the air of planet number `body`, or the home air outside a world.
+    pub fn air(&self, body: usize) -> Air {
+        let near = self.0.as_ref();
+        let planet = near.and_then(|near| near.planet(u8::try_from(body).ok()?));
+        planet.map_or(Air::HOME, |planet| Air::of(&planet.record))
+    }
+}
+
 /// Where the camera is and what surrounds it, in the units the sky systems draw with.
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct Vantage {
@@ -54,7 +64,8 @@ pub struct Vantage {
     pub up: Vec3,
     /// Height of the camera above sea level in metres.
     pub altitude: f32,
-    /// Share of the atmosphere left above the camera: 1 at the ground, 0 in space.
+    /// Share of a home atmosphere left above the camera: 1 at the ground of a planet with at
+    /// least the home pressure, less in thinner air, 0 in space and on a planet without air.
     pub air: f32,
     /// Rank of the planet around its star.
     pub body: usize,
@@ -108,7 +119,7 @@ impl Vantage {
             velocity: Vec3::ZERO,
             up: (observer.to_render * observer.up()).as_vec3(),
             altitude,
-            air: air(altitude, planet.atmosphere_height as f32),
+            air: air(altitude, planet.atmosphere_height as f32) * Air::of(&planet.record).share(),
             body: usize::from(planet.id.index),
             radius: planet.radius as f32,
             atmosphere: planet.atmosphere_height as f32,

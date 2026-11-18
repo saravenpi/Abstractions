@@ -17,7 +17,7 @@ use super::celestial::smoothstep;
 use super::dome::cloud_cover;
 use super::palette::Palette;
 use super::sky::linear;
-use super::vantage::Vantage;
+use super::vantage::{LocalSystem, Vantage};
 use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
 
@@ -29,7 +29,8 @@ const HIDE_RADII: f32 = 20.0;
 
 /// How deep the camera is in the cloud layer: 0 outside it, 1 in the middle of the band.
 ///
-/// The ship and the audio read it for shake and sound. It stays 0 while clouds are switched off.
+/// The ship and the audio read it for shake and sound. It stays 0 while clouds are switched off
+/// and on a planet without clouds.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
 pub struct CloudCrossing {
     /// Depth in the band, from 0 to 1.
@@ -122,6 +123,7 @@ fn spawn_shell(
 #[derive(SystemParam)]
 pub(super) struct CloudInputs<'w> {
     vantage: Res<'w, Vantage>,
+    local: Res<'w, LocalSystem>,
     palette: Res<'w, Palette>,
     clock: Res<'w, DayClock>,
     settings: Res<'w, Persistent<Settings>>,
@@ -131,7 +133,8 @@ pub(super) struct CloudInputs<'w> {
 impl CloudInputs<'_> {
     /// Returns the shader values for a shell of `radius` metres and a camera `depth` deep in the band.
     ///
-    /// The noise is read in planet-fixed axes, so the clouds turn with the ground below them.
+    /// The noise is read in planet-fixed axes, so the clouds turn with the ground below them,
+    /// and the cover of the day is scaled by how cloudy the planet is.
     fn uniform(&self, radius: f32, depth: f32) -> CloudUniform {
         let vantage = &*self.vantage;
         let observer = &vantage.observer;
@@ -140,7 +143,10 @@ impl CloudInputs<'_> {
         let rim =
             (distance * distance - ground).max(0.0).sqrt() + (radius * radius - ground).sqrt();
         let fixed = Mat3::from_quat((observer.to_render * observer.spin).inverse().as_quat());
-        let cover = cloud_cover(self.clock.phase);
+        let cover = self
+            .local
+            .air(vantage.body)
+            .cover(cloud_cover(self.clock.phase));
         CloudUniform {
             light: self.palette.sun_dir.extend(vantage.air),
             color: linear(self.palette.cloud).truncate().extend(cover),
@@ -162,7 +168,7 @@ type ShellParts = (
 );
 
 /// Measures how deep the camera is in the cloud layer, wraps the shell around the planet halfway
-/// up the band and refreshes the shader values.
+/// up the band and refreshes the shader values. A planet without clouds has no shell and no crossing.
 pub(super) fn drift(
     inputs: CloudInputs,
     mut crossing: ResMut<CloudCrossing>,
@@ -170,7 +176,8 @@ pub(super) fn drift(
     mut materials: ResMut<Assets<CloudMaterial>>,
 ) {
     let vantage = &*inputs.vantage;
-    let on = inputs.settings.graphics.clouds && vantage.cloud_top > vantage.cloud_base;
+    let cloudy = inputs.local.air(vantage.body).clouds > 0.0;
+    let on = inputs.settings.graphics.clouds && cloudy && vantage.cloud_top > vantage.cloud_base;
     let depth = match on {
         true => crossing_depth(vantage.altitude, vantage.cloud_base, vantage.cloud_top),
         false => 0.0,

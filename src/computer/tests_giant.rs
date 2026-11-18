@@ -62,7 +62,7 @@ fn a_solid_planet_names_its_moons_and_a_moon_its_orbit() {
     };
     let card = readout(&line, Some(&ringed));
     assert_eq!(card[1], "air like home, pressure 1.00");
-    assert_eq!(card[4], "radius 6.00 km - gravity 1.00 g - 2 moons - rings");
+    assert_eq!(card[4], "radius 6.00 km - gravity 1.00 g, 2 moons, rings");
     let moon = PlanetSpec {
         id: BodyId {
             moon: 1,

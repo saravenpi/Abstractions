@@ -135,14 +135,32 @@ fn action_keys(
     }
 }
 
-/// Applies an activated button: a row is selected, a tab opens, an action runs. Enter on the
-/// focused row selects it again; `action_keys` sets the course.
-pub(super) fn on_activate(event: On<Activate>, roles: Query<Role>, mut desk: Desk) {
+/// Seconds within which a second click on the same row sets the course to it.
+const DOUBLE_CLICK: f64 = 0.45;
+
+/// Applies an activated button: a row is selected, a tab opens, an action runs. A second
+/// click of the pointer on the same row within [`DOUBLE_CLICK`] sets the course to it, as on
+/// the map. Enter on the focused row selects it again; `action_keys` sets the course.
+pub(super) fn on_activate(
+    event: On<Activate>,
+    roles: Query<Role>,
+    (mouse, time): (Res<ButtonInput<MouseButton>>, Res<Time<Real>>),
+    mut last: Local<Option<(usize, f64)>>,
+    mut desk: Desk,
+) {
     let Ok((slot, link, act)) = roles.get(event.entity) else {
         return;
     };
     if let Some(Slot(slot)) = slot {
         desk.board.pick(*slot);
+        let left = MouseButton::Left;
+        let clicked = mouse.just_released(left) || mouse.just_pressed(left);
+        let now = time.elapsed_secs_f64();
+        let again = last.is_some_and(|(row, at)| row == *slot && now - at < DOUBLE_CLICK);
+        *last = clicked.then_some((*slot, now)).filter(|_| !again);
+        if clicked && again {
+            desk.run(Act::Set);
+        }
     }
     if let Some(TabLink(tab)) = link {
         desk.board.show(*tab);

@@ -54,7 +54,7 @@ pub fn company(planet: &PlanetSpec) -> String {
     if planet.record.class == PlanetClass::GasGiant {
         return String::new();
     }
-    let count = (planet.moons > 0).then(|| format!(" - {}", moons(planet.moons)));
-    let ring = planet.rings.map(|_| " - rings".to_string());
+    let count = (planet.moons > 0).then(|| format!(", {}", moons(planet.moons)));
+    let ring = planet.rings.map(|_| ", rings".to_string());
     count.into_iter().chain(ring).collect()
 }

@@ -174,7 +174,8 @@ pub(super) fn plugin(app: &mut App) {
                 super::inset::fresh,
                 super::inset::plan,
                 super::inset::collect,
-            ),
+            )
+                .chain(),
             (super::pointer::plot, super::glide::ease).chain(),
             super::draw::draw,
             (super::glide::slide, super::glide::rule),

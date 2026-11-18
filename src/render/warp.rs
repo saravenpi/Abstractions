@@ -4,7 +4,9 @@
 //!
 //! The state moves at bounded rates in seconds, never per frame, so a slow frame or a fast
 //! clock gives the same sequence, and a warp cut short falls back from wherever it stands.
+//! The dust of the warp runs by the same clock, at a rate the velocity sets.
 
+mod dust;
 mod lens;
 mod look;
 mod optics;
@@ -14,8 +16,13 @@ mod shader;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_dust;
+#[cfg(test)]
+mod tests_optics;
+#[cfg(test)]
 mod tests_sequence;
 
+pub use dust::{LAPS, MOTES};
 pub use lens::Lens;
 pub use optics::CARRIED;
 
@@ -151,7 +158,8 @@ pub(super) fn run(
     let next = sequence.advance(drive, time.delta_secs());
     sequence.set_if_neq(next);
     let heading = flight.nose.try_normalize().unwrap_or(lens.heading);
-    lens.set_if_neq(next.lens(heading));
+    let carried = lens.carry(next.lens(heading), time.delta_secs());
+    lens.set_if_neq(carried);
 }
 
 /// Registers the sequence and runs it once the camera is tracked.

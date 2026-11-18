@@ -1,7 +1,9 @@
-//! The starfield: the real stars near the camera and the far galaxies, as one mesh on a far shell.
+//! The starfield: the real stars near the camera and the far galaxies, as one mesh on a far shell,
+//! and the dust a warp rushes through, as a second fixed mesh drawn with the same material.
 
 mod build;
 mod depth;
+mod dust;
 mod material;
 mod specks;
 
@@ -21,9 +23,10 @@ pub use material::{StarMaterial, StarUniform};
 
 use super::palette::Palette;
 use super::vantage::Vantage;
-use super::warp::Lens;
+use super::warp::{LAPS, Lens};
 use crate::screens::Screen;
 use crate::universe::{GLY, GalaxyId};
+use dust::Dust;
 
 /// Radius of the star shell in metres: behind every body, in front of the dome.
 pub const STAR_SHELL: f32 = 3.0e6;
@@ -58,21 +61,35 @@ impl Starfield {
     }
 }
 
-/// Spawns the starfield without a mesh when the world starts loading.
-fn spawn(mut commands: Commands, mut materials: ResMut<Assets<StarMaterial>>) {
-    commands.spawn((
-        Starfield::default(),
-        MeshMaterial3d(materials.add(StarMaterial::default())),
+/// Spawns the starfield without a mesh when the world starts loading, and the dust with its
+/// fixed mesh and the same material, hidden until a warp.
+fn spawn(
+    mut commands: Commands,
+    mut materials: ResMut<Assets<StarMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
+    let material = MeshMaterial3d(materials.add(StarMaterial::default()));
+    let sky = (
         Transform::default(),
         Visibility::Hidden,
         NotShadowCaster,
         NoFrustumCulling,
         DespawnOnEnter(Screen::Title),
-    ));
+    );
+    commands.spawn((Starfield::default(), material.clone(), sky.clone()));
+    commands.spawn((Dust, Mesh3d(meshes.add(dust::mesh())), material, sky));
 }
 
+/// The dust entity: where it is drawn and whether it shows.
+type DustPose<'a> = (
+    &'a mut Transform,
+    &'a mut GlobalTransform,
+    &'a mut Visibility,
+);
+
 /// Keeps the shell around the camera, turned with the galaxy, fades the stars with the sky and
-/// hands the shader the warp lens: the same stars crowd ahead, streak and come back to rest.
+/// hands the shader the warp lens: the same stars crowd ahead, streak, sway with the flow and
+/// come back to rest, and the dust shows only while a warp has some in.
 fn follow(
     vantage: Res<Vantage>,
     (palette, lens): (Res<Palette>, Res<Lens>),
@@ -82,6 +99,7 @@ fn follow(
         &mut GlobalTransform,
         &MeshMaterial3d<StarMaterial>,
     )>,
+    mut dust: Query<DustPose, (With<Dust>, Without<Starfield>)>,
     mut materials: ResMut<Assets<StarMaterial>>,
 ) {
     let pose = Transform {
@@ -96,8 +114,14 @@ fn follow(
                 params: Vec4::new(palette.stars, lens.streak, lens.stars, 0.0),
                 heading: lens.heading.extend(lens.beta),
                 drift: field.drift(&vantage).extend(0.0),
+                flow: Vec4::new(lens.phase, lens.flow, lens.dust, lens.flow / LAPS),
             };
         }
+    }
+    let shown = [Visibility::Hidden, Visibility::Visible][usize::from(lens.dust > 0.0)];
+    for (mut transform, mut global, mut visibility) in &mut dust {
+        super::pin(pose, &mut transform, &mut global);
+        visibility.set_if_neq(shown);
     }
 }
 

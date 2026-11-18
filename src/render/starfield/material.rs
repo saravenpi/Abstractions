@@ -20,6 +20,10 @@ pub struct StarUniform {
     pub heading: Vec4,
     /// How far the camera has moved since the mesh was built, in game light-years in galaxy axes.
     pub drift: Vec4,
+    /// The dust of a warp and the sway of the stars: the laps the flow has run in x, its laps
+    /// per second in y, the share of the dust that is in in z and the flow as a share of its
+    /// top rate in w.
+    pub flow: Vec4,
 }
 
 /// Material of the starfield.

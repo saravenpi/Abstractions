@@ -15,6 +15,12 @@ pub const CARRIED: (f32, f32) = (50.0, 100.0);
 /// Returns the Doppler factor of light from a point whose true angle from the heading has the
 /// cosine `cos`: above 1 ahead, where light turns bluer, below 1 behind. A patch of sky there
 /// is seen smaller by the same factor.
+///
+/// It is `D = γ (1 + β cos θ)` with `θ` the true angle, the same value as
+/// `D = 1 / (γ (1 - β cos θ'))` with `θ'` the angle the point is seen at
+/// (https://en.wikipedia.org/wiki/Relativistic_Doppler_effect). The solid angle of a patch
+/// is seen divided by `D²`, so its width by `D`
+/// (https://en.wikipedia.org/wiki/Relativistic_aberration).
 pub fn doppler(cos: f32, beta: f32) -> f32 {
     (1.0 + beta * cos) / (1.0 - beta * beta).max(1.0e-6).sqrt()
 }
@@ -23,7 +29,9 @@ pub fn doppler(cos: f32, beta: f32) -> f32 {
 /// a share of the speed of light, along the unit vector `heading`.
 ///
 /// At rest it is `dir`. The angle from the heading shrinks as the speed rises, and the points
-/// straight ahead and straight behind stay where they are. It works in 64 bits and from the
+/// straight ahead and straight behind stay where they are: `cos θ' = (cos θ + β) / (1 + β cos θ)`
+/// and `sin θ' = sin θ / (γ (1 + β cos θ))`
+/// (https://en.wikipedia.org/wiki/Relativistic_aberration). It works in 64 bits and from the
 /// sine of the angle, so a body a hair off the heading stays a hair off it instead of jumping
 /// by the grain of a 32-bit cosine.
 pub fn bend(dir: DVec3, heading: DVec3, beta: f32) -> DVec3 {

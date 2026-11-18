@@ -96,6 +96,9 @@ impl Sequence {
             core: self.core(),
             flash: self.flash(),
             stars: self.stars(),
+            flow: self.flow(),
+            dust: self.dust(),
+            phase: 0.0,
         }
     }
 }

@@ -3,6 +3,7 @@
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::dust::WRAP;
 use super::optics::{bend, bubble, doppler};
 
 /// What the sky draws the warp with. At rest it changes nothing.
@@ -22,6 +23,12 @@ pub struct Lens {
     pub flash: f32,
     /// Share of their light single stars keep.
     pub stars: f32,
+    /// Laps per second the dust runs, the rate the whole sky flows at.
+    pub flow: f32,
+    /// Share of the dust that is in, from 0 to 1.
+    pub dust: f32,
+    /// Laps the dust has run, wrapped at [`WRAP`].
+    pub phase: f32,
 }
 
 impl Default for Lens {
@@ -35,6 +42,9 @@ impl Default for Lens {
             core: 0.0,
             flash: 0.0,
             stars: 1.0,
+            flow: 0.0,
+            dust: 0.0,
+            phase: 0.0,
         }
     }
 }
@@ -57,6 +67,16 @@ impl Seen {
 }
 
 impl Lens {
+    /// Returns `next` with the laps the dust has run carried on from this lens over `dt`
+    /// seconds at the mean of the two flows, so the dust moves by time, never by frame.
+    pub fn carry(&self, next: Lens, dt: f32) -> Lens {
+        let run = 0.5 * (self.flow + next.flow) * dt.max(0.0);
+        Lens {
+            phase: (self.phase + run).rem_euclid(WRAP),
+            ..next
+        }
+    }
+
     /// Returns where a body of `radius` metres that truly sits `offset` metres from the camera,
     /// in render axes, is seen.
     ///

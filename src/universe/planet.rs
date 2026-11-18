@@ -6,6 +6,7 @@ use super::hash::Rng;
 use super::home::{HOME_GRAVITY, HOME_RADIUS};
 use super::ids::BodyId;
 use super::names;
+use super::record::PlanetRecord;
 use super::spec::{PlanetSpec, StarSpec};
 
 /// Smallest and largest sea level radius of a planet in metres.
@@ -65,5 +66,6 @@ pub(super) fn build(star: &StarSpec, index: u8, orbit: f64, seed: u64) -> Planet
         atmosphere_height,
         cloud_base,
         cloud_top,
+        record: PlanetRecord::TEMPERATE,
     }
 }

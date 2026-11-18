@@ -3,6 +3,7 @@
 use bevy::math::{DVec3, Vec3};
 
 use super::ids::{BodyId, GalaxyId, StarId};
+use super::record::PlanetRecord;
 
 /// Newton's constant in SI units, linking a star mass in kilograms to the pull it exerts.
 pub const GRAVITATION: f64 = 6.674e-11;
@@ -115,6 +116,8 @@ pub struct PlanetSpec {
     pub cloud_base: f64,
     /// Height above sea level in metres of the top of the cloud layer.
     pub cloud_top: f64,
+    /// What the physics says about its air, heat and water, and the class that follows.
+    pub record: PlanetRecord,
 }
 
 impl PlanetSpec {

@@ -49,6 +49,8 @@ mod tags;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_air;
+#[cfg(test)]
 mod tests_class;
 #[cfg(test)]
 mod tests_doors;

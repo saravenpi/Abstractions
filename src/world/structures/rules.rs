@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 use super::site::Kind;
 use super::village::REACH;
+use crate::world::lands::thrive::dune_sea;
 use crate::world::{Biome, Surface, Terrain};
 
 /// How the floor height of a structure is chosen.
@@ -153,10 +154,14 @@ pub fn water_yaw(terrain: &Terrain, p: Vec2, start: u32) -> Option<f32> {
     })
 }
 
-/// Returns the floor height and foundation depth if `kind` may stand at `p`.
+/// Returns the floor height and foundation depth if `kind` may stand at `p`. Nobody camps in the heart
+/// of a desert.
 pub fn fit(terrain: &Terrain, kind: Kind, p: Vec2) -> Option<(f32, f32)> {
     let s = kind.spec();
     if !s.biomes.is_empty() && !s.biomes.contains(&terrain.biome(p.x, p.y)) {
+        return None;
+    }
+    if kind == Kind::Camp && dune_sea(terrain, p) {
         return None;
     }
     let pts = samples(p, s.radius);

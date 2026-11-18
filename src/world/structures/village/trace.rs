@@ -26,12 +26,12 @@ pub fn street(terrain: &Terrain, start: Vec2, angle: f32, bend: f32, len: f32) -
     pts
 }
 
-/// Returns true when the ground at `p` is dry and not rock.
+/// Returns true when the ground at `p` is dry and soft: never rock, a sea floor or a river bed.
 pub fn walkable(terrain: &Terrain, p: Vec2) -> bool {
     terrain.height(p.x, p.y) > 0.8
-        && !matches!(
+        && matches!(
             terrain.surface(p.x, p.y),
-            Surface::Water | Surface::Shallows | Surface::Reef | Surface::Rock
+            Surface::Pond | Surface::Sand | Surface::Grass | Surface::Snow
         )
 }
 

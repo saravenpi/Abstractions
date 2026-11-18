@@ -7,8 +7,8 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 
 use super::site::Site;
-use crate::world::Terrain;
 use crate::world::globe::Chart;
+use crate::world::{Globe, Terrain};
 
 /// Number of remembered cells after which the memory is emptied.
 const LIMIT: usize = 16_384;
@@ -32,12 +32,26 @@ struct Key {
     reserved: bool,
     class: u8,
     ocean: u64,
+    air: [u64; 4],
     grid: Grid,
     cell: IVec2,
 }
 
 thread_local! {
     static CACHE: RefCell<HashMap<Key, Option<Site>>> = RefCell::new(HashMap::new());
+}
+
+/// Returns the bits of what shapes the climate of `globe` besides its seed, size and sea, which the
+/// biome and the village rules read.
+fn air(globe: &Globe) -> [u64; 4] {
+    let record = globe.record();
+    [
+        record.temperature,
+        record.pressure,
+        record.tilt,
+        globe.gravity(),
+    ]
+    .map(f64::to_bits)
 }
 
 /// Returns the key of `cell` on the chart of `terrain`, or nothing on a chart whose cells are not remembered.
@@ -56,6 +70,7 @@ fn key(terrain: &Terrain, grid: Grid, cell: IVec2) -> Option<Key> {
         reserved: globe.reserve().is_some(),
         class: globe.record().class as u8,
         ocean: globe.record().ocean.to_bits(),
+        air: air(globe),
         grid,
         cell,
     })

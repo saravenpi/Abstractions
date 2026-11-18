@@ -9,6 +9,7 @@ use rand_chacha::ChaCha8Rng;
 use super::layout::build;
 use super::trace::walkable;
 use crate::world::Terrain;
+use crate::world::lands::thrive::{climate_at, livable};
 use crate::world::structures::geo::{EDGE, edge_distance, metres};
 use crate::world::structures::memo::{Grid, memo};
 use crate::world::structures::site::{CELL, Kind, Site};
@@ -49,6 +50,12 @@ fn suitable(terrain: &Terrain, p: Vec2, radius: f32) -> bool {
     dry * 100 >= ring.len() * 85 && level * 100 >= ring.len() * 75
 }
 
+/// Returns true when the air at `p` is neither too cold nor too hot for a village. The legacy plane has
+/// no climate and is always mild.
+fn mild(terrain: &Terrain, p: Vec2) -> bool {
+    climate_at(terrain, p).is_none_or(|air| livable(&air))
+}
+
 /// Returns true when the village at `site` has at least six buildings of three different kinds.
 fn viable(terrain: &Terrain, site: Site) -> bool {
     let lots = build(terrain, site).lots;
@@ -87,7 +94,7 @@ fn search(terrain: &Terrain, vcell: IVec2) -> Option<Site> {
         let kept = terrain
             .globe()
             .reserved(terrain.embed(p.x, 0.0, p.y), f64::from(REACH));
-        let clear = !kept && edge_distance(terrain, p) >= REACH + EDGE;
+        let clear = !kept && edge_distance(terrain, p) >= REACH + EDGE && mild(terrain, p);
         (clear && suitable(&view, p, radius) && viable(&view, site)).then_some(site)
     })
 }

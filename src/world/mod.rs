@@ -7,6 +7,7 @@ mod colormap;
 mod enter;
 mod focus;
 pub mod globe;
+mod ground;
 mod islands;
 mod lands;
 mod mesh;
@@ -27,6 +28,7 @@ pub use chunks::{Calm, Reach, STEPS as RENDER_STEPS, Sited, leaf_arc};
 pub use enter::enter_planet;
 pub use focus::{Link, spin};
 pub use globe::Globe;
+pub use ground::GroundMaterial;
 pub use meter::{Cost, Meter, STEPS as METER_STEPS};
 pub use surface::Surface;
 pub use terrain::Terrain;
@@ -166,18 +168,23 @@ fn streaming(
 
 /// Registers the world systems.
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins((sea::plugin, structures::plugin, calendar::plugin))
-        .init_resource::<chunks::Chunks>()
-        .init_resource::<chunks::Budget>()
-        .init_resource::<chunks::Calm>()
-        .insert_resource(chunks::Reach::of(None))
-        .init_resource::<Meter>()
-        .add_systems(Startup, chunks::setup_assets)
-        .add_systems(
-            OnEnter(Screen::Loading),
-            (begin_world, sea::spawn_sea).chain(),
-        )
-        .add_systems(OnEnter(Screen::Title), end_world);
+    app.add_plugins((
+        ground::plugin,
+        sea::plugin,
+        structures::plugin,
+        calendar::plugin,
+    ))
+    .init_resource::<chunks::Chunks>()
+    .init_resource::<chunks::Budget>()
+    .init_resource::<chunks::Calm>()
+    .insert_resource(chunks::Reach::of(None))
+    .init_resource::<Meter>()
+    .add_systems(Startup, chunks::setup_assets)
+    .add_systems(
+        OnEnter(Screen::Loading),
+        (begin_world, sea::spawn_sea).chain(),
+    )
+    .add_systems(OnEnter(Screen::Title), end_world);
     stream_systems(app);
 }
 

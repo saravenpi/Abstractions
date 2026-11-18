@@ -73,6 +73,7 @@ pub use self::stream::{collect, mark_ready, stream};
 use self::stretch::Stretch;
 use super::globe::quadtree::Tree;
 use super::globe::{ChunkId, Face};
+use super::ground::GroundMaterial;
 use super::props::PropAssets;
 
 /// Finished chunks turned into entities per frame once the world is ready, at the default render
@@ -163,7 +164,7 @@ impl Chunks {
 /// Creates the shared material.
 pub fn setup_assets(
     mut commands: Commands,
-    mut mats: ResMut<Assets<StandardMaterial>>,
+    mut mats: ResMut<Assets<GroundMaterial>>,
     mut images: ResMut<Assets<Image>>,
 ) {
     commands.insert_resource(PropAssets::new(&mut mats, &mut images));

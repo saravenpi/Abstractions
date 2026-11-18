@@ -64,6 +64,7 @@ jobs:
           fi
           NAMED="${ASSET/abstractions-/abstractions-$VERSION-}"
           cp "$ASSET" "$NAMED"
+          rm -r "$DIR"
           if [ "$RUNNER_OS" = "Windows" ]; then
             PLAIN="abstractions-$VERSION-$PLATFORM.exe"
             cp "target/$TARGET/release/abstractions.exe" "$PLAIN"

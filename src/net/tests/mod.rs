@@ -1,4 +1,15 @@
-//! Session tests: which sessions count as shared.
+//! Session tests: which sessions count as shared, then the network driver in the modules
+//! below, against a scripted server and against real ones on this machine.
+
+mod end;
+mod join;
+mod kept;
+mod lobby;
+mod loopback;
+mod rig;
+mod shared;
+mod single;
+mod world;
 
 use super::Session;
 

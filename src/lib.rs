@@ -73,6 +73,7 @@ fn modules(app: &mut App) {
         weather::plugin,
         update::plugin,
         net::plugin,
+        net::driver::plugin,
     ))
     .insert_resource(view::Enabled(true));
 }

@@ -8,6 +8,7 @@ mod form_view;
 mod joining;
 mod keys;
 mod ops;
+mod password;
 mod rows;
 #[cfg(test)]
 mod tests;
@@ -94,6 +95,8 @@ pub(super) enum FormKind {
     Add,
     /// The saved server at this index.
     Edit(usize),
+    /// The password of the server that refused the last one.
+    Password,
 }
 
 /// One text field of a form.
@@ -103,6 +106,8 @@ pub(super) enum Field {
     Name,
     /// The address of a server.
     Address,
+    /// The password of a server, hidden as it is typed.
+    Password,
 }
 
 /// A form being filled: what it asks for, what was typed and the field being typed in.
@@ -137,8 +142,10 @@ enum Pane {
     Form,
     /// The name field, drawn by every form but direct connect.
     Name,
-    /// The address field, drawn by every form but the player name.
+    /// The address field, drawn by the forms of a server.
     Address,
+    /// The password field, drawn by the password form only.
+    Password,
 }
 
 /// The short line under the list: a refused field, a failed save or why a session ended.
@@ -165,6 +172,7 @@ pub(super) fn plugin(app: &mut App) {
         .init_resource::<Notice>()
         .init_resource::<Waiting>()
         .init_resource::<Ended>()
+        .init_resource::<password::Retry>()
         .add_observer(act::on_activate)
         .add_systems(OnEnter(Menu::Multiplayer), view::spawn)
         .add_systems(
@@ -179,9 +187,11 @@ pub(super) fn plugin(app: &mut App) {
                 form_view::show,
                 view::show_notice,
                 joining::follow_session,
+                password::ask,
             )
                 .chain()
                 .run_if(in_state(Menu::Multiplayer)),
-        );
+        )
+        .add_systems(Update, password::remember);
     joining::plugin(app);
 }

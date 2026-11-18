@@ -16,8 +16,13 @@ pub(super) fn shown(pane: Pane, mode: &Mode) -> bool {
     match (pane, mode) {
         (Pane::List, Mode::Browse) => true,
         (Pane::Form, Mode::Form(_)) => true,
-        (Pane::Name, Mode::Form(form)) => form.kind != FormKind::Direct,
-        (Pane::Address, Mode::Form(form)) => form.kind != FormKind::Player,
+        (Pane::Name, Mode::Form(form)) => {
+            !matches!(form.kind, FormKind::Direct | FormKind::Password)
+        }
+        (Pane::Address, Mode::Form(form)) => {
+            !matches!(form.kind, FormKind::Player | FormKind::Password)
+        }
+        (Pane::Password, Mode::Form(form)) => form.kind == FormKind::Password,
         _ => false,
     }
 }
@@ -29,15 +34,20 @@ pub(super) fn texts(form: &Form, field: Field) -> (&'static str, String, Color) 
         FormKind::Direct => "Join a server once",
         FormKind::Add => "Add a server",
         FormKind::Edit(_) => "Edit the server",
+        FormKind::Password => "This server needs a password",
     };
+    let hidden = "*".repeat(form.name.chars().count());
     let value = match field {
+        Field::Name if form.kind == FormKind::Password => &hidden,
         Field::Name => &form.name,
         Field::Address => &form.address,
+        Field::Password => &hidden,
     };
     let hint = match (field, form.kind) {
         (Field::Name, FormKind::Player) => "your name",
         (Field::Name, _) => "optional, the address shows",
         (Field::Address, _) => "domain or IP, port optional",
+        (Field::Password, _) => "the password of the server",
     };
     let (shown, color) = match (form.field == field, value.is_empty()) {
         (true, _) => (with_caret(value), theme::TEXT),
@@ -84,6 +94,7 @@ pub(super) fn block(width: f32) -> impl Bundle {
             (FormTitle, text("", theme::FONT_BODY, theme::TEXT)),
             field(Pane::Name, "Name", Field::Name),
             field(Pane::Address, "Address", Field::Address),
+            field(Pane::Password, "Password", Field::Password),
         ],
     )
 }

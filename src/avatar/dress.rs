@@ -5,19 +5,18 @@
 //! of the gear only poses the body: the trunk lies prone and banks inside the player entity,
 //! which itself stays upright, so neither the physics body nor the camera ever rolls.
 
-use std::f32::consts::PI;
-
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
+use super::air::level;
 use super::{AvatarPose, Mode, Shown};
 use crate::gear::{FlightState, Gear, Mode as Flight};
-use crate::player::{Motion, Player, wrap};
-use crate::space::{Anchor, Location, Travel, altitude};
+use crate::player::{Motion, Player, above_sea, wrap};
+use crate::space::{Anchor, Location, Travel};
 use crate::view::{BodyFade, Heading};
 use crate::world::Terrain;
 
-/// Height of the body centre above the sea under which a swimming body dives, in metres.
+/// Height of the body centre above the liquid surface under which a swimming body dives, in metres.
 const DIVE_BELOW: f32 = -1.2;
 
 /// Share of the body fade above which the whole body is drawn, head and screen included.
@@ -48,11 +47,7 @@ pub fn dress(pose: &mut AvatarPose, state: &FlightState, look: Vec2, deep: bool)
     let airborne = state.mode.airborne();
     pose.mode = mode(pose.mode, state, deep);
     pose.bank = if airborne { state.bank } else { 0.0 };
-    pose.pitch = match (airborne, state.pitch.abs() > PI) {
-        (false, _) => 0.0,
-        (true, false) => state.pitch,
-        (true, true) => wrap(state.pitch),
-    };
+    pose.pitch = if airborne { level(state.pitch) } else { 0.0 };
     pose.thrust = state.power();
     pose.wings = state.spread();
     if airborne {
@@ -97,10 +92,13 @@ pub fn wear(worn: Worn, mut pose: ResMut<AvatarPose>, mut drawn: ResMut<Shown>) 
     let seated = worn
         .location
         .is_some_and(|location| location.travel == Travel::InShip);
-    let height = altitude(&worn.anchor, worn.terrain.globe(), transform.translation);
+    let height = above_sea(&worn.anchor, worn.terrain.globe(), transform.translation);
     let look = match seated {
         true => Vec2::ZERO,
-        false => Vec2::new(wrap(worn.heading.yaw - motion.yaw), worn.heading.pitch),
+        false => Vec2::new(
+            wrap(worn.heading.yaw - motion.yaw),
+            level(worn.heading.pitch),
+        ),
     };
     dress(&mut pose, &gear.state, look, height < DIVE_BELOW);
     drawn.set_if_neq(shown(seated, worn.fade.0));

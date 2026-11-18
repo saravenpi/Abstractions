@@ -2,10 +2,8 @@
 
 use bevy::prelude::*;
 
+pub use crate::universe::NO_AIR;
 use crate::universe::PlanetRecord;
-
-/// Pressure against the home planet under which a planet has no air to speak of.
-pub const NO_AIR: f64 = 0.01;
 
 /// Thickest air the flight and the sound follow, against the home planet. Above it the air
 /// only gets heavier on paper, so that no planet turns flying into wading.

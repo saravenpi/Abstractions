@@ -34,8 +34,10 @@ pub(super) struct Step {
     pub(super) time: f32,
     /// Where the player looks, with the turn of this frame already in.
     pub(super) view: View,
-    /// Altitude of the body center above the sea.
+    /// Altitude of the body center above sea level, which the air thins with.
     pub(super) height: f32,
+    /// Height of the body center above the liquid surface, infinite on a dry world.
+    pub(super) afloat: f32,
     /// Gravity at the body in meters per second squared.
     pub(super) gravity: f32,
     /// How thick the air of the planet is against the home planet, 0 without air.
@@ -57,7 +59,7 @@ fn horizontal(motion: &Motion, intent: &Intent, step: &Step) -> Vec3 {
     let current = Vec3::new(motion.velocity.x, 0.0, motion.velocity.z);
     let next = approach(
         current,
-        intent.wish * base * swim::wade_factor(step.height),
+        intent.wish * base * swim::wade_factor(step.afloat),
         rate,
         step.dt,
     );
@@ -98,7 +100,7 @@ fn velocity_for(motion: &mut Motion, intent: &Intent, floor: Option<Ground>, ste
         sprint: intent.sprint,
         up: intent.jump,
     };
-    swim_velocity(motion.velocity, &input, step.height, step.time, step.dt)
+    swim_velocity(motion.velocity, &input, step.afloat, step.time, step.dt)
 }
 
 /// Steps the flight gear and returns the velocity to move the body by: the gear's while it
@@ -112,7 +114,7 @@ pub(super) fn velocity(
 ) -> Vec3 {
     let gap = walkable(floor, false).map(|ground| ground.gap);
     let ground = walkable(floor, motion.velocity.y > RISING_SPEED);
-    motion.swimming = swim::next_swimming(motion.swimming, step.height, gap);
+    motion.swimming = swim::next_swimming(motion.swimming, step.afloat, gap);
     let on = (touching(gear.state.mode, ground), motion.swimming);
     let told = GearInput {
         air: step.air,

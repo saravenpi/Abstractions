@@ -8,6 +8,8 @@ use super::hash::{self, Rng};
 use super::ids::{BodyId, GalaxyId, StarId};
 use super::record::PlanetRecord;
 use super::spec::{GRAVITATION, PlanetSpec, StarClass, StarSpec};
+use super::system::ORBIT;
+use super::zone::FLUX_ORBIT;
 use super::{SECTOR_GLY, galaxy, names, planet};
 
 /// Sea level radius of the home planet in metres.
@@ -21,6 +23,10 @@ pub const HOME_DAY_SECONDS: f64 = 1200.0;
 
 /// Rank of the home planet around the home star.
 pub(super) const HOME_INDEX: u8 = 2;
+
+/// Fewest planets around the home star: two inside the home planet and two or more beyond it,
+/// so the first voyage always has a neighbour further out to go to.
+pub(super) const HOME_PLANETS: u8 = 5;
 
 /// Grid cell of the home galaxy, the one cell that always holds a galaxy.
 pub(super) const HOME_GALAXY: GalaxyId = GalaxyId(IVec3::ZERO);
@@ -75,10 +81,31 @@ pub(super) fn star(star: StarSpec) -> StarSpec {
     }
 }
 
+/// Returns the orbit radius in metres of a planet of the home system, from the place `band` its
+/// draw gave it in the span of orbits, 0 to 1 on the log scale, and the place `home` the home
+/// planet drew.
+///
+/// The home planet goes where its star, of luminosity 1, gives a flux of 1: [`FLUX_ORBIT`]. So
+/// the temperate record it is pinned to is the one its orbit earns, and no planet further out
+/// is ever warmer. The span of orbits inside it and the span beyond it are stretched or
+/// squeezed evenly to fit, so the planets keep their order and their orbits never cross.
+pub(super) fn orbit(band: f64, home: f64) -> f64 {
+    if band == home {
+        return FLUX_ORBIT;
+    }
+    let span = ORBIT.1 / ORBIT.0;
+    let lit = (FLUX_ORBIT / ORBIT.0).ln() / span.ln();
+    let at = match band < home {
+        true => band * lit / home,
+        false => lit + (band - home) * (1.0 - lit) / (1.0 - home),
+    };
+    ORBIT.0 * span.powf(at)
+}
+
 /// Turns a generated planet into the home planet, Kodya: fixed size, gravity, day and record, and the world seed.
 ///
-/// Its record is [`PlanetRecord::TEMPERATE`] whatever its orbit says, so the starting world is
-/// the same temperate one for every seed.
+/// Its record is [`PlanetRecord::TEMPERATE`], the same temperate world for every seed, and its
+/// orbit, see [`orbit`], is the one that gives it the flux of that record.
 pub(super) fn planet(planet: PlanetSpec, world: u64) -> PlanetSpec {
     let [atmosphere_height, cloud_base, cloud_top] = planet::air(HOME_RADIUS);
     PlanetSpec {

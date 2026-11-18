@@ -11,6 +11,7 @@ mod flight;
 mod ground;
 mod intent;
 mod lead;
+mod sea;
 mod seat;
 mod spawn;
 mod steer;
@@ -23,6 +24,7 @@ mod walk;
 mod tests;
 
 pub use controller::Motion;
+pub use sea::above_sea;
 pub use seat::{place, seat};
 pub(crate) use steer::wrap;
 pub use steer::{Lead, Steer, Turn};

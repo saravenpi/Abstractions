@@ -131,17 +131,17 @@ pub fn think(
     let (mut brain, mut face) = bot.into_inner();
     let (dt, sense) = (around.dt(), *events.sense);
     let turn = brain.observe(&around.anchor, around.stance(), dt);
+    brain.side = around.body.right().as_vec3();
     let flying = f32::from(u8::from(sense.flying));
     brain.flight += (flying - brain.flight) * blend(FLIGHT_RATE, dt);
-    let speed = brain.drift.length();
     let input = Input {
-        speed,
+        speed: brain.drift.length(),
         night: sense.night > SLEEPY_NIGHT,
         seated: sense.seated,
         dt,
     };
     let cue = brain.mind.advance(&input);
-    brain.attention.advance(turn, speed < STILL_SPEED, dt);
+    brain.attention.advance(turn, input.speed < STILL_SPEED, dt);
     let mut heard = cue.and_then(|cue| react(cue, &mut brain, &mut face, &sense));
     heard = heard.or(events.stir(&mut brain, &mut face, around.location.body));
     let changed = face.advance(wanted(&brain, &sense), dt);

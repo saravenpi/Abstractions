@@ -97,6 +97,12 @@ impl Mode {
             Mode::Swim | Mode::Dive | Mode::Seated | Mode::Glide | Mode::Fly
         )
     }
+
+    /// Returns whether the mode lies prone on the wings and turns with the flight path, all the way round
+    /// in a loop.
+    pub fn winged(self) -> bool {
+        matches!(self, Mode::Glide | Mode::Fly)
+    }
 }
 
 /// Everything the body needs to know to pose itself. Angles are radians, speeds meters per second.

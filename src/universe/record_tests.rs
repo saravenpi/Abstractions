@@ -102,13 +102,13 @@ fn dry_worlds_match_their_class() {
     assert!(mean.iter().filter(|&&kelvin| kelvin >= lava).count() == 1);
 }
 
-/// Within a system the flux falls from each planet to the next one out, and the zone follows it.
+/// Within a system the flux falls from each planet to the next one out, and the zone follows it,
+/// the home planet included.
 #[test]
 fn flux_falls_outward() {
     for (u, star) in sample() {
         let planets = u.system(star.id).planets;
-        let free: Vec<&PlanetSpec> = planets.iter().filter(|p| p.id != u.home()).collect();
-        for pair in free.windows(2) {
+        for pair in planets.windows(2) {
             let (near, far) = (pair[0].record, pair[1].record);
             assert!(near.flux > far.flux, "{near:?} {far:?}");
             assert!(near.zone as u8 <= far.zone as u8, "{near:?} {far:?}");
@@ -122,7 +122,7 @@ fn records_stay_in_range() {
     let within = |x: f64, low: f64, high: f64| low <= x && x <= high;
     for (star, p) in survey() {
         let r = p.record;
-        assert!(within(star.temperature, 4900.0, 6900.0), "{star:?}");
+        assert!(within(star.temperature, 2600.0, 45_000.0), "{star:?}");
         assert_eq!(r.flux, zone::flux(star.luminosity, p.orbit_radius));
         assert_eq!(r.zone, zone::zone(star.temperature, r.flux));
         assert!(within(r.flux, 0.005, 58_000.0), "{r:?}");

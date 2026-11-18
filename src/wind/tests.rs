@@ -108,6 +108,27 @@ fn the_wind_blows_as_hard_as_the_air_carries_it() {
     assert_eq!(carried(gust, f32::NAN).strength, 0.0);
 }
 
+/// What drifts follows the air: at home the wind velocity is the clock direction at 1 m/s plus
+/// 5 m/s at full strength, bit for bit, in thin air it is slower, in thick air it keeps the
+/// standing breeze, and without air it is exactly zero, so smoke, flames and leaves stay still.
+#[test]
+fn nothing_drifts_without_air() {
+    for step in 0..500 {
+        let clock = wind_at(step as f32 * 7.3);
+        let flat = Vec3::new(clock.direction.x, 0.0, clock.direction.y);
+        assert_eq!(clock.velocity(), flat * (1.0 + 5.0 * clock.strength));
+        let blown = PRESSURES.map(|pressure| carried(clock, thickness(&air(pressure)) as f32));
+        assert_eq!(blown[3].velocity(), clock.velocity());
+        assert_eq!(
+            (blown[0].velocity(), blown[1].velocity()),
+            (Vec3::ZERO, Vec3::ZERO)
+        );
+        assert!(blown[2].velocity().length() < clock.velocity().length());
+        assert!(blown[2].velocity().length() > 0.5 && blown[4].air == 1.0);
+        assert!(blown[4].velocity().length() >= clock.velocity().length());
+    }
+}
+
 /// Without a planet under the anchor the air is the home air, and the wind system leaves the
 /// clock wind as it is.
 #[test]

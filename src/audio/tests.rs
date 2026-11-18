@@ -1,6 +1,7 @@
 //! Offline tests: every buffer is rendered in memory, with no audio device.
 
 mod app;
+mod basin;
 mod cues;
 mod dsp;
 mod harmony;

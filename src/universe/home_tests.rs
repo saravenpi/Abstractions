@@ -1,4 +1,5 @@
-//! Home tests: Kodya and Vereya keep their names, their star temperature and their record for every seed.
+//! Home tests: Kodya and Vereya keep their names, their star temperature and their record for every seed,
+//! and the home system is laid out around the orbit that earns that record.
 
 use super::*;
 
@@ -66,5 +67,41 @@ fn home_record_is_temperate() {
         if seed <= 20 {
             println!("seed {seed}: {}", classes.join(", "));
         }
+    }
+}
+
+/// The home planet sits where its star gives it the flux of its record, so the pinned record is
+/// the one its orbit earns: flux 1, in the habitable zone. It is the third of at least 5
+/// planets on orbits that grow outward, the two inside it get more light and the two or more
+/// beyond it get less.
+#[test]
+fn home_orbit_earns_its_record() {
+    for seed in 0..200 {
+        let u = Universe::new(seed);
+        let system = u.system(u.home().star);
+        let (star, planets) = (&system.star, &system.planets);
+        let home = &planets[usize::from(u.home().index)];
+        assert_eq!(home.orbit_radius, zone::FLUX_ORBIT);
+        assert_eq!(
+            zone::flux(star.luminosity, home.orbit_radius),
+            home.record.flux
+        );
+        assert_eq!(
+            zone::zone(star.temperature, home.record.flux),
+            home.record.zone
+        );
+        assert!(
+            (5..=PLANETS.1).contains(&(planets.len() as u8)),
+            "seed {seed}"
+        );
+        let grows = |pair: &[PlanetSpec]| pair[1].orbit_radius > 1.04 * pair[0].orbit_radius;
+        assert!(planets.windows(2).all(grows), "seed {seed}");
+        let (inner, outer) = planets.split_at(usize::from(u.home().index));
+        assert!(inner.iter().all(|p| p.record.flux > 1.5), "seed {seed}");
+        assert!(
+            outer[1..].iter().all(|p| p.record.flux < 0.95),
+            "seed {seed}"
+        );
+        assert!(planets.iter().all(|p| p.orbit_radius < ORBIT.1));
     }
 }

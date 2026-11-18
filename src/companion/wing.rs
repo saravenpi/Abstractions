@@ -31,15 +31,25 @@ impl Stance {
     /// Returns the spot it flies at beside a player flying at `velocity`: behind and to the
     /// left, a little above, so it stays out of the line of a camera over the right shoulder.
     /// A slow or hovering player is flown beside along the view instead.
-    pub fn formation(&self, velocity: Vec3) -> Vec3 {
+    ///
+    /// `right` is the right of the player's body, or zero when it is not known. In a loop the
+    /// course passes the vertical and comes back the other way while the body keeps its
+    /// heading. So the side of the course is taken on the side of the body, and the steeper
+    /// the course the more the body alone tells it: the companion stays on the same wing all
+    /// the way round instead of crossing over at the top.
+    pub fn formation(&self, velocity: Vec3, right: Vec3) -> Vec3 {
         let course = velocity
             .try_normalize()
             .filter(|_| velocity.length() > WING_SPEED);
         let ahead = course.unwrap_or_else(|| self.level());
-        let across = ahead
-            .cross(self.up)
-            .try_normalize()
-            .unwrap_or_else(|| self.right());
+        let flat = ahead.cross(self.up);
+        let across = match right.try_normalize() {
+            Some(side) => {
+                let seen = flat * flat.dot(side).signum();
+                (side * (1.0 - flat.length()).max(0.0) + seen).normalize_or(side)
+            }
+            None => flat.try_normalize().unwrap_or_else(|| self.right()),
+        };
         self.eye - ahead * WING.1 - across * WING.0 + self.up * WING.2
     }
 }

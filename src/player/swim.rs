@@ -36,7 +36,8 @@ pub(super) fn float_center(time: f32) -> f32 {
 
 /// Returns whether the body swims next frame, with hysteresis around every threshold.
 ///
-/// `height` is the altitude of the body center above the sea.
+/// `height` is the height of the body center above the liquid surface, infinite on a dry world, where
+/// nobody ever swims.
 pub(super) fn next_swimming(swimming: bool, height: f32, floor_gap: Option<f32>) -> bool {
     if !swimming {
         return height < ENTER_CENTER;
@@ -45,7 +46,8 @@ pub(super) fn next_swimming(swimming: bool, height: f32, floor_gap: Option<f32>)
     !on_floor && height <= LEAVE_CENTER
 }
 
-/// Returns the walking speed multiplier for a body in shallow water, from the altitude of its center.
+/// Returns the walking speed multiplier for a body in shallow water, from the height of its center above
+/// the liquid surface.
 pub(super) fn wade_factor(height: f32) -> f32 {
     let feet_depth = BODY_LENGTH * 0.5 + BODY_RADIUS - height;
     1.0 - (1.0 - WADE_MIN) * (feet_depth / WADE_DEPTH).clamp(0.0, 1.0)

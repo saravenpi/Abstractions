@@ -1,5 +1,6 @@
 //! Player tests on a sphere: walking around the planet, rebasing the view, and the ship hand-over.
 
+mod basin;
 mod eyes;
 mod flight;
 mod lead;

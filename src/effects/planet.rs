@@ -2,15 +2,12 @@
 
 use super::kind::{Ambient, Kind};
 use super::pick::pick;
-use crate::universe::{PlanetClass, PlanetRecord};
+use crate::universe::{NO_AIR, PlanetClass, PlanetRecord};
 use crate::world::SEA_LEVEL;
-
-/// Air pressure, the home planet having 1, under which nothing drifts and nothing flies.
-pub const THIN_AIR: f64 = 0.01;
 
 /// Returns true when the planet has too little air to carry a particle or a wing.
 pub fn airless(record: &PlanetRecord) -> bool {
-    record.pressure < THIN_AIR
+    record.pressure < NO_AIR
 }
 
 /// Returns true when no creature lives on the planet: no air, molten rock or bare rock.

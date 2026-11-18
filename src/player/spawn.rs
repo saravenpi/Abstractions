@@ -26,7 +26,7 @@ const SPAWN_LIFT: f32 = 2.0;
 /// Height above the spawn point where a resumed body appears: the point is its saved center.
 pub(super) const RESUME_LIFT: f32 = 0.05;
 
-/// Altitude below which the player is teleported back to the spawn point.
+/// Altitude below which a player under the ground is teleported back to the spawn point.
 const KILL_HEIGHT: f32 = -50.0;
 
 /// Depth of the body centre under the ground beyond which it is lifted back onto it, in metres.
@@ -152,12 +152,13 @@ fn spawn_player(
 
 /// Returns where a body at render position `at` goes when it is lost: back `home` once it fell
 /// out of the world, or straight up onto the ground once it sank more than [`SUNK`] under it,
-/// as when the ground loaded after the body passed. Nothing while it is where a body can be.
-fn rescue(anchor: &Anchor, terrain: &Terrain, at: Vec3, home: DVec3) -> Option<Vec3> {
+/// as when the ground loaded after the body passed. Nothing while it is where a body can be:
+/// a body on or over the ground never fell out, however deep the dry basin it stands in.
+pub(super) fn rescue(anchor: &Anchor, terrain: &Terrain, at: Vec3, home: DVec3) -> Option<Vec3> {
     let height = altitude(anchor, terrain.globe(), at);
     let chart = terrain.locate(anchor.to_frame(at));
     let ground = terrain.height(chart.x, chart.z);
-    if height < KILL_HEIGHT {
+    if height < KILL_HEIGHT.min(ground - SUNK) {
         return Some(anchor.to_render(home));
     }
     let stand = ground + BODY_RADIUS + BODY_LENGTH * 0.5 + RESUME_LIFT;

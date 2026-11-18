@@ -38,7 +38,7 @@ pub fn wind_in_seat(wind: &Wind, pose: Quat) -> Wind {
     let blown = pose.inverse() * Vec3::new(wind.direction.x, 0.0, wind.direction.y);
     Wind {
         direction: Vec2::new(blown.x, blown.z).normalize_or(wind.direction),
-        strength: wind.strength,
+        ..*wind
     }
 }
 

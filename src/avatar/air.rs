@@ -1,11 +1,23 @@
 //! Poses off the ground without wings: the jump, the fall, and the upright fall on the boot boosters.
 
+use std::f32::consts::PI;
+
 use super::AvatarPose;
 use super::clock::Clock;
 use super::pose::{Core, Limb, Pose};
+use crate::player::wrap;
 
 /// Steepest bank and flight path pitch the poses follow, in radians.
 pub const STEER_LIMIT: (f32, f32) = (1.0, 0.8);
+
+/// Returns `pitch` on the half turn around the horizon. In a loop a pitch passes the vertical and
+/// keeps counting; a pose that only leans with it, the head and the arms care where it points.
+pub fn level(pitch: f32) -> f32 {
+    match pitch.abs() > PI {
+        true => wrap(pitch),
+        false => pitch,
+    }
+}
 
 /// Returns the rising pose: one knee tucked, the other leg trailing, arms out for balance.
 pub fn jump(input: &AvatarPose) -> Pose {
@@ -48,7 +60,7 @@ pub fn boot_fall(input: &AvatarPose, clock: &Clock) -> Pose {
     Pose::default()
         .with(
             Core::Pitch,
-            -0.04 - 0.15 * input.pitch.clamp(-STEER_LIMIT.1, STEER_LIMIT.1),
+            -0.04 - 0.15 * level(input.pitch).clamp(-STEER_LIMIT.1, STEER_LIMIT.1),
         )
         .with(Core::Roll, 0.4 * bank)
         .with(Core::Spine, 0.04 + shake)

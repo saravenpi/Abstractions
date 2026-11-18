@@ -1,16 +1,14 @@
 //! The climate line: a short line under the compass with the air temperature where the player
 //! is and the weather, such as "14 C - clear". It shows only in the air of a planet.
 
-use bevy::math::{DVec3, Vec2};
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::minimap::Reader;
-use crate::climate::season as orbit_season;
-use crate::climate::{self, Setting, Spot};
 use crate::computer::temperature;
-use crate::space::Clock;
 use crate::ui::{text, theme};
 use crate::universe::{PlanetSpec, Universe};
+use crate::world::{Globe, Planet};
 
 /// Pixels from the top of the screen to the line: just under the compass and its distances.
 const TOP: f32 = 64.0;
@@ -62,20 +60,14 @@ pub(super) fn line() -> impl Bundle {
     )
 }
 
-/// Returns the climate line at `at`, metres from the centre of `spec` in its frame, at `time`,
-/// or nothing above the air of the planet.
-pub(super) fn reading(spec: &PlanetSpec, at: DVec3, time: f64, word: &str) -> Option<String> {
+/// Returns the climate line at `at`, metres from the centre of `spec` in its frame, in the air of
+/// its streamed `globe` at the season the globe is at, or nothing above the air of the planet.
+pub(super) fn reading(spec: &PlanetSpec, globe: &Globe, at: DVec3, word: &str) -> Option<String> {
     let altitude = at.length() - spec.radius;
     if altitude > spec.atmosphere_height.max(FLOOR) {
         return None;
     }
-    let spot = Spot {
-        dir: at.normalize(),
-        altitude: altitude as f32,
-        inland: 0.0,
-        slope: Vec2::ZERO,
-    };
-    let air = climate::at(&Setting::of(spec), &spot, orbit_season(spec, time));
+    let air = globe.air(at.normalize(), altitude as f32);
     Some(format!(
         "{} - {word}",
         temperature(f64::from(air.temperature))
@@ -85,7 +77,7 @@ pub(super) fn reading(spec: &PlanetSpec, at: DVec3, time: f64, word: &str) -> Op
 /// What the climate line reads besides the place of the player.
 type Sources<'w> = (
     Option<Res<'w, Universe>>,
-    Option<Res<'w, Clock>>,
+    Option<Res<'w, Planet>>,
     Option<Res<'w, HudWeather>>,
 );
 
@@ -93,7 +85,7 @@ type Sources<'w> = (
 /// The planet is looked up once each time the player reaches another one.
 pub(super) fn update(
     reader: Reader,
-    (universe, clock, weather): Sources,
+    (universe, planet, weather): Sources,
     mut spec: Local<Option<PlanetSpec>>,
     mut gauges: Query<(&mut Node, &mut Text), With<ClimateGauge>>,
 ) {
@@ -104,11 +96,12 @@ pub(super) fn update(
         *spec = Some(universe.planet(pose.body));
     }
     let word = weather.map_or(CLEAR, |weather| weather.word);
-    let time = clock.map_or(0.0, |clock| clock.seconds);
+    let planet = planet.filter(|planet| pose.is_some_and(|pose| planet.body == pose.body));
     let shown = pose
         .zip(spec.as_ref())
-        .filter(|(pose, spec)| spec.id == pose.body)
-        .and_then(|(pose, spec)| reading(spec, pose.at, time, word));
+        .zip(planet.as_deref())
+        .filter(|((pose, spec), _)| spec.id == pose.body)
+        .and_then(|((pose, spec), planet)| reading(spec, &planet.globe, pose.at, word));
     let display = if shown.is_some() {
         Display::Flex
     } else {

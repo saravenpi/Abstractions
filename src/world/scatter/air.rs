@@ -1,9 +1,7 @@
 //! The climate over one chunk: read once per cell of a coarse grid, then looked up by every try.
 
-use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::relief::Relief;
 use crate::climate::Climate;
 use crate::world::lands::thrive::climate_on;
 use crate::world::{CHUNK_SIZE, Terrain};
@@ -25,26 +23,14 @@ pub struct Air {
     corner: Vec2,
 }
 
-/// Returns the rise per metre, in planet axes, of ground whose gradient is `grade` metres per chart
-/// unit along the chart axes at `w` of `terrain`.
-fn rise(terrain: &Terrain, w: Vec2, grade: Vec2) -> DVec3 {
-    let (chart, radius) = (terrain.chart(), terrain.globe().radius());
-    let here = chart.dir(w.x, w.y);
-    let axis = |by: Vec2| (chart.dir(w.x + by.x, w.y + by.y) - here) * radius;
-    let (x, z) = (axis(Vec2::X), axis(Vec2::Y));
-    x * f64::from(grade.x) / x.length_squared() + z * f64::from(grade.y) / z.length_squared()
-}
-
 impl Air {
-    /// Reads the climate over chunk `coord` of `terrain`, standing on its visible `relief`.
-    pub fn new(terrain: &Terrain, coord: IVec2, relief: &Relief) -> Self {
+    /// Reads the annual mean climate over chunk `coord` of `terrain`, where its biomes are picked from.
+    pub fn new(terrain: &Terrain, coord: IVec2) -> Self {
         let corner = coord.as_vec2() * CHUNK_SIZE;
         let step = CHUNK_SIZE / CELLS as f32;
         let read = |i: usize, j: usize| {
             let w = corner + (Vec2::new(i as f32, j as f32) + 0.5) * step;
-            let (height, grade) = relief.at(w);
-            let dir = terrain.chart().dir(w.x, w.y);
-            climate_on(terrain.globe(), dir, height, rise(terrain, w, grade))
+            climate_on(terrain.globe(), terrain.chart().dir(w.x, w.y))
         };
         Self {
             cells: std::array::from_fn(|i| std::array::from_fn(|j| read(i, j))),

@@ -1,4 +1,5 @@
-//! The spawn search: a gentle spot near a coast on a real island, in a temperate biome when possible.
+//! The spawn search: a gentle spot near a coast on a real island, in a temperate biome on grass or sand when
+//! possible, on flat snow or rock near the poles where nothing else lies.
 
 use bevy::prelude::*;
 
@@ -24,12 +25,17 @@ const ISLAND_SHARE: f32 = 0.85;
 const ISLAND_SAMPLES: u32 = 12;
 
 impl Terrain {
-    /// Returns true when `(x, z)` is gentle dry ground of grass or sand with dry neighbours.
+    /// Returns true when `(x, z)` is gentle dry ground with dry neighbours out of any river: grass or sand,
+    /// or the snow and the rock of the cold and the high land, which the slope limit keeps flat.
     fn good_spawn(&self, x: f32, z: f32) -> bool {
         let sea = self.globe().sea_level();
-        let dry = |dx: f32, dz: f32| self.height(x + dx, z + dz) > sea + 1.5;
-        matches!(self.surface(x, z), Surface::Grass | Surface::Sand)
-            && self.height(x, z) >= sea + 2.0
+        let dry = |dx: f32, dz: f32| {
+            self.height(x + dx, z + dz) > sea + 1.5 && !self.river_at(x + dx, z + dz)
+        };
+        matches!(
+            self.surface(x, z),
+            Surface::Grass | Surface::Sand | Surface::Snow | Surface::Rock
+        ) && self.height(x, z) >= sea + 2.0
             && (self.height(x + 6.0, z) - self.height(x - 6.0, z)).abs() < 2.5
             && (self.height(x, z + 6.0) - self.height(x, z - 6.0)).abs() < 2.5
             && [(6.0, 0.0), (-6.0, 0.0), (0.0, 6.0), (0.0, -6.0)]
@@ -57,9 +63,11 @@ impl Terrain {
         dry as f32 / total >= ISLAND_SHARE
     }
 
-    /// Returns a penalty in metres for a spawn that is inland, high or in an harsh biome.
+    /// Returns a penalty in metres for a spawn that is inland, high, in an harsh biome or on snow or rock,
+    /// so that grass or sand near by wins.
     fn spawn_penalty(&self, x: f32, z: f32) -> f32 {
-        let harsh = matches!(self.biome(x, z), Biome::Desert | Biome::Taiga);
+        let bare = matches!(self.surface(x, z), Surface::Snow | Surface::Rock);
+        let harsh = bare || matches!(self.biome(x, z), Biome::Desert | Biome::Taiga);
         let sea = self.globe().sea_level();
         let coastal = self.ring_heights(x, z, 70.0).any(|h| h <= sea);
         let high = self.height(x, z) > 10.0;

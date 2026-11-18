@@ -1,6 +1,7 @@
 //! The planet under the player: terrain, quadtree chunk streaming, props and sea.
 
 mod biome;
+mod calendar;
 mod chunks;
 mod colormap;
 mod enter;
@@ -90,10 +91,29 @@ fn saved_view(north: &Terrain, save: Option<&WorldSave>) -> Terrain {
     Terrain::on(globe.clone(), globe.face_chart(face))
 }
 
+/// Returns the terrain view and the chart position a world starts at on the planet whose north face is
+/// `north`: the spot `save` was taken at, or for a new game, which starts on the home planet, the spawn
+/// the home base is looked for around, on the face that holds it. No ground near a pole is searched or
+/// loaded behind the loading screen of a new game.
+fn start(north: &Terrain, save: Option<&WorldSave>) -> (Terrain, Vec3) {
+    if let Some(save) = save.filter(|save| save.place.is_some()) {
+        let view = saved_view(north, Some(save));
+        return chunks::rehome(&view, save.spawn(&view));
+    }
+    let globe = north.globe();
+    let at = Base::landing(globe);
+    let view = Terrain::on(
+        globe.clone(),
+        globe.face_chart(Face::locate(at.normalize()).0),
+    );
+    let spawn = view.locate(at);
+    (view, spawn)
+}
+
 /// Builds the universe, the planet the world starts on, its terrain view, the spawn point, the
 /// anchor and the readiness flag from the world seed.
 ///
-/// A new world starts on the home planet at the terrain spawn. A resumed world starts on the
+/// A new world starts on the home planet where its base is looked for. A resumed world starts on the
 /// planet and at the spot its save names, unless that is a body without ground: then it starts
 /// as a new world. The terrain is the chart of the cube face that holds the spawn.
 fn begin_world(
@@ -109,9 +129,7 @@ fn begin_world(
     }
     let save = active.as_ref().map(|active| &active.0.save);
     let body = save.map_or_else(|| universe.home(), |save| save.body(&universe));
-    let view = saved_view(&enter_planet(&mut commands, &universe, body), save);
-    let found = save.map_or_else(|| view.find_spawn(), |save| save.spawn(&view));
-    let (terrain, spawn) = chunks::rehome(&view, found);
+    let (terrain, spawn) = start(&enter_planet(&mut commands, &universe, body), save);
     commands.insert_resource(SpawnPoint(spawn));
     commands.insert_resource(Anchor::surface(body, &terrain, spawn));
     commands.insert_resource(Location {
@@ -165,6 +183,8 @@ pub(super) fn plugin(app: &mut App) {
             (
                 chunks::add_instances.run_if(crate::render::ray_tracing::active),
                 chunks::retarget.run_if(resource_changed::<crate::render::RayTracing>),
+                calendar::turn
+                    .run_if(resource_exists::<Planet>.and_then(resource_exists::<Universe>)),
             ),
         );
     stream_systems(app);

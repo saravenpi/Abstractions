@@ -71,6 +71,19 @@ pub fn ground(ctx: &Ctx, at: Vec3) -> f32 {
     ctx.ground.height(at).max(ctx.ground.sea_level())
 }
 
+/// Returns render position `at` moved along its vertical into `band`, the lowest and highest meters over
+/// the ground, when it flies outside it: a flyer that drifts against a cliff climbs it and one that drifts
+/// off its top drops back down, instead of passing through the rock or hanging high over the foot.
+/// This samples the terrain.
+pub fn within(ctx: &Ctx, at: Vec3, band: (f32, f32)) -> Vec3 {
+    let floor = ground(ctx, at);
+    let over = ctx.ground.altitude(at) - floor;
+    match over < band.0 || over > band.1 {
+        true => ctx.ground.raised(at, floor + over.clamp(band.0, band.1)),
+        false => at,
+    }
+}
+
 /// Returns the render position `reach` meters from `base` along local heading `angle`, lifted
 /// to `above` meters over the ground there.
 fn spot(ctx: &Ctx, base: Vec3, (angle, reach): (f32, f32), above: f32) -> Vec3 {

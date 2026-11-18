@@ -43,6 +43,7 @@ pub use chart::Chart;
 pub use cube::Face;
 pub use id::ChunkId;
 pub use reserve::Reserve;
+pub use season::MEAN_SEASON;
 pub(in crate::world) use site::Site;
 pub use tangent::Tangent;
 
@@ -139,5 +140,11 @@ impl Globe {
     /// [`far::handover`].
     pub fn handover(&self) -> f64 {
         self.handover
+    }
+
+    /// Returns the planet as its climate sees it: the setting of its spec, or the home record, day and
+    /// orbit for a globe built without one.
+    pub fn setting(&self) -> &Setting {
+        &self.setting
     }
 }

@@ -27,7 +27,6 @@ pub use self::patch::Patch;
 pub use self::rings::Rings;
 pub use self::span::{Span, leaf_coord};
 use self::tris::{Cell, Style, fill, tone};
-use super::globe::Chart;
 use super::shapes::FlatMesh;
 use super::{CHUNK_SIZE, Terrain};
 
@@ -54,10 +53,7 @@ pub(super) fn dithered(terrain: &Terrain, span: &Span, (i, j): (usize, usize)) -
         let at = centre + Vec2::new(jitter(7919), jitter(104_729));
         terrain.biome(at.x, at.y)
     };
-    let bed = match terrain.chart() {
-        Chart::Flat => None,
-        _ => terrain.globe().mark(terrain.up(centre.x, centre.y)),
-    };
+    let bed = terrain.bed(centre.x, centre.y);
     ([terrain.biome(centre.x, centre.y), near(0), near(1)], bed)
 }
 

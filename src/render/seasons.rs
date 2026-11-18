@@ -9,7 +9,7 @@ use super::season::{SeasonLook, repaint};
 use super::vantage::{LocalSystem, Vantage};
 use crate::climate::{Setting, Spot};
 use crate::space::Clock;
-use crate::world::{Planet, SEA_LEVEL, Sited};
+use crate::world::{Planet, Sited};
 
 /// The colour lookup texture of the ground, its colours as the world made them, and the
 /// season look it shows.
@@ -79,13 +79,13 @@ impl Here<'_> {
             .planet
             .as_deref()
             .filter(|planet| planet.body == spec.id);
-        let ground = streamed.map_or(SEA_LEVEL, |planet| planet.globe.height(dir));
-        let spot = Spot {
+        let sea = Spot {
             dir,
-            altitude: (ground - SEA_LEVEL).max(0.0),
+            altitude: 0.0,
             inland: 0.0,
             slope: Vec2::ZERO,
         };
+        let spot = streamed.map_or(sea, |planet| planet.globe.spot(dir));
         let season = crate::climate::season(spec, self.clock.seconds);
         Some(SeasonLook::at(&Setting::of(spec), &spot, season).steps())
     }

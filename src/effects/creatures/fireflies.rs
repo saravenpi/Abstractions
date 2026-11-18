@@ -10,7 +10,7 @@ use super::env::{Ctx, Env, Sky};
 use super::gear::{Bind, Gear, rebind};
 use super::habitat::{Species, presence_on};
 use super::steer::{approach, step_toward};
-use super::wander::{PARKED, Roam, Wander, dormant, pick, place, strayed};
+use super::wander::{PARKED, Roam, Wander, dormant, pick, place, strayed, within};
 use crate::screens::Screen;
 use crate::space::{Rebased, Shift};
 
@@ -170,7 +170,11 @@ pub(super) fn fly(
     }
     let p = wander.phase;
     let hover = Vec3::new((p * 0.7).sin(), 0.5 * (p * 1.3).cos(), (p * 0.9).cos());
-    at.translation += sky.tilt * hover * 0.15 * dt;
+    at.translation = within(
+        ctx,
+        at.translation + sky.tilt * hover * 0.15 * dt,
+        ROAM.band,
+    );
     let glow = blink(p, sky.ambient.daylight) * wander.shown;
     at.scale = Vec3::splat(SIZE * wander.shown * (0.15 + 0.85 * glow));
     glow

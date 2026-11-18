@@ -2,7 +2,10 @@
 
 use std::sync::atomic::{AtomicU32, Ordering};
 
+use bevy::math::DVec3;
+
 use super::Globe;
+use crate::climate::{self, Climate, Spot};
 
 /// The season of the annual mean, when the tilt warms neither hemisphere: what the ground is shaped by.
 pub const MEAN_SEASON: f32 = 0.25;
@@ -29,10 +32,22 @@ impl Globe {
         f32::from_bits(self.season.0.load(Ordering::Relaxed))
     }
 
-    /// Sets the current season, wrapped into 0 to 1. Only [`Globe::climate`] reads it: the ground, its
-    /// biomes and its meshes follow the annual mean, so nothing has to be rebuilt.
+    /// Sets the current season, wrapped into 0 to 1. Only [`Globe::climate`] and [`Globe::air`] read it:
+    /// the ground, its biomes and its meshes follow the annual mean, so nothing has to be rebuilt.
     pub fn set_season(&self, season: f32) {
         let wrapped = season.rem_euclid(1.0);
         self.season.0.store(wrapped.to_bits(), Ordering::Relaxed);
+    }
+
+    /// Returns the climate of the moment in unit direction `dir`, `altitude` metres above the liquid
+    /// surface (above the datum on a dry world) and never under the ground there: the air a camera or a
+    /// player is in. It reads the place the biomes are picked from and the current season.
+    pub fn air(&self, dir: DVec3, altitude: f32) -> Climate {
+        let ground = self.spot(dir);
+        let spot = Spot {
+            altitude: altitude.max(ground.altitude),
+            ..ground
+        };
+        climate::at(&self.setting, &spot, self.season())
     }
 }

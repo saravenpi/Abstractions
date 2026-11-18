@@ -5,6 +5,7 @@ use bevy::math::DVec3;
 use super::Base;
 use super::tests::base;
 use super::tune::{DRY, FOOTPRINT};
+use crate::player::{BODY_LENGTH, BODY_RADIUS, EYE_OFFSET};
 
 /// Wing span and length in metres of the ship, read from its mesh in `src/ship/mesh.rs`.
 const SHIP: (f32, f32) = (6.4, 7.9);
@@ -67,13 +68,19 @@ fn named_points_are_distinct_and_spaced() {
     }
 }
 
-/// The robot wakes facing the hatch with the pad off to one side, in view.
+/// Returns the height in metres of the eyes of the robot over its feet.
+fn eyes() -> f64 {
+    f64::from(BODY_LENGTH * 0.5 + BODY_RADIUS + EYE_OFFSET)
+}
+
+/// The robot wakes facing the hatch, seen from its eyes, with the pad off to one side, in view.
 #[test]
 fn robot_wakes_facing_the_hatch_with_the_ship_in_view() {
     let (base, _) = base(1);
     let look = base.look();
     assert!(look.dot(base.wake.normalize()).abs() < 1e-9);
-    assert!(look.dot((base.door - base.wake).normalize()) > 0.95);
+    let eye = base.wake + base.wake.normalize() * eyes();
+    assert!(look.dot((base.door - eye).normalize()) > 0.95);
     let ship = (base.pad - base.wake).normalize();
     let angle = look.dot(ship).acos().to_degrees();
     assert!(

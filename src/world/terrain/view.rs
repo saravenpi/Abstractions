@@ -7,6 +7,7 @@ use bevy::prelude::*;
 
 use super::Terrain;
 use crate::world::globe::{Chart, Globe, Tangent};
+use crate::world::{SEA_LEVEL, Surface};
 
 impl Terrain {
     /// Returns the planet this terrain is a view of.
@@ -38,6 +39,23 @@ impl Terrain {
             Chart::Flat => Vec3::new(x, y, z).as_dvec3(),
             chart => chart.dir(x, z) * (self.globe.radius() + f64::from(y)),
         }
+    }
+
+    /// Returns the surface a channel bed puts at chart position `(x, z)`: a river bed, or the rock of a lava
+    /// flow, wherever a flow runs on the globe, and nothing elsewhere or on the legacy plane, which has none.
+    /// The terrain meshes paint the bed with this rule, and the placers keep out of a river with it.
+    pub fn bed(&self, x: f32, z: f32) -> Option<Surface> {
+        match self.chart {
+            Chart::Flat => None,
+            chart => self.globe.mark(chart.dir(x, z)),
+        }
+    }
+
+    /// Returns true when a river bed lies at chart position `(x, z)` above the sea, where the meshes paint
+    /// it: shallow water to anything that would stand, grow or be built there. Where a river meets the sea
+    /// its bed is sea floor.
+    pub fn river_at(&self, x: f32, z: f32) -> bool {
+        self.bed(x, z) == Some(Surface::River) && self.height(x, z) > SEA_LEVEL
     }
 
     /// Returns the unit direction away from the planet centre at chart position `(x, z)`.

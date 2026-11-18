@@ -1,5 +1,5 @@
 //! The climate map of the card: the whole planet spread flat, longitude across and latitude
-//! down, each cell the grey of the biome its climate gives at sea level.
+//! down, each cell the grey of the biome its climate gives on the ground there.
 //!
 //! The sea is black, snow is white and the six biomes are six greys between, so the map stays
 //! black and white like the rest of the interface. It is pure: the same planet and season
@@ -7,10 +7,8 @@
 
 use std::f64::consts::{PI, TAU};
 
-use bevy::math::Vec2;
-
 use super::season::direction;
-use crate::climate::{self, Climate, Setting, Spot};
+use crate::climate::{self, Climate};
 use crate::universe::{PlanetClass, PlanetSpec};
 use crate::world::{Biome, Globe};
 
@@ -61,20 +59,15 @@ pub fn mapped(spec: &PlanetSpec) -> bool {
 /// Returns the pixels of the climate map of `spec` when it is `season` of the way round its
 /// year, row by row from the north, each pixel a grey.
 pub fn grid(spec: &PlanetSpec, season: f32) -> Vec<u8> {
-    let (globe, setting) = (Globe::of(spec), Setting::of(spec));
+    let globe = Globe::of(spec);
     let mut pixels = Vec::with_capacity(COLS * ROWS * BYTES);
     for cell in 0..COLS * ROWS {
         let lon = ((cell % COLS) as f64 + 0.5) / COLS as f64 * TAU - PI;
         let lat = 0.5 * PI - ((cell / COLS) as f64 + 0.5) / ROWS as f64 * PI;
         let dir = direction(lon, lat);
-        let spot = Spot {
-            dir,
-            altitude: 0.0,
-            inland: 0.0,
-            slope: Vec2::ZERO,
-        };
         let sea = globe.height(dir) < globe.sea_level();
-        let shade = grey(&climate::at(&setting, &spot, season), sea);
+        let air = climate::at(globe.setting(), &globe.spot(dir), season);
+        let shade = grey(&air, sea);
         pixels.extend([shade, shade, shade, u8::MAX]);
     }
     pixels

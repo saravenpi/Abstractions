@@ -14,8 +14,16 @@ fn ground(b: &Build, p: Vec2, lift: f32) -> Vec3 {
 /// are cut finer. The corners float 0.12 m over the mesh, so the middle still stays above it.
 const DIP: f32 = 0.08;
 
-/// Most times the quads of a ground patch are halved each way to follow a sharp crease.
-const CUTS: u32 = 1;
+/// How far below its corners the terrain mesh may rise under the middle of a ground triangle once its quads
+/// are halved: as far as the corners float over the mesh, so that no middle sinks under it.
+const BURY: f32 = 0.12;
+
+/// The cuts tried, in order, on a patch whose quads halved each way still let a middle sink under a sharp
+/// crease, such as the top of a cliff: by how much its quads are cut along each of its two axes.
+const DEEPER: [(u32, u32); 2] = [(2, 4), (4, 2)];
+
+/// The finest cut of a patch, taken when no other keeps its middles out of the mesh.
+const FINEST: (u32, u32) = (4, 4);
 
 /// Returns the point at `(u, v)` of the quad between four world corners.
 fn corner(c: [Vec2; 4], u: f32, v: f32) -> Vec2 {
@@ -39,14 +47,21 @@ fn dip(b: &Build, c: [Vec2; 4], n: (u32, u32)) -> f32 {
         .fold(0.0, f32::max)
 }
 
-/// Returns by how much the quads of `c` cut into `n` must be halved so that no triangle dips under a
-/// crease of the terrain mesh by more than [`DIP`].
-pub fn fineness(b: &Build, c: [Vec2; 4], n: (u32, u32)) -> u32 {
-    let tries = (0..CUTS).map(|k| 1 << k);
-    tries
+/// Returns by how much the quads of `c` cut into `n` must be cut along each of its two axes: not at all
+/// when no triangle dips under a crease of the terrain mesh by more than [`DIP`], else halved each way, and
+/// cut further along one axis or both where that still lets a triangle middle sink more than [`BURY`].
+pub fn fineness(b: &Build, c: [Vec2; 4], n: (u32, u32)) -> (u32, u32) {
+    let dip = |f: (u32, u32)| dip(b, c, (n.0 * f.0, n.1 * f.1));
+    if dip((1, 1)) <= DIP {
+        return (1, 1);
+    }
+    if dip((2, 2)) <= BURY {
+        return (2, 2);
+    }
+    DEEPER
         .into_iter()
-        .find(|f| dip(b, c, (n.0 * f, n.1 * f)) <= DIP)
-        .unwrap_or(1 << CUTS)
+        .find(|f| dip(*f) <= BURY)
+        .unwrap_or(FINEST)
 }
 
 /// Draws the ground between four world corners as `n.0` by `n.1` quads with every vertex on the terrain mesh.

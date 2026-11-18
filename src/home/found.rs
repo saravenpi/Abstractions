@@ -38,6 +38,13 @@ impl Base {
         })
     }
 
+    /// Returns the planet position of the first spawn the base is looked for around on `globe`, the ground
+    /// of its home planet: where a new game stands while the base is found, near where it will stand.
+    pub fn landing(globe: &Arc<Globe>) -> DVec3 {
+        let first = starts(globe.seed()).next().unwrap_or(DVec3::Y);
+        spawn_of(Self::around(globe, first).view())
+    }
+
     /// Returns the base on the best site around the planet position `spawn` within `slack` times
     /// the relief limits, or nothing when no ground within reach takes it.
     pub fn near(globe: &Arc<Globe>, body: BodyId, spawn: DVec3, slack: f32) -> Option<Self> {

@@ -51,33 +51,43 @@ fn tally_grassland(tile: &Tile, tally: &mut [(f64, f64); 6]) {
 }
 
 /// Returns, per biome, the props per square metre of grass over the full land chunks of `zone` of `globe`, or
-/// nothing where the zone has less than two hectares of that grass.
+/// nothing where the zone has less than one hectare of that grass.
 fn grass_density(globe: &Arc<Globe>, zone: Zone) -> [Option<f64>; 6] {
     let mut tally = [(0.0, 0.0); 6];
-    for tile in chunks(globe, zone, 25, 40) {
+    for tile in chunks(globe, zone, 25, 100) {
         tally_grassland(&tile, &mut tally);
     }
-    tally.map(|(grown, area)| (area > 20_000.0).then(|| grown / area))
+    tally.map(|(grown, area)| (area > 10_000.0).then(|| grown / area))
 }
 
 /// Like for like, the grass of one biome carries the same number of props per true square metre at a face
-/// centre as at an edge midpoint and next to a corner, within 10 percent, on both globes. The climate is
+/// centre, at an edge midpoint and next to a corner, within 10 percent, on both globes. Biomes follow the
+/// latitude, so each biome is compared between the zones that hold it: the tropics of a face centre on the
+/// equator with an edge midpoint there, the temperate grass of an edge with that of a corner. The climate is
 /// held still, as it differs by latitude between the places compared: only the chart is measured.
 #[test]
 fn density_is_even_across_a_face() {
     let mut compared = 0;
+    let pairs = [
+        (Zone::Centre, Zone::Edge),
+        (Zone::Centre, Zone::Corner),
+        (Zone::Edge, Zone::Corner),
+    ];
     for globe in globes() {
-        let centre = calm(|| grass_density(&globe, Zone::Centre));
-        for zone in [Zone::Edge, Zone::Corner] {
-            let pairs = centre
+        let density =
+            [Zone::Centre, Zone::Edge, Zone::Corner].map(|z| calm(|| grass_density(&globe, z)));
+        for (one, other) in pairs {
+            let each = density[one as usize]
                 .into_iter()
-                .zip(calm(|| grass_density(&globe, zone)))
-                .zip(Biome::ALL);
-            for ((a, b), biome) in pairs.filter_map(|((a, b), biome)| Some(((a?, b?), biome))) {
+                .zip(density[other as usize]);
+            for ((a, b), biome) in each
+                .zip(Biome::ALL)
+                .filter_map(|((a, b), z)| Some(((a?, b?), z)))
+            {
                 let off = (a / b - 1.0).abs();
                 assert!(
                     off < 0.1,
-                    "{biome:?} grass: {a} at the centre, {b} on {zone:?}"
+                    "{biome:?} grass: {a} on {one:?}, {b} on {other:?}"
                 );
                 compared += 1;
             }

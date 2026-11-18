@@ -75,8 +75,9 @@ fn the_climate_line_hides_above_the_air() {
     assert_eq!(read(&mut app), None);
     let universe = Universe::new(7);
     let spec = universe.planet(universe.home());
+    let globe = Globe::of(&spec);
     let low = DVec3::Y * (spec.radius + 10.0);
-    assert!(reading(&spec, low, 0.0, CLEAR).is_some());
+    assert!(reading(&spec, &globe, low, CLEAR).is_some());
     let high = DVec3::Y * (spec.radius + spec.atmosphere_height + 3000.0);
-    assert_eq!(reading(&spec, high, 0.0, CLEAR), None);
+    assert_eq!(reading(&spec, &globe, high, CLEAR), None);
 }

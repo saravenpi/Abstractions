@@ -5,16 +5,15 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::rules::{Planet, Weather, forecast};
-use crate::climate::season;
-use crate::climate::{self, Setting, Spot};
 use crate::render::GameCamera;
 use crate::space::{Anchor, Clock, Frame};
 use crate::universe::{PlanetSpec, Universe};
+use crate::world::Planet as Streamed;
 
 /// Seconds between two readings of the weather.
 const INTERVAL: f32 = 0.25;
 
-/// What the weather is read from: the frame, the universe, its time and the camera.
+/// What the weather is read from: the frame, the universe, its time, the streamed planet and the camera.
 #[derive(SystemParam)]
 pub struct Sky<'w, 's> {
     /// Frame everything is rendered in.
@@ -23,6 +22,8 @@ pub struct Sky<'w, 's> {
     universe: Option<Res<'w, Universe>>,
     /// Universe time.
     clock: Option<Res<'w, Clock>>,
+    /// The planet the world streams, whose globe holds the climate of the moment.
+    planet: Option<Res<'w, Streamed>>,
     /// The game camera.
     camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
 }
@@ -31,29 +32,14 @@ pub struct Sky<'w, 's> {
 #[derive(Default)]
 pub struct Here(Option<(Universe, PlanetSpec)>);
 
-/// Returns the place at render position `at` on the planet of `spec`, as the climate reads it.
-/// The legacy flat world is a spot on the equator.
-pub fn spot(anchor: &Anchor, spec: &PlanetSpec, at: Vec3) -> Spot {
+/// Returns the unit direction and the height above the sea level radius of render position `at` on a
+/// planet of `radius` metres. The legacy flat world is a place on the equator.
+fn place(anchor: &Anchor, radius: f64, at: Vec3) -> (DVec3, f32) {
     let pos = anchor.to_frame(at);
-    let (dir, altitude) = match anchor.flat {
+    match anchor.flat {
         true => (DVec3::X, at.y),
-        false => (
-            pos.normalize_or(DVec3::X),
-            (pos.length() - spec.radius) as f32,
-        ),
-    };
-    Spot {
-        dir,
-        altitude,
-        inland: 0.0,
-        slope: Vec2::ZERO,
+        false => (pos.normalize_or(DVec3::X), (pos.length() - radius) as f32),
     }
-}
-
-/// Returns the weather at `spot` on the planet of `spec` at `seconds` of universe time.
-pub fn weather_at(spec: &PlanetSpec, spot: &Spot, seconds: f64) -> Weather {
-    let climate = climate::at(&Setting::of(spec), spot, season(spec, seconds));
-    forecast(&Planet::of(&spec.record, spec.seed), &climate, seconds)
 }
 
 /// Returns the weather at the camera, or nothing away from any planet.
@@ -62,6 +48,7 @@ fn read(sky: &Sky, here: &mut Here) -> Option<Weather> {
     let Frame::Surface(body) = anchor.frame else {
         return None;
     };
+    let planet = sky.planet.as_deref().filter(|planet| planet.body == body)?;
     let camera = sky.camera.single().ok()?;
     let known = |(of, spec): &(Universe, PlanetSpec)| of == universe && spec.id == body;
     if !here.0.as_ref().is_some_and(known) {
@@ -69,8 +56,13 @@ fn read(sky: &Sky, here: &mut Here) -> Option<Weather> {
     }
     let (_, spec) = here.0.as_ref()?;
     let seconds = sky.clock.as_deref().map_or(0.0, |clock| clock.seconds);
-    let at = spot(anchor, spec, camera.translation());
-    Some(weather_at(spec, &at, seconds))
+    let (dir, altitude) = place(anchor, spec.radius, camera.translation());
+    let air = planet.globe.air(dir, altitude);
+    Some(forecast(
+        &Planet::of(&spec.record, spec.seed),
+        &air,
+        seconds,
+    ))
 }
 
 /// Reads the weather at the camera every [`INTERVAL`] seconds. Away from any planet the sky is

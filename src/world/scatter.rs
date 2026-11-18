@@ -26,6 +26,8 @@ mod tests_frozen;
 #[cfg(test)]
 mod tests_metric;
 #[cfg(test)]
+pub(crate) mod tests_river;
+#[cfg(test)]
 mod tests_sphere;
 #[cfg(test)]
 pub(crate) mod tile;
@@ -147,7 +149,7 @@ fn run(terrain: &Terrain, coord: IVec2, relief: Option<Relief>) -> Scatter {
         air: relief
             .as_ref()
             .filter(|_| !still())
-            .map(|relief| Air::new(terrain, coord, relief)),
+            .map(|_| Air::new(terrain, coord)),
         relief,
     };
     let growth = terrain.globe().lands().growth();

@@ -34,10 +34,9 @@ fn plaza(b: &mut Build, c: Vec2, st: &Style) {
         let quad = |i: u32| [ring(r0, i), ring(r1, i), ring(r1, i + 1), ring(r0, i + 1)];
         let f = (0..n)
             .map(|i| fineness(b, quad(i), (1, 1)))
-            .max()
-            .unwrap_or(1);
+            .fold((1, 1), |f, g| (f.0.max(g.0), f.1.max(g.1)));
         for i in 0..n {
-            patch(b, quad(i), (f, f), (st.road, LIFT));
+            patch(b, quad(i), f, (st.road, LIFT));
         }
     }
 }
@@ -59,7 +58,7 @@ fn road(b: &mut Build, pts: &[Vec2], rgb: [f32; 3]) {
     for i in 0..last {
         let (c, n) = segment(i);
         let f = fineness(b, c, n);
-        patch(b, c, (n.0 * f, n.1 * f), (rgb, LIFT));
+        patch(b, c, (n.0 * f.0, n.1 * f.1), (rgb, LIFT));
     }
 }
 
@@ -73,7 +72,7 @@ fn path(b: &mut Build, a: Vec2, c: Vec2, rgb: [f32; 3]) {
     let n = (len / EDGE).ceil() as u32;
     let corners = [a - side, a + side, c + side, c - side];
     let f = fineness(b, corners, (1, n));
-    patch(b, corners, (f, n * f), (rgb, LIFT + OVER));
+    patch(b, corners, (f.0, n * f.1), (rgb, LIFT + OVER));
 }
 
 /// Draws the visual-only ground of the village: the plaza, the streets and the footpaths. Every vertex

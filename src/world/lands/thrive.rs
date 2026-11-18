@@ -3,17 +3,10 @@
 
 use bevy::math::{DVec3, Vec2};
 
-use crate::climate::{self, Climate, Setting, Spot};
-use crate::universe::HOME_DAY_SECONDS;
+use crate::climate::{self, Climate};
 use crate::world::Terrain;
 use crate::world::biome::Biome;
-use crate::world::globe::{Chart, Globe, Site};
-
-/// Season every placement reads: the middle of spring, when neither hemisphere leans to the star.
-pub const SEASON: f32 = 0.25;
-
-/// Value of the continent measure that counts as fully inland for the climate.
-const INLAND: f32 = 0.45;
+use crate::world::globe::{Chart, Globe, MEAN_SEASON};
 
 /// Coldest and warmest air in kelvin a village is built in.
 pub const VILLAGE_AIR: (f32, f32) = (265.0, 315.0);
@@ -41,51 +34,18 @@ const COMFORT: [(f32, f32, f32); 6] = [
     (304.0, 8.0, 0.8),
 ];
 
-/// Returns the climate setting of `globe`. The globe keeps no day length and no orbit, so the day of
-/// home stands in and no moon is read as tidally locked.
-fn setting(globe: &Globe) -> Setting {
-    let record = globe.record();
-    Setting {
-        temperature: record.temperature as f32,
-        pressure: record.pressure as f32,
-        ocean: record.ocean as f32,
-        tilt: record.tilt as f32,
-        day_seconds: HOME_DAY_SECONDS as f32,
-        gravity: globe.gravity() as f32,
-        radius: globe.radius() as f32,
-        seed: globe.seed(),
-        near: None,
-    }
+/// Returns the annual mean climate of `globe` in planet-frame unit direction `dir`, read at the place the
+/// globe picks its biomes from, so plants and settlers feel the climate their biome was chosen for.
+pub fn climate_on(globe: &Globe, dir: DVec3) -> Climate {
+    climate::at(globe.setting(), &globe.spot(dir), MEAN_SEASON)
 }
 
-/// Returns the planet-frame east and north at unit direction `dir`, east being where the spin carries
-/// the ground, and plain axes at a pole.
-fn compass(dir: DVec3) -> (DVec3, DVec3) {
-    let east = DVec3::Y.cross(dir).try_normalize().unwrap_or(DVec3::X);
-    (east, dir.cross(east))
-}
-
-/// Returns the climate of `globe` in planet-frame unit direction `dir`, on ground `altitude` metres
-/// above the liquid surface (on a dry world, above the datum), whose rise per metre is `rise` in
-/// planet axes, at [`SEASON`].
-pub fn climate_on(globe: &Globe, dir: DVec3, altitude: f32, rise: DVec3) -> Climate {
-    let (east, north) = compass(dir);
-    let spot = Spot {
-        dir,
-        altitude: altitude.max(globe.sea_level()),
-        inland: globe.shape.base((dir * globe.radius()).point()) / INLAND,
-        slope: Vec2::new(rise.dot(east) as f32, rise.dot(north) as f32),
-    };
-    climate::at(&setting(globe), &spot, SEASON)
-}
-
-/// Returns the climate at chart position `w` of `terrain`, read as on level ground, or nothing on the
-/// legacy plane, which has no latitude.
+/// Returns the annual mean climate at chart position `w` of `terrain`, or nothing on the legacy plane,
+/// which has no latitude.
 pub fn climate_at(terrain: &Terrain, w: Vec2) -> Option<Climate> {
     let chart = terrain.chart();
     let dir = chart.dir(w.x, w.y);
-    (chart != Chart::Flat)
-        .then(|| climate_on(terrain.globe(), dir, terrain.height(w.x, w.y), DVec3::ZERO))
+    (chart != Chart::Flat).then(|| climate_on(terrain.globe(), dir))
 }
 
 /// Returns how thick the plants of `biome` grow in `air`, from about 0.1 to 1: full in the heart of

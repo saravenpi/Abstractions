@@ -46,14 +46,15 @@ pub fn edge_distance(dir: DVec3, radius: f64) -> f64 {
 }
 
 /// Returns the difference in metres between the highest and the lowest ground of the disc of
-/// `radius` around `at` in the metric `view`, or nothing when part of it is low or in a pond,
-/// or when the difference passes `limit`.
+/// `radius` around `at` in the metric `view`, or nothing when part of it is low, in a pond or in a
+/// river bed, or when the difference passes `limit`.
 pub fn relief(view: &Terrain, at: Vec2, radius: f32, limit: f32) -> Option<f32> {
     let mut span = (f32::MAX, f32::MIN);
     for p in disc(at, radius) {
         let height = view.height(p.x, p.y);
         span = (span.0.min(height), span.1.max(height));
-        if height < DRY || span.1 - span.0 > limit || view.pond_at(p.x, p.y) {
+        let wet = view.pond_at(p.x, p.y) || view.river_at(p.x, p.y);
+        if height < DRY || span.1 - span.0 > limit || wet {
             return None;
         }
     }

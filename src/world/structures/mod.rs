@@ -69,6 +69,8 @@ mod tests_interior;
 #[cfg(test)]
 mod tests_lights;
 #[cfg(test)]
+mod tests_river;
+#[cfg(test)]
 mod tests_roofs;
 #[cfg(test)]
 mod tests_streets;

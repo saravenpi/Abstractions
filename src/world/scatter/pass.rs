@@ -59,7 +59,9 @@ impl Ctx<'_> {
         })
     }
 
-    /// Returns the ground at chart position `w`, or nothing where the floor is too deep for anything.
+    /// Returns the ground at chart position `w`, or nothing where the floor is too deep for anything. On a
+    /// globe a channel bed above the sea covers the ground as the terrain mesh paints it, so nothing grows
+    /// in a river.
     fn look(&self, w: Vec2) -> Option<Ground> {
         let (x, z) = (w.x, w.y);
         let (deep, lands) = (deep(self.terrain), self.terrain.globe().lands());
@@ -76,7 +78,13 @@ impl Ctx<'_> {
         (height >= deep).then(|| {
             let (slope, biome) = (self.metric.slope(grade), self.terrain.biome(x, z));
             let pond = height <= SEA_LEVEL && self.terrain.pond_at(x, z);
-            let surface = [lands.surface(height, slope, biome), Surface::Pond][usize::from(pond)];
+            let bed = (height > SEA_LEVEL)
+                .then(|| self.terrain.bed(x, z))
+                .flatten();
+            let surface = match pond {
+                true => Surface::Pond,
+                false => bed.unwrap_or_else(|| lands.surface(height, slope, biome)),
+            };
             Ground {
                 height,
                 slope,

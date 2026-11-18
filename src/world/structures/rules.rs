@@ -155,13 +155,11 @@ pub fn water_yaw(terrain: &Terrain, p: Vec2, start: u32) -> Option<f32> {
 }
 
 /// Returns the floor height and foundation depth if `kind` may stand at `p`. Nobody camps in the heart
-/// of a desert.
+/// of a desert, and nothing stands with any point of its footprint in a river bed, which is shallow water.
 pub fn fit(terrain: &Terrain, kind: Kind, p: Vec2) -> Option<(f32, f32)> {
     let s = kind.spec();
-    if !s.biomes.is_empty() && !s.biomes.contains(&terrain.biome(p.x, p.y)) {
-        return None;
-    }
-    if kind == Kind::Camp && dune_sea(terrain, p) {
+    let foreign = !s.biomes.is_empty() && !s.biomes.contains(&terrain.biome(p.x, p.y));
+    if foreign || (kind == Kind::Camp && dune_sea(terrain, p)) {
         return None;
     }
     let pts = samples(p, s.radius);
@@ -169,14 +167,12 @@ pub fn fit(terrain: &Terrain, kind: Kind, p: Vec2) -> Option<(f32, f32)> {
     let (lo, hi) = hs
         .iter()
         .fold((f32::MAX, f32::MIN), |(l, h), v| (l.min(*v), h.max(*v)));
-    if lo < s.min_height || hi - lo > s.range {
+    let wet = |q: &Vec2| terrain.river_at(q.x, q.y);
+    if lo < s.min_height || hi - lo > s.range || pts.iter().any(wet) {
         return None;
     }
-    if !pts
-        .iter()
-        .step_by(3)
-        .all(|q| s.surfaces.contains(&terrain.surface(q.x, q.y)))
-    {
+    let covered = |q: &Vec2| s.surfaces.contains(&terrain.surface(q.x, q.y));
+    if !pts.iter().step_by(3).all(covered) {
         return None;
     }
     if s.coast && !near_water(terrain, p) {

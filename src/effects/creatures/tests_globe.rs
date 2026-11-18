@@ -97,7 +97,8 @@ pub(super) fn sky(eye: &Eye, frame: usize) -> Sky {
 }
 
 /// Far from the render origin of a small globe, where render `y` is meters off, a point raised
-/// to a level reads that altitude, and the ground is the same through any cube face view.
+/// to a level 12 m over the camera reads that altitude, and the ground is the same through any cube
+/// face view.
 #[test]
 fn heights_follow_the_local_vertical() {
     let walk = Walk::new();
@@ -105,8 +106,9 @@ fn heights_follow_the_local_vertical() {
     let ground = Ground::new(&walk.anchor, &walk.terrain, &eye);
     let globe = walk.terrain.globe();
     let far = walk.camera + Vec3::new(150.0, 0.0, -40.0);
-    let raised = ground.raised(far, 12.0);
-    assert!((altitude(&walk.anchor, globe, raised) - 12.0).abs() < 1e-3);
+    let level = walk.camera.y + 12.0;
+    let raised = ground.raised(far, level);
+    assert!((altitude(&walk.anchor, globe, raised) - level).abs() < 1e-3);
     assert!((raised.y - walk.camera.y - 12.0).abs() > 2.0);
     assert!(ground.span(far, raised).y > 0.0 && up(&walk.anchor, far).dot(raised - far) > 0.0);
     let east = Terrain::on(globe.clone(), globe.face_chart(Face::PosX));

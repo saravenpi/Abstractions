@@ -4,6 +4,7 @@ use std::collections::HashSet;
 
 use super::*;
 use crate::world::SEA_LEVEL;
+use crate::world::globe::Face;
 
 const SEEDS: [u64; 4] = [1, 2, 3, 42];
 
@@ -134,4 +135,23 @@ fn ponds_are_inland_basins() {
         let s = t.find_spawn();
         assert_ne!(t.surface(s.x, s.z), Surface::Pond);
     }
+}
+
+/// Near the pole of a small globe, where the taiga lies under snow, the spawn stands on flat snow by the
+/// coast instead of searching far away for grass.
+#[test]
+fn a_polar_spawn_stands_on_flat_snow() {
+    let globe = Arc::new(Globe::new(1, 3000.0, 22.0));
+    let north = Terrain::on(globe.clone(), globe.face_chart(Face::PosY));
+    let p = north.find_spawn();
+    assert_eq!(north.surface(p.x, p.z), Surface::Snow);
+    assert!(
+        Vec2::new(p.x, p.z).length() < 200.0,
+        "spawn {p} far from the pole"
+    );
+    let rise = (north.height(p.x + 6.0, p.z) - north.height(p.x - 6.0, p.z)).abs();
+    assert!(
+        p.y > SEA_LEVEL + 2.0 && rise < 2.5,
+        "spawn {p} wet or steep"
+    );
 }

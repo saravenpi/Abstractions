@@ -1,22 +1,21 @@
 //! Pit maps: for one atlas cell, every crater that reaches into it, sorted into 32 by 32 bins.
 //!
-//! Craters are far smaller than a cell, so the craters of the cell and of the cells around it are enough.
+//! Craters are far smaller than a cell, so the craters of the cell and of the cells that touch it are enough.
+//! Only those that reach a bin of the cell are kept.
 
 use bevy::math::DVec3;
 
 use super::cell::{Cell, STEPS};
+use super::reach::around;
 use crate::world::globe::Globe;
-use crate::world::globe::craters::{Crater, FOOT, craters};
+use crate::world::globe::craters::{Crater, FOOT, WIDEST, craters};
 
 /// Bins along each side of a cell.
 const BINS: usize = 32;
 
-/// Half cells gathered around the middle of a cell on each side.
-const AROUND: i32 = 3;
-
 /// The craters reaching into one cell, binned.
 pub struct PitMap {
-    /// Every crater near the cell.
+    /// Every crater that reaches a bin of the cell.
     craters: Vec<Crater>,
     /// Where the list of each bin starts in `items`, and one more entry for the end.
     starts: Vec<u32>,
@@ -35,29 +34,13 @@ pub fn local_of(cell: Cell, dir: DVec3, n: i32) -> Option<[f64; 2]> {
     (depth > 0.0).then(|| [0, 1].map(|k| (t[k] - corner[k]) / size * STEPS as f64))
 }
 
-/// Returns the cells within `reach` half cells of the middle of `cell` on a planet of `n` cells per face
-/// side, across face edges too.
-pub fn around(cell: Cell, n: i32, reach: i32) -> Vec<Cell> {
-    let mut cells: Vec<Cell> = Vec::new();
-    for (a, b) in (-reach..=reach).flat_map(|a| (-reach..=reach).map(move |b| (a, b))) {
-        let local = [a, b].map(|c| (0.5 + f64::from(c) * 0.5) * STEPS as f64);
-        let t = cell.chart(local, n).map(|c| c.clamp(-3.0, 3.0));
-        let (holder, _) = Cell::locate(cell.at(t), n);
-        if !cells.contains(&holder) {
-            cells.push(holder);
-        }
-    }
-    cells
-}
-
 impl PitMap {
     /// Builds the map of `cell` from the craters of the cells around it.
     pub fn build(globe: &Globe, cell: Cell) -> Self {
         let n = globe.cells();
-        let craters: Vec<Crater> = around(cell, n, AROUND)
-            .iter()
-            .flat_map(|&c| craters(globe, c))
-            .collect();
+        let reach = f64::from(FOOT * 0.5 * WIDEST) / globe.radius();
+        let cells = around(cell, n, reach);
+        let craters: Vec<Crater> = cells.iter().flat_map(|&c| craters(globe, c)).collect();
         let [wide, tall] = cell.size(n, globe.radius());
         let per_bin = wide.min(tall) / BINS as f64;
         let mut bins = vec![Vec::new(); BINS * BINS];
@@ -75,11 +58,18 @@ impl PitMap {
         let mut starts = vec![0];
         bins.iter()
             .for_each(|b| starts.push(starts[starts.len() - 1] + b.len() as u32));
+        let (craters, items) = binned(&craters, bins.concat());
         Self {
             craters,
             starts,
-            items: bins.concat(),
+            items,
         }
+    }
+
+    /// Returns how many craters the map keeps.
+    #[cfg(test)]
+    pub fn len(&self) -> usize {
+        self.craters.len()
     }
 
     /// Returns the height the craters add at planet point `p`, `local` grid steps into the cell.
@@ -95,4 +85,20 @@ impl PitMap {
             .map(|&c| self.craters[c as usize].depth(p))
             .sum()
     }
+}
+
+/// Returns the craters of `all` that `items` point at, in the order they are first met, and `items` pointing
+/// at them there: a map keeps no crater that reaches none of its bins.
+fn binned(all: &[Crater], mut items: Vec<u32>) -> (Vec<Crater>, Vec<u32>) {
+    let mut place = vec![u32::MAX; all.len()];
+    let mut kept = Vec::new();
+    for item in &mut items {
+        let slot = &mut place[*item as usize];
+        if *slot == u32::MAX {
+            *slot = kept.len() as u32;
+            kept.push(all[*item as usize]);
+        }
+        *item = *slot;
+    }
+    (kept, items)
 }

@@ -5,10 +5,11 @@ use std::sync::Arc;
 use bevy::prelude::*;
 
 use super::biome::Biome;
-use super::globe::{Chart, Globe};
+use super::globe::{Chart, Globe, Grain};
 use super::surface::Surface;
 use crate::universe::{HOME_GRAVITY, HOME_RADIUS};
 
+mod coarse;
 mod ponds;
 mod spawn;
 mod view;
@@ -20,6 +21,8 @@ mod view;
 pub struct Terrain {
     globe: Arc<Globe>,
     chart: Chart,
+    /// How closely this view reads the globe: everything, unless it was made for a coarse mesh.
+    grain: Grain,
 }
 
 impl Terrain {
@@ -31,7 +34,12 @@ impl Terrain {
 
     /// Builds the view of `globe` through `chart`.
     pub fn on(globe: Arc<Globe>, chart: Chart) -> Self {
-        Self { globe, chart }
+        let grain = Grain::Fine;
+        Self {
+            globe,
+            chart,
+            grain,
+        }
     }
 
     /// Returns the seed this terrain was built from.
@@ -43,7 +51,7 @@ impl Terrain {
     pub fn height(&self, x: f32, z: f32) -> f32 {
         match self.chart {
             Chart::Flat => self.globe.height_flat(x, z),
-            chart => self.globe.height(chart.dir(x, z)),
+            chart => self.globe.height_seen(chart.dir(x, z), self.grain),
         }
     }
 
@@ -91,3 +99,5 @@ impl Terrain {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_spawn;

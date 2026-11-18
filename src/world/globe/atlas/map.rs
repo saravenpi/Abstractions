@@ -1,14 +1,15 @@
 //! Flow maps: for one atlas cell, every channel segment that crosses it, sorted into 32 by 32 bins.
 //!
 //! A ground sample reads only the few segments of its bin, so a cell crossed by no flow costs one empty
-//! check. A flow ends within [`LONGEST`] steps of its spring, so the springs of the cells that close are
-//! enough.
+//! check. A flow ends within [`LONGEST`] steps of its spring, so the springs of the cells that close, by
+//! true distance on the sphere, are enough.
 
 use bevy::math::DVec3;
 
 use super::cell::{Cell, STEPS};
 use super::channel::pull;
-use super::pits::{around, local_of};
+use super::pits::local_of;
+use super::reach::around;
 use super::trace::{LONGEST, STEP};
 use crate::world::globe::Globe;
 
@@ -17,6 +18,9 @@ const BINS: usize = 32;
 
 /// Metres between two points of a segment sorted into the bins.
 const STRIDE: f64 = 15.0;
+
+/// Metres a channel reaches past its last flow point: its widest bank.
+const BANK: f64 = 25.0;
 
 /// One straight piece of a channel between two flow points, in metres from the planet centre.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -124,13 +128,12 @@ fn mark(bins: &mut [Vec<u32>], local: [f64; 2], index: u32) {
     }
 }
 
-/// Returns every channel segment of the flows springing in the cells around `cell`.
+/// Returns every channel segment of the flows springing in the cells a flow can reach `cell` from: those
+/// within the longest flow and a bank of it, in metres on the sphere.
 fn gather(globe: &Globe, cell: Cell) -> Vec<Segment> {
-    let n = globe.cells();
-    let [wide, tall] = cell.size(n, globe.radius());
-    let reach = 2 * (LONGEST as f64 * STEP / wide.min(tall)).ceil() as i32 + 2;
-    let cells = around(cell, n, reach);
     let radius = globe.radius();
+    let reach = (LONGEST as f64 * STEP + BANK) / radius;
+    let cells = around(cell, globe.cells(), reach);
     let flows = cells
         .iter()
         .flat_map(|&c| globe.sources(c).as_ref().clone());

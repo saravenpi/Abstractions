@@ -32,11 +32,18 @@ impl Globe {
         f32::from_bits(self.season.0.load(Ordering::Relaxed))
     }
 
-    /// Sets the current season, wrapped into 0 to 1. Only [`Globe::climate`] and [`Globe::air`] read it:
-    /// the ground, its biomes and its meshes follow the annual mean, so nothing has to be rebuilt.
+    /// Sets the current season, wrapped into 0 to 1. Only [`Globe::air`] reads it: the ground, its biomes
+    /// and its meshes follow the annual mean, so nothing has to be rebuilt.
     pub fn set_season(&self, season: f32) {
         let wrapped = season.rem_euclid(1.0);
         self.season.0.store(wrapped.to_bits(), Ordering::Relaxed);
+    }
+
+    /// Returns the climate on the ground in unit direction `dir` at the current season, which the tests
+    /// compare with the climate of a given season.
+    #[cfg(test)]
+    pub fn climate(&self, dir: DVec3) -> Climate {
+        self.climate_in(dir, self.season())
     }
 
     /// Returns the climate of the moment in unit direction `dir`, `altitude` metres above the liquid

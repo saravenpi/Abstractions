@@ -22,6 +22,9 @@ pub const DEPTH: f32 = 0.2;
 /// Height of the rim above the ground around, as a share of the width.
 const RIM: f32 = 0.04;
 
+/// Width of the widest crater, rim to rim, in metres.
+pub const WIDEST: f32 = SIZES.1;
+
 /// Distance from the centre, in crater radii, where the rim has fallen back to the ground.
 pub const FOOT: f32 = 1.6;
 

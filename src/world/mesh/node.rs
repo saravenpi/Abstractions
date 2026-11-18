@@ -1,6 +1,8 @@
 //! Coarse quadtree nodes: terrain-only meshes with a flat sea, at any level of a face, or the banded deck
 //! of a planet without ground.
 
+use std::f64::consts::FRAC_PI_2;
+
 use bevy::prelude::*;
 
 use super::bands;
@@ -16,7 +18,9 @@ use crate::world::shapes::FlatMesh;
 /// Adds the terrain of quadtree node `id`, cut into `n` cells per side, to `mesh` in `frame`.
 ///
 /// `terrain` must be the face chart view of the face of the node. Every node gets a flat sea, and
-/// skirts when `skirts` is set. On a planet without ground it is the smooth banded deck instead.
+/// skirts when `skirts` is set. On a planet without ground it is the smooth banded deck instead. A node
+/// whose vertices lie farther apart than a river is wide reads no flow and no pond, and one coarser than
+/// the region grids reads the bare land, see [`crate::world::globe::Grain`].
 pub fn fill_node(
     mesh: &mut FlatMesh,
     terrain: &Terrain,
@@ -25,6 +29,7 @@ pub fn fill_node(
     skirts: bool,
 ) {
     let (id, n) = node;
+    let terrain = &terrain.spaced(spacing(terrain, id, n));
     let span = Span::node(terrain, id, n);
     let coarse = Style::coarse(span.step(), terrain.globe().lands());
     let style = Style {
@@ -38,6 +43,13 @@ pub fn fill_node(
     fill(mesh, &patch, style, &|i, j| {
         dithered(terrain, &span, (i, j))
     });
+}
+
+/// Returns the metres between two vertices of node `id` cut into `n` cells per side: the quarter turn of
+/// its face shared evenly, so every node of a level reads the ground alike.
+fn spacing(terrain: &Terrain, id: ChunkId, n: usize) -> f32 {
+    let across = (1u64 << id.level) as f64 * n as f64;
+    (terrain.globe().radius() * FRAC_PI_2 / across) as f32
 }
 
 /// Returns the frame the mesh of quadtree node `id` is stored in: the tangent frame at its middle.

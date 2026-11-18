@@ -26,16 +26,20 @@ const ISLAND_SAMPLES: u32 = 12;
 
 impl Terrain {
     /// Returns true when `(x, z)` is gentle dry ground with dry neighbours out of any river: grass or sand,
-    /// or the snow and the rock of the cold and the high land, which the slope limit keeps flat.
-    fn good_spawn(&self, x: f32, z: f32) -> bool {
+    /// or on a sphere the snow and the rock of the cold and the high land, which the slope limit keeps
+    /// flat. The legacy plane keeps to grass and sand, as it always did.
+    pub(super) fn good_spawn(&self, x: f32, z: f32) -> bool {
         let sea = self.globe().sea_level();
         let dry = |dx: f32, dz: f32| {
             self.height(x + dx, z + dz) > sea + 1.5 && !self.river_at(x + dx, z + dz)
         };
-        matches!(
-            self.surface(x, z),
-            Surface::Grass | Surface::Sand | Surface::Snow | Surface::Rock
-        ) && self.height(x, z) >= sea + 2.0
+        let stands = match self.surface(x, z) {
+            Surface::Grass | Surface::Sand => true,
+            Surface::Snow | Surface::Rock => self.chart() != Chart::Flat,
+            _ => false,
+        };
+        stands
+            && self.height(x, z) >= sea + 2.0
             && (self.height(x + 6.0, z) - self.height(x - 6.0, z)).abs() < 2.5
             && (self.height(x, z + 6.0) - self.height(x, z - 6.0)).abs() < 2.5
             && [(6.0, 0.0), (-6.0, 0.0), (0.0, 6.0), (0.0, -6.0)]

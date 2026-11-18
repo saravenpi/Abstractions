@@ -103,17 +103,18 @@ fn the_colour_shift_keeps_its_brightness() {
     }
 }
 
-/// A streak is dimmer the longer it is, but its whole light never falls under that of the
-/// star: stretching the stars does not make the sky flash or go dark.
+/// A streak is dimmer the longer it is, and its whole light is exactly that of the star: the
+/// light is spread along the streak, never multiplied by it.
 #[test]
 fn a_streak_spreads_the_light_of_its_star() {
     let halves: Vec<f32> = (0..=200).map(|i| i as f32 * 0.25).collect();
     let whole = |half: f32| spread(half) * (1.0 + half * 4.0 / std::f32::consts::PI);
     for pair in halves.windows(2) {
-        assert!(spread(pair[1]) < spread(pair[0]) && whole(pair[1]) >= whole(pair[0]));
-        assert!(spread(pair[0]) - spread(pair[1]) < 0.2);
+        assert!(spread(pair[1]) < spread(pair[0]));
+        assert!(spread(pair[0]) - spread(pair[1]) < 0.25);
     }
-    assert!(spread(50.0) > 0.05 && whole(50.0) < 6.0);
+    assert!(halves.iter().all(|half| (whole(*half) - 1.0).abs() < 1e-5));
+    assert_eq!(spread(0.0), 1.0);
 }
 
 /// A body in the warp bubble is seen as it is. In the open it is seen where a star in the

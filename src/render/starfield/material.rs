@@ -12,17 +12,17 @@ use bevy::shader::ShaderRef;
 /// Uniform block read by `starfield.wesl`. Every field is a `vec4` so the layout never needs padding.
 #[derive(Clone, Copy, Debug, Default, ShaderType)]
 pub struct StarUniform {
-    /// Visibility of the sky from 0 to 1 in x, the length in radians of the streak of a star at
-    /// right angles to the heading in y, and the share of their light single stars keep in z.
+    /// Visibility of the sky from 0 to 1 in x, the game light-years the ship flies during one
+    /// exposure in y, which every star streaks by from its own distance and bearing, and the
+    /// share of their light single stars keep in z.
     pub params: Vec4,
     /// Unit vector of the direction of travel in render axes in xyz, and in w the speed the sky
     /// is seen through as a share of the speed of light.
     pub heading: Vec4,
     /// How far the camera has moved since the mesh was built, in game light-years in galaxy axes.
     pub drift: Vec4,
-    /// The dust of a warp and the sway of the stars: the laps the flow has run in x, its laps
-    /// per second in y, the share of the dust that is in in z and the flow as a share of its
-    /// top rate in w.
+    /// The dust of a warp: the laps the flow has run in x, its laps per second in y and the
+    /// share of the dust that is in in z, which is nothing outside a galaxy.
     pub flow: Vec4,
 }
 

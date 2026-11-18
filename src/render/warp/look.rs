@@ -16,13 +16,12 @@ pub const BETA_CAP: f32 = 0.85;
 const GATHER: f32 = 0.7;
 
 /// Seconds the view is exposed for: a star streaks by the angle it crosses in that time.
-const EXPOSURE: f32 = 1.0 / 24.0;
+pub const EXPOSURE: f32 = 1.0 / 24.0;
 
-/// Radians per second the sky at right angles to the heading flows by at the top warp speed.
-const FLOW: f32 = 6.0;
-
-/// Brightness of the light ahead at the top warp speed.
-const CORE: f32 = 0.5;
+/// Slowest warp speed and fastest jump speed in game light-years per second: the ends of the
+/// logarithmic scale the drive reports its speed on. `ship::warp::fraction` is the same scale
+/// in metres per second, and a ship test holds the two together.
+pub const SPEEDS: (f32, f32) = (2.0e-7, 5000.0);
 
 /// Brightness of the flash of a drop-out, low and wide enough to be a breath of light.
 const FLASH: f32 = 0.3;
@@ -48,15 +47,20 @@ impl Sequence {
         BETA_CAP * smoothstep(0.0, 1.0, self.charge) * gathered
     }
 
-    /// Returns the length in radians of the streak of a star at right angles to the heading:
-    /// the angle the sky flows by during one exposure. At rest it is 0 and the streak is the star.
-    pub fn streak(&self) -> f32 {
-        FLOW * EXPOSURE * self.velocity
+    /// Returns the speed the sky is drawn at, in game light-years per second: the speed the
+    /// drive reports, read back from its logarithmic scale, and eased with the velocity while
+    /// the ship gathers speed and while it drops out, so that it never steps.
+    pub fn speed(&self) -> f32 {
+        let gathering = (self.velocity / ENGAGED).clamp(0.0, 1.0);
+        let pace = ((self.velocity - ENGAGED) / (1.0 - ENGAGED)).clamp(0.0, 1.0);
+        gathering * SPEEDS.0 * (SPEEDS.1 / SPEEDS.0).powf(pace)
     }
 
-    /// Returns the brightness of the light ahead.
-    pub fn core(&self) -> f32 {
-        CORE * self.velocity
+    /// Returns the game light-years the ship flies during one exposure. A star streaks by the
+    /// angle that flight moves it across the sky, which its own distance and bearing set; at
+    /// rest it is 0 and the streak is the star.
+    pub fn streak(&self) -> f32 {
+        self.speed() * EXPOSURE
     }
 
     /// Returns the brightness of the flash of the drop-out: nothing outside it, a soft rise as
@@ -93,7 +97,7 @@ impl Sequence {
             level: self.charge.max(self.velocity),
             beta: self.beta(),
             streak: self.streak(),
-            core: self.core(),
+            core: 0.0,
             flash: self.flash(),
             stars: self.stars(),
             flow: self.flow(),

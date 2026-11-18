@@ -42,7 +42,8 @@ fn starfield_faces_the_camera() {
     }
 }
 
-/// Nearer stars are brighter, and the stars gathered around the home star leave out that star itself.
+/// Nearer stars are brighter, and the stars gathered around the home star hold that star too:
+/// it is a point of the sky like the others, with its disc drawn on it up close.
 #[test]
 fn stars_come_from_the_universe() {
     let universe = Universe::new(11);
@@ -51,8 +52,8 @@ fn stars_come_from_the_universe() {
     let far = star_speck(&star, star.pos + DVec3::X * 30.0 * GLY);
     assert!((near.dir - Vec3::NEG_X).length() < 1e-5);
     assert!(near.size > far.size && near.color.length() > far.color.length());
-    let seen = gather(&universe, star.id.galaxy, star.pos, star.pos);
-    let others = universe.stars_near(star.id.galaxy, star.pos, 40.0).len() - 1;
+    let seen = gather(&universe, star.id.galaxy, star.pos);
+    let others = universe.stars_near(star.id.galaxy, star.pos, 40.0).len();
     assert!(seen.len() >= others.min(4000));
     assert!(
         seen.iter()

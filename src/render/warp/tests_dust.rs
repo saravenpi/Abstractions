@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use super::dust::{DEPTH, FADE, LAPS, MOTES, TUBE, WRAP, crawl, hash, mote, window};
+use super::dust::{DEPTH, FADE, LAPS, MOTES, TUBE, WRAP, hash, mote, window};
 use super::{Drive, Lens, Sequence};
 
 /// Frame time of the checks, in seconds.
@@ -78,7 +78,7 @@ fn the_phase_runs_by_time_and_wraps() {
 #[test]
 fn a_grain_flows_out_from_the_point_ahead() {
     let step = LAPS * DT;
-    for index in [0, 7, 513, MOTES - 1] {
+    for index in [0, 7, 113, MOTES - 1] {
         let start = 3.0 - hash(index * 4) + 1.0e-4;
         let frames = (1.0 / step) as usize - 1;
         let laps: Vec<_> = (0..frames)
@@ -149,21 +149,6 @@ fn the_dust_thins_to_nothing() {
     assert!(counts[4] as f32 > 0.9 * MOTES as f32);
     assert_eq!((window(0.0), window(1.0), window(0.5)), (0.0, 0.0, 1.0));
     assert!(window(FADE.0 * 0.5) < 1.0 && window(0.5 * (1.0 + FADE.1)) < 1.0);
-}
-
-/// The stars sway out along their streaks and back with no step: the sway is continuous over
-/// its whole cycle and across the wrap, slow outward and quick back.
-#[test]
-fn the_stars_sway_without_a_step() {
-    let cycle: Vec<f32> = (0..=1000).map(|i| crawl(i as f32 / 1000.0)).collect();
-    assert!(
-        cycle
-            .windows(2)
-            .all(|pair| (pair[1] - pair[0]).abs() < 0.01)
-    );
-    assert_eq!((crawl(0.0), crawl(1.0), crawl(0.8)), (0.0, 0.0, 1.0));
-    assert!(cycle[..800].windows(2).all(|pair| pair[1] > pair[0]));
-    assert!(cycle[800..].windows(2).all(|pair| pair[1] <= pair[0]));
 }
 
 /// The shader places the grains with the constants of the rules tested here.

@@ -55,14 +55,15 @@ impl Dock<'_> {
             .is_some_and(|state| *state.get() == Computer::Open)
     }
 
-    /// Returns the render position of the ground or the sea beside the hatch of a ship with pose `at`.
+    /// Returns the render position of the ground or the sea beside the hatch of a ship with pose
+    /// `at`. On a dry planet it is the ground, however low.
     fn step_out(&self, at: &Placed) -> Vec3 {
         let hatch = at.pos + at.rot * HATCH;
         let radius = self
             .skies
             .planet()
             .map_or(hatch.length(), |planet| planet.radius);
-        let ground = radius + self.skies.height(hatch).max(0.0);
+        let ground = radius + self.skies.height(hatch).max(self.skies.sea());
         self.anchor.to_render(hatch.normalize_or(DVec3::Y) * ground)
     }
 }

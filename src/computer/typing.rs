@@ -5,6 +5,7 @@ use bevy::input::ButtonState;
 use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::prelude::*;
 
+use super::Computer;
 use super::board::Board;
 use super::route::Destination;
 use super::sift::type_into;
@@ -30,14 +31,19 @@ fn edit(filter: &mut String, key: &Key) -> bool {
 /// list is then built again from its first row.
 ///
 /// The engage key engages while a course is set and no filter is typed, so it types only in
-/// the other cases.
+/// the other cases. Keys pressed before the panel opened, such as a held strafe key, are
+/// dropped on the frame it opens.
 pub(super) fn type_filter(
     mut typed: MessageReader<KeyboardInput>,
-    keys: Res<ButtonInput<KeyCode>>,
+    (keys, opened): (Res<ButtonInput<KeyCode>>, Res<State<Computer>>),
     settings: Res<Persistent<Settings>>,
     course: Res<Destination>,
     mut board: ResMut<Board>,
 ) {
+    if opened.is_changed() {
+        typed.clear();
+        return;
+    }
     if typed.is_empty() && !keys.just_pressed(SORT_KEY) {
         return;
     }

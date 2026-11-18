@@ -50,7 +50,7 @@ impl Bind {
     ];
 
     /// The actions used while seated in the ship, in display order.
-    pub const SHIP: [Bind; 17] = [
+    pub const SHIP: [Bind; 18] = [
         Bind::Thrust,
         Bind::Brake,
         Bind::PitchDown,
@@ -68,6 +68,7 @@ impl Bind {
         Bind::Board,
         Bind::Computer,
         Bind::Engage,
+        Bind::Minimap,
     ];
 
     /// Returns the name of the action.

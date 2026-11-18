@@ -106,6 +106,14 @@ impl Skies {
         })
     }
 
+    /// Returns the height in metres of the liquid surface of the planet under the ship: zero with
+    /// a sea, lower than any ground on a dry planet, and zero without a planet.
+    pub fn sea(&self) -> f64 {
+        self.land
+            .as_ref()
+            .map_or(0.0, |land| f64::from(land.globe.sea_level()))
+    }
+
     /// Looks up what surrounds `ship` at `time` seconds and samples the wells.
     pub fn refresh(
         &mut self,

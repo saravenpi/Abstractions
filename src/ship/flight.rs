@@ -6,7 +6,7 @@ use super::assist::{LIFT_ACCEL, steer};
 use super::atmo;
 use super::body::Ship;
 use super::cruise::Cruise;
-use super::wells::{Well, gravity, nearest};
+use super::wells::{Well, beside, gravity};
 use crate::space::Frame;
 use crate::universe::PlanetSpec;
 
@@ -79,7 +79,7 @@ pub fn thrusters(ship: &Ship, controls: &Controls) -> DVec3 {
 /// Returns what the speed hold of the assist sees in space: the ship as it moves past the
 /// body it is nearest to, and how far it is from the surface of that body.
 fn hold(ship: &Ship, controls: &Controls, scene: &Scene) -> Cruise {
-    let near = nearest(scene.wells, ship.pos).map(|well| {
+    let near = beside(scene.wells, ship.pos).map(|well| {
         let centre = well.pos + well.vel * scene.elapsed;
         (well.vel, centre.distance(ship.pos) - well.radius)
     });

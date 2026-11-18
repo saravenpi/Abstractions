@@ -6,10 +6,10 @@ use bevy::prelude::*;
 
 use super::scatter::{luminance, peak};
 use super::sky::linear;
-use crate::universe::PlanetRecord;
+use crate::universe::{NO_AIR, PlanetRecord};
 
 /// Pressure under which a planet has no air to speak of, the home planet having 1.
-const VACUUM: f32 = 0.01;
+const VACUUM: f32 = NO_AIR as f32;
 
 /// How much thicker than the home air the air can get to the eye, however high the pressure:
 /// the depth saturates at one plus this, so a crushing sky stays readable.

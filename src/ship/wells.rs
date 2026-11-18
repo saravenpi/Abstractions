@@ -74,6 +74,14 @@ pub fn gravity(wells: &[Well], pos: DVec3, elapsed: f64) -> DVec3 {
     wells.iter().map(pull).sum()
 }
 
+/// Returns the well whose surface is closest to `pos`: the body the ship is beside. Unlike
+/// [`nearest`], a planet orbiting inside the lock sphere of a large star wins when the ship is
+/// near it.
+pub fn beside(wells: &[Well], pos: DVec3) -> Option<&Well> {
+    let gap = |well: &Well| well.pos.distance(pos) - well.radius;
+    wells.iter().min_by(|a, b| gap(a).total_cmp(&gap(b)))
+}
+
 /// Returns the well whose lock sphere is closest to `pos`, if there is any well.
 pub fn nearest(wells: &[Well], pos: DVec3) -> Option<&Well> {
     wells

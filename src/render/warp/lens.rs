@@ -48,6 +48,7 @@ pub struct Seen {
     pub scale: f32,
 }
 
+#[cfg(test)]
 impl Seen {
     /// Returns the angular radius in radians a body of `radius` metres is seen with.
     pub fn angle(&self, radius: f64) -> f32 {

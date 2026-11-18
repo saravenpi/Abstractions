@@ -33,7 +33,9 @@ impl Height {
     /// Returns how high planet position `focus` is over the sea and over the ground of `globe`.
     pub fn of(globe: &Globe, focus: DVec3) -> Self {
         let altitude = focus.length() - globe.radius();
-        let ground = globe.height(focus.normalize_or(DVec3::Y)).max(0.0);
+        let ground = globe
+            .height(focus.normalize_or(DVec3::Y))
+            .max(globe.sea_level());
         Self {
             altitude,
             clearance: altitude - f64::from(ground),
@@ -55,9 +57,12 @@ pub struct Eye {
 
 impl Eye {
     /// Returns the eye of a focus at planet position `at` over `globe`, where the fog on foot
-    /// lets it see `ground` metres. With `fades` off it sees nothing: everything appears at once.
+    /// lets it see `ground` metres. Thin air lets it see farther and thick air less, as the
+    /// drawn fog does. With `fades` off it sees nothing: everything appears at once.
     pub fn of(globe: &Globe, at: DVec3, ground: f64, fades: bool) -> Self {
-        let veil = veil(ground, &Height::of(globe, at));
+        let air = render::Air::of(globe.record());
+        let thick = f64::from((air.share() * air.haze()).max(render::THIN_AIR));
+        let veil = veil(ground, &Height::of(globe, at)) / thick;
         Self {
             at,
             radius: globe.radius(),

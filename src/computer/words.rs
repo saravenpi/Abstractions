@@ -1,7 +1,7 @@
 //! The planet record in plain words: temperature, air, water, light, tilt and year.
 
 use crate::saves::play_time;
-use crate::universe::{PlanetClass, PlanetRecord, Water, Zone};
+use crate::universe::{NO_AIR, PlanetClass, PlanetRecord, Water, Zone};
 
 use super::format::short;
 
@@ -10,7 +10,7 @@ const FREEZING: f64 = 273.15;
 
 /// Pressures, the home planet having 1, under which the air is none, thin and like home.
 /// From the last one up the air is thick.
-pub const AIR: [(f64, &str); 3] = [(0.01, "none"), (0.5, "thin"), (1.5, "like home")];
+pub const AIR: [(f64, &str); 3] = [(NO_AIR, "none"), (0.5, "thin"), (1.5, "like home")];
 
 /// Seconds from which a year is counted in days of play instead of hours and minutes.
 pub const LONG_YEAR: f64 = 172_800.0;

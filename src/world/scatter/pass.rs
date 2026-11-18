@@ -100,7 +100,7 @@ impl Ctx<'_> {
         if self.relief.is_none() {
             return ground(self.terrain, w, p, at.height);
         }
-        let dry_rock = at.height >= SEA_LEVEL && rock(p.0);
+        let dry_rock = at.height >= self.terrain.globe().sea_level() && rock(p.0);
         at.height - f32::from(dry_rock) * sunk(at.slope, p.1)
     }
 
@@ -113,7 +113,7 @@ impl Ctx<'_> {
         let (plant, at) = self.pick(w, roll, big)?;
         let yaw = rng.random_range(0.0..std::f32::consts::TAU);
         let scale = size(rng, plant, at.surface, at.height);
-        if at.height < SEA_LEVEL && -at.height < plant.draft() * scale {
+        if at.height < self.terrain.globe().sea_level() && -at.height < plant.draft() * scale {
             return None;
         }
         let variant = rng.random_range(0..VARIANTS) as u8;
@@ -132,7 +132,7 @@ fn size(rng: &mut ChaCha8Rng, plant: Plant, surface: Surface, height: f32) -> f3
     if plant == Plant::Kelp {
         return (-height - 1.0 - rng.random_range(0.0..1.5)).max(1.5);
     }
-    let boulder = 1.0 + f32::from(surface == Surface::Rock) * height * 0.06;
+    let boulder = 1.0 + f32::from(surface == Surface::Rock) * height.max(0.0) * 0.06;
     rng.random_range(0.8..1.3) * boulder
 }
 

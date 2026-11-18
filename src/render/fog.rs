@@ -35,7 +35,7 @@ pub const FOG_END: f32 = 0.9;
 const NEAR_FAR: f32 = 1000.0;
 
 /// Least share of air the fog still counts: above the air the fog reaches a thousand times farther.
-const THIN_AIR: f32 = 1.0e-3;
+pub const THIN_AIR: f32 = 1.0e-3;
 
 /// Distance in meters at which the middle of the cloud layer hides everything.
 const WHITEOUT_VISIBILITY: f32 = 70.0;

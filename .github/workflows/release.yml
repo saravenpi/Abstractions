@@ -103,7 +103,7 @@ jobs:
           packaging/macos/bundle.sh "$VERSION" \
             target/aarch64-apple-darwin/release/abstractions \
             target/x86_64-apple-darwin/release/abstractions
-          NAMED="Abstractions-$REF_NAME-macos-universal.dmg"
+          NAMED="Abstractions-v$VERSION-macos-universal.dmg"
           cp Abstractions-macos-universal.dmg "$NAMED"
           echo "ASSET=Abstractions-macos-universal.dmg" >> "$GITHUB_ENV"
           echo "NAMED=$NAMED" >> "$GITHUB_ENV"

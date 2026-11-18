@@ -85,12 +85,12 @@ impl Lane {
 
     /// Returns true when `cell` is worth building: it is in the lane, and not in the part of
     /// the disc a moving focus is about to leave behind. The chunks that touch the focus
-    /// always are.
+    /// always are, so the ring that carries colliders is complete at any heading.
     pub fn wants(&self, cell: IVec2) -> bool {
         let far = (cell - self.from).as_vec2().length();
         let wake = far > (self.radius + 1) as f32 - self.lead.length() * WAKE;
         let touches = ring_distance(cell, self.from) <= 1;
-        self.holds(cell, 0) && (touches || !(self.behind(cell) && wake))
+        touches || (self.holds(cell, 0) && !(self.behind(cell) && wake))
     }
 
     /// Returns every chunk worth building, cheapest first.

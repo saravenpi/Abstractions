@@ -115,6 +115,32 @@ xattr -dr com.apple.quarantine /Applications/Abstractions.app
 
 You only need to do this once.
 
+## Updates
+
+The game looks for a newer release once per launch, when it reaches the title screen. If there is one, the main menu shows a line such as "Version 0.9.1 is available" and an "Update" entry. Nothing is downloaded until you choose it. "Check for updates" in the main menu runs the check again at any time. To stop the check at launch, turn off Settings > General > Check for updates at launch.
+
+The check is one HTTPS request to GitHub's public releases API. It sends no identifier: only the user agent `abstractions-updater`.
+
+What "Download and install" does:
+
+- Linux and Windows: it downloads the plain binary of the release next to the game, checks its size and its SHA-256, then puts it in place of the running game and offers to restart. You can cancel until the swap. A failure leaves the installed game untouched.
+- macOS: the game does not rewrite its own application. It downloads the disk image to your Downloads folder, with the same checks, and offers to open it. Drag Abstractions to Applications as for a first install. If macOS blocks the first launch again, repeat the quarantine step above.
+- If the game cannot write to its own folder (a package manager install, a read-only folder), it says so and offers to open https://abstractions.facile.studio instead.
+
+The update replaces the binary only. The `share` folder of the Linux archive (launcher entry and icons) is not touched.
+
+What the checks prove: the SHA-256 comes from a `SHA256SUMS` file of the same release, so it proves the download is whole, not truncated or corrupted. It does not prove who built it. The builds are not signed, so authenticity rests on HTTPS to GitHub alone. The game downloads only from `https://github.com/saravenpi/Abstractions/releases/download/` and follows redirects only to GitHub's own hosts.
+
+### Go back to the previous version
+
+After an update the previous game stays next to the new one as `abstractions.old` (`abstractions.old.exe` on Windows). The new version deletes it once it has started. If the new version does not start, restore the old one by hand:
+
+```sh
+mv abstractions.old abstractions
+```
+
+On Windows, delete `abstractions.exe` and rename `abstractions.old.exe` to `abstractions.exe`.
+
 ## Ray tracing
 
 Settings > Graphics > Ray tracing (experimental) turns on ray traced lighting: traced shadows from every plant and building, and bounce light. It is off by default and applies at once, without a restart. The line under the settings list shows its real state: on, off, or not available with the reason.
@@ -153,6 +179,7 @@ A missing or broken file is replaced by the defaults.
 - `src/effects`, `src/wind`: particles, creatures and the shared wind.
 - `src/screens`, `src/menus`, `src/ui`: states, menus and widgets.
 - `src/saves`, `src/settings`: saved worlds and settings.
+- `src/update`: the self-update: the check, the download, its checks and the swap.
 - `vendor/bevy_solari`: the engine's ray tracer with two patches, listed in `vendor/bevy_solari/PATCHES.md`.
 
 ## Licence

@@ -34,6 +34,8 @@ mod record_tests;
 #[cfg(test)]
 mod tests;
 
+pub use air::NO_AIR;
+pub use class::MOLTEN;
 pub use galaxy::{ARMS, CENTER_SPAN, RADIUS_GLY};
 pub use home::{HOME_DAY_SECONDS, HOME_GRAVITY, HOME_RADIUS};
 pub use ids::{BodyId, GalaxyId, StarId};

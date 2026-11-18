@@ -1,15 +1,39 @@
 //! Climate tests: each rule of the planet physics on its own, against values worked out by hand.
 
 use super::climate::{FREEZING, settle, spread, state};
+use super::range_tests::sample;
 use super::*;
 
-/// The home star is at exactly 5,780 K and a star of the same light per surface is as hot.
+/// Each class of star has the surface temperatures astronomers give it, the classes follow each
+/// other from the coolest red dwarf to the hottest blue star with no gap, a heavier star of a
+/// class is never cooler, and the home star keeps its 5,780 K, a yellow star's.
 #[test]
-fn star_temperature_follows_light_per_surface() {
-    assert_eq!(star::temperature(1.0, 1.0), 5780.0);
-    assert!((star::temperature(4.0, 2.0) - 5780.0).abs() < 1e-9);
-    assert!((star::temperature(16.0, 1.0) - 11_560.0).abs() < 1e-9);
-    assert!(star::temperature(0.05, 0.3) < 5780.0);
+fn star_temperature_follows_the_class() {
+    let classes = [
+        (StarClass::M, (2600.0, 3900.0)),
+        (StarClass::K, (3900.0, 5300.0)),
+        (StarClass::G, (5300.0, 6000.0)),
+        (StarClass::F, (6000.0, 7300.0)),
+        (StarClass::A, (7300.0, 10_000.0)),
+        (StarClass::B, (10_000.0, 30_000.0)),
+        (StarClass::O, (30_000.0, 45_000.0)),
+    ];
+    assert!(classes.windows(2).all(|pair| pair[0].1.1 == pair[1].1.0));
+    let stars: Vec<StarSpec> = sample().into_iter().map(|(_, star)| star).collect();
+    for (class, (low, high)) in classes {
+        let mut of: Vec<&StarSpec> = stars.iter().filter(|s| s.class == class).collect();
+        of.retain(|star| star.name != HOME_STAR_NAME);
+        of.sort_by(|a, b| a.mass.total_cmp(&b.mass));
+        assert!(
+            of.iter()
+                .all(|s| low <= s.temperature && s.temperature < high)
+        );
+        assert!(of.windows(2).all(|w| w[0].temperature <= w[1].temperature));
+        let found = of.len();
+        println!("{class:?}: {found} stars, {low} to {high} K");
+    }
+    let home = Universe::new(3).system(Universe::new(3).home().star).star;
+    assert_eq!((home.class, home.temperature), (StarClass::G, 5780.0));
 }
 
 /// Flux is 1 at the reference orbit of a unit star and thins as the square of the distance.

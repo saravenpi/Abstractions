@@ -15,24 +15,45 @@ pub const ORBIT: (f64, f64) = (5e6, 5e8);
 /// The span of orbit radii is cut into one equal band per planet on a log scale and each planet
 /// sits in the middle 70 percent of its band, so the radii grow geometrically, with jitter, and
 /// each one is strictly larger than the one before. With `world` set this is the home system:
-/// it has at least 3 planets and the third is the home planet, whose terrain seed is `world`.
+/// it has at least 5 planets, the third is the home planet, whose terrain seed is `world`, and
+/// the orbits are those of [`home::orbit`], which keep the order and put the home planet where
+/// its star gives it a flux of 1.
 pub(super) fn planets(star: &StarSpec, world: Option<u64>) -> Vec<PlanetSpec> {
     let mut rng = Rng::new(hash::child(star.seed, 2));
     let least = if world.is_some() {
-        home::HOME_INDEX + 1
+        home::HOME_PLANETS
     } else {
         PLANETS.0
     };
     let count = (PLANETS.0 + rng.below(u32::from(PLANETS.1 - PLANETS.0) + 1) as u8).max(least);
-    let mut planets = Vec::with_capacity(usize::from(count));
-    for index in 0..count {
+    let mut drawn = [(0.0, 0); PLANETS.1 as usize];
+    for (index, slot) in (0..count).zip(&mut drawn) {
         let band = (f64::from(index) + rng.range(0.15, 0.85)) / f64::from(count);
-        let orbit = ORBIT.0 * (ORBIT.1 / ORBIT.0).powf(band);
-        let built = planet::build(star, index, orbit, rng.next());
-        planets.push(match world {
-            Some(seed) if index == home::HOME_INDEX => home::planet(built, seed),
-            _ => built,
-        });
+        *slot = (band, rng.next());
     }
-    planets
+    let home = world.map(|world| (world, drawn[usize::from(home::HOME_INDEX)].0));
+    let members = (0..count).zip(drawn);
+    members
+        .map(|(index, drawn)| member(star, index, drawn, home))
+        .collect()
+}
+
+/// Returns planet `index` of `star` from the place `band` it drew in the span of orbits, 0 to 1 on
+/// the log scale, and its seed. In the home system `home` gives the world seed and the place the
+/// home planet drew.
+fn member(
+    star: &StarSpec,
+    index: u8,
+    (band, seed): (f64, u64),
+    home: Option<(u64, f64)>,
+) -> PlanetSpec {
+    let Some((world, at)) = home else {
+        let orbit = ORBIT.0 * (ORBIT.1 / ORBIT.0).powf(band);
+        return planet::build(star, index, orbit, seed);
+    };
+    let planet = planet::build(star, index, home::orbit(band, at), seed);
+    match index == home::HOME_INDEX {
+        true => home::planet(planet, world),
+        false => planet,
+    }
 }

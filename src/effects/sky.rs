@@ -43,9 +43,10 @@ impl Sky {
     }
 }
 
-/// Returns true when a built floor of `floor` under the camera, with a site of `near` the
-/// nearest around, is under a roof: the planks of a village house or a stilt hut, or the floor
-/// of a cabin or a lighthouse.
+/// Returns true when the floor of a room of `floor` under the camera, with a site of `near`
+/// the nearest around, is under a roof: the planks of a village house or a stilt hut, or the
+/// floor of a cabin or a lighthouse. A platform, a plaza or a boardwalk is no room, see
+/// [`crate::world::structures::Surroundings::room_at`].
 pub fn roofed(floor: Option<FloorKind>, near: Option<Site>) -> bool {
     matches!(
         (floor, near),

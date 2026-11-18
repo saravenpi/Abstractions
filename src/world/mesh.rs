@@ -50,11 +50,10 @@ pub(super) fn dithered(terrain: &Terrain, span: &Span, (i, j): (usize, usize)) -
     let centre = span.chart(i, j, 0.5);
     let near = |half: usize| {
         let jitter = |salt: usize| (tone(i + salt, j, half) - 1.0) / 0.08 * DITHER_REACH;
-        let at = centre + Vec2::new(jitter(7919), jitter(104_729));
-        terrain.biome(at.x, at.y)
+        centre + Vec2::new(jitter(7919), jitter(104_729))
     };
     let bed = terrain.bed(centre.x, centre.y);
-    ([terrain.biome(centre.x, centre.y), near(0), near(1)], bed)
+    (terrain.biomes([centre, near(0), near(1)]), bed)
 }
 
 /// Returns the vertices of chunk `coord` at `heights`, in the frame of the chunk, none lower than `floor`.

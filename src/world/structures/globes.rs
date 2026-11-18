@@ -6,8 +6,10 @@ use std::sync::Arc;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::pads::FloorKind;
 use super::site::{CELL, Site};
 use super::village::{self, SPAN};
+use super::{Survey, survey};
 use crate::world::globe::{Chart, Face, Globe};
 use crate::world::mesh::{Frame, chunk_heights, chunk_patch};
 use crate::world::scatter::chunk_center;
@@ -37,6 +39,33 @@ pub fn villages(face: &Terrain, want: usize) -> Vec<Site> {
     let cells = (-n..n).flat_map(|x| (-n..n).map(move |y| IVec2::new(x, y)));
     let found = cells.filter_map(|c| village::village_in_cell(face, c));
     found.take(want).collect()
+}
+
+/// Returns a village of plank walkways, whose houses, platforms and streets are all wood: the metric view
+/// around it, its site and the survey of its floors.
+pub fn stilt_village() -> (Terrain, Site, Survey) {
+    let found = [42, 7, 3, 11].into_iter().flat_map(|seed| {
+        let sites = |face: Terrain| {
+            villages(&face, 6)
+                .into_iter()
+                .map(move |s| (face.clone(), s))
+        };
+        faces(seed, 6000.0).into_iter().flat_map(sites)
+    });
+    let seen = found.map(|(face, site)| {
+        let view = face.around(site.origin.x, site.origin.y);
+        let plaza = view.embed(site.origin.x, site.floor, site.origin.y);
+        let wood = survey(&face, plaza, 120.0);
+        (
+            wood.floor_at(plaza) == Some(FloorKind::Wood),
+            (view, site, wood),
+        )
+    });
+    let stilt = seen
+        .filter(|(wood, _)| *wood)
+        .map(|(_, village)| village)
+        .next();
+    stilt.expect("a globe has a stilt village")
 }
 
 /// Returns the vertex normals of a built mesh.

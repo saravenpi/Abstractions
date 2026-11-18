@@ -9,6 +9,7 @@ mod datum;
 pub mod far;
 mod flat;
 mod flows;
+mod grain;
 mod ground;
 mod id;
 mod landform;
@@ -20,6 +21,8 @@ mod scale;
 mod season;
 mod site;
 mod sphere;
+#[cfg(test)]
+mod tally;
 mod tangent;
 
 #[cfg(test)]
@@ -35,12 +38,15 @@ mod tests_flows;
 #[cfg(test)]
 mod tests_landform;
 #[cfg(test)]
+mod tests_reach;
+#[cfg(test)]
 mod tests_record;
 #[cfg(test)]
 mod tests_relief;
 
 pub use chart::Chart;
 pub use cube::Face;
+pub use grain::Grain;
 pub use id::ChunkId;
 pub use reserve::Reserve;
 pub use season::MEAN_SEASON;
@@ -105,7 +111,7 @@ impl Globe {
             handover: far::handover(radius, None),
             setting: climate::setting(seed, radius, gravity),
             season: Season::default(),
-            atlas: Arc::new(Atlas::new(0)),
+            atlas: Arc::new(Atlas::new(0, 1)),
         }
         .charted()
     }

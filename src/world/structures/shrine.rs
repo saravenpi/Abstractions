@@ -45,13 +45,17 @@ fn gate(b: &mut Build) {
     );
 }
 
+/// Height of the walls of the hall and of the eaves of its roof, in meters: a player, 1.8 m tall, walks
+/// under the eaves up to the walls.
+const HALL: f32 = 2.2;
+
 /// Draws the platform, hall, lanterns and the gate.
 pub fn shrine(b: &mut Build) {
     b.foundation(Vec2::splat(3.0), Mat::solid(STONE));
-    b.boxes(&[([-1.4, 0.0, -1.2], [1.4, 2.0, 1.0])], Mat::solid(PLANK));
+    b.boxes(&[([-1.4, 0.0, -1.2], [1.4, HALL, 1.0])], Mat::solid(PLANK));
     b.gable(
-        Vec3::new(-2.1, 2.0, -1.8),
-        Vec3::new(2.1, 2.0, 1.6),
+        Vec3::new(-2.1, HALL, -1.8),
+        Vec3::new(2.1, HALL, 1.6),
         1.2,
         Mat::deco(STONE_DARK),
     );

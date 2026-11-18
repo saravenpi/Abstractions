@@ -95,3 +95,20 @@ fn flows_follow_the_class() {
         "a sea that is not water has rivers"
     );
 }
+
+/// On globes of 3 and 6 km, every node of every river is cut into the ground of the cell it lies in and
+/// painted as a bed there, so no channel stops at a cell border.
+#[test]
+fn rivers_cross_every_cell_border() {
+    let planets = [(42, 3000.0), (7, 3000.0), (42, 6000.0), (7, 6000.0)];
+    for (seed, radius) in planets {
+        let globe = Globe::new(seed, radius, 22.0);
+        let nodes = flows(&globe).into_iter().flat_map(|f| f.nodes);
+        for node in nodes.filter(|n| n.height > SEA_LEVEL + 0.5) {
+            let h = globe.shaped(node.dir * radius);
+            let cut = globe.flowed(node.dir * radius, h);
+            assert!(cut <= node.bed.max(SEA_LEVEL) + 1e-3 || h <= SEA_LEVEL);
+            assert_eq!(globe.mark(node.dir), Some(Surface::River), "{node:?}");
+        }
+    }
+}

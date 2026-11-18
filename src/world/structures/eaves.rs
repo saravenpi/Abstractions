@@ -45,9 +45,12 @@ impl Build<'_> {
     }
 
     /// Adds the roofing over the box `lo..hi`: hipped or gabled with open ends, under a snow layer when asked.
+    /// Only the top layer is solid: the colliders of a roof under snow are those of the snow.
     fn roofing(&mut self, lo: Vec3, hi: Vec3, rise: f32, cap: &Cap) {
         let layers = [(0.0, cap.roof, true), (SNOW_RISE, SNOW, cap.snow)];
+        let solid = self.parts.len();
         for (extra, rgb, _) in layers.into_iter().filter(|l| l.2) {
+            self.parts.truncate(solid);
             match cap.hip {
                 true => self.hip(lo, hi, rise + extra, Mat::deco(rgb)),
                 false => self.slopes(lo, hi, rise + extra, Mat::deco(rgb)),

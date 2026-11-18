@@ -61,11 +61,6 @@ pub fn frame(dir: DVec3) -> (DVec3, DVec3) {
 }
 
 impl Globe {
-    /// Returns the climate in unit direction `dir` at the current season, see [`Globe::set_season`].
-    pub fn climate(&self, dir: DVec3) -> Climate {
-        self.climate_in(dir, self.season())
-    }
-
     /// Returns the climate in unit direction `dir` at `season`.
     pub(super) fn climate_in(&self, dir: DVec3, season: f32) -> Climate {
         climate::at(&self.setting, &self.spot(dir), season)
@@ -113,7 +108,11 @@ impl Globe {
     /// Returns the biome of the annual mean climate at sphere point `p`, found anew.
     fn biome_found(&self, p: DVec3) -> Biome {
         let climate = self.climate_in(p.normalize(), MEAN_SEASON);
-        let jitter = gradient(sub_seed(self.seed, 18), (p / JITTER_SIZE).to_array());
-        climate::biome(&climate, jitter as f32)
+        climate::biome(&climate, self.blur(p))
+    }
+
+    /// Returns the noise that blurs the biome borders at sphere point `p`.
+    pub(super) fn blur(&self, p: DVec3) -> f32 {
+        gradient(sub_seed(self.seed, 18), (p / JITTER_SIZE).to_array()) as f32
     }
 }

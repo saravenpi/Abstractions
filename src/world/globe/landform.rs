@@ -76,16 +76,25 @@ impl Globe {
     }
 
     /// Returns the ground height at sphere point `p` before flows and ponds: the generator's ground moved by
-    /// the datum, `base` being its inland measure, with the landform of the class added.
+    /// the datum, with the landform of the class added.
     pub(super) fn shaped(&self, p: DVec3) -> f32 {
+        self.formed(p, true).0
+    }
+
+    /// Returns the ground height at sphere point `p` before flows and ponds, and its inland measure. The
+    /// craters are left out unless `pits` is set, for a reader too coarse to show them.
+    pub(super) fn formed(&self, p: DVec3, pits: bool) -> (f32, f32) {
+        #[cfg(test)]
+        super::tally::count();
         let (raw, base) = self.shape.measure(p.to_array(), &self.climate);
         let height = raw - self.datum;
-        match self.landform() {
-            Landform::Plain => height,
+        let formed = match self.landform() {
             Landform::Dunes => height + dunes(self.seed, p, height),
-            Landform::Craters => height + self.pitted(p),
+            Landform::Craters if pits => height + self.pitted(p),
             Landform::Glaciers => self.glaciated(p, height, base),
-        }
+            Landform::Plain | Landform::Craters => height,
+        };
+        (formed, base)
     }
 
     /// Returns the ground `height` at sphere point `p` with its glacier valleys, where the annual mean is

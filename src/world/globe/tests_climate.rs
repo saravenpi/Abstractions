@@ -64,19 +64,22 @@ fn read(globe: &Globe, dirs: &[DVec3]) -> Vec<(u32, Biome, Surface)> {
     dirs.iter().map(at).collect()
 }
 
-/// Two globes of one seed give the same ground bit for bit, one read forwards, one backwards and one on
-/// another thread, so nothing depends on what the memories of cells held.
+/// Two globes of one seed give the same ground bit for bit, one read forwards here and one read backwards
+/// on a fresh thread, which holds none of the cells the first read, and so does the first globe read
+/// backwards over its warm cells: nothing depends on what the memories of cells held.
 #[test]
 fn the_same_seed_gives_the_same_ground() {
     let dirs: Vec<DVec3> = sphere_dirs(1500).collect();
-    let (a, b) = (Globe::new(9, 6000.0, 22.0), Globe::new(9, 6000.0, 22.0));
+    let a = Globe::new(9, 6000.0, 22.0);
     let forwards = read(&a, &dirs);
-    let mut backwards = read(&b, &dirs.iter().rev().copied().collect::<Vec<_>>());
+    let turned: Vec<DVec3> = dirs.iter().rev().copied().collect();
+    let mut warm = read(&a, &turned);
+    warm.reverse();
+    assert_eq!(forwards, warm);
+    let other = std::thread::spawn(move || read(&Globe::new(9, 6000.0, 22.0), &turned));
+    let mut backwards = other.join().expect("the thread reads the ground");
     backwards.reverse();
     assert_eq!(forwards, backwards);
-    let copy = dirs.clone();
-    let other = std::thread::spawn(move || read(&Globe::new(9, 6000.0, 22.0), &copy));
-    assert_eq!(forwards, other.join().expect("the thread reads the ground"));
     let land = forwards
         .iter()
         .filter(|(h, _, _)| f32::from_bits(*h) > SEA_LEVEL)

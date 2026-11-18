@@ -16,7 +16,7 @@ const INTERVAL: f32 = 0.5;
 /// Distance in metres within which the nearest site says what a built floor belongs to.
 const SITE_REACH: f32 = 80.0;
 
-/// Depth in metres under the camera down to which a built floor counts as the one it stands on,
+/// Depth in metres under the camera down to which the floor of a room counts as the one it stands on,
 /// and the step of the search: the camera may float above the feet it follows.
 const FLOOR_PROBE: (f32, f32) = (2.5, 0.5);
 
@@ -50,7 +50,7 @@ fn sheltered(anchor: &Anchor, eye: &Eye, around: &Surroundings) -> bool {
     (0..=steps).any(|step| {
         let probe = eye.at - up * FLOOR_PROBE.1 * step as f32;
         roofed(
-            around.floor_at(anchor.to_frame(probe)),
+            around.room_at(anchor.to_frame(probe)),
             near.map(|site| site.kind),
         )
     })

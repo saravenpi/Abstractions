@@ -166,7 +166,7 @@ fn streaming(
 
 /// Registers the world systems.
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins((sea::plugin, structures::plugin))
+    app.add_plugins((sea::plugin, structures::plugin, calendar::plugin))
         .init_resource::<chunks::Chunks>()
         .init_resource::<chunks::Budget>()
         .init_resource::<chunks::Calm>()
@@ -183,8 +183,6 @@ pub(super) fn plugin(app: &mut App) {
             (
                 chunks::add_instances.run_if(crate::render::ray_tracing::active),
                 chunks::retarget.run_if(resource_changed::<crate::render::RayTracing>),
-                calendar::turn
-                    .run_if(resource_exists::<Planet>.and_then(resource_exists::<Universe>)),
             ),
         );
     stream_systems(app);

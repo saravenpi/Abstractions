@@ -20,7 +20,10 @@ impl Span {
     /// Returns the ground height above sea level at vertex `(i, j)`.
     pub fn height(&self, i: usize, j: usize) -> f32 {
         match self.node {
-            Some(_) => self.terrain.globe().height(self.dir(i, j)),
+            Some(_) => {
+                let grain = self.terrain.grain();
+                self.terrain.globe().height_seen(self.dir(i, j), grain)
+            }
             None => {
                 let at = self.chart(i, j, 0.0);
                 self.terrain.height(at.x, at.y)

@@ -29,7 +29,7 @@ fn materials(flavor: Flavor) -> (FloorKind, FloorKind) {
 }
 
 /// Returns the floors of the house on `lot`: the planks inside the walls, on both storeys where there are
-/// two, then the platform around them.
+/// two, then the platform around them, which lies under the open sky whatever it is made of.
 fn house(view: &Terrain, lot: &Lot, base: FloorKind) -> Vec<Pad> {
     let s = lot.house.shell();
     let (inner, at) = (s.inner(), (lot.pos, lot.yaw, lot.floor));
@@ -51,8 +51,10 @@ fn house(view: &Terrain, lot: &Lot, base: FloorKind) -> Vec<Pad> {
     if lot.house == House::TwoStory {
         slabs.push(planks(UPPER));
     }
-    slabs.push(platform);
-    slabs.iter().map(|slab| Pad::new(view, at, slab)).collect()
+    let rooms = slabs.iter().map(|slab| Pad::new(view, at, slab));
+    rooms
+        .chain([Pad::new(view, at, &platform).open()])
+        .collect()
 }
 
 /// Returns the strips of the streets and footpaths of `lay`, each on the ground of `view`.
@@ -82,7 +84,7 @@ pub fn floors(view: &Terrain, site: &Site) -> (Vec<Pad>, Vec<Strip>) {
         .flat_map(|lot| house(view, lot, base))
         .collect();
     let plaza: Slab = (true, [0.0; 2], [PLAZA, 0.0], [-1.5, 1.5], road);
-    pads.push(Pad::new(view, (site.origin, site.yaw, site.floor), &plaza));
+    pads.push(Pad::new(view, (site.origin, site.yaw, site.floor), &plaza).open());
     (pads, strips(view, &lay, road))
 }
 

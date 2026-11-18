@@ -6,7 +6,7 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::Terrain;
-use crate::world::globe::{Chart, Globe, Tangent};
+use crate::world::globe::{Chart, Globe, Grain, Tangent};
 use crate::world::{SEA_LEVEL, Surface};
 
 impl Terrain {
@@ -43,11 +43,14 @@ impl Terrain {
 
     /// Returns the surface a channel bed puts at chart position `(x, z)`: a river bed, or the rock of a lava
     /// flow, wherever a flow runs on the globe, and nothing elsewhere or on the legacy plane, which has none.
-    /// The terrain meshes paint the bed with this rule, and the placers keep out of a river with it.
+    /// The terrain meshes paint the bed with this rule, and the placers keep out of a river with it. A view
+    /// too coarse to show a river has none.
     pub fn bed(&self, x: f32, z: f32) -> Option<Surface> {
         match self.chart {
-            Chart::Flat => None,
-            chart => self.globe.mark(chart.dir(x, z)),
+            chart if chart != Chart::Flat && self.grain == Grain::Fine => {
+                self.globe.mark(chart.dir(x, z))
+            }
+            _ => None,
         }
     }
 

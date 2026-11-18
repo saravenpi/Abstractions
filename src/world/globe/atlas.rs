@@ -1,8 +1,9 @@
 //! The atlas: coarse cells of about 2 km over the cube faces, each with a height grid sampled once, the
 //! flows that start in it and the map of the flows that cross it.
 //!
-//! Chunks build on worker threads, so the cells live in a shared memory of 256 per kind behind a lock,
-//! and each thread keeps the last few it read so that the hot path takes no lock at all.
+//! Chunks build on worker threads, so the cells live in a shared memory per kind behind a lock, sized by
+//! the count of cells of the planet, and each thread keeps the last few it read so that the hot path takes
+//! no lock at all.
 
 mod cell;
 mod channel;
@@ -11,6 +12,7 @@ mod map;
 mod mix;
 mod near;
 mod pits;
+mod reach;
 mod region;
 mod trace;
 
@@ -22,6 +24,8 @@ pub use cell::{Cell, STEPS};
 pub use channel::Flowing;
 pub use map::FlowMap;
 pub use pits::PitMap;
+#[cfg(test)]
+pub use reach::around;
 pub use region::{Region, Sample};
 pub use trace::Flow;
 #[cfg(test)]
@@ -56,14 +60,16 @@ pub struct Atlas {
 }
 
 impl Atlas {
-    /// Returns an empty atlas for the planet of fingerprint `print`.
-    pub fn new(print: u64) -> Self {
+    /// Returns an empty atlas for the planet of fingerprint `print` with `cells` cells per face side: each
+    /// memory keeps all the cells of a small planet, and of a large one the [`lru::MOST`] used last.
+    pub fn new(print: u64, cells: i32) -> Self {
+        let kept = lru::kept(cells);
         Self {
             print,
-            regions: Lru::default(),
-            sources: Lru::default(),
-            maps: Lru::default(),
-            pits: Lru::default(),
+            regions: Lru::sized(kept),
+            sources: Lru::sized(kept),
+            maps: Lru::sized(kept),
+            pits: Lru::sized(kept),
         }
     }
 }
@@ -78,7 +84,7 @@ impl Globe {
         let print = text.bytes().fold(0xCBF2_9CE4_8422_2325u64, |h, b| {
             (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01B3)
         });
-        self.atlas = Arc::new(Atlas::new(print));
+        self.atlas = Arc::new(Atlas::new(print, self.cells()));
         self
     }
 

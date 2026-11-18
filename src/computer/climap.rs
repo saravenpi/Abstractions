@@ -3,7 +3,8 @@
 //!
 //! The sea is black, snow is white and the six biomes are six greys between, so the map stays
 //! black and white like the rest of the interface. It is pure: the same planet and season
-//! always give the same pixels.
+//! always give the same pixels. Each pixel reads the bare land at a glance, three ground samples,
+//! since no river, pond or crater shows at this scale.
 
 use std::f64::consts::{PI, TAU};
 
@@ -65,10 +66,37 @@ pub fn grid(spec: &PlanetSpec, season: f32) -> Vec<u8> {
         let lon = ((cell % COLS) as f64 + 0.5) / COLS as f64 * TAU - PI;
         let lat = 0.5 * PI - ((cell / COLS) as f64 + 0.5) / ROWS as f64 * PI;
         let dir = direction(lon, lat);
-        let sea = globe.height(dir) < globe.sea_level();
-        let air = climate::at(globe.setting(), &globe.spot(dir), season);
+        let (height, spot) = globe.glance(dir);
+        let sea = height < globe.sea_level();
+        let air = climate::at(globe.setting(), &spot, season);
         let shade = grey(&air, sea);
         pixels.extend([shade, shade, shade, u8::MAX]);
     }
     pixels
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::universe::Universe;
+
+    /// Most ground samples one pixel of the map may take.
+    const PER_PIXEL: u64 = 4;
+
+    /// Painting the map of a 40 km world of islands takes at most four ground samples per pixel: no
+    /// river, pond or region grid is built for a pixel read once.
+    #[test]
+    fn the_map_of_a_large_planet_is_cheap() {
+        let universe = Universe::new(7);
+        let spec = PlanetSpec {
+            radius: 40_000.0,
+            ..universe.planet(universe.home())
+        };
+        let before = Globe::sampled();
+        let pixels = grid(&spec, 0.25);
+        let taken = Globe::sampled() - before;
+        println!("climate map of a 40 km planet: {taken} ground samples");
+        assert_eq!(pixels.len(), COLS * ROWS * BYTES);
+        assert!(taken <= PER_PIXEL * (COLS * ROWS) as u64, "{taken} samples");
+    }
 }

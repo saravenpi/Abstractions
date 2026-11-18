@@ -10,6 +10,7 @@ use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 
 use super::trail::{POINTS, Trail};
+use crate::render::smoothstep as smooth;
 
 /// Rows of the ribbon: the live tip, then every point of the trail.
 pub const ROWS: usize = POINTS + 1;
@@ -18,7 +19,15 @@ pub const ROWS: usize = POINTS + 1;
 pub const VERTICES: usize = ROWS * 3;
 
 /// Rows over which the glow fades in behind the emitter.
-const FADE_IN: f32 = 3.0;
+pub const FADE_IN: f32 = 3.0;
+
+/// Widest a ribbon is drawn to each side, as a share of its distance to the camera. A strip
+/// stands in for a thin plume: without this bound one that passes the eye fills the view.
+pub const SPAN: f32 = 0.06;
+
+/// Distances from the camera between which a ribbon fades in, in metres. Nearer than the
+/// first nothing is drawn: a flat strip that close is a film over the whole scene.
+pub const NEAR: (f32, f32) = (0.75, 2.5);
 
 /// How a ribbon is drawn this frame.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -27,7 +36,7 @@ pub struct Look {
     pub eye: Vec3,
     /// Half width at the emitter in metres.
     pub width: f32,
-    /// How many times wider the ribbon is at the end of its life.
+    /// How many times wider the ribbon is at the end of its life. Under 1 it tapers.
     pub spread: f32,
     /// Seconds a point glows for.
     pub life: f32,
@@ -55,7 +64,8 @@ impl Default for Strip {
 }
 
 /// Returns the glow of row `row` of `trail`: its heat, faded by age, by its place along the
-/// ribbon and over the first rows behind the emitter.
+/// ribbon and over the first rows behind the emitter. The oldest point laid is dark, so a
+/// trail that has only just begun still ends softly instead of on a lit edge.
 fn glow(trail: &Trail, row: usize, life: f32) -> f32 {
     let sample = if row == 0 {
         trail.tip()
@@ -65,7 +75,7 @@ fn glow(trail: &Trail, row: usize, life: f32) -> f32 {
     let young = (1.0 - sample.age / life).clamp(0.0, 1.0);
     let along = 1.0 - row as f32 / (ROWS - 1) as f32;
     let begun = (row as f32 / FADE_IN).min(1.0);
-    let laid = if row > trail.len() { 0.0 } else { 1.0 };
+    let laid = if row >= trail.len() { 0.0 } else { 1.0 };
     sample.heat * young * young * along.sqrt() * begun * laid
 }
 
@@ -78,11 +88,18 @@ fn place(trail: &Trail, row: usize) -> DVec3 {
     }
 }
 
+/// Returns the half width a row `away` metres from the camera is drawn with, at most `wide`,
+/// and how much of its glow shows.
+fn fit(wide: f32, away: f32) -> (f32, f32) {
+    (wide.min(away * SPAN), smooth(NEAR.0, NEAR.1, away))
+}
+
 /// Fills `strip` with the ribbon of `trail`, seen from `look.eye`. `to_render` maps the planet
 /// frame to render space.
 ///
 /// Each row is widened across the view direction and along neither the trail nor the view, so
 /// the strip always faces the camera. Rows the trail has not laid yet collapse onto its end.
+/// A row close to the camera narrows and fades out, so no trail can veil the view.
 pub fn fill(trail: &Trail, look: &Look, to_render: impl Fn(DVec3) -> Vec3, strip: &mut Strip) {
     for row in 0..ROWS {
         let at = to_render(place(trail, row));
@@ -93,9 +110,10 @@ pub fn fill(trail: &Trail, look: &Look, to_render: impl Fn(DVec3) -> Vec3, strip
         } else {
             trail.point(row - 1).age
         };
-        let wide = look.width * (1.0 + (look.spread - 1.0) * (age / look.life).clamp(0.0, 1.0));
+        let aged = look.width * (1.0 + (look.spread - 1.0) * (age / look.life).clamp(0.0, 1.0));
+        let (wide, shown) = fit(aged, look.eye.distance(at));
         let side = (ahead - behind).cross(look.eye - at).normalize_or_zero() * wide;
-        let alpha = glow(trail, row, look.life);
+        let alpha = glow(trail, row, look.life) * shown;
         for (slot, (offset, shade)) in [(-1.0, 0.0), (0.0, alpha), (1.0, 0.0)]
             .into_iter()
             .enumerate()

@@ -21,6 +21,8 @@ mod warm;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_exhaust;
+#[cfg(test)]
 mod tests_fx;
 
 use bevy::prelude::*;

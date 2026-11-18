@@ -8,10 +8,12 @@ use super::palette::Palette;
 use super::vantage::Scene;
 
 /// Ambient brightness the stars add on a night no moon lights, on top of
-/// [`Palette::NIGHT_AMBIENT`]: together 65, half of what the old painted moon and the night
-/// ambient gave a floor facing it (about 130). The ground and the way ahead still read on foot,
-/// and a lamp, the light of the companion or a glowing sea stand out more than they did.
-pub const STARLIGHT: f32 = 25.0;
+/// [`Palette::NIGHT_AMBIENT`]: together 100, three quarters of what the old painted moon and
+/// the night ambient gave a floor facing it (about 130). With 25 the ground showed almost black
+/// in the frames, a quarter as bright on screen as under the painted moon; with 60 it shows a
+/// little over half as bright, so the ground and the way ahead still read on foot, and a lamp,
+/// the light of the companion or a glowing sea stand out more than they did.
+pub const STARLIGHT: f32 = 60.0;
 
 /// The real body that lights the night of the camera, or nothing on a planet without moons.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]

@@ -118,7 +118,7 @@ fn moonlight_follows_real_moons() {
     assert_eq!(moonlit(palette, &Moonlight(None)).moon_lux, 0.0);
 }
 
-/// A night without a moon is lit by the stars alone: no moon light, and an ambient light of 65,
+/// A night without a moon is lit by the stars alone: no moon light, and an ambient light of 100,
 /// under the 130 the painted moon gave and above the bare night. A full moon leaves no room for
 /// the stars, a thin one lets them fill in, and the day is left bit for bit.
 #[test]
@@ -127,7 +127,7 @@ fn a_moonless_night_is_lit_by_the_stars() {
     let dark = moonlit(night, &Moonlight(None));
     let starlit = Palette::NIGHT_AMBIENT + STARLIGHT;
     assert!((dark.ambient_brightness - starlit).abs() < 0.5 && dark.moon_lux == 0.0);
-    assert!((60.0..=70.0).contains(&dark.ambient_brightness));
+    assert!((95.0..=105.0).contains(&dark.ambient_brightness));
     assert_eq!((dark.zenith, dark.ambient), (night.zenith, night.ambient));
     assert_eq!(moonlit(noon, &Moonlight(None)), noon);
     let glow = |share: f32| Glow {

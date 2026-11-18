@@ -66,6 +66,8 @@ mod tests_globe;
 #[cfg(test)]
 mod tests_hang;
 #[cfg(test)]
+mod tests_headroom;
+#[cfg(test)]
 mod tests_interior;
 #[cfg(test)]
 mod tests_landing;
@@ -99,6 +101,8 @@ use glow::LightPoint;
 use site::sites_in_chunk;
 
 pub use around::{AROUND, Surroundings, Survey, survey};
+#[cfg(test)]
+pub use globes::stilt_village;
 pub use pads::{FloorKind, Nearby};
 pub use site::{CELL, Kind, Site, origins_near, structure_in_cell};
 pub use village::{Entry, entries};

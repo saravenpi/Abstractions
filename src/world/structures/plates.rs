@@ -7,7 +7,7 @@ use super::brush::{Build, Part, Shape};
 
 /// Thickness of the box under a roof slope, in meters: thin enough to stay out of the room under the lowest
 /// pitch, the shed.
-const THICK: f32 = 0.1;
+pub const THICK: f32 = 0.1;
 
 /// Heights of the level steps that fill a hipped roof, as shares of its rise. The deepest dip between the
 /// drawn roof and its collider is the widest gap between two of them.

@@ -16,8 +16,10 @@ use crate::effects::{rng, sim};
 use crate::render::DayClock;
 use crate::space::Anchor;
 use crate::universe::Universe;
+use crate::weather::Weather;
 use crate::wind::Wind;
 use crate::world::globe::Face;
+use crate::world::structures::{entries, stilt_village};
 use crate::world::{Biome, Globe, Surface, Terrain};
 
 /// Returns open meadow surroundings `height` metres above sea level.
@@ -72,6 +74,29 @@ fn a_roof_is_over_roofed_floors_only() {
     assert!(roofed(Some(FloorKind::Stone), Some(Site::Cabin)));
     assert!(!roofed(Some(FloorKind::Wood), Some(Site::Dock)));
     assert!(!roofed(None, Some(Site::Village)));
+}
+
+/// In a stilt village, whose house floors, platforms and streets are all planks, rain falls on the plaza
+/// boardwalk and not inside a house.
+#[test]
+fn rain_falls_on_a_boardwalk_and_not_indoors() {
+    let (view, site, seen) = stilt_village();
+    let (village, lift) = (Some(Site::Village), 0.02);
+    let rain = Weather {
+        rain: 1.0,
+        ..default()
+    };
+    let plaza = view.embed(site.origin.x, site.floor + lift, site.origin.y);
+    assert_eq!(seen.floor_at(plaza), Some(FloorKind::Wood));
+    let open = Sky::of(&rain, roofed(seen.room_at(plaza), village));
+    assert_eq!(fall(&open, &meadow(5.0), 0.1), Some(Kind::Rain));
+    let houses = entries(&view, &site);
+    assert!(!houses.is_empty());
+    for (middle, ..) in houses {
+        let floor = seen.room_at(middle + middle.normalize() * f64::from(lift));
+        let indoors = Sky::of(&rain, roofed(floor, village));
+        assert_eq!(fall(&indoors, &meadow(5.0), 0.1), None);
+    }
 }
 
 /// Returns an app that moves the particle pool around a camera two metres over the ground of

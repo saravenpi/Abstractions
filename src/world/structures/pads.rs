@@ -47,11 +47,13 @@ pub struct Pad {
     y: (f32, f32),
     round: bool,
     kind: FloorKind,
+    /// True for the floor of a room, false for a floor under the open sky.
+    room: bool,
 }
 
 impl Pad {
     /// Returns the floor `slab` of a piece that stands at the chart point `at` of `view`, turned by `yaw`, with
-    /// its floor `floor` meters above sea level.
+    /// its floor `floor` meters above sea level. It is the floor of a room until it is made [`Pad::open`].
     pub fn new(view: &Terrain, at: (Vec2, f32, f32), slab: &Slab) -> Self {
         let (origin, yaw, floor) = at;
         let frame = Frame::at(view, origin);
@@ -65,7 +67,22 @@ impl Pad {
             y: (floor + slab.3[0] - BELOW, floor + slab.3[1] + ABOVE),
             round: slab.0,
             kind: slab.4,
+            room: true,
         }
+    }
+
+    /// Returns this floor as one under the open sky: a platform, a plaza or a boardwalk.
+    pub fn open(self) -> Self {
+        Self {
+            room: false,
+            ..self
+        }
+    }
+
+    /// Returns the material when feet at the planet position `pos` stand on this floor and it is the floor
+    /// of a room.
+    pub fn room(&self, pos: DVec3) -> Option<FloorKind> {
+        self.under(pos).filter(|_| self.room)
     }
 
     /// Returns the material when feet at the planet position `pos` stand on this floor.

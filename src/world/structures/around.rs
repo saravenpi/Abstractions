@@ -13,6 +13,8 @@ use crate::world::Terrain;
 use crate::world::focus::Focus;
 use crate::world::globe::{Chart, Face};
 
+mod rooms;
+
 /// Radius in meters around the focus within which [`Surroundings`] always knows every site.
 pub const AROUND: f32 = 320.0;
 

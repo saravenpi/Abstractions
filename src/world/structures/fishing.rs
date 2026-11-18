@@ -8,9 +8,13 @@ use super::palette::{DARK_WOOD, PLANK, THATCH, WOOD};
 use super::roofs::lean_height;
 use super::tags::Tag;
 
+/// Height of the low edge of the shelter roof over its ground, in meters: the collider under it leaves a
+/// player, 1.8 m tall, room to walk in.
+const EAVE: f32 = 2.1;
+
 /// Adds the lean-to shelter on four posts that reach up to its roof.
 fn shelter(b: &mut Build) {
-    let (lo, hi) = (Vec3::new(-2.6, 1.8, -2.7), Vec3::new(2.6, 1.8, 0.5));
+    let (lo, hi) = (Vec3::new(-2.6, EAVE, -2.7), Vec3::new(2.6, EAVE, 0.5));
     for (x, z) in [(-2.2, -2.4), (2.2, -2.4), (-2.2, 0.2), (2.2, 0.2)] {
         let (foot, top) = (Vec3::new(x, -0.3, z), lean_height(lo, hi, 1.0, z));
         let size = Vec2::new(0.09, top + 0.3);

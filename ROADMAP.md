@@ -60,7 +60,7 @@ Planets get a kind, and the kind comes from physics.
 
 One record per planet feeds everything below it. This is the version that makes the tenth landing different from the first.
 
-## 0.9: climate and terrain
+## 0.9: climate and terrain (released)
 
 **Goal:** the planet record shapes the ground you walk on. Two island worlds no longer look alike, and a planet has poles, a warm belt, wet coasts and dry interiors.
 

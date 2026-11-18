@@ -5,6 +5,55 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-18
+
+### Added
+
+- Climate: every place on a planet has its own temperature and rainfall, from its latitude, its height, the winds and the sea. Biomes, snow lines and deserts follow it, so poles are cold, equators warm and the lee of mountains dry.
+- Terrain shaped by the planet: rivers and river beds, landforms that follow the climate and the gravity, and craters on worlds without air.
+- Weather where you stand: clouds, rain, snow, dust storms, gusts and far thunder, with their sounds. It never rains or snows indoors.
+- Seasons on tilted planets: the ground and the snow change through the year. Kodya is now tilted like the Earth, and a Kodya year lasts about 70 hours of play.
+- The board computer shows each planet's season, its range of temperatures and a climate map. The weather is on the HUD.
+- Self-update: the title screen tells you when a newer version is out, and "Check for updates" in the main menu looks again at any time. The update screen shows the notes and the size, downloads with a progress bar you can cancel, checks the download, installs it and offers to restart. On macOS it downloads the disk image and offers to open it. Settings > General > Check for updates at launch, on by default.
+- The way home: the board computer always lists your home galaxy, home star and Kodya, marked with a house. Away from home a Home row stays on top of the lists, the map pins a house with the distance on its rim, the header says how far you are, and the compass points home in space and on other worlds. A "Course Home" button and the Home key set the course home one step at a time.
+- The landing gear folds in flight and comes down near the ground. The flight instruments show it: up, moving or down.
+- The warp rushes through streaks of dust, and the stars sway as the drive engages.
+- Plants grow as thick as the climate lets them, and villages and camps stand only where their people could live.
+
+### Changed
+
+- Press Space again in the air to spread the wingsuit, and once more to fold it. The wings key (R) still works. Hold Shift in a fall to fire the boots and slow the descent; with the wings out, Shift is still the boost.
+- The wingsuit glides much further, about four metres forward for one down, and the keys steer it.
+- The ship handles more calmly near the ground, and its steering is locked while the warp is engaged: line up during the spool.
+- The board computer selects on a click, not when the pointer passes over a row; a double click sets the course. The panel has more room, and the arrow on the maps points where the ship points.
+- The companion looks around on its own, head first, instead of copying where you look.
+- In third person you can turn the camera to see your face, and the body dives head first under water.
+- The home base stands at a mild latitude. A world saved in 0.8.1 on Kodya starts at the new base with a fresh ship; discoveries and play time are kept. Some worlds now start in autumn.
+- A new game opens under a calm sky: no storm, rain, snow or dust for the first five minutes on Kodya.
+- Rivers and ponds are drawn on near ground only.
+- The night sky shows only real moons. A world without a moon, like Kodya, has darker nights lit by the stars.
+- Far planets and moons are lit as brightly as the ground.
+- Releases also publish a plain Linux binary, a plain Windows `.exe` and SHA-256 checksum files, which the self-update uses.
+
+### Removed
+
+- Ray tracing: the "Ray tracing (experimental)" option, its status line and its log. The game looks as it did with the option off. Old settings files still load.
+
+### Fixed
+
+- A crash no longer bounces the ship back into the air, and the ship no longer turns into the ground.
+- Roofs are solid where they are drawn: you can walk on them, and into the fishing shelter and under the shrine's eaves.
+- A world saved in 0.8.1 on another planet no longer resumes under the ground.
+- Loading a second world in one session no longer adds false first visits to its log.
+- Seen from the air or from orbit, a planet no longer changes colour all over with the season under the camera.
+- Dust storms no longer blow over meadows, forests or snow.
+- Large planets load their distant ground and their climate map far faster.
+- A loaded ship keeps its landing gear as it was saved.
+- The sea no longer shows a dark patch or pale rings under you when you fly up.
+- Lava seas glow from any height and from space, not only close to you.
+- Planets and moons keep their real colours and clouds when you fly away from them.
+- Shadows fade out as you climb instead of vanishing at once.
+
 ## [0.8.1] - 2026-11-18
 
 ### Added

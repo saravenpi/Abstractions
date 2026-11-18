@@ -94,11 +94,18 @@ Life that fits its planet.
 
 Species are generated once per planet, then placed by the same scatter rules that place trees today.
 
-## 0.11: hunting and crafting
+## 0.11: hunting, mining and crafting
 
-Hunt what lives on a planet, and build your gear from it. No recipe and no weapon is written by hand: the gear comes from the tissues and from physics.
+Hunt what lives on a planet, dig what lies under it, and build your gear from both. No recipe and no weapon is written by hand: the gear comes from the tissues and from physics.
 
 - **Harvesting.** Creatures, plants and rocks give their tissues. Breaking a part in a fight drops that part.
+- **Geology you can read.** Deposits are a pure function of the seed, the position and the depth, placed by simple geological processes: volcanic veins near lava and basalt, sediment layers on wet worlds, heavy minerals in river beds, dense metals in the craters of barren worlds, rare minerals at hot springs under the sea, cores and trapped gas in ice. Outcrop colours, surface rocks and plants that like rich soil show what lies below.
+- **Prospecting.** The companion's scanner reads density and echo with limited range and precision. It gives odds, not a treasure map.
+- **Digging and drilling.** A pick must be harder than the rock, the same rule as for shells. A drill needs an energy store, like a launcher: a spring crank, an explosive gland or a charged tissue. Heat rises with depth at a rate set by the planet record, and gas pockets, water and cave-ins wait below, so tolerances matter underground too.
+- **Mining in steps.** First, outcrops and boulders placed like today's props, with no terrain change. Then open pits: shapes cut into the height field, stored as per-chunk changes and meshed again. Tunnels come with caves (see Later).
+- **Drill rigs** are structures. Nothing runs while you are away: the yield follows from the elapsed time. Deposits run out, and only the extracted amount is stored.
+- **Wear and decay.** Items wear and break at their weakest joint. Organic tissues decay unless treated: gel dries, hide rots. A broken robot leaves part of its gear behind.
+- **Processing chains.** Raw tissue, then treatment (tanning, smelting, fire hardening), then piece, then item. Some treatments need a workshop.
 - **Crafting by intent,** not by recipe. You ask for a function: cut, pierce, crush, block, reach, throw, launch, contain. A form grammar assembles a grip, a shaft, a head, a guard or a counterweight to meet it, from the tissues you carry.
 - **Hand-made pieces, generated assemblies.** The pieces are modelled by hand, with dials and attachment points, so every result stays clean. The grammar picks and joins them. A critic renders 20 candidates at game resolution and keeps the one with the most readable silhouette.
 - **Gear that looks like its source.** Tissues dress the pieces with their colour, pattern, gloss, translucency and glow. Each item shows one signature: the tissue value that differs most from the planet's average life. A slime gives a glassy coating, a jelly a glowing core, a crystal creature faceted edges.
@@ -113,7 +120,7 @@ Hunt what lives on a planet, and build your gear from it. No recipe and no weapo
 
 Items are named after their source: "Silvaren bow", "Velkra breastplate". The same tissues upgrade the ship and the companion.
 
-Rocks and plants already exist, so the mineral and plant half can start before 0.10.
+Rocks and plants already exist, so the mineral and plant half can start before 0.10. Gas giants from 0.8.1 are harvested in flight, by passing the ship through their air. Creatures that eat minerals and crystal creatures live near deposits, so digging there has consequences.
 
 ## 0.12: life odds
 
@@ -152,23 +159,46 @@ What a people believes and remembers, shown in the world.
 Meeting them.
 
 - **Languages** learned word by word. They use the regional vocabulary from 0.10, so the creature names you heard for hours turn out to mean something.
-- **Trade** and what each culture values.
+- **Trade** and what each culture values. The economy behind it is 0.16.
 - **Reputation** per culture, shaped by what you do.
 - **Species with spaceflight** that you meet in other systems, with stations and ships.
-- **Your companion as interpreter.**
+- **Your companion as interpreter.** The more words of a people you know, the better you bargain.
 
 This builds on the board computer and the discovery atlas from 0.6.
+
+## 0.16: economy
+
+A local economy that comes from the same data as everything else. What a settlement sells depends on what lives and grows around it. What it buys depends on what it lacks and what its culture values.
+
+- **Stock from the area.** Each settlement produces from its ecosystem and its ground, and consumes by its population. A village by a slime marsh sells gel; a mountain village sells crystal.
+- **Prices from scarcity and culture.** Rare here means dear here: heat scales are worth a fortune on an ice world and little at home. Culture adds taste: a people that values light pays well for anything that glows.
+- **Local makers use the 0.11 grammar.** Goods for sale are generated by the same crafting system, from local tissues and in the culture's style. One system serves the player and the people, so a trader's gear tells where it comes from.
+- **Ways to exchange** follow culture and technology: barter for small groups; object money for village networks, where a rare, durable, light tissue of the region becomes the currency (shells, crystals, hard seeds); minted coins for advanced cultures, limited by their real reserves; gift and debt for communal cultures, where reputation is the currency.
+- **Exchange rates** come from the value of each currency's backing tissue in each region. Gaps between planets make trade worth it, and the ship becomes a freighter.
+- **Order books.** Settlements post buy and sell orders from their stock and shortages. In multiplayer, players add their own orders on top.
+- **Transport costs physics, not fuel.** Cargo mass changes the Newtonian flight: a full ship accelerates less and brakes earlier on landing.
+- **Risk pays.** Rare tissues sit where planets are dangerous: hazards, dense predators, hostile peoples.
+- **Information is a resource.** You only know the prices of places you visited, as of your visit. The companion records them with their date. A deposit survey can be sold.
+- **Requests from shortages.** A settlement short of something posts a request, because 0.9 weather or overhunting really cut its supply. No quest is written by hand.
+- **Taboos.** A religion from 0.14 can make a species or a mountain sacred. Hunting or drilling there closes that people's market, or earns a contract to protect it.
+- **Another way through tolerances.** If you cannot survive the lava world yet, buy the scales from a people who live there.
+- **Courier contracts with a deposit:** carry goods for a settlement or another player, and the deposit covers the cargo.
+- **Nothing runs in the background.** A settlement's stock and prices are a pure function of its seed and the time. Only what you changed is stored. Sell 50 gels and the price drops, then recovers by formula, like populations.
+- **Everything is physical.** No money comes from nowhere. Life and ground produce; wear, decay and consumption destroy. A view of what enters and what leaves the economy catches inflation early.
+- **The companion summarises:** where to sell, what is missing, which price is old. No spreadsheet needed.
+
+Hunter, trader and maker are three ways to progress, and any mix works. Perishable goods, cargo mass and local currencies keep markets local, so no single hub swallows all trade.
 
 ## Later, not yet ordered
 
 - Building: a base of your own, from the same pieces, tissues and joints as 0.11 gear.
 - The control container opens, and you find out more about who is driving.
-- Caves, underwater structures and things under the ice.
-- Other humans and their robots: co-op exploration.
+- Caves, underwater structures and things under the ice. Mine tunnels share their local volume representation.
+- Other humans and their robots: co-op exploration. One seed, one universe, and a server that holds what players changed: stocks, prices, kills, deposits. Players specialise (one hunts, one crafts, one hauls), trade by barter or in any local currency, and form groups that share a base and a stock. Items carry their maker's name. Fights between players are opt-in.
 - A galaxy map you can fly through.
 - Mod support for generators.
 
 ## Research behind this
 
-The techniques and sources for 0.8 to 0.14 are in the research report:
+The techniques and sources for 0.8 to 0.16 are in the research report:
 https://mycelium.facile.studio/artifacts/2026-11-17-procedural-universe-for-abstractions-research-and-roadmap-november-2026-5fb680

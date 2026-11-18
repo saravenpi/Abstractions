@@ -8,6 +8,7 @@ use super::assist::{eased, ramp};
 use super::body::Ship;
 use super::flight::Controls;
 use super::pilot::Autopilot;
+use super::warp::Warp;
 use crate::computer::Computer;
 use crate::settings::{Keymap, Persistent, Settings};
 use crate::space::{Frame, Location, Travel};
@@ -84,6 +85,16 @@ impl Devices<'_> {
     }
 }
 
+/// Returns the turn the keys ask of a ship whose drive is in `warp`: nothing while the warp is
+/// engaged, when the ship flies the line it was pointed along and no hand could steer it, and
+/// what the keys ask otherwise, the spool included, so the pilot can still line up.
+pub fn steerable(warp: Warp, keys: DVec3) -> DVec3 {
+    match warp {
+        Warp::Active { .. } => DVec3::ZERO,
+        _ => keys,
+    }
+}
+
 /// Reads the helm while the player is seated, and lets go of every control while on foot or
 /// while the board computer is open. The throttle lever stays where it was. With the assist on
 /// over a planet the turn keys ease in over [`RAMP`](super::assist::RAMP), so that a tap is a
@@ -100,7 +111,7 @@ pub fn read(
         return;
     }
     let map = devices.settings.controls.keys;
-    let keys = devices.turn(&map);
+    let keys = steerable(ship.warp, devices.turn(&map));
     helm.held = ramp(helm.held, keys, devices.time.delta_secs_f64());
     let surface = matches!(ship.frame, Frame::Surface(_));
     let turn = if ship.assist && surface {
@@ -117,5 +128,19 @@ pub fn read(
     let assist = ship.assist ^ devices.keys.just_pressed(map.ship.assist);
     if (throttle, assist) != (ship.throttle, ship.assist) {
         (ship.throttle, ship.assist) = (throttle, assist);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// An engaged warp takes no steering, whatever the keys ask; off or spooling, the keys steer.
+    #[test]
+    fn an_engaged_warp_cannot_be_steered() {
+        let keys = DVec3::new(1.0, -1.0, 0.5);
+        assert_eq!(steerable(Warp::Active { speed: 2.0e9 }, keys), DVec3::ZERO);
+        assert_eq!(steerable(Warp::Off, keys), keys);
+        assert_eq!(steerable(Warp::Spooling { left: 2.0 }, keys), keys);
     }
 }

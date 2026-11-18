@@ -1,0 +1,194 @@
+import bevy_pbr::render::mesh_view_bindings::view;
+import bevy_pbr::render::pbr_types::PbrInput;
+import bevy_pbr::render::pbr_functions::{calculate_diffuse_color, calculate_F0, calculate_F0_dielectric};
+import bevy_pbr::render::pbr_lighting::{
+    LightingInput, LAYER_BASE, derive_lighting_input, Fd_Burley, specular, F_AB, EnvBRDFApprox,
+    perceptualRoughnessToRoughness,
+};
+
+struct Place {
+    centre: vec4<f32>,
+    star: vec4<f32>,
+    colour: vec4<f32>,
+    air: vec4<f32>,
+    day: vec4<f32>,
+    eye_sun: vec4<f32>,
+    eye_sky: vec4<f32>,
+}
+
+struct Daylight {
+    tint: vec3<f32>,
+    through: f32,
+    risen: f32,
+    sky: f32,
+}
+
+struct Light {
+    sun: vec3<f32>,
+    sky: vec3<f32>,
+}
+
+const DEPTH: vec3<f32> = vec3<f32>(0.045, 0.10, 0.23);
+const HORIZON_MASS: f32 = 12.5;
+const LUMA: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
+const SUN_EDGE: vec2<f32> = vec2<f32>(-0.06, 0.03);
+const SKY_EDGE: vec2<f32> = vec2<f32>(-0.12, 0.25);
+const NIGHT_EDGE: vec2<f32> = vec2<f32>(-0.02, 0.3);
+const SHADOW_EDGE: vec2<f32> = vec2<f32>(0.97, 1.03);
+const NIGHT_AMBIENT_COLOR: vec3<f32> = vec3<f32>(0.35, 0.45, 0.9);
+const NIGHT_AMBIENT: f32 = 40.0;
+const DAY_AMBIENT: f32 = 350.0;
+const SPACE_AMBIENT: f32 = 0.2;
+const SPACE_LUX: f32 = 12000.0;
+
+fn air_mass(height: f32) -> f32 {
+    return 1.0 / (max(height, 0.0) + 1.0 / HORIZON_MASS);
+}
+
+fn transmit(height: f32, share: f32) -> vec3<f32> {
+    return exp(-DEPTH * (air_mass(height) * share));
+}
+
+fn peak(light: vec3<f32>) -> vec3<f32> {
+    let top = max(light.x, max(light.y, light.z));
+    if (top <= 0.000001) {
+        return vec3<f32>(1.0);
+    }
+    return light / top;
+}
+
+fn luminance(light: vec3<f32>) -> f32 {
+    return dot(light, LUMA);
+}
+
+fn to_linear(c: vec3<f32>) -> vec3<f32> {
+    let low = c / 12.92;
+    let high = pow((max(c, vec3<f32>(0.0)) + vec3<f32>(0.055)) / 1.055, vec3<f32>(2.4));
+    return select(high, low, c <= vec3<f32>(0.04045));
+}
+
+fn daylight(height: f32, star: vec3<f32>, depth: f32) -> Daylight {
+    let through = star * transmit(height, depth);
+    let full = max(luminance(star * transmit(1.0, 1.0)), 0.000001);
+    var out: Daylight;
+    out.tint = peak(through);
+    out.through = min(luminance(through) / full, 1.0);
+    out.risen = smoothstep(SUN_EDGE.x, SUN_EDGE.y, height);
+    out.sky = smoothstep(SKY_EDGE.x, SKY_EDGE.y, height);
+    return out;
+}
+
+fn air(altitude: f32, height: f32) -> f32 {
+    if (height <= 0.0) {
+        return 0.0;
+    }
+    let t = clamp(altitude / height, 0.0, 1.0);
+    return 1.0 - t * t;
+}
+
+fn horizon_dip(altitude: f32, radius: f32) -> f32 {
+    let ratio = radius / max(radius + max(altitude, 0.0), 1.0);
+    return sqrt(max(1.0 - ratio * ratio, 0.0));
+}
+
+fn shadow_at(height: f32, altitude: f32, radius: f32) -> f32 {
+    if (height >= 0.0) {
+        return 1.0;
+    }
+    let miss = (1.0 + altitude / max(radius, 1.0)) * sqrt(max(1.0 - height * height, 0.0));
+    return smoothstep(SHADOW_EDGE.x, SHADOW_EDGE.y, miss);
+}
+
+fn light_at(place: Place, height: f32, altitude: f32) -> Light {
+    let radius = place.centre.w;
+    let seen = height + horizon_dip(altitude, radius);
+    let day = daylight(seen, place.colour.rgb, place.star.w);
+    let left = air(altitude, place.air.x) * place.colour.w;
+    let open = SPACE_LUX * shadow_at(height, altitude, radius) * (1.0 - left);
+    let lux = open + SPACE_LUX * day.through * day.risen * left;
+    let night = smoothstep(NIGHT_EDGE.x, NIGHT_EDGE.y, -seen) * left;
+    let thin = SPACE_AMBIENT + (1.0 - SPACE_AMBIENT) * left;
+    let level = (NIGHT_AMBIENT + (DAY_AMBIENT - NIGHT_AMBIENT) * day.sky) * thin + place.air.y * night;
+    var out: Light;
+    out.sun = to_linear(mix(peak(place.colour.rgb), day.tint, left)) * lux;
+    out.sky = to_linear(mix(NIGHT_AMBIENT_COLOR, place.day.rgb, day.sky)) * level;
+    return out;
+}
+
+fn height_at(place: Place, world: vec3<f32>) -> vec2<f32> {
+    let out = world - place.centre.xyz;
+    let far = max(length(out), 0.001);
+    return vec2<f32>(dot(out / far, place.star.xyz), far - place.centre.w);
+}
+
+fn light_of(place: Place, world: vec3<f32>) -> Light {
+    let at = height_at(place, world);
+    return light_at(place, at.x, at.y);
+}
+
+fn sky_gain(place: Place, world: vec3<f32>, eye: vec3<f32>) -> f32 {
+    let here = height_at(place, world);
+    let there = height_at(place, eye);
+    let radius = place.centre.w;
+    let near = smoothstep(SKY_EDGE.x, SKY_EDGE.y, here.x + horizon_dip(here.y, radius));
+    let seen = smoothstep(SKY_EDGE.x, SKY_EDGE.y, there.x + horizon_dip(there.y, radius));
+    let swing = DAY_AMBIENT - NIGHT_AMBIENT;
+    return (NIGHT_AMBIENT + swing * near) / (NIGHT_AMBIENT + swing * seen);
+}
+
+fn sun_response(in: PbrInput, toward: vec3<f32>) -> vec3<f32> {
+    let base = in.material.base_color.rgb;
+    let rough = in.material.perceptual_roughness;
+    let facing = max(dot(in.N, in.V), 0.0001);
+    var input: LightingInput;
+    input.layers[LAYER_BASE].NdotV = facing;
+    input.layers[LAYER_BASE].N = in.N;
+    input.layers[LAYER_BASE].R = reflect(-in.V, in.N);
+    input.layers[LAYER_BASE].perceptual_roughness = rough;
+    input.layers[LAYER_BASE].roughness = perceptualRoughnessToRoughness(rough);
+    input.P = in.world_position.xyz;
+    input.V = in.V;
+    input.diffuse_color = calculate_diffuse_color(
+        base,
+        in.material.metallic,
+        in.material.specular_transmission,
+        in.material.diffuse_transmission
+    );
+    input.metallic = in.material.metallic;
+    input.F0_dielectric = calculate_F0_dielectric(in.material.reflectance);
+    input.F0_metallic = base;
+    input.F_ab = F_AB(rough, facing);
+    var derived = derive_lighting_input(in.N, in.V, toward);
+    let diffuse = input.diffuse_color * Fd_Burley(&input, &derived);
+    let shine = specular(&input, &derived, input.layers[LAYER_BASE].roughness, 1.0);
+    return (diffuse + shine) * derived.NdotL;
+}
+
+fn ambient_response(diffuse: vec3<f32>, f0: vec3<f32>, rough: f32, facing: f32) -> vec3<f32> {
+    let soft = EnvBRDFApprox(diffuse, F_AB(1.0, facing));
+    let shine = EnvBRDFApprox(f0, F_AB(rough, facing));
+    return soft + shine * saturate(dot(f0, vec3<f32>(50.0 * 0.33)));
+}
+
+fn sky_response(in: PbrInput) -> vec3<f32> {
+    let base = in.material.base_color.rgb;
+    let facing = max(dot(in.N, in.V), 0.0001);
+    let diffuse = calculate_diffuse_color(
+        base,
+        in.material.metallic,
+        in.material.specular_transmission,
+        in.material.diffuse_transmission
+    );
+    let f0 = calculate_F0(base, in.material.metallic, in.material.reflectance);
+    return ambient_response(diffuse, f0, in.material.perceptual_roughness, facing) * in.diffuse_occlusion;
+}
+
+fn relit(in: PbrInput, lit: vec4<f32>, place: Place) -> vec4<f32> {
+    if (place.air.z <= 0.0) {
+        return lit;
+    }
+    let here = light_of(place, in.world_position.xyz);
+    let sun = (here.sun - place.eye_sun.rgb) * sun_response(in, place.star.xyz);
+    let sky = (here.sky - place.eye_sky.rgb) * sky_response(in);
+    return vec4<f32>(max(lit.rgb + (sun + sky) * view.exposure, vec3<f32>(0.0)), lit.a);
+}

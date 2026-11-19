@@ -17,6 +17,7 @@ use bevy::prelude::*;
 
 use super::Hosted;
 use crate::computer::Atlas;
+use crate::map::explored::Explored;
 use crate::net::join::{open, opts};
 use crate::net::link::{Link, Role};
 use crate::net::{NetDir, OpenToLan, Session, SessionNotice};
@@ -93,23 +94,33 @@ pub struct Opening<'w, 's> {
     changes: Option<Res<'w, Changes>>,
     /// What the player discovered.
     atlas: Option<Res<'w, Atlas>>,
+    /// The ground the player uncovered.
+    explored: Option<Res<'w, Explored>>,
 }
 
 impl Opening<'_, '_> {
     /// Returns the server's world of the world being played: its name, seed, universe time,
-    /// log and atlas, with no player records. Nothing without a world.
+    /// log, atlas and explored ground, with no player records. Nothing without a world.
     fn world(&self) -> Option<World> {
         let save = &self.active.as_deref()?.0.save;
         let atlas = self
             .atlas
             .as_deref()
             .and_then(|atlas| toml::to_string(atlas).ok());
+        let explored = self
+            .explored
+            .as_deref()
+            .into_iter()
+            .flat_map(Explored::bodies);
         Some(World {
             name: save.name.clone(),
             seed: save.seed,
             clock: self.clock.seconds,
             changes: self.changes.as_deref().cloned().unwrap_or_default(),
             atlas: atlas.unwrap_or_default(),
+            explored: explored
+                .map(|(body, words)| (body, words.to_vec()))
+                .collect(),
             ..World::default()
         })
     }
@@ -166,3 +177,7 @@ pub fn open_lan(
         notices.write(SessionNotice { line });
     }
 }
+
+#[cfg(test)]
+#[path = "open_tests.rs"]
+mod tests;

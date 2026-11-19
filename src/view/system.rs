@@ -14,7 +14,7 @@ use super::rig::Rig;
 use super::tune::RADIUS;
 use crate::player::Player;
 use crate::render::GameCamera;
-use crate::screens::{in_control, playing};
+use crate::screens::{in_control, shown};
 use crate::settings::{Persistent, Settings};
 use crate::ship::Ship;
 
@@ -188,7 +188,7 @@ pub(super) fn plugin(app: &mut App) {
             (ViewSet::Input, ViewSet::Rig)
                 .chain()
                 .run_if(enabled)
-                .run_if(playing),
+                .run_if(shown),
         )
         .add_systems(
             Update,

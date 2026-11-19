@@ -4,7 +4,7 @@ Written 2026-11-19 on the owner's MacBook (Apple M2, 8 cores, 16 GB). It replace
 
 ## Owner decision, 2026-11-19 (overrides CONTRACT.md and HANDOFF.md)
 
-Kodya is not special-cased. Its life comes from the same odds and rung rules as every planet: no forced `Rung::Skeletal`, and no herd guaranteed near the wake point. If the normal rules do not make an Earth-like home planet live, fix the physics they read and report the numbers to the owner; never add a home-planet override.
+Kodya is not special-cased. Its life comes from the same odds and rung rules as every planet: no forced `Rung::Skeletal`, and no herd guaranteed near the wake point. If the normal rules do not make an Earth-like home planet live, fix the physics they read and report the numbers to the owner; never add a home-planet override. The same holds for plants: on a living globe Kodya's plants come from its life through the normal planting, not the old hand-made tables, so its look changes in 0.11.
 
 ## Paths
 

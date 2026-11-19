@@ -11,6 +11,7 @@ use bevy::ui::RelativeCursorPosition;
 use bevy::ui_widgets::Activate;
 
 use super::chart::Dot;
+use super::course::{Offer, offer};
 use super::hover::{light, look, surface};
 use super::pointer::MapView;
 use super::tests_pointer::{click, pixel, point, rig};
@@ -82,6 +83,12 @@ fn said(app: &mut App) -> String {
     words.map(|text| text.0.clone()).unwrap_or_default()
 }
 
+/// Returns what the button of the action line does, when it shows.
+fn button(app: &mut App) -> Option<Act> {
+    let mut buttons = app.world_mut().query::<&Act>();
+    buttons.iter(app.world()).next().copied()
+}
+
 /// The keyboard works as before: the arrows move the selection, Enter sets the course to it,
 /// and Delete clears it. The action line says nothing without a course, and what the route
 /// can do with one.
@@ -101,7 +108,14 @@ fn the_keyboard_selects_sets_and_clears_the_course() {
     let name = row
         .target
         .name(app.world().resource::<crate::universe::Universe>());
-    assert_eq!(said(&mut app), action(&name, status).1);
+    let words = match offer(Some(&name), false, status) {
+        Offer::Words(words) => words,
+        Offer::Button(act, ..) => {
+            assert_eq!(button(&mut app), Some(act));
+            String::new()
+        }
+    };
+    assert_eq!(said(&mut app), words);
     tap(&mut app, KeyCode::ArrowUp, None);
     assert_eq!(app.world().resource::<Board>().cursor, 0);
     assert_eq!(app.world().resource::<Destination>().0, Some(row.target));

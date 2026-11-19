@@ -12,7 +12,7 @@ use super::home::{tab_of, toward};
 use super::locate::here;
 use super::open::ready;
 use super::pointer::MapView;
-use super::route::{Destination, Engage};
+use super::route::{Destination, Engage, RouteStatus};
 use super::typing::Typing;
 use super::view::Slot;
 use crate::audio::AudioCue;
@@ -103,6 +103,7 @@ fn focus_cursor(
 pub(super) struct Desk<'w, 's> {
     board: ResMut<'w, Board>,
     destination: ResMut<'w, Destination>,
+    route: Option<Res<'w, RouteStatus>>,
     commands: Commands<'w, 's>,
     world: Option<(Res<'w, Universe>, Res<'w, Anchor>)>,
 }
@@ -122,7 +123,7 @@ impl Desk<'_, '_> {
     }
 
     /// Runs an action of the screen: the course goes to the selected row, home, to the
-    /// autopilot or away.
+    /// autopilot while the route is idle, as with the map closed, or away.
     fn run(&mut self, act: Act) {
         match (act, self.destination.0) {
             (Act::Home, _) => self.home(),
@@ -130,7 +131,9 @@ impl Desk<'_, '_> {
                 let row = self.board.lines.get(self.board.cursor);
                 self.destination.0 = row.map(|line| line.target).or(self.destination.0);
             }
-            (Act::Engage, Some(target)) => self.commands.trigger(Engage(target)),
+            (Act::Engage, Some(target)) if self.route.as_deref() == Some(&RouteStatus::Idle) => {
+                self.commands.trigger(Engage(target));
+            }
             (Act::Clear, Some(_)) => self.destination.0 = None,
             _ => {}
         }
@@ -196,17 +199,22 @@ pub(super) fn on_activate(
     }
 }
 
+/// Ends any typing and clears the search, so neither outlives the screen: the keys of the
+/// game work again once it closes, and Escape closes it once it opens again.
+fn stop_typing(mut typing: ResMut<Typing>, mut board: ResMut<Board>) {
+    *typing = Typing::Off;
+    if !board.filter.is_empty() {
+        (board.filter, board.stale) = (String::new(), true);
+    }
+}
+
 /// Registers the input systems of the screen.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Typing>()
         .add_observer(on_activate)
         .add_observer(super::typing::on_search)
-        .add_systems(
-            OnEnter(super::Computer::Open),
-            |mut typing: ResMut<Typing>| {
-                *typing = Typing::Off;
-            },
-        )
+        .add_systems(OnEnter(super::Computer::Open), stop_typing)
+        .add_systems(OnExit(super::Computer::Open), stop_typing)
         .add_systems(
             Update,
             (

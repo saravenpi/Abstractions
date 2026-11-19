@@ -1,11 +1,13 @@
 //! Writing the lists of the side panel of the map: the names of the favourites, the one being
-//! named with a caret, and the players with their colours. Rows past the end are hidden.
+//! named with a caret, the players with their colours, and what the save button saves. Rows
+//! past the end are hidden.
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::favourite::Favourites;
-use super::side::{FavName, FavRow, PlayerDot, PlayerName, PlayerRow};
+use super::level::Level;
+use super::side::{FavName, FavRow, PlayerDot, PlayerName, PlayerRow, Players, SAVE, SaveWords};
 use crate::computer::Typing;
 use crate::menus::{Marker, MarkerKind, Markers};
 
@@ -17,8 +19,9 @@ type Rows<'w, 's> = Query<
         &'static mut Node,
         Option<&'static FavRow>,
         Option<&'static PlayerRow>,
+        Has<Players>,
     ),
-    Or<(With<FavRow>, With<PlayerRow>)>,
+    Or<(With<FavRow>, With<PlayerRow>, With<Players>)>,
 >;
 
 /// The texts and squares of the two lists.
@@ -67,7 +70,8 @@ fn players_text(markers: &[Marker], friends: &[usize], faces: &mut Faces) {
     }
 }
 
-/// Writes both lists of the side panel and hides the rows past their ends.
+/// Writes both lists of the side panel and hides the rows past their ends, and the players
+/// while there are none.
 pub(super) fn write(
     (favourites, typing, markers): (Res<Favourites>, Res<Typing>, Res<Markers>),
     mut rows: Rows,
@@ -81,11 +85,11 @@ pub(super) fn write(
         .enumerate()
         .filter(|(_, marker)| marker.kind == MarkerKind::Friend);
     friends.extend(found.map(|(index, _)| index));
-    for (mut node, favourite, player) in &mut rows {
+    for (mut node, favourite, player, block) in &mut rows {
         let shown = match (favourite, player) {
             (Some(FavRow(index)), _) => *index < favourites.0.len(),
             (_, Some(PlayerRow(index))) => *index < friends.len(),
-            _ => false,
+            _ => block && !friends.is_empty(),
         };
         let display = [Display::None, Display::Flex][usize::from(shown)];
         if node.display != display {
@@ -96,4 +100,20 @@ pub(super) fn write(
         favourites_text(&favourites, &typing, &mut faces);
     }
     players_text(&markers.0, &friends, &mut faces);
+}
+
+/// Writes what the button that saves a favourite saves, when the level changes or the panel
+/// was just spawned: the place picked on a planet, where the player is on a chart.
+pub(super) fn save_words(
+    level: Res<Level>,
+    fresh: Query<(), Added<SaveWords>>,
+    mut texts: Query<&mut Text, With<SaveWords>>,
+) {
+    if !(level.is_changed() || !fresh.is_empty()) {
+        return;
+    }
+    let said = SAVE[usize::from(*level == Level::Chart)];
+    for mut text in &mut texts {
+        text.set_if_neq(Text(said.to_string()));
+    }
 }

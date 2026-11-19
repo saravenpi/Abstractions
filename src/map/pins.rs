@@ -8,7 +8,7 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use super::geo::to_chart;
+use super::geo::{copy_near, to_chart};
 use super::level::Level;
 use super::me::Me;
 use super::spots::place;
@@ -52,7 +52,7 @@ pub struct PinDot(pub usize);
 pub struct PinLabel(pub usize);
 
 /// Side in pixels of the dot of a marker.
-const DOT: f32 = 8.0;
+pub const DOT: f32 = 8.0;
 
 /// The dot of a node of the pool, centred on its point.
 fn dot(index: usize) -> impl Bundle {
@@ -62,11 +62,9 @@ fn dot(index: usize) -> impl Bundle {
         top: px(-0.5 * DOT),
         width: px(DOT),
         height: px(DOT),
-        border: UiRect::all(px(theme::LINE)),
         ..default()
     };
-    let colours = (BackgroundColor(Color::NONE), BorderColor::all(Color::NONE));
-    (PinDot(index), node, colours)
+    (PinDot(index), node, BackgroundColor(Color::NONE))
 }
 
 /// The name of a node of the pool, to the right of its dot.
@@ -151,13 +149,16 @@ impl Source<'_, '_> {
     }
 }
 
-/// Finds where every marker is drawn on the level shown, the player first on its planet.
-pub(super) fn collect(source: Source, mut pins: ResMut<Pins>) {
-    pins.0.clear();
+/// Finds where every marker is drawn on the level shown, the player first on its planet. The
+/// list is gathered aside and written only when it changed, so the frames it stays the same
+/// do not count as changes.
+pub(super) fn collect(source: Source, mut pins: ResMut<Pins>, mut found: Local<Pins>) {
+    let list = &mut found.0;
+    list.clear();
     if let Level::Planet(body) = *source.level
         && let Some((_, at)) = source.me.spot().filter(|(on, _)| *on == body)
     {
-        pins.0.push(Pin {
+        list.push(Pin {
             at: to_chart(at),
             marker: None,
         });
@@ -168,20 +169,23 @@ pub(super) fn collect(source: Source, mut pins: ResMut<Pins>) {
             true => source.on_planet(index),
             false => source.on_chart(index),
         };
-        if let Some(at) = at.filter(|_| pins.0.len() < POOL) {
-            pins.0.push(Pin {
+        if let Some(at) = at.filter(|_| list.len() < POOL) {
+            list.push(Pin {
                 at,
                 marker: Some(index),
             });
         }
     }
+    if pins.0 != found.0 {
+        pins.0.clone_from(&found.0);
+    }
 }
 
-/// Returns the pixel of the map the chart point `at` is drawn at on the level shown.
+/// Returns the pixel of the map the chart point `at` is drawn at on the level shown: on a
+/// planet, its copy nearest the longitude the lens looks at.
 pub(super) fn pixel(level: Level, (surface, view): (&Surface, &MapView), at: Vec2) -> Vec2 {
-    let lens = match level {
-        Level::Chart => view.lens,
-        Level::Planet(_) => surface.lens,
-    };
-    lens.to_map(at)
+    match level {
+        Level::Chart => view.lens.to_map(at),
+        Level::Planet(_) => surface.lens.to_map(copy_near(at, surface.lens.centre.x)),
+    }
 }

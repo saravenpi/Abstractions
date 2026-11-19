@@ -55,13 +55,14 @@ pub fn advice(target: Target, visited: bool) -> Option<&'static str> {
 }
 
 /// Returns the lines of the readout of `line`: the record of `world` when the row is a planet
-/// or a moon with a known record, and otherwise the facts of the row and what to do to learn
-/// more. The year of a moon is its turn around its planet.
+/// or a moon with a known record, what to do to learn more about one without, and otherwise
+/// the facts of the star or the galaxy and what to do to learn more. The year of a moon is its turn around its planet.
 pub fn readout(line: &Line, world: Option<&PlanetSpec>) -> Vec<String> {
     let Some(planet) = world else {
-        let known = std::iter::once(line.facts().to_string());
+        let body = matches!(line.target, Target::Body(_));
+        let known = (!body).then(|| line.facts().to_string());
         let hint = advice(line.target, line.visited).map(str::to_string);
-        return known.chain(hint).collect();
+        return known.into_iter().chain(hint).collect();
     };
     let record = &planet.record;
     let (radius, pull) = (distance(planet.radius), gravity(planet.gravity));

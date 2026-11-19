@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 use super::route::RouteStatus;
 use crate::saves::play_time;
+use crate::ui::Icon;
 
 /// What a button or a key of the map does to the course.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,6 +20,9 @@ pub enum Act {
     /// Set the course to the next place on the way home.
     Home,
 }
+
+/// What the course line says while no course is set.
+pub const NO_COURSE: &str = "Double-click a place or press Enter to set a course";
 
 /// What the breadcrumb says when the ship is inside no known galaxy.
 pub const NOWHERE: &str = "Deep space";
@@ -45,7 +49,7 @@ pub fn arrival(gap: f64, speed: f64) -> Option<String> {
 /// time to get there at `speed` metres per second, and the state of the route.
 pub fn course(to: Option<(&str, f64)>, speed: f64, status: RouteStatus) -> String {
     let Some((name, gap)) = to else {
-        return "No course set. Select a place, then set course".to_string();
+        return NO_COURSE.to_string();
     };
     let eta = arrival(gap, speed).map_or(String::new(), |eta| format!(" - {eta}"));
     format!(
@@ -68,5 +72,32 @@ pub fn action(name: &str, status: RouteStatus) -> (bool, String) {
         RouteStatus::Spooling => (false, "Spooling the warp drive".to_string()),
         RouteStatus::InWarp => (false, format!("In warp to {name}")),
         RouteStatus::Arrived => (false, format!("Arrived at {name}")),
+    }
+}
+
+/// What the action line of the course offers: a button that runs an act, with its icon and
+/// its words, or words alone while there is nothing to do.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Offer {
+    /// A button that runs this act.
+    Button(Act, Icon, String),
+    /// Words alone.
+    Words(String),
+}
+
+/// Returns what the action line offers: setting the course while the selection is not the
+/// course, engaging the autopilot while the route to the course named `course` is idle,
+/// clearing it once arrived, and otherwise what the route is doing or why it cannot start.
+pub fn offer(course: Option<&str>, set: bool, status: RouteStatus) -> Offer {
+    if set {
+        return Offer::Button(Act::Set, Icon::MapPin, "Set course".to_string());
+    }
+    let Some(name) = course else {
+        return Offer::Words(String::new());
+    };
+    match status {
+        RouteStatus::Idle => Offer::Button(Act::Engage, Icon::Send, action(name, status).1),
+        RouteStatus::Arrived => Offer::Button(Act::Clear, Icon::Close, "Clear course".to_string()),
+        _ => Offer::Words(action(name, status).1),
     }
 }

@@ -1,30 +1,30 @@
 //! Drawing the pool of markers: each node moved to its pixel and dressed for what it stands
-//! for, the rest hidden. Only what changed is written.
+//! for, the rest hidden. A name that would cross a marker or a name drawn before it is left
+//! out, so names stay readable where markers crowd. Only what changed is written.
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::level::Level;
-use super::pins::{PinDot, PinLabel, PinSlot, Pins, pixel};
+use super::pins::{DOT, POOL, PinDot, PinLabel, PinSlot, Pins, pixel};
 use super::surface::Surface;
+use crate::computer::{GLYPH, clear_of_bands};
 use crate::computer::{MapView, SIZE};
 use crate::menus::{Marker, MarkerKind, Markers};
 use crate::ui::theme;
 
-/// The look of one marker: its fill, its border, its turn and its name.
+/// The look of one marker: its fill, its turn and its name. Markers have no outline.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Dress<'a> {
     /// Colour inside the dot.
     pub fill: Color,
-    /// Colour of the border of the dot.
-    pub border: Color,
     /// Turn of the dot in radians: a waypoint is a square on its corner.
     pub turn: f32,
     /// The name written beside it.
     pub name: &'a str,
 }
 
-/// Returns how a marker of `kind` is drawn: in its own colour or white, hollow or filled,
+/// Returns how a marker of `kind` is drawn: in its own colour or white, grey or bright,
 /// and turned onto its corner, with the name it has without a label.
 pub fn shape(kind: MarkerKind) -> (bool, bool, f32, &'static str) {
     match kind {
@@ -37,7 +37,7 @@ pub fn shape(kind: MarkerKind) -> (bool, bool, f32, &'static str) {
 }
 
 /// Returns the look of `marker`, or of the player for nothing: the player white, a friend and a
-/// waypoint in their colour, a favourite and the ship hollow squares, home white.
+/// waypoint in their colour, a favourite and the ship grey squares, home white.
 pub fn dress(marker: Option<&Marker>) -> Dress<'_> {
     let Some(marker) = marker else {
         let white = (false, false, 0.0, "You");
@@ -49,17 +49,44 @@ pub fn dress(marker: Option<&Marker>) -> Dress<'_> {
 /// Returns the look of a marker drawn as `shape` says, in `color` when it has its own, named
 /// `label` or the name of its shape.
 fn look<'a>(
-    (own, hollow, turn, name): (bool, bool, f32, &'static str),
+    (own, grey, turn, name): (bool, bool, f32, &'static str),
     color: Color,
     label: &'a str,
 ) -> Dress<'a> {
     let tint = [theme::TEXT, color][usize::from(own)];
     Dress {
-        fill: [tint, Color::NONE][usize::from(hollow)],
-        border: [theme::INK, theme::TEXT][usize::from(hollow)],
+        fill: [tint, theme::MUTED][usize::from(grey)],
         turn,
         name: [label, name][usize::from(label.is_empty())],
     }
+}
+
+/// Where a marker is drawn, in pixels of the map, and how many characters its name has.
+pub type Spot = Option<(Vec2, usize)>;
+
+/// Returns which markers show their name on a map `side` pixels high: a name is left out when
+/// it would cross the dot or the shown name of a marker before it, or run under the header or
+/// footer words. The player comes first, so their name shows wherever there is room.
+pub fn named(spots: &[Spot; POOL], side: f32) -> [bool; POOL] {
+    let dot = |at: Vec2| Rect::from_center_size(at, Vec2::splat(DOT));
+    let name = |(at, chars): (Vec2, usize)| {
+        let corner = at + Vec2::new(DOT, -0.6 * theme::FONT_SMALL);
+        let size = Vec2::new(chars as f32 * GLYPH, theme::FONT_SMALL * 1.2);
+        Rect::from_corners(corner, corner + size)
+    };
+    let mut shown = [false; POOL];
+    for index in 0..POOL {
+        let Some(spot) = spots[index] else {
+            continue;
+        };
+        let words = name(spot);
+        let crosses = |rect: Rect| !rect.intersect(words).is_empty();
+        let crossed = spots[..index].iter().zip(shown).any(|(other, lit)| {
+            other.is_some_and(|other| crosses(dot(other.0)) || (lit && crosses(name(other))))
+        });
+        shown[index] = !crossed && clear_of_bands(words, side);
+    }
+    shown
 }
 
 /// The nodes of the pool.
@@ -74,7 +101,6 @@ pub struct Pool<'w, 's> {
         (
             &'static PinDot,
             &'static mut BackgroundColor,
-            &'static mut BorderColor,
             &'static mut UiTransform,
         ),
     >,
@@ -97,7 +123,7 @@ fn moved(pool: &mut Pool, wanted: impl Fn(usize) -> Option<Vec2>) {
     }
 }
 
-/// Draws every marker of [`Pins`] on the level shown.
+/// Draws every marker of [`Pins`] on the level shown, with the names [`named`] keeps.
 pub(super) fn draw(
     (pins, markers, level): (Res<Pins>, Res<Markers>, Res<Level>),
     (surface, view): (Res<Surface>, Res<MapView>),
@@ -105,29 +131,31 @@ pub(super) fn draw(
 ) {
     let side = [SIZE, view.side][usize::from(view.side > 0.0)];
     let lenses = (&*surface, &*view);
-    moved(&mut pool, |index| {
-        let pin = pins.0.get(index)?;
-        Some(pixel(*level, lenses, pin.at) / SIZE * side)
-    });
     let look = |index: usize| {
         pins.0
             .get(index)
             .map(|pin| dress(pin.marker.and_then(|at| markers.0.get(at))))
     };
-    for (PinDot(index), mut fill, mut border, mut turn) in &mut pool.dots {
+    let spots: [Spot; POOL] = std::array::from_fn(|index| {
+        let at = pixel(*level, lenses, pins.0.get(index)?.at) / SIZE * side;
+        look(index).map(|dress| (at, dress.name.chars().count()))
+    });
+    let shown = named(&spots, side);
+    moved(&mut pool, |index| spots[index].map(|(at, _)| at));
+    for (PinDot(index), mut fill, mut turn) in &mut pool.dots {
         let Some(dress) = look(*index) else {
             continue;
         };
         fill.set_if_neq(BackgroundColor(dress.fill));
-        border.set_if_neq(BorderColor::all(dress.border));
         let rotation = Rot2::radians(dress.turn);
         if turn.rotation != rotation {
             turn.rotation = rotation;
         }
     }
     for (PinLabel(index), mut text) in &mut pool.labels {
-        if let Some(dress) = look(*index).filter(|dress| text.0 != dress.name) {
-            text.0 = dress.name.to_string();
+        let wanted = look(*index).map(|dress| ["", dress.name][usize::from(shown[*index])]);
+        if let Some(name) = wanted.filter(|name| text.0 != *name) {
+            text.0 = name.to_string();
         }
     }
 }

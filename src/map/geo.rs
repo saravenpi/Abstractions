@@ -1,5 +1,6 @@
 //! Places on a planet: the latitude and longitude of a direction from its centre, the point of
-//! the flat map they are drawn at, and the words that say them.
+//! the flat map they are drawn at, and the words that say them. The flat map wraps east and
+//! west: a point and its copies whole turns away are the same place.
 //!
 //! The flat map is the whole planet spread from longitude 0 on the left edge, going east, to
 //! the full turn on the right edge, with the north pole up. It is twice as wide as it is high
@@ -25,6 +26,18 @@ pub fn lat_lon(dir: DVec3) -> (f64, f64) {
 pub fn to_chart(dir: DVec3) -> Vec2 {
     let (lat, lon) = lat_lon(dir);
     Vec2::new((lon / PI - 1.0) as f32, (lat / PI) as f32)
+}
+
+/// Returns the chart point `at` moved by whole turns of longitude into the flat map, from -1
+/// to 1 across, for a point of a map that wraps east and west.
+pub fn wrapped(at: Vec2) -> Vec2 {
+    Vec2::new((at.x + 1.0).rem_euclid(2.0) - 1.0, at.y)
+}
+
+/// Returns the copy of the chart point `at`, whole turns of longitude east or west, nearest to
+/// the longitude `x` the lens looks at.
+pub fn copy_near(at: Vec2, x: f32) -> Vec2 {
+    Vec2::new(at.x + 2.0 * ((x - at.x) * 0.5).round(), at.y)
 }
 
 /// Returns the direction drawn at the chart point `at`, or nothing off the flat map.

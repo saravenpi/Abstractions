@@ -4,7 +4,7 @@
 
 use bevy::prelude::*;
 
-use crate::ui::{Icon, Tone, column, entry, frame, label, step_button, text, theme};
+use crate::ui::{Icon, Tone, column, frame, icon_slot, label, step_button, text, theme};
 
 /// Favourites listed at most.
 pub const FAVOURITES: usize = 5;
@@ -40,6 +40,14 @@ pub struct FavName(pub usize);
 /// The button that saves a favourite.
 #[derive(Component)]
 pub struct SaveFavourite;
+
+/// The words of the button that saves a favourite, which say what it saves on the level shown.
+#[derive(Component)]
+pub struct SaveWords;
+
+/// What the button that saves a favourite says on a planet and on a chart, where it saves
+/// where the player is.
+pub const SAVE: [&str; 2] = ["Save as favourite", "Save my spot"];
 
 /// The row of the player at this index of the list of friends, hidden past its end.
 #[derive(Component, Debug, Clone, Copy)]
@@ -92,16 +100,17 @@ pub fn favourites() -> impl Bundle {
         text("Favourites", theme::FONT_SMALL, theme::MUTED),
         TextLayout::no_wrap(),
     );
+    let row = Node {
+        align_items: AlignItems::Center,
+        column_gap: px(theme::GAP_S),
+        ..default()
+    };
+    let words = (SaveWords, label(SAVE[0], theme::FONT_SMALL, Tone::Plain));
     let save = (
         frame(),
         SaveFavourite,
-        Node::default(),
-        children![entry(
-            Icon::Star,
-            "Save as favourite",
-            theme::FONT_SMALL,
-            Tone::Plain
-        )],
+        row,
+        children![icon_slot(Some(Icon::Star), Tone::Plain), words],
     );
     (
         column(percent(100), theme::GAP_XS),
@@ -134,14 +143,26 @@ fn player(index: usize) -> impl Bundle {
     )
 }
 
-/// The players: their heading over the pool of rows.
+/// Marks the players with their heading, hidden while there are none.
+#[derive(Component)]
+pub struct Players;
+
+/// The players: their heading over the pool of rows, hidden while there are none.
 pub fn players() -> impl Bundle {
     let head = (
         text("Players", theme::FONT_SMALL, theme::MUTED),
         TextLayout::no_wrap(),
     );
+    let block = Node {
+        display: Display::None,
+        width: percent(100),
+        flex_direction: FlexDirection::Column,
+        row_gap: px(theme::GAP_XS),
+        ..default()
+    };
     (
-        column(percent(100), theme::GAP_XS),
+        Players,
+        block,
         children![
             head,
             (

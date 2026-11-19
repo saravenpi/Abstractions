@@ -75,12 +75,12 @@ fn the_filter_takes_letters_and_shows_in_the_header() {
             (filter, Sort::Near),
         )
     };
-    assert_eq!(shown(9, ""), "Vereya system - 1 to 6 of 9 by distance");
-    assert_eq!(shown(2, "ko"), "\"ko\" - 1 to 2 of 2 by distance");
-    assert!(shown(0, "").starts_with("Vereya system - nothing charted yet"));
+    assert_eq!(shown(9, ""), "Vereya system - 1-6 of 9");
+    assert_eq!(shown(2, "ko"), "\"ko\"");
+    assert!(shown(0, "").starts_with("Vereya system - none charted yet"));
     assert!(shown(0, "zz").starts_with("No name holds \"zz\""));
     let by_name = summary("Known universe", (1, 4, 4), ("", Sort::Name));
-    assert_eq!(by_name, "Known universe - 1 to 4 of 4 by name");
+    assert_eq!(by_name, "Known universe by name");
 }
 
 /// A row wears the icon of what it is, a pin when it is the destination and the ship where
@@ -112,6 +112,26 @@ fn a_row_shows_what_it_is_and_whether_it_was_visited() {
     assert_eq!(title(&star, (false, false)), Tone::Muted);
     assert_eq!(title(&planet, (false, false)), Tone::Plain);
     assert_eq!(title(&planet, (true, false)), Tone::Accent);
+}
+
+/// A search left over once typing went elsewhere, as after naming a favourite, is cleared by
+/// Escape, and the next Escape closes the map.
+#[test]
+fn escape_clears_a_search_left_over() {
+    let mut app = game("leftover");
+    tap(&mut app, KeyCode::Tab, None);
+    run(&mut app, 5);
+    tap(&mut app, KeyCode::Slash, None);
+    tap(&mut app, KeyCode::KeyK, Some("k"));
+    *app.world_mut().resource_mut::<Typing>() = Typing::Off;
+    run(&mut app, 2);
+    let open = |app: &App| *app.world().resource::<State<Computer>>().get() == Computer::Open;
+    assert_eq!(app.world().resource::<Board>().filter, "k");
+    tap(&mut app, KeyCode::Escape, None);
+    assert!(open(&app) && app.world().resource::<Board>().filter.is_empty());
+    tap(&mut app, KeyCode::Escape, None);
+    run(&mut app, 2);
+    assert!(!open(&app));
 }
 
 /// The search key starts a search, typing then narrows the list, Backspace widens it again,

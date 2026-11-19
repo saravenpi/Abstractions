@@ -5,13 +5,25 @@
 use bevy::math::{DVec3, Vec2};
 use bevy::prelude::*;
 
+use super::explored::grid::COLS;
 use super::geo::to_chart;
 use super::me::Me;
 use crate::computer::{Board, DIVE, Dot, Lens, MapView, Tab, Target};
 use crate::universe::BodyId;
 
-/// Zoom of the flat map the screen opens at on the ground: the land around the player.
-pub const GROUND: f32 = 16.0;
+/// Most screen pixels one cell of the planet picture takes at the closest zoom.
+const CELL_PIXELS: f32 = 6.0;
+
+/// Side in pixels of the square map in a 1280 by 720 window, which the closest zoom is set for.
+pub(super) const REFERENCE_MAP: f32 = 720.0;
+
+/// Closest zoom of the flat map: one cell of the picture is then [`CELL_PIXELS`] wide on the
+/// map of a 1280 by 720 window, so the picture stays readable.
+pub(super) const CLOSEST: f32 = CELL_PIXELS * COLS as f32 / REFERENCE_MAP;
+
+/// Zoom of the flat map the screen opens at on the ground: the land around the player, as close
+/// as the map goes.
+pub const GROUND: f32 = CLOSEST;
 
 /// Zoom of the flat map at which the planet fills the height of the map.
 pub const WHOLE: f32 = 2.0;
@@ -58,6 +70,17 @@ pub fn rise(view: &MapView, board: &Board, body: BodyId) -> Option<(Lens, Lens)>
     Some((close(DIVE), close(DIVE * 0.5)))
 }
 
+/// Returns `lens` held to the flat map of a planet: from the whole planet to [`CLOSEST`], and
+/// never past the poles, so the picture always fills the view. East and west it wraps.
+pub fn framed(lens: Lens) -> Lens {
+    let zoom = lens.zoom.clamp(WHOLE, CLOSEST);
+    let reach = 0.5 - 1.0 / zoom;
+    Lens {
+        zoom,
+        centre: Vec2::new(lens.centre.x, lens.centre.y.clamp(-reach, reach)),
+    }
+}
+
 /// Returns where the flat map of a planet looks first: on `focus` when it was asked for, on
 /// the player close to the ground when they are on it, and on the whole planet otherwise.
 pub fn first(focus: Option<DVec3>, here: Option<DVec3>) -> Lens {
@@ -70,5 +93,5 @@ pub fn first(focus: Option<DVec3>, here: Option<DVec3>) -> Lens {
         zoom: GROUND,
         centre,
     });
-    lens.clamped()
+    framed(lens)
 }

@@ -1,11 +1,11 @@
 //! Tests of the places on a planet: the round trip of a direction through the flat map, and
-//! the words of its latitude and longitude.
+//! the words of its latitude and longitude, and the map wrapping east and west.
 
 use std::f64::consts::{FRAC_PI_2, PI};
 
 use bevy::math::{DVec3, Vec2};
 
-use super::geo::{coords, from_chart, lat_lon, to_chart};
+use super::geo::{coords, copy_near, from_chart, lat_lon, to_chart, wrapped};
 use crate::computer::direction;
 
 #[test]
@@ -38,4 +38,16 @@ fn coordinates_read_north_south_east_and_west() {
         coords(direction(-45.0 * degree, -30.0 * degree)),
         "30.0° S  45.0° W"
     );
+}
+
+/// A point just east of longitude 0 is drawn just east of a view on longitude 0 from the far
+/// side, and a point of a wrapped view comes back onto the flat map.
+#[test]
+fn the_flat_map_wraps_at_the_date_line() {
+    let east = Vec2::new(-0.95, 0.2);
+    assert!(copy_near(east, 0.98).distance(Vec2::new(1.05, 0.2)) < 1e-6);
+    assert_eq!(copy_near(east, -0.9), east);
+    assert!(copy_near(east, 5.0).distance(Vec2::new(5.05, 0.2)) < 1e-5);
+    assert!(wrapped(Vec2::new(1.05, 0.2)).distance(east) < 1e-6);
+    assert!(wrapped(Vec2::new(-3.0, 0.0)).distance(Vec2::new(-1.0, 0.0)) < 1e-6);
 }

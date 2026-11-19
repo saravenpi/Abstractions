@@ -2,19 +2,18 @@
 
 use bevy::prelude::*;
 
-use super::acting::{Acting, act};
 use super::board::Board;
-use super::format::distance;
+use super::format::{clip, distance};
 use super::home::{arranged, beacon, homes, pinned};
 use super::moons::is_moon;
 use super::open::ready;
+use super::results::TITLE_CHARS;
 use super::route::{Destination, HOME_LABEL, RouteStatus, Target};
 use super::rows::Line;
 use super::scene::Scene;
 use super::sift;
 use super::tab::Tab;
 use super::view::{Cell, Crumbs, Part, Slot, Status, Summary};
-use crate::settings::{Persistent, Settings};
 use crate::ui::{Icon, Tone};
 
 /// Seconds between two refreshes of what changes while flying: the distances of the system tab
@@ -61,8 +60,8 @@ fn sign(target: Target, chosen: bool, here: bool) -> Icon {
 
 /// Returns the text and the tone of one cell of `line`. The destination and the place of the
 /// ship are marked, a row that says home in its name wears the house unless it is the
-/// destination, a place never visited is dimmed, and the name of a moon is indented under
-/// its planet.
+/// destination, a place never visited is dimmed, the name of a moon is indented under its
+/// planet, and a long name is cut short to fit its column.
 pub(super) fn cell_text(line: &Line, part: Part, (chosen, here): (bool, bool)) -> (String, Tone) {
     let seen = match (chosen, line.visited || here) {
         (true, _) => Tone::Accent,
@@ -72,10 +71,11 @@ pub(super) fn cell_text(line: &Line, part: Part, (chosen, here): (bool, bool)) -
     match part {
         Part::Mark if !chosen && line.title.ends_with(HOME_LABEL) => (Icon::Home.glyph(), seen),
         Part::Mark => (sign(line.target, chosen, here).glyph(), seen),
-        Part::Title if is_moon(line.target) => (format!("{INDENT}{}", line.title), seen),
-        Part::Title => (line.title.clone(), seen),
+        Part::Title if is_moon(line.target) => {
+            (clip(&format!("{INDENT}{}", line.title), TITLE_CHARS), seen)
+        }
+        Part::Title => (clip(&line.title, TITLE_CHARS), seen),
         Part::Distance => (distance(line.distance), Tone::Plain),
-        Part::Detail => (line.facts().to_string(), Tone::Muted),
     }
 }
 
@@ -144,33 +144,36 @@ type Route<'w> = (Res<'w, Destination>, Res<'w, RouteStatus>);
 /// The lines the course and the place of the ship are written on.
 type Written = Or<(With<Status>, With<Crumbs>)>;
 
-/// Writes the action line and the course with its distance and the state of the route, and
-/// where the ship is: when the course or the route changes, and twice a second for the
-/// distance.
+/// Writes the course with its distance and the state of the route, and where the ship is:
+/// when the course, the route or the selection changes, and twice a second for the
+/// distance. Without a course the line stays empty while a row is selected, since the button
+/// over it already offers to set the course.
 fn status(
-    (time, settings): (Res<Time>, Res<Persistent<Settings>>),
+    (time, board): (Res<Time>, Res<Board>),
     scene: Scene,
     (destination, route): Route,
     mut since: Local<f32>,
-    (mut lines, acting): (Query<(&mut Text, Has<Crumbs>), Written>, Acting),
+    mut lines: Query<(&mut Text, Has<Crumbs>), Written>,
 ) {
     *since += time.delta_secs();
-    let empty = lines.iter().any(|(text, _)| text.0.is_empty());
-    if !(destination.is_changed() || route.is_changed() || empty || *since >= REFRESH) {
+    let empty = lines
+        .iter()
+        .any(|(text, crumbs)| crumbs && text.0.is_empty());
+    let changed = destination.is_changed() || route.is_changed() || board.is_changed();
+    if !(changed || empty || *since >= REFRESH) {
         return;
     }
     *since = 0.0;
-    let (shown, place) = (scene.route(destination.0, *route), scene.place());
+    let offered = destination.0.is_none() && board.lines.get(board.cursor).is_some();
+    let shown = match offered {
+        true => String::new(),
+        false => scene.route(destination.0, *route),
+    };
+    let place = scene.place();
     for (mut text, crumbs) in &mut lines {
         let wanted = if crumbs { &place } else { &shown };
         text.set_if_neq(Text(wanted.clone()));
     }
-    act(
-        &scene,
-        (destination.0, *route),
-        settings.controls.keys.engage,
-        acting,
-    );
 }
 
 /// Registers the systems that fill the screen.
@@ -182,6 +185,7 @@ pub(super) fn plugin(app: &mut App) {
             rows,
             tabs,
             status,
+            super::acting::write,
             super::readout::write,
             (super::pointer::plot, super::glide::ease).chain(),
             super::draw::draw,

@@ -14,7 +14,7 @@ use super::chart::{GRID, mark};
 use super::layout::{SMALLEST, measure};
 use super::orbits::{cell, circle};
 use super::rim::pin;
-use crate::ui::{column, text, theme};
+use crate::ui::{text, theme};
 use crate::universe::PlanetSpec;
 
 /// Width and height of the map in the units the lens counts in. The map is drawn at the size
@@ -39,58 +39,16 @@ pub struct Field;
 pub struct Sheet;
 
 /// Marks what is drawn of the charts of a system, a galaxy and the universe: the sheet, the
-/// legend and the pin toward home. It is hidden while the map shows a planet.
+/// pin toward home, the letter for north and the scale. It is hidden while the map shows a planet.
 #[derive(Component)]
 pub struct ChartLayer;
 
-/// Marks the bar whose length stands for the distance written above it.
-#[derive(Component)]
-pub(super) struct ScaleBar;
-
-/// Marks the text that says which distance the scale bar stands for.
-#[derive(Component)]
-pub(super) struct ScaleText;
-
-/// What lies over the chart: a letter for north, which is up, in the top right corner, and in
-/// the bottom left one the scale, a distance and a bar of that length.
-fn legend() -> impl Bundle {
-    let bar = Node {
-        height: px(2),
-        ..default()
-    };
-    let north = Node {
-        align_self: AlignSelf::FlexEnd,
-        ..default()
-    };
-    (
-        Node {
-            position_type: PositionType::Absolute,
-            width: percent(100),
-            height: percent(100),
-            padding: UiRect::axes(px(theme::GAP_S), px(theme::GAP_XS)),
-            flex_direction: FlexDirection::Column,
-            justify_content: JustifyContent::SpaceBetween,
-            ..default()
-        },
-        children![
-            (north, text("N", theme::FONT_SMALL, theme::MUTED)),
-            (
-                column(auto(), 0.0),
-                children![
-                    (ScaleText, text("", theme::FONT_SMALL, theme::MUTED)),
-                    (ScaleBar, bar, BackgroundColor(theme::TEXT)),
-                ],
-            ),
-        ],
-    )
-}
-
-/// The empty map: a square that knows where the pointer is, holding the chart under its
-/// legend and the pin that points home, the planet and the markers of the players. `draw`
+/// The empty map: a square that knows where the pointer is, holding the chart and the pin
+/// that points home, the planet and the markers of the players. `draw`
 /// fills the chart. The room around the square cuts what leaves it, so a zoomed chart runs
 /// on to the edges of the screen.
 pub fn field() -> impl Bundle {
-    let side = px(measure(SMALLEST).map);
+    let side = px(measure(SMALLEST, (0, 0)).map);
     let cover = Node {
         position_type: PositionType::Absolute,
         width: percent(100),
@@ -98,7 +56,7 @@ pub fn field() -> impl Bundle {
         ..default()
     };
     let sheet = (Sheet, cover.clone());
-    let chart = (ChartLayer, cover, children![sheet, legend(), pin()]);
+    let chart = (ChartLayer, cover, children![sheet, pin()]);
     (
         Field,
         RelativeCursorPosition::default(),
@@ -131,13 +89,15 @@ pub fn spot(at: Vec2, corner: Vec2, size: Vec2) -> Node {
     }
 }
 
-/// Spawns a frame `side` pixels wide in `color` around the chart point `at`.
+/// Share of its colour a frame is laid in: a faint square of tone, not a line.
+const FRAME_TONE: f32 = 0.25;
+
+/// Spawns a faint square `side` pixels wide in `color` around the chart point `at`, which
+/// marks it by tone rather than by an outline.
 pub fn frame(sheet: &mut ChildSpawnerCommands, at: Vec2, (side, color): (f32, Color)) {
-    let node = Node {
-        border: UiRect::all(px(theme::LINE)),
-        ..spot(at, Vec2::splat(-0.5 * side), Vec2::splat(side))
-    };
-    sheet.spawn((node, BorderColor::all(color)));
+    let node = spot(at, Vec2::splat(-0.5 * side), Vec2::splat(side));
+    let tone = color.with_alpha(color.alpha() * FRAME_TONE);
+    sheet.spawn((node, BackgroundColor(tone)));
 }
 
 /// Spawns `title` to the right of the chart point `at`, `gap` pixels away.

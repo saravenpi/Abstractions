@@ -1,5 +1,7 @@
 //! Narrowing and ordering the list: the filter typed on the keyboard and the sort order.
 
+use super::format::clip;
+use super::layout::LINE_CHARS;
 use super::route::Target;
 use super::rows::Line;
 
@@ -25,11 +27,12 @@ impl Sort {
         }
     }
 
-    /// Returns the name of the order as the header shows it.
+    /// Returns the name of the order as the header shows it: nothing for the order the table
+    /// is built in.
     pub fn label(self) -> &'static str {
         match self {
-            Sort::Near => "by distance",
-            Sort::Name => "by name",
+            Sort::Near => "",
+            Sort::Name => " by name",
         }
     }
 }
@@ -87,21 +90,25 @@ pub fn arrange(lines: Vec<Line>, filter: &str, sort: Sort) -> Vec<Line> {
     rows.into_iter().map(|((_, line), _)| line).collect()
 }
 
-/// Returns the line of the header that names the list: which rows are drawn, the order, and
-/// the filter when there is one. An empty list says what to do about it.
+/// Returns the line of the header that names the list: the filter or the heading, which rows
+/// are drawn while the list does not fit, and the order when it is by name. It fits one line of the side panel: a long
+/// heading is cut short.
 pub fn summary(
     heading: &str,
     (first, last, count): (usize, usize, usize),
     view: (&str, Sort),
 ) -> String {
     let (filter, sort) = view;
-    match (count, filter.is_empty()) {
-        (0, true) => format!("{heading} - nothing charted yet. Visit a system to chart more"),
-        (0, false) => format!("No name holds \"{filter}\". Backspace edits it, Esc clears it"),
-        (_, true) => format!("{heading} - {first} to {last} of {count} {}", sort.label()),
-        (_, false) => format!(
-            "\"{filter}\" - {first} to {last} of {count} {}",
-            sort.label()
-        ),
-    }
+    let rows = match (first, last) {
+        (1, last) if last == count => sort.label().to_string(),
+        _ => format!(" - {first}-{last} of {count}{}", sort.label()),
+    };
+    let (head, tail) = match (count, filter.is_empty()) {
+        (0, true) => (heading.to_string(), " - none charted yet".to_string()),
+        (0, false) => (format!("No name holds \"{filter}\""), String::new()),
+        (_, true) => (heading.to_string(), rows),
+        (_, false) => (format!("\"{filter}\""), rows),
+    };
+    let room = LINE_CHARS.saturating_sub(tail.chars().count());
+    format!("{}{tail}", clip(&head, room))
 }

@@ -42,7 +42,7 @@ pub struct Limbs {
 
 impl Limbs {
     /// Returns the marks of the drawn body, which stands at `pose`, in render space.
-    fn of(marks: &Marks, pose: &Transform) -> Self {
+    pub fn of(marks: &Marks, pose: &Transform) -> Self {
         let jet = pose.rotation * (marks.jets[0] + marks.jets[1]);
         Self {
             tips: marks.tips.map(|tip| pose.transform_point(tip)),

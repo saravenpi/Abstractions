@@ -3,16 +3,21 @@
 //!
 //! The file is TOML at `world.toml` in the server's data folder. [`save`] writes it whole
 //! through a temporary file, so a crash leaves either the old file or the new one, and keeps
-//! the last three copies. [`import`] reads a single-player world of the game.
+//! the last three copies. The explored ground goes beside it in `explored.bin`, written the
+//! same safe way. [`import`] reads a single-player world of the game.
 
+mod explored;
 mod file;
 mod import;
 
+#[cfg(test)]
+mod explored_tests;
 #[cfg(test)]
 mod file_tests;
 #[cfg(test)]
 mod import_tests;
 
+pub use explored::EXPLORED_FILE;
 pub use file::{FILE, load_or_create, save};
 pub use import::import;
 
@@ -20,6 +25,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::ids::BodyId;
 use crate::log::Changes;
 use crate::wire::PlayerRecord;
 
@@ -33,6 +39,8 @@ pub struct Member {
     pub place: String,
     /// The player's ship, as the game wrote it.
     pub ship: String,
+    /// The player's saved places, as the game wrote them.
+    pub marks: String,
 }
 
 impl Member {
@@ -41,6 +49,7 @@ impl Member {
         PlayerRecord {
             place: self.place.clone(),
             ship: self.ship.clone(),
+            marks: self.marks.clone(),
         }
     }
 }
@@ -62,6 +71,10 @@ pub struct World {
     pub atlas: String,
     /// Every player who ever kept a record here, by identity key in hexadecimal.
     pub players: BTreeMap<String, Member>,
+    /// The ground explored on each body, as bitsets of [`crate::room::EXPLORED_WORDS`] words.
+    /// It lives in [`EXPLORED_FILE`], not in the world file.
+    #[serde(skip)]
+    pub explored: Vec<(BodyId, Vec<u64>)>,
 }
 
 impl Default for World {
@@ -74,6 +87,7 @@ impl Default for World {
             changes: Changes::default(),
             atlas: String::new(),
             players: BTreeMap::new(),
+            explored: Vec::new(),
         }
     }
 }

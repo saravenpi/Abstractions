@@ -3,17 +3,20 @@
 use bevy::prelude::*;
 
 use super::board::Board;
-use super::format::distance;
+use super::course::progress;
+use super::format::{clip, distance};
 use super::home::{arranged, beacon, homes, pinned};
 use super::moons::is_moon;
 use super::open::ready;
+use super::pointer::{MapView, selected};
+use super::results::TITLE_CHARS;
 use super::route::{Destination, HOME_LABEL, RouteStatus, Target};
 use super::rows::Line;
 use super::scene::Scene;
 use super::sift;
 use super::tab::Tab;
-use super::view::{Cell, Crumbs, Part, Slot, Status, Summary, TabLink};
-use crate::ui::{Icon, Selected, Tone};
+use super::view::{Action, Cell, Part, Slot, Status, Summary};
+use crate::ui::{Icon, Tone};
 
 /// Seconds between two refreshes of what changes while flying: the distances of the system tab
 /// and of the route line.
@@ -30,7 +33,7 @@ fn rebuild(time: Res<Time>, scene: Scene, mut board: ResMut<Board>, mut since: L
         return;
     }
     *since = 0.0;
-    let (heading, lines) = scene.table(board.tab);
+    let (heading, lines) = scene.table(board.tab, board.inside);
     let pin = pinned(board.tab, here, &scene.universe);
     let lines = arranged(lines, pin, &board.filter, board.sort);
     board.ship = scene.ship();
@@ -59,8 +62,8 @@ fn sign(target: Target, chosen: bool, here: bool) -> Icon {
 
 /// Returns the text and the tone of one cell of `line`. The destination and the place of the
 /// ship are marked, a row that says home in its name wears the house unless it is the
-/// destination, a place never visited is dimmed, and the name of a moon is indented under
-/// its planet.
+/// destination, a place never visited is dimmed, the name of a moon is indented under its
+/// planet, and a long name is cut short to fit its column.
 pub(super) fn cell_text(line: &Line, part: Part, (chosen, here): (bool, bool)) -> (String, Tone) {
     let seen = match (chosen, line.visited || here) {
         (true, _) => Tone::Accent,
@@ -70,10 +73,11 @@ pub(super) fn cell_text(line: &Line, part: Part, (chosen, here): (bool, bool)) -
     match part {
         Part::Mark if !chosen && line.title.ends_with(HOME_LABEL) => (Icon::Home.glyph(), seen),
         Part::Mark => (sign(line.target, chosen, here).glyph(), seen),
-        Part::Title if is_moon(line.target) => (format!("{INDENT}{}", line.title), seen),
-        Part::Title => (line.title.clone(), seen),
+        Part::Title if is_moon(line.target) => {
+            (clip(&format!("{INDENT}{}", line.title), TITLE_CHARS), seen)
+        }
+        Part::Title => (clip(&line.title, TITLE_CHARS), seen),
         Part::Distance => (distance(line.distance), Tone::Plain),
-        Part::Detail => (line.facts().to_string(), Tone::Muted),
     }
 }
 
@@ -122,18 +126,14 @@ fn summary(board: &Board) -> String {
     sift::summary(&board.heading, (first, last, count), view)
 }
 
-/// Selects the open tab and writes the summary line, when the table changed.
+/// Writes the summary line over the results, when the table changed.
 fn tabs(
     board: Res<Board>,
     fresh: Query<(), Added<Summary>>,
-    mut links: Query<(&TabLink, &mut Selected)>,
     mut lines: Query<&mut Text, With<Summary>>,
 ) {
     if !(board.is_changed() || !fresh.is_empty()) {
         return;
-    }
-    for (TabLink(tab), mut selected) in &mut links {
-        selected.set_if_neq(Selected(*tab == board.tab));
     }
     for mut text in &mut lines {
         text.set_if_neq(Text(summary(&board)));
@@ -143,27 +143,35 @@ fn tabs(
 /// What the route line is drawn from.
 type Route<'w> = (Res<'w, Destination>, Res<'w, RouteStatus>);
 
-/// The lines the course and the place of the ship are written on.
-type Written = Or<(With<Status>, With<Crumbs>)>;
+/// The lines the course and the progress of the route are written on.
+type Written = Or<(With<Status>, With<Action>)>;
 
-/// Writes the course with its distance and the state of the route, and where the ship is:
-/// when the course or the route changes, and twice a second for the distance.
+/// Writes the course with its distance and the state of the route, and under the map the
+/// progress of the route while it is flown: when the course, the route or the selection
+/// changes, and twice a second for the distance. Without a course the course line stays empty
+/// while a row is selected, since the card of the row already offers to set the course.
 fn status(
-    time: Res<Time>,
+    (time, board, view): (Res<Time>, Res<Board>, Res<MapView>),
     scene: Scene,
     (destination, route): Route,
     mut since: Local<f32>,
-    mut lines: Query<(&mut Text, Has<Crumbs>), Written>,
+    mut lines: Query<(&mut Text, Has<Action>), Written>,
 ) {
     *since += time.delta_secs();
-    let empty = lines.iter().any(|(text, _)| text.0.is_empty());
-    if !(destination.is_changed() || route.is_changed() || empty || *since >= REFRESH) {
+    let changed = destination.is_changed() || route.is_changed() || board.is_changed();
+    if !(changed || *since >= REFRESH) {
         return;
     }
     *since = 0.0;
-    let (shown, place) = (scene.route(destination.0, *route), scene.place());
-    for (mut text, crumbs) in &mut lines {
-        let wanted = if crumbs { &place } else { &shown };
+    let offered = destination.0.is_none() && selected(&board, &view).is_some();
+    let shown = match offered {
+        true => String::new(),
+        false => scene.route(destination.0, *route),
+    };
+    let name = destination.0.map(|target| target.name(&scene.universe));
+    let going = name.map_or(String::new(), |name| progress(&name, *route));
+    for (mut text, action) in &mut lines {
+        let wanted = if action { &going } else { &shown };
         text.set_if_neq(Text(wanted.clone()));
     }
 }
@@ -178,17 +186,11 @@ pub(super) fn plugin(app: &mut App) {
             tabs,
             status,
             super::readout::write,
-            (
-                super::inset::fresh,
-                super::inset::plan,
-                super::inset::collect,
-            )
-                .chain(),
             (super::pointer::plot, super::glide::ease).chain(),
             super::draw::draw,
             (super::glide::slide, super::glide::rule, super::rim::place),
             (super::arrow::turn, super::hover::light),
-            (super::chrome::fit, super::primary::offer),
+            super::chrome::fit,
         )
             .chain()
             .after(super::Input)

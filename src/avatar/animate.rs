@@ -36,7 +36,8 @@ pub struct Anim {
     /// The state posed last, for what reads the body after it is posed.
     pub input: AvatarPose,
     /// The bank and the felt load the poses read: the real ones, followed at a bounded rate,
-    /// because the gear drops both in one step when the body touches down.
+    /// because the gear drops both in one step when the body touches down. The bank goes the
+    /// short way round, so a body rolling on round is followed through the half turn.
     pub trim: Vec2,
 }
 
@@ -76,8 +77,9 @@ impl Anim {
         self.path = if leaving { wrap(self.path) } else { self.path };
         let turn = if none { f32::MAX } else { TRIM_RATE * dt };
         self.path += (goal - self.path).clamp(-turn, turn);
-        let want = Vec2::new(input.bank, input.load);
+        let want = Vec2::new(self.trim.x + wrap(input.bank - self.trim.x), input.load);
         self.trim += (want - self.trim).clamp_length_max(TRIM_RATE * dt);
+        self.trim.x = wrap(self.trim.x);
         self.weights.step(input.mode, dt);
         let flown = AvatarPose {
             pitch: self.path,

@@ -14,6 +14,15 @@ fn pair() -> (super::Room, crate::host::ConnId, crate::host::ConnId) {
     (room, ada, bob)
 }
 
+/// Returns [`pair`] with Bob seen around the home star.
+fn near_pair() -> (super::Room, crate::host::ConnId, crate::host::ConnId) {
+    let (mut room, ada, bob) = pair();
+    let mut out = Outbox::default();
+    let bytes = batch(2, Kind::Ship, star(0), 0.0, 40);
+    room.datagram(bob, &bytes, 100.0, &mut out);
+    (room, ada, bob)
+}
+
 /// A record of Ada reaches Bob once and never Ada herself.
 #[test]
 fn record_reaches_the_others_only() {
@@ -69,11 +78,11 @@ fn other_star_gets_one_record_a_second() {
     assert_eq!(heads(&out, bob).len(), 3);
 }
 
-/// A record that claims another player's id, a body over 128 bytes, an older sample and a
-/// second record of one kind in a batch are all dropped.
+/// A record that claims another player's id, a body over 128 bytes and an older sample are
+/// dropped, while two records of one kind in a batch both go out, in order.
 #[test]
 fn drops_spoofed_large_old_and_repeated_records() {
-    let (mut room, ada, bob) = pair();
+    let (mut room, ada, bob) = near_pair();
     let mut out = Outbox::default();
     room.datagram(
         ada,
@@ -99,9 +108,35 @@ fn drops_spoofed_large_old_and_repeated_records() {
         &mut out,
     );
     room.tick(100.1, &mut out);
-    let got = heads(&out, bob);
-    assert_eq!(got.len(), 1);
-    assert_eq!(got[0].time, 5.0);
+    let times: Vec<f64> = heads(&out, bob).iter().map(|head| head.time).collect();
+    assert_eq!(times, [5.0, 6.0]);
+}
+
+/// Of six records of one kind between two ticks, the last four go out in order, and nothing is
+/// sent again on the next tick.
+#[test]
+fn the_last_four_records_go_out_in_order() {
+    let (mut room, ada, bob) = near_pair();
+    let mut out = Outbox::default();
+    for step in 0..6 {
+        let time = 1.0 + f64::from(step) / 30.0;
+        let bytes = batch(1, Kind::Robot, star(0), time, 40);
+        room.datagram(ada, &bytes, 100.0 + time, &mut out);
+    }
+    room.tick(101.2, &mut out);
+    let times: Vec<f64> = heads(&out, bob).iter().map(|head| head.time).collect();
+    let want: Vec<f64> = (2..6).map(|step| 1.0 + f64::from(step) / 30.0).collect();
+    assert_eq!(times, want);
+    out.clear();
+    room.datagram(
+        ada,
+        &batch(1, Kind::Robot, star(0), 2.0, 40),
+        101.3,
+        &mut out,
+    );
+    room.tick(101.3, &mut out);
+    let times: Vec<f64> = heads(&out, bob).iter().map(|head| head.time).collect();
+    assert_eq!(times, [2.0]);
 }
 
 /// Many records split into datagrams that each fit the budget.

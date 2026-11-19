@@ -147,9 +147,6 @@ pub const LAND_SPEED: f32 = 3.0;
 /// Depth of the landing dip per metre per second of fall, and its limit.
 pub const DIP: (f32, f32) = (0.012, 0.18);
 
-/// Largest bank of the body the camera follows. The rig shows a share of it: 0.5 in first person, 0.35 in third.
-pub const BANK_LIMIT: f32 = 0.6;
-
 /// Rate at which the camera rolls into a bank.
 pub const ROLL_RATE: f32 = 6.0;
 

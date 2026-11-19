@@ -1,8 +1,10 @@
-//! Opening and closing the computer.
+//! Opening and closing the map screen: its key opens it everywhere, and the key of the board
+//! computer opens it while seated in the ship.
 //!
 //! While the screen is open the keyboard and the mouse belong to it. The ship and the player
-//! look at [`Computer`], or at `screens::in_control`, and let go of their controls; the pause
-//! menu does not open. The player module frees the pointer.
+//! look at [`Computer`], or at `screens::in_control`, and let go of their controls, but the
+//! throttle and the autopilot keep the ship flying; the pause menu does not open. The player
+//! module frees the pointer.
 
 use bevy::ecs::system::SystemParam;
 use bevy::input_focus::InputFocus;
@@ -10,15 +12,17 @@ use bevy::prelude::*;
 
 use super::atlas::Atlas;
 use super::board::Board;
+use super::hold::Hold;
+use super::typing::Typing;
 use super::view;
 use crate::audio::AudioCue;
 use crate::menus::Menu;
-use crate::screens::Screen;
+use crate::screens::{Screen, WarmUp};
 use crate::settings::{Persistent, Settings};
 use crate::space::{Anchor, Location, Travel};
 use crate::universe::Universe;
 
-/// Whether the computer screen is open. The game keeps running under it.
+/// Whether the map screen is open. The game keeps running under it.
 #[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Computer {
     /// The screen is hidden.
@@ -35,58 +39,86 @@ struct Seat<'w> {
     settings: Res<'w, Persistent<Settings>>,
     screen: Res<'w, State<Screen>>,
     menu: Res<'w, State<Menu>>,
+    warm: Option<Res<'w, State<WarmUp>>>,
     location: Option<Res<'w, Location>>,
 }
 
+/// Whether the player is in the world with no menu open, and seated in the ship.
+pub(super) type Where = (bool, bool);
+
+/// Which keys were pressed this frame: the map key, the key of the board computer, Escape.
+pub(super) type Pressed = (bool, bool, bool);
+
 impl Seat<'_> {
-    /// Returns true while the player is seated in the ship with no menu open.
-    fn taken(&self) -> bool {
-        let playing = *self.screen.get() == Screen::Gameplay && *self.menu.get() == Menu::None;
+    /// Returns whether the player is in the world past the boot screen with no menu open, and
+    /// whether they are seated in the ship.
+    fn place(&self) -> Where {
+        let hidden = self
+            .warm
+            .as_deref()
+            .is_some_and(|warm| *warm.get() == WarmUp::Hidden);
+        let menu = *self.menu.get() == Menu::None;
+        let playing = *self.screen.get() == Screen::Gameplay && menu && !hidden;
         let seated = self.location.as_deref().map(|location| location.travel);
-        playing && seated == Some(Travel::InShip)
+        (playing, playing && seated == Some(Travel::InShip))
     }
 
-    /// Returns whether the key of the computer and Escape were pressed this frame.
-    fn pressed(&self) -> (bool, bool) {
-        let key = self.settings.controls.keys.computer;
+    /// Returns whether the map key, the key of the board computer and Escape were pressed.
+    fn pressed(&self) -> Pressed {
+        let keys = self.settings.controls.keys;
         (
-            self.keys.just_pressed(key),
+            self.keys.just_pressed(keys.map),
+            self.keys.just_pressed(keys.computer),
             self.keys.just_pressed(KeyCode::Escape),
         )
     }
 }
 
-/// Returns the state the screen moves to, if any: it opens on its key while seated, and closes
-/// on the same key, on Escape or when the player leaves the seat.
-pub(super) fn next_state(open: bool, seated: bool, key: bool, escape: bool) -> Option<Computer> {
-    match (open, seated) {
-        (true, false) => Some(Computer::Closed),
-        (true, true) if key || escape => Some(Computer::Closed),
-        (false, true) if key => Some(Computer::Open),
+/// Returns the state the screen moves to, if any: it opens on the map key anywhere in the
+/// world and on the key of the board computer while seated, and closes on either key, on
+/// Escape, or when the world or a menu takes the screen.
+pub(super) fn next_state(
+    open: bool,
+    (playing, seated): Where,
+    (map, tab, escape): Pressed,
+) -> Option<Computer> {
+    match open {
+        true if !playing || map || tab || escape => Some(Computer::Closed),
+        false if playing && (map || (tab && seated)) => Some(Computer::Open),
         _ => None,
     }
 }
 
-/// Opens and closes the computer. Closing on its key sounds a cancel; Escape already does.
-/// While a filter is typed, Escape clears the filter and leaves the panel open.
+/// Opens and closes the map. Closing on a key sounds a cancel; Escape already does. While a
+/// search is typed or a favourite named, Escape and the map key type, and the screen stays.
+/// While a menu is open or something is selected, Escape lets go of it first.
 ///
-/// The state changes on the next frame. The pause menu opens only while the computer is
-/// closed, so the Escape that closes the screen does not also pause the game.
+/// The state changes on the next frame. The pause menu opens only while the map is closed, so
+/// the Escape that closes the screen does not also pause the game.
 fn toggle(
     seat: Seat,
     state: Res<State<Computer>>,
     mut next: ResMut<NextState<Computer>>,
-    board: Res<Board>,
+    (board, typing, mut hold): (Res<Board>, Res<Typing>, Hold),
     mut cues: MessageWriter<AudioCue>,
 ) {
     let open = *state.get() == Computer::Open;
-    let (key, escape) = seat.pressed();
-    let escape = escape && board.filter.is_empty();
-    let Some(wanted) = next_state(open, seat.taken(), key, escape) else {
+    let (map, tab, escape) = seat.pressed();
+    let free = typing.is_off() && board.filter.is_empty();
+    let held = open && escape && free && hold.held();
+    if held {
+        hold.release();
+    }
+    let pressed = (
+        map && (typing.is_off() || !open),
+        tab,
+        escape && free && !held,
+    );
+    let Some(wanted) = next_state(open, seat.place(), pressed) else {
         return;
     };
     next.set(wanted);
-    if key && !escape {
+    if (pressed.0 || pressed.1) && !pressed.2 {
         cues.write(match wanted {
             Computer::Open => AudioCue::UiConfirm,
             Computer::Closed => AudioCue::UiCancel,

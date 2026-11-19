@@ -24,6 +24,8 @@ pub struct Banner<'a> {
     pub lan: Option<IpAddr>,
     /// Short key of the server's certificate.
     pub key: &'a str,
+    /// Most players at once.
+    pub players: u16,
     /// True when players need a password. The password itself is never shown.
     pub password: bool,
 }
@@ -43,11 +45,10 @@ pub fn banner(info: &Banner<'_>) -> String {
         info.file.display()
     );
     row(&mut text, "World", &world);
-    row(
-        &mut text,
-        "Listening",
-        &format!("UDP {port} on all addresses (0.0.0.0)"),
-    );
+    let listening = format!("UDP {port} on all addresses (0.0.0.0)");
+    row(&mut text, "Listening", &listening);
+    let players = format!("up to {} at once", info.players);
+    row(&mut text, "Players", &players);
     row(&mut text, "Join at", &join);
     row(
         &mut text,

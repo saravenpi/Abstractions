@@ -15,10 +15,14 @@ On foot:
 | Space | Jump, or swim up. Pressed again in the air and held: boot boosters, which slow a fall |
 | Shift | Sprint. Held with the wingsuit spread: boot boosters, which make you fly |
 | R | Spread or fold the wingsuit in the air |
-| W S in the wingsuit | Dive and climb. Hold S to fly a loop |
-| A D in the wingsuit | Roll into a banked turn |
+| W S in the wingsuit | Dive and climb. Hold S to loop with the boosters on. A plain glide is too slow and stalls out of the climb. Let go and the glide levels out |
+| A D in the wingsuit | Roll. Hold to roll over and on round. Let go and the wings level |
 | Q E in the wingsuit | Turn |
+| Left mouse held in the wingsuit | Steer toward where you look |
 | V | First or third person |
+| M | Map |
+| N | Minimap range, then off |
+| B | Set or clear a waypoint where you stand, or under the pointer on the map |
 | F | Board the ship |
 | Look down + W | Dive while swimming |
 | Esc | Pause menu, or back |
@@ -36,12 +40,14 @@ In the ship:
 | X | Cut the throttle |
 | Z | Flight assist on or off |
 | J | Warp drive, away from a planet's gravity |
-| Tab | Board computer: places you have discovered |
-| G | Send the computer's destination to the autopilot |
+| M or Tab | Map. Wheel to zoom, drag to pan, double click to go in, Back or Backspace to go out. A trackpad scroll and a pinch also zoom; W A S D, and the arrows with the pointer on the map, also pan. 0 recentres. Click selects. The card of the selected place has buttons to set the course there, engage the autopilot, clear the course, focus it, set a waypoint or save it as a favourite; Enter also sets the course and right click opens the same menu. The path under the Back button jumps to any level above. Esc lets go of the selection, then closes the map |
+| G | Engage the autopilot on the course. The line under the compass says when it cannot, and why |
 | V | First or third person |
 | F | Leave the ship |
 
-A bar at the top of the screen points to the home base and to the ship while you are on their planet.
+The compass at the top of the screen shows north, the home base, the ship, your friends, waypoints and nearby favourite places ahead of you. They fade toward its ends and hide behind you. Your coordinates, altitude and the weather sit in the top-left corner.
+
+The map shows each planet flat and in colour, but only the ground someone has explored. On a server, ground one player uncovers is uncovered for everyone. Right click a place on the map to set a waypoint there, save it as a favourite, copy its coordinates or centre the map on it. Right click a planet, a favourite or your waypoint to set the course to it or focus the map on it.
 
 Rebind every key in Settings > Controls.
 
@@ -59,7 +65,7 @@ Saves are one small file per world:
 
 ## Play together
 
-Up to 16 players share one universe: the same seed, the same clock and the same discoveries. Each player keeps their own robot, ship and companion.
+Players share one universe: the same seed, the same clock and the same discoveries. A server takes 16 players by default, and up to 1000 when its owner says so. Each player keeps their own robot, ship and companion.
 
 - **On your network:** in a world, pause and pick Open to LAN. Friends on the same network see the world under Multiplayer, On your network, and join with one click. Close LAN saves the world as usual.
 - **On a server:** Multiplayer lists your servers with their players and ping. Space (`space.facile.studio`) is there from the start. Add a server by its address, such as `play.example.com` or `203.0.113.4:24650`. Direct connect joins one without saving it.
@@ -91,7 +97,7 @@ The first start creates a world with a random seed in `./data` (`/data` in Docke
 | `--name` | `ABSTRACTIONS_NAME` | the world's name | Name in the server list |
 | `--password` | `ABSTRACTIONS_PASSWORD` | none | Password players must give |
 | `--port` | `ABSTRACTIONS_PORT` | 24650 | UDP port |
-| `--max-players` | `ABSTRACTIONS_MAX_PLAYERS` | 16 | Players at once |
+| `--max-players` | `ABSTRACTIONS_MAX_PLAYERS` | 16 | Players at once, 1 to 1000 |
 | `--data` | `ABSTRACTIONS_DATA` | `./data` | Folder of the world and the key |
 | `--import` | | | Start from a single-player world file |
 
@@ -201,7 +207,8 @@ A missing or broken file is replaced by the defaults.
 - `src/world`: planets as spheres, terrain, chunk streaming, plants, structures and sea.
 - `src/home`: the base on Kodya.
 - `src/player`, `src/avatar`, `src/gear`, `src/view`: movement, the robot body, the wingsuit and boots, the camera.
-- `src/ship`, `src/computer`: the ship, its autopilot and the board computer.
+- `src/ship`, `src/computer`: the ship, its autopilot, its course and the charts.
+- `src/map`: the map, the explored ground, waypoints and favourite places.
 - `src/companion`: the second robot.
 - `src/audio`: generated music and sounds.
 - `src/render`: low-resolution target, sun, sky, atmosphere, clouds, stars and fog.

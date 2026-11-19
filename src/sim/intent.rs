@@ -44,6 +44,10 @@ pub enum Intent {
     Leave,
     /// Use what is in front of the body.
     Interact,
+    /// Turn flat on the wingsuit, from -1 (left) to 1 (right). Sent while held.
+    Yaw(f32),
+    /// Let the view steer the wingsuit. Sent while the steer button is held.
+    Steer,
 }
 
 /// An intent of one player, as a message.

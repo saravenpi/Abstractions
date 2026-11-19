@@ -11,6 +11,7 @@ pub mod gear;
 pub mod home;
 pub mod icon;
 pub mod life;
+pub mod map;
 pub mod menus;
 pub mod net;
 pub mod player;
@@ -65,6 +66,11 @@ fn modules(app: &mut App) {
         audio::plugin,
         companion::plugin,
     ));
+    later_modules(app);
+}
+
+/// Adds the modules that build on the ones above, with the camera rig driving the game camera.
+fn later_modules(app: &mut App) {
     app.add_plugins((
         home::plugin,
         avatar::plugin,
@@ -77,6 +83,7 @@ fn modules(app: &mut App) {
         net::plugin,
         net::driver::plugin,
     ))
+    .add_plugins(map::plugin)
     .insert_resource(view::Enabled(true));
 }
 

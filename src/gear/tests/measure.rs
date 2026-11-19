@@ -2,8 +2,8 @@
 
 use bevy::prelude::*;
 
-use super::pilot::{Pilot, keys};
-use super::{DT, Flight, flying, gliding};
+use super::pilot::{keys, powered};
+use super::{DT, Flight, flying};
 use crate::gear::{GearInput, Mode};
 
 /// Returns the glide ratio, the airspeed and the sink rate a hands-off glide settles at in
@@ -26,25 +26,22 @@ pub(super) fn settled_flight(aim: f32) -> (f32, f32) {
     )
 }
 
-/// Returns a settled glide of four to one pushed into a dive: the forward key held for `push`
-/// seconds and let go, then flown for six seconds more. Gives the pilot in the dive.
-pub(super) fn dive(push: f32) -> Pilot {
-    let slope = -0.25_f32.atan();
+/// Returns a settled hands-off glide pushed into a dive: the forward key held for `push`
+/// seconds.
+pub(super) fn dive(push: f32) -> Flight {
     let mut flight = Flight::new(Mode::Glide, Vec3::new(0.0, -12.0, -36.0));
-    flight.run(&gliding(slope), 30.0);
-    let mut pilot = Pilot::on(flight, slope);
-    pilot.run(&keys(-1.0, 0.0), &gliding(0.0), push);
-    pilot.run(&keys(0.0, 0.0), &gliding(0.0), 6.0);
-    pilot
+    flight.run(&keys(0.0, 0.0), 30.0);
+    flight.run(&keys(-1.0, 0.0), push);
+    flight
 }
 
 /// Prints the hands-off glide, the dives, the powered climbs and the boots.
 #[test]
 fn print_measured_numbers() {
-    let (ratio, speed, sink) = settled_glide(&gliding(0.0));
+    let (ratio, speed, sink) = settled_glide(&keys(0.0, 0.0));
     println!("hands-off glide: ratio {ratio:5.2} speed {speed:5.1} sink {sink:5.2}");
-    for push in [0.3, 0.6, 0.9, 1.2] {
-        let top = dive(push).flight.state;
+    for push in [0.5, 1.0, 2.0, 4.0] {
+        let top = dive(push).state;
         println!(
             "dive pushed {push:3.1} s: top {:5.1} at pitch {:5.2}",
             top.airspeed, top.pitch
@@ -62,19 +59,19 @@ fn print_measured_numbers() {
     println!("folded terminal {:5.1}", -drop.state.velocity.y);
 }
 
-/// Prints a pull-up out of a dive: the back key held for 2.2 s and let go.
+/// Prints a pull-up out of a dive: the back key held for 5 s and let go.
 #[test]
 fn print_pull_up() {
-    let mut pilot = dive(1.0);
+    let mut flight = dive(2.0);
     for frame in 0..600 {
-        let stick = f32::from(u8::from(frame < 132));
-        pilot.tick(&keys(stick, 0.0), &gliding(0.0), DT);
+        let stick = f32::from(u8::from(frame < 300));
+        flight.tick(&keys(stick, 0.0), DT);
         if frame % 20 == 0 {
-            let s = pilot.flight.state;
+            let s = flight.state;
             println!(
                 "t {:4.1} y {:7.1} v {:5.1} vy {:6.1} pitch {:5.2} aoa {:5.2} load {:4.2}",
                 frame as f32 * DT,
-                pilot.flight.pos.y,
+                flight.pos.y,
                 s.airspeed,
                 s.velocity.y,
                 s.pitch,
@@ -88,18 +85,13 @@ fn print_pull_up() {
 /// Prints a gliding turn and a powered turn to the left with the roll key held.
 #[test]
 fn print_turn() {
-    for powered in [false, true] {
-        let flight = Flight::new(Mode::Glide, Vec3::new(0.0, -12.0, -36.0));
-        let input = GearInput {
-            boost: powered,
-            ..gliding(0.0)
-        };
-        let mut pilot = Pilot::on(flight, -0.245 * f32::from(u8::from(!powered)));
-        pilot.run(&keys(0.0, 0.0), &input, 30.0);
+    for hands in [keys, powered] {
+        let mut flight = Flight::new(Mode::Glide, Vec3::new(0.0, -12.0, -36.0));
+        flight.run(&hands(0.0, 0.0), 30.0);
         for frame in 0..240 {
-            pilot.tick(&keys(0.0, -1.0), &input, DT);
+            flight.tick(&hands(0.0, -1.0), DT);
             if frame % 30 == 29 {
-                let s = pilot.flight.state;
+                let s = flight.state;
                 let heading = (-s.velocity.x).atan2(-s.velocity.z);
                 println!(
                     "t {:4.1} heading {:5.2} bank {:5.2} vy {:6.1} v {:5.1} load {:4.2}",

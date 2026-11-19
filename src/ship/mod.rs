@@ -53,12 +53,16 @@ mod tests;
 
 pub use board::{Hatch, near_hatch};
 pub use body::{SavedFrame, Ship, ShipState};
+pub use cruise::top_speed;
 pub use drag::{SEA_DENSITY, density};
 pub use gear::reach;
+pub use glow::{Engine, level_of};
+pub use helm::Helm;
 pub use legs::Leg;
 pub use mesh::{Looks, dress};
 pub use pilot::{Autopilot, Phase};
 pub use save::Logbook;
+pub use spawn::airframe;
 pub use telemetry::{ShipTelemetry, WarpState};
 pub use view::{HULL_RADIUS, SEAT, seated};
 pub use warp::Warp;
@@ -177,8 +181,8 @@ fn display(app: &mut App) {
     let report = (
         (telemetry::update, fx::feed).chain(),
         legs::fold,
-        route::report,
-        glow::glow,
+        (route::report, route::finish).chain(),
+        (glow::throttle, glow::glow).chain(),
     );
     app.add_systems(
         Update,

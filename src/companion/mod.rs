@@ -75,10 +75,12 @@ mod tests_tour;
 #[cfg(test)]
 mod tests_yard;
 
-pub use face::Expression;
+pub use face::machine::Face;
+pub use face::{Expression, Frame};
 pub use mood::{ChirpKind, CompanionChirp};
 pub use motion::Float;
 pub use pose::Pose;
+pub use screen::{Display, Look};
 pub use sense::CompanionSense;
 pub use spawn::{Stock, look};
 

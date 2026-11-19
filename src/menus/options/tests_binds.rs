@@ -81,3 +81,21 @@ fn every_action_has_its_own_key() {
     );
     assert_eq!(key_name(KeyCode::ShiftLeft), "Left Shift");
 }
+
+/// The map and waypoint keys are rows on foot and in the ship, and clash with keys of both. The
+/// turn keys also turn the wingsuit, so a map key on Q clashes with them in both groups.
+#[test]
+fn the_map_and_waypoint_keys_conflict_in_both_groups() {
+    assert!(Bind::FOOT.contains(&Bind::Map) && Bind::SHIP.contains(&Bind::Waypoint));
+    let mut s = Settings::default();
+    set_key(&mut s, Bind::Waypoint, KeyCode::KeyM);
+    assert_eq!(
+        conflicts(&s.controls.keys),
+        vec![(Bind::Map, Bind::Waypoint), (Bind::Map, Bind::Waypoint)]
+    );
+    set_key(&mut s, Bind::Map, KeyCode::KeyQ);
+    assert_eq!(
+        conflicts(&s.controls.keys),
+        vec![(Bind::YawLeft, Bind::Map), (Bind::YawLeft, Bind::Map)]
+    );
+}

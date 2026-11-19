@@ -5,8 +5,10 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
+use super::{BODY_LENGTH, BODY_RADIUS};
+
 /// Smallest surface normal height that counts as walkable ground (about 50 degrees).
-const MIN_GROUND_NORMAL: f32 = 0.64;
+pub(super) const MIN_GROUND_NORMAL: f32 = 0.64;
 
 /// Longest distance below the capsule at which the body still sticks to the ground.
 pub(super) const SNAP_DISTANCE: f32 = 0.4;
@@ -15,7 +17,7 @@ pub(super) const SNAP_DISTANCE: f32 = 0.4;
 pub(super) const RISING_SPEED: f32 = 0.5;
 
 /// Gap that is ignored when snapping, so the resting skin never causes motion.
-const SKIN: f32 = 0.03;
+pub(super) const SKIN: f32 = 0.03;
 
 /// Ground found under the capsule.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -28,6 +30,8 @@ pub(super) struct Ground {
 
 /// Casts the capsule down the local vertical and returns the nearest surface within snap range.
 ///
+/// When the capsule rests on an edge too steep to stand on, such as the nose of a stair step
+/// it walks down from, the ground straight under its centre gives the normal instead.
 /// `tilt` turns the upright frame of the body into render space.
 pub(super) fn probe(
     query: &SpatialQuery,
@@ -37,19 +41,34 @@ pub(super) fn probe(
     filter: &SpatialQueryFilter,
 ) -> Option<Ground> {
     let down = Dir3::new(tilt * Vec3::NEG_Y).unwrap_or(Dir3::NEG_Y);
+    let hit = query.cast_shape(
+        collider,
+        transform.translation,
+        transform.rotation,
+        down,
+        &ShapeCastConfig::from_max_distance(SNAP_DISTANCE),
+        filter,
+    )?;
+    let normal = tilt.inverse() * hit.normal1;
+    let normal = match normal.y >= MIN_GROUND_NORMAL {
+        true => normal,
+        false => {
+            under(query, transform.translation, down, filter).map_or(normal, |n| tilt.inverse() * n)
+        }
+    };
+    Some(Ground {
+        normal,
+        gap: hit.distance,
+    })
+}
+
+/// Returns the normal of the ground straight down from the capsule centre at `at`, within
+/// snap range of its soles.
+fn under(query: &SpatialQuery, at: Vec3, down: Dir3, filter: &SpatialQueryFilter) -> Option<Vec3> {
+    let reach = BODY_LENGTH * 0.5 + BODY_RADIUS + SNAP_DISTANCE;
     query
-        .cast_shape(
-            collider,
-            transform.translation,
-            transform.rotation,
-            down,
-            &ShapeCastConfig::from_max_distance(SNAP_DISTANCE),
-            filter,
-        )
-        .map(|hit| Ground {
-            normal: tilt.inverse() * hit.normal1,
-            gap: hit.distance,
-        })
+        .cast_ray(at, down, reach, true, filter)
+        .map(|hit| hit.normal)
 }
 
 /// Keeps the ground only when it is flat enough to stand on and the body is not rising.

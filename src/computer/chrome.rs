@@ -1,61 +1,56 @@
-//! Keeping the panel in shape: its width, its margins, its map and its list follow the window.
+//! Keeping the screen in shape: the square map and the search results follow the window.
 
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use super::board::Board;
-use super::layout::{Measures, SMALLEST, measure};
+use super::layout::{SMALLEST, measure};
 use super::map::Field;
 use super::pointer::MapView;
 use super::view::Panel;
+use crate::map::{FAVOURITES, Favourites, PLAYERS};
+use crate::menus::{MarkerKind, Markers};
 
-/// The nodes the window sizes: the panel and the map in it.
-type Sized = Or<(With<Panel>, With<Field>)>;
-
-/// The window, and the panel when it was just spawned.
+/// The window, and the screen when it was just spawned.
 type Seen<'w, 's> = (
     Query<'w, 's, &'static Window, With<PrimaryWindow>>,
     Query<'w, 's, (), Added<Panel>>,
 );
 
-/// Returns the node `node` sized as the measures `fit` ask: the map square, the panel as wide
-/// as its map and margins with the same margin around and between its sections.
-fn sized(node: &Node, map: bool, fit: &Measures) -> Node {
-    if map {
-        return Node {
-            width: px(fit.map),
-            height: px(fit.map),
-            ..node.clone()
-        };
-    }
-    Node {
-        width: px(fit.panel),
-        row_gap: px(fit.margin),
-        padding: UiRect::all(px(fit.margin)),
-        ..node.clone()
-    }
+/// Returns how many rows the favourites and the players lists of the panel show, none for a
+/// list that does not exist.
+fn listed(favourites: Option<&Favourites>, markers: Option<&Markers>) -> (usize, usize) {
+    let saved = favourites.map_or(0, |favourites| favourites.0.len());
+    let friends = markers.map_or(0, |markers| {
+        let kinds = markers.0.iter().map(|marker| marker.kind);
+        kinds.filter(|kind| *kind == MarkerKind::Friend).count()
+    });
+    (saved.min(FAVOURITES), friends.min(PLAYERS))
 }
 
-/// Sizes the panel, the square map and the list for the window, when the window changed size
-/// or the panel was just spawned. Without a window, as in a test, the smallest supported one
-/// is assumed.
+/// Sizes the square map and the search results for the window and the lists of the panel,
+/// when the window changed size, a list changed length or the screen was just spawned.
+/// Without a window, as in a test, the smallest supported one is assumed.
 pub(super) fn fit(
     (windows, fresh): Seen,
-    mut nodes: Query<(&mut Node, Has<Field>), Sized>,
-    mut board: ResMut<Board>,
-    mut view: ResMut<MapView>,
-    mut last: Local<Option<Measures>>,
+    (favourites, markers): (Option<Res<Favourites>>, Option<Res<Markers>>),
+    mut fields: Query<&mut Node, With<Field>>,
+    (mut board, mut view): (ResMut<Board>, ResMut<MapView>),
+    mut last: Local<Option<(Vec2, (usize, usize))>>,
 ) {
     let size = |window: &Window| Vec2::new(window.width(), window.height());
-    let fit = measure(windows.iter().next().map_or(SMALLEST, size));
-    if *last == Some(fit) && fresh.is_empty() {
+    let now = (
+        windows.iter().next().map_or(SMALLEST, size),
+        listed(favourites.as_deref(), markers.as_deref()),
+    );
+    if *last == Some(now) && fresh.is_empty() {
         return;
     }
-    *last = Some(fit);
-    for (mut node, map) in &mut nodes {
-        let wanted = sized(&node, map, &fit);
-        if *node != wanted {
-            *node = wanted;
+    *last = Some(now);
+    let fit = measure(now.0, now.1);
+    for mut node in &mut fields {
+        if node.width != px(fit.map) {
+            (node.width, node.height) = (px(fit.map), px(fit.map));
         }
     }
     view.side = fit.map;

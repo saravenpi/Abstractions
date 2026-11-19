@@ -37,6 +37,8 @@ fn pushing(wish: Vec3) -> Intent {
         right: 0.0,
         sprint: false,
         jump: false,
+        yaw: 0.0,
+        steer: false,
     }
 }
 

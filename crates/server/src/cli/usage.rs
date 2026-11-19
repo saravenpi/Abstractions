@@ -10,7 +10,7 @@ Options (a flag wins over its environment variable):
   --name <name>          name in the server list      ABSTRACTIONS_NAME
   --password <password>  password players must give   ABSTRACTIONS_PASSWORD
   --port <port>          UDP port (24650)             ABSTRACTIONS_PORT
-  --max-players <n>      players at once (16)         ABSTRACTIONS_MAX_PLAYERS
+  --max-players <n>      players, 1 to 1000 (16)      ABSTRACTIONS_MAX_PLAYERS
   --data <folder>        world and key (./data)       ABSTRACTIONS_DATA
   --import <file>        start from a single-player world file
 ";

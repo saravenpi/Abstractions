@@ -1,0 +1,22 @@
+default_job = "check"
+
+[jobs.check]
+command = ["cargo", "check", "--features", "dev", "--all-targets", "--color", "always"]
+need_stdout = false
+
+[jobs.clippy]
+command = ["cargo", "clippy", "--workspace", "--features", "dev", "--all-targets", "--color", "always", "--", "-D", "warnings"]
+need_stdout = false
+
+[jobs.test]
+command = ["cargo", "test", "--features", "dev", "--lib", "--color", "always"]
+need_stdout = true
+
+[jobs.net]
+command = ["cargo", "test", "-p", "abstractions-net", "-p", "abstractions-server", "--color", "always"]
+need_stdout = true
+
+[keybindings]
+c = "job:clippy"
+t = "job:test"
+n = "job:net"

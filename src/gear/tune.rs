@@ -110,34 +110,58 @@ pub const PRONE_RATE: f32 = 4.5;
 /// Rate at which the nose heading follows its target while the wings are spread, per second.
 pub const YAW_RATE: f32 = 12.0;
 
-/// Steepest nose angle above or below the horizon, in radians.
+/// Steepest a folded body or a view that steers may point the flight frame above or below the
+/// horizon, in radians (80 degrees). On the wings the keys know no such limit.
 pub const MAX_PITCH: f32 = 1.4;
 
-/// Steepest bank angle, in radians.
-pub const MAX_BANK: f32 = 1.13;
+/// Rate in radians per second at which a held roll key rolls the wings: a whole roll in a
+/// little over two seconds. Held on, the body rolls on round, through inverted flight.
+pub const ROLL_RATE: f32 = 3.0;
 
-/// Pitch a full stick adds to the look direction, in radians.
-pub const PITCH_AUTHORITY: f32 = 0.5;
+/// Rate in radians per second at which a held back key turns the flight path toward the back
+/// of the body, as far as the wing may pull: a loop in a few seconds, given the speed. A glide
+/// needs about 70 m/s for a loop, about the fastest dive, so loops want the boosters.
+pub const PULL_TURN: f32 = 2.0;
 
-/// Bank a full roll stick holds, in radians (40 degrees): a turn of about 0.6 rad/s in a glide.
-pub const ROLL_AUTHORITY: f32 = 0.7;
+/// Strength of the self-level, from 0 to 1. Let go of the keys, the wings come level and the
+/// nose comes back toward the best glide: at 1 in about a second, at 0 not at all, the body
+/// then holding the attitude the keys left. Folded, the body always rights itself in full.
+pub const LEVEL: f32 = 0.8;
 
-/// Bank angle per radian of heading error between the aim and the flight path.
+/// Steepest bank the view may ask for while it steers, in radians (55 degrees).
+pub const BANK_LIMIT: f32 = 0.96;
+
+/// Lowest flight path angle the view may ask for while it steers, in radians (70 degrees down).
+pub const DIVE_LIMIT: f32 = -1.22;
+
+/// Highest flight path angle the view may ask for while it steers, in radians (30 degrees up).
+pub const CLIMB_LIMIT: f32 = 0.52;
+
+/// Rate per second at which the asked flight path angle follows the view: 95 percent of a
+/// change in 0.6 s. Let go of the keys it follows the best glide at [`LEVEL`] of this rate.
+pub const COMMAND_RATE: f32 = 5.0;
+
+/// Rate in radians per second at which a full yaw key turns the flight path flat.
+pub const YAW_TURN: f32 = 0.45;
+
+/// Bank angle per radian of heading error between the view and the flight path, while the
+/// view steers.
 pub const BANK_GAIN: f32 = 1.6;
 
-/// Rate in radians per second at which a held key turns the aim of a body on its wings, and at
-/// which the aim goes to the view when the steer button is pressed: the pitch rate the keys
-/// gave the view in 0.8.1, which the wings can follow without the leash cutting in.
-pub const STICK_RATE: f32 = 0.9;
+/// Airspeeds between which the stall protection lets go: under the first a hands-off wing
+/// holds its nose down at [`STALL_PITCH`], and a view that steers banks no more than
+/// [`STALL_BANK`] of its limit. A held key may still stall the wing.
+pub const STALL_SPEED: (f32, f32) = (14.0, 21.0);
 
-/// Seconds the heading of the aim rides the flight path after the roll key is let go: as long
-/// as the wings take to come level at [`BANK_RATE`], to within a hundredth of the bank.
-pub const LEVEL_TIME: f32 = 1.0;
+/// Highest flight path angle the wings may be asked for at the stall, in radians.
+pub const STALL_PITCH: f32 = -0.35;
 
-/// Farthest the aim may be led ahead of the flight frame in pitch, in radians. The frame
-/// follows only as fast as the wings turn the path, and an aim that ran a half turn ahead
-/// would call the nose back the short way: this is what lets a held key pull a whole loop.
-pub const LEASH: f32 = 0.9;
+/// Share of [`BANK_LIMIT`] left at the stall.
+pub const STALL_BANK: f32 = 0.35;
+
+/// Gap in radians between the asked flight path angle and a lower path over which a hands-off
+/// wing clear of the stall pulls out of its dive at full load, not at the best glide angle.
+pub const PULL_OUT: f32 = 0.3;
 
 /// Largest angle of attack the nose may hold above the flight path, in radians (18 degrees).
 pub const AOA_MAX: f32 = 0.314;
@@ -145,7 +169,7 @@ pub const AOA_MAX: f32 = 0.314;
 /// Largest angle the nose may hold below the flight path, in radians.
 pub const AOA_MIN: f32 = 0.17;
 
-/// Largest load in g the pitch limits let the wing pull.
+/// Largest load in g the wing may pull, a held key included.
 pub const MAX_LOAD: f32 = 4.0;
 
 /// Largest nose-up trim that holds the flight path on the look direction, in radians.

@@ -14,7 +14,7 @@ use crate::ship::body::Ship;
 use crate::ship::flight::{Controls, Report};
 use crate::ship::landing::GEAR_DROP;
 use crate::universe::PlanetSpec;
-use stage::{Block, CANOPY, CANOPY_TOP, flown, stage, through_the_canopy};
+use stage::{Block, CANOPY, CANOPY_TOP, flown, height, stage, still, through_the_canopy};
 
 /// A house 8 m wide and 5 m high, its front wall at z = -10 m, the ship coming at it along -z.
 const HOUSE: [Block; 1] = [(Vec3::new(0.0, 2.5, -14.0), Vec3::new(8.0, 5.0, 8.0))];
@@ -30,20 +30,6 @@ const ROOF: [Block; 1] = [(Vec3::new(0.0, 2.0, 0.0), Vec3::new(10.0, 4.0, 10.0))
 
 /// Height in metres above the sea of the top of [`ROOF`].
 const ROOF_TOP: f64 = 4.0;
-
-/// Returns the home planet without gravity, air or spin, so that a ship let go coasts straight.
-fn still() -> PlanetSpec {
-    PlanetSpec {
-        gravity: 0.0,
-        atmosphere_height: 0.0,
-        ..planet(6000.0, 4000.0, 1e12)
-    }
-}
-
-/// Returns the height in metres above the sea of the hull centre of `ship` over `planet`.
-fn height(ship: &Ship, planet: &PlanetSpec) -> f64 {
-    ship.pos.length() - planet.radius
-}
 
 /// Flies a ship without assist level at [`HOUSE`] at `speed` metres per second for two seconds.
 fn into_wall(speed: f64) -> Vec<(Ship, Report)> {

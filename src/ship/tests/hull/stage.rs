@@ -30,6 +30,20 @@ pub const CANOPY: [Block; 5] = [
 /// Height in metres above the sea of the top of [`CANOPY`].
 pub const CANOPY_TOP: f64 = 2.6;
 
+/// Returns the home planet without gravity, air or spin, so that a ship let go coasts straight.
+pub fn still() -> PlanetSpec {
+    PlanetSpec {
+        gravity: 0.0,
+        atmosphere_height: 0.0,
+        ..super::super::planet(6000.0, 4000.0, 1e12)
+    }
+}
+
+/// Returns the height in metres above the sea of the hull centre of `ship` over `planet`.
+pub fn height(ship: &Ship, planet: &PlanetSpec) -> f64 {
+    ship.pos.length() - planet.radius
+}
+
 /// Returns the anchor of the stage: render origin at the sea level point of the +Y pole of
 /// `planet`, render axes the frame axes.
 pub fn anchor(planet: &PlanetSpec) -> Anchor {
@@ -107,7 +121,10 @@ pub fn through_the_canopy(track: &[(Ship, Report)], planet: &PlanetSpec) -> usiz
         .iter()
         .map(|(ship, _)| over_the_canopy(ship, planet))
         .collect();
-    let crossed = |(was, now): (&Option<f64>, &Option<f64>)| matches!((was, now), (Some(was), Some(now)) if *was > CANOPY_TOP && *now < CANOPY_TOP - 0.1);
+    let crossed = |(was, now): (&Option<f64>, &Option<f64>)| match (was, now) {
+        (Some(was), Some(now)) => *was > CANOPY_TOP && *now < CANOPY_TOP - 0.1,
+        _ => false,
+    };
     let steps = heights.windows(2);
     steps
         .map(|pair| {

@@ -64,7 +64,7 @@ Saves are one small file per world:
 
 ## Play together
 
-Up to 16 players share one universe: the same seed, the same clock and the same discoveries. Each player keeps their own robot, ship and companion.
+Players share one universe, as many as the server allows: the same seed, the same clock and the same discoveries. Each player keeps their own robot, ship and companion.
 
 - **On your network:** in a world, pause and pick Open to LAN. Friends on the same network see the world under Multiplayer, On your network, and join with one click. Close LAN saves the world as usual.
 - **On a server:** Multiplayer lists your servers with their players and ping. Space (`space.facile.studio`) is there from the start. Add a server by its address, such as `play.example.com` or `203.0.113.4:24650`. Direct connect joins one without saving it.
@@ -96,7 +96,7 @@ The first start creates a world with a random seed in `./data` (`/data` in Docke
 | `--name` | `ABSTRACTIONS_NAME` | the world's name | Name in the server list |
 | `--password` | `ABSTRACTIONS_PASSWORD` | none | Password players must give |
 | `--port` | `ABSTRACTIONS_PORT` | 24650 | UDP port |
-| `--max-players` | `ABSTRACTIONS_MAX_PLAYERS` | 16 | Players at once |
+| `--max-players` | `ABSTRACTIONS_MAX_PLAYERS` | 16 | Players at once, up to 1000 |
 | `--data` | `ABSTRACTIONS_DATA` | `./data` | Folder of the world and the key |
 | `--import` | | | Start from a single-player world file |
 

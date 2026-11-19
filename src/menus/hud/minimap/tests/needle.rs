@@ -37,7 +37,7 @@ fn the_arrow_shows_the_body_not_the_view() {
     let turned = |along: DVec3| (anchor.rotation * along).as_vec3();
     let body = Transform::from_translation(anchor.to_render(at));
     let body = body.looking_to(turned(east), turned(at.normalize()));
-    app.world_mut().spawn((Player, GlobalTransform::from(body)));
+    app.world_mut().spawn((Player, body));
     look(&mut app, at, north);
     let shown = turns(&mut app);
     assert!(

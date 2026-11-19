@@ -1,13 +1,8 @@
-//! Computer tests: the climate of the card, its season words, its span of temperatures and the
-//! greys of the climate map.
+//! Computer tests: the climate line of a planet, its season words and its span of temperatures.
 
-use std::collections::HashSet;
-
-use super::climap::{BYTES, COLS, ROWS, SEA, WHITE, grid, mapped, tone};
 use super::season::{climate_line, season_words, span_words};
 use crate::climate::season as orbit_season;
-use crate::universe::{Orbit, PlanetClass, PlanetSpec, Universe};
-use crate::world::Biome;
+use crate::universe::{Orbit, PlanetSpec, Universe};
 
 /// Returns the home planet of seed 7.
 pub(super) fn home() -> PlanetSpec {
@@ -79,25 +74,4 @@ fn the_card_writes_the_span_of_temperatures() {
     let mut moon = planet.clone();
     (moon.id.moon, moon.day_seconds) = (1, -600.0);
     assert!(climate_line(&moon, 0.5).starts_with("near side warm - "));
-}
-
-/// The map has one pixel per cell, all of them grey: black sea, white snow or one of the six
-/// biome greys, the home planet showing both sea and land. A gas giant has no map.
-#[test]
-fn the_climate_map_is_a_grid_of_greys() {
-    let pixels = grid(&home(), 0.25);
-    assert_eq!(pixels.len(), COLS * ROWS * BYTES);
-    let mut allowed: HashSet<u8> = Biome::ALL.into_iter().map(tone).collect();
-    assert_eq!(allowed.len(), 6);
-    allowed.extend([SEA, WHITE]);
-    for pixel in pixels.chunks(BYTES) {
-        assert!(pixel[0] == pixel[1] && pixel[1] == pixel[2], "{pixel:?}");
-        assert_eq!(pixel[3], u8::MAX);
-        assert!(allowed.contains(&pixel[0]), "{pixel:?}");
-    }
-    let greys: HashSet<u8> = pixels.chunks(BYTES).map(|pixel| pixel[0]).collect();
-    assert!(greys.contains(&SEA) && greys.len() > 1, "{greys:?}");
-    let mut giant = home();
-    giant.record.class = PlanetClass::GasGiant;
-    assert!(!mapped(&giant) && mapped(&home()));
 }

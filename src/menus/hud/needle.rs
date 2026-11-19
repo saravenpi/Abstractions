@@ -1,4 +1,5 @@
-//! Where a mark of the compass sits: the angle to its target and its place along the bar.
+//! Where a mark of the compass sits: the angle to its target, its place along the bar, how
+//! much it has faded toward the ends, and the row it takes beside marks it would cover.
 
 use bevy::prelude::*;
 
@@ -8,8 +9,14 @@ pub const WIDTH: f32 = 360.0;
 /// Angle in radians from the middle of the bar to either end.
 pub const SPAN: f32 = 1.2;
 
-/// Least gap in pixels between the two marks, so their distances stay readable.
-const APART: f32 = 56.0;
+/// Least gap in pixels between two marks on one row, so their labels stay readable.
+pub const APART: f32 = 72.0;
+
+/// Most rows the marks stack in; a mark that finds no free row goes on the last one.
+pub const ROWS: usize = 5;
+
+/// Share of the span, at each end, over which a mark fades out.
+const FADE: f32 = 0.3;
 
 /// Returns the angle in radians from the view to a target `offset` away, around the local
 /// `up`: positive to the right, zero straight ahead, a half turn behind. Nothing for a target
@@ -26,12 +33,19 @@ pub fn slot(bearing: f32) -> f32 {
     0.5 + 0.5 * (bearing / SPAN).clamp(-1.0, 1.0)
 }
 
-/// Returns the place in pixels along the bar of the ship mark at `slot`, moved aside when the
-/// home mark at `home` would sit under it, as when both wait at the same end.
-pub fn beside(slot: f32, home: Option<f32>) -> f32 {
-    let at = slot * WIDTH;
-    match home.map(|home| home * WIDTH) {
-        Some(taken) if (at - taken).abs() < APART => taken + APART * (0.5 - taken / WIDTH).signum(),
-        _ => at,
-    }
+/// Returns how opaque a mark at `bearing` is: fully inside the span, fading to nothing over
+/// the last share of it toward each end, and nothing past the span, where it is hidden.
+pub fn fade(bearing: f32) -> Option<f32> {
+    let reach = bearing.abs() / SPAN;
+    (reach <= 1.0).then(|| ((1.0 - reach) / FADE).min(1.0))
+}
+
+/// Returns the row of a mark at `at` pixels along the bar, for marks taken from left to right:
+/// the first row whose last mark ends `APART` before it, else the last row. `ends` holds the
+/// place of the last mark of each row and starts at minus infinity.
+pub fn row(at: f32, ends: &mut [f32; ROWS]) -> usize {
+    let free = ends.iter().position(|end| at - end >= APART);
+    let chosen = free.unwrap_or(ROWS - 1);
+    ends[chosen] = at;
+    chosen
 }

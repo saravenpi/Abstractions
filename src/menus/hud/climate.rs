@@ -10,9 +10,6 @@ use crate::ui::{text, theme};
 use crate::universe::{PlanetSpec, Universe};
 use crate::world::{Globe, Planet};
 
-/// Pixels from the top of the screen to the line: just under the compass and its distances.
-const TOP: f32 = 64.0;
-
 /// Lowest height in metres the line shows up to, for a planet whose air ends lower or that has
 /// no air at all.
 const FLOOR: f64 = 2000.0;
@@ -38,25 +35,16 @@ impl Default for HudWeather {
 #[derive(Component)]
 pub(super) struct ClimateGauge;
 
-/// The climate line, centred under the compass and hidden until the player is on a planet.
+/// The climate line, under the coordinates line, hidden until the player is on a planet.
 pub(super) fn line() -> impl Bundle {
     (
+        ClimateGauge,
         Node {
-            position_type: PositionType::Absolute,
-            width: percent(100),
-            top: px(TOP),
-            justify_content: JustifyContent::Center,
+            display: Display::None,
             ..default()
         },
-        children![(
-            ClimateGauge,
-            Node {
-                display: Display::None,
-                ..default()
-            },
-            text("", theme::FONT_SMALL, theme::MUTED),
-            TextLayout::no_wrap(),
-        )],
+        text("", theme::FONT_SMALL, theme::MUTED),
+        TextLayout::no_wrap(),
     )
 }
 

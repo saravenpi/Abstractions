@@ -38,6 +38,8 @@ impl Host for Room {
                 out.send(conn, ServerMsg::Pong { id, sent, clock });
             }
             ClientMsg::Bye => self.leave(conn, out),
+            ClientMsg::Explored { body, cells } => self.explored(conn, body, &cells),
+            ClientMsg::Waypoint(waypoint) => self.waypoint(conn, waypoint, out),
         }
     }
 
@@ -51,10 +53,12 @@ impl Host for Room {
         self.forget(conn, out);
     }
 
-    /// Closes connections that never joined, then sends every player the others' state.
+    /// Closes connections that never joined, sends every player the others' state, then the
+    /// newly explored ground that is due.
     fn tick(&mut self, now: f64, out: &mut Outbox) {
         self.expire(now, out);
         self.relay(now, out);
+        self.spread_explored(now, out);
     }
 
     /// Returns true while any connection is open.

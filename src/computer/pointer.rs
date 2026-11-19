@@ -16,28 +16,31 @@ use super::moons;
 use super::open::Computer;
 use super::rim::{home_row, spread};
 use super::route::Destination;
-use super::semantic::{entry, shift};
+use super::semantic::{dive, entry, shift};
 use super::tab::Tab;
+use super::typing::Typing;
+use super::view::Area;
+use crate::map::Level;
 use crate::ui::theme;
 
 /// Pixels around a mark within which the pointer is on it.
-pub(super) const REACH: f32 = 10.0;
+pub const REACH: f32 = 10.0;
 
 /// Pixels the pointer travels with the button held before a click becomes a drag.
-pub(super) const SLOP: f32 = 3.0;
+pub const SLOP: f32 = 3.0;
 
 /// How much closer one notch of the wheel brings the map.
-pub(super) const ZOOM_STEP: f32 = 1.25;
+pub const ZOOM_STEP: f32 = 1.25;
 
 /// Seconds between two clicks on empty map that still count as a double click.
-pub(super) const DOUBLE_CLICK: f32 = 0.4;
+pub const DOUBLE_CLICK: f32 = 0.4;
 
 /// The key that shows the whole chart again.
-pub(super) const RESET_KEY: KeyCode = KeyCode::Digit0;
+pub const RESET_KEY: KeyCode = KeyCode::Digit0;
 
 /// How the map is looked at and what the pointer does on it.
 #[derive(Resource, Debug, Clone, Default, PartialEq)]
-pub(super) struct MapView {
+pub struct MapView {
     /// The zoom and the centre of the map as it is drawn.
     pub lens: Lens,
     /// The zoom and the centre the map eases to.
@@ -66,15 +69,20 @@ pub(super) struct MapView {
     pub span: Option<f64>,
 }
 
+/// The square map and the room around it, which say where the pointer is.
+type Under<'w, 's> = (
+    Query<'w, 's, &'static RelativeCursorPosition, With<Field>>,
+    Query<'w, 's, &'static RelativeCursorPosition, With<Area>>,
+);
+
 /// Follows the pointer: finds the mark under it when it moves. The mark is only lit: the
-/// selection stays where it is.
-pub(super) fn aim(
-    fields: Query<&RelativeCursorPosition, With<Field>>,
-    board: Res<Board>,
-    mut view: ResMut<MapView>,
-) {
+/// selection stays where it is. The pointer counts as on the map anywhere in the room around
+/// the square, where a zoomed chart runs on.
+pub(super) fn aim((fields, areas): Under, board: Res<Board>, mut view: ResMut<MapView>) {
     let seen = fields.iter().next();
-    let pointer = seen.and_then(|field| Some((field.cursor_over, field.normalized?)));
+    let room = areas.iter().next().map(|area| area.cursor_over);
+    let pointer =
+        seen.and_then(|field| Some((room.unwrap_or(field.cursor_over), field.normalized?)));
     let (over, at) = match pointer {
         Some((over, share)) => (over, (share + 0.5) * SIZE),
         None => (false, view.at),
@@ -150,14 +158,19 @@ pub(super) fn press(
 }
 
 /// Zooms around the pointer with the wheel while the pointer is over the map, and shows the
-/// whole chart again on the reset key. Past the ends of the zoom the wheel changes chart.
+/// whole chart again on the reset key unless a search is typed. Past the ends of the zoom the
+/// wheel changes chart, and dives into the planet under the pointer on the system chart.
 pub(super) fn zoom(
-    wheel: Res<AccumulatedMouseScroll>,
-    keys: Res<ButtonInput<KeyCode>>,
+    (wheel, keys, typing): (
+        Res<AccumulatedMouseScroll>,
+        Res<ButtonInput<KeyCode>>,
+        Option<Res<Typing>>,
+    ),
     mut board: ResMut<Board>,
     mut view: ResMut<MapView>,
+    level: Option<ResMut<Level>>,
 ) {
-    if keys.just_pressed(RESET_KEY) {
+    if keys.just_pressed(RESET_KEY) && typing.is_none_or(|typing| typing.is_off()) {
         view.goal = Lens::default();
     }
     let notches = match wheel.unit {
@@ -165,6 +178,10 @@ pub(super) fn zoom(
         MouseScrollUnit::Pixel => wheel.delta.y / theme::ROW_HEIGHT,
     };
     if !view.over || notches == 0.0 {
+        return;
+    }
+    if let Some((body, mut level)) = dive(&board, &view, notches).zip(level) {
+        *level = Level::Planet(body);
         return;
     }
     let pointed = match view.hover {
@@ -225,6 +242,7 @@ pub(super) fn plugin(app: &mut App) {
                 .chain()
                 .in_set(super::Input)
                 .before(super::keys::navigate)
-                .run_if(super::open::ready),
+                .run_if(super::open::ready)
+                .run_if(crate::map::charting),
         );
 }

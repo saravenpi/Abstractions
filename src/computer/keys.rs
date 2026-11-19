@@ -1,4 +1,4 @@
-//! Keyboard, wheel and button handling of the table of the computer screen.
+//! Keyboard, wheel and button handling of the search results of the map screen.
 
 use bevy::ecs::system::SystemParam;
 use bevy::input::mouse::{AccumulatedMouseScroll, MouseScrollUnit};
@@ -7,12 +7,14 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
 use super::board::{Board, VISIBLE_ROWS};
+use super::course::Act;
 use super::home::{tab_of, toward};
 use super::locate::here;
 use super::open::ready;
 use super::pointer::MapView;
 use super::route::{Destination, Engage};
-use super::view::{Act, Slot, TabLink};
+use super::typing::Typing;
+use super::view::Slot;
 use crate::audio::AudioCue;
 use crate::settings::{Persistent, Settings};
 use crate::space::Anchor;
@@ -40,11 +42,7 @@ const MOVES: [(KeyCode, isize); 5] = [
 pub(super) const HOME_KEY: KeyCode = KeyCode::Home;
 
 /// The components that say what an activated button of the screen does.
-type Role = (
-    Option<&'static Slot>,
-    Option<&'static TabLink>,
-    Option<&'static Act>,
-);
+type Role = (Option<&'static Slot>, Option<&'static Act>);
 
 /// Moves the cursor with the arrows, Page Up and Down and End, changes tab with Left and
 /// Right, and scrolls with the wheel unless the pointer is over the map. A move that scrolls
@@ -140,20 +138,25 @@ impl Desk<'_, '_> {
 }
 
 /// Sets the course to the selected row on Enter, hands the destination to the autopilot on the
-/// engage key of the settings, unless a filter is being typed, forgets the destination on
-/// Delete and sets the course home on the Home key.
+/// engage key of the settings, forgets the destination on Delete and sets the course home on
+/// the Home key. Enter and Home also work while a search is typed; nothing does while a
+/// favourite is named, and the engage key and Delete type into a search.
 fn action_keys(
     keys: Res<ButtonInput<KeyCode>>,
-    settings: Res<Persistent<Settings>>,
+    (settings, typing): (Res<Persistent<Settings>>, Res<Typing>),
     mut desk: Desk,
 ) {
+    if matches!(*typing, Typing::Name(..)) {
+        return;
+    }
+    let off = typing.is_off();
     if keys.just_pressed(KeyCode::Enter) {
         desk.run(Act::Set);
     }
-    if keys.just_pressed(settings.controls.keys.engage) && desk.board.filter.is_empty() {
+    if keys.just_pressed(settings.controls.keys.engage) && off {
         desk.run(Act::Engage);
     }
-    if keys.just_pressed(KeyCode::Delete) {
+    if keys.just_pressed(KeyCode::Delete) && off {
         desk.run(Act::Clear);
     }
     if keys.just_pressed(HOME_KEY) {
@@ -164,7 +167,7 @@ fn action_keys(
 /// Seconds within which a second click on the same row sets the course to it.
 const DOUBLE_CLICK: f64 = 0.45;
 
-/// Applies an activated button: a row is selected, a tab opens, an action runs. A second
+/// Applies an activated button: a row is selected or an action runs. A second
 /// click of the pointer on the same row within [`DOUBLE_CLICK`] sets the course to it, as on
 /// the map. Enter on the focused row selects it again; `action_keys` sets the course.
 pub(super) fn on_activate(
@@ -174,7 +177,7 @@ pub(super) fn on_activate(
     mut last: Local<Option<(usize, f64)>>,
     mut desk: Desk,
 ) {
-    let Ok((slot, link, act)) = roles.get(event.entity) else {
+    let Ok((slot, act)) = roles.get(event.entity) else {
         return;
     };
     if let Some(Slot(slot)) = slot {
@@ -188,9 +191,6 @@ pub(super) fn on_activate(
             desk.run(Act::Set);
         }
     }
-    if let Some(TabLink(tab)) = link {
-        desk.board.show(*tab);
-    }
     if let Some(act) = act {
         desk.run(*act);
     }
@@ -198,16 +198,26 @@ pub(super) fn on_activate(
 
 /// Registers the input systems of the screen.
 pub(super) fn plugin(app: &mut App) {
-    app.add_observer(on_activate).add_systems(
-        Update,
-        (
-            navigate,
-            focus_cursor,
-            action_keys,
-            super::typing::type_filter,
+    app.init_resource::<Typing>()
+        .add_observer(on_activate)
+        .add_observer(super::typing::on_search)
+        .add_systems(
+            OnEnter(super::Computer::Open),
+            |mut typing: ResMut<Typing>| {
+                *typing = Typing::Off;
+            },
         )
-            .chain()
-            .in_set(super::Input)
-            .run_if(ready),
-    );
+        .add_systems(
+            Update,
+            (
+                navigate,
+                focus_cursor,
+                action_keys,
+                super::typing::type_filter,
+                super::typing::show_search,
+            )
+                .chain()
+                .in_set(super::Input)
+                .run_if(ready),
+        );
 }

@@ -2,13 +2,14 @@
 //! and datagrams come out. The server and a game open to LAN run the same room.
 //!
 //! The room never simulates and never decodes a state body. It owns the world (seed, clock,
-//! log, atlas, player records), lets players in, keeps the latest state of each player and
-//! kind, and copies it to the others every tick: at the full rate around the same star, once
-//! a second elsewhere.
+//! log, atlas, player records), lets players in, keeps the last few states of each player and
+//! kind, and copies them to the others every tick: all of them around the same star, the
+//! newest once a second elsewhere.
 
 mod conn;
 mod host;
 mod join;
+mod map;
 mod play;
 mod relay;
 mod seat;
@@ -18,16 +19,22 @@ mod join_tests;
 #[cfg(test)]
 mod kit;
 #[cfg(test)]
+mod map_tests;
+#[cfg(test)]
 mod play_tests;
 #[cfg(test)]
 mod relay_tests;
 
 use std::collections::HashMap;
 
+pub use map::EXPLORED_WORDS;
+
 use conn::Conn;
+use map::Ground;
 use seat::{KINDS, Seat, Sent};
 
 use crate::host::{ConnId, DATAGRAM_BUDGET};
+use crate::ids::BodyId;
 use crate::log::PlayerId;
 use crate::store::World;
 use crate::wire::PlayerInfo;
@@ -68,13 +75,18 @@ pub struct Room {
     batch: Vec<u8>,
     /// Number of the last state record kept, so newer records compare greater.
     seq: u64,
+    /// Value of `seq` at the end of the last relay: records above it came since that tick.
+    relayed: u64,
+    /// The explored ground of each body.
+    explored: HashMap<BodyId, Ground>,
 }
 
 impl Room {
     /// Returns a room for `world` with nobody in it. `now` is the network time, so the
     /// universe clock reads `world.clock` at that moment.
-    pub fn new(config: RoomConfig, world: World, now: f64) -> Self {
+    pub fn new(config: RoomConfig, mut world: World, now: f64) -> Self {
         let cap = usize::from(config.cap);
+        let explored = map::grounds(std::mem::take(&mut world.explored));
         Self {
             config,
             world,
@@ -86,13 +98,17 @@ impl Room {
             next_id: 1,
             batch: Vec::with_capacity(2 * DATAGRAM_BUDGET),
             seq: 0,
+            relayed: 0,
+            explored,
         }
     }
 
-    /// Returns the world to save: the universe clock advanced to `now` and every record kept.
+    /// Returns the world to save: the universe clock advanced to `now`, every record kept and
+    /// the explored ground.
     pub fn snapshot(&self, now: f64) -> World {
         World {
             clock: self.clock(now),
+            explored: self.explored_list(),
             ..self.world.clone()
         }
     }

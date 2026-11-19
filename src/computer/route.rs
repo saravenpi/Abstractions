@@ -43,14 +43,51 @@ pub struct Destination(pub Option<Target>);
 #[derive(Event, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Engage(pub Target);
 
+/// Why the warp drive cannot take the course now, the first of the checks of the route that fails.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Block {
+    /// The ship stands on the ground.
+    Landed,
+    /// The ship flies in the frame of a planet surface, inside its air.
+    Surface,
+    /// The ship is inside the lock sphere of a planet or a star.
+    Inside {
+        /// True for a star, false for a planet or a moon.
+        star: bool,
+        /// Radii of the body the lock sphere reaches.
+        lock: u8,
+        /// Radii from the centre the ship is at now, in tenths.
+        tenths: u32,
+    },
+}
+
+impl Block {
+    /// Returns the reason in plain words, with what to do about it.
+    pub fn words(self) -> String {
+        match self {
+            Block::Landed => "Landed: take off first".to_string(),
+            Block::Surface => "In the air of a planet: climb to orbit first".to_string(),
+            Block::Inside { star, lock, tenths } => {
+                let body = ["planet", "star"][usize::from(star)];
+                let now = f64::from(tenths) / 10.0;
+                format!("Inside {lock} {body} radii (now {now:.1}): fly out first")
+            }
+        }
+    }
+}
+
 /// How far along its route the ship is. The ship writes it, the computer shows it.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum RouteStatus {
-    /// No route is being flown.
+    /// No route is being flown. With a course set, the autopilot can take it.
     #[default]
     Idle,
-    /// The ship is turning toward the destination.
-    Aligning,
+    /// A course is set or flown, but the drive cannot take it yet.
+    Blocked(Block),
+    /// The drive, still running on the course before, drops out first.
+    Dropping,
+    /// The ship is turning toward the destination, this many percent of the way.
+    Aligning(u8),
     /// The warp drive is charging.
     Spooling,
     /// The ship is in warp.
@@ -64,7 +101,9 @@ impl RouteStatus {
     pub fn label(self) -> &'static str {
         match self {
             RouteStatus::Idle => "idle",
-            RouteStatus::Aligning => "aligning",
+            RouteStatus::Blocked(_) => "blocked",
+            RouteStatus::Dropping => "dropping out",
+            RouteStatus::Aligning(_) => "aligning",
             RouteStatus::Spooling => "spooling",
             RouteStatus::InWarp => "in warp",
             RouteStatus::Arrived => "arrived",

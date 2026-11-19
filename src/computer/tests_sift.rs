@@ -114,8 +114,8 @@ fn a_row_shows_what_it_is_and_whether_it_was_visited() {
     assert_eq!(title(&planet, (true, false)), Tone::Accent);
 }
 
-/// Typing in the open panel narrows the list, Backspace widens it again, Escape clears the
-/// filter before it closes the panel, and the sort key changes the order.
+/// The search key starts a search, typing then narrows the list, Backspace widens it again,
+/// Escape clears the search before it closes the map, and the sort key changes the order.
 #[test]
 fn typing_in_the_panel_filters_the_list() {
     let mut app = game("filter");
@@ -125,6 +125,7 @@ fn typing_in_the_panel_filters_the_list() {
     let open = |app: &App| *app.world().resource::<State<Computer>>().get() == Computer::Open;
     let all = rows(&app);
     assert!(all > 2);
+    tap(&mut app, KeyCode::Slash, None);
     for (code, letter) in [
         (KeyCode::KeyK, "k"),
         (KeyCode::KeyO, "o"),

@@ -90,8 +90,8 @@ pub struct Globe {
     season: Season,
     /// The coarse cells of the sphere, their height grids and their flows, shared by every copy.
     atlas: Arc<Atlas>,
-    /// The life of the planet, shared by every copy, none on a dead world.
-    life: Option<Arc<crate::life::Life>>,
+    /// The life of the planet, shared by every copy: none until given, then none on a dead world.
+    life: Option<Option<Arc<crate::life::Life>>>,
 }
 
 impl Globe {

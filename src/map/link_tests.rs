@@ -69,3 +69,29 @@ fn a_kept_waypoint_is_sent_again_on_welcome() {
     let sent = script.lock().unwrap().sent.clone();
     assert_eq!(sent, vec![ClientMsg::Waypoint(Some(to_wire(&mine)))]);
 }
+
+/// The welcome brings the others' waypoints and never this player's own; a cleared waypoint
+/// goes, and a change about this player is not taken as a friend's.
+#[test]
+fn waypoints_come_in_without_your_own() {
+    let (mut app, _) = joined(Waypoints::default());
+    let (lin, you) = (spot(DVec3::Y), spot(DVec3::Z));
+    let given = vec![(PlayerId(1), to_wire(&lin)), (PlayerId(3), to_wire(&you))];
+    hear(&mut app, welcome(given));
+    let waypoints = app.world().resource::<Waypoints>();
+    assert_eq!(waypoints.me, 3);
+    assert_eq!(waypoints.friends.len(), 1);
+    assert!(waypoints.friends[&1].dir.distance(DVec3::Y) < 1e-6);
+    let about_you = ServerMsg::Waypoint {
+        player: PlayerId(3),
+        waypoint: Some(to_wire(&you)),
+    };
+    hear(&mut app, about_you);
+    assert!(!app.world().resource::<Waypoints>().friends.contains_key(&3));
+    let cleared = ServerMsg::Waypoint {
+        player: PlayerId(1),
+        waypoint: None,
+    };
+    hear(&mut app, cleared);
+    assert!(app.world().resource::<Waypoints>().friends.is_empty());
+}

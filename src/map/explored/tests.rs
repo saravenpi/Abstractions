@@ -136,3 +136,19 @@ fn bad_ground_from_a_server_keeps_nothing() {
     }
     assert_eq!(explored.bodies().count(), BODIES_MAX);
 }
+
+/// Explored words survive a trip through the world file, the top bit of a word included.
+#[test]
+fn saved_words_survive_the_file() {
+    let body = Universe::new(3).home();
+    let mut words = vec![0; WORDS];
+    words[0] = (1 << 63) | 5;
+    words[WORDS - 1] = u64::MAX;
+    let mut save = toml::from_str::<WorldSave>("[[explored]]\nwords = [0]").expect("reads");
+    save.explored[0].body = body;
+    save.explored[0].words.clone_from(&words);
+    let text = toml::to_string(&save).expect("writes");
+    let back: WorldSave = toml::from_str(&text).expect("reads back");
+    assert_eq!(back.explored, save.explored);
+    assert_eq!(Explored::of(&back).words(body).expect("loaded"), &words[..]);
+}

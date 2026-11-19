@@ -56,12 +56,12 @@ impl Motion {
 
     /// Returns how much the point `body` gives to an impulse along the frame direction `dir`:
     /// 1 at the centre, more off centre, where part of the impulse turns the ship.
-    fn give(ship: &Ship, body: DVec3, dir: DVec3) -> f64 {
+    pub fn give(ship: &Ship, body: DVec3, dir: DVec3) -> f64 {
         1.0 + body.cross(ship.rot.inverse() * dir).length_squared() / GYRATION
     }
 
     /// Applies the impulse `kick`, a change of velocity in frame axes, at the point `body`.
-    fn push(&mut self, ship: &Ship, body: DVec3, kick: DVec3) {
+    pub fn push(&mut self, ship: &Ship, body: DVec3, kick: DVec3) {
         self.vel += kick;
         self.spin += body.cross(ship.rot.inverse() * kick) / GYRATION;
     }

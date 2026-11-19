@@ -5,8 +5,11 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::body::Ship;
-use super::flight::{Report, STEP, Scene, rotate, step};
+use super::flight::{Controls, Report, STEP, Scene, rotate, step};
+use super::gear::locked;
 use super::helm::Helm;
+use super::hull::meet;
+use super::hull_cast::Solids;
 use super::pilot::Autopilot;
 use super::sky::Skies;
 use super::transit::{catch_up, change_galaxy, enter_system, leave_system, reframe};
@@ -106,7 +109,7 @@ pub fn survey(
 
 /// The resources the fixed step reads and writes.
 #[derive(SystemParam)]
-pub struct Flight<'w> {
+pub struct Flight<'w, 's> {
     /// Frame time.
     time: Res<'w, Time>,
     /// What the pilot asks for.
@@ -115,15 +118,49 @@ pub struct Flight<'w> {
     skies: Res<'w, Skies>,
     /// Bookkeeping of the fixed step.
     pace: ResMut<'w, Pace>,
+    /// The built solids near the player, in a game that runs the physics.
+    solids: Option<Solids<'w, 's>>,
 }
 
-impl Flight<'_> {
+/// Returns the height in metres above sea level of what a ship in `frame` stands on at a
+/// position in the frame of the planet under it, whose sea level is `radius` metres from its
+/// centre: the ground `land` gives, or the top of a built solid of `solids` where it is higher.
+pub fn floor<'a>(
+    land: impl Fn(DVec3) -> f64 + 'a,
+    radius: f64,
+    solids: Option<&'a Solids>,
+    frame: Frame,
+) -> impl Fn(DVec3) -> f64 + 'a {
+    move |pos| {
+        let ground = land(pos);
+        solids.map_or(ground, |solids| ground.max(solids.top(frame, pos, radius)))
+    }
+}
+
+/// Advances `ship` by one fixed step in `scene`, then sweeps its hull along that step against
+/// the built `solids` and books what it met on the report of the step.
+pub fn stride(
+    ship: &mut Ship,
+    controls: &Controls,
+    scene: &Scene,
+    solids: Option<&Solids>,
+) -> Report {
+    let (frame, from, down) = (ship.frame, ship.pos, locked(ship));
+    let cast =
+        |at, rot, motion| solids.and_then(|solids| solids.cast(frame, (at, rot), motion, down));
+    let mut report = step(ship, controls, scene, STEP);
+    meet(ship, from, &cast, &mut report);
+    report
+}
+
+impl Flight<'_, '_> {
     /// Steps `ship` at the fixed rate through `dt` seconds of frame time and returns the
     /// fastest touchdown of these steps in metres per second, zero without one, and the crash
     /// of these steps, if one was.
     fn advance(&mut self, ship: &mut Ship, dt: f64) -> (f64, Option<Impact>) {
-        let skies = &*self.skies;
-        let ground = |pos: DVec3| skies.height(pos);
+        let (skies, solids) = (&*self.skies, self.solids.as_ref());
+        let radius = skies.planet().map_or(0.0, |planet| planet.radius);
+        let ground = floor(|pos| skies.height(pos), radius, solids, ship.frame);
         let (mut elapsed, mut impact, mut crash) = (0.0, 0.0f64, None);
         self.pace.carry += dt;
         while self.pace.carry >= STEP {
@@ -133,17 +170,11 @@ impl Flight<'_> {
                 wells: &skies.wells,
                 elapsed,
             };
-            self.pace.report = step(ship, &self.helm.controls, &scene, STEP);
-            let report = self.pace.report;
+            let report = stride(ship, &self.helm.controls, &scene, solids);
             impact = impact.max(report.impact);
-            crash = report
-                .crash
-                .map(|at| Impact {
-                    speed: report.impact,
-                    at,
-                })
-                .or(crash);
-            elapsed += STEP;
+            let speed = report.impact;
+            crash = report.crash.map(|at| Impact { speed, at }).or(crash);
+            (self.pace.report, elapsed) = (report, elapsed + STEP);
             self.pace.carry -= STEP;
         }
         (impact, crash)

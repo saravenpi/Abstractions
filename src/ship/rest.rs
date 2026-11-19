@@ -24,6 +24,14 @@ pub fn wakes(ship: &Ship, controls: &Controls) -> bool {
     (!ship.assist && ship.throttle.abs() >= NEUTRAL) || controls.lift > 0.0
 }
 
+/// Adds to the damage of the ship what a hit `excess` metres per second above the safe speed
+/// of the point that took it does. A hit at or under the safe speed does none.
+pub fn harm(ship: &mut Ship, excess: f64) {
+    if excess > 0.0 {
+        ship.damage = (ship.damage + excess / DAMAGE_SPAN).min(1.0);
+    }
+}
+
 /// Seconds a ship must stay slow and held before it comes to rest.
 const REST_TIME: f64 = 0.5;
 
@@ -43,8 +51,8 @@ fn rests(ship: &Ship, contact: &Contact, controls: &Controls) -> bool {
 pub fn settle(ship: &mut Ship, contact: &Contact, controls: &Controls, h: f64) -> f64 {
     let landing = contact.ground && !ship.touching;
     ship.touching = contact.ground;
-    if landing && contact.excess > 0.0 {
-        ship.damage = (ship.damage + contact.excess / DAMAGE_SPAN).min(1.0);
+    if landing {
+        harm(ship, contact.excess);
     }
     ship.calm = if rests(ship, contact, controls) {
         ship.calm + h

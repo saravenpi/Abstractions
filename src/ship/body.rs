@@ -41,6 +41,8 @@ pub struct Ship {
     pub touching: bool,
     /// Seconds the ship has been slow and held by the ground or the sea, before it comes to rest.
     pub calm: f64,
+    /// Whether the hull met a built solid on the last step.
+    pub scraped: bool,
 }
 
 impl Ship {
@@ -61,6 +63,7 @@ impl Ship {
             stowed: false,
             touching: false,
             calm: 0.0,
+            scraped: false,
         }
     }
 

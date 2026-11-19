@@ -1,11 +1,16 @@
 //! The jitter buffer of one remote body: snapshots in, a smooth state a little in the past out.
 //!
+//! A snapshot is drawn at `now` minus the one-way delay and minus the jitter delay. The one-way
+//! delay is the shortest arrival time minus sample time over the last [`super::WINDOW`]
+//! arrivals, so snapshots are drawn as soon as they can arrive, whatever the latency.
+//!
 //! The delay is two send intervals plus the 95th percentile of arrival jitter, within
 //! [`DELAY_MIN`] and [`DELAY_MAX`]. It moves toward that target by at most [`DRIFT`] per
 //! second, so motion never stutters while it adapts. The send interval is the one the sender
 //! uses while moving: a body at rest sends slower, but its samples still line up with its
 //! arrivals, so the delay does not grow and the body holds still between them.
 
+use super::lag::Lag;
 use super::ring::Ring;
 use super::spread::Spread;
 use super::{Snap, View};
@@ -23,9 +28,11 @@ pub const DRIFT: f64 = 0.005;
 #[derive(Debug, Clone)]
 pub struct Buffer<E> {
     /// The snapshots in time order.
-    ring: Ring<E>,
+    pub(super) ring: Ring<E>,
     /// The recent arrival jitter.
-    spread: Spread,
+    pub(super) spread: Spread,
+    /// The recent one-way delays.
+    lag: Lag,
     /// Seconds between two snapshots while the body moves.
     interval: f64,
     /// The delay in use, in seconds.
@@ -41,6 +48,7 @@ impl<E: Copy + Default> Buffer<E> {
         let mut buffer = Self {
             ring: Ring::default(),
             spread: Spread::default(),
+            lag: Lag::default(),
             interval: interval.max(0.0),
             delay: 0.0,
             last_now: None,
@@ -49,23 +57,31 @@ impl<E: Copy + Default> Buffer<E> {
         buffer
     }
 
-    /// Adds a snapshot that arrived at `arrival`, a time in seconds on the same clock as the
-    /// `now` of [`Buffer::sample`]. Returns false when it was dropped as late or repeated; its
-    /// arrival still counts toward the jitter.
+    /// Adds a snapshot that arrived at universe time `arrival`, on the same clock as the `now`
+    /// of [`Buffer::sample`]. Returns false when it was dropped as late or repeated; its
+    /// arrival still counts toward the jitter and the one-way delay.
     pub fn push(&mut self, snap: Snap<E>, arrival: f64) -> bool {
         let kept = self.ring.push(snap);
         self.spread.record(snap.time, arrival, kept);
+        self.lag.record(snap.time, arrival);
         kept
     }
 
     /// Moves the delay toward its target for the time since the last call, and returns the
-    /// state at `now` minus the delay. Returns nothing while the buffer is empty.
+    /// state at `now` minus the one-way delay and the delay. Returns nothing while the buffer
+    /// is empty.
     pub fn sample(&mut self, now: f64) -> Option<View<E>> {
         let elapsed = self.last_now.map_or(0.0, |last| (now - last).max(0.0));
         self.last_now = Some(now);
         let step = DRIFT * elapsed;
         self.delay += (self.target() - self.delay).clamp(-step, step);
-        self.ring.at(now - self.delay)
+        self.ring.at(now - self.latency() - self.delay)
+    }
+
+    /// Returns the one-way delay in seconds: the shortest arrival time minus sample time over
+    /// the recent arrivals, or zero before the first one.
+    pub fn latency(&self) -> f64 {
+        self.lag.shortest()
     }
 
     /// Returns the delay in use, in seconds.
@@ -87,12 +103,5 @@ impl<E: Copy + Default> Buffer<E> {
     /// Returns true when no snapshot is kept.
     pub fn is_empty(&self) -> bool {
         self.ring.len() == 0
-    }
-
-    /// Forgets every snapshot but keeps the delay and the jitter measures. Call it when the
-    /// frame of the body changes, so no position is blended across two frames.
-    pub fn reset(&mut self) {
-        self.ring.clear();
-        self.spread.forget();
     }
 }

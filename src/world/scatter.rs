@@ -3,12 +3,14 @@
 
 mod air;
 mod density;
+mod grow;
 mod metric;
 mod pass;
 mod relief;
 mod rig;
 #[cfg(test)]
 mod rules;
+mod sow;
 mod spacing;
 mod table;
 #[cfg(test)]
@@ -23,6 +25,8 @@ mod tests_cost;
 mod tests_edge;
 #[cfg(test)]
 mod tests_frozen;
+#[cfg(test)]
+mod tests_life;
 #[cfg(test)]
 mod tests_metric;
 #[cfg(test)]
@@ -40,6 +44,7 @@ use rand_chacha::ChaCha8Rng;
 
 use self::air::{Air, still};
 use self::density::Fields;
+use self::grow::{Flora, growth};
 use self::metric::Metric;
 use self::pass::{Ctx, pass};
 use self::relief::Relief;
@@ -113,7 +118,7 @@ fn deep(terrain: &Terrain) -> f32 {
 
 /// Returns true when nothing is scattered on the planet at all.
 fn bare(terrain: &Terrain) -> bool {
-    terrain.globe().lands().growth() <= 0.0
+    growth(terrain) <= 0.0
 }
 
 /// Returns true when one of 25 points spread over chunk `coord` has a floor above the deep limit.
@@ -150,10 +155,11 @@ fn run(terrain: &Terrain, coord: IVec2, relief: Option<Relief>) -> Scatter {
             .as_ref()
             .filter(|_| !still())
             .map(|_| Air::new(terrain, coord)),
+        flora: Flora::of(terrain, center),
         relief,
     };
-    let growth = terrain.globe().lands().growth();
-    let thin = |tries: usize| (tries as f32 * growth) as usize;
+    let share = growth(terrain);
+    let thin = |tries: usize| (tries as f32 * share) as usize;
     Scatter {
         props: pass(&ctx, &mut rng, thin(BIG_TRIES), true),
         grass: pass(&ctx, &mut rng, thin(SMALL_TRIES), false),

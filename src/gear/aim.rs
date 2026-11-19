@@ -1,31 +1,25 @@
-//! Where the attitude wants to go: the aim leads, the flight path limits.
+//! Where the attitude wants to go: the command of the pilot, held near the flight path at speed.
 
 use std::f32::consts::{PI, TAU};
 
 use bevy::prelude::*;
 
 use super::aero::{best_aoa, bite, lift_slope};
-use super::assist::flare;
+use super::command::{bank, course};
 use super::input::GearInput;
+use super::mode::Mode;
 use super::path::{climb, path_offset};
 use super::state::FlightState;
 use super::tune::{
-    AOA_MAX, AOA_MIN, BANK_GAIN, BANK_SPEED, FOLLOW_SPEED, LIMIT_SPEED, MAX_BANK, MAX_LOAD,
-    MAX_PITCH, PATH_LOAD, PITCH_AUTHORITY, PRONE_SPEED, ROLL_AUTHORITY, TRIM_LOAD, TRIM_MAX,
+    AOA_MAX, AOA_MIN, BANK_SPEED, FOLLOW_SPEED, LIMIT_SPEED, MAX_LOAD, MAX_PITCH, PATH_LOAD,
+    PRONE_SPEED, TRIM_LOAD, TRIM_MAX,
 };
 use crate::render::smoothstep as smooth;
-
-/// Most g the wing can pull at this speed, between which a held pitch stick takes the nose off
-/// the flight path. Above the band the wing turns the path and the nose stays on it, which is
-/// a clean loop. Under it the wing cannot even carry the weight, the path will not come round
-/// whatever is asked, and the stick turns the body through the stall instead.
-const CARRY: (f32, f32) = (1.0, 1.5);
 
 /// Largest share in radians of the gap between the flight frame and its target that the pull
 /// makes up. The frame lags a path that turns, and at speed the wing pulls its whole load with
 /// a few hundredths of a radian, about that lag: without this a fast pull-out pulls one g
-/// where it may pull four. Kept small, so a frame turning freely through a stall does not
-/// throw the nose ahead of the body.
+/// where it may pull four.
 const LAG: f32 = 0.1;
 
 /// The attitude the gear steers toward.
@@ -56,10 +50,15 @@ pub(super) fn look_yaw(look: Vec3, fallback: f32) -> f32 {
     (-look.x).atan2(-look.z)
 }
 
-/// Returns the heading and the pitch the body is asked to fly along: the aim the caller gave,
-/// or the angles of the look direction. On the wings the path is turned onto it as fast as
-/// the wing can; folded, the nose heading is locked to it.
+/// Returns the heading and the flight path angle the body is asked to fly along.
+///
+/// On the wings it is the command of the pilot, see `command`. In a fall the gear took over it
+/// is the flight path, so the folded body lies along its momentum. Otherwise it is the aim the
+/// caller gave, or the angles of the look direction.
 pub(super) fn asked(state: &FlightState, input: &GearInput) -> Vec2 {
+    if state.mode.winged() || state.mode == Mode::Fall {
+        return Vec2::new(course(state, input), state.servo.climb);
+    }
     let level = look_yaw(input.look, state.servo.yaw);
     input
         .aim
@@ -69,88 +68,65 @@ pub(super) fn asked(state: &FlightState, input: &GearInput) -> Vec2 {
 /// Returns the largest angle of attack the wing may take at this speed: the stall angle, and
 /// less at high speed, where the same angle would pull more than [`MAX_LOAD`] g.
 ///
-/// Gliding with the pitch stick let go it is no more than the angle of the best glide: a
-/// hands-off wing too slow for its aim drops its nose and gathers speed, where one held at
+/// Gliding with the pitch and roll keys let go it is no more than the angle of the best glide: a
+/// hands-off wing too slow for its path drops its nose and gathers speed, where one held at
 /// the stall angle would sink on at that angle. Under power the thrust gathers the speed.
 fn lead(state: &FlightState, input: &GearInput) -> f32 {
     let slope = lift_slope(state.velocity.length(), bite(input));
     let stall = AOA_MAX.min(MAX_LOAD * input.gravity / slope.max(1e-3));
-    let calm = (1.0 - input.pitch.clamp(-1.0, 1.0).abs()) * state.spread() * (1.0 - state.power());
+    let held = input.pitch.abs().max(input.roll.abs()).min(1.0);
+    let calm = (1.0 - held) * state.spread() * (1.0 - state.power());
     stall.lerp(stall.min(best_aoa()), calm)
 }
 
 /// Returns the pull target: the nose-up trim that carries the weight at this speed and bank,
-/// the pull that turns the flight path onto the asked pitch at [`PATH_LOAD`], and the stick,
-/// inside what the wing may take.
+/// and the pull that turns the flight path onto the asked angle at [`PATH_LOAD`], inside what
+/// the wing may take.
 fn pull(state: &FlightState, input: &GearInput) -> f32 {
     let speed = state.velocity.length();
     let level = state.velocity.with_y(0.0).length() / speed.max(1e-3);
     let load = (level / state.bank.cos().max(0.1)).min(TRIM_LOAD);
-    let wanted = asked(state, input).y + flare(state, input);
-    let turn = wrap(wanted - climb(state)).clamp(-1.0, 1.0) * PATH_LOAD;
+    let turn = wrap(asked(state, input).y - climb(state)).clamp(-1.0, 1.0) * PATH_LOAD;
     let slope = lift_slope(speed, bite(input)).max(1e-3);
     let trim = (input.gravity * load / slope).min(TRIM_MAX) + input.gravity * turn / slope;
-    let stick = input.pitch.clamp(-1.0, 1.0) * PITCH_AUTHORITY;
-    ((trim + stick) * state.spread()).clamp(-AOA_MIN, lead(state, input))
+    (trim * state.spread()).clamp(-AOA_MIN, lead(state, input))
 }
 
-/// Returns the pitch target: the asked pitch and the assist, held near the flight path at speed.
+/// Returns the pitch target: the asked angle, held near the flight path at speed, and never
+/// past [`MAX_PITCH`], so the frame is never on its back.
 ///
 /// With the pull, the nose may lead the path by [`lead`] at most. The limits do not wait for
 /// the wings: with them folded the flight frame already lies along the fall, so that spreading
 /// them never meets the air flat on.
-///
-/// Every angle is taken on the turn nearest the pitch the body has, so the nose can follow the
-/// aim over the top of a loop and round again. Only a caller that gives a look direction, which
-/// cannot pass the vertical, is held under [`MAX_PITCH`].
-///
-/// `hold` is how much of the path limit is left, see [`aim`]: a held pitch stick lets go of the
-/// path once the wing is too slow to turn it. Without that a pull held from a glide ends in a
-/// stall that mushes down with the nose tied to the falling path, and the body never comes
-/// over the top.
-fn pitch(state: &FlightState, input: &GearInput, (pull, hold): (f32, f32)) -> f32 {
-    let near = |angle: f32| state.pitch + wrap(angle - state.pitch);
-    let wanted = near(asked(state, input).y + flare(state, input));
+fn pitch(state: &FlightState, input: &GearInput, pull: f32) -> f32 {
+    let wanted = asked(state, input).y;
     let (speed, path) = (state.velocity.length(), climb(state));
     let room = (lead(state, input) - pull).max(0.0);
     let held = wanted.clamp(path - AOA_MIN, path + room);
-    let weight = smooth(LIMIT_SPEED.0, LIMIT_SPEED.1, speed) * hold;
-    let free = wanted + (held - wanted) * weight;
-    match input.aim {
-        Some(_) => free,
-        None => free.clamp(-MAX_PITCH, MAX_PITCH),
-    }
+    let weight = smooth(LIMIT_SPEED.0, LIMIT_SPEED.1, speed);
+    (wanted + (held - wanted) * weight).clamp(-MAX_PITCH, MAX_PITCH)
 }
 
 /// Returns the attitude target for this state and input.
 ///
-/// With the wings folded it is upright along the look heading. As they spread and the airspeed
-/// builds, the nose heading follows the flight path, the heading error to the aim and the roll
-/// stick bank the wings, whose banked lift turns the path (a coordinated turn, no rudder), and
-/// the body lies prone.
-///
-/// A held pitch stick on a wing too slow to turn the path, see [`CARRY`], takes the nose off
-/// the path: the pitch follows the aim through the stall, and the heading and the bank stop
-/// chasing a path that only falls, or the body would spin on its way over the top. The body
-/// also stays prone on its flight frame however slow it gets: standing it up half way with the
-/// nose straight down has no shortest way round, and it would snap.
+/// With the wings folded it is upright along the asked heading. As they spread and the airspeed
+/// builds, the nose heading follows the flight path, the keys and the view bank the wings, whose
+/// banked lift turns the path (a coordinated turn), and the body lies prone. In a fall the gear
+/// took over the heading follows the path too, so spreading the wings again turns nothing.
 pub(super) fn aim(state: &FlightState, input: &GearInput) -> Aim {
     let (spread, speed) = (state.spread(), state.velocity.length());
     let heading = asked(state, input).x;
-    let carry = lift_slope(speed, bite(input)) * AOA_MAX / input.gravity.max(1e-3);
-    let stick = input.pitch.clamp(-1.0, 1.0).abs();
-    let hold = 1.0 - stick * (1.0 - smooth(CARRY.0, CARRY.1, carry));
-    let offset = path_offset(state, heading) * hold;
+    let offset = path_offset(state, heading);
     let flat = state.velocity.with_y(0.0).length();
-    let follow = spread * smooth(FOLLOW_SPEED.0, FOLLOW_SPEED.1, flat);
-    let turn = BANK_GAIN * offset + input.roll.clamp(-1.0, 1.0) * ROLL_AUTHORITY;
+    let along = spread.max(f32::from(u8::from(state.mode == Mode::Fall)));
+    let follow = along * smooth(FOLLOW_SPEED.0, FOLLOW_SPEED.1, flat);
     let pull = pull(state, input);
-    let pitch = pitch(state, input, (pull, hold));
+    let pitch = pitch(state, input, pull);
     Aim {
         pull: pull + (pitch - state.pitch).clamp(-LAG, LAG) * spread,
         yaw: heading + follow * offset,
         pitch,
-        bank: turn.clamp(-MAX_BANK, MAX_BANK) * spread * smooth(BANK_SPEED.0, BANK_SPEED.1, speed),
-        prone: spread * smooth(PRONE_SPEED.0, PRONE_SPEED.1, speed).max(1.0 - hold),
+        bank: bank(state, input) * spread * smooth(BANK_SPEED.0, BANK_SPEED.1, speed),
+        prone: spread * smooth(PRONE_SPEED.0, PRONE_SPEED.1, speed),
     }
 }

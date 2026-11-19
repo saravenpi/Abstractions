@@ -11,7 +11,7 @@ use crate::player::controller::{Motion, drive};
 use crate::sim::{Intent, IntentOf, PlayerId};
 
 /// Returns a world with one body standing on flat ground, moved by intents alone.
-fn world() -> App {
+pub(super) fn world() -> App {
     let mut app = app(&[(PlayerId::LOCAL, 0.0)]);
     app.add_systems(Update, (gather, drive).chain());
     app
@@ -19,7 +19,7 @@ fn world() -> App {
 
 /// Holds `asked` for `frames` frames and returns the motion and the gear of the body after
 /// them, with whether its boots were fired on any of them.
-fn hold(app: &mut App, frames: usize, asked: &[Intent]) -> (Motion, Gear, bool) {
+pub(super) fn hold(app: &mut App, frames: usize, asked: &[Intent]) -> (Motion, Gear, bool) {
     let mut fired = false;
     for _ in 0..frames {
         for &intent in asked {

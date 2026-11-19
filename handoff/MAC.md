@@ -10,6 +10,13 @@ Kodya is not special-cased. Its life comes from the same odds and rung rules as 
 
 Kodya and Vereya are no longer hand-made. Remove `PlanetRecord::TEMPERATE` as the home record and every fixed home value (the 6,371 km radius, the 86,164 s spin and the single impact moon that PLANETS.md and HANDOFF.md set). The universe is generated with the normal rules for every planet; then the home is picked: the nearest planet to the universe's centre that is solid, landable and alive under the normal life odds. If no living planet lies within a reasonable search (say the nearest few hundred systems), take the most suitable solid planet and report it. The chosen planet and its star get generated names like every other place: there is no Kodya and no Vereya any more. Remove `HOME_PLANET_NAME`, `HOME_STAR_NAME` and every fixed home name; code that needs home asks for the chosen planet. Rewrite the texts that name them (README, ROADMAP, the website hero, the og image alt text, the boot and wake screens) to speak of "your home planet" or use the generated name at runtime. The same seed gives the same home, so multiplayer still agrees on it. The home base, the wake point and every `HOME_PLANET_NAME` / `is_home` check follow the chosen planet. Old saves open with their own release, as already planned. This belongs to the planet waves (P1, with units and moons) and needs the new life odds from `eco-core` first.
 
+## Owner decisions, 2026-11-20: life odds (after the eco-core per-solvent model)
+
+- **Too many wet worlds.** The universe generator makes a liquid-water world in 84% of systems, so 88% of systems near home hold life. Fix the cause in the planet generator (planet wave P1): water worlds rarer, for physical reasons. Target: life in about 20 to 40% of systems. Core adds a tidal-locking penalty for red-dwarf planets.
+- **Lava life rare.** Life in molten silicate stays possible but rare and always at the lowest rung (core).
+- **Evolution at Earth's pace.** One rung takes about 1.3 billion years, anchored on Earth's 4 billion years from first life to complex animals (core).
+- **Data the planet wave adds for life** (missing today, reported by core): the star's age in `StarSpec` (so planets of one star share an age), liquid amounts per solvent (ammonia and hydrocarbon lakes), stored tidal heat (for vents), axial tilt in `World` (climate swings), and the planet's carbon supply.
+
 ## Paths
 
 | What | Path |

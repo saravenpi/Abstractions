@@ -1,12 +1,11 @@
 //! Tests of the explored ground: the grid, the reach, the network lists and the save.
 
-use abstractions_net::room::BODIES_MAX;
 use bevy::math::DVec3;
 
 use super::grid::{CELLS, COLS, WORDS, cell_of, centre, disc};
 use super::{Explored, REACH_CAP, REACH_FOOT, reach};
 use crate::saves::{Place, WorldSave};
-use crate::universe::{BodyId, HOME_RADIUS, Universe};
+use crate::universe::{HOME_RADIUS, Universe};
 
 /// Every cell holds its own centre.
 #[test]
@@ -114,41 +113,4 @@ fn saves_load_their_ground() {
         .unwrap();
     save.explored[0].body = body;
     assert_eq!(Explored::of(&save).words(body).unwrap(), &words[..]);
-}
-
-/// A server cannot make the game keep ground for empty lists, lists of the wrong size, cells
-/// off the grid, or more bodies than the room keeps.
-#[test]
-fn bad_ground_from_a_server_keeps_nothing() {
-    let universe = Universe::new(3);
-    let home = universe.home();
-    let mut explored = Explored::default();
-    explored.reveal_cells(home, &[]);
-    explored.reveal_cells(home, &[CELLS as u32, u32::MAX]);
-    explored.merge_words(home, &[]);
-    explored.merge_words(home, &[u64::MAX; 3]);
-    explored.merge_words(home, &vec![0; WORDS]);
-    assert_eq!(explored.bodies().count(), 0);
-    for index in 0..=u8::MAX {
-        let body = BodyId { index, ..home };
-        explored.reveal_cells(body, &[1]);
-        explored.merge_words(body, &vec![u64::MAX; WORDS]);
-    }
-    assert_eq!(explored.bodies().count(), BODIES_MAX);
-}
-
-/// Explored words survive a trip through the world file, the top bit of a word included.
-#[test]
-fn saved_words_survive_the_file() {
-    let body = Universe::new(3).home();
-    let mut words = vec![0; WORDS];
-    words[0] = (1 << 63) | 5;
-    words[WORDS - 1] = u64::MAX;
-    let mut save = toml::from_str::<WorldSave>("[[explored]]\nwords = [0]").expect("reads");
-    save.explored[0].body = body;
-    save.explored[0].words.clone_from(&words);
-    let text = toml::to_string(&save).expect("writes");
-    let back: WorldSave = toml::from_str(&text).expect("reads back");
-    assert_eq!(back.explored, save.explored);
-    assert_eq!(Explored::of(&back).words(body).expect("loaded"), &words[..]);
 }

@@ -60,3 +60,7 @@ impl Explored {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "remote_tests.rs"]
+mod tests;

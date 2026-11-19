@@ -15,7 +15,7 @@ use crate::map::explored::Explored;
 use crate::map::explored::grid::WORDS;
 use crate::net::{FromServer, Link, Role, Script, Source, Wire};
 use crate::screens::Screen;
-use crate::universe::Universe;
+use crate::universe::{BodyId, Universe};
 
 /// A whole body uncovered at once goes out as many messages, each one small enough for the
 /// server to read, and every cell once.
@@ -70,19 +70,9 @@ fn nothing_piles_up_offline() {
     assert!(explored.take_new(body).is_empty());
 }
 
-/// The ground of a welcome is merged at once, and merged again into the world the welcome
-/// starts once it is in play.
-#[test]
-fn the_welcome_ground_outlives_the_new_world() {
-    let mut app = alone();
-    let script: Script = Arc::new(Mutex::new(Wire::default()));
-    let link = Link::over(Source::Script(script), Role::Host);
-    app.world_mut().insert_resource(link);
-    app.update();
-    let body = Universe::new(3).home();
-    let mut words = vec![0; WORDS];
-    words[7] = 1 << 63;
-    let welcome = Welcome {
+/// Returns the welcome of player 3 to a world whose ground is `explored`.
+fn welcome(explored: Vec<(BodyId, Vec<u64>)>) -> ServerMsg {
+    ServerMsg::Welcome(Welcome {
         you: PlayerId(3),
         seed: 3,
         clock: 0.0,
@@ -90,23 +80,37 @@ fn the_welcome_ground_outlives_the_new_world() {
         atlas: String::new(),
         record: None,
         players: Vec::new(),
-        explored: vec![(body, words.clone())],
+        explored,
         waypoints: Vec::new(),
+    })
+}
+
+/// The ground of a welcome is merged at once, and merged again into the world the welcome
+/// starts once it is in play.
+#[test]
+fn the_welcome_ground_outlives_the_new_world() {
+    let mut app = alone();
+    let script: Script = Arc::new(Mutex::new(Wire::default()));
+    app.world_mut()
+        .insert_resource(Link::over(Source::Script(script), Role::Host));
+    app.update();
+    let body = Universe::new(3).home();
+    let mut words = vec![0; WORDS];
+    words[7] = 1 << 63;
+    let words_of = |app: &App| {
+        app.world()
+            .resource::<Explored>()
+            .words(body)
+            .map(<[u64]>::to_vec)
     };
     app.world_mut()
-        .write_message(FromServer(ServerMsg::Welcome(welcome)));
+        .write_message(FromServer(welcome(vec![(body, words.clone())])));
     app.update();
-    assert_eq!(
-        app.world().resource::<Explored>().words(body),
-        Some(&words[..])
-    );
+    assert_eq!(words_of(&app), Some(words.clone()));
     app.world_mut().insert_resource(Explored::default());
     app.world_mut()
         .resource_mut::<NextState<Screen>>()
         .set(Screen::Gameplay);
     app.update();
-    assert_eq!(
-        app.world().resource::<Explored>().words(body),
-        Some(&words[..])
-    );
+    assert_eq!(words_of(&app), Some(words));
 }

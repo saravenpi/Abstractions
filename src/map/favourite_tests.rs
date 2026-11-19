@@ -34,39 +34,44 @@ fn favourites_set_before_the_universe_are_drawn() {
     assert_eq!(markers[0].kind, MarkerKind::Favourite);
 }
 
-/// The favourites of the active world load, go back into it when they change, and ride the
-/// record a server keeps to the world of the next welcome.
-#[test]
-fn favourites_cross_the_world_and_the_record() {
-    let home = Universe::new(3).home();
+/// Returns a world of seed 3 whose one favourite is on the home planet.
+fn marked() -> WorldSave {
     let mut marks = Favourites::default();
-    marks.save(home, DVec3::X);
-    let save = WorldSave {
+    marks.save(Universe::new(3).home(), DVec3::X);
+    WorldSave {
         seed: 3,
-        marks: marks.0.clone(),
+        marks: marks.0,
         ..WorldSave::default()
-    };
+    }
+}
+
+/// The favourites of the active world load, and go back into it when they change.
+#[test]
+fn favourites_load_and_store_through_the_world() {
+    let save = marked();
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .init_resource::<Favourites>()
         .insert_resource(ActiveWorld(WorldEntry {
             id: "isle".to_string(),
-            save,
+            save: save.clone(),
         }))
         .add_systems(Update, (super::load, super::store).chain());
     app.update();
-    assert_eq!(*app.world().resource::<Favourites>(), marks);
-    let index = app
-        .world_mut()
-        .resource_mut::<Favourites>()
-        .save(home, DVec3::Y);
-    app.world_mut()
-        .resource_mut::<Favourites>()
-        .rename(index, "Cove");
+    assert_eq!(app.world().resource::<Favourites>().0, save.marks);
+    let mut favourites = app.world_mut().resource_mut::<Favourites>();
+    let index = favourites.save(Universe::new(3).home(), DVec3::Y);
+    favourites.rename(index, "Cove");
     app.update();
-    let saved = app.world().resource::<ActiveWorld>().0.save.clone();
+    let saved = &app.world().resource::<ActiveWorld>().0.save;
     assert_eq!(saved.marks, app.world().resource::<Favourites>().0);
     assert_eq!(saved.marks[1].name, "Cove");
+}
+
+/// The favourites ride the record a server keeps to the world of the next welcome.
+#[test]
+fn favourites_ride_the_record() {
+    let saved = marked();
     let welcome = Welcome {
         you: PlayerId(3),
         seed: 3,
@@ -78,5 +83,6 @@ fn favourites_cross_the_world_and_the_record() {
         explored: Vec::new(),
         waypoints: Vec::new(),
     };
+    assert!(!saved.marks.is_empty());
     assert_eq!(world_of(&welcome, "Isle").save.marks, saved.marks);
 }

@@ -45,7 +45,7 @@ In the ship:
 | V | First or third person |
 | F | Leave the ship |
 
-The compass at the top of the screen shows the home base, the ship, your friends, waypoints and nearby favourite places ahead of you. They fade toward its ends and hide behind you. Your coordinates and altitude sit under it.
+The compass at the top of the screen shows north, the home base, the ship, your friends, waypoints and nearby favourite places ahead of you. They fade toward its ends and hide behind you. Your coordinates, altitude and the weather sit in the top-left corner.
 
 The map shows each planet flat and in colour, but only the ground someone has explored. On a server, ground one player uncovers is uncovered for everyone. Right click a place on the map to set a waypoint there, save it as a favourite, copy its coordinates or centre the map on it. Right click a planet, a favourite or your waypoint to set the course to it or focus the map on it.
 

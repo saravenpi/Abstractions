@@ -11,11 +11,12 @@ use crate::ui::{text, theme};
 #[derive(Component)]
 pub(super) struct Readout;
 
-/// The empty card under a rule: the room of the longest readout, cut past it. `write` fills it.
+/// The empty card under a rule, as tall as its readout up to the longest one and cut past it.
+/// `write` fills it.
 pub(super) fn card() -> impl Bundle {
     (
         Node {
-            height: px(theme::GAP_S + LINES as f32 * LINE_HEIGHT),
+            max_height: px(theme::GAP_S + LINES as f32 * LINE_HEIGHT),
             flex_shrink: 0.0,
             flex_direction: FlexDirection::Column,
             padding: UiRect::top(px(theme::GAP_S)),

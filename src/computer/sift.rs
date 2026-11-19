@@ -91,7 +91,7 @@ pub fn arrange(lines: Vec<Line>, filter: &str, sort: Sort) -> Vec<Line> {
 }
 
 /// Returns the line of the header that names the list: the filter or the heading, which rows
-/// are drawn, and the order when it is by name. It fits one line of the side panel: a long
+/// are drawn while the list does not fit, and the order when it is by name. It fits one line of the side panel: a long
 /// heading is cut short.
 pub fn summary(
     heading: &str,
@@ -99,9 +99,12 @@ pub fn summary(
     view: (&str, Sort),
 ) -> String {
     let (filter, sort) = view;
-    let rows = format!(" - {first}-{last} of {count}{}", sort.label());
+    let rows = match (first, last) {
+        (1, last) if last == count => sort.label().to_string(),
+        _ => format!(" - {first}-{last} of {count}{}", sort.label()),
+    };
     let (head, tail) = match (count, filter.is_empty()) {
-        (0, true) => (heading.to_string(), " - nothing charted yet".to_string()),
+        (0, true) => (heading.to_string(), " - none charted yet".to_string()),
         (0, false) => (format!("No name holds \"{filter}\""), String::new()),
         (_, true) => (heading.to_string(), rows),
         (_, false) => (format!("\"{filter}\""), rows),

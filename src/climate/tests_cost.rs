@@ -9,7 +9,6 @@ use super::tests::{kodya, spot};
 use super::*;
 
 /// A point in time as the C library gives it.
-#[cfg(target_os = "linux")]
 #[repr(C)]
 #[derive(Default)]
 struct Timespec {
@@ -19,18 +18,15 @@ struct Timespec {
     nanos: i64,
 }
 
-#[cfg(target_os = "linux")]
 unsafe extern "C" {
     /// Reads the clock `clock` into `time`.
     fn clock_gettime(clock: i32, time: *mut Timespec) -> i32;
 }
 
 /// The clock that counts the processor time of the calling thread on Linux.
-#[cfg(target_os = "linux")]
 const THREAD_CLOCK: i32 = 3;
 
 /// Returns the seconds of processor time the calling thread has used.
-#[cfg(target_os = "linux")]
 fn busy() -> f64 {
     let mut time = Timespec::default();
     let failed = unsafe { clock_gettime(THREAD_CLOCK, &mut time) };
@@ -39,7 +35,6 @@ fn busy() -> f64 {
 }
 
 /// One call of `at` costs under 150 ns of processor time, over spots spread on the whole globe.
-#[cfg(target_os = "linux")]
 #[test]
 fn one_sample_costs_under_150_ns() {
     let home = kodya();

@@ -49,7 +49,17 @@ The `dev` feature links Bevy dynamically. A dev binary only starts through `carg
 
 1. Edit, and let `cargo check` or bacon tell you about errors.
 2. Run the tests of the area you touched, with a filter.
-3. Run the full gate once, before you commit. Not after every edit: it takes minutes.
+3. Before you commit: `cargo fmt --all --check`, clippy, the tests of every area you touched, and `filet check .`.
+
+Who checks what:
+
+| Who | Checks | When |
+| --- | --- | --- |
+| An agent | It compiles, clippy, the tests of its own areas, filet | Before each commit |
+| The owner | Feel and looks: flight, camera, animation, plants, interface | As soon as the work lands, in a dev or hot build |
+| The lead | The full gate: every test of the workspace | Once, after merging, before anything reaches `next` |
+
+An agent does not run the full workspace test suite: it takes minutes and the lead runs it after the merge. An agent that changes something the player sees says in its report exactly what the owner should try in the game.
 
 A change anywhere in `src/` rebuilds the whole game crate. Batch your edits between builds.
 

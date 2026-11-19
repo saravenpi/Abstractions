@@ -2,8 +2,8 @@
 //! and latitude down from the north pole, one pixel per cell of the explored grid.
 //!
 //! Each body asked for keeps its picture. Only explored cells are painted, on a worker thread,
-//! and each cell once: a newly explored cell is painted alone. The rest stays black with a
-//! faint grid. Painting waits while the map is closed, and the pictures stay painted.
+//! and each cell once: a newly explored cell is painted alone. The rest stays plain black.
+//! Painting waits while the map is closed, and the pictures stay painted.
 
 mod paint;
 #[cfg(test)]
@@ -28,12 +28,6 @@ use crate::world::Globe;
 
 /// Bytes of one pixel: red, green, blue and alpha.
 pub const BYTES: usize = 4;
-
-/// Cells between two lines of the faint grid over unexplored ground.
-const GRID: usize = 32;
-
-/// Grey of the faint grid.
-const LINE: u8 = 24;
 
 /// The pictures of the bodies the map asked for.
 #[derive(Resource, Default)]
@@ -83,22 +77,14 @@ impl Rasters {
     }
 }
 
-/// Returns a picture where nothing is explored: black with a faint grid.
+/// Returns a picture where nothing is explored: plain black, with no lines.
 fn blank() -> Image {
     let size = Extent3d {
         width: COLS as u32,
         height: ROWS as u32,
         depth_or_array_layers: 1,
     };
-    let mut pixels = vec![0; COLS * ROWS * BYTES];
-    for (index, pixel) in pixels.as_chunks_mut::<BYTES>().0.iter_mut().enumerate() {
-        let (row, column) = (index / COLS, index % COLS);
-        let grey = match row % GRID == 0 || column % GRID == 0 {
-            true => LINE,
-            false => 0,
-        };
-        *pixel = [grey, grey, grey, u8::MAX];
-    }
+    let pixels = [0, 0, 0, u8::MAX].repeat(COLS * ROWS);
     let (format, usage) = (TextureFormat::Rgba8UnormSrgb, RenderAssetUsages::default());
     let mut image = Image::new(size, TextureDimension::D2, pixels, format, usage);
     image.sampler = ImageSampler::nearest();

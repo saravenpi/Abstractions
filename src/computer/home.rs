@@ -3,7 +3,6 @@
 
 use bevy::math::DVec3;
 
-use super::format::distance;
 use super::locate::{here, ship_position, target_position};
 use super::route::Target;
 use super::rows::Line;
@@ -64,24 +63,6 @@ pub fn homeward(universe: &Universe, frame: Frame, at: DVec3, time: f64) -> Opti
     let (_, to) = beacon(universe, here(universe, frame, at), time)?;
     let offset = to - ship_position(universe, frame, at, time)?;
     Some((offset.try_normalize()?, offset.length()))
-}
-
-/// Returns how far from home a ship at `ship` inside `here` is, for the header: nothing in
-/// the home system, a distance in the home galaxy, and from another galaxy the number of
-/// cells of the galaxy grid to cross.
-pub fn away(universe: &Universe, here: [Option<Target>; 3], ship: UniPos) -> Option<String> {
-    let [_, star, galaxy] = homes(universe);
-    if here[1] == star {
-        return None;
-    }
-    let level = if here[2] == galaxy { star } else { galaxy };
-    let to = target_position(universe, level?, 0.0)?;
-    let cells = (ship.cell - to.cell).abs().max_element();
-    Some(match (here[2] == galaxy, cells) {
-        (true, _) | (_, 0) => format!("{} from home", distance(to.distance(ship))),
-        (_, 1) => "1 galaxy from home".to_string(),
-        (_, cells) => format!("{cells} galaxies from home"),
-    })
 }
 
 /// Returns the row pinned at the top of the table of `tab` for a ship inside `here`: the home

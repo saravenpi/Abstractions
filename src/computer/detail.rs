@@ -1,20 +1,40 @@
-//! The readout of the row under the cursor: the whole record of a planet or a moon in plain
-//! words.
+//! The card of the row under the cursor: the name of the place, what it is, and its facts in
+//! small groups, one labelled fact per row.
 
 use super::atlas::Atlas;
-use super::format::{distance, gravity};
-use super::giant::{company, surface};
+use super::facts::{galaxy, planet, star, uncharted};
 use super::route::Target;
 use super::rows::Line;
-use super::words::{flux, temperature, tilt, year, zone};
-use crate::saves::play_time;
+use super::words::temperature;
 use crate::universe::{PlanetRecord, PlanetSpec, Universe};
 
-/// Most lines a readout has.
-pub const LINES: usize = 6;
+/// Most rows a card has under its title and its subtitle.
+pub const ROWS: usize = 17;
 
 /// What a row says in place of the class and the temperature while the record is unknown.
 pub const UNCHARTED: &str = "uncharted";
+
+/// One row of a card.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Row {
+    /// The heading of the group of facts under it.
+    Heading(&'static str),
+    /// One fact: its label and its value.
+    Fact(&'static str, String),
+    /// A sentence on its own, such as what to do to learn more.
+    Note(&'static str),
+}
+
+/// The card of a place: its name, one line on what it is and where, and its rows.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Card {
+    /// The name of the place.
+    pub title: String,
+    /// What the place is and what it belongs to.
+    pub subtitle: String,
+    /// The facts, grouped under their headings.
+    pub rows: Vec<Row>,
+}
 
 /// Returns the class and the temperature of a planet, or [`UNCHARTED`] without its record.
 pub fn brief(record: Option<&PlanetRecord>) -> String {
@@ -54,30 +74,46 @@ pub fn advice(target: Target, visited: bool) -> Option<&'static str> {
     }
 }
 
-/// Returns the lines of the readout of `line`: the record of `world` when the row is a planet
-/// or a moon with a known record, what to do to learn more about one without, and otherwise
-/// the facts of the star or the galaxy and what to do to learn more. The year of a moon is its turn around its planet.
-pub fn readout(line: &Line, world: Option<&PlanetSpec>) -> Vec<String> {
-    let Some(planet) = world else {
-        let body = matches!(line.target, Target::Body(_));
-        let known = (!body).then(|| line.facts().to_string());
-        let hint = advice(line.target, line.visited).map(str::to_string);
-        return known.into_iter().chain(hint).collect();
+/// Returns `words` with its first letter in capitals.
+fn capital(words: &str) -> String {
+    let mut letters = words.chars();
+    letters.next().map_or(String::new(), |first| {
+        first.to_uppercase().chain(letters).collect()
+    })
+}
+
+/// Returns the subtitle of a planet or a moon: its class when its record is known, what it is
+/// and what it turns around.
+fn subtitle(universe: &Universe, body: &PlanetSpec, known: bool) -> String {
+    let id = body.id;
+    let (noun, around) = match id.is_moon() {
+        true => ("moon", universe.planet(id.planet()).name),
+        false => ("planet", Target::Star(id.star).name(universe)),
     };
-    let record = &planet.record;
-    let (radius, pull) = (distance(planet.radius), gravity(planet.gravity));
-    let (day, orbit) = (
-        play_time(planet.day_seconds.abs()),
-        year(planet.orbit_seconds),
-    );
-    let turn = if planet.id.is_moon() { "orbit" } else { "year" };
-    let [ground, sea] = surface(planet);
-    vec![
-        format!("{} - tilt {}", brief(Some(record)), tilt(record.tilt)),
-        ground,
-        sea,
-        format!("light {}, zone {}", flux(record.flux), zone(record.zone)),
-        format!("radius {radius} - gravity {pull}{}", company(planet)),
-        format!("day {day} - {turn} {orbit}"),
-    ]
+    let kind = match (known, body.record.class.label()) {
+        (false, _) => format!("{UNCHARTED} {noun}"),
+        (true, giant) if giant.ends_with("giant") => giant.to_string(),
+        (true, class) => format!("{class} {noun}"),
+    };
+    capital(&format!("{kind} of {around}"))
+}
+
+/// Returns the card of `line`: the whole record of `world` for a planet or a moon whose record
+/// is known, its size and what to do to learn more for one without, and otherwise the facts
+/// of the star or the galaxy.
+pub fn card(line: &Line, world: Option<&PlanetSpec>, universe: &Universe) -> Card {
+    let (subtitle, rows) = match (line.target, world) {
+        (Target::Body(_), Some(body)) => (subtitle(universe, body, true), planet(line, body)),
+        (Target::Body(id), None) => {
+            let body = universe.planet(id);
+            (subtitle(universe, &body, false), uncharted(line, &body))
+        }
+        (Target::Star(id), _) => star(line, universe, id),
+        (Target::Galaxy(id), _) => galaxy(line, universe, id),
+    };
+    Card {
+        title: line.title.clone(),
+        subtitle,
+        rows,
+    }
 }

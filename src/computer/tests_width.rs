@@ -80,7 +80,7 @@ fn the_header_fits_one_line() {
 }
 
 /// A chart name stays clear of the header and footer words: one in the middle of the map is
-/// drawn, one under the breadcrumb or beside the action button is not.
+/// drawn, one under the path or beside the progress line is not.
 #[test]
 fn chart_names_keep_out_of_the_header_and_footer() {
     let label = |y: f32| room(Vec2::new(200.0, y), 10.0, 6);

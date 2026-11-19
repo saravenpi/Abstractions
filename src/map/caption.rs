@@ -38,7 +38,7 @@ pub fn coords() -> impl Bundle {
 }
 
 /// Returns the caption of the level: the climate at `time` seconds of the planet shown, which
-/// the breadcrumb names, and nothing on a chart, whose list already names it.
+/// the path names, and nothing on a chart, whose list already names it.
 pub fn title(level: Level, (universe, time): (Option<&Universe>, f64)) -> String {
     match (level, universe) {
         (Level::Planet(body), Some(universe)) => {

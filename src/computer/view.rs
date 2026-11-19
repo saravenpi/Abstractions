@@ -1,7 +1,7 @@
 //! Static layout of the map screen: the map over the whole window but a slim panel on the
-//! right, with where the player is written over its top left corner and the action line of
-//! the course over its bottom. The panel holds the search box with its results, the
-//! favourites and the players.
+//! right, with the Back button and the path of the level shown over its top left corner and
+//! the progress of the route over its bottom. The panel holds the search box with its
+//! results, the card of the selected result with its buttons, the favourites and the players.
 //!
 //! The game keeps running under the screen. Every button of the screen is for the pointer
 //! only: hovering one lights it and never moves the keyboard focus, which stays on the
@@ -48,10 +48,6 @@ pub(super) enum Part {
 #[derive(Component, Debug, Clone, Copy)]
 pub(super) struct Cell(pub usize, pub Part);
 
-/// Marks the line that says where the player is.
-#[derive(Component)]
-pub(super) struct Crumbs;
-
 /// Marks the line that names the results and counts them.
 #[derive(Component)]
 pub(super) struct Summary;
@@ -60,13 +56,9 @@ pub(super) struct Summary;
 #[derive(Component)]
 pub(super) struct Status;
 
-/// Marks the words of the action line of the course, shown while it has no button.
+/// Marks the line that says how far along the route is while it is flown.
 #[derive(Component)]
 pub(super) struct Action;
-
-/// Marks the room of the button of the action line of the course.
-#[derive(Component)]
-pub(super) struct ActionSlot;
 
 /// Marks the search box, which a click makes the place typing goes to.
 #[derive(Component)]
@@ -76,7 +68,8 @@ pub struct SearchBox;
 #[derive(Component)]
 pub(super) struct SearchText;
 
-/// The slim panel on the right: the search with its card, the favourites and the players.
+/// The slim panel on the right: the search, the card of the selected result with its
+/// buttons, the favourites and the players. The card gives way first when the window is short.
 fn side() -> impl Bundle {
     let node = Node {
         width: px(SIDE),
@@ -139,26 +132,22 @@ fn line(color: Color) -> impl Bundle {
     )
 }
 
-/// The lines along the bottom of the map: the action line of the course, which holds its
-/// button or its words, over the course line and the place under the pointer.
+/// The lines along the bottom of the map: the progress of the route over the course line and
+/// the place under the pointer.
 fn foot() -> impl Bundle {
-    let act = (
-        Node {
-            min_height: px(theme::ROW_COMPACT),
-            align_items: AlignItems::Center,
-            ..default()
-        },
-        children![(ActionSlot, Node::default()), (Action, line(theme::TEXT))],
-    );
-    let lines = children![act, (Status, line(theme::MUTED)), crate::map::coords()];
+    let lines = children![
+        (Action, line(theme::TEXT)),
+        (Status, line(theme::MUTED)),
+        crate::map::coords()
+    ];
     (stack(), lines)
 }
 
-/// What is written over the map: the Back button and the path of the level shown, then where
-/// the player is, in the top left corner with north at
-/// the right end, and along the bottom the action line of the course over the course line
-/// and the place under the pointer, with the scale at the right end. Each line keeps its
-/// height while empty, so the others do not jump.
+/// What is written over the map: the Back button on its own row and the path of the level
+/// shown under it, then the caption, in the top left corner with north at the right end, and
+/// along the bottom the progress of the route over the course line and the place under the
+/// pointer, with the scale at the right end. Each line keeps its height while empty, so the
+/// others do not jump.
 fn words() -> impl Bundle {
     let node = Node {
         position_type: PositionType::Absolute,
@@ -169,11 +158,7 @@ fn words() -> impl Bundle {
         padding: UiRect::all(px(MARGIN)),
         ..default()
     };
-    let head = children![
-        crate::map::path(),
-        (Crumbs, line(theme::MUTED)),
-        crate::map::caption()
-    ];
+    let head = children![crate::map::path(), crate::map::caption()];
     (
         node,
         children![

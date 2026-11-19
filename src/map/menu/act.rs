@@ -32,7 +32,7 @@ pub struct Hands<'w, 's> {
 
 impl Hands<'_, '_> {
     /// Runs `choice` on `under`.
-    fn run(&mut self, choice: Choice, under: Under) {
+    pub(in crate::map) fn run(&mut self, choice: Choice, under: Under) {
         match choice {
             Choice::Course => self.course(under),
             Choice::Focus => self.focus(under),

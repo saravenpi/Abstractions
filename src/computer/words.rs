@@ -60,9 +60,9 @@ pub fn flux(flux: f64) -> String {
 /// Returns where an orbit lies against the habitable zone, in plain words.
 pub const fn zone(zone: Zone) -> &'static str {
     match zone {
-        Zone::Hot => "too hot",
-        Zone::Habitable => "habitable",
-        Zone::Cold => "too cold",
+        Zone::Hot => "too hot for water",
+        Zone::Habitable => "in the habitable zone",
+        Zone::Cold => "too cold for water",
     }
 }
 

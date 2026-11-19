@@ -7,7 +7,8 @@
 //!   system, a galaxy and the universe, one at a time. A double click goes into a place, Back
 //!   comes out of it, and each fades in.
 //! - The markers: the player, friends, waypoints, favourites, home and the ship.
-//! - The side panel lists the favourites and the players beside the search of the computer.
+//! - The side panel lists the favourites and the players beside the search of the computer,
+//!   and puts the buttons of what can be done with the selected place under its card.
 //! - A right click opens a menu of what can be done with what is under the pointer.
 
 pub mod explored;
@@ -16,6 +17,9 @@ pub mod raster;
 
 mod action;
 mod caption;
+mod deeds;
+#[cfg(test)]
+mod deeds_tests;
 mod fade;
 mod favourite;
 mod geo;
@@ -41,6 +45,7 @@ mod tests;
 mod waypoint;
 
 pub use caption::{caption, coords};
+pub use deeds::{Deed, deeds, named, offer, reason};
 pub use fade::veil;
 pub use favourite::Favourites;
 pub use geo::{coords as place_words, from_chart, lat_lon, to_chart};
@@ -91,12 +96,13 @@ fn screen(app: &mut App) {
         (pins::collect, pins_draw::draw),
         (planet::show, planet::picture),
         (caption::caption_text, caption::coords_text),
-        (side_show::write, side_show::save_words),
+        (side_show::write, side_show::save_words, deeds::write),
         fade::fade,
     );
     let after = (MarkerSet::Show, crate::computer::Input);
     app.add_systems(OnEnter(Computer::Open), level::open)
         .add_observer(side_act::on_activate)
+        .add_observer(deeds::on_press)
         .add_systems(
             Update,
             shown.chain().after(after.0).after(after.1).run_if(open),

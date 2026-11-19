@@ -1,20 +1,24 @@
-//! Computer tests: the measures of the side panel, the words of its header and footer, and
-//! the open panel leaving the game running.
+//! Computer tests: the measures of the side panel, the words of the footer, the buttons of
+//! the card, and the open panel leaving the game running.
 
 use avian3d::prelude::{Physics, PhysicsTime};
 use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 
-use super::course::{NO_COURSE, NOWHERE, Offer, arrival, course, crumbs, offer};
-use super::layout::{Measures, RESULTS, ROW, SIDE, SMALLEST, fixed, measure};
+use super::course::{NO_COURSE, arrival, course, progress};
+use super::layout::{FACTS, Measures, RESULTS, ROW, SIDE, SMALLEST, fixed, measure};
 use super::tests_rig::{game, run, tap};
 use super::view::{Panel, Slot};
 use super::*;
+use crate::map::{Choice, Deed, offer, reason};
 use crate::menus::Menu;
 use crate::screens::{in_control, playing};
 
 /// At every window size the side panel keeps its width, the map is the largest square beside
 /// it, and the search results take what the panel leaves within their fewest and most rows.
+/// At the smallest window the search, one result, the top of the card with its buttons and
+/// the lists always fit, and only the facts of the card are cut; at 1280 by 720 the whole
+/// card fits with nothing listed.
 #[test]
 fn the_screen_fits_every_window() {
     for height in [540.0, 600.0, 720.0, 900.0, 1080.0, 1200.0, 1440.0, 2160.0] {
@@ -35,24 +39,21 @@ fn the_screen_fits_every_window() {
     let smallest = Measures {
         side: SIDE,
         map: 540.0,
-        rows: RESULTS.1,
+        rows: RESULTS.0,
     };
     assert_eq!(measure(SMALLEST, (0, 0)), smallest);
     for lists in [(0, 0), (2, 1), (5, 0), (3, 3), (1, 6)] {
         let fit = measure(SMALLEST, lists);
-        let used = fixed(lists) + fit.rows as f32 * ROW;
+        let used = fixed(lists) - FACTS + fit.rows as f32 * ROW;
         assert!(used <= SMALLEST.y, "{lists:?}: {used}");
     }
+    let usual = measure(Vec2::new(1280.0, 720.0), (0, 0));
+    assert!(fixed((0, 0)) + usual.rows as f32 * ROW <= 720.0);
 }
 
-/// The breadcrumb joins the names from the galaxy down, and the course line gives a time to
-/// arrival only while the ship moves.
+/// The course line gives a time to arrival only while the ship moves.
 #[test]
-fn the_header_and_the_footer_say_the_right_words() {
-    let names = ["Aru".to_string(), "Vereya".to_string(), "Kodya".to_string()];
-    assert_eq!(crumbs(&names), "Aru > Vereya > Kodya");
-    assert_eq!(crumbs(&names[..1]), "Aru");
-    assert_eq!(crumbs(&[]), NOWHERE);
+fn the_footer_says_the_right_words() {
     let idle = RouteStatus::Idle;
     assert_eq!(arrival(6000.0, 100.0).as_deref(), Some("about 1 min"));
     assert_eq!(arrival(6000.0, 0.5), None);
@@ -96,23 +97,60 @@ fn the_action_line_says_what_the_route_can_do() {
     );
 }
 
-/// The action line offers to set the course while the selection is not the course, to
-/// engage while the route is idle, to clear once arrived, and words alone otherwise.
+/// The progress line under the map says how far along the route is while it is flown, and
+/// nothing while the route waits, is blocked or has arrived.
 #[test]
-fn the_action_line_offers_one_button() {
-    let idle = RouteStatus::Idle;
-    let act = |offer: Offer| match offer {
-        Offer::Button(act, ..) => Some(act),
-        Offer::Words(_) => None,
-    };
-    assert_eq!(act(offer(None, true, idle)), Some(Act::Set));
-    assert_eq!(act(offer(Some("Kodya"), true, idle)), Some(Act::Set));
-    assert_eq!(act(offer(Some("Kodya"), false, idle)), Some(Act::Engage));
-    let arrived = RouteStatus::Arrived;
-    assert_eq!(act(offer(Some("Kodya"), false, arrived)), Some(Act::Clear));
-    let words = offer(Some("Kodya"), false, RouteStatus::Aligning(45));
-    assert_eq!(words, Offer::Words("Aligning 45%".to_string()));
-    assert_eq!(offer(None, false, idle), Offer::Words(String::new()));
+fn the_progress_line_shows_only_a_route_in_flight() {
+    assert_eq!(progress("Kodya", RouteStatus::Aligning(40)), "Aligning 40%");
+    assert_eq!(progress("Kodya", RouteStatus::InWarp), "In warp to Kodya");
+    let quiet = [
+        RouteStatus::Idle,
+        RouteStatus::Blocked(Block::Landed),
+        RouteStatus::Arrived,
+    ];
+    assert!(
+        quiet
+            .iter()
+            .all(|status| progress("Kodya", *status).is_empty())
+    );
+}
+
+/// The card of a place offers to set the course there while it is not the course, and to
+/// engage while the route to it is idle and to clear it while it is, with the other choices
+/// of the menu of a right click after them. Only the card of the course says why the drive
+/// cannot engage.
+#[test]
+fn the_card_offers_the_buttons_of_the_course() {
+    let universe = crate::universe::Universe::new(7);
+    let (planet, star) = (
+        Target::Body(universe.home()),
+        Target::Star(universe.home().star),
+    );
+    let (idle, landed) = (RouteStatus::Idle, RouteStatus::Blocked(Block::Landed));
+    let menu = |choice| Deed::Choice(choice);
+    let others = [
+        menu(Choice::Focus),
+        menu(Choice::Waypoint),
+        menu(Choice::Favourite),
+    ];
+    let free = offer(planet, Some(star), idle);
+    assert_eq!(free[0], menu(Choice::Course));
+    assert_eq!(free[1..], others);
+    assert_eq!(
+        offer(planet, Some(planet), idle)[..2],
+        [Deed::Engage, Deed::Clear]
+    );
+    assert_eq!(
+        offer(planet, Some(planet), landed)[..2],
+        [Deed::Clear, others[0]]
+    );
+    assert_eq!(offer(star, None, idle), [menu(Choice::Course), others[0]]);
+    assert_eq!(
+        reason(planet, Some(planet), landed),
+        "Landed: take off first"
+    );
+    assert_eq!(reason(star, Some(planet), landed), "");
+    assert_eq!(reason(planet, Some(planet), idle), "");
 }
 
 /// Opening the map leaves the game running: physics and the game clock are not paused and

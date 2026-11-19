@@ -7,7 +7,7 @@ use bevy::state::app::StatesPlugin;
 
 use super::work::offset;
 use super::{BYTES, LINE, Rasters, colour};
-use crate::computer::{Lens, SIZE, direction};
+use crate::computer::{Computer, Lens, SIZE, direction};
 use crate::map::explored::Explored;
 use crate::map::explored::grid::{COLS, ROWS, cell_of, centre};
 use crate::map::{from_chart, place_words, to_chart};
@@ -70,29 +70,61 @@ fn pixel(world: &World, cell: u32) -> Option<[u8; BYTES]> {
     data[at..at + BYTES].try_into().ok()
 }
 
-/// A requested picture paints the explored cells on a worker and leaves the rest dark.
-#[test]
-fn explored_cells_are_painted_and_the_rest_stays_dark() {
+/// Returns a headless app that paints the pictures of a world of seed 7 where `seen` is the
+/// one explored cell of the home planet, the map in state `map`.
+fn painter(seen: u32, map: Computer) -> App {
     let universe = Universe::new(7);
     let body = universe.home();
     let mut explored = Explored::default();
-    let seen = (COLS * 100 + 7) as u32;
     explored.reveal_cells(body, &[seen]);
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), StatesPlugin))
         .init_asset::<Image>()
         .init_state::<Screen>()
+        .insert_state(map)
         .insert_resource(universe)
         .insert_resource(explored)
         .add_plugins(super::plugin);
     app.update();
     app.world_mut().resource_mut::<Rasters>().request(body);
+    app
+}
+
+/// A requested picture paints the explored cells on a worker and leaves the rest dark.
+#[test]
+fn explored_cells_are_painted_and_the_rest_stays_dark() {
+    let seen = (COLS * 100 + 7) as u32;
+    let mut app = painter(seen, Computer::Open);
     let painted = |world: &World| pixel(world, seen).is_some_and(|pixel| pixel[..3] != [0; 3]);
     wait(&mut app, painted);
     let dark = pixel(app.world(), seen + 1).expect("the picture exists");
     assert_eq!(dark, [0, 0, 0, u8::MAX]);
     let line = pixel(app.world(), (COLS * 100) as u32).expect("the picture exists");
     assert_eq!(line, [LINE, LINE, LINE, u8::MAX]);
+}
+
+/// Nothing is painted while the map is closed; opening it paints what was explored, and the
+/// picture stays painted when it closes again.
+#[test]
+fn a_closed_map_paints_nothing() {
+    let seen = (COLS * 100 + 7) as u32;
+    let mut app = painter(seen, Computer::Closed);
+    for _ in 0..50 {
+        app.update();
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    assert_eq!(pixel(app.world(), seen), None);
+    let set = |app: &mut App, map| {
+        app.world_mut()
+            .resource_mut::<NextState<Computer>>()
+            .set(map)
+    };
+    set(&mut app, Computer::Open);
+    let painted = |world: &World| pixel(world, seen).is_some_and(|pixel| pixel[..3] != [0; 3]);
+    wait(&mut app, painted);
+    set(&mut app, Computer::Closed);
+    app.update();
+    assert!(painted(app.world()));
 }
 
 /// The pixel of the picture under the pointer on the planet level is the cell of the place the

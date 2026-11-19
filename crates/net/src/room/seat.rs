@@ -2,7 +2,7 @@
 
 use crate::host::ConnId;
 use crate::ids::StarId;
-use crate::wire::{Head, Kind, PlayerInfo, Record};
+use crate::wire::{Head, Kind, PlayerInfo, Record, Waypoint};
 
 /// Kinds of state record: robot, ship and companion.
 pub(super) const KINDS: usize = 3;
@@ -101,6 +101,8 @@ pub(super) struct Seat {
     pub(super) star: Option<StarId>,
     /// The recent records of each kind, in the order of [`kind_index`].
     pub(super) recent: [Recent; KINDS],
+    /// The player's live waypoint, if any.
+    pub(super) waypoint: Option<Waypoint>,
 }
 
 /// Returns the place of `kind` in [`Seat::latest`].
@@ -121,6 +123,7 @@ impl Seat {
             info,
             star: None,
             recent: Default::default(),
+            waypoint: None,
         }
     }
 

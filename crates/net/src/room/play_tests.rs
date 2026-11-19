@@ -94,6 +94,7 @@ fn snapshot_keeps_clock_and_records() {
     let record = PlayerRecord {
         place: "here".to_string(),
         ship: "red".to_string(),
+        marks: "lake".to_string(),
     };
     room.message(ada, ClientMsg::Record(record), 101.0, &mut out);
     room.closed(ada, 120.0, &mut out);
@@ -104,9 +105,10 @@ fn snapshot_keeps_clock_and_records() {
         (
             member.name.as_str(),
             member.place.as_str(),
-            member.ship.as_str()
+            member.ship.as_str(),
+            member.marks.as_str()
         ),
-        ("Ada", "here", "red")
+        ("Ada", "here", "red", "lake")
     );
     assert!(!room.busy());
 }

@@ -79,5 +79,6 @@ pub fn record_of(save: &WorldSave) -> PlayerRecord {
                 .as_ref()
                 .and_then(|ship| toml::to_string(ship).ok()),
         ),
+        ..PlayerRecord::default()
     }
 }

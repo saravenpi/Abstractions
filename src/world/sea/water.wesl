@@ -206,6 +206,10 @@ fn column_depth(frag: vec4<f32>, eye_above: f32) -> f32 {
     return depth;
 }
 
+fn shelved(depth: f32) -> f32 {
+    return mix(depth, DEEP, smoothstep(SHELF_START, SHELF_END, depth));
+}
+
 fn swash(p: vec2<f32>, d: f32, pixel: f32, t: f32) -> f32 {
     let n = value_noise(p + vec2<f32>(t * 0.1, -t * 0.06), 0.25);
     let ragged = value_noise(p - vec2<f32>(t * 0.05, t * 0.08), 0.75);
@@ -341,7 +345,7 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
         let column = min(column_depth(in.position, rise * dist) + sag, DEEP);
         let shelf = smoothstep(SHELF_START, SHELF_END, column);
         let mapped = bed.w * (1.0 - smoothstep(MAP_LOW, MAP_HIGH, eye_height));
-        let depth = mix(mix(column, DEEP, shelf), max(bed.y, 0.0), mapped);
+        let depth = mix(shelved(column), shelved(max(bed.y, 0.0)), mapped);
         let shade = floor((1.0 - exp(-depth * 0.5)) * 6.0 + 0.5) / 6.0;
         let body = mix(water.shallow.rgb, water.deep.rgb, shade) * (light + vec3<f32>(water.shallow.w));
 

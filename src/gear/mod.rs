@@ -39,7 +39,7 @@ mod tests;
 
 pub use boots::descent_target;
 pub use contact::{deflect, slid};
-pub use fx::{FlightFx, GearSet};
+pub use fx::{FlightFx, GearSet, Wake};
 pub use input::{GearInput, air_density};
 pub use mode::Mode;
 pub use path::path_offset;

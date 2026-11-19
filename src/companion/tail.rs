@@ -16,6 +16,7 @@ use super::sense::Around;
 use super::spring::ramp;
 use super::tune::{HALF, TAIL_GAIN, TAIL_LIFE, TAIL_SPEED, TAIL_WIDTH};
 use super::wake::Wake;
+use crate::net::Remote;
 use crate::screens::Screen;
 
 /// The trail of one companion and whether its mesh currently shows anything.
@@ -90,26 +91,41 @@ fn look(eye: Vec3, display: &Display) -> Look {
     }
 }
 
+/// What a tail is laid from: where its companion is, how it flies, its light, whether it is
+/// the companion of another player and whether it is shown.
+type Bot = (
+    &'static Transform,
+    &'static Float,
+    &'static Display,
+    Has<Remote>,
+    Option<&'static Visibility>,
+);
+
 /// Lays the tail of every companion behind its thruster and rewrites the ribbon while any of
 /// it glows. A tail with nothing left to show is written once more, to clear it, and then left
-/// alone. A tail whose companion is gone goes too.
+/// alone. A tail whose companion is gone goes too. The tail of the companion of another player
+/// is emptied while that companion is hidden, so it does not run from where it was hidden to
+/// where it shows again.
 pub fn draw(
     mut commands: Commands,
     around: Around,
-    bots: Query<(&Transform, &Float, &Display), With<Companion>>,
+    bots: Query<Bot, With<Companion>>,
     mut tails: Query<(Entity, &mut Tail, &Mesh3d)>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
     let anchor = &*around.anchor;
     for (entity, mut tail, handle) in &mut tails {
-        let Ok((at, float, display)) = bots.get(tail.owner) else {
+        let Ok((at, float, display, remote, shown)) = bots.get(tail.owner) else {
             commands.entity(entity).despawn();
             continue;
         };
         let seat = float.seated.then_some(*around.body);
         let glow = heat(float.flight, float.vel.length()) * f32::from(u8::from(!float.seated));
         let from = anchor.to_frame(nozzle(at, seat));
-        tail.wake.feed(from, glow, around.dt());
+        match remote && shown == Some(&Visibility::Hidden) {
+            true => tail.wake = Wake::default(),
+            false => tail.wake.feed(from, glow, around.dt()),
+        }
         let live = tail.wake.live(TAIL_LIFE);
         if !live && !tail.drawn {
             continue;

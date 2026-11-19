@@ -16,9 +16,14 @@ mod robot;
 mod send;
 mod tag;
 mod track;
+mod whereabouts;
 
 #[cfg(test)]
 mod tests;
+
+pub(super) use bodies::Bodies;
+pub(super) use frame::{Place, Pose};
+pub(super) use track::Remotes;
 
 use bevy::prelude::*;
 use bevy::transform::TransformSystems;
@@ -43,6 +48,7 @@ fn frame(app: &mut App) {
     let placed = drawn
         .chain()
         .after(ShipSet::Place)
+        .before(ShipSet::Report)
         .before(AvatarSet::Animate);
     let heard = (track::ingest, forget::forget).chain().after(Receive);
     app.add_systems(

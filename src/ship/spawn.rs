@@ -159,7 +159,7 @@ pub fn spawn(
             rot: ship.rot,
         },
         ship,
-        Engine { glow: glow.clone() },
+        Engine::new(glow.clone()),
         Transform::default(),
         Visibility::default(),
         DespawnOnEnter(Screen::Title),

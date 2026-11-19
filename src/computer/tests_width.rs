@@ -1,8 +1,12 @@
 //! Width tests: every text of the side panel fits its room at the smallest window, so none is
-//! cut off at the right edge. The panel keeps its width at every window size.
+//! cut off at the right edge. The panel keeps its width at every window size. Chart names keep
+//! out of the header and footer words.
+
+use bevy::math::Vec2;
 
 use super::format::{clip, distance};
-use super::layout::{GLYPH, LINE_CHARS, ROOM};
+use super::labels::room;
+use super::layout::{GLYPH, LINE_CHARS, ROOM, clear_of_bands};
 use super::results::{DISTANCE_CHARS, TITLE_CHARS, WIDTHS};
 use super::show::cell_text;
 use super::sift::{FILTER_CHARS, Sort, summary};
@@ -73,4 +77,14 @@ fn the_header_fits_one_line() {
     }
     let usual = summary("Vereya system", (1, 8, 12), ("", Sort::Near));
     assert_eq!(usual, "Vereya system - 1-8 of 12");
+}
+
+/// A chart name stays clear of the header and footer words: one in the middle of the map is
+/// drawn, one under the breadcrumb or beside the action button is not.
+#[test]
+fn chart_names_keep_out_of_the_header_and_footer() {
+    let label = |y: f32| room(Vec2::new(200.0, y), 10.0, 6);
+    assert!(clear_of_bands(label(360.0), 720.0));
+    assert!(!clear_of_bands(label(22.0), 720.0));
+    assert!(!clear_of_bands(label(644.0), 720.0));
 }

@@ -145,21 +145,31 @@ type Route<'w> = (Res<'w, Destination>, Res<'w, RouteStatus>);
 type Written = Or<(With<Status>, With<Crumbs>)>;
 
 /// Writes the course with its distance and the state of the route, and where the ship is:
-/// when the course or the route changes, and twice a second for the distance.
+/// when the course, the route or the selection changes, and twice a second for the
+/// distance. Without a course the line stays empty while a row is selected, since the button
+/// over it already offers to set the course.
 fn status(
-    time: Res<Time>,
+    (time, board): (Res<Time>, Res<Board>),
     scene: Scene,
     (destination, route): Route,
     mut since: Local<f32>,
     mut lines: Query<(&mut Text, Has<Crumbs>), Written>,
 ) {
     *since += time.delta_secs();
-    let empty = lines.iter().any(|(text, _)| text.0.is_empty());
-    if !(destination.is_changed() || route.is_changed() || empty || *since >= REFRESH) {
+    let empty = lines
+        .iter()
+        .any(|(text, crumbs)| crumbs && text.0.is_empty());
+    let changed = destination.is_changed() || route.is_changed() || board.is_changed();
+    if !(changed || empty || *since >= REFRESH) {
         return;
     }
     *since = 0.0;
-    let (shown, place) = (scene.route(destination.0, *route), scene.place());
+    let offered = destination.0.is_none() && board.lines.get(board.cursor).is_some();
+    let shown = match offered {
+        true => String::new(),
+        false => scene.route(destination.0, *route),
+    };
+    let place = scene.place();
     for (mut text, crumbs) in &mut lines {
         let wanted = if crumbs { &place } else { &shown };
         text.set_if_neq(Text(wanted.clone()));

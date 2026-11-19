@@ -15,6 +15,9 @@ use crate::ui::{Icon, Tone, icon_sized, text, theme};
 /// Height in pixels of a house drawn on the map.
 const HOUSE: f32 = 12.0;
 
+/// Pixels the ship takes on either side of its point, which the house keeps clear of.
+const SHIP_ROOM: f32 = 10.0;
+
 /// Width and height in pixels of the room of the pin: its house over its distance.
 const PIN: Vec2 = Vec2::new(72.0, 30.0);
 
@@ -100,13 +103,19 @@ pub fn rank(home: bool, base: u8) -> u8 {
     if home { 0 } else { base + 1 }
 }
 
-/// Spawns a small house to the left of the mark of the home of the open chart.
+/// Spawns a small house to the left of the mark of the home of the open chart, moved out
+/// past the ship when the ship is drawn on it, so the two never overlap.
 pub(super) fn badge(sheet: &mut ChildSpawnerCommands, board: &Board, view: &MapView) {
     let row = home_row(board).map(Dot::Row);
-    let Some((_, at)) = view.dots.iter().find(|(dot, _)| Some(*dot) == row) else {
+    let find = |wanted: Option<Dot>| view.dots.iter().find(|(dot, _)| Some(*dot) == wanted);
+    let Some((_, at)) = find(row) else {
         return;
     };
-    let corner = Vec2::new(-HOUSE - theme::GAP_S, -0.5 * HOUSE);
+    let scale = [1.0, view.side / SIZE][usize::from(view.side > 0.0)];
+    let apart = |ship: Vec2| view.lens.to_map(ship).distance(view.lens.to_map(*at)) * scale;
+    let near = find(Some(Dot::Ship)).is_some_and(|(_, ship)| apart(*ship) < SHIP_ROOM);
+    let shift = [0.0, SHIP_ROOM][usize::from(near)];
+    let corner = Vec2::new(-HOUSE - theme::GAP_S - shift, -0.5 * HOUSE);
     let house = icon_sized(Icon::Home, Tone::Plain, HOUSE);
     sheet
         .spawn(spot(*at, corner, Vec2::splat(HOUSE)))

@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 
 use super::work::offset;
-use super::{BYTES, LINE, Rasters, colour};
+use super::{BYTES, Rasters, colour};
 use crate::computer::{Lens, SIZE, direction};
 use crate::map::explored::Explored;
 use crate::map::explored::grid::{COLS, ROWS, cell_of, centre};
@@ -91,8 +91,8 @@ fn explored_cells_are_painted_and_the_rest_stays_dark() {
     wait(&mut app, painted);
     let dark = pixel(app.world(), seen + 1).expect("the picture exists");
     assert_eq!(dark, [0, 0, 0, u8::MAX]);
-    let line = pixel(app.world(), (COLS * 100) as u32).expect("the picture exists");
-    assert_eq!(line, [LINE, LINE, LINE, u8::MAX]);
+    let far = pixel(app.world(), (COLS * 100) as u32).expect("the picture exists");
+    assert_eq!(far, [0, 0, 0, u8::MAX]);
 }
 
 /// The pixel of the picture under the pointer on the planet level is the cell of the place the

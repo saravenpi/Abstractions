@@ -75,7 +75,6 @@ fn moons_stay_with_their_planet_in_the_list() {
         (title(&system()[2]), title(&system()[1])),
         ("  Zed".into(), "Rhea".into())
     );
-    assert_eq!(cell_text(&system()[2], Part::Detail, marks).0, "");
 }
 
 /// Returns the chart point of row `index` among `dots`.

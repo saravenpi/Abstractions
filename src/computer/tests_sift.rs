@@ -75,12 +75,12 @@ fn the_filter_takes_letters_and_shows_in_the_header() {
             (filter, Sort::Near),
         )
     };
-    assert_eq!(shown(9, ""), "Vereya system - 1 to 6 of 9 by distance");
-    assert_eq!(shown(2, "ko"), "\"ko\" - 1 to 2 of 2 by distance");
+    assert_eq!(shown(9, ""), "Vereya system - 1-6 of 9");
+    assert_eq!(shown(2, "ko"), "\"ko\" - 1-2 of 2");
     assert!(shown(0, "").starts_with("Vereya system - nothing charted yet"));
     assert!(shown(0, "zz").starts_with("No name holds \"zz\""));
     let by_name = summary("Known universe", (1, 4, 4), ("", Sort::Name));
-    assert_eq!(by_name, "Known universe - 1 to 4 of 4 by name");
+    assert_eq!(by_name, "Known universe - 1-4 of 4 by name");
 }
 
 /// A row wears the icon of what it is, a pin when it is the destination and the ship where

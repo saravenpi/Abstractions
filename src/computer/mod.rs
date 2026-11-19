@@ -81,6 +81,8 @@ mod tests_tables;
 #[cfg(test)]
 mod tests_wheel;
 #[cfg(test)]
+mod tests_width;
+#[cfg(test)]
 mod tests_words;
 
 pub use arrow::{arrow, bearing};
@@ -92,6 +94,7 @@ pub use draw::side;
 pub use format::{distance, gravity};
 pub use home::{arranged, away, beacon, homes, homeward, pinned, tab_of, toward};
 pub use labels::{keep, priority, room, scale_bar};
+pub use layout::GLYPH;
 pub use lens::{Lens, MAX_ZOOM};
 pub use locate::{SYSTEM_REACH, here, ship_position, target_position, whereabouts};
 pub use map::{ChartLayer, Field, SIZE, Sheet, body, field, frame, name, ring, ship, spot};

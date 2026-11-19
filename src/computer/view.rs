@@ -15,8 +15,8 @@ use super::map::field;
 use super::open::Computer;
 use crate::ui::{Overlay, Tone, column, hairline, key_cap, label, text, theme};
 
-/// Key hints shown at the bottom of the panel.
-const HINT: &str = "Wheel zoom, drag pan, 0 centre, B waypoint";
+/// Key hints shown at the bottom of the panel, one short line each.
+pub(super) const HINT: &str = "Wheel zoom, drag pan\n0 centre, B waypoint";
 
 /// What the search box says while nothing is typed.
 pub(super) const SEARCH_HINT: &str = "Search (/)";
@@ -42,8 +42,6 @@ pub(super) enum Part {
     Title,
     /// The distance from the ship.
     Distance,
-    /// The other facts.
-    Detail,
 }
 
 /// A text of the result in this slot.

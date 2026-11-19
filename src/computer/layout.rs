@@ -18,6 +18,15 @@ pub const SIDE: f32 = 320.0;
 /// Margin in pixels around the side panel and around the texts over the map.
 pub const MARGIN: f32 = 12.0;
 
+/// Width in pixels the side panel leaves for its content, inside its margins and its border.
+pub const ROOM: f32 = SIDE - 2.0 * MARGIN - theme::LINE;
+
+/// Width in pixels of one character of small text, the font being monospaced.
+pub const GLYPH: f32 = theme::GLYPH_ASPECT * theme::FONT_SMALL;
+
+/// Most characters of small text one line of the side panel holds.
+pub const LINE_CHARS: usize = (ROOM / GLYPH) as usize;
+
 /// Height in pixels of one row of the lists of the side panel.
 pub const ROW: f32 = theme::ROW_COMPACT;
 
@@ -29,8 +38,8 @@ pub const LINE_HEIGHT: f32 = theme::FONT_SMALL * 1.2;
 
 /// Height in pixels the side panel keeps for what is not the search results: the search box,
 /// the card of the selected result, the favourites and the players with their headings, the
-/// hints and the margins.
-pub const FIXED: f32 = 470.0;
+/// two lines of hints and the margins.
+pub const FIXED: f32 = 470.0 + LINE_HEIGHT;
 
 /// The measures of the screen in one window.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]

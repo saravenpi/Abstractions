@@ -4,10 +4,11 @@ use bevy::prelude::*;
 
 use super::acting::{Acting, act};
 use super::board::Board;
-use super::format::distance;
+use super::format::{clip, distance};
 use super::home::{arranged, beacon, homes, pinned};
 use super::moons::is_moon;
 use super::open::ready;
+use super::results::TITLE_CHARS;
 use super::route::{Destination, HOME_LABEL, RouteStatus, Target};
 use super::rows::Line;
 use super::scene::Scene;
@@ -61,8 +62,8 @@ fn sign(target: Target, chosen: bool, here: bool) -> Icon {
 
 /// Returns the text and the tone of one cell of `line`. The destination and the place of the
 /// ship are marked, a row that says home in its name wears the house unless it is the
-/// destination, a place never visited is dimmed, and the name of a moon is indented under
-/// its planet.
+/// destination, a place never visited is dimmed, the name of a moon is indented under its
+/// planet, and a long name is cut short to fit its column.
 pub(super) fn cell_text(line: &Line, part: Part, (chosen, here): (bool, bool)) -> (String, Tone) {
     let seen = match (chosen, line.visited || here) {
         (true, _) => Tone::Accent,
@@ -72,10 +73,11 @@ pub(super) fn cell_text(line: &Line, part: Part, (chosen, here): (bool, bool)) -
     match part {
         Part::Mark if !chosen && line.title.ends_with(HOME_LABEL) => (Icon::Home.glyph(), seen),
         Part::Mark => (sign(line.target, chosen, here).glyph(), seen),
-        Part::Title if is_moon(line.target) => (format!("{INDENT}{}", line.title), seen),
-        Part::Title => (line.title.clone(), seen),
+        Part::Title if is_moon(line.target) => {
+            (clip(&format!("{INDENT}{}", line.title), TITLE_CHARS), seen)
+        }
+        Part::Title => (clip(&line.title, TITLE_CHARS), seen),
         Part::Distance => (distance(line.distance), Tone::Plain),
-        Part::Detail => (line.facts().to_string(), Tone::Muted),
     }
 }
 

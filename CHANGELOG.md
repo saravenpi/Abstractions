@@ -5,6 +5,33 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-11-19
+
+Players and servers must both run 0.10.1: the multiplayer protocol changed.
+
+### Added
+
+- The map, on M anywhere or Tab in the ship: one map that zooms from the ground under you to the planet, its system, the galaxy and the universe with the wheel, with no tabs to switch.
+- Planets on the map are flat and in colour, and only the ground someone has explored shows. On a server, ground one player uncovers is uncovered for everyone.
+- Waypoints: B, or a right click on the map, sets one; again clears it. Your friends see your waypoint in your colour on their compass, minimap and map.
+- Favourite places: save a place on the map with a name, then find it, rename it, delete it or set a course to it from the map.
+- Your coordinates and altitude under the compass, and the coordinates under the pointer on the map.
+- Friends on the compass and the minimap, each in their own colour, and in the map's player list.
+- A remote pilot sits in their cockpit, moving the stick, and their ship's glow and exhaust follow its throttle.
+- Friends' wingsuit trails and their companions' trails, and their companions' faces.
+
+### Changed
+
+- The compass fades its marks toward its ends and hides what is behind you, like a real compass, and shows any number of marks.
+- When a course is set, one line always says what happens next: "G Engage autopilot", or exactly why the drive waits, such as "Inside 3 planet radii (now 1.4): fly out first". G engages from the cockpit without opening the map.
+- The minimap range moved from M to N.
+
+### Fixed
+
+- Friends' ships no longer stutter or jump: their motion is drawn behind the measured network delay, with no freeze on landing, liftoff or far out in space.
+- The minimap and the compass no longer disagree with where you are for a frame when the world shifts under you or the ship moves fast.
+- You walk up stairs and small ledges without jumping.
+
 ## [0.10.0] - 2026-11-19
 
 ### Added

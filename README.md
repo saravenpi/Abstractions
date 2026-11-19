@@ -19,6 +19,9 @@ On foot:
 | A D in the wingsuit | Roll into a banked turn |
 | Q E in the wingsuit | Turn |
 | V | First or third person |
+| M | Map |
+| N | Minimap range, then off |
+| B | Set or clear a waypoint where you stand |
 | F | Board the ship |
 | Look down + W | Dive while swimming |
 | Esc | Pause menu, or back |
@@ -36,12 +39,14 @@ In the ship:
 | X | Cut the throttle |
 | Z | Flight assist on or off |
 | J | Warp drive, away from a planet's gravity |
-| Tab | Board computer: places you have discovered |
-| G | Send the computer's destination to the autopilot |
+| M or Tab | Map. Wheel to zoom from the ground to the universe, drag to pan, 0 to recentre, double click a planet to set the course |
+| G | Engage the autopilot on the course. The line under the compass says when it cannot, and why |
 | V | First or third person |
 | F | Leave the ship |
 
-A bar at the top of the screen points to the home base and to the ship while you are on their planet.
+The compass at the top of the screen shows the home base, the ship, your friends, waypoints and nearby favourite places ahead of you. They fade toward its ends and hide behind you. Your coordinates and altitude sit under it.
+
+The map shows each planet flat and in colour, but only the ground someone has explored. On a server, ground one player uncovers is uncovered for everyone. Save a place on the map as a favourite to find it again.
 
 Rebind every key in Settings > Controls.
 
@@ -201,7 +206,8 @@ A missing or broken file is replaced by the defaults.
 - `src/world`: planets as spheres, terrain, chunk streaming, plants, structures and sea.
 - `src/home`: the base on Kodya.
 - `src/player`, `src/avatar`, `src/gear`, `src/view`: movement, the robot body, the wingsuit and boots, the camera.
-- `src/ship`, `src/computer`: the ship, its autopilot and the board computer.
+- `src/ship`, `src/computer`: the ship, its autopilot, its course and the charts.
+- `src/map`: the map, the explored ground, waypoints and favourite places.
 - `src/companion`: the second robot.
 - `src/audio`: generated music and sounds.
 - `src/render`: low-resolution target, sun, sky, atmosphere, clouds, stars and fog.

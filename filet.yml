@@ -1,4 +1,4 @@
-ignore: [.git, node_modules, dist, build, target, testdata, .venv, __pycache__, data]
+ignore: [.git, node_modules, dist, build, target, testdata, .venv, __pycache__, data, examples]
 
 extensions: [.rs, .sh]
 

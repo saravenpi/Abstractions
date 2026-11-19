@@ -124,8 +124,8 @@ type Followed = (
 );
 
 /// Tells the camera rig what it follows: the local body, upright, with the velocity the controller
-/// just gave it. The forward direction is the north of the upright frame, because the rig
-/// owns the heading of the view.
+/// just gave it, shifted by how far the eyes still trail it after a step-up. The forward
+/// direction is the north of the upright frame, because the rig owns the heading of the view.
 pub(super) fn aim(
     anchor: Res<Anchor>,
     players: Query<Followed, With<Player>>,
@@ -141,7 +141,7 @@ pub(super) fn aim(
     let to_render = tilt(vertical);
     let airborne = gear.state.mode.airborne();
     *target = Target {
-        position: transform.translation,
+        position: transform.translation - to_render * motion.lag,
         up: vertical,
         forward: to_render * Vec3::NEG_Z,
         velocity: to_render * motion.velocity,

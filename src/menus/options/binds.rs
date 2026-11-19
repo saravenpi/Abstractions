@@ -37,8 +37,9 @@ pub enum Bind {
 }
 
 impl Bind {
-    /// The actions used on foot, in display order. The view and board keys work in the ship too.
-    pub const FOOT: [Bind; 12] = [
+    /// The actions used on foot, in display order. The view and board keys work in the ship too,
+    /// and the turn keys turn the wingsuit as they turn the ship.
+    pub const FOOT: [Bind; 14] = [
         Bind::Forward,
         Bind::Back,
         Bind::Left,
@@ -46,6 +47,8 @@ impl Bind {
         Bind::Jump,
         Bind::Sprint,
         Bind::Wings,
+        Bind::YawLeft,
+        Bind::YawRight,
         Bind::View,
         Bind::Board,
         Bind::Minimap,

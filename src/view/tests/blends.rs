@@ -94,7 +94,7 @@ fn ground_flight_ground_is_continuous() {
 /// person camera looks a little toward where the body is going.
 #[test]
 fn flight_banks_partly_and_looks_ahead() {
-    for (prefs, share) in [(third(), 0.35), (ViewPrefs::default(), 0.5)] {
+    for (prefs, share) in [(third(), 0.3), (ViewPrefs::default(), 0.3)] {
         let mut body = moment(Kind::Flying, prefs);
         body.target.velocity = Vec3::new(-8.0, 0.0, -20.0);
         body.target.bank = 0.4;

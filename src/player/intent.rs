@@ -21,6 +21,8 @@ pub(super) struct Intent {
     pub(super) right: f32,
     pub(super) sprint: bool,
     pub(super) jump: bool,
+    pub(super) yaw: f32,
+    pub(super) steer: bool,
 }
 
 /// Returns the unit horizontal direction for forward and right axes at a yaw angle.
@@ -80,6 +82,8 @@ mod tests {
             right: 0.0,
             sprint: false,
             jump: true,
+            yaw: 0.0,
+            steer: false,
         };
         let mut airborne = Motion {
             coyote: -1.0,

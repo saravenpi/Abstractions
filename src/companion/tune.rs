@@ -42,6 +42,10 @@ pub const LOW_CLEARANCE: f32 = 0.32;
 /// Gap the body itself never goes under, whatever the spring does, in meters.
 pub const FLOOR: f32 = 0.24;
 
+/// Radius of the ball the companion is to the drawn solids, in meters: its shell and its hands,
+/// just under [`FLOOR`] so the floor alone never presses it into the ground.
+pub const SHELL_RADIUS: f32 = 0.22;
+
 /// Spring rate in radians per second while it is close to its spot. Higher is tighter.
 pub const FOLLOW_RATE: f32 = 4.0;
 

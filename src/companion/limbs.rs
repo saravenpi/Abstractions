@@ -5,9 +5,9 @@ use std::f32::consts::FRAC_PI_2;
 use bevy::prelude::*;
 
 use super::Companion;
-use super::brain::Brain;
 use super::motion::Float;
 use super::pose::Pose;
+use super::puppet::Parts;
 use super::tune::{HALF, HAND_LAG};
 
 /// How fast a hand catches up with where it should trail, per second.
@@ -35,17 +35,17 @@ pub struct Hand {
 #[derive(Component, Debug, Clone, Copy)]
 pub struct Thruster;
 
-/// The hands: their transform and how far they trail.
-type Hands<'w, 's> = Query<
+/// The parts on a rig the limbs move: their transform, the hand if one is, and whether it is the thruster.
+type Limbs<'w, 's> = Query<
     'w,
     's,
-    (&'static mut Transform, &'static mut Hand),
-    (Without<Companion>, Without<Thruster>),
+    (
+        &'static mut Transform,
+        Option<&'static mut Hand>,
+        Has<Thruster>,
+    ),
+    Without<Companion>,
 >;
-
-/// The transform of the thruster.
-type Nozzle<'w, 's> =
-    Single<'w, 's, &'static mut Transform, (With<Thruster>, Without<Hand>, Without<Companion>)>;
 
 /// Returns where a hand trails to for a body moving at `local` meters per second in its own axes.
 pub fn trail(local: Vec3) -> Vec3 {
@@ -69,22 +69,44 @@ pub fn hand_pose(side: f32, lag: Vec3, pose: &Pose, now: f32) -> Transform {
         .with_rotation(Quat::from_rotation_z(side * (0.25 + pose.spread * 0.9)))
 }
 
-/// Moves the hands and pulses the thruster.
-pub fn limbs(
-    time: Res<Time>,
-    bot: Single<(&Transform, &Float, &Brain), With<Companion>>,
-    mut hands: Hands,
-    mut thruster: Nozzle,
+/// Moves the hands of one companion moving at `float` and posed by it, and pulses its thruster.
+fn swing(
+    limb: (Mut<Transform>, Option<Mut<Hand>>, bool),
+    local: Vec3,
+    float: &Float,
+    clock: (f32, f32),
 ) {
-    let (at, float, brain) = *bot;
-    let (now, dt) = (time.elapsed_secs_wrapped(), time.delta_secs());
-    let local = at.rotation.inverse() * float.vel;
-    let blend = 1.0 - (-HAND_RATE * dt).exp();
-    for (mut transform, mut hand) in &mut hands {
+    let (mut transform, hand, thruster) = limb;
+    let (now, blend) = clock;
+    if let Some(mut hand) = hand {
         let lag = hand.lag.lerp(trail(local), blend);
         hand.lag = lag;
-        *transform = hand_pose(hand.side, lag, &brain.pose, now).with_scale(transform.scale);
+        *transform = hand_pose(hand.side, lag, &float.pose, now).with_scale(transform.scale);
+    } else if thruster {
+        let push = 1.0 + 0.12 * (now * 11.0).sin() + (float.vel.length() * 0.08).min(0.5);
+        transform.scale = THRUSTER * Vec3::new(1.0, push, 1.0);
     }
-    let push = 1.0 + 0.12 * (now * 11.0).sin() + (float.vel.length() * 0.08).min(0.5);
-    thruster.scale = THRUSTER * Vec3::new(1.0, push, 1.0);
+}
+
+/// Moves the hands and pulses the thruster of every companion, each from its own motion and
+/// pose, so a companion driven from elsewhere moves its own hands too.
+pub fn limbs(
+    time: Res<Time>,
+    bots: Query<(&Transform, &Float, &Parts), With<Companion>>,
+    rigs: Query<&Children>,
+    mut parts: Limbs,
+) {
+    let (now, dt) = (time.elapsed_secs_wrapped(), time.delta_secs());
+    let blend = 1.0 - (-HAND_RATE * dt).exp();
+    for (at, float, own) in &bots {
+        let local = at.rotation.inverse() * float.vel;
+        let Ok(children) = rigs.get(own.rig) else {
+            continue;
+        };
+        for &child in children {
+            if let Ok(limb) = parts.get_mut(child) {
+                swing(limb, local, float, (now, blend));
+            }
+        }
+    }
 }

@@ -74,6 +74,7 @@ fn screen(app: &mut App) {
         pins::collect,
         pins_draw::draw,
         planet::show,
+        planet::picture,
         planet::caption_text,
         planet::coords_text,
         side_show::write,

@@ -4,7 +4,7 @@
 //! the local vertical through the anchor, never from render `y`, and the pooled entities are
 //! marked `Rebased` so an anchor rebase leaves them where they were on the planet.
 
-mod creatures;
+pub(crate) mod creatures;
 mod eye;
 mod ground;
 mod kind;

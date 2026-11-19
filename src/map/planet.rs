@@ -2,12 +2,14 @@
 //! the level shown, and the latitude and longitude under the pointer.
 //!
 //! The flat map is the coloured picture of the planet the raster paints, black where nobody
-//! has been. Until a picture is ready a plain dark rectangle stands in for it.
+//! has been, from [`super::raster::Rasters`]. Until a picture is ready a plain dark rectangle
+//! stands in for it.
 
 use bevy::prelude::*;
 
 use super::geo::coords as words;
 use super::level::Level;
+use super::raster::Rasters;
 use super::surface::{PlanetSheet, Surface};
 use crate::computer::{Board, ChartLayer, Tab, climate_line};
 use crate::space::Clock;
@@ -98,6 +100,37 @@ pub(super) fn show(level: Res<Level>, fresh: Query<(), Added<PlanetLayer>>, mut 
         let display = [Display::None, Display::Flex][usize::from(planet == is_planet)];
         if node.display != display {
             node.display = display;
+        }
+    }
+}
+
+/// Asks for the picture of the planet shown and puts it on the map once it is painted. The
+/// plain rectangle stands in until then, also after a switch to a planet not painted yet.
+pub(super) fn picture(
+    level: Res<Level>,
+    mut rasters: ResMut<Rasters>,
+    mut commands: Commands,
+    pictures: Query<(Entity, Option<&ImageNode>), With<Picture>>,
+) {
+    let Level::Planet(body) = *level else {
+        return;
+    };
+    let handle = rasters.image(body);
+    if handle.is_none() {
+        rasters.request(body);
+    }
+    for (entity, node) in &pictures {
+        match (&handle, node) {
+            (Some(handle), Some(node)) if node.image == *handle => {}
+            (Some(handle), _) => {
+                commands
+                    .entity(entity)
+                    .insert(ImageNode::new(handle.clone()));
+            }
+            (None, Some(_)) => {
+                commands.entity(entity).remove::<ImageNode>();
+            }
+            (None, None) => {}
         }
     }
 }

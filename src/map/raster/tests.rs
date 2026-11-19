@@ -7,8 +7,10 @@ use bevy::state::app::StatesPlugin;
 
 use super::work::offset;
 use super::{BYTES, LINE, Rasters, colour};
+use crate::computer::{Lens, SIZE, direction};
 use crate::map::explored::Explored;
 use crate::map::explored::grid::{COLS, ROWS, cell_of, centre};
+use crate::map::{from_chart, place_words, to_chart};
 use crate::screens::Screen;
 use crate::universe::Universe;
 use crate::world::Globe;
@@ -91,4 +93,28 @@ fn explored_cells_are_painted_and_the_rest_stays_dark() {
     assert_eq!(dark, [0, 0, 0, u8::MAX]);
     let line = pixel(app.world(), (COLS * 100) as u32).expect("the picture exists");
     assert_eq!(line, [LINE, LINE, LINE, u8::MAX]);
+}
+
+/// The pixel of the picture under the pointer on the planet level is the cell of the place the
+/// map reads there and says in words. The picture fills the middle half of the sheet, as
+/// `planet_layer` lays it out.
+#[test]
+fn the_picture_lies_under_the_pointer_as_the_map_reads_it() {
+    let lens = Lens::default();
+    let spots = [(12.4, 103.2), (-60.0, 300.0), (0.3, 0.3), (80.0, 200.0)];
+    for (lat, lon) in spots {
+        let dir = direction(f64::to_radians(lon), f64::to_radians(lat));
+        let pixel = lens.to_map(to_chart(dir));
+        let at = from_chart(lens.to_chart(pixel)).expect("on the map");
+        assert_eq!(cell_of(at), cell_of(dir), "{lat} {lon}");
+        let across = (pixel.x / SIZE * COLS as f32) as usize;
+        let down = ((pixel.y / SIZE - 0.25) * 2.0 * ROWS as f32) as usize;
+        assert_eq!(
+            (down * COLS + across) * BYTES,
+            offset(cell_of(at)),
+            "{lat} {lon}"
+        );
+    }
+    let said = place_words(direction(f64::to_radians(103.2), f64::to_radians(12.4)));
+    assert_eq!(said, "12.4° N  103.2° E");
 }

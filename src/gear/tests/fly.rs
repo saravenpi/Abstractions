@@ -27,12 +27,12 @@ fn level_flight_is_sustainable() {
     assert!(flight.state.velocity.y.abs() < 0.5);
 }
 
-/// The back key held climbs under power, 200 m in well under a minute. Let go, the flight
-/// levels out and holds its height.
+/// The view held at the climb limit climbs under power, 200 m in well under a minute. Let go,
+/// the flight levels out and holds its height.
 #[test]
 fn powered_flight_climbs() {
     let mut flight = Flight::new(Mode::Fly, Vec3::new(0.0, 0.0, -40.0));
-    flight.run(&powered(1.0, 0.0), 20.0);
+    flight.run(&flying(CLIMB_LIMIT), 20.0);
     assert!(flight.pos.y > 200.0, "climbed {}", flight.pos.y);
     flight.run(&powered(0.0, 0.0), 20.0);
     let climb = flight.state.velocity.y;
@@ -71,8 +71,8 @@ fn hovering_is_impossible() {
 }
 
 /// The view straight up and the back key held from rest never rise above the start until the
-/// wings fly: the nose cannot point past the climb limit, so the boosters only lift the body
-/// once it has run past the stall speed, where the wings carry it.
+/// wings fly: too slow, the wing cannot turn the path up and the nose follows the fall, so the
+/// boosters only lift the body once it has run past the stall speed, where the wings carry it.
 #[test]
 fn straight_up_from_rest_never_rises() {
     let mut flight = Flight::new(Mode::Fly, Vec3::ZERO);
@@ -90,11 +90,6 @@ fn straight_up_from_rest_never_rises() {
             "rose to {} at {}",
             flight.pos.y,
             flight.state.airspeed
-        );
-        assert!(
-            flight.state.pitch < CLIMB_LIMIT + 0.02,
-            "pitch {}",
-            flight.state.pitch
         );
     }
 }

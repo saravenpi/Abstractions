@@ -1,11 +1,13 @@
-//! The wingsuit flown by intents in the controller: the keys ask for an attitude inside fixed
-//! limits, never a rate, so the body never rolls over, never loops and levels when let go.
+//! The wingsuit flown by intents in the controller: the keys ask for rates in the frame of the
+//! body, so a held roll key rolls it over and round, a held back key on a plain glide stalls out
+//! of the climb, and let go the wings level.
 
 use bevy::prelude::*;
 
 use super::stage::body;
 use super::wings::{hold, world};
-use crate::gear::tune::{BANK_LIMIT, CLIMB_LIMIT};
+use std::f32::consts::{FRAC_PI_2, TAU};
+
 use crate::gear::{FlightState, Gear, Mode};
 use crate::player::Player;
 use crate::player::controller::Motion;
@@ -56,47 +58,41 @@ pub(super) fn launch(velocity: Vec3, settle: f32) -> App {
     app
 }
 
-/// Holding A for ten seconds banks left to the limit and no further, and the back of the body
-/// always faces the sky: it never rolls over.
+/// Holding A rolls the body left all the way round within three seconds, through flying on
+/// its back, and the wings stay spread.
 #[test]
-fn holding_a_never_passes_the_bank_limit_or_rolls_over() {
+fn holding_a_rolls_the_body_over_and_round() {
     let mut app = launch(Vec3::new(0.0, -7.0, -30.0), 2.0);
-    let mut deepest = 0.0_f32;
-    for frame in 0..300 {
+    let (mut turned, mut lowest) = (0.0_f32, 1.0_f32);
+    let mut last = body(&mut app, PlayerId::LOCAL).2.state.bank;
+    for _ in 0..90 {
         let (_, gear, _) = hold(&mut app, 1, &[keys(0.0, -1.0)]);
-        let back = (gear.state.frame() * Vec3::Y).y;
-        deepest = deepest.min(gear.state.bank);
-        assert!(
-            gear.state.bank > -BANK_LIMIT - 0.01,
-            "frame {frame}: bank {}",
-            gear.state.bank
-        );
-        assert!(back > 0.4, "frame {frame}: the back faces {back}");
+        turned += crate::player::wrap(gear.state.bank - last);
+        last = gear.state.bank;
+        lowest = lowest.min((gear.state.frame() * Vec3::Y).y);
+        assert_eq!(gear.state.mode, Mode::Glide);
     }
-    assert!(deepest < -BANK_LIMIT + 0.05, "banked only {deepest}");
+    assert!(turned < -TAU, "rolled only {turned}");
+    assert!(lowest < -0.8, "never on its back: {lowest}");
 }
 
-/// Holding S for ten seconds never climbs past the climb limit, and the body never rolls over.
-/// A glide already under the stall speed gets its nose down by itself, S still held.
+/// Holding S on a plain glide climbs and stalls out of the climb: it never loops and never ends
+/// on its back, too slow for it. A glide already under the stall speed gets its nose down with
+/// S still held.
 #[test]
-fn holding_s_never_passes_the_climb_limit_and_a_stall_drops_the_nose() {
+fn holding_s_on_a_plain_glide_stalls_out_and_a_stall_drops_the_nose() {
     let mut app = launch(Vec3::new(0.0, -7.0, -30.0), 2.0);
-    for frame in 0..300 {
+    for frame in 0..180 {
         let (_, gear, _) = hold(&mut app, 1, &[keys(-1.0, 0.0)]);
         let state = gear.state;
         assert!(
-            state.pitch < CLIMB_LIMIT + 0.02,
+            state.pitch < FRAC_PI_2,
             "frame {frame}: pitch {}",
             state.pitch
         );
         assert!(
-            path(&gear) < CLIMB_LIMIT + 0.05,
-            "frame {frame}: path {}",
-            path(&gear)
-        );
-        assert!(
-            (state.frame() * Vec3::Y).y > 0.4,
-            "frame {frame}: rolled over"
+            (state.frame() * Vec3::Y).y > -0.3,
+            "frame {frame}: on its back"
         );
     }
     let mut slow = launch(Vec3::new(0.0, 0.0, -11.0), 0.0);
@@ -109,14 +105,14 @@ fn holding_s_never_passes_the_climb_limit_and_a_stall_drops_the_nose() {
     assert_eq!(gear.state.mode, Mode::Glide);
 }
 
-/// Let go after a full bank, the wings are within 3 degrees of level within a second.
+/// Let go after a roll into a bank, the wings are within 3 degrees of level within 1.3 s.
 #[test]
-fn letting_go_levels_the_wings_within_a_second() {
+fn letting_go_levels_the_wings() {
     for strafe in [-1.0, 1.0] {
         let mut app = launch(Vec3::new(0.0, -7.0, -30.0), 2.0);
-        let (_, banked, _) = hold(&mut app, 90, &[keys(0.0, strafe)]);
-        assert!(banked.state.bank.abs() > 0.8, "bank {}", banked.state.bank);
-        let (_, level, _) = hold(&mut app, 30, &[]);
+        let (_, banked, _) = hold(&mut app, 10, &[keys(0.0, strafe)]);
+        assert!(banked.state.bank.abs() > 0.6, "bank {}", banked.state.bank);
+        let (_, level, _) = hold(&mut app, 40, &[]);
         let bank = level.state.bank.to_degrees();
         assert!(bank.abs() < 3.0, "still banked {bank} degrees");
     }

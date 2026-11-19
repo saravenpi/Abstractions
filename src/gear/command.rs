@@ -1,23 +1,32 @@
-//! What the pilot asks of the wings: a flight path angle and a bank, never a rate.
+//! What the pilot asks of the wings: rates from the keys, an attitude from the view.
 //!
-//! This is stabilised flight, as in the angle mode of a flight controller. A held key asks for
-//! an attitude inside fixed limits, and let go the wings come level on the best glide. Nothing
-//! asks for more than the limits, so the body never rolls over and never loops. Near the stall
-//! the limits close in: the nose is held down and the bank kept shallow until the speed is back.
+//! The keys fly the wings as a pilot flies them, in the frame of the body. The roll keys roll
+//! it on round its nose (see `roll`), the pitch keys pull toward its back or push toward its
+//! belly as hard as the wing may (see `aim`), and the yaw keys turn the path flat. Nothing
+//! limits the attitude: held, they roll the body over and loop it. Let go, the wings come
+//! level and the flight path eases back to the best glide, and near the stall the nose goes
+//! down. While the steer button is held the view asks for an attitude inside fixed limits.
 
 use bevy::prelude::*;
 
 use super::aero::bite;
+use super::aim::wrap;
 use super::assist::flare;
 use super::input::GearInput;
-use super::path::{climb, path_offset};
+use super::path::{bounded, climb, mirrored, path_offset};
 use super::servo::ease;
 use super::state::FlightState;
 use super::tune::{
-    BANK_GAIN, BANK_LIMIT, BANK_SPEED, CLIMB_LIMIT, COMMAND_RATE, DIVE_LIMIT, MAX_PITCH,
+    BANK_GAIN, BANK_LIMIT, BANK_SPEED, CLIMB_LIMIT, COMMAND_RATE, DIVE_LIMIT, LEVEL, LIMIT_SPEED,
     STALL_BANK, STALL_PITCH, STALL_SPEED, WING_DRAG, YAW_TURN,
 };
 use crate::render::smoothstep as smooth;
+
+/// Rate per second at which the asked flight path angle rides the path while a pitch key is
+/// held at flying speed, so the nose stays on the path the wing turns. Slower it lets go, as
+/// the air lets go of the body: under [`LIMIT_SPEED`] a stalled body does not whip round after
+/// a path that points nowhere.
+const RIDE_RATE: f32 = 20.0;
 
 /// Returns the flight path angle of the best glide of the spread wing, in radians: about 13
 /// degrees down, a glide of `(dorsal - nose) / (2 * sqrt(dorsal * nose))` to one.
@@ -33,49 +42,58 @@ pub(super) fn safe(state: &FlightState) -> f32 {
     smooth(STALL_SPEED.0, STALL_SPEED.1, speed).max(state.power())
 }
 
-/// Returns the flight path angle the keys and the view ask for.
+/// Returns the flight path angle the wings ease toward while no pitch key is held.
 ///
-/// It is the view while it steers, else the trim: the best glide, or level flight under power.
-/// The back key lifts it toward [`CLIMB_LIMIT`] and the forward key lowers it toward
-/// [`DIVE_LIMIT`], the ground assist flares it, and near the stall it is never higher than
-/// [`STALL_PITCH`].
+/// It is the view while it steers, inside [`DIVE_LIMIT`] and [`CLIMB_LIMIT`], else the trim:
+/// the best glide, or level flight under power. The ground assist flares it, and near the stall
+/// it is never higher than [`STALL_PITCH`]. A body whose pitch reads past the vertical reads
+/// it there too.
 fn wanted(state: &FlightState, input: &GearInput) -> f32 {
     let trim = best_glide().lerp(0.0, state.power());
     let base = input.aim.map_or(trim, |aim| aim.y);
     let base = base.clamp(DIVE_LIMIT, CLIMB_LIMIT);
-    let stick = input.pitch.clamp(-1.0, 1.0);
-    let keyed = match stick >= 0.0 {
-        true => base.lerp(CLIMB_LIMIT, stick),
-        false => base.lerp(DIVE_LIMIT, -stick),
-    };
     let ceiling = STALL_PITCH.lerp(CLIMB_LIMIT, safe(state));
-    (keyed.min(ceiling) + flare(state, input)).min(CLIMB_LIMIT)
+    mirrored(
+        state,
+        (base.min(ceiling) + flare(state, input)).min(CLIMB_LIMIT),
+    )
 }
 
 /// Returns the asked flight path angle after `h` seconds.
 ///
-/// Folded it rides the flight path. As the wings spread it eases from there toward [`wanted`]
-/// at [`COMMAND_RATE`], so spreading them mid-air flies on along the path the body had.
+/// Folded it rides the flight path. On the wings a held pitch key flies by rate, so the asked
+/// angle rides the path too, at [`RIDE_RATE`], and let go it eases from there toward
+/// [`wanted`]: at [`COMMAND_RATE`] for the view, at [`LEVEL`] of it for the self-level. As the
+/// wings spread it eases from the path, so spreading them mid-air flies on along the path the
+/// body had.
 pub(super) fn command(state: &FlightState, input: &GearInput, h: f32) -> f32 {
-    let path = climb(state).clamp(-MAX_PITCH, MAX_PITCH);
+    let path = climb(state);
     if !state.mode.winged() {
-        return path;
+        return bounded(state, path);
     }
+    let speed = state.velocity.length();
+    let (goal, rate) = match input.pitch.abs() > f32::EPSILON {
+        true => (
+            path,
+            RIDE_RATE * smooth(LIMIT_SPEED.0, LIMIT_SPEED.1, speed),
+        ),
+        false => (
+            wanted(state, input),
+            input.aim.map_or(COMMAND_RATE * LEVEL, |_| COMMAND_RATE),
+        ),
+    };
     let asked = state.servo.climb;
-    let eased = asked + (wanted(state, input) - asked) * ease(COMMAND_RATE, h);
-    path.lerp(eased, state.spread())
+    path.lerp(asked + wrap(goal - asked) * ease(rate, h), state.spread())
 }
 
-/// Returns the bank the keys and the view ask for, positive with the right wing down.
-///
-/// A full roll key holds [`BANK_LIMIT`]; a view to one side banks toward it. Near the stall the
-/// limit shrinks to [`STALL_BANK`] of itself.
+/// Returns the bank a view that steers asks for, positive with the right wing down: toward the
+/// side it looks to, at most [`BANK_LIMIT`], and near the stall [`STALL_BANK`] of that.
 pub(super) fn bank(state: &FlightState, input: &GearInput) -> f32 {
     let limit = BANK_LIMIT * STALL_BANK.lerp(1.0, safe(state));
     let view = input
         .aim
         .map_or(0.0, |aim| BANK_GAIN * path_offset(state, aim.x));
-    (view + input.roll.clamp(-1.0, 1.0) * limit).clamp(-limit, limit)
+    view.clamp(-limit, limit)
 }
 
 /// Returns the heading the wings fly along: the view while it steers, else the flight path, or

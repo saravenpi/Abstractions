@@ -1,11 +1,12 @@
 //! Wingsuit alone: a real glide that always loses energy, flown by the keys or by the view.
 
+use std::f32::consts::FRAC_PI_2;
+
 use bevy::prelude::*;
 
 use super::measure::{dive, settled_glide};
 use super::pilot::keys;
 use super::{DT, Flight, gliding};
-use crate::gear::tune::DIVE_LIMIT;
 use crate::gear::{GearInput, Mode};
 
 /// The range of the hands-off glide ratio under the home gravity and air.
@@ -87,7 +88,7 @@ fn glide_never_gains_energy() {
     }
 }
 
-/// The forward key held dives past 50 m/s, the path never steeper than the dive limit. Let go,
+/// The forward key held dives past 50 m/s, the path steep but never past the vertical. Let go,
 /// the nose comes back up to the glide by itself.
 #[test]
 fn a_dive_trades_height_for_speed() {
@@ -99,7 +100,7 @@ fn a_dive_trades_height_for_speed() {
         .velocity
         .y
         .atan2(flight.state.velocity.with_y(0.0).length());
-    assert!(path > DIVE_LIMIT - 0.05 && path < -0.9, "path {path}");
+    assert!(path > -FRAC_PI_2 && path < -0.9, "path {path}");
     flight.run(&keys(0.0, 0.0), 6.0);
     let v = flight.state.velocity;
     let path = v.y.atan2(v.with_y(0.0).length());
@@ -107,28 +108,29 @@ fn a_dive_trades_height_for_speed() {
 }
 
 /// The back key held out of a fast dive pulls out and climbs 15 m and more above the bottom
-/// of the pull-out while the speed bleeds away. The stall protection then drops the nose with
-/// the key still held, and let go the glide speed comes back. The climb still costs energy.
+/// of the pull-out while the speed bleeds away, as far as a stall: the key may stall the wing.
+/// Let go, the glide speed comes back. The climb still costs energy.
 #[test]
 fn pull_up_climbs_then_stalls_and_recovers() {
     let mut flight = dive(2.0);
     let (before, fast) = (flight.energy(22.0), flight.state.airspeed);
-    let mut track = [(0.0_f64, 0.0_f32); 900];
+    let mut track = [(0.0_f64, 0.0_f32, 0.0_f32); 900];
     for (frame, at) in track.iter_mut().enumerate() {
         let stick = f32::from(u8::from(frame < 300));
         flight.tick(&keys(stick, 0.0), DT);
-        *at = (flight.pos.y, flight.state.airspeed);
+        *at = (flight.pos.y, flight.state.airspeed, flight.state.velocity.y);
     }
-    let low = (0..300).min_by(|a, b| track[*a].0.total_cmp(&track[*b].0));
-    let bottom = track[low.unwrap_or(0)].0;
-    let top = track
-        .iter()
-        .map(|at| at.0)
-        .skip(low.unwrap_or(0))
+    let rise = track.iter().position(|at| at.2 > 0.0).unwrap_or(0).min(299);
+    let heights = |range: &[(f64, f32, f32)]| range.iter().map(|at| at.0).collect::<Vec<_>>();
+    let bottom = heights(&track[..=rise])
+        .into_iter()
+        .fold(f64::MAX, f64::min);
+    let top = heights(&track[rise..300])
+        .into_iter()
         .fold(f64::MIN, f64::max);
     let slowest = track.iter().map(|at| at.1).fold(f32::MAX, f32::min);
     assert!(top > bottom + 15.0, "climbed only {}", top - bottom);
-    assert!(slowest > 12.0 && slowest < fast - 30.0, "kept {slowest}");
+    assert!(slowest < fast - 30.0, "kept {slowest}");
     assert!(flight.state.airspeed > slowest + 5.0, "no speed back");
     assert!(flight.energy(22.0) < before, "the pull-up gained energy");
     assert!(flight.twist < 0.09, "tumbled by {}", flight.twist);

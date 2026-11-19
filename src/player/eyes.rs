@@ -2,28 +2,20 @@
 
 use bevy::prelude::*;
 
+use super::chase::{carried, chased, drift};
 use super::controller::Motion;
 use super::upright::tilt;
-use super::{Player, PlayerSet, local, wrap};
+use super::{Player, PlayerSet, local};
 use crate::gear::{FlightState, Gear};
 use crate::screens::{in_control, playing};
 use crate::sim::PlayerId;
 use crate::space::{Anchor, on_foot, up};
 use crate::view::{Heading, Kind, Look, Target, ViewSet};
 
+pub use super::chase::WingView;
+
 /// The mouse button that lets the view steer a body on its wings while it is held.
 pub(super) const STEER: MouseButton = MouseButton::Left;
-
-/// Seconds the steer button must have been up and the mouse left alone on the wings before the
-/// view drifts back behind the body: long enough to look around.
-const SETTLE: f32 = 2.5;
-
-/// Rate per second at which the view drifts back behind a body on its wings.
-const RETURN: f32 = 4.0;
-
-/// Fastest the view drifts back, in radians per second: a view left far round swings back
-/// steadily instead of whipping a third person camera across.
-const SWING: f32 = 2.5;
 
 /// Airspeed in metres per second above which a body the gear carries is framed as flying even
 /// with the wings folded: a fast fall.
@@ -39,32 +31,14 @@ pub(super) fn kind(state: &FlightState) -> Kind {
     }
 }
 
-/// What the chase view of the local body on its wings keeps between frames.
-#[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
-pub struct WingView {
-    /// Nose heading and frame pitch of the body on the last frame, while on the wings.
-    last: Option<Vec2>,
-    /// Seconds the steer button has been up and the mouse left alone.
-    idle: f32,
-}
-
-/// Returns the turn that drifts a view at `view` back behind a body in `state` in `dt` seconds,
-/// nothing before the view has been left alone for [`SETTLE`]. It goes to the nose heading and
-/// the pitch of the flight frame at [`RETURN`] and never faster than [`SWING`].
-pub(super) fn drift(state: &FlightState, view: Vec2, idle: f32, dt: f32) -> Vec2 {
-    if idle < SETTLE {
-        return Vec2::ZERO;
-    }
-    let gap = Vec2::new(wrap(state.servo.yaw - view.x), wrap(state.pitch - view.y));
-    (gap * (1.0 - (-RETURN * dt).exp())).clamp_length_max(SWING * dt)
-}
-
 /// Turns the view of the local body on its wings: a chase view.
 ///
 /// The mouse looks around freely. With the steer button up the view also turns with the body,
-/// by as much as its nose heading and pitch turned since the last frame, and once left alone
-/// it drifts back behind the body. With the button held the view is the aim of the flight, so
-/// it turns with the mouse alone: carried with the body as well, it would chase its own turn.
+/// by as much as its nose heading and pitch turned since the last frame, over the top of a loop
+/// too, and once left alone it drifts back behind the body. A view on its back behind a body
+/// that faces the sky rights itself at once, see `chased`. With the button held the view is
+/// the aim of the flight, so it turns with the mouse alone: carried with the body as well, it
+/// would chase its own turn.
 pub(super) fn steer(
     time: Res<Time>,
     buttons: Res<ButtonInput<MouseButton>>,
@@ -82,18 +56,18 @@ pub(super) fn steer(
     }
     let (dt, held) = (time.delta_secs(), buttons.pressed(STEER));
     let body = Vec2::new(state.servo.yaw, state.pitch);
-    let mouse = Vec2::new(look.yaw_delta, look.pitch_delta);
-    let carry = match (held, wing.last) {
-        (false, Some(last)) => Vec2::new(wrap(body.x - last.x), body.y - last.y),
-        _ => Vec2::ZERO,
-    };
-    wing.last = Some(body);
+    let (before, mouse) = (
+        Vec2::new(heading.yaw, heading.pitch),
+        Vec2::new(look.yaw_delta, look.pitch_delta),
+    );
+    let carry = carried(&mut wing, body, before) * f32::from(u8::from(!held));
     wing.idle = match held || mouse != Vec2::ZERO {
         true => 0.0,
         false => wing.idle + dt,
     };
-    let view = Vec2::new(heading.yaw, heading.pitch) + carry;
-    let turn = mouse + carry + drift(state, view, wing.idle, dt);
+    let view = before + carry;
+    let goal = chased(&mut wing, state, body, view);
+    let turn = mouse + carry + drift(goal, view, &wing, dt) * f32::from(u8::from(!held));
     (look.yaw_delta, look.pitch_delta) = (turn.x, turn.y);
 }
 
@@ -108,8 +82,9 @@ type Followed = (
 /// Tells the camera rig what it follows: the local body, upright, with the velocity the controller
 /// just gave it, shifted by how far the eyes still trail it after a step-up. The forward
 /// direction is the north of the upright frame, because the rig owns the heading of the view.
+/// The bank is the one the horizon shows, see `FlightState::tilt`, so a roll never jumps.
 pub(super) fn aim(
-    anchor: Res<Anchor>,
+    (anchor, wing): (Res<Anchor>, Res<WingView>),
     players: Query<Followed, With<Player>>,
     mut target: ResMut<Target>,
 ) {
@@ -128,7 +103,7 @@ pub(super) fn aim(
         forward: to_render * Vec3::NEG_Z,
         velocity: to_render * motion.velocity,
         kind: kind(&gear.state),
-        bank: gear.state.bank * f32::from(u8::from(airborne)),
+        bank: gear.state.tilt() * wing.sense() * f32::from(u8::from(airborne)),
         ..Target::default()
     };
 }

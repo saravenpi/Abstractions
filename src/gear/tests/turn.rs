@@ -1,5 +1,5 @@
-//! The roll and yaw keys: a held roll key banks into a steady coordinated turn inside the bank
-//! limit, let go the wings level; a held yaw key turns flat.
+//! The roll, pitch and yaw keys: a roll into a bank and a held pull turn steadily, let go the
+//! wings level; a held yaw key turns flat.
 
 use bevy::prelude::*;
 
@@ -9,14 +9,14 @@ use crate::gear::aim::wrap;
 use crate::gear::tune::BANK_LIMIT;
 use crate::gear::{Gear, GearInput, Mode};
 
-/// Slowest and fastest turn rate in radians per second a held roll key gives a settled glide.
-const RATE: (f32, f32) = (0.9, 1.4);
+/// Slowest turn rate in radians per second a bank and a held pull give a settled glide.
+const RATE: f32 = 0.9;
 
-/// Most the sink rate may grow in a held turn, as a share of the straight glide.
-const SINK_SHARE: f32 = 0.6;
+/// Seconds the roll key is held to bank into a turn: about 50 degrees.
+const ROLL_IN: f32 = 0.35;
 
-/// Seconds the wings take to come within [`LEVEL`] of level once the roll key is let go.
-const LEVEL_TIME: f32 = 1.0;
+/// Seconds the wings take to come within [`LEVEL`] of level once the keys are let go.
+const LEVEL_TIME: f32 = 1.3;
 
 /// Bank in radians that counts as level: 3 degrees.
 const LEVEL: f32 = 0.052;
@@ -37,35 +37,30 @@ fn heading(flight: &Flight) -> f32 {
     (-v.x).atan2(-v.z)
 }
 
-/// A held left key banks left to the limit and turns left at a steady rate, the nose on the
-/// path, and the glide sinks at most [`SINK_SHARE`] faster than straight.
+/// A roll to the left and the back key held turn left at a steady rate, the bank held where the
+/// roll took it once it stopped and the nose on the path: a bank and a pull, as a pilot turns.
 #[test]
-fn a_held_roll_key_turns_steadily() {
+fn a_bank_and_a_pull_turn_steadily() {
     let mut flight = settled();
-    let straight = -flight.state.velocity.y;
-    flight.run(&keys(0.0, -1.0), 2.0);
+    flight.run(&keys(0.0, -1.0), ROLL_IN);
+    flight.run(&keys(1.0, 0.0), 0.5);
     let bank = flight.state.bank;
-    assert!(bank < -0.5 && bank > -BANK_LIMIT - 0.01, "bank {bank}");
-    let (mut turned, mut sink) = (0.0, 0.0_f32);
+    assert!(bank < -0.6 && bank > -1.4, "bank {bank}");
+    let mut turned = 0.0;
     let mut last = heading(&flight);
-    for _ in 0..240 {
-        flight.tick(&keys(0.0, -1.0), DT);
+    for _ in 0..90 {
+        flight.tick(&keys(1.0, 0.0), DT);
         turned += wrap(heading(&flight) - last);
         last = heading(&flight);
-        sink = sink.max(-flight.state.velocity.y);
         let aoa = flight.state.aoa;
-        assert!(aoa.abs() < 0.3, "slipping at {aoa}");
+        assert!(aoa.abs() < 0.35, "slipping at {aoa}");
         assert!(
-            flight.state.bank > -BANK_LIMIT - 0.01,
-            "banked past the limit"
+            (flight.state.bank - bank).abs() < 0.1,
+            "the bank left {bank}"
         );
     }
-    let rate = turned / 4.0;
-    assert!((RATE.0..=RATE.1).contains(&rate), "turns at {rate} rad/s");
-    assert!(
-        sink < straight * (1.0 + SINK_SHARE),
-        "sinks {sink} against {straight}"
-    );
+    let rate = turned / 1.5;
+    assert!(rate > RATE, "turns at {rate} rad/s");
 }
 
 /// Let go, the wings come within 3 degrees of level within [`LEVEL_TIME`], one way only, and the
@@ -74,7 +69,7 @@ fn a_held_roll_key_turns_steadily() {
 fn letting_go_levels_the_wings() {
     for roll in [-1.0, 1.0] {
         let mut flight = settled();
-        flight.run(&keys(0.0, roll), 3.0);
+        flight.run(&keys(0.0, roll), ROLL_IN);
         let bank = flight.state.bank;
         for _ in 0..(LEVEL_TIME / DT) as u32 {
             flight.tick(&keys(0.0, 0.0), DT);
@@ -152,14 +147,17 @@ fn an_aim_to_one_side_banks_and_turns_onto_it() {
     assert!(widest <= 1.2_f32.sin() + 0.03, "swung past the aim");
 }
 
-/// Flies a glide in a cross wind for `frames` frames with the roll key at `roll`, and returns
-/// the largest bank on the way.
+/// Flies a glide in a cross wind for `frames` frames, the roll key at `roll` for the first
+/// [`ROLL_IN`] and then the back key held, and returns the largest bank on the way. With the
+/// roll key at zero nothing is held.
 fn in_wind(gear: &mut Gear, roll: f32, frames: u32) -> f32 {
     let mut most = 0.0_f32;
-    for _ in 0..frames {
+    for frame in 0..frames {
+        let rolling = (frame as f32) < ROLL_IN / DT;
+        let pull = f32::from(u8::from(roll != 0.0 && !rolling));
         let input = GearInput {
             wind: Vec3::new(9.0, 0.0, 0.0),
-            ..keys(0.0, roll)
+            ..keys(pull, roll * f32::from(u8::from(rolling)))
         };
         gear.drive(gear.state.velocity, input, DT);
         most = most.max(gear.state.bank.abs());
@@ -167,7 +165,7 @@ fn in_wind(gear: &mut Gear, roll: f32, frames: u32) -> f32 {
     most
 }
 
-/// In a cross wind a held roll key turns as fast one way as the other: the wings fly the path
+/// In a cross wind a bank and a pull turn as fast one way as the other: the wings fly the path
 /// through the air, not the track over the ground.
 #[test]
 fn a_cross_wind_does_not_bias_a_held_turn() {

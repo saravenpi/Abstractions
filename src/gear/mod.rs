@@ -11,11 +11,12 @@
 //! - The wingsuit alone glides and always loses energy.
 //! - Both together fly.
 //!
-//! On the wings the keys ask for an attitude, not a rate (see `command`): the pitch keys a
-//! flight path angle between a dive and a climb, the roll keys a bank, whose lift turns the
-//! path, and the yaw keys a flat turn. Let go, the wings come level on the best glide. The view
-//! steers inside the same limits while the steer button is held. Folded, the body faces the
-//! view on foot and its flight path in a fall.
+//! On the wings the keys ask for rates in the frame of the body, not an attitude (see
+//! `command`): the roll keys roll it on round its nose, the pitch keys pull toward its back or
+//! push toward its belly as hard as the wing may, and the yaw keys turn the path flat. Held,
+//! they roll the body over and loop it when it has the speed for it. Let go, the wings come
+//! level on the best glide. The view steers inside fixed attitude limits while the steer
+//! button is held. Folded, the body faces the view on foot and its flight path in a fall.
 //!
 //! The effects in `fx` read the [`Gear`] component and publish [`FlightFx`] for the camera,
 //! the audio and the companion.
@@ -31,6 +32,7 @@ mod input;
 mod mode;
 mod modes;
 mod path;
+mod roll;
 mod servo;
 mod state;
 mod step;

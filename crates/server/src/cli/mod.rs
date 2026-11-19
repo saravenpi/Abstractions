@@ -3,6 +3,8 @@
 mod usage;
 
 #[cfg(test)]
+mod cap_tests;
+#[cfg(test)]
 mod parse_tests;
 
 pub use usage::USAGE;
@@ -10,7 +12,7 @@ pub use usage::USAGE;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use abstractions_net::wire::{GAME_PORT, MAX_PLAYERS_DEFAULT};
+use abstractions_net::wire::{GAME_PORT, MAX_PLAYERS_DEFAULT, MAX_PLAYERS_LIMIT};
 
 /// Data folder when neither `--data` nor `ABSTRACTIONS_DATA` names one.
 const DATA: &str = "./data";
@@ -47,7 +49,7 @@ pub struct Options {
     /// UDP port to listen on.
     pub port: u16,
     /// Most players at once.
-    pub max_players: u8,
+    pub max_players: u16,
     /// Folder of the world file and the certificate.
     pub data: PathBuf,
     /// Single-player world file to start the server's world from.
@@ -111,7 +113,7 @@ fn set(options: &mut Options, flag: &str, value: Option<String>) -> Result<(), S
         "--name" => options.name = Some(value()?),
         "--password" => options.password = Some(value()?),
         "--port" => options.port = number(flag, &value()?)?,
-        "--max-players" => options.max_players = number(flag, &value()?)?,
+        "--max-players" => options.max_players = players(flag, &value()?)?,
         "--data" => options.data = PathBuf::from(value()?),
         "--import" => options.import = Some(PathBuf::from(value()?)),
         _ => return Err(format!("Unknown option `{flag}`")),
@@ -125,6 +127,16 @@ fn number<T: FromStr + PartialOrd + Default>(flag: &str, text: &str) -> Result<T
         .ok()
         .filter(|number| *number > T::default())
         .ok_or_else(|| format!("{flag} takes a whole number from 1 up, not `{text}`"))
+}
+
+/// Returns `text` as a number of players from 1 to [`MAX_PLAYERS_LIMIT`].
+fn players(flag: &str, text: &str) -> Result<u16, String> {
+    number(flag, text)
+        .ok()
+        .filter(|players| *players <= MAX_PLAYERS_LIMIT)
+        .ok_or_else(|| {
+            format!("{flag} takes a whole number from 1 to {MAX_PLAYERS_LIMIT}, not `{text}`")
+        })
 }
 
 /// Reads the address of `ping`. Without one it asks this machine, on the port the

@@ -13,9 +13,10 @@ use crate::io::close::{BROKEN, BYE};
 use crate::io::link::{self, End};
 use crate::wire::{CLIENT_MESSAGE_MAX, ClientMsg};
 
-/// Messages waiting for a connection's stream at most. A player that lets more pile up is
-/// closed as too slow.
-const QUEUE: usize = 256;
+/// Messages waiting for a connection's stream at most: one from each of
+/// [`crate::wire::MAX_PLAYERS_LIMIT`] other players at once. A player that lets more pile up
+/// is closed as too slow.
+const QUEUE: usize = 1024;
 
 /// How long a new connection may take to open its stream.
 const OPEN_TIMEOUT: Duration = Duration::from_secs(10);

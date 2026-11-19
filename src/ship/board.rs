@@ -8,7 +8,9 @@ use bevy::prelude::*;
 use super::ShipEvent;
 use super::body::Ship;
 use super::deck::grounded;
+use super::pilot::Autopilot;
 use super::sky::Skies;
+use super::warp::Warp;
 use crate::computer::Computer;
 use crate::player::{EYE_OFFSET, Player, place, seat};
 use crate::render::GameCamera;
@@ -46,6 +48,8 @@ pub struct Dock<'w> {
     hatch: ResMut<'w, Hatch>,
     /// Whether the board computer is open.
     computer: Option<Res<'w, State<Computer>>>,
+    /// The route the ship flies, dropped when the pilot leaves.
+    autopilot: ResMut<'w, Autopilot>,
 }
 
 impl Dock<'_> {
@@ -76,6 +80,15 @@ fn in_reach(dock: &Dock, ship: &Ship, placed: &Placed, body: Vec3) -> bool {
     ship.landed && here && near && dock.location.travel == Travel::OnFoot
 }
 
+/// Stops the motors of a ship its pilot leaves: the throttle to idle and a spooling warp drive
+/// off. The boost and the vertical thrusters are held keys the helm lets go of on foot.
+fn idle(ship: &mut Ship) {
+    ship.throttle = 0.0;
+    if matches!(ship.warp, Warp::Spooling { .. }) {
+        ship.warp = Warp::Off;
+    }
+}
+
 /// Whether the player on foot stands at the hatch of the landed ship, where the board key
 /// works. The ship refreshes it every frame of play; anything may read it, for a prompt.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -100,17 +113,18 @@ pub fn reseat(
 }
 
 /// Seats the player near the landed ship on the board key, and on the same key puts the player
-/// back on the ground beside the hatch. The key does nothing while the board computer is open,
-/// and nothing over a gas giant, where there is no ground to step out on.
+/// back on the ground beside the hatch, with the motors stopped and the autopilot off. The key
+/// does nothing while the board computer is open, and nothing over a gas giant, where there is
+/// no ground to step out on. Only a landed ship can be left, so it stays where it stands.
 pub fn board(
     mut dock: Dock,
     mut commands: Commands,
-    ship: Single<(&Ship, &Placed)>,
+    ship: Single<(&mut Ship, &Placed)>,
     player: Single<&Transform, OnlyBody>,
     mut eyes: Single<&mut Transform, OnlyEyes>,
 ) {
-    let (ship, placed) = *ship;
-    let near = in_reach(&dock, ship, placed, player.translation);
+    let (mut ship, placed) = ship.into_inner();
+    let near = in_reach(&dock, &ship, placed, player.translation);
     dock.hatch.set_if_neq(Hatch { near });
     let pressed = dock
         .keys
@@ -123,6 +137,8 @@ pub fn board(
         let feet = dock.step_out(placed);
         let toward = dock.anchor.rotation_to_render(placed.rot) * Vec3::NEG_Z;
         dock.location.travel = Travel::OnFoot;
+        idle(&mut ship);
+        dock.autopilot.cancel();
         **eyes = Transform::from_xyz(0.0, EYE_OFFSET, 0.0);
         commands.queue(move |world: &mut World| {
             place(world, feet, toward);

@@ -17,6 +17,8 @@ use super::palette::player_color;
 use super::surface::Surface;
 use crate::computer::{Computer, Typing};
 use crate::menus::{Marker, MarkerKind, MarkerPlace, Markers};
+use crate::net::Link;
+use crate::screens::Screen as Shown;
 use crate::settings::{Persistent, Settings};
 use crate::universe::{BodyId, Universe};
 
@@ -114,17 +116,16 @@ fn marker(waypoint: &Waypoint, owner: u32, radius: f64) -> Marker {
     }
 }
 
-/// Writes every waypoint as a marker when one changed. The waypoints of the others keep the
+/// Writes every waypoint as a marker when one changed, or when the universe they lie in
+/// appears: a welcome sets them before it exists. The waypoints of the others keep the
 /// owner of their player; this player's own the owner 0 of the game.
 pub(super) fn fill(
     waypoints: Res<Waypoints>,
     universe: Option<Res<Universe>>,
     mut markers: ResMut<Markers>,
 ) {
-    if !waypoints.is_changed() {
-        return;
-    }
-    let Some(universe) = universe else {
+    let due = |universe: &Res<Universe>| waypoints.is_changed() || universe.is_changed();
+    let Some(universe) = universe.filter(due) else {
         return;
     };
     markers.clear_kind(MarkerKind::Waypoint);
@@ -140,3 +141,29 @@ pub(super) fn fill(
             .push(marker(waypoint, *owner, radius(waypoint.body)));
     }
 }
+
+/// Forgets every waypoint and its marker: the world they were set in ended.
+fn reset(mut waypoints: ResMut<Waypoints>, mut markers: ResMut<Markers>) {
+    *waypoints = Waypoints::default();
+    markers.clear_kind(MarkerKind::Waypoint);
+}
+
+/// Forgets the waypoints of the other players and their markers once the session ended. This
+/// player's own stays with the world, and the next server gets it with its welcome.
+fn part(mut waypoints: ResMut<Waypoints>, mut markers: ResMut<Markers>) {
+    waypoints.me = 0;
+    waypoints.friends.clear();
+    markers
+        .0
+        .retain(|marker| marker.kind != MarkerKind::Waypoint || marker.owner == 0);
+}
+
+/// Registers the end of waypoints: all of them with the world, the others' with the session.
+pub(super) fn plugin(app: &mut App) {
+    app.add_systems(OnEnter(Shown::Title), reset)
+        .add_systems(Update, part.run_if(resource_removed::<Link>));
+}
+
+#[cfg(test)]
+#[path = "waypoint_tests.rs"]
+mod tests;

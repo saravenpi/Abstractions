@@ -12,7 +12,7 @@ use crate::store::World;
 use crate::wire::{ClientMsg, Frame, Head, Hello, Kind, PROTOCOL, Record, ServerMsg, push};
 
 /// Returns a room of `cap` seats with `password`, at network time 100.
-pub(super) fn room(cap: u8, password: Option<&str>) -> Room {
+pub(super) fn room(cap: u16, password: Option<&str>) -> Room {
     let config = RoomConfig {
         name: "Test".to_string(),
         password: password.map(str::to_string),

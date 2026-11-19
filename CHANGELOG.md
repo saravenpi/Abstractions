@@ -25,6 +25,7 @@ Players and servers must both run 0.10.1: the multiplayer protocol changed.
 - The compass fades its marks toward its ends and hides what is behind you, like a real compass, and shows any number of marks.
 - When a course is set, one line always says what happens next: "G Engage autopilot", or exactly why the drive waits, such as "Inside 3 planet radii (now 1.4): fly out first". G engages from the cockpit without opening the map.
 - The minimap range moved from M to N.
+- A server takes as many players as its owner sets with `--max-players` or `ABSTRACTIONS_MAX_PLAYERS`, up to 1000 and 16 by default. Open to LAN reads `host_max_players` from the settings. The server list shows each server's real limit. Space, `space.facile.studio`, takes 64.
 
 ### Fixed
 

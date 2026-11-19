@@ -10,7 +10,7 @@ use abstractions_net::lan::{Announcer, Beacon, Listener};
 use abstractions_net::wire::BEACON_PORT;
 
 /// Returns a beacon with a name only this test uses.
-fn beacon(players: u8) -> Beacon {
+fn beacon(players: u16) -> Beacon {
     Beacon {
         protocol: 1,
         version: "0.9.0".to_string(),

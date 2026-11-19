@@ -24,10 +24,12 @@ mod map_tests;
 mod play_tests;
 #[cfg(test)]
 mod relay_tests;
+#[cfg(test)]
+mod scale_tests;
 
 use std::collections::HashMap;
 
-pub use map::EXPLORED_WORDS;
+pub use map::{BODIES_MAX, EXPLORED_WORDS};
 
 use conn::Conn;
 use map::Ground;
@@ -47,7 +49,7 @@ pub struct RoomConfig {
     /// Password a player must give to join, or nothing for an open server.
     pub password: Option<String>,
     /// Most players in the world at once.
-    pub cap: u8,
+    pub cap: u16,
     /// Version of the server program, such as `0.9.0`.
     pub version: String,
 }

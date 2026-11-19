@@ -64,10 +64,12 @@ pub(super) fn send(mut changes: MessageReader<WaypointChanged>, mut link: ResMut
 }
 
 /// Takes in the waypoints of the other players: all of them with the welcome, then each one
-/// that is set or cleared. This player's id comes from the link and picks its colour.
+/// that is set or cleared. This player's id comes from the link and picks its colour. A
+/// waypoint this player kept from before goes to the server with the welcome, which knows
+/// none of it.
 pub(super) fn receive(
     mut read: MessageReader<FromServer>,
-    link: Res<Link>,
+    mut link: ResMut<Link>,
     mut waypoints: ResMut<Waypoints>,
 ) {
     let you = link.you.map(|you| you.0);
@@ -80,6 +82,9 @@ pub(super) fn receive(
                 let given = welcome.waypoints.iter();
                 let friends = given.filter_map(|(player, wire)| Some((player.0, from_wire(wire)?)));
                 waypoints.friends = friends.filter(|(player, _)| Some(*player) != you).collect();
+                if let Some(mine) = &waypoints.mine {
+                    link.send(ClientMsg::Waypoint(Some(to_wire(mine))));
+                }
             }
             ServerMsg::Waypoint { player, waypoint } if Some(player.0) != you => {
                 match waypoint.as_ref().and_then(from_wire) {
@@ -91,3 +96,7 @@ pub(super) fn receive(
         }
     }
 }
+
+#[cfg(test)]
+#[path = "link_tests.rs"]
+mod tests;

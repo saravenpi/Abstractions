@@ -7,6 +7,7 @@ mod frame;
 mod levers;
 mod looks;
 mod machinery;
+mod outline;
 mod shell;
 mod tub;
 
@@ -15,6 +16,7 @@ use bevy::prelude::*;
 pub use levers::{bar_mesh, lever_mesh, stick_mesh};
 pub use looks::{Looks, dress};
 pub use machinery::{NOZZLE_Z, plume_mesh};
+pub use outline::hulls;
 
 use super::gear::{GEAR, STRUT};
 use super::solid::Solid;

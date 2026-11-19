@@ -94,6 +94,8 @@ impl Room {
                 .get(&hex(key))
                 .map(|member| member.record()),
             players: self.players(),
+            explored: Vec::new(),
+            waypoints: Vec::new(),
         }
     }
 

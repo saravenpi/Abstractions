@@ -2,9 +2,20 @@
 //! never change have not changed.
 
 use super::body_tests::planet;
-use super::{ClientMsg, Hello, PlayerInfo, PlayerRecord, Reason, ServerMsg, Status, Welcome};
+use super::{
+    ClientMsg, Hello, PlayerInfo, PlayerRecord, Reason, ServerMsg, Status, Waypoint, Welcome,
+};
 use super::{PROTOCOL, decode, encode};
 use crate::log::{Change, Changes, Entry, PlayerId};
+
+/// Returns a named waypoint on the test planet.
+fn waypoint() -> Waypoint {
+    Waypoint {
+        body: planet(),
+        dir: [0.6, 0.0, -0.8],
+        name: "Camp".to_string(),
+    }
+}
 
 /// Returns a welcome with a log, an atlas, a record and another player.
 fn welcome() -> Welcome {
@@ -19,11 +30,14 @@ fn welcome() -> Welcome {
         record: Some(PlayerRecord {
             place: "kind = \"surface\"".to_string(),
             ship: String::new(),
+            marks: "[[mark]]\nname = \"Lake\"\n".to_string(),
         }),
         players: vec![PlayerInfo {
             id: PlayerId(2),
             name: "Zoé".to_string(),
         }],
+        explored: vec![(planet(), vec![0, u64::MAX, 1 << 63])],
+        waypoints: vec![(PlayerId(2), waypoint())],
     }
 }
 
@@ -84,6 +98,52 @@ fn server_messages_come_back() {
     }
 }
 
+/// The explored cells and the waypoint of a player come back as they were sent.
+#[test]
+fn client_map_messages_come_back() {
+    let client = [
+        ClientMsg::Explored {
+            body: planet(),
+            cells: vec![0, 511, 512 * 256 - 1],
+        },
+        ClientMsg::Waypoint(Some(waypoint())),
+        ClientMsg::Waypoint(None),
+    ];
+    for message in client {
+        let bytes = encode(&message).unwrap();
+        assert_eq!(
+            decode::<ClientMsg>(&bytes, bytes.len()).unwrap().unwrap().0,
+            message
+        );
+    }
+}
+
+/// The explored cells and the waypoints a server sends come back as they were sent.
+#[test]
+fn server_map_messages_come_back() {
+    let server = [
+        ServerMsg::Explored {
+            body: planet(),
+            cells: vec![7, 1024],
+        },
+        ServerMsg::Waypoint {
+            player: PlayerId(2),
+            waypoint: Some(waypoint()),
+        },
+        ServerMsg::Waypoint {
+            player: PlayerId(2),
+            waypoint: None,
+        },
+    ];
+    for message in server {
+        let bytes = encode(&message).unwrap();
+        assert_eq!(
+            decode::<ServerMsg>(&bytes, bytes.len()).unwrap().unwrap().0,
+            message
+        );
+    }
+}
+
 /// The status request and its answer keep number zero, whatever the version: an old game must
 /// still be able to ask a new server what it is.
 #[test]
@@ -100,4 +160,13 @@ fn the_status_messages_keep_their_number() {
     let bytes = encode(&status).unwrap();
     assert_eq!(bytes[4..], [0, 1, b'a', 1, 2, 1, b'b', 3]);
     assert_eq!(encode(&ServerMsg::Kick(Reason::Full)).unwrap()[4..], [7, 1]);
+    assert_eq!(
+        encode(&ClientMsg::Waypoint(None)).unwrap(),
+        [2, 0, 0, 0, 7, 0]
+    );
+    let cleared = ServerMsg::Waypoint {
+        player: PlayerId(1),
+        waypoint: None,
+    };
+    assert_eq!(encode(&cleared).unwrap()[4..], [9, 1, 0]);
 }

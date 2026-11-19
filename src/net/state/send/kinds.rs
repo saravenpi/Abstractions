@@ -127,6 +127,7 @@ pub fn ship(
         landed: ship.landed,
         warp,
         warp_level,
+        ..ShipBody::default()
     };
     let rest = ship.landed || wire.vel.length() < REST_SPEED;
     Some(Sent { frame, body, rest })
@@ -155,6 +156,7 @@ pub fn companion(
         roll: pose.roll,
         spread: pose.spread,
         wave: pose.wave,
+        ..CompanionBody::default()
     };
     let speed = was
         .filter(|(before, ..)| *before == frame)

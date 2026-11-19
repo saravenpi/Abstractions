@@ -100,7 +100,7 @@ fn a_position_in_space_comes_back_exactly() {
     }
 }
 
-/// A ship body takes 34 bytes on a surface and comes back within the packing error.
+/// A ship body takes 37 bytes on a surface and comes back within the packing error.
 #[test]
 fn a_ship_body_comes_back() {
     let frame = Frame::Surface(planet());
@@ -114,10 +114,12 @@ fn a_ship_body_comes_back() {
         landed: true,
         warp: WARP_ACTIVE,
         warp_level: 0.6,
+        stick: [0.5, -1.0],
+        boost: 0.75,
     };
     let mut bytes = Vec::new();
     sent.encode(&frame, &mut bytes);
-    assert_eq!(bytes.len(), 34);
+    assert_eq!(bytes.len(), 37);
     let got = ShipBody::decode(&frame, &bytes).unwrap();
     assert!((got.position - sent.position).abs().max_element() <= 0.000_500_001);
     assert!(got.rotation.angle_between(sent.rotation) < 0.005);
@@ -128,9 +130,11 @@ fn a_ship_body_comes_back() {
     assert!((got.throttle - sent.throttle).abs() < 0.005);
     assert!((got.gear - sent.gear).abs() < 0.002 && (got.damage - sent.damage).abs() < 0.002);
     assert!((got.warp_level - sent.warp_level).abs() < 0.002);
+    assert!((got.stick[0] - 0.5).abs() < 0.005 && got.stick[1] == -1.0);
+    assert!((got.boost - sent.boost).abs() < 0.002);
 }
 
-/// A companion body takes 23 bytes on a surface and comes back within the packing error.
+/// A companion body takes 25 bytes on a surface and comes back within the packing error.
 #[test]
 fn a_companion_body_comes_back() {
     let frame = Frame::Surface(planet());
@@ -143,16 +147,19 @@ fn a_companion_body_comes_back() {
         roll: -0.24,
         spread: 0.5,
         wave: 1.0,
+        expr: 4,
+        face: 0b101_1011,
     };
     let mut bytes = Vec::new();
     sent.encode(&frame, &mut bytes);
-    assert_eq!(bytes.len(), 23);
+    assert_eq!(bytes.len(), 25);
     let got = CompanionBody::decode(&frame, &bytes).unwrap();
     assert_eq!((got.position, got.wave), (sent.position, 1.0));
     assert!(got.rotation.angle_between(sent.rotation) < 0.005);
     assert!((got.lift - sent.lift).abs() < 0.004 && (got.yaw - sent.yaw).abs() < 1e-3);
     assert!((got.pitch - sent.pitch).abs() < 0.013 && (got.roll - sent.roll).abs() < 0.013);
     assert!((got.spread - sent.spread).abs() < 0.002);
+    assert_eq!((got.expr, got.face), (4, 0b101_1011));
 }
 
 /// A body that is cut short, too long, read in the wrong frame or holding a number that is not

@@ -5,6 +5,7 @@
 
 mod asks;
 mod camera;
+mod climb;
 mod controller;
 mod dive;
 mod eyes;

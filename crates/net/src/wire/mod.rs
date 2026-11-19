@@ -28,7 +28,9 @@ mod stream_tests;
 
 pub use companion::{CompanionBody, LIFT_RANGE};
 pub use frame::{Frame, Kind};
-pub use msg::{ClientMsg, Hello, PlayerInfo, PlayerRecord, Reason, ServerMsg, Status, Welcome};
+pub use msg::{
+    ClientMsg, Hello, PlayerInfo, PlayerRecord, Reason, ServerMsg, Status, Waypoint, Welcome,
+};
 pub use name::clean_name;
 pub use record::{AT_REST, Head, Record, Records, push, push_within, records, split};
 pub use robot::{AIRSPEED_RANGE, CLIMB_RANGE, RobotBody, SPEED_RANGE, STRIDE_WRAP, stride_delta};
@@ -37,7 +39,13 @@ pub use stream::{CLIENT_MESSAGE_MAX, MESSAGE_MAX, StreamError, decode, encode};
 
 /// Version of the protocol. A player and a server must hold the same number to play together.
 /// Raise it whenever bytes on the wire change meaning.
-pub const PROTOCOL: u16 = 1;
+pub const PROTOCOL: u16 = 2;
+
+/// Columns of the explored grid of a body, longitude 0 first, going east.
+pub const EXPLORED_COLUMNS: u32 = 512;
+
+/// Rows of the explored grid of a body, the south pole first.
+pub const EXPLORED_ROWS: u32 = 256;
 
 /// Default UDP port of the game.
 pub const GAME_PORT: u16 = 24650;

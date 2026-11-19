@@ -151,10 +151,10 @@ fn the_banner_fades_in_and_out() {
 }
 
 /// A target to the right reads a quarter turn to the right and sits right of the middle, one
-/// straight ahead sits in the middle, and one behind waits at the end of its side.
+/// straight ahead sits in the middle, and one behind lies past the end of its side.
 #[test]
 fn the_compass_points_at_its_target() {
-    use super::needle::{SPAN, bearing, beside, slot};
+    use super::needle::{SPAN, bearing, slot};
     let (ahead, up) = (Vec3::NEG_Z, Vec3::Y);
     let right = bearing(Vec3::new(30.0, 4.0, 0.0), ahead, up).unwrap();
     assert!((right - std::f32::consts::FRAC_PI_2).abs() < 1e-5);
@@ -163,9 +163,4 @@ fn the_compass_points_at_its_target() {
     let behind = bearing(Vec3::new(-1.0, 0.0, 9.0), ahead, up).unwrap();
     assert_eq!((slot(behind), slot(right)), (0.0, 1.0));
     assert_eq!(bearing(Vec3::Y, ahead, up), None);
-    assert_eq!(
-        (beside(0.0, Some(0.0)), beside(1.0, Some(1.0))),
-        (56.0, 304.0)
-    );
-    assert_eq!((beside(0.5, Some(0.0)), beside(0.5, None)), (180.0, 180.0));
 }

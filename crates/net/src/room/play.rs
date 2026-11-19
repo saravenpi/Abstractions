@@ -13,7 +13,7 @@ impl Room {
         self.conns.get(&conn).and_then(|open| open.seat)
     }
 
-    /// Keeps the place and ship of the player on `conn`, under their key.
+    /// Keeps the place, ship and saved places of the player on `conn`, under their key.
     pub(super) fn record(&mut self, conn: ConnId, record: PlayerRecord) {
         let Some(seat) = self
             .seat_of(conn)
@@ -25,6 +25,7 @@ impl Room {
         member.name.clone_from(&seat.info.name);
         member.place = record.place;
         member.ship = record.ship;
+        member.marks = record.marks;
     }
 
     /// Adds the change of the player on `conn` to the log and tells everyone, the player

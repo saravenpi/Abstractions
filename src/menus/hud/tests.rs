@@ -87,7 +87,7 @@ fn instruments_follow_the_frame() {
     assert_eq!(reading(Gauge::Speed, &air).unwrap(), "312 m/s surface");
     assert_eq!(reading(Gauge::Throttle, &air).unwrap(), "65 %");
     assert_eq!(reading(Gauge::Assist, &air).unwrap(), "on");
-    assert_eq!(reading(Gauge::Frame, &air).unwrap(), "surface");
+    assert_eq!(reading(Gauge::Frame, &air).unwrap(), "planet");
     assert_eq!(reading(Gauge::Apoapsis, &air), None);
     assert_eq!(reading(Gauge::Warp, &air), None);
     assert_eq!(reading(Gauge::Destination, &air), None);
@@ -99,7 +99,7 @@ fn instruments_follow_the_frame() {
     );
     let space = flying(Frame::System(StarId::default()));
     assert_eq!(reading(Gauge::Speed, &space).unwrap(), "7.80 km/s orbital");
-    assert_eq!(reading(Gauge::Frame, &space).unwrap(), "orbit");
+    assert_eq!(reading(Gauge::Frame, &space).unwrap(), "star system");
     assert_eq!(reading(Gauge::Apoapsis, &space).unwrap(), "52.0 km");
     assert_eq!(reading(Gauge::Periapsis, &space).unwrap(), "-1.20 km");
 }

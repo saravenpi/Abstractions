@@ -103,7 +103,7 @@ pub use coast::keyed;
 pub use course::{Act, action};
 pub use draw::side;
 pub use format::{distance, gravity};
-pub use hand::{Hand, Turn, ctrl, to_map, turn};
+pub use hand::{Hand, to_map, turn};
 pub use home::{arranged, away, beacon, homes, homeward, pinned, tab_of, toward};
 pub use labels::{keep, priority, room, scale_bar};
 pub use layout::{GLYPH, clear_of_bands};

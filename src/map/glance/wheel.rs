@@ -4,35 +4,20 @@
 use bevy::input::mouse::AccumulatedMouseScroll;
 use bevy::prelude::*;
 
-use crate::computer::{
-    Hand, MapView, RESET_KEY, Turn, Typing, ZOOM_STEP, ctrl, keyed, to_map, turn,
-};
+use crate::computer::{Hand, RESET_KEY, Typing, ZOOM_STEP, keyed, turn};
 use crate::map::geo::{copy_near, to_chart};
 use crate::map::level::{Level, framed};
 use crate::map::me::Me;
 use crate::map::roam::{scaled, slid};
 use crate::map::surface::Surface;
 
-/// What the wheel reads: the scroll, the keys and the pinch.
-type Scroll<'w> = (
-    Res<'w, AccumulatedMouseScroll>,
-    Res<'w, ButtonInput<KeyCode>>,
-    Res<'w, Hand>,
-);
+/// What the wheel reads: the scroll and the pinch.
+type Scroll<'w> = (Res<'w, AccumulatedMouseScroll>, Res<'w, Hand>);
 
-/// Zooms around the pointer with the wheel within what [`framed`] allows and pans with the
-/// trackpad. The wheel never leaves the planet.
-pub(crate) fn wheel(
-    (scroll, keys, hand): Scroll,
-    mut surface: ResMut<Surface>,
-    view: Res<MapView>,
-) {
-    let turned = turn(&scroll, ctrl(&keys)).filter(|_| surface.over);
-    if let Some(Turn::Pan(pixels)) = turned {
-        let moved = to_map(pixels, view.side);
-        (surface.lens, surface.goal) = (slid(surface.lens, moved), slid(surface.goal, moved));
-    }
-    let notches = hand.notches(turned);
+/// Zooms around the pointer with the wheel within what [`framed`] allows. The wheel never
+/// leaves the planet.
+pub(crate) fn wheel((scroll, hand): Scroll, mut surface: ResMut<Surface>) {
+    let notches = hand.notches(turn(&scroll) * f32::from(u8::from(surface.over)));
     if surface.over && notches != 0.0 {
         surface.goal = scaled(surface.goal, surface.at, ZOOM_STEP.powf(notches));
     }

@@ -1,8 +1,8 @@
 //! What the hands do to the map besides clicking: the wheel, the trackpad and the pinch.
 //!
-//! A wheel turns by lines and zooms. A trackpad scrolls by pixels and pans the map, as a drag
-//! does; with Ctrl held, or with a pinch, it zooms. The zoom stays inside the level shown: a
-//! double click goes into a place, and Back comes out of it.
+//! The wheel zooms, by lines or by the pixels of a trackpad or a smooth wheel, and so does a
+//! pinch; a drag pans. The zoom stays inside the level shown: a double click goes into a place,
+//! and Back comes out of it.
 
 use bevy::input::gestures::PinchGesture;
 use bevy::input::mouse::{AccumulatedMouseScroll, MouseScrollUnit};
@@ -11,17 +11,8 @@ use bevy::prelude::*;
 use super::map::SIZE;
 use super::pointer::ZOOM_STEP;
 
-/// Pixels of a trackpad scroll with Ctrl held that zoom as much as one line of the wheel.
+/// Pixels of a trackpad or smooth wheel scroll that zoom as much as one line of the wheel.
 pub const PIXELS_PER_NOTCH: f32 = 100.0;
-
-/// What one frame of the wheel or the trackpad asks of the map.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Turn {
-    /// Zoom by this many notches, closer when positive.
-    Zoom(f32),
-    /// Pan by these screen pixels, as a drag by them would.
-    Pan(Vec2),
-}
 
 /// What the hands did to the map lately: how fast it drifts after a drag and the pinch of
 /// this frame.
@@ -33,17 +24,12 @@ pub struct Hand {
     pub pinch: f32,
 }
 
-/// Returns what the wheel asks this frame. Lines zoom. Pixels pan, or zoom with Ctrl held.
-pub fn turn(scroll: &AccumulatedMouseScroll, ctrl: bool) -> Option<Turn> {
-    let turn = match (scroll.unit, ctrl) {
-        (MouseScrollUnit::Line, _) => Turn::Zoom(scroll.delta.y),
-        (MouseScrollUnit::Pixel, true) => Turn::Zoom(scroll.delta.y / PIXELS_PER_NOTCH),
-        (MouseScrollUnit::Pixel, false) => Turn::Pan(scroll.delta),
-    };
-    match turn {
-        Turn::Zoom(0.0) => None,
-        Turn::Pan(pixels) if pixels == Vec2::ZERO => None,
-        turn => Some(turn),
+/// Returns the notches the wheel turned this frame, closer when positive. A mouse wheel gives
+/// lines; a trackpad or a smooth wheel gives pixels, of which [`PIXELS_PER_NOTCH`] make one.
+pub fn turn(scroll: &AccumulatedMouseScroll) -> f32 {
+    match scroll.unit {
+        MouseScrollUnit::Line => scroll.delta.y,
+        MouseScrollUnit::Pixel => scroll.delta.y / PIXELS_PER_NOTCH,
     }
 }
 
@@ -56,19 +42,10 @@ pub fn to_map(pixels: Vec2, side: f32) -> Vec2 {
 }
 
 impl Hand {
-    /// Returns the notches this frame zooms by, from the wheel and the pinch.
-    pub fn notches(&self, turn: Option<Turn>) -> f32 {
-        let wheel = match turn {
-            Some(Turn::Zoom(notches)) => notches,
-            _ => 0.0,
-        };
+    /// Returns the notches this frame zooms by, from the `wheel` and the pinch.
+    pub fn notches(&self, wheel: f32) -> f32 {
         wheel + (1.0 + self.pinch).max(0.1).ln() / ZOOM_STEP.ln()
     }
-}
-
-/// Returns true while a Ctrl key is held.
-pub fn ctrl(keys: &ButtonInput<KeyCode>) -> bool {
-    keys.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
 }
 
 /// Adds up the pinch of this frame.

@@ -20,6 +20,8 @@ mod tests_curve;
 mod tests_globe;
 #[cfg(test)]
 mod tests_light;
+#[cfg(test)]
+mod tests_shelf;
 
 pub use self::ember::ember as sea_glow;
 pub use self::follow::follow_focus;

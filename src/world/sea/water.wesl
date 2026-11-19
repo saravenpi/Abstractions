@@ -337,7 +337,8 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
         let time = daytime(world);
         let day = time.x;
         let light = mix(vec3<f32>(0.07, 0.10, 0.22), mix(vec3<f32>(1.0), water.sun_color.rgb, 0.4), day);
-        let column = column_depth(in.position, rise * dist);
+        let sag = max(water.globe.w - length(world - water.globe.xyz), 0.0);
+        let column = min(column_depth(in.position, rise * dist) + sag, DEEP);
         let shelf = smoothstep(SHELF_START, SHELF_END, column);
         let mapped = bed.w * (1.0 - smoothstep(MAP_LOW, MAP_HIGH, eye_height));
         let depth = mix(mix(column, DEEP, shelf), max(bed.y, 0.0), mapped);

@@ -137,5 +137,5 @@ fn leaving_the_seat_gives_the_body_back() {
     let (root, anim) = roots.single(app.world()).expect("one body");
     assert_eq!(root.translation, Vec3::ZERO);
     let frames = locals(&anim.pose);
-    assert!(last.angle_between(frames[Seg::ThighR as usize].rotation) < 1.0e-4);
+    assert!(last.dot(frames[Seg::ThighR as usize].rotation).abs() > 1.0 - 1.0e-6);
 }

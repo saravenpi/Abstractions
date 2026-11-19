@@ -111,7 +111,10 @@ fn sense_companion(
 fn sense_listener(
     here: Res<Here>,
     (anchor, terrain): (Option<Res<Anchor>>, Option<Res<Terrain>>),
-    (camera, crossing): (Query<&GlobalTransform, With<GameCamera>>, Option<Res<CloudCrossing>>),
+    (camera, crossing): (
+        Query<&GlobalTransform, With<GameCamera>>,
+        Option<Res<CloudCrossing>>,
+    ),
     mut scene: ResMut<AudioScene>,
 ) {
     let (Some(anchor), Some(terrain), Some((_, spec))) = (anchor, terrain, here.0.as_ref()) else {

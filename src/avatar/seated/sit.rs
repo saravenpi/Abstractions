@@ -58,6 +58,24 @@ pub fn posed(animated: &Pose, levers: &Levers, look: Vec2, share: f32) -> Pose {
 /// What the seat reads besides the body.
 type View<'w> = (Option<Res<'w, Heading>>, Option<Res<'w, BodyFade>>);
 
+/// Returns how much of the seated pose a body takes: all of it in a pilot seat, else the
+/// weight its animation still gives the seat while it blends out.
+fn seat_share(piloting: bool, anim: &Anim) -> f32 {
+    match piloting {
+        true => 1.0,
+        false => anim.weights.eased()[Mode::Seated as usize],
+    }
+}
+
+/// Returns where the head of a pilot looks: the view of the player at this machine when
+/// `turns`, straight ahead for any other body.
+fn pilot_look(view: &View, turns: bool) -> Vec2 {
+    match (view, turns) {
+        ((Some(heading), Some(fade)), true) => piloting(heading, fade.0).0,
+        _ => Vec2::ZERO,
+    }
+}
+
 /// The parts of a body the seat moves: its animation, the pose of its root, the player it
 /// hangs from and its segments.
 type Seated = (
@@ -84,18 +102,12 @@ pub fn sit(
         if root.translation != place {
             root.translation = place;
         }
-        let share = match cockpit {
-            Some(_) => 1.0,
-            None => anim.weights.eased()[Mode::Seated as usize],
-        };
+        let share = seat_share(cockpit.is_some(), anim);
         if share <= 0.0 {
             continue;
         }
         let local = players.get(player).is_ok_and(|id| *id == PlayerId::LOCAL);
-        let look = match (&view, local && cockpit.is_some()) {
-            ((Some(heading), Some(fade)), true) => piloting(heading, fade.0).0,
-            _ => Vec2::ZERO,
-        };
+        let look = pilot_look(&view, local && cockpit.is_some());
         let levers = cockpit.map_or(Levers::default(), |ship| ship.shown);
         let frames = locals(&posed(&anim.pose, &levers, look, share));
         for &segment in &skeleton.0 {

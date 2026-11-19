@@ -38,7 +38,7 @@ pub(super) const CANOPY_SIDES: u32 = 6;
 
 /// Outline of the right wing from above: the root at the front and at the back, then the tip
 /// at the back and at the front. The root is 0.2 m or more inside the fuselage.
-const WING: [Vec3; 4] = [
+pub(super) const WING: [Vec3; 4] = [
     Vec3::new(0.45, -0.1, -0.2),
     Vec3::new(0.45, -0.1, 2.6),
     Vec3::new(3.2, -0.3, 2.2),
@@ -46,21 +46,25 @@ const WING: [Vec3; 4] = [
 ];
 
 /// Outline of the right winglet from the side, 0.05 m inside the end of the wing: it starts
-/// under the wing and is longer than the wing end, which it takes in whole.
-const WINGLET: [Vec3; 4] = [
+/// under the wing and is longer than the wing end, which it takes in whole. It stands 0.41 m
+/// above the top of the wing end, higher than a body steps up, so it stops a body on the wing.
+pub(super) const WINGLET: [Vec3; 4] = [
     Vec3::new(3.15, -0.32, 0.85),
     Vec3::new(3.15, -0.32, 2.25),
-    Vec3::new(3.15, 0.2, 2.4),
-    Vec3::new(3.15, 0.2, 1.3),
+    Vec3::new(3.15, 0.25, 2.4),
+    Vec3::new(3.15, 0.25, 1.3),
 ];
 
 /// Outline of the fin from the side. Its foot is 0.1 m or more under the roof of the fuselage.
-const FIN: [Vec3; 4] = [
+pub(super) const FIN: [Vec3; 4] = [
     Vec3::new(-0.05, 0.5, 1.5),
     Vec3::new(-0.05, 0.5, 3.15),
     Vec3::new(-0.05, 1.9, 3.4),
     Vec3::new(-0.05, 1.9, 2.7),
 ];
+
+/// Thickness of the fin, across it.
+pub(super) const FIN_DEPTH: Vec3 = Vec3::new(0.1, 0.0, 0.0);
 
 /// Returns the point of a station of a lathe along z at corner `i` of `sides`.
 pub(super) fn ring([z, w, h, y]: [f32; 4], i: u32, sides: u32) -> Vec3 {
@@ -107,19 +111,29 @@ pub fn fuselage() -> [Solid; 2] {
     [body, nose]
 }
 
+/// Returns the flat outline and the thickness of the wing and of the winglet of one side: -1
+/// for the left, 1 for the right.
+pub(super) fn plates(side: f32) -> [([Vec3; 4], Vec3); 2] {
+    let mirror = |p: Vec3| Vec3::new(p.x * side, p.y, p.z);
+    [
+        (WING.map(mirror), Vec3::Y * 0.14),
+        (WINGLET.map(mirror), Vec3::X * 0.1 * side),
+    ]
+}
+
 /// Returns the wing and the winglet of one side: -1 for the left, 1 for the right.
 pub fn wing(side: f32) -> [Solid; 2] {
-    let mirror = |p: Vec3| Vec3::new(p.x * side, p.y, p.z);
-    let (mut wing, mut winglet) = (Solid::default(), Solid::default());
-    wing.plate(WING.map(mirror), Vec3::Y * 0.14);
-    winglet.plate(WINGLET.map(mirror), Vec3::X * 0.1 * side);
-    [wing, winglet]
+    plates(side).map(|(base, depth)| {
+        let mut solid = Solid::default();
+        solid.plate(base, depth);
+        solid
+    })
 }
 
 /// Returns the tail fin, which stands in the roof of the fuselage.
 pub fn fin() -> Solid {
     let mut fin = Solid::default();
-    fin.plate(FIN, Vec3::X * 0.1);
+    fin.plate(FIN, FIN_DEPTH);
     fin
 }
 

@@ -62,6 +62,7 @@ pub use legs::Leg;
 pub use mesh::{Looks, dress};
 pub use pilot::{Autopilot, Phase};
 pub use save::Logbook;
+pub use spawn::airframe;
 pub use telemetry::{ShipTelemetry, WarpState};
 pub use view::{HULL_RADIUS, SEAT, seated};
 pub use warp::Warp;

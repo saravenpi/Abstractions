@@ -10,7 +10,7 @@ use super::body::Ship;
 use super::gear::infer;
 use super::glow::Engine;
 use super::landing::GEAR_DROP;
-use super::mesh::{Looks, Skin, dress, material};
+use super::mesh::{Looks, Skin, dress, hulls, material};
 use super::save::saved;
 use crate::home::Base;
 use crate::render::Warm;
@@ -18,9 +18,6 @@ use crate::saves::ActiveWorld;
 use crate::screens::Screen;
 use crate::space::{Frame, Location, Placed, Travel};
 use crate::world::{SpawnPoint, Terrain};
-
-/// Width, height and length in metres of the box that stops the player from walking through the hull.
-const HULL_BOX: Vec3 = Vec3::new(1.8, 1.3, 6.4);
 
 /// Where a new world puts the player, and the save it may come from.
 #[derive(SystemParam)]
@@ -138,6 +135,17 @@ pub fn berth_at_base(
     };
 }
 
+/// Returns the collider of the ship root: one convex hull for each part of the airframe as it is
+/// drawn, the fuselage, the canopy, the fin, the wings and the winglets, so that the player stands
+/// on the wings and bumps into them.
+pub fn airframe() -> Collider {
+    let part = |points: Vec<Vec3>| {
+        let hull = Collider::convex_hull(&points).expect("the airframe parts are solid");
+        (Vec3::ZERO, Quat::IDENTITY, hull)
+    };
+    Collider::compound(hulls().into_iter().map(part).collect())
+}
+
 /// Spawns the ship with its parts once the spawn point exists, and resets the flight state. Its
 /// engine glow is the one material of its own: its colour follows its own engine.
 pub fn spawn(
@@ -164,7 +172,7 @@ pub fn spawn(
         Visibility::default(),
         DespawnOnEnter(Screen::Title),
         RigidBody::Kinematic,
-        Collider::cuboid(HULL_BOX.x, HULL_BOX.y, HULL_BOX.z),
+        airframe(),
     );
     dress(&mut commands.spawn(root), &looks, glow);
     super::reset(&mut commands);

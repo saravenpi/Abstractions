@@ -53,8 +53,12 @@ pub const GAME_PORT: u16 = 24650;
 /// UDP port a host announces itself on, on the local network.
 pub const BEACON_PORT: u16 = 24651;
 
-/// Most players a server takes unless its owner says otherwise.
-pub const MAX_PLAYERS_DEFAULT: u8 = 16;
+/// Most players a server takes unless its owner says otherwise. It is a default, never a
+/// ceiling.
+pub const MAX_PLAYERS_DEFAULT: u16 = 16;
+
+/// Most players an owner may let into a server.
+pub const MAX_PLAYERS_LIMIT: u16 = 1000;
 
 /// Most characters in a player name.
 pub const NAME_MAX: usize = 24;

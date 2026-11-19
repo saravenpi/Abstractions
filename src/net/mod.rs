@@ -26,7 +26,11 @@ mod state;
 mod tests;
 
 pub use clock::{NetStats, SessionClock};
+#[cfg(test)]
+pub use join::{record_of, world_of};
 pub use link::{EVENTS_PER_FRAME, FromServer, Inbox, Link, Receive, Role};
+#[cfg(test)]
+pub use link::{Script, Source, Wire};
 pub use lobby::{Lobby, Players, RowStatus, ServerRow};
 pub use messages::{
     CloseLan, JoinServer, LeaveSession, OpenToLan, PasswordNeeded, PlayerJoined, PlayerLeft,

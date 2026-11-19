@@ -15,9 +15,9 @@ pub struct Status {
     /// Name of the server.
     pub name: String,
     /// Players in the world now.
-    pub players: u8,
+    pub players: u16,
     /// Most players the server takes.
-    pub cap: u8,
+    pub cap: u16,
     /// Version of the server program, such as `0.9.0`.
     pub version: String,
     /// Protocol the server speaks: compare it with [`super::PROTOCOL`].

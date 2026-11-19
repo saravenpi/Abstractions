@@ -23,12 +23,13 @@ const IDLE_TIMEOUT: Duration = Duration::from_secs(15);
 /// Round trip assumed before the first measure: a typical internet path.
 const INITIAL_RTT: Duration = Duration::from_millis(100);
 
-/// Bytes of datagrams kept waiting, each way: about two ticks of state for 16 players (15
-/// others, three records each, about 60 bytes a record). Older datagrams are dropped first,
-/// so a stale pose is never queued behind a fresh one.
-const DATAGRAM_BUFFER: usize = 8 * 1024;
+/// Bytes of datagrams kept waiting, each way: about three ticks of state for 100 players
+/// around one star (99 others, three records each, about 60 bytes a record). Older datagrams
+/// are dropped first, so a stale pose is never queued behind a fresh one.
+const DATAGRAM_BUFFER: usize = 64 * 1024;
 
-/// Bytes of the UDP socket's own buffers, raised so a burst of 16 players is not dropped.
+/// Bytes of the UDP socket's own buffers, raised so a burst of datagrams from every player of
+/// a tick is not dropped.
 const SOCKET_BUFFER: usize = 1 << 20;
 
 /// Returns the transport settings. `streams` is how many streams the other side may open.

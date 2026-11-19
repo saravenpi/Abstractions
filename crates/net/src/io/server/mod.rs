@@ -20,8 +20,9 @@ use crate::host::Host;
 use crate::trust::Identity;
 use run::Event;
 
-/// Events waiting for the host at most: enough for a burst of 16 players.
-const EVENTS: usize = 1024;
+/// Events waiting for the host at most: a few datagrams and messages from each of
+/// [`crate::wire::MAX_PLAYERS_LIMIT`] players in one tick.
+const EVENTS: usize = 8 * 1024;
 
 /// Longest wait for the port to be free after a stop.
 const RELEASE: Duration = Duration::from_secs(2);

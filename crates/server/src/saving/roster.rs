@@ -8,12 +8,12 @@ pub struct Roster {
     /// Players by id, as the room listed them.
     known: Vec<PlayerInfo>,
     /// Seats of the server, for the count in the log.
-    cap: u8,
+    cap: u16,
 }
 
 impl Roster {
     /// Returns an empty roster of a server with `cap` seats.
-    pub fn new(cap: u8) -> Self {
+    pub fn new(cap: u16) -> Self {
         Self {
             known: Vec::with_capacity(usize::from(cap)),
             cap,

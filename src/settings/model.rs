@@ -1,5 +1,6 @@
 //! The persisted settings data model.
 
+use abstractions_net::wire::MAX_PLAYERS_DEFAULT;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -29,6 +30,8 @@ pub struct Settings {
     pub player_name: String,
     /// The servers of the multiplayer menu, in the order the player added them.
     pub servers: Vec<SavedServer>,
+    /// Most players a world opened to LAN takes, the host included.
+    pub host_max_players: u16,
 }
 
 impl Default for Settings {
@@ -42,6 +45,7 @@ impl Default for Settings {
             updates: UpdatePrefs::default(),
             player_name: String::new(),
             servers: default_servers(),
+            host_max_players: MAX_PLAYERS_DEFAULT,
         }
     }
 }

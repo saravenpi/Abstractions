@@ -2,7 +2,7 @@
 
 use bevy::math::DVec3;
 
-use super::grid::{CELLS, COLS, cell_of, centre, disc};
+use super::grid::{CELLS, COLS, WORDS, cell_of, centre, disc};
 use super::{Explored, REACH_CAP, REACH_FOOT, reach};
 use crate::saves::{Place, WorldSave};
 use crate::universe::{HOME_RADIUS, Universe};
@@ -80,7 +80,9 @@ fn only_local_cells_are_sent_and_only_once() {
     explored.reveal(body, centre(9), 1e-6);
     assert_eq!(explored.take_new(body), vec![9]);
     assert!(explored.take_new(body).is_empty());
-    explored.merge_words(body, &[1 << 40]);
+    let mut words = vec![0; WORDS];
+    words[0] = 1 << 40;
+    explored.merge_words(body, &words);
     assert_eq!(
         explored.words(body).unwrap()[0],
         (1 << 40) | (1 << 9) | 0b110_0000

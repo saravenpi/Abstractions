@@ -1,0 +1,21 @@
+services:
+  abstractions-server:
+    image: ghcr.io/saravenpi/abstractions-server:0.10.0
+    restart: unless-stopped
+    ports:
+      - "24650:24650/udp"
+    environment:
+      ABSTRACTIONS_NAME: "Space"
+      ABSTRACTIONS_MAX_PLAYERS: "64"
+    volumes:
+      - space-data:/data
+    mem_limit: 128m
+    cpus: 1.0
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  space-data:

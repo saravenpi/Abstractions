@@ -3,7 +3,7 @@
 //!
 //! Each body asked for keeps its picture. Only explored cells are painted, on a worker thread,
 //! and each cell once: a newly explored cell is painted alone. The rest stays black with a
-//! faint grid.
+//! faint grid. Painting waits while the map is closed, and the pictures stay painted.
 
 mod paint;
 #[cfg(test)]
@@ -117,7 +117,8 @@ pub(super) fn plugin(app: &mut App) {
             Update,
             (work::open, work::plan, work::collect)
                 .chain()
-                .run_if(|rasters: Res<Rasters>| !rasters.bodies.is_empty()),
+                .run_if(|rasters: Res<Rasters>| !rasters.bodies.is_empty())
+                .run_if(super::open),
         )
         .add_systems(OnEnter(Screen::Title), forget);
 }

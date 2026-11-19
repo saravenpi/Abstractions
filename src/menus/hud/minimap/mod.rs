@@ -3,10 +3,12 @@
 //!
 //! On a planet the ground is painted into a small image fixed to the planet and wider than the
 //! view, off the main thread, so that walking and turning only move and turn that image. The
-//! home base and the ship are marks that wait on the rim while they are out of range. In space
+//! home base, the ship, friends, waypoints and favourites are marks that wait on the rim while
+//! they are out of range. In space
 //! the board computer lends its chart and its marks. The minimap is part of the HUD, so it
 //! hides behind every menu and behind the computer, which has the large map.
 
+mod dots;
 mod marks;
 mod orbit;
 mod paint;
@@ -30,6 +32,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
+use super::MarkerSet;
 use crate::screens::{Screen, in_control};
 use crate::settings::{Persistent, Settings};
 
@@ -53,11 +56,19 @@ fn cycle(
 pub(super) fn plugin(app: &mut App) {
     let chart = space::chart.run_if(on_timer(Duration::from_secs_f32(CHART_EVERY)));
     let ground = (scope::fresh, scope::track, scope::refill, scope::collect);
-    let shown = (cycle, marks::place, marks::caption, chart, space::steer);
+    let shown = (
+        cycle,
+        marks::place,
+        dots::place,
+        marks::caption,
+        chart,
+        space::steer,
+    );
     app.init_resource::<scope::Scope>().add_systems(
         Update,
         (ground.chain(), shown.chain().run_if(in_control))
             .chain()
+            .in_set(MarkerSet::Show)
             .run_if(in_state(Screen::Gameplay)),
     );
 }

@@ -89,8 +89,7 @@ fn world(app: &mut App) {
         .insert_resource(Clock { seconds: 0.0 })
         .insert_resource(terrain)
         .insert_resource(universe);
-    app.world_mut()
-        .spawn((GameCamera, GlobalTransform::default()));
+    app.world_mut().spawn((GameCamera, Transform::default()));
     let world = app.world_mut();
     world
         .resource_mut::<NextState<Screen>>()
@@ -132,9 +131,9 @@ pub fn look(app: &mut App, at: DVec3, toward: DVec3) {
     let pose = pose.looking_to(turned(toward), turned(at.normalize()));
     let mut cameras = app
         .world_mut()
-        .query_filtered::<&mut GlobalTransform, With<GameCamera>>();
+        .query_filtered::<&mut Transform, With<GameCamera>>();
     for mut camera in cameras.iter_mut(app.world_mut()) {
-        *camera = GlobalTransform::from(pose);
+        *camera = pose;
     }
     for _ in 0..3 {
         app.update();

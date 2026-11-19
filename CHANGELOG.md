@@ -32,6 +32,10 @@ Players and servers must both run 0.10.1: the multiplayer protocol changed.
 - Friends' ships no longer stutter or jump: their motion is drawn behind the measured network delay, with no freeze on landing, liftoff or far out in space.
 - The minimap and the compass no longer disagree with where you are for a frame when the world shifts under you or the ship moves fast.
 - You walk up stairs and small ledges without jumping.
+- The ship's wings, winglets, fin and canopy are solid, and leaving the seat stops the motors.
+- Unexplored ground on the map is plain black, without grid lines.
+- Names on the map stay clear of the header and footer lines, and the home icon no longer covers the ship.
+- The map no longer repeats the course hint while the Set course button shows.
 
 ## [0.10.0] - 2026-11-19
 

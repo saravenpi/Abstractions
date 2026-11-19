@@ -53,21 +53,34 @@ impl Room {
         self.broadcast(&ServerMsg::Change(entry), out);
     }
 
-    /// Frees the seat of `conn` and tells the others the player left. The player's saved
-    /// record stays.
+    /// Frees the seat of `conn` and tells the others the player left, clearing their waypoint
+    /// first when they had one. The player's saved record stays.
     pub(super) fn leave(&mut self, conn: ConnId, out: &mut Outbox) {
         let Some(slot) = self.conns.get_mut(&conn).and_then(|open| open.seat.take()) else {
             return;
         };
-        if let Some(seat) = self.seats[slot].take() {
-            self.broadcast(&ServerMsg::Left(seat.info.id), out);
+        let Some(seat) = self.seats[slot].take() else {
+            return;
+        };
+        if seat.waypoint.is_some() {
+            let player = seat.info.id;
+            let waypoint = None;
+            self.broadcast(&ServerMsg::Waypoint { player, waypoint }, out);
         }
+        self.broadcast(&ServerMsg::Left(seat.info.id), out);
     }
 
     /// Lets the player on `conn` leave and forgets the connection.
     pub(super) fn forget(&mut self, conn: ConnId, out: &mut Outbox) {
         self.leave(conn, out);
         self.conns.remove(&conn);
+    }
+
+    /// Sends `msg` to every joined player but the one on `conn`.
+    pub(super) fn send_others(&self, conn: ConnId, msg: &ServerMsg, out: &mut Outbox) {
+        for seat in self.seats.iter().flatten().filter(|seat| seat.conn != conn) {
+            out.send(seat.conn, msg.clone());
+        }
     }
 
     /// Sends `msg` to every joined player.

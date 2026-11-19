@@ -1,23 +1,21 @@
-//! The card of the panel: the readout of the row under the cursor.
+//! The card of the side panel: the readout of the selected search result.
 
 use bevy::prelude::*;
 
 use super::board::Board;
-use super::detail::readout;
-use super::inset;
-use super::layout::CARD;
+use super::detail::{LINES, readout};
+use super::layout::LINE_HEIGHT;
 use crate::ui::{text, theme};
 
 /// Marks the text that shows the readout.
 #[derive(Component)]
 pub(super) struct Readout;
 
-/// The empty card under a rule: the room of the longest readout and the climate line, cut past
-/// it, with the climate map in its top right corner. `write` and the inset fill it.
+/// The empty card under a rule: the room of the longest readout, cut past it. `write` fills it.
 pub(super) fn card() -> impl Bundle {
     (
         Node {
-            height: px(CARD),
+            height: px(theme::GAP_S + LINES as f32 * LINE_HEIGHT),
             flex_shrink: 0.0,
             flex_direction: FlexDirection::Column,
             padding: UiRect::top(px(theme::GAP_S)),
@@ -26,11 +24,7 @@ pub(super) fn card() -> impl Bundle {
             ..default()
         },
         BorderColor::all(theme::HAIRLINE),
-        children![
-            (Readout, text("", theme::FONT_SMALL, theme::TEXT)),
-            inset::line(),
-            inset::map(),
-        ],
+        children![(Readout, text("", theme::FONT_SMALL, theme::TEXT))],
     )
 }
 

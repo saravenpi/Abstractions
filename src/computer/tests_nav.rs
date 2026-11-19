@@ -13,10 +13,9 @@ use bevy::ui_widgets::Activate;
 use super::chart::Dot;
 use super::hover::{light, look, surface};
 use super::pointer::MapView;
-use super::primary::Face;
 use super::tests_pointer::{click, pixel, point, rig};
 use super::tests_rig::{game, run, tap};
-use super::view::Slot;
+use super::view::{Action, Slot};
 use super::*;
 use crate::ui::{Look, Selected, theme};
 
@@ -76,17 +75,16 @@ fn a_click_on_a_row_selects_and_a_double_click_on_a_mark_sets_the_course() {
     assert_eq!(state(&app), (2, Some(target)));
 }
 
-/// Returns the words the main button says.
+/// Returns the words of the action line of the course.
 fn said(app: &mut App) -> String {
-    let mut faces = app.world_mut().query::<(&Face, &Text)>();
-    let words = faces
-        .iter(app.world())
-        .find(|(face, _)| **face == Face::Words);
-    words.map(|(_, text)| text.0.clone()).unwrap_or_default()
+    let mut lines = app.world_mut().query_filtered::<&Text, With<Action>>();
+    let words = lines.iter(app.world()).next();
+    words.map(|text| text.0.clone()).unwrap_or_default()
 }
 
 /// The keyboard works as before: the arrows move the selection, Enter sets the course to it,
-/// and Delete clears it. The main button always says what it will do next.
+/// and Delete clears it. The action line says nothing without a course, and what the route
+/// can do with one.
 #[test]
 fn the_keyboard_selects_sets_and_clears_the_course() {
     let mut app = game("keys");
@@ -95,11 +93,15 @@ fn the_keyboard_selects_sets_and_clears_the_course() {
     tap(&mut app, KeyCode::ArrowDown, None);
     let row = app.world().resource::<Board>().lines[1].clone();
     assert_eq!(app.world().resource::<Board>().cursor, 1);
-    assert_eq!(said(&mut app), format!("Set course to {}", row.title));
+    assert_eq!(said(&mut app), "");
     tap(&mut app, KeyCode::Enter, None);
     run(&mut app, 2);
     assert_eq!(app.world().resource::<Destination>().0, Some(row.target));
-    assert_eq!(said(&mut app), "Engage autopilot");
+    let status = *app.world().resource::<RouteStatus>();
+    let name = row
+        .target
+        .name(app.world().resource::<crate::universe::Universe>());
+    assert_eq!(said(&mut app), action(&name, status).1);
     tap(&mut app, KeyCode::ArrowUp, None);
     assert_eq!(app.world().resource::<Board>().cursor, 0);
     assert_eq!(app.world().resource::<Destination>().0, Some(row.target));

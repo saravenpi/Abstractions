@@ -1,11 +1,15 @@
 //! The check a player runs on a server's certificate: its fingerprint instead of a chain.
+//!
+//! [`Verifier`] holds the check; `handshake` hands it to rustls.
+
+mod handshake;
 
 use std::sync::Mutex;
 
-use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
-use rustls::crypto::{WebPkiSupportedAlgorithms, verify_tls12_signature, verify_tls13_signature};
-use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
-use rustls::{CertificateError, DigitallySignedStruct, Error, SignatureScheme};
+use rustls::client::danger::ServerCertVerified;
+use rustls::crypto::WebPkiSupportedAlgorithms;
+use rustls::pki_types::CertificateDer;
+use rustls::{CertificateError, Error};
 
 use super::{TrustError, fingerprint};
 
@@ -67,26 +71,9 @@ impl Verifier {
             .unwrap_or_else(|poison| poison.into_inner())
     }
 
-    /// Returns the verdict on the certificate the server showed, once it did.
-    pub fn outcome(&self) -> Option<Result<Seen, TrustError>> {
-        let got = self.fingerprint()?;
-        Some(self.judge(got).map(|first_time| Seen {
-            fingerprint: got,
-            first_time,
-        }))
-    }
-}
-
-impl ServerCertVerifier for Verifier {
-    /// Accepts the certificate when its fingerprint is the one expected, or a new one.
-    fn verify_server_cert(
-        &self,
-        end_entity: &CertificateDer<'_>,
-        _intermediates: &[CertificateDer<'_>],
-        _server_name: &ServerName<'_>,
-        _ocsp_response: &[u8],
-        _now: UnixTime,
-    ) -> Result<ServerCertVerified, Error> {
+    /// Remembers the fingerprint of `end_entity` and accepts it when it is the one expected or
+    /// a new one. A changed one is refused when strict, else accepted and only reported.
+    fn check(&self, end_entity: &CertificateDer<'_>) -> Result<ServerCertVerified, Error> {
         let got = fingerprint(end_entity);
         *self
             .seen
@@ -100,28 +87,12 @@ impl ServerCertVerifier for Verifier {
         }
     }
 
-    /// Checks a TLS 1.2 handshake signature with ring. QUIC never uses TLS 1.2.
-    fn verify_tls12_signature(
-        &self,
-        message: &[u8],
-        cert: &CertificateDer<'_>,
-        dss: &DigitallySignedStruct,
-    ) -> Result<HandshakeSignatureValid, Error> {
-        verify_tls12_signature(message, cert, dss, &self.algorithms)
-    }
-
-    /// Checks the TLS 1.3 handshake signature with ring: the server holds the certificate's key.
-    fn verify_tls13_signature(
-        &self,
-        message: &[u8],
-        cert: &CertificateDer<'_>,
-        dss: &DigitallySignedStruct,
-    ) -> Result<HandshakeSignatureValid, Error> {
-        verify_tls13_signature(message, cert, dss, &self.algorithms)
-    }
-
-    /// Returns the signature schemes ring can check.
-    fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
-        self.algorithms.supported_schemes()
+    /// Returns the verdict on the certificate the server showed, once it did.
+    pub fn outcome(&self) -> Option<Result<Seen, TrustError>> {
+        let got = self.fingerprint()?;
+        Some(self.judge(got).map(|first_time| Seen {
+            fingerprint: got,
+            first_time,
+        }))
     }
 }

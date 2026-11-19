@@ -3,8 +3,14 @@
 use super::{Chemistry, Energy, Solvent, Structure, World};
 use crate::universe::hash::{Rng, child};
 
+mod liquid;
+
+pub use liquid::{solvent, suitability, wet};
+
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_liquid;
 
 /// Child of the planet seed the chemistry draws come from.
 const STREAM: u64 = 0x43_48_45_4D;
@@ -20,18 +26,6 @@ const PIGMENT: [(f32, [f32; 3]); 8] = [
     (8000.0, [0.6, 0.75, 0.8]),
     (12_000.0, [0.82, 0.87, 0.95]),
 ];
-
-/// Kelvin between which each solvent is liquid, water aside, whose top follows the pressure.
-const AMMONIA: (f32, f32) = (195.0, 240.0);
-
-/// Kelvin between which hydrocarbons are liquid.
-const HYDROCARBON: (f32, f32) = (90.0, 190.0);
-
-/// Kelvin between which molten silicate carries life.
-const SILICATE: (f32, f32) = (1300.0, 3500.0);
-
-/// Kelvin at which water freezes.
-const FREEZING: f32 = 273.0;
 
 /// Returns the linear RGB colour of the light gathering pigment of producers under a star at `kelvin`:
 /// green under a yellow star, red to black under a red dwarf, pale under a hot blue star.
@@ -51,32 +45,6 @@ pub fn pigment(kelvin: f32) -> [f32; 3] {
     let t = ((kelvin - low.0) / span).clamp(0.0, 1.0);
     let t = t * t * (3.0 - 2.0 * t);
     [0, 1, 2].map(|i| low.1[i] + (high.1[i] - low.1[i]) * t)
-}
-
-/// Returns how well a temperature `t` fits a liquid range from `low` to `high`: 1 in the middle, 0 at
-/// and past the edges.
-pub fn fit(t: f32, low: f32, high: f32) -> f32 {
-    let x = (2.0 * t - low - high) / (high - low);
-    (1.0 - x.powi(4)).max(0.0)
-}
-
-/// Returns the kelvin at which water boils under `pressure` home atmospheres, by Clausius-Clapeyron from 373 K.
-fn boiling(pressure: f32) -> f32 {
-    1.0 / (1.0 / 373.15 - 2.045e-4 * pressure.max(1e-3).ln())
-}
-
-/// Returns the solvent that best fits the temperature and pressure of `world`, with its fit, or nothing when none does.
-pub fn solvent(world: &World) -> Option<(Solvent, f32)> {
-    let t = world.temperature;
-    let fits = [
-        (Solvent::Water, fit(t, FREEZING, boiling(world.pressure))),
-        (Solvent::Ammonia, fit(t, AMMONIA.0, AMMONIA.1)),
-        (Solvent::Hydrocarbon, fit(t, HYDROCARBON.0, HYDROCARBON.1)),
-        (Solvent::Silicate, fit(t, SILICATE.0, SILICATE.1)),
-    ];
-    fits.into_iter()
-        .filter(|(_, f)| *f > 0.0)
-        .max_by(|a, b| a.1.total_cmp(&b.1))
 }
 
 /// Returns the linear RGB glow colour of life in `solvent`.

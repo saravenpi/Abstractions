@@ -1,27 +1,28 @@
 //! Whether a planet lives, and how far evolution got there.
 //!
-//! The chance of life is a product of factors, a liquid that fits the temperature, air, water on
-//! the ground and usable energy, scaled by loaded dice so that about one system in three holds a
-//! living world. The rung then follows the age of the star and how harsh the climate is.
+//! Each liquid of the planet gives a suitability, combined as independent chances, then scaled by
+//! the needs every life shares: energy, air and a calm star. Abiogenesis is a Poisson process: life
+//! starts after a wait drawn at a rate that grows with the suitability and the speed of the
+//! chemistry, and only if that wait is shorter than the age of the star. The rung then follows the
+//! time life has had since, at the speed of its chemistry.
+
+mod tune;
 
 use super::{Rung, Solvent, World, chem};
 use crate::universe::hash::{Rng, child};
 use crate::universe::{GIANT_RADIUS, NO_AIR};
+use tune::{BARRIER, OLDEST, RATE, RUNG_GYR};
 
 #[cfg(test)]
 pub(super) mod tests;
+#[cfg(test)]
+mod tests_worlds;
 
 /// Child of the planet seed the odds draws come from.
 const STREAM: u64 = 0x4F_44_44_53;
 
-/// Scale of the chance of life, tuned so that about one system in three holds a living world.
-const LOADING: f32 = 0.17;
-
-/// Oldest a star gets, in billions of years.
-const OLDEST: f32 = 12.0;
-
-/// Billions of years evolution takes to climb one rung.
-const RUNG_GYR: f32 = 2.2;
+/// Kelvin of the home surface, where the chemistry of life runs at speed 1.
+const HOME_KELVIN: f32 = 288.0;
 
 /// The rungs, from the lowest.
 const LADDER: [Rung; 5] = [
@@ -32,32 +33,50 @@ const LADDER: [Rung; 5] = [
     Rung::Old,
 ];
 
-/// Returns the share of the chance of life the ground and the light allow on `world`, from 0 to 1.
+/// Returns the share of the needs every life shares that `world` meets with `solvent`, 0 to 1.
 ///
-/// Dry ground keeps 40 percent of the chance, and a dim sky 30 percent, since vents still feed life.
-fn ground(world: &World) -> f32 {
-    let wet = 0.4 + 0.6 * (world.ocean / 0.3).min(1.0);
-    let light = 0.3 + 0.7 * (world.flux / 0.1).min(1.0);
-    wet * light
+/// Energy: starlight, with vents as a floor of 30 percent under a dim sky, and the heat of the
+/// melt itself for silicate life. Air: thin air keeps 40 percent. A calm star: red dwarfs under
+/// 3,900 K flare, down to 40 percent at 3,000 K and cooler.
+fn needs(world: &World, solvent: Solvent) -> f32 {
+    let energy = match solvent {
+        Solvent::Silicate => 1.0,
+        _ => 0.3 + 0.7 * (world.flux / 0.1).min(1.0),
+    };
+    let air = 0.4 + 0.6 * (world.pressure / 0.3).min(1.0);
+    let calm = ((world.star - 3000.0) / 900.0).clamp(0.0, 1.0);
+    energy * air * (0.4 + 0.6 * calm * calm * (3.0 - 2.0 * calm))
 }
 
-/// Returns how many rungs a harsh climate takes away: thin air, heat for water life, and the slow
-/// chemistry of the cold solvents.
+/// Returns the solvent life on `world` would use and how well the planet suits life, 0 to 1, or
+/// nothing when no liquid suits it.
+fn suitability(world: &World) -> Option<(Solvent, f32)> {
+    let (solvent, _) = chem::solvent(world)?;
+    Some((solvent, chem::wet(world) * needs(world, solvent)))
+}
+
+/// Returns how fast the chemistry of life runs at `kelvin`, relative to water at 288 K, after an
+/// Arrhenius law with the softened barrier of [`BARRIER`]. Nothing runs faster than at 288 K: the
+/// heat that speeds reactions also breaks long molecules.
+fn speed(kelvin: f32) -> f32 {
+    (-BARRIER * (1.0 / kelvin.max(1.0) - 1.0 / HOME_KELVIN))
+        .exp()
+        .min(1.0)
+}
+
+/// Returns how many rungs a harsh climate takes away: thin air, and heat for water life.
 fn harshness(world: &World, solvent: Solvent) -> usize {
     let thin = world.pressure < 0.1;
     let hot = solvent == Solvent::Water && world.temperature > 330.0;
-    let slow = matches!(solvent, Solvent::Ammonia | Solvent::Hydrocarbon);
-    usize::from(thin) + usize::from(hot) + usize::from(slow)
+    usize::from(thin) + usize::from(hot)
 }
 
-/// Returns the rung evolution reached on `world` with `solvent`, for a draw `age` from 0 to 1 of the star's age.
+/// Returns the rung life on `world` with `solvent` reached after `years` billion years.
 ///
-/// A star lives about 10 billion years at the home temperature and shorter the hotter it is, as
-/// `(5780 / kelvin)^2.5`, and no star is older than 12. Each 2.2 billion years climb one rung,
-/// harshness takes rungs away, and molten silicate life never gets past shells.
-fn ladder(world: &World, solvent: Solvent, age: f32) -> Rung {
-    let lifetime = (10.0 * (5780.0 / world.star.max(1000.0)).powf(2.5)).min(OLDEST);
-    let climbed = (age * lifetime / RUNG_GYR) as usize;
+/// Each 2.2 billion years at the chemical speed of the planet climb one rung, harshness takes
+/// rungs away, and molten silicate life never gets past shells.
+fn ladder(world: &World, solvent: Solvent, years: f32) -> Rung {
+    let climbed = (years * speed(world.temperature) / RUNG_GYR) as usize;
     let rung = LADDER[climbed
         .saturating_sub(harshness(world, solvent))
         .min(LADDER.len() - 1)];
@@ -69,14 +88,18 @@ fn ladder(world: &World, solvent: Solvent, age: f32) -> Rung {
 
 /// Returns how far life got on a planet of `world` whose life rolls from `seed`, or nothing on a dead world.
 ///
-/// Gas giants and airless worlds never live, nor does a world no liquid fits.
+/// The star is a seeded share of its life old: about 10 billion years at the home temperature and
+/// shorter the hotter it is, as `(5780 / kelvin)^2.5`, and never older than 12. Gas giants and
+/// airless worlds never live, nor does a world no liquid suits.
 pub fn rung(world: &World, seed: u64) -> Option<Rung> {
     if world.radius >= GIANT_RADIUS.0 as f32 || world.pressure < NO_AIR as f32 {
         return None;
     }
-    let (solvent, fit) = chem::solvent(world)?;
+    let (solvent, suits) = suitability(world)?;
     let mut rng = Rng::new(child(seed, STREAM));
-    let chance = LOADING * fit.sqrt() * ground(world);
-    let lives = (rng.unit() as f32) < chance;
-    lives.then(|| ladder(world, solvent, rng.unit() as f32))
+    let lifetime = (10.0 * (5780.0 / world.star.max(1000.0)).powf(2.5)).min(OLDEST);
+    let age = rng.unit() as f32 * lifetime;
+    let rate = (RATE * suits * speed(world.temperature)).max(1e-9);
+    let wait = -(1.0 - rng.unit() as f32).ln() / rate;
+    (wait < age).then(|| ladder(world, solvent, age - wait))
 }

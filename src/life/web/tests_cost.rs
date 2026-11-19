@@ -51,14 +51,18 @@ fn cost(
     (busy() - start) * 1.0e3 / f64::from(rounds)
 }
 
-/// Building the life of the home planet of universe 9, which lives at the skeletal rung, costs
-/// under 5 ms of processor time, through the web and through `life::of`, which runs when the
-/// planet is entered.
+/// Building the life of the first home planet with animals costs under 5 ms of processor time, through
+/// the web and through `life::of`, which runs when the planet is entered.
 #[test]
 fn home_costs_under_5_ms() {
-    let universe = Universe::new(9);
-    let home = universe.home();
-    let (planet, star) = (universe.planet(home), universe.system(home.star).star);
+    let homes = (0..).map(Universe::new).map(|universe| {
+        let home = universe.home();
+        (universe.planet(home), universe.system(home.star).star)
+    });
+    let living = homes
+        .take(50)
+        .find(|(planet, star)| assemble(planet, star).is_some_and(|l| l.species.len() >= 12));
+    let (planet, star) = living.expect("a home planet with animals in 50 universes");
     let web = cost(&planet, &star, assemble);
     let of = cost(&planet, &star, crate::life::of);
     println!("web::assemble costs {web:.3} ms, life::of {of:.3} ms");

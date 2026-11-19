@@ -14,6 +14,7 @@ mod ground;
 mod handling;
 mod helm;
 mod hover;
+mod hull;
 mod landed;
 mod lever;
 mod manual;

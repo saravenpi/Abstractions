@@ -205,8 +205,9 @@ pub const SOAR_LIMIT: f32 = 1.0;
 /// along it, so a turn banks it over a few frames and frame noise never shakes it.
 pub const GAIN_RATE: f32 = 5.0;
 
-/// Half width of its trail in metres: a third of the boot exhaust of the wingsuit.
-pub const TAIL_WIDTH: f32 = 0.035;
+/// Half width of its trail in metres: under a fifth of the boot exhaust of the wingsuit, and
+/// thinner than a wingtip trail, so it reads as the smaller of the two.
+pub const TAIL_WIDTH: f32 = 0.02;
 
 /// Seconds a point of its trail glows for: a third of a wingtip trail.
 pub const TAIL_LIFE: f32 = 0.5;
@@ -215,7 +216,7 @@ pub const TAIL_LIFE: f32 = 0.5;
 pub const TAIL_SPEED: (f32, f32) = (8.0, 22.0);
 
 /// Brightness of the trail, as a multiple of the colour of its light, so bloom catches it.
-pub const TAIL_GAIN: f32 = 2.2;
+pub const TAIL_GAIN: f32 = 1.5;
 
 /// How much brighter its thruster glows in flight.
 pub const THRUST_GLOW: f32 = 1.8;

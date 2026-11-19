@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::{held, offset, seated};
-use crate::avatar::animate::{Anim, Bone};
+use crate::avatar::animate::{Anim, Bone, Skeleton};
 use crate::avatar::neck::reach;
 use crate::avatar::pose::{Core, Pose};
 use crate::avatar::rig::locals;
@@ -58,39 +58,62 @@ pub fn posed(animated: &Pose, levers: &Levers, look: Vec2, share: f32) -> Pose {
 /// What the seat reads besides the body.
 type View<'w> = (Option<Res<'w, Heading>>, Option<Res<'w, BodyFade>>);
 
-/// Seats the body: while its player is the pilot of a ship the root of the body is in the
+/// Returns how much of the seated pose a body takes: all of it in a pilot seat, else the
+/// weight its animation still gives the seat while it blends out.
+fn seat_share(piloting: bool, anim: &Anim) -> f32 {
+    match piloting {
+        true => 1.0,
+        false => anim.weights.eased()[Mode::Seated as usize],
+    }
+}
+
+/// Returns where the head of a pilot looks: the view of the player at this machine when
+/// `turns`, straight ahead for any other body.
+fn pilot_look(view: &View, turns: bool) -> Vec2 {
+    match (view, turns) {
+        ((Some(heading), Some(fade)), true) => piloting(heading, fade.0).0,
+        _ => Vec2::ZERO,
+    }
+}
+
+/// The parts of a body the seat moves: its animation, the pose of its root, the player it
+/// hangs from and its segments.
+type Seated = (
+    &'static Anim,
+    &'static mut Transform,
+    &'static ChildOf,
+    &'static Skeleton,
+);
+
+/// Seats every body: while its player is the pilot of a ship the root of the body is in the
 /// seat and the pose is the seated one, hands on the controls of that ship. The head of the
 /// player at this machine turns with the view. After leaving, the pose blends back out with
 /// the weight the animation still gives the seat.
 pub fn sit(
     view: View,
-    cockpits: Query<&Cockpit>,
-    players: Query<&PlayerId>,
-    body: Single<(&Anim, &mut Transform, &ChildOf), With<Avatar>>,
+    (cockpits, players): (Query<&Cockpit>, Query<&PlayerId>),
+    mut bodies: Query<Seated, With<Avatar>>,
     mut bones: Query<(&Bone, &mut Transform), Without<Avatar>>,
 ) {
-    let (anim, mut root, parent) = body.into_inner();
-    let player = parent.parent();
-    let cockpit = cockpits.iter().find(|ship| ship.pilot == Some(player));
-    let place = cockpit.map_or(Vec3::ZERO, |_| offset());
-    if root.translation != place {
-        root.translation = place;
-    }
-    let share = match cockpit {
-        Some(_) => 1.0,
-        None => anim.weights.eased()[Mode::Seated as usize],
-    };
-    if share <= 0.0 {
-        return;
-    }
-    let local = players.get(player).is_ok_and(|id| *id == PlayerId::LOCAL);
-    let look = match (view, local && cockpit.is_some()) {
-        ((Some(heading), Some(fade)), true) => piloting(&heading, fade.0).0,
-        _ => Vec2::ZERO,
-    };
-    let levers = cockpit.map_or(Levers::default(), |ship| ship.shown);
-    let frames = locals(&posed(&anim.pose, &levers, look, share));
-    for (bone, mut transform) in &mut bones {
-        *transform = frames[bone.0 as usize];
+    for (anim, mut root, parent, skeleton) in &mut bodies {
+        let player = parent.parent();
+        let cockpit = cockpits.iter().find(|ship| ship.pilot == Some(player));
+        let place = cockpit.map_or(Vec3::ZERO, |_| offset());
+        if root.translation != place {
+            root.translation = place;
+        }
+        let share = seat_share(cockpit.is_some(), anim);
+        if share <= 0.0 {
+            continue;
+        }
+        let local = players.get(player).is_ok_and(|id| *id == PlayerId::LOCAL);
+        let look = pilot_look(&view, local && cockpit.is_some());
+        let levers = cockpit.map_or(Levers::default(), |ship| ship.shown);
+        let frames = locals(&posed(&anim.pose, &levers, look, share));
+        for &segment in &skeleton.0 {
+            if let Ok((bone, mut transform)) = bones.get_mut(segment) {
+                *transform = frames[bone.0 as usize];
+            }
+        }
     }
 }

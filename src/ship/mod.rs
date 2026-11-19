@@ -22,6 +22,8 @@ mod fx;
 mod gear;
 mod glow;
 mod helm;
+mod hull;
+mod hull_cast;
 mod landing;
 mod legs;
 mod mesh;
@@ -212,5 +214,6 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(Update, spawn::berth_at_base.run_if(founding));
     flight(app);
     display(app);
+    hull_cast::plugin(app);
     cockpit::plugin(app);
 }

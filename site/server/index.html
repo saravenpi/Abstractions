@@ -22,11 +22,11 @@
 <link rel="alternate icon" type="image/png" sizes="96x96" href="/favicon.png?v=1">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=1">
 <link rel="preload" href="/fonts/undefined-medium.woff2?v=1" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=5">
+<link rel="stylesheet" href="/style.css?v=6">
 <script src="/copy.js?v=1" defer></script>
 </head>
 <body>
-<div class="light" aria-hidden="true"><i></i><i></i><i></i><b></b></div>
+<div class="light" aria-hidden="true"><i></i><i></i><i></i></div>
 <a class="skip" href="#one-command">Skip to the install command</a>
 <header class="top wrap">
   <a class="brand" href="/"><span class="mark"></span>Abstractions</a>
@@ -41,7 +41,7 @@
       <div class="lead">
         <p>A server lets your friends join your universe. It keeps the world for everyone: the seed, the clock, what you all found, and where each player left their ship.</p>
         <p>It is small. Each player uses about 10 KB/s, and a Raspberry Pi is enough.</p>
-        <p><a class="inline" href="/#download">Or just play on space.facile.studio, already in the game's server list.</a></p>
+        <p><a class="inline" href="/#download">Or just play on space.facile.studio, already in the game's server list.</a> It takes up to 64 players.</p>
       </div>
     </div>
   </section>
@@ -136,7 +136,7 @@ Environment="ABSTRACTIONS_PASSWORD=change-me"</code></pre></div>
       <p>Last, give friends your public IP address. Or point a domain at it: add an A record with your public IP.</p>
       <div class="warn" role="note">
         <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 10h2v2H2zm0 4h2v-2H2zm20-4h-2v2h2zm0 4h-2v-2h2zM4 8h2v2H4zm0 8h2v-2H4zm16-8h-2v2h2zm0 8h-2v-2h2zM6 6h2v2H6zm0 12h2v-2H6zM18 6h-2v2h2zm0 12h-2v-2h2zM8 4h2v2H8zm0 16h2v-2H8zm8-16h-2v2h2zm0 16h-2v-2h2zM10 2h2v2h-2zm0 20h2v-2h-2zm4-20h-2v2h2zm0 20h-2v-2h-2zm-3-5h2v-2h-2zm0-4h2V7h-2z"/></svg>
-        <p><strong>Using Cloudflare?</strong> Set the record to DNS only (grey cloud). Cloudflare's proxy only carries web traffic, so friends cannot reach the server through it.</p>
+        <p><span class="warn-title">Using Cloudflare?</span> Set the record to DNS only (grey cloud). Cloudflare's proxy only carries web traffic, so friends cannot reach the server through it.</p>
       </div>
       <p>The game talks over UDP. Some school or office networks block it, and nobody on those networks can reach any server.</p>
     </div>
@@ -154,7 +154,7 @@ Environment="ABSTRACTIONS_PASSWORD=change-me"</code></pre></div>
           <tr><td data-label="Flag"><code>--name</code></td><td data-label="Variable"><code>ABSTRACTIONS_NAME</code></td><td data-label="Default">Set on first start</td><td data-label="Does">The name in the server list.</td></tr>
           <tr><td data-label="Flag"><code>--password</code></td><td data-label="Variable"><code>ABSTRACTIONS_PASSWORD</code></td><td data-label="Default">None</td><td data-label="Does">Players type it to join. The server never prints it.</td></tr>
           <tr><td data-label="Flag"><code>--port</code></td><td data-label="Variable"><code>ABSTRACTIONS_PORT</code></td><td data-label="Default"><code>24650</code></td><td data-label="Does">The UDP port it listens on.</td></tr>
-          <tr><td data-label="Flag"><code>--max-players</code></td><td data-label="Variable"><code>ABSTRACTIONS_MAX_PLAYERS</code></td><td data-label="Default"><code>16</code></td><td data-label="Does">How many players can be in at once.</td></tr>
+          <tr><td data-label="Flag"><code>--max-players</code></td><td data-label="Variable"><code>ABSTRACTIONS_MAX_PLAYERS</code></td><td data-label="Default"><code>16</code></td><td data-label="Does">How many players can be in at once, up to 1000.</td></tr>
           <tr><td data-label="Flag"><code>--data</code></td><td data-label="Variable"><code>ABSTRACTIONS_DATA</code></td><td data-label="Default"><code>./data</code>, <code>/data</code> in Docker</td><td data-label="Does">The folder for the world and the key.</td></tr>
           <tr><td data-label="Flag"><code>--import &lt;file&gt;</code></td><td data-label="Variable">None</td><td data-label="Default">None</td><td data-label="Does">Starts from a single-player world.</td></tr>
         </tbody>
@@ -215,9 +215,7 @@ docker rm -f abstractions</code></pre></div>
   <a class="brand" href="/"><span class="mark"></span>Abstractions, a game by saravenpi</a>
   <a href="https://github.com/saravenpi/Abstractions"><svg class="icon " xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 2h4v2H7v2H5V2Zm0 10H3V6h2v6Zm2 2H5v-2h2v2Zm2 2v-2H7v2H3v-2H1v2h2v2h4v4h2v-4h2v-2H9Zm0 0v2H7v-2h2Zm6-12v2H9V4h6Zm4 2h-2V4h-2V2h4v4Zm0 6V6h2v6h-2Zm-2 2v-2h2v2h-2Zm-2 2v-2h2v2h-2Zm0 2h-2v-2h2v2Zm0 0h2v4h-2v-4Z"/></svg> Source <svg class="icon " xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 5H5v2h6V5ZM5 7H3v12h2V7Zm12 12H5v2h12v-2Zm2-6h-2v6h2v-6Zm-8 0H9v2h2v-2Zm2-2h-2v2h2v-2Zm2-2h-2v2h2V9Zm2-2h-2v2h2V7Zm2-2h-2v2h2V5Zm2-2h-2v8h2V3Z"/><path d="M21 3h-8v2h8V3Z"/></svg></a>
   <a href="/server.sh">Install script</a>
-  <a href="https://github.com/saravenpi/Abstractions/blob/main/LICENSE">MIT licence</a>
-  <a href="/fonts/OFL.txt">Font: Undefined Medium, OFL</a>
-  <a href="/licenses/pixelarticons.txt">Icons: pixelarticons, MIT</a>
+  <a href="/licenses/">Licences</a>
 </footer>
 </body>
 </html>

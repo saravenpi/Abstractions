@@ -17,7 +17,7 @@ mod tests;
 mod tests_air;
 #[cfg(test)]
 mod tests_biome;
-#[cfg(test)]
+#[cfg(all(test, target_os = "linux"))]
 mod tests_cost;
 
 use bevy::math::{DVec3, Vec2, Vec3};

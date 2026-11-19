@@ -98,6 +98,8 @@ pub fn welcome(seed: u64, changes: Changes, record: Option<PlayerRecord>) -> Wel
             id: PlayerId(1),
             name: "Lin".to_string(),
         }],
+        explored: Vec::new(),
+        waypoints: Vec::new(),
     }
 }
 

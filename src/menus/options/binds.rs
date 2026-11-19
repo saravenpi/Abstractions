@@ -32,11 +32,14 @@ pub enum Bind {
     Computer,
     Engage,
     Minimap,
+    Map,
+    Waypoint,
 }
 
 impl Bind {
-    /// The actions used on foot, in display order. The view and board keys work in the ship too.
-    pub const FOOT: [Bind; 10] = [
+    /// The actions used on foot, in display order. The view and board keys work in the ship too,
+    /// and the turn keys turn the wingsuit as they turn the ship.
+    pub const FOOT: [Bind; 14] = [
         Bind::Forward,
         Bind::Back,
         Bind::Left,
@@ -44,13 +47,17 @@ impl Bind {
         Bind::Jump,
         Bind::Sprint,
         Bind::Wings,
+        Bind::YawLeft,
+        Bind::YawRight,
         Bind::View,
         Bind::Board,
         Bind::Minimap,
+        Bind::Map,
+        Bind::Waypoint,
     ];
 
     /// The actions used while seated in the ship, in display order.
-    pub const SHIP: [Bind; 18] = [
+    pub const SHIP: [Bind; 20] = [
         Bind::Thrust,
         Bind::Brake,
         Bind::PitchDown,
@@ -69,6 +76,8 @@ impl Bind {
         Bind::Computer,
         Bind::Engage,
         Bind::Minimap,
+        Bind::Map,
+        Bind::Waypoint,
     ];
 
     /// Returns the name of the action.
@@ -99,6 +108,8 @@ impl Bind {
             Bind::Computer => "Board computer",
             Bind::Engage => "Engage autopilot",
             Bind::Minimap => "Minimap",
+            Bind::Map => "Map",
+            Bind::Waypoint => "Waypoint",
         }
     }
 
@@ -130,6 +141,8 @@ impl Bind {
             Bind::Computer => &mut keys.computer,
             Bind::Engage => &mut keys.engage,
             Bind::Minimap => &mut keys.minimap,
+            Bind::Map => &mut keys.map,
+            Bind::Waypoint => &mut keys.waypoint,
         }
     }
 

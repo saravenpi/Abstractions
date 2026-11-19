@@ -16,17 +16,21 @@ pub struct GearInput {
     pub deploy: bool,
     /// Whether the boot boosters are held on.
     pub boost: bool,
-    /// Pitch stick from -1 (nose down, or forward with the boots alone) to 1 (nose up, or back).
+    /// Pitch stick from -1 (dive, or forward with the boots alone) to 1 (pull toward the back of
+    /// the body, or back). On the wings it is a rate, not an attitude.
     pub pitch: f32,
-    /// Roll stick from -1 (left) to 1 (right). With the boots alone it strafes.
+    /// Roll stick from -1 (left) to 1 (right): on the wings a roll rate. With the boots alone it
+    /// strafes.
     pub roll: f32,
-    /// Unit direction the body is asked to fly along. Zero keeps the current heading and a
-    /// level nose.
+    /// Yaw stick from -1 (left) to 1 (right): a flat turn on the wings.
+    pub yaw: f32,
+    /// Unit direction the camera looks along. With the wings folded the body faces its heading
+    /// and the boots drift along it. Zero keeps the current heading and a level nose.
     pub look: Vec3,
-    /// Heading and pitch of that direction in radians, when the caller has them: the aim. The
-    /// pitch may pass the vertical, which a direction cannot say: past it the aim is on its
-    /// back, and the wings follow it over the top of a loop. Without it both angles come from
-    /// `look`. On foot and in a fall it is the view; on the wings see [`super::stick`].
+    /// Heading and pitch in radians of the view that aims the body, when the caller has them.
+    /// Folded, both angles otherwise come from `look`. On the wings the view steers only while
+    /// this is given, inside fixed attitude limits: without it the wings fly by
+    /// the keys alone and the camera looks around freely.
     pub aim: Option<Vec2>,
     /// Whether the controller found walkable ground under the body this frame.
     pub grounded: bool,
@@ -58,6 +62,7 @@ impl Default for GearInput {
             boost: false,
             pitch: 0.0,
             roll: 0.0,
+            yaw: 0.0,
             look: Vec3::NEG_Z,
             aim: None,
             grounded: false,

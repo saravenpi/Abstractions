@@ -35,11 +35,22 @@ pub fn sight(pose: &Pose, patch: &Patch, radius: f32, home: Option<DVec3>) -> Si
     let toward = |along: DVec3| patch.locate((dir + along * STEP).normalize()) - at;
     let turn = heading(toward(pose.ahead)).unwrap_or(0.0);
     let north = (DVec3::Y - dir * dir.y).try_normalize().unwrap_or(DVec3::X);
-    let mark = |pos: DVec3| pin(to_view(patch.locate(pos.normalize()) - at, turn, radius)).0;
+    let mark = |pos: DVec3| spot(pose, patch, radius, pos);
     Sight {
         fit: fit(patch.half(), at, turn, radius),
         north: rim(toward(north), turn),
         home: home.map(mark),
         ship: pose.ship.map(mark),
     }
+}
+
+/// Returns the map point of `pos`, in metres from the centre of the planet, seen from `pose`
+/// through `patch` on a map that shows `radius` metres to each side with the heading up. A
+/// point past the rim waits on it.
+pub fn spot(pose: &Pose, patch: &Patch, radius: f32, pos: DVec3) -> Vec2 {
+    let dir = pose.at.normalize();
+    let at = patch.locate(dir);
+    let ahead = patch.locate((dir + pose.ahead * STEP).normalize()) - at;
+    let turn = heading(ahead).unwrap_or(0.0);
+    pin(to_view(patch.locate(pos.normalize()) - at, turn, radius)).0
 }

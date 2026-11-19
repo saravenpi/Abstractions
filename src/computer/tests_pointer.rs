@@ -27,6 +27,7 @@ pub(super) fn rig() -> App {
         .init_resource::<ButtonInput<MouseButton>>()
         .init_resource::<ButtonInput<KeyCode>>()
         .init_resource::<AccumulatedMouseScroll>()
+        .init_resource::<Hand>()
         .add_message::<AudioCue>()
         .add_observer(on_activate);
     let universe = Universe::new(11);
@@ -115,33 +116,39 @@ fn pointing_at_a_mark_lights_it_and_selects_nothing() {
     assert_eq!(state(&app), (1, None));
 }
 
-/// A click on a mark moves the cursor to its row, the second click sets the destination as a
-/// click on the row does, and a click on the ship or on empty map does nothing.
+/// A click on a mark moves the cursor to its row and picks it, a slow second click on it lets
+/// go of it, and a click on the ship or on empty map lets go of the selection. No click sets
+/// the destination.
 #[test]
-fn a_click_on_a_mark_selects_its_row_then_sets_the_destination() {
+fn a_click_on_a_mark_selects_its_row_and_never_sets_the_destination() {
     let mut app = rig();
     let state = |app: &App| {
         let chosen = app.world().resource::<Destination>().0;
-        (app.world().resource::<Board>().cursor, chosen)
+        let picked = app.world().resource::<MapView>().picked;
+        (app.world().resource::<Board>().cursor, picked, chosen)
     };
     let planet = pixel(&app, Dot::Row(2));
     point(&mut app, planet);
-    app.world_mut().resource_mut::<Board>().step(-2);
     click(&mut app, Vec2::ZERO);
-    assert_eq!(state(&app), (2, None));
-    click(&mut app, Vec2::ZERO);
-    let target = app.world().resource::<Board>().lines[2].target;
-    assert_eq!(state(&app), (2, Some(target)));
+    assert_eq!(state(&app), (2, true, None));
+    let slow = |app: &mut App, now: f32| {
+        app.world_mut()
+            .resource_scope(|world, mut view: Mut<MapView>| {
+                tap(&mut view, &mut world.resource_mut::<Board>(), now);
+            });
+        state(app)
+    };
+    assert_eq!(slow(&mut app, 10.0), (2, false, None));
+    assert_eq!(slow(&mut app, 20.0), (2, true, None));
     for empty in [pixel(&app, Dot::Ship), Vec2::new(2.0, 2.0)] {
         point(&mut app, empty);
         click(&mut app, Vec2::ZERO);
-        click(&mut app, Vec2::ZERO);
-        assert_eq!(state(&app), (2, Some(target)));
+        assert_eq!(state(&app), (2, false, None));
     }
     let star = pixel(&app, Dot::Row(0));
     point(&mut app, star);
     click(&mut app, Vec2::ZERO);
-    assert_eq!(state(&app), (0, Some(target)));
+    assert_eq!(state(&app), (0, true, None));
 }
 
 /// A drag pans the zoomed chart and is not a click, and two quick clicks on empty map show
@@ -164,10 +171,10 @@ fn a_drag_pans_and_a_double_click_shows_the_whole_chart() {
         goal: closer,
         ..default()
     };
-    assert!(!tap(&mut slow, &mut board, 1.0));
-    assert!(!tap(&mut slow, &mut board, 1.0 + 2.0 * DOUBLE_CLICK));
+    tap(&mut slow, &mut board, 1.0);
+    tap(&mut slow, &mut board, 1.0 + 2.0 * DOUBLE_CLICK);
     assert_eq!(slow.goal, closer);
-    assert!(!tap(&mut slow, &mut board, 1.0 + 2.5 * DOUBLE_CLICK));
+    tap(&mut slow, &mut board, 1.0 + 2.5 * DOUBLE_CLICK);
     assert_eq!((slow.goal, slow.clicked), (Lens::default(), None));
     click(&mut app, Vec2::ZERO);
     click(&mut app, Vec2::ZERO);

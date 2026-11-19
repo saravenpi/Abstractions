@@ -31,6 +31,7 @@ impl Rng {
     }
 
     /// Returns the next 64 bits.
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> u64 {
         self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15);
         mix(self.0)

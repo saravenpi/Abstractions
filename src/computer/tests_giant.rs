@@ -3,7 +3,8 @@
 
 use bevy::math::{DVec3, Vec3};
 
-use super::detail::{LINES, brief, readout};
+use super::detail::{ROWS, brief, card};
+use super::tests_card::fact;
 use super::tests_detail::world;
 use super::*;
 use crate::space::Frame;
@@ -29,40 +30,52 @@ fn rings() -> Rings {
     }
 }
 
-/// A gas giant row says so, and its card says it has no ground to land on, its deck pressure,
-/// its moons and its rings, in as many lines as any card.
+/// A gas giant row says so, and its card says it is a gas giant with no ground to land on,
+/// its deck pressure, its moons and its rings.
 #[test]
 fn a_gas_giant_card_says_it_has_no_ground() {
     assert_eq!(brief(Some(&giant())), "gas giant - -150 C");
+    let universe = Universe::new(7);
     let (line, planet) = world(giant());
     let ringed = PlanetSpec {
         moons: 3,
         rings: Some(rings()),
         ..planet.clone()
     };
-    let card = readout(&line, Some(&ringed));
-    assert_eq!(card.len(), LINES);
-    assert_eq!(card[0], "gas giant - -150 C - tilt 23 deg");
-    assert_eq!(card[1], "no ground to land on - deck pressure 5.00");
-    assert_eq!(card[2], "3 moons - rings 80.0 Mm to 140 Mm");
-    assert_eq!(card[4], "radius 6.00 km - gravity 1.00 g");
-    let bare = PlanetSpec { moons: 1, ..planet };
-    assert_eq!(readout(&line, Some(&bare))[2], "1 moon - no rings");
+    let shown = card(&line, Some(&ringed), &universe);
+    assert!(
+        shown.subtitle.starts_with("Gas giant of "),
+        "{}",
+        shown.subtitle
+    );
+    assert_eq!(fact(&shown, "Ground"), Some("none to land on"));
+    assert_eq!(fact(&shown, "Deck pressure"), Some("5.00"));
+    assert_eq!(fact(&shown, "Moons"), Some("3"));
+    assert_eq!(fact(&shown, "Rings"), Some("80.0 Mm to 140 Mm"));
+    assert_eq!(fact(&shown, "Radius"), Some("6.00 km"));
+    assert!(shown.rows.len() <= ROWS);
+    let bare = card(&line, Some(&PlanetSpec { moons: 1, ..planet }), &universe);
+    assert_eq!(
+        (fact(&bare, "Moons"), fact(&bare, "Rings")),
+        (Some("1"), None)
+    );
 }
 
-/// A solid planet with moons or rings ends its size line with them, and a moon counts its
-/// turn around its planet as its orbit.
+/// A solid planet with moons or rings counts them on its card, one with neither says
+/// nothing of them, and a moon says what it turns around and counts that turn as its orbit.
 #[test]
 fn a_solid_planet_names_its_moons_and_a_moon_its_orbit() {
+    let universe = Universe::new(7);
     let (line, planet) = world(PlanetRecord::TEMPERATE);
     let ringed = PlanetSpec {
         moons: 2,
         rings: Some(rings()),
         ..planet.clone()
     };
-    let card = readout(&line, Some(&ringed));
-    assert_eq!(card[1], "air like home, pressure 1.00");
-    assert_eq!(card[4], "radius 6.00 km - gravity 1.00 g, 2 moons, rings");
+    let shown = card(&line, Some(&ringed), &universe);
+    assert_eq!(fact(&shown, "Air"), Some("like home, pressure 1.00"));
+    assert_eq!(fact(&shown, "Moons"), Some("2"));
+    assert!(fact(&shown, "Rings").is_some());
     let moon = PlanetSpec {
         id: BodyId {
             moon: 1,
@@ -75,9 +88,12 @@ fn a_solid_planet_names_its_moons_and_a_moon_its_orbit() {
         }),
         ..planet
     };
-    let card = readout(&line, Some(&moon));
-    assert_eq!(card[4], "radius 6.00 km - gravity 1.00 g");
-    assert_eq!(card[5], "day 24 min - orbit 3 h 20 min");
+    let shown = card(&line, Some(&moon), &universe);
+    let host = universe.planet(moon.id.planet()).name;
+    assert_eq!(shown.subtitle, format!("Island moon of {host}"));
+    assert_eq!(fact(&shown, "Moons"), None);
+    assert_eq!(fact(&shown, "Orbit"), Some("3 h 20 min"));
+    assert_eq!(fact(&shown, "Year"), None);
 }
 
 /// Standing on a moon is being inside its system and its galaxy, so a visit charts the system

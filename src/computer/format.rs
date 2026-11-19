@@ -31,6 +31,15 @@ pub fn distance(metres: f64) -> String {
     }
 }
 
+/// Returns `text` cut to at most `chars` characters, ending in `..` when it was cut.
+pub fn clip(text: &str, chars: usize) -> String {
+    if text.chars().count() <= chars {
+        return text.to_string();
+    }
+    let kept: String = text.chars().take(chars.saturating_sub(2)).collect();
+    format!("{kept}..")
+}
+
 /// Formats a surface gravity in metres per second squared as a multiple of the home planet's.
 pub fn gravity(acceleration: f64) -> String {
     format!("{:.2} g", acceleration / HOME_GRAVITY)

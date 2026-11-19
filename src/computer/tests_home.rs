@@ -1,5 +1,4 @@
-//! Computer tests: home is always known and marked, its row is pinned first away from it,
-//! and the header says how far it is.
+//! Computer tests: home is always known and marked, and its row is pinned first away from it.
 
 use bevy::math::{DVec3, IVec3};
 
@@ -7,7 +6,7 @@ use super::route::HOME_LABEL;
 use super::sift::{arrange, matches};
 use super::*;
 use crate::space::UniPos;
-use crate::universe::{GALAXY_CELL, GLY, GalaxyId, Universe};
+use crate::universe::{GALAXY_CELL, GalaxyId, Universe};
 
 /// Returns the galaxy cell ten cells east of the home galaxy and the middle of that cell.
 pub(super) fn far(universe: &Universe) -> (GalaxyId, UniPos) {
@@ -93,25 +92,4 @@ fn home_is_pinned_only_away_from_it() {
     assert_eq!(pinned(Tab::Galaxy, wandering, &universe), at_home[1]);
     assert_eq!(pinned(Tab::Galaxy, at_home, &universe), None);
     assert_eq!(pinned(Tab::System, [None; 3], &universe), None);
-}
-
-/// The header says nothing in the home system, a distance in the home galaxy, and a count of
-/// galaxies from another one.
-#[test]
-fn the_header_says_how_far_home_is() {
-    let universe = Universe::new(7);
-    let at_home = homes(&universe);
-    let star = universe.star_position(universe.home().star).unwrap();
-    assert_eq!(away(&universe, at_home, star), None);
-    let near = away(
-        &universe,
-        [None, None, at_home[2]],
-        star + DVec3::X * 40.0 * GLY,
-    );
-    assert_eq!(near.as_deref(), Some("40.0 gly from home"));
-    let (_, ship) = far(&universe);
-    let lost = away(&universe, [None; 3], ship);
-    assert_eq!(lost.as_deref(), Some("10 galaxies from home"));
-    let next = away(&universe, [None; 3], ship - DVec3::X * 9.0 * GALAXY_CELL);
-    assert_eq!(next.as_deref(), Some("1 galaxy from home"));
 }

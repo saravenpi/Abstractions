@@ -33,6 +33,7 @@ mod keys;
 mod mode;
 mod occlude;
 mod rig;
+mod roll;
 mod shot;
 mod smooth;
 mod sway;

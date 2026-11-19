@@ -5,8 +5,30 @@
 //! are metres.
 
 mod build;
+mod crystal;
+mod frame;
+mod head;
+mod kit;
+mod leg;
+mod make;
+mod paint;
+mod piece;
+mod radial;
+mod rules;
+mod segmented;
+mod shape;
+mod skeletal;
+mod soft;
+mod soup;
+mod trunk;
 
-pub use build::build;
+pub use build::{archetypes, build};
+pub use frame::{frame, frames, length};
+pub use kit::MAX_PARTS;
+pub use paint::{soup, triangles};
+pub use rules::{Traits, gravity, lift, traits};
+pub use segmented::CRAWLER_PARTS;
+pub use soup::{Face, Soup};
 
 use bevy::math::{Quat, Vec3};
 
@@ -220,3 +242,6 @@ pub struct Body {
     /// Listed features.
     pub features: Vec<Feature>,
 }
+
+#[cfg(test)]
+mod tests;

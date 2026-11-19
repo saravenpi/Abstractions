@@ -1,4 +1,4 @@
-//! Keyboard, wheel and button handling of the table of the computer screen.
+//! Keyboard, wheel and button handling of the search results of the map screen.
 
 use bevy::ecs::system::SystemParam;
 use bevy::input::mouse::{AccumulatedMouseScroll, MouseScrollUnit};
@@ -7,12 +7,16 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
 use super::board::{Board, VISIBLE_ROWS};
+use super::chart::Dot;
+use super::coast::arrow;
+use super::course::Act;
 use super::home::{tab_of, toward};
 use super::locate::here;
 use super::open::ready;
-use super::pointer::MapView;
-use super::route::{Destination, Engage};
-use super::view::{Act, Slot, TabLink};
+use super::pointer::{MapView, aimed, selected};
+use super::route::{Destination, Engage, RouteStatus};
+use super::typing::Typing;
+use super::view::Slot;
 use crate::audio::AudioCue;
 use crate::settings::{Persistent, Settings};
 use crate::space::Anchor;
@@ -40,33 +44,32 @@ const MOVES: [(KeyCode, isize); 5] = [
 pub(super) const HOME_KEY: KeyCode = KeyCode::Home;
 
 /// The components that say what an activated button of the screen does.
-type Role = (
-    Option<&'static Slot>,
-    Option<&'static TabLink>,
-    Option<&'static Act>,
-);
+type Role = (Option<&'static Slot>, Option<&'static Act>);
 
 /// Moves the cursor with the arrows, Page Up and Down and End, changes tab with Left and
-/// Right, and scrolls with the wheel unless the pointer is over the map. A move that scrolls
-/// the table under a cursor that stays on the same drawn row is sounded here, since the focus
-/// does not move.
+/// Right, and scrolls with the wheel unless the pointer is over the map, where the arrows and
+/// the wheel move the map instead. A key that moves the cursor picks its row. A move that
+/// scrolls the table under a cursor that stays on the same drawn row is sounded here, since
+/// the focus does not move.
 pub(super) fn navigate(
     keys: Res<ButtonInput<KeyCode>>,
-    (wheel, view): (Res<AccumulatedMouseScroll>, Res<MapView>),
+    (wheel, mut view): (Res<AccumulatedMouseScroll>, ResMut<MapView>),
     mut board: ResMut<Board>,
     mut cues: MessageWriter<AudioCue>,
 ) {
-    let pressed = MOVES.iter().filter(|(key, _)| keys.just_pressed(*key));
+    let over = view.over;
+    let held = |key: KeyCode| keys.just_pressed(key) && !(over && arrow(key));
+    let pressed = MOVES.iter().filter(|(key, _)| held(*key));
     let by: isize = pressed.map(|(_, by)| by).sum();
     if by != 0 {
         let (cursor, slot) = (board.cursor, board.cursor - board.top);
         board.step(by);
+        view.picked = true;
         if board.cursor != cursor && board.cursor - board.top == slot {
             cues.write(AudioCue::UiMove);
         }
     }
-    let turn = isize::from(keys.just_pressed(KeyCode::ArrowRight))
-        - isize::from(keys.just_pressed(KeyCode::ArrowLeft));
+    let turn = isize::from(held(KeyCode::ArrowRight)) - isize::from(held(KeyCode::ArrowLeft));
     if turn != 0 {
         let tab = board.tab.step(turn);
         board.show(tab);
@@ -75,7 +78,7 @@ pub(super) fn navigate(
         MouseScrollUnit::Line => wheel.delta.y * WHEEL_ROWS,
         MouseScrollUnit::Pixel => wheel.delta.y / theme::ROW_HEIGHT,
     };
-    if rows.round() != 0.0 && !view.over {
+    if rows.round() != 0.0 && !over {
         board.scroll(-rows.round() as isize);
     }
 }
@@ -105,8 +108,10 @@ fn focus_cursor(
 pub(super) struct Desk<'w, 's> {
     board: ResMut<'w, Board>,
     destination: ResMut<'w, Destination>,
+    route: Option<Res<'w, RouteStatus>>,
     commands: Commands<'w, 's>,
     world: Option<(Res<'w, Universe>, Res<'w, Anchor>)>,
+    view: ResMut<'w, MapView>,
 }
 
 impl Desk<'_, '_> {
@@ -123,16 +128,30 @@ impl Desk<'_, '_> {
         self.board.seek = Some(target);
     }
 
-    /// Runs an action of the screen: the course goes to the selected row, home, to the
-    /// autopilot or away.
+    /// Eases the chart onto the row under the cursor and asks to go into its place.
+    fn focus(&mut self) {
+        if let Some(lens) = aimed(&self.board, &self.view, Dot::Row(self.board.cursor)) {
+            self.view.goal = lens;
+        }
+        self.view.into = self
+            .board
+            .lines
+            .get(self.board.cursor)
+            .map(|line| line.target);
+    }
+
+    /// Runs an action of the screen: the course goes to the selected row, if any, home, to the
+    /// autopilot while the route is idle, as with the map closed, or away.
     fn run(&mut self, act: Act) {
         match (act, self.destination.0) {
             (Act::Home, _) => self.home(),
             (Act::Set, _) => {
-                let row = self.board.lines.get(self.board.cursor);
+                let row = selected(&self.board, &self.view).map(|row| &self.board.lines[row]);
                 self.destination.0 = row.map(|line| line.target).or(self.destination.0);
             }
-            (Act::Engage, Some(target)) => self.commands.trigger(Engage(target)),
+            (Act::Engage, Some(target)) if self.route.as_deref() == Some(&RouteStatus::Idle) => {
+                self.commands.trigger(Engage(target));
+            }
             (Act::Clear, Some(_)) => self.destination.0 = None,
             _ => {}
         }
@@ -140,20 +159,25 @@ impl Desk<'_, '_> {
 }
 
 /// Sets the course to the selected row on Enter, hands the destination to the autopilot on the
-/// engage key of the settings, unless a filter is being typed, forgets the destination on
-/// Delete and sets the course home on the Home key.
+/// engage key of the settings, forgets the destination on Delete and sets the course home on
+/// the Home key. Enter and Home also work while a search is typed; nothing does while a
+/// favourite is named, and the engage key and Delete type into a search.
 fn action_keys(
     keys: Res<ButtonInput<KeyCode>>,
-    settings: Res<Persistent<Settings>>,
+    (settings, typing): (Res<Persistent<Settings>>, Res<Typing>),
     mut desk: Desk,
 ) {
+    if matches!(*typing, Typing::Name(..)) {
+        return;
+    }
+    let off = typing.is_off();
     if keys.just_pressed(KeyCode::Enter) {
         desk.run(Act::Set);
     }
-    if keys.just_pressed(settings.controls.keys.engage) && desk.board.filter.is_empty() {
+    if keys.just_pressed(settings.controls.keys.engage) && off {
         desk.run(Act::Engage);
     }
-    if keys.just_pressed(KeyCode::Delete) {
+    if keys.just_pressed(KeyCode::Delete) && off {
         desk.run(Act::Clear);
     }
     if keys.just_pressed(HOME_KEY) {
@@ -161,11 +185,11 @@ fn action_keys(
     }
 }
 
-/// Seconds within which a second click on the same row sets the course to it.
+/// Seconds within which a second click on the same row focuses the map on it.
 const DOUBLE_CLICK: f64 = 0.45;
 
-/// Applies an activated button: a row is selected, a tab opens, an action runs. A second
-/// click of the pointer on the same row within [`DOUBLE_CLICK`] sets the course to it, as on
+/// Applies an activated button: a row is picked or an action runs. A second
+/// click of the pointer on the same row within [`DOUBLE_CLICK`] goes into its place, as on
 /// the map. Enter on the focused row selects it again; `action_keys` sets the course.
 pub(super) fn on_activate(
     event: On<Activate>,
@@ -174,22 +198,20 @@ pub(super) fn on_activate(
     mut last: Local<Option<(usize, f64)>>,
     mut desk: Desk,
 ) {
-    let Ok((slot, link, act)) = roles.get(event.entity) else {
+    let Ok((slot, act)) = roles.get(event.entity) else {
         return;
     };
     if let Some(Slot(slot)) = slot {
         desk.board.pick(*slot);
+        desk.view.picked = true;
         let left = MouseButton::Left;
         let clicked = mouse.just_released(left) || mouse.just_pressed(left);
         let now = time.elapsed_secs_f64();
         let again = last.is_some_and(|(row, at)| row == *slot && now - at < DOUBLE_CLICK);
         *last = clicked.then_some((*slot, now)).filter(|_| !again);
         if clicked && again {
-            desk.run(Act::Set);
+            desk.focus();
         }
-    }
-    if let Some(TabLink(tab)) = link {
-        desk.board.show(*tab);
     }
     if let Some(act) = act {
         desk.run(*act);
@@ -198,16 +220,22 @@ pub(super) fn on_activate(
 
 /// Registers the input systems of the screen.
 pub(super) fn plugin(app: &mut App) {
-    app.add_observer(on_activate).add_systems(
-        Update,
-        (
-            navigate,
-            focus_cursor,
-            action_keys,
-            super::typing::type_filter,
-        )
-            .chain()
-            .in_set(super::Input)
-            .run_if(ready),
-    );
+    app.init_resource::<Typing>()
+        .add_observer(on_activate)
+        .add_observer(super::typing::on_search)
+        .add_systems(OnEnter(super::Computer::Open), super::typing::stop_typing)
+        .add_systems(OnExit(super::Computer::Open), super::typing::stop_typing)
+        .add_systems(
+            Update,
+            (
+                navigate,
+                focus_cursor,
+                action_keys,
+                super::typing::type_filter,
+                super::typing::show_search,
+            )
+                .chain()
+                .in_set(super::Input)
+                .run_if(ready),
+        );
 }

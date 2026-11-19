@@ -10,6 +10,7 @@ mod follow;
 mod liquid;
 mod material;
 mod mesh;
+mod order;
 mod seat;
 mod uniform;
 mod waves;
@@ -22,6 +23,8 @@ mod tests_globe;
 mod tests_light;
 #[cfg(test)]
 mod tests_shelf;
+#[cfg(test)]
+mod tests_sort;
 
 pub use self::ember::ember as sea_glow;
 pub use self::follow::follow_focus;

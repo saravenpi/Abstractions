@@ -1,5 +1,6 @@
 //! The persisted settings data model.
 
+use abstractions_net::wire::MAX_PLAYERS_DEFAULT;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -29,6 +30,8 @@ pub struct Settings {
     pub player_name: String,
     /// The servers of the multiplayer menu, in the order the player added them.
     pub servers: Vec<SavedServer>,
+    /// Most players a world opened to LAN takes, the host included.
+    pub host_max_players: u16,
 }
 
 impl Default for Settings {
@@ -42,6 +45,7 @@ impl Default for Settings {
             updates: UpdatePrefs::default(),
             player_name: String::new(),
             servers: default_servers(),
+            host_max_players: MAX_PLAYERS_DEFAULT,
         }
     }
 }
@@ -92,6 +96,16 @@ fn nearest_step<'de, D: serde::Deserializer<'de>>(reader: D) -> Result<u32, D::E
     Ok(RENDER_STEPS[render_step(rings)].1)
 }
 
+/// Reads the key bindings and moves the minimap to N in files written before the map had M:
+/// such a file binds the minimap to M and leaves the map on its default M.
+fn moved_minimap<'de, D: serde::Deserializer<'de>>(reader: D) -> Result<Keymap, D::Error> {
+    let mut keys = Keymap::deserialize(reader)?;
+    if keys.minimap == KeyCode::KeyM && keys.map == KeyCode::KeyM {
+        keys.minimap = KeyCode::KeyN;
+    }
+    Ok(keys)
+}
+
 impl Default for Graphics {
     fn default() -> Self {
         Self {
@@ -119,6 +133,7 @@ pub struct Controls {
     /// Whether moving the mouse up looks down.
     pub invert_y: bool,
     /// Key bindings.
+    #[serde(deserialize_with = "moved_minimap")]
     pub keys: Keymap,
 }
 
@@ -159,6 +174,10 @@ pub struct Keymap {
     pub view: KeyCode,
     /// Step the minimap through its ranges, then off.
     pub minimap: KeyCode,
+    /// Open and close the map, on foot and in the ship.
+    pub map: KeyCode,
+    /// Drop a waypoint where the player looks, or clear it.
+    pub waypoint: KeyCode,
     /// Ship controls, used while seated in the ship and to board it.
     pub ship: ShipKeys,
 }
@@ -176,7 +195,9 @@ impl Default for Keymap {
             engage: KeyCode::KeyG,
             wings: KeyCode::KeyR,
             view: KeyCode::KeyV,
-            minimap: KeyCode::KeyM,
+            minimap: KeyCode::KeyN,
+            map: KeyCode::KeyM,
+            waypoint: KeyCode::KeyB,
             ship: ShipKeys::default(),
         }
     }

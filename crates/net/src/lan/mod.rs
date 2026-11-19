@@ -33,9 +33,9 @@ pub struct Beacon {
     /// Name of the world or the host.
     pub name: String,
     /// Players in the world now.
-    pub players: u8,
+    pub players: u16,
     /// Most players the host takes.
-    pub cap: u8,
+    pub cap: u16,
     /// UDP port the game listens on.
     pub port: u16,
     /// Fingerprint of the host's certificate.

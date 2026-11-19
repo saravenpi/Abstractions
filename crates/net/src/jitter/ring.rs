@@ -44,6 +44,23 @@ impl<E: Copy> Ring<E> {
         self.len.checked_sub(1).map(|last| self.get(last))
     }
 
+    /// Replaces each snapshot, oldest first, with what `f` returns for it. A snapshot `f`
+    /// returns nothing for, or one no later than the snapshot kept before it, is dropped.
+    pub(super) fn rebase(&mut self, mut f: impl FnMut(Snap<E>) -> Option<Snap<E>>) {
+        let mut kept = 0;
+        for index in 0..self.len {
+            let Some(snap) = f(*self.get(index)) else {
+                continue;
+            };
+            let after = kept == 0 || snap.time > self.get(kept - 1).time;
+            if snap.time.is_finite() && after {
+                self.snaps[(self.start + kept) % CAPACITY] = snap;
+                kept += 1;
+            }
+        }
+        self.len = kept;
+    }
+
     /// Forgets every snapshot.
     pub(super) fn clear(&mut self) {
         self.start = 0;

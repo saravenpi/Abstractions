@@ -13,7 +13,7 @@ impl Room {
     pub(super) fn status(&self, conn: ConnId, out: &mut Outbox) {
         let status = Status {
             name: self.config.name.clone(),
-            players: self.seats.iter().flatten().count() as u8,
+            players: u16::try_from(self.seats.iter().flatten().count()).unwrap_or(u16::MAX),
             cap: self.config.cap,
             version: self.config.version.clone(),
             protocol: PROTOCOL,
@@ -94,6 +94,8 @@ impl Room {
                 .get(&hex(key))
                 .map(|member| member.record()),
             players: self.players(),
+            explored: self.explored_list(),
+            waypoints: self.waypoints(),
         }
     }
 

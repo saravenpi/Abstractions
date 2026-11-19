@@ -5,6 +5,8 @@
 //! really lies prone. So spreading the wings shows the spread itself, and folding them is the
 //! same motion backwards.
 
+use std::f32::consts::PI;
+
 use super::AvatarPose;
 use super::air::{STEER_LIMIT, fall, mix};
 use super::clock::{Clock, ramp};
@@ -17,17 +19,26 @@ pub fn arch(input: &AvatarPose) -> f32 {
     ramp(ARCH_LOAD.0, ARCH_LOAD.1, input.load)
 }
 
+/// Returns the roll of the trunk for a bank within a half turn of zero: a share of it in a
+/// turn, as far as the body lies prone, and all of it rolled over, so that a body rolling on
+/// round reaches a half turn on either side at once and never jumps.
+fn rolled(bank: f32, lie: f32) -> f32 {
+    let lean = 0.4 + 0.6 * lie;
+    let held = bank.clamp(-STEER_LIMIT.0, STEER_LIMIT.0);
+    let over = (bank - held) * (PI - lean * STEER_LIMIT.0) / (PI - STEER_LIMIT.0);
+    held * lean + over
+}
+
 /// Returns `limbs` with the trunk of the flying body: tipped from the falling trunk to prone
 /// along the flight path, all the way round in a loop, as far as the gear lies prone, banked
-/// into the turn, the back arched by the load, head up to look ahead.
+/// into the turn and rolled over with it, the back arched by the load, head up to look ahead.
 fn prone(limbs: Pose, input: &AvatarPose, clock: &Clock) -> Pose {
     let lie = input.prone.clamp(0.0, 1.0);
     let upright = fall(input, clock);
     let toward = |joint: Core, flat: f32| upright.core(joint) + (flat - upright.core(joint)) * lie;
-    let bank = input.bank.clamp(-STEER_LIMIT.0, STEER_LIMIT.0);
     limbs
         .with(Core::Pitch, toward(Core::Pitch, PRONE - input.pitch))
-        .with(Core::Roll, bank * (0.4 + 0.6 * lie))
+        .with(Core::Roll, rolled(input.bank, lie))
         .with(Core::Spine, toward(Core::Spine, -0.08 - 0.22 * arch(input)))
         .with(Core::HeadPitch, toward(Core::HeadPitch, 0.95))
 }

@@ -3,7 +3,7 @@
 
 mod kinds;
 
-pub use kinds::{Here, Sent, Trail};
+pub use kinds::{Here, Pilot, Sent, Trail};
 
 use abstractions_net::wire::{self, AT_REST, CompanionBody, Head, Kind, Record, RobotBody};
 use abstractions_net::wire::{ShipBody, push_within};
@@ -15,10 +15,10 @@ use super::bodies::{Bodies, star_of};
 use super::frame::Place;
 use super::rate::{Cadence, REST_SPEED};
 use crate::avatar::{Avatar, AvatarPose};
-use crate::companion::{Companion, Float};
+use crate::companion::{Companion, Display, Float};
 use crate::net::link::Link;
 use crate::player::{Motion, Player};
-use crate::ship::{Ship, ShipTelemetry, WarpState};
+use crate::ship::{Helm, Ship, ShipTelemetry, WarpState};
 use crate::sim::PlayerId;
 use crate::space::{Anchor, Clock, Location, Placed, Travel};
 use crate::universe::{StarId, Universe};
@@ -102,6 +102,8 @@ pub struct Scene<'w> {
     time: Res<'w, Time<Real>>,
     /// The instruments of the ship.
     telemetry: Option<Res<'w, ShipTelemetry>>,
+    /// What the pilot asks of the ship.
+    helm: Option<Res<'w, Helm>>,
 }
 
 /// The things of this machine that are sent.
@@ -124,7 +126,7 @@ pub struct Locals<'w, 's> {
     /// The ship of this machine.
     ship: Query<'w, 's, (&'static Ship, Option<&'static Placed>)>,
     /// The companion of this machine.
-    companion: Query<'w, 's, (&'static GlobalTransform, &'static Float), OwnBot>,
+    companion: Query<'w, 's, (&'static GlobalTransform, &'static Float, &'static Display), OwnBot>,
 }
 
 /// Filter of the companion of this machine: not a puppet of another player's.
@@ -147,6 +149,15 @@ fn here(scene: &Scene, ship: Option<&Ship>, last: Option<StarId>) -> Option<Here
 }
 
 impl Scene<'_> {
+    /// Returns what the pilot of the ship of this machine holds: the stick, pitch up then roll
+    /// left, and the boost.
+    fn pilot(&self) -> Pilot {
+        self.helm.as_deref().map_or(([0.0; 2], 0.0), |helm| {
+            let turn = helm.controls.turn.as_vec3();
+            ([turn.x, turn.z], f32::from(u8::from(helm.controls.boost)))
+        })
+    }
+
     /// Returns what the warp drive of the ship of this machine does.
     fn drive(&self) -> WarpState {
         self.telemetry
@@ -168,8 +179,8 @@ impl Locals<'_, '_> {
 
     /// Returns the record of the companion of this machine, which was at `was` a frame ago.
     fn bot(&self, here: &Here, was: Trail, bodies: &mut Bodies) -> Option<Sent<CompanionBody>> {
-        let (at, float) = self.companion.single().ok()?;
-        kinds::companion(here, at, &float.pose, was, bodies)
+        let (at, float, display) = self.companion.single().ok()?;
+        kinds::companion(here, at, (&float.pose, display.shown), was, bodies)
     }
 }
 
@@ -201,8 +212,8 @@ pub fn send(
     let walker =
         walker.and_then(|(at, motion, pose)| kinds::robot(&here, at, motion, pose, &mut bodies));
     out.offer(&stamp, (Kind::Robot, walker), RobotBody::encode);
-    let drive = scene.drive();
-    let hull = ship.and_then(|(ship, placed)| kinds::ship(&here, ship, placed, drive, &mut bodies));
+    let flown = (scene.drive(), scene.pilot());
+    let hull = ship.and_then(|(ship, placed)| kinds::ship(&here, ship, placed, flown, &mut bodies));
     out.offer(&stamp, (Kind::Ship, hull), ShipBody::encode);
     let bot = locals.bot(&here, out.trail, &mut bodies);
     out.trail = bot.map(|sent| (sent.frame, sent.body.position, here.time));

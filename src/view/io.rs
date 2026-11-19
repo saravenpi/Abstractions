@@ -43,6 +43,10 @@ pub struct Target {
     pub kind: Kind,
     /// Roll of a flying body around its direction of flight, positive to the right.
     pub bank: f32,
+    /// Direction the back of a flying body faces, in the upright axes of the target, or zero.
+    /// When given, the camera rolls its roof toward it as seen along where it looks, a full turn
+    /// round, in place of [`Self::bank`].
+    pub back: Vec3,
 }
 
 impl Default for Target {
@@ -57,6 +61,7 @@ impl Default for Target {
             radius: 0.9,
             kind: Kind::OnFoot,
             bank: 0.0,
+            back: Vec3::ZERO,
         }
     }
 }

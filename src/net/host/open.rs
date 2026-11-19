@@ -11,12 +11,13 @@ use abstractions_net::lan::{Announcer, Beacon};
 use abstractions_net::room::{Room, RoomConfig};
 use abstractions_net::store::World;
 use abstractions_net::trust::short_key;
-use abstractions_net::wire::{GAME_PORT, PROTOCOL};
+use abstractions_net::wire::{GAME_PORT, MAX_PLAYERS_DEFAULT, MAX_PLAYERS_LIMIT, PROTOCOL};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::Hosted;
 use crate::computer::Atlas;
+use crate::map::explored::Explored;
 use crate::net::join::{open, opts};
 use crate::net::link::{Link, Role};
 use crate::net::{NetDir, OpenToLan, Session, SessionNotice};
@@ -24,9 +25,6 @@ use crate::saves::ActiveWorld;
 use crate::settings::{Persistent, Settings};
 use crate::sim::Changes;
 use crate::space::Clock;
-
-/// Most players a world open to LAN takes, the host included.
-pub const HOST_CAP: u8 = 16;
 
 /// The ports a host tries, in order: the game port and the ten after it.
 pub const PORTS: RangeInclusive<u16> = GAME_PORT..=GAME_PORT + 10;
@@ -60,6 +58,13 @@ fn bind(config: &RoomConfig, world: &World, dir: &Path) -> io::Result<ServerHand
     Err(last)
 }
 
+/// Returns the most players a world opened to LAN takes: the setting, from 1 to
+/// [`MAX_PLAYERS_LIMIT`], or the default without settings.
+fn host_cap(settings: Option<&Settings>) -> u16 {
+    let asked = settings.map_or(MAX_PLAYERS_DEFAULT, |settings| settings.host_max_players);
+    asked.clamp(1, MAX_PLAYERS_LIMIT)
+}
+
 /// Returns the beacon of a world served on `port` with the certificate `key`, with the host
 /// as its one player.
 fn beacon_of(config: RoomConfig, port: u16, key: [u8; 32]) -> Beacon {
@@ -68,7 +73,7 @@ fn beacon_of(config: RoomConfig, port: u16, key: [u8; 32]) -> Beacon {
         version: config.version,
         name: config.name,
         players: 1,
-        cap: HOST_CAP,
+        cap: config.cap,
         port,
         key,
     }
@@ -93,23 +98,33 @@ pub struct Opening<'w, 's> {
     changes: Option<Res<'w, Changes>>,
     /// What the player discovered.
     atlas: Option<Res<'w, Atlas>>,
+    /// The ground the player uncovered.
+    explored: Option<Res<'w, Explored>>,
 }
 
 impl Opening<'_, '_> {
     /// Returns the server's world of the world being played: its name, seed, universe time,
-    /// log and atlas, with no player records. Nothing without a world.
+    /// log, atlas and explored ground, with no player records. Nothing without a world.
     fn world(&self) -> Option<World> {
         let save = &self.active.as_deref()?.0.save;
         let atlas = self
             .atlas
             .as_deref()
             .and_then(|atlas| toml::to_string(atlas).ok());
+        let explored = self
+            .explored
+            .as_deref()
+            .into_iter()
+            .flat_map(Explored::bodies);
         Some(World {
             name: save.name.clone(),
             seed: save.seed,
             clock: self.clock.seconds,
             changes: self.changes.as_deref().cloned().unwrap_or_default(),
             atlas: atlas.unwrap_or_default(),
+            explored: explored
+                .map(|(body, words)| (body, words.to_vec()))
+                .collect(),
             ..World::default()
         })
     }
@@ -120,7 +135,7 @@ impl Opening<'_, '_> {
         let config = RoomConfig {
             name: world.name.clone(),
             password: None,
-            cap: HOST_CAP,
+            cap: host_cap(self.settings.as_deref().map(Persistent::get)),
             version: env!("CARGO_PKG_VERSION").to_string(),
         };
         let mut joined = opts(&self.dir, self.settings.as_deref(), None, None)?;
@@ -166,3 +181,7 @@ pub fn open_lan(
         notices.write(SessionNotice { line });
     }
 }
+
+#[cfg(test)]
+#[path = "open_tests.rs"]
+mod tests;

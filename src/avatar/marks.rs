@@ -1,7 +1,8 @@
 //! Where the flight gear sits on the posed body: the wingtips and the boot nozzles.
 //!
 //! The trails and the exhaust of the gear leave from these points, so they follow the body in
-//! every pose instead of a fixed offset from its centre.
+//! every pose instead of a fixed offset from its centre. The body at this machine publishes
+//! them as a resource; every other body that carries [`Marked`] gets its own.
 
 use bevy::prelude::*;
 
@@ -37,6 +38,11 @@ impl Marks {
     }
 }
 
+/// The marks of a body other than the one at this machine, in the frame of its root. A body
+/// that carries it gets the marks of its pose each frame.
+#[derive(Component, Debug, Default, Clone, Copy, PartialEq)]
+pub struct Marked(pub Marks);
+
 impl Default for Marks {
     /// The marks of the body standing at rest.
     fn default() -> Self {
@@ -45,10 +51,16 @@ impl Default for Marks {
 }
 
 /// Publishes the marks of the pose applied this frame to the body at this machine: the gear
-/// effects that leave from them are the ones of the local player.
-pub fn mark(own: Own, bodies: Query<&Anim>, mut marks: ResMut<Marks>) {
+/// effects that leave from them are the ones of the local player. Every body that carries
+/// its own marks gets those of its pose.
+pub fn mark(own: Own, mut bodies: Query<(&Anim, Option<&mut Marked>)>, mut marks: ResMut<Marks>) {
     let body = own.body().and_then(|(_, body)| bodies.get(body).ok());
-    if let Some(body) = body {
+    if let Some((body, _)) = body {
         marks.set_if_neq(Marks::of(&body.pose));
+    }
+    for (body, mine) in &mut bodies {
+        if let Some(mut mine) = mine {
+            mine.set_if_neq(Marked(Marks::of(&body.pose)));
+        }
     }
 }

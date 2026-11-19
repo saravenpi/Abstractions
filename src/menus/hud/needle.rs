@@ -1,4 +1,5 @@
-//! Where a mark of the compass sits: the angle to its target and its place along the bar.
+//! Where a mark of the compass sits: the angle to its target, its place along the bar, how
+//! and how much it has faded toward the ends.
 
 use bevy::prelude::*;
 
@@ -8,8 +9,8 @@ pub const WIDTH: f32 = 360.0;
 /// Angle in radians from the middle of the bar to either end.
 pub const SPAN: f32 = 1.2;
 
-/// Least gap in pixels between the two marks, so their distances stay readable.
-const APART: f32 = 56.0;
+/// Share of the span, at each end, over which a mark fades out.
+const FADE: f32 = 0.3;
 
 /// Returns the angle in radians from the view to a target `offset` away, around the local
 /// `up`: positive to the right, zero straight ahead, a half turn behind. Nothing for a target
@@ -26,12 +27,9 @@ pub fn slot(bearing: f32) -> f32 {
     0.5 + 0.5 * (bearing / SPAN).clamp(-1.0, 1.0)
 }
 
-/// Returns the place in pixels along the bar of the ship mark at `slot`, moved aside when the
-/// home mark at `home` would sit under it, as when both wait at the same end.
-pub fn beside(slot: f32, home: Option<f32>) -> f32 {
-    let at = slot * WIDTH;
-    match home.map(|home| home * WIDTH) {
-        Some(taken) if (at - taken).abs() < APART => taken + APART * (0.5 - taken / WIDTH).signum(),
-        _ => at,
-    }
+/// Returns how opaque a mark at `bearing` is: fully inside the span, fading to nothing over
+/// the last share of it toward each end, and nothing past the span, where it is hidden.
+pub fn fade(bearing: f32) -> Option<f32> {
+    let reach = bearing.abs() / SPAN;
+    (reach <= 1.0).then(|| ((1.0 - reach) / FADE).min(1.0))
 }

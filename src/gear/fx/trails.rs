@@ -6,9 +6,11 @@ use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
 use super::kit::Kit;
-use super::ribbon::{Look, Strip, fill, mesh, write};
+use super::lay::redraw;
+use super::ribbon::{Look, Strip, mesh};
 use super::scene::{SOLES, Scene};
 use super::trail::Trail;
+use super::wakes::Laid;
 use crate::render::{Palette, smoothstep as smooth};
 use crate::screens::Screen;
 use crate::space::Anchor;
@@ -91,8 +93,8 @@ pub struct Canvas<'w> {
 /// Spawns the three ribbons when gameplay starts, unless they already exist.
 ///
 /// A ribbon is moved to the head of its trail each frame and its vertices are rewritten around
-/// it from points kept in the planet frame, which is what carries it through a rebase. It has
-/// no bounds, so the renderer sorts it among the see-through things by where the entity is.
+/// it from points kept in the planet frame, which is what carries it through a rebase. The sea
+/// draws before it and writes its depth, so each pixel of it shows above the water only.
 pub fn spawn(
     mut commands: Commands,
     kit: Res<Kit>,
@@ -151,7 +153,7 @@ pub fn exhaust_heat(scene: &Scene) -> f32 {
 }
 
 /// Returns where `source` is in render space and how strongly it glows.
-fn emitter(source: Source, scene: &Scene) -> (Vec3, f32) {
+pub fn emitter(source: Source, scene: &Scene) -> (Vec3, f32) {
     let at = match (source, scene.limbs) {
         (Source::Tip(side), Some(limbs)) => limbs.tips[side],
         (Source::Tip(side), None) => scene.at(TIPS[side]),
@@ -189,52 +191,30 @@ pub fn look(source: Source, eye: Vec3, palette: Option<&Palette>) -> Look {
     }
 }
 
-/// Feeds `ribbon` from its emitter and fills `strip` with it around the head of its trail.
-/// Returns the render position of that head, or nothing when there is nothing to write.
-///
-/// A trail nobody feeds, with the player in the ship or gone, is emptied: left as it was it
-/// would hang where it was last drawn and, fed again from another place, run straight there.
-/// A trail with nothing left to show is written once more, to clear it, and then left alone.
-fn lay(ribbon: &mut Ribbon, canvas: &Canvas, strip: &mut Strip) -> Option<Vec3> {
-    let (anchor, scene) = (canvas.anchor.as_deref()?, &canvas.scene);
-    match scene.active {
-        true => {
-            let (at, heat) = emitter(ribbon.source, scene);
-            ribbon.trail.feed(anchor.to_frame(at), heat, scene.dt);
-        }
-        false => ribbon.trail = Trail::default(),
-    }
-    let style = look(ribbon.source, scene.eye, canvas.palette.as_deref());
-    let live = ribbon.trail.live(style.life);
-    if !live && !ribbon.drawn {
-        return None;
-    }
-    ribbon.drawn = live;
-    let head = anchor.to_render(ribbon.trail.tip().at);
-    let around = Look {
-        eye: style.eye - head,
-        ..style
+/// Feeds every trail of the player from its emitter, moves each ribbon to the head of its
+/// trail and rewrites the meshes of the ones that glow. The trails of other bodies are left
+/// to [`super::wakes`].
+pub fn draw(
+    canvas: Canvas,
+    mut ribbons: Query<(&mut Ribbon, &Mesh3d, &mut Transform), Without<Laid>>,
+) {
+    let Canvas {
+        scene,
+        anchor,
+        palette,
+        mut meshes,
+    } = canvas;
+    let Some(anchor) = anchor.as_deref() else {
+        return;
     };
-    fill(
-        &ribbon.trail,
-        &around,
-        |point| anchor.to_render(point) - head,
-        strip,
-    );
-    Some(head)
-}
-
-/// Feeds every trail from its emitter, moves each ribbon to the head of its trail and rewrites
-/// the meshes of the ones that glow.
-pub fn draw(mut canvas: Canvas, mut ribbons: Query<(&mut Ribbon, &Mesh3d, &mut Transform)>) {
     let mut strip = Strip::default();
     for (mut ribbon, handle, mut transform) in &mut ribbons {
-        let Some(head) = lay(&mut ribbon, &canvas, &mut strip) else {
-            continue;
-        };
-        transform.translation = head;
-        if let Some(mut mesh) = canvas.meshes.get_mut(&handle.0) {
-            write(&mut mesh, &strip);
-        }
+        let against = (&*scene, anchor, palette.as_deref());
+        redraw(
+            (&mut ribbon, handle, &mut transform),
+            against,
+            &mut strip,
+            &mut meshes,
+        );
     }
 }

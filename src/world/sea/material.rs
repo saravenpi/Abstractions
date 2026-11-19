@@ -9,6 +9,7 @@ use bevy::render::render_resource::{
 };
 use bevy::shader::ShaderRef;
 
+use super::order::{FIRST, surface};
 use super::uniform::WaterUniform;
 use crate::render::PlaceUniform;
 
@@ -43,6 +44,11 @@ impl Material for WaterMaterial {
         AlphaMode::Blend
     }
 
+    /// Puts the sea before every other see-through thing.
+    fn depth_bias(&self) -> f32 {
+        FIRST
+    }
+
     /// The sea stays out of the depth prepass so the shader can read the depth of what lies below.
     fn enable_prepass() -> bool {
         false
@@ -53,14 +59,14 @@ impl Material for WaterMaterial {
         false
     }
 
-    /// Draws both faces so the surface shows from below.
+    /// Draws both faces and writes depth, see [`surface`].
     fn specialize(
         _pipeline: &MaterialPipeline,
         descriptor: &mut RenderPipelineDescriptor,
         _layout: &MeshVertexBufferLayoutRef,
         _key: MaterialPipelineKey<Self>,
     ) -> Result<(), SpecializedMeshPipelineError> {
-        descriptor.primitive.cull_mode = None;
+        surface(descriptor);
         Ok(())
     }
 }

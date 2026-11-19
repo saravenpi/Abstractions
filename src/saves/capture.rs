@@ -3,8 +3,9 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use super::model::{Place, SAVE_VERSION, WorldSave};
+use super::model::{self, Place, SAVE_VERSION, WorldSave};
 use crate::computer::Atlas;
+use crate::map::explored::Explored;
 use crate::sim::Changes;
 use crate::space::{Anchor, Clock, Frame, Location, Travel};
 use crate::universe::HOME_RADIUS;
@@ -49,10 +50,13 @@ pub(super) struct Site<'w> {
     terrain: Option<Res<'w, Terrain>>,
     atlas: Option<Res<'w, Atlas>>,
     changes: Option<Res<'w, Changes>>,
+    /// The ground uncovered on each body.
+    explored: Option<Res<'w, Explored>>,
 }
 
 impl Site<'_> {
-    /// Writes the format version, the universe time, the atlas and the log into `save`.
+    /// Writes the format version, the universe time, the atlas, the log and the explored ground
+    /// into `save`.
     pub(super) fn record(&self, save: &mut WorldSave) {
         save.version = SAVE_VERSION;
         save.clock_seconds = self.clock.seconds;
@@ -61,6 +65,13 @@ impl Site<'_> {
         }
         if let Some(changes) = self.changes.as_deref() {
             save.changes = changes.clone();
+        }
+        if let Some(explored) = self.explored.as_deref() {
+            let bodies = explored.bodies().map(|(body, words)| model::Explored {
+                body,
+                words: words.to_vec(),
+            });
+            save.explored = bodies.collect();
         }
     }
 

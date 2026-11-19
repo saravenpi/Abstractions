@@ -36,6 +36,10 @@ pub struct Intents {
     ran: bool,
     /// Whether the wingsuit was asked to spread or fold this step.
     wings: bool,
+    /// Flat turn on the wings, from -1 (left) to 1 (right).
+    yaw: f32,
+    /// Whether the view steers the wings.
+    steer: bool,
 }
 
 impl Intents {
@@ -63,6 +67,8 @@ impl Intents {
             sim::Intent::Jump => self.jump = true,
             sim::Intent::Boost => self.boost = true,
             sim::Intent::Wings => self.wings = true,
+            sim::Intent::Yaw(right) => self.yaw = right.clamp(-1.0, 1.0),
+            sim::Intent::Steer => self.steer = true,
             sim::Intent::Board | sim::Intent::Leave | sim::Intent::Interact => {}
         }
     }
@@ -111,5 +117,7 @@ pub(super) fn ask(motion: &mut Motion, asks: &Intents, step: &Step) -> Intent {
         right: asks.axes.y,
         sprint: asks.boost,
         jump: asks.jump,
+        yaw: asks.yaw,
+        steer: asks.steer,
     }
 }

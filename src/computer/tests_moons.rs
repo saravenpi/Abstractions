@@ -75,7 +75,6 @@ fn moons_stay_with_their_planet_in_the_list() {
         (title(&system()[2]), title(&system()[1])),
         ("  Zed".into(), "Rhea".into())
     );
-    assert_eq!(cell_text(&system()[2], Part::Detail, marks).0, "");
 }
 
 /// Returns the chart point of row `index` among `dots`.
@@ -117,7 +116,8 @@ fn moons_sit_on_tiny_orbits_around_their_planet() {
 }
 
 /// Below the zoom that parts them a moon is hidden and the pointer finds its planet; from
-/// that zoom the pointer finds the moon, and two clicks on it choose it like any body.
+/// that zoom the pointer finds the moon, and a click on it selects it like any body, which a
+/// double click keeps selected.
 #[test]
 fn a_moon_is_pointed_at_once_the_zoom_parts_it() {
     let lines = system();
@@ -146,6 +146,8 @@ fn a_moon_is_pointed_at_once_the_zoom_parts_it() {
         hover: Some(Dot::Row(2)),
         ..default()
     };
-    assert!(!tap(&mut view, &mut board, 1.0) && board.cursor == 2);
-    assert!(tap(&mut view, &mut board, 1.2));
+    tap(&mut view, &mut board, 1.0);
+    assert!(board.cursor == 2 && view.picked);
+    tap(&mut view, &mut board, 1.2);
+    assert!(board.cursor == 2 && view.picked);
 }

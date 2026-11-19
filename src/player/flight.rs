@@ -30,7 +30,7 @@ pub(super) struct Air {
     pub(super) clearance: f32,
     /// Unit direction the camera looks along.
     pub(super) look: Vec3,
-    /// Heading and pitch of the view. The pitch passes the vertical in a loop.
+    /// Heading and pitch of the view.
     pub(super) aim: Vec2,
     /// Gravity in metres per second squared.
     pub(super) gravity: f32,
@@ -69,15 +69,18 @@ pub(super) fn touching(mode: Mode, floor: Option<Ground>) -> bool {
 /// Returns what the gear is told this frame.
 ///
 /// The run key held in the air fires the boots: a brake with the wingsuit folded, the boost with
-/// it asked open. The forward key pushes the nose down and the back key pulls it up.
+/// it asked open. The forward key dives and the back key pulls, the strafe keys roll and the
+/// yaw keys turn flat, all at a rate in the frame of the body. On the wings the view aims the body only while the
+/// steer button is held; folded it always does.
 pub(super) fn input(motion: &Motion, intent: &Intent, air: &Air, on: (bool, bool)) -> GearInput {
     GearInput {
         deploy: motion.wings,
         boost: motion.boots || (motion.wings && intent.sprint),
         pitch: -intent.forward,
         roll: intent.right,
+        yaw: intent.yaw,
         look: air.look,
-        aim: Some(air.aim),
+        aim: (!motion.wings || intent.steer).then_some(air.aim),
         grounded: on.0,
         in_water: on.1,
         density: air.density,

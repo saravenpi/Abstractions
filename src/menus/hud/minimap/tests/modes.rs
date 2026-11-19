@@ -14,7 +14,7 @@ use crate::space::{Anchor, Frame};
 use crate::universe::{BodyId, Universe};
 
 /// The default key of the minimap.
-const KEY: KeyCode = KeyCode::KeyM;
+const KEY: KeyCode = KeyCode::KeyN;
 
 /// Presses the minimap key, waits for the map to come to rest, and returns its range and
 /// what the corner says.

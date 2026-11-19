@@ -6,6 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::ids::BodyId;
 use crate::log::{Change, Changes, Entry, PlayerId};
 
 /// What a server says about itself to anyone who asks, before any check.
@@ -14,9 +15,9 @@ pub struct Status {
     /// Name of the server.
     pub name: String,
     /// Players in the world now.
-    pub players: u8,
+    pub players: u16,
     /// Most players the server takes.
-    pub cap: u8,
+    pub cap: u16,
     /// Version of the server program, such as `0.9.0`.
     pub version: String,
     /// Protocol the server speaks: compare it with [`super::PROTOCOL`].
@@ -40,6 +41,19 @@ pub struct PlayerRecord {
     pub place: String,
     /// The player's ship, or empty when the player has none yet.
     pub ship: String,
+    /// The player's saved places, or empty when there are none.
+    pub marks: String,
+}
+
+/// A point a player marks for the others: a direction from the centre of a body.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Waypoint {
+    /// The body the point is on.
+    pub body: BodyId,
+    /// Unit direction from the body centre to the point, in the body's turning frame.
+    pub dir: [f32; 3],
+    /// Name of the point, or empty when it has none.
+    pub name: String,
 }
 
 /// Why a server refuses a player or sends one away. New reasons are added at the end.
@@ -89,6 +103,10 @@ pub struct Welcome {
     pub record: Option<PlayerRecord>,
     /// The players already in the world, without the one who joins.
     pub players: Vec<PlayerInfo>,
+    /// The cells explored on each body, as bitsets of 64 cells a word, cell 0 in bit 0 of word 0.
+    pub explored: Vec<(BodyId, Vec<u64>)>,
+    /// The live waypoint of each player already in the world.
+    pub waypoints: Vec<(PlayerId, Waypoint)>,
 }
 
 /// A message from a player to a server.
@@ -111,6 +129,16 @@ pub enum ClientMsg {
     },
     /// The player leaves.
     Bye,
+    /// The player explored new cells of a body. A cell is `row * 512 + column` on the grid of
+    /// [`super::EXPLORED_ROWS`] by [`super::EXPLORED_COLUMNS`].
+    Explored {
+        /// The body explored.
+        body: BodyId,
+        /// The cells newly explored.
+        cells: Vec<u32>,
+    },
+    /// The player sets their waypoint, or clears it with nothing.
+    Waypoint(Option<Waypoint>),
 }
 
 /// A message from a server to a player.
@@ -139,4 +167,18 @@ pub enum ServerMsg {
     },
     /// The player is sent away.
     Kick(Reason),
+    /// Players explored new cells of a body, numbered as in [`ClientMsg::Explored`].
+    Explored {
+        /// The body explored.
+        body: BodyId,
+        /// The cells newly explored.
+        cells: Vec<u32>,
+    },
+    /// A player set their waypoint, or cleared it with nothing.
+    Waypoint {
+        /// The player whose waypoint it is.
+        player: PlayerId,
+        /// The waypoint, or nothing when cleared.
+        waypoint: Option<Waypoint>,
+    },
 }

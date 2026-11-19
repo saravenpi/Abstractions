@@ -11,10 +11,9 @@ use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use crate::player::Player;
-use crate::render::GameCamera;
+use crate::menus::hud::eye::{Eye, HudPose};
 use crate::ship::Ship;
-use crate::space::{Anchor, Frame, Location, Travel};
+use crate::space::{Frame, Location, Travel};
 use crate::universe::BodyId;
 use crate::world::{Globe, Planet};
 
@@ -37,18 +36,14 @@ pub struct Pose {
 /// What the minimap reads of the world.
 #[derive(SystemParam)]
 pub struct Reader<'w, 's> {
-    /// The render anchor.
-    anchor: Option<Res<'w, Anchor>>,
+    /// The eye of the HUD for this frame.
+    eye: Res<'w, HudPose>,
     /// Where the player is.
     location: Option<Res<'w, Location>>,
     /// The planet the world streams.
     planet: Option<Res<'w, Planet>>,
     /// The ship.
     ships: Query<'w, 's, &'static Ship>,
-    /// The game camera.
-    camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
-    /// The body of the player.
-    bodies: Query<'w, 's, &'static GlobalTransform, With<Player>>,
 }
 
 /// Returns `along` without its part along the unit vector `up`, or nothing when none is left.
@@ -63,51 +58,52 @@ pub fn needle(ahead: DVec3, facing: DVec3, up: DVec3) -> f32 {
 }
 
 impl Reader<'_, '_> {
+    /// Returns the eye of the HUD for this frame.
+    pub fn eye(&self) -> Option<&Eye> {
+        self.eye.0.as_ref()
+    }
+
     /// Returns the nose and the top of what the player steers, in the frame of the world: the
     /// ship while seated in it, else the body, else the camera.
     pub fn facing(&self) -> Option<(DVec3, DVec3)> {
-        let anchor = self.anchor.as_deref()?;
+        let eye = self.eye()?;
         let seated = self.location.as_deref().map(|at| at.travel) == Some(Travel::InShip);
-        let ship = self.ships.iter().find(|ship| ship.frame == anchor.frame);
+        let ship = self
+            .ships
+            .iter()
+            .find(|ship| ship.frame == eye.anchor.frame);
         if let Some(ship) = ship.filter(|_| seated) {
             return Some((ship.rot * DVec3::NEG_Z, ship.rot * DVec3::Y));
         }
-        let body = self
-            .bodies
-            .iter()
-            .next()
-            .or_else(|| self.camera.iter().next())?;
-        let turned = |axis: Dir3| anchor.rotation.inverse() * axis.as_dvec3();
-        Some((turned(body.forward()), turned(body.up())))
+        Some(eye.body.unwrap_or((eye.forward, eye.up)))
     }
 
     /// Returns the frame the world is anchored in and the camera position in it.
     pub fn place(&self) -> Option<(Frame, DVec3)> {
-        let (anchor, camera) = (self.anchor.as_deref()?, self.camera.iter().next()?);
-        Some((anchor.frame, anchor.to_frame(camera.translation())))
+        self.eye().map(|eye| (eye.anchor.frame, eye.at))
     }
 
     /// Returns the globe of the planet the world is anchored to, once the world streams it.
     pub fn globe(&self) -> Option<&Arc<Globe>> {
-        let (anchor, planet) = (self.anchor.as_deref()?, self.planet.as_deref()?);
-        (anchor.frame == Frame::Surface(planet.body)).then_some(&planet.globe)
+        let (eye, planet) = (self.eye()?, self.planet.as_deref()?);
+        (eye.anchor.frame == Frame::Surface(planet.body)).then_some(&planet.globe)
     }
 
     /// Returns the player on the planet the world is anchored to, or nothing in space. A
     /// camera that looks straight down gives the direction of its top edge.
     pub fn pose(&self) -> Option<Pose> {
-        let (anchor, camera) = (self.anchor.as_deref()?, self.camera.iter().next()?);
-        let Frame::Surface(body) = anchor.frame else {
+        let eye = self.eye()?;
+        let Frame::Surface(body) = eye.anchor.frame else {
             return None;
         };
-        let eye = anchor.to_frame(camera.translation());
-        let ship = self.ships.iter().find(|ship| ship.frame == anchor.frame);
+        let ship = self
+            .ships
+            .iter()
+            .find(|ship| ship.frame == eye.anchor.frame);
         let seated = self.location.as_deref().map(|at| at.travel) == Some(Travel::InShip);
-        let at = ship.filter(|_| seated).map_or(eye, |ship| ship.pos);
-        let up = at.try_normalize().filter(|_| !anchor.flat)?;
-        let turned = |axis: Dir3| anchor.rotation.inverse() * axis.as_dvec3();
-        let ahead =
-            level(turned(camera.forward()), up).or_else(|| level(turned(camera.up()), up))?;
+        let at = ship.filter(|_| seated).map_or(eye.at, |ship| ship.pos);
+        let up = at.try_normalize().filter(|_| !eye.anchor.flat)?;
+        let ahead = level(eye.forward, up).or_else(|| level(eye.up, up))?;
         let nose = self.facing().and_then(|(nose, _)| level(nose, up));
         Some(Pose {
             body,

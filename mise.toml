@@ -25,3 +25,15 @@ run = [
 [tasks.build-release]
 description = "Build the optimized binary"
 run = "cargo build --release"
+
+[tasks.watch]
+description = "Check the code on every save, with bacon"
+run = "bacon"
+
+[tasks.hot]
+description = "Run the game with hot-patching: edited systems update in the running game"
+run = "dx serve --hot-patch --features hot"
+
+[tasks.timings]
+description = "Build and write target/cargo-timings/cargo-timing.html, to see what is slow"
+run = "cargo build --features dev --timings"

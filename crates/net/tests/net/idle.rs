@@ -8,7 +8,9 @@ use abstractions_net::io::{Client, CloseReason};
 use super::proxy::Proxy;
 use super::util::{closed, connected, opts, scratch, start};
 
-/// The player reports a timeout about 15 seconds after the server went silent.
+/// The player reports a timeout 15 to 21 seconds after the server went silent: the idle timer
+/// starts again at the first keep-alive sent after the last packet heard, up to 5 seconds later,
+/// and the session lingers 1 second before it reports.
 #[test]
 fn a_silent_server_times_out() {
     let dir = scratch("idle");
@@ -21,7 +23,7 @@ fn a_silent_server_times_out() {
     connected(&mut client);
     proxy.cut();
     let cut = Instant::now();
-    let reason = closed(&mut client, Duration::from_secs(20));
+    let reason = closed(&mut client, Duration::from_secs(25));
     let waited = cut.elapsed();
     assert_eq!(reason, CloseReason::Timeout);
     assert!(waited > Duration::from_secs(10), "{waited:?}");

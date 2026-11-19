@@ -1,14 +1,20 @@
 //! Player tests on a sphere: walking around the planet, rebasing the view, and the ship hand-over.
 
+mod airframe;
 mod basin;
+mod climbing;
 mod deck;
 mod eyes;
 mod flight;
+mod glider;
 mod intents;
 mod lead;
+mod respread;
+mod sends;
 mod spawn;
 mod stage;
 mod steer;
+mod steps;
 mod wings;
 
 use std::f64::consts::TAU;

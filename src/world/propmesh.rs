@@ -1,5 +1,6 @@
 //! The plant vocabulary and the meshes of the solid props: trees, cacti, rocks, wrecks, corals and sea life.
 
+pub(in crate::world) mod grown;
 mod land;
 mod merge;
 mod plant;

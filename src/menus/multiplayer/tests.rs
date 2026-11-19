@@ -18,7 +18,7 @@ fn saved(name: &str, address: &str) -> SavedServer {
 }
 
 /// Returns a server that answered with `players` of 16 and a ping of 42 ms.
-fn online(players: u8, compatible: bool) -> RowStatus {
+fn online(players: u16, compatible: bool) -> RowStatus {
     RowStatus::Online {
         players,
         cap: 16,
@@ -87,6 +87,17 @@ fn every_status_has_its_text() {
     let cases = [
         (RowStatus::Pinging, "Pinging", Tone::Muted),
         (online(3, true), "3/16  42 ms", Tone::Plain),
+        (
+            RowStatus::Online {
+                players: 37,
+                cap: 100,
+                ping_ms: 42,
+                version: "0.9.0".to_string(),
+                compatible: true,
+            },
+            "37/100  42 ms",
+            Tone::Plain,
+        ),
         (online(3, false), "Needs v0.9.0", Tone::Muted),
         (RowStatus::Offline, "Offline", Tone::Muted),
         (RowStatus::KeyChanged, "Key changed", Tone::Danger),

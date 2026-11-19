@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use super::aim::{Aim, wrap};
+use super::roll::settle;
 use super::state::FlightState;
 use super::tune::{BANK_RATE, PITCH_RATE, PRONE_RATE, PULL_RATE, YAW_RATE};
 
@@ -28,7 +29,8 @@ pub(super) fn damp(value: Vec2, target: f32, omega: f32, h: f32) -> Vec2 {
 /// Turns the attitude of `state` toward `aim` over `h` seconds.
 ///
 /// Pitch, bank, proneness and pull are critically damped. The heading is locked to its target
-/// with the wings folded, as on foot, and eased once they spread.
+/// with the wings folded, as on foot, and eased once they spread. The angles are then settled,
+/// see `settle`.
 pub(super) fn turn(state: &mut FlightState, aim: &Aim, h: f32) {
     let rates = state.servo.rates;
     let pitch = damp(Vec2::new(state.pitch, rates.x), aim.pitch, PITCH_RATE, h);
@@ -39,5 +41,6 @@ pub(super) fn turn(state: &mut FlightState, aim: &Aim, h: f32) {
     state.servo.yaw = wrap(state.servo.yaw + wrap(aim.yaw - state.servo.yaw) * lock);
     state.servo.rates = Vec4::new(pitch.y, bank.y, prone.y, pull.y);
     (state.pitch, state.bank, state.prone, state.servo.pull) = (pitch.x, bank.x, prone.x, pull.x);
+    settle(state);
     state.attitude = state.pose();
 }

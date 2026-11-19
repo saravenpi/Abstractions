@@ -50,7 +50,7 @@ fn an_oversized_message_is_refused() {
     assert_eq!(decode::<ClientMsg>(&exact, CLIENT_MESSAGE_MAX), Ok(None));
     let record = PlayerRecord {
         place: "x".repeat(MESSAGE_MAX),
-        ship: String::new(),
+        ..PlayerRecord::default()
     };
     assert_eq!(
         encode(&ClientMsg::Record(record)),

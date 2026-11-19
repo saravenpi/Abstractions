@@ -1,6 +1,6 @@
 //! The body of a ship record: where a player's ship is and what a watcher sees of its state.
 //!
-//! 34 bytes on a surface, 46 in the other frames.
+//! 37 bytes on a surface, 49 in the other frames.
 
 use glam::{DVec3, Quat, Vec3};
 
@@ -41,6 +41,10 @@ pub struct ShipBody {
     /// How far the drive is, from 0 to 1: the share of the spool time done while it spools, the
     /// share of its top speed while it runs.
     pub warp_level: f32,
+    /// Tilt of the pilot's stick, each axis from -1 to 1: pitch up, then roll left.
+    pub stick: [f32; 2],
+    /// Boost the pilot holds, from 0 to 1.
+    pub boost: f32,
 }
 
 impl ShipBody {
@@ -56,6 +60,9 @@ impl ShipBody {
             u8::from(self.landed),
             self.warp,
             pack_unit(self.warp_level),
+            pack_i8(self.stick[0], 1.0) as u8,
+            pack_i8(self.stick[1], 1.0) as u8,
+            pack_unit(self.boost),
         ]);
     }
 
@@ -66,7 +73,7 @@ impl ShipBody {
         let position = reader.position(frame)?;
         let velocity = reader.vec3()?;
         let rotation = unpack_rotation(u32::from_le_bytes(reader.take()?));
-        let [throttle, gear, damage, state, warp, level] = reader.take()?;
+        let [throttle, gear, damage, state, warp, level, x, y, boost] = reader.take()?;
         reader.end(Self {
             position,
             velocity,
@@ -77,6 +84,8 @@ impl ShipBody {
             landed: state & 1 != 0,
             warp,
             warp_level: unpack_unit(level),
+            stick: [unpack_i8(x as i8, 1.0), unpack_i8(y as i8, 1.0)],
+            boost: unpack_unit(boost),
         })
     }
 }

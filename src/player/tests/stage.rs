@@ -73,7 +73,7 @@ pub(super) fn app(bodies: &[(PlayerId, f32)]) -> App {
         .init_resource::<Look>()
         .init_resource::<ViewPrefs>()
         .init_resource::<Target>()
-        .init_resource::<crate::player::eyes::WingAim>()
+        .init_resource::<crate::player::eyes::WingView>()
         .init_resource::<ButtonInput<MouseButton>>()
         .add_message::<IntentOf>();
     stand(app.world_mut(), bodies);

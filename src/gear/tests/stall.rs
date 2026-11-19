@@ -1,45 +1,30 @@
-//! The stall: gentle, nose down, speed back, never a spin.
+//! The stall: the protection holds the nose down, the speed comes back, never a spin.
 
 use bevy::prelude::*;
 
-use super::pilot::{Pilot, keys};
-use super::{DT, Flight, gliding};
+use super::pilot::keys;
+use super::{DT, Flight};
 use crate::gear::Mode;
+use crate::gear::tune::STALL_SPEED;
 
-/// Airspeed in metres per second under which the wing is stalled.
-const STALL: f32 = 15.0;
-
-/// Pulls `flight` up with the back key until it is slower than [`STALL`], and returns the
-/// frames it took. Fails if the speed never drops that far.
-fn pull_to_stall(pilot: &mut Pilot) -> u32 {
-    for frame in 0..600 {
-        if pilot.flight.state.airspeed < STALL {
-            return frame;
-        }
-        pilot.tick(&keys(1.0, 0.0), &gliding(0.0), DT);
-    }
-    panic!(
-        "never slowed under {STALL}: {}",
-        pilot.flight.state.airspeed
-    );
-}
-
-/// A pull-up held into a stall and let go: the nose comes back down below the horizon, the
-/// speed builds again and the angle of attack comes back inside the wing, with no tumble.
+/// The back key held for ten seconds from a fast glide: the wing pulls up and stalls, which
+/// a held key may do, and the nose falls below the horizon with the key still held. Let go,
+/// the glide speed comes back, with no tumble.
 #[test]
 fn stall_drops_the_nose_and_recovers_speed() {
     let mut flight = Flight::new(Mode::Glide, Vec3::new(0.0, -10.0, -45.0));
-    flight.run(&gliding(0.0), 1.0);
-    let mut pilot = Pilot::on(flight, 0.0);
-    pull_to_stall(&mut pilot);
+    flight.run(&keys(0.0, 0.0), 1.0);
     let (mut slowest, mut lowest) = (f32::MAX, f32::MAX);
-    for _ in 0..360 {
-        pilot.tick(&keys(0.0, 0.0), &gliding(0.0), DT);
-        slowest = slowest.min(pilot.flight.state.airspeed);
-        lowest = lowest.min(pilot.flight.state.pitch);
+    for frame in 0..600 {
+        flight.tick(&keys(1.0, 0.0), DT);
+        slowest = slowest.min(flight.state.airspeed);
+        if frame > 120 {
+            lowest = lowest.min(flight.state.pitch);
+        }
     }
-    let flight = pilot.flight;
     assert!(lowest < 0.0, "the nose stayed up: {lowest}");
+    assert!(slowest < STALL_SPEED.0, "never stalled: {slowest}");
+    flight.run(&keys(0.0, 0.0), 6.0);
     assert!(
         flight.state.airspeed > slowest + 8.0,
         "speed did not recover: {} from {slowest}",
@@ -53,21 +38,31 @@ fn stall_drops_the_nose_and_recovers_speed() {
     assert!(flight.twist < 0.09, "tumbled by {}", flight.twist);
 }
 
-/// A stall entered in a bank, by a pilot who aims along the flight path and so asks for no
-/// turn, levels the wings one way only: the roll rate never changes sign and the bank never
-/// crosses to the other side. No spin.
+/// A slow glide with the back key held: under the stall speed the nose comes down below the
+/// horizon by itself within a second and a half.
+#[test]
+fn under_the_stall_speed_the_nose_comes_down() {
+    let mut flight = Flight::new(Mode::Glide, Vec3::new(0.0, 0.0, -11.0));
+    flight.state.pitch = 0.3;
+    flight.run(&keys(1.0, 0.0), 1.5);
+    assert!(
+        flight.state.pitch < 0.0,
+        "the nose stayed at {}",
+        flight.state.pitch
+    );
+    assert!(flight.twist < 0.09, "tumbled by {}", flight.twist);
+}
+
+/// A stall entered in a bank, the roll key centred, levels the wings one way only: the roll
+/// rate never changes sign and the bank never crosses to the other side. No spin.
 #[test]
 fn stall_never_spins() {
     for bank in [0.6, -0.6, 0.15] {
         let mut flight = Flight::new(Mode::Glide, Vec3::new(0.0, -8.0, -30.0));
         flight.state.bank = bank;
-        let mut pilot = Pilot::on(flight, 0.0);
         for frame in 0..1200 {
             let stick = f32::from(u8::from(frame < 90));
-            let v = pilot.flight.state.velocity;
-            pilot.stick.aim.x = (-v.x).atan2(-v.z);
-            pilot.tick(&keys(stick, 0.0), &gliding(0.0), DT);
-            let flight = &pilot.flight;
+            flight.tick(&keys(stick, 0.0), DT);
             let rate = flight.state.servo.rates.y;
             assert!(
                 rate * bank <= 1e-4,
@@ -79,20 +74,20 @@ fn stall_never_spins() {
             );
         }
         assert!(
-            pilot.flight.state.bank.abs() < 0.02,
+            flight.state.bank.abs() < 0.02,
             "wings not level after the stall"
         );
     }
 }
 
-/// A level stall with the roll stick centred stays exactly symmetric: no roll at all.
+/// A level stall with the roll key centred stays exactly symmetric: no roll at all.
 #[test]
 fn level_stall_stays_level() {
-    let mut pilot = Pilot::on(Flight::new(Mode::Glide, Vec3::new(0.0, -8.0, -30.0)), 0.0);
+    let mut flight = Flight::new(Mode::Glide, Vec3::new(0.0, -8.0, -30.0));
     for frame in 0..1200 {
         let stick = f32::from(u8::from(frame < 90));
-        pilot.tick(&keys(stick, 0.0), &gliding(0.0), DT);
-        let state = pilot.flight.state;
+        flight.tick(&keys(stick, 0.0), DT);
+        let state = flight.state;
         assert!(state.bank.abs() < 1e-4 && state.velocity.x.abs() < 1e-3);
     }
 }

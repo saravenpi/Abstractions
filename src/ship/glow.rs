@@ -1,4 +1,5 @@
-//! The engine glow: its brightness and the length of the exhaust follow the throttle.
+//! The engine glow: its brightness and the length of the exhaust follow the throttle. Every
+//! hull has its own: the ship of this machine from its flight, a puppet from its records.
 
 use bevy::prelude::*;
 
@@ -11,8 +12,23 @@ use crate::render::Sequence;
 /// The glowing parts of a ship.
 #[derive(Component, Debug, Clone)]
 pub struct Engine {
-    /// Material shared by the nozzle discs and the exhaust.
+    /// Material shared by the nozzle discs and the exhaust of this hull alone.
     pub glow: Handle<StandardMaterial>,
+    /// Engine level to show, from 0 (idle) to 1 (full throttle) and above.
+    pub level: f32,
+    /// Engine level the material and the exhaust show, once written.
+    shown: Option<f32>,
+}
+
+impl Engine {
+    /// Returns the engine of a hull glowing with `glow`, idle and not drawn yet.
+    pub fn new(glow: Handle<StandardMaterial>) -> Self {
+        Self {
+            glow,
+            level: 0.0,
+            shown: None,
+        }
+    }
 }
 
 /// Marker for the exhaust, a child of the ship stretched along z by the engine level.
@@ -49,29 +65,48 @@ fn level(ship: &Ship, boost: bool) -> f32 {
     }
 }
 
-/// Sets the glow color and the exhaust length of the ship when the engine level changes. The warp sequence
-/// lights the engines as the drive charges and lets them fade as it drops out.
-pub fn glow(
+/// Returns the engine level of a hull from its records: the `throttle`, raised by the share
+/// of `boost` and by the share of `warp` the drive reached, full in warp.
+pub fn level_of(throttle: f32, boost: f32, warp: f32) -> f32 {
+    if warp >= 1.0 {
+        return WARP_LEVEL;
+    }
+    let lift = 1.0 + ((BOOST as f32).sqrt() - 1.0) * boost.clamp(0.0, 1.0);
+    (throttle.abs() * lift).max(WARP_LEVEL * warp.max(0.0))
+}
+
+/// Sets the engine level of the ship of this machine. The warp sequence lights the engines as
+/// the drive charges and lets them fade as it drops out.
+pub fn throttle(
     (helm, sequence): (Res<Helm>, Option<Res<Sequence>>),
-    ship: Single<(Entity, &Ship, &Engine)>,
+    mut ships: Query<(&Ship, &mut Engine)>,
+) {
+    let charged = sequence.as_deref().map_or(0.0, Sequence::thrust);
+    for (ship, mut engine) in &mut ships {
+        engine.level = level(ship, helm.controls.boost).max(WARP_LEVEL * charged);
+    }
+}
+
+/// Sets the glow color and the exhaust length of every hull whose engine level changed.
+pub fn glow(
+    mut engines: Query<(Entity, &mut Engine)>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut plumes: Query<(&ChildOf, &mut Transform), With<Plume>>,
-    mut shown: Local<Option<f32>>,
 ) {
-    let (hull, ship, engine) = *ship;
-    let charged = sequence.as_deref().map_or(0.0, Sequence::thrust);
-    let level = level(ship, helm.controls.boost).max(WARP_LEVEL * charged);
-    if shown.is_some_and(|old| (old - level).abs() < 0.01) {
-        return;
-    }
-    *shown = Some(level);
-    if let Some(mut material) = materials.get_mut(&engine.glow) {
-        material.base_color = color(level);
-    }
-    for (_, mut plume) in plumes
-        .iter_mut()
-        .filter(|(parent, _)| parent.parent() == hull)
-    {
-        plume.scale.z = 0.02 + PLUME_LENGTH * level;
+    for (hull, mut engine) in &mut engines {
+        let level = engine.level;
+        if engine.shown.is_some_and(|old| (old - level).abs() < 0.01) {
+            continue;
+        }
+        engine.shown = Some(level);
+        if let Some(mut material) = materials.get_mut(&engine.glow) {
+            material.base_color = color(level);
+        }
+        for (_, mut plume) in plumes
+            .iter_mut()
+            .filter(|(parent, _)| parent.parent() == hull)
+        {
+            plume.scale.z = 0.02 + PLUME_LENGTH * level;
+        }
     }
 }

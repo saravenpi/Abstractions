@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy::ui::Val2;
 
 use super::patch::Patch;
-use super::pose::Reader;
+use super::pose::{Pose, Reader};
 use super::range::{Mode, range};
 use super::scope::Scope;
 use super::sight::{Sight, sight};
@@ -22,7 +22,7 @@ fn show(node: &mut Mut<Node>, shown: bool) {
 }
 
 /// Shows or hides `node`, and moves it to the map point `at` when it has one.
-fn put(node: &mut Mut<Node>, at: Option<Vec2>) {
+pub fn put(node: &mut Mut<Node>, at: Option<Vec2>) {
     let display = at.map_or(Display::None, |_| Display::Flex);
     let share = at.map(|at| (Vec2::new(at.x, -at.y) * 0.5 + 0.5) * 100.0);
     let (left, top) = share.map_or((node.left, node.top), |s| (percent(s.x), percent(s.y)));
@@ -56,14 +56,26 @@ fn turned(sight: Option<&Sight>) -> UiTransform {
     }
 }
 
-/// Returns the ground view of this frame, or nothing in space. Before the first patch is
-/// painted the marks are placed on a patch around the player.
-fn seen(reader: &Reader, scope: &Scope, base: Option<&Base>) -> Option<Sight> {
+/// Returns the player on the planet and the patch the marks are placed through, or nothing
+/// in space or before the map has a range. Before the first patch is painted the marks are
+/// placed on a patch around the player.
+pub fn lens(reader: &Reader, scope: &Scope) -> Option<(Pose, Patch)> {
     let (pose, globe) = reader.pose().zip(reader.globe())?;
     let around = || Patch::around(pose.at.normalize(), globe.radius(), scope.radius);
     let patch = scope.patch.unwrap_or_else(around);
+    (scope.radius > 0.0).then_some((pose, patch))
+}
+
+/// Returns the ground view of this frame, or nothing in space.
+fn seen(reader: &Reader, scope: &Scope, base: Option<&Base>) -> Option<Sight> {
+    let (pose, patch) = lens(reader, scope)?;
     let home = base.filter(|base| base.body == pose.body);
-    (scope.radius > 0.0).then(|| sight(&pose, &patch, scope.radius, home.map(|base| base.centre)))
+    Some(sight(
+        &pose,
+        &patch,
+        scope.radius,
+        home.map(|base| base.centre),
+    ))
 }
 
 /// Places every part of the ground view: the frame hides while the map is off, the image

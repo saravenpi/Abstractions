@@ -1,42 +1,39 @@
-//! Static layout of the computer panel on the right edge of the window: the header with the
-//! breadcrumb and the tabs, the map, the list with its title over a fixed pool of rows, the
-//! card of the selected row and the footer with the course, the main button and the key hints.
+//! Static layout of the map screen: the map over the whole window but a slim panel on the
+//! right, with the Back button and the path of the level shown over its top left corner and
+//! the progress of the route over its bottom. The panel holds the search box with its
+//! results, the card of the selected result with its buttons, the favourites and the players.
 //!
-//! The game stays visible and keeps running to the left of the panel. Every button of the
-//! panel is for the pointer only: hovering one lights it and never moves the keyboard focus,
-//! which stays on the selected row.
+//! The game keeps running under the screen. Every button of the screen is for the pointer
+//! only: hovering one lights it and never moves the keyboard focus, which stays on the
+//! selected result.
 
 use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
-use bevy::ui_widgets::Button;
 
-use super::board::VISIBLE_ROWS;
-use super::layout::{BUTTON, ROW, SMALLEST, measure};
+use super::layout::{LINE_HEIGHT, MARGIN, SIDE};
 use super::map::field;
 use super::open::Computer;
-use super::primary::{Spare, button};
-use super::readout::card;
-use super::tab::Tab;
-use crate::ui::{
-    Blurred, Icon, Look, Overlay, Selected, Tone, action, cell, column, entry, frame, hairline,
-    icon, label, text, theme,
-};
+use crate::ui::{Blurred, Overlay, text, theme};
 
-/// Widths in pixels of the icon, name and distance columns of a row. The facts take the rest.
-const WIDTHS: [f32; 3] = [24.0, 140.0, 80.0];
+/// Background of the side panel: a tone lighter than the map, which sets it apart with no line.
+pub const PANEL: Color = Color::srgb(0.09, 0.09, 0.09);
 
-/// Key hints shown at the bottom of the panel.
-const HINT: &str = "Type to filter. F2 sorts. Map: wheel, drag, 0";
+/// What the search box says while nothing is typed.
+pub(super) const SEARCH_HINT: &str = "Search (/)";
 
-/// Marks the panel, which the window sizes.
+/// Marks the whole screen.
 #[derive(Component)]
 pub(super) struct Panel;
 
-/// A row button of the pool, counted from the top of the list.
+/// Marks the room of the map beside the panel, which cuts the chart at its edges.
+#[derive(Component)]
+pub struct Area;
+
+/// A result button of the pool, counted from the top of the list.
 #[derive(Component, Debug, Clone, Copy)]
 pub(super) struct Slot(pub usize);
 
-/// Which text of a row a cell is.
+/// Which text of a result a cell is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Part {
     /// The icon that says what the row is, or marks the destination or the place of the ship.
@@ -45,201 +42,169 @@ pub(super) enum Part {
     Title,
     /// The distance from the ship.
     Distance,
-    /// The other facts.
-    Detail,
 }
 
-/// A text of the row in this slot.
+/// A text of the result in this slot.
 #[derive(Component, Debug, Clone, Copy)]
 pub(super) struct Cell(pub usize, pub Part);
 
-/// A button that opens this tab.
-#[derive(Component, Debug, Clone, Copy)]
-pub(super) struct TabLink(pub Tab);
-
-/// What a button of the footer does to the course.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Act {
-    /// Set the course to the selected row.
-    Set,
-    /// Hand the course to the autopilot.
-    Engage,
-    /// Forget the course.
-    Clear,
-    /// Set the course to the next place on the way home.
-    Home,
-}
-
-/// Marks the line that says where the ship is.
-#[derive(Component)]
-pub(super) struct Crumbs;
-
-/// Marks the line that names the list and counts its rows.
+/// Marks the line that names the results and counts them.
 #[derive(Component)]
 pub(super) struct Summary;
 
-/// Marks the line that shows the course and the route state.
+/// Marks the line that shows the course, its distance and the route state.
 #[derive(Component)]
 pub(super) struct Status;
 
-/// The node of one row of the list: a strip closed by a hairline, its columns lined up.
-fn strip() -> Node {
-    Node {
-        width: percent(100),
-        height: px(ROW),
+/// Marks the line that says how far along the route is while it is flown.
+#[derive(Component)]
+pub(super) struct Action;
+
+/// Marks the search box, which a click makes the place typing goes to.
+#[derive(Component)]
+pub struct SearchBox;
+
+/// Marks the text of the search box.
+#[derive(Component)]
+pub(super) struct SearchText;
+
+/// The slim panel on the right: the search, the card of the selected result with its
+/// buttons, the favourites and the players. The card gives way first when the window is short.
+fn side() -> impl Bundle {
+    let node = Node {
+        width: px(SIDE),
+        height: percent(100),
         flex_shrink: 0.0,
-        align_items: AlignItems::Center,
-        column_gap: px(theme::GAP_M - theme::GAP_XS),
-        padding: UiRect::horizontal(px(theme::GAP_S)),
-        border: UiRect::bottom(px(theme::LINE)),
+        flex_direction: FlexDirection::Column,
+        row_gap: px(theme::GAP_M),
+        padding: UiRect::all(px(MARGIN)),
         overflow: Overflow::clip(),
         ..default()
-    }
+    };
+    (
+        node,
+        BackgroundColor(theme::STRIP),
+        children![
+            super::results::search(),
+            super::readout::card(),
+            crate::map::favourites(),
+            crate::map::players()
+        ],
+    )
 }
 
-/// One empty row of the pool, a button for the pointer only whose look `hover::light` sets.
-/// `show::rows` writes its texts.
-fn row(slot: usize) -> impl Bundle {
-    let small =
-        move |part: Part, tone: Tone| (label("", theme::FONT_SMALL, tone), Cell(slot, part));
-    let mark = (icon(Icon::Check, Tone::Muted), Cell(slot, Part::Mark));
-    let facts = Node {
-        flex_grow: 1.0,
+/// A column of lines over the map that shrinks and is cut before it runs under what is at the
+/// right end of its row.
+fn stack() -> Node {
+    Node {
+        flex_direction: FlexDirection::Column,
+        row_gap: px(theme::GAP_XS),
+        flex_shrink: 1.0,
         min_width: px(0),
         overflow: Overflow::clip(),
         ..default()
-    };
-    (
-        (Button, RelativeCursorPosition::default(), Look::default()),
-        (strip(), hairline(), BackgroundColor(Color::NONE)),
-        children![
-            cell(WIDTHS[0], mark),
-            cell(WIDTHS[1], small(Part::Title, Tone::Plain)),
-            cell(WIDTHS[2], small(Part::Distance, Tone::Plain)),
-            (facts, children![small(Part::Detail, Tone::Muted)]),
-        ],
-        Slot(slot),
-        Selected(false),
-    )
-}
-
-/// Returns the icon shown on a tab: a planet for the system, a star for the galaxy of stars
-/// and a map for the universe, since the icon pack has no galaxy.
-fn tab_icon(tab: Tab) -> Icon {
-    match tab {
-        Tab::System => Icon::Earth,
-        Tab::Galaxy => Icon::Star,
-        Tab::Universe => Icon::Map,
     }
 }
 
-/// The header: where the ship is, muted, over the tabs with their icons.
-fn header() -> impl Bundle {
-    let tab = |tab: Tab| {
-        let node = Node {
-            height: px(theme::ROW_HEIGHT),
-            align_items: AlignItems::Center,
-            padding: UiRect::horizontal(px(theme::GAP_S)),
-            ..default()
-        };
-        let words = entry(tab_icon(tab), tab.label(), theme::FONT_SMALL, Tone::Muted);
-        (
-            frame(),
-            node,
-            children![words],
-            TabLink(tab),
-            Selected(false),
-        )
+/// A row over the map with `left` on its left and `right` at its right end, aligned along
+/// `align`.
+fn ends(align: AlignItems, left: impl Bundle, right: impl Bundle) -> impl Bundle {
+    let row = Node {
+        width: percent(100),
+        justify_content: JustifyContent::SpaceBetween,
+        align_items: align,
+        column_gap: px(theme::GAP_M),
+        ..default()
     };
-    let tabs = (
-        Node {
-            column_gap: px(theme::GAP_S),
-            ..default()
-        },
-        Children::spawn(SpawnIter(Tab::ALL.into_iter().map(tab))),
-    );
-    let crumbs = text("", theme::FONT_SMALL, theme::MUTED);
+    (row, children![left, right])
+}
+
+/// A line of small text over the map that keeps its height while empty.
+fn line(color: Color) -> impl Bundle {
+    let tall = Node {
+        min_height: px(LINE_HEIGHT),
+        ..default()
+    };
     (
-        column(percent(100), theme::GAP_XS),
-        children![(Crumbs, crumbs, TextLayout::no_wrap()), tabs],
+        text("", theme::FONT_SMALL, color),
+        TextLayout::no_wrap(),
+        tall,
     )
 }
 
-/// The list: its title, which counts the rows, over the pool of rows. Only the rows that fit
-/// the window are shown, and the list takes the height the other sections leave.
-fn list() -> impl Bundle {
-    let rows = (
-        column(percent(100), 0.0),
-        Children::spawn(SpawnIter((0..VISIBLE_ROWS).map(row))),
-    );
-    let title = text("", theme::FONT_SMALL, theme::MUTED);
-    (
-        Node {
-            flex_grow: 1.0,
-            min_height: px(0),
-            width: percent(100),
-            flex_direction: FlexDirection::Column,
-            row_gap: px(theme::GAP_XS),
-            overflow: Overflow::clip(),
-            ..default()
-        },
-        children![(Summary, title, TextLayout::no_wrap()), rows],
-    )
+/// The lines along the bottom of the map: the progress of the route over the course line and
+/// the place under the pointer.
+fn foot() -> impl Bundle {
+    let lines = children![
+        (Action, line(theme::TEXT)),
+        (Status, line(theme::MUTED)),
+        crate::map::coords()
+    ];
+    (stack(), lines)
 }
 
-/// The footer: the course, the main button with the small ones that set the course home and
-/// clear it beside it, and the key hints.
-fn footer() -> impl Bundle {
-    let spare = (
-        action(Icon::Eraser, "", "Del", Tone::Plain),
-        Act::Clear,
-        Spare,
-    );
-    let home = (action(Icon::Home, "Course", "Home", Tone::Plain), Act::Home);
-    let actions = (
-        Node {
-            column_gap: px(theme::GAP_S),
-            height: px(BUTTON),
-            ..default()
-        },
-        children![button(), home, spare],
-    );
-    let line = |words: &'static str, color: Color| {
-        (text(words, theme::FONT_SMALL, color), TextLayout::no_wrap())
+/// What is written over the map: the Back button on its own row and the path of the level
+/// shown under it, then the caption, in the top left corner with north at the right end, and
+/// along the bottom the progress of the route over the course line and the place under the
+/// pointer, with the scale at the right end. Each line keeps its height while empty, so the
+/// others do not jump.
+fn words() -> impl Bundle {
+    let node = Node {
+        position_type: PositionType::Absolute,
+        width: percent(100),
+        height: percent(100),
+        flex_direction: FlexDirection::Column,
+        justify_content: JustifyContent::SpaceBetween,
+        padding: UiRect::all(px(MARGIN)),
+        ..default()
     };
+    let head = children![crate::map::path(), crate::map::caption()];
     (
-        column(percent(100), theme::GAP_XS),
+        node,
         children![
-            (Status, line("", theme::TEXT)),
-            actions,
-            line(HINT, theme::MUTED),
+            ends(
+                AlignItems::FlexStart,
+                (stack(), head),
+                super::legend::north()
+            ),
+            ends(AlignItems::FlexEnd, foot(), super::legend::scale()),
         ],
     )
 }
 
-/// Spawns the panel on the right edge of the window and asks for the rows of the open tab.
+/// The room of the map: the square map in its middle, the veil that fades one level into the
+/// next, and the words over them.
+fn area() -> impl Bundle {
+    (
+        Area,
+        RelativeCursorPosition::default(),
+        Node {
+            flex_grow: 1.0,
+            height: percent(100),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            overflow: Overflow::clip(),
+            ..default()
+        },
+        children![field(), crate::map::veil(), words()],
+    )
+}
+
+/// Spawns the screen over the whole window and asks for the rows of the open tab.
 pub(super) fn spawn(mut commands: Commands, mut board: ResMut<super::board::Board>) {
     let tab = board.tab;
     board.show(tab);
-    let fit = measure(SMALLEST);
     let node = Node {
         position_type: PositionType::Absolute,
-        top: px(0),
-        right: px(0),
-        bottom: px(0),
-        width: px(fit.panel),
-        flex_direction: FlexDirection::Column,
-        row_gap: px(fit.margin),
-        padding: UiRect::all(px(fit.margin)),
-        border: UiRect::left(px(theme::LINE)),
-        overflow: Overflow::clip(),
+        width: percent(100),
+        height: percent(100),
         ..default()
     };
     commands.spawn((
         DespawnOnExit(Computer::Open),
-        (Panel, Overlay, Blurred, node),
+        (Panel, Overlay, node),
         BackgroundColor(theme::SCRIM),
-        hairline(),
-        children![header(), field(), list(), card(), footer()],
+        Blurred,
+        children![area(), side()],
     ));
 }

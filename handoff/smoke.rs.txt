@@ -1,0 +1,1217 @@
+//! Throwaway headless playtest: a new game toured stage by stage, one screenshot per stage, with
+//! main-thread frame times and the streaming meter logged as `SMOKE` lines.
+//!
+//! Environment: `SMOKE_DIR` (screenshot folder), `SMOKE_SEED` (world seed, default 7).
+
+use std::time::{Duration, Instant};
+
+use abstractions::computer::{Engage, Target};
+use abstractions::home::Base;
+use abstractions::player::{Motion, Player, place};
+use abstractions::saves::{SaveDir, Starter, new_entry};
+use abstractions::screens::{Screen, WarmUp};
+use abstractions::settings::{Persistent, Settings};
+use abstractions::ship::{Autopilot, Phase, Ship, ShipTelemetry};
+use abstractions::space::{Anchor, Frame, Location, Travel};
+use abstractions::universe::{BodyId, Universe};
+use abstractions::view::{Cut, Heading, ViewMode, ViewPrefs};
+use abstractions::world::globe::Face;
+use abstractions::world::structures::{CELL, Kind, entries, structure_in_cell};
+use abstractions::world::{METER_STEPS, Meter, Planet, Terrain};
+use bevy::ecs::system::RunSystemOnce;
+use bevy::input::ButtonState;
+use bevy::input::keyboard::{Key, KeyboardInput, NativeKey};
+use bevy::math::{DQuat, DVec3};
+use bevy::prelude::*;
+use bevy::render::view::screenshot::{Screenshot, save_to_disk};
+use bevy::time::TimeUpdateStrategy;
+use bevy::window::PrimaryWindow;
+
+/// Simulated seconds per frame on foot.
+const WALK: f64 = 1.0 / 30.0;
+
+/// Simulated seconds per frame in flight, as in the voyage test.
+const FLIGHT: f64 = 0.1;
+
+/// What a stage asks for this frame.
+enum Act {
+    /// Keep running this stage.
+    Wait,
+    /// Take a screenshot with this name, then go to the next stage.
+    Shoot(String),
+    /// Go to the next stage without a screenshot.
+    Next,
+    /// Log why the stage could not run and go to the next one.
+    Fail(String),
+}
+
+/// Facts found on the way and reused by later stages.
+#[derive(Default)]
+struct Notes {
+    /// Planet position of the nearest village origin.
+    village: Option<DVec3>,
+    /// Planet position of the middle of that room on its floor.
+    room: Option<DVec3>,
+    /// Planet position of the threshold of its door, and the unit direction out of it.
+    door: Option<(DVec3, DVec3)>,
+    /// Planet position of a shore point near the base.
+    shore: Option<DVec3>,
+    /// The planet the ship warps to.
+    far: Option<BodyId>,
+}
+
+/// One stage of the tour.
+type Stage = fn(&mut World, &mut Notes, u32) -> Act;
+
+/// Tour state.
+#[derive(Resource, Default)]
+struct Tour {
+    stage: usize,
+    frame: u32,
+    notes: Notes,
+    begun: Option<Instant>,
+    worst: Vec<(f32, String)>,
+    frames: Vec<f32>,
+}
+
+/// Triangle count of every mesh asset, read when it is added, before a render-only mesh hands its
+/// data to the render world.
+#[derive(Resource, Default)]
+struct Tris(std::collections::HashMap<AssetId<Mesh>, usize>);
+
+/// Records the triangle count of new and changed meshes.
+fn count_tris(
+    mut events: MessageReader<AssetEvent<Mesh>>,
+    meshes: Res<Assets<Mesh>>,
+    mut tris: ResMut<Tris>,
+) {
+    for event in events.read() {
+        let (AssetEvent::Added { id } | AssetEvent::Modified { id }) = event else {
+            continue;
+        };
+        let Some(mesh) = meshes.get(*id) else {
+            continue;
+        };
+        let count = match mesh.try_indices_option() {
+            Ok(Some(indices)) => indices.len() / 3,
+            Ok(None) => mesh.count_vertices() / 3,
+            Err(_) => continue,
+        };
+        tris.0.insert(*id, count);
+    }
+}
+
+/// Start of the main-thread part of the frame, and the milliseconds since then at which the
+/// pre-update, update and post-update schedules were reached.
+#[derive(Resource)]
+struct FrameStart(Instant, [f32; 3]);
+
+/// Notes the milliseconds since the frame started at which schedule `AT` was reached.
+fn mark<const AT: usize>(mut start: ResMut<FrameStart>) {
+    start.1[AT] = start.0.elapsed().as_secs_f32() * 1000.0;
+}
+
+/// The stages, in order, with the name logged for each.
+const STAGES: [(&str, Stage); 33] = [
+    ("title", title),
+    ("loading", loading),
+    ("boot", boot),
+    ("wake", wake),
+    ("base", base_view),
+    ("pad", pad_view),
+    ("village", village),
+    ("room", room),
+    ("door-far", door_far),
+    ("door-near", door_near),
+    ("roof-a", roof_a),
+    ("roof-b", roof_b),
+    ("tp-stand", tp_stand),
+    ("tp-walk", tp_walk),
+    ("tp-takeoff", tp_takeoff),
+    ("tp-glide", tp_glide),
+    ("tp-fly", tp_fly),
+    ("board", board),
+    ("tp-pad", tp_pad),
+    ("takeoff", takeoff),
+    ("shore", shore),
+    ("fog-300", fog_300),
+    ("tp-flight", tp_flight),
+    ("low", low),
+    ("handover", handover),
+    ("clouds", clouds),
+    ("above", above),
+    ("orbit", orbit),
+    ("tp-orbit", tp_orbit),
+    ("warp", warp),
+    ("arrive", arrive),
+    ("land", land),
+    ("step-out", step_out),
+];
+
+/// Entry.
+fn main() -> AppExit {
+    let mut app = App::new();
+    app.add_plugins(abstractions::AppPlugin);
+    app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs_f64(
+        WALK,
+    )));
+    app.init_resource::<Tour>();
+    app.insert_resource(FrameStart(Instant::now(), [0.0; 3]));
+    app.add_systems(First, |mut start: ResMut<FrameStart>| {
+        start.0 = Instant::now()
+    });
+    app.add_systems(PreUpdate, mark::<0>);
+    app.add_systems(Update, (mark::<1>, run));
+    app.add_systems(PostUpdate, mark::<2>);
+    app.init_resource::<Tris>();
+    app.add_systems(Last, (measure, count_tris));
+    app.run()
+}
+
+/// Records the main-thread time of the frame and the streaming step that cost the most in it.
+fn measure(start: Res<FrameStart>, mut tour: ResMut<Tour>, mut meter: ResMut<Meter>) {
+    let millis = start.0.elapsed().as_secs_f32() * 1000.0;
+    let (step, cost) = meter.worst();
+    let name = STAGES.get(tour.stage).map_or("end", |s| s.0);
+    tour.frames.push(millis);
+    tour.worst.push((
+        millis,
+        format!(
+            "{name}: reached pre-update {:.0}, update {:.0} (fixed steps between), post-update {:.0} ms; worst stream step {step} {:.1} ms",
+            start.1[0], start.1[1], start.1[2], cost.worst
+        ),
+    ));
+    meter.reset();
+}
+
+/// Runs the current stage and moves on when it says so.
+fn run(world: &mut World) {
+    let mut tour = world.resource_mut::<Tour>().into_inner().clone_out();
+    let Some((name, stage)) = STAGES.get(tour.stage).copied() else {
+        tour.frame += 1;
+        if tour.frame == 30 {
+            report(&tour);
+            world.write_message(AppExit::Success);
+        }
+        world.resource_mut::<Tour>().clone_in(tour);
+        return;
+    };
+    tour.frame += 1;
+    let skipped = std::env::var("SMOKE_SKIP").unwrap_or_default();
+    let act = match skipped.split(',').any(|skip| skip == name) {
+        true => Act::Next,
+        false => stage(world, &mut tour.notes, tour.frame),
+    };
+    let advance = |tour: &mut Tour, why: &str| {
+        summary(tour, name, why);
+        (tour.stage, tour.frame) = (tour.stage + 1, 0);
+    };
+    match act {
+        Act::Wait => {}
+        Act::Shoot(file) => {
+            shot(world, &file);
+            advance(&mut tour, &format!("shot {file}"));
+        }
+        Act::Next => advance(&mut tour, "done"),
+        Act::Fail(why) => advance(&mut tour, &format!("FAILED {why}")),
+    }
+    world.resource_mut::<Tour>().clone_in(tour);
+}
+
+impl Tour {
+    /// Takes the tour out of the world, leaving an empty one in its place.
+    fn clone_out(&mut self) -> Tour {
+        std::mem::take(self)
+    }
+
+    /// Puts `tour` back.
+    fn clone_in(&mut self, tour: Tour) {
+        *self = tour;
+    }
+}
+
+/// Logs how stage `name` ended, with its frame times and its worst frames.
+fn summary(tour: &mut Tour, name: &str, why: &str) {
+    let wall = tour
+        .begun
+        .replace(Instant::now())
+        .map_or(0.0, |t| t.elapsed().as_secs_f32());
+    let frames = std::mem::take(&mut tour.frames);
+    let mean = frames.iter().sum::<f32>() / frames.len().max(1) as f32;
+    let max = frames.iter().copied().fold(0.0, f32::max);
+    info!(
+        "SMOKE stage {name}: {why}; {} frames in {wall:.1} s wall, main thread mean {mean:.1} ms max {max:.1} ms",
+        tour.frame
+    );
+    let mut worst = std::mem::take(&mut tour.worst);
+    worst.sort_by(|a, b| b.0.total_cmp(&a.0));
+    for (millis, what) in worst.iter().take(3) {
+        info!("SMOKE   slow frame {millis:.1} ms, {what}");
+    }
+}
+
+/// Logs the worst frames of the whole run.
+fn report(_: &Tour) {
+    info!("SMOKE steps timed: {METER_STEPS:?}");
+}
+
+/// Saves a screenshot of the window.
+fn shot(world: &mut World, name: &str) {
+    let dir = std::env::var("SMOKE_DIR").unwrap_or_default();
+    world
+        .spawn(Screenshot::primary_window())
+        .observe(save_to_disk(format!("{dir}/{name}.png")));
+}
+
+/// Sets the simulated seconds per frame.
+fn pace(world: &mut World, seconds: f64) {
+    world.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs_f64(
+        seconds,
+    )));
+}
+
+/// Presses or releases `code`.
+fn key(world: &mut World, code: KeyCode, pressed: bool) {
+    let window = world
+        .query_filtered::<Entity, With<PrimaryWindow>>()
+        .iter(world)
+        .next()
+        .unwrap_or(Entity::PLACEHOLDER);
+    world.write_message(KeyboardInput {
+        key_code: code,
+        logical_key: Key::Unidentified(NativeKey::Unidentified),
+        state: [ButtonState::Released, ButtonState::Pressed][usize::from(pressed)],
+        text: None,
+        repeat: false,
+        window,
+    });
+}
+
+/// Returns the key the settings bind to what `pick` names.
+fn bound(world: &World, pick: impl Fn(&Settings) -> KeyCode) -> KeyCode {
+    pick(world.resource::<Persistent<Settings>>())
+}
+
+/// Returns the planet position on the ground of the streamed planet under `pos`, raised by `lift`.
+fn ground(world: &World, pos: DVec3, lift: f64) -> DVec3 {
+    let globe = &world.resource::<Planet>().globe;
+    let dir = pos.normalize();
+    dir * (globe.radius() + f64::from(globe.height(dir).max(0.0)) + lift)
+}
+
+/// Stands the player at planet position `feet` looking at planet position `at`, with `pitch`.
+fn stand(world: &mut World, feet: DVec3, at: DVec3, pitch: f32) {
+    let anchor = *world.resource::<Anchor>();
+    let (feet, at) = (anchor.to_render(feet), anchor.to_render(at));
+    place(world, feet, at - feet);
+    let yaw = world
+        .query_filtered::<&Motion, With<Player>>()
+        .iter(world)
+        .next()
+        .map_or(0.0, |m| m.yaw);
+    world.write_message(Cut {
+        heading: Some(Heading { yaw, pitch }),
+    });
+}
+
+/// Logs the meshes, triangles and lights in view.
+fn hygiene(world: &mut World, label: &str) {
+    let counted = world.run_system_once(
+        |meshes: Query<(&Mesh3d, &ViewVisibility)>,
+         tris: Res<Tris>,
+         points: Query<&ViewVisibility, With<PointLight>>,
+         spots: Query<&ViewVisibility, With<SpotLight>>| {
+            let shown = meshes.iter().filter(|(_, v)| v.get());
+            let (mut count, mut triangles) = (0, 0);
+            for (mesh, _) in shown {
+                count += 1;
+                triangles += tris.0.get(&mesh.0.id()).copied().unwrap_or(0);
+            }
+            let lights = points
+                .iter()
+                .chain(spots.iter())
+                .filter(|v| v.get())
+                .count();
+            (meshes.iter().count(), count, triangles, lights)
+        },
+    );
+    if let Ok((all, shown, triangles, lights)) = counted {
+        info!(
+            "SMOKE hygiene {label}: {all} mesh entities, {shown} in view, {triangles} triangles in view, {lights} lights in view"
+        );
+    }
+}
+
+/// The title screen, then a new world.
+fn title(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    match frame {
+        20 => {
+            shot(world, "00-title");
+            Act::Wait
+        }
+        30 => {
+            let seed = std::env::var("SMOKE_SEED")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(7);
+            let dir = world.resource::<SaveDir>().0.clone();
+            let entry = new_entry(&dir, "Smoke world", seed);
+            let started =
+                world.run_system_once(move |mut starter: Starter| starter.start(entry.clone()));
+            match started {
+                Ok(()) => Act::Next,
+                Err(e) => Act::Fail(format!("{e:?}")),
+            }
+        }
+        _ => Act::Wait,
+    }
+}
+
+/// The loading screen, until the world is played.
+fn loading(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let screen = *world.resource::<State<Screen>>().get();
+    match (screen, frame) {
+        (Screen::Loading, 5) => Act::Shoot("01-loading".into()),
+        (Screen::Gameplay, _) => Act::Next,
+        (_, f) if f > 6000 => Act::Fail("the world never loaded".into()),
+        _ => Act::Wait,
+    }
+}
+
+/// The boot screen, until it lifts.
+fn boot(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let warm = *world.resource::<State<WarmUp>>().get();
+    match (warm, frame) {
+        (WarmUp::Hidden, 30) => {
+            shot(world, "02-boot");
+            Act::Wait
+        }
+        (WarmUp::Idle, f) if f > 40 => Act::Next,
+        (_, f) if f > 3000 => Act::Fail("the boot screen never lifted".into()),
+        _ => Act::Wait,
+    }
+}
+
+/// The view the player wakes with.
+fn wake(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    match frame {
+        60 => {
+            hygiene(world, "home base, wake view");
+            Act::Shoot("03-wake".into())
+        }
+        _ => Act::Wait,
+    }
+}
+
+/// The whole base from 30 m away.
+fn base_view(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let Some(base) = world.get_resource::<Base>().copied() else {
+        return Act::Fail("no home base".into());
+    };
+    match frame {
+        1 => {
+            let from = base.centre + (base.east * 0.6 - base.north) * 30.0;
+            let feet = ground(world, from, 0.0);
+            stand(world, feet, base.centre, -0.1);
+            Act::Wait
+        }
+        40 => Act::Shoot("04-base".into()),
+        _ => Act::Wait,
+    }
+}
+
+/// The pad and the parked ship, seen from the wake point.
+fn pad_view(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let Some(base) = world.get_resource::<Base>().copied() else {
+        return Act::Fail("no home base".into());
+    };
+    match frame {
+        1 => {
+            let feet = ground(world, base.wake, 0.0);
+            stand(world, feet, base.pad, 0.0);
+            Act::Wait
+        }
+        40 => Act::Shoot("05-pad-ship".into()),
+        _ => Act::Wait,
+    }
+}
+
+/// Returns the village sites whose plaza lies within 5 m of the planet position `origin`.
+fn village_sites(terrain: &Terrain, origin: DVec3) -> Vec<abstractions::world::structures::Site> {
+    let at = terrain.locate(origin);
+    let cell = (Vec2::new(at.x, at.z) / CELL).floor().as_ivec2();
+    let cells = (-2..=2).flat_map(|x| (-2..=2).map(move |y| cell + IVec2::new(x, y)));
+    cells
+        .filter_map(|c| structure_in_cell(terrain, c))
+        .filter(|s| s.kind == Kind::Village)
+        .filter(|s| {
+            terrain
+                .embed(s.origin.x, s.floor, s.origin.y)
+                .distance(origin)
+                < 5.0
+        })
+        .collect()
+}
+
+/// Returns the planet position of the inland village nearest to `near` on the face chart
+/// `terrain`: one whose floor is over 5 m above the sea, so not a shore village on stilts.
+fn nearest_village(terrain: &Terrain, near: DVec3) -> Option<DVec3> {
+    let at = terrain.locate(near);
+    let cell = (Vec2::new(at.x, at.z) / CELL).floor().as_ivec2();
+    let cells = (-40..=40).flat_map(|x| (-40..=40).map(move |y| cell + IVec2::new(x, y)));
+    let sites = cells.filter_map(|c| structure_in_cell(terrain, c));
+    let villages = sites.filter(|s| s.kind == Kind::Village && s.floor > 5.0);
+    let place =
+        |s: abstractions::world::structures::Site| terrain.embed(s.origin.x, s.floor, s.origin.y);
+    villages
+        .map(place)
+        .min_by(|a, b| a.distance(near).total_cmp(&b.distance(near)))
+}
+
+/// The nearest village from 35 m outside it.
+fn village(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    match frame {
+        1 => {
+            let (Some(base), terrain) = (
+                world.get_resource::<Base>().copied(),
+                world.resource::<Terrain>().clone(),
+            ) else {
+                return Act::Fail("no home base".into());
+            };
+            let Some(origin) = nearest_village(&terrain, base.centre) else {
+                return Act::Fail("no village within 40 cells".into());
+            };
+            info!(
+                "SMOKE nearest village {:.0} m from the base",
+                origin.distance(base.centre)
+            );
+            notes.village = Some(origin);
+            let up = origin.normalize();
+            let side = up.cross(DVec3::Y).normalize_or(DVec3::X);
+            let feet = ground(world, origin + side * 35.0, 0.0);
+            stand(world, feet, origin, -0.15);
+            Act::Wait
+        }
+        150 => {
+            hygiene(world, "village");
+            Act::Shoot("06-village".into())
+        }
+        _ => Act::Wait,
+    }
+}
+
+/// Returns the unit tangent directions around `at`, `count` of them.
+fn compass(at: DVec3, count: u32) -> Vec<DVec3> {
+    let up = at.normalize();
+    let east = up.cross(DVec3::Y).normalize_or(DVec3::X);
+    let north = up.cross(east);
+    (0..count)
+        .map(|k| f64::from(k) * std::f64::consts::TAU / f64::from(count))
+        .map(|a| east * a.cos() + north * a.sin())
+        .collect()
+}
+
+/// Takes the walled house of the village nearest to its plaza from the village layout, and
+/// stands in it while its chunk loads.
+fn room(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    let Some(origin) = notes.village else {
+        return Act::Fail("no village".into());
+    };
+    match frame {
+        1 => {
+            let terrain = world.resource::<Terrain>().clone();
+            let sites = village_sites(&terrain, origin);
+            let Some(site) = sites.first() else {
+                return Act::Fail("no village site".into());
+            };
+            let view = terrain.around(site.origin.x, site.origin.y);
+            let mut houses = entries(&view, site);
+            houses.sort_by(|a, b| a.0.distance(origin).total_cmp(&b.0.distance(origin)));
+            let Some((middle, door, out)) = houses.first().copied() else {
+                return Act::Fail("the village has no walled house".into());
+            };
+            info!("SMOKE house middle {middle:?}, door {door:?}");
+            (notes.room, notes.door) = (Some(middle), Some((door, out)));
+            let up = middle.normalize();
+            stand(world, middle + up * 0.1, door, 0.0);
+            Act::Wait
+        }
+        90 => Act::Next,
+        _ => Act::Wait,
+    }
+}
+
+/// Stands `away` metres out of the door, looking at its frame.
+fn at_door(world: &mut World, notes: &Notes, away: f64) -> bool {
+    let Some((door, out)) = notes.door else {
+        return false;
+    };
+    let up = door.normalize();
+    let feet = ground(world, door + out * away, 0.0);
+    let pitch = (0.6 / away).atan() as f32;
+    stand(world, feet, door + up * 1.6, pitch);
+    true
+}
+
+/// The door frame from 15 m outside.
+fn door_far(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    match frame {
+        1 if !at_door(world, notes, 15.0) => Act::Fail("no door".into()),
+        60 => {
+            hygiene(world, "house door");
+            Act::Shoot("07-door-15m".into())
+        }
+        _ => Act::Wait,
+    }
+}
+
+/// The door frame from 3 m outside.
+fn door_near(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    match frame {
+        1 if !at_door(world, notes, 3.0) => Act::Fail("no door".into()),
+        60 => Act::Shoot("08-door-3m".into()),
+        _ => Act::Wait,
+    }
+}
+
+/// Stands 1.5 m inside the door, clear of the furniture in the middle of the room, looking up at
+/// the roof, turned `turn` radians from the way out.
+fn under_roof(world: &mut World, notes: &Notes, turn: f64) -> bool {
+    let Some((door, out)) = notes.door else {
+        return false;
+    };
+    let spot = door - out * 1.5;
+    let up = spot.normalize();
+    let toward = DQuat::from_axis_angle(up, turn) * -out;
+    stand(world, spot + up * 0.1, spot + toward, 1.05);
+    true
+}
+
+/// A drawn mesh: its entity, where it is and whether it is seen and shown.
+type Drawn = (
+    Entity,
+    &'static GlobalTransform,
+    &'static ViewVisibility,
+    &'static InheritedVisibility,
+);
+
+/// The robot body and the companion.
+type Bodies = Or<(
+    With<abstractions::avatar::Avatar>,
+    With<abstractions::companion::Companion>,
+)>;
+
+/// Logs the pose input, what is drawn of the body, and every drawn mesh of the body within 1.5 m
+/// of the camera with its angle from the line of sight.
+fn body_report(world: &mut World) {
+    let Some(pose) = world
+        .query::<&abstractions::avatar::AvatarPose>()
+        .iter(world)
+        .next()
+        .copied()
+    else {
+        return;
+    };
+    let shown = *world.resource::<abstractions::avatar::Shown>();
+    info!(
+        "SMOKE body look {:?}, shown {shown:?}, mode {:?}",
+        pose.look, pose.mode
+    );
+    let height = world.run_system_once(
+        |camera: Single<&GlobalTransform, With<abstractions::render::GameCamera>>,
+         body: Single<&GlobalTransform, With<Player>>| {
+            let up = body.up().as_vec3();
+            (camera.translation() - body.translation()).dot(up)
+        },
+    );
+    info!("SMOKE camera over the body centre: {height:?}");
+    let report = world.run_system_once(
+        |camera: Single<&GlobalTransform, With<abstractions::render::GameCamera>>,
+         meshes: Query<Drawn, With<Mesh3d>>,
+         parents: Query<&ChildOf>,
+         bodies: Query<(), Bodies>| {
+            let (eye, ahead) = (camera.translation(), camera.forward().as_vec3());
+            let mut lines = Vec::new();
+            for (entity, at, seen, inherited) in &meshes {
+                let owner = parents.iter_ancestors(entity).find(|e| bodies.contains(*e));
+                let offset = at.translation() - eye;
+                if owner.is_some() && offset.length() < 1.5 && inherited.get() {
+                    let angle = offset.normalize_or_zero().dot(ahead).acos().to_degrees();
+                    lines.push(format!(
+                        "{entity:?} {:.2} m {angle:.0} deg seen {}",
+                        offset.length(),
+                        seen.get()
+                    ));
+                }
+            }
+            lines
+        },
+    );
+    for line in report.unwrap_or_default() {
+        info!("SMOKE body part {line}");
+    }
+}
+
+/// Inside, looking up at the roof away from the door.
+fn roof_a(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    match frame {
+        1 if !under_roof(world, notes, 0.0) => Act::Fail("no room".into()),
+        49 => {
+            body_report(world);
+            Act::Wait
+        }
+        50 => Act::Shoot("09-roof-in-a".into()),
+        _ => Act::Wait,
+    }
+}
+
+/// Inside, looking up at the roof across the room.
+fn roof_b(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    match frame {
+        1 if !under_roof(world, notes, 1.6) => Act::Fail("no room".into()),
+        50 => Act::Shoot("10-roof-in-b".into()),
+        _ => Act::Wait,
+    }
+}
+
+/// Sets the view on foot and in the ship.
+fn view(world: &mut World, on_foot: ViewMode, in_ship: ViewMode) {
+    let mut prefs = world.resource_mut::<ViewPrefs>();
+    prefs.on_foot = on_foot;
+    prefs.ship = in_ship;
+}
+
+/// Returns the player's height above the ground under it, in metres.
+fn clearance(world: &mut World) -> f64 {
+    let anchor = *world.resource::<Anchor>();
+    let at = world
+        .query_filtered::<&Transform, With<Player>>()
+        .iter(world)
+        .next()
+        .map_or(Vec3::ZERO, |t| t.translation);
+    let planet = anchor.to_frame(at);
+    let globe = &world.resource::<Planet>().globe;
+    planet.length() - globe.radius() - f64::from(globe.height(planet.normalize()).max(0.0))
+}
+
+/// Opens the wingsuit once the player is in the air.
+fn spread(world: &mut World) {
+    for mut motion in world
+        .query_filtered::<&mut Motion, With<Player>>()
+        .iter_mut(world)
+    {
+        if !motion.grounded {
+            motion.wings = true;
+        }
+    }
+}
+
+/// Third person, standing at the wake point of the base.
+fn tp_stand(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let Some(base) = world.get_resource::<Base>().copied() else {
+        return Act::Fail("no home base".into());
+    };
+    match frame {
+        1 => {
+            view(world, ViewMode::Third, ViewMode::First);
+            let feet = ground(world, base.wake, 0.0);
+            stand(world, feet, base.pad, -0.1);
+            Act::Wait
+        }
+        60 => Act::Shoot("11-tp-stand".into()),
+        _ => Act::Wait,
+    }
+}
+
+/// Third person, walking toward the pad.
+fn tp_walk(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let forward = bound(world, |s| s.controls.keys.forward);
+    match frame {
+        1 => {
+            key(world, forward, true);
+            Act::Wait
+        }
+        40 => {
+            shot(world, "12-tp-walk");
+            Act::Wait
+        }
+        45 => {
+            key(world, forward, false);
+            Act::Next
+        }
+        _ => Act::Wait,
+    }
+}
+
+/// Third person, jumping and taking off with boots and wingsuit.
+fn tp_takeoff(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let jump = bound(world, |s| s.controls.keys.jump);
+    if frame == 1 {
+        key(world, jump, true);
+    }
+    if frame > 4 {
+        spread(world);
+    }
+    match frame {
+        45 => {
+            info!("SMOKE take-off clearance {:.1} m", clearance(world));
+            Act::Shoot("13-tp-takeoff".into())
+        }
+        _ => Act::Wait,
+    }
+}
+
+/// Third person, gliding in the wingsuit, high enough above the ground.
+fn tp_glide(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let jump = bound(world, |s| s.controls.keys.jump);
+    match frame {
+        1 => {
+            key(world, jump, false);
+            let high = clearance(world);
+            info!("SMOKE glide starts {high:.1} m above the ground");
+            if high < 40.0 {
+                let base = world.get_resource::<Base>().map_or(DVec3::Y, |b| b.centre);
+                let side = base.normalize().cross(DVec3::Y).normalize_or(DVec3::X);
+                let feet = ground(world, base - side * 160.0, 160.0);
+                stand(world, feet, ground(world, base, 160.0), -0.2);
+            }
+            Act::Wait
+        }
+        f if f <= 4 => Act::Wait,
+        f if f < 70 => {
+            spread(world);
+            match f {
+                60 => Act::Shoot("14-tp-glide".into()),
+                _ => Act::Wait,
+            }
+        }
+        _ => Act::Next,
+    }
+}
+
+/// Third person, powered flight: wingsuit and boots, trails out.
+fn tp_fly(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let jump = bound(world, |s| s.controls.keys.jump);
+    spread(world);
+    match frame {
+        1 => {
+            key(world, jump, true);
+            Act::Wait
+        }
+        50 => {
+            info!(
+                "SMOKE powered flight {:.1} m above the ground",
+                clearance(world)
+            );
+            shot(world, "15-tp-fly");
+            Act::Wait
+        }
+        52 => {
+            key(world, jump, false);
+            view(world, ViewMode::First, ViewMode::First);
+            Act::Next
+        }
+        _ => Act::Wait,
+    }
+}
+
+/// Returns the ship.
+fn ship(world: &mut World) -> Option<Ship> {
+    world.query::<&Ship>().iter(world).next().cloned()
+}
+
+/// Changes the ship in place.
+fn with_ship(world: &mut World, change: impl FnOnce(&mut Ship)) {
+    if let Some(mut ship) = world.query::<&mut Ship>().iter_mut(world).next() {
+        change(&mut ship);
+    }
+}
+
+/// Back at the base, beside the hatch of the ship, then into its seat.
+fn board(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let Some(hull) = ship(world) else {
+        return Act::Fail("no ship".into());
+    };
+    let key_board = bound(world, |s| s.controls.keys.ship.board);
+    match frame {
+        1 => {
+            let beside = hull.pos + hull.rot * DVec3::new(-2.6, -1.2, -1.8);
+            stand(world, beside, hull.pos, 0.0);
+            Act::Wait
+        }
+        60 => {
+            shot(world, "16-hatch");
+            Act::Wait
+        }
+        62 => {
+            key(world, key_board, true);
+            Act::Wait
+        }
+        63 => {
+            key(world, key_board, false);
+            Act::Wait
+        }
+        90 => match world.resource::<Location>().travel {
+            Travel::InShip => Act::Shoot("17-seated".into()),
+            Travel::OnFoot => Act::Fail("the board key did not seat the player".into()),
+        },
+        _ => Act::Wait,
+    }
+}
+
+/// Holds the vertical thrusters until the ship climbs past 15 m.
+fn takeoff(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let up = bound(world, |s| s.controls.keys.ship.rise);
+    if frame == 1 {
+        pace(world, FLIGHT);
+        key(world, up, true);
+    }
+    let height = world.resource::<ShipTelemetry>().altitude_ground;
+    if height > 15.0 {
+        key(world, up, false);
+        return Act::Shoot("19-takeoff".into());
+    }
+    if frame > 400 {
+        key(world, up, false);
+        return Act::Fail(format!("the ship reached only {height:.1} m"));
+    }
+    Act::Wait
+}
+
+/// Puts the ship at rest `height` metres above the sea at the planet direction `dir`, the nose
+/// along `toward` and pitched down by `pitch` radians.
+fn hover(world: &mut World, dir: DVec3, height: f64, (toward, pitch): (DVec3, f64)) {
+    let planet = world.resource::<Planet>();
+    let (radius, body) = (planet.globe.radius(), planet.body);
+    let up = dir.normalize();
+    let flat = (toward - up * toward.dot(up)).normalize_or(up.any_orthonormal_vector());
+    let level = DQuat::from_mat3(&bevy::math::DMat3::from_cols(flat.cross(up), up, -flat));
+    with_ship(world, |ship| {
+        ship.frame = Frame::Surface(body);
+        ship.pos = up * (radius + height);
+        ship.rot = level * DQuat::from_rotation_x(-pitch);
+        (ship.vel, ship.spin, ship.landed) = (DVec3::ZERO, DVec3::ZERO, false);
+    });
+}
+
+/// Returns a shore point within 2 km of `from`: the first sea along one of 16 directions.
+fn find_shore(world: &World, from: DVec3) -> Option<DVec3> {
+    let globe = &world.resource::<Planet>().globe;
+    let up = from.normalize();
+    let east = up.any_orthonormal_vector();
+    let north = up.cross(east);
+    (0..16).find_map(|k| {
+        let a = f64::from(k) * std::f64::consts::TAU / 16.0;
+        let dir = east * a.cos() + north * a.sin();
+        (1..200)
+            .map(|i| (from + dir * f64::from(i) * 10.0).normalize())
+            .find(|p| globe.height(*p) < -2.0)
+    })
+}
+
+/// Puts the ship `height` metres up, 150 m inland of the shore point `sea` seen from `from`,
+/// looking out to sea a little below the horizon.
+fn seaward(world: &mut World, sea: DVec3, from: DVec3, height: f64) {
+    let back = (from - sea).normalize();
+    let over = (sea + back * 150.0).normalize();
+    hover(world, over, height, (sea - over, 0.22));
+}
+
+/// The fog from 100 m above the shore.
+fn shore(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    let Some(hull) = ship(world) else {
+        return Act::Fail("no ship".into());
+    };
+    match frame {
+        1 => {
+            let Some(sea) = find_shore(world, hull.pos) else {
+                return Act::Fail("no shore within 2 km".into());
+            };
+            notes.shore = Some(sea);
+            seaward(world, sea, hull.pos, 100.0);
+            Act::Wait
+        }
+        30 => Act::Shoot("20-fog-100m".into()),
+        _ => Act::Wait,
+    }
+}
+
+/// 500 m above the ground: the counts the brief asks for.
+fn low(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    let Some(sea) = notes.shore else {
+        return Act::Fail("no shore".into());
+    };
+    match frame {
+        1 => {
+            let base = world.get_resource::<Base>().map_or(sea * 2.0, |b| b.centre);
+            seaward(world, sea, base, 500.0);
+            Act::Wait
+        }
+        40 => {
+            hygiene(world, "500 m");
+            Act::Shoot("23-fog-500m".into())
+        }
+        _ => Act::Wait,
+    }
+}
+
+/// The fog from 300 m above the shore.
+fn fog_300(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    let Some(sea) = notes.shore else {
+        return Act::Fail("no shore".into());
+    };
+    match frame {
+        1 => {
+            let base = world.get_resource::<Base>().map_or(sea * 2.0, |b| b.centre);
+            seaward(world, sea, base, 300.0);
+            Act::Wait
+        }
+        40 => Act::Shoot("21-fog-300m".into()),
+        _ => Act::Wait,
+    }
+}
+
+/// Third person view of the ship, at `name`, then first person again.
+fn chase(world: &mut World, frame: u32, name: &str) -> Act {
+    match frame {
+        1 => {
+            view(world, ViewMode::First, ViewMode::Third);
+            Act::Wait
+        }
+        40 => {
+            shot(world, name);
+            Act::Wait
+        }
+        42 => {
+            view(world, ViewMode::First, ViewMode::First);
+            Act::Next
+        }
+        _ => Act::Wait,
+    }
+}
+
+/// Third person, the ship landed on its pad.
+fn tp_pad(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    chase(world, frame, "18-tp-ship-pad")
+}
+
+/// Third person, the ship at 300 m.
+fn tp_flight(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    chase(world, frame, "22-tp-ship-300m")
+}
+
+/// Third person, the ship in orbit.
+fn tp_orbit(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    chase(world, frame, "28-tp-ship-orbit")
+}
+
+/// 1000 m up, looking down past the ring where the near sea hands over to the far sea.
+fn handover(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    let Some(sea) = notes.shore else {
+        return Act::Fail("no shore".into());
+    };
+    match frame {
+        1 => {
+            let globe = world.resource::<Planet>().globe.clone();
+            let out = compass(sea, 32)
+                .into_iter()
+                .map(|d| (sea + d * 1500.0).normalize())
+                .max_by(|a, b| globe.height(*b).total_cmp(&globe.height(*a)))
+                .unwrap_or(sea.normalize());
+            hover(
+                world,
+                sea.normalize(),
+                1000.0,
+                (out - sea.normalize(), 0.65),
+            );
+            Act::Wait
+        }
+        40 => Act::Shoot("24-handover-1000m".into()),
+        _ => Act::Wait,
+    }
+}
+
+/// Inside the cloud band.
+fn clouds(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    let sea = notes.shore.unwrap_or(DVec3::Y);
+    let body = world.resource::<Location>().body;
+    let spec = world.resource::<Universe>().planet(body);
+    match frame {
+        1 => {
+            let mid = (spec.cloud_base + spec.cloud_top) * 0.5;
+            hover(
+                world,
+                sea,
+                mid,
+                (sea.normalize().any_orthonormal_vector(), 0.1),
+            );
+            Act::Wait
+        }
+        20 => Act::Shoot("25-clouds".into()),
+        _ => Act::Wait,
+    }
+}
+
+/// Just above the cloud band.
+fn above(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    let sea = notes.shore.unwrap_or(DVec3::Y);
+    let body = world.resource::<Location>().body;
+    let spec = world.resource::<Universe>().planet(body);
+    match frame {
+        1 => {
+            hover(
+                world,
+                sea,
+                spec.cloud_top + 200.0,
+                (sea.normalize().any_orthonormal_vector(), 0.25),
+            );
+            Act::Wait
+        }
+        20 => Act::Shoot("26-above-clouds".into()),
+        _ => Act::Wait,
+    }
+}
+
+/// Above the air, the nose down at the planet.
+fn orbit(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    let sea = notes.shore.unwrap_or(DVec3::Y);
+    let body = world.resource::<Location>().body;
+    let spec = world.resource::<Universe>().planet(body);
+    match frame {
+        1 => {
+            hover(
+                world,
+                sea,
+                spec.atmosphere_height * 1.6,
+                (sea.normalize().any_orthonormal_vector(), 1.2),
+            );
+            Act::Wait
+        }
+        60 => {
+            hygiene(world, "orbit");
+            Act::Shoot("27-orbit".into())
+        }
+        _ => Act::Wait,
+    }
+}
+
+/// Returns the planet of the system of `home` nearest to it now, itself excluded, or with
+/// `SMOKE_TARGET` set to `giant` or `moon`, the gas giant of the system or its first moon.
+fn neighbour(world: &World, home: BodyId) -> Option<BodyId> {
+    let universe = world.resource::<Universe>();
+    let wanted = std::env::var("SMOKE_TARGET").unwrap_or_default();
+    if wanted == "giant" || wanted == "moon" {
+        let system = universe.system(home.star);
+        let giant = system.planets.iter().find(|p| {
+            p.record.class == abstractions::universe::PlanetClass::GasGiant && p.moons > 0
+        })?;
+        return match wanted.as_str() {
+            "giant" => Some(giant.id),
+            _ => universe.moons(giant.id).first().map(|moon| moon.id),
+        };
+    }
+    let time = world.resource::<abstractions::space::Clock>().seconds;
+    let from = universe.planet_position(home, time);
+    let gap = |id: &BodyId| universe.planet_position(*id, time).distance(from);
+    let system = universe.system(home.star);
+    let others = system.planets.iter().map(|p| p.id).filter(|id| *id != home);
+    others.min_by(|a, b| gap(a).total_cmp(&gap(b)))
+}
+
+/// Lifts the ship past the lock sphere of its planet, engages the autopilot to the nearest other
+/// planet and shoots the warp.
+fn warp(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    let phase = world.resource::<Autopilot>().phase();
+    match frame {
+        1 => {
+            let sea = notes.shore.unwrap_or(DVec3::Y);
+            let radius = world.resource::<Planet>().globe.radius();
+            hover(
+                world,
+                sea,
+                radius * 2.5,
+                (sea.normalize().any_orthonormal_vector(), 0.0),
+            );
+            Act::Wait
+        }
+        10 => {
+            let home = world.resource::<Location>().body;
+            let Some(far) = neighbour(world, home) else {
+                return Act::Fail("no other planet".into());
+            };
+            notes.far = Some(far);
+            info!(
+                "SMOKE ship frame before engage {:?}",
+                ship(world).map(|s| s.frame)
+            );
+            world.trigger(Engage(Target::Body(far)));
+            Act::Wait
+        }
+        f if f > 10 && phase == Phase::Cruising => Act::Shoot("29-warp".into()),
+        f if f > 2000 => Act::Fail(format!("the autopilot stayed {phase:?}")),
+        f if f % 200 == 0 => {
+            info!("SMOKE warp frame {f}: autopilot {phase:?}");
+            Act::Wait
+        }
+        _ => Act::Wait,
+    }
+}
+
+/// Waits for the drop out of warp at the other planet.
+fn arrive(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    let phase = world.resource::<Autopilot>().phase();
+    let streamed = world.resource::<Planet>().body;
+    match (phase, frame) {
+        (_, f) if f > 4000 => Act::Fail(format!("the autopilot stayed {phase:?}")),
+        (Phase::Arrived, _) if Some(streamed) == notes.far => Act::Shoot("30-arrival".into()),
+        _ => Act::Wait,
+    }
+}
+
+/// Sets the ship 12 m over dry ground of the new planet and holds the thrusters down until it lands.
+fn land(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    let down = bound(world, |s| s.controls.keys.ship.sink);
+    if frame == 1 {
+        let globe = world.resource::<Planet>().globe.clone();
+        let north = Terrain::on(globe.clone(), globe.face_chart(Face::PosY));
+        let spawn = north.find_spawn();
+        let dir = north.embed(spawn.x, 0.0, spawn.z).normalize();
+        let height = f64::from(globe.height(dir).max(0.0)) + 14.0;
+        hover(world, dir, height, (dir.any_orthonormal_vector(), 0.0));
+        key(world, down, true);
+        info!("SMOKE landing on {:?}", notes.far);
+    }
+    let landed = ship(world).is_some_and(|s| s.landed);
+    match (landed, frame) {
+        (true, _) => {
+            key(world, down, false);
+            Act::Shoot("31-landed".into())
+        }
+        (_, f) if f > 900 => {
+            key(world, down, false);
+            Act::Fail("the ship never landed".into())
+        }
+        _ => Act::Wait,
+    }
+}
+
+/// Out of the seat onto the new planet.
+fn step_out(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let board = bound(world, |s| s.controls.keys.ship.board);
+    match frame {
+        30 => {
+            pace(world, WALK);
+            key(world, board, true);
+            Act::Wait
+        }
+        31 => {
+            key(world, board, false);
+            Act::Wait
+        }
+        120 => match world.resource::<Location>().travel {
+            Travel::OnFoot => Act::Shoot("32-step-out".into()),
+            Travel::InShip => Act::Fail("still seated".into()),
+        },
+        _ => Act::Wait,
+    }
+}

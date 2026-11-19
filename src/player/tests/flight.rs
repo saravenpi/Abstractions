@@ -45,32 +45,62 @@ fn the_gear_touches_down_on_contact_and_slides_along_the_ground() {
     assert_eq!(settle(&mut sliding, Vec3::new(1.0, -3.0, -9.0)).y, 0.0);
 }
 
-/// Fired boots reach the gear, the sprint key alone only with the wingsuit asked open, and the
-/// forward key pushes the nose down.
-#[test]
-fn keys_map_to_the_gear() {
-    let air = Air {
+/// Returns the air of the key tests: a wind along +X, the view dead ahead.
+fn air() -> Air {
+    Air {
         density: 1.2,
         wind: Vec3::X,
         clearance: 9.0,
         look: Vec3::NEG_Z,
         aim: Vec2::ZERO,
         gravity: 22.0,
-    };
-    let mut intent = Intent {
+    }
+}
+
+/// Returns the intent of the key tests: forward, left, the sprint and half a right yaw held.
+fn held() -> Intent {
+    Intent {
         wish: Vec3::ZERO,
         forward: 1.0,
         right: -1.0,
         sprint: true,
         jump: false,
-    };
+        yaw: 0.5,
+        steer: false,
+    }
+}
+
+/// Fired boots reach the gear, the sprint key alone only with the wingsuit asked open, the
+/// forward key pushes the nose down and the yaw keys turn.
+#[test]
+fn keys_map_to_the_gear() {
+    let (air, mut intent) = (air(), held());
     let mut motion = Motion::default();
     let told = input(&motion, &intent, &air, (false, false));
     assert!(!told.boost && !told.deploy);
     assert_eq!((told.pitch, told.roll, told.wind), (-1.0, -1.0, Vec3::X));
+    assert_eq!(told.yaw, 0.5);
     motion.wings = true;
     assert!(input(&motion, &intent, &air, (false, false)).boost);
     (motion.wings, intent.sprint, motion.boots) = (false, false, true);
     let told = input(&motion, &intent, &air, (true, true));
     assert!(told.boost && told.grounded && told.in_water);
+}
+
+/// Folded the view always aims the body; on the wings only while the steer button is held.
+#[test]
+fn the_view_aims_the_wings_only_while_it_steers() {
+    let (air, mut intent) = (air(), held());
+    let mut motion = Motion::default();
+    assert_eq!(
+        input(&motion, &intent, &air, (false, false)).aim,
+        Some(Vec2::ZERO)
+    );
+    motion.wings = true;
+    assert_eq!(input(&motion, &intent, &air, (false, false)).aim, None);
+    intent.steer = true;
+    assert_eq!(
+        input(&motion, &intent, &air, (false, false)).aim,
+        Some(Vec2::ZERO)
+    );
 }

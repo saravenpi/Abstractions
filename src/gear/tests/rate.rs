@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::{Flight, braking, flying, gliding, looking};
+use super::{Flight, braking, flying, gliding};
 use crate::gear::{GearInput, Mode};
 
 /// Returns where a body ends after 10 s of `input` from `start` at `rate` frames per second.
@@ -38,7 +38,7 @@ fn same_at_every_rate(start: Flight, input: GearInput) {
 fn powered_turn_is_rate_independent() {
     let input = GearInput {
         roll: 0.3,
-        look: looking(1.0, 0.2),
+        aim: Some(Vec2::new(1.0, 0.2)),
         ..flying(0.0)
     };
     same_at_every_rate(Flight::new(Mode::Off, Vec3::new(0.0, 7.0, -5.0)), input);
@@ -49,7 +49,7 @@ fn powered_turn_is_rate_independent() {
 fn glide_is_rate_independent() {
     let input = GearInput {
         pitch: -0.4,
-        look: looking(-0.7, -0.5),
+        aim: Some(Vec2::new(-0.7, -0.5)),
         ..gliding(0.0)
     };
     same_at_every_rate(

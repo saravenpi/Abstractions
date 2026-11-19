@@ -137,14 +137,15 @@ fn altitude_text(flight: &Flight) -> String {
     }
 }
 
-/// Returns the words for the frame the ship is measured in. The frame of a moon is its
-/// surface, as on a planet, and over a gas giant the ship says it cannot land.
+/// Returns the words for the frame the ship is measured in: near a planet or a moon, out in
+/// the space of a star system, or between the stars. Over a gas giant the ship also says it
+/// cannot land.
 fn frame_text(flight: &Flight) -> String {
     let name = match flight.telemetry.frame {
-        Frame::Surface(_) if flight.giant => "surface - no ground, cannot land",
-        Frame::Surface(_) => "surface",
-        Frame::System(_) => "orbit",
-        Frame::Galaxy(_) => "deep space",
+        Frame::Surface(_) if flight.giant => "planet - no ground, cannot land",
+        Frame::Surface(_) => "planet",
+        Frame::System(_) => "star system",
+        Frame::Galaxy(_) => "between stars",
     };
     name.to_string()
 }

@@ -1,11 +1,14 @@
 //! The in-game HUD: flight instruments in the ship, the interaction prompt, the location and
-//! presence banner, the compass that points home and to the ship, and the minimap. Everything hides
-//! behind menus and the computer.
+//! presence banner, the compass that points at every marker with the coordinates under it,
+//! and the minimap. Everything hides behind menus and the computer.
 
 mod banner;
 mod climate;
 mod compass;
+mod coords;
+mod eye;
 mod flight;
+mod markers;
 mod minimap;
 mod needle;
 mod panel;
@@ -17,10 +20,13 @@ mod tests_banner;
 #[cfg(test)]
 mod tests_climate;
 #[cfg(test)]
+mod tests_coords;
+#[cfg(test)]
 mod tests_deck;
 mod units;
 
 pub use climate::HudWeather;
+pub use markers::{Marker, MarkerKind, MarkerPlace, MarkerSet, Markers};
 
 use std::time::Duration;
 
@@ -33,6 +39,9 @@ use crate::space::{Location, Travel};
 
 /// Seconds between two refreshes of the flight instruments.
 const REFRESH: f32 = 0.1;
+
+/// Seconds between two refreshes of the coordinates line.
+const COORDS_EVERY: f32 = 0.1;
 
 /// Seconds between two refreshes of the climate line.
 const CLIMATE_EVERY: f32 = 0.5;
@@ -60,7 +69,7 @@ fn spawn(mut commands: Commands) {
             prompt::line(),
             banner::block(),
             compass::bar(),
-            climate::line(),
+            coords::corner(),
             minimap::frame()
         ],
     ));
@@ -91,7 +100,12 @@ fn show(
 
 /// Registers the HUD systems.
 pub(super) fn plugin(app: &mut App) {
+    markers::plugin(app);
+    eye::plugin(app);
+    compass::plugin(app);
     let every = on_timer(Duration::from_secs_f32(REFRESH));
+    let place = coords::update.run_if(on_timer(Duration::from_secs_f32(COORDS_EVERY)));
+    let marks = (compass::update, compass::north, place);
     app.init_resource::<banner::Banner>()
         .add_plugins(minimap::plugin)
         .add_systems(OnEnter(Screen::Gameplay), spawn)
@@ -104,7 +118,7 @@ pub(super) fn plugin(app: &mut App) {
                     .run_if(seated)
                     .run_if(every),
                 prompt::update.run_if(in_control),
-                compass::update.run_if(in_control),
+                marks.run_if(in_control).in_set(MarkerSet::Show),
                 climate::update
                     .run_if(in_control)
                     .run_if(on_timer(Duration::from_secs_f32(CLIMATE_EVERY))),

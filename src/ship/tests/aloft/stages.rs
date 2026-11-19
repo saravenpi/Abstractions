@@ -78,8 +78,8 @@ pub fn glides(game: &mut Game, watch: &mut Watch) {
     assert!(!game.walker().seated);
 }
 
-/// Wingsuit and boots together fly: the back key pulls the view and the nose up and climbs,
-/// the forward key brings them level again, and level flight holds its height.
+/// Wingsuit and boots together fly: the back key lifts the nose and climbs, and let go the
+/// wings come back to level flight, which holds its height.
 pub fn flies(game: &mut Game, watch: &mut Watch) {
     let boost = game.bound(|keys| keys.sprint);
     game.press(boost);
@@ -96,13 +96,8 @@ pub fn flies(game: &mut Game, watch: &mut Watch) {
         climbed > before,
         "pulling up sank from {before} m to {climbed} m"
     );
-    let forward = game.bound(|keys| keys.forward);
-    game.press(forward);
-    watch.step(game, 45);
-    game.release(forward);
-    let level = game.body().height;
     watch.step(game, 180);
-    let (body, kept) = (game.body(), level - 15.0);
+    let (body, kept) = (game.body(), climbed - 15.0);
     assert!(
         body.height > kept,
         "level flight sank to {} m under {kept} m",

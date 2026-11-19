@@ -30,6 +30,11 @@ pub struct Display {
     pub thrust: f32,
 }
 
+/// Where the eyes of a companion with no brain of its own look, each axis -1, 0 or 1, as its
+/// player's game says they do.
+#[derive(Component, Debug, Default, Clone, Copy, PartialEq)]
+pub struct Look(pub IVec2);
+
 /// Builds the picture for `frame`: nearest sampling, no mipmaps, so the pixels stay sharp.
 pub fn picture(frame: &Frame) -> Image {
     let size = Extent3d {
@@ -59,18 +64,29 @@ fn gaze(brain: Option<&Brain>, head: &GlobalTransform) -> IVec2 {
     }
 }
 
+/// What a screen is painted from: the brain or the look that turns the eyes, the face, the
+/// parts that hold the head and what the screen shows.
+type Painted = (
+    Option<&'static Brain>,
+    Option<&'static Look>,
+    &'static Face,
+    &'static Parts,
+    &'static mut Display,
+);
+
 /// Repaints the screen of every companion with a face when its frame changed. The eyes turn
-/// toward what the companion looks at, from where its own head points.
+/// toward what the companion looks at, from where its own head points, or where its [`Look`]
+/// says.
 pub fn repaint(
-    mut bots: Query<(Option<&Brain>, &Face, &Parts, &mut Display), With<Companion>>,
+    mut bots: Query<Painted, With<Companion>>,
     heads: Query<&GlobalTransform>,
     mut images: ResMut<Assets<Image>>,
 ) {
-    for (brain, face, parts, mut display) in &mut bots {
+    for (brain, look, face, parts, mut display) in &mut bots {
         let Ok(head) = heads.get(parts.head) else {
             continue;
         };
-        let frame = face.frame(gaze(brain, head));
+        let frame = face.frame(look.map_or_else(|| gaze(brain, head), |look| look.0));
         if display.shown == Some(frame) {
             continue;
         }

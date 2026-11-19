@@ -160,7 +160,7 @@ impl Rig {
             Quat::from_rotation_y(self.sway.lead.x) * Quat::from_rotation_x(self.sway.lead.y);
         let pose = CameraPose {
             position: pivot + swing.normalize_or_zero() * gap,
-            rotation: stance.frame * look * lead * Quat::from_rotation_z(-self.sway.roll),
+            rotation: stance.frame * look * lead * Quat::from_rotation_z(-self.sway.roll.angle),
             fov: curve::fov(moment.fov, &shot, &bend),
         };
         Shown {

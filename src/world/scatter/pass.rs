@@ -6,13 +6,14 @@ use rand_chacha::ChaCha8Rng;
 
 use super::air::Air;
 use super::density::{Fields, choose};
+use super::grow::Flora;
 use super::metric::Metric;
 use super::relief::Relief;
+use super::sow::cost;
 use super::spacing::{crowded, ground, rock, room, sunk};
 use super::{BIG_CAP, Placement, SMALL_CAP, TRI_BUDGET, deep};
 use crate::world::lands::thrive::{frozen, vigor};
 use crate::world::propmesh::{Plant, VARIANTS};
-use crate::world::props::small_tris;
 use crate::world::{Biome, CHUNK_SIZE, SEA_LEVEL, Surface, Terrain};
 
 /// Highest ground a willow may stand on.
@@ -35,18 +36,20 @@ pub struct Ctx<'a> {
     pub relief: Option<Relief<'a>>,
     /// Climate over the chunk. The legacy plane has none and grows as it always did.
     pub air: Option<Air>,
+    /// The plant groups of a living or dead planet other than home, or none where the tables of home grow.
+    pub flora: Option<Flora>,
 }
 
 /// The ground under one try.
-struct Ground {
+pub(super) struct Ground {
     /// Height every decision reads: the visible mesh on a globe, the analytic ground on the legacy plane.
-    height: f32,
+    pub(super) height: f32,
     /// True slope of the visible mesh, rise over run. Zero on the legacy plane, which measures its own.
-    slope: f32,
+    pub(super) slope: f32,
     /// What covers the ground.
-    surface: Surface,
+    pub(super) surface: Surface,
     /// Biome of the spot.
-    biome: Biome,
+    pub(super) biome: Biome,
 }
 
 impl Ctx<'_> {
@@ -62,7 +65,7 @@ impl Ctx<'_> {
     /// Returns the ground at chart position `w`, or nothing where the floor is too deep for anything. On a
     /// globe a channel bed above the sea covers the ground as the terrain mesh paints it, so nothing grows
     /// in a river.
-    fn look(&self, w: Vec2) -> Option<Ground> {
+    pub(super) fn look(&self, w: Vec2) -> Option<Ground> {
         let (x, z) = (w.x, w.y);
         let (deep, lands) = (deep(self.terrain), self.terrain.globe().lands());
         let Some(relief) = &self.relief else {
@@ -113,7 +116,7 @@ impl Ctx<'_> {
     }
 
     /// Returns the height a prop of scale `scale` stands at: the visible terrain mesh, with rocks sunk into slopes.
-    fn rest(&self, w: Vec2, p: (Plant, f32), at: &Ground) -> f32 {
+    pub(super) fn rest(&self, w: Vec2, p: (Plant, f32), at: &Ground) -> f32 {
         if self.relief.is_none() {
             return ground(self.terrain, w, p, at.height);
         }
@@ -121,11 +124,15 @@ impl Ctx<'_> {
         at.height - f32::from(dry_rock) * sunk(at.slope, p.1)
     }
 
-    /// Returns the prop the roll plants at chunk position `local`, if any, with its look drawn from `rng`.
+    /// Returns the prop the roll plants at chunk position `local`, if any, with its look drawn from `rng`: from
+    /// the flora of the chunk when it has one, else from the tables of home.
     fn place(&self, rng: &mut ChaCha8Rng, local: Vec2, roll: f32, big: bool) -> Option<Placement> {
         let w = self.center + local;
         if self.relief.as_ref().is_some_and(|relief| !relief.holds(w)) {
             return None;
+        }
+        if let Some(flora) = &self.flora {
+            return flora.place(self, rng, (w, local), (roll, big));
         }
         let (plant, at) = self.pick(w, roll, big)?;
         let yaw = rng.random_range(0.0..std::f32::consts::TAU);
@@ -145,7 +152,7 @@ impl Ctx<'_> {
 }
 
 /// Returns the scale of a new plant, or the height of a kelp, which stops one to two meters under the surface.
-fn size(rng: &mut ChaCha8Rng, plant: Plant, surface: Surface, height: f32) -> f32 {
+pub(super) fn size(rng: &mut ChaCha8Rng, plant: Plant, surface: Surface, height: f32) -> f32 {
     if plant == Plant::Kelp {
         return (-height - 1.0 - rng.random_range(0.0..1.5)).max(1.5);
     }
@@ -184,7 +191,7 @@ pub fn pass(ctx: &Ctx, rng: &mut ChaCha8Rng, tries: usize, big: bool) -> Vec<Pla
         if big && !clear(ctx, &mut spots, &placement) {
             continue;
         }
-        spent += if big { 0 } else { small_tris(&placement) };
+        spent += if big { 0 } else { cost(&placement) };
         out.push(placement);
     }
     out

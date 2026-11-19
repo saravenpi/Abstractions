@@ -6,13 +6,13 @@ use glam::{DVec3, Quat, Vec3};
 use super::{Buffer, DELAY_MAX, DELAY_MIN, DRIFT, Snap, View};
 
 /// Seconds between two snapshots of a moving body.
-const INTERVAL: f64 = 1.0 / 30.0;
+pub(super) const INTERVAL: f64 = 1.0 / 30.0;
 
 /// Seconds between two snapshots of a body at rest.
 const REST_INTERVAL: f64 = 0.5;
 
 /// Shortest one-way trip of a datagram in seconds.
-const LATENCY: f64 = 0.05;
+pub(super) const LATENCY: f64 = 0.05;
 
 /// Frames drawn per second.
 const FPS: f64 = 60.0;
@@ -24,7 +24,7 @@ fn noise(n: u32) -> f64 {
 }
 
 /// Returns the true state at `time` of a body going round a 20 m circle at 10 m/s.
-fn circle(time: f64) -> Snap<()> {
+pub(super) fn circle(time: f64) -> Snap<()> {
     let angle = time * 10.0 / 20.0;
     let (sin, cos) = angle.sin_cos();
     Snap {
@@ -38,7 +38,7 @@ fn circle(time: f64) -> Snap<()> {
 
 /// Returns the snapshots of `body` sent every `interval` for `seconds`, with the share `loss`
 /// lost and up to `jitter` seconds of extra latency, paired with their arrival times in order.
-fn arrivals(
+pub(super) fn arrivals(
     body: fn(f64) -> Snap<()>,
     interval: f64,
     jitter: f64,
@@ -57,7 +57,7 @@ fn arrivals(
 
 /// Feeds `buffer` the `arrivals` and samples it every frame for `seconds`, calling `check` with
 /// each state drawn, the frame time and the delay in use.
-fn play(
+pub(super) fn play(
     buffer: &mut Buffer<()>,
     arrivals: &[(f64, Snap<()>)],
     seconds: f64,

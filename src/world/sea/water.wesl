@@ -372,5 +372,8 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
     let near = 1.0 - smoothstep(water.frame.w * HAND_SOFT, water.frame.w, dist);
     let far_side = f32(below) * step(WAVE_TOP, eye_height);
     let alpha = mix(col.a, 1.0, fog_amount) * near * (1.0 - far_side);
+    if (alpha <= 0.0) {
+        discard;
+    }
     return vec4<f32>(mix(col.rgb, water.fog.rgb, fog_amount), alpha);
 }

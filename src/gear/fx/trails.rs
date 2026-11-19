@@ -93,8 +93,8 @@ pub struct Canvas<'w> {
 /// Spawns the three ribbons when gameplay starts, unless they already exist.
 ///
 /// A ribbon is moved to the head of its trail each frame and its vertices are rewritten around
-/// it from points kept in the planet frame, which is what carries it through a rebase. It has
-/// no bounds, so the renderer sorts it among the see-through things by where the entity is.
+/// it from points kept in the planet frame, which is what carries it through a rebase. The sea
+/// draws before it and writes its depth, so each pixel of it shows above the water only.
 pub fn spawn(
     mut commands: Commands,
     kit: Res<Kit>,

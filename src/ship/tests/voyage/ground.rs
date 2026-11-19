@@ -64,8 +64,8 @@ pub fn boards(game: &mut Game) {
     assert_eq!(game.get::<AudioScene>().cabin, 1.0);
 }
 
-/// In the seat, the view key moves the camera behind the ship, which it shows whole, and the
-/// camera stays above the ground the landed ship stands on.
+/// In the seat, the view key moves the camera behind the ship, which it shows whole with the
+/// pilot drawn in the seat, and the camera stays above the ground the landed ship stands on.
 pub fn looks_from_behind(game: &mut Game) {
     assert_eq!(game.get::<ViewPrefs>().ship, ViewMode::First);
     game.press(key(game, |keys| keys.view));
@@ -79,5 +79,5 @@ pub fn looks_from_behind(game: &mut Game) {
         assert!(height > 0.3, "the camera is {height} m over the ground");
     }
     assert!(game.hull_in_view(), "the landed ship is not all in view");
-    assert_eq!(game.get::<Shown>(), Shown::Hidden);
+    assert_eq!(game.get::<Shown>(), Shown::Full);
 }

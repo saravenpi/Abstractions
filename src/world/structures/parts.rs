@@ -30,9 +30,13 @@ impl Build<'_> {
         self.spire(Vec3::Y * lift, Vec2::new(r, 0.001), sides, mat.rgb);
     }
 
-    /// Adds an upright prism with its bottom circle centered on the local point `base`.
+    /// Adds an upright prism with its bottom circle centered on the local point `base`. Nothing when it has
+    /// no height, like a stilt on ground that reaches its deck.
     pub fn pillar(&mut self, base: Vec3, size: Vec2, sides: u32, mat: Mat) {
         let color = self.color(mat.rgb, 1.0);
+        if size.y <= 0.0 {
+            return;
+        }
         let at = self.pt(base);
         self.tagged(Tag::Round, |b| prism(&mut b.mesh, at, size, sides, color));
         if mat.solid {
@@ -45,25 +49,22 @@ impl Build<'_> {
         }
     }
 
-    /// Adds a cone with its base circle centered on the local point `base`.
+    /// Adds a cone with its base circle centered on the local point `base`, solid as drawn.
     pub fn spire(&mut self, base: Vec3, size: Vec2, sides: u32, rgb: [f32; 3]) {
         let color = self.color(rgb, 1.0);
         let at = self.pt(base);
         self.tagged(Tag::Round, |b| cone(&mut b.mesh, at, size, sides, color));
+        self.cone_body(at, size, sides);
     }
 
-    /// Adds a boulder on the ground at the local point `(x, z)`.
+    /// Adds a solid boulder on the ground at the local point `(x, z)`.
     pub fn rock(&mut self, x: f32, z: f32, size: f32, seed: u32) {
         let y = self.ground_at(x, z) - self.base_y + size * 0.3;
         let at = self.pt(Vec3::new(x, y, z));
         let color = self.color(STONE, 1.0);
-        icosa(
-            &mut self.mesh,
-            at,
-            Vec3::new(size, size * 0.65, size * 0.85),
-            (0.25, seed),
-            color,
-        );
+        let radii = Vec3::new(size, size * 0.65, size * 0.85);
+        icosa(&mut self.mesh, at, radii, (0.25, seed), color);
+        self.boulder(at, radii);
     }
 
     /// Lowers the frame to the highest ground within `r` of it, plus `lift`.
@@ -76,7 +77,8 @@ impl Build<'_> {
         self.base_y = top + lift;
     }
 
-    /// Adds a ramp from the local point `at`, heading along local +z down to the ground.
+    /// Adds a ramp from the local point `at`, heading along local +z down to the ground: a wedge, solid as
+    /// drawn.
     pub fn ramp(&mut self, at: Vec3, width: f32) {
         let top = self.base_y + at.y;
         let drop_at = |s: &Self, len: f32| (top - s.ground_at(at.x, at.z + len)).max(0.25);
@@ -97,13 +99,10 @@ impl Build<'_> {
         self.sheet_quad([a, b, c, d], up, [top_c, side_c]);
         self.sheet_tri([a, al, d], self.dir(Vec3::NEG_X), [side_c, side_c]);
         self.sheet_tri([b, bl, c], self.dir(Vec3::X), [side_c, side_c]);
-        let tilt = Quat::from_rotation_y(self.yaw)
-            * Quat::from_rotation_arc(Vec3::Z, Vec3::new(0.0, -drop, len) / hyp);
-        let mid = self.pt(Vec3::new(at.x, at.y - drop * 0.5, at.z + len * 0.5)) - up * 0.25;
         self.parts.push(Part {
-            pos: mid,
-            rot: tilt,
-            shape: Shape::Cuboid(Vec3::new(width, 0.5, hyp)),
+            pos: al,
+            rot: Quat::IDENTITY,
+            shape: Shape::Hull([a, b, c, d, al, bl].map(|p| p - al)),
         });
     }
 }

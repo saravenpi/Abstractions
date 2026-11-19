@@ -21,7 +21,7 @@ use crate::world::globe::Face;
 use crate::world::{Globe, Terrain};
 
 /// Returns default settings in a file of their own, so that tests running at once never share one.
-fn settings() -> Persistent<Settings> {
+pub(super) fn settings() -> Persistent<Settings> {
     static MADE: AtomicUsize = AtomicUsize::new(0);
     let made = MADE.fetch_add(1, Ordering::Relaxed);
     let name = format!("abstractions-intents-{}-{made}", std::process::id());
@@ -73,6 +73,8 @@ pub(super) fn app(bodies: &[(PlayerId, f32)]) -> App {
         .init_resource::<Look>()
         .init_resource::<ViewPrefs>()
         .init_resource::<Target>()
+        .init_resource::<crate::player::eyes::WingAim>()
+        .init_resource::<ButtonInput<MouseButton>>()
         .add_message::<IntentOf>();
     stand(app.world_mut(), bodies);
     app.finish();

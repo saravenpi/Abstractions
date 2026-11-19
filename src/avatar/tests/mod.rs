@@ -2,16 +2,20 @@
 
 mod app;
 mod blending;
+mod bodies;
 mod body;
 mod diving;
 mod dressing;
+mod dust;
 mod face;
 mod filling;
 mod flown;
 mod gait;
+mod landing;
 mod loops;
 mod neck;
 mod poses;
+mod steps;
 mod wings;
 
 use bevy::prelude::*;
@@ -38,6 +42,13 @@ pub fn scene(mode: Mode, k: f32) -> AvatarPose {
         airspeed: 60.0 * k,
         look: Vec2::new(0.8 * (k - 0.5), 0.6 * (0.5 - k)),
         landed_hard: k,
+        impact: 24.0 * k,
+        absorb: false,
+        gain: 8.0 * (0.5 - k),
+        turn: 3.0 * (0.5 - k),
+        clearance: 40.0 * k,
+        prone: 1.0,
+        load: 1.0,
     }
 }
 

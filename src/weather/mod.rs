@@ -1,22 +1,37 @@
-//! Weather: clouds, rain, snow, dust and storms at the camera, from the climate there.
+//! Weather: clouds, rain, snow, dust and storms, from the cloud field of the planet.
 //!
-//! The weather is a pure function of the climate at the camera, the seed of the planet and
-//! universe time. The particles, the wind and the sound read it from [`Weather`].
+//! The cloud field is a pure function of the seed of the planet, a place on it and universe
+//! time. The sky draws it, and the weather at the camera is read from it and from the climate
+//! there. The particles, the wind and the sound read that weather from [`Weather`].
 
 mod feed;
+mod field;
+mod grid;
 mod noise;
+mod puff;
 mod rules;
 mod watch;
+mod wet;
 
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_field;
+#[cfg(test)]
+mod tests_grid;
+#[cfg(test)]
 mod tests_ground;
+#[cfg(test)]
+mod tests_puff;
 #[cfg(test)]
 mod tests_time;
 
 pub use feed::{seen, word};
+pub use field::Field;
+pub use grid::{FACE, Patch, SNAPSHOT, TEXELS, moment, texel};
+pub use puff::{CELL, density_at, drift};
 pub use rules::{THUNDER_SECONDS, Weather, thunder};
+pub use wet::wet;
 
 use bevy::prelude::*;
 

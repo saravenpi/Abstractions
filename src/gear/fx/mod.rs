@@ -24,6 +24,8 @@ mod tests;
 mod tests_exhaust;
 #[cfg(test)]
 mod tests_fx;
+#[cfg(test)]
+mod tests_trail;
 
 use bevy::prelude::*;
 

@@ -49,16 +49,16 @@ fn level(ship: &Ship, boost: bool) -> f32 {
     }
 }
 
-/// Sets the glow color and the exhaust length when the engine level changes. The warp sequence
+/// Sets the glow color and the exhaust length of the ship when the engine level changes. The warp sequence
 /// lights the engines as the drive charges and lets them fade as it drops out.
 pub fn glow(
     (helm, sequence): (Res<Helm>, Option<Res<Sequence>>),
-    ship: Single<(&Ship, &Engine)>,
+    ship: Single<(Entity, &Ship, &Engine)>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut plumes: Query<&mut Transform, With<Plume>>,
+    mut plumes: Query<(&ChildOf, &mut Transform), With<Plume>>,
     mut shown: Local<Option<f32>>,
 ) {
-    let (ship, engine) = *ship;
+    let (hull, ship, engine) = *ship;
     let charged = sequence.as_deref().map_or(0.0, Sequence::thrust);
     let level = level(ship, helm.controls.boost).max(WARP_LEVEL * charged);
     if shown.is_some_and(|old| (old - level).abs() < 0.01) {
@@ -68,7 +68,10 @@ pub fn glow(
     if let Some(mut material) = materials.get_mut(&engine.glow) {
         material.base_color = color(level);
     }
-    for mut plume in &mut plumes {
+    for (_, mut plume) in plumes
+        .iter_mut()
+        .filter(|(parent, _)| parent.parent() == hull)
+    {
         plume.scale.z = 0.02 + PLUME_LENGTH * level;
     }
 }

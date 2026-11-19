@@ -7,6 +7,7 @@ use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
 
 use super::giant::Giant;
+use crate::render::daylight::PlaceUniform;
 use crate::universe::{PlanetRecord, PlanetSpec, StarSpec};
 
 /// Brightness of a star against plain white, enough for bloom to catch it.
@@ -52,9 +53,11 @@ pub struct BodyUniform {
     /// mesh is the baked ball, whose vertices carry the colours of the surface.
     pub glow: Vec4,
     /// Linear colour of the light of the star times its illuminance in lux, as the sun light of
-    /// the ground has it in space, and in w the cloud cover, 0 without clouds.
+    /// the ground has it in space, and in w 1 while the clouds show, 0 without clouds and
+    /// until the cover map is ready.
     pub sun: Vec4,
-    /// Linear colour of the sunlit clouds, and in w the seconds that drift them.
+    /// Linear colour of the sunlit clouds, and in w how far the cover is read from the first
+    /// channel of the cover map toward the second, from 0 to 1.
     pub cloud: Vec4,
     /// First column of the rotation from render axes to the axes fixed to the body.
     pub fixed_x: Vec4,
@@ -62,6 +65,8 @@ pub struct BodyUniform {
     pub fixed_y: Vec4,
     /// Third column of that rotation.
     pub fixed_z: Vec4,
+    /// Cells of the noise the puffs of the clouds have drifted by, as `weather::drift` gives them.
+    pub drift: Vec4,
 }
 
 /// Material of a star or a far planet.
@@ -70,6 +75,15 @@ pub struct BodyMaterial {
     /// Values for the shader.
     #[uniform(0)]
     pub body: BodyUniform,
+    /// The cover map of the body: the broad cover of its cloud field, as a cube texture. The
+    /// cloud shell around the planet under the camera reads the same one.
+    #[texture(1, dimension = "cube")]
+    #[sampler(2)]
+    pub cover: Option<Handle<Image>>,
+    /// The star and the air the body is lit through, so its day and its night are its own and
+    /// not those of the camera. All zero, a planet stays unlit and shows only its own glow.
+    #[uniform(10)]
+    pub place: PlaceUniform,
 }
 
 /// A planet seen from afar, in linear colours.
@@ -110,6 +124,8 @@ impl BodyMaterial {
                 color: star.color.extend(STAR_GAIN),
                 ..default()
             },
+            cover: None,
+            place: default(),
         }
     }
 
@@ -136,6 +152,8 @@ impl BodyMaterial {
                 rings,
                 ..default()
             },
+            cover: None,
+            place: default(),
         }
     }
 }

@@ -1,10 +1,13 @@
-//! Poses off the ground without wings: the jump, the fall, and the upright fall on the boot boosters.
+//! Poses off the ground without wings: the fall, the reach for the ground, and the upright fall
+//! on the boot boosters. The rise of a jump is in `leap`.
 
 use std::f32::consts::PI;
 
 use super::AvatarPose;
-use super::clock::Clock;
+use super::clock::{Clock, ramp};
+use super::leap::gathered;
 use super::pose::{Core, Limb, Pose};
+use super::tune::REACH_TIME;
 use crate::player::wrap;
 
 /// Steepest bank and flight path pitch the poses follow, in radians.
@@ -19,25 +22,41 @@ pub fn level(pitch: f32) -> f32 {
     }
 }
 
-/// Returns the rising pose: one knee tucked, the other leg trailing, arms out for balance.
-pub fn jump(input: &AvatarPose) -> Pose {
-    let rise = (input.vertical_speed / 8.0).clamp(0.0, 1.0);
-    Pose::default()
-        .with(Core::Pitch, 0.06)
-        .with(Core::Spine, 0.05)
-        .with(Core::HeadPitch, 0.15 * rise)
-        .pair(Limb::Hip, 0.35 + 0.3 * rise, -0.2)
-        .pair(Limb::Knee, 0.75 + 0.3 * rise, 0.4)
-        .both(Limb::Ankle, 0.35)
-        .pair(Limb::Shoulder, -0.35, 0.45)
-        .both(Limb::ArmOut, 0.35)
-        .both(Limb::Elbow, 0.6)
+/// Returns the pose `share` of the way from `from` to `to`, joint by joint.
+pub fn mix(from: &Pose, to: &Pose, share: f32) -> Pose {
+    Pose::default().plus(from, 1.0 - share).plus(to, share)
 }
 
-/// Returns the falling pose: arms out and up, legs trailing and pedalling slowly.
-pub fn fall(clock: &Clock) -> Pose {
-    let (pedal, flail) = (clock.wave(5.0, 0.0), clock.wave(7.0, 0.0));
+/// Returns the body about to touch down: legs reaching under it, soles level, knees ready to
+/// give, arms out for balance, eyes on the ground.
+fn reaching() -> Pose {
     Pose::default()
+        .with(Core::Pitch, 0.06)
+        .with(Core::Spine, 0.1)
+        .with(Core::HeadPitch, -0.3)
+        .pair(Limb::Hip, 0.3, 0.14)
+        .pair(Limb::Knee, 0.42, 0.3)
+        .pair(Limb::Ankle, -0.12, -0.16)
+        .both(Limb::LegOut, 0.07)
+        .both(Limb::Shoulder, 0.35)
+        .both(Limb::ArmOut, 0.75)
+        .both(Limb::Elbow, 0.4)
+}
+
+/// Returns how far the legs of a body falling at `input` reach for the ground, from 0 to 1,
+/// from the real time left before it: the free height under it over its fall speed.
+pub fn reach(input: &AvatarPose, clock: &Clock) -> f32 {
+    let sink = -clock.rise;
+    let left = input.clearance.max(0.0) / sink.max(1.0);
+    (1.0 - ramp(REACH_TIME.0, REACH_TIME.1, left)) * ramp(0.0, 6.0, sink)
+}
+
+/// Returns the falling pose from the real fall speed and the height left: gathered at the
+/// top, then arms out and up with the legs trailing and pedalling slowly, then the legs
+/// reaching for the ground just before it.
+pub fn fall(input: &AvatarPose, clock: &Clock) -> Pose {
+    let (pedal, flail) = (clock.wave(5.0, 0.0), clock.wave(7.0, 0.0));
+    let dropping = Pose::default()
         .with(Core::Pitch, 0.12)
         .with(Core::Spine, 0.08)
         .with(Core::HeadPitch, -0.25)
@@ -47,7 +66,13 @@ pub fn fall(clock: &Clock) -> Pose {
         .both(Limb::Ankle, 0.35)
         .both(Limb::Shoulder, 0.2)
         .pair(Limb::ArmOut, 1.15 + 0.08 * flail, 1.15 - 0.08 * flail)
-        .both(Limb::Elbow, 0.35)
+        .both(Limb::Elbow, 0.35);
+    let drop = ramp(0.5, 9.0, -clock.rise);
+    mix(
+        &mix(&gathered(), &dropping, drop),
+        &reaching(),
+        reach(input, clock),
+    )
 }
 
 /// Returns the pose on the boots alone: upright, arms slightly out, knees bent, soles facing down.

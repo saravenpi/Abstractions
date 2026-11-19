@@ -13,12 +13,13 @@ const NECK: f32 = 0.48;
 /// From the neck to the eyes in the axes the camera looks along: right, up, back. The eyes sit
 /// on the face of the head, ahead of the chest, so the view never looks down into the neck, and
 /// they swing forward over the chest when the head looks down.
-const FACE: Vec3 = Vec3::new(0.0, 0.22, -0.16);
+pub const FACE: Vec3 = Vec3::new(0.0, 0.22, -0.16);
 
 /// Height above the centre of the body of the pivot the third person camera orbits: just above the shoulders.
 const SHOULDERS: f32 = 0.8;
 
-/// Pilot seat of the ship as multiples of its radius: under the canopy, ahead of the centre.
+/// Eyes of the pilot of the ship at rest, as multiples of its radius: under the canopy, ahead
+/// of the centre. The neck they turn on is [`FACE`] behind and under them.
 const SEAT: Vec3 = Vec3::new(0.0, 0.2, -0.29);
 
 /// Boom of the chase camera as multiples of the radius of the ship: above and behind. From there
@@ -134,14 +135,15 @@ fn fly(third: bool) -> Shot {
     }
 }
 
-/// Returns the shot of the ship: the pilot seat with a slight lag behind the rotation, or a
-/// chase camera sized from the hull that lags more and only trails low in an atmosphere.
+/// Returns the shot of the ship: the eyes of the pilot, on a head that turns at the neck inside
+/// the canopy, with a slight lag behind the rotation, or a chase camera sized from the hull
+/// that lags more and only trails low in an atmosphere.
 fn ship(third: bool, target: &Target) -> Shot {
     let near = target.ground.length().min(1.0);
     if !third {
         return Shot {
-            seat: SEAT * target.radius,
-            boom: Vec3::ZERO,
+            seat: SEAT * target.radius - FACE,
+            boom: FACE,
             turn: 14.0,
             widen: 0.1,
             ..eyes()

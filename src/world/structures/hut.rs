@@ -37,7 +37,7 @@ pub fn stilt_hut(b: &mut Build) {
             Vec3::new(x, low, z),
             Vec2::new(0.18, -0.3 - low),
             5,
-            Mat::deco(DARK_WOOD),
+            Mat::solid(DARK_WOOD),
         );
     }
     b.tagged(Tag::Wall, |b| b.boxes(&WALLS, Mat::solid(WOOD)));

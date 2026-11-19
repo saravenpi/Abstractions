@@ -10,6 +10,7 @@ use bevy::render::render_resource::{
 use bevy::shader::ShaderRef;
 
 use super::uniform::WaterUniform;
+use crate::render::PlaceUniform;
 
 /// Material of the sea surface.
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
@@ -21,6 +22,9 @@ pub struct WaterMaterial {
     #[texture(1)]
     #[sampler(2)]
     pub floor: Handle<Image>,
+    /// The light of the planet under the camera, so that sea seen from far is lit as its place is.
+    #[uniform(3)]
+    pub place: PlaceUniform,
 }
 
 impl Material for WaterMaterial {

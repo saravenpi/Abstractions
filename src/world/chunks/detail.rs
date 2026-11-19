@@ -15,6 +15,7 @@ use super::spawn::Spawner;
 use super::turf::Turf;
 use super::work::start_work;
 use crate::world::Terrain;
+use crate::world::ground::GroundMaterial;
 use crate::world::mesh::Lod;
 
 /// Most terrain meshes and ground covers rebuilt at the same time.
@@ -118,7 +119,7 @@ fn soften(
     fades: &mut Fades,
     chunk: Entity,
     changed: Changed,
-    (material, now): (&Handle<StandardMaterial>, f64),
+    (material, now): (&Handle<GroundMaterial>, f64),
 ) {
     if let Some(grass) = changed.grass {
         fades.begin(commands, grass, vec![grass], (Way::In, now));

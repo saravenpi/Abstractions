@@ -1,9 +1,8 @@
-//! Parts every piece of the base is made of: legs that reach the ground, level decks, solid
-//! boxes and lamps.
+//! Parts every piece of the base is made of: legs that reach the ground, level decks and lamps.
 
 use bevy::prelude::*;
 
-use super::draft::{Block, Draft};
+use super::draft::Draft;
 use super::glow::Glow;
 use super::soup::Rgb;
 use super::tune::SINK;
@@ -26,15 +25,6 @@ impl Draft<'_> {
         let top = [Vec3::new(lo.x, hi.y, lo.z), Vec3::new(hi.x, hi.y, lo.z), hi];
         self.decks.push(top.map(|p| self.at(p)));
         self.draw(|soup| soup.slab(lo, hi, rgb));
-    }
-
-    /// Records a solid box between two corners of the piece.
-    pub fn block(&mut self, lo: Vec3, hi: Vec3) {
-        self.blocks.push(Block {
-            at: self.at((lo + hi) * 0.5),
-            rot: Quat::from_mat3a(&self.pose.matrix3),
-            size: hi - lo,
-        });
     }
 
     /// Adds a glowing box between two corners of the piece.

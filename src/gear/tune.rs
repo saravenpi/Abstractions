@@ -27,8 +27,8 @@ pub const AERO: f32 = 0.0453;
 /// Real suits glide at about 2.5 to 3, forward at up to 28 m/s and down at 11 m/s and more
 /// (https://www.jafmonline.net/article_2307_6211080fa89981f66b1a0c9d55c61d0f.pdf,
 /// https://thaiskyadventures.com/blog/wingsuit-flying/). The game is kinder: under
-/// [`REF_GRAVITY`] the hands-off glide of [`GLIDE_REST`] flies at about 30 m/s and sinks at
-/// about 7, the wing stalls under about 15 m/s at [`AOA_MAX`], and a dive runs past 50 m/s.
+/// [`REF_GRAVITY`] a glide of four to one flies at about 30 m/s and sinks at about 7, the wing
+/// stalls under about 15 m/s at [`AOA_MAX`], and a dive runs past 50 m/s.
 pub const WING_DRAG: Vec3 = Vec3::new(0.6, 6.95, 0.091);
 
 /// Drag coefficient of the folded body, the same on every axis.
@@ -88,8 +88,8 @@ pub const BOOT_AIR_DAMP: f32 = 0.6;
 /// Horizontal acceleration of a free falling body leaning into the air, at sea level.
 pub const FALL_AIR_ACCEL: f32 = 2.0;
 
-/// Seconds the wings take to spread or fold.
-pub const WING_TIME: f32 = 0.3;
+/// Seconds the wings take to spread or fold: one eased motion, see `FlightState::spread`.
+pub const WING_TIME: f32 = 0.4;
 
 /// Seconds the boosters take to spool up or down.
 pub const THRUST_TIME: f32 = 0.25;
@@ -122,21 +122,22 @@ pub const PITCH_AUTHORITY: f32 = 0.5;
 /// Bank a full roll stick holds, in radians (40 degrees): a turn of about 0.6 rad/s in a glide.
 pub const ROLL_AUTHORITY: f32 = 0.7;
 
-/// Glide ratio of the flight path a body on its wings alone eases back to with the keys let
-/// go: just under the best, on its fast side, where the speed holds steady by itself.
-pub const GLIDE_REST: f32 = 4.0;
+/// Bank angle per radian of heading error between the aim and the flight path.
+pub const BANK_GAIN: f32 = 1.6;
 
-/// Steepest climb in radians powered flight holds with the keys let go.
-pub const CLIMB_HOLD: f32 = 0.5;
+/// Rate in radians per second at which a held key turns the aim of a body on its wings, and at
+/// which the aim goes to the view when the steer button is pressed: the pitch rate the keys
+/// gave the view in 0.8.1, which the wings can follow without the leash cutting in.
+pub const STICK_RATE: f32 = 0.9;
 
-/// Rate in radians per second at which a held pitch key turns the course.
-pub const COURSE_RATE: f32 = 1.2;
+/// Seconds the heading of the aim rides the flight path after the roll key is let go: as long
+/// as the wings take to come level at [`BANK_RATE`], to within a hundredth of the bank.
+pub const LEVEL_TIME: f32 = 1.0;
 
-/// Rate per second at which the course eases back to rest with the keys let go.
-pub const COURSE_EASE: f32 = 1.5;
-
-/// Farthest the course may lead the flight frame, in radians.
-pub const COURSE_LEASH: f32 = 0.9;
+/// Farthest the aim may be led ahead of the flight frame in pitch, in radians. The frame
+/// follows only as fast as the wings turn the path, and an aim that ran a half turn ahead
+/// would call the nose back the short way: this is what lets a held key pull a whole loop.
+pub const LEASH: f32 = 0.9;
 
 /// Largest angle of attack the nose may hold above the flight path, in radians (18 degrees).
 pub const AOA_MAX: f32 = 0.314;

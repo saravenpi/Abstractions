@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use super::moons::Standoff;
 use crate::computer::{Target, target_position};
+use crate::render::Sequence;
 use crate::space::UniPos;
 use crate::universe::{StarId, Universe};
 
@@ -17,6 +18,9 @@ pub enum Phase {
     /// The drive is locked: the ship is landed, in an atmosphere or too close to a body. The
     /// pilot has to fly it out.
     Waiting,
+    /// The drive, still running on the course before, drops out, and the ship holds its heading
+    /// until the drop-out has played out. Only then does it turn.
+    Dropping,
     /// The ship turns its nose onto the course.
     Aligning,
     /// The drive spools.
@@ -60,6 +64,21 @@ impl Goal {
     }
 }
 
+/// Seconds a ship holds its heading after its drive was stopped for a new course: the time the
+/// drop-out takes on screen.
+pub(super) const SETTLE: f64 = Sequence::DROP as f64;
+
+/// What a route does about a drive that ran on the course before.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Settle {
+    /// The drive runs and is stopped now.
+    Stop,
+    /// The drive was stopped and the drop-out still plays: the ship holds its heading.
+    Hold,
+    /// Nothing is left of the course before: the ship may turn and spool.
+    Clear,
+}
+
 /// The autopilot. The board computer sets a destination with [`Autopilot::engage`].
 #[derive(Resource, Debug, Default, Clone, PartialEq)]
 pub struct Autopilot {
@@ -71,16 +90,43 @@ pub struct Autopilot {
     pub(super) phase: Phase,
     /// Whether the route is a long jump, which uses the faster warp tier.
     pub(super) jump: bool,
+    /// Whether the route has yet to look at the drive: one that still runs is stopped first.
+    pub(super) fresh: bool,
+    /// Universe second until which the ship holds its heading after its drive was stopped for
+    /// this route.
+    pub(super) settled: f64,
 }
 
 impl Autopilot {
-    /// Starts a route to `target`: a planet, a moon, a star or a galaxy.
+    /// Starts a route to `target`: a planet, a moon, a star or a galaxy. The route already
+    /// flown to that target goes on as it is.
     pub fn engage(&mut self, target: Target) {
+        if self.target == Some(target) {
+            return;
+        }
         *self = Self {
             target: Some(target),
             phase: Phase::Waiting,
+            fresh: true,
             ..Self::default()
         };
+    }
+
+    /// Returns what a route does about the drive of the course before, at universe second
+    /// `time`, when the drive is `running`, spooling or engaged.
+    ///
+    /// A new route that finds the drive running stops it, then holds the heading for the
+    /// [`SETTLE`] seconds the drop-out takes on screen. The ship never turns in warp.
+    pub(super) fn settle(&mut self, running: bool, time: f64) -> Settle {
+        self.settled = self.settled.min(time + SETTLE);
+        if std::mem::take(&mut self.fresh) && running {
+            self.settled = time + SETTLE;
+            return Settle::Stop;
+        }
+        if time < self.settled {
+            return Settle::Hold;
+        }
+        Settle::Clear
     }
 
     /// Drops the route and hands the ship back to the pilot.

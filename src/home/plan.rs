@@ -2,7 +2,8 @@
 
 use bevy::prelude::*;
 
-use super::draft::{Block, Draft};
+use super::block::{Block, pruned};
+use super::draft::Draft;
 use super::glow::Glow;
 use super::lot::Lot;
 use super::{cables, container, pad, path, station};
@@ -13,7 +14,7 @@ pub struct Plan {
     pub lit: Mesh,
     /// Meshes of the glowing parts, one per [`Glow`].
     pub glows: [Mesh; 6],
-    /// Boxes nothing walks through.
+    /// Boxes nothing passes through.
     pub blocks: Vec<Block>,
     /// Where each light that is cast sits.
     pub lamps: Vec<(Glow, Vec3)>,
@@ -39,7 +40,7 @@ pub fn plan(lot: &Lot) -> Plan {
     Plan {
         lit: draft.lit.into_mesh(),
         glows: draft.glows.map(|soup| soup.into_mesh()),
-        blocks: draft.blocks,
+        blocks: pruned(draft.blocks),
         lamps: draft.lamps,
     }
 }

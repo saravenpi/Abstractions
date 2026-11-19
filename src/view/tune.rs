@@ -9,6 +9,13 @@ pub const PIXELS_PER_NOTCH: f32 = 40.0;
 /// Largest look-up or look-down angle (89 degrees).
 pub const PITCH_LIMIT: f32 = 1.553_343;
 
+/// Farthest the head of the pilot turns to each side in the seat of the ship (115 degrees).
+pub const COCKPIT_TURN: f32 = 2.0;
+
+/// Farthest the head of the pilot looks up in the seat of the ship (52 degrees): beyond it the
+/// eyes would swing back into the headrest.
+pub const COCKPIT_UP: f32 = 0.9;
+
 /// Largest look-up angle of the third person orbit (70 degrees).
 pub const THIRD_UP: f32 = 1.221_73;
 

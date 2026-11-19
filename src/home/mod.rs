@@ -4,6 +4,7 @@
 //! near it on the home planet, and gives it a little life.
 
 mod base;
+mod block;
 mod cables;
 mod container;
 mod draft;
@@ -29,11 +30,15 @@ mod tests;
 #[cfg(test)]
 mod tests_app;
 #[cfg(test)]
+mod tests_cover;
+#[cfg(test)]
 mod tests_found;
 #[cfg(test)]
 mod tests_ground;
 #[cfg(test)]
 mod tests_points;
+#[cfg(test)]
+mod tests_solid;
 
 pub use base::Base;
 pub use tune::{FOOTPRINT, PAD_HALF, PAD_LIFT};

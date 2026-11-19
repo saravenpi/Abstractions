@@ -3,8 +3,11 @@
 
 use bevy::prelude::*;
 
+use super::eyes::WingAim;
 use super::intent::axis;
 use super::lead::View;
+use super::{Player, local};
+use crate::gear::Gear;
 use crate::settings::{Persistent, Settings};
 use crate::sim::{Intent, IntentOf, PlayerId};
 use crate::view::{Heading, Look, ViewPrefs};
@@ -34,17 +37,31 @@ fn intents(
     ]
 }
 
+/// The gear of every player body, among which the local one is found.
+type Bodies<'w, 's> = Query<'w, 's, (&'static PlayerId, &'static Gear), With<Player>>;
+
 /// Sends what the keys and the view ask this frame as intents of the local player.
 ///
-/// The view is the one the camera rig will show: the angles it holds, turned by what the mouse
-/// and the wing keys ask. It runs on every frame, so that a key held down since a menu or the
-/// ship does not count as pressed again when the body takes over.
+/// The look is the view the camera rig will show: the angles it holds, turned by what the mouse
+/// and the wing keys ask. On the wings it is the aim of the flight instead, which the view only
+/// leads while the steer button is held. It runs on every frame, so that a key held down since
+/// a menu or the ship does not count as pressed again when the body takes over.
 pub(super) fn send(
     (keys, settings): (Res<ButtonInput<KeyCode>>, Res<Persistent<Settings>>),
     (heading, look, prefs): (Res<Heading>, Res<Look>, Res<ViewPrefs>),
+    (wing, players): (Res<WingAim>, Bodies),
     mut out: MessageWriter<IntentOf>,
 ) {
-    let view = View::ahead(&heading, &look, prefs.on_foot);
+    let seen = View::ahead(&heading, &look, prefs.on_foot);
+    let gear = local(players.iter().map(|(id, gear)| (*id, gear)));
+    let view = match gear.is_some_and(|gear| gear.state.mode.winged()) {
+        true => View {
+            yaw: wing.stick.aim.x,
+            pitch: wing.stick.aim.y,
+            ..seen
+        },
+        false => seen,
+    };
     let asked = intents(&keys, &settings, view, look.yaw_delta);
     out.write_batch(asked.into_iter().flatten().map(|intent| IntentOf {
         player: PlayerId::LOCAL,

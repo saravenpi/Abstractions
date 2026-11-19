@@ -48,13 +48,13 @@ fn speed_lines_scale_with_airspeed() {
     assert!((0..64).all(|slot| (0.0..1.0).contains(&noise(slot, 3))));
 }
 
-/// The wingtips glow faintly in steady flight and brightly under load and in dives, and not
+/// The wingtips glow plainly in steady flight and brighter under load and in dives, and not
 /// at all folded, slow or on the ground.
 #[test]
 fn wingtips_glow_under_load() {
     let steady = tip_heat(&scene(Mode::Glide, 45.0, 1.0));
-    assert!(steady > 0.0 && steady < 0.5);
-    assert!(tip_heat(&scene(Mode::Glide, 45.0, 2.5)) > 2.0 * steady);
+    assert!(steady > 0.0 && steady < 0.7);
+    assert!(tip_heat(&scene(Mode::Glide, 45.0, 2.5)) > 1.5 * steady);
     assert!(tip_heat(&scene(Mode::Glide, 90.0, 1.0)) > 1.5 * steady);
     assert_eq!(tip_heat(&scene(Mode::Glide, 12.0, 1.0)), 0.0);
     assert_eq!(tip_heat(&scene(Mode::Fall, 60.0, 1.0)), 0.0);

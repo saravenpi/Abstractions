@@ -21,13 +21,13 @@ pub struct Building {
     task: Task<Option<Mesh>>,
 }
 
-/// Returns every speck seen from `at` metres from the centre of `galaxy`: the stars within reach
-/// except the one of the current system, which is drawn as a body, and the galaxies around.
-pub fn gather(universe: &Universe, galaxy: GalaxyId, at: DVec3, own: DVec3) -> Vec<Sighted> {
+/// Returns every speck seen from `at` metres from the centre of `galaxy`: the stars within
+/// reach and the galaxies around. The star of the current system is one of them: from afar it
+/// is this point, and up close its disc is drawn on it as a body.
+pub fn gather(universe: &Universe, galaxy: GalaxyId, at: DVec3) -> Vec<Sighted> {
     let stars = universe.stars_near(galaxy, at, REACH_GLY);
-    let away = |pos: DVec3| pos.distance_squared(own) > 1.0;
-    let stars = stars.iter().filter(|star| away(star.pos));
     let mut specks: Vec<Sighted> = stars
+        .iter()
         .take(MOST_STARS)
         .map(|star| Sighted::star(star, at))
         .collect();
@@ -58,13 +58,13 @@ pub fn launch(
     let (galaxy, at) = (vantage.galaxy, vantage.galactic);
     let near =
         |(built, was): (GalaxyId, DVec3)| built == galaxy && was.distance(at) < SECTOR_GLY * GLY;
-    let (universe, own) = (*universe, vantage.galactic - vantage.observer.eye);
+    let universe = *universe;
     for (entity, field) in &fields {
         if field.built.is_some_and(near) {
             continue;
         }
         let task = AsyncComputeTaskPool::get().spawn(async move {
-            let specks = gather(&universe, galaxy, at, own);
+            let specks = gather(&universe, galaxy, at);
             (!specks.is_empty()).then(|| lit(&specks))
         });
         let place = (galaxy, at);

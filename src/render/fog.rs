@@ -185,7 +185,7 @@ fn update_fog(
             air: vantage.air * below.haze(),
         };
         depths.aloft.set_if_neq(Clearance(height.clearance));
-        let clear = fog_sight(ground, &height) * depths.weather.look(&below).sight();
+        let clear = fog_sight(ground, &height) * depths.weather.look().sight();
         let liquid = depths.submerged(camera);
         let air = palette.horizon.lerp(palette.cloud, crossing.depth);
         let key = FogKey {

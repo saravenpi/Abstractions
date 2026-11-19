@@ -15,6 +15,10 @@ use super::vantage::Scene;
 /// Radius of the halo shell in planet radii.
 pub const HALO_SCALE: f32 = 1.08;
 
+/// Distances from the axis of the shadow of a planet, in planet radii, between which a point
+/// behind it goes from its shadow into the light of the star.
+pub const SHADOW_EDGE: (f32, f32) = (0.97, 1.03);
+
 /// Returns the share of the atmosphere left above `altitude` metres: 1 at the ground, 0 from
 /// `height` metres up. A planet without air gives 0 everywhere.
 pub fn air(altitude: f32, height: f32) -> f32 {
@@ -39,7 +43,7 @@ pub fn shadow(from: DVec3, sun: DVec3, radius: f64) -> f32 {
         return 1.0;
     }
     let miss = (from - sun * along).length() / radius;
-    smoothstep(0.97, 1.03, miss as f32)
+    smoothstep(SHADOW_EDGE.0, SHADOW_EDGE.1, miss as f32)
 }
 
 /// Uniform block read by `atmosphere.wesl`. Every field is a `vec4` so the layout never needs padding.
@@ -106,9 +110,13 @@ fn light_halos(
     }
 }
 
-/// Embeds the shader, registers the material and lights the halos once the camera is tracked.
+/// Embeds the shader and the daylight module, registers the material and lights the halos once
+/// the camera is tracked.
 pub(super) fn plugin(app: &mut App) {
     embedded_asset!(app, "atmosphere.wesl");
-    app.add_plugins(MaterialPlugin::<HaloMaterial>::default())
-        .add_systems(PostUpdate, light_halos.after(super::sun::track));
+    app.add_plugins((
+        super::daylight::plugin,
+        MaterialPlugin::<HaloMaterial>::default(),
+    ))
+    .add_systems(PostUpdate, light_halos.after(super::sun::track));
 }

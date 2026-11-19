@@ -1,6 +1,6 @@
 //! The scene helpers: how altitude, space and clouds turn into levels.
 
-use crate::audio::scene::{AudioScene, altitude_fade, cloud_depth};
+use crate::audio::scene::{AudioScene, altitude_fade};
 
 /// The altitude fade is 1 on the ground, 0 at the top of the air, and falls all the way up.
 #[test]
@@ -34,13 +34,4 @@ fn music_level_follows_the_scene() {
     };
     assert_eq!(space.music_level(), 0.0);
     assert_eq!(warp.music_level(), 0.0);
-}
-
-/// The cloud depth is 1 in the middle of the layer and 0 at its edges and outside.
-#[test]
-fn cloud_depth_peaks_in_the_layer() {
-    assert_eq!(cloud_depth(1200.0, 900.0, 1500.0), 1.0);
-    assert_eq!(cloud_depth(900.0, 900.0, 1500.0), 0.0);
-    assert_eq!(cloud_depth(1500.0, 900.0, 1500.0), 0.0);
-    assert_eq!(cloud_depth(100.0, 900.0, 1500.0), 0.0);
 }

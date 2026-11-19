@@ -5,6 +5,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- A real cockpit: a seat, a dashboard, side consoles, canopy bars, a stick that moves with your steering and a throttle lever that follows the throttle. Black and white instruments show your speed against the top speed, the warp charge and the gear. Your robot sits in the seat with its hands on the controls, and you can see it through the canopy from outside.
+- In the ship's first-person view the mouse turns your head inside the cockpit; you see your arms, legs and the dashboard.
+
+### Changed
+
+- Clouds are real: each planet has one cloud field that drifts with the wind and changes over minutes. The clouds you see from the ground, from orbit and on the far planet are the same clouds, in the same places.
+- Weather happens somewhere: it rains or snows only under the thick cloud you can see above you and from orbit, and you climb out of the rain above the cloud tops. Weather changes no longer make the sky flicker.
+- Flying into a cloud whites out the view, shakes the ship and sounds like it only inside a real cloud, not anywhere at cloud height.
+- Light falls where the star hits the planet: the ground, the sea and far planets are lit by the sun's height at each place, not where you stand. From high up the night side stays dark while you are in sunlight, mountain tops catch the dawn first, and far planets have a dark night side.
+- Stars are one real object: near a star you see a disc of its true size, far away it is the same point as in the star field. Its light falls off with distance, and between the stars there is no sun.
+- The warp shows faint grey interstellar dust, inside galaxies only, and each star streaks by its real motion: near stars streak past, far ones stay points. The stars no longer sway.
+- Choosing a new destination during a warp drops out of warp first, then turns to the new course and spools again.
+- The mouse steers the wingsuit and the ship only while you hold the left mouse button. Without it the mouse looks around. With the wings out W and S move the aim like a stick, and A and D bank into a turn that the camera follows.
+- The wings open in one smooth 0.4 second motion.
+
+### Fixed
+
+- The wingsuit trails no longer vanish or show through the sea, and they no longer draw a line across the sky after you leave the ship.
+- The roof of the home base station, the stall posts of markets and many other drawn parts of buildings and camps were not solid. Everything drawn larger than a hand is now solid. Roofs are one solid piece.
+
 ## [0.9.0] - 2026-11-18
 
 ### Added

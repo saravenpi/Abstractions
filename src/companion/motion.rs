@@ -1,4 +1,5 @@
-//! Floating: springy following on foot, the ride in the cockpit, turning toward what it looks at, bob and lean.
+//! Floating: springy following on foot and in flight, the ride in the cockpit, turning toward
+//! what it looks at, bob and lean.
 
 use bevy::prelude::*;
 
@@ -10,19 +11,25 @@ use super::sense::Around;
 use super::spot::Probe;
 use super::spring::{rate, step};
 use super::tune::{
-    BOB, CLEARANCE, FEED, FEED_FLIGHT, FLIGHT_LEASH, FLIGHT_STIFFNESS, FLOOR, LEASH, LOOK_AHEAD,
+    FEED, FEED_FLIGHT, FLIGHT_LEASH, FLIGHT_STIFFNESS, FLOOR, GAIN_RATE, LEASH, LOOK_AHEAD,
     SCALE_RATE, SEAT, SEAT_RATE, SEAT_SCALE, TILT,
 };
-use crate::player::Player;
 
 /// How fast the body takes a new pose, per second.
-const POSE_RATE: f32 = 9.0;
+pub const POSE_RATE: f32 = 9.0;
 
 /// How the companion moves.
 #[derive(Component, Debug, Clone, Copy, Default)]
 pub struct Float {
     /// Velocity in the axes its transform is expressed in, in meters per second.
     pub vel: Vec3,
+    /// How fast that velocity changes, eased, in meters per second squared. The flying pose
+    /// leans along it.
+    pub gain: Vec3,
+    /// How far it has moved from hovering, 0, to flying, 1.
+    pub flight: f32,
+    /// How the body is posed on top of floating.
+    pub pose: Pose,
     /// True while it rides in the cockpit as a child of the player body in the pilot seat.
     pub seated: bool,
     /// How the head is turned from the body, which follows it.
@@ -63,26 +70,27 @@ fn grow(at: &mut Transform, size: f32, dt: f32) {
 /// foot and wholly in flight, so that it keeps its place in the formation at any speed.
 ///
 /// The spring is critically damped in the frame of the player, so an abrupt stop or a fold of
-/// the wings never makes it swing. The goal and the body both stay clear of the ground and the
-/// water, at speed where they will be as well as where they are. Left very far behind, it
-/// reappears behind the player at rest.
+/// the wings never makes it swing. Only the goal looks ahead for the ground: the body is pulled
+/// toward it by the spring and is itself held clear of what lies under it alone, so nothing
+/// ever moves it in one step. Truly left behind, by a fast travel, it starts again out of view
+/// and flies in.
 pub fn follow(probe: &Probe, brain: &Brain, at: &mut Transform, float: &mut Float, dt: f32) {
     let (goal, clearance) = brain.goal();
     let flight = brain.flight;
     let lead = brain.drift * (FEED + (FEED_FLIGHT - FEED) * flight);
     let target = probe.clear_ahead(goal, lead, (LOOK_AHEAD * flight, clearance));
-    let offset = at.translation + lead * dt - target;
+    let mut offset = at.translation + lead * dt - target;
+    let mut slip = float.vel - lead;
     if offset.length() > LEASH + (FLIGHT_LEASH - LEASH) * flight {
-        at.translation = probe.clear(brain.stance.behind(), CLEARANCE);
-        float.vel = Vec3::ZERO;
-    } else {
-        let slip = float.vel - lead;
-        let stiff = rate(offset, slip).max(FLIGHT_STIFFNESS * flight);
-        let (offset, vel) = step(offset, slip, stiff, dt);
-        at.translation =
-            probe.clear_ahead(target + offset, vel + lead, (LOOK_AHEAD * flight, FLOOR));
-        float.vel = vel + lead;
+        (offset, slip) = (brain.entry() - target, Vec3::ZERO);
+        float.vel = lead;
     }
+    let stiff = rate(offset, slip).max(FLIGHT_STIFFNESS * flight);
+    let (offset, slip) = step(offset, slip, stiff, dt);
+    at.translation = probe.clear(target + offset, FLOOR);
+    let gained = (slip + lead - float.vel) / dt.max(1e-4);
+    float.gain += (gained - float.gain) * blend(GAIN_RATE, dt);
+    float.vel = slip + lead;
     let up = probe.up(at.translation);
     at.rotation = float
         .neck
@@ -102,48 +110,24 @@ pub fn ride(look: Vec3, at: &mut Transform, float: &mut Float, dt: f32) {
     grow(at, SEAT_SCALE, dt);
 }
 
-/// Bobs, leans and poses the rig on top of where the body floats.
-fn sway(rig: &mut Transform, pose: &Pose, local: Vec3, (now, dt): (f32, f32)) {
-    let share = blend(POSE_RATE, dt);
-    rig.rotation = rig.rotation.slerp(lean(local) * pose.rotation(), share);
-    let lift = pose.lift + BOB.0 * (now * BOB.1).sin();
-    rig.translation.y += (lift - rig.translation.y) * share;
-}
-
-/// Filter of the rig, which is neither the companion root nor the player body.
-type RigOnly = (With<Rig>, Without<Companion>, Without<Player>);
-
-/// Filter of the head, which is neither the rig, the companion root nor the player body.
-type HeadOnly = (
-    With<Head>,
-    Without<Rig>,
-    Without<Companion>,
-    Without<Player>,
-);
-
-/// Moves the companion: following on foot or riding in the ship, the head turned ahead of the
-/// body, then the bob, the lean and the pose.
+/// Moves every companion that has a brain: following on foot or riding in the ship. What its
+/// motion shows, the bob, the lean and the pose, is left to `puppet::pose`.
 pub fn float(
     around: Around,
-    bot: Single<(&mut Transform, &mut Float, &Brain), With<Companion>>,
-    (mut rig, mut head): (
-        Single<&mut Transform, RigOnly>,
-        Single<&mut Transform, HeadOnly>,
-    ),
+    mut bots: Query<(&mut Transform, &mut Float, &Brain), With<Companion>>,
 ) {
-    let (mut at, mut float, brain) = bot.into_inner();
     let dt = around.dt();
-    if float.seated {
-        let look = around
-            .body
-            .compute_affine()
-            .inverse()
-            .transform_point3(brain.look);
-        ride(look, &mut at, &mut float, dt);
-    } else {
-        follow(&around.probe(), brain, &mut at, &mut float, dt);
+    for (mut at, mut float, brain) in &mut bots {
+        (float.flight, float.pose) = (brain.flight, brain.pose);
+        if float.seated {
+            let look = around
+                .body
+                .compute_affine()
+                .inverse()
+                .transform_point3(brain.look);
+            ride(look, &mut at, &mut float, dt);
+        } else {
+            follow(&around.probe(), brain, &mut at, &mut float, dt);
+        }
     }
-    head.rotation = float.neck.rotation();
-    let local = at.rotation.inverse() * float.vel;
-    sway(&mut rig, &brain.pose, local, (around.now(), dt));
 }

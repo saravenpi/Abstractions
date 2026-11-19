@@ -9,7 +9,7 @@ use super::machinery::{engines, leg};
 use super::{GEAR, Solid, hull_meshes};
 
 /// Returns the corners of the triangles of a mesh, three for each triangle.
-fn positions(mesh: &Mesh) -> Vec<Vec3> {
+pub(super) fn positions(mesh: &Mesh) -> Vec<Vec3> {
     match mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
         Some(VertexAttributeValues::Float32x3(points)) => {
             points.iter().map(|p| Vec3::from(*p)).collect()
@@ -19,12 +19,12 @@ fn positions(mesh: &Mesh) -> Vec<Vec3> {
 }
 
 /// Returns the corners of the triangles of a part.
-fn corners(part: Solid) -> Vec<Vec3> {
+pub(super) fn corners(part: Solid) -> Vec<Vec3> {
     positions(&part.into_mesh())
 }
 
 /// Returns true when the ray from `from` along `dir` goes through the triangle `tri`.
-fn crosses(tri: &[Vec3], from: Vec3, dir: Vec3) -> bool {
+pub(super) fn crosses(tri: &[Vec3], from: Vec3, dir: Vec3) -> bool {
     let (ab, ac) = (tri[1] - tri[0], tri[2] - tri[0]);
     let normal = dir.cross(ac);
     let scale = ab.dot(normal);
@@ -39,7 +39,7 @@ fn crosses(tri: &[Vec3], from: Vec3, dir: Vec3) -> bool {
 
 /// Returns true when `point` is inside the closed part whose triangles have `corners`: a ray
 /// from it leaves the part through an odd number of triangles.
-fn inside(corners: &[Vec3], point: Vec3) -> bool {
+pub(super) fn inside(corners: &[Vec3], point: Vec3) -> bool {
     let dir = Vec3::new(0.3713, 0.8217, 0.4331);
     let hits = corners.chunks(3).filter(|tri| crosses(tri, point, dir));
     hits.count() % 2 == 1

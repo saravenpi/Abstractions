@@ -4,7 +4,10 @@
 use std::f32::consts::TAU;
 
 use super::gait::advance;
-use super::tune::{CROUCH, CROUCH_RATE, DIP_LIMIT, DIP_RATE, DIP_SPEED};
+use super::tune::{
+    CROUCH, CROUCH_RATE, CROUCH_SOFT, DIP_LIMIT, DIP_RATE, DIP_SPEED, PUSH_OFF, RECOVER_SLOW,
+    RISE_RATE,
+};
 use super::wing::unfold_step;
 use super::{AvatarPose, Mode};
 
@@ -34,6 +37,12 @@ pub struct Clock {
     pub dip: f32,
     /// Rate of that pitch in radians per second.
     pub dip_rate: f32,
+    /// Seconds since a jump left the ground, held at the end of the push-off in any other air.
+    pub air: f32,
+    /// Speed along the local up as the air poses read it, in meters per second: the real one,
+    /// followed at a bounded rate, so a body that touches down and jumps again in one instant
+    /// turns from one pose to the other over a few frames.
+    pub rise: f32,
 }
 
 /// Hermite ramp from 0 at `low` to 1 at `high`.
@@ -55,12 +64,15 @@ pub fn spring(offset: f32, vel: f32, rate: f32, dt: f32) -> (f32, f32) {
     )
 }
 
-/// Returns how deep the body is asked to crouch: only while landing, deeper for a harder landing.
+/// Returns how deep the body is asked to crouch: only while it takes a landing in, deeper the
+/// faster it came down. Under the speeds that make a landing hard the depth still follows the
+/// real impact speed, from half the soft depth for a step down to all of it.
 pub fn crouch_target(input: &AvatarPose) -> f32 {
-    match input.mode {
-        Mode::Land => CROUCH.0 + (CROUCH.1 - CROUCH.0) * input.landed_hard.clamp(0.0, 1.0),
-        _ => 0.0,
+    if input.mode != Mode::Land && !input.absorb {
+        return 0.0;
     }
+    let soft = 0.5 + 0.5 * ramp(CROUCH_SOFT.0, CROUCH_SOFT.1, input.impact);
+    CROUCH.0 * soft + (CROUCH.1 - CROUCH.0) * input.landed_hard.clamp(0.0, 1.0)
 }
 
 /// Returns the pitch the body lies at in the water: along its way, up to [`DIP_LIMIT`], and less
@@ -77,6 +89,31 @@ pub fn dip_target(input: &AvatarPose) -> f32 {
 }
 
 impl Clock {
+    /// Advances the crouch of the knees by `dt` seconds.
+    ///
+    /// The knees give way fast under a landing and push the body back up more slowly the
+    /// harder it was. A jump starts with a short dip: the legs fold as they push off, on the
+    /// first frames of the rise, so the real jump is never delayed by it.
+    fn absorb(&mut self, input: &AvatarPose, dt: f32) {
+        let standing = matches!(input.mode, Mode::Idle | Mode::Walk | Mode::Run | Mode::Land);
+        self.air = match input.mode {
+            _ if standing => 0.0,
+            Mode::Jump => self.air + dt,
+            _ => PUSH_OFF.1,
+        };
+        let pushing = input.mode == Mode::Jump && self.air < PUSH_OFF.1;
+        let target = if pushing {
+            PUSH_OFF.0
+        } else {
+            crouch_target(input)
+        };
+        let rising = target < self.crouch;
+        let slow = 1.0 + RECOVER_SLOW * input.landed_hard.clamp(0.0, 1.0);
+        let rate = CROUCH_RATE / if rising { slow } else { 1.0 };
+        let (offset, vel) = spring(self.crouch - target, self.crouch_vel, rate, dt);
+        (self.crouch, self.crouch_vel) = (offset + target, vel);
+    }
+
     /// Returns a slow wave of `rate` radians per second, shifted by `shift` radians.
     pub fn wave(&self, rate: f32, shift: f32) -> f32 {
         (self.time * f64::from(rate) + f64::from(shift)).sin() as f32
@@ -89,9 +126,9 @@ impl Clock {
         self.phase = advance(self.phase, moved, input.speed);
         self.walked = input.stride_distance;
         self.stroke = (self.stroke + dt * (2.5 + 1.2 * input.speed.abs())).rem_euclid(2.0 * TAU);
-        let target = crouch_target(input);
-        let (offset, vel) = spring(self.crouch - target, self.crouch_vel, CROUCH_RATE, dt);
-        (self.crouch, self.crouch_vel) = (offset + target, vel);
+        self.absorb(input, dt);
+        let climb = RISE_RATE * dt;
+        self.rise += (input.vertical_speed - self.rise).clamp(-climb, climb);
         let target = dip_target(input);
         let (offset, rate) = spring(self.dip - target, self.dip_rate, DIP_RATE, dt);
         (self.dip, self.dip_rate) = (offset + target, rate);

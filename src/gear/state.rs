@@ -17,9 +17,6 @@ pub struct Servo {
     pub pull: f32,
     /// Heading of the nose in radians around the local up.
     pub yaw: f32,
-    /// Angle above the horizon in radians of the flight path the keys ask for on the wings. It
-    /// may pass the vertical, which is how a held key loops; folded, it follows the pitch.
-    pub course: f32,
     /// Seconds spent in the current mode.
     pub clock: f32,
     /// Speed lost into the last surface hit, in metres per second, until a touchdown reads it.
@@ -79,7 +76,9 @@ impl Default for FlightState {
 }
 
 impl FlightState {
-    /// Returns how much of the wing works, eased from the spread progress.
+    /// Returns how much of the wing is spread, from 0 to 1: the progress eased so that the
+    /// motion starts and ends at rest. The lift, the drag and the drawn wing all read this one
+    /// value, so the body is carried by exactly the wing the eye sees.
     pub fn spread(&self) -> f32 {
         smooth(0.0, 1.0, self.wings)
     }

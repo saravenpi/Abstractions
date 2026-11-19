@@ -7,6 +7,7 @@
 use bevy::prelude::*;
 
 use super::Companion;
+use super::brain::Brain;
 use super::motion::Float;
 use super::sense::CompanionSense;
 use super::tune::BOARD_REACH;
@@ -32,6 +33,9 @@ pub fn leaving(eye: &Transform, at: &Transform) -> Transform {
     }
 }
 
+/// Filter of the companion of the player at this machine: the one with a brain.
+type Mine = (With<Companion>, With<Brain>);
+
 /// Filter of the player body, which carries the seat, and is not the companion.
 type Seat = (With<Player>, Without<Companion>);
 
@@ -45,7 +49,7 @@ pub fn switch(
     mut commands: Commands,
     sense: Res<CompanionSense>,
     seat: Single<(Entity, &Transform), Seat>,
-    bot: Single<(Entity, &mut Transform, &mut Float), With<Companion>>,
+    bot: Single<(Entity, &mut Transform, &mut Float), Mine>,
 ) {
     let (entity, mut at, mut float) = bot.into_inner();
     if sense.seated == float.seated {

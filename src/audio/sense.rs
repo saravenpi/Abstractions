@@ -4,12 +4,13 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::planet::{Surf, loudness, surf, wind as heard};
-use super::scene::{AudioScene, altitude_fade, cloud_depth};
+use super::scene::{AudioScene, altitude_fade};
 use super::shore::{closeness, nearest};
 use crate::companion::Companion;
 use crate::gear::{FlightFx, GearSet};
+use crate::net::Remote;
 use crate::player::above_sea;
-use crate::render::{DayClock, GameCamera, daylight, smoothstep};
+use crate::render::{CloudCrossing, DayClock, GameCamera, daylight, smoothstep};
 use crate::screens::Screen;
 use crate::ship::ShipSet;
 use crate::space::{Anchor, Frame, Location, Travel, altitude};
@@ -92,7 +93,7 @@ fn side(listener: &GlobalTransform, from: Vec3) -> f32 {
 /// Writes where the companion is for the listener, so its voice comes from where it floats.
 fn sense_companion(
     camera: Query<&GlobalTransform, With<GameCamera>>,
-    companion: Query<&GlobalTransform, With<Companion>>,
+    companion: Query<&GlobalTransform, (With<Companion>, Without<Remote>)>,
     mut scene: ResMut<AudioScene>,
 ) {
     let (Ok(camera), Ok(companion)) = (camera.single(), companion.single()) else {
@@ -106,13 +107,15 @@ fn sense_companion(
 /// Writes the altitude fade, the water, the clouds and the shore into the scene from the camera.
 ///
 /// In space there is no air, no water and no shore: all four are zero. On a planet the whoosh
-/// of the clouds follows how loud its air is. The sound is muffled under the liquid of the globe
+/// of the clouds plays inside a real cloud only, as loud as its air is. The sound is muffled under the liquid of the globe
 /// and never in a dry basin, and the shore is heard where the record says something breaks on it.
 fn sense_listener(
     here: Res<Here>,
-    anchor: Option<Res<Anchor>>,
-    terrain: Option<Res<Terrain>>,
-    camera: Query<&GlobalTransform, With<GameCamera>>,
+    (anchor, terrain): (Option<Res<Anchor>>, Option<Res<Terrain>>),
+    (camera, crossing): (
+        Query<&GlobalTransform, With<GameCamera>>,
+        Option<Res<CloudCrossing>>,
+    ),
     mut scene: ResMut<AudioScene>,
 ) {
     let (Some(anchor), Some(terrain), Some((_, spec))) = (anchor, terrain, here.0.as_ref()) else {
@@ -134,7 +137,7 @@ fn sense_listener(
     let height = altitude(&anchor, terrain.globe(), pos);
     let chart = terrain.locate(anchor.to_frame(pos));
     scene.altitude_fade = altitude_fade(height, spec.atmosphere_height as f32);
-    let depth = cloud_depth(height, spec.cloud_base as f32, spec.cloud_top as f32);
+    let depth = crossing.map_or(0.0, |crossing| crossing.depth);
     scene.cloud_depth = depth * loudness(&spec.record);
     let afloat = above_sea(&anchor, terrain.globe(), pos);
     scene.submerged = (-afloat / HEAD_DEPTH).clamp(0.0, 1.0);

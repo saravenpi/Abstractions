@@ -11,6 +11,8 @@ mod specks;
 mod tests;
 #[cfg(test)]
 mod tests_depth;
+#[cfg(test)]
+mod tests_sight;
 
 use bevy::asset::embedded_asset;
 use bevy::camera::visibility::NoFrustumCulling;
@@ -23,7 +25,8 @@ pub use material::{StarMaterial, StarUniform};
 
 use super::palette::Palette;
 use super::vantage::Vantage;
-use super::warp::{LAPS, Lens};
+use super::warp::Lens;
+use crate::computer::SYSTEM_REACH;
 use crate::screens::Screen;
 use crate::universe::{GLY, GalaxyId};
 use dust::Dust;
@@ -31,11 +34,15 @@ use dust::Dust;
 /// Radius of the star shell in metres: behind every body, in front of the dome.
 pub const STAR_SHELL: f32 = 3.0e6;
 
-/// Distance in game light-years up to which stars are drawn.
-pub(super) const REACH_GLY: f64 = 40.0;
+/// Distance in game light-years up to which stars are gathered into the mesh. It is farther
+/// than the 40 they are drawn to (`SIGHT` in `starfield.wesl`), by more than the camera moves
+/// between two builds, so a camera that has moved since the build still has every star it can
+/// see. A star fades in over the last 2.5 of those 40 as the camera closes on it, half a second
+/// of the fastest cruise, so none pops into the sky when the next mesh is swapped in.
+pub(super) const REACH_GLY: f64 = 55.0;
 
-/// Most stars drawn, the nearest ones.
-pub(super) const MOST_STARS: usize = 4000;
+/// Most stars gathered, the nearest ones: more than the sectors within reach can hold.
+pub(super) const MOST_STARS: usize = 9000;
 
 /// Galaxy grid cells searched for galaxies around the camera's own.
 pub(super) const GALAXY_CELLS: i32 = 2;
@@ -59,6 +66,19 @@ impl Starfield {
             _ => Vec3::ZERO,
         }
     }
+}
+
+/// Returns the share of the light of its star that reaches a camera `distance` metres from it,
+/// against the light at the planet it is at, whose centre is `orbit` metres from the star.
+///
+/// The light falls off with the square of the distance: ten times as far out it is one
+/// hundredth. Closer in than the planet it stays what the planet gets. Over the outer half of
+/// the reach of the system it fades to nothing, so between the stars no star lights the ship
+/// as a sun: they are all just stars.
+pub fn sunlight(orbit: f64, distance: f64) -> f32 {
+    let square = (orbit / distance.max(1.0e-9)).powi(2).min(1.0);
+    let out = ((distance / SYSTEM_REACH - 0.5) / 0.5).clamp(0.0, 1.0);
+    (square * (1.0 - out * out * (3.0 - 2.0 * out))) as f32
 }
 
 /// Spawns the starfield without a mesh when the world starts loading, and the dust with its
@@ -88,8 +108,8 @@ type DustPose<'a> = (
 );
 
 /// Keeps the shell around the camera, turned with the galaxy, fades the stars with the sky and
-/// hands the shader the warp lens: the same stars crowd ahead, streak, sway with the flow and
-/// come back to rest, and the dust shows only while a warp has some in.
+/// hands the shader the warp lens: the same stars crowd ahead, streak by their own apparent
+/// motion and come back to rest, and the dust shows only while a warp inside a galaxy has some in.
 fn follow(
     vantage: Res<Vantage>,
     (palette, lens): (Res<Palette>, Res<Lens>),
@@ -114,11 +134,12 @@ fn follow(
                 params: Vec4::new(palette.stars, lens.streak, lens.stars, 0.0),
                 heading: lens.heading.extend(lens.beta),
                 drift: field.drift(&vantage).extend(0.0),
-                flow: Vec4::new(lens.phase, lens.flow, lens.dust, lens.flow / LAPS),
+                flow: Vec4::new(lens.phase, lens.flow, lens.medium(vantage.band), 0.0),
             };
         }
     }
-    let shown = [Visibility::Hidden, Visibility::Visible][usize::from(lens.dust > 0.0)];
+    let shown =
+        [Visibility::Hidden, Visibility::Visible][usize::from(lens.medium(vantage.band) > 0.0)];
     for (mut transform, mut global, mut visibility) in &mut dust {
         super::pin(pose, &mut transform, &mut global);
         visibility.set_if_neq(shown);

@@ -29,6 +29,7 @@ fn flying(mode: Mode, bank: f32, pitch: f32) -> Pose {
     let input = AvatarPose {
         bank,
         pitch,
+        wings: 1.0,
         look: Vec2::ZERO,
         ..scene(mode, 0.5)
     };

@@ -5,12 +5,13 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::{above_pole, fly, planet};
-use crate::render::entry_glow;
+use crate::render::{Drive, Sequence, entry_glow};
 use crate::ship::flight::Controls;
-use crate::ship::fx::warp_level;
+use crate::ship::fx::{pace, warp_level};
 use crate::ship::shake::{REACH, eased, roughness, shake};
 use crate::ship::telemetry::WarpState;
-use crate::universe::PlanetSpec;
+use crate::ship::warp::{CRUISE_CAP, JUMP_CAP};
+use crate::universe::{GLY, PlanetSpec};
 
 /// Returns the strongest glow of a flight of `seconds` with the assist on that starts `height`
 /// metres above the sea of `planet` at velocity `vel`, nose first, with the lever at `throttle`
@@ -133,4 +134,20 @@ fn warp_level_and_shake_are_bounded_and_smooth() {
     }
     assert!((level - 1.0).abs() < 1e-3);
     assert_eq!(eased(5e-4, 0.0, 3.0, dt), 0.0);
+}
+
+/// The sky draws the stars at the speed the drive really has: the share of its top speed the
+/// instruments report, `warp::fraction`, read back by `Sequence::speed` once the sequence
+/// cruises, gives the speed of the drive again, from the slowest warp to the fastest jump.
+#[test]
+fn the_sky_reads_the_speed_of_the_drive_back() {
+    for speed in [2000.0, 1.0e6, 3.0e9, CRUISE_CAP, 40.0 * GLY, JUMP_CAP] {
+        let drive = Drive {
+            charge: 1.0,
+            speed: pace(WarpState::Active(speed)),
+        };
+        let cruise = Sequence::default().advance(drive, 100.0);
+        let shown = f64::from(cruise.speed()) * GLY;
+        assert!((shown / speed - 1.0).abs() < 0.01, "{speed}: {shown}");
+    }
 }

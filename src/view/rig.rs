@@ -147,6 +147,7 @@ impl Rig {
         let shot = Shot::of(target, self.blend.person(), self.blend.flight());
         self.aim.flight = self.blend.flight();
         self.aim.step(moment, &stance, shot.third);
+        self.aim.heading = curve::head(target.kind, self.aim.heading, shot.third);
         let look = self.look(target, &stance, &shot);
         self.sway.step(moment, &stance, &shot, look);
         let bend = self.bend(target, &stance, shot.third, world);
@@ -164,7 +165,7 @@ impl Rig {
         };
         Shown {
             pose,
-            fade: BodyFade(curve::fade(target.kind, gap)),
+            fade: BodyFade(curve::fade(gap)),
             heading: self.aim.heading,
         }
     }

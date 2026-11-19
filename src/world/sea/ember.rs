@@ -8,6 +8,7 @@ use bevy::prelude::*;
 
 use super::liquid::Liquid;
 use crate::universe::{PlanetClass, PlanetRecord};
+use crate::world::ground::GroundMaterial;
 use crate::world::lands::Lands;
 use crate::world::props::PropAssets;
 use crate::world::shapes::srgb;
@@ -64,24 +65,25 @@ pub fn ember(globe: Option<&Globe>) -> LinearRgba {
 pub fn kindle(
     planet: Option<Res<Planet>>,
     assets: Option<Res<PropAssets>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<GroundMaterial>>,
     mut images: ResMut<Assets<Image>>,
 ) {
     let Some(assets) = assets else {
         return;
     };
     let light = ember(planet.as_deref().map(|planet| &*planet.globe));
-    let settled = |m: &StandardMaterial| m.emissive_texture.is_some() && m.emissive == light;
+    let settled =
+        |m: &GroundMaterial| m.base.emissive_texture.is_some() && m.base.emissive == light;
     if materials.get(&assets.material).is_none_or(settled) {
         return;
     }
     let Some(mut material) = materials.get_mut(&assets.material) else {
         return;
     };
-    if material.emissive_texture.is_none() {
-        material.emissive_texture = Some(images.add(glow_map()));
+    if material.base.emissive_texture.is_none() {
+        material.base.emissive_texture = Some(images.add(glow_map()));
     }
-    material.emissive = light;
+    material.base.emissive = light;
 }
 
 #[cfg(test)]

@@ -3,16 +3,24 @@
 use bevy::prelude::*;
 
 use super::{FRAME, scene};
-use crate::avatar::Mode;
 use crate::avatar::blend::pose_of;
 use crate::avatar::fx::{plume_color, plume_length};
 use crate::avatar::rig::{Seg, globals};
 use crate::avatar::tune::{PLUME, UNFOLD_SECONDS};
 use crate::avatar::wing::{Panel, fan, flutter, rim, stretch, unfold_step};
+use crate::avatar::{AvatarPose, Mode};
+
+/// Returns a glide with the wings fully spread, which is what the pose now follows.
+fn spread() -> AvatarPose {
+    AvatarPose {
+        wings: 1.0,
+        ..scene(Mode::Glide, 0.5)
+    }
+}
 
 /// Returns the area of a panel in square meters.
 fn area(panel: Panel, open: f32) -> f32 {
-    let frames = globals(&pose_of(Mode::Glide, &scene(Mode::Glide, 0.5), &default()));
+    let frames = globals(&pose_of(Mode::Glide, &spread(), &default()));
     let triangles = fan(&rim(panel, &frames, open), 0.0);
     triangles
         .iter()
@@ -68,7 +76,7 @@ fn fabric_stretches_between_the_joints() {
         );
         assert!(area(panel, 0.5) > area(panel, 0.1) && area(panel, 1.0) > area(panel, 0.5));
     }
-    let frames = globals(&pose_of(Mode::Glide, &scene(Mode::Glide, 0.5), &default()));
+    let frames = globals(&pose_of(Mode::Glide, &spread(), &default()));
     let right = rim(Panel::ArmR, &frames, 1.0);
     assert_eq!(right[2], frames[Seg::HandR as usize].translation);
     assert_eq!(right[1], frames[Seg::ForearmR as usize].translation);

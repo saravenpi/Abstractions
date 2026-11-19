@@ -5,10 +5,12 @@ use std::f32::consts::{FRAC_PI_2, PI};
 
 use bevy::prelude::*;
 
-use super::io::Kind;
+use super::io::{Heading, Kind};
 use super::shot::Shot;
+use super::smooth::wrap;
 use super::tune::{
-    FADE_BAND, INDOOR_DROP, INDOOR_SHORTEN, MAX_FOV, PITCH_LIMIT, TILT_DROP, TILT_FOV, TILT_REACH,
+    COCKPIT_TURN, COCKPIT_UP, FADE_BAND, INDOOR_DROP, INDOOR_SHORTEN, MAX_FOV, PITCH_LIMIT,
+    TILT_DROP, TILT_FOV, TILT_REACH,
 };
 use crate::render::smoothstep;
 
@@ -66,10 +68,23 @@ pub(super) fn fov(base: f32, shot: &Shot, bend: &Bend) -> f32 {
     (framed + shot.widen * bend.rush).min(MAX_FOV.max(base))
 }
 
-/// Returns how much of the body to draw when the camera is `gap` metres from the pivot.
-pub(super) fn fade(kind: Kind, gap: f32) -> f32 {
-    match kind {
-        Kind::Ship => 1.0,
-        Kind::OnFoot | Kind::Flying => smoothstep(FADE_BAND.0, FADE_BAND.1, gap),
+/// Returns how much of the body to draw when the camera is `gap` metres from the pivot: none
+/// of its head at the eyes, on foot and in the pilot seat alike, and all of it from afar.
+pub(super) fn fade(gap: f32) -> f32 {
+    smoothstep(FADE_BAND.0, FADE_BAND.1, gap)
+}
+
+/// Returns the look angles `heading` kept where the head of a pilot can turn in the seat, for
+/// a view `third` of the way to third person. At the eyes the head turns as far as
+/// [`COCKPIT_TURN`] to each side and looks up as far as [`COCKPIT_UP`], so the view never goes
+/// through the headrest; the limits open with the view, and the chase camera orbits freely.
+pub(super) fn head(kind: Kind, heading: Heading, third: f32) -> Heading {
+    if kind != Kind::Ship || third >= 1.0 {
+        return heading;
+    }
+    let side = COCKPIT_TURN.lerp(PI, third);
+    Heading {
+        yaw: wrap(heading.yaw).clamp(-side, side),
+        pitch: heading.pitch.min(COCKPIT_UP.lerp(PITCH_LIMIT, third)),
     }
 }

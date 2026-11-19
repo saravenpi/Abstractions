@@ -25,6 +25,9 @@ Players and servers must both run 0.10.1: the multiplayer protocol changed.
 - The compass fades its marks toward its ends and hides what is behind you, like a real compass, and shows any number of marks.
 - When a course is set, one line always says what happens next: "G Engage autopilot", or exactly why the drive waits, such as "Inside 3 planet radii (now 1.4): fly out first". G engages from the cockpit without opening the map.
 - The minimap range moved from M to N.
+- The wingsuit flies by attitude, not by rate: W dives down to 70 degrees, S climbs up to 30, A and D bank up to 55 degrees into a turn, Q and E turn gently. Let go and it levels out. It never loops or flies on its back.
+- Below flying speed the wingsuit lowers its nose by itself, and spreading it again in mid-air carries on along your path.
+- In flight the camera follows your heading and tilts with only part of the bank.
 - A server takes as many players as its owner sets with `--max-players` or `ABSTRACTIONS_MAX_PLAYERS`, up to 1000 and 16 by default. Open to LAN reads `host_max_players` from the settings. The server list shows each server's real limit. Space, `space.facile.studio`, takes 64.
 
 ### Fixed

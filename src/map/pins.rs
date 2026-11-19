@@ -151,13 +151,16 @@ impl Source<'_, '_> {
     }
 }
 
-/// Finds where every marker is drawn on the level shown, the player first on its planet.
-pub(super) fn collect(source: Source, mut pins: ResMut<Pins>) {
-    pins.0.clear();
+/// Finds where every marker is drawn on the level shown, the player first on its planet. The
+/// list is gathered aside and written only when it changed, so the frames it stays the same
+/// do not count as changes.
+pub(super) fn collect(source: Source, mut pins: ResMut<Pins>, mut found: Local<Pins>) {
+    let list = &mut found.0;
+    list.clear();
     if let Level::Planet(body) = *source.level
         && let Some((_, at)) = source.me.spot().filter(|(on, _)| *on == body)
     {
-        pins.0.push(Pin {
+        list.push(Pin {
             at: to_chart(at),
             marker: None,
         });
@@ -168,16 +171,20 @@ pub(super) fn collect(source: Source, mut pins: ResMut<Pins>) {
             true => source.on_planet(index),
             false => source.on_chart(index),
         };
-        if let Some(at) = at.filter(|_| pins.0.len() < POOL) {
-            pins.0.push(Pin {
+        if let Some(at) = at.filter(|_| list.len() < POOL) {
+            list.push(Pin {
                 at,
                 marker: Some(index),
             });
         }
     }
+    if pins.0 != found.0 {
+        pins.0.clone_from(&found.0);
+    }
 }
 
-/// Returns the pixel of the map the chart point `at` is drawn at on the level shown.
+/// Returns the pixel of the map the chart point `at` is drawn at on the level shown: on a
+/// planet, its copy nearest the longitude the lens looks at.
 pub(super) fn pixel(level: Level, (surface, view): (&Surface, &MapView), at: Vec2) -> Vec2 {
     match level {
         Level::Chart => view.lens.to_map(at),

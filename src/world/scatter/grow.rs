@@ -1,14 +1,13 @@
-//! The flora of a chunk of a living planet other than home: its producer groups, each with the looks the
+//! The flora of a chunk of a living planet, home included: its producer groups, each with the looks the
 //! book holds for it at this time of the year, and the chance it gets per try.
 //!
-//! Home keeps its own tables, a planet whose life was never given keeps the rules of home, and a dead
-//! planet gets a flora without groups: only its stones lie there.
+//! A planet whose life was never given keeps the hand-made tables, and a dead planet gets a flora without
+//! groups: only its stones lie there.
 
 use bevy::prelude::*;
 
 use crate::life::flora::{self, Stage, productivity};
 use crate::life::{Habitat, Life, Species, Tolerance, World};
-use crate::universe::{HOME_GRAVITY, HOME_RADIUS, PlanetRecord};
 use crate::world::Terrain;
 use crate::world::globe::{Chart, Globe};
 use crate::world::lands::thrive::climate_on;
@@ -18,7 +17,7 @@ use crate::world::propmesh::{BIG, VARIANTS};
 /// Chance per try of a group of each architecture on its best ground, before productivity.
 const CHANCE: [f32; 8] = [0.35, 0.12, 0.5, 0.12, 0.12, 0.15, 0.3, 0.12];
 
-/// Least share of the plant tries of home a living planet other than home gets, whatever its class.
+/// Least share of the plant tries of home a living planet gets, whatever its class.
 const LIVING: f32 = 0.6;
 
 /// Latitudes in radians the mean wind of a planet is read at.
@@ -59,21 +58,13 @@ pub struct Flora {
     pub growers: Vec<Grower>,
 }
 
-/// Returns true for the home planet, Kodya, which keeps its own plants: the one world with the home
-/// record, size and gravity.
-fn home(globe: &Globe) -> bool {
-    *globe.record() == PlanetRecord::TEMPERATE
-        && globe.radius() == HOME_RADIUS
-        && globe.gravity() == HOME_GRAVITY
-}
-
 /// Returns the share of the plant tries of home chunks of `terrain` get: what the class of the planet
-/// lets grow, and at least [`LIVING`] on a living planet other than home, whose life fits its class.
+/// lets grow, and at least [`LIVING`] on a living planet, whose life fits its class.
 pub fn growth(terrain: &Terrain) -> f32 {
     let globe = terrain.globe();
-    let alien = globe.lives() == Some(true) && terrain.chart() != Chart::Flat && !home(globe);
+    let living = globe.lives() == Some(true) && terrain.chart() != Chart::Flat;
     let class = globe.lands().growth();
-    if alien { class.max(LIVING) } else { class }
+    if living { class.max(LIVING) } else { class }
 }
 
 /// Returns the world of `globe` as the plant rules read it. The globe does not know its star, whose colour
@@ -126,13 +117,10 @@ fn grower(life: &Life, species: &Species, world: &World, wind: f32, stage: Stage
 
 impl Flora {
     /// Returns the flora of the chunk centred on chart position `center` of `terrain`, or nothing where the
-    /// rules of home apply: on the legacy plane, at home, and where the life of the planet was never given.
+    /// hand-made tables apply: on the legacy plane and where the life of the planet was never given.
     pub fn of(terrain: &Terrain, center: Vec2) -> Option<Self> {
         let globe = terrain.globe();
         let lives = globe.lives().filter(|_| terrain.chart() != Chart::Flat)?;
-        if home(globe) {
-            return None;
-        }
         let Some(life) = globe.life().filter(|_| lives) else {
             return Some(Self::default());
         };

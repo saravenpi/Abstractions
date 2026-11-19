@@ -1,5 +1,5 @@
 //! Tests of scatter on planets with their life given: a living world grows its own producers, a dead one
-//! keeps only its stones, and home keeps its tables.
+//! keeps only its stones, and home plants its life like any other.
 
 use std::sync::Arc;
 
@@ -108,11 +108,12 @@ fn trees_are_lower_on_a_heavy_world() {
     );
 }
 
-/// Home keeps its own tables and look with its life given, and so does a globe whose life was never given.
+/// Home with its life given plants its own producers like any living planet, and a home globe whose life
+/// was never given keeps the hand-made tables.
 #[test]
-fn home_keeps_its_tables() {
+fn home_plants_its_life() {
     let given = Arc::new(
-        Globe::new(9, HOME_RADIUS, HOME_GRAVITY).with_life(Some(garden(9, &[0, 6], vec![]))),
+        Globe::new(9, HOME_RADIUS, HOME_GRAVITY).with_life(Some(garden(9, &[0, 2], vec![]))),
     );
     let plain = Arc::new(Globe::new(9, HOME_RADIUS, HOME_GRAVITY));
     let (a, b) = (
@@ -120,10 +121,25 @@ fn home_keeps_its_tables() {
         chunks(&plain, Zone::Centre, 15, 4),
     );
     assert_eq!(a.len(), 4);
+    let mut grew = 0;
     for (x, y) in a.iter().zip(&b) {
-        assert_eq!(x.scatter(), y.scatter());
-        assert!(Flora::of(&x.terrain, chunk_center(x.coord)).is_none());
+        let flora = Flora::of(&x.terrain, chunk_center(x.coord)).expect("a flora at home");
+        assert_eq!(flora.growers.len(), 2);
+        assert!(Flora::of(&y.terrain, chunk_center(y.coord)).is_none());
+        for (p, _) in x.scatter() {
+            assert!(
+                stone(&p) || grown(p.variant),
+                "{:?} of the tables at home",
+                p.plant
+            );
+            grew += usize::from(grown(p.variant));
+        }
+        assert!(
+            y.scatter().iter().any(|(p, _)| !stone(p)),
+            "no table plant on a plain home"
+        );
     }
+    assert!(grew > 20, "only {grew} grown plants at home");
 }
 
 /// The same living planet always scatters the same.

@@ -20,6 +20,7 @@ mod lobby;
 mod messages;
 mod paths;
 mod scan;
+mod state;
 #[cfg(test)]
 mod tests;
 
@@ -31,6 +32,7 @@ pub use messages::{
     RefreshLobby, SessionEnded, SessionNotice,
 };
 pub use paths::NetDir;
+pub use state::Remote;
 
 use bevy::prelude::*;
 

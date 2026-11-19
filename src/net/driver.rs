@@ -115,4 +115,5 @@ pub fn plugin(app: &mut App) {
     hosting(app);
     edges(app);
     lobby(app);
+    super::state::plugin(app);
 }

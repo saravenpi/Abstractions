@@ -1,0 +1,205 @@
+//! Sending the robot, the ship and the companion of this machine: one batch a frame, each
+//! record at its own rate, the batch and the body written into buffers that are kept.
+
+mod kinds;
+
+pub use kinds::{Here, Sent, Trail};
+
+use abstractions_net::wire::{self, AT_REST, CompanionBody, Head, Kind, Record, RobotBody};
+use abstractions_net::wire::{ShipBody, push_within};
+use bevy::ecs::system::SystemParam;
+use bevy::prelude::*;
+
+use super::Remote;
+use super::bodies::{Bodies, star_of};
+use super::frame::Place;
+use super::rate::{Cadence, REST_SPEED};
+use crate::avatar::{Avatar, AvatarPose};
+use crate::companion::Companion;
+use crate::net::link::Link;
+use crate::player::{Motion, Player};
+use crate::ship::{Ship, ShipTelemetry, WarpState};
+use crate::sim::PlayerId;
+use crate::space::{Anchor, Clock, Location, Placed, Travel};
+use crate::universe::{StarId, Universe};
+
+/// The batch being written, kept from frame to frame so that sending allocates nothing once
+/// it has grown, and when each kind is due.
+#[derive(Resource, Debug, Default)]
+pub struct Outbox {
+    /// The datagram of the frame.
+    pub batch: Vec<u8>,
+    /// The body of the record being written.
+    body: Vec<u8>,
+    /// When the next robot, ship and companion record is due, in that order.
+    cadence: [Cadence; 3],
+    /// The star this machine was last at.
+    star: Option<StarId>,
+    /// Where the companion was on the last frame.
+    trail: Trail,
+}
+
+/// What every record of a frame shares.
+struct Stamp {
+    /// The id the server gave this player.
+    player: PlayerId,
+    /// Universe time of the frame.
+    time: f64,
+    /// Local time in seconds, which the rates count in.
+    now: f64,
+    /// Most bytes the datagram may carry.
+    max: usize,
+}
+
+impl Outbox {
+    /// Adds the record of `kind` to the batch when `sent` holds one and its rate says it is due.
+    fn offer<B>(
+        &mut self,
+        stamp: &Stamp,
+        (kind, sent): (Kind, Option<Sent<B>>),
+        encode: fn(&B, &wire::Frame, &mut Vec<u8>),
+    ) {
+        let Some(sent) = sent else {
+            return;
+        };
+        let slot = match kind {
+            Kind::Robot => 0,
+            Kind::Ship => 1,
+            Kind::Companion => 2,
+        };
+        if !self.cadence[slot].due(stamp.now, sent.rest) {
+            return;
+        }
+        self.body.clear();
+        encode(&sent.body, &sent.frame, &mut self.body);
+        let head = Head {
+            player: stamp.player,
+            kind,
+            frame: sent.frame,
+            time: stamp.time,
+            flags: if sent.rest { AT_REST } else { 0 },
+        };
+        let record = Record {
+            head,
+            body: &self.body,
+        };
+        push_within(&mut self.batch, &record, stamp.max);
+    }
+}
+
+/// Where this machine stands.
+#[derive(SystemParam)]
+pub struct Scene<'w> {
+    /// The render anchor.
+    anchor: Option<Res<'w, Anchor>>,
+    /// Where the player is.
+    location: Option<Res<'w, Location>>,
+    /// The universe.
+    universe: Option<Res<'w, Universe>>,
+    /// Universe time.
+    clock: Res<'w, Clock>,
+    /// Local time.
+    time: Res<'w, Time<Real>>,
+    /// The instruments of the ship.
+    telemetry: Option<Res<'w, ShipTelemetry>>,
+}
+
+/// The things of this machine that are sent.
+#[derive(SystemParam)]
+pub struct Locals<'w, 's> {
+    /// The player bodies.
+    players: Query<
+        'w,
+        's,
+        (
+            Entity,
+            &'static PlayerId,
+            &'static GlobalTransform,
+            &'static Motion,
+        ),
+        With<Player>,
+    >,
+    /// The robots, with the body each hangs from.
+    avatars: Query<'w, 's, (&'static ChildOf, &'static AvatarPose), With<Avatar>>,
+    /// The ship of this machine.
+    ship: Query<'w, 's, (&'static Ship, Option<&'static Placed>)>,
+    /// The companion of this machine.
+    companion: Query<'w, 's, &'static GlobalTransform, (With<Companion>, Without<Remote>)>,
+}
+
+/// Returns where this machine stands, or nothing before its world exists.
+fn here(scene: &Scene, ship: Option<&Ship>, last: Option<StarId>) -> Option<Here> {
+    let (anchor, location) = (*scene.anchor.as_deref()?, scene.location.as_deref()?);
+    let seated = location.travel == Travel::InShip;
+    let resting = ship.is_none_or(|ship| ship.landed || ship.vel.length() < REST_SPEED);
+    Some(Here {
+        anchor,
+        place: Place::from(anchor.frame),
+        time: scene.clock.seconds,
+        seated,
+        landed: ship.is_some_and(|ship| ship.landed),
+        still: !seated || resting,
+        last: star_of(Place::from(anchor.frame)).or(last),
+    })
+}
+
+impl Scene<'_> {
+    /// Returns what the warp drive of the ship of this machine does.
+    fn drive(&self) -> WarpState {
+        self.telemetry
+            .as_deref()
+            .map(|t| t.warp)
+            .unwrap_or_default()
+    }
+}
+
+impl Locals<'_, '_> {
+    /// Returns the body of the player at this machine, how it moves and how its robot is posed.
+    fn mine(&self) -> Option<(&GlobalTransform, &Motion, &AvatarPose)> {
+        let local = |(_, id, ..): &(Entity, &PlayerId, _, _)| **id == PlayerId::LOCAL;
+        let (entity, _, at, motion) = self.players.iter().find(local)?;
+        let hung = |(parent, _): &(&ChildOf, &AvatarPose)| parent.parent() == entity;
+        let (_, pose) = self.avatars.iter().find(hung)?;
+        Some((at, motion, pose))
+    }
+}
+
+/// Sends the records that are due in one batch, once the server gave this player an id.
+pub fn send(
+    mut link: ResMut<Link>,
+    mut out: ResMut<Outbox>,
+    mut bodies: ResMut<Bodies>,
+    scene: Scene,
+    locals: Locals,
+) {
+    let ship = locals.ship.single().ok();
+    let found = here(&scene, ship.map(|(ship, _)| ship), out.star);
+    let (Some(player), Some(here), Some(universe)) = (link.you, found, scene.universe.as_deref())
+    else {
+        return;
+    };
+    bodies.sync(universe);
+    out.star = here.last;
+    out.batch.clear();
+    let (now, max) = (scene.time.elapsed_secs_f64(), link.max_datagram());
+    let stamp = Stamp {
+        player,
+        time: here.time,
+        now,
+        max,
+    };
+    let walker = locals.mine();
+    let walker =
+        walker.and_then(|(at, motion, pose)| kinds::robot(&here, at, motion, pose, &mut bodies));
+    out.offer(&stamp, (Kind::Robot, walker), RobotBody::encode);
+    let drive = scene.drive();
+    let hull = ship.and_then(|(ship, placed)| kinds::ship(&here, ship, placed, drive, &mut bodies));
+    out.offer(&stamp, (Kind::Ship, hull), ShipBody::encode);
+    let bot = locals.companion.single().ok();
+    let bot = bot.and_then(|at| kinds::companion(&here, at, out.trail, &mut bodies));
+    out.trail = bot.map(|sent| (sent.frame, sent.body.position, here.time));
+    out.offer(&stamp, (Kind::Companion, bot), CompanionBody::encode);
+    if !out.batch.is_empty() && max > 0 {
+        link.send_records(&out.batch);
+    }
+}

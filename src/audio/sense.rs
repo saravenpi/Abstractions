@@ -8,6 +8,7 @@ use super::scene::{AudioScene, altitude_fade};
 use super::shore::{closeness, nearest};
 use crate::companion::Companion;
 use crate::gear::{FlightFx, GearSet};
+use crate::net::Remote;
 use crate::player::above_sea;
 use crate::render::{CloudCrossing, DayClock, GameCamera, daylight, smoothstep};
 use crate::screens::Screen;
@@ -92,7 +93,7 @@ fn side(listener: &GlobalTransform, from: Vec3) -> f32 {
 /// Writes where the companion is for the listener, so its voice comes from where it floats.
 fn sense_companion(
     camera: Query<&GlobalTransform, With<GameCamera>>,
-    companion: Query<&GlobalTransform, With<Companion>>,
+    companion: Query<&GlobalTransform, (With<Companion>, Without<Remote>)>,
     mut scene: ResMut<AudioScene>,
 ) {
     let (Ok(camera), Ok(companion)) = (camera.single(), companion.single()) else {
@@ -111,7 +112,10 @@ fn sense_companion(
 fn sense_listener(
     here: Res<Here>,
     (anchor, terrain): (Option<Res<Anchor>>, Option<Res<Terrain>>),
-    (camera, crossing): (Query<&GlobalTransform, With<GameCamera>>, Option<Res<CloudCrossing>>),
+    (camera, crossing): (
+        Query<&GlobalTransform, With<GameCamera>>,
+        Option<Res<CloudCrossing>>,
+    ),
     mut scene: ResMut<AudioScene>,
 ) {
     let (Some(anchor), Some(terrain), Some((_, spec))) = (anchor, terrain, here.0.as_ref()) else {

@@ -36,6 +36,7 @@ Players and servers must both run 0.10.1: the multiplayer protocol changed.
 - Unexplored ground on the map is plain black, without grid lines.
 - Names on the map stay clear of the header and footer lines, and the home icon no longer covers the ship.
 - The map no longer repeats the course hint while the Set course button shows.
+- Wingsuit trails over the sea are no longer hidden by the water, and no clearer patch of sea follows a low camera.
 
 ## [0.10.0] - 2026-11-19
 

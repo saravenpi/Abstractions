@@ -1,5 +1,6 @@
-//! Laying the compass out every frame: which markers it shows, where, how faded and on which
-//! row, written into a pool of marks that grows when more markers show than it holds.
+//! Laying the compass out every frame: which markers it shows, where and how faded, written
+//! into a pool of marks that grows when more markers show than it holds. Every mark sits on one
+//! level, its distance under its icon, even where marks overlap.
 
 use std::fmt::Write;
 
@@ -7,9 +8,9 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::aim::Around;
-use super::{Bar, Far, Glyph, HEIGHT, Pin, ROOM, ROW, pin};
+use super::{Bar, Far, Glyph, Pin, ROOM, pin};
 use crate::computer::distance;
-use crate::menus::hud::needle::{ROWS, WIDTH, fade, row, slot};
+use crate::menus::hud::needle::{WIDTH, fade, slot};
 use crate::menus::{Marker, MarkerKind, Markers};
 use crate::ui::{Icon, theme};
 
@@ -24,18 +25,6 @@ pub struct Seen {
     pub alpha: f32,
     /// Its distance in metres.
     pub gap: f64,
-    /// The row it sits on, from 0 at the bar.
-    pub row: usize,
-}
-
-/// Sorts the shown markers from left to right and gives each the first row where it covers no
-/// other mark.
-pub fn arrange(seen: &mut [Seen]) {
-    seen.sort_unstable_by(|a, b| a.at.total_cmp(&b.at).then(a.index.cmp(&b.index)));
-    let mut ends = [f32::NEG_INFINITY; ROWS];
-    for mark in seen.iter_mut() {
-        mark.row = row(mark.at, &mut ends);
-    }
 }
 
 /// Returns the icon of a marker of `kind`.
@@ -49,43 +38,31 @@ fn icon(kind: MarkerKind) -> Icon {
     }
 }
 
-/// The label of a mark: its slot, its words, their colour and its node.
-type Words = (
-    &'static Far,
-    &'static mut Text,
-    &'static mut TextColor,
-    &'static mut Node,
-);
-
-/// What sets the label of a mark apart from its icon, its room and the bar.
-type Label = (Without<Glyph>, Without<Pin>, Without<Bar>);
+/// The label of a mark: its slot, its words and their colour.
+type Words = (&'static Far, &'static mut Text, &'static mut TextColor);
 
 /// The nodes of the compass.
 #[derive(SystemParam)]
 pub struct Pins<'w, 's> {
     /// Spawns marks when the pool is too small.
     commands: Commands<'w, 's>,
-    /// The bar, its visibility and its height.
-    bars: Query<'w, 's, (Entity, &'static mut Visibility, &'static mut Node), With<Bar>>,
+    /// The bar and its visibility.
+    bars: Query<'w, 's, (Entity, &'static mut Visibility), With<Bar>>,
     /// The marks of the pool.
     pins: Query<'w, 's, (&'static mut Pin, &'static mut Node), Without<Bar>>,
     /// The icons of the marks.
     glyphs:
         Query<'w, 's, (&'static Glyph, &'static mut Text, &'static mut TextColor), Without<Far>>,
     /// The labels of the marks.
-    words: Query<'w, 's, Words, Label>,
+    words: Query<'w, 's, Words, Without<Glyph>>,
 }
 
 impl Pins<'_, '_> {
-    /// Shows the bar, empty or not, as high as its rows of labels, and grows the pool to `wanted`.
-    fn frame(&mut self, wanted: usize, rows: usize) {
+    /// Shows the bar, empty or not, and grows the pool to `wanted`.
+    fn frame(&mut self, wanted: usize) {
         let held = self.pins.iter().count();
-        for (bar, mut visibility, mut node) in &mut self.bars {
+        for (bar, mut visibility) in &mut self.bars {
             visibility.set_if_neq(Visibility::Inherited);
-            let height = px(HEIGHT + ROW * rows.saturating_sub(1) as f32);
-            if node.height != height {
-                node.height = height;
-            }
             for slot in held..wanted {
                 self.commands.entity(bar).with_child(pin(slot));
             }
@@ -124,16 +101,12 @@ impl Pins<'_, '_> {
     }
 
     /// Writes the name and distance of every shown mark, faded, in its colour for a friend,
-    /// a waypoint or a favourite, on the row of labels it was given under the line.
+    /// a waypoint or a favourite, under its icon.
     fn label(&mut self, seen: &[Seen], markers: &[Marker], words: &mut String) {
-        for (far, mut text, mut color, mut node) in &mut self.words {
+        for (far, mut text, mut color) in &mut self.words {
             let Some(mark) = seen.get(far.0) else {
                 continue;
             };
-            let drop = px(ROW * mark.row as f32);
-            if node.margin.top != drop {
-                node.margin.top = drop;
-            }
             let marker = &markers[mark.index];
             words.clear();
             let gap = distance(mark.gap);
@@ -154,7 +127,7 @@ impl Pins<'_, '_> {
 }
 
 /// Shows every marker that lies inside the span of the bar where it lies, faded toward the
-/// ends, with their labels stacked in rows under the line. The bar shows even while empty.
+/// ends, all on one level. The bar shows even while empty.
 pub fn update(
     around: Around,
     markers: Res<Markers>,
@@ -168,19 +141,16 @@ pub fn update(
             continue;
         };
         if let Some(alpha) = fade(bearing) {
-            let (at, row) = (slot(bearing) * WIDTH, 0);
+            let at = slot(bearing) * WIDTH;
             seen.push(Seen {
                 index,
                 at,
                 alpha,
                 gap,
-                row,
             });
         }
     }
-    arrange(&mut seen);
-    let rows = seen.iter().map(|mark| mark.row + 1).max().unwrap_or(1);
-    pins.frame(seen.len(), rows);
+    pins.frame(seen.len());
     pins.place(&seen, &markers.0);
     pins.paint(&seen, &markers.0);
     pins.label(&seen, &markers.0, &mut words);

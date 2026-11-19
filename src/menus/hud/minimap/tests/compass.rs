@@ -1,5 +1,5 @@
 //! The compass reads the markers: marks fade toward the ends of the bar and hide past them,
-//! marks that would cover each other stack in rows, and a rebase in the frame keeps both the
+//! every mark sits on one level, and a rebase in the frame keeps both the
 //! compass and the minimap on the true place of the player.
 
 use bevy::math::DVec3;
@@ -7,10 +7,10 @@ use bevy::prelude::*;
 
 use super::read::{at, furnish};
 use super::rig::{app, ground, look, settle};
-use crate::menus::hud::compass::{Far, Pin};
+use crate::menus::hud::compass::Pin;
 use crate::menus::hud::minimap::scope::Scope;
 use crate::menus::hud::minimap::widget::Part;
-use crate::menus::hud::needle::{ROWS, SPAN, fade, row};
+use crate::menus::hud::needle::{SPAN, fade};
 use crate::menus::{Marker, MarkerKind, MarkerPlace, Markers};
 use crate::render::GameCamera;
 use crate::space::Anchor;
@@ -25,16 +25,6 @@ fn marks_fade_toward_the_ends_and_hide_behind() {
     assert!(fade(SPAN).unwrap().abs() < 1e-6);
     assert_eq!(fade(1.01 * SPAN), None);
     assert_eq!(fade(std::f32::consts::PI), None);
-}
-
-/// Five marks at one place take five rows; a mark far enough to the right goes back to the
-/// first row.
-#[test]
-fn five_overlapping_marks_stack_in_rows() {
-    let mut ends = [f32::NEG_INFINITY; ROWS];
-    let rows: Vec<usize> = (0..5).map(|_| row(100.0, &mut ends)).collect();
-    assert_eq!(rows, vec![0, 1, 2, 3, 4]);
-    assert_eq!(row(300.0, &mut ends), 0);
 }
 
 /// Returns a friend called `name` at the ground point `at` of the home planet.
@@ -64,8 +54,8 @@ fn shown(app: &mut App, kind: MarkerKind) -> Vec<(f32, f32)> {
     found
 }
 
-/// Five friends 300 m ahead show as five icons on the top row over the same place, their labels
-/// stacked in five rows under the line, and a sixth one behind the player shows nowhere.
+/// Five friends 300 m ahead show as five marks on one level over the same place, and a sixth
+/// one behind the player shows nowhere.
 #[test]
 fn the_compass_shows_every_friend_ahead() {
     let mut app = app("friends");
@@ -86,18 +76,6 @@ fn the_compass_shows_every_friend_ahead() {
             .all(|(left, _)| (left - found[0].0).abs() < 0.01)
     );
     assert!(found.iter().all(|(_, top)| *top == 0.0), "{found:?}");
-    let mut labels = app.world_mut().query::<(&Far, &Node)>();
-    let mut drops: Vec<f32> = labels
-        .iter(app.world())
-        .filter(|(far, _)| far.0 < 5)
-        .map(|(_, node)| match node.margin.top {
-            Val::Px(drop) => drop,
-            _ => 0.0,
-        })
-        .collect();
-    drops.sort_by(f32::total_cmp);
-    assert_eq!(drops[0], 0.0);
-    assert!(drops.windows(2).all(|pair| pair[1] > pair[0]), "{drops:?}");
 }
 
 /// Moves the anchor 500 m along the planet and the camera with it in one frame, leaving a

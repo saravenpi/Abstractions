@@ -1,5 +1,5 @@
 //! Where a mark of the compass sits: the angle to its target, its place along the bar, how
-//! much it has faded toward the ends, and the row it takes beside marks it would cover.
+//! and how much it has faded toward the ends.
 
 use bevy::prelude::*;
 
@@ -8,12 +8,6 @@ pub const WIDTH: f32 = 360.0;
 
 /// Angle in radians from the middle of the bar to either end.
 pub const SPAN: f32 = 1.2;
-
-/// Least gap in pixels between two marks on one row, so their labels stay readable.
-pub const APART: f32 = 72.0;
-
-/// Most rows the marks stack in; a mark that finds no free row goes on the last one.
-pub const ROWS: usize = 5;
 
 /// Share of the span, at each end, over which a mark fades out.
 const FADE: f32 = 0.3;
@@ -38,14 +32,4 @@ pub fn slot(bearing: f32) -> f32 {
 pub fn fade(bearing: f32) -> Option<f32> {
     let reach = bearing.abs() / SPAN;
     (reach <= 1.0).then(|| ((1.0 - reach) / FADE).min(1.0))
-}
-
-/// Returns the row of a mark at `at` pixels along the bar, for marks taken from left to right:
-/// the first row whose last mark ends `APART` before it, else the last row. `ends` holds the
-/// place of the last mark of each row and starts at minus infinity.
-pub fn row(at: f32, ends: &mut [f32; ROWS]) -> usize {
-    let free = ends.iter().position(|end| at - end >= APART);
-    let chosen = free.unwrap_or(ROWS - 1);
-    ends[chosen] = at;
-    chosen
 }

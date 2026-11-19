@@ -2,8 +2,8 @@
 //! player, each where it lies, with its name and distance under it.
 //!
 //! A mark slides along the bar as the player turns, fades out toward the ends of the bar and
-//! hides past them. Every icon stays over the line, even where icons overlap; labels that would
-//! cover each other stack in rows under it. On a planet an N marks north. The bar shows even
+//! hides past them. Every mark sits on one level, its icon over the line and its distance under
+//! it, even where marks overlap. On a planet an N marks north. The bar shows even
 //! while empty. The ship only shows on the planet it stands on and while the player is on foot;
 //! favourites only nearby. Away from the home planet the home mark points at the next place on
 //! the way home.
@@ -36,10 +36,6 @@ const MARK: f32 = 14.0;
 /// Height in pixels of the bar with one row of marks.
 const HEIGHT: f32 = MARK * 2.0 + theme::GAP_M;
 
-/// Height in pixels of one more row of labels. Every icon stays on the top row, over the line,
-/// even where icons overlap; only the labels stack under it.
-const ROW: f32 = theme::FONT_SMALL + theme::GAP_XS;
-
 /// Marks the bar itself, which shows whenever the HUD does, empty or not.
 #[derive(Component)]
 pub(super) struct Bar;
@@ -60,7 +56,7 @@ pub(super) struct Glyph(usize);
 
 /// Marks the label of the mark of the pool at this slot: its name and distance.
 #[derive(Component)]
-pub(super) struct Far(pub usize);
+pub(super) struct Far(usize);
 
 /// One hidden mark of the pool at `slot`: its icon over its label.
 fn pin(slot: usize) -> impl Bundle {

@@ -6,9 +6,11 @@ pub mod climate;
 pub mod companion;
 pub mod computer;
 pub mod effects;
+pub mod fauna;
 pub mod gear;
 pub mod home;
 pub mod icon;
+pub mod life;
 pub mod menus;
 pub mod net;
 pub mod player;
@@ -91,5 +93,6 @@ impl Plugin for AppPlugin {
         app.insert_resource(saved).add_plugins(defaults);
         app.add_plugins(PhysicsPlugins::default());
         modules(app);
+        app.add_plugins(fauna::plugin);
     }
 }

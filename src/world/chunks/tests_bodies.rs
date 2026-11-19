@@ -52,7 +52,7 @@ pub(super) fn body(radius: f64, class: PlanetClass, moon: bool) -> PlanetSpec {
 /// Makes `spec` the streamed body, with the focus `lift` metres over the north pole, or at the
 /// terrain spawn without one.
 pub(super) fn enter(app: &mut App, spec: &PlanetSpec, lift: Option<f32>) {
-    let (planet, north) = planet_of(spec.id, spec);
+    let (planet, north) = planet_of(spec.id, spec, None);
     let at = lift.map_or_else(|| north.find_spawn(), |lift| Vec3::Y * lift);
     let (terrain, spawn) = rehome(&north, at);
     let world = app.world_mut();

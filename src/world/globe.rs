@@ -13,6 +13,7 @@ mod grain;
 mod ground;
 mod id;
 mod landform;
+mod life;
 pub mod quadtree;
 mod record;
 mod reserve;
@@ -89,6 +90,8 @@ pub struct Globe {
     season: Season,
     /// The coarse cells of the sphere, their height grids and their flows, shared by every copy.
     atlas: Arc<Atlas>,
+    /// The life of the planet, shared by every copy, none on a dead world.
+    life: Option<Arc<crate::life::Life>>,
 }
 
 impl Globe {
@@ -112,6 +115,7 @@ impl Globe {
             setting: climate::setting(seed, radius, gravity),
             season: Season::default(),
             atlas: Arc::new(Atlas::new(0, 1)),
+            life: None,
         }
         .charted()
     }

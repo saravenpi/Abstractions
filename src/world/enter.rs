@@ -8,14 +8,15 @@ use bevy::prelude::*;
 
 use super::globe::Face;
 use super::{Globe, Planet, Terrain};
+use crate::life::Life;
 use crate::saves::ActiveWorld;
 use crate::space::Location;
 use crate::universe::{BodyId, PlanetSpec, Universe};
 
-/// Returns the streamed planet named `body` with the ground of `spec`, a planet or a moon alike, and its
-/// terrain view on the north face.
-pub(super) fn planet_of(body: BodyId, spec: &PlanetSpec) -> (Planet, Terrain) {
-    let globe = Arc::new(Globe::of(spec));
+/// Returns the streamed planet named `body` with the ground of `spec` and its `life`, a planet or a moon
+/// alike, and its terrain view on the north face.
+pub(super) fn planet_of(body: BodyId, spec: &PlanetSpec, life: Option<Life>) -> (Planet, Terrain) {
+    let globe = Arc::new(Globe::of(spec).with_life(life));
     let terrain = Terrain::on(globe.clone(), globe.face_chart(Face::PosY));
     let planet = Planet {
         body,
@@ -31,7 +32,11 @@ pub(super) fn planet_of(body: BodyId, spec: &PlanetSpec) -> (Planet, Terrain) {
 /// The caller still owns the `Anchor` and `Location`. The terrain starts on the north face and
 /// follows the focus from the next frame on.
 pub fn enter_planet(commands: &mut Commands, universe: &Universe, body: BodyId) -> Terrain {
-    let (planet, terrain) = planet_of(body, &universe.planet(body));
+    let (planet, terrain) = {
+        let spec = universe.planet(body);
+        let life = crate::life::of(&spec, &universe.system(body.star).star);
+        planet_of(body, &spec, life)
+    };
     commands.insert_resource(terrain.clone());
     commands.insert_resource(planet);
     terrain

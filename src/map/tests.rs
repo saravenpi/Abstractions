@@ -1,5 +1,6 @@
 //! Map tests: the waypoint key sets and clears, favourites are named and renamed, a level
-//! fades in, the flat map opens where it was asked to look, no closer than its cap.
+//! fades in, the flat map opens where it was asked to look and no closer than its cap, and
+//! crowded names on it are left out.
 
 use bevy::input::keyboard::Key;
 use bevy::math::{DVec3, Vec2};
@@ -80,4 +81,21 @@ fn favourites_and_waypoints_cross_the_wire() {
     let mine = waypoints.mine.unwrap();
     let back = from_wire(&to_wire(&mine)).unwrap();
     assert!(back.dir.distance(mine.dir) < 1e-6 && back.body == mine.body);
+}
+
+/// A name that would cross the player or a name before it is left out, and a marker far
+/// enough away keeps its name.
+#[test]
+fn crowded_names_are_left_out() {
+    use super::pins::POOL;
+    use super::pins_draw::{Spot, named};
+    let mut spots: [Spot; POOL] = [None; POOL];
+    spots[0] = Some((Vec2::new(500.0, 358.0), 3));
+    spots[1] = Some((Vec2::new(503.0, 359.0), 4));
+    spots[2] = Some((Vec2::new(520.0, 362.0), 8));
+    spots[3] = Some((Vec2::new(500.0, 420.0), 4));
+    let shown = named(&spots);
+    assert_eq!(shown[..4], [true, false, false, true]);
+    spots[0] = None;
+    assert_eq!(named(&spots)[..4], [false, true, false, true]);
 }

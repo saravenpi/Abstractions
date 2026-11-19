@@ -52,7 +52,7 @@ pub struct PinDot(pub usize);
 pub struct PinLabel(pub usize);
 
 /// Side in pixels of the dot of a marker.
-const DOT: f32 = 8.0;
+pub const DOT: f32 = 8.0;
 
 /// The dot of a node of the pool, centred on its point.
 fn dot(index: usize) -> impl Bundle {

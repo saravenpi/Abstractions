@@ -1,12 +1,14 @@
 //! Drawing the pool of markers: each node moved to its pixel and dressed for what it stands
-//! for, the rest hidden. Only what changed is written.
+//! for, the rest hidden. A name that would cross a marker or a name drawn before it is left
+//! out, so names stay readable where markers crowd. Only what changed is written.
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::level::Level;
-use super::pins::{PinDot, PinLabel, PinSlot, Pins, pixel};
+use super::pins::{DOT, POOL, PinDot, PinLabel, PinSlot, Pins, pixel};
 use super::surface::Surface;
+use crate::computer::GLYPH;
 use crate::computer::{MapView, SIZE};
 use crate::menus::{Marker, MarkerKind, Markers};
 use crate::ui::theme;
@@ -62,6 +64,33 @@ fn look<'a>(
     }
 }
 
+/// Where a marker is drawn, in pixels of the map, and how many characters its name has.
+pub type Spot = Option<(Vec2, usize)>;
+
+/// Returns which markers show their name: a name is left out when it would cross the dot or
+/// the shown name of a marker before it. The player comes first, so their name always shows.
+pub fn named(spots: &[Spot; POOL]) -> [bool; POOL] {
+    let dot = |at: Vec2| Rect::from_center_size(at, Vec2::splat(DOT));
+    let name = |(at, chars): (Vec2, usize)| {
+        let corner = at + Vec2::new(DOT, -0.6 * theme::FONT_SMALL);
+        let size = Vec2::new(chars as f32 * GLYPH, theme::FONT_SMALL * 1.2);
+        Rect::from_corners(corner, corner + size)
+    };
+    let mut shown = [false; POOL];
+    for index in 0..POOL {
+        let Some(spot) = spots[index] else {
+            continue;
+        };
+        let words = name(spot);
+        let crosses = |rect: Rect| !rect.intersect(words).is_empty();
+        let crossed = spots[..index].iter().zip(shown).any(|(other, lit)| {
+            other.is_some_and(|other| crosses(dot(other.0)) || (lit && crosses(name(other))))
+        });
+        shown[index] = !crossed;
+    }
+    shown
+}
+
 /// The nodes of the pool.
 #[derive(SystemParam)]
 pub struct Pool<'w, 's> {
@@ -97,7 +126,7 @@ fn moved(pool: &mut Pool, wanted: impl Fn(usize) -> Option<Vec2>) {
     }
 }
 
-/// Draws every marker of [`Pins`] on the level shown.
+/// Draws every marker of [`Pins`] on the level shown, with the names [`named`] keeps.
 pub(super) fn draw(
     (pins, markers, level): (Res<Pins>, Res<Markers>, Res<Level>),
     (surface, view): (Res<Surface>, Res<MapView>),
@@ -105,15 +134,17 @@ pub(super) fn draw(
 ) {
     let side = [SIZE, view.side][usize::from(view.side > 0.0)];
     let lenses = (&*surface, &*view);
-    moved(&mut pool, |index| {
-        let pin = pins.0.get(index)?;
-        Some(pixel(*level, lenses, pin.at) / SIZE * side)
-    });
     let look = |index: usize| {
         pins.0
             .get(index)
             .map(|pin| dress(pin.marker.and_then(|at| markers.0.get(at))))
     };
+    let spots: [Spot; POOL] = std::array::from_fn(|index| {
+        let at = pixel(*level, lenses, pins.0.get(index)?.at) / SIZE * side;
+        look(index).map(|dress| (at, dress.name.chars().count()))
+    });
+    let shown = named(&spots);
+    moved(&mut pool, |index| spots[index].map(|(at, _)| at));
     for (PinDot(index), mut fill, mut border, mut turn) in &mut pool.dots {
         let Some(dress) = look(*index) else {
             continue;
@@ -126,8 +157,9 @@ pub(super) fn draw(
         }
     }
     for (PinLabel(index), mut text) in &mut pool.labels {
-        if let Some(dress) = look(*index).filter(|dress| text.0 != dress.name) {
-            text.0 = dress.name.to_string();
+        let wanted = look(*index).map(|dress| ["", dress.name][usize::from(shown[*index])]);
+        if let Some(name) = wanted.filter(|name| text.0 != *name) {
+            text.0 = name.to_string();
         }
     }
 }

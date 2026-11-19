@@ -30,6 +30,7 @@ mod shapes;
 mod shine;
 mod sights;
 mod soar;
+mod solid;
 mod spawn;
 mod spot;
 mod spring;
@@ -68,7 +69,11 @@ mod tests_place;
 #[cfg(test)]
 mod tests_soar;
 #[cfg(test)]
+mod tests_solid;
+#[cfg(test)]
 mod tests_tour;
+#[cfg(test)]
+mod tests_yard;
 
 pub use face::Expression;
 pub use mood::{ChirpKind, CompanionChirp};

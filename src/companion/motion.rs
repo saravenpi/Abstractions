@@ -8,6 +8,7 @@ use super::brain::Brain;
 use super::neck::Neck;
 use super::pose::Pose;
 use super::sense::Around;
+use super::solid::Solids;
 use super::spot::Probe;
 use super::spring::{rate, step};
 use super::tune::{
@@ -73,15 +74,22 @@ fn grow(at: &mut Transform, size: f32, dt: f32) {
 /// the wings never makes it swing. Only the goal looks ahead for the ground: the body is pulled
 /// toward it by the spring and is itself held clear of what lies under it alone, so nothing
 /// ever moves it in one step. Truly left behind, by a fast travel, it starts again out of view
-/// and flies in.
-pub fn follow(probe: &Probe, brain: &Brain, at: &mut Transform, float: &mut Float, dt: f32) {
+/// and flies in: then it returns true.
+pub fn follow(
+    probe: &Probe,
+    brain: &Brain,
+    at: &mut Transform,
+    float: &mut Float,
+    dt: f32,
+) -> bool {
     let (goal, clearance) = brain.goal();
     let flight = brain.flight;
     let lead = brain.drift * (FEED + (FEED_FLIGHT - FEED) * flight);
     let target = probe.clear_ahead(goal, lead, (LOOK_AHEAD * flight, clearance));
     let mut offset = at.translation + lead * dt - target;
     let mut slip = float.vel - lead;
-    if offset.length() > LEASH + (FLIGHT_LEASH - LEASH) * flight {
+    let lost = offset.length() > LEASH + (FLIGHT_LEASH - LEASH) * flight;
+    if lost {
         (offset, slip) = (brain.entry() - target, Vec3::ZERO);
         float.vel = lead;
     }
@@ -96,6 +104,23 @@ pub fn follow(probe: &Probe, brain: &Brain, at: &mut Transform, float: &mut Floa
         .neck
         .turn(at.rotation, brain.look - at.translation, up, dt);
     grow(at, 1.0, dt);
+    lost
+}
+
+/// Follows the player as [`follow`] does, each step swept among the drawn solids so that a
+/// wall, a roof or the ship's hull stops it and it slides along them and round them. A start again out of
+/// view after a real loss is not swept: nothing sees it.
+pub fn chase(
+    probe: &Probe,
+    solids: &mut Solids,
+    brain: &Brain,
+    (at, float): (&mut Transform, &mut Float),
+    dt: f32,
+) {
+    let from = at.translation;
+    if !follow(probe, brain, at, float, dt) {
+        solids.sweep((from, brain.stance.eye), at, float, dt);
+    }
 }
 
 /// Rides in the cockpit: a spring toward the seat in the space of the pilot seat, looking at
@@ -114,6 +139,7 @@ pub fn ride(look: Vec3, at: &mut Transform, float: &mut Float, dt: f32) {
 /// motion shows, the bob, the lean and the pose, is left to `puppet::pose`.
 pub fn float(
     around: Around,
+    mut solids: Solids,
     mut bots: Query<(&mut Transform, &mut Float, &Brain), With<Companion>>,
 ) {
     let dt = around.dt();
@@ -127,7 +153,13 @@ pub fn float(
                 .transform_point3(brain.look);
             ride(look, &mut at, &mut float, dt);
         } else {
-            follow(&around.probe(), brain, &mut at, &mut float, dt);
+            chase(
+                &around.probe(),
+                &mut solids,
+                brain,
+                (&mut at, &mut float),
+                dt,
+            );
         }
     }
 }

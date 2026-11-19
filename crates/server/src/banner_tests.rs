@@ -15,6 +15,7 @@ fn info() -> Banner<'static> {
         port: 24650,
         lan: Some(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 20))),
         key: "7F3A-91C2-0B5E",
+        players: 16,
         password: false,
     }
 }
@@ -26,6 +27,7 @@ fn the_banner_shows_how_to_join() {
 Abstractions server v0.10.0
 World     Kodya (seed 42)   ./data/world.toml
 Listening UDP 24650 on all addresses (0.0.0.0)
+Players   up to 16 at once
 Join at   192.168.1.20:24650
 Key       7F3A-91C2-0B5E   players see this the first time they join
 Internet  forward UDP port 24650 to this machine, or point a domain at it

@@ -93,7 +93,7 @@ pub(super) fn plugin(app: &mut App) {
         .init_resource::<Waypoints>()
         .init_resource::<Favourites>()
         .add_message::<WaypointChanged>()
-        .add_plugins((explored::plugin, raster::plugin, screen))
+        .add_plugins((explored::plugin, raster::plugin, waypoint::plugin, screen))
         .add_systems(
             Update,
             (

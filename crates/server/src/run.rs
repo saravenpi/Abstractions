@@ -75,6 +75,7 @@ fn announce(options: &Options, name: &str, seed: u64, port: u16, fingerprint: &[
         port,
         lan: lan_ip(),
         key: &key,
+        players: options.max_players,
         password: options.password.is_some(),
     };
     print!("{}", banner(&info));

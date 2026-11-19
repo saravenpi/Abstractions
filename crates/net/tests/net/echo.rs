@@ -68,7 +68,7 @@ impl Host for Echo {
 fn status(players: usize) -> Status {
     Status {
         name: "test".to_string(),
-        players: players as u8,
+        players: players as u16,
         cap: 16,
         version: "0.9.0".to_string(),
         protocol: PROTOCOL,

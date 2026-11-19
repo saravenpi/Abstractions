@@ -16,6 +16,10 @@ use crate::universe::BodyId;
 /// Seconds between two sends of the cells uncovered here.
 const EVERY: f32 = 2.0;
 
+/// Most cells one message carries: at most 5 bytes a cell, 40 KB, well under the
+/// [`abstractions_net::wire::CLIENT_MESSAGE_MAX`] a server reads from a player.
+pub(super) const CELLS_MAX: usize = 8000;
+
 /// The ground of the last welcome, merged again once its world is in play: joining starts a
 /// new world, which replaces the explored ground at the end of the frame of the welcome.
 #[derive(Resource, Debug, Default)]
@@ -48,15 +52,32 @@ fn settle(mut welcomed: ResMut<Welcomed>, mut explored: ResMut<Explored>) {
     }
 }
 
-/// Sends the cells uncovered here since the last send, one message a body.
-fn send(mut link: ResMut<Link>, mut explored: ResMut<Explored>) {
+/// Returns the messages that carry the cells uncovered here since the last call, at most
+/// [`CELLS_MAX`] cells each.
+pub(super) fn messages(explored: &mut Explored) -> Vec<ClientMsg> {
     let bodies: Vec<BodyId> = explored.bodies().map(|(body, _)| body).collect();
+    let mut out = Vec::new();
     for body in bodies {
         let cells = explored.take_new(body);
-        if !cells.is_empty() {
-            link.send(ClientMsg::Explored { body, cells });
-        }
+        let chunks = cells.chunks(CELLS_MAX).map(|cells| ClientMsg::Explored {
+            body,
+            cells: cells.to_vec(),
+        });
+        out.extend(chunks);
     }
+    out
+}
+
+/// Sends the cells uncovered here since the last send.
+fn send(mut link: ResMut<Link>, mut explored: ResMut<Explored>) {
+    for msg in messages(&mut explored) {
+        link.send(msg);
+    }
+}
+
+/// Forgets the cells uncovered with no server to send them to.
+fn drop_unsent(mut explored: ResMut<Explored>) {
+    explored.bypass_change_detection().drop_unsent();
 }
 
 /// Registers the sharing of the explored ground.
@@ -70,5 +91,10 @@ pub fn plugin(app: &mut App) {
             )
                 .run_if(resource_exists::<Link>),
         )
+        .add_systems(Update, drop_unsent.run_if(not(resource_exists::<Link>)))
         .add_systems(OnEnter(Screen::Gameplay), settle);
 }
+
+#[cfg(test)]
+#[path = "share_tests.rs"]
+mod tests;

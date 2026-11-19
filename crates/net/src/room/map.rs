@@ -19,7 +19,7 @@ pub const EXPLORED_WORDS: usize = (EXPLORED_COLUMNS * EXPLORED_ROWS / 64) as usi
 
 /// Most bodies the room keeps explored ground for, so the welcome stays under
 /// [`crate::wire::MESSAGE_MAX`]. Cells of further bodies are dropped.
-const BODIES_MAX: usize = 128;
+pub const BODIES_MAX: usize = 128;
 
 /// Seconds between two broadcasts of new cells of one body.
 const EXPLORED_EVERY: f64 = 1.0;

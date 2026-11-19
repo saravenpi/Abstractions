@@ -102,13 +102,15 @@ pub(super) fn store(favourites: Res<Favourites>, active: Option<ResMut<ActiveWor
     }
 }
 
-/// Writes every favourite as a marker when they change.
+/// Writes every favourite as a marker when they change, or when the universe they lie in
+/// appears.
 pub(super) fn fill(
     favourites: Res<Favourites>,
     universe: Option<Res<Universe>>,
     mut markers: ResMut<Markers>,
 ) {
-    let Some(universe) = universe.filter(|_| favourites.is_changed()) else {
+    let due = |universe: &Res<Universe>| favourites.is_changed() || universe.is_changed();
+    let Some(universe) = universe.filter(due) else {
         return;
     };
     markers.clear(MarkerKind::Favourite, 0);
@@ -123,3 +125,7 @@ pub(super) fn fill(
         });
     }
 }
+
+#[cfg(test)]
+#[path = "favourite_tests.rs"]
+mod tests;

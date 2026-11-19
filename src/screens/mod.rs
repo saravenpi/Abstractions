@@ -6,6 +6,8 @@ mod loading;
 #[cfg(test)]
 mod tests;
 mod title;
+#[cfg(test)]
+mod title_tests;
 mod wake;
 
 use bevy::prelude::*;

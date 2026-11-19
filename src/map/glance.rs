@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
 use super::geo::{from_chart, to_chart};
-use super::level::{Level, rise};
+use super::level::{CLOSEST, Level, rise};
 use super::me::Me;
 use super::pins::Pins;
 use super::surface::Surface;
@@ -103,8 +103,8 @@ type Wheel<'w, 's> = (
     Me<'w, 's>,
 );
 
-/// Zooms around the pointer with the wheel, looks at the player again on the reset key, and
-/// rises to the system chart when the wheel turns out of the whole planet.
+/// Zooms around the pointer with the wheel, no closer than [`CLOSEST`], looks at the player
+/// again on the reset key, and rises to the system chart when the wheel turns out of the whole planet.
 pub(super) fn wheel(
     (scroll, keys, typing, me): Wheel,
     mut surface: ResMut<Surface>,
@@ -133,5 +133,6 @@ pub(super) fn wheel(
         }
         return;
     }
-    surface.goal = surface.goal.zoomed(surface.at, ZOOM_STEP.powf(notches));
+    let factor = ZOOM_STEP.powf(notches).min(CLOSEST / surface.goal.zoom);
+    surface.goal = surface.goal.zoomed(surface.at, factor);
 }

@@ -1,12 +1,13 @@
 //! Map tests: the waypoint key sets and clears, favourites are named and renamed, a level
-//! fades in, and the flat map opens where it was asked to look.
+//! fades in, the flat map opens where it was asked to look, no closer than its cap.
 
 use bevy::input::keyboard::Key;
 use bevy::math::{DVec3, Vec2};
 
+use super::explored::grid::COLS;
 use super::fade::{FADE, shade};
 use super::favourite::{Favourites, edit};
-use super::level::{GROUND, WHOLE, first};
+use super::level::{CLOSEST, GROUND, REFERENCE_MAP, WHOLE, first};
 use super::{Waypoints, to_chart, toggle};
 use crate::universe::BodyId;
 
@@ -49,10 +50,19 @@ fn a_level_fades_in_and_opens_where_asked() {
     assert_eq!((whole.zoom, whole.centre), (WHOLE, Vec2::ZERO));
     let here = DVec3::new(0.3, 0.2, -0.9);
     let close = first(None, Some(here));
-    assert_eq!(close.zoom, GROUND);
+    assert_eq!((close.zoom, GROUND), (CLOSEST, CLOSEST));
     assert!(close.centre.distance(to_chart(here)) < 1e-6);
     let asked = first(Some(DVec3::Z), Some(here));
     assert!(asked.centre.distance(to_chart(DVec3::Z)) < 1e-6);
+}
+
+/// At the closest zoom one cell of the planet picture takes at most 6 pixels of the map of a
+/// 1280 by 720 window, and the closest zoom still comes closer than the whole planet.
+#[test]
+fn the_closest_zoom_keeps_cells_small() {
+    let cell = CLOSEST * REFERENCE_MAP / COLS as f32;
+    assert!(cell <= 6.0 + 1e-4 && cell > 5.0, "{cell}");
+    assert!(CLOSEST > WHOLE);
 }
 
 #[test]

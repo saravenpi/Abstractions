@@ -37,7 +37,7 @@ Run through `mise` where a task exists.
 | --- | --- |
 | Play a dev build | `mise run dev` |
 | Check on every save | `mise run watch` (bacon: `c` clippy, `t` tests, `n` net tests) |
-| Edit systems in the running game | `mise run hot` (needs `dx`, the Dioxus CLI) |
+| Edit systems in the running game | `mise run hot` (needs `dx`, the Dioxus CLI; its own cache in `target/hot`, about 30 minutes to build the first time) |
 | Test one area | `cargo test --features dev --lib -- gear::` |
 | Test the net and server crates | `cargo test -p abstractions-net -p abstractions-server` |
 | The full gate | `mise run check` |

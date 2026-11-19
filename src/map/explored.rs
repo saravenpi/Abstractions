@@ -7,6 +7,7 @@
 pub mod grid;
 mod ground;
 mod reveal;
+mod share;
 
 pub(super) use reveal::plugin;
 pub use reveal::{REACH_CAP, REACH_FOOT, reach};

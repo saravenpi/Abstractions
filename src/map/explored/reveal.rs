@@ -82,6 +82,7 @@ fn forget(mut explored: ResMut<Explored>) {
 /// Registers the uncovering of the ground.
 pub fn plugin(app: &mut App) {
     app.init_resource::<Explored>()
+        .add_plugins(super::share::plugin)
         .add_systems(
             Update,
             (

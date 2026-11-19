@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use super::aboard::{Flight, read};
 use super::face::machine::{BLINK_EVERY, BLINK_SECONDS, Face, SHIFT_SECONDS};
-use super::face::{Expression, Lid};
+use super::face::{Expression, Frame, Lid};
 use super::mood::{ChirpKind, ambient, chirp};
 use super::sense::CompanionSense;
 use super::tune::{SLEEPY_NIGHT, TAKEOFF_CLIMB, WORRY_DEPTH};
@@ -147,4 +147,23 @@ fn senses_read_the_eyes_and_the_ship() {
         ..clear
     };
     assert_eq!(read(Some(5.0), Some(900.0), &parked, DT), (0.0, 0.0, false));
+}
+
+/// Every picture of the face crosses the wire as two bytes and comes back the same.
+#[test]
+fn every_frame_packs_into_two_bytes_and_back() {
+    for expr in Expression::ALL {
+        for lid in Lid::ALL {
+            for (x, y, beat) in [(-1, 1, false), (0, 0, true), (1, -1, true)] {
+                let frame = Frame {
+                    expr,
+                    lid,
+                    gaze: IVec2::new(x, y),
+                    beat,
+                };
+                let (expr, face) = frame.pack();
+                assert_eq!(Frame::unpack(expr, face), frame);
+            }
+        }
+    }
 }

@@ -68,7 +68,7 @@ impl Host for Echo {
 fn status(players: usize) -> Status {
     Status {
         name: "test".to_string(),
-        players: players as u8,
+        players: players as u16,
         cap: 16,
         version: "0.9.0".to_string(),
         protocol: PROTOCOL,
@@ -85,5 +85,7 @@ fn welcome(conn: ConnId, now: f64) -> Welcome {
         atlas: String::new(),
         record: None,
         players: Vec::new(),
+        explored: Vec::new(),
+        waypoints: Vec::new(),
     }
 }

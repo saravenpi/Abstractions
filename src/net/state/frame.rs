@@ -28,6 +28,19 @@ pub enum Place {
     Galaxy(GalaxyId),
 }
 
+impl Place {
+    /// Returns how far the frame lies from the ground: 0 on a surface, then around a body, the
+    /// frame of a star and the frame of a galaxy.
+    pub fn depth(self) -> u8 {
+        match self {
+            Self::Surface(_) => 0,
+            Self::Around(_) => 1,
+            Self::System(_) => 2,
+            Self::Galaxy(_) => 3,
+        }
+    }
+}
+
 impl From<wire::Frame> for Place {
     /// Returns the place of a wire frame.
     fn from(frame: wire::Frame) -> Self {

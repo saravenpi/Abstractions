@@ -1,5 +1,6 @@
-//! Computer tests: hovering lights and never selects, a click selects, a second click or a
-//! double click sets the course, the keyboard flow, and the arrow of the ship on the charts.
+//! Computer tests: hovering lights and never selects, a click selects, a double click
+//! goes into the place and sets no course, the keyboard flow, and the arrow of the ship on the
+//! charts.
 
 use std::f32::consts::PI;
 use std::f64::consts::FRAC_PI_2;
@@ -11,12 +12,12 @@ use bevy::ui::RelativeCursorPosition;
 use bevy::ui_widgets::Activate;
 
 use super::chart::Dot;
+use super::course::progress;
 use super::hover::{light, look, surface};
 use super::pointer::MapView;
-use super::primary::Face;
 use super::tests_pointer::{click, pixel, point, rig};
 use super::tests_rig::{game, run, tap};
-use super::view::Slot;
+use super::view::{Action, Slot};
 use super::*;
 use crate::ui::{Look, Selected, theme};
 
@@ -52,9 +53,10 @@ fn hovering_a_row_or_a_mark_lights_it_and_selects_nothing() {
 }
 
 /// A click on a row of the list selects it and sets no course, and two quick clicks on a mark
-/// that was not selected set the course to it at once.
+/// that was not selected select it, ease the map onto it and ask to go into its place, still
+/// with no course.
 #[test]
-fn a_click_on_a_row_selects_and_a_double_click_on_a_mark_sets_the_course() {
+fn a_click_on_a_row_selects_and_a_double_click_on_a_mark_goes_into_it() {
     let mut app = rig();
     let slot = |app: &mut App, wanted: usize| {
         let mut slots = app.world_mut().query::<(Entity, &Slot)>();
@@ -68,25 +70,30 @@ fn a_click_on_a_row_selects_and_a_double_click_on_a_mark_sets_the_course() {
         (app.world().resource::<Board>().cursor, course)
     };
     assert_eq!(state(&app), (3, None));
+    assert!(app.world().resource::<MapView>().picked);
     let mark = pixel(&app, Dot::Row(2));
     point(&mut app, mark);
     click(&mut app, Vec2::ZERO);
     click(&mut app, Vec2::ZERO);
-    let target = app.world().resource::<Board>().lines[2].target;
-    assert_eq!(state(&app), (2, Some(target)));
+    assert_eq!(state(&app), (2, None));
+    let (view, board) = (
+        app.world().resource::<MapView>(),
+        app.world().resource::<Board>(),
+    );
+    assert!(view.picked && Some(view.goal) == aimed(board, view, Dot::Row(2)));
+    assert_eq!(view.into, Some(board.lines[2].target));
 }
 
-/// Returns the words the main button says.
+/// Returns the words of the progress line under the map.
 fn said(app: &mut App) -> String {
-    let mut faces = app.world_mut().query::<(&Face, &Text)>();
-    let words = faces
-        .iter(app.world())
-        .find(|(face, _)| **face == Face::Words);
-    words.map(|(_, text)| text.0.clone()).unwrap_or_default()
+    let mut lines = app.world_mut().query_filtered::<&Text, With<Action>>();
+    let words = lines.iter(app.world()).next();
+    words.map(|text| text.0.clone()).unwrap_or_default()
 }
 
 /// The keyboard works as before: the arrows move the selection, Enter sets the course to it,
-/// and Delete clears it. The main button always says what it will do next.
+/// and Delete clears it. The progress line says nothing without a course, and how far along
+/// the route is with one.
 #[test]
 fn the_keyboard_selects_sets_and_clears_the_course() {
     let mut app = game("keys");
@@ -95,11 +102,15 @@ fn the_keyboard_selects_sets_and_clears_the_course() {
     tap(&mut app, KeyCode::ArrowDown, None);
     let row = app.world().resource::<Board>().lines[1].clone();
     assert_eq!(app.world().resource::<Board>().cursor, 1);
-    assert_eq!(said(&mut app), format!("Set course to {}", row.title));
+    assert_eq!(said(&mut app), "");
     tap(&mut app, KeyCode::Enter, None);
     run(&mut app, 2);
     assert_eq!(app.world().resource::<Destination>().0, Some(row.target));
-    assert_eq!(said(&mut app), "Engage autopilot");
+    let status = *app.world().resource::<RouteStatus>();
+    let name = row
+        .target
+        .name(app.world().resource::<crate::universe::Universe>());
+    assert_eq!(said(&mut app), progress(&name, status));
     tap(&mut app, KeyCode::ArrowUp, None);
     assert_eq!(app.world().resource::<Board>().cursor, 0);
     assert_eq!(app.world().resource::<Destination>().0, Some(row.target));

@@ -1,4 +1,4 @@
-//! The room's tick does not allocate in steady state: sixteen players each send a robot
+//! The room's tick does not allocate in steady state: sixty-four players each send a robot
 //! record every tick for a thousand ticks, and allocations inside `tick` are counted.
 //!
 //! This file is its own test binary, so its counting allocator touches no other test.
@@ -44,7 +44,7 @@ unsafe impl GlobalAlloc for Counting {
 static GLOBAL: Counting = Counting;
 
 /// Players in the room.
-const PLAYERS: u32 = 16;
+const PLAYERS: u32 = 64;
 
 /// Ticks run, the first ones warming the buffers up.
 const TICKS: u32 = 1000;
@@ -52,12 +52,12 @@ const TICKS: u32 = 1000;
 /// Ticks given to warm up before allocations count.
 const WARM_UP: u32 = 10;
 
-/// Returns a room with sixteen joined players and their connections.
+/// Returns a room with sixty-four joined players and their connections.
 fn full_room(out: &mut Outbox) -> (Room, Vec<ConnId>) {
     let config = RoomConfig {
         name: "Bench".to_string(),
         password: None,
-        cap: 16,
+        cap: 64,
         version: "0.9.0".to_string(),
     };
     let mut room = Room::new(config, World::default(), 0.0);

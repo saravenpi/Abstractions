@@ -1,88 +1,124 @@
-//! Loops: a held pitch key takes the wings over the top and all the way round.
+//! Loops: a held back key flies the wings over the top and round when they have the speed for
+//! it, and stalls out of the climb when they do not.
 
-use std::f32::consts::{PI, TAU};
+use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
 use bevy::prelude::*;
 
-use super::pilot::{Pilot, keys};
-use super::{DT, Flight, flying, gliding};
-use crate::gear::Mode;
+use super::pilot::{keys, powered};
+use super::{DT, Flight};
 use crate::gear::aim::wrap;
-use crate::gear::tune::LEASH;
+use crate::gear::{GearInput, Mode};
 
-/// Holds the back key on a powered flight until its nose has come nearly all the way round,
-/// and returns the highest it got, its slowest speed and whether it flew backward over the top.
-fn over_the_top(pilot: &mut Pilot) -> (f64, f32, bool) {
-    let (mut top, mut slowest, mut backward) = (0.0_f64, f32::MAX, false);
-    for _ in 0..3600 {
-        if pilot.flight.state.pitch >= TAU - 0.3 {
+/// Largest turn of the body in one frame of a sixtieth of a second, in radians: a slow body
+/// turns fast over the top of a loop, a snap turns it in a single step and far more.
+const SNAP: f32 = 0.12;
+
+/// Speed in metres per second a glide needs to loop without the boosters.
+const LOOP_SPEED: f32 = 70.0;
+
+/// What a held key did to the body.
+#[derive(Debug, Default)]
+struct Held {
+    /// How far the pitch turned, counted the whole way round.
+    turned: f32,
+    /// How far the back faced the sky with the body over the top, the lowest being upside down.
+    top: f32,
+    /// Lowest airspeed on the way.
+    slowest: f32,
+}
+
+/// Returns how far the back of the body faces the sky.
+pub(super) fn back(flight: &Flight) -> f32 {
+    (flight.state.frame() * Vec3::Y).y
+}
+
+/// Holds `input` on `flight` until its pitch turned all the way round, or for `seconds`.
+fn hold(flight: &mut Flight, input: &GearInput, seconds: f32) -> Held {
+    let mut held = Held {
+        top: 1.0,
+        slowest: f32::MAX,
+        ..Held::default()
+    };
+    for _ in 0..(seconds / DT) as u32 {
+        let was = flight.state.pitch;
+        flight.tick(input, DT);
+        held.turned += wrap(flight.state.pitch - was);
+        held.slowest = held.slowest.min(flight.state.airspeed);
+        if (held.turned - PI).abs() < 0.3 {
+            held.top = held.top.min(back(flight));
+        }
+        if held.turned >= TAU - 0.2 {
             break;
         }
-        pilot.tick(&keys(1.0, 0.0), &flying(0.0), DT);
-        let flight = &pilot.flight;
-        top = top.max(flight.pos.y);
-        slowest = slowest.min(flight.state.airspeed);
-        backward |= flight.state.velocity.z > 5.0 && (flight.state.pitch - PI).abs() < 0.6;
     }
-    (top, slowest, backward)
+    held
 }
 
-/// From fast level flight, the back key held flies a whole loop: the body climbs, passes over
-/// the top on its back flying the other way and comes down. Let go, it flies on along the aim
-/// the key left, on the heading it started on, without a jolt and without ever standing still
-/// in the air.
+/// From powered flight and from a glide fast enough for it, as after a long dive, the back key
+/// held flies a whole loop: up past the vertical, over the top on its back, down and round. Let
+/// go, the wings fly on the right way up, and the body never snapped.
 #[test]
-fn pulling_up_flies_a_whole_loop() {
-    let mut flight = Flight::new(Mode::Fly, Vec3::new(0.0, 0.0, -75.0));
-    flight.run(&flying(0.0), 1.0);
-    let mut pilot = Pilot::on(flight, 0.0);
-    let (top, slowest, backward) = over_the_top(&mut pilot);
-    let pitch = pilot.flight.state.pitch;
-    assert!(
-        pitch >= TAU - 0.3 && backward,
-        "pitch {pitch}, over: {backward}"
-    );
-    assert!(
-        top > 15.0 && slowest > 8.0,
-        "{top} m high, {slowest} m/s at the slowest"
-    );
-    let left = pilot.stick.aim;
-    pilot.run(&keys(0.0, 0.0), &flying(0.0), 3.0);
-    let (state, twist) = (pilot.flight.state, pilot.flight.twist);
-    let off = wrap(pilot.stick.aim.y - state.pitch);
-    assert_eq!(pilot.stick.aim, left, "the aim moved by itself");
-    assert!(off.abs() < 0.3 && wrap(left.y).abs() < LEASH + 0.3, "{off}");
-    assert!(state.velocity.z < -30.0 && state.servo.yaw.abs() < 0.2);
-    assert!(twist < 0.2, "the body snapped by {twist}");
+fn a_held_back_key_loops_at_flying_speed() {
+    let mut fast = Flight::new(Mode::Fly, Vec3::new(0.0, 0.0, -75.0));
+    fast.run(&powered(0.0, 0.0), 2.0);
+    let glide = Flight::new(Mode::Glide, Vec3::new(0.0, 0.0, -LOOP_SPEED));
+    let flights = [(fast, powered(1.0, 0.0)), (glide, keys(1.0, 0.0))];
+    for (mut flight, input) in flights {
+        let speed = flight.state.velocity.length();
+        let held = hold(&mut flight, &input, 14.0);
+        assert!(held.turned >= TAU - 0.2, "from {speed} m/s: {held:?}");
+        assert!(
+            held.top < -0.8,
+            "from {speed} m/s, not on its back: {held:?}"
+        );
+        let release = GearInput {
+            pitch: 0.0,
+            ..input
+        };
+        flight.run(&release, 3.0);
+        let state = flight.state;
+        assert!(back(&flight) > 0.9 && state.mode.winged(), "{state:?}");
+        assert!(
+            state.airspeed > 20.0,
+            "from {speed} m/s, ends at {}",
+            state.airspeed
+        );
+        assert!(
+            flight.twist < SNAP,
+            "from {speed} m/s, snapped by {}",
+            flight.twist
+        );
+    }
 }
 
-/// From a plain glide, far too slow for a round loop, a held pitch key still takes the body
-/// all the way round, up and over or down and under: the wing pulls while it can, then the
-/// body turns on through the stall and falls through. It never hangs with the nose tied to a
-/// falling path, never spins and never snaps. Without the key the nose stays on the path.
+/// From a plain glide or a slow one the back key held climbs, and the wing, too slow to turn the
+/// path over the top, stalls: the nose never passes the vertical, the body never ends up on its
+/// back, and it falls out nose down with the key still held.
 #[test]
-fn a_held_stick_turns_a_slow_glide_all_the_way_round() {
-    let mut glide = Flight::new(Mode::Glide, Vec3::new(0.0, -12.0, -36.0));
-    glide.run(&gliding(0.0), 20.0);
-    let turned = |stick: f32, sign: f32| {
-        let (mut pilot, start) = (Pilot::on(glide, glide.state.pitch), glide.state.pitch);
-        let mut round = 0.0;
-        for _ in 0..1200 {
-            if round >= TAU {
-                break;
+fn a_held_back_key_stalls_out_of_a_slow_climb() {
+    for speed in [30.0, 20.0] {
+        let mut flight = Flight::new(Mode::Glide, Vec3::new(0.0, -0.2 * speed, -speed));
+        flight.run(&keys(0.0, 0.0), 1.0);
+        let mut lowest = f32::MAX;
+        let mut highest = f32::MIN;
+        for frame in 0..360 {
+            flight.tick(&keys(1.0, 0.0), DT);
+            highest = highest.max(flight.state.pitch);
+            if frame > 120 {
+                lowest = lowest.min(flight.state.pitch);
             }
-            pilot.tick(&keys(stick, 0.0), &gliding(0.0), DT);
-            round = sign * (pilot.flight.state.pitch - start);
+            assert!(
+                back(&flight) > -0.3,
+                "{speed} m/s, frame {frame}: on its back"
+            );
         }
-        let twist = pilot.flight.twist;
-        assert!(twist < 0.2, "{stick}: snapped by {twist}");
-        round
-    };
-    assert!(
-        glide.state.airspeed < 45.0,
-        "a glide at {}",
-        glide.state.airspeed
-    );
-    assert!(turned(1.0, 1.0) >= TAU && turned(-1.0, -1.0) >= TAU);
-    assert!(turned(0.0, 1.0) < 2.0, "the nose left the path by itself");
+        assert!(highest < FRAC_PI_2, "{speed} m/s: looped to {highest}");
+        assert!(lowest < 0.0, "{speed} m/s: the nose stayed up at {lowest}");
+        assert!(
+            flight.twist < SNAP,
+            "{speed} m/s: snapped by {}",
+            flight.twist
+        );
+    }
 }

@@ -8,7 +8,7 @@ mod climate;
 mod density;
 mod galaxy;
 mod giant;
-mod hash;
+pub mod hash;
 mod hill;
 mod home;
 mod ids;

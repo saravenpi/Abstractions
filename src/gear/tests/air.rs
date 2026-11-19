@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::{Flight, braking, flying, gliding, looking};
+use super::{Flight, braking, flying, gliding};
 use crate::gear::{GearInput, Mode, descent_target};
 use crate::universe::PlanetRecord;
 use crate::wind::{PRESSURES, samples, thickness};
@@ -53,7 +53,7 @@ fn without_air_a_drop_is_ballistic() {
             let sticks = GearInput {
                 pitch: 1.0,
                 roll: -1.0,
-                look: looking(0.8, 0.5),
+                aim: Some(Vec2::new(0.8, 0.5)),
                 ..under(pressure, input)
             };
             flight.run(&sticks, 10.0);

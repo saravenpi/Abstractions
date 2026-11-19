@@ -43,7 +43,7 @@ mod wing;
 mod tests;
 
 pub use looks::Looks;
-pub use marks::Marks;
+pub use marks::{Marked, Marks};
 pub use spawn::{Stock, puppet};
 
 use bevy::prelude::*;

@@ -1,6 +1,6 @@
 //! The body of a companion record: where a player's companion hovers and its body language.
 //!
-//! 23 bytes on a surface, 35 in the other frames. It holds no velocity: a companion is drawn
+//! 25 bytes on a surface, 37 in the other frames. It holds no velocity: a companion is drawn
 //! by blending straight between two samples.
 
 use std::f32::consts::{PI, TAU};
@@ -35,6 +35,11 @@ pub struct CompanionBody {
     pub spread: f32,
     /// How much the hands wave in turn, from 0 to 1.
     pub wave: f32,
+    /// Expression the face shows, as the game numbers them. Kept as it is.
+    pub expr: u8,
+    /// Face state in bits: lid in bits 0 and 1, gaze x in bits 2 and 3, gaze y in bits 4 and 5,
+    /// heartbeat in bit 6. Kept as it is.
+    pub face: u8,
 }
 
 impl CompanionBody {
@@ -49,6 +54,8 @@ impl CompanionBody {
             pack_i8(self.roll, PI) as u8,
             pack_unit(self.spread),
             pack_unit(self.wave),
+            self.expr,
+            self.face,
         ]);
     }
 
@@ -60,7 +67,7 @@ impl CompanionBody {
         let rotation = unpack_rotation(u32::from_le_bytes(reader.take()?));
         let [lift] = reader.take()?;
         let yaw = unpack_i16(i16::from_le_bytes(reader.take()?), TAU);
-        let [pitch, roll, spread, wave] = reader.take()?;
+        let [pitch, roll, spread, wave, expr, face] = reader.take()?;
         reader.end(Self {
             position,
             rotation,
@@ -70,6 +77,8 @@ impl CompanionBody {
             roll: unpack_i8(roll as i8, PI),
             spread: unpack_unit(spread),
             wave: unpack_unit(wave),
+            expr,
+            face,
         })
     }
 }

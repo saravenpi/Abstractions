@@ -1,4 +1,5 @@
-//! Tests that the player name and the saved servers load from files of every age.
+//! Tests that the player name, the saved servers and the host cap load from files of every
+//! age.
 
 use super::{SavedServer, Settings, default_servers, load_from};
 
@@ -14,6 +15,7 @@ fn files_without_the_multiplayer_keys_load() {
     assert_eq!(parsed.player_name, "");
     assert_eq!(parsed.servers, default_servers());
     assert_eq!(parsed.servers[0].address, "space.facile.studio");
+    assert_eq!(parsed.host_max_players, 16);
     let path = std::env::temp_dir()
         .join(format!("abstractions-test-{}-servers", std::process::id()))
         .join("settings.toml");
@@ -30,6 +32,7 @@ fn saved_servers_and_the_name_round_trip() {
     assert!(emptied.servers.is_empty());
     let settings = Settings {
         player_name: "Ada".to_string(),
+        host_max_players: 120,
         servers: vec![SavedServer {
             name: String::new(),
             address: "10.0.0.2:24650".to_string(),

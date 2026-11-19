@@ -1,7 +1,7 @@
 //! The companions of the other players: the shared companion look with no brain, placed and
 //! posed from the records. The companion code measures how it moves, leans and bobs it, moves
-//! its hands and lays its trail from that motion and the pose; its face keeps the picture it was
-//! spawned with.
+//! its hands and lays its trail from that motion and the pose. Its face shows the expression
+//! and the gaze of the records, with blinks and changes of its own.
 
 use abstractions_net::jitter::View;
 use abstractions_net::wire::CompanionBody;
@@ -9,7 +9,7 @@ use bevy::prelude::*;
 
 use super::{Eye, Sight, drop_puppet, seen, shown, visible};
 use crate::avatar::Mode;
-use crate::companion::{self, Float, Pose, Stock};
+use crate::companion::{self, Face, Float, Frame, Look, Pose, Stock};
 use crate::net::state::Remote;
 use crate::net::state::robot::mode;
 use crate::net::state::track::{Remotes, Track};
@@ -23,22 +23,26 @@ type Bots<'w, 's> = Query<
         &'static mut Placed,
         &'static mut Visibility,
         &'static mut Float,
+        &'static mut Face,
+        &'static mut Look,
     ),
     (With<Remote>, With<companion::Companion>),
 >;
 
 /// What spawning a companion puppet needs.
-type Spawner<'w, 's> = (Commands<'w, 's>, Stock<'w>);
+type Spawner<'w, 's> = (Commands<'w, 's>, Stock<'w>, Res<'w, Time>);
 
 /// Spawns the puppet of a companion at `placed` and returns it. It is placed from its pose,
 /// not carried by the rebase.
-fn spawn((commands, stock): &mut Spawner, eye: &Eye, placed: Placed) -> Entity {
+fn spawn((commands, stock, _): &mut Spawner, eye: &Eye, placed: Placed) -> Entity {
     let (at, _) = seen(eye, &placed);
     let root = companion::look(commands, stock, at);
+    let face = (Face::new(root.to_bits()), Look::default());
     commands.entity(root).remove::<Rebased>().insert((
         Name::new("Remote companion"),
         Remote,
         placed,
+        face,
     ));
     root
 }
@@ -71,12 +75,15 @@ fn draw(
         track.puppet = Some(spawn(spawner, eye, placed));
         return;
     };
-    let Ok((mut at, mut shown, mut float)) = bots.get_mut(entity) else {
+    let Ok((mut at, mut shown, mut float, mut face, mut look)) = bots.get_mut(entity) else {
         track.puppet = None;
         return;
     };
     *at = placed;
     float.pose = posed(&view);
+    let wire = Frame::unpack(view.newer.expr, view.newer.face);
+    face.advance(wire.expr, spawner.2.delta_secs());
+    look.set_if_neq(Look(wire.gaze));
     let (_, far) = seen(eye, &placed);
     shown.set_if_neq(visible(far, seated));
 }

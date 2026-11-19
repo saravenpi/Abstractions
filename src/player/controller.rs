@@ -10,8 +10,9 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::asks::{Intents, ask, gather};
+use super::climb::{Reach, ease};
 use super::flight::{Air, clearance, density, settle};
-use super::ground::probe;
+use super::ground::{MIN_GROUND_NORMAL, probe};
 use super::keys::send;
 use super::lead::lead;
 use super::sea::above_sea;
@@ -56,6 +57,8 @@ pub struct Motion {
     pub steer: Steer,
     /// How the body turns to its heading.
     pub turn: Turn,
+    /// How far the eyes trail the body after a step-up, in the upright frame. It fades away.
+    pub lag: Vec3,
 }
 
 /// Services the controller needs besides the player query.
@@ -85,11 +88,22 @@ impl Env<'_, '_> {
         }
     }
 
-    /// Reads the air around a body with `free` metres of height under its soles.
+    /// Reads the air around a body at `at` whose local down is `down`, with the free height
+    /// under its soles. That height is only measured off the ground, where the gear reads it.
     ///
     /// The wind blows along the tangent plane of the anchor in render axes; carried to the
     /// body by the tilt of its vertical, it has the same components in the upright frame.
-    fn air(&self, free: f32, step: &Step) -> Air {
+    fn air(
+        &self,
+        (at, down): (Vec3, Vec3),
+        grounded: bool,
+        filter: &SpatialQueryFilter,
+        step: &Step,
+    ) -> Air {
+        let free = match grounded {
+            true => 0.0,
+            false => clearance(&self.query, at, down, filter),
+        };
         let wind = self.wind.as_deref().map_or(Vec3::ZERO, Wind::velocity);
         Air {
             density: density(self.terrain.globe(), step.height),
@@ -102,15 +116,17 @@ impl Env<'_, '_> {
     }
 
     /// Moves a body at `from` by `velocity`, given in render axes, for `dt` seconds, sliding
-    /// along what it meets.
+    /// along what it meets. Also returns whether it met something too steep to stand on.
     fn moved(
         &self,
         (collider, from): (&Collider, &Transform),
         velocity: Vec3,
         dt: f32,
         filter: &SpatialQueryFilter,
-    ) -> MoveAndSlideOutput {
-        self.slide.move_and_slide(
+    ) -> (MoveAndSlideOutput, bool) {
+        let up = from.rotation * Vec3::Y;
+        let mut steep = false;
+        let out = self.slide.move_and_slide(
             collider,
             from.translation,
             from.rotation,
@@ -118,8 +134,12 @@ impl Env<'_, '_> {
             Duration::from_secs_f32(dt),
             &MoveAndSlideConfig::default(),
             filter,
-            |_| MoveAndSlideHitResponse::Accept,
-        )
+            |hit| {
+                steep |= hit.normal.dot(up) < MIN_GROUND_NORMAL;
+                MoveAndSlideHitResponse::Accept
+            },
+        );
+        (out, steep)
     }
 }
 
@@ -142,7 +162,7 @@ pub(super) fn drive(env: Env, mut players: Query<Body, With<Player>>) {
 
 /// Runs one step of intents, ground detection, flight gear and collision-aware movement.
 ///
-/// The free height under the body is only measured off the ground, where the gear reads it.
+/// A body on foot that move and slide stops against a steep contact climbs a low step.
 fn step_body(
     env: &Env,
     (entity, mut transform, mut motion, collider, mut gear, asks): (
@@ -159,15 +179,18 @@ fn step_body(
     let intent = ask(&mut motion, asks, &step);
     let filter = SpatialQueryFilter::from_excluded_entities([entity]);
     let floor = probe(&env.query, collider, &transform, to_render, &filter);
-    let down = to_render * Vec3::NEG_Y;
-    let free = match motion.grounded {
-        true => 0.0,
-        false => clearance(&env.query, transform.translation, down, &filter),
-    };
-    let air = env.air(free, &step);
+    let down = (transform.translation, to_render * Vec3::NEG_Y);
+    let air = env.air(down, motion.grounded, &filter, &step);
     let wanted = velocity((&mut motion, &mut gear), &intent, floor, &air, &step);
-    let out = env.moved((collider, &transform), to_render * wanted, step.dt, &filter);
-    let moved = to_render.inverse() * out.projected_velocity;
+    let wished = to_render * wanted;
+    let (out, steep) = env.moved((collider, &transform), wished, step.dt, &filter);
+    let climbing = steep && motion.grounded && !motion.swimming && !gear.state.mode.drives();
+    let stepped = climbing
+        .then(|| Reach::of(&env.query, (collider, &transform), &filter, to_render))
+        .and_then(|reach| reach.climb((transform.translation, out.position), wished * step.dt));
+    let at = stepped.unwrap_or(out.position);
+    motion.lag = ease(motion.lag, step.dt) + to_render.inverse() * (at - out.position);
+    let moved = stepped.map_or(to_render.inverse() * out.projected_velocity, |_| wanted);
     motion.velocity = match (gear.state.mode.drives(), motion.grounded) {
         (true, _) => settle(&mut gear, moved),
         (false, true) => moved.with_y(0.0),
@@ -176,8 +199,8 @@ fn step_body(
     let toward = lead(&motion, &gear, &intent, &step.view);
     let body = &mut *motion;
     body.yaw = body.turn.step(body.yaw, toward, step.dt);
-    transform.translation = out.position;
-    transform.rotation = facing(up(&env.anchor, out.position), motion.yaw);
+    transform.translation = at;
+    transform.rotation = facing(up(&env.anchor, at), motion.yaw);
 }
 
 /// Registers the controller: the local intents are sent after the mouse is read, then every

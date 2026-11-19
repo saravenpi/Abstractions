@@ -138,6 +138,7 @@ pub fn frame() -> impl Bundle {
             (Blurred, layer(), BackgroundColor(theme::SCRIM)),
             ground(),
             (Chart, layer()),
+            super::dots::layer(),
             mark(Part::Home, symbol(Icon::Home)),
             mark(Part::Ship, symbol(Icon::Send)),
             mark(Part::North, north),

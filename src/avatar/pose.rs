@@ -1,5 +1,7 @@
 //! A pose: every joint angle of the body as plain numbers, which blend by plain weighted sums.
 
+use std::f32::consts::PI;
+
 /// The joints of the trunk and the head.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Core {
@@ -48,11 +50,12 @@ pub const LIMBS: usize = 7;
 
 /// Lowest and highest value of every trunk joint, in the order of [`Core`]. No pose leaves them,
 /// and the blended pose is held inside them whatever the input.
+/// The roll reaches a half turn either way, so a body rolled over on its wings lies on its back.
 pub const CORE_LIMITS: [(f32, f32); CORES] = [
     (-0.45, 0.1),
     (-0.05, 0.05),
     (-0.6, 2.3),
-    (-1.1, 1.1),
+    (-PI, PI),
     (-0.5, 0.6),
     (-0.5, 0.5),
     (-1.3, 1.3),

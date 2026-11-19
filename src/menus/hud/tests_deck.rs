@@ -30,7 +30,7 @@ fn a_gas_giant_has_a_deck_and_a_moon_a_surface() {
     };
     let mut deep = flying(Frame::Surface(moon));
     assert_eq!(reading(Gauge::Altitude, &deep).unwrap(), "1.24 km");
-    assert_eq!(reading(Gauge::Frame, &deep).unwrap(), "surface");
+    assert_eq!(reading(Gauge::Frame, &deep).unwrap(), "planet");
     deep.destination = Some(("Ola".to_string(), 2.0e5));
     assert_eq!(reading(Gauge::Destination, &deep).unwrap(), "Ola  200 km");
     deep.giant = true;
@@ -39,12 +39,12 @@ fn a_gas_giant_has_a_deck_and_a_moon_a_surface() {
         "3.40 km above deck"
     );
     let frame = reading(Gauge::Frame, &deep).unwrap();
-    assert_eq!(frame, "surface - no ground, cannot land");
+    assert_eq!(frame, "planet - no ground, cannot land");
     let space = Flight {
         giant: true,
         ..flying(Frame::System(StarId::default()))
     };
-    assert_eq!(reading(Gauge::Frame, &space).unwrap(), "orbit");
+    assert_eq!(reading(Gauge::Frame, &space).unwrap(), "star system");
 }
 
 /// The gear instrument reads up, moving and down near a planet with ground, and shows nothing

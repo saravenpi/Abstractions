@@ -42,7 +42,7 @@ pub struct Saving {
 impl Saving {
     /// Returns the room of `cap` seats, saving into `dir`. The room's network time must start
     /// now, at zero.
-    pub fn new(room: Room, dir: PathBuf, cap: u8) -> io::Result<Self> {
+    pub fn new(room: Room, dir: PathBuf, cap: u16) -> io::Result<Self> {
         Ok(Self {
             room,
             saver: Saver::spawn(dir.clone())?,

@@ -10,9 +10,9 @@ mod loops;
 mod measure;
 mod pilot;
 mod rate;
+mod rolls;
 mod spread;
 mod stall;
-mod stick;
 mod transitions;
 mod turn;
 mod vacuum;
@@ -82,16 +82,19 @@ impl Flight {
     }
 }
 
-/// Returns an input holding the wings open, looking `elevation` radians above the horizon.
+/// Returns an input holding the wings open, the view steering them straight ahead
+/// `elevation` radians above the horizon.
 pub(super) fn gliding(elevation: f32) -> GearInput {
     GearInput {
         deploy: true,
         look: Vec3::new(0.0, elevation.sin(), -elevation.cos()),
+        aim: Some(Vec2::new(0.0, elevation)),
         ..GearInput::default()
     }
 }
 
-/// Returns an input holding wings and boosters, looking `elevation` radians above the horizon.
+/// Returns an input holding wings and boosters, the view steering them `elevation` radians
+/// above the horizon.
 pub(super) fn flying(elevation: f32) -> GearInput {
     GearInput {
         boost: true,

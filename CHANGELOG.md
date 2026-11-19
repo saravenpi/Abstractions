@@ -3,7 +3,50 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.10.1] - 2026-11-19
+
+Players and servers must both run 0.10.1: the multiplayer protocol changed.
+
+### Added
+
+- The map, on M anywhere or Tab in the ship: one level at a time, from the ground under you to the planet, its system, the galaxy and the universe. Double click a place to go in, Back or Backspace to come out, or click any level of the path at the top. The wheel and the trackpad zoom, a drag pans and drifts on, W A S D and the arrows pan. The game shows through behind it, blurred.
+- A right click on the map opens a menu: set a course, go in, set a waypoint, save a favourite, rename or delete it, copy the coordinates.
+- Planets on the map are flat and in colour, and only the ground someone has explored shows. On a server, ground one player uncovers is uncovered for everyone.
+- Waypoints: B, or the map's right-click menu, sets one; again clears it. Your friends see your waypoint in your colour on their compass, minimap and map.
+- Favourite places: save a place on the map with a name, then find it, rename it, delete it or set a course to it from the map.
+- Your coordinates, altitude and the weather in the top-left corner, and the coordinates under the pointer on the map.
+- North on the compass, on every planet.
+- The robot on Kodya behind the main menu.
+- Friends on the compass and the minimap, each in their own colour, and in the map's player list.
+- A remote pilot sits in their cockpit, moving the stick, and their ship's glow and exhaust follow its throttle.
+- Friends' wingsuit trails and their companions' trails, and their companions' faces.
+
+### Changed
+
+- The compass stays on screen, fades its marks toward its ends and hides what is behind you, like a real compass, and shows any number of marks, all on one line.
+- When a course is set, one line always says what happens next: "G Engage autopilot", or exactly why the drive waits, such as "Inside 3 planet radii (now 1.4): fly out first". G engages from the cockpit without opening the map.
+- The minimap range moved from M to N.
+- The map's side panel card is easier to read: the place's name, what it is and what it turns around, then one fact per row under Surface, Climate, Body and Time, with the label on the left and the value on the right. Stars and galaxies get the same layout.
+- The buttons for a place sit on its card, under its name: Set course, Engage autopilot, Clear course, Focus, Set waypoint and Save as favourite. When the drive cannot engage, the card says why. The line at the bottom left of the map now only shows a route in flight.
+- The map's header shows the path once, with the Back button on its own row above it.
+- The habitable zone reads "in the habitable zone", "too hot for water" or "too cold for water".
+- The wingsuit rolls freely: hold A or D to roll over and fly on your back, S pulls toward your back and loops with the boosters, W pushes the nose down, Q and E turn gently. Let go and the wings come level by themselves.
+- Below flying speed the wingsuit lowers its nose by itself, and spreading it again in mid-air carries on along your path.
+- In flight the camera and the robot roll with you all the way round.
+- The ship's frame reads "planet", "star system" or "between stars" instead of "orbit".
+- A course ends by itself a few seconds after you arrive.
+- A server takes as many players as its owner sets with `--max-players` or `ABSTRACTIONS_MAX_PLAYERS`, up to 1000 and 16 by default. Open to LAN reads `host_max_players` from the settings. The server list shows each server's real limit. Space, `space.facile.studio`, takes 64.
+
+### Fixed
+
+- Friends' ships no longer stutter or jump: their motion is drawn behind the measured network delay, with no freeze on landing, liftoff or far out in space.
+- The minimap and the compass no longer disagree with where you are for a frame when the world shifts under you or the ship moves fast.
+- You walk up stairs and small ledges without jumping.
+- The ship's wings, winglets, fin and canopy are solid, and leaving the seat stops the motors.
+- Unexplored ground on the map is plain black, without grid lines.
+- Names on the map stay clear of the header and footer lines, and the home icon no longer covers the ship.
+- The map no longer repeats the course hint while the Set course button shows.
+- Wingsuit trails over the sea are no longer hidden by the water, and no clearer patch of sea follows a low camera.
 
 ## [0.10.0] - 2026-11-19
 

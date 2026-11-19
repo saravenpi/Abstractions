@@ -242,3 +242,6 @@ pub struct Body {
     /// Listed features.
     pub features: Vec<Feature>,
 }
+
+#[cfg(test)]
+mod tests;

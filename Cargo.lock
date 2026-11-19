@@ -20,7 +20,7 @@ checksum = "366ffbaa4442f4684d91e2cd7c5ea7c4ed8add41959a31447066e279e432b618"
 
 [[package]]
 name = "abstractions"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "abstractions-net",
  "avian3d",
@@ -41,7 +41,7 @@ dependencies = [
 
 [[package]]
 name = "abstractions-net"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "bevy_ecs",
  "bytes",
@@ -59,7 +59,7 @@ dependencies = [
 
 [[package]]
 name = "abstractions-server"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "abstractions-net",
  "async-signal",

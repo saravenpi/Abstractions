@@ -5,8 +5,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-19
+
 ### Added
 
+- Multiplayer: up to 16 players share one universe, with the same seed, clock and discoveries. Each player keeps their own robot, ship and companion, and sees everyone else's move smoothly, with their name above their head.
+- Open to LAN: pause a world and open it to your network. Friends on the same network see it under Multiplayer and join with one click, and you keep playing without a reload. Close LAN saves the world as usual.
+- The Multiplayer screen lists your servers with their players and ping, and finds games on your network by itself. Add a server by its address, join one once with Direct connect, and give a password when a server asks for one. Space (`space.facile.studio`) is in the list from the start.
+- A planet a friend visits shows as visited on your board computer too.
+- The game remembers each server's key the first time you join, and refuses to join if it changes.
+- In a session the pause menu lists the players and has a Disconnect entry, and the world keeps going behind menus.
+- `abstractions-server`: a small server for Linux (x86_64 and arm64) and a Docker image, `ghcr.io/saravenpi/abstractions-server`. It needs no configuration, saves the world every 30 seconds and can start from a single-player world. The guide is at https://abstractions.facile.studio/server/.
 - A real cockpit: a seat, a dashboard, side consoles, canopy bars, a stick that moves with your steering and a throttle lever that follows the throttle. Black and white instruments show your speed against the top speed, the warp charge and the gear. Your robot sits in the seat with its hands on the controls, and you can see it through the canopy from outside.
 - In the ship's first-person view the mouse turns your head inside the cockpit; you see your arms, legs and the dashboard.
 
@@ -26,6 +35,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - The wingsuit trails no longer vanish or show through the sea, and they no longer draw a line across the sky after you leave the ship.
 - The roof of the home base station, the stall posts of markets and many other drawn parts of buildings and camps were not solid. Everything drawn larger than a hand is now solid. Roofs are one solid piece.
+- The ship no longer flies through buildings: it stops at walls and can land on flat roofs.
+- The sea seen from a few hundred metres up no longer shows square rings.
+- The companion follows a flying player without a jump, and no longer flies through buildings.
 
 ## [0.9.0] - 2026-11-18
 

@@ -2,6 +2,10 @@
 
 Written 2026-11-19 on the owner's MacBook (Apple M2, 8 cores, 16 GB). It replaces the ruche-specific parts of `CONTRACT.md` ("Repo and branches", "Building and testing"). Everything else in `CONTRACT.md` still holds. The repo-wide rules are in `AGENTS.md` on `next`, which this branch gets when 0.10.1 merges in.
 
+## Owner decision, 2026-11-19 (overrides CONTRACT.md and HANDOFF.md)
+
+Kodya is not special-cased. Its life comes from the same odds and rung rules as every planet: no forced `Rung::Skeletal`, and no herd guaranteed near the wake point. If the normal rules do not make an Earth-like home planet live, fix the physics they read and report the numbers to the owner; never add a home-planet override.
+
 ## Paths
 
 | What | Path |

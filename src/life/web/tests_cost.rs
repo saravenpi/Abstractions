@@ -51,11 +51,12 @@ fn cost(
     (busy() - start) * 1.0e3 / f64::from(rounds)
 }
 
-/// Assembling the life of Kodya costs under 5 ms of processor time, through the web and through
-/// `life::of`, which runs when the planet is entered.
+/// Building the life of the home planet of universe 9, which lives at the skeletal rung, costs
+/// under 5 ms of processor time, through the web and through `life::of`, which runs when the
+/// planet is entered.
 #[test]
-fn assemble_costs_under_5_ms() {
-    let universe = Universe::new(5);
+fn home_costs_under_5_ms() {
+    let universe = Universe::new(9);
     let home = universe.home();
     let (planet, star) = (universe.planet(home), universe.system(home.star).star);
     let web = cost(&planet, &star, assemble);
@@ -68,14 +69,16 @@ fn assemble_costs_under_5_ms() {
 /// The richest web around the home sector, the most species, also costs under 5 ms.
 #[test]
 fn richest_web_costs_under_5_ms() {
-    let bodies = crate::life::odds::tests::systems(40)
+    let richest = super::tests::lives(40)
         .into_iter()
-        .flat_map(|(star, bodies)| bodies.into_iter().map(move |p| (star.clone(), p)));
-    let richest = bodies
-        .filter_map(|(star, p)| assemble(&p, &star).map(|life| (life.species.len(), star, p)))
-        .max_by_key(|(count, _, _)| *count);
-    let (count, star, planet) = richest.expect("a living planet near home");
-    let ms = cost(&planet, &star, crate::life::of);
-    println!("life::of on {count} species costs {ms:.3} ms");
-    assert!(ms < 5.0, "life::of on {count} species costs {ms:.3} ms");
+        .max_by_key(|(_, _, life)| life.species.len());
+    let (star, planet, life) = richest.expect("a living planet near home");
+    let count = life.species.len();
+    let web = cost(&planet, &star, assemble);
+    let of = cost(&planet, &star, crate::life::of);
+    println!("{count} species: web::assemble costs {web:.3} ms, life::of {of:.3} ms");
+    assert!(
+        web < 5.0 && of < 5.0,
+        "{count} species: {web:.3} ms, {of:.3} ms"
+    );
 }

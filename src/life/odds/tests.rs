@@ -78,3 +78,29 @@ fn rung_is_seeded_and_spread() {
     assert!(LADDER.iter().all(|r| rungs.contains(r)));
     assert!((0..50).all(|seed| rung(&home, seed) == rung(&home, seed)));
 }
+
+/// The home planet rolls by the same rules as every planet: `life::of` lives at the rung `rung`
+/// gives its world. Prints its world, liquid fit, chance and rung for universes 0 to 11, and how
+/// many of 200 home planets live.
+#[test]
+fn home_follows_the_same_odds() {
+    let mut living = 0;
+    for seed in 0..200 {
+        let universe = Universe::new(seed);
+        let home = universe.home();
+        let (planet, star) = (universe.planet(home), universe.system(home.star).star);
+        let world = World::of(&planet, &star);
+        let liquid = chem::solvent(&world);
+        let chance = liquid.map_or(0.0, |(_, fit)| LOADING * fit.sqrt() * ground(&world));
+        let rung = of(&planet, &star);
+        assert_eq!(crate::life::of(&planet, &star).map(|l| l.rung), rung);
+        living += usize::from(rung.is_some());
+        if seed < 12 {
+            println!(
+                "{seed} {}: {world:?} {liquid:?} chance {chance:.3} {rung:?}",
+                planet.name
+            );
+        }
+    }
+    println!("{living} of 200 home planets live");
+}

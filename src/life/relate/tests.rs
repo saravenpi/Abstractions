@@ -2,13 +2,12 @@
 
 use super::*;
 use crate::life::Life;
-use crate::universe::Universe;
 
-/// Returns the life of Kodya in universe `seed`.
-fn kodya(seed: u64) -> Life {
-    let universe = Universe::new(seed);
-    let star = universe.system(universe.home().star).star;
-    crate::life::web::assemble(&universe.planet(universe.home()), &star).expect("Kodya lives")
+/// Returns the life of the living bodies of the first `count` systems around the home sector.
+fn lives(count: usize) -> impl Iterator<Item = Life> {
+    crate::life::web::tests::lives(count)
+        .into_iter()
+        .map(|(_, _, life)| life)
 }
 
 /// Returns true when `relation` joins species of the right kinds in `life`.
@@ -31,30 +30,28 @@ fn fits(life: &Life, relation: Relation) -> bool {
     }
 }
 
-/// Relations join species of the right kinds, and Kodya always has a keystone.
+/// Relations join species of the right kinds, and every web with a hunter or an ambusher has a keystone.
 #[test]
 fn relations_are_consistent() {
-    for seed in 0..30 {
-        let life = kodya(seed);
-        assert!(
-            life.relations.iter().all(|r| fits(&life, *r)),
-            "seed {seed}"
-        );
-        assert!(life.keystone.is_some(), "seed {seed}: no keystone");
+    for life in lives(100) {
+        assert!(life.relations.iter().all(|r| fits(&life, *r)));
+        let predator =
+            |s: &crate::life::Species| matches!(s.role.guild, Guild::Hunter | Guild::Ambusher);
+        assert!(life.keystone.is_some() || !life.species.iter().any(predator));
     }
 }
 
 /// A mimic wears the colours of its model's warning tissue.
 #[test]
 fn mimics_copy_their_model() {
-    let mimicry = (0..60).map(kodya).find_map(|life| {
+    let mimicry = lives(200).find_map(|life| {
         let pair = life.relations.iter().find_map(|r| match *r {
             Relation::Mimics { mimic, model } => Some((mimic, model)),
             _ => None,
         });
         pair.map(|pair| (life, pair))
     });
-    let (life, (mimic, model)) = mimicry.expect("some Kodya has a mimic");
+    let (life, (mimic, model)) = mimicry.expect("some web has a mimic");
     let model = &life.species[usize::from(model)];
     let warning = model.tissues.iter().find(|t| t.reaction != Reaction::Inert);
     assert_eq!(

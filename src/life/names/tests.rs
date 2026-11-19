@@ -2,20 +2,21 @@
 
 use super::*;
 use crate::life::{Glow, GlowUse, Life};
-use crate::universe::Universe;
 
-/// Returns the home star and the life of Kodya in universe `seed`.
-fn kodya(seed: u64) -> (StarSpec, Life) {
-    let universe = Universe::new(seed);
-    let star = universe.system(universe.home().star).star;
-    let life = crate::life::web::assemble(&universe.planet(universe.home()), &star);
-    (star, life.expect("Kodya lives"))
+/// Returns the star and life of the first living body around the home sector whose web holds a
+/// species that `wanted` accepts.
+fn living(wanted: fn(&crate::life::Species) -> bool) -> (StarSpec, Life) {
+    let lives = crate::life::web::tests::lives(60).into_iter();
+    let found = lives
+        .map(|(star, _, life)| (star, life))
+        .find(|(_, l)| l.species.iter().any(wanted));
+    found.expect("a living body holds the species wanted")
 }
 
 /// The same species gets the same name, sectors of one cube share a region, and far ones do not.
 #[test]
 fn names_are_seeded_and_regional() {
-    let (star, life) = kodya(1);
+    let (star, life) = living(|_| true);
     let mut next = star.clone();
     let x = star.id.sector.x;
     next.id.sector.x = x.div_euclid(REGION) * REGION + (x.rem_euclid(REGION) + 1) % REGION;
@@ -34,15 +35,17 @@ fn names_are_seeded_and_regional() {
     );
 }
 
+/// Returns true when `species` is a hunter that does not fly.
+fn ground_hunter(species: &crate::life::Species) -> bool {
+    species.role.guild == Guild::Hunter && species.role.habitat != Habitat::Air
+}
+
 /// The epithet names a glow first, and a ground hunter as a hunter.
 #[test]
 fn epithet_reads_plainly() {
-    let (_, mut life) = kodya(2);
-    let hunter = life
-        .species
-        .iter_mut()
-        .find(|s| s.role.guild == Guild::Hunter && s.role.habitat != Habitat::Air);
-    let hunter = hunter.expect("Kodya has a ground hunter");
+    let (_, mut life) = living(ground_hunter);
+    let hunter = life.species.iter_mut().find(|s| ground_hunter(s));
+    let hunter = hunter.expect("the web has a ground hunter");
     hunter.glow = Some(Glow {
         purpose: GlowUse::Lure,
         colour: [1.0; 3],

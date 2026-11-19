@@ -5,14 +5,15 @@ use crate::life::guild::FLIGHT_AIR;
 use crate::life::{Guild, Habitat, Plan};
 use crate::universe::Universe;
 
-/// Returns the life of every living body of the first `count` systems around the home sector.
-fn lives(count: usize) -> Vec<(PlanetSpec, Life)> {
+/// Returns the star, body and life of every living body of the first `count` systems around the
+/// home sector.
+pub(in crate::life) fn lives(count: usize) -> Vec<(StarSpec, PlanetSpec, Life)> {
     let systems = crate::life::odds::tests::systems(count);
     let bodies = systems
         .into_iter()
         .flat_map(|(star, bodies)| bodies.into_iter().map(move |p| (star.clone(), p)));
     bodies
-        .filter_map(|(star, p)| assemble(&p, &star).map(|life| (p, life)))
+        .filter_map(|(star, p)| assemble(&p, &star).map(|life| (star, p, life)))
         .collect()
 }
 
@@ -28,8 +29,7 @@ fn kodya(seed: u64) -> (PlanetSpec, StarSpec) {
 fn same_seed_same_life() {
     let (planet, star) = kodya(3);
     assert_eq!(assemble(&planet, &star), assemble(&planet, &star));
-    for (planet, life) in lives(40).into_iter().take(5) {
-        let star = Universe::new(1).system(planet.id.star).star;
+    for (star, planet, life) in lives(40).into_iter().take(5) {
         assert_eq!(assemble(&planet, &star), Some(life));
     }
 }
@@ -85,7 +85,7 @@ fn holds_together(planet: &PlanetSpec, life: &Life) {
 fn webs_hold_together() {
     let lives = lives(300);
     assert!(lives.len() > 50, "only {} living bodies", lives.len());
-    for (planet, life) in &lives {
+    for (_, planet, life) in &lives {
         holds_together(planet, life);
     }
 }
@@ -93,7 +93,7 @@ fn webs_hold_together() {
 /// Swimmers live only where there is a liquid, flyers only in thick enough air, and mats never move.
 #[test]
 fn habitats_fit_the_planet() {
-    for (planet, life) in lives(300) {
+    for (_, planet, life) in lives(300) {
         let record = &planet.record;
         for s in &life.species {
             assert!(s.role.habitat != Habitat::Water || record.ocean > 0.0);
@@ -105,27 +105,5 @@ fn habitats_fit_the_planet() {
                     && life.species.len() <= 3
             );
         }
-    }
-}
-
-/// Kodya lives at the skeletal rung with a ground grazer that lives in herds, and a hunter, for every seed.
-#[test]
-fn kodya_has_a_herd_and_a_hunter() {
-    for seed in 0..40 {
-        let (planet, star) = kodya(seed);
-        let life = assemble(&planet, &star).expect("Kodya lives");
-        assert_eq!(life.rung, Rung::Skeletal);
-        let herd = life.species.iter().any(|s| {
-            let r = &s.role;
-            r.guild == Guild::Grazer
-                && r.habitat == Habitat::Ground
-                && s.plan == Plan::Skeletal
-                && s.history.group_max >= 4
-        });
-        assert!(herd, "seed {seed}: no grazer herd");
-        assert!(
-            life.species.iter().any(|s| s.role.guild == Guild::Hunter),
-            "seed {seed}: no hunter"
-        );
     }
 }

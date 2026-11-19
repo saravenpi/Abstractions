@@ -1,17 +1,16 @@
 //! The food web of a planet, after the niche model, and the assembly of its whole life.
 
 mod fill;
-mod home;
 mod niche;
 mod plants;
 
 use super::chem::{self, Setting};
 use super::{Life, Rung, Species, World, names, odds, relate, tissue};
 use crate::universe::hash::{Rng, child};
-use crate::universe::{HOME_PLANET_NAME, PlanetSpec, StarSpec};
+use crate::universe::{PlanetSpec, StarSpec};
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;
 #[cfg(test)]
 mod tests_cost;
 
@@ -76,44 +75,33 @@ fn sign(species: &mut [Species]) {
     }
 }
 
-/// Returns every species of the planet of seed `seed` and `setting`, producers first, and how many
-/// producers there are.
-fn species(seed: u64, setting: &Setting) -> (Vec<Species>, usize) {
+/// Returns every species of the planet of seed `seed` and `setting`, producers first.
+fn species(seed: u64, setting: &Setting) -> Vec<Species> {
     let mut rng = Rng::new(child(seed, STREAM));
     let web = niche::draw(shape(setting, &mut rng), &mut rng);
     let architectures = plants::architectures(web.producers, setting, &mut rng);
-    let species = (0..web.niche.len())
+    (0..web.niche.len())
         .map(|i| {
             let architecture = architectures.get(i).copied().unwrap_or(2);
             fill::species(seed, i, &web, architecture, setting)
         })
-        .collect();
-    (species, web.producers)
+        .collect()
 }
 
 /// Returns the whole life of `planet` around `star`, or nothing on a dead world.
 ///
-/// Kodya, the home planet, always lives at the skeletal rung with home chemistry, a herd grazer and
-/// a hunter. Species come producers first, `species[i].id.index == i`.
+/// The home planet follows the same rules as every other. Species come producers first,
+/// `species[i].id.index == i`.
 pub fn assemble(planet: &PlanetSpec, star: &StarSpec) -> Option<Life> {
     let world = World::of(planet, star);
-    let is_home = planet.name == HOME_PLANET_NAME && planet.id.moon == 0;
-    let (rung, chemistry) = match is_home {
-        true => (Rung::Skeletal, home::chemistry(&world, planet.seed)),
-        false => (
-            odds::rung(&world, planet.seed)?,
-            chem::chemistry(&world, planet.seed),
-        ),
-    };
+    let rung = odds::rung(&world, planet.seed)?;
+    let chemistry = chem::chemistry(&world, planet.seed);
     let setting = Setting {
         world,
         chemistry,
         rung,
     };
-    let (mut species, producers) = species(planet.seed, &setting);
-    if is_home {
-        home::settle(&mut species, producers, &setting);
-    }
+    let mut species = species(planet.seed, &setting);
     sign(&mut species);
     names::christen(&mut species, names::region(star));
     let (relations, keystone) = relate::of(&mut species);

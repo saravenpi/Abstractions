@@ -94,13 +94,7 @@ fn tolerance(mass: f32, habitat: Habitat, setting: &Setting) -> Tolerance {
 
 /// Fills a species of `plan`, `archetype`, `role` and `mass` from `seed`: its history, tissues,
 /// glow, tolerance and body. Name, epithet and signature stay empty for the names step.
-pub(super) fn reform(
-    seed: u64,
-    form: (Plan, u8),
-    role: Role,
-    mass: f32,
-    setting: &Setting,
-) -> Species {
+fn reform(seed: u64, form: (Plan, u8), role: Role, mass: f32, setting: &Setting) -> Species {
     let mut rng = Rng::new(child(seed, 2));
     let history = history::of(seed, &role, mass, setting.rung, &setting.world);
     let mut tissues = tissue::of(seed, form.0, &role, setting);

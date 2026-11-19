@@ -47,7 +47,8 @@ fn spreading_again_flies_on_where_the_body_goes() {
     assert!(kick < KICK, "the velocity jumped by {kick} m/s in a frame");
 }
 
-/// Holding W dives and gains speed, the path no steeper than the dive limit.
+/// Holding W dives and gains speed, the path steep but never past the vertical, and the body
+/// never on its back.
 #[test]
 fn holding_w_dives_and_gains_speed() {
     let mut app = launch(Vec3::new(0.0, -7.0, -30.0), 3.0);
@@ -55,7 +56,8 @@ fn holding_w_dives_and_gains_speed() {
     let (_, gear, _) = hold(&mut app, 90, &[keys(1.0, 0.0)]);
     let (fast, steep) = (gear.state.airspeed, path(&gear));
     assert!(fast > start + 15.0, "{fast} m/s from {start}");
-    assert!(steep > crate::gear::tune::DIVE_LIMIT - 0.05, "path {steep}");
+    assert!(steep < -0.5 && steep > -1.58, "path {steep}");
+    assert!((gear.state.frame() * Vec3::Y).y > -0.3, "on its back");
 }
 
 /// Hands off, the glide settles at about four metres forward for each metre down.

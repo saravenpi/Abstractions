@@ -69,8 +69,8 @@ pub(super) fn touching(mode: Mode, floor: Option<Ground>) -> bool {
 /// Returns what the gear is told this frame.
 ///
 /// The run key held in the air fires the boots: a brake with the wingsuit folded, the boost with
-/// it asked open. The forward key pushes the nose down and the back key pulls it up, the strafe
-/// keys bank and the yaw keys turn flat. On the wings the view aims the body only while the
+/// it asked open. The forward key dives and the back key pulls, the strafe keys roll and the
+/// yaw keys turn flat, all at a rate in the frame of the body. On the wings the view aims the body only while the
 /// steer button is held; folded it always does.
 pub(super) fn input(motion: &Motion, intent: &Intent, air: &Air, on: (bool, bool)) -> GearInput {
     GearInput {

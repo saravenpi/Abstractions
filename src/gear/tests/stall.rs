@@ -5,27 +5,25 @@ use bevy::prelude::*;
 use super::pilot::keys;
 use super::{DT, Flight};
 use crate::gear::Mode;
-use crate::gear::tune::{CLIMB_LIMIT, STALL_SPEED};
+use crate::gear::tune::STALL_SPEED;
 
-/// The back key held for ten seconds from a fast glide: the path never climbs past the limit,
-/// the stall protection drops the nose below the horizon with the key still held, and the speed
-/// never collapses. Let go, the glide speed comes back, with no tumble.
+/// The back key held for ten seconds from a fast glide: the wing pulls up and stalls, which
+/// a held key may do, and the nose falls below the horizon with the key still held. Let go,
+/// the glide speed comes back, with no tumble.
 #[test]
 fn stall_drops_the_nose_and_recovers_speed() {
     let mut flight = Flight::new(Mode::Glide, Vec3::new(0.0, -10.0, -45.0));
     flight.run(&keys(0.0, 0.0), 1.0);
-    let (mut slowest, mut lowest, mut highest) = (f32::MAX, f32::MAX, f32::MIN);
+    let (mut slowest, mut lowest) = (f32::MAX, f32::MAX);
     for frame in 0..600 {
         flight.tick(&keys(1.0, 0.0), DT);
         slowest = slowest.min(flight.state.airspeed);
-        highest = highest.max(flight.state.pitch);
         if frame > 120 {
             lowest = lowest.min(flight.state.pitch);
         }
     }
-    assert!(highest < CLIMB_LIMIT + 0.02, "climbed at {highest}");
     assert!(lowest < 0.0, "the nose stayed up: {lowest}");
-    assert!(slowest > STALL_SPEED.0 - 3.0, "slowed to {slowest}");
+    assert!(slowest < STALL_SPEED.0, "never stalled: {slowest}");
     flight.run(&keys(0.0, 0.0), 6.0);
     assert!(
         flight.state.airspeed > slowest + 8.0,

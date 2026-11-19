@@ -78,9 +78,10 @@ pub fn fall(input: &AvatarPose, clock: &Clock) -> Pose {
 /// Returns the pose on the boots alone: upright, arms slightly out, knees bent, soles facing down.
 ///
 /// The body leans a little into the turn and with the flight path, and trembles with the thrust.
+/// A bank past the side leans it back toward upright, so one rolling on round never jumps.
 pub fn boot_fall(input: &AvatarPose, clock: &Clock) -> Pose {
     let shake = 0.012 * input.thrust.clamp(0.0, 1.0) * clock.wave(31.0, 0.0);
-    let bank = input.bank.clamp(-STEER_LIMIT.0, STEER_LIMIT.0);
+    let bank = input.bank.sin().asin().clamp(-STEER_LIMIT.0, STEER_LIMIT.0);
     let (hip, knee) = (0.32, 0.62);
     Pose::default()
         .with(

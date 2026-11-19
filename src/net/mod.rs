@@ -13,6 +13,7 @@
 
 mod clock;
 pub mod driver;
+mod friends;
 mod host;
 mod join;
 mod link;

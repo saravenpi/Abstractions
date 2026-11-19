@@ -159,6 +159,10 @@ pub struct Keymap {
     pub view: KeyCode,
     /// Step the minimap through its ranges, then off.
     pub minimap: KeyCode,
+    /// Open and close the map, on foot and in the ship.
+    pub map: KeyCode,
+    /// Drop a waypoint where the player looks, or clear it.
+    pub waypoint: KeyCode,
     /// Ship controls, used while seated in the ship and to board it.
     pub ship: ShipKeys,
 }
@@ -176,7 +180,9 @@ impl Default for Keymap {
             engage: KeyCode::KeyG,
             wings: KeyCode::KeyR,
             view: KeyCode::KeyV,
-            minimap: KeyCode::KeyM,
+            minimap: KeyCode::KeyN,
+            map: KeyCode::KeyM,
+            waypoint: KeyCode::KeyB,
             ship: ShipKeys::default(),
         }
     }

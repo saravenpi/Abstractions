@@ -75,6 +75,36 @@ pub struct WorldSave {
     /// What the players changed, oldest first. A file from before 0.9 has an empty log.
     #[serde(default)]
     pub changes: Changes,
+    /// The ground uncovered on each body, as the words of its explored bitset. A file from
+    /// before 0.10.1 has none.
+    #[serde(default)]
+    pub explored: Vec<Explored>,
+    /// The player's favourite places. A file from before 0.10.1 has none.
+    #[serde(default)]
+    pub marks: Vec<Favourite>,
+}
+
+/// The ground uncovered on one body: a 512 by 256 grid in longitude and latitude, one bit a
+/// cell, row by row from the south, packed in 64-bit words.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[serde(default)]
+pub struct Explored {
+    /// The body.
+    pub body: BodyId,
+    /// The bits, 2048 words when complete.
+    pub words: Vec<u64>,
+}
+
+/// A place the player saved with a name.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[serde(default)]
+pub struct Favourite {
+    /// Name the player gave it.
+    pub name: String,
+    /// The body it is on.
+    pub body: BodyId,
+    /// Direction from the body centre in the frame that turns with the body.
+    pub dir: [f64; 3],
 }
 
 impl Default for WorldSave {
@@ -95,6 +125,8 @@ impl Default for WorldSave {
             atlas: None,
             ship: None,
             changes: Changes::default(),
+            explored: Vec::new(),
+            marks: Vec::new(),
         }
     }
 }

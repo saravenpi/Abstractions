@@ -9,6 +9,7 @@ pub mod effects;
 pub mod gear;
 pub mod home;
 pub mod icon;
+pub mod map;
 pub mod menus;
 pub mod net;
 pub mod player;
@@ -75,6 +76,7 @@ fn modules(app: &mut App) {
         net::plugin,
         net::driver::plugin,
     ))
+    .add_plugins(map::plugin)
     .insert_resource(view::Enabled(true));
 }
 

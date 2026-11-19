@@ -6,6 +6,7 @@ mod banner;
 mod climate;
 mod compass;
 mod flight;
+mod markers;
 mod minimap;
 mod needle;
 mod panel;
@@ -21,6 +22,7 @@ mod tests_deck;
 mod units;
 
 pub use climate::HudWeather;
+pub use markers::{Marker, MarkerKind, MarkerPlace, MarkerSet, Markers};
 
 use std::time::Duration;
 
@@ -91,6 +93,7 @@ fn show(
 
 /// Registers the HUD systems.
 pub(super) fn plugin(app: &mut App) {
+    markers::plugin(app);
     let every = on_timer(Duration::from_secs_f32(REFRESH));
     app.init_resource::<banner::Banner>()
         .add_plugins(minimap::plugin)

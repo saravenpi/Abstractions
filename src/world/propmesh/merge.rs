@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 use bevy::mesh::VertexAttributeValues;
 use bevy::prelude::*;
 
-use super::{BIG, PARTS, VARIANTS, big_mesh};
+use super::{BIG, PARTS, VARIANTS, big_mesh, grown};
 use crate::world::scatter::Placement;
 use crate::world::shapes::textured_mesh;
 
@@ -42,9 +42,17 @@ impl Soup {
         }
     }
 
-    /// Appends prop `p` as one rigid piece, its base at `origin` and its axes turned by `rot`.
+    /// Appends prop `p` as one rigid piece, its base at `origin` and its axes turned by `rot`: the shared mesh
+    /// of its plant and variant, or the grown look its variant names.
     pub(super) fn push(&mut self, p: &Placement, origin: Vec3, rot: Quat) {
-        let b = base(p.plant as usize, p.variant as usize);
+        match grown::soup(p.variant) {
+            Some(look) => self.lay(&look, p, origin, rot),
+            None => self.lay(base(p.plant as usize, p.variant as usize), p, origin, rot),
+        }
+    }
+
+    /// Appends the geometry `b` of prop `p`, scaled by it, its base at `origin` and its axes turned by `rot`.
+    fn lay(&mut self, b: &Soup, p: &Placement, origin: Vec3, rot: Quat) {
         self.positions.extend(
             b.positions
                 .iter()
@@ -75,7 +83,7 @@ fn base(kind: usize, variant: usize) -> &'static Soup {
     } else {
         kind - PARTS.start + BIG
     };
-    &bases[slot * VARIANTS + variant]
+    &bases[slot * VARIANTS + variant % VARIANTS]
 }
 
 /// Merges every placed solid prop into one mesh in chunk space, with each transform baked into the vertices.

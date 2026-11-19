@@ -46,6 +46,7 @@ mod tests;
 pub use io::{BodyFade, CameraPose, Heading, Kind, Look, Moment, Occluder, Shown, Target};
 pub use mode::{ViewMode, ViewPrefs};
 pub use rig::Rig;
+pub use roll::on_screen;
 pub use shot::FACE;
 pub use system::{Cut, Enabled, Unseen, ViewSet, enabled};
 

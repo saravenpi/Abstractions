@@ -7,10 +7,10 @@ use super::controller::Motion;
 use super::upright::tilt;
 use super::{Player, PlayerSet, local};
 use crate::gear::{FlightState, Gear};
-use crate::screens::{in_control, playing};
+use crate::screens::{in_control, playing, shown};
 use crate::sim::PlayerId;
 use crate::space::{Anchor, on_foot, up};
-use crate::view::{Heading, Kind, Look, Target, ViewSet};
+use crate::view::{Heading, Kind, Look, Rig, Target, ViewSet, on_screen};
 
 pub use super::chase::WingView;
 
@@ -33,9 +33,10 @@ pub(super) fn kind(state: &FlightState) -> Kind {
 
 /// Turns the view of the local body on its wings: a chase view.
 ///
-/// The mouse looks around freely. With the steer button up the view also turns with the body,
-/// by as much as its nose heading and pitch turned since the last frame, over the top of a loop
-/// too, and once left alone it drifts back behind the body. A view on its back behind a body
+/// The mouse looks around freely, read on the rolled screen, see [`on_screen`]. With the steer
+/// button up the view also turns with the body, by as much as its nose heading and pitch turned
+/// since the last frame, over the top of a loop too, and once left alone it drifts back behind
+/// the body. A view on its back behind a body
 /// that faces the sky rights itself at once, see `chased`. With the button held the view is
 /// the aim of the flight, so it turns with the mouse alone: carried with the body as well, it
 /// would chase its own turn.
@@ -43,7 +44,7 @@ pub(super) fn steer(
     time: Res<Time>,
     buttons: Res<ButtonInput<MouseButton>>,
     players: Query<(&PlayerId, &Gear), With<Player>>,
-    (heading, mut look): (Res<Heading>, ResMut<Look>),
+    (heading, mut look, rig): (Res<Heading>, ResMut<Look>, Option<Res<Rig>>),
     mut wing: ResMut<WingView>,
 ) {
     let Some(gear) = local(players.iter().map(|(id, gear)| (*id, gear))) else {
@@ -58,7 +59,10 @@ pub(super) fn steer(
     let body = Vec2::new(state.servo.yaw, state.pitch);
     let (before, mouse) = (
         Vec2::new(heading.yaw, heading.pitch),
-        Vec2::new(look.yaw_delta, look.pitch_delta),
+        on_screen(
+            Vec2::new(look.yaw_delta, look.pitch_delta),
+            rig.map_or(0.0, |rig| rig.roll()),
+        ),
     );
     let carry = carried(&mut wing, body, before) * f32::from(u8::from(!held));
     wing.idle = match held || mouse != Vec2::ZERO {
@@ -121,10 +125,12 @@ pub(super) fn plugin(app: &mut App) {
                 steer
                     .after(ViewSet::Input)
                     .before(PlayerSet::Intend)
-                    .run_if(in_control),
-                aim.after(PlayerSet::Move).before(ViewSet::Rig),
+                    .run_if(in_control)
+                    .run_if(playing),
+                aim.after(PlayerSet::Move)
+                    .before(ViewSet::Rig)
+                    .run_if(shown),
             )
-                .run_if(playing)
                 .run_if(on_foot),
         );
 }

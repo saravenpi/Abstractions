@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::level::Level;
-use crate::computer::{Board, Tab};
+use crate::computer::{Board, Tab, Target};
 
 /// Seconds the veil takes to clear.
 pub const FADE: f32 = 0.3;
@@ -29,13 +29,16 @@ pub fn shade(since: f32) -> f32 {
     (1.0 - since / FADE).clamp(0.0, 1.0)
 }
 
+/// The level shown and the chart: its tab and what it charts.
+type Shown = (Level, Tab, Option<Target>);
+
 /// Darkens the veil when the level or the chart changes, then clears it over [`FADE`] seconds.
 pub(super) fn fade(
     (time, level, board): (Res<Time>, Res<Level>, Res<Board>),
     mut veils: Query<&mut BackgroundColor, With<Veil>>,
-    mut state: Local<(Option<(Level, Tab)>, f32)>,
+    mut state: Local<(Option<Shown>, f32)>,
 ) {
-    let now = Some((*level, board.tab));
+    let now = Some((*level, board.tab, board.inside));
     if state.0 != now {
         *state = (now, 0.0);
     }

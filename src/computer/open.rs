@@ -12,6 +12,7 @@ use bevy::prelude::*;
 
 use super::atlas::Atlas;
 use super::board::Board;
+use super::hold::Hold;
 use super::typing::Typing;
 use super::view;
 use crate::audio::AudioCue;
@@ -90,6 +91,7 @@ pub(super) fn next_state(
 
 /// Opens and closes the map. Closing on a key sounds a cancel; Escape already does. While a
 /// search is typed or a favourite named, Escape and the map key type, and the screen stays.
+/// While a menu is open or something is selected, Escape lets go of it first.
 ///
 /// The state changes on the next frame. The pause menu opens only while the map is closed, so
 /// the Escape that closes the screen does not also pause the game.
@@ -97,13 +99,21 @@ fn toggle(
     seat: Seat,
     state: Res<State<Computer>>,
     mut next: ResMut<NextState<Computer>>,
-    (board, typing): (Res<Board>, Res<Typing>),
+    (board, typing, mut hold): (Res<Board>, Res<Typing>, Hold),
     mut cues: MessageWriter<AudioCue>,
 ) {
     let open = *state.get() == Computer::Open;
     let (map, tab, escape) = seat.pressed();
     let free = typing.is_off() && board.filter.is_empty();
-    let pressed = (map && (typing.is_off() || !open), tab, escape && free);
+    let held = open && escape && free && hold.held();
+    if held {
+        hold.release();
+    }
+    let pressed = (
+        map && (typing.is_off() || !open),
+        tab,
+        escape && free && !held,
+    );
     let Some(wanted) = next_state(open, seat.place(), pressed) else {
         return;
     };

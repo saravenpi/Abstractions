@@ -19,17 +19,23 @@ use crate::universe::BodyId;
 /// What the buttons of the panel change.
 #[derive(SystemParam)]
 pub struct Desk<'w, 's> {
-    favourites: ResMut<'w, Favourites>,
-    typing: ResMut<'w, Typing>,
-    destination: ResMut<'w, Destination>,
-    board: ResMut<'w, Board>,
-    view: (ResMut<'w, Level>, ResMut<'w, Surface>),
-    world: (Res<'w, Markers>, Option<Res<'w, Anchor>>, Me<'w, 's>),
+    /// The favourites.
+    pub(super) favourites: ResMut<'w, Favourites>,
+    /// Where the letters typed go.
+    pub(super) typing: ResMut<'w, Typing>,
+    /// The course.
+    pub(super) destination: ResMut<'w, Destination>,
+    /// The rows of the chart and the search.
+    pub(super) board: ResMut<'w, Board>,
+    /// The level shown and the flat map.
+    pub(super) view: (ResMut<'w, Level>, ResMut<'w, Surface>),
+    /// The markers, the render anchor and the player.
+    pub(super) world: (Res<'w, Markers>, Option<Res<'w, Anchor>>, Me<'w, 's>),
 }
 
 impl Desk<'_, '_> {
     /// Opens the flat map of `body` looking at `dir`.
-    fn look(&mut self, body: BodyId, dir: DVec3) {
+    pub(super) fn look(&mut self, body: BodyId, dir: DVec3) {
         let (level, surface) = &mut self.view;
         surface.focus = Some(dir);
         **level = Level::Planet(body);
@@ -37,7 +43,7 @@ impl Desk<'_, '_> {
 
     /// Runs the button `act` of the favourite at `index`. Renaming one ends and clears a search,
     /// so Escape is left free to close the map.
-    fn favourite(&mut self, index: usize, act: Do) {
+    pub(super) fn favourite(&mut self, index: usize, act: Do) {
         let Some(favourite) = self.favourites.0.get(index).cloned() else {
             return;
         };
@@ -62,16 +68,20 @@ impl Desk<'_, '_> {
             Level::Planet(body) => self.view.1.picked.map(|dir| (body, dir)),
             Level::Chart => None,
         };
-        let Some((body, dir)) = picked.or_else(|| self.world.2.spot()) else {
-            return;
-        };
+        if let Some((body, dir)) = picked.or_else(|| self.world.2.spot()) {
+            self.keep(body, dir);
+        }
+    }
+
+    /// Saves the place `dir` of `body` as a favourite and starts naming it.
+    pub(super) fn keep(&mut self, body: BodyId, dir: DVec3) {
         let index = self.favourites.save(body, dir);
         *self.typing = Typing::Name(index, self.favourites.0[index].name.clone());
     }
 
     /// Looks at the player at `index` of the list of friends: on the flat map of their planet,
     /// or on the chart.
-    fn player(&mut self, index: usize) {
+    pub(super) fn player(&mut self, index: usize) {
         let (markers, anchor, _) = &self.world;
         let friends = markers
             .0

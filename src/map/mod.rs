@@ -1,11 +1,14 @@
-//! The map: one screen that zooms from the ground under the player to the whole universe.
+//! The map: one screen that shows the ground under the player and, a level at a time, out to
+//! the whole universe.
 //!
 //! - [`explored`] keeps the ground each body has had uncovered and shares it on a server.
 //! - [`raster`] paints the flat coloured picture of a body, black where nobody has been.
 //! - The levels: the flat map of a planet, then the charts of the board computer for a
-//!   system, a galaxy and the universe. The wheel goes from one to the next, and each fades in.
+//!   system, a galaxy and the universe, one at a time. A double click goes into a place, Back
+//!   comes out of it, and each fades in.
 //! - The markers: the player, friends, waypoints, favourites, home and the ship.
 //! - The side panel lists the favourites and the players beside the search of the computer.
+//! - A right click opens a menu of what can be done with what is under the pointer.
 
 pub mod explored;
 pub mod palette;
@@ -22,9 +25,12 @@ mod glance;
 mod level;
 mod link;
 mod me;
+mod menu;
+mod nav;
 mod pins;
 mod pins_draw;
 mod planet;
+mod roam;
 mod side;
 mod side_act;
 mod side_show;
@@ -40,6 +46,8 @@ pub use favourite::Favourites;
 pub use geo::{coords as place_words, from_chart, lat_lon, to_chart};
 pub use level::{Level, charting, on_planet};
 pub use link::{from_wire, marks_of, marks_text, to_wire};
+pub use menu::{Choice, ContextMenu, Opened, Under, choices, words};
+pub use nav::{Place, Stop, Trail, path};
 pub use pins::pin_layer;
 pub use planet::planet_layer;
 pub use side::{FAVOURITES, PLAYERS, favourites, players};
@@ -58,45 +66,65 @@ fn open(state: Option<Res<State<Computer>>>) -> bool {
     state.is_some_and(|state| *state.get() == Computer::Open)
 }
 
-/// Registers the systems of the open screen: the flat map of a planet, the markers, the side
-/// panel and the fade.
-fn screen(app: &mut App) {
-    let planet = (
+/// The systems of the flat map of a planet: the pointer, the wheel, the keys and the lens.
+fn planet_systems() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
+    (
         glance::aim,
         glance::press,
         glance::wheel,
+        glance::recentre,
+        glance::coast,
         surface::ease,
         surface::slide,
     )
         .chain()
-        .run_if(on_planet);
-    let shown = (
-        surface::enter.run_if(resource_changed::<Level>),
-        planet,
-        pins::collect,
-        pins_draw::draw,
-        planet::show,
-        planet::picture,
-        caption::caption_text,
-        caption::coords_text,
-        side_show::write,
-        side_show::save_words,
-        fade::fade,
-    );
-    app.add_systems(OnEnter(Computer::Open), level::open)
-        .add_observer(side_act::on_activate)
-        .add_systems(Update, shown.chain().after(MarkerSet::Show).run_if(open));
+        .run_if(on_planet)
 }
 
-/// Registers the map.
-pub(super) fn plugin(app: &mut App) {
+/// Registers the systems of the open screen: the flat map of a planet, the way between the
+/// levels, the menu of a right click, the markers, the side panel and the fade.
+fn screen(app: &mut App) {
+    let shown = (
+        surface::enter.run_if(resource_changed::<Level>),
+        planet_systems(),
+        (nav::systems(), menu::systems()),
+        (pins::collect, pins_draw::draw),
+        (planet::show, planet::picture),
+        (caption::caption_text, caption::coords_text),
+        (side_show::write, side_show::save_words),
+        fade::fade,
+    );
+    let after = (MarkerSet::Show, crate::computer::Input);
+    app.add_systems(OnEnter(Computer::Open), level::open)
+        .add_observer(side_act::on_activate)
+        .add_systems(
+            Update,
+            shown.chain().after(after.0).after(after.1).run_if(open),
+        );
+}
+
+/// Registers what the map keeps between frames.
+fn resources(app: &mut App) {
     app.init_resource::<Level>()
         .init_resource::<Surface>()
         .init_resource::<pins::Pins>()
         .init_resource::<Waypoints>()
         .init_resource::<Favourites>()
-        .add_message::<WaypointChanged>()
-        .add_plugins((explored::plugin, raster::plugin, waypoint::plugin, screen))
+        .add_message::<WaypointChanged>();
+}
+
+/// Registers the map.
+pub(super) fn plugin(app: &mut App) {
+    let parts = (
+        explored::plugin,
+        raster::plugin,
+        waypoint::plugin,
+        menu::plugin,
+        nav::plugin,
+        screen,
+    );
+    resources(app);
+    app.add_plugins(parts)
         .add_systems(
             Update,
             (

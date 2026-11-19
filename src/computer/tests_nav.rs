@@ -1,5 +1,6 @@
-//! Computer tests: hovering lights and never selects, a click selects, a second click or a
-//! double click sets the course, the keyboard flow, and the arrow of the ship on the charts.
+//! Computer tests: hovering lights and never selects, a click selects, a double click
+//! goes into the place and sets no course, the keyboard flow, and the arrow of the ship on the
+//! charts.
 
 use std::f32::consts::PI;
 use std::f64::consts::FRAC_PI_2;
@@ -52,9 +53,10 @@ fn hovering_a_row_or_a_mark_lights_it_and_selects_nothing() {
 }
 
 /// A click on a row of the list selects it and sets no course, and two quick clicks on a mark
-/// that was not selected set the course to it at once.
+/// that was not selected select it, ease the map onto it and ask to go into its place, still
+/// with no course.
 #[test]
-fn a_click_on_a_row_selects_and_a_double_click_on_a_mark_sets_the_course() {
+fn a_click_on_a_row_selects_and_a_double_click_on_a_mark_goes_into_it() {
     let mut app = rig();
     let slot = |app: &mut App, wanted: usize| {
         let mut slots = app.world_mut().query::<(Entity, &Slot)>();
@@ -68,12 +70,18 @@ fn a_click_on_a_row_selects_and_a_double_click_on_a_mark_sets_the_course() {
         (app.world().resource::<Board>().cursor, course)
     };
     assert_eq!(state(&app), (3, None));
+    assert!(app.world().resource::<MapView>().picked);
     let mark = pixel(&app, Dot::Row(2));
     point(&mut app, mark);
     click(&mut app, Vec2::ZERO);
     click(&mut app, Vec2::ZERO);
-    let target = app.world().resource::<Board>().lines[2].target;
-    assert_eq!(state(&app), (2, Some(target)));
+    assert_eq!(state(&app), (2, None));
+    let (view, board) = (
+        app.world().resource::<MapView>(),
+        app.world().resource::<Board>(),
+    );
+    assert!(view.picked && Some(view.goal) == aimed(board, view, Dot::Row(2)));
+    assert_eq!(view.into, Some(board.lines[2].target));
 }
 
 /// Returns the words of the action line of the course.

@@ -13,6 +13,9 @@ use crate::computer::{MapView, SIZE};
 use crate::menus::{Marker, MarkerKind, Markers};
 use crate::ui::theme;
 
+/// How many times larger the selected marker of a planet is drawn.
+pub const CHOSEN: f32 = 1.75;
+
 /// The look of one marker: its fill, its turn and its name. Markers have no outline.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Dress<'a> {
@@ -123,7 +126,24 @@ fn moved(pool: &mut Pool, wanted: impl Fn(usize) -> Option<Vec2>) {
     }
 }
 
-/// Draws every marker of [`Pins`] on the level shown, with the names [`named`] keeps.
+/// Fills, turns and sizes the dot of each node of the pool as `look` says, the node `chosen`
+/// larger than the others.
+fn paint<'a>(pool: &mut Pool, look: &impl Fn(usize) -> Option<Dress<'a>>, chosen: Option<usize>) {
+    for (PinDot(index), mut fill, mut turn) in &mut pool.dots {
+        let Some(dress) = look(*index) else {
+            continue;
+        };
+        fill.set_if_neq(BackgroundColor(dress.fill));
+        let rotation = Rot2::radians(dress.turn);
+        let scale = Vec2::splat([1.0, CHOSEN][usize::from(chosen == Some(*index))]);
+        if (turn.rotation, turn.scale) != (rotation, scale) {
+            (turn.rotation, turn.scale) = (rotation, scale);
+        }
+    }
+}
+
+/// Draws every marker of [`Pins`] on the level shown, with the names [`named`] keeps. The
+/// selected marker of a planet is drawn larger.
 pub(super) fn draw(
     (pins, markers, level): (Res<Pins>, Res<Markers>, Res<Level>),
     (surface, view): (Res<Surface>, Res<MapView>),
@@ -141,17 +161,9 @@ pub(super) fn draw(
         look(index).map(|dress| (at, dress.name.chars().count()))
     });
     let shown = named(&spots, side);
+    let chosen = surface.chosen.filter(|_| *level != Level::Chart);
     moved(&mut pool, |index| spots[index].map(|(at, _)| at));
-    for (PinDot(index), mut fill, mut turn) in &mut pool.dots {
-        let Some(dress) = look(*index) else {
-            continue;
-        };
-        fill.set_if_neq(BackgroundColor(dress.fill));
-        let rotation = Rot2::radians(dress.turn);
-        if turn.rotation != rotation {
-            turn.rotation = rotation;
-        }
-    }
+    paint(&mut pool, &look, chosen);
     for (PinLabel(index), mut text) in &mut pool.labels {
         let wanted = look(*index).map(|dress| ["", dress.name][usize::from(shown[*index])]);
         if let Some(name) = wanted.filter(|name| text.0 != *name) {

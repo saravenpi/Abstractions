@@ -1,4 +1,4 @@
-//! Computer tests: the wheel moving from one chart to the next at the ends of the zoom, and
+//! Computer tests: the charts as nested levels, the wheel that stays on the chart shown, and
 //! the lens easing to its goal.
 
 use bevy::ecs::system::RunSystemOnce;
@@ -8,28 +8,16 @@ use bevy::prelude::*;
 use super::chart::Dot;
 use super::lens::{Lens, MAX_ZOOM};
 use super::pointer::{MapView, plot, zoom};
-use super::semantic::{DIVE, entry, inner, outer, shift};
+use super::semantic::{DIVE, entry, outer};
 use super::tests_pointer::{pixel, point, rig};
 use super::*;
 
-/// The wheel changes chart only at the thresholds: out of a chart seen whole, and into the
-/// place of the ship from the dive zoom on. Anywhere else it zooms.
+/// The charts nest from the system out to the universe, which has nothing around it.
 #[test]
-fn the_wheel_changes_chart_at_the_thresholds() {
-    assert_eq!(shift(Tab::System, 1.0, -1.0, false), Some(Tab::Galaxy));
-    assert_eq!(shift(Tab::Galaxy, 1.0, -1.0, true), Some(Tab::Universe));
-    assert_eq!(shift(Tab::Universe, 1.0, -1.0, false), None);
-    assert_eq!(shift(Tab::System, 1.01, -1.0, false), None);
-    assert_eq!(shift(Tab::Galaxy, DIVE, 1.0, true), Some(Tab::System));
-    assert_eq!(shift(Tab::Universe, MAX_ZOOM, 1.0, true), Some(Tab::Galaxy));
-    assert_eq!(shift(Tab::Galaxy, DIVE, 1.0, false), None);
-    assert_eq!(shift(Tab::Galaxy, DIVE - 0.01, 1.0, true), None);
-    assert_eq!(shift(Tab::System, MAX_ZOOM, 1.0, true), None);
-    assert_eq!(shift(Tab::Galaxy, 1.0, 0.0, true), None);
-    for tab in Tab::ALL {
-        assert!(outer(tab).is_none_or(|out| inner(out) == Some(tab)));
-        assert!(inner(tab).is_none_or(|within| outer(within) == Some(tab)));
-    }
+fn the_charts_nest_out_to_the_universe() {
+    assert_eq!(outer(Tab::System), Some(Tab::Galaxy));
+    assert_eq!(outer(Tab::Galaxy), Some(Tab::Universe));
+    assert_eq!(outer(Tab::Universe), None);
 }
 
 /// A chart reached by zooming out opens close on the ship and pulls back, so one notch in
@@ -69,8 +57,8 @@ fn the_lens_eases_to_its_goal_and_lands_on_it() {
 }
 
 /// Turns the wheel by `notches` over the map and lays the chart out again, with the same
-/// rows when the wheel opened another chart.
-fn turn(app: &mut App, notches: f32) -> (Tab, Lens, Lens) {
+/// rows if the table was asked for again.
+pub(super) fn turn(app: &mut App, notches: f32) -> (Tab, Lens, Lens) {
     app.insert_resource(AccumulatedMouseScroll {
         unit: MouseScrollUnit::Line,
         delta: Vec2::new(0.0, notches),
@@ -87,29 +75,29 @@ fn turn(app: &mut App, notches: f32) -> (Tab, Lens, Lens) {
     (view.tab, view.lens, view.goal)
 }
 
-/// On the map, one notch out of the whole system chart opens the galaxy chart close on the
-/// ship, and from there a notch into the place of the ship at the dive zoom opens the system
-/// again, while a notch anywhere else only zooms.
+/// On the map the wheel only zooms the chart shown, within its own zoom: out of a chart seen
+/// whole, or in at the closest zoom on the place of the ship, it stays on the same chart.
 #[test]
-fn the_wheel_moves_between_the_charts_on_the_map() {
+fn the_wheel_never_changes_the_chart() {
     let mut app = rig();
     point(&mut app, Vec2::new(30.0, 30.0));
     let (tab, lens, goal) = turn(&mut app, -1.0);
-    assert_eq!((tab, lens.zoom, goal.zoom), (Tab::Galaxy, DIVE, DIVE * 0.5));
-    let (tab, _, goal) = turn(&mut app, 1.0);
-    assert!(tab == Tab::Galaxy && goal.zoom > DIVE * 0.5);
-    let mut view = app.world_mut().resource_mut::<MapView>();
-    let centre = view.dots[0].1;
-    let close = Lens { zoom: DIVE, centre }.clamped();
-    (view.lens, view.goal) = (close, close);
-    let home = app.world().resource::<Board>().lines[0].target;
-    app.world_mut().resource_mut::<Board>().here = [None, Some(home), None];
-    let star = pixel(&app, Dot::Row(0));
-    point(&mut app, star);
-    assert_eq!(app.world().resource::<MapView>().hover, Some(Dot::Row(0)));
-    let (tab, lens, goal) = turn(&mut app, 1.0);
     assert_eq!(
         (tab, lens, goal),
         (Tab::System, Lens::default(), Lens::default())
     );
+    for _ in 0..40 {
+        assert_eq!(turn(&mut app, -3.0).0, Tab::System);
+    }
+    let home = app.world().resource::<Board>().lines[0].target;
+    app.world_mut().resource_mut::<Board>().here = [None, Some(home), None];
+    let star = pixel(&app, Dot::Row(0));
+    point(&mut app, star);
+    for _ in 0..60 {
+        let (tab, _, goal) = turn(&mut app, 2.0);
+        assert!(tab == Tab::System && goal.zoom <= MAX_ZOOM);
+    }
+    let view = app.world().resource::<MapView>();
+    assert_eq!(view.goal.zoom, MAX_ZOOM);
+    assert_eq!(app.world().resource::<Board>().tab, Tab::System);
 }

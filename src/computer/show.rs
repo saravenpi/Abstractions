@@ -7,6 +7,7 @@ use super::format::{clip, distance};
 use super::home::{arranged, beacon, homes, pinned};
 use super::moons::is_moon;
 use super::open::ready;
+use super::pointer::{MapView, selected};
 use super::results::TITLE_CHARS;
 use super::route::{Destination, HOME_LABEL, RouteStatus, Target};
 use super::rows::Line;
@@ -31,7 +32,7 @@ fn rebuild(time: Res<Time>, scene: Scene, mut board: ResMut<Board>, mut since: L
         return;
     }
     *since = 0.0;
-    let (heading, lines) = scene.table(board.tab);
+    let (heading, lines) = scene.table(board.tab, board.inside);
     let pin = pinned(board.tab, here, &scene.universe);
     let lines = arranged(lines, pin, &board.filter, board.sort);
     board.ship = scene.ship();
@@ -149,7 +150,7 @@ type Written = Or<(With<Status>, With<Crumbs>)>;
 /// distance. Without a course the line stays empty while a row is selected, since the button
 /// over it already offers to set the course.
 fn status(
-    (time, board): (Res<Time>, Res<Board>),
+    (time, board, view): (Res<Time>, Res<Board>, Res<MapView>),
     scene: Scene,
     (destination, route): Route,
     mut since: Local<f32>,
@@ -164,7 +165,7 @@ fn status(
         return;
     }
     *since = 0.0;
-    let offered = destination.0.is_none() && board.lines.get(board.cursor).is_some();
+    let offered = destination.0.is_none() && selected(&board, &view).is_some();
     let shown = match offered {
         true => String::new(),
         false => scene.route(destination.0, *route),

@@ -68,25 +68,34 @@ impl Scene<'_, '_> {
         self.known.is_changed() && self.known.complete(&self.atlas)
     }
 
-    /// Returns the heading and the rows of `tab`.
-    pub(super) fn table(&self, tab: Tab) -> (String, Vec<Line>) {
+    /// Returns the heading and the rows of `tab`, on the chart of the star or the galaxy
+    /// `inside`, or of the place of the ship.
+    pub(super) fn table(&self, tab: Tab, inside: Option<Target>) -> (String, Vec<Line>) {
         let view = View {
             universe: &self.universe,
             atlas: &self.atlas,
             ship: self.ship(),
             time: self.clock.seconds,
         };
-        let star = self.location.body.star;
+        let ship = self.location.body.star;
+        let star = match inside {
+            Some(Target::Star(star)) => star,
+            _ => ship,
+        };
+        let galaxy = match inside {
+            Some(Target::Galaxy(galaxy)) => galaxy,
+            _ => star.galaxy,
+        };
         match tab {
             Tab::System => (
                 format!("{} system", Target::Star(star).name(&self.universe)),
                 view.system(star),
             ),
             Tab::Galaxy => {
-                let name = Target::Galaxy(star.galaxy).name(&self.universe);
+                let name = Target::Galaxy(galaxy).name(&self.universe);
                 (
                     format!("{name} galaxy"),
-                    view.galaxy(star.galaxy, self.known.stars()),
+                    view.galaxy(galaxy, self.known.stars()),
                 )
             }
             Tab::Universe => ("Known universe".to_string(), view.universe()),

@@ -35,13 +35,19 @@ fn same_seed_same_life() {
 }
 
 /// Checks that species `s` sits at index `i`, has one to three tissues, and eats as its guild says:
-/// a producer eats nothing and has no body, a consumer eats something.
+/// a producer eats nothing, has no body, is colonial at level 1 and grows one of the eight
+/// architectures, a consumer eats something.
 fn fits(i: usize, s: &Species) {
     assert_eq!(usize::from(s.id.index), i);
     assert!((1..=3).contains(&s.tissues.len()));
     match s.role.guild {
         Guild::Producer => {
-            assert!(s.prey.is_empty() && s.body.parts.is_empty() && s.plan == Plan::Colonial)
+            assert!(s.prey.is_empty() && s.body.parts.is_empty() && s.plan == Plan::Colonial);
+            assert!(
+                s.role.level == 1.0 && s.archetype < 8,
+                "{} is no plant group",
+                s.name
+            );
         }
         _ => assert!(!s.prey.is_empty(), "{} eats nothing", s.name),
     }

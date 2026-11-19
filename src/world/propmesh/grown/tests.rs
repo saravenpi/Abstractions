@@ -1,5 +1,5 @@
 //! Checks that every grown look is a closed solid within its triangle budget, buried where it is tall, and
-//! that the book hands back the mesh of each look.
+//! that the book hands back the mesh of each look, built once.
 
 use std::collections::HashSet;
 
@@ -130,4 +130,16 @@ fn the_book_names_each_look() {
         variant: pa,
     };
     assert_eq!(merge_props(&[placed]).count_vertices(), tris(pa) * 3);
+}
+
+/// A look is built once: asking the book for it again hands back the same mesh, not a new one.
+#[test]
+fn a_look_is_built_once() {
+    let look = Look {
+        dials: dials(7, false, 4, false),
+        variant: 2,
+    };
+    let first = soup(page(look)).expect("a page");
+    let again = soup(page(look)).expect("the same page");
+    assert!(std::sync::Arc::ptr_eq(&first, &again));
 }

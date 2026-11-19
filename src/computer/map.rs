@@ -89,13 +89,15 @@ pub fn spot(at: Vec2, corner: Vec2, size: Vec2) -> Node {
     }
 }
 
-/// Spawns a frame `side` pixels wide in `color` around the chart point `at`.
+/// Share of its colour a frame is laid in: a faint square of tone, not a line.
+const FRAME_TONE: f32 = 0.25;
+
+/// Spawns a faint square `side` pixels wide in `color` around the chart point `at`, which
+/// marks it by tone rather than by an outline.
 pub fn frame(sheet: &mut ChildSpawnerCommands, at: Vec2, (side, color): (f32, Color)) {
-    let node = Node {
-        border: UiRect::all(px(theme::LINE)),
-        ..spot(at, Vec2::splat(-0.5 * side), Vec2::splat(side))
-    };
-    sheet.spawn((node, BorderColor::all(color)));
+    let node = spot(at, Vec2::splat(-0.5 * side), Vec2::splat(side));
+    let tone = color.with_alpha(color.alpha() * FRAME_TONE);
+    sheet.spawn((node, BackgroundColor(tone)));
 }
 
 /// Spawns `title` to the right of the chart point `at`, `gap` pixels away.

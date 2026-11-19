@@ -13,7 +13,10 @@ use bevy::ui::RelativeCursorPosition;
 use super::layout::{LINE_HEIGHT, MARGIN, SIDE};
 use super::map::field;
 use super::open::Computer;
-use crate::ui::{Overlay, hairline, text, theme};
+use crate::ui::{Overlay, text, theme};
+
+/// Background of the side panel: a tone lighter than the map, which sets it apart with no line.
+const PANEL: Color = Color::srgb(0.09, 0.09, 0.09);
 
 /// What the search box says while nothing is typed.
 pub(super) const SEARCH_HINT: &str = "Search (/)";
@@ -82,14 +85,12 @@ fn side() -> impl Bundle {
         flex_direction: FlexDirection::Column,
         row_gap: px(theme::GAP_M),
         padding: UiRect::all(px(MARGIN)),
-        border: UiRect::left(px(theme::LINE)),
         overflow: Overflow::clip(),
         ..default()
     };
     (
         node,
-        hairline(),
-        BackgroundColor(theme::SCRIM),
+        BackgroundColor(PANEL),
         children![
             super::results::search(),
             super::readout::card(),

@@ -13,20 +13,18 @@ use crate::computer::{MapView, SIZE};
 use crate::menus::{Marker, MarkerKind, Markers};
 use crate::ui::theme;
 
-/// The look of one marker: its fill, its border, its turn and its name.
+/// The look of one marker: its fill, its turn and its name. Markers have no outline.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Dress<'a> {
     /// Colour inside the dot.
     pub fill: Color,
-    /// Colour of the border of the dot.
-    pub border: Color,
     /// Turn of the dot in radians: a waypoint is a square on its corner.
     pub turn: f32,
     /// The name written beside it.
     pub name: &'a str,
 }
 
-/// Returns how a marker of `kind` is drawn: in its own colour or white, hollow or filled,
+/// Returns how a marker of `kind` is drawn: in its own colour or white, grey or bright,
 /// and turned onto its corner, with the name it has without a label.
 pub fn shape(kind: MarkerKind) -> (bool, bool, f32, &'static str) {
     match kind {
@@ -39,7 +37,7 @@ pub fn shape(kind: MarkerKind) -> (bool, bool, f32, &'static str) {
 }
 
 /// Returns the look of `marker`, or of the player for nothing: the player white, a friend and a
-/// waypoint in their colour, a favourite and the ship hollow squares, home white.
+/// waypoint in their colour, a favourite and the ship grey squares, home white.
 pub fn dress(marker: Option<&Marker>) -> Dress<'_> {
     let Some(marker) = marker else {
         let white = (false, false, 0.0, "You");
@@ -51,14 +49,13 @@ pub fn dress(marker: Option<&Marker>) -> Dress<'_> {
 /// Returns the look of a marker drawn as `shape` says, in `color` when it has its own, named
 /// `label` or the name of its shape.
 fn look<'a>(
-    (own, hollow, turn, name): (bool, bool, f32, &'static str),
+    (own, grey, turn, name): (bool, bool, f32, &'static str),
     color: Color,
     label: &'a str,
 ) -> Dress<'a> {
     let tint = [theme::TEXT, color][usize::from(own)];
     Dress {
-        fill: [tint, Color::NONE][usize::from(hollow)],
-        border: [theme::INK, theme::TEXT][usize::from(hollow)],
+        fill: [tint, theme::MUTED][usize::from(grey)],
         turn,
         name: [label, name][usize::from(label.is_empty())],
     }
@@ -103,7 +100,6 @@ pub struct Pool<'w, 's> {
         (
             &'static PinDot,
             &'static mut BackgroundColor,
-            &'static mut BorderColor,
             &'static mut UiTransform,
         ),
     >,
@@ -145,12 +141,11 @@ pub(super) fn draw(
     });
     let shown = named(&spots);
     moved(&mut pool, |index| spots[index].map(|(at, _)| at));
-    for (PinDot(index), mut fill, mut border, mut turn) in &mut pool.dots {
+    for (PinDot(index), mut fill, mut turn) in &mut pool.dots {
         let Some(dress) = look(*index) else {
             continue;
         };
         fill.set_if_neq(BackgroundColor(dress.fill));
-        border.set_if_neq(BorderColor::all(dress.border));
         let rotation = Rot2::radians(dress.turn);
         if turn.rotation != rotation {
             turn.rotation = rotation;

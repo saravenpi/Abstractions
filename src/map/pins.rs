@@ -62,11 +62,9 @@ fn dot(index: usize) -> impl Bundle {
         top: px(-0.5 * DOT),
         width: px(DOT),
         height: px(DOT),
-        border: UiRect::all(px(theme::LINE)),
         ..default()
     };
-    let colours = (BackgroundColor(Color::NONE), BorderColor::all(Color::NONE));
-    (PinDot(index), node, colours)
+    (PinDot(index), node, BackgroundColor(Color::NONE))
 }
 
 /// The name of a node of the pool, to the right of its dot.

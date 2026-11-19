@@ -7,9 +7,7 @@ use bevy::ui_widgets::Button;
 use super::board::VISIBLE_ROWS;
 use super::layout::{GLYPH, ROW};
 use super::view::{Cell, Part, SEARCH_HINT, SearchBox, SearchText, Slot, Summary};
-use crate::ui::{
-    Icon, Look, Selected, Tone, cell, column, frame, hairline, icon, label, text, theme,
-};
+use crate::ui::{Icon, Look, Selected, Tone, cell, column, frame, icon, label, text, theme};
 
 /// Most characters of the name of a result; a longer name is cut short.
 pub(super) const TITLE_CHARS: usize = 19;
@@ -52,7 +50,7 @@ fn row(slot: usize) -> impl Bundle {
     )
 }
 
-/// The search box: a framed button with the words typed, or the hint.
+/// The search box: a button with the words typed, or the hint.
 fn field() -> impl Bundle {
     let node = Node {
         width: percent(100),
@@ -60,12 +58,11 @@ fn field() -> impl Bundle {
         align_items: AlignItems::Center,
         column_gap: px(theme::GAP_S),
         padding: UiRect::horizontal(px(theme::GAP_S)),
-        border: UiRect::all(px(theme::LINE)),
         ..default()
     };
     let words = label(SEARCH_HINT, theme::FONT_SMALL, Tone::Muted);
     let inside = children![(SearchText, words)];
-    (SearchBox, frame(), node, hairline(), inside)
+    (SearchBox, frame(), node, inside)
 }
 
 /// The search box over its results: the box, the line that counts them and the pool of rows.

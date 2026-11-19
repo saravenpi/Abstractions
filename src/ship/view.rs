@@ -88,7 +88,7 @@ pub fn carry(
         ground: cockpit.ground(centre),
         radius: HULL_RADIUS,
         kind: Kind::Ship,
-        bank: 0.0,
+        ..Target::default()
     };
 }
 

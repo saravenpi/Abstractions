@@ -90,18 +90,18 @@ fn ground_flight_ground_is_continuous() {
     }
 }
 
-/// Flying banks the horizon by a share of the bank of the body, never all of it, and the third
+/// Flying banks the horizon by the whole bank of the body, a steep one too, and the third
 /// person camera looks a little toward where the body is going.
 #[test]
-fn flight_banks_partly_and_looks_ahead() {
-    for (prefs, share) in [(third(), 0.3), (ViewPrefs::default(), 0.3)] {
+fn flight_banks_fully_and_looks_ahead() {
+    for (prefs, share) in [(third(), 1.0), (ViewPrefs::default(), 1.0)] {
         let mut body = moment(Kind::Flying, prefs);
         body.target.velocity = Vec3::new(-8.0, 0.0, -20.0);
-        body.target.bank = 0.4;
+        body.target.bank = 1.2;
         let shown = run(&mut Rig::default(), &mut body, &Boxes::default(), 240);
         let right = shown.pose.rotation * Vec3::X;
         assert!(
-            (right.y + (0.4_f32 * share).sin()).abs() < 0.01,
+            (right.y + (1.2_f32 * share).sin()).abs() < 0.01,
             "roll is {}",
             right.y
         );
@@ -125,5 +125,32 @@ fn ship_switch_is_continuous() {
     for frames in [90, 40, 9, 60] {
         glide(&mut rig, &mut ship, frames, (1.3, 0.05));
         ship.prefs.toggle(Kind::Ship);
+    }
+}
+
+/// A body rolling on round takes the camera the whole way: upside down at a half turn, and on
+/// past it without unwinding back the other way.
+#[test]
+fn flight_rolls_the_camera_over() {
+    let mut body = moment(Kind::Flying, ViewPrefs::default());
+    body.target.velocity = Vec3::new(0.0, 0.0, -30.0);
+    let mut rig = Rig::default();
+    let mut last = 0.0_f32;
+    for step in 0..=36 {
+        body.target.bank = (step as f32 * 10.0).to_radians();
+        let shown = run(&mut rig, &mut body, &Boxes::default(), 60);
+        let roof = shown.pose.rotation * Vec3::Y;
+        let right = shown.pose.rotation * Vec3::X;
+        let roll = (-right.y).atan2(roof.y);
+        let turn = (roll - last + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU)
+            - std::f32::consts::PI;
+        assert!(
+            turn.abs() < 0.3,
+            "the camera jumped by {turn} at step {step}"
+        );
+        last = roll;
+        if step == 18 {
+            assert!(roof.y < -0.9, "upside down at a half turn, roof {roof}");
+        }
     }
 }

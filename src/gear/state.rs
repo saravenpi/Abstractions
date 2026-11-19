@@ -104,12 +104,6 @@ impl FlightState {
         banked * Quat::from_rotation_x(self.servo.pull)
     }
 
-    /// Returns the bank as the horizon shows it: the bank itself up to a quarter turn, then back
-    /// toward zero on the back, so that a body rolling on round never jumps from side to side.
-    pub fn tilt(&self) -> f32 {
-        self.bank.sin().asin()
-    }
-
     /// Returns the unit direction of the nose.
     pub fn nose(&self) -> Vec3 {
         self.frame() * Vec3::NEG_Z

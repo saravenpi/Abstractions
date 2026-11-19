@@ -82,9 +82,10 @@ type Followed = (
 /// Tells the camera rig what it follows: the local body, upright, with the velocity the controller
 /// just gave it, shifted by how far the eyes still trail it after a step-up. The forward
 /// direction is the north of the upright frame, because the rig owns the heading of the view.
-/// The bank is the one the horizon shows, see `FlightState::tilt`, so a roll never jumps.
+/// In the air it also gives the way the back of the body faces, so the view rolls over with
+/// it a full turn round, however the gear reads the attitude.
 pub(super) fn aim(
-    (anchor, wing): (Res<Anchor>, Res<WingView>),
+    anchor: Res<Anchor>,
     players: Query<Followed, With<Player>>,
     mut target: ResMut<Target>,
 ) {
@@ -103,7 +104,7 @@ pub(super) fn aim(
         forward: to_render * Vec3::NEG_Z,
         velocity: to_render * motion.velocity,
         kind: kind(&gear.state),
-        bank: gear.state.tilt() * wing.sense() * f32::from(u8::from(airborne)),
+        back: gear.state.frame() * Vec3::Y * f32::from(u8::from(airborne)),
         ..Target::default()
     };
 }

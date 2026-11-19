@@ -116,7 +116,7 @@ fn foot(third: bool) -> Shot {
 fn fly(third: bool) -> Shot {
     if !third {
         return Shot {
-            bank: 0.3,
+            bank: 1.0,
             widen: 0.21,
             ..eyes()
         };
@@ -126,7 +126,7 @@ fn fly(third: bool) -> Shot {
         boom: Vec3::new(0.3, 0.9, 6.0),
         lag: 1.2,
         stiff: 5.0,
-        bank: 0.3,
+        bank: 1.0,
         lead: 0.3,
         widen: 0.25,
         pull: 0.15,

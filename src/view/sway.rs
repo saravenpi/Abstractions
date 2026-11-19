@@ -6,11 +6,12 @@ use bevy::prelude::*;
 
 use super::basis::Stance;
 use super::io::{Kind, Moment};
+use super::roll::Roll;
 use super::shot::Shot;
 use super::smooth::{Spring, closed};
 use super::tune::{
-    BANK_LIMIT, BOB, BOB_RATE, BOB_SPEED, DIP, FLY_SWIFT, LAG_TIME, LAND_SPEED, LEAD_LIMIT,
-    LEAD_RATE, ROLL_RATE, RUSH_RATE, SHIP_SWIFT, STRIDE, WARP, ZOOM_RATE,
+    BOB, BOB_RATE, BOB_SPEED, DIP, FLY_SWIFT, LAG_TIME, LAND_SPEED, LEAD_LIMIT, LEAD_RATE,
+    ROLL_RATE, RUSH_RATE, SHIP_SWIFT, STRIDE, WARP, ZOOM_RATE,
 };
 
 /// The slow state of the rig. Vectors are in the axes of the target.
@@ -24,8 +25,8 @@ pub(super) struct Sway {
     bob: f32,
     /// Vertical speed of the target on the last step.
     fall: f32,
-    /// Roll of the camera, positive to the right.
-    pub roll: f32,
+    /// Roll of the camera around where it looks.
+    pub roll: Roll,
     /// Turn of the camera toward the flight path: yaw and pitch.
     pub lead: Vec2,
     /// Zoom the boom has reached.
@@ -94,8 +95,8 @@ impl Sway {
         self.trail(target.kind, stance, shot);
         self.walk(moment, stance, shot);
         self.ahead(stance, shot, look);
-        let bank = target.bank.clamp(-BANK_LIMIT, BANK_LIMIT) * shot.bank;
-        self.roll += (bank - self.roll) * stance.gain(ROLL_RATE);
+        self.roll
+            .step(target, look, (shot.bank, stance.gain(ROLL_RATE)));
         self.zoom += (moment.prefs.zoom - self.zoom) * stance.gain(ZOOM_RATE);
         let goal = rush(target.kind, stance.drift.length());
         self.rush += (goal - self.rush) * stance.gain(RUSH_RATE);

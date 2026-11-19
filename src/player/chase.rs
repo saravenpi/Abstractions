@@ -39,17 +39,6 @@ pub struct WingView {
     rights: bool,
 }
 
-impl WingView {
-    /// Returns which way the bank of the body shows from the view: -1 for a view that follows
-    /// the body read the other way round, where left and right swap, else 1.
-    pub(super) fn sense(&self) -> f32 {
-        match self.over {
-            true => -1.0,
-            false => 1.0,
-        }
-    }
-}
-
 /// Returns the heading and pitch `body` reads the other way round: the heading turned by a
 /// half turn and the pitch mirrored across the vertical. The nose points the same way, and a
 /// view along it is on its back where the first is upright.

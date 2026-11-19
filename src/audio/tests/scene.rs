@@ -35,4 +35,3 @@ fn music_level_follows_the_scene() {
     assert_eq!(space.music_level(), 0.0);
     assert_eq!(warp.music_level(), 0.0);
 }
-

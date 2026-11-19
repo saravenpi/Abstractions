@@ -7,9 +7,13 @@ use abstractions_net::jitter::{Buffer, Snap};
 use abstractions_net::wire::{self, CompanionBody, Kind, Record, RobotBody, ShipBody, records};
 use bevy::prelude::*;
 
+use super::bodies::Bodies;
+use super::rebase::rebase;
 use super::robot::{Stride, snap};
 use crate::net::link::{Inbox, Link};
 use crate::sim::PlayerId;
+use crate::space::Clock;
+use crate::universe::Universe;
 
 /// Seconds between two records of a moving thing, which the buffers plan their delay on.
 const INTERVAL: f64 = super::rate::MOVING;
@@ -59,25 +63,36 @@ pub struct Remotes {
     pub companions: HashMap<PlayerId, Track<CompanionBody>>,
 }
 
-/// Keeps `snap` of the record of `head` that came at local time `now`. A record in another
-/// frame than the ones before empties the buffer first.
+/// When a record came, on the universe clock the buffers sample on and on the local clock the
+/// players are let go by, and the bodies its frame is converted against.
+pub struct Arrival<'a> {
+    /// Universe time in seconds, the clock of the jitter buffers.
+    pub universe: f64,
+    /// Local time in seconds.
+    pub local: f64,
+    /// The bodies frames are converted against.
+    pub bodies: &'a mut Bodies,
+}
+
+/// Keeps `snap` of the record of `head` that came at `arrival`. A record in another frame than
+/// the ones before moves the buffer into its frame first.
 fn keep<E: Copy + Default>(
     tracks: &mut HashMap<PlayerId, Track<E>>,
     head: &wire::Head,
     snap: Snap<E>,
-    now: f64,
+    arrival: &mut Arrival,
 ) {
     let track = tracks
         .entry(head.player)
         .or_insert_with(|| Track::new(head.frame));
     if track.frame != head.frame {
-        track.buffer.reset();
+        rebase(&mut track.buffer, (track.frame, head.frame), arrival.bodies);
         track.frame = head.frame;
     }
-    if track.buffer.push(snap, now) {
+    if track.buffer.push(snap, arrival.universe) {
         track.latest = snap.extra;
     }
-    track.heard = now;
+    track.heard = arrival.local;
 }
 
 /// Returns the snapshot of a ship record sampled at universe time `time`.
@@ -104,9 +119,9 @@ fn bot(time: f64, body: CompanionBody) -> Snap<CompanionBody> {
 }
 
 impl Remotes {
-    /// Decodes `record`, which came at local time `now`, and keeps it. A body that does not
-    /// decode is dropped.
-    fn take(&mut self, record: &Record, now: f64) {
+    /// Decodes `record`, which came at `now`, and keeps it. A body that does not decode is
+    /// dropped.
+    fn take(&mut self, record: &Record, now: &mut Arrival) {
         let (head, time) = (&record.head, record.head.time);
         let (frame, bytes) = (&head.frame, record.body);
         match head.kind {
@@ -139,13 +154,25 @@ pub fn kept(remotes: Res<Remotes>) -> bool {
     remotes.any()
 }
 
-/// Keeps every record of the batches of this frame, but those of this player.
-pub fn ingest(inbox: Res<Inbox>, link: Res<Link>, mut remotes: ResMut<Remotes>) {
-    let now = link.now();
+/// Keeps every record of the batches of this frame, but those of this player. Each one came
+/// at the universe time of the frame.
+pub fn ingest(
+    (inbox, link): (Res<Inbox>, Res<Link>),
+    mut remotes: ResMut<Remotes>,
+    (mut bodies, clock, universe): (ResMut<Bodies>, Res<Clock>, Option<Res<Universe>>),
+) {
+    if let Some(universe) = universe.as_deref() {
+        bodies.sync(universe);
+    }
+    let mut now = Arrival {
+        universe: clock.seconds,
+        local: link.now(),
+        bodies: &mut bodies,
+    };
     for batch in &inbox.0 {
         for record in records(batch) {
             if Some(record.head.player) != link.you {
-                remotes.take(&record, now);
+                remotes.take(&record, &mut now);
             }
         }
     }

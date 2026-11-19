@@ -3,6 +3,7 @@
 //! server on this machine.
 
 mod frames;
+mod latency;
 mod live;
 mod puppets;
 mod rate;

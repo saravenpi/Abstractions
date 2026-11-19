@@ -12,6 +12,7 @@ mod draw;
 mod forget;
 mod frame;
 mod rate;
+mod rebase;
 mod robot;
 mod send;
 mod tag;

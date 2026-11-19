@@ -7,12 +7,15 @@ mod atlas;
 mod board;
 mod chart;
 mod chrome;
+mod coast;
 mod course;
 mod detail;
 mod draw;
 mod format;
 mod giant;
 mod glide;
+mod hand;
+mod hold;
 mod home;
 mod hover;
 mod keys;
@@ -52,7 +55,11 @@ mod tests_close;
 #[cfg(test)]
 mod tests_detail;
 #[cfg(test)]
+mod tests_focus;
+#[cfg(test)]
 mod tests_giant;
+#[cfg(test)]
+mod tests_hand;
 #[cfg(test)]
 mod tests_home;
 #[cfg(test)]
@@ -92,9 +99,11 @@ pub use arrow::{arrow, bearing};
 pub use atlas::Atlas;
 pub use board::{Board, VISIBLE_ROWS};
 pub use chart::{Dot, FILL, GRID, chart, hit, mark, span};
+pub use coast::keyed;
 pub use course::{Act, action};
 pub use draw::side;
 pub use format::{distance, gravity};
+pub use hand::{Hand, Turn, ctrl, to_map, turn};
 pub use home::{arranged, away, beacon, homes, homeward, pinned, tab_of, toward};
 pub use labels::{keep, priority, room, scale_bar};
 pub use layout::{GLYPH, clear_of_bands};
@@ -104,25 +113,25 @@ pub use map::{ChartLayer, Field, SIZE, Sheet, body, field, frame, name, ring, sh
 pub use moons::{MOON_STEP, MOON_ZOOM, is_moon, seen};
 pub use open::Computer;
 pub use orbits::satellites;
-pub use pointer::{DOUBLE_CLICK, MapView, REACH, RESET_KEY, SLOP, ZOOM_STEP};
+pub use pointer::{DOUBLE_CLICK, MapView, REACH, RESET_KEY, SLOP, ZOOM_STEP, aimed, selected};
 pub use reveal::{HOME_NEIGHBOURS, REVEAL_CELLS, REVEAL_GLY};
 pub use rim::{APART, home_row, rank, rim, spread};
 pub use route::{Block, Destination, Engage, HOME_LABEL, RouteStatus, Target};
 pub use rows::{Line, View};
 pub use season::{climate_line, direction};
-pub use semantic::{DIVE, entry, shift};
+pub use semantic::{DIVE, entry};
 pub use sift::Sort;
 pub use tab::Tab;
 pub use track::Known;
 pub use typing::Typing;
-pub use view::{Area, SearchBox};
+pub use view::{Area, PANEL, SearchBox};
 pub use words::temperature;
 
 use bevy::prelude::*;
 
 /// The systems that read the keyboard, the wheel and the pointer of the open screen.
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
-struct Input;
+pub struct Input;
 
 /// Registers what the computer knows and how it learns it, without its screen: the
 /// destination, the route status, the chart and the discovery systems.
@@ -139,6 +148,7 @@ pub(super) fn plugin(app: &mut App) {
     app.add_plugins((
         logic,
         open::plugin,
+        hand::plugin,
         keys::plugin,
         pointer::plugin,
         show::plugin,

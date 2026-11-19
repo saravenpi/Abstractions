@@ -16,7 +16,7 @@ use super::open::Computer;
 use crate::ui::{Overlay, text, theme};
 
 /// Background of the side panel: a tone lighter than the map, which sets it apart with no line.
-const PANEL: Color = Color::srgb(0.09, 0.09, 0.09);
+pub const PANEL: Color = Color::srgb(0.09, 0.09, 0.09);
 
 /// What the search box says while nothing is typed.
 pub(super) const SEARCH_HINT: &str = "Search (/)";
@@ -154,7 +154,8 @@ fn foot() -> impl Bundle {
     (stack(), lines)
 }
 
-/// What is written over the map: where the player is in the top left corner with north at
+/// What is written over the map: the Back button and the path of the level shown, then where
+/// the player is, in the top left corner with north at
 /// the right end, and along the bottom the action line of the course over the course line
 /// and the place under the pointer, with the scale at the right end. Each line keeps its
 /// height while empty, so the others do not jump.
@@ -168,7 +169,11 @@ fn words() -> impl Bundle {
         padding: UiRect::all(px(MARGIN)),
         ..default()
     };
-    let head = children![(Crumbs, line(theme::TEXT)), crate::map::caption()];
+    let head = children![
+        crate::map::path(),
+        (Crumbs, line(theme::MUTED)),
+        crate::map::caption()
+    ];
     (
         node,
         children![

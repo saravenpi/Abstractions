@@ -22,7 +22,7 @@ pub enum Act {
 }
 
 /// What the course line says while no course is set.
-pub const NO_COURSE: &str = "Double-click a place or press Enter to set a course";
+pub const NO_COURSE: &str = "Right-click a place or press Enter to set a course";
 
 /// What the breadcrumb says when the ship is inside no known galaxy.
 pub const NOWHERE: &str = "Deep space";

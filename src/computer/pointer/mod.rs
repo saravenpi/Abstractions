@@ -1,10 +1,19 @@
 //! The pointer on the map: pointing at a mark, clicking it, dragging the chart and zooming it
 //! with the wheel.
 //!
-//! Pointing at a mark only lights it and names it. A click selects its row, and a second
-//! click on the selected mark, or a double click, sets the course to it.
+//! Pointing at a mark only lights it and names it. A click selects it, a click on empty map
+//! lets go of the selection, and a double click goes into the place of the mark. The course is
+//! set with Enter, the button of the action line or the menu of a right click.
 
-use bevy::input::mouse::{AccumulatedMouseScroll, MouseScrollUnit};
+mod click;
+mod wheel;
+
+pub use click::aimed;
+pub(super) use click::{coast, press};
+#[cfg(test)]
+pub(super) use click::{framing, tap};
+pub(super) use wheel::zoom;
+
 use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
@@ -15,13 +24,10 @@ use super::map::{Field, SIZE};
 use super::moons;
 use super::open::Computer;
 use super::rim::{home_row, spread};
-use super::route::Destination;
-use super::semantic::{dive, entry, shift};
+use super::route::Target;
+use super::semantic::entry;
 use super::tab::Tab;
-use super::typing::Typing;
 use super::view::Area;
-use crate::map::Level;
-use crate::ui::theme;
 
 /// Pixels around a mark within which the pointer is on it.
 pub const REACH: f32 = 10.0;
@@ -29,10 +35,10 @@ pub const REACH: f32 = 10.0;
 /// Pixels the pointer travels with the button held before a click becomes a drag.
 pub const SLOP: f32 = 3.0;
 
-/// How much closer one notch of the wheel brings the map.
-pub const ZOOM_STEP: f32 = 1.25;
+/// How much closer one line of the wheel brings the map.
+pub const ZOOM_STEP: f32 = 1.15;
 
-/// Seconds between two clicks on empty map that still count as a double click.
+/// Seconds between two clicks on the same thing that still count as a double click.
 pub const DOUBLE_CLICK: f32 = 0.4;
 
 /// The key that shows the whole chart again.
@@ -67,6 +73,20 @@ pub struct MapView {
     pub side: f32,
     /// Metres one chart unit stands for, or nothing on a chart that is not to scale.
     pub span: Option<f64>,
+    /// True while the player has picked the row under the cursor, by a click or a key.
+    pub picked: bool,
+    /// True while that pick was a click on its mark on the map, which Escape lets go of.
+    pub marked: bool,
+    /// A place the map was asked to go into, by a double click or the menu, which the map takes
+    /// once it has eased onto it.
+    pub into: Option<Target>,
+}
+
+/// Returns the selected row: the one under the cursor once the player picked it, or the first
+/// result of a search.
+pub fn selected(board: &Board, view: &MapView) -> Option<usize> {
+    let chosen = view.picked || !board.filter.is_empty();
+    (chosen && board.cursor < board.lines.len()).then_some(board.cursor)
 }
 
 /// The square map and the room around it, which say where the pointer is.
@@ -92,7 +112,9 @@ pub(super) fn aim((fields, areas): Under, board: Res<Board>, mut view: ResMut<Ma
         .hover
         .is_some_and(|dot| !moons::seen(dot, &board.lines, zoom));
     let still = at == view.at && over == view.over && !hidden;
-    (view.over, view.at) = (over, at);
+    if (view.over, view.at) != (over, at) {
+        (view.over, view.at) = (over, at);
+    }
     if still || view.held.is_some() {
         return;
     }
@@ -106,98 +128,9 @@ pub(super) fn aim((fields, areas): Under, board: Res<Board>, mut view: ResMut<Ma
     }
 }
 
-/// Applies one click at `now` seconds. A click on the mark of a row selects it, and returns
-/// true when the row was already selected by the click before, slow or quick: the course is
-/// then set to it. Two quick clicks on empty map show the whole chart again.
-pub(super) fn tap(view: &mut MapView, board: &mut Board, now: f32) -> bool {
-    let last = view.clicked.replace((view.hover, now));
-    let again = last.is_some_and(|(mark, _)| mark == view.hover);
-    match view.hover {
-        Some(Dot::Row(index)) if again && board.cursor == index => true,
-        Some(Dot::Row(index)) => {
-            board.step(index as isize - board.cursor as isize);
-            false
-        }
-        None if again && last.is_some_and(|(_, then)| now - then < DOUBLE_CLICK) => {
-            (view.goal, view.clicked) = (Lens::default(), None);
-            false
-        }
-        _ => false,
-    }
-}
-
-/// Drags the chart while the left button is held from the map, and on a release that did
-/// not drag, clicks: the second click on the selected mark sets the course to its row.
-pub(super) fn press(
-    (buttons, time): (Res<ButtonInput<MouseButton>>, Res<Time>),
-    mut board: ResMut<Board>,
-    mut view: ResMut<MapView>,
-    mut course: ResMut<Destination>,
-) {
-    if buttons.just_pressed(MouseButton::Left) && view.over {
-        (view.held, view.dragged) = (Some(view.at), false);
-    }
-    let Some(from) = view.held else {
-        return;
-    };
-    if buttons.pressed(MouseButton::Left) {
-        if view.dragged || from.distance(view.at) > SLOP {
-            view.lens = view.lens.panned(view.at - from);
-            view.goal = view.lens;
-            (view.held, view.dragged) = (Some(view.at), true);
-        }
-        return;
-    }
-    view.held = None;
-    if view.dragged || !tap(&mut view, &mut board, time.elapsed_secs()) {
-        return;
-    }
-    if let Some(line) = board.lines.get(board.cursor) {
-        course.0 = Some(line.target);
-    }
-}
-
-/// Zooms around the pointer with the wheel while the pointer is over the map, and shows the
-/// whole chart again on the reset key unless a search is typed. Past the ends of the zoom the
-/// wheel changes chart, and dives into the planet under the pointer on the system chart.
-pub(super) fn zoom(
-    (wheel, keys, typing): (
-        Res<AccumulatedMouseScroll>,
-        Res<ButtonInput<KeyCode>>,
-        Option<Res<Typing>>,
-    ),
-    mut board: ResMut<Board>,
-    mut view: ResMut<MapView>,
-    level: Option<ResMut<Level>>,
-) {
-    if keys.just_pressed(RESET_KEY) && typing.is_none_or(|typing| typing.is_off()) {
-        view.goal = Lens::default();
-    }
-    let notches = match wheel.unit {
-        MouseScrollUnit::Line => wheel.delta.y,
-        MouseScrollUnit::Pixel => wheel.delta.y / theme::ROW_HEIGHT,
-    };
-    if !view.over || notches == 0.0 {
-        return;
-    }
-    if let Some((body, mut level)) = dive(&board, &view, notches).zip(level) {
-        *level = Level::Planet(body);
-        return;
-    }
-    let pointed = match view.hover {
-        Some(Dot::Row(index)) => board.lines.get(index).map(|line| line.target),
-        _ => None,
-    };
-    let home = pointed.is_some() && board.here.contains(&pointed);
-    match shift(board.tab, view.goal.zoom, notches, home) {
-        Some(tab) => board.show(tab),
-        None => view.goal = view.goal.zoomed(view.at, ZOOM_STEP.powf(notches)),
-    }
-}
-
 /// Lays the chart out again when the table changed, to its near rows when home is far
-/// beyond them. Another tab opens as the way there asks, and a cursor that moved to a row
-/// outside the map brings that row into view.
+/// beyond them. Another tab opens as the way there asks, with nothing picked, and a cursor
+/// that moved to a row outside the map brings that row into view.
 pub(super) fn plot(board: Res<Board>, mut view: ResMut<MapView>) {
     if !board.is_changed() {
         return;
@@ -213,7 +146,7 @@ pub(super) fn plot(board: Res<Board>, mut view: ResMut<MapView>) {
     if view.tab != board.tab {
         (view.lens, view.goal) = entry(view.tab, board.tab);
         view.tab = board.tab;
-        (view.hover, view.clicked) = (None, None);
+        (view.hover, view.clicked, view.picked, view.marked) = (None, None, false, false);
     }
     if view.cursor == board.cursor {
         return;
@@ -238,7 +171,7 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(OnEnter(Computer::Open), whole)
         .add_systems(
             Update,
-            (aim, press, zoom)
+            (aim, press, zoom, coast)
                 .chain()
                 .in_set(super::Input)
                 .before(super::keys::navigate)

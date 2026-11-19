@@ -17,7 +17,7 @@ use super::lens::Lens;
 use super::map::{SIZE, Sheet, body, frame, name, ring, ship, spot};
 use super::moons::{host, is_moon, seen};
 use super::orbits::satellites;
-use super::pointer::MapView;
+use super::pointer::{MapView, selected};
 use super::rim::{badge, home_row, rank};
 use super::route::{Destination, Target};
 use super::tab::Tab;
@@ -71,7 +71,7 @@ impl Picture<'_> {
             false => host(lines, row).unwrap_or(row),
         };
         match (
-            shown(self.board.cursor) == index,
+            selected(self.board, self.view).map(shown) == Some(index),
             hover.map(shown) == Some(index),
         ) {
             (true, _) => Some(theme::TEXT),
@@ -210,19 +210,19 @@ fn labels(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
     }
 }
 
-/// Draws the chart of the open tab again whenever the table, the cursor, the destination or
-/// the mark under the pointer changed, when the lens comes to rest somewhere new, and when
+/// Draws the chart of the open tab again whenever the table, the cursor, the selection, the
+/// destination or the mark under the pointer changed, when the lens comes to rest somewhere new, and when
 /// the panel was just opened.
 pub(super) fn draw(
     mut commands: Commands,
     (board, chosen, view): (Res<Board>, Res<Destination>, Res<MapView>),
     fresh: Query<(), Added<Sheet>>,
     sheets: Query<Entity, With<Sheet>>,
-    mut last: Local<(Option<Dot>, Lens)>,
+    mut last: Local<(Option<Dot>, Lens, bool)>,
 ) {
     let rest = view.held.is_none() && view.lens == view.goal;
     let lens = if rest { view.lens } else { last.1 };
-    let now = (view.hover, lens);
+    let now = (view.hover, lens, view.picked);
     if !(board.is_changed() || chosen.is_changed() || *last != now || !fresh.is_empty()) {
         return;
     }

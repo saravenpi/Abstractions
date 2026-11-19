@@ -124,3 +124,12 @@ pub(super) fn show_search(
         shown.set_if_neq(tone);
     }
 }
+
+/// Ends any typing and clears the search, so neither outlives the screen: the keys of the
+/// game work again once it closes, and Escape closes it once it opens again.
+pub(super) fn stop_typing(mut typing: ResMut<Typing>, mut board: ResMut<Board>) {
+    *typing = Typing::Off;
+    if !board.filter.is_empty() {
+        (board.filter, board.stale) = (String::new(), true);
+    }
+}

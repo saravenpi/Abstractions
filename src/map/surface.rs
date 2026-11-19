@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use super::level::{Level, first};
 use super::me::Me;
 use super::planet::Tile;
-use crate::computer::{Lens, SIZE};
+use crate::computer::{Hand, Lens, SIZE};
 
 /// How fast the lens closes the gap to its goal, per second, as on the charts.
 const EASE: f32 = 12.0;
@@ -37,6 +37,10 @@ pub struct Surface {
     pub picked: Option<DVec3>,
     /// The direction the next planet opened is to be looked at, when one was asked for.
     pub focus: Option<DVec3>,
+    /// The selected marker, by its place in the list of drawn markers.
+    pub chosen: Option<usize>,
+    /// The lens the next planet opened is looked through, when Back returns to it.
+    pub again: Option<Lens>,
 }
 
 /// Marks the sheet the flat map is drawn on, which the lens moves and sizes.
@@ -44,13 +48,23 @@ pub struct Surface {
 pub struct PlanetSheet;
 
 /// Looks at the planet anew when the map opens one: where a list asked, on the player on it,
-/// or at the whole planet.
-pub(super) fn enter(level: Res<Level>, me: Me, mut surface: ResMut<Surface>) {
+/// or at the whole planet, or as it was looked at when Back returns to it. Any level shown anew
+/// starts still.
+pub(super) fn enter(
+    level: Res<Level>,
+    me: Me,
+    mut surface: ResMut<Surface>,
+    mut hand: ResMut<Hand>,
+) {
+    hand.drift = Vec2::ZERO;
     let Level::Planet(body) = *level else {
         return;
     };
     let here = me.spot().filter(|(on, _)| *on == body).map(|(_, at)| at);
-    let lens = first(surface.focus.take(), here);
+    let lens = surface
+        .again
+        .take()
+        .unwrap_or_else(|| first(surface.focus.take(), here));
     *surface = Surface {
         lens,
         goal: lens,

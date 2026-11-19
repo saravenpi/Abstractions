@@ -46,6 +46,8 @@ pub struct Board {
     pub beacon: Option<(Target, UniPos)>,
     /// A row the cursor moves to the next time the rows are replaced, when the table has it.
     pub seek: Option<Target>,
+    /// The star or the galaxy whose chart the tab shows, or nothing for the one of the ship.
+    pub inside: Option<Target>,
 }
 
 impl Board {
@@ -67,6 +69,13 @@ impl Board {
             sort: self.sort,
             ..default()
         };
+    }
+
+    /// Opens `tab` on the chart of `inside`, a star for the system tab or a galaxy for the
+    /// galaxy tab, or on the place of the ship for nothing.
+    pub fn open(&mut self, tab: Tab, inside: Option<Target>) {
+        self.show(tab);
+        self.inside = inside;
     }
 
     /// Replaces the rows, keeping the cursor and the scroll offset inside the new table, then

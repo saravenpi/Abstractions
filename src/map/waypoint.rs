@@ -1,5 +1,6 @@
-//! Waypoints: one point a player marks on a planet for everyone to see. The waypoint key, or a
-//! right click on the flat map, sets the player's own; the same again clears it.
+//! Waypoints: one point a player marks on a planet for everyone to see. The waypoint key sets
+//! the player's own and clears it again; the menu of a right click on the map sets it at a
+//! place or clears it.
 //!
 //! The key marks the place under the pointer on the flat map, and where the player is
 //! anywhere else. On a server each change goes out as a [`WaypointChanged`], and the waypoints
@@ -55,7 +56,13 @@ pub fn toggle(waypoints: &mut Waypoints, at: Option<(BodyId, DVec3)>) -> Option<
         return Some(WaypointChanged(None));
     }
     let (body, at) = at?;
-    let dir = at.try_normalize()?;
+    place(waypoints, body, at)
+}
+
+/// Sets the waypoint of this player at `dir` on `body`, in place of any it had, and returns what
+/// changed for the server. Nothing changes without a direction.
+pub fn place(waypoints: &mut Waypoints, body: BodyId, dir: DVec3) -> Option<WaypointChanged> {
+    let dir = dir.try_normalize()?;
     let set = Waypoint {
         body,
         dir,
@@ -66,11 +73,7 @@ pub fn toggle(waypoints: &mut Waypoints, at: Option<(BodyId, DVec3)>) -> Option<
 }
 
 /// What the waypoint key reads.
-type Asked<'w> = (
-    Res<'w, ButtonInput<KeyCode>>,
-    Res<'w, ButtonInput<MouseButton>>,
-    Res<'w, Persistent<Settings>>,
-);
+type Asked<'w> = (Res<'w, ButtonInput<KeyCode>>, Res<'w, Persistent<Settings>>);
 
 /// Where the map is and what is typed.
 type Screen<'w> = (
@@ -80,11 +83,10 @@ type Screen<'w> = (
     Res<'w, Surface>,
 );
 
-/// Sets or clears the waypoint on the waypoint key, or on a right click on the flat map: at the
-/// place under the pointer on the flat map, else where the player is. While a search or a name
-/// is typed the key types instead.
+/// Sets or clears the waypoint on the waypoint key: at the place under the pointer on the flat
+/// map, else where the player is. While a search or a name is typed the key types instead.
 pub(super) fn drop_key(
-    (keys, mouse, settings): Asked,
+    (keys, settings): Asked,
     (state, typing, level, surface): Screen,
     me: Me,
     mut waypoints: ResMut<Waypoints>,
@@ -96,8 +98,7 @@ pub(super) fn drop_key(
         Level::Planet(body) if open && surface.over => surface.point.map(|dir| (body, dir)),
         _ => None,
     };
-    let right = mouse.just_pressed(MouseButton::Right) && on_map.is_some();
-    if !(key || right) {
+    if !key {
         return;
     }
     if let Some(change) = toggle(&mut waypoints, on_map.or_else(|| me.spot())) {

@@ -1,6 +1,6 @@
 //! The levels of the map: a planet spread flat, or the charts of a system, a galaxy and the
-//! universe. The wheel goes from one to the next: past the closest zoom of the system chart,
-//! on a planet, it opens that planet, and past the whole planet it goes back to the system.
+//! universe. The wheel zooms inside one level; a double click goes into a place and Back
+//! comes out of it.
 
 use bevy::math::{DVec3, Vec2};
 use bevy::prelude::*;
@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use super::explored::grid::COLS;
 use super::geo::to_chart;
 use super::me::Me;
-use crate::computer::{Board, DIVE, Dot, Lens, MapView, Tab, Target};
+use crate::computer::{Board, Lens, Tab};
 use crate::universe::BodyId;
 
 /// Most screen pixels one cell of the planet picture takes at the closest zoom.
@@ -56,18 +56,6 @@ pub(super) fn open(me: Me, mut level: ResMut<Level>, mut board: ResMut<Board>) {
     if spot.is_some() && board.tab != Tab::System {
         board.show(Tab::System);
     }
-}
-
-/// Returns the lens a chart opens with when the map rises out of `body`: close on its mark,
-/// then easing out a little. Nothing when the chart has no mark of it.
-pub fn rise(view: &MapView, board: &Board, body: BodyId) -> Option<(Lens, Lens)> {
-    let row = board
-        .lines
-        .iter()
-        .position(|line| line.target == Target::Body(body))?;
-    let (_, at) = view.dots.iter().find(|(dot, _)| *dot == Dot::Row(row))?;
-    let close = |zoom: f32| Lens { zoom, centre: *at }.clamped();
-    Some((close(DIVE), close(DIVE * 0.5)))
 }
 
 /// Returns `lens` held to the flat map of a planet: from the whole planet to [`CLOSEST`], and

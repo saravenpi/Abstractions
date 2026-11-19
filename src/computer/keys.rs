@@ -7,11 +7,13 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
 use super::board::{Board, VISIBLE_ROWS};
+use super::chart::Dot;
+use super::coast::arrow;
 use super::course::Act;
 use super::home::{tab_of, toward};
 use super::locate::here;
 use super::open::ready;
-use super::pointer::MapView;
+use super::pointer::{MapView, aimed, selected};
 use super::route::{Destination, Engage, RouteStatus};
 use super::typing::Typing;
 use super::view::Slot;
@@ -45,26 +47,29 @@ pub(super) const HOME_KEY: KeyCode = KeyCode::Home;
 type Role = (Option<&'static Slot>, Option<&'static Act>);
 
 /// Moves the cursor with the arrows, Page Up and Down and End, changes tab with Left and
-/// Right, and scrolls with the wheel unless the pointer is over the map. A move that scrolls
-/// the table under a cursor that stays on the same drawn row is sounded here, since the focus
-/// does not move.
+/// Right, and scrolls with the wheel unless the pointer is over the map, where the arrows and
+/// the wheel move the map instead. A key that moves the cursor picks its row. A move that
+/// scrolls the table under a cursor that stays on the same drawn row is sounded here, since
+/// the focus does not move.
 pub(super) fn navigate(
     keys: Res<ButtonInput<KeyCode>>,
-    (wheel, view): (Res<AccumulatedMouseScroll>, Res<MapView>),
+    (wheel, mut view): (Res<AccumulatedMouseScroll>, ResMut<MapView>),
     mut board: ResMut<Board>,
     mut cues: MessageWriter<AudioCue>,
 ) {
-    let pressed = MOVES.iter().filter(|(key, _)| keys.just_pressed(*key));
+    let over = view.over;
+    let held = |key: KeyCode| keys.just_pressed(key) && !(over && arrow(key));
+    let pressed = MOVES.iter().filter(|(key, _)| held(*key));
     let by: isize = pressed.map(|(_, by)| by).sum();
     if by != 0 {
         let (cursor, slot) = (board.cursor, board.cursor - board.top);
         board.step(by);
+        view.picked = true;
         if board.cursor != cursor && board.cursor - board.top == slot {
             cues.write(AudioCue::UiMove);
         }
     }
-    let turn = isize::from(keys.just_pressed(KeyCode::ArrowRight))
-        - isize::from(keys.just_pressed(KeyCode::ArrowLeft));
+    let turn = isize::from(held(KeyCode::ArrowRight)) - isize::from(held(KeyCode::ArrowLeft));
     if turn != 0 {
         let tab = board.tab.step(turn);
         board.show(tab);
@@ -73,7 +78,7 @@ pub(super) fn navigate(
         MouseScrollUnit::Line => wheel.delta.y * WHEEL_ROWS,
         MouseScrollUnit::Pixel => wheel.delta.y / theme::ROW_HEIGHT,
     };
-    if rows.round() != 0.0 && !view.over {
+    if rows.round() != 0.0 && !over {
         board.scroll(-rows.round() as isize);
     }
 }
@@ -106,6 +111,7 @@ pub(super) struct Desk<'w, 's> {
     route: Option<Res<'w, RouteStatus>>,
     commands: Commands<'w, 's>,
     world: Option<(Res<'w, Universe>, Res<'w, Anchor>)>,
+    view: ResMut<'w, MapView>,
 }
 
 impl Desk<'_, '_> {
@@ -122,13 +128,25 @@ impl Desk<'_, '_> {
         self.board.seek = Some(target);
     }
 
-    /// Runs an action of the screen: the course goes to the selected row, home, to the
+    /// Eases the chart onto the row under the cursor and asks to go into its place.
+    fn focus(&mut self) {
+        if let Some(lens) = aimed(&self.board, &self.view, Dot::Row(self.board.cursor)) {
+            self.view.goal = lens;
+        }
+        self.view.into = self
+            .board
+            .lines
+            .get(self.board.cursor)
+            .map(|line| line.target);
+    }
+
+    /// Runs an action of the screen: the course goes to the selected row, if any, home, to the
     /// autopilot while the route is idle, as with the map closed, or away.
     fn run(&mut self, act: Act) {
         match (act, self.destination.0) {
             (Act::Home, _) => self.home(),
             (Act::Set, _) => {
-                let row = self.board.lines.get(self.board.cursor);
+                let row = selected(&self.board, &self.view).map(|row| &self.board.lines[row]);
                 self.destination.0 = row.map(|line| line.target).or(self.destination.0);
             }
             (Act::Engage, Some(target)) if self.route.as_deref() == Some(&RouteStatus::Idle) => {
@@ -167,11 +185,11 @@ fn action_keys(
     }
 }
 
-/// Seconds within which a second click on the same row sets the course to it.
+/// Seconds within which a second click on the same row focuses the map on it.
 const DOUBLE_CLICK: f64 = 0.45;
 
-/// Applies an activated button: a row is selected or an action runs. A second
-/// click of the pointer on the same row within [`DOUBLE_CLICK`] sets the course to it, as on
+/// Applies an activated button: a row is picked or an action runs. A second
+/// click of the pointer on the same row within [`DOUBLE_CLICK`] goes into its place, as on
 /// the map. Enter on the focused row selects it again; `action_keys` sets the course.
 pub(super) fn on_activate(
     event: On<Activate>,
@@ -185,26 +203,18 @@ pub(super) fn on_activate(
     };
     if let Some(Slot(slot)) = slot {
         desk.board.pick(*slot);
+        desk.view.picked = true;
         let left = MouseButton::Left;
         let clicked = mouse.just_released(left) || mouse.just_pressed(left);
         let now = time.elapsed_secs_f64();
         let again = last.is_some_and(|(row, at)| row == *slot && now - at < DOUBLE_CLICK);
         *last = clicked.then_some((*slot, now)).filter(|_| !again);
         if clicked && again {
-            desk.run(Act::Set);
+            desk.focus();
         }
     }
     if let Some(act) = act {
         desk.run(*act);
-    }
-}
-
-/// Ends any typing and clears the search, so neither outlives the screen: the keys of the
-/// game work again once it closes, and Escape closes it once it opens again.
-fn stop_typing(mut typing: ResMut<Typing>, mut board: ResMut<Board>) {
-    *typing = Typing::Off;
-    if !board.filter.is_empty() {
-        (board.filter, board.stale) = (String::new(), true);
     }
 }
 
@@ -213,8 +223,8 @@ pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Typing>()
         .add_observer(on_activate)
         .add_observer(super::typing::on_search)
-        .add_systems(OnEnter(super::Computer::Open), stop_typing)
-        .add_systems(OnExit(super::Computer::Open), stop_typing)
+        .add_systems(OnEnter(super::Computer::Open), super::typing::stop_typing)
+        .add_systems(OnExit(super::Computer::Open), super::typing::stop_typing)
         .add_systems(
             Update,
             (

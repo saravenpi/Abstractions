@@ -58,6 +58,8 @@ mod tests_motion;
 #[cfg(test)]
 mod tests_paint;
 #[cfg(test)]
+mod tests_pair;
+#[cfg(test)]
 mod tests_parts;
 #[cfg(test)]
 mod tests_perch;
@@ -83,7 +85,7 @@ use crate::space::{Anchor, Location};
 use crate::universe::Universe;
 use crate::world::Terrain;
 
-/// Marker for the companion's root entity. There is only ever one.
+/// Marker for the root entity of a companion: the local one, which has a brain, or a puppet.
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct Companion;
 

@@ -6,13 +6,23 @@ use super::Companion;
 use super::brain::Brain;
 use super::face::Expression;
 use super::face::machine::Face;
-use super::motion::blend;
+use super::motion::{Float, blend};
+use super::puppet::Parts;
 use super::screen::Display;
 use super::sense::CompanionSense;
 use super::tune::{GLOW_HDR, LIGHT_DAY_SHARE, LIGHT_POWER, SCREEN_HDR, THRUST_GLOW};
 
 /// How fast the colour follows the expression, per second.
 const TINT_RATE: f32 = 6.0;
+
+/// What a companion glows from: its face and brain if it has them, its motion, its parts and its display.
+type Glowing = (
+    Option<&'static Face>,
+    Option<&'static Brain>,
+    &'static Float,
+    &'static Parts,
+    &'static mut Display,
+);
 
 /// Marks the point light in front of the screen.
 #[derive(Component, Debug, Clone, Copy)]
@@ -39,7 +49,41 @@ fn hdr(tint: Vec3, gain: f32) -> Color {
     Color::linear_rgb(tint.x * gain, tint.y * gain, tint.z * gain)
 }
 
-/// Eases the colour toward the expression's and applies it to the screen, the glowing parts and the light.
+/// Returns the colour one companion glows in, eased toward its face, and how hard its thruster
+/// works, eased toward how far it flies. A companion with no face of its own glows calm.
+fn want(
+    face: Option<&Face>,
+    brain: Option<&Brain>,
+    float: &Float,
+    display: &Display,
+    share: f32,
+) -> (Vec3, f32) {
+    let expr = face.map_or(Expression::Neutral, Face::shown);
+    let dozing = brain.is_some_and(|brain| brain.mind.dozing);
+    let tint = display.tint.lerp(expr.tint() * glow(expr, dozing), share);
+    (
+        tint,
+        display.thrust + (float.flight - display.thrust) * share,
+    )
+}
+
+/// Paints the screen and the glowing parts of `display` in `tint`, the glow flared by `thrust`.
+fn paint(materials: &mut Assets<StandardMaterial>, display: &Display, (tint, thrust): (Vec3, f32)) {
+    let flare = GLOW_HDR * (1.0 + THRUST_GLOW * thrust);
+    let paints = [
+        (&display.face, hdr(tint, SCREEN_HDR)),
+        (&display.glow, hdr(tint, flare)),
+    ];
+    for (handle, base) in paints {
+        if let Some(mut material) = materials.get_mut(handle) {
+            material.base_color = base;
+            material.emissive = LinearRgba::BLACK;
+        }
+    }
+}
+
+/// Eases the colour of every companion toward its own expression and applies it to its screen,
+/// its glowing parts and its light.
 ///
 /// The light has no shadows, weakens by day and is at full strength at night. In flight the
 /// thruster and the antenna glow brighter, so the companion leaves a spark in the air beside
@@ -47,33 +91,24 @@ fn hdr(tint: Vec3, gain: f32) -> Color {
 pub fn shine(
     time: Res<Time>,
     sense: Res<CompanionSense>,
-    bot: Single<(&Face, &Brain, &mut Display), With<Companion>>,
+    mut bots: Query<Glowing, With<Companion>>,
+    (heads, mut lamps): (Query<&Children>, Query<&mut PointLight, With<Lamp>>),
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut lamp: Single<&mut PointLight, With<Lamp>>,
 ) {
-    let (face, brain, mut display) = bot.into_inner();
-    let expr = face.shown();
-    let want = expr.tint() * glow(expr, brain.mind.dozing);
     let share = blend(TINT_RATE, time.delta_secs());
-    let tint = display.tint.lerp(want, share);
-    let flying = f32::from(u8::from(sense.flying));
-    let thrust = display.thrust + (flying - display.thrust) * share;
-    lamp.color = hdr(tint, 1.0);
-    lamp.intensity = lumens(sense.night);
-    let still = (thrust - display.thrust).abs() < 1e-3;
-    if still && tint.distance(display.tint) < 1e-4 {
-        return;
-    }
-    (display.tint, display.thrust) = (tint, thrust);
-    let flare = GLOW_HDR * (1.0 + THRUST_GLOW * thrust);
-    let paints = [
-        (&display.face, hdr(tint, SCREEN_HDR), LinearRgba::BLACK),
-        (&display.glow, hdr(tint, flare), LinearRgba::BLACK),
-    ];
-    for (handle, base, emissive) in paints {
-        if let Some(mut material) = materials.get_mut(handle) {
-            material.base_color = base;
-            material.emissive = emissive;
+    for (face, brain, float, parts, mut display) in &mut bots {
+        let (tint, thrust) = want(face, brain, float, &display, share);
+        for &child in heads.get(parts.head).into_iter().flatten() {
+            if let Ok(mut lamp) = lamps.get_mut(child) {
+                lamp.color = hdr(tint, 1.0);
+                lamp.intensity = lumens(sense.night);
+            }
         }
+        let still = (thrust - display.thrust).abs() < 1e-3;
+        if still && tint.distance(display.tint) < 1e-4 {
+            continue;
+        }
+        (display.tint, display.thrust) = (tint, thrust);
+        paint(&mut materials, &display, (tint, thrust));
     }
 }

@@ -11,7 +11,7 @@ use super::brain::Brain;
 use super::face::Frame;
 use super::face::machine::Face;
 use super::face::paint::{HEIGHT, WIDTH, paint, rgba};
-use super::motion::Head;
+use super::puppet::Parts;
 
 /// The picture and the materials of the companion, and what they currently show.
 #[derive(Component, Debug, Clone)]
@@ -48,25 +48,35 @@ pub fn picture(frame: &Frame) -> Image {
     image
 }
 
-/// Repaints the screen when the face frame changed. The eyes turn toward what the companion
-/// looks at, from where the head points.
+/// Returns the eye shift of a companion whose head is at `head` and looks at `look`: none while
+/// it dozes or has no brain to look with.
+fn gaze(brain: Option<&Brain>, head: &GlobalTransform) -> IVec2 {
+    match brain {
+        Some(brain) if !brain.mind.dozing => {
+            eye_shift(head.rotation().inverse() * (brain.look - head.translation()))
+        }
+        _ => IVec2::ZERO,
+    }
+}
+
+/// Repaints the screen of every companion with a face when its frame changed. The eyes turn
+/// toward what the companion looks at, from where its own head points.
 pub fn repaint(
-    bot: Single<(&Brain, &Face, &mut Display), With<Companion>>,
-    at: Single<&GlobalTransform, With<Head>>,
+    mut bots: Query<(Option<&Brain>, &Face, &Parts, &mut Display), With<Companion>>,
+    heads: Query<&GlobalTransform>,
     mut images: ResMut<Assets<Image>>,
 ) {
-    let (brain, face, mut display) = bot.into_inner();
-    let local = at.rotation().inverse() * (brain.look - at.translation());
-    let gaze = match brain.mind.dozing {
-        true => IVec2::ZERO,
-        false => eye_shift(local),
-    };
-    let frame = face.frame(gaze);
-    if display.shown == Some(frame) {
-        return;
-    }
-    if let Some(mut image) = images.get_mut(&display.image) {
-        image.data = Some(rgba(&paint(&frame)));
-        display.shown = Some(frame);
+    for (brain, face, parts, mut display) in &mut bots {
+        let Ok(head) = heads.get(parts.head) else {
+            continue;
+        };
+        let frame = face.frame(gaze(brain, head));
+        if display.shown == Some(frame) {
+            continue;
+        }
+        if let Some(mut image) = images.get_mut(&display.image) {
+            image.data = Some(rgba(&paint(&frame)));
+            display.shown = Some(frame);
+        }
     }
 }

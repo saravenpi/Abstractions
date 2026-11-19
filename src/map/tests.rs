@@ -8,7 +8,7 @@ use bevy::math::{DVec3, Vec2};
 use super::explored::grid::COLS;
 use super::fade::{FADE, shade};
 use super::favourite::{Favourites, edit};
-use super::level::{CLOSEST, GROUND, REFERENCE_MAP, WHOLE, first};
+use super::level::{CLOSEST, GROUND, REFERENCE_MAP, WHOLE, first, framed};
 use super::{Waypoints, to_chart, toggle};
 use crate::universe::BodyId;
 
@@ -63,7 +63,26 @@ fn a_level_fades_in_and_opens_where_asked() {
 fn the_closest_zoom_keeps_cells_small() {
     let cell = CLOSEST * REFERENCE_MAP / COLS as f32;
     assert!(cell <= 6.0 + 1e-4 && cell > 5.0, "{cell}");
-    assert!(CLOSEST > WHOLE);
+    const { assert!(CLOSEST > WHOLE) };
+}
+
+/// The flat map never zooms out past the whole planet nor in past its cap, and never pans
+/// past the poles, so the picture fills the view. East and west it pans on and wraps.
+#[test]
+fn the_planet_lens_keeps_the_picture_in_view() {
+    use crate::computer::Lens;
+    let far = framed(Lens {
+        zoom: 1.0,
+        centre: Vec2::new(0.9, 0.9),
+    });
+    assert_eq!((far.zoom, far.centre), (WHOLE, Vec2::new(0.9, 0.0)));
+    let close = framed(Lens {
+        zoom: 99.0,
+        centre: Vec2::new(-2.0, -0.6),
+    });
+    assert_eq!(close.zoom, CLOSEST);
+    assert!((close.centre.y - (1.0 / CLOSEST - 0.5)).abs() < 1e-6);
+    assert_eq!(close.centre.x, -2.0);
 }
 
 #[test]

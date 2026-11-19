@@ -8,8 +8,8 @@ use bevy::input::mouse::{AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
-use super::geo::{from_chart, to_chart};
-use super::level::{CLOSEST, Level, rise};
+use super::geo::{copy_near, from_chart, to_chart, wrapped};
+use super::level::{Level, WHOLE, framed, rise};
 use super::me::Me;
 use super::pins::Pins;
 use super::surface::Surface;
@@ -28,7 +28,11 @@ type Under<'w, 's> = (
 /// Returns the marker of `pins` drawn nearest to the pixel `at` within the reach of the
 /// pointer, through `surface`'s lens.
 fn nearest(pins: &Pins, surface: &Surface, at: Vec2) -> Option<usize> {
-    let gap = |index: usize| surface.lens.to_map(pins.0[index].at).distance(at);
+    let lens = surface.lens;
+    let gap = |index: usize| {
+        lens.to_map(copy_near(pins.0[index].at, lens.centre.x))
+            .distance(at)
+    };
     let near = (0..pins.0.len()).filter(|index| gap(*index) <= REACH);
     near.min_by(|a, b| gap(*a).total_cmp(&gap(*b)))
 }
@@ -47,7 +51,7 @@ pub(super) fn aim(
     if (at, over) == (surface.at, surface.over) && !pins.is_changed() {
         return;
     }
-    let point = from_chart(surface.lens.to_chart(at)).filter(|_| over);
+    let point = from_chart(wrapped(surface.lens.to_chart(at))).filter(|_| over);
     let hover = nearest(&pins, &surface, at).filter(|_| over && surface.held.is_none());
     (surface.at, surface.over, surface.point, surface.hover) = (at, over, point, hover);
     view.over = over;
@@ -80,7 +84,7 @@ pub(super) fn press(
     };
     if buttons.pressed(MouseButton::Left) {
         if surface.dragged || from.distance(surface.at) > SLOP {
-            surface.lens = surface.lens.panned(surface.at - from);
+            surface.lens = framed(surface.lens.panned(surface.at - from));
             surface.goal = surface.lens;
             (surface.held, surface.dragged) = (Some(surface.at), true);
         }
@@ -103,8 +107,9 @@ type Wheel<'w, 's> = (
     Me<'w, 's>,
 );
 
-/// Zooms around the pointer with the wheel, no closer than [`CLOSEST`], looks at the player
-/// again on the reset key, and rises to the system chart when the wheel turns out of the whole planet.
+/// Zooms around the pointer with the wheel within what [`framed`] allows, looks at the player
+/// again on the reset key, and rises to the system chart when the wheel turns out of the whole
+/// planet.
 pub(super) fn wheel(
     (scroll, keys, typing, me): Wheel,
     mut surface: ResMut<Surface>,
@@ -116,8 +121,9 @@ pub(super) fn wheel(
     };
     if keys.just_pressed(RESET_KEY) && typing.is_off() {
         let here = me.spot().filter(|(on, _)| *on == body);
-        surface.goal.centre = here.map_or(Vec2::ZERO, |(_, at)| to_chart(at));
-        surface.goal = surface.goal.clamped();
+        let x = surface.goal.centre.x;
+        surface.goal.centre = here.map_or(Vec2::ZERO, |(_, at)| copy_near(to_chart(at), x));
+        surface.goal = framed(surface.goal);
     }
     let notches = match scroll.unit {
         MouseScrollUnit::Line => scroll.delta.y,
@@ -126,13 +132,13 @@ pub(super) fn wheel(
     if !surface.over || notches == 0.0 {
         return;
     }
-    if notches < 0.0 && surface.goal.zoom <= 1.0 {
+    if notches < 0.0 && surface.goal.zoom <= WHOLE {
         *level = Level::Chart;
         if let Some((lens, goal)) = rise(&view, &board, body) {
             (view.lens, view.goal) = (lens, goal);
         }
         return;
     }
-    let factor = ZOOM_STEP.powf(notches).min(CLOSEST / surface.goal.zoom);
-    surface.goal = surface.goal.zoomed(surface.at, factor);
+    let factor = ZOOM_STEP.powf(notches);
+    surface.goal = framed(surface.goal.zoomed(surface.at, factor));
 }

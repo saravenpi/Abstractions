@@ -12,6 +12,7 @@ pub mod palette;
 pub mod raster;
 
 mod action;
+mod caption;
 mod fade;
 mod favourite;
 mod geo;
@@ -33,14 +34,15 @@ mod surface;
 mod tests;
 mod waypoint;
 
+pub use caption::{caption, coords};
 pub use fade::veil;
 pub use favourite::Favourites;
 pub use geo::{coords as place_words, from_chart, lat_lon, to_chart};
 pub use level::{Level, charting, on_planet};
 pub use link::{from_wire, marks_of, marks_text, to_wire};
 pub use pins::pin_layer;
-pub use planet::{caption, coords, planet_layer};
-pub use side::{favourites, players};
+pub use planet::planet_layer;
+pub use side::{FAVOURITES, PLAYERS, favourites, players};
 pub use surface::Surface;
 pub use waypoint::{Waypoint, WaypointChanged, Waypoints, toggle};
 
@@ -75,8 +77,8 @@ fn screen(app: &mut App) {
         pins_draw::draw,
         planet::show,
         planet::picture,
-        planet::caption_text,
-        planet::coords_text,
+        caption::caption_text,
+        caption::coords_text,
         side_show::write,
         fade::fade,
     );

@@ -1,5 +1,5 @@
-//! The planet level of the map: the flat map of one planet on its sheet, the caption that names
-//! the level shown, and the latitude and longitude under the pointer.
+//! The planet level of the map: the flat map of one planet on its sheet, its picture tiled so
+//! the map wraps east and west.
 //!
 //! The flat map is the coloured picture of the planet the raster paints, black where nobody
 //! has been, from [`super::raster::Rasters`]. Until a picture is ready a plain dark rectangle
@@ -7,14 +7,10 @@
 
 use bevy::prelude::*;
 
-use super::geo::coords as words;
 use super::level::Level;
 use super::raster::Rasters;
-use super::surface::{PlanetSheet, Surface};
-use crate::computer::{Board, ChartLayer, Tab, climate_line};
-use crate::space::Clock;
-use crate::ui::{text, theme};
-use crate::universe::Universe;
+use super::surface::PlanetSheet;
+use crate::computer::ChartLayer;
 
 /// Colour of the flat map while its picture is not painted yet.
 const BLANK: Color = Color::srgb(0.08, 0.09, 0.11);
@@ -27,29 +23,31 @@ pub struct PlanetLayer;
 #[derive(Component)]
 pub struct Picture;
 
-/// Marks the line that names the level shown.
-#[derive(Component)]
-pub struct Caption;
+/// Which copy of the picture a node is, counted in turns east of the copy under the lens.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct Tile(pub i8);
 
-/// Marks the line that says the latitude and longitude under the pointer.
-#[derive(Component)]
-pub struct Coords;
+/// One copy of the picture, `east` turns east of the one under the lens, in the middle half
+/// of the sheet.
+fn tile(east: i8) -> impl Bundle {
+    let node = Node {
+        position_type: PositionType::Absolute,
+        left: percent(f32::from(east) * 100.0),
+        top: percent(25),
+        width: percent(100),
+        height: percent(50),
+        ..default()
+    };
+    (Picture, Tile(east), node, BackgroundColor(BLANK))
+}
 
 /// The hidden layer of the planet: the sheet the lens moves, holding the picture in its middle
-/// half, twice as wide as it is high.
+/// half, twice as wide as it is high, with a copy on each side so the map wraps east and west.
 pub fn planet_layer() -> impl Bundle {
     let cover = Node {
         position_type: PositionType::Absolute,
         width: percent(100),
         height: percent(100),
-        ..default()
-    };
-    let picture = Node {
-        position_type: PositionType::Absolute,
-        left: percent(0),
-        top: percent(25),
-        width: percent(100),
-        height: percent(50),
         ..default()
     };
     let layer = Node {
@@ -59,29 +57,7 @@ pub fn planet_layer() -> impl Bundle {
     (
         PlanetLayer,
         layer,
-        children![(
-            PlanetSheet,
-            cover,
-            children![(Picture, picture, BackgroundColor(BLANK))]
-        )],
-    )
-}
-
-/// The line that names the level shown.
-pub fn caption() -> impl Bundle {
-    (
-        Caption,
-        text("", theme::FONT_SMALL, theme::MUTED),
-        TextLayout::no_wrap(),
-    )
-}
-
-/// The line that says the latitude and longitude under the pointer.
-pub fn coords() -> impl Bundle {
-    (
-        Coords,
-        text("", theme::FONT_SMALL, theme::MUTED),
-        TextLayout::no_wrap(),
+        children![(PlanetSheet, cover, children![tile(-1), tile(0), tile(1)])],
     )
 }
 
@@ -132,56 +108,5 @@ pub(super) fn picture(
             }
             (None, None) => {}
         }
-    }
-}
-
-/// Returns the caption of the level: the planet shown with its climate at `time` seconds, or
-/// the chart of the open tab.
-pub fn title(level: Level, tab: Tab, (universe, time): (Option<&Universe>, f64)) -> String {
-    match (level, universe) {
-        (Level::Planet(body), Some(universe)) => {
-            let planet = universe.planet(body);
-            let climate = climate_line(&planet, crate::climate::season(&planet, time));
-            format!("{} - {climate}", planet.name)
-        }
-        (Level::Planet(_), None) => "Planet".to_string(),
-        (Level::Chart, _) => format!("{} chart", tab.label()),
-    }
-}
-
-/// Writes the caption when the level or the tab changes.
-pub(super) fn caption_text(
-    (level, board): (Res<Level>, Res<Board>),
-    (universe, clock): (Option<Res<Universe>>, Option<Res<Clock>>),
-    mut texts: Query<&mut Text, With<Caption>>,
-    mut last: Local<Option<(Level, Tab)>>,
-) {
-    let now = (*level, board.tab);
-    if *last == Some(now) && texts.iter().all(|text| !text.0.is_empty()) {
-        return;
-    }
-    *last = Some(now);
-    let time = clock.map_or(0.0, |clock| clock.seconds);
-    let said = title(now.0, now.1, (universe.as_deref(), time));
-    for mut text in &mut texts {
-        text.set_if_neq(Text(said.clone()));
-    }
-}
-
-/// Writes the latitude and longitude under the pointer on a planet, and nothing elsewhere.
-pub(super) fn coords_text(
-    surface: Res<Surface>,
-    level: Res<Level>,
-    mut texts: Query<&mut Text, With<Coords>>,
-) {
-    if !(surface.is_changed() || level.is_changed()) {
-        return;
-    }
-    let point = surface
-        .point
-        .filter(|_| matches!(*level, Level::Planet(_)) && surface.over);
-    let said = point.map_or(String::new(), words);
-    for mut text in &mut texts {
-        text.set_if_neq(Text(said.clone()));
     }
 }

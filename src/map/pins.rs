@@ -8,7 +8,7 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use super::geo::to_chart;
+use super::geo::{copy_near, to_chart};
 use super::level::Level;
 use super::me::Me;
 use super::spots::place;
@@ -179,9 +179,8 @@ pub(super) fn collect(source: Source, mut pins: ResMut<Pins>) {
 
 /// Returns the pixel of the map the chart point `at` is drawn at on the level shown.
 pub(super) fn pixel(level: Level, (surface, view): (&Surface, &MapView), at: Vec2) -> Vec2 {
-    let lens = match level {
-        Level::Chart => view.lens,
-        Level::Planet(_) => surface.lens,
-    };
-    lens.to_map(at)
+    match level {
+        Level::Chart => view.lens.to_map(at),
+        Level::Planet(_) => surface.lens.to_map(copy_near(at, surface.lens.centre.x)),
+    }
 }

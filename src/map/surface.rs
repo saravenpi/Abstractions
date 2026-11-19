@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 use super::level::{Level, first};
 use super::me::Me;
+use super::planet::Tile;
 use crate::computer::{Lens, SIZE};
 
 /// How fast the lens closes the gap to its goal, per second, as on the charts.
@@ -66,14 +67,26 @@ pub(super) fn ease(time: Res<Time>, mut surface: ResMut<Surface>) {
     surface.lens = surface.lens.toward(surface.goal, share);
 }
 
-/// Moves and sizes the sheet of the planet so the map shows what the lens looks at.
-pub(super) fn slide(surface: Res<Surface>, mut sheets: Query<&mut Node, With<PlanetSheet>>) {
+/// Moves and sizes the sheet of the planet so the map shows what the lens looks at, and puts
+/// the copies of the picture around the turn of longitude under the lens.
+pub(super) fn slide(
+    surface: Res<Surface>,
+    mut sheets: Query<&mut Node, With<PlanetSheet>>,
+    mut tiles: Query<(&Tile, &mut Node), Without<PlanetSheet>>,
+) {
     let corner = surface.lens.to_map(Vec2::new(-1.0, 1.0)) / SIZE * 100.0;
     let side = percent(surface.lens.zoom * 100.0);
     let wanted = (percent(corner.x), percent(corner.y), side, side);
     for mut node in &mut sheets {
         if (node.left, node.top, node.width, node.height) != wanted {
             (node.left, node.top, node.width, node.height) = wanted;
+        }
+    }
+    let turn = (surface.lens.centre.x * 0.5).round();
+    for (Tile(east), mut node) in &mut tiles {
+        let left = percent((turn + f32::from(*east)) * 100.0);
+        if node.left != left {
+            node.left = left;
         }
     }
 }

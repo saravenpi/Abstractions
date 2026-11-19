@@ -70,6 +70,17 @@ pub fn rise(view: &MapView, board: &Board, body: BodyId) -> Option<(Lens, Lens)>
     Some((close(DIVE), close(DIVE * 0.5)))
 }
 
+/// Returns `lens` held to the flat map of a planet: from the whole planet to [`CLOSEST`], and
+/// never past the poles, so the picture always fills the view. East and west it wraps.
+pub fn framed(lens: Lens) -> Lens {
+    let zoom = lens.zoom.clamp(WHOLE, CLOSEST);
+    let reach = 0.5 - 1.0 / zoom;
+    Lens {
+        zoom,
+        centre: Vec2::new(lens.centre.x, lens.centre.y.clamp(-reach, reach)),
+    }
+}
+
 /// Returns where the flat map of a planet looks first: on `focus` when it was asked for, on
 /// the player close to the ground when they are on it, and on the whole planet otherwise.
 pub fn first(focus: Option<DVec3>, here: Option<DVec3>) -> Lens {
@@ -82,5 +93,5 @@ pub fn first(focus: Option<DVec3>, here: Option<DVec3>) -> Lens {
         zoom: GROUND,
         centre,
     });
-    lens.clamped()
+    framed(lens)
 }

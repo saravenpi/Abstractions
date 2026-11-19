@@ -5,7 +5,7 @@
 //! the room beside the panel allows in its shorter direction, and the chart runs on past it
 //! to the edges of that room when it is zoomed in.
 
-use bevy::math::Vec2;
+use bevy::math::{Rect, Vec2};
 
 use crate::ui::theme;
 
@@ -35,6 +35,20 @@ pub const RESULTS: (usize, usize) = (1, 8);
 
 /// Height of one line of small text in pixels: the small font at Bevy's line height of 1.2.
 pub const LINE_HEIGHT: f32 = theme::FONT_SMALL * 1.2;
+
+/// Height in pixels of the band along the top of the map that the header lines take: where
+/// the player is and the caption under it.
+pub const HEAD_BAND: f32 = MARGIN + 2.0 * LINE_HEIGHT + theme::GAP_XS;
+
+/// Height in pixels of the band along the bottom of the map that the footer lines take: the
+/// action line, the course line and the place under the pointer.
+pub const FOOT_BAND: f32 = MARGIN + theme::ROW_COMPACT + 2.0 * LINE_HEIGHT + 2.0 * theme::GAP_XS;
+
+/// Returns true when the box `label` of a name on a map `side` pixels high stays clear of the
+/// header and footer bands, so it never runs under their words.
+pub fn clear_of_bands(label: Rect, side: f32) -> bool {
+    label.min.y >= HEAD_BAND && label.max.y <= side - FOOT_BAND
+}
 
 /// Height in pixels of the card of the selected result at its tallest.
 const CARD: f32 = theme::GAP_S + super::detail::LINES as f32 * LINE_HEIGHT + theme::LINE;

@@ -102,8 +102,8 @@ fn favourites_and_waypoints_cross_the_wire() {
     assert!(back.dir.distance(mine.dir) < 1e-6 && back.body == mine.body);
 }
 
-/// A name that would cross the player or a name before it is left out, and a marker far
-/// enough away keeps its name.
+/// A name that would cross the player or a name before it, or run under the header words, is
+/// left out, and a marker far enough away keeps its name.
 #[test]
 fn crowded_names_are_left_out() {
     use super::pins::POOL;
@@ -113,8 +113,10 @@ fn crowded_names_are_left_out() {
     spots[1] = Some((Vec2::new(503.0, 359.0), 4));
     spots[2] = Some((Vec2::new(520.0, 362.0), 8));
     spots[3] = Some((Vec2::new(500.0, 420.0), 4));
-    let shown = named(&spots);
+    let shown = named(&spots, 720.0);
     assert_eq!(shown[..4], [true, false, false, true]);
     spots[0] = None;
-    assert_eq!(named(&spots)[..4], [false, true, false, true]);
+    assert_eq!(named(&spots, 720.0)[..4], [false, true, false, true]);
+    spots[3] = Some((Vec2::new(500.0, 10.0), 4));
+    assert!(!named(&spots, 720.0)[3]);
 }

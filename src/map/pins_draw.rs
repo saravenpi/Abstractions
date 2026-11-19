@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use super::level::Level;
 use super::pins::{DOT, POOL, PinDot, PinLabel, PinSlot, Pins, pixel};
 use super::surface::Surface;
-use crate::computer::GLYPH;
+use crate::computer::{GLYPH, clear_of_bands};
 use crate::computer::{MapView, SIZE};
 use crate::menus::{Marker, MarkerKind, Markers};
 use crate::ui::theme;
@@ -64,9 +64,10 @@ fn look<'a>(
 /// Where a marker is drawn, in pixels of the map, and how many characters its name has.
 pub type Spot = Option<(Vec2, usize)>;
 
-/// Returns which markers show their name: a name is left out when it would cross the dot or
-/// the shown name of a marker before it. The player comes first, so their name always shows.
-pub fn named(spots: &[Spot; POOL]) -> [bool; POOL] {
+/// Returns which markers show their name on a map `side` pixels high: a name is left out when
+/// it would cross the dot or the shown name of a marker before it, or run under the header or
+/// footer words. The player comes first, so their name shows wherever there is room.
+pub fn named(spots: &[Spot; POOL], side: f32) -> [bool; POOL] {
     let dot = |at: Vec2| Rect::from_center_size(at, Vec2::splat(DOT));
     let name = |(at, chars): (Vec2, usize)| {
         let corner = at + Vec2::new(DOT, -0.6 * theme::FONT_SMALL);
@@ -83,7 +84,7 @@ pub fn named(spots: &[Spot; POOL]) -> [bool; POOL] {
         let crossed = spots[..index].iter().zip(shown).any(|(other, lit)| {
             other.is_some_and(|other| crosses(dot(other.0)) || (lit && crosses(name(other))))
         });
-        shown[index] = !crossed;
+        shown[index] = !crossed && clear_of_bands(words, side);
     }
     shown
 }
@@ -139,7 +140,7 @@ pub(super) fn draw(
         let at = pixel(*level, lenses, pins.0.get(index)?.at) / SIZE * side;
         look(index).map(|dress| (at, dress.name.chars().count()))
     });
-    let shown = named(&spots);
+    let shown = named(&spots, side);
     moved(&mut pool, |index| spots[index].map(|(at, _)| at));
     for (PinDot(index), mut fill, mut turn) in &mut pool.dots {
         let Some(dress) = look(*index) else {

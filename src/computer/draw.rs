@@ -12,6 +12,7 @@ use super::board::Board;
 use super::chart::Dot;
 use super::format::distance;
 use super::labels::{keep, priority, room};
+use super::layout::clear_of_bands;
 use super::lens::Lens;
 use super::map::{SIZE, Sheet, body, frame, name, ring, ship, spot};
 use super::moons::{host, is_moon, seen};
@@ -175,14 +176,16 @@ fn marks(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
 }
 
 /// Spawns the names that fit: every row in view asks for one, the most important first, and
-/// a name that would cover one already drawn is left out.
+/// a name that would cover one already drawn, or run under the header or footer words, is
+/// left out. Its mark stays.
 fn labels(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
     let (view, board) = (picture.view, picture.board);
     let scale = [1.0, view.side / SIZE][usize::from(view.side > 0.0)];
     let pixel = |at: Vec2| view.lens.to_map(at);
     let inside = |at: Vec2| pixel(at).min_element() >= 0.0 && pixel(at).max_element() <= SIZE;
     let drawn = |dot: Dot, at: Vec2| inside(at) && seen(dot, &board.lines, view.lens.zoom);
-    let mut wanted: Vec<(u8, Vec2, &str)> = Vec::new();
+    let side = [SIZE, view.side][usize::from(view.side > 0.0)];
+    let mut wanted: Vec<(u8, Vec2, &str, Rect)> = Vec::new();
     for (dot, at) in view.dots.iter().filter(|(dot, at)| drawn(*dot, *at)) {
         let Dot::Row(index) = *dot else {
             continue;
@@ -191,15 +194,16 @@ fn labels(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
             let chosen = Some(line.target) == picture.chosen;
             let base = priority(picture.marked(index).is_some(), chosen, line.visited);
             let rank = rank(home_row(board) == Some(index), base);
-            wanted.push((rank, *at, line.title.as_str()));
+            let title = line.title.as_str();
+            let room = room(pixel(*at) * scale, GAP, title.len());
+            if clear_of_bands(room, side) {
+                wanted.push((rank, *at, title, room));
+            }
         }
     }
     wanted.sort_by_key(|label| label.0);
-    let rooms = wanted
-        .iter()
-        .map(|(_, at, title)| room(pixel(*at) * scale, GAP, title.len()));
-    let rooms: Vec<Rect> = rooms.collect();
-    for ((_, at, title), shown) in wanted.iter().zip(keep(&rooms)) {
+    let rooms: Vec<Rect> = wanted.iter().map(|label| label.3).collect();
+    for ((_, at, title, _), shown) in wanted.iter().zip(keep(&rooms)) {
         if shown {
             name(sheet, *at, GAP, title);
         }

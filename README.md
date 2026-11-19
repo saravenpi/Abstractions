@@ -22,7 +22,7 @@ On foot:
 | V | First or third person |
 | M | Map |
 | N | Minimap range, then off |
-| B | Set or clear a waypoint where you stand |
+| B | Set or clear a waypoint where you stand, or under the pointer on the map |
 | F | Board the ship |
 | Look down + W | Dive while swimming |
 | Esc | Pause menu, or back |
@@ -40,14 +40,14 @@ In the ship:
 | X | Cut the throttle |
 | Z | Flight assist on or off |
 | J | Warp drive, away from a planet's gravity |
-| M or Tab | Map. Wheel to zoom from the ground to the universe, drag to pan, 0 to recentre, double click a planet to set the course |
+| M or Tab | Map. Wheel to zoom, drag to pan, double click to go in, Back or Backspace to go out. Pinch, or Ctrl and a trackpad swipe, also zoom; a two-finger swipe, W A S D, and the arrows with the pointer on the map also pan. 0 recentres. Click selects, Enter or the Set course button sets the course, right click opens a menu. The path over the map jumps to any level above. Esc lets go of the selection, then closes the map |
 | G | Engage the autopilot on the course. The line under the compass says when it cannot, and why |
 | V | First or third person |
 | F | Leave the ship |
 
 The compass at the top of the screen shows the home base, the ship, your friends, waypoints and nearby favourite places ahead of you. They fade toward its ends and hide behind you. Your coordinates and altitude sit under it.
 
-The map shows each planet flat and in colour, but only the ground someone has explored. On a server, ground one player uncovers is uncovered for everyone. Save a place on the map as a favourite to find it again.
+The map shows each planet flat and in colour, but only the ground someone has explored. On a server, ground one player uncovers is uncovered for everyone. Right click a place on the map to set a waypoint there, save it as a favourite, copy its coordinates or centre the map on it. Right click a planet, a favourite or your waypoint to set the course to it or focus the map on it.
 
 Rebind every key in Settings > Controls.
 

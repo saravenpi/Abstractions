@@ -48,13 +48,29 @@ impl Around<'_> {
         }
         let (offset, gap) = self.target(eye, marker)?;
         let far = marker.kind == MarkerKind::Favourite && gap > FAVOURITE_REACH;
-        let above = match eye.anchor.frame {
-            Frame::Surface(_) if eye.anchor.flat => eye.anchor.rotation.inverse() * DVec3::Y,
-            Frame::Surface(_) => eye.at.normalize(),
-            _ => eye.up,
-        };
-        let around = bearing(offset.as_vec3(), eye.forward.as_vec3(), above.as_vec3())?;
+        let around = bearing(
+            offset.as_vec3(),
+            eye.forward.as_vec3(),
+            above(eye).as_vec3(),
+        )?;
         (gap > HERE && !far).then_some((around, gap))
+    }
+
+    /// Returns the bearing of the north pole of the planet under the player from the view, in
+    /// radians, or nothing off a planet or right at a pole. North is up the spin axis, the
+    /// axis the coordinates read the latitude along.
+    pub fn north(&self) -> Option<f32> {
+        let eye = self.eye.0.as_ref()?;
+        let Frame::Surface(_) = eye.anchor.frame else {
+            return None;
+        };
+        let offset = DVec3::Y * eye.at.length() - eye.at;
+        let around = bearing(
+            offset.as_vec3(),
+            eye.forward.as_vec3(),
+            above(eye).as_vec3(),
+        )?;
+        (offset.length() > HERE).then_some(around)
     }
 
     /// Returns the offset in metres from the eye to `marker`, in the axes of the eye frame, and
@@ -100,5 +116,14 @@ impl Around<'_> {
         let day = planet.filter(|planet| Frame::Surface(planet.body) == eye.anchor.frame);
         let turn = day.map_or(DQuat::IDENTITY, |planet| spin(planet.day_seconds, clock));
         turn.inverse() * offset
+    }
+}
+
+/// Returns the up of the place of `eye`, around which the compass reads its bearings.
+fn above(eye: &Eye) -> DVec3 {
+    match eye.anchor.frame {
+        Frame::Surface(_) if eye.anchor.flat => eye.anchor.rotation.inverse() * DVec3::Y,
+        Frame::Surface(_) => eye.at.normalize(),
+        _ => eye.up,
     }
 }

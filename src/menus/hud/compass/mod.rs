@@ -2,15 +2,20 @@
 //! player, each where it lies, with its name and distance under it.
 //!
 //! A mark slides along the bar as the player turns, fades out toward the ends of the bar and
-//! hides past them. Marks that would cover each other stack in rows. The ship only shows on
-//! the planet it stands on and while the player is on foot; favourites only nearby. Away from
-//! the home planet the home mark points at the next place on the way home. Under the bar sit
-//! the coordinates line and the climate line.
+//! hides past them. Every icon stays over the line, even where icons overlap; labels that would
+//! cover each other stack in rows under it. On a planet an N marks north. The bar shows even
+//! while empty. The ship only shows on the planet it stands on and while the player is on foot;
+//! favourites only nearby. Away from the home planet the home mark points at the next place on
+//! the way home.
 
 mod aim;
 mod beacons;
+mod north;
 mod show;
 
+#[cfg(test)]
+pub(super) use north::North;
+pub(super) use north::point as north;
 pub(super) use show::update;
 
 use bevy::prelude::*;
@@ -31,10 +36,11 @@ const MARK: f32 = 14.0;
 /// Height in pixels of the bar with one row of marks.
 const HEIGHT: f32 = MARK * 2.0 + theme::GAP_M;
 
-/// Height in pixels of one more row of marks: an icon over its label.
-const ROW: f32 = MARK + theme::FONT_SMALL + theme::GAP_XS;
+/// Height in pixels of one more row of labels. Every icon stays on the top row, over the line,
+/// even where icons overlap; only the labels stack under it.
+const ROW: f32 = theme::FONT_SMALL + theme::GAP_XS;
 
-/// Marks the bar itself, which hides while it has nothing to point at.
+/// Marks the bar itself, which shows whenever the HUD does, empty or not.
 #[derive(Component)]
 pub(super) struct Bar;
 
@@ -54,7 +60,7 @@ pub(super) struct Glyph(usize);
 
 /// Marks the label of the mark of the pool at this slot: its name and distance.
 #[derive(Component)]
-pub(super) struct Far(usize);
+pub(super) struct Far(pub usize);
 
 /// One hidden mark of the pool at `slot`: its icon over its label.
 fn pin(slot: usize) -> impl Bundle {
@@ -102,8 +108,7 @@ fn rule(left: f32, size: Vec2, color: Color) -> impl Bundle {
     )
 }
 
-/// The compass, high in the middle of the screen, with the coordinates and climate lines
-/// under it, which move down as the marks stack in more rows.
+/// The compass, high in the middle of the screen.
 pub(super) fn bar() -> impl Bundle {
     (
         Node {
@@ -114,25 +119,22 @@ pub(super) fn bar() -> impl Bundle {
             align_items: AlignItems::Center,
             ..default()
         },
-        children![
-            (
-                Bar,
-                Visibility::Hidden,
-                Node {
-                    width: px(WIDTH),
-                    height: px(HEIGHT),
-                    ..default()
-                },
-                children![
-                    rule(0.0, Vec2::new(WIDTH, theme::LINE), theme::HAIRLINE),
-                    rule(50.0, Vec2::new(theme::LINE, theme::GAP_S), theme::MUTED),
-                    pin(0),
-                    pin(1),
-                ],
-            ),
-            super::coords::line(),
-            super::climate::line(),
-        ],
+        children![(
+            Bar,
+            Visibility::Hidden,
+            Node {
+                width: px(WIDTH),
+                height: px(HEIGHT),
+                ..default()
+            },
+            children![
+                rule(0.0, Vec2::new(WIDTH, theme::LINE), theme::HAIRLINE),
+                rule(50.0, Vec2::new(theme::LINE, theme::GAP_S), theme::MUTED),
+                north::mark(),
+                pin(0),
+                pin(1),
+            ],
+        ),],
     )
 }
 

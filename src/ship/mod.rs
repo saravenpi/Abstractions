@@ -181,7 +181,7 @@ fn display(app: &mut App) {
     let report = (
         (telemetry::update, fx::feed).chain(),
         legs::fold,
-        route::report,
+        (route::report, route::finish).chain(),
         (glow::throttle, glow::glow).chain(),
     );
     app.add_systems(

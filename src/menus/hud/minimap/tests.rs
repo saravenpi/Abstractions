@@ -9,6 +9,7 @@ mod home;
 mod hud;
 mod modes;
 mod needle;
+mod north;
 mod read;
 mod refill;
 mod rig;

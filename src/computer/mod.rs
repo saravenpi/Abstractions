@@ -47,6 +47,8 @@ mod tests;
 #[cfg(test)]
 mod tests_climate;
 #[cfg(test)]
+mod tests_close;
+#[cfg(test)]
 mod tests_detail;
 #[cfg(test)]
 mod tests_giant;

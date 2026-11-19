@@ -11,7 +11,7 @@ use super::level::Level;
 use super::me::Me;
 use super::side::{Do, FavButton, PlayerRow, SaveFavourite};
 use super::surface::Surface;
-use crate::computer::{Destination, Target, Typing};
+use crate::computer::{Board, Destination, Target, Typing};
 use crate::menus::{MarkerKind, MarkerPlace, Markers};
 use crate::space::{Anchor, Frame};
 use crate::universe::BodyId;
@@ -22,6 +22,7 @@ pub struct Desk<'w, 's> {
     favourites: ResMut<'w, Favourites>,
     typing: ResMut<'w, Typing>,
     destination: ResMut<'w, Destination>,
+    board: ResMut<'w, Board>,
     view: (ResMut<'w, Level>, ResMut<'w, Surface>),
     world: (Res<'w, Markers>, Option<Res<'w, Anchor>>, Me<'w, 's>),
 }
@@ -34,7 +35,8 @@ impl Desk<'_, '_> {
         **level = Level::Planet(body);
     }
 
-    /// Runs the button `act` of the favourite at `index`.
+    /// Runs the button `act` of the favourite at `index`. Renaming one ends and clears a search,
+    /// so Escape is left free to close the map.
     fn favourite(&mut self, index: usize, act: Do) {
         let Some(favourite) = self.favourites.0.get(index).cloned() else {
             return;
@@ -42,7 +44,11 @@ impl Desk<'_, '_> {
         match act {
             Do::Go => self.look(favourite.body, DVec3::from_array(favourite.dir)),
             Do::Course => self.destination.0 = Some(Target::Body(favourite.body)),
-            Do::Rename => *self.typing = Typing::Name(index, favourite.name),
+            Do::Rename => {
+                *self.typing = Typing::Name(index, favourite.name);
+                let board = &mut self.board;
+                (board.filter, board.stale) = (String::new(), true);
+            }
             Do::Delete => {
                 self.favourites.0.remove(index);
                 *self.typing = Typing::Off;

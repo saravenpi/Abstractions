@@ -114,6 +114,26 @@ fn a_row_shows_what_it_is_and_whether_it_was_visited() {
     assert_eq!(title(&planet, (true, false)), Tone::Accent);
 }
 
+/// A search left over once typing went elsewhere, as after naming a favourite, is cleared by
+/// Escape, and the next Escape closes the map.
+#[test]
+fn escape_clears_a_search_left_over() {
+    let mut app = game("leftover");
+    tap(&mut app, KeyCode::Tab, None);
+    run(&mut app, 5);
+    tap(&mut app, KeyCode::Slash, None);
+    tap(&mut app, KeyCode::KeyK, Some("k"));
+    *app.world_mut().resource_mut::<Typing>() = Typing::Off;
+    run(&mut app, 2);
+    let open = |app: &App| *app.world().resource::<State<Computer>>().get() == Computer::Open;
+    assert_eq!(app.world().resource::<Board>().filter, "k");
+    tap(&mut app, KeyCode::Escape, None);
+    assert!(open(&app) && app.world().resource::<Board>().filter.is_empty());
+    tap(&mut app, KeyCode::Escape, None);
+    run(&mut app, 2);
+    assert!(!open(&app));
+}
+
 /// The search key starts a search, typing then narrows the list, Backspace widens it again,
 /// Escape clears the search before it closes the map, and the sort key changes the order.
 #[test]

@@ -54,7 +54,8 @@ fn edit(filter: &mut String, key: &Key, typing: &mut Typing) -> bool {
 }
 
 /// Starts a search on its key, edits it with the keys pressed this frame, ends it on Escape,
-/// clearing what was typed, and changes the order on its key. The list is then built again
+/// clearing what was typed, and changes the order on its key. Escape also clears a search left
+/// over once typing went elsewhere and ended. The list is then built again
 /// from its first row. Keys pressed before the screen opened are dropped on the frame it opens.
 pub(super) fn type_filter(
     mut typed: MessageReader<KeyboardInput>,
@@ -75,8 +76,11 @@ pub(super) fn type_filter(
     let mut filter = board.filter.clone();
     let mut changed = sorted;
     for key in typed.read().filter(|key| key.state == ButtonState::Pressed) {
-        if *typing == Typing::Search {
-            changed |= edit(&mut filter, &key.logical_key, &mut typing);
+        match (&*typing, &key.logical_key) {
+            (Typing::Search, _) | (Typing::Off, Key::Escape) => {
+                changed |= edit(&mut filter, &key.logical_key, &mut typing);
+            }
+            _ => {}
         }
     }
     if !changed {

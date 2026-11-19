@@ -196,17 +196,22 @@ pub(super) fn on_activate(
     }
 }
 
+/// Ends any typing and clears the search, so neither outlives the screen: the keys of the
+/// game work again once it closes, and Escape closes it once it opens again.
+fn stop_typing(mut typing: ResMut<Typing>, mut board: ResMut<Board>) {
+    *typing = Typing::Off;
+    if !board.filter.is_empty() {
+        (board.filter, board.stale) = (String::new(), true);
+    }
+}
+
 /// Registers the input systems of the screen.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Typing>()
         .add_observer(on_activate)
         .add_observer(super::typing::on_search)
-        .add_systems(
-            OnEnter(super::Computer::Open),
-            |mut typing: ResMut<Typing>| {
-                *typing = Typing::Off;
-            },
-        )
+        .add_systems(OnEnter(super::Computer::Open), stop_typing)
+        .add_systems(OnExit(super::Computer::Open), stop_typing)
         .add_systems(
             Update,
             (

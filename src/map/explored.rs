@@ -67,7 +67,9 @@ impl Explored {
     /// Uncovers the cells of `body` within `angle` radians of unit direction `dir`, and the cell
     /// under it, keeping the new ones for the network.
     pub fn reveal(&mut self, body: BodyId, dir: DVec3, angle: f64) {
-        let ground = self.bodies.entry(body).or_default();
+        let Some(ground) = self.ground(body) else {
+            return;
+        };
         grid::disc(dir, angle, |cell| {
             if ground.set(cell) {
                 ground.new.push(cell);

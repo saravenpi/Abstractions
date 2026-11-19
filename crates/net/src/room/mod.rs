@@ -27,7 +27,7 @@ mod relay_tests;
 
 use std::collections::HashMap;
 
-pub use map::EXPLORED_WORDS;
+pub use map::{BODIES_MAX, EXPLORED_WORDS};
 
 use conn::Conn;
 use map::Ground;

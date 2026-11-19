@@ -1,11 +1,12 @@
 //! Tests of the explored ground: the grid, the reach, the network lists and the save.
 
+use abstractions_net::room::BODIES_MAX;
 use bevy::math::DVec3;
 
-use super::grid::{CELLS, COLS, cell_of, centre, disc};
+use super::grid::{CELLS, COLS, WORDS, cell_of, centre, disc};
 use super::{Explored, REACH_CAP, REACH_FOOT, reach};
 use crate::saves::{Place, WorldSave};
-use crate::universe::{HOME_RADIUS, Universe};
+use crate::universe::{BodyId, HOME_RADIUS, Universe};
 
 /// Every cell holds its own centre.
 #[test]
@@ -80,7 +81,9 @@ fn only_local_cells_are_sent_and_only_once() {
     explored.reveal(body, centre(9), 1e-6);
     assert_eq!(explored.take_new(body), vec![9]);
     assert!(explored.take_new(body).is_empty());
-    explored.merge_words(body, &[1 << 40]);
+    let mut words = vec![0; WORDS];
+    words[0] = 1 << 40;
+    explored.merge_words(body, &words);
     assert_eq!(
         explored.words(body).unwrap()[0],
         (1 << 40) | (1 << 9) | 0b110_0000
@@ -111,4 +114,25 @@ fn saves_load_their_ground() {
         .unwrap();
     save.explored[0].body = body;
     assert_eq!(Explored::of(&save).words(body).unwrap(), &words[..]);
+}
+
+/// A server cannot make the game keep ground for empty lists, lists of the wrong size, cells
+/// off the grid, or more bodies than the room keeps.
+#[test]
+fn bad_ground_from_a_server_keeps_nothing() {
+    let universe = Universe::new(3);
+    let home = universe.home();
+    let mut explored = Explored::default();
+    explored.reveal_cells(home, &[]);
+    explored.reveal_cells(home, &[CELLS as u32, u32::MAX]);
+    explored.merge_words(home, &[]);
+    explored.merge_words(home, &[u64::MAX; 3]);
+    explored.merge_words(home, &vec![0; WORDS]);
+    assert_eq!(explored.bodies().count(), 0);
+    for index in 0..=u8::MAX {
+        let body = BodyId { index, ..home };
+        explored.reveal_cells(body, &[1]);
+        explored.merge_words(body, &vec![u64::MAX; WORDS]);
+    }
+    assert_eq!(explored.bodies().count(), BODIES_MAX);
 }

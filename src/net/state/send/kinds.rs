@@ -11,7 +11,7 @@ use super::super::frame::{Place, Pose};
 use super::super::rate::REST_SPEED;
 use super::super::robot::{body, heading};
 use crate::avatar::{AvatarPose, Mode};
-use crate::companion::Pose as CompanionPose;
+use crate::companion::{Frame, Pose as CompanionPose};
 use crate::player::Motion;
 use crate::ship::{Ship, WarpState};
 use crate::space::{Anchor, Placed, up};
@@ -96,13 +96,18 @@ fn warp(state: WarpState) -> (u8, f32) {
     }
 }
 
-/// Returns the record of the ship of this machine. Its drawn pose is the one at universe
-/// time, while the anchor is in its frame; its state otherwise.
+/// What the pilot of a ship holds: the stick, pitch up then roll left, and the boost, each as
+/// the wire carries it.
+pub type Pilot = ([f32; 2], f32);
+
+/// Returns the record of the ship of this machine, flown with `drive` and held as the `Pilot`
+/// says. Its drawn pose is the one at universe time, while the anchor is in its frame; its
+/// state otherwise.
 pub fn ship(
     here: &Here,
     ship: &Ship,
     placed: Option<&Placed>,
-    drive: WarpState,
+    (drive, (stick, boost)): (WarpState, Pilot),
     bodies: &mut Bodies,
 ) -> Option<Sent<ShipBody>> {
     let shown = placed.filter(|_| here.anchor.frame == ship.frame);
@@ -127,7 +132,8 @@ pub fn ship(
         landed: ship.landed,
         warp,
         warp_level,
-        ..ShipBody::default()
+        stick,
+        boost,
     };
     let rest = ship.landed || wire.vel.length() < REST_SPEED;
     Some(Sent { frame, body, rest })
@@ -136,17 +142,19 @@ pub fn ship(
 /// Where a thing was on an earlier frame: its wire frame, position and universe time.
 pub type Trail = Option<(wire::Frame, DVec3, f64)>;
 
-/// Returns the record of the companion whose root is at `at`, posed as `pose`, which was at
-/// `was` on the frame before. It is at rest when it hovers still and the player does not travel.
+/// Returns the record of the companion whose root is at `at`, posed as `pose` with `face` on
+/// its screen, which was at `was` on the frame before. It is at rest when it hovers still and
+/// the player does not travel.
 pub fn companion(
     here: &Here,
     at: &GlobalTransform,
-    pose: &CompanionPose,
+    (pose, face): (&CompanionPose, Option<Frame>),
     was: Trail,
     bodies: &mut Bodies,
 ) -> Option<Sent<CompanionBody>> {
     let fixed = !here.seated || here.landed;
     let (frame, wire) = wired(here, framed(&here.anchor, at, Vec3::ZERO), fixed, bodies)?;
+    let (expr, face) = face.map_or((0, 0), |face| face.pack());
     let body = CompanionBody {
         position: wire.pos,
         rotation: wire.rot.as_quat(),
@@ -156,7 +164,8 @@ pub fn companion(
         roll: pose.roll,
         spread: pose.spread,
         wave: pose.wave,
-        ..CompanionBody::default()
+        expr,
+        face,
     };
     let speed = was
         .filter(|(before, ..)| *before == frame)

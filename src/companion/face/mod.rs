@@ -84,6 +84,11 @@ pub enum Lid {
     Closed,
 }
 
+impl Lid {
+    /// Every lid, from open to shut.
+    pub const ALL: [Lid; 3] = [Lid::Open, Lid::Half, Lid::Closed];
+}
+
 /// One picture of the face. The screen is repainted only when this changes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Frame {
@@ -95,4 +100,36 @@ pub struct Frame {
     pub gaze: IVec2,
     /// Which of the two frames of the expression is shown.
     pub beat: bool,
+}
+
+impl Frame {
+    /// Returns the frame as the wire carries it: the rank of the expression, then the lid in
+    /// bits 0 and 1, the gaze x plus one in bits 2 and 3, the gaze y plus one in bits 4 and 5
+    /// and the beat in bit 6.
+    pub fn pack(&self) -> (u8, u8) {
+        let expr = Expression::ALL
+            .iter()
+            .position(|e| *e == self.expr)
+            .unwrap_or(0) as u8;
+        let lid = Lid::ALL.iter().position(|l| *l == self.lid).unwrap_or(0) as u8;
+        let axis = |v: i32| (v.clamp(-1, 1) + 1) as u8;
+        let beat = u8::from(self.beat) << 6;
+        (
+            expr,
+            lid | axis(self.gaze.x) << 2 | axis(self.gaze.y) << 4 | beat,
+        )
+    }
+
+    /// Returns the frame the wire values `expr` and `face` of [`Frame::pack`] stand for. A
+    /// value out of range reads as the nearest one.
+    pub fn unpack(expr: u8, face: u8) -> Self {
+        let rank = |value: u8, len: usize| usize::from(value).min(len - 1);
+        let axis = |bits: u8| i32::from((bits & 3).min(2)) - 1;
+        Self {
+            expr: Expression::ALL[rank(expr, Expression::ALL.len())],
+            lid: Lid::ALL[rank(face & 3, Lid::ALL.len())],
+            gaze: IVec2::new(axis(face >> 2), axis(face >> 4)),
+            beat: face & 64 != 0,
+        }
+    }
 }

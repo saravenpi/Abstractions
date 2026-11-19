@@ -1,17 +1,17 @@
 //! The ships of the other players: a hull dressed from the shared ship look, with no flight
-//! state, no physics and no helm. The legs follow the gear of the records and the lever the
-//! throttle; the engine glow and the exhaust, of a material of its own, follow its throttle
-//! and its warp drive.
+//! state, no physics and no helm. The legs follow the gear of the records, the stick and the
+//! lever what the pilot holds, the instruments its speed, its drive and its gear. The engine
+//! glow and the exhaust, of a material of its own, follow its throttle, boost and warp drive.
 
-use abstractions_net::wire::ShipBody;
+use abstractions_net::wire::{ShipBody, WARP_ACTIVE, WARP_SPOOLING};
 use bevy::prelude::*;
 
 use super::{Eye, Sight, drop_puppet, seen, shown, visible};
 use crate::net::state::Remote;
 use crate::net::state::track::{Remotes, Track};
 use crate::screens::Screen;
-use crate::ship::cockpit::Cockpit;
-use crate::ship::{self, Engine, Leg, SEAT, level_of, reach};
+use crate::ship::cockpit::{Cockpit, Levers};
+use crate::ship::{self, Engine, Leg, SEAT, level_of, reach, top_speed};
 use crate::space::Placed;
 
 /// Rank of the engine glow among the skins of the shared ship look.
@@ -78,6 +78,27 @@ fn fold(legs: &mut Legs, hull: Entity, gear: f32) {
     }
 }
 
+/// Returns how far the warp drive of `state` is: none when off, the share of the spool while
+/// it spools, all of it in warp.
+fn drive(state: &ShipBody) -> f32 {
+    match state.warp {
+        WARP_ACTIVE => 1.0,
+        WARP_SPOOLING => state.warp_level,
+        _ => 0.0,
+    }
+}
+
+/// Returns what the instruments of a ship in `state` read, `clearance` metres above the
+/// ground: its speed against the top speed there, or its warp speed in warp, the charge of
+/// the drive and the gear.
+fn dials(state: &ShipBody, clearance: f64) -> [f32; 3] {
+    let speed = match state.warp {
+        WARP_ACTIVE => state.warp_level,
+        _ => (f64::from(state.velocity.length()) / top_speed(clearance)) as f32,
+    };
+    [speed, drive(state), state.gear].map(|value| value.clamp(0.0, 1.0))
+}
+
 /// Draws one ship of `track`.
 fn draw(
     (spawner, hulls, legs): (&mut Spawner, &mut Hulls, &mut Legs),
@@ -100,8 +121,13 @@ fn draw(
     let state = view.newer;
     let gear = view.older.gear + (state.gear - view.older.gear) * view.blend;
     fold(legs, entity, gear);
-    cockpit.asked.throttle = state.throttle.max(0.0);
-    engine.level = level_of(state.throttle, 0.0, state.warp_level);
+    let [pitch, roll] = state.stick;
+    cockpit.asked = Levers {
+        stick: Vec3::new(pitch, 0.0, roll),
+        throttle: state.throttle.max(0.0),
+    };
+    cockpit.read = dials(&state, sight.clearance(track.frame, view.position));
+    engine.level = level_of(state.throttle, state.boost, drive(&state));
     let (_, far) = seen(eye, &placed);
     shown.set_if_neq(visible(far, false));
 }

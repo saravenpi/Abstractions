@@ -112,6 +112,18 @@ fn gear(mode: avatar::Mode) -> Mode {
     }
 }
 
+/// Returns the grip of the gear at the render position `at` and how much thinner than at home
+/// the air of the planet is, as [`Scene`] holds them.
+fn thickness(field: &Field, anchor: &Anchor, at: Vec3) -> (f32, f32) {
+    let density = field.terrain.as_deref().map_or(0.0, |terrain| {
+        let globe = terrain.globe();
+        let height = altitude(anchor, globe, at) - SOLES;
+        air_density(air(globe.radius())[0] as f32, height)
+    });
+    let thick = field.thickness.as_deref().map_or(1.0, |air| air.0);
+    (grip(density), 1.0 - thick.clamp(0.0, 1.0))
+}
+
 /// Returns the flight of a body drawn at `at` in `pose`, whose gear sits at `marks`, moving
 /// at the render velocity `vel`.
 fn read(
@@ -122,16 +134,11 @@ fn read(
 ) -> Scene {
     let vertical = up(anchor, at.translation).as_dvec3();
     let tilt = DQuat::from_rotation_arc(DVec3::Y, vertical).as_quat();
-    let density = field.terrain.as_deref().map_or(0.0, |terrain| {
-        let globe = terrain.globe();
-        let height = altitude(anchor, globe, at.translation) - SOLES;
-        air_density(air(globe.radius())[0] as f32, height)
-    });
+    let (sigma, thin) = thickness(field, anchor, at.translation);
     let camera = field
         .camera
         .single()
         .map_or(at.translation, |eye| eye.translation());
-    let thick = field.thickness.as_deref().map_or(1.0, |air| air.0);
     Scene {
         active: pose.mode != avatar::Mode::Seated,
         state: FlightState {
@@ -147,8 +154,8 @@ fn read(
         tilt,
         rot: at.rotation,
         eye: camera,
-        sigma: grip(density),
-        thin: 1.0 - thick.clamp(0.0, 1.0),
+        sigma,
+        thin,
         dt: field.time.delta_secs(),
         limbs: Some(Limbs::of(marks, at)),
         ..Scene::default()

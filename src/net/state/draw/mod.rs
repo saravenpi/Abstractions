@@ -17,6 +17,7 @@ pub use ship::ships;
 use abstractions_net::jitter::View;
 use abstractions_net::wire;
 use bevy::ecs::system::SystemParam;
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::bodies::Bodies;
@@ -90,7 +91,7 @@ impl Sight<'_, '_> {
         let view = track.buffer.sample(eye.time)?;
         let pose = Pose {
             pos: view.position,
-            vel: bevy::math::DVec3::ZERO,
+            vel: DVec3::ZERO,
             rot: view.rotation.as_dquat(),
         };
         let (from, to) = (Place::from(track.frame), Place::from(eye.anchor.frame));
@@ -103,6 +104,17 @@ impl Sight<'_, '_> {
                 rot: pose.rot,
             },
         ))
+    }
+
+    /// Returns how high a thing at `pos` in the wire `frame` is above the sea of the body the
+    /// frame is centred on, or infinitely high in the frame of a star.
+    pub fn clearance(&mut self, frame: wire::Frame, pos: DVec3) -> f64 {
+        let (wire::Frame::Surface(body) | wire::Frame::Around(body)) = frame else {
+            return f64::INFINITY;
+        };
+        let specs = self.bodies.system(body.star);
+        let spec = specs.iter().find(|spec| spec.id == body);
+        spec.map_or(f64::INFINITY, |spec| (pos.length() - spec.radius).max(0.0))
     }
 }
 

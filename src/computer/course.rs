@@ -1,12 +1,11 @@
-//! The words of the header and the footer: where the ship is, what the main button does,
-//! the course with its distance and a rough time to arrival, and the action line of the course.
+//! The words of the course: what a button or a key does to it, the course line with its
+//! distance and a rough time to arrival, what the route is doing and the progress line.
 
 use super::format::distance;
 use bevy::prelude::*;
 
 use super::route::RouteStatus;
 use crate::saves::play_time;
-use crate::ui::Icon;
 
 /// What a button or a key of the map does to the course.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,20 +23,8 @@ pub enum Act {
 /// What the course line says while no course is set.
 pub const NO_COURSE: &str = "Right-click a place or press Enter to set a course";
 
-/// What the breadcrumb says when the ship is inside no known galaxy.
-pub const NOWHERE: &str = "Deep space";
-
 /// Slowest speed in metres per second a time to arrival is worked out from.
 pub const SLOWEST: f64 = 1.0;
-
-/// Returns the breadcrumb of the names of what the ship is inside, from the galaxy down to the
-/// planet, or [`NOWHERE`] when it is inside nothing.
-pub fn crumbs(names: &[String]) -> String {
-    match names {
-        [] => NOWHERE.to_string(),
-        names => names.join(" > "),
-    }
-}
 
 /// Returns a rough time to cover `gap` metres at `speed` metres per second, or nothing while
 /// the ship is too slow for the number to mean anything.
@@ -75,29 +62,12 @@ pub fn action(name: &str, status: RouteStatus) -> (bool, String) {
     }
 }
 
-/// What the action line of the course offers: a button that runs an act, with its icon and
-/// its words, or words alone while there is nothing to do.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Offer {
-    /// A button that runs this act.
-    Button(Act, Icon, String),
-    /// Words alone.
-    Words(String),
-}
-
-/// Returns what the action line offers: setting the course while the selection is not the
-/// course, engaging the autopilot while the route to the course named `course` is idle,
-/// clearing it once arrived, and otherwise what the route is doing or why it cannot start.
-pub fn offer(course: Option<&str>, set: bool, status: RouteStatus) -> Offer {
-    if set {
-        return Offer::Button(Act::Set, Icon::MapPin, "Set course".to_string());
-    }
-    let Some(name) = course else {
-        return Offer::Words(String::new());
-    };
+/// Returns the progress line under the map for a course to `name` in the state `status`:
+/// how far along the route is while it is flown, and nothing otherwise, since the card of the
+/// place offers the buttons and says why the drive cannot engage.
+pub fn progress(name: &str, status: RouteStatus) -> String {
     match status {
-        RouteStatus::Idle => Offer::Button(Act::Engage, Icon::Send, action(name, status).1),
-        RouteStatus::Arrived => Offer::Button(Act::Clear, Icon::Close, "Clear course".to_string()),
-        _ => Offer::Words(action(name, status).1),
+        RouteStatus::Idle | RouteStatus::Blocked(_) | RouteStatus::Arrived => String::new(),
+        _ => action(name, status).1,
     }
 }

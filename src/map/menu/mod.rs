@@ -14,6 +14,8 @@ mod act;
 mod show;
 mod spot;
 
+pub(super) use act::Hands;
+
 use bevy::math::DVec3;
 use bevy::prelude::*;
 

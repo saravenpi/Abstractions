@@ -27,6 +27,9 @@ pub const GLYPH: f32 = theme::GLYPH_ASPECT * theme::FONT_SMALL;
 /// Most characters of small text one line of the side panel holds.
 pub const LINE_CHARS: usize = (ROOM / GLYPH) as usize;
 
+/// Most characters of the name of a place on the card, written in the body font.
+pub const NAME_CHARS: usize = (ROOM / (theme::GLYPH_ASPECT * theme::FONT_BODY)) as usize;
+
 /// Height in pixels of one row of the lists of the side panel.
 pub const ROW: f32 = theme::ROW_COMPACT;
 
@@ -36,13 +39,13 @@ pub const RESULTS: (usize, usize) = (1, 8);
 /// Height of one line of small text in pixels: the small font at Bevy's line height of 1.2.
 pub const LINE_HEIGHT: f32 = theme::FONT_SMALL * 1.2;
 
-/// Height in pixels of the band along the top of the map that the header lines take: where
-/// the path with the Back button, where the player is and the caption under it.
-pub const HEAD_BAND: f32 = MARGIN + theme::ROW_COMPACT + 2.0 * LINE_HEIGHT + 2.0 * theme::GAP_XS;
+/// Height in pixels of the band along the top of the map that the header lines take: the
+/// Back button on its own row, the path under it and the caption under the path.
+pub const HEAD_BAND: f32 = MARGIN + 2.0 * theme::ROW_COMPACT + LINE_HEIGHT + 2.0 * theme::GAP_XS;
 
 /// Height in pixels of the band along the bottom of the map that the footer lines take: the
-/// action line, the course line and the place under the pointer.
-pub const FOOT_BAND: f32 = MARGIN + theme::ROW_COMPACT + 2.0 * LINE_HEIGHT + 2.0 * theme::GAP_XS;
+/// progress of the route, the course line and the place under the pointer.
+pub const FOOT_BAND: f32 = MARGIN + 3.0 * LINE_HEIGHT + 2.0 * theme::GAP_XS;
 
 /// Returns true when the box `label` of a name on a map `side` pixels high stays clear of the
 /// header and footer bands, so it never runs under their words.
@@ -50,13 +53,25 @@ pub fn clear_of_bands(label: Rect, side: f32) -> bool {
     label.min.y >= HEAD_BAND && label.max.y <= side - FOOT_BAND
 }
 
-/// Height in pixels of the card of the selected result at its tallest.
-const CARD: f32 = theme::GAP_S + super::detail::LINES as f32 * LINE_HEIGHT + theme::LINE;
+/// Rows of buttons the card keeps room for: a planet that is the course with an idle route
+/// takes four, engaging and clearing it, focusing, the waypoint and the favourite.
+pub const DEED_ROWS: usize = 4;
+
+/// Height in pixels of the top of the card, which is never cut: the name, the subtitle, the
+/// rows of buttons and the line that says why the drive cannot engage.
+pub const CARD_HEAD: f32 = theme::FONT_BODY * 1.2
+    + 2.0 * LINE_HEIGHT
+    + DEED_ROWS as f32 * (theme::ICON + theme::GAP_XS)
+    + 3.0 * theme::GAP_XS;
+
+/// Height in pixels of the facts of the card at their longest.
+pub const FACTS: f32 = super::detail::ROWS as f32 * LINE_HEIGHT;
 
 /// Returns the height in pixels the side panel keeps for what is not the search results,
 /// with `favourites` and `players` rows listed: the margins, the search box and the line over
 /// the results, the card at its tallest, the favourites with their heading and button, and
-/// the players with their heading, which hide while there are none.
+/// the players with their heading, which hide while there are none. In a window too short
+/// for all of it the facts at the bottom of the card are cut.
 pub fn fixed((favourites, players): (usize, usize)) -> f32 {
     let search = theme::ROW_HEIGHT + 2.0 * theme::GAP_XS + LINE_HEIGHT;
     let saved = LINE_HEIGHT + 2.0 * theme::GAP_XS + theme::ICON * (1 + favourites) as f32;
@@ -64,7 +79,7 @@ pub fn fixed((favourites, players): (usize, usize)) -> f32 {
         0 => 0.0,
         count => theme::GAP_M + LINE_HEIGHT + theme::GAP_XS + count as f32 * LINE_HEIGHT,
     };
-    2.0 * MARGIN + 2.0 * theme::GAP_M + search + CARD + saved + friends
+    2.0 * MARGIN + 2.0 * theme::GAP_M + search + CARD_HEAD + FACTS + saved + friends
 }
 
 /// The measures of the screen in one window.

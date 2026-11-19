@@ -3,7 +3,7 @@
 //!
 //! Pointing at a mark only lights it and names it. A click selects it, a click on empty map
 //! lets go of the selection, and a double click goes into the place of the mark. The course is
-//! set with Enter, the button of the action line or the menu of a right click.
+//! set with Enter, the buttons on the card of the selected place or the menu of a right click.
 
 mod click;
 mod wheel;

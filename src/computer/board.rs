@@ -22,7 +22,7 @@ pub struct Board {
     pub heading: String,
     /// Every row of the table. Only [`VISIBLE_ROWS`] of them are drawn.
     pub lines: Vec<Line>,
-    /// For each row, the planet whose record is known, for the readout and the map.
+    /// For each row, the planet whose record is known, for the card and the map.
     pub worlds: Vec<Option<PlanetSpec>>,
     /// Index of the selected row.
     pub cursor: usize,

@@ -5,7 +5,6 @@ use bevy::math::{DQuat, DVec3, IVec3};
 use bevy::prelude::*;
 
 use super::tests_rig::{game, run, tap};
-use super::view::Crumbs;
 use super::*;
 use crate::space::{Anchor, Frame};
 use crate::universe::{GLY, GalaxyId, Universe};
@@ -68,8 +67,8 @@ fn the_way_home_picks_the_right_level() {
 }
 
 /// Puts the ship of `app` at the point `at` of `frame`, presses the Home key and returns the
-/// course, the open tab, the target of the selected row and the header.
-fn press_home(app: &mut App, (frame, at): (Frame, DVec3)) -> (Option<Target>, Tab, Target, String) {
+/// course, the open tab and the target of the selected row.
+fn press_home(app: &mut App, (frame, at): (Frame, DVec3)) -> (Option<Target>, Tab, Target) {
     app.insert_resource(anchor(frame, at));
     run(app, 2);
     tap(app, KeyCode::Home, None);
@@ -77,15 +76,13 @@ fn press_home(app: &mut App, (frame, at): (Frame, DVec3)) -> (Option<Target>, Ta
     let board = app.world().resource::<Board>();
     let row = (board.tab, board.lines[board.cursor].target);
     let course = app.world().resource::<Destination>().0;
-    let mut crumbs = app.world_mut().query_filtered::<&Text, With<Crumbs>>();
-    let header = crumbs.single(app.world()).unwrap().0.clone();
-    (course, row.0, row.1, header)
+    (course, row.0, row.1)
 }
 
 /// In the open panel, the Home key sets the course to the home galaxy from another galaxy, to
 /// the home star from elsewhere in the home galaxy and to the home planet in the home system,
-/// and each time opens the tab that lists it with the cursor on its row. The header says how
-/// far home is, and the saved atlas holds nothing but the visits and the course.
+/// and each time opens the tab that lists it with the cursor on its row. The saved atlas holds
+/// nothing but the visits and the course.
 #[test]
 fn the_home_key_sets_the_course_one_level_at_a_time() {
     let mut app = game("home");
@@ -94,17 +91,14 @@ fn the_home_key_sets_the_course_one_level_at_a_time() {
     let [system, near, lost] = places(&universe);
     tap(&mut app, KeyCode::Tab, None);
     run(&mut app, 3);
-    let (course, tab, row, header) = press_home(&mut app, lost);
+    let (course, tab, row) = press_home(&mut app, lost);
     assert_eq!((course, tab, row), (Some(galaxy), Tab::Universe, galaxy));
     assert_eq!(app.world().resource::<Board>().cursor, 0);
-    assert!(header.ends_with("galaxies from home"), "{header}");
-    let (course, tab, row, header) = press_home(&mut app, near);
+    let (course, tab, row) = press_home(&mut app, near);
     assert_eq!((course, tab, row), (Some(star), Tab::Galaxy, star));
     assert_eq!(app.world().resource::<Board>().cursor, 0);
-    assert!(header.ends_with("1.00 gly from home"), "{header}");
-    let (course, tab, row, header) = press_home(&mut app, system);
+    let (course, tab, row) = press_home(&mut app, system);
     assert_eq!((course, tab, row), (Some(body), Tab::System, body));
-    assert!(!header.contains("from home"), "{header}");
     let saved = toml::to_string(app.world().resource::<Atlas>()).unwrap();
     let keys = saved.lines().filter_map(|line| line.split_once(" = "));
     let keys: Vec<&str> = keys.map(|(key, _)| key).collect();

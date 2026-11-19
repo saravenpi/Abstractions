@@ -12,7 +12,7 @@ use bevy::ui::RelativeCursorPosition;
 use bevy::ui_widgets::Activate;
 
 use super::chart::Dot;
-use super::course::{Offer, offer};
+use super::course::progress;
 use super::hover::{light, look, surface};
 use super::pointer::MapView;
 use super::tests_pointer::{click, pixel, point, rig};
@@ -84,22 +84,16 @@ fn a_click_on_a_row_selects_and_a_double_click_on_a_mark_goes_into_it() {
     assert_eq!(view.into, Some(board.lines[2].target));
 }
 
-/// Returns the words of the action line of the course.
+/// Returns the words of the progress line under the map.
 fn said(app: &mut App) -> String {
     let mut lines = app.world_mut().query_filtered::<&Text, With<Action>>();
     let words = lines.iter(app.world()).next();
     words.map(|text| text.0.clone()).unwrap_or_default()
 }
 
-/// Returns what the button of the action line does, when it shows.
-fn button(app: &mut App) -> Option<Act> {
-    let mut buttons = app.world_mut().query::<&Act>();
-    buttons.iter(app.world()).next().copied()
-}
-
 /// The keyboard works as before: the arrows move the selection, Enter sets the course to it,
-/// and Delete clears it. The action line says nothing without a course, and what the route
-/// can do with one.
+/// and Delete clears it. The progress line says nothing without a course, and how far along
+/// the route is with one.
 #[test]
 fn the_keyboard_selects_sets_and_clears_the_course() {
     let mut app = game("keys");
@@ -116,14 +110,7 @@ fn the_keyboard_selects_sets_and_clears_the_course() {
     let name = row
         .target
         .name(app.world().resource::<crate::universe::Universe>());
-    let words = match offer(Some(&name), false, status) {
-        Offer::Words(words) => words,
-        Offer::Button(act, ..) => {
-            assert_eq!(button(&mut app), Some(act));
-            String::new()
-        }
-    };
-    assert_eq!(said(&mut app), words);
+    assert_eq!(said(&mut app), progress(&name, status));
     tap(&mut app, KeyCode::ArrowUp, None);
     assert_eq!(app.world().resource::<Board>().cursor, 0);
     assert_eq!(app.world().resource::<Destination>().0, Some(row.target));

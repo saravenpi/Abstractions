@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use super::board::Board;
+use super::course::progress;
 use super::format::{clip, distance};
 use super::home::{arranged, beacon, homes, pinned};
 use super::moons::is_moon;
@@ -14,7 +15,7 @@ use super::rows::Line;
 use super::scene::Scene;
 use super::sift;
 use super::tab::Tab;
-use super::view::{Cell, Crumbs, Part, Slot, Status, Summary};
+use super::view::{Action, Cell, Part, Slot, Status, Summary};
 use crate::ui::{Icon, Tone};
 
 /// Seconds between two refreshes of what changes while flying: the distances of the system tab
@@ -142,26 +143,23 @@ fn tabs(
 /// What the route line is drawn from.
 type Route<'w> = (Res<'w, Destination>, Res<'w, RouteStatus>);
 
-/// The lines the course and the place of the ship are written on.
-type Written = Or<(With<Status>, With<Crumbs>)>;
+/// The lines the course and the progress of the route are written on.
+type Written = Or<(With<Status>, With<Action>)>;
 
-/// Writes the course with its distance and the state of the route, and where the ship is:
-/// when the course, the route or the selection changes, and twice a second for the
-/// distance. Without a course the line stays empty while a row is selected, since the button
-/// over it already offers to set the course.
+/// Writes the course with its distance and the state of the route, and under the map the
+/// progress of the route while it is flown: when the course, the route or the selection
+/// changes, and twice a second for the distance. Without a course the course line stays empty
+/// while a row is selected, since the card of the row already offers to set the course.
 fn status(
     (time, board, view): (Res<Time>, Res<Board>, Res<MapView>),
     scene: Scene,
     (destination, route): Route,
     mut since: Local<f32>,
-    mut lines: Query<(&mut Text, Has<Crumbs>), Written>,
+    mut lines: Query<(&mut Text, Has<Action>), Written>,
 ) {
     *since += time.delta_secs();
-    let empty = lines
-        .iter()
-        .any(|(text, crumbs)| crumbs && text.0.is_empty());
     let changed = destination.is_changed() || route.is_changed() || board.is_changed();
-    if !(changed || empty || *since >= REFRESH) {
+    if !(changed || *since >= REFRESH) {
         return;
     }
     *since = 0.0;
@@ -170,9 +168,10 @@ fn status(
         true => String::new(),
         false => scene.route(destination.0, *route),
     };
-    let place = scene.place();
-    for (mut text, crumbs) in &mut lines {
-        let wanted = if crumbs { &place } else { &shown };
+    let name = destination.0.map(|target| target.name(&scene.universe));
+    let going = name.map_or(String::new(), |name| progress(&name, *route));
+    for (mut text, action) in &mut lines {
+        let wanted = if action { &going } else { &shown };
         text.set_if_neq(Text(wanted.clone()));
     }
 }
@@ -186,7 +185,6 @@ pub(super) fn plugin(app: &mut App) {
             rows,
             tabs,
             status,
-            super::acting::write,
             super::readout::write,
             (super::pointer::plot, super::glide::ease).chain(),
             super::draw::draw,

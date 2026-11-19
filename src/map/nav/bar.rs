@@ -1,6 +1,6 @@
-//! The path over the map: the Back button, then the levels from the universe down to the one
-//! shown, each a button that jumps to its level but the last. Black and white, with no border.
-//! Backspace goes back as the button does.
+//! The path over the map: the Back button alone on its row, and under it the levels from the
+//! universe down to the one shown, each a button that jumps to its level but the last. Black
+//! and white, with no border. Backspace goes back as the button does.
 
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
@@ -32,7 +32,8 @@ fn button_node() -> Node {
     }
 }
 
-/// The path over the map, empty until [`write`] fills it.
+/// The path over the map, empty until [`write`] fills it: the row of the Back button, which
+/// keeps its height while the button hides, over the row of the parts of the path.
 pub fn path() -> impl Bundle {
     let row = Node {
         align_items: AlignItems::Center,
@@ -46,8 +47,16 @@ pub fn path() -> impl Bundle {
         button_node(),
         children![entry(Icon::Back, "Back", theme::FONT_SMALL, Tone::Plain)],
     );
-    let parts = (Parts, row.clone());
-    (row, children![back, parts])
+    let column = Node {
+        flex_direction: FlexDirection::Column,
+        align_items: AlignItems::FlexStart,
+        row_gap: px(theme::GAP_XS),
+        ..default()
+    };
+    (
+        column,
+        children![(row.clone(), children![back]), (Parts, row)],
+    )
 }
 
 /// Returns one part of the path: a button for a level above the one shown, plain words for it.

@@ -5,6 +5,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- The map's side panel card is easier to read: the place's name, what it is and what it turns around, then one fact per row under Surface, Climate, Body and Time, with the label on the left and the value on the right. Stars and galaxies get the same layout.
+- The buttons for a place sit on its card, under its name: Set course, Engage autopilot, Clear course, Focus, Set waypoint and Save as favourite. When the drive cannot engage, the card says why. The line at the bottom left of the map now only shows a route in flight.
+- The map's header shows the path once, with the Back button on its own row above it.
+- The habitable zone reads "in the habitable zone", "too hot for water" or "too cold for water".
+
 ## [0.10.1] - 2026-11-19
 
 Players and servers must both run 0.10.1: the multiplayer protocol changed.

@@ -1,7 +1,6 @@
 //! The board computer: the atlas of discovered systems and galaxies, fast travel, and the map
 //! screen that shows them from a planet out to the universe.
 
-mod acting;
 mod arrow;
 mod atlas;
 mod board;
@@ -11,6 +10,7 @@ mod coast;
 mod course;
 mod detail;
 mod draw;
+mod facts;
 mod format;
 mod giant;
 mod glide;
@@ -49,11 +49,15 @@ mod words;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_card;
+#[cfg(test)]
 mod tests_climate;
 #[cfg(test)]
 mod tests_close;
 #[cfg(test)]
 mod tests_detail;
+#[cfg(test)]
+mod tests_fit;
 #[cfg(test)]
 mod tests_focus;
 #[cfg(test)]
@@ -104,7 +108,7 @@ pub use course::{Act, action};
 pub use draw::side;
 pub use format::{distance, gravity};
 pub use hand::{Hand, to_map, turn};
-pub use home::{arranged, away, beacon, homes, homeward, pinned, tab_of, toward};
+pub use home::{arranged, beacon, homes, homeward, pinned, tab_of, toward};
 pub use labels::{keep, priority, room, scale_bar};
 pub use layout::{GLYPH, clear_of_bands};
 pub use lens::{Lens, MAX_ZOOM};

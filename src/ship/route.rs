@@ -1,7 +1,11 @@
 //! Flying a route: steering onto the course, asking for the warp drive and ending on arrival.
 
+mod block;
+#[cfg(test)]
+mod block_tests;
 mod goal;
 
+use block::{aligned, blocker};
 pub(super) use goal::ARRIVAL;
 
 use bevy::math::DVec3;
@@ -14,10 +18,9 @@ use super::pilot::{Autopilot, Phase, Settle};
 use super::sim::Cosmos;
 use super::sky::Skies;
 use super::steer::{aim, detour};
-use super::warp::{Warp, clearance};
+use super::warp::Warp;
 use super::wells::Well;
-use crate::computer::{Engage, RouteStatus, ship_position};
-use crate::space::Frame;
+use crate::computer::{Destination, Engage, RouteStatus, Target, ship_position};
 use crate::universe::GLY;
 
 /// Distance in metres beyond which a route is a long jump: faster, and blind to the stars on the way.
@@ -65,8 +68,7 @@ pub(super) fn hold(
     (to, lock): (DVec3, f64),
 ) -> Phase {
     let distance = to.length();
-    let surface = matches!(ship.frame, Frame::Surface(_));
-    let blocked = ship.landed || surface || clearance(wells, ship.pos) <= 0.0;
+    let blocked = blocker(ship, wells).is_some();
     let course = detour(wells, ship.pos, to / distance, distance - lock);
     let (phase, switch) = next(ship, blocked, ship.forward().dot(course) > ALIGNED);
     if phase != Phase::Waiting {
@@ -132,14 +134,38 @@ pub fn on_engage(event: On<Engage>, mut autopilot: ResMut<Autopilot>) {
     autopilot.engage(event.0);
 }
 
-/// Shows the board computer how far along the route the ship is.
-pub fn report(autopilot: Res<Autopilot>, mut status: ResMut<RouteStatus>) {
-    let shown = match autopilot.phase {
-        Phase::Idle => RouteStatus::Idle,
-        Phase::Waiting | Phase::Dropping | Phase::Aligning => RouteStatus::Aligning,
-        Phase::Spooling => RouteStatus::Spooling,
-        Phase::Cruising => RouteStatus::InWarp,
-        Phase::Arrived => RouteStatus::Arrived,
+/// What the route state is read from besides the autopilot.
+type Watch<'w, 's> = (
+    Res<'w, Skies>,
+    Res<'w, Destination>,
+    Query<'w, 's, &'static Ship>,
+);
+
+/// Shows the map and the HUD how far along the route the ship is, and what keeps the drive
+/// from a course that is set. A route that arrived reads as arrived until the course changes.
+pub fn report(
+    (cosmos, autopilot): (Cosmos, Res<Autopilot>),
+    (skies, destination, ships): Watch,
+    mut status: ResMut<RouteStatus>,
+    mut arrived: Local<Option<Target>>,
+) {
+    let Some(ship) = ships.iter().next() else {
+        return;
     };
-    status.set_if_neq(shown);
+    if autopilot.phase != Phase::Arrived {
+        *arrived = autopilot.target;
+    }
+    let left = autopilot.phase == Phase::Arrived && destination.0 != *arrived;
+    let phase = [autopilot.phase, Phase::Idle][usize::from(left)];
+    let (universe, time) = (&cosmos.universe, cosmos.clock.seconds);
+    let here = ship_position(universe, ship.frame, ship.pos, time);
+    let to = autopilot.goal.as_ref().zip(here);
+    let to = to.and_then(|(goal, here)| goal.reached(universe, here, time));
+    let reading = block::Reading {
+        phase,
+        block: blocker(ship, &skies.wells),
+        aligned: to.map_or(0, |(to, _)| aligned(ship.forward(), to)),
+        course: destination.0.is_some(),
+    };
+    status.set_if_neq(block::status(reading));
 }

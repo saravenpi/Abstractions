@@ -1,4 +1,7 @@
-//! The interaction prompt: a key and what it does, shown only while it can be done.
+//! The interaction prompt: a key and what it does, shown only while it can be done, and over
+//! it in the ship the action line of the course.
+
+mod course;
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
@@ -31,31 +34,37 @@ pub fn board_prompt(travel: Travel, at_hatch: bool, landed: bool) -> Option<&'st
     }
 }
 
-/// The hidden prompt, low in the middle of the screen. `update` fills it.
+/// The hidden prompt, low in the middle of the screen, under the hidden action line of the
+/// course. `update` fills both.
 pub(super) fn line() -> impl Bundle {
     (
         Node {
             position_type: PositionType::Absolute,
             width: percent(100),
             bottom: percent(22),
-            justify_content: JustifyContent::Center,
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Center,
+            row_gap: px(theme::GAP_S),
             ..default()
         },
-        children![(
-            Prompt,
-            Node {
-                display: Display::None,
-                align_items: AlignItems::Center,
-                column_gap: px(theme::GAP_S),
-                padding: UiRect::axes(px(theme::GAP_S), px(theme::GAP_XS)),
-                ..default()
-            },
-            BackgroundColor(theme::STRIP),
-            children![
-                (PromptKey, key_cap("")),
-                (PromptAction, label("", theme::FONT_SMALL, Tone::Plain)),
-            ],
-        )],
+        children![
+            course::row(),
+            (
+                Prompt,
+                Node {
+                    display: Display::None,
+                    align_items: AlignItems::Center,
+                    column_gap: px(theme::GAP_S),
+                    padding: UiRect::axes(px(theme::GAP_S), px(theme::GAP_XS)),
+                    ..default()
+                },
+                BackgroundColor(theme::STRIP),
+                children![
+                    (PromptKey, key_cap("")),
+                    (PromptAction, label("", theme::FONT_SMALL, Tone::Plain)),
+                ],
+            )
+        ],
     )
 }
 
@@ -86,14 +95,15 @@ type Texts<'w, 's> = (
 );
 
 /// Shows the prompt while the board key does something, and rewrites it only when it changes
-/// or when the HUD was just spawned.
+/// or when the HUD was just spawned. Writes the action line of the course too.
 pub(super) fn update(
-    reach: Reach,
+    (reach, mut line): (Reach, course::Line),
     mut shown: Local<Option<(&'static str, KeyCode)>>,
     fresh: Query<(), Added<Prompt>>,
-    mut rows: Query<&mut Node, With<Prompt>>,
+    mut rows: Query<&mut Node, (With<Prompt>, Without<course::CourseRow>)>,
     (mut actions, mut keys): Texts,
 ) {
+    line.write();
     let wanted = reach.prompt();
     if wanted == *shown && fresh.is_empty() {
         return;

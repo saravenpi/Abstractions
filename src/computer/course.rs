@@ -1,10 +1,24 @@
 //! The words of the header and the footer: where the ship is, what the main button does,
-//! and the course with its distance and a rough time to arrival.
+//! the course with its distance and a rough time to arrival, and the action line of the course.
 
 use super::format::distance;
-use super::route::{RouteStatus, Target};
-use super::view::Act;
+use bevy::prelude::*;
+
+use super::route::RouteStatus;
 use crate::saves::play_time;
+
+/// What a button or a key of the map does to the course.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Act {
+    /// Set the course to the selected row.
+    Set,
+    /// Hand the course to the autopilot.
+    Engage,
+    /// Forget the course.
+    Clear,
+    /// Set the course to the next place on the way home.
+    Home,
+}
 
 /// What the breadcrumb says when the ship is inside no known galaxy.
 pub const NOWHERE: &str = "Deep space";
@@ -18,29 +32,6 @@ pub fn crumbs(names: &[String]) -> String {
     match names {
         [] => NOWHERE.to_string(),
         names => names.join(" > "),
-    }
-}
-
-/// Returns what the main button does for the target of the selected row, the course that is
-/// set and the state of the route: set the course to a row that is not the course yet, else
-/// engage the autopilot on a course it does not fly yet, else clear the course. Nothing when
-/// there is no row and no course.
-pub fn primary(cursor: Option<Target>, course: Option<Target>, status: RouteStatus) -> Option<Act> {
-    match (cursor, course) {
-        (Some(_), _) if cursor != course => Some(Act::Set),
-        (_, None) => None,
-        _ if status == RouteStatus::Idle => Some(Act::Engage),
-        _ => Some(Act::Clear),
-    }
-}
-
-/// Returns what the main button says for `act`, with `name` the name of the selected row.
-pub fn words(act: Act, name: &str) -> String {
-    match act {
-        Act::Set => format!("Set course to {name}"),
-        Act::Engage => "Engage autopilot".to_string(),
-        Act::Clear => "Clear course".to_string(),
-        Act::Home => "Set course home".to_string(),
     }
 }
 
@@ -62,4 +53,20 @@ pub fn course(to: Option<(&str, f64)>, speed: f64, status: RouteStatus) -> Strin
         distance(gap),
         status.label()
     )
+}
+
+/// Returns the action line of a course to `name` in the state `status`: whether the engage
+/// key does something now, and what the line says. The engage key is shown only while the
+/// autopilot can take the course; otherwise the line says the first reason it cannot, or
+/// how far along the route is.
+pub fn action(name: &str, status: RouteStatus) -> (bool, String) {
+    match status {
+        RouteStatus::Idle => (true, format!("Engage autopilot to {name}")),
+        RouteStatus::Blocked(block) => (false, block.words()),
+        RouteStatus::Dropping => (false, "Dropping out of warp".to_string()),
+        RouteStatus::Aligning(done) => (false, format!("Aligning {done}%")),
+        RouteStatus::Spooling => (false, "Spooling the warp drive".to_string()),
+        RouteStatus::InWarp => (false, format!("In warp to {name}")),
+        RouteStatus::Arrived => (false, format!("Arrived at {name}")),
+    }
 }

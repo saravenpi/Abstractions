@@ -1,0 +1,56 @@
+//! Map tests: the waypoint key sets and clears, favourites are named and renamed, a level
+//! fades in, and the flat map opens where it was asked to look.
+
+use bevy::input::keyboard::Key;
+use bevy::math::{DVec3, Vec2};
+
+use super::fade::{FADE, shade};
+use super::favourite::{Favourites, edit};
+use super::level::{GROUND, WHOLE, first};
+use super::{Waypoints, to_chart, toggle};
+use crate::universe::BodyId;
+
+#[test]
+fn the_waypoint_key_sets_then_clears() {
+    let mut waypoints = Waypoints::default();
+    let body = BodyId::default();
+    assert_eq!(toggle(&mut waypoints, None), None);
+    let set = toggle(&mut waypoints, Some((body, DVec3::Y * 500.0))).unwrap();
+    let mine = waypoints.mine.clone().unwrap();
+    assert_eq!(set.0, Some(mine.clone()));
+    assert!(mine.dir.distance(DVec3::Y) < 1e-12 && mine.body == body);
+    let cleared = toggle(&mut waypoints, Some((body, DVec3::X))).unwrap();
+    assert_eq!((cleared.0, waypoints.mine), (None, None));
+}
+
+#[test]
+fn a_favourite_is_named_and_renamed() {
+    let mut favourites = Favourites::default();
+    let index = favourites.save(BodyId::default(), DVec3::X * 3.0);
+    assert_eq!((index, favourites.0[0].name.as_str()), (0, "Place 1"));
+    let mut name = String::from("Camp");
+    assert!(!edit(&mut name, &Key::Character("s".into()), "Place 1"));
+    assert!(!edit(&mut name, &Key::Backspace, "Place 1"));
+    assert!(edit(&mut name, &Key::Enter, "Place 1"));
+    favourites.rename(0, &name);
+    assert_eq!(favourites.0[0].name, "Camp");
+    favourites.rename(0, "   ");
+    assert_eq!(favourites.0[0].name, "Camp");
+    assert!(edit(&mut name, &Key::Escape, "Place 1"));
+    assert_eq!(name, "Place 1");
+}
+
+#[test]
+fn a_level_fades_in_and_opens_where_asked() {
+    assert_eq!(shade(0.0), 1.0);
+    assert!((shade(FADE * 0.5) - 0.5).abs() < 1e-6);
+    assert_eq!(shade(FADE * 2.0), 0.0);
+    let whole = first(None, None);
+    assert_eq!((whole.zoom, whole.centre), (WHOLE, Vec2::ZERO));
+    let here = DVec3::new(0.3, 0.2, -0.9);
+    let close = first(None, Some(here));
+    assert_eq!(close.zoom, GROUND);
+    assert!(close.centre.distance(to_chart(here)) < 1e-6);
+    let asked = first(Some(DVec3::Z), Some(here));
+    assert!(asked.centre.distance(to_chart(DVec3::Z)) < 1e-6);
+}

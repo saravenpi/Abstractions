@@ -19,7 +19,7 @@ use crate::space::UniPos;
 use crate::universe::PlanetClass;
 
 /// Share of the half width of the map the farthest thing is drawn at.
-pub(super) const FILL: f32 = 0.88;
+pub const FILL: f32 = 0.88;
 
 /// Dots that trace one orbit.
 const ORBIT_DOTS: usize = 40;

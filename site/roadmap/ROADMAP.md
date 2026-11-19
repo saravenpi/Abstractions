@@ -92,7 +92,7 @@ Planets get a kind, and the kind comes from physics.
 
 **Status:** released
 
-- Up to 16 players in one universe, with the same seed, clock and discoveries, each with their own robot, ship and companion.
+- Players share one universe, as many as the server allows, with the same seed, clock and discoveries, each with their own robot, ship and companion.
 - Open to LAN, a server list with ping, direct connect, passwords, and server keys remembered on first join.
 - `abstractions-server` for Linux and Docker, and a public server at space.facile.studio.
 - A real cockpit with a seat, dashboard and moving controls.
@@ -103,111 +103,16 @@ Planets get a kind, and the kind comes from physics.
 
 **Status:** in progress
 
-**Goal:** planets the size of real planets, each with life that belongs to it: recognisable, pretty, coherent in how it lives, and cheap to run. A player who lands on a new world should be able to guess its animals from its sky, and be right.
+Planets at their real size, each with life that belongs to it.
 
-### Real-size planets
-
-- Rocky planets from 1,500 to 12,000 km in radius, gas giants from 25,000 to 70,000 km, stars at their real sizes, orbits in AU.
-- Kodya is Earth-like: 6,371 km, 9.81 m/s², one turn in 23 h 56 min. No day length is set anywhere; days follow from each planet's spin and orbit.
-- Terrain on every scale: tectonic plates make continents, mountain ranges rise where plates meet, and rivers run hundreds of kilometres to the sea. Today's islands, villages and plants stay as the finest layer.
-- Real air: density falls with the scale height of each planet, clouds sit from 1 to 12 km, and the sky and drag read the same model.
-- Moons by how they form: about a quarter of rocky worlds have one large moon from a giant impact, some have small captured moons, giants have families of moons. Kodya gets a moon.
-- One light model for every galaxy: the band across the night sky is the summed light of the real stars of your galaxy, with its real arms, core and dust. Other galaxies show their true shape and tilt, and grow into a band as you fly into them.
-- Precision kept at every scale, the map and its explored ground at planet size, and a ship fast enough to reach orbit in a couple of minutes.
-- Old worlds keep their version: a world made with 0.10 opens with 0.10, which the game downloads for you.
-
-### Ecosystems: the chain, one pure step after another
-
-**1. Does this planet live, and how far has life come?** Two numbers from the record.
-- *Life or not:* a product of factors (a liquid, air, temperature, the star's age), then loaded dice: about one system in three has a living world and the region around Vereya is richer. Dead worlds keep ruins. (This pulls the core of "life odds" forward; tidal moons and fossils stay in 0.14.)
-- *Complexity:* how far evolution got, from the star's age and how stable the climate is. It is a ladder, and each rung unlocks body plans:
-
-| Rung | What lives there |
-| --- | --- |
-| 1 | Mats and films only: coloured ground, glowing shores, nothing that moves |
-| 2 | Soft life: slimes, jellies, drifting colonies, simple growths |
-| 3 | Shelled and segmented life, first plants with structure, first hunters |
-| 4 | Skeletal animals, forests with layers, herds, flyers where the air allows |
-| 5 | An old ecosystem: armour, venom, speed, mimicry, long food chains |
-
-So some worlds have only a red film on the rocks and a sea that glows at night, and that is a discovery of its own. It is also free to run.
-
-**2. Biochemistry, one roll per living planet,** from the record:
-
-| Choice | Driven by | What it changes |
-| --- | --- | --- |
-| Solvent: water, ammonia, hydrocarbon, molten silicate | temperature and pressure | which classes can live, body fluids, slime and gel tissues |
-| Energy: light, chemistry, heat | flux, volcanism, depth | where producers grow: open ground, vents, lava shores |
-| Structure: carbon fibre, silica and crystal, metal-rich shell | temperature, the star's metal content | hardness and heat tolerance of every tissue on the planet |
-| Pigment | the colour of the star's light | plant colour: green under a yellow star, red to black under a red dwarf, pale under a hot blue star |
-
-A lava world's life is crystalline and heat-proof, an ice world's is slow and insulated, and a red dwarf's forests are dark.
-
-**3. Tissues are the contract.** Every body, plants included, is built from tissue records: bone, hide, shell, gel, crystal, fibre, resin, gland. One record holds physics (hardness, toughness, density, elasticity, heat tolerance, conductivity, reactivity: acid, venom, charge) and look (colour, pattern, gloss, translucency, glow), plus an optional rigid shape (spike, shard, ridge). Biochemistry sets the planet's baseline; habitat and niche shift it. Each species has a **signature**: the tissue value farthest from its planet's average. 0.13 crafting reads tissues and nothing else.
-
-**4. Plants and other producers.** Not a list of tree models: a small set of growth architectures (trunk and branches, rosette, mat, vine, bulb, stalk and cap, kelp, crystal lattice), each with dials that the climate turns:
-- Height falls with gravity and with wind; canopy layers (ground, shrub, canopy, emergent) grow in number with productivity.
-- Leaf size grows with moisture and shrinks with light; needles in the cold; wax, spines and water-storing bodies in dry places.
-- Plants defend themselves with tissues: thorns, resin, toxins. Those are harvestable and a grazer's mouth has to cope with them.
-- What a plant offers decides who eats it: leaves, fruit, nectar, seeds, dead wood. Flowers exist only where a pollinator species exists; otherwise plants are wind-sown and plain. Fruit exists only where something carries seeds.
-- Seasons from 0.9 show: bloom, fruit, leaf fall, dormancy.
-
-Their productivity (light times moisture times temperature fit) is the energy budget of the biome.
-
-**5. A food web per planet** from the niche model: each species gets a niche value, a feeding range and a range centre, and eats whatever falls inside. Species count and connectance scale with productivity and with the complexity rung, so rich old worlds have long chains and harsh young ones have two levels. Each consumer also gets a guild that says how it eats: grazer, browser, fruit eater, nectar feeder, seed eater, filter feeder, hunter, ambusher, scavenger, decomposer, parasite. The guild shapes the mouth, the senses and the behaviour.
-
-**6. More than eating.** A second, sparse network of relationships, generated from who lives where:
-- **Pollinators and seed carriers** tie animals to plants (see 4).
-- **Scavengers and decomposers** clear carcasses, so a kill is found and eaten by something, and fungi grow where things die.
-- **Riders and cleaners:** a small species that lives on a large grazer.
-- **Mimics:** a harmless species that copies the warning pattern of a toxic one in the same biome.
-- **Builders:** species that leave structures you can find: mounds, nests, hives, burrows, webs, reefs.
-- **A keystone** per biome: the species whose loss moves the most others. Usually the top hunter or a builder.
-
-**7. Bodies.** Six plans: skeletal, amorphous (slimes), radial (jellies), segmented, colonial (swarms), crystalline. Each plan has two to four archetype silhouettes built from hand-designed parametric parts with sockets, the way the ship and the props are built in code today. Rules turn the planet into the body:
-
-| Rule | Effect |
-| --- | --- |
-| Gravity and the square-cube law | Squat, thick-limbed bodies on heavy worlds; tall and thin on light ones; a cap on the largest land animal |
-| Air density against gravity | Thick air and low gravity allow large flyers and gas-bag floaters; thin air allows none; no air, no wings |
-| Cold (Bergmann, Allen) | Larger, rounder bodies with short limbs and thick insulating hide in the cold; long thin limbs and large radiating surfaces in the heat |
-| Small worlds and islands | Giants shrink and the small grow |
-| Humidity | Darker in wet climates, pale in dry ones |
-| Light | Large eyes on dim worlds; no eyes and long feelers under permanent cloud or in the deep; forward eyes on hunters, side eyes on prey |
-| Sound | Calls are low and carry far in thick air; in thin air species signal with light and pattern instead |
-| Guild | Flat wide mouths for grazers, long necks for browsers, jaws and claws for hunters, sieves for filter feeders |
-| Arms race | Predator weapon hardness and prey armour hardness are drawn together and rise with the complexity rung |
-
-Looks stay clean by rule: bilateral or radial symmetry always, at most two accent tissues, strong value contrast so the shape reads in the pixel pass. Features are data, not decoration: horns, tails, necks, jaws, plates and glands are listed with size and tissue, because behaviour reads them now and attacks read them in 0.13. Animation is procedural on rigid parts (gaits from leg count and mass, pulsing for jellies, flow for slimes). No skinning.
-
-**8. Life history.** Small species are many, quick and short-lived; large ones are few, slow and guard their young. That gives swarms and clutches of eggs on one end and a lone giant with one calf on the other. Nests, eggs and young exist in the world.
-
-**9. Behaviour from needs.** One small utility model for every animal: hunger, thirst, fear, rest, company, curiosity, care for young. Diet, guild and life history set the weights. From them come grazing, browsing, hunting, stalking, ambush, fleeing, flocking, burrowing, sleeping, guarding a nest. Day, night or twilight habits follow eye size and glow.
-- Hunters pick the weak and the small; herds bunch and put their young in the middle; prey that cannot outrun a hunter hides or shows its warning colours.
-- Herds migrate with the seasons from 0.9, along latitude, and gather at water in dry seasons.
-- **The robot is not prey in 0.11.** One rule decides it, and 0.13 turns it on. Hunters do hunt each other's prey: hunts, kills and carcasses are pure functions of the seed and the clock, so every player sees the same hunt. Animals still notice the robot: curious ones approach, shy ones keep their distance, herds part around it, a parent stands between it and the nest.
-
-**10. Bioluminescence, by rule.** Glow appears where it pays: night-active species, deep water, caves, worlds under thick cloud or dim stars. It has one of four uses, which sets where it sits and how it behaves: lure (a hunter's bait), warning (toxic tissue), courtship (pulsing patterns at dusk), hiding from below (belly lights in swimmers). Its colour comes from the biochemistry, and plants and mats can glow too.
-
-**11. Populations from energy.** Each level keeps about a tenth of the level below. Density falls with body mass to the power three quarters and home range grows with mass, so the apex is rare, large and wide-ranging without a script.
-
-**12. Cascades you can cause.** The population field is a steady state of the web, computed by formula, and the kill log shifts it. Remove hunters from a valley and grazers rise there, then plants thin, then the grazers starve back. Nothing is simulated while you are away: the state is a function of the seed, the log and the elapsed time.
-
-**13. Signs.** Tracks, droppings, grazed patches, bones, nests and calls let you find animals before you see them. The companion reads them for the field guide. Calls are synthesised from body size and air density, so a planet has a dawn chorus of its own.
-
-**14. Three levels of simulation,** which is what keeps it fast:
-
-| Where | What runs | Cost |
-| --- | --- | --- |
-| The whole planet | The population field: a pure function of seed, place, season and the change log. Nothing is stored or ticked. | free |
-| Within about 1 km | Herd agents: one point per group at 5 Hz, moving by the same needs | microseconds |
-| Within about 150 m | Individuals at 30 Hz with full behaviour and animation, capped at a fixed count, instanced flat-shaded meshes | inside the 2 ms budget |
-
-A planet has 12 to 40 species and a biome shows 4 to 10 of them. Meshes are built once per planet off the main thread. Individuals appear from the field and dissolve back into it.
-
-**15. Names.** Each region of the galaxy has its own sounds and a small vocabulary (light, hard, glass, acid, hunter, big, small). A species name is built from the words of its signature traits, with a plain epithet: "Silvaren, the glowing hunter".
-
-**16. The field guide.** The companion scans what you look at and records name, guild, who it eats and who eats it, tissues, and where it is soft. It fills in as you observe: a web you draw by watching. It opens with K, in its own panel beside the running game.
+- Real scale: Earth-like Kodya at 6,371 km and 9.81 m/s², stars and orbits at their true sizes, days from each planet's own spin.
+- Continents from tectonic plates, mountain ranges where plates meet, and rivers hundreds of kilometres long; real air and moons that form the way real moons do.
+- Life chosen by physics: whether a planet lives and how far life has come, its chemistry, and plants shaped by its climate and its star's light.
+- A food web per planet: grazers, hunters, scavengers, pollinators and builders, with herds, nests and young.
+- Animals act from their needs: they graze, hunt, flee, flock and sleep. Hunters hunt each other's prey; the robot is not prey yet.
+- Remove the hunters from a valley and the grazers rise, then the plants thin: cascades you can cause.
+- Tracks, calls and nests lead you to animals, and the companion's field guide fills in as you watch.
+- Worlds made with 0.10 keep opening with 0.10.
 
 ## 0.12: real space
 

@@ -3,9 +3,13 @@
 mod block;
 #[cfg(test)]
 mod block_tests;
+mod done;
+#[cfg(test)]
+mod done_tests;
 mod goal;
 
 use block::{aligned, blocker};
+pub(super) use done::finish;
 pub(super) use goal::ARRIVAL;
 
 use bevy::math::DVec3;

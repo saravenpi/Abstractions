@@ -7,7 +7,7 @@ use bevy::prelude::*;
 
 use super::read::{at, furnish};
 use super::rig::{app, ground, look, settle};
-use crate::menus::hud::compass::Pin;
+use crate::menus::hud::compass::{Far, Pin};
 use crate::menus::hud::minimap::scope::Scope;
 use crate::menus::hud::minimap::widget::Part;
 use crate::menus::hud::needle::{ROWS, SPAN, fade, row};
@@ -64,8 +64,8 @@ fn shown(app: &mut App, kind: MarkerKind) -> Vec<(f32, f32)> {
     found
 }
 
-/// Five friends 300 m ahead show as five marks stacked in five rows over the same place, and
-/// a sixth one behind the player shows nowhere.
+/// Five friends 300 m ahead show as five icons on the top row over the same place, their labels
+/// stacked in five rows under the line, and a sixth one behind the player shows nowhere.
 #[test]
 fn the_compass_shows_every_friend_ahead() {
     let mut app = app("friends");
@@ -85,8 +85,19 @@ fn the_compass_shows_every_friend_ahead() {
             .iter()
             .all(|(left, _)| (left - found[0].0).abs() < 0.01)
     );
-    let tops: Vec<f32> = found.iter().map(|(_, top)| *top).collect();
-    assert!(tops.windows(2).all(|pair| pair[1] > pair[0]), "{tops:?}");
+    assert!(found.iter().all(|(_, top)| *top == 0.0), "{found:?}");
+    let mut labels = app.world_mut().query::<(&Far, &Node)>();
+    let mut drops: Vec<f32> = labels
+        .iter(app.world())
+        .filter(|(far, _)| far.0 < 5)
+        .map(|(_, node)| match node.margin.top {
+            Val::Px(drop) => drop,
+            _ => 0.0,
+        })
+        .collect();
+    drops.sort_by(f32::total_cmp);
+    assert_eq!(drops[0], 0.0);
+    assert!(drops.windows(2).all(|pair| pair[1] > pair[0]), "{drops:?}");
 }
 
 /// Moves the anchor 500 m along the planet and the camera with it in one frame, leaving a

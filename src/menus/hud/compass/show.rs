@@ -49,6 +49,17 @@ fn icon(kind: MarkerKind) -> Icon {
     }
 }
 
+/// The label of a mark: its slot, its words, their colour and its node.
+type Words = (
+    &'static Far,
+    &'static mut Text,
+    &'static mut TextColor,
+    &'static mut Node,
+);
+
+/// What sets the label of a mark apart from its icon, its room and the bar.
+type Label = (Without<Glyph>, Without<Pin>, Without<Bar>);
+
 /// The nodes of the compass.
 #[derive(SystemParam)]
 pub struct Pins<'w, 's> {
@@ -62,16 +73,15 @@ pub struct Pins<'w, 's> {
     glyphs:
         Query<'w, 's, (&'static Glyph, &'static mut Text, &'static mut TextColor), Without<Far>>,
     /// The labels of the marks.
-    words: Query<'w, 's, (&'static Far, &'static mut Text, &'static mut TextColor), Without<Glyph>>,
+    words: Query<'w, 's, Words, Label>,
 }
 
 impl Pins<'_, '_> {
-    /// Shows the bar while it has marks, as high as their rows, and grows the pool to `wanted`.
+    /// Shows the bar, empty or not, as high as its rows of labels, and grows the pool to `wanted`.
     fn frame(&mut self, wanted: usize, rows: usize) {
         let held = self.pins.iter().count();
         for (bar, mut visibility, mut node) in &mut self.bars {
-            let shown = [Visibility::Hidden, Visibility::Inherited][usize::from(wanted > 0)];
-            visibility.set_if_neq(shown);
+            visibility.set_if_neq(Visibility::Inherited);
             let height = px(HEIGHT + ROW * rows.saturating_sub(1) as f32);
             if node.height != height {
                 node.height = height;
@@ -90,7 +100,7 @@ impl Pins<'_, '_> {
             pin.set_if_neq(Pin { kind, ..*pin });
             let display = mark.map_or(Display::None, |_| Display::Flex);
             let (left, top) = mark.map_or((node.left, node.top), |mark| {
-                (px(mark.at - ROOM * 0.5), px(ROW * mark.row as f32))
+                (px(mark.at - ROOM * 0.5), px(0))
             });
             if (node.display, node.left, node.top) != (display, left, top) {
                 (node.display, node.left, node.top) = (display, left, top);
@@ -114,12 +124,16 @@ impl Pins<'_, '_> {
     }
 
     /// Writes the name and distance of every shown mark, faded, in its colour for a friend,
-    /// a waypoint or a favourite.
+    /// a waypoint or a favourite, on the row of labels it was given under the line.
     fn label(&mut self, seen: &[Seen], markers: &[Marker], words: &mut String) {
-        for (far, mut text, mut color) in &mut self.words {
+        for (far, mut text, mut color, mut node) in &mut self.words {
             let Some(mark) = seen.get(far.0) else {
                 continue;
             };
+            let drop = px(ROW * mark.row as f32);
+            if node.margin.top != drop {
+                node.margin.top = drop;
+            }
             let marker = &markers[mark.index];
             words.clear();
             let gap = distance(mark.gap);
@@ -140,7 +154,7 @@ impl Pins<'_, '_> {
 }
 
 /// Shows every marker that lies inside the span of the bar where it lies, faded toward the
-/// ends and stacked in rows, and hides the bar while none does.
+/// ends, with their labels stacked in rows under the line. The bar shows even while empty.
 pub fn update(
     around: Around,
     markers: Res<Markers>,

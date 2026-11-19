@@ -69,6 +69,7 @@ fn spawn(mut commands: Commands) {
             prompt::line(),
             banner::block(),
             compass::bar(),
+            coords::corner(),
             minimap::frame()
         ],
     ));
@@ -103,7 +104,8 @@ pub(super) fn plugin(app: &mut App) {
     eye::plugin(app);
     compass::plugin(app);
     let every = on_timer(Duration::from_secs_f32(REFRESH));
-    let every_coords = on_timer(Duration::from_secs_f32(COORDS_EVERY));
+    let place = coords::update.run_if(on_timer(Duration::from_secs_f32(COORDS_EVERY)));
+    let marks = (compass::update, compass::north, place);
     app.init_resource::<banner::Banner>()
         .add_plugins(minimap::plugin)
         .add_systems(OnEnter(Screen::Gameplay), spawn)
@@ -116,9 +118,7 @@ pub(super) fn plugin(app: &mut App) {
                     .run_if(seated)
                     .run_if(every),
                 prompt::update.run_if(in_control),
-                (compass::update, coords::update.run_if(every_coords))
-                    .run_if(in_control)
-                    .in_set(MarkerSet::Show),
+                marks.run_if(in_control).in_set(MarkerSet::Show),
                 climate::update
                     .run_if(in_control)
                     .run_if(on_timer(Duration::from_secs_f32(CLIMATE_EVERY))),

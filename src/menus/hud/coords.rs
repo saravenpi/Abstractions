@@ -18,8 +18,24 @@ use crate::universe::{StarId, SystemSpec, Universe};
 #[derive(Component)]
 pub(super) struct Coords;
 
+/// The top-left corner of the screen: the coordinates line over the climate line, as far from
+/// the edges as the minimap is in the top-right corner.
+pub(super) fn corner() -> impl Bundle {
+    (
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(theme::GAP_M),
+            left: px(theme::GAP_M),
+            flex_direction: FlexDirection::Column,
+            row_gap: px(theme::GAP_XS),
+            ..default()
+        },
+        children![line(), super::climate::line()],
+    )
+}
+
 /// The coordinates line, hidden until there is something to say.
-pub(super) fn line() -> impl Bundle {
+fn line() -> impl Bundle {
     (
         Coords,
         Node {

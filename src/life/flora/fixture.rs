@@ -1,6 +1,7 @@
 //! Hand-built life for the plant tests: producer groups, a planet of them and the world they stand on.
 
 use crate::life::body::{Body, Locomotion};
+use crate::life::flora::{Dials, Stage, dials};
 use crate::life::{
     Activity, Chemistry, Energy, Guild, Habitat, History, Life, Plan, Relation, Role, Rung,
     Solvent, Species, SpeciesId, Structure, TissueKind, Tolerance, World,
@@ -30,6 +31,33 @@ pub fn world(gravity: f32, star: f32) -> World {
     }
 }
 
+/// The life history of every test producer group.
+const HISTORY: History = History {
+    mass: 10.0,
+    lifespan: 1.0e6,
+    clutch: 1,
+    group_min: 1,
+    group_max: 1,
+    care: 0.0,
+    speed: 0.0,
+    range: 0.0,
+};
+
+/// The empty body every producer group has.
+const BODY: Body = Body {
+    parts: Vec::new(),
+    legs: Vec::new(),
+    spine: None,
+    neck: None,
+    tail: None,
+    tentacles: Vec::new(),
+    wings: None,
+    locomotion: Locomotion::Swarm,
+    length: 0.0,
+    height: 0.0,
+    features: Vec::new(),
+};
+
 /// Returns producer group `index` of planet `planet`, of growth architecture `arch`, living in `tolerance`.
 pub fn producer(planet: u64, index: u16, arch: u8, tolerance: Tolerance) -> Species {
     let habitat = if arch == 6 {
@@ -53,32 +81,11 @@ pub fn producer(planet: u64, index: u16, arch: u8, tolerance: Tolerance) -> Spec
             level: 1.0,
         },
         tolerance,
-        history: History {
-            mass: 10.0,
-            lifespan: 1.0e6,
-            clutch: 1,
-            group_min: 1,
-            group_max: 1,
-            care: 0.0,
-            speed: 0.0,
-            range: 0.0,
-        },
+        history: HISTORY,
         tissues: Vec::new(),
         signature: TissueKind::Fibre,
         glow: None,
-        body: Body {
-            parts: Vec::new(),
-            legs: Vec::new(),
-            spine: None,
-            neck: None,
-            tail: None,
-            tentacles: Vec::new(),
-            wings: None,
-            locomotion: Locomotion::Swarm,
-            length: 0.0,
-            height: 0.0,
-            features: Vec::new(),
-        },
+        body: BODY,
         prey: Vec::new(),
     }
 }
@@ -114,4 +121,9 @@ pub fn garden(planet: u64, archs: &[u8], relations: Vec<Relation>) -> Life {
         .map(|(i, &arch)| producer(planet, i as u16, arch, MILD))
         .collect();
     life(Rung::Skeletal, GREEN, species, relations)
+}
+
+/// Returns the dials of producer `i` of `life` on a home-like world in a light wind at `stage`.
+pub fn of(life: &Life, i: usize, stage: Stage) -> Dials {
+    dials(life, &life.species[i], &world(9.81, 5800.0), 3.0, stage)
 }

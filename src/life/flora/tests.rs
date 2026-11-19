@@ -1,21 +1,11 @@
 //! Checks that plants follow their planet: gravity, wind, cold, drought, light, pollinators and seasons.
 
-use super::fixture::{GREEN, MILD, garden, life, producer, world};
+use super::fixture::{GREEN, MILD, garden, life, of, producer, world};
 use super::*;
 use crate::life::{Relation, Tolerance};
 
 /// Pigment of a planet under a red dwarf of 3000 K, red to black as the roadmap gives it.
 const RED_DWARF: [f32; 3] = [0.12, 0.015, 0.01];
-
-/// Returns the dials of producer `i` of `life` on a home-like world at `stage`.
-fn of(life: &Life, i: usize, stage: Stage) -> Dials {
-    dials(life, &life.species[i], &world(9.81, 5800.0), 3.0, stage)
-}
-
-/// Returns the luma of a linear colour.
-fn luma(c: [f32; 3]) -> f32 {
-    0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
-}
 
 /// Under a 3000 K star the leaves are redder and darker than under a 5800 K one.
 #[test]
@@ -29,6 +19,7 @@ fn leaves_under_a_red_dwarf_are_redder_and_darker() {
         );
         of(&life, 0, Stage::Green).paint.leaves.expect("in leaf")
     };
+    let luma = |c: [f32; 3]| 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
     let (red, sun) = (leaves(RED_DWARF), leaves(GREEN));
     assert!(red[0] / red[1] > sun[0] / sun[1], "{red:?} against {sun:?}");
     assert!(luma(red) < luma(sun), "{red:?} against {sun:?}");

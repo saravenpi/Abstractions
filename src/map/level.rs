@@ -1,0 +1,74 @@
+//! The levels of the map: a planet spread flat, or the charts of a system, a galaxy and the
+//! universe. The wheel goes from one to the next: past the closest zoom of the system chart,
+//! on a planet, it opens that planet, and past the whole planet it goes back to the system.
+
+use bevy::math::{DVec3, Vec2};
+use bevy::prelude::*;
+
+use super::geo::to_chart;
+use super::me::Me;
+use crate::computer::{Board, DIVE, Dot, Lens, MapView, Tab, Target};
+use crate::universe::BodyId;
+
+/// Zoom of the flat map the screen opens at on the ground: the land around the player.
+pub const GROUND: f32 = 16.0;
+
+/// Zoom of the flat map at which the planet fills the height of the map.
+pub const WHOLE: f32 = 2.0;
+
+/// Which level the map shows.
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Level {
+    /// The chart of the open tab of the board computer: a system, a galaxy or the universe.
+    #[default]
+    Chart,
+    /// The flat map of this planet or moon.
+    Planet(BodyId),
+}
+
+/// Run condition: the map shows a chart, or there is no map.
+pub fn charting(level: Option<Res<Level>>) -> bool {
+    level.is_none_or(|level| *level == Level::Chart)
+}
+
+/// Run condition: the map shows a planet.
+pub fn on_planet(level: Option<Res<Level>>) -> bool {
+    !charting(level)
+}
+
+/// Opens the map on the planet under the player, close on the ground, or on the system chart
+/// in space.
+pub(super) fn open(me: Me, mut level: ResMut<Level>, mut board: ResMut<Board>) {
+    let spot = me.spot();
+    *level = spot.map_or(Level::Chart, |(body, _)| Level::Planet(body));
+    if spot.is_some() && board.tab != Tab::System {
+        board.show(Tab::System);
+    }
+}
+
+/// Returns the lens a chart opens with when the map rises out of `body`: close on its mark,
+/// then easing out a little. Nothing when the chart has no mark of it.
+pub fn rise(view: &MapView, board: &Board, body: BodyId) -> Option<(Lens, Lens)> {
+    let row = board
+        .lines
+        .iter()
+        .position(|line| line.target == Target::Body(body))?;
+    let (_, at) = view.dots.iter().find(|(dot, _)| *dot == Dot::Row(row))?;
+    let close = |zoom: f32| Lens { zoom, centre: *at }.clamped();
+    Some((close(DIVE), close(DIVE * 0.5)))
+}
+
+/// Returns where the flat map of a planet looks first: on `focus` when it was asked for, on
+/// the player close to the ground when they are on it, and on the whole planet otherwise.
+pub fn first(focus: Option<DVec3>, here: Option<DVec3>) -> Lens {
+    let whole = Lens {
+        zoom: WHOLE,
+        centre: Vec2::ZERO,
+    };
+    let spot = focus.or(here).map(to_chart);
+    let lens = spot.map_or(whole, |centre| Lens {
+        zoom: GROUND,
+        centre,
+    });
+    lens.clamped()
+}

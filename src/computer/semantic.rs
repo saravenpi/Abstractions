@@ -3,8 +3,13 @@
 
 use bevy::math::Vec2;
 
+use super::board::Board;
+use super::chart::Dot;
 use super::lens::Lens;
+use super::pointer::MapView;
+use super::route::Target;
 use super::tab::Tab;
+use crate::universe::BodyId;
 
 /// Zoom from which one more notch into the place of the ship opens the chart inside it. A
 /// chart reached by zooming out opens at this zoom, so the way back is one notch away.
@@ -53,4 +58,17 @@ pub fn entry(from: Tab, to: Tab) -> (Lens, Lens) {
         centre: Vec2::ZERO,
     };
     (close(DIVE), close(DIVE * 0.5))
+}
+
+/// Returns the planet or the moon the wheel dives into on the system chart: the one under the
+/// pointer, when the wheel turns in at [`DIVE`] or closer.
+pub(super) fn dive(board: &Board, view: &MapView, notches: f32) -> Option<BodyId> {
+    let deep = board.tab == Tab::System && notches > 0.0 && view.goal.zoom >= DIVE;
+    let Some(Dot::Row(index)) = view.hover.filter(|_| deep) else {
+        return None;
+    };
+    match board.lines.get(index)?.target {
+        Target::Body(body) => Some(body),
+        _ => None,
+    }
 }

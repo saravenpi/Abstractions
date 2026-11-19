@@ -1,4 +1,4 @@
-//! The map of the computer panel and the pieces a chart is drawn with: the field, the sheet,
+//! The map of the map screen and the pieces a chart is drawn with: the field, the sheet,
 //! and the marks of a body, the ship, an orbit, a frame and a name.
 //!
 //! The marks are plain squares on a black field, like the rest of the interface. They sit on
@@ -37,6 +37,11 @@ pub struct Field;
 /// Marks the sheet the chart is drawn on, which the lens moves and sizes inside the field.
 #[derive(Component)]
 pub struct Sheet;
+
+/// Marks what is drawn of the charts of a system, a galaxy and the universe: the sheet, the
+/// legend and the pin toward home. It is hidden while the map shows a planet.
+#[derive(Component)]
+pub struct ChartLayer;
 
 /// Marks the bar whose length stands for the distance written above it.
 #[derive(Component)]
@@ -80,16 +85,20 @@ fn legend() -> impl Bundle {
     )
 }
 
-/// The empty map: a dark square with no frame that cuts what leaves it, holding the sheet
-/// under the legend and the pin that points home. `draw` fills the sheet.
+/// The empty map: a square that knows where the pointer is, holding the chart under its
+/// legend and the pin that points home, the planet and the markers of the players. `draw`
+/// fills the chart. The room around the square cuts what leaves it, so a zoomed chart runs
+/// on to the edges of the screen.
 pub fn field() -> impl Bundle {
-    let sheet = Node {
+    let side = px(measure(SMALLEST).map);
+    let cover = Node {
         position_type: PositionType::Absolute,
         width: percent(100),
         height: percent(100),
         ..default()
     };
-    let side = px(measure(SMALLEST).map);
+    let sheet = (Sheet, cover.clone());
+    let chart = (ChartLayer, cover, children![sheet, legend(), pin()]);
     (
         Field,
         RelativeCursorPosition::default(),
@@ -97,12 +106,9 @@ pub fn field() -> impl Bundle {
             width: side,
             height: side,
             flex_shrink: 0.0,
-            align_self: AlignSelf::Center,
-            overflow: Overflow::clip(),
             ..default()
         },
-        BackgroundColor(theme::STRIP),
-        children![(Sheet, sheet), legend(), pin()],
+        children![crate::map::planet_layer(), chart, crate::map::pin_layer()],
     )
 }
 

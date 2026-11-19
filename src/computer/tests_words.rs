@@ -105,7 +105,7 @@ fn a_lava_world_reads_its_molten_share() {
     );
 }
 
-/// Light reads against home with three digits, and the zone in two words at most.
+/// Light reads against home with three digits, and the zone says whether water can be liquid.
 #[test]
 fn light_and_zone_read_against_home() {
     let cases = [
@@ -120,7 +120,14 @@ fn light_and_zone_read_against_home() {
         assert_eq!(flux(light), shown, "{light}");
     }
     let zones = [Zone::Hot, Zone::Habitable, Zone::Cold].map(zone);
-    assert_eq!(zones, ["too hot", "habitable", "too cold"]);
+    assert_eq!(
+        zones,
+        [
+            "too hot for water",
+            "in the habitable zone",
+            "too cold for water"
+        ]
+    );
 }
 
 /// A tilt in radians reads in whole degrees.

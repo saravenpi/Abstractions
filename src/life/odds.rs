@@ -1,10 +1,10 @@
 //! Whether a planet lives, and how far evolution got there.
 //!
 //! Each liquid of the planet gives a suitability, combined as independent chances, then scaled by
-//! the needs every life shares: energy, air and a calm star. Abiogenesis is a Poisson process: life
-//! starts after a wait drawn at a rate that grows with the suitability and the speed of the
-//! chemistry, and only if that wait is shorter than the age of the star. The rung then follows the
-//! time life has had since, at the speed of its chemistry.
+//! the needs every life shares: energy, air, a calm star and a turning day. Abiogenesis is a
+//! Poisson process: life starts after a wait drawn at a rate that grows with the suitability and
+//! the speed of the chemistry, and only if that wait is shorter than the age of the star. The rung
+//! then follows the time life has had since, at the speed of its chemistry.
 
 mod tune;
 
@@ -33,19 +33,30 @@ const LADDER: [Rung; 5] = [
     Rung::Old,
 ];
 
+/// Returns `x` clamped to 0 to 1 and eased at both ends.
+fn ease(x: f32) -> f32 {
+    let x = x.clamp(0.0, 1.0);
+    x * x * (3.0 - 2.0 * x)
+}
+
 /// Returns the share of the needs every life shares that `world` meets with `solvent`, 0 to 1.
 ///
 /// Energy: starlight, with vents as a floor of 30 percent under a dim sky, and the heat of the
 /// melt itself for silicate life. Air: thin air keeps 40 percent. A calm star: red dwarfs under
-/// 3,900 K flare, down to 40 percent at 3,000 K and cooler.
+/// 3,900 K flare, down to 40 percent at 3,000 K and cooler. A turning day: the habitable zone of a
+/// cool star lies so close that tides lock the planet's day to its year, one face always lit and
+/// the other always dark, which halves the score under 3,200 K and fades out by 4,200 K. Tides
+/// grow fast with a smaller star and a closer orbit, so locking is likely for habitable-zone
+/// planets of M dwarfs: https://arxiv.org/abs/1708.02981
 fn needs(world: &World, solvent: Solvent) -> f32 {
     let energy = match solvent {
         Solvent::Silicate => 1.0,
         _ => 0.3 + 0.7 * (world.flux / 0.1).min(1.0),
     };
     let air = 0.4 + 0.6 * (world.pressure / 0.3).min(1.0);
-    let calm = ((world.star - 3000.0) / 900.0).clamp(0.0, 1.0);
-    energy * air * (0.4 + 0.6 * calm * calm * (3.0 - 2.0 * calm))
+    let calm = 0.4 + 0.6 * ease((world.star - 3000.0) / 900.0);
+    let turning = 1.0 - 0.5 * ease((4200.0 - world.star) / 1000.0);
+    energy * air * calm * turning
 }
 
 /// Returns the solvent life on `world` would use and how well the planet suits life, 0 to 1, or
@@ -73,15 +84,15 @@ fn harshness(world: &World, solvent: Solvent) -> usize {
 
 /// Returns the rung life on `world` with `solvent` reached after `years` billion years.
 ///
-/// Each 2.2 billion years at the chemical speed of the planet climb one rung, harshness takes
-/// rungs away, and molten silicate life never gets past shells.
+/// Each 1.3 billion years at the chemical speed of the planet climb one rung, harshness takes
+/// rungs away, and molten silicate life never gets past mats.
 fn ladder(world: &World, solvent: Solvent, years: f32) -> Rung {
     let climbed = (years * speed(world.temperature) / RUNG_GYR) as usize;
     let rung = LADDER[climbed
         .saturating_sub(harshness(world, solvent))
         .min(LADDER.len() - 1)];
     match solvent {
-        Solvent::Silicate => rung.min(Rung::Shelled),
+        Solvent::Silicate => Rung::Mats,
         _ => rung,
     }
 }

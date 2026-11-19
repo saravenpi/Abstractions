@@ -17,10 +17,17 @@ const FULL: f32 = 0.3;
 /// lakes the record does not track.
 const UNTRACKED: f32 = 0.3;
 
+/// Share of the odds of life kept by molten silicate, the most speculative chemistry: no known
+/// molecule long enough to carry a code survives 1,500 K, so lava life stays a rare film.
+const SPECULATIVE: f32 = 0.01;
+
 /// A solvent as life sees it.
 struct Liquid {
     /// Which solvent.
     solvent: Solvent,
+    /// Share of the odds a chemistry this well known keeps: 1 for the solvents whose chemistry is
+    /// worked out in a lab, less for speculative ones.
+    known: f32,
     /// Kelvin at which it freezes.
     melts: f32,
     /// Kelvin at which it boils under one home atmosphere.
@@ -36,6 +43,7 @@ struct Liquid {
 const LIQUIDS: [Liquid; 4] = [
     Liquid {
         solvent: Solvent::Water,
+        known: 1.0,
         melts: 273.15,
         boils: 373.15,
         latent: 4890.0,
@@ -43,6 +51,7 @@ const LIQUIDS: [Liquid; 4] = [
     },
     Liquid {
         solvent: Solvent::Ammonia,
+        known: 1.0,
         melts: 195.4,
         boils: 239.8,
         latent: 2808.0,
@@ -50,6 +59,7 @@ const LIQUIDS: [Liquid; 4] = [
     },
     Liquid {
         solvent: Solvent::Hydrocarbon,
+        known: 1.0,
         melts: 90.4,
         boils: 184.6,
         latent: 1767.0,
@@ -57,6 +67,7 @@ const LIQUIDS: [Liquid; 4] = [
     },
     Liquid {
         solvent: Solvent::Silicate,
+        known: SPECULATIVE,
         melts: 1300.0,
         boils: 3500.0,
         latent: 0.0,
@@ -102,13 +113,13 @@ fn amount(solvent: Solvent, world: &World) -> f32 {
 }
 
 /// Returns how well `solvent` on `world` suits life, from 0 to 1: liquid at its temperature and
-/// pressure, near the solvent's best band, and in a large amount.
+/// pressure, near the solvent's best band, in a large amount, and of a known chemistry.
 pub fn suitability(world: &World, solvent: Solvent) -> f32 {
     LIQUIDS
         .iter()
         .find(|l| l.solvent == solvent)
         .map_or(0.0, |l| {
-            fit(l, world.temperature, world.pressure) * amount(solvent, world)
+            l.known * fit(l, world.temperature, world.pressure) * amount(solvent, world)
         })
 }
 

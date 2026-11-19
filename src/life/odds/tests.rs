@@ -38,6 +38,7 @@ fn of(planet: &PlanetSpec, star: &StarSpec) -> Option<Rung> {
 ///
 /// The universe puts a liquid water world in about 84 percent of the systems near home, and an
 /// Earth twin lives in more than 90 percent of its universes, so the share sits near 0.88.
+/// The planet wave will bring it to 20 to 40 percent by making water worlds rarer.
 #[test]
 fn living_systems_are_a_sane_share() {
     let systems = systems(400);
@@ -50,19 +51,28 @@ fn living_systems_are_a_sane_share() {
     assert!((0.15..0.95).contains(&share), "living share {share}");
 }
 
-/// Lava, barren and gas giant worlds never reach skeletal life; the latter two never live at all.
+/// Barren worlds and gas giants never live, and lava worlds rarely do, at most 5 percent of them,
+/// and only as mats. Prints the share of lava worlds that live.
 #[test]
 fn harsh_worlds_stay_low() {
+    let (mut lava, mut living) = (0, 0);
     for (star, bodies) in systems(600) {
         for planet in bodies {
             let rung = of(&planet, &star);
             match planet.record.class {
                 PlanetClass::Barren | PlanetClass::GasGiant => assert_eq!(rung, None),
-                PlanetClass::Lava => assert!(rung.is_none_or(|r| r <= Rung::Shelled)),
+                PlanetClass::Lava => {
+                    assert!(rung.is_none_or(|r| r == Rung::Mats));
+                    lava += 1;
+                    living += usize::from(rung.is_some());
+                }
                 _ => {}
             }
         }
     }
+    let share = living as f32 / lava as f32;
+    println!("lava worlds living: {living} of {lava}, {share:.3}");
+    assert!(share <= 0.05, "lava living share {share}");
 }
 
 /// The same world and seed always give the same rung, and every rung shows up somewhere.

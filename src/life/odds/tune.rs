@@ -10,7 +10,12 @@
 pub const RATE: f32 = 2.0;
 
 /// Billions of years evolution takes to climb one rung at the chemical speed of water at 288 K.
-pub const RUNG_GYR: f32 = 2.2;
+///
+/// Anchored on the Earth: from the first evidence of life, 3.85 to 4.1 billion years ago, to the
+/// Cambrian explosion, 538.8 million years ago, took about 3.3 to 3.6 billion years over three
+/// rungs, mats to soft to shelled to skeletal. Rounded to 1.3, an Earth twin reaches skeletal life
+/// about 4 billion years after it starts: https://en.wikipedia.org/wiki/Cambrian_explosion
+pub const RUNG_GYR: f32 = 1.3;
 
 /// Oldest a star gets, in billions of years.
 pub const OLDEST: f32 = 12.0;

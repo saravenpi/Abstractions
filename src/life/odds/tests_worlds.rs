@@ -47,3 +47,22 @@ fn cold_chemistry_is_slow() {
     assert!(speed(288.0) == 1.0 && speed(400.0) == 1.0);
     assert!(speed(220.0) < 0.7 && speed(220.0) > speed(94.0) && speed(94.0) < 0.05);
 }
+
+/// A red dwarf takes away odds twice, for its flares and for the tides that lock its close planets.
+#[test]
+fn red_dwarfs_flare_and_lock() {
+    let sun = world(1.0, 288.0, 1.0, 0.6);
+    let dwarf = World {
+        star: 3000.0,
+        ..sun
+    };
+    let suits = |w: &World| suitability(w).map_or(0.0, |(_, s)| s);
+    assert!((suits(&dwarf) - 0.2 * suits(&sun)).abs() < 1e-4);
+    assert_eq!(
+        suits(&World {
+            star: 4300.0,
+            ..sun
+        }),
+        suits(&sun)
+    );
+}

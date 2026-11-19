@@ -64,6 +64,11 @@ fn modules(app: &mut App) {
         audio::plugin,
         companion::plugin,
     ));
+    later_modules(app);
+}
+
+/// Adds the modules that build on the ones above, with the camera rig driving the game camera.
+fn later_modules(app: &mut App) {
     app.add_plugins((
         home::plugin,
         avatar::plugin,

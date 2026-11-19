@@ -3,15 +3,6 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
-
-### Changed
-
-- The map's side panel card is easier to read: the place's name, what it is and what it turns around, then one fact per row under Surface, Climate, Body and Time, with the label on the left and the value on the right. Stars and galaxies get the same layout.
-- The buttons for a place sit on its card, under its name: Set course, Engage autopilot, Clear course, Focus, Set waypoint and Save as favourite. When the drive cannot engage, the card says why. The line at the bottom left of the map now only shows a route in flight.
-- The map's header shows the path once, with the Back button on its own row above it.
-- The habitable zone reads "in the habitable zone", "too hot for water" or "too cold for water".
-
 ## [0.10.1] - 2026-11-19
 
 Players and servers must both run 0.10.1: the multiplayer protocol changed.
@@ -35,6 +26,10 @@ Players and servers must both run 0.10.1: the multiplayer protocol changed.
 - The compass stays on screen, fades its marks toward its ends and hides what is behind you, like a real compass, and shows any number of marks, all on one line.
 - When a course is set, one line always says what happens next: "G Engage autopilot", or exactly why the drive waits, such as "Inside 3 planet radii (now 1.4): fly out first". G engages from the cockpit without opening the map.
 - The minimap range moved from M to N.
+- The map's side panel card is easier to read: the place's name, what it is and what it turns around, then one fact per row under Surface, Climate, Body and Time, with the label on the left and the value on the right. Stars and galaxies get the same layout.
+- The buttons for a place sit on its card, under its name: Set course, Engage autopilot, Clear course, Focus, Set waypoint and Save as favourite. When the drive cannot engage, the card says why. The line at the bottom left of the map now only shows a route in flight.
+- The map's header shows the path once, with the Back button on its own row above it.
+- The habitable zone reads "in the habitable zone", "too hot for water" or "too cold for water".
 - The wingsuit rolls freely: hold A or D to roll over and fly on your back, S pulls toward your back and loops with the boosters, W pushes the nose down, Q and E turn gently. Let go and the wings come level by themselves.
 - Below flying speed the wingsuit lowers its nose by itself, and spreading it again in mid-air carries on along your path.
 - In flight the camera and the robot roll with you all the way round.

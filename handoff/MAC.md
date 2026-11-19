@@ -6,6 +6,10 @@ Written 2026-11-19 on the owner's MacBook (Apple M2, 8 cores, 16 GB). It replace
 
 Kodya is not special-cased. Its life comes from the same odds and rung rules as every planet: no forced `Rung::Skeletal`, and no herd guaranteed near the wake point. If the normal rules do not make an Earth-like home planet live, fix the physics they read and report the numbers to the owner; never add a home-planet override. The same holds for plants: on a living globe Kodya's plants come from its life through the normal planting, not the old hand-made tables, so its look changes in 0.11.
 
+## Owner decision, 2026-11-19: home is chosen, not made (overrides PLANETS.md and HANDOFF.md)
+
+Kodya and Vereya are no longer hand-made. Remove `PlanetRecord::TEMPERATE` as the home record and every fixed home value (the 6,371 km radius, the 86,164 s spin and the single impact moon that PLANETS.md and HANDOFF.md set). The universe is generated with the normal rules for every planet; then the home is picked: the nearest planet to the universe's centre that is solid, landable and alive under the normal life odds. If no living planet lies within a reasonable search (say the nearest few hundred systems), take the most suitable solid planet and report it. The chosen planet is named Kodya and its star Vereya, so the story, the README and the site stay. The same seed gives the same home, so multiplayer still agrees on it. The home base, the wake point and every `HOME_PLANET_NAME` / `is_home` check follow the chosen planet. Old saves open with their own release, as already planned. This belongs to the planet waves (P1, with units and moons) and needs the new life odds from `eco-core` first.
+
 ## Paths
 
 | What | Path |

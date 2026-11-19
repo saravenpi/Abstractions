@@ -38,6 +38,7 @@ impl Host for Room {
                 out.send(conn, ServerMsg::Pong { id, sent, clock });
             }
             ClientMsg::Bye => self.leave(conn, out),
+            ClientMsg::Explored { .. } | ClientMsg::Waypoint(_) => {}
         }
     }
 

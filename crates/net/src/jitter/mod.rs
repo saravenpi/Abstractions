@@ -8,12 +8,19 @@
 //! the caller blends itself with the weight it is handed.
 //!
 //! Positions are in the frame of the record. The buffer cannot tell frames apart, so it would
-//! blend a surface position into an orbital one: the caller must [`Buffer::reset`] it whenever
-//! the frame of a body changes.
+//! blend a surface position into an orbital one: whenever the frame of a body changes, the
+//! caller must convert the snapshots with [`Buffer::rebase`], or forget them with
+//! [`Buffer::reset`].
 
 mod buffer;
 #[cfg(test)]
 mod buffer_tests;
+mod frame;
+#[cfg(test)]
+mod frame_tests;
+mod lag;
+#[cfg(test)]
+mod lag_tests;
 mod ring;
 #[cfg(test)]
 mod ring_tests;

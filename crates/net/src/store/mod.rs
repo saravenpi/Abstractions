@@ -33,6 +33,8 @@ pub struct Member {
     pub place: String,
     /// The player's ship, as the game wrote it.
     pub ship: String,
+    /// The player's saved places, as the game wrote them.
+    pub marks: String,
 }
 
 impl Member {
@@ -41,6 +43,7 @@ impl Member {
         PlayerRecord {
             place: self.place.clone(),
             ship: self.ship.clone(),
+            marks: self.marks.clone(),
         }
     }
 }

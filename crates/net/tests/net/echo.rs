@@ -85,5 +85,7 @@ fn welcome(conn: ConnId, now: f64) -> Welcome {
         atlas: String::new(),
         record: None,
         players: Vec::new(),
+        explored: Vec::new(),
+        waypoints: Vec::new(),
     }
 }

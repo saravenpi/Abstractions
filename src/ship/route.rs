@@ -155,7 +155,8 @@ pub fn report(
     if autopilot.phase != Phase::Arrived {
         *arrived = autopilot.target;
     }
-    let left = autopilot.phase == Phase::Arrived && destination.0 != *arrived;
+    let other = destination.0.is_some_and(|wanted| Some(wanted) != *arrived);
+    let left = autopilot.phase == Phase::Arrived && other;
     let phase = [autopilot.phase, Phase::Idle][usize::from(left)];
     let (universe, time) = (&cosmos.universe, cosmos.clock.seconds);
     let here = ship_position(universe, ship.frame, ship.pos, time);

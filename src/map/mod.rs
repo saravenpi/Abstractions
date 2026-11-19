@@ -19,6 +19,7 @@ mod geo;
 mod geo_tests;
 mod glance;
 mod level;
+mod link;
 mod me;
 mod pins;
 mod pins_draw;
@@ -36,6 +37,7 @@ pub use fade::veil;
 pub use favourite::Favourites;
 pub use geo::{coords as place_words, from_chart, lat_lon, to_chart};
 pub use level::{Level, charting, on_planet};
+pub use link::{from_wire, marks_of, marks_text, to_wire};
 pub use pins::pin_layer;
 pub use planet::{caption, coords, planet_layer};
 pub use side::{favourites, players};
@@ -46,6 +48,7 @@ use bevy::prelude::*;
 
 use crate::computer::Computer;
 use crate::menus::MarkerSet;
+use crate::net::{Link, Receive};
 use crate::screens::{in_control, playing};
 
 /// Run condition: the map screen is open.
@@ -99,5 +102,13 @@ pub(super) fn plugin(app: &mut App) {
                 favourite::name_keys.run_if(open),
                 action::engage.run_if(in_control),
             ),
+        )
+        .add_systems(
+            Update,
+            (
+                link::receive.after(Receive),
+                link::send.after(waypoint::drop_key),
+            )
+                .run_if(resource_exists::<Link>),
         );
 }

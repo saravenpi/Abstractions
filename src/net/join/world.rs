@@ -60,6 +60,7 @@ pub fn world_of(welcome: &Welcome, name: &str) -> WorldEntry {
             .map(toml::Value::Table),
         changes: welcome.changes.clone(),
         play_seconds,
+        marks: crate::map::marks_of(&record.marks),
         ..WorldSave::default()
     };
     WorldEntry {
@@ -68,8 +69,8 @@ pub fn world_of(welcome: &Welcome, name: &str) -> WorldEntry {
     }
 }
 
-/// Returns what the server keeps of the player from a captured save: the place and the ship
-/// as TOML text, each empty when unknown.
+/// Returns what the server keeps of the player from a captured save: the place, the ship and
+/// the favourites as TOML text, each empty when unknown.
 pub fn record_of(save: &WorldSave) -> PlayerRecord {
     let text = |value: Option<String>| value.unwrap_or_default();
     PlayerRecord {
@@ -79,6 +80,6 @@ pub fn record_of(save: &WorldSave) -> PlayerRecord {
                 .as_ref()
                 .and_then(|ship| toml::to_string(ship).ok()),
         ),
-        ..PlayerRecord::default()
+        marks: crate::map::marks_text(&save.marks),
     }
 }

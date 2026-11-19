@@ -54,3 +54,20 @@ fn a_level_fades_in_and_opens_where_asked() {
     let asked = first(Some(DVec3::Z), Some(here));
     assert!(asked.centre.distance(to_chart(DVec3::Z)) < 1e-6);
 }
+
+#[test]
+fn favourites_and_waypoints_cross_the_wire() {
+    use super::{from_wire, marks_of, marks_text, to_wire};
+    let mut favourites = Favourites::default();
+    favourites.save(BodyId::default(), DVec3::Z);
+    assert_eq!(marks_of(&marks_text(&favourites.0)), favourites.0);
+    assert_eq!((marks_text(&[]), marks_of("")), (String::new(), Vec::new()));
+    let mut waypoints = Waypoints::default();
+    toggle(
+        &mut waypoints,
+        Some((BodyId::default(), DVec3::new(3.0, 4.0, 0.0))),
+    );
+    let mine = waypoints.mine.unwrap();
+    let back = from_wire(&to_wire(&mine)).unwrap();
+    assert!(back.dir.distance(mine.dir) < 1e-6 && back.body == mine.body);
+}

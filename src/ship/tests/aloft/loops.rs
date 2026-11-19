@@ -1,26 +1,30 @@
-//! Loops on the wings in a whole game: a pitch key held down, through the real keys, the view
-//! rig and the gear, from an ordinary glide and from powered flight, in both views.
-
-use std::f32::consts::TAU;
+//! No loops on the wings in a whole game: a pitch key held down, through the real keys, the
+//! view rig and the gear, from an ordinary glide and from powered flight, in both views. The key
+//! asks for an attitude, so the body holds the climb or the dive limit and never goes round.
 
 use bevy::prelude::*;
 
 use super::watch::Watch;
 use super::{Body, Game};
 use crate::gear::Mode;
+use crate::gear::tune::{CLIMB_LIMIT, DIVE_LIMIT};
 use crate::player::wrap;
 use crate::space::{Anchor, up};
 use crate::view::{CameraPose, Heading, ViewMode, ViewPrefs};
 
 /// Height above the sea the flights start at, in metres: low enough for the full grip of the
-/// air, high enough to fall through a slow loop.
+/// air, high enough to hold a dive.
 const START: f32 = 520.0;
 
 /// Frames a flight is left alone to settle before the key is held, at 30 frames per second.
 const SETTLE: usize = 150;
 
-/// Frames the key may be held for the body to come all the way round.
-const PATIENCE: usize = 540;
+/// Frames the key is held: long enough to come all the way round, were loops still possible.
+const HELD: usize = 120;
+
+/// Margins in radians the nose and the flight path may run past the climb and dive limits: the
+/// path runs a little under the nose, by the angle of attack.
+const MARGIN: (f32, f32) = (0.02, 0.15);
 
 /// Largest move of the camera relative to the body in one frame, in metres, and its largest
 /// turn in radians: a view that follows smoothly stays far under both, a snap or a flip does not.
@@ -79,31 +83,34 @@ fn takes_wing(game: &mut Game, watch: &mut Watch, powered: bool) -> Body {
     game.body()
 }
 
-/// Holds `key` until the nose has come all the way round, `sign` being 1 for a pull up and -1
-/// for a push down, and returns how many frames it took. Fails when the body hangs.
-fn rounds(game: &mut Game, eye: &mut Eye, key: KeyCode, sign: f32) -> usize {
-    let start = game.body().gear.state.pitch;
+/// Holds `key` for [`HELD`] frames and checks every frame that the nose and the flight path
+/// stay inside the climb and dive limits, the back of the body faces the sky and the wings
+/// stay spread.
+fn holds(game: &mut Game, eye: &mut Eye, key: KeyCode) {
     game.press(key);
-    let mut frames = 0;
-    while sign * (game.body().gear.state.pitch - start) < TAU - 0.35 {
+    for frame in 0..HELD {
         eye.step(game);
-        frames += 1;
         let state = game.body().gear.state;
-        let (turned, view) = (state.pitch - start, game.get::<Heading>().pitch);
+        let (v, pitch) = (state.velocity, state.pitch);
+        let path = v.y.atan2(v.with_y(0.0).length());
+        let inside =
+            |angle: f32, margin: f32| (DIVE_LIMIT - margin..=CLIMB_LIMIT + margin).contains(&angle);
         assert!(
-            frames < PATIENCE,
-            "the body hangs {turned} rad round at {} m/s, the view at {view} rad",
-            state.airspeed
+            inside(pitch, MARGIN.0),
+            "frame {frame}: the nose at {pitch} rad"
         );
-        assert!(state.mode.winged(), "the wings folded {turned} rad round");
+        assert!(
+            inside(path, MARGIN.1),
+            "frame {frame}: the path at {path} rad"
+        );
+        let back = (state.frame() * Vec3::Y).y;
+        assert!(back > 0.3, "frame {frame}: the back faces {back}");
+        assert!(state.mode.winged(), "frame {frame}: the wings folded");
     }
     game.release(key);
-    frames
 }
 
-/// Frames a flight may take after the key is let go to fly nose first where the view looks. A
-/// clean loop does at once. A body that fell through a slow one comes out slipping and turns
-/// back onto the view.
+/// Frames a flight may take after the key is let go to fly nose first where the view looks.
 const RECOVERY: usize = 300;
 
 /// Returns how far the nose of the body is from where the view looks, around the vertical,
@@ -114,7 +121,7 @@ fn astray(game: &mut Game) -> (f32, f32) {
     (wrap(state.servo.yaw - view).abs(), state.aoa.abs())
 }
 
-/// Checks that the flight comes out of a loop the way it went in: on its wings, the right way
+/// Checks that the flight comes out of the held key the way it went in: on its wings, the right way
 /// up, flying nose first where the view looks, with the camera upright behind it.
 fn comes_out_level(game: &mut Game, eye: &mut Eye, what: &str) {
     let mut frames = 0;
@@ -144,9 +151,9 @@ fn comes_out_level(game: &mut Game, eye: &mut Eye, what: &str) {
     assert!(body.height > 30.0, "{what}: ended at {} m", body.height);
 }
 
-/// Flies a loop up with the back key and a loop down with the forward key, from a glide and
-/// from powered flight, in the view `mode`.
-fn loops_both_ways(tag: &str, mode: ViewMode) {
+/// Holds the back key and the forward key, from a glide and from powered flight, in the view
+/// `mode`, and checks that the heading is where it was.
+fn holds_both_ways(tag: &str, mode: ViewMode) {
     let mut game = Game::full(tag);
     let game = &mut game;
     game.start("Loops", None);
@@ -154,34 +161,33 @@ fn loops_both_ways(tag: &str, mode: ViewMode) {
     game.app.world_mut().resource_mut::<ViewPrefs>().on_foot = mode;
     let mut watch = Watch::default();
     let keys = [
-        (game.bound(|keys| keys.back), 1.0),
-        (game.bound(|keys| keys.forward), -1.0),
+        (game.bound(|keys| keys.back), "climbing"),
+        (game.bound(|keys| keys.forward), "diving"),
     ];
     for powered in [false, true] {
-        for (key, sign) in keys {
-            let what = format!("{mode:?}, powered {powered}, turning {sign}");
+        for (key, how) in keys {
+            let what = format!("{mode:?}, powered {powered}, {how}");
             let before = takes_wing(game, &mut watch, powered);
             let mut eye = Eye::default();
-            let frames = rounds(game, &mut eye, key, sign);
+            holds(game, &mut eye, key);
             comes_out_level(game, &mut eye, &what);
             let turned = wrap(game.body().gear.state.servo.yaw - before.gear.state.servo.yaw);
-            let clean = powered && sign > 0.0 && mode == ViewMode::First;
-            assert!(!clean || turned.abs() < 0.5, "{what}: {turned} rad off");
-            println!("loops: {what}: {frames} frames, camera {:?}", eye.worst);
+            assert!(turned.abs() < 0.2, "{what}: {turned} rad off");
+            println!("holds: {what}: camera {:?}", eye.worst);
             game.release(game.bound(|keys| keys.sprint));
         }
     }
 }
 
-/// In first person a held pitch key takes the body all the way round, both ways, from a plain
-/// glide and from powered flight, and the view follows without a snap and ends upright.
+/// In first person a held pitch key holds the climb or the dive limit and never loops, from a
+/// plain glide and from powered flight, and the view follows without a snap and ends upright.
 #[test]
-fn a_held_key_loops_in_first_person() {
-    loops_both_ways("loops-first", ViewMode::First);
+fn a_held_key_never_loops_in_first_person() {
+    holds_both_ways("holds-first", ViewMode::First);
 }
 
 /// In third person a held pitch key does the same, and the camera stays behind the body.
 #[test]
-fn a_held_key_loops_in_third_person() {
-    loops_both_ways("loops-third", ViewMode::Third);
+fn a_held_key_never_loops_in_third_person() {
+    holds_both_ways("holds-third", ViewMode::Third);
 }

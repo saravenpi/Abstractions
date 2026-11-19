@@ -1,16 +1,12 @@
 //! The eyes of the body: what the camera rig follows on foot and in flight.
 
-use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::controller::Motion;
-use super::intent::axis;
 use super::upright::tilt;
 use super::{Player, PlayerSet, local, wrap};
-use crate::gear::stick::{self, Hands, Stick};
 use crate::gear::{FlightState, Gear};
 use crate::screens::{in_control, playing};
-use crate::settings::{Persistent, Settings};
 use crate::sim::PlayerId;
 use crate::space::{Anchor, on_foot, up};
 use crate::view::{Heading, Kind, Look, Target, ViewSet};
@@ -43,30 +39,18 @@ pub(super) fn kind(state: &FlightState) -> Kind {
     }
 }
 
-/// The aim of the local body on its wings, see [`crate::gear::stick`], kept between frames.
+/// What the chase view of the local body on its wings keeps between frames.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
-pub struct WingAim {
-    /// The stick, with the heading and pitch the wings are asked to fly along.
-    pub stick: Stick,
+pub struct WingView {
+    /// Nose heading and frame pitch of the body on the last frame, while on the wings.
+    last: Option<Vec2>,
     /// Seconds the steer button has been up and the mouse left alone.
     idle: f32,
 }
 
-/// The hands of the player at this machine: the keys, the mouse buttons and their bindings.
-#[derive(SystemParam)]
-pub(super) struct Controls<'w> {
-    /// The held keys.
-    keys: Res<'w, ButtonInput<KeyCode>>,
-    /// The held mouse buttons.
-    buttons: Res<'w, ButtonInput<MouseButton>>,
-    /// The key bindings.
-    settings: Res<'w, Persistent<Settings>>,
-}
-
 /// Returns the turn that drifts a view at `view` back behind a body in `state` in `dt` seconds,
 /// nothing before the view has been left alone for [`SETTLE`]. It goes to the nose heading and
-/// the pitch of the flight frame, all the way round a loop, at [`RETURN`] and never faster
-/// than [`SWING`].
+/// the pitch of the flight frame at [`RETURN`] and never faster than [`SWING`].
 pub(super) fn drift(state: &FlightState, view: Vec2, idle: f32, dt: f32) -> Vec2 {
     if idle < SETTLE {
         return Vec2::ZERO;
@@ -75,43 +59,41 @@ pub(super) fn drift(state: &FlightState, view: Vec2, idle: f32, dt: f32) -> Vec2
     (gap * (1.0 - (-RETURN * dt).exp())).clamp_length_max(SWING * dt)
 }
 
-/// Steers the aim of the local body on its wings and turns its view.
+/// Turns the view of the local body on its wings: a chase view.
 ///
-/// Off the wings the aim is the view, so that spreading them flies on toward where the player
-/// looks. On them the keys turn the aim and the view together, the mouse turns the view, and
-/// the view aims the flight only while [`STEER`] is held, see [`crate::gear::stick::steer`].
-/// With the button up and the mouse left alone the view drifts back behind the body.
+/// The mouse looks around freely. With the steer button up the view also turns with the body,
+/// by as much as its nose heading and pitch turned since the last frame, and once left alone
+/// it drifts back behind the body. With the button held the view is the aim of the flight, so
+/// it turns with the mouse alone: carried with the body as well, it would chase its own turn.
 pub(super) fn steer(
     time: Res<Time>,
-    controls: Controls,
+    buttons: Res<ButtonInput<MouseButton>>,
     players: Query<(&PlayerId, &Gear), With<Player>>,
     (heading, mut look): (Res<Heading>, ResMut<Look>),
-    mut wing: ResMut<WingAim>,
+    mut wing: ResMut<WingView>,
 ) {
     let Some(gear) = local(players.iter().map(|(id, gear)| (*id, gear))) else {
         return;
     };
-    let view = Vec2::new(heading.yaw, heading.pitch);
-    let mouse = Vec2::new(look.yaw_delta, look.pitch_delta);
-    if !gear.state.mode.winged() {
-        (wing.stick, wing.idle) = (Stick::at(view + mouse), 0.0);
+    let state = &gear.state;
+    if !state.mode.winged() {
+        *wing = WingView::default();
         return;
     }
-    let (dt, map) = (time.delta_secs(), &controls.settings.controls.keys);
-    let hands = Hands {
-        pitch: axis(&controls.keys, map.back, map.forward),
-        roll: axis(&controls.keys, map.right, map.left),
-        held: controls.buttons.pressed(STEER),
-        mouse,
-        view,
+    let (dt, held) = (time.delta_secs(), buttons.pressed(STEER));
+    let body = Vec2::new(state.servo.yaw, state.pitch);
+    let mouse = Vec2::new(look.yaw_delta, look.pitch_delta);
+    let carry = match (held, wing.last) {
+        (false, Some(last)) => Vec2::new(wrap(body.x - last.x), body.y - last.y),
+        _ => Vec2::ZERO,
     };
-    let steered = stick::steer(&wing.stick, &gear.in_air(), &hands, dt);
-    wing.stick = steered.stick;
-    wing.idle = match hands.held || mouse != Vec2::ZERO {
+    wing.last = Some(body);
+    wing.idle = match held || mouse != Vec2::ZERO {
         true => 0.0,
         false => wing.idle + dt,
     };
-    let turn = steered.turn + drift(&gear.state, view, wing.idle, dt);
+    let view = Vec2::new(heading.yaw, heading.pitch) + carry;
+    let turn = mouse + carry + drift(state, view, wing.idle, dt);
     (look.yaw_delta, look.pitch_delta) = (turn.x, turn.y);
 }
 
@@ -151,11 +133,11 @@ pub(super) fn aim(
     };
 }
 
-/// Registers the steering of the wings, before the intents are sent, and the feed of the
+/// Registers the chase view of the wings, before the intents are sent, and the feed of the
 /// camera rig, after the controller moved the body and before the rig.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Target>()
-        .init_resource::<WingAim>()
+        .init_resource::<WingView>()
         .init_resource::<ButtonInput<MouseButton>>()
         .add_systems(
             Update,

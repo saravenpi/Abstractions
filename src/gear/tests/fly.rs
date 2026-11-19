@@ -3,8 +3,11 @@
 use bevy::prelude::*;
 
 use super::measure::settled_flight;
-use super::pilot::{Pilot, keys};
+use super::pilot::powered;
 use super::{DT, Flight, flying};
+use std::f32::consts::FRAC_PI_2;
+
+use crate::gear::tune::{CLIMB_LIMIT, STALL_SPEED};
 use crate::gear::{GearInput, Mode};
 
 /// The documented range of the top level speed at sea level on the home planet.
@@ -24,18 +27,20 @@ fn level_flight_is_sustainable() {
     assert!(flight.state.velocity.y.abs() < 0.5);
 }
 
-/// The back key tapped for a quarter second sets a climb that holds: 200 m in well under a
-/// minute.
+/// The back key held climbs under power, 200 m in well under a minute. Let go, the flight
+/// levels out and holds its height.
 #[test]
 fn powered_flight_climbs() {
-    let mut pilot = Pilot::on(Flight::new(Mode::Fly, Vec3::new(0.0, 0.0, -40.0)), 0.0);
-    pilot.run(&keys(1.0, 0.0), &flying(0.0), 0.25);
-    pilot.run(&keys(0.0, 0.0), &flying(0.0), 25.0);
-    assert!(pilot.flight.pos.y > 200.0, "climbed {}", pilot.flight.pos.y);
+    let mut flight = Flight::new(Mode::Fly, Vec3::new(0.0, 0.0, -40.0));
+    flight.run(&powered(1.0, 0.0), 20.0);
+    assert!(flight.pos.y > 200.0, "climbed {}", flight.pos.y);
+    flight.run(&powered(0.0, 0.0), 20.0);
+    let climb = flight.state.velocity.y;
+    assert!(climb.abs() < 1.0, "not level: {climb}");
 }
 
-/// The level top speed is inside the documented range, set by drag, and a dive the forward key
-/// set for half a second is faster.
+/// The level top speed is inside the documented range, set by drag, and a dive on the forward
+/// key is faster.
 #[test]
 fn top_speed_is_in_range() {
     let (level, climb) = settled_flight(0.0);
@@ -44,10 +49,9 @@ fn top_speed_is_in_range() {
         "level {level}"
     );
     assert!(climb.abs() < 0.5, "not level: {climb}");
-    let mut dive = Pilot::on(Flight::new(Mode::Fly, Vec3::new(0.0, 0.0, -40.0)), 0.0);
-    dive.run(&keys(-1.0, 0.0), &flying(0.0), 0.5);
-    dive.run(&keys(0.0, 0.0), &flying(0.0), 30.0);
-    let fast = dive.flight.state.airspeed;
+    let mut dive = Flight::new(Mode::Fly, Vec3::new(0.0, 0.0, -40.0));
+    dive.run(&powered(-1.0, 0.0), 10.0);
+    let fast = dive.state.airspeed;
     assert!(fast > level + 15.0, "dive {fast}");
 }
 
@@ -66,18 +70,32 @@ fn hovering_is_impossible() {
     }
 }
 
-/// Looking straight up from rest never rises above the start.
+/// The view straight up and the back key held from rest never rise above the start until the
+/// wings fly: the nose cannot point past the climb limit, so the boosters only lift the body
+/// once it has run past the stall speed, where the wings carry it.
 #[test]
 fn straight_up_from_rest_never_rises() {
     let mut flight = Flight::new(Mode::Fly, Vec3::ZERO);
     let input = GearInput {
         pitch: 1.0,
         look: Vec3::Y,
+        aim: Some(Vec2::new(0.0, FRAC_PI_2)),
         ..flying(0.0)
     };
     for _ in 0..300 {
         flight.tick(&input, DT);
-        assert!(flight.pos.y <= 0.0, "rose to {}", flight.pos.y);
+        let slow = flight.state.airspeed < STALL_SPEED.0;
+        assert!(
+            flight.pos.y <= 0.0 || !slow,
+            "rose to {} at {}",
+            flight.pos.y,
+            flight.state.airspeed
+        );
+        assert!(
+            flight.state.pitch < CLIMB_LIMIT + 0.02,
+            "pitch {}",
+            flight.state.pitch
+        );
     }
 }
 

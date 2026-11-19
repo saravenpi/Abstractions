@@ -87,6 +87,8 @@ impl Basin {
             right: 0.0,
             sprint: false,
             jump,
+            yaw: 0.0,
+            steer: false,
         };
         let air = Air {
             density: 1.2,

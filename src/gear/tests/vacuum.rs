@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::{Flight, braking, flying, gliding, looking};
+use super::{Flight, braking, flying, gliding};
 use crate::gear::{FlightState, Gear, GearInput, Mode, air_density};
 
 /// In zero density every mode is a plain ballistic fall: no lift, no drag, no booster push.
@@ -19,7 +19,7 @@ fn vacuum_leaves_only_gravity() {
             density: 0.0,
             pitch: 1.0,
             roll: -1.0,
-            look: looking(0.8, 0.5),
+            aim: Some(Vec2::new(0.8, 0.5)),
             ..input
         };
         flight.run(&airless, 10.0);

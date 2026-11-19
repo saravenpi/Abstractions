@@ -17,6 +17,10 @@ pub struct Servo {
     pub pull: f32,
     /// Heading of the nose in radians around the local up.
     pub yaw: f32,
+    /// Flight path angle the pilot asks for, in radians: it eases toward what the keys or the
+    /// view ask, inside the attitude limits. Off the wings it rides the flight path, so that
+    /// spreading them flies on where the body was going.
+    pub climb: f32,
     /// Seconds spent in the current mode.
     pub clock: f32,
     /// Speed lost into the last surface hit, in metres per second, until a touchdown reads it.

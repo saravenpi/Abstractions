@@ -15,9 +15,10 @@ On foot:
 | Space | Jump, or swim up. Pressed again in the air and held: boot boosters, which slow a fall |
 | Shift | Sprint. Held with the wingsuit spread: boot boosters, which make you fly |
 | R | Spread or fold the wingsuit in the air |
-| W S in the wingsuit | Dive and climb. Hold S to fly a loop |
-| A D in the wingsuit | Roll into a banked turn |
-| Q E in the wingsuit | Turn |
+| W S in the wingsuit | Nose down to dive and gain speed, nose up to climb and trade speed. Let go and the glide levels out |
+| A D in the wingsuit | Bank into a turn. Let go and the wings level |
+| Q E in the wingsuit | Turn flat, for fine heading |
+| Left mouse held in the wingsuit | Steer toward where you look |
 | V | First or third person |
 | M | Map |
 | N | Minimap range, then off |

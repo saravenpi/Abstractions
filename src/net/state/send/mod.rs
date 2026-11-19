@@ -15,7 +15,7 @@ use super::bodies::{Bodies, star_of};
 use super::frame::Place;
 use super::rate::{Cadence, REST_SPEED};
 use crate::avatar::{Avatar, AvatarPose};
-use crate::companion::Companion;
+use crate::companion::{Companion, Float};
 use crate::net::link::Link;
 use crate::player::{Motion, Player};
 use crate::ship::{Ship, ShipTelemetry, WarpState};
@@ -124,8 +124,11 @@ pub struct Locals<'w, 's> {
     /// The ship of this machine.
     ship: Query<'w, 's, (&'static Ship, Option<&'static Placed>)>,
     /// The companion of this machine.
-    companion: Query<'w, 's, &'static GlobalTransform, (With<Companion>, Without<Remote>)>,
+    companion: Query<'w, 's, (&'static GlobalTransform, &'static Float), OwnBot>,
 }
+
+/// Filter of the companion of this machine: not a puppet of another player's.
+type OwnBot = (With<Companion>, Without<Remote>);
 
 /// Returns where this machine stands, or nothing before its world exists.
 fn here(scene: &Scene, ship: Option<&Ship>, last: Option<StarId>) -> Option<Here> {
@@ -162,6 +165,12 @@ impl Locals<'_, '_> {
         let (_, pose) = self.avatars.iter().find(hung)?;
         Some((at, motion, pose))
     }
+
+    /// Returns the record of the companion of this machine, which was at `was` a frame ago.
+    fn bot(&self, here: &Here, was: Trail, bodies: &mut Bodies) -> Option<Sent<CompanionBody>> {
+        let (at, float) = self.companion.single().ok()?;
+        kinds::companion(here, at, &float.pose, was, bodies)
+    }
 }
 
 /// Sends the records that are due in one batch, once the server gave this player an id.
@@ -195,8 +204,7 @@ pub fn send(
     let drive = scene.drive();
     let hull = ship.and_then(|(ship, placed)| kinds::ship(&here, ship, placed, drive, &mut bodies));
     out.offer(&stamp, (Kind::Ship, hull), ShipBody::encode);
-    let bot = locals.companion.single().ok();
-    let bot = bot.and_then(|at| kinds::companion(&here, at, out.trail, &mut bodies));
+    let bot = locals.bot(&here, out.trail, &mut bodies);
     out.trail = bot.map(|sent| (sent.frame, sent.body.position, here.time));
     out.offer(&stamp, (Kind::Companion, bot), CompanionBody::encode);
     if !out.batch.is_empty() && max > 0 {

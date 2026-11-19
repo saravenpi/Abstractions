@@ -1,14 +1,15 @@
-//! The companions of the other players: the shared companion look with no brain, placed from
-//! the records. The companion code measures how it moves, leans and bobs it and lays its trail
-//! from that motion alone; its pose fields are not shared yet, and its face keeps the picture
-//! it was spawned with.
+//! The companions of the other players: the shared companion look with no brain, placed and
+//! posed from the records. The companion code measures how it moves, leans and bobs it, moves
+//! its hands and lays its trail from that motion and the pose; its face keeps the picture it was
+//! spawned with.
 
+use abstractions_net::jitter::View;
 use abstractions_net::wire::CompanionBody;
 use bevy::prelude::*;
 
 use super::{Eye, Sight, drop_puppet, seen, shown, visible};
 use crate::avatar::Mode;
-use crate::companion::{self, Stock};
+use crate::companion::{self, Float, Pose, Stock};
 use crate::net::state::Remote;
 use crate::net::state::robot::mode;
 use crate::net::state::track::{Remotes, Track};
@@ -18,7 +19,11 @@ use crate::space::{Placed, Rebased};
 type Bots<'w, 's> = Query<
     'w,
     's,
-    (&'static mut Placed, &'static mut Visibility),
+    (
+        &'static mut Placed,
+        &'static mut Visibility,
+        &'static mut Float,
+    ),
     (With<Remote>, With<companion::Companion>),
 >;
 
@@ -38,6 +43,19 @@ fn spawn((commands, stock): &mut Spawner, eye: &Eye, placed: Placed) -> Entity {
     root
 }
 
+/// Returns the pose between the two records of `view`.
+pub(super) fn posed(view: &View<CompanionBody>) -> Pose {
+    let (a, b, t) = (&view.older, &view.newer, view.blend);
+    Pose {
+        lift: a.lift.lerp(b.lift, t),
+        yaw: a.yaw.lerp(b.yaw, t),
+        pitch: a.pitch.lerp(b.pitch, t),
+        roll: a.roll.lerp(b.roll, t),
+        spread: a.spread.lerp(b.spread, t),
+        wave: a.wave.lerp(b.wave, t),
+    }
+}
+
 /// Draws one companion of `track`, hidden while its player sits in the ship when `seated`.
 fn draw(
     (spawner, bots): (&mut Spawner, &mut Bots),
@@ -46,18 +64,19 @@ fn draw(
     track: &mut Track<CompanionBody>,
     seated: bool,
 ) {
-    let Some((_, placed)) = sight.locate(track, eye) else {
+    let Some((view, placed)) = sight.locate(track, eye) else {
         return;
     };
     let Some(entity) = track.puppet else {
         track.puppet = Some(spawn(spawner, eye, placed));
         return;
     };
-    let Ok((mut at, mut shown)) = bots.get_mut(entity) else {
+    let Ok((mut at, mut shown, mut float)) = bots.get_mut(entity) else {
         track.puppet = None;
         return;
     };
     *at = placed;
+    float.pose = posed(&view);
     let (_, far) = seen(eye, &placed);
     shown.set_if_neq(visible(far, seated));
 }

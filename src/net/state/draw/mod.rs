@@ -5,6 +5,8 @@
 //! rest keep their buffer only. A puppet beyond [`HIDE`] metres is hidden.
 
 mod companion;
+#[cfg(test)]
+mod companion_tests;
 mod robot;
 mod ship;
 

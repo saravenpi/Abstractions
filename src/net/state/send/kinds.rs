@@ -11,6 +11,7 @@ use super::super::frame::{Place, Pose};
 use super::super::rate::REST_SPEED;
 use super::super::robot::{body, heading};
 use crate::avatar::{AvatarPose, Mode};
+use crate::companion::Pose as CompanionPose;
 use crate::player::Motion;
 use crate::ship::{Ship, WarpState};
 use crate::space::{Anchor, Placed, up};
@@ -134,12 +135,12 @@ pub fn ship(
 /// Where a thing was on an earlier frame: its wire frame, position and universe time.
 pub type Trail = Option<(wire::Frame, DVec3, f64)>;
 
-/// Returns the record of the companion whose root is at `at`, which was at `was` on the frame
-/// before. It is at rest when it hovers still and the player does not travel. Its pose fields
-/// stay at zero: the companion module keeps its pose to itself.
+/// Returns the record of the companion whose root is at `at`, posed as `pose`, which was at
+/// `was` on the frame before. It is at rest when it hovers still and the player does not travel.
 pub fn companion(
     here: &Here,
     at: &GlobalTransform,
+    pose: &CompanionPose,
     was: Trail,
     bodies: &mut Bodies,
 ) -> Option<Sent<CompanionBody>> {
@@ -148,7 +149,12 @@ pub fn companion(
     let body = CompanionBody {
         position: wire.pos,
         rotation: wire.rot.as_quat(),
-        ..CompanionBody::default()
+        lift: pose.lift,
+        yaw: pose.yaw,
+        pitch: pose.pitch,
+        roll: pose.roll,
+        spread: pose.spread,
+        wave: pose.wave,
     };
     let speed = was
         .filter(|(before, ..)| *before == frame)

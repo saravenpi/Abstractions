@@ -77,6 +77,7 @@ mod tests_yard;
 
 pub use face::Expression;
 pub use mood::{ChirpKind, CompanionChirp};
+pub use motion::Float;
 pub use pose::Pose;
 pub use sense::CompanionSense;
 pub use spawn::{Stock, look};

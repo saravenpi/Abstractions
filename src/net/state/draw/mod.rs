@@ -78,6 +78,7 @@ impl Sight<'_, '_> {
 
     /// Returns the state of `track` now and its pose in the anchor frame, or nothing while it
     /// is empty, is not drawn from here or cannot be placed.
+    /// The sample is a little in the past; see [`moment`] for the time it is converted at.
     pub fn locate<E: Copy + Default>(
         &mut self,
         track: &mut Track<E>,
@@ -92,10 +93,9 @@ impl Sight<'_, '_> {
             vel: bevy::math::DVec3::ZERO,
             rot: view.rotation.as_dquat(),
         };
-        let to = Place::from(eye.anchor.frame);
-        let pose = self
-            .bodies
-            .convert(pose, track.frame.into(), to, eye.time)?;
+        let (from, to) = (Place::from(track.frame), Place::from(eye.anchor.frame));
+        let time = moment((from, to), view.time, eye.time);
+        let pose = self.bodies.convert(pose, from, to, time)?;
         Some((
             view,
             Placed {
@@ -103,6 +103,18 @@ impl Sight<'_, '_> {
                 rot: pose.rot,
             },
         ))
+    }
+}
+
+/// Returns the universe time a pose sampled at `sampled` is moved from the frame `from` into
+/// the frame `to` at, `now` being the time of the frame drawn. Into a frame nearer the ground
+/// than its own, at its own time, so a ship hovering over a turning planet stays over the same
+/// ground. Into a frame farther out, now, so a thing on a planet or around it stays with the
+/// planet, which is drawn where it is now.
+pub fn moment((from, to): (Place, Place), sampled: f64, now: f64) -> f64 {
+    match to.depth() < from.depth() {
+        true => sampled,
+        false => now,
     }
 }
 

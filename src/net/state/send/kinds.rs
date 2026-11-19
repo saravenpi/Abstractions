@@ -67,7 +67,7 @@ fn framed(anchor: &Anchor, at: &GlobalTransform, vel: Vec3) -> Pose {
 }
 
 /// Returns the record of the robot whose body is at `at`, moved by `motion` and posed by
-/// `pose`. It is at rest standing idle or seated, where the ship carries it.
+/// `pose`. It is at rest standing idle, or seated in a ship at rest.
 pub fn robot(
     here: &Here,
     at: &GlobalTransform,
@@ -83,7 +83,7 @@ pub fn robot(
     Some(Sent {
         frame,
         body: body(pose, wire.pos, wire.vel, heading(wire.pos, wire.rot)),
-        rest: idle || pose.mode == Mode::Seated,
+        rest: idle || (pose.mode == Mode::Seated && here.still),
     })
 }
 

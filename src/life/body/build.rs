@@ -6,15 +6,8 @@ use super::{Body, Locomotion};
 /// Returns the body of a species whose `form` is its plan and archetype, with `role` and `history` on `world`.
 ///
 /// Phase 0 stub: an empty body.
-pub fn build(
-    seed: u64,
-    plan: Plan,
-    archetype: u8,
-    role: &Role,
-    history: &History,
-    world: &World,
-) -> Body {
-    let _ = (seed, plan, archetype, role, world);
+pub fn build(seed: u64, form: (Plan, u8), role: &Role, history: &History, world: &World) -> Body {
+    let _ = (seed, form, role, world);
     Body {
         parts: Vec::new(),
         legs: Vec::new(),

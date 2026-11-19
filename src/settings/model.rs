@@ -92,6 +92,16 @@ fn nearest_step<'de, D: serde::Deserializer<'de>>(reader: D) -> Result<u32, D::E
     Ok(RENDER_STEPS[render_step(rings)].1)
 }
 
+/// Reads the key bindings and moves the minimap to N in files written before the map had M:
+/// such a file binds the minimap to M and leaves the map on its default M.
+fn moved_minimap<'de, D: serde::Deserializer<'de>>(reader: D) -> Result<Keymap, D::Error> {
+    let mut keys = Keymap::deserialize(reader)?;
+    if keys.minimap == KeyCode::KeyM && keys.map == KeyCode::KeyM {
+        keys.minimap = KeyCode::KeyN;
+    }
+    Ok(keys)
+}
+
 impl Default for Graphics {
     fn default() -> Self {
         Self {
@@ -119,6 +129,7 @@ pub struct Controls {
     /// Whether moving the mouse up looks down.
     pub invert_y: bool,
     /// Key bindings.
+    #[serde(deserialize_with = "moved_minimap")]
     pub keys: Keymap,
 }
 

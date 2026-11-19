@@ -1,12 +1,13 @@
 //! The compass in space: its home mark points at the home star from a ship elsewhere in the
-//! home galaxy, slides to the middle of the bar when the view turns to it and waits at an end
-//! of the bar when it is behind.
+//! home galaxy, slides to the middle of the bar when the view turns to it and hides when it
+//! lies past the ends of the bar.
 
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::rig::app;
-use crate::menus::hud::compass::{Bar, Mark};
+use crate::menus::MarkerKind;
+use crate::menus::hud::compass::{Bar, Pin};
 use crate::menus::hud::needle::WIDTH;
 use crate::render::GameCamera;
 use crate::space::{Anchor, Frame};
@@ -21,18 +22,20 @@ fn home_mark(app: &mut App, toward: Vec3) -> (Option<f32>, Vec<String>) {
     let pose = Transform::default().looking_to(toward, Vec3::Y);
     let mut cameras = app
         .world_mut()
-        .query_filtered::<&mut GlobalTransform, With<GameCamera>>();
+        .query_filtered::<&mut Transform, With<GameCamera>>();
     for mut camera in cameras.iter_mut(app.world_mut()) {
-        *camera = GlobalTransform::from(pose);
+        *camera = pose;
     }
     for _ in 0..3 {
         app.update();
     }
-    let mut marks = app.world_mut().query::<(&Mark, &Node, &Children)>();
-    let (_, node, children) = marks
+    let mut marks = app.world_mut().query::<(&Pin, &Node, &Children)>();
+    let home = marks
         .iter(app.world())
-        .find(|(mark, ..)| **mark == Mark::Home)
-        .unwrap();
+        .find(|(pin, ..)| pin.kind == Some(MarkerKind::Home));
+    let Some((_, node, children)) = home else {
+        return (None, Vec::new());
+    };
     let left = match (node.display, node.left) {
         (Display::Flex, Val::Px(left)) => Some(left + HALF_ROOM),
         _ => None,
@@ -43,9 +46,10 @@ fn home_mark(app: &mut App, toward: Vec3) -> (Option<f32>, Vec<String>) {
     (left, words.map(|text| text.0.clone()).collect())
 }
 
-/// One light-year east of the home star, in the frame of the home galaxy, the bar is shown
-/// and the home mark gives one light-year: at the left end looking north, in the middle
-/// looking west at the star, and at an end of the bar looking away from it.
+/// One light-year east of the home star, in the frame of the home galaxy, the home mark gives
+/// one light-year and sits in the middle of the bar looking west at the star. Looking north
+/// the star lies a quarter turn away, past the span, and looking east it is behind: the mark
+/// hides in both.
 #[test]
 fn the_compass_points_home_from_space() {
     let mut app = app("home");
@@ -57,16 +61,11 @@ fn the_compass_points_home_from_space() {
         rotation: DQuat::IDENTITY,
         flat: false,
     });
-    let (north, words) = home_mark(&mut app, Vec3::NEG_Z);
-    assert_eq!(north, Some(0.0));
+    let (west, words) = home_mark(&mut app, Vec3::NEG_X);
+    assert!((west.unwrap() - 0.5 * WIDTH).abs() < 0.01, "{west:?}");
     assert!(words.contains(&"1.00 gly".to_string()), "{words:?}");
     let mut bars = app.world_mut().query_filtered::<&Visibility, With<Bar>>();
     assert_eq!(bars.single(app.world()).unwrap(), Visibility::Inherited);
-    let (west, _) = home_mark(&mut app, Vec3::NEG_X);
-    assert!((west.unwrap() - 0.5 * WIDTH).abs() < 0.01, "{west:?}");
-    let (east, _) = home_mark(&mut app, Vec3::X);
-    assert!(
-        matches!(east, Some(at) if at == 0.0 || at == WIDTH),
-        "{east:?}"
-    );
+    assert_eq!(home_mark(&mut app, Vec3::NEG_Z).0, None);
+    assert_eq!(home_mark(&mut app, Vec3::X).0, None);
 }

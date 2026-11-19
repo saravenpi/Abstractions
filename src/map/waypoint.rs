@@ -116,17 +116,16 @@ fn marker(waypoint: &Waypoint, owner: u32, radius: f64) -> Marker {
     }
 }
 
-/// Writes every waypoint as a marker when one changed. The waypoints of the others keep the
+/// Writes every waypoint as a marker when one changed, or when the universe they lie in
+/// appears: a welcome sets them before it exists. The waypoints of the others keep the
 /// owner of their player; this player's own the owner 0 of the game.
 pub(super) fn fill(
     waypoints: Res<Waypoints>,
     universe: Option<Res<Universe>>,
     mut markers: ResMut<Markers>,
 ) {
-    if !waypoints.is_changed() {
-        return;
-    }
-    let Some(universe) = universe else {
+    let due = |universe: &Res<Universe>| waypoints.is_changed() || universe.is_changed();
+    let Some(universe) = universe.filter(due) else {
         return;
     };
     markers.clear_kind(MarkerKind::Waypoint);

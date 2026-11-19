@@ -79,3 +79,25 @@ fn the_others_waypoints_end_with_the_session() {
     assert_eq!(waypoints.me, 0);
     assert_eq!(app.world().resource::<Markers>().0, vec![marker(0)]);
 }
+
+/// Waypoints a welcome sets before the universe exists are drawn once it does.
+#[test]
+fn waypoints_set_before_the_universe_are_drawn() {
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins)
+        .init_resource::<Markers>()
+        .init_resource::<Waypoints>()
+        .add_systems(Update, super::fill);
+    app.update();
+    app.world_mut()
+        .resource_mut::<Waypoints>()
+        .friends
+        .insert(4, spot());
+    app.update();
+    assert!(app.world().resource::<Markers>().0.is_empty());
+    app.world_mut().insert_resource(Universe::new(3));
+    app.update();
+    let markers = &app.world().resource::<Markers>().0;
+    assert_eq!(markers.len(), 1);
+    assert_eq!(markers[0].owner, 4);
+}

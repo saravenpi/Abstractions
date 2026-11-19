@@ -9,7 +9,8 @@ use bevy::math::{DVec2, DVec3};
 
 use super::HerdState;
 use super::roll::Roam;
-use super::sphere::{arc, bearing, east, slerp};
+use super::scene::Scene;
+use super::sphere::{bearing, east, slerp};
 use crate::life::census::{self, Site};
 use crate::life::{Activity, Habitat, Species};
 use crate::universe::hash::{Rng, child};
@@ -29,7 +30,7 @@ const PHASE: u64 = 0x5048_4153;
 
 /// Where a herd is and what it does at one time.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(super) struct Pose {
+pub(in crate::life) struct Pose {
     /// Unit direction of its centre.
     pub centre: DVec3,
     /// Unit tangent it faces.
@@ -45,13 +46,13 @@ fn cruise(species: &Species) -> f64 {
     (f64::from(species.history.speed) * 0.125).max(0.3)
 }
 
-/// Returns waypoint `leg` of `roam` on a planet of `radius` metres, and its site.
-fn waypoint(
+/// Draws waypoint `leg` of `roam` of `species` on a planet of `radius` metres, and returns it with its site.
+pub(super) fn draw(
     roam: &Roam,
     species: &Species,
     leg: i64,
     radius: f64,
-    sample: &impl Fn(DVec3) -> Site,
+    sample: &dyn Fn(DVec3) -> Site,
 ) -> (DVec3, Site) {
     let chart = Tangent::new(roam.home, east(roam.home), radius, DVec2::ZERO);
     let mut rng = Rng::new(child(roam.id, leg as u64));
@@ -67,30 +68,25 @@ fn waypoint(
     (roam.fallback, sample(roam.fallback))
 }
 
-/// Returns where `roam` of `species` is at `time` on a planet of `radius` metres.
-pub(super) fn pose(
-    roam: &Roam,
-    species: &Species,
-    time: f64,
-    radius: f64,
-    sample: &impl Fn(DVec3) -> Site,
-) -> Pose {
+/// Returns where `roam` of `species` is on its route in `scene` at `time`.
+pub(super) fn pose(scene: &Scene, roam: &Roam, species: &Species, time: f64) -> Pose {
     let walk = cruise(species);
-    let slack = roam.reach + roam.home.distance(roam.fallback) * radius;
+    let slack = roam.reach + roam.home.distance(roam.fallback) * scene.planet;
     let period = 2.0 * slack / walk + DWELL;
     let x = time / period + Rng::new(child(roam.id, PHASE)).unit();
     let leg = x.floor();
     let into = (x - leg) * period;
-    let (from, _) = waypoint(roam, species, leg as i64 - 1, radius, sample);
-    let (to, site) = waypoint(roam, species, leg as i64, radius, sample);
-    let span = arc(from, to) * radius;
+    let (from, _) = scene.waypoint(roam, species, leg as i64 - 1);
+    let (to, site) = scene.waypoint(roam, species, leg as i64);
+    let span = scene.metres(from, to);
     let walking = span / walk;
     if into >= walking {
+        let light = (scene.ground.light)(to, time);
         return Pose {
             centre: to,
             heading: bearing(to, from, to),
             speed: 0.0,
-            state: settle(species, &site),
+            state: settle(species, &site, light),
         };
     }
     let u = into / walking;
@@ -103,16 +99,20 @@ pub(super) fn pose(
     }
 }
 
-/// Returns what a herd of `species` does while it stays at a waypoint with `site`.
-fn settle(species: &Species, site: &Site) -> HerdState {
-    let light = site.daylight;
-    let (open, deep) = match species.role.activity {
+/// Returns whether a species out at `activity` is active under `light`, and whether it is deep in
+/// its inactive hours.
+pub(in crate::life) fn open(activity: Activity, light: f32) -> (bool, bool) {
+    match activity {
         Activity::Day => (light >= 0.25, light < 0.1),
         Activity::Night => (light <= 0.25, light > 0.6),
         Activity::Twilight => ((0.05..=0.6).contains(&light), light < 0.05),
-    };
+    }
+}
+
+/// Returns what a herd of `species` does while it stays at a waypoint with `site` under `light`.
+fn settle(species: &Species, site: &Site, light: f32) -> HerdState {
     let ground = matches!(species.role.habitat, Habitat::Ground | Habitat::Shore);
-    match (open, deep) {
+    match open(species.role.activity, light) {
         (false, true) => HerdState::Sleep,
         (false, false) => HerdState::Rest,
         _ if ground && site.height < DRINK => HerdState::Drink,

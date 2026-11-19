@@ -2,9 +2,9 @@
 
 use bevy::math::DVec3;
 
-use super::fixtures::{height, meadow_life, sample};
+use super::fixtures::{height, light, meadow_life, sample};
 use super::sphere::arc;
-use super::{Herd, HerdState, Search, member, near};
+use super::{Ground, Herd, HerdState, Search, member, near};
 use crate::life::{Habitat, Life};
 
 /// Radius of the test planet in metres.
@@ -15,7 +15,7 @@ fn land() -> DVec3 {
     DVec3::new(1.0, 0.3, 0.2).normalize()
 }
 
-/// Returns the herds of `life` within `radius` metres of `at` at `time`, under noon light.
+/// Returns the herds of `life` within `radius` metres of `at` at `time` on the test planet.
 fn look(life: &Life, at: DVec3, radius: f64, time: f64, pin: Option<DVec3>) -> Vec<Herd> {
     let search = Search {
         at,
@@ -24,7 +24,11 @@ fn look(life: &Life, at: DVec3, radius: f64, time: f64, pin: Option<DVec3>) -> V
         time,
         pin,
     };
-    near(life, &|dir| sample(dir, 1.0), &search)
+    let ground = Ground {
+        sample: &|dir| sample(dir, 1.0),
+        light: &light,
+    };
+    near(life, &ground, &search)
 }
 
 /// The same life and time give the same herds and members, built from scratch twice.
@@ -38,7 +42,8 @@ fn same_seed_same_herds() {
     assert_eq!(member(herd, 2, 50.0), member(&b[0], 2, 50.0));
 }
 
-/// Herd centres never jump: between t and t + 0.1 s each moves at most its speed times 0.1 s plus 1 cm.
+/// Herd centres never jump: between t and t + 0.1 s each moves at most its speed times 0.1 s, 5 percent
+/// for the change of speed within the step, plus 1 cm.
 #[test]
 fn herds_move_continuously() {
     let life = meadow_life();
@@ -54,7 +59,7 @@ fn herds_move_continuously() {
                 continue;
             };
             let jump = arc(a.centre, b.centre) * RADIUS;
-            let bound = f64::from(a.speed.max(b.speed)) * 0.1 + 0.01;
+            let bound = f64::from(a.speed.max(b.speed)) * 0.1 * 1.05 + 0.01;
             assert!(
                 jump <= bound,
                 "herd {} jumped {jump} m at {t} s (bound {bound})",
@@ -131,21 +136,18 @@ fn members_keep_the_young_inside() {
     let herds = look(&meadow_life(), land(), 2000.0, 500.0, Some(land()));
     let herd = herds
         .iter()
-        .find(|h| h.young > 0 && h.count > h.young + 2)
+        .find(|h| h.young > 0 && h.count == h.base && h.count > h.young + 2)
         .copied();
     let Some(herd) = herd else {
         panic!("no herd with young")
     };
+    let at = |slot, time| member(&herd, slot, time).expect("living member");
     let mean = |slots: &mut dyn Iterator<Item = u8>| {
-        let all: Vec<f32> = slots
-            .map(|s| member(&herd, s, 500.0).offset.length())
-            .collect();
+        let all: Vec<f32> = slots.map(|s| at(s, 500.0).offset.length()).collect();
         all.iter().sum::<f32>() / all.len() as f32
     };
     assert!(mean(&mut (0..herd.young)) < mean(&mut (herd.young..herd.count)));
-    assert!(member(&herd, 0, 500.0).young && !member(&herd, herd.count - 1, 500.0).young);
-    let drift = member(&herd, 1, 500.0)
-        .offset
-        .distance(member(&herd, 1, 500.1).offset);
+    assert!(at(0, 500.0).young && !at(herd.base - 1, 500.0).young);
+    let drift = at(1, 500.0).offset.distance(at(1, 500.1).offset);
     assert!(drift < 0.05 * herd.spacing, "{drift}");
 }

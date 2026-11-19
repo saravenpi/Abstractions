@@ -3,12 +3,14 @@
 use bevy::math::{DVec3, IVec3};
 
 use super::cells::Grid;
+use super::sphere::arc;
 use crate::life::census::{self, Site};
+use crate::life::hunt::TERRITORY;
 use crate::life::{Guild, Habitat, Life, Species};
 use crate::universe::hash::{Rng, cell, child, mix};
 
 /// Farthest a herd roams from its home in metres, whatever its home range.
-pub(super) const MAX_ROAM: f64 = 800.0;
+pub(in crate::life) const MAX_ROAM: f64 = 800.0;
 
 /// Farthest the pinned herd roams from the pin in metres.
 const PIN_ROAM: f64 = 250.0;
@@ -21,7 +23,7 @@ const PINNED: u64 = 0x5049_4E4E;
 
 /// A herd before time is applied: who it is and where it lives.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(super) struct Roam {
+pub(in crate::life) struct Roam {
     /// Stable identity, also the seed of its route.
     pub id: u64,
     /// Index of its species.
@@ -36,37 +38,65 @@ pub(super) struct Roam {
     pub fallback: DVec3,
     /// Radius in metres of the disc around `home` its waypoints fall in.
     pub reach: f64,
+    /// True for the herd that always lives at the robot's wake point.
+    pub pinned: bool,
 }
 
-/// Returns the farthest any species of `life` roams, in metres.
-pub(super) fn widest(life: &Life) -> f64 {
-    life.species
-        .iter()
-        .filter(|s| s.role.guild != Guild::Producer)
-        .map(|s| f64::from(s.history.range).min(MAX_ROAM))
-        .fold(0.0, f64::max)
+/// Returns true for the species that hunt: hunters and ambushers.
+pub(in crate::life) fn hunts(species: &Species) -> bool {
+    matches!(species.role.guild, Guild::Hunter | Guild::Ambusher)
 }
 
-/// Returns the herds that live in cell `at` of `grid`, whose centre has `site`, in a stable order.
-pub(super) fn in_cell(life: &Life, grid: &Grid, at: IVec3, site: &Site) -> Vec<Roam> {
+/// Returns the herds of `grid` whose cell centre is within `reach` metres of `at`, hunters only when
+/// `hunters` is true and plant eaters only otherwise. A cell centre is sampled only when the cell could
+/// hold a herd even at the best site.
+pub(super) fn around(
+    life: &Life,
+    grid: &Grid,
+    (at, reach): (DVec3, f64),
+    sample: &dyn Fn(DVec3) -> Site,
+    hunters: bool,
+) -> Vec<Roam> {
     let planet = life.species.first().map_or(0, |s| s.id.planet);
-    let seed = cell(child(planet, HERDS), at);
+    let salt = child(planet, HERDS ^ u64::from(hunters));
+    let kinds: Vec<&Species> = life
+        .species
+        .iter()
+        .filter(|s| hunts(s) == hunters)
+        .collect();
+    grid.around(at, reach)
+        .into_iter()
+        .filter(|c| arc(grid.spot(*c, 0.5, 0.5), at) * grid.radius <= reach)
+        .flat_map(|c| {
+            let seed = cell(salt, c);
+            let may = kinds
+                .iter()
+                .any(|s| rolled(seed, s, census::most(s) * grid.area()) > 0);
+            let site = may.then(|| sample(grid.spot(c, 0.5, 0.5)));
+            site.map(|site| in_cell(&kinds, grid, (c, seed), &site))
+                .unwrap_or_default()
+        })
+        .collect()
+}
+
+/// Returns how many herds of `species` cell `seed` holds when `expected` are expected there.
+fn rolled(seed: u64, species: &Species, expected: f32) -> u64 {
+    (f64::from(expected) + Rng::new(child(seed, u64::from(species.id.index))).unit()).floor() as u64
+}
+
+/// Returns the herds of `kinds` in cell `at` with `seed` of `grid`, whose centre has `site`.
+fn in_cell(kinds: &[&Species], grid: &Grid, (at, seed): (IVec3, u64), site: &Site) -> Vec<Roam> {
     let centre = grid.spot(at, 0.5, 0.5);
     let mut herds = Vec::new();
-    for species in &life.species {
+    for species in kinds {
+        let n = rolled(seed, species, census::herds(species, site) * grid.area());
         let seed = child(seed, u64::from(species.id.index));
-        let expected = census::herds(species, site) * grid.area();
-        let n = (f64::from(expected) + Rng::new(seed).unit()).floor() as u64;
+        let most = if hunts(species) { TERRITORY } else { MAX_ROAM };
+        let reach = f64::from(species.history.range).min(most);
         herds.extend((1..=n).map(|k| {
             let mut rng = Rng::new(child(seed, k));
             let home = grid.spot(at, rng.range(0.1, 0.9), rng.range(0.1, 0.9));
-            roam(
-                species,
-                child(seed, k),
-                home,
-                centre,
-                f64::from(species.history.range).min(MAX_ROAM),
-            )
+            roam(species, child(seed, k), (home, centre), reach, false)
         }));
     }
     herds
@@ -88,14 +118,21 @@ pub(super) fn pinned(life: &Life, pin: DVec3) -> Option<Roam> {
     Some(roam(
         species,
         seed,
-        pin,
-        pin,
+        (pin, pin),
         PIN_ROAM.min(f64::from(species.history.range)),
+        true,
     ))
 }
 
-/// Returns the herd of `species` with `seed`, living at `home`, falling back to `fallback`, within `reach`.
-fn roam(species: &Species, seed: u64, home: DVec3, fallback: DVec3, reach: f64) -> Roam {
+/// Returns the herd of `species` with `seed`, living at `home` and falling back to `fallback`, within
+/// `reach`, pinned or not.
+fn roam(
+    species: &Species,
+    seed: u64,
+    (home, fallback): (DVec3, DVec3),
+    reach: f64,
+    pinned: bool,
+) -> Roam {
     let mut rng = Rng::new(mix(seed));
     let history = &species.history;
     let spread = u32::from(history.group_max.saturating_sub(history.group_min)) + 1;
@@ -113,5 +150,6 @@ fn roam(species: &Species, seed: u64, home: DVec3, fallback: DVec3, reach: f64) 
         home,
         fallback,
         reach,
+        pinned,
     }
 }

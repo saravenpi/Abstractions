@@ -40,24 +40,36 @@ pub struct Site {
 
 /// Returns the individuals of `species` per square kilometre at `site`.
 pub fn density(species: &Species, site: &Site) -> f32 {
-    if species.role.guild == Guild::Producer {
-        return 0.0;
-    }
-    let mass = species.history.mass.max(1e-4);
-    let level = (species.role.level - 1.0).max(0.0);
-    DAMUTH
-        * mass.powf(-0.75)
-        * 0.1f32.powf(level)
-        * fit(&species.tolerance, site)
-        * habitat(species.role.habitat, site)
+    peak(species) * fit(&species.tolerance, site) * habitat(species.role.habitat, site)
 }
 
 /// Returns the herds of `species` per square kilometre at `site`: its density over its mean group size,
 /// softly capped so that the smallest species do not fill the ground.
 pub fn herds(species: &Species, site: &Site) -> f32 {
+    crowd(species, density(species, site))
+}
+
+/// Returns the herds of `species` per square kilometre at the site that suits it best: no site has more.
+pub fn most(species: &Species) -> f32 {
+    crowd(species, peak(species))
+}
+
+/// Returns the individuals of `species` per square kilometre where the site suits it fully.
+fn peak(species: &Species) -> f32 {
+    if species.role.guild == Guild::Producer {
+        return 0.0;
+    }
+    let mass = species.history.mass.max(1e-4);
+    let level = (species.role.level - 1.0).max(0.0);
+    DAMUTH * mass.powf(-0.75) * 0.1f32.powf(level)
+}
+
+/// Returns the herds per square kilometre of `species` living at `density` individuals per square
+/// kilometre, softly capped at [`CROWD`].
+fn crowd(species: &Species, density: f32) -> f32 {
     let history = &species.history;
     let group = (f32::from(history.group_min) + f32::from(history.group_max)) * 0.5;
-    let herds = density(species, site) / group.max(1.0);
+    let herds = density / group.max(1.0);
     herds * CROWD / (herds + CROWD)
 }
 

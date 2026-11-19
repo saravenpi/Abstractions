@@ -2,7 +2,7 @@
 //!
 //! A unit direction falls on the face of [`Face::locate`], whose coordinates `u` and `v` run from -1
 //! to 1 with equal steps of angle. Each face is cut into `n` by `n` cells, with `n` the face's arc at
-//! its centre line, a quarter of the great circle, over 256 metres. A cell is named by
+//! its centre line, a quarter of the great circle, over 256 metres (1024 for the hunter layer). A cell is named by
 //! `(face index in Face::ALL, column, row)`. Cells near face corners are up to a third smaller than
 //! at face centres, which the census absorbs as noise.
 
@@ -28,7 +28,12 @@ pub(super) struct Grid {
 impl Grid {
     /// Returns the grid of a planet of `radius` metres.
     pub fn of(radius: f64) -> Self {
-        let n = (radius * FRAC_PI_2 / SIDE).round().clamp(1.0, 65_536.0) as u32;
+        Self::sized(radius, SIDE)
+    }
+
+    /// Returns the grid of a planet of `radius` metres with cells of about `side` metres.
+    pub fn sized(radius: f64, side: f64) -> Self {
+        let n = (radius * FRAC_PI_2 / side).round().clamp(1.0, 65_536.0) as u32;
         Self { n, radius }
     }
 

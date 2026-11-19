@@ -1,14 +1,14 @@
 //! Hand-made lives, worlds and sites for the tests of the population modules.
 
-use bevy::math::DVec3;
+mod ground;
+
+pub use ground::{height, light, sample, site};
 
 use crate::life::body::{Body, Locomotion};
-use crate::life::census::Site;
 use crate::life::{
     Activity, Chemistry, Energy, Guild, Habitat, Life, Plan, Role, Rung, Solvent, Species,
     SpeciesId, Structure, TissueKind, Tolerance, World, history,
 };
-use crate::world::Biome;
 
 /// Terrain seed of the test planet.
 pub const PLANET: u64 = 0x5EED_C0DE;
@@ -89,58 +89,44 @@ fn empty_body() -> Body {
 }
 
 /// Returns a skeletal life: a plant, two grazers, a browser, a hunter, an apex hunter, a filter
-/// feeder in the sea and a shore grazer. Species 1 is the most common ground grazer.
+/// feeder in the sea, a shore grazer, a scavenger and an ambusher. Species 1 is the most common
+/// ground grazer.
 pub fn meadow_life() -> Life {
     use Activity::{Day, Night, Twilight};
-    use Guild::{Browser, Filter, Grazer, Hunter, Producer};
+    use Guild::{Ambusher, Browser, Filter, Grazer, Hunter, Producer, Scavenger};
     use Habitat::{Ground, Shore, Water};
-    let table = [
-        (role(Producer, Ground, Day, 1.0), 1.0),
-        (role(Grazer, Ground, Day, 2.0), 40.0),
-        (role(Grazer, Ground, Day, 2.0), 400.0),
-        (role(Browser, Ground, Twilight, 2.0), 300.0),
-        (role(Hunter, Ground, Night, 3.0), 80.0),
-        (role(Hunter, Ground, Day, 4.0), 300.0),
-        (role(Filter, Water, Day, 2.0), 5.0),
-        (role(Grazer, Shore, Twilight, 2.0), 2.0),
+    let table: [(Role, f32, &[u16]); 10] = [
+        (role(Producer, Ground, Day, 1.0), 1.0, &[]),
+        (role(Grazer, Ground, Day, 2.0), 40.0, &[0]),
+        (role(Grazer, Ground, Day, 2.0), 400.0, &[0]),
+        (role(Browser, Ground, Twilight, 2.0), 300.0, &[0]),
+        (role(Hunter, Ground, Night, 3.0), 80.0, &[1, 7]),
+        (role(Hunter, Ground, Day, 4.0), 300.0, &[1, 2, 3, 4]),
+        (role(Filter, Water, Day, 2.0), 5.0, &[0]),
+        (role(Grazer, Shore, Twilight, 2.0), 2.0, &[0]),
+        (role(Scavenger, Ground, Day, 3.0), 8.0, &[]),
+        (role(Ambusher, Ground, Night, 3.0), 30.0, &[1, 7]),
     ];
+    let species = (0u16..).zip(table).map(|(i, (role, mass, prey))| Species {
+        prey: prey.to_vec(),
+        ..species(i, role, mass)
+    });
     Life {
         rung: Rung::Skeletal,
-        chemistry: Chemistry {
-            solvent: Solvent::Water,
-            energy: Energy::Light,
-            structure: Structure::Carbon,
-            pigment: [0.1, 0.5, 0.1],
-            glow: [0.2, 0.8, 0.6],
-        },
-        species: (0u16..)
-            .zip(table)
-            .map(|(i, (role, mass))| species(i, role, mass))
-            .collect(),
+        chemistry: chemistry(),
+        species: species.collect(),
         relations: Vec::new(),
         keystone: None,
     }
 }
 
-/// Returns a site on land or sea at `height` metres, in a temperate meadow under `daylight`.
-pub fn site(height: f32, daylight: f32) -> Site {
-    Site {
-        height,
-        temperature: 288.0,
-        moisture: 0.5,
-        biome: Biome::Meadow,
-        liquid: height < 0.0,
-        daylight,
+/// Returns a water and carbon biochemistry under a yellow star.
+fn chemistry() -> Chemistry {
+    Chemistry {
+        solvent: Solvent::Water,
+        energy: Energy::Light,
+        structure: Structure::Carbon,
+        pigment: [0.1, 0.5, 0.1],
+        glow: [0.2, 0.8, 0.6],
     }
-}
-
-/// Returns the ground height in metres of a test planet of hills, bays and seas at `dir`.
-pub fn height(dir: DVec3) -> f32 {
-    let d = dir.as_vec3();
-    300.0 * ((3.0 * d.x).sin() * (2.0 * d.y).cos() + 0.3 * (5.0 * d.z).sin()) - 40.0
-}
-
-/// Returns the site of the test planet at `dir` under `daylight`.
-pub fn sample(dir: DVec3, daylight: f32) -> Site {
-    site(height(dir), daylight)
 }

@@ -1,11 +1,13 @@
 //! State relay: keeping the records players send and copying them to the others each tick.
 //!
-//! Nothing here allocates once every seat has held a record of each kind: bodies are copied
-//! into memory kept from the last record, and batches are built in one reused buffer.
+//! Each seat keeps the last [`super::seat::DEPTH`] records of each kind, and a player around
+//! the same star gets every one sent since the last tick, in order. Nothing here allocates
+//! once every seat has filled its slots: bodies are copied into memory kept from older
+//! records, and batches are built in one reused buffer.
 
 use super::Room;
 use super::conn::HELLO_WAIT;
-use super::seat::{KINDS, Latest, Sent, kind_index};
+use super::seat::{Latest, Recent, Sent};
 use crate::host::{ConnId, DATAGRAM_BUDGET, Outbox};
 use crate::ids::StarId;
 use crate::wire::{Reason, Record, push_within, records};
@@ -14,8 +16,8 @@ use crate::wire::{Reason, Record, push_within, records};
 const OTHER_STAR_EVERY: f64 = 1.0;
 
 impl Room {
-    /// Keeps the records of a batch from `conn`. A record of another player, a second record
-    /// of a kind in the batch, or a record the seat refuses is dropped.
+    /// Keeps the records of a batch from `conn`, in order. A record of another player or a
+    /// record the seat refuses is dropped.
     pub(super) fn ingest(&mut self, conn: ConnId, bytes: &[u8]) {
         let Some(seat) = self
             .seat_of(conn)
@@ -23,15 +25,10 @@ impl Room {
         else {
             return;
         };
-        let mut seen = [false; KINDS];
         let player = seat.info.id;
         for record in records(bytes).filter(|record| record.head.player == player) {
-            let kind = kind_index(record.head.kind);
-            if !seen[kind] {
-                seen[kind] = true;
-                self.seq += 1;
-                seat.keep(&record, self.seq);
-            }
+            self.seq += 1;
+            seat.keep(&record, self.seq);
         }
     }
 
@@ -51,6 +48,7 @@ impl Room {
         for to in 0..self.seats.len() {
             self.relay_to(to, now, out);
         }
+        self.relayed = self.seq;
     }
 
     /// Sends the player in seat `to` the newer records of every other seat, in batches of at
@@ -65,16 +63,20 @@ impl Room {
             let Some(other) = other.as_ref().filter(|_| from != to) else {
                 continue;
             };
-            for (latest, sent) in other.latest.iter().zip(&mut self.sent[to][from]) {
-                let Some(latest) = latest
-                    .as_ref()
-                    .filter(|latest| due(latest, sent, star, now))
+            for (recent, sent) in other.recent.iter().zip(&mut self.sent[to][from]) {
+                let Some(newest) = recent
+                    .newest()
+                    .filter(|newest| due(newest, sent, star, now))
                 else {
                     continue;
                 };
-                offer(&mut self.batch, latest, conn, out);
+                let near = star == Some(newest.star);
+                let since = sent.seq.max(self.relayed);
+                for latest in owed(recent, newest, since, near) {
+                    offer(&mut self.batch, latest, conn, out);
+                }
                 *sent = Sent {
-                    seq: latest.seq,
+                    seq: newest.seq,
                     at: now,
                 };
             }
@@ -90,6 +92,20 @@ impl Room {
 fn due(latest: &Latest, sent: &Sent, star: Option<StarId>, now: f64) -> bool {
     let near = star == Some(latest.star);
     latest.seq > sent.seq && (near || now - sent.at >= OTHER_STAR_EVERY)
+}
+
+/// Returns the records of `recent` a recipient is owed: around the same star every one above
+/// number `since`, oldest first, else only `newest`.
+fn owed<'a>(
+    recent: &'a Recent,
+    newest: &'a Latest,
+    since: u64,
+    near: bool,
+) -> impl Iterator<Item = &'a Latest> {
+    let older = recent
+        .iter()
+        .filter(move |latest| near && latest.seq > since);
+    older.chain((!near).then_some(newest))
 }
 
 /// Adds `latest` to `batch`. When the batch is full it goes out to `conn` first and the

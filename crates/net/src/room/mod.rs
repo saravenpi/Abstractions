@@ -2,9 +2,9 @@
 //! and datagrams come out. The server and a game open to LAN run the same room.
 //!
 //! The room never simulates and never decodes a state body. It owns the world (seed, clock,
-//! log, atlas, player records), lets players in, keeps the latest state of each player and
-//! kind, and copies it to the others every tick: at the full rate around the same star, once
-//! a second elsewhere.
+//! log, atlas, player records), lets players in, keeps the last few states of each player and
+//! kind, and copies them to the others every tick: all of them around the same star, the
+//! newest once a second elsewhere.
 
 mod conn;
 mod host;
@@ -68,6 +68,8 @@ pub struct Room {
     batch: Vec<u8>,
     /// Number of the last state record kept, so newer records compare greater.
     seq: u64,
+    /// Value of `seq` at the end of the last relay: records above it came since that tick.
+    relayed: u64,
 }
 
 impl Room {
@@ -86,6 +88,7 @@ impl Room {
             next_id: 1,
             batch: Vec::with_capacity(2 * DATAGRAM_BUDGET),
             seq: 0,
+            relayed: 0,
         }
     }
 

@@ -158,6 +158,8 @@ footer {
 }
 
 .top {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -220,12 +222,28 @@ p {
 
 .hero {
   container-type: inline-size;
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   min-height: calc(100vh - 4.5rem);
   min-height: calc(100svh - 4.5rem);
   padding: 3rem 0 2rem;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: -12rem calc(50% - 50vw) 0;
+  z-index: -1;
+  background:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 28%, rgba(0, 0, 0, 0.25) 55%, var(--black)),
+    url("hero.jpg?v=1") 50% 62% / cover no-repeat;
+  background:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 28%, rgba(0, 0, 0, 0.25) 55%, var(--black)),
+    image-set(url("hero.webp?v=1") type("image/webp"), url("hero.jpg?v=1") type("image/jpeg")) 50% 62% / cover no-repeat;
+  image-rendering: pixelated;
 }
 
 h1 {
@@ -776,6 +794,15 @@ pre.sample code {
 @media (max-width: 48rem) {
   .hero {
     justify-content: center;
+  }
+
+  .hero::before {
+    background:
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.45) 40%, rgba(0, 0, 0, 0.55) 70%, var(--black)),
+      url("hero.jpg?v=1") 50% 62% / cover no-repeat;
+    background:
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.45) 40%, rgba(0, 0, 0, 0.55) 70%, var(--black)),
+      image-set(url("hero.webp?v=1") type("image/webp"), url("hero.jpg?v=1") type("image/jpeg")) 50% 62% / cover no-repeat;
   }
 
   .intro .label,

@@ -5,8 +5,13 @@
 //! are metres.
 
 mod build;
+mod paint;
+mod shape;
+mod soup;
 
 pub use build::build;
+pub use paint::{soup, triangles};
+pub use soup::{Face, Soup};
 
 use bevy::math::{Quat, Vec3};
 

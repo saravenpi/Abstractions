@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- A self-hosted server takes as many players as `--max-players` or `ABSTRACTIONS_MAX_PLAYERS` says, up to 1000, and still 16 by default. A world opened to LAN takes `host_max_players` from the settings, 16 by default. The server list shows each server's real cap.
+
 ## [0.10.1] - 2026-11-19
 
 Players and servers must both run 0.10.1: the multiplayer protocol changed.

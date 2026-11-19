@@ -21,7 +21,7 @@ pub fn count(
     if !timer.tick(time.delta()).just_finished() {
         return;
     }
-    let held = u8::try_from(players.0.len() + 1).unwrap_or(u8::MAX);
+    let held = u16::try_from(players.0.len() + 1).unwrap_or(u16::MAX);
     if hosted.beacon.players == held {
         return;
     }

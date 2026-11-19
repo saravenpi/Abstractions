@@ -11,9 +11,9 @@ pub enum RowStatus {
     /// The server answered.
     Online {
         /// Players connected now.
-        players: u8,
+        players: u16,
         /// Most players the server takes.
-        cap: u8,
+        cap: u16,
         /// Round trip of the status request, in milliseconds.
         ping_ms: u32,
         /// The game version the server runs, as `0.9.0`.

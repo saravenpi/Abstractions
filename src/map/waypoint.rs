@@ -17,6 +17,8 @@ use super::palette::player_color;
 use super::surface::Surface;
 use crate::computer::{Computer, Typing};
 use crate::menus::{Marker, MarkerKind, MarkerPlace, Markers};
+use crate::net::Link;
+use crate::screens::Screen as Shown;
 use crate::settings::{Persistent, Settings};
 use crate::universe::{BodyId, Universe};
 
@@ -140,3 +142,29 @@ pub(super) fn fill(
             .push(marker(waypoint, *owner, radius(waypoint.body)));
     }
 }
+
+/// Forgets every waypoint and its marker: the world they were set in ended.
+fn reset(mut waypoints: ResMut<Waypoints>, mut markers: ResMut<Markers>) {
+    *waypoints = Waypoints::default();
+    markers.clear_kind(MarkerKind::Waypoint);
+}
+
+/// Forgets the waypoints of the other players and their markers once the session ended. This
+/// player's own stays with the world, and the next server gets it with its welcome.
+fn part(mut waypoints: ResMut<Waypoints>, mut markers: ResMut<Markers>) {
+    waypoints.me = 0;
+    waypoints.friends.clear();
+    markers
+        .0
+        .retain(|marker| marker.kind != MarkerKind::Waypoint || marker.owner == 0);
+}
+
+/// Registers the end of waypoints: all of them with the world, the others' with the session.
+pub(super) fn plugin(app: &mut App) {
+    app.add_systems(OnEnter(Shown::Title), reset)
+        .add_systems(Update, part.run_if(resource_removed::<Link>));
+}
+
+#[cfg(test)]
+#[path = "waypoint_tests.rs"]
+mod tests;

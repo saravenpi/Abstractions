@@ -80,6 +80,7 @@ fn screen(app: &mut App) {
         caption::caption_text,
         caption::coords_text,
         side_show::write,
+        side_show::save_words,
         fade::fade,
     );
     app.add_systems(OnEnter(Computer::Open), level::open)

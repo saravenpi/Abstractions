@@ -90,7 +90,7 @@ fn legend() -> impl Bundle {
 /// fills the chart. The room around the square cuts what leaves it, so a zoomed chart runs
 /// on to the edges of the screen.
 pub fn field() -> impl Bundle {
-    let side = px(measure(SMALLEST).map);
+    let side = px(measure(SMALLEST, (0, 0)).map);
     let cover = Node {
         position_type: PositionType::Absolute,
         width: percent(100),

@@ -6,7 +6,7 @@ use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 
 use super::course::{NOWHERE, arrival, course, crumbs};
-use super::layout::{Measures, RESULTS, SIDE, SMALLEST, measure};
+use super::layout::{Measures, RESULTS, ROW, SIDE, SMALLEST, fixed, measure};
 use super::tests_rig::{game, run, tap};
 use super::view::{Panel, Slot};
 use super::*;
@@ -20,7 +20,7 @@ fn the_screen_fits_every_window() {
     for height in [540.0, 600.0, 720.0, 900.0, 1080.0, 1200.0, 1440.0, 2160.0] {
         for width in [960.0, 1280.0, 1920.0, 2560.0, 3840.0] {
             let window = Vec2::new(width, height);
-            let fit = measure(window);
+            let fit = measure(window, (0, 0));
             assert!(
                 fit.map <= height && fit.map + fit.side <= width,
                 "{window}: {fit:?}"
@@ -35,9 +35,14 @@ fn the_screen_fits_every_window() {
     let smallest = Measures {
         side: SIDE,
         map: 540.0,
-        rows: RESULTS.0,
+        rows: RESULTS.1,
     };
-    assert_eq!(measure(SMALLEST), smallest);
+    assert_eq!(measure(SMALLEST, (0, 0)), smallest);
+    for lists in [(0, 0), (2, 1), (5, 0), (3, 3), (1, 6)] {
+        let fit = measure(SMALLEST, lists);
+        let used = fixed(lists) + fit.rows as f32 * ROW;
+        assert!(used <= SMALLEST.y, "{lists:?}: {used}");
+    }
 }
 
 /// The breadcrumb joins the names from the galaxy down, and the course line gives a time to
@@ -113,7 +118,7 @@ fn the_open_panel_leaves_the_game_running() {
     let drawn = slots
         .iter(app.world())
         .filter(|(_, node)| node.display != Display::None);
-    assert!(drawn.count() <= measure(SMALLEST).rows);
+    assert!(drawn.count() <= measure(SMALLEST, (0, 0)).rows);
     tap(&mut app, KeyCode::Escape, None);
     run(&mut app, 2);
     assert!(!open(&app) && menu(&app) == Menu::None);

@@ -12,7 +12,7 @@ use crate::ui::{
 };
 
 /// Most characters of the name of a result; a longer name is cut short.
-pub(super) const TITLE_CHARS: usize = 20;
+pub(super) const TITLE_CHARS: usize = 19;
 
 /// Most characters of the distance of a result, as `1000000 gly`.
 pub(super) const DISTANCE_CHARS: usize = 11;
@@ -64,7 +64,7 @@ fn field() -> impl Bundle {
         ..default()
     };
     let words = label(SEARCH_HINT, theme::FONT_SMALL, Tone::Muted);
-    let inside = children![icon(Icon::Map, Tone::Muted), (SearchText, words)];
+    let inside = children![(SearchText, words)];
     (SearchBox, frame(), node, hairline(), inside)
 }
 

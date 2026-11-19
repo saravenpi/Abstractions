@@ -5,7 +5,7 @@ use avian3d::prelude::{Physics, PhysicsTime};
 use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 
-use super::course::{NOWHERE, arrival, course, crumbs};
+use super::course::{NO_COURSE, NOWHERE, Offer, arrival, course, crumbs, offer};
 use super::layout::{Measures, RESULTS, ROW, SIDE, SMALLEST, fixed, measure};
 use super::tests_rig::{game, run, tap};
 use super::view::{Panel, Slot};
@@ -62,7 +62,7 @@ fn the_header_and_the_footer_say_the_right_words() {
     );
     let moving = course(Some(("Kodya", 720_000.0)), 100.0, idle);
     assert_eq!(moving, "Course Kodya - 720 km - about 2 h 0 min - idle");
-    assert!(course(None, 100.0, idle).starts_with("No course set"));
+    assert_eq!(course(None, 100.0, idle), NO_COURSE);
 }
 
 /// The action line offers the engage key only while the autopilot can take the course, and
@@ -94,6 +94,25 @@ fn the_action_line_says_what_the_route_can_do() {
         action("Kodya b", RouteStatus::Arrived).1,
         "Arrived at Kodya b"
     );
+}
+
+/// The action line offers to set the course while the selection is not the course, to
+/// engage while the route is idle, to clear once arrived, and words alone otherwise.
+#[test]
+fn the_action_line_offers_one_button() {
+    let idle = RouteStatus::Idle;
+    let act = |offer: Offer| match offer {
+        Offer::Button(act, ..) => Some(act),
+        Offer::Words(_) => None,
+    };
+    assert_eq!(act(offer(None, true, idle)), Some(Act::Set));
+    assert_eq!(act(offer(Some("Kodya"), true, idle)), Some(Act::Set));
+    assert_eq!(act(offer(Some("Kodya"), false, idle)), Some(Act::Engage));
+    let arrived = RouteStatus::Arrived;
+    assert_eq!(act(offer(Some("Kodya"), false, arrived)), Some(Act::Clear));
+    let words = offer(Some("Kodya"), false, RouteStatus::Aligning(45));
+    assert_eq!(words, Offer::Words("Aligning 45%".to_string()));
+    assert_eq!(offer(None, false, idle), Offer::Words(String::new()));
 }
 
 /// Opening the map leaves the game running: physics and the game clock are not paused and

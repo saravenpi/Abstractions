@@ -16,7 +16,7 @@ pub const SMALLEST: Vec2 = Vec2::new(960.0, 540.0);
 pub const SIDE: f32 = 320.0;
 
 /// Margin in pixels around the side panel and around the texts over the map.
-pub const MARGIN: f32 = 12.0;
+pub const MARGIN: f32 = theme::GAP_M;
 
 /// Width in pixels the side panel leaves for its content, inside its margins and its border.
 pub const ROOM: f32 = SIDE - 2.0 * MARGIN - theme::LINE;

@@ -10,13 +10,10 @@
 use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
-use super::layout::{MARGIN, SIDE};
+use super::layout::{LINE_HEIGHT, MARGIN, SIDE};
 use super::map::field;
 use super::open::Computer;
-use crate::ui::{Overlay, Tone, column, hairline, key_cap, label, text, theme};
-
-/// Key hints shown at the bottom of the panel, one short line each.
-pub(super) const HINT: &str = "Wheel zoom, drag pan\n0 centre, B waypoint";
+use crate::ui::{Overlay, hairline, text, theme};
 
 /// What the search box says while nothing is typed.
 pub(super) const SEARCH_HINT: &str = "Search (/)";
@@ -60,13 +57,13 @@ pub(super) struct Summary;
 #[derive(Component)]
 pub(super) struct Status;
 
-/// Marks the words of the action line of the course.
+/// Marks the words of the action line of the course, shown while it has no button.
 #[derive(Component)]
 pub(super) struct Action;
 
-/// Marks the key of the action line of the course.
+/// Marks the room of the button of the action line of the course.
 #[derive(Component)]
-pub(super) struct ActionKey;
+pub(super) struct ActionSlot;
 
 /// Marks the search box, which a click makes the place typing goes to.
 #[derive(Component)]
@@ -76,7 +73,7 @@ pub struct SearchBox;
 #[derive(Component)]
 pub(super) struct SearchText;
 
-/// The slim panel on the right: the search, the favourites, the players and the key hints.
+/// The slim panel on the right: the search with its card, the favourites and the players.
 fn side() -> impl Bundle {
     let node = Node {
         width: px(SIDE),
@@ -89,10 +86,6 @@ fn side() -> impl Bundle {
         overflow: Overflow::clip(),
         ..default()
     };
-    let hint = (
-        text(HINT, theme::FONT_SMALL, theme::MUTED),
-        TextLayout::no_wrap(),
-    );
     (
         node,
         hairline(),
@@ -101,17 +94,70 @@ fn side() -> impl Bundle {
             super::results::search(),
             super::readout::card(),
             crate::map::favourites(),
-            crate::map::players(),
-            hint
+            crate::map::players()
         ],
     )
 }
 
-/// What is written over the map: where the player is in the top left corner, and the action
-/// line of the course over the course line along the bottom, with the place under the
-/// pointer.
+/// A column of lines over the map that shrinks and is cut before it runs under what is at the
+/// right end of its row.
+fn stack() -> Node {
+    Node {
+        flex_direction: FlexDirection::Column,
+        row_gap: px(theme::GAP_XS),
+        flex_shrink: 1.0,
+        min_width: px(0),
+        overflow: Overflow::clip(),
+        ..default()
+    }
+}
+
+/// A row over the map with `left` on its left and `right` at its right end, aligned along
+/// `align`.
+fn ends(align: AlignItems, left: impl Bundle, right: impl Bundle) -> impl Bundle {
+    let row = Node {
+        width: percent(100),
+        justify_content: JustifyContent::SpaceBetween,
+        align_items: align,
+        column_gap: px(theme::GAP_M),
+        ..default()
+    };
+    (row, children![left, right])
+}
+
+/// A line of small text over the map that keeps its height while empty.
+fn line(color: Color) -> impl Bundle {
+    let tall = Node {
+        min_height: px(LINE_HEIGHT),
+        ..default()
+    };
+    (
+        text("", theme::FONT_SMALL, color),
+        TextLayout::no_wrap(),
+        tall,
+    )
+}
+
+/// The lines along the bottom of the map: the action line of the course, which holds its
+/// button or its words, over the course line and the place under the pointer.
+fn foot() -> impl Bundle {
+    let act = (
+        Node {
+            min_height: px(theme::ROW_COMPACT),
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        children![(ActionSlot, Node::default()), (Action, line(theme::TEXT))],
+    );
+    let lines = children![act, (Status, line(theme::MUTED)), crate::map::coords()];
+    (stack(), lines)
+}
+
+/// What is written over the map: where the player is in the top left corner with north at
+/// the right end, and along the bottom the action line of the course over the course line
+/// and the place under the pointer, with the scale at the right end. Each line keeps its
+/// height while empty, so the others do not jump.
 fn words() -> impl Bundle {
-    let line = |color: Color| (text("", theme::FONT_SMALL, color), TextLayout::no_wrap());
     let node = Node {
         position_type: PositionType::Absolute,
         width: percent(100),
@@ -121,25 +167,18 @@ fn words() -> impl Bundle {
         padding: UiRect::all(px(MARGIN)),
         ..default()
     };
-    let act = (
-        Node {
-            column_gap: px(theme::GAP_M),
-            ..default()
-        },
+    let head = children![(Crumbs, line(theme::TEXT)), crate::map::caption()];
+    (
+        node,
         children![
-            (ActionKey, key_cap("")),
-            (Action, label("", theme::FONT_BODY, Tone::Plain))
+            ends(
+                AlignItems::FlexStart,
+                (stack(), head),
+                super::legend::north()
+            ),
+            ends(AlignItems::FlexEnd, foot(), super::legend::scale()),
         ],
-    );
-    let foot = (
-        column(percent(100), theme::GAP_XS),
-        children![act, (Status, line(theme::MUTED)), crate::map::coords()],
-    );
-    let head = (
-        column(percent(100), theme::GAP_XS),
-        children![(Crumbs, line(theme::TEXT)), crate::map::caption()],
-    );
-    (node, children![head, foot])
+    )
 }
 
 /// The room of the map: the square map in its middle, the veil that fades one level into the

@@ -6,7 +6,7 @@ use super::layout::{GLYPH, LINE_CHARS, ROOM};
 use super::results::{DISTANCE_CHARS, TITLE_CHARS, WIDTHS};
 use super::show::cell_text;
 use super::sift::{FILTER_CHARS, Sort, summary};
-use super::view::{HINT, Part};
+use super::view::Part;
 use super::{Line, Target};
 use crate::ui::theme;
 use crate::universe::{BodyId, GLY};
@@ -73,13 +73,4 @@ fn the_header_fits_one_line() {
     }
     let usual = summary("Vereya system", (1, 8, 12), ("", Sort::Near));
     assert_eq!(usual, "Vereya system - 1-8 of 12");
-}
-
-/// Each line of the key hints fits the panel, and the hints take two lines.
-#[test]
-fn the_hint_fits_the_panel() {
-    assert_eq!(HINT.lines().count(), 2);
-    for line in HINT.lines() {
-        assert!(line.chars().count() <= LINE_CHARS, "{line}");
-    }
 }

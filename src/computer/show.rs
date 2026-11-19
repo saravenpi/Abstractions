@@ -2,7 +2,6 @@
 
 use bevy::prelude::*;
 
-use super::acting::{Acting, act};
 use super::board::Board;
 use super::format::{clip, distance};
 use super::home::{arranged, beacon, homes, pinned};
@@ -15,7 +14,6 @@ use super::scene::Scene;
 use super::sift;
 use super::tab::Tab;
 use super::view::{Cell, Crumbs, Part, Slot, Status, Summary};
-use crate::settings::{Persistent, Settings};
 use crate::ui::{Icon, Tone};
 
 /// Seconds between two refreshes of what changes while flying: the distances of the system tab
@@ -146,15 +144,14 @@ type Route<'w> = (Res<'w, Destination>, Res<'w, RouteStatus>);
 /// The lines the course and the place of the ship are written on.
 type Written = Or<(With<Status>, With<Crumbs>)>;
 
-/// Writes the action line and the course with its distance and the state of the route, and
-/// where the ship is: when the course or the route changes, and twice a second for the
-/// distance.
+/// Writes the course with its distance and the state of the route, and where the ship is:
+/// when the course or the route changes, and twice a second for the distance.
 fn status(
-    (time, settings): (Res<Time>, Res<Persistent<Settings>>),
+    time: Res<Time>,
     scene: Scene,
     (destination, route): Route,
     mut since: Local<f32>,
-    (mut lines, acting): (Query<(&mut Text, Has<Crumbs>), Written>, Acting),
+    mut lines: Query<(&mut Text, Has<Crumbs>), Written>,
 ) {
     *since += time.delta_secs();
     let empty = lines.iter().any(|(text, _)| text.0.is_empty());
@@ -167,12 +164,6 @@ fn status(
         let wanted = if crumbs { &place } else { &shown };
         text.set_if_neq(Text(wanted.clone()));
     }
-    act(
-        &scene,
-        (destination.0, *route),
-        settings.controls.keys.engage,
-        acting,
-    );
 }
 
 /// Registers the systems that fill the screen.
@@ -184,6 +175,7 @@ pub(super) fn plugin(app: &mut App) {
             rows,
             tabs,
             status,
+            super::acting::write,
             super::readout::write,
             (super::pointer::plot, super::glide::ease).chain(),
             super::draw::draw,

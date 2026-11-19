@@ -1,55 +1,72 @@
-//! The action line of the course on the map: the engage key and what it does while the
-//! autopilot can take the course, or why it cannot, or how far along the route is.
+//! The action line of the course on the map: one button that sets the course to the selection,
+//! engages the autopilot or clears the course, with its key, or words that say how far along
+//! the route is or why it cannot start.
 
 use bevy::prelude::*;
 
-use super::route::{RouteStatus, Target};
-use super::scene::Scene;
-use super::view::{Action, ActionKey, Crumbs, Status};
+use super::board::Board;
+use super::course::{Act, Offer, offer};
+use super::route::{Destination, RouteStatus};
+use super::view::{Action, ActionSlot};
 use crate::menus::key_name;
+use crate::settings::{Persistent, Settings};
+use crate::ui::{Tone, action};
+use crate::universe::Universe;
 
-/// The action line of the course: its words and its key.
-pub(super) type Acting<'w, 's> = (
-    Query<
-        'w,
-        's,
-        &'static mut Text,
-        (
-            With<Action>,
-            Without<ActionKey>,
-            Without<Status>,
-            Without<Crumbs>,
-        ),
-    >,
-    Query<
-        'w,
-        's,
-        &'static mut Text,
-        (
-            With<ActionKey>,
-            Without<Action>,
-            Without<Status>,
-            Without<Crumbs>,
-        ),
-    >,
+/// Returns the name of the key that runs `act`.
+fn key_of(act: Act, engage: KeyCode) -> String {
+    match act {
+        Act::Set => "Enter".to_string(),
+        Act::Engage => key_name(engage),
+        Act::Clear => "Delete".to_string(),
+        Act::Home => "Home".to_string(),
+    }
+}
+
+/// The room of the button and the words of the action line.
+type Lines<'w, 's> = (
+    Query<'w, 's, Entity, With<ActionSlot>>,
+    Query<'w, 's, &'static mut Text, With<Action>>,
 );
 
-/// Writes the action line of the course, its key only while the key engages the autopilot.
-pub(super) fn act(
-    scene: &Scene,
-    (destination, route): (Option<Target>, RouteStatus),
-    key: KeyCode,
-    (mut words, mut keys): Acting,
+/// What the action line is worked out from.
+type Course<'w> = (Res<'w, Board>, Res<'w, Destination>, Res<'w, RouteStatus>);
+
+/// Writes the action line when the selection, the course or the route changes: the button in
+/// its room, or the words alone.
+pub(super) fn write(
+    (board, destination, route): Course,
+    (settings, universe): (Res<Persistent<Settings>>, Res<Universe>),
+    mut commands: Commands,
+    (slots, mut words): Lines,
+    mut last: Local<Option<(Offer, Entity)>>,
 ) {
-    let named = destination.map(|target| target.name(&scene.universe));
-    let (engage, said) = named.map_or((false, String::new()), |name| {
-        super::course::action(&name, route)
-    });
-    let shown = if engage { key_name(key) } else { String::new() };
+    let Some(slot) = slots.iter().next() else {
+        return;
+    };
+    let moved = board.is_changed() || destination.is_changed() || route.is_changed();
+    if !moved && last.as_ref().is_some_and(|(_, at)| *at == slot) {
+        return;
+    }
+    let chosen = board.lines.get(board.cursor).map(|line| line.target);
+    let set = chosen.is_some() && chosen != destination.0;
+    let name = destination.0.map(|target| target.name(&universe));
+    let wanted = offer(name.as_deref(), set, *route);
+    if last.as_ref() == Some(&(wanted.clone(), slot)) {
+        return;
+    }
+    commands.entity(slot).despawn_children();
+    let said = match &wanted {
+        Offer::Button(act, icon, label) => {
+            let key = key_of(*act, settings.controls.keys.engage);
+            let button = (*act, action(*icon, label, &key, Tone::Accent));
+            commands.entity(slot).with_child(button);
+            String::new()
+        }
+        Offer::Words(said) => said.clone(),
+    };
     for mut text in &mut words {
         text.set_if_neq(Text(said.clone()));
     }
-    for mut text in &mut keys {
-        text.set_if_neq(Text(shown.clone()));
-    }
+    *last = Some((wanted, slot));
 }

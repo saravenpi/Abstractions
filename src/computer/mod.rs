@@ -18,6 +18,7 @@ mod hover;
 mod keys;
 mod labels;
 mod layout;
+mod legend;
 mod lens;
 mod locate;
 mod map;

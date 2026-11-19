@@ -4,6 +4,7 @@
 //! - [`raster`] paints the flat coloured picture of a body, black where nobody has been.
 
 pub mod explored;
+pub mod palette;
 pub mod raster;
 
 use bevy::prelude::*;

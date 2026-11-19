@@ -13,7 +13,7 @@ use bevy::ui::RelativeCursorPosition;
 use super::layout::{LINE_HEIGHT, MARGIN, SIDE};
 use super::map::field;
 use super::open::Computer;
-use crate::ui::{Overlay, text, theme};
+use crate::ui::{Blurred, Overlay, text, theme};
 
 /// Background of the side panel: a tone lighter than the map, which sets it apart with no line.
 pub const PANEL: Color = Color::srgb(0.09, 0.09, 0.09);
@@ -90,7 +90,7 @@ fn side() -> impl Bundle {
     };
     (
         node,
-        BackgroundColor(PANEL),
+        BackgroundColor(theme::STRIP),
         children![
             super::results::search(),
             super::readout::card(),
@@ -218,7 +218,8 @@ pub(super) fn spawn(mut commands: Commands, mut board: ResMut<super::board::Boar
     commands.spawn((
         DespawnOnExit(Computer::Open),
         (Panel, Overlay, node),
-        BackgroundColor(theme::BACKGROUND),
+        BackgroundColor(theme::SCRIM),
+        Blurred,
         children![area(), side()],
     ));
 }

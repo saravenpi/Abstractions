@@ -6,7 +6,7 @@ use std::collections::HashSet;
 use bevy::prelude::*;
 
 use super::font::UNDEFINED_OTF;
-use super::icon::{ICONS_TTF, Icon};
+use super::icon::{CODEPOINTS, ICONS_TTF, Icon};
 use super::theme;
 
 /// Reads a big-endian `u16` at `at`.
@@ -49,7 +49,11 @@ fn glyph_index(data: &[u8], c: char) -> usize {
 #[test]
 fn every_icon_has_a_glyph_in_the_embedded_font() {
     assert_eq!(&ICONS_TTF[..4], [0, 1, 0, 0]);
-    for icon in Icon::ALL {
+    for (at, icon) in Icon::ALL.into_iter().enumerate() {
+        assert_eq!(
+            CODEPOINTS[at].0, icon,
+            "the table follows the declaration order"
+        );
         let index = glyph_index(ICONS_TTF, icon.codepoint());
         assert!(index > 0, "{icon:?} has no glyph");
         assert_eq!(icon.glyph().chars().count(), 1);
@@ -76,4 +80,23 @@ fn the_interface_font_loads_and_covers_ascii() {
     let units = be16(UNDEFINED_OTF, table(UNDEFINED_OTF, b"head") + 18) as f32;
     let advance = be16(UNDEFINED_OTF, table(UNDEFINED_OTF, b"hmtx")) as f32;
     assert_eq!(advance / units, theme::GLYPH_ASPECT);
+}
+
+/// The icons of the multiplayer menus keep the codepoints of `pixelart-icons-font.css` 2.4.2,
+/// and the embedded font draws each of them.
+#[test]
+fn the_multiplayer_icons_match_the_pinned_font() {
+    let pinned = [
+        (Icon::Users, 0xede1),
+        (Icon::User, 0xeddf),
+        (Icon::Server, 0xed20),
+        (Icon::Wifi, 0xee01),
+        (Icon::Reload, 0xecfa),
+        (Icon::Link, 0xec5f),
+    ];
+    for (icon, code) in pinned {
+        assert_eq!(icon.codepoint() as u32, code, "{icon:?}");
+        assert!(glyph_index(ICONS_TTF, icon.codepoint()) > 0, "{icon:?}");
+        assert!(Icon::ALL.contains(&icon), "{icon:?}");
+    }
 }

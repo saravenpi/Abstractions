@@ -1,0 +1,19 @@
+[package]
+name = "abstractions-server"
+authors = ["saravenpi"]
+version.workspace = true
+edition = "2024"
+rust-version = "1.97.1"
+description = "The self-hosted server of Abstractions."
+repository = "https://github.com/saravenpi/Abstractions"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "abstractions-server"
+path = "src/main.rs"
+
+[dependencies]
+abstractions-net = { path = "../net" }
+async-signal = "0.2.14"
+smol = "2"

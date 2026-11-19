@@ -8,14 +8,53 @@
 //! is kept for one world, named by its save and its seed, and the atlas of any other world is
 //! new. A world starts from a system of `Update`, one frame before the loading screen, so
 //! clearing the mark on that screen alone would come one comparison too late.
+//!
+//! In a session the log belongs to the server: a first visit is not appended here but sent as
+//! a [`ShareChange`], and the server's answer appends it for every player.
 
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::{Change, Changes, PlayerId};
 use crate::computer::Atlas;
+use crate::net::Session;
 use crate::saves::ActiveWorld;
 use crate::screens::Screen;
 use crate::space::Clock;
+use crate::universe::BodyId;
+
+/// A change the local player made in a session, for the network to send to the server in
+/// place of the local log.
+#[derive(Message, Debug, Clone, PartialEq)]
+pub struct ShareChange(pub Change);
+
+/// Where the visits of a frame go: the local log, or the server in a session.
+#[derive(SystemParam)]
+struct Sink<'w> {
+    /// The local log.
+    changes: Option<ResMut<'w, Changes>>,
+    /// Where the game stands with other players.
+    session: Option<Res<'w, Session>>,
+    /// The changes for the server.
+    share: MessageWriter<'w, ShareChange>,
+}
+
+impl Sink<'_> {
+    /// Logs a first visit of `body` at universe time `time`, or sends it in a session unless
+    /// the log already holds it.
+    fn visit(&mut self, body: BodyId, time: f64) {
+        let change = Change::Visited(body);
+        let shared = self.session.as_deref().is_some_and(Session::shared);
+        let Some(changes) = self.changes.as_deref_mut() else {
+            return;
+        };
+        if !shared {
+            changes.push(PlayerId::LOCAL, time, change);
+        } else if !changes.entries.iter().any(|entry| entry.change == change) {
+            self.share.write(ShareChange(change));
+        }
+    }
+}
 
 /// How far the logger has read the atlas of one world.
 #[derive(Resource, Debug, Default, Clone, PartialEq)]
@@ -41,19 +80,22 @@ impl Seen {
 fn log_visits(
     atlas: Option<Res<Atlas>>,
     clock: Option<Res<Clock>>,
-    changes: Option<ResMut<Changes>>,
     active: Option<Res<ActiveWorld>>,
     mut seen: ResMut<Seen>,
+    mut sink: Sink,
 ) {
-    let (Some(atlas), Some(clock), Some(mut changes)) = (atlas, clock, changes) else {
+    let (Some(atlas), Some(clock)) = (atlas, clock) else {
         return;
     };
+    if sink.changes.is_none() {
+        return;
+    }
     let world = active.as_deref().map(|active| &active.0);
     let world = world.map(|entry| (entry.id.as_str(), entry.save.seed));
     let same = seen.of(world);
     if let Some(logged) = seen.logged.filter(|_| same) {
         for &body in atlas.bodies.iter().skip(logged) {
-            changes.push(PlayerId::LOCAL, clock.seconds, Change::Visited(body));
+            sink.visit(body, clock.seconds);
         }
     }
     if !same {
@@ -72,6 +114,7 @@ fn forget(mut seen: ResMut<Seen>) {
 /// Registers the log of first visits, after every system of the frame that visits.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Seen>()
+        .add_message::<ShareChange>()
         .add_systems(OnEnter(Screen::Loading), forget)
         .add_systems(PostUpdate, log_visits);
 }

@@ -1,13 +1,16 @@
-//! Menu overlays: main, worlds, new world, settings, update and pause, and the in-game HUD.
+//! Menu overlays: main, worlds, new world, multiplayer, settings, update, pause and players, and
+//! the in-game HUD.
 
 mod hud;
 mod main_menu;
+mod multiplayer;
 mod name;
 mod nav;
 mod new_game;
 mod options;
 mod pause;
 mod pause_hud;
+mod players;
 mod recall;
 mod seed;
 mod slots;
@@ -40,6 +43,12 @@ pub enum Menu {
     Pause,
     /// A newer release: its notes, its download and the restart.
     Update,
+    /// Saved servers and games on the local network.
+    Multiplayer,
+    /// Waiting for a server to answer a join.
+    Joining,
+    /// The players of the session, opened from the pause menu.
+    Players,
 }
 
 /// Registers the menu state and every menu plugin.
@@ -56,5 +65,7 @@ pub(super) fn plugin(app: &mut App) {
         options::plugin,
         pause::plugin,
         update::plugin,
+        multiplayer::plugin,
+        players::plugin,
     ));
 }

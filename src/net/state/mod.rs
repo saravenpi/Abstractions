@@ -1,0 +1,75 @@
+//! The state of every player in a session: this machine sends where its robot, ship and
+//! companion are, and draws those of the others.
+//!
+//! Sending reads the local robot, ship and companion once the frame is drawn, puts each in
+//! the wire frame it belongs in (the surface of a body on foot or landed, around the body a
+//! ship flies at, the frame of a star in deep space) and sends what is due in one batch.
+//! Drawing keeps a jitter buffer per player and kind, samples it at universe time, moves the
+//! sample from its wire frame into the frame of the render anchor and writes the puppet.
+
+mod bodies;
+mod draw;
+mod forget;
+mod frame;
+mod rate;
+mod robot;
+mod send;
+mod tag;
+mod track;
+
+#[cfg(test)]
+mod tests;
+
+use bevy::prelude::*;
+use bevy::transform::TransformSystems;
+
+use super::link::{Link, Receive};
+use crate::avatar::{self, AvatarSet};
+use crate::ship::{self, ShipSet};
+
+/// Marks a puppet: the robot, ship or companion of another player, drawn from the network.
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct Remote;
+
+/// Registers what runs each frame of a session: the records that arrived, the players who
+/// went, then the puppets and their names once the anchor of the frame is set.
+fn frame(app: &mut App) {
+    let drawn = (
+        draw::robots.run_if(resource_exists::<avatar::Looks>),
+        draw::ships.run_if(resource_exists::<ship::Looks>),
+        draw::companions.run_if(resource_exists::<Assets<Image>>),
+        tag::tags,
+    );
+    let placed = drawn
+        .chain()
+        .after(ShipSet::Place)
+        .before(AvatarSet::Animate);
+    let heard = (track::ingest, forget::forget).chain().after(Receive);
+    app.add_systems(
+        Update,
+        (heard, placed)
+            .chain()
+            .distributive_run_if(resource_exists::<Link>),
+    );
+}
+
+/// Registers the state of the players: what arrives, what is drawn and what is sent. Every
+/// system waits for a link, so single player runs none but the one that forgets puppets.
+pub fn plugin(app: &mut App) {
+    app.init_resource::<track::Remotes>()
+        .init_resource::<send::Outbox>()
+        .init_resource::<bodies::Bodies>()
+        .add_systems(
+            Update,
+            forget::clear
+                .run_if(not(resource_exists::<Link>))
+                .run_if(track::kept),
+        )
+        .add_systems(
+            PostUpdate,
+            send::send
+                .after(TransformSystems::Propagate)
+                .run_if(resource_exists::<Link>),
+        );
+    frame(app);
+}

@@ -1,13 +1,33 @@
-//! Corner texts of the pause menu: the world name and the save notice.
+//! Corner texts of the pause menu: the world name or the session, and the save notice.
 
 use bevy::prelude::*;
 
-use crate::saves::SavedFlash;
+use crate::net::Session;
+use crate::saves::{ActiveWorld, SavedFlash};
 use crate::ui::{text, theme};
+use crate::world::WorldSeed;
 
 /// Marks the "Saved" notice.
 #[derive(Component)]
 pub struct SavedLabel;
+
+/// Returns the corner text: the LAN address and key while hosting, the server while joined, and
+/// otherwise the world name and seed, or the seed alone.
+pub fn corner_text(
+    session: &Session,
+    active: Option<&ActiveWorld>,
+    seed: Option<&WorldSeed>,
+) -> String {
+    match (session, active, seed) {
+        (Session::Hosting { lan_address, key }, _, _) => {
+            format!("Hosting on {lan_address} - key {key}")
+        }
+        (Session::Joined { address, name }, _, _) => format!("{name} - {address}"),
+        (_, Some(active), _) => format!("{} - seed {}", active.0.save.name, active.0.save.seed),
+        (_, None, Some(seed)) => format!("Seed {}", seed.0),
+        (_, None, None) => String::new(),
+    }
+}
 
 /// Small muted text in the bottom-right corner.
 pub fn world_corner(content: String) -> impl Bundle {

@@ -10,6 +10,7 @@ pub mod gear;
 pub mod home;
 pub mod icon;
 pub mod menus;
+pub mod net;
 pub mod player;
 pub mod render;
 pub mod saves;
@@ -71,6 +72,8 @@ fn modules(app: &mut App) {
         sim::plugin,
         weather::plugin,
         update::plugin,
+        net::plugin,
+        net::driver::plugin,
     ))
     .insert_resource(view::Enabled(true));
 }

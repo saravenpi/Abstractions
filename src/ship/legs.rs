@@ -10,11 +10,13 @@ use super::gear::reach;
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct Leg;
 
-/// Sets the length of every leg from the extension of the gear, when it changes.
-pub fn fold(ship: Single<&Ship>, mut legs: Query<&mut Transform, With<Leg>>) {
+/// Sets the length of every leg of the ship from the extension of its gear, when it changes.
+/// The legs of other hulls are left to whatever draws them.
+pub fn fold(ship: Single<(Entity, &Ship)>, mut legs: Query<(&ChildOf, &mut Transform), With<Leg>>) {
+    let (hull, ship) = *ship;
     let length = reach(ship.gear) as f32;
-    for mut leg in &mut legs {
-        if leg.scale.y != length {
+    for (parent, mut leg) in &mut legs {
+        if parent.parent() == hull && leg.scale.y != length {
             leg.scale.y = length;
         }
     }

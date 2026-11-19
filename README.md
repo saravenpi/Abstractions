@@ -57,6 +57,48 @@ Saves are one small file per world:
 - macOS: `~/Library/Application Support/abstractions/worlds/`
 - Windows: `%APPDATA%\abstractions\worlds\`
 
+## Play together
+
+Up to 16 players share one universe: the same seed, the same clock and the same discoveries. Each player keeps their own robot, ship and companion.
+
+- **On your network:** in a world, pause and pick Open to LAN. Friends on the same network see the world under Multiplayer, On your network, and join with one click. Close LAN saves the world as usual.
+- **On a server:** Multiplayer lists your servers with their players and ping. Space (`space.facile.studio`) is there from the start. Add a server by its address, such as `play.example.com` or `203.0.113.4:24650`. Direct connect joins one without saving it.
+
+The first time you join a server, the game remembers its key, as SSH does, and shows it in a banner. If the key changes later, the game refuses to join and says so. Known keys live next to the settings file, in `known_servers.toml`.
+
+A world on a server is saved by the server. The game writes nothing to your local worlds while you play there.
+
+## Host a server
+
+The server is one small program for Linux, x86_64 or arm64 (a Raspberry Pi works). The guide at https://abstractions.facile.studio/server/ walks through every step. In short:
+
+```sh
+curl -fsSL https://abstractions.facile.studio/server.sh | sh
+abstractions-server
+```
+
+Or with Docker:
+
+```sh
+docker run -d --name abstractions -p 24650:24650/udp -v abstractions:/data \
+  --restart unless-stopped ghcr.io/saravenpi/abstractions-server
+```
+
+The first start creates a world with a random seed in `./data` (`/data` in Docker) and prints the address and the key to give your friends. For players outside your network, forward UDP port 24650 to the machine, or point a domain at it. With Cloudflare, the record must be DNS only: its proxy does not carry UDP.
+
+| Flag | Variable | Default | What it does |
+| --- | --- | --- | --- |
+| `--name` | `ABSTRACTIONS_NAME` | the world's name | Name in the server list |
+| `--password` | `ABSTRACTIONS_PASSWORD` | none | Password players must give |
+| `--port` | `ABSTRACTIONS_PORT` | 24650 | UDP port |
+| `--max-players` | `ABSTRACTIONS_MAX_PLAYERS` | 16 | Players at once |
+| `--data` | `ABSTRACTIONS_DATA` | `./data` | Folder of the world and the key |
+| `--import` | | | Start from a single-player world file |
+
+`abstractions-server ping <address>` asks a server for its name, players, version and key, and exits 0 when it answers. The world is saved every 30 seconds and on shutdown, with the last 3 copies kept. Players need the same game version as the server.
+
+To build the image yourself: `docker build -f crates/server/Dockerfile -t abstractions-server .` from the repository root.
+
 ## Run
 
 You need Rust and [mise](https://mise.jdx.dev).
@@ -167,6 +209,9 @@ A missing or broken file is replaced by the defaults.
 - `src/screens`, `src/menus`, `src/ui`: states, menus and widgets.
 - `src/saves`, `src/settings`: saved worlds and settings.
 - `src/update`: the self-update: the check, the download, its checks and the swap.
+- `src/net`: multiplayer in the game: sessions, the server list, Open to LAN, and the robots, ships and companions of other players.
+- `crates/net`: the multiplayer protocol and the server's logic, without Bevy.
+- `crates/server`: the `abstractions-server` program and its Docker image.
 
 ## Licence
 

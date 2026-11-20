@@ -119,12 +119,7 @@ impl Terrain {
     }
 
     /// Scores the points of ring `k`, and returns the best of them with the score that beats `bound`.
-    fn ring_best(
-        &self,
-        k: u32,
-        bound: f32,
-        fallback: &mut Option<Vec2>,
-    ) -> Option<(f32, Vec2)> {
+    fn ring_best(&self, k: u32, bound: f32, fallback: &mut Option<Vec2>) -> Option<(f32, Vec2)> {
         ring_points(k)
             .filter_map(|p| self.candidate((p, k), bound, fallback))
             .min_by(|a, b| a.0.total_cmp(&b.0))
@@ -187,13 +182,10 @@ impl Terrain {
     }
 }
 
-/// Ring from which the points lie about 33 m apart and no longer 16 m: far from the origin a spot is
-/// taken from a wider mesh, since the spawn is scored by its distance in hundreds of metres.
-const WIDE: u32 = 64;
-
-/// Returns the points of search ring `k`, evenly spaced.
+/// Returns the points of search ring `k`, evenly spaced about 33 m apart: a spot is flat over 12 m and the
+/// spawn is scored by its distance in tens of metres, so a finer mesh only pays for samples.
 fn ring_points(k: u32) -> impl Iterator<Item = Vec2> {
-    let n = (k * [6, 3][usize::from(k >= WIDE)]).max(1);
+    let n = (k * 3).max(1);
     (0..n).map(move |a| {
         Vec2::from_angle(a as f32 * std::f32::consts::TAU / n as f32) * (k as f32 * SPAWN_STEP)
     })

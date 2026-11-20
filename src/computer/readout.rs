@@ -78,10 +78,9 @@ pub(super) fn shown(board: &Board, universe: &Universe, odds: &mut Odds) -> Card
     let mut card = of(line, world, universe);
     if let Some(body) = world {
         let at = card.rows.iter().position(|row| matches!(row, Row::More));
-        card.rows.insert(
-            at.unwrap_or(card.rows.len()),
-            odds.row(universe, body, line.visited),
-        );
+        let at = at.unwrap_or(card.rows.len());
+        card.rows
+            .splice(at..at, odds.rows(universe, body, line.visited));
     }
     card
 }

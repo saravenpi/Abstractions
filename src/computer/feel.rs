@@ -1,13 +1,7 @@
 //! What the numbers of a planet mean for the player: bars, kilometres, comparisons with home,
 //! and a plain word for the pull, the air, the heat and the length of the day.
 
-use super::format::short;
 use super::words::{AIR, FREEZING};
-
-/// Formats an air pressure in bar, the home planet having 1 bar, such as `0.60 bar`.
-pub fn bar(pressure: f64) -> String {
-    format!("{} bar", short(pressure.max(0.0)))
-}
 
 /// What the air does for a glider, from none to thick, in the order of [`AIR`] and one more.
 const LIFT: [&str; 4] = [
@@ -69,19 +63,4 @@ pub fn versus(value: f64, home: f64) -> String {
         r if r < 100.0 => format!("{r:.1} x home"),
         r => format!("{r:.0} x home"),
     }
-}
-
-/// Formats a length in metres as whole kilometres with a comma between the thousands, such as
-/// `3,390 km`.
-pub fn km(metres: f64) -> String {
-    let whole = (metres.max(0.0) / 1000.0).round() as u64;
-    let digits = whole.to_string();
-    let mut grouped = String::new();
-    for (at, digit) in digits.chars().enumerate() {
-        if at > 0 && (digits.len() - at) % 3 == 0 {
-            grouped.push(',');
-        }
-        grouped.push(digit);
-    }
-    format!("{grouped} km")
 }

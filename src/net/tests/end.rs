@@ -1,44 +1,13 @@
-//! The end of a join: refusals and lost connections said in plain words, and the password
-//! prompt after a wrong password.
+//! The end of a join: the password prompt after a wrong password, and the session that ends on a
+//! lost connection.
 
-use abstractions_net::io::{AddrError, ClientEvent, CloseReason};
-use abstractions_net::trust::TrustError;
+use abstractions_net::io::{ClientEvent, CloseReason};
 use abstractions_net::wire::{Reason, ServerMsg};
 
 use super::kept::{kept, watch};
 use super::rig::{ADDRESS, app, push, run, scripted};
-use crate::net::join::end::words;
 use crate::net::link::Link;
 use crate::net::{PasswordNeeded, Session, SessionEnded};
-
-/// Every reason reads as a short sentence; the version the server runs names what is needed.
-#[test]
-fn every_reason_has_plain_words() {
-    let said = |reason: CloseReason| words(&reason, "home.example", Some("0.9.0"));
-    let refused = |reason| said(CloseReason::Refused(reason));
-    assert_eq!(refused(Reason::WrongPassword), "Wrong password");
-    assert_eq!(refused(Reason::Full), "The server is full");
-    assert_eq!(refused(Reason::Outdated), "This server needs v0.9.0");
-    assert_eq!(refused(Reason::Newer), "You need v0.9.0");
-    let changed = TrustError::Changed {
-        expected: [1; 32],
-        got: [2; 32],
-    };
-    assert_eq!(
-        said(CloseReason::Trust(changed)),
-        "This server's key changed"
-    );
-    assert_eq!(said(CloseReason::Timeout), "No answer from home.example");
-    assert_eq!(
-        said(CloseReason::Unreachable),
-        "No answer from home.example"
-    );
-    assert_eq!(said(CloseReason::Lost), "Connection lost");
-    let malformed = CloseReason::Address(AddrError::Malformed);
-    assert_eq!(said(malformed), "This is not an address");
-    let unknown = words(&CloseReason::Refused(Reason::Outdated), "x", None);
-    assert_eq!(unknown, "This server needs a newer game");
-}
 
 /// A refused password ends the session with its reason and asks for a password once, even
 /// when the close follows the refusal in the same frame.

@@ -11,7 +11,7 @@ use bevy::window::PrimaryWindow;
 
 use super::Guide;
 use super::book::book;
-use super::layout::{chars, measure};
+use super::layout::{chars, logical, measure};
 use super::seen::Seen;
 use super::view::{Slot, spawn};
 use crate::audio::AudioCue;
@@ -95,7 +95,7 @@ pub(super) fn enter(
 ) {
     let size = window
         .single()
-        .map_or(Vec2::new(1280.0, 720.0), |w| w.size());
+        .map_or(Vec2::new(1280.0, 720.0), |w| logical(w.size()));
     let measures = measure(size);
     let life = terrain.as_deref().and_then(|t| t.globe().life());
     let planet = universe.zip(location).map(|(u, l)| u.planet(l.body).name);

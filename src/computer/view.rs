@@ -156,7 +156,7 @@ fn words() -> impl Bundle {
         padding: UiRect::all(px(MARGIN)),
         ..default()
     };
-    let head = children![crate::map::path(), crate::map::caption()];
+    let head = children![super::header::top(), crate::map::caption()];
     (
         node,
         children![

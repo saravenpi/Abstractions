@@ -3,9 +3,9 @@
 use bevy::prelude::*;
 
 use super::world::Boxes;
-use super::{moment, run};
+use super::{moment, run, first};
 use crate::view::tune::{BOB, DIP};
-use crate::view::{Kind, Moment, Rig, ViewPrefs};
+use crate::view::{Kind, Moment, Rig};
 
 /// Returns the lowest and highest eye height over two seconds of walking, and the largest roll.
 fn walk(body: &mut Moment) -> (f32, f32, f32) {
@@ -25,7 +25,7 @@ fn walk(body: &mut Moment) -> (f32, f32, f32) {
 /// ground, even when the body reports a bank. With the option off the eyes stay level.
 #[test]
 fn head_bob_is_small_and_optional() {
-    let mut body = moment(Kind::OnFoot, ViewPrefs::default());
+    let mut body = moment(Kind::OnFoot, first());
     body.target.bank = 0.5;
     let (low, high, roll) = walk(&mut body);
     assert!(high - low > BOB && high - low <= 2.0 * BOB + 1.0e-4);
@@ -40,7 +40,7 @@ fn head_bob_is_small_and_optional() {
 #[test]
 fn landing_dips_and_recovers() {
     let (mut rig, world) = (Rig::default(), Boxes::default());
-    let mut body = moment(Kind::OnFoot, ViewPrefs::default());
+    let mut body = moment(Kind::OnFoot, first());
     body.prefs.head_bob = false;
     body.target.velocity = Vec3::NEG_Y * 9.0;
     run(&mut rig, &mut body, &world, 30);

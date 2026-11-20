@@ -39,6 +39,8 @@ mod tests_fade;
 #[cfg(test)]
 mod tests_fly;
 #[cfg(test)]
+mod tests_grow;
+#[cfg(test)]
 mod tests_lane;
 #[cfg(test)]
 mod tests_reach;

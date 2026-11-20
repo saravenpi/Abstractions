@@ -4,6 +4,7 @@
 use bevy::prelude::*;
 
 use super::Terrain;
+use crate::climate::Spot;
 use crate::world::Biome;
 use crate::world::globe::{Chart, Grain};
 
@@ -29,6 +30,18 @@ impl Terrain {
             chart => {
                 let dirs = at.map(|p| chart.dir(p.x, p.y));
                 self.globe.biomes_seen(dirs, self.grain)
+            }
+        }
+    }
+
+    /// Returns the biomes at three chart positions close together as [`Terrain::biomes`] does, with the
+    /// place at the first already read as `spot`, so that a coarse reader samples the ground there once.
+    pub fn biomes_glanced(&self, at: [Vec2; 3], spot: Spot) -> [Biome; 3] {
+        match self.chart {
+            Chart::Flat => self.biomes(at),
+            chart => {
+                let dirs = at.map(|p| chart.dir(p.x, p.y));
+                self.globe.biomes_glanced(dirs, self.grain, || spot)
             }
         }
     }

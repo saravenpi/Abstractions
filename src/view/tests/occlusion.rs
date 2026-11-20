@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::world::Boxes;
-use super::{moment, run, third};
+use super::{moment, run, third, first};
 use crate::view::tune::{EASE_SPEED, HEAD_RADIUS, RADIUS, SKIN};
 use crate::view::{Kind, Moment, Rig, ViewPrefs};
 
@@ -106,7 +106,7 @@ fn tour(prefs: ViewPrefs, margin: f32) {
 #[test]
 fn never_inside_geometry() {
     tour(third(), RADIUS);
-    tour(ViewPrefs::default(), HEAD_RADIUS - SKIN);
+    tour(first(), HEAD_RADIUS - SKIN);
 }
 
 /// Under a low ceiling the rig is shorter and lower than in the open.

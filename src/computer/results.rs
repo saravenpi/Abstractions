@@ -1,5 +1,6 @@
 //! The search box of the side panel and the pool of results under it.
 
+use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 use bevy::ui_widgets::Button;
@@ -8,7 +9,8 @@ use super::board::VISIBLE_ROWS;
 use super::layout::{GLYPH, ROW};
 use super::section::{heading, heading_row, row_node};
 use super::view::{Cell, Part, SEARCH_HINT, SearchBox, SearchText, Slot, Summary};
-use crate::ui::{Icon, Look, Selected, Tone, cell, column, frame, icon, label, text, theme};
+use crate::ui::units::SHORT_NOTE;
+use crate::ui::{Icon, Look, Selected, Tip, Tone, cell, column, frame, icon, label, text, theme};
 
 /// Most characters of the name of a result; a longer name is cut short.
 pub(super) const TITLE_CHARS: usize = 19;
@@ -35,7 +37,13 @@ fn row(slot: usize) -> impl Bundle {
         move |part: Part, tone: Tone| (label("", theme::FONT_SMALL, tone), Cell(slot, part));
     let mark = (icon(Icon::Check, Tone::Muted), Cell(slot, Part::Mark));
     let strip = row_node(ROW);
-    let button = (Button, RelativeCursorPosition::default(), Look::default());
+    let button = (
+        Button,
+        Hovered::default(),
+        Tip(SHORT_NOTE),
+        RelativeCursorPosition::default(),
+        Look::default(),
+    );
     (
         (button, strip, BackgroundColor(Color::NONE)),
         children![
@@ -59,7 +67,7 @@ fn field() -> impl Bundle {
     };
     let words = label(SEARCH_HINT, theme::FONT_SMALL, Tone::Muted);
     let inside = children![(SearchText, words)];
-    (SearchBox, frame(), node, inside)
+    (SearchBox, frame(), Tip("Search places [/]"), node, inside)
 }
 
 /// The heading of the search, with the line that names the results and counts them at its

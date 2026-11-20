@@ -6,8 +6,8 @@ use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
 use glam::{DVec3, Vec2, Vec3};
 
-use super::Frame;
 use super::bytes::{Reader, put_position, put_vec3};
+use super::{Body, Frame, Kind};
 use crate::pack::{pack_i8, pack_i16, pack_u16, pack_unit};
 use crate::pack::{unpack_i8, unpack_i16, unpack_u16, unpack_unit};
 
@@ -82,20 +82,6 @@ pub fn stride_delta(before: f32, after: f32) -> f32 {
 }
 
 impl RobotBody {
-    /// Adds the body to `out`, with its position packed for `frame`.
-    pub fn encode(&self, frame: &Frame, out: &mut Vec<u8>) {
-        let yaw = (self.yaw + PI).rem_euclid(TAU) - PI;
-        let stride = (self.stride_distance.rem_euclid(STRIDE_WRAP) * 100.0) as u16;
-        put_position(out, frame, self.position);
-        put_vec3(out, self.velocity);
-        out.extend_from_slice(&pack_i16(yaw, PI).to_le_bytes());
-        out.push(self.mode);
-        out.extend_from_slice(&pack_u16(self.speed, SPEED_RANGE).to_le_bytes());
-        out.extend_from_slice(&pack_i16(self.vertical_speed, CLIMB_RANGE).to_le_bytes());
-        out.extend_from_slice(&stride.to_le_bytes());
-        out.extend_from_slice(&self.small());
-    }
-
     /// Returns the ten fields that take one byte each, in wire order.
     fn small(&self) -> [u8; 10] {
         [
@@ -131,10 +117,30 @@ impl RobotBody {
             ..Self::default()
         }
     }
+}
 
-    /// Returns the body [`RobotBody::encode`] wrote for `frame`, or nothing when `bytes` has the
+impl Body for RobotBody {
+    const KIND: Kind = Kind::Robot;
+
+    const MAX_LEN: usize = 55;
+
+    /// Adds the body to `out`, with its position packed for `frame`.
+    fn encode(&self, frame: &Frame, out: &mut Vec<u8>) {
+        let yaw = (self.yaw + PI).rem_euclid(TAU) - PI;
+        let stride = (self.stride_distance.rem_euclid(STRIDE_WRAP) * 100.0) as u16;
+        put_position(out, frame, self.position);
+        put_vec3(out, self.velocity);
+        out.extend_from_slice(&pack_i16(yaw, PI).to_le_bytes());
+        out.push(self.mode);
+        out.extend_from_slice(&pack_u16(self.speed, SPEED_RANGE).to_le_bytes());
+        out.extend_from_slice(&pack_i16(self.vertical_speed, CLIMB_RANGE).to_le_bytes());
+        out.extend_from_slice(&stride.to_le_bytes());
+        out.extend_from_slice(&self.small());
+    }
+
+    /// Returns the body [`Body::encode`] wrote for `frame`, or nothing when `bytes` has the
     /// wrong length or holds a number that is not finite.
-    pub fn decode(frame: &Frame, bytes: &[u8]) -> Option<Self> {
+    fn decode(frame: &Frame, bytes: &[u8]) -> Option<Self> {
         let mut reader = Reader(bytes);
         let position = reader.position(frame)?;
         let velocity = reader.vec3()?;

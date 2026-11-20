@@ -3,11 +3,11 @@
 //! shows in its row of the list, not on its card.
 
 use super::detail::{Row, advice};
-use super::format::distance;
 use super::groups::{climate, rarer, size, time, wet_group};
 use super::route::Target;
 use super::rows::Line;
 use super::words::{flux, temperature};
+use crate::ui::units::distance;
 use crate::universe::{GalaxyId, PlanetSpec, StarId, Universe};
 
 /// Returns the rows of the record of a planet or a moon whose record is known, against the home

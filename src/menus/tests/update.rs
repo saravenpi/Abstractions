@@ -107,7 +107,7 @@ fn the_title_shows_the_newer_release_and_the_version() {
         home::<OfferLine>(&mut app),
         ("Version 0.9.1 is available".into(), true)
     );
-    assert_eq!(home::<CheckLabel>(&mut app).0, "0.9.1 is available");
+    assert_eq!(home::<CheckLabel>(&mut app).0, "0.9.1 available");
     let corner = format!("v{}", env!("CARGO_PKG_VERSION"));
     assert!(texts(&mut app).contains(&corner));
     let mut entries = app.world_mut().query::<(Entity, &Nav, Option<&Selected>)>();
@@ -150,7 +150,7 @@ fn check_for_updates_runs_a_check() {
     fake.serve(LATEST, &document("v0.10.0", &[]));
     activate(&mut app, UpdateAction::Check);
     settle(&mut app);
-    assert_eq!(label(&mut app), ("0.10.0 is available".into(), true));
+    assert_eq!(label(&mut app), ("0.10.0 available".into(), true));
     assert_eq!(home::<OfferLine>(&mut app).0, "Version 0.10.0 is available");
     assert_eq!(fake.count(LATEST), 3);
     assert_eq!(fake.asked.lock().unwrap().len(), 3, "nothing is downloaded");

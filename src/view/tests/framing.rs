@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::world::Boxes;
-use super::{FOV, moment, run, third};
+use super::{FOV, moment, run, third, first};
 use crate::view::tune::{PITCH_LIMIT, RADIANS_PER_PIXEL, ZOOM_RANGE};
 use crate::view::{Heading, Kind, Look, Rig, Shown, ViewMode, ViewPrefs};
 
@@ -66,7 +66,7 @@ fn pitch_curve_drives_distance_height_and_fov() {
 #[test]
 fn first_and_third_person_on_foot() {
     let world = Boxes::default();
-    let mut body = moment(Kind::OnFoot, ViewPrefs::default());
+    let mut body = moment(Kind::OnFoot, first());
     let first = run(&mut Rig::default(), &mut body, &world, 1);
     assert!(first.pose.position.distance(Vec3::new(0.0, 1.6, -0.16)) < 1.0e-5);
     assert_eq!((first.fade.0, first.pose.fov), (0.0, FOV));
@@ -95,27 +95,30 @@ fn head_stays_when_a_wall_pushes_the_camera_close() {
     assert!(inside.pose.position.distance(head) < 0.22 && inside.fade.0 < 0.05);
 }
 
-/// The two preferences are independent, start in first person and survive a round trip to TOML.
+/// A new profile starts in third person on foot and in first person in the ship, the two preferences are
+/// independent, and a toggle survives a round trip to TOML while an empty file gives the new profile.
 #[test]
 fn view_modes_toggle_independently() {
     let mut prefs = ViewPrefs::default();
     assert_eq!(
         (prefs.on_foot, prefs.ship),
-        (ViewMode::First, ViewMode::First)
+        (ViewMode::Third, ViewMode::First)
     );
     prefs.toggle(Kind::Flying);
     assert_eq!(
         (prefs.on_foot, prefs.ship),
-        (ViewMode::Third, ViewMode::First)
+        (ViewMode::First, ViewMode::First)
     );
     prefs.toggle(Kind::Ship);
     prefs.toggle(Kind::OnFoot);
     assert_eq!(
         (prefs.on_foot, prefs.ship),
-        (ViewMode::First, ViewMode::Third)
+        (ViewMode::Third, ViewMode::Third)
     );
+    prefs.toggle(Kind::OnFoot);
     let text = toml::to_string(&prefs).unwrap();
     assert_eq!(toml::from_str::<ViewPrefs>(&text).unwrap(), prefs);
+    assert_eq!(prefs.on_foot, ViewMode::First);
     assert_eq!(
         toml::from_str::<ViewPrefs>("").unwrap(),
         ViewPrefs::default()
@@ -125,7 +128,7 @@ fn view_modes_toggle_independently() {
 /// The wheel zooms within the limits, and the mouse settings scale and flip the look.
 #[test]
 fn zoom_and_mouse_settings_are_respected() {
-    let mut prefs = ViewPrefs::default();
+    let mut prefs = first();
     prefs.zoom_by(100.0);
     assert_eq!(prefs.zoom, ZOOM_RANGE.0);
     prefs.zoom_by(-100.0);

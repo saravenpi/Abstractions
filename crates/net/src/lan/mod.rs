@@ -7,12 +7,16 @@
 //! without ever having seen the server.
 
 mod announce;
+mod ip;
 mod listen;
 
 #[cfg(test)]
 mod beacon_tests;
+#[cfg(test)]
+mod ip_tests;
 
 pub use announce::Announcer;
+pub use ip::lan_ip;
 pub use listen::{Found, Listener};
 
 use serde::{Deserialize, Serialize};

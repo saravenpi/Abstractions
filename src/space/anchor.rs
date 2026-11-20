@@ -2,19 +2,24 @@
 
 use bevy::math::{DMat3, DQuat, DVec3};
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::universe::{BodyId, GalaxyId, StarId};
 use crate::world::Terrain;
 use crate::world::globe::Chart;
 
-/// A coordinate frame positions are expressed in. All frames use metres.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// A coordinate frame positions are expressed in. All frames use metres. A save file holds it
+/// as it is: the names and the order of the variants are part of the save format.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Frame {
     /// Fixed to a planet or a moon and turning with it: origin at its centre, +Y its spin axis.
     Surface(BodyId),
     /// Inertial, origin at a star, planets orbiting on the XZ plane.
     System(StarId),
-    /// Inertial, origin at a galaxy centre.
+    /// Inertial, origin at a galaxy centre. The position is a 64-bit number of metres from the
+    /// centre: its step is 1e5 m at 5e20 m and 4e6 m at 2.4e22 m. Slow motion, 33 m a frame at the
+    /// slowest warp, is below that step at the rim, so nothing flies slowly in this frame: the
+    /// slowest warp speed applies inside a lock sphere, where the ship is in a system frame.
     Galaxy(GalaxyId),
 }
 

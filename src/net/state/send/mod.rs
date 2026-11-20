@@ -6,15 +6,15 @@ mod vitals;
 
 pub use kinds::{Here, Pilot, Sent, Trail};
 
-use abstractions_net::wire::{self, AT_REST, CompanionBody, Head, Kind, Record, RobotBody};
-use abstractions_net::wire::{ShipBody, push_within};
+use abstractions_net::wire::push_within;
+use abstractions_net::wire::{AT_REST, Body, Cadences, CompanionBody, Head, Record};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::Remote;
 use super::bodies::{Bodies, star_of};
 use super::frame::Place;
-use super::rate::{Cadence, REST_SPEED};
+use super::rate::REST_SPEED;
 use crate::avatar::strike::Strike;
 use crate::avatar::{Avatar, AvatarPose};
 use crate::companion::{Companion, Display, Float};
@@ -35,8 +35,8 @@ pub struct Outbox {
     pub batch: Vec<u8>,
     /// The body of the record being written.
     body: Vec<u8>,
-    /// When the next robot, ship and companion record is due, in that order.
-    cadence: [Cadence; 4],
+    /// When the next record of each kind is due.
+    cadence: Cadences,
     /// The star this machine was last at.
     star: Option<StarId>,
     /// Where the companion was on the last frame.
@@ -56,30 +56,19 @@ struct Stamp {
 }
 
 impl Outbox {
-    /// Adds the record of `kind` to the batch when `sent` holds one and its rate says it is due.
-    fn offer<B>(
-        &mut self,
-        stamp: &Stamp,
-        (kind, sent): (Kind, Option<Sent<B>>),
-        encode: fn(&B, &wire::Frame, &mut Vec<u8>),
-    ) {
+    /// Adds the record of `sent` to the batch when it holds one and its rate says it is due.
+    fn offer<B: Body>(&mut self, stamp: &Stamp, sent: Option<Sent<B>>) {
         let Some(sent) = sent else {
             return;
         };
-        let slot = match kind {
-            Kind::Robot => 0,
-            Kind::Ship => 1,
-            Kind::Companion => 2,
-            Kind::Vitals => 3,
-        };
-        if !self.cadence[slot].due(stamp.now, sent.rest) {
+        if !self.cadence.due(B::KIND, stamp.now, sent.rest) {
             return;
         }
         self.body.clear();
-        encode(&sent.body, &sent.frame, &mut self.body);
+        sent.body.encode(&sent.frame, &mut self.body);
         let head = Head {
             player: stamp.player,
-            kind,
+            kind: B::KIND,
             frame: sent.frame,
             time: stamp.time,
             flags: if sent.rest { AT_REST } else { 0 },
@@ -234,14 +223,14 @@ pub fn send(
     let walker = locals.mine();
     let walker =
         walker.and_then(|(at, motion, hands)| kinds::robot(&here, at, motion, hands, &mut bodies));
-    out.offer(&stamp, (Kind::Robot, walker), RobotBody::encode);
-    out.offer_vitals(&stamp, scene.vitals(&here, walker));
+    out.offer(&stamp, walker);
+    out.offer(&stamp, scene.vitals(&here, walker));
     let flown = scene.flown(&here);
     let hull = ship.and_then(|(ship, placed)| kinds::ship(&here, ship, placed, flown, &mut bodies));
-    out.offer(&stamp, (Kind::Ship, hull), ShipBody::encode);
+    out.offer(&stamp, hull);
     let bot = locals.bot(&here, out.trail, &mut bodies);
     out.trail = bot.map(|sent| (sent.frame, sent.body.position, here.time));
-    out.offer(&stamp, (Kind::Companion, bot), CompanionBody::encode);
+    out.offer(&stamp, bot);
     if !out.batch.is_empty() && max > 0 {
         link.send_records(&out.batch);
     }

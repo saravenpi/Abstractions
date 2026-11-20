@@ -11,6 +11,8 @@
 //!   The title, loading, boot and wake stages always run.
 //! - `SMOKE_ONLY` and `SMOKE_SKIP`: comma lists of stage names to keep or to leave out.
 //! - `SMOKE_TARGET` and `SMOKE_FLASH`: see the `warp` and `boot` stages.
+//! - `PROBE_SOFT`: when set, a system whose parameters fail validation is logged and skipped instead of
+//!   stopping the game, so one run lists every such system.
 //!
 //! `PROBE_STAGES=zoo` does not tour the game. It shows every animal of the seed's home planet walking in a
 //! line on flat ground (see the `zoo` module); with `SMOKE_DIR` set it saves a shot of each gait and exits,
@@ -92,6 +94,9 @@ fn main() -> AppExit {
         return zoo::run();
     }
     let mut app = App::new();
+    if std::env::var("PROBE_SOFT").is_ok() {
+        app.set_error_handler(bevy::ecs::error::error);
+    }
     app.add_plugins(abstractions::AppPlugin);
     app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs_f64(
         WALK,

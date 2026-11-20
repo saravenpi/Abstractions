@@ -3,7 +3,9 @@
 
 use super::body_tests::{planet, robot};
 use super::hunt_tests::{animal, size};
-use super::{Act, Attack, Blow, ClientMsg, DEFLECTED, Event, Frame, Head, HuntWorld, Impact, Kind};
+use super::{
+    Act, Attack, Blow, Body, ClientMsg, DEFLECTED, Event, Frame, Head, HuntWorld, Impact, Kind,
+};
 use super::{Record, Rock, ServerMsg, VitalsBody, Wound, split};
 use crate::log::PlayerId;
 
@@ -52,9 +54,9 @@ fn a_vitals_body_comes_back() {
         heat: 0.35,
     };
     let mut bytes = Vec::new();
-    sent.encode(&mut bytes);
+    sent.encode(&Frame::Around(planet()), &mut bytes);
     assert_eq!(bytes.len(), 11);
-    let got = VitalsBody::decode(&bytes).unwrap();
+    let got = VitalsBody::decode(&Frame::Around(planet()), &bytes).unwrap();
     assert!(
         got.harm
             .iter()
@@ -63,9 +65,9 @@ fn a_vitals_body_comes_back() {
     );
     assert_eq!((got.harm[0], got.harm[9]), (0.0, 1.0));
     assert!((got.heat - sent.heat).abs() < 0.002);
-    assert!(VitalsBody::decode(&bytes[..10]).is_none());
+    assert!(VitalsBody::decode(&Frame::Around(planet()), &bytes[..10]).is_none());
     bytes.push(0);
-    assert!(VitalsBody::decode(&bytes).is_none());
+    assert!(VitalsBody::decode(&Frame::Around(planet()), &bytes).is_none());
 }
 
 /// Every blow, wound, impact and attack comes back, at a size that fits a datagram of acts.

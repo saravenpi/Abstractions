@@ -2,12 +2,12 @@
 //! and life, and the rarer facts behind the More row.
 
 use super::detail::Row;
-use super::feel::{day_feel, gravity_feel, heat, km, versus};
-use super::format::gravity;
+use super::feel::{day_feel, gravity_feel, heat, versus};
 use super::giant::{company, flying, ground, surface, wet};
 use super::words::{flux, temperature, tilt, year, zone};
 use crate::saves::play_time;
 use crate::ui::Icon;
+use crate::ui::units::{distance, gravity_ratio, gravity_si};
 use crate::universe::{PlanetSpec, STANDARD_GRAVITY};
 
 /// Returns one measure of a planet.
@@ -34,14 +34,14 @@ pub fn size(planet: &PlanetSpec, home: &PlanetSpec, known: bool) -> Vec<Row> {
         stat(
             Icon::Radius,
             "Radius",
-            km(planet.radius),
+            distance(planet.radius),
             versus(planet.radius, home.radius),
         ),
         stat(
             Icon::Gravity,
             "Gravity",
-            gravity(planet.gravity),
-            versus(planet.gravity, home.gravity),
+            gravity_ratio(planet.gravity),
+            gravity_si(planet.gravity),
         ),
         meaning,
     ]

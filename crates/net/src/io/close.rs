@@ -35,14 +35,8 @@ pub(crate) fn reason(code: VarInt) -> Option<Reason> {
     REASONS.get(usize::try_from(place).ok()?).copied()
 }
 
-/// Returns the short text sent with a close for `reason`, for logs on the other side.
-pub(crate) fn text(reason: Reason) -> &'static [u8] {
-    match reason {
-        Reason::WrongPassword => b"wrong password",
-        Reason::Full => b"server full",
-        Reason::Outdated => b"game outdated",
-        Reason::Newer => b"server outdated",
-        Reason::Flooding => b"too many messages",
-        Reason::Closing => b"server closing",
-    }
+/// Returns the text sent with a close for `reason`, for logs on the other side: the words the
+/// player reads, without a version.
+pub(crate) fn text(reason: Reason) -> Vec<u8> {
+    reason.words(None).into_bytes()
 }

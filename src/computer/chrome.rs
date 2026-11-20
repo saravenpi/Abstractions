@@ -28,17 +28,20 @@ fn listed(places: Option<&Places>, markers: Option<&Markers>) -> (usize, usize) 
     (saved.min(PINS), friends.min(PLAYERS))
 }
 
+/// What the size of the lists and of the interface is read from.
+type Lists<'w> = (
+    Option<Res<'w, Places>>,
+    Option<Res<'w, Markers>>,
+    Option<Res<'w, UiScale>>,
+);
+
 /// Sizes the square map, the search results and the rows of the lists for the window and the
 /// lists of the panel, when the window changed size, a list changed length or the screen was
 /// just spawned. The window is measured in logical pixels of the interface: its size over the
 /// interface scale. Without a window, as in a test, the smallest supported one is assumed.
 pub(super) fn fit(
     (windows, fresh): Seen,
-    (places, markers, scale): (
-        Option<Res<Places>>,
-        Option<Res<Markers>>,
-        Option<Res<UiScale>>,
-    ),
+    (places, markers, scale): Lists,
     mut fields: Query<&mut Node, With<Field>>,
     (mut board, mut view): (ResMut<Board>, ResMut<MapView>),
     mut last: Local<Option<(Vec2, (usize, usize))>>,

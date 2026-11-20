@@ -4,7 +4,7 @@
 
 use bevy::math::Vec2;
 
-use super::format::{clip, distance};
+use super::format::clip;
 use super::labels::room;
 use super::layout::{GLYPH, LINE_CHARS, ROOM, SUMMARY_CHARS, clear_of_bands};
 use super::results::{DISTANCE_CHARS, TITLE_CHARS, WIDTHS};
@@ -13,6 +13,7 @@ use super::sift::{FILTER_CHARS, Sort, summary};
 use super::view::Part;
 use super::{Line, Target};
 use crate::ui::theme;
+use crate::ui::units::distance_short;
 use crate::universe::{BodyId, LY};
 
 /// The longest name a row can carry: a Greek prefix, a long made-up word, a moon numeral and
@@ -49,16 +50,16 @@ fn a_result_row_fits_the_panel() {
     assert_eq!(clip("Kolva", TITLE_CHARS), "Kolva");
 }
 
-/// Every distance from a metre to a million light-years fits the distance column.
+/// Every distance from a metre to a billion light-years fits the distance column, short.
 #[test]
 fn every_distance_fits_its_column() {
     let mut metres = 1.0;
-    while metres < 1e6 * LY {
-        let shown = distance(metres);
+    while metres < 1e9 * LY {
+        let shown = distance_short(metres);
         assert!(shown.chars().count() <= DISTANCE_CHARS, "{shown}");
         metres *= 1.37;
     }
-    assert!(distance(102_007.0 * LY).chars().count() <= DISTANCE_CHARS);
+    assert!(distance_short(102_007.0 * LY).chars().count() <= DISTANCE_CHARS);
 }
 
 /// The line that counts the results fits beside the heading of the search, whatever the

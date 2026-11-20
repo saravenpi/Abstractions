@@ -22,11 +22,16 @@ const SIZE: Vec3 = Vec3::new(0.5, 0.3, 0.4);
 pub struct Waiting;
 
 /// Run condition: a cache lies on the planet the anchor is on and is not drawn yet.
-pub fn wanted(left: Res<Left>, anchor: Res<Anchor>, waiting: Query<(), With<Waiting>>) -> bool {
+pub fn wanted(
+    left: Res<Left>,
+    anchor: Option<Res<Anchor>>,
+    waiting: Query<(), With<Waiting>>,
+) -> bool {
     let here = left
         .0
         .as_ref()
-        .is_some_and(|cache| anchor.frame == Frame::Surface(cache.body));
+        .zip(anchor)
+        .is_some_and(|(cache, anchor)| anchor.frame == Frame::Surface(cache.body));
     here && waiting.is_empty()
 }
 

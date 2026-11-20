@@ -47,7 +47,7 @@ Branch `integrate` (worktree `~/Code/Saravenpi/wt-int`) holds everything merged 
 | 12 | The owner wants all of these in this version: the trail at the tip of the weapon, the sound of hits, the robot staggering under a blow, missed and deflected hits that read differently, the animal's whole body moving in the wind-up | Sent back to the `combat` agent. Also still open from its list: blood stains on the blade |
 | 13 | H gives stone from nowhere (`src/craft/pack/pick.rs`): stone must come from a real rock under the crosshair, which then is gone. The owner wants it in this version | Agent running on `rocks`: stable prop ids, a saved set of taken rocks, a filter at chunk build, a props rebuild, a crosshair pick |
 | 14 | In multiplayer the other players must see everything the same as we do | Sent to `net-h4` as its acceptance test: crouch, entry sheath, robot damage, strikes and trails, blows and stagger, wounds and blood, impacts and sounds, animal attacks, carcasses, stuck spears, taken rocks, pins, and a check that season, weather, clouds, herds and leaf fall come only from the shared seed and clock |
-| 15 | Take pretty screenshots of the game and add them to the website in a carousel that shows different aspects of the game | Not started: needs the game running. Shots through `examples/probe` on lavapipe (ground at dawn, forest and grass, sea and shore, animals, the base, flight, clouds from above, orbit, a moon, a galaxy, the map and the new HUD). Site lives on branch `landing` (`site/`): carousel with no borders, no rounded corners, no bold, keyboard and touch, alt text per shot |
+| 15 | Take pretty screenshots of the game and add them to the website in a carousel that shows different aspects of the game | Not started: needs the game running. Shots through `examples/probe` on lavapipe (ground at dawn, forest and grass, sea and shore, animals, the base, flight, clouds from above, orbit, a moon, a galaxy, the map and the new HUD). Site lives on branch `landing` (`site/`): carousel with no borders, no rounded corners, no bold, keyboard and touch, alt text per shot. Owner reminder, 2026-11-20 night: add the new screenshots AND update the roadmap on the website (the fallback copy `site/roadmap/ROADMAP.md` on `landing` is out of date against `ROADMAP.md` on `main`) |
 | 16 | Third person by default on foot, first person (cockpit) by default in the ship, and the game remembers the last view used | Done on `integrate`: `ViewPrefs` default changed; the last view was already saved by `src/settings/prefs.rs`. `fx-world` makes the tests state their view |
 | 17 | Improve the inside of the cockpit, it is simplistic in first person | Agent `cockpit` running: seat, frame, consoles, controls that follow the real inputs, instruments that show the real state, panel light |
 | 18 | Redesign the ship: it looks like a child's drawing; real engines and real engine fire; no floating parts | Agent `ship-look` running: one lofted hull, wings with roots, nacelles, nozzles, gear bays, hatch, a test that the mesh is one connected piece, exhaust from thrust and air pressure, colliders that follow |
@@ -119,7 +119,9 @@ State: an audit is running. It checks every scale of `src/universe/` against rea
 
 This is part of 0.11: the release waits for it.
 
-## 6c. Architecture wave (request 23)
+## 6c. Architecture wave (request 23): in 0.11
+
+Owner decision, 2026-11-20 late evening, final: do the architecture wave in this version too, clean everything, make a beautiful version; the owner went to sleep and left the lead to work and to ship when it is done. (An hour earlier the owner had moved it to the next version; this decision replaces that.) It runs after the four branches in flight are merged and the suite is green. Already landed: C5 (the net seam), the shore throttle, one system reach, one units formatter, the borders removed, several gating fixes.
 
 Source: `handoff/specs/architecture-review.md`, 22 candidates in parts A (celestial and navigation), B (world and actors), C (interface and net), plus Bevy practices (D). It read `main` at e8f0dd4; line numbers have moved, so every finding is checked on `integrate` before it is acted on.
 
@@ -134,7 +136,21 @@ Order, when the tree is green:
 
 6. C5, the replicated-kind seam in net. Owner decision relayed by `abstractions-16`: it lands before protocol 3 ships, and any change of bytes on the wire stays inside protocol 3. One kind table shared by the room and the sender (the mapping is written twice today), one trait for the body records' `encode` and `decode`, one generic `Remotes` instead of a map and an arm per kind, the four frame enums reduced, one `lan_ip`, the close reasons worded once. `net-h4` added kinds since the review (`Vitals`, the hunt acts and events), so check them against the same seam. It starts after `fx-net` merges, because that branch is editing the same files.
 
+7. Notes from the session `abstractions-53` (read-only look at this tree, to judge in this wave): `src/world/shapes.rs` gives every terrain vertex a constant tangent (16 of about 50 bytes) and shares no vertex (6,144 stored for 1,089 lattice points per near chunk); `src/world/chunks/build.rs` builds a trimesh collider where `plan.rs` says heightfield; `chunk_heights` in `src/world/mesh.rs` returns `Vec<Vec<f32>>`; entries of `crates/net/src/log.rs` repeat an 8-byte time and a full `BodyId`, and the whole log rides in `Welcome` under a 4 MiB cap; the log and the quarried rocks are text rows in the TOML save. Roadmap 0.13 ("ground you can shape") plans a binary per-chunk terrain file and area-based sync: if protocol 3 leaves room for a `Change::Dug` variant and for not sending the full log on join, 0.13 will not need protocol 4 for that alone. `zstd` is approved by the owner for 0.13, not before.
+
+`ROADMAP.md` on `main` moved again (9e62575, ede5233): 0.12 places worth the trip, 0.13 ground you can shape, 0.14 real space and probes, 0.15 together, 0.16 the thread, 0.17 hunting, mining, crafting and building, then 0.18 to 0.23. Merge `main` again before the release and edit only the 0.11 section.
+
 Each step: tests rewritten where behaviour changes on purpose and listed, never weakened; the gate after each step; the line count of `src/` before and after.
+
+## 6d. Seen in the first run of the game (probe, seed 7, 2026-11-20)
+
+The game starts, loads a world, wakes at the base in third person and the probe runs its whole tour. Seen on the shots:
+- The ground shader did not compile (reserved word `cast` in `daylight.wesl`): fixed on `integrate`. The sheath shader had a wrong import: fixed.
+- The sky is covered with a bright grain by day. Not diagnosed.
+- The compass labels "Home" and "Ship" overlap and cannot be read.
+- The home of seed 7 is a red desert at 50 C with no grass and no animal in view. The home must be a world with life to see, by the normal rules, with no special case.
+- The title screen still says v0.10.1 (set at the version bump).
+- A system read `Res<Anchor>` on the title screen and stopped the game (`craft::fall::show::wanted`): fixed. The probe has `PROBE_SOFT` to log such systems instead of stopping.
 
 ## 7. Order of the remaining work
 

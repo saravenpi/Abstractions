@@ -2,7 +2,7 @@
 
 use glam::{DVec3, IVec3, Quat, Vec2, Vec3};
 
-use super::{CompanionBody, Frame, RobotBody, ShipBody, WARP_ACTIVE, stride_delta};
+use super::{Body, CompanionBody, Frame, RobotBody, ShipBody, WARP_ACTIVE, stride_delta};
 use crate::ids::{BodyId, GalaxyId, StarId};
 
 /// Returns a planet far from the origin of the universe.

@@ -5,6 +5,7 @@ use std::net::{Ipv4Addr, SocketAddr};
 use std::path::Path;
 
 use abstractions_net::io::{ServeConfig, serve};
+use abstractions_net::lan::lan_ip;
 use abstractions_net::room::{Room, RoomConfig};
 use abstractions_net::store::{self, FILE, World};
 use abstractions_net::trust::short_key;
@@ -12,7 +13,6 @@ use abstractions_net::trust::short_key;
 use crate::VERSION;
 use crate::banner::{Banner, banner};
 use crate::cli::Options;
-use crate::lan::lan_ip;
 use crate::saving::Saving;
 use crate::signal;
 

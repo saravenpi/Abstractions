@@ -11,8 +11,9 @@ use bevy::math::{Rect, Vec2};
 
 use crate::ui::theme;
 
-/// The smallest window the game supports, in pixels.
-pub const SMALLEST: Vec2 = Vec2::new(960.0, 540.0);
+/// The smallest layout the game draws, in logical pixels: a window of 960 by 540 pixels scales
+/// by 0.75 and lays out like this.
+pub const SMALLEST: Vec2 = Vec2::new(1280.0, 720.0);
 
 /// Width in pixels of the side panel: a line of small text holds 35 characters.
 pub const SIDE: f32 = 384.0;

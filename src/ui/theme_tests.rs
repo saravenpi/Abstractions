@@ -53,7 +53,7 @@ fn text_on_the_panel_is_readable_over_a_white_sky() {
     );
     for warning in [theme::WARN, theme::DANGER] {
         assert!(
-            on_panel(warning, 1.0) >= 3.5,
+            on_panel(warning, 1.0) >= 4.5,
             "{warning:?} {}",
             on_panel(warning, 1.0)
         );

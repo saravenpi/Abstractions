@@ -6,7 +6,9 @@
 //! a record and never its body.
 
 mod act;
+mod body;
 mod bytes;
+mod cadence;
 mod companion;
 mod field;
 mod frame;
@@ -23,6 +25,8 @@ mod vitals;
 #[cfg(test)]
 mod body_tests;
 #[cfg(test)]
+mod cadence_tests;
+#[cfg(test)]
 mod cells_tests;
 #[cfg(test)]
 mod far_tests;
@@ -30,6 +34,8 @@ mod far_tests;
 mod field_tests;
 #[cfg(test)]
 mod hunt_tests;
+#[cfg(test)]
+mod kind_tests;
 #[cfg(test)]
 mod msg_tests;
 #[cfg(test)]
@@ -42,6 +48,8 @@ mod record_tests;
 mod stream_tests;
 
 pub use act::{Act, Event, HuntWorld};
+pub use body::{BODY_MAX, Body};
+pub use cadence::{Cadence, Cadences, MOVING, RESTING};
 pub use companion::{CompanionBody, LIFT_RANGE};
 pub use field::{
     Attack, Blow, CLEAN, DEFLECTED, Impact, MISS, Opened, Rock, STOPPED, Wound, finite,

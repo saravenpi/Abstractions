@@ -5,7 +5,6 @@
 
 mod banner;
 mod cli;
-mod lan;
 mod ping;
 mod run;
 mod saving;

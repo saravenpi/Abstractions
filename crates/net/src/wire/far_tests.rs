@@ -3,7 +3,7 @@
 use glam::{DVec3, IVec3, Quat, Vec3};
 
 use super::body_tests::planet;
-use super::{Frame, ShipBody};
+use super::{Body, Frame, ShipBody};
 use crate::ids::{GalaxyId, StarId};
 
 /// Returns a star 5e20 m from the centre of its galaxy, in sector 5285 of the first axis.

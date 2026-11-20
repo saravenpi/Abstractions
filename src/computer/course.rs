@@ -2,11 +2,11 @@
 //! a rough time to arrival, and the sentences of the card and the HUD that say what Go does
 //! now, why it cannot, or how far along the route is.
 
-use super::format::distance;
+use crate::ui::units::distance;
 use bevy::prelude::*;
 
 use super::route::{Block, Keys, RouteStatus, Target};
-use crate::saves::play_time;
+use crate::ui::units::duration;
 
 /// What a button or a key of the map does to the course.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,7 +34,7 @@ pub const READY: &str = "The autopilot flies there.";
 /// Returns a rough time to cover `gap` metres at `speed` metres per second, or nothing while
 /// the ship is too slow for the number to mean anything.
 pub fn arrival(gap: f64, speed: f64) -> Option<String> {
-    (speed >= SLOWEST).then(|| format!("about {}", play_time(gap / speed)))
+    (speed >= SLOWEST).then(|| format!("about {}", duration(gap / speed)))
 }
 
 /// Returns the course line of the footer: the name of the destination, how far it is and the

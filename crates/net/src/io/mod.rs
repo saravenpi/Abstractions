@@ -11,11 +11,14 @@ mod close;
 mod config;
 mod link;
 mod server;
+mod words;
 
 #[cfg(test)]
 mod addr_tests;
 #[cfg(test)]
 mod close_tests;
+#[cfg(test)]
+mod words_tests;
 
 pub use addr::{AddrError, resolve};
 pub use client::{Client, ClientEvent, CloseReason, ConnectOpts, status};

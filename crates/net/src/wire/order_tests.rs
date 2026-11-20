@@ -3,7 +3,7 @@
 use glam::{DVec3, Vec3};
 
 use super::body_tests::{planet, robot};
-use super::{Act, ClientMsg, Event, Frame, RobotBody, Rock, ServerMsg, ShipBody, encode};
+use super::{Act, Body, ClientMsg, Event, Frame, RobotBody, Rock, ServerMsg, ShipBody, encode};
 use crate::log::PlayerId;
 
 /// The new messages sit after the old ones, so the numbers of the old ones never change.

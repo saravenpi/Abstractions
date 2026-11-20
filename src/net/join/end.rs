@@ -1,7 +1,6 @@
 //! The end of a session: a refusal, a kick or a closed connection, said in plain words.
 
 use abstractions_net::io::CloseReason;
-use abstractions_net::trust::TrustError;
 use abstractions_net::wire::{Reason, ServerMsg};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
@@ -9,33 +8,6 @@ use bevy::prelude::*;
 use super::shut;
 use crate::net::link::{Dropped, FromServer, Link, Role};
 use crate::net::{CloseLan, Lobby, PasswordNeeded, Players, RowStatus, Session, SessionEnded};
-
-/// Returns why a session ended in words for the player. `version` is the version the server
-/// runs, when its status is known.
-pub fn words(reason: &CloseReason, address: &str, version: Option<&str>) -> String {
-    match reason {
-        CloseReason::Refused(reason) => refusal(*reason, version),
-        CloseReason::Trust(TrustError::Changed { .. }) => "This server's key changed".to_string(),
-        CloseReason::Trust(error) => error.to_string(),
-        CloseReason::Address(error) => error.to_string(),
-        CloseReason::Timeout | CloseReason::Unreachable => format!("No answer from {address}"),
-        CloseReason::Lost => "Connection lost".to_string(),
-    }
-}
-
-/// Returns why the server refused or sent the player away, in words.
-fn refusal(reason: Reason, version: Option<&str>) -> String {
-    let named =
-        |fallback: &str| version.map_or(fallback.to_string(), |version| format!("v{version}"));
-    match reason {
-        Reason::WrongPassword => "Wrong password".to_string(),
-        Reason::Full => "The server is full".to_string(),
-        Reason::Outdated => format!("This server needs {}", named("a newer game")),
-        Reason::Newer => format!("You need {}", named("an older game")),
-        Reason::Flooding => "The server sent you away for sending too much".to_string(),
-        Reason::Closing => "The server closed".to_string(),
-    }
-}
 
 /// What the end of a session changes and says.
 #[derive(SystemParam)]
@@ -71,7 +43,7 @@ impl Ending<'_, '_> {
             Some(RowStatus::Online { version, .. }) => Some(version.as_str()),
             _ => None,
         };
-        let reason_text = words(reason, address, version);
+        let reason_text = reason.words(address, version);
         self.ended.write(SessionEnded {
             reason: reason_text,
         });

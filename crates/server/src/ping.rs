@@ -3,7 +3,7 @@
 use std::process::ExitCode;
 use std::time::Duration;
 
-use abstractions_net::io::{CloseReason, status};
+use abstractions_net::io::status;
 use abstractions_net::trust::short_key;
 use abstractions_net::wire::{PROTOCOL, Status};
 
@@ -18,7 +18,7 @@ pub fn ping(address: &str) -> ExitCode {
             ExitCode::SUCCESS
         }
         Err(reason) => {
-            eprintln!("No answer from {address}: {}", words(&reason));
+            eprintln!("{}", reason.words(address, None));
             ExitCode::FAILURE
         }
     }
@@ -41,15 +41,4 @@ pub fn line(status: &Status, rtt: Duration, key: &str) -> String {
         );
     }
     text
-}
-
-/// Returns why the server did not answer, in plain words.
-fn words(reason: &CloseReason) -> String {
-    match reason {
-        CloseReason::Refused(reason) => format!("it refused the connection ({reason:?})"),
-        CloseReason::Trust(error) => error.to_string(),
-        CloseReason::Address(error) => error.to_string(),
-        CloseReason::Timeout | CloseReason::Unreachable => "no server answered".to_string(),
-        CloseReason::Lost => "the connection broke".to_string(),
-    }
 }

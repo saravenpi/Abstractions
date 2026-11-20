@@ -3,10 +3,12 @@
 use std::fmt::Write;
 
 use super::Room;
-use super::seat::{KINDS, Seat, Sent};
+use super::seat::{Seat, Sent};
 use crate::host::{ConnId, Outbox};
 use crate::log::PlayerId;
-use crate::wire::{Hello, PROTOCOL, PlayerInfo, Reason, ServerMsg, Status, Welcome, clean_name};
+use crate::wire::{
+    Hello, Kind, PROTOCOL, PlayerInfo, Reason, ServerMsg, Status, Welcome, clean_name,
+};
 
 impl Room {
     /// Tells `conn` what the server is. It is answered before any check.
@@ -103,9 +105,9 @@ impl Room {
     /// Puts `seat` in `slot`, forgetting what anyone was sent of the slot's last player.
     fn seat(&mut self, slot: usize, seat: Seat) {
         self.seats[slot] = Some(seat);
-        self.sent[slot].fill([Sent::NONE; KINDS]);
+        self.sent[slot].fill([Sent::NONE; Kind::COUNT]);
         for row in &mut self.sent {
-            row[slot] = [Sent::NONE; KINDS];
+            row[slot] = [Sent::NONE; Kind::COUNT];
         }
     }
 }

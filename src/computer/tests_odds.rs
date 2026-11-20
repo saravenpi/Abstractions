@@ -68,15 +68,15 @@ fn the_line_is_kept_while_the_body_stays_selected() {
         .unwrap();
     let mut kept = Odds::default();
     let start = Instant::now();
-    let first = kept.row(&universe, &home, false);
+    let first = kept.rows(&universe, &home, false);
     let once = start.elapsed();
     let start = Instant::now();
-    assert!((0..1000).all(|_| kept.row(&universe, &home, false) == first));
+    assert!((0..1000).all(|_| kept.rows(&universe, &home, false) == first));
     let again = start.elapsed();
     println!("one line in {once:?}, a thousand kept ones in {again:?}");
     assert_eq!(kept.worked, 1);
-    kept.row(&universe, &other, false);
-    kept.row(&universe, &other, true);
+    kept.rows(&universe, &other, false);
+    kept.rows(&universe, &other, true);
     assert_eq!(kept.worked, 3);
     assert!(
         once.as_millis() < 20 && again.as_millis() < 5,

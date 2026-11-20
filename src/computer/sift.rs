@@ -19,14 +19,6 @@ pub enum Sort {
 }
 
 impl Sort {
-    /// Returns the other order.
-    pub fn next(self) -> Sort {
-        match self {
-            Sort::Near => Sort::Name,
-            Sort::Name => Sort::Near,
-        }
-    }
-
     /// Returns the name of the order as the header shows it: nothing for the order the table
     /// is built in.
     pub fn label(self) -> &'static str {

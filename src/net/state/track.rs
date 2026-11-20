@@ -3,21 +3,22 @@
 
 use std::collections::HashMap;
 
-use abstractions_net::jitter::{Buffer, Snap};
-use abstractions_net::wire::records;
-use abstractions_net::wire::{self, CompanionBody, Kind, Record, RobotBody, ShipBody, VitalsBody};
+use abstractions_net::jitter::Buffer;
+use abstractions_net::wire::{self, CompanionBody, Kind, MOVING, Record, RobotBody, ShipBody};
+use abstractions_net::wire::{VitalsBody, records};
 use bevy::prelude::*;
 
 use super::bodies::Bodies;
-use super::rebase::rebase;
-use super::robot::{Stride, snap};
+use super::held::Held;
+use super::robot::Stride;
+use super::store::Store;
 use crate::net::link::{Inbox, Link};
 use crate::sim::PlayerId;
 use crate::space::Clock;
 use crate::universe::Universe;
 
 /// Seconds between two records of a moving thing, which the buffers plan their delay on.
-const INTERVAL: f64 = super::rate::MOVING;
+const INTERVAL: f64 = MOVING;
 
 /// The records of one thing of one player.
 #[derive(Debug, Clone)]
@@ -40,7 +41,7 @@ pub struct Track<E> {
 
 impl<E: Copy + Default> Track<E> {
     /// Returns a track with nothing in it yet, for records in `frame`.
-    fn new(frame: wire::Frame) -> Self {
+    pub(super) fn new(frame: wire::Frame) -> Self {
         Self {
             frame,
             buffer: Buffer::new(INTERVAL),
@@ -63,7 +64,7 @@ pub struct Remotes {
     /// The companions.
     pub companions: HashMap<PlayerId, Track<CompanionBody>>,
     /// How hurt each robot is and how it glows, as the newest record says.
-    pub vitals: HashMap<PlayerId, VitalsBody>,
+    pub vitals: HashMap<PlayerId, Held<VitalsBody>>,
 }
 
 /// When a record came, on the universe clock the buffers sample on and on the local clock the
@@ -77,77 +78,22 @@ pub struct Arrival<'a> {
     pub bodies: &'a mut Bodies,
 }
 
-/// Keeps `snap` of the record of `head` that came at `arrival`. A record in another frame than
-/// the ones before moves the buffer into its frame first.
-fn keep<E: Copy + Default>(
-    tracks: &mut HashMap<PlayerId, Track<E>>,
-    head: &wire::Head,
-    snap: Snap<E>,
-    arrival: &mut Arrival,
-) {
-    let track = tracks
-        .entry(head.player)
-        .or_insert_with(|| Track::new(head.frame));
-    if track.frame != head.frame {
-        rebase(&mut track.buffer, (track.frame, head.frame), arrival.bodies);
-        track.frame = head.frame;
-    }
-    if track.buffer.push(snap, arrival.universe) {
-        track.latest = snap.extra;
-    }
-    track.heard = arrival.local;
-}
-
-/// Returns the snapshot of a ship record sampled at universe time `time`.
-fn hull(time: f64, body: ShipBody) -> Snap<ShipBody> {
-    Snap {
-        time,
-        position: body.position,
-        velocity: Some(body.velocity),
-        rotation: body.rotation,
-        extra: body,
-    }
-}
-
-/// Returns the snapshot of a companion record sampled at universe time `time`. It carries no
-/// velocity, so the buffer blends it in straight lines.
-fn bot(time: f64, body: CompanionBody) -> Snap<CompanionBody> {
-    Snap {
-        time,
-        position: body.position,
-        velocity: None,
-        rotation: body.rotation,
-        extra: body,
-    }
-}
-
 impl Remotes {
-    /// Decodes `record`, which came at `now`, and keeps it. A body that does not decode is
-    /// dropped.
+    /// Returns the map of every kind of record, to take and sweep them alike.
+    pub(super) fn stores(&mut self) -> [&mut dyn Store; Kind::COUNT] {
+        [
+            &mut self.robots,
+            &mut self.ships,
+            &mut self.companions,
+            &mut self.vitals,
+        ]
+    }
+
+    /// Keeps `record`, which came at `now`, in the map of its kind. A body that does not decode
+    /// is dropped.
     fn take(&mut self, record: &Record, now: &mut Arrival) {
-        let (head, time) = (&record.head, record.head.time);
-        let (frame, bytes) = (&head.frame, record.body);
-        match head.kind {
-            Kind::Robot => {
-                if let Some(body) = RobotBody::decode(frame, bytes) {
-                    keep(&mut self.robots, head, snap(time, body), now);
-                }
-            }
-            Kind::Ship => {
-                if let Some(body) = ShipBody::decode(frame, bytes) {
-                    keep(&mut self.ships, head, hull(time, body), now);
-                }
-            }
-            Kind::Vitals => {
-                if let Some(body) = VitalsBody::decode(bytes) {
-                    self.vitals.insert(head.player, body);
-                }
-            }
-            Kind::Companion => {
-                if let Some(body) = CompanionBody::decode(frame, bytes) {
-                    keep(&mut self.companions, head, bot(time, body), now);
-                }
-            }
+        for store in self.stores() {
+            store.take(record, now);
         }
     }
 

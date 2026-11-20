@@ -45,13 +45,13 @@ pub use map::{BODIES_MAX, RUNS_MAX};
 use conn::Conn;
 use hunt::Hunting;
 use map::Ground;
-use seat::{KINDS, Seat, Sent};
+use seat::{Seat, Sent};
 
 use crate::host::{ConnId, DATAGRAM_BUDGET};
 use crate::ids::BodyId;
 use crate::log::PlayerId;
 use crate::store::World;
-use crate::wire::PlayerInfo;
+use crate::wire::{Kind, PlayerInfo};
 
 /// What the owner of a server chose.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,7 +80,7 @@ pub struct Room {
     /// One seat per player the room takes, empty when free.
     seats: Vec<Option<Seat>>,
     /// What each seat last got of each other seat and kind: `sent[to][from][kind]`.
-    sent: Vec<Vec<[Sent; KINDS]>>,
+    sent: Vec<Vec<[Sent; Kind::COUNT]>>,
     /// The id each identity key had this session, so a player who comes back keeps it.
     ids: HashMap<[u8; 32], PlayerId>,
     /// The next id never given yet. It starts at 1: 0 is the single-player id.
@@ -114,7 +114,7 @@ impl Room {
             start: now,
             conns: HashMap::new(),
             seats: (0..cap).map(|_| None).collect(),
-            sent: vec![vec![[Sent::NONE; KINDS]; cap]; cap],
+            sent: vec![vec![[Sent::NONE; Kind::COUNT]; cap]; cap],
             ids: HashMap::new(),
             next_id: 1,
             batch: Vec::with_capacity(2 * DATAGRAM_BUDGET),

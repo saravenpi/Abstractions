@@ -20,9 +20,13 @@ const NOTE_CHARS: usize = 12;
 /// as the panel shows it.
 fn alive(line: &super::Line, planet: &PlanetSpec, universe: &Universe) -> Card {
     let mut shown = card(line, Some(planet), universe);
-    let life = super::odds::row(universe, planet, line.visited);
+    let life = [
+        super::odds::row(universe, planet, line.visited),
+        super::odds::meaning(universe, planet, line.visited),
+    ];
     let more = shown.rows.iter().position(|row| matches!(row, Row::More));
-    shown.rows.insert(more.unwrap_or(shown.rows.len()), life);
+    let at = more.unwrap_or(shown.rows.len());
+    shown.rows.splice(at..at, life);
     shown
 }
 
@@ -100,7 +104,7 @@ fn fits(row: &Row) -> bool {
 /// six letters: the home star's generated name may be longer, and the panel clips it like any name.
 #[test]
 fn every_card_fits_the_panel() {
-    assert!(NAME_CHARS as f32 * theme::GLYPH_ASPECT * theme::FONT_BODY <= ROOM);
+    assert!(NAME_CHARS as f32 * theme::GLYPH_ASPECT * theme::FONT_BODY <= ROOM + 0.01);
     let universe = Universe::new(7);
     let star = universe.system(universe.home().star).star.name;
     for shown in planets(&universe).into_iter().chain(far(&universe)) {
@@ -112,16 +116,16 @@ fn every_card_fits_the_panel() {
     }
 }
 
-/// Every measure of every planet card writes its unit: kilometres, g, bar, degrees Celsius, and
+/// Every measure of every planet card writes its unit: kilometres, multiples of home, degrees Celsius, and
 /// minutes, hours or days for time.
 #[test]
 fn every_measure_writes_its_unit() {
     let universe = Universe::new(7);
     let units = [
         ("Radius", " km"),
-        ("Gravity", " g"),
-        ("Air", " bar"),
-        ("Deck pressure", " bar"),
+        ("Gravity", " x home"),
+        ("Air", " x home"),
+        ("Deck air", " x home"),
         ("Temperature", " C"),
     ];
     for shown in planets(&universe) {

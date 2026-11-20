@@ -5,7 +5,7 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::read::{at, caption, drawn, part};
-use super::rig::{app, radius, settle, tap};
+use super::rig::{app, settle, tap};
 use crate::computer::{Destination, Target};
 use crate::menus::hud::minimap::scope::Scope;
 use crate::menus::hud::minimap::space::{DASHES, Dash};
@@ -23,7 +23,7 @@ fn cycled(app: &mut App) -> (f32, String) {
     (settle(app), caption(app))
 }
 
-/// The key goes from the speed to each fixed range, the last one capped by the small planet.
+/// The key goes from the speed to each fixed range, the last one whole because the home planet is large.
 /// The shown range eases to each step and a patch is painted for it.
 #[test]
 fn the_key_cycles_the_ranges() {
@@ -36,8 +36,7 @@ fn the_key_cycles_the_ranges() {
     let wide = (settle(&mut app), caption(&mut app));
     assert_eq!(wide, (800.0, "800 m".to_string()));
     assert_eq!(part(&mut app, Part::Ground).width, percent(200));
-    let capped = (radius() * 0.35) as f32;
-    assert_eq!(cycled(&mut app), (capped, "2.10 km".to_string()));
+    assert_eq!(cycled(&mut app), (2500.0, "2.50 km".to_string()));
 }
 
 /// After the last range the key switches the minimap off, and once more brings it back on

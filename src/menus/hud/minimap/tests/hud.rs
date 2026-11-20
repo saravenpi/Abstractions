@@ -10,12 +10,15 @@ use bevy::ui::Val2;
 use super::read::{at, caption, furnish, part, turn};
 use super::rig::{app, ground, look, settle, tap};
 use crate::computer::Computer;
+use crate::map::raster::colour;
 use crate::menus::Menu;
 use crate::menus::hud::HudRoot;
+use crate::menus::hud::minimap::patch::TEXELS;
 use crate::menus::hud::minimap::scope::Scope;
 use crate::menus::hud::minimap::widget::{Part, SIDE};
 use crate::space::{Location, Travel};
 use crate::ui::{Blurred, theme};
+use crate::world::Planet;
 
 /// Returns whether the HUD is shown, after three more frames.
 fn hud_shown(app: &mut App) -> bool {
@@ -91,7 +94,9 @@ fn the_marks_sit_where_their_targets_lie() {
 }
 
 /// The image of the ground is painted by the worker, twice as wide as the frame around its
-/// middle, and neither moved nor turned while the player stands at its middle looking north.
+/// middle, and neither moved nor turned while the player stands at its middle looking north. Each texel has the
+/// colour of the full map there: a kilometre of a planet of real size is too even to tell apart by
+/// its relief, so the test reads the colours where they are painted.
 #[test]
 fn the_ground_is_painted_around_the_player() {
     let mut app = app("ground");
@@ -103,21 +108,16 @@ fn the_ground_is_painted_around_the_player() {
     assert_eq!((image.left, image.top), (corner, corner));
     let placed = turn(&mut app);
     assert!(placed.rotation.as_radians().abs() < 1e-3, "{placed:?}");
+    let patch = app.world().resource::<Scope>().patch.expect("a patch");
+    let globe = app.world().resource::<Planet>().globe.clone();
     let handle = app.world().resource::<Scope>().image.clone();
     let painted = app.world().resource::<Assets<Image>>().get(&handle);
-    let texels = painted
-        .unwrap()
-        .data
-        .as_ref()
-        .unwrap()
-        .as_chunks::<4>()
-        .0
-        .iter();
-    assert!(texels.clone().all(|texel| texel[3] == 255));
-    let mut greys: Vec<u8> = texels.map(|texel| texel[0]).collect();
-    greys.sort_unstable();
-    greys.dedup();
-    assert!(greys.len() > 2, "{greys:?}");
+    let texels = painted.unwrap().data.as_ref().unwrap().as_chunks::<4>().0;
+    assert!(texels.iter().all(|texel| texel[3] == 255));
+    for (x, y) in [(0, 0), (48, 48), (95, 20), (30, 95)] {
+        let wanted = colour(&globe, patch.dir(x, y));
+        assert_eq!(texels[y * TEXELS + x], wanted, "({x}, {y})");
+    }
 }
 
 /// Turning east turns the map: the base is now to the left, the ship ahead and north on the

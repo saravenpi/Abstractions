@@ -91,10 +91,12 @@ fn a_disc_over_a_corner_takes_three_faces() {
     assert_eq!(faces.len(), 3);
 }
 
-/// The reach is 300 m on the ground, the horizon higher up, and never past 2 km.
+/// The reach is 300 m on the ground, the horizon higher up, and never past 2 km. On a planet of
+/// Earth's size the horizon is past the cap from one metre up, so the growth shows on a small moon.
 #[test]
 fn the_reach_grows_with_height_to_a_cap() {
     assert_eq!(reach(-5.0, EARTH_RADIUS), REACH_FOOT);
-    assert!((reach(100.0, EARTH_RADIUS) - 1100.0).abs() < 1.0);
+    assert!((reach(100.0, 5000.0) - 1005.0).abs() < 1.0);
+    assert_eq!(reach(1.0, EARTH_RADIUS), REACH_CAP);
     assert_eq!(reach(5000.0, EARTH_RADIUS), REACH_CAP);
 }

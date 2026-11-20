@@ -6,6 +6,7 @@ mod climate;
 mod craters;
 mod cube;
 mod datum;
+mod drainage;
 mod elevation;
 pub mod far;
 mod flat;
@@ -40,6 +41,8 @@ mod tests_datum;
 #[cfg(test)]
 pub(in crate::world) mod tests_deck;
 #[cfg(test)]
+mod tests_drainage;
+#[cfg(test)]
 mod tests_flows;
 #[cfg(test)]
 mod tests_landform;
@@ -58,6 +61,7 @@ mod tests_scales;
 
 pub use chart::{BLOCK, Chart};
 pub use cube::Face;
+pub use drainage::Drainage;
 pub use grain::Grain;
 pub use id::ChunkId;
 pub use plates::{Boundary, Crust, Interior, Plates, Sample as PlateSample};

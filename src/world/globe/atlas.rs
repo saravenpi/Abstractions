@@ -15,8 +15,9 @@ mod pits;
 mod reach;
 mod region;
 mod trace;
+mod trunk;
 
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use bevy::math::DVec3;
 
@@ -32,6 +33,7 @@ pub use trace::Flow;
 pub use trace::{End, downhill};
 
 use super::Globe;
+use super::drainage::Drainage;
 use lru::Lru;
 
 /// Which memory a cell is kept in, for the per-thread lookups.
@@ -57,6 +59,8 @@ pub struct Atlas {
     maps: Lru<FlowMap>,
     /// Maps of the craters reaching into each cell.
     pits: Lru<PitMap>,
+    /// The drainage grid of the planet, built on first use.
+    pub(super) drainage: OnceLock<Arc<Drainage>>,
 }
 
 impl Atlas {
@@ -70,6 +74,7 @@ impl Atlas {
             sources: Lru::sized(kept),
             maps: Lru::sized(kept),
             pits: Lru::sized(kept),
+            drainage: OnceLock::new(),
         }
     }
 }

@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use super::ambient::with_ground;
 use super::{PlaceUniform, Sky};
+use crate::render::cloudshade::{CloudShade, fixed};
 use crate::render::moonlight::{Moonlight, STARLIGHT};
 use crate::render::sun::SunDir;
 use crate::render::vantage::{LocalSystem, Vantage};
@@ -55,16 +56,25 @@ pub fn block(sky: &Sky, vantage: &Vantage, sun: &SunDir) -> PlaceUniform {
 /// and the moon are tracked.
 pub fn place_light(
     place: (Res<Vantage>, Res<LocalSystem>, Res<SunDir>),
-    moon: Res<Moonlight>,
+    (moon, shade): (Res<Moonlight>, Res<CloudShade>),
     mut light: ResMut<PlaceLight>,
 ) {
     let (vantage, local, sun) = place;
+    let cloud = shade.eye(fixed(&vantage) * vantage.up);
     let sky = sky_below(&vantage, &local, &moon);
     let ground = local
         .below(&vantage)
         .map_or(Vec3::splat(GROUND), |body| body.record.class.look().land);
     let block = sky.map_or(PlaceUniform::default(), |sky| {
-        with_ground(block(&sky, &vantage, &sun), ground)
+        let lit = block(&sky, &vantage, &sun);
+        let dimmed = lit.eye_sun.truncate() * cloud;
+        with_ground(
+            PlaceUniform {
+                eye_sun: dimmed.extend(lit.eye_sun.w),
+                ..lit
+            },
+            ground,
+        )
     });
     light.set_if_neq(PlaceLight(block));
 }

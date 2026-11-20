@@ -51,6 +51,10 @@ const SHADOW_FADE: f32 = 0.2;
 const SUN_ALIGN: f32 = 0.9999;
 const SHIFT_MIN: f32 = 0.005;
 const PI: f32 = 3.14159265;
+const SHADE_AT: i32 = 9;
+const SHADE_GRID: i32 = 15;
+const SHADE_SIDE: i32 = 32;
+const SHADE_REACH_FADE: f32 = 0.75;
 const BOUNCE_CAP: f32 = 1.5;
 const TWILIGHT_SHARE: f32 = 0.35;
 const TWILIGHT_EDGES: vec3<f32> = vec3<f32>(-0.18, -0.02, 0.12);
@@ -277,12 +281,52 @@ fn sun_shadow(in: PbrInput, toward: vec3<f32>, wanted: f32) -> Shadow {
     return out;
 }
 
+fn shade_cell(map: texture_2d<f32>, column: i32, row: i32) -> f32 {
+    let x = clamp(column, 0, SHADE_SIDE - 1);
+    let y = clamp(row, 0, SHADE_SIDE - 1);
+    return textureLoad(map, vec2<i32>(SHADE_GRID + y * SHADE_SIDE + x, 0), 0).x;
+}
+
+fn cloud_shade(map: texture_2d<f32>, place: Place, world: vec3<f32>) -> f32 {
+    let spot = textureLoad(map, vec2<i32>(SHADE_AT + 3, 0), 0);
+    if (spot.w <= 0.0 || place.air.z <= 0.0) {
+        return 1.0;
+    }
+    let col_x = textureLoad(map, vec2<i32>(SHADE_AT, 0), 0).xyz;
+    let col_y = textureLoad(map, vec2<i32>(SHADE_AT + 1, 0), 0).xyz;
+    let col_z = textureLoad(map, vec2<i32>(SHADE_AT + 2, 0), 0).xyz;
+    let east = textureLoad(map, vec2<i32>(SHADE_AT + 4, 0), 0).xyz;
+    let north = textureLoad(map, vec2<i32>(SHADE_AT + 5, 0), 0).xyz;
+    let out = world - place.centre.xyz;
+    let dir = normalize(col_x * out.x + col_y * out.y + col_z * out.z);
+    let along = max(dot(dir, spot.xyz), 0.05);
+    let across = place.centre.w * vec2<f32>(dot(dir, east), dot(dir, north)) / along;
+    let uv = across / spot.w * 0.5 + vec2<f32>(0.5);
+    let edge = max(abs(uv.x * 2.0 - 1.0), abs(uv.y * 2.0 - 1.0));
+    if (edge >= 1.0) {
+        return 1.0;
+    }
+    let g = uv * f32(SHADE_SIDE) - vec2<f32>(0.5);
+    let corner = floor(g);
+    let f = g - corner;
+    let i = vec2<i32>(corner);
+    let low = mix(shade_cell(map, i.x, i.y), shade_cell(map, i.x + 1, i.y), f.x);
+    let high = mix(shade_cell(map, i.x, i.y + 1), shade_cell(map, i.x + 1, i.y + 1), f.x);
+    let share = mix(low, high, f.y);
+    return mix(1.0, share, 1.0 - smoothstep(SHADE_REACH_FADE, 1.0, edge));
+}
+
 fn relit(in: PbrInput, lit: vec4<f32>, place: Place) -> vec4<f32> {
+    return relit_under(in, lit, place, 1.0);
+}
+
+fn relit_under(in: PbrInput, lit: vec4<f32>, place: Place, cloud: f32) -> vec4<f32> {
     if (place.air.z <= 0.0) {
         return lit;
     }
     let at = height_at(place, in.world_position.xyz);
-    let here = light_at(place, at.x, at.y);
+    var here = light_at(place, at.x, at.y);
+    here.sun = here.sun * cloud;
     let shift = here.sun - place.eye_sun.rgb;
     let moved = max(abs(shift.x), max(abs(shift.y), abs(shift.z)));
     let eye_top = max(place.eye_sun.x, max(place.eye_sun.y, place.eye_sun.z));

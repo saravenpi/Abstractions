@@ -13,7 +13,7 @@ import bevy_pbr::render::pbr_fragment::pbr_input_from_standard_material;
 import bevy_pbr::render::pbr_functions::main_pass_post_lighting_processing;
 import bevy_pbr::render::pbr_lighting::{EnvBRDFApprox, F_AB, getDistanceAttenuation};
 import bevy_pbr::render::shadows::fetch_directional_shadow;
-import package::render::daylight::{place_from, light_of};
+import package::render::daylight::{cloud_shade, place_from, light_of};
 import package::world::turf::{Turf, cover};
 
 @group(constants::MATERIAL_BIND_GROUP) @binding(100) var place_map: texture_2d<f32>;
@@ -143,7 +143,8 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
     var sky = lights.ambient_color.rgb;
     if (place.air.z > 0.0) {
         let here = light_of(place, in.world_position.xyz);
-        sun += (here.sun - place.eye_sun.rgb) * saturate(dot(up, place.star.xyz));
+        let cloud = cloud_shade(place_map, place, in.world_position.xyz);
+        sun += (here.sun * cloud - place.eye_sun.rgb) * saturate(dot(up, place.star.xyz));
         sky += here.sky - place.eye_sky.rgb;
     }
     let facing = max(dot(up, pbr_input.V), 0.0001);

@@ -87,7 +87,8 @@ pub(super) fn plugin(app: &mut App) {
         let _handle = load_embedded_asset!(app, "daylight.wesl");
         app.insert_resource(Module { _handle });
     }
-    app.init_resource::<super::SunDir>()
+    app.add_plugins(super::cloudshade::plugin)
+        .init_resource::<super::SunDir>()
         .init_resource::<super::Vantage>()
         .init_resource::<super::LocalSystem>()
         .init_resource::<super::moonlight::Moonlight>()

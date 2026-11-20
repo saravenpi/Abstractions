@@ -56,7 +56,9 @@ pub struct PlaceUniform {
     pub air: Vec4,
     /// Ambient colour of the full day in sRGB.
     pub day: Vec4,
-    /// Direct light this rule gives at the camera, which the lights of the scene carry.
+    /// Direct light this rule gives at the camera, which the lights of the scene carry, less what
+    /// the clouds over the camera take. Its w is 1 when the sea shows the glint of the sun and the
+    /// moon, 0 when the setting asks for the sky alone.
     pub eye_sun: Vec4,
     /// Ambient light this rule gives at the camera, which the ambient light of the scene carries.
     pub eye_sky: Vec4,

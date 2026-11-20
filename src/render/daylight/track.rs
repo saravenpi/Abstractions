@@ -9,6 +9,7 @@ use crate::render::cloudshade::{CloudShade, fixed};
 use crate::render::moonlight::{Moonlight, STARLIGHT};
 use crate::render::sun::SunDir;
 use crate::render::vantage::{LocalSystem, Vantage};
+use crate::settings::{Persistent, Settings};
 
 /// Linear grey of the ground of a place whose body is not known, a mean land albedo.
 const GROUND: f32 = 0.2;
@@ -56,7 +57,7 @@ pub fn block(sky: &Sky, vantage: &Vantage, sun: &SunDir) -> PlaceUniform {
 /// and the moon are tracked.
 pub fn place_light(
     place: (Res<Vantage>, Res<LocalSystem>, Res<SunDir>),
-    (moon, shade): (Res<Moonlight>, Res<CloudShade>),
+    (moon, shade, settings): (Res<Moonlight>, Res<CloudShade>, Res<Persistent<Settings>>),
     mut light: ResMut<PlaceLight>,
 ) {
     let (vantage, local, sun) = place;

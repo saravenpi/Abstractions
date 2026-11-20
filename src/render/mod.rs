@@ -52,6 +52,8 @@ mod tests_dither;
 #[cfg(test)]
 mod tests_fog;
 #[cfg(test)]
+mod tests_fresnel;
+#[cfg(test)]
 mod tests_lens;
 #[cfg(test)]
 mod tests_lowres;

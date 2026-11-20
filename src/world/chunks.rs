@@ -6,7 +6,7 @@ mod build;
 mod calm;
 mod cut;
 mod detail;
-mod dither;
+pub mod dither;
 mod embed;
 mod face;
 mod fade;

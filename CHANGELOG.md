@@ -9,6 +9,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - The map's card of a planet or a moon in a visited system gives its chance of life, such as "Chance of life 72 %", from the same odds that decide what lives there. Once you have landed it says what is really there: none, microbial mats, soft-bodied life, shelled life, animals with skeletons or ancient life.
 - Right click a search result, a favourite or a player in the map's side panel for the same menu as on the map.
+- Animals walk the ground of living planets: the herds of the planet's own species graze, travel and rest around you, up to 48 at once within 150 m, and fade in and out at the edge. Every player sees the same herd in the same place.
+- Animals notice robots, yours and your friends': shy plant eaters look up, then run from you and come back to their herd once you are gone. Hunters stay bolder.
+- Hunts play out where you can see them: hunters stalk and run their prey down, the kill lies where it fell while it has meat, and scavengers gather round it.
 
 ### Changed
 
@@ -20,6 +23,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A body falling belly down has twice the drag of one diving head first, so it falls slower.
 - The home planet, its star and its galaxy carry generated names like every other place.
 - Landings match the impact. A soft one bends the knees as before. A hard drop crouches deeper, puts one hand and then both on the ground and gets up slower. A fast touchdown with the gear rolls over the shoulder, forward, backward or over the side, one turn over the distance the roll covers. A shallow fast one skids on the feet, leaning back, or on the belly with the arms out after a glide. A crash at 60 m/s tumbles with the limbs flailing, then the body gets up.
+- Fireflies and butterflies only fly where life has reached shelled animals, and birds only where it has skeletons. Dead planets have none.
 
 ## [0.10.1] - 2026-11-19
 

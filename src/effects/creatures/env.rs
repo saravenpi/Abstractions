@@ -1,5 +1,7 @@
 //! What every creature system reads: time, sky, surroundings, the ground and random numbers.
 
+use std::sync::Arc;
+
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
@@ -10,9 +12,8 @@ use crate::effects::rng::Rng;
 use crate::effects::sense::Sensed;
 use crate::render::{DayClock, daylight};
 use crate::space::Anchor;
-use crate::universe::PlanetRecord;
 use crate::wind::Wind;
-use crate::world::Terrain;
+use crate::world::{Globe, Terrain};
 
 /// Resources the creature systems read.
 #[derive(SystemParam)]
@@ -72,9 +73,9 @@ impl Env<'_> {
         }
     }
 
-    /// Returns the record of the planet under the camera.
-    pub fn record(&self) -> &PlanetRecord {
-        self.terrain.globe().record()
+    /// Returns the globe of the planet under the camera.
+    pub fn globe(&self) -> Arc<Globe> {
+        self.terrain.globe().clone()
     }
 
     /// Returns the ground around the camera of this frame.

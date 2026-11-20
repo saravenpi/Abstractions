@@ -24,7 +24,7 @@ mod surface;
 mod terrain;
 
 pub use biome::{Biome, ground_rgb};
-pub use chunks::{Calm, Reach, STEPS as RENDER_STEPS, Sited, leaf_arc};
+pub use chunks::{Calm, Reach, STEPS as RENDER_STEPS, Sited, dither, leaf_arc};
 pub use enter::enter_planet;
 pub use focus::{Link, spin};
 pub use globe::Globe;

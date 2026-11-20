@@ -8,12 +8,10 @@ use crate::map::explored::Explored;
 use crate::saves::WorldSave;
 use crate::universe::{BodyId, Universe};
 
-/// A server cannot make the game keep ground for empty lists, keys that name no leaf, or more
-/// bodies than the room keeps.
+/// A server cannot make the game keep ground for empty lists or keys that name no leaf.
 #[test]
 fn bad_ground_from_a_server_keeps_nothing() {
-    let universe = Universe::new(3);
-    let home = universe.home();
+    let home = Universe::new(3).home();
     let mut explored = Explored::default();
     explored.merge_runs(home, &[]);
     explored.merge_runs(
@@ -38,13 +36,19 @@ fn bad_ground_from_a_server_keeps_nothing() {
         }],
     );
     assert_eq!(explored.bodies().count(), 0);
+}
+
+/// A server cannot make the game keep ground for more bodies than the room keeps.
+#[test]
+fn a_server_cannot_make_the_game_keep_every_body() {
+    let home = Universe::new(3).home();
+    let mut explored = Explored::default();
     let good = [Run {
         gap: key(1, 8, 3),
         len: 2,
     }];
     for index in 0..=u8::MAX {
-        let body = BodyId { index, ..home };
-        explored.merge_runs(body, &good);
+        explored.merge_runs(BodyId { index, ..home }, &good);
     }
     assert_eq!(explored.bodies().count(), BODIES_MAX);
 }

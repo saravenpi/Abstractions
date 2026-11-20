@@ -15,6 +15,8 @@ mod relay;
 mod seat;
 
 #[cfg(test)]
+mod explored_tests;
+#[cfg(test)]
 mod join_tests;
 #[cfg(test)]
 mod kit;

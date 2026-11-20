@@ -30,8 +30,14 @@ fn finish(updates: &mut Updates) {
     wait(updates, |updates| *updates.older() != Older::Working);
 }
 
-/// The build is downloaded, checked, kept in the data folder and started with `--world`, and a
-/// second time it is not downloaded again.
+/// Returns the address of the build of the older release.
+fn build_url() -> String {
+    let name = Platform::Linux.payload(OLDER_TAG);
+    format!("{}{OLDER_TAG}/{name}", crate::update::allow::RELEASES)
+}
+
+/// The build is downloaded, checked, kept in the data folder, made runnable and started with
+/// `--world`.
 #[test]
 fn a_world_opens_with_the_older_build() {
     let (mut updates, fake, dir) = setup("older", &payload());
@@ -46,27 +52,25 @@ fn a_world_opens_with_the_older_build() {
         fake.launched.lock().unwrap().clone(),
         [(build.clone(), args)]
     );
-    let url = format!(
-        "{}{OLDER_TAG}/{}",
-        crate::update::allow::RELEASES,
-        Platform::Linux.payload(OLDER_TAG)
-    );
-    updates.open_older(OLDER_TAG, "isle", &dir);
-    finish(&mut updates);
-    assert_eq!(
-        fake.count(&url),
-        1,
-        "the kept build is not downloaded again"
-    );
-    assert_eq!(fake.launched.lock().unwrap().len(), 2);
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        assert_eq!(
-            fs::metadata(&build).unwrap().permissions().mode() & 0o111,
-            0o111
-        );
+        let mode = fs::metadata(&build).unwrap().permissions().mode();
+        assert_eq!(mode & 0o111, 0o111);
     }
+}
+
+/// A build already kept, and still matching its checksum, is not downloaded again.
+#[test]
+fn a_kept_older_build_is_not_downloaded_twice() {
+    let (mut updates, fake, dir) = setup("older-kept", &payload());
+    updates.open_older(OLDER_TAG, "reef", &dir);
+    finish(&mut updates);
+    updates.open_older(OLDER_TAG, "isle", &dir);
+    wait(&mut updates, |updates| {
+        fake.launched.lock().unwrap().len() == 2 && *updates.older() != Older::Working
+    });
+    assert_eq!(fake.count(&build_url()), 1);
 }
 
 /// A build whose checksum does not match is removed and never started.

@@ -79,4 +79,6 @@ impl Explored {
 }
 
 #[cfg(test)]
+mod share_state_tests;
+#[cfg(test)]
 mod tests;

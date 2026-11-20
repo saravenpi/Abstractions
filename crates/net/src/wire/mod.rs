@@ -14,9 +14,12 @@ mod record;
 mod robot;
 mod ship;
 mod stream;
+mod varint;
 
 #[cfg(test)]
 mod body_tests;
+#[cfg(test)]
+mod cells_tests;
 #[cfg(test)]
 mod msg_tests;
 #[cfg(test)]

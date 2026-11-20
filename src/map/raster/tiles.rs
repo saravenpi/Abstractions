@@ -2,6 +2,9 @@
 //! used and dropped when the cache is full.
 
 use std::collections::HashMap;
+use std::sync::Arc;
+
+use abstractions_net::leaves::Leaves;
 
 use bevy::asset::RenderAssetUsages;
 use bevy::image::ImageSampler;
@@ -15,6 +18,7 @@ use super::tile_paint::{lit, paint};
 use crate::map::explored::Explored;
 use crate::map::{Level, Surface};
 use crate::universe::BodyId;
+use crate::world::Globe;
 
 /// Most tiles painted at once.
 const JOBS: usize = 2;
@@ -117,15 +121,16 @@ pub(super) fn start(mut tiles: ResMut<Tiles>, rasters: Res<Rasters>, explored: R
             continue;
         };
         let current = slot.image.is_some() && slot.seen == version;
-        if running >= JOBS || slot.job.is_some() || current {
-            continue;
+        if running < JOBS && slot.job.is_none() && !current {
+            slot.job = Some((spawn(globe.clone(), leaves.clone(), id), version));
+            running += 1;
         }
-        let (globe, leaves) = (globe.clone(), leaves.clone());
-        let task = AsyncComputeTaskPool::get()
-            .spawn(async move { paint(&globe, id, Some(&lit(&leaves, id))) });
-        slot.job = Some((task, version));
-        running += 1;
     }
+}
+
+/// Starts a worker that paints tile `id` of `globe`, lit where `leaves` reach it.
+fn spawn(globe: Arc<Globe>, leaves: Leaves, id: TileId) -> Task<Vec<u8>> {
+    AsyncComputeTaskPool::get().spawn(async move { paint(&globe, id, Some(&lit(&leaves, id))) })
 }
 
 /// Puts the tiles the workers finished into pictures.

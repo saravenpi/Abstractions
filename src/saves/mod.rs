@@ -12,6 +12,8 @@ mod log_tests;
 mod model;
 #[cfg(test)]
 mod moon_tests;
+#[cfg(test)]
+mod old_tests;
 mod resume;
 mod snapshot;
 mod start;

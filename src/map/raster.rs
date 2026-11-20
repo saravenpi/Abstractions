@@ -10,6 +10,8 @@ mod paint;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_coast;
+#[cfg(test)]
 mod tests_sea;
 #[cfg(test)]
 mod tests_tile;

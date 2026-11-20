@@ -82,37 +82,27 @@ pub fn visible(lens: Lens, level: u8) -> Vec<(i64, TileId)> {
         f64::from(TileId::rows(level)),
     );
     let half = 1.0 / f64::from(lens.zoom);
-    let at = |v: f32| f64::from(v);
+    let (x, y) = (f64::from(lens.centre.x), f64::from(lens.centre.y));
     let east = |x: f64| ((x + 1.0) * 0.5 * cols).floor() as i64;
     let south = |y: f64| (((0.5 - y) * rows).floor().max(0.0) as i64).min(rows as i64 - 1);
-    let (first, last) = (
-        east(at(lens.centre.x) - half),
-        east(at(lens.centre.x) + half),
-    );
-    let (top, bottom) = (
-        south(at(lens.centre.y) + half),
-        south(at(lens.centre.y) - half),
-    );
     let mut tiles = Vec::new();
-    for row in top..=bottom {
-        for col in first..=last {
+    for row in south(y + half)..=south(y - half) {
+        for col in east(x - half)..=east(x + half) {
             let wrapped = col.rem_euclid(cols as i64) as u32;
-            let row = row as u32;
             tiles.push((
                 col,
                 TileId {
                     level,
                     col: wrapped,
-                    row,
+                    row: row as u32,
                 },
             ));
         }
     }
-    let middle = Vec2::new(
-        ((at(lens.centre.x) + 1.0) * 0.5 * cols) as f32,
-        ((0.5 - at(lens.centre.y)) * rows) as f32,
-    );
-    nearest(tiles, middle)
+    nearest(
+        tiles,
+        Vec2::new(((x + 1.0) * 0.5 * cols) as f32, ((0.5 - y) * rows) as f32),
+    )
 }
 
 /// Returns at most [`SHOWN_MAX`] of `tiles`, those nearest `middle` first, where `middle` is in

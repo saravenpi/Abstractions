@@ -104,6 +104,11 @@ pub fn open(
 }
 
 impl Updates {
+    /// Returns how far opening a world with an older release has gone.
+    pub fn older(&self) -> &Older {
+        &self.older
+    }
+
     /// Opens the world `world` with the older release tagged `tag`, in the background: fetches
     /// its build into `data` when it is not there, then starts it. Does nothing while one runs.
     pub fn open_older(&mut self, tag: &str, world: &str, data: &Path) {

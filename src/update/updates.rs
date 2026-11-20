@@ -100,11 +100,6 @@ impl Updates {
         self.plan
     }
 
-    /// Returns how far opening a world with an older release has gone.
-    pub fn older(&self) -> &Older {
-        &self.older
-    }
-
     /// Returns the version of the running game.
     pub fn current(&self) -> &str {
         &self.current

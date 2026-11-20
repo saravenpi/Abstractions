@@ -22,7 +22,7 @@ fn bell(k: &Kit) -> (f32, f32) {
     }
 }
 
-/// Adds `tiers` caps over the stalk top `top`, as wide as the species spreads and hanging as far as it
+/// Adds `tiers` caps down the leaning stalk from its top `top`, as wide as the species spreads and hanging as far as it
 /// droops, and pushes onto `spots` where a flower sits on each rim.
 fn caps(k: &mut Kit, top: Vec3, tiers: u32, spots: &mut Vec<Vec3>) {
     let (form, kind, colour) = (k.dials.form, k.dials.kind, k.leaves());
@@ -33,9 +33,9 @@ fn caps(k: &mut Kit, top: Vec3, tiers: u32, spots: &mut Vec<Vec3>) {
             * (0.6 + 0.45 * kind.spread)
             * wide;
         let h = (0.45 + 0.6 * kind.droop) * tall;
-        let at = top - Vec3::Y * (0.75 * t as f32 + 0.5 * h * kind.droop);
+        let at = top - k.axis() * 0.75 * t as f32 - Vec3::Y * 0.5 * h * kind.droop;
         cone(&mut k.mesh, at, Vec2::new(r, h), 7, colour);
-        spots.push(at + round(k.rand(t + 20) * 3.0, 0.0) * r * 0.95);
+        spots.push(at + round(k.rand(t + 20) * 3.0, 0.0) * r * 0.85);
     }
 }
 
@@ -66,7 +66,7 @@ pub fn stalk(k: &mut Kit) {
         let top = shoot(k, s, girth);
         caps(k, top, 1, &mut spots);
     }
-    k.armour(Vec3::ZERO, lead, girth * 0.8);
+    k.armour(Vec3::new(0.0, -0.5, 0.0), lead, girth * 0.8);
     if form.store {
         let body = k.tone(k.dials.paint.stem);
         icosa(

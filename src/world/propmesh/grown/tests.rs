@@ -64,7 +64,7 @@ fn dials(arch: u8, on: bool, layers: u8, dressed: bool) -> Dials {
 
 /// Returns every look the tests sweep: each architecture, age, flag setting, layer count, dressing and the
 /// species at both ends of every range.
-fn looks() -> Vec<Look> {
+pub(super) fn looks() -> Vec<Look> {
     let flags = [false, true];
     let all = (0..8u8).flat_map(|a| (0..AGES as u8).map(move |v| (a, v)));
     all.flat_map(|(a, v)| {

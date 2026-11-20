@@ -6,11 +6,11 @@ use super::kit::{Kit, OLD};
 use super::low::{deeper, ring};
 use crate::world::solids::{fan, icosa};
 
-/// Returns the heart of the rosette of `k`: on the ground, or atop a short leaning trunk it builds when the
+/// Returns the heart of the rosette of `k`: a little under the ground, or atop a short leaning trunk it builds when the
 /// plant is old and of a branching species.
 fn heart(k: &mut Kit) -> Vec3 {
     if k.age < OLD || k.dials.kind.branches < 3 {
-        return Vec3::Y * 0.02;
+        return Vec3::Y * -0.04;
     }
     let top = k.axis() * 0.6 + Vec3::Y * 0.1;
     k.stem(Vec3::new(0.0, -0.3, 0.0), top, [0.09, 0.07]);
@@ -18,7 +18,7 @@ fn heart(k: &mut Kit) -> Vec3 {
 }
 
 /// Adds two small side rosettes of blades `width` wide round a rosette of `reach` and `rise` turned by `yaw`,
-/// when its species clumps and it is past its youth.
+/// when its species clumps and it is past its youth, each on a root deep enough to meet ground as steep as 1.
 fn pups(k: &mut Kit, (reach, rise, width): (f32, f32, f32), yaw: f32, colour: [f32; 4]) {
     if k.dials.kind.branches < 4 || k.age == 0 {
         return;
@@ -26,13 +26,9 @@ fn pups(k: &mut Kit, (reach, rise, width): (f32, f32, f32), yaw: f32, colour: [f
     for s in 0..2 {
         let a = yaw + 1.3 + s as f32 * 2.9;
         let pup = [5.0, reach * 0.45, rise * 0.4, 0.0, width * 0.7];
-        fan(
-            &mut k.mesh,
-            Vec3::new(a.cos(), 0.0, a.sin()) * reach * 0.9,
-            pup,
-            a,
-            colour,
-        );
+        let at = Vec3::new(a.cos(), 0.0, a.sin()) * reach * 0.9;
+        fan(&mut k.mesh, at, pup, a, colour);
+        k.stem(at, at - Vec3::Y * reach, [0.03, 0.02]);
     }
 }
 
@@ -64,7 +60,7 @@ fn blades(k: &Kit) -> [f32; 5] {
 }
 
 /// Builds a rosette: a ring of blades, a second ring under wax, a swollen heart where it stores water, spines
-/// in drought, side shoots when it clumps, a flower spike when it flowers, and a short leaning trunk under the
+/// on the blade tips in drought, side shoots when it clumps, a flower spike when it flowers, and a short leaning trunk under the
 /// rosette of an old one.
 pub fn rosette(k: &mut Kit) {
     let (form, colour, yaw) = (k.dials.form, k.leaves(), k.rand(1) * 3.0);
@@ -93,7 +89,7 @@ pub fn rosette(k: &mut Kit) {
         );
     }
     if form.spines {
-        ring(k, heart, 9, (0.75, reach * 0.9, yaw), 0.12);
+        ring(k, heart, count as u32, (rise / reach, reach, yaw), 0.12);
     }
     pups(k, (reach, rise, width), yaw, colour);
     spire(k, heart);

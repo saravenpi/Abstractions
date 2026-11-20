@@ -27,6 +27,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Landings match the impact. A soft one bends the knees as before. A hard drop crouches deeper, puts one hand and then both on the ground and gets up slower. A fast touchdown with the gear rolls over the shoulder, forward, backward or over the side, one turn over the distance the roll covers. A shallow fast one skids on the feet, leaning back, or on the belly with the arms out after a glide. A crash at 60 m/s tumbles with the limbs flailing, then the body gets up.
 - Fireflies and butterflies only fly where life has reached shelled animals, and birds only where it has skeletons. Dead planets have none.
 
+### Fixed
+
+- No more floating parts on the plants of living planets. The top clump of a tree sits on its trunk, thorns and resin stay on a leaning trunk or stalk, fruit hangs from its flower, and the flowers of trees, bulbs, mats and vines sit on their leaves and stems. The spines of a rosette grow on its blade tips. On a slope, mats, side shoots, bulbs and kelp reach down into the ground instead of hovering over its low side, and the caps of a leaning stalk follow it.
+
 ## [0.10.1] - 2026-11-19
 
 Players and servers must both run 0.10.1: the multiplayer protocol changed.

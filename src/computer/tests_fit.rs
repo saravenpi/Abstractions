@@ -1,19 +1,28 @@
 //! Width tests of the card of the side panel: every row of every card fits one line at the
-//! smallest window, and its buttons fit the rows kept for them.
+//! smallest window, and every sentence of Go fits two lines.
 
-use super::detail::{Card, ROWS, Row, card};
-use super::layout::{DEED_ROWS, GLYPH, LINE_CHARS, NAME_CHARS, ROOM};
+use super::course::hud_line;
+use super::detail::{Card, ROWS, Row, card, visible};
+use super::layout::{GLYPH, LINE_CHARS, NAME_CHARS, ROOM};
+use super::route::Keys;
 use super::tests_detail::{records, world};
-use super::{Atlas, Block, RouteStatus, Target, View};
-use crate::map::{named, offer};
+use super::{Atlas, Block, RouteStatus, View};
 use crate::ui::theme;
 use crate::universe::{BodyId, PlanetClass, PlanetSpec, Rings, Universe};
 
-/// Returns the card of `planet` on `line`, led by its line on life as the panel shows it.
+/// Characters the icon of a stat takes, with the gap after it.
+const ICON_CHARS: usize = 3;
+
+/// Characters the column of notes of a stat takes at the right end of its row.
+const NOTE_CHARS: usize = 12;
+
+/// Returns the card of `planet` on `line`, with its line on life at the end of its last group
+/// as the panel shows it.
 fn alive(line: &super::Line, planet: &PlanetSpec, universe: &Universe) -> Card {
     let mut shown = card(line, Some(planet), universe);
     let life = super::odds::row(universe, planet, line.visited);
-    shown.rows.insert(0, life);
+    let more = shown.rows.iter().position(|row| matches!(row, Row::More));
+    shown.rows.insert(more.unwrap_or(shown.rows.len()), life);
     shown
 }
 
@@ -67,12 +76,22 @@ fn far(universe: &Universe) -> Vec<Card> {
 }
 
 /// Returns true when `row` of a card fits one line of the panel: a fact with its label, a gap
-/// and its value, a heading in its spaced capitals, a note in two lines.
+/// and its value, a stat with its icon, its label, its value and its note column, a heading in
+/// its spaced capitals, a note or a meaning in two lines.
 fn fits(row: &Row) -> bool {
     match row {
         Row::Heading(name) => name.chars().count() as f32 * (GLYPH + theme::CAPS_SPACING) <= ROOM,
         Row::Fact(name, value) => name.chars().count() + 1 + value.chars().count() <= LINE_CHARS,
         Row::Note(words) => words.chars().count() <= 2 * LINE_CHARS,
+        Row::Meaning(words) => words.chars().count() <= 2 * LINE_CHARS,
+        Row::More => true,
+        Row::Stat {
+            label, value, note, ..
+        } => {
+            let room = LINE_CHARS - ICON_CHARS - [NOTE_CHARS, 0][usize::from(note.is_empty())];
+            let words = label.chars().count() + 1 + value.chars().count();
+            words <= room && note.chars().count() <= NOTE_CHARS
+        }
     }
 }
 
@@ -85,7 +104,7 @@ fn every_card_fits_the_panel() {
     let universe = Universe::new(7);
     let star = universe.system(universe.home().star).star.name;
     for shown in planets(&universe).into_iter().chain(far(&universe)) {
-        assert!(shown.rows.len() <= ROWS, "{shown:?}");
+        assert!(visible(&shown.rows, false).len() <= ROWS, "{shown:?}");
         let words = shown.subtitle.replace(&star, "Varena");
         assert!(words.chars().count() <= LINE_CHARS, "{}", shown.subtitle);
         let wide = shown.rows.iter().find(|row| !fits(row));
@@ -93,52 +112,64 @@ fn every_card_fits_the_panel() {
     }
 }
 
-/// Returns how many rows the buttons of the card of `place` take once wrapped, each button its
-/// icon, the gap to its words, its words and its padding, and checks each fits a row alone.
-fn rows_taken(place: Target, course: Option<Target>, status: RouteStatus) -> usize {
-    let width = |words: &str| {
-        theme::ICON + theme::GAP_S + words.chars().count() as f32 * GLYPH + 2.0 * theme::GAP_XS
-    };
-    let mut rows = (0, ROOM);
-    for deed in offer(place, course, status) {
-        let wide = width(named(deed, place).1);
-        assert!(wide <= ROOM, "{deed:?}");
-        let next = rows.1 + theme::GAP_XS + wide;
-        rows = match next <= ROOM {
-            true => (rows.0, next),
-            false => (rows.0 + 1, wide),
-        };
+/// Every measure of every planet card writes its unit: kilometres, g, bar, degrees Celsius, and
+/// minutes, hours or days for time.
+#[test]
+fn every_measure_writes_its_unit() {
+    let universe = Universe::new(7);
+    let units = [
+        ("Radius", " km"),
+        ("Gravity", " g"),
+        ("Air", " bar"),
+        ("Deck pressure", " bar"),
+        ("Temperature", " C"),
+    ];
+    for shown in planets(&universe) {
+        for row in &shown.rows {
+            let Row::Stat { label, value, .. } = row else {
+                continue;
+            };
+            if let Some((_, unit)) = units.iter().find(|(name, _)| name == label) {
+                assert!(value.ends_with(unit), "{label}: {value}");
+            }
+            if matches!(*label, "Day" | "Year" | "Orbit") {
+                assert!(
+                    value.ends_with("min") || value.ends_with("days"),
+                    "{label}: {value}"
+                );
+            }
+        }
     }
-    rows.0
 }
 
-/// The buttons of every card wrap into the two rows kept for them, whatever the course and the
-/// route, and the reason the drive waits, which has its own line under them, fits two lines.
+/// Every sentence Go can say fits the two lines the card keeps for it, with the longest name
+/// of a place and the longest key names.
 #[test]
-fn the_buttons_of_the_card_fit_their_rows() {
-    let universe = Universe::new(7);
-    let home = universe.home();
-    let places = [
-        Target::Body(home),
-        Target::Star(home.star),
-        Target::Galaxy(home.star.galaxy),
-    ];
-    let (idle, landed) = (RouteStatus::Idle, RouteStatus::Blocked(Block::Landed));
-    for place in places {
-        assert!(rows_taken(place, None, idle) <= DEED_ROWS);
-        assert!(rows_taken(place, Some(place), idle) <= DEED_ROWS);
-        assert!(rows_taken(place, Some(place), landed) <= DEED_ROWS);
-    }
-    let inside = Block::Inside {
-        star: true,
-        lock: 99,
-        tenths: 999,
+fn the_go_sentences_fit_two_lines() {
+    let keys = Keys {
+        board: "Num Enter".to_string(),
+        rise: "Space".to_string(),
+        go: "Num Enter".to_string(),
     };
-    for block in [Block::Landed, Block::Surface, inside] {
-        assert!(
-            block.words().chars().count() <= 2 * LINE_CHARS,
-            "{}",
-            block.words()
-        );
+    let star = Block::Inside {
+        star: true,
+        lock: 50,
+        tenths: 30,
+    };
+    let name = "x".repeat(NAME_CHARS);
+    let route = [
+        RouteStatus::Blocked(Block::OnFoot),
+        RouteStatus::Blocked(Block::Landed),
+        RouteStatus::Blocked(star),
+        RouteStatus::Climbing,
+        RouteStatus::Dropping,
+        RouteStatus::Aligning(50),
+        RouteStatus::Spooling,
+        RouteStatus::InWarp,
+        RouteStatus::Arrived,
+    ];
+    for status in route {
+        let words = hud_line(&name, status, &keys);
+        assert!(words.chars().count() <= 2 * LINE_CHARS, "{words}");
     }
 }

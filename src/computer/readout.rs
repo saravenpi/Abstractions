@@ -1,18 +1,26 @@
-//! The card of the side panel: the name of the selected search result, what it is, the
-//! buttons of what can be done with it, and its facts in groups, a muted label on the left of
-//! each fact and its value on the right. A planet or a moon whose record is known leads with
-//! its line on life.
+//! The card of the side panel: the name of the selected search result, what it is, the Go
+//! button, and its facts in groups. A planet shows stats with an icon, a unit and a comparison
+//! with home, and ends its last group with its line on life; its rarer facts wait behind a More
+//! row.
 
 use bevy::prelude::*;
 
 use super::board::Board;
-use super::detail::{Card, Row, card as of};
+use super::detail::{Card, Row, card as of, visible};
+use super::face::{meaning, more, stat};
 use super::format::clip;
 use super::layout::{LINE_CHARS, NAME_CHARS};
 use super::odds::Odds;
 use super::section::{heading, heading_row};
 use crate::ui::{caps, text, theme};
 use crate::universe::Universe;
+
+/// What the card of a place says while the table has no rows.
+pub const NO_CARD: &str = "Pick a place on the map or in the list to see it here.";
+
+/// Whether the rarer facts of the card show.
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(super) struct More(pub bool);
 
 /// Marks the name of the place on the card.
 #[derive(Component)]
@@ -60,8 +68,8 @@ pub(super) fn card() -> impl Bundle {
 }
 
 /// Returns the card of the row under the cursor, or an empty card for an empty table. A planet
-/// or a moon whose record is known leads with its line on life, which `odds` keeps while the
-/// same body stays selected.
+/// or a moon whose record is known ends its last group with its line on life, which `odds`
+/// keeps while the same body stays selected.
 pub(super) fn shown(board: &Board, universe: &Universe, odds: &mut Odds) -> Card {
     let world = board.worlds.get(board.cursor).and_then(Option::as_ref);
     let Some(line) = board.lines.get(board.cursor) else {
@@ -69,7 +77,11 @@ pub(super) fn shown(board: &Board, universe: &Universe, odds: &mut Odds) -> Card
     };
     let mut card = of(line, world, universe);
     if let Some(body) = world {
-        card.rows.insert(0, odds.row(universe, body, line.visited));
+        let at = card.rows.iter().position(|row| matches!(row, Row::More));
+        card.rows.insert(
+            at.unwrap_or(card.rows.len()),
+            odds.row(universe, body, line.visited),
+        );
     }
     card
 }
@@ -97,11 +109,12 @@ fn fact(parent: &mut ChildSpawnerCommands, name: &str, value: &str) {
 }
 
 /// Spawns one row of the card under `parent`. A heading that is not the first row keeps room
-/// over it, which sets its group apart from the one above.
-fn row(parent: &mut ChildSpawnerCommands, row: &Row, first: bool) {
+/// over it, which sets its group apart from the one above. `open` tells the More row what it
+/// reads.
+fn row(parent: &mut ChildSpawnerCommands, row: &Row, (first, open): (bool, bool)) {
     match row {
         Row::Heading(name) => {
-            let gap = [theme::GAP_S, 0.0][usize::from(first)];
+            let gap = [theme::S4, 0.0][usize::from(first)];
             let node = Node {
                 margin: UiRect::top(px(gap)),
                 ..default()
@@ -112,6 +125,14 @@ fn row(parent: &mut ChildSpawnerCommands, row: &Row, first: bool) {
         Row::Note(words) => {
             parent.spawn(text(*words, theme::FONT_SMALL, theme::TEXT_2));
         }
+        Row::Stat {
+            icon,
+            label,
+            value,
+            note,
+        } => stat(parent, (*icon, *label), (value.as_str(), note.as_str())),
+        Row::Meaning(words) => meaning(parent, words),
+        Row::More => more(parent, open),
     }
 }
 
@@ -122,20 +143,26 @@ type Parts<'w, 's> = (
     Query<'w, 's, Entity, With<Facts>>,
 );
 
-/// Writes the card when the table or the cursor changed, and when the screen was just opened.
+/// Writes the card when the table, the cursor or the More row changed, and when the screen was
+/// just opened. A table with no rows says how to pick a place.
 pub(super) fn write(
-    (board, universe): (Res<Board>, Option<Res<Universe>>),
+    (board, universe, open): (Res<Board>, Option<Res<Universe>>, Option<Res<More>>),
     fresh: Query<(), Added<Facts>>,
     (mut titles, mut subtitles, facts): Parts,
     mut commands: Commands,
     mut odds: Local<Odds>,
 ) {
-    if !(board.is_changed() || !fresh.is_empty()) {
+    let flipped = open.as_ref().is_some_and(|open| open.is_changed());
+    if !(board.is_changed() || flipped || !fresh.is_empty()) {
         return;
     }
-    let shown = universe.map_or_else(Card::default, |universe| {
+    let open = open.is_some_and(|open| open.0);
+    let mut shown = universe.map_or_else(Card::default, |universe| {
         shown(&board, &universe, &mut odds)
     });
+    if shown.title.is_empty() {
+        shown.rows = vec![Row::Note(NO_CARD)];
+    }
     for mut text in &mut titles {
         text.set_if_neq(Text(clip(&shown.title, NAME_CHARS)));
     }
@@ -147,8 +174,8 @@ pub(super) fn write(
             .entity(column)
             .despawn_children()
             .with_children(|parent| {
-                for (at, fact) in shown.rows.iter().enumerate() {
-                    row(parent, fact, at == 0);
+                for (at, fact) in visible(&shown.rows, open).iter().enumerate() {
+                    row(parent, fact, (at == 0, open));
                 }
             });
     }

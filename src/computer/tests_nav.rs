@@ -12,7 +12,6 @@ use bevy::ui::RelativeCursorPosition;
 use bevy::ui_widgets::Activate;
 
 use super::chart::Dot;
-use super::course::progress;
 use super::hover::{light, look, surface};
 use super::pointer::MapView;
 use super::tests_pointer::{click, pixel, point, rig};
@@ -91,31 +90,30 @@ fn said(app: &mut App) -> String {
     words.map(|text| text.0.clone()).unwrap_or_default()
 }
 
-/// The keyboard works as before: the arrows move the selection, Enter sets the course to it,
-/// and Delete clears it. The progress line says nothing without a course, and how far along
-/// the route is with one.
+/// The keyboard selects and goes: the arrows move the selection, and Enter sends the ship to
+/// the row under the cursor, sets the course there and closes the map. The progress line under
+/// the map says nothing until the route is flown, and Delete does not clear the course.
 #[test]
-fn the_keyboard_selects_sets_and_clears_the_course() {
+fn the_keyboard_selects_and_goes() {
     let mut app = game("keys");
     tap(&mut app, KeyCode::Tab, None);
     run(&mut app, 5);
-    tap(&mut app, KeyCode::ArrowDown, None);
-    let row = app.world().resource::<Board>().lines[1].clone();
-    assert_eq!(app.world().resource::<Board>().cursor, 1);
+    let at = super::tests_close::elsewhere(&app);
+    for _ in 0..at {
+        tap(&mut app, KeyCode::ArrowDown, None);
+    }
+    let row = app.world().resource::<Board>().lines[at].clone();
+    assert_eq!(app.world().resource::<Board>().cursor, at);
     assert_eq!(said(&mut app), "");
     tap(&mut app, KeyCode::Enter, None);
-    run(&mut app, 2);
+    run(&mut app, 3);
     assert_eq!(app.world().resource::<Destination>().0, Some(row.target));
-    let status = *app.world().resource::<RouteStatus>();
-    let name = row
-        .target
-        .name(app.world().resource::<crate::universe::Universe>());
-    assert_eq!(said(&mut app), progress(&name, status));
-    tap(&mut app, KeyCode::ArrowUp, None);
-    assert_eq!(app.world().resource::<Board>().cursor, 0);
-    assert_eq!(app.world().resource::<Destination>().0, Some(row.target));
+    let state = app.world().resource::<State<Computer>>();
+    assert_eq!(*state.get(), Computer::Closed);
+    tap(&mut app, KeyCode::Tab, None);
+    run(&mut app, 3);
     tap(&mut app, KeyCode::Delete, None);
-    assert_eq!(app.world().resource::<Destination>().0, None);
+    assert_eq!(app.world().resource::<Destination>().0, Some(row.target));
 }
 
 /// Returns where an arrow turned clockwise by `angle` from up points on the screen, whose y

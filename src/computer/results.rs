@@ -24,6 +24,10 @@ pub(super) const WIDTHS: [f32; 3] = [
     DISTANCE_CHARS as f32 * GLYPH,
 ];
 
+/// Marks the line under the list that says why the list is empty. `show::tabs` writes it.
+#[derive(Component)]
+pub(super) struct Empty;
+
 /// One empty result of the pool, a button for the pointer only whose look `hover::light` sets.
 /// `show::rows` writes its texts.
 fn row(slot: usize) -> impl Bundle {
@@ -80,5 +84,9 @@ pub(super) fn search() -> impl Bundle {
         },
         Children::spawn(SpawnIter((0..VISIBLE_ROWS).map(row))),
     );
-    (column(percent(100), 0.0), children![head(), field(), rows])
+    let empty = (Empty, text("", theme::FONT_SMALL, theme::TEXT_2));
+    (
+        column(percent(100), 0.0),
+        children![head(), field(), rows, empty],
+    )
 }

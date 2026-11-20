@@ -7,7 +7,7 @@ use super::moons::Standoff;
 use crate::computer::{Target, target_position};
 use crate::render::Sequence;
 use crate::space::UniPos;
-use crate::universe::{StarId, Universe};
+use crate::universe::{BodyId, StarId, Universe};
 
 /// What the autopilot is doing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -97,6 +97,10 @@ pub struct Autopilot {
     /// Universe second until which the ship holds its heading after its drive was stopped for
     /// this route.
     pub(super) settled: f64,
+    /// The planet the climb leaves, kept after the ship is out of its air.
+    pub(super) leaving: Option<BodyId>,
+    /// Whether the pilot stopped the route: the drive that runs is dropped out on the next frame.
+    pub(super) halt: bool,
 }
 
 impl Autopilot {
@@ -108,6 +112,8 @@ impl Autopilot {
         jump: false,
         fresh: false,
         settled: 0.0,
+        leaving: None,
+        halt: false,
     };
 
     /// Starts a route to `target`: a planet, a moon, a star or a galaxy. The route already

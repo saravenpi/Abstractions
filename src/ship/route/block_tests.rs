@@ -23,6 +23,8 @@ fn well(radius: f64, radii: f64) -> Well {
     }
 }
 
+/// The first check of the ship that fails is the reason. In the air of a planet nothing blocks
+/// the route: it climbs out by itself.
 #[test]
 fn the_first_failing_check_is_the_reason() {
     let star = StarId::default();
@@ -46,7 +48,7 @@ fn the_first_failing_check_is_the_reason() {
         })
     ));
     ship.frame = Frame::Surface(BodyId::default());
-    assert_eq!(blocker(&ship, &wells), Some(Block::Surface));
+    assert_eq!(blocker(&ship, &wells), None);
     ship.landed = true;
     assert_eq!(blocker(&ship, &wells), Some(Block::Landed));
 }
@@ -59,6 +61,7 @@ fn the_route_says_why_and_how_far() {
             block,
             aligned: 40,
             course,
+            seated: true,
         })
     };
     let landed = Some(Block::Landed);
@@ -76,4 +79,32 @@ fn the_route_says_why_and_how_far() {
     assert_eq!(aligned(DVec3::X, DVec3::X * 5.0), 100);
     assert_eq!(aligned(DVec3::X, DVec3::Y), 50);
     assert_eq!(aligned(DVec3::X, DVec3::NEG_X), 0);
+}
+
+/// A player on foot with a course gets `OnFoot`, whatever else keeps the drive locked, and only
+/// while a course is set or the route waits. A player in the seat gets the other reasons.
+#[test]
+fn a_player_on_foot_is_blocked_before_everything_else() {
+    let read = |phase: Phase, block: Option<Block>, seated: bool| {
+        status(Reading {
+            phase,
+            block,
+            aligned: 40,
+            course: true,
+            seated,
+        })
+    };
+    let blocked = RouteStatus::Blocked(Block::OnFoot);
+    assert_eq!(read(Phase::Idle, None, false), blocked);
+    assert_eq!(read(Phase::Idle, Some(Block::Landed), false), blocked);
+    assert_eq!(read(Phase::Waiting, Some(Block::Landed), false), blocked);
+    assert_eq!(read(Phase::Idle, None, true), RouteStatus::Idle);
+    let no_course = Reading {
+        phase: Phase::Idle,
+        block: None,
+        aligned: 0,
+        course: false,
+        seated: false,
+    };
+    assert_eq!(status(no_course), RouteStatus::Idle);
 }

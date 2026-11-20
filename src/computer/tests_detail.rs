@@ -6,7 +6,7 @@ use std::f64::consts::PI;
 use bevy::prelude::*;
 
 use super::chart::{GRID, mark};
-use super::detail::{ROWS, UNCHARTED, brief, card, worlds};
+use super::detail::{ROWS, UNCHARTED, brief, card, visible, worlds};
 use super::*;
 use crate::universe::{PlanetClass, PlanetRecord, PlanetSpec, StarId, Universe, Water, Zone};
 
@@ -119,8 +119,9 @@ fn a_record_is_known_once_the_system_is_visited() {
         let planet = planet.as_ref().unwrap();
         assert_eq!(line.target, Target::Body(planet.id));
         assert!(line.facts().starts_with(&brief(Some(&planet.record))));
-        let rows = card(line, Some(planet), &universe).rows.len();
-        assert!((13..=ROWS).contains(&rows), "{rows}");
+        let shown = card(line, Some(planet), &universe);
+        let rows = visible(&shown.rows, false).len();
+        assert!((12..=ROWS).contains(&rows), "{rows}");
     }
     let grown = toml::to_string(&atlas).unwrap().len() - saved;
     assert!(grown < 200, "a visit stores one id, not {grown} bytes");

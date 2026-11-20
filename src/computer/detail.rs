@@ -1,14 +1,18 @@
 //! The card of the row under the cursor: the name of the place, what it is, and its facts in
-//! small groups, one labelled fact per row.
+//! small groups. A planet shows four groups of two stats, each with an icon, a label, a value
+//! with its unit, a comparison with home and a plain meaning, and keeps its rarer facts behind a
+//! More row.
 
 use super::atlas::Atlas;
 use super::facts::{galaxy, planet, star, uncharted};
 use super::route::Target;
 use super::rows::Line;
 use super::words::temperature;
+use crate::ui::Icon;
 use crate::universe::{PlanetRecord, PlanetSpec, Universe};
 
-/// Most rows a card has under its title and its subtitle, its line on life included.
+/// Most rows a card shows under its title and its subtitle with its rarer facts folded, its
+/// line on life included.
 pub const ROWS: usize = 17;
 
 /// Most headings of groups a card has under its first row.
@@ -26,6 +30,31 @@ pub enum Row {
     Fact(&'static str, String),
     /// A sentence on its own, such as what to do to learn more.
     Note(&'static str),
+    /// One measure of a planet: an icon, a label, a value with its unit and a few words, such
+    /// as the comparison with home or what the value means for the player.
+    Stat {
+        /// The icon of the measure.
+        icon: Icon,
+        /// What is measured.
+        label: &'static str,
+        /// The value, always with its unit.
+        value: String,
+        /// The comparison with home or one to three words of meaning, or nothing.
+        note: String,
+    },
+    /// What the group above means for the player, in one plain line.
+    Meaning(String),
+    /// The row that shows or hides the rarer facts. Every row after it is one of them.
+    More,
+}
+
+/// Returns the rows of a card as they are shown: all of them when `open`, and otherwise those
+/// up to and with the [`Row::More`] row.
+pub fn visible(rows: &[Row], open: bool) -> &[Row] {
+    match (open, rows.iter().position(|row| matches!(row, Row::More))) {
+        (false, Some(at)) => &rows[..=at],
+        _ => rows,
+    }
 }
 
 /// The card of a place: its name, one line on what it is and where, and its rows.
@@ -70,9 +99,9 @@ pub fn worlds(universe: &Universe, atlas: &Atlas, lines: &[Line]) -> Vec<Option<
 /// Returns what to do to learn more about a row the computer knows little about.
 pub fn advice(target: Target, visited: bool) -> Option<&'static str> {
     match (target, visited) {
-        (Target::Body(_), _) => Some("Visit this system to chart its planets"),
-        (Target::Star(_), false) => Some("Visit this system to chart its planets"),
-        (Target::Galaxy(_), false) => Some("Visit this galaxy to chart its systems"),
+        (Target::Body(_), _) => Some("Not visited. Fly there to learn its air, water and climate."),
+        (Target::Star(_), false) => Some("Not visited. Fly there to learn its planets."),
+        (Target::Galaxy(_), false) => Some("Not visited. Fly there to learn its systems."),
         _ => None,
     }
 }
@@ -105,11 +134,15 @@ fn subtitle(universe: &Universe, body: &PlanetSpec, known: bool) -> String {
 /// is known, its size and what to do to learn more for one without, and otherwise the facts
 /// of the star or the galaxy.
 pub fn card(line: &Line, world: Option<&PlanetSpec>, universe: &Universe) -> Card {
+    let home = || universe.planet(universe.home());
     let (subtitle, rows) = match (line.target, world) {
-        (Target::Body(_), Some(body)) => (subtitle(universe, body, true), planet(body)),
+        (Target::Body(_), Some(body)) => (subtitle(universe, body, true), planet(body, &home())),
         (Target::Body(id), None) => {
             let body = universe.planet(id);
-            (subtitle(universe, &body, false), uncharted(line, &body))
+            (
+                subtitle(universe, &body, false),
+                uncharted(line, &body, &home()),
+            )
         }
         (Target::Star(id), _) => star(line, universe, id),
         (Target::Galaxy(id), _) => galaxy(line, universe, id),

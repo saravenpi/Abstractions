@@ -2,6 +2,7 @@
 
 use std::f64::consts::PI;
 
+use super::feel::{bar, lift};
 use super::words::{AIR, LONG_YEAR, air, flux, state, temperature, tilt, water, year, zone};
 use crate::universe::{PlanetClass, PlanetRecord, Water, Zone};
 
@@ -27,26 +28,29 @@ fn temperatures_read_in_celsius() {
 }
 
 /// The air is none under a hundredth of home, thin under half, like home under one and a
-/// half, and thick from there, and the pressure number follows the word.
+/// half, and thick from there, and the pressure reads in bar.
 #[test]
 fn air_words_follow_the_thresholds() {
     let cases = [
-        (0.0, "none, pressure 0.00"),
-        (0.004, "none, pressure 0.00"),
-        (0.01, "thin, pressure 0.01"),
-        (0.4, "thin, pressure 0.40"),
-        (0.5, "like home, pressure 0.50"),
-        (1.0, "like home, pressure 1.00"),
-        (1.49, "like home, pressure 1.49"),
-        (1.5, "thick, pressure 1.50"),
-        (92.0, "thick, pressure 92.0"),
-        (250.0, "thick, pressure 250"),
+        (0.0, "none", "0.00 bar", "No lift: boots only"),
+        (0.004, "none", "0.00 bar", "No lift: boots only"),
+        (0.01, "thin", "0.01 bar", "Weak lift"),
+        (0.4, "thin", "0.40 bar", "Weak lift"),
+        (0.5, "like home", "0.50 bar", "Wings work"),
+        (1.0, "like home", "1.00 bar", "Wings work"),
+        (1.49, "like home", "1.49 bar", "Wings work"),
+        (1.5, "thick", "1.50 bar", "Strong lift, hard on the wings"),
+        (92.0, "thick", "92.0 bar", "Strong lift, hard on the wings"),
+        (250.0, "thick", "250 bar", "Strong lift, hard on the wings"),
     ];
-    for (pressure, shown) in cases {
-        assert_eq!(air(pressure), shown, "{pressure}");
+    for (pressure, word, number, flight) in cases {
+        assert_eq!(air(pressure), word, "{pressure}");
+        assert_eq!(bar(pressure), number, "{pressure}");
+        assert_eq!(lift(pressure), flight, "{pressure}");
     }
     assert_eq!(AIR.map(|(limit, _)| limit), [0.01, 0.5, 1.5]);
-    assert_eq!(air(-1.0), "none, pressure 0.00");
+    assert_eq!(air(-1.0), "none");
+    assert_eq!(bar(-1.0), "0.00 bar");
 }
 
 /// Builds a record of `class` whose water is in `state` and whose liquid covers `ocean`.

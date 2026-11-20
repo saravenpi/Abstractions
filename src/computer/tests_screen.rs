@@ -3,7 +3,8 @@
 use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 
-use super::readout::{Facts, Subtitle, Title, shown, write};
+use super::detail::visible;
+use super::readout::{Facts, NO_CARD, Subtitle, Title, shown, write};
 use super::tests_detail::{records, world};
 use super::*;
 use crate::universe::Universe;
@@ -24,7 +25,8 @@ fn rig() -> (App, Parts) {
 }
 
 /// Writes the card and returns its name, its subtitle, how many rows it shows and how many
-/// rows the card of the cursor row has.
+/// rows the card of the cursor row shows with its rarer facts folded: the sentence that says
+/// how to pick a place for an empty table.
 fn read(app: &mut App, [title, subtitle, facts]: Parts) -> (String, String, usize, usize) {
     app.world_mut().run_system_once(write).unwrap();
     let said = |entity: Entity| app.world().get::<Text>(entity).unwrap().0.clone();
@@ -34,18 +36,24 @@ fn read(app: &mut App, [title, subtitle, facts]: Parts) -> (String, String, usiz
         .map_or(0, |rows| rows.len());
     let universe = *app.world().resource::<Universe>();
     let odds = &mut Default::default();
-    let wanted = shown(app.world().resource::<Board>(), &universe, odds)
-        .rows
-        .len();
+    let card = shown(app.world().resource::<Board>(), &universe, odds);
+    let wanted = match card.title.is_empty() {
+        true => 1,
+        false => visible(&card.rows, false).len(),
+    };
     (said(title), said(subtitle), rows, wanted)
 }
 
 /// On the screen the card follows the cursor: the name, what the place is and one row per
-/// fact of a star, then of a planet, and nothing for an empty table.
+/// fact of a star, then of a planet with its rarer facts folded, and a sentence that says how
+/// to pick a place for an empty table.
 #[test]
 fn the_screen_shows_the_card_of_the_cursor_row() {
     let (mut app, parts) = rig();
-    assert_eq!(read(&mut app, parts), (String::new(), String::new(), 0, 0));
+    assert_eq!(read(&mut app, parts), (String::new(), String::new(), 1, 1));
+    let rows = app.world().get::<Children>(parts[2]).unwrap();
+    let words = app.world().get::<Text>(rows[0]).unwrap();
+    assert_eq!(words.0, NO_CARD);
     let (planet_row, planet) = world(records()[3]);
     let home = planet.name.clone();
     let star = Line {

@@ -1,9 +1,11 @@
-//! The line of the card on life: the chance of life on a planet or a moon the player has not
-//! flown down to, and what lives there on one they have. Both come from the life model, on the
-//! same world it builds when the planet is entered.
+//! The line of the card on life, a stat with the leaf icon: the chance of life on a planet or a
+//! moon the player has not flown down to, and what lives there on one they have. Both come from
+//! the life model, on the same world it builds when the planet is entered.
 
 use super::detail::Row;
+use super::groups::stat;
 use crate::life::{Rung, World, odds};
+use crate::ui::Icon;
 use crate::universe::{BodyId, PlanetSpec, Universe};
 
 /// Returns what lives on a planet whose life reached `rung`, in plain words.
@@ -42,8 +44,14 @@ pub fn world(universe: &Universe, body: &PlanetSpec) -> World {
 pub fn row(universe: &Universe, body: &PlanetSpec, landed: bool) -> Row {
     let world = world(universe, body);
     match landed {
-        true => Row::Fact("Life", lives(odds::rung(&world, body.seed)).to_string()),
-        false => Row::Fact("Chance of life", percent(odds::chance(&world))),
+        true => {
+            let living = lives(odds::rung(&world, body.seed)).to_string();
+            stat(Icon::Life, "Life", living, String::new())
+        }
+        false => {
+            let chance = percent(odds::chance(&world));
+            stat(Icon::Life, "Chance of life", chance, String::new())
+        }
     }
 }
 

@@ -1,7 +1,8 @@
 //! What keeps the warp drive from taking a course, and what the route says about it.
 //!
-//! The same checks lock the drive in `warp::request` and hold the autopilot: the ship must be
-//! off the ground, out of the frame of a planet surface and outside every lock sphere.
+//! The same checks hold the autopilot: the player must sit in the ship, the ship must be off
+//! the ground and outside every lock sphere. A ship in the air of a planet is not blocked: the
+//! route climbs out of the air by itself.
 
 use std::f64::consts::PI;
 
@@ -13,14 +14,15 @@ use crate::ship::pilot::Phase;
 use crate::ship::wells::{STAR_LOCK, Well, nearest};
 use crate::space::Frame;
 
-/// Returns the first check that keeps the drive of `ship` locked among `wells`, or nothing
-/// when the drive may spool.
+/// Returns the first check of the ship itself that keeps the drive of `ship` locked among
+/// `wells`, or nothing when the drive may spool. Whether the player sits in the ship is read
+/// by [`status`].
 pub fn blocker(ship: &Ship, wells: &[Well]) -> Option<Block> {
     if ship.landed {
         return Some(Block::Landed);
     }
     if matches!(ship.frame, Frame::Surface(_)) {
-        return Some(Block::Surface);
+        return None;
     }
     let well = nearest(wells, ship.pos).filter(|well| well.clearance(ship.pos) <= 0.0)?;
     let radii = well.lock / well.radius;
@@ -49,13 +51,17 @@ pub struct Reading {
     pub aligned: u8,
     /// Whether a course is set.
     pub course: bool,
+    /// Whether the player sits in the ship.
+    pub seated: bool,
 }
 
 /// Returns the state of the route the ship shows. A course that is set but not flown says
-/// what keeps the drive locked, as does a route that waits for the drive. A route that
-/// arrived and was given a new course since reads as idle.
+/// what keeps the drive locked, as does a route that waits for the drive. A player who is not
+/// in the ship comes before every other reason. A route that arrived and was given a new
+/// course since reads as idle.
 pub fn status(reading: Reading) -> RouteStatus {
-    match (reading.phase, reading.block) {
+    let block = [reading.block, Some(Block::OnFoot)][usize::from(!reading.seated)];
+    match (reading.phase, block) {
         (Phase::Idle, Some(block)) if reading.course => RouteStatus::Blocked(block),
         (Phase::Idle, _) => RouteStatus::Idle,
         (Phase::Waiting, Some(block)) => RouteStatus::Blocked(block),

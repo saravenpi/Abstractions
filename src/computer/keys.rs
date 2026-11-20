@@ -10,18 +10,16 @@ use super::board::{Board, VISIBLE_ROWS};
 use super::chart::Dot;
 use super::coast::arrow;
 use super::course::Act;
-use super::home::{tab_of, toward};
-use super::locate::here;
+use super::go::Go;
 use super::open::ready;
 use super::pointer::{MapView, aimed, selected};
-use super::route::{Destination, Engage, RouteStatus};
+use super::readout::More;
+use super::route::Target;
 use super::typing::Typing;
 use super::view::Slot;
 use crate::audio::AudioCue;
 use crate::settings::{Persistent, Settings};
-use crate::space::Anchor;
 use crate::ui::theme;
-use crate::universe::Universe;
 
 /// Rows a jump to the first or the last row moves by: more than any table holds.
 const FAR: isize = 1_000_000;
@@ -29,8 +27,7 @@ const FAR: isize = 1_000_000;
 /// Rows scrolled by one notch of the wheel.
 const WHEEL_ROWS: f32 = 3.0;
 
-/// Rows the cursor moves by for each key. The Home key is not one of them: it sets the
-/// course home.
+/// Rows the cursor moves by for each key.
 const MOVES: [(KeyCode, isize); 5] = [
     (KeyCode::ArrowUp, -1),
     (KeyCode::ArrowDown, 1),
@@ -39,18 +36,16 @@ const MOVES: [(KeyCode, isize); 5] = [
     (KeyCode::End, FAR),
 ];
 
-/// The key that sets the course home. It is not a letter, so that typing "home" still
-/// narrows the list.
-pub(super) const HOME_KEY: KeyCode = KeyCode::Home;
+/// The key that flies the ship home. It types a letter while a search is typed.
+pub const HOME_KEY: KeyCode = KeyCode::KeyH;
 
 /// The components that say what an activated button of the screen does.
 type Role = (Option<&'static Slot>, Option<&'static Act>);
 
-/// Moves the cursor with the arrows, Page Up and Down and End, changes tab with Left and
-/// Right, and scrolls with the wheel unless the pointer is over the map, where the arrows and
-/// the wheel move the map instead. A key that moves the cursor picks its row. A move that
-/// scrolls the table under a cursor that stays on the same drawn row is sounded here, since
-/// the focus does not move.
+/// Moves the cursor with the arrows, Page Up and Down and End, and scrolls with the wheel
+/// unless the pointer is over the map, where the arrows and the wheel move the map instead. A
+/// key that moves the cursor picks its row. A move that scrolls the table under a cursor that
+/// stays on the same drawn row is sounded here, since the focus does not move.
 pub(super) fn navigate(
     keys: Res<ButtonInput<KeyCode>>,
     (wheel, mut view): (Res<AccumulatedMouseScroll>, ResMut<MapView>),
@@ -68,11 +63,6 @@ pub(super) fn navigate(
         if board.cursor != cursor && board.cursor - board.top == slot {
             cues.write(AudioCue::UiMove);
         }
-    }
-    let turn = isize::from(held(KeyCode::ArrowRight)) - isize::from(held(KeyCode::ArrowLeft));
-    if turn != 0 {
-        let tab = board.tab.step(turn);
-        board.show(tab);
     }
     let rows = match wheel.unit {
         MouseScrollUnit::Line => wheel.delta.y * WHEEL_ROWS,
@@ -107,27 +97,12 @@ fn focus_cursor(
 #[derive(SystemParam)]
 pub(super) struct Desk<'w, 's> {
     board: ResMut<'w, Board>,
-    destination: ResMut<'w, Destination>,
-    route: Option<Res<'w, RouteStatus>>,
-    commands: Commands<'w, 's>,
-    world: Option<(Res<'w, Universe>, Res<'w, Anchor>)>,
     view: ResMut<'w, MapView>,
+    more: ResMut<'w, More>,
+    go: Go<'w, 's>,
 }
 
 impl Desk<'_, '_> {
-    /// Sets the course to the next place on the way home from where the ship is: the home
-    /// galaxy, then the home star, then the home planet. The tab that lists it opens with
-    /// the cursor on its row.
-    fn home(&mut self) {
-        let Some((universe, anchor)) = &self.world else {
-            return;
-        };
-        let target = toward(here(universe, anchor.frame, anchor.origin), universe);
-        self.destination.0 = Some(target);
-        self.board.show(tab_of(target));
-        self.board.seek = Some(target);
-    }
-
     /// Eases the chart onto the row under the cursor and asks to go into its place.
     fn focus(&mut self) {
         if let Some(lens) = aimed(&self.board, &self.view, Dot::Row(self.board.cursor)) {
@@ -140,28 +115,33 @@ impl Desk<'_, '_> {
             .map(|line| line.target);
     }
 
-    /// Runs an action of the screen: the course goes to the selected row, if any, home, to the
-    /// autopilot while the route is idle, as with the map closed, or away.
+    /// Returns the place of the row under the cursor.
+    fn cursor(&self) -> Option<Target> {
+        self.board
+            .lines
+            .get(self.board.cursor)
+            .map(|line| line.target)
+    }
+
+    /// Runs an action of the screen: Go on the selected row, or on the course when no row is
+    /// selected, the way home, or the rarer facts of the card.
     fn run(&mut self, act: Act) {
-        match (act, self.destination.0) {
-            (Act::Home, _) => self.home(),
-            (Act::Set, _) => {
-                let row = selected(&self.board, &self.view).map(|row| &self.board.lines[row]);
-                self.destination.0 = row.map(|line| line.target).or(self.destination.0);
+        match act {
+            Act::Go => {
+                let row = selected(&self.board, &self.view);
+                let pick = row.map(|row| self.board.lines[row].target);
+                self.go.press(pick);
             }
-            (Act::Engage, Some(target)) if self.route.as_deref() == Some(&RouteStatus::Idle) => {
-                self.commands.trigger(Engage(target));
-            }
-            (Act::Clear, Some(_)) => self.destination.0 = None,
-            _ => {}
+            Act::Home => self.go.home(),
+            Act::More => self.more.0 = !self.more.0,
         }
     }
 }
 
-/// Sets the course to the selected row on Enter, hands the destination to the autopilot on the
-/// engage key of the settings, forgets the destination on Delete and sets the course home on
-/// the Home key. Enter and Home also work while a search is typed; nothing does while a
-/// favourite is named, and the engage key and Delete type into a search.
+/// Sends the ship to the row under the cursor on Enter, presses Go on the engage key of the
+/// settings, which stops a route that is flown, and flies home on the home key. Enter also works
+/// while a search is typed; nothing does while a pin is named, and the other keys type into a
+/// search.
 fn action_keys(
     keys: Res<ButtonInput<KeyCode>>,
     (settings, typing): (Res<Persistent<Settings>>, Res<Typing>),
@@ -172,15 +152,13 @@ fn action_keys(
     }
     let off = typing.is_off();
     if keys.just_pressed(KeyCode::Enter) {
-        desk.run(Act::Set);
+        let cursor = desk.cursor();
+        desk.go.press(cursor);
     }
     if keys.just_pressed(settings.controls.keys.engage) && off {
-        desk.run(Act::Engage);
+        desk.run(Act::Go);
     }
-    if keys.just_pressed(KeyCode::Delete) && off {
-        desk.run(Act::Clear);
-    }
-    if keys.just_pressed(HOME_KEY) {
+    if keys.just_pressed(HOME_KEY) && off {
         desk.run(Act::Home);
     }
 }
@@ -190,7 +168,7 @@ const DOUBLE_CLICK: f64 = 0.45;
 
 /// Applies an activated button: a row is picked or an action runs. A second
 /// click of the pointer on the same row within [`DOUBLE_CLICK`] goes into its place, as on
-/// the map. Enter on the focused row selects it again; `action_keys` sets the course.
+/// the map. Enter on the focused row selects it again; `action_keys` sends the ship there.
 pub(super) fn on_activate(
     event: On<Activate>,
     roles: Query<Role>,
@@ -221,6 +199,7 @@ pub(super) fn on_activate(
 /// Registers the input systems of the screen.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Typing>()
+        .init_resource::<More>()
         .add_observer(on_activate)
         .add_observer(super::typing::on_search)
         .add_systems(OnEnter(super::Computer::Open), super::typing::stop_typing)

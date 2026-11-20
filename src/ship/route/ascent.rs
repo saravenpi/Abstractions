@@ -1,8 +1,12 @@
-//! The climb to orbit: a route to the planet whose air the ship is in flies it up to a circular
-//! orbit above the air, with the speed hold of the assist, and lets go of the assist there.
+//! The climb to orbit: a route flown from the air of a planet takes the ship up to a circular
+//! orbit above the air, with the speed hold of the assist, and lets go of the assist there. A
+//! route to that planet ends in the orbit. A route to anything else climbs past the lock sphere
+//! of the planet and goes on with the warp drive.
 
 use bevy::math::DVec3;
 
+use super::handoff::reached;
+use super::tune::LOCK_MARGIN;
 use crate::computer::Target;
 use crate::ship::body::Ship;
 use crate::ship::cruise::top_speed_at;
@@ -14,7 +18,7 @@ use crate::ship::pilot::{Autopilot, Phase};
 use crate::ship::sky::Skies;
 use crate::ship::steer::aim;
 use crate::ship::tune::{CLIMB_TIME, ORBIT_ALTITUDE, ORBIT_RAMP, ORBIT_TOLERANCE};
-use crate::ship::wells::Well;
+use crate::ship::wells::{PLANET_LOCK, Well};
 use crate::space::Frame;
 use crate::universe::{BodyId, PlanetSpec};
 
@@ -48,24 +52,28 @@ pub(in crate::ship) fn altitude(planet: &PlanetSpec) -> f64 {
     ORBIT_ALTITUDE.max(planet.atmosphere_height * 1.25)
 }
 
-/// Returns true when a route to `target` is a climb: the ship is in the air of that planet.
-pub(in crate::ship) fn climbs(ship: &Ship, target: Option<Target>) -> bool {
-    let Frame::Surface(body) = ship.frame else {
-        return false;
-    };
-    !ship.landed && target == Some(Target::Body(body))
+/// Returns the height in metres above sea level of the orbit a route to another place leaves
+/// `planet` from: the orbit of [`altitude`], or higher when the lock sphere of the planet is
+/// wider, by [`LOCK_MARGIN`].
+pub(in crate::ship) fn departure(planet: &PlanetSpec) -> f64 {
+    altitude(planet).max(planet.radius * (PLANET_LOCK - 1.0) * LOCK_MARGIN)
 }
 
-/// Returns what the climb asks of a ship at `fix` above `planet`.
+/// Returns true when a route is a climb: the ship is in the air of a planet and off the ground.
+pub(in crate::ship) fn climbs(ship: &Ship) -> bool {
+    matches!(ship.frame, Frame::Surface(_)) && !ship.landed
+}
+
+/// Returns what the climb to the height `goal` in metres asks of a ship at `fix` above `planet`.
 ///
 /// The speed hold flies the velocity the climb wants: up at a speed that closes the gap to the
 /// orbit in [`CLIMB_TIME`] seconds, and along the equator at the speed of a circular orbit,
 /// which it reaches at the share [`ORBIT_RAMP`] of the height. The sideways speed grows with the
 /// square of the height, so the ship climbs through the air and turns over above it.
-pub(in crate::ship) fn order(fix: &Fix, planet: &PlanetSpec) -> Order {
+pub(in crate::ship) fn order(fix: &Fix, planet: &PlanetSpec, goal: f64) -> Order {
     let radius = fix.pos.length();
     let up = fix.pos / radius;
-    let (height, goal) = (radius - planet.radius, altitude(planet));
+    let height = radius - planet.radius;
     let circular = (planet.mu() / radius).sqrt();
     let east = DVec3::Y
         .cross(up)
@@ -121,16 +129,23 @@ fn well_of(skies: &Skies, body: BodyId) -> Option<&Well> {
 }
 
 /// Flies the climb to the orbit around the planet `body` for one frame: turns the nose onto the
-/// course, sets the lever and keeps the assist on. Returns whether the orbit is reached, in
-/// which case the assist is let go and the ship is left to orbit, or nothing when the climb
+/// course, sets the lever and keeps the assist on. The orbit is the one of [`altitude`] when
+/// `stay` is true, and the one of [`departure`] otherwise. Returns whether the orbit is reached,
+/// in which case the assist is let go and the ship is left to orbit, or nothing when the climb
 /// cannot go on.
-fn steer_up(ship: &mut Ship, helm: &mut Helm, skies: &Skies, body: BodyId) -> Option<bool> {
+fn steer_up(
+    ship: &mut Ship,
+    helm: &mut Helm,
+    skies: &Skies,
+    (body, stay): (BodyId, bool),
+) -> Option<bool> {
     let system = skies.spec()?;
     let planet = system.planets.iter().find(|planet| planet.id == body)?;
     if ship.landed {
         return None;
     }
-    let order = order(&fix(ship, skies, planet)?, planet);
+    let goal = [departure(planet), altitude(planet)][usize::from(stay)];
+    let order = order(&fix(ship, skies, planet)?, planet, goal);
     if order.done {
         helm.controls = Controls::default();
         (ship.throttle, ship.assist) = (0.0, false);
@@ -144,8 +159,9 @@ fn steer_up(ship: &mut Ship, helm: &mut Helm, skies: &Skies, body: BodyId) -> Op
     Some(false)
 }
 
-/// Flies the climb to orbit around the planet `target` for one frame, and ends the route when
-/// the orbit is reached or the climb cannot go on.
+/// Flies the climb out of the air of the planet the ship is over for one frame. It ends the
+/// route when the orbit is reached around the planet `target`, hands over to the warp drive when
+/// the route goes elsewhere, and ends the route when the climb cannot go on.
 pub(in crate::ship) fn climb(
     autopilot: &mut Autopilot,
     ship: &mut Ship,
@@ -153,12 +169,16 @@ pub(in crate::ship) fn climb(
     skies: &Skies,
     target: Target,
 ) {
-    let Target::Body(body) = target else {
+    if let Frame::Surface(body) = ship.frame {
+        autopilot.leaving = Some(body);
+    }
+    let Some(body) = autopilot.leaving else {
         return autopilot.cancel();
     };
-    match steer_up(ship, helm, skies, body) {
+    let stay = target == Target::Body(body);
+    match steer_up(ship, helm, skies, (body, stay)) {
         None => autopilot.cancel(),
         Some(false) => autopilot.phase = Phase::Climbing,
-        Some(true) => *autopilot = Autopilot::ARRIVED,
+        Some(true) => reached(autopilot, stay),
     }
 }

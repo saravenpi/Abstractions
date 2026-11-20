@@ -6,7 +6,7 @@ use crate::universe::{NO_AIR, PlanetClass, PlanetRecord, Water, Zone};
 use super::format::short;
 
 /// Kelvin at zero degrees Celsius.
-const FREEZING: f64 = 273.15;
+pub(super) const FREEZING: f64 = 273.15;
 
 /// Pressures, the home planet having 1, under which the air is none, thin and like home.
 /// From the last one up the air is thick.
@@ -23,11 +23,10 @@ pub fn temperature(kelvin: f64) -> String {
     format!("{} C", (kelvin - FREEZING).round() as i64)
 }
 
-/// Formats an air pressure as a word and the number, the home planet having 1.
-pub fn air(pressure: f64) -> String {
+/// Returns the word for an air pressure, the home planet having 1: none, thin, like home or thick.
+pub fn air(pressure: f64) -> &'static str {
     let word = AIR.iter().find(|(limit, _)| pressure < *limit);
-    let word = word.map_or("thick", |(_, word)| word);
-    format!("{word}, pressure {}", short(pressure.max(0.0)))
+    word.map_or("thick", |(_, word)| word)
 }
 
 /// Returns the word for the state water is in.

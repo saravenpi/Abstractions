@@ -112,7 +112,7 @@ fn the_shader_has_the_constants_of_the_rules() {
         format!("const SIGHT: f32 = {:?};", SIGHT.0),
         format!("const SIGHT_FADE: f32 = {:?};", SIGHT.1),
         format!("const DAY_FLUX: f32 = {DAY_FLUX:?};"),
-        "let day = smoothstep(DAY_FLUX, DAY_FLUX + 1.0, flux) * (1.0 - extended);".to_string(),
+        "let day = smoothstep(DAY_FLUX, DAY_FLUX + 1.0, flux);".to_string(),
         format!("const EXPOSURE: f32 = {:?};", super::look::EXPOSURE),
         "return tint(factor) * (beam / (1.0 + half * FOUR_OVER_PI));".to_string(),
         "min(0.5 * stars.params.y * seen.turn / (now * seen.factor), STREAK_MOST);".to_string(),

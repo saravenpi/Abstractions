@@ -90,6 +90,8 @@ impl Flight {
 #[test]
 fn keeps_formation_at_ninety_metres_a_second() {
     let mut flight = Flight::new(3);
+    flight.eye.y += ALOFT;
+    flight.at.translation = flight.eye;
     let course = Vec3::new(0.6, 0.0, -0.8);
     let mut worst: f32 = 0.0;
     for tick in 0..(12.0 / DT) as usize {

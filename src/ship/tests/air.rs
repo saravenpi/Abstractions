@@ -31,7 +31,7 @@ pub(super) fn air(pressure: f64) -> PlanetRecord {
 /// any height, nothing without air and never less as the pressure grows.
 #[test]
 fn density_follows_the_pressure() {
-    let home = planet(40_000.0, 80_000.0, 1e9);
+    let home = world(PlanetRecord::TEMPERATE);
     assert_eq!(density(&home, 0.0), SEA_DENSITY);
     for height in [0.0, 120.0, 2500.0, 40_000.0, 79_999.0, 80_000.0] {
         let seen = PRESSURES.map(|at| density(&world(air(at)), height));
@@ -130,6 +130,7 @@ fn the_air_of_an_earth_thins_by_e_over_its_scale_height() {
         atmosphere_height,
         cloud_base,
         cloud_top,
+        record: PlanetRecord::TEMPERATE,
         ..planet(radius, 0.0, 86_164.0)
     };
     assert!((7000.0..10_000.0).contains(&earth.scale_height()));

@@ -7,12 +7,16 @@ use super::frames::{to_galaxy, to_star, to_surface, to_system};
 use super::tune::ESCORT;
 use super::warp::Warp;
 use super::wells::Well;
-use crate::computer::SYSTEM_REACH;
 use crate::space::Frame;
-use crate::universe::{GalaxyId, PlanetSpec, StarSpec, SystemSpec, Universe};
+use crate::universe::{GalaxyId, ORBIT, PlanetSpec, StarSpec, SystemSpec, Universe};
 
 /// Metres above the top of an atmosphere at which a climbing ship leaves the surface frame.
 const AIR_MARGIN: f64 = 50.0;
+
+/// Distance from a star in metres within which a ship flies in the frame of its star: the far
+/// edge of the orbit of the outermost planet of a star of the mass of the Sun, so that every
+/// planet of the system is a well of the frame.
+const SYSTEM_REACH: f64 = ORBIT.1;
 
 /// Share of the reach of a system beyond which a ship leaves the frame of its star.
 const REACH_MARGIN: f64 = 1.05;
@@ -68,8 +72,9 @@ pub fn change_galaxy(ship: &mut Ship, universe: &Universe, galaxy: GalaxyId) {
 
 /// Moves a ship between the stars into the frame of the first of `stars` whose reach it is in.
 pub fn enter_system<'a>(ship: &mut Ship, stars: impl IntoIterator<Item = &'a StarSpec>) {
-    let near = |star: &&StarSpec| star.pos.distance(ship.pos) < SYSTEM_REACH;
-    if let Some(star) = stars.into_iter().find(near) {
+    let gap = |star: &&StarSpec| star.pos.distance(ship.pos);
+    let near = stars.into_iter().filter(|star| gap(star) < SYSTEM_REACH);
+    if let Some(star) = near.min_by(|a, b| gap(a).total_cmp(&gap(b))) {
         to_star(ship, star);
     }
 }

@@ -115,23 +115,26 @@ fn over_the_canopy(ship: &Ship, planet: &PlanetSpec) -> [Option<f64>; 9] {
 }
 
 /// Returns how many times along `track` a contact point went from above the canopy to under its
-/// slab in one step while over it: through the canopy.
+/// slab in one step while over it, by more than that step could carry it: through the canopy. The
+/// contact points are not swept, so a ship that falls onto the slab sinks into it by up to one
+/// step of its fall before the next step sees it and sets it back.
 pub fn through_the_canopy(track: &[(Ship, Report)], planet: &PlanetSpec) -> usize {
     let heights: Vec<_> = track
         .iter()
         .map(|(ship, _)| over_the_canopy(ship, planet))
         .collect();
-    let crossed = |(was, now): (&Option<f64>, &Option<f64>)| match (was, now) {
-        (Some(was), Some(now)) => *was > CANOPY_TOP && *now < CANOPY_TOP - 0.1,
+    let crossed = |(was, now): (&Option<f64>, &Option<f64>), fall: f64| match (was, now) {
+        (Some(was), Some(now)) => *was > CANOPY_TOP && *now < CANOPY_TOP - 0.1 - fall,
         _ => false,
     };
-    let steps = heights.windows(2);
+    let steps = heights.windows(2).zip(track);
     steps
-        .map(|pair| {
+        .map(|(pair, (ship, _))| {
+            let fall = ship.vel.length() * STEP;
             pair[0]
                 .iter()
                 .zip(&pair[1])
-                .filter(|pair| crossed(*pair))
+                .filter(|pair| crossed(*pair, fall))
                 .count()
         })
         .sum()

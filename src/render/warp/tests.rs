@@ -7,8 +7,9 @@ use bevy::prelude::*;
 use super::look::BETA_CAP;
 use super::optics::{bend, bubble, doppler};
 use super::shader::{aberrate, beaming, spread, tint};
-use super::{CARRIED, Lens, Sequence};
+use super::{Lens, Sequence};
 use crate::render::scatter::luminance;
+use crate::universe::CARRY;
 
 /// Speeds the rules are checked at, from rest to the cap.
 const SPEEDS: [f32; 6] = [0.0, 0.1, 0.3, 0.5, 0.7, BETA_CAP];
@@ -122,18 +123,19 @@ fn a_streak_spreads_the_light_of_its_star() {
 #[test]
 fn a_body_keeps_its_place_among_the_stars() {
     let (lens, radius) = (lens(0.6), 6000.0);
+    let reach = radius * 200.0;
     let dir = DVec3::new(0.5, 0.2, -0.7).normalize();
-    let near = lens.body(dir * radius * 30.0, radius);
+    let near = lens.body(dir * radius * 30.0, reach);
     assert_eq!((near.offset, near.scale), (dir * radius * 30.0, 1.0));
-    let far = lens.body(dir * radius * 500.0, radius);
+    let far = lens.body(dir * radius * 500.0, reach);
     let star = bend(dir, lens.heading.as_dvec3(), lens.beta);
     assert!((far.offset.normalize() - star).length() < 1e-9);
     assert!((far.offset.length() - radius * 500.0).abs() < 1.0);
     let factor = doppler(dir.as_vec3().dot(lens.heading), lens.beta);
     assert!(factor > 1.0 && (far.scale * factor - 1.0).abs() < 1e-5);
-    assert_eq!((bubble(CARRIED.0), bubble(CARRIED.1)), (0.0, 1.0));
+    assert_eq!((bubble(CARRY.0 as f32), bubble(CARRY.1 as f32)), (0.0, 1.0));
     let seen: Vec<_> = (300..=1100)
-        .map(|i| lens.body(dir * radius * f64::from(i) * 0.1, radius))
+        .map(|i| lens.body(dir * radius * f64::from(i) * 0.1, reach))
         .collect();
     for pair in seen.windows(2) {
         let turn = pair[0].offset.angle_between(pair[1].offset);
@@ -148,7 +150,7 @@ fn bodies_slide_by_with_true_parallax() {
     let radius = 6.0e6;
     let aft = |lens: &Lens, side: f64, travelled: f64| {
         let offset = DVec3::new(side, 0.0, -2.0e9 + travelled);
-        let seen = lens.body(offset, radius).offset;
+        let seen = lens.body(offset, radius * 200.0).offset;
         assert!(seen.x > 0.0 && seen.y.abs() < 1e-3 * seen.x, "{seen}");
         seen.angle_between(DVec3::NEG_Z)
     };

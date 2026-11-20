@@ -4,7 +4,7 @@ use bevy::math::{DQuat, DVec3};
 
 use crate::ship::body::Ship;
 use crate::ship::flight::{Controls, STEP, Scene, step};
-use crate::ship::steer::{aim, detour};
+use crate::ship::steer::{aim, waypoint};
 use crate::ship::warp::{CRUISE_CAP, SPOOL_TIME, Warp, advance, clearance, request};
 use crate::ship::wells::{PLANET_LOCK, Well, system_wells};
 use crate::space::Frame;
@@ -193,16 +193,15 @@ fn detour_goes_around_a_body_in_the_way() {
         hill: 1.0e6,
     };
     let from = DVec3::new(-30_000.0, 200.0, 0.0);
-    let bent = detour(&[well], from, DVec3::X, 60_000.0);
+    let at = waypoint(&[well], from, DVec3::X, 60_000.0).expect("a point beside the body");
+    let bent = (at - from).normalize();
     let closest = (well.pos - from).cross(bent).length();
     assert!(
         bent.dot(DVec3::X) > 0.9 && closest > well.lock * 1.5,
         "passes at {closest}"
     );
-    assert_eq!(detour(&[well], from, DVec3::X, 20_000.0), DVec3::X);
-    assert_eq!(
-        detour(&[well], from + DVec3::Y * 9000.0, DVec3::X, 60_000.0),
-        DVec3::X
-    );
-    assert_eq!(detour(&[well], -from, DVec3::X, 60_000.0), DVec3::X);
+    assert_eq!(waypoint(&[well], from, DVec3::X, 20_000.0), None);
+    let wide = from + DVec3::Y * 9000.0;
+    assert_eq!(waypoint(&[well], wide, DVec3::X, 60_000.0), None);
+    assert_eq!(waypoint(&[well], -from, DVec3::X, 60_000.0), None);
 }

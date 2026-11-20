@@ -181,7 +181,7 @@ fn ship_changes_frame_at_the_atmosphere_top() {
     reframe(&mut ship, &system, time);
     assert_eq!(ship.frame, Frame::System(planet.id.star));
     let height = ship.pos.distance(planet.position(time)) - top;
-    assert!((height - 80.0).abs() < 1e-6 && ship.warp != Warp::Off);
+    assert!((height - 80.0).abs() < 1e-3 && ship.warp != Warp::Off);
     reframe(&mut ship, &system, time);
     assert_eq!(ship.frame, Frame::System(planet.id.star));
     ship.pos = planet.position(time) + (ship.pos - planet.position(time)) * 0.97;

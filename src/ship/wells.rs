@@ -2,7 +2,7 @@
 
 use bevy::math::DVec3;
 
-use super::frames::{hill_radius, planet_velocity};
+use super::frames::planet_velocity;
 use crate::universe::{PlanetSpec, StarSpec, SystemSpec};
 
 /// Radii from a planet centre inside which the warp drive is locked: just outside its surface,
@@ -51,7 +51,7 @@ impl Well {
             mu: planet.mu(),
             radius: planet.radius,
             lock: planet.radius * PLANET_LOCK,
-            hill: hill_radius(planet),
+            hill: planet.hill_radius(),
         }
     }
 

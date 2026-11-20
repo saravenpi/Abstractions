@@ -168,7 +168,23 @@ pub struct PlanetSpec {
     pub rings: Option<Rings>,
 }
 
+/// Shares of the Hill radius of a body between which it stops carrying the warp bubble: it carries
+/// it whole inside the first and not at all outside the second. The drive and the sky read it.
+pub const CARRY: (f64, f64) = (0.25, 0.5);
+
 impl PlanetSpec {
+    /// Returns the Hill radius in metres around what it goes round: `a (m / 3 M)^(1/3)`.
+    ///
+    /// The gravitational parameter of what it goes round follows from its orbit, which is
+    /// circular: `mu = (2 pi / T)^2 a^3`.
+    pub fn hill_radius(&self) -> f64 {
+        let (a, rate) = (
+            self.orbit_radius,
+            std::f64::consts::TAU / self.orbit_seconds,
+        );
+        a * (self.mu() / (3.0 * rate * rate * a * a * a)).cbrt()
+    }
+
     /// Returns the gravitational parameter in cubic metres per second squared.
     pub fn mu(&self) -> f64 {
         self.gravity * self.radius * self.radius

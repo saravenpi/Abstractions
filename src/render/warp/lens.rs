@@ -87,8 +87,8 @@ impl Lens {
         }
     }
 
-    /// Returns where a body of `radius` metres that truly sits `offset` metres from the camera,
-    /// in render axes, is seen.
+    /// Returns where a body that truly sits `offset` metres from the camera, in render axes, is
+    /// seen. `reach` is the metres the body carries the warp bubble to, its Hill radius.
     ///
     /// A body close by rides in the warp bubble and is seen as it is. Farther out it is seen
     /// through the speed of the ship like the stars: pulled toward the heading and smaller
@@ -98,15 +98,15 @@ impl Lens {
     /// The size follows the distance to the body, and the direction the distance at which the
     /// line of flight misses it. That one does not change while the ship flies straight, so a
     /// body the ship passes slides aft the whole way and never swings back.
-    pub fn body(&self, offset: DVec3, radius: f64) -> Seen {
-        let (distance, radius) = (offset.length(), radius.max(1.0e-9));
-        let sized = self.beta * bubble((distance / radius) as f32);
+    pub fn body(&self, offset: DVec3, reach: f64) -> Seen {
+        let (distance, reach) = (offset.length(), reach.max(1.0e-9));
+        let sized = self.beta * bubble((distance / reach) as f32);
         let Some(dir) = (offset / distance).try_normalize().filter(|_| sized > 0.0) else {
             return Seen { offset, scale: 1.0 };
         };
         let heading = self.heading.as_dvec3();
         let miss = (offset - heading * offset.dot(heading)).length();
-        let bent = self.beta * bubble((miss / radius) as f32);
+        let bent = self.beta * bubble((miss / reach) as f32);
         Seen {
             offset: bend(dir, heading, bent) * distance,
             scale: 1.0 / doppler(dir.dot(heading) as f32, sized),

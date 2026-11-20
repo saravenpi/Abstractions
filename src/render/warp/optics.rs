@@ -6,11 +6,7 @@
 use bevy::math::DVec3;
 
 use crate::render::celestial::smoothstep;
-
-/// Radii from a body inside which it rides in the warp bubble and is seen as it is, and beyond
-/// which it is seen through the whole speed of the ship. The drive carries the bubble along
-/// with a body between the same radii.
-pub const CARRIED: (f32, f32) = (50.0, 100.0);
+use crate::universe::CARRY;
 
 /// Returns the Doppler factor of light from a point whose true angle from the heading has the
 /// cosine `cos`: above 1 ahead, where light turns bluer, below 1 behind. A patch of sky there
@@ -41,8 +37,10 @@ pub fn bend(dir: DVec3, heading: DVec3, beta: f32) -> DVec3 {
     (heading * ((cos + beta) / (1.0 + beta * cos)) + out * shrink).normalize_or(dir)
 }
 
-/// Returns how much of the speed of the ship a body `radii` of its own radii away is seen
-/// through: none while it rides in the bubble, all of it in the open.
-pub fn bubble(radii: f32) -> f32 {
-    smoothstep(CARRIED.0, CARRIED.1, radii)
+/// Returns how much of the speed of the ship a body is seen through when the ship is `share` of
+/// the reach of the body away from it: none while it rides in the warp bubble, all of it in the
+/// open. The bubble is carried between the same shares of the Hill radius as the drive carries it,
+/// see [`CARRY`].
+pub fn bubble(share: f32) -> f32 {
+    smoothstep(CARRY.0 as f32, CARRY.1 as f32, share)
 }

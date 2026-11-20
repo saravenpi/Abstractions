@@ -134,6 +134,7 @@ impl Game {
             crate::audio::plugin,
             crate::companion::plugin,
             crate::home::plugin,
+            crate::craft::plugin,
         ))
         .add_systems(Update, start_playing.run_if(in_state(Screen::Loading)))
         .add_systems(Last, record);

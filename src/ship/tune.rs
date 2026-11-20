@@ -36,10 +36,6 @@ pub const ORBIT_RAMP: f64 = 0.8;
 /// climbing from a planet has to reach the speed of its orbit, and escapes it at 1.41 times that.
 pub const ORBIT_CAP: f64 = 2.0;
 
-/// Radii of the Hill sphere of a body between which it stops carrying the warp bubble: it
-/// carries it whole inside the first and not at all outside the second.
-pub const CARRY: (f64, f64) = (0.25, 0.5);
-
 /// Share of the Hill radius of a planet or a moon inside which it is the body the world streams.
 pub const BODY_SWITCH: f64 = 0.1;
 

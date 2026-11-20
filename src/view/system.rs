@@ -10,10 +10,11 @@ use bevy::prelude::*;
 use super::io::{BodyFade, CameraPose, Heading, Look, Moment, Occluder, Target};
 use super::keys::{read_look, toggle};
 use super::mode::ViewPrefs;
+use super::occlude;
 use super::rig::Rig;
 use super::tune::RADIUS;
 use crate::player::Player;
-use crate::render::GameCamera;
+use crate::render::{GameCamera, Waterline};
 use crate::screens::{in_control, shown};
 use crate::settings::{Persistent, Settings};
 use crate::ship::Ship;
@@ -115,6 +116,8 @@ struct Asked<'w, 's> {
     settings: Res<'w, Persistent<Settings>>,
     /// The cuts asked for since the last frame.
     cuts: MessageReader<'w, 's, Cut>,
+    /// The water surface under the camera, which it never rests on.
+    water: Option<Res<'w, Waterline>>,
 }
 
 /// Runs the rig for the frame: applies the cuts and the zoom, steps, and publishes the results.
@@ -142,7 +145,10 @@ fn drive(
         fov: (asked.settings.graphics.fov as f32).to_radians(),
         dt: asked.time.delta_secs(),
     };
-    let shown = rig.step(&moment, &sight);
+    let mut shown = rig.step(&moment, &sight);
+    if let Some(water) = asked.water.as_deref() {
+        shown.pose.position = occlude::afloat(shown.pose.position, water);
+    }
     (*results.pose, *results.heading) = (shown.pose, shown.heading);
     results.fade.set_if_neq(shown.fade);
 }

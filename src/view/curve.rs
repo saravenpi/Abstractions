@@ -68,10 +68,12 @@ pub(super) fn fov(base: f32, shot: &Shot, bend: &Bend) -> f32 {
     (framed + shot.widen * bend.rush).min(MAX_FOV.max(base))
 }
 
-/// Returns how much of the body to draw when the camera is `gap` metres from the pivot: none
-/// of its head at the eyes, on foot and in the pilot seat alike, and all of it from afar.
-pub(super) fn fade(gap: f32) -> f32 {
-    smoothstep(FADE_BAND.0, FADE_BAND.1, gap)
+/// Returns how much of the body to draw in a view `third` of the way to third person, with the
+/// camera `head` metres from the centre of the head: none of its head at the eyes, on foot and
+/// in the pilot seat alike, and all of it in third person, however close a wall pushes the
+/// camera, unless the camera is inside the head.
+pub(super) fn fade(third: f32, head: f32) -> f32 {
+    third * smoothstep(FADE_BAND.0, FADE_BAND.1, head)
 }
 
 /// Returns the look angles `heading` kept where the head of a pilot can turn in the seat, for

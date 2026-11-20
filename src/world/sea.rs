@@ -12,6 +12,7 @@ mod material;
 mod mesh;
 mod order;
 mod seat;
+mod swell;
 mod uniform;
 mod waves;
 
@@ -25,6 +26,8 @@ mod tests_light;
 mod tests_shelf;
 #[cfg(test)]
 mod tests_sort;
+#[cfg(test)]
+mod tests_swell;
 
 pub use self::ember::ember as sea_glow;
 pub use self::follow::follow_focus;
@@ -43,7 +46,7 @@ use self::seat::Seat;
 use self::uniform::{FogLook, WaterUniform};
 use super::focus::Focus;
 use super::{Planet, SEA_LEVEL};
-use crate::render::{GameCamera, Palette, PlaceLit};
+use crate::render::{GameCamera, Murk, Palette, PlaceLit};
 use crate::screens::Screen;
 use crate::space::Placed;
 use crate::wind::Wind;
@@ -58,14 +61,19 @@ pub struct SeaInputs<'w, 's> {
     palette: Res<'w, Palette>,
     wind: Res<'w, Wind>,
     time: Res<'w, Time>,
-    fog: Query<'w, 's, &'static DistanceFog, With<GameCamera>>,
+    fog: Query<'w, 's, (&'static DistanceFog, Option<&'static Murk>), With<GameCamera>>,
 }
 
 impl SeaInputs<'_, '_> {
     /// Returns the shader values for the current sky, wind, time and camera fog, for a seat
-    /// whose axes are turned by `pose` in render space.
+    /// whose axes are turned by `pose` in render space. Under the surface the fog the water
+    /// reads is the colour of the liquid, which its underside takes.
     fn uniform(&self, pose: Quat) -> WaterUniform {
-        let fog = FogLook::from_fog(self.fog.iter().next(), self.palette.horizon);
+        let camera = self.fog.iter().next();
+        let mut fog = FogLook::from_fog(camera.map(|(fog, _)| fog), self.palette.horizon);
+        if let Some(murk) = camera.and_then(|(_, murk)| murk.filter(|m| m.submerged())) {
+            fog.color = murk.colour.extend(1.0);
+        }
         let wind = follow::wind_in_seat(&self.wind, pose);
         WaterUniform::new(&self.palette, &wind, self.time.elapsed_secs(), &fog)
     }
@@ -114,6 +122,12 @@ pub(super) fn plugin(app: &mut App) {
     app.add_plugins(material::plugin)
         .add_systems(Update, follow::refresh.before(super::chunks::place))
         .add_systems(Update, ember::kindle)
+        .add_systems(
+            PostUpdate,
+            swell::swell
+                .after(bevy::transform::TransformSystems::Propagate)
+                .run_if(resource_exists::<Planet>),
+        )
         .add_systems(
             PostUpdate,
             follow::light.after(PlaceLit).before(AssetEventSystems),

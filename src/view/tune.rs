@@ -70,6 +70,10 @@ pub const HEAD_RADIUS: f32 = 0.12;
 /// Gap kept between that sphere and what it touched.
 pub const SKIN: f32 = 0.02;
 
+/// Least distance in metres the camera keeps from the water surface, on the side it is on, so
+/// its near plane (0.05 m) never rests on the surface.
+pub const AFLOAT: f32 = 0.04;
+
 /// Sideways shifts of the casts that measure an obstacle, near and far. An obstacle is narrow
 /// when both far spheres pass it and at least one near sphere does: one narrower than 0.3 m
 /// always is, one wider than 0.75 m never is.
@@ -123,8 +127,14 @@ pub const TILT_DROP: f32 = 0.25;
 /// Share of the field of view gained when looking fully up, and lost when looking fully down.
 pub const TILT_FOV: f32 = 0.08;
 
-/// Distances from the camera to the head between which the body fades in.
-pub const FADE_BAND: (f32, f32) = (0.5, 1.3);
+/// Distances in metres from the camera to the centre of the head between which the head comes
+/// back: inside the first the camera is in the head, whose half size is 0.155 m, or its near
+/// plane cuts it.
+pub const FADE_BAND: (f32, f32) = (0.22, 0.32);
+
+/// Height in metres of the centre of the head above the centre of the body: the neck joint at
+/// 0.48 m and the head 0.19 m above it.
+pub const HEAD_CENTRE: f32 = 0.67;
 
 /// Seconds the camera lags behind a moving body, until the lag reaches the limit of the rig.
 pub const LAG_TIME: f32 = 0.12;

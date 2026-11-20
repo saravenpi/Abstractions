@@ -8,19 +8,20 @@ use bevy::prelude::*;
 use super::GameCamera;
 use super::celestial::smoothstep;
 use super::clouds::CloudCrossing;
-use super::murk::{clearance, murk};
+use super::murk::clearance;
 use super::palette::{Palette, srgb};
 use super::vantage::{LocalSystem, Vantage};
 use super::weather::LocalWeather;
 use crate::settings::{Persistent, Settings};
-use crate::space::{Anchor, Frame, altitude};
+use crate::space::{Anchor, Frame};
 use crate::world::{CHUNK_SIZE, Planet, Reach};
 
-/// Fog and sky color seen from below the surface of water, in sRGB.
+/// Fog and sky color seen from below the surface of water, in sRGB. The underwater pass draws
+/// it, so the distance fog of the camera stays the fog of the air.
 pub const UNDERWATER: Vec3 = Vec3::new(0.04, 0.27, 0.35);
 
 /// Distance in meters at which the water hides everything.
-const UNDERWATER_VISIBILITY: f32 = 25.0;
+pub(super) const UNDERWATER_VISIBILITY: f32 = 25.0;
 
 /// Heights above the ground in metres between which the fog opens from the edge of the detailed
 /// ground to the horizon: shut on foot, open a few hundred metres up.
@@ -49,7 +50,6 @@ pub struct Clearance(pub f32);
 /// What the fog looks like, so the camera is only written when it changes.
 #[derive(Clone, Copy, PartialEq)]
 pub(super) struct FogKey {
-    submerged: bool,
     color: Vec3,
     reach: f32,
 }
@@ -58,7 +58,6 @@ impl FogKey {
     /// Builds the key for a camera in clear air on the ground.
     pub(super) fn ground(color: Vec3, render_distance: u32) -> Self {
         Self {
-            submerged: false,
             color,
             reach: render_distance as f32 * CHUNK_SIZE,
         }
@@ -95,23 +94,15 @@ pub fn cull_distance(reach: f32) -> f32 {
     reach.max(NEAR_FAR)
 }
 
-/// Builds the camera fog for a key: dense fog in the colour of the liquid below its surface, or
-/// linear fog that fades the terrain out before its reach.
+/// Builds the camera fog for a key: linear fog that fades the terrain out before its reach.
 pub(super) fn fog_for(key: FogKey) -> DistanceFog {
-    match key.submerged {
-        true => DistanceFog {
-            color: srgb(key.color),
-            falloff: FogFalloff::from_visibility(UNDERWATER_VISIBILITY),
-            ..default()
+    DistanceFog {
+        color: srgb(key.color),
+        falloff: FogFalloff::Linear {
+            start: key.reach * 0.35,
+            end: key.reach * FOG_END,
         },
-        false => DistanceFog {
-            color: srgb(key.color),
-            falloff: FogFalloff::Linear {
-                start: key.reach * 0.35,
-                end: key.reach * FOG_END,
-            },
-            ..default()
-        },
+        ..default()
     }
 }
 
@@ -126,7 +117,7 @@ struct Depths<'w> {
     crossing: Res<'w, CloudCrossing>,
     /// The render anchor.
     anchor: Option<Res<'w, Anchor>>,
-    /// The planet the world streams, whose sea the camera may be under.
+    /// The planet the world streams, whose ground the camera stands over.
     planet: Option<Res<'w, Planet>>,
     /// The weather at the camera, whose rain and dust close the fog in.
     weather: Res<'w, LocalWeather>,
@@ -135,18 +126,6 @@ struct Depths<'w> {
 }
 
 impl Depths<'_> {
-    /// Returns the colour of the liquid around the render position `camera` when it is under
-    /// the sea of the streamed planet, or nothing.
-    ///
-    /// The height comes from [`altitude`], which is this frame's, on the planet the anchor is
-    /// fixed to. Away from its surface, and on a planet without a sea, nothing is submerged.
-    fn submerged(&self, camera: Vec3) -> Option<Vec3> {
-        let (anchor, planet) = (self.anchor.as_deref()?, self.planet.as_deref()?);
-        let here = anchor.flat || anchor.frame == Frame::Surface(planet.body);
-        let under = here && altitude(anchor, &planet.globe, camera) < 0.0;
-        murk(planet.record()).filter(|_| under)
-    }
-
     /// Returns the height of the render position `camera` above the ground or the sea under it,
     /// which is `altitude` above sea level, on the streamed planet the anchor is fixed to.
     fn clearance(&self, camera: Vec3, altitude: f32) -> f32 {
@@ -162,8 +141,7 @@ impl Depths<'_> {
 }
 
 /// Matches the fog to the sky horizon and the height of the camera, closer under rain and dust,
-/// to the whiteout inside the cloud layer, or to dense water fog below the surface, and culls
-/// the view where the fog ends.
+/// and to the whiteout inside the cloud layer, and culls the view where the fog ends.
 fn update_fog(
     palette: Res<Palette>,
     settings: Res<Persistent<Settings>>,
@@ -186,11 +164,8 @@ fn update_fog(
         };
         depths.aloft.set_if_neq(Clearance(height.clearance));
         let clear = fog_sight(ground, &height) * depths.weather.look().sight();
-        let liquid = depths.submerged(camera);
-        let air = palette.horizon.lerp(palette.cloud, crossing.depth);
         let key = FogKey {
-            submerged: liquid.is_some(),
-            color: liquid.unwrap_or(air),
+            color: palette.horizon.lerp(palette.cloud, crossing.depth),
             reach: clear * (WHITEOUT_VISIBILITY / clear).powf(crossing.depth),
         };
         if *last != Some(key) {

@@ -11,6 +11,7 @@ use bevy::render::view::{Msaa, Tonemapping};
 use super::GameCamera;
 use super::fog::{FogKey, fog_for};
 use super::lowres::LowRes;
+use super::murk::Murk;
 use super::palette::Palette;
 use super::pixelate::Pixelate;
 use crate::settings::{Graphics, Persistent, Settings};
@@ -74,7 +75,9 @@ fn setup_camera(
         set_fov(&mut projection, graphics.fov);
     }
     let key = FogKey::ground(look.palette.horizon, graphics.render_distance);
-    commands.entity(add.entity).insert(fog_for(key));
+    commands
+        .entity(add.entity)
+        .insert((fog_for(key), Murk::default()));
 }
 
 /// Registers the camera setup.

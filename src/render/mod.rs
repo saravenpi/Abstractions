@@ -48,6 +48,8 @@ mod tests_dither;
 #[cfg(test)]
 mod tests_fog;
 #[cfg(test)]
+mod tests_lens;
+#[cfg(test)]
 mod tests_lowres;
 #[cfg(test)]
 mod tests_moonday;
@@ -79,6 +81,7 @@ pub use fog::{FOG_END, HORIZON_SHARE, OPEN as FOG_OPEN, THIN_AIR};
 pub use glow::entry_glow;
 pub use lighting::{Moon, Sun};
 pub use lowres::{Fit, LowRes, window_changed};
+pub use murk::{Murk, Swell, Waterline, murk};
 pub use observer::Observer;
 pub use palette::Palette;
 pub use pixelate::Pixelate;
@@ -127,6 +130,7 @@ pub(super) fn sky(app: &mut App) {
         camera::plugin,
         fog::plugin,
         warp::plugin,
+        murk::gauge,
     ))
     .add_plugins((
         atmosphere::plugin,
@@ -155,5 +159,5 @@ const UPLOAD_BYTES: usize = 16 << 20;
 /// Registers the render plugins.
 pub(super) fn plugin(app: &mut App) {
     app.insert_resource(RenderAssetBytesPerFrame::new(UPLOAD_BYTES))
-        .add_plugins((pixelate::plugin, lowres::plugin, sky));
+        .add_plugins((pixelate::plugin, murk::pass, lowres::plugin, sky));
 }

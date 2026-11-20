@@ -38,3 +38,11 @@ env = { CARGO_TARGET_DIR = "target/hot" }
 [tasks.timings]
 description = "Build and write target/cargo-timings/cargo-timing.html, to see what is slow"
 run = "cargo build --features dev --timings"
+
+[tasks.zoo]
+description = "Show the home planet's animals walking, trotting and galloping: mise run zoo -- <seed> (needs examples/zoo.rs, untracked)"
+run = "cargo run --features dev --example zoo --"
+
+[tasks.check-fast]
+description = "Clippy and the tests of one area: mise run check-fast -- gear::"
+run = "cargo clippy --workspace --features dev --all-targets -- -D warnings && cargo test --features dev --lib --"

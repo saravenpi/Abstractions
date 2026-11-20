@@ -11,8 +11,9 @@ mod ledger;
 mod spear;
 mod state;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
+use crate::ids::BodyId;
 use crate::log::PlayerId;
 use crate::wire::{AnimalKey, Carcass, HuntWorld, Opened, Rock, Spear};
 
@@ -53,8 +54,8 @@ pub(super) struct Hunting {
     pub(super) hurt: HashMap<AnimalKey, Hurt>,
     /// The wounds of animals that are not dead, oldest first.
     pub(super) wounds: Vec<Opened>,
-    /// The rocks taken.
-    pub(super) rocks: HashSet<Rock>,
+    /// The mass taken of each rock, in grams, with the mass of the whole rock, by planet and id.
+    pub(super) rocks: HashMap<(BodyId, u64), (u32, u32)>,
 }
 
 impl Hunting {
@@ -69,7 +70,10 @@ impl Hunting {
         }
         hunt.wounds = kept.wounds;
         hunt.wounds.truncate(WOUNDS_MAX);
-        hunt.rocks = kept.rocks.into_iter().take(ROCKS_MAX).collect();
+        for rock in kept.rocks.into_iter().take(ROCKS_MAX) {
+            hunt.rocks
+                .insert((rock.planet, rock.id), (rock.grams.min(rock.whole), rock.whole));
+        }
         hunt
     }
 
@@ -80,7 +84,16 @@ impl Hunting {
             spears: self.spears.clone(),
             held,
             wounds: self.wounds.clone(),
-            rocks: self.rocks.iter().copied().collect(),
+            rocks: self
+                .rocks
+                .iter()
+                .map(|(&(planet, id), &(grams, whole))| Rock {
+                    planet,
+                    id,
+                    grams,
+                    whole,
+                })
+                .collect(),
         }
     }
 }

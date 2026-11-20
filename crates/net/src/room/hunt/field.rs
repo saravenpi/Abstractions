@@ -83,12 +83,20 @@ impl Room {
         }
     }
 
-    /// Keeps a rock as taken and tells the others, when it was not taken before and the room has
-    /// room for it.
+    /// Adds a piece to what was taken of its rock and tells the others, when something of the rock
+    /// is left and the room has room for it. The taken mass never passes the whole.
     pub(super) fn rock(&mut self, conn: ConnId, rock: Rock, out: &mut Outbox) {
-        if self.hunting.rocks.len() < ROCKS_MAX && self.hunting.rocks.insert(rock) {
-            self.dirty = true;
-            self.send_others(conn, &ServerMsg::Hunt(Event::Rock(rock)), out);
+        let key = (rock.planet, rock.id);
+        let known = self.hunting.rocks.contains_key(&key);
+        if rock.grams == 0 || rock.whole == 0 || !(known || self.hunting.rocks.len() < ROCKS_MAX) {
+            return;
         }
+        let entry = self.hunting.rocks.entry(key).or_insert((0, rock.whole));
+        if entry.0 >= entry.1 {
+            return;
+        }
+        entry.0 = entry.0.saturating_add(rock.grams).min(entry.1);
+        self.dirty = true;
+        self.send_others(conn, &ServerMsg::Hunt(Event::Rock(rock)), out);
     }
 }

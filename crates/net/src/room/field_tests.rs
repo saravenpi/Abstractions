@@ -68,19 +68,22 @@ fn field() -> (
     let rock = Rock {
         planet: BodyId::default(),
         id: 77,
+        grams: 600,
+        whole: 1000,
     };
     act(&mut room, ada, Act::Rock(rock), (101.0, &mut out));
     act(&mut room, bob, Act::Rock(rock), (101.0, &mut out));
+    act(&mut room, ada, Act::Rock(rock), (101.0, &mut out));
     (room, ada, bob, out, rock)
 }
 
-/// A wound, its plug and a rock are told to the others once each, and a rock taken twice is not
-/// told back.
+/// A wound and its plug are told to the others once. The pieces of a rock add up: each is told to
+/// the others until the rock is gone, and a piece of a rock with nothing left is told to no one.
 #[test]
-fn wounds_and_rocks_are_told_once() {
-    let (_, ada, bob, out, _) = field();
+fn wounds_are_told_once_and_rock_pieces_add_up() {
+    let (_, ada, bob, out, rock) = field();
     assert_eq!(events(&out, bob).len(), 3);
-    assert!(events(&out, ada).is_empty());
+    assert_eq!(events(&out, ada), [Event::Rock(rock)]);
 }
 
 /// A player who joins later is told the wound with its plug and the rock taken.
@@ -93,7 +96,8 @@ fn a_later_player_finds_the_wounds_and_rocks() {
     let [Event::World(world)] = seen.as_slice() else {
         panic!("the world");
     };
-    assert_eq!(world.rocks, [rock]);
+    let whole = Rock { grams: 1000, ..rock };
+    assert_eq!(world.rocks, [whole]);
     assert!(world.wounds.len() == 1 && world.wounds[0].1.plugged);
 }
 

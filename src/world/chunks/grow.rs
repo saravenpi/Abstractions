@@ -10,7 +10,7 @@ use super::reach::Reach;
 use super::scene::Scene;
 use super::spawn::Spawner;
 use crate::world::globe::ChunkId;
-use crate::world::globe::quadtree::{Changes, MAX_SPLITS, Path, View, children, select_along};
+use crate::world::globe::quadtree::{Changes, Path, View, children, select_along, splits};
 
 /// Distance in metres the focus moves before a settled quadtree is selected again.
 const STILL: f64 = 4.0;
@@ -79,7 +79,10 @@ fn path_of(chunks: &Chunks, spawner: &Spawner, at: DVec3, reach: &Reach) -> Path
         radius: globe.radius(),
         deepest: globe.deepest_level(),
         reach: 0.0,
-        budget: reach.node_cap().saturating_sub(chunks.tree.count()) / 4,
+        budget: reach
+            .node_cap(globe.deepest_level())
+            .saturating_sub(chunks.tree.count())
+            / 4,
         split: reach.split(),
     };
     let leaf = view.arc(view.deepest) * f64::from(u8::from(globe.has_ground()));
@@ -120,7 +123,8 @@ pub fn grow(
         return;
     }
     let ready = |id| chunks.nodes.has(id);
-    let changes = select_along(&chunks.tree, &path, &ready, stretch.count(MAX_SPLITS));
+    let most = stretch.count(splits(path.view.deepest));
+    let changes = select_along(&chunks.tree, &path, &ready, most);
     let (eye, now) = (scene.eye(), scene.now());
     let fade = |id| eye.filter(|eye| eye.sees(id)).map(|_| now);
     chunks.reshape(&mut commands, &changes, &fade);

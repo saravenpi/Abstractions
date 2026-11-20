@@ -8,7 +8,7 @@
 use bevy::math::DVec3;
 
 /// Texels along one side of a face of the grid.
-pub const FACE: i32 = 64;
+pub const FACE: i32 = 256;
 
 /// Texels of the whole grid: six faces, each row after row.
 pub const TEXELS: usize = 6 * (FACE * FACE) as usize;
@@ -36,6 +36,13 @@ pub fn texel_dir(face: usize, column: i32, row: i32) -> DVec3 {
     let fold = |side: f64| (side.clamp(-1.0, 1.0), (side.abs() - 1.0).max(0.0));
     let ((x, past_x), (y, past_y)) = (fold(side(column)), fold(side(row)));
     (major * (1.0 - past_x - past_y) + along * x + down * y).normalize()
+}
+
+/// Returns the unit direction through the point `x`, `y` of `face` of a cube map, each from -1
+/// at the first column or row to 1 at the last: the way a cube texture of any side is laid out.
+pub fn face_dir(face: usize, x: f64, y: f64) -> DVec3 {
+    let [major, along, down] = AXES[face];
+    (major + along * x + down * y).normalize()
 }
 
 /// Returns the unit direction of the centre of texel number `index` of the whole grid, which

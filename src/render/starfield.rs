@@ -1,4 +1,4 @@
-//! The starfield: the real stars near the camera and the far galaxies, as one mesh on a far shell,
+//! The starfield: the real stars near the camera, as one mesh on a far shell,
 //! and the dust a warp rushes through, as a second fixed mesh drawn with the same material.
 
 mod build;
@@ -31,7 +31,8 @@ use crate::screens::Screen;
 use crate::universe::{GLY, GalaxyId};
 use dust::Dust;
 
-/// Radius of the star shell in metres: behind every body, in front of the dome.
+/// Radius of the star shell in metres. The shader writes the far depth for every speck, so the
+/// stars lie behind every body at any radius.
 pub const STAR_SHELL: f32 = 3.0e6;
 
 /// Distance in game light-years up to which stars are gathered into the mesh. It is farther
@@ -43,9 +44,6 @@ pub(super) const REACH_GLY: f64 = 55.0;
 
 /// Most stars gathered, the nearest ones: more than the sectors within reach can hold.
 pub(super) const MOST_STARS: usize = 9000;
-
-/// Galaxy grid cells searched for galaxies around the camera's own.
-pub(super) const GALAXY_CELLS: i32 = 2;
 
 /// The starfield entity, with the place its mesh was last built for.
 #[derive(Component, Debug, Default, Clone, Copy, PartialEq)]

@@ -35,8 +35,6 @@ use crate::universe::{BodyId, PlanetSpec};
 use crate::world::Link;
 use crate::world::globe::far::handover;
 
-pub use crate::world::globe::far::FAR;
-
 /// Angular radius in radians under which the disc of the star is not drawn: a ball under two
 /// pixels across cannot be drawn steadily. The star is then the point the star field draws
 /// for it, which is already far wider and brighter than a disc that small.
@@ -59,35 +57,8 @@ pub enum Body {
     Rings(BodyId),
 }
 
-/// Where a body is drawn: an offset from the camera and the factor its size shrinks by.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Drawn {
-    /// Offset from the camera in metres, in the axes of the true offset.
-    pub at: Vec3,
-    /// Drawn size over true size.
-    pub scale: f32,
-}
-
-/// Returns where to draw a body that truly sits `offset` metres from the camera.
-///
-/// Up to [`FAR`] it stays where it is. Beyond, it is pulled in along its direction to between one
-/// and two times [`FAR`], farther bodies staying behind nearer ones, and shrunk by the same factor
-/// so that it covers the same angle. That keeps 32-bit positions and the depth range exact.
-pub fn place(offset: DVec3) -> Drawn {
-    let (far, distance) = (f64::from(FAR), offset.length());
-    if distance <= far {
-        return Drawn {
-            at: offset.as_vec3(),
-            scale: 1.0,
-        };
-    }
-    let scale = far * (2.0 - far / distance) / distance;
-    Drawn {
-        at: (offset * scale).as_vec3(),
-        scale: scale as f32,
-    }
-}
-/// A body ready to be placed.
+/// A body ready to be placed, drawn at its true distance and size: the depth of the camera has no
+/// far plane, so nothing is pulled in or shrunk.
 struct Orb {
     pos: DVec3,
     turn: DQuat,
@@ -171,9 +142,7 @@ impl Body {
                 airy && (!below || vantage.air <= 0.0)
             }
             Body::Rings(_) => true,
-            _ => {
-                !below || pos.distance(vantage.observer.eye) > handover(planet.radius, planet.rings)
-            }
+            _ => !below || pos.distance(vantage.observer.eye) > handover(planet.radius),
         }
     }
 }
@@ -194,14 +163,13 @@ fn follow(
             continue;
         };
         let seen = lens.body(observer.to_render * (orb.pos - observer.eye), orb.solid);
-        let drawn = place(seen.offset);
-        let size = orb.radius as f32 * drawn.scale * seen.scale;
-        let size = size.max(orb.least_angle * drawn.at.length());
+        let at = seen.offset.as_vec3();
+        let size = (orb.radius as f32 * seen.scale).max(orb.least_angle * at.length());
         let turn = match body {
             Body::Rings(_) | Body::Planet(_) => (observer.to_render * orb.turn).as_quat(),
             _ => Quat::IDENTITY,
         };
-        let pose = Transform::from_translation(vantage.camera + drawn.at).with_rotation(turn);
+        let pose = Transform::from_translation(vantage.camera + at).with_rotation(turn);
         super::pin(
             pose.with_scale(Vec3::splat(size)),
             &mut transform,

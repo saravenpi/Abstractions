@@ -3,20 +3,21 @@
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::ecs::system::SystemParam;
 use bevy::light::{NotShadowCaster, NotShadowReceiver};
-use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::SunDir;
 use super::atmosphere::horizon_dip;
 use super::celestial::smoothstep;
 use super::clouds::CloudCrossing;
+use super::galaxy_light::GalaxyLight;
 use super::palette::Palette;
 use super::sky::{SkyLook, SkyMaterial, SkyUniform};
 use super::vantage::{LocalSystem, Vantage};
 use super::warp::Lens;
 use crate::screens::Screen;
 
-/// Radius of the dome in metres: behind the stars and every body, which are drawn nearer.
+/// Radius of the dome in metres. Its shader writes the far depth, so the dome lies behind the
+/// stars and every body at any radius, and the radius only has to hold the camera.
 pub const DOME_RADIUS: f32 = 4.0e6;
 
 /// Brightness of the horizon rim against the horizon color at the ground.
@@ -37,6 +38,7 @@ fn spawn_dome(
         Mesh3d(meshes.add(super::shell(false))),
         MeshMaterial3d(materials.add(SkyMaterial {
             sky: SkyUniform::default(),
+            map: None,
         })),
         Transform::from_scale(Vec3::splat(DOME_RADIUS)),
         NotShadowCaster,
@@ -55,6 +57,7 @@ struct SkyInputs<'w> {
     sun: Res<'w, SunDir>,
     crossing: Res<'w, CloudCrossing>,
     lens: Res<'w, Lens>,
+    light: Res<'w, GalaxyLight>,
 }
 
 impl SkyInputs<'_> {
@@ -75,9 +78,8 @@ impl SkyInputs<'_> {
             air: vantage.air,
             whiteout: self.crossing.depth,
             rim: rim * (share - vantage.air) * (1.0 - leaving),
-            disc: (to_render * DVec3::Y).as_vec3(),
-            core: (to_render * (-vantage.galactic).normalize_or_zero()).as_vec3(),
-            band: vantage.band,
+            to_galaxy: Mat3::from_quat(to_render.inverse().as_quat()),
+            mapped: self.light.map().is_some(),
             murk: super::murk::under(&self.local, vantage),
             heading: self.lens.heading,
             beta: self.lens.beta,
@@ -105,6 +107,7 @@ fn update_dome(
         super::pin(pose, &mut transform, &mut global);
         if let Some(mut material) = materials.get_mut(&handle.0) {
             material.sky = sky;
+            material.map = inputs.light.map();
         }
     }
 }

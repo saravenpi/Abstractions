@@ -17,9 +17,13 @@ pub const FADE_SECONDS: f32 = 0.4;
 /// Steps of a fade: the sixteen levels of the Bayer pattern.
 pub const LEVELS: u8 = 16;
 
-/// Width in metres of the made-up distance margin a fade is written as. It is so wide that the
-/// true distance of the camera, a few thousand metres at most, never moves the dither level.
-const SPAN: f32 = 1.0e7;
+/// Narrowest width in metres of the made-up distance margin a fade is written as: so wide that
+/// the true distance of the camera to a node of a small planet never moves the dither level.
+pub const SPAN: f32 = 1.0e7;
+
+/// How many times the farthest distance a node can lie from the camera the margin of a fade is
+/// wide: at the half of a level, 1/32 of the margin, the distance would move the level.
+const SPAN_SHARE: f32 = 64.0;
 
 /// Which way something fades, and what becomes of it at the end.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -37,12 +41,26 @@ pub fn level(age: f32) -> u8 {
     ((age / FADE_SECONDS).clamp(0.0, 1.0) * f32::from(LEVELS)) as u8
 }
 
+/// Returns the width in metres of the margin of a fade seen from `altitude` metres over a planet
+/// of `radius` metres: [`SPAN`] or, when the planet is big, [`SPAN_SHARE`] times the farthest
+/// point of it from the camera, which is its width and the camera's altitude away.
+pub fn span(altitude: f64, radius: f64) -> f32 {
+    let farthest = 2.0 * radius + altitude.max(0.0);
+    SPAN.max(SPAN_SHARE * farthest as f32)
+}
+
 /// Returns the visibility range that draws `level` sixteenths of what fades in, or hides that
 /// many sixteenths of what fades out, at any distance of the camera. Two things at the same
 /// level, one each way, fill exactly every pixel between them.
 pub fn range(way: Way, level: u8) -> VisibilityRange {
-    let from = -SPAN * f32::from(level.min(LEVELS)) / f32::from(LEVELS);
-    let margin = from..from + SPAN;
+    ranged(way, level, SPAN)
+}
+
+/// Returns the visibility range of [`range`] with a margin of `span` metres, which must be wider
+/// than [`SPAN_SHARE`] times the distance of the farthest thing that fades, see [`span`].
+pub fn ranged(way: Way, level: u8, span: f32) -> VisibilityRange {
+    let from = -span * f32::from(level.min(LEVELS)) / f32::from(LEVELS);
+    let margin = from..from + span;
     match way {
         Way::In => VisibilityRange {
             start_margin: margin,

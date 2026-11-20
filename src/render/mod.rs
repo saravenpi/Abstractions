@@ -14,6 +14,7 @@ mod daylight;
 mod dome;
 mod entry;
 mod fog;
+mod galaxy_light;
 mod glow;
 mod heat;
 mod lighting;

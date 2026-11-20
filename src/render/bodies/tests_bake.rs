@@ -95,9 +95,9 @@ fn a_body_shows_its_surface_from_the_hand_over_inward() {
     let steps: Vec<f32> = (0..=40).map(|k| detail(k as f32 * 0.0005)).collect();
     assert!(steps.windows(2).all(|pair| pair[1] >= pair[0]));
     for radius in [3000.0, 6000.0, 40_000.0, 150_000.0] {
-        let at = handover(radius, None);
+        let at = handover(radius);
         assert_eq!(detail((radius / at) as f32), 1.0, "{radius}");
-        assert!(radius / at >= 1.0 / LIMIT);
+        assert!((radius / at - 1.0 / LIMIT).abs() < 1.0e-12);
     }
 }
 

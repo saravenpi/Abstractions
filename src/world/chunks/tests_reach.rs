@@ -29,7 +29,7 @@ pub(super) struct Load {
     /// Megabytes of meshes.
     megabytes: f64,
     /// Seconds until settled.
-    seconds: f64,
+    pub(super) seconds: f64,
     /// Frames run until settled.
     pub(super) frames: u32,
     /// Seconds the frames took on the main thread, together and the longest one.
@@ -98,7 +98,7 @@ fn measure(app: &mut App, seconds: f64) -> Load {
 
 /// Settles a world of `radius` metres at `rings`, waits for the last fade to end and returns
 /// what it holds.
-fn settle(radius: f64, rings: u32) -> Load {
+pub(super) fn settle(radius: f64, rings: u32) -> Load {
     settle_on(rings, &|app| resize(app, radius))
 }
 
@@ -128,12 +128,16 @@ pub(super) fn settle_on(rings: u32, enter: &dyn Fn(&mut App)) -> Load {
     }
 }
 
-/// Prints what every render distance step costs on a 6 km and a 40 km planet, and checks that the
+/// Radius of Earth in metres, whose quadtree is 17 levels deep.
+pub(super) const EARTH: f64 = 6_371_000.0;
+
+/// Prints what every render distance step costs on a 6 km, a 40 km and an Earth-sized planet, and checks that the
 /// quadtree keeps within its cap. Run it alone: `cargo test --features dev reach_table -- --ignored --nocapture`.
 #[test]
 #[ignore = "a benchmark of several minutes; run it alone"]
 fn reach_table() {
-    for radius in [6_000.0, 40_000.0] {
+    for radius in [6_000.0, 40_000.0, EARTH] {
+        let depth = Globe::new(7, radius, 9.81).deepest_level();
         for (name, rings) in STEPS {
             let load = settle(radius, rings);
             println!(
@@ -147,7 +151,7 @@ fn reach_table() {
                 load.megabytes,
                 load.seconds
             );
-            assert!(load.nodes <= Reach::of(Some(rings)).node_cap() + 4);
+            assert!(load.nodes <= Reach::of(Some(rings)).node_cap(depth) + 4);
         }
     }
 }

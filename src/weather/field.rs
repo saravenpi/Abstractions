@@ -19,9 +19,9 @@ const FULL_AIR: f32 = 0.3;
 const BROAD: f64 = 1500.0;
 
 /// Fewest and most cells of the broad noise along the radius of a planet. One gives a little
-/// over six cells round the smallest planet; ten keeps every cell at least four texels of the
+/// over six cells round the smallest planet; forty keeps every cell at least four texels of the
 /// cover grid wide on the largest, where the cells grow with the planet.
-const CELLS: (f64, f64) = (1.0, 10.0);
+const CELLS: (f64, f64) = (1.0, 40.0);
 
 /// Metres per second the broad weather drifts east at the equator, round the spin axis.
 const DRIFT: f64 = 4.0;

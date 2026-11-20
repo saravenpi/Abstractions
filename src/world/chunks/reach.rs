@@ -34,6 +34,9 @@ const SKEW: f64 = 1.65;
 /// even where the chart squeezes them the most.
 const FOG_SHARE: f64 = 0.78;
 
+/// Most levels a quadtree has: the leaf level is clamped to it, see `Globe::leaf_level`.
+pub const MOST_LEVELS: u8 = 20;
+
 /// What the render distance setting asks of the streamer. The streamer reads this resource, which
 /// follows the setting; a run without settings uses [`DEFAULT_RINGS`].
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
@@ -58,11 +61,13 @@ impl Reach {
         2.0 + f64::from((self.rings - 4).max(0)) * 0.04
     }
 
-    /// Returns the most quadtree nodes kept alive, hidden parents included: room for the detail
-    /// disc down to the deepest level and for the rings of every coarser level.
-    pub fn node_cap(&self) -> usize {
+    /// Returns the most quadtree nodes kept alive on a planet whose tree is `depth` levels deep,
+    /// hidden parents included: room for the detail disc down to the deepest level and for the
+    /// rings of every coarser level. A shallow planet has fewer rings, so its cap is lower, and
+    /// no planet gets more than the twenty levels the quadtree ever has.
+    pub fn node_cap(&self, depth: u8) -> usize {
         let disc = f64::from(self.rings + 3).powi(2) * 6.4;
-        let levels = 20.0 * self.split().powi(2) * 11.0;
+        let levels = f64::from(depth.min(MOST_LEVELS)) * self.split().powi(2) * 11.0;
         (disc + levels) as usize
     }
 

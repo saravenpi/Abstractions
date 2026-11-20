@@ -155,7 +155,7 @@ fn cross_edge(app: &mut App) -> DVec3 {
 }
 
 /// Lifts the focus to five radii along `dir`, where the baked planet replaces the quadtree, and
-/// brings it back to two.
+/// brings it back to a radius and a tenth.
 fn leave_and_return(app: &mut App, dir: DVec3) {
     let radius = app.world().resource::<Terrain>().globe().radius();
     go(app, Some(dir * radius * 5.0), "the baked planet", |w| {
@@ -165,7 +165,7 @@ fn leave_and_return(app: &mut App, dir: DVec3) {
     assert!(chunks.loaded.is_empty() && chunks.nodes.live.is_empty() && chunks.tree.count() == 6);
     go(
         app,
-        Some(dir * radius * 2.0),
+        Some(dir * radius * 1.1),
         "the quadtree to come back",
         idle,
     );

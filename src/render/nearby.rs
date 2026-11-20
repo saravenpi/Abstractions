@@ -68,7 +68,7 @@ impl Nearby {
         let body = u8::try_from(vantage.body)
             .ok()
             .and_then(|index| self.body(index, vantage.moon));
-        body.map_or(f64::MAX, |body| handover(body.radius, body.rings))
+        body.map_or(f64::MAX, |body| handover(body.radius))
     }
 
     /// Returns every planet, then every moon.

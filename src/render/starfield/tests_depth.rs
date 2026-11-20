@@ -6,8 +6,8 @@ use bevy::mesh::VertexAttributeValues;
 use bevy::prelude::*;
 
 use super::Starfield;
-use super::depth::{EXTENDED, Sighted, lit};
-use super::specks::{GALAXY_ANGLE, Speck, shine, star_speck};
+use super::depth::{Sighted, lit};
+use super::specks::{Speck, shine, star_speck};
 use crate::render::vantage::Vantage;
 use crate::universe::{GLY, GalaxyId, StarSpec, Universe};
 
@@ -19,13 +19,8 @@ impl Sighted {
     pub fn drifted(&self, drift: Vec3) -> Speck {
         let far = self.speck.dir * self.range - drift;
         let now = far.length().max(1.0e-4);
-        let (size, gain) = if self.flux >= EXTENDED {
-            let size = self.speck.size * self.range / now;
-            (size.min(GALAXY_ANGLE), 1.0)
-        } else {
-            let (size, shown) = shine(self.flux - 2.0 * (now / self.range).log10());
-            (size, shown / shine(self.flux).1)
-        };
+        let (size, shown) = shine(self.flux - 2.0 * (now / self.range).log10());
+        let gain = shown / shine(self.flux).1;
         Speck {
             dir: far / now,
             size,
@@ -84,15 +79,13 @@ fn nothing_moves_at_the_place_of_the_build() {
         assert!((still.dir - seen.dir).length() < 1e-6 && still.size == seen.size);
         assert!((still.color - seen.color).length() < 1e-5 && still.soft == seen.soft);
     }
-    let galaxy = sighted(Vec3::X, 3.0e5, EXTENDED);
-    assert_eq!(galaxy.drifted(Vec3::ZERO), galaxy.speck);
 }
 
 /// A ship that flies five light-years sees a star two light-years off its path swing from
-/// ahead to behind, a star thirty light-years off turn a little, and a far galaxy stand still.
-/// Everything slides aft, and what comes closer grows.
+/// ahead to behind, a star thirty light-years off turn a little, and one thirty thousand
+/// stand still. Everything slides aft, and what comes closer grows.
 #[test]
-fn near_stars_pass_and_far_galaxies_stand() {
+fn near_stars_pass_and_far_stars_stand() {
     let ahead = Vec3::NEG_Z;
     let beside = |off: f32, flux: f32| {
         let at = Vec3::new(off, 0.0, -2.5);
@@ -104,24 +97,19 @@ fn near_stars_pass_and_far_galaxies_stand() {
         assert!(after.x > 0.0 && after.y.abs() < 1e-6);
         before.angle_between(after)
     };
-    let (near, far, galaxy) = (beside(2.0, 0.0), beside(30.0, 0.0), beside(3.0e5, EXTENDED));
-    assert!(swing(&near) > 1.5 && swing(&far) < 0.2 && swing(&galaxy) < 2e-5);
+    let (near, far, remote) = (beside(2.0, 0.0), beside(30.0, 0.0), beside(3.0e5, -9.0));
+    assert!(swing(&near) > 1.5 && swing(&far) < 0.2 && swing(&remote) < 2e-5);
     assert!(near.speck.dir.z < 0.0 && near.drifted(ahead * 5.0).dir.z > 0.0);
     let closing = sighted(ahead, 10.0, -3.0);
     let closer = closing.drifted(ahead * 8.0);
     assert!(closer.size > shine(closing.flux).0 && closer.color.x > closing.speck.color.x);
-    let grown = sighted(ahead, 3.0e5, EXTENDED).drifted(ahead * 1.0e5);
-    assert!((grown.size - 0.015).abs() < 1e-6 && grown.color == Vec3::ONE);
 }
 
 /// The mesh carries the range and the light of each speck on its four corners, and the drift
 /// the shader slides them by is the way from the place of the build, in light-years.
 #[test]
 fn the_mesh_and_the_drift_carry_the_depth() {
-    let specks = [
-        sighted(Vec3::X, 4.0, -1.0),
-        sighted(Vec3::Y, 2.0e5, EXTENDED),
-    ];
+    let specks = [sighted(Vec3::X, 4.0, -1.0), sighted(Vec3::Y, 2.0e5, -9.0)];
     let mesh = lit(&specks);
     let Some(VertexAttributeValues::Float32x2(depths)) = mesh.attribute(Mesh::ATTRIBUTE_UV_1)
     else {
@@ -129,7 +117,7 @@ fn the_mesh_and_the_drift_carry_the_depth() {
     };
     assert_eq!(depths.len(), 8);
     assert!(depths[..4].iter().all(|depth| *depth == [4.0, -1.0]));
-    assert!(depths[4..].iter().all(|depth| *depth == [2.0e5, EXTENDED]));
+    assert!(depths[4..].iter().all(|depth| *depth == [2.0e5, -9.0]));
     let at = DVec3::new(3.0e12, -1.0e12, 5.0e11);
     let vantage = Vantage {
         galaxy: GalaxyId::default(),

@@ -3,7 +3,7 @@
 use super::*;
 
 /// The stages in order: name, group and function. The `core` stages always run.
-pub const STAGES: [(&str, &str, Stage); 54] = [
+pub const STAGES: [(&str, &str, Stage); 59] = [
     ("title", "core", title),
     ("loading", "core", loading),
     ("boot", "core", boot),
@@ -54,6 +54,11 @@ pub const STAGES: [(&str, &str, Stage); 54] = [
     ("above", "tour", above),
     ("orbit", "tour", orbit),
     ("tp-orbit", "tour", tp_orbit),
+    ("stop-2m", "tour", stop_2m),
+    ("stop-10km", "tour", stop_10km),
+    ("stop-100km", "tour", stop_100km),
+    ("stop-1000km", "tour", stop_1000km),
+    ("stop-20000km", "tour", stop_20000km),
     ("warp", "tour", warp),
     ("arrive", "tour", arrive),
     ("land", "tour", land),

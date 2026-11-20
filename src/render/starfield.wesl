@@ -25,8 +25,6 @@ struct Seen {
 
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> stars: Stars;
 
-const EXTENDED: f32 = 50.0;
-const GALAXY_ANGLE: f32 = 0.35;
 const LOG10: f32 = 2.302585;
 const BEAM: f32 = 1.5;
 const BEAM_LEAST: f32 = 0.08;
@@ -123,29 +121,27 @@ fn emit(seen: Seen, corner: vec2<f32>, size: f32, reach: f32, light: vec4<f32>) 
 fn placed(out: StarVertex, world_from_local: mat4x4<f32>) -> StarVertex {
     var moved = out;
     let shell = length(world_from_local[0].xyz);
-    moved.position = position_world_to_clip(world_from_local[3].xyz + out.position.xyz * shell);
+    let clip = position_world_to_clip(world_from_local[3].xyz + out.position.xyz * shell);
+    moved.position = vec4<f32>(clip.x, clip.y, 0.0, clip.w);
     return moved;
 }
 
 fn star(vertex: UncompressedVertex, world_from_local: mat4x4<f32>, corner: vec2<f32>) -> StarVertex {
     let built = -vertex.normal;
     let range = max(vertex.uv_b.x, 0.0001);
-    let extended = step(EXTENDED, vertex.uv_b.y);
     let far = built * range - stars.drift.xyz;
     let now = max(length(far), 0.0001);
     let was = shine(vertex.uv_b.y);
     let flux = vertex.uv_b.y - 2.0 * log(now / range) / LOG10;
     let lit = shine(flux);
-    let drawn = length(vertex.position - built) * 0.70710678;
-    let galaxy = vec2<f32>(min(drawn * range / now, GALAXY_ANGLE), 1.0);
-    let sized = mix(vec2<f32>(lit.x, lit.y / was.y), galaxy, extended);
+    let sized = vec2<f32>(lit.x, lit.y / was.y);
 
     let seen = see(normalize((world_from_local * vec4<f32>(far / now, 0.0)).xyz));
-    let size = sized.x * mix(1.0, 1.0 / seen.factor, extended);
+    let size = sized.x;
     let reach = min(0.5 * stars.params.y * seen.turn / (now * seen.factor), STREAK_MOST);
     let near = 1.0 - smoothstep(SIGHT - SIGHT_FADE, SIGHT, now);
-    let share = mix(stars.params.z * near, 1.0, extended);
-    let day = smoothstep(DAY_FLUX, DAY_FLUX + 1.0, flux) * (1.0 - extended);
+    let share = stars.params.z * near;
+    let day = smoothstep(DAY_FLUX, DAY_FLUX + 1.0, flux);
     let sky = mix(stars.params.x, 1.0, day);
     let glow = vertex.color.rgb * (sized.y * sky * share) * beamed(seen.factor, reach / size);
     return emit(seen, corner, size, reach, vec4<f32>(glow, vertex.color.a));

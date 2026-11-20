@@ -6,12 +6,8 @@ use std::ops::Deref;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::specks::{Speck, galaxy_speck, mesh, star_light, star_speck};
-use crate::universe::{GLY, GalaxySpec, StarSpec};
-
-/// Light of a speck that is no point: a galaxy, which keeps its brightness and changes size
-/// with the distance. No star comes near this value.
-pub const EXTENDED: f32 = 100.0;
+use super::specks::{Speck, mesh, star_light, star_speck};
+use crate::universe::StarSpec;
 
 /// A speck with its depth, as seen from the place the mesh is built for.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -20,7 +16,7 @@ pub struct Sighted {
     pub speck: Speck,
     /// Distance in game light-years.
     pub range: f32,
-    /// Light that arrives from a star, as [`star_light`] gives it, or [`EXTENDED`].
+    /// Light that arrives from a star, as [`star_light`] gives it.
     pub flux: f32,
 }
 
@@ -43,16 +39,6 @@ impl Sighted {
             range: range as f32,
             flux,
         }
-    }
-
-    /// Returns a galaxy whose centre lies `offset` metres from the camera, or nothing when the
-    /// camera is inside it.
-    pub fn galaxy(galaxy: &GalaxySpec, offset: DVec3) -> Option<Self> {
-        Some(Self {
-            speck: galaxy_speck(galaxy, offset)?,
-            range: (offset.length() / GLY) as f32,
-            flux: EXTENDED,
-        })
     }
 }
 

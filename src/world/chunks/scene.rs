@@ -27,6 +27,18 @@ impl Scene<'_, '_> {
         self.focus.planet()
     }
 
+    /// Returns the margin in metres the fades are written with at this focus: wider than the
+    /// farthest node of the planet can be from it, see [`super::dither::span`].
+    pub fn span(&self) -> f32 {
+        match (self.at(), self.terrain.as_ref()) {
+            (Some(at), Some(terrain)) => {
+                let radius = terrain.globe().radius();
+                super::dither::span(at.length() - radius, radius)
+            }
+            _ => super::dither::SPAN,
+        }
+    }
+
     /// Returns the seconds the last frame took.
     pub fn delta(&self) -> f64 {
         self.time.as_ref().map_or(0.0, |time| time.delta_secs_f64())

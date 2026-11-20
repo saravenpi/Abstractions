@@ -217,3 +217,12 @@ pub const DIP_SPEED: (f32, f32) = (0.3, 2.5);
 
 /// Spring rate of the body pitching along its way through the water, per second.
 pub const DIP_RATE: f32 = 4.0;
+
+/// How far a fully crouched body sinks its pelvis, in meters.
+pub const SQUAT: f32 = 0.36;
+
+/// Forward lean of the whole body and bend of the torso over the pelvis when fully crouched, in radians.
+pub const HUNCH: (f32, f32) = (0.35, 0.3);
+
+/// Share of the step height and reach a fully crouched stride keeps: the steps are short.
+pub const SHORT_STEP: f32 = 0.6;

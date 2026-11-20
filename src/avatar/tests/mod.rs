@@ -4,6 +4,7 @@ mod app;
 mod blending;
 mod bodies;
 mod body;
+mod crouching;
 mod diving;
 mod dressing;
 mod dust;
@@ -57,6 +58,7 @@ pub fn scene(mode: Mode, k: f32) -> AvatarPose {
         gain: 8.0 * (0.5 - k),
         turn: 3.0 * (0.5 - k),
         clearance: 40.0 * k,
+        crouch: 0.0,
         prone: 1.0,
         load: 1.0,
     }

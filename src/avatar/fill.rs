@@ -96,6 +96,7 @@ pub fn observe(
     memory.vertical = motion.velocity.y;
     pose.mode = if landing { Mode::Land } else { mode };
     pose.speed = speed;
+    pose.crouch = motion.crouch;
     pose.vertical_speed = motion.velocity.y;
     pose.airspeed = motion.velocity.length();
     if standing {

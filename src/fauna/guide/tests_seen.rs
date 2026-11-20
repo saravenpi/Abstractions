@@ -1,5 +1,5 @@
 //! Tests of seen marking: plants count as seen on the planet, a creature within 40 m of the
-//! robot marks its species, and one farther away does not.
+//! robot marks its species, one farther away does not, and the seen species survive a save.
 
 use std::sync::Arc;
 
@@ -7,10 +7,11 @@ use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 
 use super::rig::web;
-use super::seen::{SIGHT, Seen, sight, sighted};
+use super::seen::{SIGHT, Seen, sight, sighted, store};
 use crate::fauna::Creature;
 use crate::life::Guild;
 use crate::player::Player;
+use crate::saves::{ActiveWorld, WorldEntry, WorldSave};
 use crate::universe::{EARTH_RADIUS, STANDARD_GRAVITY};
 use crate::world::globe::Chart;
 use crate::world::{Globe, Terrain};
@@ -78,4 +79,31 @@ fn a_near_creature_is_marked_seen() {
     let seen = app.world().resource::<Seen>();
     assert!(seen.has(animals[0].id) && !seen.has(animals[1].id));
     assert_eq!(seen.count(&life), life.species.len() - animals.len() + 1);
+}
+
+/// The seen species go into the world file through toml and come back out as the same set.
+#[test]
+fn seen_species_survive_a_save_round_trip() {
+    let life = web();
+    let ids: Vec<_> = life.species.iter().map(|s| s.id).take(3).collect();
+    let mut app = App::new();
+    app.insert_resource(Seen::default())
+        .insert_resource(ActiveWorld(WorldEntry {
+            id: "seen".to_string(),
+            save: WorldSave::default(),
+        }));
+    for id in ids.iter().rev() {
+        app.world_mut().resource_mut::<Seen>().mark(*id);
+    }
+    app.world_mut().run_system_once(store).expect("store runs");
+    let text = toml::to_string(&app.world().resource::<ActiveWorld>().0.save).unwrap();
+    let save: WorldSave = toml::from_str(&text).unwrap();
+    let mut sorted = ids.clone();
+    sorted.sort();
+    assert_eq!(save.seen, sorted);
+    let mut restored = Seen::default();
+    for id in &save.seen {
+        restored.mark(*id);
+    }
+    assert_eq!(&restored, app.world().resource::<Seen>());
 }

@@ -1,10 +1,12 @@
 //! The records of life: tissues, roles, tolerances, life histories, species and the life of a planet.
 
+use serde::{Deserialize, Serialize};
+
 use super::body::Body;
 use super::kinds::{Activity, Chemistry, Glow, Guild, Habitat, Plan, Relation, Rung};
 
 /// Stable identity of a species: the seed of its planet and its index there.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct SpeciesId {
     /// Terrain seed of the planet.
     pub planet: u64,

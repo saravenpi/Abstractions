@@ -5,6 +5,7 @@ use bevy::math::DVec3;
 use serde::{Deserialize, Serialize};
 
 use crate::computer::Atlas;
+use crate::life::SpeciesId;
 use crate::render::DayClock;
 use crate::sim::Changes;
 use crate::universe::BodyId;
@@ -104,6 +105,9 @@ pub struct WorldSave {
     /// The gear a destroyed robot left where it fell, if it is still there.
     #[serde(default)]
     pub cache: Option<crate::craft::fall::Cache>,
+    /// The species the player has seen in this world. A file from before the field guide has none.
+    #[serde(default)]
+    pub seen: Vec<SpeciesId>,
 }
 
 /// The ground uncovered on one body: runs of the leaves of its quadtree on the cube-sphere.

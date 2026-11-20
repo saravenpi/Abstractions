@@ -73,11 +73,12 @@ pub(crate) fn plugin(app: &mut App) {
     app.init_state::<Guide>()
         .init_resource::<Seen>()
         .init_resource::<open::Shelf>()
-        .add_systems(OnExit(crate::screens::Screen::Gameplay), seen::forget)
         .add_systems(
             Update,
             (
+                seen::load,
                 seen::sight.run_if(on_foot.and_then(look)),
+                seen::store,
                 crate::screens::playing
                     .pipe(open::toggle)
                     .run_if(in_state(crate::screens::Screen::Gameplay).or_else(shown)),

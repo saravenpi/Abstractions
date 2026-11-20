@@ -13,6 +13,7 @@ mod eyes;
 mod flight;
 mod ground;
 mod intent;
+mod jet;
 mod keys;
 mod lead;
 mod sea;

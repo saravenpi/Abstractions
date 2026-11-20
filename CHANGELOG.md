@@ -16,6 +16,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Herds within 300 m show on the compass and the minimap with a small animal mark and their distance, labelled "Herd" until the field guide has their species, then by its name. The nearest three show, one for herds that keep together.
 - Animals that glow light up at night in their own colour.
 - Animals leave signs and make calls. Within 60 m you find the footprints of herds that passed in the last four minutes, spaced wider where they ran, droppings and cropped patches where they grazed, nests and burrows near their homes, and bones where a kill was eaten. Herds call now and then, lower for bigger animals, call the alarm when they flee, and hunters cry as they give chase. Every player finds the same tracks and hears the same calls.
+- Hold the run key in the water to jet with the boots: underwater the robot dives, climbs and turns where you look, and at the surface it skims along the water. The boots push with the same power as in the air, through the planet's own liquid: about 8 m/s in water, slower in molten rock, nothing in a frozen sea.
 
 ### Changed
 

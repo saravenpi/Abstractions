@@ -9,7 +9,7 @@
 
 mod attack;
 mod beast;
-mod bleed;
+pub mod bleed;
 mod fade;
 mod gate;
 mod glow;

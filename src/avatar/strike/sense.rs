@@ -11,7 +11,7 @@ use super::outcome::{Contact, Outcome, after, classify, rebound};
 use super::path::Path;
 use super::tune::KICK;
 use crate::craft::build::{Blow, Mode, blow, reference, strike as through};
-use crate::fauna::beast::Beast;
+use crate::fauna::Beast;
 use crate::fauna::bleed::{refused, stiffness};
 use crate::fauna::{Live, Part};
 use crate::world::Terrain;

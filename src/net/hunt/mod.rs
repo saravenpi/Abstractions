@@ -31,6 +31,7 @@ pub use hooks::Echoes;
 
 use super::link::{FromServer, Link, Receive};
 use crate::avatar::strike::{Hit, Spear};
+use crate::fauna::Herds;
 use crate::space::Location;
 use crate::world::Terrain;
 
@@ -82,7 +83,9 @@ fn waiting(hunted: Res<Hunted>) -> bool {
 pub fn plugin(app: &mut App) {
     let linked = resource_exists::<Link>;
     let look = || on_timer(Duration::from_secs_f32(LOOK_EVERY));
-    let ready = resource_exists::<Terrain>.and_then(resource_exists::<Location>);
+    let ready = resource_exists::<Terrain>
+        .and_then(resource_exists::<Location>)
+        .and_then(resource_exists::<Herds>);
     app.add_message::<Hit>()
         .init_resource::<Hunted>()
         .init_resource::<Echoes>()
@@ -92,23 +95,30 @@ pub fn plugin(app: &mut App) {
                 reset.run_if(resource_added::<Link>),
                 take::receive
                     .after(Receive)
+                    .run_if(linked)
                     .run_if(on_message::<FromServer>),
                 (take::apply.run_if(waiting), take::plant.run_if(waiting))
                     .chain()
+                    .run_if(linked)
                     .run_if(look())
                     .run_if(ready),
                 take::dress
+                    .run_if(linked)
                     .run_if(look())
                     .run_if(resource_exists::<Terrain>),
-                blows::hits.run_if(on_message::<Hit>),
-                blows::breaks.run_if(watching),
-                (ledger::kills, ledger::carves).run_if(look()),
-                spears::sticks.run_if(any_with_component::<Spear>),
-                spears::pulls,
-                held::holds,
+                blows::hits.run_if(linked).run_if(on_message::<Hit>),
+                blows::breaks.run_if(linked).run_if(watching),
+                (ledger::kills, ledger::carves)
+                    .run_if(linked)
+                    .run_if(resource_exists::<Herds>)
+                    .run_if(look()),
+                spears::sticks
+                    .run_if(linked)
+                    .run_if(any_with_component::<Spear>),
+                spears::pulls.run_if(linked),
+                held::holds.run_if(linked),
             )
-                .chain()
-                .run_if(linked),
+                .chain(),
         );
 }
 

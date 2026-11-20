@@ -1,6 +1,7 @@
 //! The water a source churns: spray and bubbles in a pool of flecks, wakes and ripple rings in one
 //! pooled mesh of foam, each thrown from the wash, the speed and the jet of the source.
 
+mod arms;
 mod churn;
 mod drops;
 mod foam;
@@ -10,6 +11,7 @@ mod tests_cost;
 #[cfg(test)]
 mod tests_spray;
 mod throw;
+mod trail;
 mod tune;
 mod wash;
 
@@ -39,6 +41,7 @@ fn has_sea(terrain: Option<Res<Terrain>>) -> bool {
 pub(super) fn plugin(app: &mut App) {
     embedded_asset!(app, "foam.wesl");
     app.init_resource::<drops::Drops>()
+        .init_resource::<crate::world::wake::Wakes>()
         .init_resource::<foam::Foam>()
         .add_plugins(MaterialPlugin::<material::FoamMaterial>::default())
         .add_systems(OnEnter(Screen::Gameplay), (drops::spawn, foam::spawn))

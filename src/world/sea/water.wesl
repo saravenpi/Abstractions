@@ -7,6 +7,7 @@ import bevy_pbr::render::pbr_functions::{apply_pbr_lighting, calculate_view};
 @if(DEPTH_PREPASS)
 import bevy_pbr::prepass::utils::prepass_depth;
 import package::render::daylight::{Place, relit, height_at, sky_gain};
+import package::world::sea::wake::field::{SeaWakes, wake_bit};
 
 struct Water {
     zenith: vec4<f32>,
@@ -28,6 +29,7 @@ struct Water {
     foam: vec4<f32>,
     far: vec4<f32>,
     blend: vec4<f32>,
+    wake: SeaWakes,
 }
 
 struct SeaVertex {
@@ -42,6 +44,7 @@ struct SeaVertex {
 @group(constants::MATERIAL_BIND_GROUP) @binding(3) var<uniform> place: Place;
 
 const GRAVITY: f32 = 9.81;
+const WAKE_CELL: f32 = 2.0;
 const FADE_START: f32 = 48.0;
 const FADE_END: f32 = 90.0;
 const DEEP: f32 = 12.0;
@@ -155,6 +158,20 @@ fn waves(p: vec2<f32>, t: f32) -> vec3<f32> {
         + wave_term(water.wave_b, p, t, 1.7)
         + wave_term(water.wave_c, p, t, 3.1)
         + wave_term(water.wave_d, p, t, 4.9);
+}
+
+fn wake_sample(p: vec2<f32>, t: f32, foot: f32) -> vec3<f32> {
+    var sum = vec3<f32>(0.0);
+    let live = u32(water.wake.count.x);
+    for (var i = 0u; i < live; i++) {
+        let row = water.wake.rows[4u * i];
+        let rel = p - row.xy;
+        let side = vec2<f32>(-row.w, row.z);
+        let at = vec2<f32>(dot(rel, row.zw), dot(rel, side));
+        let bit = wake_bit(water.wake.rows[4u * i + 1u], water.wake.rows[4u * i + 2u], water.wake.rows[4u * i + 3u], at, t, foot);
+        sum += vec3<f32>(bit.x, row.zw * bit.y + side * bit.z);
+    }
+    return sum;
 }
 
 fn keep(k: f32, foot: f32) -> f32 {
@@ -298,7 +315,8 @@ fn vertex(vertex_no_morph: Vertex) -> SeaVertex {
     let calm = mix(1.0, smoothstep(0.0, SHOAL_DEPTH, bed.x) * (1.0 - bed.y), floor_valid(p));
     let still = lift(p, radius);
     let outward = normalize(still + vec3<f32>(0.0, radius, 0.0));
-    let local = still + outward * (waves(p, water.params.x).x * fade * calm);
+    let rise = waves(p, water.params.x).x + wake_sample(p, water.params.x, WAKE_CELL).x;
+    let local = still + outward * (rise * fade * calm);
     let world = mesh_functions::mesh_position_local_to_world(world_from_local, vec4<f32>(local, 1.0));
     out.world_position = world;
     out.position = position_world_to_clip(world.xyz);
@@ -326,7 +344,9 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
     let foot = max(length(dpdx(p)), length(dpdy(p)));
     let fine = detail * (1.0 - smoothstep(SPARK_START, SPARK_END, foot));
     let still = 1.0 - POND_CALM * bed.z;
-    let slope = surface_slope((cell + vec2<f32>(0.5, 0.5)) / DETAIL_CELLS, t, wind, foot) * detail * still;
+    let spot = (cell + vec2<f32>(0.5, 0.5)) / DETAIL_CELLS;
+    let stir = wake_sample(spot, t, foot).yz * SLOPE_GAIN;
+    let slope = (surface_slope(spot, t, wind, foot) + stir) * detail * still;
     var n = normalize(up - east * slope.x - south * slope.y);
     let rise = dot(v, up);
     let below = rise < 0.0;

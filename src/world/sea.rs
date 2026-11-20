@@ -14,6 +14,7 @@ mod order;
 mod seat;
 mod swell;
 mod uniform;
+pub mod wake;
 mod waves;
 
 #[cfg(test)]
@@ -45,6 +46,7 @@ use self::floor::SeaFloor;
 use self::material::WaterMaterial;
 use self::seat::Seat;
 use self::uniform::{FogLook, WaterUniform};
+use self::wake::{SeaWakes, Wakes};
 use super::focus::Focus;
 use super::{Planet, SEA_LEVEL};
 use crate::render::{GameCamera, Murk, Palette, PlaceLit};
@@ -62,6 +64,7 @@ pub struct SeaInputs<'w, 's> {
     palette: Res<'w, Palette>,
     wind: Res<'w, Wind>,
     time: Res<'w, Time>,
+    wakes: Option<Res<'w, Wakes>>,
     fog: Query<'w, 's, (&'static DistanceFog, Option<&'static Murk>), With<GameCamera>>,
 }
 
@@ -77,6 +80,17 @@ impl SeaInputs<'_, '_> {
         }
         let wind = follow::wind_in_seat(&self.wind, pose);
         WaterUniform::new(&self.palette, &wind, self.time.elapsed_secs(), &fog)
+    }
+}
+
+impl SeaInputs<'_, '_> {
+    /// Returns the live wakes in the sea coordinates of `seat`, none when nothing stirs the sea.
+    fn stirred(&self, seat: &Seat) -> SeaWakes {
+        let now = self.time.elapsed_secs();
+        match self.wakes.as_deref() {
+            Some(wakes) if wakes.stirred(now) => SeaWakes::pack(wakes, now, |at| seat.coords(at)),
+            _ => SeaWakes::default(),
+        }
     }
 }
 
@@ -120,7 +134,7 @@ pub fn spawn_sea(
 /// the focus, before the planet-fixed poses are written so that a new seat is placed at once,
 /// and hands the sea the light of the planet once the camera is tracked.
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins(material::plugin)
+    app.add_plugins((material::plugin, wake::plugin))
         .add_systems(Update, follow::refresh.before(super::chunks::place))
         .add_systems(Update, ember::kindle)
         .add_systems(

@@ -16,6 +16,9 @@ const COOL_EDGE: f32 = 0.45;
 /// Linear colour of the crust that floats where water would carry foam.
 const CRUST: Vec3 = Vec3::new(0.05, 0.04, 0.04);
 
+/// Density in kilograms per cubic metre of molten rock.
+const MOLTEN_DENSITY: f32 = 2700.0;
+
 /// What the water shader needs to know about the liquid it draws.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Liquid {
@@ -31,6 +34,8 @@ pub struct Liquid {
     pub mirror: f32,
     /// Least opacity of the surface, 0 for clear water and 1 for a liquid nothing shows through.
     pub cover: f32,
+    /// Density in kilograms per cubic metre, which sets how high its waves rise under a push.
+    pub density: f32,
     /// False on a planet without a sea, where no liquid surface is drawn at all.
     pub shown: bool,
 }
@@ -44,6 +49,7 @@ impl Liquid {
         glow: 0.0,
         mirror: 1.0,
         cover: 0.0,
+        density: 1000.0,
         shown: true,
     };
 
@@ -67,6 +73,7 @@ impl Liquid {
             glow: look.glow,
             mirror: [1.0, DULL][usize::from(molten)],
             cover: [0.5, 1.0][usize::from(molten)],
+            density: [1000.0, MOLTEN_DENSITY][usize::from(molten)],
             ..water
         }
     }

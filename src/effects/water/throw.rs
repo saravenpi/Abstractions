@@ -4,12 +4,14 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::super::rng::Rng;
+use super::arms::{Pass, quads};
 use super::drops::{Drop, Drops};
 use super::foam::{Foam, Quad, lay, sectors};
 use super::tune::{
-    DROP_LIFE, FOAM_LIFE, FOAM_LIFT, RING_PIECES, RIPPLE_BAND, SPRAY_CARRY, SPRAY_KICK, WAKE_STEP,
+    DROP_LIFE, FOAM_LIFE, FOAM_LIFT, RING_PIECES, RIPPLE_BAND, SPRAY_CARRY, SPRAY_KICK, WAKE_BREAK,
+    WAKE_STEP,
 };
-use super::wash::{Flow, kelvin_spread};
+use super::wash::Flow;
 use crate::space::Anchor;
 
 /// One source on this frame, in render space.
@@ -45,6 +47,8 @@ pub struct Mark {
     pub at: DVec3,
     /// Unit direction across the wake there.
     pub side: Vec3,
+    /// Unit local up there.
+    pub up: Vec3,
     /// Foam clock when it was laid.
     pub birth: f32,
 }
@@ -115,8 +119,9 @@ impl Hand<'_, '_, '_> {
     }
 }
 
-/// Lays the next segment of the wake of `spot` once it travelled [`WAKE_STEP`] past `mark`, or
-/// starts a new wake when there is none or it broke off. Returns the mark to keep.
+/// Lays the next segment of the wake of `spot`, three quads of foam, once it travelled
+/// [`WAKE_STEP`] past `mark`, or starts a new wake when there is none or it broke off. Returns
+/// the mark to keep.
 pub fn wake(
     (meshes, foam, origin): (&mut Assets<Mesh>, &mut Foam, Vec3),
     anchor: &Anchor,
@@ -128,6 +133,7 @@ pub fn wake(
     let fresh = Mark {
         at: anchor.to_frame(here),
         side,
+        up: spot.up,
         birth: spot.now,
     };
     let Some(last) = mark else {
@@ -135,21 +141,16 @@ pub fn wake(
     };
     let from = anchor.to_render(last.at);
     let gap = from.distance(here);
-    if gap > 3.0 * WAKE_STEP {
+    if gap > WAKE_BREAK {
         return Some(fresh);
     }
     if gap < WAKE_STEP {
         return mark;
     }
-    let speed = spot.velocity.length();
-    let quad = Quad {
-        ends: [from - origin, here - origin],
-        dirs: [last.side, side],
-        shape: Vec4::new(0.0, 0.0, 0.5 * spot.size, kelvin_spread(speed)),
-        births: [last.birth, spot.now],
-        fade: Vec2::new(strength, FOAM_LIFE),
-    };
-    lay(meshes, foam, &quad);
+    let ends = [from - origin, here - origin];
+    for quad in quads(ends, [&last, &fresh], &Pass::of(spot, strength)) {
+        lay(meshes, foam, &quad);
+    }
     Some(fresh)
 }
 

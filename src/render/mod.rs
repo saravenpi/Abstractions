@@ -89,7 +89,7 @@ pub use heat::{
     Craft, Gas, Glow, Heat, MIN_SPEED, SHEATH_FROM, SHEATH_REACH, SheathMaterial, SheathUniform,
     descent, entry,
 };
-pub use lighting::{Moon, Sun};
+pub use lighting::{Moon, Sun, reach};
 pub use lowres::{Fit, LowRes, window_changed};
 pub use murk::{Murk, Swell, Waterline, murk};
 pub use observer::Observer;

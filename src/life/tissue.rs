@@ -17,19 +17,23 @@ pub(super) mod tests;
 /// Child of the species seed the tissue draws come from.
 const STREAM: u64 = 0x54_49_53;
 
+/// Home values of each tissue kind, in [`TissueKind`] order, for carbon life in water: hardness,
+/// toughness, density, elasticity, heat and conductivity, as in [`Tissue`].
+pub const HOME: [[f32; 6]; 8] = [
+    [5.0, 0.6, 1900.0, 0.2, 400.0, 0.2],
+    [1.5, 0.7, 1100.0, 0.6, 350.0, 0.1],
+    [4.0, 0.4, 2300.0, 0.1, 450.0, 0.2],
+    [0.2, 0.2, 1050.0, 0.9, 330.0, 0.5],
+    [7.0, 0.15, 2600.0, 0.05, 1500.0, 0.3],
+    [2.0, 0.8, 900.0, 0.5, 380.0, 0.1],
+    [2.5, 0.3, 1200.0, 0.3, 420.0, 0.05],
+    [0.5, 0.3, 1050.0, 0.7, 330.0, 0.3],
+];
+
 /// Returns the physics of `kind` under `chemistry`: hardness, toughness, density, elasticity, heat and
 /// conductivity, from the home values shifted by the structure and the solvent.
 fn physics(kind: TissueKind, chemistry: &Chemistry) -> [f32; 6] {
-    let [h, t, d, e, heat, c] = match kind {
-        TissueKind::Bone => [5.0, 0.6, 1900.0, 0.2, 400.0, 0.2],
-        TissueKind::Hide => [1.5, 0.7, 1100.0, 0.6, 350.0, 0.1],
-        TissueKind::Shell => [4.0, 0.4, 2300.0, 0.1, 450.0, 0.2],
-        TissueKind::Gel => [0.2, 0.2, 1050.0, 0.9, 330.0, 0.5],
-        TissueKind::Crystal => [7.0, 0.15, 2600.0, 0.05, 1500.0, 0.3],
-        TissueKind::Fibre => [2.0, 0.8, 900.0, 0.5, 380.0, 0.1],
-        TissueKind::Resin => [2.5, 0.3, 1200.0, 0.3, 420.0, 0.05],
-        TissueKind::Gland => [0.5, 0.3, 1050.0, 0.7, 330.0, 0.3],
-    };
+    let [h, t, d, e, heat, c] = HOME[kind as usize];
     let [h, t, d, heat, c] = match chemistry.structure {
         Structure::Carbon => [h, t, d, heat, c],
         Structure::Silica => [h + 2.0, t * 0.6, d, heat + 800.0, c],

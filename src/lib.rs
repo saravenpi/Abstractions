@@ -5,6 +5,7 @@ pub mod avatar;
 pub mod climate;
 pub mod companion;
 pub mod computer;
+pub mod craft;
 pub mod effects;
 pub mod fauna;
 pub mod gear;
@@ -82,6 +83,7 @@ fn later_modules(app: &mut App) {
         update::plugin,
         net::plugin,
         net::driver::plugin,
+        craft::plugin,
     ))
     .add_plugins(map::plugin)
     .insert_resource(view::Enabled(true));

@@ -25,6 +25,8 @@ mod body_tests;
 #[cfg(test)]
 mod cells_tests;
 #[cfg(test)]
+mod far_tests;
+#[cfg(test)]
 mod field_tests;
 #[cfg(test)]
 mod hunt_tests;

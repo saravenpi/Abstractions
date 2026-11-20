@@ -27,7 +27,6 @@ use self::march::{Source, bake};
 use self::tune::MIN_GAP;
 use super::vantage::{LocalSystem, Vantage};
 use crate::screens::Screen;
-use crate::space::UniPos;
 use crate::universe::{GLY, GalaxyId, GalaxySpec, Glow, Universe};
 
 /// Galaxy grid cells searched for galaxies around the camera's own.
@@ -103,7 +102,7 @@ pub fn plan(universe: &Universe, galaxy: GalaxyId, at: DVec3) -> (Vec<Source>, f
         return (Vec::new(), INSIDE);
     };
     let source = |spec: &GalaxySpec| {
-        let offset = UniPos::new(spec.id.0, spec.center) - here;
+        let offset = spec.locate(DVec3::ZERO) - here;
         Source {
             glow: Glow::of(spec),
             offset,

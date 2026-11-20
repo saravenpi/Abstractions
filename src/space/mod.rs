@@ -12,13 +12,15 @@ mod rebase;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_far;
 
 pub use anchor::{Anchor, Frame};
 pub use clock::{Clock, ClockStep};
 pub use frame::{FrameSet, on_foot};
 pub use gravity::local_gravity;
 pub use local::{altitude, up};
-pub use pos::UniPos;
+pub use pos::{SECTORS_PER_CELL, UniPos};
 pub use rebase::{Shift, rebase_limit, rebased};
 
 use bevy::math::{DQuat, DVec3};

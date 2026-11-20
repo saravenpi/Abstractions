@@ -20,6 +20,8 @@ mod start;
 mod store;
 #[cfg(test)]
 mod store_tests;
+#[cfg(test)]
+mod tests_far;
 mod writer;
 
 pub use autosave::{SaveSet, SavedFlash};

@@ -72,13 +72,16 @@ impl Universe {
     /// Returns where a star is in the universe, or nothing when the star does not exist.
     pub fn star_position(&self, id: StarId) -> Option<UniPos> {
         let star = self.star(id)?;
-        Some(self.galaxy(id.galaxy)?.locate(star.pos))
+        let sector = self.galaxy(id.galaxy)?.center_sector + id.sector;
+        Some(UniPos::sectors(id.galaxy.0, sector, star.local))
     }
 }
 
 impl super::GalaxySpec {
     /// Returns the universe position of a point `pos` metres from the centre of this galaxy.
+    ///
+    /// The centre is a whole sector, so the result is exact up to the 64-bit step of `pos`.
     pub fn locate(&self, pos: DVec3) -> UniPos {
-        UniPos::new(self.id.0, self.center + pos)
+        UniPos::sectors(self.id.0, self.center_sector, DVec3::ZERO) + pos
     }
 }

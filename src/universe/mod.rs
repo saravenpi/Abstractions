@@ -73,7 +73,6 @@ pub use system::{ORBIT, PLANETS};
 pub use units::{
     AU, EARTH_RADIUS, STANDARD_GRAVITY, STARLIGHT, SUN_MASS, SUN_RADIUS, SUN_TEMPERATURE, YEAR,
 };
-pub use units::{EARTH_RADIUS as HOME_RADIUS, STANDARD_GRAVITY as HOME_GRAVITY};
 
 use bevy::math::IVec3;
 use bevy::prelude::Resource;

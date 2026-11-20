@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use super::biome::Biome;
 use super::globe::{Chart, Globe, Grain};
 use super::surface::Surface;
-use crate::universe::{HOME_GRAVITY, HOME_RADIUS};
+use crate::universe::Universe;
 
 mod coarse;
 mod ponds;
@@ -29,9 +29,11 @@ pub struct Terrain {
 }
 
 impl Terrain {
-    /// Builds the legacy flat terrain for a seed. The same seed always gives the same world.
+    /// Builds the flat terrain of the home planet of the universe of `seed`, the globe the game
+    /// builds for it. The same seed always gives the same world.
     pub fn new(seed: u64) -> Self {
-        let globe = Globe::new(seed, HOME_RADIUS, HOME_GRAVITY);
+        let universe = Universe::new(seed);
+        let globe = Globe::of(&universe.planet(universe.home()));
         Self::on(Arc::new(globe), Chart::Flat)
     }
 

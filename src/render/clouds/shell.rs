@@ -1,18 +1,21 @@
 //! The mesh of the cloud shell: a cube sphere cut into tiles, of which only the tiles the camera
-//! can see are built. Its cells are small enough that no point of the mesh lies more than
-//! [`TOLERANCE`] metres from the true sphere, whatever the size of the planet.
+//! can see are built. Its cells are small enough that no point of the mesh lies more than a
+//! stated tolerance in metres from the true sphere, whatever the size of the planet. The
+//! tolerance grows with the distance of the camera from the shell, see [`super::mesh`].
 
-use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, SQRT_2};
+mod tile;
+
+use std::f32::consts::{FRAC_PI_2, SQRT_2};
 
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 
-/// Most metres any point of the shell mesh lies from the true sphere of the shell.
-pub const TOLERANCE: f32 = 50.0;
+use self::tile::{FACES, TILE, corner, push};
 
-/// Cells along one side of a tile.
-const TILE: u32 = 8;
+/// Most metres any point of the shell mesh lies from the true sphere of the shell when the
+/// camera is close to it: the finest the mesh is ever built.
+pub const TOLERANCE: f32 = 50.0;
 
 /// Radians added round the cap the camera sees, so a camera that moves does not rebuild the
 /// mesh every frame.
@@ -20,17 +23,6 @@ pub(super) const MARGIN: f32 = 0.03;
 
 /// How many times wider than what the camera sees a new cap is built.
 pub(super) const GROWTH: f32 = 1.5;
-
-/// For each face of the cube, the axis it looks along, the axis its columns run along and the
-/// axis its rows run along.
-const FACES: [[Vec3; 3]; 6] = [
-    [Vec3::X, Vec3::NEG_Z, Vec3::NEG_Y],
-    [Vec3::NEG_X, Vec3::Z, Vec3::NEG_Y],
-    [Vec3::Y, Vec3::X, Vec3::Z],
-    [Vec3::NEG_Y, Vec3::X, Vec3::NEG_Z],
-    [Vec3::Z, Vec3::X, Vec3::NEG_Y],
-    [Vec3::NEG_Z, Vec3::NEG_X, Vec3::NEG_Y],
-];
 
 /// The part of the sphere a mesh covers: every direction within `half` radians of `centre`.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -57,12 +49,18 @@ pub fn error(radius: f32, cells: u32) -> f32 {
 }
 
 /// Returns the cells per face side the shell of a sphere of `radius` metres is built with: the
-/// fewest, in whole tiles, that keep it within [`TOLERANCE`].
-pub fn cells(radius: f32) -> u32 {
+/// fewest, in whole tiles, that keep it within `tolerance` metres.
+pub fn cells_within(radius: f32, tolerance: f32) -> u32 {
     (1..)
         .map(|tiles| tiles * TILE)
-        .find(|cells| error(radius, *cells) < TOLERANCE)
+        .find(|cells| error(radius, *cells) < tolerance)
         .unwrap_or(TILE)
+}
+
+/// Returns the cells per face side the shell of `radius` metres has at the finest tolerance.
+#[cfg(test)]
+pub fn cells(radius: f32) -> u32 {
+    cells_within(radius, TOLERANCE)
 }
 
 /// Returns the angle in radians from the point under a camera `altitude` metres above a planet
@@ -73,41 +71,11 @@ pub fn reach(ground: f32, altitude: f32, shell: f32) -> f32 {
     angle(ground, ground + altitude.max(0.0)) + angle(ground, shell)
 }
 
-/// Returns the unit direction at corner `column`, `row` of a face of `cells` cells per side.
-fn corner(face: usize, column: u32, row: u32, cells: u32) -> Vec3 {
-    let [major, along, down] = FACES[face];
-    let slope = |at: u32| (FRAC_PI_4 * (2.0 * at as f32 / cells as f32 - 1.0)).tan();
-    (major + along * slope(column) + down * slope(row)).normalize()
-}
-
-/// Pushes the vertices and the triangles of tile `tile` of `face` onto `vertices` and `indices`.
-fn push(
-    (face, tile, cells): (usize, [u32; 2], u32),
-    vertices: &mut Vec<[f32; 3]>,
-    indices: &mut Vec<u32>,
-) {
-    let first = vertices.len() as u32;
-    let side = TILE + 1;
-    let lifted = 1.0 + lift(cells);
-    for row in 0..side {
-        for column in 0..side {
-            let at = corner(face, tile[0] * TILE + column, tile[1] * TILE + row, cells);
-            vertices.push((at * lifted).to_array());
-        }
-    }
-    for row in 0..TILE {
-        for column in 0..TILE {
-            let a = first + row * side + column;
-            let (b, c, d) = (a + 1, a + side, a + side + 1);
-            indices.extend([a, b, c, b, d, c]);
-        }
-    }
-}
-
-/// Builds the mesh of the unit sphere over `cap`, turned to the true sphere of `radius` metres
-/// by scaling it by `radius`. It carries the unit direction of every vertex as its normal.
-pub fn build(radius: f32, cap: Cap) -> Mesh {
-    let cells = cells(radius);
+/// Builds the mesh of the unit sphere over `cap`, no point of it more than `tolerance` metres
+/// from the true sphere of `radius` metres, which it is turned to by scaling it by `radius`.
+/// It carries the unit direction of every vertex as its normal, and stays in the render world.
+pub fn build_within(radius: f32, cap: Cap, tolerance: f32) -> Mesh {
+    let cells = cells_within(radius, tolerance);
     let tiles = cells / TILE;
     let limit = cap.half + 0.75 * TILE as f32 * FRAC_PI_2 / cells as f32;
     let (mut vertices, mut indices) = (Vec::new(), Vec::new());
@@ -125,9 +93,15 @@ pub fn build(radius: f32, cap: Cap) -> Mesh {
         .collect();
     Mesh::new(
         PrimitiveTopology::TriangleList,
-        RenderAssetUsages::default(),
+        RenderAssetUsages::RENDER_WORLD,
     )
     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
     .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
     .with_inserted_indices(Indices::U32(indices))
+}
+
+/// Builds the mesh of the unit sphere over `cap` at the finest tolerance.
+#[cfg(test)]
+pub fn build(radius: f32, cap: Cap) -> Mesh {
+    build_within(radius, cap, TOLERANCE)
 }

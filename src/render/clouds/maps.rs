@@ -3,7 +3,7 @@
 //! frame, and dropped when nobody asks any more.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use bevy::asset::RenderAssetUsages;
 use bevy::ecs::system::SystemParam;
@@ -16,22 +16,55 @@ use bevy::tasks::{
     AsyncComputeTaskPool, Task, TaskPool, block_on, futures_lite::future::poll_once,
 };
 
-use super::map::{CHANNELS, CoverMap, budget};
+use super::map::{CHANNELS, CoverMap, Slab, budget, slab};
 use crate::render::vantage::Scene;
-use crate::universe::{BodyId, PlanetSpec, Universe};
-use crate::weather::{FACE, Field, TEXELS, texel, wet};
+use crate::universe::{BodyId, Universe};
+use crate::weather::{FACE, Field, TEXELS};
 use crate::world::{Globe, Planet};
 
 /// Frames a map is kept after it was last asked for: its readers run in no fixed order
 /// against the keeper, so one frame without a request is not yet nobody asking.
 const GRACE: u8 = 3;
 
+/// Faces of the cube grid of a cover map, each built by a task of its own.
+const FACES: usize = 6;
+
+/// A map being built off the main thread, one task per face of the grid.
+struct Build {
+    /// The cloud field the map is built from.
+    field: Field,
+    /// Universe time the map is built for.
+    seconds: f64,
+    /// The faces still being worked out, with their number.
+    tasks: Vec<(usize, Task<Slab>)>,
+    /// The faces that are done, with their number.
+    slabs: Vec<(usize, Slab)>,
+}
+
+impl Build {
+    /// Takes the faces that finished, and returns the map once all of them have.
+    fn poll(&mut self) -> Option<CoverMap> {
+        for (face, mut task) in std::mem::take(&mut self.tasks) {
+            match block_on(poll_once(&mut task)) {
+                Some(slab) => self.slabs.push((face, slab)),
+                None => self.tasks.push((face, task)),
+            }
+        }
+        if !self.tasks.is_empty() {
+            return None;
+        }
+        self.slabs.sort_by_key(|(face, _)| *face);
+        let slabs = self.slabs.drain(..).map(|(_, slab)| slab).collect();
+        Some(CoverMap::from_slabs(self.field, self.seconds, slabs))
+    }
+}
+
 /// How far a map has got.
 enum Stage {
     /// Asked for, not started.
     Asked,
-    /// Being built off the main thread.
-    Building(Task<CoverMap>),
+    /// Being built off the main thread, for the first time or again after a jump in time.
+    Building(Build),
     /// Built and following universe time.
     Ready(CoverMap),
 }
@@ -42,6 +75,9 @@ struct Kept {
     image: Handle<Image>,
     /// How far the map has got.
     stage: Stage,
+    /// Whether the texture has held the cover once: it keeps showing it while the map is built
+    /// again after a jump in time.
+    shown: bool,
     /// Frames since it was last asked for.
     idle: u8,
 }
@@ -57,10 +93,11 @@ impl CloudMaps {
         let kept = self.0.entry(id).or_insert_with(|| Kept {
             image: Handle::default(),
             stage: Stage::Asked,
+            shown: false,
             idle: 0,
         });
         kept.idle = 0;
-        matches!(kept.stage, Stage::Ready(_)).then(|| kept.image.clone())
+        kept.shown.then(|| kept.image.clone())
     }
 }
 
@@ -86,18 +123,6 @@ fn blank() -> Image {
     image
 }
 
-/// Builds the cover map of `spec` at `seconds` with the snapshot after it ready: the wetness
-/// of the ground under every texel, read from `globe` or from a globe of its own, then the
-/// field. It reads only its arguments and is safe on any thread.
-fn build(spec: &PlanetSpec, globe: Option<Arc<Globe>>, field: Field, seconds: f64) -> CoverMap {
-    let globe = globe.unwrap_or_else(|| Arc::new(Globe::of(spec)));
-    let ground = (0..TEXELS).map(|index| wet(&globe, texel(index))).collect();
-    let mut map = CoverMap::new(field, ground);
-    map.advance(seconds, 0);
-    map.advance(seconds, TEXELS);
-    map
-}
-
 /// What the maps are built from: the bodies, universe time and the planet the world streams.
 #[derive(SystemParam)]
 pub(super) struct Sources<'w> {
@@ -110,26 +135,45 @@ pub(super) struct Sources<'w> {
 }
 
 impl Sources<'_> {
-    /// Starts building the map of body `id` off the main thread, or nothing for a body that
-    /// is not there or has no deck of clouds. The streamed planet lends its own globe.
-    fn start(&self, id: BodyId) -> Option<Task<CoverMap>> {
+    /// Starts building the map of body `id` off the main thread, a task per face, or nothing
+    /// for a body that is not there or has no deck of clouds. The streamed planet lends its own
+    /// globe, and any other planet gets one that the first task to need it builds.
+    fn start(&self, id: BodyId) -> Option<Build> {
         let spec = self.scene.local.0.as_ref()?.find(id)?;
         let home = self.universe.as_deref().map(Universe::home);
         let field = Field::of(spec, home == Some(id));
         if !field.deck {
             return None;
         }
-        let streamed = self.planet.as_deref().filter(|planet| planet.body == id);
-        let globe = streamed.map(|planet| planet.globe.clone());
+        let globe = Arc::new(OnceLock::new());
+        if let Some(planet) = self.planet.as_deref().filter(|planet| planet.body == id) {
+            let _ = globe.set(planet.globe.clone());
+        }
         let (spec, seconds) = (spec.clone(), self.scene.clock.seconds);
         let pool = AsyncComputeTaskPool::get_or_init(TaskPool::default);
-        Some(pool.spawn(async move { build(&spec, globe, field, seconds) }))
+        let tasks = (0..FACES)
+            .map(|face| {
+                let (spec, globe) = (spec.clone(), globe.clone());
+                let work = async move {
+                    let globe = globe.get_or_init(|| Arc::new(Globe::of(&spec)));
+                    slab(&field, globe, face, seconds)
+                };
+                (face, pool.spawn(work))
+            })
+            .collect();
+        Some(Build {
+            field,
+            seconds,
+            tasks,
+            slabs: Vec::new(),
+        })
     }
 }
 
 impl Kept {
-    /// Moves this map on to `seconds`: starts it, takes it from its task, or works out
-    /// `texels` texels of its next snapshot, and writes the texture when its bytes changed.
+    /// Moves this map on to `seconds`: starts it, takes it from its tasks, starts it again
+    /// after a jump in time, or works out `texels` texels of its next snapshot, and writes
+    /// the texture when its bytes changed.
     fn refresh(
         &mut self,
         sources: &Sources,
@@ -140,19 +184,24 @@ impl Kept {
         let seconds = sources.scene.clock.seconds;
         let changed = match &mut self.stage {
             Stage::Asked => {
-                if let Some(task) = sources.start(id) {
-                    (self.image, self.stage) = (images.add(blank()), Stage::Building(task));
+                if let Some(build) = sources.start(id) {
+                    (self.image, self.stage) = (images.add(blank()), Stage::Building(build));
                 }
                 false
             }
-            Stage::Building(task) => match block_on(poll_once(task)) {
-                Some(mut map) => {
-                    map.advance(seconds, texels);
-                    self.stage = Stage::Ready(map);
+            Stage::Building(build) => match build.poll() {
+                Some(map) => {
+                    (self.stage, self.shown) = (Stage::Ready(map), true);
                     true
                 }
                 None => false,
             },
+            Stage::Ready(map) if map.stale(seconds) => {
+                if let Some(build) = sources.start(id) {
+                    self.stage = Stage::Building(build);
+                }
+                false
+            }
             Stage::Ready(map) => map.advance(seconds, texels),
         };
         if let (true, Stage::Ready(map)) = (changed, &self.stage) {
@@ -176,7 +225,8 @@ pub(super) fn clear(mut maps: ResMut<CloudMaps>) {
     maps.0.clear();
 }
 
-/// Drops the maps nobody asked for lately and moves the others on with universe time.
+/// Drops the maps nobody asked for lately and moves the others on with universe time. The
+/// frame's [`budget`] of texels is shared by the maps that follow time.
 pub(super) fn keep(
     sources: Sources,
     time: Res<Time>,
@@ -184,7 +234,11 @@ pub(super) fn keep(
     mut images: ResMut<Assets<Image>>,
 ) {
     maps.0.retain(|_, kept| kept.idle < GRACE);
-    let texels = budget(time.delta_secs());
+    let ready = maps
+        .0
+        .values()
+        .filter(|kept| matches!(kept.stage, Stage::Ready(_)));
+    let texels = budget(time.delta_secs()) / ready.count().max(1);
     for (id, kept) in &mut maps.0 {
         kept.idle = kept.idle.saturating_add(1);
         kept.refresh(&sources, *id, texels, &mut images);

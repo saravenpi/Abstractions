@@ -9,7 +9,7 @@ use bevy::render::render_resource::{
 use bevy::shader::ShaderRef;
 
 /// Uniform block read by `clouds.wesl`. Every field is a `vec4` so the layout never needs padding.
-#[derive(Clone, Copy, Debug, Default, ShaderType)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, ShaderType)]
 pub struct CloudUniform {
     /// Unit vector toward the star in xyz and the share of air above the camera in w.
     pub light: Vec4,

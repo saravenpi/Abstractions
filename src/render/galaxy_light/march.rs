@@ -6,6 +6,7 @@ use std::thread;
 use bevy::math::{DVec3, Vec3};
 
 use super::pack::encode;
+use super::tune::SHARE;
 use crate::render::smoothstep;
 use crate::universe::{GLY, Glow, Parts};
 use crate::weather::face_dir;
@@ -133,12 +134,11 @@ fn rows(sources: &[Source], side: usize, (first, stride): (usize, usize)) -> Vec
         .collect()
 }
 
-/// Bakes the cube map of `sources`, `side` texels along a face, on as many threads as the
-/// machine has, up to one per face. Returns the bytes of the six faces one after the other.
+/// Bakes the cube map of `sources`, `side` texels along a face, on a share of the cores of the
+/// machine, see [`SHARE`], up to one thread per face and at least one. Returns the bytes of the
+/// six faces one after the other.
 pub fn bake_at(sources: &[Source], side: usize) -> Vec<u8> {
-    let workers = thread::available_parallelism()
-        .map_or(1, usize::from)
-        .min(FACES);
+    let workers = (thread::available_parallelism().map_or(1, usize::from) / SHARE).clamp(1, FACES);
     let mut bytes = vec![0; FACES * side * side * 4];
     thread::scope(|scope| {
         let work: Vec<_> = (0..workers)

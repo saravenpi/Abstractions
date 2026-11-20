@@ -42,6 +42,12 @@ fn vertex(vertex_in: Vertex) -> FoamOut {
     let life = max(in.uv_b.y, 1e-3);
     let left = 1.0 - age / life;
     let alive = step(0.0, left) * step(1e-3, in.uv_b.y);
+    if (alive == 0.0) {
+        out.position = vec4<f32>(0.0, 0.0, 2.0, 1.0);
+        out.side = 0.0;
+        out.alpha = 0.0;
+        return out;
+    }
     let reach = in.color.x + in.color.y * age + in.uv.x * (in.color.z + in.color.w * age);
     let pushed = in.position + in.normal * reach * alive;
     let local = pushed + wake_lift(pushed) * alive;

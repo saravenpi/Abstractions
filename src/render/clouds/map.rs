@@ -6,18 +6,14 @@
 //! channel is written over only at the instant its weight is zero, so the picture never steps,
 //! and the snapshot that comes next is worked out a few texels per frame ahead of time.
 
+mod faces;
+
+pub use self::faces::{Slab, slab};
+pub use super::tune::budget;
 use crate::weather::{Field, SNAPSHOT, TEXELS, moment, texel};
 
 /// Channels of the texture: one per snapshot it holds.
 pub const CHANNELS: usize = 2;
-
-/// Fewest texels of the next snapshot worked out in one frame: the 393,216 texels of the grid
-/// of 256 by 256 over six faces take about four seconds at 60 frames per second.
-const SLICE: usize = 512;
-
-/// Texels of the next snapshot worked out per second of frame time, on top of [`SLICE`]: a
-/// slow frame does more, so that a snapshot is always ready within its [`SNAPSHOT`] seconds.
-const PACE: f32 = 131072.0;
 
 /// Returns how far the shaders read from the first channel toward the second at `seconds`.
 pub fn toward_second(seconds: f64) -> f32 {
@@ -26,11 +22,6 @@ pub fn toward_second(seconds: f64) -> f32 {
         0 => share,
         _ => 1.0 - share,
     }
-}
-
-/// Returns the texels of the next snapshot to work out in a frame of `seconds`.
-pub fn budget(seconds: f32) -> usize {
-    SLICE + (seconds.clamp(0.0, 1.0) * PACE) as usize
 }
 
 /// The cover map of one planet.
@@ -71,18 +62,27 @@ impl CoverMap {
     /// Returns the cover of texel number `index` at snapshot `epoch`, as a byte.
     fn cover(&self, index: usize, epoch: i64) -> u8 {
         let second = epoch as f64 * SNAPSHOT;
-        let cover = self.field.raw(self.wet[index], texel(index), second);
-        (cover * 255.0).round() as u8
+        faces::level(&self.field, self.wet[index], texel(index), second)
     }
 
     /// Works out up to `texels` more texels of the snapshot after the two held, which are
     /// `epoch` and the one after it.
     fn stage(&mut self, epoch: i64, texels: usize) {
         let end = self.done.saturating_add(texels).min(TEXELS);
-        for texel in self.done..end {
-            self.next[texel] = self.cover(texel, epoch + 2);
+        let second = (epoch + 2) as f64 * SNAPSHOT;
+        for index in self.done..end {
+            let (wet, dir) = (self.wet[index], texel(index));
+            self.next[index] = faces::level(&self.field, wet, dir, second);
         }
         self.done = end;
+    }
+
+    /// Returns true when `seconds` lies outside the two snapshots the map holds and the one
+    /// worked out ahead: bringing the map there by [`CoverMap::advance`] would rebuild every
+    /// texel at once, which is for a task to do, see [`Slab`].
+    pub fn stale(&self, seconds: f64) -> bool {
+        let now = moment(seconds).0;
+        self.epoch.is_none_or(|held| now < held || now > held + 1)
     }
 
     /// Writes snapshot `epoch` into its channel of the bytes, from the staged snapshot when

@@ -26,7 +26,7 @@ const EMBER: f32 = 0.3;
 const EMBER_FLOOR: f32 = 0.15;
 
 /// Uniform block read by `bodies.wesl`. Every field is a `vec4` so the layout never needs padding.
-#[derive(Clone, Copy, Debug, Default, ShaderType)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, ShaderType)]
 pub struct BodyUniform {
     /// Linear colour in xyz and the glow gain in w: above 0 the body shines by itself.
     pub color: Vec4,

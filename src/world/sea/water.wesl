@@ -69,6 +69,7 @@ const SWASH_BREATH: f32 = 0.15;
 const SWASH_RATE: f32 = 1.05;
 const SWASH_RAGGED: f32 = 0.3;
 const LINE_FAR: f32 = 5.0;
+const SHORE_REACH: f32 = 6.0;
 const LINE_NEAR: f32 = 2.0;
 const LINE_RATE: f32 = 0.1;
 const LINE_HALF: f32 = 0.15;
@@ -354,11 +355,15 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
     let fine = detail * (1.0 - smoothstep(SPARK_START, SPARK_END, foot));
     let still = 1.0 - POND_CALM * bed.z;
     let spot = (cell + vec2<f32>(0.5, 0.5)) / DETAIL_CELLS;
-    let stir = wake_sample(spot, t, foot).yz * SLOPE_GAIN;
-    let slope = (surface_slope(spot, t, wind, foot) + stir) * detail * still;
-    var n = normalize(up - east * slope.x - south * slope.y);
+    let turned = afar(to_eye, eye_height);
     let rise = dot(v, up);
     let below = rise < 0.0;
+    var slope = vec2<f32>(0.0);
+    if (detail > 0.0 && (below || turned < 1.0)) {
+        let stir = wake_sample(spot, t, foot).yz * SLOPE_GAIN;
+        slope = (surface_slope(spot, t, wind, foot) + stir) * detail * still;
+    }
+    var n = normalize(up - east * slope.x - south * slope.y);
     if (below) {
         n = -n;
     }
@@ -367,37 +372,45 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
     if (below) {
         col = under_surface(v, n, p, t);
     } else {
-        let time = daytime(world);
-        let day = time.x;
-        let light = mix(vec3<f32>(0.07, 0.10, 0.22), mix(vec3<f32>(1.0), water.sun_color.rgb, 0.4), day);
         let sag = max(-sea_height(world), 0.0);
         let column = min(column_depth(in.position, rise * dist) + sag, DEEP);
         let shelf = smoothstep(SHELF_START, SHELF_END, column);
-        let mapped = bed.w * (1.0 - smoothstep(MAP_LOW, MAP_HIGH, eye_height));
-        let depth = mix(shelved(column), shelved(max(bed.y, 0.0)), mapped);
-        let shade = floor((1.0 - exp(-depth * 0.5)) * 6.0 + 0.5) / 6.0;
-        let body = mix(water.shallow.rgb, water.deep.rgb, shade) * (light + vec3<f32>(water.shallow.w));
+        if (turned >= 1.0) {
+            col = vec4<f32>(coarse_sea(world, up, in.position), shelf);
+        } else {
+            let time = daytime(world);
+            let day = time.x;
+            let light = mix(vec3<f32>(0.07, 0.10, 0.22), mix(vec3<f32>(1.0), water.sun_color.rgb, 0.4), day);
+            let mapped = bed.w * (1.0 - smoothstep(MAP_LOW, MAP_HIGH, eye_height));
+            let depth = mix(shelved(column), shelved(max(bed.y, 0.0)), mapped);
+            let shade = floor((1.0 - exp(-depth * 0.5)) * 6.0 + 0.5) / 6.0;
+            let body = mix(water.shallow.rgb, water.deep.rgb, shade) * (light + vec3<f32>(water.shallow.w));
 
-        let ndv = max(dot(n, v), 0.0);
-        let fresnel = (0.05 + 0.95 * pow(1.0 - ndv, 4.0)) * water.deep.w;
-        let r = reflect(-v, n);
-        var color = mix(body, sky_color(dot(r, up)) * time.z, fresnel);
-        let sun_glint = glitter(r, water.sun.xyz, cell, t) * time.y;
-        let moon_glint = glitter(r, water.moon.xyz, cell, t) * water.moon.w * 0.5;
-        color = color + (water.sun_color.rgb * sun_glint + MOON_COLOR * moon_glint) * fine * water.deep.w;
+            let ndv = max(dot(n, v), 0.0);
+            let fresnel = (0.05 + 0.95 * pow(1.0 - ndv, 4.0)) * water.deep.w;
+            let r = reflect(-v, n);
+            var color = mix(body, sky_color(dot(r, up)) * time.z, fresnel);
+            let sun_glint = glitter(r, water.sun.xyz, cell, t) * time.y;
+            let moon_glint = glitter(r, water.moon.xyz, cell, t) * water.moon.w * 0.5;
+            color = color + (water.sun_color.rgb * sun_glint + MOON_COLOR * moon_glint) * fine * water.deep.w;
 
-        let open = mix(1.0, smoothstep(FLECK_DEPTH, FLECK_DEPTH + 1.0, bed.y), bed.w) * (1.0 - bed.z);
-        let flecks = crest_flecks(p, t, wind) * fine * open;
-        let foam = max(shore_foam(p, bed, pixel, t), flecks);
-        let foam_light = water.foam.rgb * mix(0.07, 1.0, day) * mix(vec3<f32>(1.0), water.sun_color.rgb, 0.35);
-        color = mix(color, foam_light, foam);
+            let open = mix(1.0, smoothstep(FLECK_DEPTH, FLECK_DEPTH + 1.0, bed.y), bed.w) * (1.0 - bed.z);
+            var foam = 0.0;
+            if (bed.w > 0.0 && bed.x < SHORE_REACH && bed.z < 0.6) {
+                foam = shore_foam(p, bed, pixel, t);
+            }
+            if (fine > 0.0 && wind > 0.5 && open > 0.0) {
+                foam = max(foam, crest_flecks(p, t, wind) * fine * open);
+            }
+            let foam_light = water.foam.rgb * mix(0.07, 1.0, day) * mix(vec3<f32>(1.0), water.sun_color.rgb, 0.35);
+            color = mix(color, foam_light, foam);
 
-        let clear = select(mix(0.2, 0.95, shade), 1.0, shade >= 1.0);
-        let opacity = max(mix(clear, 1.0, pow(1.0 - ndv, 3.0)), water.foam.w);
-        col = vec4<f32>(color, max(opacity, foam) * smoothstep(0.0, EDGE_DEPTH, column));
-        let turned = afar(to_eye, eye_height);
-        if (turned > 0.0) {
-            col = mix(col, vec4<f32>(coarse_sea(world, up, in.position), shelf), turned);
+            let clear = select(mix(0.2, 0.95, shade), 1.0, shade >= 1.0);
+            let opacity = max(mix(clear, 1.0, pow(1.0 - ndv, 3.0)), water.foam.w);
+            col = vec4<f32>(color, max(opacity, foam) * smoothstep(0.0, EDGE_DEPTH, column));
+            if (turned > 0.0) {
+                col = mix(col, vec4<f32>(coarse_sea(world, up, in.position), shelf), turned);
+            }
         }
     }
 

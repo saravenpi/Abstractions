@@ -67,12 +67,17 @@ impl Spot {
         ((radius * radius - flat).max(0.0).sqrt() - r) as f32
     }
 
-    /// Returns the height in the frame of the drawn ground of `terrain` over `(x, z)`.
-    pub fn ground(&self, terrain: &Terrain, at: Vec2) -> f32 {
+    /// Returns the height in the frame of the drawn ground of `terrain` over `(x, z)`, its heights read
+    /// through `height` at chart positions.
+    pub fn ground_by(&self, terrain: &Terrain, at: Vec2, height: impl Fn(f32, f32) -> f32) -> f32 {
         let pos = self.planet(Vec3::new(at.x, 0.0, at.y));
         let radius = terrain.globe().radius();
         let chart = terrain.locate(pos.normalize() * radius);
-        let height = terrain.mesh_height(chart.x, chart.z);
-        self.rise(at, radius + f64::from(height))
+        self.rise(at, radius + f64::from(height(chart.x, chart.z)))
+    }
+
+    /// Returns the height in the frame of the drawn ground of `terrain` over `(x, z)`.
+    pub fn ground(&self, terrain: &Terrain, at: Vec2) -> f32 {
+        self.ground_by(terrain, at, |x, z| terrain.mesh_height(x, z))
     }
 }

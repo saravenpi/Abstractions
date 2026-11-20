@@ -7,11 +7,12 @@ use bevy::prelude::*;
 
 use super::beast::{Beast, Part};
 use super::gate::Spec;
+use super::ground::Heights;
 use super::herds::{Herds, Land};
 use super::lead::goal;
 use super::motion::{Detail, Motion};
 use super::steer::{Aim, Pace, cruise, drive};
-use super::tune::{DRIFT, FROUDE_TOP, NEAR, RING};
+use super::tune::{DRIFT, FROUDE_TOP, MAX_STEP, NEAR, RING};
 use super::want::Lead;
 use crate::avatar::Avatar;
 use crate::life::Species;
@@ -21,9 +22,6 @@ use crate::life::hunt::Hunt;
 use crate::player::Player;
 use crate::space::{Anchor, Clock, Placed};
 use crate::world::Terrain;
-
-/// Longest step in seconds an animal takes in one frame.
-const MAX_STEP: f32 = 0.1;
 
 /// What the walk reads and writes.
 #[derive(SystemParam)]
@@ -55,6 +53,8 @@ pub struct Scratch {
     herds: Vec<(u64, Option<Herd>)>,
     /// Planet positions of everything animals fear, with the herd each belongs to, 0 for robots.
     threats: Vec<(DVec3, u64)>,
+    /// Heights of the drawn ground read so far.
+    heights: Heights,
 }
 
 /// What every animal reads this frame.
@@ -76,6 +76,9 @@ pub fn walk(mut w: Walk, mut scratch: Local<Scratch>) {
         return;
     };
     let robot = w.anchor.to_frame(robot.translation);
+    if w.terrain.is_changed() {
+        scratch.heights.clear();
+    }
     let land = Land {
         globe: &globe,
         life,
@@ -196,7 +199,8 @@ fn step(
     let temper = beast.temper;
     beast.mood.feel(&temper, near, ctx.dt);
     let spot = beast.spot;
-    let ground = |p: Vec2| spot.ground(ctx.terrain, p);
+    let heights = &ctx.scratch.heights;
+    let ground = |p: Vec2| spot.ground_by(ctx.terrain, p, |x, z| heights.mesh(ctx.terrain, x, z));
     let pace = pace(ctx, beast, species);
     let drive = drive(
         &beast.motion,

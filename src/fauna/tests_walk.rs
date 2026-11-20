@@ -82,3 +82,19 @@ fn the_walk_is_cheap() {
         "{full} ms per frame for {MOST} animals"
     );
 }
+
+/// The ground cache reads the same drawn ground as the terrain, within a millimetre, at any chart
+/// position and again once cached.
+#[test]
+fn cached_ground_is_the_drawn_ground() {
+    let (app, _) = app(true);
+    let terrain = app.world().resource::<Terrain>();
+    let heights = super::ground::Heights::default();
+    for round in 0..2 {
+        for k in 0..400 {
+            let (x, z) = (k as f32 * 0.37 - 70.0, (k * 7 % 400) as f32 * 0.29 - 55.0);
+            let gap = (heights.mesh(terrain, x, z) - terrain.mesh_height(x, z)).abs();
+            assert!(gap < 1e-3, "round {round}: {gap} m at {x}, {z}");
+        }
+    }
+}

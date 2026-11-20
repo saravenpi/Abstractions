@@ -6,17 +6,22 @@ mod lattice;
 mod lod;
 mod node;
 mod patch;
+mod read;
 mod rings;
 mod sample;
 mod skirt;
 mod span;
+mod style;
 #[cfg(test)]
 mod tests_bands;
 #[cfg(test)]
 mod tests_edges;
 #[cfg(test)]
 mod tests_globe;
+#[cfg(test)]
+mod tests_read;
 mod tris;
+mod tune;
 
 use bevy::prelude::*;
 
@@ -24,9 +29,14 @@ pub use self::frame::Frame;
 pub use self::lod::{Lod, ring_distance, subsample};
 pub use self::node::{fill_node, node_frame, node_mesh};
 pub use self::patch::Patch;
+use self::read::scale;
 pub use self::rings::Rings;
 pub use self::span::{Span, leaf_coord};
-use self::tris::{Cell, Style, fill, tone};
+use self::style::{Style, tone};
+use self::tris::{Cell, fill};
+use self::tune::COARSE;
+use super::globe::Chart;
+use super::lands::{Reading, Verdure};
 use super::scatter::Carpet;
 use super::shapes::FlatMesh;
 use super::{CHUNK_SIZE, Terrain};
@@ -56,8 +66,12 @@ pub(super) fn dithered(terrain: &Terrain, span: &Span, (i, j): (usize, usize)) -
         let jitter = |salt: usize| (tone(i + salt, j, half) - 1.0) / 0.08 * DITHER_REACH;
         centre + Vec2::new(jitter(7919), jitter(104_729))
     };
-    let bed = terrain.bed(centre.x, centre.y);
-    (terrain.biomes([centre, near(0), near(1)]), bed)
+    Cell {
+        biomes: terrain.biomes([centre, near(0), near(1)]),
+        bed: terrain.bed(centre.x, centre.y),
+        reading: (terrain.chart() != Chart::Flat && scale(span.step()) >= COARSE)
+            .then(|| Reading::of(terrain.globe(), terrain.up(centre.x, centre.y))),
+    }
 }
 
 /// Returns the vertices of chunk `coord` at `heights`, in the frame of the chunk, none lower than `floor`.
@@ -81,6 +95,7 @@ pub fn chunk_mesh(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>], lod: Lo
         Lod::Distant => Style::coarse(span.step(), lands),
         _ => Style::detail(lands),
     };
+    let style = style.grown(span.step(), Verdure::of(terrain, span.center()));
     let patch = patch_above(terrain, coord, heights, style.floor);
     let mut mesh = FlatMesh::default();
     let carpet = (lod != Lod::Distant)

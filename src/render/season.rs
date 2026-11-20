@@ -1,51 +1,55 @@
 //! Seasons in the colours of the ground: leaves turn gold and rust in autumn and grass and
 //! leaves fade under snow where the climate freezes, by latitude and the place on the orbit.
 //!
-//! The ground is coloured through a lookup texture of flat colours, so the season repaints
-//! that texture for the place under the camera and no mesh is ever built again.
+//! The ground shader turns every fragment by the season of its own latitude and height, from a small
+//! block of the state of the planet, so the season is the same from the ground and from orbit and no
+//! mesh is ever built again. This file holds the rules, and the CPU twin of what `season.wesl` does.
 
+#[cfg(test)]
 use bevy::prelude::*;
 
 use super::celestial::smoothstep;
+#[cfg(test)]
 use super::weather::alike;
+#[cfg(test)]
 use crate::climate::{self, Setting, Spot};
+#[cfg(test)]
 use crate::universe::NO_AIR;
 
 /// Temperatures in kelvin from which snow lies on all the flat ground down to none at all.
-const FREEZE: (f32, f32) = (269.0, 275.0);
+#[cfg(test)]
+pub(super) const FREEZE: (f32, f32) = (269.0, 275.0);
 
 /// Lean of the sun path under which autumn shows only in part: the sine of the tilt times the
 /// sine of the latitude, about a tilt of 23 degrees at a latitude of 23 degrees.
 const AUTUMN_REF: f32 = 0.15;
 
 /// Share of a leaf colour the full autumn turns.
-const AUTUMN_SHARE: f32 = 0.75;
+#[cfg(test)]
+pub(super) const AUTUMN_SHARE: f32 = 0.75;
 
 /// Shares of the local year where autumn colours start, are full, start to go and are gone:
 /// from the equinox after summer to just past the winter solstice.
 const AUTUMN_SPAN: [f32; 4] = [0.22, 0.34, 0.45, 0.56];
 
 /// Early autumn hue of a leaf, in sRGB.
-const GOLD: Vec3 = Vec3::new(0.80, 0.56, 0.18);
+#[cfg(test)]
+pub(super) const GOLD: Vec3 = Vec3::new(0.80, 0.56, 0.18);
 
 /// Late autumn hue of a leaf, in sRGB.
-const RUST: Vec3 = Vec3::new(0.70, 0.30, 0.12);
+#[cfg(test)]
+pub(super) const RUST: Vec3 = Vec3::new(0.70, 0.30, 0.12);
 
 /// Colour of fresh snow, in sRGB.
-const SNOW: Vec3 = Vec3::new(0.93, 0.95, 0.98);
+#[cfg(test)]
+pub(super) const SNOW: Vec3 = Vec3::new(0.93, 0.95, 0.98);
 
 /// How sharply a colour counts as a leaf as green rises over red and blue.
-const LEAF_GAIN: f32 = 6.0;
-
-/// Steps per unit the season look is rounded to, so the texture is only repainted now and then.
-const STEPS: f32 = 64.0;
-
-/// Heights in metres above the ground up to which the season shows in full and from which it
-/// does not show at all. Every mesh in view shares one texture, so from the air and from orbit
-/// the planet keeps its mean colours instead of the season of the one place under the camera.
-const NEAR: (f32, f32) = (150.0, 600.0);
+#[cfg(test)]
+pub(super) const LEAF_GAIN: f32 = 6.0;
 
 /// What the season does to the ground at one place, each value from 0 to 1.
+#[cfg(test)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SeasonLook {
     /// How far the leaves have turned.
@@ -54,6 +58,7 @@ pub struct SeasonLook {
     pub snow: f32,
 }
 
+#[cfg(test)]
 impl SeasonLook {
     /// The ground as it is drawn without seasons.
     pub const NONE: Self = Self {
@@ -71,48 +76,45 @@ impl SeasonLook {
             snow: if air { snow(temperature) } else { 0.0 },
         }
     }
-
-    /// Returns this look as a camera `height` metres above the ground sees it: in full near the
-    /// ground, fading to [`SeasonLook::NONE`] over [`NEAR`].
-    pub fn seen(self, height: f32) -> Self {
-        let share = 1.0 - smoothstep(NEAR.0, NEAR.1, height);
-        Self {
-            autumn: self.autumn * share,
-            snow: self.snow * share,
-        }
-    }
-
-    /// Returns this look rounded to the steps the texture is repainted at.
-    pub fn steps(self) -> Self {
-        Self {
-            autumn: (self.autumn * STEPS).round() / STEPS,
-            snow: (self.snow * STEPS).round() / STEPS,
-        }
-    }
 }
 
+#[cfg(test)]
 /// Returns how far the leaves have turned at `latitude` radians at `season` on a planet whose
 /// spin axis leans by `tilt` radians: nothing at the equator or without a tilt, most in the
 /// autumn of each hemisphere, half a year apart.
 pub fn autumn(latitude: f32, season: f32, tilt: f32) -> f32 {
     let strength = (tilt.sin().abs() * latitude.sin().abs() / AUTUMN_REF).min(1.0);
     let south = if latitude < 0.0 { 0.5 } else { 0.0 };
-    let local = (season + south).rem_euclid(1.0);
-    let [start, full, fade, gone] = AUTUMN_SPAN;
-    strength * smoothstep(start, full, local) * (1.0 - smoothstep(fade, gone, local))
+    strength * window((season + south).rem_euclid(1.0))
 }
 
+/// Returns how far autumn has come at `local` of the local year, from 0 to 1, before the lean of the sun
+/// path is counted.
+pub fn window(local: f32) -> f32 {
+    let [start, full, fade, gone] = AUTUMN_SPAN;
+    smoothstep(start, full, local) * (1.0 - smoothstep(fade, gone, local))
+}
+
+/// Returns the lean of the sun path per unit of the sine of the latitude that makes autumn full, for a spin
+/// axis that leans by `tilt` radians.
+pub fn lean(tilt: f32) -> f32 {
+    tilt.sin().abs() / AUTUMN_REF
+}
+
+#[cfg(test)]
 /// Returns how much of the flat ground snow covers at `temperature` kelvin.
 pub fn snow(temperature: f32) -> f32 {
     1.0 - smoothstep(FREEZE.0, FREEZE.1, temperature)
 }
 
+#[cfg(test)]
 /// Returns how much the sRGB `color` reads as grass or leaves, from 0 to 1.
 fn leafiness(color: Vec3) -> f32 {
     let over = color.y - color.x.max(color.z);
     (over / color.y.max(1.0e-3) * LEAF_GAIN).clamp(0.0, 1.0)
 }
 
+#[cfg(test)]
 /// Returns the sRGB ground colour `color` under the season `look`: grass and leaves turn
 /// toward gold, then rust, and fade to snow. Rock, sand, wood and water stay as they are.
 pub fn tint(color: Vec3, look: SeasonLook) -> Vec3 {
@@ -123,15 +125,4 @@ pub fn tint(color: Vec3, look: SeasonLook) -> Vec3 {
     let hue = GOLD.lerp(RUST, look.autumn);
     let turned = color.lerp(alike(color, hue), look.autumn * AUTUMN_SHARE * leaf);
     turned.lerp(SNOW, look.snow * leaf).min(Vec3::ONE)
-}
-
-/// Writes into `out` the RGBA bytes of the sRGB texels of `original` under the season `look`.
-pub fn repaint(original: &[u8], out: &mut [u8], look: SeasonLook) {
-    let (from, _) = original.as_chunks::<4>();
-    let (to, _) = out.as_chunks_mut::<4>();
-    for (from, to) in from.iter().zip(to) {
-        let color = Vec3::new(from[0].into(), from[1].into(), from[2].into()) / 255.0;
-        let shown = (tint(color, look) * 255.0).round();
-        *to = [shown.x as u8, shown.y as u8, shown.z as u8, from[3]];
-    }
 }

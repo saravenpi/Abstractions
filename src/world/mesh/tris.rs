@@ -1,142 +1,146 @@
 //! Terrain triangles: two flat triangles per cell, coloured by height, slope and biome.
+//!
+//! The colour of a triangle comes from the one rule of the lands, read at a fixed scale at the cell centre
+//! and never from the facet of this mesh, so a coarse level paints a place as a fine one does.
 
 use bevy::prelude::*;
 
 use super::patch::Patch;
+use super::read::{TURF_BAND, TURF_LEVELS, facet, level, read, rock_share};
 use super::skirt;
-use crate::world::lands::Lands;
+use super::style::{Style, tone};
+use crate::world::lands::Reading;
 use crate::world::shapes::{FlatMesh, srgb};
-use crate::world::{Biome, SEA_LEVEL, Surface};
+use crate::world::{Biome, Surface};
 
-/// What the ground of one cell is: its biome, the biomes dithered for its two triangles, and the surface a
-/// channel bed puts on it above the sea.
-pub type Cell = ([Biome; 3], Option<Surface>);
-
-/// Quarters of turf a triangle can hold, and the lift in metres of the second uv `y` per quarter: the
-/// `LEVELS` and `BAND` of `turf.wesl`.
-const TURF_LEVELS: f32 = 4.0;
-
-/// Lift of the second uv `y` per quarter of turf.
-const TURF_BAND: f32 = 512.0;
-
-/// How far below sea level a coarse mesh draws its flat sea, so that the real sea covers it.
-const SEA_DROP: f32 = 1.5;
-
-/// How a patch is drawn.
+/// What the ground of one cell is: its biome, the biomes dithered for its two triangles, the surface a
+/// channel bed puts on it above the sea, and its height and slope at the fixed scale of the colours, where
+/// the chart has a globe to read them from.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Style {
-    /// Lowest height drawn: lower ground is covered by a flat sea at this height.
-    pub floor: f32,
-    /// How far the skirts hang below the edges, in metres. Zero means no skirts.
-    pub skirt: f32,
-    /// The ground rules of the planet, which give the surfaces and their colours.
-    pub lands: Lands,
-}
-
-impl Style {
-    /// Returns the style of a detail chunk on `lands`: the real sea bed and the skirts of the 2 m grid.
-    pub fn detail(lands: Lands) -> Style {
-        Style {
-            floor: f32::NEG_INFINITY,
-            skirt: 3.0,
-            lands,
-        }
-    }
-
-    /// Returns the style of a coarse mesh on `lands` with cells `cell` metres wide: a flat sea where the
-    /// planet has one, and skirts deep enough to hide the cracks along a finer neighbour.
-    pub fn coarse(cell: f32, lands: Lands) -> Style {
-        let floor = match lands.has_sea() {
-            true => SEA_LEVEL - SEA_DROP,
-            false => f32::NEG_INFINITY,
-        };
-        Style {
-            floor,
-            skirt: 3.0 + cell * 0.5,
-            lands,
-        }
-    }
-}
-
-/// Returns a stable value in `[0.92, 1.08]` for a grid cell and triangle index.
-pub fn tone(i: usize, j: usize, half: usize) -> f32 {
-    let h = (i as u32).wrapping_mul(73_856_093)
-        ^ (j as u32).wrapping_mul(19_349_663)
-        ^ (half as u32 * 83_492_791);
-    let h = (h ^ (h >> 15)).wrapping_mul(0x2C1B_3C6D);
-    0.92 + ((h >> 10) & 0xFF) as f32 / 255.0 * 0.16
-}
-
-/// Returns the sRGB colour of ground of `lands` at `height` and `slope` in the biome `base` of its cell,
-/// tinted by the biome `near` dithered across a border when that biome covers it the same way. A channel
-/// `bed` above the sea takes the place of the surface.
-///
-/// The surface always follows `base`: a dithered biome that would turn sand into grass or grass
-/// into rock would leave single triangles of the wrong surface on a border.
-fn paint(
-    lands: Lands,
-    height: f32,
-    slope: f32,
-    [base, near]: [Biome; 2],
-    bed: Option<Surface>,
-) -> ((f32, f32, f32), Surface) {
-    let surface = match bed {
-        Some(bed) if height > SEA_LEVEL => bed,
-        _ => lands.surface(height, slope, base),
-    };
-    let tint = match lands.surface(height, slope, near) == surface {
-        true => near,
-        false => base,
-    };
-    (lands.rgb(surface, tint, height), surface)
+pub struct Cell {
+    /// The biome of the cell, then the biomes dithered for its two triangles.
+    pub biomes: [Biome; 3],
+    /// The surface a channel bed puts on the cell, where one runs.
+    pub bed: Option<Surface>,
+    /// Its height and slope read at the cell centre, or nothing on the legacy plane.
+    pub reading: Option<Reading>,
 }
 
 /// Returns the sRGB colour the home planet gives ground at `height` and `slope` in the biome `base`,
 /// tinted by the dithered biome `near`.
 #[cfg(test)]
 pub fn ground(height: f32, slope: f32, base: Biome, near: Biome) -> (f32, f32, f32) {
-    let home = Lands::of(&crate::universe::PlanetRecord::TEMPERATE);
-    paint(home, height, slope, [base, near], None).0
+    let home = crate::world::lands::Lands::of(&crate::universe::PlanetRecord::TEMPERATE);
+    home.colour(Reading { height, slope }, [base, near], None).0
 }
 
-/// What one triangle is painted from: its biome and the one dithered for it, a channel bed, and its tone.
-type Ground = ([Biome; 2], Option<Surface>, f32);
+/// Slope far over the rock threshold, to read the rock a place would be.
+const STEEP: f32 = 100.0;
+
+/// What one triangle is painted from: its cell, which of the two triangles of the cell it is, and the gain of its tone.
+type Ground = (Cell, usize, f32);
+
+/// Returns the wrapped chart position of a vertex and how thick the turf grows there.
+pub type Turf<'a> = &'a dyn Fn(usize, usize) -> [f32; 3];
 
 /// Returns the colour of the triangle over vertices `c` and its surface: sea when all of it lies on
-/// the floor, else the ground for its mean height and its slope against the local up, in the biome
-/// of its cell and the biome dithered for it.
-fn shade(patch: &Patch, c: [[usize; 2]; 3], style: &Style, ground: Ground) -> ([f32; 4], Surface) {
-    let p = c.map(|[i, j]| patch.at(i, j));
+/// the floor, else the ground at the reading of its cell, in the biome of the cell and the biome dithered
+/// for the triangle, with grass moved to the mean colour of its carpet.
+fn shade(
+    patch: &Patch,
+    c: [[usize; 2]; 3],
+    (style, turf): (&Style, Option<Turf>),
+    (cell, half, gain): Ground,
+) -> ([f32; 4], Surface) {
     let h = c.map(|[i, j]| patch.height(i, j));
     if h.iter().all(|h| *h <= style.floor) {
         let [r, g, b] = style.lands.sea_rgb();
         return (srgb(r, g, b), Surface::Water);
     }
-    let normal = (p[1] - p[0]).cross(p[2] - p[0]).normalize_or_zero();
-    let cos = normal.dot(patch.up(c[0][0], c[0][1]));
-    let slope = (1.0 - cos * cos).max(0.0).sqrt() / cos.max(0.01);
-    let (biomes, bed, t) = ground;
-    let ((r, g, b), surface) = paint(style.lands, (h[0] + h[1] + h[2]) / 3.0, slope, biomes, bed);
-    (srgb(r * t, g * t, b * t), surface)
+    let biomes = [cell.biomes[0], cell.biomes[1 + half]];
+    let reading = read(h.iter().sum::<f32>() / 3.0, cell.reading, || {
+        facet(patch, c)
+    });
+    let classed = |slope: f32| {
+        style
+            .lands
+            .colour(Reading { slope, ..reading }, biomes, cell.bed)
+    };
+    let (open, surface) = match cell.reading {
+        Some(_) => classed(0.0),
+        None => classed(reading.slope),
+    };
+    let open = carpeted(style, turf, c, (open, surface));
+    let (rgb, surface) = match cell.reading {
+        Some(r) => {
+            let (rock, kind) = classed(STEEP);
+            let share = rock_share(r.slope);
+            let mixed = Vec3::from(open).lerp(Vec3::from(rock), share);
+            let rgb: (f32, f32, f32) = mixed.into();
+            (rgb, if share > 0.5 { kind } else { surface })
+        }
+        None => (open, surface),
+    };
+    (srgb(rgb.0 * gain, rgb.1 * gain, rgb.2 * gain), surface)
 }
 
-/// Returns the wrapped chart position of a vertex and how thick the turf grows there.
-pub type Turf<'a> = &'a dyn Fn(usize, usize) -> [f32; 3];
+/// Returns the colour `ground` of a triangle over vertices `c` with grass moved to the mean colour of its carpet.
+fn carpeted(
+    style: &Style,
+    turf: Option<Turf>,
+    c: [[usize; 2]; 3],
+    ground: ((f32, f32, f32), Surface),
+) -> (f32, f32, f32) {
+    match (style.verdure, ground.1) {
+        (Some(verdure), Surface::Grass) => {
+            let thick = turf.map_or(verdure.cover, |turf| {
+                level(&c.map(|[i, j]| turf(i, j))) / TURF_LEVELS
+            });
+            verdure.carpeted(ground.0, thick)
+        }
+        _ => ground.0,
+    }
+}
 
 /// Returns the turf coordinates of the three vertices `c` of a triangle of `surface`: their wrapped
-/// chart positions from `turf`, lifted by the band of the mean thickness of the turf on open grass.
+/// chart positions from `turf`, lifted by the band of the quarters of turf the triangle holds on open grass.
 fn turfed(turf: Turf, c: [[usize; 2]; 3], surface: Surface) -> [[f32; 2]; 3] {
     let v = c.map(|[i, j]| turf(i, j));
-    let thick = match surface {
-        Surface::Grass => (v[0][2] + v[1][2] + v[2][2]) / 3.0,
+    let lift = match surface {
+        Surface::Grass => level(&v) * TURF_BAND,
         _ => 0.0,
     };
-    let lift = (thick.clamp(0.0, 1.0) * TURF_LEVELS).round() * TURF_BAND;
     v.map(|[x, z, _]| [x, z + lift])
 }
 
-/// Adds the triangles and skirts of `patch` to `mesh`, asking `cell_at(i, j)` for the biome of
-/// each cell, the biome dithered for each of its two triangles and its channel bed, and `turf(i, j)`,
+/// Adds the two triangles of cell `(i, j)` of `patch` to `mesh`, and returns their colours.
+fn paint_cell(
+    mesh: &mut FlatMesh,
+    patch: &Patch,
+    (i, j): (usize, usize),
+    (style, turf): (&Style, Option<Turf>),
+    ground: Cell,
+) -> [[f32; 4]; 2] {
+    let halves = [
+        [[i, j], [i, j + 1], [i + 1, j]],
+        [[i + 1, j], [i, j + 1], [i + 1, j + 1]],
+    ];
+    let mut pair = [[0.0; 4]; 2];
+    for (half, c) in halves.into_iter().enumerate() {
+        let toned = if style.toned { tone(i, j, half) } else { 1.0 };
+        let (colour, surface) = shade(patch, c, (style, turf), (ground, half, toned));
+        pair[half] = colour;
+        if let Some(turf) = turf {
+            mesh.turf(turfed(turf, c, surface));
+        }
+        let [a, b, c] = c.map(|[i, j]| patch.at(i, j));
+        mesh.tri(a, b, c, colour);
+    }
+    pair
+}
+
+/// Adds the triangles and skirts of `patch` to `mesh`, asking `cell_at(i, j)` for the biome of each cell,
+/// the biome dithered for each of its two triangles, its channel bed and its reading, and `turf(i, j)`,
 /// when given, for the wrapped chart position of each vertex and how thick the turf grows there.
 pub fn fill(
     mesh: &mut FlatMesh,
@@ -147,23 +151,8 @@ pub fn fill(
     let n = patch.cells();
     let mut colors = Vec::with_capacity(n * n);
     for (i, j) in (0..n).flat_map(|i| (0..n).map(move |j| (i, j))) {
-        let halves = [
-            [[i, j], [i, j + 1], [i + 1, j]],
-            [[i + 1, j], [i, j + 1], [i + 1, j + 1]],
-        ];
-        let mut pair = [[0.0; 4]; 2];
-        let ([base, first, second], bed) = cell_at(i, j);
-        for (half, c) in halves.into_iter().enumerate() {
-            let ground = ([base, [first, second][half]], bed, tone(i, j, half));
-            let (colour, surface) = shade(patch, c, &style, ground);
-            pair[half] = colour;
-            if let Some(turf) = turf {
-                mesh.turf(turfed(turf, c, surface));
-            }
-            let [a, b, c] = c.map(|[i, j]| patch.at(i, j));
-            mesh.tri(a, b, c, pair[half]);
-        }
-        colors.push(pair);
+        let ground = cell_at(i, j);
+        colors.push(paint_cell(mesh, patch, (i, j), (&style, turf), ground));
     }
     if style.skirt > 0.0 {
         let drop = |i: usize, j: usize| -patch.up(i, j) * style.skirt;

@@ -1,7 +1,9 @@
 import bevy_pbr::render::forward_io::VertexOutput;
 import bevy_pbr::render::mesh_view_bindings::view;
+import bevy_pbr::render::pbr_types::pbr_input_new;
 import package::render::cloud_field::{broad_cover, day_side, dither, puff, shade};
-import package::render::daylight::{Place, light_at, ambient_response};
+import package::render::daylight::{Place, light_at, sky_response, sun_response};
+import package::render::season::{Season, look_at, tinted};
 
 struct Body {
     color: vec4<f32>,
@@ -26,15 +28,15 @@ struct Body {
 @group(constants::MATERIAL_BIND_GROUP) @binding(1) var cover_map: texture_cube<f32>;
 @group(constants::MATERIAL_BIND_GROUP) @binding(2) var cover_sampler: sampler;
 @group(constants::MATERIAL_BIND_GROUP) @binding(10) var<uniform> place: Place;
+@group(constants::MATERIAL_BIND_GROUP) @binding(11) var<uniform> season: Season;
 
-const PI: f32 = 3.14159265;
 const TAU: f32 = 6.2831853;
 const LIMB: f32 = 0.55;
 const RINGLETS: f32 = 5.0;
 const RING_DEPTH: f32 = 0.6;
 const RING_EDGE: f32 = 0.04;
 const ROUGHNESS: f32 = 0.95;
-const F0: f32 = 0.0004;
+const REFLECTANCE: f32 = 0.05;
 const SHELL: f32 = 1.5;
 
 fn ring_cover(u: f32, inner: f32, density: f32) -> f32 {
@@ -76,18 +78,6 @@ fn surface(n: vec3<f32>) -> vec3<f32> {
     return mix(banded, body.spot.rgb, spot);
 }
 
-fn scatter(f90: f32, u: f32) -> f32 {
-    return 1.0 + (f90 - 1.0) * pow(1.0 - u, 5.0);
-}
-
-fn sunlit(n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> f32 {
-    let nl = saturate(dot(n, l));
-    let nv = max(dot(n, v), 0.0001);
-    let lh = saturate(dot(l, normalize(l + v)));
-    let f90 = 0.5 + 2.0 * ROUGHNESS * ROUGHNESS * lh * lh;
-    return scatter(f90, nl) * scatter(f90, nv) * nl / PI;
-}
-
 fn clouds(n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, texel: vec2<f32>) -> vec3<f32> {
     let to_fixed = mat3x3<f32>(body.fixed_x.xyz, body.fixed_y.xyz, body.fixed_z.xyz);
     let dir = to_fixed * n;
@@ -112,12 +102,21 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     if (in.uv.x > SHELL) {
         return vec4<f32>(clouds(n, v, l, in.position.xy), 1.0);
     }
-    let albedo = mix(surface(n), in.color.rgb, body.map.z);
+    let baked = tinted(in.color.rgb, look_at(season, n, 0.0));
+    let albedo = mix(surface(n), baked, body.map.z);
     let ember = mix(body.ember.rgb, body.glow.rgb * in.color.a, body.map.z);
     let limb = select(1.0, mix(LIMB, 1.0, sqrt(facing)), body.axis.w > 0.0);
+    var ground = pbr_input_new();
+    ground.material.base_color = vec4<f32>(albedo, 1.0);
+    ground.material.perceptual_roughness = ROUGHNESS;
+    ground.material.reflectance = vec3<f32>(REFLECTANCE);
+    ground.world_position = in.world_position;
+    ground.world_normal = n;
+    ground.N = n;
+    ground.V = v;
     let here = light_at(place, dot(n, l), 0.0);
-    let direct = here.sun * (sunlit(n, v, l) * ring_shade(n, l) * body.light.w * place.air.z);
-    let around = ambient_response(albedo, vec3<f32>(F0), ROUGHNESS, max(facing, 0.0001)) * here.sky * place.air.z;
-    let lit = (albedo * direct + around) * limb * view.exposure + ember;
+    let direct = here.sun * (sun_response(ground, l) * (ring_shade(n, l) * body.light.w * place.air.z));
+    let around = sky_response(ground) * here.sky * place.air.z;
+    let lit = (direct + around) * limb * view.exposure + ember;
     return vec4<f32>(lit, 1.0);
 }

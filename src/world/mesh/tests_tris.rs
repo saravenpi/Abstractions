@@ -1,7 +1,9 @@
 //! Tests of the terrain triangles.
 
-use super::*;
+use super::super::style::{SEA_DROP, Style};
 use crate::universe::{PlanetClass, PlanetRecord};
+use crate::world::SEA_LEVEL;
+use crate::world::lands::Lands;
 
 /// A coarse mesh draws its flat sea 1.5 m under the sea level, and none at all on a dry planet of
 /// any class, whose low ground it draws as it is.

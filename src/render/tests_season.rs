@@ -6,7 +6,7 @@ use std::f32::consts::{FRAC_PI_4, TAU};
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::season::{SeasonLook, autumn, repaint, snow, tint};
+use super::season::{SeasonLook, autumn, snow, tint};
 use super::vantage::Nearby;
 use crate::climate::season as phase;
 use crate::climate::{Setting, Spot};
@@ -126,7 +126,7 @@ fn home_ground_looks_as_today_at_the_equinox() {
         .flat_map(|d| [0.0, 120.0, 300.0].map(|a| (0.75_f32, d, a)));
     for (season, degrees, altitude) in cases {
         let here = spot((degrees as f32).to_radians(), altitude);
-        let look = SeasonLook::at(&setting, &here, season).steps();
+        let look = SeasonLook::at(&setting, &here, season);
         for color in GRASS.iter().chain(&BARE) {
             let shift = (tint(*color, look) - *color).abs().max_element();
             assert!(shift < 1.0 / 255.0, "{degrees} {season} {altitude}");
@@ -156,25 +156,10 @@ fn autumn_turns_home_greens() {
     }
 }
 
-/// The season goes once round per orbit, and the texture of a season without effect keeps its bytes.
+/// The season goes once round per orbit.
 #[test]
-fn phase_goes_round_and_none_repaints_nothing() {
+fn phase_goes_round() {
     let home = home();
     let quarter = phase(&home, home.orbit_seconds / 4.0) - phase(&home, 0.0);
     assert!((quarter.rem_euclid(1.0) - 0.25).abs() < 1.0e-3);
-    let original: Vec<u8> = (0..=255u8)
-        .flat_map(|v| [v, v.wrapping_mul(7), 255 - v, 255])
-        .collect();
-    let mut out = vec![0; original.len()];
-    repaint(&original, &mut out, SeasonLook::NONE);
-    assert_eq!(out, original);
-    repaint(
-        &original,
-        &mut out,
-        SeasonLook {
-            autumn: 1.0,
-            snow: 0.5,
-        },
-    );
-    assert_ne!(out, original);
 }

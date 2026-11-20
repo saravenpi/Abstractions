@@ -32,6 +32,7 @@ pub use enter::enter_planet;
 pub use focus::{Link, spin};
 pub use globe::Globe;
 pub use ground::GroundMaterial;
+pub use lands::Reading;
 pub use meter::{Cost, Meter, STEPS as METER_STEPS};
 pub use sea::{Liquid, wake};
 pub use surface::Surface;

@@ -90,3 +90,46 @@ pub(super) fn temperature(setting: &Setting, spot: &Spot, lat: f32, season: f32)
     let lapse = LAPSE * setting.gravity / STANDARD_GRAVITY as f32 * spot.altitude.max(0.0);
     setting.temperature + shape + swing - lapse
 }
+
+/// The terms the air temperature at a place is summed from, which a shader sums the same way: the mean, the
+/// pole to equator shape, the season, the near side of a locked moon and the cooling with height.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Terms {
+    /// Mean surface temperature of the planet in kelvin.
+    pub mean: f32,
+    /// Kelvin of the pole to equator shape, `gap * 1.2`, or 0 for a tidally locked moon.
+    pub shape: f32,
+    /// Kelvin the season adds per unit of the sine of the latitude: `gap * sin(tilt) * cos(2 pi season)`.
+    pub swing: f32,
+    /// Kelvin lost per metre of height above the liquid surface.
+    pub lapse: f32,
+    /// Kelvin a locked moon is warmer on the side that faces what it goes round, 0 for any other body.
+    pub side: f32,
+    /// Unit direction of that side in the planet frame, zero for a body that turns freely.
+    pub near: Vec3,
+}
+
+/// Returns the terms of the air temperature of the planet of `setting` at `season` of its year.
+pub fn terms(setting: &Setting, season: f32) -> Terms {
+    let gap = gap(setting);
+    let locked = setting.near.is_some();
+    Terms {
+        mean: setting.temperature,
+        shape: if locked { 0.0 } else { gap * SHAPE },
+        swing: gap * setting.tilt.sin() * (TAU * season).cos(),
+        lapse: LAPSE * setting.gravity / STANDARD_GRAVITY as f32,
+        side: if locked { NEAR_SIDE } else { 0.0 },
+        near: setting.near.unwrap_or(Vec3::ZERO),
+    }
+}
+
+impl Terms {
+    /// Returns the air temperature in kelvin at a place whose latitude has the sine `sin`, in the planet
+    /// direction `dir`, `altitude` metres above the liquid surface: the sum `temperature` makes without
+    /// the slow warp of the latitude.
+    pub fn at(&self, sin: f32, dir: Vec3, altitude: f32) -> f32 {
+        let shape = self.shape * (MEAN_SQUARE - sin * sin);
+        let side = self.side * dir.dot(self.near);
+        self.mean + shape + self.swing * sin + side - self.lapse * altitude.max(0.0)
+    }
+}

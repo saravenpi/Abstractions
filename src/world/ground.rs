@@ -11,9 +11,13 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{AsBindGroup, Extent3d, TextureDimension, TextureFormat};
 use bevy::shader::ShaderRef;
 
+mod season;
+
 use super::blades::TurfUniform;
 use super::props::PropAssets;
-use crate::render::{PlaceLight, PlaceLit, PlaceUniform};
+use crate::render::{PlaceLight, PlaceLit, PlaceUniform, SeasonLight, SeasonLit};
+
+pub use season::season_map;
 
 /// The material every mesh of the world shares: terrain near and far, props, grass and buildings.
 pub type GroundMaterial = ExtendedMaterial<StandardMaterial, Daylit>;
@@ -30,6 +34,10 @@ pub struct Daylit {
     /// The look of the turf of the planet, which carpets the open ground of its living planets.
     #[uniform(101)]
     pub turf: TurfUniform,
+    /// The season of the planet under the camera: the block of `SeasonUniform`, one field per texel, in
+    /// a texture for the same reason as the light of the place.
+    #[texture(102, filterable = false)]
+    pub season: Handle<Image>,
 }
 
 impl MaterialExtension for Daylit {
@@ -106,7 +114,17 @@ pub(super) fn plugin(app: &mut App) {
     }
     app.add_plugins(MaterialPlugin::<GroundMaterial>::default())
         .init_resource::<PlaceLight>()
-        .add_systems(PostUpdate, light.after(PlaceLit).before(AssetEventSystems));
+        .init_resource::<SeasonLight>()
+        .add_systems(
+            PostUpdate,
+            (
+                light.after(PlaceLit),
+                season::follow
+                    .after(SeasonLit)
+                    .run_if(resource_exists::<PropAssets>),
+            )
+                .before(AssetEventSystems),
+        );
     crate::render::warm_material::<GroundMaterial>(app);
 }
 

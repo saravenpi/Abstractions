@@ -1,16 +1,18 @@
 //! Tests of where the base is founded once biomes follow the climate: around a mild northern
 //! latitude, on firm ground out of the heart of a taiga or a desert.
 
+use std::sync::Arc;
+
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::Base;
-use super::ground::{firm, harsh, starts};
+use super::ground::{firm, harsh, spread};
 use super::site::SLACK;
 use super::tests::{base, homeworld};
 use super::tune::STARTS;
-use crate::world::Terrain;
 use crate::world::globe::Face;
+use crate::world::{Globe, Terrain};
 
 /// Returns the base the search of 0.8 found: near the spawn of the centre of the north face, the
 /// pole of a world tilted on its spin axis, or nothing when no ground near that spawn took it.
@@ -65,16 +67,49 @@ fn every_seed_founds_its_base_on_good_ground() {
     println!("BASES MOVED {} of 51: {moved:?}", moved.len());
 }
 
-/// The starts lie on the mild latitude, spread around the spin axis, and the seed turns them.
+/// The fallback ring lies on the mild latitude, spread around the spin axis, and the seed turns it.
 #[test]
-fn the_starts_ring_a_mild_latitude() {
-    let dirs: Vec<DVec3> = starts(7).collect();
+fn the_ring_of_starts_is_a_mild_latitude() {
+    let dirs: Vec<DVec3> = spread(7).collect();
     assert_eq!(dirs.len(), STARTS.1 as usize);
     for dir in &dirs {
         assert!((dir.length() - 1.0).abs() < 1e-9);
         assert!((dir.y.asin().to_degrees() - f64::from(STARTS.0)).abs() < 1e-6);
     }
     assert!((0..dirs.len()).all(|i| (0..i).all(|j| dirs[i].distance(dirs[j]) > 0.5)));
-    assert_eq!(starts(7).next(), starts(7).next());
-    assert!(starts(7).next() != starts(8).next());
+    assert_eq!(spread(7).next(), spread(7).next());
+    assert!(spread(7).next() != spread(8).next());
+}
+
+/// Returns true when sea lies within 2 km of the base centre of `found` on `globe`, sampled on circles.
+fn on_a_coast(found: &Base, globe: &Arc<Globe>) -> bool {
+    let lot = found.lot(globe);
+    let circles = [250.0_f32, 500.0, 1000.0, 2000.0];
+    let points = circles.iter().flat_map(|r| {
+        (0..32).map(move |k| Vec2::from_angle(k as f32 / 32.0 * std::f32::consts::TAU) * *r)
+    });
+    points
+        .into_iter()
+        .any(|p| lot.view().height(p.x, p.y) <= 0.0)
+}
+
+/// On the seeds whose home planet has a sea, the base lands on a coast: the starts are shores of the
+/// drainage grid at a mild latitude, and sea lies within 2 km of the base.
+#[test]
+fn the_base_lands_on_a_coast() {
+    let mut coasts = 0;
+    for seed in 0..=20 {
+        let (found, globe) = base(seed);
+        if !globe.has_sea() {
+            continue;
+        }
+        coasts += 1;
+        assert!(
+            on_a_coast(&found, &globe),
+            "seed {seed}: no sea within 2 km of the base"
+        );
+        let degrees = latitude(found.up).abs();
+        assert!(degrees < 50.0, "seed {seed}: base at {degrees} degrees");
+    }
+    assert!(coasts > 0, "no seed has a home planet with a sea");
 }

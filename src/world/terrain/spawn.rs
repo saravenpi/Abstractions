@@ -7,13 +7,13 @@ use crate::world::globe::Chart;
 use crate::world::{Biome, Surface, Terrain};
 
 /// Spacing of the spawn search rings.
-const SPAWN_STEP: f32 = 16.0;
+pub(super) const SPAWN_STEP: f32 = 16.0;
 
 /// Number of rings searched, which bounds the search radius.
-const RINGS: u32 = 600;
+pub(super) const RINGS: u32 = 600;
 
 /// Share of the planet radius the search may reach on a globe, which keeps it on the near side.
-const GLOBE_REACH: f64 = 1.2;
+pub(super) const GLOBE_REACH: f64 = 1.2;
 
 /// Radii of the rings sampled to check that land surrounds the spawn.
 const ISLAND_RADII: [f32; 2] = [45.0, 85.0];
@@ -85,8 +85,8 @@ impl Terrain {
     }
 
     /// Returns the best spot within `rings` rings of the origin of this metric view: a candidate
-    /// scored by distance plus its penalty.
-    fn best_spot(&self, rings: u32) -> Vec2 {
+    /// scored by distance plus its penalty, or nothing when no ground there takes a spawn.
+    pub(super) fn best_spot(&self, rings: u32) -> Option<Vec2> {
         let mut best: Option<(f32, Vec2)> = None;
         let mut fallback: Option<Vec2> = None;
         for k in 0..rings {
@@ -104,21 +104,24 @@ impl Terrain {
                 best = found;
             }
         }
-        best.map(|(_, p)| p).or(fallback).unwrap_or(Vec2::ZERO)
+        best.map(|(_, p)| p).or(fallback)
     }
 
     /// Returns the best spawn near the origin of the chart, in chart coordinates.
     ///
     /// The search runs in metres on every chart: a globe view is searched through its metric view
-    /// around the origin, so distances and slopes mean the same as on the plane.
+    /// around the origin, so distances and slopes mean the same as on the plane. Where no ground near
+    /// the origin takes a spawn, which is open sea on a large planet, the search goes on from the shores
+    /// of the drainage grid, see [`Terrain::landfall`].
     pub fn find_spawn(&self) -> Vec3 {
         let site = self.around(0.0, 0.0);
-        let rings = match self.chart() {
-            Chart::Flat => RINGS,
-            _ => RINGS.min((self.globe().radius() * GLOBE_REACH / f64::from(SPAWN_STEP)) as u32),
-        };
-        let spot = site.best_spot(rings);
-        let at = self.locate(site.embed(spot.x, 0.0, spot.y));
+        let spot = site
+            .best_spot(self.reach())
+            .map(|s| site.embed(s.x, 0.0, s.y));
+        let at = spot
+            .or_else(|| self.landfall())
+            .unwrap_or_else(|| site.embed(0.0, 0.0, 0.0));
+        let at = self.locate(at);
         Vec3::new(at.x, self.height(at.x, at.z), at.z)
     }
 }

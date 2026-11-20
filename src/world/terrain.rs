@@ -10,6 +10,7 @@ use super::surface::Surface;
 use crate::universe::{HOME_GRAVITY, HOME_RADIUS};
 
 mod coarse;
+mod landfall;
 mod ponds;
 mod root;
 mod spawn;

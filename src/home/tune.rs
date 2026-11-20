@@ -35,8 +35,9 @@ pub const HEART: f32 = 300.0;
 /// distance a site gives up to have no taiga or desert on it.
 pub const HARSH: (f32, f32) = (60.0, 300.0);
 
-/// Latitude in degrees north of the places the base is looked for around, mild on a tilted home
-/// world whose pole is its coldest place, and how many of them lie around that circle.
+/// Latitude in degrees north of the ring of places the base is looked for around on a planet whose
+/// drainage grid finds no shore, mild on a tilted home world whose pole is its coldest place, and how
+/// many of them lie around that circle. A planet with a sea is looked at from its shores instead.
 pub const STARTS: (f32, u32) = (32.0, 8);
 
 /// Metres of distance a site may give up for one metre less relief under the footprint, and

@@ -99,7 +99,8 @@ pub fn warm(mut warm: ResMut<Warm>, mut stock: Stock) {
     warm.add(mesh, stock.materials.add(unlit(Glow::ALL[0])));
 }
 
-/// Finds the base of the world in a task and inserts it once found. Runs while the world has
+/// Finds the base of the world in a task and inserts it once found. The task builds the drainage grid of
+/// the planet first, which the search starts from. Runs while the world has
 /// no base: the world may also insert one itself when it begins.
 pub fn locate(mut commands: Commands, universe: Res<Universe>, mut works: ResMut<Works>) {
     if let Some(task) = works.survey.as_mut() {

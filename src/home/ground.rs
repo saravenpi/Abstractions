@@ -6,7 +6,7 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::tune::{FOOTPRINT, HARSH, HEART, STARTS};
-use crate::world::{Biome, Surface, Terrain};
+use crate::world::{Biome, Globe, Surface, Terrain};
 
 /// Points on each circle the cover and the biome are checked at.
 const SAMPLES: u32 = 8;
@@ -50,9 +50,20 @@ pub fn fringe(view: &Terrain, at: Vec2) -> f32 {
     cost * f32::from(u8::from(rough))
 }
 
-/// Returns the planet directions around which the base is looked for, in order: on a mild
-/// northern latitude, the first at a longitude `seed` picks and the others spread east of it.
-pub fn starts(seed: u64) -> impl Iterator<Item = DVec3> + Clone {
+/// Returns the planet directions around which the base is looked for, in order: the shores of the land at a
+/// mild latitude that the drainage grid of `globe` finds, river mouths first. A planet whose grid finds
+/// none, a dry one, is looked at on a ring instead, see [`spread`].
+pub fn starts(globe: &Globe) -> Vec<DVec3> {
+    let shores = globe.landfalls();
+    match shores.is_empty() {
+        true => spread(globe.seed()).collect(),
+        false => shores,
+    }
+}
+
+/// Returns the planet directions of the ring of fallback starts, in order: on a mild northern latitude,
+/// the first at a longitude `seed` picks and the others spread east of it.
+pub fn spread(seed: u64) -> impl Iterator<Item = DVec3> + Clone {
     let (latitude, count) = STARTS;
     let turn = (seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 11) as f64 / (1u64 << 53) as f64;
     let lat = f64::from(latitude).to_radians();

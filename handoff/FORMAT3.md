@@ -37,7 +37,7 @@ Still protocol 3: nothing of it was released. An old client is refused at the jo
 - Robot: 46 bytes on a surface (was 44), 55 in the other frames. New: `swing` (1 byte: act rank in bits 0 to 2 as ready, wind-up, swing, recover, guard, draw, stun; side in bits 3 and 4 as right, left, up, down) and one byte with `crouch` (high 4 bits, steps of 1/15) and `phase` (low 4 bits, seconds into the act, 0 to 2 s in steps of 0.13 s). Sixteen robot records fit one datagram of 1,100 bytes (test `sixteen_robots_fit_one_datagram`).
 - Ship: 41 bytes on a surface (was 40), 50 elsewhere. New: `heat`, the glow of an entry, 1 byte.
 - New kind `Vitals` (11 bytes in every frame, about twice a second, sent in the frame of the robot record): the harm of the ten parts, one byte each, 0 whole to 255 destroyed, in the order head, torso, left arm, right arm, left leg, right leg, left wing, right wing, left boot, right boot, then the entry glow of the robot (1 byte). It travels apart so that the robot record stays small.
-- The room keeps four kinds per player now (`KINDS` is 4).
+- The room keeps four kinds per player now (`Kind::COUNT` is 4).
 
 ### Reliable messages (stream)
 `ClientMsg::Hunt(Act)` (number 8) and `ServerMsg::Hunt(Event)` (number 10) are the only new messages. The server stamps the sending player and never lets a client speak for another. A player may send 30 acts a second.
@@ -66,3 +66,15 @@ Still protocol 3: nothing of it was released. An old client is refused at the jo
 - A carcass lasts the `lasts` its killer gave, clamped from 60 s to a day, and goes with the spears stuck in it. At most 1,024 carcasses, 256 spears, 2,048 wounds and 65,536 rocks are kept.
 - The server file `hunt3.bin` (postcard of `HuntWorld`, without the held items) keeps carcasses, spears, wounds and rocks beside `world.toml`. The server writes the world only when something changed since the last save.
 - Open choice: loot. The shared mask of taken parts makes the first cutter win a part. The list of credited players travels in `Killed` so that a later change can give each of them a personal harvest.
+
+## The replicated-kind seam (`net-seam`)
+
+Still protocol 3. State records and messages keep their bytes. One change of bytes, inside protocol 3:
+
+- The text that rides with a connection close, which only logs on the other side read, is now the sentence `Reason::words(None)` gives ("Wrong password", "The server is full", "This server needs a newer game", ...). It was a short lowercase phrase ("wrong password", "server full", "game outdated", ...). The close code, which the client reads, is unchanged. The fixed texts of the other closes ("bye", "too slow", "no stream", "malformed message") are unchanged.
+
+What the seam holds, for the next kind of record:
+
+- `wire::Kind` is the one table: `Kind::ALL`, `Kind::COUNT`, `Kind::index()`. The room's per-kind arrays and the sender's `Cadences` are sized and indexed by it. Every state record is periodic and shares the two rates of `wire::Cadence` (30 a second moving, 2 a second at rest). The reliable hunt `Act` and `Event` are messages, not records, and stay outside the table.
+- `wire::Body` is the one trait of a body: `KIND`, `MAX_LEN` (never past `BODY_MAX`, 128), `encode(frame, out)`, `decode(frame, bytes)`. A body with no position ignores the frame. The test `every_body_follows_the_rules` checks every implementation.
+- A saved ship keeps `space::Frame` itself: the old `SavedFrame` had the same variants, names and payloads, so the TOML of a save is unchanged (test `saved_frames_load_as_they_were_written`).

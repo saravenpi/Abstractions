@@ -133,11 +133,11 @@ impl<H: Host> Server<H> {
         let now = self.start.elapsed().as_secs_f64();
         for (id, link) in self.links.drain() {
             link.conn
-                .close(code(Reason::Closing), text(Reason::Closing));
+                .close(code(Reason::Closing), &text(Reason::Closing));
             self.host.closed(id, now, &mut self.out);
         }
         self.out.clear();
-        endpoint.close(code(Reason::Closing), text(Reason::Closing));
+        endpoint.close(code(Reason::Closing), &text(Reason::Closing));
         future::or(endpoint.wait_idle(), linger()).await;
         self.host
     }
@@ -161,7 +161,9 @@ fn close(link: Option<&Link>, reason: Reason) {
         return;
     };
     let order = Out::Close(code(reason), text(reason));
-    if link.out.try_send(order).is_err() {
-        link.conn.close(code(reason), text(reason));
+    if let Err(refused) = link.out.try_send(order)
+        && let Out::Close(code, text) = refused.into_inner()
+    {
+        link.conn.close(code, &text);
     }
 }

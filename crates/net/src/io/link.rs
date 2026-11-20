@@ -19,7 +19,7 @@ pub(crate) enum Out {
     /// Write these bytes: one message as [`crate::wire::encode`] made it.
     Frame(Vec<u8>),
     /// Finish the stream, let the other side read it, then close with this code and text.
-    Close(VarInt, &'static [u8]),
+    Close(VarInt, Vec<u8>),
 }
 
 /// How reading the stream ended.
@@ -75,7 +75,7 @@ pub(crate) async fn write(conn: Connection, mut send: SendStream, queue: Receive
         match out {
             Out::Frame(bytes) if send.write_all(&bytes).await.is_ok() => {}
             Out::Frame(_) => return End::Over,
-            Out::Close(code, text) => return finish(conn, send, code, text).await,
+            Out::Close(code, text) => return finish(conn, send, code, &text).await,
         }
     }
     finish(conn, send, BYE, b"bye").await

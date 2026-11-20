@@ -45,7 +45,7 @@ impl Base {
         found: impl Fn(DVec3) -> Option<T>,
     ) -> (Option<(DVec3, T)>, Option<DVec3>) {
         let (mut first, mut hearts) = (None, Vec::new());
-        let clear = starts(globe).into_iter().find_map(|dir| {
+        let clear = starts(globe).find_map(|dir| {
             let (spawn, heart) = Self::lay(globe, dir)?;
             first.get_or_insert(spawn);
             if heart {

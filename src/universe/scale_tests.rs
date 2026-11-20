@@ -135,14 +135,15 @@ fn the_home_search_stays_under_two_seconds() {
     assert!(took.as_secs_f64() < 2.0, "{took:?}");
 }
 
-/// No two of 2,000 stars of the home neighbourhood and of a core block lie closer than their
+/// No two of 2,000 stars of the home neighbourhood (60 light-years around it, the home lying
+/// anywhere on the disc) and of a core block lie closer than their
 /// two system reaches, so no sky ever has two systems in one.
 #[test]
 fn stars_keep_out_of_each_others_systems() {
     let (u, at) = home_star(1);
     let galaxy = u.galaxy(HOME_GALAXY).expect("the home galaxy exists");
     let core = DVec3::new(0.04, 0.0, 0.03) * galaxy.radius;
-    let mut stars = u.stars_near(HOME_GALAXY, at, 30.0);
+    let mut stars = u.stars_near(HOME_GALAXY, at, 60.0);
     stars.extend(u.stars_near(HOME_GALAXY, core, 15.0));
     stars.truncate(2000);
     assert!(stars.len() >= 1000, "{}", stars.len());

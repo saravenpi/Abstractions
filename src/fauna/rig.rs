@@ -18,8 +18,9 @@ use crate::universe::{BodyId, Universe};
 use crate::world::globe::Face;
 use crate::world::{Globe, Terrain};
 
-/// Universe seed of the rig: its home planet lives at the skeletal rung, with walkers.
-pub const SEED: u64 = 7;
+/// Universe seed of the rig: its home planet is homely, and the first herd of walkers its life gives
+/// near the rig's spots is of plant eaters a robot outweighs, which flee it.
+pub const SEED: u64 = 3;
 
 /// Universe time in seconds the rig starts at.
 pub const START: f64 = 600.0;

@@ -142,6 +142,11 @@ const STAGES: [(&str, Stage); 33] = [
     ("above", above),
     ("orbit", orbit),
     ("tp-orbit", tp_orbit),
+    ("stop-2m", stop_2m),
+    ("stop-10km", stop_10km),
+    ("stop-100km", stop_100km),
+    ("stop-1000km", stop_1000km),
+    ("stop-20000km", stop_20000km),
     ("warp", warp),
     ("arrive", arrive),
     ("land", land),
@@ -1093,6 +1098,53 @@ fn orbit(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
         }
         _ => Act::Wait,
     }
+}
+
+/// Holds the ship `height` metres over the sea at the shore for 60 frames, nose down at the
+/// planet, and shoots `name`: the stops of the far view, from the ground to a ball in the sky.
+fn stop(world: &mut World, notes: &Notes, frame: u32, (height, name): (f64, &str)) -> Act {
+    let sea = notes.shore.unwrap_or(DVec3::Y);
+    match frame {
+        1 => {
+            hover(
+                world,
+                sea,
+                height,
+                (sea.normalize().any_orthonormal_vector(), 1.0),
+            );
+            Act::Wait
+        }
+        90 => {
+            hygiene(world, name);
+            Act::Shoot(name.into())
+        }
+        _ => Act::Wait,
+    }
+}
+
+/// Two metres over the ground.
+fn stop_2m(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    stop(world, notes, frame, (2.0, "30-stop-2m"))
+}
+
+/// Ten kilometres up.
+fn stop_10km(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    stop(world, notes, frame, (1.0e4, "31-stop-10km"))
+}
+
+/// A hundred kilometres up.
+fn stop_100km(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    stop(world, notes, frame, (1.0e5, "32-stop-100km"))
+}
+
+/// A thousand kilometres up, where the world draws the far ball.
+fn stop_1000km(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    stop(world, notes, frame, (1.0e6, "33-stop-1000km"))
+}
+
+/// Twenty thousand kilometres up, past the hand-over, where the sky draws the planet.
+fn stop_20000km(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    stop(world, notes, frame, (2.0e7, "34-stop-20000km"))
 }
 
 /// Returns the planet of the system of `home` nearest to it now, itself excluded, or with

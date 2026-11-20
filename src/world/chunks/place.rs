@@ -4,7 +4,8 @@
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
-use crate::space::{Anchor, Placed};
+use crate::space::{Anchor, Frame as Space, Placed};
+use crate::world::Planet;
 use crate::world::focus::{Frames, Link};
 use crate::world::mesh::Frame;
 
@@ -41,6 +42,13 @@ pub fn pose(anchor: &Anchor, link: &Link, sited: &Sited) -> (Placed, Transform) 
         scale: Vec3::ONE,
     };
     (placed, transform)
+}
+
+/// Run condition of [`place`]: the anchor was rebased or replaced, the planet changed, or the anchor is in
+/// the frame of the star, where the planet turns and orbits and every pose moves each frame.
+pub fn due(anchor: Option<Res<Anchor>>, planet: Option<Res<Planet>>) -> bool {
+    anchor.is_some_and(|a| a.is_changed() || matches!(a.frame, Space::System(_)))
+        || planet.is_some_and(|p| p.is_changed())
 }
 
 /// Keeps the anchor frame pose and the transform of every planet-fixed entity up to date: after

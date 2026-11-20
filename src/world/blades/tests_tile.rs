@@ -4,9 +4,14 @@
 use std::sync::Arc;
 use std::time::Instant;
 
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::tile::{Ground, grow};
+use super::Cropped;
+use super::clear::{reaching, taken};
+use super::colour::tint;
+use super::ground::Ground;
+use super::tile::grow;
 use super::tune::{DENSE, FAR, NEAR, SPARSE, TILE};
 use crate::life::flora::fixture::garden;
 use crate::world::Terrain;
@@ -101,4 +106,45 @@ fn blades_are_cheap() {
         .map(|d| TILE * TILE * if d < NEAR + TILE { DENSE } else { SPARSE })
         .sum();
     assert!(blades < 150_000.0, "{blades} blades in the rings");
+}
+
+/// A prop that cannot reach the tile changes nothing: the blades grown clear of the footprints that reach
+/// the tile are those grown clear of every footprint, with a prop inside the tile, on its border and far off.
+#[test]
+fn reaching_keeps_the_blades() {
+    let _book = hold();
+    let terrain = view(&[0, 2, 5]);
+    let (key, carpet, _) = turfed(&terrain).expect("a turfed tile");
+    let ground = Ground::read(&terrain, key);
+    let sphere = ground.sphere(&terrain);
+    let corner = key.as_vec2() * TILE;
+    let on = |x: f32, z: f32| terrain.embed(x, terrain.height(x, z), z);
+    let props = [
+        (on(corner.x + TILE * 0.5, corner.y + TILE * 0.5), 1.5),
+        (on(corner.x, corner.y + TILE * 0.5), 0.6),
+        (sphere.0 + DVec3::new(300.0, 0.0, 0.0), 2.0),
+    ];
+    let kept = reaching(&props, sphere);
+    assert_eq!(kept.len(), 2, "the far prop is dropped, the others stay");
+    let radius = terrain.globe().radius();
+    let crops = Cropped::default();
+    let all = |p| taken(p, &props, &crops, radius);
+    let some = |p| taken(p, &kept, &crops, radius);
+    let free = grow((&terrain, &ground), key, &carpet, true, &|_| false).0;
+    let (full, _) = grow((&terrain, &ground), key, &carpet, true, &all);
+    let (filtered, _) = grow((&terrain, &ground), key, &carpet, true, &some);
+    assert!(full.len() < free.len(), "the props clear no blade");
+    assert_eq!(full.roots(), filtered.roots());
+}
+
+/// The baked carpet noise stays in 0 to 1 and repeats every 256 metres, as the shader noise does.
+#[test]
+fn the_tint_repeats() {
+    let spots = (0..50).map(|n| Vec2::new(n as f32 * 5.3, n as f32 * 2.9 + 0.4));
+    for p in spots {
+        let (share, speckle) = tint(p);
+        assert!((0.0..=1.0).contains(&share) && (0.0..=1.0).contains(&speckle));
+        let (again, same) = tint(p + Vec2::new(256.0, 256.0));
+        assert!((share - again).abs() < 1e-3 && speckle == same);
+    }
 }

@@ -22,6 +22,15 @@ pub fn taken(p: DVec3, near: &[(DVec3, f32)], cropped: &Cropped, radius: f64) ->
             .any(|(dir, r)| dir.distance(up) * radius < f64::from(*r))
 }
 
+/// Returns the footprints of `near` that can take ground inside `sphere`, a centre and a radius in metres
+/// that hold every blade of a tile: the others are farther from every blade than their own reach.
+pub fn reaching(near: &[(DVec3, f32)], (centre, radius): (DVec3, f64)) -> Vec<(DVec3, f32)> {
+    near.iter()
+        .filter(|(at, foot)| at.distance(centre) < radius + f64::from(foot + ROOM))
+        .copied()
+        .collect()
+}
+
 /// Returns the footprints of the big props of the chunks within reach of the tile at planet position
 /// `centre`, as planet positions and radii, into `out`.
 pub fn footprints(chunks: &Query<(&Sited, &Canopy)>, centre: DVec3, out: &mut Vec<(DVec3, f32)>) {

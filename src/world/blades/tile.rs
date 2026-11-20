@@ -3,73 +3,27 @@
 //!
 //! A blade is one triangle whose three corners all sit at its root; the vertex shader grows it. Its first
 //! uv names the corner, its second holds the turf coordinates of the ground under it, and its colour holds
-//! its rank, which the shader keeps or drops it by with the distance, and a seed for its height and sway.
+//! its rank, which the shader keeps or drops it by with the distance, a seed for its height and sway, and
+//! the share of the second species and the speckle of the carpet under it, baked once per blade.
 
 use bevy::asset::RenderAssetUsages;
 use bevy::math::DVec3;
 use bevy::mesh::PrimitiveTopology;
 use bevy::prelude::*;
 
+use super::colour::tint;
+use super::ground::{CELLS, Ground};
 use super::tune::{DENSE, SPARSE, TILE};
 use crate::universe::hash::mix;
-use crate::world::mesh::{Frame, GRID_STEP, wrap};
+use crate::world::mesh::{Frame, wrap};
 use crate::world::scatter::Carpet;
-use crate::world::{CHUNK_SIZE, SEA_LEVEL, Surface, Terrain};
-
-/// Terrain cells along one side of a tile.
-const CELLS: usize = (TILE / GRID_STEP) as usize;
+use crate::world::{CHUNK_SIZE, SEA_LEVEL, Terrain};
 
 /// Quarters of turf a blade can stand in, and the lift of the second uv `y` per quarter, as in `turf.wesl`.
 const TURF: (f32, f32) = (4.0, 512.0);
 
 /// The corners of a blade: left and right at the root, then the tip.
 const CORNERS: [[f32; 2]; 3] = [[-1.0, 0.0], [1.0, 0.0], [0.0, 1.0]];
-
-/// The ground of one tile: its corner, its heights at the grid points, and where the turf may grow.
-pub struct Ground {
-    /// Chart position of the low corner of the tile.
-    corner: Vec2,
-    /// Heights above sea level at the grid points, the first index along x.
-    heights: [[f32; CELLS + 1]; CELLS + 1],
-    /// Whether each grid point lies on open grass.
-    grass: [[bool; CELLS + 1]; CELLS + 1],
-}
-
-impl Ground {
-    /// Reads the ground of tile `key` of `terrain`: one height and one surface per grid point.
-    pub fn read(terrain: &Terrain, key: IVec2) -> Self {
-        let corner = key.as_vec2() * TILE;
-        let at = |i: usize, j: usize| corner + Vec2::new(i as f32, j as f32) * GRID_STEP;
-        Self {
-            corner,
-            heights: std::array::from_fn(|i| {
-                std::array::from_fn(|j| terrain.height(at(i, j).x, at(i, j).y))
-            }),
-            grass: std::array::from_fn(|i| {
-                std::array::from_fn(|j| terrain.surface(at(i, j).x, at(i, j).y) == Surface::Grass)
-            }),
-        }
-    }
-
-    /// Returns the height the finest terrain mesh draws at `u`, in cells from the corner of the tile: its
-    /// two triangles per cell, split as the mesh splits them. None off open grass.
-    fn height(&self, u: Vec2) -> Option<f32> {
-        let (i, j) = ((u.x as usize).min(CELLS - 1), (u.y as usize).min(CELLS - 1));
-        let (a, b) = (u.x - i as f32, u.y - j as f32);
-        let (ri, rj) = (
-            (u.x.round() as usize).min(CELLS),
-            (u.y.round() as usize).min(CELLS),
-        );
-        if !self.grass[ri][rj] {
-            return None;
-        }
-        let h = |x: usize, z: usize| self.heights[i + x][j + z];
-        Some(match a + b <= 1.0 {
-            true => h(0, 0) + a * (h(1, 0) - h(0, 0)) + b * (h(0, 1) - h(0, 0)),
-            false => h(1, 1) + (1.0 - a) * (h(0, 1) - h(1, 1)) + (1.0 - b) * (h(1, 0) - h(1, 1)),
-        })
-    }
-}
 
 /// The blades of one tile, ready to become a mesh.
 #[derive(Default)]
@@ -80,7 +34,7 @@ pub struct Blades {
     corners: Vec<[f32; 2]>,
     /// Turf coordinates of the ground under each.
     turf: Vec<[f32; 2]>,
-    /// Rank and seed of its blade.
+    /// Rank, seed, share of the second species and speckle of its blade.
     marks: Vec<[f32; 4]>,
 }
 
@@ -97,6 +51,12 @@ impl Blades {
         self.corners.extend(CORNERS);
         self.turf.extend([turf; 3]);
         self.marks.extend([mark; 3]);
+    }
+
+    /// Returns the root of every corner of every blade, in the frame of the tile.
+    #[cfg(test)]
+    pub fn roots(&self) -> &[[f32; 3]] {
+        &self.positions
     }
 
     /// Converts the blades into a mesh, or none when there is no blade.
@@ -117,11 +77,14 @@ impl Blades {
 }
 
 /// Returns the turf coordinates of chart position `w`, where the turf grows `thick`: its wrapped chart
-/// position, lifted by the band of its quarter of turf.
-fn turf_uv(w: Vec2, thick: f32) -> [f32; 2] {
+/// position, lifted by the band of its quarter of turf, and the wrapped position alone.
+fn turf_uv(w: Vec2, thick: f32) -> ([f32; 2], Vec2) {
     let chunk = (w / CHUNK_SIZE).floor().as_ivec2();
     let [x, z] = wrap(chunk, w);
-    [x, z + (thick.min(1.0) * TURF.0).round() * TURF.1]
+    (
+        [x, z + (thick.min(1.0) * TURF.0).round() * TURF.1],
+        Vec2::new(x, z),
+    )
 }
 
 /// Returns the unit value of bits 40 and up of `x`.
@@ -161,8 +124,10 @@ pub fn grow(
             continue;
         }
         let rank = (n as f32 + unit(mix(h ^ 1))) / most;
-        let mark = [rank, unit(mix(h ^ 2)), 0.0, 1.0];
-        blades.push(frame.local(planet), turf_uv(w, thick), mark);
+        let (uv, spot) = turf_uv(w, thick);
+        let (share, speckle) = tint(spot);
+        let mark = [rank, unit(mix(h ^ 2)), share, speckle];
+        blades.push(frame.local(planet), uv, mark);
     }
     (blades, frame)
 }

@@ -1,4 +1,7 @@
-import bevy_pbr::render::mesh_view_bindings::view;
+import bevy_pbr::render::mesh_view_bindings::{view, lights};
+import bevy_pbr::render::mesh_view_types::DIRECTIONAL_LIGHT_FLAGS_SHADOWS_ENABLED_BIT;
+import bevy_pbr::render::mesh_types::MESH_FLAGS_SHADOW_RECEIVER_BIT;
+import bevy_pbr::render::shadows::fetch_directional_shadow;
 import bevy_pbr::render::pbr_types::PbrInput;
 import bevy_pbr::render::pbr_functions::{calculate_diffuse_color, calculate_F0, calculate_F0_dielectric};
 import bevy_pbr::render::pbr_lighting::{
@@ -43,6 +46,15 @@ const DAY_AMBIENT: f32 = 350.0;
 const SPACE_AMBIENT: f32 = 0.2;
 const SPACE_LUX: f32 = 12000.0;
 const TOP_SCALES: f32 = 12.0;
+const SHADOW_FADE: f32 = 0.2;
+const SUN_ALIGN: f32 = 0.9999;
+const SHIFT_MIN: f32 = 0.005;
+const OCCLUSION_RANGE: vec2<f32> = vec2<f32>(30.0, 90.0);
+
+struct Shadow {
+    share: f32,
+    fade: f32,
+}
 
 fn place_from(map: texture_2d<f32>) -> Place {
     var place: Place;
@@ -203,7 +215,39 @@ fn sky_response(in: PbrInput) -> vec3<f32> {
         in.material.diffuse_transmission
     );
     let f0 = calculate_F0(base, in.material.metallic, in.material.reflectance);
-    return ambient_response(diffuse, f0, in.material.perceptual_roughness, facing) * in.diffuse_occlusion;
+    return ambient_response(diffuse, f0, in.material.perceptual_roughness, facing);
+}
+
+fn view_z(world: vec4<f32>) -> f32 {
+    return dot(vec4<f32>(
+        view.view_from_world[0].z,
+        view.view_from_world[1].z,
+        view.view_from_world[2].z,
+        view.view_from_world[3].z
+    ), world);
+}
+
+fn sun_shadow(in: PbrInput, toward: vec3<f32>, wanted: f32) -> Shadow {
+    var out: Shadow;
+    out.share = 1.0;
+    out.fade = 0.0;
+    let count = lights.n_directional_lights;
+    for (var i: u32 = 0u; i < count; i = i + 1u) {
+        let light = &lights.directional_lights[i];
+        let casts = ((*light).flags & DIRECTIONAL_LIGHT_FLAGS_SHADOWS_ENABLED_BIT) != 0u;
+        if (casts && dot((*light).direction_to_light, toward) > SUN_ALIGN) {
+            let z = view_z(in.world_position);
+            let far = (*light).cascades[max((*light).num_cascades, 1u) - 1u].far_bound;
+            out.fade = smoothstep(far * (1.0 - SHADOW_FADE), far, -z);
+            let receives = (in.flags & MESH_FLAGS_SHADOW_RECEIVER_BIT) != 0u;
+            if (receives && (out.fade > 0.0 || wanted > 0.0)) {
+                let cast = fetch_directional_shadow(i, in.world_position, in.world_normal, z, in.frag_coord.xy);
+                out.share = cast * in.directional_shadow_factor;
+            }
+            return out;
+        }
+    }
+    return out;
 }
 
 fn relit(in: PbrInput, lit: vec4<f32>, place: Place) -> vec4<f32> {
@@ -211,7 +255,15 @@ fn relit(in: PbrInput, lit: vec4<f32>, place: Place) -> vec4<f32> {
         return lit;
     }
     let here = light_of(place, in.world_position.xyz);
-    let sun = (here.sun - place.eye_sun.rgb) * sun_response(in, place.star.xyz);
-    let sky = (here.sky - place.eye_sky.rgb) * sky_response(in);
+    let shift = here.sun - place.eye_sun.rgb;
+    let moved = max(abs(shift.x), max(abs(shift.y), abs(shift.z)));
+    let eye_top = max(place.eye_sun.x, max(place.eye_sun.y, place.eye_sun.z));
+    let wanted = select(0.0, 1.0, moved > SHIFT_MIN * max(eye_top, 1.0));
+    let shadow = sun_shadow(in, place.star.xyz, wanted);
+    let back = (1.0 - shadow.share) * shadow.fade;
+    let sun = (shift * shadow.share + here.sun * back) * sun_response(in, place.star.xyz);
+    let near = 1.0 - smoothstep(OCCLUSION_RANGE.x, OCCLUSION_RANGE.y, -view_z(in.world_position));
+    let seen = mix(vec3<f32>(1.0), in.diffuse_occlusion, near);
+    let sky = (here.sky * seen - place.eye_sky.rgb * in.diffuse_occlusion) * sky_response(in);
     return vec4<f32>(max(lit.rgb + (sun + sky) * view.exposure, vec3<f32>(0.0)), lit.a);
 }

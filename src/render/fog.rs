@@ -44,7 +44,7 @@ pub const THIN_AIR: f32 = 1.0e-3;
 const WHITEOUT_VISIBILITY: f32 = 70.0;
 
 /// Height of the game camera above the ground or the sea under it, in metres, as the fog last
-/// measured it. The lights read it to fade the shadows out before their maps run out.
+/// measured it. The shading reads it to take the ambient occlusion pass off a high camera.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
 pub struct Clearance(pub f32);
 

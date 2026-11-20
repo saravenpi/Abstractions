@@ -1,18 +1,29 @@
 //! The sun and moon directional lights, aimed by the real star and the real moon and tinted by
 //! the palette. A night without a moon leaves the moon light dark.
+//!
+//! The sun gives what the rule of `daylight.wesl` gives the camera, so the ground shader, which
+//! corrects the light for the place it shades, finds nothing to correct at the camera. The
+//! lights run after the place light, in the same schedule, and before Bevy builds the shadow
+//! cascades from their pose.
+
+mod tune;
+
+#[cfg(test)]
+mod tests;
 
 use bevy::camera::visibility::Visibility;
-use bevy::light::{CascadeShadowConfigBuilder, DirectionalLight, DirectionalLightShadowMap};
+use bevy::light::{
+    CascadeShadowConfigBuilder, DirectionalLight, DirectionalLightShadowMap, SimulationLightSystems,
+};
 use bevy::prelude::*;
 
+use self::tune::{FIRST_CASCADE, MOON_SHADOW_LUX, SHADOW_HEIGHT, SHADOW_RANGE};
 use super::SunDir;
+use super::daylight::{PlaceLight, PlaceLit, PlaceUniform};
 use super::moonlight::Moonlight;
 use super::palette::{Palette, srgb};
 use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
-
-/// Lowest light height above the horizon, as a sine, at which shadows are still cast.
-const SHADOW_HEIGHT: f32 = 0.02;
 
 /// Marker for the world's directional sun light.
 #[derive(Component, Debug, Default, Clone, Copy)]
@@ -23,7 +34,11 @@ pub struct Sun;
 pub struct Moon;
 
 /// Transform and light of a directional light entity.
-type LightParts = (&'static mut Transform, &'static mut DirectionalLight);
+type LightParts = (
+    &'static mut Transform,
+    &'static mut GlobalTransform,
+    &'static mut DirectionalLight,
+);
 
 /// Filter matching the sun only.
 type SunOnly = (With<Sun>, Without<Moon>);
@@ -38,28 +53,34 @@ struct Aim {
     color: Color,
     lux: f32,
     shadows: bool,
+    floor: f32,
 }
 
 impl Aim {
     /// Points the light from `dir` toward the origin and sets its color, strength and shadows.
-    fn apply(self, transform: &mut Transform, light: &mut DirectionalLight) {
+    /// It has no shadow below its `floor` of lux. The global transform is written with the local
+    /// one: the light is a root entity and moves after transform propagation.
+    fn apply(self, pose: (&mut Transform, &mut GlobalTransform), light: &mut DirectionalLight) {
+        let (transform, global) = pose;
         transform.look_to(-self.dir, Vec3::Y);
+        *global = GlobalTransform::from(*transform);
         light.color = self.color;
         light.illuminance = self.lux;
-        let shadows = self.shadows && self.height > SHADOW_HEIGHT;
+        let shadows = self.shadows && self.height > SHADOW_HEIGHT && self.lux > self.floor;
         if light.shadow_maps_enabled != shadows {
             light.shadow_maps_enabled = shadows;
         }
     }
 }
 
-/// Returns the shadow setup shared by both lights: two cascades out to 110 meters, enough at a third of the resolution.
+/// Returns the shadow setup shared by both lights: two cascades out to [`SHADOW_RANGE`] metres,
+/// enough at a third of the resolution. The ground shader fades the last fifth of the range out.
 fn cascades() -> bevy::light::CascadeShadowConfig {
     CascadeShadowConfigBuilder {
         num_cascades: 2,
         minimum_distance: 0.1,
-        first_cascade_far_bound: 28.0,
-        maximum_distance: 110.0,
+        first_cascade_far_bound: FIRST_CASCADE,
+        maximum_distance: SHADOW_RANGE,
         overlap_proportion: 0.2,
     }
     .build()
@@ -89,41 +110,79 @@ fn spawn_lights(mut commands: Commands) {
     ));
 }
 
+/// Returns the share of the light of the star that reaches the camera once a moon or a distant
+/// star has taken its part: [`SunDir::lit`] above the horizon, where the planet casts no shadow
+/// and `daylight.wesl` already counts the rest. Below it the planet's shadow is in the place
+/// block, so nothing is taken twice.
+fn beam(sun: &SunDir) -> f32 {
+    if sun.height >= 0.0 {
+        sun.lit.min(1.0)
+    } else {
+        1.0
+    }
+}
+
+/// Returns the colour and the illuminance of the sun light: what the place block gives the
+/// camera, the same linear light the ground shader takes as its reference, times the
+/// [`beam`]. Without a lit planet, as in space, it is the light of the palette.
+fn sun_light(place: &PlaceUniform, sun: &SunDir, palette: &Palette) -> (Color, f32) {
+    if place.air.z <= 0.0 {
+        return (srgb(palette.sun_color), palette.sun_lux);
+    }
+    let light = place.eye_sun.truncate() * beam(sun);
+    let lux = light.max_element();
+    if lux <= 0.0 {
+        return (Color::WHITE, 0.0);
+    }
+    let tint = light / lux;
+    (Color::linear_rgb(tint.x, tint.y, tint.z), lux)
+}
+
 /// Aims the sun at the star and the moon light at the real moon, which the palette leaves dark
-/// on a planet without moons, tints both from the palette and applies the shadow setting.
+/// on a planet without moons, tints both and applies the shadow setting. The sun takes the
+/// light of the place block, the moon the palette.
 fn update_lights(
-    sky: (Res<Palette>, Res<SunDir>, Res<Moonlight>),
+    sky: (Res<Palette>, Res<SunDir>, Res<Moonlight>, Res<PlaceLight>),
     settings: Res<Persistent<Settings>>,
     mut suns: Query<LightParts, SunOnly>,
     mut moons: Query<LightParts, MoonOnly>,
 ) {
-    let (palette, sun, moon) = sky;
+    let (palette, sun, moon, place) = sky;
     let shadows = settings.graphics.shadows;
-    for (mut transform, mut light) in &mut suns {
+    let (color, lux) = sun_light(&place.0, &sun, &palette);
+    for (mut transform, mut global, mut light) in &mut suns {
         let aim = Aim {
             dir: sun.dir,
             height: sun.height,
-            color: srgb(palette.sun_color),
-            lux: palette.sun_lux,
+            color,
+            lux,
             shadows,
+            floor: 0.0,
         };
-        aim.apply(&mut transform, &mut light);
+        aim.apply((&mut *transform, &mut *global), &mut light);
     }
-    for (mut transform, mut light) in &mut moons {
+    for (mut transform, mut global, mut light) in &mut moons {
         let aim = Aim {
             dir: moon.0.map_or(Vec3::X, |glow| glow.dir),
             height: moon.0.map_or(0.0, |glow| glow.height),
             color: Color::srgb(0.62, 0.72, 1.0),
             lux: palette.moon_lux,
             shadows,
+            floor: MOON_SHADOW_LUX,
         };
-        aim.apply(&mut transform, &mut light);
+        aim.apply((&mut *transform, &mut *global), &mut light);
     }
 }
 
-/// Registers the lights and their update.
+/// Registers the lights and their update, which runs after the place light is worked out and
+/// before the shadow cascades are built from the pose of the lights.
 pub(super) fn plugin(app: &mut App) {
     app.insert_resource(DirectionalLightShadowMap { size: 2048 })
         .add_systems(OnEnter(Screen::Loading), spawn_lights)
-        .add_systems(Update, (update_lights, super::shade::split).chain());
+        .add_systems(
+            PostUpdate,
+            update_lights
+                .after(PlaceLit)
+                .before(SimulationLightSystems::UpdateDirectionalLightCascades),
+        );
 }

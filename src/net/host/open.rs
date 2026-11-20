@@ -1,13 +1,13 @@
 //! Opening the world being played to the local network.
 
 use std::io;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::RangeInclusive;
 use std::path::Path;
 use std::time::Instant;
 
 use abstractions_net::io::{ServeConfig, ServerHandle, serve};
-use abstractions_net::lan::{Announcer, Beacon};
+use abstractions_net::lan::{Announcer, Beacon, lan_ip};
 use abstractions_net::room::{Room, RoomConfig};
 use abstractions_net::store::World;
 use abstractions_net::trust::short_key;
@@ -28,16 +28,6 @@ use crate::space::Clock;
 
 /// The ports a host tries, in order: the game port and the ten after it.
 pub const PORTS: RangeInclusive<u16> = GAME_PORT..=GAME_PORT + 10;
-
-/// Returns the address of this machine on its local network, or the loopback address when it
-/// has none. Connecting a UDP socket sends nothing; it only picks the route.
-pub fn lan_ip() -> IpAddr {
-    let probe = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0))).and_then(|socket| {
-        socket.connect(SocketAddr::from((Ipv4Addr::new(192, 168, 0, 1), 9)))?;
-        socket.local_addr()
-    });
-    probe.map_or(IpAddr::V4(Ipv4Addr::LOCALHOST), |addr| addr.ip())
-}
 
 /// Starts a server for `world` on the first free port of [`PORTS`], keeping its certificate
 /// in `dir`.
@@ -155,7 +145,10 @@ impl Opening<'_, '_> {
             started: Instant::now(),
         });
         *self.session = Session::Hosting {
-            lan_address: format!("{}:{port}", lan_ip()),
+            lan_address: format!(
+                "{}:{port}",
+                lan_ip().unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST))
+            ),
             key: short_key(&key),
         };
         Ok(())

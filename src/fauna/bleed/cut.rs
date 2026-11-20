@@ -162,7 +162,6 @@ pub fn cut(
         let normal = normal(&s.parts, hit);
         flake(&mut s, hit, (normal, (species, index), key));
         let gravity = (life, globe.gravity() as f32);
-        let gravity = (life, globe.gravity() as f32);
         let made = opening(
             gravity,
             (species, beast.index),

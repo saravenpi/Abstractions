@@ -109,9 +109,13 @@ pub const CROUCH_RATE: f32 = 16.0;
 /// a step down, to all of it.
 pub const CROUCH_SOFT: (f32, f32) = (2.0, 9.0);
 
-/// How much slower the knees push the body back up after the hardest landing than after a
-/// soft one: the recovery takes 0.3 s soft and 0.5 s hard.
+/// How much slower the knees push the body back up after the hardest landing than after a soft
+/// one: the recovery takes 0.3 s soft and 0.5 s hard.
 pub const RECOVER_SLOW: f32 = 0.6;
+
+/// How much slower the knees give way under the hardest landing than under a soft one, while the
+/// hands go down to the ground.
+pub const GIVE_SLOW: f32 = 1.0;
 
 /// How deep the knees fold when a jump starts, in meters, and for how many seconds: a short
 /// dip while the body already rises, so the jump itself is never delayed.

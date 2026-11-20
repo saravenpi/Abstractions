@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use crate::avatar::dress::{dress, mode, shown};
 use crate::avatar::show::{ARMS_PITCH, drawn};
+use crate::avatar::touch::{Touch, touch};
 use crate::avatar::{AvatarPose, Mode, Shown};
 use crate::gear::{FlightState, Mode as Flight};
 
@@ -21,6 +22,11 @@ fn gear(mode: Flight, velocity: Vec3) -> FlightState {
     }
 }
 
+/// Returns how a body with no recorded impact takes a touchdown the gear handles as `flight`.
+fn touched(flight: Flight) -> Touch {
+    touch(flight, Vec3::ZERO, 0.0, 0.0)
+}
+
 /// Each gear mode poses its own way, a deep swim dives, and the filler decides with the gear off.
 #[test]
 fn the_gear_chooses_the_flight_poses() {
@@ -32,14 +38,14 @@ fn the_gear_chooses_the_flight_poses() {
         (Mode::Fall, Flight::Fall, up, false, Mode::Jump),
         (Mode::Jump, Flight::Fall, down, false, Mode::Fall),
         (Mode::Run, Flight::Roll, still, false, Mode::Land),
-        (Mode::Run, Flight::Slide, still, false, Mode::Run),
+        (Mode::Run, Flight::Slide, still, false, Mode::Skid),
         (Mode::Swim, Flight::Off, still, true, Mode::Dive),
         (Mode::Swim, Flight::Off, still, false, Mode::Swim),
         (Mode::Walk, Flight::Off, still, true, Mode::Walk),
     ];
     for (filled, flight, velocity, deep, wanted) in cases {
         assert_eq!(
-            mode(filled, &gear(flight, velocity), deep),
+            mode(filled, &gear(flight, velocity), touched(flight), deep),
             wanted,
             "{flight:?}"
         );

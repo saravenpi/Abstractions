@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use super::FRAME;
 use crate::avatar::fill::{LAND_SECONDS, Memory, classify, hardness, observe};
+use crate::avatar::touch::tune::LAND_HOLD;
 use crate::avatar::{AvatarPose, Mode};
 use crate::player::Motion;
 
@@ -66,14 +67,16 @@ fn touch_down(fall: f32) -> (AvatarPose, usize) {
     panic!("the landing never ends");
 }
 
-/// Touching down after a fall lands for a moment, as hard as the fall was fast.
+/// Touching down after a fall lands for a moment, as hard as the fall was fast: a soft landing
+/// for the soft time, a hard one longer by its hardness.
 #[test]
 fn touching_down_lands() {
     for (fall, hard) in [(4.0, false), (40.0, true)] {
         let (pose, frames) = touch_down(fall);
         assert_eq!(pose.mode, Mode::Idle);
+        let held = LAND_SECONDS + LAND_HOLD * pose.landed_hard;
         assert!(
-            (frames as f32 * FRAME - LAND_SECONDS).abs() <= FRAME,
+            (frames as f32 * FRAME - held).abs() <= FRAME,
             "landed for {frames} frames"
         );
         assert_eq!(

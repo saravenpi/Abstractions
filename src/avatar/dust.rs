@@ -147,7 +147,8 @@ pub struct Seen {
 impl Seen {
     /// Returns what the body does in the state `input`, with the feet `planted` or not.
     pub fn of(input: &AvatarPose, planted: [bool; 2]) -> Self {
-        let standing = matches!(input.mode, Mode::Idle | Mode::Walk | Mode::Run | Mode::Land);
+        let standing = matches!(input.mode, Mode::Idle | Mode::Walk | Mode::Run | Mode::Land)
+            || input.mode.floored();
         Self {
             landing: input.absorb || input.mode == Mode::Land,
             standing,

@@ -9,7 +9,9 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::air::level;
+use super::fill::hardness;
 use super::own::Own;
+use super::touch::{Touch, touch};
 use super::{AvatarPose, Mode, Shown};
 use crate::gear::{FlightState, Gear, Mode as Flight};
 use crate::player::{Motion, Player, above_sea, wrap};
@@ -26,27 +28,39 @@ const SHOW_HEAD: f32 = 0.5;
 /// How hard a landing roll looks at least, from 0 to 1.
 const ROLL_HARD: f32 = 0.7;
 
-/// Returns the mode of a body the filler put in `filled`, whose gear is in `state`, `deep`
-/// under the sea or not.
-pub fn mode(filled: Mode, state: &FlightState, deep: bool) -> Mode {
+/// Returns the mode of a body the filler put in `filled`, whose gear is in `state` and takes a
+/// touchdown as `touched`, `deep` under the sea or not.
+pub fn mode(filled: Mode, state: &FlightState, touched: Touch, deep: bool) -> Mode {
     match state.mode {
         Flight::BootFall => Mode::BootFall,
         Flight::Glide => Mode::Glide,
         Flight::Fly => Mode::Fly,
         Flight::Fall if state.velocity.y > 0.5 => Mode::Jump,
         Flight::Fall => Mode::Fall,
-        Flight::Roll => Mode::Land,
-        Flight::Slide | Flight::Off if filled == Mode::Swim && deep => Mode::Dive,
-        Flight::Slide | Flight::Off => filled,
+        Flight::Roll | Flight::Slide => touched.mode(),
+        Flight::Off if filled == Mode::Swim && deep => Mode::Dive,
+        Flight::Off => filled,
     }
 }
 
-/// Writes the gear, the dive and the look of the head over the filled `pose`.
+/// Keeps in `pose` how the body came in when the gear hit a surface this frame: the velocity
+/// it had, turned into the frame of the body, and the speed it lost into the surface.
+fn strike(pose: &mut AvatarPose, state: &FlightState) {
+    if state.mode.airborne() && state.servo.impact > 0.0 {
+        pose.struck = Quat::from_rotation_y(-state.servo.yaw) * state.servo.struck;
+        pose.lost = state.servo.impact;
+    }
+}
+
+/// Writes the gear, the dive, the way the body takes a touchdown and the look of the head over
+/// the filled `pose`.
 ///
 /// `look` is where the view points relative to the body: yaw to the left, then pitch up.
 pub fn dress(pose: &mut AvatarPose, state: &FlightState, look: Vec2, deep: bool) {
     let airborne = state.mode.airborne();
-    pose.mode = mode(pose.mode, state, deep);
+    strike(pose, state);
+    let touched = touch(state.mode, pose.struck, pose.lost, pose.landed_hard);
+    pose.mode = mode(pose.mode, state, touched, deep);
     pose.bank = if airborne { state.bank } else { 0.0 };
     pose.pitch = if airborne { level(state.pitch) } else { 0.0 };
     pose.thrust = state.power();
@@ -57,7 +71,7 @@ pub fn dress(pose: &mut AvatarPose, state: &FlightState, look: Vec2, deep: bool)
         pose.airspeed = state.airspeed;
     }
     if state.mode == Flight::Roll {
-        pose.landed_hard = pose.landed_hard.max(ROLL_HARD);
+        pose.landed_hard = pose.landed_hard.max(ROLL_HARD).max(hardness(pose.lost));
     }
     pose.look = look;
 }

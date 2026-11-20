@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use super::clock::ramp;
 use super::own::Own;
+use super::touch::tune::LAND_HOLD;
 use super::{AvatarPose, Mode};
 use crate::player::{Motion, Player, wrap};
 use crate::space::{Location, Travel};
@@ -72,8 +73,8 @@ fn sway(pose: &mut AvatarPose, memory: &mut Memory, motion: &Motion, (standing, 
 }
 
 /// Writes one frame of `motion` into `pose`: the mode, the speeds and the distance walked. A body
-/// that was in the air and now stands lands for a moment, as hard as it was falling, and its
-/// knees take the landing in whether it stops or runs on.
+/// that was in the air and now stands lands for a moment, longer and harder the faster it was
+/// falling, and its knees take the landing in whether it stops or runs on.
 pub fn observe(
     pose: &mut AvatarPose,
     memory: &mut Memory,
@@ -86,7 +87,7 @@ pub fn observe(
     if standing && memory.airborne {
         pose.landed_hard = hardness(-memory.vertical);
         pose.impact = (-memory.vertical).max(0.0);
-        memory.landing = LAND_SECONDS;
+        memory.landing = LAND_SECONDS + LAND_HOLD * pose.landed_hard;
     }
     pose.absorb = standing && memory.landing > 0.0;
     let landing = pose.absorb && speed <= RUN_ABOVE;

@@ -50,6 +50,8 @@ mod record_tests;
 #[cfg(test)]
 mod ring_tests;
 #[cfg(test)]
+mod scale_planet_tests;
+#[cfg(test)]
 mod scale_tests;
 #[cfg(test)]
 mod spin_tests;

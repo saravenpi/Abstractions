@@ -35,6 +35,7 @@ pub use meter::Meter;
 pub(super) use sense::sense;
 pub use stance::Stance;
 
+use super::attack::Broken;
 use crate::life::Species;
 
 /// The thing an animal is most aware of.
@@ -61,6 +62,8 @@ pub struct Wits {
     pub den: Option<DVec3>,
     /// Planet position of its last drop of blood.
     pub bled: Option<DVec3>,
+    /// The parts of its body that are broken.
+    pub broken: Broken,
 }
 
 impl Wits {
@@ -73,6 +76,7 @@ impl Wits {
             health: Health::of(species.history.mass),
             den: None,
             bled: None,
+            broken: Broken::default(),
         }
     }
 }

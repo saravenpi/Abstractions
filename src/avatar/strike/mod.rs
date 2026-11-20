@@ -18,6 +18,7 @@ mod input;
 mod key;
 mod layer;
 mod path;
+mod pull;
 mod sense;
 mod show;
 #[cfg(feature = "dev")]
@@ -115,6 +116,9 @@ fn spears() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
     (
         throw::loose.run_if(on_message::<input::Loose>),
         (throw::soar, throw::pick).run_if(any_with_component::<Spear>),
+        pull::pull
+            .run_if(any_with_component::<Spear>)
+            .run_if(crate::screens::in_control),
     )
         .chain()
 }

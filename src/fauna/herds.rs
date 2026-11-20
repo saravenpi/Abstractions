@@ -4,8 +4,10 @@
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::attack::Carved;
 use super::site;
 use super::tune::{WATCH_MOVE, WATCH_RADIUS, WATCH_SPARE};
+use super::want::carcass_key;
 use crate::life::herd::{Ground, Herd, Ledger, Search, Watch};
 use crate::life::hunt::{Carcass, Hunt};
 use crate::life::{Life, herd};
@@ -40,6 +42,10 @@ pub struct Herds {
     pub carcasses: Vec<Carcass>,
     /// Members killed by players, gone from their herds until they recover.
     pub ledger: Ledger,
+    /// The carcasses of the animals players killed, until their bones are gone.
+    pub slain: Vec<Carcass>,
+    /// What was taken from each of them.
+    pub carved: Vec<Carved>,
 }
 
 /// Runs `f` with the herds' view of `land` at universe `time`.
@@ -91,6 +97,10 @@ impl Herds {
         self.hunts = watch.hunts(land.life, time);
         self.carcasses = watch.carcasses(land.life, time);
         self.ledger.prune(time);
+        self.slain.retain(|c| time < c.bones);
+        let slain = &self.slain;
+        self.carved
+            .retain(|c| slain.iter().any(|s| carcass_key(s) == c.key));
     }
 
     /// Returns herd `id` at universe `time`, wherever it has gone, or nothing when the watch does not

@@ -28,6 +28,7 @@ mod voice;
 use bevy::math::{DVec3, Vec2};
 
 use super::herd::{Ground, Search, Watch, arc, east};
+use super::hunt::Carcass;
 use super::{Life, Species};
 pub use dens::nearest as den;
 
@@ -89,6 +90,12 @@ pub fn near(life: &Life, ground: &Ground, watch: &mut Watch, search: &Search, ou
     let from = search.at;
     out.sort_unstable_by(|a, b| arc(a.at, from).total_cmp(&arc(b.at, from)));
     out.truncate(tune::MOST);
+}
+
+/// Adds to `out` the bones of `carcasses` that lie within the search radius and whose meat is gone at
+/// the search time, as the bones of a hunter's kill are laid.
+pub fn lay_bones(life: &Life, carcasses: &[Carcass], search: &Search, out: &mut Vec<Sign>) {
+    bones::lay(life, carcasses, search, out);
 }
 
 /// What a herd's signs are read against: the ground, the search, and the species of the herd.

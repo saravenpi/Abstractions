@@ -60,7 +60,7 @@ pub use screens::{Display, Face, Screen};
 pub use state::Cockpit;
 pub use tune::{
     BACK, FLOOR, FOLLOW, GEAR_LEVER, LEVER, LEVER_LENGTH, LEVER_SWING, PAN, PANEL_Z, PEDAL,
-    PEDAL_REACH, SETTLE, STICK, STICK_LENGTH, STICK_REACH, WARP_SWITCH,
+    PEDAL_REACH, RAKE, RAKE_TILT, SETTLE, STICK, STICK_LENGTH, STICK_REACH, WARP_SWITCH,
 };
 
 /// Registers the systems of the cockpit: the local ship is fed from its helm and its

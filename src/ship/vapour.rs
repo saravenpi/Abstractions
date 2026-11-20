@@ -148,7 +148,7 @@ pub fn draw(
     fit(transform, &air.anchor, placed);
     if (strength - *last).abs() > 0.002 || *last == 0.0 {
         *last = strength;
-        if let Some(material) = materials.get_mut(&handle.0) {
+        if let Some(mut material) = materials.get_mut(&handle.0) {
             material.base_color = Color::linear_rgba(TINT.x, TINT.y, TINT.z, CONE_ALPHA * strength);
         }
     }

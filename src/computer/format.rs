@@ -1,6 +1,6 @@
 //! Human readable distances and gravity for the computer tables.
 
-use crate::universe::{GLY, STANDARD_GRAVITY};
+use crate::universe::{LY, STANDARD_GRAVITY};
 
 /// Metres in one kilometre and in one megametre, with their unit names.
 const UNITS: [(f64, &str); 2] = [(1e3, "km"), (1e6, "Mm")];
@@ -17,9 +17,9 @@ pub(super) fn short(value: f64) -> String {
     }
 }
 
-/// Formats a distance in metres as m, km, Mm or gly, whichever keeps the number under 1000.
+/// Formats a distance in metres as m, km, Mm or light-years, whichever keeps the number under 1000.
 ///
-/// Past 999 Mm the unit is the game light-year, however large the number gets.
+/// Past 999 Mm the unit is the light-year, however large the number gets.
 pub fn distance(metres: f64) -> String {
     let metres = metres.max(0.0);
     if metres < UNIT_LIMIT {
@@ -27,7 +27,7 @@ pub fn distance(metres: f64) -> String {
     }
     match UNITS.iter().find(|(scale, _)| metres / scale < UNIT_LIMIT) {
         Some((scale, unit)) => format!("{} {unit}", short(metres / scale)),
-        None => format!("{} gly", short(metres / GLY)),
+        None => format!("{} ly", short(metres / LY)),
     }
 }
 

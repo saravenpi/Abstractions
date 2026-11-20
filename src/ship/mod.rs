@@ -17,6 +17,7 @@ mod cruise;
 mod deck;
 mod drag;
 mod drive;
+mod exhaust;
 mod flight;
 mod frames;
 mod fx;
@@ -45,6 +46,7 @@ mod spawn;
 mod steer;
 mod strike;
 mod telemetry;
+mod tones;
 mod transit;
 mod tune;
 mod vapour;
@@ -234,4 +236,5 @@ pub(super) fn plugin(app: &mut App) {
     hull_cast::plugin(app);
     cockpit::plugin(app);
     vapour::plugin(app);
+    exhaust::plugin(app);
 }

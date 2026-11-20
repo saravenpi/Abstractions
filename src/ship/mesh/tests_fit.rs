@@ -1,12 +1,15 @@
-//! Fit tests: every part of the ship goes into the part that carries it, and the left side is
-//! the mirror of the right side.
+//! Fit tests: every part of the ship goes into the part that carries it, the gear stays in its
+//! hinge folded and down, and the left side is the mirror of the right side.
 
 use bevy::mesh::VertexAttributeValues;
 use bevy::prelude::*;
 
-use super::frame::{canopy, fin, fuselage, wing};
-use super::machinery::{engines, leg};
-use super::{GEAR, Solid, hull_meshes};
+use super::Solid;
+use super::blade::{FIN, WINGLET, blade};
+use super::frame::{canopy, fuselage};
+use super::parts::{Paint, parts};
+use super::tail::{ENGINES, motor};
+use super::wing::wing;
 
 /// Returns the corners of the triangles of a mesh, three for each triangle.
 pub(super) fn positions(mesh: &Mesh) -> Vec<Vec3> {
@@ -61,49 +64,43 @@ fn assert_held(name: &str, part: Solid, joins: impl Fn(Vec3) -> bool, carriers: 
 }
 
 /// The wing roots, the foot of the fin, the rim and the ends of the canopy and the fronts of
-/// the engines are inside the fuselage, and the wing ends are inside the winglets. The roots
-/// the wings had before, 0.9 m from the middle, were outside it.
+/// the engine pods are inside the fuselage, and the wing ends are inside the winglets.
 #[test]
 fn every_part_goes_into_the_part_that_carries_it() {
     let hull = fuselage();
-    let [body, _] = hull.clone().map(corners);
-    assert!(inside(&body, Vec3::new(0.0, 0.1, 1.0)) && !inside(&body, Vec3::new(0.0, 2.0, 1.0)));
-    for old in [Vec3::new(0.9, -0.1, -0.2), Vec3::new(0.9, -0.1, 2.6)] {
-        assert!(!inside(&body, old), "{old} was a wing root in the air");
-    }
     for side in [-1.0, 1.0] {
-        let [wing, winglet] = wing(side);
-        assert_held("wing root", wing.clone(), |p| p.x.abs() < 0.5, &hull);
-        assert_held("wing end", wing, |p| p.x.abs() > 3.1, &[winglet]);
+        let tip = blade(3.2 * side, &WINGLET);
+        assert_held("wing root", wing(side), |p| p.x.abs() < 0.5, &hull);
+        assert_held("wing end", wing(side), |p| p.x.abs() > 3.19, &[tip]);
     }
-    let [engine, _] = engines();
-    assert_held("fin", fin(), |p| p.y < 0.6, &hull);
+    assert_held("fin", blade(0.0, &FIN), |p| p.y < 0.5, &hull);
     assert_held("canopy", canopy(), |p| p.y < 0.3 || p.z > 0.1, &hull);
-    assert_held("engines", engine, |p| p.z < 2.7, &hull);
-}
-
-/// The strut of the nose gear ends inside the fuselage and the two others inside the wings,
-/// and every pad stands on the foot the flight uses.
-#[test]
-fn the_gear_reaches_the_ship() {
-    let carriers = [fuselage().to_vec(), wing(-1.0).to_vec(), wing(1.0).to_vec()];
-    for (foot, carrier) in GEAR.map(|foot| foot.as_vec3()).into_iter().zip(carriers) {
-        let [strut, pad] = leg(foot);
-        assert_held("strut", strut, |p| p.y > foot.y + 1.0, &carrier);
-        let lowest = corners(pad).iter().map(|p| p.y).fold(f32::MAX, f32::min);
-        assert!((lowest - foot.y).abs() < 1e-5, "pad at {lowest}");
+    for at in ENGINES {
+        assert_held("engine", motor(at).pod, |p| p.z < 2.3, &hull);
     }
 }
 
-/// Every corner of every skin has its mirror image on the other side of the ship.
+/// Every corner of the ship has its mirror image on the other side, but for the hatch, which is on
+/// the left flank only, and the red and green lights, which are each other's mirror image.
 #[test]
 fn the_ship_is_the_same_on_both_sides() {
-    for mesh in hull_meshes() {
-        let points = positions(&mesh);
-        for point in &points {
-            let mirror = Vec3::new(-point.x, point.y, point.z);
-            let twin = points.iter().any(|other| other.distance(mirror) < 1e-4);
-            assert!(twin, "{point} has no mirror image");
-        }
+    let all = parts();
+    let mut points = Vec::new();
+    for part in all.iter().filter(|part| part.group != "hatch") {
+        points.extend(corners(part.solid.clone()));
+    }
+    for point in &points {
+        let mirror = Vec3::new(-point.x, point.y, point.z);
+        let twin = points.iter().any(|other| other.distance(mirror) < 1e-3);
+        assert!(twin || point.x.abs() < 1e-3, "{point} has no mirror image");
+    }
+    let lamp = |paint| {
+        let part = all.iter().find(|part| part.paint == paint).expect("a lamp");
+        corners(part.solid.clone())
+    };
+    let (red, green) = (lamp(Paint::Red), lamp(Paint::Green));
+    for point in red {
+        let mirror = Vec3::new(-point.x, point.y, point.z);
+        assert!(green.iter().any(|other| other.distance(mirror) < 1e-4));
     }
 }

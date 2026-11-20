@@ -10,6 +10,7 @@ use bevy::prelude::*;
 
 use super::gear::GEAR;
 use super::hull::{Hit, SKIN};
+use super::mesh::hulls;
 use crate::space::{Anchor, Frame};
 
 /// Metres above a contact point a deck ray starts: more than a fast ship sinks in one step.
@@ -18,13 +19,9 @@ const LIFT: f64 = 1.0;
 /// Metres under a contact point a deck ray looks, so that the radar reads a roof under the ship.
 const DEPTH: f64 = 30.0;
 
-/// The parts of the hull shape in body axes: centre, then full width, height and length. The
-/// fuselage from the nose tip to the tail and from the belly to the roof, then the wings with
-/// their winglets, as the contact points of the hull and the drawn airframe span them.
-const PARTS: [(Vec3, Vec3); 2] = [
-    (Vec3::new(0.0, 0.3, -0.45), Vec3::new(2.0, 1.9, 7.5)),
-    (Vec3::new(0.0, -0.1, 1.7), Vec3::new(6.4, 0.5, 1.8)),
-];
+/// Height in metres of the belly, the bottom of the heat shield, which the struts of the locked
+/// gear stand under.
+const BELLY: f32 = -0.65;
 
 /// Metres of a locked leg above its foot that the hull shape leaves out: the foot itself and
 /// the travel of its spring stay with the deck rays and the landing rules.
@@ -48,19 +45,21 @@ fn record(anchor: Option<Res<Anchor>>, mut built: ResMut<Built>) {
 pub struct Shape([Collider; 2]);
 
 impl Default for Shape {
-    /// Returns the hull shapes made of [`PARTS`] and of the legs of [`GEAR`].
+    /// Returns the hull shapes made of the convex parts of the drawn airframe, see
+    /// [`hulls`], and of the legs of [`GEAR`].
     fn default() -> Self {
-        let part = |(at, size): (Vec3, Vec3)| {
-            (at, Quat::IDENTITY, Collider::cuboid(size.x, size.y, size.z))
+        let part = |points: Vec<Vec3>| {
+            let hull = Collider::convex_hull(&points).expect("the airframe parts are solid");
+            (Vec3::ZERO, Quat::IDENTITY, hull)
         };
         let low = GEAR[0].y as f32 + SPRING;
         let leg = |foot: DVec3| {
-            let top = PARTS[0].0.y - PARTS[0].1.y * 0.5;
-            let at = Vec3::new(foot.x as f32, (low + top) * 0.5, foot.z as f32);
-            (at, Vec3::new(STRUT_WIDTH, top - low, STRUT_WIDTH))
+            let at = Vec3::new(foot.x as f32, (low + BELLY) * 0.5, foot.z as f32);
+            let strut = Collider::cuboid(STRUT_WIDTH, BELLY - low, STRUT_WIDTH);
+            (at, Quat::IDENTITY, strut)
         };
-        let folded = PARTS.map(part).to_vec();
-        let down = PARTS.into_iter().chain(GEAR.map(leg)).map(part).collect();
+        let folded: Vec<_> = hulls().into_iter().map(part).collect();
+        let down = folded.iter().cloned().chain(GEAR.map(leg)).collect();
         Self([Collider::compound(folded), Collider::compound(down)])
     }
 }

@@ -4,11 +4,18 @@ use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 
-/// Triangles with one flat normal each, wound counter-clockwise seen from outside.
+use super::tones::{LAST, paint};
+
+/// Triangles with one flat normal each, wound counter-clockwise seen from outside. Each one
+/// has a tone, the plain one unless the solid was told another with [`Solid::set_tone`].
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Solid {
     /// The corners of every triangle.
-    tris: Vec<[Vec3; 3]>,
+    pub(in crate::ship) tris: Vec<[Vec3; 3]>,
+    /// The tone of every triangle.
+    pub(in crate::ship) tones: Vec<u8>,
+    /// The tone the next triangles take.
+    tone: u8,
 }
 
 impl Solid {
@@ -16,6 +23,12 @@ impl Solid {
     pub fn tri(&mut self, p: [Vec3; 3], out: Vec3) {
         let front = (p[1] - p[0]).cross(p[2] - p[0]).dot(out) >= 0.0;
         self.tris.push(if front { p } else { [p[0], p[2], p[1]] });
+        self.tones.push(self.tone);
+    }
+
+    /// Sets the tone of the triangles added from now on: an index into the tones of the palette.
+    pub fn set_tone(&mut self, tone: u8) {
+        self.tone = tone.min(LAST);
     }
 
     /// Adds a quad wound so that its front faces the direction `out`.
@@ -52,16 +65,18 @@ impl Solid {
     pub fn merge(&mut self, other: &Solid, offset: Vec3) {
         self.tris
             .extend(other.tris.iter().map(|tri| tri.map(|p| p + offset)));
+        self.tones.extend(other.tones.iter());
     }
 
-    /// Converts the triangles into a mesh: positions, flat normals, one UV, tangents and `u32` indices.
+    /// Converts the triangles into a mesh: positions, flat normals, one UV, tangents, `u32` indices,
+    /// and vertex colours when any triangle is not of the plain tone.
     pub fn into_mesh(self) -> Mesh {
         let count = self.tris.len() * 3;
         let normal =
             |[a, b, c]: &[Vec3; 3]| (*b - *a).cross(*c - *a).normalize_or_zero().to_array();
         let normals: Vec<[f32; 3]> = self.tris.iter().flat_map(|tri| [normal(tri); 3]).collect();
         let positions: Vec<[f32; 3]> = self.tris.iter().flatten().map(|p| p.to_array()).collect();
-        Mesh::new(
+        let mut mesh = Mesh::new(
             PrimitiveTopology::TriangleList,
             RenderAssetUsages::default(),
         )
@@ -69,6 +84,11 @@ impl Solid {
         .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
         .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0.5, 0.5]; count])
         .with_inserted_attribute(Mesh::ATTRIBUTE_TANGENT, vec![[1.0, 0.0, 0.0, 1.0]; count])
-        .with_inserted_indices(Indices::U32((0..count as u32).collect()))
+        .with_inserted_indices(Indices::U32((0..count as u32).collect()));
+        if self.tones.iter().any(|tone| *tone != 0) {
+            let colors: Vec<[f32; 4]> = self.tones.iter().flat_map(|t| [paint(*t); 3]).collect();
+            mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
+        }
+        mesh
     }
 }

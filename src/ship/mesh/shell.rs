@@ -3,7 +3,10 @@
 
 use bevy::prelude::*;
 
-use super::frame::{CANOPY, CANOPY_ENDS, CANOPY_SIDES, FUSELAGE, SIDES, SPINE, ring};
+use super::frame::{
+    CANOPY, CANOPY_ENDS, CANOPY_SIDES, FUSELAGE, JOINT, POST, PRE, SIDES, SPINE, ring,
+};
+use super::plating::{cone, plating};
 use crate::ship::solid::Solid;
 
 /// Where the mouth of the cockpit starts and ends along z. The joint between the nose and the
@@ -28,7 +31,7 @@ pub fn station(z: f32) -> [f32; 4] {
 
 /// Returns the three stations of the mouth: its front, the joint and its back.
 pub fn mouth() -> [[f32; 4]; 3] {
-    [station(MOUTH.0), FUSELAGE[1], station(MOUTH.1)]
+    [station(MOUTH.0), FUSELAGE[JOINT], station(MOUTH.1)]
 }
 
 /// Returns the point of the roof of the hull at `station` that is `half` metres to the right
@@ -39,10 +42,17 @@ pub fn lip(station: [f32; 4], half: f32) -> Vec3 {
     Vec3::new(at.x * half.signum(), at.y, at.z)
 }
 
-/// Adds the skin of the fuselage between the stations `a` and `b`. With `halves` the two roof
-/// faces are left open between the lips, which are that far from the middle at `a` and at `b`.
-fn band(solid: &mut Solid, a: [f32; 4], b: [f32; 4], halves: Option<(f32, f32)>) {
+/// Adds the skin of the fuselage between the stations `a` and `b`, the panel `i` in the tone
+/// `tones[i]`. With `halves` the two roof faces are left open between the lips, which are that
+/// far from the middle at `a` and at `b`.
+fn band(
+    solid: &mut Solid,
+    (a, b): ([f32; 4], [f32; 4]),
+    halves: Option<(f32, f32)>,
+    tones: [u8; 8],
+) {
     for i in 0..SIDES {
+        solid.set_tone(tones[i as usize]);
         let out = ring([0.0, 1.0, 1.0, 0.0], i, SIDES) + ring([0.0, 1.0, 1.0, 0.0], i + 1, SIDES);
         let (from, to) = (ring(a, i, SIDES), ring(b, i, SIDES));
         match halves.filter(|_| i == 1 || i == 2) {
@@ -62,9 +72,11 @@ fn band(solid: &mut Solid, a: [f32; 4], b: [f32; 4], halves: Option<(f32, f32)>)
     }
 }
 
-/// Adds the fan that closes the fuselage from `end` to `station`, facing `out`.
-fn cap(solid: &mut Solid, end: Vec3, station: [f32; 4], out: Vec3) {
+/// Adds the fan that closes the fuselage from `end` to `station`, facing `out`, in the tones
+/// of `tones`.
+fn cap(solid: &mut Solid, end: Vec3, (station, out): ([f32; 4], Vec3), tones: [u8; 8]) {
     for i in 0..SIDES {
+        solid.set_tone(tones[i as usize]);
         solid.tri(
             [end, ring(station, i, SIDES), ring(station, i + 1, SIDES)],
             out,
@@ -73,19 +85,34 @@ fn cap(solid: &mut Solid, end: Vec3, station: [f32; 4], out: Vec3) {
 }
 
 /// Returns the two halves of the fuselage as they are drawn, the body and the nose, with the
-/// mouth of the cockpit open in their roof and nothing across the joint between them.
+/// mouth of the cockpit open in their roof and nothing across the joint between them. Every
+/// station is a ring of the same corners, so all the panels share their edges.
 pub fn hull() -> [Solid; 2] {
     let (mut body, mut nose) = (Solid::default(), Solid::default());
     let [front, joint, back] = mouth();
-    cap(&mut nose, SPINE[0], FUSELAGE[0], Vec3::NEG_Z);
-    band(&mut nose, FUSELAGE[0], front, None);
-    band(&mut nose, front, joint, Some((HALF[0], HALF[1])));
-    band(&mut body, joint, back, Some((HALF[1], HALF[2])));
-    band(&mut body, back, FUSELAGE[2], None);
-    for pair in FUSELAGE[2..].windows(2) {
-        band(&mut body, pair[0], pair[1], None);
+    let (first, last) = (FUSELAGE[0], FUSELAGE[FUSELAGE.len() - 1]);
+    cap(&mut nose, SPINE[0], (first, Vec3::NEG_Z), cone(0));
+    for (k, pair) in FUSELAGE[..=PRE].windows(2).enumerate() {
+        band(&mut nose, (pair[0], pair[1]), None, cone(k));
     }
-    cap(&mut body, SPINE[2], FUSELAGE[4], Vec3::Z);
+    band(&mut nose, (FUSELAGE[PRE], front), None, plating(PRE));
+    band(
+        &mut nose,
+        (front, joint),
+        Some((HALF[0], HALF[1])),
+        plating(JOINT),
+    );
+    band(
+        &mut body,
+        (joint, back),
+        Some((HALF[1], HALF[2])),
+        plating(JOINT + 1),
+    );
+    band(&mut body, (back, FUSELAGE[POST]), None, plating(POST));
+    for (k, pair) in FUSELAGE[POST..].windows(2).enumerate() {
+        band(&mut body, (pair[0], pair[1]), None, plating(POST + 1 + k));
+    }
+    cap(&mut body, SPINE[2], (last, Vec3::Z), plating(0));
     [body, nose]
 }
 

@@ -2,26 +2,36 @@
 //! and the cockpit under the canopy.
 
 mod bars;
+mod blade;
 mod fittings;
 mod frame;
 mod levers;
+mod lod;
+mod loft;
 mod looks;
-mod machinery;
 mod outline;
+mod outside;
+mod parts;
+mod plating;
+mod ports;
 mod shell;
+mod struts;
+mod tail;
 mod tub;
+mod wing;
 
 use bevy::prelude::*;
 
 pub use levers::{bar_mesh, lever_mesh, stick_mesh};
+pub use lod::{FAR, far_mesh};
 pub use looks::{Looks, dress};
-pub use machinery::{NOZZLE_Z, plume_mesh};
 pub use outline::hulls;
+pub use ports::{LIFT, LIFT_AT, Port, ports};
+pub use tail::{ENGINES, EXIT, NOZZLE_Z};
 
 use super::gear::{GEAR, STRUT};
 use super::solid::Solid;
-use frame::{fin, wing};
-use machinery::{engines, leg};
+use parts::{Paint, parts};
 
 /// The materials a ship is made of. Each one is drawn as its own mesh.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,22 +54,38 @@ impl Skin {
 }
 
 /// Builds the meshes of the ship, one per skin in the order of [`Skin::ALL`], without the
-/// legs of the gear, which fold and are drawn from [`leg_mesh`].
+/// legs of the gear, which fold and are drawn from [`leg_mesh`], and without the lights, which
+/// are drawn from [`lamp_meshes`]. The hull, wings, fin, engines, pods and fittings are all
+/// there: [`parts`] is the one list they come from.
 pub fn hull_meshes() -> [Mesh; 5] {
-    let mut parts: [Solid; 5] = Default::default();
-    let [hull, trim, dark, glass, glow] = &mut parts;
-    let ([body, nose], [engine, disc]) = (shell::hull(), engines());
-    hull.merge(&body, Vec3::ZERO);
-    trim.merge(&nose, Vec3::ZERO);
-    trim.merge(&fin(), Vec3::ZERO);
-    for [wing, winglet] in [wing(-1.0), wing(1.0)] {
-        hull.merge(&wing, Vec3::ZERO);
-        trim.merge(&winglet, Vec3::ZERO);
+    let mut skins: [Solid; 5] = Default::default();
+    for part in parts() {
+        let skin = match part.paint {
+            Paint::Hull => Skin::Hull,
+            Paint::Trim => Skin::Trim,
+            Paint::Dark => Skin::Dark,
+            Paint::Glass => Skin::Glass,
+            Paint::Glow => Skin::Glow,
+            _ => continue,
+        };
+        skins[skin as usize].merge(&part.solid, Vec3::ZERO);
     }
-    dark.merge(&engine, Vec3::ZERO);
-    glass.merge(&shell::glass(), Vec3::ZERO);
-    glow.merge(&disc, Vec3::ZERO);
-    parts.map(Solid::into_mesh)
+    skins.map(Solid::into_mesh)
+}
+
+/// Builds the meshes of the three kinds of light, in the order red, green and white.
+pub fn lamp_meshes() -> [Mesh; 3] {
+    let mut lamps: [Solid; 3] = Default::default();
+    for part in parts() {
+        let at = match part.paint {
+            Paint::Red => 0,
+            Paint::Green => 1,
+            Paint::White => 2,
+            _ => continue,
+        };
+        lamps[at].merge(&part.solid, Vec3::ZERO);
+    }
+    lamps.map(Solid::into_mesh)
 }
 
 /// Builds what is inside the cockpit and does not move, each mesh with its skin: the dark
@@ -84,13 +110,9 @@ pub fn faces_mesh() -> Mesh {
 }
 
 /// Builds one leg of the gear, strut and pad, hanging from its hinge at the origin: scaled
-/// along y it folds up into the hull.
+/// along y it folds up into its pod.
 pub fn leg_mesh() -> Mesh {
-    let mut solid = Solid::default();
-    for part in leg(-Vec3::Y * STRUT as f32) {
-        solid.merge(&part, Vec3::ZERO);
-    }
-    solid.into_mesh()
+    struts::leg().into_mesh()
 }
 
 /// Returns where the hinges of the three legs are in body axes, at the top of each strut.
@@ -130,8 +152,16 @@ pub fn material(skin: Skin) -> StandardMaterial {
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_attach;
+#[cfg(test)]
 mod tests_cabin;
 #[cfg(test)]
+mod tests_collide;
+#[cfg(test)]
 mod tests_fit;
+#[cfg(test)]
+mod tests_gear;
+#[cfg(test)]
+mod tests_graph;
 #[cfg(test)]
 mod tests_view;

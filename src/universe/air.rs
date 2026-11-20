@@ -39,8 +39,20 @@ const MELTING: f64 = 208.0;
 /// Pressure of the rock vapour over a world hot enough to melt, in Earth atmospheres.
 const ROCK_VAPOUR: f64 = 0.02;
 
-/// Warming in kelvin by the air of the Earth.
+/// Warming in kelvin by the air of the Earth: its surface at 288 K over its effective
+/// temperature of 255 K.
 const EARTH_GREENHOUSE: f64 = 33.0;
+
+/// Kelvin of the Earth seen from space: the black body that sends back as much heat as the
+/// Earth makes, the base the grey atmosphere of [`greenhouse`] warms.
+const EARTH_EFFECTIVE: f64 = 255.0;
+
+/// Optical depth to the heat of the air of the Earth in the grey atmosphere model, fitted so
+/// that the model gives 288 K at the ground: `4/3 ((288 / 255)^4 - 1)`.
+const EARTH_DEPTH: f64 = 0.836;
+
+/// What a boiled sea multiplies the greenhouse by: the runaway greenhouse.
+const RUNAWAY: f64 = 20.0;
 
 /// Kelvin at which water boils under the air of the Earth.
 const EARTH_BOILING: f64 = 373.15;
@@ -68,9 +80,22 @@ pub fn pressure(stock: f64, gravity: f64, size: f64, flux: f64) -> f64 {
 
 /// Returns the warming in kelvin by air of a given pressure with a steady mix of gases.
 ///
-/// It grows as the square root of the pressure: 33 K under the air of the Earth, 74 K under 5.
+/// This is the grey atmosphere of radiative equilibrium: the ground is at `Te (1 + 3 tau / 4)^(1/4)`
+/// for a body of effective temperature `Te` and an air of optical depth `tau`, here `Te` of the
+/// Earth and `tau` in proportion to the pressure, since the mix and the pull are the Earth's. It
+/// gives 33 K under the air of the Earth, 109 K under 5 and 451 K under the 92 of Venus (about
+/// 500 K in reality, against 316 K for a square root). The warming of a colder or hotter body
+/// is not scaled by its own `Te`.
 pub fn greenhouse(pressure: f64) -> f64 {
-    EARTH_GREENHOUSE * pressure.sqrt()
+    let depth = EARTH_DEPTH * pressure;
+    EARTH_EFFECTIVE * ((1.0 + 0.75 * depth).powf(0.25) - 1.0)
+}
+
+/// Returns the warming in kelvin of a world whose sea has boiled: 20 times the square root of
+/// the pressure in 33 K. This is tuned, not derived: a steam air has no optical depth the model
+/// can give, and the runaway of Venus is out of its range.
+pub fn runaway(pressure: f64) -> f64 {
+    RUNAWAY * EARTH_GREENHOUSE * pressure.sqrt()
 }
 
 /// Returns the kelvin at which water boils under a given pressure, above the triple point.

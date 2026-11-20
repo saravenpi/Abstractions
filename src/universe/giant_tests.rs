@@ -141,7 +141,7 @@ fn giants_stay_in_range() {
             );
             assert_eq!((r.ammonia, r.hydrocarbon, r.tide), (0.0, 0.0, 0.0));
             assert!(
-                r.flux < FROST && within(r.temperature, (80.0, 230.0)),
+                r.flux < FROST && within(r.temperature, (115.0, 265.0)),
                 "{r:?}"
             );
             let wet = climate::state(r.temperature, r.pressure, 1.0);

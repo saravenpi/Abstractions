@@ -21,6 +21,7 @@ mod frames;
 mod fx;
 mod gear;
 mod glow;
+mod heat;
 mod helm;
 mod hull;
 mod hull_cast;
@@ -179,7 +180,7 @@ fn display(app: &mut App) {
         view::carry.run_if(seated),
     );
     let report = (
-        (telemetry::update, fx::feed).chain(),
+        (telemetry::update, fx::feed, heat::offer.run_if(heat::hot)).chain(),
         legs::fold,
         (route::report, route::finish).chain(),
         (glow::throttle, glow::glow).chain(),

@@ -114,3 +114,17 @@ pub const PULL: f32 = 3.0;
 /// How much longer a tool made for two hands takes to wind up in one hand, unitless: the grip
 /// budget falls from 30 to 15 newton metres.
 pub const ONE_HAND: f32 = 2.0;
+
+/// Tip speed relative to the body, in metres per second, above which the tool leaves a trail: a tool
+/// carried or raised moves the tip slower than this, a swing or a thrust faster. The trail glows
+/// from nothing at this speed to full at twice it.
+pub const TRAIL_SPEED: f32 = 3.0;
+
+/// Seconds a point of the trail of a tool lasts before it has faded.
+pub const TRAIL_LIFE: f32 = 0.15;
+
+/// Opacity of the trail at its brightest, unitless.
+pub const TRAIL_PEAK: f32 = 0.5;
+
+/// Share of the colour of the tool head in the trail, unitless; the rest is white.
+pub const TRAIL_TINT: f32 = 0.25;

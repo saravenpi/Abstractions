@@ -9,6 +9,7 @@
 //! it meets takes a [`Hit`]; a [`Hitstop`] freezes both for a few frames and shakes the animal.
 
 mod act;
+mod canvas;
 mod dir;
 mod flight;
 mod held;
@@ -21,6 +22,7 @@ mod layer;
 mod path;
 mod pull;
 mod recoil;
+mod ribbon;
 mod sense;
 mod show;
 #[cfg(feature = "dev")]
@@ -30,6 +32,7 @@ mod stock;
 mod stop;
 mod sync;
 mod throw;
+mod trail;
 pub mod tune;
 mod wear;
 
@@ -49,6 +52,8 @@ mod tests_hurt;
 mod tests_ik;
 #[cfg(test)]
 mod tests_stock;
+#[cfg(test)]
+mod tests_trail;
 
 pub use act::{Act, Strike};
 pub use dir::Dir;
@@ -75,6 +80,11 @@ fn armed(held: Query<(), Drawn>) -> bool {
     !held.is_empty()
 }
 
+/// Run condition: some body holds a tool and has no ribbon yet.
+fn unrigged(bodies: Query<(), (With<Held>, Without<ribbon::Trailing>)>) -> bool {
+    !bodies.is_empty()
+}
+
 /// Adds the systems of the frame: the hands read and posed before the body is animated, the drawn
 /// tool placed after, the spears thrown and flown, then the hitstop.
 fn update(app: &mut App) {
@@ -90,6 +100,10 @@ fn update(app: &mut App) {
             show::place
                 .after(AvatarSet::Animate)
                 .run_if(any_with_component::<Wielded>),
+            ribbon::rig.run_if(unrigged),
+            ribbon::trace
+                .after(show::place)
+                .run_if(any_with_component::<ribbon::Trailing>),
             spears.after(input::ask),
             sync::sync
                 .run_if(sync::stale)

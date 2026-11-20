@@ -11,6 +11,9 @@ use super::layer::posed;
 use super::tune::HAND_GRIP;
 use crate::craft::build::{Build, Form};
 
+/// Colour of the head of a drawn tool, as sRGB: the trail of a swing takes a share of it.
+pub const HEAD: [f32; 3] = [0.32, 0.32, 0.34];
+
 /// The mesh and the materials every drawn tool shares.
 #[derive(Resource, Debug, Clone)]
 pub struct Kit {
@@ -35,7 +38,7 @@ pub fn kit(meshes: &mut Assets<Mesh>, materials: &mut Assets<StandardMaterial>) 
         cube: meshes.add(Cuboid::from_length(1.0)),
         paint: [
             materials.add(paint(Color::srgb(0.55, 0.48, 0.38))),
-            materials.add(paint(Color::srgb(0.32, 0.32, 0.34))),
+            materials.add(paint(Color::srgb(HEAD[0], HEAD[1], HEAD[2]))),
         ],
     }
 }

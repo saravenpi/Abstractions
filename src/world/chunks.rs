@@ -165,6 +165,13 @@ impl Chunks {
         Around::along(&spawner.terrain, at, &course)
     }
 
+    /// Returns true when the detail chunk under unit direction `dir` of `globe` has its colliders on, which
+    /// a body released there stands on.
+    pub fn solid_under(&self, globe: &super::Globe, dir: DVec3) -> bool {
+        let leaf = super::globe::quadtree::leaf_at(dir, globe.leaf_level());
+        self.loaded.get(&leaf).is_some_and(|loaded| loaded.solid)
+    }
+
     /// Returns the chunks whose generation task is done.
     fn finished(&self) -> Vec<ChunkId> {
         let done = self.pending.iter().filter(|(_, task)| task.is_finished());

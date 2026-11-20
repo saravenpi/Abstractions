@@ -103,7 +103,10 @@ pub fn sense(mut s: Sense, mut scratch: Local<Scratch>) {
 /// Returns true when the animal `entity` senses on frame `frame`: one frame in [`SENSE_EVERY`], by its
 /// entity index.
 fn turn(entity: Entity, frame: u32) -> bool {
-    entity.index_u32().wrapping_add(frame) % SENSE_EVERY == 0
+    entity
+        .index_u32()
+        .wrapping_add(frame)
+        .is_multiple_of(SENSE_EVERY)
 }
 
 /// Readies the scratch for this frame: the ground heights, the last landing, the threats of `life`
@@ -118,7 +121,7 @@ fn ready(s: &Sense, scratch: &mut Scratch, life: &Life, (me, at, now): (Entity, 
     robots(s, &mut scratch.threats, (me, at));
     hunters(s, life, &mut scratch.threats);
     scratch.frame = scratch.frame.wrapping_add(1);
-    if scratch.frame % SENSE_EVERY == 0 {
+    if scratch.frame.is_multiple_of(SENSE_EVERY) {
         std::mem::swap(&mut scratch.alarms, &mut scratch.raised);
         scratch.raised.clear();
     }

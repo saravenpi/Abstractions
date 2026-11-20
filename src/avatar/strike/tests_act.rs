@@ -8,7 +8,7 @@ use super::dir::{Dir, Strokes};
 use super::held::{Held, Style};
 use super::path::Path;
 use super::stage::{blade, club, knife, spear};
-use super::tune::{DRAW, PARRY, PARRY_LIGHT, RECOVER};
+use super::tune::{BRAKE, DRAW, PARRY, PARRY_LIGHT, RECOVER};
 
 /// Seconds in a frame at sixty frames per second.
 const FRAME: f32 = 1.0 / 60.0;
@@ -149,8 +149,9 @@ fn the_mouse_picks_the_side() {
     assert_eq!(strokes.dir(4.1), Dir::Right);
 }
 
-/// A heavier head recovers for longer than a light one, never under the least, and carries on further
-/// past the follow-through; the overshoot settles back to the carried tool.
+/// Recovery is never under the least and grows with the wind-up once that passes it, which a light blade
+/// and a club do not reach; a heavier head carries on further past the follow-through; the overshoot
+/// settles back to the carried tool.
 #[test]
 fn a_heavy_head_recovers_longer_and_carries_on() {
     let path = |h: &Held| Path::of(h.style, Dir::Right);
@@ -159,7 +160,11 @@ fn a_heavy_head_recovers_longer_and_carries_on() {
         Timing::of(&light, &path(&light)),
         Timing::of(&heavy, &path(&heavy)),
     );
-    assert!(a.recover >= RECOVER && b.recover > a.recover);
+    assert!((a.recover - RECOVER).abs() < 1e-6 && (b.recover - RECOVER).abs() < 1e-6);
+    let mut slow = club();
+    slow.swing.windup = 0.5;
+    let slower = Timing::of(&slow, &path(&slow));
+    assert!(slower.recover > RECOVER && (slower.recover - BRAKE * 0.5).abs() < 1e-6);
     assert!(b.over > a.over && b.over < 0.2);
     let p = path(&heavy);
     let mid = key(Act::Recover(0.5 * b.recover), &p, &b, Dir::Right);

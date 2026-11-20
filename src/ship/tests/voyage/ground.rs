@@ -71,7 +71,7 @@ pub fn looks_from_behind(game: &mut Game) {
     game.step(1);
     game.release(key(game, |keys| keys.view));
     assert_eq!(game.get::<ViewPrefs>().ship, ViewMode::Third);
-    assert_eq!(game.get::<ViewPrefs>().on_foot, ViewMode::First);
+    assert_eq!(game.get::<ViewPrefs>().on_foot, ViewMode::Third);
     for _ in 0..60 {
         game.step(1);
         let height = game.camera_height();

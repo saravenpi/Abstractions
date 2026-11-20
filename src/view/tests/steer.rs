@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::world::Boxes;
-use super::{moment, run, third};
+use super::{moment, run, third, first};
 use crate::view::tune::{FOLLOW_DELAY, PITCH_LIMIT};
 use crate::view::{Kind, Moment, Rig, ViewPrefs};
 
@@ -47,7 +47,7 @@ fn auto_follow_has_limits() {
         0.0
     );
     let mut eyes = drifting();
-    eyes.prefs = ViewPrefs::default();
+    eyes.prefs = first();
     assert_eq!(
         run(&mut Rig::default(), &mut eyes, &world, 300).heading.yaw,
         0.0
@@ -65,7 +65,7 @@ fn auto_follow_has_limits() {
 /// The look turns the heading by exactly what was asked, and the pitch stops at the limit.
 #[test]
 fn look_turns_the_heading() {
-    for prefs in [third(), ViewPrefs::default()] {
+    for prefs in [third(), first()] {
         let (mut rig, mut body) = (Rig::default(), moment(Kind::OnFoot, prefs));
         body.look.yaw_delta = 0.02;
         body.look.pitch_delta = 0.05;
@@ -93,7 +93,7 @@ fn third_person_trails_the_look() {
         };
         (shown.pose.rotation * Vec3::NEG_Z).angle_between(Vec3::NEG_Z)
     };
-    assert!((turned(ViewPrefs::default(), 0) - 0.2).abs() < 1.0e-5);
+    assert!((turned(first(), 0) - 0.2).abs() < 1.0e-5);
     let trailing = turned(third(), 0);
     assert!(trailing > 0.02 && trailing < 0.19);
     assert!((turned(third(), 30) - 0.2).abs() < 1.0e-4);

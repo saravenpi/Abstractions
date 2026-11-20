@@ -20,6 +20,30 @@ impl Base {
     /// or a desert, or on the next such shore when no ground near that spawn takes the base within any
     /// pass of the search. The shores in such a heart come last. The same globe always gives the same base.
     pub fn on(globe: &Arc<Globe>, body: BodyId) -> Self {
+        let (found, first) = Self::choose(globe, |spawn| Self::within(globe, body, spawn));
+        found.map(|(_, base)| base).unwrap_or_else(|| {
+            let first = first.unwrap_or(DVec3::Y * globe.radius());
+            let view = Self::around(globe, first).view().clone();
+            Self::settled(&view, body, Vec2::X * SEARCH.0)
+        })
+    }
+
+    /// Returns the planet position of the spawn the base of the home planet whose ground is `globe` is
+    /// looked for around: where a new game stands while the base is found, which is where the base will
+    /// stand unless no ground near any spawn takes one, and then the first spawn there is.
+    pub fn landing(globe: &Arc<Globe>) -> DVec3 {
+        let (found, first) = Self::choose(globe, |spawn| Self::sited(globe, spawn).then_some(()));
+        let spawn = found.map(|(spawn, _)| spawn).or(first);
+        spawn.unwrap_or(DVec3::Y * globe.radius())
+    }
+
+    /// Walks the spawns of the shores in the order of the base: the shores out of the heart of a taiga or a
+    /// desert first, then the others. Returns the first spawn `found` takes with what it made of it, and
+    /// the first spawn there is, which stands in when none is taken.
+    fn choose<T>(
+        globe: &Arc<Globe>,
+        found: impl Fn(DVec3) -> Option<T>,
+    ) -> (Option<(DVec3, T)>, Option<DVec3>) {
         let (mut first, mut hearts) = (None, Vec::new());
         let clear = starts(globe).into_iter().find_map(|dir| {
             let (spawn, heart) = Self::lay(globe, dir)?;
@@ -28,32 +52,18 @@ impl Base {
                 hearts.push(spawn);
                 return None;
             }
-            Self::within(globe, body, spawn)
+            found(spawn).map(|made| (spawn, made))
         });
-        let heart = || hearts.iter().find_map(|s| Self::within(globe, body, *s));
-        clear.or_else(heart).unwrap_or_else(|| {
-            let first = first.unwrap_or(DVec3::Y * globe.radius());
-            let view = Self::around(globe, first).view().clone();
-            Self::settled(&view, body, Vec2::X * SEARCH.0)
-        })
+        let heart = || hearts.iter().find_map(|s| found(*s).map(|made| (*s, made)));
+        (clear.or_else(heart), first)
     }
 
-    /// Returns the planet position of the spawn the base is looked for around first on `globe`, the ground
-    /// of its home planet: where a new game stands while the base is found, which is where the base will
-    /// stand unless no ground near it takes one. It is the spawn of the first shore that is not in the
-    /// heart of a taiga or a desert, or of the first shore with a spawn when all are.
-    pub fn landing(globe: &Arc<Globe>) -> DVec3 {
-        let mut first = None;
-        for (spawn, heart) in starts(globe)
-            .into_iter()
-            .filter_map(|dir| Self::lay(globe, dir))
-        {
-            if !heart {
-                return spawn;
-            }
-            first.get_or_insert(spawn);
-        }
-        first.unwrap_or(DVec3::Y * globe.radius())
+    /// Returns true when some pass of the search finds a site for the base around `spawn`.
+    fn sited(globe: &Arc<Globe>, spawn: DVec3) -> bool {
+        let around = Self::around(globe, spawn);
+        PASSES
+            .iter()
+            .any(|pass| site::find(around.view(), *pass).is_some())
     }
 
     /// Returns the spawn the terrain finds around the shore `dir` of `globe`, and whether it lies in the

@@ -84,10 +84,22 @@ impl Globe {
     /// them. A reader too coarse for a region grid takes the climate of the first for all three, each
     /// border blurred by its own noise.
     pub fn biomes_seen(&self, at: [DVec3; 3], grain: Grain) -> [Biome; 3] {
+        self.biomes_glanced(at, grain, || self.glance(at[0]).1)
+    }
+
+    /// Returns the biomes as [`Globe::biomes_seen`] does, taking the place of the first direction from
+    /// `spot`, the second half of [`Globe::glance`] there, which a caller that already read it hands over
+    /// so that the ground under it is sampled once. `spot` is only called for a reader too coarse for a grid.
+    pub fn biomes_glanced(
+        &self,
+        at: [DVec3; 3],
+        grain: Grain,
+        spot: impl FnOnce() -> Spot,
+    ) -> [Biome; 3] {
         if grain != Grain::Far || self.lands().biome().is_some() {
             return at.map(|dir| self.biome(dir));
         }
-        let climate = climate::at(self.setting(), &self.glance(at[0]).1, MEAN_SEASON);
+        let climate = climate::at(self.setting(), &spot(), MEAN_SEASON);
         at.map(|dir| climate::biome(&climate, self.blur(dir * self.radius())))
     }
 }

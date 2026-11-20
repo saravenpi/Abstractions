@@ -3,8 +3,8 @@
 use bevy::prelude::*;
 
 use super::world::Boxes;
-use super::{apart, moment, run, seen, third};
-use crate::view::{Kind, Moment, Rig, ViewPrefs};
+use super::{apart, moment, run, seen, third, first};
+use crate::view::{Kind, Moment, Rig};
 
 /// Largest change of the view of a body in one frame at 60 Hz, in metres and in radians. A
 /// switch moves the camera 3.7 m in 0.35 s, eased, which peaks at 0.27 m per frame.
@@ -56,7 +56,7 @@ fn mode_switch_slides_along_the_view_axis() {
     let (mut rig, world) = (Rig::default(), Boxes::default());
     let mut body = moment(Kind::OnFoot, third());
     let mut last = run(&mut rig, &mut body, &world, 30);
-    body.prefs = ViewPrefs::default();
+    body.prefs = first();
     for frame in 0..24 {
         let now = run(&mut rig, &mut body, &world, 1);
         let (at, was) = (now.pose.position, last.pose.position);
@@ -74,7 +74,7 @@ fn mode_switch_slides_along_the_view_axis() {
 /// views, and the flight rig sees wider and, in third person, sits farther back.
 #[test]
 fn ground_flight_ground_is_continuous() {
-    for (prefs, back) in [(third(), 1.5), (ViewPrefs::default(), -0.05)] {
+    for (prefs, back) in [(third(), 1.5), (first(), -0.05)] {
         let mut rig = Rig::default();
         let mut body = moment(Kind::OnFoot, prefs);
         body.target.velocity = Vec3::new(0.0, -2.0, -14.0);
@@ -94,7 +94,7 @@ fn ground_flight_ground_is_continuous() {
 /// third person camera only leans with it, and it looks a little toward where the body goes.
 #[test]
 fn flight_banks_and_looks_ahead() {
-    for (prefs, share) in [(third(), 0.15), (ViewPrefs::default(), 1.0)] {
+    for (prefs, share) in [(third(), 0.15), (first(), 1.0)] {
         let mut body = moment(Kind::Flying, prefs);
         body.target.velocity = Vec3::new(-8.0, 0.0, -20.0);
         body.target.bank = 1.2;
@@ -132,7 +132,7 @@ fn ship_switch_is_continuous() {
 /// past it without unwinding back the other way.
 #[test]
 fn flight_rolls_the_camera_over() {
-    let mut body = moment(Kind::Flying, ViewPrefs::default());
+    let mut body = moment(Kind::Flying, first());
     body.target.velocity = Vec3::new(0.0, 0.0, -30.0);
     let mut rig = Rig::default();
     let mut last = 0.0_f32;

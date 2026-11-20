@@ -90,7 +90,7 @@ impl Stand {
             rock.scale *= ratio;
             rock.mid = rock.at + (rock.mid - rock.at) * ratio;
             rock.left = left;
-            let mut props = self.props.iter_mut().filter(|p| id_of(key, p) == id);
+            let props = self.props.iter_mut().filter(|p| id_of(key, p) == id);
             props.for_each(|p| p.scale *= ratio);
         }
         self.changes.push((origin, ratio));

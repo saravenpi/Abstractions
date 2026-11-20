@@ -33,6 +33,15 @@ fn third() -> ViewPrefs {
     }
 }
 
+/// Returns the preferences with the first person view on foot and in the ship.
+fn first() -> ViewPrefs {
+    ViewPrefs {
+        on_foot: ViewMode::First,
+        ship: ViewMode::First,
+        ..default()
+    }
+}
+
 /// Returns a moment for a body of `kind` standing 0.9 m above the origin, seen with `prefs`.
 fn moment(kind: Kind, prefs: ViewPrefs) -> Moment {
     Moment {

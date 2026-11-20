@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::world::Boxes;
-use super::{moment, run, seen, third};
+use super::{moment, run, seen, third, first};
 use crate::view::tune::RADIUS;
 use crate::view::{Kind, Moment, Rig, Shown, ViewPrefs};
 
@@ -102,7 +102,7 @@ fn the_mouse_looks_around_and_the_view_springs_back() {
 #[test]
 fn cockpit_lags_behind_the_rotation() {
     let (mut rig, world) = (Rig::default(), Boxes::default());
-    let mut ship = ship(4.5, ViewPrefs::default());
+    let mut ship = ship(4.5, first());
     let still = run(&mut rig, &mut ship, &world, 1);
     assert!(
         seen(&still, &ship.target)

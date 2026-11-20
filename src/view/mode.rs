@@ -45,7 +45,7 @@ pub struct ViewPrefs {
 impl Default for ViewPrefs {
     fn default() -> Self {
         Self {
-            on_foot: ViewMode::First,
+            on_foot: ViewMode::Third,
             ship: ViewMode::First,
             head_bob: true,
             auto_follow: true,

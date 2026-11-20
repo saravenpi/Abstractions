@@ -6,7 +6,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-use super::{World, explored, hunt};
+use super::{WORLD_VERSION, World, explored, hunt};
 
 /// Name of the world file in the data folder.
 pub const FILE: &str = "world.toml";
@@ -28,6 +28,9 @@ pub fn load_or_create(dir: &Path, name_hint: &str) -> io::Result<World> {
         Ok(text) => {
             let world: World = toml::from_str(&text)
                 .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
+            if world.version < WORLD_VERSION {
+                return replace_old(dir, &path, name_hint);
+            }
             let explored = explored::load(dir)?;
             let hunt = hunt::load(dir)?;
             Ok(World {
@@ -48,6 +51,25 @@ pub fn load_or_create(dir: &Path, name_hint: &str) -> io::Result<World> {
         }
         Err(error) => Err(error),
     }
+}
+
+/// Keeps the 0.10 world file at `path` as `world.toml.0.10.bak`, says so, and starts a new world.
+/// The certificate and the key stay, so players still trust the server.
+fn replace_old(dir: &Path, path: &Path, name_hint: &str) -> io::Result<World> {
+    let backup = dir.join(format!("{FILE}.0.10.bak"));
+    fs::copy(path, &backup)?;
+    let world = World {
+        name: name_hint.to_string(),
+        seed: random_seed(),
+        ..World::default()
+    };
+    save(dir, &world)?;
+    println!(
+        "The world in {} is from 0.10 and cannot be opened by 0.11. A new world starts; the old file is kept as {}.",
+        path.display(),
+        backup.display()
+    );
+    Ok(world)
 }
 
 /// Writes `world` to `dir/world.toml` atomically: a temporary file, flushed to disk, then

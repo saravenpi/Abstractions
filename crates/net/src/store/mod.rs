@@ -57,11 +57,22 @@ impl Member {
     }
 }
 
+/// Version of the world format this build writes. 0.11 is 3, like the game's saves.
+pub const WORLD_VERSION: u32 = 3;
+
+/// Returns the version of a world file that has none: the 0.10 format.
+fn old_version() -> u32 {
+    0
+}
+
 /// Everything a server's world file stores. Missing keys take their defaults, so older files
 /// still load.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct World {
+    /// Version of the world format. A file without it is a 0.10 world.
+    #[serde(default = "old_version")]
+    pub version: u32,
     /// Name of the world, shown in the server list.
     pub name: String,
     /// Seed the whole universe is generated from.
@@ -88,6 +99,7 @@ impl Default for World {
     /// Returns an empty world named `World` with seed 0.
     fn default() -> Self {
         Self {
+            version: WORLD_VERSION,
             name: "World".to_string(),
             seed: 0,
             clock: 0.0,

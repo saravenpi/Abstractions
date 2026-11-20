@@ -59,4 +59,4 @@ Grass blades and their cost (the owner saw 20 fps, but the machine was at load 9
 
 ## Screenshots
 
-`examples/probe.rs` drives the real game through a tour and saves PNGs (`SMOKE_SEED=1 SMOKE_DIR=<dir> cargo run --features dev --example probe`). It is not tracked. Three diverged copies are in `handoff/probe/` (`probe-water`, `probe-grass`, `probe-fauna`, each with its own stages) with `zoo.rs` and `handoff/smoke.rs.txt`. Copy one to `examples/probe.rs` to use it; merging them into one tracked example is worth doing. A cloud machine without a GPU cannot run it.
+`examples/probe/` drives the real game through a tour and saves PNGs (`SMOKE_SEED=1 SMOKE_DIR=<dir> cargo run --features dev --example probe`). It is one tracked example with a module per area. `PROBE_STAGES` (comma list of `water`, `grass`, `fauna`, `tour`, `zoo`; default all but `zoo`) picks the stages, and `SMOKE_ONLY` and `SMOKE_SKIP` pick single stages by name. `PROBE_STAGES=zoo` shows every animal of the seed walking in a line instead of touring the game. A cloud machine without a GPU cannot run it.

@@ -55,7 +55,7 @@ Branch `integrate` (worktree `~/Code/Saravenpi/wt-int`) holds everything merged 
 | 20 | After that: a complete review, fix what it finds, improve and polish the animations and everything that was added | After the tests are green: review of the whole diff by area, probe shots, polish pass |
 | 21 | Polish the light effects and make them more realistic, from good practices found online, still optimised, with control given to the user for a weak PC | Agent `lightfx` running: research to `handoff/specs/lightfx.md`; exposure that adapts, sky and ground bounce ambient, cloud shadows on the ground, low sun and aerial perspective from the real air, water Fresnel and glint, local lights in physical units; a "Lighting quality" preset plus one switch per costly effect. Low keeps every light and drops only shadows, shafts, occlusion and bloom |
 | 22 | Show units and distances correctly in the UI so everyone understands them easily | Sent to `fx-ui`: one formatting module for the whole UI (metres, km, AU, light-years, each explained once on the screen), a trip time beside every far distance, gravity, air and radius as multiples of home with the SI value beside, plain labels, the same number on the marker and on the map |
-| 23 | From the owner through the session `abstractions-16`: read the architecture review (`handoff/specs/architecture-review.md`, read at `main` e8f0dd4), make a plan, fix what it lists, fold it into this update; reduce the size of the codebase and optimise the game: less redundancy, one way of doing each thing | Planned as its own wave, after every branch in flight is merged and the tests are green, because it moves and deletes code that eleven branches are editing. See section 6c |
+| 23 | (Moved to the next version by the owner, except C5 which is done.) From the owner through the session `abstractions-16`: read the architecture review (`handoff/specs/architecture-review.md`, read at `main` e8f0dd4), make a plan, fix what it lists, fold it into this update; reduce the size of the codebase and optimise the game: less redundancy, one way of doing each thing | Planned as its own wave, after every branch in flight is merged and the tests are green, because it moves and deletes code that eleven branches are editing. See section 6c |
 
 ## 3. The UI rework: what the owner asked for
 
@@ -119,7 +119,9 @@ State: an audit is running. It checks every scale of `src/universe/` against rea
 
 This is part of 0.11: the release waits for it.
 
-## 6c. Architecture wave (request 23)
+## 6c. Architecture wave (request 23): moved to the next version
+
+Owner decision, 2026-11-20 evening: the architecture wave is done in the next version (0.11.1 or 0.12), not in 0.11. Already landed in 0.11: C5 (the net seam, before protocol 3), the shore throttle, one system reach, one units formatter, the borders removed, several gating fixes. Everything below is the plan for later.
 
 Source: `handoff/specs/architecture-review.md`, 22 candidates in parts A (celestial and navigation), B (world and actors), C (interface and net), plus Bevy practices (D). It read `main` at e8f0dd4; line numbers have moved, so every finding is checked on `integrate` before it is acted on.
 

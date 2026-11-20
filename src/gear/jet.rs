@@ -72,12 +72,13 @@ pub fn jetting(input: &GearInput) -> bool {
 /// Returns the velocity of a body jetting along the unit direction `aim` after `dt` seconds,
 /// from `velocity`, with the spool of `state` and the liquid and gravity of `input`.
 ///
-/// The thrust is added first, then the drag slows the result implicitly, so it never
-/// overshoots and never adds speed. Nothing pushes while the boots are not held.
+/// The thrust is added first, then the drag of the speed before the step slows the result
+/// implicitly, so it never adds speed and the body settles where the thrust meets the drag,
+/// whatever the step. Nothing pushes while the boots are not held.
 pub fn jet(velocity: Vec3, aim: Vec3, state: &FlightState, input: &GearInput, dt: f32) -> Vec3 {
     let held = f32::from(u8::from(jetting(input)));
     let power = boot_power(input.gravity) * state.power() * held;
     let thrust = pump(power, velocity.dot(aim), input.liquid);
     let free = velocity + aim * (thrust * dt);
-    free / (1.0 + hull_drag(input.liquid) * free.length() * dt)
+    free / (1.0 + hull_drag(input.liquid) * velocity.length() * dt)
 }

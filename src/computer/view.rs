@@ -1,7 +1,7 @@
-//! Static layout of the map screen: the map over the whole window but a slim panel on the
-//! right, with the Back button and the path of the level shown over its top left corner and
-//! the progress of the route over its bottom. The panel holds the search box with its
-//! results, the card of the selected result with its buttons, the favourites and the players.
+//! Static layout of the map screen: the map over the whole window but the panel on the right,
+//! with the path of the levels over its top left corner and the progress of the route over its
+//! bottom. The panel holds the search box with its results, the card of the selected result
+//! with its buttons, the pins, the players, and at its foot the keys of the map.
 //!
 //! The game keeps running under the screen. Every button of the screen is for the pointer
 //! only: hovering one lights it and never moves the keyboard focus, which stays on the
@@ -10,13 +10,10 @@
 use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
-use super::layout::{LINE_HEIGHT, MARGIN, SECTION_GAP, SIDE};
+use super::layout::{LINE_HEIGHT, MARGIN, PAD, SECTION_GAP, SIDE};
 use super::map::field;
 use super::open::Computer;
 use crate::ui::{Blurred, Overlay, text, theme};
-
-/// Background of the side panel: a tone lighter than the map, which sets it apart with no line.
-pub const PANEL: Color = Color::srgb(0.09, 0.09, 0.09);
 
 /// What the search box says while nothing is typed.
 pub(super) const SEARCH_HINT: &str = "Search (/)";
@@ -68,9 +65,9 @@ pub struct SearchBox;
 #[derive(Component)]
 pub(super) struct SearchText;
 
-/// The slim panel on the right, four sections apart under their headings: the search, the
-/// card of the selected place with its buttons, the favourites and the players. The card gives
-/// way first when the window is short.
+/// The panel on the right, sections apart under their headings: the search, the card of the
+/// selected place with its buttons, the pins, the players and the keys. The card gives way
+/// first when the window is short.
 fn side() -> impl Bundle {
     let node = Node {
         width: px(SIDE),
@@ -78,18 +75,19 @@ fn side() -> impl Bundle {
         flex_shrink: 0.0,
         flex_direction: FlexDirection::Column,
         row_gap: px(SECTION_GAP),
-        padding: UiRect::all(px(MARGIN)),
+        padding: UiRect::all(px(PAD)),
         overflow: Overflow::clip(),
         ..default()
     };
     (
         node,
-        BackgroundColor(theme::PANEL),
+        BackgroundColor(theme::PANEL_BLUR),
         children![
             super::results::search(),
             super::readout::card(),
-            crate::map::favourites(),
-            crate::map::players()
+            crate::map::pins(),
+            crate::map::players(),
+            super::section::legend()
         ],
     )
 }
@@ -144,11 +142,10 @@ fn foot() -> impl Bundle {
     (stack(), lines)
 }
 
-/// What is written over the map: the Back button on its own row and the path of the level
-/// shown under it, then the caption, in the top left corner with north at the right end, and
-/// along the bottom the progress of the route over the course line and the place under the
-/// pointer, with the scale at the right end. Each line keeps its height while empty, so the
-/// others do not jump.
+/// What is written over the map: the path of the levels, then the caption, in the top left
+/// corner with north at the right end, and along the bottom the progress of the route over the
+/// course line and the place under the pointer, with the scale at the right end. Each line
+/// keeps its height while empty, so the others do not jump.
 fn words() -> impl Bundle {
     let node = Node {
         position_type: PositionType::Absolute,

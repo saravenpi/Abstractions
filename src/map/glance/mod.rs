@@ -1,19 +1,20 @@
 //! The pointer on the flat map of a planet: pointing at a marker or a place, clicking it and
 //! dragging the map.
 //!
-//! A click selects the marker under the pointer, or lets go of the selection on bare ground,
-//! and picks the place for a favourite. A slow second click on the selected marker lets go of
-//! it, and a double click focuses the map on the marker or the place. No click sets a course.
+//! A click selects the marker under the pointer, or lets go of the selection on bare ground, and
+//! picks the place. A double click focuses the map on the marker or the place. A right click on
+//! bare ground drops a pin. No click sets a course.
 
+mod pin;
 mod wheel;
 
+pub(super) use pin::{drop_click, pick};
 pub(super) use wheel::{coast, recentre, wheel};
 
 use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
 use super::geo::{copy_near, from_chart, wrapped};
-use super::menu::ContextMenu;
 use super::pins::Pins;
 use super::roam::{focused, slid};
 use super::surface::Surface;
@@ -57,9 +58,9 @@ pub(super) fn aim(
     view.over = over;
 }
 
-/// Applies one click at `now` seconds: selects the marker under the pointer, lets go of a
-/// selected marker clicked again or of any on bare ground, and on a double click focuses the
-/// map on the marker of `pins` or on the place under the pointer.
+/// Applies one click at `now` seconds: selects the marker under the pointer, lets go of the
+/// selection on bare ground, and on a double click focuses the map on the marker of `pins` or
+/// on the place under the pointer.
 pub fn tap(surface: &mut Surface, pins: &Pins, now: f32) {
     let last = surface.clicked.replace((surface.hover, now));
     surface.picked = surface.point.or(surface.picked);
@@ -73,29 +74,21 @@ pub fn tap(surface: &mut Surface, pins: &Pins, now: f32) {
         (surface.goal, surface.clicked) = (focused(at, surface.goal.zoom), None);
         return;
     }
-    surface.chosen = match surface.hover {
-        Some(pin) if same && surface.chosen == Some(pin) => None,
-        hover => hover,
-    };
+    surface.chosen = surface.hover;
 }
 
-/// What a press of the pointer reads: its buttons, the time and the menu of a right click.
-type Buttons<'w> = (
-    Res<'w, ButtonInput<MouseButton>>,
-    Res<'w, Time>,
-    Res<'w, ContextMenu>,
-);
+/// What a press of the pointer reads: its buttons and the time.
+type Buttons<'w> = (Res<'w, ButtonInput<MouseButton>>, Res<'w, Time>);
 
 /// Drags the map while the left button is held from it, so the place under the pointer stays
-/// under it, and clicks on a release that did not drag. A press while the menu of a right
-/// click is open only closes the menu.
+/// under it, and clicks on a release that did not drag.
 pub(super) fn press(
-    (buttons, time, menu): Buttons,
+    (buttons, time): Buttons,
     pins: Res<Pins>,
     mut surface: ResMut<Surface>,
     mut hand: ResMut<Hand>,
 ) {
-    if buttons.just_pressed(MouseButton::Left) && surface.over && menu.0.is_none() {
+    if buttons.just_pressed(MouseButton::Left) && surface.over {
         (surface.held, surface.dragged, hand.drift) = (Some(surface.at), false, Vec2::ZERO);
     }
     let Some(from) = surface.held else {

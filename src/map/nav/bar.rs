@@ -1,6 +1,6 @@
-//! The path over the map: the Back button alone on its row, and under it the levels from the
-//! universe down to the one shown, each a button that jumps to its level but the last. Black
-//! and white, with no border. Backspace goes back as the button does.
+//! The path over the map: the levels from the universe down to the one shown, each a button
+//! that jumps to its level but the last. It is the only way to change level besides a double
+//! click into a place. Backspace goes up one level.
 
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
@@ -8,12 +8,8 @@ use bevy::ui_widgets::Activate;
 use super::Place;
 use super::go::Nav;
 use crate::computer::Typing;
-use crate::ui::{Icon, Tone, entry, frame, label, theme};
+use crate::ui::{Tone, frame, label, theme};
 use crate::universe::Universe;
-
-/// Marks the Back button.
-#[derive(Component)]
-pub struct BackButton;
 
 /// Marks the row the parts of the path are written in.
 #[derive(Component)]
@@ -32,30 +28,16 @@ fn button_node() -> Node {
     }
 }
 
-/// The path over the map, empty until [`write`] fills it: the row of the Back button, which
-/// keeps its height while the button hides, over the row of the parts of the path.
+/// The path over the map, empty until [`write`] fills it. It keeps its height while empty.
 pub fn path() -> impl Bundle {
-    let row = Node {
-        align_items: AlignItems::Center,
-        column_gap: px(theme::GAP_XS),
-        min_height: px(theme::ROW_COMPACT),
-        ..default()
-    };
-    let back = (
-        BackButton,
-        frame(),
-        button_node(),
-        children![entry(Icon::Back, "Back", theme::FONT_SMALL, Tone::Plain)],
-    );
-    let column = Node {
-        flex_direction: FlexDirection::Column,
-        align_items: AlignItems::FlexStart,
-        row_gap: px(theme::GAP_XS),
-        ..default()
-    };
     (
-        column,
-        children![(row.clone(), children![back]), (Parts, row)],
+        Parts,
+        Node {
+            align_items: AlignItems::Center,
+            column_gap: px(theme::GAP_XS),
+            min_height: px(theme::ROW_COMPACT),
+            ..default()
+        },
     )
 }
 
@@ -70,12 +52,10 @@ fn part(commands: &mut ChildSpawnerCommands, place: Place, name: String, last: b
     commands.spawn(label(">", theme::FONT_SMALL, Tone::Muted));
 }
 
-/// Writes the path again when the level shown changes, and shows the Back button only while
-/// there is somewhere to go back to.
+/// Writes the path again when the level shown changes.
 pub(super) fn write(
     (nav, universe): (Nav, Option<Res<Universe>>),
     rows: Query<Entity, With<Parts>>,
-    mut backs: Query<&mut Node, With<BackButton>>,
     mut commands: Commands,
     mut last: Local<Option<(Place, Entity)>>,
 ) {
@@ -83,12 +63,6 @@ pub(super) fn write(
         return;
     };
     let here = nav.here().place;
-    let shown = [Display::None, Display::Flex][usize::from(nav.behind())];
-    for mut node in &mut backs {
-        if node.display != shown {
-            node.display = shown;
-        }
-    }
     if *last == Some((here, row)) {
         return;
     }
@@ -111,15 +85,9 @@ pub(super) fn back_key(keys: Res<ButtonInput<KeyCode>>, typing: Res<Typing>, mut
     }
 }
 
-/// Goes back on the Back button, and to the level of a part of the path clicked.
-pub(super) fn on_press(
-    event: On<Activate>,
-    buttons: Query<(Has<BackButton>, Option<&Crumb>)>,
-    mut nav: Nav,
-) {
-    match buttons.get(event.entity) {
-        Ok((true, _)) => nav.back(),
-        Ok((_, Some(Crumb(place)))) => nav.enter(*place),
-        _ => {}
+/// Goes to the level of a part of the path clicked.
+pub(super) fn on_press(event: On<Activate>, buttons: Query<&Crumb>, mut nav: Nav) {
+    if let Ok(Crumb(place)) = buttons.get(event.entity) {
+        nav.enter(*place);
     }
 }

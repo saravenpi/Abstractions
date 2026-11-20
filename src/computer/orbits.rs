@@ -3,6 +3,8 @@
 //!
 //! The board computer and the space view of the minimap draw them the same way.
 
+use std::f32::consts::{FRAC_PI_2, TAU};
+
 use bevy::prelude::*;
 
 use super::chart::Dot;
@@ -27,6 +29,12 @@ const TICK_DROP: f32 = 6.0;
 /// Most ticks drawn under one planet.
 const TICKS: usize = 6;
 
+/// Segments an orbit is drawn with.
+const SEGMENTS: usize = 72;
+
+/// How much longer than its share of the circle a segment is drawn, so that neighbours meet.
+const OVERLAP: f32 = 1.15;
+
 /// A chart to draw on: its dots, its rows and, for each row, the planet whose record is known.
 pub type Drawn<'a> = (&'a [(Dot, Vec2)], &'a [Line], &'a [Option<PlanetSpec>]);
 
@@ -39,7 +47,33 @@ pub fn cell(side: f32, planet: &PlanetSpec) -> f32 {
     }
 }
 
-/// Returns a hairline circle `radius` chart units around the chart point `centre`.
+/// Returns one segment of an orbit: a hairline rectangle on the circle of its box, turned along
+/// the circle, `index` of [`SEGMENTS`] counted from the east, anticlockwise. Its length is a
+/// share of the width of the box, so the segments keep meeting as the chart zooms.
+fn segment(index: usize) -> impl Bundle {
+    let angle = TAU * index as f32 / SEGMENTS as f32;
+    let (sin, cos) = angle.sin_cos();
+    let length = 50.0 * TAU / SEGMENTS as f32;
+    let node = Node {
+        position_type: PositionType::Absolute,
+        left: percent(50.0 + 50.0 * cos),
+        top: percent(50.0 - 50.0 * sin),
+        width: percent(length * OVERLAP),
+        height: px(theme::LINE),
+        margin: UiRect {
+            left: percent(-0.5 * length * OVERLAP),
+            top: px(-0.5 * theme::LINE),
+            ..default()
+        },
+        ..default()
+    };
+    let turn = UiTransform::from_rotation(Rot2::radians(-angle - FRAC_PI_2));
+    (node, turn, BackgroundColor(theme::HAIRLINE))
+}
+
+/// Returns a hairline circle `radius` chart units around the chart point `centre`: a box whose
+/// sides are the diameter, holding [`SEGMENTS`] thin rectangles. It has no border and no
+/// rounded corner.
 pub fn circle(centre: Vec2, radius: f32) -> impl Bundle {
     let middle = (Vec2::new(centre.x, -centre.y) * 0.5 + 0.5 - radius * 0.5) * 100.0;
     let node = Node {
@@ -48,11 +82,9 @@ pub fn circle(centre: Vec2, radius: f32) -> impl Bundle {
         top: percent(middle.y),
         width: percent(radius * 100.0),
         height: percent(radius * 100.0),
-        border: UiRect::all(px(theme::LINE)),
-        border_radius: BorderRadius::MAX,
         ..default()
     };
-    (node, BorderColor::all(theme::HAIRLINE))
+    (node, Children::spawn(SpawnIter((0..SEGMENTS).map(segment))))
 }
 
 /// Spawns one tick per moon in a row under the planet mark at `at`, at most [`TICKS`].

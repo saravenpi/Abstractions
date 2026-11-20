@@ -1,5 +1,7 @@
-//! The measures of the map screen: the slim side panel on the right, and the square the chart
-//! is laid out on in the middle of what is left.
+//! The measures of the map screen: the side panel on the right, and the square the chart
+//! is laid out on in the middle of what is left. Every measure is in logical pixels at the 1280
+//! by 720 reference: the interface scales with the window, so a window of 960 by 540 lays out
+//! as 1280 by 720.
 //!
 //! The chart is drawn on a square, so its marks keep their shape. The square is as large as
 //! the room beside the panel allows in its shorter direction, and the chart runs on past it
@@ -12,14 +14,17 @@ use crate::ui::theme;
 /// The smallest window the game supports, in pixels.
 pub const SMALLEST: Vec2 = Vec2::new(960.0, 540.0);
 
-/// Width in pixels of the side panel.
-pub const SIDE: f32 = 320.0;
+/// Width in pixels of the side panel: a line of small text holds 35 characters.
+pub const SIDE: f32 = 384.0;
 
-/// Margin in pixels around the side panel and around the texts over the map.
-pub const MARGIN: f32 = theme::GAP_M;
+/// Margin in pixels between the texts over the map and the edges of the screen.
+pub const MARGIN: f32 = theme::EDGE;
 
-/// Width in pixels the side panel leaves for its content, inside its margins.
-pub const ROOM: f32 = SIDE - 2.0 * MARGIN;
+/// Padding in pixels of the side panel on every side.
+pub const PAD: f32 = theme::S4;
+
+/// Width in pixels the side panel leaves for its content, inside its padding.
+pub const ROOM: f32 = SIDE - 2.0 * PAD;
 
 /// Width in pixels of one character of small text, the font being monospaced.
 pub const GLYPH: f32 = theme::GLYPH_ASPECT * theme::FONT_SMALL;
@@ -35,15 +40,15 @@ pub const SUMMARY_CHARS: usize =
 /// Most characters of the name of a place on the card, written in the body font.
 pub const NAME_CHARS: usize = (ROOM / (theme::GLYPH_ASPECT * theme::FONT_BODY)) as usize;
 
-/// Height in pixels of one row of the lists of the side panel: the results, the favourites
+/// Height in pixels of one row of the lists of the side panel: the results, the pins
 /// and the players.
 pub const ROW: f32 = theme::ROW_HEIGHT;
 
-/// Height in pixels of one row of the favourites and the players.
+/// Height in pixels of one row of the pins and the players.
 pub const LIST_ROW: f32 = theme::ROW_COMPACT;
 
 /// Pixels between two sections of the side panel.
-pub const SECTION_GAP: f32 = theme::GAP_L;
+pub const SECTION_GAP: f32 = theme::S4;
 
 /// Height in pixels of the heading of a section in spaced capitals, with the room under it.
 pub const HEADING: f32 = LINE_HEIGHT + theme::GAP_S;
@@ -55,8 +60,8 @@ pub const RESULTS: (usize, usize) = (1, 8);
 pub const LINE_HEIGHT: f32 = theme::FONT_SMALL * 1.2;
 
 /// Height in pixels of the band along the top of the map that the header lines take: the
-/// Back button on its own row, the path under it and the caption under the path.
-pub const HEAD_BAND: f32 = MARGIN + 2.0 * theme::ROW_COMPACT + LINE_HEIGHT + 2.0 * theme::GAP_XS;
+/// path of levels and the caption under it.
+pub const HEAD_BAND: f32 = MARGIN + theme::ROW_COMPACT + LINE_HEIGHT + theme::GAP_XS;
 
 /// Height in pixels of the band along the bottom of the map that the footer lines take: the
 /// progress of the route, the course line and the place under the pointer.
@@ -68,20 +73,22 @@ pub fn clear_of_bands(label: Rect, side: f32) -> bool {
     label.min.y >= HEAD_BAND && label.max.y <= side - FOOT_BAND
 }
 
-/// Rows of buttons the card keeps room for: a planet that is the course with an idle route
-/// takes two, engaging, clearing and focusing on the first, the waypoint and the favourite on
-/// the second.
-pub const DEED_ROWS: usize = 2;
+/// Rows of buttons the card keeps room for: the one the primary button is on.
+pub const DEED_ROWS: usize = 1;
+
+/// Lines the sentence under the primary button of the card may take.
+pub const SENTENCE_LINES: usize = 2;
 
 /// Height in pixels of the top of the card, which is never cut: its heading, the name, the
-/// subtitle, the rows of buttons and the line that says why the drive cannot engage, with the
-/// room between them.
+/// subtitle, the row of the primary button and the sentence under it, with the room between
+/// them.
 pub const CARD_HEAD: f32 = HEADING
     + theme::FONT_BODY * 1.2
     + LINE_HEIGHT
     + theme::GAP_S
-    + DEED_ROWS as f32 * (theme::ICON + theme::GAP_XS)
-    + LINE_HEIGHT
+    + DEED_ROWS as f32 * theme::ROW_HEIGHT
+    + theme::GAP_XS
+    + SENTENCE_LINES as f32 * LINE_HEIGHT
     + theme::GAP_S;
 
 /// Height in pixels of the facts of the card at their longest, with the room over each heading
@@ -89,20 +96,32 @@ pub const CARD_HEAD: f32 = HEADING
 pub const FACTS: f32 =
     super::detail::ROWS as f32 * LINE_HEIGHT + super::detail::GROUPS as f32 * theme::GAP_S;
 
+/// Height in pixels of the foot of the pins: a line that says what the selected pin does, and
+/// under it the row of its three buttons. With no pin selected the same room holds the empty
+/// text, which takes two lines.
+pub const PIN_FOOT: f32 = LINE_HEIGHT + theme::GAP_XS + LIST_ROW;
+
+/// What the legend at the foot of the panel says: the keys of the map, in the order of the
+/// table of keys.
+pub const LEGEND: &str = "Click select  G go  B pin  H home  / search  Esc close";
+
+/// Lines the legend takes at most.
+pub const LEGEND_LINES: usize = 2;
+
 /// Returns the height in pixels the side panel keeps for what is not the search results,
-/// with `favourites` and `players` rows listed: the margins, the gaps between the sections,
-/// the search with its heading and box, the card at its tallest, the favourites under their
-/// heading, which holds the button that saves one, and the players with their heading, which
-/// hide while there are none. In a window too short for all of it the facts at the bottom of
-/// the card are cut.
-pub fn fixed((favourites, players): (usize, usize)) -> f32 {
+/// with `pins` and `players` rows listed: the padding, the gaps between the sections, the
+/// search with its heading and box, the card at its tallest, the pins under their heading
+/// with their foot, the players with their heading, which hide while there are none, and the
+/// legend. In a window too short for all of it the facts at the bottom of the card are cut.
+pub fn fixed((pins, players): (usize, usize)) -> f32 {
     let search = HEADING + theme::ROW_HEIGHT + theme::GAP_XS;
-    let saved = theme::ICON + theme::GAP_S + LIST_ROW * favourites as f32;
+    let kept = HEADING + LIST_ROW * pins as f32 + PIN_FOOT;
     let friends = match players {
         0 => 0.0,
         count => SECTION_GAP + HEADING + count as f32 * LIST_ROW,
     };
-    2.0 * MARGIN + 2.0 * SECTION_GAP + search + CARD_HEAD + FACTS + saved + friends
+    let legend = LEGEND_LINES as f32 * LINE_HEIGHT;
+    2.0 * PAD + 3.0 * SECTION_GAP + search + CARD_HEAD + FACTS + kept + friends + legend
 }
 
 /// The measures of the screen in one window.
@@ -114,23 +133,23 @@ pub struct Measures {
     pub map: f32,
     /// Rows of search results drawn.
     pub rows: usize,
-    /// Rows of favourites and of players drawn.
+    /// Rows of pins and of players drawn.
     pub lists: (usize, usize),
 }
 
-/// Returns how many of `lists` rows of favourites and players a window `height` pixels high
-/// draws: what is left once the search with its fewest results and the top of the card fit,
-/// the favourites first. The players show only while one of them fits under their heading.
-pub fn listed(height: f32, (favourites, players): (usize, usize)) -> (usize, usize) {
+/// Returns how many of `lists` rows of pins and players a window `height` pixels high draws:
+/// what is left once the search with its fewest results and the top of the card fit, the pins
+/// first. The players show only while one of them fits under their heading.
+pub fn listed(height: f32, (pins, players): (usize, usize)) -> (usize, usize) {
     let room = height - (fixed((0, 0)) - FACTS) - RESULTS.0 as f32 * ROW;
     let fits = |room: f32| (room / LIST_ROW).floor().max(0.0) as usize;
-    let saved = favourites.min(fits(room));
+    let saved = pins.min(fits(room));
     let left = room - saved as f32 * LIST_ROW - SECTION_GAP - HEADING;
     (saved, players.min(fits(left)))
 }
 
-/// Returns the measures of the screen in a window of `window` pixels with `lists` rows of
-/// favourites and players: the panel keeps its width, the map takes the largest square
+/// Returns the measures of the screen in a window of `window` logical pixels with `lists` rows
+/// of pins and players: the panel keeps its width, the map takes the largest square
 /// beside it, the lists take what the window has room for, and the search results take the
 /// height the rest of the panel leaves, within their fewest and most rows.
 pub fn measure(window: Vec2, lists: (usize, usize)) -> Measures {
@@ -144,3 +163,7 @@ pub fn measure(window: Vec2, lists: (usize, usize)) -> Measures {
         lists,
     }
 }
+
+#[cfg(test)]
+#[path = "layout_tests.rs"]
+mod tests;

@@ -1,17 +1,17 @@
-//! The buttons of the side panel of the map: looking at a favourite or a player, setting the
-//! course to a favourite, renaming it, deleting it and saving a new one.
+//! The buttons of the side panel of the map: selecting a pin, going to it, renaming it and
+//! removing it, and looking at a player. The rename and remove keys do the same as their buttons.
 
 use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
-use super::favourite::Favourites;
 use super::level::Level;
 use super::me::Me;
-use super::side::{Do, FavButton, PlayerRow, SaveFavourite};
+use super::places::Places;
+use super::side::{Do, PinButton, PinRow, PlayerRow};
 use super::surface::Surface;
-use crate::computer::{Board, Destination, Target, Typing};
+use crate::computer::{Board, Computer, Destination, Engage, RouteStatus, Target, Typing};
 use crate::menus::{MarkerKind, MarkerPlace, Markers};
 use crate::space::{Anchor, Frame};
 use crate::universe::BodyId;
@@ -19,18 +19,20 @@ use crate::universe::BodyId;
 /// What the buttons of the panel change.
 #[derive(SystemParam)]
 pub struct Desk<'w, 's> {
-    /// The favourites.
-    pub(super) favourites: ResMut<'w, Favourites>,
+    /// The pins.
+    pub(super) places: ResMut<'w, Places>,
     /// Where the letters typed go.
     pub(super) typing: ResMut<'w, Typing>,
-    /// The course.
-    pub(super) destination: ResMut<'w, Destination>,
+    /// The course, and the route that can take it.
+    pub(super) course: (ResMut<'w, Destination>, Option<Res<'w, RouteStatus>>),
     /// The rows of the chart and the search.
     pub(super) board: ResMut<'w, Board>,
     /// The level shown and the flat map.
     pub(super) view: (ResMut<'w, Level>, ResMut<'w, Surface>),
     /// The markers, the render anchor and the player.
     pub(super) world: (Res<'w, Markers>, Option<Res<'w, Anchor>>, Me<'w, 's>),
+    /// Closing the map and handing a course to the autopilot.
+    pub(super) screen: (ResMut<'w, NextState<Computer>>, Commands<'w, 's>),
 }
 
 impl Desk<'_, '_> {
@@ -41,42 +43,55 @@ impl Desk<'_, '_> {
         **level = Level::Planet(body);
     }
 
-    /// Runs the button `act` of the favourite at `index`. Renaming one ends and clears a search,
-    /// so Escape is left free to close the map.
-    pub(super) fn favourite(&mut self, index: usize, act: Do) {
-        let Some(favourite) = self.favourites.0.get(index).cloned() else {
+    /// Selects the pin at `index` and looks at it on the flat map.
+    fn pick(&mut self, index: usize) {
+        let Some(pin) = self.places.pins.get(index).cloned() else {
             return;
         };
-        match act {
-            Do::Go => self.look(favourite.body, DVec3::from_array(favourite.dir)),
-            Do::Course => self.destination.0 = Some(Target::Body(favourite.body)),
-            Do::Rename => {
-                *self.typing = Typing::Name(index, favourite.name);
+        self.places.selected = Some(index);
+        self.look(pin.body, DVec3::from_array(pin.dir));
+    }
+
+    /// Makes the selected pin the active one and closes the map. A pin on another planet also
+    /// sets the course to that planet, handed to the autopilot when it can take it.
+    fn go(&mut self) {
+        let Some(index) = self.places.selected else {
+            return;
+        };
+        let Some(pin) = self.places.pins.get(index).cloned() else {
+            return;
+        };
+        self.places.set_active(Some(index));
+        let here = self.world.2.spot().map(|(body, _)| body);
+        if here != Some(pin.body) {
+            let target = Target::Body(pin.body);
+            self.course.0.0 = Some(target);
+            if self.course.1.as_deref() == Some(&RouteStatus::Idle) {
+                self.screen.1.trigger(Engage(target));
+            }
+        }
+        self.screen.0.set(Computer::Closed);
+    }
+
+    /// Runs the button `act` on the selected pin. Renaming one ends and clears a search, so
+    /// Escape is left free to close the map.
+    pub(super) fn pin(&mut self, act: Do) {
+        let Some(index) = self.places.selected else {
+            return;
+        };
+        match (act, self.places.pins.get(index).cloned()) {
+            (Do::Go, _) => self.go(),
+            (Do::Rename, Some(pin)) => {
+                *self.typing = Typing::Name(index, pin.name);
                 let board = &mut self.board;
                 (board.filter, board.stale) = (String::new(), true);
             }
-            Do::Delete => {
-                self.favourites.0.remove(index);
+            (Do::Remove, _) => {
+                self.places.remove(index);
                 *self.typing = Typing::Off;
             }
+            _ => {}
         }
-    }
-
-    /// Saves the place picked on the flat map, or where the player is, and starts naming it.
-    fn save(&mut self) {
-        let picked = match *self.view.0 {
-            Level::Planet(body) => self.view.1.picked.map(|dir| (body, dir)),
-            Level::Chart => None,
-        };
-        if let Some((body, dir)) = picked.or_else(|| self.world.2.spot()) {
-            self.keep(body, dir);
-        }
-    }
-
-    /// Saves the place `dir` of `body` as a favourite and starts naming it.
-    pub(super) fn keep(&mut self, body: BodyId, dir: DVec3) {
-        let index = self.favourites.save(body, dir);
-        *self.typing = Typing::Name(index, self.favourites.0[index].name.clone());
     }
 
     /// Looks at the player at `index` of the list of friends: on the flat map of their planet,
@@ -101,23 +116,36 @@ impl Desk<'_, '_> {
 
 /// The parts of a button of the panel that say what it does.
 type Role = (
-    Option<&'static FavButton>,
+    Option<&'static PinRow>,
+    Option<&'static PinButton>,
     Option<&'static PlayerRow>,
-    Has<SaveFavourite>,
 );
 
 /// Runs a button of the panel.
 pub(super) fn on_activate(event: On<Activate>, roles: Query<Role>, mut desk: Desk) {
-    let Ok((favourite, player, save)) = roles.get(event.entity) else {
+    let Ok((row, button, player)) = roles.get(event.entity) else {
         return;
     };
-    if let Some(FavButton(index, act)) = favourite {
-        desk.favourite(*index, *act);
+    if let Some(PinRow(index)) = row {
+        desk.pick(*index);
+    }
+    if let Some(PinButton(act)) = button {
+        desk.pin(*act);
     }
     if let Some(PlayerRow(index)) = player {
         desk.player(*index);
     }
-    if save {
-        desk.save();
+}
+
+/// Renames the selected pin on R and removes it on Delete, unless a search or a name is typed.
+pub(super) fn pin_keys(keys: Res<ButtonInput<KeyCode>>, mut desk: Desk) {
+    if !desk.typing.is_off() {
+        return;
+    }
+    if keys.just_pressed(KeyCode::KeyR) {
+        desk.pin(Do::Rename);
+    }
+    if keys.just_pressed(KeyCode::Delete) {
+        desk.pin(Do::Remove);
     }
 }

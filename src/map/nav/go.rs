@@ -89,11 +89,6 @@ impl Nav<'_> {
         }
     }
 
-    /// Returns true while Back has somewhere to go.
-    pub fn behind(&self) -> bool {
-        !self.trail.stops.is_empty() || self.here().place.parent().is_some()
-    }
-
     /// Goes back to the level shown before, or else to the level around this one.
     pub fn back(&mut self) {
         let here = self.here().place;

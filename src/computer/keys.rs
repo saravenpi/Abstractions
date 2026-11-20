@@ -46,11 +46,10 @@ pub(super) const HOME_KEY: KeyCode = KeyCode::Home;
 /// The components that say what an activated button of the screen does.
 type Role = (Option<&'static Slot>, Option<&'static Act>);
 
-/// Moves the cursor with the arrows, Page Up and Down and End, changes tab with Left and
-/// Right, and scrolls with the wheel unless the pointer is over the map, where the arrows and
-/// the wheel move the map instead. A key that moves the cursor picks its row. A move that
-/// scrolls the table under a cursor that stays on the same drawn row is sounded here, since
-/// the focus does not move.
+/// Moves the cursor with the arrows, Page Up and Down and End, and scrolls with the wheel
+/// unless the pointer is over the map, where the arrows and the wheel move the map instead. A
+/// key that moves the cursor picks its row. A move that scrolls the table under a cursor that
+/// stays on the same drawn row is sounded here, since the focus does not move.
 pub(super) fn navigate(
     keys: Res<ButtonInput<KeyCode>>,
     (wheel, mut view): (Res<AccumulatedMouseScroll>, ResMut<MapView>),
@@ -68,11 +67,6 @@ pub(super) fn navigate(
         if board.cursor != cursor && board.cursor - board.top == slot {
             cues.write(AudioCue::UiMove);
         }
-    }
-    let turn = isize::from(held(KeyCode::ArrowRight)) - isize::from(held(KeyCode::ArrowLeft));
-    if turn != 0 {
-        let tab = board.tab.step(turn);
-        board.show(tab);
     }
     let rows = match wheel.unit {
         MouseScrollUnit::Line => wheel.delta.y * WHEEL_ROWS,
@@ -159,9 +153,9 @@ impl Desk<'_, '_> {
 }
 
 /// Sets the course to the selected row on Enter, hands the destination to the autopilot on the
-/// engage key of the settings, forgets the destination on Delete and sets the course home on
-/// the Home key. Enter and Home also work while a search is typed; nothing does while a
-/// favourite is named, and the engage key and Delete type into a search.
+/// engage key of the settings and sets the course home on the Home key. Enter and Home also
+/// work while a search is typed; nothing does while a pin is renamed, and the engage key types
+/// into a search. Delete removes the selected pin, see the side panel.
 fn action_keys(
     keys: Res<ButtonInput<KeyCode>>,
     (settings, typing): (Res<Persistent<Settings>>, Res<Typing>),
@@ -176,9 +170,6 @@ fn action_keys(
     }
     if keys.just_pressed(settings.controls.keys.engage) && off {
         desk.run(Act::Engage);
-    }
-    if keys.just_pressed(KeyCode::Delete) && off {
-        desk.run(Act::Clear);
     }
     if keys.just_pressed(HOME_KEY) {
         desk.run(Act::Home);

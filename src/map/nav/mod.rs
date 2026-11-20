@@ -1,7 +1,7 @@
 //! Going in and out of the levels of the map. The map shows one level at a time: the universe,
-//! a galaxy, a system or a planet. A double click on a place goes one level into it, Back or
-//! Backspace comes out to what was shown before, and each part of the path over the map jumps
-//! straight to that level. The wheel never changes the level.
+//! a galaxy, a system or a planet. A double click on a place goes one level into it, Backspace
+//! comes out to what was shown before, and each part of the path over the map jumps straight to
+//! that level, the one way to change level a player can see. The wheel never changes the level.
 
 mod bar;
 mod go;

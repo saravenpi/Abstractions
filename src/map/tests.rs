@@ -1,46 +1,13 @@
-//! Map tests: the waypoint key sets and clears, favourites are named and renamed, a level
-//! fades in, the flat map opens where it was asked to look and no closer than its cap, and
-//! crowded names on it are left out.
+//! Map tests: a level fades in, the flat map opens where it was asked to look and no closer
+//! than its cap, pins cross the wire, and crowded names on it are left out.
 
-use bevy::input::keyboard::Key;
 use bevy::math::{DVec3, Vec2};
 
 use super::fade::{FADE, shade};
-use super::favourite::{Favourites, edit};
 use super::level::{CLOSEST, GROUND, REFERENCE_MAP, WHOLE, first, framed};
 use super::raster::tile::{LEVEL_MAX, SIDE, TileId};
-use super::{Waypoints, to_chart, toggle};
+use super::{Places, to_chart};
 use crate::universe::BodyId;
-
-#[test]
-fn the_waypoint_key_sets_then_clears() {
-    let mut waypoints = Waypoints::default();
-    let body = BodyId::default();
-    assert_eq!(toggle(&mut waypoints, None), None);
-    let set = toggle(&mut waypoints, Some((body, DVec3::Y * 500.0))).unwrap();
-    let mine = waypoints.mine.clone().unwrap();
-    assert_eq!(set.0, Some(mine.clone()));
-    assert!(mine.dir.distance(DVec3::Y) < 1e-12 && mine.body == body);
-    let cleared = toggle(&mut waypoints, Some((body, DVec3::X))).unwrap();
-    assert_eq!((cleared.0, waypoints.mine), (None, None));
-}
-
-#[test]
-fn a_favourite_is_named_and_renamed() {
-    let mut favourites = Favourites::default();
-    let index = favourites.save(BodyId::default(), DVec3::X * 3.0);
-    assert_eq!((index, favourites.0[0].name.as_str()), (0, "Place 1"));
-    let mut name = String::from("Camp");
-    assert!(!edit(&mut name, &Key::Character("s".into()), "Place 1"));
-    assert!(!edit(&mut name, &Key::Backspace, "Place 1"));
-    assert!(edit(&mut name, &Key::Enter, "Place 1"));
-    favourites.rename(0, &name);
-    assert_eq!(favourites.0[0].name, "Camp");
-    favourites.rename(0, "   ");
-    assert_eq!(favourites.0[0].name, "Camp");
-    assert!(edit(&mut name, &Key::Escape, "Place 1"));
-    assert_eq!(name, "Place 1");
-}
 
 #[test]
 fn a_level_fades_in_and_opens_where_asked() {
@@ -86,21 +53,17 @@ fn the_planet_lens_keeps_the_picture_in_view() {
     assert_eq!(close.centre.x, -2.0);
 }
 
+/// A pin crosses the wire as the active pin of a player, and the pins ride the record.
 #[test]
-fn favourites_and_waypoints_cross_the_wire() {
+fn pins_cross_the_wire() {
     use super::{from_wire, marks_of, marks_text, to_wire};
-    let mut favourites = Favourites::default();
-    favourites.save(BodyId::default(), DVec3::Z);
-    assert_eq!(marks_of(&marks_text(&favourites.0)), favourites.0);
-    assert_eq!((marks_text(&[]), marks_of("")), (String::new(), Vec::new()));
-    let mut waypoints = Waypoints::default();
-    toggle(
-        &mut waypoints,
-        Some((BodyId::default(), DVec3::new(3.0, 4.0, 0.0))),
-    );
-    let mine = waypoints.mine.unwrap();
+    let mut places = Places::default();
+    places.drop(BodyId::default(), DVec3::new(3.0, 4.0, 0.0));
+    assert_eq!(marks_of(&marks_text(&places.pins)), places.pins);
+    let mine = places.pins[0].clone();
     let back = from_wire(&to_wire(&mine)).unwrap();
-    assert!(back.dir.distance(mine.dir) < 1e-6 && back.body == mine.body);
+    let (was, now) = (DVec3::from_array(mine.dir), DVec3::from_array(back.dir));
+    assert!(was.distance(now) < 1e-6 && back.body == mine.body);
 }
 
 /// A name that would cross the player or a name before it, or run under the header words, is

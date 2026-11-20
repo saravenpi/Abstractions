@@ -41,17 +41,15 @@ fn whole(hover: Option<usize>) -> Surface {
     }
 }
 
-/// A click selects the marker under the pointer, a slow second click on it lets go of it, and
-/// a click on bare ground lets go of any while it picks the place.
+/// A click selects the marker under the pointer and a slow second click keeps it selected. A
+/// click on bare ground lets go of it, the one way to let go, while it picks the place.
 #[test]
-fn a_click_selects_a_marker_and_a_slow_second_click_lets_go_of_it() {
+fn a_click_selects_a_marker_and_empty_ground_lets_go_of_it() {
     let pins = pins();
     let mut surface = whole(Some(1));
     tap(&mut surface, &pins, 1.0);
     assert_eq!(surface.chosen, Some(1));
     tap(&mut surface, &pins, 3.0);
-    assert_eq!(surface.chosen, None);
-    tap(&mut surface, &pins, 5.0);
     assert_eq!(surface.chosen, Some(1));
     (surface.hover, surface.point) = (None, Some(DVec3::Z));
     tap(&mut surface, &pins, 7.0);

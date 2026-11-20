@@ -14,7 +14,6 @@ use crate::computer::route::Target;
 use crate::computer::semantic::DIVE;
 use crate::computer::tab::Tab;
 use crate::computer::typing::Typing;
-use crate::map::ContextMenu;
 
 /// Returns the zoom that frames `target` on the chart of `tab`: the whole system for its
 /// star, and the dive zoom for anything else, from which one more notch on it goes inside.
@@ -37,10 +36,10 @@ pub fn aimed(board: &Board, view: &MapView, dot: Dot) -> Option<Lens> {
     Some(Lens { zoom, centre: *at }.clamped())
 }
 
-/// Applies one click at `now` seconds. A click on the mark of a row selects that row, and a
-/// slow second click on it lets go of it. A click on empty map or on the ship lets go of the
-/// selection. A double click eases the map onto the mark and asks to go into its place, or
-/// shows the whole chart on empty map. No click sets the course.
+/// Applies one click at `now` seconds. A click on the mark of a row selects that row. A click
+/// on empty map or on the ship lets go of the selection. A double click eases the map onto the
+/// mark and asks to go into its place, or shows the whole chart on empty map. No click sets the
+/// course.
 pub(crate) fn tap(view: &mut MapView, board: &mut Board, now: f32) {
     let last = view.clicked.replace((view.hover, now));
     let same = last.is_some_and(|(mark, _)| mark == view.hover);
@@ -55,9 +54,6 @@ pub(crate) fn tap(view: &mut MapView, board: &mut Board, now: f32) {
         return;
     }
     match view.hover {
-        Some(Dot::Row(index)) if same && view.picked && board.cursor == index => {
-            (view.picked, view.marked) = (false, false);
-        }
         Some(Dot::Row(index)) => {
             board.step(index as isize - board.cursor as isize);
             (view.picked, view.marked) = (true, true);
@@ -66,24 +62,18 @@ pub(crate) fn tap(view: &mut MapView, board: &mut Board, now: f32) {
     }
 }
 
-/// What a press of the pointer reads: its buttons, the time and the menu of a right click.
-type Buttons<'w> = (
-    Res<'w, ButtonInput<MouseButton>>,
-    Res<'w, Time>,
-    Option<Res<'w, ContextMenu>>,
-);
+/// What a press of the pointer reads: its buttons and the time.
+type Buttons<'w> = (Res<'w, ButtonInput<MouseButton>>, Res<'w, Time>);
 
 /// Drags the chart while the left button is held from the map, so the point under the pointer
-/// stays under it, and clicks on a release that did not drag. A press while the menu of a
-/// right click is open only closes the menu.
+/// stays under it, and clicks on a release that did not drag.
 pub(crate) fn press(
-    (buttons, time, menu): Buttons,
+    (buttons, time): Buttons,
     mut board: ResMut<Board>,
     mut view: ResMut<MapView>,
     mut hand: ResMut<Hand>,
 ) {
-    let free = menu.is_none_or(|menu| menu.0.is_none());
-    if buttons.just_pressed(MouseButton::Left) && view.over && free {
+    if buttons.just_pressed(MouseButton::Left) && view.over {
         (view.held, view.dragged, hand.drift) = (Some(view.at), false, Vec2::ZERO);
     }
     let Some(from) = view.held else {

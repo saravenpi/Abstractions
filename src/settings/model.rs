@@ -179,7 +179,7 @@ pub struct Keymap {
     pub minimap: KeyCode,
     /// Open and close the map, on foot and in the ship.
     pub map: KeyCode,
-    /// Drop a waypoint at the feet of the player or the ship, or clear it.
+    /// Drop a pin at the player's feet, or remove the pin within ten metres of them.
     pub waypoint: KeyCode,
     /// Open and close the field guide of the planet underfoot.
     pub guide: KeyCode,

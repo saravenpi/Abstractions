@@ -1,6 +1,6 @@
 //! Typing on the map screen: a click on the search box or the slash key starts a search,
-//! letters then narrow the results, Backspace edits the search, Escape clears it and a key
-//! changes the order of the rows. A favourite being named takes the keys instead.
+//! letters then narrow the results, Backspace edits the search and Escape clears it. A pin
+//! being renamed takes the keys instead.
 
 use bevy::input::ButtonState;
 use bevy::input::keyboard::{Key, KeyboardInput};
@@ -13,14 +13,11 @@ use super::sift::type_into;
 use super::view::{SEARCH_HINT, SearchBox, SearchText};
 use crate::ui::Tone;
 
-/// The key that changes the order of the rows.
-pub(super) const SORT_KEY: KeyCode = KeyCode::F2;
-
 /// The key that starts a search.
 pub(super) const SEARCH_KEY: KeyCode = KeyCode::Slash;
 
 /// Where the letters typed on the map screen go. While they go anywhere, the keys of the map
-/// (the map key, the engage key, the waypoint key, the reset key) type instead.
+/// (the map key, the engage key, the pin key, the reset key) type instead.
 #[derive(Resource, Debug, Clone, PartialEq, Eq, Default)]
 pub enum Typing {
     /// Nowhere: every key does what it does on the map.
@@ -28,7 +25,7 @@ pub enum Typing {
     Off,
     /// Into the search.
     Search,
-    /// Into the name of the favourite at this index of the list.
+    /// Into the name of the pin at this index of the list.
     Name(usize, String),
 }
 
@@ -53,10 +50,10 @@ fn edit(filter: &mut String, key: &Key, typing: &mut Typing) -> bool {
     }
 }
 
-/// Starts a search on its key, edits it with the keys pressed this frame, ends it on Escape,
-/// clearing what was typed, and changes the order on its key. Escape also clears a search left
-/// over once typing went elsewhere and ended. The list is then built again
-/// from its first row. Keys pressed before the screen opened are dropped on the frame it opens.
+/// Starts a search on its key, edits it with the keys pressed this frame and ends it on Escape,
+/// clearing what was typed. Escape also clears a search left over once typing went elsewhere
+/// and ended. The list is then built again from its first row. Keys pressed before the screen
+/// opened are dropped on the frame it opens.
 pub(super) fn type_filter(
     mut typed: MessageReader<KeyboardInput>,
     (keys, opened): (Res<ButtonInput<KeyCode>>, Res<State<Computer>>),
@@ -67,14 +64,13 @@ pub(super) fn type_filter(
         typed.clear();
         return;
     }
-    let sorted = keys.just_pressed(SORT_KEY) && !matches!(*typing, Typing::Name(..));
     if typing.is_off() && keys.just_pressed(SEARCH_KEY) {
         *typing = Typing::Search;
         typed.clear();
         return;
     }
     let mut filter = board.filter.clone();
-    let mut changed = sorted;
+    let mut changed = false;
     for key in typed.read().filter(|key| key.state == ButtonState::Pressed) {
         match (&*typing, &key.logical_key) {
             (Typing::Search, _) | (Typing::Off, Key::Escape) => {
@@ -85,9 +81,6 @@ pub(super) fn type_filter(
     }
     if !changed {
         return;
-    }
-    if sorted {
-        board.sort = board.sort.next();
     }
     (board.filter, board.stale) = (filter, true);
     (board.cursor, board.top) = (0, 0);

@@ -1,13 +1,14 @@
-//! The fade between two levels of the map: a black veil over the map that clears in a moment
-//! whenever the level or the chart changes, so one level fades into the next.
+//! The fade between two levels of the map: a veil of the panel colour over the map that clears
+//! in a moment whenever the level or the chart changes, so one level fades into the next.
 
 use bevy::prelude::*;
 
 use super::level::Level;
 use crate::computer::{Board, Tab, Target};
+use crate::ui::{motion, theme};
 
 /// Seconds the veil takes to clear.
-pub const FADE: f32 = 0.3;
+pub const FADE: f32 = motion::LEVEL_FADE;
 
 /// Marks the veil over the map.
 #[derive(Component)]
@@ -32,7 +33,7 @@ pub fn shade(since: f32) -> f32 {
 /// The level shown and the chart: its tab and what it charts.
 type Shown = (Level, Tab, Option<Target>);
 
-/// Darkens the veil when the level or the chart changes, then clears it over [`FADE`] seconds.
+/// Tints the veil when the level or the chart changes, then clears it over [`FADE`] seconds.
 pub(super) fn fade(
     (time, level, board): (Res<Time>, Res<Level>, Res<Board>),
     mut veils: Query<&mut BackgroundColor, With<Veil>>,
@@ -46,7 +47,7 @@ pub(super) fn fade(
         return;
     }
     state.1 += time.delta_secs();
-    let wanted = BackgroundColor(Color::BLACK.with_alpha(shade(state.1)));
+    let wanted = BackgroundColor(theme::PANEL.with_alpha(shade(state.1)));
     for mut veil in &mut veils {
         veil.set_if_neq(wanted);
     }

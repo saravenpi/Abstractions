@@ -24,10 +24,4 @@ impl Tab {
             Tab::Universe => "Universe",
         }
     }
-
-    /// Returns the tab `by` places to the right, wrapping around.
-    pub fn step(self, by: isize) -> Tab {
-        let count = Tab::ALL.len() as isize;
-        Tab::ALL[(self as isize + by).rem_euclid(count) as usize]
-    }
 }

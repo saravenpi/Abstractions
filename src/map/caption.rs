@@ -1,15 +1,19 @@
 //! The words of the planet level over the map: the caption, which gives the climate of the
-//! planet shown, and the latitude and longitude under the pointer.
+//! planet shown, and the latitude and longitude under the pointer, which also say when that
+//! ground is not explored.
 
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::explored::Explored;
+use super::explored::grid::{depth_for, leaf_of};
 use super::geo::coords as words;
 use super::level::Level;
 use super::surface::Surface;
 use crate::computer::climate_line;
 use crate::space::Clock;
 use crate::ui::{text, theme};
-use crate::universe::Universe;
+use crate::universe::{BodyId, Universe};
 
 /// Marks the line that names the level shown.
 #[derive(Component)]
@@ -66,19 +70,40 @@ pub(super) fn caption_text(
     }
 }
 
-/// Writes the latitude and longitude under the pointer on a planet, and nothing elsewhere.
+/// What the line under the pointer says when the ground there is not explored.
+pub const UNSEEN: &str = "Not explored yet.";
+
+/// Returns true when the ground of `body` in the direction `dir` is not explored.
+pub fn unexplored(explored: &Explored, universe: &Universe, body: BodyId, dir: DVec3) -> bool {
+    let leaf = leaf_of(dir, depth_for(universe.planet(body).radius));
+    !explored
+        .leaves(body)
+        .is_some_and(|leaves| leaves.contains(leaf))
+}
+
+/// What the line under the pointer is written from: what is explored and the universe.
+type Ground<'w> = (Option<Res<'w, Explored>>, Option<Res<'w, Universe>>);
+
+/// Writes the latitude and longitude under the pointer on a planet, with a sentence when that
+/// ground is not explored, and nothing elsewhere.
 pub(super) fn coords_text(
-    surface: Res<Surface>,
-    level: Res<Level>,
+    (surface, level): (Res<Surface>, Res<Level>),
+    (explored, universe): Ground,
     mut texts: Query<&mut Text, With<Coords>>,
 ) {
     if !(surface.is_changed() || level.is_changed()) {
         return;
     }
-    let point = surface
-        .point
-        .filter(|_| matches!(*level, Level::Planet(_)) && surface.over);
-    let said = point.map_or(String::new(), words);
+    let point = surface.point.filter(|_| surface.over);
+    let said = match (*level, point) {
+        (Level::Planet(body), Some(dir)) => {
+            let seen = explored.zip(universe);
+            let blind = seen.is_some_and(|(e, u)| unexplored(&e, &u, body, dir));
+            let note = [String::new(), format!("  {UNSEEN}")][usize::from(blind)];
+            format!("{}{note}", words(dir))
+        }
+        _ => String::new(),
+    };
     for mut text in &mut texts {
         text.set_if_neq(Text(said.clone()));
     }

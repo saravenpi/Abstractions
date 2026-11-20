@@ -6,34 +6,44 @@ Read `AGENTS.md`, then this file, then `handoff/MAC.md` (0.11 decisions), `hando
 
 The owner asked for speed: agents coded with `cargo check` only, and the lead builds, tests and looks at the game at the end. So most of what is below type-checks but has never run. Shader errors only show in the running game (a reserved word, `patch`, already broke the ground once). Treat every "not run" item as unverified.
 
-## Branches
+## Branches (all pushed; every agent has stopped, nothing is left only on the Mac)
 
 | Branch | Holds | State |
 | --- | --- | --- |
-| `ecosystems` | The 0.11 line. Merged today: big game and slope walking and herd marks after seen and limb joints (`fauna2`), seated plant parts (`fix-flora`), fixed pixel look (`pixels`), water view and camera fixes (`waterview`), turf carpet and blades and leaves from real plants (`grass`), test fixes (`fixgate`), clear glass and align-before-warp (`shipfix`), smooth coloured minimap and map sea colour and one home mark (`minimap`), boot water jet and spray and wake (`watergear`), call poses and new cries (`voice`), compass home rule and atmosphere entry (`entry`) | Type-checks. Last full test run (before `entry`): 1,644 passed, 13 failed, see below |
-| `fixgate2` | Fixes for those 13 failures, warp first | Agent was still working when this was written |
-| `leaves` | Leaf fall as a function of wind, season, weather | Agent was still testing; uncommitted work may exist only on the Mac |
-| `wake` | V-shaped Kelvin wake and a real wave trail in the sea shader | Just started |
-| `hunt` | Hunting integration: H1 craft model, senses, swing, plus `ecosystems` and `voice` merged, hits wired to health | Integration agent was still working; then merge `h-craftui` and the crouch commits of `h-senses` |
-| `h-senses` | Animal senses, health, ledger, lookouts, blood; then crouch (213662f, 065a779, 8139228) | Not run |
-| `h-swing` | Swings, guard, parry, spear throw, hitstop, starter tools on F8 | Not run |
-| `h-craftui` | Pack, hotbar, workshop screen on I, harvest, save | Not run |
-| `p-air` | Real gas mix and air column per planet | Not run. Do NOT merge into `ecosystems` alone: at today's small radii it squashes the air |
-| `p-precision` | f64 chart origin, shader altitude from the camera | Not run |
-| `p-plates` | Plates, continents, relief | Agent still working |
-| `p-units` | Real radii, gravity, spins, moons, generated home | Agent still working; uncommitted on the Mac |
+| `ecosystems` | The 0.11 line. Merged today: big game, slope walking, herd marks after seen, limb joints, seated plant parts, fixed pixel look, water view and camera fixes, turf carpet and blades, leaves from real plants, clear ship glass, smooth coloured minimap, map sea colour, one home mark, boot water jet, spray and wake, call poses and new cries, compass home rule, atmosphere entry, and the `fixgate2` fixes | Type-checks. The full gate has NOT run on this tip. Run it first |
+| `warp-align` | `ecosystems` with commit 1ae8704 (align before the warp, never turn in warp) still in | Eight `ship::tests` fail there: the autopilot never spools. It was reverted on `ecosystems` (3fd4952) so the ship can warp. Diagnosis below |
+| `leaves` | Leaf fall as a function of wind, season, rain and thirst (953bd04) | 26 tests passed before two last fixes; filet will flag `src/effects/shed.rs` (9 functions). Not merged |
+| `wake` | V-shaped foam and a wave trail in the sea shader (7168ebf) | Never run; `field.wesl` never loaded by a GPU. Not merged |
+| `hunt` | H1 craft model, senses, swing, craft UI, `ecosystems` (before `entry` and `fixgate2`) and `voice` merged; hits wired to health, kills to the ledger and to harvest; one held item; F8 starter tools into the pack; H picks up stone | fmt, clippy, filet clean. 22 of 296 hunting tests fail, listed below |
+| `h-senses` | Senses, then crouch (213662f, 065a779, 8139228). `hunt` holds it only up to 79b24d3: merge the crouch commits | Not run |
+| `h-swing`, `h-craftui` | Already merged into `hunt` | |
+| `p-units` | Real radii, gravity, spins, moons, generated home, fewer wet worlds (0c7ea5a) | Not run. About 200 tests outside `universe` assume the old fixed home |
+| `p-air` | Real gas mix and air column | Not run. Edits `planet.rs`, `giant.rs`, `moon.rs`, `home.rs`, `mod.rs`, `record.rs`: expect conflicts with `p-units` |
+| `p-precision` | f64 chart origin, shader altitude from the camera | Not run. May conflict with `p-air` in `src/render/atmosphere.rs` |
+| `p-plates` | Plates, continents, relief (1a329f2); off below a 50 km radius | Not run |
 
-Planet branches go together onto a `planets` branch first, and into `ecosystems` only once `p-units` lands.
+Merge the four `p-*` branches onto a new `planets` branch together, never one alone into `ecosystems`: `p-air` alone squashes the air on small planets.
 
-## Known failures on `ecosystems`
+## Warp alignment (branch `warp-align`)
 
-- Eight `ship::tests` (reroute, retarget, steady, moon_route, voyage): the autopilot never reaches the warp. Cause: commit 1ae8704 demands 1e-3 rad and 1e-3 rad/s before spooling. The owner's rule stays: align fully before the warp, never turn during it. The ship probably cannot warp in the game until this is fixed.
-- `menus::hud::minimap::tests::ground::a_world_of_seas_is_coloured` and `modes::the_chart_follows_the_destination_and_the_frame`.
-- `gear::tests::jet::the_jet_settles_on_its_top_speed`, `life::signs::tests_voice::herds_sing_at_dawn_and_young_answer`.
-- Timing tests that fail under load and pass alone: `sphere_height_is_not_slow`, `fauna::motion::tests_cost::grown_bodies_step_and_pose_within_budget` (rerun on a quiet machine).
-- Clippy: `type_complexity` at `src/menus/hud/minimap/follow.rs:49`.
-- A double despawn warning at boot, probably the warm-up copies (`src/render/warm.rs`).
-- `src/ship/tests/fx.rs` numbers were rewritten by the entry agent from estimates; they may fail.
+Owner rule: the ship finishes aligning before the warp and never changes heading during it; a new course drops out, re-aligns, warps again.
+Diagnosis from the fix agent, unconfirmed: `align::settled` (`src/ship/route/align.rs`) stays false; `tolerance()` shrinks toward `FLOOR` 1e-7 rad for a far planet while the led aim keeps moving, so the proportional stick in `steer::aim` trails it. `moon_route` shows a drop-out loop (3 spools in 34 s) from `missed`.
+Suggested fix: snap the residual and zero the spin once within about 1e-3 rad, then spool; freeze the lead aim from the spool on (count the drift of the 4 s spool); hysteresis on `missed`.
+
+## Failing tests on `hunt`
+
+- Pack save: `craft::pack::the_pack_survives_the_world_file`, five `menus::worlds` and two `menus::tests::worlds` fail with `UnsupportedNone`: the hotbar's `Option<u32>` slots cannot be written to TOML. Write empty slots as a sentinel in `src/craft/pack/bar.rs`. Until then saving a world with a pack may fail.
+- `craft::build::tests_recipe::recipes_round_trip_small`: 101 bytes against 72; the text form of `Stuff::Tissue.planet` in `src/craft/matter/stuff.rs` should apply to human-readable formats only.
+- No cause found yet: `craft::harvest::tests::real_parts_give_tissue`, `fauna::senses::tests::a_ridge_blocks_sight`, `fauna::senses::tests_blood::blood_falls_every_two_metres_and_fades`, `fauna::tests_react::animals_flee_a_near_robot_and_come_back` (Threaten where Flee is expected), `fauna::tests_walk::animals_stand_on_the_ground` (0.29 m against 0.25 m), two `avatar::strike::tests_ik`.
+- Already fixed on `ecosystems` by `fixgate` and `fixgate2` (merge `ecosystems` into `hunt` again): the signs tests, the dawn chorus test, `settings::tests_removed`.
+- Open in `hunt`: a thrown spear stays in the pack while it flies (a hotbar change can duplicate it); the harvest uses the held weapon as the tool; no carcasses; stone pickup is not tied to rock props.
+
+## Decisions waiting for the owner
+
+- `p-units`: the chosen home is often a tidally locked red-dwarf planet (one side in permanent night). Excluding locked planets is one line in `landable` (`src/universe/home.rs`) but bends the "no special case" rule.
+- Carry limit: 25 kg at 9.81 m/s².
+- The wake's V is floored at 4 degrees; the physical wedge at flight speeds is 1 to 2 degrees.
+- The entry glow guesses the gas from the planet class until `p-air` merges (`record.mix.main_gas()`).
 
 ## Never seen in the game
 

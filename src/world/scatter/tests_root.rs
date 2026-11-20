@@ -32,5 +32,5 @@ fn a_chunk_is_the_same_through_every_root() {
         Frame::at(&other, chunk_center(same)),
     );
     assert!(a.origin.distance(b.origin) < 1.0e-6);
-    assert!(a.rot.angle_between(b.rot) < 1.0e-9);
+    assert!((a.rot * b.rot.inverse()).xyz().length() < 1.0e-9);
 }

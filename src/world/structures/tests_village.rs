@@ -156,7 +156,7 @@ fn meshes_wind_outward() {
 fn villages_follow_the_ground() {
     let cells = || (-6..6).flat_map(|x| (-6..6).map(move |y| IVec2::new(x, y)));
     let mut seen = 0;
-    for t in [1, 42].map(Terrain::new) {
+    for t in [1, 42].map(Terrain::legacy) {
         let sites = cells().filter_map(|c| village::village_in_cell(&t, c));
         for site in sites.take(8) {
             let p = village::probe(&t, site);

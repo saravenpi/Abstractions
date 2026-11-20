@@ -29,7 +29,7 @@ fn scatter_is_deterministic() {
 /// A chunk whose floor is everywhere deeper than the limit holds nothing.
 #[test]
 fn deep_sea_is_empty() {
-    let t = Terrain::new(5);
+    let t = Terrain::legacy(5);
     let floor = |c: IVec2| {
         let o = chunk_center(c) - Vec2::splat(CHUNK_SIZE * 0.5);
         (0..25)

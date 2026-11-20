@@ -76,9 +76,9 @@ fn a_moon_streams_like_a_planet() {
     settle_at_spawn(&mut app);
 }
 
-/// A moon sits where its planet is plus its own place around it. A spin that turns the way its orbit
-/// goes keeps one face to its planet; `spin` with a day as long as the orbit turns the other way, and
-/// so swings that face twice round its sky per orbit.
+/// A moon sits where its planet is plus its own place around it. A moon is locked: its day is as long as
+/// its orbit, turning the way the orbit goes, so it keeps one face to its planet. A spin of the same
+/// length the other way swings that face twice round its sky per orbit.
 #[test]
 fn a_moon_follows_its_planet_and_its_spin_sets_its_near_side() {
     let moon = body(5000.0, PlanetClass::Barren, true);
@@ -89,14 +89,14 @@ fn a_moon_follows_its_planet_and_its_spin_sets_its_near_side() {
     }
     let near =
         |spec: &PlanetSpec, t: f64| Link::orbiting(spec, t).to_planet(host.at(t)).normalize();
-    let locked = PlanetSpec {
+    let against = PlanetSpec {
         day_seconds: -moon.orbit_seconds,
         ..moon.clone()
     };
     let quarter = moon.orbit_seconds / 4.0;
-    assert!(near(&locked, 0.0).distance(near(&locked, quarter)) < 1e-6);
+    assert!(near(&moon, 0.0).distance(near(&moon, quarter)) < 1e-6);
     assert_eq!(moon.day_seconds, moon.orbit_seconds);
-    assert!(near(&moon, 0.0).dot(near(&moon, quarter)) < -0.99);
+    assert!(near(&against, 0.0).dot(near(&against, quarter)) < -0.99);
 }
 
 /// A 150 km gas giant settles as coarse nodes alone, drawn once over the whole deck, ready at once,

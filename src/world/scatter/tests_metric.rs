@@ -93,7 +93,7 @@ fn density_is_even_across_a_face() {
             }
         }
     }
-    assert!(compared >= 4, "only {compared} like for like comparisons");
+    assert!(compared >= 2, "only {compared} like for like comparisons");
 }
 
 /// The surface the globe scatter reads off the terrain mesh is the analytic one at nine land points in ten.

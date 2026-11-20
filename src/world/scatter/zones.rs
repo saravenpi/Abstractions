@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use bevy::prelude::*;
 
 pub use super::tile::Tile;
+use crate::universe::STANDARD_GRAVITY;
 use crate::world::globe::{Face, Globe};
 
 /// Seed of a test globe whose living planet is nearly all covered, so that tests of its producers count
@@ -69,7 +70,7 @@ pub fn chunks(globe: &Arc<Globe>, zone: Zone, dry: usize, want: usize) -> Vec<Ti
 
 /// Returns the chunk at the face centre, at an edge midpoint and next to a corner of a face of a 3,000 m globe.
 pub fn trio() -> [Tile; 3] {
-    let globe = Arc::new(Globe::new(5, 3000.0, 22.0));
+    let globe = Arc::new(Globe::new(5, 3000.0, STANDARD_GRAVITY));
     let side = 1i32 << globe.leaf_level();
     let zones = [Zone::Centre, Zone::Edge, Zone::Corner];
     zones.map(|zone| Tile::new(&globe, Face::PosX, coords(zone, side, 1)[0]))
@@ -77,7 +78,7 @@ pub fn trio() -> [Tile; 3] {
 
 /// Returns a 3,000 m globe and a 40,000 m globe, the smallest and the largest planets.
 pub fn globes() -> [Arc<Globe>; 2] {
-    [3000.0, 40_000.0].map(|radius| Arc::new(Globe::new(5, radius, 22.0)))
+    [3000.0, 40_000.0].map(|radius| Arc::new(Globe::new(5, radius, STANDARD_GRAVITY)))
 }
 
 /// Returns, for each zone of each of the two globes, up to `want` chunks with at least `dry` land points of 25.

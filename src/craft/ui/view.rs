@@ -60,7 +60,7 @@ fn header() -> impl Bundle {
             ),
             (
                 Tally,
-                text("", theme::FONT_SMALL, theme::MUTED),
+                text("", theme::FONT_SMALL, theme::TEXT_2),
                 TextLayout::no_wrap()
             ),
         ],
@@ -109,7 +109,7 @@ pub fn spawn(commands: &mut Commands) {
     };
     let hints = (
         Hints,
-        text(PACK_HINTS, theme::FONT_SMALL, theme::MUTED),
+        text(PACK_HINTS, theme::FONT_SMALL, theme::TEXT_2),
         TextLayout::no_wrap(),
     );
     let screen = (Overlay, Blurred, root, BackgroundColor(theme::SCRIM));

@@ -78,7 +78,7 @@ fn caption(content: &str) -> impl Bundle {
 /// A muted line in place of an empty section.
 fn empty(content: &str) -> impl Bundle {
     (
-        text(content, theme::FONT_SMALL, theme::MUTED),
+        text(content, theme::FONT_SMALL, theme::TEXT_2),
         Node {
             margin: UiRect::all(px(theme::GAP_S)),
             ..default()

@@ -85,7 +85,7 @@ fn enter(mut commands: Commands, seed: Option<Res<WorldSeed>>, active: Option<Re
                 theme::TEXT
             ),
             (
-                text(detail, theme::FONT_SMALL, theme::MUTED),
+                text(detail, theme::FONT_SMALL, theme::TEXT_2),
                 Node {
                     margin: UiRect::vertical(px(theme::GAP_S)),
                     ..default()

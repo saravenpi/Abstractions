@@ -36,7 +36,7 @@ pub(super) fn row() -> impl Bundle {
             padding: UiRect::axes(px(theme::GAP_S), px(theme::GAP_XS)),
             ..default()
         },
-        BackgroundColor(theme::STRIP),
+        BackgroundColor(theme::PANEL),
         children![
             (CourseKey, key_cap("")),
             (CourseWords, label("", theme::FONT_SMALL, Tone::Plain)),

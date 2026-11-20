@@ -63,7 +63,7 @@ pub fn strip() -> Node {
 /// Dimmed hint pinned to the bottom-left corner.
 pub fn footer(content: &str) -> impl Bundle {
     (
-        text(content, theme::FONT_SMALL, theme::MUTED),
+        text(content, theme::FONT_SMALL, theme::TEXT_2),
         Node {
             position_type: PositionType::Absolute,
             left: percent(5),

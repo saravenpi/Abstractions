@@ -23,8 +23,8 @@ fn shown(kind: Kind, value: &str, focused: bool) -> (String, Color) {
     match (focused, value.is_empty(), kind) {
         (true, _, _) => (name::with_caret(value), theme::INK),
         (false, false, _) => (value.to_string(), theme::TEXT),
-        (false, true, Kind::Name) => ("name your world".to_string(), theme::MUTED),
-        (false, true, Kind::Seed) => ("leave empty for a random world".to_string(), theme::MUTED),
+        (false, true, Kind::Name) => ("name your world".to_string(), theme::TEXT_2),
+        (false, true, Kind::Seed) => ("leave empty for a random world".to_string(), theme::TEXT_2),
     }
 }
 
@@ -109,7 +109,7 @@ mod tests {
     #[test]
     fn shows_caret_and_hint() {
         assert_eq!(shown(Kind::Name, "Isle", true).0, "Isle_");
-        assert_eq!(shown(Kind::Seed, "", false).1, theme::MUTED);
+        assert_eq!(shown(Kind::Seed, "", false).1, theme::TEXT_2);
         assert_eq!(shown(Kind::Seed, "12", false).0, "12");
     }
 }

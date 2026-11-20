@@ -47,7 +47,7 @@ fn offer(page: &mut ChildSpawnerCommands, updates: &Updates, release: &Release) 
             page.spawn(para(why));
             page.spawn(failure_line());
             (
-                Some(Icon::Earth),
+                Some(Icon::Planet),
                 "Open the download page",
                 UpdateAction::OpenPage,
             )

@@ -25,7 +25,7 @@ pub fn look(selected: bool, hovered: bool) -> (Look, bool) {
 pub fn surface(look: Look, lit: bool) -> Color {
     match (look, lit) {
         (Look::Active, _) => theme::BLOCK,
-        (_, true) => theme::SELECTED,
+        (_, true) => theme::SELECT,
         _ => Color::NONE,
     }
 }

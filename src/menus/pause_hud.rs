@@ -32,7 +32,7 @@ pub fn corner_text(
 /// Small muted text in the bottom-right corner.
 pub fn world_corner(content: String) -> impl Bundle {
     (
-        text(content, theme::FONT_SMALL, theme::MUTED),
+        text(content, theme::FONT_SMALL, theme::TEXT_2),
         Node {
             position_type: PositionType::Absolute,
             right: px(theme::EDGE),
@@ -46,7 +46,7 @@ pub fn world_corner(content: String) -> impl Bundle {
 pub fn saved_label() -> impl Bundle {
     (
         SavedLabel,
-        text("Saved", theme::FONT_SMALL, theme::MUTED),
+        text("Saved", theme::FONT_SMALL, theme::TEXT_2),
         Visibility::Hidden,
         Node {
             position_type: PositionType::Absolute,

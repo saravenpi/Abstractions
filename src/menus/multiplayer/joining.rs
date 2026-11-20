@@ -24,7 +24,7 @@ fn waiting_line() -> impl Bundle {
         text(
             "Waiting for the server to answer",
             theme::FONT_SMALL,
-            theme::MUTED,
+            theme::TEXT_2,
         ),
         Node {
             margin: UiRect::vertical(px(theme::GAP_M)),

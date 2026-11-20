@@ -84,7 +84,7 @@ fn pin(slot: usize) -> impl Bundle {
             ),
             (
                 Far(slot),
-                text("", theme::FONT_SMALL, theme::MUTED),
+                text("", theme::FONT_SMALL, theme::TEXT_2),
                 TextLayout::no_wrap(),
             ),
         ],
@@ -128,7 +128,7 @@ pub(super) fn bar() -> impl Bundle {
             },
             children![
                 rule(0.0, Vec2::new(WIDTH, theme::LINE), theme::HAIRLINE),
-                rule(50.0, Vec2::new(theme::LINE, theme::GAP_S), theme::MUTED),
+                rule(50.0, Vec2::new(theme::LINE, theme::GAP_S), theme::TEXT_2),
                 north::mark(),
                 pin(0),
                 pin(1),

@@ -54,9 +54,9 @@ fn line((index, (label, status)): (usize, (&'static str, String))) -> impl Bundl
         children![
             cell(
                 LABEL_WIDTH,
-                (text(label, theme::FONT_BODY, theme::MUTED), spaced())
+                (text(label, theme::FONT_BODY, theme::TEXT_2), spaced())
             ),
-            text("...", theme::FONT_BODY, theme::MUTED),
+            text("...", theme::FONT_BODY, theme::TEXT_2),
             (
                 text(status, theme::FONT_BODY, theme::TEXT),
                 spaced(),
@@ -71,7 +71,7 @@ fn line((index, (label, status)): (usize, (&'static str, String))) -> impl Bundl
 fn hint() -> impl Bundle {
     (
         Lines,
-        text("Press any key to skip", theme::FONT_SMALL, theme::MUTED),
+        text("Press any key to skip", theme::FONT_SMALL, theme::TEXT_2),
         Node {
             position_type: PositionType::Absolute,
             left: percent(5),

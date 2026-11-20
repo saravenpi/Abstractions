@@ -27,7 +27,7 @@ fn line(key: impl Bundle, action: &str) -> impl Bundle {
         },
         children![
             cell(KEY_WIDTH, key),
-            text(action, theme::FONT_SMALL, theme::MUTED)
+            text(action, theme::FONT_SMALL, theme::TEXT_2)
         ],
     )
 }

@@ -67,7 +67,7 @@ pub fn text(content: impl Into<String>, size: f32, color: Color) -> impl Bundle 
 /// Small dimmed uppercase label with letter spacing, used for section and column names.
 pub fn caps(content: &str) -> impl Bundle {
     (
-        text(content.to_uppercase(), theme::FONT_SMALL, theme::MUTED),
+        text(content.to_uppercase(), theme::FONT_SMALL, theme::TEXT_2),
         TextLayout::no_wrap(),
         LetterSpacing::Px(theme::CAPS_SPACING),
     )

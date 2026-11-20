@@ -17,7 +17,7 @@ struct Continue(WorldEntry);
 /// The entries below Continue, in order: icon, label and what each does. The update check and
 /// Quit come after them.
 const ENTRIES: [(Icon, &str, Nav); 4] = [
-    (Icon::Earth, "Worlds", Nav::To(Menu::Worlds)),
+    (Icon::Planet, "Worlds", Nav::To(Menu::Worlds)),
     (Icon::Plus, "New world", Nav::To(Menu::NewGame)),
     (Icon::Users, "Multiplayer", Nav::To(Menu::Multiplayer)),
     (Icon::Settings, "Settings", Nav::To(Menu::Settings)),

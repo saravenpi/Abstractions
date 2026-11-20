@@ -34,7 +34,7 @@ pub fn title(content: impl Into<String>) -> impl Bundle {
 
 /// A paragraph of dimmed body text, which wraps inside the page.
 pub fn para(content: impl Into<String>) -> impl Bundle {
-    text(content, theme::FONT_BODY, theme::MUTED)
+    text(content, theme::FONT_BODY, theme::TEXT_2)
 }
 
 /// The empty line a failed restart or a failed opening writes into.

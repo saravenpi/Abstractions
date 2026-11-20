@@ -87,9 +87,9 @@ fn caption() -> impl Bundle {
         padding: UiRect::axes(px(theme::GAP_XS), px(0)),
         ..default()
     };
-    let words = text("", theme::FONT_SMALL, theme::MUTED);
+    let words = text("", theme::FONT_SMALL, theme::TEXT_2);
     let line = (Caption, words, TextLayout::no_wrap());
-    (node, BackgroundColor(theme::STRIP), children![line])
+    (node, BackgroundColor(theme::PANEL), children![line])
 }
 
 /// The image of the ground, hidden until a patch is painted.

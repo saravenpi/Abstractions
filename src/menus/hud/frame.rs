@@ -39,7 +39,7 @@ fn row(at: usize) -> impl Bundle {
             display: Display::None,
             ..default()
         },
-        text("", theme::FONT_SMALL, theme::MUTED),
+        text("", theme::FONT_SMALL, theme::TEXT_2),
         TextLayout::no_wrap(),
     )
 }

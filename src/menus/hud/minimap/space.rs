@@ -97,7 +97,7 @@ fn course(sheet: &mut ChildSpawnerCommands, scene: &Scene) {
     for step in 1..DASHES {
         let at = from.lerp(to, step as f32 / DASHES as f32);
         let node = spot(at, Vec2::splat(-0.5), Vec2::splat(1.0));
-        sheet.spawn((Dash(step), node, BackgroundColor(theme::MUTED)));
+        sheet.spawn((Dash(step), node, BackgroundColor(theme::TEXT_2)));
     }
     frame(sheet, to, (CHOSEN, theme::TEXT));
 }
@@ -118,7 +118,7 @@ fn draw(sheet: &mut ChildSpawnerCommands, scene: &Scene) {
     course(sheet, scene);
     for (index, at) in rows.filter(|(index, _)| seen(Dot::Row(*index), lines, zoom)) {
         let line = &lines[index];
-        let color = [theme::MUTED, theme::TEXT][usize::from(line.visited)];
+        let color = [theme::TEXT_2, theme::TEXT][usize::from(line.visited)];
         let world = scene.worlds.get(index).and_then(Option::as_ref);
         body(sheet, at, (side(line.target, false), color), world);
     }

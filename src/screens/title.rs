@@ -73,7 +73,7 @@ fn version() -> impl Bundle {
         text(
             format!("v{}", env!("CARGO_PKG_VERSION")),
             theme::FONT_SMALL,
-            theme::MUTED,
+            theme::TEXT_2,
         ),
         Node {
             position_type: PositionType::Absolute,

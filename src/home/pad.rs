@@ -13,14 +13,14 @@ use super::tune::{PAD, PAD_HALF, PAD_LIFT, SINK};
 pub const CELLS: usize = 10;
 
 /// Width in metres of the marked strip along the edge.
-const STRIP: f32 = 0.4;
+const PANEL: f32 = 0.4;
 
 /// Height in metres of a corner light above the ground, and its distance beyond the corner.
 const CORNER: (f32, f32) = (0.45, 0.4);
 
 /// Returns the position of grid line `i` across the pad, from one edge to the other.
 fn line(i: usize) -> f32 {
-    let inner = PAD_HALF - STRIP;
+    let inner = PAD_HALF - PANEL;
     match i {
         0 => -PAD_HALF,
         CELLS => PAD_HALF,

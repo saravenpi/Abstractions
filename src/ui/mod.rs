@@ -11,6 +11,7 @@ mod icon;
 mod icon_tests;
 mod item;
 mod list;
+pub mod motion;
 mod scroll;
 mod sound;
 mod style;

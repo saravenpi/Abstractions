@@ -6,6 +6,7 @@
 
 mod bar;
 mod item;
+mod lend;
 mod load;
 mod make;
 mod pick;
@@ -17,10 +18,13 @@ mod words;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_lend;
+#[cfg(test)]
 mod tests_pick;
 
 pub use bar::{Bar, SLOTS};
 pub use item::Item;
+pub use lend::Lent;
 pub use load::{Burden, capacity, pace};
 pub use make::cost;
 pub(crate) use pick::gather;

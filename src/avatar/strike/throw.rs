@@ -13,6 +13,7 @@ use super::input::{Loose, Robot};
 use super::sense::{Parts, first};
 use super::show::{Kit, tool};
 use super::tune::{LOFT, PICK, REST_SPEED};
+use crate::craft::Pack;
 use crate::craft::build::{Intent, blow};
 use crate::fauna::Live;
 use crate::player::Player;
@@ -34,6 +35,7 @@ fn launched(held: &Held, aim: Vec3, by: (Entity, Entity), point: Vec3) -> Spear 
         thrower: by.0,
         body: by.1,
         was: point,
+        lent: None,
     }
 }
 
@@ -75,6 +77,7 @@ pub fn loose(
     mut loosed: MessageReader<Loose>,
     bodies: Query<(&Held, &Strike, &ChildOf), With<Avatar>>,
     (players, heading, kit): Aim,
+    mut pack: Option<ResMut<Pack>>,
 ) {
     let Some(kit) = kit else { return };
     for loose in loosed.read() {
@@ -87,12 +90,13 @@ pub fn loose(
         let look = Quat::from_rotation_y(heading.yaw) * Quat::from_rotation_x(heading.pitch + LOFT);
         let aim = player.rotation * look * Vec3::NEG_Z;
         let point = player.transform_point(strike.blade[0][1]);
-        let spear = launched(
+        let mut spear = launched(
             held,
             aim * loose.share.sqrt(),
             (of.parent(), loose.body),
             point,
         );
+        spear.lent = pack.as_mut().and_then(|pack| pack.lend(held.id));
         let reach = held.build.reach();
         let drawn = tool(&mut commands, &kit, &held.build, None, -reach);
         let place =
@@ -193,14 +197,20 @@ pub fn pierce(
     }
 }
 
+/// The players' places, and the bodies whose hands are full.
+type Hands<'w, 's> = (
+    Query<'w, 's, &'static Transform, With<Player>>,
+    Query<'w, 's, (), With<Held>>,
+);
+
 /// Gives a spear that came to rest back to the local robot when it stands within reach of it with
 /// empty hands.
 pub fn pick(
     mut commands: Commands,
     robot: Robot,
     spears: Query<(Entity, &Spear, &GlobalTransform)>,
-    players: Query<&Transform, With<Player>>,
-    full: Query<(), With<Held>>,
+    (players, full): Hands,
+    mut pack: Option<ResMut<Pack>>,
 ) {
     let Some((body, player)) = robot.pair() else {
         return;
@@ -213,7 +223,12 @@ pub fn pick(
         spear.rest != Rest::Flying && placed.translation().distance(at.translation) < PICK
     });
     if let Some((entity, spear, _)) = near {
-        commands.entity(body).insert(spear.item.clone());
+        match (spear.lent.clone(), pack.as_mut()) {
+            (Some(lent), Some(pack)) => pack.restore(lent),
+            _ => {
+                commands.entity(body).insert(spear.item.clone());
+            }
+        }
         commands.entity(entity).despawn();
     }
 }

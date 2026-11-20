@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use super::held::Held;
 use super::tune::{RESTITUTION, SOIL, STICK};
+use crate::craft::Lent;
 use crate::craft::build::{Blow, reference, strike};
 
 /// Where a thrown spear is.
@@ -33,6 +34,9 @@ pub struct Spear {
     pub body: Entity,
     /// Where its point was before the last step, in render space.
     pub was: Vec3,
+    /// The item in the pack's terms, taken out of the pack while the spear flies and put back when
+    /// it is picked up.
+    pub lent: Option<Lent>,
 }
 
 /// Returns the point and the velocity `dt` seconds after `at` and `velocity` under `gravity`, with

@@ -16,7 +16,7 @@ pub mod wield;
 
 use bevy::prelude::*;
 
-pub use pack::{Burden, Pack};
+pub use pack::{Burden, Lent, Pack};
 pub use wield::{Held, Hold, Worn};
 
 /// Registers the crafting area: the pack and its save, the held tool and its wear, harvesting and

@@ -24,7 +24,9 @@ pub fn reach(target: Vec3, side: usize) -> [f32; 3] {
     let (out, along) = plane(sign * t.x, t.y);
     let forward = -t.z;
     let (a, b) = (UPPER_ARM, FOREARM + HAND_GRIP);
-    let length = along.hypot(forward).clamp((a - b).abs() + 1e-3, a + b - 1e-3);
+    let length = along
+        .hypot(forward)
+        .clamp((a - b).abs() + 1e-3, a + b - 1e-3);
     let cos = ((a * a + b * b - length * length) / (2.0 * a * b)).clamp(-1.0, 1.0);
     let elbow = PI - cos.acos();
     let rest = (b * elbow.sin()).atan2(a + b * elbow.cos());

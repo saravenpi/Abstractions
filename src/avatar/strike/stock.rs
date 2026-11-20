@@ -1,13 +1,15 @@
 //! Starter stock: what a robot could gather on the planet underfoot, one of each tissue class its
-//! life grows and every stone its ground has, for the starter tools until crafting comes.
+//! life grows and every stone its ground has, for the dev starter tools.
 
-use crate::craft::build::{Intent, Place, Stock, solve};
+use crate::craft::build::{Intent, Place, Proposal, Stock, solve};
 use crate::craft::matter::{Class, Grade, Mineral, Stuff, Treatments, material};
 use crate::life::body::Part;
 use crate::life::{Life, Species};
 use crate::universe::PlanetRecord;
+#[cfg(test)]
 use crate::world::Globe;
 
+#[cfg(test)]
 use super::held::Held;
 
 /// Kilograms of each tissue and stone the starter stock holds.
@@ -64,16 +66,18 @@ pub fn stock(life: &Life, record: &PlanetRecord, planet: u64) -> Vec<Stock> {
     out
 }
 
-/// Returns the hardest-hitting build the solver makes for `intent` from `stock` at `place`, as an
-/// item in the hands, or nothing when the stock cannot make one.
-pub fn starter(intent: Intent, stock: &[Stock], place: Place) -> Option<Held> {
-    let hardest = solve(intent, stock, &place).ok()?.hardest;
-    Some(Held::new(hardest.recipe(stock), hardest.build, place))
+/// Returns the hardest-hitting build the solver makes for `intent` from `stock` at `place`, or
+/// nothing when the stock cannot make one.
+pub fn hardest(intent: Intent, stock: &[Stock], place: &Place) -> Option<Proposal> {
+    Some(solve(intent, stock, place).ok()?.hardest)
 }
 
 /// Returns the starter item for `intent` on `globe`: from its life and its stones, on its surface.
+#[cfg(test)]
 pub fn on(globe: &Globe, intent: Intent) -> Option<Held> {
     let life = globe.life()?;
     let place = Place::on(globe.gravity(), globe.record());
-    starter(intent, &stock(life, globe.record(), globe.seed()), place)
+    let stock = stock(life, globe.record(), globe.seed());
+    let best = hardest(intent, &stock, &place)?;
+    Some(Held::new(best.recipe(&stock), best.build, place))
 }

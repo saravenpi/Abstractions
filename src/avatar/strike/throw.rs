@@ -45,6 +45,7 @@ fn arrival(spear: &Spear, (victim, part, at): (Entity, Entity, Vec3)) -> Hit {
     landed.energy = 0.5 * spear.item.throw.mass * speed * speed;
     Hit {
         attacker: spear.body,
+        item: spear.item.id,
         victim,
         part,
         at,

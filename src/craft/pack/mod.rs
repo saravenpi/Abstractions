@@ -8,17 +8,22 @@ mod bar;
 mod item;
 mod load;
 mod make;
+mod pick;
 mod save;
 mod tune;
 mod words;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_pick;
 
 pub use bar::{Bar, SLOTS};
 pub use item::Item;
 pub use load::{Burden, capacity, pace};
 pub use make::cost;
+pub(crate) use pick::gather;
+pub use pick::stones;
 pub(crate) use save::{load, store, weigh};
 pub use words::{called, noun};
 

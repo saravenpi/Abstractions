@@ -1,10 +1,11 @@
-//! Tests of harm: a small blow hurts and a big one kills and goes into the ledger.
+//! Tests of harm: a small blow hurts and a big one kills, goes into the ledger and asks for parts.
 
 use bevy::prelude::*;
 
 use super::harm::{Dead, harm};
 use crate::avatar::strike::Hit;
 use crate::craft::build::{Blow, Intent, Mode};
+use crate::craft::harvest::Harvest;
 use crate::fauna::beast::Beast;
 use crate::fauna::herds::Herds;
 use crate::fauna::rig::app;
@@ -15,6 +16,7 @@ use crate::fauna::want::Lead;
 fn hit(victim: Entity, energy: f32) -> Hit {
     Hit {
         attacker: Entity::PLACEHOLDER,
+        item: 0,
         victim,
         part: Entity::PLACEHOLDER,
         at: Vec3::ZERO,
@@ -36,7 +38,9 @@ fn hit(victim: Entity, energy: f32) -> Hit {
 fn a_blow_hurts_and_a_big_one_kills() {
     let (mut app, herd) = app(true);
     assert!(herd.is_some());
-    app.add_message::<Hit>().add_systems(Update, harm);
+    app.add_message::<Hit>()
+        .add_message::<Harvest>()
+        .add_systems(Update, harm);
     run(&mut app, 3.0, 1.0 / 30.0);
     let world = app.world_mut();
     let mut herds = world.query::<(Entity, &Beast)>();
@@ -53,6 +57,7 @@ fn a_blow_hurts_and_a_big_one_kills() {
     app.world_mut().write_message(hit(victim, before.max));
     app.world_mut().run_schedule(Update);
     assert!(app.world().entity(victim).contains::<Dead>());
+    assert!(!app.world().resource::<Messages<Harvest>>().is_empty());
     let Lead::Herd { id, slot } = lead else {
         return;
     };

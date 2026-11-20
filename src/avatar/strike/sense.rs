@@ -88,6 +88,7 @@ pub fn sense(
         let intent = held.style.intent();
         hits.write(Hit {
             attacker: body,
+            item: held.id,
             victim,
             part,
             at,

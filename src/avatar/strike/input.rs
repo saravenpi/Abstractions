@@ -1,5 +1,6 @@
 //! The hands of the local robot: the primary button swings or throws, the secondary one guards, the
-//! mouse over the last moment picks the side, and the first number key draws or stows the tool.
+//! mouse over the last moment picks the side, and the number key of the held hotbar slot draws or
+//! stows the tool.
 
 use bevy::ecs::system::SystemParam;
 use bevy::input::mouse::AccumulatedMouseMotion;
@@ -11,6 +12,7 @@ use super::dir::{Dir, Strokes};
 use super::held::Held;
 use super::path::Path;
 use super::stop::Hitstop;
+use crate::craft::{Pack, wield::pressed};
 use crate::player::Player;
 use crate::sim::PlayerId;
 
@@ -19,9 +21,6 @@ pub const PRIMARY: MouseButton = MouseButton::Left;
 
 /// The button that holds a guard up.
 pub const SECONDARY: MouseButton = MouseButton::Right;
-
-/// The key that draws or stows the held tool: the first slot of the hotbar to come.
-pub const SLOT: KeyCode = KeyCode::Digit1;
 
 /// A spear let go by `body` after a draw of `share` of a full one.
 #[derive(Message, Debug, Clone, Copy, PartialEq)]
@@ -100,7 +99,7 @@ pub fn ask(
         Res<ButtonInput<KeyCode>>,
     ),
     (motion, mut strokes, stop): (Res<AccumulatedMouseMotion>, ResMut<Strokes>, Res<Hitstop>),
-    robot: Robot,
+    (robot, pack): (Robot, Res<Pack>),
     mut bodies: Query<(&mut Strike, &mut Held, &AvatarPose)>,
     mut loose: MessageWriter<Loose>,
 ) {
@@ -111,7 +110,7 @@ pub fn ask(
     let Ok((mut strike, mut held, pose)) = bodies.get_mut(body) else {
         return;
     };
-    if keys.just_pressed(SLOT) {
+    if pressed(&keys) == Some(pack.bar.held) {
         held.out = !held.out;
         strike.act = Act::Ready;
     }

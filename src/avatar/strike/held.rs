@@ -44,6 +44,8 @@ impl Style {
 #[derive(Component, Debug, Clone, PartialEq)]
 #[require(Strike, Layer)]
 pub struct Held {
+    /// The id of the item in the pack, which wear is counted on.
+    pub id: u32,
     /// The item as it is stored.
     pub recipe: Recipe,
     /// The build the recipe makes.
@@ -64,6 +66,7 @@ impl Held {
     /// Returns the item of `recipe`, built as `build`, in the hands at `place`.
     pub fn new(recipe: Recipe, build: Build, place: Place) -> Self {
         Self {
+            id: 0,
             swing: swing(&build, &place),
             throw: throw(&build, &place),
             style: Style::of(&build),

@@ -5,12 +5,14 @@ use bevy::prelude::*;
 use super::tune::SWEET_FLOOR;
 use crate::craft::build::{Blow, Intent};
 
-/// A blow that landed on a creature part. Damage to animals reads it (wave H3); the hitstop starts
-/// from it now.
+/// A blow that landed on a creature part. Harm to animals, the wear of the tool and the hitstop
+/// read it.
 #[derive(Message, Debug, Clone, Copy, PartialEq)]
 pub struct Hit {
     /// Root of the body that struck.
     pub attacker: Entity,
+    /// Id in the pack of the tool that struck.
+    pub item: u32,
     /// Root of the animal struck.
     pub victim: Entity,
     /// The part struck.

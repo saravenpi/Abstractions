@@ -25,8 +25,10 @@ mod starter;
 #[cfg(any(test, feature = "dev"))]
 mod stock;
 mod stop;
+mod sync;
 mod throw;
 pub mod tune;
+mod wear;
 
 #[cfg(test)]
 mod stage;
@@ -84,11 +86,17 @@ fn update(app: &mut App) {
             hands
                 .run_if(armed)
                 .after(AvatarSet::Fill)
-                .before(AvatarSet::Animate),
+                .before(AvatarSet::Animate)
+                .before(crate::craft::wield::choose),
             show::place
                 .after(AvatarSet::Animate)
                 .run_if(any_with_component::<Wielded>),
             spears.after(input::ask),
+            sync::sync
+                .run_if(sync::stale)
+                .after(crate::craft::wield::choose)
+                .after(crate::craft::wield::hold),
+            wear::worn.run_if(on_message::<Hit>),
             stop::start.run_if(on_message::<Hit>),
             stop::hold
                 .after(stop::start)

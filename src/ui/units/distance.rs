@@ -18,18 +18,8 @@ pub const UNITS: [Unit; 7] = [
     (9.995e8, 1e9, "million km", "M km"),
     (1e10, AU, "AU", "AU"),
     (LY_FROM, LY, "light-years", "ly"),
-    (
-        1e6 * LY,
-        1e6 * LY,
-        "million light-years",
-        "M ly",
-    ),
-    (
-        1e9 * LY,
-        1e9 * LY,
-        "billion light-years",
-        "G ly",
-    ),
+    (1e6 * LY, 1e6 * LY, "million light-years", "M ly"),
+    (1e9 * LY, 1e9 * LY, "billion light-years", "G ly"),
 ];
 
 /// What 1 AU means, for a legend or a tooltip.

@@ -1,7 +1,7 @@
 //! Tests of the units: each boundary of distance, and the shared unit of a list.
 
 use super::{distance, distance_short, distances, duration, gravity, mass, pressure, speed};
-use crate::universe::{AU, SPEED_OF_LIGHT, LY};
+use crate::universe::{AU, LY, SPEED_OF_LIGHT};
 
 /// Every boundary of distance writes the unit and the number a person would say.
 #[test]

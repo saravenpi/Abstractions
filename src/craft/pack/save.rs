@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use super::{Burden, Pack};
+use crate::condition::Condition;
 use crate::saves::ActiveWorld;
 use crate::world::Terrain;
 
@@ -24,12 +25,20 @@ pub(crate) fn store(pack: Res<Pack>, active: Option<ResMut<ActiveWorld>>) {
     }
 }
 
-/// Weighs the pack under the gravity of the planet underfoot when either changes.
-pub(crate) fn weigh(pack: Res<Pack>, terrain: Option<Res<Terrain>>, mut burden: ResMut<Burden>) {
-    let moved = terrain.as_ref().is_some_and(|t| t.is_changed());
+/// Weighs the pack under the gravity of the planet underfoot when the pack, the planet or the
+/// torso of the robot changes: a hurt torso carries less.
+pub(crate) fn weigh(
+    pack: Res<Pack>,
+    terrain: Option<Res<Terrain>>,
+    condition: Option<Res<Condition>>,
+    mut burden: ResMut<Burden>,
+) {
+    let moved = terrain.as_ref().is_some_and(|t| t.is_changed())
+        || condition.as_ref().is_some_and(|c| c.is_changed());
     if !pack.is_changed() && !moved {
         return;
     }
     let gravity = terrain.map_or(9.81, |t| t.globe().gravity() as f32);
-    burden.set_if_neq(Burden::of(pack.mass(), gravity));
+    let carry = condition.map_or(1.0, |condition| condition.carry());
+    burden.set_if_neq(Burden::of(pack.mass(), gravity).strained(carry));
 }

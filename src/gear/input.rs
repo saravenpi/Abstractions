@@ -56,6 +56,8 @@ pub struct GearInput {
     /// Velocity of the air over the ground in metres per second. The gear flies through this
     /// air: lift, drag and airspeed all count from it. Zero is still air.
     pub wind: Vec3,
+    /// Share of its push the boots keep, from 0 to 1: less for boots that are hurt.
+    pub boots: f32,
 }
 
 impl Default for GearInput {
@@ -78,6 +80,7 @@ impl Default for GearInput {
             clearance: f32::INFINITY,
             assist: 1.0,
             wind: Vec3::ZERO,
+            boots: 1.0,
         }
     }
 }

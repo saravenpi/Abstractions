@@ -6,12 +6,15 @@ use bevy::prelude::*;
 
 use super::blend::{Weights, asked, blended};
 use super::clock::Clock;
+use super::hurt::limp::{limp, on_feet};
 use super::neck::Neck;
+use super::own::Own;
 use super::pose::Pose;
 use super::rig::{SEGS, Seg, locals};
 use super::strike::Layer;
 use super::touch::tune::RISE_SECONDS;
 use super::{AvatarPose, Mode};
+use crate::condition::Condition;
 use crate::player::wrap;
 
 /// Longest simulated frame in seconds, to survive hitches.
@@ -120,14 +123,21 @@ pub struct Skeleton(pub [Entity; SEGS]);
 /// Poses every body from its own input, with the strike layer laid over it: every segment turns in
 /// its joint, nothing else moves.
 pub fn animate(
-    time: Res<Time>,
-    mut bodies: Query<(&mut Anim, &AvatarPose, &Skeleton, Option<&Layer>)>,
+    (time, own, hurt): (Res<Time>, Own, Option<Res<Condition>>),
+    mut bodies: Query<(Entity, &mut Anim, &AvatarPose, &Skeleton, Option<&Layer>)>,
     mut bones: Query<&mut Transform, With<Bone>>,
 ) {
     let dt = time.delta_secs().min(MAX_DT);
-    for (mut anim, input, skeleton, layer) in &mut bodies {
+    let mine = own.body().map(|(_, body)| body);
+    for (body, mut anim, input, skeleton, layer) in &mut bodies {
         let pose = anim.step(input, dt);
         anim.pose = layer.map_or(pose, |layer| layer.apply(pose));
+        if let Some(hurt) = hurt
+            .as_deref()
+            .filter(|_| mine == Some(body) && on_feet(input.mode))
+        {
+            anim.pose = limp(anim.pose, hurt, input.speed);
+        }
         let frames = locals(&anim.pose);
         for (bone, frame) in skeleton.0.into_iter().zip(frames) {
             if let Ok(mut transform) = bones.get_mut(bone) {

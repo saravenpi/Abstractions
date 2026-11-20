@@ -20,6 +20,7 @@ mod flight;
 mod fx;
 mod gait;
 mod ground;
+pub mod hurt;
 mod kick;
 mod leap;
 mod looks;
@@ -45,6 +46,7 @@ mod tests;
 
 pub use looks::Looks;
 pub use marks::{Marked, Marks};
+pub use show::Shown;
 pub use spawn::{Stock, puppet};
 
 use bevy::prelude::*;
@@ -181,18 +183,6 @@ pub struct AvatarPose {
     pub load: f32,
 }
 
-/// How much of the body is drawn. Hidden parts cast no shadow either.
-#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub enum Shown {
-    /// The whole body: third person.
-    Full,
-    /// Everything but the head, which would clip a camera at the eyes: first person.
-    #[default]
-    FirstPerson,
-    /// Nothing.
-    Hidden,
-}
-
 /// The two stages of the body, in order, in `Update`.
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AvatarSet {
@@ -210,6 +200,7 @@ pub struct Avatar;
 fn systems(app: &mut App) {
     let rendered = resource_exists::<Warm>.and_then(resource_exists::<Assets<Image>>);
     app.add_systems(Startup, warm::warm.run_if(rendered))
+        .add_message::<blow::Blow>()
         .init_resource::<Shown>()
         .init_resource::<Marks>()
         .configure_sets(Update, AvatarSet::Animate.after(AvatarSet::Fill))
@@ -231,6 +222,7 @@ fn systems(app: &mut App) {
         );
     seated::systems(app);
     strike::plugin(app);
+    hurt::plugin(app);
 }
 
 /// Registers the avatar: its input, its visibility setting and the systems that run it while

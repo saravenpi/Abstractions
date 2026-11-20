@@ -85,6 +85,13 @@ pub struct WorldSave {
     /// The tools and materials the robot carries. A file from before 0.13 has none.
     #[serde(default)]
     pub pack: crate::craft::pack::Pack,
+    /// How whole each part of the robot is, in the order of its parts. A file from before robot
+    /// health has a whole robot.
+    #[serde(default)]
+    pub health: Option<[f32; crate::condition::PARTS]>,
+    /// The gear a destroyed robot left where it fell, if it is still there.
+    #[serde(default)]
+    pub cache: Option<crate::craft::fall::Cache>,
 }
 
 /// The ground uncovered on one body: a 512 by 256 grid in longitude and latitude, one bit a
@@ -131,6 +138,8 @@ impl Default for WorldSave {
             explored: Vec::new(),
             marks: Vec::new(),
             pack: Default::default(),
+            health: None,
+            cache: None,
         }
     }
 }

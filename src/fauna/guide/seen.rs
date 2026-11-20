@@ -7,6 +7,7 @@ use std::collections::HashSet;
 use bevy::prelude::*;
 
 use super::super::Creature;
+use crate::condition::Condition;
 use crate::life::{Guild, Life, SpeciesId};
 use crate::player::Player;
 use crate::world::Terrain;
@@ -37,11 +38,13 @@ impl Seen {
 }
 
 /// Returns the species of `life` the robot sees from where it stands: every plant, and the
-/// species of each creature at `creatures` within [`SIGHT`] of `robot`.
+/// species of each creature at `creatures` within `reach` metres of `robot`, which is [`SIGHT`] for
+/// a whole head and less for a hurt one.
 pub fn sighted<'a>(
     life: &'a Life,
     robot: Vec3,
     creatures: impl Iterator<Item = (SpeciesId, Vec3)> + 'a,
+    reach: f32,
 ) -> impl Iterator<Item = SpeciesId> + 'a {
     let plants = life
         .species
@@ -49,7 +52,7 @@ pub fn sighted<'a>(
         .filter(|s| s.role.guild == Guild::Producer)
         .map(|s| s.id);
     let near = creatures
-        .filter(move |(_, at)| at.distance_squared(robot) <= SIGHT * SIGHT)
+        .filter(move |(_, at)| at.distance_squared(robot) <= reach * reach)
         .map(|(species, _)| species);
     plants.chain(near)
 }
@@ -60,6 +63,7 @@ pub(super) fn sight(
     robot: Query<&GlobalTransform, With<Player>>,
     creatures: Query<(&Creature, &GlobalTransform)>,
     mut seen: ResMut<Seen>,
+    condition: Option<Res<Condition>>,
 ) {
     let (Some(terrain), Ok(robot)) = (terrain, robot.single()) else {
         return;
@@ -70,7 +74,8 @@ pub(super) fn sight(
     let near = creatures
         .iter()
         .map(|(c, at)| (c.species, at.translation()));
-    for species in sighted(life, robot.translation(), near) {
+    let reach = SIGHT * condition.map_or(1.0, |condition| condition.scan());
+    for species in sighted(life, robot.translation(), near, reach) {
         if !seen.has(species) {
             seen.mark(species);
         }

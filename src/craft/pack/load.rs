@@ -47,6 +47,16 @@ impl Burden {
         }
     }
 
+    /// Returns this burden with `carry` of its capacity left, from 0 to 1: a hurt torso lifts less.
+    pub fn strained(self, carry: f32) -> Self {
+        let capacity = self.capacity * carry;
+        Self {
+            capacity,
+            pace: pace(self.load, capacity),
+            ..self
+        }
+    }
+
     /// Returns the mass still free, in kilograms.
     pub fn room(&self) -> f32 {
         (self.capacity - self.load).max(0.0)

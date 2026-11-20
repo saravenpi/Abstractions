@@ -8,11 +8,13 @@ mod compass;
 mod coords;
 mod eye;
 mod flight;
+mod frame;
 mod markers;
 mod minimap;
 mod needle;
 mod panel;
 mod prompt;
+mod snow;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
@@ -23,6 +25,8 @@ mod tests_climate;
 mod tests_coords;
 #[cfg(test)]
 mod tests_deck;
+#[cfg(test)]
+mod tests_frame;
 mod units;
 
 pub use climate::HudWeather;
@@ -33,6 +37,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
+use crate::condition::Condition;
 use crate::screens::{Screen, in_control};
 use crate::ship::seated;
 use crate::space::{Location, Travel};
@@ -45,6 +50,9 @@ const COORDS_EVERY: f32 = 0.1;
 
 /// Seconds between two refreshes of the climate line.
 const CLIMATE_EVERY: f32 = 0.5;
+
+/// Seconds between two redraws of the static over the view.
+const SNOW_EVERY: f32 = 0.05;
 
 /// Marks the root of the HUD.
 #[derive(Component)]
@@ -70,7 +78,9 @@ fn spawn(mut commands: Commands) {
             banner::block(),
             compass::bar(),
             coords::corner(),
-            minimap::frame()
+            minimap::frame(),
+            frame::corner(),
+            snow::screen()
         ],
     ));
 }
@@ -98,6 +108,20 @@ fn show(
     }
 }
 
+/// Registers the frame corner and the static of a hurt head.
+fn hurt(app: &mut App) {
+    let snow = on_timer(Duration::from_secs_f32(SNOW_EVERY));
+    app.init_resource::<Condition>().add_systems(
+        Update,
+        (
+            frame::update.run_if(resource_changed::<Condition>.or_else(frame::fresh)),
+            snow::update.run_if(snow),
+        )
+            .run_if(in_control)
+            .run_if(in_state(Screen::Gameplay)),
+    );
+}
+
 /// Registers the HUD systems.
 pub(super) fn plugin(app: &mut App) {
     markers::plugin(app);
@@ -106,6 +130,7 @@ pub(super) fn plugin(app: &mut App) {
     let every = on_timer(Duration::from_secs_f32(REFRESH));
     let place = coords::update.run_if(on_timer(Duration::from_secs_f32(COORDS_EVERY)));
     let marks = (compass::update, compass::north, place);
+    hurt(app);
     app.init_resource::<banner::Banner>()
         .add_plugins(minimap::plugin)
         .add_systems(OnEnter(Screen::Gameplay), spawn)

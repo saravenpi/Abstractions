@@ -5,6 +5,7 @@ pub mod avatar;
 pub mod climate;
 pub mod companion;
 pub mod computer;
+pub mod condition;
 pub mod craft;
 pub mod effects;
 pub mod fauna;
@@ -73,6 +74,7 @@ fn modules(app: &mut App) {
 /// Adds the modules that build on the ones above, with the camera rig driving the game camera.
 fn later_modules(app: &mut App) {
     app.add_plugins((
+        condition::plugin,
         home::plugin,
         avatar::plugin,
         gear::plugin,

@@ -8,10 +8,13 @@ use super::animate::Anim;
 use super::face::machine::Visor;
 use super::face::paint::{paint, rgba};
 use super::face::{Frame, ambient, gaze, landing};
+use super::hurt::eye;
+use super::own::Own;
 use super::rig::globals;
 use super::spawn::{Kit, Lamp, Plume};
 use super::tune::{LANDING_FACE, LIGHT_POWER, NOZZLE, PLUME, PLUME_HDR, SCREEN_HDR};
 use super::wing::{Panel, RIM, fan, flutter, rim, stretch};
+use crate::condition::Condition;
 
 /// How fast the screen colour follows the face, per second.
 const TINT_RATE: f32 = 6.0;
@@ -142,12 +145,13 @@ fn repaint(images: &mut Assets<Image>, kit: &mut Kit, frame: Frame) {
 /// Runs the face of every body: notices landings, repaints the screen when the frame changes
 /// and eases its colour, which also colours the faint light in front of it.
 pub fn face(
-    time: Res<Time>,
+    (time, own, hurt): (Res<Time>, Own, Option<Res<Condition>>),
     mut bodies: Query<(&Anim, &mut Visor, &mut Kit)>,
     mut stores: (ResMut<Assets<Image>>, ResMut<Assets<StandardMaterial>>),
     mut lamps: Query<(&Lamp, &mut PointLight)>,
 ) {
     let dt = time.delta_secs();
+    let mine = own.body().map(|(_, body)| body);
     for (lamp, mut light) in &mut lamps {
         let Ok((anim, mut visor, mut kit)) = bodies.get_mut(lamp.0) else {
             continue;
@@ -163,14 +167,16 @@ pub fn face(
         let tint = kit
             .tint
             .lerp(visor.shown().tint(), 1.0 - (-TINT_RATE * dt).exp());
+        let dim = eye::screen(hurt.as_deref(), mine == Some(lamp.0), time.elapsed_secs());
         light.color = Color::linear_rgb(tint.x, tint.y, tint.z);
-        light.intensity = LIGHT_POWER;
-        if tint.distance(kit.tint) < 1e-4 {
+        light.intensity = LIGHT_POWER * dim;
+        if tint.distance(kit.tint) < 1e-4 && (dim - kit.dim).abs() < 1e-3 {
             continue;
         }
         kit.tint = tint;
+        kit.dim = dim;
         if let Some(mut material) = stores.1.get_mut(&kit.visor) {
-            let lit = tint * SCREEN_HDR;
+            let lit = tint * SCREEN_HDR * dim;
             material.base_color = Color::linear_rgb(lit.x, lit.y, lit.z);
         }
     }

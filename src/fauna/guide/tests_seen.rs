@@ -27,9 +27,25 @@ fn sight_reaches_forty_metres() {
     let plants = life.species.len() - animals.len();
     let near = (animals[0].id, Vec3::new(SIGHT - 1.0, 0.0, 0.0));
     let far = (animals[1].id, Vec3::new(0.0, 0.0, SIGHT + 1.0));
-    let found: Vec<_> = sighted(&life, Vec3::ZERO, [near, far].into_iter()).collect();
+    let found: Vec<_> = sighted(&life, Vec3::ZERO, [near, far].into_iter(), SIGHT).collect();
     assert_eq!(found.len(), plants + 1);
     assert!(found.contains(&animals[0].id) && !found.contains(&animals[1].id));
+}
+
+/// A hurt head shortens the reach of the scan.
+#[test]
+fn a_hurt_head_sees_less_far() {
+    let life = web();
+    let animal = life
+        .species
+        .iter()
+        .find(|s| s.role.guild != Guild::Producer)
+        .expect("an animal");
+    let near = (animal.id, Vec3::new(SIGHT - 5.0, 0.0, 0.0));
+    let found = |reach: f32| sighted(&life, Vec3::ZERO, [near].into_iter(), reach).count();
+    let plants = found(0.0);
+    assert_eq!(found(SIGHT), plants + 1);
+    assert_eq!(found(SIGHT * crate::condition::tune::HEAD_SCAN), plants);
 }
 
 /// In the running game a creature near the robot on a living planet is marked seen.

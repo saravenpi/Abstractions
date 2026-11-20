@@ -20,6 +20,7 @@ use super::steer::{Steer, Turn};
 use super::upright::{facing, tilt};
 use super::walk::{Step, velocity};
 use super::{Player, PlayerSet};
+use crate::condition::Condition;
 use crate::gear::{Gear, liquid_density};
 use crate::screens::playing;
 use crate::sim::IntentOf;
@@ -72,6 +73,7 @@ pub(super) struct Env<'w, 's> {
     wind: Option<Res<'w, Wind>>,
     air: Option<Res<'w, Thickness>>,
     burden: Option<Res<'w, crate::craft::Burden>>,
+    body: Option<Res<'w, Condition>>,
     slide: MoveAndSlide<'w, 's>,
     query: SpatialQuery<'w, 's>,
 }
@@ -80,6 +82,7 @@ impl Env<'_, '_> {
     /// Reads the per-frame values of a body at render position `at` that is asked `asks`.
     fn step(&self, at: Vec3, asks: &Intents) -> Step {
         let globe = self.terrain.globe();
+        let body = self.body.as_deref().copied().unwrap_or_default();
         Step {
             dt: self.time.delta_secs().min(MAX_DT),
             time: self.time.elapsed_secs(),
@@ -88,7 +91,8 @@ impl Env<'_, '_> {
             afloat: above_sea(&self.anchor, globe, at),
             gravity: local_gravity(&self.anchor, globe, at).length(),
             air: self.air.as_deref().map_or(1.0, |air| air.0),
-            pace: self.burden.as_deref().map_or(1.0, |burden| burden.pace),
+            pace: self.burden.as_deref().map_or(1.0, |burden| burden.pace) * body.pace(),
+            body,
         }
     }
 

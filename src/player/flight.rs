@@ -92,6 +92,7 @@ pub(super) fn input(motion: &Motion, intent: &Intent, air: &Air, on: (bool, bool
         clearance: air.clearance,
         assist: 1.0,
         wind: air.wind,
+        boots: 1.0,
     }
 }
 

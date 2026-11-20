@@ -13,6 +13,7 @@ mod dir;
 mod flight;
 mod held;
 mod hit;
+mod hurt;
 mod ik;
 mod input;
 mod key;
@@ -42,6 +43,8 @@ mod tests_flight;
 #[cfg(test)]
 mod tests_hit;
 #[cfg(test)]
+mod tests_hurt;
+#[cfg(test)]
 mod tests_ik;
 #[cfg(test)]
 mod tests_stock;
@@ -51,6 +54,7 @@ pub use dir::Dir;
 pub use flight::{Rest, Spear};
 pub use held::{Held, Style};
 pub use hit::Hit;
+pub use hurt::Hurt;
 pub use layer::Layer;
 pub use stop::Hitstop;
 
@@ -104,6 +108,7 @@ fn update(app: &mut App) {
 /// Returns the systems of the hands: read, posed and drawn.
 fn hands() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
     (
+        hurt::feel,
         input::ask.run_if(in_control),
         layer::lay,
         show::wield.run_if(armed),

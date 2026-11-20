@@ -80,5 +80,6 @@ pub(super) fn push(state: &FlightState, input: &GearInput) -> Vec3 {
     let brake = braking(state, input) * sigma;
     let lean = FALL_AIR_ACCEL * air.min(1.0) * (1.0 - spread) * (1.0 - power);
     let winged = spread * input.air.clamp(0.0, 1.0);
-    brake.lerp(flying(state, input, sigma), winged) * power + wish(state, input) * lean
+    brake.lerp(flying(state, input, sigma), winged) * (power * input.boots)
+        + wish(state, input) * lean
 }

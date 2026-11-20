@@ -55,6 +55,7 @@ Branch `integrate` (worktree `~/Code/Saravenpi/wt-int`) holds everything merged 
 | 20 | After that: a complete review, fix what it finds, improve and polish the animations and everything that was added | After the tests are green: review of the whole diff by area, probe shots, polish pass |
 | 21 | Polish the light effects and make them more realistic, from good practices found online, still optimised, with control given to the user for a weak PC | Agent `lightfx` running: research to `handoff/specs/lightfx.md`; exposure that adapts, sky and ground bounce ambient, cloud shadows on the ground, low sun and aerial perspective from the real air, water Fresnel and glint, local lights in physical units; a "Lighting quality" preset plus one switch per costly effect. Low keeps every light and drops only shadows, shafts, occlusion and bloom |
 | 22 | Show units and distances correctly in the UI so everyone understands them easily | Sent to `fx-ui`: one formatting module for the whole UI (metres, km, AU, light-years, each explained once on the screen), a trip time beside every far distance, gravity, air and radius as multiples of home with the SI value beside, plain labels, the same number on the marker and on the map |
+| 23 | From the owner through the session `abstractions-16`: read the architecture review (`handoff/specs/architecture-review.md`, read at `main` e8f0dd4), make a plan, fix what it lists, fold it into this update; reduce the size of the codebase and optimise the game: less redundancy, one way of doing each thing | Planned as its own wave, after every branch in flight is merged and the tests are green, because it moves and deletes code that eleven branches are editing. See section 6c |
 
 ## 3. The UI rework: what the owner asked for
 
@@ -117,6 +118,21 @@ What was found: planets are real size and orbit at 0.03 to 40 AU, but the game l
 State: an audit is running. It checks every scale of `src/universe/` against real astrophysics (galaxy size, star density and masses, Kepler periods, mass-radius, gravity from mass and radius, Hill and Roche limits), lists everything that depends on the galaxy scale (position precision, warp speeds and travel times, starfield, galaxy light, map, saves, wire), and writes a plan with work packages to `~/.cache/abstractions-targets/int-logs/scale.md`. Implementation starts when the four test-fix branches are merged, because one of them is unifying the reach of a star system.
 
 This is part of 0.11: the release waits for it.
+
+## 6c. Architecture wave (request 23)
+
+Source: `handoff/specs/architecture-review.md`, 22 candidates in parts A (celestial and navigation), B (world and actors), C (interface and net), plus Bevy practices (D). It read `main` at e8f0dd4; line numbers have moved, so every finding is checked on `integrate` before it is acted on.
+
+Already done or in flight on `integrate`: the shore search throttle of B1 (`perf-misc`), `SYSTEM_REACH` moved to `universe::system_reach` (A8, `fx-sky` and the scale agents), one units formatter (C4, `fx-ui`), borders and the radius removed (the conflict of C3, `ui-b`), several ungated systems and per-frame writes (parts of C7 and D4, the perf agents), the sun light from the place block (part of A5, `light` and `lightfx`).
+
+Order, when the tree is green:
+1. Baseline: counts of systems run per frame and CPU time of the hot systems from the probe, since a GPU frame time on this machine means nothing. A `profiling` cargo profile (release, symbols kept) for the owner's machine with Tracy.
+2. Layers: A8 and C8 (move `Screen`, `playing`, `in_control`, `Menu`, the marker types, `Link`, `spin` down), then A7 (one base `math` module: smoothstep, angle wrap, spring).
+3. Performance: A1 (one `Here` resource for the current system, moons and planet spec, replacing the private caches), the rest of B1 (one ground answer per frame for the focus point), C7 (stop the 0.5 s chart rebuild, gate the `ui` systems), C6 (settings reactions only on the fields they read, ranges checked on load).
+4. Deletions with no change in behaviour: B4 (one mesh builder), B5 (one `Trail<const N>`), B6 (one face module), C1 (one list screen), C2 (one focus stepper and one text field), C3 (screen scaffold, progress bar, show/hide), A2 (one frame and velocity module), A6 (one latitude and longitude module), B2 (one ground reader).
+5. Changes the player can see. The lead's proposal, each open to the owner's veto, all following the rule "real, one source of truth": A3 one air density curve for gear, ship, sky and sound; A4 one gravity function, the same for the player and the ship below sea level; A5 retire the phase-based `daylight`, lights, creatures and sounds follow the real sun; B3 structures stand on one height source; B7 one footfall source so sound and dust coincide. Hash and RNG seeding (A7, the cube face in the per-chunk seed) and the wire seam (C5) may change now without cost, because 0.11 worlds, `SAVE_VERSION` 3 and protocol 3 are all new and unreleased.
+
+Each step: tests rewritten where behaviour changes on purpose and listed, never weakened; the gate after each step; the line count of `src/` before and after.
 
 ## 7. Order of the remaining work
 

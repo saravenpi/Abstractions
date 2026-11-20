@@ -13,6 +13,7 @@ mod filling;
 mod flown;
 mod gait;
 mod hands;
+mod jetting;
 mod landing;
 mod life;
 mod loops;

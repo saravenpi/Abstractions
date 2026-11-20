@@ -78,7 +78,7 @@ pub fn pose_of(mode: Mode, input: &AvatarPose, clock: &Clock) -> Pose {
         Mode::Fall => air::fall(input, clock),
         Mode::Land => ground::land(input, clock),
         Mode::Swim => water::swim(input, clock),
-        Mode::Dive => water::dive(clock),
+        Mode::Dive => water::dive(input, clock),
         Mode::Seated => ground::seated(clock),
         Mode::BootFall => air::boot_fall(input, clock),
         Mode::Glide => flight::glide(input, clock),

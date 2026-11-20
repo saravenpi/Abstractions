@@ -15,6 +15,8 @@ pub enum Role {
     Link(u8, u8),
     /// The head, which looks around.
     Head,
+    /// A lower jaw, which drops when the body calls.
+    Jaw,
     /// A wing on side -1 or 1.
     Wing(i8),
     /// An antenna on side -1, 0 or 1.
@@ -78,6 +80,7 @@ pub fn roles(body: &Body) -> Vec<Role> {
 fn own(kind: PartKind, side: i8) -> Role {
     match kind {
         PartKind::Head => Role::Head,
+        PartKind::Jaw => Role::Jaw,
         PartKind::Antenna => Role::Antenna(side),
         PartKind::Bell | PartKind::Blob => Role::Squash,
         _ => Role::Free,

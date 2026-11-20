@@ -28,6 +28,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - The minimap shows the ground of a planet in its real colours, from the same palette as the map, with its relief shading.
 - Falling leaves, petals and pollen come only from the plants around you. A tree in leaf drops leaves of its own colour and size, more in autumn; a plant in flower drops petals and, by day, pollen; a bare tree and a lifeless planet drop nothing.
+- Animals move when they call: the head lifts, the jaw drops on every note, and the chest or the bell swells. Bigger animals call slower. Every player sees the same animal call at the same moment.
+- Animals have more to say. A hunter growls and rears up, head low, just before it charges, and hunters and horned animals do the same when you come too close. A caught animal cries in distress, and young call back to their parents. Herds call more around sunrise and sunset, in a dawn and a dusk chorus.
+
+### Changed
+
+- Calls follow the body: animals that breathe air moan, hoot, whistle, growl or hiss, shelled ones rasp and click, soft ones gurgle, and calls from under water sound muffled. Long, thin bodies and long necks call lower.
 - The map's side panel has more room: Search, Place, Favourites and Players each sit under a heading, with space between them and between the groups of the card. The result count sits beside the Search heading, the save button beside the Favourites heading, and the distance only in the result row. Rows are taller, and in a short window the favourites and players lose their last rows before anything else is cut.
 - The buttons on the card are shorter, so they take two rows: Set course or Engage and Clear, Focus, Set waypoint and Save place.
 - The wingsuit answers the pitch keys faster: a pull bends the flight path about twice as fast at speed, and let go the wings fly on where you pointed them instead of snapping back to the glide.

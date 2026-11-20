@@ -1,9 +1,5 @@
 //! Tuning of the drawn animals: how far and how many are drawn, how often the herds are read, and
-//! how animals notice robots.
-//!
-//! Distances that animals keep from a threat grow with body size and with how much the species is
-//! hunted, as flight initiation distances do in birds and mammals (Blumstein 2006, "Developing an
-//! evolutionary ecology of fear", Animal Behaviour 71, 389-399).
+//! how they move when alarmed. How they notice robots is tuned in `super::senses::tune`.
 
 /// Metres along the ground from the local robot within which animals are drawn.
 pub const REACH: f64 = 150.0;
@@ -57,25 +53,6 @@ pub const PULL: f32 = 0.8;
 /// Metres from its place within which an animal of a still herd stands still.
 pub const SETTLE: f32 = 0.4;
 
-/// Metres from which an animal of 1 m of body looks up at a threat; [`SIZE_SHARE`] sets how the
-/// distance grows with body length.
-pub const ALERT: f32 = 20.0;
-
-/// Metres under which a shy animal of 1 m of body flees a moving threat. Grazing mammals let a
-/// walker come to about ten metres before they run (Stankowich 2008, "Ungulate flight responses to
-/// human disturbance", Biological Conservation 141, 2159-2173).
-pub const FLEE: f32 = 11.0;
-
-/// Share of the reaction distances that does not grow with body length: an animal of length `l`
-/// metres reacts at `SIZE_SHARE + (1 - SIZE_SHARE) * l` times the distances of a 1 m animal.
-pub const SIZE_SHARE: f32 = 0.6;
-
-/// Share of the flee distance a threat that stands still keeps: a robot that waits is let nearer.
-pub const STILL_SHARE: f32 = 0.6;
-
-/// Speed in metres per second under which a threat counts as standing still.
-pub const STILL: f32 = 0.4;
-
 /// Rise of the alarm per second while a threat is near, a share of the gap to its level.
 pub const ALARM_RISE: f32 = 4.0;
 
@@ -109,3 +86,9 @@ pub const FROUDE_TOP: f32 = 3.5;
 
 /// Longest step in seconds an animal takes in one frame.
 pub const MAX_STEP: f32 = 0.1;
+
+/// Share of its top speed a hunter walks up to a robot at.
+pub const APPROACH_SPEED: f32 = 0.5;
+
+/// Metres past its own length a hunter stops short of a robot it walks up to.
+pub const STAND_OFF: f32 = 2.0;

@@ -5,8 +5,9 @@ use bevy::math::DVec3;
 
 use super::herds::{herd_arc, member};
 use super::tune::{REACH, SLACK, VISIT_DELAY, VISITORS};
+use crate::life::herd::{Herd, Ledger};
 use crate::life::hunt::Carcass;
-use crate::life::{Guild, Life, Species, herd::Herd};
+use crate::life::{Guild, Life, Species};
 use crate::universe::hash::{Rng, child};
 
 /// What leads an animal: its place in a herd, or the carcass it visits.
@@ -83,15 +84,16 @@ pub struct From {
 }
 
 /// Fills `out` with every member of `herds` within [`REACH`] and [`SLACK`] of the robot, nearest
-/// first.
-pub fn members(life: &Life, herds: &[Herd], from: From, out: &mut Vec<Want>) {
+/// first, leaving out those dead by `ledger`.
+pub fn members(life: &Life, (herds, ledger): (&[Herd], &Ledger), from: From, out: &mut Vec<Want>) {
     out.clear();
     for herd in herds {
         let drawable = life
             .species
             .get(usize::from(herd.species))
             .is_some_and(drawn);
-        for slot in (0..herd.base).filter(|_| drawable) {
+        let alive = |slot: &u8| drawable && !ledger.dead(herd.id, *slot, from.time);
+        for slot in (0..herd.base).filter(alive) {
             let Some((_, dir)) = member(herd, slot, from.time, from.radius) else {
                 continue;
             };

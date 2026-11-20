@@ -11,7 +11,7 @@ use super::beast::Beast;
 use super::gate::Spec;
 use super::herds::Herds;
 use super::rig::{SEED, view};
-use super::{fade, gate, looks, scan, walk};
+use super::{fade, gate, looks, scan, senses, walk};
 use crate::player::Player;
 use crate::space::{Anchor, Clock, Location, Travel};
 use crate::universe::{BodyId, Universe};
@@ -33,18 +33,31 @@ pub fn stage(globe: Arc<Globe>, body: BodyId, dir: DVec3, time: f64) -> App {
         .insert_resource(Clock { seconds: time })
         .init_resource::<Time>()
         .init_resource::<Assets<Mesh>>()
-        .init_resource::<Assets<StandardMaterial>>()
-        .init_resource::<Herds>()
-        .init_resource::<super::Nearby>()
-        .init_resource::<Spec>()
-        .init_resource::<looks::Looks>()
-        .add_systems(
-            Update,
-            (gate::forget, scan::scan, walk::walk, fade::fade).chain(),
-        );
+        .init_resource::<Assets<StandardMaterial>>();
+    fauna(&mut app);
     app.world_mut()
         .spawn((Player, Transform::from_translation(ground + Vec3::Y)));
     app
+}
+
+/// Adds the resources and the systems of the fauna to `app`.
+fn fauna(app: &mut App) {
+    app.init_resource::<Herds>()
+        .init_resource::<super::Nearby>()
+        .init_resource::<Spec>()
+        .init_resource::<looks::Looks>()
+        .init_resource::<senses::Blood>()
+        .add_systems(
+            Update,
+            (
+                gate::forget,
+                scan::scan,
+                senses::sense,
+                walk::walk,
+                fade::fade,
+            )
+                .chain(),
+        );
 }
 
 /// Moves the rig `seconds` on in frames of `dt` seconds: game time, universe time, then one update.

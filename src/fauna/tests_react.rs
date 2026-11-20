@@ -1,5 +1,5 @@
-//! Tests of reactions: an animal flees a robot that comes too near and walks back to its herd once
-//! the robot is gone.
+//! Tests of reactions: an animal flees a robot that comes too near, once its senses notice it, and
+//! walks back to its herd once the robot is gone.
 
 use bevy::math::{DVec3, Vec3};
 use bevy::prelude::*;
@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use super::beast::Beast;
 use super::gate::Spec;
 use super::herds::{Herds, Land, member};
-use super::react::{Act, Mood, Temper};
+use super::react::Act;
 use super::rig::app;
 use super::stage::{put, run, staying};
 use super::want::Lead;
@@ -42,26 +42,6 @@ pub fn busy() -> f64 {
     let failed = unsafe { clock_gettime(THREAD_CLOCK, &mut time) };
     assert_eq!(failed, 0);
     time.seconds as f64 + time.nanos as f64 * 1.0e-9
-}
-
-/// A threat inside the flee distance makes an animal flee within a second, and with no threat its
-/// alarm falls back to grazing.
-#[test]
-fn alarm_rises_and_calms() {
-    let temper = Temper {
-        notice: 12.0,
-        flee: 6.0,
-        calm: 8.0,
-    };
-    let mut mood = Mood::default();
-    for _ in 0..20 {
-        mood.feel(&temper, Some((Vec3::new(3.0, 0.0, 0.0), 3.0)), 0.05);
-    }
-    assert_eq!(mood.act(), Act::Flee);
-    for _ in 0..600 {
-        mood.feel(&temper, None, 0.05);
-    }
-    assert_eq!(mood.act(), Act::Graze);
 }
 
 /// Returns the animal of `app` led by `key`.

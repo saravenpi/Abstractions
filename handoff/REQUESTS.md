@@ -134,6 +134,10 @@ Order, when the tree is green:
 
 6. C5, the replicated-kind seam in net. Owner decision relayed by `abstractions-16`: it lands before protocol 3 ships, and any change of bytes on the wire stays inside protocol 3. One kind table shared by the room and the sender (the mapping is written twice today), one trait for the body records' `encode` and `decode`, one generic `Remotes` instead of a map and an arm per kind, the four frame enums reduced, one `lan_ip`, the close reasons worded once. `net-h4` added kinds since the review (`Vitals`, the hunt acts and events), so check them against the same seam. It starts after `fx-net` merges, because that branch is editing the same files.
 
+7. Notes from the session `abstractions-53` (read-only look at this tree, to judge in this wave): `src/world/shapes.rs` gives every terrain vertex a constant tangent (16 of about 50 bytes) and shares no vertex (6,144 stored for 1,089 lattice points per near chunk); `src/world/chunks/build.rs` builds a trimesh collider where `plan.rs` says heightfield; `chunk_heights` in `src/world/mesh.rs` returns `Vec<Vec<f32>>`; entries of `crates/net/src/log.rs` repeat an 8-byte time and a full `BodyId`, and the whole log rides in `Welcome` under a 4 MiB cap; the log and the quarried rocks are text rows in the TOML save. Roadmap 0.13 ("ground you can shape") plans a binary per-chunk terrain file and area-based sync: if protocol 3 leaves room for a `Change::Dug` variant and for not sending the full log on join, 0.13 will not need protocol 4 for that alone. `zstd` is approved by the owner for 0.13, not before.
+
+`ROADMAP.md` on `main` moved again (9e62575, ede5233): 0.12 places worth the trip, 0.13 ground you can shape, 0.14 real space and probes, 0.15 together, 0.16 the thread, 0.17 hunting, mining, crafting and building, then 0.18 to 0.23. Merge `main` again before the release and edit only the 0.11 section.
+
 Each step: tests rewritten where behaviour changes on purpose and listed, never weakened; the gate after each step; the line count of `src/` before and after.
 
 ## 7. Order of the remaining work

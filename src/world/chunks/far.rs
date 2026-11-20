@@ -74,7 +74,8 @@ fn covered(chunks: &Chunks) -> bool {
 }
 
 /// Swaps between the quadtree and the baked planet with the distance of the focus: the baked
-/// planet beyond about three radii, nothing beyond the hand-over, where the sky draws the planet.
+/// planet beyond a radius and a third, nothing beyond the hand-over of a radius and a half, where
+/// the sky draws the planet.
 ///
 /// As the first step of the chain that sees the focus, it also notes how the focus moves and
 /// how far the budget of the frame stretches for the work that waits.

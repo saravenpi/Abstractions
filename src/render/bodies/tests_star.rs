@@ -4,7 +4,7 @@
 
 use bevy::math::DVec3;
 
-use super::{Body, FAR, STAR_POINT, angle, place};
+use super::{Body, STAR_POINT, angle};
 use crate::computer::SYSTEM_REACH;
 use crate::render::observer::Observer;
 use crate::render::starfield::sunlight;
@@ -12,15 +12,15 @@ use crate::render::vantage::Vantage;
 use crate::render::warp::{Drive, Sequence};
 use crate::universe::{GLY, Universe};
 
-/// The disc of the star is drawn with its radius over its distance, at any distance: where it
-/// is drawn in place and where it is pulled in and shrunk to keep 32-bit positions exact.
+/// The disc of the star is drawn with its radius over its distance, at any distance, from its
+/// true position and size in 32 bits.
 #[test]
 fn the_disc_of_the_star_is_its_radius_over_its_distance() {
     let universe = Universe::new(7);
     let star = universe.system(universe.home().star).star;
-    for distance in [2.0e6, f64::from(FAR) * 0.5, 4.0e7, 4.0e8, 5.0e9] {
-        let drawn = place(DVec3::new(0.6, 0.0, -0.8) * distance);
-        let seen = star.radius as f32 * drawn.scale / drawn.at.length();
+    for distance in [2.0e6, 5.0e5, 4.0e7, 4.0e8, 5.0e9] {
+        let at = (DVec3::new(0.6, 0.0, -0.8) * distance).as_vec3();
+        let seen = star.radius as f32 / at.length();
         let wanted = (star.radius / distance) as f32;
         assert!((seen / wanted - 1.0).abs() < 1e-4, "{distance}: {seen}");
         assert_eq!(angle(star.radius, distance), wanted);

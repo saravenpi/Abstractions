@@ -96,8 +96,6 @@ pub struct Globe {
     relief: Relief,
     /// The ground rules the record gives.
     lands: Lands,
-    /// Metres from the centre past which the sky draws the planet instead of the world.
-    handover: f64,
     /// The planet as its climate sees it.
     setting: Setting,
     /// How far round its orbit the planet is now, for the climate of the moment.
@@ -125,7 +123,6 @@ impl Globe {
             record,
             relief: Relief::of(seed, [radius, gravity], &record, None),
             lands: Lands::of(&record),
-            handover: far::handover(radius, None),
             setting: climate::setting(seed, radius, gravity),
             season: Season::default(),
             atlas: Arc::new(Atlas::new(0, 1)),
@@ -134,11 +131,9 @@ impl Globe {
         .charted()
     }
 
-    /// Builds the globe of a planet of the universe, with its own record and the hand-over
-    /// its size and its rings give.
+    /// Builds the globe of a planet of the universe, with its own record.
     pub fn of(spec: &PlanetSpec) -> Self {
         Self {
-            handover: far::handover(spec.radius, spec.rings),
             setting: Setting::of(spec),
             ..Self::new(spec.seed, spec.radius, spec.gravity).with_record(spec.record)
         }
@@ -163,7 +158,7 @@ impl Globe {
     /// Returns the metres from the centre past which the sky draws the planet, see
     /// [`far::handover`].
     pub fn handover(&self) -> f64 {
-        self.handover
+        far::handover(self.radius)
     }
 
     /// Returns the planet as its climate sees it: the setting of its spec, or the home record, day and

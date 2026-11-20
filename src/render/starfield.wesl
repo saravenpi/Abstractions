@@ -123,7 +123,8 @@ fn emit(seen: Seen, corner: vec2<f32>, size: f32, reach: f32, light: vec4<f32>) 
 fn placed(out: StarVertex, world_from_local: mat4x4<f32>) -> StarVertex {
     var moved = out;
     let shell = length(world_from_local[0].xyz);
-    moved.position = position_world_to_clip(world_from_local[3].xyz + out.position.xyz * shell);
+    let clip = position_world_to_clip(world_from_local[3].xyz + out.position.xyz * shell);
+    moved.position = vec4<f32>(clip.x, clip.y, 0.0, clip.w);
     return moved;
 }
 

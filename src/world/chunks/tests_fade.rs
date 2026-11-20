@@ -2,7 +2,7 @@
 
 use bevy::camera::visibility::VisibilityRange;
 
-use super::dither::{FADE_SECONDS, LEVELS, Way, level, range};
+use super::dither::{FADE_SECONDS, LEVELS, SPAN, Way, level, range, ranged, span};
 
 /// The 4 by 4 Bayer thresholds of `visibility_range_dither` in Bevy's `pbr_functions`.
 const BAYER: [i32; 16] = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
@@ -75,4 +75,28 @@ fn fade_runs_for_its_duration() {
     assert_eq!(level(FADE_SECONDS * 30.0), LEVELS);
     let steps = (0..=40).map(|i| level(FADE_SECONDS * i as f32 / 40.0));
     assert!(steps.collect::<Vec<_>>().windows(2).all(|w| w[0] <= w[1]));
+}
+
+/// On a planet of 6,371 km a node can lie 13,000 km from the camera, which the fixed margin of a
+/// small planet cannot carry: its level would move with the distance. The margin that grows with
+/// the planet and the altitude keeps every level exact at every distance up to the far side.
+#[test]
+fn the_margin_grows_with_the_planet_and_the_altitude() {
+    let radius = 6.371e6;
+    assert_eq!(span(2.0, 6.0e3), SPAN);
+    assert!(span(2.0, radius) > span(2.0, 6.0e3));
+    assert!(span(2.0e6, radius) > span(2.0, radius));
+    let wide = span(0.0, radius);
+    for (altitude, level) in [(0.0, 0), (30.0, 3), (1.0e5, 8), (3.0e6, 16)] {
+        let wide = span(altitude, radius);
+        for distance in [3.0, 9.0e3, 6.0e5, 6.4e6, 1.2e7, 1.9e7] {
+            let drawn = |way| {
+                let range = ranged(way, level, wide);
+                let share = ((distance - range.start_margin.start) / wide * 16.0).round() as i32;
+                share.clamp(0, 16)
+            };
+            assert_eq!(drawn(Way::In), i32::from(level), "{altitude} m, {distance} m");
+        }
+    }
+    assert!(wide >= 64.0 * 2.0 * radius as f32);
 }

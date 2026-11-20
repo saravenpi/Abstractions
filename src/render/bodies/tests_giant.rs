@@ -1,6 +1,6 @@
 //! Gas giant tests: the bands and the storm of a giant keep to cloud colours, its material
 //! carries them with its rings, its sky seen from the deck is its own, and the world hands it
-//! to the sky before anything the sky pulls in could show in front of it.
+//! to the sky at the same number of radii at every size.
 
 use std::f32::consts::PI;
 
@@ -15,9 +15,9 @@ use crate::render::observer::Observer;
 use crate::render::palette::Palette;
 use crate::render::smoothstep;
 use crate::render::vantage::Vantage;
-use crate::universe::{PlanetClass, PlanetRecord, PlanetSpec, RING_OUTER, Rings, Universe, Water};
+use crate::universe::{PlanetClass, PlanetRecord, PlanetSpec, Universe, Water};
 use crate::world::Globe;
-use crate::world::globe::far::{ENTER, FAR, Range, handover, seen};
+use crate::world::globe::far::{ENTER, LIMIT, Range, handover, seen};
 
 /// Returns the record of a gas giant.
 fn giant() -> PlanetRecord {
@@ -124,34 +124,23 @@ fn handed_over(planet: &PlanetSpec, away: f64) -> (bool, bool) {
     (world, Body::Planet(planet.id).shown(planet, pos, &vantage))
 }
 
-/// For planets of 6, 40, 60 and 150 km, with and without the widest rings, the world and the
-/// sky hand the planet over at the same distance, the world still draws its baked sphere for a
-/// while, and the planet and its rings, drawn at their true distances up to there, end short of
-/// the distance past which the sky pulls bodies in, so no ring or moon shows in front of it.
+/// For planets of 6 km to 12,000 km, the world and the sky hand the planet over at the same
+/// distance, 1.5 radii from its centre, the world still draws its baked sphere for a while
+/// before, and nothing is handed over twice.
 #[test]
 fn the_world_and_the_sky_agree_on_the_handover() {
     let universe = Universe::new(7);
     let home = universe.planet(universe.home());
-    for radius in [6.0e3, 4.0e4, 6.0e4, 1.5e5] {
-        for outer in [None, Some(RING_OUTER * radius)] {
-            let rings = outer.map(|outer| Rings {
-                inner: 1.5 * radius,
-                outer,
-                density: 0.5,
-                color: Vec3::ONE,
-            });
-            let planet = PlanetSpec {
-                radius,
-                rings,
-                ..home.clone()
-            };
-            let at = handover(radius, rings);
-            let reach = outer.unwrap_or(radius);
-            assert!(at + reach <= f64::from(FAR), "{radius} {outer:?}: {at}");
-            assert!(at > ENTER * radius, "{radius} {outer:?}: {at}");
-            assert_eq!(handed_over(&planet, at * 0.999), (false, false));
-            assert_eq!(handed_over(&planet, at * 1.001), (true, true));
-        }
+    for radius in [6.0e3, 4.0e4, 1.5e6, 6.371e6, 1.2e7] {
+        let planet = PlanetSpec {
+            radius,
+            rings: None,
+            ..home.clone()
+        };
+        let at = handover(radius);
+        assert_eq!(at, LIMIT * radius);
+        assert!(at > ENTER * radius, "{radius}: {at}");
+        assert_eq!(handed_over(&planet, at * 0.999), (false, false));
+        assert_eq!(handed_over(&planet, at * 1.001), (true, true));
     }
-    assert_eq!(handover(home.radius, None), 20.0 * home.radius);
 }

@@ -5,7 +5,6 @@ use bevy::math::{DMat3, DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::atmosphere::{air, horizon_dip, shadow};
-use super::bodies::{FAR, place};
 use super::clock::{catch_up, solar_day};
 use super::clouds::crossing_depth;
 use super::fog::{Height, fog_sight};
@@ -163,30 +162,23 @@ fn cloud_crossing_peaks_mid_band() {
     assert_eq!(crossing_depth(1200.0, 1500.0, 1500.0), 0.0);
 }
 
-/// A far body is drawn in its true direction, covers its true angle, sits within reach of 32-bit
-/// positions and stays behind every nearer body.
+/// A far body is drawn where it truly is: its position in 32 bits keeps its direction and its
+/// angular size at every distance up to the width of a galaxy, so nothing is pulled in or shrunk.
 #[test]
 fn far_bodies_keep_direction_and_size() {
     let toward = DVec3::new(0.36, -0.48, 0.8);
-    let radius = 6000.0;
-    let mut last = 0.0;
-    for distance in [10.0, 9.0e5, 1.0e6, 1.2e6, 4.0e7, 5.0e8, 3.0e11, 1.0e16] {
-        let drawn = place(toward * distance);
-        let reach = drawn.at.length();
+    let radius = 6.0e6;
+    for distance in [10.0, 9.0e5, 1.0e7, 1.2e8, 4.0e8, 3.0e11, 1.0e16, 1.0e21] {
+        let at = (toward * distance).as_vec3();
+        let reach = at.length();
         assert!(
-            (drawn.at / reach - toward.as_vec3()).length() < 1e-5,
+            (at / reach - toward.as_vec3()).length() < 1e-5,
             "{distance}"
         );
-        let (seen, truth) = (
-            radius * f64::from(drawn.scale) / f64::from(reach),
-            radius / distance,
-        );
+        let (seen, truth) = (f64::from(radius as f32 / reach), radius / distance);
         assert!(
-            (seen / truth - 1.0).abs() < 0.01,
+            (seen / truth - 1.0).abs() < 1e-4,
             "{distance}: {seen} {truth}"
         );
-        assert!(reach > last && reach <= 2.0 * FAR, "{distance}: {reach}");
-        assert!(distance > f64::from(FAR) || drawn.scale == 1.0);
-        last = reach;
     }
 }

@@ -14,6 +14,11 @@ struct Sky {
     warp: vec4<f32>,
 }
 
+struct SkyOut {
+    @location(0) color: vec4<f32>,
+    @builtin(frag_depth) depth: f32,
+}
+
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> sky: Sky;
 
 const RIM_SHARPNESS: f32 = 26.0;
@@ -73,7 +78,7 @@ fn warped_band(v: vec3<f32>) -> vec3<f32> {
 }
 
 @fragment
-fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
+fn fragment(in: VertexOutput) -> SkyOut {
     let v = normalize(in.world_position.xyz - view.world_position);
     let sun_dir = sky.sun.xyz;
     let height = dot(v, sky.up.xyz);
@@ -91,5 +96,5 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     col = col + sun_col * sun_glow * sun_visible;
 
     col = mix(col, sky.cloud.rgb, sky.cloud.w);
-    return vec4<f32>(col, 1.0);
+    return SkyOut(vec4<f32>(col, 1.0), 0.0);
 }

@@ -14,6 +14,7 @@ use super::vantage::{LocalSystem, Vantage};
 use super::weather::LocalWeather;
 use crate::settings::{Persistent, Settings};
 use crate::space::{Anchor, Frame};
+use crate::world::globe::far::SIGHT;
 use crate::world::{CHUNK_SIZE, Planet, Reach};
 
 /// Fog and sky color seen from below the surface of water, in sRGB. The underwater pass draws
@@ -80,13 +81,15 @@ pub struct Height {
 
 /// Returns the distance in metres the fog lets the camera see when the detail of the ground ends
 /// `ground` metres away. On foot that is the ground; climbing, the fog opens smoothly to beyond
-/// the horizon, where the coarse planet still shows; it has no limit as the air runs out.
+/// the horizon, where the coarse planet still shows; as the air runs out it reaches on, up to
+/// [`SIGHT`] planet radii, far past the hand-over.
 pub fn fog_sight(ground: f32, height: &Height) -> f32 {
     let up = height.altitude.max(0.0);
     let horizon = (up * (2.0 * height.radius + up)).sqrt();
     let open = smoothstep(OPEN.0, OPEN.1, height.clearance);
     let far = ground.max(horizon * HORIZON_SHARE);
-    (ground + (far - ground) * open) / height.air.max(THIN_AIR)
+    let reach = (ground + (far - ground) * open) / height.air.max(THIN_AIR);
+    reach.min(SIGHT as f32 * height.radius)
 }
 
 /// Returns the distance in metres a camera that sees `reach` metres away culls at.

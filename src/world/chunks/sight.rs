@@ -7,6 +7,7 @@ use bevy::math::DVec3;
 use crate::render;
 use crate::world::Globe;
 use crate::world::globe::ChunkId;
+use crate::world::globe::far::SIGHT;
 
 /// Heights above the ground in metres between which the fog opens from the edge of the detailed
 /// ground to the horizon, read from `render::fog`, which draws the fog.
@@ -62,7 +63,7 @@ impl Eye {
     pub fn of(globe: &Globe, at: DVec3, ground: f64) -> Self {
         let air = render::Air::of(globe.record());
         let thick = f64::from((air.share() * air.haze()).max(render::THIN_AIR));
-        let veil = veil(ground, &Height::of(globe, at)) / thick;
+        let veil = (veil(ground, &Height::of(globe, at)) / thick).min(SIGHT * globe.radius());
         Self {
             at,
             radius: globe.radius(),

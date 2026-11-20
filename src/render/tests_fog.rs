@@ -2,6 +2,7 @@
 
 use super::atmosphere::air;
 use super::fog::{Height, cull_distance, fog_sight};
+use crate::world::globe::far::SIGHT;
 
 /// Returns where the fog sees a camera `clearance` metres above the ground from, on a planet of
 /// 3 km whose ground lies 200 m above the sea and whose air ends `top` metres up.
@@ -33,4 +34,23 @@ fn fog_opens_with_height_over_the_ground() {
     }
     assert_eq!(cull_distance(ground), 1000.0);
     assert!(cull_distance(sights[400]) >= sights[400]);
+}
+
+/// The fog of a planet of 6,371 km counts its reach in radii: with no air above it the fog sees
+/// 100 radii at most, whatever the height, and with air it reaches the horizon and no farther.
+#[test]
+fn fog_reach_is_counted_in_radii() {
+    let radius = 6.371e6;
+    let at = |altitude: f32, air: f32| Height {
+        altitude,
+        clearance: altitude,
+        radius,
+        air,
+    };
+    let most = SIGHT as f32 * radius;
+    assert_eq!(fog_sight(230.0, &at(2.0e7, 0.0)), most);
+    assert_eq!(fog_sight(230.0, &at(3.0e6, 0.0)), most);
+    let horizon = (3.0e6 * (2.0 * radius + 3.0e6)).sqrt();
+    let seen = fog_sight(230.0, &at(3.0e6, 1.0));
+    assert!(seen > horizon && seen < most, "{seen}");
 }

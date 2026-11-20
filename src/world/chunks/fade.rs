@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 
-use super::dither::{LEVELS, Way, level, range, redither};
+use super::dither::{LEVELS, SPAN, Way, level, ranged, redither};
 
 /// One thing that fades: its mesh entities, which way it goes and where it stands.
 struct Fade {
@@ -17,9 +17,20 @@ struct Fade {
 }
 
 /// Everything that fades now, by the entity that owns it.
-#[derive(Default)]
 pub struct Fades {
     live: HashMap<Entity, Fade>,
+    /// Width in metres of the margin the fades are written with, see [`super::dither::span`].
+    pub span: f32,
+}
+
+impl Default for Fades {
+    /// Returns no fades, with the margin of a small planet.
+    fn default() -> Self {
+        Self {
+            live: HashMap::new(),
+            span: SPAN,
+        }
+    }
 }
 
 impl Fades {
@@ -55,7 +66,7 @@ impl Fades {
         let (way, start) = at;
         self.cancel(commands, root);
         for part in &parts {
-            redither(commands, *part, Some(range(way, 0)));
+            redither(commands, *part, Some(ranged(way, 0, self.span)));
         }
         let fade = Fade {
             parts,
@@ -104,7 +115,9 @@ impl Fades {
             } else if next != fade.level {
                 fade.level = next;
                 for part in &fade.parts {
-                    commands.entity(*part).try_insert(range(fade.way, next));
+                    commands
+                        .entity(*part)
+                        .try_insert(ranged(fade.way, next, self.span));
                 }
             }
         }

@@ -11,7 +11,6 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::{ChunkId, Face, Globe};
-use crate::universe::Rings;
 use crate::world::Terrain;
 use crate::world::mesh::{Frame, fill_node};
 use crate::world::shapes::FlatMesh;
@@ -25,17 +24,19 @@ pub const LEVEL: u8 = 2;
 pub const CELLS: usize = 16;
 
 /// Distance from the planet centre, in radii, beyond which the far mesh replaces the quadtree.
-pub const ENTER: f64 = 3.2;
+pub const ENTER: f64 = 1.3;
 
 /// Distance from the planet centre, in radii, under which the quadtree comes back.
-pub const LEAVE: f64 = 3.0;
+pub const LEAVE: f64 = 1.2;
 
-/// Distance from the planet centre, in radii, beyond which the planet is no longer drawn here.
-pub const LIMIT: f64 = 20.0;
+/// Distance from the planet centre, in radii, beyond which the world no longer draws the planet
+/// and the sky does. Every far distance of the world and the sky is a number of radii, so the
+/// hand-over means the same on a 6 km planet and on a 12,000 km one.
+pub const LIMIT: f64 = 1.5;
 
-/// Distance in metres past which the sky pulls a body in: farther than anything the terrain
-/// streams, see [`handover`].
-pub const FAR: f32 = 1.0e6;
+/// Distance from the planet centre, in radii, up to which the fog and the fade of the world
+/// reach at most: far past the hand-over, where nothing of the world is drawn any more.
+pub const SIGHT: f64 = 100.0;
 
 /// How a planet is drawn for a focus at some distance.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,14 +62,13 @@ pub fn range(radii: f64, far: bool) -> Range {
     }
 }
 
-/// Returns the distance in metres from the centre of a planet of `radius` metres with `rings`
-/// beyond which the world no longer draws it and the sky does: [`LIMIT`] radii, or nearer for a
-/// large planet, so that the planet and its rings end short of [`FAR`]. Within that distance the
-/// sky draws the rings and the moons around it at their true distances, and nothing it pulls in
-/// can show in front of the planet. The world and the sky both read it from here.
-pub fn handover(radius: f64, rings: Option<Rings>) -> f64 {
-    let reach = rings.map_or(radius, |rings| rings.outer.max(radius));
-    (LIMIT * radius).min(f64::from(FAR) - reach)
+/// Returns the distance in metres from the centre of a planet of `radius` metres beyond which
+/// the world no longer draws it and the sky does: [`LIMIT`] radii. The sky draws a body at its
+/// true distance and size on the depth of the camera, which has no far plane, so the rings and
+/// the moons around the planet need no distance of their own. The world and the sky both read
+/// it from here.
+pub fn handover(radius: f64) -> f64 {
+    LIMIT * radius
 }
 
 /// Returns how to draw `globe` for a focus at `at` metres from its centre: as [`range`] says,

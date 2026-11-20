@@ -7,8 +7,12 @@
 //! Bevy chooses the dithered pipeline of a mesh once, by whether it has a visibility range then,
 //! and chooses again only when the mesh changes. A dithered pipeline with no range discards every
 //! pixel, so a range that comes or goes marks the mesh changed.
+//!
+//! The shadow pass does not dither. A mesh that fades out would cast its whole shadow onto what
+//! replaces it until the last frame, so it casts none while it fades.
 
 use bevy::camera::visibility::VisibilityRange;
+use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
 /// Seconds a fade lasts.
@@ -89,4 +93,17 @@ pub fn redither(commands: &mut Commands, part: Entity, range: Option<VisibilityR
                 mesh.set_changed();
             }
         });
+}
+
+/// Stops `part` casting shadows while it fades out, `way` being the fade it is in, and lets it
+/// cast them again when it is in no fade or fades in.
+pub fn casting(commands: &mut Commands, part: Entity, way: Option<Way>) {
+    match way {
+        Some(Way::Hide | Way::Leave) => {
+            commands.entity(part).try_insert(NotShadowCaster);
+        }
+        Some(Way::In) | None => {
+            commands.entity(part).try_remove::<NotShadowCaster>();
+        }
+    }
 }

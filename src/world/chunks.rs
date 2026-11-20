@@ -42,6 +42,8 @@ mod tests_lane;
 #[cfg(test)]
 mod tests_reach;
 #[cfg(test)]
+mod tests_shadow;
+#[cfg(test)]
 mod tests_stream;
 mod turf;
 mod work;

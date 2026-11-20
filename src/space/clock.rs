@@ -15,6 +15,19 @@ pub struct Clock {
     pub seconds: f64,
 }
 
+/// Seconds after which [`Clock::phase`] starts over: a power of two, so that a phase in `f32` keeps
+/// better than a hundredth of a second.
+pub const PHASE_PERIOD: f64 = 65_536.0;
+
+impl Clock {
+    /// Returns universe time as an `f32` that starts over every [`PHASE_PERIOD`] seconds. What two
+    /// players see move with the weather, the waves and the foam reads it, so that it is the same on
+    /// every screen of a session.
+    pub fn phase(&self) -> f32 {
+        (self.seconds % PHASE_PERIOD) as f32
+    }
+}
+
 /// The step of `PreUpdate` that moves universe time. What corrects it, such as the clock of a
 /// session, runs after it.
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]

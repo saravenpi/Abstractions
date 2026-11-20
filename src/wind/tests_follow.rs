@@ -14,7 +14,7 @@ use crate::world::{Globe, Terrain};
 #[test]
 fn home_calm_wind_is_unchanged() {
     for step in 0..500 {
-        let clock = wind_at(step as f32 * 7.3);
+        let clock = wind_at(f64::from(step) * 7.3);
         assert_eq!(carried(weathered(clock, Vec2::ZERO, 0.0), 1.0), clock);
         let leaning = carried(weathered(clock, Vec2::new(0.0, 6.0), 0.0), 1.0);
         assert_eq!((leaning.strength, leaning.air), (clock.strength, clock.air));
@@ -26,7 +26,7 @@ fn home_calm_wind_is_unchanged() {
     app.init_resource::<Weather>();
     app.update();
     app.update();
-    let seconds = app.world().resource::<Time>().elapsed_secs();
+    let seconds = app.world().resource::<Clock>().seconds;
     assert_eq!(*app.world().resource::<Wind>(), wind_at(seconds));
 }
 
@@ -35,7 +35,7 @@ fn home_calm_wind_is_unchanged() {
 #[test]
 fn a_storm_gusts_as_the_air_carries_it() {
     for step in 0..500 {
-        let clock = wind_at(step as f32 * 7.3);
+        let clock = wind_at(f64::from(step) * 7.3);
         let half = weathered(clock, Vec2::ZERO, 0.5);
         assert!(half.strength >= clock.strength && half.strength <= 1.0);
         assert_eq!(weathered(clock, Vec2::ZERO, 1.0).strength, 1.0);

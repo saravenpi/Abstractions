@@ -18,7 +18,7 @@ use super::tune::{
 };
 use super::wash::{Flow, flow, ripple_speed, skim, thrown};
 use crate::render::smoothstep;
-use crate::space::{Anchor, altitude, up};
+use crate::space::{Anchor, Clock, altitude, up};
 use crate::world::wake::Wakes;
 use crate::world::{Globe, Liquid, Terrain};
 
@@ -74,6 +74,8 @@ impl Trace {
 pub struct Sea<'w, 's> {
     /// Frame clock.
     time: Res<'w, Time>,
+    /// Universe time, which the waves and the foam count in.
+    clock: Res<'w, Clock>,
     /// The render anchor.
     anchor: Res<'w, Anchor>,
     /// The terrain, for the planet.
@@ -209,7 +211,7 @@ pub fn churn(
     let Some(origin) = origin.filter(|_| dt > 0.0) else {
         return;
     };
-    let now = sea.time.elapsed_secs();
+    let now = sea.clock.phase();
     let mut work = Work {
         hand: Hand {
             drops: &mut sea.drops,

@@ -15,7 +15,7 @@ use crate::world::{Globe, Terrain};
 #[test]
 fn wind_stays_in_range() {
     for step in 0..500 {
-        let wind = wind_at(step as f32 * 7.3);
+        let wind = wind_at(f64::from(step) * 7.3);
         assert!((wind.direction.length() - 1.0).abs() < 1e-4);
         assert!((0.0..=1.0).contains(&wind.strength));
     }
@@ -84,7 +84,7 @@ fn thickness_follows_the_pressure() {
 #[test]
 fn the_wind_blows_as_hard_as_the_air_carries_it() {
     for step in 0..500 {
-        let clock = wind_at(step as f32 * 7.3);
+        let clock = wind_at(f64::from(step) * 7.3);
         let blown = PRESSURES.map(|pressure| carried(clock, thickness(&air(pressure)) as f32));
         assert_eq!(blown[3], clock);
         assert_eq!((blown[0].strength, blown[1].strength), (0.0, 0.0));
@@ -114,7 +114,7 @@ fn the_wind_blows_as_hard_as_the_air_carries_it() {
 #[test]
 fn nothing_drifts_without_air() {
     for step in 0..500 {
-        let clock = wind_at(step as f32 * 7.3);
+        let clock = wind_at(f64::from(step) * 7.3);
         let flat = Vec3::new(clock.direction.x, 0.0, clock.direction.y);
         assert_eq!(clock.velocity(), flat * (1.0 + 5.0 * clock.strength));
         let blown = PRESSURES.map(|pressure| carried(clock, thickness(&air(pressure)) as f32));
@@ -137,7 +137,7 @@ fn the_wind_system_keeps_the_home_wind() {
     app.add_plugins(MinimalPlugins).add_plugins(plugin);
     app.update();
     app.update();
-    let seconds = app.world().resource::<Time>().elapsed_secs();
+    let seconds = app.world().resource::<Clock>().seconds;
     assert_eq!(*app.world().resource::<Thickness>(), Thickness(1.0));
     assert_eq!(*app.world().resource::<Wind>(), wind_at(seconds));
     app.world_mut().insert_resource(Thickness(0.0));

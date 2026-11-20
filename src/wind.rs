@@ -12,7 +12,7 @@ pub use self::air::{NO_AIR, THICKEST, Thickness, breeze, thickness};
 #[cfg(test)]
 pub use self::air::{PRESSURES, samples};
 use self::follow::{to_render, weathered};
-use crate::space::{Anchor, Frame, Shift};
+use crate::space::{Anchor, Clock, Frame, Shift};
 use crate::universe::{BodyId, Universe};
 use crate::weather::{Forecast, Weather};
 
@@ -50,11 +50,13 @@ impl Wind {
     }
 }
 
-/// Returns the wind at `seconds` of game time, before it is turned with the anchor.
-pub fn wind_at(seconds: f32) -> Wind {
-    let angle = seconds / TURN_SECONDS * TAU + 0.7;
-    let gust = (seconds / GUST_SECONDS * TAU).sin();
-    let swell = (seconds / (GUST_SECONDS * 3.7) * TAU).sin();
+/// Returns the wind at `seconds` of universe time, before it is turned with the anchor. Every player
+/// of a session reads the same universe time, so every one feels the same wind.
+pub fn wind_at(seconds: f64) -> Wind {
+    let turns = |period: f32| (seconds / f64::from(period)).fract() as f32 * TAU;
+    let angle = turns(TURN_SECONDS) + 0.7;
+    let gust = turns(GUST_SECONDS).sin();
+    let swell = turns(GUST_SECONDS * 3.7).sin();
     Wind {
         direction: Vec2::from_angle(angle),
         strength: (0.45 + 0.3 * gust + 0.2 * swell).clamp(0.0, 1.0),
@@ -123,13 +125,13 @@ fn weigh(
 /// toward the prevailing wind of the weather and its storm gusts, and lets it blow as hard as
 /// the air of the planet carries it.
 fn blow(
-    time: Res<Time>,
+    clock: Res<Clock>,
     place: (Option<Res<Anchor>>, Option<Res<Weather>>),
     air: Res<Thickness>,
     mut veer: Local<Veer>,
     mut wind: ResMut<Wind>,
 ) {
-    let clock = wind_at(time.elapsed_secs());
+    let clock = wind_at(clock.seconds);
     let (anchor, weather) = place;
     let direction = match anchor.as_deref() {
         Some(anchor) => veer.track(anchor, clock.direction),
@@ -145,7 +147,8 @@ fn blow(
 
 /// Registers the wind and air resources and their systems.
 pub(super) fn plugin(app: &mut App) {
-    app.init_resource::<Wind>()
+    app.init_resource::<Clock>()
+        .init_resource::<Wind>()
         .init_resource::<Thickness>()
         .add_systems(Update, (weigh, blow).chain().after(Forecast));
 }

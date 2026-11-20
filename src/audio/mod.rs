@@ -10,6 +10,7 @@ mod cue;
 mod cues;
 mod dsp;
 mod feed;
+mod flight;
 mod hit;
 mod mix;
 mod music;
@@ -23,6 +24,8 @@ mod sky;
 mod source;
 mod steps;
 mod suit;
+#[cfg(test)]
+mod tests_speed;
 mod wire;
 
 #[cfg(test)]

@@ -121,6 +121,8 @@ impl Mixer {
             rush: self.at(Param::Rush),
             boost: self.at(Param::Boost),
             flutter: self.at(Param::Flutter),
+            speed: self.at(Param::Speed),
+            buffet: self.at(Param::Buffet),
         }
     }
 

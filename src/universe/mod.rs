@@ -60,7 +60,7 @@ mod tests;
 #[cfg(test)]
 mod volatiles_tests;
 
-pub use air::{Gas, Mix, NO_AIR, Part, TOP_SCALES, dense, heights};
+pub use air::{GAS_CONSTANT, Gas, Mix, NO_AIR, Part, TOP_SCALES, dense, heights};
 pub use class::{MOLTEN, VOLCANIC};
 pub use density::Parts;
 pub use galaxy::{ARMS, CENTER_SPAN, RADIUS_LY};

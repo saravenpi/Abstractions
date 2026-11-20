@@ -11,13 +11,15 @@ use super::pool::{ABOVE, BELOW, HALF_WIDTH, Particle, Pool};
 use super::rng::Rng;
 use super::shed::{Shedding, Source, start};
 use super::sky::{Sky, fall};
+use super::tune::{HEAD_ON, HEAD_ON_SHARE};
+use crate::render::smoothstep;
 use crate::universe::PlanetRecord;
 use crate::world::SEA_LEVEL;
 
 /// Closest a fresh particle may appear to the camera, in meters.
 const NEAREST: f32 = 1.5;
 
-/// Chance that a respawn happens on the upwind side of the box.
+/// Chance that a respawn happens on the upwind side of the box, where the air comes from.
 const UPWIND_SHARE: f32 = 0.6;
 
 /// Everything a respawn reads or advances.
@@ -32,12 +34,21 @@ pub struct Spawn<'a> {
     pub shed: &'a Shedding,
     /// The ground around the camera, for heights along the local vertical.
     pub ground: Ground<'a>,
-    /// Unit wind direction in the local frame of the camera.
-    pub wind: Vec2,
+    /// Velocity in metres per second of the air against the camera, along the local horizontal:
+    /// the wind less the velocity of the camera. It is the wind itself when the camera is still.
+    pub flow: Vec2,
     /// Shared meshes and materials.
     pub pool: &'a Pool,
     /// Random numbers.
     pub rng: &'a mut Rng,
+}
+
+/// Returns the chance of a respawn on the upwind face for air that meets the camera at `speed`
+/// metres per second: more of them the faster it does, so a body in fast flight flies into
+/// particles that stream past it.
+pub fn upwind_share(speed: f32) -> f32 {
+    let fast = smoothstep(HEAD_ON.0, HEAD_ON.1, speed);
+    UPWIND_SHARE + (1.0 - UPWIND_SHARE) * HEAD_ON_SHARE * fast
 }
 
 impl Spawn<'_> {
@@ -47,8 +58,9 @@ impl Spawn<'_> {
             self.rng.range(-HALF_WIDTH, HALF_WIDTH),
             self.rng.range(-HALF_WIDTH, HALF_WIDTH),
         );
-        if primed && self.rng.next() < UPWIND_SHARE {
-            at += self.wind * (-HALF_WIDTH * 0.95 - at.dot(self.wind));
+        let upwind = -self.flow.normalize_or_zero();
+        if primed && self.rng.next() < upwind_share(self.flow.length()) {
+            at += upwind * (HALF_WIDTH * 0.95 - at.dot(upwind));
             at = at.clamp(
                 Vec2::splat(-HALF_WIDTH * 0.95),
                 Vec2::splat(HALF_WIDTH * 0.95),

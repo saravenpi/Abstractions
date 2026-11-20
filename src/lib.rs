@@ -24,6 +24,7 @@ pub mod settings;
 pub mod ship;
 pub mod sim;
 pub mod space;
+pub mod speed;
 pub mod ui;
 pub mod universe;
 pub mod update;

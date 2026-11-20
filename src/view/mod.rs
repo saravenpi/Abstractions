@@ -42,6 +42,8 @@ pub mod tune;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_speed;
 
 pub use io::{BodyFade, CameraPose, Heading, Kind, Look, Moment, Occluder, Shown, Target};
 pub use mode::{ViewMode, ViewPrefs};

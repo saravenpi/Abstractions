@@ -53,6 +53,11 @@ pub struct AudioScene {
     pub boost: f32,
     /// Flutter of the wingsuit cloth from 0 to 1.
     pub flutter: f32,
+    /// Speed of the air past the flying body from 0 (still) to 1 (very fast), whatever the air:
+    /// it sets the pitch of the rush, while `rush` sets how loud it is.
+    pub speed: f32,
+    /// How hard the air buffets the flying body from 0 to 1, from its dynamic pressure.
+    pub buffet: f32,
     /// How hard it rains on the ground and on the hull, from 0 to 1.
     pub rain: f32,
     /// How much dust the wind blows past, from 0 to 1.
@@ -82,6 +87,8 @@ impl Default for AudioScene {
             rush: 0.0,
             boost: 0.0,
             flutter: 0.0,
+            speed: 0.0,
+            buffet: 0.0,
             rain: 0.0,
             dust: 0.0,
         }

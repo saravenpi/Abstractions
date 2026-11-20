@@ -11,7 +11,7 @@ use super::telemetry::{ShipTelemetry, WarpState};
 use crate::player::Player;
 use crate::render::{GameCamera, smoothstep};
 use crate::space::{Anchor, Frame, Location, Placed, Travel, up};
-use crate::view::{Kind, Target};
+use crate::view::{Kind, Target, ViewPrefs};
 
 /// Eye point of the pilot in body axes, under the canopy. The body of the player sits there.
 pub const SEAT: DVec3 = DVec3::new(0.0, 0.9, -1.3);
@@ -92,14 +92,16 @@ pub fn carry(
     };
 }
 
-/// Shakes the view the rig made in rough air and after a crash: an offset and a tilt on top of it. The rig
-/// writes the whole camera pose every frame, so the shake never adds up.
+/// Shakes the view the rig made in rough air and after a crash: an offset and a tilt on top of
+/// it, scaled by the "Speed effects" setting. The rig writes the whole camera pose every frame,
+/// so the shake never adds up.
 pub fn buffet(
     time: Res<Time>,
     level: Res<Buffet>,
+    prefs: Res<ViewPrefs>,
     mut eyes: Single<&mut Transform, With<GameCamera>>,
 ) {
-    let strength = level.level + level.jolt * JOLT.0;
+    let strength = (level.level + level.jolt * JOLT.0) * prefs.speed_fx.clamp(0.0, 1.0);
     if strength <= 0.0 {
         return;
     }

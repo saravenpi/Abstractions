@@ -16,7 +16,7 @@ pub use born::{born, escape};
 pub use column::{dense, heights};
 pub use gas::Gas;
 pub use mix::{Mix, Part};
-pub use tune::TOP_SCALES;
+pub use tune::{GAS_CONSTANT, TOP_SCALES};
 
 /// Pressure, the air of the Earth being 1, under which a planet has no air to speak of.
 pub const NO_AIR: f64 = 0.01;

@@ -98,7 +98,7 @@ impl Sway {
         self.roll
             .step(target, look, (shot.bank, stance.gain(ROLL_RATE)));
         self.zoom += (moment.prefs.zoom - self.zoom) * stance.gain(ZOOM_RATE);
-        let goal = rush(target.kind, stance.drift.length());
+        let goal = rush(target.kind, stance.drift.length()) * moment.prefs.speed_fx.clamp(0.0, 1.0);
         self.rush += (goal - self.rush) * stance.gain(RUSH_RATE);
     }
 

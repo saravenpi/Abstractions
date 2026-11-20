@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use super::FlightFx;
 use super::kit::Kit;
 use crate::render::GameCamera;
+use crate::view::ViewPrefs;
 
 /// Distance of the ring in front of the camera, in metres.
 const DISTANCE: f32 = 0.4;
@@ -50,21 +51,24 @@ pub fn scale(fov: f32, aspect: f32, rush: f32) -> Vec3 {
     Vec3::new(half * aspect * opening, half * opening, 1.0)
 }
 
-/// Sizes the ring to the view and the rush. Does nothing while the rush does not change.
+/// Sizes the ring to the view and the rush, which the "Speed effects" setting scales. Does nothing
+/// while neither changes.
 pub fn draw(
     fx: Res<FlightFx>,
+    prefs: Res<ViewPrefs>,
     mut rings: Query<(&mut Transform, &mut Visibility, &ChildOf), With<Haze>>,
     cameras: Query<&Projection, With<GameCamera>>,
 ) {
-    if !fx.is_changed() {
+    if !fx.is_changed() && !prefs.is_changed() {
         return;
     }
+    let rush = fx.rush * prefs.speed_fx.clamp(0.0, 1.0);
     for (mut transform, mut visibility, parent) in &mut rings {
         let Ok(Projection::Perspective(lens)) = cameras.get(parent.parent()) else {
             continue;
         };
-        transform.scale = scale(lens.fov, lens.aspect_ratio, fx.rush);
-        let wanted = if fx.rush > 0.0 {
+        transform.scale = scale(lens.fov, lens.aspect_ratio, rush);
+        let wanted = if rush > 0.0 {
             Visibility::Inherited
         } else {
             Visibility::Hidden

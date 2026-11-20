@@ -28,6 +28,7 @@ pub enum Field {
     ViewShip,
     HeadBob,
     AutoFollow,
+    SpeedFx,
     CheckUpdates,
     Hitstop,
     WorldMarkers,
@@ -111,6 +112,9 @@ pub fn step(settings: &mut Settings, field: Field, dir: i32) {
         Field::WorldMarkers => play.world_markers = !play.world_markers,
         Field::Blood => play.blood = !play.blood,
         Field::Hitstop => play.hitstop = bump_tenths(play.hitstop, dir, 0.0, 1.0),
+        Field::SpeedFx => {
+            settings.view.speed_fx = bump_tenths(settings.view.speed_fx, dir, 0.0, 1.0);
+        }
         _ => {}
     }
 }

@@ -3,10 +3,9 @@
 
 use bevy::prelude::*;
 
-use crate::render::smoothstep;
+pub use crate::speed::shake::{REACH, shake};
 
-/// Largest offset of the view in metres and largest tilt in radians, at full shake.
-pub const REACH: (f32, f32) = (0.012, 0.004);
+use crate::render::smoothstep;
 
 /// Dynamic pressure in pascals at which the hull starts to buffet and at which it buffets fully.
 const BUFFET: (f32, f32) = (4.0e3, 6.0e4);
@@ -58,25 +57,4 @@ pub fn eased(level: f32, wanted: f32, rate: f32, dt: f32) -> f32 {
     } else {
         next
     }
-}
-
-/// Returns the offset and the tilt of the view at `time` seconds for a shake of `level`.
-///
-/// Each axis is the sum of two slow sines whose rates share no period, so the motion never
-/// repeats visibly and has no step: its speed is bounded by the rates.
-pub fn shake(time: f32, level: f32) -> (Vec3, Quat) {
-    let wave = |a: f32, b: f32, phase: f32| {
-        0.6 * (time * a + phase).sin() + 0.4 * (time * b + 2.0 * phase).sin()
-    };
-    let offset = Vec3::new(wave(23.0, 37.1, 0.0), wave(29.3, 41.7, 1.3), 0.0);
-    let tilt = Vec3::new(
-        wave(19.1, 31.3, 2.1),
-        wave(17.3, 27.7, 0.7),
-        wave(21.7, 33.1, 4.0),
-    );
-    let turn = tilt * (REACH.1 * level);
-    (
-        offset * (REACH.0 * level),
-        Quat::from_euler(EulerRot::XYZ, turn.x, turn.y, turn.z),
-    )
 }

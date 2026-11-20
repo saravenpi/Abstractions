@@ -33,15 +33,15 @@ impl Terrain {
         let dry = |dx: f32, dz: f32| {
             self.height(x + dx, z + dz) > sea + 1.5 && !self.river_at(x + dx, z + dz)
         };
-        let stands = match self.surface(x, z) {
+        let stands = || match self.surface(x, z) {
             Surface::Grass | Surface::Sand => true,
             Surface::Snow | Surface::Rock => self.chart() != Chart::Flat,
             _ => false,
         };
-        stands
-            && self.height(x, z) >= sea + 2.0
+        self.height(x, z) >= sea + 2.0
             && (self.height(x + 6.0, z) - self.height(x - 6.0, z)).abs() < 2.5
             && (self.height(x, z + 6.0) - self.height(x, z - 6.0)).abs() < 2.5
+            && stands()
             && [(6.0, 0.0), (-6.0, 0.0), (0.0, 6.0), (0.0, -6.0)]
                 .iter()
                 .all(|&(dx, dz)| dry(dx, dz))
@@ -67,21 +67,38 @@ impl Terrain {
         dry as f32 / total >= ISLAND_SHARE
     }
 
-    /// Returns a penalty in metres for a spawn that is inland, high, in an harsh biome or on snow or rock,
-    /// so that grass or sand near by wins.
-    fn spawn_penalty(&self, x: f32, z: f32) -> f32 {
-        let bare = matches!(self.surface(x, z), Surface::Snow | Surface::Rock);
-        let harsh = bare || matches!(self.biome(x, z), Biome::Desert | Biome::Taiga);
-        let sea = self.globe().sea_level();
-        let coastal = self.ring_heights(x, z, 70.0).any(|h| h <= sea);
-        let high = self.height(x, z) > 10.0;
-        300.0 * f32::from(harsh) + 200.0 * f32::from(!coastal) + 100.0 * f32::from(high)
+    /// Returns a penalty in metres for a spawn that is high, in an harsh biome or on snow or rock, so that
+    /// grass or sand near by wins.
+    fn rough_penalty(&self, x: f32, z: f32) -> f32 {
+        let bare = || matches!(self.surface(x, z), Surface::Snow | Surface::Rock);
+        let harsh = matches!(self.biome(x, z), Biome::Desert | Biome::Taiga) || bare();
+        300.0 * f32::from(harsh) + 100.0 * f32::from(self.height(x, z) > 10.0)
     }
 
-    /// Returns the score of an island spot on ring `k`: its distance plus its penalty.
-    fn island_score(&self, p: Vec2, k: u32) -> Option<(f32, Vec2)> {
-        self.on_island(p.x, p.y)
-            .then(|| (k as f32 * SPAWN_STEP + self.spawn_penalty(p.x, p.y), p))
+    /// Returns a penalty in metres for a spawn that is inland.
+    fn inland_penalty(&self, x: f32, z: f32) -> f32 {
+        let sea = self.globe().sea_level();
+        200.0 * f32::from(!self.ring_heights(x, z, 70.0).any(|h| h <= sea))
+    }
+
+    /// Returns the score of the spawn at `p` on ring `k`, which is its distance plus its penalty, when it is a
+    /// good spawn on an island and the score beats `bound`. Once a spot is known, the distance and the rough
+    /// penalty are read before anything else, since they prune most of what is left. The first good spawn is
+    /// noted in `fallback`.
+    fn candidate(
+        &self,
+        (p, k): (Vec2, u32),
+        bound: f32,
+        fallback: &mut Option<Vec2>,
+    ) -> Option<(f32, Vec2)> {
+        let reach = || k as f32 * SPAWN_STEP + self.rough_penalty(p.x, p.y);
+        let early = bound.is_finite().then(reach);
+        if early.is_some_and(|early| early >= bound) || !self.good_spawn(p.x, p.y) {
+            return None;
+        }
+        fallback.get_or_insert(p);
+        let score = early.unwrap_or_else(reach) + self.inland_penalty(p.x, p.y);
+        (score < bound && self.on_island(p.x, p.y)).then_some((score, p))
     }
 
     /// Returns the best spot within `rings` rings of the origin of this metric view: a candidate
@@ -90,17 +107,14 @@ impl Terrain {
         let mut best: Option<(f32, Vec2)> = None;
         let mut fallback: Option<Vec2> = None;
         for k in 0..rings {
-            if best.is_some_and(|(score, _)| k as f32 * SPAWN_STEP > score) {
+            let bound = best.map_or(f32::INFINITY, |(score, _)| score);
+            if k as f32 * SPAWN_STEP > bound {
                 break;
             }
             let found = ring_points(k)
-                .filter(|p| self.good_spawn(p.x, p.y))
-                .inspect(|p| {
-                    fallback.get_or_insert(*p);
-                })
-                .filter_map(|p| self.island_score(p, k))
+                .filter_map(|p| self.candidate((p, k), bound, &mut fallback))
                 .min_by(|a, b| a.0.total_cmp(&b.0));
-            if found.is_some_and(|f| best.is_none_or(|b| f.0 < b.0)) {
+            if found.is_some() {
                 best = found;
             }
         }
@@ -114,15 +128,22 @@ impl Terrain {
     /// the origin takes a spawn, which is open sea on a large planet, the search goes on from the shores
     /// of the drainage grid, see [`Terrain::landfall`].
     pub fn find_spawn(&self) -> Vec3 {
+        self.spawn().unwrap_or_else(|| {
+            let at = self.locate(self.around(0.0, 0.0).embed(0.0, 0.0, 0.0));
+            Vec3::new(at.x, self.height(at.x, at.z), at.z)
+        })
+    }
+
+    /// Returns the best spawn near the origin of the chart, or on a shore of the drainage grid when none is
+    /// near, or nothing when no ground takes a spawn.
+    pub fn spawn(&self) -> Option<Vec3> {
         let site = self.around(0.0, 0.0);
-        let spot = site
-            .best_spot(self.reach())
+        let spot = (!self.open_sea())
+            .then(|| site.best_spot(self.reach()))
+            .flatten()
             .map(|s| site.embed(s.x, 0.0, s.y));
-        let at = spot
-            .or_else(|| self.landfall())
-            .unwrap_or_else(|| site.embed(0.0, 0.0, 0.0));
-        let at = self.locate(at);
-        Vec3::new(at.x, self.height(at.x, at.z), at.z)
+        let at = self.locate(spot.or_else(|| self.landfall())?);
+        Some(Vec3::new(at.x, self.height(at.x, at.z), at.z))
     }
 }
 

@@ -114,7 +114,7 @@ fn touches_sea(t: &Terrain, p: (f32, f32)) -> bool {
 #[test]
 fn ponds_are_inland_basins() {
     for seed in 1..=3 {
-        let t = Terrain::new(seed);
+        let t = Terrain::legacy(seed);
         let mut blocks = HashSet::new();
         let mut checked = 0;
         for p in grid(6.0)

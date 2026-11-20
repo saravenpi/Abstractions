@@ -8,7 +8,7 @@ use super::read::{at, caption, drawn, part};
 use super::rig::{RADIUS, app, settle, tap};
 use crate::computer::{Destination, Target};
 use crate::menus::hud::minimap::scope::Scope;
-use crate::menus::hud::minimap::space::{DASHES, Dash, QUIET};
+use crate::menus::hud::minimap::space::{DASHES, Dash};
 use crate::menus::hud::minimap::widget::Part;
 use crate::space::{Anchor, Frame};
 use crate::universe::{BodyId, Universe};
@@ -98,8 +98,8 @@ fn space_shows_the_system_chart_in_the_same_frame() {
     assert_eq!(caption(&mut app), system.star.name);
 }
 
-/// A destination in the system adds its course to the chart. Between the stars the map is
-/// empty and says so.
+/// A destination in the system adds its course to the chart. Between the stars the chart of
+/// the system the ship left stays, under the name of its star.
 #[test]
 fn the_chart_follows_the_destination_and_the_frame() {
     let mut app = app("course");
@@ -118,5 +118,7 @@ fn the_chart_follows_the_destination_and_the_frame() {
     let mut dashes = app.world_mut().query_filtered::<(), With<Dash>>();
     assert_eq!(dashes.iter(app.world()).count(), DASHES - 1);
     leave(&mut app, true);
-    assert_eq!((drawn(&mut app), caption(&mut app)), (0, QUIET.to_string()));
+    let star = app.world().resource::<Universe>().system(home.star).star;
+    assert!(drawn(&mut app) > 0, "the chart is gone between the stars");
+    assert_eq!(caption(&mut app), star.name);
 }

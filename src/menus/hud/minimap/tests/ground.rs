@@ -57,11 +57,11 @@ fn a_world_of_seas_is_coloured() {
     assert!(tinted > texels.len() / 2, "{tinted} tinted texels");
     let blue = texels
         .iter()
-        .filter(|t| t[2] > t[0] + 15 && t[2] > t[1])
+        .filter(|t| t[2] > t[0].saturating_add(15) && t[2] > t[1])
         .count();
     let green = texels
         .iter()
-        .filter(|t| t[1] > t[2] + 15 && t[1] > t[0])
+        .filter(|t| t[1] > t[2].saturating_add(15) && t[1] > t[0])
         .count();
     assert!(blue > 500 && green > 500, "{blue} blue, {green} green");
 }

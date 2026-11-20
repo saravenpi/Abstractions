@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::aero::{angle_of_attack, bite, slow};
-use super::aim::aim;
+use super::aim::{STEEP, aim};
 use super::boots::push;
 use super::command::{command, yawed};
 use super::input::GearInput;
@@ -11,7 +11,8 @@ use super::mode::Mode;
 use super::modes::{next, roll, slide};
 use super::servo::turn;
 use super::state::FlightState;
-use super::tune::{MAX_STEP, MAX_SUBSTEPS, THRUST_TIME, WING_TIME};
+use super::tune::{MAX_LOAD, MAX_STEP, MAX_SUBSTEPS, THRUST_TIME, TURN_CAP, TURN_LOAD, WING_TIME};
+use crate::render::smoothstep as smooth;
 
 /// Moves `value` toward 1 when `on`, else toward 0, by `amount`.
 fn ramp(value: f32, on: bool, amount: f32) -> f32 {
@@ -21,14 +22,30 @@ fn ramp(value: f32, on: bool, amount: f32) -> f32 {
     }
 }
 
+/// Returns `slowed`, the velocity `free` after `h` seconds of air, with the part of the push
+/// of the air that turns the heading held to what a wingsuit turns: the ground track at no
+/// more than [`TURN_CAP`] and with no more than [`TURN_LOAD`] g. That part is level and across
+/// the path, so holding it back takes no energy and leaves the climb and the pull-up whole. A
+/// path near the vertical has no heading to turn and is left free.
+fn drifted(free: Vec3, slowed: Vec3, gravity: f32, h: f32) -> Vec3 {
+    let flat = free.with_y(0.0);
+    let across = Vec3::Y.cross(flat).normalize_or_zero();
+    let steep = smooth(STEEP.0, STEEP.1, flat.length() / free.length().max(1e-3));
+    let room = (TURN_CAP * flat.length()).min(TURN_LOAD * gravity);
+    let most = room.lerp(MAX_LOAD * gravity, 1.0 - steep) * h;
+    let side = (slowed - free).dot(across);
+    slowed - across * (side - side.clamp(-most, most))
+}
+
 /// Returns the velocity and the felt load of a body in the air after `h` seconds.
 ///
-/// Boosters and gravity are added first, then the air slows the result implicitly. The load is
-/// everything but gravity, over the weight.
+/// Boosters and gravity are added first, then the air slows the result implicitly, and the
+/// turn it gives is held to a drift, see [`drifted`]. The load is everything but gravity, over
+/// the weight.
 fn fly(state: &FlightState, input: &GearInput, h: f32) -> (Vec3, f32) {
     let pushed = push(state, input);
     let free = state.velocity + (pushed - Vec3::Y * input.gravity) * h;
-    let slowed = slow(state, free, bite(input), h);
+    let slowed = drifted(free, slow(state, free, bite(input), h), input.gravity, h);
     let felt = pushed + (slowed - free) / h;
     (slowed, felt.length() / input.gravity.max(1e-3))
 }

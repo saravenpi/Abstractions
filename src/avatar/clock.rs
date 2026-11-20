@@ -3,10 +3,11 @@
 
 use std::f32::consts::TAU;
 
+use super::air::belly;
 use super::gait::advance;
 use super::tune::{
-    CROUCH, CROUCH_RATE, CROUCH_SOFT, DIP_LIMIT, DIP_RATE, DIP_SPEED, PUSH_OFF, RECOVER_SLOW,
-    RISE_RATE,
+    ARCH_SECONDS, CROUCH, CROUCH_RATE, CROUCH_SOFT, DIP_LIMIT, DIP_RATE, DIP_SPEED, PUSH_OFF,
+    RECOVER_SLOW, RISE_RATE,
 };
 use super::wing::unfold_step;
 use super::{AvatarPose, Mode};
@@ -43,6 +44,10 @@ pub struct Clock {
     /// followed at a bounded rate, so a body that touches down and jumps again in one instant
     /// turns from one pose to the other over a few frames.
     pub rise: f32,
+    /// How far the body lies in the skydiver arch of a fast fall, from 0 to 1: eased toward
+    /// what the fall asks, see `air::belly`, by at most [`ARCH_SECONDS`] for the whole way, so
+    /// that it never turns over in a frame, whatever mode it leaves or enters.
+    pub belly: f32,
 }
 
 /// Hermite ramp from 0 at `low` to 1 at `high`.
@@ -137,5 +142,11 @@ impl Clock {
             _ => 0.0,
         };
         self.unfold = unfold_step(self.unfold, input.wings, dt);
+        let flat = match input.mode {
+            Mode::Fall | Mode::Glide | Mode::Fly => belly(input, self),
+            _ => 0.0,
+        };
+        let turn = dt / ARCH_SECONDS;
+        self.belly += (flat - self.belly).clamp(-turn, turn);
     }
 }

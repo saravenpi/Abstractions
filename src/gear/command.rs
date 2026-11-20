@@ -17,8 +17,8 @@ use super::path::{bounded, climb, mirrored, path_offset};
 use super::servo::ease;
 use super::state::FlightState;
 use super::tune::{
-    BANK_GAIN, BANK_LIMIT, BANK_SPEED, CLIMB_LIMIT, COMMAND_RATE, DIVE_LIMIT, LEVEL, LIMIT_SPEED,
-    STALL_BANK, STALL_PITCH, STALL_SPEED, WING_DRAG, YAW_TURN,
+    BANK_GAIN, BANK_LIMIT, BANK_SPEED, CLIMB_LIMIT, COMMAND_RATE, DIVE_LIMIT, LEVEL, LEVEL_PITCH,
+    LIMIT_SPEED, STALL_BANK, STALL_PITCH, STALL_SPEED, WING_DRAG, YAW_TURN,
 };
 use crate::render::smoothstep as smooth;
 
@@ -59,11 +59,19 @@ fn wanted(state: &FlightState, input: &GearInput) -> f32 {
     )
 }
 
+/// Returns the share of the self-level the flight path angle gets: [`LEVEL_PITCH`] clear of
+/// the stall, where let go the wings fly on along the path the keys left, and all of it at the
+/// stall, where the nose comes down.
+fn held(state: &FlightState) -> f32 {
+    LEVEL_PITCH.lerp(1.0, 1.0 - safe(state))
+}
+
 /// Returns the asked flight path angle after `h` seconds.
 ///
 /// Folded it rides the flight path. On the wings a held pitch key flies by rate, so the asked
 /// angle rides the path too, at [`RIDE_RATE`], and let go it eases from there toward
-/// [`wanted`]: at [`COMMAND_RATE`] for the view, at [`LEVEL`] of it for the self-level. As the
+/// [`wanted`]: at [`COMMAND_RATE`] for the view, at [`LEVEL`] of it for the self-level, see
+/// [`held`]. As the
 /// wings spread it eases from the path, so spreading them mid-air flies on along the path the
 /// body had.
 pub(super) fn command(state: &FlightState, input: &GearInput, h: f32) -> f32 {
@@ -79,7 +87,9 @@ pub(super) fn command(state: &FlightState, input: &GearInput, h: f32) -> f32 {
         ),
         false => (
             wanted(state, input),
-            input.aim.map_or(COMMAND_RATE * LEVEL, |_| COMMAND_RATE),
+            input
+                .aim
+                .map_or(COMMAND_RATE * LEVEL * held(state), |_| COMMAND_RATE),
         ),
     };
     let asked = state.servo.climb;

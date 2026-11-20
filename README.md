@@ -14,8 +14,8 @@ On foot:
 | Mouse | Look |
 | Space | Jump, or swim up. Pressed again in the air and held: boot boosters, which slow a fall |
 | Shift | Sprint. Held with the wingsuit spread: boot boosters, which make you fly |
-| R | Spread or fold the wingsuit in the air |
-| W S in the wingsuit | Dive and climb. Hold S to loop with the boosters on. A plain glide is too slow and stalls out of the climb. Let go and the glide levels out |
+| R | Spread or fold the wingsuit in the air. Folded, you fall belly down in a skydiver arch |
+| W S in the wingsuit | Dive and climb. Hold S to loop with the boosters on. A plain glide is too slow and stalls out of the climb. Let go and the wings fly on where you pointed them, easing back to the glide over a few seconds. Rolled on edge, S turns you round in a wide drift |
 | A D in the wingsuit | Roll. Hold to roll over and on round. Let go and the wings level |
 | Q E in the wingsuit | Turn |
 | Left mouse held in the wingsuit | Steer toward where you look |

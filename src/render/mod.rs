@@ -141,7 +141,6 @@ pub(super) fn sky(app: &mut App) {
         bodies::plugin,
         moonlight::plugin,
         entry::plugin,
-        galaxy_light::plugin,
         warm::plugin,
         seasons::plugin,
         shade::plugin,

@@ -30,6 +30,8 @@ mod tests;
 #[cfg(test)]
 mod tests_bodies;
 #[cfg(test)]
+mod tests_caps;
+#[cfg(test)]
 mod tests_embed;
 #[cfg(test)]
 mod tests_fade;

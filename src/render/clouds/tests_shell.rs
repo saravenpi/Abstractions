@@ -62,7 +62,10 @@ fn the_shell_stays_within_the_tolerance_of_the_sphere() {
 #[test]
 fn bigger_planets_get_more_cells() {
     let counts: Vec<u32> = RADII.iter().map(|radius| cells(*radius)).collect();
-    assert!(counts.windows(2).all(|pair| pair[0] <= pair[1]), "{counts:?}");
+    assert!(
+        counts.windows(2).all(|pair| pair[0] <= pair[1]),
+        "{counts:?}"
+    );
     for (radius, count) in RADII.iter().zip(&counts) {
         assert!(error(*radius, count - 8) >= TOLERANCE, "{radius}");
     }
@@ -98,6 +101,9 @@ fn the_reach_grows_with_the_altitude() {
     let (ground, shell) = (6.371e6, 6.377e6);
     let heights = [0.0, 1.0e4, 1.0e5, 1.0e6, 3.0e6];
     let reaches: Vec<f32> = heights.iter().map(|h| reach(ground, *h, shell)).collect();
-    assert!(reaches.windows(2).all(|pair| pair[0] < pair[1]), "{reaches:?}");
+    assert!(
+        reaches.windows(2).all(|pair| pair[0] < pair[1]),
+        "{reaches:?}"
+    );
     assert!(reaches[4] < PI / 2.0);
 }

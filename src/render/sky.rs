@@ -95,7 +95,12 @@ impl SkyUniform {
             cloud: linear(palette.cloud).truncate().extend(look.whiteout * dry),
             up: look.up.extend(look.dip),
             rim: linear(look.rim) * dry,
-            galaxy: Vec4::new(palette.stars * dry, f32::from(u8::from(look.mapped)), 0.0, 0.0),
+            galaxy: Vec4::new(
+                palette.stars * dry,
+                f32::from(u8::from(look.mapped)),
+                0.0,
+                0.0,
+            ),
             to_galaxy_x: look.to_galaxy.x_axis.extend(0.0),
             to_galaxy_y: look.to_galaxy.y_axis.extend(0.0),
             to_galaxy_z: look.to_galaxy.z_axis.extend(0.0),
@@ -145,8 +150,9 @@ impl Material for SkyMaterial {
     }
 }
 
-/// Embeds the shader and registers the material.
+/// Embeds the shader, registers the material and the map of the light of the galaxies it reads.
 pub(super) fn plugin(app: &mut App) {
+    super::galaxy_light::plugin(app);
     embedded_asset!(app, "sky.wesl");
     app.add_plugins(MaterialPlugin::<SkyMaterial>::default());
 }

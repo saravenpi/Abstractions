@@ -95,7 +95,11 @@ fn the_margin_grows_with_the_planet_and_the_altitude() {
                 let share = ((distance - range.start_margin.start) / wide * 16.0).round() as i32;
                 share.clamp(0, 16)
             };
-            assert_eq!(drawn(Way::In), i32::from(level), "{altitude} m, {distance} m");
+            assert_eq!(
+                drawn(Way::In),
+                i32::from(level),
+                "{altitude} m, {distance} m"
+            );
         }
     }
     assert!(wide >= 64.0 * 2.0 * radius as f32);

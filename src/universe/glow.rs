@@ -54,7 +54,13 @@ impl Glow {
     /// holds all the light of the galaxy.
     pub fn slab(&self) -> f64 {
         let shape = &self.shape;
-        let disc = SLAB.0 * shape.thick * if shape.kind == GalaxyKind::Irregular { 4.0 } else { 1.0 };
+        let disc = SLAB.0
+            * shape.thick
+            * if shape.kind == GalaxyKind::Irregular {
+                4.0
+            } else {
+                1.0
+            };
         let share = match shape.kind {
             GalaxyKind::Spiral => disc.max(SLAB.1 * shape.core),
             GalaxyKind::Elliptical => ROUND,

@@ -135,7 +135,7 @@ impl Swap<'_> {
 /// at again when a node or a chunk appears or goes.
 pub fn show(mut commands: Commands, mut chunks: ResMut<Chunks>, scene: Scene) {
     let chunks = &mut *chunks;
-    chunks.fades.span = scene.span();
+    chunks.fades.span = Some(scene.span());
     chunks.fades.run(&mut commands, scene.now());
     if chunks.drawn == Some(chunks.stamp) {
         return;

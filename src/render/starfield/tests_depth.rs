@@ -109,10 +109,7 @@ fn near_stars_pass_and_far_stars_stand() {
 /// the shader slides them by is the way from the place of the build, in light-years.
 #[test]
 fn the_mesh_and_the_drift_carry_the_depth() {
-    let specks = [
-        sighted(Vec3::X, 4.0, -1.0),
-        sighted(Vec3::Y, 2.0e5, -9.0),
-    ];
+    let specks = [sighted(Vec3::X, 4.0, -1.0), sighted(Vec3::Y, 2.0e5, -9.0)];
     let mesh = lit(&specks);
     let Some(VertexAttributeValues::Float32x2(depths)) = mesh.attribute(Mesh::ATTRIBUTE_UV_1)
     else {

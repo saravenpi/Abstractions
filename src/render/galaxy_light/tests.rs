@@ -5,44 +5,11 @@ use std::time::{Duration, Instant};
 
 use bevy::math::DVec3;
 
-use super::march::{BYTES, SIDE, Source, bake, bake_at};
+use super::march::{BYTES, Source, bake, bake_at};
 use super::pack::{decode, encode};
-use super::{INSIDE, OUTSIDE, Built, plan};
-use crate::universe::{GLY, GalaxySpec, Glow, Universe};
-use crate::weather::face_dir;
-
-/// Returns the universe of seed 7 and its home galaxy, a spiral.
-pub(super) fn home() -> (Universe, GalaxySpec) {
-    let universe = Universe::new(7);
-    let galaxy = universe.home().star.galaxy;
-    let spec = universe.galaxy(galaxy).expect("the home galaxy");
-    (universe, spec)
-}
-
-/// Returns the light of texel `column`, `row` of face `face` of a map `side` texels wide: the mean
-/// of its three channels.
-pub(super) fn light(bytes: &[u8], side: usize, (face, column, row): (usize, usize, usize)) -> f32 {
-    let first = ((face * side + row) * side + column) * 4;
-    bytes[first..first + 3].iter().map(|b| decode(*b)).sum::<f32>() / 3.0
-}
-
-/// Returns the unit direction of texel `column`, `row` of face `face` of a map `side` texels
-/// wide, and the share of the sky it covers against the texel at the middle of a face.
-pub(super) fn texel(side: usize, (face, column, row): (usize, usize, usize)) -> (DVec3, f32) {
-    let at = |index: usize| 2.0 * (index as f64 + 0.5) / side as f64 - 1.0;
-    let (x, y) = (at(column), at(row));
-    (face_dir(face, x, y), (1.0 + x * x + y * y).powf(-1.5) as f32)
-}
-
-/// Returns every texel of a map with its direction, its weight on the sky and its light.
-pub(super) fn texels(bytes: &[u8], side: usize) -> Vec<(DVec3, f32, f32)> {
-    let all = (0..6).flat_map(|f| (0..side).flat_map(move |r| (0..side).map(move |c| (f, c, r))));
-    all.map(|at| {
-        let (dir, weight) = texel(side, at);
-        (dir, weight, light(bytes, side, at))
-    })
-    .collect()
-}
+use super::rig::{halfway, home};
+use super::{Built, INSIDE, OUTSIDE, plan};
+use crate::universe::{GLY, Glow};
 
 /// A texel survives the bytes it is kept in to within a hundredth of a unit of light, from the
 /// dark of the void to the glare of a core.
@@ -55,13 +22,10 @@ fn the_light_survives_its_bytes() {
 }
 
 /// Seen from half way out along a spoke, the band lies in the plane of the disc, within two
-/// degrees, and is brightest toward the real core, far above what the other way holds.
+/// degrees.
 #[test]
-fn the_band_peaks_on_the_disc_and_toward_the_core() {
-    let (universe, spec) = home();
-    let at = DVec3::X * 0.4 * spec.radius;
-    let (sources, _) = plan(&universe, spec.id, at);
-    let all = texels(&bake(&sources), SIDE);
+fn the_band_peaks_on_the_disc() {
+    let all = halfway();
     let (mut sums, mut weights) = ([0.0f32; 60], [0.0f32; 60]);
     for (dir, weight, light) in &all {
         let bin = (dir.y.asin().to_degrees() + 30.0).floor();
@@ -70,12 +34,33 @@ fn the_band_peaks_on_the_disc_and_toward_the_core() {
             weights[bin as usize] += weight;
         }
     }
-    let means: Vec<f32> = sums.iter().zip(&weights).map(|(s, w)| s / w.max(1e-9)).collect();
-    let peak = (0..60).max_by(|a, b| means[*a].total_cmp(&means[*b])).unwrap_or(0);
-    assert!((peak as f32 - 29.5).abs() <= 2.0, "the band peaks at {} degrees", peak as f32 - 29.5);
+    let means: Vec<f32> = sums
+        .iter()
+        .zip(&weights)
+        .map(|(s, w)| s / w.max(1e-9))
+        .collect();
+    let peak = (0..60)
+        .max_by(|a, b| means[*a].total_cmp(&means[*b]))
+        .unwrap_or(0);
+    assert!(
+        (peak as f32 - 29.5).abs() <= 2.0,
+        "the band peaks at {} degrees",
+        peak as f32 - 29.5
+    );
+}
+
+/// Seen from half way out along a spoke, the sky is brightest toward the real core, far above
+/// what the other way holds.
+#[test]
+fn the_sky_is_brightest_toward_the_core() {
+    let all = halfway();
     let cone = |toward: DVec3| {
-        let seen: Vec<_> = all.iter().filter(|(dir, ..)| dir.angle_between(toward) < 0.35).collect();
-        seen.iter().map(|(_, w, l)| w * l).sum::<f32>() / seen.iter().map(|(_, w, _)| w).sum::<f32>()
+        let seen: Vec<_> = all
+            .iter()
+            .filter(|(dir, ..)| dir.angle_between(toward) < 0.35)
+            .collect();
+        let share = seen.iter().map(|(_, w, l)| w * l).sum::<f32>();
+        share / seen.iter().map(|(_, w, _)| w).sum::<f32>()
     };
     let (core, away) = (cone(DVec3::NEG_X), cone(DVec3::X));
     assert!(core > 3.0 * away, "core {core}, away {away}");
@@ -106,14 +91,25 @@ fn the_map_is_baked_again_when_the_camera_has_moved() {
     let inside = DVec3::new(0.3, 0.0, 0.1) * spec.radius;
     let (_, limit) = plan(&universe, spec.id, inside);
     assert_eq!(limit, INSIDE);
-    let built = Built { galaxy: spec.id, at: inside, limit };
+    let built = Built {
+        galaxy: spec.id,
+        at: inside,
+        limit,
+    };
     let moved = |gly: f64| inside + DVec3::Z * gly * GLY;
     assert!(!built.stale(spec.id, moved(49.0)) && built.stale(spec.id, moved(51.0)));
     let outside = DVec3::new(0.0, 0.5, 1.0).normalize() * 4.0 * spec.radius;
     let (sources, limit) = plan(&universe, spec.id, outside);
-    let nearest = sources.iter().map(|s| s.offset.length()).fold(f64::MAX, f64::min);
+    let nearest = sources
+        .iter()
+        .map(|s| s.offset.length())
+        .fold(f64::MAX, f64::min);
     assert!((limit - OUTSIDE * nearest).abs() < 1.0);
-    let built = Built { galaxy: spec.id, at: outside, limit };
+    let built = Built {
+        galaxy: spec.id,
+        at: outside,
+        limit,
+    };
     let along = |share: f64| outside + DVec3::X * share * nearest;
     assert!(!built.stale(spec.id, along(0.019)) && built.stale(spec.id, along(0.021)));
     let other = crate::universe::GalaxyId(spec.id.0 + bevy::math::IVec3::X);
@@ -125,9 +121,20 @@ fn the_map_is_baked_again_when_the_camera_has_moved() {
 #[test]
 fn an_empty_sky_is_dark_and_a_bake_is_repeatable() {
     let (_, spec) = home();
-    let far = Source { glow: Glow::of(&spec), offset: DVec3::X * 1.0e9 * GLY, inside: false };
+    let far = Source {
+        glow: Glow::of(&spec),
+        offset: DVec3::X * 1.0e9 * GLY,
+        inside: false,
+    };
     let dark = bake_at(&[far], 16);
-    assert!(dark.chunks(4).all(|texel| texel[..3] == [0, 0, 0] && texel[3] == 255));
-    let near = Source { glow: Glow::of(&spec), offset: DVec3::X * 3.0 * spec.radius, inside: false };
+    assert!(
+        dark.chunks(4)
+            .all(|texel| texel[..3] == [0, 0, 0] && texel[3] == 255)
+    );
+    let near = Source {
+        glow: Glow::of(&spec),
+        offset: DVec3::X * 3.0 * spec.radius,
+        inside: false,
+    };
     assert_eq!(bake_at(&[near], 16), bake_at(&[near], 16));
 }

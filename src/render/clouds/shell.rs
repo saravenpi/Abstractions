@@ -2,9 +2,9 @@
 //! can see are built. Its cells are small enough that no point of the mesh lies more than
 //! [`TOLERANCE`] metres from the true sphere, whatever the size of the planet.
 
-use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI, SQRT_2};
+use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, SQRT_2};
 
-use bevy::asset::{AssetId, RenderAssetUsages};
+use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 
@@ -16,10 +16,10 @@ const TILE: u32 = 8;
 
 /// Radians added round the cap the camera sees, so a camera that moves does not rebuild the
 /// mesh every frame.
-const MARGIN: f32 = 0.03;
+pub(super) const MARGIN: f32 = 0.03;
 
 /// How many times wider than what the camera sees a new cap is built.
-const GROWTH: f32 = 1.5;
+pub(super) const GROWTH: f32 = 1.5;
 
 /// For each face of the cube, the axis it looks along, the axis its columns run along and the
 /// axis its rows run along.
@@ -127,58 +127,7 @@ pub fn build(radius: f32, cap: Cap) -> Mesh {
         PrimitiveTopology::TriangleList,
         RenderAssetUsages::default(),
     )
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
-        .with_inserted_indices(Indices::U32(indices))
-}
-
-/// What the mesh of the shell in the asset store was last built for.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Built {
-    /// The mesh asset that holds it.
-    mesh: AssetId<Mesh>,
-    /// Radius of the shell in metres.
-    radius: f32,
-    /// The part of the sphere it covers.
-    cap: Cap,
-}
-
-impl Built {
-    /// Returns true while this mesh still covers a camera under direction `up` that sees `need`
-    /// radians of the shell, and is not much wider than that.
-    fn fits(&self, mesh: AssetId<Mesh>, radius: f32, up: Vec3, need: f32) -> bool {
-        let leaning = self.cap.centre.angle_between(up);
-        self.mesh == mesh
-            && self.radius.to_bits() == radius.to_bits()
-            && leaning + need <= self.cap.half
-            && self.cap.half <= 3.0 * (need + MARGIN)
-    }
-}
-
-/// Builds the mesh of the shell into `handle` again when the camera has seen past what `built`
-/// covers, or the shell is another one, and remembers what it built.
-pub fn refresh(
-    built: &mut Option<Built>,
-    meshes: &mut Assets<Mesh>,
-    handle: &Handle<Mesh>,
-    sight: (f32, f32, f32),
-    up: Vec3,
-) {
-    let (ground, altitude, radius) = sight;
-    let need = reach(ground, altitude, radius);
-    if built.is_some_and(|built| built.fits(handle.id(), radius, up, need)) {
-        return;
-    }
-    let cap = Cap {
-        centre: up,
-        half: (need * GROWTH + MARGIN).min(PI),
-    };
-    if let Some(mut mesh) = meshes.get_mut(handle) {
-        *mesh = build(radius, cap);
-        *built = Some(Built {
-            mesh: handle.id(),
-            radius,
-            cap,
-        });
-    }
+    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
+    .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
+    .with_inserted_indices(Indices::U32(indices))
 }

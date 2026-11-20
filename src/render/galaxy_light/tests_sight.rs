@@ -4,7 +4,7 @@
 use bevy::math::DVec3;
 
 use super::march::{SIDE, Source, bake_at};
-use super::tests::{home, texels};
+use super::rig::{home, texels};
 use crate::universe::{GalaxySpec, Glow};
 
 /// Returns the home galaxy alone as the camera `at` metres from its centre sees it.
@@ -41,12 +41,19 @@ fn a_spiral_has_the_aspect_its_tilt_gives() {
     }
     assert!(total > 0.0, "the galaxy is dark");
     let aspect = (across / along).sqrt();
-    assert!((aspect / tilt.cos() - 1.0).abs() < 0.1, "aspect {aspect}, wanted {}", tilt.cos());
+    assert!(
+        (aspect / tilt.cos() - 1.0).abs() < 0.1,
+        "aspect {aspect}, wanted {}",
+        tilt.cos()
+    );
 }
 
 /// Returns the light of the whole sky, texel by texel on its share of the sphere.
 fn glare(bytes: &[u8]) -> f64 {
-    texels(bytes, SIDE).iter().map(|(_, w, l)| f64::from(w * l)).sum()
+    texels(bytes, SIDE)
+        .iter()
+        .map(|(_, w, l)| f64::from(w * l))
+        .sum()
 }
 
 /// Along a warp from three radii out to half a radius from the centre of the galaxy, past its
@@ -58,7 +65,9 @@ fn the_light_changes_without_a_jump_from_outside_to_inside() {
     let toward = DVec3::new(0.8, 0.1, 0.6).normalize();
     let steps = 120;
     let at = |k: usize| toward * 3.0 * spec.radius * (0.5f64 / 3.0).powf(k as f64 / steps as f64);
-    let lights: Vec<f64> = (0..=steps).map(|k| glare(&bake_at(&[lone(&spec, at(k))], SIDE))).collect();
+    let lights: Vec<f64> = (0..=steps)
+        .map(|k| glare(&bake_at(&[lone(&spec, at(k))], SIDE)))
+        .collect();
     for (k, pair) in lights.windows(2).enumerate() {
         let change = (pair[1] / pair[0] - 1.0).abs();
         assert!(change < 0.05, "step {k}: {} to {}", pair[0], pair[1]);

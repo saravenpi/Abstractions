@@ -142,9 +142,7 @@ impl Body {
                 airy && (!below || vantage.air <= 0.0)
             }
             Body::Rings(_) => true,
-            _ => {
-                !below || pos.distance(vantage.observer.eye) > handover(planet.radius)
-            }
+            _ => !below || pos.distance(vantage.observer.eye) > handover(planet.radius),
         }
     }
 }

@@ -17,20 +17,12 @@ struct Fade {
 }
 
 /// Everything that fades now, by the entity that owns it.
+#[derive(Default)]
 pub struct Fades {
     live: HashMap<Entity, Fade>,
-    /// Width in metres of the margin the fades are written with, see [`super::dither::span`].
-    pub span: f32,
-}
-
-impl Default for Fades {
-    /// Returns no fades, with the margin of a small planet.
-    fn default() -> Self {
-        Self {
-            live: HashMap::new(),
-            span: SPAN,
-        }
-    }
+    /// Width in metres of the margin the fades are written with, see [`super::dither::span`],
+    /// or nothing for the margin of a small planet.
+    pub span: Option<f32>,
 }
 
 impl Fades {
@@ -66,7 +58,11 @@ impl Fades {
         let (way, start) = at;
         self.cancel(commands, root);
         for part in &parts {
-            redither(commands, *part, Some(ranged(way, 0, self.span)));
+            redither(
+                commands,
+                *part,
+                Some(ranged(way, 0, self.span.unwrap_or(SPAN))),
+            );
         }
         let fade = Fade {
             parts,
@@ -115,9 +111,11 @@ impl Fades {
             } else if next != fade.level {
                 fade.level = next;
                 for part in &fade.parts {
-                    commands
-                        .entity(*part)
-                        .try_insert(ranged(fade.way, next, self.span));
+                    commands.entity(*part).try_insert(ranged(
+                        fade.way,
+                        next,
+                        self.span.unwrap_or(SPAN),
+                    ));
                 }
             }
         }

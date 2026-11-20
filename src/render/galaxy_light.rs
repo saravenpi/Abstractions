@@ -6,6 +6,8 @@
 mod march;
 mod pack;
 #[cfg(test)]
+mod rig;
+#[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tests_sight;
@@ -146,7 +148,10 @@ fn keep(
     universe: Option<Res<Universe>>,
     mut images: ResMut<Assets<Image>>,
 ) {
-    let done = light.task.as_mut().and_then(|task| block_on(poll_once(task)));
+    let done = light
+        .task
+        .as_mut()
+        .and_then(|task| block_on(poll_once(task)));
     if let Some((built, bytes)) = done {
         write(&mut images, &light.image, &bytes);
         (light.built, light.task) = (Some(built), None);

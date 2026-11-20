@@ -5,6 +5,7 @@ mod cross;
 mod map;
 mod maps;
 mod material;
+mod mesh;
 mod shell;
 #[cfg(test)]
 mod tests;
@@ -90,6 +91,13 @@ impl CloudInputs<'_> {
         on.then_some(body.id)
     }
 
+    /// Returns true while the camera is nearer the body than its hand-over, past which the far
+    /// body draws the clouds.
+    fn within(&self, vantage: &Vantage) -> bool {
+        let limit = self.local.0.as_ref().map(|near| near.handover(vantage));
+        limit.is_none_or(|limit| vantage.observer.altitude(0.0) < limit)
+    }
+
     /// Returns the rotation from render axes to the axes fixed to the planet under the camera,
     /// which the cloud field is laid in: the clouds turn with the ground below them.
     fn fixed(&self) -> Mat3 {
@@ -142,51 +150,42 @@ type ShellParts = (
 /// Measures how deep the camera is in real cloud, wraps the shell around the planet halfway up
 /// the cloud band, at a radius that never changes, and refreshes the shader values. The mesh of
 /// the shell is a cube sphere within [`shell::TOLERANCE`] metres of the true sphere, built over
-/// what the camera can see. The shell
-/// shows once the cover map of the planet is ready. A sky without clouds has no shell and no
-/// crossing, and past the hand-over the far body draws the same clouds from the same map.
+/// what the camera can see. The shell shows once the cover map of the planet is ready. A sky
+/// without clouds has no shell and no crossing, and past the hand-over the far body draws the
+/// same clouds from the same map.
 pub(super) fn drift(
     mut inputs: CloudInputs,
     mut around: Local<f32>,
     mut crossing: ResMut<CloudCrossing>,
     mut shells: Query<ShellParts, With<CloudShell>>,
-    mut materials: ResMut<Assets<CloudMaterial>>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut built: Local<Option<shell::Built>>,
+    mut assets: mesh::Shell,
 ) {
     let vantage = *inputs.vantage;
     let body = inputs.cloudy();
     let radius = vantage.radius + 0.5 * (vantage.cloud_base + vantage.cloud_top);
-    let band = match body {
-        Some(_) => crossing_depth(vantage.altitude, vantage.cloud_base, vantage.cloud_top),
-        None => 0.0,
-    };
+    let band = body.map_or(0.0, |_| {
+        crossing_depth(vantage.altitude, vantage.cloud_base, vantage.cloud_top)
+    });
     let seconds = inputs.time.delta_secs();
     *around = cross::eased(*around, inputs.density(radius), band, seconds);
     let depth = band * *around;
     crossing.set_if_neq(CloudCrossing { depth });
     let map = body.and_then(|id| inputs.maps.want(id));
-    let limit = inputs.local.0.as_ref().map(|near| near.handover(&vantage));
-    let within = limit.is_none_or(|limit| vantage.observer.altitude(0.0) < limit);
-    let shown = map.is_some() && within;
-    let center = vantage
-        .observer
-        .place(vantage.observer.center, vantage.camera);
+    let shown = map.is_some() && inputs.within(&vantage);
+    let observer = vantage.observer;
+    let center = observer.place(observer.center, vantage.camera);
     let pose = Transform::from_translation(center).with_scale(Vec3::splat(radius));
     for (mesh, mut transform, mut global, mut visibility, handle) in &mut shells {
         if shown {
             let sight = (vantage.radius, vantage.altitude, radius);
-            shell::refresh(&mut built, &mut meshes, &mesh.0, sight, vantage.up);
+            assets.remesh(&mesh.0, sight, vantage.up);
         }
         super::pin(pose, &mut transform, &mut global);
         visibility.set_if_neq(match shown {
             true => Visibility::Visible,
             false => Visibility::Hidden,
         });
-        if let Some(mut material) = materials.get_mut(&handle.0) {
-            material.clouds = inputs.uniform(radius, depth);
-            material.cover.clone_from(&map);
-        }
+        assets.paint(&handle.0, inputs.uniform(radius, depth), &map);
     }
 }
 

@@ -35,7 +35,9 @@ pub const SHALLOW: u8 = 8;
 /// reaches its leaves as fast as a 7 level home planet. Splits only queue work: the mesh of a
 /// node is built off the main thread and turned into an entity within the frame budget.
 pub fn splits(depth: u8) -> usize {
-    (MAX_SPLITS * usize::from(depth)).div_ceil(usize::from(SHALLOW)).max(MAX_SPLITS)
+    (MAX_SPLITS * usize::from(depth))
+        .div_ceil(usize::from(SHALLOW))
+        .max(MAX_SPLITS)
 }
 
 /// Most nodes the streamer keeps alive, hidden parents included.

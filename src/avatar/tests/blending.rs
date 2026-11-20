@@ -131,7 +131,7 @@ fn weights_blend_in_the_documented_time() {
                 frame == frames || weights.0[to as usize] < 1.0,
                 "{from:?} to {to:?} is early"
             );
-            weights.step(to, FRAME);
+            weights.step(to, FRAME, false);
         }
         assert_eq!(weights, Weights::only(to), "{from:?} to {to:?} is late");
     }

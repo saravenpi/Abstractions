@@ -9,10 +9,10 @@ use super::Starfield;
 use super::depth::{Sighted, lit};
 use super::specks::{Speck, shine, star_speck};
 use crate::render::vantage::Vantage;
-use crate::universe::{GLY, GalaxyId, StarSpec, Universe};
+use crate::universe::{GalaxyId, LY, StarSpec, Universe};
 
 impl Sighted {
-    /// Returns the speck as it shows once the camera has moved `drift` game light-years, in
+    /// Returns the speck as it shows once the camera has moved `drift` light-years, in
     /// galaxy axes, from the place it was sighted from: where it stands now, and how large and
     /// bright the new distance makes it. This is the rule `starfield.wesl` applies to every
     /// vertex, written again here to be tested.
@@ -54,13 +54,13 @@ fn sighted(dir: Vec3, range: f32, flux: f32) -> Sighted {
 #[test]
 fn a_new_build_changes_nothing_on_screen() {
     let (home, stars) = neighbourhood();
-    let from = home.pos + DVec3::X * 2.0 * GLY;
+    let from = home.pos + DVec3::X * 2.0 * LY;
     let moved = DVec3::new(1.5, -0.7, 2.0);
     let others = stars.iter().filter(|star| star.id != home.id).take(300);
     let mut checked = 0;
     for star in others {
         let slid = Sighted::star(star, from).drifted(moved.as_vec3());
-        let fresh = star_speck(star, from + moved * GLY);
+        let fresh = star_speck(star, from + moved * LY);
         assert!(slid.dir.angle_between(fresh.dir) < 2e-4, "{star:?}");
         assert!((slid.size - fresh.size).abs() < 1e-5, "{star:?}");
         assert!((slid.color - fresh.color).length() < 2e-3 * fresh.color.length());
@@ -121,7 +121,7 @@ fn the_mesh_and_the_drift_carry_the_depth() {
     let at = DVec3::new(3.0e12, -1.0e12, 5.0e11);
     let vantage = Vantage {
         galaxy: GalaxyId::default(),
-        galactic: at + DVec3::new(2.0, 0.0, -1.0) * GLY,
+        galactic: at + DVec3::new(2.0, 0.0, -1.0) * LY,
         ..Vantage::default()
     };
     let field = |built| Starfield { built };

@@ -14,7 +14,7 @@ use crate::universe::StarSpec;
 pub struct Sighted {
     /// The speck as the mesh draws it.
     pub speck: Speck,
-    /// Distance in game light-years.
+    /// Distance in light-years.
     pub range: f32,
     /// Light that arrives from a star, as [`star_light`] gives it.
     pub flux: f32,

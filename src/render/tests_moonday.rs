@@ -16,7 +16,7 @@ fn moon() -> (PlanetSpec, StarSpec) {
     let universe = Universe::new(3);
     let home = universe.home().star;
     let at = universe.star(home).expect("the home star exists").pos;
-    let near = universe.stars_near(home.galaxy, at, 60.0);
+    let near = universe.stars_near(home.galaxy, at, 30.0);
     let mooned = near.iter().find_map(|star| {
         let planets = universe.system(star.id).planets;
         let host = planets.into_iter().find(|planet| planet.moons > 0)?;

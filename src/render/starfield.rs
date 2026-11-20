@@ -28,21 +28,24 @@ use super::palette::Palette;
 use super::vantage::Vantage;
 use super::warp::Lens;
 use crate::screens::Screen;
-use crate::universe::{GLY, GalaxyId};
+use crate::universe::{GalaxyId, LY};
 use dust::Dust;
 
 /// Radius of the star shell in metres. The shader writes the far depth for every speck, so the
 /// stars lie behind every body at any radius.
 pub const STAR_SHELL: f32 = 3.0e6;
 
-/// Distance in game light-years up to which stars are gathered into the mesh. It is farther
+/// Distance in light-years up to which stars are gathered into the mesh. It is farther
 /// than the 40 they are drawn to (`SIGHT` in `starfield.wesl`), by more than the camera moves
 /// between two builds, so a camera that has moved since the build still has every star it can
-/// see. A star fades in over the last 2.5 of those 40 as the camera closes on it, half a second
-/// of the fastest cruise, so none pops into the sky when the next mesh is swapped in.
-pub(super) const REACH_GLY: f64 = 55.0;
+/// see. A star fades in over the last 2.5 of those 40 as the camera closes on it, two and a half
+/// seconds of the cruise at one light-year a second, so none pops into the sky when the next mesh
+/// is swapped in. A sphere of this radius holds 2,800 stars at the density of the Sun's place, 0.004
+/// per cubic light-year, and 8,400 where a sector is full.
+pub(super) const REACH_LY: f64 = 55.0;
 
-/// Most stars gathered, the nearest ones: more than the sectors within reach can hold.
+/// Most stars gathered, the nearest ones: more than a sphere of [`REACH_LY`] holds anywhere but
+/// in the saturated core.
 pub(super) const MOST_STARS: usize = 9000;
 
 /// The starfield entity, with the place its mesh was last built for.
@@ -59,7 +62,7 @@ impl Starfield {
     pub fn drift(&self, vantage: &Vantage) -> Vec3 {
         match self.built {
             Some((galaxy, at)) if galaxy == vantage.galaxy => {
-                ((vantage.galactic - at) / GLY).as_vec3()
+                ((vantage.galactic - at) / LY).as_vec3()
             }
             _ => Vec3::ZERO,
         }

@@ -7,9 +7,9 @@ use bevy::tasks::futures_lite::future::poll_once;
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on};
 
 use super::depth::{Sighted, lit};
-use super::{MOST_STARS, REACH_GLY, Starfield};
+use super::{MOST_STARS, REACH_LY, Starfield};
 use crate::render::vantage::Scene;
-use crate::universe::{GLY, GalaxyId, SECTOR_GLY, StarId, StarSpec, Universe};
+use crate::universe::{GalaxyId, LY, SECTOR_LY, StarId, StarSpec, Universe};
 
 /// The mesh being built for a starfield, and the place it is built for.
 #[derive(Component)]
@@ -29,7 +29,7 @@ pub fn gather(
     at: DVec3,
     own: Option<StarId>,
 ) -> Vec<Sighted> {
-    let stars = universe.stars_near(galaxy, at, REACH_GLY);
+    let stars = universe.stars_near(galaxy, at, REACH_LY);
     let seen = |star: &StarSpec| match own == Some(star.id) {
         true => Sighted::own(star, at),
         false => Sighted::star(star, at),
@@ -54,7 +54,7 @@ pub fn launch(
     let vantage = &scene.vantage;
     let (galaxy, at) = (vantage.galaxy, vantage.galactic);
     let near =
-        |(built, was): (GalaxyId, DVec3)| built == galaxy && was.distance(at) < SECTOR_GLY * GLY;
+        |(built, was): (GalaxyId, DVec3)| built == galaxy && was.distance(at) < SECTOR_LY * LY;
     let universe = *universe;
     let own = scene.local.0.as_ref().map(|near| near.id);
     for (entity, field) in &fields {

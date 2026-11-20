@@ -9,7 +9,7 @@ use crate::render::observer::Observer;
 use crate::render::starfield::sunlight;
 use crate::render::vantage::Vantage;
 use crate::render::warp::{Drive, Sequence};
-use crate::universe::{Universe, system_reach};
+use crate::universe::{LY, Universe, system_reach};
 
 /// The disc of the star is drawn with its radius over its distance, at any distance, from its
 /// true position and size in 32 bits.
@@ -37,7 +37,7 @@ fn the_disc_is_gone_far_outside_the_system() {
     let seen = angle(star.radius, home.orbit_radius);
     assert!(seen > STAR_POINT, "the star is {seen} rad from home");
     assert!(angle(star.radius, system_reach(&star)) < STAR_POINT);
-    assert!(angle(star.radius, 1.0e10) < 0.05 * STAR_POINT);
+    assert!(angle(star.radius, LY) < 0.05 * STAR_POINT);
     let angles: Vec<f32> = (1..=60)
         .map(|i| angle(star.radius, home.orbit_radius * f64::from(i)))
         .collect();
@@ -80,8 +80,8 @@ fn the_light_of_the_star_falls_with_the_square_of_the_distance() {
 
 /// Past the reach of its system, whichever way the camera went, the disc of the star left
 /// behind is far under the size it is drawn from, so it is the point of the star field, and the
-/// planets of the system are gone. At this scale the stars near home lie closer than the reach, so
-/// the camera is taken that far out along the line to each one.
+/// planets of the system are gone. The camera is taken that far out along the line to each star
+/// within 40 light-years, a thousand reaches short of any of them.
 #[test]
 fn past_the_reach_of_a_system_the_star_is_not_a_disc() {
     let universe = Universe::new(7);

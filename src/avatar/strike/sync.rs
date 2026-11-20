@@ -10,12 +10,12 @@ use crate::craft::{Held as Chosen, Pack};
 use crate::world::Terrain;
 
 /// Returns true when the hotbar holds another tool than last frame, or the body of the local robot
-/// is a new one.
-pub fn stale(chosen: Res<Chosen>, robot: Robot, mut seen: Local<Option<Entity>>) -> bool {
+/// is a new one. Without a hotbar there is nothing to hold.
+pub fn stale(chosen: Option<Res<Chosen>>, robot: Robot, mut seen: Local<Option<Entity>>) -> bool {
     let body = robot.body();
     let new = body != *seen;
     *seen = body;
-    chosen.is_changed() || new
+    chosen.is_some_and(|chosen| chosen.is_changed()) || new
 }
 
 /// Puts the tool the hotbar holds in the hands of the local robot, or empties them. The tool is

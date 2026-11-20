@@ -41,13 +41,13 @@ pub const LIFE: [(f32, Act); 21] = [
     (0.9, Act::Go(0.0, 0.0)),
     (1.2, Act::Hop),
     (0.5, Act::Go(3.0, 0.0)),
-    (0.35, Act::Hop),
+    (0.6, Act::Hop),
     (2.4, Act::Soar),
     (1.6, Act::Burn),
     (1.0, Act::Soar),
     (2.6, Act::Flare),
     (1.0, Act::Go(0.0, 0.0)),
-    (0.35, Act::Hop),
+    (0.6, Act::Hop),
     (1.5, Act::Soar),
     (0.7, Act::Touch(Flight::Roll)),
     (1.2, Act::Touch(Flight::Slide)),
@@ -151,7 +151,7 @@ impl Body {
             Act::Hop => {
                 if self.motion.grounded {
                     self.motion.grounded = false;
-                    self.motion.velocity.y = 5.3;
+                    self.motion.velocity.y = 4.7;
                 }
                 self.fall(dt);
             }

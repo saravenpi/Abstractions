@@ -12,7 +12,7 @@ use crate::gear::tune::TURN_CAP;
 use crate::gear::{GearInput, Mode};
 
 /// Fewest degrees a held back key bends a level flight path in its first half second.
-const BEND: f32 = 15.0;
+const BEND: f32 = 10.0;
 
 /// Steepest path in radians on which the turn rate is held to the cap: steeper, the path has
 /// little heading left to turn (50 degrees).

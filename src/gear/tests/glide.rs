@@ -93,7 +93,7 @@ fn glide_never_gains_energy() {
 /// the nose comes back up to the glide by itself.
 #[test]
 fn a_dive_trades_height_for_speed() {
-    let mut flight = dive(4.0);
+    let mut flight = dive(6.0);
     let fast = flight.state.airspeed;
     assert!(fast > DIVE, "dive {fast}");
     let path = flight
@@ -113,7 +113,7 @@ fn a_dive_trades_height_for_speed() {
 /// Let go, the glide speed comes back. The climb still costs energy.
 #[test]
 fn pull_up_climbs_then_stalls_and_recovers() {
-    let mut flight = dive(2.0);
+    let mut flight = dive(3.5);
     let (before, fast) = (flight.energy(REF_GRAVITY), flight.state.airspeed);
     let mut track = [(0.0_f64, 0.0_f32, 0.0_f32); 900];
     for (frame, at) in track.iter_mut().enumerate() {

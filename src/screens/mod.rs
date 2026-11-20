@@ -55,13 +55,16 @@ pub fn shown(screen: Res<State<Screen>>, menu: Res<State<Menu>>) -> bool {
 /// Run condition: true while the player is in the world, past the boot screen, with no menu open.
 ///
 /// The board computer does not stop play: use [`in_control`] for what reads the player's hands.
+///
+/// An app with no screen state, such as a test of one area, is never playing.
 pub fn playing(
-    screen: Res<State<Screen>>,
-    menu: Res<State<Menu>>,
+    screen: Option<Res<State<Screen>>>,
+    menu: Option<Res<State<Menu>>>,
     warm: Option<Res<State<WarmUp>>>,
 ) -> bool {
     let hidden = warm.is_some_and(|warm| *warm.get() == WarmUp::Hidden);
-    *screen.get() == Screen::Gameplay && *menu.get() == Menu::None && !hidden
+    let world = screen.is_some_and(|screen| *screen.get() == Screen::Gameplay);
+    world && menu.is_none_or(|menu| *menu.get() == Menu::None) && !hidden
 }
 
 /// The screens that cover the game with their own keys: the field guide and the pack.
@@ -76,8 +79,8 @@ type Covers<'w> = (
 /// While the computer is open the game goes on, so [`playing`] stays true, but keys and mouse
 /// belong to the computer screen. Movement, steering, boarding and the cursor grab use this.
 pub fn in_control(
-    screen: Res<State<Screen>>,
-    menu: Res<State<Menu>>,
+    screen: Option<Res<State<Screen>>>,
+    menu: Option<Res<State<Menu>>>,
     warm: Option<Res<State<WarmUp>>>,
     computer: Option<Res<State<Computer>>>,
     (guide, bench): Covers,

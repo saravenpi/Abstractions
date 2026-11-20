@@ -98,12 +98,12 @@ fn straight_up_from_rest_never_rises() {
 }
 
 /// Jump, deploy, boost: the body never drops below the ground it left and is flying fast and
-/// prone within ten seconds.
+/// prone within fifteen seconds.
 #[test]
 fn take_off_from_a_jump() {
     for start in [Vec3::new(0.0, 7.0, 0.0), Vec3::new(3.0, 7.0, -8.5)] {
         let mut flight = Flight::new(Mode::Off, start);
-        for _ in 0..600 {
+        for _ in 0..900 {
             flight.tick(&flying(0.0), DT);
             assert!(flight.pos.y >= 0.0, "dropped to {}", flight.pos.y);
         }

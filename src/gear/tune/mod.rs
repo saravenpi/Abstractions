@@ -94,7 +94,7 @@ pub const BOOT_DESCENT: f32 = 5.0;
 pub const BOOT_DESCENT_RANGE: (f32, f32) = (4.0, 6.0);
 
 /// Largest upward push of the braking boots, as a multiple of the weight.
-pub const BRAKE_MAX_G: f32 = 2.6;
+pub const BRAKE_MAX_G: f32 = 4.5;
 
 /// Horizontal acceleration the braking boots give, in metres per second squared.
 pub const BOOT_AIR_ACCEL: f32 = 6.0;
@@ -223,7 +223,7 @@ pub const TURN_CAP: f32 = 0.7;
 
 /// Largest share of the lift in g that may turn the heading: at speed it holds the turn rate
 /// under [`TURN_CAP`], falling as one over the speed, 18 degrees per second at 70 m/s.
-pub const TURN_LOAD: f32 = 1.0;
+pub const TURN_LOAD: f32 = 2.2;
 
 /// Largest load factor the trim compensates for in a banked turn.
 pub const TRIM_LOAD: f32 = 2.5;

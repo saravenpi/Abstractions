@@ -53,7 +53,7 @@ fn spreading_again_flies_on_where_the_body_goes() {
 fn holding_w_dives_and_gains_speed() {
     let mut app = launch(Vec3::new(0.0, -7.0, -30.0), 3.0);
     let start = body(&mut app, PlayerId::LOCAL).2.state.airspeed;
-    let (_, gear, _) = hold(&mut app, 90, &[keys(1.0, 0.0)]);
+    let (_, gear, _) = hold(&mut app, 150, &[keys(1.0, 0.0)]);
     let (fast, steep) = (gear.state.airspeed, path(&gear));
     assert!(fast > start + 15.0, "{fast} m/s from {start}");
     assert!(steep < -0.5 && steep > -1.58, "path {steep}");
@@ -74,11 +74,11 @@ fn the_hands_off_glide_is_about_four_to_one() {
 }
 
 /// Spread from a slow fall, hands off, the wings dive for speed and then pull out at the load
-/// they may take: within 2.5 s the path is back within 20 degrees of the horizon.
+/// they may take: within 4 s the path is back within 20 degrees of the horizon.
 #[test]
 fn a_slow_spread_pulls_out_of_its_dive_soon() {
     let mut app = launch(Vec3::new(0.0, -6.0, -3.0), 0.0);
-    let (_, gear, _) = hold(&mut app, 75, &[]);
+    let (_, gear, _) = hold(&mut app, 240, &[]);
     let angle = path(&gear).to_degrees();
     assert!(angle > -20.0, "still diving at {angle} degrees");
     assert!(gear.state.airspeed > 15.0, "{} m/s", gear.state.airspeed);

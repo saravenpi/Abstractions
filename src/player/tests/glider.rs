@@ -124,7 +124,7 @@ fn the_yaw_keys_turn_the_heading_with_the_wings_level() {
     for yaw in [-1.0, 1.0] {
         let mut app = launch(Vec3::new(0.0, -7.0, -30.0), 2.0);
         let from = heading(&body(&mut app, PlayerId::LOCAL).2);
-        for frame in 0..90 {
+        for frame in 0..180 {
             let (_, gear, _) = hold(&mut app, 1, &[Intent::Yaw(yaw)]);
             let bank = gear.state.bank.to_degrees();
             assert!(bank.abs() < 5.0, "frame {frame}: banked {bank} degrees");

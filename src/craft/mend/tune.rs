@@ -24,4 +24,4 @@ pub const PLATE_MASS: f32 = 0.15;
 pub const BIND_MASS: f32 = 0.05;
 
 /// Least Mohs hardness of a material that patches a plate: bone and horn hold, hide and wood do not.
-pub const HARD: f32 = 2.0;
+pub const HARD: f32 = 2.5;

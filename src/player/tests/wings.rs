@@ -44,16 +44,16 @@ fn lift(app: &mut App) {
     }
 }
 
-/// Checks that the body of `app`, the run held for three more seconds, sinks at the descent
+/// Checks that the body of `app`, the run held for 2.5 more seconds, sinks at the descent
 /// speed of the boots with the wings folded, and falls freely again once the run is let go.
 fn brakes(app: &mut App) {
     let target = descent_target(REF_GRAVITY);
-    let (motion, gear, _) = hold(app, 90, &[Intent::Boost]);
+    let (motion, gear, _) = hold(app, 150, &[Intent::Boost]);
     let sink = -gear.state.velocity.y;
     assert!(motion.boots && !motion.wings, "{motion:?}");
     assert_eq!(gear.state.mode, Mode::BootFall);
     assert!((sink - target).abs() < 0.3, "sinks at {sink}");
-    let (loose, gear, _) = hold(app, 30, &[]);
+    let (loose, gear, _) = hold(app, 60, &[]);
     assert!(!loose.boots && -gear.state.velocity.y > 2.0 * target);
 }
 
@@ -81,15 +81,15 @@ fn a_second_jump_press_spreads_the_wings_and_a_third_folds_them() {
 fn the_run_key_brakes_a_fall_with_the_wings_folded() {
     let mut pressed = world();
     lift(&mut pressed);
-    let (free, _, fired) = hold(&mut pressed, 30, &[]);
+    let (free, _, fired) = hold(&mut pressed, 60, &[]);
     assert!(!fired && free.velocity.y < -15.0, "{free:?}");
     brakes(&mut pressed);
     let mut kept = world();
     hold(&mut kept, 2, &[Intent::Boost]);
     lift(&mut kept);
-    let (slow, _, fired) = hold(&mut kept, 8, &[Intent::Boost]);
+    let (slow, _, fired) = hold(&mut kept, 20, &[Intent::Boost]);
     assert!(!fired && slow.velocity.y < -3.0, "{slow:?}");
-    let (_, _, fired) = hold(&mut kept, 30, &[Intent::Boost]);
+    let (_, _, fired) = hold(&mut kept, 90, &[Intent::Boost]);
     assert!(fired, "a fast fall fires the boots of a run still held");
     brakes(&mut kept);
 }

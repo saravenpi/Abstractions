@@ -3,11 +3,12 @@
 use bevy::prelude::*;
 
 use super::{DT, Flight, braking, flying, gliding};
-use crate::gear::tune::REF_GRAVITY;
+use crate::gear::tune::{BRAKE_MAX_G, MAX_LOAD, REF_GRAVITY};
 use crate::gear::{GearInput, Mode};
 
-/// Largest velocity change in one frame in the air: 6 g, the load limit plus thrust and weight.
-pub(super) const AIR_KICK: f32 = 6.0 * REF_GRAVITY * DT;
+/// Largest velocity change in one frame in the air: the load limit of the wings plus the push of
+/// the braking boots, in g.
+pub(super) const AIR_KICK: f32 = (MAX_LOAD + BRAKE_MAX_G) * REF_GRAVITY * DT;
 
 /// Largest attitude change in one frame, in radians (about 5 degrees).
 pub(super) const TWIST: f32 = 0.09;

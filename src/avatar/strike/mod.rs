@@ -61,25 +61,18 @@ use crate::screens::{in_control, playing};
 use crate::view::ViewSet;
 use show::Wielded;
 
+/// A body with a tool in its hands or on show.
+type Drawn = Or<(With<Held>, With<Wielded>)>;
+
 /// Run condition: some body holds a tool or still has one drawn.
-fn armed(held: Query<(), Or<(With<Held>, With<Wielded>)>>) -> bool {
+fn armed(held: Query<(), Drawn>) -> bool {
     !held.is_empty()
 }
 
 /// Adds the systems of the frame: the hands read and posed before the body is animated, the drawn
 /// tool placed after, the spears thrown and flown, then the hitstop.
 fn update(app: &mut App) {
-    let hands = (
-        input::ask.run_if(in_control),
-        layer::lay,
-        show::wield.run_if(armed),
-    )
-        .chain();
-    let spears = (
-        throw::loose.run_if(on_message::<input::Loose>),
-        (throw::soar, throw::pick).run_if(any_with_component::<Spear>),
-    )
-        .chain();
+    let (hands, spears) = (hands(), spears());
     app.add_systems(
         Update,
         (
@@ -105,6 +98,25 @@ fn update(app: &mut App) {
         )
             .run_if(playing),
     );
+}
+
+/// Returns the systems of the hands: read, posed and drawn.
+fn hands() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
+    (
+        input::ask.run_if(in_control),
+        layer::lay,
+        show::wield.run_if(armed),
+    )
+        .chain()
+}
+
+/// Returns the systems of the spears: thrown, then flown and picked up.
+fn spears() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
+    (
+        throw::loose.run_if(on_message::<input::Loose>),
+        (throw::soar, throw::pick).run_if(any_with_component::<Spear>),
+    )
+        .chain()
 }
 
 /// Registers the strikes: the frame systems, and the blows sensed once the transforms are

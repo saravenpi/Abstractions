@@ -45,7 +45,11 @@ impl Hitstop {
 
     /// Returns the share of the shake left, 1 at the start to 0 at the end, flipping every frame.
     fn shake(&self) -> f32 {
-        let flip = if self.frame % 2 == 0 { 1.0 } else { -1.0 };
+        let flip = if self.frame.is_multiple_of(2) {
+            1.0
+        } else {
+            -1.0
+        };
         flip * (self.left / self.total.max(f32::EPSILON)).max(0.0)
     }
 }

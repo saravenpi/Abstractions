@@ -47,6 +47,13 @@ pub fn next_state(open: bool, can: bool, (key, escape): (bool, bool)) -> Option<
     }
 }
 
+/// The screens that decide whether the guide opens: itself, the computer and the pack.
+type Screens<'w> = (
+    Res<'w, State<Guide>>,
+    Option<Res<'w, State<Computer>>>,
+    Option<Res<'w, State<crate::craft::ui::Workshop>>>,
+);
+
 /// Opens and closes the guide. `playing` says the world is shown with no menu open.
 pub(super) fn toggle(
     In(playing): In<bool>,
@@ -54,11 +61,7 @@ pub(super) fn toggle(
         Res<ButtonInput<KeyCode>>,
         Res<crate::settings::Persistent<crate::settings::Settings>>,
     ),
-    (state, computer, bench): (
-        Res<State<Guide>>,
-        Option<Res<State<Computer>>>,
-        Option<Res<State<crate::craft::ui::Workshop>>>,
-    ),
+    (state, computer, bench): Screens,
     location: Option<Res<Location>>,
     (mut next, mut cues): (ResMut<NextState<Guide>>, MessageWriter<AudioCue>),
 ) {

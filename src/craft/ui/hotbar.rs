@@ -39,12 +39,11 @@ fn spawn(mut commands: Commands) {
     ));
 }
 
+/// The silhouette of a tool: shaft length, head size and form, if its build is whole.
+type Shape = Option<(f32, f32, crate::craft::build::Form)>;
+
 /// Returns one slot: its number, the silhouette of its tool and the wear left, lit when `held`.
-fn slot(
-    at: usize,
-    tool: Option<(Option<(f32, f32, crate::craft::build::Form)>, f32)>,
-    held: bool,
-) -> impl Bundle {
+fn slot(at: usize, tool: Option<(Shape, f32)>, held: bool) -> impl Bundle {
     let node = Node {
         width: px(SIDE),
         height: px(SIDE),

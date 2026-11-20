@@ -95,15 +95,18 @@ pub fn tool(
     root
 }
 
+/// The drawn tool's kit and the stores of meshes and materials it is built in.
+type Stores<'w> = (
+    Option<Res<'w, Kit>>,
+    ResMut<'w, Assets<Mesh>>,
+    ResMut<'w, Assets<StandardMaterial>>,
+);
+
 /// Draws the tool of every body whose held item is new or changed, in place of the one drawn
 /// before, and takes the drawn tool away from every body whose hands are empty.
 pub fn wield(
     mut commands: Commands,
-    (kit, mut meshes, mut materials): (
-        Option<Res<Kit>>,
-        ResMut<Assets<Mesh>>,
-        ResMut<Assets<StandardMaterial>>,
-    ),
+    (kit, mut meshes, mut materials): Stores,
     held: Query<(Entity, &Held, Option<&Wielded>), Changed<Held>>,
     empty: Query<(Entity, &Wielded), Without<Held>>,
 ) {

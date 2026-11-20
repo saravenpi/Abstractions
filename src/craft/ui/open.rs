@@ -30,6 +30,13 @@ pub fn next_state(open: bool, can: bool, (key, escape): (bool, bool)) -> Option<
     }
 }
 
+/// The screens that decide whether the pack opens: itself, the computer and the field guide.
+type Screens<'w> = (
+    Res<'w, State<Workshop>>,
+    Option<Res<'w, State<Computer>>>,
+    Option<Res<'w, State<Guide>>>,
+);
+
 /// Opens and closes the screen. `playing` says the world is shown with no menu open.
 pub(super) fn toggle(
     In(playing): In<bool>,
@@ -37,11 +44,7 @@ pub(super) fn toggle(
         Res<ButtonInput<KeyCode>>,
         Res<crate::settings::Persistent<crate::settings::Settings>>,
     ),
-    (state, computer, guide): (
-        Res<State<Workshop>>,
-        Option<Res<State<Computer>>>,
-        Option<Res<State<Guide>>>,
-    ),
+    (state, computer, guide): Screens,
     (location, bench): (Option<Res<Location>>, Res<Bench>),
     (mut next, mut cues): (ResMut<NextState<Workshop>>, MessageWriter<AudioCue>),
 ) {

@@ -61,17 +61,20 @@ fn steady(spear: &Spear, now: Vec3) -> bool {
     spear.rest == Rest::Flying && now.distance(spear.was) <= spear.velocity.length() * 0.2 + 1.0
 }
 
+/// What a throw reads: the players, where they look and the kit that draws the spear.
+type Aim<'w, 's> = (
+    Query<'w, 's, &'static Transform, With<Player>>,
+    Res<'w, Heading>,
+    Option<Res<'w, Kit>>,
+);
+
 /// Throws the spear of every body that let one go: from the grip, along the view tilted up a
 /// little, at the launch speed of the build times the square root of the draw.
 pub fn loose(
     mut commands: Commands,
     mut loosed: MessageReader<Loose>,
     bodies: Query<(&Held, &Strike, &ChildOf), With<Avatar>>,
-    (players, heading, kit): (
-        Query<&Transform, With<Player>>,
-        Res<Heading>,
-        Option<Res<Kit>>,
-    ),
+    (players, heading, kit): Aim,
 ) {
     let Some(kit) = kit else { return };
     for loose in loosed.read() {

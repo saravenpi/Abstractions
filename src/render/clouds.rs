@@ -5,10 +5,13 @@ mod cross;
 mod map;
 mod maps;
 mod material;
+mod shell;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tests_cross;
+#[cfg(test)]
+mod tests_shell;
 
 use bevy::asset::embedded_asset;
 use bevy::camera::visibility::NoFrustumCulling;
@@ -129,6 +132,7 @@ impl CloudInputs<'_> {
 
 /// The transforms, visibility and material of the cloud shell.
 type ShellParts = (
+    &'static Mesh3d,
     &'static mut Transform,
     &'static mut GlobalTransform,
     &'static mut Visibility,
@@ -136,7 +140,9 @@ type ShellParts = (
 );
 
 /// Measures how deep the camera is in real cloud, wraps the shell around the planet halfway up
-/// the cloud band, at a radius that never changes, and refreshes the shader values. The shell
+/// the cloud band, at a radius that never changes, and refreshes the shader values. The mesh of
+/// the shell is a cube sphere within [`shell::TOLERANCE`] metres of the true sphere, built over
+/// what the camera can see. The shell
 /// shows once the cover map of the planet is ready. A sky without clouds has no shell and no
 /// crossing, and past the hand-over the far body draws the same clouds from the same map.
 pub(super) fn drift(
@@ -145,6 +151,8 @@ pub(super) fn drift(
     mut crossing: ResMut<CloudCrossing>,
     mut shells: Query<ShellParts, With<CloudShell>>,
     mut materials: ResMut<Assets<CloudMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut built: Local<Option<shell::Built>>,
 ) {
     let vantage = *inputs.vantage;
     let body = inputs.cloudy();
@@ -165,7 +173,11 @@ pub(super) fn drift(
         .observer
         .place(vantage.observer.center, vantage.camera);
     let pose = Transform::from_translation(center).with_scale(Vec3::splat(radius));
-    for (mut transform, mut global, mut visibility, handle) in &mut shells {
+    for (mesh, mut transform, mut global, mut visibility, handle) in &mut shells {
+        if shown {
+            let sight = (vantage.radius, vantage.altitude, radius);
+            shell::refresh(&mut built, &mut meshes, &mesh.0, sight, vantage.up);
+        }
         super::pin(pose, &mut transform, &mut global);
         visibility.set_if_neq(match shown {
             true => Visibility::Visible,

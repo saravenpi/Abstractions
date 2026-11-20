@@ -11,12 +11,13 @@ use crate::weather::{Field, SNAPSHOT, TEXELS, moment, texel};
 /// Channels of the texture: one per snapshot it holds.
 pub const CHANNELS: usize = 2;
 
-/// Fewest texels of the next snapshot worked out in one frame.
-const SLICE: usize = 256;
+/// Fewest texels of the next snapshot worked out in one frame: the 393,216 texels of the grid
+/// of 256 by 256 over six faces take about four seconds at 60 frames per second.
+const SLICE: usize = 512;
 
 /// Texels of the next snapshot worked out per second of frame time, on top of [`SLICE`]: a
 /// slow frame does more, so that a snapshot is always ready within its [`SNAPSHOT`] seconds.
-const PACE: f32 = 8192.0;
+const PACE: f32 = 131072.0;
 
 /// Returns how far the shaders read from the first channel toward the second at `seconds`.
 pub fn toward_second(seconds: f64) -> f32 {

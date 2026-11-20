@@ -8,7 +8,7 @@
 use bevy::math::DVec3;
 
 /// Texels along one side of a face of the grid.
-pub const FACE: i32 = 64;
+pub const FACE: i32 = 256;
 
 /// Texels of the whole grid: six faces, each row after row.
 pub const TEXELS: usize = 6 * (FACE * FACE) as usize;

@@ -1,10 +1,5 @@
 //! Tuning constants of mending the robot. Health is a share from 0 to 1.
 
-use bevy::input::keyboard::KeyCode;
-
-/// The key that mends the worst part with what the robot carries.
-pub const MEND_KEY: KeyCode = KeyCode::KeyU;
-
 /// Distance from the home base within which the robot mends itself, in metres.
 pub const BAY: f32 = 18.0;
 

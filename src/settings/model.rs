@@ -182,6 +182,8 @@ pub struct Keymap {
     pub guide: KeyCode,
     /// Open and close the pack and the workshop, on foot.
     pub pack: KeyCode,
+    /// Patch the worst damaged part of the robot with what the pack holds, on foot.
+    pub mend: KeyCode,
     /// Ship controls, used while seated in the ship and to board it.
     pub ship: ShipKeys,
 }
@@ -205,6 +207,7 @@ impl Default for Keymap {
             waypoint: KeyCode::KeyB,
             guide: KeyCode::KeyK,
             pack: KeyCode::KeyI,
+            mend: KeyCode::KeyU,
             ship: ShipKeys::default(),
         }
     }

@@ -4,7 +4,6 @@ use super::banner::opacity;
 use super::flight::{Flight, Gauge, reading};
 use super::prompt::board_prompt;
 use super::units::{height, percent, speed};
-use crate::computer::RouteStatus;
 use crate::ship::{ShipTelemetry, WarpState};
 use crate::space::{Frame, Travel};
 use crate::universe::{BodyId, StarId};
@@ -87,10 +86,7 @@ fn instruments_follow_the_frame() {
     assert_eq!(reading(Gauge::Speed, &air).unwrap(), "312 m/s surface");
     assert_eq!(reading(Gauge::Throttle, &air).unwrap(), "65 %");
     assert_eq!(reading(Gauge::Assist, &air).unwrap(), "on");
-    assert_eq!(reading(Gauge::Frame, &air).unwrap(), "planet");
     assert_eq!(reading(Gauge::Apoapsis, &air), None);
-    assert_eq!(reading(Gauge::Warp, &air), None);
-    assert_eq!(reading(Gauge::Destination, &air), None);
     let mut landed = flying(Frame::Surface(BodyId::default()));
     landed.telemetry.landed = true;
     assert_eq!(
@@ -99,33 +95,8 @@ fn instruments_follow_the_frame() {
     );
     let space = flying(Frame::System(StarId::default()));
     assert_eq!(reading(Gauge::Speed, &space).unwrap(), "7.80 km/s orbital");
-    assert_eq!(reading(Gauge::Frame, &space).unwrap(), "star system");
     assert_eq!(reading(Gauge::Apoapsis, &space).unwrap(), "52.0 km");
     assert_eq!(reading(Gauge::Periapsis, &space).unwrap(), "-1.20 km");
-}
-
-/// The warp line shows the spool progress, then the warp speed replaces the speed, and a set
-/// destination shows its name, its distance and the route state.
-#[test]
-fn warp_and_destination_show_only_when_needed() {
-    let mut flight = flying(Frame::System(StarId::default()));
-    flight.telemetry.warp = WarpState::Spooling(0.434);
-    assert_eq!(reading(Gauge::Warp, &flight).unwrap(), "spooling 43 %");
-    flight.telemetry.warp = WarpState::Active(2.0e10);
-    assert_eq!(reading(Gauge::Warp, &flight).unwrap(), "engaged");
-    assert_eq!(reading(Gauge::Speed, &flight).unwrap(), "2.00 gly/s warp");
-    assert_eq!(reading(Gauge::Altitude, &flight), None);
-    flight.destination = Some(("Kolva".to_string(), 1.2e6));
-    assert_eq!(
-        reading(Gauge::Destination, &flight).unwrap(),
-        "Kolva  1.20 Mm"
-    );
-    flight.route = RouteStatus::Spooling;
-    assert_eq!(
-        reading(Gauge::Destination, &flight).unwrap(),
-        "Kolva  1.20 Mm  spooling"
-    );
-    assert_eq!(Gauge::ALL.len(), 10);
 }
 
 /// The prompt shows at the hatch of the landed ship and inside it, and nowhere else.

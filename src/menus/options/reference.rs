@@ -9,11 +9,11 @@ use super::rows::value;
 use crate::ui::{caps, cell, column, text, theme};
 
 /// Width of the key column of the reference, in pixels.
-const KEY_WIDTH: f32 = 120.0;
+const KEY_WIDTH: f32 = 136.0;
 
 /// Most characters an action of the reference may have to stay on one line.
 #[cfg(test)]
-pub const ACTION_CHARS: usize = 19;
+pub const ACTION_CHARS: usize = 15;
 
 /// Width of one half of the reference, in pixels.
 const HALF_WIDTH: f32 = 288.0;
@@ -22,7 +22,7 @@ const HALF_WIDTH: f32 = 288.0;
 fn line(key: impl Bundle, action: &str) -> impl Bundle {
     (
         Node {
-            column_gap: px(theme::GAP_S),
+            column_gap: px(theme::S2),
             ..default()
         },
         children![
@@ -45,14 +45,14 @@ fn fixed(key: &str, action: &str) -> impl Bundle {
 /// What the mouse and held keys do on foot, which no row can rebind.
 const FOOT_FIXED: [(&str, &str); 5] = [
     ("Mouse", "Look around"),
-    ("Wheel", "Zoom third person"),
-    ("Jump again in the air", "Wings out or in"),
-    ("Sprint in a fall, hold", "Boots brake"),
-    ("Sprint on the wings, hold", "Boost"),
+    ("Wheel", "Zoom camera"),
+    ("Jump in air", "Wings out or in"),
+    ("Sprint, fall", "Boots brake"),
+    ("Sprint, wings", "Boost"),
 ];
 
 /// What the mouse does in the ship.
-const SHIP_FIXED: [(&str, &str); 2] = [("Mouse", "Look around"), ("Wheel", "Zoom third person")];
+const SHIP_FIXED: [(&str, &str); 2] = [("Mouse", "Look around"), ("Wheel", "Zoom camera")];
 
 /// One half of the reference: a title, the fixed lines and the rebindable ones.
 fn half(
@@ -66,7 +66,7 @@ fn half(
             Spawn(caps(title)),
             SpawnIter(lines.iter().map(|(key, action)| fixed(key, action))),
             SpawnIter(binds.iter().copied().map(bound)),
-            Spawn(fixed("Esc", "Pause or go back")),
+            Spawn(fixed("Esc", "Pause, go back")),
         )),
     )
 }

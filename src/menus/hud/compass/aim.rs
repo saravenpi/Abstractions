@@ -56,6 +56,35 @@ impl Around<'_> {
         (gap > HERE && !far).then_some((around, gap))
     }
 
+    /// Returns the direction to `marker` in the camera frame, +X right, +Y up, forward -Z, and
+    /// its distance in metres, or nothing when it has no place the camera can aim at or is the
+    /// ship while seated.
+    pub fn seen(&self, marker: &Marker) -> Option<(Vec3, f64)> {
+        let eye = self.eye.0.as_ref()?;
+        let seated = self.location.as_deref().map(|at| at.travel) == Some(Travel::InShip);
+        if marker.kind == MarkerKind::Ship && seated {
+            return None;
+        }
+        let (offset, gap) = self.target(eye, marker)?;
+        let right = eye.forward.cross(eye.up);
+        let local = DVec3::new(
+            offset.dot(right),
+            offset.dot(eye.up),
+            -offset.dot(eye.forward),
+        );
+        Some((local.normalize_or_zero().as_vec3(), gap))
+    }
+
+    /// Returns the point of `target` in the anchor frame, and its name, or nothing while the
+    /// universe or the eye is missing. It is where the course marker stands.
+    pub fn course(&self, target: Target) -> Option<(DVec3, String)> {
+        let eye = self.eye.0.as_ref()?;
+        let (universe, clock) = self.sky.as_ref()?;
+        let from = ship_position(universe, eye.anchor.frame, eye.at, clock.seconds)?;
+        let to = target_position(universe, target, clock.seconds)?;
+        Some((eye.at + self.turned(eye, to - from), target.name(universe)))
+    }
+
     /// Returns the bearing of the north pole of the planet under the player from the view, in
     /// radians, or nothing off a planet or right at a pole. North is up the spin axis, the
     /// axis the coordinates read the latitude along.

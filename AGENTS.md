@@ -104,10 +104,17 @@ filet check .
 
 ## Design rules from the owner
 
-- No borders anywhere. No rounded corners.
-- Never bold text. The game font renders badly in bold.
-- Interface chrome is black and white. Colour is allowed only in the map picture, player dots and markers.
-- Icons come from pixelarticons, through `crate::ui::Icon`. Build screens from the widgets in `crate::ui`.
+Direction of 2026-11-20. Tokens live in `src/ui/theme.rs`, durations in `src/ui/motion.rs`, icons in `src/ui/icon.rs`.
+
+- No borders anywhere. Separate things with space, tone and translucency. No rounded corners: `BorderRadius` stays zero, a test checks it.
+- The font is Undefined Medium only. Never bold text: the game font renders badly in bold.
+- Panels are translucent. Over the live world use `PANEL`; big blurred panels use `PANEL_BLUR` on top of `Blurred`. Text without a panel gets a `TextShadow` and a `PANEL` strip.
+- Colour has a meaning, one token each. `TEXT` is primary text, `TEXT_2` secondary text, `TEXT_OFF` disabled only. `ACCENT` marks the primary action, selection and the course. `PIN` marks pins. `WARN` marks a blocked course, weather and heat warnings, a frame under 50 percent. `DANGER` marks a frame under 25 percent and a broken part. A friend has one colour per player. Home and the ship use `TEXT` and differ by icon shape. Use no other colour in interface chrome. Colour is free in the map picture.
+- Icons are real pictures from `crate::ui::Icon` (Material Symbols Sharp, square, no round caps). No black box behind an icon. Every icon has a name in words somewhere on screen, and an icon-only control carries a `Tip`.
+- Type scale 16, 20, 32, 72 at the 720 pixel reference, at most three sizes on one screen. `UiScale` scales the whole interface with the window height.
+- Margins are generous and on the spacing scale `S1` to `S6` (4, 8, 16, 24, 32, 48). The screen edge is `S5`. Panels pad `S4`. Every position is a multiple of 4.
+- Every action shows its key. Every empty state says why, in words. The player never has to guess.
+- What the HUD shows depends on where the player is: `menus::hud::context::shown` is the one rule. Never show a reading that means nothing where the player stands.
 - What the player sees is real: every light, cloud and landmark is an object at that place. Nothing is decoration.
 
 ## Commits

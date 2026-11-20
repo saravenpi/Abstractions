@@ -1,9 +1,12 @@
-//! The frame corner: the integrity of the whole body and one line for each part that is hurt, in
-//! the bottom left. It shows nothing while the body is whole.
+//! The frame rows: the integrity of the whole body and one line for each part that is hurt.
+//! They sit in the bottom-left stack, under the instrument block, so the two never overlap.
+//! Nothing shows while the body is whole.
 
 use bevy::ecs::spawn::SpawnIter;
 use bevy::prelude::*;
 
+use super::context::Element;
+use super::fade::gate;
 use crate::condition::{Condition, PARTS};
 use crate::ui::{text, theme};
 
@@ -11,15 +14,15 @@ use crate::ui::{text, theme};
 #[derive(Component)]
 pub(super) struct Row(usize);
 
-/// The bottom left corner of the screen, with a hidden line for the frame and one for each part.
+/// The frame rows, a hidden line for the frame and one for each part, in a column that sits in
+/// the bottom-left stack.
 pub(super) fn corner() -> impl Bundle {
     (
+        gate(Element::Integrity),
         Node {
-            position_type: PositionType::Absolute,
-            bottom: px(theme::GAP_M),
-            left: px(theme::GAP_M),
             flex_direction: FlexDirection::Column,
-            row_gap: px(theme::GAP_XS),
+            align_items: AlignItems::FlexStart,
+            row_gap: px(theme::S1),
             ..default()
         },
         Children::spawn(SpawnIter((0..=PARTS).map(row))),
@@ -37,9 +40,11 @@ fn row(at: usize) -> impl Bundle {
         Row(at),
         Node {
             display: Display::None,
+            padding: UiRect::axes(px(theme::S3), px(theme::S2)),
             ..default()
         },
-        text("", theme::FONT_SMALL, theme::TEXT_2),
+        BackgroundColor(theme::PANEL),
+        text("", theme::FONT_SMALL, theme::TEXT),
         TextLayout::no_wrap(),
     )
 }
@@ -60,10 +65,25 @@ pub fn lines(condition: &Condition) -> Vec<String> {
     lines
 }
 
+/// Returns the colour of the frame rows for a body of `integrity`: the warning colour under half
+/// and the danger colour under a quarter.
+pub fn tone(integrity: f32) -> Color {
+    match integrity {
+        low if low < 0.25 => theme::DANGER,
+        mid if mid < 0.5 => theme::WARN,
+        _ => theme::TEXT,
+    }
+}
+
 /// Writes the lines of the corner when the condition of the body changes.
-pub(super) fn update(condition: Res<Condition>, mut rows: Query<(&Row, &mut Node, &mut Text)>) {
+pub(super) fn update(
+    condition: Res<Condition>,
+    mut rows: Query<(&Row, &mut Node, &mut Text, &mut TextColor)>,
+) {
     let lines = lines(&condition);
-    for (Row(at), mut node, mut text) in &mut rows {
+    let tone = tone(condition.integrity());
+    for (Row(at), mut node, mut text, mut color) in &mut rows {
+        color.set_if_neq(TextColor(tone));
         let display = match lines.get(*at) {
             Some(line) => {
                 text.set_if_neq(Text(line.clone()));

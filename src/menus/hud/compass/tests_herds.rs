@@ -11,6 +11,7 @@ use crate::fauna::guide::Seen;
 use crate::fauna::tune::MEMORY;
 use crate::fauna::{Nearby, Sighting};
 use crate::life::SpeciesId;
+use crate::menus::hud::context::{Context, Where};
 use crate::menus::{MarkerKind, MarkerPlace, Markers};
 use crate::space::{Anchor, Frame};
 use crate::universe::Universe;
@@ -21,6 +22,7 @@ fn marks(nearby: Nearby, seen: Seen) -> Vec<crate::menus::Marker> {
     let mut app = App::new();
     app.insert_resource(nearby)
         .insert_resource(seen)
+        .insert_resource(Where(Context::OnFoot))
         .init_resource::<Markers>()
         .insert_resource(Anchor {
             frame: Frame::Surface(body),

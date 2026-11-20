@@ -1,13 +1,15 @@
-//! The minimap as nodes: a framed square in the top right corner over the blurred game, the
-//! image of the ground, the sheet of the system chart, and the marks over them.
+//! The minimap as nodes: a square in the top right corner over the blurred game, the image of
+//! the ground, the sheet of the system chart, and the marks over them.
 //!
-//! Every mark is a white glyph in a black box, like the structures painted on the ground, so
-//! it reads on bright land as well as on dark water.
+//! Every mark is a white glyph with a shadow and no box behind it. The ground is painted
+//! without structures.
 
 use bevy::prelude::*;
 use bevy::ui::widget::NodeImageMode;
 
 use crate::computer::{arrow, spot};
+use crate::menus::hud::context::Element;
+use crate::menus::hud::fade::gate;
 use crate::ui::{Blurred, Icon, Tone, icon_sized, text, theme};
 
 /// Side of the map in pixels in a window 1080 pixels high. It grows and shrinks with the
@@ -17,11 +19,8 @@ pub const SIDE: f32 = 160.0;
 /// Smallest and largest side of the map in pixels, whatever the window.
 const LIMITS: (f32, f32) = (128.0, 240.0);
 
-/// Size in pixels of the icon of a mark: half the grid the icons are drawn on.
-pub const MARK: f32 = 12.0;
-
-/// Side in pixels of the black box behind a mark.
-const BOX: f32 = 14.0;
+/// Size in pixels of the icon of a mark.
+pub const MARK: f32 = theme::ICON_SMALL;
 
 /// One part of the minimap that is shown, hidden or moved every frame.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -66,28 +65,28 @@ fn layer() -> Node {
     }
 }
 
-/// A hidden mark: `content` in the middle of a black box, placed later.
+/// A hidden mark: `content` in the middle of its room, placed later.
 fn mark(part: Part, content: impl Bundle) -> impl Bundle {
     let node = Node {
         display: Display::None,
         flex_direction: FlexDirection::Column,
         justify_content: JustifyContent::Center,
         align_items: AlignItems::Center,
-        ..spot(Vec2::ZERO, Vec2::splat(-0.5 * BOX), Vec2::splat(BOX))
+        ..spot(Vec2::ZERO, Vec2::splat(-0.5 * MARK), Vec2::splat(MARK))
     };
-    (part, node, BackgroundColor(theme::INK), children![content])
+    (part, node, children![content])
 }
 
-/// The text in the bottom left corner, on a dark strip.
+/// The text in the bottom left corner, on a strip.
 fn caption() -> impl Bundle {
     let node = Node {
         position_type: PositionType::Absolute,
         left: px(0),
         bottom: px(0),
-        padding: UiRect::axes(px(theme::GAP_XS), px(0)),
+        padding: UiRect::axes(px(theme::S2), px(theme::S1)),
         ..default()
     };
-    let words = text("", theme::FONT_SMALL, theme::TEXT_2);
+    let words = text("", theme::FONT_SMALL, theme::TEXT);
     let line = (Caption, words, TextLayout::no_wrap());
     (node, BackgroundColor(theme::PANEL), children![line])
 }
@@ -111,36 +110,38 @@ fn square() -> Node {
     let side = Val::Vh(100.0 * SIDE / 1080.0);
     Node {
         position_type: PositionType::Absolute,
-        top: px(theme::GAP_M),
-        right: px(theme::GAP_M),
+        top: px(theme::EDGE),
+        right: px(theme::EDGE),
         width: side,
         height: side,
         min_width: px(LIMITS.0),
         min_height: px(LIMITS.0),
         max_width: px(LIMITS.1),
         max_height: px(LIMITS.1),
-        border: UiRect::all(px(theme::LINE)),
         overflow: Overflow::clip(),
         ..default()
     }
 }
 
-/// The minimap: a hairline frame over the blurred, darkened game, holding the ground, the
+/// The minimap: a square over the blurred, darkened game, holding the ground, the
 /// chart and the marks, all hidden until there is something to show.
 pub fn frame() -> impl Bundle {
-    let symbol = |symbol: Icon| icon_sized(symbol, Tone::Plain, MARK);
-    let north = text("N", theme::FONT_SMALL, theme::TEXT);
+    let symbol = |symbol: Icon| (icon_sized(symbol, Tone::Plain, MARK), TextShadow::default());
+    let north = (
+        text("N", theme::FONT_SMALL, theme::TEXT),
+        TextShadow::default(),
+    );
     (
         Part::Frame,
+        gate(Element::Minimap),
         square(),
-        BorderColor::all(theme::HAIRLINE),
         children![
             (Blurred, layer(), BackgroundColor(theme::SCRIM)),
             ground(),
             (Chart, layer()),
             super::dots::layer(),
             mark(Part::Home, symbol(Icon::Home)),
-            mark(Part::Ship, symbol(Icon::Send)),
+            mark(Part::Ship, symbol(Icon::ShipParked)),
             mark(Part::North, north),
             mark(Part::Arrow, (Needle, arrow(STEP))),
             caption(),

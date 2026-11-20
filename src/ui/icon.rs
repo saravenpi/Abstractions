@@ -11,6 +11,10 @@
 use bevy::asset::uuid_handle;
 use bevy::prelude::*;
 
+mod codes;
+
+pub use codes::CODEPOINTS;
+
 use super::style::Tone;
 use super::theme;
 
@@ -18,7 +22,8 @@ use super::theme;
 pub const ICONS_VERSION: &str = "Material Symbols Sharp, instance wght 400 FILL 0 opsz 24";
 
 /// Bytes of the icon font file.
-pub(super) const ICONS_TTF: &[u8] = include_bytes!("../../assets/fonts/material-symbols-sharp-subset.ttf");
+pub(super) const ICONS_TTF: &[u8] =
+    include_bytes!("../../assets/fonts/material-symbols-sharp-subset.ttf");
 
 /// Handle of the icon font asset, filled at startup.
 pub const ICON_FONT: Handle<Font> = uuid_handle!("6c1f0a52-3d0e-4b6e-9a57-4f1d2c7b8e90");
@@ -134,121 +139,7 @@ pub enum Icon {
     ShipDamaged,
 }
 
-/// Every icon with its codepoint in the icon font, in declaration order.
-pub(super) const CODEPOINTS: [(Icon, char); 53] = [
-    (Icon::Play, '\u{e037}'),
-    (Icon::Pause, '\u{e034}'),
-    (Icon::Planet, '\u{f387}'),
-    (Icon::Moon, '\u{e51c}'),
-    (Icon::Sun, '\u{e81a}'),
-    (Icon::Galaxy, '\u{ebd5}'),
-    (Icon::Plus, '\u{e145}'),
-    (Icon::Settings, '\u{e429}'),
-    (Icon::LogOut, '\u{e9ba}'),
-    (Icon::Power, '\u{f8c7}'),
-    (Icon::Pencil, '\u{f097}'),
-    (Icon::Copy, '\u{e14d}'),
-    (Icon::Trash, '\u{e92e}'),
-    (Icon::Sort, '\u{e8d5}'),
-    (Icon::Back, '\u{e5c4}'),
-    (Icon::Check, '\u{e668}'),
-    (Icon::Close, '\u{e5cd}'),
-    (Icon::Monitor, '\u{ef5b}'),
-    (Icon::Keyboard, '\u{e312}'),
-    (Icon::Volume, '\u{e050}'),
-    (Icon::Info, '\u{e88e}'),
-    (Icon::Star, '\u{f09a}'),
-    (Icon::Send, '\u{e163}'),
-    (Icon::MapPin, '\u{f1db}'),
-    (Icon::Shuffle, '\u{e043}'),
-    (Icon::Eraser, '\u{e6d0}'),
-    (Icon::ChevronLeft, '\u{e5cb}'),
-    (Icon::ChevronRight, '\u{e5cc}'),
-    (Icon::Home, '\u{e9b2}'),
-    (Icon::Map, '\u{e55b}'),
-    (Icon::Users, '\u{ea21}'),
-    (Icon::User, '\u{f0d3}'),
-    (Icon::Server, '\u{e875}'),
-    (Icon::Wifi, '\u{e63e}'),
-    (Icon::Reload, '\u{e5d5}'),
-    (Icon::Link, '\u{e250}'),
-    (Icon::Animal, '\u{e91d}'),
-    (Icon::Go, '\u{eb9b}'),
-    (Icon::Stop, '\u{ef71}'),
-    (Icon::Arrow, '\u{e5c7}'),
-    (Icon::Radius, '\u{e41c}'),
-    (Icon::Gravity, '\u{eb5f}'),
-    (Icon::Temperature, '\u{f076}'),
-    (Icon::Pressure, '\u{e94d}'),
-    (Icon::Air, '\u{efd8}'),
-    (Icon::Day, '\u{e1c6}'),
-    (Icon::Year, '\u{e425}'),
-    (Icon::Water, '\u{e798}'),
-    (Icon::Life, '\u{ea35}'),
-    (Icon::ShipParked, '\u{eba5}'),
-    (Icon::ShipFlying, '\u{e55d}'),
-    (Icon::ShipWarp, '\u{e01f}'),
-    (Icon::ShipDamaged, '\u{f8cd}'),
-];
-
 impl Icon {
-    /// Every icon, in declaration order.
-    pub const ALL: [Icon; 53] = [
-        Icon::Play,
-        Icon::Pause,
-        Icon::Planet,
-        Icon::Moon,
-        Icon::Sun,
-        Icon::Galaxy,
-        Icon::Plus,
-        Icon::Settings,
-        Icon::LogOut,
-        Icon::Power,
-        Icon::Pencil,
-        Icon::Copy,
-        Icon::Trash,
-        Icon::Sort,
-        Icon::Back,
-        Icon::Check,
-        Icon::Close,
-        Icon::Monitor,
-        Icon::Keyboard,
-        Icon::Volume,
-        Icon::Info,
-        Icon::Star,
-        Icon::Send,
-        Icon::MapPin,
-        Icon::Shuffle,
-        Icon::Eraser,
-        Icon::ChevronLeft,
-        Icon::ChevronRight,
-        Icon::Home,
-        Icon::Map,
-        Icon::Users,
-        Icon::User,
-        Icon::Server,
-        Icon::Wifi,
-        Icon::Reload,
-        Icon::Link,
-        Icon::Animal,
-        Icon::Go,
-        Icon::Stop,
-        Icon::Arrow,
-        Icon::Radius,
-        Icon::Gravity,
-        Icon::Temperature,
-        Icon::Pressure,
-        Icon::Air,
-        Icon::Day,
-        Icon::Year,
-        Icon::Water,
-        Icon::Life,
-        Icon::ShipParked,
-        Icon::ShipFlying,
-        Icon::ShipWarp,
-        Icon::ShipDamaged,
-    ];
-
     /// Returns the codepoint of the icon in the icon font.
     pub const fn codepoint(self) -> char {
         CODEPOINTS[self as usize].1

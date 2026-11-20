@@ -109,10 +109,6 @@ pub const DANGER: Color = Color::srgb(1.0, 0.40, 0.38);
 
 /// Dividing lines.
 pub const HAIRLINE: Color = Color::srgba(1.0, 1.0, 1.0, 0.25);
-/// The block behind the primary row of a menu: solid white.
-pub const BLOCK: Color = Color::srgb(1.0, 1.0, 1.0);
-/// The block behind a row while it is held down.
-pub const BLOCK_PRESSED: Color = Color::srgb(0.78, 0.78, 0.78);
 /// Crosshair dot.
 pub const CROSSHAIR: Color = Color::srgba(1.0, 1.0, 1.0, 0.8);
 

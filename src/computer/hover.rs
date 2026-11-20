@@ -11,8 +11,8 @@ use super::pointer::MapView;
 use super::view::Slot;
 use crate::ui::{Look, Selected, theme};
 
-/// Returns the look of a row and whether it is lit: the selected row is the current one, black
-/// on white, and a hovered row that is not selected is lit.
+/// Returns the look of a row and whether it is lit: the selected row is the current one, tinted
+/// with the selection tint, and a hovered row that is not selected is lit.
 pub fn look(selected: bool, hovered: bool) -> (Look, bool) {
     match selected {
         true => (Look::Active, false),
@@ -20,12 +20,12 @@ pub fn look(selected: bool, hovered: bool) -> (Look, bool) {
     }
 }
 
-/// Returns the background of a row with `look`, lit or not: a white block under the selected
+/// Returns the background of a row with `look`, lit or not: the selection tint under the selected
 /// row, a faint one under a lit row, nothing otherwise.
 pub fn surface(look: Look, lit: bool) -> Color {
     match (look, lit) {
-        (Look::Active, _) => theme::BLOCK,
-        (_, true) => theme::SELECT,
+        (Look::Active, _) => theme::SELECT,
+        (_, true) => theme::HOVER,
         _ => Color::NONE,
     }
 }

@@ -14,7 +14,6 @@ use super::scope::Scope;
 use super::sight::spot;
 use crate::computer::spot as corner;
 use crate::menus::{Marker, MarkerKind, MarkerPlace, Markers};
-use crate::ui::theme;
 use crate::universe::BodyId;
 
 /// Marks the layer the coloured marks sit on.
@@ -33,6 +32,7 @@ pub fn shape(kind: MarkerKind) -> Option<(f32, bool)> {
         MarkerKind::Waypoint => Some((9.0, true)),
         MarkerKind::Favourite => Some((6.0, false)),
         MarkerKind::Herd => Some((5.0, false)),
+        MarkerKind::Course => None,
         MarkerKind::Home | MarkerKind::Ship => None,
     }
 }
@@ -41,7 +41,6 @@ pub fn shape(kind: MarkerKind) -> Option<(f32, bool)> {
 fn dot(slot: usize) -> impl Bundle {
     let node = Node {
         display: Display::None,
-        border: UiRect::all(px(theme::LINE)),
         ..corner(Vec2::ZERO, Vec2::ZERO, Vec2::ZERO)
     };
     (
@@ -49,7 +48,6 @@ fn dot(slot: usize) -> impl Bundle {
         node,
         UiTransform::default(),
         BackgroundColor(Color::WHITE),
-        BorderColor::all(theme::INK),
     )
 }
 

@@ -18,3 +18,13 @@ pub fn ease_out(t: f32) -> f32 {
     let t = t.clamp(0.0, 1.0);
     1.0 - (1.0 - t) * (1.0 - t)
 }
+
+/// Returns `alpha` moved `dt` seconds toward 1 when `shown`, toward 0 otherwise, in [`FADE`]
+/// seconds for the whole way.
+pub fn approach(alpha: f32, shown: bool, dt: f32) -> f32 {
+    let step = dt / FADE;
+    match shown {
+        true => (alpha + step).min(1.0),
+        false => (alpha - step).max(0.0),
+    }
+}

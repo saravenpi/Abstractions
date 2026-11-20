@@ -1,11 +1,12 @@
 //! The herd markers: the herds the robot has seen, at the place each was last seen and fading out,
-//! rewritten every frame for the compass and the minimap, each named for its species once the field
+//! rewritten four times a second for the compass and the minimap, each named for its species once the field
 //! guide has it, else "Herd".
 
 use bevy::prelude::*;
 
 use crate::fauna::guide::Seen;
 use crate::fauna::{Nearby, Sighting};
+use crate::menus::hud::context::{Element, Where};
 use crate::menus::{Marker, MarkerKind, MarkerPlace, Markers};
 use crate::space::{Anchor, Clock, Frame};
 use crate::universe::BodyId;
@@ -39,14 +40,21 @@ type Reads<'w> = (
     Option<Res<'w, Clock>>,
 );
 
+/// Seconds between two refills of the herd markers.
+pub const EVERY: f32 = 0.25;
+
 /// Writes a marker for every herd the robot has seen, while the robot stands on the planet they are
 /// on.
 pub fn herds(
     (nearby, seen, clock): Reads<'_>,
     anchor: Option<Res<Anchor>>,
     mut markers: ResMut<Markers>,
+    now: Res<Where>,
 ) {
     markers.clear(MarkerKind::Herd, GAME);
+    if !now.has(Element::Herds) {
+        return;
+    }
     let here = anchor.map(|a| a.frame);
     let Some((nearby, body)) = nearby.and_then(|n| n.body.map(|b| (n, b))) else {
         return;

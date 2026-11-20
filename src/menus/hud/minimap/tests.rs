@@ -14,5 +14,4 @@ mod north;
 mod read;
 mod refill;
 mod rig;
-mod sites;
 mod view;

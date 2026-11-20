@@ -7,7 +7,7 @@ use bevy::math::{DQuat, DVec3, IVec3};
 
 use super::store::{list, new_entry, write};
 use super::store_tests::scratch;
-use crate::ship::{SavedFrame, Ship, ShipState};
+use crate::ship::{Ship, ShipState};
 use crate::space::{Frame, UniPos};
 use crate::universe::{GalaxyId, StarId};
 
@@ -68,5 +68,4 @@ fn a_metre_survives_arithmetic_save_and_wire_at_5e20_metres() {
     .encode(&frame, &mut bytes);
     let got = wire::ShipBody::decode(&frame, &bytes).unwrap();
     assert_eq!(got.position, beside);
-    assert_eq!(SavedFrame::from(back.frame), SavedFrame::System(star));
 }

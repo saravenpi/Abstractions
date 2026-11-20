@@ -37,9 +37,9 @@ fn the_frame_rows_sit_under_the_instruments() {
     assert_eq!(block_parent.parent(), stack);
     assert_ne!(block.position_type, PositionType::Absolute);
     let mut rows = world.query_filtered::<(&ChildOf, &Node), With<Row>>();
+    let mut stacked = world.query::<&Children>();
     let rows: Vec<_> = rows.iter(&world).collect();
     assert!(!rows.is_empty());
-    let mut stacked = world.query::<&Children>();
     let order: Vec<Entity> = stacked.get(&world, stack).unwrap().iter().collect();
     assert_eq!(order.len(), 2);
     for (parent, node) in rows {

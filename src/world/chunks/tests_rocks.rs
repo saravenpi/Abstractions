@@ -17,7 +17,7 @@ fn rocky() -> (Terrain, IVec2) {
         let props = scatter_chunk(&terrain, *c).props;
         props.iter().any(|p| is_rock(p.plant))
     };
-    let cells = (-8..8).flat_map(|x| (-8..8).map(move |y| IVec2::new(x, y)));
+    let mut cells = (-8..8).flat_map(|x| (-8..8).map(move |y| IVec2::new(x, y)));
     let spot = cells.find(rocks).expect("a chunk with a rock");
     (terrain, spot)
 }

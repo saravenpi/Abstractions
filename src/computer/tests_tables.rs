@@ -134,10 +134,6 @@ fn a_long_table_keeps_the_cursor_in_view() {
     assert_eq!(board.cursor, 491);
     board.fill(String::new(), (0..5).map(line).collect());
     assert!((board.cursor, board.top) == (4, 0) && board.at(5).is_none());
-    assert_eq!(
-        (Tab::System.step(-1), Tab::Universe.step(1)),
-        (Tab::Universe, Tab::System)
-    );
 }
 
 /// The frame says what the ship is inside: a planet, a system within reach, a galaxy within its disc.

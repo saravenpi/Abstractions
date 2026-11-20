@@ -66,11 +66,16 @@ pub(super) fn dithered(terrain: &Terrain, span: &Span, (i, j): (usize, usize)) -
         let jitter = |salt: usize| (tone(i + salt, j, half) - 1.0) / 0.08 * DITHER_REACH;
         centre + Vec2::new(jitter(7919), jitter(104_729))
     };
+    let near = [centre, near(0), near(1)];
+    let coarse = terrain.chart() != Chart::Flat && scale(span.step()) >= COARSE;
+    let glanced = coarse.then(|| terrain.globe().glance(terrain.up(centre.x, centre.y)));
     Cell {
-        biomes: terrain.biomes([centre, near(0), near(1)]),
+        biomes: match &glanced {
+            Some((_, spot)) => terrain.biomes_glanced(near, *spot),
+            None => terrain.biomes(near),
+        },
         bed: terrain.bed(centre.x, centre.y),
-        reading: (terrain.chart() != Chart::Flat && scale(span.step()) >= COARSE)
-            .then(|| Reading::of(terrain.globe(), terrain.up(centre.x, centre.y))),
+        reading: glanced.map(|(height, spot)| Reading::glanced(height, &spot)),
     }
 }
 

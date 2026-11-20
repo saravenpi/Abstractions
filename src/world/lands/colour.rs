@@ -7,7 +7,7 @@
 //! of its turf, and the ground shader adds only the detail of the turf around that mean.
 
 use bevy::color::{LinearRgba, Srgba};
-use bevy::math::{DVec3, Vec2, Vec3};
+use bevy::math::{Vec2, Vec3};
 
 use super::Lands;
 use crate::world::SEA_LEVEL;
@@ -27,10 +27,8 @@ pub struct Reading {
 }
 
 impl Reading {
-    /// Reads the land of `globe` in unit direction `dir`: the bare height and the slope over a fixed
-    /// analytic distance, whatever the grid of the mesh that asks.
-    pub fn of(globe: &Globe, dir: DVec3) -> Self {
-        let (height, spot) = globe.glance(dir);
+    /// Returns the reading of a place [`Globe::glance`] gave as `height` and `spot`.
+    pub fn glanced(height: f32, spot: &crate::climate::Spot) -> Self {
         Self {
             height,
             slope: spot.slope.length(),

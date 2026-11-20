@@ -43,6 +43,7 @@ Branch `integrate` (worktree `~/Code/Saravenpi/wt-int`) holds everything merged 
 | 8 | Look up good practices online for 6 and 7 | Done, sources listed in `light.md` |
 | 9 | Review and rework the UI and UX of the game, the map and the whole HUD. Carte blanche. Friends were lost launching a warp and using waypoints | Review done: spec in `UX.md` in the same folder (488 lines). Three packages: C (theme, icons, HUD) running on `ui-c`; B (pins and map) and A (Go flow and planet card) start when C lands its tokens |
 | 10 | Markers over the world, as in modern games: a pin shows on the screen at its real place; when it is to the side or behind, it slides to the border of the screen with an arrow pointing to it, higher or lower on the border by its real position | Sent to `ui-c` (HUD). Not started |
+| 11 | Review the combat animations and effects so combat is dynamic and pleasant. Blood spurts for animals that have blood, in the colour of their blood, only when the hit made an opening that bleeds | Agent running on `combat`. Blood colour comes from the life model (the oxygen carrier), a blunt hit that opens nothing does not bleed, drops are real particles that land as the existing blood marks, a "Blood" setting hides the spurts |
 
 ## 3. The UI rework: what the owner asked for
 

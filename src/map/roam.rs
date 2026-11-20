@@ -1,9 +1,8 @@
 //! Moving the lens of the flat map of a planet: panning and zooming it without the edges of a
 //! chart, since the map wraps east and west, and focusing it on a place.
 
-use bevy::math::{DVec3, Vec2};
+use bevy::math::Vec2;
 
-use super::geo::from_chart;
 use super::level::{CLOSEST, WHOLE, framed};
 use crate::computer::{Lens, SIZE};
 
@@ -36,10 +35,4 @@ pub fn focused(at: Vec2, zoom: f32) -> Lens {
         zoom: zoom.max(FOCUS),
         centre: at,
     })
-}
-
-/// Returns the direction a waypoint or a favourite set on a whole planet points at: where its
-/// flat map is centred, on the equator.
-pub fn middle() -> DVec3 {
-    from_chart(Vec2::ZERO).unwrap_or(DVec3::X)
 }

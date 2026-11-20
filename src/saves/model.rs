@@ -91,9 +91,10 @@ pub struct WorldSave {
     /// The ground uncovered on each body, as runs of leaves. A file from before 0.10.1 has none.
     #[serde(default)]
     pub explored: Vec<Explored>,
-    /// The player's favourite places. A file from before 0.10.1 has none.
+    /// The player's pins, up to eight. Old files kept favourites here: they load as pins. A file
+    /// from before 0.10.1 has none.
     #[serde(default)]
-    pub marks: Vec<Favourite>,
+    pub marks: Vec<Pin>,
     /// The tools and materials the robot carries. A file from before 0.13 has none.
     #[serde(default)]
     pub pack: crate::craft::pack::Pack,
@@ -116,10 +117,11 @@ pub struct Explored {
     pub runs: Vec<Run>,
 }
 
-/// A place the player saved with a name.
+/// A pin: a place the player marked on a planet, with a name. It is what old files called a
+/// favourite, and the same record, so those files load as they are.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[serde(default)]
-pub struct Favourite {
+pub struct Pin {
     /// Name the player gave it.
     pub name: String,
     /// The body it is on.

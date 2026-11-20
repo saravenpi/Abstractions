@@ -1,5 +1,5 @@
-//! The markers on the map: the player, the friends in their colours, the waypoints as
-//! diamonds, the favourites as hollow squares, home and the ship, each with its name.
+//! The markers on the map: the player, the friends in their colours, the pins, home and the
+//! ship, each drawn as its icon with its name, over nothing: no square sits behind a marker.
 //!
 //! A fixed pool of nodes is spawned with the map and moved every frame, so a moving friend
 //! costs no spawn. On a planet every marker on it is drawn; on a chart the friends and the
@@ -11,12 +11,13 @@ use bevy::prelude::*;
 use super::geo::{copy_near, to_chart};
 use super::level::Level;
 use super::me::Me;
+use super::pins_draw::glyph;
 use super::spots::place;
 use super::surface::Surface;
 use crate::computer::{Board, MapView};
 use crate::menus::{MarkerKind, MarkerPlace, Markers};
 use crate::space::{Anchor, Clock, Frame};
-use crate::ui::{text, theme};
+use crate::ui::{Icon, text, theme};
 use crate::universe::Universe;
 
 /// Markers drawn at most at once.
@@ -43,7 +44,7 @@ pub struct PinLayer;
 #[derive(Component, Debug, Clone, Copy)]
 pub struct PinSlot(pub usize);
 
-/// The square, diamond or frame of a node of the pool.
+/// The icon of a node of the pool.
 #[derive(Component, Debug, Clone, Copy)]
 pub struct PinDot(pub usize);
 
@@ -51,27 +52,37 @@ pub struct PinDot(pub usize);
 #[derive(Component, Debug, Clone, Copy)]
 pub struct PinLabel(pub usize);
 
-/// Side in pixels of the dot of a marker.
+/// Side in pixels of the footprint of a marker, which names keep clear of.
 pub const DOT: f32 = 8.0;
 
-/// The dot of a node of the pool, centred on its point.
+/// Side in pixels of the icon of a marker that is not the selected one.
+pub const GLYPH_SIZE: f32 = theme::ICON_SMALL;
+
+/// Pixels from the point of a marker to the start of its name.
+pub const NAME_GAP: f32 = 12.0;
+
+/// The icon of a node of the pool, centred on its point.
 fn dot(index: usize) -> impl Bundle {
     let node = Node {
         position_type: PositionType::Absolute,
-        left: px(-0.5 * DOT),
-        top: px(-0.5 * DOT),
-        width: px(DOT),
-        height: px(DOT),
+        left: px(-0.5 * GLYPH_SIZE),
+        top: px(-0.5 * GLYPH_SIZE),
+        width: px(GLYPH_SIZE),
+        height: px(GLYPH_SIZE),
         ..default()
     };
-    (PinDot(index), node, BackgroundColor(Color::NONE))
+    (
+        PinDot(index),
+        node,
+        glyph(Icon::MapPin, GLYPH_SIZE, theme::PIN),
+    )
 }
 
-/// The name of a node of the pool, to the right of its dot.
+/// The name of a node of the pool, to the right of its icon.
 fn name(index: usize) -> impl Bundle {
     let node = Node {
         position_type: PositionType::Absolute,
-        left: px(DOT),
+        left: px(NAME_GAP),
         top: px(-0.6 * theme::FONT_SMALL),
         ..default()
     };
@@ -136,7 +147,7 @@ impl Source<'_, '_> {
     }
 
     /// Returns the chart point of the marker at `index` on the chart shown: friends and
-    /// waypoints only, since the chart draws home and the ship itself.
+    /// the active pin only, since the chart draws home and the ship itself.
     fn on_chart(&self, index: usize) -> Option<Vec2> {
         let marker = self.markers.0.get(index)?;
         let (universe, clock, anchor) = self.world.as_ref()?;

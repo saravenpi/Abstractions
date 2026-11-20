@@ -1,55 +1,54 @@
-//! The favourites and the players in the side panel of the map. A favourite can be looked at,
-//! set as the course, renamed and deleted; a player can be looked at. The button over the
-//! favourites saves the place picked on the flat map, or where the player is.
+//! The pins and the players in the side panel of the map. A pin is a row with its icon, its
+//! name and how far it is; the selected one shows what it does and three buttons with their
+//! words: Go, Rename and Remove. A player can be looked at.
 
 use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
-use crate::computer::{LIST_ROW, heading, heading_row, row_node};
-use crate::ui::{Icon, Tone, column, frame, icon_slot, label, step_button, theme};
+use super::pins_draw::glyph;
+use crate::computer::{LIST_ROW, PIN_FOOT, heading, heading_row, row_node};
+use crate::ui::{Icon, Selected, Tone, column, frame, label, text, theme};
 
-/// Favourites listed at most.
-pub const FAVOURITES: usize = 5;
+/// Pins listed at most: every pin a player can keep.
+pub const PINS: usize = super::places::MAX;
 
 /// Players listed at most.
 pub const PLAYERS: usize = 6;
 
-/// What a button of a favourite does.
+/// What a button of the selected pin does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Do {
-    /// Look at it on the flat map.
+    /// Make it the active pin and, on another planet, fly there.
     Go,
-    /// Set the course to its planet.
-    Course,
     /// Type a new name for it.
     Rename,
     /// Forget it.
-    Delete,
+    Remove,
 }
 
-/// A button of the favourite at this index of the list.
+/// A button of the selected pin.
 #[derive(Component, Debug, Clone, Copy)]
-pub struct FavButton(pub usize, pub Do);
+pub struct PinButton(pub Do);
 
-/// The row of the favourite at this index, hidden past the end of the list.
+/// The row of the pin at this index, hidden past the end of the list. A click selects it.
 #[derive(Component, Debug, Clone, Copy)]
-pub struct FavRow(pub usize);
+pub struct PinRow(pub usize);
 
-/// The name of the favourite at this index.
+/// The name of the pin at this index.
 #[derive(Component, Debug, Clone, Copy)]
-pub struct FavName(pub usize);
+pub struct PinName(pub usize);
 
-/// The button that saves a favourite.
+/// How far the pin at this index is, or the planet it is on.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct PinFar(pub usize);
+
+/// The line under the pins: what the selected pin does, or the empty text.
 #[derive(Component)]
-pub struct SaveFavourite;
+pub struct PinHint;
 
-/// The words of the button that saves a favourite, which say what it saves on the level shown.
+/// The row of the three buttons of the selected pin, hidden while none is selected.
 #[derive(Component)]
-pub struct SaveWords;
-
-/// What the button that saves a favourite says on a planet and on a chart, where it saves
-/// where the player is.
-pub const SAVE: [&str; 2] = ["Save place", "Save my spot"];
+pub struct PinActions;
 
 /// The row of the player at this index of the list of friends, hidden past its end.
 #[derive(Component, Debug, Clone, Copy)]
@@ -63,6 +62,17 @@ pub struct PlayerName(pub usize);
 #[derive(Component, Debug, Clone, Copy)]
 pub struct PlayerDot(pub usize);
 
+/// Marks the players with their heading, hidden outside a session.
+#[derive(Component)]
+pub struct Players;
+
+/// Marks the line that says no one else is in the session yet.
+#[derive(Component)]
+pub struct NoPlayers;
+
+/// What the line of the players says while no one else is in the session.
+pub const ALONE: &str = "No one else is here yet.";
+
 /// The node of a row of a list of the panel, hidden until it is written.
 fn strip() -> Node {
     Node {
@@ -71,55 +81,77 @@ fn strip() -> Node {
     }
 }
 
-/// One hidden favourite: its name, which looks at it, and its buttons.
-fn favourite(index: usize) -> impl Bundle {
+/// One hidden pin: its icon, its name and how far it is. A click selects it.
+fn pin(index: usize) -> impl Bundle {
     let name = Node {
         flex_grow: 1.0,
         min_width: px(0),
-        height: percent(100),
-        align_items: AlignItems::Center,
         overflow: Overflow::clip(),
         ..default()
     };
-    let named = (FavName(index), label("", theme::FONT_SMALL, Tone::Plain));
-    let button = |symbol: Icon, act: Do| (step_button(symbol), FavButton(index, act));
+    let named = (PinName(index), label("", theme::FONT_SMALL, Tone::Plain));
     (
-        (FavRow(index), RelativeCursorPosition::default()),
+        (PinRow(index), Selected(false)),
+        frame(),
         strip(),
         children![
-            (frame(), name, FavButton(index, Do::Go), children![named]),
-            button(Icon::Send, Do::Course),
-            button(Icon::Pencil, Do::Rename),
-            button(Icon::Trash, Do::Delete),
+            glyph(Icon::MapPin, theme::ICON_SMALL, theme::PIN),
+            (name, children![named]),
+            (PinFar(index), label("", theme::FONT_SMALL, Tone::Muted)),
         ],
     )
 }
 
-/// The favourites: their heading with the button that saves one at its right end, over the
-/// pool of rows.
-pub fn favourites() -> impl Bundle {
-    let row = Node {
+/// One button of the selected pin, with its words and its key.
+fn button(act: Do, words: &str) -> impl Bundle {
+    let node = Node {
+        height: px(LIST_ROW),
         align_items: AlignItems::Center,
-        column_gap: px(theme::GAP_S),
-        padding: UiRect::horizontal(px(theme::GAP_XS)),
-        margin: UiRect::right(px(-theme::GAP_XS)),
+        padding: UiRect::horizontal(px(theme::GAP_S)),
         ..default()
     };
-    let words = (SaveWords, label(SAVE[0], theme::FONT_SMALL, Tone::Plain));
-    let save = (
+    let tone = [Tone::Plain, Tone::Accent][usize::from(act == Do::Go)];
+    (
         frame(),
-        SaveFavourite,
-        row,
-        children![icon_slot(Some(Icon::Star), Tone::Plain), words],
-    );
+        PinButton(act),
+        node,
+        children![label(words, theme::FONT_SMALL, tone)],
+    )
+}
+
+/// The foot of the pins: the line that says what the selected pin does, and under it the row of
+/// its three buttons, hidden while no pin is selected.
+fn foot() -> impl Bundle {
+    let node = Node {
+        width: percent(100),
+        min_height: px(PIN_FOOT),
+        flex_direction: FlexDirection::Column,
+        row_gap: px(theme::GAP_XS),
+        ..default()
+    };
+    let actions = Node {
+        display: Display::None,
+        column_gap: px(theme::GAP_S),
+        ..default()
+    };
+    let buttons = children![
+        button(Do::Go, "Go"),
+        button(Do::Rename, "Rename [R]"),
+        button(Do::Remove, "Remove [Del]"),
+    ];
+    let said = (PinHint, text("", theme::FONT_SMALL, theme::TEXT_2));
+    (node, children![said, (PinActions, actions, buttons)])
+}
+
+/// The pins: their heading over the pool of rows, and under them their foot.
+pub fn pins() -> impl Bundle {
+    let rows = Children::spawn(SpawnIter((0..PINS).map(pin)));
     (
         column(percent(100), 0.0),
         children![
-            (heading_row(), children![heading("Favourites"), save]),
-            (
-                column(percent(100), 0.0),
-                Children::spawn(SpawnIter((0..FAVOURITES).map(favourite)))
-            )
+            (heading_row(), children![heading("Pins")]),
+            (column(percent(100), 0.0), rows),
+            foot(),
         ],
     )
 }
@@ -142,11 +174,8 @@ fn player(index: usize) -> impl Bundle {
     )
 }
 
-/// Marks the players with their heading, hidden while there are none.
-#[derive(Component)]
-pub struct Players;
-
-/// The players: their heading over the pool of rows, hidden while there are none.
+/// The players: their heading over the pool of rows and the line for when no one else is
+/// there, hidden outside a session.
 pub fn players() -> impl Bundle {
     let block = Node {
         display: Display::None,
@@ -154,11 +183,20 @@ pub fn players() -> impl Bundle {
         flex_direction: FlexDirection::Column,
         ..default()
     };
+    let alone = Node {
+        display: Display::None,
+        ..default()
+    };
     (
         Players,
         block,
         children![
             (heading_row(), children![heading("Players")]),
+            (
+                NoPlayers,
+                alone,
+                text(ALONE, theme::FONT_SMALL, theme::TEXT_2)
+            ),
             (
                 column(percent(100), 0.0),
                 Children::spawn(SpawnIter((0..PLAYERS).map(player)))

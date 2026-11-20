@@ -8,7 +8,7 @@ use super::layout::{SMALLEST, measure};
 use super::map::Field;
 use super::pointer::MapView;
 use super::view::Panel;
-use crate::map::{FAVOURITES, Favourites, PLAYERS};
+use crate::map::{PINS, PLAYERS, Places};
 use crate::menus::{MarkerKind, Markers};
 
 /// The window, and the screen when it was just spawned.
@@ -17,32 +17,37 @@ type Seen<'w, 's> = (
     Query<'w, 's, (), Added<Panel>>,
 );
 
-/// Returns how many rows the favourites and the players lists of the panel show, none for a
-/// list that does not exist.
-fn listed(favourites: Option<&Favourites>, markers: Option<&Markers>) -> (usize, usize) {
-    let saved = favourites.map_or(0, |favourites| favourites.0.len());
+/// Returns how many rows the pins and the players lists of the panel show, none for a list
+/// that does not exist.
+fn listed(places: Option<&Places>, markers: Option<&Markers>) -> (usize, usize) {
+    let saved = places.map_or(0, |places| places.pins.len());
     let friends = markers.map_or(0, |markers| {
         let kinds = markers.0.iter().map(|marker| marker.kind);
         kinds.filter(|kind| *kind == MarkerKind::Friend).count()
     });
-    (saved.min(FAVOURITES), friends.min(PLAYERS))
+    (saved.min(PINS), friends.min(PLAYERS))
 }
 
 /// Sizes the square map, the search results and the rows of the lists for the window and the
 /// lists of the panel, when the window changed size, a list changed length or the screen was
-/// just spawned.
-/// Without a window, as in a test, the smallest supported one is assumed.
+/// just spawned. The window is measured in logical pixels of the interface: its size over the
+/// interface scale. Without a window, as in a test, the smallest supported one is assumed.
 pub(super) fn fit(
     (windows, fresh): Seen,
-    (favourites, markers): (Option<Res<Favourites>>, Option<Res<Markers>>),
+    (places, markers, scale): (
+        Option<Res<Places>>,
+        Option<Res<Markers>>,
+        Option<Res<UiScale>>,
+    ),
     mut fields: Query<&mut Node, With<Field>>,
     (mut board, mut view): (ResMut<Board>, ResMut<MapView>),
     mut last: Local<Option<(Vec2, (usize, usize))>>,
 ) {
-    let size = |window: &Window| Vec2::new(window.width(), window.height());
+    let scale = scale.map_or(1.0, |scale| scale.0).max(f32::EPSILON);
+    let size = |window: &Window| Vec2::new(window.width(), window.height()) / scale;
     let now = (
         windows.iter().next().map_or(SMALLEST, size),
-        listed(favourites.as_deref(), markers.as_deref()),
+        listed(places.as_deref(), markers.as_deref()),
     );
     if *last == Some(now) && fresh.is_empty() {
         return;

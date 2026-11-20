@@ -1,4 +1,4 @@
-//! Tests of the map on a server: the waypoints that come in and the one that goes out.
+//! Tests of the map on a server: the active pins that come in and the one that goes out.
 
 use std::sync::{Arc, Mutex};
 
@@ -8,16 +8,17 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::{receive, to_wire};
-use crate::map::waypoint::{Waypoint, Waypoints};
+use crate::map::places::Places;
 use crate::net::{FromServer, Link, Role, Script, Source};
+use crate::saves::Pin;
 use crate::universe::Universe;
 
-/// Returns a waypoint on the home planet of seed 3 toward `dir`.
-fn spot(dir: DVec3) -> Waypoint {
-    Waypoint {
-        body: Universe::new(3).home(),
-        dir,
+/// Returns a pin on the home planet of seed 3 toward `dir`.
+fn spot(dir: DVec3) -> Pin {
+    Pin {
         name: String::new(),
+        body: Universe::new(3).home(),
+        dir: dir.to_array(),
     }
 }
 
@@ -36,9 +37,9 @@ fn welcome(waypoints: Vec<(PlayerId, Wire)>) -> ServerMsg {
     })
 }
 
-/// Returns a headless app that takes in waypoints over a scripted link as player 3, with
-/// `waypoints`, and the script.
-fn joined(waypoints: Waypoints) -> (App, Script) {
+/// Returns a headless app that takes in waypoints over a scripted link as player 3, with the
+/// pins `places`, and the script.
+fn joined(places: Places) -> (App, Script) {
     let script: Script = Arc::new(Mutex::new(Default::default()));
     let mut link = Link::over(Source::Script(script.clone()), Role::Host);
     link.you = Some(PlayerId(3));
@@ -46,7 +47,7 @@ fn joined(waypoints: Waypoints) -> (App, Script) {
     app.add_plugins(MinimalPlugins)
         .add_message::<FromServer>()
         .insert_resource(link)
-        .insert_resource(waypoints)
+        .insert_resource(places)
         .add_systems(Update, receive);
     (app, script)
 }
@@ -57,13 +58,14 @@ fn hear(app: &mut App, msg: ServerMsg) {
     app.update();
 }
 
-/// A waypoint kept from before goes to the server with its welcome, which knows none.
+/// The active pin kept from before goes to the server with its welcome, which knows none.
 #[test]
-fn a_kept_waypoint_is_sent_again_on_welcome() {
+fn a_kept_active_pin_is_sent_again_on_welcome() {
     let mine = spot(DVec3::X);
-    let (mut app, script) = joined(Waypoints {
-        mine: Some(mine.clone()),
-        ..Waypoints::default()
+    let (mut app, script) = joined(Places {
+        pins: vec![mine.clone()],
+        active: Some(0),
+        ..Places::default()
     });
     hear(&mut app, welcome(Vec::new()));
     let sent = script.lock().unwrap().sent.clone();
@@ -74,24 +76,24 @@ fn a_kept_waypoint_is_sent_again_on_welcome() {
 /// goes, and a change about this player is not taken as a friend's.
 #[test]
 fn waypoints_come_in_without_your_own() {
-    let (mut app, _) = joined(Waypoints::default());
+    let (mut app, _) = joined(Places::default());
     let (lin, you) = (spot(DVec3::Y), spot(DVec3::Z));
     let given = vec![(PlayerId(1), to_wire(&lin)), (PlayerId(3), to_wire(&you))];
     hear(&mut app, welcome(given));
-    let waypoints = app.world().resource::<Waypoints>();
-    assert_eq!(waypoints.me, 3);
-    assert_eq!(waypoints.friends.len(), 1);
-    assert!(waypoints.friends[&1].dir.distance(DVec3::Y) < 1e-6);
+    let places = app.world().resource::<Places>();
+    assert_eq!(places.me, 3);
+    assert_eq!(places.friends.len(), 1);
+    assert!(DVec3::from_array(places.friends[&1].dir).distance(DVec3::Y) < 1e-6);
     let about_you = ServerMsg::Waypoint {
         player: PlayerId(3),
         waypoint: Some(to_wire(&you)),
     };
     hear(&mut app, about_you);
-    assert!(!app.world().resource::<Waypoints>().friends.contains_key(&3));
+    assert!(!app.world().resource::<Places>().friends.contains_key(&3));
     let cleared = ServerMsg::Waypoint {
         player: PlayerId(1),
         waypoint: None,
     };
     hear(&mut app, cleared);
-    assert!(app.world().resource::<Waypoints>().friends.is_empty());
+    assert!(app.world().resource::<Places>().friends.is_empty());
 }

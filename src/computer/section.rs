@@ -7,6 +7,7 @@
 use bevy::prelude::*;
 use bevy::text::LetterSpacing;
 
+use super::layout::LEGEND;
 use crate::ui::{text, theme};
 
 /// The heading of a section of the side panel: its name in white spaced capitals. The section
@@ -46,4 +47,13 @@ pub fn row_node(height: f32) -> Node {
         overflow: Overflow::clip(),
         ..default()
     }
+}
+
+/// The keys of the map, in small text that wraps to the two lines the foot of the panel keeps.
+pub fn legend() -> impl Bundle {
+    let node = Node {
+        margin: UiRect::top(auto()),
+        ..default()
+    };
+    (node, text(LEGEND, theme::FONT_SMALL, theme::TEXT))
 }

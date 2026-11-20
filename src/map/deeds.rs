@@ -1,29 +1,27 @@
 //! The buttons on the card of the selected place, under its name: set the course there,
-//! engage the autopilot, clear the course, focus, set a waypoint or save it as a favourite,
-//! as the menu of a right click on the place offers them. Under the buttons, the reason the
-//! drive cannot engage, while the place is the course.
+//! engage the autopilot, clear the course. Under the buttons, the reason the drive cannot
+//! engage, while the place is the course.
 
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
-use super::menu::{Choice, Hands, Under, choices, words};
 use crate::computer::{Act, Board, Destination, RouteStatus, Target};
 use crate::ui::{Icon, Tone, column, entry, frame, text, theme};
 
 /// What a button under the card does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Deed {
-    /// A choice of the menu of a right click on the place.
-    Choice(Choice),
+    /// Set the course to the place.
+    Course,
     /// Hand the course to the autopilot.
     Engage,
     /// Forget the course.
     Clear,
 }
 
-/// Marks a button that runs a choice of the menu on a place.
+/// Marks a button that sets the course to a place.
 #[derive(Component, Debug, Clone, Copy)]
-pub struct DeedChoice(pub Choice, pub Target);
+pub struct DeedCourse(pub Target);
 
 /// Marks the row the buttons are in.
 #[derive(Component)]
@@ -34,23 +32,14 @@ pub struct Deeds;
 pub struct Reason;
 
 /// Returns the buttons of the card of `target` with the course `course` in the state
-/// `status`, in the order of the menu: setting the course while the place is not the course,
-/// and while it is, engaging the autopilot when the route is idle and clearing the course.
+/// `status`: setting the course while the place is not the course, and while it is, engaging
+/// the autopilot when the route is idle and clearing the course.
 pub fn offer(target: Target, course: Option<Target>, status: RouteStatus) -> Vec<Deed> {
-    let ours = course == Some(target);
     let engage = (status == RouteStatus::Idle).then_some(Deed::Engage);
-    let course_deeds: Vec<Deed> = match ours {
+    match course == Some(target) {
         true => engage.into_iter().chain([Deed::Clear]).collect(),
-        false => vec![Deed::Choice(Choice::Course)],
-    };
-    let each = |choice: &Choice| match choice {
-        Choice::Course => course_deeds.clone(),
-        other => vec![Deed::Choice(*other)],
-    };
-    choices(&Under::Place(target))
-        .iter()
-        .flat_map(each)
-        .collect()
+        false => vec![Deed::Course],
+    }
 }
 
 /// Returns why the drive cannot engage on the course `course` in the state `status`, in plain
@@ -62,12 +51,10 @@ pub fn reason(target: Target, course: Option<Target>, status: RouteStatus) -> St
     }
 }
 
-/// Returns the icon and the words of the button `deed` on `target`: the words of the menu,
-/// cut to one or two words so the buttons of the card fit two rows.
-pub fn named(deed: Deed, target: Target) -> (Icon, &'static str) {
+/// Returns the icon and the words of the button `deed`.
+pub fn named(deed: Deed) -> (Icon, &'static str) {
     match deed {
-        Deed::Choice(Choice::Favourite) => (Icon::Star, "Save place"),
-        Deed::Choice(choice) => words(choice, &Under::Place(target)),
+        Deed::Course => (Icon::Send, "Set course"),
         Deed::Engage => (Icon::Play, "Engage"),
         Deed::Clear => (Icon::Close, "Clear"),
     }
@@ -93,9 +80,9 @@ pub fn deeds() -> impl Bundle {
 }
 
 /// Spawns the button `deed` on `target` under `row`. Engaging and clearing run the acts of the
-/// computer, as their keys do; the others run the choice of the menu.
+/// computer, as their keys do; setting the course does it for the place of the card.
 fn spawn(row: &mut ChildSpawnerCommands, deed: Deed, target: Target) {
-    let (icon, said) = named(deed, target);
+    let (icon, said) = named(deed);
     let node = Node {
         align_items: AlignItems::Center,
         padding: UiRect::horizontal(px(theme::GAP_XS)),
@@ -104,7 +91,7 @@ fn spawn(row: &mut ChildSpawnerCommands, deed: Deed, target: Target) {
     let shown = entry(icon, said, theme::FONT_SMALL, Tone::Plain);
     let mut button = row.spawn((frame(), node, children![shown]));
     match deed {
-        Deed::Choice(choice) => button.insert(DeedChoice(choice, target)),
+        Deed::Course => button.insert(DeedCourse(target)),
         Deed::Engage => button.insert(Act::Engage),
         Deed::Clear => button.insert(Act::Clear),
     };
@@ -148,9 +135,13 @@ pub(super) fn write(
     *last = now;
 }
 
-/// Runs the choice of the menu a button under the card stands for, on its place.
-pub(super) fn on_press(event: On<Activate>, buttons: Query<&DeedChoice>, mut hands: Hands) {
-    if let Ok(DeedChoice(choice, target)) = buttons.get(event.entity) {
-        hands.run(*choice, Under::Place(*target));
+/// Sets the course to the place of the card whose button was pressed.
+pub(super) fn on_press(
+    event: On<Activate>,
+    buttons: Query<&DeedCourse>,
+    mut destination: ResMut<Destination>,
+) {
+    if let Ok(DeedCourse(target)) = buttons.get(event.entity) {
+        destination.0 = Some(*target);
     }
 }

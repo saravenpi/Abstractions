@@ -117,7 +117,7 @@ pub use format::{distance, gravity};
 pub use hand::{Hand, to_map, turn};
 pub use home::{arranged, beacon, homes, homeward, pinned, tab_of, toward};
 pub use labels::{keep, priority, room, scale_bar};
-pub use layout::{GLYPH, LIST_ROW, ROOM, clear_of_bands};
+pub use layout::{GLYPH, LIST_ROW, PIN_FOOT, ROOM, clear_of_bands};
 pub use lens::{Lens, MAX_ZOOM};
 pub use locate::{SYSTEM_REACH, here, ship_position, target_position, whereabouts};
 pub use map::{ChartLayer, Field, SIZE, Sheet, body, field, frame, name, ring, ship, spot};
@@ -137,7 +137,7 @@ pub use sift::Sort;
 pub use tab::Tab;
 pub use track::Known;
 pub use typing::Typing;
-pub use view::{Area, PANEL, SearchBox, Slot};
+pub use view::{Area, SearchBox, Slot};
 pub use words::temperature;
 
 use bevy::prelude::*;

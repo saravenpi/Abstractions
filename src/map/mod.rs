@@ -4,12 +4,13 @@
 //! - [`explored`] keeps the ground each body has had uncovered and shares it on a server.
 //! - [`raster`] paints the flat coloured picture of a body, black where nobody has been.
 //! - The levels: the flat map of a planet, then the charts of the board computer for a
-//!   system, a galaxy and the universe, one at a time. A double click goes into a place, Back
-//!   comes out of it, and each fades in.
-//! - The markers: the player, friends, waypoints, favourites, home and the ship.
-//! - The side panel lists the favourites and the players beside the search of the computer,
-//!   and puts the buttons of what can be done with the selected place under its card.
-//! - A right click opens a menu of what can be done with what is under the pointer.
+//!   system, a galaxy and the universe, one at a time. A double click goes into a place, the
+//!   path over the map comes out of it, and each fades in.
+//! - The markers: the player, friends, pins, home and the ship, each drawn as its icon.
+//! - The pins: [`Places`] keeps up to eight. The pin key drops one at the feet or removes the
+//!   one within ten metres, and a right click on the ground of the map drops one there.
+//! - The side panel lists the pins and the players beside the search of the computer, and puts
+//!   the buttons of the selected pin and the keys of the map under them.
 
 pub mod explored;
 pub mod palette;
@@ -21,7 +22,6 @@ mod deeds;
 #[cfg(test)]
 mod deeds_tests;
 mod fade;
-mod favourite;
 mod geo;
 #[cfg(test)]
 mod geo_tests;
@@ -29,10 +29,10 @@ mod glance;
 mod level;
 mod link;
 mod me;
-mod menu;
 mod nav;
 mod pins;
 mod pins_draw;
+mod places;
 mod planet;
 mod roam;
 mod side;
@@ -44,22 +44,19 @@ mod spots;
 mod surface;
 #[cfg(test)]
 mod tests;
-mod waypoint;
 
 pub use caption::{caption, coords};
 pub use deeds::{Deed, deeds, named, offer, reason};
 pub use fade::veil;
-pub use favourite::Favourites;
 pub use geo::{coords as place_words, from_chart, lat_lon, to_chart};
 pub use level::{Level, charting, on_planet};
-pub use link::{from_wire, marks_of, marks_text, to_wire};
-pub use menu::{Choice, ContextMenu, Opened, Under, choices, words};
+pub use link::{WaypointChanged, from_wire, marks_of, marks_text, to_wire};
 pub use nav::{Place, Stop, Trail, path};
 pub use pins::pin_layer;
+pub use places::Places;
 pub use planet::planet_layer;
-pub use side::{FAVOURITES, PLAYERS, favourites, players};
+pub use side::{PINS, PLAYERS, pins, players};
 pub use surface::Surface;
-pub use waypoint::{Waypoint, WaypointChanged, Waypoints, toggle};
 
 use bevy::prelude::*;
 
@@ -78,6 +75,8 @@ fn planet_systems() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSyste
     (
         glance::aim,
         glance::press,
+        glance::drop_click,
+        glance::pick,
         glance::wheel,
         glance::recentre,
         glance::coast,
@@ -89,16 +88,16 @@ fn planet_systems() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSyste
 }
 
 /// Registers the systems of the open screen: the flat map of a planet, the way between the
-/// levels, the menu of a right click, the markers, the side panel and the fade.
+/// levels, the markers, the side panel and the fade.
 fn screen(app: &mut App) {
     let shown = (
         surface::enter.run_if(resource_changed::<Level>),
         planet_systems(),
-        (nav::systems(), menu::systems()),
+        nav::systems(),
         (pins::collect, pins_draw::draw),
         (planet::show, planet::picture),
         (caption::caption_text, caption::coords_text),
-        (side_show::write, side_show::save_words, deeds::write),
+        (side_show::write, deeds::write),
         fade::fade,
     );
     let after = (MarkerSet::Show, crate::computer::Input);
@@ -116,8 +115,7 @@ fn resources(app: &mut App) {
     app.init_resource::<Level>()
         .init_resource::<Surface>()
         .init_resource::<pins::Pins>()
-        .init_resource::<Waypoints>()
-        .init_resource::<Favourites>()
+        .init_resource::<Places>()
         .add_message::<WaypointChanged>();
 }
 
@@ -126,8 +124,7 @@ pub(super) fn plugin(app: &mut App) {
     let parts = (
         explored::plugin,
         raster::plugin,
-        waypoint::plugin,
-        menu::plugin,
+        places::plugin,
         nav::plugin,
         screen,
     );
@@ -136,18 +133,20 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(
             Update,
             (
-                (favourite::load, favourite::store).chain(),
-                (waypoint::fill, favourite::fill).in_set(MarkerSet::Fill),
-                waypoint::drop_key.run_if(playing),
-                favourite::name_keys.run_if(open),
+                (places::load, places::store).chain(),
+                places::fill.in_set(MarkerSet::Fill),
+                places::drop_key.run_if(playing),
+                places::arrive.run_if(playing).run_if(places::leading),
+                (places::name_keys, side_act::pin_keys).chain().run_if(open),
                 action::engage.run_if(in_control),
+                places::announce,
             ),
         )
         .add_systems(
             Update,
             (
                 link::receive.after(Receive),
-                link::send.after(waypoint::drop_key),
+                link::send.after(places::announce),
             )
                 .run_if(resource_exists::<Link>),
         );

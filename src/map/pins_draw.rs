@@ -1,68 +1,78 @@
-//! Drawing the pool of markers: each node moved to its pixel and dressed for what it stands
-//! for, the rest hidden. A name that would cross a marker or a name drawn before it is left
-//! out, so names stay readable where markers crowd. Only what changed is written.
+//! Drawing the pool of markers: each node moved to its pixel and dressed as the icon of what it
+//! stands for, the rest hidden. The point of a pin is the tip of its glyph. A name that would
+//! cross a marker or a name drawn before it is left out, so names stay readable where markers
+//! crowd, but the selected and the hovered marker always show theirs. Only what changed is
+//! written.
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::level::Level;
-use super::pins::{DOT, POOL, PinDot, PinLabel, PinSlot, Pins, pixel};
+use super::pins::{DOT, GLYPH_SIZE, NAME_GAP, POOL, PinDot, PinLabel, PinSlot, Pins, pixel};
 use super::surface::Surface;
 use crate::computer::{GLYPH, clear_of_bands};
 use crate::computer::{MapView, SIZE};
 use crate::menus::{Marker, MarkerKind, Markers};
-use crate::ui::theme;
+use crate::ui::{ICON_FONT, Icon, theme};
 
-/// How many times larger the selected marker of a planet is drawn.
-pub const CHOSEN: f32 = 1.75;
+/// How many times larger the selected marker of a planet is drawn: 24 pixels against 16.
+pub const CHOSEN: f32 = 1.5;
 
-/// The look of one marker: its fill, its turn and its name. Markers have no outline.
+/// The look of one marker: its icon, its colour and its name. Markers have no outline and no
+/// fill behind the icon.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Dress<'a> {
-    /// Colour inside the dot.
+    /// The icon.
+    pub icon: Icon,
+    /// Colour of the icon.
     pub fill: Color,
-    /// Turn of the dot in radians: a waypoint is a square on its corner.
-    pub turn: f32,
     /// The name written beside it.
     pub name: &'a str,
 }
 
-/// Returns how a marker of `kind` is drawn: in its own colour or white, grey or bright,
-/// and turned onto its corner, with the name it has without a label.
-pub fn shape(kind: MarkerKind) -> (bool, bool, f32, &'static str) {
+/// Returns the icon of a marker of `kind` and the name it has without a label.
+pub fn shape(kind: MarkerKind) -> (Icon, &'static str) {
     match kind {
-        MarkerKind::Friend => (true, false, 0.0, "Player"),
-        MarkerKind::Waypoint => (true, false, std::f32::consts::FRAC_PI_4, "Waypoint"),
-        MarkerKind::Favourite => (false, true, 0.0, "Favourite"),
-        MarkerKind::Home => (false, false, 0.0, "Home"),
-        MarkerKind::Ship => (false, true, 0.0, "Ship"),
-        MarkerKind::Herd => (true, false, 0.0, "Herd"),
+        MarkerKind::Friend => (Icon::User, "Player"),
+        MarkerKind::Waypoint | MarkerKind::Favourite => (Icon::MapPin, "Pin"),
+        MarkerKind::Home => (Icon::Home, "Home"),
+        MarkerKind::Ship => (Icon::ShipParked, "Ship"),
+        MarkerKind::Herd => (Icon::Animal, "Herd"),
     }
 }
 
-/// Returns the look of `marker`, or of the player for nothing: the player white, a friend and a
-/// waypoint in their colour, a favourite and the ship grey squares, home white.
+/// Returns the look of `marker`, or of the player for nothing: the player, home and the ship
+/// white, every other marker in its own colour, which a pin has in the pin colour.
 pub fn dress(marker: Option<&Marker>) -> Dress<'_> {
     let Some(marker) = marker else {
-        let white = (false, false, 0.0, "You");
-        return look(white, Color::WHITE, "");
+        return Dress {
+            icon: Icon::User,
+            fill: theme::TEXT,
+            name: "You",
+        };
     };
-    look(shape(marker.kind), marker.color, &marker.label)
+    let (icon, name) = shape(marker.kind);
+    let plain = matches!(marker.kind, MarkerKind::Home | MarkerKind::Ship);
+    Dress {
+        icon,
+        fill: [marker.color, theme::TEXT][usize::from(plain)],
+        name: if marker.label.is_empty() {
+            name
+        } else {
+            &marker.label
+        },
+    }
 }
 
-/// Returns the look of a marker drawn as `shape` says, in `color` when it has its own, named
-/// `label` or the name of its shape.
-fn look<'a>(
-    (own, grey, turn, name): (bool, bool, f32, &'static str),
-    color: Color,
-    label: &'a str,
-) -> Dress<'a> {
-    let tint = [theme::TEXT, color][usize::from(own)];
-    Dress {
-        fill: [tint, theme::TEXT_2][usize::from(grey)],
-        turn,
-        name: [label, name][usize::from(label.is_empty())],
-    }
+/// Returns `icon` as a glyph of the icon font `size` pixels high in `color`, which no node
+/// stands behind.
+pub fn glyph(icon: Icon, size: f32, color: Color) -> impl Bundle {
+    (
+        Text::new(icon.glyph()),
+        TextFont::from_font_size(size).with_font(ICON_FONT),
+        TextColor(color),
+        TextLayout::no_wrap(),
+    )
 }
 
 /// Where a marker is drawn, in pixels of the map, and how many characters its name has.
@@ -74,7 +84,7 @@ pub type Spot = Option<(Vec2, usize)>;
 pub fn named(spots: &[Spot; POOL], side: f32) -> [bool; POOL] {
     let dot = |at: Vec2| Rect::from_center_size(at, Vec2::splat(DOT));
     let name = |(at, chars): (Vec2, usize)| {
-        let corner = at + Vec2::new(DOT, -0.6 * theme::FONT_SMALL);
+        let corner = at + Vec2::new(NAME_GAP, -0.6 * theme::FONT_SMALL);
         let size = Vec2::new(chars as f32 * GLYPH, theme::FONT_SMALL * 1.2);
         Rect::from_corners(corner, corner + size)
     };
@@ -98,18 +108,20 @@ pub fn named(spots: &[Spot; POOL], side: f32) -> [bool; POOL] {
 pub struct Pool<'w, 's> {
     /// The nodes moved to the markers.
     slots: Query<'w, 's, (&'static PinSlot, &'static mut Node)>,
-    /// Their dots.
+    /// Their icons.
     dots: Query<
         'w,
         's,
         (
             &'static PinDot,
-            &'static mut BackgroundColor,
+            &'static mut Text,
+            &'static mut TextColor,
             &'static mut UiTransform,
         ),
+        Without<PinLabel>,
     >,
     /// Their names.
-    labels: Query<'w, 's, (&'static PinLabel, &'static mut Text)>,
+    labels: Query<'w, 's, (&'static PinLabel, &'static mut Text), Without<PinDot>>,
 }
 
 /// Moves each node of the pool to its marker and hides the nodes left over.
@@ -127,24 +139,30 @@ fn moved(pool: &mut Pool, wanted: impl Fn(usize) -> Option<Vec2>) {
     }
 }
 
-/// Fills, turns and sizes the dot of each node of the pool as `look` says, the node `chosen`
-/// larger than the others.
+/// Sets the icon and the colour of the dot of each node of the pool as `look` says, and sizes
+/// it, the node `chosen` larger than the others. A pin is lifted so that its tip, not its
+/// middle, is on its point.
 fn paint<'a>(pool: &mut Pool, look: &impl Fn(usize) -> Option<Dress<'a>>, chosen: Option<usize>) {
-    for (PinDot(index), mut fill, mut turn) in &mut pool.dots {
+    for (PinDot(index), mut face, mut color, mut place) in &mut pool.dots {
         let Some(dress) = look(*index) else {
             continue;
         };
-        fill.set_if_neq(BackgroundColor(dress.fill));
-        let rotation = Rot2::radians(dress.turn);
-        let scale = Vec2::splat([1.0, CHOSEN][usize::from(chosen == Some(*index))]);
-        if (turn.rotation, turn.scale) != (rotation, scale) {
-            (turn.rotation, turn.scale) = (rotation, scale);
-        }
+        face.set_if_neq(Text(dress.icon.glyph()));
+        color.set_if_neq(TextColor(dress.fill));
+        let scale = [1.0, CHOSEN][usize::from(chosen == Some(*index))];
+        let lift = [0.0, 0.5 * GLYPH_SIZE * scale][usize::from(dress.icon == Icon::MapPin)];
+        let wanted = UiTransform {
+            translation: Val2::px(0.0, -lift),
+            scale: Vec2::splat(scale),
+            rotation: Rot2::IDENTITY,
+        };
+        place.set_if_neq(wanted);
     }
 }
 
-/// Draws every marker of [`Pins`] on the level shown, with the names [`named`] keeps. The
-/// selected marker of a planet is drawn larger.
+/// Draws every marker of [`Pins`] on the level shown, with the names [`named`] keeps, and the
+/// name of the selected and of the hovered marker besides. The selected marker of a planet is
+/// drawn larger.
 pub(super) fn draw(
     (pins, markers, level): (Res<Pins>, Res<Markers>, Res<Level>),
     (surface, view): (Res<Surface>, Res<MapView>),
@@ -162,11 +180,13 @@ pub(super) fn draw(
         look(index).map(|dress| (at, dress.name.chars().count()))
     });
     let shown = named(&spots, side);
-    let chosen = surface.chosen.filter(|_| *level != Level::Chart);
+    let flat = |pick: Option<usize>| pick.filter(|_| *level != Level::Chart);
+    let (chosen, hover) = (flat(surface.chosen), flat(surface.hover));
     moved(&mut pool, |index| spots[index].map(|(at, _)| at));
     paint(&mut pool, &look, chosen);
     for (PinLabel(index), mut text) in &mut pool.labels {
-        let wanted = look(*index).map(|dress| ["", dress.name][usize::from(shown[*index])]);
+        let lit = shown[*index] || chosen == Some(*index) || hover == Some(*index);
+        let wanted = look(*index).map(|dress| ["", dress.name][usize::from(lit)]);
         if let Some(name) = wanted.filter(|name| text.0 != *name) {
             text.0 = name.to_string();
         }

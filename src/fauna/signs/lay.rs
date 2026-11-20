@@ -103,10 +103,17 @@ fn draw(l: &mut Lay, spot: Spot, heights: &Heights) {
     }
     let terrain = &l.terrain;
     let ground = |xz: Vec2| spot.ground_by(terrain, xz, |x, z| heights.mesh(terrain, x, z));
+    let life = terrain.globe().life();
+    let blood = |species: u16, fresh: f32| {
+        let species = life.and_then(|l| Some((l, l.species.get(usize::from(species))?)));
+        let blood = species.and_then(|(l, s)| crate::life::blood::species(l, s));
+        blood.map_or([0.0; 3], |b| b.stain(fresh))
+    };
     let canvas = Canvas {
         spot,
         radius: terrain.globe().radius(),
         ground: &ground,
+        blood: &blood,
     };
     if let Some(mut mesh) = l.meshes.get_mut(&handle) {
         paint(&mut mesh, &l.trail.signs, &canvas);

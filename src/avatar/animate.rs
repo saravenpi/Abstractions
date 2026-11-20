@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 use super::blend::{Weights, asked, blended};
 use super::clock::Clock;
+use super::hurt::Reel;
 use super::hurt::limp::{limp, on_feet};
 use super::neck::Neck;
 use super::own::Own;
@@ -129,15 +130,16 @@ pub fn animate(
         &mut Anim,
         &AvatarPose,
         &Skeleton,
-        (Option<&Layer>, Option<&Wounded>),
+        (Option<&Layer>, Option<&Wounded>, Option<&Reel>),
     )>,
     mut bones: Query<&mut Transform, With<Bone>>,
 ) {
     let dt = time.delta_secs().min(MAX_DT);
     let mine = own.body().map(|(_, body)| body);
-    for (body, mut anim, input, skeleton, (layer, wounded)) in &mut bodies {
+    for (body, mut anim, input, skeleton, (layer, wounded, reel)) in &mut bodies {
         let pose = anim.step(input, dt);
         anim.pose = layer.map_or(pose, |layer| layer.apply(pose));
+        anim.pose = reel.map_or(anim.pose, |reel| reel.apply(anim.pose));
         let own = hurt.as_deref().filter(|_| mine == Some(body));
         let hurt = wounded.map(|wounded| &wounded.0).or(own);
         if let Some(hurt) = hurt.filter(|_| on_feet(input.mode)) {

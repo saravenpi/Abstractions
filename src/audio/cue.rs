@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use super::call::Call;
+use super::hit::HitSound;
 
 /// What the robot the player controls is walking on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -68,6 +69,8 @@ pub enum AudioCue {
     Call(Call),
     /// One pulse of the boot water pump. The strength runs from 0 (idle) to 1 (full spool).
     Pump(f32),
+    /// A blow, a glance or a swing, placed for the listener.
+    Hit(HitSound),
 }
 
 /// Every surface, in code order.
@@ -127,6 +130,7 @@ impl AudioCue {
             AudioCue::Thunder(level) => (10, (level.clamp(0.0, 1.0) * STRENGTH_STEPS) as u32),
             AudioCue::Call(call) => (11, call.pack()),
             AudioCue::Pump(strength) => (12, (strength.clamp(0.0, 1.0) * STRENGTH_STEPS) as u32),
+            AudioCue::Hit(sound) => (13, sound.pack()),
         };
         kind | (arg << 8)
     }
@@ -147,6 +151,7 @@ impl AudioCue {
             10 => Some(AudioCue::Thunder(arg as f32 / STRENGTH_STEPS)),
             11 => Call::unpack(arg as u32).map(AudioCue::Call),
             12 => Some(AudioCue::Pump(arg as f32 / STRENGTH_STEPS)),
+            13 => HitSound::unpack(arg as u32).map(AudioCue::Hit),
             _ => None,
         }
     }

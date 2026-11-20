@@ -10,6 +10,7 @@ mod cue;
 mod cues;
 mod dsp;
 mod feed;
+mod hit;
 mod mix;
 mod music;
 mod planet;
@@ -30,6 +31,7 @@ mod tests;
 pub use call::Call;
 pub use cue::{AudioCue, ChirpKind, StepSurface};
 pub(crate) use dsp::rand::Rand;
+pub use hit::{Body, Impact, Outer, Whoosh};
 pub use scene::{AudioScene, altitude_fade};
 
 use bevy::audio::AddAudioSource;
@@ -48,6 +50,7 @@ pub(super) fn plugin(app: &mut App) {
         .add_audio_source::<source::Synth>()
         .add_plugins((
             feed::plugin,
+            hit::plugin,
             sense::plugin,
             sky::plugin,
             steps::plugin,

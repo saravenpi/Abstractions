@@ -4,6 +4,7 @@
 //! and `bevy::math` only, so the same universe seed always gives the same life on every machine.
 //! Systems that draw and move creatures live in `crate::fauna`.
 
+pub mod blood;
 pub mod body;
 pub mod census;
 pub mod chem;

@@ -2,6 +2,7 @@
 
 pub(super) mod calls;
 mod chirps;
+mod hits;
 pub(super) mod sounds;
 mod steps;
 pub(super) mod voice;
@@ -11,6 +12,7 @@ use voice::Voice;
 use super::call::Call;
 use super::cue::AudioCue;
 use super::dsp::rand::Rand;
+use super::hit::HitSound;
 use super::shore::stereo;
 
 /// Blips that can sound at once. A cue that finds no free voice loses the blips that do not fit.
@@ -18,6 +20,10 @@ const VOICES: usize = 16;
 
 /// Voices a call of an animal leaves free for every other cue.
 const CALL_SPARE: usize = 6;
+
+/// Voices a blow leaves free for every other cue: with 16 voices, blows hold 10 at most, about three
+/// of them at once.
+const HIT_SPARE: usize = 6;
 
 /// Seed of the small variations between two plays of the same cue.
 const VARIATION_SEED: u64 = 0x5EED_C0E5;
@@ -54,8 +60,10 @@ impl Pool {
 
     /// Starts every blip of `cue` on free voices.
     pub fn play(&mut self, cue: AudioCue) {
-        if let AudioCue::Call(call) = cue {
-            return self.call(call);
+        match cue {
+            AudioCue::Call(call) => return self.call(call),
+            AudioCue::Hit(sound) => return self.hit(sound),
+            _ => {}
         }
         let (blips, pitch, gain) = sounds::recipe(cue, &mut self.rand);
         let free = self.voices.iter_mut().filter(|voice| voice.idle());
@@ -78,6 +86,22 @@ impl Pool {
             return;
         }
         let sides = stereo(call.side, call.near);
+        let idle = self.voices.iter_mut().filter(|voice| voice.idle());
+        for (voice, blip) in idle.zip(&blips[..count]) {
+            voice.start(*blip, 1.0, 1.0, self.rate);
+            voice.sides = sides;
+        }
+    }
+
+    /// Starts the blips of a blow or a swing from where it is, only when [`HIT_SPARE`] voices stay free
+    /// for the rest: at most three blips for a blow.
+    fn hit(&mut self, sound: HitSound) {
+        let (blips, count) = hits::hit(&sound, &mut self.rand);
+        let free = self.voices.iter().filter(|voice| voice.idle()).count();
+        if free < count + HIT_SPARE {
+            return;
+        }
+        let sides = stereo(sound.side, sound.near);
         let idle = self.voices.iter_mut().filter(|voice| voice.idle());
         for (voice, blip) in idle.zip(&blips[..count]) {
             voice.start(*blip, 1.0, 1.0, self.rate);

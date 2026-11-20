@@ -9,6 +9,7 @@
 
 mod attack;
 mod beast;
+mod bleed;
 mod fade;
 mod gate;
 mod glow;
@@ -111,6 +112,6 @@ pub(super) fn plugin(app: &mut App) {
                 .chain()
                 .after(crate::effects::Sight),
         )
-        .add_plugins((senses::plugin, signs::plugin, attack::plugin));
+        .add_plugins((senses::plugin, signs::plugin, attack::plugin, bleed::plugin));
     app.add_plugins(guide::plugin);
 }

@@ -32,6 +32,7 @@ const FIELDS: [Field; 21] = [
     Field::CheckUpdates,
     Field::Hitstop,
     Field::WorldMarkers,
+    Field::Blood,
 ];
 
 /// Keys with long names, among them the widest ones a keyboard has.

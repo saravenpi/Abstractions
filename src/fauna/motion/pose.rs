@@ -34,7 +34,8 @@ impl Motion {
     /// all in the local frame. `body` must be the body the motion was made for.
     pub fn pose(&self, body: &Body) -> Vec<Placed> {
         let raise = self.sung().map_or(0.0, |s| s.raise(body.height));
-        let root = (self.root.place + Vec3::Y * raise, self.root.turn);
+        let held = (self.root.place + Vec3::Y * raise, self.root.turn);
+        let root = self.brace.placed(held, body.height);
         let mut placed: Vec<Placed> = Vec::with_capacity(body.parts.len());
         let mut stack = [[Vec3::ZERO; 4]; ON_STACK];
         let mut heap = Vec::new();

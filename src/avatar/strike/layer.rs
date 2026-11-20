@@ -78,7 +78,9 @@ pub fn posed(strike: &Strike, held: &Held) -> Key {
     key(
         strike.act,
         &path,
-        &Timing::of(held, &path).felt(&strike.hurt),
+        &Timing::of(held, &path)
+            .felt(&strike.hurt)
+            .braked(strike.result),
         strike.dir,
     )
 }

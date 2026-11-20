@@ -40,6 +40,8 @@ fn a_blow_hurts_the_part_it_struck() {
             at: Vec3::ZERO,
             joules: 300.0,
             cut,
+            dir: Vec3::Z,
+            momentum: 0.0,
         });
         app.update();
     }

@@ -7,9 +7,13 @@ use bevy::math::{Vec2, Vec3Swizzles};
 use bevy::prelude::*;
 
 use super::Dead;
+use super::brace::hold;
+use super::foe::{Foe, foe_of};
 use super::kinds::Kind;
+use super::ring::heard;
 use super::timing::{Attacking, joules};
 use super::tune::{SLACK, SPREAD, STRIKE};
+use crate::audio::Impact;
 use crate::avatar::blow::Blow;
 use crate::fauna::beast::Beast;
 use crate::fauna::senses::Stance;
@@ -29,14 +33,7 @@ pub struct Fight<'w, 's> {
     anchor: Res<'w, Anchor>,
     robot: Query<'w, 's, &'static Transform, With<Player>>,
     blows: MessageWriter<'w, Blow>,
-}
-
-/// The robot an animal fights: its place in the frame of the animal and in render space.
-#[derive(Clone, Copy)]
-struct Foe {
-    local: Vec3,
-    render: Vec3,
-    up: Vec3,
+    sounds: MessageWriter<'w, Impact>,
 }
 
 /// Returns how far the target lies in the horizontal plane of `beast` and the unit way it faces.
@@ -82,6 +79,8 @@ fn landing(kind: Kind, species: &Species, foe: &Foe) -> Blow {
         at: foe.render + foe.up * lift,
         joules: joules(kind, species.history.mass, speed),
         cut: kind.cuts(),
+        dir: foe.away,
+        momentum: species.history.mass * kind.share() * speed,
     }
 }
 
@@ -116,7 +115,7 @@ fn advance(
     (beast, attack): (&mut Beast, &mut Attacking),
     species: &Species,
     (foe, dt): (&Foe, f32),
-    blows: &mut MessageWriter<Blow>,
+    (blows, sounds): (&mut MessageWriter<Blow>, &mut MessageWriter<Impact>),
 ) {
     attack.t += dt;
     if !attack.striking() {
@@ -129,7 +128,9 @@ fn advance(
     }
     if !attack.struck && reaches(attack.kind, (beast, species), foe) {
         attack.struck = true;
-        blows.write(landing(attack.kind, species, foe));
+        let blow = landing(attack.kind, species, foe);
+        sounds.write(heard(attack.kind, species, &blow));
+        blows.write(blow);
     }
 }
 
@@ -148,19 +149,22 @@ pub fn attack(
         let Some(species) = life.species.get(usize::from(beast.index)) else {
             continue;
         };
-        let foe = Foe {
-            local: beast.spot.local(here),
-            render: robot.translation,
-            up: robot.up().as_vec3(),
-        };
+        let foe = foe_of(&f.anchor, &beast, (robot, here));
+        let length = species.body.length;
         match going {
             Some(a) if a.over() => {
                 f.commands.entity(entity).remove::<Attacking>();
+                hold(&mut beast, None, length);
             }
             Some(mut a) => {
-                advance((&mut *beast, &mut *a), species, (&foe, dt), &mut f.blows);
+                let out = (&mut f.blows, &mut f.sounds);
+                advance((&mut *beast, &mut *a), species, (&foe, dt), out);
+                hold(&mut beast, Some(&a), length);
             }
-            None => open(&mut f.commands, (entity, &*beast), species, &foe, gravity),
+            None => {
+                hold(&mut beast, None, length);
+                open(&mut f.commands, (entity, &*beast), species, &foe, gravity);
+            }
         }
     }
 }

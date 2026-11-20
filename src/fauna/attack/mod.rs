@@ -8,7 +8,9 @@
 //! ([`pounce`]).
 
 mod anatomy;
+mod brace;
 mod carve;
+mod foe;
 mod fracture;
 mod gesture;
 mod harm;
@@ -16,13 +18,17 @@ mod kinds;
 mod limbs;
 mod pounce;
 mod raise;
+mod ring;
 mod slay;
 mod slump;
+mod startle;
 mod timing;
 pub mod tune;
 
 #[cfg(test)]
 mod tests_attack;
+#[cfg(test)]
+mod tests_brace;
 #[cfg(test)]
 mod tests_harm;
 #[cfg(test)]
@@ -30,7 +36,7 @@ mod tests_limbs;
 
 use bevy::prelude::*;
 
-pub use harm::Dead;
+pub use harm::{Dead, harm};
 pub use limbs::Broken;
 pub use slay::{Carved, slay};
 
@@ -61,6 +67,7 @@ pub(super) fn plugin(app: &mut App) {
                 .after(walk)
                 .run_if(any_with_component::<slump::Slump>),
             carve::carve.run_if(in_control),
+            startle::startle.run_if(on_message::<crate::avatar::strike::Missed>),
         )
             .run_if(playing),
     );

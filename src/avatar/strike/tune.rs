@@ -23,8 +23,24 @@ pub const LIGHT: f32 = 0.5;
 /// Share of the mass in the head above which a build chops or smashes overhead, unitless.
 pub const HEAVY_HEAD: f32 = 0.6;
 
-/// Seconds from the end of a swing back to carrying the tool.
+/// Least seconds from the end of a swing back to carrying the tool.
 pub const RECOVER: f32 = 0.25;
+
+/// Share of its wind-up that the arm takes to stop the tool after a swing, unitless: the arm that
+/// gave the tool its speed in the wind-up takes as long to take it away, so a heavy or badly held
+/// tool recovers slowly.
+pub const BRAKE: f32 = 0.8;
+
+/// Most the head carries on past the follow-through, in shares of the path, for a tool of great
+/// inertia.
+pub const OVERSHOOT: f32 = 0.2;
+
+/// Moment of inertia about the hand at which a tool carries on half of [`OVERSHOOT`], in kg·m².
+pub const COAST: f32 = 0.1;
+
+/// Share of the path by which the chest leads the arm in a swing, unitless: hips and chest start the
+/// blow and the arm follows.
+pub const LEAD: f32 = 0.15;
 
 /// Seconds to raise the guard.
 pub const GUARD_IN: f32 = 0.1;
@@ -66,8 +82,17 @@ pub const STOP_FPS: f32 = 60.0;
 /// Shake of the struck animal at the start of a hitstop, in metres; it falls to 0 by its end.
 pub const SHAKE: f32 = 0.03;
 
+/// Kick of the camera along the blow at the start of a hitstop that involves the local robot, in
+/// metres, for a blow of average energy; the hitstop scales it from half to twice that and it falls
+/// to nothing by the end.
+pub const CAMERA_KICK: f32 = 0.02;
+
 /// Shake of the camera at the start of a hitstop that involves the local robot, in metres.
 pub const CAMERA_SHAKE: f32 = 0.012;
+
+/// Stiffness in gigapascals and mass in kilograms of the ground a spear lands in, for its sound: a
+/// loose soil, our estimate.
+pub const GROUND: (f32, f32) = (0.05, 500.0);
 
 /// Pressure soil puts against a point driven into it, in pascals.
 pub const SOIL: f32 = 1.0e6;
@@ -93,3 +118,43 @@ pub const PULL: f32 = 3.0;
 /// How much longer a tool made for two hands takes to wind up in one hand, unitless: the grip
 /// budget falls from 30 to 15 newton metres.
 pub const ONE_HAND: f32 = 2.0;
+
+/// Tip speed relative to the body, in metres per second, above which the tool leaves a trail: a tool
+/// carried or raised moves the tip slower than this, a swing or a thrust faster. The trail glows
+/// from nothing at this speed to full at twice it.
+pub const TRAIL_SPEED: f32 = 3.0;
+
+/// Seconds a point of the trail of a tool lasts before it has faded.
+pub const TRAIL_LIFE: f32 = 0.15;
+
+/// Opacity of the trail at its brightest, unitless.
+pub const TRAIL_PEAK: f32 = 0.5;
+
+/// Share of the colour of the tool head in the trail, unitless; the rest is white.
+pub const TRAIL_TINT: f32 = 0.25;
+
+/// Share of the surface normal under which a blow counts as glancing: the cosine of the angle between
+/// the way the tool moves and the normal of what it hits. Under 0.35 (past about 70 degrees) the tool
+/// slides along the surface instead of biting.
+pub const GLANCE: f32 = 0.35;
+
+/// How much longer the recovery takes after a swing that met nothing: no target braked the tool, so
+/// the arm has to, unitless.
+pub const MISS_RECOVER: f32 = 1.5;
+
+/// Share of the path a tool rebounds along after a blunt blow that the body took, for the most
+/// elastic contact, unitless.
+pub const REBOUND: f32 = 0.15;
+
+/// Restitution of the stiffest contact, unitless: two bodies of infinite stiffness bounce this much.
+pub const BOUNCE: f32 = 0.6;
+
+/// Contact stiffness in gigapascals at which the restitution is half of [`BOUNCE`].
+pub const BOUNCE_HALF: f32 = 5.0;
+
+/// Metres from the tip at which a swing that met nothing is seen and heard by an animal.
+pub const MISS_RANGE: f32 = 4.0;
+
+/// Awareness, 0 to 1, that a swing that passes at the tip adds to an animal: it falls to nothing at
+/// [`MISS_RANGE`].
+pub const MISS_ALERT: f32 = 0.5;

@@ -80,6 +80,7 @@ impl Timing {
             windup: self.windup * hurt.grip() / arm,
             swing: self.swing / arm,
             recover: self.recover / hurt.recover.max(f32::EPSILON),
+            ..self
         }
     }
 }

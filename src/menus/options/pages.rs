@@ -87,6 +87,7 @@ pub fn general(active: Tab) -> impl Bundle {
             toggle("Check for updates at launch", Field::CheckUpdates),
             stepper("Hitstop", Field::Hitstop),
             toggle("Markers over the world", Field::WorldMarkers),
+            toggle("Blood", Field::Blood),
         ],
     )
 }

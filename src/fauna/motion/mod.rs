@@ -3,6 +3,7 @@
 //! Pure: plain data and `bevy::math`, no ECS. The runtime keeps one [`Motion`] per individual,
 //! steps it with a [`Drive`] and the ground height, and copies [`Motion::pose`] onto the parts.
 
+pub mod brace;
 pub mod chain;
 pub mod feet;
 pub mod frame;

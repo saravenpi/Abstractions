@@ -3,9 +3,9 @@
 
 use bevy::prelude::*;
 
-use super::act::{Act, Ask, Strike, Timing, next};
+use super::act::{Act, Ask, Strike, Timing, key, next};
 use super::dir::{Dir, Strokes};
-use super::held::Style;
+use super::held::{Held, Style};
 use super::path::Path;
 use super::stage::{blade, club, knife, spear};
 use super::tune::{DRAW, PARRY, PARRY_LIGHT, RECOVER};
@@ -45,7 +45,7 @@ fn a_swing_follows_the_build() {
     assert!(matches!(act, Act::Swing(_)), "{act:?}");
     let (act, _) = run(act, &rest, &timing, false, timing.swing + FRAME);
     assert!(matches!(act, Act::Recover(_)), "{act:?}");
-    let (act, _) = run(act, &rest, &timing, false, RECOVER + FRAME);
+    let (act, _) = run(act, &rest, &timing, false, timing.recover + FRAME);
     assert_eq!(act, Act::Ready);
 }
 
@@ -147,4 +147,23 @@ fn the_mouse_picks_the_side() {
     strokes.push(4.0, Vec2::new(0.0, 25.0));
     strokes.push(4.05, Vec2::new(50.0, 0.0));
     assert_eq!(strokes.dir(4.1), Dir::Right);
+}
+
+/// A heavier head recovers for longer than a light one, never under the least, and carries on further
+/// past the follow-through; the overshoot settles back to the carried tool.
+#[test]
+fn a_heavy_head_recovers_longer_and_carries_on() {
+    let path = |h: &Held| Path::of(h.style, Dir::Right);
+    let (light, heavy) = (blade(), club());
+    let (a, b) = (
+        Timing::of(&light, &path(&light)),
+        Timing::of(&heavy, &path(&heavy)),
+    );
+    assert!(a.recover >= RECOVER && b.recover > a.recover);
+    assert!(b.over > a.over && b.over < 0.2);
+    let p = path(&heavy);
+    let mid = key(Act::Recover(0.5 * b.recover), &p, &b, Dir::Right);
+    assert!(mid.grip.distance(p.at(1.0).grip) > 1e-4);
+    let end = key(Act::Recover(b.recover), &p, &b, Dir::Right);
+    assert!(end.grip.distance(super::key::carry().grip) < 1e-4);
 }

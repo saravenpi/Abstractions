@@ -64,6 +64,8 @@ pub struct Wits {
     pub den: Option<DVec3>,
     /// Planet position of its last drop of blood.
     pub bled: Option<DVec3>,
+    /// True while a wound of its body lets blood out: the trail of drops follows it.
+    pub leaking: bool,
     /// The parts of its body that are broken.
     pub broken: Broken,
 }
@@ -78,6 +80,7 @@ impl Wits {
             health: Health::of(species.history.mass),
             den: None,
             bled: None,
+            leaking: false,
             broken: Broken::default(),
         }
     }

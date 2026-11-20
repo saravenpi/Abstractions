@@ -62,6 +62,7 @@ fn the_mesh_keeps_its_size() {
         spot: Spot::at(dir, 6000.0),
         radius: 6000.0,
         ground: &ground,
+        blood: &|_, _| [0.4, 0.0, 0.0],
     };
     let mut mesh = mesh();
     let before = mesh.count_vertices();
@@ -72,4 +73,35 @@ fn the_mesh_keeps_its_size() {
     );
     assert_eq!(drawn, QUADS);
     assert_eq!(mesh.count_vertices(), before);
+}
+
+/// A mark of blood is painted in the colour the canvas gives the species that bled, one source for
+/// the signs on the ground and the drops in the air.
+#[test]
+fn blood_is_painted_in_the_colour_of_its_species() {
+    let dir = bevy::math::DVec3::new(0.3, 0.9, 0.1).normalize();
+    let sign = Sign {
+        mark: Mark::Blood,
+        species: 3,
+        at: dir,
+        facing: crate::fauna::place::east(dir),
+        size: 0.1,
+        fresh: 1.0,
+    };
+    let ground = |_| 0.0;
+    let blue = |_: u16, _: f32| [0.0, 0.2, 0.6];
+    let canvas = Canvas {
+        spot: Spot::at(dir, 6000.0),
+        radius: 6000.0,
+        ground: &ground,
+        blood: &blue,
+    };
+    let mut mesh = mesh();
+    assert!(paint(&mut mesh, &[sign], &canvas) > 0);
+    let Some(bevy::mesh::VertexAttributeValues::Float32x4(colours)) =
+        mesh.attribute(bevy::prelude::Mesh::ATTRIBUTE_COLOR)
+    else {
+        panic!("the mesh has colours");
+    };
+    assert_eq!(colours[0][..3], [0.0, 0.2, 0.6]);
 }

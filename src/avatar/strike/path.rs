@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use super::dir::Dir;
 use super::held::Style;
 use super::key::Key;
-use super::tune::{GRIP_RADIUS, SPINE, TWIST};
+use super::tune::{GRIP_RADIUS, LEAD, OVERSHOOT, SPINE, TWIST};
 
 /// The way a strike travels, in the frame of the torso.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -104,9 +104,10 @@ impl Path {
         }
     }
 
-    /// Returns the key at the share `s` of the path, 0 cocked to 1 followed through.
+    /// Returns the key at the share `s` of the path, 0 cocked to 1 followed through, and a little
+    /// past 1 as far as [`OVERSHOOT`] lets the tool carry on.
     pub fn at(&self, s: f32) -> Key {
-        let s = s.clamp(0.0, 1.0);
+        let s = s.clamp(0.0, 1.0 + OVERSHOOT);
         let swing = 2.0 * s - 1.0;
         match *self {
             Path::Sweep {
@@ -131,6 +132,17 @@ impl Path {
                 twist: trunk[0] * swing,
                 spine: trunk[1] * swing,
             },
+        }
+    }
+
+    /// Returns the key at the share `s` of the path with the chest ahead of the arm: the turn and
+    /// bend of the chest are those [`LEAD`] further along, never past the follow-through.
+    pub fn led(&self, s: f32) -> Key {
+        let chest = self.at((s + LEAD).min(1.0));
+        Key {
+            twist: chest.twist,
+            spine: chest.spine,
+            ..self.at(s)
         }
     }
 }

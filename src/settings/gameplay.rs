@@ -12,6 +12,9 @@ pub struct Gameplay {
     /// Whether pins, the course and other markers show over the world, with an arrow at the
     /// edge of the screen when they are out of view.
     pub world_markers: bool,
+    /// True to show the blood of a wound: the spurts and the stains. The bleeding itself goes on
+    /// either way.
+    pub blood: bool,
 }
 
 impl Default for Gameplay {
@@ -19,6 +22,7 @@ impl Default for Gameplay {
         Self {
             hitstop: 1.0,
             world_markers: true,
+            blood: true,
         }
     }
 }

@@ -23,13 +23,17 @@ pub fn cascades(reach: ShadowReach) -> CascadeShadowConfig {
     .build()
 }
 
+/// The shadow cascades of the sun and the moon.
+type Cascaded<'w, 's> =
+    Query<'w, 's, &'static mut CascadeShadowConfig, Or<(With<Sun>, With<Moon>)>>;
+
 /// Gives the sun and the moon the cascades of the setting and the shadow maps its size, whenever
 /// the settings change. A change of the size makes Bevy build the maps again, so it is written
 /// only when it differs.
 fn apply(
     settings: Res<Persistent<Settings>>,
     mut map: ResMut<DirectionalLightShadowMap>,
-    mut lights: Query<&mut CascadeShadowConfig, Or<(With<Sun>, With<Moon>)>>,
+    mut lights: Cascaded<'_, '_>,
 ) {
     let own = &settings.graphics.lighting;
     let size = own.shadow_detail.map_size();

@@ -7,6 +7,7 @@ mod feel;
 mod fly;
 mod glide;
 mod ground;
+mod jet;
 mod loops;
 mod measure;
 mod pilot;

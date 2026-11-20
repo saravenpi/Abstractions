@@ -33,6 +33,7 @@ pub use focus::{Link, spin};
 pub use globe::Globe;
 pub use ground::GroundMaterial;
 pub use meter::{Cost, Meter, STEPS as METER_STEPS};
+pub use sea::Liquid;
 pub use surface::Surface;
 pub use terrain::Terrain;
 

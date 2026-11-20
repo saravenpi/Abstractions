@@ -3,10 +3,12 @@
 use bevy::ecs::system::RunSystemOnce;
 
 use super::*;
+use crate::effects::eye::Eye;
+use crate::effects::pool::Pool;
 use crate::effects::rate::Air;
 use crate::effects::sense::Sensed;
 use crate::life::flora::Stage;
-use crate::world::canopy::Crown;
+use crate::world::canopy::{Canopy, Crown};
 
 /// A breezy day at home.
 const WINDY: Air = Air {

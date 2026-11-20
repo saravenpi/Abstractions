@@ -12,6 +12,8 @@ mod planet;
 mod pool;
 mod rate;
 mod respawn;
+#[cfg(test)]
+mod rig;
 mod rng;
 mod sense;
 mod shed;
@@ -21,11 +23,14 @@ mod sky;
 #[cfg(test)]
 mod tests_pool;
 mod tune;
+mod water;
 
 use std::time::Duration;
 
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
+
+pub use water::Churn;
 
 use crate::screens::{Screen, playing};
 
@@ -38,7 +43,8 @@ pub struct Sight;
 
 /// Registers the ambient particle pool and its systems.
 pub(super) fn plugin(app: &mut App) {
-    app.init_resource::<rng::Rng>()
+    app.add_plugins(water::plugin)
+        .init_resource::<rng::Rng>()
         .init_resource::<sense::Sensed>()
         .init_resource::<eye::Eye>()
         .add_systems(Startup, pool::build)

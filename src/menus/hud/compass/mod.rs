@@ -5,8 +5,8 @@
 //! hides past them. Every mark sits on one level, its icon over the line and its distance under
 //! it, even where marks overlap. On a planet an N marks north. The bar shows even
 //! while empty. The ship only shows on the planet it stands on and while the player is on foot;
-//! favourites only nearby. Away from the home planet the home mark points at the next place on
-//! the way home.
+//! favourites only nearby. The home mark only shows on the planet of the home base, on foot or in
+//! its air, and nowhere else.
 
 mod aim;
 mod beacons;

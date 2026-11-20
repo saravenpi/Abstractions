@@ -4,7 +4,7 @@
 
 use bevy::math::{IVec2, Vec2};
 
-use crate::computer::{Dot, Lens, Line, MOON_ZOOM, Tab, Target, View, chart};
+use crate::computer::{Dot, Lens, Line, MOON_ZOOM, SIZE, Tab, Target, View, chart};
 use crate::universe::{PlanetSpec, StarId};
 
 /// Share of the half width of the map the ship, the nearest body and the destination span.
@@ -12,6 +12,10 @@ const FILLED: f32 = 0.7;
 
 /// Closest zoom of the minimap, which keeps the neighbours in sight while the ship orbits.
 pub const CLOSEST: f32 = MOON_ZOOM;
+
+/// Cells per chart unit of the grid a mark has to leave before the chart is drawn again: a
+/// cell is a sixth of a map pixel on the whole chart, a pixel a few zooms in.
+const GRID: f32 = SIZE * 3.0;
 
 /// The chart of one system, ready to draw.
 #[derive(Debug, Clone, PartialEq)]
@@ -82,13 +86,16 @@ pub fn scene(view: &View, star: StarId, chosen: Option<Target>) -> Scene {
     }
 }
 
-/// Returns what the drawn chart depends on: the pixel of every mark and the destination. The
-/// chart is drawn again only when this changes.
+/// Returns what the drawn chart depends on: the destination, whether the moons part from their
+/// planets, and every mark of the system on a fine grid. The ship is left out, it moves on its
+/// own. The chart is drawn again only when this changes.
 pub fn signature(scene: &Scene) -> Vec<IVec2> {
-    let marks = scene.dots.iter().filter(|(dot, _)| *dot != Dot::Orbit);
-    let pixels = marks.map(|(_, at)| scene.lens.to_map(*at).round().as_ivec2());
+    let fixed = |dot: &Dot| !matches!(dot, Dot::Orbit | Dot::Ship);
+    let marks = scene.dots.iter().filter(|(dot, _)| fixed(dot));
+    let cells = marks.map(|(_, at)| (*at * GRID).round().as_ivec2());
+    let apart = i32::from(scene.lens.zoom >= MOON_ZOOM);
     let chosen = scene.chosen.map_or(-1, |row| row as i32);
-    std::iter::once(IVec2::new(2, chosen))
-        .chain(pixels)
+    std::iter::once(IVec2::new(2 + apart, chosen))
+        .chain(cells)
         .collect()
 }

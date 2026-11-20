@@ -103,14 +103,15 @@ pub(super) fn gather(
 ///
 /// The gear only answers in the air. There a new press of the jump spreads or folds the
 /// wingsuit, as the wings intent does. The run held fires the boots once it is pressed in the
-/// air, the wings are out or the fall is past [`PLUNGE`], and keeps them on until let go.
+/// air, the wings are out or the fall is past [`PLUNGE`], and keeps them on until let go. In
+/// the water the run held fires the boots at once: they jet the swimming body.
 pub(super) fn ask(motion: &mut Motion, asks: &Intents, step: &Step) -> Intent {
     let yaw = motion.steer.step(step.view.yaw, asks.turn, asks.axes);
     let aloft = !motion.grounded && !motion.swimming;
     let again = motion.coyote <= 0.0 && asks.jump && !asks.held;
     motion.wings ^= aloft && (asks.wings || again);
     let fired = motion.boots || motion.wings || !asks.ran || motion.velocity.y < -PLUNGE;
-    motion.boots = aloft && asks.boost && fired;
+    motion.boots = (aloft && fired || motion.swimming) && asks.boost;
     Intent {
         wish: wish_direction(asks.axes.x, asks.axes.y, yaw),
         forward: asks.axes.x,

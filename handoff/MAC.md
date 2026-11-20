@@ -65,3 +65,13 @@ As in `HANDOFF.md`, "Steps to finish", step 6, with the release flow proven for 
 ## Brief template for an agent
 
 Each agent gets: its worktree and branch, its build env line, the files it owns (from `CONTRACT.md`), "read `AGENTS.md`, `handoff/CONTRACT.md` and this file first", its gate, the commit rules (Conventional Commits, no co-author line), and the report format from `CONTRACT.md`, "Final report". It never pushes, never merges and never touches another worktree.
+
+## Leaf fall follows the weather (owner, 2026-11-20)
+
+Leaves, petals and pollen must not fall at a steady random rate. What a plant sheds follows the wind, the season and the weather:
+
+- Calm air and a healthy plant in its growing season: almost nothing falls.
+- Wind detaches leaves in gusts, more as it gets stronger, and they drift downwind.
+- Deciduous species shed heavily in autumn, almost nothing in spring and summer, and stand bare in winter. Evergreens shed a slow trickle all year.
+- Rain and storms knock more down. A dry or stressed plant sheds more.
+- Petals fall only while the species flowers; pollen only on dry days with some wind.

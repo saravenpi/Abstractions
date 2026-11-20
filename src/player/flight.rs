@@ -34,6 +34,8 @@ pub(super) struct Air {
     pub(super) aim: Vec2,
     /// Gravity in metres per second squared.
     pub(super) gravity: f32,
+    /// Density of the liquid of the sea in kilograms per cubic metre, 0 when frozen or absent.
+    pub(super) liquid: f32,
 }
 
 /// Returns the air density `height` metres above the sea of `globe`.
@@ -83,6 +85,7 @@ pub(super) fn input(motion: &Motion, intent: &Intent, air: &Air, on: (bool, bool
         aim: (!motion.wings || intent.steer).then_some(air.aim),
         grounded: on.0,
         in_water: on.1,
+        liquid: air.liquid,
         density: air.density,
         air: 1.0,
         gravity: air.gravity,

@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use super::{Trail, hear, lay};
+use super::{Sung, Trail, hear, lay};
 use crate::audio::AudioCue;
 use crate::fauna::herds::Herds;
 use crate::life::herd::Herd;
@@ -27,6 +27,8 @@ fn count(mut cues: MessageReader<AudioCue>, mut sent: ResMut<Sent>) {
 pub fn app(alive: bool) -> (App, Option<Herd>) {
     let (mut app, herd) = crate::fauna::rig::app(alive);
     app.init_resource::<Trail>()
+        .init_resource::<crate::world::Cropped>()
+        .init_resource::<Sung>()
         .init_resource::<Sent>()
         .add_message::<AudioCue>()
         .add_systems(

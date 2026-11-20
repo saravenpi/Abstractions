@@ -26,12 +26,8 @@ impl LocalSystem {
     /// Returns the air of the body under the camera of `vantage`, planet or moon, or the home
     /// air outside a world.
     pub fn air_below(&self, vantage: &Vantage) -> Air {
-        if vantage.moon == 0 {
-            return self.air(vantage.body);
-        }
-        let near = self.0.as_ref();
-        let body = near.and_then(|near| near.body(u8::try_from(vantage.body).ok()?, vantage.moon));
-        body.map_or(Air::HOME, |body| Air::of(&body.record))
+        self.below(vantage)
+            .map_or(Air::HOME, |body| Air::of(&body.record))
     }
 }
 

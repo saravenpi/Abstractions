@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::tune::SEA_DENSITY;
+use super::tune::{SEA_DENSITY, WATER_DENSITY};
 
 /// Share of the atmosphere height that makes one scale height, as in `ship::drag`.
 const SCALE_SHARE: f32 = 0.125;
@@ -36,6 +36,10 @@ pub struct GearInput {
     pub grounded: bool,
     /// Whether the body is in water deep enough to swim.
     pub in_water: bool,
+    /// Density in kilograms per cubic metre of the liquid of the sea of the planet, which the
+    /// boots jet through: 0 where the sea is frozen or there is no liquid. See
+    /// [`super::liquid_density`].
+    pub liquid: f32,
     /// Density in kilograms per cubic metre that home air would have at this height. See
     /// [`air_density`]. It says how high the gear still works: the boots follow it alone.
     pub density: f32,
@@ -55,7 +59,7 @@ pub struct GearInput {
 }
 
 impl Default for GearInput {
-    /// Standing in the air of the home planet at sea level with nothing held.
+    /// Standing in the air of the home planet at sea level with nothing held, by its sea.
     fn default() -> Self {
         Self {
             deploy: false,
@@ -67,6 +71,7 @@ impl Default for GearInput {
             aim: None,
             grounded: false,
             in_water: false,
+            liquid: WATER_DENSITY,
             density: SEA_DENSITY,
             air: 1.0,
             gravity: super::tune::REF_GRAVITY,

@@ -1,6 +1,6 @@
-//! Flight effects around the view: the glow of re-entry, the light ahead and the flash of a
-//! warp (the stars themselves streak, the camera rig opens the view), and cloud wisps streaking
-//! past inside the cloud layer.
+//! Flight effects around the view: the glow of an atmospheric entry on the cockpit glass and the
+//! plasma streaming past it, the light ahead and the flash of a warp (the stars themselves
+//! streak, the camera rig opens the view), and cloud wisps streaking past inside the cloud layer.
 
 use bevy::asset::embedded_asset;
 use bevy::camera::visibility::NoFrustumCulling;
@@ -14,7 +14,8 @@ use bevy::shader::ShaderRef;
 use super::GameCamera;
 use super::celestial::smoothstep;
 use super::clouds::CloudCrossing;
-use super::glow::{entry_glow, stream_heading};
+use super::glow::stream_heading;
+use super::heat::{Heat, HeatSet};
 use super::palette::Palette;
 use super::sky::linear;
 use super::vantage::Vantage;
@@ -30,8 +31,8 @@ const WISP_SPEED: (f32, f32) = (8.0, 80.0);
 /// Linear colour of the light ahead in a warp and of the flash of its drop-out: blue-white.
 const CORE_COLOR: Vec3 = Vec3::new(0.8, 0.9, 1.3);
 
-/// Brightness of the re-entry glow at the rim of the view. It stays a rim: a dive under power
-/// is fast and deep in the air too, and a brighter glow washed the whole view out to white.
+/// Brightness of the glow of an entry at the rim of the view. It stays a rim: a brighter glow
+/// washed the whole view out to white.
 const GLOW_GAIN: f32 = 0.7;
 
 /// What the flight effects are drawn from. The ship writes it; everything is zero on foot.
@@ -117,6 +118,7 @@ fn spawn(
 #[derive(SystemParam)]
 struct FxInputs<'w, 's> {
     flight: Res<'w, FlightFx>,
+    heat: Res<'w, Heat>,
     vantage: Res<'w, Vantage>,
     crossing: Res<'w, CloudCrossing>,
     palette: Res<'w, Palette>,
@@ -126,7 +128,7 @@ struct FxInputs<'w, 's> {
 }
 
 impl FxInputs<'_, '_> {
-    /// Returns the shader values: the glow grows with dynamic pressure while sinking, the light
+    /// Returns the shader values: the glow and the plasma come from the heat of the entry, the light
     /// ahead and the flash come from the warp lens and the wisps grow with the depth in the
     /// clouds and the speed, all streaming from [`stream_heading`].
     fn uniform(&self) -> FxUniform {
@@ -142,9 +144,8 @@ impl FxInputs<'_, '_> {
         let looking = seen.map_or(Vec3::NEG_Z, |camera| *camera.forward());
         let nose = flight.nose.try_normalize().unwrap_or(looking);
         let ahead = if lens.level > 0.0 { lens.heading } else { nose };
-        let sink = -velocity.dot(self.vantage.up);
-        let glow = entry_glow(flight.dynamic_pressure, sink);
-        let hot = Vec3::new(1.0, 0.32, 0.07).lerp(Vec3::new(1.0, 0.6, 0.3), glow) * GLOW_GAIN;
+        let glow = self.heat.glow.heat;
+        let hot = self.heat.glow.color * GLOW_GAIN;
         let wisps = self.crossing.depth * smoothstep(WISP_SPEED.0, WISP_SPEED.1, speed);
         FxUniform {
             heading: stream_heading(velocity, ahead, lens.level).extend(0.0),
@@ -194,11 +195,14 @@ fn follow(
 /// Embeds the shader, registers the material and runs the effects once the clouds are known.
 pub(super) fn plugin(app: &mut App) {
     embedded_asset!(app, "entry.wesl");
-    app.add_plugins(MaterialPlugin::<FxMaterial>::default())
+    app.add_plugins((MaterialPlugin::<FxMaterial>::default(), super::heat::plugin))
         .init_resource::<FlightFx>()
         .add_systems(OnEnter(Screen::Loading), spawn)
         .add_systems(
             PostUpdate,
-            follow.after(super::clouds::drift).after(super::warp::run),
+            follow
+                .after(super::clouds::drift)
+                .after(super::warp::run)
+                .after(HeatSet),
         );
 }

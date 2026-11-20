@@ -31,6 +31,7 @@ mod tests_swell;
 
 pub use self::ember::ember as sea_glow;
 pub use self::follow::follow_focus;
+pub use self::liquid::Liquid;
 
 use bevy::asset::AssetEventSystems;
 use bevy::camera::visibility::NoFrustumCulling;

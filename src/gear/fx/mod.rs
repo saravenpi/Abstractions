@@ -7,11 +7,14 @@
 //! ([`crate::avatar::Marks`]); the rest is placed from the gear's own attitude. Every other
 //! body marked with a [`Wake`] lays trails of its own the same way.
 
+mod churn;
 mod flare;
 mod haze;
+mod heat;
 mod kit;
 mod lay;
 mod motes;
+mod pump;
 mod ribbon;
 mod scene;
 mod streaks;
@@ -35,6 +38,7 @@ use bevy::prelude::*;
 pub use wakes::Wake;
 
 use super::mode::Mode;
+use crate::audio::AudioCue;
 use crate::screens::{Screen, WarmUp, playing};
 
 /// When the gear systems run, in `Update`.
@@ -103,7 +107,11 @@ fn systems(app: &mut App) {
     )
     .add_systems(
         Update,
-        (flare::equip, haze::fit, live.pipe(scene::observe)).in_set(GearSet::Publish),
+        (
+            (flare::equip, haze::fit),
+            (live.pipe(scene::observe), heat::offer.run_if(heat::fast)).chain(),
+        )
+            .in_set(GearSet::Publish),
     )
     .add_systems(
         Update,
@@ -114,6 +122,8 @@ fn systems(app: &mut App) {
             haze::draw,
             flare::draw,
             motes::step,
+            churn::feed,
+            pump::pump.run_if(resource_exists::<Messages<AudioCue>>),
         )
             .in_set(GearSet::Draw)
             .run_if(playing),

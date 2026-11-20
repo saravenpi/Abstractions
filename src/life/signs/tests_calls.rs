@@ -1,5 +1,6 @@
 //! Tests of calls: pitch falls with size, herds call now and then at the same moments for everyone,
-//! and hunts bring cries and alarms only through the chase.
+//! hunts bring a threat before the chase and cries and alarms only through it, and a kill a cry of
+//! distress.
 
 use super::calls::{Cry, Timbre, contact, cries, voice};
 use super::rig::{chase, find};
@@ -8,7 +9,7 @@ use crate::life::herd::fixtures::{meadow_life, species};
 use crate::life::herd::{Herd, HerdState};
 use crate::life::{Activity, Guild, Habitat, Rung};
 
-/// A heavier animal of the same kind calls lower, and shelled life clicks.
+/// A heavier animal of the same kind calls lower, and shelled life stridulates.
 #[test]
 fn calls_pitch_scales_with_size() {
     let grazer = role(Guild::Grazer, Habitat::Ground, Activity::Day, 2.0);
@@ -24,7 +25,7 @@ fn calls_pitch_scales_with_size() {
         pitches[2]
     );
     let shelled = voice(&species(1, grazer, 1.0), Rung::Shelled);
-    assert_eq!(shelled.timbre, Timbre::Click);
+    assert!(matches!(shelled.timbre, Timbre::Click | Timbre::Rasp));
 }
 
 /// An awake herd calls now and then, at the same moments however the time is cut into hearings.
@@ -37,7 +38,7 @@ fn herds_call_now_and_then_the_same_for_everyone() {
         let spans = (0..(3600.0 / step) as i64)
             .map(|k| (time + k as f64 * step, time + (k + 1) as f64 * step));
         spans
-            .filter_map(|s| contact(&herd, s))
+            .filter_map(|s| contact(&herd, &|_| 0.0, s))
             .map(|c| c.at)
             .collect::<Vec<_>>()
     };
@@ -47,7 +48,8 @@ fn herds_call_now_and_then_the_same_for_everyone() {
     assert!(fine.len() > 10 && fine.len() < 400, "{} calls", fine.len());
 }
 
-/// Hunters cry as the chase starts, and the prey calls the alarm only while it is chased.
+/// Hunters threaten before the chase and cry as it starts, and the prey calls the alarm only while
+/// it is chased.
 #[test]
 fn hunts_cry_through_the_chase() {
     let life = meadow_life();
@@ -59,6 +61,14 @@ fn hunts_cry_through_the_chase() {
         heard
             .iter()
             .any(|c| c.cry == Cry::Chase && c.at == chase && c.herd == hunt.hunter)
+    );
+    let threat = heard
+        .iter()
+        .any(|c| c.cry == Cry::Threat && c.at < chase && c.herd == hunt.hunter);
+    assert!(
+        threat || hunt.stalk <= 1.5,
+        "no threat after {:.1} s of stalk",
+        hunt.stalk
     );
     let alarms: Vec<_> = heard.iter().filter(|c| c.cry == Cry::Alarm).collect();
     assert!(

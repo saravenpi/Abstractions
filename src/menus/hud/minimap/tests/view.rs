@@ -121,3 +121,15 @@ fn the_range_eases_between_steps() {
     let (up, down) = (eased(250.0, 800.0, 0.02), eased(800.0, 250.0, 0.02));
     assert!((800.0 / down - up / 250.0).abs() < 1e-3, "{up} and {down}");
 }
+
+/// On planets of real size the ranges stay at metre scale, and only a small moon caps them at a
+/// share of its radius.
+#[test]
+fn the_ranges_hold_at_real_planet_sizes() {
+    for radius in [1.5e6, 6.371e6, 1.2e7, 7.0e7] {
+        for (step, wanted) in RANGES.iter().enumerate() {
+            assert_eq!(range(Mode::Fixed(step), 0, radius), Some(*wanted));
+        }
+    }
+    assert_eq!(range(Mode::Fixed(2), 0, 10_000.0), Some(3500.0));
+}

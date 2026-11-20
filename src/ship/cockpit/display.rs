@@ -69,7 +69,7 @@ pub fn repaint(
         let Ok(cockpit) = cockpits.get(parent.parent()) else {
             continue;
         };
-        let face = screen.face(&cockpit.read);
+        let face = screen.face(cockpit);
         if display.shown == Some(face) {
             continue;
         }

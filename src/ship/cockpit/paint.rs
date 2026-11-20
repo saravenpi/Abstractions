@@ -1,26 +1,33 @@
-//! Painting the displays of the dashboard: the text of a speed or a height, the attitude ball
-//! and the scope of the course. Each painter is a pure function of the quantised value it
-//! shows, so a display repaints only when that value changes.
+//! Painting the displays of the dashboard: the two blocks of figures and bars, the attitude
+//! ball and the scope of the course. Each painter is a pure function of the quantised values it
+//! shows, so a display repaints only when one of them changes.
 
 use bevy::prelude::*;
 
-use super::font::{WIDTH, glyph};
+use super::font::{ADVANCE, HEIGHT, WIDTH, glyph};
 use super::pixels::Pixels;
 use super::tune::{ANGLE_STEP, TEXT_STEPS};
 use crate::computer::distance;
 
-/// Size in pixels of the text displays: ten characters of four columns and a row of margin.
-pub const TEXT: (usize, usize) = (40, 7);
+/// Size in pixels of a block of figures and bars: ten characters wide, and the rows of the
+/// label, the value, three bars with their labels and the labels of the lamps.
+pub const TEXT: (usize, usize) = (60, 54);
 
 /// Size in pixels of the attitude ball and of the scope, which are square with an odd side so
 /// that they have a centre pixel.
-pub const BALL: usize = 17;
+pub const BALL: usize = 19;
 
 /// Radius in pixels of the rim of the ball, and the pixels a radian of pitch moves the horizon.
-const ROUND: (f32, f32) = (8.0, 6.0);
+const ROUND: (f32, f32) = (9.0, 7.0);
 
 /// Radius in pixels of the area of the scope the marks move in.
-pub const REACH: f32 = 6.0;
+pub const REACH: f32 = 7.0;
+
+/// Steps of a bar from empty to full.
+pub const BAR_STEPS: u8 = 32;
+
+/// Row of a block where the value starts.
+const VALUE: i32 = 9;
 
 /// Returns the step of the text display that shows `value`: its natural logarithm in steps of
 /// half a percent. A value under zero reads as zero.
@@ -33,22 +40,71 @@ pub fn value(key: i32) -> f64 {
     (f64::from(key) / TEXT_STEPS).exp() - 1.0
 }
 
-/// Returns the words of the step `key`: its value in the units of the HUD, and per second for
-/// a speed.
+/// Returns the words of the step `key`: its value in the units of the HUD, with the light-year
+/// shortened to fit the display, and per second for a speed.
 pub fn words(key: i32, per_second: bool) -> String {
     let unit = if per_second { "/s" } else { "" };
-    format!("{}{unit}", distance(value(key)))
+    format!(
+        "{}{unit}",
+        distance(value(key)).replace("light-years", "ly")
+    )
 }
 
-/// Paints `words` in the pixel font, one column of margin on the left and one row above.
-pub fn text(words: &str) -> Pixels {
-    let mut pixels = Pixels::dark(TEXT.0, TEXT.1);
+/// Paints `words` in the pixel font with its top left corner at column `x` and row `y`.
+pub fn write(pixels: &mut Pixels, words: &str, (x, y): (i32, i32)) {
     for (place, c) in words.chars().enumerate() {
-        for (row, bits) in glyph(c).into_iter().enumerate() {
+        for (row, bits) in glyph(c).into_iter().enumerate().take(HEIGHT) {
             for column in (0..WIDTH).filter(|column| (bits >> (WIDTH - 1 - column)) & 1 == 1) {
-                pixels.light((1 + place * (WIDTH + 1) + column) as i32, 1 + row as i32);
+                pixels.light(x + (place * ADVANCE + column) as i32, y + row as i32);
             }
         }
+    }
+}
+
+/// Paints a bar `from` column `x` to the end of the row, `rows` high from row `y`, lit up to
+/// `step` of [`BAR_STEPS`] and dotted beyond, so that the whole run shows.
+pub fn bar(pixels: &mut Pixels, (x, y, rows): (i32, i32, i32), step: u8) {
+    let run = pixels.width as i32 - x;
+    let lit = run * i32::from(step) / i32::from(BAR_STEPS);
+    for column in 0..run {
+        for row in 0..rows {
+            if column < lit || (column + row) % 2 == 0 {
+                pixels.light(x + column, y + row);
+            }
+        }
+    }
+}
+
+/// Paints a block of figures: the `label` and the figure `value`, the gauge under it, then a
+/// labelled bar for each of `bars`, and last the labels of the lamps. Each bar is its label
+/// and its step; a bar without a reading is left out, and a block with no value and no bar is
+/// left dark.
+pub fn block(
+    label: &str,
+    value: Option<&str>,
+    gauge: Option<u8>,
+    (bars, lamps): (&[(&str, Option<u8>)], [&str; 3]),
+) -> Pixels {
+    let mut pixels = Pixels::dark(TEXT.0, TEXT.1);
+    if value.is_none() && gauge.is_none() && bars.iter().all(|(_, step)| step.is_none()) {
+        return pixels;
+    }
+    write(&mut pixels, label, (0, 0));
+    if let Some(value) = value {
+        write(&mut pixels, value, (0, VALUE));
+    }
+    if let Some(step) = gauge {
+        bar(&mut pixels, (0, 19, 3), step);
+    }
+    for (i, (name, step)) in bars.iter().enumerate() {
+        let row = 26 + 8 * i as i32;
+        if let Some(step) = step {
+            write(&mut pixels, name, (0, row));
+            bar(&mut pixels, (28, row + 1, 5), *step);
+        }
+    }
+    for (i, name) in lamps.into_iter().enumerate() {
+        write(&mut pixels, name, (21 * i as i32, 41));
     }
     pixels
 }

@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use super::readings::Lamp;
 use super::shapes::{gear_mesh, pedal_mesh, strap_mesh, switch_mesh};
 use crate::ship::mesh::{
-    Skin, bar_mesh, cabin_meshes, faces_mesh, lever_mesh, stick_mesh, tub_mesh,
+    Skin, cabin_meshes, canopy_meshes, faces_mesh, lever_mesh, stick_mesh, tub_mesh,
 };
 
 /// A mesh with the material it is drawn with.
@@ -45,8 +45,10 @@ pub struct Kit {
     pub(super) pedal: Drawn,
     /// The loose strap.
     pub(super) strap: Drawn,
-    /// The lit bar of the instruments, white.
-    pub(super) bar: Drawn,
+    /// The glass and the frame of the canopy, built around its hinge.
+    pub(super) canopy: [Drawn; 2],
+    /// The material of the white lamps.
+    pub(super) white: Handle<StandardMaterial>,
     /// The material of the amber lamps and of the red lamp.
     pub(super) warn: [Handle<StandardMaterial>; 2],
     /// The unit square, centred, that the displays and the lamps are drawn on.
@@ -80,7 +82,9 @@ impl Kit {
             ],
             pedal: add(pedal_mesh(), &dark),
             strap: add(strap_mesh(), &trim),
-            bar: add(bar_mesh(), &materials.add(ink(Vec3::ONE))),
+            canopy: canopy_meshes()
+                .map(|(skin, mesh)| (meshes.add(mesh), skins[skin as usize].clone())),
+            white: materials.add(ink(Vec3::ONE)),
             warn: [Lamp::Hot, Lamp::Failing].map(|lamp| materials.add(ink(lamp.tone()))),
             screen: meshes.add(Rectangle::new(1.0, 1.0)),
         }
@@ -89,7 +93,7 @@ impl Kit {
     /// Returns the material of the lit part of `lamp`: white, amber or red.
     pub fn glass(&self, lamp: Lamp) -> Handle<StandardMaterial> {
         match lamp {
-            Lamp::Assist | Lamp::Landed => self.bar.1.clone(),
+            Lamp::Assist | Lamp::Landed => self.white.clone(),
             Lamp::Close | Lamp::Hot | Lamp::Frame => self.warn[0].clone(),
             Lamp::Failing => self.warn[1].clone(),
         }
@@ -101,7 +105,8 @@ impl Kit {
         let moving = self
             .levers
             .iter()
-            .chain([&self.pedal, &self.strap, &self.bar]);
+            .chain([&self.pedal, &self.strap])
+            .chain(&self.canopy);
         self.fixed.iter().chain(moving).cloned()
     }
 }

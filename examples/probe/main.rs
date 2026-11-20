@@ -49,6 +49,7 @@ mod camera;
 mod foot;
 mod grass;
 mod herd;
+mod hull;
 mod launch;
 mod meter;
 mod orbital;
@@ -72,6 +73,7 @@ use camera::*;
 use foot::*;
 use grass::*;
 use herd::*;
+use hull::*;
 use launch::*;
 use meter::*;
 use orbital::*;
@@ -110,6 +112,12 @@ fn main() -> AppExit {
     app.add_systems(Update, (mark::<1>, run));
     app.add_systems(PostUpdate, mark::<2>);
     app.init_resource::<Lower>();
+    app.init_resource::<Eye>();
+    app.add_systems(
+        PostUpdate,
+        hold.after(bevy::transform::TransformSystems::Propagate)
+            .after(lower),
+    );
     app.add_systems(
         PostUpdate,
         lower.after(bevy::transform::TransformSystems::Propagate),

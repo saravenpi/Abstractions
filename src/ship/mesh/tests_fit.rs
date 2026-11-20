@@ -80,13 +80,16 @@ fn every_part_goes_into_the_part_that_carries_it() {
     }
 }
 
-/// Every corner of the ship has its mirror image on the other side, but for the hatch, which is on
-/// the left flank only, and the red and green lights, which are each other's mirror image.
+/// Every corner of the ship has its mirror image on the other side, but for the service panel and the
+/// antenna, which are on the left only, and the red and green lights, which are each other's mirror image.
 #[test]
 fn the_ship_is_the_same_on_both_sides() {
     let all = parts();
     let mut points = Vec::new();
-    for part in all.iter().filter(|part| part.group != "hatch") {
+    for part in all
+        .iter()
+        .filter(|part| part.group != "panel" && part.group != "mast")
+    {
         points.extend(corners(part.solid.clone()));
     }
     for point in &points {

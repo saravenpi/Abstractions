@@ -5,6 +5,7 @@ mod bars;
 mod blade;
 mod fittings;
 mod frame;
+mod lames;
 mod levers;
 mod lod;
 mod loft;
@@ -22,13 +23,14 @@ mod wing;
 
 use bevy::prelude::*;
 
-pub use levers::{bar_mesh, lever_mesh, stick_mesh};
+pub use levers::{lever_mesh, stick_mesh};
 pub use lod::{FAR, far_mesh};
 pub use looks::{Looks, dress};
 pub use outline::hulls;
 pub use ports::{LIFT, LIFT_AT, Port, ports};
 pub use tail::{ENGINES, EXIT, NOZZLE_Z};
 
+use super::cockpit::HINGE;
 use super::gear::{GEAR, STRUT};
 use super::solid::Solid;
 use parts::{Paint, parts};
@@ -89,13 +91,21 @@ pub fn lamp_meshes() -> [Mesh; 3] {
 }
 
 /// Builds what is inside the cockpit and does not move, each mesh with its skin: the dark
-/// furniture with the frame of the canopy, and the cushions of the seat.
+/// furniture and the cushions of the seat.
 pub fn cabin_meshes() -> [(Skin, Mesh); 2] {
-    let mut dark = fittings::furniture();
-    dark.merge(&bars::frame(), Vec3::ZERO);
     [
-        (Skin::Dark, dark.into_mesh()),
+        (Skin::Dark, fittings::furniture().into_mesh()),
         (Skin::Trim, fittings::seat().into_mesh()),
+    ]
+}
+
+/// Builds the canopy that lifts, each mesh with its skin: the glass and its frame, around the
+/// hinge of the canopy at the origin.
+pub fn canopy_meshes() -> [(Skin, Mesh); 2] {
+    let at = |solid: Solid| solid.into_mesh().translated_by(-HINGE);
+    [
+        (Skin::Glass, at(shell::glass())),
+        (Skin::Dark, at(bars::frame())),
     ]
 }
 

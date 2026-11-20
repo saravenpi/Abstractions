@@ -11,9 +11,9 @@ use crate::ship::solid::Solid;
 /// out of the roof; the tip is 1.9 m up.
 pub(super) const FIN: [[f32; 4]; 4] = [
     [0.45, 1.4, 3.15, 0.17],
-    [0.78, 1.55, 3.2, 0.085],
-    [1.25, 1.95, 3.3, 0.07],
-    [1.9, 2.7, 3.4, 0.04],
+    [0.78, 1.6, 3.2, 0.085],
+    [1.25, 2.1, 3.3, 0.07],
+    [1.9, 2.85, 3.45, 0.04],
 ];
 
 /// Stations of the fin at a wing tip, like [`FIN`]: the fin starts under the wing end and

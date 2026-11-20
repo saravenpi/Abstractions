@@ -14,18 +14,19 @@ pub const PAN: f32 = 0.06;
 /// Where the front of the backrest and of the headrest is along z: the back of the pilot.
 pub const BACK: f32 = -0.975;
 
-/// Where the centre stick hinges, on its column between the knees of the pilot.
-pub const STICK: Vec3 = Vec3::new(0.0, 0.1, -1.42);
+/// Where the side stick hinges, on the front of the right console, where the hand of the pilot
+/// reaches it and the eye sees its grip at the foot of the view.
+pub const STICK: Vec3 = Vec3::new(0.3, 0.31, -1.74);
 
 /// Length of the stick from its hinge to the top of its grip, and how far under the top the
 /// hand holds it, in metres.
-pub const STICK_LENGTH: (f32, f32) = (0.34, 0.04);
+pub const STICK_LENGTH: (f32, f32) = (0.24, 0.045);
 
 /// Tilt of the stick at full pitch or roll, and its twist at full yaw, in radians.
 pub const STICK_REACH: (f32, f32) = (0.18, 0.3);
 
-/// Where the throttle lever hinges, on top of the left console.
-pub const LEVER: Vec3 = Vec3::new(-0.27, 0.22, -1.4);
+/// Where the throttle lever hinges, on the front of the left console.
+pub const LEVER: Vec3 = Vec3::new(-0.3, 0.31, -1.72);
 
 /// Length of the throttle lever from its hinge to the top of its handle, and how far under the
 /// top the hand holds it, in metres.
@@ -35,10 +36,10 @@ pub const LEVER_LENGTH: (f32, f32) = (0.2, 0.025);
 pub const LEVER_SWING: f32 = 0.35;
 
 /// Where the gear lever hinges, on top of the right console.
-pub const GEAR_LEVER: Vec3 = Vec3::new(0.29, 0.22, -1.55);
+pub const GEAR_LEVER: Vec3 = Vec3::new(0.29, 0.25, -1.45);
 
 /// Where the warp switch hinges, on top of the right console.
-pub const WARP_SWITCH: Vec3 = Vec3::new(0.29, 0.22, -1.3);
+pub const WARP_SWITCH: Vec3 = Vec3::new(0.29, 0.25, -1.25);
 
 /// Tilt of the gear lever and of the warp switch from upright, in radians: back when the gear
 /// is up and the drive off, forward when the gear is down and the drive engaged.
@@ -80,15 +81,17 @@ pub const SLACK: f32 = 2.0;
 /// Longest step in seconds the strap is integrated over, so a long frame cannot throw it.
 pub const SPRING_STEP: f32 = 1.0 / 30.0;
 
-/// Where the aft face of the instrument pods is along z: the plane the instruments are on.
-pub const PANEL_Z: f32 = -1.95;
-
-/// Centre of the raked panel between the pods, and its half width across and half length up
-/// the slope, in metres. The slope rises 45 degrees toward the nose.
-pub const RAKE: (Vec3, f32, f32) = (Vec3::new(0.0, 0.53, -2.05), 0.1, 0.0707);
+/// Centre of the raked instrument panel, and its half width across and half length up the
+/// slope, in metres. The slope rises 45 degrees toward the nose: the face looks up at the pilot,
+/// and the top edge is under the line of the nose, so the world shows over it.
+pub const RAKE: (Vec3, f32, f32) = (Vec3::new(0.0, 0.41, -2.03), 0.29, 0.125);
 
 /// Tilt of the raked panel from upright, in radians: its face looks up at the pilot.
 pub const RAKE_TILT: f32 = std::f32::consts::FRAC_PI_4;
+
+/// Side of a pixel of the displays on the panel, in metres: a capital of the font is 2.9 cm
+/// tall, as tall as nine pixels of the game image at the distance of the eye.
+pub const TEXEL: f32 = 0.0041;
 
 /// Height in metres at which the altitude bar is full. It reads on a logarithmic scale, so a
 /// hand over the ground and a high orbit both show.
@@ -126,3 +129,9 @@ pub const SCREEN_GLOW: (f32, f32) = (0.45, 1.0);
 /// Distances in metres from the camera to the cockpit between which it is drawn: past the
 /// second it is hidden, between them it fades out.
 pub const DRAW: Range<f32> = 70.0..90.0;
+
+/// Where the canopy hinges: across the back of the mouth, on the line of the roof of the hull.
+pub const HINGE: Vec3 = Vec3::new(0.0, 0.62, -0.95);
+
+/// How far the canopy opens, in radians, and how fast it swings, in radians per second.
+pub const CANOPY_OPEN: (f32, f32) = (1.0, 0.7);

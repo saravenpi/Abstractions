@@ -9,8 +9,8 @@ use super::frame::{CANOPY, canopy, fuselage};
 use super::shell::{HALF, MOUTH, arch, glass, hull, lip, mouth, station};
 use super::tests_fit::{corners, crosses, inside, positions};
 use super::tub::tub;
-use super::{bar_mesh, cabin_meshes, faces_mesh, lever_mesh, stick_mesh, tub_mesh};
-use crate::ship::cockpit::{Dial, LEVER, Levers, STICK};
+use super::{cabin_meshes, faces_mesh, lever_mesh, stick_mesh, tub_mesh};
+use crate::ship::cockpit::{LEVER, Levers, STICK};
 
 /// Returns the corners of the closed outlines: the two halves of the fuselage and the canopy.
 fn outlines() -> Vec<Vec<Vec3>> {
@@ -113,13 +113,7 @@ fn the_cabin_fits_inside_the_hull() {
         }
     }
     let fixed = cabin_meshes().map(|(_, mesh)| mesh);
-    let meshes = [
-        tub_mesh(),
-        faces_mesh(),
-        stick_mesh(),
-        lever_mesh(),
-        bar_mesh(),
-    ];
+    let meshes = [tub_mesh(), faces_mesh(), stick_mesh(), lever_mesh()];
     let mut triangles = 0;
     for mesh in fixed.iter().chain(&meshes) {
         let points = positions(mesh);
@@ -132,8 +126,7 @@ fn the_cabin_fits_inside_the_hull() {
     assert!(triangles > 200 && triangles < 1000, "{triangles} triangles");
 }
 
-/// The stick and the lever stay inside the cockpit wherever the input puts them, and every
-/// lit instrument stays on the black face of its pod.
+/// The stick and the lever stay inside the cockpit wherever the input puts them.
 #[test]
 fn the_moving_parts_stay_inside() {
     let all = outlines();
@@ -152,18 +145,6 @@ fn the_moving_parts_stay_inside() {
         for point in &lever {
             let at = LEVER + held_at.lever_turn() * *point;
             assert!(within(&all, at), "the lever leaves the cockpit at {at}");
-        }
-    }
-    let panel = corners(faces());
-    let bar = positions(&bar_mesh());
-    for dial in Dial::ALL {
-        for corner in bar.iter().map(|p| dial.place(Some(1.0)) * *p) {
-            let from = corner + Vec3::Z * 0.001;
-            let on = panel.chunks(3).any(|tri| crosses(tri, from, Vec3::NEG_Z));
-            assert!(
-                on && corner.z > panel[0].z,
-                "{dial:?} is off its face at {corner}"
-            );
         }
     }
 }

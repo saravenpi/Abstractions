@@ -1,7 +1,7 @@
 //! Paint tests: the pixel font, the canvases and their bytes.
 
-use super::font::{WIDTH, glyph};
-use super::paint::{TEXT, text};
+use super::font::{ADVANCE, HEIGHT, WIDTH, glyph};
+use super::paint::{TEXT, block, write};
 use super::pixels::Pixels;
 use super::screens::Screen;
 
@@ -10,22 +10,22 @@ fn weight(c: char) -> u32 {
     glyph(c).iter().map(|row| row.count_ones()).sum()
 }
 
-/// Every digit and every unit letter the HUD writes has a glyph of its own, and a character
-/// the font does not know is blank.
+/// Every digit, capital and unit letter the displays write has a glyph of its own, and a
+/// character the font does not know is blank.
 #[test]
-fn the_font_has_every_character_of_the_units() {
-    let wanted = "0123456789.-/mkMglys";
+fn the_font_has_every_character_of_the_displays() {
+    let wanted = "0123456789.-/mkMlyAUSPEDHIGTWRNFCBOL";
     for c in wanted.chars() {
         assert!(weight(c) > 0, "{c} has no glyph");
     }
-    let digits: Vec<[u8; 5]> = ('0'..='9').map(glyph).collect();
+    let digits: Vec<[u8; HEIGHT]> = ('0'..='9').map(glyph).collect();
     for (i, a) in digits.iter().enumerate() {
         assert!(
             digits[i + 1..].iter().all(|b| a != b),
             "digit {i} is not unique"
         );
     }
-    assert_eq!((weight(' '), weight('?')), (0, 0));
+    assert_eq!((weight(' '), weight('\u{1}')), (0, 0));
     assert!(
         wanted
             .chars()
@@ -33,21 +33,44 @@ fn the_font_has_every_character_of_the_units() {
     );
 }
 
-/// A text lights the pixels of its glyphs and nothing else, one column of margin on the left,
-/// and the longest unit the HUD writes fits the canvas.
+/// A written text lights the pixels of its glyphs and nothing else, and the longest value the
+/// displays write fits a block.
 #[test]
 fn a_text_is_painted_in_the_font() {
-    assert_eq!(text("").count(), 0);
-    assert_eq!(text("10").count() as u32, weight('1') + weight('0'));
-    let long = text("999 gly/s");
-    assert_eq!((long.width, long.height), TEXT);
-    assert!(!(0..7).any(|y| long.is_lit(0, y)));
-    let widest = text("1.23 gly/s");
-    assert!(widest.is_lit(TEXT.0 as i32 - 1, 1));
+    let paint = |words: &str| {
+        let mut pixels = Pixels::dark(TEXT.0, TEXT.1);
+        write(&mut pixels, words, (0, 0));
+        pixels
+    };
+    assert_eq!(paint("").count(), 0);
+    assert_eq!(paint("10").count() as u32, weight('1') + weight('0'));
+    let widest = "12.3 km/s";
     assert_eq!(
-        widest.count() as u32,
-        "1.23 gly/s".chars().map(weight).sum::<u32>()
+        paint(widest).count() as u32,
+        widest.chars().map(weight).sum::<u32>()
     );
+    assert!(widest.len() * ADVANCE <= TEXT.0);
+    let rows = HEIGHT as i32;
+    assert!(paint("HEIGHT").is_lit(0, 2) || (0..rows).any(|y| paint("HEIGHT").is_lit(1, y)));
+}
+
+/// A block with nothing to show is dark, and one with a reading lights its label, its figure
+/// and its gauge.
+#[test]
+fn a_block_is_dark_without_a_source() {
+    let lamps = ["AAA", "BBB", "CCC"];
+    assert_eq!(
+        block("SPEED", None, None, (&[("THR", None)], lamps)).count(),
+        0
+    );
+    let lit = block(
+        "SPEED",
+        Some("10 m/s"),
+        Some(16),
+        (&[("THR", Some(8))], lamps),
+    );
+    assert_eq!((lit.width, lit.height), TEXT);
+    assert!(lit.count() > 150);
 }
 
 /// The bytes of a canvas are four per pixel, lit white over dark, and a pixel outside the

@@ -1,5 +1,5 @@
-//! The parts of the cockpit that move: the stick, the throttle lever and the lit bar of an
-//! instrument. Each one is built around its hinge at the origin and is turned or stretched there.
+//! The parts of the cockpit that move: the stick and the throttle lever. Each one is built
+//! around its hinge at the origin and is turned there.
 
 use bevy::prelude::*;
 
@@ -35,20 +35,6 @@ pub fn lever_mesh() -> Mesh {
     );
     lever.slab(Vec3::new(-0.035, shaft, -0.02), Vec3::new(0.035, top, 0.02));
     lever.into_mesh()
-}
-
-/// Builds the lit bar of an instrument: a unit quad that starts at the origin, runs to the
-/// right and faces the pilot.
-pub fn bar_mesh() -> Mesh {
-    let mut bar = Solid::default();
-    let corners = [
-        Vec3::new(0.0, -0.5, 0.0),
-        Vec3::new(1.0, -0.5, 0.0),
-        Vec3::new(1.0, 0.5, 0.0),
-        Vec3::new(0.0, 0.5, 0.0),
-    ];
-    bar.quad(corners, Vec3::Z);
-    bar.into_mesh()
 }
 
 /// Returns the mesh of a part lathed along z, stood up along y.

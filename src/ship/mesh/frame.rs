@@ -15,8 +15,8 @@ pub(super) const SIDES: u32 = 8;
 /// centre. The three of the cabin, at [`PRE`], [`JOINT`] and [`POST`], are the ones the cockpit
 /// is fitted to and do not change: the nose lies in front of them and the tail behind.
 pub(super) const FUSELAGE: [[f32; 4]; 8] = [
-    [-3.95, 0.09, 0.07, -0.12],
-    [-3.6, 0.22, 0.16, -0.1],
+    [-3.95, 0.06, 0.045, -0.12],
+    [-3.55, 0.18, 0.1, -0.11],
     [-3.2, 0.42, 0.3, -0.05],
     [-1.8, 0.85, 0.55, 0.05],
     [0.4, 1.0, 0.65, 0.1],

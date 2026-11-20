@@ -3,6 +3,7 @@
 
 use bevy::prelude::*;
 
+use super::Cockpit;
 use super::paint::{key, value, words};
 use super::readings::{Dial, Lamp, Readings};
 use super::screens::{Face, Screen};
@@ -10,6 +11,11 @@ use crate::ship::telemetry::{ShipTelemetry, WarpState};
 use crate::ship::warp::GALAXY_CAP;
 use crate::space::Frame;
 use crate::universe::BodyId;
+
+/// Returns a cockpit that reads `read` and whose bars have not moved.
+fn seen(read: Readings) -> Cockpit {
+    Cockpit { read, ..default() }
+}
 
 /// Returns telemetry on a planet: `speed` over the ground, `height` above it and a drive.
 fn aloft(speed: f64, height: f64, warp: WarpState) -> ShipTelemetry {
@@ -45,9 +51,9 @@ fn an_instrument_without_a_source_is_dark() {
     assert_eq!(far.bars[Dial::Gear as usize], None);
     assert_eq!(far.height, None);
     assert!(far.bars[Dial::Speed as usize].is_some() && far.speed == Some(800.0));
-    assert_eq!(Screen::Height.face(&far), Face::Dark);
-    assert_eq!(Screen::Horizon.face(&far), Face::Dark);
-    assert_eq!(Screen::Scope.face(&far), Face::Dark);
+    assert_eq!(Screen::Height.face(&seen(far)), Face::Dark);
+    assert_eq!(Screen::Horizon.face(&seen(far)), Face::Dark);
+    assert_eq!(Screen::Scope.face(&seen(far)), Face::Dark);
     let nothing = Readings::of(&aloft(f64::NAN, f64::NAN, WarpState::Off), f64::NAN);
     assert_eq!(nothing.height, None);
     assert_eq!(nothing.bars[Dial::Altitude as usize], None);
@@ -107,15 +113,20 @@ fn a_text_display_shows_its_value_in_steps() {
         height: None,
         ..default()
     };
-    let Face::Text(step) = Screen::Speed.face(&read) else {
+    let Face::Block(Some(step), ..) = Screen::Speed.face(&seen(read)) else {
         panic!("the speed display is dark");
     };
     assert!((value(step) / 1500.0 - 1.0).abs() < 0.003);
-    assert_eq!(Screen::Height.face(&read), Face::Dark);
+    assert_eq!(Screen::Height.face(&seen(read)), Face::Dark);
     assert_eq!(key(1000.0), key(1000.4));
     assert_ne!(key(1000.0), key(1010.0));
     assert_eq!(key(-5.0), 0);
     assert_eq!(words(0, true), "0 m/s");
     assert_eq!(Screen::Speed.painted(Face::Dark).count(), 0);
-    assert!(Screen::Speed.painted(Face::Text(step)).count() > 10);
+    assert!(
+        Screen::Speed
+            .painted(Face::Block(Some(step), None, [None; 2]))
+            .count()
+            > 10
+    );
 }

@@ -12,6 +12,7 @@
 //! repainted only when its quantised value changes.
 
 mod attitude;
+mod canopy;
 mod controls;
 mod display;
 mod fit;
@@ -50,6 +51,7 @@ mod tests_paint;
 
 use bevy::prelude::*;
 
+pub use canopy::Canopy;
 pub use controls::Levers;
 pub use fit::{Lit, fit};
 pub use kit::Kit;
@@ -59,8 +61,8 @@ pub use remote::Seen;
 pub use screens::{Display, Face, Screen};
 pub use state::Cockpit;
 pub use tune::{
-    BACK, FLOOR, FOLLOW, GEAR_LEVER, LEVER, LEVER_LENGTH, LEVER_SWING, PAN, PANEL_Z, PEDAL,
-    PEDAL_LENGTH, PEDAL_REACH, RAKE, RAKE_TILT, SETTLE, STICK, STICK_LENGTH, STICK_REACH,
+    BACK, FLOOR, FOLLOW, GEAR_LEVER, HINGE, LEVER, LEVER_LENGTH, LEVER_SWING, PAN, PEDAL,
+    PEDAL_LENGTH, PEDAL_REACH, RAKE, RAKE_TILT, SETTLE, STICK, STICK_LENGTH, STICK_REACH, TEXEL,
     WARP_SWITCH,
 };
 
@@ -73,6 +75,7 @@ pub(super) fn plugin(app: &mut App) {
         display::equip.run_if(display::fitted),
         light::rig.run_if(light::fitting),
         work::work,
+        canopy::swing,
         display::repaint,
         light::shine,
         light::dim.run_if(any_with_component::<Lit>),

@@ -5,7 +5,8 @@
 use bevy::prelude::*;
 
 use super::blade::{FIN, WINGLET, blade};
-use super::outside::{hatch, lamps, mast, shield};
+use super::lames::lames;
+use super::outside::{lamps, mast, service_panel, shield};
 use super::ports::{nozzles, sockets};
 use super::shell;
 use super::struts::{MAIN, NOSE, pod};
@@ -60,7 +61,7 @@ fn part(group: &'static str, paint: Paint, far: bool, solid: Solid) -> Part {
 }
 
 /// Returns the hull and what is fixed to its skin: the glass, the heat shield, the fin, the
-/// hatch, the antenna and the sockets of the jets under the belly and in the skin.
+/// service panel, the antenna and the sockets of the jets under the belly and in the skin.
 fn hull() -> Vec<Part> {
     let [body, nose] = shell::hull();
     vec![
@@ -69,7 +70,7 @@ fn hull() -> Vec<Part> {
         part("canopy", Paint::Glass, true, shell::glass()),
         part("shield", Paint::Hull, true, shield()),
         part("fin", Paint::Trim, true, blade(0.0, &FIN)),
-        part("hatch", Paint::Hull, false, hatch()),
+        part("panel", Paint::Hull, false, service_panel()),
         part("mast", Paint::Dark, false, mast()),
         part("ports", Paint::Dark, false, sockets()),
         part("lift", Paint::Dark, false, nozzles()),
@@ -110,7 +111,19 @@ fn engines() -> Vec<Part> {
     all
 }
 
+/// Returns the plates over the airframe: the lames, the line of glow, the bands of the engine
+/// pods and the crest.
+fn plates() -> Vec<Part> {
+    let [lames, line, bands, crest] = lames();
+    vec![
+        part("lames", Paint::Hull, false, lames),
+        part("lines", Paint::Glow, false, line),
+        part("bands", Paint::Hull, false, bands),
+        part("crest", Paint::Hull, true, crest),
+    ]
+}
+
 /// Returns every fixed part of the ship.
 pub fn parts() -> Vec<Part> {
-    [hull(), wings(), engines()].concat()
+    [hull(), wings(), engines(), plates()].concat()
 }

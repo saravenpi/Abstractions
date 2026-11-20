@@ -5,12 +5,13 @@ use bevy::camera::visibility::VisibilityRange;
 use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
+use super::canopy::Canopy;
 use super::kit::{Drawn, Kit};
 use super::part::Part;
-use super::readings::{Dial, Lamp};
+use super::readings::Lamp;
 use super::screens::Screen;
 use super::state::Cockpit;
-use super::tune::{DRAW, GEAR_LEVER, LEVER, PEDAL, STICK, STRAP, WARP_SWITCH};
+use super::tune::{DRAW, GEAR_LEVER, HINGE, LEVER, PEDAL, STICK, STRAP, WARP_SWITCH};
 
 /// Marks an instrument that glows: it is dimmed by day to the share of this linear tone.
 #[derive(Component, Debug, Clone, Copy, PartialEq)]
@@ -33,6 +34,21 @@ fn drawn((mesh, material): &Drawn) -> impl Bundle {
         NotShadowCaster,
         range(),
     )
+}
+
+/// Adds the canopy to the ship `entity`: the glass and its frame, hinged at the back, shut.
+fn canopy(entity: &mut EntityCommands, kit: &Kit) {
+    let hinge = (
+        Canopy::default(),
+        Transform::from_translation(HINGE),
+        Visibility::default(),
+    );
+    entity.with_children(|parent| {
+        let mut hinge = parent.spawn(hinge);
+        for shape in &kit.canopy {
+            hinge.with_child(drawn(shape));
+        }
+    });
 }
 
 /// Adds the controls to the ship `entity`, each in its hinge.
@@ -61,18 +77,9 @@ fn controls(entity: &mut EntityCommands, kit: &Kit) {
     entity.with_child(strap);
 }
 
-/// Adds the bars, the lamps and the displays to the ship `entity`, dark until a reading
+/// Adds the lamps and the displays to the ship `entity`, dark until a reading
 /// lights them.
 fn instruments(entity: &mut EntityCommands, kit: &Kit) {
-    for dial in Dial::ALL {
-        let bar = (
-            Part::Bar(dial),
-            Lit(Vec3::ONE),
-            drawn(&kit.bar),
-            dial.place(None),
-        );
-        entity.with_child(bar);
-    }
     for lamp in Lamp::ALL {
         let lit = (kit.screen.clone(), kit.glass(lamp));
         entity.with_child((
@@ -88,13 +95,14 @@ fn instruments(entity: &mut EntityCommands, kit: &Kit) {
     }
 }
 
-/// Adds a cockpit to the ship `entity`: its state, the cabin, the controls in their hinges
-/// and the instruments on their faces. None of it has a collider.
+/// Adds a cockpit to the ship `entity`: its state, the cabin, the canopy, the controls in
+/// their hinges and the instruments on their faces. None of it has a collider.
 pub fn fit(entity: &mut EntityCommands, kit: &Kit) {
     entity.insert(Cockpit::default());
     for part in &kit.fixed {
         entity.with_child(drawn(part));
     }
+    canopy(entity, kit);
     controls(entity, kit);
     instruments(entity, kit);
 }

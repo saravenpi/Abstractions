@@ -80,10 +80,10 @@ fn the_levers_turn_with_what_is_asked() {
     assert!(turned(&mut app, Part::Switch, asked.switch_turn()));
 }
 
-/// The pedals turn with the yaw, and a bar shows what it reads, or is dark when it reads
+/// The pedals turn with the yaw, and a gauge shows what it reads, or is dark when it reads
 /// nothing.
 #[test]
-fn the_pedals_and_the_bars_follow_the_ship() {
+fn the_pedals_and_the_gauges_follow_the_ship() {
     let asked = levers([0.0, 0.5, 0.0], 0.0);
     let mut app = settled(asked);
     assert!(turned(&mut app, Part::Pedal(0), asked.pedal_turn(0)));
@@ -91,8 +91,6 @@ fn the_pedals_and_the_bars_follow_the_ship() {
     let cockpit = state::<Ship>(&mut app);
     assert!((cockpit.gauges[Dial::Charge as usize].expect("lit") - 0.5).abs() < 1.0e-3);
     assert_eq!(cockpit.gauges[Dial::Altitude as usize], None);
-    let bar = part::<Ship>(&mut app, Part::Bar(Dial::Altitude));
-    assert_eq!(bar, Dial::Altitude.place(None));
 }
 
 /// A display is painted again only when the value it shows moves by a step: a steady value,

@@ -72,6 +72,17 @@ pub fn motor(at: Vec2) -> Motor {
     Motor { pod, bell, face }
 }
 
+/// Returns the radius of the pod `z` metres along the ship, between its stations.
+pub fn ring_radius(z: f32) -> f32 {
+    let i = POD
+        .iter()
+        .rposition(|s| s.0 <= z)
+        .unwrap_or(0)
+        .min(POD.len() - 2);
+    let (a, b) = (POD[i], POD[i + 1]);
+    a.1 + (b.1 - a.1) * ((z - a.0) / (b.0 - a.0)).clamp(0.0, 1.0)
+}
+
 /// Returns the corner points of the pod on the axis `at`, for its collider.
 pub fn corners(at: Vec2) -> Vec<Vec3> {
     POD.iter().flat_map(|&s| station(at, s)).collect()

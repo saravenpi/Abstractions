@@ -1,5 +1,5 @@
-//! What is fixed to the outside of the hull: the heat shield plate under the belly, the boarding
-//! hatch on the left flank, the antenna mast and the lights. Every part is sunk into the skin.
+//! What is fixed to the outside of the hull: the heat shield plate under the belly, the service
+//! panel on the left flank, the antenna mast and the lights. Every part is sunk into the skin.
 
 use bevy::prelude::*;
 
@@ -21,9 +21,9 @@ pub(super) const SHIELD: [[f32; 4]; 7] = [
     [2.7, 0.3, -0.2, -0.34],
 ];
 
-/// Where the hatch is on the left flank along z, and how far across the flank its door reaches,
-/// from the chine up and down.
-const HATCH: (f32, f32, f32) = (-2.25, -1.45, 0.95);
+/// Where the service panel is on the left flank along z, and how far across the flank it
+/// reaches, from the chine up and down.
+const PANEL: (f32, f32, f32) = (-2.75, -2.25, 0.4);
 
 /// Returns the section of the heat shield at a station: a box with chamfered edges.
 fn box_section([z, half, top, bottom]: [f32; 4]) -> Section {
@@ -65,9 +65,13 @@ fn flank(z: f32, across: f32) -> (Vec3, Vec3) {
     )
 }
 
-/// Adds one layer of the hatch over the part of the flank `from..to` across and `front..back`
-/// along z: a box sunk 2 cm in the skin that stands `lift` metres out of it.
-fn layer(solid: &mut Solid, (front, back): (f32, f32), (from, to): (f32, f32), lift: f32) {
+/// Adds one layer over the part of the flank `from..to` across and `front..back` along z: a box sunk 2 cm in the skin that stands `lift` metres out of it.
+pub(super) fn layer(
+    solid: &mut Solid,
+    (front, back): (f32, f32),
+    (from, to): (f32, f32),
+    lift: f32,
+) {
     let corner = |z: f32, across: f32| {
         let (at, normal) = flank(z, across);
         (at - normal * 0.02, normal * (0.02 + lift))
@@ -77,37 +81,33 @@ fn layer(solid: &mut Solid, (front, back): (f32, f32), (from, to): (f32, f32), l
     solid.plate(base, (a.1 + b.1) * 0.5);
 }
 
-/// Returns the boarding hatch on the left flank, where the robot steps out: a light frame, the
-/// dark door in it, and the handle, over the upper and the lower face of the flank.
-pub fn hatch() -> Solid {
-    let (front, back, reach) = HATCH;
-    let mut hatch = Solid::default();
+/// Returns the service panel on the left flank: a light frame flush with the skin and the dark
+/// cover in it, over the upper and the lower face of the flank. The robot does not board
+/// through it: the canopy opens for that.
+pub fn service_panel() -> Solid {
+    let (front, back, reach) = PANEL;
+    let mut panel = Solid::default();
     for (from, to) in [(0.0, reach), (-reach, 0.0)] {
-        hatch.set_tone(1);
-        layer(&mut hatch, (front, back), (from, to), 0.03);
-        hatch.set_tone(4);
-        let (inner, scale) = ((front + 0.1, back - 0.1), 0.88);
-        layer(&mut hatch, inner, (from * scale, to * scale), 0.05);
+        panel.set_tone(1);
+        layer(&mut panel, (front, back), (from, to), 0.012);
+        panel.set_tone(4);
+        let (inner, scale) = ((front + 0.05, back - 0.05), 0.85);
+        layer(&mut panel, inner, (from * scale, to * scale), 0.02);
     }
-    hatch.set_tone(1);
-    let chine = flank(-1.65, 0.0).0;
-    hatch.slab(
-        chine + Vec3::new(-0.08, -0.04, -0.05),
-        chine + Vec3::new(0.0, 0.06, 0.05),
-    );
-    hatch
+    panel
 }
 
-/// Returns the antenna: a mast on the spine behind the canopy with a crossbar at its top.
+/// Returns the antenna, the one asymmetry of the ship: a mast on the left shoulder behind the
+/// canopy with a crossbar at its top.
 pub fn mast() -> Solid {
     let mut mast = Solid::default();
     column(
         &mut mast,
-        Vec3::new(0.0, 0.0, 0.95),
-        &[(1.12, 0.015), (0.7, 0.025)],
+        Vec3::new(-0.45, 0.0, 0.95),
+        &[(1.12, 0.015), (0.5, 0.025)],
         (6, 0),
     );
-    mast.slab(Vec3::new(-0.1, 1.1, 0.93), Vec3::new(0.1, 1.13, 0.97));
+    mast.slab(Vec3::new(-0.55, 1.1, 0.93), Vec3::new(-0.35, 1.13, 0.97));
     mast
 }
 

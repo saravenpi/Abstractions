@@ -5,12 +5,16 @@
 
 mod apply;
 mod gameplay;
+mod lighting;
 mod model;
 mod prefs;
 mod servers;
+mod shadows;
 mod ship_keys;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_lighting;
 #[cfg(test)]
 mod tests_removed;
 #[cfg(test)]
@@ -18,8 +22,10 @@ mod tests_servers;
 
 pub use bevy_persistent::Persistent;
 pub use gameplay::Gameplay;
+pub use lighting::{Lighting, Quality};
 pub use model::{Audio, Controls, Graphics, Keymap, Settings, WorldPrefs, render_step};
 pub use servers::{SavedServer, default_servers};
+pub use shadows::{ShadowDetail, ShadowReach};
 pub use ship_keys::ShipKeys;
 
 use bevy::prelude::*;

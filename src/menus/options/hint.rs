@@ -1,9 +1,13 @@
 //! The line under the settings: on the graphics tab a note on the render distance steps that need
 //! a strong GPU, and the first key conflict on the controls and ship tabs.
 
+use bevy::input_focus::InputFocus;
 use bevy::prelude::*;
 
+use super::actions::SettingsAction;
 use super::binds::conflicts;
+use super::describe::{COSTS, describe};
+use super::field::Field;
 use super::format::key_name;
 use super::{SettingsTab, Tab};
 use crate::menus::Menu;
@@ -59,15 +63,35 @@ pub fn conflict_line(keys: &Keymap) -> String {
     )
 }
 
-/// Shows the render distance note on the graphics tab and the key conflicts on the key tabs.
+/// Returns the line of the graphics tab: the description of the focused row when it has one,
+/// else the render distance note, else what costs the most.
+fn graphics_hint(rings: u32, focused: Option<Field>) -> String {
+    let note = graphics_line(rings);
+    let said = focused.map_or("", describe);
+    match (said.is_empty(), note.is_empty()) {
+        (true, true) => COSTS.to_string(),
+        (true, false) => note,
+        (false, false) if focused == Some(Field::RenderDistance) => format!("{said} {note}"),
+        (false, _) => said.to_string(),
+    }
+}
+
+/// Shows the description of the focused setting on the graphics tab and the key conflicts on the
+/// key tabs.
 fn show_hint(
-    tab: Res<SettingsTab>,
+    (tab, focus): (Res<SettingsTab>, Res<InputFocus>),
     settings: Res<Persistent<Settings>>,
+    actions: Query<&SettingsAction>,
     mut lines: Query<(&mut Text, &mut TextColor), With<HintLine>>,
 ) {
+    let on = focus.get().and_then(|entity| actions.get(entity).ok());
+    let field = match on {
+        Some(SettingsAction::Adjust(field, _)) => Some(*field),
+        _ => None,
+    };
     let (shown, color) = match tab.0 {
         Tab::Graphics => (
-            graphics_line(settings.graphics.render_distance),
+            graphics_hint(settings.graphics.render_distance, field),
             theme::TEXT_2,
         ),
         Tab::Controls | Tab::Ship => (conflict_line(&settings.controls.keys), theme::TEXT),
@@ -81,11 +105,11 @@ fn show_hint(
 
 /// What the hint line depends on.
 fn stale(
-    tab: Res<SettingsTab>,
+    (tab, focus): (Res<SettingsTab>, Res<InputFocus>),
     settings: Res<Persistent<Settings>>,
     fresh: Query<(), Added<HintLine>>,
 ) -> bool {
-    tab.is_changed() || settings.is_changed() || !fresh.is_empty()
+    tab.is_changed() || focus.is_changed() || settings.is_changed() || !fresh.is_empty()
 }
 
 /// Registers the hint system.

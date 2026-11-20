@@ -10,9 +10,16 @@ use crate::settings::Settings;
 use crate::ui::theme;
 
 /// Every setting that is not a key.
-const FIELDS: [Field; 22] = [
+const FIELDS: [Field; 29] = [
     Field::RenderDistance,
+    Field::LightingQuality,
     Field::Shadows,
+    Field::ShadowDetail,
+    Field::ShadowDistance,
+    Field::CloudShadows,
+    Field::AutoExposure,
+    Field::LocalShadows,
+    Field::WaterGlint,
     Field::Vsync,
     Field::Fullscreen,
     Field::AmbientOcclusion,

@@ -3,6 +3,7 @@
 use bevy::prelude::KeyCode;
 
 use super::field::Field;
+use super::lights;
 use crate::settings::{Graphics, Settings, render_step};
 use crate::ui::theme;
 use crate::view::{ViewMode, ViewPrefs};
@@ -43,7 +44,7 @@ fn display_graphics(g: &Graphics, field: Field) -> Option<String> {
     match field {
         Field::RenderDistance => Some(RENDER_STEPS[render_step(g.render_distance)].0.to_string()),
         Field::Fov => Some(format!("{} deg", g.fov)),
-        _ => None,
+        _ => lights::display(g, field),
     }
 }
 

@@ -23,3 +23,18 @@ Inference: the checks to automate are the ones the benchmark names: no floating 
 
 - No source read on procedural low-poly character rigs in code, or on joint design for mechanical characters. Two candidate pages (a blockout guide and a Blender low-poly guide) were found but not opened.
 - No source read on Rust mesh libraries; none is needed and no new crate is allowed without asking.
+
+## Second pass: character design, and skills for Claude (2026-11-20 night)
+
+### Character design
+
+- Silhouette first. Iconic characters stay recognisable as a pure black shape; detail must be "organized and contained within a recognizable silhouette". A character is a collection of shapes: the silhouette is the biggest, then secondary shapes, then the smallest, the details. Shapes carry meaning ("spiky thing dangerous", "round thing safe"). The process is iteration from big to small: many silhouettes first, then the interior shapes, details last (Jon Neimeister, Hi-Rez Studios). https://visualartspassage.com/blog/principles-of-character-design
+- Machines with character, from the designer of the machine lifeforms of NieR:Automata: the brief was cute enough to appeal, a little unbalanced to show character, rough and retro, and modular, "assembled from similar units to look like a cohesive force"; his own goals were simple symbolic features "that even a kid could draw" and a silhouette easy to understand; he reached the final design by subtraction, "removing details until only the bare necessities were left"; one shared detail (a connector cover where parts attach) ties every unit together; thinking about how they move and are put together is part of the design. https://www.platinumgames.com/official-blog/article/9863
+- Believable robots: humanoid robots rest on human anatomy; understand what each detail is for ("if you creating a hatch, you should understand what this hatch should hide"); before detailing a moving part, block it out and animate it; vary the kinds of joints. https://80.lv/articles/how-to-model-a-robot
+
+### Skills that exist for Claude and 3D
+
+- A curated list counts 213 open-source MCP servers and skills for agents working in 3D (Blender, Unity, Godot, Unreal, CAD, Three.js, model generation), each security-graded, and ran one brief through 25 of them on 2026-11-08. https://github.com/zhuyansen/awesome-3d-skills/blob/main/README.md
+- Snyk lists eight Claude skills for 3D, game development and shaders, among them a "3D Modeling specialist" skill with three reference files (creation patterns, known failures, validation rules) and strong rules on topology, and a Blender procedural Python skill; it also warns that its research found prompt injection in 36 percent of skills tested, so every `SKILL.md` and script must be read before install. https://snyk.io/articles/top-claude-skills-3d-modeling-game-dev-shader-programming/
+- Inference: almost all of these drive Blender, Unity, Unreal or Three.js. None targets meshes written in Rust for Bevy. Installing a third-party skill is a supply-chain decision for the owner (read it first), and none is needed tonight. What would help this repo is its own small skill: the turntable loop, the mesh vocabulary (loft, lathe, extrude, inset, chamfer), the attach test and the design rules of this file, so every later model follows them.
+- Not found: a skill or a source specific to character design for code-written models. `https://www.diva-portal.org/smash/get/diva2:1129926/FULLTEXT02.pdf` (a thesis on guidelines for game character design) was fetched but not read.

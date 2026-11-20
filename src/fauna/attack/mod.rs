@@ -30,9 +30,9 @@ mod tests_limbs;
 
 use bevy::prelude::*;
 
-pub use harm::Dead;
+pub use harm::{Dead, harm};
 pub use limbs::Broken;
-pub use slay::Carved;
+pub use slay::{Carved, slay};
 
 use crate::screens::{in_control, playing};
 

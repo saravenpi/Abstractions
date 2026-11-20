@@ -86,6 +86,7 @@ pub fn general(active: Tab) -> impl Bundle {
         children![
             toggle("Check for updates at launch", Field::CheckUpdates),
             stepper("Hitstop", Field::Hitstop),
+            toggle("Blood", Field::Blood),
         ],
     )
 }

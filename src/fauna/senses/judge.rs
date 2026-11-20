@@ -1,5 +1,5 @@
 //! The judgment of one animal: its senses this frame, its stance by fight or flight, its herd's
-//! alarm, and, when wounded, its way to the den and its blood.
+//! alarm, and, when wounded, its way to the den and its blood, which a wound lets out.
 
 use bevy::math::{DVec3, Vec2, Vec3, Vec3Swizzles};
 
@@ -169,6 +169,9 @@ fn wound(
     let here = beast.spot.planet(beast.motion.root.at);
     let dir = here.normalize();
     beast.wits.den = herd.map(|h| den(h, species, radius, dir).unwrap_or(h.home));
+    if !beast.wits.leaking {
+        return;
+    }
     let ahead = (beast.motion.root.turn * Vec3::NEG_Z)
         .with_y(0.0)
         .normalize_or(Vec3::NEG_Z);

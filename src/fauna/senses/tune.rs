@@ -127,7 +127,7 @@ pub const LIMP: f32 = 0.6;
 pub const BLOOD_STEP: f64 = 2.0;
 
 /// Most drops of blood kept at once; the oldest go first.
-pub const BLOOD_MOST: usize = 512;
+pub const BLOOD_MOST: usize = 1024;
 
 /// Length in metres of a drop of blood per cube root of a kilogram of the animal.
 pub const BLOOD_PER_KG: f32 = 0.04;

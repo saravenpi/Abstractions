@@ -40,3 +40,39 @@ fn one_material_per_colour() {
     assert_ne!(a, c);
     assert_eq!(materials.len(), 2);
 }
+
+/// However many flecks are thrown, the pool keeps its slots and never has more flying.
+#[test]
+fn the_pool_never_exceeds_its_size() {
+    use bevy::ecs::system::RunSystemOnce;
+
+    use super::pool::{Fleck, SLOTS, spawn};
+    use super::{Fling, fly::fling};
+    let mut app = App::new();
+    app.add_message::<Fling>()
+        .init_resource::<Flecks>()
+        .init_resource::<Assets<Mesh>>()
+        .init_resource::<Assets<StandardMaterial>>();
+    let world = app.world_mut();
+    world.run_system_once(spawn).expect("the flecks");
+    for n in 0..SLOTS * 3 {
+        world.write_message(Fling {
+            at: Vec3::splat(n as f32),
+            velocity: Vec3::Y,
+            radius: 0.006,
+            colour: [0.4, 0.0, 0.0],
+            wet: true,
+            tag: Some(1),
+        });
+    }
+    world.run_system_once(fling).expect("the throw");
+    let all = world.query::<&Fleck>().iter(world).count();
+    let live = world
+        .query::<&Fleck>()
+        .iter(world)
+        .filter(|f| f.live)
+        .count();
+    assert_eq!(all, SLOTS);
+    assert_eq!(live, SLOTS);
+    assert!(world.resource::<Flecks>().live <= SLOTS);
+}

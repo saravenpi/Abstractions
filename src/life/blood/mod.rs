@@ -6,7 +6,9 @@
 //! volume, the flow through an opening and the clotting follow from the mass and the height of the
 //! animal and the gravity of its planet ([`flow`]). Pure functions of plain data.
 
+mod beat;
 mod carrier;
+mod drops;
 mod flow;
 pub mod tune;
 
@@ -15,7 +17,7 @@ mod tests_carrier;
 #[cfg(test)]
 mod tests_flow;
 
+pub use beat::{heart_rate, pulse};
 pub use carrier::{Blood, Carrier, of, species};
-pub use flow::{
-    clot, drag, drop_radius, gush, heart_rate, pressure, pulse, seep, speed, stain, vessel, volume,
-};
+pub use drops::{drag, drop_radius, drop_volume, stain};
+pub use flow::{clot, gush, pressure, seep, speed, vessel, volume};

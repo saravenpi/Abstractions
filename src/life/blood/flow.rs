@@ -1,10 +1,10 @@
 //! The physics of blood: how much a body holds, how hard it is pushed, and how it leaves a wound.
 
-use std::f32::consts::{PI, TAU};
+use std::f32::consts::PI;
 
 use super::tune::{
-    AIR, BASE, CLOT, CLOT_MAJOR, DENSITY, DISCHARGE, FILM, HEART, LIFT, OPEN, PORES, SHARE, SPHERE,
-    VENOUS, VESSEL, VESSEL_EXPONENT,
+    BASE, CLOT, CLOT_MAJOR, DENSITY, DISCHARGE, LIFT, OPEN, PORES, SHARE, VENOUS, VESSEL,
+    VESSEL_EXPONENT,
 };
 
 /// Returns the volume of blood of a body of `mass` kilograms, in cubic metres.
@@ -53,34 +53,4 @@ pub fn seep(width: f32, depth: f32) -> f32 {
 pub fn clot(age: f32, major: bool) -> f32 {
     let tau = if major { CLOT_MAJOR } else { CLOT };
     (-age.max(0.0) / tau).exp()
-}
-
-/// Returns the heart rate of a body of `mass` kilograms, in beats per second.
-pub fn heart_rate(mass: f32) -> f32 {
-    HEART * mass.max(1e-3).powf(-0.25)
-}
-
-/// Returns the flow of an artery at time `t` seconds, relative to its mean, for a heart that beats
-/// `rate` times a second: the systolic half of each beat carries it all, with a mean of 1.
-pub fn pulse(t: f32, rate: f32) -> f32 {
-    let wave = (TAU * rate * t).sin().max(0.0);
-    4.0 * wave * wave
-}
-
-/// Returns the radius in metres of a sphere of blood of `volume` cubic metres.
-pub fn drop_radius(volume: f32) -> f32 {
-    (3.0 * volume.max(0.0) / (4.0 * PI)).cbrt()
-}
-
-/// Returns the diameter in metres of the stain a drop of `volume` cubic metres leaves on the ground:
-/// it spreads to a film of [`FILM`] thickness.
-pub fn stain(volume: f32) -> f32 {
-    2.0 * (volume.max(0.0) / (FILM * PI)).sqrt()
-}
-
-/// Returns the drag a sphere of blood of `radius` metres feels in air `thick` times as dense as at
-/// home, as the share of its speed it loses per metre it travels: ½·ρa·Cd·A / m.
-pub fn drag(radius: f32, thick: f32) -> f32 {
-    let r = radius.max(1e-4);
-    0.5 * AIR * thick.max(0.0) * SPHERE * PI * r * r / (DENSITY * 4.0 / 3.0 * PI * r * r * r)
 }

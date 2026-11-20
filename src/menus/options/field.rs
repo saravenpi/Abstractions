@@ -30,6 +30,7 @@ pub enum Field {
     AutoFollow,
     CheckUpdates,
     Hitstop,
+    Blood,
     Key(Bind),
 }
 
@@ -106,6 +107,7 @@ pub fn step(settings: &mut Settings, field: Field, dir: i32) {
         Field::Music => a.music = bump_tenths(a.music, dir, 0.0, 1.0),
         Field::Effects => a.effects = bump_tenths(a.effects, dir, 0.0, 1.0),
         Field::CheckUpdates => updates.check_at_launch = !updates.check_at_launch,
+        Field::Blood => play.blood = !play.blood,
         Field::Hitstop => play.hitstop = bump_tenths(play.hitstop, dir, 0.0, 1.0),
         _ => {}
     }

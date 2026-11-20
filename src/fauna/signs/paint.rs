@@ -24,6 +24,8 @@ pub struct Canvas<'a> {
     pub radius: f64,
     /// Height in the frame of the drawn ground over `(x, z)`.
     pub ground: &'a dyn Fn(Vec2) -> f32,
+    /// Linear RGB colour of the blood of a species, at a freshness from 1 (just fell) to 0 (dried).
+    pub blood: &'a dyn Fn(u16, f32) -> [f32; 3],
 }
 
 /// Builds the empty mesh of the signs: [`QUADS`] quads all folded onto the origin.
@@ -64,7 +66,8 @@ pub fn paint(mesh: &mut Mesh, signs: &[Sign], canvas: &Canvas) -> usize {
     colours.clear();
     for sign in signs {
         let lie = flat(canvas, sign.at, sign.facing);
-        quads(sign, lie, &mut |q| {
+        let blood = (canvas.blood)(sign.species, sign.fresh);
+        quads(sign, lie, blood, &mut |q| {
             put((&mut positions, &mut colours), &q, canvas)
         });
     }

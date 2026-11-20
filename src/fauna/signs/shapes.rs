@@ -38,9 +38,6 @@ const STEMS: [f32; 3] = [0.28, 0.19, 0.09];
 /// Colour of a burrow mouth and of the soil dug out of it.
 const HOLE: ([f32; 3], [f32; 3]) = ([0.015, 0.012, 0.01], [0.32, 0.25, 0.17]);
 
-/// Colour of drying blood.
-const BLOOD: [f32; 3] = [0.22, 0.015, 0.01];
-
 /// Colour of weathered bone.
 const BONE: [f32; 3] = [0.82, 0.79, 0.7];
 
@@ -51,7 +48,12 @@ fn tint(rgb: [f32; 3], alpha: f32) -> [f32; 4] {
 
 /// Calls `put` with the quads of `sign`, lying at `centre` and pointing along the unit `along`, both
 /// `(x, z)` in the frame.
-pub fn quads(sign: &Sign, (centre, along): (Vec2, Vec2), put: &mut impl FnMut(Quad)) {
+pub fn quads(
+    sign: &Sign,
+    (centre, along): (Vec2, Vec2),
+    blood: [f32; 3],
+    put: &mut impl FnMut(Quad),
+) {
     let (s, f) = (sign.size, sign.fresh);
     let across = along.perp();
     let diagonal = (along + across).normalize_or(along);
@@ -73,7 +75,7 @@ pub fn quads(sign: &Sign, (centre, along): (Vec2, Vec2), put: &mut impl FnMut(Qu
             crossed(&mut at, (along, diagonal), tint(HOLE.0, 0.95));
         }
         Mark::Bones => bones(&mut at, (along, across), f),
-        Mark::Blood => crossed(&mut at, (along, diagonal), tint(BLOOD, 0.9 * f)),
+        Mark::Blood => crossed(&mut at, (along, diagonal), tint(blood, 0.9 * f)),
     }
 }
 

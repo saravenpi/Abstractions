@@ -3,7 +3,7 @@
 //! costs nothing while the craft is slow.
 
 use super::{Craft, Gas, Glow, Heat, descent, entry, flux};
-use crate::universe::{PlanetClass, PlanetRecord};
+use crate::universe::{self as air, Mix};
 
 /// Density of the air of the home planet at sea level in kilograms per cubic metre.
 const HOME: f64 = 1.2;
@@ -101,18 +101,26 @@ fn an_idle_heat_does_no_work() {
     assert!(heat.live());
 }
 
-/// The class of a planet gives the gas of its air.
+/// The most abundant gas of a mix gives the gas of the glow.
 #[test]
-fn a_planet_gives_a_gas() {
-    let mut record = PlanetRecord::TEMPERATE;
-    assert_eq!(Gas::of(&record), Gas::NitrogenOxygen);
-    record.class = PlanetClass::GasGiant;
-    assert_eq!(Gas::of(&record), Gas::Hydrogen);
-    record.class = PlanetClass::Desert;
-    assert_eq!(Gas::of(&record), Gas::CarbonDioxide);
-    record.class = PlanetClass::Lava;
-    assert_eq!(Gas::of(&record), Gas::Sulphur);
-    record.class = PlanetClass::Ice;
-    record.temperature = 100.0;
-    assert_eq!(Gas::of(&record), Gas::Methane);
+fn a_mix_gives_a_gas() {
+    assert_eq!(Gas::of(&Mix::HOME), Gas::NitrogenOxygen);
+    let giant = Mix::of([
+        (air::Gas::Hydrogen, 0.9),
+        (air::Gas::Helium, 0.1),
+        (air::Gas::Hydrogen, 0.0),
+        (air::Gas::Hydrogen, 0.0),
+    ]);
+    assert_eq!(Gas::of(&giant), Gas::Hydrogen);
+    let rock = |gas, rest| Mix::of([(gas, 0.9), (rest, 0.1), (rest, 0.0), (rest, 0.0)]);
+    let nitrogen = air::Gas::Nitrogen;
+    assert_eq!(
+        Gas::of(&rock(air::Gas::CarbonDioxide, nitrogen)),
+        Gas::CarbonDioxide
+    );
+    assert_eq!(
+        Gas::of(&rock(air::Gas::SulphurDioxide, nitrogen)),
+        Gas::Sulphur
+    );
+    assert_eq!(Gas::of(&rock(air::Gas::Methane, nitrogen)), Gas::Methane);
 }

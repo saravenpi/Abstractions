@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::telemetry::ShipTelemetry;
-use crate::render::{Craft, Gas, Heat, LocalSystem, MIN_SPEED, Vantage, descent, entry};
+use crate::render::{Craft, Heat, LocalSystem, MIN_SPEED, Vantage, descent, entry};
 use crate::space::{Location, Travel};
 use crate::view::Target;
 
@@ -32,9 +32,7 @@ pub fn offer(
     let (Some(vantage), Some(local), Some(mut heat)) = (sky.0, sky.1, heat) else {
         return;
     };
-    let gas = local
-        .below(&vantage)
-        .map_or(Gas::Unknown, |planet| Gas::of(&planet.record));
+    let gas = local.gas(&vantage);
     let air = density(telemetry.dynamic_pressure, telemetry.surface_speed);
     let sink = -vantage.velocity.dot(vantage.up);
     let glow = entry(air, telemetry.surface_speed, gas).scaled(descent(sink));

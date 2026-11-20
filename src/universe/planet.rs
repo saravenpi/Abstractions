@@ -95,7 +95,8 @@ fn solid(star: &StarSpec, index: u8, orbit: f64, seed: u64) -> PlanetSpec {
     let born = drawn(&mut rng);
     let body = Body::new(born.gravity, born.radius, orbit);
     let record = PlanetRecord::derive(star, &body, hash::child(seed, RECORD_STREAM));
-    let [atmosphere_height, cloud_base, cloud_top] = air::heights(&record, born.gravity, born.radius);
+    let [atmosphere_height, cloud_base, cloud_top] =
+        air::heights(&record, born.gravity, born.radius);
     PlanetSpec {
         id: BodyId {
             star: star.id,

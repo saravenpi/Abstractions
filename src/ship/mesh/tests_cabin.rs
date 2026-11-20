@@ -10,9 +10,7 @@ use super::shell::{HALF, MOUTH, arch, glass, hull, lip, mouth, station};
 use super::tests_fit::{corners, crosses, inside, positions};
 use super::tub::tub;
 use super::{bar_mesh, cabin_meshes, faces_mesh, lever_mesh, stick_mesh, tub_mesh};
-use crate::ship::cockpit::{
-    Dial, GEAR_LEVER, LEVER, Lamp, Levers, PEDAL, STICK, Screen, WARP_SWITCH,
-};
+use crate::ship::cockpit::{Dial, LEVER, Levers, STICK};
 
 /// Returns the corners of the closed outlines: the two halves of the fuselage and the canopy.
 fn outlines() -> Vec<Vec<Vec3>> {

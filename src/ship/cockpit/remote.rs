@@ -35,7 +35,7 @@ impl Readings {
         Self {
             bars,
             speed: seen.speed.filter(|speed| speed.is_finite()),
-            height: Some(seen.clearance).filter(|_| near),
+            height: near.then_some(seen.clearance),
             ..Self::default()
         }
     }

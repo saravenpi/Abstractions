@@ -4,6 +4,7 @@
 //! `ResMut<Persistent<Settings>>` and call `persist()` to save.
 
 mod apply;
+mod gameplay;
 mod model;
 mod prefs;
 mod servers;
@@ -16,6 +17,7 @@ mod tests_removed;
 mod tests_servers;
 
 pub use bevy_persistent::Persistent;
+pub use gameplay::Gameplay;
 pub use model::{Audio, Controls, Graphics, Keymap, Settings, WorldPrefs, render_step};
 pub use servers::{SavedServer, default_servers};
 pub use ship_keys::ShipKeys;

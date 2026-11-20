@@ -37,16 +37,19 @@ use super::body::Ship;
 use super::flight::{Controls, Report, STEP, Scene, step};
 use super::wells::Well;
 use crate::space::Frame;
-use crate::universe::{PlanetSpec, Universe};
+use crate::universe::{PlanetRecord, PlanetSpec, STANDARD_GRAVITY, Universe};
 
 /// Returns the home planet resized to `radius` metres with an atmosphere `air` metres high, turning
-/// once every `day` seconds.
+/// once every `day` seconds, with the temperate reference air and the standard gravity, so that the
+/// flight tests do not depend on what the seed made of the home planet.
 fn planet(radius: f64, air: f64, day: f64) -> PlanetSpec {
     let universe = Universe::new(7);
     PlanetSpec {
         radius,
         atmosphere_height: air,
         day_seconds: day,
+        gravity: STANDARD_GRAVITY,
+        record: PlanetRecord::TEMPERATE,
         ..universe.planet(universe.home())
     }
 }

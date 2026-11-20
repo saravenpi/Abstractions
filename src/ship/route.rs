@@ -38,7 +38,7 @@ use bevy::prelude::*;
 use super::body::Ship;
 use super::flight::Controls;
 use super::helm::Helm;
-use super::pilot::{Autopilot, Goal, Phase, Settle};
+use super::pilot::{Autopilot, Phase, Settle};
 use super::sim::Cosmos;
 use super::sky::Skies;
 use super::steer::{aim, waypoint};

@@ -37,7 +37,9 @@ pub enum Paint {
 /// One fixed part of the ship.
 #[derive(Debug, Clone)]
 pub struct Part {
-    /// The group the part belongs to: the parts of a group are closed shapes together.
+    /// The group the part belongs to: the parts of a group are closed shapes together. Only the
+    /// tests read it.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub group: &'static str,
     /// What it is painted with.
     pub paint: Paint,

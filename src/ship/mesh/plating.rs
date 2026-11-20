@@ -5,7 +5,11 @@
 /// Tones of the eight panels of a band of the plain fuselage, from the right flank round the
 /// roof, the left flank and the belly. `band` counts the bands from the nose.
 pub fn plating(band: usize) -> [u8; 8] {
-    let (roof, shoulder) = if band % 2 == 0 { (0, 1) } else { (1, 0) };
+    let (roof, shoulder) = if band.is_multiple_of(2) {
+        (0, 1)
+    } else {
+        (1, 0)
+    };
     [shoulder, roof, roof, shoulder, 2, 3, 3, 2]
 }
 

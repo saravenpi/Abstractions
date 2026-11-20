@@ -80,14 +80,16 @@ fn on_the_ground() -> Ship {
 /// With the assist off the ship flies exactly as it did before the assist learned to hold a
 /// speed: the same bits in the air and in space. On the ground the number was taken again in
 /// 0.9, when a touchdown above the safe speed, as this 7 m/s drop is, stopped bouncing. All three
-/// were taken again in 0.11, with the standard gravity, the air of the chosen home and the new thrust.
+/// were taken again in 0.11, with the standard gravity and the new thrust. The air and the ground
+/// were taken again with the temperate reference air that `planet` gives, so that the number does
+/// not move with what the seed makes of the home planet.
 #[test]
 fn the_manual_ship_is_bit_identical() {
     let seen = [in_the_air(), in_space(), on_the_ground()].map(|ship| digest(&ship));
     let frozen = [
-        10_802_390_405_902_409_831,
+        5_056_145_825_944_329_500,
         15_576_487_431_479_213_754,
-        7_546_659_858_878_267_499,
+        841_045_005_777_745_334,
     ];
     assert_eq!(seen, frozen);
 }

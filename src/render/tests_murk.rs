@@ -47,9 +47,8 @@ fn dome(murk: Option<Vec3>) -> SkyUniform {
         air: 1.0,
         whiteout: 0.0,
         rim: Vec3::splat(0.2),
-        disc: Vec3::Z,
-        core: Vec3::X,
-        band: 1.0,
+        to_galaxy: Mat3::IDENTITY,
+        mapped: true,
         murk,
         heading: Vec3::NEG_Z,
         beta: 0.0,
@@ -98,7 +97,7 @@ fn water_keeps_the_home_colour() {
         (sky.zenith, sky.horizon),
         (linear(UNDERWATER), linear(UNDERWATER))
     );
-    assert_eq!((sky.sun.w, sky.rim, sky.disc.w), (0.0, Vec4::ZERO, 0.0));
+    assert_eq!((sky.sun.w, sky.rim, sky.galaxy.x), (0.0, Vec4::ZERO, 0.0));
 }
 
 /// Under a sea of molten rock the fog and the dome are the glowing colour of the liquid: red

@@ -1,5 +1,6 @@
 //! The sky material: an unlit dome shader with a gradient that fades with height, the glow of the
-//! sun, the horizon rim and the band of the galaxy. Moons are real bodies, drawn with the planets.
+//! sun, the horizon rim and the light of the galaxies, read from their baked cube map. Moons are
+//! real bodies, drawn with the planets.
 
 use bevy::asset::embedded_asset;
 use bevy::mesh::MeshVertexBufferLayoutRef;
@@ -28,10 +29,14 @@ pub struct SkyUniform {
     pub up: Vec4,
     /// Linear color of the bright rim along the horizon, already scaled by its strength.
     pub rim: Vec4,
-    /// Normal of the galaxy disc in xyz and the strength of its band in w.
-    pub disc: Vec4,
-    /// Direction of the galaxy center in xyz.
-    pub core: Vec4,
+    /// Strength of the light of the galaxies in x, and in y 1 once their map is baked.
+    pub galaxy: Vec4,
+    /// First column of the rotation from render axes to galaxy axes, the axes of the map.
+    pub to_galaxy_x: Vec4,
+    /// Second column of that rotation.
+    pub to_galaxy_y: Vec4,
+    /// Third column of that rotation.
+    pub to_galaxy_z: Vec4,
     /// Linear color of the star light the air lets through, which colors the glow around the star.
     pub glow: Vec4,
     /// Unit vector of the direction of travel in xyz and, in w, the speed the sky is seen
@@ -54,12 +59,10 @@ pub struct SkyLook {
     pub whiteout: f32,
     /// sRGB color of the rim along the horizon, already scaled by its strength.
     pub rim: Vec3,
-    /// Normal of the galaxy disc.
-    pub disc: Vec3,
-    /// Direction of the galaxy center.
-    pub core: Vec3,
-    /// Strength of the galaxy band.
-    pub band: f32,
+    /// Rotation from render axes to galaxy axes.
+    pub to_galaxy: Mat3,
+    /// Whether the map of the light of the galaxies is baked.
+    pub mapped: bool,
     /// sRGB colour of the liquid around a camera below the surface of a sea.
     pub murk: Option<Vec3>,
     /// Unit vector of the direction of travel.
@@ -92,8 +95,10 @@ impl SkyUniform {
             cloud: linear(palette.cloud).truncate().extend(look.whiteout * dry),
             up: look.up.extend(look.dip),
             rim: linear(look.rim) * dry,
-            disc: look.disc.extend(look.band * palette.stars * dry),
-            core: look.core.extend(0.0),
+            galaxy: Vec4::new(palette.stars * dry, f32::from(u8::from(look.mapped)), 0.0, 0.0),
+            to_galaxy_x: look.to_galaxy.x_axis.extend(0.0),
+            to_galaxy_y: look.to_galaxy.y_axis.extend(0.0),
+            to_galaxy_z: look.to_galaxy.z_axis.extend(0.0),
             glow: linear(palette.sun_color),
             warp: look.heading.extend(look.beta),
         }
@@ -106,6 +111,10 @@ pub struct SkyMaterial {
     /// Values for the shader.
     #[uniform(0)]
     pub sky: SkyUniform,
+    /// The light of the galaxies: the cube map `galaxy_light` bakes, in galaxy axes.
+    #[texture(1, dimension = "cube")]
+    #[sampler(2)]
+    pub map: Option<Handle<Image>>,
 }
 
 impl Material for SkyMaterial {

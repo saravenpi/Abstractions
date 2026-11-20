@@ -25,7 +25,7 @@ const HALO: f64 = 0.004;
 
 /// The part of a galaxy a place belongs to, which decides how old its stars are.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Region {
+pub enum Region {
     /// The dense centre, old stars.
     Core,
     /// An arm or a clump, where young hot stars form.
@@ -38,7 +38,7 @@ pub(super) enum Region {
 
 /// Expected stars per sector at one place, split by the structure they belong to.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(super) struct Parts {
+pub struct Parts {
     /// Stars of the dense core.
     pub core: f64,
     /// Stars of the arms or clumps.
@@ -69,7 +69,7 @@ impl Parts {
 }
 
 /// Returns 0 below `a`, 1 above `b` and a smooth blend between (also works when `a > b`).
-fn smooth(a: f64, b: f64, x: f64) -> f64 {
+pub(super) fn smooth(a: f64, b: f64, x: f64) -> f64 {
     let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
     t * t * (3.0 - 2.0 * t)
 }

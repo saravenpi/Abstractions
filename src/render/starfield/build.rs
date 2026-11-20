@@ -7,9 +7,8 @@ use bevy::tasks::futures_lite::future::poll_once;
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on};
 
 use super::depth::{Sighted, lit};
-use super::{GALAXY_CELLS, MOST_STARS, REACH_GLY, Starfield};
+use super::{MOST_STARS, REACH_GLY, Starfield};
 use crate::render::vantage::Scene;
-use crate::space::UniPos;
 use crate::universe::{GLY, GalaxyId, SECTOR_GLY, Universe};
 
 /// The mesh being built for a starfield, and the place it is built for.
@@ -22,22 +21,12 @@ pub struct Building {
 }
 
 /// Returns every speck seen from `at` metres from the centre of `galaxy`: the stars within
-/// reach and the galaxies around. The star of the current system is one of them: from afar it
-/// is this point, and up close its disc is drawn on it as a body.
+/// reach. The star of the current system is one of them: from afar it is this point, and up
+/// close its disc is drawn on it as a body. The galaxies are in the map of `galaxy_light`.
 pub fn gather(universe: &Universe, galaxy: GalaxyId, at: DVec3) -> Vec<Sighted> {
     let stars = universe.stars_near(galaxy, at, REACH_GLY);
-    let mut specks: Vec<Sighted> = stars
-        .iter()
-        .take(MOST_STARS)
-        .map(|star| Sighted::star(star, at))
-        .collect();
-    let Some(here) = universe.galaxy(galaxy).map(|spec| spec.locate(at)) else {
-        return specks;
-    };
-    let others = universe.galaxies_near(galaxy, GALAXY_CELLS);
-    let seen = |other: &_| Sighted::galaxy(other, UniPos::new(other.id.0, other.center) - here);
-    specks.extend(others.iter().filter_map(seen));
-    specks
+    let near = stars.iter().take(MOST_STARS);
+    near.map(|star| Sighted::star(star, at)).collect()
 }
 
 /// Starts a build when the camera has moved more than a sector since the last one, unless one

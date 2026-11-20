@@ -28,7 +28,7 @@ mod tests_time;
 
 pub use feed::{seen, word};
 pub use field::Field;
-pub use grid::{FACE, Patch, SNAPSHOT, TEXELS, moment, texel};
+pub use grid::{FACE, Patch, SNAPSHOT, TEXELS, face_dir, moment, texel};
 pub use puff::{CELL, density_at, drift};
 pub use rules::{THUNDER_SECONDS, Weather, thunder};
 pub use wet::wet;

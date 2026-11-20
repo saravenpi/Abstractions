@@ -38,6 +38,13 @@ pub fn texel_dir(face: usize, column: i32, row: i32) -> DVec3 {
     (major * (1.0 - past_x - past_y) + along * x + down * y).normalize()
 }
 
+/// Returns the unit direction through the point `x`, `y` of `face` of a cube map, each from -1
+/// at the first column or row to 1 at the last: the way a cube texture of any side is laid out.
+pub fn face_dir(face: usize, x: f64, y: f64) -> DVec3 {
+    let [major, along, down] = AXES[face];
+    (major + along * x + down * y).normalize()
+}
+
 /// Returns the unit direction of the centre of texel number `index` of the whole grid, which
 /// counts the faces one after the other and each face row after row, as the texture does.
 pub fn texel(index: usize) -> DVec3 {

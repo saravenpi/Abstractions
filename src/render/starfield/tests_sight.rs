@@ -29,7 +29,7 @@ fn the_mesh_reaches_past_the_edge_of_sight() {
         within <= MOST_STARS,
         "{within} stars within reach are cut short"
     );
-    let stars = seen.iter().filter(|speck| speck.flux < 50.0).count();
+    let stars = seen.len();
     assert_eq!(stars, within, "every star within reach, the own one too");
 }
 
@@ -46,8 +46,8 @@ fn a_grain_is_fainter_and_thinner_than_any_star() {
     let universe = Universe::new(7);
     let star = universe.system(universe.home().star).star;
     let seen = gather(&universe, star.id.galaxy, star.pos);
-    let stars = seen.iter().filter(|speck| speck.flux < 50.0);
-    let dimmest = stars
+    let dimmest = seen
+        .iter()
         .map(|speck| luminance(speck.color))
         .fold(f32::MAX, f32::min);
     assert!(

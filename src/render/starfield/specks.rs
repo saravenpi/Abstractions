@@ -1,14 +1,12 @@
-//! Specks of light on the sky: the nearby stars and the far galaxies, and the one mesh that draws them.
+//! Specks of light on the sky: the nearby stars, and the one mesh that draws them. The galaxies
+//! are not specks: `galaxy_light` bakes their light into a map of the whole sky.
 
 use bevy::asset::RenderAssetUsages;
 use bevy::math::DVec3;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 
-use crate::universe::{GALAXY_CELL, GLY, GalaxyKind, GalaxySpec, StarSpec};
-
-/// Largest angular radius in radians a galaxy is drawn with.
-pub const GALAXY_ANGLE: f32 = 0.35;
+use crate::universe::{GLY, StarSpec};
 
 /// One point of light on the sky shell.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -19,7 +17,7 @@ pub struct Speck {
     pub size: f32,
     /// Linear colour times brightness.
     pub color: Vec3,
-    /// How fast it fades from its centre: low for a crisp star, high for a soft galaxy.
+    /// How fast it fades from its centre: low for a crisp star.
     pub soft: f32,
 }
 
@@ -51,27 +49,6 @@ pub fn star_speck(star: &StarSpec, from: DVec3) -> Speck {
         color: star.color * gain,
         soft: 0.6,
     }
-}
-
-/// Returns the speck of a galaxy whose centre lies `offset` metres from the camera, or nothing
-/// when the camera is inside it.
-pub fn galaxy_speck(galaxy: &GalaxySpec, offset: DVec3) -> Option<Speck> {
-    let distance = offset.length();
-    if distance <= galaxy.radius {
-        return None;
-    }
-    let color = match galaxy.kind {
-        GalaxyKind::Spiral => Vec3::new(0.7, 0.8, 1.0),
-        GalaxyKind::Elliptical => Vec3::new(1.0, 0.9, 0.7),
-        GalaxyKind::Irregular => Vec3::new(0.8, 0.7, 1.0),
-    };
-    let bright = (0.5 * GALAXY_CELL / distance).clamp(0.1, 0.7) as f32;
-    Some(Speck {
-        dir: (offset / distance).as_vec3(),
-        size: ((galaxy.radius / distance) as f32).min(GALAXY_ANGLE),
-        color: color * bright,
-        soft: 2.5,
-    })
 }
 
 /// Builds the mesh of the specks on a unit shell: one quad each, facing the centre, with the

@@ -14,6 +14,7 @@ mod daylight;
 mod dome;
 mod entry;
 mod fog;
+mod galaxy_light;
 mod glow;
 mod heat;
 mod lighting;
@@ -140,6 +141,7 @@ pub(super) fn sky(app: &mut App) {
         bodies::plugin,
         moonlight::plugin,
         entry::plugin,
+        galaxy_light::plugin,
         warm::plugin,
         seasons::plugin,
         shade::plugin,

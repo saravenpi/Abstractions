@@ -34,3 +34,8 @@ pub const REFERENCE: f32 = 0.7;
 /// Share of [`REFERENCE`] the new bake may differ by at that place.
 #[cfg(test)]
 pub const REFERENCE_SLACK: f32 = 0.15;
+
+/// Seconds a new map takes to fade in over the one on show, so the sky grows between two bakes
+/// and does not change in steps: as long as the minimum gap between bakes. Unit: seconds of the
+/// app clock.
+pub const FADE: f64 = MIN_GAP;

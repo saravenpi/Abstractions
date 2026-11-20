@@ -4,9 +4,9 @@
 
 use bevy::math::DVec3;
 
-use super::density::smooth;
 use super::galaxy::Shape;
 use super::hash;
+use super::place::{Place, smooth};
 use super::spec::GalaxyKind;
 
 /// Optical depth per light-year through the densest lane: 3e-4, so a ray along the plane of the
@@ -24,25 +24,23 @@ const BETWEEN: f64 = 0.15;
 const BALL: f64 = 0.1;
 
 impl Shape {
-    /// Returns the dust at `p` light-years from the galaxy centre, as the optical depth
-    /// per light-year of a ray through it: 0 in the void and above the disc.
-    pub fn dust(&self, p: DVec3) -> f64 {
-        let q = p / self.radius;
-        let (r, d) = (q.x.hypot(q.z), q.length());
-        let alive = smooth(0.01, 0.03, d) * smooth(1.4, 1.0, d);
+    /// Returns the dust at `place`, as the optical depth per light-year of a ray through it: 0 in
+    /// the void and above the disc.
+    pub fn dust_at(&self, place: &Place) -> f64 {
+        let Place { q, r, alive, .. } = *place;
         let layer = |scale: f64| (-0.5 * (q.y / (scale * self.thick)).powi(2) - r / 0.3).exp();
         let found = match self.kind {
-            GalaxyKind::Spiral => layer(0.8) * smooth(1.0, 0.9, r) * self.lanes(q, r),
+            GalaxyKind::Spiral => layer(0.8) * smooth(1.0, 0.9, r) * self.lanes(place),
             GalaxyKind::Elliptical => BALL * (-r.hypot(q.y / 0.7) / 0.18).exp(),
             GalaxyKind::Irregular => layer(3.0) * smooth(1.0, 0.8, r) * self.patches(q),
         };
         alive * DUST * found
     }
 
-    /// Returns the share of the peak of a lane the arms of a spiral hold at `q` radii from the
-    /// centre, `r` from the axis: sharp lanes along the arms and a little between them.
-    fn lanes(&self, q: DVec3, r: f64) -> f64 {
-        let spoke = q.z.atan2(q.x) - self.swirl * r - LANE_SHIFT;
+    /// Returns the share of the peak of a lane the arms of a spiral hold at `place`: sharp lanes
+    /// along the arms and a little between them.
+    fn lanes(&self, place: &Place) -> f64 {
+        let spoke = place.turn - self.swirl * place.r - LANE_SHIFT;
         let wave = 0.5 + 0.5 * (f64::from(self.arms) * spoke).cos();
         BETWEEN + (1.0 - BETWEEN) * wave.powi(4)
     }

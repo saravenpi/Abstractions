@@ -43,6 +43,7 @@ pub struct CoverMap {
 
 impl CoverMap {
     /// Returns the empty map of `field` over ground of wetness `wet` at every texel.
+    #[cfg(test)]
     pub fn new(field: Field, wet: Vec<f32>) -> Self {
         Self {
             field,

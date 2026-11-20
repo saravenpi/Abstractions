@@ -17,7 +17,7 @@ const GRAIN: f64 = 0.1;
 
 /// The patch of sky a far galaxy covers and how finely a texel in it is sampled.
 #[derive(Debug, Clone, Copy)]
-pub struct Cone {
+pub(super) struct Cone {
     /// Unit vector toward the centre of the galaxy.
     axis: DVec3,
     /// Cosine of the angular radius of the galaxy, a texel wider.
@@ -29,7 +29,7 @@ pub struct Cone {
 /// Returns the cones of the galaxies in `sources` that cover so little of the sky that a map
 /// `side` texels wide cannot resolve them: those whose camera lies outside their light, with an
 /// angular radius under ten texels. Other galaxies are wide enough for one line per texel.
-pub fn cones(sources: &[Source], side: usize) -> Vec<Cone> {
+pub(super) fn cones(sources: &[Source], side: usize) -> Vec<Cone> {
     let texel = std::f64::consts::FRAC_PI_2 / side as f64;
     let cone = |source: &Source| {
         let (distance, reach) = (source.offset.length(), source.glow.reach());
@@ -62,7 +62,7 @@ fn fineness(cones: &[Cone], dir: DVec3) -> usize {
 /// Returns the light of texel `column`, `line` of face `face` of a map `side` texels wide: the
 /// mean over a grid of lines of sight where a far galaxy needs it, one through the middle of the
 /// texel everywhere else.
-pub fn texel(sources: &[Source], cones: &[Cone], side: usize, at: (usize, usize, usize)) -> Vec3 {
+pub(super) fn texel(sources: &[Source], cones: &[Cone], side: usize, at: (usize, usize, usize)) -> Vec3 {
     let (face, column, line) = at;
     let across = |index: f64| 2.0 * (index + 0.5) / side as f64 - 1.0;
     let middle = face_dir(face, across(column as f64), across(line as f64));

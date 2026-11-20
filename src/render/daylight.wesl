@@ -272,8 +272,8 @@ fn sun_shadow(in: PbrInput, toward: vec3<f32>, wanted: f32) -> Shadow {
             out.fade = smoothstep(far * (1.0 - SHADOW_FADE), far, -z);
             let receives = (in.flags & MESH_FLAGS_SHADOW_RECEIVER_BIT) != 0u;
             if (receives && (out.fade > 0.0 || wanted > 0.0)) {
-                let cast = fetch_directional_shadow(i, in.world_position, in.world_normal, z, in.frag_coord.xy);
-                out.share = cast * in.directional_shadow_factor;
+                let blocked = fetch_directional_shadow(i, in.world_position, in.world_normal, z, in.frag_coord.xy);
+                out.share = blocked * in.directional_shadow_factor;
             }
             return out;
         }

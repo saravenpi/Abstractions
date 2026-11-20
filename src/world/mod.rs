@@ -7,7 +7,7 @@ pub mod canopy;
 mod chunks;
 mod colormap;
 #[cfg(test)]
-mod cpu;
+pub(crate) mod cpu;
 mod enter;
 mod focus;
 pub mod globe;

@@ -61,7 +61,7 @@ fn a_new_build_changes_nothing_on_screen() {
     for star in others {
         let slid = Sighted::star(star, from).drifted(moved.as_vec3());
         let fresh = star_speck(star, from + moved * LY);
-        assert!(slid.dir.angle_between(fresh.dir) < 2e-4, "{star:?}");
+        assert!((slid.dir - fresh.dir).length() < 2e-5, "{star:?}");
         assert!((slid.size - fresh.size).abs() < 1e-5, "{star:?}");
         assert!((slid.color - fresh.color).length() < 2e-3 * fresh.color.length());
         checked += 1;

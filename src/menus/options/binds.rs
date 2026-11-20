@@ -34,12 +34,13 @@ pub enum Bind {
     Minimap,
     Map,
     Waypoint,
+    Guide,
 }
 
 impl Bind {
     /// The actions used on foot, in display order. The view and board keys work in the ship too,
-    /// and the turn keys turn the wingsuit as they turn the ship.
-    pub const FOOT: [Bind; 14] = [
+    /// and the turn keys turn the wingsuit as they turn the ship. The field guide opens on foot only.
+    pub const FOOT: [Bind; 15] = [
         Bind::Forward,
         Bind::Back,
         Bind::Left,
@@ -54,6 +55,7 @@ impl Bind {
         Bind::Minimap,
         Bind::Map,
         Bind::Waypoint,
+        Bind::Guide,
     ];
 
     /// The actions used while seated in the ship, in display order.
@@ -110,6 +112,7 @@ impl Bind {
             Bind::Minimap => "Minimap",
             Bind::Map => "Map",
             Bind::Waypoint => "Waypoint",
+            Bind::Guide => "Field guide",
         }
     }
 
@@ -143,6 +146,7 @@ impl Bind {
             Bind::Minimap => &mut keys.minimap,
             Bind::Map => &mut keys.map,
             Bind::Waypoint => &mut keys.waypoint,
+            Bind::Guide => &mut keys.guide,
         }
     }
 

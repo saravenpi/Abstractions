@@ -60,7 +60,9 @@ pub fn segments(from: f64, to: f64, radius: f64) -> Vec<(f64, f64)> {
     if at < to {
         let equal = ((to - at) / cap).ceil();
         let step = (to - at) / equal;
-        cuts.extend((0..equal as usize).map(|k| (at + step * k as f64, at + step * (k + 1) as f64)));
+        cuts.extend(
+            (0..equal as usize).map(|k| (at + step * k as f64, at + step * (k + 1) as f64)),
+        );
     }
     cuts
 }

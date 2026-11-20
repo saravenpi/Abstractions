@@ -40,6 +40,7 @@ const NIGHT_AMBIENT: f32 = 40.0;
 const DAY_AMBIENT: f32 = 350.0;
 const SPACE_AMBIENT: f32 = 0.2;
 const SPACE_LUX: f32 = 12000.0;
+const TOP_SCALES: f32 = 12.0;
 
 fn place_from(map: texture_2d<f32>) -> Place {
     var place: Place;
@@ -91,11 +92,10 @@ fn daylight(height: f32, star: vec3<f32>, depth: f32) -> Daylight {
 }
 
 fn air(altitude: f32, height: f32) -> f32 {
-    if (height <= 0.0) {
+    if (height <= 0.0 || altitude >= height) {
         return 0.0;
     }
-    let t = clamp(altitude / height, 0.0, 1.0);
-    return 1.0 - t * t;
+    return exp(-TOP_SCALES * max(altitude, 0.0) / height);
 }
 
 fn horizon_dip(altitude: f32, radius: f32) -> f32 {

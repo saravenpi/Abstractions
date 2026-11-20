@@ -19,14 +19,19 @@ pub const HALO_SCALE: f32 = 1.08;
 /// behind it goes from its shadow into the light of the star.
 pub const SHADOW_EDGE: (f32, f32) = (0.97, 1.03);
 
+/// Scale heights in an atmosphere, as `crate::universe::TOP_SCALES` and `daylight.wesl` have it.
+const TOP_SCALES: f32 = crate::universe::TOP_SCALES as f32;
+
 /// Returns the share of the atmosphere left above `altitude` metres: 1 at the ground, 0 from
 /// `height` metres up. A planet without air gives 0 everywhere.
+///
+/// The air thins as its pressure does, by a factor e over each scale height, a twelfth of
+/// `height`: the same density the ship and the gear fly in.
 pub fn air(altitude: f32, height: f32) -> f32 {
-    if height <= 0.0 {
+    if height <= 0.0 || altitude >= height {
         return 0.0;
     }
-    let t = (altitude / height).clamp(0.0, 1.0);
-    1.0 - t * t
+    (-TOP_SCALES * altitude.max(0.0) / height).exp()
 }
 
 /// Returns the sine of the angle the horizon drops by, seen `altitude` metres above a globe.

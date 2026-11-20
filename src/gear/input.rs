@@ -3,9 +3,10 @@
 use bevy::prelude::*;
 
 use super::tune::{SEA_DENSITY, WATER_DENSITY};
+use crate::universe::TOP_SCALES;
 
 /// Share of the atmosphere height that makes one scale height, as in `ship::drag`.
-const SCALE_SHARE: f32 = 0.125;
+const SCALE_SHARE: f32 = 1.0 / TOP_SCALES as f32;
 
 /// Everything the gear needs to know about the player and the air for one step.
 ///
@@ -85,7 +86,8 @@ impl Default for GearInput {
 /// Returns the air density in kilograms per cubic metre `altitude` metres above the sea of a
 /// planet whose atmosphere is `atmosphere_height` metres deep.
 ///
-/// The same exponential atmosphere as `ship::drag::density`: zero above the top.
+/// The same exponential atmosphere as `ship::drag::density`: it thins by a factor e over each
+/// scale height, a twelfth of the atmosphere, and is zero above the top.
 pub fn air_density(atmosphere_height: f32, altitude: f32) -> f32 {
     if altitude >= atmosphere_height || atmosphere_height <= 0.0 {
         return 0.0;

@@ -36,13 +36,16 @@ fn vacuum_leaves_only_gravity() {
     }
 }
 
-/// The air thins with height, so level flight has a ceiling below the top of the atmosphere.
+/// The air thins with height, by a factor e over each scale height, a twelfth of the
+/// atmosphere, so level flight has a ceiling below the top of the atmosphere.
 #[test]
 fn thin_air_sets_a_ceiling() {
     let top = 6000.0;
     assert_eq!(air_density(top, 0.0), 1.2);
     assert_eq!(air_density(top, top), 0.0);
     assert!(air_density(top, 750.0) < air_density(top, 0.0) * 0.4);
+    let scale = top / crate::universe::TOP_SCALES as f32;
+    assert!((air_density(top, scale) * std::f32::consts::E / 1.2 - 1.0).abs() < 1e-5);
     let holds = |altitude: f32| {
         let mut flight = Flight::new(Mode::Fly, Vec3::new(0.0, 0.0, -70.0));
         let input = GearInput {

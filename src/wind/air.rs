@@ -3,20 +3,23 @@
 use bevy::prelude::*;
 
 pub use crate::universe::NO_AIR;
-use crate::universe::PlanetRecord;
+use crate::universe::{PlanetRecord, dense};
 
 /// Thickest air the flight and the sound follow, against the home planet. Above it the air
 /// only gets heavier on paper, so that no planet turns flying into wading.
 pub const THICKEST: f64 = 3.0;
 
-/// Returns how thick the air of a planet is against the home planet: its pressure, held under
-/// [`THICKEST`], and exactly zero under [`NO_AIR`] or when the pressure is not a number.
+/// Returns how thick the air of a planet is against the home planet: its density at sea
+/// level, held under [`THICKEST`], and exactly zero when the pressure is under [`NO_AIR`] or
+/// not a number.
 ///
-/// Drag, lift, wind and the sounds of the air all scale with it, so that a planet with the
-/// home pressure gives 1 and changes nothing.
+/// The density is the pressure times the molar mass of the air over its temperature, see
+/// [`dense`], so cold or heavy air is thicker than its pressure says and hot or light air
+/// thinner. Drag, lift, wind and the sounds of the air all scale with it, and a planet with the
+/// air of the home planet gives its pressure: 1 at home, which changes nothing.
 pub fn thickness(record: &PlanetRecord) -> f64 {
     if record.pressure >= NO_AIR {
-        record.pressure.min(THICKEST)
+        dense(record).min(THICKEST)
     } else {
         0.0
     }

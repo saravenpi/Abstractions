@@ -82,6 +82,11 @@ pub const STOP_FPS: f32 = 60.0;
 /// Shake of the struck animal at the start of a hitstop, in metres; it falls to 0 by its end.
 pub const SHAKE: f32 = 0.03;
 
+/// Kick of the camera along the blow at the start of a hitstop that involves the local robot, in
+/// metres, for a blow of average energy; the hitstop scales it from half to twice that and it falls
+/// to nothing by the end.
+pub const CAMERA_KICK: f32 = 0.02;
+
 /// Shake of the camera at the start of a hitstop that involves the local robot, in metres.
 pub const CAMERA_SHAKE: f32 = 0.012;
 

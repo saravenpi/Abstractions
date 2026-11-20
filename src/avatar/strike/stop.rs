@@ -5,7 +5,8 @@
 use bevy::prelude::*;
 
 use super::hit::Hit;
-use super::tune::{CAMERA_SHAKE, SHAKE, STOP, STOP_FPS};
+use super::recoil::{gain, steady};
+use super::tune::{SHAKE, STOP, STOP_FPS};
 use crate::fauna::{Frozen, Part};
 use crate::render::GameCamera;
 use crate::settings::{Persistent, Settings};
@@ -24,12 +25,16 @@ pub struct Hitstop {
     /// Strength of the shake, 0 to 1, from the settings; 0 when the local robot is not in it for
     /// the camera.
     pub camera: f32,
+    /// Unit direction of the blow in render space: the way the animal and the camera are kicked.
+    pub along: Vec3,
+    /// How hard the blow kicks the camera, from 0.5 to 2, by its energy.
+    pub gain: f32,
     /// Offset laid on the parts of the animal last frame, in their frames.
     shaken: Vec3,
     /// Frames shown so far, which flip the shake.
     frame: u32,
     /// Local camera translation written last frame and the offset it held.
-    lens: [Vec3; 2],
+    pub(super) lens: [Vec3; 2],
 }
 
 /// Returns the hitstop frames of a blow of `energy` joules at 60 fps: 3 + 0.4·√E, from 3 to 12.
@@ -83,6 +88,8 @@ pub fn start(
         attacker: Some(hit.attacker),
         victim: Some(hit.victim),
         camera: if ours { strength } else { 0.0 },
+        along: hit.along,
+        gain: gain(hit.blow.energy),
         ..default()
     };
     commands.entity(hit.victim).try_insert(Frozen);
@@ -96,29 +103,22 @@ fn active_now(stop: &Hitstop) -> bool {
 /// The parts of animals, which the shake moves.
 type Parts<'w, 's> = Query<'w, 's, &'static mut Transform, (With<Part>, Without<GameCamera>)>;
 
-/// The game camera, which the shake moves when the local robot is in it.
-type Lens<'w, 's> =
-    Option<Single<'w, 's, &'static mut Transform, (With<GameCamera>, Without<Part>)>>;
-
-/// Moves the local `camera` by the shake of `stop` at `share`, on top of where the rig put it: a
-/// camera the rig left alone since the last frame loses last frame's shake first.
-fn steady(camera: &mut Transform, stop: &mut Hitstop, share: f32) {
-    let shake = Vec3::new(1.0, -0.5, 0.0) * CAMERA_SHAKE * share * stop.camera;
-    let [written, before] = stop.lens;
-    let base = match camera.translation == written {
-        true => written - before,
-        false => camera.translation,
-    };
-    camera.translation = base + shake;
-    stop.lens = [camera.translation, shake];
-}
+/// The game camera and where it is, which the shake moves when the local robot is in it.
+type Lens<'w, 's> = Option<
+    Single<
+        'w,
+        's,
+        (&'static mut Transform, &'static GlobalTransform),
+        (With<GameCamera>, Without<Part>),
+    >,
+>;
 
 /// Runs the hitstop one frame: the animal and the camera shake less and less, and at the end both
 /// come back to rest and the animal is let go.
 pub fn hold(
     time: Res<Time>,
     mut stop: ResMut<Hitstop>,
-    (children, mut parts): (Query<&Children>, Parts),
+    (children, mut parts, roots): (Query<&Children>, Parts, Query<&GlobalTransform>),
     lens: Lens,
     mut commands: Commands,
 ) {
@@ -126,10 +126,15 @@ pub fn hold(
     stop.frame += 1;
     let done = stop.left <= 0.0;
     let share = if done { 0.0 } else { stop.shake() };
-    let offset = Vec3::new(SHAKE, 0.4 * SHAKE, 0.0) * share;
+    let victim = stop.victim;
+    let way = victim
+        .and_then(|v| roots.get(v).ok())
+        .map(|g| g.rotation().inverse() * stop.along)
+        .filter(|w| w.length_squared() > 1e-6)
+        .map_or(Vec3::X, Vec3::normalize);
+    let offset = way * SHAKE * share;
     let delta = offset - stop.shaken;
     stop.shaken = offset;
-    let victim = stop.victim;
     for child in victim
         .iter()
         .flat_map(|v| children.get(*v).into_iter().flatten())
@@ -138,8 +143,9 @@ pub fn hold(
             part.translation += delta;
         }
     }
-    if let Some(mut camera) = lens {
-        steady(&mut camera, &mut stop, share);
+    if let Some(camera) = lens {
+        let (mut local, global) = camera.into_inner();
+        steady(&mut local, global, &mut stop, share);
     }
     if done {
         if let Some(victim) = victim {

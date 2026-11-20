@@ -20,6 +20,7 @@ mod key;
 mod layer;
 mod path;
 mod pull;
+mod recoil;
 mod sense;
 mod show;
 #[cfg(feature = "dev")]

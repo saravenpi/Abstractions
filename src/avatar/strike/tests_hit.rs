@@ -4,9 +4,10 @@
 use bevy::prelude::*;
 
 use super::hit::{Bounds, enter, radius, sweet, touch};
+use super::recoil::{gain, steady};
 use super::sense::landed;
 use super::stage::{blade, club};
-use super::stop::frames;
+use super::stop::{Hitstop, frames};
 use super::tune::{KICK, SWEET_FLOOR};
 
 /// A unit box at the origin.
@@ -91,4 +92,21 @@ fn the_hitstop_grows_with_energy() {
     assert_eq!(frames(0.0), 3.0);
     assert!((frames(100.0) - 7.0).abs() < 1e-5);
     assert_eq!(frames(10_000.0), 12.0);
+}
+
+/// A blow kicks the camera along its direction, by more for more energy, and the kick is gone when
+/// the hitstop ends.
+#[test]
+fn the_camera_is_kicked_along_the_blow() {
+    assert!((gain(0.0) - 0.5).abs() < 1e-5 && (gain(1.0e4) - 2.0).abs() < 1e-5);
+    assert!(gain(0.0) < gain(100.0) && gain(100.0) < gain(1.0e4));
+    let mut stop = Hitstop::default();
+    (stop.left, stop.total, stop.camera) = (0.1, 0.1, 1.0);
+    (stop.along, stop.gain) = (Vec3::X, 1.0);
+    let mut camera = Transform::IDENTITY;
+    steady(&mut camera, &GlobalTransform::IDENTITY, &mut stop, 0.0);
+    assert!(camera.translation.x > 0.0 && camera.translation.y.abs() < 1e-6);
+    stop.left = 0.0;
+    steady(&mut camera, &GlobalTransform::IDENTITY, &mut stop, 0.0);
+    assert!(camera.translation.length() < 1e-6);
 }

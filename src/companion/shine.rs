@@ -11,6 +11,7 @@ use super::puppet::Parts;
 use super::screen::Display;
 use super::sense::CompanionSense;
 use super::tune::{GLOW_HDR, LIGHT_DAY_SHARE, LIGHT_POWER, SCREEN_HDR, THRUST_GLOW};
+use crate::render::reach;
 
 /// How fast the colour follows the expression, per second.
 const TINT_RATE: f32 = 6.0;
@@ -95,6 +96,10 @@ fn light(
         if let Ok(mut lamp) = lamps.get_mut(child) {
             if (lamp.color, lamp.intensity) != next {
                 (lamp.color, lamp.intensity) = next;
+            }
+            let wide = reach(LIGHT_POWER);
+            if lamp.range != wide {
+                lamp.range = wide;
             }
         }
     }

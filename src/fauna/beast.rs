@@ -80,15 +80,18 @@ fn root(commands: &mut Commands, lead: Lead, species: &Species, placed: Placed) 
     commands.spawn((Name::new("Animal"), marks, shown)).id()
 }
 
-/// Spawns one child of `root` per part mesh of `meshes` drawn with `skin` at its place in `pose`,
-/// dithered fully out, and returns them in the order of the parts.
+/// Spawns one child of `root` per part mesh of `meshes` drawn with its material of `skins` at its
+/// place in `pose`, dithered fully out, and returns them in the order of the parts.
 fn limbs(
     commands: &mut Commands,
     root: Entity,
-    (meshes, skin): (&[Option<Handle<Mesh>>], &Handle<StandardMaterial>),
+    (meshes, skins): (&[Option<Handle<Mesh>>], &[Handle<StandardMaterial>]),
     pose: Vec<motion::Placed>,
 ) -> Vec<Option<Entity>> {
-    let part = |(mesh, (at, turn, scale)): (&Option<Handle<Mesh>>, motion::Placed)| {
+    let part = |((mesh, skin), (at, turn, scale)): (
+        (&Option<Handle<Mesh>>, &Handle<StandardMaterial>),
+        motion::Placed,
+    )| {
         let look = (Mesh3d(mesh.clone()?), MeshMaterial3d(skin.clone()));
         let place = Transform {
             translation: at,
@@ -98,15 +101,16 @@ fn limbs(
         let marks = (Part, range(Way::In, 0), ChildOf(root));
         Some(commands.spawn((look, place, marks)).id())
     };
-    meshes.iter().zip(pose).map(part).collect()
+    meshes.iter().zip(skins).zip(pose).map(part).collect()
 }
 
-/// Spawns the animal of `birth` with the part meshes `meshes` and the material `skin`, fading in.
+/// Spawns the animal of `birth` with the part meshes `meshes` and the part materials `skins`,
+/// fading in.
 pub fn spawn(
     commands: &mut Commands,
     birth: Birth,
     meshes: &[Option<Handle<Mesh>>],
-    skin: &Handle<StandardMaterial>,
+    skins: &[Handle<StandardMaterial>],
 ) -> Entity {
     let (species, index) = birth.species;
     let (spot, at, facing) = birth.at;
@@ -121,7 +125,7 @@ pub fn spawn(
         placed = lay(&spot, &species.body, at, &mut pose);
     }
     let root = root(commands, birth.lead, species, placed);
-    let parts = limbs(commands, root, (meshes, skin), pose);
+    let parts = limbs(commands, root, (meshes, skins), pose);
     let beast = Beast {
         lead: birth.lead,
         index,

@@ -36,6 +36,7 @@ pub fn shape(kind: MarkerKind) -> (bool, bool, f32, &'static str) {
         MarkerKind::Favourite => (false, true, 0.0, "Favourite"),
         MarkerKind::Home => (false, false, 0.0, "Home"),
         MarkerKind::Ship => (false, true, 0.0, "Ship"),
+        MarkerKind::Herd => (true, false, 0.0, "Herd"),
     }
 }
 

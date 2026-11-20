@@ -1,6 +1,7 @@
 //! The food web of a planet, after the niche model, and the assembly of its whole life.
 
 mod fill;
+mod mass;
 mod niche;
 mod plants;
 

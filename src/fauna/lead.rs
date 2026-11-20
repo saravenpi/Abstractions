@@ -4,8 +4,11 @@
 use bevy::math::{DVec3, Vec2};
 
 use super::herds::member;
-use super::place::beside;
+use super::place::{beside, east};
+use super::tune::{RING, SOAR_LOOP, SOAR_SPEED};
 use super::want::Lead;
+use crate::life::Species;
+use crate::life::body::Locomotion;
 use crate::life::herd::{Herd, HerdState};
 use crate::life::hunt::{Hunt, Outcome};
 use crate::universe::hash::{Rng, child};
@@ -73,16 +76,42 @@ pub fn visiting((key, slot, at): (u64, u8, DVec3), ring: f32, time: f64, radius:
     }
 }
 
-/// Returns the goal of the animal led by `lead`, with its herd `herd` when it has one.
+/// Returns `goal` moved round a loop above its place, as flyer `slot` of flock `id` of `species`
+/// circles at `time` on a planet of `radius` metres: the flock goes round together, each bird a
+/// little behind the one before.
+pub fn soar(goal: Goal, species: &Species, (id, slot): (u64, u8), time: f64, radius: f64) -> Goal {
+    let size = f64::from(species.body.length);
+    let round = f64::from(SOAR_LOOP) * (1.0 + size).min(4.0);
+    let speed = f64::from((species.history.speed * SOAR_SPEED).clamp(2.0, 15.0));
+    let start = Rng::new(child(id, 0x50A2)).unit() * std::f64::consts::TAU;
+    let angle = start + speed / round * time - 0.25 * f64::from(slot);
+    let (sin, cos) = angle.sin_cos();
+    let (east, offset) = (
+        east(goal.dir),
+        Vec2::new(cos as f32, sin as f32) * round as f32,
+    );
+    let north = goal.dir.cross(east);
+    Goal {
+        dir: beside(goal.dir, offset, radius),
+        flow: goal.flow + (north * cos - east * sin) * speed,
+        ..goal
+    }
+}
+
+/// Returns the goal of the animal led by `lead` of `species`, with its herd `herd` when it has one:
+/// flyers circle above their flock's place.
 pub fn goal(
     lead: &Lead,
     herd: Option<&Herd>,
-    (hunts, ring): (&[Hunt], f32),
+    (hunts, species): (&[Hunt], &Species),
     time: f64,
     radius: f64,
 ) -> Option<Goal> {
+    let ring = RING + species.body.length;
+    let flies = species.body.locomotion == Locomotion::Fly;
     match *lead {
-        Lead::Herd { slot, .. } => in_herd(herd?, slot, hunts, time, radius),
+        Lead::Herd { id, slot } => in_herd(herd?, slot, hunts, time, radius)
+            .map(|g| [g, soar(g, species, (id, slot), time, radius)][usize::from(flies)]),
         Lead::Visit { key, slot, at } => Some(visiting((key, slot, at), ring, time, radius)),
         Lead::Carcass { .. } => None,
     }

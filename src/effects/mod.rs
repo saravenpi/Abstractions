@@ -1,10 +1,9 @@
-//! Ambient effects: drifting particles and small wandering creatures.
+//! Ambient effects: drifting particles.
 //!
 //! Everything here lives in render space around the camera of a planet. Heights are read along
 //! the local vertical through the anchor, never from render `y`, and the pooled entities are
 //! marked `Rebased` so an anchor rebase leaves them where they were on the planet.
 
-pub(crate) mod creatures;
 mod eye;
 mod ground;
 mod kind;
@@ -16,6 +15,8 @@ mod rng;
 mod sense;
 mod sim;
 mod sky;
+#[cfg(test)]
+mod tests_pool;
 
 use bevy::prelude::*;
 
@@ -27,7 +28,6 @@ pub struct Sight;
 
 /// Registers the ambient particle pool and its systems.
 pub(super) fn plugin(app: &mut App) {
-    creatures::plugin(app);
     app.init_resource::<rng::Rng>()
         .init_resource::<sense::Sensed>()
         .init_resource::<eye::Eye>()

@@ -31,9 +31,13 @@ pub struct Pace {
     pub detail: Detail,
 }
 
-/// Returns the height in metres a flyer of `body` cruises at above the ground.
+/// Returns the height in metres a flyer or a swarm of `body` cruises at above the ground: swarms
+/// hover low over the plants, flyers circle well over the robot's head.
 pub fn cruise(body: &Body) -> f32 {
-    (2.0 + 3.0 * body.length).clamp(2.0, 12.0)
+    match body.locomotion {
+        Locomotion::Swarm => (0.6 + 2.0 * body.length).clamp(0.5, 2.0),
+        _ => (8.0 + 8.0 * body.length).clamp(8.0, 30.0),
+    }
 }
 
 /// Returns the velocity that keeps `at` on its herd place `aim`, no faster than `top`.

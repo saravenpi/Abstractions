@@ -6,11 +6,9 @@ use super::super::{
     Activity, Guild, Habitat, Plan, Role, Rung, Solvent, Species, SpeciesId, Tolerance,
 };
 use super::super::{guild, history, tissue};
+use super::mass::mass;
 use super::niche::Web;
 use crate::universe::hash::{Rng, child};
-
-/// Gravity of the home planet in metres per second squared, the unit of the square-cube cap.
-const HOME_GRAVITY: f32 = crate::universe::HOME_GRAVITY as f32;
 
 /// Growth architecture index of kelp, the one producer that lives in the liquid.
 const KELP: u8 = 6;
@@ -45,34 +43,6 @@ fn plan(habitat: Habitat, setting: &Setting, rng: &mut Rng) -> Plan {
         roll -= weight;
     }
     Plan::Amorphous
-}
-
-/// Returns the adult mass in kilograms of a consumer of `plan` in `habitat` at niche `niche` and
-/// trophic `level`: log-uniform over two decades that rise with both, then capped by the plan, the
-/// rung and gravity, the land cap falling as the cube of gravity by the square-cube law.
-pub(super) fn mass(plan: Plan, role: (Habitat, f32, f32), setting: &Setting, rng: &mut Rng) -> f32 {
-    let (habitat, niche, level) = role;
-    let low = -3.0 + 3.5 * niche + 0.6 * (level - 2.0);
-    let drawn = 10f32.powf(low + 2.0 * rng.unit() as f32);
-    let heavy = (HOME_GRAVITY / setting.world.gravity.max(1.0)).powi(3);
-    let place = match habitat {
-        Habitat::Air => 30.0 * setting.world.pressure * heavy.cbrt(),
-        Habitat::Water => 20_000.0,
-        Habitat::Ground | Habitat::Shore => (4000.0 * heavy).min(20_000.0),
-    };
-    let body = match plan {
-        Plan::Skeletal => f32::MAX,
-        Plan::Amorphous | Plan::Crystalline => 400.0,
-        Plan::Radial => 200.0,
-        Plan::Segmented => 60.0,
-        Plan::Colonial => 0.05,
-    };
-    let rung = if setting.rung <= Rung::Soft {
-        50.0
-    } else {
-        f32::MAX
-    };
-    drawn.min(place).min(body).min(rung).max(1e-4)
 }
 
 /// Returns the climate a species of `mass` in `habitat` stands on `setting`: wider for larger species.
@@ -182,7 +152,7 @@ fn consumer(seed: u64, web: &Web, index: usize, setting: &Setting) -> ((Plan, u8
         level,
     };
     let form = (plan(habitat, setting, &mut rng), rng.below(4) as u8);
-    let mass = mass(form.0, (habitat, niche, level), setting, &mut rng);
+    let mass = mass(form, (habitat, niche, level), setting, &mut rng);
     (form, role, mass)
 }
 

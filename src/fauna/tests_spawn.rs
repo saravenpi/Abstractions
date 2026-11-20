@@ -52,14 +52,16 @@ fn a_dead_planet_has_no_animals() {
     assert!(!alive);
 }
 
-/// Animals fade out and are gone once the robot walks far away.
+/// Animals fade out and are gone once the robot walks 900 m away along the ground.
 #[test]
 fn far_animals_fade_out() {
     let (mut app, _) = app(true);
     run(&mut app, 1.0, 0.1);
     let before: Vec<Entity> = drawn(&mut app);
     assert!(!before.is_empty());
-    let away = robot(&mut app) + bevy::math::DVec3::new(900.0, 0.0, 0.0);
+    let here = robot(&mut app);
+    let side = here.normalize().any_orthonormal_vector();
+    let away = (here + side * 900.0).normalize() * here.length();
     put(&mut app, away);
     run(&mut app, 2.0, 0.1);
     let after = drawn(&mut app);

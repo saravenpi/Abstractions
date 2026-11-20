@@ -10,8 +10,11 @@
 
 mod aim;
 mod beacons;
+mod herds;
 mod north;
 mod show;
+#[cfg(test)]
+mod tests_herds;
 
 #[cfg(test)]
 pub(super) use north::North;
@@ -134,11 +137,11 @@ pub(super) fn bar() -> impl Bundle {
     )
 }
 
-/// Registers the home and ship markers, written once the ship has placed the world.
+/// Registers the home, ship and herd markers, written once the ship has placed the world.
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         Update,
-        (beacons::home, beacons::ship)
+        (beacons::home, beacons::ship, herds::herds)
             .after(ShipSet::Place)
             .in_set(MarkerSet::Fill)
             .run_if(in_state(Screen::Gameplay)),

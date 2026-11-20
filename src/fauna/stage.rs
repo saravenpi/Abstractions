@@ -35,6 +35,7 @@ pub fn stage(globe: Arc<Globe>, body: BodyId, dir: DVec3, time: f64) -> App {
         .init_resource::<Assets<Mesh>>()
         .init_resource::<Assets<StandardMaterial>>()
         .init_resource::<Herds>()
+        .init_resource::<super::Nearby>()
         .init_resource::<Spec>()
         .init_resource::<looks::Looks>()
         .add_systems(

@@ -9,8 +9,18 @@ use bevy::math::{Quat, Vec2, Vec3};
 use super::super::gait::ramp;
 use super::super::rig::{Drive, Motion};
 use super::super::root::{heading, travel};
-use crate::effects::creatures::anim::{glide, wing_angle};
 use crate::life::body::Body;
+
+/// Returns the wing angle in radians above the body plane for a flap `phase`, from flapping at
+/// `glide` 0 to wings held still at `rest` at 1.
+pub fn wing_angle(phase: f32, glide: f32, amplitude: f32, rest: f32) -> f32 {
+    rest + (1.0 - glide) * amplitude * phase.sin()
+}
+
+/// Returns how much a flyer glides at `time`, from 0 to 1, in bursts of `rate` radians per second.
+pub fn glide(time: f32, seed: f32, rate: f32) -> f32 {
+    ramp(0.3, 0.75, (time * rate + seed * TAU).sin())
+}
 
 /// Moves `m` through the air, at least `clear` metres over `ground`; returns its velocity.
 fn aloft(m: &mut Motion, drive: &Drive, ground: &dyn Fn(Vec2) -> f32, clear: f32, dt: f32) -> Vec3 {

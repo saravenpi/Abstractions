@@ -13,6 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Animals notice robots, yours and your friends': shy plant eaters look up, then run from you and come back to their herd once you are gone. Hunters stay bolder.
 - Hunts play out where you can see them: hunters stalk and run their prey down, the kill lies where it fell while it has meat, and scavengers gather round it.
 - A field guide on K, on foot: every species of the planet underfoot, plants first, with a count such as "12 of 31 seen". A plant counts as seen once you stand on its planet, an animal once one comes within 40 m. Pick one with the arrows, the wheel or a click to read its body, diet, herd, hours, habitat, and what it eats and what eats it. Species you have not seen show as unknown. K or Esc closes it. The key can be changed in the options. For now the guide remembers what you saw until you leave the world.
+- Herds within 300 m show on the compass and the minimap with a small animal mark and their distance, labelled "Herd" until the field guide has their species, then by its name. The nearest three show, one for herds that keep together.
+- Animals that glow light up at night in their own colour.
 - Animals leave signs and make calls. Within 60 m you find the footprints of herds that passed in the last four minutes, spaced wider where they ran, droppings and cropped patches where they grazed, nests and burrows near their homes, and bones where a kill was eaten. Herds call now and then, lower for bigger animals, call the alarm when they flee, and hunters cry as they give chase. Every player finds the same tracks and hears the same calls.
 
 ### Changed
@@ -25,7 +27,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A body falling belly down has twice the drag of one diving head first, so it falls slower.
 - The home planet, its star and its galaxy carry generated names like every other place.
 - Landings match the impact. A soft one bends the knees as before. A hard drop crouches deeper, puts one hand and then both on the ground and gets up slower. A fast touchdown with the gear rolls over the shoulder, forward, backward or over the side, one turn over the distance the roll covers. A shallow fast one skids on the feet, leaning back, or on the belly with the arms out after a glide. A crash at 60 m/s tumbles with the limbs flailing, then the body gets up.
-- Fireflies and butterflies only fly where life has reached shelled animals, and birds only where it has skeletons. Dead planets have none.
+- Plant eaters are about a hundred times heavier than before, as on land the biggest animals eat plants: a planet's grazers now run from hare to buffalo size, and their herds are easy to spot.
+- Animals let you nearer: a calm grazer looks up at about 20 m and runs once you walk within about 11 m. Small animals let you come closer, hunters closer still, and an animal lets a robot that stands still come nearer than one that walks.
+- Flying species circle in flocks 8 to 30 m over the ground, and swarms hover low over the plants.
+
+### Removed
+
+- The fixed birds, butterflies and fireflies. The flying and swarming species of each planet take their place, and dead planets have none.
 
 ## [0.10.1] - 2026-11-19
 

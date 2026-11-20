@@ -9,6 +9,7 @@
 mod beast;
 mod fade;
 mod gate;
+mod glow;
 mod ground;
 pub mod guide;
 mod herds;
@@ -16,6 +17,7 @@ mod lead;
 mod looks;
 pub mod mesh;
 pub mod motion;
+mod near;
 mod place;
 mod react;
 #[cfg(test)]
@@ -29,9 +31,13 @@ mod steer;
 #[cfg(test)]
 mod tests_hunt;
 #[cfg(test)]
+mod tests_near;
+#[cfg(test)]
 mod tests_react;
 #[cfg(test)]
 mod tests_spawn;
+#[cfg(test)]
+mod tests_temper;
 #[cfg(test)]
 mod tests_walk;
 pub mod tune;
@@ -42,6 +48,8 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
+
+pub use near::{Nearby, Sighting};
 
 use crate::life::SpeciesId;
 use crate::screens::playing;
@@ -61,14 +69,16 @@ pub struct Creature {
 /// then, on a living planet in play, the scan, the walk and the fades.
 pub(super) fn plugin(app: &mut App) {
     let scan = scan::scan.run_if(on_timer(Duration::from_secs_f32(tune::SCAN)));
+    let shine = glow::shine.run_if(on_timer(Duration::from_secs_f32(tune::SCAN)));
     app.init_resource::<herds::Herds>()
         .init_resource::<gate::Spec>()
+        .init_resource::<Nearby>()
         .init_resource::<looks::Looks>()
         .add_systems(
             Update,
             (
                 gate::forget.run_if(gate::moved),
-                (scan, walk::walk, fade::fade)
+                (scan, walk::walk, fade::fade, shine)
                     .chain()
                     .run_if(playing)
                     .run_if(gate::living),

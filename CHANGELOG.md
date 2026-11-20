@@ -45,6 +45,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- The minimap in space follows your ship every frame, including in warp and when leaving a system, instead of jumping five times a second.
 - In the system view of the map only the home planet is labelled home; the star of the home system no longer is. The view of stars still marks the home star.
 - The map no longer shows blue seas on every world: the liquid of a planet picture is the liquid the world draws, so a lava planet has a sea of molten rock, a dry planet has none, and the minimap, which shares the picture, follows.
 - The camera at the water surface splits the view along the waterline, with a thin dark line where the surface crosses the lens: only what is seen from under the water is fogged, and the line follows the waves. The camera never rests on the surface itself.

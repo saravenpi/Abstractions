@@ -46,8 +46,16 @@ impl Shape {
     /// Returns the ground height at `p` and the continent measure at its warped position, which follows
     /// the coast.
     pub fn measure<P: Point>(&self, p: P, climate: &Climate) -> (f32, f32) {
+        self.measure_on(p, climate, 0.0)
+    }
+
+    /// Returns the ground height at `p` and the continent measure at its warped position, with `bias`
+    /// added to the measure: what a larger shape of the ground, a continent or an ocean of the plates, says
+    /// about the place. A bias of 1 leaves only land and one of -1 only open sea; in between the coast
+    /// keeps every shape it has, moved towards one side.
+    pub fn measure_on<P: Point>(&self, p: P, climate: &Climate, bias: f32) -> (f32, f32) {
         let w = self.warped(p);
-        let base = self.land(w) - LAND_LEVEL;
+        let base = self.land(w) - LAND_LEVEL + bias;
         let [bar, stack] = self.islets(w, base);
         let s = base + bar + 0.3 * stack;
         let cliff = if s > CLIFF_REACH {

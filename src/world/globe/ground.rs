@@ -27,7 +27,7 @@ impl Globe {
     pub(in crate::world) fn uncarved<S: Site>(&self, at: S) -> f32 {
         match at.ball() {
             Some(p) => self.flowed(p, self.shaped(p)),
-            None => self.shape.elevation(at.point(), &self.climate) - self.datum,
+            None => self.shape.elevation(at.point(), &self.climate) - self.relief.datum,
         }
     }
 

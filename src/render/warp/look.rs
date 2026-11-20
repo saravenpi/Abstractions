@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use super::lens::Lens;
 use super::{ENGAGED, Phase, Sequence};
 use crate::render::celestial::smoothstep;
+use crate::universe::LY;
 
 /// Share of the speed of light the sky is seen through at the top warp speed. The drive is far
 /// faster than light; this is the speed the eye is shown, kept under 1 so the sky stays a sky.
@@ -18,10 +19,11 @@ const GATHER: f32 = 0.7;
 /// Seconds the view is exposed for: a star streaks by the angle it crosses in that time.
 pub const EXPOSURE: f32 = 1.0 / 24.0;
 
-/// Slowest warp speed and fastest jump speed in game light-years per second: the ends of the
-/// logarithmic scale the drive reports its speed on. `ship::warp::fraction` is the same scale
-/// in metres per second, and a ship test holds the two together.
-pub const SPEEDS: (f32, f32) = (2.0e-7, 5000.0);
+/// Slowest warp speed and fastest jump speed in light-years per second: the ends of the
+/// logarithmic scale the drive reports its speed on. The slowest is 2000 m/s, and the fastest is
+/// 3,600 light-years per second, the cap of a jump to another galaxy. `ship::warp::fraction` is
+/// the same scale in metres per second, and a ship test holds the two together.
+pub const SPEEDS: (f32, f32) = ((2000.0 / LY) as f32, 3600.0);
 
 /// Brightness of the flash of a drop-out, low and wide enough to be a breath of light.
 const FLASH: f32 = 0.3;
@@ -31,7 +33,7 @@ const FLASH_RISE: f32 = 0.15;
 
 /// Velocities between which single stars pass too fast to follow and fade. The first is just
 /// above the fastest cruise between the stars, the second about a hundred light-years a second.
-const BLUR: (f32, f32) = (0.81, 0.9);
+const BLUR: (f32, f32) = (0.81, 0.93);
 
 /// Share of their light single stars keep once they pass too fast to follow.
 const BLURRED: f32 = 0.25;

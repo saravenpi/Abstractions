@@ -4,7 +4,9 @@
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
-use super::{CRUISE_CAP, FLOOR, JUMP_CAP, SPOOL_TIME, Warp, advance, fraction, request};
+use super::{
+    CRUISE_CAP, FLOOR, GALAXY_CAP, JUMP_CAP, SPOOL_TIME, Warp, advance, fraction, request,
+};
 use crate::render::{Drive, Phase, Sequence};
 use crate::ship::body::Ship;
 use crate::ship::fx::{pace, warp_level};
@@ -92,20 +94,24 @@ fn fly_home(system: &SystemSpec, index: usize, ship: &mut Ship) -> Vec<Frame30> 
 }
 
 /// The share of the top speed runs from the slowest warp to the fastest jump on a log scale:
-/// a tenfold speed is always the same step, and the fastest cruise sits at seven tenths.
+/// a tenfold speed is always the same step, and every tier sits at the share its cap gives.
 #[test]
 fn speed_share_spans_the_drive_on_a_log_scale() {
     assert_eq!(
-        (fraction(0.0), fraction(FLOOR), fraction(JUMP_CAP)),
+        (fraction(0.0), fraction(FLOOR), fraction(GALAXY_CAP)),
         (0.0, 0.0, 1.0)
     );
-    assert_eq!(fraction(JUMP_CAP * 10.0), 1.0);
+    assert_eq!(fraction(GALAXY_CAP * 10.0), 1.0);
     let decades: Vec<f64> = (4..=13).map(|power| fraction(10f64.powi(power))).collect();
     for pair in decades.windows(2) {
         assert!((pair[1] - pair[0] - decades[1] + decades[0]).abs() < 1e-12);
         assert!(pair[1] > pair[0]);
     }
-    assert!((fraction(CRUISE_CAP) - 0.711).abs() < 1e-3);
+    let share = |cap: f64| (cap / FLOOR).ln() / (GALAXY_CAP / FLOOR).ln();
+    assert!((fraction(CRUISE_CAP) - share(CRUISE_CAP)).abs() < 1e-12);
+    assert!((fraction(CRUISE_CAP) - 0.73).abs() < 0.01);
+    assert!((fraction(JUMP_CAP) - 0.92).abs() < 0.01);
+    assert!(fraction(CRUISE_CAP) < fraction(JUMP_CAP));
 }
 
 /// The drive carries a body in the bubble inside its Hill sphere, a cruise between the stars
@@ -117,9 +123,10 @@ fn the_sky_follows_the_scales_of_the_drive() {
         let engaged = shown(Warp::Active { speed });
         (0..600).fold(Sequence::default(), |state, _| state.advance(engaged, 0.1))
     };
-    let (cruise, jump) = (settled(CRUISE_CAP), settled(JUMP_CAP));
+    let (cruise, jump) = (settled(CRUISE_CAP), settled(GALAXY_CAP));
     assert_eq!((cruise.phase, cruise.stars()), (Phase::Cruise, 1.0));
     assert_eq!((jump.velocity, jump.stars()), (1.0, 0.25));
+    assert_eq!(settled(JUMP_CAP).stars(), 0.25);
     assert!(jump.beta() > cruise.beta() && cruise.beta() > settled(FLOOR).beta());
     assert_eq!(shown(Warp::Off), Drive::default());
     assert!(shown(Warp::Spooling { left: 0.0 }).charge < 1.0);

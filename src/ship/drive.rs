@@ -8,7 +8,7 @@ use super::body::Ship;
 use super::helm::Helm;
 use super::pilot::Autopilot;
 use super::sky::Skies;
-use super::warp::{CRUISE_CAP, JUMP_CAP, Warp, advance, drop_out, request};
+use super::warp::{Warp, advance, drop_out, request};
 use crate::space::Frame;
 
 /// Longest frame the drive moves the ship through, in seconds.
@@ -66,15 +66,10 @@ pub fn drive(
     let refused = std::mem::take(&mut helm.warp)
         .then(|| switch(&mut ship, skies))
         .flatten();
-    let cap = if bridge.autopilot.jump() {
-        JUMP_CAP
-    } else {
-        CRUISE_CAP
-    };
     advance(
         &mut ship,
         &skies.wells,
-        cap,
+        bridge.autopilot.tier.cap(),
         bridge.time.delta_secs_f64().min(MAX_FRAME),
     );
     for event in refused.into_iter().chain(change(before, ship.warp)) {

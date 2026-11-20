@@ -6,7 +6,8 @@ use crate::computer::Target;
 use crate::ship::moons;
 use crate::ship::pilot::Goal;
 use crate::ship::wells::{PLANET_LOCK, STAR_LOCK};
-use crate::universe::{BodyId, GLY, Universe};
+use crate::space::Frame;
+use crate::universe::{BodyId, GalaxyId, LY, StarSpec, Universe};
 
 /// Lock radii from a planet at which the autopilot drops out, a safe distance for an orbit.
 pub(in crate::ship) const ARRIVAL: f64 = 1.3;
@@ -30,14 +31,51 @@ fn body(universe: &Universe, id: BodyId) -> Goal {
     }
 }
 
-/// Returns the goal for a target: its lock sphere and where to drop out. A galaxy becomes the
-/// star nearest to its centre, or its centre when no star is near.
+/// Shares of the radius of a galaxy at which the stars of its centre are looked for, in the
+/// plane of its disc: the very centre is a void a few hundred light-years wide, and the stars
+/// begin just outside it.
+const CENTRE_SHARES: [f64; 3] = [0.03, 0.05, 0.08];
+
+/// Light-years around each point of [`CENTRE_SHARES`] in which a star is looked for: 125 sectors
+/// of a galaxy, 375 at most for the three points, and one lookup per route.
+const CENTRE_SCAN: f64 = 20.0;
+
+/// Returns a star at the edge of the void at the centre of galaxy `id`, from the first of a few
+/// probes in its disc that finds one, or nothing when none does.
+fn centre_star(universe: &Universe, id: GalaxyId) -> Option<StarSpec> {
+    let radius = universe.galaxy(id)?.radius;
+    let near = |share: f64| universe.stars_near(id, DVec3::X * radius * share, CENTRE_SCAN);
+    CENTRE_SHARES
+        .into_iter()
+        .find_map(|share| near(share).into_iter().next())
+}
+
+/// Returns whether `target` lies in another galaxy than the one the frame of a ship is in: the
+/// route is then a jump between galaxies.
+pub(super) fn abroad(frame: Frame, target: Target) -> bool {
+    let ship = match frame {
+        Frame::Surface(body) => body.star.galaxy,
+        Frame::System(star) => star.galaxy,
+        Frame::Galaxy(galaxy) => galaxy,
+    };
+    let goal = match target {
+        Target::Body(body) => body.star.galaxy,
+        Target::Star(star) => star.galaxy,
+        Target::Galaxy(galaxy) => galaxy,
+    };
+    ship != goal
+}
+
+/// Returns the goal for a target: its lock sphere and where to drop out. A galaxy becomes a star
+/// at the edge of the void at its centre, or its centre when no star is there: a ship cannot
+/// stop at a point of empty space it was never shown, so that one is a lock sphere of one
+/// light-year.
 pub(super) fn resolve(universe: &Universe, target: Target) -> Goal {
     match target {
         Target::Body(id) => body(universe, id),
         Target::Star(id) => {
             let star = universe.star(id);
-            let lock = star.as_ref().map_or(GLY, |star| star.radius * STAR_LOCK);
+            let lock = star.as_ref().map_or(LY, |star| star.radius * STAR_LOCK);
             let calm = star.map_or(0.0, |star| (star.mu() / SAFE_PULL).sqrt());
             Goal {
                 target,
@@ -46,12 +84,12 @@ pub(super) fn resolve(universe: &Universe, target: Target) -> Goal {
                 beyond: None,
             }
         }
-        Target::Galaxy(id) => match universe.stars_near(id, DVec3::ZERO, 30.0).first() {
+        Target::Galaxy(id) => match centre_star(universe, id) {
             Some(star) => resolve(universe, Target::Star(star.id)),
             None => Goal {
                 target,
-                lock: GLY,
-                arrival: GLY * ARRIVAL,
+                lock: LY,
+                arrival: LY * ARRIVAL,
                 beyond: None,
             },
         },

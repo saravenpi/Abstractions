@@ -9,7 +9,7 @@ use crate::ship::save::record;
 use crate::ship::warp::Warp;
 use crate::ship::wells::{Well, system_wells};
 use crate::space::Frame;
-use crate::universe::{GLY, GalaxyId, Universe};
+use crate::universe::{GalaxyId, LY, Universe};
 
 /// Returns `ship` after a trip through the text of a save file, and whether it was seated.
 fn reloaded(ship: &Ship, wells: &[Well], seated: bool) -> (Ship, bool) {
@@ -45,7 +45,7 @@ fn a_saved_ship_comes_back_exactly() {
         flying(Frame::Surface(home), DVec3::new(100.1, 6900.7, -0.3)),
         flying(Frame::System(home.star), far),
         flying(Frame::System(home.star), far * 40.0),
-        flying(Frame::Galaxy(GalaxyId(IVec3::new(-2, 0, 5))), far * GLY),
+        flying(Frame::Galaxy(GalaxyId(IVec3::new(-2, 0, 5))), far * LY),
     ];
     for (index, ship) in ships.iter().enumerate() {
         let seated = index % 2 == 1;

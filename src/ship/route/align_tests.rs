@@ -2,9 +2,9 @@
 
 use bevy::math::{DQuat, DVec3};
 
-use super::align::{lead, missed, settled, snap, travel};
+use super::align::{lead, led, missed, settled, snap, travel};
 use crate::ship::Ship;
-use crate::ship::warp::{CRUISE_CAP, SPOOL_TIME, Warp};
+use crate::ship::warp::{CRUISE_CAP, JUMP_CAP, SPOOL_TIME, Warp};
 use crate::space::Frame;
 use crate::universe::StarId;
 
@@ -60,4 +60,23 @@ fn a_leg_ends_once_its_point_is_behind_the_ship() {
     assert!(missed(&ship, Some(DVec3::Z * 10.0), near));
     assert!(missed(&ship, None, (DVec3::Z * 1.0e8, 1.0e7)));
     assert!(!missed(&ship, None, (DVec3::Z * 1.0e7, 1.0e7)));
+}
+
+/// A destination that moves at 30 km/s is led to the point it reaches when the ship does, at a
+/// range of 1e17 m: the 64-bit lead holds a metre of it, far under the kilometre asked.
+#[test]
+fn a_far_destination_is_led_to_where_it_will_be() {
+    let (base, speed, lock) = (
+        DVec3::new(6.0e16, -4.0e16, 7.0e16),
+        DVec3::new(3.0e4, 0.0, 0.0),
+        1.0e7,
+    );
+    let at = |ahead: f64| Some(base + speed * ahead);
+    let mut arrival = base;
+    for _ in 0..8 {
+        arrival = base + speed * lead(Warp::Off, arrival.length(), lock, JUMP_CAP);
+    }
+    let led = led(Warp::Off, (lock, JUMP_CAP), at).unwrap();
+    assert!(led.distance(arrival) < 1.0e3, "{}", led.distance(arrival));
+    assert!(led.distance(base) > 1.0e5);
 }

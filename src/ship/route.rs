@@ -10,12 +10,15 @@ mod block;
 #[cfg(test)]
 mod block_tests;
 mod cancel;
+mod course;
 #[cfg(test)]
 mod departure_tests;
 mod done;
 #[cfg(test)]
 mod done_tests;
 mod goal;
+#[cfg(test)]
+mod goal_tests;
 mod handoff;
 #[cfg(test)]
 mod stop_tests;
@@ -39,14 +42,10 @@ use super::pilot::{Autopilot, Goal, Phase, Settle};
 use super::sim::Cosmos;
 use super::sky::Skies;
 use super::steer::{aim, waypoint};
-use super::warp::{CRUISE_CAP, JUMP_CAP, Warp};
+use super::warp::Warp;
 use super::wells::Well;
 use crate::computer::{Destination, Engage, RouteStatus, Target, ship_position};
-use crate::space::{Location, Travel, UniPos};
-use crate::universe::{GLY, Universe};
-
-/// Distance in metres beyond which a route is a long jump: faster, and blind to the stars on the way.
-const JUMP_DISTANCE: f64 = 50.0 * GLY;
+use crate::space::{Location, Travel};
 
 /// Returns what the autopilot does next, and whether it asks to switch the warp drive.
 fn next(ship: &Ship, blocked: bool, aligned: bool) -> (Phase, bool) {
@@ -128,30 +127,6 @@ fn drop_first(helm: &mut Helm, settle: Settle) -> Phase {
     Phase::Dropping
 }
 
-/// Returns whether the route is a long jump, and the course to the destination as it will be
-/// when the ship gets there, so a destination that moves is led and the heading needs no
-/// correction on the way. The ship goes on with its own velocity until the drive carries it, so
-/// the course is the one from where it will be then. `now` is where the ship is and when, `to`
-/// the course now, and `ship` the drive and the velocity.
-fn aim_at(
-    goal: &Goal,
-    universe: &Universe,
-    now: (Option<UniPos>, f64),
-    (to, ship): (DVec3, (Warp, DVec3)),
-) -> (bool, DVec3) {
-    let jump = to.length() > JUMP_DISTANCE;
-    let cap = if jump { JUMP_CAP } else { CRUISE_CAP };
-    let drift = ship.1 * align::spool(ship.0);
-    let at = |here: UniPos, ahead: f64| {
-        let reached = goal.reached(universe, here + drift, now.1 + ahead);
-        reached.map(|(to, _)| to)
-    };
-    let led = now
-        .0
-        .and_then(|here| align::led(ship.0, (goal.lock, cap), |ahead| at(here, ahead)));
-    (jump, led.unwrap_or(to))
-}
-
 /// Flies the route: stops a drive still running on another course and waits for the drop-out,
 /// then steers onto the course, asks for the warp drive and ends the route on arrival.
 pub fn fly(
@@ -163,6 +138,7 @@ pub fn fly(
 ) {
     let (universe, time) = (&cosmos.universe, cosmos.clock.seconds);
     skies.beacon = None;
+    let held = autopilot.tier;
     let Some(target) = autopilot.target else {
         return;
     };
@@ -182,9 +158,9 @@ pub fn fly(
         *autopilot = Autopilot::ARRIVED;
         return;
     }
-    let (jump, to) = aim_at(goal, universe, (here, time), (to, (ship.warp, ship.vel)));
-    autopilot.jump = jump;
-    skies.beacon = autopilot.jump.then(|| beacon(ship.pos, to, lock));
+    let (tier, to) = course::plan(goal, universe, (here, time), &ship, (to, held));
+    autopilot.tier = tier;
+    skies.beacon = tier.blind().then(|| beacon(ship.pos, to, lock));
     let settle = autopilot.settle(ship.warp != Warp::Off, time);
     autopilot.phase = match settle {
         Settle::Clear => hold(&mut ship, &mut helm, &skies.wells, (to, lock)),

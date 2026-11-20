@@ -4,6 +4,7 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::moons::Standoff;
+use super::warp::Tier;
 use crate::computer::{Target, target_position};
 use crate::render::Sequence;
 use crate::space::UniPos;
@@ -90,8 +91,8 @@ pub struct Autopilot {
     pub(super) goal: Option<Goal>,
     /// What the autopilot is doing.
     pub(super) phase: Phase,
-    /// Whether the route is a long jump, which uses the faster warp tier.
-    pub(super) jump: bool,
+    /// The speed tier of the route, set while the drive is off and kept until it stops.
+    pub(super) tier: Tier,
     /// Whether the route has yet to look at the drive: one that still runs is stopped first.
     pub(super) fresh: bool,
     /// Universe second until which the ship holds its heading after its drive was stopped for
@@ -109,7 +110,7 @@ impl Autopilot {
         target: None,
         goal: None,
         phase: Phase::Arrived,
-        jump: false,
+        tier: Tier::Cruise,
         fresh: false,
         settled: 0.0,
         leaving: None,
@@ -126,6 +127,7 @@ impl Autopilot {
             target: Some(target),
             phase: Phase::Waiting,
             fresh: true,
+            tier: self.tier,
             ..Self::default()
         };
     }
@@ -173,8 +175,8 @@ impl Autopilot {
         }
     }
 
-    /// Returns true while the route is a long jump.
+    /// Returns true while the route is a long jump, in a faster tier and blind to the stars.
     pub fn jump(&self) -> bool {
-        self.jump
+        self.tier.blind()
     }
 }

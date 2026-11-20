@@ -3,9 +3,9 @@
 use bevy::prelude::*;
 
 use super::world::Boxes;
-use super::{apart, moment, run, seen, third};
+use super::{apart, moment, run, seen, third, first};
 use crate::view::smooth::Spring;
-use crate::view::{Kind, Moment, Rig, ViewPrefs};
+use crate::view::{Kind, Moment, Rig};
 
 /// Returns the view of a body after two seconds of the same turning and walking at `hertz`.
 fn two_seconds(start: &Moment, hertz: f32) -> ((Vec3, Quat), f32) {
@@ -39,7 +39,7 @@ fn same_at_every_rate(start: &Moment) {
 /// A walking body is seen the same at every frame rate, in third and in first person.
 #[test]
 fn walking_view_is_framerate_independent() {
-    for prefs in [third(), ViewPrefs::default()] {
+    for prefs in [third(), first()] {
         let mut start = moment(Kind::OnFoot, prefs);
         start.target.velocity = Vec3::new(3.0, 0.0, -2.0);
         same_at_every_rate(&start);
@@ -49,7 +49,7 @@ fn walking_view_is_framerate_independent() {
 /// A banked flying body is seen the same at every frame rate.
 #[test]
 fn flying_view_is_framerate_independent() {
-    for prefs in [third(), ViewPrefs::default()] {
+    for prefs in [third(), first()] {
         let mut start = moment(Kind::Flying, prefs);
         start.target.velocity = Vec3::new(4.0, -3.0, -22.0);
         start.target.bank = 0.4;

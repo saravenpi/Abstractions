@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::world::Boxes;
-use super::{apart, moment, run, seen, third};
+use super::{apart, moment, run, seen, third, first};
 use crate::view::keys::free;
 use crate::view::tune::{COCKPIT_TURN, COCKPIT_UP};
 use crate::view::{FACE, Kind, Moment, Rig, ViewPrefs};
@@ -25,7 +25,7 @@ fn ship(prefs: ViewPrefs) -> Moment {
 #[test]
 fn the_pilot_looks_around_from_the_neck() {
     let (mut rig, world) = (Rig::default(), Boxes::default());
-    let mut pilot = ship(ViewPrefs::default());
+    let mut pilot = ship(first());
     let rest = run(&mut rig, &mut pilot, &world, 1);
     assert_eq!(rest.fade.0, 0.0);
     assert!(seen(&rest, &pilot.target).0.distance(NECK + FACE) < 1.0e-4);
@@ -54,7 +54,7 @@ fn the_head_stops_before_the_headrest() {
         (0.05, 0.05),
         (0.0, -0.05),
     ] {
-        let (mut rig, mut pilot) = (Rig::default(), ship(ViewPrefs::default()));
+        let (mut rig, mut pilot) = (Rig::default(), ship(first()));
         (pilot.look.yaw_delta, pilot.look.pitch_delta) = (yaw, pitch);
         for _ in 0..200 {
             let shown = run(&mut rig, &mut pilot, &world, 1);
@@ -76,7 +76,7 @@ fn the_orbit_is_free_and_folds_into_the_seat_smoothly() {
     let behind = run(&mut rig, &mut pilot, &world, 60);
     assert!((behind.heading.yaw - 3.0).abs() < 1.0e-3);
     pilot.look.yaw_delta = 0.0;
-    pilot.prefs = ViewPrefs::default();
+    pilot.prefs = first();
     let mut last = seen(&behind, &pilot.target);
     for _ in 0..40 {
         let shown = run(&mut rig, &mut pilot, &world, 1);

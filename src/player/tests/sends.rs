@@ -8,7 +8,7 @@ use crate::player::eyes::STEER;
 use crate::player::keys::send;
 use crate::settings::{Persistent, Settings};
 use crate::sim::{Intent, IntentOf};
-use crate::view::{Heading, ViewPrefs};
+use crate::view::{Heading, ViewMode, ViewPrefs};
 
 /// Runs the sending of the intents once in `world` and returns what was sent.
 fn sent(world: &mut World) -> Vec<Intent> {
@@ -23,7 +23,10 @@ fn sent(world: &mut World) -> Vec<Intent> {
 #[test]
 fn the_look_is_the_view_and_the_steer_and_yaw_keys_are_sent() {
     let mut world = gliding();
-    world.init_resource::<ViewPrefs>();
+    world.insert_resource(ViewPrefs {
+        on_foot: ViewMode::First,
+        ..default()
+    });
     world.init_resource::<Messages<IntentOf>>();
     *world.resource_mut::<Heading>() = Heading {
         yaw: 1.0,

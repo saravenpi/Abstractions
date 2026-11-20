@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use super::{held, offset, seated};
+use super::{held, offset, seated, shod};
 use crate::avatar::animate::{Anim, Bone, Skeleton};
 use crate::avatar::neck::reach;
 use crate::avatar::pose::{Core, Pose};
@@ -49,7 +49,7 @@ pub fn shown(
 /// neck reaches.
 pub fn posed(animated: &Pose, levers: &Levers, look: Vec2, share: f32) -> Pose {
     let head = reach(look);
-    let sat = seated(held(levers))
+    let sat = shod(seated(held(levers)), levers)
         .with(Core::HeadYaw, head.x)
         .with(Core::HeadPitch, head.y);
     animated.plus(animated, -share).plus(&sat, share)

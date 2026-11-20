@@ -10,7 +10,9 @@ use super::shell::{HALF, MOUTH, arch, glass, hull, lip, mouth};
 use super::tests_fit::{corners, crosses, inside, positions};
 use super::tub::tub;
 use super::{bar_mesh, cabin_meshes, faces_mesh, lever_mesh, stick_mesh, tub_mesh};
-use crate::ship::cockpit::{Dial, LEVER, Levers, STICK};
+use crate::ship::cockpit::{
+    Dial, GEAR_LEVER, LEVER, Lamp, Levers, PEDAL, STICK, Screen, WARP_SWITCH,
+};
 
 /// Returns the corners of the closed outlines: the two halves of the fuselage and the canopy.
 fn outlines() -> Vec<Vec<Vec3>> {
@@ -123,7 +125,7 @@ fn the_cabin_fits_inside_the_hull() {
             assert!(area > 1.0e-7, "{tri:?}");
         }
     }
-    assert!(triangles > 200 && triangles < 480, "{triangles} triangles");
+    assert!(triangles > 200 && triangles < 1000, "{triangles} triangles");
 }
 
 /// The stick and the lever stay inside the cockpit wherever the input puts them, and every
@@ -137,6 +139,7 @@ fn the_moving_parts_stay_inside() {
         let held_at = Levers {
             stick: Vec3::new(axis(1), axis(3), axis(9)),
             throttle: axis(1) * 0.5 + 0.5,
+            ..default()
         };
         for point in &stick {
             let at = STICK + held_at.stick_turn() * *point;
@@ -150,7 +153,7 @@ fn the_moving_parts_stay_inside() {
     let panel = corners(faces());
     let bar = positions(&bar_mesh());
     for dial in Dial::ALL {
-        for corner in bar.iter().map(|p| dial.place(1.0) * *p) {
+        for corner in bar.iter().map(|p| dial.place(Some(1.0)) * *p) {
             let from = corner + Vec3::Z * 0.001;
             let on = panel.chunks(3).any(|tri| crosses(tri, from, Vec3::NEG_Z));
             assert!(

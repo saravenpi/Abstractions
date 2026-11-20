@@ -37,6 +37,17 @@ pub fn planet(alive: bool) -> (BodyId, Arc<Globe>, Option<Life>) {
 
 /// Returns the first herd of a drawn species near one of a few spots of the planet of `globe`.
 pub fn herd(globe: &Arc<Globe>, life: &Life, body: BodyId) -> Option<Herd> {
+    herd_of(globe, life, body, |_| true)
+}
+
+/// Returns the first herd of a drawn walking species that `fits` near one of a few spots of the
+/// planet of `globe`.
+pub fn herd_of(
+    globe: &Arc<Globe>,
+    life: &Life,
+    body: BodyId,
+    fits: impl Fn(&Species) -> bool,
+) -> Option<Herd> {
     let spec = Universe::new(SEED).planet(body);
     let land = Land {
         globe,
@@ -55,7 +66,7 @@ pub fn herd(globe: &Arc<Globe>, life: &Life, body: BodyId) -> Option<Herd> {
             time: START,
         };
         let herds = read(land, START, |g| near(life, g, &search));
-        let walks = |s: &Species| drawn(s) && s.body.locomotion == Locomotion::Walk;
+        let walks = |s: &Species| drawn(s) && s.body.locomotion == Locomotion::Walk && fits(s);
         let walker =
             |h: &Herd| life.species.get(usize::from(h.species)).is_some_and(walks) && h.count > 1;
         herds.into_iter().find(walker)
@@ -79,8 +90,13 @@ pub fn view(globe: &Arc<Globe>, body: BodyId, dir: DVec3) -> (Terrain, Anchor, V
 /// Returns an app on the rig's home planet, `alive` or dead, with the robot standing at the centre
 /// of a herd, and that herd when the planet has one.
 pub fn app(alive: bool) -> (App, Option<Herd>) {
+    app_of(alive, |_| true)
+}
+
+/// Returns an app like [`app`] with the robot in the first herd of a species that `fits`.
+pub fn app_of(alive: bool, fits: impl Fn(&Species) -> bool) -> (App, Option<Herd>) {
     let (body, globe, life) = planet(true);
-    let herd = life.as_ref().and_then(|l| herd(&globe, l, body));
+    let herd = life.as_ref().and_then(|l| herd_of(&globe, l, body, &fits));
     let dir = herd.map_or(DVec3::Y, |h| h.centre);
     let globe = if alive { globe } else { planet(false).1 };
     (stage(globe, body, dir, START), herd.filter(|_| alive))

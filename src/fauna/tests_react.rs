@@ -8,11 +8,12 @@ use super::beast::Beast;
 use super::gate::Spec;
 use super::herds::{Herds, Land, member};
 use super::react::Act;
-use super::rig::app;
+use super::rig::app_of;
 use super::senses::stance::plant_eater;
 use super::senses::tune::{PREY_SHARE, ROBOT_KG};
 use super::stage::{put, run, staying};
 use super::want::Lead;
+use crate::life::Species;
 use crate::world::Terrain;
 
 /// A point in time as the C library gives it.
@@ -77,17 +78,22 @@ fn off_place(app: &mut App, beast: &Beast) -> f32 {
 /// flees a robot, where a hunter or a heavy animal stands its ground.
 fn skittish(app: &App, beast: &Beast) -> bool {
     let globe = app.world().resource::<Terrain>().globe().clone();
-    globe.life().is_some_and(|life| {
-        let species = &life.species[usize::from(beast.index)];
-        plant_eater(species.role.guild) && species.history.mass < ROBOT_KG / PREY_SHARE
-    })
+    globe
+        .life()
+        .is_some_and(|life| shy(&life.species[usize::from(beast.index)]))
+}
+
+/// Returns true when animals of `species` flee a robot: see [`skittish`].
+fn shy(species: &Species) -> bool {
+    plant_eater(species.role.guild) && species.history.mass < ROBOT_KG / PREY_SHARE
 }
 
 /// A robot a metre and a half from a plant eater smaller than twice the robot makes it flee, and
 /// once the robot is far it calms down and walks back to its place in the herd.
 #[test]
 fn animals_flee_a_near_robot_and_come_back() {
-    let (mut app, _) = app(true);
+    let (mut app, herd) = app_of(true, shy);
+    assert!(herd.is_some(), "a herd of a skittish species");
     run(&mut app, 30.0, 0.1);
     let herded = staying(&mut app)
         .into_iter()

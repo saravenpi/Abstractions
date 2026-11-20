@@ -6,7 +6,7 @@ edition = "2024"
 rust-version = "1.97.1"
 description = "The multiplayer protocol of Abstractions: shared types, packing, messages and the room."
 repository = "https://github.com/saravenpi/Abstractions"
-license = "MIT"
+license = "PolyForm-Noncommercial-1.0.0"
 publish = false
 
 [features]

@@ -222,4 +222,8 @@ A missing or broken file is replaced by the defaults.
 
 ## Licence
 
-MIT. See [LICENSE](LICENSE). Font licences are in `LICENSES/`.
+The source is open to read, and the game is not for sale by anyone.
+
+Abstractions is under the [PolyForm Noncommercial License 1.0.0](LICENSE). You may read the code, play, run a server, change the game and share your changes, as long as none of it is for commercial purposes. You may not sell the game, a copy of it or a game built from it.
+
+Versions 0.10.1 and earlier were published under the MIT License and stay available under it. Font licences are in `LICENSES/`.

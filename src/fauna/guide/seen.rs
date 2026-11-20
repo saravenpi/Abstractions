@@ -1,6 +1,6 @@
 //! Which species the player has seen. An animal counts as seen once a drawn [`Creature`] of it
 //! came within [`SIGHT`] metres of the robot; the plants of a living planet count as seen once
-//! the robot stands on it. The list lasts for the session: saves have no field for it yet.
+//! the robot stands on it. The list is kept in the world file and read back when the world opens.
 
 use std::collections::HashSet;
 
@@ -10,12 +10,13 @@ use super::super::Creature;
 use crate::condition::Condition;
 use crate::life::{Guild, Life, SpeciesId};
 use crate::player::Player;
+use crate::saves::ActiveWorld;
 use crate::world::Terrain;
 
 /// Distance in metres within which a creature counts as seen.
 pub const SIGHT: f32 = 40.0;
 
-/// The species the player has seen this session, on every planet.
+/// The species the player has seen in the world being played, on every planet.
 #[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
 pub struct Seen(HashSet<SpeciesId>);
 
@@ -82,7 +83,22 @@ pub(super) fn sight(
     }
 }
 
-/// Forgets every sighting when the player leaves the world.
-pub(super) fn forget(mut seen: ResMut<Seen>) {
-    *seen = Seen::default();
+/// Reads the seen species of the world that was just made active: none when its file has none.
+pub(super) fn load(active: Option<Res<ActiveWorld>>, mut seen: ResMut<Seen>) {
+    let Some(active) = active.filter(|active| active.is_added()) else {
+        return;
+    };
+    *seen = Seen(active.0.save.seen.iter().copied().collect());
+}
+
+/// Writes the seen species into the active world whenever they change, so the next save keeps them.
+pub(super) fn store(seen: Res<Seen>, active: Option<ResMut<ActiveWorld>>) {
+    let Some(mut active) = active.filter(|_| seen.is_changed()) else {
+        return;
+    };
+    let mut saved: Vec<SpeciesId> = seen.0.iter().copied().collect();
+    saved.sort();
+    if active.0.save.seen != saved {
+        active.0.save.seen = saved;
+    }
 }

@@ -41,7 +41,7 @@ fn home_air_is_unchanged() {
 fn no_air_carries_nothing() {
     for class in PlanetClass::ALL {
         let thin = record(class, 0.005, 0.6);
-        assert!(airless(&thin) && lifeless(&thin));
+        assert!(airless(&thin));
         assert_eq!(drift(&thin, &place(5.0), 0.1), Kind::Hidden);
         assert_eq!(drift(&thin, &place(-3.0), 0.1), Kind::Hidden);
     }
@@ -83,7 +83,7 @@ fn a_dry_basin_has_no_bubbles() {
 #[test]
 fn a_giant_carries_nothing() {
     let giant = record(PlanetClass::GasGiant, 1.0, 0.6);
-    assert!(!airless(&giant) && lifeless(&giant));
+    assert!(!airless(&giant));
     let meadow = Ambient {
         biome: Biome::Meadow,
         surface: Surface::Grass,

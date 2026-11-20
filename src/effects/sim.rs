@@ -3,7 +3,6 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use super::creatures::anim::ramp;
 use super::eye::Eye;
 use super::ground::Ground;
 use super::kind::{Ambient, Kind};
@@ -11,7 +10,7 @@ use super::pool::{ABOVE, BELOW, HALF_WIDTH, Particle, Pool};
 use super::respawn::{Spawn, respawn};
 use super::rng::Rng;
 use super::sense::Sensed;
-use crate::render::{DayClock, daylight};
+use crate::render::{DayClock, daylight, smoothstep};
 use crate::space::Anchor;
 use crate::wind::Wind;
 use crate::world::{SEA_LEVEL, Terrain};
@@ -55,7 +54,7 @@ fn scale_of(particle: &Particle, distance: f32) -> Vec3 {
     let grow = (particle.age * 2.0)
         .min((particle.life - particle.age) * 2.0)
         .clamp(0.0, 1.0);
-    let s = size * grow * ramp(0.6, 1.2, distance);
+    let s = size * grow * smoothstep(0.6, 1.2, distance);
     match particle.kind {
         Kind::Rain => Vec3::new(s * 0.06, s, 1.0),
         kind if kind.is_leafy() => Vec3::new(s * 0.55, s, 1.0),

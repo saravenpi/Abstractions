@@ -10,7 +10,7 @@ use super::hit::{Bounds, Hit, radius, sweet, touch};
 use super::path::Path;
 use super::tune::KICK;
 use crate::craft::build::{Blow, blow, reference, strike as through};
-use crate::fauna::{Creature, Part};
+use crate::fauna::{Live, Part};
 
 /// The parts of animals as the sweep sees them: placed, bounded, and the animal they belong to.
 pub type Parts<'w, 's> = Query<
@@ -29,7 +29,7 @@ pub type Parts<'w, 's> = Query<
 /// padded by `pad` metres, with its animal and the point of contact.
 pub fn first(
     parts: &Parts,
-    creatures: &Query<(), With<Creature>>,
+    creatures: &Query<(), Live>,
     (was, now): ([Vec3; 2], [Vec3; 2]),
     pad: f32,
 ) -> Option<(Entity, Entity, Vec3)> {
@@ -64,7 +64,7 @@ pub fn swinging(strikes: Query<&Strike>) -> bool {
 /// sends the first blow it lands; a blow that gives energy back stuns the swing for a moment.
 pub fn sense(
     mut bodies: Query<(Entity, &GlobalTransform, &mut Strike, &Held)>,
-    (parts, creatures): (Parts, Query<(), With<Creature>>),
+    (parts, creatures): (Parts, Query<(), Live>),
     mut hits: MessageWriter<Hit>,
 ) {
     for (body, placed, mut strike, held) in &mut bodies {

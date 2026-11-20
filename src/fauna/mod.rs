@@ -7,6 +7,7 @@
 //! robots and hunters near it and set its stance, the walk steps it towards its place in its herd
 //! through that stance, and the voice moves its body to the calls it makes.
 
+mod attack;
 mod beast;
 mod fade;
 mod gate;
@@ -53,6 +54,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
+pub use attack::Dead;
 pub use beast::Part;
 pub use near::{Nearby, Sighting};
 
@@ -69,6 +71,9 @@ pub struct Creature {
     /// Its place in the herd.
     pub slot: u8,
 }
+
+/// What swings and spears may strike: a drawn animal that is not [`Dead`].
+pub type Live = (With<Creature>, Without<Dead>);
 
 /// Holds an animal still: its walk skips it while a hitstop freezes it with the robot that struck it.
 #[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -102,6 +107,6 @@ pub(super) fn plugin(app: &mut App) {
                 .chain()
                 .after(crate::effects::Sight),
         )
-        .add_plugins((senses::plugin, signs::plugin));
+        .add_plugins((senses::plugin, signs::plugin, attack::plugin));
     app.add_plugins(guide::plugin);
 }

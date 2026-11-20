@@ -88,7 +88,7 @@ pub fn hear(mut h: Hear, mut heard: Local<Heard>) {
         pos,
         view: *camera,
     };
-    gather(&h, life, &mut heard, (from, now));
+    gather(&h, &mut heard, (from, now));
     let Heard { calls, loud, .. } = &mut *heard;
     let tempo = |c: &Calling| {
         let species = life.species.get(usize::from(c.species))?;
@@ -101,9 +101,9 @@ pub fn hear(mut h: Hear, mut heard: Local<Heard>) {
     }
 }
 
-/// Fills the calls of `heard` with the contact calls, hunt cries and robot alarms and threats of
-/// `life` within `span`.
-fn gather(h: &Hear, life: &Life, heard: &mut Heard, span: (f64, f64)) {
+/// Fills the calls of `heard` with the contact calls, hunt cries and robot alarms and threats and
+/// the distress of the hurt, within `span`.
+fn gather(h: &Hear, heard: &mut Heard, span: (f64, f64)) {
     let Heard { calls, fled, .. } = heard;
     calls.clear();
     let herds = &h.herds.herds;

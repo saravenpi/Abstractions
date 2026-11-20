@@ -14,7 +14,7 @@ use super::sense::{Parts, first};
 use super::show::{Kit, tool};
 use super::tune::{LOFT, PICK, REST_SPEED};
 use crate::craft::build::{Intent, blow};
-use crate::fauna::Creature;
+use crate::fauna::Live;
 use crate::player::Player;
 use crate::screens::Screen;
 use crate::space::{Anchor, Rebased, local_gravity};
@@ -161,11 +161,7 @@ pub fn soar(
 pub fn pierce(
     mut commands: Commands,
     mut spears: Query<(Entity, &mut Spear, &GlobalTransform)>,
-    (parts, creatures, roots): (
-        Parts,
-        Query<(), With<Creature>>,
-        Query<&GlobalTransform, With<Creature>>,
-    ),
+    (parts, creatures, roots): (Parts, Query<(), Live>, Query<&GlobalTransform, Live>),
     mut hits: MessageWriter<Hit>,
 ) {
     for (entity, mut spear, placed) in &mut spears {

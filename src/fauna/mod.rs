@@ -28,6 +28,7 @@ mod scan;
 pub mod senses;
 mod signs;
 mod site;
+mod slant;
 #[cfg(test)]
 mod stage;
 mod steer;

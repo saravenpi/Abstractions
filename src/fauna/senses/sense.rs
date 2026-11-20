@@ -1,5 +1,5 @@
 //! The sense system: every frame, the robots and chasing hunters near the local robot, and each drawn
-//! animal's senses and stance towards them.
+//! animal's senses and stance towards them, each animal on every third frame.
 
 use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
@@ -9,7 +9,7 @@ use super::Blood;
 use super::cues::loudness;
 use super::feel::Threat;
 use super::judge::{Ctx, judge};
-use super::tune::{GRACE, JUMP, ROBOT_KG, WALK};
+use super::tune::{GRACE, JUMP, ROBOT_KG, SENSE_EVERY, WALK};
 use crate::avatar::{Avatar, AvatarPose};
 use crate::fauna::beast::Beast;
 use crate::fauna::gate::footing;
@@ -38,7 +38,7 @@ pub struct Sense<'w, 's> {
     robot: Query<'w, 's, (Entity, &'static Transform), With<Player>>,
     pose: Query<'w, 's, &'static AvatarPose, (With<Avatar>, With<ChildOf>)>,
     remotes: Remotes<'w, 's>,
-    beasts: Query<'w, 's, &'static mut Beast>,
+    beasts: Query<'w, 's, (Entity, &'static mut Beast)>,
 }
 
 /// The robots of the other players, standing free, with their poses when known.
@@ -60,6 +60,8 @@ pub struct Scratch {
     raised: Vec<(u64, DVec3)>,
     /// Heights of the drawn ground read so far.
     heights: Heights,
+    /// Frames counted, to phase each animal's sense.
+    frame: u32,
     /// Planet under the robot, game seconds of the last landing, and the robot's last position.
     landed: (Option<BodyId>, f32, Option<DVec3>),
 }
@@ -73,22 +75,22 @@ pub fn sense(mut s: Sense, mut scratch: Local<Scratch>) {
     let at = s.anchor.to_frame(robot.translation);
     let now = s.time.elapsed_secs();
     ready(&s, &mut scratch, life, (me, at, now));
-    let wind = blowing(&s, robot.translation, at);
     let scratch = &mut *scratch;
     let ctx = Ctx {
         terrain: &s.terrain,
         herds: &s.herds.herds,
         time: s.clock.seconds,
-        dt: s.time.delta_secs().min(MAX_STEP),
-        wind,
+        dt: s.time.delta_secs().min(MAX_STEP) * SENSE_EVERY as f32,
+        wind: blowing(&s, robot.translation, at),
         grace: now - scratch.landed.1 < GRACE,
         threats: &scratch.threats,
         alarms: &scratch.alarms,
         heights: &scratch.heights,
     };
-    for mut beast in &mut s.beasts {
+    for (entity, mut beast) in &mut s.beasts {
         let species = life.species.get(usize::from(beast.index));
-        if let Some(species) = species.filter(|_| !matches!(beast.lead, Lead::Carcass { .. })) {
+        let alive = !matches!(beast.lead, Lead::Carcass { .. }) && turn(entity, scratch.frame);
+        if let Some(species) = species.filter(|_| alive) {
             judge(
                 &ctx,
                 (&mut beast, species),
@@ -98,8 +100,15 @@ pub fn sense(mut s: Sense, mut scratch: Local<Scratch>) {
     }
 }
 
+/// Returns true when the animal `entity` senses on frame `frame`: one frame in [`SENSE_EVERY`], by its
+/// entity index.
+fn turn(entity: Entity, frame: u32) -> bool {
+    entity.index_u32().wrapping_add(frame) % SENSE_EVERY == 0
+}
+
 /// Readies the scratch for this frame: the ground heights, the last landing, the threats of `life`
-/// around the local robot `me` at planet position `at` at game second `now`, and last frame's alarms.
+/// around the local robot `me` at planet position `at` at game second `now`, and, every third frame,
+/// the alarms of the last three.
 fn ready(s: &Sense, scratch: &mut Scratch, life: &Life, (me, at, now): (Entity, DVec3, f32)) {
     if s.terrain.is_changed() {
         scratch.heights.clear();
@@ -108,8 +117,11 @@ fn ready(s: &Sense, scratch: &mut Scratch, life: &Life, (me, at, now): (Entity, 
     scratch.threats.clear();
     robots(s, &mut scratch.threats, (me, at));
     hunters(s, life, &mut scratch.threats);
-    std::mem::swap(&mut scratch.alarms, &mut scratch.raised);
-    scratch.raised.clear();
+    scratch.frame = scratch.frame.wrapping_add(1);
+    if scratch.frame % SENSE_EVERY == 0 {
+        std::mem::swap(&mut scratch.alarms, &mut scratch.raised);
+        scratch.raised.clear();
+    }
 }
 
 /// Returns the wind velocity in planet axes at the local robot, at render position `render` and
@@ -164,7 +176,7 @@ fn robots(s: &Sense, threats: &mut Vec<Threat>, (me, at): (Entity, DVec3)) {
 
 /// Adds the drawn hunters of `life` whose herd is on a chase to `threats`.
 fn hunters(s: &Sense, life: &Life, threats: &mut Vec<Threat>) {
-    for beast in &s.beasts {
+    for (_, beast) in &s.beasts {
         let Lead::Herd { id, slot } = beast.lead else {
             continue;
         };

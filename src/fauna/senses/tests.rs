@@ -18,6 +18,7 @@ pub(super) fn grazer(keen: f32) -> Senser {
         keen,
         nose: NOSE_GRAZER,
         herd: 1,
+        fleeing: false,
     }
 }
 

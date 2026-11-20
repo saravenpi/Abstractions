@@ -46,6 +46,8 @@ pub struct Senser {
     pub nose: f32,
     /// Identity of its herd.
     pub herd: u64,
+    /// True while it flees: a threat it already knows of is kept in mind without a sight test.
+    pub fleeing: bool,
 }
 
 /// The air and ground an animal senses through this frame.
@@ -68,12 +70,13 @@ pub fn nose(guild: Guild) -> f32 {
 }
 
 /// Returns true when `me` notices `threat` at `local` in its frame, `metres` away, with the wind at
-/// `wind` `(x, z)` in its frame: by ear, by nose, or by eye over the ground.
+/// `wind` `(x, z)` in its frame: by ear, by nose, or by eye over the ground. A `sure` threat, whose
+/// meter is full or which a fleeing animal already knows, needs no sight test within range.
 fn noticed(
     me: &Senser,
     (threat, local, metres): (&Threat, Vec3, f32),
     air: &Air,
-    wind: Vec2,
+    (wind, sure): (Vec2, bool),
 ) -> bool {
     if heard(threat.loud, metres, me.keen) || smelt(wind, (local - me.at).xz(), me.nose * me.keen) {
         return true;
@@ -81,7 +84,7 @@ fn noticed(
     let eye = me.at + Vec3::Y * me.eye;
     let chest = ROBOT_CHEST - CROUCH_DROP * threat.crouch;
     let range = me.keen * (1.0 - CROUCH_SIGHT * threat.crouch);
-    in_sight(metres, range) && clear(air.ground, eye, local + Vec3::Y * chest)
+    in_sight(metres, range) && (sure || clear(air.ground, eye, local + Vec3::Y * chest))
 }
 
 /// Steps the `meter` of `me` by one frame against `threats`, and returns the index of the threat it
@@ -102,7 +105,9 @@ pub fn perceive(
     {
         let local = me.spot.local(threat.pos);
         let metres = local.distance(me.at);
-        let aware = if noticed(me, (threat, local, metres), air, wind) {
+        let held = meter.of(threat.key);
+        let sure = held >= 1.0 - DRAIN * air.dt || (me.fleeing && held > 0.0);
+        let aware = if noticed(me, (threat, local, metres), air, (wind, sure)) {
             let rate =
                 stealth(threat.speed, threat.loud, threat.crouch) / fill_seconds(metres / me.keen);
             meter.raise(threat.key, (rate + DRAIN) * air.dt)

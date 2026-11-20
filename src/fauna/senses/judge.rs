@@ -1,6 +1,8 @@
 //! The judgment of one animal: its senses this frame, its stance by fight or flight, its herd's
 //! alarm, and, when wounded, its way to the den and its blood.
 
+use std::cell::OnceCell;
+
 use bevy::math::{DVec3, Vec2, Vec3, Vec3Swizzles};
 
 use super::feel::{Air, Senser, Threat, nose, perceive};
@@ -98,6 +100,7 @@ fn senser(beast: &Beast, species: &Species, watch: bool) -> Senser {
         keen: if watch { LOOKOUT } else { 1.0 },
         nose: nose(species.role.guild),
         herd: beast.lead.key().0,
+        fleeing: beast.wits.stance == Stance::Flee,
     }
 }
 
@@ -134,8 +137,14 @@ pub fn judge(
     let herd = ctx.herds.iter().find(|h| h.id == own);
     let watch = herd.is_some_and(|h| lookout(h) == slot);
     let spot = beast.spot;
-    let ground =
-        |p: Vec2| spot.ground_by(ctx.terrain, p, |x, z| ctx.heights.mesh(ctx.terrain, x, z));
+    let feet = beast.motion.root.at.xz();
+    let slant = OnceCell::new();
+    let ground = |p: Vec2| {
+        let slant = slant.get_or_init(|| spot.slant(ctx.terrain, feet));
+        spot.ground_near(ctx.terrain, (slant, p), |x, z| {
+            ctx.heights.mesh(ctx.terrain, x, z)
+        })
+    };
     let senser = senser(beast, species, watch);
     let air = Air {
         wind: ctx.wind,

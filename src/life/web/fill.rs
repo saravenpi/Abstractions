@@ -3,7 +3,7 @@
 use super::super::body::{self, Body, Locomotion};
 use super::super::chem::Setting;
 use super::super::{
-    Activity, Guild, Habitat, Plan, Role, Rung, Solvent, Species, SpeciesId, Tolerance,
+    Activity, Guild, Habitat, History, Plan, Role, Rung, Solvent, Species, SpeciesId, Tolerance,
 };
 use super::super::{guild, history, tissue};
 use super::mass::mass;
@@ -66,7 +66,7 @@ fn tolerance(mass: f32, habitat: Habitat, setting: &Setting) -> Tolerance {
 /// glow, tolerance and body. Name, epithet and signature stay empty for the names step.
 fn reform(seed: u64, form: (Plan, u8), role: Role, mass: f32, setting: &Setting) -> Species {
     let mut rng = Rng::new(child(seed, 2));
-    let history = history::of(seed, &role, mass, setting.rung, &setting.world);
+    let mut history = history::of(seed, &role, mass, setting.rung, &setting.world);
     let mut tissues = tissue::of(seed, form.0, &role, setting);
     let glow = guild::glow(&role, &tissues, setting, &mut rng);
     if let (Some(glow), Some(last)) = (glow, tissues.last_mut()) {
@@ -76,6 +76,7 @@ fn reform(seed: u64, form: (Plan, u8), role: Role, mass: f32, setting: &Setting)
         Guild::Producer => empty(),
         _ => body::build(seed, form, &role, &history, &setting.world),
     };
+    history.speed = legged(&history, &body, setting.world.gravity);
     Species {
         id: SpeciesId {
             planet: 0,
@@ -93,6 +94,15 @@ fn reform(seed: u64, form: (Plan, u8), role: Role, mass: f32, setting: &Setting)
         glow,
         body,
         prey: Vec::new(),
+    }
+}
+
+/// Returns the top speed of a species of `history` and `body` on a world of `gravity`: a walker is
+/// held to the gallop its legs allow.
+fn legged(history: &History, body: &Body, gravity: f32) -> f32 {
+    match body.locomotion {
+        Locomotion::Walk => history.speed.min(history::gait(body.height, gravity)),
+        _ => history.speed,
     }
 }
 

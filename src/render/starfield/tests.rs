@@ -11,7 +11,7 @@ use super::build::{Building, adopt, gather, launch};
 use super::specks::{Speck, mesh, star_speck};
 use crate::render::vantage::{LocalSystem, Nearby, Vantage};
 use crate::space::Clock;
-use crate::universe::{GLY, GalaxyId, StarId, Universe};
+use crate::universe::{GalaxyId, LY, StarId, Universe};
 
 /// The starfield mesh has one inward-facing quad per speck.
 #[test]
@@ -48,8 +48,8 @@ fn starfield_faces_the_camera() {
 fn stars_come_from_the_universe() {
     let universe = Universe::new(11);
     let star = universe.system(universe.home().star).star;
-    let near = star_speck(&star, star.pos + DVec3::X * 2.0 * GLY);
-    let far = star_speck(&star, star.pos + DVec3::X * 30.0 * GLY);
+    let near = star_speck(&star, star.pos + DVec3::X * 2.0 * LY);
+    let far = star_speck(&star, star.pos + DVec3::X * 30.0 * LY);
     assert!((near.dir - Vec3::NEG_X).length() < 1e-5);
     assert!(near.size > far.size && near.color.length() > far.color.length());
     let seen = gather(&universe, star.id.galaxy, star.pos, None);

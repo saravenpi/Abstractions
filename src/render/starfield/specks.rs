@@ -7,7 +7,7 @@ use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 
 use crate::render::smoothstep;
-use crate::universe::{GLY, StarSpec, system_reach};
+use crate::universe::{LY, StarSpec, system_reach};
 
 /// Light that arrives from a star, as the star field counts it, from which the star shows
 /// through the daylight of a sky, fully one step of ten above it: the star of the system the
@@ -27,11 +27,11 @@ pub struct Speck {
     pub soft: f32,
 }
 
-/// Returns the distance in game light-years of a star seen from `from`, both in metres from the
+/// Returns the distance in light-years of a star seen from `from`, both in metres from the
 /// galaxy centre, and the light that arrives from it: the base 10 logarithm of its light output
 /// over the squared distance.
 pub fn star_light(star: &StarSpec, from: DVec3) -> (f64, f32) {
-    let distance = ((star.pos - from).length() / GLY).max(1e-3);
+    let distance = ((star.pos - from).length() / LY).max(1e-3);
     let flux = (star.luminosity / (distance * distance)).max(1e-9).log10() as f32;
     (distance, flux)
 }

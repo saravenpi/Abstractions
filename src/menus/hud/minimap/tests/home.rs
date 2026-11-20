@@ -9,7 +9,7 @@ use crate::menus::MarkerKind;
 use crate::menus::hud::compass::Pin;
 use crate::render::GameCamera;
 use crate::space::{Anchor, Frame};
-use crate::universe::{BodyId, GLY, Universe};
+use crate::universe::{BodyId, LY, Universe};
 
 /// Half the width in pixels of the room of a mark, which is centred on its place on the bar.
 const HALF_ROOM: f32 = 48.0;
@@ -60,7 +60,7 @@ fn the_compass_hides_home_in_space() {
     let star = universe.star(universe.home().star).unwrap();
     app.insert_resource(Anchor {
         frame: Frame::Galaxy(star.id.galaxy),
-        origin: star.pos + DVec3::X * GLY,
+        origin: star.pos + DVec3::X * LY,
         rotation: DQuat::IDENTITY,
         flat: false,
     });

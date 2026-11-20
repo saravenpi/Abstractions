@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Clouds, sky and far planets follow real size. The cloud shell is a cube sphere within 50 m of the true sphere, and the weather grid is 256 by 256 per face. A planet is drawn by the world out to a radius and a half from its centre and by the sky beyond, on depth with no far limit. The galaxy is lit by one model: the band of your own galaxy and every galaxy in sight come from their real star density, with dust lanes dimming the light, baked into a map of the sky; the round smudges are gone.
 - The map's card of a planet or a moon in a visited system gives its chance of life, such as "Chance of life 72 %", from the same odds that decide what lives there. Once you have landed it says what is really there: none, microbial mats, soft-bodied life, shelled life, animals with skeletons or ancient life.
 - Right click a search result, a favourite or a player in the map's side panel for the same menu as on the map.
 - Animals walk the ground of living planets: the herds of the planet's own species graze, travel and rest around you, up to 48 at once within 150 m, and fade in and out at the edge. Every player sees the same herd in the same place.

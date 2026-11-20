@@ -11,6 +11,7 @@ pub mod flora;
 pub mod guild;
 pub mod herd;
 pub mod history;
+pub mod hunt;
 mod kinds;
 pub mod names;
 pub mod odds;

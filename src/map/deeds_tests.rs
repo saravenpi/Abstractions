@@ -39,7 +39,7 @@ fn rig() -> App {
 /// Returns the row of the planet `target` in a table.
 fn row(target: Target) -> Line {
     Line {
-        title: "Kodya".to_string(),
+        title: "Kolva".to_string(),
         detail: String::new(),
         target,
         distance: 0.0,
@@ -57,7 +57,7 @@ fn the_buttons_follow_the_cursor_and_the_course() {
     let mut app = rig();
     assert_eq!(shown(&mut app), (vec![], vec![], String::new()));
     let mut board = app.world_mut().resource_mut::<Board>();
-    board.fill("Vereya system".to_string(), vec![row(planet)]);
+    board.fill("Varena system".to_string(), vec![row(planet)]);
     let menu = [
         Choice::Course,
         Choice::Focus,

@@ -47,23 +47,24 @@ fn the_screen_shows_the_card_of_the_cursor_row() {
     let (mut app, parts) = rig();
     assert_eq!(read(&mut app, parts), (String::new(), String::new(), 0, 0));
     let (planet_row, planet) = world(records()[3]);
+    let home = planet.name.clone();
     let star = Line {
-        title: "Vereya".to_string(),
+        title: "Varena".to_string(),
         detail: "2.00 Mm - class G - 5 planets - visited".to_string(),
         target: Target::Star(planet.id.star),
         ..planet_row.clone()
     };
     let mut board = app.world_mut().resource_mut::<Board>();
     board.worlds = vec![None, Some(planet)];
-    board.fill("Vereya system".to_string(), vec![star, planet_row]);
+    board.fill("Varena system".to_string(), vec![star, planet_row]);
     let (name, kind, rows, wanted) = read(&mut app, parts);
-    assert_eq!((name.as_str(), rows), ("Vereya", wanted));
+    assert_eq!((name.as_str(), rows), ("Varena", wanted));
     assert!(
         kind.starts_with("Class ") && kind.contains(" star in "),
         "{kind}"
     );
     app.world_mut().resource_mut::<Board>().step(1);
     let (name, kind, rows, wanted) = read(&mut app, parts);
-    assert_eq!((name.as_str(), rows), ("Kodya", wanted));
+    assert_eq!((name.as_str(), rows), (home.as_str(), wanted));
     assert!(kind.starts_with("Ice planet of "), "{kind}");
 }

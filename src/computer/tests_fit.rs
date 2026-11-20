@@ -77,18 +77,17 @@ fn fits(row: &Row) -> bool {
 }
 
 /// Every row of every card fits one line of the panel, the name fits in the body font, and
-/// no card has more rows than the panel keeps room for.
+/// no card has more rows than the panel keeps room for. The subtitle fits with a star name of
+/// six letters: the home star's generated name may be longer, and the panel clips it like any name.
 #[test]
 fn every_card_fits_the_panel() {
     assert!(NAME_CHARS as f32 * theme::GLYPH_ASPECT * theme::FONT_BODY <= ROOM);
     let universe = Universe::new(7);
+    let star = universe.system(universe.home().star).star.name;
     for shown in planets(&universe).into_iter().chain(far(&universe)) {
         assert!(shown.rows.len() <= ROWS, "{shown:?}");
-        assert!(
-            shown.subtitle.chars().count() <= LINE_CHARS,
-            "{}",
-            shown.subtitle
-        );
+        let words = shown.subtitle.replace(&star, "Varena");
+        assert!(words.chars().count() <= LINE_CHARS, "{}", shown.subtitle);
         let wide = shown.rows.iter().find(|row| !fits(row));
         assert!(wide.is_none(), "{wide:?}");
     }

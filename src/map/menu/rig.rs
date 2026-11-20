@@ -9,7 +9,7 @@ use crate::universe::{BodyId, StarId};
 /// Returns a row of the search for `target`.
 pub fn line(target: Target) -> Line {
     Line {
-        title: "Kodya".to_string(),
+        title: "Kolva".to_string(),
         detail: String::new(),
         target,
         distance: 1000.0,
@@ -27,7 +27,7 @@ pub fn board() -> Board {
         Target::Star(star),
         Target::Galaxy(star.galaxy),
     ];
-    board.fill("Vereya system".to_string(), targets.map(line).to_vec());
+    board.fill("Varena system".to_string(), targets.map(line).to_vec());
     board
 }
 

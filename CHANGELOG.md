@@ -18,6 +18,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A banked pull turns no faster than 40 degrees a second, and slower at speed: rolled on edge, the wingsuit drifts round instead of spinning.
 - Folding the wings in the air keeps the body prone and turns it into a skydiver arch, belly down, arms and legs spread, head up. A fast fall from a jump arches too, and the body turns upright and reaches for the ground just before it lands.
 - A body falling belly down has twice the drag of one diving head first, so it falls slower.
+- The home planet, its star and its galaxy carry generated names like every other place.
 
 ## [0.10.1] - 2026-11-19
 

@@ -1,15 +1,15 @@
 //! Tests of life histories.
 
 use super::of;
-use crate::life::herd::fixtures::{kodya, role};
+use crate::life::herd::fixtures::{homeworld, role};
 use crate::life::{Activity, Guild, Habitat, Rung, World};
 
 /// The same seed gives the same history.
 #[test]
 fn same_seed_same_history() {
     let grazer = role(Guild::Grazer, Habitat::Ground, Activity::Day, 2.0);
-    let a = of(7, &grazer, 100.0, Rung::Skeletal, &kodya());
-    assert_eq!(a, of(7, &grazer, 100.0, Rung::Skeletal, &kodya()));
+    let a = of(7, &grazer, 100.0, Rung::Skeletal, &homeworld());
+    assert_eq!(a, of(7, &grazer, 100.0, Rung::Skeletal, &homeworld()));
 }
 
 /// Large species live longer, have fewer young, care more and range wider; a 100 kg grazer ranges
@@ -17,9 +17,9 @@ fn same_seed_same_history() {
 #[test]
 fn mass_sets_the_pace_of_life() {
     let grazer = role(Guild::Grazer, Habitat::Ground, Activity::Day, 2.0);
-    let small = of(1, &grazer, 0.01, Rung::Skeletal, &kodya());
-    let mid = of(1, &grazer, 100.0, Rung::Skeletal, &kodya());
-    let giant = of(1, &grazer, 5000.0, Rung::Skeletal, &kodya());
+    let small = of(1, &grazer, 0.01, Rung::Skeletal, &homeworld());
+    let mid = of(1, &grazer, 100.0, Rung::Skeletal, &homeworld());
+    let giant = of(1, &grazer, 5000.0, Rung::Skeletal, &homeworld());
     assert!(small.lifespan < mid.lifespan && mid.lifespan < giant.lifespan);
     assert!(
         small.clutch > 10 && giant.clutch == 1,
@@ -41,7 +41,7 @@ fn guild_sets_the_group() {
     let ambusher = role(Guild::Ambusher, Habitat::Ground, Activity::Night, 3.0);
     let browser = role(Guild::Browser, Habitat::Ground, Activity::Day, 2.0);
     let group = |r, rung| {
-        let h = of(3, &r, 80.0, rung, &kodya());
+        let h = of(3, &r, 80.0, rung, &homeworld());
         (h.group_min, h.group_max)
     };
     assert_eq!(group(hunter, Rung::Skeletal), (1, 4));
@@ -57,12 +57,12 @@ fn speed_and_range_follow_body_and_world() {
     let hunter = role(Guild::Hunter, Habitat::Ground, Activity::Day, 3.0);
     let light = World {
         gravity: 9.81,
-        ..kodya()
+        ..homeworld()
     };
     let speed = |mass, world: &World| of(2, &grazer, mass, Rung::Skeletal, world).speed;
     assert!(speed(0.01, &light) < speed(100.0, &light));
     assert!(speed(20000.0, &light) < speed(100.0, &light));
-    assert!(speed(100.0, &kodya()) < speed(100.0, &light) * 0.75);
-    let range = |r, mass| of(2, &r, mass, Rung::Skeletal, &kodya()).range;
+    assert!(speed(100.0, &homeworld()) < speed(100.0, &light) * 0.75);
+    let range = |r, mass| of(2, &r, mass, Rung::Skeletal, &homeworld()).range;
     assert!(range(hunter, 100.0) > 2.0 * range(grazer, 100.0));
 }

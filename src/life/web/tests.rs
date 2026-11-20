@@ -18,7 +18,7 @@ pub(in crate::life) fn lives(count: usize) -> Vec<(StarSpec, PlanetSpec, Life)> 
 }
 
 /// Returns the home planet and star of universe `seed`.
-fn kodya(seed: u64) -> (PlanetSpec, StarSpec) {
+fn homeworld(seed: u64) -> (PlanetSpec, StarSpec) {
     let universe = Universe::new(seed);
     let home = universe.home();
     (universe.planet(home), universe.system(home.star).star)
@@ -27,7 +27,7 @@ fn kodya(seed: u64) -> (PlanetSpec, StarSpec) {
 /// The same planet always gives the same life.
 #[test]
 fn same_seed_same_life() {
-    let (planet, star) = kodya(3);
+    let (planet, star) = homeworld(3);
     assert_eq!(assemble(&planet, &star), assemble(&planet, &star));
     for (star, planet, life) in lives(40).into_iter().take(5) {
         assert_eq!(assemble(&planet, &star), Some(life));

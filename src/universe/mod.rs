@@ -54,7 +54,6 @@ pub use hill::MOON_RADIUS;
 pub use home::{HOME_DAY_SECONDS, HOME_GRAVITY, HOME_RADIUS};
 pub use ids::{BodyId, GalaxyId, StarId};
 pub use look::Look;
-pub use names::{HOME_PLANET_NAME, HOME_STAR_NAME};
 pub use planet::{PLANET_DAY, PLANET_GRAVITY, PLANET_RADIUS, air, orbit_seconds};
 pub use record::{PlanetClass, PlanetRecord, Water, Zone};
 pub use rings::{RING_OUTER, ROCHE};

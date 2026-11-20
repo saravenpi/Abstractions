@@ -50,21 +50,23 @@ fn places_name_the_planet_and_the_system() {
         seed: 9,
         ..WorldSave::default()
     };
-    assert_eq!(place_name(&save), "Kodya, Vereya");
+    let star = universe.system(universe.home().star).star.name;
+    let home = format!("{}, {star}", universe.planet(universe.home()).name);
+    assert_eq!(place_name(&save), home);
     let mut body = universe.home();
     save.place = Some(Place {
         body,
         ..Place::default()
     });
-    assert_eq!(place_name(&save), "Kodya, Vereya");
+    assert_eq!(place_name(&save), home);
     body.index = 0;
     save.place = Some(Place {
         body,
         ..Place::default()
     });
     let inner = universe.planet(body).name;
-    assert_ne!(inner, "Kodya");
-    assert_eq!(place_name(&save), format!("{inner}, Vereya"));
+    assert_ne!(format!("{inner}, {star}"), home);
+    assert_eq!(place_name(&save), format!("{inner}, {star}"));
 }
 
 /// Returns a listed world played two hours before the stamp 8200.
@@ -80,7 +82,7 @@ fn listed() -> Listed {
                 ..WorldSave::default()
             },
         },
-        place: "Kodya, Vereya".to_string(),
+        place: "Kolva, Varena".to_string(),
     }
 }
 
@@ -90,7 +92,7 @@ fn a_row_shows_every_fact_of_its_world() {
     let world = listed();
     let shown = |part| cell_text(&world, part, None, 8200);
     assert_eq!(shown(Part::Name), ("Isle".to_string(), Tone::Plain));
-    assert_eq!(shown(Part::Place).0, "Kodya, Vereya");
+    assert_eq!(shown(Part::Place).0, "Kolva, Varena");
     assert_eq!(shown(Part::Seed).0, "42");
     assert_eq!(shown(Part::Played).0, "1 h 24 min");
     assert_eq!(shown(Part::Last).0, "2 hours ago");

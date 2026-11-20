@@ -101,7 +101,7 @@ fn the_card_says_the_whole_record_of_each_class() {
         let (line, planet) = world(record);
         let card = card(&line, Some(&planet), &universe);
         let star = Target::Star(planet.id.star).name(&universe);
-        assert_eq!(card.title, "Kodya");
+        assert_eq!(card.title, planet.name);
         assert_eq!(card.subtitle, format!("{} of {star}", wanted[0]));
         let said = labels.map(|label| fact(&card, label).unwrap_or_default());
         assert_eq!(said, wanted[1..], "{}", wanted[0]);

@@ -1,4 +1,4 @@
-//! Climate field tests: the Earth check on Kodya, height, seasons, rain, wind, moons and the
+//! Climate field tests: the Earth check on the home planet, height, seasons, rain, wind, moons and the
 //! guarantees every caller leans on (same output, never NaN).
 
 use bevy::math::{DVec3, Vec2};
@@ -6,8 +6,8 @@ use bevy::math::{DVec3, Vec2};
 use super::*;
 use crate::universe::Universe;
 
-/// Returns the setting of Kodya, the home planet of universe 42.
-pub(super) fn kodya() -> Setting {
+/// Returns the setting of the home planet of universe 42.
+pub(super) fn homeworld() -> Setting {
     let universe = Universe::new(42);
     Setting::of(&universe.planet(universe.home()))
 }
@@ -31,11 +31,11 @@ fn ring(setting: &Setting, lat: f64, season: f32) -> f32 {
         / 72.0
 }
 
-/// Kodya's equator is about 300 K and its poles about 250 K between the seasons, with its own
+/// The home planet's equator is about 300 K and its poles about 250 K between the seasons, with its own
 /// tilt of about 23 degrees and with none.
 #[test]
-fn kodya_has_a_warm_equator_and_cold_poles() {
-    let home = kodya();
+fn home_has_a_warm_equator_and_cold_poles() {
+    let home = homeworld();
     assert_eq!((home.temperature, home.pressure), (288.0, 1.0));
     assert!(
         (home.tilt.to_degrees() - 23.4).abs() < 0.1,
@@ -60,7 +60,7 @@ fn kodya_has_a_warm_equator_and_cold_poles() {
 /// The equal-area mean of the temperature over the whole sphere is the record mean.
 #[test]
 fn the_planet_mean_is_the_record_mean() {
-    let home = kodya();
+    let home = homeworld();
     let n = 4000;
     let total: f32 = (0..n)
         .map(|i| {
@@ -79,7 +79,7 @@ fn the_planet_mean_is_the_record_mean() {
 /// Every metre up is colder, at 6.5 K per km at home gravity and twice that at twice the gravity.
 #[test]
 fn temperature_falls_with_height() {
-    let home = kodya();
+    let home = homeworld();
     let heavy = Setting {
         gravity: home.gravity * 2.0,
         ..home
@@ -98,18 +98,18 @@ fn temperature_falls_with_height() {
     assert_eq!(up(&home, -300.0), up(&home, 0.0));
 }
 
-/// At Kodya's own tilt the north has its summer when the south has its winter, and half a year
+/// At the home planet's own tilt the north has its summer when the south has its winter, and half a year
 /// later the other way round; without a tilt there are no seasons.
 #[test]
 fn seasons_are_opposite_in_the_two_hemispheres() {
-    let tilted = kodya();
+    let tilted = homeworld();
     let swing = |lat: f64, season: f32| ring(&tilted, lat, season) - ring(&tilted, lat, 0.25);
     assert!(swing(50.0, 0.0) > 5.0 && swing(-50.0, 0.0) < -5.0);
     assert!(swing(50.0, 0.5) < -5.0 && swing(-50.0, 0.5) > 5.0);
     assert!((swing(50.0, 0.0) + swing(-50.0, 0.0)).abs() < 0.5);
     let flat = Setting {
         tilt: 0.0,
-        ..kodya()
+        ..homeworld()
     };
     assert!((ring(&flat, 50.0, 0.0) - ring(&flat, 50.0, 0.5)).abs() < 1e-3);
 }
@@ -117,7 +117,7 @@ fn seasons_are_opposite_in_the_two_hemispheres() {
 /// The same inputs always give the same climate, and another seed moves the warped belts.
 #[test]
 fn same_inputs_give_the_same_climate() {
-    let home = kodya();
+    let home = homeworld();
     let place = Spot {
         altitude: 40.0,
         inland: 0.3,

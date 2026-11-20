@@ -46,7 +46,7 @@ fn a_result_row_fits_the_panel() {
     let title = cell_text(&long, Part::Title, (false, false)).0;
     assert!(title.chars().count() <= TITLE_CHARS, "{title}");
     assert!(title.ends_with(".."));
-    assert_eq!(clip("Kodya", TITLE_CHARS), "Kodya");
+    assert_eq!(clip("Kolva", TITLE_CHARS), "Kolva");
 }
 
 /// Every distance from a metre to a million game light-years fits the distance column.
@@ -68,7 +68,7 @@ fn the_header_fits_one_line() {
     let caps = "Search".len() as f32 * (GLYPH + theme::CAPS_SPACING);
     assert!(caps + theme::GAP_S + SUMMARY_CHARS as f32 * GLYPH <= ROOM);
     let filter = "x".repeat(FILTER_CHARS);
-    let headings = ["Vereya system", "Known universe", LONGEST];
+    let headings = ["Varena system", "Known universe", LONGEST];
     for heading in headings {
         for sort in [Sort::Near, Sort::Name] {
             for (count, typed) in [(0, ""), (0, filter.as_str()), (999, ""), (999, &filter)] {
@@ -77,8 +77,8 @@ fn the_header_fits_one_line() {
             }
         }
     }
-    let usual = summary("Vereya system", (1, 8, 12), ("", Sort::Near));
-    assert_eq!(usual, "Vereya system - 1-8 of 12");
+    let usual = summary("Varena system", (1, 8, 12), ("", Sort::Near));
+    assert_eq!(usual, "Varena system - 1-8 of 12");
 }
 
 /// A chart name stays clear of the header and footer words: one in the middle of the map is

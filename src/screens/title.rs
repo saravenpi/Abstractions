@@ -1,4 +1,4 @@
-//! Title screen: a picture of the robot on Kodya filling the window behind the main menu, and
+//! Title screen: a picture of the robot on the home planet filling the window behind the main menu, and
 //! the version label under it.
 
 use bevy::asset::RenderAssetUsages;

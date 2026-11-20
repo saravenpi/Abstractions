@@ -53,11 +53,11 @@ fn the_footer_says_the_right_words() {
     assert_eq!(arrival(6000.0, 100.0).as_deref(), Some("about 1 min"));
     assert_eq!(arrival(6000.0, 0.5), None);
     assert_eq!(
-        course(Some(("Kodya", 1500.0)), 0.0, idle),
-        "Course Kodya - 1.50 km - idle"
+        course(Some(("Kolva", 1500.0)), 0.0, idle),
+        "Course Kolva - 1.50 km - idle"
     );
-    let moving = course(Some(("Kodya", 720_000.0)), 100.0, idle);
-    assert_eq!(moving, "Course Kodya - 720 km - about 2 h 0 min - idle");
+    let moving = course(Some(("Kolva", 720_000.0)), 100.0, idle);
+    assert_eq!(moving, "Course Kolva - 720 km - about 2 h 0 min - idle");
     assert_eq!(course(None, 100.0, idle), NO_COURSE);
 }
 
@@ -66,14 +66,14 @@ fn the_footer_says_the_right_words() {
 #[test]
 fn the_action_line_says_what_the_route_can_do() {
     let idle = RouteStatus::Idle;
-    let engage = (true, "Engage autopilot to Kodya b".to_string());
-    assert_eq!(action("Kodya b", idle), engage);
+    let engage = (true, "Engage autopilot to Kolva b".to_string());
+    assert_eq!(action("Kolva b", idle), engage);
     let inside = Block::Inside {
         star: false,
         lock: 3,
         tenths: 14,
     };
-    let blocked = action("Kodya b", RouteStatus::Blocked(inside));
+    let blocked = action("Kolva b", RouteStatus::Blocked(inside));
     assert_eq!(
         blocked,
         (
@@ -82,13 +82,13 @@ fn the_action_line_says_what_the_route_can_do() {
         )
     );
     assert_eq!(
-        action("Kodya b", RouteStatus::Aligning(45)).1,
+        action("Kolva b", RouteStatus::Aligning(45)).1,
         "Aligning 45%"
     );
-    assert!(!action("Kodya b", RouteStatus::Blocked(Block::Landed)).0);
+    assert!(!action("Kolva b", RouteStatus::Blocked(Block::Landed)).0);
     assert_eq!(
-        action("Kodya b", RouteStatus::Arrived).1,
-        "Arrived at Kodya b"
+        action("Kolva b", RouteStatus::Arrived).1,
+        "Arrived at Kolva b"
     );
 }
 
@@ -96,8 +96,8 @@ fn the_action_line_says_what_the_route_can_do() {
 /// nothing while the route waits, is blocked or has arrived.
 #[test]
 fn the_progress_line_shows_only_a_route_in_flight() {
-    assert_eq!(progress("Kodya", RouteStatus::Aligning(40)), "Aligning 40%");
-    assert_eq!(progress("Kodya", RouteStatus::InWarp), "In warp to Kodya");
+    assert_eq!(progress("Kolva", RouteStatus::Aligning(40)), "Aligning 40%");
+    assert_eq!(progress("Kolva", RouteStatus::InWarp), "In warp to Kolva");
     let quiet = [
         RouteStatus::Idle,
         RouteStatus::Blocked(Block::Landed),
@@ -106,7 +106,7 @@ fn the_progress_line_shows_only_a_route_in_flight() {
     assert!(
         quiet
             .iter()
-            .all(|status| progress("Kodya", *status).is_empty())
+            .all(|status| progress("Kolva", *status).is_empty())
     );
 }
 

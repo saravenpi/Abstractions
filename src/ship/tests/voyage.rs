@@ -122,7 +122,7 @@ fn stage<T>(name: &str, game: &mut Game, run: impl FnOnce(&mut Game) -> T) -> T 
     out
 }
 
-/// A new game: on foot on Kodya, into the ship and its chase view, up through the clouds into
+/// A new game: on foot on the home planet, into the ship and its chase view, up through the clouds into
 /// space with the whole hull in the frame, by warp to
 /// another planet of the system, down onto it, out on foot, and back to the same place from the
 /// save. Then into the air again, and back in the seat from a save taken in flight.
@@ -131,7 +131,7 @@ fn a_new_game_flies_to_another_planet_and_resumes() {
     let mut game = Game::full("voyage");
     let game = &mut game;
     stage("load", game, |game| game.start("Voyage", None));
-    stage("stand", game, ground::stands_on_kodya);
+    stage("stand", game, ground::stands_on_home);
     stage("base", game, ground::starts_at_the_base);
     stage("board", game, ground::boards);
     stage("chase view", game, ground::looks_from_behind);

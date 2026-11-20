@@ -48,7 +48,7 @@ pub(super) fn world(record: PlanetRecord) -> (Line, PlanetSpec) {
         ..universe.planet(home)
     };
     let line = Line {
-        title: "Kodya".to_string(),
+        title: planet.name.clone(),
         detail: format!(
             "1.00 km - {} - radius 6.00 km - 1.00 g",
             brief(Some(&record))

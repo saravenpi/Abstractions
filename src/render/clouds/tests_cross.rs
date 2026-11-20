@@ -82,6 +82,7 @@ fn world(name: &str, dir: DVec3, altitude: f64) -> (PlanetSpec, World) {
     world.init_resource::<CloudMaps>();
     world.init_resource::<CloudCrossing>();
     world.init_resource::<Assets<CloudMaterial>>();
+    world.init_resource::<Assets<Mesh>>();
     (home, world)
 }
 

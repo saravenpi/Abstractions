@@ -1,4 +1,4 @@
-//! A flat-shaded triangle soup with one colour per triangle: what every part of the body is built from.
+//! A flat-shaded triangle soup with one colour per triangle: what every part of a body is built from.
 
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
@@ -37,6 +37,23 @@ impl Soup {
     #[cfg(test)]
     pub fn triangles(&self) -> usize {
         self.positions.len() / 3
+    }
+
+    /// Returns every triangle as its three corners.
+    #[cfg(test)]
+    pub fn tris(&self) -> impl Iterator<Item = [Vec3; 3]> + '_ {
+        self.positions
+            .chunks(3)
+            .map(|c| [c[0], c[1], c[2]].map(Vec3::from_array))
+    }
+
+    /// Adds every triangle of `other`, turned by `turn` and then moved by `at`.
+    pub fn extend(&mut self, other: &Soup, (at, turn): (Vec3, Quat)) {
+        let place = |p: &[f32; 3]| (turn * Vec3::from_array(*p) + at).to_array();
+        self.positions.extend(other.positions.iter().map(place));
+        let aim = |n: &[f32; 3]| (turn * Vec3::from_array(*n)).to_array();
+        self.normals.extend(other.normals.iter().map(aim));
+        self.colors.extend(&other.colors);
     }
 
     /// Returns every corner position.

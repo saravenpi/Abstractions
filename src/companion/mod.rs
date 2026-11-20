@@ -108,6 +108,21 @@ fn ready(
     anchor.is_some() && terrain.is_some() && location.is_some() && universe.is_some()
 }
 
+/// Registers only what poses and paints the companions, for a studio with no game around it: the
+/// probe uses it to look at the companion alone.
+pub fn studio(app: &mut App) {
+    app.init_resource::<CompanionSense>().add_systems(
+        Update,
+        (
+            puppet::pose,
+            limbs::limbs,
+            screen::repaint,
+            shine::shine,
+        )
+            .chain(),
+    );
+}
+
 /// Registers the companion: its inputs, its chirps, its spawn and the systems that run it.
 pub(super) fn plugin(app: &mut App) {
     let rendered = resource_exists::<Warm>.and_then(resource_exists::<Assets<Image>>);

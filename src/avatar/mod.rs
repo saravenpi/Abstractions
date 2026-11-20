@@ -228,6 +228,15 @@ fn systems(app: &mut App) {
     hurt::plugin(app);
 }
 
+/// Registers only what poses and paints the bodies, for a studio with no game around it: the probe
+/// uses it to look at the robot alone.
+pub fn studio(app: &mut App) {
+    app.add_systems(
+        Update,
+        (animate::animate, fx::wings, fx::boots, fx::face).chain(),
+    );
+}
+
 /// Registers the avatar: its input, its visibility setting and the systems that run it while
 /// the world is shown, behind the boot screen too. The pose is filled once the controller moved
 /// the body, then dressed with the gear and the view once the camera rig ran.

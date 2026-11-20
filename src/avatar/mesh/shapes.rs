@@ -4,7 +4,7 @@ use std::f32::consts::TAU;
 
 use bevy::prelude::*;
 
-use super::soup::Soup;
+use crate::skin::Soup;
 
 /// A tube between two points, wider or narrower at each end.
 #[derive(Debug, Clone, Copy, PartialEq)]

@@ -2,10 +2,9 @@
 
 mod limbs;
 mod shapes;
-mod soup;
 mod trunk;
 
-pub use soup::Soup;
+pub use crate::skin::Soup;
 pub use trunk::SCREEN_FRONT;
 
 use std::f32::consts::TAU;

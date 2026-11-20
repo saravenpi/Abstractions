@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::shapes::{Tube, ball, rounded, tube};
-use super::soup::Soup;
+use crate::skin::Soup;
 use crate::avatar::tune::{
     ACCENT, CAP_RADIUS, CHEST, DARK, HEAD, HIP, HIPS, NECK, SCREEN, SHADE, SHELL, SHOULDER,
 };

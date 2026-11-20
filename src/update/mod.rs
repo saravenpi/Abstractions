@@ -24,6 +24,7 @@ mod host;
 pub mod install;
 pub mod job;
 mod net;
+pub mod older;
 mod open;
 pub mod place;
 pub mod platform;
@@ -40,6 +41,7 @@ pub mod version;
 
 pub use failure::Failure;
 pub use host::{Host, Offline, Sink};
+pub use older::Older;
 pub use open::PAGE;
 pub use place::Place;
 pub use platform::Platform;

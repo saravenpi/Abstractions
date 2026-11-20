@@ -29,15 +29,18 @@ pub struct Starter<'w, 's> {
 }
 
 impl Starter<'_, '_> {
-    /// Makes `entry` the active world and begins loading it.
+    /// Makes `entry` the active world and begins loading it. A world of an older release is
+    /// never started: the generator that made it is not in this game.
     ///
     /// The universe clock, the atlas, the destination, the log of changes and the explored
     /// ground are restored here. The planet and the spot on it are read from the save by the
     /// world, through [`super::WorldSave::body`] and [`super::WorldSave::spawn`]. A file
     /// from before v0.6 starts at the home planet spawn.
     pub fn start(&mut self, mut entry: WorldEntry) {
+        if entry.save.made_with().is_some() {
+            return;
+        }
         entry.save.last_played = now();
-        entry.save.upgrade();
         let universe = Universe::new(entry.save.seed);
         let atlas = entry.save.atlas.clone();
         let atlas = atlas.unwrap_or_else(|| Atlas::new(&universe));

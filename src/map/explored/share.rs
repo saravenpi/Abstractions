@@ -1,9 +1,10 @@
-//! Sharing the explored ground on a server: the cells uncovered here go out every two
-//! seconds, and the cells of the other players come back, whole in the welcome and new ones
+//! Sharing the explored ground on a server: the leaves uncovered here go out every two
+//! seconds, and the leaves of the other players come back, whole in the welcome and new ones
 //! after.
 
 use std::time::Duration;
 
+use abstractions_net::leaves::Run;
 use abstractions_net::wire::{ClientMsg, ServerMsg};
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
@@ -16,16 +17,16 @@ use crate::universe::BodyId;
 /// Seconds between two sends of the cells uncovered here.
 const EVERY: f32 = 2.0;
 
-/// Most cells one message carries: at most 5 bytes a cell, 40 KB, well under the
+/// Most runs one message carries: at most 12 bytes a run, 36 KB, well under the
 /// [`abstractions_net::wire::CLIENT_MESSAGE_MAX`] a server reads from a player.
-pub(super) const CELLS_MAX: usize = 8000;
+pub(super) const RUNS_MAX: usize = 3000;
 
 /// The ground of the last welcome, merged again once its world is in play: joining starts a
 /// new world, which replaces the explored ground at the end of the frame of the welcome.
 #[derive(Resource, Debug, Default)]
-struct Welcomed(Vec<(BodyId, Vec<u64>)>);
+struct Welcomed(Vec<(BodyId, Vec<Run>)>);
 
-/// Marks the cells the server sends, and the whole ground of a welcome.
+/// Marks the leaves the server sends, and the whole ground of a welcome.
 fn take(
     mut from: MessageReader<FromServer>,
     mut explored: ResMut<Explored>,
@@ -33,10 +34,10 @@ fn take(
 ) {
     for FromServer(msg) in from.read() {
         match msg {
-            ServerMsg::Explored { body, cells } => explored.reveal_cells(*body, cells),
+            ServerMsg::Explored { body, runs } => explored.merge_runs(*body, runs),
             ServerMsg::Welcome(welcome) => {
-                for (body, words) in &welcome.explored {
-                    explored.merge_words(*body, words);
+                for (body, runs) in &welcome.explored {
+                    explored.merge_runs(*body, runs);
                 }
                 welcomed.0.clone_from(&welcome.explored);
             }
@@ -47,35 +48,35 @@ fn take(
 
 /// Merges the ground of the welcome into the world the welcome started.
 fn settle(mut welcomed: ResMut<Welcomed>, mut explored: ResMut<Explored>) {
-    for (body, words) in welcomed.0.drain(..) {
-        explored.merge_words(body, &words);
+    for (body, runs) in welcomed.0.drain(..) {
+        explored.merge_runs(body, &runs);
     }
 }
 
-/// Returns the messages that carry the cells uncovered here since the last call, at most
-/// [`CELLS_MAX`] cells each.
+/// Returns the messages that carry the leaves uncovered here since the last call, at most
+/// [`RUNS_MAX`] runs each.
 pub(super) fn messages(explored: &mut Explored) -> Vec<ClientMsg> {
     let bodies: Vec<BodyId> = explored.bodies().map(|(body, _)| body).collect();
     let mut out = Vec::new();
     for body in bodies {
-        let cells = explored.take_new(body);
-        let chunks = cells.chunks(CELLS_MAX).map(|cells| ClientMsg::Explored {
-            body,
-            cells: cells.to_vec(),
-        });
-        out.extend(chunks);
+        let chunks = explored.take_new(body).chunks(RUNS_MAX);
+        out.extend(
+            chunks
+                .into_iter()
+                .map(|runs| ClientMsg::Explored { body, runs }),
+        );
     }
     out
 }
 
-/// Sends the cells uncovered here since the last send.
+/// Sends the leaves uncovered here since the last send.
 fn send(mut link: ResMut<Link>, mut explored: ResMut<Explored>) {
     for msg in messages(&mut explored) {
         link.send(msg);
     }
 }
 
-/// Forgets the cells uncovered with no server to send them to.
+/// Forgets the leaves uncovered with no server to send them to.
 fn drop_unsent(mut explored: ResMut<Explored>) {
     explored.bypass_change_detection().drop_unsent();
 }

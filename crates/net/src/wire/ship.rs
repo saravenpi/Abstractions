@@ -1,6 +1,6 @@
 //! The body of a ship record: where a player's ship is and what a watcher sees of its state.
 //!
-//! 37 bytes on a surface, 49 in the other frames.
+//! 40 bytes on a surface, 49 in the other frames.
 
 use glam::{DVec3, Quat, Vec3};
 

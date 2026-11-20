@@ -1,8 +1,8 @@
 //! What players share for the map: the ground they explored on each body and one waypoint
 //! each.
 //!
-//! The room merges explored cells into one bitset per body and tells everyone only the new
-//! cells, at most once a second per body. A waypoint lives as long as its player's seat.
+//! The room merges explored leaves into one set per body and tells everyone only the new
+//! leaves, at most once a second per body. A waypoint lives as long as its player's seat.
 
 use std::collections::HashMap;
 use std::mem;
@@ -12,69 +12,68 @@ use glam::Vec3;
 use super::Room;
 use crate::host::{ConnId, Outbox};
 use crate::ids::BodyId;
-use crate::wire::{EXPLORED_COLUMNS, EXPLORED_ROWS, ServerMsg, Waypoint, clean_name};
-
-/// Words in the explored bitset of one body: one bit per cell.
-pub const EXPLORED_WORDS: usize = (EXPLORED_COLUMNS * EXPLORED_ROWS / 64) as usize;
+use crate::leaves::{Leaves, Run};
+use crate::wire::{ServerMsg, Waypoint, clean_name};
 
 /// Most bodies the room keeps explored ground for, so the welcome stays under
-/// [`crate::wire::MESSAGE_MAX`]. Cells of further bodies are dropped.
+/// [`crate::wire::MESSAGE_MAX`]. Leaves of further bodies are dropped.
 pub const BODIES_MAX: usize = 128;
 
-/// Seconds between two broadcasts of new cells of one body.
+/// Most runs the room keeps for one body, so a welcome of [`BODIES_MAX`] bodies stays under
+/// [`crate::wire::MESSAGE_MAX`]. Leaves past it are dropped.
+pub const RUNS_MAX: usize = 6144;
+
+/// Seconds between two broadcasts of new leaves of one body.
 const EXPLORED_EVERY: f64 = 1.0;
 
 /// The explored ground of one body.
 #[derive(Debug)]
 pub(super) struct Ground {
-    /// One bit per cell, cell `n` in bit `n % 64` of word `n / 64`.
-    bits: Vec<u64>,
-    /// Cells explored since the last broadcast, in the order they came.
-    fresh: Vec<u32>,
+    /// Every leaf explored.
+    leaves: Leaves,
+    /// Leaves explored since the last broadcast.
+    fresh: Leaves,
     /// Network time of the last broadcast.
     sent: f64,
 }
 
-/// Returns the ground of `world`, leaving out bitsets of the wrong size.
-pub(super) fn grounds(explored: Vec<(BodyId, Vec<u64>)>) -> HashMap<BodyId, Ground> {
-    let sized = explored
-        .into_iter()
-        .filter(|(_, bits)| bits.len() == EXPLORED_WORDS);
-    sized.map(|(body, bits)| (body, ground(bits))).collect()
+/// Returns the ground of `world`, leaving out bodies past [`BODIES_MAX`].
+pub(super) fn grounds(explored: Vec<(BodyId, Vec<Run>)>) -> HashMap<BodyId, Ground> {
+    let kept = explored.into_iter().take(BODIES_MAX);
+    kept.map(|(body, runs)| (body, ground(Leaves::from_runs(&runs))))
+        .collect()
 }
 
-/// Returns the ground explored as `bits`, with nothing new to tell.
-fn ground(bits: Vec<u64>) -> Ground {
+/// Returns the ground explored as `leaves`, with nothing new to tell.
+fn ground(leaves: Leaves) -> Ground {
     Ground {
-        bits,
-        fresh: Vec::new(),
+        leaves,
+        fresh: Leaves::default(),
         sent: f64::NEG_INFINITY,
     }
 }
 
 impl Room {
-    /// Merges the `cells` the player on `conn` explored on `body`. Cells out of the grid are
-    /// dropped, and so is a new body once [`BODIES_MAX`] are known.
-    pub(super) fn explored(&mut self, conn: ConnId, body: BodyId, cells: &[u32]) {
+    /// Merges the leaves in `runs` that the player on `conn` explored on `body`. Keys that name
+    /// no leaf are dropped, and so is a new body once [`BODIES_MAX`] are known or a body that
+    /// holds [`RUNS_MAX`] runs.
+    pub(super) fn explored(&mut self, conn: ConnId, body: BodyId, runs: &[Run]) {
         let full = self.explored.len() >= BODIES_MAX;
         if self.seat_of(conn).is_none() || (full && !self.explored.contains_key(&body)) {
             return;
         }
-        let blank = || ground(vec![0; EXPLORED_WORDS]);
-        let ground = self.explored.entry(body).or_insert_with(blank);
-        for &cell in cells {
-            let Some(word) = ground.bits.get_mut(cell as usize / 64) else {
-                continue;
-            };
-            let bit = 1 << (cell % 64);
-            if *word & bit == 0 {
-                *word |= bit;
-                ground.fresh.push(cell);
-            }
+        let ground = self
+            .explored
+            .entry(body)
+            .or_insert_with(|| ground(Leaves::default()));
+        if ground.leaves.run_count() >= RUNS_MAX {
+            return;
         }
+        let new = ground.leaves.merge(&Leaves::from_runs(runs));
+        ground.fresh.merge(&new);
     }
 
-    /// Tells everyone the new cells of each body whose last broadcast is a second old.
+    /// Tells everyone the new leaves of each body whose last broadcast is a second old.
     pub(super) fn spread_explored(&mut self, now: f64, out: &mut Outbox) {
         let seats = &self.seats;
         for (body, ground) in &mut self.explored {
@@ -82,8 +81,8 @@ impl Room {
                 continue;
             }
             ground.sent = now;
-            let cells = mem::take(&mut ground.fresh);
-            let msg = ServerMsg::Explored { body: *body, cells };
+            let runs = mem::take(&mut ground.fresh).runs();
+            let msg = ServerMsg::Explored { body: *body, runs };
             for seat in seats.iter().flatten() {
                 out.send(seat.conn, msg.clone());
             }
@@ -112,9 +111,9 @@ impl Room {
     }
 
     /// Returns the explored ground of every body, as the welcome and the world file carry it.
-    pub(super) fn explored_list(&self) -> Vec<(BodyId, Vec<u64>)> {
+    pub(super) fn explored_list(&self) -> Vec<(BodyId, Vec<Run>)> {
         let all = self.explored.iter();
-        all.map(|(body, ground)| (*body, ground.bits.clone()))
+        all.map(|(body, ground)| (*body, ground.leaves.runs()))
             .collect()
     }
 

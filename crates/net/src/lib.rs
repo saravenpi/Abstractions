@@ -7,6 +7,7 @@
 //!
 //! - [`ids`] names galaxies, stars, planets and moons.
 //! - [`log`] is the list of what players changed in a world.
+//! - [`leaves`] holds the explored ground of a body as runs of quadtree leaves.
 //! - [`pack`] shrinks rotations, positions and small numbers to a few bytes.
 //! - [`wire`] is the protocol: state records, messages and how they sit on a stream.
 //! - [`clock`] and [`jitter`] keep players in time and remote bodies smooth.
@@ -20,6 +21,7 @@ pub mod ids;
 pub mod io;
 pub mod jitter;
 pub mod lan;
+pub mod leaves;
 pub mod log;
 pub mod pack;
 pub mod room;

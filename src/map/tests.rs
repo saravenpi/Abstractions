@@ -5,10 +5,10 @@
 use bevy::input::keyboard::Key;
 use bevy::math::{DVec3, Vec2};
 
-use super::explored::grid::COLS;
 use super::fade::{FADE, shade};
 use super::favourite::{Favourites, edit};
 use super::level::{CLOSEST, GROUND, REFERENCE_MAP, WHOLE, first, framed};
+use super::raster::tile::{LEVEL_MAX, SIDE, TileId};
 use super::{Waypoints, to_chart, toggle};
 use crate::universe::BodyId;
 
@@ -57,12 +57,13 @@ fn a_level_fades_in_and_opens_where_asked() {
     assert!(asked.centre.distance(to_chart(DVec3::Z)) < 1e-6);
 }
 
-/// At the closest zoom one cell of the planet picture takes at most 6 pixels of the map of a
-/// 1280 by 720 window, and the closest zoom still comes closer than the whole planet.
+/// At the closest zoom a pixel of the finest tile takes between one and two pixels of the map
+/// of a 1280 by 720 window, and the closest zoom still comes closer than the whole planet.
 #[test]
-fn the_closest_zoom_keeps_cells_small() {
-    let cell = CLOSEST * REFERENCE_MAP / COLS as f32;
-    assert!(cell <= 6.0 + 1e-4 && cell > 5.0, "{cell}");
+fn the_closest_zoom_keeps_tile_pixels_small() {
+    let across = f64::from(TileId::cols(LEVEL_MAX)) * SIDE as f64;
+    let pixel = f64::from(CLOSEST * REFERENCE_MAP) / across;
+    assert!((1.0..2.0).contains(&pixel), "{pixel}");
     const { assert!(CLOSEST > WHOLE) };
 }
 

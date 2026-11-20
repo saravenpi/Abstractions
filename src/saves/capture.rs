@@ -3,7 +3,7 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use super::model::{self, Place, SAVE_VERSION, WorldSave};
+use super::model::{self, GAME_VERSION, Place, SAVE_VERSION, WorldSave};
 use crate::computer::Atlas;
 use crate::map::explored::Explored;
 use crate::sim::Changes;
@@ -59,6 +59,7 @@ impl Site<'_> {
     /// into `save`.
     pub(super) fn record(&self, save: &mut WorldSave) {
         save.version = SAVE_VERSION;
+        save.game_version = GAME_VERSION.to_string();
         save.clock_seconds = self.clock.seconds;
         if let Some(atlas) = self.atlas.as_deref() {
             save.atlas = Some(atlas.clone());
@@ -67,9 +68,9 @@ impl Site<'_> {
             save.changes = changes.clone();
         }
         if let Some(explored) = self.explored.as_deref() {
-            let bodies = explored.bodies().map(|(body, words)| model::Explored {
+            let bodies = explored.bodies().map(|(body, leaves)| model::Explored {
                 body,
-                words: words.to_vec(),
+                runs: leaves.runs(),
             });
             save.explored = bodies.collect();
         }

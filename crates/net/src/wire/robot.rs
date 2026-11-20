@@ -1,6 +1,6 @@
 //! The body of a robot record: where a player's robot is and how it is posed.
 //!
-//! 41 bytes on a surface, 53 in the other frames. Angles are radians, speeds metres per second.
+//! 44 bytes on a surface, 53 in the other frames. Angles are radians, speeds metres per second.
 
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
 

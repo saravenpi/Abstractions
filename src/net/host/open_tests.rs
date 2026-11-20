@@ -1,7 +1,6 @@
 //! Tests of opening a world to LAN: the room's world carries what the player explored, and
 //! the room takes as many players as the settings say.
 
-use abstractions_net::room::EXPLORED_WORDS;
 use abstractions_net::store::World;
 use bevy::ecs::system::RunSystemOnce;
 use bevy::math::DVec3;
@@ -9,20 +8,19 @@ use bevy::prelude::*;
 
 use super::{Opening, host_cap};
 use crate::map::explored::Explored;
-use crate::map::explored::grid::WORDS;
 use crate::net::{NetDir, Session};
 use crate::saves::{ActiveWorld, WorldEntry, WorldSave};
 use crate::settings::Settings;
 use crate::space::Clock;
 use crate::universe::Universe;
 
-/// The world a host serves holds the ground it explored, whole bitsets the room keeps.
+/// The world a host serves holds the ground it explored, runs of leaves the room keeps.
 #[test]
 fn hosting_shares_the_explored_ground() {
     let body = Universe::new(6).home();
     let mut explored = Explored::default();
-    explored.reveal(body, DVec3::X, 0.01);
-    let words = explored.words(body).expect("explored").to_vec();
+    explored.reveal(body, DVec3::X, 0.0001, 6.371e6);
+    let runs = explored.leaves(body).expect("explored").runs();
     let save = WorldSave {
         seed: 6,
         ..WorldSave::default()
@@ -40,8 +38,7 @@ fn hosting_shares_the_explored_ground() {
         .run_system_once(|opening: Opening| opening.world())
         .expect("runs");
     let served = served.expect("a world is played");
-    assert_eq!(WORDS, EXPLORED_WORDS);
-    assert_eq!(served.explored, vec![(body, words)]);
+    assert_eq!(served.explored, vec![(body, runs)]);
 }
 
 /// A world opened to LAN takes as many players as the settings say, 16 by default, within

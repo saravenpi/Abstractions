@@ -4,6 +4,7 @@ mod act;
 mod bars;
 mod keys;
 mod modal;
+mod older;
 mod ops;
 mod rows;
 #[cfg(test)]
@@ -120,6 +121,7 @@ pub(super) fn plugin(app: &mut App) {
                     .after(MenuKeys)
                     .run_if(editing),
                 keys::focus_cursor,
+                older::report,
                 rows::show,
                 rows::show_lines,
                 rows::show_bars,

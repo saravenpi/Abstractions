@@ -1,29 +1,40 @@
 //! The flat coloured picture of a body: 512 by 256 pixels, longitude across from 0 going east
-//! and latitude down from the north pole, one pixel per cell of the explored grid.
+//! and latitude down from the north pole, one pixel per cell of its own grid.
 //!
-//! Each body asked for keeps its picture. Only explored cells are painted, on a worker thread,
-//! and each cell once: a newly explored cell is painted alone. The rest stays plain black.
+//! Each body asked for keeps its picture. A cell is painted, on a worker thread and once, when
+//! a leaf of the explored ground falls in it. The rest stays plain black.
 //! Painting waits while the map is closed, and the pictures stay painted.
 
+pub mod grid;
 mod paint;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_coast;
+#[cfg(test)]
 mod tests_sea;
+#[cfg(test)]
+mod tests_tile;
+pub mod tile;
+mod tile_paint;
+mod tiles;
+mod tiles_view;
 mod work;
 
 pub use paint::colour;
+pub use tiles_view::tile_layer;
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use abstractions_net::leaves::Leaves;
 use bevy::asset::RenderAssetUsages;
 use bevy::image::ImageSampler;
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::tasks::Task;
 
-use super::explored::grid::{COLS, ROWS, WORDS};
+use self::grid::{COLS, ROWS, WORDS};
 use crate::screens::Screen;
 use crate::universe::BodyId;
 use crate::world::Globe;
@@ -43,9 +54,11 @@ pub struct Rasters {
 struct Raster {
     /// The image, from the frame after the first request.
     image: Option<Handle<Image>>,
-    /// The cells painted or being painted, one bit a cell.
-    painted: Vec<u64>,
-    /// The version of the explored ground every painted cell was taken from.
+    /// The cells painted, one bit a cell.
+    lit: Vec<u64>,
+    /// The leaves of the explored ground already looked at.
+    painted: Leaves,
+    /// The version of the explored ground the last worker was started for.
     seen: u64,
     /// The ground of the body, once a worker built it.
     globe: Option<Arc<Globe>>,
@@ -73,7 +86,7 @@ impl Rasters {
     /// nothing.
     pub fn request(&mut self, body: BodyId) {
         self.bodies.entry(body).or_insert_with(|| Raster {
-            painted: vec![0; WORDS],
+            lit: vec![0; WORDS],
             ..default()
         });
     }
@@ -94,13 +107,28 @@ fn blank() -> Image {
 }
 
 /// Forgets the pictures of the world that ended: the same body of another world looks else.
-fn forget(mut rasters: ResMut<Rasters>) {
+fn forget(mut rasters: ResMut<Rasters>, mut tiles: ResMut<tiles::Tiles>) {
     *rasters = Rasters::default();
+    *tiles = tiles::Tiles::default();
 }
 
 /// Registers the painting of body pictures.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Rasters>()
+        .init_resource::<tiles::Tiles>()
+        .add_systems(
+            Update,
+            (
+                tiles::want,
+                tiles::start,
+                tiles::collect,
+                tiles::trim,
+                tiles_view::show,
+            )
+                .chain()
+                .run_if(super::on_planet)
+                .run_if(super::open),
+        )
         .add_systems(
             Update,
             (work::open, work::plan, work::collect)

@@ -123,7 +123,7 @@ impl Opening<'_, '_> {
             changes: self.changes.as_deref().cloned().unwrap_or_default(),
             atlas: atlas.unwrap_or_default(),
             explored: explored
-                .map(|(body, words)| (body, words.to_vec()))
+                .map(|(body, leaves)| (body, leaves.runs()))
                 .collect(),
             ..World::default()
         })

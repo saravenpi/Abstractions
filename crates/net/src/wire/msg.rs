@@ -7,6 +7,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::ids::BodyId;
+use crate::leaves::Run;
 use crate::log::{Change, Changes, Entry, PlayerId};
 
 /// What a server says about itself to anyone who asks, before any check.
@@ -103,8 +104,8 @@ pub struct Welcome {
     pub record: Option<PlayerRecord>,
     /// The players already in the world, without the one who joins.
     pub players: Vec<PlayerInfo>,
-    /// The cells explored on each body, as bitsets of 64 cells a word, cell 0 in bit 0 of word 0.
-    pub explored: Vec<(BodyId, Vec<u64>)>,
+    /// The leaves explored on each body, as runs of leaf keys.
+    pub explored: Vec<(BodyId, Vec<Run>)>,
     /// The live waypoint of each player already in the world.
     pub waypoints: Vec<(PlayerId, Waypoint)>,
 }
@@ -129,13 +130,13 @@ pub enum ClientMsg {
     },
     /// The player leaves.
     Bye,
-    /// The player explored new cells of a body. A cell is `row * 512 + column` on the grid of
-    /// [`super::EXPLORED_ROWS`] by [`super::EXPLORED_COLUMNS`].
+    /// The player explored new leaves of a body, as runs of leaf keys (see
+    /// [`crate::leaves`]).
     Explored {
         /// The body explored.
         body: BodyId,
-        /// The cells newly explored.
-        cells: Vec<u32>,
+        /// The leaves newly explored.
+        runs: Vec<Run>,
     },
     /// The player sets their waypoint, or clears it with nothing.
     Waypoint(Option<Waypoint>),
@@ -167,12 +168,12 @@ pub enum ServerMsg {
     },
     /// The player is sent away.
     Kick(Reason),
-    /// Players explored new cells of a body, numbered as in [`ClientMsg::Explored`].
+    /// Players explored new leaves of a body, numbered as in [`ClientMsg::Explored`].
     Explored {
         /// The body explored.
         body: BodyId,
-        /// The cells newly explored.
-        cells: Vec<u32>,
+        /// The leaves newly explored.
+        runs: Vec<Run>,
     },
     /// A player set their waypoint, or cleared it with nothing.
     Waypoint {

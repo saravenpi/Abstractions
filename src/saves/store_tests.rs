@@ -9,10 +9,9 @@ use super::model::{Place, SAVE_VERSION, WorldSave};
 use super::store::{delete, ids, list, new_entry, write};
 use crate::computer::{Atlas, Target};
 use crate::universe::{GalaxyId, Universe};
-use crate::world::Terrain;
 
 /// Returns an empty unique directory under the system temp folder.
-fn scratch(tag: &str) -> PathBuf {
+pub(super) fn scratch(tag: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("abstractions-saves-{tag}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     dir
@@ -51,7 +50,7 @@ fn broken_files_are_skipped_not_deleted() {
 }
 
 /// A world file exactly as v0.5 wrote it.
-const V05: &str = r#"name = "Old Isle"
+pub(super) const V05: &str = r#"name = "Old Isle"
 seed = 42
 position = [12.5, 3.0, -40.25]
 yaw = 0.5
@@ -61,39 +60,6 @@ play_seconds = 5025.5
 created = 1700000000
 last_played = 1700000500
 "#;
-
-/// A v0.5 file loads, keeps its name, seed, play time and dates, and starts at the home spawn.
-#[test]
-fn a_v05_file_loads_and_starts_at_home() {
-    let dir = scratch("v05");
-    fs::create_dir_all(&dir).unwrap();
-    fs::write(dir.join("old-isle.toml"), V05).unwrap();
-    let worlds = list(&dir);
-    assert_eq!(worlds.len(), 1);
-    let mut save = worlds[0].save.clone();
-    assert_eq!(
-        (save.version, save.position),
-        (0, Some([12.5, 3.0, -40.25]))
-    );
-    save.upgrade();
-    assert_eq!((save.name.as_str(), save.seed), ("Old Isle", 42));
-    assert_eq!(
-        (save.play_seconds, save.created, save.last_played),
-        (5025.5, 1_700_000_000, 1_700_000_500)
-    );
-    assert_eq!(
-        (save.version, save.position, save.place),
-        (SAVE_VERSION, None, None)
-    );
-    assert_eq!(
-        (save.clock_seconds, &save.atlas, &save.ship),
-        (0.0, &None, &None)
-    );
-    let (universe, terrain) = (Universe::new(42), Terrain::new(42));
-    assert_eq!(save.body(&universe), universe.home());
-    assert_eq!(save.spawn(&terrain), terrain.find_spawn());
-    let _ = fs::remove_dir_all(&dir);
-}
 
 /// Returns a save with every v0.6 field set to a value that is awkward to print.
 fn voyage() -> WorldSave {

@@ -15,6 +15,8 @@ mod relay;
 mod seat;
 
 #[cfg(test)]
+mod explored_tests;
+#[cfg(test)]
 mod join_tests;
 #[cfg(test)]
 mod kit;
@@ -29,7 +31,7 @@ mod scale_tests;
 
 use std::collections::HashMap;
 
-pub use map::{BODIES_MAX, EXPLORED_WORDS};
+pub use map::{BODIES_MAX, RUNS_MAX};
 
 use conn::Conn;
 use map::Ground;

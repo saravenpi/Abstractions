@@ -7,6 +7,8 @@ use bevy::ui_widgets::Activate;
 use super::rows::Row;
 use super::{Mode, Notice, Worlds, ops};
 use crate::saves::{SaveDir, Starter};
+use crate::update::Updates;
+use crate::update::older::OLDER_TAG;
 
 /// What a key or a button of the worlds menu does.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,6 +37,7 @@ pub(super) struct Ctx<'w, 's> {
     notice: ResMut<'w, Notice>,
     dir: Res<'w, SaveDir>,
     starter: Starter<'w, 's>,
+    updates: ResMut<'w, Updates>,
 }
 
 impl Ctx<'_, '_> {
@@ -63,11 +66,18 @@ impl Ctx<'_, '_> {
         }
     }
 
-    /// Starts the selected world.
+    /// Starts the selected world. A world of an older release opens in that release, which the
+    /// game downloads first when it is not there.
     fn play(&mut self) -> Result<(), String> {
-        if let Some(world) = self.worlds.selected().cloned() {
+        let Some(world) = self.worlds.selected().cloned() else {
+            return Ok(());
+        };
+        if world.entry.save.made_with().is_none() {
             self.starter.start(world.entry);
+            return Ok(());
         }
+        let data = dirs::data_dir().unwrap_or_default().join("abstractions");
+        self.updates.open_older(OLDER_TAG, &world.entry.id, &data);
         Ok(())
     }
 

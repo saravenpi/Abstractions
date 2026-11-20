@@ -6,12 +6,13 @@ use std::thread;
 use super::check::check;
 use super::failure::Failure;
 use super::job;
+use super::older::Older;
 use super::signals::Signals;
 use super::state::{Plan, Stage, Status};
 use super::updates::{Event, Updates};
 
 /// Runs `work` on a named background thread. Returns false when the thread could not start.
-fn background(name: &str, work: impl FnOnce() + Send + 'static) -> bool {
+pub(super) fn background(name: &str, work: impl FnOnce() + Send + 'static) -> bool {
     let builder = thread::Builder::new().name(name.to_string());
     builder.spawn(work).is_ok()
 }
@@ -86,6 +87,7 @@ impl Updates {
                     Err(failure) => Stage::Failed(failure.reason()),
                 };
             }
+            Event::Opened(done) if self.older == Older::Working => self.opened(done),
             _ => {}
         }
     }

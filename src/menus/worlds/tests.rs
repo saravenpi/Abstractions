@@ -135,3 +135,24 @@ fn delete_removes_only_that_world() {
     assert_eq!(list(&dir).iter().find(|w| w.id == "reef").unwrap(), &reef);
     let _ = fs::remove_dir_all(&dir);
 }
+
+/// A world of version 2 is listed as "Made with 0.10", and a new one shows its place.
+#[test]
+fn an_old_world_is_listed_as_made_with_0_10() {
+    let dir = scratch("older");
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(
+        dir.join("reef.toml"),
+        "name = \"Reef\"\nseed = 5\nversion = 2\n",
+    )
+    .unwrap();
+    world(&dir, "Fresh", 6, 10);
+    let places: Vec<(String, String)> = load(&dir)
+        .into_iter()
+        .map(|world| (world.entry.id, world.place))
+        .collect();
+    let place = |id: &str| places.iter().find(|(got, _)| got == id).unwrap().1.clone();
+    assert_eq!(place("reef"), "Made with 0.10");
+    assert!(!place("fresh").starts_with("Made with"));
+    let _ = fs::remove_dir_all(&dir);
+}

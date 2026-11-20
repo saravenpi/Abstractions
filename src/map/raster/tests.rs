@@ -5,11 +5,11 @@ use std::time::{Duration, Instant};
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 
+use super::grid::{COLS, ROWS, cell_of, centre};
 use super::work::offset;
 use super::{BYTES, Rasters, colour};
 use crate::computer::{Computer, Lens, SIZE, direction};
 use crate::map::explored::Explored;
-use crate::map::explored::grid::{COLS, ROWS, cell_of, centre};
 use crate::map::{from_chart, place_words, to_chart};
 use crate::screens::Screen;
 use crate::universe::Universe;
@@ -76,7 +76,8 @@ fn painter(seen: u32, map: Computer) -> App {
     let universe = Universe::new(7);
     let body = universe.home();
     let mut explored = Explored::default();
-    explored.reveal_cells(body, &[seen]);
+    let radius = universe.planet(body).radius;
+    explored.reveal(body, centre(seen), 1e-7, radius);
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), StatesPlugin))
         .init_asset::<Image>()

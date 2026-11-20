@@ -78,6 +78,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Dark patches on the ground. A chunk that fades out no longer shadows the one that replaces it. The ground light is corrected for shadows, so it is exactly the sun light at the camera and never relights a shadow. Shadows end in a fade over the last fifth of the shadow range instead of at a line. Ambient occlusion fades out between 30 and 90 m and is taken off a camera more than 90 m above the ground, so chunk seams no longer halo. The moon casts a shadow only when its light is strong enough to show one. The lights now update in the same step as the light of the place, with no frame of lag.
 - The autopilot aligns the ship before it warps and never turns it in warp: the drive waits until the nose is on the course and has stopped turning, the course aims at where a moving planet will be on arrival, and a heading that would miss the destination drops the drive out to align again.
 - The windows of the ship are clear glass instead of blue: nearly colourless and see-through, with a faint sheen at a slant, so the sky, clouds and water show their own colours through it.
 - The minimap in space follows your ship every frame, including in warp and when leaving a system, instead of jumping five times a second.

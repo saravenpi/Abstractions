@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 
-use super::dither::{LEVELS, SPAN, Way, level, ranged, redither};
+use super::dither::{LEVELS, SPAN, Way, casting, level, ranged, redither};
 
 /// One thing that fades: its mesh entities, which way it goes and where it stands.
 struct Fade {
@@ -63,6 +63,7 @@ impl Fades {
                 *part,
                 Some(ranged(way, 0, self.span.unwrap_or(SPAN))),
             );
+            casting(commands, *part, Some(way));
         }
         let fade = Fade {
             parts,
@@ -84,6 +85,7 @@ impl Fades {
     pub fn cancel(&mut self, commands: &mut Commands, root: Entity) {
         for part in self.live.remove(&root).iter().flat_map(|fade| &fade.parts) {
             redither(commands, *part, None);
+            casting(commands, *part, None);
         }
     }
 

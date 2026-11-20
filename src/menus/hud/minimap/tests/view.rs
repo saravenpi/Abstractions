@@ -131,5 +131,5 @@ fn the_ranges_hold_at_real_planet_sizes() {
             assert_eq!(range(Mode::Fixed(step), 0, radius), Some(*wanted));
         }
     }
-    assert_eq!(range(Mode::Fixed(2), 0, 10_000.0), Some(3500.0));
+    assert_eq!(range(Mode::Fixed(2), 0, 5000.0), Some(1750.0));
 }

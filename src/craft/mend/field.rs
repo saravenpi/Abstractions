@@ -3,10 +3,11 @@
 
 use bevy::prelude::*;
 
-use super::tune::{BIND_MASS, HARD, MEND_KEY, PATCH, PATCH_CAP, PLATE_MASS};
+use super::tune::{BIND_MASS, HARD, PATCH, PATCH_CAP, PLATE_MASS};
 use crate::condition::{Condition, Part};
 use crate::craft::matter::{Class, Stuff};
 use crate::craft::pack::{Pack, Stack};
+use crate::settings::{Persistent, Settings};
 
 /// Returns true when `stack` binds a joint: sinew or resin.
 fn binds(stack: &Stack) -> bool {
@@ -63,10 +64,10 @@ pub fn patch(condition: &mut Condition, pack: &mut Pack) -> Option<Part> {
 
 /// Patches the worst part of the robot when the mend key is pressed.
 pub fn press(
-    keys: Res<ButtonInput<KeyCode>>,
+    (keys, settings): (Res<ButtonInput<KeyCode>>, Res<Persistent<Settings>>),
     (mut condition, mut pack): (ResMut<Condition>, ResMut<Pack>),
 ) {
-    if keys.just_pressed(MEND_KEY) && !condition.intact() {
+    if keys.just_pressed(settings.controls.keys.mend) && !condition.intact() {
         patch(&mut condition, &mut pack);
     }
 }

@@ -41,36 +41,48 @@ fn sea_bytes(globe: &Globe) -> HashSet<[u8; 3]> {
         .collect()
 }
 
-/// Returns, for each row of tile `id` that crosses a coast, where the ground crosses sea level
-/// in pixels from the left edge and where the painted sea ends.
-fn crossings(globe: &Globe, id: TileId) -> Vec<(f64, f64)> {
+/// Returns true when two colours differ by one byte at most in every channel: the sea shades in
+/// steps finer than the samples of its colours.
+fn near(first: &[u8; 3], second: &[u8; 3]) -> bool {
+    first.iter().zip(second).all(|(a, b)| a.abs_diff(*b) <= 1)
+}
+
+/// Returns the pixels of tile `id` where the painted sea and the ground at the middle of the pixel
+/// disagree, and how many rows of the tile hold both sea and land.
+fn disagreements(globe: &Globe, id: TileId) -> (Vec<(usize, usize)>, usize) {
     let data = paint(globe, id, None);
     let sea = sea_bytes(globe);
-    let mut found = Vec::new();
+    let (mut wrong, mut coasts) = (Vec::new(), 0);
     for y in 0..SIDE {
         let painted = |x: usize| {
             let at = (y * SIDE + x) * BYTES;
-            sea.contains(&[data[at], data[at + 1], data[at + 2]])
+            let pixel = [data[at], data[at + 1], data[at + 2]];
+            sea.iter().any(|sea| near(sea, &pixel))
         };
-        let wet = |x: f64| globe.height(id.direction((x, y as f64 + 0.5))) < globe.sea_level();
-        let fine = |sub: usize| (sub as f64 + 0.5) / 4.0;
-        let truth = (0..SIDE * 4 - 1).find(|sub| wet(fine(*sub)) != wet(fine(sub + 1)));
-        let shown = (0..SIDE - 1).find(|x| painted(*x) != painted(x + 1));
-        if let (Some(truth), Some(shown)) = (truth, shown) {
-            found.push(((truth + 1) as f64 / 4.0, (shown + 1) as f64));
-        }
+        let wet = |x: usize| {
+            let dir = id.direction((x as f64 + 0.5, y as f64 + 0.5));
+            globe.height(dir) < globe.sea_level()
+        };
+        wrong.extend((0..SIDE).filter(|x| painted(*x) != wet(*x)).map(|x| (x, y)));
+        coasts += usize::from((0..SIDE - 1).any(|x| wet(x) != wet(x + 1)));
     }
-    found
+    (wrong, coasts)
 }
 
-/// A tile 78 km across at a coast shows the coastline within one pixel of where the height of
-/// the ground crosses sea level.
+/// A tile 78 km across at a coast paints the sea in the pixels whose middle lies under sea level
+/// and the land in the others, so its coastline is within one pixel of where the height of the
+/// ground crosses sea level. Sea is told from land by colour, so a thousandth of the pixels
+/// may be mistaken where a land colour comes within a byte of a sea colour.
 #[test]
 fn a_coast_is_painted_within_a_pixel_of_the_crossing() {
     let (globe, on_coast) = coast().expect("a planet with a coast");
-    let found = crossings(&globe, tile_at(on_coast, 8));
-    assert!(!found.is_empty(), "no row of the tile crosses the coast");
-    for (truth, shown) in found {
-        assert!((truth - shown).abs() <= 1.0, "{truth} against {shown}");
-    }
+    let (wrong, coasts) = disagreements(&globe, tile_at(on_coast, 8));
+    assert!(coasts > 0, "no row of the tile crosses the coast");
+    let stray = SIDE * SIDE / 1000;
+    assert!(
+        wrong.len() <= stray,
+        "{} pixels, the first {:?}",
+        wrong.len(),
+        wrong[0]
+    );
 }

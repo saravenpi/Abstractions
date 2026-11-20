@@ -7,7 +7,7 @@ use bevy::ui_widgets::Activate;
 
 use super::Place;
 use super::Trail;
-use super::bar::{BackButton, Crumb, back_key, on_press};
+use super::bar::{Crumb, back_key, on_press};
 use super::go::descend;
 use super::tests::places;
 use crate::computer::{Board, Lens, MapView, Tab, Target, Typing};
@@ -115,8 +115,8 @@ fn backspace_goes_back_unless_something_is_typed() {
     assert_eq!(shown(&app).0, Tab::Galaxy);
 }
 
-/// Backspace and the Back button go back to the level shown before and look at it as it was;
-/// a part of the path jumps to its level, and Back then returns.
+/// Backspace goes back to the level shown before and looks at it as it was; a part of the path
+/// jumps to its level, and Backspace then returns.
 #[test]
 fn back_returns_to_what_was_shown_before() {
     let (galaxy, _, _) = places();
@@ -131,8 +131,7 @@ fn back_returns_to_what_was_shown_before() {
     let crumb = app.world_mut().spawn(Crumb(Place::Universe)).id();
     app.world_mut().trigger(Activate { entity: crumb });
     assert_eq!(shown(&app).0, Tab::Universe);
-    let back = app.world_mut().spawn(BackButton).id();
-    app.world_mut().trigger(Activate { entity: back });
+    backspace(&mut app);
     assert_eq!(
         shown(&app),
         (Tab::Galaxy, Some(Target::Galaxy(galaxy)), Level::Chart)

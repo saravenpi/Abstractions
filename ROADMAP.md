@@ -18,16 +18,17 @@ The order from 0.12 on was set on 2026-11-20 from a study of what other explorat
 | 0.10 | Multiplayer | released |
 | 0.11 | Living worlds at real size | in progress |
 | 0.12 | Places worth the trip | planned |
-| 0.13 | Real space | planned |
-| 0.14 | Together | planned |
-| 0.15 | The thread | planned |
-| 0.16 | Hunting, mining and crafting | planned |
-| 0.17 | Life odds | planned |
-| 0.18 | Sapient species | planned |
-| 0.19 | Religion and history | planned |
-| 0.20 | Contact | planned |
-| 0.21 | Economy | planned |
-| 0.22 | Geopolitics and conflict | planned |
+| 0.13 | Ground you can shape | planned |
+| 0.14 | Real space | planned |
+| 0.15 | Together | planned |
+| 0.16 | The thread | planned |
+| 0.17 | Hunting, mining, crafting and building | planned |
+| 0.18 | Life odds | planned |
+| 0.19 | Sapient species | planned |
+| 0.20 | Religion and history | planned |
+| 0.21 | Contact | planned |
+| 0.22 | Economy | planned |
+| 0.23 | Geopolitics and conflict | planned |
 
 ## The setting
 
@@ -131,7 +132,7 @@ Planets and the galaxy at their real size, each living planet with life that bel
 - Animals act from their needs: they graze, hunt, flee, flock and sleep.
 - Remove the hunters from a valley and the grazers rise, then the plants thin: cascades you can cause.
 - Tracks, calls and nests lead you to animals, and the companion's field guide fills in as you watch.
-- A first step of hunting: creatures and the robot have health, and rocks are quarried by mass. The full loop is 0.16.
+- A first step of hunting: creatures and the robot have health, and rocks are quarried by mass. The full loop is 0.17.
 - A reworked interface: one Go command, pins in place of waypoints and favourites, a HUD that shows only what applies, and markers on screen.
 - Worlds made with 0.10 keep opening with 0.10. A 0.10 game cannot join a 0.11 server.
 
@@ -157,7 +158,49 @@ A real-size planet has thousands of times more ground than the small ones before
 
 **Played, not assumed.** On a planet nobody has seen, each player can say at any moment where they are heading and why.
 
-## 0.13: real space
+## 0.13: ground you can shape
+
+**Status:** planned
+
+You can dig into the ground anywhere, take what comes out, and reshape the land. This version also makes the ground as light in memory as it can be, because digging on a real-size planet is only possible if it is.
+
+**The lesson.** No game studied runs a full volume at real size: the planets of Space Engineers stop at 120 km across. No Man's Sky caps how many edits it keeps, and past the cap the ground grows back over bases, which players took for a bug. Astroneer stopped at four players because the host works out the dug ground for each of them. Valheim had to rewrite its ground after one network object per dig made loading slow. Subnautica removed its digging tool because "you can just dig your way anywhere". Each of these costs has a rule below.
+
+What you can do:
+
+- **Dig, fill and flatten anywhere.** Pits, trenches, terraces, ramps, roads and walls of earth. The ground is smooth and sculpted, not made of cubes: a grid of cubes does not fit a round planet.
+- **What comes out is real.** A dig yields material by mass, and which material follows from the geology of that spot: soil, then rock, with veins and ice where the planet put them.
+- **A tool must be harder than the ground.** Soil gives way to anything. Hard rock needs a tool made for it. So a place that must be earned stays earned, and nobody digs straight to it.
+- **Gravity and mass count.** Moving a hill is work, and more so on a heavy world. What you dug has to go somewhere.
+- **Large works show.** A big enough pit or wall is seen from the air.
+- **Everyone sees the same ground.** What a friend dug is there when you arrive, and still there next month.
+- **Nothing grows back in silence.** There is no hidden limit. If a limit is ever reached, the game says so, and the ground around a base is never undone.
+
+How it stays light:
+
+- **Only what was dug is stored.** The planet comes from the seed. A dig is a change laid over it.
+- **One record per piece of ground,** never one per stroke of the tool, compressed with zstd.
+- **You receive the ground near you.** A joining player is not sent every dig in the universe.
+- **The server stores and passes on.** It never builds ground.
+- **The ground you see is rebuilt to be lean:** points shared between triangles, no constant data carried per point, and a collision shape made from heights.
+- **Changes are kept in a compact binary file,** not as text in the save.
+
+Budgets, each one a test that fails the build:
+
+| What | Budget |
+| --- | --- |
+| One stroke of the tool | 5 bytes |
+| One changed piece of ground (64 m) on disk | a few hundred bytes |
+| A planet with 10,000 changed pieces | about 3 MB |
+| The ground drawn near you | about a fifth of the memory it takes in 0.11 |
+
+These numbers were computed from the data layout, not measured. The first task of this version is to measure them.
+
+Tunnels, caves you dig and building arrive with 0.17.
+
+**Played, not assumed.** Players reshape a place and come back to it.
+
+## 0.14: real space
 
 **Status:** planned
 
@@ -184,13 +227,13 @@ You already drive a robot from far away. A probe is the same link to a smaller m
 - **The release is the skill.** Speed and angle matter under the real gravity and the real air. Too fast and it burns. On a small asteroid it bounces.
 - **The ship is the relay.** When the ship passes behind the planet the picture stops, so a fast-spinning world gives you a window to hold.
 - **A probe is lost for real.** There is no recall. It stays where it came to rest, and other players can find it.
-- **What it brings back:** the view, and what a robot would need to survive there (heat, pressure, acid). That is a reason to build protection in 0.16.
+- **What it brings back:** the view, and what a robot would need to survive there (heat, pressure, acid). That is a reason to build protection in 0.17.
 - **First on a world.** The first probe to reach a world leaves its owner's name there.
 - **A station for a crew.** One flies the ship and holds the link, the other guides the probe.
 
 **Played, not assumed.** Players go out of their way to reach an object they first saw as a dot in the sky. After a probe shows a place, they want to go and stand there.
 
-## 0.14: together
+## 0.15: together
 
 **Status:** planned
 
@@ -205,14 +248,14 @@ The people who play Abstractions play it with friends. This version is for them.
 - **While you were away.** The companion tells you what your friends found and where they went since you last played.
 - **Stations aboard.** One flies, one reads the chart, one watches and scans. The stations ask for attention, not for levels.
 - **Things in the world, not menus.** A course is plotted on a chart everyone aboard can see and point at.
-- **A shared base and a shared stock.**
+- **A shared stock,** and shared earthworks from 0.13. A shared base follows when building arrives in 0.17.
 - **Faces and signals.** The robot's screen face shows expressions, and a light or a call carries across a valley.
 - **No harm between players** unless both ask for it.
 - **A cost test per player.** Players spread across a planet multiply the server's work, so each added player has a budget.
 
 **Played, not assumed.** A friend who joins for the first time is doing something that matters within ten minutes.
 
-## 0.15: the thread
+## 0.16: the thread
 
 **Status:** planned
 
@@ -232,7 +275,7 @@ A reason to go far: the story of the control container, of who is driving, and o
 
 **Played, not assumed.** A player who stops for two weeks opens the log and knows what to do next.
 
-## 0.16: hunting, mining and crafting
+## 0.17: hunting, mining, crafting and building
 
 **Status:** planned
 
@@ -242,7 +285,7 @@ A reason to go far: the story of the control container, of who is driving, and o
 
 **A prototype comes first.** Four intents on ten tissues, played by the crew, before the full grammar is built. If asking for a function is not fun at that size, the design changes there.
 
-0.16.0 is the complete loop, playable end to end. The rest follows as 0.16.x.
+0.17.0 is the complete loop, playable end to end. The rest follows as 0.17.x.
 
 ### Crafting, the idea
 
@@ -268,7 +311,7 @@ A reason to go far: the story of the control container, of who is driving, and o
 - **More than one way through a hazard.** A hot world can be met with plates, with a treatment, or by landing on the night side.
 - **Knowledge.** A tissue's numbers are unknown until the companion scans it or you use it. The field guide then remembers what it is good for.
 
-### In 0.16.0
+### In 0.17.0
 
 - **Inventory and HUD.**
   - A hotbar of six slots at the bottom centre: small, black and white, the held item marked, wear shown as a thin bar.
@@ -279,7 +322,9 @@ A reason to go far: the story of the control container, of who is driving, and o
   - Robot status in a HUD corner: frame integrity, and one line per hazard only while it applies (heat, cold, pressure, acid).
 - **No clock to feed.** The robot has no hunger and nothing that drains by time alone. Danger comes from where you are and how far you are from the ship.
 - **Harvesting**, with the tool rule above. Breaking a part in a fight drops that part. A crew shares the yield.
-- **Surface mining.** Outcrops and boulders placed by geology rules: veins near basalt, dense metal in craters, minerals in the river beds from 0.9, ice cores. A pick must be harder than the rock. The scanner gives odds, not a map. Minerals are tissues too (hardness, density, conductivity), so the same grammar uses them.
+- **Mining.** Outcrops and boulders placed by geology rules: veins near basalt, dense metal in craters, minerals in the river beds from 0.9, ice cores. A pick must be harder than the rock. The scanner gives odds, not a map. Minerals are tissues too (hardness, density, conductivity), so the same grammar uses them.
+- **Tunnels.** Below the surface the ground becomes a volume, only where somebody dug: galleries, shafts and rooms, with overhangs. A tunnel is stored like any other dig, as a change over the seed, and exists in detail only near a player.
+- **Building.** A base of your own, from the same pieces, tissues and joints as gear: walls, floors, roofs and doors assembled by the grammar, not stacked cubes. A wall of hide and bone does not hold what a wall of stone holds.
 - **Crafting** as described: the four intents, the grammar, the explanations, the three proposals, treatments, patterns, repair, armour.
 - **Combat.** Creatures gain health per body part and attacks derived from their features: horns charge, tails sweep, necks lunge, and wind-up grows with mass so large animals telegraph. Aggression comes from guild and life history: hunters that take prey your size attack, and so does anything cornered and a parent near its young. Grazers still flee. Wounded animals behave wounded: they limp, run, or turn. The robot swings, thrusts and blocks along arcs set by the item's grip, mass and reach.
 - **Fair fights.** Animals act for themselves, which can be unfair to a player. Every attack can be seen coming, and there is always a way to leave.
@@ -288,13 +333,13 @@ A reason to go far: the story of the control container, of who is driving, and o
 - **Death.** A broken robot leaves the human unharmed: you wake in a spare body at the base and your gear waits where you fell. Nothing else is lost. Items are saved as recipes (tissue origins, pieces, treatments) and rebuilt from the seed.
 - **A zen server setting.** A server can turn off attacks on the robot and damage from planets, for a quiet game. The default is the full game.
 
-### Follows in 0.16.x
+### Follows in 0.17.x
 
-Ranged weapons from energy-store tissues (elastic, gas bladder, reactive gland, charged tissue); open pits cut into the height field; drill rigs; decay of untreated organic tissue; a silhouette critic that picks the most readable of 20 candidate builds; gas harvesting from giants; the intents reach, throw, launch and contain.
+Ranged weapons from energy-store tissues (elastic, gas bladder, reactive gland, charged tissue); drill rigs; decay of untreated organic tissue; a silhouette critic that picks the most readable of 20 candidate builds; gas harvesting from giants; the intents reach, throw, launch and contain.
 
 **Played, not assumed.** Players make a tool because of a place they want to reach, and can say which place.
 
-## 0.17: life odds
+## 0.18: life odds
 
 **Status:** planned
 
@@ -307,7 +352,7 @@ The core rule, which planets live and how far life got, arrives with 0.11. This 
 
 The dice are biased, not the physics. Every planet stays coherent; living ones are just more common than in reality.
 
-## 0.18: sapient species
+## 0.19: sapient species
 
 **Status:** planned
 
@@ -327,7 +372,7 @@ Some worlds have people.
 
 **Played, not assumed.** A player can tell two peoples apart from their villages alone, before meeting anyone.
 
-## 0.19: religion and history
+## 0.20: religion and history
 
 **Status:** planned
 
@@ -346,7 +391,7 @@ What a people believes and remembers, shown in the world.
 
 **Played, not assumed.** A player follows a story to a place and finds what the story said.
 
-## 0.20: contact
+## 0.21: contact
 
 **Status:** planned
 
@@ -358,7 +403,7 @@ Meeting them.
 - **The words you need come first.** What a people says to you draws on the words for what is in front of you.
 - **Understanding changes what you can do.** Nothing explains a scene for you. A word you know opens a trade, a door or a warning.
 - **A crew learns together.** A word learned by one is known to all.
-- **Trade** and what each culture values. The economy behind it is 0.21.
+- **Trade** and what each culture values. The economy behind it is 0.22.
 - **Reputation** per culture, shaped by what you do.
 - **Species with spaceflight** that you meet in other systems, with stations and ships.
 - **Your companion as interpreter.** The more words of a people you know, the better you bargain.
@@ -367,7 +412,7 @@ This builds on the board computer and the discovery atlas from 0.6.
 
 **Played, not assumed.** A player uses a word they learned to get something they wanted.
 
-## 0.21: economy
+## 0.22: economy
 
 **Status:** planned
 
@@ -377,7 +422,7 @@ This version and the next are far ahead. Each will be cut to what a player can s
 
 - **Stock from the area.** Each settlement produces from its ecosystem and its ground, and consumes by its population. A village by a slime marsh sells gel; a mountain village sells crystal.
 - **Prices from scarcity and culture.** Rare here means dear here: heat scales are worth a fortune on an ice world and little at home. Culture adds taste: a people that values light pays well for anything that glows.
-- **Local makers use the 0.16 grammar.** Goods for sale are generated by the same crafting system, from local tissues and in the culture's style. One system serves the player and the people, so a trader's gear tells where it comes from.
+- **Local makers use the 0.17 grammar.** Goods for sale are generated by the same crafting system, from local tissues and in the culture's style. One system serves the player and the people, so a trader's gear tells where it comes from.
 - **Ways to exchange** follow culture and technology: barter for small groups; object money for village networks, where a rare, durable, light tissue of the region becomes the currency (shells, crystals, hard seeds); minted coins for advanced cultures, limited by their real reserves; gift and debt for communal cultures, where reputation is the currency.
 - **Exchange rates** come from the value of each currency's backing tissue in each region. Gaps between planets make trade worth it, and the ship becomes a freighter.
 - **Order books.** Settlements post buy and sell orders from their stock and shortages. In multiplayer, players add their own orders on top.
@@ -385,7 +430,7 @@ This version and the next are far ahead. Each will be cut to what a player can s
 - **Risk pays.** Rare tissues sit where planets are dangerous: hazards, dense predators, hostile peoples.
 - **Information is a resource.** You only know the prices of places you visited, as of your visit. The companion records them with their date. A deposit survey can be sold.
 - **Requests from shortages.** A settlement short of something posts a request, because 0.9 weather or overhunting really cut its supply. No quest is written by hand.
-- **Taboos.** A religion from 0.19 can make a species or a mountain sacred. Hunting or drilling there closes that people's market, or earns a contract to protect it.
+- **Taboos.** A religion from 0.20 can make a species or a mountain sacred. Hunting or drilling there closes that people's market, or earns a contract to protect it.
 - **Another way through tolerances.** If you cannot survive the lava world yet, buy the scales from a people who live there.
 - **Courier contracts with a deposit:** carry goods for a settlement or another player, and the deposit covers the cargo.
 - **Nothing runs in the background.** A settlement's stock and prices are a pure function of its seed and the time. Only what you changed is stored. Sell 50 gels and the price drops, then recovers by formula, like populations.
@@ -394,15 +439,15 @@ This version and the next are far ahead. Each will be cut to what a player can s
 
 Hunter, trader and maker are three ways to progress, and any mix works. Perishable goods, cargo mass and local currencies keep markets local, so no single hub swallows all trade.
 
-## 0.22: geopolitics and conflict
+## 0.23: geopolitics and conflict
 
 **Status:** planned
 
 Peoples with enough technology form states, draw borders, trade, ally, expand and fight, within their own species and between species. It stays coherent because it follows the same rule as everything else: history is a pure function of the seed, the universe clock and what players changed. Nothing runs in the background.
 
-- **Polities from geography and culture.** States form around fertile basins, rivers and coasts (from 0.11 terrain and 0.21 stock). Their size is limited by how far their technology can hold land, so stone-age peoples have tribes and valleys, and industrial ones have nations and empires. Culture from 0.18 sets how they govern and what they value.
+- **Polities from geography and culture.** States form around fertile basins, rivers and coasts (from 0.11 terrain and 0.22 stock). Their size is limited by how far their technology can hold land, so stone-age peoples have tribes and valleys, and industrial ones have nations and empires. Culture from 0.19 sets how they govern and what they value.
 - **Borders and claims.** A border is where two polities' reach meets, shaped by mountains, rivers and seas. Contested land is where reach overlaps.
-- **Diplomacy with reasons.** Alliances, rivalries and treaties come from shared or opposed interests: the same scarce resource, the same enemy, the same religion (0.19), trade that pays both sides (0.21).
+- **Diplomacy with reasons.** Alliances, rivalries and treaties come from shared or opposed interests: the same scarce resource, the same enemy, the same religion (0.20), trade that pays both sides (0.22).
 - **Wars that make sense.** A war starts from a cause the world holds: scarcity after a bad season, a border on a rich deposit, a sacred site, a broken treaty. Its course follows strength, supply lines, terrain and technology. Its outcome moves borders, ruins towns and shows in the world as forts, battlefields, refugees and new ruins. Wars are scheduled events like hunts, so every player sees the same war.
 - **Between species.** Two sapient species on one planet, or a spacefaring one meeting another, compete for the same land or worlds, or find a niche apart. Body plans and needs matter: a species that breathes ammonia does not want the same planets as one that breathes water, so some neighbours never fight at all.
 - **Expansion into space.** A spacefaring species spreads through nearby systems over centuries, its frontier growing along the stars it can reach and colonise (a percolation model: not every colony sends more colonies, so empires have holes and edges). The universe at a given time shows where each frontier stands.
@@ -413,8 +458,7 @@ Peoples with enough technology form states, draw borders, trade, ally, expand an
 
 **Status:** not yet ordered
 
-- Building: a base of your own, from the same pieces, tissues and joints as 0.16 gear.
-- Caves, underwater structures and things under the ice. Mine tunnels share their local volume representation.
+- Natural caves, underwater structures and things under the ice. They use the same local volumes as the tunnels of 0.17.
 - Crews that specialise (one hunts, one crafts, one hauls) and trade in any local currency. Items carry their maker's name.
 - Binary and multiple star systems, and eccentric orbits.
 - A galaxy map you can fly through.
@@ -422,7 +466,7 @@ Peoples with enough technology form states, draw borders, trade, ally, expand an
 
 ## Research behind this
 
-- Universe, planets and life (0.8 to 0.21): https://mycelium.facile.studio/artifacts/2026-11-17-procedural-universe-for-abstractions-research-and-roadmap-november-2026-5fb680
+- Universe, planets and life (0.8 to 0.22): https://mycelium.facile.studio/artifacts/2026-11-17-procedural-universe-for-abstractions-research-and-roadmap-november-2026-5fb680
 - What exploration games do well and badly (the order from 0.12 on): https://mycelium.facile.studio/artifacts/2026-11-20-what-exploration-games-do-well-and-badly-and-what-it-changes-in-the-abstractions-roadmap-november-2026-2b8d92
 
 The sources quoted in this file:
@@ -433,6 +477,11 @@ The sources quoted in this file:
 - Outer Wilds on knowledge and the ship log: https://media.gdcvault.com/GDC+2021/beachum_gdc_2021(1).pdf
 - Kate Compton on generated things that look alike: https://galaxykate0.tumblr.com/post/139774965871/so-you-want-to-build-a-generator
 - Hello Games on looking at generated planets at scale: https://gamesbeat.com/unraveling-the-mysteries-of-no-mans-skys-18-quintillion-planets/
+- Space Engineers on the size of its planets: https://blog.marekrosa.org/2015/11/planets-because-you-wanted-them_12
+- A player's study of the edit cap in No Man's Sky: https://steamcommunity.com/sharedfiles/filedetails?id=2526352095
+- Astroneer on the cost of dug ground with several players: https://blog.astroneer.space/p/day-1-multiplayer-and-beyond/
+- Valheim's rewrite of its ground: https://steamcommunity.com/games/892970/announcements/detail/5411613798265437193
+- Subnautica's director on removing digging: https://forums.unknownworlds.com/discussion/comment/2287209
 - The scout of Outer Wilds: https://outerwilds.fandom.com/wiki/Scout_Launcher
 - Scanning in Mass Effect 2, in its director's words: https://www.gamewatcher.com/2010-21-05-mass-effect-3-will-keep-the-mining-mini-game-it-serves-a-purpose
 - An explorer on the Elite Dangerous scanner: https://forums.frontier.co.uk/threads/why-fss-erased-a-lot-of-what-made-exploration-interesting.467000/

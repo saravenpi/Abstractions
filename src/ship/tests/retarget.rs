@@ -87,7 +87,7 @@ pub(super) fn flight() -> (App, Vec<Target>) {
 }
 
 /// Returns the unit vector from the ship to `target` now.
-fn course(app: &mut App, target: Target) -> DVec3 {
+pub(super) fn course(app: &mut App, target: Target) -> DVec3 {
     let ship = see_ship(app);
     let (universe, time) = (
         *app.world().resource::<Universe>(),

@@ -34,15 +34,16 @@ impl Glow {
     }
 
     /// Returns the expected stars per sector at `pos` metres from the galaxy centre, split by
-    /// the structure they belong to.
-    pub fn stars(&self, pos: DVec3) -> Parts {
-        self.shape.parts(pos / GLY)
+    /// the structure they belong to, and the dust there as the optical depth per game
+    /// light-year.
+    pub fn at(&self, pos: DVec3) -> (Parts, f64) {
+        let place = self.shape.place(pos / GLY);
+        (self.shape.parts_at(&place), self.shape.dust_at(&place))
     }
 
-    /// Returns the dust at `pos` metres from the galaxy centre, as the optical depth per game
-    /// light-year.
-    pub fn dust(&self, pos: DVec3) -> f64 {
-        self.shape.dust(pos / GLY)
+    /// Returns the radius in metres of the disc of the galaxy.
+    pub fn radius(&self) -> f64 {
+        self.shape.radius * GLY
     }
 
     /// Returns the radius in metres of the sphere that holds all the light of the galaxy.

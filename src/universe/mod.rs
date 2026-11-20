@@ -18,6 +18,7 @@ mod look;
 mod moon;
 mod names;
 mod orbit;
+mod place;
 mod planet;
 mod record;
 mod rings;

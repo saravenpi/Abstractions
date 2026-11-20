@@ -28,8 +28,14 @@ pub const NEAR: f32 = 40.0;
 /// `starfield.wesl` has them: the integral takes the light they give up over the same stretch.
 const FADE: f32 = 2.5;
 
-/// Steps along the part of a line of sight that lies in the light of one galaxy.
-const STEPS: usize = 24;
+/// Longest step along a line of sight, as a share of the radius of the galaxy it crosses. The
+/// disc and the core have a deviation of 0.02 to 0.1 radii, so with this step no structure falls
+/// between two samples, and the light changes without a jump as the camera moves.
+const STEP: f64 = 0.03;
+
+/// Fewest and most steps along the part of a line of sight that lies in one galaxy: a short
+/// chord through the slab needs few, one along the disc is cut at the most.
+const STEPS: (usize, usize) = (6, 96);
 
 /// Light that one star per sector gives along one game light-year of a line of sight: the
 /// scale at which the home galaxy reads about 0.7 toward its core from half way out.
@@ -87,16 +93,18 @@ impl Source {
         let Some((from, to)) = self.span(dir) else {
             return (Vec3::ZERO, 0.0);
         };
-        let step = (to - from) / STEPS as f64;
+        let wanted = ((to - from) / (STEP * self.glow.radius())).ceil() as usize;
+        let steps = wanted.clamp(STEPS.0, STEPS.1);
+        let step = (to - from) / steps as f64;
         let (mut light, mut depth) = (Vec3::ZERO, 0.0);
-        for k in 0..STEPS {
+        for k in 0..steps {
             let along = from + step * (k as f64 + 0.5);
-            let at = dir * along - self.offset;
-            let dim = self.glow.dust(at) * step / GLY;
+            let (stars, dust) = self.glow.at(dir * along - self.offset);
+            let dim = dust * step / GLY;
             let far = smoothstep(NEAR - FADE, NEAR, (along / GLY) as f32);
             if far > 0.0 {
                 let clear = (-(depth + 0.5 * dim)).exp();
-                light += tint(self.glow.stars(at)) * (far * (clear * GAIN * step / GLY) as f32);
+                light += tint(stars) * (far * (clear * GAIN * step / GLY) as f32);
             }
             depth += dim;
         }
@@ -119,7 +127,11 @@ pub fn radiance(sources: &[Source], dir: DVec3) -> Vec3 {
 
 /// Returns the texels of rows `first`, `first + stride`, and so on, of a map `side` texels
 /// wide, six faces of `side` rows each, as `(row, bytes)` pairs.
-fn rows(sources: &[Source], side: usize, (first, stride): (usize, usize)) -> Vec<(usize, Vec<u8>)> {
+pub(super) fn rows(
+    sources: &[Source],
+    side: usize,
+    (first, stride): (usize, usize),
+) -> Vec<(usize, Vec<u8>)> {
     let at = |index: usize| 2.0 * (index as f64 + 0.5) / side as f64 - 1.0;
     (first..FACES * side)
         .step_by(stride)
@@ -134,11 +146,17 @@ fn rows(sources: &[Source], side: usize, (first, stride): (usize, usize)) -> Vec
         .collect()
 }
 
+/// Returns the threads a bake runs on: a share of the cores of the machine, see [`SHARE`], up to
+/// one per face and at least one.
+pub(super) fn workers() -> usize {
+    (thread::available_parallelism().map_or(1, usize::from) / SHARE).clamp(1, FACES)
+}
+
 /// Bakes the cube map of `sources`, `side` texels along a face, on a share of the cores of the
 /// machine, see [`SHARE`], up to one thread per face and at least one. Returns the bytes of the
 /// six faces one after the other.
 pub fn bake_at(sources: &[Source], side: usize) -> Vec<u8> {
-    let workers = (thread::available_parallelism().map_or(1, usize::from) / SHARE).clamp(1, FACES);
+    let workers = workers();
     let mut bytes = vec![0; FACES * side * side * 4];
     thread::scope(|scope| {
         let work: Vec<_> = (0..workers)

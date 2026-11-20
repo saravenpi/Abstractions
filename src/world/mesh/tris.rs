@@ -120,13 +120,12 @@ fn shade(patch: &Patch, c: [[usize; 2]; 3], style: &Style, ground: Ground) -> ([
     (srgb(r * t, g * t, b * t), surface)
 }
 
+/// Returns the wrapped chart position of a vertex and how thick the turf grows there.
+pub type Turf<'a> = &'a dyn Fn(usize, usize) -> [f32; 3];
+
 /// Returns the turf coordinates of the three vertices `c` of a triangle of `surface`: their wrapped
 /// chart positions from `turf`, lifted by the band of the mean thickness of the turf on open grass.
-fn turfed(
-    turf: &dyn Fn(usize, usize) -> [f32; 3],
-    c: [[usize; 2]; 3],
-    surface: Surface,
-) -> [[f32; 2]; 3] {
+fn turfed(turf: Turf, c: [[usize; 2]; 3], surface: Surface) -> [[f32; 2]; 3] {
     let v = c.map(|[i, j]| turf(i, j));
     let thick = match surface {
         Surface::Grass => (v[0][2] + v[1][2] + v[2][2]) / 3.0,
@@ -142,7 +141,7 @@ fn turfed(
 pub fn fill(
     mesh: &mut FlatMesh,
     patch: &Patch,
-    (style, turf): (Style, Option<&dyn Fn(usize, usize) -> [f32; 3]>),
+    (style, turf): (Style, Option<Turf>),
     cell_at: &dyn Fn(usize, usize) -> Cell,
 ) {
     let n = patch.cells();

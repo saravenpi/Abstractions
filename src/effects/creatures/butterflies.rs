@@ -130,7 +130,7 @@ pub fn step(
     mut wings: Query<(&mut Transform, &Wing)>,
 ) {
     let sky = env.sky();
-    let level = presence_on(env.record(), Species::Butterfly, &sky.ambient) * COUNT as f32;
+    let level = presence_on(&env.globe(), Species::Butterfly, &sky.ambient) * COUNT as f32;
     let mut rng = *env.rng;
     let mut ctx = Ctx {
         ground: env.ground(),

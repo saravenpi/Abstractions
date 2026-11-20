@@ -87,9 +87,9 @@ pub fn step(
     mut wings: Query<(&mut Transform, &Wing)>,
 ) {
     let sky = env.sky();
-    let record = *env.record();
+    let globe = env.globe();
     let levels =
-        [Species::Crow, Species::Gull].map(|species| presence_on(&record, species, &sky.ambient));
+        [Species::Crow, Species::Gull].map(|species| presence_on(&globe, species, &sky.ambient));
     let mut rng = *env.rng;
     let mut ctx = Ctx {
         ground: env.ground(),

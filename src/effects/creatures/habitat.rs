@@ -1,10 +1,11 @@
-//! Which creatures are out for a biome, a surface and the time of day.
+//! Which creatures are out for a biome, a surface and the time of day, on a planet whose life has
+//! come far enough for them.
 
 use super::anim::ramp;
 use crate::effects::kind::{Ambient, CEILING};
-use crate::effects::planet::{lifeless, seen};
-use crate::universe::PlanetRecord;
-use crate::world::{Biome, SEA_LEVEL, Surface};
+use crate::effects::planet::{airless, lifeless, seen};
+use crate::life::Rung;
+use crate::world::{Biome, Globe, SEA_LEVEL, Surface};
 
 /// The kinds of wandering creature.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -85,11 +86,28 @@ pub fn presence(species: Species, a: &Ambient) -> f32 {
     }
 }
 
-/// Returns the share of a species' pool that should be out on a planet of `record`: none on a world
-/// without air or without life, no gull without a sea, and at home what [`presence`] gives.
-pub fn presence_on(record: &PlanetRecord, species: Species, a: &Ambient) -> f32 {
+/// Returns the first rung of life at which `species` lives: insects with shells and segments, birds
+/// with skeletons.
+fn first_rung(species: Species) -> Rung {
+    match species {
+        Species::Firefly | Species::Butterfly => Rung::Shelled,
+        Species::Crow | Species::Gull => Rung::Skeletal,
+    }
+}
+
+/// Returns the share of a species' pool that should be out on the planet of `globe`: none without
+/// air, no gull without a sea, and by its life when the globe carries one: none on a dead planet, none
+/// before the rung of the species, and otherwise what [`presence`] gives. A globe given no life, such
+/// as a test globe, keeps the rules of its record: none on molten or bare rock.
+pub fn presence_on(globe: &Globe, species: Species, a: &Ambient) -> f32 {
+    let record = globe.record();
     let stranded = species == Species::Gull && record.ocean <= 0.0;
-    if lifeless(record) || stranded {
+    let barred = match (globe.lives(), globe.life()) {
+        (Some(true), Some(life)) => life.rung < first_rung(species),
+        (Some(_), _) => true,
+        (None, _) => lifeless(record),
+    };
+    if airless(record) || stranded || barred {
         return 0.0;
     }
     presence(species, &seen(record, a))

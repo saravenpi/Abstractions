@@ -212,7 +212,7 @@ pub fn step(
     mut lights: Query<LightData, Without<Firefly>>,
 ) {
     let sky = env.sky();
-    let level = presence_on(env.record(), Species::Firefly, &sky.ambient) * COUNT as f32;
+    let level = presence_on(&env.globe(), Species::Firefly, &sky.ambient) * COUNT as f32;
     let flight = Flight { sky, level };
     let mut rng = *env.rng;
     let mut ctx = Ctx {

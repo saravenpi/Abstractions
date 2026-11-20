@@ -62,6 +62,7 @@ fn display_view(view: &ViewPrefs, field: Field) -> Option<String> {
         Field::ViewShip => Some(view_name(view.ship).to_string()),
         Field::HeadBob => Some(on_off(view.head_bob)),
         Field::AutoFollow => Some(on_off(view.auto_follow)),
+        Field::SpeedFx => Some(strength(view.speed_fx)),
         _ => None,
     }
 }

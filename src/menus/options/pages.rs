@@ -62,6 +62,7 @@ pub fn controls(active: Tab) -> impl Bundle {
             Spawn(toggle("View in ship", Field::ViewShip)),
             Spawn(toggle("Head bob", Field::HeadBob)),
             Spawn(toggle("Camera auto-follow", Field::AutoFollow)),
+            Spawn(stepper("Speed effects", Field::SpeedFx)),
             SpawnIter(Bind::FOOT.into_iter().map(binding)),
         )),
     )

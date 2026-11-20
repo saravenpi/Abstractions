@@ -3,6 +3,7 @@
 //! it crosses, with the dust of that galaxy absorbing, so the band of the home galaxy, the lanes
 //! in it and the galaxies far outside it are one model. The sky shader reads the map.
 
+mod image;
 mod march;
 mod pack;
 #[cfg(test)]
@@ -10,20 +11,20 @@ mod rig;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_gap;
+#[cfg(test)]
 mod tests_sight;
+mod tune;
 
-use bevy::asset::RenderAssetUsages;
-use bevy::image::ImageSampler;
 use bevy::math::DVec3;
 use bevy::prelude::*;
-use bevy::render::render_resource::{
-    Extent3d, TextureDimension, TextureFormat, TextureViewDescriptor, TextureViewDimension,
-};
 use bevy::tasks::{
     AsyncComputeTaskPool, Task, TaskPool, block_on, futures_lite::future::poll_once,
 };
 
-use self::march::{BYTES, FACES, SIDE, Source, bake};
+use self::image::{blank, write};
+use self::march::{Source, bake};
+use self::tune::MIN_GAP;
 use super::vantage::{LocalSystem, Vantage};
 use crate::screens::Screen;
 use crate::space::UniPos;
@@ -66,9 +67,28 @@ pub struct GalaxyLight {
     built: Option<Built>,
     /// The bake in progress.
     task: Option<Task<(Built, Vec<u8>)>>,
+    /// Seconds of the app clock at which the last bake was taken into the texture.
+    finished: Option<f64>,
 }
 
 impl GalaxyLight {
+    /// Takes a finished bake, if there is one, into the texture, at `now` seconds of the app clock.
+    fn land(&mut self, images: &mut Assets<Image>, now: f64) {
+        let done = self
+            .task
+            .as_mut()
+            .and_then(|task| block_on(poll_once(task)));
+        if let Some((built, bytes)) = done {
+            write(images, &self.image, &bytes);
+            (self.built, self.task, self.finished) = (Some(built), None, Some(now));
+        }
+    }
+
+    /// Returns true once [`MIN_GAP`] seconds have passed since the last bake was taken, at `now`.
+    fn rested(&self, now: f64) -> bool {
+        self.finished.is_none_or(|at| now - at >= MIN_GAP)
+    }
+
     /// Returns the texture once it holds the light of the sky, and nothing before.
     pub fn map(&self) -> Option<Handle<Image>> {
         self.built.map(|_| self.image.clone())
@@ -99,28 +119,6 @@ pub fn plan(universe: &Universe, galaxy: GalaxyId, at: DVec3) -> (Vec<Source>, f
     (sources, if inside { INSIDE } else { OUTSIDE * nearest })
 }
 
-/// Returns the empty cube texture of the map: six faces of [`SIDE`] texels, read smoothly.
-fn blank() -> Image {
-    let side = SIDE as u32;
-    let mut image = Image::new(
-        Extent3d {
-            width: side,
-            height: side,
-            depth_or_array_layers: FACES as u32,
-        },
-        TextureDimension::D2,
-        vec![0; BYTES],
-        TextureFormat::Rgba8Unorm,
-        RenderAssetUsages::default(),
-    );
-    image.texture_view_descriptor = Some(TextureViewDescriptor {
-        dimension: Some(TextureViewDimension::Cube),
-        ..default()
-    });
-    image.sampler = ImageSampler::linear();
-    image
-}
-
 /// Starts a fresh map when the world starts loading.
 fn start(mut light: ResMut<GalaxyLight>, mut images: ResMut<Assets<Image>>) {
     *light = GalaxyLight {
@@ -129,39 +127,24 @@ fn start(mut light: ResMut<GalaxyLight>, mut images: ResMut<Assets<Image>>) {
     };
 }
 
-/// Writes `bytes` over the texels of the texture `image`, which keeps its size.
-fn write(images: &mut Assets<Image>, image: &Handle<Image>, bytes: &[u8]) {
-    let Some(mut image) = images.get_mut(image) else {
-        return;
-    };
-    if let Some(data) = image.data.as_mut().filter(|data| data.len() == bytes.len()) {
-        data.copy_from_slice(bytes);
-    }
-}
-
 /// Takes a finished bake into the texture, and starts the next one when the camera has moved
-/// far enough from the place of the last, unless one is already running. Waits for the star
-/// system of the world to be known, so a stale place is never baked for.
+/// far enough from the place of the last and the last bake is at least [`MIN_GAP`] seconds old,
+/// unless one is already running. Waits for the star system of the world to be known, so a stale
+/// place is never baked for.
 fn keep(
     mut light: ResMut<GalaxyLight>,
     (vantage, local): (Res<Vantage>, Res<LocalSystem>),
     universe: Option<Res<Universe>>,
-    mut images: ResMut<Assets<Image>>,
+    (time, mut images): (Res<Time>, ResMut<Assets<Image>>),
 ) {
-    let done = light
-        .task
-        .as_mut()
-        .and_then(|task| block_on(poll_once(task)));
-    if let Some((built, bytes)) = done {
-        write(&mut images, &light.image, &bytes);
-        (light.built, light.task) = (Some(built), None);
-    }
+    let now = time.elapsed_secs_f64();
+    light.land(&mut images, now);
     let (Some(universe), Some(_)) = (universe, local.0.as_ref()) else {
         return;
     };
     let (galaxy, at) = (vantage.galaxy, vantage.galactic);
     let fresh = light.built.is_some_and(|built| !built.stale(galaxy, at));
-    if light.task.is_some() || fresh {
+    if light.task.is_some() || fresh || !light.rested(now) {
         return;
     }
     let universe = *universe;

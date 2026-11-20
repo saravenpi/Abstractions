@@ -51,11 +51,14 @@ pub struct PlaceUniform {
     /// Linear colour of the star in xyz, and in w the share of a home sky the air makes.
     pub colour: Vec4,
     /// Height in metres where the air ends in x, the ambient brightness of the stars at night
-    /// in y, and in z 1 when a planet is lit this way and 0 when the block is to be ignored.
+    /// in y, and in z 1 when a planet is lit this way and 0 when the block is to be ignored. The w
+    /// of `air`, `day` and `eye_sky` carry the linear colour of the ground, see `ambient.rs`.
     pub air: Vec4,
     /// Ambient colour of the full day in sRGB.
     pub day: Vec4,
-    /// Direct light this rule gives at the camera, which the lights of the scene carry.
+    /// Direct light this rule gives at the camera, which the lights of the scene carry, less what
+    /// the clouds over the camera take. Its w is 1 when the sea shows the glint of the sun and the
+    /// moon, 0 when the setting asks for the sky alone.
     pub eye_sun: Vec4,
     /// Ambient light this rule gives at the camera, which the ambient light of the scene carries.
     pub eye_sky: Vec4,

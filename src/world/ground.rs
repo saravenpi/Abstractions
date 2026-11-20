@@ -15,7 +15,7 @@ mod season;
 
 use super::blades::TurfUniform;
 use super::props::PropAssets;
-use crate::render::{PlaceLight, PlaceLit, PlaceUniform, SeasonLight, SeasonLit};
+use crate::render::{CloudShade, PlaceLight, PlaceLit, PlaceUniform, SeasonLight, SeasonLit};
 
 pub use season::season_map;
 
@@ -63,34 +63,41 @@ pub fn texels(place: &PlaceUniform) -> [u8; PlaceUniform::BYTES] {
 }
 
 /// Builds the texture that carries the light block to the ground shader, all zero: no light of
-/// a place, so the ground is lit as the standard material lights it.
+/// a place and no cloud shadow, so the ground is lit as the standard material lights it. After
+/// the fields of the block it holds the patch of cloud shadow.
 pub fn place_map() -> Image {
     let size = Extent3d {
-        width: PlaceUniform::FIELDS as u32,
+        width: (PlaceUniform::FIELDS + CloudShade::TEXELS) as u32,
         height: 1,
         depth_or_array_layers: 1,
     };
     Image::new(
         size,
         TextureDimension::D2,
-        vec![0; PlaceUniform::BYTES],
+        vec![0; PlaceUniform::BYTES + 16 * CloudShade::TEXELS],
         TextureFormat::Rgba32Float,
         RenderAssetUsages::default(),
     )
 }
 
 /// Writes the light of the planet under the camera into the texture of the ground material,
-/// in place, whenever it changed.
+/// in place, whenever it changed, and the patch of cloud shadow after it whenever it was worked
+/// out again.
 pub fn light(
-    place: Res<PlaceLight>,
+    (place, shade): (Res<PlaceLight>, Res<CloudShade>),
     assets: Option<Res<PropAssets>>,
     mut images: ResMut<Assets<Image>>,
+    mut copied: Local<u32>,
 ) {
     let Some(assets) = assets else {
         return;
     };
     let bytes = texels(&place.0);
-    let same = |image: &Image| image.data.as_deref() == Some(&bytes[..]);
+    let fresh = *copied != shade.revision;
+    let same = |image: &Image| {
+        let data = image.data.as_deref();
+        !fresh && data.and_then(|data| data.get(..PlaceUniform::BYTES)) == Some(&bytes[..])
+    };
     if images.get(&assets.place).is_none_or(same) {
         return;
     }
@@ -98,7 +105,12 @@ pub fn light(
         return;
     };
     if let Some(data) = image.data.as_mut() {
-        data.copy_from_slice(&bytes);
+        let (head, tail) = data.split_at_mut(PlaceUniform::BYTES);
+        head.copy_from_slice(&bytes);
+        if fresh {
+            shade.write(tail);
+            *copied = shade.revision;
+        }
     }
 }
 
@@ -114,6 +126,7 @@ pub(super) fn plugin(app: &mut App) {
     }
     app.add_plugins(MaterialPlugin::<GroundMaterial>::default())
         .init_resource::<PlaceLight>()
+        .init_resource::<CloudShade>()
         .init_resource::<SeasonLight>()
         .add_systems(
             PostUpdate,
@@ -146,7 +159,8 @@ mod tests {
         let base = &material.base;
         let kept = base.base_color_texture.is_some()
             && (base.perceptual_roughness, base.reflectance) == (0.95, 0.05);
-        (bytes.iter().map(|b| f32::from_le_bytes(*b)).collect(), kept)
+        let numbers: Vec<f32> = bytes.iter().map(|b| f32::from_le_bytes(*b)).collect();
+        (numbers[..4 * PlaceUniform::FIELDS].to_vec(), kept)
     }
 
     /// The ground starts with no light of a place, so it is the standard material, and its
@@ -161,6 +175,7 @@ mod tests {
             .insert_resource(materials)
             .insert_resource(images)
             .init_resource::<PlaceLight>()
+            .init_resource::<CloudShade>()
             .add_systems(Update, light);
         app.update();
         assert_eq!(ground(&app), (vec![0.0; 4 * PlaceUniform::FIELDS], true));

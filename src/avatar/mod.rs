@@ -22,6 +22,7 @@ mod gait;
 mod ground;
 pub mod hurt;
 mod kick;
+mod lamp;
 mod leap;
 mod looks;
 mod marks;
@@ -205,6 +206,7 @@ fn systems(app: &mut App) {
         .init_resource::<Marks>()
         .configure_sets(Update, AvatarSet::Animate.after(AvatarSet::Fill))
         .add_systems(Update, fill::fill.in_set(AvatarSet::Fill))
+        .add_systems(Update, lamp::shadows.run_if(lamp::changed))
         .add_systems(
             Update,
             (

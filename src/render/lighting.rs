@@ -6,18 +6,23 @@
 //! lights run after the place light, in the same schedule, and before Bevy builds the shadow
 //! cascades from their pose.
 
+mod quality;
+mod reach;
 mod tune;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_reach;
+
+pub use self::reach::reach;
 
 use bevy::camera::visibility::Visibility;
-use bevy::light::{
-    CascadeShadowConfigBuilder, DirectionalLight, DirectionalLightShadowMap, SimulationLightSystems,
-};
+use bevy::light::{DirectionalLight, DirectionalLightShadowMap, SimulationLightSystems};
 use bevy::prelude::*;
 
-use self::tune::{FIRST_CASCADE, MOON_SHADOW_LUX, SHADOW_HEIGHT, SHADOW_RANGE};
+use self::quality::cascades;
+use self::tune::{MOON_SHADOW_LUX, SHADOW_HEIGHT};
 use super::SunDir;
 use super::daylight::{PlaceLight, PlaceLit, PlaceUniform};
 use super::moonlight::Moonlight;
@@ -73,21 +78,9 @@ impl Aim {
     }
 }
 
-/// Returns the shadow setup shared by both lights: two cascades out to [`SHADOW_RANGE`] metres,
-/// enough at a third of the resolution. The ground shader fades the last fifth of the range out.
-fn cascades() -> bevy::light::CascadeShadowConfig {
-    CascadeShadowConfigBuilder {
-        num_cascades: 2,
-        minimum_distance: 0.1,
-        first_cascade_far_bound: FIRST_CASCADE,
-        maximum_distance: SHADOW_RANGE,
-        overlap_proportion: 0.2,
-    }
-    .build()
-}
-
 /// Spawns the sun and the moon when the world starts loading.
-fn spawn_lights(mut commands: Commands) {
+fn spawn_lights(mut commands: Commands, settings: Res<Persistent<Settings>>) {
+    let reach = settings.graphics.lighting.shadow_reach;
     let light = DirectionalLight {
         shadow_maps_enabled: false,
         ..default()
@@ -95,7 +88,7 @@ fn spawn_lights(mut commands: Commands) {
     commands.spawn((
         Sun,
         light,
-        cascades(),
+        cascades(reach),
         Transform::default(),
         Visibility::default(),
         DespawnOnEnter(Screen::Title),
@@ -103,7 +96,7 @@ fn spawn_lights(mut commands: Commands) {
     commands.spawn((
         Moon,
         light,
-        cascades(),
+        cascades(reach),
         Transform::default(),
         Visibility::default(),
         DespawnOnEnter(Screen::Title),
@@ -177,7 +170,8 @@ fn update_lights(
 /// Registers the lights and their update, which runs after the place light is worked out and
 /// before the shadow cascades are built from the pose of the lights.
 pub(super) fn plugin(app: &mut App) {
-    app.insert_resource(DirectionalLightShadowMap { size: 2048 })
+    app.add_plugins(quality::plugin)
+        .init_resource::<DirectionalLightShadowMap>()
         .add_systems(OnEnter(Screen::Loading), spawn_lights)
         .add_systems(
             PostUpdate,

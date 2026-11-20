@@ -81,6 +81,8 @@ pub struct Graphics {
     pub fov: u32,
     /// Whether the frame rate is shown in a corner.
     pub show_fps: bool,
+    /// Shadow, exposure and reflection options of the light, see `lighting.rs`.
+    pub lighting: super::lighting::Lighting,
 }
 
 /// Returns the index in [`RENDER_STEPS`] of the step nearest to a detail radius of `rings` chunks; a
@@ -121,6 +123,7 @@ impl Default for Graphics {
             clouds: true,
             fov: 75,
             show_fps: false,
+            lighting: Default::default(),
         }
     }
 }

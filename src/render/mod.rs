@@ -10,9 +10,11 @@ mod camera;
 mod celestial;
 mod clock;
 mod clouds;
+mod cloudshade;
 mod daylight;
 mod dome;
 mod entry;
+mod exposure;
 mod fog;
 mod galaxy_light;
 mod glow;
@@ -50,6 +52,8 @@ mod tests_dither;
 #[cfg(test)]
 mod tests_fog;
 #[cfg(test)]
+mod tests_fresnel;
+#[cfg(test)]
 mod tests_lens;
 #[cfg(test)]
 mod tests_lowres;
@@ -77,6 +81,7 @@ pub use camera::{configure_camera, set_fov};
 pub use celestial::{daylight, smoothstep, sun_direction};
 pub use clock::DayClock;
 pub use clouds::CloudCrossing;
+pub use cloudshade::CloudShade;
 pub use daylight::{PlaceLight, PlaceLit, PlaceUniform, place_light};
 pub use entry::FlightFx;
 pub use fog::{FOG_END, HORIZON_SHARE, OPEN as FOG_OPEN, THIN_AIR};
@@ -84,7 +89,7 @@ pub use heat::{
     Craft, Gas, Glow, Heat, MIN_SPEED, SHEATH_FROM, SHEATH_REACH, SheathMaterial, SheathUniform,
     descent, entry,
 };
-pub use lighting::{Moon, Sun};
+pub use lighting::{Moon, Sun, reach};
 pub use lowres::{Fit, LowRes, window_changed};
 pub use murk::{Murk, Swell, Waterline, murk};
 pub use observer::Observer;

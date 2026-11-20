@@ -12,6 +12,7 @@ use bevy::prelude::*;
 use super::celestial::smoothstep;
 use super::scatter::{luminance, peak, transmit};
 
+mod ambient;
 mod place;
 mod track;
 
@@ -19,6 +20,8 @@ mod track;
 mod tests;
 #[cfg(test)]
 mod tests_altitude;
+#[cfg(test)]
+mod tests_ambient;
 #[cfg(test)]
 mod tests_place;
 
@@ -84,7 +87,8 @@ pub(super) fn plugin(app: &mut App) {
         let _handle = load_embedded_asset!(app, "daylight.wesl");
         app.insert_resource(Module { _handle });
     }
-    app.init_resource::<super::SunDir>()
+    app.add_plugins(super::cloudshade::plugin)
+        .init_resource::<super::SunDir>()
         .init_resource::<super::Vantage>()
         .init_resource::<super::LocalSystem>()
         .init_resource::<super::moonlight::Moonlight>()

@@ -31,6 +31,7 @@ struct Daylight {
 struct Light {
     sun: vec3<f32>,
     sky: vec3<f32>,
+    glow: vec3<f32>,
 }
 
 const DEPTH: vec3<f32> = vec3<f32>(0.045, 0.10, 0.23);
@@ -49,6 +50,14 @@ const TOP_SCALES: f32 = 12.0;
 const SHADOW_FADE: f32 = 0.2;
 const SUN_ALIGN: f32 = 0.9999;
 const SHIFT_MIN: f32 = 0.005;
+const PI: f32 = 3.14159265;
+const SHADE_AT: i32 = 9;
+const SHADE_GRID: i32 = 15;
+const SHADE_SIDE: i32 = 32;
+const SHADE_REACH_FADE: f32 = 0.75;
+const BOUNCE_CAP: f32 = 1.5;
+const TWILIGHT_SHARE: f32 = 0.35;
+const TWILIGHT_EDGES: vec3<f32> = vec3<f32>(-0.18, -0.02, 0.12);
 const OCCLUSION_RANGE: vec2<f32> = vec2<f32>(30.0, 90.0);
 
 struct Shadow {
@@ -127,6 +136,11 @@ fn shadow_at(height: f32, altitude: f32, radius: f32) -> f32 {
     return smoothstep(SHADOW_EDGE.x, SHADOW_EDGE.y, miss);
 }
 
+fn twilight(height: f32) -> f32 {
+    return smoothstep(TWILIGHT_EDGES.x, TWILIGHT_EDGES.y, height)
+        * (1.0 - smoothstep(TWILIGHT_EDGES.y, TWILIGHT_EDGES.z, height));
+}
+
 fn light_at(place: Place, height: f32, altitude: f32) -> Light {
     let radius = place.centre.w;
     let seen = height + horizon_dip(altitude, radius);
@@ -140,6 +154,7 @@ fn light_at(place: Place, height: f32, altitude: f32) -> Light {
     var out: Light;
     out.sun = to_linear(mix(peak(place.colour.rgb), day.tint, left)) * lux;
     out.sky = to_linear(mix(NIGHT_AMBIENT_COLOR, place.day.rgb, day.sky)) * level;
+    out.glow = to_linear(day.tint) * (twilight(seen) * TWILIGHT_SHARE * level * left);
     return out;
 }
 
@@ -218,6 +233,22 @@ fn sky_response(in: PbrInput) -> vec3<f32> {
     return ambient_response(diffuse, f0, in.material.perceptual_roughness, facing);
 }
 
+fn ground_of(place: Place) -> vec3<f32> {
+    return vec3<f32>(place.air.w, place.day.w, place.eye_sky.w);
+}
+
+fn hemisphere(sky: vec3<f32>, bounce: vec3<f32>, tilt: f32) -> vec3<f32> {
+    return mix(bounce, sky, 0.5 + 0.5 * clamp(tilt, -1.0, 1.0));
+}
+
+fn bounce_of(ground: vec3<f32>, sun: vec3<f32>, height: f32, sky: vec3<f32>) -> vec3<f32> {
+    let level = luminance(sun) * max(height, 0.0) / PI + luminance(sky);
+    let given = ground * level;
+    let top = BOUNCE_CAP * luminance(sky);
+    let seen = luminance(given);
+    return select(given, given * (top / max(seen, 0.000001)), seen > top);
+}
+
 fn view_z(world: vec4<f32>) -> f32 {
     return dot(vec4<f32>(
         view.view_from_world[0].z,
@@ -250,11 +281,52 @@ fn sun_shadow(in: PbrInput, toward: vec3<f32>, wanted: f32) -> Shadow {
     return out;
 }
 
+fn shade_cell(map: texture_2d<f32>, column: i32, row: i32) -> f32 {
+    let x = clamp(column, 0, SHADE_SIDE - 1);
+    let y = clamp(row, 0, SHADE_SIDE - 1);
+    return textureLoad(map, vec2<i32>(SHADE_GRID + y * SHADE_SIDE + x, 0), 0).x;
+}
+
+fn cloud_shade(map: texture_2d<f32>, place: Place, world: vec3<f32>) -> f32 {
+    let spot = textureLoad(map, vec2<i32>(SHADE_AT + 3, 0), 0);
+    if (spot.w <= 0.0 || place.air.z <= 0.0) {
+        return 1.0;
+    }
+    let col_x = textureLoad(map, vec2<i32>(SHADE_AT, 0), 0).xyz;
+    let col_y = textureLoad(map, vec2<i32>(SHADE_AT + 1, 0), 0).xyz;
+    let col_z = textureLoad(map, vec2<i32>(SHADE_AT + 2, 0), 0).xyz;
+    let east = textureLoad(map, vec2<i32>(SHADE_AT + 4, 0), 0).xyz;
+    let north = textureLoad(map, vec2<i32>(SHADE_AT + 5, 0), 0).xyz;
+    let out = world - place.centre.xyz;
+    let dir = normalize(col_x * out.x + col_y * out.y + col_z * out.z);
+    let along = max(dot(dir, spot.xyz), 0.05);
+    let across = place.centre.w * vec2<f32>(dot(dir, east), dot(dir, north)) / along;
+    let uv = across / spot.w * 0.5 + vec2<f32>(0.5);
+    let edge = max(abs(uv.x * 2.0 - 1.0), abs(uv.y * 2.0 - 1.0));
+    if (edge >= 1.0) {
+        return 1.0;
+    }
+    let g = uv * f32(SHADE_SIDE) - vec2<f32>(0.5);
+    let corner = floor(g);
+    let f = g - corner;
+    let i = vec2<i32>(corner);
+    let low = mix(shade_cell(map, i.x, i.y), shade_cell(map, i.x + 1, i.y), f.x);
+    let high = mix(shade_cell(map, i.x, i.y + 1), shade_cell(map, i.x + 1, i.y + 1), f.x);
+    let share = mix(low, high, f.y);
+    return mix(1.0, share, 1.0 - smoothstep(SHADE_REACH_FADE, 1.0, edge));
+}
+
 fn relit(in: PbrInput, lit: vec4<f32>, place: Place) -> vec4<f32> {
+    return relit_under(in, lit, place, 1.0);
+}
+
+fn relit_under(in: PbrInput, lit: vec4<f32>, place: Place, cloud: f32) -> vec4<f32> {
     if (place.air.z <= 0.0) {
         return lit;
     }
-    let here = light_of(place, in.world_position.xyz);
+    let at = height_at(place, in.world_position.xyz);
+    var here = light_at(place, at.x, at.y);
+    here.sun = here.sun * cloud;
     let shift = here.sun - place.eye_sun.rgb;
     let moved = max(abs(shift.x), max(abs(shift.y), abs(shift.z)));
     let eye_top = max(place.eye_sun.x, max(place.eye_sun.y, place.eye_sun.z));
@@ -264,6 +336,11 @@ fn relit(in: PbrInput, lit: vec4<f32>, place: Place) -> vec4<f32> {
     let sun = (shift * shadow.share + here.sun * back) * sun_response(in, place.star.xyz);
     let near = 1.0 - smoothstep(OCCLUSION_RANGE.x, OCCLUSION_RANGE.y, -view_z(in.world_position));
     let seen = mix(vec3<f32>(1.0), in.diffuse_occlusion, near);
-    let sky = (here.sky * seen - place.eye_sky.rgb * in.diffuse_occlusion) * sky_response(in);
+    let up = normalize(in.world_position.xyz - place.centre.xyz);
+    let ground = bounce_of(ground_of(place), here.sun, at.x, here.sky);
+    let lean = place.star.xyz - up * dot(place.star.xyz, up);
+    let toward = select(0.0, saturate(dot(in.N, lean / max(length(lean), 0.000001))), length(lean) > 0.001);
+    let around = hemisphere(here.sky, ground, dot(in.N, up)) + here.glow * toward;
+    let sky = (around * seen - place.eye_sky.rgb * in.diffuse_occlusion) * sky_response(in);
     return vec4<f32>(max(lit.rgb + (sun + sky) * view.exposure, vec3<f32>(0.0)), lit.a);
 }

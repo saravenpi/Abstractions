@@ -87,6 +87,7 @@ const MAP_LOW: f32 = 30.0;
 const MAP_HIGH: f32 = 120.0;
 const COARSE_ROUGHNESS: f32 = 0.95;
 const COARSE_REFLECTANCE: f32 = 0.05;
+const WATER_F0: f32 = 0.02;
 const DAY_EDGE: vec2<f32> = vec2<f32>(-0.1, 0.3);
 const SUN_UP_EDGE: vec2<f32> = vec2<f32>(-0.05, 0.12);
 
@@ -387,11 +388,11 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
             let body = mix(water.shallow.rgb, water.deep.rgb, shade) * (light + vec3<f32>(water.shallow.w));
 
             let ndv = max(dot(n, v), 0.0);
-            let fresnel = (0.05 + 0.95 * pow(1.0 - ndv, 4.0)) * water.deep.w;
+            let fresnel = (WATER_F0 + (1.0 - WATER_F0) * pow(1.0 - ndv, 5.0)) * water.deep.w;
             let r = reflect(-v, n);
             var color = mix(body, sky_color(dot(r, up)) * time.z, fresnel);
-            let sun_glint = glitter(r, water.sun.xyz, cell, t) * time.y;
-            let moon_glint = glitter(r, water.moon.xyz, cell, t) * water.moon.w * 0.5;
+            let sun_glint = glitter(r, water.sun.xyz, cell, t) * time.y * place.eye_sun.w;
+            let moon_glint = glitter(r, water.moon.xyz, cell, t) * water.moon.w * 0.5 * place.eye_sun.w;
             color = color + (water.sun_color.rgb * sun_glint + MOON_COLOR * moon_glint) * fine * water.deep.w;
 
             let open = mix(1.0, smoothstep(FLECK_DEPTH, FLECK_DEPTH + 1.0, bed.y), bed.w) * (1.0 - bed.z);

@@ -1,0 +1,67 @@
+//! The two shadow options of the lighting settings: how fine the shadow maps are and how far
+//! the sun casts shadows.
+
+use serde::{Deserialize, Serialize};
+
+/// How fine the shadow maps are.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ShadowDetail {
+    Low,
+    #[default]
+    High,
+}
+
+impl ShadowDetail {
+    /// Returns the side of one shadow map in texels.
+    pub fn map_size(self) -> usize {
+        match self {
+            ShadowDetail::Low => 1024,
+            ShadowDetail::High => 2048,
+        }
+    }
+
+    /// Returns the name shown in the menu.
+    pub fn name(self) -> &'static str {
+        match self {
+            ShadowDetail::Low => "Low",
+            ShadowDetail::High => "High",
+        }
+    }
+}
+
+/// How far from the camera the sun casts shadows.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ShadowReach {
+    Near,
+    #[default]
+    Normal,
+    Far,
+}
+
+impl ShadowReach {
+    /// Returns the distance in metres where the last shadow cascade ends.
+    pub fn metres(self) -> f32 {
+        match self {
+            ShadowReach::Near => 55.0,
+            ShadowReach::Normal => 110.0,
+            ShadowReach::Far => 220.0,
+        }
+    }
+
+    /// Returns the number of shadow cascades: a third one carries the far reach.
+    pub fn cascades(self) -> usize {
+        match self {
+            ShadowReach::Far => 3,
+            _ => 2,
+        }
+    }
+
+    /// Returns the name shown in the menu.
+    pub fn name(self) -> &'static str {
+        match self {
+            ShadowReach::Near => "55 m",
+            ShadowReach::Normal => "110 m",
+            ShadowReach::Far => "220 m",
+        }
+    }
+}

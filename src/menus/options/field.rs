@@ -3,6 +3,7 @@
 use bevy::prelude::KeyCode;
 
 pub use super::binds::Bind;
+use super::lights;
 use crate::settings::{Graphics, Settings, render_step};
 use crate::view::ViewPrefs;
 use crate::world::RENDER_STEPS;
@@ -11,7 +12,14 @@ use crate::world::RENDER_STEPS;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Field {
     RenderDistance,
+    LightingQuality,
     Shadows,
+    ShadowDetail,
+    ShadowDistance,
+    CloudShadows,
+    AutoExposure,
+    LocalShadows,
+    WaterGlint,
     Vsync,
     Fullscreen,
     AmbientOcclusion,
@@ -76,7 +84,7 @@ fn step_graphics(g: &mut Graphics, field: Field, dir: i32) {
     match field {
         Field::RenderDistance => g.render_distance = bump_step(g.render_distance, dir),
         Field::Fov => g.fov = bump_int(g.fov, dir * 5, 60, 110),
-        _ => {}
+        _ => lights::step(g, field, dir),
     }
 }
 

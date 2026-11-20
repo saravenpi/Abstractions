@@ -35,19 +35,29 @@ pub fn page(tab: Tab, active: Tab) -> impl Bundle {
 
 /// Graphics tab.
 pub fn graphics(active: Tab) -> impl Bundle {
+    let light = (
+        Spawn(stepper("Lighting quality", Field::LightingQuality)),
+        Spawn(toggle("Shadows", Field::Shadows)),
+        Spawn(stepper("Shadow detail", Field::ShadowDetail)),
+        Spawn(stepper("Shadow distance", Field::ShadowDistance)),
+        Spawn(toggle("Ambient occlusion", Field::AmbientOcclusion)),
+        Spawn(toggle("Bloom", Field::Bloom)),
+        Spawn(toggle("Clouds", Field::Clouds)),
+        Spawn(toggle("Cloud shadows", Field::CloudShadows)),
+        Spawn(toggle("Auto exposure", Field::AutoExposure)),
+        Spawn(toggle("Lamp shadows", Field::LocalShadows)),
+        Spawn(toggle("Sea reflections", Field::WaterGlint)),
+    );
     (
         page(Tab::Graphics, active),
-        children![
-            stepper("Render distance", Field::RenderDistance),
-            toggle("Shadows", Field::Shadows),
-            toggle("Vsync", Field::Vsync),
-            toggle("Fullscreen", Field::Fullscreen),
-            toggle("Ambient occlusion", Field::AmbientOcclusion),
-            toggle("Bloom", Field::Bloom),
-            toggle("Clouds", Field::Clouds),
-            toggle("Show FPS", Field::ShowFps),
-            stepper("Field of view", Field::Fov),
-        ],
+        Children::spawn((
+            Spawn(stepper("Render distance", Field::RenderDistance)),
+            light,
+            Spawn(toggle("Vsync", Field::Vsync)),
+            Spawn(toggle("Fullscreen", Field::Fullscreen)),
+            Spawn(toggle("Show FPS", Field::ShowFps)),
+            Spawn(stepper("Field of view", Field::Fov)),
+        )),
     )
 }
 

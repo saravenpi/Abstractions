@@ -2,9 +2,11 @@
 
 mod actions;
 mod binds;
+mod describe;
 mod field;
 mod format;
 mod hint;
+mod lights;
 mod pages;
 mod rebind;
 mod reference;
@@ -13,6 +15,8 @@ mod rows;
 mod tests;
 #[cfg(test)]
 mod tests_binds;
+#[cfg(test)]
+mod tests_lights;
 #[cfg(test)]
 mod tests_width;
 mod view;

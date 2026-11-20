@@ -9,7 +9,7 @@ use super::glow::{Glow, Mood};
 use super::spawn::{Home, Lamp, Sight};
 use super::tune::{BEACON_GROWTH, NOTICE};
 use super::works::Works;
-use crate::render::{DayClock, daylight};
+use crate::render::{DayClock, daylight, reach};
 use crate::world::StreamAnchor;
 
 /// Smallest change of a colour channel worth sending to the renderer.
@@ -82,6 +82,10 @@ pub fn glow(
         let power = lamp.0.power(mood);
         if light.intensity != power {
             light.intensity = power;
+        }
+        let wide = reach(lamp.0.lamp().map_or(0.0, |(lumens, _)| lumens));
+        if light.range != wide {
+            light.range = wide;
         }
     }
     let kit = works

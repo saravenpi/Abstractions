@@ -5,9 +5,9 @@ use super::fog::{Height, cull_distance, fog_sight};
 use crate::world::globe::far::SIGHT;
 
 /// Returns where the fog sees a camera `clearance` metres above the ground from, on a planet of
-/// 3 km whose ground lies 200 m above the sea and whose air ends `top` metres up.
+/// 3 km whose ground lies 20 m above the sea and whose air ends `top` metres up.
 fn above(clearance: f32, top: f32) -> Height {
-    let altitude = 200.0 + clearance;
+    let altitude = 20.0 + clearance;
     Height {
         altitude,
         clearance,

@@ -11,13 +11,21 @@ use super::palette::Palette;
 use super::vantage::{Nearby, Vantage};
 use crate::universe::{BodyId, PlanetSpec, Universe};
 
-/// Returns the home system of seed 7 with one moon added around the home planet, 30 planet
-/// radii out, and the rank of that planet.
-fn with_moon() -> (Nearby, u8) {
+/// Returns the home system of seed 7 with no moon around its home planet, and the rank of that
+/// planet.
+fn bare() -> (Nearby, u8) {
     let universe = Universe::new(7);
     let home = universe.home();
     let mut near = Nearby::read(&universe, home.star);
-    let planet = near.planet(home.index).unwrap().clone();
+    near.moons.retain(|moon| moon.id.index != home.index);
+    (near, home.index)
+}
+
+/// Returns the home system of seed 7 with one moon added around the home planet, 30 planet
+/// radii out, and the rank of that planet.
+fn with_moon() -> (Nearby, u8) {
+    let (mut near, index) = bare();
+    let planet = near.planet(index).unwrap().clone();
     let moon = PlanetSpec {
         id: BodyId {
             moon: 1,
@@ -32,7 +40,7 @@ fn with_moon() -> (Nearby, u8) {
         ..planet
     };
     near.moons.push(moon);
-    (near, home.index)
+    (near, index)
 }
 
 /// Returns a vantage standing on the planet at `pos`, looking out along `up`, render axes
@@ -112,7 +120,7 @@ fn moonlight_follows_real_moons() {
     let lit = moonlit(palette, &Moonlight(Some(glow)));
     assert_eq!(lit.moon_dir, glow.dir);
     assert!(lit.moon_lux > 0.0 && lit.moon_lux <= palette.moon_lux * 3.0);
-    let alone = Nearby::read(&Universe::new(7), near.id);
+    let (alone, _) = bare();
     let home = standing(&alone, index, at(0.0), 0.0);
     assert_eq!(moonlight(&home, &alone, 0.0), None);
     assert_eq!(moonlit(palette, &Moonlight(None)).moon_lux, 0.0);

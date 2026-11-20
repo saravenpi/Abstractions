@@ -13,6 +13,11 @@ use super::sun::SunDir;
 use crate::space::{Anchor, Frame};
 use crate::universe::{PlanetSpec, StarSpec, Universe};
 use crate::world::Terrain;
+use crate::world::globe::far::SIGHT;
+
+/// Metres the height above the sea may be off: at the distance of a planet from its star a 64-bit
+/// position steps by a few hundredths of a millimetre.
+const MILLIMETRE: f64 = 1.0e-3;
 
 /// Returns the home planet and its star for a seed. The planet is made to turn 300 times a
 /// year, so that it has days whatever tides did to the one the seed chose.
@@ -58,7 +63,7 @@ fn noon_is_where_the_planet_faces_the_star() {
         let sun = SunDir::of(&day, planet.radius);
         assert!(sun.height > 0.99 && sun.dir.y > 0.99, "{time} {sun:?}");
         assert!((day.phase() - 0.25).abs() < 0.01, "{time} {}", day.phase());
-        assert!((day.altitude(planet.radius)).abs() < 1e-6 && sun.lit == 1.0);
+        assert!((day.altitude(planet.radius)).abs() < MILLIMETRE && sun.lit == 1.0);
         let night = Observer::new(
             &standing(&planet, -toward),
             Vec3::ZERO,
@@ -80,11 +85,12 @@ fn noon_is_where_the_planet_faces_the_star() {
     time += catch_up(at(time).phase(), 0.0, &planet);
     let rise = SunDir::of(&at(time), planet.radius);
     assert!(rise.dir.x > 0.99 && rise.height.abs() < 0.02, "{rise:?}");
-    assert!((at(time).altitude(planet.radius) - 12.0).abs() < 1e-6);
+    assert!((at(time).altitude(planet.radius) - 12.0).abs() < MILLIMETRE);
 }
 
 /// The phase only moves forward through a day, covers the whole cycle in one solar day, and a
-/// wanted phase is reached by moving universe time forward.
+/// wanted phase is reached by moving universe time forward, to within the parallax of the
+/// camera on the surface against the centre of the planet, which the wait is worked out for.
 #[test]
 fn phase_rises_through_a_day() {
     let (planet, star) = home(3);
@@ -100,11 +106,13 @@ fn phase_rises_through_a_day() {
         total += gain;
     }
     assert!((total - 1.0).abs() < 1e-3, "{total}");
+    let parallax = planet.radius / planet.orbit_radius / std::f64::consts::PI;
+    let slack = 1.0e-4 + 2.0 * parallax as f32;
     for wanted in [0.0, 0.08, 0.25, 0.6, 0.99] {
         let later = start + catch_up(phase(start), wanted, &planet);
         let off = (phase(later) - wanted + 0.5).rem_euclid(1.0) - 0.5;
         assert!(
-            later >= start && off.abs() < 1e-4,
+            later >= start && off.abs() < slack,
             "{wanted}: {}",
             phase(later)
         );
@@ -139,7 +147,7 @@ fn air_thins_with_height() {
         radius: 3000.0,
         air: air(4200.0, height),
     };
-    assert!(fog_sight(256.0, &space) > 1.0e7);
+    assert_eq!(fog_sight(256.0, &space), SIGHT as f32 * space.radius);
     let (sun, radius) = (DVec3::X, 6000.0);
     assert_eq!(shadow(DVec3::new(7000.0, 0.0, 0.0), sun, radius), 1.0);
     assert_eq!(shadow(DVec3::new(-7000.0, 100.0, 0.0), sun, radius), 0.0);

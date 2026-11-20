@@ -5,7 +5,7 @@ use std::f32::consts::FRAC_PI_4;
 
 use super::season::SeasonLook;
 use super::seasons::look_over;
-use super::tests_season::{home, spot};
+use super::tests_season::{EARTH_TILT, home, spot};
 use crate::climate::Setting;
 
 /// From orbit over a frozen pole the planet keeps its mean colours: the snow of the one place
@@ -15,6 +15,7 @@ use crate::climate::Setting;
 fn the_season_under_the_camera_fades_with_height() {
     let mut setting = Setting::of(&home());
     setting.temperature = 250.0;
+    setting.tilt = EARTH_TILT;
     let pole = spot(1.55, 40.0);
     assert_eq!(SeasonLook::at(&setting, &pole, 0.0).snow, 1.0);
     assert_eq!(look_over(&setting, &pole, 42.0, 0.0).snow, 1.0);

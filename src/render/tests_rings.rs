@@ -101,7 +101,7 @@ fn bodies_of_one_planet_shade_each_other() {
         },
         radius: RADIUS * 0.4,
         orbit_radius: RADIUS * 10.0,
-        orbit_phase: sun.z.atan2(sun.x),
+        orbit_phase: (-sun.z).atan2(sun.x),
         host: Some(planet.orbit()),
         rings: None,
         ..planet.clone()

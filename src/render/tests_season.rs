@@ -29,6 +29,10 @@ const BARE: [Vec3; 4] = [
     Vec3::new(0.50, 0.34, 0.20),
 ];
 
+/// Lean of the spin axis in radians the tests give the planet when they need a clear autumn,
+/// since the home the seed chooses may lean by any angle.
+pub(super) const EARTH_TILT: f32 = 0.41;
+
 /// Returns the home planet of seed 7.
 pub(super) fn home() -> PlanetSpec {
     let universe = Universe::new(7);
@@ -134,12 +138,12 @@ fn home_ground_looks_as_today_at_the_equinox() {
     }
 }
 
-/// Autumn and the start of winter turn the greens of the home planet's middle latitudes, in the north
-/// half a year after the south, and leave its rock and sand alone.
+/// Autumn and the start of winter turn the greens of the middle latitudes of a planet that
+/// leans like the Earth, in the north half a year after the south, and leave rock and sand alone.
 #[test]
 fn autumn_turns_home_greens() {
-    let home = home();
-    let setting = Setting::of(&home);
+    let mut setting = Setting::of(&home());
+    setting.tilt = EARTH_TILT;
     for (latitude, season) in [(45.0f32, 0.4), (45.0, 0.5), (-45.0, 0.9)] {
         let look = SeasonLook::at(&setting, &spot(latitude.to_radians(), 0.0), season);
         assert!(look.autumn > 0.4, "{latitude} {season}");

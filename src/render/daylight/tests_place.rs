@@ -127,7 +127,8 @@ fn the_shadow_of_a_place_is_the_shadow_of_its_point() {
 
 /// Past the terminator the valley floor is dark while a summit 300 m above it still catches the
 /// star, and no ground is lit once the star is under its own horizon by the edge of the disc:
-/// through the air nothing at all, and under one lux of the open star where the air has thinned.
+/// through the air nothing at all, and no more than the share of the open star the air has left
+/// free, which the thin air at the height of the place lets by.
 #[test]
 fn a_summit_is_lit_before_the_valley() {
     let sky = Sky::of(Vec3::ONE, &Air::HOME, GLOBE, STARLIGHT);
@@ -136,7 +137,9 @@ fn a_summit_is_lit_before_the_valley() {
     assert!(luminance(summit.sun) > 500.0, "{}", summit.sun);
     for altitude in [0.0, 50.0, 300.0, 1500.0] {
         let dark = SUN_EDGE.0 - horizon_dip(altitude, GLOBE.0) - 0.01;
-        assert!(luminance(sky.light(dark, altitude).sun) < 1.0, "{altitude}");
+        let open = Palette::SPACE_LUX * (1.0 - air(altitude, GLOBE.1));
+        let lit = luminance(sky.light(dark, altitude).sun);
+        assert!(lit < 1.0 + open, "{altitude}: {lit} against {open}");
         assert_eq!(
             daylight(dark + horizon_dip(altitude, GLOBE.0), Vec3::ONE, 1.0).risen,
             0.0

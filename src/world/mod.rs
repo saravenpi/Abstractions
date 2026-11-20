@@ -28,6 +28,7 @@ pub use chunks::{Calm, Reach, STEPS as RENDER_STEPS, Sited, dither, leaf_arc};
 pub use enter::enter_planet;
 pub use focus::{Link, spin};
 pub use globe::Globe;
+pub use sea::Liquid;
 pub use ground::GroundMaterial;
 pub use meter::{Cost, Meter, STEPS as METER_STEPS};
 pub use surface::Surface;

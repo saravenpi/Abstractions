@@ -13,6 +13,11 @@ mod tests;
 mod tests_cross;
 #[cfg(test)]
 mod tests_shell;
+#[cfg(test)]
+mod tests_stage;
+#[cfg(test)]
+mod tests_tolerance;
+mod tune;
 
 use bevy::asset::embedded_asset;
 use bevy::camera::visibility::NoFrustumCulling;
@@ -149,10 +154,11 @@ type ShellParts = (
 
 /// Measures how deep the camera is in real cloud, wraps the shell around the planet halfway up
 /// the cloud band, at a radius that never changes, and refreshes the shader values. The mesh of
-/// the shell is a cube sphere within [`shell::TOLERANCE`] metres of the true sphere, built over
-/// what the camera can see. The shell shows once the cover map of the planet is ready. A sky
-/// without clouds has no shell and no crossing, and past the hand-over the far body draws the
-/// same clouds from the same map.
+/// the shell is a cube sphere within [`shell::TOLERANCE`] metres of the true sphere near it, and
+/// within a hundredth of the distance to it from afar, built over what the camera can see off
+/// the main thread. The shell shows once the cover map of the planet is ready and its mesh is
+/// built. A sky without clouds has no shell and no crossing, and past the hand-over the far
+/// body draws the same clouds from the same map.
 pub(super) fn drift(
     mut inputs: CloudInputs,
     mut around: Local<f32>,
@@ -171,21 +177,21 @@ pub(super) fn drift(
     let depth = band * *around;
     crossing.set_if_neq(CloudCrossing { depth });
     let map = body.and_then(|id| inputs.maps.want(id));
-    let shown = map.is_some() && inputs.within(&vantage);
+    let wanted = map.is_some() && inputs.within(&vantage);
     let observer = vantage.observer;
     let center = observer.place(observer.center, vantage.camera);
     let pose = Transform::from_translation(center).with_scale(Vec3::splat(radius));
     for (mesh, mut transform, mut global, mut visibility, handle) in &mut shells {
-        if shown {
-            let sight = (vantage.radius, vantage.altitude, radius);
-            assets.remesh(&mesh.0, sight, vantage.up);
-        }
+        let sight = (vantage.radius, vantage.altitude, radius);
+        let shown = wanted && assets.remesh(&mesh.0, sight, vantage.up);
         super::pin(pose, &mut transform, &mut global);
         visibility.set_if_neq(match shown {
             true => Visibility::Visible,
             false => Visibility::Hidden,
         });
-        assets.paint(&handle.0, inputs.uniform(radius, depth), &map);
+        if shown {
+            assets.paint(&handle.0, inputs.uniform(radius, depth), &map);
+        }
     }
 }
 

@@ -41,9 +41,14 @@ pub(super) fn approach(current: Vec3, target: Vec3, rate: f32, dt: f32) -> Vec3 
     current.lerp(target, 1.0 - (-rate * dt).exp())
 }
 
-/// Returns the vertical speed on land under `gravity`, in meters per second squared, and updates
-/// the coyote timer.
-pub(super) fn land_vertical(motion: &mut Motion, intent: &Intent, gravity: f32, dt: f32) -> f32 {
+/// Returns the vertical speed on land under `gravity`, in meters per second squared, with a jump
+/// of `leap` of its speed, and updates the coyote timer.
+pub(super) fn land_vertical(
+    motion: &mut Motion,
+    intent: &Intent,
+    (gravity, leap): (f32, f32),
+    dt: f32,
+) -> f32 {
     motion.coyote = if motion.grounded {
         COYOTE_TIME
     } else {
@@ -52,7 +57,7 @@ pub(super) fn land_vertical(motion: &mut Motion, intent: &Intent, gravity: f32, 
     if intent.jump && motion.coyote > 0.0 {
         motion.coyote = 0.0;
         motion.grounded = false;
-        return JUMP_SPEED;
+        return JUMP_SPEED * leap;
     }
     if motion.grounded {
         return 0.0;
@@ -91,13 +96,13 @@ mod tests {
             coyote: -1.0,
             ..default()
         };
-        assert!(land_vertical(&mut airborne, &intent, 22.0, 0.016) < JUMP_SPEED);
+        assert!(land_vertical(&mut airborne, &intent, (22.0, 1.0), 0.016) < JUMP_SPEED);
         let mut grounded = Motion {
             grounded: true,
             ..default()
         };
         assert_eq!(
-            land_vertical(&mut grounded, &intent, 22.0, 0.016),
+            land_vertical(&mut grounded, &intent, (22.0, 1.0), 0.016),
             JUMP_SPEED
         );
     }

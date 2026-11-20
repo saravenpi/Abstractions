@@ -72,6 +72,7 @@ impl Basin {
             gravity: 22.0,
             air: 1.0,
             pace: 1.0,
+            body: Default::default(),
         };
         Self {
             motion: Motion::default(),

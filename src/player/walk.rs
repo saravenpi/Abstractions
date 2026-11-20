@@ -11,6 +11,7 @@ use super::intent::{Intent, approach, land_vertical};
 use super::jet::jet_velocity;
 use super::lead::View;
 use super::swim;
+use crate::condition::Condition;
 use crate::gear::{Gear, GearInput, jetting};
 
 /// Walking speed in meters per second.
@@ -44,8 +45,10 @@ pub(super) struct Step {
     pub(super) gravity: f32,
     /// How thick the air of the planet is against the home planet, 0 without air.
     pub(super) air: f32,
-    /// Share of the walking speed the load of the pack leaves, 0 to 1.
+    /// Share of the walking speed the load of the pack and the legs leave, 0 to 1.
     pub(super) pace: f32,
+    /// The condition of the body, which its legs, wings and boots work by.
+    pub(super) body: Condition,
 }
 
 /// Returns the horizontal velocity for this step.
@@ -78,7 +81,7 @@ fn horizontal(motion: &Motion, intent: &Intent, step: &Step) -> Vec3 {
 fn walk_step(motion: &mut Motion, intent: &Intent, ground: Option<Ground>, step: &Step) -> Vec3 {
     motion.grounded = ground.is_some();
     let flat = horizontal(motion, intent, step);
-    let vertical = land_vertical(motion, intent, step.gravity, step.dt);
+    let vertical = land_vertical(motion, intent, (step.gravity, step.body.leap()), step.dt);
     match ground.filter(|_| motion.grounded) {
         Some(ground) => {
             slope_velocity(flat, ground.normal) + Vec3::Y * snap_velocity(ground.gap, step.dt)
@@ -117,6 +120,21 @@ fn velocity_for(
     swim_velocity(motion.velocity, &input, step.afloat, step.time, step.dt)
 }
 
+/// Returns what the gear is told with the air of the planet and the condition of the body worked
+/// in: wings that carry less lift and pull toward the weaker one while spread, boots that push less.
+fn hurt_gear(told: GearInput, spread: bool, step: &Step) -> GearInput {
+    let (lift, pull) = match spread {
+        true => (step.body.lift(), step.body.pull()),
+        false => (1.0, 0.0),
+    };
+    GearInput {
+        air: step.air * lift,
+        roll: (told.roll + pull).clamp(-1.0, 1.0),
+        boots: step.body.boots(),
+        ..told
+    }
+}
+
 /// Steps the flight gear and returns the velocity to move the body by: the gear's while it
 /// carries the body, else the walking or swimming one.
 pub(super) fn velocity(
@@ -129,13 +147,10 @@ pub(super) fn velocity(
     let gap = walkable(floor, false).map(|ground| ground.gap);
     let ground = walkable(floor, motion.velocity.y > RISING_SPEED);
     motion.swimming = swim::next_swimming(motion.swimming, step.afloat, gap);
-    let down = intent.crouch && crouch::allowed(motion, gear);
+    let down = (intent.crouch || step.body.crawling()) && crouch::allowed(motion, gear);
     motion.crouch = crouch::settle(motion.crouch, down, step.dt);
     let on = (touching(gear.state.mode, ground), motion.swimming);
-    let told = GearInput {
-        air: step.air,
-        ..input(motion, intent, air, on)
-    };
+    let told = hurt_gear(input(motion, intent, air, on), motion.wings, step);
     gear.drive(motion.velocity, told, step.dt);
     motion.spent = intent.jump && (motion.spent || gear.state.mode.airborne());
     let Some(velocity) = carried(gear, ground, step.dt) else {

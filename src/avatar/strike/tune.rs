@@ -23,8 +23,24 @@ pub const LIGHT: f32 = 0.5;
 /// Share of the mass in the head above which a build chops or smashes overhead, unitless.
 pub const HEAVY_HEAD: f32 = 0.6;
 
-/// Seconds from the end of a swing back to carrying the tool.
+/// Least seconds from the end of a swing back to carrying the tool.
 pub const RECOVER: f32 = 0.25;
+
+/// Share of its wind-up that the arm takes to stop the tool after a swing, unitless: the arm that
+/// gave the tool its speed in the wind-up takes as long to take it away, so a heavy or badly held
+/// tool recovers slowly.
+pub const BRAKE: f32 = 0.8;
+
+/// Most the head carries on past the follow-through, in shares of the path, for a tool of great
+/// inertia.
+pub const OVERSHOOT: f32 = 0.2;
+
+/// Moment of inertia about the hand at which a tool carries on half of [`OVERSHOOT`], in kg·m².
+pub const COAST: f32 = 0.1;
+
+/// Share of the path by which the chest leads the arm in a swing, unitless: hips and chest start the
+/// blow and the arm follows.
+pub const LEAD: f32 = 0.15;
 
 /// Seconds to raise the guard.
 pub const GUARD_IN: f32 = 0.1;

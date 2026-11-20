@@ -7,7 +7,7 @@ use super::held::Held;
 use super::hurt::Hurt;
 use super::key::{Key, carry, drawn, guard};
 use super::path::Path;
-use super::tune::{DRAW, GUARD_IN, LEAST_DRAW, RECOVER};
+use super::tune::{BRAKE, COAST, DRAW, GUARD_IN, LEAST_DRAW, OVERSHOOT, RECOVER};
 
 /// What the hands are doing. Every time is seconds since the act began.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -77,8 +77,11 @@ pub struct Timing {
     pub windup: f32,
     /// Through the path at the speed of the build.
     pub swing: f32,
-    /// Back to carrying.
+    /// Back to carrying: the arm brakes the tool for as long as it took to speed it up.
     pub recover: f32,
+    /// How far past the follow-through the tool carries on, in shares of the path: more for a tool of
+    /// more inertia about the hand.
+    pub over: f32,
 }
 
 impl Timing {
@@ -92,7 +95,8 @@ impl Timing {
         Self {
             windup: held.swing.windup,
             swing: path.length() / speed.max(f32::EPSILON),
-            recover: RECOVER,
+            recover: RECOVER.max(BRAKE * held.swing.windup),
+            over: OVERSHOOT * held.swing.inertia / (held.swing.inertia + COAST),
         }
     }
 }
@@ -151,8 +155,12 @@ pub fn key(act: Act, path: &Path, timing: &Timing, dir: Dir) -> Key {
     match act {
         Act::Ready => carry(),
         Act::Windup(t) => carry().toward(&path.at(0.0), share(t, timing.windup)),
-        Act::Swing(t) => path.at(share(t, timing.swing)),
-        Act::Recover(t) => path.at(1.0).toward(&carry(), share(t, timing.recover)),
+        Act::Swing(t) => path.led(share(t, timing.swing)),
+        Act::Recover(t) => {
+            let s = share(t, timing.recover);
+            let past = path.at(1.0 + timing.over * (std::f32::consts::PI * s).sin());
+            past.toward(&carry(), s)
+        }
         Act::Guard(t) => carry().toward(&guard(dir), share(t, GUARD_IN)),
         Act::Draw(t) => carry().toward(&drawn(), share(t, DRAW)),
         Act::Stun(_, at) => path.at(at),

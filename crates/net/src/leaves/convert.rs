@@ -5,10 +5,18 @@ use super::{Leaves, Run, parts, valid};
 impl Leaves {
     /// Returns the runs, each placed from the end of the one before.
     pub fn runs(&self) -> Vec<Run> {
-        self.chunks(usize::MAX)
-            .into_iter()
-            .next()
-            .unwrap_or_default()
+        let mut end = 0u64;
+        self.runs
+            .iter()
+            .map(|(start, stop)| {
+                let gap = start - end;
+                end = *stop;
+                Run {
+                    gap,
+                    len: stop - start,
+                }
+            })
+            .collect()
     }
 
     /// Returns the runs in groups of at most `size`, each group placed from 0 on its own, so

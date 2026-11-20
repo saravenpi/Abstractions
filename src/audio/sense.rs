@@ -5,7 +5,7 @@ use bevy::prelude::*;
 
 use super::planet::{Surf, loudness, surf, wind as heard};
 use super::scene::{AudioScene, altitude_fade};
-use super::shore::{closeness, nearest};
+use super::shore::{CEILING, ShoreRead, closeness};
 use crate::companion::Companion;
 use crate::gear::{FlightFx, GearSet};
 use crate::net::Remote;
@@ -70,19 +70,6 @@ fn sense_place(
     scene.wind = record.map_or(wind.strength, |record| heard(&record, wind.strength));
 }
 
-/// Returns how close the nearest shoreline is to a listener at chart position `at`, `height`
-/// metres above the sea, and the render position of that shoreline. Nothing is heard inland
-/// or out at sea, and a globe without a sea is all inland.
-fn shore(terrain: &Terrain, anchor: &Anchor, at: Vec3, height: f32) -> (f32, Vec3) {
-    let sea = terrain.globe().sea_level();
-    let ground = |point: Vec2| terrain.height(point.x, point.y) - sea;
-    let Some(offset) = nearest(ground, Vec2::new(at.x, at.z)) else {
-        return (0.0, Vec3::ZERO);
-    };
-    let edge = terrain.embed(at.x + offset.x, 0.0, at.z + offset.y);
-    (closeness(offset.length(), height), anchor.to_render(edge))
-}
-
 /// Returns the side a sound at render position `from` is on for the `listener`: -1 at its
 /// left, 1 at its right, 0 ahead, behind or at the head itself.
 fn side(listener: &GlobalTransform, from: Vec3) -> f32 {
@@ -104,11 +91,11 @@ fn sense_companion(
     scene.companion = Vec2::new(side(camera, from), 1.0 / (1.0 + far / EARSHOT));
 }
 
-/// Writes the altitude fade, the water, the clouds and the shore into the scene from the camera.
+/// Writes the altitude fade, the water and the clouds into the scene from the camera.
 ///
-/// In space there is no air, no water and no shore: all four are zero. On a planet the whoosh
-/// of the clouds plays inside a real cloud only, as loud as its air is. The sound is muffled under the liquid of the globe
-/// and never in a dry basin, and the shore is heard where the record says something breaks on it.
+/// In space there is no air and no water: both are zero. On a planet the whoosh of the clouds
+/// plays inside a real cloud only, as loud as its air is. The sound is muffled under the liquid
+/// of the globe and never in a dry basin.
 fn sense_listener(
     here: Res<Here>,
     (anchor, terrain): (Option<Res<Anchor>>, Option<Res<Terrain>>),
@@ -125,27 +112,48 @@ fn sense_listener(
         return;
     };
     if !matches!(anchor.frame, Frame::Surface(_)) {
-        (
-            scene.altitude_fade,
-            scene.submerged,
-            scene.cloud_depth,
-            scene.shore,
-        ) = (0.0, 0.0, 0.0, 0.0);
+        (scene.altitude_fade, scene.submerged, scene.cloud_depth) = (0.0, 0.0, 0.0);
         return;
     }
     let pos = camera.translation();
     let height = altitude(&anchor, terrain.globe(), pos);
-    let chart = terrain.locate(anchor.to_frame(pos));
     scene.altitude_fade = altitude_fade(height, spec.atmosphere_height as f32);
     let depth = crossing.map_or(0.0, |crossing| crossing.depth);
     scene.cloud_depth = depth * loudness(&spec.record);
     let afloat = above_sea(&anchor, terrain.globe(), pos);
     scene.submerged = (-afloat / HEAD_DEPTH).clamp(0.0, 1.0);
-    if surf(&spec.record) == Surf::Silent {
+}
+
+/// Writes the shore into the scene from the camera: how close the nearest shoreline is and on
+/// which side it lies. Nothing is heard in space, out at sea or inland, and where the record says
+/// no surf breaks.
+fn sense_shore(
+    here: Res<Here>,
+    (anchor, terrain, time): (Option<Res<Anchor>>, Option<Res<Terrain>>, Res<Time>),
+    camera: Query<&GlobalTransform, With<GameCamera>>,
+    mut read: Local<ShoreRead>,
+    mut scene: ResMut<AudioScene>,
+) {
+    let (Some(anchor), Some(terrain), Some((_, spec))) = (anchor, terrain, here.0.as_ref()) else {
+        return;
+    };
+    let Ok(camera) = camera.single() else {
+        return;
+    };
+    let pos = camera.translation();
+    let height = altitude(&anchor, terrain.globe(), pos);
+    let surfing = matches!(anchor.frame, Frame::Surface(_)) && surf(&spec.record) != Surf::Silent;
+    if !surfing || height >= CEILING {
         (scene.shore, scene.shore_side) = (0.0, 0.0);
         return;
     }
-    let (level, edge) = shore(&terrain, &anchor, chart, height);
+    let at = terrain.locate(anchor.to_frame(pos)).xz();
+    let (level, edge) = read
+        .read(spec.id, time.elapsed_secs(), &terrain, at)
+        .map_or((0.0, Vec3::ZERO), |point| {
+            let render = anchor.to_render(terrain.embed(point.x, 0.0, point.y));
+            (closeness(point.distance(at), height), render)
+        });
     (scene.shore, scene.shore_side) = (level, side(camera, edge) * level.signum());
 }
 
@@ -178,7 +186,13 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(OnExit(Screen::Gameplay), rest)
         .add_systems(
             Update,
-            (sense_place, sense_listener, sense_flight, sense_companion)
+            (
+                sense_place,
+                sense_listener,
+                sense_shore,
+                sense_flight,
+                sense_companion,
+            )
                 .chain()
                 .in_set(super::Sensing)
                 .after(ShipSet::Place)

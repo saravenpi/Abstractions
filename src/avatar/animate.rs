@@ -141,7 +141,7 @@ pub fn animate(
         let frames = locals(&anim.pose);
         for (bone, frame) in skeleton.0.into_iter().zip(frames) {
             if let Ok(mut transform) = bones.get_mut(bone) {
-                *transform = frame;
+                transform.set_if_neq(frame);
             }
         }
     }

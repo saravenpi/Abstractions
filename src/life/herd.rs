@@ -12,6 +12,7 @@
 mod cells;
 #[cfg(test)]
 pub(super) mod fixtures;
+mod path;
 mod roll;
 mod route;
 mod scene;
@@ -20,6 +21,8 @@ mod sphere;
 mod tests;
 #[cfg(test)]
 mod tests_cost;
+#[cfg(test)]
+mod tests_path;
 #[cfg(test)]
 mod tests_real;
 mod watch;
@@ -123,11 +126,14 @@ pub struct Search {
     pub time: f64,
 }
 
-/// What herds read of the planet: the site at a unit direction, and the daylight, 0 to 1, at a unit
-/// direction and a universe time.
+/// What herds read of the planet: the site at a unit direction, the ground height at a unit direction,
+/// and the daylight, 0 to 1, at a unit direction and a universe time.
 pub struct Ground<'a> {
     /// Site at a unit direction. Called at most a few hundred times per search.
     pub sample: &'a dyn Fn(DVec3) -> Site,
+    /// Ground height in metres above sea level at a unit direction, the height of its site. Cheaper
+    /// than a site: called along the paths of herds.
+    pub height: &'a dyn Fn(DVec3) -> f32,
     /// Daylight at a unit direction and a universe time in seconds. Cheap, called freely.
     pub light: &'a dyn Fn(DVec3, f64) -> f32,
 }

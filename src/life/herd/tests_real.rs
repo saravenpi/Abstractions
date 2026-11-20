@@ -22,6 +22,7 @@ fn look(life: &Life, world: &World, heat: f32) -> Vec<Herd> {
     };
     let ground = Ground {
         sample: &sample,
+        height: &crate::life::herd::fixtures::height,
         light: &light,
     };
     let search = Search {

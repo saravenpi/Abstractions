@@ -25,6 +25,7 @@ use bevy::math::{DVec3, Vec2};
 
 use super::herd::{Ground, Search, Watch, arc, east};
 use super::{Life, Species};
+pub use dens::nearest as den;
 
 /// What a sign is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -41,6 +42,8 @@ pub enum Mark {
     Burrow,
     /// The bones of a kill.
     Bones,
+    /// A drop of blood from a wounded animal.
+    Blood,
 }
 
 /// One sign on the ground.

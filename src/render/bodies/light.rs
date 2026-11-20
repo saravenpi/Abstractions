@@ -3,17 +3,17 @@
 //! surface, the storm of a gas giant turning with it, and the rings from their star.
 
 use bevy::ecs::system::SystemParam;
-use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
+mod relight;
+
+use self::relight::relit;
 use super::Body;
-use super::giant::Giant;
-use super::material::{BodyMaterial, BodyUniform};
+use super::material::BodyMaterial;
 use super::rings::RingMaterial;
-use crate::render::air::Air;
 use crate::render::celestial::smoothstep;
-use crate::render::clouds::{CloudMaps, toward_second};
-use crate::render::daylight::{PlaceUniform, Sky, starlight};
+use crate::render::clouds::CloudMaps;
+use crate::render::daylight::{PlaceUniform, starlight};
 use crate::render::moonlight::{Moonlight, STARLIGHT};
 use crate::render::palette::Palette;
 use crate::render::scatter::peak;
@@ -21,8 +21,6 @@ use crate::render::sky::linear;
 use crate::render::vantage::Scene;
 use crate::settings::{Persistent, Settings};
 use crate::universe::PlanetSpec;
-use crate::weather::drift;
-use crate::world::{Link, spin};
 
 /// Angular radii in radians between which a baked body goes from a dot in the mean colour of
 /// its surface to a disc that shows the surface and its clouds: from about one pixel of the
@@ -38,15 +36,6 @@ pub fn detail(angle: f32) -> f32 {
 /// illuminance in lux: what the sun light of the ground carries in open space.
 pub fn star_light(star: Vec3) -> Vec3 {
     linear(peak(star)).truncate() * Palette::SPACE_LUX
-}
-
-/// Returns the block the shader lights the ball of `planet` with: its own air under a star of
-/// linear colour `star` in the direction `toward`, on nights the stars light by `stars`. The
-/// ball is lit point by point by the rule that lights its ground, whatever the camera stands in.
-fn lit_by(planet: &PlanetSpec, star: Vec3, toward: Vec3, stars: f32) -> PlaceUniform {
-    let size = (planet.radius as f32, planet.atmosphere_height as f32);
-    let sky = Sky::of(star, &Air::of(&planet.record), size, stars);
-    sky.uniform(Vec3::ZERO, toward, (1.0, 0.0))
 }
 
 /// What the clouds of the bodies are drawn from.
@@ -71,93 +60,67 @@ impl Skies<'_> {
     }
 }
 
-/// Writes into `uniform` what the baked ball of `planet` is drawn from this frame: the rotation
-/// `to_fixed` from render axes to its own, the light `star` of its star, the radians `angle`
-/// its radius covers, which say how much of the surface shows, and for its clouds whether
-/// their cover map is ready and the `seconds` of universe time that drift and morph them.
-fn dress(
-    uniform: &mut BodyUniform,
-    planet: &PlanetSpec,
-    to_fixed: DQuat,
-    sky: (Vec3, f32, bool, f64),
-) {
-    let (star, angle, cloudy, seconds) = sky;
-    let fixed = Mat3::from_quat(to_fixed.as_quat());
-    uniform.fixed_x = fixed.x_axis.extend(0.0);
-    uniform.fixed_y = fixed.y_axis.extend(0.0);
-    uniform.fixed_z = fixed.z_axis.extend(0.0);
-    uniform.sun = star_light(star).extend(f32::from(u8::from(cloudy)));
-    let clouds = Air::of(&planet.record).clouds_from_space();
-    uniform.cloud = clouds.extend(toward_second(seconds));
-    uniform.drift = drift(seconds).extend(0.0);
-    uniform.map.z = uniform.glow.w * detail(angle);
-}
-
-/// Turns the spin axis of `planet` and the storm of a giant into render axes through
-/// `to_render` at `time` seconds of universe time.
-fn orient(uniform: &mut BodyUniform, planet: &PlanetSpec, to_render: DQuat, time: f64) {
-    uniform.axis = (to_render * DVec3::Y).as_vec3().extend(uniform.axis.w);
-    if let Some(giant) = Giant::of(&planet.record, planet.seed) {
-        let spot = to_render * (spin(planet.day_seconds, time) * giant.spot);
-        uniform.storm = spot.as_vec3().extend(giant.size);
-    }
-}
-
 /// Lights every planet and moon from the direction of its star, dimmed where another body of
 /// its planet hides the star, and turns its spin axis, its surface, its clouds and the storm of
 /// a giant into render axes. Each is lit through its own air, and the one under the camera
-/// shares the night of the ground, under `moon`.
+/// shares the night of the ground, under `moon`. A material is written only when what it
+/// holds changes, and a body that is hidden keeps the light it was last given.
 pub(super) fn planets(
     scene: Scene,
     mut skies: Skies,
     moon: Option<Res<Moonlight>>,
-    planets: Query<(&Body, &MeshMaterial3d<BodyMaterial>)>,
+    planets: Query<(&Body, &MeshMaterial3d<BodyMaterial>, &Visibility)>,
     mut materials: ResMut<Assets<BodyMaterial>>,
 ) {
     let Some(near) = scene.local.0.as_ref() else {
         return;
     };
-    let (vantage, time) = (&*scene.vantage, scene.clock.seconds);
-    let to_render = vantage.observer.to_render;
-    for (body, handle) in &planets {
-        let found = match *body {
-            Body::Planet(id) => scene.body(id).zip(materials.get_mut(&handle.0)),
-            _ => None,
-        };
-        let Some(((planet, pos), mut material)) = found else {
+    let vantage = &*scene.vantage;
+    for (body, handle, seen) in &planets {
+        let Body::Planet(id) = *body else {
             continue;
         };
-        let toward = vantage.sunward(pos);
+        let (Some((planet, pos)), Some(old)) = (scene.body(id), materials.get(&handle.0)) else {
+            continue;
+        };
+        if *seen == Visibility::Hidden && old.place != PlaceUniform::default() {
+            continue;
+        }
         let below = moon.as_deref().filter(|_| vantage.is(planet.id));
         let stars = below.map_or(STARLIGHT, starlight);
-        material.place = lit_by(planet, near.system.star.color, toward, stars);
-        let uniform = &mut material.body;
-        uniform.light = toward.extend(near.eclipse(pos, planet.id, time));
-        orient(uniform, planet, to_render, time);
-        let to_fixed = (to_render * Link::orbiting(planet, time).turn).inverse();
         let angle = (planet.radius / pos.distance(vantage.observer.eye).max(1.0)) as f32;
         let map = skies.map(planet, vantage.is(planet.id) || detail(angle) > 0.0);
-        let sky = (near.system.star.color, angle, map.is_some(), time);
-        dress(uniform, planet, to_fixed, sky);
-        material.cover = map;
+        let next = relit(old, (&scene, near), (planet, pos), (stars, angle, map));
+        let changed = next.body != old.body || next.place != old.place || next.cover != old.cover;
+        if changed && let Some(mut material) = materials.get_mut(&handle.0) {
+            *material = next;
+        }
     }
 }
 
-/// Lights the rings of every ringed planet from the direction of its star.
+/// Lights the rings of every ringed planet from the direction of its star, when that changes
+/// what their material holds, and not while they are hidden once they have been lit.
 pub(super) fn rings(
     scene: Scene,
-    rings: Query<(&Body, &MeshMaterial3d<RingMaterial>)>,
+    rings: Query<(&Body, &MeshMaterial3d<RingMaterial>, &Visibility)>,
     mut materials: ResMut<Assets<RingMaterial>>,
 ) {
-    for (body, handle) in &rings {
+    for (body, handle, seen) in &rings {
         let Body::Rings(id) = *body else {
             continue;
         };
-        let Some((_, pos)) = scene.body(id) else {
+        let (Some((_, pos)), Some(old)) = (scene.body(id), materials.get(&handle.0)) else {
             continue;
         };
-        if let Some(mut material) = materials.get_mut(&handle.0) {
-            material.light(pos);
+        if *seen == Visibility::Hidden && old.ring.light != Vec4::ZERO {
+            continue;
+        }
+        let mut next = old.clone();
+        next.light(pos);
+        if next.ring.light != old.ring.light
+            && let Some(mut material) = materials.get_mut(&handle.0)
+        {
+            material.ring.light = next.ring.light;
         }
     }
 }

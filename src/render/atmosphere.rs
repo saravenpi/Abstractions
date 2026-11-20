@@ -54,7 +54,7 @@ pub fn shadow(from: DVec3, sun: DVec3, radius: f64) -> f32 {
 }
 
 /// Uniform block read by `atmosphere.wesl`. Every field is a `vec4` so the layout never needs padding.
-#[derive(Clone, Copy, Debug, Default, ShaderType)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, ShaderType)]
 pub struct HaloUniform {
     /// Linear glow colour in xyz and its strength in w.
     pub color: Vec4,
@@ -88,31 +88,38 @@ impl Material for HaloMaterial {
 }
 
 /// Lights every halo from its star, in the colour and strength of the air of its planet; the
-/// halo of the planet below fades in above its air.
+/// halo of the planet below fades in above its air. A material is written only when what it
+/// holds changes, and a halo that is hidden keeps the light it was last given.
 fn light_halos(
     scene: Scene,
-    halos: Query<(&Body, &MeshMaterial3d<HaloMaterial>)>,
+    halos: Query<(&Body, &MeshMaterial3d<HaloMaterial>, &Visibility)>,
     mut materials: ResMut<Assets<HaloMaterial>>,
 ) {
     let vantage = &scene.vantage;
     let limb = (1.0 - 1.0 / (HALO_SCALE * HALO_SCALE)).sqrt();
     let local = scene.local.0.as_ref();
     let star = local.map_or(Vec3::ONE, |near| near.system.star.color);
-    for (body, handle) in &halos {
+    for (body, handle, seen) in &halos {
         let Body::Halo(id) = *body else {
             continue;
         };
-        let Some((planet, pos)) = scene.body(id) else {
+        let (Some((planet, pos)), Some(old)) = (scene.body(id), materials.get(&handle.0)) else {
             continue;
         };
+        if *seen == Visibility::Hidden && old.halo != HaloUniform::default() {
+            continue;
+        }
         let glow = Air::of(&planet.record).halo(star);
         let leaving = smoothstep(1.0, 1.5, vantage.altitude / vantage.atmosphere.max(1.0));
         let strength = if vantage.is(id) { leaving } else { 1.0 };
-        if let Some(mut material) = materials.get_mut(&handle.0) {
-            material.halo = HaloUniform {
-                color: glow.truncate().extend(glow.w * strength),
-                light: vantage.sunward(pos).extend(limb),
-            };
+        let halo = HaloUniform {
+            color: glow.truncate().extend(glow.w * strength),
+            light: vantage.sunward(pos).extend(limb),
+        };
+        if halo != old.halo
+            && let Some(mut material) = materials.get_mut(&handle.0)
+        {
+            material.halo = halo;
         }
     }
 }

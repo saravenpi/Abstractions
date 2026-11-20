@@ -2,6 +2,7 @@
 
 mod app;
 mod basin;
+mod calls;
 mod cues;
 mod dsp;
 mod giant;

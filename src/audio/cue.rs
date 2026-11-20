@@ -2,6 +2,8 @@
 
 use bevy::prelude::*;
 
+use super::call::Call;
+
 /// What the robot the player controls is walking on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StepSurface {
@@ -62,6 +64,8 @@ pub enum AudioCue {
     Chirp(ChirpKind),
     /// Thunder rolls far away. The level runs from 0 (barely heard) to 1 (a near storm).
     Thunder(f32),
+    /// An animal calls, from where it is for the listener.
+    Call(Call),
 }
 
 /// Every surface, in code order.
@@ -119,6 +123,7 @@ impl AudioCue {
             AudioCue::WarpExit => (8, 0),
             AudioCue::Chirp(kind) => (9, kind as u32),
             AudioCue::Thunder(level) => (10, (level.clamp(0.0, 1.0) * STRENGTH_STEPS) as u32),
+            AudioCue::Call(call) => (11, call.pack()),
         };
         kind | (arg << 8)
     }
@@ -137,6 +142,7 @@ impl AudioCue {
             8 => Some(AudioCue::WarpExit),
             9 => CHIRPS.get(arg).copied().map(AudioCue::Chirp),
             10 => Some(AudioCue::Thunder(arg as f32 / STRENGTH_STEPS)),
+            11 => Call::unpack(arg as u32).map(AudioCue::Call),
             _ => None,
         }
     }

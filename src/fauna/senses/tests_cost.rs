@@ -23,6 +23,7 @@ fn scene() -> (Senser, Vec<Threat>) {
         keen: 1.5,
         nose: NOSE_HUNTER,
         herd: 1,
+        fleeing: false,
     };
     let threats = (0..4)
         .map(|i| Threat {

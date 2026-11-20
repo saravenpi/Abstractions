@@ -106,6 +106,10 @@ pub const GRACE: f32 = 60.0;
 /// Metres a robot moves in one frame that count as a landing: a respawn or a ship's arrival.
 pub const JUMP: f64 = 50.0;
 
+/// Frames between two senses of one animal: each animal senses on every third frame, phased by its
+/// entity, with the seconds of the frames it skipped added to its step.
+pub const SENSE_EVERY: u32 = 3;
+
 /// Metres ahead of a fleeing animal its way out is probed.
 pub const CORNER_PROBE: f32 = 3.0;
 

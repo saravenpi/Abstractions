@@ -20,6 +20,7 @@ mod tests_hear;
 mod tests_lay;
 #[cfg(test)]
 mod tests_sing;
+mod trail;
 pub mod tune;
 
 use std::time::Duration;
@@ -29,6 +30,7 @@ use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
 use super::gate;
+use super::roll::Rolling;
 use crate::life::herd::Watch;
 use crate::life::signs::Sign;
 use crate::screens::playing;
@@ -41,6 +43,8 @@ pub(super) use sing::{Sung, sing, sounding};
 pub struct Trail {
     /// The watch, once rolled.
     watch: Option<Watch>,
+    /// The watch being rolled, once the old one is stale.
+    rolling: Option<Rolling>,
     /// Seed of the globe, unit direction and universe time the watch was rolled for.
     rolled: (u64, DVec3, f64),
     /// The signs read at the last lay, nearest first.

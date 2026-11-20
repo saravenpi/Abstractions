@@ -14,7 +14,7 @@ use crate::world::Terrain;
 const STEP: f32 = 2.0;
 
 /// Grid points the cache holds.
-const SLOTS: usize = 1024;
+const SLOTS: usize = 4096;
 
 /// An empty slot.
 const EMPTY: (i32, i32, f32) = (i32::MIN, i32::MIN, 0.0);
@@ -22,13 +22,13 @@ const EMPTY: (i32, i32, f32) = (i32::MIN, i32::MIN, 0.0);
 /// The cached heights, by grid point, direct mapped.
 pub struct Heights {
     /// Grid point and height of each slot.
-    slots: Box<[Cell<(i32, i32, f32)>; SLOTS]>,
+    slots: Box<[Cell<(i32, i32, f32)>]>,
 }
 
 impl Default for Heights {
     fn default() -> Self {
         Self {
-            slots: Box::new(std::array::from_fn(|_| Cell::new(EMPTY))),
+            slots: (0..SLOTS).map(|_| Cell::new(EMPTY)).collect(),
         }
     }
 }

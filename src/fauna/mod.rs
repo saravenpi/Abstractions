@@ -24,10 +24,12 @@ mod place;
 mod react;
 #[cfg(test)]
 mod rig;
+mod roll;
 mod scan;
 pub mod senses;
 mod signs;
 mod site;
+mod slant;
 #[cfg(test)]
 mod stage;
 mod steer;

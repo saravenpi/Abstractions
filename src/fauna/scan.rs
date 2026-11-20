@@ -10,7 +10,7 @@ use bevy::prelude::*;
 use super::beast::{Beast, Birth, spawn};
 use super::fade::leave;
 use super::gate::{Spec, footing};
-use super::herds::{Herds, Land};
+use super::herds::Herds;
 use super::looks::Looks;
 use super::near::{Eye, Nearby, remember};
 use super::place::Spot;
@@ -88,19 +88,11 @@ fn look(s: &mut Scan) -> Option<(Arc<Globe>, From)> {
         s.spec.planet = Some(Arc::new(s.universe.as_deref()?.planet(body)));
     }
     let globe = s.terrain.globe().clone();
-    let (robot, life, planet) = (
-        s.robot.single().ok()?,
-        globe.life()?,
-        s.spec.planet.clone()?,
-    );
+    let (robot, planet) = (s.robot.single().ok()?, s.spec.planet.clone()?);
+    globe.life()?;
     let at = s.anchor.to_frame(robot.translation).normalize();
     let time = s.clock.seconds;
-    let land = Land {
-        globe: &globe,
-        life,
-        planet: &planet,
-    };
-    s.herds.scan(land, at, time);
+    s.herds.scan((&globe, &planet), at, time);
     let radius = globe.radius();
     Some((
         globe.clone(),

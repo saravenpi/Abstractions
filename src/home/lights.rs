@@ -79,7 +79,10 @@ pub fn glow(
 ) {
     let mood = skies.mood(&home);
     for (lamp, mut light) in &mut lamps {
-        light.intensity = lamp.0.power(mood);
+        let power = lamp.0.power(mood);
+        if light.intensity != power {
+            light.intensity = power;
+        }
     }
     let kit = works
         .kit

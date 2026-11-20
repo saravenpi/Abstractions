@@ -6,6 +6,7 @@
 mod base;
 mod block;
 mod cables;
+mod choose;
 mod container;
 mod draft;
 mod found;

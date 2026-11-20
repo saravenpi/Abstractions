@@ -15,7 +15,7 @@ use crate::render::observer::Observer;
 use crate::render::palette::Palette;
 use crate::render::smoothstep;
 use crate::render::vantage::Vantage;
-use crate::universe::{PlanetClass, PlanetRecord, PlanetSpec, Universe, Water};
+use crate::universe::{PlanetClass, PlanetRecord, PlanetSpec, Rings, Universe, Water};
 use crate::world::Globe;
 use crate::world::globe::far::{ENTER, LIMIT, Range, handover, seen};
 

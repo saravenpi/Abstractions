@@ -79,3 +79,13 @@ pub const RING_PIECES: usize = 16;
 
 /// Most drops one source throws in one frame, whatever the distance it covered.
 pub const MAX_THROWN: u32 = 24;
+
+/// Spray flecks per second a full wash throws off the sea, on top of the ones per metre.
+pub const SPRAY_PER_SECOND: f32 = 40.0;
+
+/// Metres a source may move in one frame and still be followed: a longer step is a jump of the
+/// world, such as a teleport or a change of planet, and starts its trace afresh.
+pub const JUMP: f32 = 500.0;
+
+/// Greatest opacity of the foam, from 0 to 1.
+pub const FOAM_OPACITY: f32 = 0.85;

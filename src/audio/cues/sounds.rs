@@ -97,6 +97,12 @@ const THUNDER: [Blip; 3] = [
     noise(70.0, 3.6, 0.6, 0.4, 0.25),
 ];
 
+/// One pulse of the water pump: a low burst of noise and a tone falling away.
+const PUMP: [Blip; 2] = [
+    noise(150.0, 0.14, 0.01, 0.0, 0.14),
+    deep(tone(190.0, 70.0, 0.16, 0.0, 0.1)),
+];
+
 /// Returns the blips of a cue with the pitch factor and the level to play them at.
 ///
 /// Footsteps and chirps vary a little each time so that they never sound stamped. The steps of
@@ -115,6 +121,11 @@ pub fn recipe(cue: AudioCue, rand: &mut Rand) -> (&'static [Blip], f32, f32) {
         AudioCue::WarpExit => (&WARP_EXIT, 1.0, 1.0),
         AudioCue::Chirp(kind) => (chirp(kind), rand.range(0.95, 1.06), 1.0),
         AudioCue::Thunder(level) => (&THUNDER, rand.range(0.85, 1.1), level.clamp(0.0, 1.0)),
+        AudioCue::Pump(strength) => (
+            &PUMP,
+            0.8 + 0.4 * strength.clamp(0.0, 1.0),
+            0.4 + 0.6 * strength.clamp(0.0, 1.0),
+        ),
         AudioCue::Call(_) => (&[], 1.0, 0.0),
     }
 }

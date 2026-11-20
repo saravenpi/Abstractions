@@ -22,3 +22,12 @@ pub const POWER_SPEED: f32 = 75.0;
 
 /// Steps of the bisection that finds the speed of the jet: a millionth of the bracket.
 pub const PUMP_STEPS: u32 = 20;
+
+/// Width in metres of the body as the sea feels it, with the wings folded.
+pub const BODY_SIZE: f32 = 0.7;
+
+/// Span in metres of the spread wingsuit, tip to tip.
+pub const WING_SPAN: f32 = 2.2;
+
+/// Pulses per second of the water pump sound at the start of the spool and at full spool.
+pub const PUMP_RATE: (f32, f32) = (2.0, 7.0);

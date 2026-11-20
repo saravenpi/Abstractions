@@ -9,8 +9,10 @@
 use std::f32::consts::{PI, TAU};
 
 use super::tune::{
-    BOW_SHARE, KELVIN, MAX_THROWN, RIPPLE_PRESSURE, RIPPLE_WAVELENGTH, SPRAY_PRESSURE,
+    BOW_SHARE, KELVIN, MAX_THROWN, RIPPLE_PRESSURE, RIPPLE_WAVELENGTH, SKIM_DEPTH, SKIM_SPRAY,
+    SPRAY_PRESSURE,
 };
+use crate::render::smoothstep;
 
 /// Returns the far wash speed in metres per second of a source `size` metres across that pushes
 /// `push` newtons on air of `density` kilograms per cubic metre while moving at `speed`.
@@ -39,6 +41,16 @@ pub fn surface_pressure(wash: f32, speed: f32, size: f32, density: f32, height: 
 pub fn spray_strength(pressure: f32) -> f32 {
     match pressure > SPRAY_PRESSURE {
         true => 1.0 - SPRAY_PRESSURE / pressure,
+        false => 0.0,
+    }
+}
+
+/// Returns how strongly a source `size` metres across, `height` metres over the sea and moving
+/// at `speed` along it skims the surface and tears spray by flying fast and low: 0 when it is
+/// higher than its own size or deeper than [`SKIM_DEPTH`], else rising with the speed.
+pub fn skim(speed: f32, height: f32, size: f32) -> f32 {
+    match height <= size && height >= -SKIM_DEPTH {
+        true => smoothstep(SKIM_SPRAY.0, SKIM_SPRAY.1, speed),
         false => 0.0,
     }
 }

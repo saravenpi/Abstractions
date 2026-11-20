@@ -5,6 +5,10 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
 
+use super::foam::{Foam, FoamMesh};
+use super::tune::FOAM_OPACITY;
+use crate::world::{Liquid, Terrain};
+
 /// Uniform block read by `foam.wesl`. Every field is a `vec4` so the layout never needs padding.
 #[derive(Clone, Copy, Debug, Default, ShaderType)]
 pub struct FoamUniform {
@@ -46,5 +50,30 @@ impl Material for FoamMaterial {
     /// The foam never takes part in shadow rendering.
     fn enable_shadows() -> bool {
         false
+    }
+}
+
+/// Sets the clock and the colour of the foam and shows its mesh while some quad still lives.
+pub fn tick(
+    time: Res<Time>,
+    terrain: Res<Terrain>,
+    foam: Res<Foam>,
+    mut materials: ResMut<Assets<FoamMaterial>>,
+    mut meshes: Query<&mut Visibility, With<FoamMesh>>,
+) {
+    let now = time.elapsed_secs();
+    let shown = [Visibility::Hidden, Visibility::Inherited][usize::from(now < foam.until)];
+    for mut visibility in &mut meshes {
+        visibility.set_if_neq(shown);
+    }
+    if now >= foam.until {
+        return;
+    }
+    if let Some(mut material) = materials.get_mut(&foam.material) {
+        let color = Liquid::of(terrain.globe()).foam;
+        material.foam = FoamUniform {
+            color: color.extend(FOAM_OPACITY),
+            clock: Vec4::new(now, 0.0, 0.0, 0.0),
+        };
     }
 }

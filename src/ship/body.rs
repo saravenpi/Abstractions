@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::warp::Warp;
+use crate::effects::Churn;
 use crate::space::Frame;
 use crate::universe::{BodyId, GalaxyId, StarId};
 
@@ -12,6 +13,7 @@ use crate::universe::{BodyId, GalaxyId, StarId};
 ///
 /// Body axes follow Bevy: the nose points along -Z, the roof along +Y and the right wing along +X.
 #[derive(Component, Debug, Clone, PartialEq)]
+#[require(Churn)]
 pub struct Ship {
     /// Frame `pos`, `vel` and `rot` are expressed in.
     pub frame: Frame,

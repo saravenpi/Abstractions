@@ -92,7 +92,9 @@ pub fn spawn(
 /// bubbles rise toward their buoyant speed. Also returns how far it moved.
 pub fn fly(drop: &Drop, dt: f32) -> (Drop, Vec3) {
     let velocity = match drop.bubble {
-        true => drop.velocity.lerp(drop.up * BUBBLE_RISE, (4.0 * dt).min(1.0)),
+        true => drop
+            .velocity
+            .lerp(drop.up * BUBBLE_RISE, (4.0 * dt).min(1.0)),
         false => (drop.velocity - drop.up * drop.gravity * dt) * (-SPRAY_DRAG * dt).exp(),
     };
     let moved = velocity * dt;
@@ -132,7 +134,7 @@ pub fn step(
             continue;
         }
         awake = true;
-        let size = DROP_SIZE[usize::from(drop.bubble)];
+        let size = [DROP_SIZE.0, DROP_SIZE.1][usize::from(drop.bubble)];
         let fade = ((drop.life - drop.age) * 3.0).clamp(0.0, 1.0);
         transform.translation += moved;
         transform.rotation = eye.rot;

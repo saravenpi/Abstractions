@@ -54,10 +54,13 @@ pub use step::step;
 
 use bevy::prelude::*;
 
+use crate::effects::Churn;
+
 /// The flight gear of a body: its state and the input of its last step.
 ///
 /// Both pieces of equipment are owned from the start: every [`crate::player::Player`] gets one.
 #[derive(Component, Debug, Default, Clone, Copy, PartialEq)]
+#[require(Churn)]
 pub struct Gear {
     /// The flight state after the last step.
     pub state: FlightState,

@@ -17,8 +17,11 @@ mod sim;
 mod sky;
 #[cfg(test)]
 mod tests_pool;
+mod water;
 
 use bevy::prelude::*;
+
+pub use water::Churn;
 
 use crate::screens::{Screen, playing};
 
@@ -28,7 +31,8 @@ pub struct Sight;
 
 /// Registers the ambient particle pool and its systems.
 pub(super) fn plugin(app: &mut App) {
-    app.init_resource::<rng::Rng>()
+    app.add_plugins(water::plugin)
+        .init_resource::<rng::Rng>()
         .init_resource::<sense::Sensed>()
         .init_resource::<eye::Eye>()
         .add_systems(Startup, pool::build)

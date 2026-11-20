@@ -66,6 +66,8 @@ pub enum AudioCue {
     Thunder(f32),
     /// An animal calls, from where it is for the listener.
     Call(Call),
+    /// One pulse of the boot water pump. The strength runs from 0 (idle) to 1 (full spool).
+    Pump(f32),
 }
 
 /// Every surface, in code order.
@@ -94,7 +96,7 @@ const STRENGTH_STEPS: f32 = 1000.0;
 
 impl AudioCue {
     /// Returns every cue the player sets off once, landing at full strength. Thunder comes from
-    /// the weather and is auditioned on its own. Used to audition and to test.
+    /// the weather and the pump from the boots; both are auditioned on their own. Used to audition and to test.
     pub fn all() -> impl Iterator<Item = AudioCue> {
         let plain = [
             AudioCue::UiMove,
@@ -124,6 +126,7 @@ impl AudioCue {
             AudioCue::Chirp(kind) => (9, kind as u32),
             AudioCue::Thunder(level) => (10, (level.clamp(0.0, 1.0) * STRENGTH_STEPS) as u32),
             AudioCue::Call(call) => (11, call.pack()),
+            AudioCue::Pump(strength) => (12, (strength.clamp(0.0, 1.0) * STRENGTH_STEPS) as u32),
         };
         kind | (arg << 8)
     }
@@ -143,6 +146,7 @@ impl AudioCue {
             9 => CHIRPS.get(arg).copied().map(AudioCue::Chirp),
             10 => Some(AudioCue::Thunder(arg as f32 / STRENGTH_STEPS)),
             11 => Call::unpack(arg as u32).map(AudioCue::Call),
+            12 => Some(AudioCue::Pump(arg as f32 / STRENGTH_STEPS)),
             _ => None,
         }
     }

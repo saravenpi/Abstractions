@@ -2,7 +2,7 @@
 
 use bevy::prelude::KeyCode;
 
-use crate::settings::Keymap;
+use crate::settings::{Keymap, ShipKeys};
 
 /// One rebindable action.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -13,6 +13,7 @@ pub enum Bind {
     Right,
     Jump,
     Sprint,
+    Crouch,
     Wings,
     Board,
     Thrust,
@@ -40,13 +41,14 @@ pub enum Bind {
 impl Bind {
     /// The actions used on foot, in display order. The view and board keys work in the ship too,
     /// and the turn keys turn the wingsuit as they turn the ship. The field guide opens on foot only.
-    pub const FOOT: [Bind; 15] = [
+    pub const FOOT: [Bind; 16] = [
         Bind::Forward,
         Bind::Back,
         Bind::Left,
         Bind::Right,
         Bind::Jump,
         Bind::Sprint,
+        Bind::Crouch,
         Bind::Wings,
         Bind::YawLeft,
         Bind::YawRight,
@@ -91,7 +93,20 @@ impl Bind {
             Bind::Right => "Right",
             Bind::Jump => "Jump",
             Bind::Sprint => "Sprint / boots",
+            Bind::Crouch => "Crouch (hold)",
             Bind::Wings => "Wings (toggle)",
+            Bind::View => "Switch view",
+            Bind::Minimap => "Minimap",
+            Bind::Map => "Map",
+            Bind::Waypoint => "Waypoint",
+            Bind::Guide => "Field guide",
+            _ => self.ship_label(),
+        }
+    }
+
+    /// Returns the name of an action of the ship.
+    fn ship_label(self) -> &'static str {
+        match self {
             Bind::Board => "Board or leave ship",
             Bind::Thrust => "Throttle up, boost",
             Bind::Brake => "Throttle, brake",
@@ -105,14 +120,9 @@ impl Bind {
             Bind::PitchUp => "Nose up",
             Bind::Assist => "Flight assist",
             Bind::Cut => "Cut throttle",
-            Bind::Warp => "Warp drive",
-            Bind::View => "Switch view",
             Bind::Computer => "Board computer",
             Bind::Engage => "Engage autopilot",
-            Bind::Minimap => "Minimap",
-            Bind::Map => "Map",
-            Bind::Waypoint => "Waypoint",
-            Bind::Guide => "Field guide",
+            _ => "Warp drive",
         }
     }
 
@@ -125,28 +135,36 @@ impl Bind {
             Bind::Right => &mut keys.right,
             Bind::Jump => &mut keys.jump,
             Bind::Sprint => &mut keys.sprint,
+            Bind::Crouch => &mut keys.crouch,
             Bind::Wings => &mut keys.wings,
-            Bind::Board => &mut keys.ship.board,
-            Bind::Thrust => &mut keys.ship.throttle_up,
-            Bind::Brake => &mut keys.ship.throttle_down,
-            Bind::PitchDown => &mut keys.ship.pitch_down,
-            Bind::PitchUp => &mut keys.ship.pitch_up,
-            Bind::YawLeft => &mut keys.ship.turn_left,
-            Bind::YawRight => &mut keys.ship.turn_right,
-            Bind::RollLeft => &mut keys.ship.bank_left,
-            Bind::RollRight => &mut keys.ship.bank_right,
-            Bind::Up => &mut keys.ship.rise,
-            Bind::Down => &mut keys.ship.sink,
-            Bind::Assist => &mut keys.ship.assist,
-            Bind::Cut => &mut keys.ship.cut,
-            Bind::Warp => &mut keys.ship.warp,
             Bind::View => &mut keys.view,
-            Bind::Computer => &mut keys.computer,
-            Bind::Engage => &mut keys.engage,
             Bind::Minimap => &mut keys.minimap,
             Bind::Map => &mut keys.map,
             Bind::Waypoint => &mut keys.waypoint,
             Bind::Guide => &mut keys.guide,
+            Bind::Computer => &mut keys.computer,
+            Bind::Engage => &mut keys.engage,
+            _ => self.ship_slot(&mut keys.ship),
+        }
+    }
+
+    /// Returns the key of an action of the ship inside `keys`.
+    fn ship_slot(self, keys: &mut ShipKeys) -> &mut KeyCode {
+        match self {
+            Bind::Board => &mut keys.board,
+            Bind::Thrust => &mut keys.throttle_up,
+            Bind::Brake => &mut keys.throttle_down,
+            Bind::PitchDown => &mut keys.pitch_down,
+            Bind::PitchUp => &mut keys.pitch_up,
+            Bind::YawLeft => &mut keys.turn_left,
+            Bind::YawRight => &mut keys.turn_right,
+            Bind::RollLeft => &mut keys.bank_left,
+            Bind::RollRight => &mut keys.bank_right,
+            Bind::Up => &mut keys.rise,
+            Bind::Down => &mut keys.sink,
+            Bind::Assist => &mut keys.assist,
+            Bind::Cut => &mut keys.cut,
+            _ => &mut keys.warp,
         }
     }
 

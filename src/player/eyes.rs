@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use super::chase::{carried, chased, drift};
 use super::controller::Motion;
+use super::crouch;
 use super::upright::tilt;
 use super::{Player, PlayerSet, local};
 use crate::gear::{FlightState, Gear};
@@ -103,7 +104,8 @@ pub(super) fn aim(
     let to_render = tilt(vertical);
     let airborne = gear.state.mode.airborne();
     *target = Target {
-        position: transform.translation - to_render * motion.lag,
+        position: transform.translation
+            - to_render * (motion.lag + Vec3::Y * crouch::drop(motion.crouch)),
         up: vertical,
         forward: to_render * Vec3::NEG_Z,
         velocity: to_render * motion.velocity,

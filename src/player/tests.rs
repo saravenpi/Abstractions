@@ -3,6 +3,7 @@
 mod airframe;
 mod basin;
 mod climbing;
+mod crouching;
 mod deck;
 mod eyes;
 mod flight;

@@ -17,7 +17,7 @@ fn intents(
     settings: &Settings,
     view: View,
     turn: f32,
-) -> [Option<Intent>; 7] {
+) -> [Option<Intent>; 8] {
     let map = &settings.controls.keys;
     let yaw = axis(keys, map.ship.turn_right, map.ship.turn_left);
     [
@@ -33,6 +33,7 @@ fn intents(
         }),
         keys.pressed(map.jump).then_some(Intent::Jump),
         keys.pressed(map.sprint).then_some(Intent::Boost),
+        keys.pressed(map.crouch).then_some(Intent::Crouch),
         keys.just_pressed(map.wings).then_some(Intent::Wings),
         (yaw != 0.0).then_some(Intent::Yaw(yaw)),
         steer.then_some(Intent::Steer),

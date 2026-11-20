@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Hold Left Ctrl to crouch (rebind it in the controls): you walk at under half speed, cannot sprint, and your eyes sink over a quarter of a second. Animals notice a crouched robot at half the rate, hear it less and lose it behind lower ground. Other players do not see your crouch yet.
 - The map's card of a planet or a moon in a visited system gives its chance of life, such as "Chance of life 72 %", from the same odds that decide what lives there. Once you have landed it says what is really there: none, microbial mats, soft-bodied life, shelled life, animals with skeletons or ancient life.
 - Right click a search result, a favourite or a player in the map's side panel for the same menu as on the map.
 - Animals walk the ground of living planets: the herds of the planet's own species graze, travel and rest around you, up to 48 at once within 150 m, and fade in and out at the edge. Every player sees the same herd in the same place.

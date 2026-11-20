@@ -86,6 +86,7 @@ impl Basin {
             forward: 1.0,
             right: 0.0,
             sprint: false,
+            crouch: false,
             jump,
             yaw: 0.0,
             steer: false,

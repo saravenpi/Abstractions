@@ -8,6 +8,7 @@ mod camera;
 mod chase;
 mod climb;
 mod controller;
+mod crouch;
 mod dive;
 mod eyes;
 mod flight;

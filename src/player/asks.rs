@@ -34,6 +34,8 @@ pub struct Intents {
     boost: bool,
     /// Whether the run was held on the step before.
     ran: bool,
+    /// Whether the crouch is held.
+    crouch: bool,
     /// Whether the wingsuit was asked to spread or fold this step.
     wings: bool,
     /// Flat turn on the wings, from -1 (left) to 1 (right).
@@ -66,6 +68,7 @@ impl Intents {
             } => (self.look, self.turn, self.behind) = (Vec2::new(yaw, pitch), turn, behind),
             sim::Intent::Jump => self.jump = true,
             sim::Intent::Boost => self.boost = true,
+            sim::Intent::Crouch => self.crouch = true,
             sim::Intent::Wings => self.wings = true,
             sim::Intent::Yaw(right) => self.yaw = right.clamp(-1.0, 1.0),
             sim::Intent::Steer => self.steer = true,
@@ -116,6 +119,7 @@ pub(super) fn ask(motion: &mut Motion, asks: &Intents, step: &Step) -> Intent {
         forward: asks.axes.x,
         right: asks.axes.y,
         sprint: asks.boost,
+        crouch: asks.crouch,
         jump: asks.jump,
         yaw: asks.yaw,
         steer: asks.steer,

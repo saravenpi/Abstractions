@@ -7,7 +7,7 @@ use crate::audio::cue::AudioCue;
 use crate::audio::cues::Pool;
 use crate::audio::cues::calls::call;
 use crate::audio::dsp::rand::Rand;
-use crate::life::signs::calls::{Cry, TIMBRES, Timbre, Voice};
+use crate::life::signs::calls::{CRIES, Cry, TIMBRES, Timbre, Voice};
 
 /// Returns a call of `timbre` at `hz`, from straight ahead at full level.
 fn calling(timbre: Timbre, hz: f32, cry: Cry) -> Call {
@@ -16,6 +16,7 @@ fn calling(timbre: Timbre, hz: f32, cry: Cry) -> Call {
             hz,
             timbre,
             notes: 3,
+            muffled: false,
         },
         cry,
         side: 0.0,
@@ -23,20 +24,22 @@ fn calling(timbre: Timbre, hz: f32, cry: Cry) -> Call {
     }
 }
 
-/// A call packed into a cue comes back with its pitch within an eighth of an octave and its place
-/// within a fifteenth.
+/// A call packed into a cue comes back with its pitch within an eighth of an octave, its place
+/// within a fifteenth, and every cry and the muffling whole.
 #[test]
 fn calls_cross_whole() {
-    for (t, hz) in [
+    let voices = [
         (Timbre::Low, 110.0),
         (Timbre::Growl, 60.0),
-        (Timbre::Click, 3000.0),
-    ] {
-        let sent = Call {
+        (Timbre::Rasp, 3000.0),
+    ];
+    for ((t, hz), cry) in voices.into_iter().cycle().zip(CRIES) {
+        let mut sent = Call {
             side: -0.6,
             near: 0.4,
-            ..calling(t, hz, Cry::Alarm)
+            ..calling(t, hz, cry)
         };
+        sent.voice.muffled = cry == Cry::Young;
         let Some(AudioCue::Call(got)) = AudioCue::decode(AudioCue::Call(sent).encode()) else {
             panic!("the call did not come back");
         };
@@ -45,10 +48,13 @@ fn calls_cross_whole() {
             "{hz} Hz came back {}",
             got.voice.hz
         );
-        assert_eq!(
-            (got.voice.timbre, got.voice.notes, got.cry),
-            (sent.voice.timbre, 3, Cry::Alarm)
+        let kept = (
+            got.voice.timbre,
+            got.voice.notes,
+            got.cry,
+            got.voice.muffled,
         );
+        assert_eq!(kept, (sent.voice.timbre, 3, cry, sent.voice.muffled));
         assert!((got.side + 0.6).abs() < 0.07 && (got.near - 0.4).abs() < 0.04);
     }
 }
@@ -57,7 +63,7 @@ fn calls_cross_whole() {
 #[test]
 fn every_call_renders() {
     for t in TIMBRES {
-        for cry in [Cry::Contact, Cry::Alarm, Cry::Chase] {
+        for cry in CRIES {
             let mut pool = Pool::new(RATE);
             pool.play(AudioCue::Call(calling(t, 220.0, cry)));
             let buffer: Vec<f32> = (0..frames(4.0)).map(|_| pool.frame()[0]).collect();
@@ -98,4 +104,16 @@ fn calls_leave_voices_free() {
     assert!(pool.free() >= 6, "{} voices free", pool.free());
     pool.play(AudioCue::UiConfirm);
     assert!(pool.busy());
+}
+
+/// A call from under water is quieter than the same call in the air.
+#[test]
+fn muffled_calls_are_quieter() {
+    let mut rand = Rand::new(3, 0);
+    let open = calling(Timbre::Whistle, 400.0, Cry::Contact);
+    let mut under = open;
+    under.voice.muffled = true;
+    let (a, _) = call(&open, &mut rand);
+    let (b, _) = call(&under, &mut rand);
+    assert!(b[0].gain < a[0].gain);
 }

@@ -3,19 +3,25 @@
 //!
 //! Contact calls and the cries of hunts come from `crate::life::signs::calls`, pure functions of the
 //! herds and universe time, so every player hears them at the same moment. Alarms at a robot are
-//! local, as the flight they come with is. Only the [`CALLS`] loudest calls of one hearing are sent.
+//! local, as the flight they come with is; so are the threats of bold animals that stand their
+//! ground. Herds call more around sunrise and sunset, by the daylight at their home. Every call heard
+//! is kept for the singing, which moves the bodies that make it; only the [`CALLS`] loudest calls of
+//! one hearing are sent to the audio.
 
 use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::sing::Sung;
 use super::tune::{CALLS, EARSHOT, HALF_LEVEL, HEAR, QUIET};
 use crate::audio::{AudioCue, Call};
 use crate::fauna::beast::Beast;
+use crate::fauna::gate::Spec;
 use crate::fauna::herds::{Herds, herd_arc};
 use crate::fauna::senses::Stance;
+use crate::fauna::site;
 use crate::life::Life;
-use crate::life::signs::calls::{Calling, Cry, contact, cries, voice};
+use crate::life::signs::calls::{Calling, Cry, chorus, contact, cries, distress, rhythm, voice};
 use crate::render::GameCamera;
 use crate::space::{Anchor, Clock, Placed};
 use crate::world::Terrain;
@@ -33,6 +39,8 @@ pub struct Hear<'w, 's> {
     terrain: Res<'w, Terrain>,
     anchor: Res<'w, Anchor>,
     herds: Res<'w, Herds>,
+    spec: Res<'w, Spec>,
+    sung: ResMut<'w, Sung>,
     camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
     beasts: Query<'w, 's, (&'static Beast, &'static Placed)>,
     cues: MessageWriter<'w, AudioCue>,
@@ -61,7 +69,7 @@ pub struct Ear {
     pub view: GlobalTransform,
 }
 
-/// Sends the calls heard since the last hearing.
+/// Keeps the calls heard since the last hearing for the singing and sends the loudest.
 pub fn hear(mut h: Hear, mut heard: Local<Heard>) {
     let globe = h.terrain.globe().clone();
     let (Some(life), Ok(camera)) = (globe.life(), h.camera.single()) else {
@@ -80,16 +88,22 @@ pub fn hear(mut h: Hear, mut heard: Local<Heard>) {
         pos,
         view: *camera,
     };
-    gather(&h, &mut heard, (from, now));
+    gather(&h, life, &mut heard, (from, now));
     let Heard { calls, loud, .. } = &mut *heard;
+    let tempo = |c: &Calling| {
+        let species = life.species.get(usize::from(c.species))?;
+        Some(rhythm(&voice(species, life.rung), c.cry))
+    };
+    h.sung.remember(now, calls.iter().map(|(c, _)| *c), tempo);
     weigh(life, calls, (&ear, &h.anchor, globe.radius()), loud);
     for (_, call) in loud.iter() {
         h.cues.write(AudioCue::Call(*call));
     }
 }
 
-/// Fills the calls of `heard` with the contact calls, hunt cries and robot alarms within `span`.
-fn gather(h: &Hear, heard: &mut Heard, span: (f64, f64)) {
+/// Fills the calls of `heard` with the contact calls, hunt cries and robot alarms and threats of
+/// `life` within `span`.
+fn gather(h: &Hear, life: &Life, heard: &mut Heard, span: (f64, f64)) {
     let Heard { calls, fled, .. } = heard;
     calls.clear();
     let herds = &h.herds.herds;
@@ -99,8 +113,10 @@ fn gather(h: &Hear, heard: &mut Heard, span: (f64, f64)) {
             .find(|herd| herd.id == id)
             .map(|herd| herd.centre)
     };
+    let planet = h.spec.planet.as_deref();
     for herd in herds {
-        if let Some(c) = contact(herd, span) {
+        let dawn = |t: f64| planet.map_or(0.0, |p| chorus(site::light(p, herd.home, t)));
+        if let Some(c) = contact(herd, &dawn, span) {
             calls.push((c, herd.centre));
         }
     }
@@ -110,24 +126,41 @@ fn gather(h: &Hear, heard: &mut Heard, span: (f64, f64)) {
         });
     }
     alarms(h, (calls, fled), span.1);
+    cries_of_pain(h, calls, span);
 }
 
-/// Adds to `calls` an alarm for each herd with an animal fleeing or threatening at universe time `now`,
-/// one per herd every [`ALARM_GAP`] seconds, as kept in `fled`.
+/// Adds to `calls` the distress cries of the hurt animals drawn, within the universe times `span`.
+fn cries_of_pain(h: &Hear, calls: &mut Vec<(Calling, DVec3)>, span: (f64, f64)) {
+    for (beast, placed) in &h.beasts {
+        let hurt = 1.0 - beast.wits.health.share();
+        let (herd, slot) = beast.lead.key();
+        let who = (herd, beast.index, slot);
+        if let Some(c) = distress(who, hurt, span) {
+            calls.push((c, placed.pos.normalize()));
+        }
+    }
+}
+
+/// Adds to `calls` an alarm for each herd with an animal fleeing, or a threat for one standing its
+/// ground, at universe time `now`, one per herd every [`ALARM_GAP`] seconds, as kept in `fled`.
 fn alarms(h: &Hear, (calls, fled): Lists<'_>, now: f64) {
     fled.retain(|(_, at)| now - at < ALARM_GAP);
     for (beast, placed) in &h.beasts {
-        let (herd, _) = beast.lead.key();
-        let stands = beast.wits.stance == Stance::Threaten;
-        if !(beast.mood.fleeing || stands) || fled.iter().any(|(id, _)| *id == herd) {
+        let (herd, slot) = beast.lead.key();
+        let cry = match (beast.mood.fleeing, beast.wits.stance) {
+            (true, _) => Cry::Alarm,
+            (false, Stance::Threaten) => Cry::Threat,
+            _ => continue,
+        };
+        if fled.iter().any(|(id, _)| *id == herd) {
             continue;
         }
         fled.push((herd, now));
-        let species = beast.index;
         let calling = Calling {
             herd,
-            species,
-            cry: Cry::Alarm,
+            species: beast.index,
+            slot,
+            cry,
             at: now,
         };
         calls.push((calling, placed.pos.normalize()));

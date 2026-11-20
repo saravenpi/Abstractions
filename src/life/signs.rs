@@ -10,6 +10,7 @@ mod bones;
 pub mod calls;
 mod dens;
 mod marks;
+mod rhythm;
 #[cfg(test)]
 mod rig;
 #[cfg(test)]
@@ -18,8 +19,11 @@ mod tests;
 mod tests_calls;
 #[cfg(test)]
 mod tests_cost;
+#[cfg(test)]
+mod tests_voice;
 mod tracks;
 pub mod tune;
+mod voice;
 
 use bevy::math::{DVec3, Vec2};
 

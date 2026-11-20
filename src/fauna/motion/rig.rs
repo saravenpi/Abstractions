@@ -12,6 +12,7 @@ use super::gait::Clock;
 use super::idle::Idle;
 use super::rest::Frame;
 use super::root::yaw_of;
+use super::song::Song;
 use super::spring::Follow;
 use super::strand::Strand;
 use super::tune::Tune;
@@ -99,6 +100,8 @@ pub struct Motion {
     pub idle: Idle,
     /// The plan's own clocks.
     pub beat: Beat,
+    /// The call it is making, if any.
+    pub song: Option<Song>,
     /// Tuning from the body's mass.
     pub tune: Tune,
     /// Detail of the last step, none before the first.
@@ -160,6 +163,7 @@ impl Motion {
             look: Follow::new(Vec2::ZERO, Vec2::ZERO),
             idle: Idle::new(seed),
             beat: Beat::new(seed),
+            song: None,
             tune: Tune::of_body(body),
             detail: None,
             time: 0.0,
@@ -175,6 +179,10 @@ impl Motion {
         let ground: &dyn Fn(Vec2) -> f32 = ground;
         self.time = (self.time + dt).rem_euclid(WRAP);
         self.idle.step(&self.tune, drive.excite, dt);
+        if let Some(song) = self.song.as_mut() {
+            song.age += dt;
+        }
+        self.song = self.song.filter(Song::live);
         match body.locomotion {
             Locomotion::Walk => walk::step(self, body, drive, ground, dt),
             Locomotion::Slither => plans::slither(self, body, drive, ground, dt),

@@ -4,8 +4,8 @@
 //! The herds of the planet's life are pure functions of universe time, read through one
 //! `life::herd::Watch` around the local robot. A few times a second the scan spawns the members near
 //! the robot and fades out those that went; every frame the senses fill each one's awareness of the
-//! robots and hunters near it and set its stance, and the walk steps it towards its place in its herd
-//! through that stance.
+//! robots and hunters near it and set its stance, the walk steps it towards its place in its herd
+//! through that stance, and the voice moves its body to the calls it makes.
 
 mod beast;
 mod fade;
@@ -87,7 +87,14 @@ pub(super) fn plugin(app: &mut App) {
             Update,
             (
                 gate::forget.run_if(gate::moved),
-                (scan, senses::sense, walk::walk, fade::fade, shine)
+                (
+                    scan,
+                    senses::sense,
+                    signs::sing.run_if(signs::sounding),
+                    walk::walk,
+                    fade::fade,
+                    shine,
+                )
                     .chain()
                     .run_if(playing)
                     .run_if(gate::living),

@@ -9,6 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - The map's card of a planet or a moon in a visited system gives its chance of life, such as "Chance of life 72 %", from the same odds that decide what lives there. Once you have landed it says what is really there: none, microbial mats, soft-bodied life, shelled life, animals with skeletons or ancient life.
 - Right click a search result, a favourite or a player in the map's side panel for the same menu as on the map.
+- A field guide on K, on foot: every species of the planet underfoot, plants first, with a count such as "12 of 31 seen". A plant counts as seen once you stand on its planet, an animal once one comes within 40 m. Pick one with the arrows, the wheel or a click to read its body, diet, herd, hours, habitat, and what it eats and what eats it. Species you have not seen show as unknown. K or Esc closes it. The key can be changed in the options. For now the guide remembers what you saw until you leave the world.
 
 ### Changed
 

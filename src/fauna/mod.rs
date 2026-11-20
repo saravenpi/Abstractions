@@ -1,6 +1,7 @@
 //! Fauna: the creatures of the planet underfoot, spawned from its life, moved by their needs and
 //! animated by procedural gaits on rigid parts.
 
+pub mod guide;
 pub mod mesh;
 pub mod motion;
 
@@ -21,5 +22,5 @@ pub struct Creature {
 
 /// Registers the fauna systems.
 pub(super) fn plugin(app: &mut App) {
-    let _ = app;
+    app.add_plugins(guide::plugin);
 }

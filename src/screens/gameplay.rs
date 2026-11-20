@@ -40,8 +40,8 @@ fn enter(mut commands: Commands) {
 
 /// Opens the pause menu on Escape.
 ///
-/// It runs only while the board computer is closed. The computer closes on the same key, and its
-/// state changes one frame later, so one press never does both.
+/// It runs only while the board computer and the field guide are closed. They close on the same
+/// key, and their state changes one frame later, so one press never does both.
 fn open_pause(keys: Res<ButtonInput<KeyCode>>, mut menu: ResMut<NextState<Menu>>) {
     if keys.just_pressed(KeyCode::Escape) {
         menu.set(Menu::Pause);
@@ -72,7 +72,8 @@ pub(super) fn plugin(app: &mut App) {
             (
                 open_pause
                     .run_if(playing)
-                    .run_if(in_state(Computer::Closed)),
+                    .run_if(in_state(Computer::Closed))
+                    .run_if(not(crate::fauna::guide::shown)),
                 in_control
                     .pipe(crosshair_visibility)
                     .run_if(in_state(Screen::Gameplay)),

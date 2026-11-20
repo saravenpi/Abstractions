@@ -1,12 +1,47 @@
 //! Fauna: the creatures of the planet underfoot, spawned from its life, moved by their needs and
 //! animated by procedural gaits on rigid parts.
+//!
+//! The herds of the planet's life are pure functions of universe time, read through one
+//! `life::herd::Watch` around the local robot. A few times a second the scan spawns the members near
+//! the robot and fades out those that went; every frame the walk steps each one towards its place in
+//! its herd, through its own reactions to the robots and hunters near it.
 
+mod beast;
+mod fade;
+mod gate;
+mod herds;
+mod lead;
+mod looks;
 pub mod mesh;
 pub mod motion;
+mod place;
+mod react;
+#[cfg(test)]
+mod rig;
+mod scan;
+mod site;
+#[cfg(test)]
+mod stage;
+mod steer;
+#[cfg(test)]
+mod tests_hunt;
+#[cfg(test)]
+mod tests_react;
+#[cfg(test)]
+mod tests_spawn;
+#[cfg(test)]
+mod tests_walk;
+pub mod tune;
+mod walk;
+mod want;
+
+use std::time::Duration;
 
 use bevy::prelude::*;
+use bevy::time::common_conditions::on_timer;
 
 use crate::life::SpeciesId;
+use crate::screens::playing;
 
 /// One drawn individual. Its parts are its children, one entity per body part.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -19,7 +54,23 @@ pub struct Creature {
     pub slot: u8,
 }
 
-/// Registers the fauna systems.
+/// Registers the fauna systems: the forgetting of animals when the planet under the anchor changes,
+/// then, on a living planet in play, the scan, the walk and the fades.
 pub(super) fn plugin(app: &mut App) {
-    let _ = app;
+    let scan = scan::scan.run_if(on_timer(Duration::from_secs_f32(tune::SCAN)));
+    app.init_resource::<herds::Herds>()
+        .init_resource::<gate::Spec>()
+        .init_resource::<looks::Looks>()
+        .add_systems(
+            Update,
+            (
+                gate::forget.run_if(gate::moved),
+                (scan, walk::walk, fade::fade)
+                    .chain()
+                    .run_if(playing)
+                    .run_if(gate::living),
+            )
+                .chain()
+                .after(crate::effects::Sight),
+        );
 }

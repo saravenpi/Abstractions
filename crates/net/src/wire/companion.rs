@@ -7,8 +7,8 @@ use std::f32::consts::{PI, TAU};
 
 use glam::{DVec3, Quat};
 
-use super::Frame;
 use super::bytes::{Reader, put_position};
+use super::{Body, Frame, Kind};
 use crate::pack::{pack_i8, pack_i16, pack_rotation, pack_unit};
 use crate::pack::{unpack_i8, unpack_i16, unpack_rotation, unpack_unit};
 
@@ -42,9 +42,12 @@ pub struct CompanionBody {
     pub face: u8,
 }
 
-impl CompanionBody {
-    /// Adds the body to `out`, with its position packed for `frame`.
-    pub fn encode(&self, frame: &Frame, out: &mut Vec<u8>) {
+impl Body for CompanionBody {
+    const KIND: Kind = Kind::Companion;
+
+    const MAX_LEN: usize = 37;
+
+    fn encode(&self, frame: &Frame, out: &mut Vec<u8>) {
         put_position(out, frame, self.position);
         out.extend_from_slice(&pack_rotation(self.rotation).to_le_bytes());
         out.push(pack_i8(self.lift, LIFT_RANGE) as u8);
@@ -59,9 +62,9 @@ impl CompanionBody {
         ]);
     }
 
-    /// Returns the body [`CompanionBody::encode`] wrote for `frame`, or nothing when `bytes`
+    /// Returns the body [`Body::encode`] wrote for `frame`, or nothing when `bytes`
     /// has the wrong length or holds a number that is not finite.
-    pub fn decode(frame: &Frame, bytes: &[u8]) -> Option<Self> {
+    fn decode(frame: &Frame, bytes: &[u8]) -> Option<Self> {
         let mut reader = Reader(bytes);
         let position = reader.position(frame)?;
         let rotation = unpack_rotation(u32::from_le_bytes(reader.take()?));

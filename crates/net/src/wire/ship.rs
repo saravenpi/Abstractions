@@ -4,8 +4,8 @@
 
 use glam::{DVec3, Quat, Vec3};
 
-use super::Frame;
 use super::bytes::{Reader, put_position, put_vec3};
+use super::{Body, Frame, Kind};
 use crate::pack::{pack_i8, pack_rotation, pack_unit, unpack_i8, unpack_rotation, unpack_unit};
 
 /// Value of [`ShipBody::warp`] while the warp drive is off.
@@ -49,9 +49,13 @@ pub struct ShipBody {
     pub heat: f32,
 }
 
-impl ShipBody {
+impl Body for ShipBody {
+    const KIND: Kind = Kind::Ship;
+
+    const MAX_LEN: usize = 50;
+
     /// Adds the body to `out`, with its position packed for `frame`.
-    pub fn encode(&self, frame: &Frame, out: &mut Vec<u8>) {
+    fn encode(&self, frame: &Frame, out: &mut Vec<u8>) {
         put_position(out, frame, self.position);
         put_vec3(out, self.velocity);
         out.extend_from_slice(&pack_rotation(self.rotation).to_le_bytes());
@@ -69,9 +73,9 @@ impl ShipBody {
         ]);
     }
 
-    /// Returns the body [`ShipBody::encode`] wrote for `frame`, or nothing when `bytes` has the
+    /// Returns the body [`Body::encode`] wrote for `frame`, or nothing when `bytes` has the
     /// wrong length or holds a number that is not finite.
-    pub fn decode(frame: &Frame, bytes: &[u8]) -> Option<Self> {
+    fn decode(frame: &Frame, bytes: &[u8]) -> Option<Self> {
         let mut reader = Reader(bytes);
         let position = reader.position(frame)?;
         let velocity = reader.vec3()?;

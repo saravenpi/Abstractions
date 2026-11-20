@@ -5,7 +5,9 @@ use std::collections::HashMap;
 
 use abstractions_net::jitter::{Buffer, Snap};
 use abstractions_net::wire::records;
-use abstractions_net::wire::{self, CompanionBody, Kind, Record, RobotBody, ShipBody, VitalsBody};
+use abstractions_net::wire::{
+    self, Body, CompanionBody, Kind, Record, RobotBody, ShipBody, VitalsBody,
+};
 use bevy::prelude::*;
 
 use super::bodies::Bodies;
@@ -17,7 +19,7 @@ use crate::space::Clock;
 use crate::universe::Universe;
 
 /// Seconds between two records of a moving thing, which the buffers plan their delay on.
-const INTERVAL: f64 = super::rate::MOVING;
+const INTERVAL: f64 = abstractions_net::wire::MOVING;
 
 /// The records of one thing of one player.
 #[derive(Debug, Clone)]
@@ -139,7 +141,7 @@ impl Remotes {
                 }
             }
             Kind::Vitals => {
-                if let Some(body) = VitalsBody::decode(bytes) {
+                if let Some(body) = VitalsBody::decode(frame, bytes) {
                     self.vitals.insert(head.player, body);
                 }
             }

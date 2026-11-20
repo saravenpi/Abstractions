@@ -41,3 +41,17 @@ pub enum Kind {
     /// [`super::VitalsBody`], sent more slowly than the robot.
     Vitals,
 }
+
+impl Kind {
+    /// Every kind, in the order of [`Kind::index`].
+    pub const ALL: [Kind; 4] = [Self::Robot, Self::Ship, Self::Companion, Self::Vitals];
+
+    /// Number of kinds: the length of an array that holds one slot per kind.
+    pub const COUNT: usize = Self::ALL.len();
+
+    /// Returns the place of the kind in [`Kind::ALL`], which is the slot it has in every array
+    /// indexed by kind.
+    pub const fn index(self) -> usize {
+        self as usize
+    }
+}

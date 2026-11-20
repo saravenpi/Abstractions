@@ -2,7 +2,7 @@
 //! the past, and a ship in deep space, each sent in its wire frame and drawn in another.
 
 use abstractions_net::jitter::{Buffer, Snap};
-use abstractions_net::wire::{self, ShipBody};
+use abstractions_net::wire::{self, Body, ShipBody};
 use bevy::math::{DQuat, DVec3, Quat, Vec3};
 
 use crate::net::state::bodies::Bodies;

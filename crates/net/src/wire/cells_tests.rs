@@ -3,7 +3,7 @@
 use glam::DVec3;
 
 use super::body_tests::{planet, robot};
-use super::{Frame, RobotBody};
+use super::{Body, Frame, RobotBody};
 
 /// A robot on a planet of 1.2e7 m radius comes back within a millimetre.
 #[test]

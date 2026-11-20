@@ -2,7 +2,7 @@
 
 use std::fs;
 
-use abstractions_net::wire;
+use abstractions_net::wire::{self, Body};
 use bevy::math::{DQuat, DVec3, IVec3};
 
 use super::store::{list, new_entry, write};

@@ -1,7 +1,7 @@
 //! Tests of state records and batches: sizes, reading without decoding, splitting, bad bytes.
 
 use super::body_tests::{planet, robot};
-use super::{AT_REST, Frame, Head, Kind, Record, push, push_within, records, split};
+use super::{AT_REST, Body, Frame, Head, Kind, Record, push, push_within, records, split};
 use crate::log::PlayerId;
 
 /// Returns the head of a robot record of player `player` on the test planet.

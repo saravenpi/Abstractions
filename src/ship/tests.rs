@@ -26,7 +26,6 @@ mod resume;
 mod retarget;
 mod rig;
 mod space;
-mod steady;
 mod voyage;
 
 use bevy::math::{DQuat, DVec3};

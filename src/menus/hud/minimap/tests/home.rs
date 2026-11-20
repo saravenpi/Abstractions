@@ -1,17 +1,15 @@
-//! The compass in space: its home mark points at the home star from a ship elsewhere in the
-//! home galaxy, slides to the middle of the bar when the view turns to it and hides when it
-//! lies past the ends of the bar.
+//! The compass away from the home planet: its home mark is not shown in space nor on another
+//! planet.
 
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::rig::app;
 use crate::menus::MarkerKind;
-use crate::menus::hud::compass::{Bar, Pin};
-use crate::menus::hud::needle::WIDTH;
+use crate::menus::hud::compass::Pin;
 use crate::render::GameCamera;
 use crate::space::{Anchor, Frame};
-use crate::universe::{GLY, Universe};
+use crate::universe::{BodyId, GLY, Universe};
 
 /// Half the width in pixels of the room of a mark, which is centred on its place on the bar.
 const HALF_ROOM: f32 = 48.0;
@@ -46,12 +44,17 @@ fn home_mark(app: &mut App, toward: Vec3) -> (Option<f32>, Vec<String>) {
     (left, words.map(|text| text.0.clone()).collect())
 }
 
-/// One light-year east of the home star, in the frame of the home galaxy, the home mark gives
-/// one light-year and sits in the middle of the bar looking west at the star. Looking north
-/// the star lies a quarter turn away, past the span, and looking east it is behind: the mark
-/// hides in both.
+/// Looks every way and returns whether the home mark showed in any direction.
+fn ever_shown(app: &mut App) -> bool {
+    [Vec3::NEG_X, Vec3::X, Vec3::NEG_Z, Vec3::Z, Vec3::Y]
+        .into_iter()
+        .any(|toward| home_mark(app, toward).0.is_some())
+}
+
+/// One light-year east of the home star, in the frame of the home galaxy, the compass has no
+/// home mark in any direction, even looking straight at the star.
 #[test]
-fn the_compass_points_home_from_space() {
+fn the_compass_hides_home_in_space() {
     let mut app = app("home");
     let universe = Universe::new(7);
     let star = universe.star(universe.home().star).unwrap();
@@ -61,11 +64,23 @@ fn the_compass_points_home_from_space() {
         rotation: DQuat::IDENTITY,
         flat: false,
     });
-    let (west, words) = home_mark(&mut app, Vec3::NEG_X);
-    assert!((west.unwrap() - 0.5 * WIDTH).abs() < 0.01, "{west:?}");
-    assert!(words.contains(&"1.00 gly".to_string()), "{words:?}");
-    let mut bars = app.world_mut().query_filtered::<&Visibility, With<Bar>>();
-    assert_eq!(bars.single(app.world()).unwrap(), Visibility::Inherited);
-    assert_eq!(home_mark(&mut app, Vec3::NEG_Z).0, None);
-    assert_eq!(home_mark(&mut app, Vec3::X).0, None);
+    assert!(!ever_shown(&mut app));
+}
+
+/// On the surface of another planet of the same star the compass has no home mark either.
+#[test]
+fn the_compass_hides_home_on_another_planet() {
+    let mut app = app("home");
+    let home = Universe::new(7).home();
+    let other = BodyId {
+        index: home.index + 1,
+        ..home
+    };
+    app.insert_resource(Anchor {
+        frame: Frame::Surface(other),
+        origin: DVec3::X * 6000.0,
+        rotation: DQuat::IDENTITY,
+        flat: false,
+    });
+    assert!(!ever_shown(&mut app));
 }

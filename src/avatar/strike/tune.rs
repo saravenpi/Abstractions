@@ -86,3 +86,6 @@ pub const PICK: f32 = 1.5;
 
 /// Upward tilt of a throw over the view, in radians.
 pub const LOFT: f32 = 0.08;
+
+/// Metres from the robot within which a spear stuck in an animal can be pulled out.
+pub const PULL: f32 = 3.0;

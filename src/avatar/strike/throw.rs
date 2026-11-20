@@ -10,6 +10,7 @@ use super::flight::{Rest, Spear, bounce, depth, fly, pierces, stands};
 use super::held::Held;
 use super::hit::Hit;
 use super::input::{Loose, Robot};
+use super::pull::Reach;
 use super::sense::{Parts, first};
 use super::show::{Kit, tool};
 use super::tune::{LOFT, PICK, REST_SPEED};
@@ -194,13 +195,12 @@ pub fn pierce(
 }
 
 /// Gives a spear that came to rest back to the local robot when it stands within reach of it with
-/// empty hands.
+/// empty hands. A spear stuck in an animal stays there until [`super::pull::pull`] draws it out.
 pub fn pick(
     mut commands: Commands,
     robot: Robot,
-    spears: Query<(Entity, &Spear, &GlobalTransform)>,
-    players: Query<&Transform, With<Player>>,
-    full: Query<(), With<Held>>,
+    spears: Query<(Entity, &Spear, &GlobalTransform, Option<&ChildOf>)>,
+    (players, full, creatures): Reach,
 ) {
     let Some((body, player)) = robot.pair() else {
         return;
@@ -209,10 +209,13 @@ pub fn pick(
     if full.contains(body) {
         return;
     }
-    let near = spears.iter().find(|(_, spear, placed)| {
-        spear.rest != Rest::Flying && placed.translation().distance(at.translation) < PICK
+    let lying = |of: &Option<&ChildOf>| !of.is_some_and(|of| creatures.contains(of.parent()));
+    let near = spears.iter().find(|(_, spear, placed, of)| {
+        spear.rest != Rest::Flying
+            && lying(of)
+            && placed.translation().distance(at.translation) < PICK
     });
-    if let Some((entity, spear, _)) = near {
+    if let Some((entity, spear, _, _)) = near {
         commands.entity(body).insert(spear.item.clone());
         commands.entity(entity).despawn();
     }

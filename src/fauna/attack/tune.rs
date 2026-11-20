@@ -41,6 +41,10 @@ pub const MOUTH: f32 = 0.5;
 /// Share of the mass that moves with a bite, a lunge, a swipe, a sweep, a charge and a trample.
 pub const SHARE: [f32; 6] = [0.5, 0.08, 0.06, 0.1, 0.03, 1.0];
 
+/// Stiffness in gigapascals and mass in kilograms of the plate of the robot that a blow rings: an
+/// aluminium alloy, our estimate.
+pub const PLATE: (f32, f32) = (70.0, 8.0);
+
 /// Metres from its middle the robot is struck at above its feet: its blows land at the height of
 /// the part that struck, within this much of the middle of the body.
 pub const SPREAD: f32 = 0.9;
@@ -59,6 +63,10 @@ pub const LEAN: (f32, f32) = (0.12, 0.3);
 
 /// Share of its speed a falling body keeps when it hits the ground.
 pub const BOUNCE: f32 = 0.25;
+
+/// Energy in joules, stiffness in gigapascals and mass in kilograms of the flint knife that cuts a
+/// part from a carcass, for the sound of the cut.
+pub const CARVE: (f32, f32, f32) = (6.0, 30.0, 0.3);
 
 /// Metres from the eyes within which a part of a carcass is cut or a spear pulled.
 pub const CUT_RANGE: f32 = 3.5;

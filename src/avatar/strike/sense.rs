@@ -6,7 +6,7 @@ use bevy::prelude::*;
 
 use super::act::{Act, Strike, Timing};
 use super::held::Held;
-use super::hit::{Bounds, Hit, radius, sweet, touch};
+use super::hit::{Bounds, Hit, Tip, radius, sweet, touch};
 use super::path::Path;
 use super::tune::KICK;
 use crate::craft::build::{Blow, blow, reference, strike as through};
@@ -53,6 +53,29 @@ pub fn landed(held: &Held, now: [Vec3; 2], at: Vec3) -> (Blow, f32) {
     (out, KICK * kept.clamp(0.0, 1.0) * (1.0 - held.counter()))
 }
 
+/// Returns the hit of the tool `held` by `body` on `part` of `victim` at `at`, moving along `along`.
+fn hit(
+    held: &Held,
+    body: Entity,
+    (victim, part, at): (Entity, Entity, Vec3),
+    (blow, along): (Blow, Vec3),
+) -> Hit {
+    Hit {
+        attacker: body,
+        item: held.id,
+        victim,
+        part,
+        at,
+        along,
+        blow,
+        intent: held.style.intent(),
+        tip: Tip {
+            stiffness: held.build.head.material.stiffness,
+            mass: held.build.head.mass,
+        },
+    }
+}
+
 /// Run condition: some body is swinging.
 pub fn swinging(strikes: Query<&Strike>) -> bool {
     strikes
@@ -85,16 +108,6 @@ pub fn sense(
             strike.act = Act::Stun(stun, t / timing.swing.max(f32::EPSILON));
         }
         let along = (now[1] - was[1]).normalize_or_zero();
-        let intent = held.style.intent();
-        hits.write(Hit {
-            attacker: body,
-            item: held.id,
-            victim,
-            part,
-            at,
-            along,
-            blow,
-            intent,
-        });
+        hits.write(hit(held, body, (victim, part, at), (blow, along)));
     }
 }

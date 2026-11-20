@@ -16,6 +16,7 @@ mod kinds;
 mod limbs;
 mod pounce;
 mod raise;
+mod ring;
 mod slay;
 mod slump;
 mod timing;

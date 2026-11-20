@@ -11,6 +11,7 @@ mod chips;
 mod cut;
 mod drain;
 mod open;
+mod sound;
 mod stain;
 mod throw;
 pub mod tune;
@@ -23,6 +24,7 @@ mod tests_wound;
 
 use bevy::prelude::*;
 
+pub use sound::impact;
 pub use wound::{Circuit, Cut, Wound};
 
 use crate::avatar::strike::Hit;

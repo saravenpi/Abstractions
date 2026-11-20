@@ -11,12 +11,13 @@ use super::held::Held;
 use super::hit::Hit;
 use super::hurt::steadied;
 use super::input::{Loose, Robot};
+use super::landing::{arrival, grounded, steady};
 use super::pull::{Reach, take};
 use super::sense::{Parts, first};
 use super::show::{Kit, tool};
 use super::tune::{LOFT, PICK, REST_SPEED};
+use crate::audio::Impact;
 use crate::craft::Pack;
-use crate::craft::build::{Intent, blow};
 use crate::fauna::Live;
 use crate::player::Player;
 use crate::screens::Screen;
@@ -39,30 +40,6 @@ fn launched(held: &Held, aim: Vec3, by: (Entity, Entity), point: Vec3) -> Spear 
         was: point,
         lent: None,
     }
-}
-
-/// Returns the hit `spear` lands now on `part` of `victim` at `at`, carrying its kinetic energy
-/// ½mv².
-fn arrival(spear: &Spear, (victim, part, at): (Entity, Entity, Vec3)) -> Hit {
-    let speed = spear.velocity.length();
-    let mut landed = blow(&spear.item.build, Intent::Throw, &spear.item.place);
-    landed.energy = 0.5 * spear.item.throw.mass * speed * speed;
-    Hit {
-        attacker: spear.body,
-        item: spear.item.id,
-        victim,
-        part,
-        at,
-        along: spear.velocity / speed.max(f32::EPSILON),
-        blow: landed,
-        intent: Intent::Throw,
-    }
-}
-
-/// Returns true when `spear` is in the air and its point moved to `now` by no more than a frame of
-/// flight could take it: a rebase of the world in between is not a path through it.
-fn steady(spear: &Spear, now: Vec3) -> bool {
-    spear.rest == Rest::Flying && now.distance(spear.was) <= spear.velocity.length() * 0.2 + 1.0
 }
 
 /// What a throw reads: the players, where they look and the kit that draws the spear.
@@ -138,7 +115,7 @@ fn arrive(spear: &mut Spear, place: &mut Transform, point: Vec3, normal: Vec3) {
 pub fn soar(
     time: Res<Time>,
     (anchor, terrain): (Res<Anchor>, Res<Terrain>),
-    world: SpatialQuery,
+    (world, mut sounds): (SpatialQuery, MessageWriter<Impact>),
     mut spears: Query<(&mut Spear, &mut Transform)>,
 ) {
     let dt = time.delta_secs();
@@ -154,12 +131,13 @@ pub fn soar(
         let way = Dir3::new(to - from).ok();
         let met = way.and_then(|way| world.cast_ray(from, way, from.distance(to), true, &filter));
         if let (Some(way), Some(met)) = (way, met) {
-            arrive(
-                &mut spear,
-                &mut place,
-                from + way * met.distance,
-                met.normal,
-            );
+            let point = from + way * met.distance;
+            let landed = grounded(&spear, point);
+            arrive(&mut spear, &mut place, point, met.normal);
+            sounds.write(Impact {
+                deflected: spear.rest != Rest::Stuck,
+                ..landed
+            });
             continue;
         }
         (place.translation, spear.velocity) = (to, velocity);

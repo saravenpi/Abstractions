@@ -126,6 +126,6 @@ pub fn recipe(cue: AudioCue, rand: &mut Rand) -> (&'static [Blip], f32, f32) {
             0.8 + 0.4 * strength.clamp(0.0, 1.0),
             0.4 + 0.6 * strength.clamp(0.0, 1.0),
         ),
-        AudioCue::Call(_) => (&[], 1.0, 0.0),
+        AudioCue::Call(_) | AudioCue::Hit(_) => (&[], 1.0, 0.0),
     }
 }

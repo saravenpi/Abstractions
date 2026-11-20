@@ -7,9 +7,11 @@ use bevy::prelude::*;
 
 use super::chips::chips;
 use super::open::opened;
+use super::sound::impact;
 use super::throw::{Jet, burst, scatter};
 use super::tune::CHIP;
 use super::wound::{Circuit, Cut, Wound};
+use crate::audio::{Body, Impact};
 use crate::avatar::strike::Hit;
 use crate::effects::Fling;
 use crate::fauna::Part;
@@ -29,6 +31,7 @@ pub struct Strikes<'w, 's> {
     settings: Res<'w, Persistent<Settings>>,
     time: Res<'w, Time>,
     flings: MessageWriter<'w, Fling>,
+    sounds: MessageWriter<'w, Impact>,
     parts: Query<'w, 's, (&'static GlobalTransform, &'static Aabb), With<Part>>,
     roots: Query<'w, 's, &'static GlobalTransform, With<Beast>>,
 }
@@ -106,6 +109,16 @@ fn opening(
     Some((jet, wound_of(root, hit, (index, normal), open)))
 }
 
+/// Sends the sound of `hit` on part `index` of `species`, `cut` when it opened it.
+fn ring(s: &mut Strikes, hit: &Hit, (species, index): (&Species, usize), cut: bool) {
+    let tool = Body {
+        stiffness: hit.tip.stiffness,
+        mass: hit.tip.mass,
+    };
+    s.sounds
+        .write(impact(species, index, (hit.at, hit.blow.energy, cut), tool));
+}
+
 /// Adds `cut` to the wound of `victim`, or gives it its first.
 fn record(commands: &mut Commands, victim: Entity, wound: Option<Mut<Wound>>, cut: Cut) {
     match wound {
@@ -147,6 +160,7 @@ pub fn cut(
             (hit, &root),
             (index, normal),
         );
+        ring(&mut s, hit, (species, index), made.is_some());
         let Some((jet, cut)) = made else { continue };
         if s.settings.gameplay.blood {
             burst(&mut s.flings, &jet, (cut.width, cut.depth), key);

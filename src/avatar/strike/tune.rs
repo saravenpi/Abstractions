@@ -90,6 +90,10 @@ pub const CAMERA_KICK: f32 = 0.02;
 /// Shake of the camera at the start of a hitstop that involves the local robot, in metres.
 pub const CAMERA_SHAKE: f32 = 0.012;
 
+/// Stiffness in gigapascals and mass in kilograms of the ground a spear lands in, for its sound: a
+/// loose soil, our estimate.
+pub const GROUND: (f32, f32) = (0.05, 500.0);
+
 /// Pressure soil puts against a point driven into it, in pascals.
 pub const SOIL: f32 = 1.0e6;
 

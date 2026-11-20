@@ -42,6 +42,8 @@ pub struct Strike {
     pub blade: [[Vec3; 2]; 2],
     /// What the body leaves of the strike: the arms and the torso, hurt or whole.
     pub hurt: Hurt,
+    /// True once the swing under way has sounded its whoosh.
+    pub sounded: bool,
 }
 
 impl Strike {

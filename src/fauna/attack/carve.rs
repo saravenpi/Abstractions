@@ -7,10 +7,12 @@ use bevy::prelude::*;
 
 use super::Dead;
 use super::slay::Carved;
-use super::tune::{CUT_RANGE, CUT_SLACK};
+use super::tune::{CARVE, CUT_RANGE, CUT_SLACK};
+use crate::audio::{Body, Impact};
 use crate::craft::harvest::{Cut, Harvest};
 use crate::craft::matter::{Class, Grade};
 use crate::fauna::beast::{Beast, Part};
+use crate::fauna::bleed::impact;
 use crate::fauna::herds::Herds;
 use crate::fauna::want::Lead;
 use crate::life::Species;
@@ -91,11 +93,29 @@ fn worth(species: &Species, index: usize) -> bool {
     tissue.is_some_and(|(t, p)| Class::of(t.kind, p.kind).is_some())
 }
 
+/// Returns the cut of part `index` of the carcass `beast`, graded by how it was killed.
+fn cut_of(herds: &Herds, beast: &Beast, index: usize) -> Cut {
+    Cut {
+        species: beast.index,
+        part: index as u8,
+        kill: kill(herds, beast.lead),
+    }
+}
+
+/// Returns the sound of the flint knife cutting part `index` of the carcass of `species` at `at`.
+fn knife(species: &Species, index: usize, at: Vec3) -> Impact {
+    let edge = Body {
+        stiffness: CARVE.1,
+        mass: CARVE.2,
+    };
+    impact(species, index, (at, CARVE.0, true), edge)
+}
+
 /// Cuts the part of the carcass the robot looks at when the interact key goes down.
 pub fn carve(
     eyes: Eyes,
     (mut herds, terrain): (ResMut<Herds>, Res<Terrain>),
-    (mut commands, mut asks): (Commands, MessageWriter<Harvest>),
+    (mut commands, mut asks, mut sounds): (Commands, MessageWriter<Harvest>, MessageWriter<Impact>),
     (mut dead, parts): (Query<&mut Beast, With<Dead>>, Parts),
 ) {
     let key = eyes.settings.controls.keys.ship.board;
@@ -117,12 +137,11 @@ pub fn carve(
     if let (Some(species), Some(index)) = (species, index)
         && worth(species, index)
     {
-        let cut = Cut {
-            species: beast.index,
-            part: index as u8,
-            kill: kill(&herds, beast.lead),
-        };
-        asks.write(Harvest(cut));
+        let at = parts
+            .get(part)
+            .map_or(eye.translation(), |(_, p, _, _)| p.translation());
+        sounds.write(knife(species, index, at));
+        asks.write(Harvest(cut_of(&herds, &beast, index)));
         note(&mut herds, beast.lead, index);
         commands.entity(part).despawn();
         beast.parts[index] = None;

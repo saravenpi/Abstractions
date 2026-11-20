@@ -8,8 +8,10 @@ use bevy::prelude::*;
 
 use super::Dead;
 use super::kinds::Kind;
+use super::ring::heard;
 use super::timing::{Attacking, joules};
 use super::tune::{SLACK, SPREAD, STRIKE};
+use crate::audio::Impact;
 use crate::avatar::blow::Blow;
 use crate::fauna::beast::Beast;
 use crate::fauna::senses::Stance;
@@ -29,6 +31,7 @@ pub struct Fight<'w, 's> {
     anchor: Res<'w, Anchor>,
     robot: Query<'w, 's, &'static Transform, With<Player>>,
     blows: MessageWriter<'w, Blow>,
+    sounds: MessageWriter<'w, Impact>,
 }
 
 /// The robot an animal fights: its place in the frame of the animal and in render space.
@@ -116,7 +119,7 @@ fn advance(
     (beast, attack): (&mut Beast, &mut Attacking),
     species: &Species,
     (foe, dt): (&Foe, f32),
-    blows: &mut MessageWriter<Blow>,
+    (blows, sounds): (&mut MessageWriter<Blow>, &mut MessageWriter<Impact>),
 ) {
     attack.t += dt;
     if !attack.striking() {
@@ -129,7 +132,9 @@ fn advance(
     }
     if !attack.struck && reaches(attack.kind, (beast, species), foe) {
         attack.struck = true;
-        blows.write(landing(attack.kind, species, foe));
+        let blow = landing(attack.kind, species, foe);
+        sounds.write(heard(attack.kind, species, &blow));
+        blows.write(blow);
     }
 }
 
@@ -158,7 +163,8 @@ pub fn attack(
                 f.commands.entity(entity).remove::<Attacking>();
             }
             Some(mut a) => {
-                advance((&mut *beast, &mut *a), species, (&foe, dt), &mut f.blows);
+                let out = (&mut f.blows, &mut f.sounds);
+                advance((&mut *beast, &mut *a), species, (&foe, dt), out);
             }
             None => open(&mut f.commands, (entity, &*beast), species, &foe, gravity),
         }

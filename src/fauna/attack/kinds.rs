@@ -8,6 +8,7 @@ use super::limbs::Broken;
 use super::tune::{
     CHARGE_CONE, CHARGE_RANGE, CHARGE_ROOM, LUNGE_NECK, MOUTH, SHARE, SLACK, TRAMPLE_KG,
 };
+use crate::craft::matter::Class;
 use crate::life::Species;
 use crate::life::body::{Body, FeatureKind, Locomotion, PartKind};
 
@@ -74,6 +75,16 @@ impl Kind {
     /// Returns true for the attacks that run: the body itself goes for the target.
     pub fn dashes(self) -> bool {
         matches!(self, Kind::Charge | Kind::Trample)
+    }
+
+    /// Returns the class of the material of the part that strikes: teeth and claws are bone, horns
+    /// keratin, a hoof keratin, a tail hide.
+    pub fn striker(self) -> Class {
+        match self {
+            Kind::Charge | Kind::Trample => Class::Keratin,
+            Kind::Lunge | Kind::Swipe | Kind::Bite => Class::Bone,
+            Kind::Sweep => Class::Hide,
+        }
     }
 
     /// Returns the share of the mass of the body that carries the blow.

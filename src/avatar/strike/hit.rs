@@ -5,6 +5,15 @@ use bevy::prelude::*;
 use super::tune::SWEET_FLOOR;
 use crate::craft::build::{Blow, Intent};
 
+/// The head of the tool that struck, as the sound and the harm read it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Tip {
+    /// Young's modulus of the material of the head, in gigapascals.
+    pub stiffness: f32,
+    /// Mass of the head, in kilograms.
+    pub mass: f32,
+}
+
 /// A blow that landed on a creature part. Harm to animals, the wear of the tool and the hitstop
 /// read it.
 #[derive(Message, Debug, Clone, Copy, PartialEq)]
@@ -26,6 +35,8 @@ pub struct Hit {
     pub blow: Blow,
     /// What the blow was meant to do.
     pub intent: Intent,
+    /// The head of the tool that struck.
+    pub tip: Tip,
 }
 
 /// A box in its own frame: a part's bounds.

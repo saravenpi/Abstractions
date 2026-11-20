@@ -18,6 +18,7 @@ mod hurt;
 mod ik;
 mod input;
 mod key;
+mod landing;
 mod layer;
 mod path;
 mod pull;
@@ -30,6 +31,7 @@ mod starter;
 #[cfg(any(test, feature = "dev"))]
 mod stock;
 mod stop;
+mod swish;
 mod sync;
 mod throw;
 mod trail;
@@ -59,7 +61,7 @@ pub use act::{Act, Strike};
 pub use dir::Dir;
 pub use flight::{Rest, Spear};
 pub use held::{Held, Style};
-pub use hit::Hit;
+pub use hit::{Hit, Tip};
 pub use hurt::Hurt;
 pub use layer::Layer;
 pub use stop::Hitstop;
@@ -100,10 +102,6 @@ fn update(app: &mut App) {
             show::place
                 .after(AvatarSet::Animate)
                 .run_if(any_with_component::<Wielded>),
-            ribbon::rig.run_if(unrigged),
-            ribbon::trace
-                .after(show::place)
-                .run_if(any_with_component::<ribbon::Trailing>),
             spears.after(input::ask),
             sync::sync
                 .run_if(sync::stale)
@@ -143,6 +141,17 @@ fn spears() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
         .chain()
 }
 
+/// Returns the systems that show a swing: the whoosh and the ribbon, once the drawn tool is placed.
+fn swings() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
+    (
+        swish::swish.run_if(armed),
+        ribbon::rig.run_if(unrigged),
+        ribbon::trace.run_if(any_with_component::<ribbon::Trailing>),
+    )
+        .after(show::place)
+        .run_if(playing)
+}
+
 /// Registers the strikes: the frame systems, and the blows sensed once the transforms are
 /// propagated.
 pub(super) fn plugin(app: &mut App) {
@@ -160,6 +169,7 @@ pub(super) fn plugin(app: &mut App) {
                 .run_if(playing),
         );
     update(app);
+    app.add_systems(Update, swings());
     #[cfg(feature = "dev")]
     app.add_systems(Update, starter::give.run_if(in_control).before(input::ask));
 }

@@ -133,6 +133,19 @@ pub const TURN_BANK: (f32, f32) = (0.012, 0.09);
 /// start to reach at the longer time and are fully out at the shorter one.
 pub const REACH_TIME: (f32, f32) = (0.12, 0.45);
 
+/// Fall speeds in meters per second between which a falling body goes from the upright fall
+/// of a jump into the skydiver arch, belly to the ground: a hop never reaches the first, a drop
+/// of about 18 m on the home planet reaches the second.
+pub const ARCH_SINK: (f32, f32) = (14.0, 28.0);
+
+/// Seconds before the ground between which a body in the arch turns upright to land: upright
+/// at the first, still flat at the second. Long enough that the turn of a quarter turn never
+/// jumps a joint, and over before the legs reach out at [`REACH_TIME`].
+pub const ARCH_GROUND: (f32, f32) = (0.45, 1.5);
+
+/// Seconds the body takes at least to turn from the upright fall into the arch, or back.
+pub const ARCH_SECONDS: f32 = 0.9;
+
 /// Felt loads in g between which the flying body arches: level at the first, fully arched in
 /// a hard pull-up at the second.
 pub const ARCH_LOAD: (f32, f32) = (1.3, 3.0);

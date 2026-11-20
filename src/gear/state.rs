@@ -17,6 +17,11 @@ pub struct Servo {
     pub pull: f32,
     /// Heading of the nose in radians around the local up.
     pub yaw: f32,
+    /// Flight path angle the wings fly toward, in radians, read on the side of the vertical the
+    /// pitch is on. It rides the flight path while a pitch key is held or the wings are
+    /// folded, so that letting go or spreading them flies on where the body was going, and
+    /// eases from there toward the best glide or what the view asks.
+    pub climb: f32,
     /// Seconds spent in the current mode.
     pub clock: f32,
     /// Speed lost into the last surface hit, in metres per second, until a touchdown reads it.
@@ -42,10 +47,13 @@ pub struct FlightState {
     pub airspeed: f32,
     /// Angle of attack in radians: how far the nose points above the flight path.
     pub aoa: f32,
-    /// Bank in radians, positive with the right wing down.
+    /// Bank in radians, positive with the right wing down, within a half turn of zero. Past a
+    /// quarter turn the body flies on its back.
     pub bank: f32,
-    /// Angle of the flight frame above the horizon in radians, before the pull. With the wings
-    /// folded it follows the fall, so that spreading them never meets the air flat on.
+    /// Angle of the flight frame above the horizon in radians, before the pull, within a half
+    /// turn of zero. A loop takes it past the vertical, where the body flies on its back against
+    /// its heading. With the wings folded it follows the fall, so that spreading them never
+    /// meets the air flat on.
     pub pitch: f32,
     /// How prone the body lies, from 0 (upright) to 1 (flat along the nose).
     pub prone: f32,

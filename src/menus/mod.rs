@@ -19,7 +19,7 @@ mod tests;
 mod update;
 mod worlds;
 
-pub use hud::HudWeather;
+pub use hud::{HudWeather, Marker, MarkerKind, MarkerPlace, MarkerSet, Markers};
 pub use nav::{Nav, Trail};
 pub use options::key_name;
 

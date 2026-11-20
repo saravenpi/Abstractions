@@ -17,6 +17,7 @@ pub use ship::ships;
 use abstractions_net::jitter::View;
 use abstractions_net::wire;
 use bevy::ecs::system::SystemParam;
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::bodies::Bodies;
@@ -78,6 +79,7 @@ impl Sight<'_, '_> {
 
     /// Returns the state of `track` now and its pose in the anchor frame, or nothing while it
     /// is empty, is not drawn from here or cannot be placed.
+    /// The sample is a little in the past; see [`moment`] for the time it is converted at.
     pub fn locate<E: Copy + Default>(
         &mut self,
         track: &mut Track<E>,
@@ -89,13 +91,12 @@ impl Sight<'_, '_> {
         let view = track.buffer.sample(eye.time)?;
         let pose = Pose {
             pos: view.position,
-            vel: bevy::math::DVec3::ZERO,
+            vel: DVec3::ZERO,
             rot: view.rotation.as_dquat(),
         };
-        let to = Place::from(eye.anchor.frame);
-        let pose = self
-            .bodies
-            .convert(pose, track.frame.into(), to, eye.time)?;
+        let (from, to) = (Place::from(track.frame), Place::from(eye.anchor.frame));
+        let time = moment((from, to), view.time, eye.time);
+        let pose = self.bodies.convert(pose, from, to, time)?;
         Some((
             view,
             Placed {
@@ -103,6 +104,29 @@ impl Sight<'_, '_> {
                 rot: pose.rot,
             },
         ))
+    }
+
+    /// Returns how high a thing at `pos` in the wire `frame` is above the sea of the body the
+    /// frame is centred on, or infinitely high in the frame of a star.
+    pub fn clearance(&mut self, frame: wire::Frame, pos: DVec3) -> f64 {
+        let (wire::Frame::Surface(body) | wire::Frame::Around(body)) = frame else {
+            return f64::INFINITY;
+        };
+        let specs = self.bodies.system(body.star);
+        let spec = specs.iter().find(|spec| spec.id == body);
+        spec.map_or(f64::INFINITY, |spec| (pos.length() - spec.radius).max(0.0))
+    }
+}
+
+/// Returns the universe time a pose sampled at `sampled` is moved from the frame `from` into
+/// the frame `to` at, `now` being the time of the frame drawn. Into a frame nearer the ground
+/// than its own, at its own time, so a ship hovering over a turning planet stays over the same
+/// ground. Into a frame farther out, now, so a thing on a planet or around it stays with the
+/// planet, which is drawn where it is now.
+pub fn moment((from, to): (Place, Place), sampled: f64, now: f64) -> f64 {
+    match to.depth() < from.depth() {
+        true => sampled,
+        false => now,
     }
 }
 

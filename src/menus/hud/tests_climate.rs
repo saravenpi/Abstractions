@@ -8,6 +8,7 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::climate::{CLEAR, ClimateGauge, HudWeather, reading, update};
+use super::eye::{HudPose, capture};
 use crate::render::GameCamera;
 use crate::space::{Anchor, Clock, Frame};
 use crate::universe::Universe;
@@ -33,8 +34,8 @@ fn standing(height: f64) -> App {
     });
     app.insert_resource(universe)
         .insert_resource(Clock::default());
-    app.world_mut()
-        .spawn((GameCamera, GlobalTransform::IDENTITY));
+    app.world_mut().spawn((GameCamera, Transform::IDENTITY));
+    app.init_resource::<HudPose>();
     let hidden = Node {
         display: Display::None,
         ..default()
@@ -46,6 +47,7 @@ fn standing(height: f64) -> App {
 
 /// Runs the line once and returns what it shows, or nothing while it is hidden.
 fn read(app: &mut App) -> Option<String> {
+    app.world_mut().run_system_once(capture).unwrap();
     app.world_mut().run_system_once(update).unwrap();
     let world = app.world_mut();
     let mut gauges = world.query_filtered::<(&Node, &Text), With<ClimateGauge>>();

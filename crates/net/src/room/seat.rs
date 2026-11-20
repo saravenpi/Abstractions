@@ -1,14 +1,17 @@
-//! A seat: one player in the room and the latest state they sent of each kind.
+//! A seat: one player in the room and the latest states they sent of each kind.
 
 use crate::host::ConnId;
 use crate::ids::StarId;
-use crate::wire::{Head, Kind, PlayerInfo, Record};
+use crate::wire::{Head, Kind, PlayerInfo, Record, Waypoint};
 
 /// Kinds of state record: robot, ship and companion.
 pub(super) const KINDS: usize = 3;
 
 /// Most bytes of a state body the room keeps. A longer body is dropped.
 pub(super) const BODY_MAX: usize = 128;
+
+/// Most records of one player and kind the room keeps between two ticks.
+pub(super) const DEPTH: usize = 4;
 
 /// The latest state record of one player and kind, kept as bytes the room never decodes.
 #[derive(Debug)]
@@ -21,6 +24,51 @@ pub(super) struct Latest {
     pub(super) star: StarId,
     /// Number of the record in the room: higher is newer.
     pub(super) seq: u64,
+}
+
+/// The last [`DEPTH`] records of one player and kind, oldest first, in slots whose memory is
+/// reused once all are taken.
+#[derive(Debug, Default)]
+pub(super) struct Recent {
+    /// The records, at most [`DEPTH`].
+    slots: Vec<Latest>,
+    /// The slot of the oldest record once every slot is taken.
+    start: usize,
+}
+
+impl Recent {
+    /// Returns the records oldest first.
+    pub(super) fn iter(&self) -> impl Iterator<Item = &Latest> {
+        let (newer, older) = self.slots.split_at(self.start);
+        older.iter().chain(newer)
+    }
+
+    /// Returns the newest record, if any.
+    pub(super) fn newest(&self) -> Option<&Latest> {
+        let last = match self.start {
+            0 => self.slots.len().checked_sub(1)?,
+            start => start - 1,
+        };
+        self.slots.get(last)
+    }
+
+    /// Returns the slot for a new record: a new one while fewer than [`DEPTH`] are taken, else
+    /// the oldest, which becomes the newest.
+    fn next_slot(&mut self, head: Head) -> &mut Latest {
+        if self.slots.len() < DEPTH {
+            self.slots.push(Latest {
+                head,
+                body: Vec::with_capacity(BODY_MAX),
+                star: head.frame.star(),
+                seq: 0,
+            });
+            let last = self.slots.len() - 1;
+            return &mut self.slots[last];
+        }
+        let slot = self.start;
+        self.start = (self.start + 1) % DEPTH;
+        &mut self.slots[slot]
+    }
 }
 
 /// What a recipient last got of one player and kind.
@@ -51,8 +99,10 @@ pub(super) struct Seat {
     pub(super) info: PlayerInfo,
     /// The star of the player's latest record, or nothing before the first one.
     pub(super) star: Option<StarId>,
-    /// The latest record of each kind, in the order of [`kind_index`].
-    pub(super) latest: [Option<Latest>; KINDS],
+    /// The recent records of each kind, in the order of [`kind_index`].
+    pub(super) recent: [Recent; KINDS],
+    /// The player's live waypoint, if any.
+    pub(super) waypoint: Option<Waypoint>,
 }
 
 /// Returns the place of `kind` in [`Seat::latest`].
@@ -72,28 +122,24 @@ impl Seat {
             key,
             info,
             star: None,
-            latest: [None, None, None],
+            recent: Default::default(),
+            waypoint: None,
         }
     }
 
-    /// Keeps `record` as the latest of its kind under number `seq` and returns true. A body
-    /// over [`BODY_MAX`] bytes, a time that is not a number, or a sample older than the one
+    /// Keeps `record` as the newest of its kind under number `seq` and returns true. A body
+    /// over [`BODY_MAX`] bytes, a time that is not a number, or a sample older than the newest
     /// kept is dropped and false is returned.
     pub(super) fn keep(&mut self, record: &Record<'_>, seq: u64) -> bool {
-        let slot = &mut self.latest[kind_index(record.head.kind)];
-        let older = slot
-            .as_ref()
-            .is_some_and(|latest| record.head.time < latest.head.time);
+        let recent = &mut self.recent[kind_index(record.head.kind)];
+        let older = recent
+            .newest()
+            .is_some_and(|newest| record.head.time < newest.head.time);
         if record.body.len() > BODY_MAX || !record.head.time.is_finite() || older {
             return false;
         }
         let star = record.head.frame.star();
-        let latest = slot.get_or_insert_with(|| Latest {
-            head: record.head,
-            body: Vec::with_capacity(BODY_MAX),
-            star,
-            seq,
-        });
+        let latest = recent.next_slot(record.head);
         latest.head = record.head;
         latest.body.clear();
         latest.body.extend_from_slice(record.body);

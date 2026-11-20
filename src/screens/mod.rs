@@ -6,6 +6,8 @@ mod loading;
 #[cfg(test)]
 mod tests;
 mod title;
+#[cfg(test)]
+mod title_tests;
 mod wake;
 
 use bevy::prelude::*;
@@ -39,6 +41,14 @@ pub enum WarmUp {
     Idle,
     /// The boot screen covers the loaded world.
     Hidden,
+}
+
+/// Run condition: true while the world is drawn: in the world with no menu open, the boot
+/// screen included. What only shows the world uses it, the camera and the pose of the body, so
+/// the world the boot screen fades away from is already seen from the player, never from where
+/// the camera stood before. What the player's hands or the physics drive waits for [`playing`].
+pub fn shown(screen: Res<State<Screen>>, menu: Res<State<Menu>>) -> bool {
+    *screen.get() == Screen::Gameplay && *menu.get() == Menu::None
 }
 
 /// Run condition: true while the player is in the world, past the boot screen, with no menu open.

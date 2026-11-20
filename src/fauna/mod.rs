@@ -1,6 +1,7 @@
 //! Fauna: the creatures of the planet underfoot, spawned from its life, moved by their needs and
 //! animated by procedural gaits on rigid parts.
 
+pub mod mesh;
 pub mod motion;
 
 use bevy::prelude::*;

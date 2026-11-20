@@ -11,9 +11,12 @@
 //! - The wingsuit alone glides and always loses energy.
 //! - Both together fly.
 //!
-//! The body flies toward its aim as fast as the wings turn the flight path. On foot and in a
-//! fall the aim is the view. On the wings the keys move it like a stick and the view takes it
-//! over while the steer button is held: see `stick`.
+//! On the wings the keys ask for rates in the frame of the body, not an attitude (see
+//! `command`): the roll keys roll it on round its nose, the pitch keys pull toward its back or
+//! push toward its belly as hard as the wing may, and the yaw keys turn the path flat. Held,
+//! they roll the body over and loop it when it has the speed for it. Let go, the wings come
+//! level on the best glide. The view steers inside fixed attitude limits while the steer
+//! button is held. Folded, the body faces the view on foot and its flight path in a fall.
 //!
 //! The effects in `fx` read the [`Gear`] component and publish [`FlightFx`] for the camera,
 //! the audio and the companion.
@@ -22,16 +25,17 @@ mod aero;
 mod aim;
 mod assist;
 mod boots;
+mod command;
 mod contact;
 mod fx;
 mod input;
 mod mode;
 mod modes;
 mod path;
+mod roll;
 mod servo;
 mod state;
 mod step;
-pub mod stick;
 pub mod tune;
 
 #[cfg(test)]
@@ -39,10 +43,9 @@ mod tests;
 
 pub use boots::descent_target;
 pub use contact::{deflect, slid};
-pub use fx::{FlightFx, GearSet};
+pub use fx::{FlightFx, GearSet, Wake};
 pub use input::{GearInput, air_density};
 pub use mode::Mode;
-pub use path::path_offset;
 pub use state::{FlightState, Servo};
 pub use step::step;
 

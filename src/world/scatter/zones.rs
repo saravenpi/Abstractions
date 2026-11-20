@@ -1,11 +1,24 @@
 //! Test fixtures: the chunks at chosen places of the cube faces of a globe.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use bevy::prelude::*;
 
 pub use super::tile::Tile;
 use crate::world::globe::{Face, Globe};
+
+/// Seed of a test globe whose living planet is nearly all covered, so that tests of its producers count
+/// plants rather than barren ground.
+pub const LUSH: u64 = 1;
+
+/// Held by the tests that write many looks into the book and by those that time scatter, so that the first
+/// do not write over the pages the second are timing.
+static BOOK: Mutex<()> = Mutex::new(());
+
+/// Returns the hold on the book of grown looks for the length of a test.
+pub fn hold() -> MutexGuard<'static, ()> {
+    BOOK.lock().unwrap_or_else(PoisonError::into_inner)
+}
 
 /// A part of a cube face, by how much the chart is squeezed there.
 #[derive(Debug, Clone, Copy, PartialEq)]

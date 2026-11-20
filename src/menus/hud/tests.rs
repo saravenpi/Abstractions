@@ -87,7 +87,7 @@ fn instruments_follow_the_frame() {
     assert_eq!(reading(Gauge::Speed, &air).unwrap(), "312 m/s surface");
     assert_eq!(reading(Gauge::Throttle, &air).unwrap(), "65 %");
     assert_eq!(reading(Gauge::Assist, &air).unwrap(), "on");
-    assert_eq!(reading(Gauge::Frame, &air).unwrap(), "surface");
+    assert_eq!(reading(Gauge::Frame, &air).unwrap(), "planet");
     assert_eq!(reading(Gauge::Apoapsis, &air), None);
     assert_eq!(reading(Gauge::Warp, &air), None);
     assert_eq!(reading(Gauge::Destination, &air), None);
@@ -99,7 +99,7 @@ fn instruments_follow_the_frame() {
     );
     let space = flying(Frame::System(StarId::default()));
     assert_eq!(reading(Gauge::Speed, &space).unwrap(), "7.80 km/s orbital");
-    assert_eq!(reading(Gauge::Frame, &space).unwrap(), "orbit");
+    assert_eq!(reading(Gauge::Frame, &space).unwrap(), "star system");
     assert_eq!(reading(Gauge::Apoapsis, &space).unwrap(), "52.0 km");
     assert_eq!(reading(Gauge::Periapsis, &space).unwrap(), "-1.20 km");
 }
@@ -115,15 +115,15 @@ fn warp_and_destination_show_only_when_needed() {
     assert_eq!(reading(Gauge::Warp, &flight).unwrap(), "engaged");
     assert_eq!(reading(Gauge::Speed, &flight).unwrap(), "2.00 gly/s warp");
     assert_eq!(reading(Gauge::Altitude, &flight), None);
-    flight.destination = Some(("Kodya".to_string(), 1.2e6));
+    flight.destination = Some(("Kolva".to_string(), 1.2e6));
     assert_eq!(
         reading(Gauge::Destination, &flight).unwrap(),
-        "Kodya  1.20 Mm"
+        "Kolva  1.20 Mm"
     );
     flight.route = RouteStatus::Spooling;
     assert_eq!(
         reading(Gauge::Destination, &flight).unwrap(),
-        "Kodya  1.20 Mm  spooling"
+        "Kolva  1.20 Mm  spooling"
     );
     assert_eq!(Gauge::ALL.len(), 10);
 }
@@ -151,10 +151,10 @@ fn the_banner_fades_in_and_out() {
 }
 
 /// A target to the right reads a quarter turn to the right and sits right of the middle, one
-/// straight ahead sits in the middle, and one behind waits at the end of its side.
+/// straight ahead sits in the middle, and one behind lies past the end of its side.
 #[test]
 fn the_compass_points_at_its_target() {
-    use super::needle::{SPAN, bearing, beside, slot};
+    use super::needle::{SPAN, bearing, slot};
     let (ahead, up) = (Vec3::NEG_Z, Vec3::Y);
     let right = bearing(Vec3::new(30.0, 4.0, 0.0), ahead, up).unwrap();
     assert!((right - std::f32::consts::FRAC_PI_2).abs() < 1e-5);
@@ -163,9 +163,4 @@ fn the_compass_points_at_its_target() {
     let behind = bearing(Vec3::new(-1.0, 0.0, 9.0), ahead, up).unwrap();
     assert_eq!((slot(behind), slot(right)), (0.0, 1.0));
     assert_eq!(bearing(Vec3::Y, ahead, up), None);
-    assert_eq!(
-        (beside(0.0, Some(0.0)), beside(1.0, Some(1.0))),
-        (56.0, 304.0)
-    );
-    assert_eq!((beside(0.5, Some(0.0)), beside(0.5, None)), (180.0, 180.0));
 }

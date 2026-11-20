@@ -2,14 +2,20 @@
 //! density and climate.
 
 mod air;
+mod cover;
+mod ctx;
 mod density;
+mod grow;
 mod metric;
 mod pass;
 mod relief;
 mod rig;
 #[cfg(test)]
 mod rules;
+mod shelf;
+mod sow;
 mod spacing;
+mod stand;
 mod table;
 #[cfg(test)]
 mod tests;
@@ -20,9 +26,13 @@ mod tests_climate;
 #[cfg(test)]
 mod tests_cost;
 #[cfg(test)]
+mod tests_cover;
+#[cfg(test)]
 mod tests_edge;
 #[cfg(test)]
 mod tests_frozen;
+#[cfg(test)]
+mod tests_life;
 #[cfg(test)]
 mod tests_metric;
 #[cfg(test)]
@@ -38,14 +48,16 @@ use bevy::prelude::*;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
-use self::air::{Air, still};
-use self::density::Fields;
+use self::grow::growth;
+#[cfg(test)]
 use self::metric::Metric;
 use self::pass::{Ctx, pass};
 use self::relief::Relief;
+use self::spacing::room;
 use super::globe::Chart;
 use super::mesh::chunk_heights;
 use super::propmesh::Plant;
+use super::propmesh::grown::grown;
 #[cfg(test)]
 use super::props::small_tris;
 use super::{CHUNK_SIZE, Terrain};
@@ -113,7 +125,7 @@ fn deep(terrain: &Terrain) -> f32 {
 
 /// Returns true when nothing is scattered on the planet at all.
 fn bare(terrain: &Terrain) -> bool {
-    terrain.globe().lands().growth() <= 0.0
+    growth(terrain) <= 0.0
 }
 
 /// Returns true when one of 25 points spread over chunk `coord` has a floor above the deep limit.
@@ -136,27 +148,21 @@ fn stream(terrain: &Terrain, coord: IVec2) -> ChaCha8Rng {
     ChaCha8Rng::seed_from_u64(seed ^ mix ^ face)
 }
 
-/// Runs the two passes of chunk `coord`: the big props, then the ground cover, each with the share of the
-/// tries of home that the class of the planet lets grow.
+/// Runs the two passes of chunk `coord`: the big props, then the ground cover in the shade they cast, each
+/// with the share of the tries of home that the class of the planet lets grow.
 fn run(terrain: &Terrain, coord: IVec2, relief: Option<Relief>) -> Scatter {
-    let center = chunk_center(coord);
     let mut rng = stream(terrain, coord);
-    let ctx = Ctx {
-        terrain,
-        center,
-        fields: Fields::new(terrain.seed()),
-        metric: Metric::of(terrain, center),
-        air: relief
-            .as_ref()
-            .filter(|_| !still())
-            .map(|_| Air::new(terrain, coord)),
-        relief,
-    };
-    let growth = terrain.globe().lands().growth();
-    let thin = |tries: usize| (tries as f32 * growth) as usize;
+    let mut ctx = Ctx::new(terrain, coord, relief);
+    let share = growth(terrain);
+    let thin = |tries: usize| (tries as f32 * share) as usize;
+    let props = pass(&ctx, &mut rng, thin(BIG_TRIES), true);
+    let grown_big = props.iter().filter(|p| grown(p.variant));
+    ctx.canopy = grown_big
+        .map(|p| (ctx.center + p.pos.xz(), room(p)))
+        .collect();
     Scatter {
-        props: pass(&ctx, &mut rng, thin(BIG_TRIES), true),
         grass: pass(&ctx, &mut rng, thin(SMALL_TRIES), false),
+        props,
     }
 }
 

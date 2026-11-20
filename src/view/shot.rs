@@ -111,12 +111,16 @@ fn foot(third: bool) -> Shot {
     }
 }
 
+/// Share of the bank of a flying body a third person camera leans with. The first person view
+/// rolls all the way.
+const THIRD_LEAN: f32 = 0.15;
+
 /// Returns the shot of a flying body: the horizon banks and the view widens, and in third
 /// person the camera sits farther back and higher, lags more and looks ahead.
 fn fly(third: bool) -> Shot {
     if !third {
         return Shot {
-            bank: 0.5,
+            bank: 1.0,
             widen: 0.21,
             ..eyes()
         };
@@ -126,7 +130,7 @@ fn fly(third: bool) -> Shot {
         boom: Vec3::new(0.3, 0.9, 6.0),
         lag: 1.2,
         stiff: 5.0,
-        bank: 0.35,
+        bank: THIRD_LEAN,
         lead: 0.3,
         widen: 0.25,
         pull: 0.15,

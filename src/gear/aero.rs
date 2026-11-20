@@ -6,7 +6,7 @@ use bevy::prelude::*;
 
 use super::input::GearInput;
 use super::state::FlightState;
-use super::tune::{AERO, BODY_DRAG, SEA_DENSITY, THIN_AIR, WING_DRAG};
+use super::tune::{AERO, BELLY_DRAG, BODY_DRAG, SEA_DENSITY, THIN_AIR, WING_DRAG};
 
 /// Returns how well the gear bites air of `density` kilograms per cubic metre: 0 in vacuum,
 /// 1 at sea level.
@@ -29,16 +29,19 @@ pub(super) fn bite(input: &GearInput) -> f32 {
     grip(input.density) * input.air.max(0.0)
 }
 
-/// Returns the drag coefficients along the right, dorsal and nose axes for a wing `spread`.
-fn coefficients(spread: f32) -> Vec3 {
-    Vec3::splat(BODY_DRAG).lerp(WING_DRAG, spread)
+/// Returns the drag coefficients along the right, dorsal and nose axes of `state`: the folded
+/// body, streamlined upright and spread flat across the air as far as it lies prone, opening
+/// into the wing as far as it is spread.
+fn coefficients(state: &FlightState) -> Vec3 {
+    let body = BODY_DRAG.lerp(BELLY_DRAG, state.prone.clamp(0.0, 1.0));
+    Vec3::splat(body).lerp(WING_DRAG, state.spread())
 }
 
 /// Returns the acceleration air of grip `sigma` gives a body flying at `velocity`.
 pub(super) fn drag(state: &FlightState, velocity: Vec3, sigma: f32) -> Vec3 {
     let frame = state.frame();
     let local = frame.inverse() * velocity;
-    frame * (-(coefficients(state.spread()) * local) * (AERO * sigma * velocity.length()))
+    frame * (-(coefficients(state) * local) * (AERO * sigma * velocity.length()))
 }
 
 /// Returns `velocity` after `h` seconds of drag in air of grip `sigma`.
@@ -47,7 +50,7 @@ pub(super) fn drag(state: &FlightState, velocity: Vec3, sigma: f32) -> Vec3 {
 pub(super) fn slow(state: &FlightState, velocity: Vec3, sigma: f32, h: f32) -> Vec3 {
     let frame = state.frame();
     let rate = AERO * sigma * velocity.length() * h;
-    frame * ((frame.inverse() * velocity) / (Vec3::ONE + coefficients(state.spread()) * rate))
+    frame * ((frame.inverse() * velocity) / (Vec3::ONE + coefficients(state) * rate))
 }
 
 /// Returns the lift acceleration per radian of angle of attack the spread wing gives at `speed`.

@@ -1,51 +1,59 @@
-//! Home tests: Kodya and Vereya keep their names, their star temperature and their record for every seed,
-//! and the home system is laid out around the orbit that earns that record.
+//! Home tests: the home planet and its star carry generated names, and keep their star
+//! temperature and their record for every seed; the home system is laid out around the orbit
+//! that earns that record.
+
+use std::collections::HashSet;
 
 use super::*;
 
-/// Returns true when a name holds one of the two home names as a word.
-fn reserved(name: &str) -> bool {
-    name.split(' ')
-        .any(|word| word == HOME_PLANET_NAME || word == HOME_STAR_NAME)
-}
-
-/// The home planet is Kodya, the third planet of the yellow star Vereya, for every seed.
+/// The home planet is the third planet of a yellow star, named from its star like every other
+/// planet, and the only planet of its system with that name, for every seed.
 #[test]
-fn home_names_are_fixed() {
+fn home_is_named_like_every_planet() {
     for seed in 0..200 {
         let u = Universe::new(seed);
         let home = u.home();
         let system = u.system(home.star);
-        assert_eq!(system.star.name, "Vereya");
         assert_eq!(system.star.class, StarClass::G);
         assert_eq!(home.index, 2);
-        assert_eq!(u.planet(home).name, "Kodya");
-        let named = |name: &str| system.planets.iter().filter(|p| p.name == name).count();
-        assert_eq!((named("Kodya"), named("Vereya")), (1, 0));
+        let name = u.planet(home).name;
+        assert_eq!(name, names::planet(&system.star.name, home.index));
+        assert_eq!(system.planets.iter().filter(|p| p.name == name).count(), 1);
     }
 }
 
-/// No generator emits a home name: not for a star, a galaxy or a planet of another star.
+/// The home star and the home galaxy get a new name for each seed and the same name for the
+/// same seed, so every player of one world reads the same names. The names of seeds 0 to 5
+/// are printed.
 #[test]
-fn home_names_are_unique() {
-    for seed in 0..200_000 {
-        let seed = hash::mix(seed);
-        assert!(!reserved(&names::star(seed)));
-        assert!(!reserved(&names::galaxy(seed, seed.is_multiple_of(2))));
-    }
-    for seed in 0..8 {
+fn home_names_follow_the_seed() {
+    let named = |seed| {
         let u = Universe::new(seed);
-        let home = u.home();
-        let at = u.star(home.star).expect("the home star exists").pos;
-        for star in u.stars_near(home.star.galaxy, at, 60.0) {
-            assert_eq!(star.name == "Vereya", star.id == home.star);
-            for planet in u.system(star.id).planets {
-                assert_eq!(planet.name == "Kodya", planet.id == home);
-                assert!(planet.id.star == home.star || !reserved(&planet.name));
-            }
-        }
-        let galaxies = u.galaxies_near(home.star.galaxy, 2);
-        assert!(galaxies.iter().all(|g| !reserved(&g.name)));
+        let galaxy = u
+            .galaxy(u.home().star.galaxy)
+            .expect("the home cell holds a galaxy");
+        (
+            u.planet(u.home()).name,
+            u.system(u.home().star).star.name,
+            galaxy.name,
+        )
+    };
+    let all: Vec<_> = (0..200).map(named).collect();
+    assert!(
+        all.iter()
+            .zip(0..)
+            .all(|(names, seed)| *names == named(seed))
+    );
+    let stars: HashSet<&String> = all.iter().map(|(_, star, _)| star).collect();
+    let galaxies: HashSet<&String> = all.iter().map(|(_, _, galaxy)| galaxy).collect();
+    assert!(
+        stars.len() > 150 && galaxies.len() > 150,
+        "{} {}",
+        stars.len(),
+        galaxies.len()
+    );
+    for (seed, (planet, star, galaxy)) in all.iter().take(6).enumerate() {
+        println!("seed {seed}: {planet}, {star}, in {galaxy}");
     }
 }
 
@@ -106,7 +114,7 @@ fn home_orbit_earns_its_record() {
     }
 }
 
-/// Kodya has no moons and no rings, and the outermost planet of the home system is a gas giant
+/// The home planet has no moons and no rings, and the outermost planet of the home system is a gas giant
 /// with at least two moons, all of them solid ground to land on, for every seed. The home
 /// systems of seeds 0 to 20 are printed: class, moons and rings of each planet.
 #[test]
@@ -114,8 +122,8 @@ fn home_has_a_giant_with_moons() {
     for seed in 0..200 {
         let u = Universe::new(seed);
         let system = u.system(u.home().star);
-        let kodya = u.planet(u.home());
-        assert_eq!((kodya.moons, kodya.rings), (0, None), "seed {seed}");
+        let homeworld = u.planet(u.home());
+        assert_eq!((homeworld.moons, homeworld.rings), (0, None), "seed {seed}");
         assert!(u.moons(u.home()).is_empty());
         let outer = system.planets.last().expect("the home system has planets");
         assert_eq!(outer.record.class, PlanetClass::GasGiant, "seed {seed}");

@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use super::Base;
 use super::glow::Glow;
 use super::spawn::{Home, Lamp};
-use super::tests::{kodya, planet};
+use super::tests::{homeworld, planet};
 use crate::space::{Anchor, Frame};
 use crate::universe::{BodyId, Universe};
 use crate::world::SpawnPoint;
@@ -115,7 +115,7 @@ fn go_far_and_return(app: &mut App) {
     assert!(beacon.expect("a beacon").1.scale.x > 10.0);
 }
 
-/// The base is found in the background, spawned near the focus on Kodya, lit, despawned when
+/// The base is found in the background, spawned near the focus on the home planet, lit, despawned when
 /// another planet is streamed or the focus is far, and spawned again from its cached parts.
 #[test]
 fn base_follows_the_streamed_planet_and_the_focus() {
@@ -123,7 +123,7 @@ fn base_follows_the_streamed_planet_and_the_focus() {
     wait(&mut app, "the base to be found", |w| {
         w.contains_resource::<Base>()
     });
-    let (globe, home) = kodya(SEED);
+    let (globe, home) = homeworld(SEED);
     assert_eq!(*app.world().resource::<Base>(), Base::on(&globe, home));
     focus(&mut app, 3.0);
     wait(&mut app, "the base to spawn", |w| count::<Home>(w) == 1);

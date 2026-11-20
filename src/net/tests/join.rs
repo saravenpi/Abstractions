@@ -54,7 +54,7 @@ fn welcomed(tag: &str) -> App {
     let script = scripted(&mut app);
     let record = PlayerRecord {
         place: toml::to_string(&kept_place()).unwrap(),
-        ship: String::new(),
+        ..PlayerRecord::default()
     };
     let first = ClientEvent::Connected {
         fingerprint: [0x7f; 32],

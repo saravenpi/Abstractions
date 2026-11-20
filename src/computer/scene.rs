@@ -6,9 +6,8 @@ use bevy::prelude::*;
 
 use super::arrow::bearing;
 use super::atlas::Atlas;
-use super::course::{course, crumbs};
+use super::course::course;
 use super::detail::worlds;
-use super::home::away;
 use super::locate::{here, ship_position, target_position};
 use super::route::{RouteStatus, Target};
 use super::rows::{Line, View};
@@ -68,25 +67,34 @@ impl Scene<'_, '_> {
         self.known.is_changed() && self.known.complete(&self.atlas)
     }
 
-    /// Returns the heading and the rows of `tab`.
-    pub(super) fn table(&self, tab: Tab) -> (String, Vec<Line>) {
+    /// Returns the heading and the rows of `tab`, on the chart of the star or the galaxy
+    /// `inside`, or of the place of the ship.
+    pub(super) fn table(&self, tab: Tab, inside: Option<Target>) -> (String, Vec<Line>) {
         let view = View {
             universe: &self.universe,
             atlas: &self.atlas,
             ship: self.ship(),
             time: self.clock.seconds,
         };
-        let star = self.location.body.star;
+        let ship = self.location.body.star;
+        let star = match inside {
+            Some(Target::Star(star)) => star,
+            _ => ship,
+        };
+        let galaxy = match inside {
+            Some(Target::Galaxy(galaxy)) => galaxy,
+            _ => star.galaxy,
+        };
         match tab {
             Tab::System => (
                 format!("{} system", Target::Star(star).name(&self.universe)),
                 view.system(star),
             ),
             Tab::Galaxy => {
-                let name = Target::Galaxy(star.galaxy).name(&self.universe);
+                let name = Target::Galaxy(galaxy).name(&self.universe);
                 (
                     format!("{name} galaxy"),
-                    view.galaxy(star.galaxy, self.known.stars()),
+                    view.galaxy(galaxy, self.known.stars()),
                 )
             }
             Tab::Universe => ("Known universe".to_string(), view.universe()),
@@ -101,15 +109,6 @@ impl Scene<'_, '_> {
     /// Returns the planet, the system and the galaxy the ship is inside.
     pub(super) fn here(&self) -> [Option<Target>; 3] {
         here(&self.universe, self.anchor.frame, self.anchor.origin)
-    }
-
-    /// Returns the breadcrumb of where the ship is, from the galaxy down to the planet, then
-    /// how far from home that is when the ship is outside the home system.
-    pub(super) fn place(&self) -> String {
-        let inside = self.here().into_iter().rev().flatten();
-        let names: Vec<String> = inside.map(|at| at.name(&self.universe)).collect();
-        let far = away(&self.universe, self.here(), self.ship());
-        far.map_or(crumbs(&names), |far| format!("{} - {far}", crumbs(&names)))
     }
 
     /// Returns the course line: the destination, its distance, a rough time to get there at

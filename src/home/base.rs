@@ -1,4 +1,4 @@
-//! The home base as other modules see it: where it is on Kodya and its named points.
+//! The home base as other modules see it: where it is on the home planet and its named points.
 
 use bevy::math::{DMat3, DQuat, DVec3};
 use bevy::prelude::*;

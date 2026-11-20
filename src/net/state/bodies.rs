@@ -8,11 +8,16 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::frame::{Place, Pose, Rigid};
-use crate::universe::{PlanetSpec, StarId, Universe};
+use crate::universe::{BodyId, PlanetSpec, StarId, Universe};
 
-/// Radii from a body within which a flying ship is sent around it rather than in the frame of
-/// its star: the reach within which the flight carries a ship along with a planet.
+/// Radii from the centre of a body within which a flying ship sent around it stays around it
+/// rather than going in the frame of its star: the reach within which the flight carries a ship
+/// along with a planet.
 pub const REACH: f64 = 100.0;
+
+/// Radii from the centre of a body within which a flying ship not yet around it goes around
+/// it. Under [`REACH`], so a ship on the edge does not flip between two frames every record.
+pub const ENTER: f64 = 95.0;
 
 /// The planets and moons of the stars seen so far, and where those stars are in their galaxy.
 #[derive(Resource, Debug, Default)]
@@ -23,6 +28,8 @@ pub struct Bodies {
     systems: HashMap<StarId, Vec<PlanetSpec>>,
     /// Where each star is in its galaxy, when it exists.
     stars: HashMap<StarId, Option<DVec3>>,
+    /// The body the last flying thing was sent around, which it leaves only past [`REACH`].
+    held: Option<BodyId>,
 }
 
 impl Bodies {
@@ -108,16 +115,19 @@ impl Bodies {
         }
     }
 
-    /// Returns the frame around the body of `star` whose surface is nearest `pos` within
-    /// [`REACH`] radii, else the frame of the star.
+    /// Returns the frame around the body of `star` whose surface is nearest `pos`, among those
+    /// within [`ENTER`] radii and the one held within [`REACH`], else the frame of the star.
     fn near(&mut self, star: StarId, pos: DVec3, time: f64) -> wire::Frame {
+        let held = self.held.filter(|body| body.star == star);
         let gap = |spec: &PlanetSpec| spec.position(time).distance(pos) - spec.radius;
-        let close = |spec: &&PlanetSpec| gap(spec) < (REACH - 1.0) * spec.radius;
+        let reach = |spec: &PlanetSpec| if Some(spec.id) == held { REACH } else { ENTER };
+        let close = |spec: &&PlanetSpec| gap(spec) < (reach(spec) - 1.0) * spec.radius;
         let bodies = self.system(star).iter().filter(close);
-        let nearest = bodies.min_by(|a, b| gap(a).total_cmp(&gap(b)));
-        nearest.map_or(wire::Frame::System(star), |spec| {
-            wire::Frame::Around(spec.id)
-        })
+        let nearest = bodies
+            .min_by(|a, b| gap(a).total_cmp(&gap(b)))
+            .map(|spec| spec.id);
+        self.held = nearest;
+        nearest.map_or(wire::Frame::System(star), wire::Frame::Around)
     }
 }
 

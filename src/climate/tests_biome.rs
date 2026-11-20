@@ -1,9 +1,9 @@
 //! Biome rule tests: every branch, the jitter only blurring the inputs, the snow line and
-//! the places Kodya puts each biome.
+//! the places the home planet puts each biome.
 
 use bevy::math::Vec2;
 
-use super::tests::{kodya, spot};
+use super::tests::{homeworld, spot};
 use super::*;
 use crate::world::Biome;
 
@@ -57,11 +57,11 @@ fn snow_lies_under_the_snow_line() {
     assert_eq!(SNOW_LINE, 271.0);
 }
 
-/// On Kodya the poles and high ground are taiga, the wet equator tropical, the dry subtropics
+/// On the home planet the poles and high ground are taiga, the wet equator tropical, the dry subtropics
 /// inland desert, wet mid latitudes forest, and the rest meadow or cherry.
 #[test]
-fn kodya_puts_each_biome_in_its_place() {
-    let home = kodya();
+fn home_puts_each_biome_in_its_place() {
+    let home = homeworld();
     let at_spot = |lat: f64, inland: f32, altitude: f32| {
         let place = Spot {
             inland,

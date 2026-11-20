@@ -1,5 +1,6 @@
 //! Tests of the shelf of the near sea: over the flat sea of the coarse planet mesh it reads deep
-//! water at every distance, so the straight cells of the mesh draw no rings.
+//! water at every distance, so the straight cells of the mesh draw no rings, and the floor map
+//! near the camera obeys the same shelf, so no patch of the sea is clearer than the rest.
 
 use super::mesh::lines;
 
@@ -66,4 +67,31 @@ fn the_coarse_sea_reads_deep_under_every_cell() {
         assert!(SHADER.contains(line), "{line}");
     }
     assert!(COARSE.contains("const SEA_DROP: f32 = 1.5;"));
+}
+
+/// Mirrors `shelved` of the fragment shader: the depth a column of `depth` metres is shaded with.
+fn shelved(depth: f64) -> f64 {
+    depth + (DEEP - depth) * shelf(depth, 0.0)
+}
+
+/// A bed reads the same water from the floor map near a low camera as from the depth buffer
+/// everywhere else. Before, the map gave a bed 1.4 to 4.6 metres down its true depth, see-through,
+/// while the depth buffer gave it deep water, so a clear square of sea followed the camera.
+#[test]
+fn the_map_and_the_depth_buffer_read_the_same_water() {
+    for step in 0..=160 {
+        let bed = f64::from(step) * 0.1;
+        let buffer = shelved(bed.min(DEEP));
+        for mapped in [0.0, 0.3, 1.0] {
+            let depth = buffer + (shelved(bed) - buffer) * mapped;
+            assert!((depth - buffer).abs() < 1.0e-9, "{bed} {mapped}");
+        }
+    }
+    assert!(shelved(3.0) > 11.9 && shelved(0.5) == 0.5);
+    for line in [
+        "let depth = mix(shelved(column), shelved(max(bed.y, 0.0)), mapped);",
+        "return mix(depth, DEEP, smoothstep(SHELF_START, SHELF_END, depth));",
+    ] {
+        assert!(SHADER.contains(line), "{line}");
+    }
 }

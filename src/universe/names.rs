@@ -24,18 +24,12 @@ const GREEK: [&str; 10] = [
 /// Roman numerals of the moons of a planet, from the closest one out.
 const NUMERALS: [&str; 6] = ["I", "II", "III", "IV", "V", "VI"];
 
-/// Name of the home planet, the same for every seed.
-pub const HOME_PLANET_NAME: &str = "Kodya";
-
-/// Name of the home star, the same for every seed.
-pub const HOME_STAR_NAME: &str = "Vereya";
-
 /// Returns one entry of a list, every entry being as likely.
 fn pick<'a>(rng: &mut Rng, list: &[&'a str]) -> &'a str {
     list[rng.below(list.len() as u32) as usize]
 }
 
-/// Returns a made-up capitalised word of two or three syllables, never one of the two home names.
+/// Returns a made-up capitalised word of two or three syllables.
 fn word(rng: &mut Rng) -> String {
     let mut word = String::with_capacity(12);
     for _ in 0..2 + rng.below(2) {
@@ -44,9 +38,6 @@ fn word(rng: &mut Rng) -> String {
     }
     word.push_str(pick(rng, &CODAS));
     word[..1].make_ascii_uppercase();
-    if word == HOME_PLANET_NAME || word == HOME_STAR_NAME {
-        word.push('n');
-    }
     word
 }
 

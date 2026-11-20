@@ -22,7 +22,7 @@ pub struct Board {
     pub heading: String,
     /// Every row of the table. Only [`VISIBLE_ROWS`] of them are drawn.
     pub lines: Vec<Line>,
-    /// For each row, the planet whose record is known, for the readout and the map.
+    /// For each row, the planet whose record is known, for the card and the map.
     pub worlds: Vec<Option<PlanetSpec>>,
     /// Index of the selected row.
     pub cursor: usize,
@@ -34,6 +34,9 @@ pub struct Board {
     pub ship: UniPos,
     /// Rows the window has room for, or 0 before the panel was sized.
     pub fit: usize,
+    /// Rows of favourites and of players the window has room for, or nothing before the panel
+    /// was sized.
+    pub lists: Option<(usize, usize)>,
     /// The letters typed to narrow the list to the names that hold them.
     pub filter: String,
     /// How the rows are ordered.
@@ -46,6 +49,8 @@ pub struct Board {
     pub beacon: Option<(Target, UniPos)>,
     /// A row the cursor moves to the next time the rows are replaced, when the table has it.
     pub seek: Option<Target>,
+    /// The star or the galaxy whose chart the tab shows, or nothing for the one of the ship.
+    pub inside: Option<Target>,
 }
 
 impl Board {
@@ -64,9 +69,17 @@ impl Board {
             tab,
             stale: true,
             fit: self.fit,
+            lists: self.lists,
             sort: self.sort,
             ..default()
         };
+    }
+
+    /// Opens `tab` on the chart of `inside`, a star for the system tab or a galaxy for the
+    /// galaxy tab, or on the place of the ship for nothing.
+    pub fn open(&mut self, tab: Tab, inside: Option<Target>) {
+        self.show(tab);
+        self.inside = inside;
     }
 
     /// Replaces the rows, keeping the cursor and the scroll offset inside the new table, then

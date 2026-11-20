@@ -4,11 +4,13 @@
 //! moved afterwards. Free entities are `Rebased`, the rush ring is a child of the camera, and
 //! the trail ribbons keep their points in the planet frame, so an anchor rebase leaves nothing
 //! behind. The wingtip trails and the boot exhaust leave from the limbs of the drawn body
-//! ([`crate::avatar::Marks`]); the rest is placed from the gear's own attitude.
+//! ([`crate::avatar::Marks`]); the rest is placed from the gear's own attitude. Every other
+//! body marked with a [`Wake`] lays trails of its own the same way.
 
 mod flare;
 mod haze;
 mod kit;
+mod lay;
 mod motes;
 mod ribbon;
 mod scene;
@@ -16,6 +18,7 @@ mod streaks;
 mod trail;
 mod trails;
 mod under;
+mod wakes;
 mod warm;
 
 #[cfg(test)]
@@ -28,6 +31,8 @@ mod tests_fx;
 mod tests_trail;
 
 use bevy::prelude::*;
+
+pub use wakes::Wake;
 
 use super::mode::Mode;
 use crate::screens::{Screen, WarmUp, playing};
@@ -104,6 +109,7 @@ fn systems(app: &mut App) {
         Update,
         (
             trails::draw,
+            (wakes::spawn, wakes::draw).chain(),
             streaks::draw,
             haze::draw,
             flare::draw,

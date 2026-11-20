@@ -48,6 +48,12 @@ impl Rig {
     }
 
     /// Sets the look angles, as after a spawn or when the player leaves the ship.
+    /// Returns the roll of the camera around where it looks, as last shown, positive to the
+    /// right.
+    pub fn roll(&self) -> f32 {
+        self.sway.roll.angle
+    }
+
     pub fn face(&mut self, heading: Heading) {
         self.aim = Aim::settled(heading);
     }
@@ -160,7 +166,7 @@ impl Rig {
             Quat::from_rotation_y(self.sway.lead.x) * Quat::from_rotation_x(self.sway.lead.y);
         let pose = CameraPose {
             position: pivot + swing.normalize_or_zero() * gap,
-            rotation: stance.frame * look * lead * Quat::from_rotation_z(-self.sway.roll),
+            rotation: stance.frame * look * lead * Quat::from_rotation_z(-self.sway.roll.angle),
             fov: curve::fov(moment.fov, &shot, &bend),
         };
         Shown {

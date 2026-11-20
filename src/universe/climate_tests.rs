@@ -19,10 +19,14 @@ fn star_temperature_follows_the_class() {
         (StarClass::O, (30_000.0, 45_000.0)),
     ];
     assert!(classes.windows(2).all(|pair| pair[0].1.1 == pair[1].1.0));
-    let stars: Vec<StarSpec> = sample().into_iter().map(|(_, star)| star).collect();
+    let away = |(u, star): &(Universe, StarSpec)| star.id != u.home().star;
+    let stars: Vec<StarSpec> = sample()
+        .into_iter()
+        .filter(away)
+        .map(|(_, star)| star)
+        .collect();
     for (class, (low, high)) in classes {
         let mut of: Vec<&StarSpec> = stars.iter().filter(|s| s.class == class).collect();
-        of.retain(|star| star.name != HOME_STAR_NAME);
         of.sort_by(|a, b| a.mass.total_cmp(&b.mass));
         assert!(
             of.iter()

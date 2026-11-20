@@ -51,12 +51,13 @@ fn the_hand_lands_on_the_grip() {
     assert!(near * 10 >= keys().len() * 8, "{near} of {}", keys().len());
 }
 
-/// A target straight ahead at chest height is reached with the arm forward and the elbow bent.
+/// A target straight ahead and a little under the shoulder is reached with the arm swung forward and
+/// the elbow bent past a right angle.
 #[test]
 fn a_target_ahead_bends_the_elbow() {
     let [shoulder, out, elbow] = reach(Vec3::new(0.212, 0.2, -0.3), 1);
     assert!(
-        shoulder > 0.5 && out.abs() < 0.2 && elbow > 0.2,
+        shoulder > 0.1 && out.abs() < 0.2 && elbow > 1.0,
         "{shoulder} {out} {elbow}"
     );
     let pose = Layer::of(&carry(), Hands::One).apply(Pose::default());

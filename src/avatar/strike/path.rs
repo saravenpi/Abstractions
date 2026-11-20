@@ -40,22 +40,22 @@ pub enum Path {
 /// Centre of the grip circle, radius at angle 0 and trunk at the end of a swing, per [`Dir`].
 const SWEEPS: [(Vec3, Vec3, [f32; 2]); 4] = [
     (
-        Vec3::new(0.06, 0.3, -0.05),
+        Vec3::new(0.18, 0.3, -0.1),
         Vec3::new(1.0, 0.25, 0.0),
         [TWIST, 0.1],
     ),
     (
-        Vec3::new(0.0, 0.3, -0.05),
+        Vec3::new(0.12, 0.3, -0.1),
         Vec3::new(-1.0, 0.25, 0.0),
         [-TWIST, 0.1],
     ),
     (
-        Vec3::new(0.15, 0.35, -0.05),
+        Vec3::new(0.15, 0.35, -0.1),
         Vec3::new(0.15, 1.0, 0.0),
         [0.15, SPINE],
     ),
     (
-        Vec3::new(0.15, 0.25, -0.05),
+        Vec3::new(0.15, 0.25, -0.1),
         Vec3::new(0.3, -1.0, 0.0),
         [0.15, -0.15],
     ),
@@ -79,7 +79,7 @@ fn sweep(dir: Dir) -> Path {
 fn line(dir: Dir) -> Path {
     let rise = if dir == Dir::Up { 0.3 } else { 0.05 };
     Path::Line {
-        grip: [Vec3::new(0.2, 0.18, 0.06), Vec3::new(0.12, 0.24, -0.4)],
+        grip: [Vec3::new(0.2, 0.2, -0.02), Vec3::new(0.2, 0.28, -0.4)],
         axis: Vec3::new(0.0, rise, -1.0).normalize(),
         trunk: [0.3, 0.15],
     }

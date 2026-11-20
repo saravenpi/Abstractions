@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use super::dir::Dir;
 use super::held::Held;
+use super::hurt::Hurt;
 use super::key::{Key, carry, drawn, guard};
 use super::path::Path;
 use super::tune::{DRAW, GUARD_IN, LEAST_DRAW, RECOVER};
@@ -39,6 +40,8 @@ pub struct Strike {
     pub landed: bool,
     /// The grip and the tip of the tool this frame and the one before, in the frame of the body.
     pub blade: [[Vec3; 2]; 2],
+    /// What the body leaves of the strike: the arms and the torso, hurt or whole.
+    pub hurt: Hurt,
 }
 
 impl Strike {

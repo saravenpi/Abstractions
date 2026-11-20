@@ -9,6 +9,7 @@ use super::act::Strike;
 use super::flight::{Rest, Spear, bounce, depth, fly, pierces, stands};
 use super::held::Held;
 use super::hit::Hit;
+use super::hurt::steadied;
 use super::input::{Loose, Robot};
 use super::sense::{Parts, first};
 use super::show::{Kit, tool};
@@ -66,6 +67,7 @@ type Aim<'w, 's> = (
     Query<'w, 's, &'static Transform, With<Player>>,
     Res<'w, Heading>,
     Option<Res<'w, Kit>>,
+    Res<'w, Time>,
 );
 
 /// Throws the spear of every body that let one go: from the grip, along the view tilted up a
@@ -74,7 +76,7 @@ pub fn loose(
     mut commands: Commands,
     mut loosed: MessageReader<Loose>,
     bodies: Query<(&Held, &Strike, &ChildOf), With<Avatar>>,
-    (players, heading, kit): Aim,
+    (players, heading, kit, time): Aim,
 ) {
     let Some(kit) = kit else { return };
     for loose in loosed.read() {
@@ -86,10 +88,12 @@ pub fn loose(
         };
         let look = Quat::from_rotation_y(heading.yaw) * Quat::from_rotation_x(heading.pitch + LOFT);
         let aim = player.rotation * look * Vec3::NEG_Z;
+        let key = (time.elapsed_secs() * 1000.0) as u32;
+        let aim = steadied(aim, strike.hurt.steady, key);
         let point = player.transform_point(strike.blade[0][1]);
         let spear = launched(
             held,
-            aim * loose.share.sqrt(),
+            aim * loose.share.sqrt() * strike.hurt.swing,
             (of.parent(), loose.body),
             point,
         );

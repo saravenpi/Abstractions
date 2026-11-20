@@ -86,3 +86,7 @@ pub const PICK: f32 = 1.5;
 
 /// Upward tilt of a throw over the view, in radians.
 pub const LOFT: f32 = 0.08;
+
+/// How much longer a tool made for two hands takes to wind up in one hand, unitless: the grip
+/// budget falls from 30 to 15 newton metres.
+pub const ONE_HAND: f32 = 2.0;

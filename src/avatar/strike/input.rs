@@ -81,7 +81,7 @@ fn step(strike: &mut Strike, held: &Held, ask: &Ask, dt: f32) -> Option<f32> {
     if strike.act == Act::Ready {
         strike.dir = ask.dir;
     }
-    let timing = Timing::of(held, &Path::of(held.style, strike.dir));
+    let timing = Timing::of(held, &Path::of(held.style, strike.dir)).felt(&strike.hurt);
     let (act, loosed) = next(strike.act, ask, &timing, held.thrown(), dt);
     if matches!(act, Act::Windup(_)) && !matches!(strike.act, Act::Windup(_)) {
         strike.landed = false;

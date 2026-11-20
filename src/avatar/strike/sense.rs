@@ -79,7 +79,7 @@ pub fn sense(
             continue;
         };
         let (blow, stun) = landed(held, now, at);
-        let timing = Timing::of(held, &Path::of(held.style, strike.dir));
+        let timing = Timing::of(held, &Path::of(held.style, strike.dir)).felt(&strike.hurt);
         strike.landed = true;
         if stun > 0.0 {
             strike.act = Act::Stun(stun, t / timing.swing.max(f32::EPSILON));

@@ -7,6 +7,7 @@ use bevy::prelude::*;
 
 use super::failure::Failure;
 use super::host::{Host, Offline};
+use super::older::Older;
 use super::place::Place;
 use super::platform::pick;
 use super::release::Release;
@@ -19,6 +20,8 @@ pub(super) enum Event {
     Checked(Status),
     /// The install with this number ended.
     Installed(u64, Result<Outcome, Failure>),
+    /// Opening a world with an older release ended.
+    Opened(Result<(), Failure>),
 }
 
 /// The updater. Menus read it and ask it to check, install, cancel and restart; the network
@@ -49,6 +52,8 @@ pub struct Updates {
     pub(super) signals: Arc<Signals>,
     /// Number of the install that runs, or ran last. A report with another number is stale.
     pub(super) job: u64,
+    /// How far opening a world with an older release has gone.
+    pub(super) older: Older,
 }
 
 impl Default for Updates {
@@ -76,6 +81,7 @@ impl Updates {
             inbox: Mutex::new(inbox),
             signals: Arc::default(),
             job: 0,
+            older: Older::Idle,
         }
     }
 
@@ -92,6 +98,11 @@ impl Updates {
     /// Returns how the newer release can be installed on this computer.
     pub fn plan(&self) -> Plan {
         self.plan
+    }
+
+    /// Returns how far opening a world with an older release has gone.
+    pub fn older(&self) -> &Older {
+        &self.older
     }
 
     /// Returns the version of the running game.

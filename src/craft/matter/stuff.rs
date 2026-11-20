@@ -6,6 +6,21 @@ use super::tune::GRADE;
 use super::{Class, Material, Mineral, Treatments, material};
 use crate::life::Tissue;
 
+/// Writes a 64-bit seed as decimal text and reads it back.
+mod seed {
+    use serde::{Deserialize, Deserializer, Serializer, de::Error};
+
+    /// Writes `seed` as decimal text.
+    pub fn serialize<S: Serializer>(seed: &u64, to: S) -> Result<S::Ok, S::Error> {
+        to.collect_str(seed)
+    }
+
+    /// Reads a seed written by [`serialize`].
+    pub fn deserialize<'de, D: Deserializer<'de>>(from: D) -> Result<u64, D::Error> {
+        String::deserialize(from)?.parse().map_err(D::Error::custom)
+    }
+}
+
 /// How cleanly the animal a tissue came from was killed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Grade {
@@ -39,7 +54,9 @@ impl Grade {
 pub enum Stuff {
     /// A tissue harvested from an animal.
     Tissue {
-        /// Terrain seed of the planet the species lives on.
+        /// Terrain seed of the planet the species lives on, written as text: a TOML integer stops at
+        /// i64::MAX.
+        #[serde(with = "seed")]
         planet: u64,
         /// Index of the species in that planet's life.
         species: u16,

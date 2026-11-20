@@ -73,7 +73,8 @@ pub(super) fn plugin(app: &mut App) {
                 open_pause
                     .run_if(playing)
                     .run_if(in_state(Computer::Closed))
-                    .run_if(not(crate::fauna::guide::shown)),
+                    .run_if(not(crate::fauna::guide::shown))
+                    .run_if(not(crate::craft::ui::shown)),
                 in_control
                     .pipe(crosshair_visibility)
                     .run_if(in_state(Screen::Gameplay)),

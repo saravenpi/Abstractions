@@ -42,6 +42,8 @@ pub(super) struct Step {
     pub(super) gravity: f32,
     /// How thick the air of the planet is against the home planet, 0 without air.
     pub(super) air: f32,
+    /// Share of the walking speed the load of the pack leaves, 0 to 1.
+    pub(super) pace: f32,
 }
 
 /// Returns the horizontal velocity for this step.
@@ -59,7 +61,7 @@ fn horizontal(motion: &Motion, intent: &Intent, step: &Step) -> Vec3 {
     let current = Vec3::new(motion.velocity.x, 0.0, motion.velocity.z);
     let next = approach(
         current,
-        intent.wish * base * swim::wade_factor(step.afloat),
+        intent.wish * base * step.pace * swim::wade_factor(step.afloat),
         rate,
         step.dt,
     );

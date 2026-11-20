@@ -11,7 +11,7 @@ use crate::ui::{Selected, Tone, caps, text, theme};
 use crate::world::Terrain;
 
 /// Returns `words` cut to `most` characters, ending in two dots when cut.
-fn clip(words: &str, most: usize) -> String {
+pub(crate) fn clip(words: &str, most: usize) -> String {
     if words.chars().count() <= most {
         return words.to_string();
     }
@@ -82,7 +82,7 @@ fn fact(parent: &mut ChildSpawnerCommands, (name, value): (&str, &str), most: us
 }
 
 /// Spawns the rows of `card` under `parent`, a heading after the first keeping room over it.
-fn rows(parent: &mut ChildSpawnerCommands, card: &Card, most: usize) {
+pub(crate) fn rows(parent: &mut ChildSpawnerCommands, card: &Card, most: usize) {
     for (at, row) in card.rows.iter().enumerate() {
         match row {
             Row::Heading(name) => {

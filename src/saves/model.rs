@@ -82,6 +82,9 @@ pub struct WorldSave {
     /// The player's favourite places. A file from before 0.10.1 has none.
     #[serde(default)]
     pub marks: Vec<Favourite>,
+    /// The tools and materials the robot carries. A file from before 0.13 has none.
+    #[serde(default)]
+    pub pack: crate::craft::pack::Pack,
 }
 
 /// The ground uncovered on one body: a 512 by 256 grid in longitude and latitude, one bit a
@@ -127,6 +130,7 @@ impl Default for WorldSave {
             changes: Changes::default(),
             explored: Vec::new(),
             marks: Vec::new(),
+            pack: Default::default(),
         }
     }
 }

@@ -180,6 +180,8 @@ pub struct Keymap {
     pub waypoint: KeyCode,
     /// Open and close the field guide of the planet underfoot.
     pub guide: KeyCode,
+    /// Open and close the pack and the workshop, on foot.
+    pub pack: KeyCode,
     /// Ship controls, used while seated in the ship and to board it.
     pub ship: ShipKeys,
 }
@@ -201,6 +203,7 @@ impl Default for Keymap {
             map: KeyCode::KeyM,
             waypoint: KeyCode::KeyB,
             guide: KeyCode::KeyK,
+            pack: KeyCode::KeyI,
             ship: ShipKeys::default(),
         }
     }

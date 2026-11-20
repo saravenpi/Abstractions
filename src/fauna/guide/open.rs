@@ -54,7 +54,11 @@ pub(super) fn toggle(
         Res<ButtonInput<KeyCode>>,
         Res<crate::settings::Persistent<crate::settings::Settings>>,
     ),
-    (state, computer): (Res<State<Guide>>, Option<Res<State<Computer>>>),
+    (state, computer, bench): (
+        Res<State<Guide>>,
+        Option<Res<State<Computer>>>,
+        Option<Res<State<crate::craft::ui::Workshop>>>,
+    ),
     location: Option<Res<Location>>,
     (mut next, mut cues): (ResMut<NextState<Guide>>, MessageWriter<AudioCue>),
 ) {
@@ -65,7 +69,8 @@ pub(super) fn toggle(
         keys.just_pressed(settings.controls.keys.guide),
         keys.just_pressed(KeyCode::Escape),
     );
-    let Some(wanted) = next_state(open, playing && foot && !map, pressed) else {
+    let can = playing && foot && !map && !crate::craft::ui::shown(bench);
+    let Some(wanted) = next_state(open, can, pressed) else {
         return;
     };
     next.set(wanted);

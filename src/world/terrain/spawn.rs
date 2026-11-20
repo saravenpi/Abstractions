@@ -1,6 +1,7 @@
 //! The spawn search: a gentle spot near a coast on a real island, in a temperate biome on grass or sand when
 //! possible, on flat snow or rock near the poles where nothing else lies.
 
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use crate::world::globe::Chart;
@@ -14,6 +15,13 @@ pub(super) const RINGS: u32 = 600;
 
 /// Share of the planet radius the search may reach on a globe, which keeps it on the near side.
 pub(super) const GLOBE_REACH: f64 = 1.2;
+
+/// Points of a ring skipped between two the search for land looks at: with 16 m between rings this is
+/// about 130 m along a ring, under the 170 m an island must span to take a spawn.
+const SPARSE: usize = 4;
+
+/// Rings before the first land the search for land finds that are searched in full.
+const WAKE: u32 = 16;
 
 /// Radii of the rings sampled to check that land surrounds the spawn.
 const ISLAND_RADII: [f32; 2] = [45.0, 85.0];
@@ -101,22 +109,48 @@ impl Terrain {
         (score < bound && self.on_island(p.x, p.y)).then_some((score, p))
     }
 
+    /// Returns true when one of the points of ring `k` taken at the sparse stride of the search for land
+    /// lies on dry ground.
+    fn land_on_ring(&self, k: u32) -> bool {
+        let sea = self.globe().sea_level();
+        ring_points(k)
+            .step_by(SPARSE)
+            .any(|p| self.height(p.x, p.y) >= sea + 2.0)
+    }
+
+    /// Scores the points of ring `k`, and returns the best of them with the score that beats `bound`.
+    fn ring_best(
+        &self,
+        k: u32,
+        bound: f32,
+        fallback: &mut Option<Vec2>,
+    ) -> Option<(f32, Vec2)> {
+        ring_points(k)
+            .filter_map(|p| self.candidate((p, k), bound, fallback))
+            .min_by(|a, b| a.0.total_cmp(&b.0))
+    }
+
     /// Returns the best spot within `rings` rings of the origin of this metric view: a candidate
-    /// scored by distance plus its penalty, or nothing when no ground there takes a spawn.
+    /// scored by distance plus its penalty, or nothing when no ground there takes a spawn. A ring is
+    /// first felt for land at a sparse stride, since a spot needs an island wider than the stride, and
+    /// searched in full only when it holds land, with the [`WAKE`] rings before it that were skipped.
     pub(super) fn best_spot(&self, rings: u32) -> Option<Vec2> {
         let mut best: Option<(f32, Vec2)> = None;
         let mut fallback: Option<Vec2> = None;
+        let mut scanned = 0;
         for k in 0..rings {
             let bound = best.map_or(f32::INFINITY, |(score, _)| score);
             if k as f32 * SPAWN_STEP > bound {
                 break;
             }
-            let found = ring_points(k)
-                .filter_map(|p| self.candidate((p, k), bound, &mut fallback))
-                .min_by(|a, b| a.0.total_cmp(&b.0));
-            if found.is_some() {
-                best = found;
+            if !self.land_on_ring(k) {
+                continue;
             }
+            for j in scanned.max(k.saturating_sub(WAKE))..=k {
+                let bound = best.map_or(f32::INFINITY, |(score, _)| score);
+                best = self.ring_best(j, bound, &mut fallback).or(best);
+            }
+            scanned = k + 1;
         }
         best.map(|(_, p)| p).or(fallback)
     }
@@ -135,21 +169,31 @@ impl Terrain {
     }
 
     /// Returns the best spawn near the origin of the chart, or on a shore of the drainage grid when none is
-    /// near, or nothing when no ground takes a spawn.
+    /// near, or nothing when no ground takes a spawn. A shore far from the chart lies where no chart
+    /// reaches, so the position is given in the chart of this view only when the chart holds it.
     pub fn spawn(&self) -> Option<Vec3> {
+        let at = self.locate(self.spawn_site()?);
+        Some(Vec3::new(at.x, self.height(at.x, at.z), at.z))
+    }
+
+    /// Returns the planet position of the spawn [`Terrain::spawn`] finds, in metres from the planet centre.
+    pub fn spawn_site(&self) -> Option<DVec3> {
         let site = self.around(0.0, 0.0);
         let spot = (!self.open_sea())
             .then(|| site.best_spot(self.reach()))
             .flatten()
             .map(|s| site.embed(s.x, 0.0, s.y));
-        let at = self.locate(spot.or_else(|| self.landfall())?);
-        Some(Vec3::new(at.x, self.height(at.x, at.z), at.z))
+        spot.or_else(|| self.landfall())
     }
 }
 
+/// Ring from which the points lie about 33 m apart and no longer 16 m: far from the origin a spot is
+/// taken from a wider mesh, since the spawn is scored by its distance in hundreds of metres.
+const WIDE: u32 = 64;
+
 /// Returns the points of search ring `k`, evenly spaced.
 fn ring_points(k: u32) -> impl Iterator<Item = Vec2> {
-    let n = (k * 6).max(1);
+    let n = (k * [6, 3][usize::from(k >= WIDE)]).max(1);
     (0..n).map(move |a| {
         Vec2::from_angle(a as f32 * std::f32::consts::TAU / n as f32) * (k as f32 * SPAWN_STEP)
     })

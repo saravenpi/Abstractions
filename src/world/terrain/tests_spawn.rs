@@ -48,10 +48,11 @@ fn every_seed_spawns_on_land_in_time() {
         globe.drainage();
         let view = Terrain::on(globe.clone(), globe.face_chart(Face::PosY));
         let start = busy();
-        let at = view.find_spawn();
+        let site = view.spawn_site();
         let took = busy() - start;
+        let site = site.unwrap_or_else(|| panic!("seed {seed}: no spawn"));
         assert!(
-            view.height(at.x, at.z) > globe.sea_level(),
+            globe.height(site.normalize()) > globe.sea_level(),
             "seed {seed}: spawns at sea"
         );
         assert!(took < SEARCH, "seed {seed}: the spawn took {took} s");

@@ -108,6 +108,7 @@ pub fn companions(
         robots,
         ships,
         companions,
+        ..
     } = &mut *remotes;
     for (player, track) in companions.iter_mut() {
         if !shown(track.frame, eye.body) {

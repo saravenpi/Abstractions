@@ -18,12 +18,12 @@ pub struct Bubble;
 
 /// Marks the text of the tooltip panel.
 #[derive(Component)]
-struct Words;
+pub struct Words;
 
 /// What the tooltip remembers between frames: the control the pointer rests on, how long it
 /// has rested there, and how visible the panel is.
 #[derive(Default)]
-struct Rest {
+pub struct Rest {
     /// The control under the pointer that has a tip.
     over: Option<Entity>,
     /// Seconds the pointer has rested on it.
@@ -57,7 +57,7 @@ pub(super) fn spawn(mut commands: Commands) {
 }
 
 /// The panel and its text.
-type Parts<'w, 's> = (
+pub type Parts<'w, 's> = (
     Query<
         'w,
         's,

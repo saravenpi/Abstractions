@@ -6,18 +6,26 @@ use super::tune::GRADE;
 use super::{Class, Material, Mineral, Treatments, material};
 use crate::life::Tissue;
 
-/// Writes a 64-bit seed as decimal text and reads it back.
+/// Writes a 64-bit seed as decimal text in human-readable formats and as a plain integer in binary ones.
 mod seed {
     use serde::{Deserialize, Deserializer, Serializer, de::Error};
 
     /// Writes `seed` as decimal text.
     pub fn serialize<S: Serializer>(seed: &u64, to: S) -> Result<S::Ok, S::Error> {
-        to.collect_str(seed)
+        if to.is_human_readable() {
+            to.collect_str(seed)
+        } else {
+            to.serialize_u64(*seed)
+        }
     }
 
     /// Reads a seed written by [`serialize`].
     pub fn deserialize<'de, D: Deserializer<'de>>(from: D) -> Result<u64, D::Error> {
-        String::deserialize(from)?.parse().map_err(D::Error::custom)
+        if from.is_human_readable() {
+            String::deserialize(from)?.parse().map_err(D::Error::custom)
+        } else {
+            u64::deserialize(from)
+        }
     }
 }
 

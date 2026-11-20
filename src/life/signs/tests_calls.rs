@@ -5,6 +5,7 @@ use super::calls::{Cry, Timbre, contact, cries, voice};
 use super::rig::{chase, find};
 use crate::life::herd::fixtures::role;
 use crate::life::herd::fixtures::{meadow_life, species};
+use crate::life::herd::{Herd, HerdState};
 use crate::life::{Activity, Guild, Habitat, Rung};
 
 /// A heavier animal of the same kind calls lower, and shelled life clicks.
@@ -26,11 +27,12 @@ fn calls_pitch_scales_with_size() {
     assert_eq!(shelled.timbre, Timbre::Click);
 }
 
-/// A herd calls now and then, at the same moments however the time is cut into hearings.
+/// An awake herd calls now and then, at the same moments however the time is cut into hearings.
 #[test]
 fn herds_call_now_and_then_the_same_for_everyone() {
     let life = meadow_life();
-    let (herd, time) = find(&life, |h| h.count > 4).expect("a herd");
+    let awake = |h: &Herd| !matches!(h.state, HerdState::Sleep | HerdState::Stalk);
+    let (herd, time) = find(&life, |h| h.count > 4 && awake(h)).expect("an awake herd");
     let hour = |step: f64| {
         let spans = (0..(3600.0 / step) as i64)
             .map(|k| (time + k as f64 * step, time + (k + 1) as f64 * step));

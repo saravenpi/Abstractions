@@ -59,12 +59,11 @@ fn crawler(m: &mut Make) {
     let width = 0.16 * s * m.t.round;
     let leg = 0.4 * s * m.t.reach * m.vary(0.1);
     let splay = 0.55 * leg;
-    let below = 0.3 * width;
-    let front = Vec3::new(0.0, stance(leg, splay) + below, -0.5 * s);
+    let front = Vec3::new(0.0, stance(leg, splay), -0.5 * s);
     let chain = spine(m, front, (pairs, link, width));
     for (rank, &segment) in chain.parts.iter().enumerate() {
         let spec = LegSpec {
-            hip: Vec3::new(0.4 * width, -0.5 * link, -below),
+            hip: Vec3::new(0.4 * width, -0.5 * link, 0.0),
             bones: [0.45 * leg, 0.55 * leg, 0.0],
             radius: 0.03 * s * m.t.thick,
             knee: Knee::Out,
@@ -98,13 +97,14 @@ fn front_end(m: &mut Make, spine: Chain, length: f32) {
     m.kit.body.spine = Some(spine);
 }
 
-/// Builds a hexapod under a hard shell: three pairs of splayed legs, a head and feelers.
+/// Builds a hexapod under a hard shell: three pairs of splayed legs from the sides of its shell, a head
+/// and feelers.
 fn hexapod(m: &mut Make) {
     let s = m.t.size;
     let extent = Vec3::new(0.5 * s * m.t.round, 0.3 * s * m.t.hide, 0.75 * s);
     let leg = 0.55 * s * m.t.reach * m.vary(0.1);
     let splay = 0.5 * leg;
-    let hip = Vec3::new(0.38 * extent.x, -0.3 * extent.y, 0.0);
+    let hip = Vec3::new(0.38 * extent.x, 0.0, 0.0);
     let shell =
         piece(PartKind::Torso, ShapeKind::Ball, extent).at(Vec3::Y * (stance(leg, splay) - hip.y));
     let torso = m.kit.add(None, shell);

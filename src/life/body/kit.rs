@@ -1,10 +1,17 @@
 //! The kit a body is assembled with: parts placed parents first, mirrored pairs, chains and features.
 
 use super::frame::mirror;
-use super::{Body, Chain, Feature, FeatureKind, Locomotion, Part};
+use super::sink::{limb, root, sink};
+use super::{Body, Chain, Feature, FeatureKind, Locomotion, Part, PartKind};
 
 /// Most parts in one body, so that every individual stays cheap to draw and to move.
 pub const MAX_PARTS: usize = 16;
+
+/// Returns true when `part` grows from `host` as a limb from the body: a limb of another kind than its
+/// host, legs aside.
+fn grows(part: &Part, host: &Part) -> bool {
+    limb(part.kind) && part.kind != PartKind::Thigh && part.kind != host.kind
+}
 
 /// A body under construction.
 #[derive(Debug, Clone, PartialEq)]
@@ -39,10 +46,21 @@ impl Kit {
         self.body.parts.len() + count <= self.cap
     }
 
-    /// Adds `part` under `parent` and returns its index.
+    /// Adds `part` under `parent` and returns its index. The root of a neck, tail, wing or fin grown
+    /// from a part of another kind is sunk inside that part by its own radius; legs sink their hips
+    /// before they are posed, in `leg`.
     pub fn add(&mut self, parent: Option<u8>, part: Part) -> u8 {
         let index = self.body.parts.len() as u8;
-        self.body.parts.push(Part { parent, ..part });
+        let host = parent.and_then(|p| self.body.parts.get(usize::from(p)));
+        let socket = match host {
+            Some(host) if grows(&part, host) => sink(host, part.socket, root(&part)),
+            _ => part.socket,
+        };
+        self.body.parts.push(Part {
+            parent,
+            socket,
+            ..part
+        });
         index
     }
 

@@ -2,8 +2,11 @@
 //!
 //! The rules are allometric. Life span grows as `mass^0.25`, top speed follows the running fit of
 //! Hirt and others (<https://www.nature.com/articles/s41559-017-0241-4>) scaled by the gravity of the
-//! planet, and the home range area grows as `mass^0.75` for plant eaters and `mass^1` for hunters
-//! (Jetz and others 2004, "The scaling of animal space use", Science 306).
+//! planet, and the home range area grows as `mass^1` for every consumer, hunters on a wider range
+//! (Jetz and others 2004, "The scaling of animal space use", Science 306, home range area about
+//! `mass^1.02` across mammals, <https://www.science.org/doi/10.1126/science.1102138>). Herds of grazers
+//! grow with body size, as group size grows with body mass in antelope (Jarman 1974, re-tested by
+//! Brashares and others 2000, <https://biology.ucr.edu/people/faculty/Garland/BrasEA00.pdf>).
 
 use super::{Guild, Habitat, History, Role, Rung, World};
 use crate::universe::hash::Rng;
@@ -19,6 +22,9 @@ const EARTH_GRAVITY: f32 = 9.81;
 
 /// Home range radius in metres of a 100 kg plant eater.
 const RANGE_100KG: f32 = 400.0;
+
+/// Mass in kilograms from which grazers live in large herds.
+const LARGE_GRAZER: f32 = 20.0;
 
 /// Returns the life history of a species of `role` and adult `mass` in kilograms on `world`.
 pub fn of(seed: u64, role: &Role, mass: f32, rung: Rung, world: &World) -> History {
@@ -51,6 +57,7 @@ fn group(guild: Guild, mass: f32, rung: Rung) -> (u8, u8) {
         Guild::Hunter if rung == Rung::Old => (4, 8),
         Guild::Hunter => (1, 4),
         _ if mass < 0.05 => (20, 60),
+        Guild::Grazer if mass >= LARGE_GRAZER => (5, 30),
         Guild::Grazer => (4, 24),
         Guild::Browser => (2, 8),
         Guild::Granivore | Guild::Filter => (6, 30),
@@ -73,14 +80,12 @@ fn speed(habitat: Habitat, mass: f32, gravity: f32) -> f32 {
     run * medium * weight
 }
 
-/// Returns the home range radius in metres: area as `mass^0.75` for plant eaters, `mass^1` and three
-/// times as wide for hunters.
+/// Returns the home range radius in metres: area as `mass^1`, so radius as `mass^0.5`, three times as
+/// wide for hunters and scavengers.
 fn range(guild: Guild, mass: f32) -> f32 {
-    let scaled = mass / 100.0;
-    let radius = match guild {
-        Guild::Hunter | Guild::Scavenger => 3.0 * RANGE_100KG * scaled.powf(0.5),
-        Guild::Ambusher => RANGE_100KG * scaled.powf(0.5),
-        _ => RANGE_100KG * scaled.powf(0.375),
+    let wide = match guild {
+        Guild::Hunter | Guild::Scavenger => 3.0,
+        _ => 1.0,
     };
-    radius.max(5.0)
+    (wide * RANGE_100KG * (mass / 100.0).sqrt()).max(5.0)
 }

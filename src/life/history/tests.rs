@@ -13,7 +13,7 @@ fn same_seed_same_history() {
 }
 
 /// Large species live longer, have fewer young, care more and range wider; a 100 kg grazer ranges
-/// about 400 m.
+/// about 400 m in herds of 5 to 30.
 #[test]
 fn mass_sets_the_pace_of_life() {
     let grazer = role(Guild::Grazer, Habitat::Ground, Activity::Day, 2.0);
@@ -31,7 +31,7 @@ fn mass_sets_the_pace_of_life() {
     assert!((mid.range - 400.0).abs() < 50.0, "{}", mid.range);
     assert!(giant.range > mid.range && mid.range > small.range);
     assert_eq!((small.group_min, small.group_max), (20, 60));
-    assert_eq!((mid.group_min, mid.group_max), (4, 24));
+    assert_eq!((mid.group_min, mid.group_max), (5, 30));
 }
 
 /// Groups follow the guild: lone ambushers, hunting packs only on old worlds.

@@ -45,6 +45,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- The map no longer shows blue seas on every world: the liquid of a planet picture is the liquid the world draws, so a lava planet has a sea of molten rock, a dry planet has none, and the minimap, which shares the picture, follows.
 - The camera at the water surface splits the view along the waterline, with a thin dark line where the surface crosses the lens: only what is seen from under the water is fogged, and the line follows the waves. The camera never rests on the surface itself.
 - In third person the head no longer vanishes when a wall pushes the camera close to the robot. It only hides when the camera is inside the head.
 - No flash of water at eye level in front of the base door as the boot screen fades: the warm-up copy of the sea was drawn 30 m wide in front of the camera.

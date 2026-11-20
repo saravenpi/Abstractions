@@ -77,13 +77,22 @@ fn first_and_third_person_on_foot() {
     assert!((behind.pose.rotation * Vec3::NEG_Z).distance(Vec3::NEG_Z) < 1.0e-5);
 }
 
-/// The body fades out as an obstacle pushes the third person camera onto it.
+/// A wall that pushes the third person camera close to the body keeps the head drawn; only a
+/// camera pushed into the head itself hides it.
 #[test]
-fn body_fades_when_the_camera_is_close() {
+fn head_stays_when_a_wall_pushes_the_camera_close() {
     let cramped = Boxes::floor().with([-4.0, 0.0, 0.7], [4.0, 4.0, 0.9]);
     let mut body = moment(Kind::OnFoot, third());
     let shown = run(&mut Rig::default(), &mut body, &cramped, 30);
-    assert!(shown.fade.0 < 0.05 && cramped.clearance(shown.pose.position) > 0.29);
+    let head = body.target.position + Vec3::Y * 0.67;
+    assert!(
+        shown.pose.position.distance(head) < 0.6,
+        "the wall pushed the camera in"
+    );
+    assert!(shown.fade.0 > 0.99 && cramped.clearance(shown.pose.position) > 0.29);
+    let pressed = Boxes::floor().with([-4.0, 0.0, 0.05], [4.0, 4.0, 0.25]);
+    let inside = run(&mut Rig::default(), &mut body, &pressed, 30);
+    assert!(inside.pose.position.distance(head) < 0.22 && inside.fade.0 < 0.05);
 }
 
 /// The two preferences are independent, start in first person and survive a round trip to TOML.

@@ -37,6 +37,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- In third person the head no longer vanishes when a wall pushes the camera close to the robot. It only hides when the camera is inside the head.
 - No flash of water at eye level in front of the base door as the boot screen fades: the warm-up copy of the sea was drawn 30 m wide in front of the camera.
 - No more floating parts on the plants of living planets. The top clump of a tree sits on its trunk, thorns and resin stay on a leaning trunk or stalk, fruit hangs from its flower, and the flowers of trees, bulbs, mats and vines sit on their leaves and stems. The spines of a rosette grow on its blade tips. On a slope, mats, side shoots, bulbs and kelp reach down into the ground instead of hovering over its low side, and the caps of a leaning stalk follow it.
 

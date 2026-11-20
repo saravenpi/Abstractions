@@ -84,7 +84,10 @@ pub(super) fn hold(
         helm.warp |= align::missed(ship, course, (distance, lock));
         return next(ship, blocked, false).0;
     }
-    let ready = align::settled(ship, course, (distance, lock));
+    let ready = align::settled(ship, course);
+    if ready {
+        align::snap(ship, course);
+    }
     let (phase, switch) = next(ship, blocked, ready);
     if phase != Phase::Waiting {
         helm.controls = Controls {

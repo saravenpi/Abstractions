@@ -1,7 +1,7 @@
 //! The rule of the turn: the ship aligns before the drive spools, aims where the destination
 //! will be when the ship gets there, and never turns while the drive runs.
 
-use bevy::math::DVec3;
+use bevy::math::{DQuat, DVec3};
 
 use crate::ship::body::Ship;
 use crate::ship::warp::{DROP_MARGIN, RAMP, SPOOL_TIME, Warp};
@@ -9,14 +9,8 @@ use crate::ship::warp::{DROP_MARGIN, RAMP, SPOOL_TIME, Warp};
 /// Largest angle in radians between the nose and the course at which the drive may spool.
 const ANGLE: f64 = 1.0e-3;
 
-/// Smallest angle in radians the tolerance shrinks to for a far destination.
-const FLOOR: f64 = 1.0e-7;
-
 /// Largest turn rate in radians per second at which the drive may spool.
 const RATE: f64 = 1.0e-3;
-
-/// Share of the lock radius the course may miss the destination by when the drive spools.
-const AIMED: f64 = 0.25;
 
 /// Share of the lock radius a course in warp may miss by before the drive drops out to align again.
 const OFF: f64 = 0.8;
@@ -45,17 +39,17 @@ pub fn lead(warp: Warp, distance: f64, lock: f64, cap: f64) -> f64 {
     spool + travel(distance, lock, cap)
 }
 
-/// Returns the angle in radians between the nose and a course `distance` metres long to a
-/// destination with a lock sphere of `lock` metres below which the aim is good enough to warp.
-pub fn tolerance(distance: f64, lock: f64) -> f64 {
-    (AIMED * lock / distance.max(1.0)).clamp(FLOOR, ANGLE)
+/// Returns true when the nose is within a milliradian of the course and the ship has nearly
+/// stopped turning, so that the drive may spool once the residual is snapped away.
+pub fn settled(ship: &Ship, course: DVec3) -> bool {
+    ship.forward().angle_between(course) <= ANGLE && ship.spin.length() <= RATE
 }
 
-/// Returns true when the nose is on the course within the tolerance and the ship has stopped
-/// turning, so that the drive may spool.
-pub fn settled(ship: &Ship, course: DVec3, (distance, lock): (f64, f64)) -> bool {
-    let angle = ship.forward().angle_between(course);
-    angle <= tolerance(distance, lock) && ship.spin.length() <= RATE
+/// Turns the nose exactly onto the course and stops the spin, so that the heading held through
+/// the spool and the warp is the course itself and not a residual the stick never closes.
+pub fn snap(ship: &mut Ship, course: DVec3) {
+    ship.rot = (DQuat::from_rotation_arc(ship.forward(), course) * ship.rot).normalize();
+    ship.spin = DVec3::ZERO;
 }
 
 /// Returns true when a ship in warp flies a heading that would miss a destination `distance`

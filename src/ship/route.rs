@@ -14,6 +14,8 @@ mod done;
 mod done_tests;
 mod goal;
 
+#[cfg(test)]
+pub(super) use align::{led, spool};
 use ascent::{climb, climbs};
 use block::{aligned, blocker};
 pub(super) use done::finish;
@@ -28,7 +30,7 @@ use super::helm::Helm;
 use super::pilot::{Autopilot, Goal, Phase, Settle};
 use super::sim::Cosmos;
 use super::sky::Skies;
-use super::steer::{aim, detour};
+use super::steer::{aim, waypoint};
 use super::warp::{CRUISE_CAP, JUMP_CAP, Warp};
 use super::wells::Well;
 use crate::computer::{Destination, Engage, RouteStatus, Target, ship_position};
@@ -71,24 +73,29 @@ fn beacon(pos: DVec3, to: DVec3, lock: f64) -> Well {
 /// `lock` metres, asks for the drive once the nose is on the course and still, and returns what
 /// the autopilot is doing.
 ///
-/// Once the drive spools or runs the heading is locked: no stick, no spin. A course that
-/// the heading no longer reaches drops the drive out, and the ship aligns again before it
-/// warps. While the drive is locked the pilot keeps the controls.
+/// Once the drive spools or runs the heading is locked: no stick, no spin. A body in the way is
+/// not steered round in warp: the leg flies to a point beside it and the drive drops out there,
+/// and the next leg starts from it. A course that the heading no longer reaches drops the drive
+/// out too, and the ship aligns again before it warps. While the drive is locked the pilot
+/// keeps the controls.
 pub(super) fn hold(
     ship: &mut Ship,
     helm: &mut Helm,
     wells: &[Well],
     (to, lock): (DVec3, f64),
 ) -> Phase {
-    let distance = to.length();
     let blocked = blocker(ship, wells).is_some();
-    let course = detour(wells, ship.pos, to / distance, distance - lock);
     if ship.warp != Warp::Off {
         helm.controls = Controls::default();
         ship.spin = DVec3::ZERO;
-        helm.warp |= align::missed(ship, course, (distance, lock));
+        helm.warp |= align::missed(ship, helm.way, (to, lock));
         return next(ship, blocked, false).0;
     }
+    let distance = to.length();
+    helm.way = waypoint(wells, ship.pos, to / distance, distance - lock);
+    let course = helm
+        .way
+        .map_or(to / distance, |at| (at - ship.pos).normalize());
     let ready = align::settled(ship, course);
     if ready {
         align::snap(ship, course);
@@ -115,20 +122,26 @@ fn drop_first(helm: &mut Helm, settle: Settle) -> Phase {
 
 /// Returns whether the route is a long jump, and the course to the destination as it will be
 /// when the ship gets there, so a destination that moves is led and the heading needs no
-/// correction on the way. `now` is where the ship is and when, `to` the course now and the drive.
+/// correction on the way. The ship goes on with its own velocity until the drive carries it, so
+/// the course is the one from where it will be then. `now` is where the ship is and when, `to`
+/// the course now, and `ship` the drive and the velocity.
 fn aim_at(
     goal: &Goal,
     universe: &Universe,
     now: (Option<UniPos>, f64),
-    (to, warp): (DVec3, Warp),
+    (to, ship): (DVec3, (Warp, DVec3)),
 ) -> (bool, DVec3) {
     let jump = to.length() > JUMP_DISTANCE;
     let cap = if jump { JUMP_CAP } else { CRUISE_CAP };
-    let ahead = align::lead(warp, to.length(), goal.lock, cap);
+    let drift = ship.1 * align::spool(ship.0);
+    let at = |here: UniPos, ahead: f64| {
+        let reached = goal.reached(universe, here + drift, now.1 + ahead);
+        reached.map(|(to, _)| to)
+    };
     let led = now
         .0
-        .and_then(|here| goal.reached(universe, here, now.1 + ahead));
-    (jump, led.map_or(to, |(led, _)| led))
+        .and_then(|here| align::led(ship.0, (goal.lock, cap), |ahead| at(here, ahead)));
+    (jump, led.unwrap_or(to))
 }
 
 /// Flies the route: stops a drive still running on another course and waits for the drop-out,
@@ -161,7 +174,7 @@ pub fn fly(
         *autopilot = Autopilot::ARRIVED;
         return;
     }
-    let (jump, to) = aim_at(goal, universe, (here, time), (to, ship.warp));
+    let (jump, to) = aim_at(goal, universe, (here, time), (to, (ship.warp, ship.vel)));
     autopilot.jump = jump;
     skies.beacon = autopilot.jump.then(|| beacon(ship.pos, to, lock));
     let settle = autopilot.settle(ship.warp != Warp::Off, time);

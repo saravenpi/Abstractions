@@ -3,9 +3,8 @@
 use bevy::math::DVec3;
 
 use super::body::Ship;
-use super::tune::CARRY;
 use super::wells::{Well, beside, nearest};
-use crate::universe::GLY;
+use crate::universe::{CARRY, GLY};
 
 #[cfg(test)]
 mod tests;
@@ -17,7 +16,7 @@ pub const SPOOL_TIME: f64 = 4.0;
 pub const RAMP: f64 = 2.0;
 
 /// Slowest warp speed in metres per second, so leaving the edge of a lock sphere is not endless.
-const FLOOR: f64 = 2000.0;
+pub const FLOOR: f64 = 2000.0;
 
 /// Fastest warp speed between the stars of a galaxy, in metres per second.
 pub const CRUISE_CAP: f64 = 5.0 * GLY;
@@ -92,7 +91,8 @@ pub fn drop_out(ship: &mut Ship, wells: &[Well]) {
 
 /// Moves a ship in warp along its heading for `dt` seconds, at most at `cap` metres per second.
 ///
-/// Speed is the clearance over the ramp time, so it falls to zero at the edge of a lock sphere, and
+/// The clearance falls by the share of it that `RAMP` seconds leave, whatever the frame time: the
+/// speed is the clearance over the ramp time, so it falls to zero at the edge of a lock sphere, and
 /// one move never covers more than half of the clearance. Returns the speed, or nothing when the
 /// ship closes on a lock sphere and must drop out.
 fn cruise(ship: &mut Ship, wells: &[Well], cap: f64, dt: f64) -> Option<f64> {
@@ -100,7 +100,8 @@ fn cruise(ship: &mut Ship, wells: &[Well], cap: f64, dt: f64) -> Option<f64> {
     if before <= 0.0 {
         return None;
     }
-    let speed = (before / RAMP).clamp(FLOOR, cap).min(before * 0.5 / dt);
+    let closing = before * (1.0 - (-dt / RAMP).exp()) / dt;
+    let speed = closing.clamp(FLOOR, cap).min(before * 0.5 / dt);
     ship.pos += (ship.forward() * speed + carry(wells, ship.pos)) * dt;
     let after = clearance(wells, ship.pos);
     let margin = nearest(wells, ship.pos).map_or(0.0, |well| well.lock * DROP_MARGIN);

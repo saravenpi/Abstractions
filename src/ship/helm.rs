@@ -27,6 +27,9 @@ pub struct Helm {
     pub controls: Controls,
     /// Whether the warp key was pressed, or the autopilot asks to switch the drive.
     pub warp: bool,
+    /// The point beside a body in the way that the autopilot flies the leg of its route to, in
+    /// the axes of the frame of the ship. Nothing when the leg goes to the destination.
+    pub way: Option<DVec3>,
     /// How far each turn key has been held, from -1 to 1: pitch, yaw and roll.
     pub held: DVec3,
     /// The stick the mouse moves while its left button is held, x to the right and y downward,

@@ -99,7 +99,7 @@ pub(super) fn course(app: &mut App, target: Target) -> DVec3 {
 }
 
 /// Returns a copy of the ship.
-fn see_ship(app: &mut App) -> Ship {
+pub(super) fn see_ship(app: &mut App) -> Ship {
     let world = app.world_mut();
     let mut ships = world.query::<&Ship>();
     ships.single(world).expect("one ship").clone()

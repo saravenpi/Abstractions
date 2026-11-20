@@ -22,22 +22,20 @@ pub fn aim(rot: DQuat, course: DVec3) -> DVec3 {
     turn * (angle * AIM_GAIN).min(1.0)
 }
 
-/// Returns the unit direction to fly from `pos` to reach a point `reach` metres away along the
-/// unit direction `course`: the course itself, or a direction that passes beside a body whose
-/// lock sphere the course would cross.
-pub fn detour(wells: &[Well], pos: DVec3, course: DVec3, reach: f64) -> DVec3 {
+/// Returns the point to fly to from `pos` to reach a point `reach` metres away along the unit
+/// direction `course`, when the course would cross the lock sphere of a body that is in the way:
+/// a point beside that body. Without such a body the course is clear and there is no point.
+pub fn waypoint(wells: &[Well], pos: DVec3, course: DVec3, reach: f64) -> Option<DVec3> {
     let blocks = |well: &&Well| {
         let to = well.pos - pos;
         let along = to.dot(course);
         along > 0.0 && along < reach && (to - course * along).length() < well.lock * BERTH
     };
-    let Some(well) = wells.iter().find(blocks) else {
-        return course;
-    };
+    let well = wells.iter().find(blocks)?;
     let to = well.pos - pos;
     let miss = course * to.dot(course) - to;
     let side = miss
         .try_normalize()
         .unwrap_or_else(|| course.any_orthonormal_vector());
-    (to + side * (well.lock * BERTH * 1.2)).normalize()
+    Some(pos + to + side * (well.lock * BERTH * 1.2))
 }

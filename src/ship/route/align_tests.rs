@@ -34,13 +34,12 @@ fn a_far_flight_takes_the_distance_over_the_cap() {
 
 #[test]
 fn a_miss_only_counts_in_warp() {
-    let course = DVec3::NEG_Z;
     let mut ship = facing(1.0e-4);
-    let far = (1.0e11, 1.0e7);
-    assert!(!missed(&ship, course, far));
+    let far = (DVec3::NEG_Z * 1.0e11, 1.0e7);
+    assert!(!missed(&ship, None, far));
     ship.warp = Warp::Active { speed: 1.0 };
-    assert!(missed(&ship, course, far));
-    assert!(!missed(&ship, course, (1.0e5, 1.0e7)));
+    assert!(missed(&ship, None, far));
+    assert!(!missed(&ship, None, (DVec3::NEG_Z * 1.0e5, 1.0e7)));
 }
 
 #[test]
@@ -50,4 +49,15 @@ fn snapping_puts_the_nose_on_the_course_and_stops_the_spin() {
     snap(&mut ship, DVec3::NEG_Z);
     assert!(ship.forward().angle_between(DVec3::NEG_Z) < 1.0e-12);
     assert_eq!(ship.spin, DVec3::ZERO);
+}
+
+#[test]
+fn a_leg_ends_once_its_point_is_behind_the_ship() {
+    let mut ship = facing(0.0);
+    ship.warp = Warp::Active { speed: 1.0 };
+    let near = (DVec3::NEG_Z, 1.0e7);
+    assert!(!missed(&ship, Some(DVec3::NEG_Z * 10.0), near));
+    assert!(missed(&ship, Some(DVec3::Z * 10.0), near));
+    assert!(missed(&ship, None, (DVec3::Z * 1.0e8, 1.0e7)));
+    assert!(!missed(&ship, None, (DVec3::Z * 1.0e7, 1.0e7)));
 }

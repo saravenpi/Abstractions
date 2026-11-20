@@ -1,7 +1,10 @@
 //! The rule of the turn on a route: the ship aligns before the drive spools, and from the first
 //! frame of the spool to the last of the warp it never turns.
 
-use super::retarget::{Seen, course, flight, frames};
+use bevy::prelude::App;
+
+use super::retarget::{Seen, course, flight, frames, see_ship};
+use crate::computer::Target;
 use crate::ship::pilot::{Autopilot, Phase};
 use crate::ship::warp::Warp;
 
@@ -11,15 +14,28 @@ const TIGHT: f64 = 1.0e-3;
 /// Largest angle in radians the nose may move from one frame of the drive to the next.
 const NONE: f64 = 1.0e-12;
 
-/// Flies a route to its first planet and returns every frame of it, and the angle between the
-/// nose and the course at the first frame that spools.
+/// Returns the planet whose straight course passes the star at the greatest distance, so that
+/// no star is in the way and the course is a straight line.
+fn open_course(app: &mut App, targets: &[Target]) -> Target {
+    let pos = see_ship(app).pos;
+    let miss = |app: &mut App, target: &Target| pos.cross(course(app, *target)).length();
+    let mut best = targets[0];
+    for target in targets {
+        if miss(app, target) > miss(app, &best) {
+            best = *target;
+        }
+    }
+    best
+}
+
+/// Flies a route to the planet with the straightest course and returns every frame of it, and
+/// the angle between the nose and the course at the first frame that spools.
 fn voyage() -> (Vec<Seen>, f64) {
     let (mut app, targets) = flight();
-    app.world_mut()
-        .resource_mut::<Autopilot>()
-        .engage(targets[0]);
+    let target = open_course(&mut app, &targets);
+    app.world_mut().resource_mut::<Autopilot>().engage(target);
     let mut seen = frames(&mut app, 3000, Some(Phase::Spooling));
-    let off = course(&mut app, targets[0]).angle_between(frames(&mut app, 1, None)[0].nose);
+    let off = course(&mut app, target).angle_between(frames(&mut app, 1, None)[0].nose);
     seen.extend(frames(&mut app, 3000, Some(Phase::Arrived)));
     (seen, off)
 }

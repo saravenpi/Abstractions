@@ -87,6 +87,9 @@ pub struct PlanetRecord {
     pub water: Water,
     /// Share of the surface covered by the liquid of the planet, water or molten rock, from 0 to 1.
     pub ocean: f64,
+    /// The gases of the air with their shares, as the planet has them without life. A planet
+    /// whose life splits water breathes [`air::Mix::breathed`] of it.
+    pub mix: air::Mix,
 }
 
 impl PlanetRecord {
@@ -97,7 +100,7 @@ impl PlanetRecord {
     pub const BALANCED_OCEAN: f64 = 0.6;
 
     /// The record of the home planet: a temperate world of seas and islands, tilted like the
-    /// Earth so that it has seasons.
+    /// Earth so that it has seasons, with the air of the Earth, which life made.
     pub const TEMPERATE: Self = Self {
         class: PlanetClass::Island,
         zone: Zone::Habitable,
@@ -109,6 +112,7 @@ impl PlanetRecord {
         temperature: 288.0,
         water: Water::Liquid,
         ocean: Self::BALANCED_OCEAN,
+        mix: air::Mix::HOME,
     };
 
     /// Returns the record of a planet on an orbit of `orbit` metres around `star`.
@@ -116,7 +120,8 @@ impl PlanetRecord {
     /// `gravity` and `size` are the surface gravity and the radius over those of the home
     /// planet. `seed` gives three draws: the gas the planet was born with, its water and its
     /// tilt. Starlight, air, climate and class then follow in that order, each from the ones
-    /// before, so the same planet always gets the same record.
+    /// before, so the same planet always gets the same record. The gases of the air come last,
+    /// from the class, the heat and the escape speed, see [`air::born`].
     ///
     /// Ranges: flux 0.005 to 58,000, tilt 0 to a quarter turn, pressure 0 to 5, albedo 0.08 to
     /// 0.6, greenhouse 0 to 1,500 K, temperature 40 to 6,000 K, ocean 0 to 1.
@@ -155,9 +160,14 @@ impl PlanetRecord {
             temperature: climate.temperature,
             water: climate.water,
             ocean: class::liquid(pressure, &climate, wet),
+            mix: air::Mix::HOME,
+        };
+        let record = Self {
+            class: class::classify(&record),
+            ..record
         };
         Self {
-            class: class::classify(&record),
+            mix: air::born(&record, air::escape(body[0], body[1]), tide, seed),
             ..record
         }
     }
@@ -166,7 +176,8 @@ impl PlanetRecord {
     ///
     /// `seed` gives the same three draws as [`PlanetRecord::derive`]; the gas stock goes unused,
     /// since a giant holds all of it. The pressure is the cap, the ground nothing: no liquid
-    /// covers it and its water is ice, steam or nothing as [`climate::deck`] finds it.
+    /// covers it and its water is ice, steam or nothing as [`climate::deck`] finds it. Its air is
+    /// hydrogen and helium, of which nothing escapes.
     ///
     /// Ranges: flux 0.005 to 0.14 (up to 0.26 for the giant of the home system), pressure 5,
     /// albedo 0.34, greenhouse 74 K, temperature 140 to 260 K, ocean 0.
@@ -176,7 +187,7 @@ impl PlanetRecord {
         let _stock = rng.unit();
         let wet = rng.unit();
         let climate = climate::deck(flux, wet);
-        Self {
+        let record = Self {
             class: PlanetClass::GasGiant,
             zone: zone::zone(star.temperature, flux),
             flux,
@@ -187,6 +198,11 @@ impl PlanetRecord {
             temperature: climate.temperature,
             water: climate.water,
             ocean: 0.0,
+            mix: air::Mix::HOME,
+        };
+        Self {
+            mix: air::born(&record, f64::INFINITY, 0.0, seed),
+            ..record
         }
     }
 }

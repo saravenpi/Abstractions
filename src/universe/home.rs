@@ -10,7 +10,7 @@ use super::record::PlanetRecord;
 use super::spec::{GRAVITATION, PlanetSpec, StarClass, StarSpec};
 use super::system::ORBIT;
 use super::zone::FLUX_ORBIT;
-use super::{SECTOR_GLY, galaxy, planet};
+use super::{SECTOR_GLY, air, galaxy};
 
 /// Sea level radius of the home planet in metres.
 pub const HOME_RADIUS: f64 = 6000.0;
@@ -110,7 +110,9 @@ pub(super) fn orbit(band: f64, home: f64) -> f64 {
 /// orbit, see [`orbit`], is the one that gives it the flux of that record. It has no moons and
 /// no rings, so its sky stays the same for every seed. It keeps its generated name.
 pub(super) fn planet(planet: PlanetSpec, world: u64) -> PlanetSpec {
-    let [atmosphere_height, cloud_base, cloud_top] = planet::air(HOME_RADIUS);
+    let record = PlanetRecord::TEMPERATE;
+    let [atmosphere_height, cloud_base, cloud_top] =
+        air::heights(&record, HOME_GRAVITY, HOME_RADIUS);
     PlanetSpec {
         seed: world,
         radius: HOME_RADIUS,
@@ -119,7 +121,7 @@ pub(super) fn planet(planet: PlanetSpec, world: u64) -> PlanetSpec {
         atmosphere_height,
         cloud_base,
         cloud_top,
-        record: PlanetRecord::TEMPERATE,
+        record,
         moons: 0,
         rings: None,
         ..planet

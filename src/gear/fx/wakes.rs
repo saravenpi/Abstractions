@@ -20,7 +20,7 @@ use crate::gear::{FlightState, Mode, air_density};
 use crate::render::{GameCamera, Palette};
 use crate::screens::Screen;
 use crate::space::{Anchor, Frame, altitude, up};
-use crate::universe::air;
+use crate::universe::heights;
 use crate::wind::Thickness;
 use crate::world::Terrain;
 
@@ -118,7 +118,9 @@ fn thickness(field: &Field, anchor: &Anchor, at: Vec3) -> (f32, f32) {
     let density = field.terrain.as_deref().map_or(0.0, |terrain| {
         let globe = terrain.globe();
         let height = altitude(anchor, globe, at) - SOLES;
-        air_density(air(globe.radius())[0] as f32, height)
+        let gravity = f64::from(globe.setting().gravity);
+        let [top, ..] = heights(globe.record(), gravity, globe.radius());
+        air_density(top as f32, height)
     });
     let thick = field.thickness.as_deref().map_or(1.0, |air| air.0);
     (grip(density), 1.0 - thick.clamp(0.0, 1.0))

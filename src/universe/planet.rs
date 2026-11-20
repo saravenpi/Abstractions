@@ -7,7 +7,7 @@ use super::home::{HOME_GRAVITY, HOME_RADIUS};
 use super::ids::BodyId;
 use super::record::PlanetRecord;
 use super::spec::{PlanetSpec, StarSpec};
-use super::{giant, moon, names, rings};
+use super::{air, giant, moon, names, rings};
 
 /// Smallest and largest sea level radius of a planet in metres.
 pub const PLANET_RADIUS: (f64, f64) = (3000.0, 40_000.0);
@@ -23,19 +23,6 @@ pub const PLANET_DAY: (f64, f64) = (600.0, 3600.0);
 
 /// Child of the planet seed the record draws from, so the draws of the body itself never shift.
 pub(super) const RECORD_STREAM: u64 = 1;
-
-/// Atmosphere top, cloud base and cloud top of the home planet, in metres above sea level.
-const HOME_AIR: [f64; 3] = [4000.0, 900.0, 1500.0];
-
-/// Returns the atmosphere top, cloud base and cloud top of a planet in metres above sea level.
-///
-/// The three heights are the home planet's 4,000, 900 and 1,500 m times the square root of the
-/// radius over the home radius, so they run from 0.71 times those on the smallest planet to
-/// 2.58 times on the largest.
-pub fn air(radius: f64) -> [f64; 3] {
-    let scale = (radius / HOME_RADIUS).sqrt();
-    HOME_AIR.map(|height| height * scale)
-}
 
 /// Returns the seconds a circular orbit of `radius` metres takes around a body of parameter `mu`.
 pub fn orbit_seconds(mu: f64, radius: f64) -> f64 {
@@ -72,14 +59,17 @@ pub(super) fn build(star: &StarSpec, index: u8, orbit: f64, seed: u64, giant: bo
 ///
 /// Radii are spread evenly on a log scale, so small planets are the common ones, and half of
 /// the gravity follows the size. The record follows from the star, the orbit, the gravity and
-/// the size, with its own draws from a child of the seed.
+/// the size, with its own draws from a child of the seed, and the air heights from the record,
+/// see [`air::heights`].
 fn solid(star: &StarSpec, index: u8, orbit: f64, seed: u64) -> PlanetSpec {
     let mut rng = Rng::new(seed);
     let size = rng.unit();
     let radius = PLANET_RADIUS.0 * (PLANET_RADIUS.1 / PLANET_RADIUS.0).powf(size);
     let earths = earths(size, rng.unit());
-    let [atmosphere_height, cloud_base, cloud_top] = air(radius);
     let draws = hash::child(seed, RECORD_STREAM);
+    let record = PlanetRecord::derive(star, orbit, earths, radius / HOME_RADIUS, draws);
+    let [atmosphere_height, cloud_base, cloud_top] =
+        air::heights(&record, earths * HOME_GRAVITY, radius);
     PlanetSpec {
         id: BodyId {
             star: star.id,
@@ -97,7 +87,7 @@ fn solid(star: &StarSpec, index: u8, orbit: f64, seed: u64) -> PlanetSpec {
         atmosphere_height,
         cloud_base,
         cloud_top,
-        record: PlanetRecord::derive(star, orbit, earths, radius / HOME_RADIUS, draws),
+        record,
         host: None,
         moons: 0,
         rings: None,

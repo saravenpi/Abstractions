@@ -1,4 +1,22 @@
-//! Air: how much of it a planet keeps, how much it warms the ground and when water boils under it.
+//! Air: how much of it a planet keeps, what it is made of, how high it reaches, how much it
+//! warms the ground and when water boils under it.
+
+mod born;
+mod column;
+mod gas;
+mod mix;
+mod tune;
+
+#[cfg(test)]
+mod tests_column;
+#[cfg(test)]
+mod tests_mix;
+
+pub use born::{born, escape};
+pub use column::{dense, heights};
+pub use gas::Gas;
+pub use mix::{Mix, Part};
+pub use tune::TOP_SCALES;
 
 /// Pressure, the home air being 1, under which a planet has no air to speak of.
 pub const NO_AIR: f64 = 0.01;

@@ -1,8 +1,8 @@
 //! Gas giants: planets that formed beyond the frost line on a core heavy enough to gather gas.
 
+use super::air;
 use super::hash::{self, Rng};
 use super::home::{HOME_GRAVITY, HOME_STAR_MASS};
-use super::planet;
 use super::record::PlanetRecord;
 use super::spec::{PlanetSpec, StarSpec};
 
@@ -45,22 +45,23 @@ pub(super) fn forms(star: &StarSpec, flux: f64, seed: u64) -> bool {
 /// Turns a solid planet into a gas giant on the same orbit, with the same day, seed and name.
 ///
 /// Radii are spread evenly on a log scale over [`GIANT_RADIUS`] and half of the gravity
-/// follows the size, as for solid planets. The air heights scale with the radius as
-/// [`planet::air`] scales them, from the cloud deck. The record is [`PlanetRecord::giant`],
-/// drawn from `record_seed`.
+/// follows the size, as for solid planets. The record is [`PlanetRecord::giant`], drawn from
+/// `record_seed`, and the air heights follow from it as [`air::heights`] gives them, from the
+/// cloud deck.
 pub(super) fn grow(star: &StarSpec, planet: PlanetSpec, record_seed: u64) -> PlanetSpec {
     let [_, size, pull] = draws(planet.seed);
     let radius = GIANT_RADIUS.0 * (GIANT_RADIUS.1 / GIANT_RADIUS.0).powf(size);
     let span = GIANT_GRAVITY.1 - GIANT_GRAVITY.0;
     let gravity = (GIANT_GRAVITY.0 + span * 0.5 * (size + pull)) * HOME_GRAVITY;
-    let [atmosphere_height, cloud_base, cloud_top] = planet::air(radius);
+    let record = PlanetRecord::giant(star, planet.orbit_radius, record_seed);
+    let [atmosphere_height, cloud_base, cloud_top] = air::heights(&record, gravity, radius);
     PlanetSpec {
         radius,
         gravity,
         atmosphere_height,
         cloud_base,
         cloud_top,
-        record: PlanetRecord::giant(star, planet.orbit_radius, record_seed),
+        record,
         ..planet
     }
 }

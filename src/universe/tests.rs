@@ -20,12 +20,12 @@ fn home_system_is_deterministic() {
         (planet.radius, planet.gravity, planet.day_seconds),
         (HOME_RADIUS, HOME_GRAVITY, HOME_DAY_SECONDS)
     );
-    let air = (
+    let air = [
         planet.atmosphere_height,
         planet.cloud_base,
         planet.cloud_top,
-    );
-    assert_eq!(air, (4000.0, 900.0, 1500.0));
+    ];
+    assert_eq!(air, heights(&planet.record, planet.gravity, planet.radius));
     let system = a.system(home.star);
     assert!((3..=8).contains(&system.planets.len()));
     assert!(

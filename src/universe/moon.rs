@@ -9,7 +9,7 @@ use super::home::{HOME_GRAVITY, HOME_RADIUS};
 use super::planet::{self, PLANET_RADIUS, RECORD_STREAM};
 use super::record::PlanetRecord;
 use super::spec::{PlanetSpec, StarSpec};
-use super::{BodyId, Universe, names};
+use super::{BodyId, Universe, air, names};
 
 /// Inner heat, in units of the starlight the home planet gets, of a moon on the innermost
 /// orbit of the most massive gas giant: enough to melt its rock.
@@ -73,10 +73,11 @@ fn build(star: &StarSpec, planet: &PlanetSpec, rank: u8, place: Place) -> Planet
     let span = (PLANET_RADIUS.1 / PLANET_RADIUS.0).ln();
     let earths = planet::earths((place.radius / PLANET_RADIUS.0).ln() / span, rng.unit());
     let seconds = planet::orbit_seconds(planet.mu(), place.orbit);
-    let [atmosphere_height, cloud_base, cloud_top] = planet::air(place.radius);
-    let body = [earths, place.radius / HOME_RADIUS];
+    let (body, gravity) = ([earths, place.radius / HOME_RADIUS], earths * HOME_GRAVITY);
     let draws = hash::child(place.seed, RECORD_STREAM);
     let heat = tide(planet, place.orbit);
+    let record = PlanetRecord::heated(star, planet.orbit_radius, body, draws, heat);
+    let [atmosphere_height, cloud_base, cloud_top] = air::heights(&record, gravity, place.radius);
     PlanetSpec {
         id: BodyId {
             moon: rank,
@@ -85,7 +86,7 @@ fn build(star: &StarSpec, planet: &PlanetSpec, rank: u8, place: Place) -> Planet
         seed: place.seed,
         name: names::moon(&planet.name, rank),
         radius: place.radius,
-        gravity: earths * HOME_GRAVITY,
+        gravity,
         day_seconds: -seconds,
         orbit_radius: place.orbit,
         orbit_seconds: seconds,
@@ -93,7 +94,7 @@ fn build(star: &StarSpec, planet: &PlanetSpec, rank: u8, place: Place) -> Planet
         atmosphere_height,
         cloud_base,
         cloud_top,
-        record: PlanetRecord::heated(star, planet.orbit_radius, body, draws, heat),
+        record,
         host: Some(planet.orbit()),
         moons: 0,
         rings: None,

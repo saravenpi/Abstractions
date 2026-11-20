@@ -72,30 +72,23 @@ fn systems_stay_in_range() {
     }
 }
 
-/// Radius, gravity, cloud base and cloud top ranges of a solid planet, then of a gas giant.
-const RANGES: [[(f64, f64); 4]; 2] = [
-    [
-        PLANET_RADIUS,
-        PLANET_GRAVITY,
-        (630.0, 2330.0),
-        (1050.0, 3880.0),
-    ],
-    [
-        GIANT_RADIUS,
-        GIANT_GRAVITY,
-        (2840.0, 4500.0),
-        (4740.0, 7500.0),
-    ],
+/// Radius and gravity ranges of a solid planet, then of a gas giant.
+const RANGES: [[(f64, f64); 2]; 2] = [
+    [PLANET_RADIUS, PLANET_GRAVITY],
+    [GIANT_RADIUS, GIANT_GRAVITY],
 ];
 
-/// Every planet of the sample has a radius, gravity, day, year and air inside its range, those
-/// of solid worlds or those of gas giants. It has no host and at most 6 moons.
+/// Every planet of the sample has a radius, gravity, day and year inside its range, those of
+/// solid worlds or those of gas giants. Its air holds together: a scale height no planet lets
+/// go of, clouds that top out between one scale height and the height where rising air runs
+/// out of pressure, and a cloud base above the ground, at most half way up to that top. It has
+/// no host and at most 6 moons.
 #[test]
 fn planets_stay_in_range() {
     for (u, star) in sample() {
         for p in u.system(star.id).planets {
             let giant = p.record.class == PlanetClass::GasGiant;
-            let [radius, gravity, base, top] = RANGES[usize::from(giant)];
+            let [radius, gravity] = RANGES[usize::from(giant)];
             assert!(within(p.radius, radius), "{p:?}");
             assert!(within(p.gravity / HOME_GRAVITY, gravity), "{p:?}");
             assert!(within(p.day_seconds, PLANET_DAY), "{p:?}");
@@ -103,12 +96,14 @@ fn planets_stay_in_range() {
             assert_eq!(p.orbit_seconds, orbit_seconds(star.mu(), p.orbit_radius));
             assert_eq!(
                 [p.atmosphere_height, p.cloud_base, p.cloud_top],
-                air(p.radius)
+                heights(&p.record, p.gravity, p.radius)
             );
-            assert!(
-                within(p.cloud_base, base) && within(p.cloud_top, top),
-                "{p:?}"
-            );
+            let (scale, slack) = (p.scale_height(), 1.0 + 1e-9);
+            let held = scale > 0.0 && scale <= slack * p.radius / 20.0;
+            let topped =
+                scale <= slack * p.cloud_top && p.cloud_top <= scale / p.record.mix.kappa();
+            assert!(held && topped && 0.0 < p.cloud_base, "{p:?}");
+            assert!(p.cloud_base <= 0.5 * p.cloud_top, "{p:?}");
             assert!(p.cloud_base < p.cloud_top && p.cloud_top < p.atmosphere_height);
             assert!(p.name.starts_with(&star.name) || p.id == u.home());
             assert!(p.host.is_none() && p.moons <= 6 && !p.id.is_moon());

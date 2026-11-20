@@ -46,7 +46,7 @@ mod ring_tests;
 #[cfg(test)]
 mod tests;
 
-pub use air::NO_AIR;
+pub use air::{Gas, Mix, NO_AIR, Part, TOP_SCALES, dense, heights};
 pub use class::MOLTEN;
 pub use galaxy::{ARMS, CENTER_SPAN, RADIUS_GLY};
 pub use giant::{GIANT_GRAVITY, GIANT_RADIUS};
@@ -54,7 +54,7 @@ pub use hill::MOON_RADIUS;
 pub use home::{HOME_DAY_SECONDS, HOME_GRAVITY, HOME_RADIUS};
 pub use ids::{BodyId, GalaxyId, StarId};
 pub use look::Look;
-pub use planet::{PLANET_DAY, PLANET_GRAVITY, PLANET_RADIUS, air, orbit_seconds};
+pub use planet::{PLANET_DAY, PLANET_GRAVITY, PLANET_RADIUS, orbit_seconds};
 pub use record::{PlanetClass, PlanetRecord, Water, Zone};
 pub use rings::{RING_OUTER, ROCHE};
 pub use sector::{SECTOR_STARS, sector_of};

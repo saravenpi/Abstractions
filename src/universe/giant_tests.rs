@@ -105,7 +105,7 @@ fn giants_stay_in_range() {
             assert!(within(p.gravity / HOME_GRAVITY, GIANT_GRAVITY), "{p:?}");
             assert_eq!(
                 [p.atmosphere_height, p.cloud_base, p.cloud_top],
-                air(p.radius)
+                heights(&p.record, p.gravity, p.radius)
             );
             assert_eq!(r.flux, zone::flux(system.star.luminosity, p.orbit_radius));
             assert_eq!(

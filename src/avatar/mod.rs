@@ -11,6 +11,7 @@
 mod air;
 mod animate;
 mod blend;
+pub mod blow;
 mod clock;
 mod crouch;
 mod dress;
@@ -239,6 +240,7 @@ fn systems(app: &mut App) {
 /// the body, then dressed with the gear and the view once the camera rig ran.
 pub(super) fn plugin(app: &mut App) {
     systems(app);
+    app.add_message::<blow::Blow>();
     app.configure_sets(Update, (AvatarSet::Fill, AvatarSet::Animate).run_if(shown))
         .configure_sets(Update, AvatarSet::Fill.after(PlayerSet::Move))
         .add_systems(

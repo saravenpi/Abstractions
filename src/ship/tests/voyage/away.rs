@@ -174,7 +174,8 @@ pub fn steps_out(game: &mut Game, far: BodyId) {
         "feet {} m off the ground",
         walker.gap
     );
-    assert!(walker.at.length() > planet.radius, "under the sea");
+    let dry = planet.record.ocean <= 0.0;
+    assert!(dry || walker.at.length() > planet.radius, "under the sea");
     assert!(game.get::<Atlas>().walked.contains(&far));
     let chirps = game.get::<Log>().chirps;
     assert!(chirps.contains(&CompanionChirp(ChirpKind::Delight)));

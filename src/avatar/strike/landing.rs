@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use super::flight::{Rest, Spear};
 use super::hit::{Hit, Tip};
+use super::outcome::Outcome;
 use super::tune::GROUND;
 use crate::audio::{Body, Impact, Outer};
 use crate::craft::build::{Intent, blow};
@@ -28,6 +29,7 @@ pub fn arrival(spear: &Spear, (victim, part, at): (Entity, Entity, Vec3)) -> Hit
             stiffness: spear.item.build.head.material.stiffness,
             mass: spear.item.build.head.mass,
         },
+        outcome: Outcome::Clean,
     }
 }
 

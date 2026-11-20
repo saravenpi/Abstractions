@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 
+use super::outcome::Outcome;
 use super::tune::SWEET_FLOOR;
 use crate::craft::build::{Blow, Intent};
 
@@ -37,6 +38,8 @@ pub struct Hit {
     pub intent: Intent,
     /// The head of the tool that struck.
     pub tip: Tip,
+    /// What the swing came to: clean, glanced off or stopped.
+    pub outcome: Outcome,
 }
 
 /// A box in its own frame: a part's bounds.

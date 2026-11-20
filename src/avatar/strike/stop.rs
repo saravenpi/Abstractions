@@ -83,10 +83,10 @@ pub fn start(
     local: super::input::Robot,
     mut commands: Commands,
 ) {
-    let strength = settings.gameplay.hitstop.clamp(0.0, 1.0);
     let Some(hit) = hits.read().last().copied() else {
         return;
     };
+    let strength = settings.gameplay.hitstop.clamp(0.0, 1.0) * hit.outcome.hitstop();
     if strength <= 0.0 || active_now(&stop) {
         return;
     }
@@ -97,9 +97,13 @@ pub fn start(
         total: seconds,
         attacker: Some(hit.attacker),
         victim: Some(hit.victim),
-        camera: if ours { strength } else { 0.0 },
+        camera: if ours {
+            settings.gameplay.hitstop.clamp(0.0, 1.0)
+        } else {
+            0.0
+        },
         along: hit.along,
-        gain: gain(hit.blow.energy),
+        gain: gain(hit.blow.energy) * hit.outcome.kick(),
         ..default()
     };
     commands.entity(hit.victim).try_insert(Frozen);

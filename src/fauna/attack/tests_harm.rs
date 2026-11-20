@@ -5,7 +5,7 @@ use bevy::prelude::*;
 
 use super::harm::{Dead, harm};
 use super::slump::Slump;
-use crate::avatar::strike::{Hit, Tip};
+use crate::avatar::strike::{Hit, Outcome, Tip};
 use crate::craft::build::{Blow, Intent, Mode};
 use crate::craft::harvest::Harvest;
 use crate::fauna::beast::Beast;
@@ -35,6 +35,7 @@ fn hit(victim: Entity, energy: f32) -> Hit {
             stiffness: 30.0,
             mass: 0.3,
         },
+        outcome: Outcome::Clean,
     }
 }
 

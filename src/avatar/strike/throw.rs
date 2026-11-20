@@ -12,6 +12,7 @@ use super::hit::Hit;
 use super::hurt::steadied;
 use super::input::{Loose, Robot};
 use super::landing::{arrival, grounded, steady};
+use super::outcome::Outcome;
 use super::pull::{Reach, take};
 use super::sense::{Parts, first};
 use super::show::{Kit, tool};
@@ -165,9 +166,13 @@ pub fn pierce(
         else {
             continue;
         };
-        let hit = arrival(&spear, (victim, part, at));
+        let mut hit = arrival(&spear, (victim, part, at));
+        let stuck = pierces(&hit.blow);
+        if !stuck {
+            hit.outcome = Outcome::Deflected;
+        }
         hits.write(hit);
-        match (pierces(&hit.blow), roots.get(victim)) {
+        match (stuck, roots.get(victim)) {
             (true, Ok(root)) => {
                 spear.rest = Rest::Stuck;
                 commands

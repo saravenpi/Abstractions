@@ -10,6 +10,7 @@ use super::super::{Avatar, AvatarPose, Mode};
 use super::act::{Act, Ask, Strike, Timing, next};
 use super::dir::{Dir, Strokes};
 use super::held::Held;
+use super::outcome::Outcome;
 use super::path::Path;
 use super::stop::Hitstop;
 use crate::craft::{Pack, wield::pressed};
@@ -81,10 +82,14 @@ fn step(strike: &mut Strike, held: &Held, ask: &Ask, dt: f32) -> Option<f32> {
     if strike.act == Act::Ready {
         strike.dir = ask.dir;
     }
-    let timing = Timing::of(held, &Path::of(held.style, strike.dir)).felt(&strike.hurt);
+    let path = Path::of(held.style, strike.dir);
+    let timing = Timing::of(held, &path)
+        .felt(&strike.hurt)
+        .braked(strike.result);
     let (act, loosed) = next(strike.act, ask, &timing, held.thrown(), dt);
     if matches!(act, Act::Windup(_)) && !matches!(strike.act, Act::Windup(_)) {
         strike.landed = false;
+        strike.result = Outcome::Miss;
     }
     strike.act = act;
     loosed

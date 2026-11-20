@@ -2,7 +2,7 @@
 //! where the vessels are.
 
 use super::tune::{FLESH, OUTER, THIN};
-use crate::craft::build::{Blow, Layer, strike};
+use crate::craft::build::{Blow, Layer, Mode, strike};
 use crate::craft::matter::{Class, Grade, material};
 use crate::life::Species;
 use crate::life::body::PartKind;
@@ -66,4 +66,17 @@ pub fn opened(species: &Species, index: usize, blow: &Blow) -> Option<Opening> {
         width: blow.width,
         major: trunk(species.body.parts[index].kind) && passed == layers.len(),
     })
+}
+
+/// Returns true when an edge or a point of `blow` is refused by the outer layer of part `index` of
+/// `species`: the layer is at least as hard as the edge, so the blow glances off it.
+pub fn refused(species: &Species, index: usize, blow: &Blow) -> bool {
+    let (layers, skin) = stack(species, index);
+    skin > 0 && blow.mode != Mode::Blunt && blow.hardness <= layers[0].material.hardness
+}
+
+/// Returns the stiffness of the outer layer of part `index` of `species` in gigapascals: what the
+/// blow meets, bone and horn stiff, hide and flesh soft.
+pub fn stiffness(species: &Species, index: usize) -> f32 {
+    stack(species, index).0[0].material.stiffness
 }

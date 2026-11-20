@@ -24,6 +24,7 @@ mod tests_wound;
 
 use bevy::prelude::*;
 
+pub use open::{refused, stiffness};
 pub use sound::impact;
 pub use wound::{Circuit, Cut, Wound};
 

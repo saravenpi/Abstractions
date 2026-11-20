@@ -20,6 +20,7 @@ mod raise;
 mod ring;
 mod slay;
 mod slump;
+mod startle;
 mod timing;
 pub mod tune;
 
@@ -63,6 +64,7 @@ pub(super) fn plugin(app: &mut App) {
                 .after(walk)
                 .run_if(any_with_component::<slump::Slump>),
             carve::carve.run_if(in_control),
+            startle::startle.run_if(on_message::<crate::avatar::strike::Missed>),
         )
             .run_if(playing),
     );

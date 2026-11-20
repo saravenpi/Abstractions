@@ -20,6 +20,7 @@ mod input;
 mod key;
 mod landing;
 mod layer;
+mod outcome;
 mod path;
 mod pull;
 mod recoil;
@@ -53,6 +54,8 @@ mod tests_hurt;
 #[cfg(test)]
 mod tests_ik;
 #[cfg(test)]
+mod tests_outcome;
+#[cfg(test)]
 mod tests_stock;
 #[cfg(test)]
 mod tests_trail;
@@ -64,7 +67,9 @@ pub use held::{Held, Style};
 pub use hit::{Hit, Tip};
 pub use hurt::Hurt;
 pub use layer::Layer;
+pub use outcome::Outcome;
 pub use stop::Hitstop;
+pub use swish::Missed;
 
 use bevy::prelude::*;
 use bevy::transform::TransformSystems;
@@ -156,6 +161,7 @@ fn swings() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
 /// propagated.
 pub(super) fn plugin(app: &mut App) {
     app.add_message::<Hit>()
+        .add_message::<Missed>()
         .add_message::<input::Loose>()
         .init_resource::<dir::Strokes>()
         .init_resource::<Hitstop>()

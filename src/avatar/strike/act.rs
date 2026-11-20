@@ -6,6 +6,7 @@ use super::dir::Dir;
 use super::held::Held;
 use super::hurt::Hurt;
 use super::key::{Key, carry, drawn, guard};
+use super::outcome::Outcome;
 use super::path::Path;
 use super::tune::{BRAKE, COAST, DRAW, GUARD_IN, LEAST_DRAW, OVERSHOOT, RECOVER};
 
@@ -44,6 +45,8 @@ pub struct Strike {
     pub hurt: Hurt,
     /// True once the swing under way has sounded its whoosh.
     pub sounded: bool,
+    /// What the swing under way came to, a miss until it meets something.
+    pub result: Outcome,
 }
 
 impl Strike {

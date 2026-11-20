@@ -132,3 +132,29 @@ pub const TRAIL_PEAK: f32 = 0.5;
 
 /// Share of the colour of the tool head in the trail, unitless; the rest is white.
 pub const TRAIL_TINT: f32 = 0.25;
+
+/// Share of the surface normal under which a blow counts as glancing: the cosine of the angle between
+/// the way the tool moves and the normal of what it hits. Under 0.35 (past about 70 degrees) the tool
+/// slides along the surface instead of biting.
+pub const GLANCE: f32 = 0.35;
+
+/// How much longer the recovery takes after a swing that met nothing: no target braked the tool, so
+/// the arm has to, unitless.
+pub const MISS_RECOVER: f32 = 1.5;
+
+/// Share of the path a tool rebounds along after a blunt blow that the body took, for the most
+/// elastic contact, unitless.
+pub const REBOUND: f32 = 0.15;
+
+/// Restitution of the stiffest contact, unitless: two bodies of infinite stiffness bounce this much.
+pub const BOUNCE: f32 = 0.6;
+
+/// Contact stiffness in gigapascals at which the restitution is half of [`BOUNCE`].
+pub const BOUNCE_HALF: f32 = 5.0;
+
+/// Metres from the tip at which a swing that met nothing is seen and heard by an animal.
+pub const MISS_RANGE: f32 = 4.0;
+
+/// Awareness, 0 to 1, that a swing that passes at the tip adds to an animal: it falls to nothing at
+/// [`MISS_RANGE`].
+pub const MISS_ALERT: f32 = 0.5;

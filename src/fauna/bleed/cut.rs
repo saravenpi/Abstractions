@@ -12,7 +12,7 @@ use super::throw::{Jet, burst, scatter};
 use super::tune::CHIP;
 use super::wound::{Circuit, Cut, Wound};
 use crate::audio::{Body, Impact};
-use crate::avatar::strike::Hit;
+use crate::avatar::strike::{Hit, Outcome};
 use crate::effects::Fling;
 use crate::fauna::Part;
 use crate::fauna::attack::Dead;
@@ -48,7 +48,8 @@ fn normal(parts: &Query<(&GlobalTransform, &Aabb), With<Part>>, hit: &Hit) -> Ve
 
 /// Throws the chips of `hit` off its part: deflected off the surface, widely scattered.
 fn flake(s: &mut Strikes, hit: &Hit, (normal, species, key): (Vec3, (&Species, usize), u32)) {
-    let Some(c) = chips(species.0, species.1, &hit.blow) else {
+    let glanced = hit.outcome == Outcome::Deflected;
+    let Some(c) = chips(species.0, species.1, &hit.blow, glanced) else {
         return;
     };
     let bounce = hit.along.reflect(normal);
@@ -86,13 +87,17 @@ fn wound_of(
 
 /// Returns the cut that `hit` made in the animal `species` of index `beast` whose root is `root`, and
 /// the jet its blood bursts out in: along the blow and the surface normal at the speed its pressure
-/// gives. A blow that opens nothing, a bruise, makes none, and nor does a body with no blood.
+/// gives. A blow that opens nothing, a bruise, makes none, nor does one that glanced off or a body with
+/// no blood.
 fn opening(
     (life, gravity): (&Life, f32),
     (species, beast): (&Species, u16),
     (hit, root): (&Hit, &GlobalTransform),
     (index, normal): (usize, Vec3),
 ) -> Option<(Jet, Cut)> {
+    if hit.outcome != Outcome::Clean {
+        return None;
+    }
     let blood = blood_of(life, species)?;
     let open = opened(species, index, &hit.blow)?;
     let circuit = Circuit::of(species, &blood, gravity);
@@ -115,8 +120,11 @@ fn ring(s: &mut Strikes, hit: &Hit, (species, index): (&Species, usize), cut: bo
         stiffness: hit.tip.stiffness,
         mass: hit.tip.mass,
     };
-    s.sounds
-        .write(impact(species, index, (hit.at, hit.blow.energy, cut), tool));
+    let heard = impact(species, index, (hit.at, hit.blow.energy, cut), tool);
+    s.sounds.write(Impact {
+        deflected: hit.outcome == Outcome::Deflected,
+        ..heard
+    });
 }
 
 /// Adds `cut` to the wound of `victim`, or gives it its first.
@@ -153,6 +161,7 @@ pub fn cut(
         let root = *root;
         let normal = normal(&s.parts, hit);
         flake(&mut s, hit, (normal, (species, index), key));
+        let gravity = (life, globe.gravity() as f32);
         let gravity = (life, globe.gravity() as f32);
         let made = opening(
             gravity,

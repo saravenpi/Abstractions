@@ -65,10 +65,14 @@ fn chips_come_off_a_layer_that_was_not_cut() {
     let mut found = false;
     for species in &life.species {
         for index in 0..species.body.parts.len() {
-            if let Some(c) = chips(species, index, &blow(Mode::Blunt, 50.0)) {
+            if let Some(c) = chips(species, index, &blow(Mode::Blunt, 50.0), false) {
                 found = true;
                 assert!(c.count >= 1 && c.speed > 0.0 && c.speed <= super::tune::CHIP_FAST);
-                assert_eq!(chips(species, index, &blow(Mode::Slash, 1.0e5)), None);
+                assert_eq!(
+                    chips(species, index, &blow(Mode::Slash, 1.0e5), false),
+                    None
+                );
+                assert!(chips(species, index, &blow(Mode::Slash, 1.0e5), true).is_some());
             }
         }
     }

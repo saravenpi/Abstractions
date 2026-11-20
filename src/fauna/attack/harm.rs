@@ -70,7 +70,8 @@ fn flinch(
     let along = beast.spot.rot.inverse() * way;
     let share = (hit.blow.energy / beast.wits.health.max.max(1e-3))
         .sqrt()
-        .min(1.0);
+        .min(1.0)
+        * hit.outcome.harm();
     let push = along.as_vec3().normalize_or_zero() * FLINCH_PUSH * species.body.length * share;
     commands.entity(hit.victim).insert(Flinch {
         part: part as u8,
@@ -128,7 +129,7 @@ pub fn harm(
             let broke = (&mut *beast, species);
             snap(&mut commands, (hit, now), broke, (part, &mut asks));
         }
-        if beast.wits.health.hurt(hit.blow.energy) {
+        if beast.wits.health.hurt(hit.blow.energy * hit.outcome.harm()) {
             let (herds, kill) = (&mut *ctx.herds, Grade::of(now.hits, now.blunt));
             let dead = (hit.victim, &mut *beast);
             slay(

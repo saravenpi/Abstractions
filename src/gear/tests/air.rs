@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use super::{Flight, braking, flying, gliding};
+use crate::gear::tune::REF_GRAVITY;
 use crate::gear::{GearInput, Mode, descent_target};
 use crate::universe::PlanetRecord;
 use crate::wind::{PRESSURES, samples, thickness};
@@ -57,7 +58,7 @@ fn without_air_a_drop_is_ballistic() {
                 ..under(pressure, input)
             };
             flight.run(&sticks, 10.0);
-            let off = flight.state.velocity - (start - Vec3::Y * 220.0);
+            let off = flight.state.velocity - (start - Vec3::Y * 10.0 * REF_GRAVITY);
             assert!(off.length() < 0.05, "{mode:?} off by {off}");
             assert!(flight.state.load.abs() < 1e-3 && flight.twist.is_finite());
         }
@@ -69,7 +70,7 @@ fn without_air_a_drop_is_ballistic() {
 /// away sideways for want of drag.
 #[test]
 fn the_boots_brake_without_air() {
-    let target = descent_target(22.0);
+    let target = descent_target(REF_GRAVITY);
     for input in [braking(), flying(0.0), flying(0.6)] {
         let mode = if input.deploy {
             Mode::Fly

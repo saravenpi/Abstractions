@@ -4,8 +4,9 @@ use bevy::prelude::*;
 
 use super::controller::Motion;
 
-/// Upward speed of a jump.
-const JUMP_SPEED: f32 = 7.0;
+/// Upward speed of a jump in metres per second: it rises 1.11 m under standard gravity, as far as
+/// the 7 m/s jump did under the 22 m/s squared the robot was first tuned for.
+pub(super) const JUMP_SPEED: f32 = 4.6735;
 
 /// Seconds after leaving the ground during which a jump still works.
 const COYOTE_TIME: f32 = 0.12;

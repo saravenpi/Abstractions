@@ -16,6 +16,7 @@ use crate::player::controller::Motion;
 use crate::player::{BODY_LENGTH, BODY_RADIUS, Player};
 use crate::settings::{Persistent, Settings};
 use crate::sim::{IntentOf, PlayerId};
+use crate::universe::STANDARD_GRAVITY;
 use crate::view::{Heading, Look, Target, ViewPrefs};
 use crate::world::globe::Face;
 use crate::world::{Globe, Terrain};
@@ -59,7 +60,7 @@ fn stand(world: &mut World, bodies: &[(PlayerId, f32)]) {
 /// Its first frame, which lasts no time, is already run.
 pub(super) fn app(bodies: &[(PlayerId, f32)]) -> App {
     let mut app = App::new();
-    let globe = Arc::new(Globe::new(4, 3000.0, 22.0));
+    let globe = Arc::new(Globe::new(4, 3000.0, STANDARD_GRAVITY));
     let frame = TimeUpdateStrategy::ManualDuration(Duration::from_secs_f64(1.0 / 30.0));
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), TransformPlugin))
         .add_plugins(PhysicsPlugins::default())

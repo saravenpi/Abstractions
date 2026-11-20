@@ -7,6 +7,7 @@ use bevy::prelude::*;
 
 use super::tangent_anchor;
 use crate::gear::Gear;
+use crate::gear::tune::REF_GRAVITY;
 use crate::player::controller::Motion;
 use crate::player::flight::Air;
 use crate::player::ground::Ground;
@@ -56,7 +57,7 @@ struct Basin {
 impl Basin {
     /// Returns a body standing [`DEEP`] under sea level on a planet with `record`.
     fn on(record: PlanetRecord) -> Self {
-        let globe = Globe::new(4, 3000.0, 22.0).with_record(record);
+        let globe = Globe::new(4, 3000.0, STANDARD_GRAVITY).with_record(record);
         let anchor = tangent_anchor(DVec3::Y);
         let view = View {
             yaw: 0.0,
@@ -69,7 +70,7 @@ impl Basin {
             view,
             height: DEEP,
             afloat: above_sea(&anchor, &globe, Vec3::Y * DEEP),
-            gravity: 22.0,
+            gravity: REF_GRAVITY,
             air: 1.0,
         };
         Self {
@@ -96,7 +97,7 @@ impl Basin {
             clearance: 0.0,
             look: Vec3::NEG_Z,
             aim: Vec2::ZERO,
-            gravity: 22.0,
+            gravity: REF_GRAVITY,
             liquid: 1000.0,
         };
         for _ in 0..frames {
@@ -125,11 +126,14 @@ fn a_dry_basin_is_ground_and_a_filled_one_is_a_sea() {
         }
         assert!((motion.velocity - Vec3::NEG_Z * 5.0).length() < 0.01);
         body.run(1, true, flat);
-        assert!(body.motion.velocity.y > 6.0 && !body.motion.grounded);
+        assert!(body.motion.velocity.y > 4.0 && !body.motion.grounded);
         let rising = body.motion.velocity.y;
         body.run(30, false, None);
         let falling = body.motion.velocity.y;
-        assert!((falling - (rising - 22.0 * 0.5)).abs() < 0.01, "{class:?}");
+        assert!(
+            (falling - (rising - REF_GRAVITY * 0.5)).abs() < 0.01,
+            "{class:?}"
+        );
         assert!(!body.motion.swimming && !body.gear.state.mode.drives());
     }
 }

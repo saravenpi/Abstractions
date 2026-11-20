@@ -3,10 +3,11 @@
 use bevy::prelude::*;
 
 use super::{DT, Flight, braking, flying, gliding};
+use crate::gear::tune::REF_GRAVITY;
 use crate::gear::{GearInput, Mode};
 
 /// Largest velocity change in one frame in the air: 6 g, the load limit plus thrust and weight.
-pub(super) const AIR_KICK: f32 = 6.0 * 22.0 * DT;
+pub(super) const AIR_KICK: f32 = 6.0 * REF_GRAVITY * DT;
 
 /// Largest attitude change in one frame, in radians (about 5 degrees).
 pub(super) const TWIST: f32 = 0.09;
@@ -69,7 +70,10 @@ fn stopping_mid_air_is_ballistic_then_boots_catch() {
     let folded = flight.state.velocity;
     flight.tick(&GearInput::default(), DT);
     let accel = (flight.state.velocity - folded) / DT;
-    assert!((accel.y + 22.0).abs() < 2.0, "not ballistic: {accel}");
+    assert!(
+        (accel.y + REF_GRAVITY).abs() < 2.0,
+        "not ballistic: {accel}"
+    );
     assert!(
         accel.with_y(0.0).length() < 18.0,
         "air brake too hard: {accel}"

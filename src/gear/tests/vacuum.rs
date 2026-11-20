@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use super::{Flight, braking, flying, gliding};
+use crate::gear::tune::REF_GRAVITY;
 use crate::gear::{FlightState, Gear, GearInput, Mode, air_density};
 
 /// In zero density every mode is a plain ballistic fall: no lift, no drag, no booster push.
@@ -23,7 +24,7 @@ fn vacuum_leaves_only_gravity() {
             ..input
         };
         flight.run(&airless, 10.0);
-        let ballistic = start - Vec3::Y * 220.0;
+        let ballistic = start - Vec3::Y * 10.0 * REF_GRAVITY;
         assert!(
             (flight.state.velocity - ballistic).length() < 0.05,
             "{mode:?}"

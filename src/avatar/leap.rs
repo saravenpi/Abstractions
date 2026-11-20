@@ -38,6 +38,6 @@ pub fn gathered() -> Pose {
 /// Returns the rising pose from the real climb speed: stretched out while the body shoots up,
 /// gathering its knees and arms as it slows toward the top.
 pub fn jump(clock: &Clock) -> Pose {
-    let rise = ramp(0.5, 7.0, clock.rise);
+    let rise = ramp(0.5, 4.7, clock.rise);
     mix(&gathered(), &stretched(), rise)
 }

@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 
+use crate::gear::tune::REF_GRAVITY;
 use crate::gear::{Gear, GearInput};
 use crate::player::jet::jet_velocity;
 use crate::player::lead::View;
@@ -20,7 +21,7 @@ fn frame(afloat: f32, pitch: f32) -> Step {
         },
         height: afloat,
         afloat,
-        gravity: 22.0,
+        gravity: REF_GRAVITY,
         air: 1.0,
     }
 }

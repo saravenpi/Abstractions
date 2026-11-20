@@ -2,20 +2,18 @@
 
 use bevy::math::{DQuat, DVec3};
 
-use super::assist::{LIFT_ACCEL, steer};
+use super::assist::steer;
 use super::atmo;
 use super::body::Ship;
 use super::cruise::Cruise;
 use super::gear::stow;
+use super::tune::{LIFT_ACCEL, MAIN_ACCEL};
 use super::wells::{Well, beside, gravity};
 use crate::space::Frame;
 use crate::universe::PlanetSpec;
 
 /// Length of one simulation step in seconds.
 pub const STEP: f64 = 1.0 / 120.0;
-
-/// Acceleration of the main engine at full throttle in metres per second squared.
-pub const MAIN_ACCEL: f64 = 66.0;
 
 /// How many times stronger the main engine is with the boost.
 pub const BOOST: f64 = 3.0;

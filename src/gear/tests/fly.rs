@@ -7,7 +7,7 @@ use super::pilot::powered;
 use super::{DT, Flight, flying};
 use std::f32::consts::FRAC_PI_2;
 
-use crate::gear::tune::{CLIMB_LIMIT, STALL_SPEED};
+use crate::gear::tune::{CLIMB_LIMIT, REF_GRAVITY, STALL_SPEED};
 use crate::gear::{GearInput, Mode};
 
 /// The documented range of the top level speed at sea level on the home planet.
@@ -66,7 +66,10 @@ fn hovering_is_impossible() {
         };
         flight.tick(&input, DT);
         let fall = -flight.state.velocity.y / DT;
-        assert!(fall > 0.15 * 22.0, "look {degrees}: falls at only {fall}");
+        assert!(
+            fall > 0.15 * REF_GRAVITY,
+            "look {degrees}: falls at only {fall}"
+        );
     }
 }
 

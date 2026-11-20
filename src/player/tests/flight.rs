@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use crate::gear::FlightState;
+use crate::gear::tune::REF_GRAVITY;
 use crate::gear::{Gear, Mode};
 use crate::player::controller::Motion;
 use crate::player::flight::*;
@@ -53,7 +54,7 @@ fn air() -> Air {
         clearance: 9.0,
         look: Vec3::NEG_Z,
         aim: Vec2::ZERO,
-        gravity: 22.0,
+        gravity: REF_GRAVITY,
         liquid: 1000.0,
     }
 }

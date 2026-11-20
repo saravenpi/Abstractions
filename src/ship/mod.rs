@@ -47,6 +47,7 @@ mod strike;
 mod telemetry;
 mod transit;
 mod tune;
+mod vapour;
 mod view;
 mod warp;
 mod wells;
@@ -151,6 +152,7 @@ fn resources(app: &mut App) {
         .init_resource::<ShipTelemetry>()
         .init_resource::<Hatch>()
         .init_resource::<shake::Buffet>()
+        .init_resource::<crate::view::ViewPrefs>()
         .add_message::<ShipEvent>()
         .add_message::<Impact>();
 }
@@ -231,4 +233,5 @@ pub(super) fn plugin(app: &mut App) {
     display(app);
     hull_cast::plugin(app);
     cockpit::plugin(app);
+    vapour::plugin(app);
 }

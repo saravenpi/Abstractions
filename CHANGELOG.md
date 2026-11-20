@@ -12,6 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Animals walk the ground of living planets: the herds of the planet's own species graze, travel and rest around you, up to 48 at once within 150 m, and fade in and out at the edge. Every player sees the same herd in the same place.
 - Animals notice robots, yours and your friends': shy plant eaters look up, then run from you and come back to their herd once you are gone. Hunters stay bolder.
 - Hunts play out where you can see them: hunters stalk and run their prey down, the kill lies where it fell while it has meat, and scavengers gather round it.
+- A field guide on K, on foot: every species of the planet underfoot, plants first, with a count such as "12 of 31 seen". A plant counts as seen once you stand on its planet, an animal once one comes within 40 m. Pick one with the arrows, the wheel or a click to read its body, diet, herd, hours, habitat, and what it eats and what eats it. Species you have not seen show as unknown. K or Esc closes it. The key can be changed in the options. For now the guide remembers what you saw until you leave the world.
 
 ### Changed
 

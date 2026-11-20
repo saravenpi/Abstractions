@@ -178,6 +178,8 @@ pub struct Keymap {
     pub map: KeyCode,
     /// Drop a waypoint where the player looks, or clear it.
     pub waypoint: KeyCode,
+    /// Open and close the field guide of the planet underfoot.
+    pub guide: KeyCode,
     /// Ship controls, used while seated in the ship and to board it.
     pub ship: ShipKeys,
 }
@@ -198,6 +200,7 @@ impl Default for Keymap {
             minimap: KeyCode::KeyN,
             map: KeyCode::KeyM,
             waypoint: KeyCode::KeyB,
+            guide: KeyCode::KeyK,
             ship: ShipKeys::default(),
         }
     }

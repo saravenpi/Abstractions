@@ -13,6 +13,7 @@ mod wake;
 use bevy::prelude::*;
 
 use crate::computer::Computer;
+use crate::fauna::guide::Guide;
 use crate::menus::Menu;
 
 /// The logical screen the game is showing.
@@ -64,7 +65,7 @@ pub fn playing(
 }
 
 /// Run condition: true while the keyboard and the mouse drive the player or the ship: playing,
-/// and the board computer is closed.
+/// and the board computer and the field guide are closed.
 ///
 /// While the computer is open the game goes on, so [`playing`] stays true, but keys and mouse
 /// belong to the computer screen. Movement, steering, boarding and the cursor grab use this.
@@ -73,9 +74,10 @@ pub fn in_control(
     menu: Res<State<Menu>>,
     warm: Option<Res<State<WarmUp>>>,
     computer: Option<Res<State<Computer>>>,
+    guide: Option<Res<State<Guide>>>,
 ) -> bool {
     let open = computer.is_some_and(|computer| *computer.get() == Computer::Open);
-    playing(screen, menu, warm) && !open
+    playing(screen, menu, warm) && !open && !crate::fauna::guide::shown(guide)
 }
 
 /// Registers the screen states and every screen plugin.

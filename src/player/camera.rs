@@ -24,14 +24,14 @@ fn grab_cursor(mut cursor: Single<&mut CursorOptions, With<PrimaryWindow>>) {
     set_cursor(&mut cursor, true);
 }
 
-/// Releases the cursor everywhere else, and while the board computer is open.
+/// Releases the cursor everywhere else, and while the board computer or the field guide is open.
 fn release_cursor(mut cursor: Single<&mut CursorOptions, With<PrimaryWindow>>) {
     set_cursor(&mut cursor, false);
 }
 
 /// Registers the cursor systems.
 pub(super) fn plugin(app: &mut App) {
-    let pointing = in_state(Computer::Open);
+    let pointing = in_state(Computer::Open).or_else(crate::fauna::guide::shown);
     app.add_systems(
         Update,
         (

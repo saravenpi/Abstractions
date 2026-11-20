@@ -23,6 +23,7 @@ On foot:
 | M | Map |
 | N | Minimap range, then off |
 | B | Set or clear a waypoint where you stand, or under the pointer on the map |
+| K | Field guide |
 | F | Board the ship |
 | Look down + W | Dive while swimming |
 | Esc | Pause menu, or back |

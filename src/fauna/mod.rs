@@ -10,6 +10,7 @@ mod beast;
 mod fade;
 mod gate;
 mod ground;
+pub mod guide;
 mod herds;
 mod lead;
 mod looks;
@@ -74,4 +75,5 @@ pub(super) fn plugin(app: &mut App) {
                 .chain()
                 .after(crate::effects::Sight),
         );
+    app.add_plugins(guide::plugin);
 }

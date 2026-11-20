@@ -99,3 +99,18 @@ fn the_map_and_waypoint_keys_conflict_in_both_groups() {
         vec![(Bind::YawLeft, Bind::Map), (Bind::YawLeft, Bind::Map)]
     );
 }
+
+/// The field guide key is a row on foot only, on K by default and in files written before it
+/// existed, and it clashes with another key on foot but never with a key of the ship.
+#[test]
+fn the_field_guide_key_conflicts_on_foot_only() {
+    assert!(Bind::FOOT.contains(&Bind::Guide) && !Bind::SHIP.contains(&Bind::Guide));
+    let old = "[controls.keys]\nmap = \"KeyM\"\nwaypoint = \"KeyB\"\n";
+    let keys = toml::from_str::<Settings>(old).unwrap().controls.keys;
+    assert_eq!(keys.guide, KeyCode::KeyK);
+    let mut s = Settings::default();
+    set_key(&mut s, Bind::Guide, KeyCode::KeyM);
+    assert_eq!(conflicts(&s.controls.keys), vec![(Bind::Map, Bind::Guide)]);
+    set_key(&mut s, Bind::Guide, KeyCode::KeyZ);
+    assert_eq!(conflicts(&s.controls.keys), Vec::new());
+}

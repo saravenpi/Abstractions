@@ -49,15 +49,15 @@ fn cushions(k: &mut Kit, wide: f32, colour: [f32; 4]) {
     }
 }
 
-/// Builds a mat: a low film as wide as its species spreads, cushions on it, upright tufts as many as its
-/// shoots, and flowers among them.
+/// Builds a mat: a low film as wide as its species spreads, its skirt as deep as it is wide so that a slope
+/// never shows its underside, cushions on it, upright tufts as many as its shoots, and flowers among them.
 pub fn mat(k: &mut Kit) {
     let (kind, colour) = (k.dials.kind, k.leaves());
     let wide = (0.55 + 0.3 * kind.spread) * k.grow;
     prism(
         &mut k.mesh,
-        Vec3::Y * -0.08,
-        Vec2::new(wide, 0.12),
+        Vec3::Y * -wide,
+        Vec2::new(wide, wide + 0.04),
         5,
         colour,
     );
@@ -67,12 +67,13 @@ pub fn mat(k: &mut Kit) {
         let at = level(t as f32 * 2.1 + k.rand(t + 11)) * wide * 0.5 + Vec3::Y * 0.1;
         bead(&mut k.mesh, at, Vec3::new(0.04, 0.1, 0.04), tuft);
     }
-    let spots = [Vec3::new(0.2, 0.12, 0.1), Vec3::new(-0.4, 0.1, 0.25)].map(|p| p * wide);
+    let spots =
+        [Vec3::new(0.2, 0.0, 0.1), Vec3::new(-0.4, 0.0, 0.25)].map(|p| p * wide + Vec3::Y * 0.05);
     k.dress(&spots, 0.06);
 }
 
 /// Adds creeper number `s` of `stems` of a vine climbing `climb` metres, with a leaf fan of `blade` at each
-/// node and a thorn when armed, and returns where it ends.
+/// node and a thorn when armed, and returns the tip of its last stem.
 fn creeper(k: &mut Kit, (s, stems): (u32, u32), climb: f32, blade: [f32; 5]) -> Vec3 {
     let colour = k.leaves();
     let a = s as f32 / stems as f32 * TAU + k.rand(s + 1) * 0.8;
@@ -98,7 +99,7 @@ fn creeper(k: &mut Kit, (s, stems): (u32, u32), climb: f32, blade: [f32; 5]) -> 
             colour,
         );
     }
-    nodes[2] + Vec3::Y * 0.1
+    nodes[2] + Vec3::Y * 0.03
 }
 
 /// Builds a vine: creepers that curl out from one root, one when young and as many as its shoots later,

@@ -68,7 +68,7 @@ pub fn tree(k: &mut Kit) {
     let (base, up) = (Vec3::new(0.0, -0.5, 0.0), k.axis());
     let top = base + up * (TALL * f.share + 0.5);
     k.stem(base, top, [f.girth, f.girth * 0.55]);
-    k.armour(Vec3::ZERO, top, f.girth * 0.7);
+    k.armour(base, top, f.girth * 0.7);
     if k.age == OLD {
         k.stem(base, Vec3::Y * 0.35, [f.girth * 1.7, f.girth]);
         let stub = base.lerp(top, 0.55);
@@ -106,25 +106,27 @@ fn scaffold(k: &mut Kit, (base, top): (Vec3, Vec3), f: &Frame) -> Vec<Vec3> {
         .collect()
 }
 
-/// Adds a clump of leaves over each of `tips` and a larger one over the trunk top `top`, as big as `crown`
+/// Adds a clump of leaves over each of `tips` and a larger one sunk onto the trunk top `top`, as big as `crown`
 /// lets them and hanging as far as the species droops, and returns the spots its flowers and fruit hang on.
 fn canopy(k: &mut Kit, top: Vec3, tips: &[Vec3], crown: f32) -> Vec<Vec3> {
     let (form, kind, colour) = (k.dials.form, k.dials.kind, k.leaves());
     let dense = 0.85 + 0.06 * f32::from(form.layers.clamp(1, 4));
     let size = (0.5 + 0.22 * form.leaf.min(1.4)) * dense * crown;
-    let crest = top + k.axis() * 0.8 * crown;
-    let all = tips.iter().copied().chain(std::iter::once(crest));
+    let all = tips.iter().copied().chain(std::iter::once(top));
     let mut spots = Vec::new();
     for (i, at) in all.enumerate() {
         let big = if i == tips.len() { 1.2 } else { 1.0 };
         let r = size * big * (1.0 + 0.18 * k.rand(i as u32 + 30));
         let wide = r * (1.0 - 0.25 * kind.droop);
         let radii = Vec3::new(wide, r * (0.62 + 0.6 * kind.droop), wide);
-        let centre = at + Vec3::Y * r * (0.2 - 0.5 * kind.droop);
+        let centre = match i == tips.len() {
+            true => at + k.axis() * radii.y * 0.45,
+            false => at + Vec3::Y * r * (0.2 - 0.5 * kind.droop),
+        };
         let seed = i as u32 * 7 + u32::from(kind.rank);
         let side = Vec3::new(k.rand(i as u32 + 40), 0.5, k.rand(i as u32 + 50)).normalize();
         icosa(&mut k.mesh, centre, radii, (0.22, seed), colour);
-        spots.push(centre + side * r * 0.9);
+        spots.push(centre + side * radii * 0.8);
     }
     spots
 }

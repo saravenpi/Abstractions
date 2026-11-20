@@ -90,8 +90,9 @@ impl Kit {
         }
     }
 
-    /// Hangs a flower on each of the first four of `spots` and a fruit under them, as the paint allows, each
-    /// of about `size` metres. A young plant neither flowers nor fruits.
+    /// Hangs a flower on each of the first four of `spots` and a fruit touching the bottom of each flower, or
+    /// on the spot itself without one, as the paint allows, each of about `size` metres. A young plant neither
+    /// flowers nor fruits.
     pub fn dress(&mut self, spots: &[Vec3], size: f32) {
         let paint = self.dials.paint;
         let spots = if self.age == 0 { &[] } else { spots };
@@ -100,9 +101,10 @@ impl Kit {
                 bead(&mut self.mesh, at, Vec3::new(1.0, 0.6, 1.0) * size, c);
             }
             if let Some(c) = paint.fruit.filter(|_| i < 4).map(|c| self.tone(c)) {
+                let drop = [0.4, 1.35][usize::from(paint.flowers.is_some())];
                 bead(
                     &mut self.mesh,
-                    at - Vec3::Y * size * 1.6,
+                    at - Vec3::Y * size * drop,
                     Vec3::splat(size * 0.8),
                     c,
                 );
@@ -111,7 +113,7 @@ impl Kit {
     }
 
     /// Adds the visible defences along the stem from `from` to `to` of radius `reach`: four thorns, and two
-    /// beads of resin.
+    /// beads of resin. `from` is the foot of the stem itself, so a leaning stem keeps them on its bark.
     pub fn armour(&mut self, from: Vec3, to: Vec3, reach: f32) {
         let (form, thorn, resin) = (self.dials.form, self.tone(THORN), self.tone(RESIN));
         for k in 0..4 {

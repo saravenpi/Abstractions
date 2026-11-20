@@ -13,6 +13,8 @@ mod rosette;
 mod tall;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_joined;
 mod tree;
 
 pub(in crate::world::propmesh) use book::soup;

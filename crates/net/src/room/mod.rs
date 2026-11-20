@@ -2,12 +2,13 @@
 //! and datagrams come out. The server and a game open to LAN run the same room.
 //!
 //! The room never simulates and never decodes a state body. It owns the world (seed, clock,
-//! log, atlas, player records), lets players in, keeps the last few states of each player and
-//! kind, and copies them to the others every tick: all of them around the same star, the
+//! log, atlas, player records, hunt), lets players in, keeps the last few states of each player
+//! and kind, and copies them to the others every tick: all of them around the same star, the
 //! newest once a second elsewhere.
 
 mod conn;
 mod host;
+mod hunt;
 mod join;
 mod map;
 mod play;
@@ -17,7 +18,15 @@ mod seat;
 #[cfg(test)]
 mod explored_tests;
 #[cfg(test)]
+mod field_tests;
+#[cfg(test)]
+mod hunt_kit;
+#[cfg(test)]
+mod hunt_tests;
+#[cfg(test)]
 mod join_tests;
+#[cfg(test)]
+mod keep_tests;
 #[cfg(test)]
 mod kit;
 #[cfg(test)]
@@ -34,6 +43,7 @@ use std::collections::HashMap;
 pub use map::{BODIES_MAX, RUNS_MAX};
 
 use conn::Conn;
+use hunt::Hunting;
 use map::Ground;
 use seat::{KINDS, Seat, Sent};
 
@@ -83,6 +93,12 @@ pub struct Room {
     relayed: u64,
     /// The explored ground of each body.
     explored: HashMap<BodyId, Ground>,
+    /// The hurt animals, the carcasses, the stuck spears and the held items.
+    hunting: Hunting,
+    /// True when something that is saved changed since [`Room::saved`] was last called.
+    dirty: bool,
+    /// Network time of the last sweep of the hunt.
+    swept: f64,
 }
 
 impl Room {
@@ -91,6 +107,7 @@ impl Room {
     pub fn new(config: RoomConfig, mut world: World, now: f64) -> Self {
         let cap = usize::from(config.cap);
         let explored = map::grounds(std::mem::take(&mut world.explored));
+        let hunting = Hunting::new(std::mem::take(&mut world.hunt));
         Self {
             config,
             world,
@@ -104,17 +121,34 @@ impl Room {
             seq: 0,
             relayed: 0,
             explored,
+            hunting,
+            dirty: false,
+            swept: f64::NEG_INFINITY,
         }
     }
 
-    /// Returns the world to save: the universe clock advanced to `now`, every record kept and
-    /// the explored ground.
+    /// Returns the world to save: the universe clock advanced to `now`, every record kept, the
+    /// explored ground and the hunt. The runs of each body come from the copy kept when its
+    /// ground changed, so nothing is rebuilt here.
     pub fn snapshot(&self, now: f64) -> World {
         World {
             clock: self.clock(now),
             explored: self.explored_list(),
+            hunt: self.hunting.world(Vec::new()),
             ..self.world.clone()
         }
+    }
+
+    /// Returns true when something that is saved changed since [`Room::saved`] was last called:
+    /// a change of the log, a player's record, explored ground, a carcass or a spear. A server
+    /// that finds it false has nothing new to write.
+    pub fn changed(&self) -> bool {
+        self.dirty
+    }
+
+    /// Says the world was handed to be saved, so [`Room::changed`] is false until the next change.
+    pub fn saved(&mut self) {
+        self.dirty = false;
     }
 
     /// Returns the players in the world now, by id.

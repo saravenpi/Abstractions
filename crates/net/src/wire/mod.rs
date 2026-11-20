@@ -5,9 +5,12 @@
 //! [`ServerMsg`], each behind a length ([`encode`], [`decode`]). The server reads the head of
 //! a record and never its body.
 
+mod act;
 mod bytes;
 mod companion;
+mod field;
 mod frame;
+mod hunt;
 mod msg;
 mod name;
 mod record;
@@ -15,30 +18,48 @@ mod robot;
 mod ship;
 mod stream;
 mod varint;
+mod vitals;
 
 #[cfg(test)]
 mod body_tests;
 #[cfg(test)]
 mod cells_tests;
 #[cfg(test)]
+mod field_tests;
+#[cfg(test)]
+mod hunt_tests;
+#[cfg(test)]
 mod msg_tests;
 #[cfg(test)]
 mod name_tests;
+#[cfg(test)]
+mod order_tests;
 #[cfg(test)]
 mod record_tests;
 #[cfg(test)]
 mod stream_tests;
 
+pub use act::{Act, Event, HuntWorld};
 pub use companion::{CompanionBody, LIFT_RANGE};
+pub use field::{
+    Attack, Blow, CLEAN, DEFLECTED, Impact, MISS, Opened, Rock, STOPPED, Wound, finite,
+};
 pub use frame::{Frame, Kind};
+pub use hunt::{
+    AnimalKey, CARCASSES_MAX, CREDIT_WINDOW, Carcass, Hit, ITEM_MAX, Kill, LASTS, PARTS_MAX, SKEW,
+    SPEARS_MAX, Spear, SpearKey,
+};
 pub use msg::{
     ClientMsg, Hello, PlayerInfo, PlayerRecord, Reason, ServerMsg, Status, Waypoint, Welcome,
 };
 pub use name::clean_name;
 pub use record::{AT_REST, Head, Record, Records, push, push_within, records, split};
-pub use robot::{AIRSPEED_RANGE, CLIMB_RANGE, RobotBody, SPEED_RANGE, STRIDE_WRAP, stride_delta};
+pub use robot::{
+    AIRSPEED_RANGE, CLIMB_RANGE, PHASE_RANGE, RobotBody, SPEED_RANGE, STRIDE_WRAP, stride_delta,
+};
 pub use ship::{ShipBody, WARP_ACTIVE, WARP_OFF, WARP_SPOOLING};
 pub use stream::{CLIENT_MESSAGE_MAX, MESSAGE_MAX, StreamError, decode, encode};
+pub use vitals::{HARM_PARTS, VitalsBody};
 
 /// Version of the protocol. A player and a server must hold the same number to play together.
 /// Raise it whenever bytes on the wire change meaning.

@@ -3,11 +3,12 @@
 //!
 //! The file is TOML at `world.toml` in the server's data folder. [`save`] writes it whole
 //! through a temporary file, so a crash leaves either the old file or the new one, and keeps
-//! the last three copies. The explored ground goes beside it in `explored3.bin`, written the
-//! same safe way. [`import`] reads a single-player world of the game.
+//! the last three copies. The explored ground goes beside it in `explored3.bin` and the hunt in
+//! `hunt3.bin`, written the same safe way. [`import`] reads a single-player world of the game.
 
 mod explored;
 mod file;
+mod hunt;
 mod import;
 
 #[cfg(test)]
@@ -19,6 +20,7 @@ mod import_tests;
 
 pub use explored::EXPLORED_FILE;
 pub use file::{FILE, load_or_create, save};
+pub use hunt::HUNT_FILE;
 pub use import::import;
 
 use std::collections::BTreeMap;
@@ -28,7 +30,7 @@ use serde::{Deserialize, Serialize};
 use crate::ids::BodyId;
 use crate::leaves::Run;
 use crate::log::Changes;
-use crate::wire::PlayerRecord;
+use crate::wire::{HuntWorld, PlayerRecord};
 
 /// What the server keeps of one player between sessions.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -76,6 +78,10 @@ pub struct World {
     /// It lives in [`EXPLORED_FILE`], not in the world file.
     #[serde(skip)]
     pub explored: Vec<(BodyId, Vec<Run>)>,
+    /// The carcasses and the stuck spears. It lives in [`HUNT_FILE`], not in the world file, and
+    /// holds no item of a player.
+    #[serde(skip)]
+    pub hunt: HuntWorld,
 }
 
 impl Default for World {
@@ -89,6 +95,7 @@ impl Default for World {
             atlas: String::new(),
             players: BTreeMap::new(),
             explored: Vec::new(),
+            hunt: HuntWorld::default(),
         }
     }
 }

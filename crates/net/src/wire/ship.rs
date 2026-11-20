@@ -1,6 +1,6 @@
 //! The body of a ship record: where a player's ship is and what a watcher sees of its state.
 //!
-//! 40 bytes on a surface, 49 in the other frames.
+//! 41 bytes on a surface, 50 in the other frames.
 
 use glam::{DVec3, Quat, Vec3};
 
@@ -45,6 +45,8 @@ pub struct ShipBody {
     pub stick: [f32; 2],
     /// Boost the pilot holds, from 0 to 1.
     pub boost: f32,
+    /// Glow of an atmospheric entry around the hull, from 0 to 1.
+    pub heat: f32,
 }
 
 impl ShipBody {
@@ -63,6 +65,7 @@ impl ShipBody {
             pack_i8(self.stick[0], 1.0) as u8,
             pack_i8(self.stick[1], 1.0) as u8,
             pack_unit(self.boost),
+            pack_unit(self.heat),
         ]);
     }
 
@@ -73,7 +76,18 @@ impl ShipBody {
         let position = reader.position(frame)?;
         let velocity = reader.vec3()?;
         let rotation = unpack_rotation(u32::from_le_bytes(reader.take()?));
-        let [throttle, gear, damage, state, warp, level, x, y, boost] = reader.take()?;
+        let [
+            throttle,
+            gear,
+            damage,
+            state,
+            warp,
+            level,
+            x,
+            y,
+            boost,
+            heat,
+        ] = reader.take()?;
         reader.end(Self {
             position,
             velocity,
@@ -86,6 +100,7 @@ impl ShipBody {
             warp_level: unpack_unit(level),
             stick: [unpack_i8(x as i8, 1.0), unpack_i8(y as i8, 1.0)],
             boost: unpack_unit(boost),
+            heat: unpack_unit(heat),
         })
     }
 }

@@ -43,6 +43,7 @@ impl Room {
             name: name.unwrap_or_else(|| format!("Robot {}", id.0)),
         };
         out.send(conn, ServerMsg::Welcome(self.welcome(id, &hello.key, now)));
+        self.tell_hunt(conn, out);
         self.broadcast(&ServerMsg::Joined(info.clone()), out);
         self.seat(slot, Seat::new(conn, hello.key, info));
         if let Some(open) = self.conns.get_mut(&conn) {

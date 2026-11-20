@@ -4,8 +4,8 @@ use crate::host::ConnId;
 use crate::ids::StarId;
 use crate::wire::{Head, Kind, PlayerInfo, Record, Waypoint};
 
-/// Kinds of state record: robot, ship and companion.
-pub(super) const KINDS: usize = 3;
+/// Kinds of state record: robot, ship, companion and vitals.
+pub(super) const KINDS: usize = 4;
 
 /// Most bytes of a state body the room keeps. A longer body is dropped.
 pub(super) const BODY_MAX: usize = 128;
@@ -103,6 +103,8 @@ pub(super) struct Seat {
     pub(super) recent: [Recent; KINDS],
     /// The player's live waypoint, if any.
     pub(super) waypoint: Option<Waypoint>,
+    /// The bytes of the item the player holds, if any.
+    pub(super) held: Option<Vec<u8>>,
 }
 
 /// Returns the place of `kind` in [`Seat::latest`].
@@ -111,6 +113,7 @@ pub(super) fn kind_index(kind: Kind) -> usize {
         Kind::Robot => 0,
         Kind::Ship => 1,
         Kind::Companion => 2,
+        Kind::Vitals => 3,
     }
 }
 
@@ -124,6 +127,7 @@ impl Seat {
             star: None,
             recent: Default::default(),
             waypoint: None,
+            held: None,
         }
     }
 

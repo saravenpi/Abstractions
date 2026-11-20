@@ -26,6 +26,7 @@ impl Room {
         member.place = record.place;
         member.ship = record.ship;
         member.marks = record.marks;
+        self.dirty = true;
     }
 
     /// Adds the change of the player on `conn` to the log and tells everyone, the player
@@ -45,6 +46,7 @@ impl Room {
         }
         let time = self.clock(now);
         self.world.changes.push(player, time, change.clone());
+        self.dirty = true;
         let entry = Entry {
             player,
             time,

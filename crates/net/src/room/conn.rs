@@ -8,6 +8,9 @@ pub(super) const MESSAGES_PER_SECOND: u32 = 60;
 /// Log entries a player may add per second. Further ones are dropped.
 pub(super) const CHANGES_PER_SECOND: u32 = 10;
 
+/// Hunting acts a player may send per second. Further ones are dropped.
+pub(super) const HUNTS_PER_SECOND: u32 = 30;
+
 /// Seconds a connection may stay open without joining.
 pub(super) const HELLO_WAIT: f64 = 10.0;
 
@@ -56,6 +59,8 @@ pub(super) struct Conn {
     pub(super) messages: Window,
     /// Log entries this second.
     pub(super) changes: Window,
+    /// Hunting acts this second.
+    pub(super) hunt: Window,
 }
 
 impl Conn {
@@ -67,6 +72,7 @@ impl Conn {
             seat: None,
             messages: Window::new(now),
             changes: Window::new(now),
+            hunt: Window::new(now),
         }
     }
 }

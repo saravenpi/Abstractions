@@ -6,6 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::hunt::{Act, Event};
 use crate::ids::BodyId;
 use crate::leaves::Run;
 use crate::log::{Change, Changes, Entry, PlayerId};
@@ -140,6 +141,8 @@ pub enum ClientMsg {
     },
     /// The player sets their waypoint, or clears it with nothing.
     Waypoint(Option<Waypoint>),
+    /// The player tells what happened in their hunt: see [`Act`].
+    Hunt(Act),
 }
 
 /// A message from a server to a player.
@@ -182,4 +185,7 @@ pub enum ServerMsg {
         /// The waypoint, or nothing when cleared.
         waypoint: Option<Waypoint>,
     },
+    /// What another player did in their hunt, or the state of the hunt after joining: see
+    /// [`Event`].
+    Hunt(Event),
 }

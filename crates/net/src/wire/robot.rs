@@ -1,6 +1,6 @@
 //! The body of a robot record: where a player's robot is and how it is posed.
 //!
-//! 44 bytes on a surface, 53 in the other frames. Angles are radians, speeds metres per second.
+//! 47 bytes on a surface, 56 in the other frames. Angles are radians, speeds metres per second.
 
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
@@ -56,7 +56,18 @@ pub struct RobotBody {
     pub look: Vec2,
     /// How hard the last landing was, from 0 to 1.
     pub landed_hard: f32,
+    /// How far the body is crouched, from 0 (standing) to 1 (fully down).
+    pub crouch: f32,
+    /// What the hands do with the tool: the rank of the game's act in bits 0 to 2 (0 ready, 1
+    /// wind-up, 2 swing, 3 recover, 4 guard, 5 draw, 6 stun) and the side of the strike in bits 3
+    /// and 4. Kept as it is.
+    pub swing: u8,
+    /// Seconds since the act began, from 0 to [`PHASE_RANGE`].
+    pub phase: f32,
 }
+
+/// Longest time into an act a record holds, in seconds. The step is 8 ms.
+pub const PHASE_RANGE: f32 = 2.0;
 
 /// Returns how far the stride moved from the sample `before` to the sample `after`, in metres,
 /// seeing through the wrap at [`STRIDE_WRAP`].
@@ -79,8 +90,8 @@ impl RobotBody {
         out.extend_from_slice(&self.small());
     }
 
-    /// Returns the eight fields that take one byte each, in wire order.
-    fn small(&self) -> [u8; 8] {
+    /// Returns the eleven fields that take one byte each, in wire order.
+    fn small(&self) -> [u8; 11] {
         [
             pack_i8(self.bank, PI) as u8,
             pack_i8(self.pitch, PI) as u8,
@@ -90,11 +101,14 @@ impl RobotBody {
             pack_i8(self.look.x, PI) as u8,
             pack_i8(self.look.y, FRAC_PI_2) as u8,
             pack_unit(self.landed_hard),
+            pack_unit(self.crouch),
+            self.swing,
+            pack_unit(self.phase / PHASE_RANGE),
         ]
     }
 
-    /// Returns a body at rest at the origin with the eight one-byte fields read from `small`.
-    fn with_small(small: [u8; 8]) -> Self {
+    /// Returns a body at rest at the origin with the eleven one-byte fields read from `small`.
+    fn with_small(small: [u8; 11]) -> Self {
         Self {
             bank: unpack_i8(small[0] as i8, PI),
             pitch: unpack_i8(small[1] as i8, PI),
@@ -106,6 +120,9 @@ impl RobotBody {
                 unpack_i8(small[6] as i8, FRAC_PI_2),
             ),
             landed_hard: unpack_unit(small[7]),
+            crouch: unpack_unit(small[8]),
+            swing: small[9],
+            phase: unpack_unit(small[10]) * PHASE_RANGE,
             ..Self::default()
         }
     }

@@ -37,4 +37,7 @@ pub enum Kind {
     Ship,
     /// The companion of a player: a [`super::CompanionBody`].
     Companion,
+    /// How hurt the robot of a player is, and the glow of an entry around it: a
+    /// [`super::VitalsBody`], sent more slowly than the robot.
+    Vitals,
 }

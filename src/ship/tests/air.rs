@@ -6,9 +6,9 @@ use bevy::math::{DQuat, DVec3};
 
 use super::{above_pole, coast, fly, planet};
 use crate::ship::body::Ship;
-use crate::ship::drag::{DRAG, SEA_DENSITY, density};
+use crate::ship::drag::{DRAG, SEA_DENSITY, density, slow};
 use crate::ship::flight::{Controls, Report};
-use crate::universe::{PlanetRecord, PlanetSpec};
+use crate::universe::{PlanetRecord, PlanetSpec, heights};
 use crate::wind::{PRESSURES, samples};
 
 /// Returns a 40 km planet with an 80 km atmosphere and a very long day, with `record`.
@@ -61,13 +61,13 @@ fn dive(planet: &PlanetSpec, top: f64) -> (f64, f64, f64) {
 }
 
 /// In thin air the ship falls faster and in thick air slower, each at the speed where the drag
-/// of that air equals the weight. The atmosphere is 800 km deep, so that the air hardly
-/// changes over the distance the thin air needs to settle the speed.
+/// of that air equals the weight. The atmosphere is 1,200 km deep, a scale height of 100 km, so
+/// that the air hardly changes over the distance the thin air needs to settle the speed.
 #[test]
 fn terminal_speed_follows_the_air() {
     let speeds = [0.3, 1.0, 3.0].map(|at| {
         let planet = PlanetSpec {
-            atmosphere_height: 800_000.0,
+            atmosphere_height: 1_200_000.0,
             ..world(air(at))
         };
         let (speed, height, _) = dive(&planet, 12_000.0);
@@ -115,4 +115,36 @@ fn the_class_alone_changes_no_flight() {
         (ship.pos, ship.vel, ship.rot, ship.spin)
     });
     assert!(flown.iter().all(|ship| *ship == flown[1]));
+}
+
+/// On a planet with the size, the pull and the air of the Earth the scale height is 8.4 km: the
+/// air at the sea is e times denser than 8.5 km up, it drags a ship e times harder there, and
+/// there is none left at the top.
+#[test]
+fn the_air_of_an_earth_thins_by_e_over_its_scale_height() {
+    let (radius, gravity) = (6.371e6, 9.81);
+    let [atmosphere_height, cloud_base, cloud_top] =
+        heights(&PlanetRecord::TEMPERATE, gravity, radius);
+    let earth = PlanetSpec {
+        gravity,
+        atmosphere_height,
+        cloud_base,
+        cloud_top,
+        ..planet(radius, 0.0, 86_164.0)
+    };
+    assert!((7000.0..10_000.0).contains(&earth.scale_height()));
+    assert_eq!(density(&earth, 0.0), SEA_DENSITY);
+    let vel = DVec3::NEG_Z * 200.0;
+    let drag = |height: f64| {
+        let after = slow(DQuat::IDENTITY, vel, density(&earth, height), 0.01);
+        (vel - after).length()
+    };
+    for fall in [
+        density(&earth, 0.0) / density(&earth, 8500.0),
+        drag(0.0) / drag(8500.0),
+    ] {
+        assert!((fall / std::f64::consts::E - 1.0).abs() < 0.03, "{fall}");
+    }
+    assert_eq!(density(&earth, atmosphere_height), 0.0);
+    assert!(density(&earth, atmosphere_height - 1.0) > 0.0);
 }

@@ -82,7 +82,7 @@ impl Nodes {
         let pool = AsyncComputeTaskPool::get();
         let room = MAX_BUILDING.saturating_sub(self.building.len());
         for id in wanted.into_iter().take(room) {
-            let terrain = spawner.view(id.face);
+            let terrain = spawner.view(id);
             let task = pool.spawn(async move { coarse(&terrain, id) });
             self.building.insert(id, task);
         }

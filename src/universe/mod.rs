@@ -21,8 +21,11 @@ mod record;
 mod rings;
 mod sector;
 mod spec;
+mod spin;
 mod star;
 mod system;
+mod units;
+mod volatiles;
 mod zone;
 
 #[cfg(test)]
@@ -44,24 +47,32 @@ mod record_tests;
 #[cfg(test)]
 mod ring_tests;
 #[cfg(test)]
+mod spin_tests;
+#[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod volatiles_tests;
 
-pub use air::NO_AIR;
-pub use class::MOLTEN;
+pub use air::{Gas, Mix, NO_AIR, Part, TOP_SCALES, dense, heights};
+pub use class::{MOLTEN, VOLCANIC};
 pub use galaxy::{ARMS, CENTER_SPAN, RADIUS_GLY};
-pub use giant::{GIANT_GRAVITY, GIANT_RADIUS};
-pub use hill::MOON_RADIUS;
-pub use home::{HOME_DAY_SECONDS, HOME_GRAVITY, HOME_RADIUS};
+pub use giant::{GIANT_MASS, GIANT_RADIUS};
+pub use hill::{CAPTURED_RADIUS, IMPACT_RADIUS, REGULAR_RADIUS};
+pub use home::landable;
 pub use ids::{BodyId, GalaxyId, StarId};
 pub use look::Look;
-pub use planet::{PLANET_DAY, PLANET_GRAVITY, PLANET_RADIUS, air, orbit_seconds};
+pub use planet::{PLANET_RADIUS, ROCK, gravity, orbit_seconds};
 pub use record::{PlanetClass, PlanetRecord, Water, Zone};
 pub use rings::{RING_OUTER, ROCHE};
 pub use sector::{SECTOR_STARS, sector_of};
 pub use spec::{
     GRAVITATION, GalaxyKind, GalaxySpec, Orbit, PlanetSpec, Rings, StarClass, StarSpec, SystemSpec,
 };
+pub use spin::breakup;
 pub use system::{ORBIT, PLANETS};
+pub use units::{
+    AU, EARTH_RADIUS, STANDARD_GRAVITY, STARLIGHT, SUN_MASS, SUN_RADIUS, SUN_TEMPERATURE, YEAR,
+};
 
 use bevy::math::IVec3;
 use bevy::prelude::Resource;
@@ -79,12 +90,17 @@ pub const GALAXY_CELL: f64 = 1e15;
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Universe {
     seed: u64,
+    home: BodyId,
 }
 
 impl Universe {
     /// Builds the universe for a seed. The same seed always gives the same universe.
+    ///
+    /// This searches the middle of the home galaxy for the home planet, which takes a few
+    /// milliseconds: keep the universe, do not build it again every frame.
     pub fn new(seed: u64) -> Self {
-        Self { seed }
+        let home = home::choose(seed);
+        Self { seed, home }
     }
 
     /// Returns the seed this universe was built from.
@@ -92,9 +108,11 @@ impl Universe {
         self.seed
     }
 
-    /// Returns the planet a new game starts on, always the same one for a seed.
+    /// Returns the planet a new game starts on, always the same one for a seed: the nearest
+    /// planet to the centre of the home galaxy that is solid, landable and alive. It is found
+    /// once, when the universe is built.
     pub fn home(&self) -> BodyId {
-        home::body(self.seed)
+        self.home
     }
 
     /// Returns the galaxy of a grid cell, or nothing when the cell is empty.
@@ -122,12 +140,10 @@ impl Universe {
 
     /// Returns a star with its planets. A star that does not exist gives the home system.
     pub fn system(&self, id: StarId) -> SystemSpec {
-        let home = self.home().star;
-        let star = self.star(id).or_else(|| self.star(home));
-        let star = star.expect("the home sector always holds the home star");
-        let world = (star.id == home).then_some(self.seed);
+        let star = self.star(id).or_else(|| self.star(self.home.star));
+        let star = star.expect("the home galaxy always holds the home star");
         SystemSpec {
-            planets: system::planets(&star, world),
+            planets: system::planets(&star),
             star,
         }
     }

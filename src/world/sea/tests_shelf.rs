@@ -57,7 +57,7 @@ fn the_coarse_sea_reads_deep_under_every_cell() {
         "the bare depth reads a shelf"
     );
     for line in [
-        "let sag = max(water.globe.w - length(world - water.globe.xyz), 0.0);",
+        "let sag = max(-sea_height(world), 0.0);",
         "let column = min(column_depth(in.position, rise * dist) + sag, DEEP);",
         "let shelf = smoothstep(SHELF_START, SHELF_END, column);",
         "const SHELF_START: f32 = 1.1;",

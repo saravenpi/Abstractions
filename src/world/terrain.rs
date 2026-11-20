@@ -7,16 +7,19 @@ use bevy::prelude::*;
 use super::biome::Biome;
 use super::globe::{Chart, Globe, Grain};
 use super::surface::Surface;
-use crate::universe::{HOME_GRAVITY, HOME_RADIUS};
+use crate::universe::Universe;
 
 mod coarse;
 mod ponds;
+mod root;
 mod spawn;
 mod view;
 
 /// A flat `(x, z)` view of the ground of one planet, deterministic for a seed.
 ///
-/// The chart says how `(x, z)` maps onto the globe. Heights are metres above sea level.
+/// The chart says how `(x, z)` maps onto the globe. Heights are metres above sea level. On a cube face
+/// `(x, z)` are 32-bit offsets from the 64-bit origin of the chart, so they stay precise on a planet of
+/// any size; whole tiles counted from the middle of the face name ground that outlives a view.
 #[derive(Resource, Clone)]
 pub struct Terrain {
     globe: Arc<Globe>,
@@ -26,9 +29,11 @@ pub struct Terrain {
 }
 
 impl Terrain {
-    /// Builds the legacy flat terrain for a seed. The same seed always gives the same world.
+    /// Builds the flat terrain of the home planet of the universe of `seed`, the globe the game
+    /// builds for it. The same seed always gives the same world.
     pub fn new(seed: u64) -> Self {
-        let globe = Globe::new(seed, HOME_RADIUS, HOME_GRAVITY);
+        let universe = Universe::new(seed);
+        let globe = Globe::of(&universe.planet(universe.home()));
         Self::on(Arc::new(globe), Chart::Flat)
     }
 
@@ -99,5 +104,7 @@ impl Terrain {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_root;
 #[cfg(test)]
 mod tests_spawn;

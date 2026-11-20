@@ -159,7 +159,7 @@ pub(super) fn drift(
     crossing.set_if_neq(CloudCrossing { depth });
     let map = body.and_then(|id| inputs.maps.want(id));
     let limit = inputs.local.0.as_ref().map(|near| near.handover(&vantage));
-    let within = limit.is_none_or(|limit| f64::from(vantage.radius + vantage.altitude) < limit);
+    let within = limit.is_none_or(|limit| vantage.observer.altitude(0.0) < limit);
     let shown = map.is_some() && within;
     let center = vantage
         .observer

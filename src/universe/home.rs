@@ -1,127 +1,139 @@
-//! The home system: where every new game starts, generated like any other and then pinned.
+//! The home planet: where every new game starts. It is chosen, not made: every planet comes
+//! from the same rules, and the home is the nearest one to the centre of the central galaxy
+//! that a robot can land on and that holds life.
 
-use std::f64::consts::TAU;
+use bevy::math::IVec3;
 
-use bevy::math::{DVec3, IVec3, Vec3};
-
-use super::hash::{self, Rng};
+use super::galaxy::{self, Shape};
 use super::ids::{BodyId, GalaxyId, StarId};
-use super::record::PlanetRecord;
-use super::spec::{GRAVITATION, PlanetSpec, StarClass, StarSpec};
-use super::system::ORBIT;
-use super::zone::FLUX_ORBIT;
-use super::{SECTOR_GLY, galaxy, planet};
+use super::record::PlanetClass;
+use super::spec::{PlanetSpec, StarSpec};
+use super::{GLY, SECTOR_GLY, sector, system};
+use crate::life::{World, odds};
 
-/// Sea level radius of the home planet in metres.
-pub const HOME_RADIUS: f64 = 6000.0;
-
-/// Surface gravity of the home planet in metres per second squared, the gravity the player falls with.
-pub const HOME_GRAVITY: f64 = 22.0;
-
-/// Seconds in one day of the home planet, the length of the day clock cycle.
-pub const HOME_DAY_SECONDS: f64 = 1200.0;
-
-/// Rank of the home planet around the home star.
-pub(super) const HOME_INDEX: u8 = 2;
-
-/// Fewest planets around the home star: two inside the home planet and two or more beyond it,
-/// so the first voyage always has a neighbour further out to go to.
-pub(super) const HOME_PLANETS: u8 = 5;
-
-/// Grid cell of the home galaxy, the one cell that always holds a galaxy.
+/// Grid cell of the home galaxy, the one cell that always holds a galaxy: the centre of the
+/// universe.
 pub(super) const HOME_GALAXY: GalaxyId = GalaxyId(IVec3::ZERO);
 
-/// Gravitational parameter of the home star: a planet 4e7 m away takes 24 home days to go round.
-const HOME_MU: f64 = 3.046e15;
+/// Systems looked at before the search settles for the planet most suited to life.
+pub const SEARCH: usize = 300;
 
-/// Mass of the home star in kilograms, the unit of the star class table.
-pub(super) const HOME_STAR_MASS: f64 = HOME_MU / GRAVITATION;
+/// Thickness in game light-years of the shells the search goes through, from the centre out.
+const SHELL: f64 = 10.0;
 
-/// Radius of the home star in metres, the unit of the star class table.
-pub(super) const HOME_STAR_RADIUS: f64 = 1.85e5;
+/// Most shells the search goes through: past the rim of the largest galaxy.
+const SHELLS: u32 = 360;
 
-/// Surface temperature of the home star in kelvin, the unit star temperatures are scaled from.
-pub(super) const HOME_STAR_TEMPERATURE: f64 = 5780.0;
-
-/// Returns the sector of the home star in the home galaxy of radius `radius` game light-years.
-///
-/// The sector lies on the middle plane of the disc, between 40 and 60 percent of the radius.
-pub(super) fn sector(galaxy_seed: u64, radius: f64) -> IVec3 {
-    let mut rng = Rng::new(hash::child(galaxy_seed, 4));
-    let (reach, angle) = (rng.range(0.4, 0.6) * radius, rng.range(0.0, TAU));
-    let at = DVec3::new(angle.cos(), 0.0, angle.sin()) * reach / SECTOR_GLY;
-    at.floor().as_ivec3()
-}
-
-/// Returns the identifier of the home planet of a universe.
-pub(super) fn body(universe: u64) -> BodyId {
-    let shape = galaxy::shape(universe, HOME_GALAXY);
-    let star = StarId {
+/// The body a universe without a single solid planet starts on. No seed gets there.
+const NOWHERE: BodyId = BodyId {
+    star: StarId {
         galaxy: HOME_GALAXY,
-        sector: shape.and_then(|s| s.home).unwrap_or_default(),
+        sector: IVec3::ZERO,
         index: 0,
+    },
+    index: 0,
+    moon: 0,
+};
+
+/// Returns true when a robot can stand on `planet`: solid ground that is not molten.
+pub fn landable(planet: &PlanetSpec) -> bool {
+    !matches!(
+        planet.record.class,
+        PlanetClass::GasGiant | PlanetClass::Lava
+    )
+}
+
+/// Returns the stars of the home galaxy whose sector centre lies from `low` to `low + SHELL`
+/// game light-years from the galaxy centre, nearest first.
+fn shell(shape: &Shape, low: f64) -> Vec<StarSpec> {
+    let reach = ((low + SHELL) / SECTOR_GLY).ceil() as i32 + 1;
+    let side = 2 * reach;
+    let mut stars = Vec::new();
+    for i in 0..side * side * side {
+        let at = IVec3::new(i % side, i / side % side, i / (side * side)) - reach;
+        let out = (at.as_dvec3() + 0.5).length() * SECTOR_GLY;
+        if (low..low + SHELL).contains(&out) {
+            sector::fill(shape, HOME_GALAXY, at, &mut stars);
+        }
+    }
+    stars.sort_by(|a, b| a.pos.length_squared().total_cmp(&b.pos.length_squared()));
+    stars
+}
+
+/// Returns the living planet of `planets`, the planets of `star`, a new game would start on:
+/// the landable one whose life climbed highest under the normal odds, the inner one of two
+/// alike, or nothing when none lives.
+fn living(star: &StarSpec, planets: &[PlanetSpec]) -> Option<BodyId> {
+    let alive = |p: &PlanetSpec| {
+        let rung = odds::rung(&World::of(p, star), p.seed)?;
+        landable(p).then_some((rung as u8, p.id))
     };
-    BodyId {
-        star,
-        index: HOME_INDEX,
-        moon: 0,
+    let best = planets.iter().rev().filter_map(alive);
+    best.max_by_key(|(rung, _)| *rung).map(|(_, id)| id)
+}
+
+/// Returns the landable planet of `planets`, the planets of `star`, most likely to hold life,
+/// with that chance, the inner one of two alike.
+fn suited(star: &StarSpec, planets: &[PlanetSpec]) -> Option<(f32, BodyId)> {
+    let chance = |p: &PlanetSpec| (odds::chance(&World::of(p, star)), p.id);
+    let landable = planets.iter().rev().filter(|p| landable(p));
+    landable.map(chance).max_by(|a, b| a.0.total_cmp(&b.0))
+}
+
+/// What the search has found so far.
+#[derive(Default)]
+struct Found {
+    /// The nearest living planet and the metres from the galaxy centre to its star.
+    living: Option<(f64, BodyId)>,
+    /// The planet most likely to hold life and that chance.
+    spare: Option<(f32, BodyId)>,
+    /// How many systems were looked at.
+    seen: usize,
+}
+
+impl Found {
+    /// Looks at the system of `star`, unless a living planet nearer than it is already known.
+    fn look(&mut self, star: &StarSpec) {
+        let out = star.pos.length();
+        if self.living.is_some_and(|(nearest, _)| out >= nearest) {
+            return;
+        }
+        let planets = system::planets(star);
+        self.seen += 1;
+        self.living = living(star, &planets).map(|id| (out, id)).or(self.living);
+        let spare = suited(star, &planets);
+        if spare.is_some_and(|(chance, _)| self.spare.is_none_or(|(best, _)| chance > best)) {
+            self.spare = spare;
+        }
+    }
+
+    /// Returns true when no shell from `low` game light-years out can change the answer: the
+    /// nearest living planet is closer than any star left, or enough systems had none.
+    fn settled(&self, low: f64) -> bool {
+        let slack = 0.5 * 3f64.sqrt() * SECTOR_GLY;
+        let nearer = |(out, _): (f64, BodyId)| out < (low - slack) * GLY;
+        self.living.map_or(self.seen >= SEARCH, nearer)
     }
 }
 
-/// Turns the first star of the home sector into the home star: a yellow star of unit mass and light at 5,780 K.
+/// Returns the home planet of a universe: the nearest planet to the centre of the home galaxy
+/// that is solid, landable and alive under the normal odds of life.
 ///
-/// It keeps the name the naming code gave it, like every other star.
-pub(super) fn star(star: StarSpec) -> StarSpec {
-    StarSpec {
-        class: StarClass::G,
-        mass: HOME_STAR_MASS,
-        luminosity: 1.0,
-        radius: HOME_STAR_RADIUS,
-        temperature: HOME_STAR_TEMPERATURE,
-        color: Vec3::new(1.0, 0.96, 0.88),
-        ..star
-    }
-}
-
-/// Returns the orbit radius in metres of a planet of the home system, from the place `band` its
-/// draw gave it in the span of orbits, 0 to 1 on the log scale, and the place `home` the home
-/// planet drew.
-///
-/// The home planet goes where its star, of luminosity 1, gives a flux of 1: [`FLUX_ORBIT`]. So
-/// the temperate record it is pinned to is the one its orbit earns, and no planet further out
-/// is ever warmer. The span of orbits inside it and the span beyond it are stretched or
-/// squeezed evenly to fit, so the planets keep their order and their orbits never cross.
-pub(super) fn orbit(band: f64, home: f64) -> f64 {
-    if band == home {
-        return FLUX_ORBIT;
-    }
-    let span = ORBIT.1 / ORBIT.0;
-    let lit = (FLUX_ORBIT / ORBIT.0).ln() / span.ln();
-    let at = match band < home {
-        true => band * lit / home,
-        false => lit + (band - home) * (1.0 - lit) / (1.0 - home),
+/// The search goes through the stars shell by shell from the centre. When the nearest
+/// [`SEARCH`] systems hold no living planet it takes the landable planet most likely to hold
+/// life among them. The same seed always gives the same home.
+pub(super) fn choose(universe: u64) -> BodyId {
+    let Some(shape) = galaxy::shape(universe, HOME_GALAXY) else {
+        return NOWHERE;
     };
-    ORBIT.0 * span.powf(at)
-}
-
-/// Turns a generated planet into the home planet: fixed size, gravity, day and record, and the world seed.
-///
-/// Its record is [`PlanetRecord::TEMPERATE`], the same temperate world for every seed, and its
-/// orbit, see [`orbit`], is the one that gives it the flux of that record. It has no moons and
-/// no rings, so its sky stays the same for every seed. It keeps its generated name.
-pub(super) fn planet(planet: PlanetSpec, world: u64) -> PlanetSpec {
-    let [atmosphere_height, cloud_base, cloud_top] = planet::air(HOME_RADIUS);
-    PlanetSpec {
-        seed: world,
-        radius: HOME_RADIUS,
-        gravity: HOME_GRAVITY,
-        day_seconds: HOME_DAY_SECONDS,
-        atmosphere_height,
-        cloud_base,
-        cloud_top,
-        record: PlanetRecord::TEMPERATE,
-        moons: 0,
-        rings: None,
-        ..planet
+    let mut found = Found::default();
+    for round in 0..SHELLS {
+        let low = f64::from(round) * SHELL;
+        if found.settled(low) {
+            break;
+        }
+        shell(&shape, low).iter().for_each(|star| found.look(star));
     }
+    let chosen = found.living.map(|(_, id)| id);
+    chosen.or(found.spare.map(|(_, id)| id)).unwrap_or(NOWHERE)
 }

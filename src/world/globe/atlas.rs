@@ -78,8 +78,8 @@ impl Globe {
     /// Returns this globe with a fresh atlas for what it now is.
     pub(super) fn charted(mut self) -> Self {
         let text = format!(
-            "{} {} {} {:?} {:?}",
-            self.seed, self.radius, self.gravity, self.record, self.setting
+            "{} {} {} {:?} {:?} {:?}",
+            self.seed, self.radius, self.gravity, self.record, self.setting, self.relief.age
         );
         let print = text.bytes().fold(0xCBF2_9CE4_8422_2325u64, |h, b| {
             (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01B3)

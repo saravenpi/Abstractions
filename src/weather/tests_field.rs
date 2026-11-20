@@ -8,7 +8,7 @@ use super::grid::{Patch, SNAPSHOT};
 use super::puff::{CELL, WRAP, density_at, drift};
 use super::rules::{Planet, RAIN, Weather, forecast, under};
 use super::wet::Wet;
-use crate::universe::{HOME_RADIUS, PlanetRecord, PlanetSpec, Universe};
+use crate::universe::{EARTH_RADIUS, PlanetRecord, PlanetSpec, Universe};
 use crate::world::Globe;
 
 /// One sixtieth of a second, the frame the smoothness bounds are given for.
@@ -102,9 +102,9 @@ fn rain_stays_under_the_cloud_top() {
 fn the_field_never_steps_in_time() {
     let field = Field {
         home: true,
-        ..Field::new(&PlanetRecord::TEMPERATE, 11, HOME_RADIUS)
+        ..Field::new(&PlanetRecord::TEMPERATE, 11, EARTH_RADIUS)
     };
-    let cells = (HOME_RADIUS as f32 + 1200.0) / CELL;
+    let cells = (EARTH_RADIUS as f32 + 1200.0) / CELL;
     let knots = [
         0.0,
         97.0,
@@ -136,10 +136,10 @@ fn the_field_never_steps_in_time() {
 /// laid on, the broad cover never jumps, and it does change from place to place.
 #[test]
 fn the_cover_never_steps_from_place_to_place() {
-    let field = Field::new(&PlanetRecord::TEMPERATE, 11, HOME_RADIUS);
+    let field = Field::new(&PlanetRecord::TEMPERATE, 11, EARTH_RADIUS);
     let axis = DVec3::new(0.3, 1.0, -0.2).normalize();
     let start = axis.cross(DVec3::X).normalize();
-    let metre = 1.0 / HOME_RADIUS;
+    let metre = 1.0 / EARTH_RADIUS;
     let cover = |step: u32| {
         let dir = bevy::math::DQuat::from_axis_angle(axis, f64::from(step) * metre) * start;
         field.cover(&Patch::around(dir), [0.8; 4], 1234.5)

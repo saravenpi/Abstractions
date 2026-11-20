@@ -6,8 +6,8 @@ use super::super::chem::Setting;
 use super::super::{Habitat, Plan, Rung, body};
 use crate::universe::hash::Rng;
 
-/// Gravity of the home planet in metres per second squared, the unit of the square-cube cap.
-const HOME_GRAVITY: f32 = crate::universe::HOME_GRAVITY as f32;
+/// Standard gravity in metres per second squared, the unit of the square-cube cap.
+const STANDARD_GRAVITY: f32 = crate::universe::STANDARD_GRAVITY as f32;
 
 /// Decades of mass a plant eater gains over the niche order. The niche model ranks species by
 /// body size as in water, where eaters outweigh what they eat; on land the plant eaters reach the
@@ -65,7 +65,7 @@ pub(super) fn mass(
     let (habitat, niche, level) = role;
     let low = -3.0 + 3.5 * niche + 0.6 * (level - 2.0) + grazes(form, habitat, level);
     let drawn = 10f32.powf(low + 2.0 * rng.unit() as f32);
-    let heavy = (HOME_GRAVITY / setting.world.gravity.max(1.0)).powi(3);
+    let heavy = (STANDARD_GRAVITY / setting.world.gravity.max(1.0)).powi(3);
     let place = match habitat {
         Habitat::Air if winged(form) => 30.0 * setting.world.pressure * heavy.cbrt(),
         Habitat::Water => 20_000.0,

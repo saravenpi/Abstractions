@@ -87,6 +87,8 @@ mod tests_river;
 #[cfg(test)]
 mod tests_roofs;
 #[cfg(test)]
+mod tests_root;
+#[cfg(test)]
 mod tests_stall;
 #[cfg(test)]
 mod tests_streets;

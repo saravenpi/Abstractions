@@ -9,7 +9,7 @@ use super::tune::SHIP_MASS;
 use super::view::HULL_RADIUS;
 use crate::effects::Churn;
 use crate::gear::air_density;
-use crate::universe::HOME_GRAVITY;
+use crate::universe::STANDARD_GRAVITY;
 use crate::wind::thickness;
 
 /// Sets the churn of the ship: its mass times the acceleration its crew feels pushes the air
@@ -23,7 +23,7 @@ pub fn feed(
     let air = skies.planet().map_or(0.0, |planet| {
         air_density(planet.atmosphere_height as f32, height) * thickness(&planet.record) as f32
     });
-    let load = SHIP_MASS * telemetry.g_force as f32 * HOME_GRAVITY as f32;
+    let load = SHIP_MASS * telemetry.g_force as f32 * STANDARD_GRAVITY as f32;
     churn.push = [load, 0.0][usize::from(telemetry.landed)];
     churn.size = 2.0 * HULL_RADIUS;
     churn.air = air;

@@ -5,7 +5,7 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::read::{at, caption, drawn, part};
-use super::rig::{RADIUS, app, settle, tap};
+use super::rig::{app, radius, settle, tap};
 use crate::computer::{Destination, Target};
 use crate::menus::hud::minimap::scope::Scope;
 use crate::menus::hud::minimap::space::{DASHES, Dash};
@@ -36,7 +36,7 @@ fn the_key_cycles_the_ranges() {
     let wide = (settle(&mut app), caption(&mut app));
     assert_eq!(wide, (800.0, "800 m".to_string()));
     assert_eq!(part(&mut app, Part::Ground).width, percent(200));
-    let capped = (RADIUS * 0.35) as f32;
+    let capped = (radius() * 0.35) as f32;
     assert_eq!(cycled(&mut app), (capped, "2.10 km".to_string()));
 }
 

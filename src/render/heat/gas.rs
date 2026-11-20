@@ -2,9 +2,9 @@
 
 use bevy::prelude::*;
 
-use super::tune::METHANE_BELOW;
+use crate::life::{World, chem, odds};
 use crate::render::{LocalSystem, Vantage};
-use crate::universe::{PlanetClass, PlanetRecord, PlanetSpec};
+use crate::universe::{self as air, Mix, PlanetSpec};
 
 /// The main gas of an atmosphere.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -25,20 +25,17 @@ pub enum Gas {
 }
 
 impl Gas {
-    /// Returns the main gas of the air of a planet.
-    ///
-    /// The universe has no composition for a planet, so the class stands for it: a giant is
-    /// hydrogen, a world of molten rock has sulphur in its air, a dry world has the carbon
-    /// dioxide of its volcanoes, a cold frozen world has methane, and the wet worlds have
-    /// nitrogen and oxygen. A planet without air has no gas.
-    pub fn of(record: &PlanetRecord) -> Self {
-        match record.class {
-            PlanetClass::GasGiant => Self::Hydrogen,
-            PlanetClass::Lava => Self::Sulphur,
-            PlanetClass::Desert => Self::CarbonDioxide,
-            PlanetClass::Ice if record.temperature < METHANE_BELOW => Self::Methane,
-            PlanetClass::Ice | PlanetClass::Ocean | PlanetClass::Island => Self::NitrogenOxygen,
-            PlanetClass::Barren => Self::Unknown,
+    /// Returns the gas that colours the glow in `mix`, from its most abundant gas: nitrogen,
+    /// oxygen and the air of a living world glow like the Earth's, hydrogen and helium like a
+    /// giant's, and water vapour or argon alone leave the glow a hot black body.
+    pub fn of(mix: &Mix) -> Self {
+        match mix.main_gas() {
+            air::Gas::Nitrogen | air::Gas::Oxygen => Self::NitrogenOxygen,
+            air::Gas::CarbonDioxide => Self::CarbonDioxide,
+            air::Gas::Hydrogen | air::Gas::Helium => Self::Hydrogen,
+            air::Gas::Methane => Self::Methane,
+            air::Gas::SulphurDioxide => Self::Sulphur,
+            air::Gas::Steam | air::Gas::Argon => Self::Unknown,
         }
     }
 
@@ -73,6 +70,22 @@ fn black_body(heat: f32) -> Vec3 {
 }
 
 impl LocalSystem {
+    /// Returns the gas of the air under the camera of `vantage`, [`Gas::Unknown`] outside a world.
+    ///
+    /// Life that splits water fills the air with oxygen, see [`chem::air`], so a living world
+    /// glows with the mix it breathes and a dead one with the mix it was born with.
+    pub fn gas(&self, vantage: &Vantage) -> Gas {
+        let (Some(planet), Some(near)) = (self.below(vantage), self.0.as_ref()) else {
+            return Gas::Unknown;
+        };
+        let world = World::of(planet, &near.system.star);
+        let mix = match odds::rung(&world, planet.seed) {
+            Some(_) => chem::air(&chem::chemistry(&world, planet.seed), planet.record.mix),
+            None => planet.record.mix,
+        };
+        Gas::of(&mix)
+    }
+
     /// Returns the planet or moon under the camera of `vantage`, when a world exists.
     pub fn below(&self, vantage: &Vantage) -> Option<&PlanetSpec> {
         let near = self.0.as_ref()?;

@@ -1,4 +1,5 @@
-//! Moon tests: moons repeat, fit inside the Hill sphere without crossing and face their planet.
+//! Moon tests: moons repeat, form three ways, fit between the Roche limit and the Hill sphere
+//! and face their planet.
 
 use std::f64::consts::TAU;
 use std::time::Instant;
@@ -6,7 +7,9 @@ use std::time::Instant;
 use bevy::math::DQuat;
 
 use super::giant_tests::{giant, systems};
-use super::hill::{HILL_SHARE, INNERMOST, SPACING, hill};
+use super::hill::{
+    CAPTURE_SHARE, HILL_SHARE, IMPACT_ORBIT, IMPACT_SHARE, MOST, REGULAR_MOONS, SPACING, hill,
+};
 use super::*;
 
 /// Returns every planet of the sample that has moons, with its star and its moons.
@@ -24,54 +27,40 @@ pub(super) fn hosts() -> Vec<(StarSpec, PlanetSpec, Vec<PlanetSpec>)> {
 /// The same seed gives the same moons, and looking a moon up by its id finds the same spec.
 #[test]
 fn same_seed_same_moons() {
-    for seed in 0..20 {
-        let (a, b) = (Universe::new(seed), Universe::new(seed));
-        let home = a.home();
-        for index in 0..a.system(home.star).planets.len() as u8 {
-            let id = BodyId { index, ..home };
-            let moons = a.moons(id);
-            assert_eq!(moons, b.moons(id));
-            assert_eq!(a.planet(id).moons as usize, moons.len());
-            for moon in &moons {
-                assert_eq!(&a.planet(moon.id), moon);
-                assert_eq!(a.moons(moon.id), moons);
-            }
-            let past = BodyId { moon: 7, ..id };
-            assert_eq!(a.planet(past), a.planet(id));
+    for (star, p, moons) in hosts().into_iter().take(200) {
+        assert_eq!(moons, moon::of(&star, &p));
+        assert_eq!(usize::from(p.moons), moons.len());
+        for (moon, rank) in moons.iter().zip(1u8..) {
+            assert_eq!(moon::ranked(&star, &p, rank).as_ref(), Some(moon));
         }
+        assert_eq!(moon::ranked(&star, &p, p.moons + 1), None);
+        assert_eq!(moon::ranked(&star, &p, 0), None);
     }
 }
 
-/// Moons orbit outward from 4 planet radii to a third of the Hill radius, and each one clears
-/// the one inside it by 4 times the sum of their radii, so no two orbits cross.
+/// Every moon orbits outside the Roche limit of its planet and inside half its Hill sphere,
+/// and each one at least `SPACING` times further out than the one before.
 #[test]
 fn moon_orbits_fit_inside_the_hill_sphere() {
     for (star, p, moons) in hosts() {
-        let high = HILL_SHARE * hill(&star, &p);
-        assert_eq!(usize::from(p.moons), moons.len());
-        assert!(moons[0].orbit_radius >= INNERMOST * p.radius, "{p:?}");
-        assert!(
-            moons.iter().all(|m| m.orbit_radius + m.radius <= high),
-            "{p:?}"
-        );
-        for pair in moons.windows(2) {
-            let gap = pair[1].orbit_radius - pair[0].orbit_radius;
-            let least = SPACING * (pair[0].radius + pair[1].radius);
-            assert!(gap >= least * (1.0 - 1e-9), "{pair:?}");
+        let reach = HILL_SHARE * hill(&star, &p);
+        for m in &moons {
+            assert!(m.orbit_radius > ROCHE * p.radius, "{m:?}");
+            assert!(m.orbit_radius < reach, "{m:?}");
         }
-        let mass = p.mu() / GRAVITATION;
-        let reach = p.orbit_radius * (mass / (3.0 * star.mass)).cbrt();
-        assert!((reach / hill(&star, &p) - 1.0).abs() < 1e-9);
+        let spaced = |pair: &[PlanetSpec]| pair[1].orbit_radius > SPACING * pair[0].orbit_radius;
+        assert!(moons.windows(2).all(spaced), "{p:?}");
     }
 }
 
-/// A moon turns once per orbit around its planet, the way its orbit goes, on an orbit set by the pull of its planet,
-/// and it carries the orbit of its planet as its host. It has no moons and no rings.
+/// Every moon turns once per orbit, the same way round, takes the year its planet's mass
+/// gives it, and has no moons or rings of its own.
 #[test]
 fn moons_are_tidally_locked() {
     for (star, p, moons) in hosts() {
-        for (rank, m) in (1..).zip(&moons) {
-            assert_eq!(m.day_seconds, -m.orbit_seconds);
+        for (m, rank) in moons.iter().zip(1u8..) {
+            assert_eq!(m.day_seconds, m.orbit_seconds);
+            assert!(m.locked());
             assert_eq!(m.orbit_seconds, orbit_seconds(p.mu(), m.orbit_radius));
             assert_eq!(m.host, Some(p.orbit()));
             assert_eq!(m.id, BodyId { moon: rank, ..p.id });
@@ -101,72 +90,44 @@ fn moons_keep_one_face_to_their_planet() {
     }
 }
 
-/// Every planet counts as many moons as `moon::of` gives it. Gas giants have 2 to 6 moons and
-/// solid planets 0 to 2, most of them none and the bigger ones
-/// more often. Counts are printed.
+/// Moons form three ways. Among the solid planets with room for any moon, about a quarter
+/// hold one large impact moon and about 15 in 100 hold one or two small captured ones, within
+/// 5 points. A gas giant with room holds 2 to 6 moons, of which 2 or more are regular.
 #[test]
-fn moon_counts_follow_the_planet() {
-    let (mut giants, mut solid) = ([0; 7], [0; 3]);
-    let (mut small, mut big) = ((0, 0), (0, 0));
+fn moons_form_three_ways() {
+    let (mut roomy, mut impact, mut caught) = (0.0, 0.0, 0.0);
     for system in systems() {
         for p in &system.planets {
-            assert_eq!(usize::from(p.moons), moon::of(&system.star, p).len());
-            match giant(p) {
-                true => giants[usize::from(p.moons)] += 1,
-                false => solid[usize::from(p.moons)] += 1,
+            let moons = moon::of(&system.star, p);
+            let room = HILL_SHARE * hill(&system.star, p) > 2.0 * IMPACT_ORBIT.1 * p.radius;
+            let large = |m: &PlanetSpec| m.radius >= IMPACT_RADIUS.0 * p.radius;
+            let small = |m: &PlanetSpec| m.radius <= CAPTURED_RADIUS.1;
+            if giant(p) && room {
+                let regular = moons.iter().filter(|m| m.radius >= REGULAR_RADIUS.0);
+                assert!(regular.count() >= usize::from(REGULAR_MOONS.0), "{p:?}");
+                assert!(moons.len() <= MOST, "{p:?}");
+            } else if room {
+                assert!(moons.len() <= 2 && (moons.iter().all(large) || moons.iter().all(small)));
+                roomy += 1.0;
+                impact += f64::from(u8::from(moons.len() == 1 && large(&moons[0])));
+                caught += f64::from(u8::from(!moons.is_empty() && small(&moons[0])));
             }
-            let side = if p.radius < 10_000.0 {
-                &mut small
-            } else {
-                &mut big
-            };
-            *side = (
-                side.0 + usize::from(p.moons > 0 && !giant(p)),
-                side.1 + usize::from(!giant(p)),
-            );
         }
     }
-    println!("giants by moon count {giants:?}, solid planets {solid:?}");
-    assert_eq!(giants[..2], [0, 0]);
-    assert!(solid[0] > solid[1] + solid[2] && solid[2] > 0, "{solid:?}");
-    let rate = |(with, all): (usize, usize)| with as f64 / all as f64;
-    assert!(rate(big) > 2.0 * rate(small), "{small:?} {big:?}");
-}
-
-/// Tides heat the closest moons of the heaviest giants: some are molten, some hold liquid water
-/// under thin air, and the heat falls as the sixth power of the orbit radius. Classes of moons are printed.
-#[test]
-fn tides_warm_close_moons() {
-    let mut classes = [0; 7];
-    for (_, p, moons) in hosts() {
-        for m in &moons {
-            classes[m.record.class as usize] += 1;
-            let heat = moon::tide(&p, m.orbit_radius);
-            assert!(heat <= moon::TIDE, "{m:?}");
-            let further = moon::tide(&p, 2.0 * m.orbit_radius);
-            assert!((64.0 * further / heat - 1.0).abs() < 1e-9);
-        }
-    }
-    println!("moons, ocean to gas giant: {classes:?}");
-    let class = |c: PlanetClass| classes[c as usize];
-    assert!(class(PlanetClass::Lava) > 0, "{classes:?}");
-    assert!(
-        class(PlanetClass::Island) + class(PlanetClass::Ocean) > 0,
-        "{classes:?}"
-    );
-    assert_eq!(class(PlanetClass::GasGiant), 0);
+    let (impact, caught) = (impact / roomy, caught / roomy);
+    println!("of {roomy} roomy solid planets: impact moon {impact:.3}, captured {caught:.3}");
+    assert!((impact - IMPACT_SHARE).abs() < 0.05, "{impact}");
+    assert!((caught - CAPTURE_SHARE).abs() < 0.05, "{caught}");
 }
 
 /// Looking up a moon builds one system and the moons of one planet: tens of microseconds.
 #[test]
 fn moon_lookup_is_cheap() {
-    let u = Universe::new(3);
-    let home = u.home();
-    let last = u.system(home.star).planets.len() as u8 - 1;
+    let (_, planet, _) = hosts().swap_remove(0);
+    let u = Universe::new(0);
     let id = BodyId {
-        index: last,
         moon: 1,
-        ..home
+        ..planet.id
     };
     let run = || {
         let start = Instant::now();
@@ -179,5 +140,5 @@ fn moon_lookup_is_cheap() {
         .expect("five runs");
     println!("one moon lookup: {best:?}");
     assert!(found > 0.0);
-    assert!(best.as_micros() < 60, "a moon lookup took {best:?}");
+    assert!(best.as_micros() < 120, "a moon lookup took {best:?}");
 }

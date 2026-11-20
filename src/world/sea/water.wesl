@@ -29,6 +29,8 @@ struct Water {
     foam: vec4<f32>,
     far: vec4<f32>,
     blend: vec4<f32>,
+    eye: vec4<f32>,
+    upward: vec4<f32>,
     wake: SeaWakes,
 }
 
@@ -297,6 +299,13 @@ fn daytime(world: vec3<f32>) -> vec3<f32> {
     return vec3<f32>(saturate(water.sun_color.w + day), saturate(water.sun.w + up), gain);
 }
 
+fn sea_height(world: vec3<f32>) -> f32 {
+    let p = world - water.eye.xyz;
+    let radius = water.globe.w;
+    let rise = dot(p, p) + 2.0 * (radius + water.eye.w) * dot(p, water.upward.xyz) + water.upward.w;
+    return rise / max(sqrt(max(radius * radius + rise, 0.0)) + radius, 0.001);
+}
+
 fn afar(to_eye: vec3<f32>, eye_height: f32) -> f32 {
     let reach = smoothstep(water.blend.x, water.blend.y, length(to_eye));
     return max(reach, smoothstep(water.blend.z, water.blend.w, eye_height));
@@ -336,7 +345,7 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
     let to_eye = view.world_position - world;
     let dist = length(to_eye);
     let v = to_eye / max(dist, 0.001);
-    let eye_height = length(view.world_position - water.globe.xyz) - water.globe.w;
+    let eye_height = sea_height(view.world_position);
     let detail = 1.0 - smoothstep(60.0, 260.0, dist);
     let cell = floor(p * DETAIL_CELLS);
     let bed = shore(p);
@@ -361,7 +370,7 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
         let time = daytime(world);
         let day = time.x;
         let light = mix(vec3<f32>(0.07, 0.10, 0.22), mix(vec3<f32>(1.0), water.sun_color.rgb, 0.4), day);
-        let sag = max(water.globe.w - length(world - water.globe.xyz), 0.0);
+        let sag = max(-sea_height(world), 0.0);
         let column = min(column_depth(in.position, rise * dist) + sag, DEEP);
         let shelf = smoothstep(SHELF_START, SHELF_END, column);
         let mapped = bed.w * (1.0 - smoothstep(MAP_LOW, MAP_HIGH, eye_height));

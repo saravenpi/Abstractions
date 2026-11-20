@@ -18,6 +18,8 @@ mod track;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_altitude;
+#[cfg(test)]
 mod tests_place;
 
 pub use place::{PlaceUniform, Sky};

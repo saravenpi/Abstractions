@@ -16,7 +16,7 @@ use crate::player::spawn::rescue;
 use crate::player::walk::{Step, velocity};
 use crate::player::{BODY_LENGTH, BODY_RADIUS, above_sea};
 use crate::space::Anchor;
-use crate::universe::{HOME_GRAVITY, HOME_RADIUS, PlanetClass, PlanetRecord, Universe, Water};
+use crate::universe::{EARTH_RADIUS, PlanetClass, PlanetRecord, STANDARD_GRAVITY, Universe, Water};
 use crate::world::globe::Chart;
 use crate::world::{Globe, Terrain};
 
@@ -151,7 +151,7 @@ fn lowest(terrain: &Terrain) -> Vec3 {
 #[test]
 fn the_deepest_dry_basin_is_no_fall_out_of_the_world() {
     let dry = classes()[5].0;
-    let globe = Globe::new(7, HOME_RADIUS, HOME_GRAVITY).with_record(dry);
+    let globe = Globe::new(7, EARTH_RADIUS, STANDARD_GRAVITY).with_record(dry);
     let terrain = Terrain::on(Arc::new(globe), Chart::Flat);
     let floor = lowest(&terrain);
     assert!(floor.y < -25.0 && floor.y > -50.0, "floor at {}", floor.y);

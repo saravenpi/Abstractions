@@ -38,7 +38,7 @@ pub struct Setting {
     pub ocean: f32,
     /// Angle between the spin axis and the axis of the orbit, in radians.
     pub tilt: f32,
-    /// Seconds for one turn, negative for a moon that turns against its orbit.
+    /// Seconds for one turn against the stars, the same way round as the orbit.
     pub day_seconds: f32,
     /// Surface gravity in metres per second squared.
     pub gravity: f32,
@@ -46,19 +46,20 @@ pub struct Setting {
     pub radius: f32,
     /// Seed the small variations of the climate are drawn from.
     pub seed: u64,
-    /// For a tidally locked moon, the unit direction in its frame that always faces its planet,
-    /// the centre of its warm side. Nothing for a planet.
+    /// For a tidally locked body, the unit direction in its frame that always faces what it
+    /// goes round, its planet for a moon and its star for a planet: the centre of its warm side.
+    /// Nothing for a body that turns freely.
     pub near: Option<Vec3>,
 }
 
 impl Setting {
     /// Returns the setting of a planet or moon.
     ///
-    /// A moon turns once per orbit, the other way to a planet, so in its own frame its planet
-    /// stays at `-(cos phase, 0, sin phase)`, `phase` being its angle on its orbit at time 0.
+    /// A locked body turns once per orbit, the same way round, so in its own frame what it goes
+    /// round stays at `(-cos phase, 0, sin phase)`, `phase` being its angle on its orbit at time 0.
     pub fn of(spec: &PlanetSpec) -> Self {
         let phase = spec.orbit_phase as f32;
-        let locked = spec.host.is_some() && spec.day_seconds < 0.0;
+        let locked = spec.locked();
         Self {
             temperature: spec.record.temperature as f32,
             pressure: spec.record.pressure as f32,
@@ -68,7 +69,7 @@ impl Setting {
             gravity: spec.gravity as f32,
             radius: spec.radius as f32,
             seed: spec.seed,
-            near: locked.then(|| -Vec3::new(phase.cos(), 0.0, phase.sin())),
+            near: locked.then(|| Vec3::new(-phase.cos(), 0.0, phase.sin())),
         }
     }
 }

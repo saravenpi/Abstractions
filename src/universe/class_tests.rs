@@ -1,6 +1,7 @@
 //! Class tests: one hand-built record per branch of the class rule, and the look table order.
 
-use super::class::{MOLTEN, classify};
+use super::class::{MOLTEN, VOLCANIC, classify, liquid};
+use super::climate::Climate;
 use super::*;
 
 /// No air to speak of is barren, whatever the heat and the water.
@@ -15,6 +16,33 @@ fn no_air_is_barren() {
         };
         assert_eq!(classify(&record), PlanetClass::Barren);
     }
+}
+
+/// A body whose tides give off more than a watt per square metre is a lava world, air or not,
+/// with lava over 10 to 40 percent of its ground. A weaker tide changes nothing.
+#[test]
+fn volcanic_moons_are_lava() {
+    let record = |tide, pressure| PlanetRecord {
+        tide,
+        pressure,
+        temperature: 110.0,
+        water: Water::Ice,
+        ..PlanetRecord::TEMPERATE
+    };
+    assert_eq!(classify(&record(VOLCANIC, 0.0)), PlanetClass::Lava);
+    assert_eq!(classify(&record(VOLCANIC, 1.0)), PlanetClass::Lava);
+    assert_eq!(classify(&record(0.99 * VOLCANIC, 0.0)), PlanetClass::Barren);
+    assert_eq!(classify(&record(0.99 * VOLCANIC, 1.0)), PlanetClass::Ice);
+    let cold = Climate {
+        albedo: 0.5,
+        greenhouse: 0.0,
+        temperature: 110.0,
+        water: Water::Ice,
+    };
+    assert_eq!(liquid(0.0, &cold, 0.5, 0.0), 0.0);
+    assert_eq!(liquid(0.0, &cold, 0.5, VOLCANIC), 0.1);
+    assert!((liquid(0.0, &cold, 0.5, 2.5 * VOLCANIC) - 0.25).abs() < 1e-12);
+    assert!((liquid(0.0, &cold, 0.5, 40.0 * VOLCANIC) - 0.4).abs() < 1e-12);
 }
 
 /// Air over rock hot enough to melt is lava, from the melting point up.

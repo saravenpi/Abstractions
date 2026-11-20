@@ -8,7 +8,7 @@ use crate::computer::Atlas;
 use crate::map::explored::Explored;
 use crate::sim::Changes;
 use crate::space::{Anchor, Clock, Frame, Location, Travel};
-use crate::universe::HOME_RADIUS;
+use crate::universe::EARTH_RADIUS;
 use crate::world::Terrain;
 
 /// Returns the spot of render position `at` on the planet the anchor is fixed to.
@@ -86,7 +86,7 @@ impl Site<'_> {
     /// on a planet is kept.
     pub(super) fn stand(&self, save: &mut WorldSave, at: Vec3) {
         let terrain = self.terrain.as_deref();
-        let radius = terrain.map_or(HOME_RADIUS, |terrain| terrain.globe().radius());
+        let radius = terrain.map_or(EARTH_RADIUS, |terrain| terrain.globe().radius());
         stand(save, self.anchor.as_deref(), radius, at);
     }
 }

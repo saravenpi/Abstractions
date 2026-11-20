@@ -12,6 +12,13 @@ fn world(pressure: f32, temperature: f32, ocean: f32) -> World {
         radius: 6000.0,
         ocean,
         star: 5780.0,
+        tilt: 0.0,
+        liquids: [
+            ocean.max(f32::MIN_POSITIVE),
+            0.0375,
+            0.0375,
+            ocean.max(f32::MIN_POSITIVE),
+        ],
     }
 }
 

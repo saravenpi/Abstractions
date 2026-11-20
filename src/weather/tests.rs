@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use super::field::{Field, Overhead};
 use super::rules::{self, Planet, Weather};
 use crate::climate::Climate;
-use crate::universe::{HOME_RADIUS, PlanetClass, PlanetRecord};
+use crate::universe::{EARTH_RADIUS, PlanetClass, PlanetRecord};
 
 /// A planet as these tests read its weather: its ground and its cloud field.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -60,7 +60,7 @@ pub(super) fn planet(class: PlanetClass, pressure: f64) -> Sky {
     };
     Sky {
         ground: Planet::of(&record),
-        field: Field::new(&record, 42, HOME_RADIUS),
+        field: Field::new(&record, 42, EARTH_RADIUS),
     }
 }
 

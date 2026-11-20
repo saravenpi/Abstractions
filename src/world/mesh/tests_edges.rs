@@ -12,7 +12,7 @@ use crate::world::globe::{ChunkId, Face};
 fn span(globe: &Arc<Globe>, id: ChunkId, n: usize) -> Span {
     let terrain = view(globe, id.face);
     if id.level == globe.leaf_level() {
-        Span::leaf(&terrain, leaf_coord(id), n)
+        Span::leaf(&terrain, leaf_coord(&terrain, id), n)
     } else {
         Span::node(&terrain, id, n)
     }

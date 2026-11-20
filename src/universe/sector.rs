@@ -6,7 +6,7 @@ use super::galaxy::{self, Shape};
 use super::hash::{self, Rng};
 use super::ids::{GalaxyId, StarId};
 use super::spec::StarSpec;
-use super::{GLY, SECTOR_GLY, Universe, home, star};
+use super::{GLY, SECTOR_GLY, Universe, star};
 use crate::space::UniPos;
 
 /// Most stars one sector holds.
@@ -14,29 +14,21 @@ pub const SECTOR_STARS: u8 = 12;
 
 /// Appends the stars of one sector to `out`, in index order.
 pub(super) fn fill(shape: &Shape, galaxy: GalaxyId, sector: IVec3, out: &mut Vec<StarSpec>) {
-    let is_home = shape.home == Some(sector);
     let parts = shape.parts((sector.as_dvec3() + 0.5) * SECTOR_GLY);
     let expected = parts.total();
-    if expected <= 0.0 && !is_home {
+    if expected <= 0.0 {
         return;
     }
     let mut rng = Rng::new(hash::cell(shape.seed, sector));
     let extra = u8::from(rng.unit() < expected.fract());
-    let count = (expected as u8)
-        .saturating_add(extra)
-        .clamp(u8::from(is_home), SECTOR_STARS);
+    let count = (expected as u8).saturating_add(extra).min(SECTOR_STARS);
     for index in 0..count {
         let id = StarId {
             galaxy,
             sector,
             index,
         };
-        let star = star::build(id, rng.next(), parts.region());
-        out.push(if is_home && index == 0 {
-            home::star(star)
-        } else {
-            star
-        });
+        out.push(star::build(id, rng.next(), parts.region()));
     }
 }
 

@@ -2,7 +2,7 @@
 //! whether it has ground.
 
 use super::Globe;
-use super::datum::datum;
+use super::relief::Relief;
 use crate::universe::{PlanetClass, PlanetRecord};
 use crate::world::lands::Lands;
 use crate::world::{Planet, SEA_LEVEL};
@@ -12,7 +12,12 @@ impl Globe {
     /// to cover the share of the surface the record gives it.
     pub fn with_record(mut self, record: PlanetRecord) -> Self {
         self.record = record;
-        self.datum = datum(record.ocean).unwrap_or(0.0);
+        self.relief = Relief::of(
+            self.seed,
+            [self.radius, self.gravity],
+            &record,
+            self.relief.age,
+        );
         self.lands = Lands::of(&record);
         self.setting = super::climate::recorded(self.setting, &record);
         self.charted()

@@ -29,16 +29,21 @@ fn within(x: f64, range: (f64, f64)) -> bool {
     range.0 <= x && x <= range.1
 }
 
-/// Every star of the sample has a mass, light, radius, colour and place inside its range.
+/// Every star of the sample has a mass, light, radius, temperature, age, colour and place
+/// inside its range, and its light, size and temperature follow its mass.
 #[test]
 fn stars_stay_in_range() {
-    let sol = Universe::new(0)
-        .star(Universe::new(0).home().star)
-        .expect("the home star exists");
     for (_, star) in sample() {
-        assert!(within(star.mass / sol.mass, (0.2, 20.0)), "{star:?}");
-        assert!(within(star.luminosity, (0.05, 50.0)), "{star:?}");
-        assert!(within(star.radius / sol.radius, (0.3, 8.0)), "{star:?}");
+        let mass = star.mass / SUN_MASS;
+        assert!(within(mass, (0.08, 30.0)), "{star:?}");
+        assert!(within(star.luminosity, (0.0006, 2.2e5)), "{star:?}");
+        assert!(within(star.radius / SUN_RADIUS, (0.13, 7.0)), "{star:?}");
+        assert!(within(star.temperature, (2500.0, 47_000.0)), "{star:?}");
+        assert_eq!(star.luminosity, star::light(mass));
+        assert_eq!(star.radius, star::size(mass) * SUN_RADIUS);
+        let years = star.age / YEAR;
+        assert!(years > 0.0 && years <= star::OLDEST, "{star:?}");
+        assert!(years <= star::life(mass), "{star:?}");
         assert!(star.color.min_element() > 0.0 && star.color.max_element() <= 1.0);
         assert!(usize::from(star.id.index) < usize::from(SECTOR_STARS));
         assert_eq!(sector_of(star.pos), star.id.sector);
@@ -46,71 +51,60 @@ fn stars_stay_in_range() {
     }
 }
 
-/// Every system of the sample has 2 to 8 planets, in index order, on orbits that never cross.
+/// Every system of the sample has 2 to 8 planets, numbered outward on orbits that grow, none
+/// closer than the span of orbits of its star allows and none inside the star.
 #[test]
 fn systems_stay_in_range() {
     for (u, star) in sample() {
         let system = u.system(star.id);
+        let scale = star.mass / SUN_MASS;
         assert_eq!(system.star, star);
         assert!((PLANETS.0..=PLANETS.1).contains(&(system.planets.len() as u8)));
-        assert!(
-            system
-                .planets
-                .iter()
-                .enumerate()
-                .all(|(i, p)| usize::from(p.id.index) == i)
-        );
+        let numbered = system.planets.iter().zip(0u8..);
+        assert!(numbered.clone().all(|(p, index)| p.id.index == index));
         assert!(system.planets.iter().all(|p| p.id.star == star.id));
+        let grows = |pair: &[PlanetSpec]| pair[0].orbit_radius < pair[1].orbit_radius;
+        assert!(system.planets.windows(2).all(grows), "{star:?}");
+        let span = (ORBIT.0 * scale, 3.0 * ORBIT.1 * scale);
+        assert!(system.planets.iter().all(|p| within(p.orbit_radius, span)));
         assert!(
-            system
-                .planets
-                .windows(2)
-                .all(|w| w[0].orbit_radius < w[1].orbit_radius)
+            system.planets[0].orbit_radius > 2.0 * star.radius,
+            "{star:?}"
         );
-        assert!(system.planets.iter().all(|p| within(p.orbit_radius, ORBIT)));
-        assert!(system.planets[0].orbit_radius > 2.0 * star.radius);
     }
 }
 
-/// Radius, gravity, cloud base and cloud top ranges of a solid planet, then of a gas giant.
-const RANGES: [[(f64, f64); 4]; 2] = [
-    [
-        PLANET_RADIUS,
-        PLANET_GRAVITY,
-        (630.0, 2330.0),
-        (1050.0, 3880.0),
-    ],
-    [
-        GIANT_RADIUS,
-        GIANT_GRAVITY,
-        (2840.0, 4500.0),
-        (4740.0, 7500.0),
-    ],
-];
+/// Gravity range of a solid planet and of a gas giant, in metres per second squared.
+const GRAVITY: [(f64, f64); 2] = [(1.28, 41.3), (4.8, 52.0)];
 
-/// Every planet of the sample has a radius, gravity, day, year and air inside its range, those
-/// of solid worlds or those of gas giants. It has no host and at most 6 moons.
+/// Every planet of the sample has a radius, gravity, year and air inside its range, those of
+/// solid worlds or those of gas giants. Its air holds together: a scale height no planet lets
+/// go of, clouds that top out between one scale height and the height where rising air runs
+/// out of pressure, and a cloud base above the ground, at most half way up to that top. It has
+/// no host and at most 6 moons.
 #[test]
 fn planets_stay_in_range() {
     for (u, star) in sample() {
         for p in u.system(star.id).planets {
             let giant = p.record.class == PlanetClass::GasGiant;
-            let [radius, gravity, base, top] = RANGES[usize::from(giant)];
+            let radius = if giant { GIANT_RADIUS } else { PLANET_RADIUS };
             assert!(within(p.radius, radius), "{p:?}");
-            assert!(within(p.gravity / HOME_GRAVITY, gravity), "{p:?}");
-            assert!(within(p.day_seconds, PLANET_DAY), "{p:?}");
+            assert!(within(p.gravity, GRAVITY[usize::from(giant)]), "{p:?}");
             assert!(within(p.orbit_phase, (0.0, std::f64::consts::TAU)));
             assert_eq!(p.orbit_seconds, orbit_seconds(star.mu(), p.orbit_radius));
+            assert_eq!(p.mu(), p.gravity * p.radius * p.radius);
             assert_eq!(
                 [p.atmosphere_height, p.cloud_base, p.cloud_top],
-                air(p.radius)
+                heights(&p.record, p.gravity, p.radius)
             );
-            assert!(
-                within(p.cloud_base, base) && within(p.cloud_top, top),
-                "{p:?}"
-            );
+            let (scale, slack) = (p.scale_height(), 1.0 + 1e-9);
+            let held = scale > 0.0 && scale <= slack * p.radius / 20.0;
+            let topped =
+                scale <= slack * p.cloud_top && p.cloud_top <= scale / p.record.mix.kappa();
+            assert!(held && topped && 0.0 < p.cloud_base, "{p:?}");
+            assert!(p.cloud_base <= 0.5 * p.cloud_top, "{p:?}");
             assert!(p.cloud_base < p.cloud_top && p.cloud_top < p.atmosphere_height);
-            assert!(p.name.starts_with(&star.name) || p.id == u.home());
+            assert_eq!(p.name, names::planet(&star.name, p.id.index));
             assert!(p.host.is_none() && p.moons <= 6 && !p.id.is_moon());
         }
     }

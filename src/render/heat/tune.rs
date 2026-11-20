@@ -27,9 +27,6 @@ pub const EASE: (f32, f32) = (3.0, 0.8);
 /// Rate per second at which the colour of the glow follows the gas the ship flies through.
 pub const HUE_RATE: f32 = 4.0;
 
-/// Mean surface temperature in kelvin under which a frozen world has a cold methane air.
-pub const METHANE_BELOW: f64 = 150.0;
-
 /// Heat share that makes a craft show its sheath from outside; under it nothing is drawn.
 pub const SHEATH_FROM: f32 = 0.02;
 

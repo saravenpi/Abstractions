@@ -8,7 +8,7 @@ use super::ground::{Ground, slope_velocity, snap_velocity};
 use super::intent::Intent;
 use super::{BODY_LENGTH, BODY_RADIUS};
 use crate::gear::{Gear, GearInput, Mode, air_density};
-use crate::universe::air;
+use crate::universe::heights;
 use crate::world::Globe;
 
 /// Reach of the ray that measures the free height under the body, in metres: two seconds of
@@ -40,7 +40,9 @@ pub(super) struct Air {
 
 /// Returns the air density `height` metres above the sea of `globe`.
 pub(super) fn density(globe: &Globe, height: f32) -> f32 {
-    air_density(air(globe.radius())[0] as f32, height)
+    let gravity = f64::from(globe.setting().gravity);
+    let [top, ..] = heights(globe.record(), gravity, globe.radius());
+    air_density(top as f32, height)
 }
 
 /// Returns the free height under the soles of a body centred at `at`, from a ray down the local

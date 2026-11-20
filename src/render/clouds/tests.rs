@@ -4,7 +4,7 @@
 use bevy::math::DVec3;
 
 use super::map::{CHANNELS, CoverMap, budget, toward_second};
-use crate::universe::{HOME_RADIUS, PlanetRecord};
+use crate::universe::{EARTH_RADIUS, PlanetRecord};
 use crate::weather::{FACE, Field, Patch, SNAPSHOT, TEXELS, texel};
 
 /// Returns the wetness the tests give the ground in direction `dir`.
@@ -14,7 +14,7 @@ fn wet(dir: DVec3) -> f32 {
 
 /// Returns the field of a planet like home and its empty map over the ground of [`wet`].
 fn map() -> (Field, CoverMap) {
-    let field = Field::new(&PlanetRecord::TEMPERATE, 5, HOME_RADIUS);
+    let field = Field::new(&PlanetRecord::TEMPERATE, 5, EARTH_RADIUS);
     let ground = (0..TEXELS).map(|index| wet(texel(index))).collect();
     (field, CoverMap::new(field, ground))
 }

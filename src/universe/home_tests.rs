@@ -1,148 +1,122 @@
-//! Home tests: the home planet and its star carry generated names, and keep their star
-//! temperature and their record for every seed; the home system is laid out around the orbit
-//! that earns that record.
+//! Home tests: the home planet is chosen by the same rule for every seed, never made by hand.
 
 use std::collections::HashSet;
+use std::time::Instant;
 
+use bevy::math::DVec3;
+
+use super::home::{HOME_GALAXY, SEARCH};
+use super::range_tests::sample;
 use super::*;
+use crate::life;
 
-/// The home planet is the third planet of a yellow star, named from its star like every other
-/// planet, and the only planet of its system with that name, for every seed.
+/// Seeds the home tests look at.
+const SEEDS: u64 = 40;
+
+/// Returns the home planet and its star for a seed.
+fn home(seed: u64) -> (PlanetSpec, StarSpec) {
+    let u = Universe::new(seed);
+    (u.planet(u.home()), u.system(u.home().star).star)
+}
+
+/// Returns true when a landable planet of `star` holds life under the normal odds.
+fn lives(u: &Universe, star: &StarSpec) -> bool {
+    let planets = u.system(star.id).planets;
+    let alive = |p: &PlanetSpec| landable(p) && life::of(p, star).is_some();
+    planets.iter().any(alive)
+}
+
+/// The home is a solid planet a robot can land on, and it holds life under the same odds as
+/// every other planet. A seed whose nearest systems are all dead may fall back on a dead
+/// planet: that is printed, and stays rare.
 #[test]
-fn home_is_named_like_every_planet() {
-    for seed in 0..200 {
+fn home_is_landable_and_alive() {
+    let mut dead = Vec::new();
+    for seed in 0..SEEDS {
+        let (planet, star) = home(seed);
+        assert!(landable(&planet) && !planet.id.is_moon(), "seed {seed}");
+        assert!(planet.record.class != PlanetClass::GasGiant, "seed {seed}");
+        if life::of(&planet, &star).is_none() {
+            dead.push(seed);
+        }
+    }
+    println!("seeds with a dead home: {dead:?}");
+    assert!(dead.len() <= 2, "{dead:?}");
+}
+
+/// No star nearer to the centre of the home galaxy than the home star has a living landable
+/// planet: the home is the nearest one.
+#[test]
+fn home_is_the_nearest_living_planet() {
+    for seed in 0..12 {
         let u = Universe::new(seed);
-        let home = u.home();
-        let system = u.system(home.star);
-        assert_eq!(system.star.class, StarClass::G);
-        assert_eq!(home.index, 2);
-        let name = u.planet(home).name;
-        assert_eq!(name, names::planet(&system.star.name, home.index));
-        assert_eq!(system.planets.iter().filter(|p| p.name == name).count(), 1);
+        let (planet, star) = home(seed);
+        if life::of(&planet, &star).is_none() {
+            continue;
+        }
+        let out = star.pos.length() / GLY;
+        let nearer = u.stars_near(HOME_GALAXY, DVec3::ZERO, out);
+        assert_eq!(nearer.last().map(|s| s.id), Some(star.id), "seed {seed}");
+        assert!(nearer.len() <= SEARCH, "seed {seed}: {}", nearer.len());
+        let inside = &nearer[..nearer.len() - 1];
+        assert!(inside.iter().all(|s| !lives(&u, s)), "seed {seed}");
     }
 }
 
-/// The home star and the home galaxy get a new name for each seed and the same name for the
-/// same seed, so every player of one world reads the same names. The names of seeds 0 to 5
-/// are printed.
+/// The home planet and its star carry generated names, and nothing about the home is fixed:
+/// names, sizes, pulls, days and stars differ from seed to seed.
 #[test]
-fn home_names_follow_the_seed() {
-    let named = |seed| {
-        let u = Universe::new(seed);
-        let galaxy = u
-            .galaxy(u.home().star.galaxy)
-            .expect("the home cell holds a galaxy");
-        (
-            u.planet(u.home()).name,
-            u.system(u.home().star).star.name,
-            galaxy.name,
-        )
+fn nothing_about_the_home_is_fixed() {
+    let homes: Vec<(PlanetSpec, StarSpec)> = (0..SEEDS).map(home).collect();
+    let distinct = |key: &dyn Fn(&(PlanetSpec, StarSpec)) -> u64| {
+        homes.iter().map(key).collect::<HashSet<u64>>().len()
     };
-    let all: Vec<_> = (0..200).map(named).collect();
-    assert!(
-        all.iter()
-            .zip(0..)
-            .all(|(names, seed)| *names == named(seed))
-    );
-    let stars: HashSet<&String> = all.iter().map(|(_, star, _)| star).collect();
-    let galaxies: HashSet<&String> = all.iter().map(|(_, _, galaxy)| galaxy).collect();
-    assert!(
-        stars.len() > 150 && galaxies.len() > 150,
-        "{} {}",
-        stars.len(),
-        galaxies.len()
-    );
-    for (seed, (planet, star, galaxy)) in all.iter().take(6).enumerate() {
-        println!("seed {seed}: {planet}, {star}, in {galaxy}");
+    for (planet, star) in &homes {
+        assert_eq!(planet.name, names::planet(&star.name, planet.id.index));
+        assert!(!star.name.is_empty());
     }
+    let names: HashSet<&str> = homes.iter().map(|(p, _)| p.name.as_str()).collect();
+    assert!(names.len() >= 38, "{names:?}");
+    assert!(distinct(&|(p, _)| p.radius.to_bits()) >= 38);
+    assert!(distinct(&|(p, _)| p.gravity.to_bits()) >= 38);
+    assert!(distinct(&|(p, _)| p.day_seconds.to_bits()) >= 38);
+    assert!(distinct(&|(_, s)| s.temperature.to_bits()) >= 38);
+    assert!(distinct(&|(p, _)| u64::from(p.id.index)) >= 2);
+    assert!(distinct(&|(p, _)| u64::from(p.moons)) >= 2);
 }
 
-/// The home star is at 5,780 K and the home planet keeps the temperate record, for every seed.
-///
-/// The classes of the home system are printed for seeds 0 to 20, the home planet in capitals.
+/// Life lands in about 20 to 40 percent of systems, counting planets and moons: wet worlds are
+/// the exception. The share is printed, with the share of systems that hold liquid water.
 #[test]
-fn home_record_is_temperate() {
-    for seed in 0..200 {
-        let u = Universe::new(seed);
-        let system = u.system(u.home().star);
-        assert_eq!(system.star.temperature, 5780.0);
-        assert_eq!(u.planet(u.home()).record, PlanetRecord::TEMPERATE);
-        let label = |p: &PlanetSpec| match p.id == u.home() {
-            true => p.record.class.label().to_uppercase(),
-            false => p.record.class.label().to_string(),
-        };
-        let classes: Vec<String> = system.planets.iter().map(label).collect();
-        if seed <= 20 {
-            println!("seed {seed}: {}", classes.join(", "));
-        }
+fn life_is_in_a_minority_of_systems() {
+    let (mut systems, mut alive, mut wet) = (0.0, 0.0, 0.0);
+    for (u, star) in sample() {
+        let planets = u.system(star.id).planets;
+        let moons = planets.iter().flat_map(|p| moon::of(&star, p));
+        let bodies: Vec<PlanetSpec> = planets.iter().cloned().chain(moons).collect();
+        systems += 1.0;
+        alive += f64::from(u8::from(
+            bodies.iter().any(|b| life::of(b, &star).is_some()),
+        ));
+        wet += f64::from(u8::from(bodies.iter().any(|b| b.record.liquids()[0] > 0.0)));
     }
+    let (alive, wet) = (100.0 * alive / systems, 100.0 * wet / systems);
+    println!("systems with life {alive:.1} %, with liquid water {wet:.1} %, of {systems}");
+    assert!((17.0..=43.0).contains(&alive), "{alive}");
+    assert!(wet < 50.0, "{wet}");
 }
 
-/// The home planet sits where its star gives it the flux of its record, so the pinned record is
-/// the one its orbit earns: flux 1, in the habitable zone. It is the third of at least 5
-/// planets on orbits that grow outward, the two inside it get more light and the two or more
-/// beyond it get less.
+/// Building a universe finds its home in a few milliseconds: 100 ms still catches a search
+/// that walks the whole galaxy.
 #[test]
-fn home_orbit_earns_its_record() {
-    for seed in 0..200 {
-        let u = Universe::new(seed);
-        let system = u.system(u.home().star);
-        let (star, planets) = (&system.star, &system.planets);
-        let home = &planets[usize::from(u.home().index)];
-        assert_eq!(home.orbit_radius, zone::FLUX_ORBIT);
-        assert_eq!(
-            zone::flux(star.luminosity, home.orbit_radius),
-            home.record.flux
-        );
-        assert_eq!(
-            zone::zone(star.temperature, home.record.flux),
-            home.record.zone
-        );
-        assert!(
-            (5..=PLANETS.1).contains(&(planets.len() as u8)),
-            "seed {seed}"
-        );
-        let grows = |pair: &[PlanetSpec]| pair[1].orbit_radius > 1.04 * pair[0].orbit_radius;
-        assert!(planets.windows(2).all(grows), "seed {seed}");
-        let (inner, outer) = planets.split_at(usize::from(u.home().index));
-        assert!(inner.iter().all(|p| p.record.flux > 1.5), "seed {seed}");
-        assert!(
-            outer[1..].iter().all(|p| p.record.flux < 0.95),
-            "seed {seed}"
-        );
-        assert!(planets.iter().all(|p| p.orbit_radius < ORBIT.1));
-    }
-}
-
-/// The home planet has no moons and no rings, and the outermost planet of the home system is a gas giant
-/// with at least two moons, all of them solid ground to land on, for every seed. The home
-/// systems of seeds 0 to 20 are printed: class, moons and rings of each planet.
-#[test]
-fn home_has_a_giant_with_moons() {
-    for seed in 0..200 {
-        let u = Universe::new(seed);
-        let system = u.system(u.home().star);
-        let homeworld = u.planet(u.home());
-        assert_eq!((homeworld.moons, homeworld.rings), (0, None), "seed {seed}");
-        assert!(u.moons(u.home()).is_empty());
-        let outer = system.planets.last().expect("the home system has planets");
-        assert_eq!(outer.record.class, PlanetClass::GasGiant, "seed {seed}");
-        assert_eq!(outer.record.zone, Zone::Cold, "seed {seed}");
-        let moons = moon::of(&system.star, outer);
-        assert!(moons.len() >= 2, "seed {seed}");
-        let solid = |m: &PlanetSpec| m.record.class != PlanetClass::GasGiant;
-        assert!(
-            moons
-                .iter()
-                .all(|m| solid(m) && m.radius <= PLANET_RADIUS.1)
-        );
-        let entry = |p: &PlanetSpec| {
-            let ring = if p.rings.is_some() { " ringed" } else { "" };
-            format!("{} {}m{ring}", p.record.class.label(), p.moons)
-        };
-        let entries: Vec<String> = system.planets.iter().map(entry).collect();
-        if seed <= 20 {
-            println!("seed {seed}: {}", entries.join(", "));
-        }
-    }
+fn the_home_search_is_cheap() {
+    let run = |seed: u64| {
+        let start = Instant::now();
+        let home = Universe::new(seed).home();
+        (start.elapsed(), home)
+    };
+    let worst = (0..20).map(|seed| (0..3).map(|_| run(seed).0).min());
+    let worst = worst.flatten().max().expect("twenty seeds");
+    println!("slowest home search of 20 seeds: {worst:?}");
+    assert!(worst.as_millis() < 100, "{worst:?}");
 }

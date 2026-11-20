@@ -5,6 +5,7 @@ use bevy::math::{DVec3, Vec2};
 
 use super::Globe;
 use super::climate::INLAND;
+use super::elevation::{Lift, inland};
 use super::season::MEAN_SEASON;
 use crate::climate::{self, Spot};
 use crate::universe::PlanetClass;
@@ -54,9 +55,9 @@ impl Landform {
     }
 }
 
-/// Returns the dune height at sphere point `p` of planet `seed`, over ground `height` high: ridges whose
-/// crests run along the spin axis, across the east and west winds of the climate bands, fading out above
-/// 15 m so the dunes fill the low ground.
+/// Returns the dune height at sphere point `p` of planet `seed`, over local ground `height` high: ridges
+/// whose crests run along the spin axis, across the east and west winds of the climate bands, fading out
+/// above 15 m of local height so the dunes fill the low ground between the hills.
 pub fn dunes(seed: u64, p: DVec3, height: f32) -> f32 {
     let low = smooth(40.0, 15.0, height);
     if low <= 0.0 {
@@ -84,27 +85,37 @@ impl Globe {
     /// Returns the ground height at sphere point `p` before flows and ponds, and its inland measure. The
     /// craters are left out unless `pits` is set, for a reader too coarse to show them.
     pub(super) fn formed(&self, p: DVec3, pits: bool) -> (f32, f32) {
-        #[cfg(test)]
-        super::tally::count();
-        let (raw, base) = self.shape.measure(p.to_array(), &self.climate);
-        let height = raw - self.datum;
-        let formed = match self.landform() {
-            Landform::Dunes => height + dunes(self.seed, p, height),
-            Landform::Craters if pits => height + self.pitted(p),
-            Landform::Glaciers => self.glaciated(p, height, base),
-            Landform::Plain | Landform::Craters => height,
-        };
-        (formed, base)
+        self.raised(p, pits, self.relief.lift(p / self.radius))
     }
 
-    /// Returns the ground `height` at sphere point `p` with its glacier valleys, where the annual mean is
-    /// under 260 K, and on a world without a sea the frozen sea that stands at the datum.
-    fn glaciated(&self, p: DVec3, height: f32, base: f32) -> f32 {
+    /// Returns the ground height at sphere point `p` before flows and ponds, and its inland measure, for
+    /// the `lift` of the large shape there: the local ground, its coast pushed towards land or sea by the
+    /// lift, moved by the datum and raised by the lift, with the landform of the class added.
+    fn raised(&self, p: DVec3, pits: bool, lift: Option<Lift>) -> (f32, f32) {
+        #[cfg(test)]
+        super::tally::count();
+        let bias = lift.map_or(0.0, |lift| lift.bias);
+        let (raw, base) = self.shape.measure_on(p.to_array(), &self.climate, bias);
+        let local = raw - self.relief.datum;
+        let height = lift.map_or(local, |lift| local + lift.height);
+        let formed = match self.landform() {
+            Landform::Dunes => height + dunes(self.seed, p, local),
+            Landform::Craters if pits => height + self.pitted(p),
+            Landform::Glaciers => self.glaciated(p, [local, height], base),
+            Landform::Plain | Landform::Craters => height,
+        };
+        (formed, inland(lift, base))
+    }
+
+    /// Returns the ground at sphere point `p` with its glacier valleys, where the annual mean is under
+    /// 260 K, and on a world without a sea the frozen sea that stands at the datum. `local` is the height of
+    /// the local ground, which says where a valley may lie, and `height` the whole height.
+    fn glaciated(&self, p: DVec3, [local, height]: [f32; 2], base: f32) -> f32 {
         let floor = match self.has_sea() {
             true => f32::NEG_INFINITY,
             false => SEA_LEVEL,
         };
-        let land = smooth(2.0, 12.0, height);
+        let land = smooth(2.0, 12.0, local);
         let valley = gradient(sub_seed(self.seed, 20), (p / VALLEY_SIZE).to_array()).abs() as f32;
         let trough = (1.0 - smooth(0.08, 0.22, valley)) * land;
         if trough <= 0.0 {
@@ -124,8 +135,11 @@ impl Globe {
         (height - VALLEY_DEPTH * trough * cold).max(floor)
     }
 
-    /// Returns the ground height at sphere point `p` before flows and ponds, and its inland measure.
+    /// Returns the ground height at sphere point `p` before flows and ponds, and its inland measure away
+    /// from the bends of the coast.
     pub(super) fn relief(&self, p: DVec3) -> (f32, f32) {
-        (self.shaped(p), self.shape.base(p.to_array()))
+        let lift = self.relief.lift(p / self.radius);
+        let base = self.shape.base(p.to_array()) + lift.map_or(0.0, |lift| lift.bias);
+        (self.raised(p, true, lift).0, inland(lift, base))
     }
 }

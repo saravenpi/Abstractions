@@ -9,9 +9,6 @@ use crate::wind::thickness;
 /// Air density at sea level in kilograms per cubic metre.
 pub const SEA_DENSITY: f64 = 1.2;
 
-/// Share of the atmosphere height that makes one scale height.
-const SCALE_SHARE: f64 = 0.125;
-
 /// Drag area over twice the mass along the body axes: sideways, vertical and nose first.
 pub const DRAG: DVec3 = DVec3::new(6.0e-3, 9.0e-3, 1.3e-3);
 
@@ -27,15 +24,17 @@ const SPIN_DRAG: f64 = 0.0125;
 /// Returns the air density in kilograms per cubic metre `altitude` metres above the sea of a planet.
 ///
 /// `density = rho0 * thickness * exp(-altitude / scale_height)` below the top of the atmosphere,
-/// zero above it. The thickness is the pressure of the planet against the home planet, so thin
-/// air drags less, thick air more, and a planet without air has no density at any height.
+/// zero above it. The scale height is the physical one of the planet, see
+/// [`PlanetSpec::scale_height`], and the thickness is the density of its air at sea level
+/// against the home planet, so thin air drags less, thick air more, and a planet without air
+/// has no density at any height.
 /// Under the sea level of a solid planet the density stays the one at sea level. Under the
 /// cloud deck of a gas giant it keeps growing, down to [`DEEPEST`] scale heights.
 pub fn density(planet: &PlanetSpec, altitude: f64) -> f64 {
     if altitude >= planet.atmosphere_height {
         return 0.0;
     }
-    let scale = planet.atmosphere_height * SCALE_SHARE;
+    let scale = planet.scale_height();
     let low = if giant(planet) { -DEEPEST * scale } else { 0.0 };
     SEA_DENSITY * thickness(&planet.record) * (-altitude.max(low) / scale).exp()
 }

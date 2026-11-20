@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::scene::Scene;
-use crate::render::{Craft, Gas, Heat, LocalSystem, MIN_SPEED, Vantage, descent, entry};
+use crate::render::{Craft, Heat, LocalSystem, MIN_SPEED, Vantage, descent, entry};
 
 /// Radius in metres of the sphere that holds the body of the robot.
 const BODY_RADIUS: f32 = 0.9;
@@ -23,9 +23,7 @@ pub fn offer(
     let (Some(vantage), Some(local), Some(mut heat)) = (sky.0, sky.1, heat) else {
         return;
     };
-    let gas = local
-        .below(&vantage)
-        .map_or(Gas::Unknown, |planet| Gas::of(&planet.record));
+    let gas = local.gas(&vantage);
     let speed = f64::from(scene.state.airspeed);
     let sink = -scene.velocity().dot(scene.tilt * Vec3::Y);
     let glow = entry(f64::from(scene.air_density), speed, gas).scaled(descent(sink));

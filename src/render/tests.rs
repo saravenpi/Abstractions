@@ -15,11 +15,17 @@ use crate::space::{Anchor, Frame};
 use crate::universe::{PlanetSpec, StarSpec, Universe};
 use crate::world::Terrain;
 
-/// Returns the home planet and its star for a seed.
+/// Returns the home planet and its star for a seed. The planet is made to turn 300 times a
+/// year, so that it has days whatever tides did to the one the seed chose.
 fn home(seed: u64) -> (PlanetSpec, StarSpec) {
     let universe = Universe::new(seed);
     let body = universe.home();
-    (universe.planet(body), universe.system(body.star).star)
+    let planet = universe.planet(body);
+    let turning = PlanetSpec {
+        day_seconds: planet.orbit_seconds / 300.0,
+        ..planet
+    };
+    (turning, universe.system(body.star).star)
 }
 
 /// Returns a surface anchor standing at sea level where the planet-fixed direction `up` leaves
@@ -107,7 +113,8 @@ fn phase_rises_through_a_day() {
     }
 }
 
-/// The air is whole at the ground and gone at the top of the atmosphere, the horizon drops and
+/// The air is whole at the ground, thins by a factor e over each scale height, a twelfth of the
+/// atmosphere, and is gone at its top, the horizon drops and
 /// the fog reaches farther with height, and the planet casts a shadow behind it only.
 #[test]
 fn air_thins_with_height() {
@@ -119,6 +126,12 @@ fn air_thins_with_height() {
     assert_eq!(air(10.0, 0.0), 0.0);
     let levels: Vec<f32> = (0..=40).map(|i| air(i as f32 * 100.0, height)).collect();
     assert!(levels.windows(2).all(|pair| pair[1] < pair[0]));
+    let scale = height / crate::universe::TOP_SCALES as f32;
+    assert!((air(scale, height) * std::f32::consts::E - 1.0).abs() < 1e-5);
+    assert!(
+        (air(3.0 * scale, height) / air(2.0 * scale, height) * std::f32::consts::E - 1.0).abs()
+            < 1e-5
+    );
     assert_eq!(horizon_dip(0.0, 6000.0), 0.0);
     assert!((horizon_dip(4000.0, 6000.0) - 0.8).abs() < 1e-5);
     let space = Height {

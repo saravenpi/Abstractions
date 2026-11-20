@@ -79,16 +79,9 @@ impl Survey {
     fn scan(&mut self, face: &Terrain, radius: f32) {
         let at = face.locate(self.center).xz();
         let pad = (radius + village::REACH) * stretch(face, at) * SLACK;
-        let bound = match face.chart() {
-            Chart::Face { scale, .. } => scale as f32,
-            _ => f32::MAX,
-        };
-        let lo = ((at - pad).max(Vec2::splat(-bound)) / CELL)
-            .floor()
-            .as_ivec2();
-        let hi = ((at + pad).min(Vec2::splat(bound)) / CELL)
-            .floor()
-            .as_ivec2();
+        let (low, high) = face.chart().span();
+        let lo = ((at - pad).max(low) / CELL).floor().as_ivec2();
+        let hi = ((at + pad).min(high) / CELL).floor().as_ivec2();
         for cell in (lo.x..=hi.x).flat_map(|x| (lo.y..=hi.y).map(move |y| IVec2::new(x, y))) {
             if let Some(site) = structure_in_cell(face, cell) {
                 self.add(face, &site, radius);
@@ -118,7 +111,8 @@ pub fn survey(terrain: &Terrain, center: DVec3, radius: f32) -> Survey {
     }
     let dir = center.normalize_or_zero();
     for face in Face::ALL.into_iter().filter(|f| f.axes()[0].dot(dir) > 0.5) {
-        out.scan(&Terrain::on(globe.clone(), globe.face_chart(face)), radius);
+        let chart = globe.face_chart(face).near(dir);
+        out.scan(&Terrain::on(globe.clone(), chart), radius);
     }
     out
 }

@@ -1,6 +1,6 @@
 //! Human readable distances and gravity for the computer tables.
 
-use crate::universe::{GLY, HOME_GRAVITY};
+use crate::universe::{GLY, STANDARD_GRAVITY};
 
 /// Metres in one kilometre and in one megametre, with their unit names.
 const UNITS: [(f64, &str); 2] = [(1e3, "km"), (1e6, "Mm")];
@@ -42,5 +42,5 @@ pub fn clip(text: &str, chars: usize) -> String {
 
 /// Formats a surface gravity in metres per second squared as a multiple of the home planet's.
 pub fn gravity(acceleration: f64) -> String {
-    format!("{:.2} g", acceleration / HOME_GRAVITY)
+    format!("{:.2} g", acceleration / STANDARD_GRAVITY)
 }

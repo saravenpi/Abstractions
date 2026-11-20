@@ -11,7 +11,7 @@ use super::sky::Skies;
 use super::warp::{SPOOL_TIME, Warp};
 use super::wells::beside;
 use crate::space::Frame;
-use crate::universe::{BodyId, HOME_GRAVITY};
+use crate::universe::{BodyId, STANDARD_GRAVITY};
 
 /// What the warp drive is doing, for display.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -150,7 +150,7 @@ pub fn update(
     let mut next = ShipTelemetry {
         throttle: ship.throttle,
         dynamic_pressure: pace.report.pressure,
-        g_force: pace.report.proper.length() / HOME_GRAVITY,
+        g_force: pace.report.proper.length() / STANDARD_GRAVITY,
         warp: warp_state(ship.warp),
         landed: ship.landed,
         frame: ship.frame,

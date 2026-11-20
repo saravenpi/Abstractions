@@ -7,7 +7,7 @@ use super::climate::FREEZING;
 use super::range_tests::sample;
 use super::*;
 
-/// Returns every solid planet of the star sample but the pinned home planets, each with its star.
+/// Returns every solid planet of the star sample, each with its star.
 ///
 /// Gas giants have records of their own, checked in `giant_tests`.
 fn survey() -> Vec<(StarSpec, PlanetSpec)> {
@@ -15,10 +15,7 @@ fn survey() -> Vec<(StarSpec, PlanetSpec)> {
     for (u, star) in sample() {
         let system = u.system(star.id);
         let solid = |p: &PlanetSpec| p.record.class != PlanetClass::GasGiant;
-        let free = system
-            .planets
-            .into_iter()
-            .filter(|p| p.id != u.home() && solid(p));
+        let free = system.planets.into_iter().filter(solid);
         planets.extend(free.map(|p| (star.clone(), p)));
     }
     assert!(planets.len() >= 5000, "only {} planets", planets.len());
@@ -35,8 +32,9 @@ fn shares(planets: &[(StarSpec, PlanetSpec)], keep: impl Fn(&StarSpec) -> bool) 
     (counts.map(|n| (1000.0 * n / total).round() / 10.0), total)
 }
 
-/// Every solid class is between 5 and 40 percent of the solid planets. Shares are printed per
-/// star class.
+/// Every solid class exists, none is more than half of the solid planets, and worlds with
+/// liquid water, oceans and islands together, are a minority of 3 to 20 percent. Shares are
+/// printed per star class.
 #[test]
 fn every_class_has_its_share() {
     let planets = survey();
@@ -48,9 +46,10 @@ fn every_class_has_its_share() {
     }
     println!("M {:?}", shares(&planets, |s| s.class == StarClass::M));
     assert!(
-        all.iter().all(|share| (5.0..=40.0).contains(share)),
+        all.iter().all(|share| (0.5..=50.0).contains(share)),
         "{all:?}"
     );
+    assert!((3.0..=20.0).contains(&(all[0] + all[1])), "{all:?}");
 }
 
 /// Ocean and island worlds have air and liquid water between freezing and their boiling point.
@@ -78,6 +77,7 @@ fn wet_worlds_hold_liquid_water() {
 }
 
 /// Barren worlds have no air, ice worlds are frozen, lava worlds are molten and the others dry.
+/// No tide heats a planet, so here lava always means heat from the star.
 #[test]
 fn dry_worlds_match_their_class() {
     let mut heat = [(0.0, 0.0); 6];
@@ -109,8 +109,7 @@ fn dry_worlds_match_their_class() {
     assert!(mean.iter().filter(|&&kelvin| kelvin >= lava).count() == 1);
 }
 
-/// Within a system the flux falls from each planet to the next one out, and the zone follows it,
-/// the home planet included.
+/// Within a system the flux falls from each planet to the next one out, and the zone follows it.
 #[test]
 fn flux_falls_outward() {
     for (u, star) in sample() {
@@ -129,16 +128,22 @@ fn records_stay_in_range() {
     let within = |x: f64, low: f64, high: f64| low <= x && x <= high;
     for (star, p) in survey() {
         let r = p.record;
-        assert!(within(star.temperature, 2600.0, 45_000.0), "{star:?}");
+        assert!(within(star.temperature, 2500.0, 47_000.0), "{star:?}");
         assert_eq!(r.flux, zone::flux(star.luminosity, p.orbit_radius));
         assert_eq!(r.zone, zone::zone(star.temperature, r.flux));
-        assert!(within(r.flux, 0.005, 58_000.0), "{r:?}");
+        assert!(within(r.flux, 0.000_003, 260_000.0), "{r:?}");
         assert!(within(r.tilt, 0.0, FRAC_PI_2), "{r:?}");
         assert!(within(r.pressure, 0.0, air::PRESSURE_CAP), "{r:?}");
         assert!(within(r.albedo, 0.08, 0.6), "{r:?}");
         assert!(within(r.greenhouse, 0.0, 1500.0), "{r:?}");
-        assert!(within(r.temperature, 40.0, 6000.0), "{r:?}");
-        assert!(within(r.ocean, 0.0, 1.0), "{r:?}");
+        assert!(within(r.temperature, 5.0, 7000.0), "{r:?}");
+        assert!(
+            within(r.ocean, 0.0, 1.0) && within(r.carbon, 0.0, 1.0),
+            "{r:?}"
+        );
+        assert!(within(r.ammonia, 0.0, 0.3) && within(r.hydrocarbon, 0.0, 0.3));
+        assert_eq!(r.tide, 0.0);
+        assert!(r.liquids().iter().filter(|share| **share > 0.0).count() <= 2);
         assert_eq!(r.class, class::classify(&r));
         assert!(p.atmosphere_height > 0.0 && p.cloud_base > 0.0 && p.cloud_top > 0.0);
     }

@@ -41,7 +41,7 @@ pub(super) fn world(record: PlanetRecord) -> (Line, PlanetSpec) {
     let home = universe.home();
     let planet = PlanetSpec {
         radius: 6000.0,
-        gravity: crate::universe::HOME_GRAVITY,
+        gravity: crate::universe::STANDARD_GRAVITY,
         day_seconds: 1440.0,
         orbit_seconds: 12_000.0,
         record,

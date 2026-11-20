@@ -13,7 +13,7 @@ mod tests;
 pub const SPOOL_TIME: f64 = 4.0;
 
 /// Seconds the drive needs to cross its clearance: speed is clearance over this.
-const RAMP: f64 = 2.0;
+pub const RAMP: f64 = 2.0;
 
 /// Slowest warp speed in metres per second, so leaving the edge of a lock sphere is not endless.
 const FLOOR: f64 = 2000.0;
@@ -25,7 +25,7 @@ pub const CRUISE_CAP: f64 = 5.0 * GLY;
 pub const JUMP_CAP: f64 = 5000.0 * GLY;
 
 /// Share of a lock radius outside the lock sphere at which a closing ship drops out.
-const DROP_MARGIN: f64 = 0.1;
+pub const DROP_MARGIN: f64 = 0.1;
 
 /// Radii from a body inside which it carries the warp bubble fully, and beyond which not at all.
 const CARRY: (f64, f64) = (50.0, 100.0);

@@ -60,7 +60,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- The autopilot aligns the ship before it warps and never turns it in warp: the drive waits until the nose is on the course and has stopped turning, the course aims at where a moving planet will be on arrival, and a heading that would miss the destination drops the drive out to align again.
 - The windows of the ship are clear glass instead of blue: nearly colourless and see-through, with a faint sheen at a slant, so the sky, clouds and water show their own colours through it.
 - The minimap in space follows your ship every frame, including in warp and when leaving a system, instead of jumping five times a second.
 - In the system view of the map only the home planet is labelled home; the star of the home system no longer is. The view of stars still marks the home star.

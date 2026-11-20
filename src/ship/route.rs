@@ -1,8 +1,5 @@
 //! Flying a route: steering onto the course, asking for the warp drive and ending on arrival.
 
-mod align;
-#[cfg(test)]
-mod align_tests;
 mod block;
 #[cfg(test)]
 mod block_tests;
@@ -21,18 +18,20 @@ use bevy::prelude::*;
 use super::body::Ship;
 use super::flight::Controls;
 use super::helm::Helm;
-use super::pilot::{Autopilot, Goal, Phase, Settle};
+use super::pilot::{Autopilot, Phase, Settle};
 use super::sim::Cosmos;
 use super::sky::Skies;
 use super::steer::{aim, detour};
-use super::warp::{CRUISE_CAP, JUMP_CAP, Warp};
+use super::warp::Warp;
 use super::wells::Well;
 use crate::computer::{Destination, Engage, RouteStatus, Target, ship_position};
-use crate::space::UniPos;
-use crate::universe::{GLY, Universe};
+use crate::universe::GLY;
 
 /// Distance in metres beyond which a route is a long jump: faster, and blind to the stars on the way.
 const JUMP_DISTANCE: f64 = 50.0 * GLY;
+
+/// Cosine of the largest angle between the nose and the course at which the drive may spool.
+const ALIGNED: f64 = 0.9994;
 
 /// Returns what the autopilot does next, and whether it asks to switch the warp drive.
 fn next(ship: &Ship, blocked: bool, aligned: bool) -> (Phase, bool) {
@@ -63,12 +62,9 @@ fn beacon(pos: DVec3, to: DVec3, lock: f64) -> Well {
 }
 
 /// Turns the ship onto the course to a destination `to` metres away with a lock sphere of
-/// `lock` metres, asks for the drive once the nose is on the course and still, and returns what
-/// the autopilot is doing.
+/// `lock` metres, asks for the drive once aligned and returns what the autopilot is doing.
 ///
-/// Once the drive spools or runs the heading is locked: no stick, no spin. A course that
-/// the heading no longer reaches drops the drive out, and the ship aligns again before it
-/// warps. While the drive is locked the pilot keeps the controls.
+/// While the drive is locked the pilot keeps the controls.
 pub(super) fn hold(
     ship: &mut Ship,
     helm: &mut Helm,
@@ -78,14 +74,7 @@ pub(super) fn hold(
     let distance = to.length();
     let blocked = blocker(ship, wells).is_some();
     let course = detour(wells, ship.pos, to / distance, distance - lock);
-    if ship.warp != Warp::Off {
-        helm.controls = Controls::default();
-        ship.spin = DVec3::ZERO;
-        helm.warp |= align::missed(ship, course, (distance, lock));
-        return next(ship, blocked, false).0;
-    }
-    let ready = align::settled(ship, course, (distance, lock));
-    let (phase, switch) = next(ship, blocked, ready);
+    let (phase, switch) = next(ship, blocked, ship.forward().dot(course) > ALIGNED);
     if phase != Phase::Waiting {
         helm.controls = Controls {
             turn: aim(ship.rot, course),
@@ -103,24 +92,6 @@ fn drop_first(helm: &mut Helm, settle: Settle) -> Phase {
     helm.controls = Controls::default();
     helm.warp |= settle == Settle::Stop;
     Phase::Dropping
-}
-
-/// Returns whether the route is a long jump, and the course to the destination as it will be
-/// when the ship gets there, so a destination that moves is led and the heading needs no
-/// correction on the way. `now` is where the ship is and when, `to` the course now and the drive.
-fn aim_at(
-    goal: &Goal,
-    universe: &Universe,
-    now: (Option<UniPos>, f64),
-    (to, warp): (DVec3, Warp),
-) -> (bool, DVec3) {
-    let jump = to.length() > JUMP_DISTANCE;
-    let cap = if jump { JUMP_CAP } else { CRUISE_CAP };
-    let ahead = align::lead(warp, to.length(), goal.lock, cap);
-    let led = now
-        .0
-        .and_then(|here| goal.reached(universe, here, now.1 + ahead));
-    (jump, led.map_or(to, |(led, _)| led))
 }
 
 /// Flies the route: stops a drive still running on another course and waits for the drop-out,
@@ -153,8 +124,7 @@ pub fn fly(
         };
         return;
     }
-    let (jump, to) = aim_at(goal, universe, (here, time), (to, ship.warp));
-    autopilot.jump = jump;
+    autopilot.jump = to.length() > JUMP_DISTANCE;
     skies.beacon = autopilot.jump.then(|| beacon(ship.pos, to, lock));
     let settle = autopilot.settle(ship.warp != Warp::Off, time);
     autopilot.phase = match settle {

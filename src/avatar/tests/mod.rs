@@ -12,19 +12,26 @@ mod falls;
 mod filling;
 mod flown;
 mod gait;
+mod hands;
 mod landing;
+mod life;
 mod loops;
 mod neck;
 mod poses;
+mod rolls;
+mod skids;
+mod stage;
 mod steps;
+mod touchdowns;
 mod wings;
 
 use bevy::prelude::*;
 
 use super::clock::Clock;
-use super::pose::Pose;
+use super::pose::{Core, Pose};
 use super::tune::CROUCH;
 use super::{AvatarPose, Mode};
+use crate::player::wrap;
 
 /// Seconds in a frame at sixty frames per second.
 pub const FRAME: f32 = 1.0 / 60.0;
@@ -44,6 +51,8 @@ pub fn scene(mode: Mode, k: f32) -> AvatarPose {
         look: Vec2::new(0.8 * (k - 0.5), 0.6 * (0.5 - k)),
         landed_hard: k,
         impact: 24.0 * k,
+        struck: Vec3::new(8.0 * (k - 0.5), -20.0 * k, -20.0 * k),
+        lost: 30.0 * k,
         absorb: false,
         gain: 8.0 * (0.5 - k),
         turn: 3.0 * (0.5 - k),
@@ -83,10 +92,13 @@ pub fn samples(mode: Mode) -> Vec<(AvatarPose, Clock)> {
 }
 
 /// Returns the largest difference between two poses over every joint, in radians or meters.
+/// The lean and the roll of the whole body count the short way round: whole turns show nothing.
 pub fn gap(a: &Pose, b: &Pose) -> f32 {
     let (a, b) = (a.values(), b.values());
-    a.iter()
-        .zip(b)
-        .map(|(x, y)| (x - y).abs())
-        .fold(0.0, f32::max)
+    let turning = [Core::Pitch as usize, Core::Roll as usize];
+    let step = |(index, (x, y)): (usize, (&f32, f32))| match turning.contains(&index) {
+        true => wrap(x - y).abs(),
+        false => (x - y).abs(),
+    };
+    a.iter().zip(b).enumerate().map(step).fold(0.0, f32::max)
 }

@@ -34,6 +34,7 @@ mod rig;
 mod seated;
 mod show;
 mod spawn;
+mod touch;
 pub mod tune;
 mod warm;
 mod water;
@@ -81,11 +82,15 @@ pub enum Mode {
     Glide,
     /// Powered flight: wingsuit and boots together.
     Fly,
+    /// Rolling over after a fast touchdown, or tumbling after a crash: the trunk turns whole turns.
+    Roll,
+    /// Skidding along the ground after a fast shallow touchdown.
+    Skid,
 }
 
 impl Mode {
     /// Every mode, in declaration order.
-    pub const ALL: [Mode; 12] = [
+    pub const ALL: [Mode; 14] = [
         Mode::Idle,
         Mode::Walk,
         Mode::Run,
@@ -98,15 +103,20 @@ impl Mode {
         Mode::BootFall,
         Mode::Glide,
         Mode::Fly,
+        Mode::Roll,
+        Mode::Skid,
     ];
 
-    /// Returns whether the mode turns the whole body over or folds it: water, wingsuit and seat.
+    /// Returns whether the mode turns the whole body over or folds it: water, wingsuit, seat,
+    /// roll and skid.
     /// A change into or out of such a mode takes the longer blend time.
     pub fn sweeping(self) -> bool {
-        matches!(
-            self,
-            Mode::Swim | Mode::Dive | Mode::Seated | Mode::Glide | Mode::Fly
-        )
+        self.winged() || self.wet() || self.floored() || self == Mode::Seated
+    }
+
+    /// Returns whether the mode lays the whole body on the ground, not only the feet.
+    pub fn floored(self) -> bool {
+        matches!(self, Mode::Roll | Mode::Skid)
     }
 
     /// Returns whether the mode lies prone on the wings and turns with the flight path, all the way round
@@ -150,6 +160,11 @@ pub struct AvatarPose {
     pub landed_hard: f32,
     /// Speed along the local up the body lost in its last touch-down, in meters per second.
     pub impact: f32,
+    /// Velocity the body had when the gear last hit a surface, in meters per second in the frame
+    /// of the body: +X right, +Y up, -Z ahead.
+    pub struck: Vec3,
+    /// Speed the body lost into that surface, in meters per second.
+    pub lost: f32,
     /// True for a moment after any touch-down, at a run too: the knees take the landing in.
     pub absorb: bool,
     /// How fast the ground speed grows, eased, in meters per second squared. Negative brakes.

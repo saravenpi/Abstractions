@@ -3,12 +3,14 @@
 use bevy::prelude::*;
 
 use super::samples;
-use crate::avatar::Mode;
 use crate::avatar::blend::pose_of;
+use crate::avatar::clock::Clock;
 use crate::avatar::mesh::{EXTRA_TRIANGLES, fabric, glow, screen, segment};
 use crate::avatar::pose::Pose;
 use crate::avatar::rig::{SEGS, Seg, globals};
+use crate::avatar::touch::tune::HANDS;
 use crate::avatar::tune::{CAP_RADIUS, SOLE_Y};
+use crate::avatar::{AvatarPose, Mode};
 use crate::player::{BODY_LENGTH, BODY_RADIUS};
 
 /// Slack allowed around the collider, in meters.
@@ -73,13 +75,17 @@ fn body_stands_as_tall_as_the_collider() {
 }
 
 /// In every pose with the feet on the ground, at every speed and through a landing, the box
-/// around the body fits the box of the player collider.
+/// around the body fits the box of the player collider. Only a landing hard enough to put the
+/// hands down leans out of it, for the moment the hands are on the ground.
 #[test]
 fn ground_poses_fit_the_collider() {
     let top = BODY_LENGTH * 0.5 + BODY_RADIUS + SLACK;
     let side = BODY_RADIUS + SLACK;
     for mode in GROUND {
-        for (input, clock) in samples(mode) {
+        let upright = |(input, _): &(AvatarPose, Clock)| {
+            !matches!(mode, Mode::Idle | Mode::Land) || input.landed_hard < HANDS.0
+        };
+        for (input, clock) in samples(mode).into_iter().filter(upright) {
             let (low, high) = bounds(&pose_of(mode, &input, &clock));
             let what = format!(
                 "{mode:?} at {} m/s, phase {}: {low} {high}",

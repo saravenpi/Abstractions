@@ -153,7 +153,8 @@ pub fn face(
             continue;
         };
         let input = &anim.input;
-        if input.mode == Mode::Land && visor.was != Mode::Land {
+        let touched = |mode: Mode| matches!(mode, Mode::Land | Mode::Roll);
+        if touched(input.mode) && !touched(visor.was) {
             visor.react(landing(input.landed_hard), LANDING_FACE);
         }
         visor.was = input.mode;

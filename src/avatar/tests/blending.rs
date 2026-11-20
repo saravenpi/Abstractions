@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 
+use super::stage::unturned;
 use super::{FRAME, gap, scene};
 use crate::avatar::animate::Anim;
 use crate::avatar::blend::{MODES, Weights};
@@ -25,13 +26,15 @@ fn still(mode: Mode) -> AvatarPose {
     }
 }
 
-/// Runs `frames` frames of `input` and returns the largest change of a joint in one frame.
+/// Runs `frames` frames of `input` and returns the largest change of a joint in one frame. The
+/// whole-body turn of a roll is the motion of that mode, not a joint, and is left out.
 fn run(anim: &mut Anim, input: &mut AvatarPose, frames: usize) -> f32 {
     let mut worst = 0.0_f32;
     for _ in 0..frames {
         input.stride_distance += input.speed * FRAME;
-        let before = anim.pose;
-        worst = worst.max(gap(&before, &anim.step(input, FRAME)));
+        let before = unturned(&anim.pose, anim.clock.turn);
+        let now = anim.step(input, FRAME);
+        worst = worst.max(gap(&before, &unturned(&now, anim.clock.turn)));
     }
     worst
 }

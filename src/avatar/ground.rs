@@ -3,10 +3,15 @@
 use std::f32::consts::TAU;
 
 use super::AvatarPose;
+use super::air::mix;
 use super::clock::{Clock, ramp};
 use super::gait::{Foot, bob, foot, leg_ik, run};
 use super::pose::{Core, Limb, Pose};
-use super::tune::{ANKLE_RISE, HIP, LEAN, LEAN_GAIN, PELVIS, SHIN, SINK, SOLE_Y, THIGH, TURN_BANK};
+use super::touch::tune::{HANDS, HANDS_DOWN};
+use super::tune::{
+    ANKLE_RISE, CROUCH, HIP, LEAN, LEAN_GAIN, PELVIS, PUSH_OFF, SHIN, SINK, SOLE_Y, THIGH,
+    TURN_BANK,
+};
 
 /// Distance from the ankle to the toes in meters, with a margin: it bounds how far lifted toes may dip.
 const TOE_REACH: f32 = 0.2;
@@ -118,14 +123,43 @@ pub fn stride(input: &AvatarPose, clock: &Clock) -> Pose {
         .both(Limb::Elbow, 0.3 + 0.35 * pace)
 }
 
-/// Returns the landing pose: the standing pose braced, arms out. The crouch itself comes from the clock.
-pub fn land(clock: &Clock) -> Pose {
-    idle(clock)
+/// Returns `base` pressed down by a hard landing as far as the knees gave under it: the pelvis
+/// drops further, the trunk leans over the knees and one hand, then from harder still both, reach
+/// straight down to the ground. They come up again as the knees push the body back up, whether
+/// it still lands or already stands. The short dip of a jump never reaches them.
+pub fn hands(base: Pose, input: &AvatarPose, clock: &Clock) -> Pose {
+    let down = ((clock.crouch - PUSH_OFF.0) / (CROUCH.1 - PUSH_OFF.0)).clamp(0.0, 1.0);
+    let hard = input.landed_hard;
+    let hands = [ramp(HANDS.0, HANDS.1, hard), ramp(HANDS.1, 1.0, hard)].map(|h| h * down);
+    if hands[0] <= 0.0 {
+        return base;
+    }
+    let stance = Stance {
+        lift: -SINK.0 - clock.crouch - HANDS_DOWN.0 * hands[0],
+        lean: HANDS_DOWN.1 * hands[0],
+        ..Stance::default()
+    };
+    let spine = 0.16 + 0.44 * hands[0];
+    let arm = |reach: f32| 0.15 + (stance.lean + spine - 0.15) * reach;
+    let deep = planted(&stance)
+        .with(Core::Spine, spine)
+        .with(Core::HeadPitch, 0.6 * hands[0])
+        .pair(Limb::Shoulder, arm(hands[0]), arm(hands[1]))
+        .pair(Limb::ArmOut, 0.12, 0.18 + 0.5 * (hands[0] - hands[1]))
+        .pair(Limb::Elbow, 0.55 - 0.5 * hands[0], 0.55 - 0.5 * hands[1]);
+    mix(&base, &deep, hands[0])
+}
+
+/// Returns the landing pose: the standing pose braced, arms out, and pressed down by a hard
+/// landing, see [`hands`]. The crouch itself comes from the clock.
+pub fn land(input: &AvatarPose, clock: &Clock) -> Pose {
+    let braced = idle(clock)
         .with(Core::Spine, 0.16)
         .with(Core::HeadYaw, 0.0)
         .both(Limb::ArmOut, 0.18)
         .both(Limb::Shoulder, 0.15)
-        .both(Limb::Elbow, 0.55)
+        .both(Limb::Elbow, 0.55);
+    hands(braced, input, clock)
 }
 
 /// Returns the pose seated in the ship: thighs level, shins down, hands on the controls.

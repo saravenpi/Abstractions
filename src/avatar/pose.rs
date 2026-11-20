@@ -51,8 +51,9 @@ pub const LIMBS: usize = 7;
 /// Lowest and highest value of every trunk joint, in the order of [`Core`]. No pose leaves them,
 /// and the blended pose is held inside them whatever the input.
 /// The roll reaches a half turn either way, so a body rolled over on its wings lies on its back.
+/// The pelvis drops far enough to lie on the ground and rises far enough to stand on its hands.
 pub const CORE_LIMITS: [(f32, f32); CORES] = [
-    (-0.45, 0.1),
+    (-0.85, 0.25),
     (-0.05, 0.05),
     (-0.6, 2.3),
     (-PI, PI),
@@ -63,12 +64,12 @@ pub const CORE_LIMITS: [(f32, f32); CORES] = [
 ];
 
 /// Lowest and highest value of every side joint, in the order of [`Limb`]. No pose leaves them:
-/// elbows and knees never bend backwards.
+/// elbows and knees never bend backwards, and a deep squat folds the thigh to the chest.
 pub const LIMB_LIMITS: [(f32, f32); LIMBS] = [
     (-1.3, 3.2),
     (-0.1, 1.8),
     (0.0, 2.4),
-    (-1.0, 1.9),
+    (-1.0, 2.2),
     (-0.2, 1.0),
     (0.0, 2.5),
     (-1.2, 1.3),

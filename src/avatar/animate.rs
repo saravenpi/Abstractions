@@ -9,6 +9,7 @@ use super::clock::Clock;
 use super::neck::Neck;
 use super::pose::Pose;
 use super::rig::{SEGS, Seg, locals};
+use super::touch::tune::RISE_SECONDS;
 use super::{AvatarPose, Mode};
 use crate::player::wrap;
 
@@ -39,6 +40,11 @@ pub struct Anim {
     /// because the gear drops both in one step when the body touches down. The bank goes the
     /// short way round, so a body rolling on round is followed through the half turn.
     pub trim: Vec2,
+    /// How prone the poses lay the body (`x`) and how far they spread the wings (`y`): the
+    /// gear's at once in the air, followed down at the rate of getting up anywhere else, because
+    /// the gear stands the body up and folds the wings in a few frames as it touches down while
+    /// the flight poses still blend out.
+    pub lie: Vec2,
 }
 
 /// Returns whether the winged modes hold none of the weight of a blend, and whether they hold all of it.
@@ -80,11 +86,19 @@ impl Anim {
         let want = Vec2::new(self.trim.x + wrap(input.bank - self.trim.x), input.load);
         self.trim += (want - self.trim).clamp_length_max(TRIM_RATE * dt);
         self.trim.x = wrap(self.trim.x);
+        let aloft = matches!(
+            input.mode,
+            Mode::Jump | Mode::Fall | Mode::BootFall | Mode::Glide | Mode::Fly
+        );
+        let drop = if aloft { f32::MAX } else { dt / RISE_SECONDS };
+        self.lie = Vec2::new(input.prone, input.wings).max(self.lie - drop);
         self.weights.step(input.mode, dt, self.clock.belly > 0.0);
         let flown = AvatarPose {
             pitch: self.path,
             bank: self.trim.x,
             load: self.trim.y,
+            prone: self.lie.x,
+            wings: self.lie.y,
             ..*input
         };
         let look = asked(&self.weights, &flown, &self.clock);

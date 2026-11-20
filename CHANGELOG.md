@@ -11,6 +11,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A banked pull turns no faster than 40 degrees a second, and slower at speed: rolled on edge, the wingsuit drifts round instead of spinning.
 - Folding the wings in the air keeps the body prone and turns it into a skydiver arch, belly down, arms and legs spread, head up. A fast fall from a jump arches too, and the body turns upright and reaches for the ground just before it lands.
 - A body falling belly down has twice the drag of one diving head first, so it falls slower.
+- Landings match the impact. A soft one bends the knees as before. A hard drop crouches deeper, puts one hand and then both on the ground and gets up slower. A fast touchdown with the gear rolls over the shoulder, forward, backward or over the side, one turn over the distance the roll covers. A shallow fast one skids on the feet, leaning back, or on the belly with the arms out after a glide. A crash at 60 m/s tumbles with the limbs flailing, then the body gets up.
 
 ## [0.10.1] - 2026-11-19
 

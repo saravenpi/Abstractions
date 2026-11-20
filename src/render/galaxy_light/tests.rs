@@ -7,9 +7,9 @@ use bevy::math::DVec3;
 
 use super::march::{BYTES, Source, bake, bake_at};
 use super::pack::{decode, encode};
-use super::rig::{halfway, home};
+use super::rig::{halfway, home, texels};
 use super::{Built, INSIDE, OUTSIDE, plan};
-use crate::universe::{GLY, Glow};
+use crate::universe::{Glow, LY};
 
 /// A texel survives the bytes it is kept in to within a hundredth of a unit of light, from the
 /// dark of the void to the glare of a core.
@@ -82,22 +82,22 @@ fn the_bake_takes_under_300_ms() {
     assert!(took < Duration::from_millis(300), "the bake took {took:?}");
 }
 
-/// A map is stale after the camera moves 50 game light-years inside a galaxy, and after it
-/// moves 2 percent of the distance to the nearest galaxy centre outside every galaxy, or into
-/// another galaxy, and not before.
+/// A map is stale after the camera moves 2 percent of the radius of its galaxy inside it, and
+/// after it moves 2 percent of the distance to the nearest galaxy centre outside every galaxy, or
+/// into another galaxy, and not before.
 #[test]
 fn the_map_is_baked_again_when_the_camera_has_moved() {
     let (universe, spec) = home();
     let inside = DVec3::new(0.3, 0.0, 0.1) * spec.radius;
     let (_, limit) = plan(&universe, spec.id, inside);
-    assert_eq!(limit, INSIDE);
+    assert_eq!(limit, INSIDE * spec.radius);
     let built = Built {
         galaxy: spec.id,
         at: inside,
         limit,
     };
-    let moved = |gly: f64| inside + DVec3::Z * gly * GLY;
-    assert!(!built.stale(spec.id, moved(49.0)) && built.stale(spec.id, moved(51.0)));
+    let moved = |share: f64| inside + DVec3::Z * share * spec.radius;
+    assert!(!built.stale(spec.id, moved(0.019)) && built.stale(spec.id, moved(0.021)));
     let outside = DVec3::new(0.0, 0.5, 1.0).normalize() * 4.0 * spec.radius;
     let (sources, limit) = plan(&universe, spec.id, outside);
     let nearest = sources
@@ -116,21 +116,23 @@ fn the_map_is_baked_again_when_the_camera_has_moved() {
     assert!(built.stale(other, outside));
 }
 
-/// The map of a lone galaxy far from the camera is dark where there is none, and the same
-/// bake twice gives the same bytes.
+/// The map of a lone galaxy a million light-years off is dark everywhere but around it, a texel
+/// wider than its light reaches, and the same bake twice gives the same bytes.
 #[test]
 fn an_empty_sky_is_dark_and_a_bake_is_repeatable() {
     let (_, spec) = home();
     let far = Source {
         glow: Glow::of(&spec),
-        offset: DVec3::X * 1.0e9 * GLY,
+        offset: DVec3::X * 1.0e6 * LY,
         inside: false,
     };
+    let reach = (far.glow.reach() / far.offset.length()).asin();
     let dark = bake_at(&[far], 16);
-    assert!(
-        dark.chunks(4)
-            .all(|texel| texel[..3] == [0, 0, 0] && texel[3] == 255)
-    );
+    for (dir, _, light) in texels(&dark, 16) {
+        if dir.angle_between(DVec3::X) > reach + 0.2 {
+            assert!(light < 1.0e-6, "light {light} at {dir}");
+        }
+    }
     let near = Source {
         glow: Glow::of(&spec),
         offset: DVec3::X * 3.0 * spec.radius,

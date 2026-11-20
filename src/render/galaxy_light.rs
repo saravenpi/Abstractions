@@ -3,15 +3,21 @@
 //! it crosses, with the dust of that galaxy absorbing, so the band of the home galaxy, the lanes
 //! in it and the galaxies far outside it are one model. The sky shader reads the map.
 
+mod fine;
 mod image;
 mod march;
 mod pack;
 #[cfg(test)]
 mod rig;
+mod steps;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_far;
+#[cfg(test)]
 mod tests_gap;
+#[cfg(test)]
+mod tests_light;
 #[cfg(test)]
 mod tests_sight;
 mod tune;
@@ -28,13 +34,15 @@ use self::tune::MIN_GAP;
 use super::vantage::{LocalSystem, Vantage};
 use crate::screens::Screen;
 use crate::space::UniPos;
-use crate::universe::{GLY, GalaxyId, GalaxySpec, Glow, Universe};
+use crate::universe::{GalaxyId, GalaxySpec, Glow, LY, RADIUS_LY, Universe};
 
 /// Galaxy grid cells searched for galaxies around the camera's own.
 const CELLS: i32 = 2;
 
-/// Metres the camera moves inside a galaxy before the map is baked again.
-const INSIDE: f64 = 50.0 * GLY;
+/// Share of the radius of the galaxy the camera is in that it moves before the map is baked
+/// again: 1,000 light-years in a galaxy 50,000 across the radius, as [`OUTSIDE`] is a share of a
+/// distance.
+const INSIDE: f64 = 0.02;
 
 /// Share of the distance to the nearest galaxy centre the camera moves outside every galaxy
 /// before the map is baked again.
@@ -96,27 +104,27 @@ impl GalaxyLight {
 }
 
 /// Returns the galaxies in sight of a camera `at` metres from the centre of `galaxy`, and the
-/// metres the camera may move before they are baked again: [`INSIDE`] in a galaxy, and
-/// [`OUTSIDE`] of the distance to the nearest galaxy centre elsewhere.
+/// metres the camera may move before they are baked again: [`INSIDE`] of the radius of the galaxy
+/// it is in, and [`OUTSIDE`] of the distance to the nearest galaxy centre elsewhere.
 pub fn plan(universe: &Universe, galaxy: GalaxyId, at: DVec3) -> (Vec<Source>, f64) {
     let Some(here) = universe.galaxy(galaxy).map(|spec| spec.locate(at)) else {
-        return (Vec::new(), INSIDE);
+        return (Vec::new(), INSIDE * RADIUS_LY.0 * LY);
     };
     let source = |spec: &GalaxySpec| {
-        let offset = UniPos::new(spec.id.0, spec.center) - here;
+        let offset = UniPos::sectors(spec.id.0, spec.center_sector, DVec3::ZERO) - here;
         Source {
             glow: Glow::of(spec),
             offset,
             inside: offset.length() <= spec.radius,
         }
     };
-    let sources: Vec<Source> = (universe.galaxies_near(galaxy, CELLS).iter())
-        .map(source)
-        .collect();
+    let specs = universe.galaxies_near(galaxy, CELLS);
+    let sources: Vec<Source> = specs.iter().map(source).collect();
     let nearest = (sources.iter()).map(|source| source.offset.length());
     let nearest = nearest.fold(f64::MAX, f64::min);
-    let inside = sources.iter().any(|source| source.inside);
-    (sources, if inside { INSIDE } else { OUTSIDE * nearest })
+    let radius = specs.iter().zip(&sources).find(|(_, source)| source.inside);
+    let limit = radius.map_or(OUTSIDE * nearest, |(spec, _)| INSIDE * spec.radius);
+    (sources, limit)
 }
 
 /// Starts a fresh map when the world starts loading.

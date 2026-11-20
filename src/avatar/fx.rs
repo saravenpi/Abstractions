@@ -168,13 +168,13 @@ pub fn face(
             .tint
             .lerp(visor.shown().tint(), 1.0 - (-TINT_RATE * dt).exp());
         let dim = eye::screen(hurt.as_deref(), mine == Some(lamp.0), time.elapsed_secs());
-        light.color = Color::linear_rgb(tint.x, tint.y, tint.z);
-        light.intensity = LIGHT_POWER * dim;
         if tint.distance(kit.tint) < 1e-4 && (dim - kit.dim).abs() < 1e-3 {
             continue;
         }
         kit.tint = tint;
         kit.dim = dim;
+        light.color = Color::linear_rgb(tint.x, tint.y, tint.z);
+        light.intensity = LIGHT_POWER * dim;
         if let Some(mut material) = stores.1.get_mut(&kit.visor) {
             let lit = tint * SCREEN_HDR * dim;
             material.base_color = Color::linear_rgb(lit.x, lit.y, lit.z);

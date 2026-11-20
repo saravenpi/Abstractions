@@ -82,6 +82,24 @@ fn paint(materials: &mut Assets<StandardMaterial>, display: &Display, (tint, thr
     }
 }
 
+/// Sets the colour and the power of the light in the head of a companion, and writes only the
+/// values that changed.
+fn light(
+    heads: &Query<&Children>,
+    lamps: &mut Query<&mut PointLight, With<Lamp>>,
+    parts: &Parts,
+    (tint, night): (Vec3, f32),
+) {
+    let next = (hdr(tint, 1.0), lumens(night));
+    for &child in heads.get(parts.head).into_iter().flatten() {
+        if let Ok(mut lamp) = lamps.get_mut(child) {
+            if (lamp.color, lamp.intensity) != next {
+                (lamp.color, lamp.intensity) = next;
+            }
+        }
+    }
+}
+
 /// Eases the colour of every companion toward its own expression and applies it to its screen,
 /// its glowing parts and its light.
 ///
@@ -98,12 +116,7 @@ pub fn shine(
     let share = blend(TINT_RATE, time.delta_secs());
     for (face, brain, float, parts, mut display) in &mut bots {
         let (tint, thrust) = want(face, brain, float, &display, share);
-        for &child in heads.get(parts.head).into_iter().flatten() {
-            if let Ok(mut lamp) = lamps.get_mut(child) {
-                lamp.color = hdr(tint, 1.0);
-                lamp.intensity = lumens(sense.night);
-            }
-        }
+        light(&heads, &mut lamps, parts, (tint, sense.night));
         let still = (thrust - display.thrust).abs() < 1e-3;
         if still && tint.distance(display.tint) < 1e-4 {
             continue;

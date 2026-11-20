@@ -110,9 +110,10 @@ pub fn material(skin: Skin) -> StandardMaterial {
         Skin::Trim => paint(0.92, 0.45, 0.12, 0.6),
         Skin::Dark => paint(0.14, 0.15, 0.18, 0.8),
         Skin::Glass => StandardMaterial {
-            base_color: Color::srgba(0.45, 0.78, 0.95, 0.18),
+            base_color: Color::srgba(0.9, 0.9, 0.9, 0.08),
             alpha_mode: AlphaMode::Blend,
-            perceptual_roughness: 0.1,
+            perceptual_roughness: 0.05,
+            reflectance: 0.5,
             double_sided: true,
             cull_mode: None,
             ..default()

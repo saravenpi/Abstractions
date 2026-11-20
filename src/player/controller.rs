@@ -20,7 +20,7 @@ use super::steer::{Steer, Turn};
 use super::upright::{facing, tilt};
 use super::walk::{Step, velocity};
 use super::{Player, PlayerSet};
-use crate::gear::Gear;
+use crate::gear::{Gear, liquid_density};
 use crate::screens::playing;
 use crate::sim::IntentOf;
 use crate::space::{Anchor, altitude, local_gravity, on_foot, up};
@@ -114,6 +114,7 @@ impl Env<'_, '_> {
             look: step.view.direction(),
             aim: Vec2::new(step.view.yaw, step.view.pitch),
             gravity: step.gravity,
+            liquid: liquid_density(self.terrain.globe().record()),
         }
     }
 

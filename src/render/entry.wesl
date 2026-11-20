@@ -13,6 +13,7 @@ struct Fx {
 
 const TAU: f32 = 6.2831853;
 const WISP_LANES: f32 = 22.0;
+const PLASMA_LANES: f32 = 34.0;
 const CORE_TIGHT: f32 = 60.0;
 const CORE_WIDE: f32 = 5.0;
 const FLASH_WIDE: f32 = 1.5;
@@ -62,7 +63,10 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let ahead = 0.6 * exp(-off * CORE_TIGHT) + 0.4 * exp(-off * CORE_WIDE);
     let flash = fx.params.y * exp(-off * FLASH_WIDE);
 
-    var col = fx.glow.rgb * (fx.glow.w * heat);
+    let plasma = lanes(turn, along, PLASMA_LANES, 0.3, time * fx.params.z * 3.0) * open;
+    let streaming = fx.glow.w * smoothstep(0.15, 0.7, fx.glow.w);
+
+    var col = fx.glow.rgb * (fx.glow.w * heat + streaming * plasma);
     col = col + fx.core.rgb * (fx.core.w * ahead + flash);
     col = col + fx.wisp.rgb * (fx.wisp.w * wisps);
     return vec4<f32>(col, 0.0);

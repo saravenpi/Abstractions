@@ -11,7 +11,7 @@ use bevy::prelude::*;
 
 use super::super::eye::{Eye, HudPose};
 use super::super::needle::bearing;
-use crate::computer::{Target, homeward, ship_position, target_position};
+use crate::computer::{Target, ship_position, target_position};
 use crate::menus::{Marker, MarkerKind, MarkerPlace};
 use crate::space::{Clock, Frame, Location, Travel};
 use crate::universe::{BodyId, Universe};
@@ -84,18 +84,11 @@ impl Around<'_> {
             MarkerPlace::Anchor(at) => at,
             MarkerPlace::Body(body, at) if Some(body) == ground => at,
             MarkerPlace::Body(..) if marker.kind == MarkerKind::Ship => return None,
-            MarkerPlace::Body(..) if marker.kind == MarkerKind::Home => return self.far(eye),
+            MarkerPlace::Body(..) if marker.kind == MarkerKind::Home => return None,
             MarkerPlace::Body(body, at) => return self.remote(eye, body, at),
         };
         let offset = at - eye.at;
         Some((offset, offset.length()))
-    }
-
-    /// Returns the offset to the next place on the way home and its length.
-    fn far(&self, eye: &Eye) -> Option<(DVec3, f64)> {
-        let (universe, clock) = self.sky.as_ref()?;
-        let (toward, gap) = homeward(universe, eye.anchor.frame, eye.at, clock.seconds)?;
-        Some((self.turned(eye, toward * gap), gap))
     }
 
     /// Returns the offset to the point `at` of the body `body`, measured from its centre

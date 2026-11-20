@@ -23,15 +23,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Animals that glow light up at night in their own colour.
 - Animals leave signs and make calls. Within 60 m you find the footprints of herds that passed in the last four minutes, spaced wider where they ran, droppings and cropped patches where they grazed, nests and burrows near their homes, and bones where a kill was eaten. Herds call now and then, lower for bigger animals, call the alarm when they flee, and hunters cry as they give chase. Every player finds the same tracks and hears the same calls.
 - Grass grows on living planets that have ground cover. Near you, blades stand dense out to 15 m and thin out to 40 m, sway in the wind and take the colour of the carpet under them. Farther out the ground shows the same carpet: two colours of the planet's ground-cover species in patches with a fine speckle. Blades stay clear of trunks and rocks and of the patches grazers cropped. A planet without ground cover has none.
+- Hold the run key in the water to jet with the boots: underwater the robot dives, climbs and turns where you look, and at the surface it skims along the water. The boots push with the same power as in the air, through the planet's own liquid: about 8 m/s in water, slower in molten rock, nothing in a frozen sea.
+- Wind from a wingsuit, boots or ship tears spray off the sea: low over the water, or fast and low skimming it, flecks fly up and fall back, thrown per metre you travel so they look the same at any frame rate.
+- A fast pass low over the sea leaves a foam wake that spreads behind you in a wedge and fades in a few seconds.
+- Hovering low over the sea rings it with ripples that run outward at the speed of waves under the planet's gravity.
+- The water jet of the boots leaves a trail of bubbles that rise to the surface.
+- The boot water pump thumps, faster as the boots spool up.
+- Entering an atmosphere from space now burns. The glow follows the real heating of the nose, which grows with the root of the air density and the cube of your speed through it, so thick air glows early and hard, thin air faintly and late, and a slow entry or level flight not at all. Its colour follows the air of the planet: pink-orange to white over wet worlds, blue-white to violet over dry ones, pale pink to magenta over giants, teal over cold frozen worlds, yellow over molten ones. The cockpit glass glows with plasma streaming past, and from outside, in third person, a shock sheath with plasma streaks, embers and a short tail wraps the ship or the gliding robot. It fades as you slow down and blends into the cloud animation without a step.
+
 - Animals move when they call: the head lifts, the jaw drops on every note, and the chest or the bell swells. Bigger animals call slower. Every player sees the same animal call at the same moment.
 - Animals have more to say. A hunter growls and rears up, head low, just before it charges, and hunters and horned animals do the same when you come too close. A caught animal cries in distress, and young call back to their parents. Herds call more around sunrise and sunset, in a dawn and a dusk chorus.
 
 ### Changed
 
 - Falling leaves, petals and pollen come only from the plants around you. A tree in leaf drops leaves of its own colour and size, more in autumn; a plant in flower drops petals and, by day, pollen; a bare tree and a lifeless planet drop nothing.
+>>>>>>> ecosystems
 - Calls follow the body: animals that breathe air moan, hoot, whistle, growl or hiss, shelled ones rasp and click, soft ones gurgle, and calls from under water sound muffled. Long, thin bodies and long necks call lower.
 - The map's side panel has more room: Search, Place, Favourites and Players each sit under a heading, with space between them and between the groups of the card. The result count sits beside the Search heading, the save button beside the Favourites heading, and the distance only in the result row. Rows are taller, and in a short window the favourites and players lose their last rows before anything else is cut.
 - The buttons on the card are shorter, so they take two rows: Set course or Engage and Clear, Focus, Set waypoint and Save place.
+- The compass shows the home mark only while you are on the planet of your base, on foot or flying in its air. In space and on other planets it is gone.
 - The wingsuit answers the pitch keys faster: a pull bends the flight path about twice as fast at speed, and let go the wings fly on where you pointed them instead of snapping back to the glide.
 - A banked pull turns no faster than 40 degrees a second, and slower at speed: rolled on edge, the wingsuit drifts round instead of spinning.
 - Folding the wings in the air keeps the body prone and turns it into a skydiver arch, belly down, arms and legs spread, head up. A fast fall from a jump arches too, and the body turns upright and reaches for the ground just before it lands.
@@ -54,6 +64,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- The windows of the ship are clear glass instead of blue: nearly colourless and see-through, with a faint sheen at a slant, so the sky, clouds and water show their own colours through it.
+- The minimap in space follows your ship every frame, including in warp and when leaving a system, instead of jumping five times a second.
+- In the system view of the map only the home planet is labelled home; the star of the home system no longer is. The view of stars still marks the home star.
+- The map no longer shows blue seas on every world: the liquid of a planet picture is the liquid the world draws, so a lava planet has a sea of molten rock, a dry planet has none, and the minimap, which shares the picture, follows.
 - The camera at the water surface splits the view along the waterline, with a thin dark line where the surface crosses the lens: only what is seen from under the water is fogged, and the line follows the waves. The camera never rests on the surface itself.
 - In third person the head no longer vanishes when a wall pushes the camera close to the robot. It only hides when the camera is inside the head.
 - No flash of water at eye level in front of the base door as the boot screen fades: the warm-up copy of the sea was drawn 30 m wide in front of the camera.

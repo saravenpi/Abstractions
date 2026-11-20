@@ -5,6 +5,7 @@ use super::calls::{Cry, Timbre, chorus, contact, distress, rhythm, voice};
 use super::rig::find;
 use crate::life::body::Locomotion;
 use crate::life::herd::fixtures::{meadow_life, role, species};
+use crate::life::herd::{Herd, HerdState};
 use crate::life::{Activity, Guild, Habitat, Plan, Rung};
 
 /// Shelled bodies stridulate, soft ones gurgle, a hunter that breathes air growls, and a swimmer
@@ -62,7 +63,8 @@ fn chorus_peaks_at_twilight() {
 #[test]
 fn herds_sing_at_dawn_and_young_answer() {
     let life = meadow_life();
-    let (herd, time) = find(&life, |h| h.count > 4).expect("a herd");
+    let awake = |h: &Herd| !matches!(h.state, HerdState::Sleep | HerdState::Stalk);
+    let (herd, time) = find(&life, |h| h.count > 4 && awake(h)).expect("a herd awake");
     let count = |dawn: f32| {
         let spans = (0..3600).map(|k| (time + f64::from(k), time + f64::from(k + 1)));
         let calls: Vec<_> = spans.filter_map(|s| contact(&herd, &|_| dawn, s)).collect();

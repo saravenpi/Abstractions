@@ -75,6 +75,9 @@ pub struct Scene {
     /// How much thinner than at home the air of the planet is: 0 with the home air or thicker,
     /// 1 without air. What the air shows, sounds and feels like is `sigma * (1 - thin)`.
     pub thin: f32,
+    /// Density of the air at this height in kilograms per cubic metre, thickness of the planet
+    /// included: zero above the air and on a planet without any.
+    pub air_density: f32,
     /// Free height under the boot soles down to the ground or the sea, in metres.
     pub clearance: f32,
     /// Whether the sea is what lies nearest under the boots.
@@ -162,6 +165,7 @@ fn read(sight: &Sight, pose: &Transform, gear: &Gear) -> Scene {
         view: camera.rotation,
         sigma: grip(gear.input.density),
         thin: 1.0 - gear.input.air.clamp(0.0, 1.0),
+        air_density: gear.input.density * gear.input.air.max(0.0),
         clearance,
         wet,
         dt: sight.time.delta_secs(),

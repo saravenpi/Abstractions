@@ -10,6 +10,7 @@
 //! - Boots alone brake a fall and cannot gain height.
 //! - The wingsuit alone glides and always loses energy.
 //! - Both together fly.
+//! - Under a liquid the boots jet the body along the view, see `jet`.
 //!
 //! On the wings the keys ask for rates in the frame of the body, not an attitude (see
 //! `command`): the roll keys roll it on round its nose, the pitch keys pull toward its back or
@@ -29,6 +30,7 @@ mod command;
 mod contact;
 mod fx;
 mod input;
+mod jet;
 mod mode;
 mod modes;
 mod path;
@@ -45,16 +47,20 @@ pub use boots::descent_target;
 pub use contact::{deflect, slid};
 pub use fx::{FlightFx, GearSet, Wake};
 pub use input::{GearInput, air_density};
+pub use jet::{boot_power, hull_drag, jet, jetting, liquid_density, pump};
 pub use mode::Mode;
 pub use state::{FlightState, Servo};
 pub use step::step;
 
 use bevy::prelude::*;
 
+use crate::effects::Churn;
+
 /// The flight gear of a body: its state and the input of its last step.
 ///
 /// Both pieces of equipment are owned from the start: every [`crate::player::Player`] gets one.
 #[derive(Component, Debug, Default, Clone, Copy, PartialEq)]
+#[require(Churn)]
 pub struct Gear {
     /// The flight state after the last step.
     pub state: FlightState,

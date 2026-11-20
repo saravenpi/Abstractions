@@ -7,9 +7,10 @@ use super::dive::{SwimInput, swim_velocity, swim_wish};
 use super::flight::{Air, carried, input, touching};
 use super::ground::{Ground, RISING_SPEED, slope_velocity, snap_velocity, walkable};
 use super::intent::{Intent, approach, land_vertical};
+use super::jet::jet_velocity;
 use super::lead::View;
 use super::swim;
-use crate::gear::{Gear, GearInput};
+use crate::gear::{Gear, GearInput, jetting};
 
 /// Walking speed in meters per second.
 const WALK_SPEED: f32 = 5.0;
@@ -86,12 +87,22 @@ fn walk_step(motion: &mut Motion, intent: &Intent, ground: Option<Ground>, step:
 }
 
 /// Returns the swimming or walking velocity for this frame, as the swim state says.
-fn velocity_for(motion: &mut Motion, intent: &Intent, floor: Option<Ground>, step: &Step) -> Vec3 {
+///
+/// Boots that jet under a liquid replace the strokes, see [`jet_velocity`].
+fn velocity_for(
+    (motion, gear): (&mut Motion, &Gear),
+    intent: &Intent,
+    floor: Option<Ground>,
+    step: &Step,
+) -> Vec3 {
     if !motion.swimming {
         let ground = walkable(floor, motion.velocity.y > RISING_SPEED);
         return walk_step(motion, intent, ground, step);
     }
     motion.grounded = false;
+    if jetting(&gear.input) {
+        return jet_velocity(motion.velocity, gear, step);
+    }
     let input = SwimInput {
         wish: swim_wish(
             intent.forward,
@@ -130,7 +141,7 @@ pub(super) fn velocity(
             jump: intent.jump && (!motion.spent || motion.swimming),
             ..*intent
         };
-        return velocity_for(motion, &hop, floor, step);
+        return velocity_for((motion, gear), &hop, floor, step);
     };
     motion.grounded = !gear.state.mode.airborne();
     velocity

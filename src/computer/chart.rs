@@ -14,6 +14,7 @@ use super::lens::Lens;
 use super::moons;
 use super::route::Target;
 use super::rows::Line;
+use super::scale;
 use super::tab::Tab;
 use crate::space::UniPos;
 use crate::universe::PlanetClass;
@@ -70,16 +71,11 @@ pub(super) fn flat(offset: DVec3) -> Vec2 {
 /// orbit with its moons on tiny orbits around it, and the ship. The star is the row of a star,
 /// or the first row when the filter left it out.
 fn system(lines: &[Line], ship: UniPos) -> Vec<(Dot, Vec2)> {
-    let star = lines
-        .iter()
-        .find(|line| matches!(line.target, Target::Star(_)));
-    let Some(origin) = star.or(lines.first()).map(|star| star.at) else {
+    let Some((origin, reach)) = scale::reading(lines) else {
         return Vec::new();
     };
     let around = |at: UniPos| flat(at - origin);
-    let far = lines.iter().map(|line| around(line.at).length());
-    let reach = far.fold(1.0, f32::max);
-    let scaled = |at: Vec2| at.normalize_or_zero() * (at.length() / reach).min(1.0).sqrt() * FILL;
+    let scaled = |at: Vec2| scale::squash(at, reach);
     let raw: Vec<Vec2> = lines.iter().map(|line| scaled(around(line.at))).collect();
     let mut points = raw.clone();
     moons::settle(lines, &mut points);

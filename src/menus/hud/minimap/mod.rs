@@ -9,6 +9,7 @@
 //! hides behind every menu and behind the computer, which has the large map.
 
 mod dots;
+mod follow;
 mod marks;
 mod orbit;
 mod paint;
@@ -20,7 +21,6 @@ mod sight;
 mod space;
 #[cfg(test)]
 mod tests;
-mod tone;
 mod view;
 mod widget;
 
@@ -62,13 +62,16 @@ pub(super) fn plugin(app: &mut App) {
         dots::place,
         marks::caption,
         chart,
+        follow::follow,
         space::steer,
     );
-    app.init_resource::<scope::Scope>().add_systems(
-        Update,
-        (ground.chain(), shown.chain().run_if(in_control))
-            .chain()
-            .in_set(MarkerSet::Show)
-            .run_if(in_state(Screen::Gameplay)),
-    );
+    app.init_resource::<scope::Scope>()
+        .init_resource::<follow::Charted>()
+        .add_systems(
+            Update,
+            (ground.chain(), shown.chain().run_if(in_control))
+                .chain()
+                .in_set(MarkerSet::Show)
+                .run_if(in_state(Screen::Gameplay)),
+        );
 }

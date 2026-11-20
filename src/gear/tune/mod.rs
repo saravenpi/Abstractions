@@ -4,8 +4,10 @@ use bevy::prelude::*;
 
 /// The constants of a touchdown.
 mod touch;
+/// The constants of the boot water jet.
+mod water;
 
-pub use touch::*;
+pub use {touch::*, water::*};
 
 /// Air density at sea level in kilograms per cubic metre, the same as the ship uses.
 pub const SEA_DENSITY: f32 = 1.2;

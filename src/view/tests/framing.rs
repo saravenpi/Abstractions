@@ -90,7 +90,7 @@ fn head_stays_when_a_wall_pushes_the_camera_close() {
         "the wall pushed the camera in"
     );
     assert!(shown.fade.0 > 0.99 && cramped.clearance(shown.pose.position) > 0.29);
-    let pressed = Boxes::floor().with([-4.0, 0.0, 0.05], [4.0, 4.0, 0.25]);
+    let pressed = Boxes::floor().with([-4.0, 0.0, 0.35], [4.0, 4.0, 0.55]);
     let inside = run(&mut Rig::default(), &mut body, &pressed, 30);
     assert!(inside.pose.position.distance(head) < 0.22 && inside.fade.0 < 0.05);
 }

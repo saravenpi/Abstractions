@@ -1,18 +1,16 @@
 //! The colour of one cell of a body picture, from the bare shape of the land: the ground
-//! colour of its biome, shaded by its slope and height, or a dark blue-grey sea, darker deeper.
+//! colour of its biome, shaded by its slope and height, or the liquid of the planet itself,
+//! darker deeper: water, molten rock or whatever the class floods its low ground with. A planet
+//! without a sea has no sea colour.
 
+use bevy::color::Srgba;
 use bevy::math::{DVec3, Vec2, Vec3};
+use bevy::prelude::Color;
 
 use super::BYTES;
 use crate::universe::PlanetClass;
 use crate::world::globe::Grain;
-use crate::world::{Biome, Globe, Surface, ground_rgb};
-
-/// Colour of the sea at the shore.
-const SHALLOW: Vec3 = Vec3::new(0.24, 0.31, 0.38);
-
-/// Colour of the deep sea.
-const DEEP: Vec3 = Vec3::new(0.07, 0.10, 0.14);
+use crate::world::{Biome, Globe, Liquid, Surface, ground_rgb};
 
 /// Metres under sea level at which the sea is drawn deep.
 const DEPTH: f32 = 40.0;
@@ -38,9 +36,9 @@ const HIGH: f32 = 60.0;
 /// Returns the pixel of the ground in unit direction `dir`, from about six bare ground samples.
 pub fn colour(globe: &Globe, dir: DVec3) -> [u8; BYTES] {
     let (height, slope) = relief(globe, dir);
-    let rgb = match height < globe.sea_level() {
-        true => SHALLOW.lerp(DEEP, (-height / DEPTH).clamp(0.0, 1.0)),
-        false => {
+    let rgb = match sea_colour(globe, height) {
+        Some(sea) => sea,
+        None => {
             let biome = globe.biomes_seen([dir; 3], Grain::Far)[0];
             let (r, g, b) = ground_rgb(cover(globe, height, slope.length(), biome), biome);
             Vec3::new(r, g, b) * shade(height, slope)
@@ -48,6 +46,21 @@ pub fn colour(globe: &Globe, dir: DVec3) -> [u8; BYTES] {
     };
     let byte = |c: f32| (c.clamp(0.0, 1.0) * 255.0).round() as u8;
     [byte(rgb.x), byte(rgb.y), byte(rgb.z), u8::MAX]
+}
+
+/// Returns the colour of the liquid of `globe` over a floor at `height` metres, from the shore
+/// to the deep, or nothing where that floor is dry: the liquid is the one the world draws, so
+/// molten rock is not blue. The colour is in sRGB, from 0 to 1.
+pub fn sea_colour(globe: &Globe, height: f32) -> Option<Vec3> {
+    if height >= globe.sea_level() {
+        return None;
+    }
+    let liquid = Liquid::of(globe);
+    let linear = liquid
+        .shallow
+        .lerp(liquid.deep, (-height / DEPTH).clamp(0.0, 1.0));
+    let shown = Srgba::from(Color::linear_rgb(linear.x, linear.y, linear.z));
+    Some(Vec3::new(shown.red, shown.green, shown.blue))
 }
 
 /// Returns the bare height and its rise towards the east and the north in direction `dir`.

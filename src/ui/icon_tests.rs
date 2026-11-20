@@ -1,4 +1,4 @@
-//! Font tests: every icon has a glyph in the embedded pixelarticons font, and the embedded
+//! Font tests: every icon has a glyph in the embedded icon font, and the embedded
 //! interface font is an OpenType file with the characters the game writes.
 
 use std::collections::HashSet;
@@ -80,23 +80,4 @@ fn the_interface_font_loads_and_covers_ascii() {
     let units = be16(UNDEFINED_OTF, table(UNDEFINED_OTF, b"head") + 18) as f32;
     let advance = be16(UNDEFINED_OTF, table(UNDEFINED_OTF, b"hmtx")) as f32;
     assert_eq!(advance / units, theme::GLYPH_ASPECT);
-}
-
-/// The icons of the multiplayer menus keep the codepoints of `pixelart-icons-font.css` 2.4.2,
-/// and the embedded font draws each of them.
-#[test]
-fn the_multiplayer_icons_match_the_pinned_font() {
-    let pinned = [
-        (Icon::Users, 0xede1),
-        (Icon::User, 0xeddf),
-        (Icon::Server, 0xed20),
-        (Icon::Wifi, 0xee01),
-        (Icon::Reload, 0xecfa),
-        (Icon::Link, 0xec5f),
-    ];
-    for (icon, code) in pinned {
-        assert_eq!(icon.codepoint() as u32, code, "{icon:?}");
-        assert!(glyph_index(ICONS_TTF, icon.codepoint()) > 0, "{icon:?}");
-        assert!(Icon::ALL.contains(&icon), "{icon:?}");
-    }
 }

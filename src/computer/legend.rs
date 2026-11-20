@@ -16,7 +16,7 @@ pub(super) struct ScaleText;
 
 /// The letter for north, which is up on a chart, shown with the charts only.
 pub(super) fn north() -> impl Bundle {
-    (ChartLayer, text("N", theme::FONT_SMALL, theme::MUTED))
+    (ChartLayer, text("N", theme::FONT_SMALL, theme::TEXT_2))
 }
 
 /// The scale of a chart, shown with the charts only: a distance over a bar of that length,
@@ -36,7 +36,7 @@ pub(super) fn scale() -> impl Bundle {
         ChartLayer,
         node,
         children![
-            (ScaleText, text("", theme::FONT_SMALL, theme::MUTED)),
+            (ScaleText, text("", theme::FONT_SMALL, theme::TEXT_2)),
             (ScaleBar, bar, BackgroundColor(theme::TEXT)),
         ],
     )

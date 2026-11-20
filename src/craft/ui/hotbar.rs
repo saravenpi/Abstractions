@@ -53,8 +53,8 @@ fn slot(at: usize, tool: Option<(Shape, f32)>, held: bool) -> impl Bundle {
         padding: UiRect::all(px(theme::GAP_XS)),
         ..default()
     };
-    let back = [theme::STRIP, theme::SELECTED][usize::from(held)];
-    let ink = [theme::MUTED, theme::TEXT][usize::from(held)];
+    let back = [theme::PANEL, theme::SELECT][usize::from(held)];
+    let ink = [theme::TEXT_2, theme::TEXT][usize::from(held)];
     let (shape, worn) = tool.unwrap_or((None, 1.0));
     let drawn = match tool.is_some() {
         true => Visibility::Inherited,

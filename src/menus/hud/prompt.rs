@@ -58,7 +58,7 @@ pub(super) fn line() -> impl Bundle {
                     padding: UiRect::axes(px(theme::GAP_S), px(theme::GAP_XS)),
                     ..default()
                 },
-                BackgroundColor(theme::STRIP),
+                BackgroundColor(theme::PANEL),
                 children![
                     (PromptKey, key_cap("")),
                     (PromptAction, label("", theme::FONT_SMALL, Tone::Plain)),

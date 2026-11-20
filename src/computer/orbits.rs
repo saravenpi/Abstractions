@@ -74,7 +74,7 @@ fn ticks(sheet: &mut ChildSpawnerCommands, at: Vec2, moons: usize) {
 fn band(sheet: &mut ChildSpawnerCommands, at: Vec2) {
     let corner = Vec2::new(-0.5 * BAND, -0.5 * theme::LINE);
     let node = spot(at, corner, Vec2::new(BAND, theme::LINE));
-    sheet.spawn((node, BackgroundColor(theme::MUTED)));
+    sheet.spawn((node, BackgroundColor(theme::TEXT_2)));
 }
 
 /// Spawns, for every row of a chart seen at `zoom`, the rings of a planet whose record is

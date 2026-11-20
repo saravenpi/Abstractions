@@ -93,7 +93,7 @@ fn heads(bench: &Bench, count: (usize, usize), burden: &Burden, texts: &mut Text
         match (tab, hints) {
             (Some(tab), _) => {
                 let on = tab.0 == bench.tab;
-                color.set_if_neq(TextColor([theme::MUTED, theme::TEXT][usize::from(on)]));
+                color.set_if_neq(TextColor([theme::TEXT_2, theme::TEXT][usize::from(on)]));
             }
             (None, true) => words.0 = [PACK_HINTS, MAKE_HINTS][bench.tab as usize].to_string(),
             (None, false) => words.0 = tally.clone(),
@@ -125,7 +125,7 @@ fn card_into(commands: &mut Commands, column: Entity, card: &Card, most: usize) 
             TextLayout::no_wrap(),
         ));
         parent.spawn((
-            text(clip(&card.subtitle, most), theme::FONT_SMALL, theme::MUTED),
+            text(clip(&card.subtitle, most), theme::FONT_SMALL, theme::TEXT_2),
             TextLayout::no_wrap(),
         ));
         rows(parent, card, most);

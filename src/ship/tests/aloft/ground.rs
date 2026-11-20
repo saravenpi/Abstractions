@@ -48,7 +48,7 @@ pub fn jumps(game: &mut Game, watch: &mut Watch) -> DVec3 {
 }
 
 /// Length of the ground that must be solid ahead of a landing before it starts, in steps of 5 m.
-const STRIP: i32 = 12;
+const PANEL: i32 = 12;
 
 /// Stands the body 1.5 m over the start, facing away from the ship, once the ground is solid
 /// there and along the strip ahead. The body is put back at the end: while the ground streams
@@ -61,7 +61,7 @@ fn over_the_start(game: &mut Game, watch: &mut Watch, feet: DVec3) {
     crate::player::place(game.app.world_mut(), spot + vertical * 1.5, away);
     game.wait("the ground to stream in", |game| {
         let here = game.get::<Anchor>().to_render(feet);
-        (0..=STRIP).all(|step| game.has_ground(here + away * (step * 5) as f32))
+        (0..=PANEL).all(|step| game.has_ground(here + away * (step * 5) as f32))
     });
     let spot = game.get::<Anchor>().to_render(feet);
     crate::player::place(game.app.world_mut(), spot + vertical * 1.5, away);

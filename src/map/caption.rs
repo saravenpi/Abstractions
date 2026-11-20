@@ -23,7 +23,7 @@ pub struct Coords;
 pub fn caption() -> impl Bundle {
     (
         Caption,
-        text("", theme::FONT_SMALL, theme::MUTED),
+        text("", theme::FONT_SMALL, theme::TEXT_2),
         TextLayout::no_wrap(),
     )
 }
@@ -32,7 +32,7 @@ pub fn caption() -> impl Bundle {
 pub fn coords() -> impl Bundle {
     (
         Coords,
-        text("", theme::FONT_SMALL, theme::MUTED),
+        text("", theme::FONT_SMALL, theme::TEXT_2),
         TextLayout::no_wrap(),
     )
 }

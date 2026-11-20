@@ -84,7 +84,7 @@ fn side() -> impl Bundle {
     };
     (
         node,
-        BackgroundColor(theme::STRIP),
+        BackgroundColor(theme::PANEL),
         children![
             super::results::search(),
             super::readout::card(),
@@ -138,7 +138,7 @@ fn line(color: Color) -> impl Bundle {
 fn foot() -> impl Bundle {
     let lines = children![
         (Action, line(theme::TEXT)),
-        (Status, line(theme::MUTED)),
+        (Status, line(theme::TEXT_2)),
         crate::map::coords()
     ];
     (stack(), lines)

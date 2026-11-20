@@ -63,7 +63,7 @@ fn field() -> impl Bundle {
 fn head() -> impl Bundle {
     let count = (
         Summary,
-        text("", theme::FONT_SMALL, theme::MUTED),
+        text("", theme::FONT_SMALL, theme::TEXT_2),
         TextLayout::no_wrap(),
     );
     (heading_row(), children![heading("Search"), count])

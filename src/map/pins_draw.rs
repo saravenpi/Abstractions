@@ -59,7 +59,7 @@ fn look<'a>(
 ) -> Dress<'a> {
     let tint = [theme::TEXT, color][usize::from(own)];
     Dress {
-        fill: [tint, theme::MUTED][usize::from(grey)],
+        fill: [tint, theme::TEXT_2][usize::from(grey)],
         turn,
         name: [label, name][usize::from(label.is_empty())],
     }

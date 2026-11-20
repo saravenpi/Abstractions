@@ -33,7 +33,7 @@ pub(super) fn spawn(mut commands: Commands) {
         FpsText::default(),
         Text::new(String::new()),
         TextFont::from_font_size(theme::FONT_SMALL),
-        TextColor(theme::MUTED),
+        TextColor(theme::TEXT_2),
         Node {
             position_type: PositionType::Absolute,
             top: px(theme::GAP_S),

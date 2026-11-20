@@ -30,7 +30,7 @@ fn hovering_a_row_or_a_mark_lights_it_and_selects_nothing() {
     assert_eq!(look(false, true), (Look::Rest, true));
     assert_eq!(look(false, false), (Look::Rest, false));
     assert_eq!(surface(Look::Active, false), theme::BLOCK);
-    assert_eq!(surface(Look::Rest, true), theme::SELECTED);
+    assert_eq!(surface(Look::Rest, true), theme::SELECT);
     assert_eq!(surface(Look::Rest, false), Color::NONE);
     let mut app = rig();
     app.world_mut().resource_mut::<MapView>().hover = Some(Dot::Row(1));

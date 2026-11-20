@@ -52,7 +52,7 @@ pub(super) fn texts(form: &Form, field: Field) -> (&'static str, String, Color) 
     let (shown, color) = match (form.field == field, value.is_empty()) {
         (true, _) => (with_caret(value), theme::TEXT),
         (false, false) => (value.clone(), theme::TEXT),
-        (false, true) => (hint.to_string(), theme::MUTED),
+        (false, true) => (hint.to_string(), theme::TEXT_2),
     };
     (title, shown, color)
 }

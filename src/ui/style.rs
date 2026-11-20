@@ -45,7 +45,7 @@ pub enum Tone {
 pub fn tone_color(tone: Tone, look: Look) -> Color {
     match (tone, look) {
         (Tone::Marker, Look::Rest) => Color::NONE,
-        (Tone::Muted, Look::Rest) => theme::MUTED,
+        (Tone::Muted, Look::Rest) => theme::TEXT_2,
         (_, Look::Rest) => theme::TEXT,
         (_, Look::Active | Look::Pressed) => theme::INK,
     }
@@ -67,7 +67,7 @@ pub fn surface(look: Look, selected: bool) -> Color {
     match (look, selected) {
         (Look::Pressed, _) => theme::BLOCK_PRESSED,
         (Look::Active, _) => theme::BLOCK,
-        (Look::Rest, true) => theme::SELECTED,
+        (Look::Rest, true) => theme::SELECT,
         (Look::Rest, false) => Color::NONE,
     }
 }
@@ -165,9 +165,9 @@ mod tests {
     fn the_current_row_is_inverted() {
         assert_eq!(surface(Look::Active, false), theme::BLOCK);
         assert_eq!(surface(Look::Active, true), theme::BLOCK);
-        assert_eq!(surface(Look::Rest, true), theme::SELECTED);
+        assert_eq!(surface(Look::Rest, true), theme::SELECT);
         assert_eq!(surface(Look::Rest, false), Color::NONE);
-        assert_eq!(shade(Tone::Muted, Look::Rest, false), theme::MUTED);
+        assert_eq!(shade(Tone::Muted, Look::Rest, false), theme::TEXT_2);
         assert_eq!(shade(Tone::Muted, Look::Rest, true), theme::TEXT);
         assert_eq!(shade(Tone::Danger, Look::Rest, false), theme::TEXT);
         assert_eq!(shade(Tone::Plain, Look::Pressed, true), theme::INK);

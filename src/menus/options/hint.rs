@@ -19,7 +19,7 @@ pub struct HintLine;
 pub fn line() -> impl Bundle {
     (
         HintLine,
-        text("", theme::FONT_SMALL, theme::MUTED),
+        text("", theme::FONT_SMALL, theme::TEXT_2),
         Node {
             margin: UiRect::top(px(theme::GAP_S)),
             min_height: px(theme::GAP_L),
@@ -68,10 +68,10 @@ fn show_hint(
     let (shown, color) = match tab.0 {
         Tab::Graphics => (
             graphics_line(settings.graphics.render_distance),
-            theme::MUTED,
+            theme::TEXT_2,
         ),
         Tab::Controls | Tab::Ship => (conflict_line(&settings.controls.keys), theme::TEXT),
-        _ => (String::new(), theme::MUTED),
+        _ => (String::new(), theme::TEXT_2),
     };
     for (mut line, mut tint) in &mut lines {
         line.set_if_neq(Text(shown.clone()));

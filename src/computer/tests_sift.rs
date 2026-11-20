@@ -100,7 +100,7 @@ fn a_row_shows_what_it_is_and_whether_it_was_visited() {
     let (galaxy, plain) = (line("Aru", 0.0), (false, false));
     let cases = [
         (&star, plain, Icon::Star, Tone::Muted),
-        (&planet, plain, Icon::Earth, Tone::Plain),
+        (&planet, plain, Icon::Planet, Tone::Plain),
         (&galaxy, plain, Icon::Map, Tone::Muted),
         (&star, (false, true), Icon::Send, Tone::Plain),
         (&star, (true, true), Icon::MapPin, Tone::Accent),

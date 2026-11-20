@@ -119,7 +119,7 @@ impl Pins<'_, '_> {
                 text.0.clone_from(words);
             }
             let tint = match marker.kind {
-                MarkerKind::Home | MarkerKind::Ship => theme::MUTED,
+                MarkerKind::Home | MarkerKind::Ship => theme::TEXT_2,
                 _ => marker.color,
             };
             color.set_if_neq(TextColor(tint.with_alpha(tint.alpha() * mark.alpha)));

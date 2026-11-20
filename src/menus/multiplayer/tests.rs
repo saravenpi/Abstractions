@@ -155,7 +155,7 @@ fn forms_draw_their_fields() {
     let typing = texts(&add, Field::Address);
     assert_eq!((typing.0, typing.1.as_str()), ("Add a server", "10.0.0.2_"));
     let empty = Form::new(FormKind::Edit(0), String::new(), String::new());
-    assert_eq!(texts(&empty, Field::Address).2, theme::MUTED);
+    assert_eq!(texts(&empty, Field::Address).2, theme::TEXT_2);
     assert_eq!(
         connecting(&Session::Joining {
             address: "space.facile.studio".to_string()

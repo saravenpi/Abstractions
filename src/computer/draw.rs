@@ -75,7 +75,7 @@ impl Picture<'_> {
             hover.map(shown) == Some(index),
         ) {
             (true, _) => Some(theme::TEXT),
-            (false, true) => Some(theme::MUTED),
+            (false, true) => Some(theme::TEXT_2),
             _ => None,
         }
     }
@@ -133,7 +133,7 @@ fn course(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
     for step in 1..DASHES {
         let at = from.lerp(to, step as f32 / DASHES as f32);
         let node = spot(at, Vec2::splat(-1.0), Vec2::splat(2.0));
-        sheet.spawn((node, BackgroundColor(theme::MUTED)));
+        sheet.spawn((node, BackgroundColor(theme::TEXT_2)));
     }
     name(
         sheet,
@@ -161,7 +161,7 @@ fn marks(sheet: &mut ChildSpawnerCommands, picture: &Picture) {
             continue;
         };
         let ring = picture.marked(index);
-        let color = [theme::MUTED, theme::TEXT][usize::from(line.visited || ring.is_some())];
+        let color = [theme::TEXT_2, theme::TEXT][usize::from(line.visited || ring.is_some())];
         let world = board.worlds.get(index).and_then(Option::as_ref);
         body(
             sheet,

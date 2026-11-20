@@ -75,7 +75,7 @@ fn fact(parent: &mut ChildSpawnerCommands, (name, value): (&str, &str), most: us
     parent.spawn((
         line,
         children![
-            small(name.to_string(), theme::MUTED),
+            small(name.to_string(), theme::TEXT_2),
             small(value, theme::TEXT)
         ],
     ));
@@ -97,7 +97,7 @@ pub(crate) fn rows(parent: &mut ChildSpawnerCommands, card: &Card, most: usize) 
             }
             Row::Fact(name, value) => fact(parent, (name, value), most),
             Row::Note(words) => {
-                parent.spawn(text(words.clone(), theme::FONT_SMALL, theme::MUTED));
+                parent.spawn(text(words.clone(), theme::FONT_SMALL, theme::TEXT_2));
             }
         }
     }

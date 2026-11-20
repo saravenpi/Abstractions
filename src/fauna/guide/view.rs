@@ -88,7 +88,7 @@ fn card() -> impl Bundle {
             ),
             (
                 Subtitle,
-                text("", theme::FONT_SMALL, theme::MUTED),
+                text("", theme::FONT_SMALL, theme::TEXT_2),
                 TextLayout::no_wrap()
             ),
             (Facts, facts),
@@ -110,7 +110,7 @@ fn header() -> impl Bundle {
             text("Field guide", theme::FONT_HEADING, theme::TEXT),
             (
                 Tally,
-                text("", theme::FONT_SMALL, theme::MUTED),
+                text("", theme::FONT_SMALL, theme::TEXT_2),
                 TextLayout::no_wrap()
             ),
         ],
@@ -153,7 +153,7 @@ pub fn spawn(window: Vec2, commands: &mut Commands) {
     };
     let hints = (
         foot,
-        children![text(HINTS, theme::FONT_SMALL, theme::MUTED)],
+        children![text(HINTS, theme::FONT_SMALL, theme::TEXT_2)],
     );
     let screen = (Overlay, Blurred, root, BackgroundColor(theme::SCRIM));
     commands.spawn((

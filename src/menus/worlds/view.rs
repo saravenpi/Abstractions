@@ -92,7 +92,7 @@ fn empty() -> impl Bundle {
             text(
                 "Every world is a whole universe grown from one seed. Create one to wake up on your home planet.",
                 theme::FONT_SMALL,
-                theme::MUTED
+                theme::TEXT_2
             ),
             (
                 item(Icon::Plus, "Create a world", Tone::Accent),
@@ -119,7 +119,7 @@ pub(super) fn spawn(mut commands: Commands, dir: Res<SaveDir>, mut worlds: ResMu
                     heading("Worlds"),
                     table(),
                     empty(),
-                    (Summary, text("", theme::FONT_SMALL, theme::MUTED)),
+                    (Summary, text("", theme::FONT_SMALL, theme::TEXT_2)),
                     (Hint, notice()),
                     bars::bars(),
                 ]

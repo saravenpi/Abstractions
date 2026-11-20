@@ -32,7 +32,7 @@ fn block(width: f32, height: f32, color: Color) -> (Node, BackgroundColor) {
 /// heap of material when there is no shape.
 pub fn pieces(shape: Option<(f32, f32, Form)>) -> Vec<(Node, BackgroundColor)> {
     let Some((length, size, form)) = shape else {
-        return vec![block(HIGH / 2.0, HIGH / 2.0, theme::MUTED)];
+        return vec![block(HIGH / 2.0, HIGH / 2.0, theme::TEXT_2)];
     };
     let head = (size * SCALE).clamp(3.0, HIGH);
     let (wide, high) = match form {
@@ -62,6 +62,6 @@ pub fn silhouette(shape: Option<(f32, f32, Form)>) -> impl Bundle {
 /// Returns a wear bar `width` pixels wide, filled with what is left of a tool `worn` 0 to 1.
 pub fn wear_bar(width: f32, worn: f32) -> impl Bundle {
     let left = (1.0 - worn).clamp(0.0, 1.0) * width;
-    let (node, color) = block(width, THIN, theme::FAINT);
+    let (node, color) = block(width, THIN, theme::TEXT_OFF);
     (node, color, children![block(left, THIN, theme::TEXT)])
 }

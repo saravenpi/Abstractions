@@ -52,7 +52,7 @@ pub(super) fn card() -> impl Bundle {
                 text("", theme::FONT_BODY, theme::TEXT),
                 TextLayout::no_wrap()
             ),
-            (Subtitle, small(theme::MUTED)),
+            (Subtitle, small(theme::TEXT_2)),
             (below(theme::GAP_S), children![crate::map::deeds()]),
             (Facts, below(theme::GAP_S)),
         ],
@@ -90,7 +90,7 @@ fn fact(parent: &mut ChildSpawnerCommands, name: &str, value: &str) {
     parent.spawn((
         line,
         children![
-            small(name.to_string(), theme::MUTED),
+            small(name.to_string(), theme::TEXT_2),
             small(value, theme::TEXT)
         ],
     ));
@@ -110,7 +110,7 @@ fn row(parent: &mut ChildSpawnerCommands, row: &Row, first: bool) {
         }
         Row::Fact(name, value) => fact(parent, name, value),
         Row::Note(words) => {
-            parent.spawn(text(*words, theme::FONT_SMALL, theme::MUTED));
+            parent.spawn(text(*words, theme::FONT_SMALL, theme::TEXT_2));
         }
     }
 }

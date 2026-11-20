@@ -38,7 +38,7 @@ fn row((gauge, name): (Gauge, &'static str)) -> impl Bundle {
             ..default()
         },
         children![
-            cell(LABEL_WIDTH, text(name, theme::FONT_SMALL, theme::MUTED)),
+            cell(LABEL_WIDTH, text(name, theme::FONT_SMALL, theme::TEXT_2)),
             (
                 Reading(gauge),
                 text("", theme::FONT_SMALL, theme::TEXT),
@@ -84,7 +84,7 @@ pub(super) fn block() -> impl Bundle {
             padding: UiRect::all(px(theme::GAP_S)),
             ..default()
         },
-        BackgroundColor(theme::STRIP),
+        BackgroundColor(theme::PANEL),
         Children::spawn((SpawnIter(Gauge::ALL.into_iter().map(row)), Spawn(bar()))),
     )
 }

@@ -145,7 +145,7 @@ pub fn ship(sheet: &mut ChildSpawnerCommands, at: Vec2, pointed: bool) {
     };
     sheet.spawn(node).with_child((ShipArrow, arrow(ARROW)));
     if pointed {
-        frame(sheet, at, (SHIP_FRAME, theme::MUTED));
+        frame(sheet, at, (SHIP_FRAME, theme::TEXT_2));
         name(sheet, at, 0.5 * SHIP_FRAME + theme::GAP_XS, SHIP);
     }
 }

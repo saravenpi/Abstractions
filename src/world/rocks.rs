@@ -2,24 +2,26 @@
 //! ids already taken, and the message that says one was.
 //!
 //! A rock is a big prop. Its id comes from the chunk it stands in and from where it stands, so it is
-//! the same on every machine and every run for the same world. A taken rock is left out when its chunk
-//! is built, so it never comes back, and the set is saved in the world file.
+//! the same on every machine and every run for the same world. A rock that was quarried is drawn smaller when
+//! its chunk is built, and one that is used up is left out, so it never comes back. The mass taken is
+//! saved in the world file.
 
 mod id;
 mod save;
 mod stand;
+mod taken;
 #[cfg(test)]
 mod tests;
+pub mod tune;
 
-use std::collections::HashSet;
 use std::f32::consts::PI;
-use std::sync::Arc;
 
 use bevy::prelude::*;
 
 pub use self::id::{id_of, is_rock, key, spare};
 pub use self::save::{load, store};
 pub use self::stand::Stand;
+pub use self::taken::{Quarry, Taken};
 pub use super::propmesh::Plant;
 use super::props::extent;
 use crate::universe::BodyId;
@@ -54,52 +56,26 @@ pub struct Rock {
     pub at: Vec3,
     /// The middle of its collider.
     pub mid: Vec3,
+    /// The share of its mass it had left when it was drawn, from 0 to 1.
+    pub left: f32,
 }
 
 impl Rock {
-    /// Returns the mass in kilograms of the rock when its stone weighs `density` kilograms per cubic
-    /// metre. The rock fills the ellipsoid inscribed in its collider, which is a cylinder.
+    /// Returns the mass in kilograms of the rock at the size it is drawn, when its stone weighs
+    /// `density` kilograms per cubic metre. The rock fills the ellipsoid inscribed in its collider, which is a cylinder.
     pub fn mass(&self, density: f32) -> f32 {
         let [radius, height] = extent(self.plant, self.scale);
         2.0 / 3.0 * PI * radius * radius * height * density
     }
 }
 
-/// The rocks the players have taken from every planet of the world.
-#[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
-pub struct Taken(Arc<HashSet<RockId>>);
-
-impl Taken {
-    /// Returns true when rock `id` was taken.
-    pub fn has(&self, id: RockId) -> bool {
-        self.0.contains(&id)
-    }
-
-    /// Notes that rock `id` was taken. Returns false when it already was.
-    pub fn add(&mut self, id: RockId) -> bool {
-        Arc::make_mut(&mut self.0).insert(id)
-    }
-
-    /// Returns the ids as the world file keeps them, in order.
-    pub fn to_text(&self) -> Vec<String> {
-        let mut ids: Vec<RockId> = self.0.iter().copied().collect();
-        ids.sort_unstable();
-        ids.into_iter().map(RockId::text).collect()
-    }
-
-    /// Returns the set the world file's `text` keeps. Text that is no id is skipped.
-    pub fn from_text(text: &[String]) -> Self {
-        Self(Arc::new(
-            text.iter().filter_map(|t| RockId::parse(t)).collect(),
-        ))
-    }
-}
-
-/// A robot took a rock: it is gone from the world of everyone who sees it.
+/// A robot broke a piece off a rock: the rock is smaller, or gone, for everyone who sees it.
 #[derive(Message, Debug, Clone, Copy, PartialEq)]
 pub struct RockTaken {
     /// The planet the rock stood on.
     pub planet: BodyId,
     /// The rock.
     pub id: RockId,
+    /// The mass in kilograms this blow took off it.
+    pub kilograms: f32,
 }

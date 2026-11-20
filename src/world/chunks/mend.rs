@@ -15,7 +15,7 @@ use crate::world::canopy::{Canopy, Crown};
 use crate::world::mesh::leaf_coord;
 use crate::world::propmesh::merge_props_on;
 use crate::world::props::body_collider_on;
-use crate::world::rocks::{Rock, RockTaken};
+use crate::world::rocks::{Rock, RockTaken, Taken};
 use crate::world::scatter::Rig;
 
 /// Metres within which a crown of the canopy is the one of a rock that left.
@@ -30,12 +30,15 @@ impl Chunks {
     }
 }
 
-/// Marks the rock of every message as gone from the chunk that holds it, which will draw it no more.
-pub fn note(mut chunks: ResMut<Chunks>, mut told: MessageReader<RockTaken>) {
+/// Tells the chunk that holds the rock of every message how much of it is left, so it draws it smaller
+/// or not at all.
+pub fn note(mut chunks: ResMut<Chunks>, taken: Res<Taken>, mut told: MessageReader<RockTaken>) {
     let Chunks { loaded, owed, .. } = &mut *chunks;
-    for taken in told.read() {
-        *owed |= loaded.values_mut().any(|l| l.stand.remove(taken.id));
+    for blow in told.read() {
+        let left = taken.left(blow.id);
+        loaded.values_mut().any(|l| l.stand.quarry(blow.id, left));
     }
+    *owed |= loaded.values().any(|l| l.stand.dirty());
 }
 
 /// Run condition: a chunk still draws a rock that was taken.
@@ -65,8 +68,14 @@ fn swap(commands: &mut Commands, spawner: &mut Spawner, l: &mut Loaded, mesh: Op
     }
 }
 
+/// Scales the crown of a rock that was drawn smaller by `ratio`.
+fn shrink(crown: &mut Crown, ratio: f32) {
+    crown.height *= ratio;
+    crown.foot *= ratio;
+}
+
 /// Builds the props mesh and the collider of chunk `coord` of the chart of `view` again from the
-/// props its stand keeps, and takes the crowns of the rocks that left out of its canopy.
+/// props its stand keeps, and takes the crowns of the rocks that left out of its canopy and shrinks those of the rocks that shrank.
 fn repair(
     (commands, spawner): (&mut Commands, &mut Spawner),
     l: &mut Loaded,
@@ -82,10 +91,13 @@ fn repair(
     let props = l.stand.props();
     let mesh = (!props.is_empty()).then(|| render_only(merge_props_on(props, &rig)));
     l.bodies = body_collider_on(props, &rig);
-    let gone = l.stand.settle();
+    let changes = l.stand.settle();
     if let Ok(mut canopy) = crowns.get_mut(l.entity) {
-        let left = |c: &Crown| gone.iter().all(|at| c.at.distance(*at) > SAME);
-        canopy.0.retain(left);
+        for (at, ratio) in changes {
+            canopy.0.retain(|c| ratio > 0.0 || c.at.distance(at) > SAME);
+            let here = canopy.0.iter_mut().filter(|c| c.at.distance(at) <= SAME);
+            here.for_each(|c| shrink(c, ratio));
+        }
     }
     swap(commands, spawner, l, mesh);
 }

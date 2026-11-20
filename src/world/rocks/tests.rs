@@ -22,7 +22,7 @@ fn stand() -> Stand {
         prop(Plant::Oak, 5.0, 5.0),
         prop(Plant::Sandstone, 12.0, -8.0),
     ];
-    Stand::of(7, &props, &Rig::PLAIN)
+    Stand::of(7, &props, &Rig::PLAIN, &Taken::default())
 }
 
 /// The id of a prop follows its chunk, its kind and its place to half a metre, and nothing else.
@@ -37,19 +37,20 @@ fn an_id_follows_the_chunk_the_kind_and_the_place() {
     assert_ne!(id, id_of(1, &prop(Plant::IceRock, 3.0, 9.0)));
 }
 
-/// An id keeps all 64 bits through its text, and the taken rocks come back from a world file written
-/// and read again, ids above the signed range included.
+/// An id keeps all 64 bits through its text, and the quarried masses come back from a world file
+/// written and read again, ids above the signed range included. A row of a plain id, as the first
+/// files wrote, loads as a rock taken whole.
 #[test]
-fn the_taken_set_survives_a_save_round_trip() {
+fn the_taken_map_survives_a_save_round_trip() {
     let id = RockId(u64::MAX - 5);
     assert_eq!(RockId::parse(&id.text()), Some(id));
     assert_eq!(
-        Taken::from_text(&["not an id".to_string()]),
+        Taken::from_text(&["not:an:id".to_string()]),
         Taken::default()
     );
     let mut taken = Taken::default();
-    for n in [3, u64::MAX, 1 << 63, 42] {
-        taken.add(RockId(n));
+    for (n, kg) in [(3, 0.25), (u64::MAX, 12.5), (1 << 63, 2700.0), (42, 0.1)] {
+        taken.quarry(RockId(n), kg, 3000.0);
     }
     let save = WorldSave {
         taken: taken.to_text(),
@@ -58,55 +59,83 @@ fn the_taken_set_survives_a_save_round_trip() {
     let text = toml::to_string(&save).expect("a world file");
     let back: WorldSave = toml::from_str(&text).expect("the file again");
     assert_eq!(Taken::from_text(&back.taken), taken);
-    let old: WorldSave = toml::from_str("name = \"Old\"\nseed = 7\n").expect("an old file");
-    assert!(old.taken.is_empty());
+    let old = Taken::from_text(&[RockId(9).text()]);
+    assert_eq!(old.left(RockId(9)), 0.0);
+    let file: WorldSave = toml::from_str("name = \"Old\"\nseed = 7\n").expect("an old file");
+    assert!(file.taken.is_empty());
 }
 
-/// Only rocks are left out for a taken id: a tree is never a rock.
+/// The share left follows the mass taken, a rock nobody touched is whole, and what is left under the
+/// least counts as nothing.
 #[test]
-fn spare_leaves_out_the_taken_rocks_only() {
-    let mut props = vec![prop(Plant::Rock, 1.0, 1.0), prop(Plant::Oak, 1.0, 1.0)];
+fn a_rock_is_gone_only_when_its_mass_is_used_up() {
+    let (id, mut taken) = (RockId(1), Taken::default());
+    assert_eq!(taken.left(id), 1.0);
+    taken.quarry(id, 25.0, 100.0);
+    assert!((taken.left(id) - 0.75).abs() < 1.0e-6);
+    taken.quarry(id, 74.9999, 100.0);
+    assert_eq!(taken.left(id), 0.0);
+    taken.quarry(id, 10.0, 100.0);
+    assert_eq!(taken.kilograms(id), 100.0);
+}
+
+/// Spare leaves out the used-up rocks, shrinks the partly taken ones to the cube root of what is left
+/// and never touches a tree.
+#[test]
+fn spare_leaves_out_and_shrinks_the_quarried_rocks() {
+    let mut props = vec![
+        prop(Plant::Rock, 1.0, 1.0),
+        prop(Plant::Sandstone, 8.0, 1.0),
+        prop(Plant::Oak, 1.0, 1.0),
+    ];
     let mut taken = Taken::default();
-    taken.add(id_of(9, &props[0]));
-    taken.add(id_of(9, &props[1]));
+    taken.quarry(id_of(9, &props[0]), 100.0, 100.0);
+    taken.quarry(id_of(9, &props[1]), 87.5, 100.0);
+    taken.quarry(id_of(9, &props[2]), 100.0, 100.0);
     spare(&mut props, 9, &taken);
-    assert_eq!(props.len(), 1);
-    assert_eq!(props[0].plant, Plant::Oak);
+    assert_eq!(props.len(), 2);
+    assert!((props[0].scale - 0.125_f32.cbrt()).abs() < 1.0e-6);
+    assert_eq!((props[1].plant, props[1].scale), (Plant::Oak, 1.0));
 }
 
-/// Taking a rock removes it and its prop from the stand, once, and the stand says where it stood.
+/// A rock that loses a little keeps its size and its stand stays clean. One that loses over the step
+/// shrinks to the cube root of what is left. A used-up rock leaves the stand with its prop, once, and
+/// the stand says where each stood.
 #[test]
-fn a_taken_rock_leaves_the_stand() {
+fn a_quarried_rock_shrinks_and_then_leaves_the_stand() {
     let mut stand = stand();
-    assert_eq!(stand.rocks().len(), 2);
-    assert_eq!(stand.props().len(), 3);
+    assert_eq!((stand.rocks().len(), stand.props().len()), (2, 3));
     let first = stand.rocks()[0];
+    assert!(stand.quarry(first.id, 0.99));
     assert!(!stand.dirty());
-    assert!(stand.remove(first.id));
-    assert!(!stand.remove(first.id));
+    assert!(stand.quarry(first.id, 0.5));
     assert!(stand.dirty());
-    assert_eq!(stand.rocks().len(), 1);
-    assert_eq!(stand.props().len(), 2);
-    assert!(stand.rocks().iter().all(|r| r.id != first.id));
-    assert_eq!(stand.settle(), vec![first.at]);
+    let shrunk = stand.rocks()[0];
+    assert!((shrunk.scale - 0.5_f32.cbrt()).abs() < 1.0e-5);
+    assert!(
+        stand
+            .props()
+            .iter()
+            .any(|p| (p.scale - shrunk.scale).abs() < 1.0e-5)
+    );
+    assert_eq!(stand.settle().len(), 1);
+    assert!(stand.quarry(first.id, 0.0));
+    assert_eq!((stand.rocks().len(), stand.props().len()), (1, 2));
+    assert_eq!(stand.settle(), vec![(first.at, 0.0)]);
+    assert!(!stand.quarry(first.id, 0.0));
     assert!(!stand.dirty());
 }
 
-/// A point on the body of a rock finds that rock, and a point in the air finds none.
+/// A point on the body of a rock finds that rock, a point in the air finds none, and a rock weighs its
+/// volume times the density of its stone.
 #[test]
-fn a_point_on_a_rock_finds_it() {
+fn a_point_on_a_rock_finds_it_and_it_has_a_weight() {
     let stand = stand();
     let rock = stand.rocks()[0];
     let on_it = rock.mid + Vec3::new(0.3, 0.2, 0.0);
     assert_eq!(stand.near(on_it).map(|r| r.id), Some(rock.id));
     assert_eq!(stand.near(rock.mid + Vec3::Y * 20.0), None);
     assert_eq!(stand.near(Vec3::new(5.0, 5.0, 5.0)), None);
-}
-
-/// A rock weighs its volume times the density of its stone.
-#[test]
-fn a_rock_weighs_its_volume_times_its_density() {
-    let rock = stand().rocks()[0];
     let volume = 2.0 / 3.0 * std::f32::consts::PI * 0.7 * 0.7 * 0.9;
     assert!((rock.mass(3000.0) - volume * 3000.0).abs() < 1.0);
     assert!(rock.mass(917.0) < rock.mass(3000.0));

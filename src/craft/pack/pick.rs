@@ -1,14 +1,14 @@
-//! Picking stones up: the pick key breaks up the rock under the crosshair, within the reach of the
-//! robot. The stone is one of the stones of the planet, chosen by the id of the rock, so the same rock
-//! always gives the same one. The robot carries off what it can of the rock, and the rock is gone
-//! from the world for good: the rest of it is rubble nobody tracks.
+//! Picking stones up: the pick key breaks a piece off the rock under the crosshair, within the reach of
+//! the robot. The stone is one of the stones of the planet, chosen by the id of the rock, so the same
+//! rock always gives the same one. A pick takes at most [`HANDFUL`] kilograms and what the robot can
+//! still carry; the rock keeps the rest, shrinks as it is quarried and is gone when its mass is used up.
 
 mod aim;
 
 use bevy::prelude::*;
 
 use self::aim::Aim;
-use super::tune::PICK_KEY;
+use super::tune::{HANDFUL, PICK_KEY};
 use super::{Burden, Pack, Stack};
 use crate::craft::matter::{Mineral, Stuff};
 use crate::space::Location;
@@ -24,35 +24,41 @@ pub fn stones(record: &PlanetRecord) -> Vec<Mineral> {
         .collect()
 }
 
-/// Returns all of `rock` as the stone of the planet of `record` its id picks, or nothing when no
-/// stone lies there. Its mass is its volume times the density of the stone.
-pub fn broken(record: &PlanetRecord, rock: &Rock) -> Option<Stack> {
+/// Returns the stone of the planet of `record` that the rock `id` is made of, or nothing when no
+/// stone lies there.
+pub fn stone_of(record: &PlanetRecord, id: RockId) -> Option<Mineral> {
     let found = stones(record);
-    let stone = *found.get(rock.id.0 as usize % found.len().max(1))?;
-    let material = stone.material();
-    Some(Stack {
-        stuff: Stuff::Mineral(stone),
-        material,
-        mass: rock.mass(material.density),
-    })
+    found.get(id.0 as usize % found.len().max(1)).copied()
 }
 
-/// Breaks up `rock`, when there is one, and stows as much of it as `room` kilograms hold. The rock
-/// is noted as taken and its id returned when the robot carried off any of it. A rock the robot
-/// cannot carry the least of stays where it is.
+/// Breaks a piece off `rock`, when there is one, and stows it: at most [`HANDFUL`] kilograms, at most
+/// what is left of the rock, at most `room` kilograms. The piece is noted as taken from the rock, and
+/// its mass and the rock's id are returned when the robot carried off any. A robot with no room
+/// leaves the rock as it is.
 pub(super) fn take(
     rock: Option<Rock>,
     (record, room): (&PlanetRecord, f32),
     (pack, taken): (&mut Pack, &mut Taken),
-) -> Option<RockId> {
+) -> Option<(RockId, f32)> {
     let rock = rock?;
-    let stack = broken(record, &rock)?;
-    (pack.stow(stack, room) > 0.0).then_some(())?;
-    taken.add(rock.id);
-    Some(rock.id)
+    let stone = stone_of(record, rock.id)?;
+    let material = stone.material();
+    let whole = taken
+        .whole(rock.id)
+        .unwrap_or_else(|| rock.mass(material.density));
+    let piece = HANDFUL.min(whole - taken.kilograms(rock.id));
+    let stack = Stack {
+        stuff: Stuff::Mineral(stone),
+        material,
+        mass: piece,
+    };
+    let kept = pack.stow(stack, room);
+    (kept > 0.0).then_some(())?;
+    taken.quarry(rock.id, kept, whole);
+    Some((rock.id, kept))
 }
 
-/// Breaks up the rock under the crosshair when the pick key goes down, and says so.
+/// Breaks a piece off the rock under the crosshair when the pick key goes down, and says so.
 pub(crate) fn gather(
     (keys, aim): (Res<ButtonInput<KeyCode>>, Aim),
     (terrain, burden, location): (Res<Terrain>, Res<Burden>, Res<Location>),
@@ -64,10 +70,11 @@ pub(crate) fn gather(
     }
     let record = terrain.globe().record();
     let tools = (&mut *pack, &mut *taken);
-    if let Some(id) = take(aim.rock(), (record, burden.room()), tools) {
+    if let Some((id, kilograms)) = take(aim.rock(), (record, burden.room()), tools) {
         told.write(RockTaken {
             planet: location.body,
             id,
+            kilograms,
         });
     }
 }

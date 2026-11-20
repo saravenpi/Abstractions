@@ -136,7 +136,7 @@ pub fn ground_cover(terrain: &Terrain, coord: IVec2) -> Option<Mesh> {
 
 /// Generates the mesh at level `lod`, the colliders, the merged props and the structures of chunk
 /// `coord`, all in the frame of the chunk: the main thread only inserts them. The ground cover is
-/// built only when `turfed` is set. The rocks of `taken` are left out.
+/// built only when `turfed` is set. The rocks of `taken` are left out or drawn smaller.
 ///
 /// `terrain` is the face chart view of the face of the chunk. Runs on any thread.
 pub fn generate(
@@ -164,7 +164,7 @@ pub fn generate(
         structures: build_in(terrain, coord, &frame),
         heights: ground(terrain, coord, &heights),
         canopy: canopy_on(terrain, coord, (&scatter.props, &scatter.grass), &rig),
-        stand: Stand::of(key(terrain, coord), &scatter.props, &rig),
+        stand: Stand::of(key(terrain, coord), &scatter.props, &rig, taken),
         lod,
         frame,
         turfed,

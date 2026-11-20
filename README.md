@@ -26,7 +26,7 @@ On foot:
 | K | Field guide |
 | I | Pack and workshop: what you carry, and making a tool for an intent |
 | 1 to 6 | Hold the tool in that hotbar slot; the key of the held slot stows or draws it |
-| H | Break up the rock you look at and take its stone |
+| H | Break a piece off the rock you look at |
 | F | Board the ship |
 | Look down + W | Dive while swimming |
 | Esc | Pause menu, or back |

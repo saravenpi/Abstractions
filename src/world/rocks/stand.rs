@@ -3,7 +3,8 @@
 use bevy::prelude::*;
 
 use super::id::{id_of, is_rock};
-use super::{Rock, RockId};
+use super::tune::SHRINK_STEP;
+use super::{Rock, RockId, Taken};
 use crate::world::props::extent;
 use crate::world::scatter::{Placement, Rig};
 
@@ -16,12 +17,12 @@ pub struct Stand {
     key: u64,
     props: Vec<Placement>,
     rocks: Vec<Rock>,
-    gone: Vec<Vec3>,
+    changes: Vec<(Vec3, f32)>,
 }
 
 /// Returns the rocks of `props`, placed through `rig`, of the chunk with key `key`. A rock without a
 /// body has nothing to aim at and is left out.
-fn rocks_of(props: &[Placement], key: u64, rig: &Rig) -> Vec<Rock> {
+fn rocks_of(props: &[Placement], key: u64, rig: &Rig, taken: &Taken) -> Vec<Rock> {
     let rocks = props.iter().filter(|p| is_rock(p.plant));
     rocks
         .filter_map(|p| {
@@ -29,6 +30,7 @@ fn rocks_of(props: &[Placement], key: u64, rig: &Rig) -> Vec<Rock> {
             let (at, turn) = rig.frame(p.pos);
             (radius > 0.0).then(|| Rock {
                 id: id_of(key, p),
+                left: taken.left(id_of(key, p)),
                 plant: p.plant,
                 scale: p.scale,
                 at,
@@ -40,15 +42,16 @@ fn rocks_of(props: &[Placement], key: u64, rig: &Rig) -> Vec<Rock> {
 
 impl Stand {
     /// Returns the stand of the chunk with key `key` whose big props are `props`, placed through
-    /// `rig`. The props are kept only when a rock stands among them.
-    pub fn of(key: u64, props: &[Placement], rig: &Rig) -> Self {
-        let rocks = rocks_of(props, key, rig);
+    /// `rig`, already drawn at the size `taken` leaves the rocks. The props are kept only when a rock
+    /// stands among them.
+    pub fn of(key: u64, props: &[Placement], rig: &Rig, taken: &Taken) -> Self {
+        let rocks = rocks_of(props, key, rig, taken);
         let kept: &[Placement] = if rocks.is_empty() { &[] } else { props };
         Self {
             key,
             props: kept.to_vec(),
             rocks,
-            gone: Vec::new(),
+            changes: Vec::new(),
         }
     }
 
@@ -63,21 +66,40 @@ impl Stand {
         held.min_by(by).copied()
     }
 
-    /// Takes rock `id` out of the stand. Returns false when no such rock stands here.
-    pub fn remove(&mut self, id: RockId) -> bool {
+    /// Tells the stand that rock `id` has the share `left` of its mass left. The rock shrinks to the
+    /// cube root of what is left, once it is [`SHRINK_STEP`] smaller than drawn, and leaves the stand
+    /// when nothing is left. Returns false when no such rock stands here.
+    pub fn quarry(&mut self, id: RockId, left: f32) -> bool {
         let Some(at) = self.rocks.iter().position(|r| r.id == id) else {
             return false;
         };
-        let rock = self.rocks.remove(at);
-        self.gone.push(rock.at);
-        let key = self.key;
-        self.props.retain(|p| id_of(key, p) != id);
+        let rock = &mut self.rocks[at];
+        let ratio = if left > 0.0 {
+            (left / rock.left).cbrt()
+        } else {
+            0.0
+        };
+        if ratio > 1.0 - SHRINK_STEP {
+            return true;
+        }
+        let (key, origin) = (self.key, rock.at);
+        if ratio <= 0.0 {
+            self.rocks.remove(at);
+            self.props.retain(|p| id_of(key, p) != id);
+        } else {
+            rock.scale *= ratio;
+            rock.mid = rock.at + (rock.mid - rock.at) * ratio;
+            rock.left = left;
+            let mut props = self.props.iter_mut().filter(|p| id_of(key, p) == id);
+            props.for_each(|p| p.scale *= ratio);
+        }
+        self.changes.push((origin, ratio));
         true
     }
 
-    /// Returns true while rocks left the stand and the chunk still draws them.
+    /// Returns true while a rock changed or left the stand and the chunk still draws it as it was.
     pub fn dirty(&self) -> bool {
-        !self.gone.is_empty()
+        !self.changes.is_empty()
     }
 
     /// Returns the rocks that still stand here.
@@ -90,8 +112,9 @@ impl Stand {
         &self.props
     }
 
-    /// Says the chunk was rebuilt without the rocks that left, and returns where they stood.
-    pub fn settle(&mut self) -> Vec<Vec3> {
-        std::mem::take(&mut self.gone)
+    /// Says the chunk was rebuilt, and returns where the rocks that changed stood, each with the ratio
+    /// of its new size to its old one: zero for a rock that left.
+    pub fn settle(&mut self) -> Vec<(Vec3, f32)> {
+        std::mem::take(&mut self.changes)
     }
 }

@@ -55,7 +55,13 @@ pub fn is_rock(plant: Plant) -> bool {
     )
 }
 
-/// Removes from `props` the rocks of `taken`, for the chunk with key `key`.
+/// Takes the rocks of `taken` out of `props`, for the chunk with key `key`, and shrinks the ones that
+/// were partly quarried to the cube root of the share of their mass that is left.
 pub fn spare(props: &mut Vec<Placement>, key: u64, taken: &Taken) {
-    props.retain(|p| !is_rock(p.plant) || !taken.has(id_of(key, p)));
+    props.retain_mut(|p| {
+        let left = taken.left(id_of(key, p));
+        let rock = is_rock(p.plant) && left < 1.0;
+        p.scale *= if rock { left.cbrt() } else { 1.0 };
+        !rock || left > 0.0
+    });
 }

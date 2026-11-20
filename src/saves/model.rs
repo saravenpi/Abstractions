@@ -97,8 +97,9 @@ pub struct WorldSave {
     /// The tools and materials the robot carries. A file from before 0.13 has none.
     #[serde(default)]
     pub pack: crate::craft::pack::Pack,
-    /// The rocks taken from the planets of the world, each as the 16 hexadecimal digits of its id. A
-    /// file from before they could be taken has none.
+    /// The mass taken from the rocks of the planets of the world, each row `id:taken:whole` with the
+    /// id in 16 hexadecimal digits and the masses in kilograms. A file from before they could be
+    /// quarried has none.
     #[serde(default)]
     pub taken: Vec<String>,
     /// How whole each part of the robot is, in the order of its parts. A file from before robot

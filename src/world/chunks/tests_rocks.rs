@@ -48,8 +48,24 @@ fn a_taken_rock_is_left_out_of_a_new_chunk() {
     let (terrain, coord) = rocky();
     let before = ids(&built(&terrain, coord, &Taken::default()));
     let mut taken = Taken::default();
-    taken.add(before[0]);
+    taken.quarry(before[0], 5.0, 5.0);
     let after = built(&terrain, coord, &taken);
     assert!(!ids(&after).contains(&before[0]));
     assert_eq!(ids(&after).len(), before.len() - 1);
+}
+
+/// A chunk built with half of a rock taken draws it at the cube root of half its size, and a chunk
+/// that was quarried to the end is the same as one that was built after.
+#[test]
+fn a_partly_taken_rock_is_drawn_smaller_in_a_new_chunk() {
+    let (terrain, coord) = rocky();
+    let whole = built(&terrain, coord, &Taken::default());
+    let first = whole.stand.rocks()[0];
+    let mut taken = Taken::default();
+    taken.quarry(first.id, 50.0, 100.0);
+    let after = built(&terrain, coord, &taken);
+    let shrunk = after.stand.rocks().iter().find(|r| r.id == first.id);
+    let shrunk = shrunk.expect("the rock is still there");
+    assert!((shrunk.scale - first.scale * 0.5_f32.cbrt()).abs() < 1.0e-4);
+    assert!((shrunk.left - 0.5).abs() < 1.0e-6);
 }

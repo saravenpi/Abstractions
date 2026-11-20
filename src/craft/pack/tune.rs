@@ -18,6 +18,10 @@ pub const BINDING: f32 = 0.02;
 /// Mass under which a stack is used up, in kilograms.
 pub const CRUMB: f32 = 1.0e-4;
 
+/// Most mass of rock one pick breaks off, in kilograms: what the robot's hands and its tool part from
+/// the stone in one go. It is a tenth of what the frame carries, so a full pack takes several picks.
+pub const HANDFUL: f32 = 2.5;
+
 /// Farthest from the robot a rock can be and still be broken up, in metres.
 pub const REACH: f32 = 2.5;
 

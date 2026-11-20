@@ -31,15 +31,17 @@ fn the_flux_follows_the_cube_of_the_speed() {
     assert!((flux(4.0 * HOME, 100.0) / slow - 2.0).abs() < 1.0e-9);
 }
 
-/// At the same speed thick air glows harder than home air and home air harder than thin air, and a
-/// slow craft glows in none of them.
+/// At the same speed thick air glows harder than home air and home air harder than thin air, until
+/// both glow in full, and a slow craft glows in none of them.
 #[test]
 fn thick_air_glows_earlier_than_thin() {
     let at = |density: f64, speed: f64| entry(density, speed, Gas::NitrogenOxygen).heat;
-    for speed in [120.0, 160.0, 240.0] {
+    for speed in [120.0, 160.0] {
         assert!(at(THICK, speed) > at(HOME, speed), "{speed}");
         assert!(at(HOME, speed) > at(THIN, speed), "{speed}");
     }
+    assert_eq!((at(THICK, 240.0), at(HOME, 240.0)), (1.0, 1.0));
+    assert!(at(HOME, 240.0) > at(THIN, 240.0));
     for density in [THIN, HOME, THICK] {
         assert_eq!(at(density, 20.0), 0.0, "{density}");
     }

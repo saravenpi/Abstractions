@@ -1,11 +1,17 @@
 import bevy_pbr::render::forward_io::{Vertex, VertexOutput, FragmentOutput, decompress_vertex};
 import bevy_pbr::render::mesh_functions::get_world_from_local;
 import bevy_pbr::render::mesh_view_bindings::{view, globals, lights};
-import bevy_pbr::render::mesh_view_types::DIRECTIONAL_LIGHT_FLAGS_SHADOWS_ENABLED_BIT;
+import bevy_pbr::render::mesh_view_bindings::clustered_lights;
+import bevy_pbr::render::mesh_view_types::{
+    DIRECTIONAL_LIGHT_FLAGS_SHADOWS_ENABLED_BIT, POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE,
+};
+import bevy_pbr::render::clustered_forward::{
+    view_fragment_cluster_index, unpack_clusterable_object_index_ranges, get_clusterable_object_id,
+};
 import bevy_pbr::render::view_transformations::position_world_to_clip;
 import bevy_pbr::render::pbr_fragment::pbr_input_from_standard_material;
 import bevy_pbr::render::pbr_functions::main_pass_post_lighting_processing;
-import bevy_pbr::render::pbr_lighting::{EnvBRDFApprox, F_AB};
+import bevy_pbr::render::pbr_lighting::{EnvBRDFApprox, F_AB, getDistanceAttenuation};
 import bevy_pbr::render::shadows::fetch_directional_shadow;
 import package::render::daylight::{place_from, light_of};
 import package::world::turf::{Turf, cover};
@@ -21,7 +27,7 @@ const FAR: f32 = 40.0;
 const EDGE: f32 = 0.16;
 
 // A blade is lit as a rough diffuse sheet that leans to the local up: the lights of the scene with the
-// shadow of the ground under it, the light of the place of the planet the way `relit` adds it, and the
+// shadow of the ground under it, the point and spot lights of its cluster without shadow or specular, the light of the place of the planet the way `relit` adds it, and the
 // ambient light. The colour of the carpet under a blade is two colours mixed by the share and the speckle
 // baked into the second half of its vertex colour, as `carpet` in `turf.wesl` mixes them.
 const PI: f32 = 3.14159265;
@@ -94,6 +100,29 @@ fn sunlight(index: u32, world: vec4<f32>, up: vec3<f32>, frag: vec2<f32>, view_z
     return (*light).color.rgb * (shadow * facing);
 }
 
+fn lamps(world: vec3<f32>, up: vec3<f32>, frag: vec2<f32>, view_z: f32, ortho: bool) -> vec3<f32> {
+    let cluster = view_fragment_cluster_index(frag, view_z, ortho);
+    let ranges = unpack_clusterable_object_index_ranges(cluster);
+    var total = vec3<f32>(0.0);
+    for (var i: u32 = ranges.first_point_light_index_offset; i < ranges.first_rect_light_index_offset; i = i + 1u) {
+        let light = &clustered_lights.data[get_clusterable_object_id(i)];
+        let to_light = (*light).position_radius.xyz - world;
+        let square = dot(to_light, to_light);
+        var reach = getDistanceAttenuation(square, (*light).color_inverse_square_range.w);
+        if (i >= ranges.first_spot_light_index_offset) {
+            var axis = vec3<f32>((*light).light_custom_data.x, 0.0, (*light).light_custom_data.y);
+            axis.y = sqrt(max(0.0, 1.0 - axis.x * axis.x - axis.z * axis.z));
+            if (((*light).flags & POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE) != 0u) {
+                axis.y = -axis.y;
+            }
+            let cone = saturate(dot(-axis, normalize(to_light)) * (*light).light_custom_data.z + (*light).light_custom_data.w);
+            reach = reach * cone * cone;
+        }
+        total += (*light).color_inverse_square_range.rgb * (reach * saturate(dot(up, normalize(to_light))));
+    }
+    return total;
+}
+
 @fragment
 fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> FragmentOutput {
     var pbr_input = pbr_input_from_standard_material(in, is_front);
@@ -110,6 +139,7 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
     for (var i: u32 = 0u; i < lights.n_directional_lights; i = i + 1u) {
         sun += sunlight(i, in.world_position, up, in.position.xy, view_z);
     }
+    sun += lamps(in.world_position.xyz, up, in.position.xy, view_z, pbr_input.is_orthographic);
     var sky = lights.ambient_color.rgb;
     if (place.air.z > 0.0) {
         let here = light_of(place, in.world_position.xyz);

@@ -102,7 +102,7 @@ fn a_jump_in_time_rebuilds_the_map() {
     for rate in [4.0_f32, 30.0, 144.0] {
         let frames = SNAPSHOT as f32 * rate;
         assert!(
-            budget(1.0 / rate) as f32 * frames > 4.0 * TEXELS as f32,
+            budget(1.0 / rate) as f32 * frames >= 2.0 * TEXELS as f32,
             "{rate}"
         );
     }

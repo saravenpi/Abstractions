@@ -21,8 +21,14 @@ pub const SHARE: usize = 2;
 /// light-years, 30.6 times the old for the same draw: 6.4 radii. The ratio is 6.4 / 0.41 x 30.6,
 /// 480. The dust of the real scale is 15 optical depths per radius against 6.6, which
 /// takes the mean transmission along that line from 0.68 to 0.40, a factor 1.7 the gain must
-/// win back. 1/700 / 480 x 1.7 is 1/198,000, here 1/200,000.
-pub const GAIN: f64 = 1.0 / 200_000.0;
+/// win back. 1/700 / 480 x 1.7 is 1/198,000.
+///
+/// The first bake with that figure read 1.42 at the reference place, 2.03 times [`REFERENCE`]:
+/// the estimate took the colour weights and the dust of the line as round numbers. The figure
+/// here is that one divided by 2.03, 1/402,000, kept at 1/400,000, and the `REFERENCE` test holds
+/// it. The sampling of the line, see `steps`, moves the integral by under 10 percent, so the
+/// gain does not depend on it.
+pub const GAIN: f64 = 1.0 / 400_000.0;
 
 /// Light the home galaxy gave toward its core, in the brightest texel of the map, from 0.45
 /// radii out along a spoke in its disc, in the bake of 0.10.1. Unit: light before the byte
@@ -34,3 +40,8 @@ pub const REFERENCE: f32 = 0.7;
 /// Share of [`REFERENCE`] the new bake may differ by at that place.
 #[cfg(test)]
 pub const REFERENCE_SLACK: f32 = 0.15;
+
+/// Seconds a new map takes to fade in over the one on show, so the sky grows between two bakes
+/// and does not change in steps: as long as the minimum gap between bakes. Unit: seconds of the
+/// app clock.
+pub const FADE: f64 = MIN_GAP;

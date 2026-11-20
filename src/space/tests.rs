@@ -5,19 +5,23 @@ use std::sync::Arc;
 use bevy::math::{DQuat, DVec3, IVec3, Vec3};
 
 use super::*;
-use crate::universe::{GALAXY_CELL, Universe};
+use crate::universe::{GALAXY_CELL, SECTOR_M, Universe};
 use crate::world::globe::Face;
 use crate::world::{Globe, Terrain};
 
-/// Moving past a cell edge carries into the cell index and differences stay exact.
+/// Moving past a cell edge carries into the cell index, moving back a sector carries into the
+/// sector and then the cell, and differences stay exact.
 #[test]
 fn unipos_carries_cells() {
-    let a = UniPos::new(IVec3::ZERO, DVec3::new(GALAXY_CELL - 10.0, 5.0, 0.0));
+    let a = UniPos::new(IVec3::ZERO, DVec3::new(GALAXY_CELL - 10.0, 50.0, 0.0));
     let b = a + DVec3::new(25.0, -8.0, 0.0);
-    assert_eq!(b.cell, IVec3::new(1, -1, 0));
+    assert_eq!(b.cell, IVec3::new(1, 0, 0));
     assert_eq!(b - a, DVec3::new(25.0, -8.0, 0.0));
     assert_eq!(a.distance(b), (25.0f64 * 25.0 + 64.0).sqrt());
     assert_eq!((b - DVec3::new(25.0, -8.0, 0.0)).cell, a.cell);
+    let back = b - DVec3::X * SECTOR_M;
+    assert_eq!((back.cell.x, back.sector.x), (0, SECTORS_PER_CELL - 1));
+    assert!(((b - back).x / SECTOR_M - 1.0).abs() < 1e-12);
 }
 
 /// The anchor of the legacy flat world is the identity: render coordinates are world coordinates.

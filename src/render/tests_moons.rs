@@ -72,7 +72,10 @@ fn moons_follow_their_planet() {
     assert!(near.family(index).any(|body| body.id == moon.id));
     assert_eq!(near.family(index).count(), 2);
     let other = (index + 1) % near.system.planets.len() as u8;
-    assert!(near.family(other).all(|body| !body.id.is_moon()));
+    assert!(
+        near.family(other)
+            .all(|body| body.id.index == other && body.id != moon.id)
+    );
     assert_eq!(near.body(index, 9).unwrap().id, planet.id);
 }
 

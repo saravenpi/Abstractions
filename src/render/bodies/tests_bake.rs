@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use bevy::asset::AssetPlugin;
 use bevy::prelude::*;
+use bevy_persistent::StorageFormat;
 
 use super::Body;
 use super::bake::{Baking, bake, shell_radius, shell_triangles};
@@ -14,6 +15,7 @@ use crate::render::clouds::CELL;
 use crate::render::palette::Palette;
 use crate::render::vantage::{LocalSystem, Nearby, Vantage};
 use crate::render::warp::Lens;
+use crate::settings::{Persistent, Settings};
 use crate::space::Clock;
 use crate::universe::{PlanetClass, PlanetRecord, PlanetSpec, Universe};
 use crate::world::globe::far::{LIMIT, TRIANGLES, handover};
@@ -111,6 +113,18 @@ fn a_body_gets_the_light_of_the_ground() {
     assert!(red.y < 0.3 * red.x && red.z < red.y, "{red}");
 }
 
+/// Returns default settings stored in a scratch file of their own.
+fn settings() -> Persistent<Settings> {
+    let dir = format!("abstractions-bodies-test-{}", std::process::id());
+    Persistent::<Settings>::builder()
+        .name("settings")
+        .format(StorageFormat::Toml)
+        .path(std::env::temp_dir().join(dir).join("settings.toml"))
+        .default(Settings::default())
+        .build()
+        .unwrap()
+}
+
 /// Returns a headless app that draws the bodies of `near`, run until every ball is baked.
 fn settled(near: &Nearby) -> App {
     let mut app = App::new();
@@ -120,6 +134,7 @@ fn settled(near: &Nearby) -> App {
         .insert_resource(Lens::default())
         .insert_resource(Clock::default())
         .insert_resource(Vantage::default())
+        .insert_resource(settings())
         .insert_resource(LocalSystem(Some(near.clone())))
         .add_plugins((crate::render::atmosphere::plugin, super::plugin));
     let mut baking = app.world_mut().query::<&Baking>();

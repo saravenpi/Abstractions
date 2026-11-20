@@ -20,7 +20,9 @@ fn moves(terrain: &Terrain, beast: &Beast) -> Option<Locomotion> {
 }
 
 /// Near walkers keep their planted feet on the drawn ground within 3 cm as they move about, and every
-/// walker its drawn origin within 25 cm, the bob of its gait and the lag of its body over its feet.
+/// walker its drawn origin within 25 cm of the ground under its body, the bob of its gait and the lag
+/// of its body over its feet. The ground is read under the body, not under the drawn origin, which a
+/// body tilted to a slope swings sideways.
 #[test]
 fn animals_stand_on_the_ground() {
     let (mut app, _) = app(true);
@@ -38,7 +40,7 @@ fn animals_stand_on_the_ground() {
     let (mut worst, mut feet) = (0.0_f32, 0);
     for b in &walkers {
         let (at, shown) = (b.motion.root.at, b.motion.root.place);
-        worst = worst.max((shown.y - b.spot.ground(&terrain, shown.xz())).abs());
+        worst = worst.max((shown.y - b.spot.ground(&terrain, at.xz())).abs());
         if b.spot.planet(at).distance(robot) < f64::from(NEAR) {
             for f in b.motion.feet.iter().filter(|f| f.planted) {
                 let gap = (f.at.y - b.spot.ground(&terrain, f.at.xz())).abs();

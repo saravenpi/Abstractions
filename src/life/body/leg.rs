@@ -5,10 +5,15 @@ use bevy::math::{Quat, Vec3};
 use super::frame::{aim, frame};
 use super::kit::Kit;
 use super::piece::piece;
+use super::sink::sink;
 use super::{Knee, Leg, Part, PartKind, ShapeKind};
 
 /// Hip to rest foot distance over the leg length, inside the 0.6 to 0.95 the motion model can reach.
 const REACH: f32 = 0.8;
+
+/// Root width of a thigh over its plain width: the haunch or the shoulder, wide where it joins the
+/// body and narrowing to the knee.
+const HAUNCH: f32 = 1.3;
 
 /// One pair of legs, described by its right leg.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -33,6 +38,13 @@ pub struct LegSpec {
 pub fn stance(leg: f32, splay: f32) -> f32 {
     let reach = REACH * leg;
     (reach * reach - splay * splay).max(0.0).sqrt()
+}
+
+/// Returns `hip` in the frame of the `body` part it grows from, sunk inside it by the root radius of a
+/// thigh of plain radius `radius`. Builders seat a hip before they set the body's height over the
+/// ground, so the legs keep their reach.
+pub fn seat(body: &Part, hip: Vec3, radius: f32) -> Vec3 {
+    sink(body, hip, HAUNCH * radius)
 }
 
 /// Returns the knee of a two bone limb from `hip` to `target` with bone lengths `bones`, bent toward `pole`.
@@ -78,9 +90,9 @@ fn bones(spec: &LegSpec, turns: [Quat; 3]) -> Vec<Part> {
         piece(kind, shape, Vec3::new(width, length, width))
     };
     let mut out = vec![
-        bone(PartKind::Thigh, spec.shapes[0], (a, 2.0 * r))
+        bone(PartKind::Thigh, spec.shapes[0], (a, 2.0 * HAUNCH * r))
             .at(spec.hip)
-            .of(0, 0.75),
+            .of(0, 0.75 / HAUNCH),
         bone(PartKind::Shin, spec.shapes[1], (b, 1.5 * r))
             .at(Vec3::NEG_Y * a)
             .of(0, 0.7),
@@ -98,8 +110,15 @@ fn bones(spec: &LegSpec, turns: [Quat; 3]) -> Vec<Part> {
         .collect()
 }
 
-/// Adds the pair of legs `spec` under `parent`, left leg first, and lists both legs.
+/// Adds the pair of legs `spec` under `parent`, left leg first, and lists both legs. The hip is first
+/// sunk inside the parent by the root radius of the thigh.
 pub fn legs(kit: &mut Kit, parent: u8, spec: &LegSpec) {
+    let hip = kit
+        .body
+        .parts
+        .get(usize::from(parent))
+        .map_or(spec.hip, |host| seat(host, spec.hip, spec.radius));
+    let spec = &LegSpec { hip, ..*spec };
     let (turns, rest) = pose(kit, parent, spec);
     let mut above = [parent; 2];
     let mut pairs = Vec::with_capacity(3);

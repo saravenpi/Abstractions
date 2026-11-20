@@ -12,7 +12,8 @@ use super::occlude::{self, Probe};
 use super::shot::Shot;
 use super::sway::Sway;
 use super::tune::{
-    CEILING_BAND, CEILING_REACH, DT_RANGE, HEAD_RADIUS, HEAD_REACH, INDOOR_RATE, RADIUS, SKIN,
+    CEILING_BAND, CEILING_REACH, DT_RANGE, HEAD_CENTRE, HEAD_RADIUS, HEAD_REACH, INDOOR_RATE,
+    RADIUS, SKIN,
 };
 use crate::render::smoothstep;
 
@@ -164,14 +165,16 @@ impl Rig {
         let gap = self.place(probe, &stance, world);
         let lead =
             Quat::from_rotation_y(self.sway.lead.x) * Quat::from_rotation_x(self.sway.lead.y);
+        let position = pivot + swing.normalize_or_zero() * gap;
+        let head = target.position + stance.frame * Vec3::Y * HEAD_CENTRE;
         let pose = CameraPose {
-            position: pivot + swing.normalize_or_zero() * gap,
+            position,
             rotation: stance.frame * look * lead * Quat::from_rotation_z(-self.sway.roll.angle),
             fov: curve::fov(moment.fov, &shot, &bend),
         };
         Shown {
             pose,
-            fade: BodyFade(curve::fade(gap)),
+            fade: BodyFade(curve::fade(shot.third, position.distance(head))),
             heading: self.aim.heading,
         }
     }

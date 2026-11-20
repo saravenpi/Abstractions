@@ -6,10 +6,27 @@ use super::Settings;
 /// skipped and every other value is kept.
 #[test]
 fn files_with_a_removed_option_load() {
-    let old = "[graphics]\npixel_size = 5\nray_tracing = true\nfov = 90\n";
+    let old = "[graphics]\nrender_distance = 6\nray_tracing = true\nfov = 90\n";
     let parsed: Settings = toml::from_str(old).unwrap();
-    assert_eq!((parsed.graphics.pixel_size, parsed.graphics.fov), (5, 90));
+    assert_eq!(
+        (parsed.graphics.render_distance, parsed.graphics.fov),
+        (6, 90)
+    );
     assert_eq!(parsed.controls, Settings::default().controls);
+}
+
+/// A file of 0.10 or older that still sets the pixel size and the colour levels loads: both
+/// fields are skipped, every other value is kept, and saving it again drops them.
+#[test]
+fn files_with_the_pixel_options_load() {
+    let old = "[graphics]\npixel_size = 5\ncolor_levels = 40\nfov = 90\nbloom = false\n";
+    let parsed: Settings = toml::from_str(old).unwrap();
+    assert_eq!((parsed.graphics.fov, parsed.graphics.bloom), (90, false));
+    let saved = toml::to_string(&parsed).unwrap();
+    assert!(
+        !saved.contains("pixel_size") && !saved.contains("color_levels"),
+        "{saved}"
+    );
 }
 
 /// A file of 0.10 that bound the minimap to M loads with the minimap on N and the map on M,

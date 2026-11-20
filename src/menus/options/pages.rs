@@ -38,7 +38,6 @@ pub fn graphics(active: Tab) -> impl Bundle {
     (
         page(Tab::Graphics, active),
         children![
-            stepper("Pixel size", Field::PixelSize),
             stepper("Render distance", Field::RenderDistance),
             toggle("Shadows", Field::Shadows),
             toggle("Vsync", Field::Vsync),
@@ -47,7 +46,6 @@ pub fn graphics(active: Tab) -> impl Bundle {
             toggle("Bloom", Field::Bloom),
             toggle("Clouds", Field::Clouds),
             toggle("Show FPS", Field::ShowFps),
-            stepper("Color depth", Field::ColorLevels),
             stepper("Field of view", Field::Fov),
         ],
     )

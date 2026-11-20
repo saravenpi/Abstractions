@@ -11,7 +11,7 @@
 use std::collections::HashSet;
 
 use bevy::asset::UntypedAssetId;
-use bevy::camera::primitives::Aabb;
+use bevy::camera::primitives::{Aabb, MeshAabb};
 use bevy::camera::visibility::{NoFrustumCulling, VisibilityRange};
 use bevy::light::NotShadowCaster;
 use bevy::mesh::MeshVertexAttributeId;
@@ -80,8 +80,12 @@ struct Copies;
 type Key = (UntypedAssetId, Option<Vec<MeshVertexAttributeId>>);
 
 /// Returns the scale that brings a mesh of bounds `aabb` down to [`SPECK`].
-fn shrink(aabb: Option<&Aabb>) -> f32 {
-    let size = aabb.map_or(1.0, |b| b.half_extents.max_element() * 2.0);
+///
+/// An entity drawn without frustum culling has no bounds of its own, so they come from the
+/// vertices of `mesh`: a sea sheet kilometres wide must shrink as much as any other copy.
+fn shrink(aabb: Option<&Aabb>, mesh: Option<&Mesh>) -> f32 {
+    let bounds = aabb.copied().or_else(|| mesh.and_then(MeshAabb::get_aabb));
+    let size = bounds.map_or(1.0, |b| b.half_extents.max_element() * 2.0);
     SPECK / size.max(1.0e-4)
 }
 
@@ -101,7 +105,7 @@ fn copy<M: Material>(
     let mut seen: HashSet<Key> = HashSet::new();
     for (mesh, material, aabb) in &drawn {
         if seen.insert((material.0.id().untyped(), layout(&mesh.0))) {
-            let scale = Transform::from_scale(Vec3::splat(shrink(aabb)));
+            let scale = Transform::from_scale(Vec3::splat(shrink(aabb, meshes.get(&mesh.0))));
             let copy = (mesh.clone(), material.clone(), scale, NoFrustumCulling);
             commands.spawn((copy.clone(), ChildOf(*root)));
             commands.spawn((copy, HALFWAY, ChildOf(*root)));
@@ -140,12 +144,16 @@ fn begin(mut commands: Commands, camera: Single<Entity, With<GameCamera>>, warm:
     });
 }
 
-/// Counts the frames the copies have been drawn.
-fn count(mut warmed: ResMut<Warmed>) {
+/// Counts the frames the copies have been drawn, and takes them away once every pipeline has
+/// had its frames, before the boot screen fades out over the world.
+fn count(mut commands: Commands, mut warmed: ResMut<Warmed>, specks: Query<Entity, With<Speck>>) {
     warmed.frames += 1;
     if !warmed.done && warmed.frames >= WARM_FRAMES {
         warmed.done = true;
         info!("warm-up drew {} materials and mesh layouts", warmed.copies);
+        specks
+            .iter()
+            .for_each(|speck| commands.entity(speck).despawn());
     }
 }
 

@@ -6,7 +6,7 @@ use bevy::math::{Vec2, Vec3, Vec3Swizzles};
 use super::motion::{Detail, Drive, Motion};
 use super::react::{Act, Mood};
 use super::tune::{APPROACH_SPEED, FLEE_SPEED, PULL, SETTLE, STAND_OFF};
-use crate::life::body::{Body, Locomotion};
+use crate::life::body::{Body, Locomotion, slope};
 
 /// Where an animal should be and how fast its herd goes, in the animal's frame.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -83,6 +83,34 @@ fn motive(
     }
 }
 
+/// Returns the slope of `ground` at `p` as its uphill gradient, rise over run, read over `span` metres.
+fn gradient(ground: &dyn Fn(Vec2) -> f32, p: Vec2, span: f32) -> Vec2 {
+    let dx = ground(p + Vec2::X * span) - ground(p - Vec2::X * span);
+    let dz = ground(p + Vec2::Y * span) - ground(p - Vec2::Y * span);
+    Vec2::new(dx, dz) / (2.0 * span)
+}
+
+/// Returns `velocity` of a body of `body` at `at` held to the ground it can walk. Where the ground one
+/// stride ahead is steeper than [`slope`] allows, the part of the velocity up or down that slope is
+/// taken out, so the body follows the foot or the edge of a cliff instead of passing it. A body that
+/// already stands on ground too steep may still walk down it, never up.
+fn hold(velocity: Vec3, at: Vec3, body: &Body, ground: &dyn Fn(Vec2) -> f32) -> Vec3 {
+    let limit = slope(body).tan();
+    let flat = velocity.xz();
+    if !limit.is_finite() || flat.length() < 1e-4 {
+        return velocity;
+    }
+    let reach = body.height.max(0.1);
+    let here = gradient(ground, at.xz(), 0.5 * reach);
+    let ahead = gradient(ground, at.xz() + flat.normalize() * reach, 0.5 * reach);
+    let kept = match (here.length() > limit, ahead.length() > limit) {
+        (true, _) => flat - here.normalize() * flat.dot(here.normalize()).max(0.0),
+        (false, true) => flat - ahead.normalize() * flat.dot(ahead.normalize()),
+        (false, false) => flat,
+    };
+    Vec3::new(kept.x, velocity.y, kept.y)
+}
+
 /// Returns the drive of `motion` for `body` towards `aim` in `mood`, over `ground`.
 pub fn drive(
     motion: &Motion,
@@ -99,7 +127,7 @@ pub fn drive(
         _ => 0.0,
     };
     Drive {
-        velocity: velocity.with_y(climb),
+        velocity: hold(velocity.with_y(climb), at, body, ground),
         look,
         gravity: pace.gravity,
         excite: mood.alarm.max(aim.excite),

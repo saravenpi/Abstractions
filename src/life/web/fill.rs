@@ -152,7 +152,7 @@ fn consumer(seed: u64, web: &Web, index: usize, setting: &Setting) -> ((Plan, u8
         level,
     };
     let form = (plan(habitat, setting, &mut rng), rng.below(4) as u8);
-    let mass = mass(form, (habitat, niche, level), setting, &mut rng);
+    let (form, mass) = mass(form, (habitat, niche, level), setting, &mut rng);
     (form, role, mass)
 }
 

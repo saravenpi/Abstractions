@@ -1,7 +1,9 @@
 //! The planet under the player: terrain, quadtree chunk streaming, props and sea.
 
 mod biome;
+mod blades;
 mod calendar;
+pub mod canopy;
 mod chunks;
 mod colormap;
 mod enter;
@@ -24,6 +26,7 @@ mod surface;
 mod terrain;
 
 pub use biome::{Biome, ground_rgb};
+pub use blades::{BladeAssets, BladeMaterial, Cropped, TurfUniform, turf_at};
 pub use chunks::{Calm, Reach, STEPS as RENDER_STEPS, Sited, dither, leaf_arc};
 pub use enter::enter_planet;
 pub use focus::{Link, spin};
@@ -180,7 +183,7 @@ pub(super) fn plugin(app: &mut App) {
             (begin_world, sea::spawn_sea).chain(),
         )
         .add_systems(OnEnter(Screen::Title), end_world);
-    app.add_plugins(ground::plugin);
+    app.add_plugins((ground::plugin, blades::plugin));
     stream_systems(app);
 }
 

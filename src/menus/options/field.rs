@@ -10,7 +10,6 @@ use crate::world::RENDER_STEPS;
 /// One editable setting.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Field {
-    PixelSize,
     RenderDistance,
     Shadows,
     Vsync,
@@ -19,7 +18,6 @@ pub enum Field {
     Bloom,
     Clouds,
     ShowFps,
-    ColorLevels,
     Fov,
     Sensitivity,
     InvertY,
@@ -73,9 +71,7 @@ fn step_graphics(g: &mut Graphics, field: Field, dir: i32) {
         return;
     }
     match field {
-        Field::PixelSize => g.pixel_size = bump_int(g.pixel_size, dir, 1, 8),
         Field::RenderDistance => g.render_distance = bump_step(g.render_distance, dir),
-        Field::ColorLevels => g.color_levels = bump_int(g.color_levels, dir * 4, 8, 64),
         Field::Fov => g.fov = bump_int(g.fov, dir * 5, 60, 110),
         _ => {}
     }

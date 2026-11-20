@@ -141,7 +141,7 @@ fn a_cancelled_download_leaves_no_file() {
 /// A settings file written before the option existed loads with the check at launch on.
 #[test]
 fn old_settings_check_at_launch() {
-    let old: crate::settings::Settings = toml::from_str("[graphics]\npixel_size = 4\n").unwrap();
+    let old: crate::settings::Settings = toml::from_str("[graphics]\nfov = 80\n").unwrap();
     assert!(old.updates.check_at_launch);
     let empty: UpdatePrefs = toml::from_str("").unwrap();
     assert!(empty.check_at_launch);

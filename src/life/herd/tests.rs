@@ -25,6 +25,7 @@ fn look(life: &Life, at: DVec3, radius: f64, time: f64) -> Vec<Herd> {
     };
     let ground = Ground {
         sample: &|dir| sample(dir, 1.0),
+        height: &crate::life::herd::fixtures::height,
         light: &light,
     };
     near(life, &ground, &search)
@@ -137,6 +138,7 @@ fn watch_matches_a_fresh_search() {
     let life = meadow_life();
     let ground = Ground {
         sample: &|dir| sample(dir, 1.0),
+        height: &crate::life::herd::fixtures::height,
         light: &light,
     };
     let search = |time| Search {

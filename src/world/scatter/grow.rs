@@ -13,6 +13,7 @@ use crate::life::flora::{self, Kind, Stage, kinds, productivity};
 use crate::life::{Habitat, Life, Species, Tolerance, World};
 use crate::universe::hash::mix;
 use crate::world::Terrain;
+use crate::world::canopy::stage_at;
 use crate::world::globe::{Chart, Globe};
 use crate::world::lands::thrive::climate_on;
 use crate::world::propmesh::BIG;
@@ -175,13 +176,7 @@ impl Flora {
         let Some(life) = globe.life().filter(|_| lives) else {
             return Some(Self::default());
         };
-        let latitude = terrain
-            .chart()
-            .dir(center.x, center.y)
-            .y
-            .clamp(-1.0, 1.0)
-            .asin() as f32;
-        let stage = flora::stage(globe.season(), latitude, globe.record().tilt as f32);
+        let stage = stage_at(terrain, center);
         Some(kept(key(life, globe, stage), || sow(life, globe, stage)))
     }
 }

@@ -1,4 +1,14 @@
-//! The low-resolution image the game camera renders into, sized from the window and the pixel size.
+//! The low-resolution image the game camera renders into. Every screen shows about
+//! [`REFERENCE_ROWS`] rows of game pixels, and every game pixel is a square of the same whole
+//! number of window pixels.
+//!
+//! The image is shown at a whole scale with nearest sampling, as a pixel-perfect camera does from
+//! its reference resolution (https://docs.unity3d.com/Manual/urp/2d-pixelperfect-ref.html): a
+//! stretch by a fraction makes some rows and columns wider than others
+//! (https://propixelizer.github.io/docs/tips_and_tricks/artefacts). When the window is not a
+//! multiple of the scale, the image holds one more game pixel and the window crops the remainder
+//! evenly at its edges, rather than the bilinear remainder of
+//! https://github.com/rsn8887/Sharp-Bilinear-Shaders, so nothing is ever blurred or barred.
 
 use bevy::asset::RenderAssetUsages;
 use bevy::image::ImageSampler;
@@ -6,7 +16,7 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat, TextureUsages};
 use bevy::window::PrimaryWindow;
 
-use crate::settings::{Persistent, Settings};
+use super::tune::REFERENCE_ROWS;
 
 /// The render target image of the game camera, shown full window by the UI camera with nearest filtering.
 #[derive(Resource, Debug, Clone)]
@@ -37,24 +47,52 @@ impl FromWorld for LowRes {
 /// Smallest target side: screen-space effects build mip chains that need a few levels.
 const MIN_SIDE: u32 = 32;
 
-/// Returns the target size in pixels for a window logical size and a block size, never tiny.
-///
-/// The logical size is used so a high-density display shades no more pixels than a normal one.
-pub fn target_size(physical: UVec2, pixel_size: u32) -> UVec2 {
-    let block = pixel_size.max(1);
-    ((physical.max(UVec2::ONE) + UVec2::splat(block - 1)) / UVec2::splat(block))
-        .max(UVec2::splat(MIN_SIDE))
+/// How the game image fits a window of physical pixels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Fit {
+    /// Window pixels per game pixel, along each side.
+    pub scale: u32,
+    /// Size of the game image, in game pixels.
+    pub size: UVec2,
+    /// Window pixels of the scaled image cut away at the left and the top. The right and the
+    /// bottom lose the rest of the overflow, at most one more.
+    pub crop: UVec2,
 }
 
-/// Resizes the target image when the window or the camera pixel size asks for another size.
+impl Fit {
+    /// Returns the fit for a window of `physical` pixels: the whole scale nearest to the height
+    /// over [`REFERENCE_ROWS`], and an image that covers the window at that scale.
+    pub fn of(physical: UVec2) -> Self {
+        let physical = physical.max(UVec2::ONE);
+        let scale = ((physical.y + REFERENCE_ROWS / 2) / REFERENCE_ROWS).max(1);
+        let step = UVec2::splat(scale);
+        let size = ((physical + step - UVec2::ONE) / step).max(UVec2::splat(MIN_SIDE));
+        let crop = (size * scale).saturating_sub(physical) / 2;
+        Self { scale, size, crop }
+    }
+
+    /// Returns the part of the image a window of `physical` pixels shows, in game pixels: exactly
+    /// `scale` window pixels to a game pixel.
+    pub fn shown(&self, physical: UVec2) -> Rect {
+        let scale = self.scale as f32;
+        let min = self.crop.as_vec2() / scale;
+        Rect::from_corners(min, min + physical.as_vec2() / scale)
+    }
+}
+
+/// Whether the primary window changed this frame, such as its size or its scale factor on
+/// another monitor.
+pub fn window_changed(windows: Query<(), (With<PrimaryWindow>, Changed<Window>)>) -> bool {
+    !windows.is_empty()
+}
+
+/// Resizes the target image when the window asks for another size.
 fn resize_target(
     low: Res<LowRes>,
     window: Single<&Window, With<PrimaryWindow>>,
-    settings: Res<Persistent<Settings>>,
     mut images: ResMut<Assets<Image>>,
 ) {
-    let logical = Vec2::new(window.width(), window.height()).ceil().as_uvec2();
-    let want = target_size(logical, settings.graphics.pixel_size);
+    let want = Fit::of(window.physical_size()).size;
     if images.get(&low.0).is_none_or(|image| image.size() == want) {
         return;
     }
@@ -70,19 +108,5 @@ fn resize_target(
 /// Creates the target image and keeps it sized.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<LowRes>()
-        .add_systems(Update, resize_target);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Sizes round up, never reach zero and shrink with the block size.
-    #[test]
-    fn target_size_rounds_up() {
-        assert_eq!(target_size(UVec2::new(2880, 1800), 3), UVec2::new(960, 600));
-        assert_eq!(target_size(UVec2::new(1000, 700), 3), UVec2::new(334, 234));
-        assert_eq!(target_size(UVec2::ZERO, 4), UVec2::splat(MIN_SIDE));
-        assert_eq!(target_size(UVec2::new(100, 90), 0), UVec2::new(100, 90));
-    }
+        .add_systems(Update, resize_target.run_if(window_changed));
 }

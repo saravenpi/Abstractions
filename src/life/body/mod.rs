@@ -1,10 +1,10 @@
 //! Bodies: parametric rigid parts with sockets, limbs and chains, built from the plan and the planet.
 //!
-//! Body frame: +Y up, -Z forward (Bevy's forward), +X right, origin on the ground under the
-//! centre of the torso. Limbs hang along -Y of their own frame, like the robot's rig. Lengths
-//! are metres.
+//! Body frame: +Y up, -Z forward (Bevy's forward), +X right, origin on the ground under the centre
+//! of the torso. Limbs hang along -Y of their own frame, like the robot's rig. Lengths are metres.
 
 mod build;
+mod climb;
 mod crystal;
 mod frame;
 mod head;
@@ -17,17 +17,20 @@ mod radial;
 mod rules;
 mod segmented;
 mod shape;
+mod sink;
 mod skeletal;
 mod soft;
 mod soup;
 mod trunk;
 
 pub use build::{archetypes, build};
+pub use climb::slope;
 pub use frame::{frame, frames, length};
 pub use kit::MAX_PARTS;
 pub use paint::{soup, triangles};
 pub use rules::{Traits, gravity, lift, traits};
 pub use segmented::CRAWLER_PARTS;
+pub use sink::{depth, limb, root};
 pub use soup::{Face, Soup};
 
 use bevy::math::{Quat, Vec3};

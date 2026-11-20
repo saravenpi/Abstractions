@@ -14,12 +14,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Animals notice you over time instead of at a set distance: in a third of a second under 10 m, a second and a half at 10 to 30 m, four seconds at 30 to 60 m. Standing still or creeping halves the rate, running, boots and hard landings double it, and a hill between you hides you. Downwind they smell you from 80 m, hunters from 120 m. One lookout per herd sees farther, and when it runs the whole herd runs. Plant eaters flee anything over half their size; big or cornered animals stand and call instead, and hungry hunters bigger than you walk up to you, though never in your first minute on a planet. A badly hurt animal limps to its den and leaves blood every two metres.
 - Hunts play out where you can see them: hunters stalk and run their prey down, the kill lies where it fell while it has meat, and scavengers gather round it.
 - A field guide on K, on foot: every species of the planet underfoot, plants first, with a count such as "12 of 31 seen". A plant counts as seen once you stand on its planet, an animal once one comes within 40 m. Pick one with the arrows, the wheel or a click to read its body, diet, herd, hours, habitat, and what it eats and what eats it. Species you have not seen show as unknown. K or Esc closes it. The key can be changed in the options. For now the guide remembers what you saw until you leave the world.
-- Herds within 300 m show on the compass and the minimap with a small animal mark and their distance, labelled "Herd" until the field guide has their species, then by its name. The nearest three show, one for herds that keep together.
+- Herds you have seen show on the compass and the minimap with a small animal mark at the place you last saw them, labelled "Herd" until the field guide has their species, then by its name. A herd counts as seen once it is in view within 150 m with no hill between you; the mark does not follow the herd and fades out over three minutes. The three last seen show, one for herds that keep together.
 - Animals that glow light up at night in their own colour.
 - Animals leave signs and make calls. Within 60 m you find the footprints of herds that passed in the last four minutes, spaced wider where they ran, droppings and cropped patches where they grazed, nests and burrows near their homes, and bones where a kill was eaten. Herds call now and then, lower for bigger animals, call the alarm when they flee, and hunters cry as they give chase. Every player finds the same tracks and hears the same calls.
+- Grass grows on living planets that have ground cover. Near you, blades stand dense out to 15 m and thin out to 40 m, sway in the wind and take the colour of the carpet under them. Farther out the ground shows the same carpet: two colours of the planet's ground-cover species in patches with a fine speckle. Blades stay clear of trunks and rocks and of the patches grazers cropped. A planet without ground cover has none.
 
 ### Changed
 
+- Falling leaves, petals and pollen come only from the plants around you. A tree in leaf drops leaves of its own colour and size, more in autumn; a plant in flower drops petals and, by day, pollen; a bare tree and a lifeless planet drop nothing.
 - The map's side panel has more room: Search, Place, Favourites and Players each sit under a heading, with space between them and between the groups of the card. The result count sits beside the Search heading, the save button beside the Favourites heading, and the distance only in the result row. Rows are taller, and in a short window the favourites and players lose their last rows before anything else is cut.
 - The buttons on the card are shorter, so they take two rows: Set course or Engage and Clear, Focus, Set waypoint and Save place.
 - The wingsuit answers the pitch keys faster: a pull bends the flight path about twice as fast at speed, and let go the wings fly on where you pointed them instead of snapping back to the glide.
@@ -29,15 +31,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The home planet, its star and its galaxy carry generated names like every other place.
 - Landings match the impact. A soft one bends the knees as before. A hard drop crouches deeper, puts one hand and then both on the ground and gets up slower. A fast touchdown with the gear rolls over the shoulder, forward, backward or over the side, one turn over the distance the roll covers. A shallow fast one skids on the feet, leaning back, or on the belly with the arms out after a glide. A crash at 60 m/s tumbles with the limbs flailing, then the body gets up.
 - Plant eaters are about a hundred times heavier than before, as on land the biggest animals eat plants: a planet's grazers now run from hare to buffalo size, and their herds are easy to spot.
+- Big game is common: herds of plant eaters at least 0.8 m at the hip, in herds of 5 to 30, live within a walk of most open land on planets with animals with skeletons. Population follows body mass (big animals are rarer, but their herds roam far), grazers keep to open meadows and browsers to woods, and a niche too heavy for a shell or a swarm is filled by an animal with a skeleton.
+- Four-legged animals stand on longer legs, as mammals do: a 75 kg grazer stands about 0.8 m at the hip, a 500 kg one about 1.5 m.
+- Legs, necks, tails, wings and fins grow from inside the body instead of touching its outline through a thin joint, and thighs widen into a haunch where they join it.
+- Animals no longer walk up cliffs. Each body holds a slope as steep as its feet grip, about 39 degrees on pads, more on many clawed legs, less for slitherers; herds walk around ground steeper than that, and an animal led at a cliff follows its foot or stops.
 - Animals let you nearer: a calm grazer looks up at about 20 m and runs once you walk within about 11 m. Small animals let you come closer, hunters closer still, and an animal lets a robot that stands still come nearer than one that walks.
 - Flying species circle in flocks 8 to 30 m over the ground, and swarms hover low over the plants.
+- The pixel look is the same on every screen: the game always shows about 360 rows of pixels, and every pixel is the same square of screen pixels, also on high-density and 4K screens. Before, a bigger window showed more detail and some rows and columns of pixels came out wider than others.
 
 ### Removed
 
 - The fixed birds, butterflies and fireflies. The flying and swarming species of each planet take their place, and dead planets have none.
+- The Pixel size and Color depth options. The pixel size now follows the screen, and the colours keep their 24 levels.
 
 ### Fixed
 
+- The camera at the water surface splits the view along the waterline, with a thin dark line where the surface crosses the lens: only what is seen from under the water is fogged, and the line follows the waves. The camera never rests on the surface itself.
+- In third person the head no longer vanishes when a wall pushes the camera close to the robot. It only hides when the camera is inside the head.
+- No flash of water at eye level in front of the base door as the boot screen fades: the warm-up copy of the sea was drawn 30 m wide in front of the camera.
 - No more floating parts on the plants of living planets. The top clump of a tree sits on its trunk, thorns and resin stay on a leaning trunk or stalk, fruit hangs from its flower, and the flowers of trees, bulbs, mats and vines sit on their leaves and stems. The spines of a rosette grow on its blade tips. On a slope, mats, side shoots, bulbs and kelp reach down into the ground instead of hovering over its low side, and the caps of a leaning stalk follow it.
 
 ## [0.10.1] - 2026-11-19

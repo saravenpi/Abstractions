@@ -12,6 +12,13 @@ use crate::world::{Biome, SEA_LEVEL, Surface};
 /// channel bed puts on it above the sea.
 pub type Cell = ([Biome; 3], Option<Surface>);
 
+/// Quarters of turf a triangle can hold, and the lift in metres of the second uv `y` per quarter: the
+/// `LEVELS` and `BAND` of `turf.wesl`.
+const TURF_LEVELS: f32 = 4.0;
+
+/// Lift of the second uv `y` per quarter of turf.
+const TURF_BAND: f32 = 512.0;
+
 /// How far below sea level a coarse mesh draws its flat sea, so that the real sea covers it.
 const SEA_DROP: f32 = 1.5;
 
@@ -72,7 +79,7 @@ fn paint(
     slope: f32,
     [base, near]: [Biome; 2],
     bed: Option<Surface>,
-) -> (f32, f32, f32) {
+) -> ((f32, f32, f32), Surface) {
     let surface = match bed {
         Some(bed) if height > SEA_LEVEL => bed,
         _ => lands.surface(height, slope, base),
@@ -81,7 +88,7 @@ fn paint(
         true => near,
         false => base,
     };
-    lands.rgb(surface, tint, height)
+    (lands.rgb(surface, tint, height), surface)
 }
 
 /// Returns the sRGB colour the home planet gives ground at `height` and `slope` in the biome `base`,
@@ -89,36 +96,52 @@ fn paint(
 #[cfg(test)]
 pub fn ground(height: f32, slope: f32, base: Biome, near: Biome) -> (f32, f32, f32) {
     let home = Lands::of(&crate::universe::PlanetRecord::TEMPERATE);
-    paint(home, height, slope, [base, near], None)
+    paint(home, height, slope, [base, near], None).0
 }
 
 /// What one triangle is painted from: its biome and the one dithered for it, a channel bed, and its tone.
 type Ground = ([Biome; 2], Option<Surface>, f32);
 
-/// Returns the colour of the triangle over vertices `c`: sea when all of it lies on the floor,
-/// else the ground for its mean height and its slope against the local up, in the biome of its
-/// cell and the biome dithered for it.
-fn shade(patch: &Patch, c: [[usize; 2]; 3], style: &Style, ground: Ground) -> [f32; 4] {
+/// Returns the colour of the triangle over vertices `c` and its surface: sea when all of it lies on
+/// the floor, else the ground for its mean height and its slope against the local up, in the biome
+/// of its cell and the biome dithered for it.
+fn shade(patch: &Patch, c: [[usize; 2]; 3], style: &Style, ground: Ground) -> ([f32; 4], Surface) {
     let p = c.map(|[i, j]| patch.at(i, j));
     let h = c.map(|[i, j]| patch.height(i, j));
     if h.iter().all(|h| *h <= style.floor) {
         let [r, g, b] = style.lands.sea_rgb();
-        return srgb(r, g, b);
+        return (srgb(r, g, b), Surface::Water);
     }
     let normal = (p[1] - p[0]).cross(p[2] - p[0]).normalize_or_zero();
     let cos = normal.dot(patch.up(c[0][0], c[0][1]));
     let slope = (1.0 - cos * cos).max(0.0).sqrt() / cos.max(0.01);
     let (biomes, bed, t) = ground;
-    let (r, g, b) = paint(style.lands, (h[0] + h[1] + h[2]) / 3.0, slope, biomes, bed);
-    srgb(r * t, g * t, b * t)
+    let ((r, g, b), surface) = paint(style.lands, (h[0] + h[1] + h[2]) / 3.0, slope, biomes, bed);
+    (srgb(r * t, g * t, b * t), surface)
+}
+
+/// Returns the wrapped chart position of a vertex and how thick the turf grows there.
+pub type Turf<'a> = &'a dyn Fn(usize, usize) -> [f32; 3];
+
+/// Returns the turf coordinates of the three vertices `c` of a triangle of `surface`: their wrapped
+/// chart positions from `turf`, lifted by the band of the mean thickness of the turf on open grass.
+fn turfed(turf: Turf, c: [[usize; 2]; 3], surface: Surface) -> [[f32; 2]; 3] {
+    let v = c.map(|[i, j]| turf(i, j));
+    let thick = match surface {
+        Surface::Grass => (v[0][2] + v[1][2] + v[2][2]) / 3.0,
+        _ => 0.0,
+    };
+    let lift = (thick.clamp(0.0, 1.0) * TURF_LEVELS).round() * TURF_BAND;
+    v.map(|[x, z, _]| [x, z + lift])
 }
 
 /// Adds the triangles and skirts of `patch` to `mesh`, asking `cell_at(i, j)` for the biome of
-/// each cell, the biome dithered for each of its two triangles and its channel bed.
+/// each cell, the biome dithered for each of its two triangles and its channel bed, and `turf(i, j)`,
+/// when given, for the wrapped chart position of each vertex and how thick the turf grows there.
 pub fn fill(
     mesh: &mut FlatMesh,
     patch: &Patch,
-    style: Style,
+    (style, turf): (Style, Option<Turf>),
     cell_at: &dyn Fn(usize, usize) -> Cell,
 ) {
     let n = patch.cells();
@@ -132,7 +155,11 @@ pub fn fill(
         let ([base, first, second], bed) = cell_at(i, j);
         for (half, c) in halves.into_iter().enumerate() {
             let ground = ([base, [first, second][half]], bed, tone(i, j, half));
-            pair[half] = shade(patch, c, &style, ground);
+            let (colour, surface) = shade(patch, c, &style, ground);
+            pair[half] = colour;
+            if let Some(turf) = turf {
+                mesh.turf(turfed(turf, c, surface));
+            }
             let [a, b, c] = c.map(|[i, j]| patch.at(i, j));
             mesh.tri(a, b, c, pair[half]);
         }
@@ -146,25 +173,5 @@ pub fn fill(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::universe::{PlanetClass, PlanetRecord};
-
-    /// A coarse mesh draws its flat sea 1.5 m under the sea level, and none at all on a dry planet of
-    /// any class, whose low ground it draws as it is.
-    #[test]
-    fn a_coarse_mesh_has_a_sea_only_where_the_planet_has_one() {
-        for class in PlanetClass::ALL {
-            let lands = |ocean: f64| {
-                Lands::of(&PlanetRecord {
-                    class,
-                    ocean,
-                    ..PlanetRecord::TEMPERATE
-                })
-            };
-            assert_eq!(Style::coarse(8.0, lands(0.4)).floor, SEA_LEVEL - SEA_DROP);
-            assert_eq!(Style::coarse(8.0, lands(0.0)).floor, f32::NEG_INFINITY);
-            assert_eq!(Style::detail(lands(0.4)).floor, f32::NEG_INFINITY);
-        }
-    }
-}
+#[path = "tests_tris.rs"]
+mod tests;

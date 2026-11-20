@@ -34,7 +34,6 @@ pub struct Walk<'w, 's> {
     spec: Res<'w, Spec>,
     herds: ResMut<'w, Herds>,
     robot: Query<'w, 's, &'static Transform, With<Player>>,
-    remotes: Remotes<'w, 's>,
     beasts: Query<'w, 's, (&'static mut Beast, &'static mut Placed), Without<Frozen>>,
     parts: Parts<'w, 's>,
 }

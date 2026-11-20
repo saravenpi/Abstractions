@@ -11,6 +11,7 @@ use bevy::render::view::{Msaa, Tonemapping};
 use super::GameCamera;
 use super::fog::{FogKey, fog_for};
 use super::lowres::LowRes;
+use super::murk::Murk;
 use super::palette::Palette;
 use super::pixelate::Pixelate;
 use crate::settings::{Graphics, Persistent, Settings};
@@ -29,7 +30,7 @@ pub fn set_fov(projection: &mut Projection, fov: u32) {
 pub fn configure_camera(commands: &mut Commands, camera: Entity, graphics: &Graphics) {
     let mut entity = commands.entity(camera);
     entity.insert((
-        Pixelate::new(graphics.pixel_size, graphics.color_levels),
+        Pixelate::default(),
         Tonemapping::TonyMcMapface,
         Msaa::Off,
         DepthPrepass,
@@ -74,7 +75,9 @@ fn setup_camera(
         set_fov(&mut projection, graphics.fov);
     }
     let key = FogKey::ground(look.palette.horizon, graphics.render_distance);
-    commands.entity(add.entity).insert(fog_for(key));
+    commands
+        .entity(add.entity)
+        .insert((fog_for(key), Murk::default()));
 }
 
 /// Registers the camera setup.

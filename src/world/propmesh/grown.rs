@@ -18,7 +18,7 @@ mod tests_joined;
 mod tree;
 
 pub(in crate::world::propmesh) use book::soup;
-pub use book::{edition, page, tris};
+pub use book::{edition, look, page, tris};
 
 use super::{Plant, VARIANTS};
 use crate::life::flora::Dials;

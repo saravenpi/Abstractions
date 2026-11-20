@@ -27,6 +27,7 @@ pub use self::patch::Patch;
 pub use self::rings::Rings;
 pub use self::span::{Span, leaf_coord};
 use self::tris::{Cell, Style, fill, tone};
+use super::scatter::Carpet;
 use super::shapes::FlatMesh;
 use super::{CHUNK_SIZE, Terrain};
 
@@ -35,6 +36,9 @@ pub const GRID_STEP: f32 = 2.0;
 
 /// Number of vertices along one chunk edge.
 pub const GRID_POINTS: usize = (CHUNK_SIZE / GRID_STEP) as usize + 1;
+
+/// Period in metres of the turf noise of `turf.wesl`: a whole number of chunks.
+pub const TURF_PERIOD: f32 = 256.0;
 
 /// Half width of the biome border dither band in world units.
 const DITHER_REACH: f32 = 12.0;
@@ -79,10 +83,35 @@ pub fn chunk_mesh(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>], lod: Lo
     };
     let patch = patch_above(terrain, coord, heights, style.floor);
     let mut mesh = FlatMesh::default();
-    fill(&mut mesh, &patch, style, &|i, j| {
+    let carpet = (lod != Lod::Distant)
+        .then(|| Carpet::of(terrain, coord))
+        .flatten();
+    let chart = &span;
+    let turf = carpet.as_ref().map(|carpet| {
+        move |i: usize, j: usize| {
+            let w = chart.chart(i, j, 0.0);
+            let [x, z] = wrap(coord, w);
+            [x, z, carpet.at(w)]
+        }
+    });
+    let turf = turf
+        .as_ref()
+        .map(|t| t as &dyn Fn(usize, usize) -> [f32; 3]);
+    fill(&mut mesh, &patch, (style, turf), &|i, j| {
         dithered(terrain, &span, (i, j))
     });
     mesh.into_mesh()
+}
+
+/// Returns chart position `w` of chunk `coord` wrapped for the turf noise: the chunk corner taken to its
+/// place in a [`TURF_PERIOD`] metre tile, plus the offset of `w` from the corner. Neighbour chunks agree
+/// on their shared edge, since the period is a whole number of chunks.
+pub fn wrap(coord: IVec2, w: Vec2) -> [f32; 2] {
+    let chunks = (TURF_PERIOD / CHUNK_SIZE) as i32;
+    let corner = coord.as_vec2() * CHUNK_SIZE;
+    let base =
+        IVec2::new(coord.x.rem_euclid(chunks), coord.y.rem_euclid(chunks)).as_vec2() * CHUNK_SIZE;
+    (base + w - corner).to_array()
 }
 
 #[cfg(test)]

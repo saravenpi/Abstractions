@@ -24,8 +24,8 @@ fn default_round_trips() {
 /// A partial file keeps its values and fills the rest with defaults.
 #[test]
 fn partial_file_uses_defaults() {
-    let parsed: Settings = toml::from_str("[graphics]\npixel_size = 6\n").unwrap();
-    assert_eq!(parsed.graphics.pixel_size, 6);
+    let parsed: Settings = toml::from_str("[graphics]\nfov = 95\n").unwrap();
+    assert_eq!(parsed.graphics.fov, 95);
     assert_eq!(
         parsed.graphics.render_distance,
         Settings::default().graphics.render_distance

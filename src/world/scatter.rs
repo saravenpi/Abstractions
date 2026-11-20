@@ -41,6 +41,7 @@ pub(crate) mod tests_river;
 mod tests_sphere;
 #[cfg(test)]
 pub(crate) mod tile;
+mod turf;
 #[cfg(test)]
 pub(crate) mod zones;
 
@@ -64,8 +65,10 @@ use super::{CHUNK_SIZE, Terrain};
 #[cfg(test)]
 use super::{SEA_LEVEL, Surface};
 
+pub use self::grow::Flora;
 pub use self::rig::Rig;
 pub use self::table::plants_for;
+pub use self::turf::{Carpet, Turf, turf_of};
 
 /// Most big props on one chunk of `CHUNK_SIZE` metres, sea floor ones included.
 const BIG_CAP: usize = 55;

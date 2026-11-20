@@ -41,9 +41,7 @@ fn display_graphics(g: &Graphics, field: Field) -> Option<String> {
         return Some(on_off(value));
     }
     match field {
-        Field::PixelSize => Some(g.pixel_size.to_string()),
         Field::RenderDistance => Some(RENDER_STEPS[render_step(g.render_distance)].0.to_string()),
-        Field::ColorLevels => Some(g.color_levels.to_string()),
         Field::Fov => Some(format!("{} deg", g.fov)),
         _ => None,
     }

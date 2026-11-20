@@ -12,7 +12,7 @@ use super::fade::leave;
 use super::gate::{Spec, footing};
 use super::herds::{Herds, Land};
 use super::looks::Looks;
-use super::near::{Nearby, sightings};
+use super::near::{Eye, Nearby, remember};
 use super::place::Spot;
 use super::steer::cruise;
 use super::tune::{MOST, REACH};
@@ -20,6 +20,7 @@ use super::want::{From, Lead, Want, members, visitors};
 use crate::life::Life;
 use crate::life::body::Locomotion;
 use crate::player::Player;
+use crate::render::GameCamera;
 use crate::space::{Anchor, Clock};
 use crate::universe::Universe;
 use crate::world::{Globe, Terrain};
@@ -42,6 +43,7 @@ pub struct Scan<'w, 's> {
         ResMut<'w, Assets<StandardMaterial>>,
     ),
     robot: Query<'w, 's, &'static Transform, With<Player>>,
+    camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
     beasts: Query<'w, 's, (Entity, &'static mut Beast)>,
 }
 
@@ -53,10 +55,15 @@ pub fn scan(mut s: Scan, mut wants: Local<Vec<Want>>) {
     let Some(life) = globe.life() else {
         return;
     };
-    *s.nearby = Nearby {
-        body: footing(&s.anchor),
-        herds: sightings(life, &globe, &s.herds.herds, from.robot),
-    };
+    if let Some(eye) = eye(&s) {
+        let body = footing(&s.anchor);
+        remember(
+            &mut s.nearby,
+            (life, &globe, body),
+            &s.herds.herds,
+            (eye, from.time),
+        );
+    }
     members(life, (&s.herds.herds, &s.herds.ledger), from, &mut wants);
     visitors(life, &s.herds.carcasses, from, &mut wants);
     let mut room = MOST.saturating_sub(keep(&mut s, &wants));
@@ -102,6 +109,21 @@ fn look(s: &mut Scan) -> Option<(Arc<Globe>, From)> {
             radius,
         },
     ))
+}
+
+/// Returns where the local robot looks from in the turning frame of the planet: the game camera, or
+/// the robot's own eyes 1.6 m up when there is no camera.
+fn eye(s: &Scan) -> Option<Eye> {
+    let (at, ahead) = match s.camera.iter().next() {
+        Some(camera) => (camera.translation(), camera.forward().as_vec3()),
+        None => {
+            let robot = s.robot.single().ok()?;
+            (robot.translation + Vec3::Y * 1.6, robot.forward().as_vec3())
+        }
+    };
+    let eye = s.anchor.to_frame(at);
+    let ahead = (s.anchor.to_frame(at + ahead) - eye).normalize_or_zero();
+    Some(Eye { at: eye, ahead })
 }
 
 /// Fades out every drawn animal no longer wanted, and returns how many stay.

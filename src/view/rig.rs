@@ -48,6 +48,12 @@ impl Rig {
     }
 
     /// Sets the look angles, as after a spawn or when the player leaves the ship.
+    /// Returns the roll of the camera around where it looks, as last shown, positive to the
+    /// right.
+    pub fn roll(&self) -> f32 {
+        self.sway.roll.angle
+    }
+
     pub fn face(&mut self, heading: Heading) {
         self.aim = Aim::settled(heading);
     }

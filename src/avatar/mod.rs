@@ -50,7 +50,7 @@ use bevy::prelude::*;
 
 use crate::player::PlayerSet;
 use crate::render::Warm;
-use crate::screens::playing;
+use crate::screens::shown;
 use crate::view::ViewSet;
 
 /// What the body is doing, which chooses its pose.
@@ -216,21 +216,18 @@ fn systems(app: &mut App) {
 }
 
 /// Registers the avatar: its input, its visibility setting and the systems that run it while
-/// playing. The pose is filled once the controller moved the body, then dressed with the gear
-/// and the view once the camera rig ran.
+/// the world is shown, behind the boot screen too. The pose is filled once the controller moved
+/// the body, then dressed with the gear and the view once the camera rig ran.
 pub(super) fn plugin(app: &mut App) {
     systems(app);
-    app.configure_sets(
-        Update,
-        (AvatarSet::Fill, AvatarSet::Animate).run_if(playing),
-    )
-    .configure_sets(Update, AvatarSet::Fill.after(PlayerSet::Move))
-    .add_systems(
-        Update,
-        dress::wear
-            .after(AvatarSet::Fill)
-            .after(ViewSet::Rig)
-            .before(AvatarSet::Animate)
-            .run_if(playing),
-    );
+    app.configure_sets(Update, (AvatarSet::Fill, AvatarSet::Animate).run_if(shown))
+        .configure_sets(Update, AvatarSet::Fill.after(PlayerSet::Move))
+        .add_systems(
+            Update,
+            dress::wear
+                .after(AvatarSet::Fill)
+                .after(ViewSet::Rig)
+                .before(AvatarSet::Animate)
+                .run_if(shown),
+        );
 }

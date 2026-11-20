@@ -90,11 +90,11 @@ fn ground_flight_ground_is_continuous() {
     }
 }
 
-/// Flying banks the horizon by the whole bank of the body, a steep one too, and the third
-/// person camera looks a little toward where the body is going.
+/// Flying, the first person view banks with the whole bank of the body, a steep one too, the
+/// third person camera only leans with it, and it looks a little toward where the body goes.
 #[test]
-fn flight_banks_fully_and_looks_ahead() {
-    for (prefs, share) in [(third(), 1.0), (ViewPrefs::default(), 1.0)] {
+fn flight_banks_and_looks_ahead() {
+    for (prefs, share) in [(third(), 0.15), (ViewPrefs::default(), 1.0)] {
         let mut body = moment(Kind::Flying, prefs);
         body.target.velocity = Vec3::new(-8.0, 0.0, -20.0);
         body.target.bank = 1.2;

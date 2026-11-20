@@ -9,8 +9,9 @@ use crate::gear::aim::wrap;
 use crate::gear::tune::BANK_LIMIT;
 use crate::gear::{Gear, GearInput, Mode};
 
-/// Slowest turn rate in radians per second a bank and a held pull give a settled glide.
-const RATE: f32 = 0.9;
+/// Slowest turn rate in radians per second a bank and a held pull give a settled glide: most
+/// of [`crate::gear::tune::TURN_CAP`], the drift a wingsuit turns at.
+const RATE: f32 = 0.5;
 
 /// Seconds the roll key is held to bank into a turn: about 50 degrees.
 const ROLL_IN: f32 = 0.35;

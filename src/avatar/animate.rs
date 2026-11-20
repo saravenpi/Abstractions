@@ -80,7 +80,7 @@ impl Anim {
         let want = Vec2::new(self.trim.x + wrap(input.bank - self.trim.x), input.load);
         self.trim += (want - self.trim).clamp_length_max(TRIM_RATE * dt);
         self.trim.x = wrap(self.trim.x);
-        self.weights.step(input.mode, dt);
+        self.weights.step(input.mode, dt, self.clock.belly > 0.0);
         let flown = AvatarPose {
             pitch: self.path,
             bank: self.trim.x,

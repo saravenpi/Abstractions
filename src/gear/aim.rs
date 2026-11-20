@@ -15,7 +15,7 @@ use super::path::{bounded, climb, path_offset};
 use super::roll::{facing, roll, sense};
 use super::state::FlightState;
 use super::tune::{
-    AOA_MAX, AOA_MIN, FOLLOW_SPEED, LIMIT_SPEED, MAX_LOAD, PATH_LOAD, PRONE_SPEED, PULL_OUT,
+    AOA_MAX, AOA_MIN, FOLLOW_SPEED, LIMIT_SPEED, MAX_LOAD, PATH_TIME, PRONE_SPEED, PULL_OUT,
     PULL_TURN, TRIM_LOAD, TRIM_MAX,
 };
 use crate::render::smoothstep as smooth;
@@ -27,8 +27,10 @@ use crate::render::smoothstep as smooth;
 const LAG: f32 = 0.3;
 
 /// Cosines of the pitch between which a body on its wings is laid flat whatever its speed:
-/// with the nose near the vertical, standing it up has no shortest way round.
-const STEEP: (f32, f32) = (0.2, 0.5);
+/// with the nose near the vertical, standing it up has no shortest way round. The same cosines
+/// of the flight path free a banked pull from [`super::tune::TURN_CAP`]: such a path has no
+/// heading to turn.
+pub(super) const STEEP: (f32, f32) = (0.2, 0.5);
 
 /// How far the back faces the sky between which the trim carries the weight: none on the back.
 const CARRY: (f32, f32) = (0.0, 0.3);
@@ -98,7 +100,7 @@ fn lead(state: &FlightState, input: &GearInput) -> f32 {
 /// Returns the pull target, toward the back of the body.
 ///
 /// Let go, it is the nose-up trim that carries the weight at this speed and bank, none on the
-/// back, and the pull that turns the flight path onto the asked angle at [`PATH_LOAD`]. The
+/// back, and the pull that turns the flight path onto the asked angle within [`PATH_TIME`]. The
 /// back key pulls what turns the path toward the back at [`PULL_TURN`], as far as [`lead`], the
 /// most the wing may take: too slow, the wing stalls before the path comes round. The forward
 /// key unloads the wing
@@ -109,9 +111,9 @@ fn pull(state: &FlightState, input: &GearInput) -> f32 {
     let level = state.velocity.with_y(0.0).length() / speed.max(1e-3);
     let carry = smooth(CARRY.0, CARRY.1, facing(state));
     let load = (level / state.bank.cos().abs().max(0.1)).min(TRIM_LOAD) * carry;
-    let turn = wrap(asked(state, input).y - climb(state)).clamp(-1.0, 1.0) * PATH_LOAD;
+    let turn = wrap(asked(state, input).y - climb(state)).clamp(-1.0, 1.0) * speed / PATH_TIME;
     let slope = lift_slope(speed, bite(input)).max(1e-3);
-    let lift = input.gravity * turn * sense(state) / slope;
+    let lift = turn * sense(state) / slope;
     let trim = (input.gravity * load / slope).min(TRIM_MAX) + lift;
     let (stick, most) = (input.pitch.clamp(-1.0, 1.0), lead(state, input));
     let back = (state.frame() * Vec3::Y).y;
@@ -152,7 +154,8 @@ fn pitch(state: &FlightState, input: &GearInput, pull: f32) -> f32 {
 /// builds, the nose heading follows the flight path, the roll keys roll the wings and the view
 /// banks them, the banked lift turns the path, and the body lies prone: at any speed on its
 /// back or with the nose near the vertical. In a fall the gear took over the heading follows
-/// the path too, so spreading the wings again turns nothing.
+/// the path too, so spreading the wings again turns nothing, and the body lies flat across the
+/// fall as fast as on the wings: folded from a glide it stays prone, belly to the air.
 pub(super) fn aim(state: &FlightState, input: &GearInput) -> Aim {
     let (spread, speed) = (state.spread(), state.velocity.length());
     let heading = asked(state, input).x;
@@ -170,6 +173,6 @@ pub(super) fn aim(state: &FlightState, input: &GearInput) -> Aim {
         yaw: heading + follow * offset,
         pitch,
         bank: roll(state, input),
-        prone: spread * flat.max(1.0 - smooth(CARRY.0, CARRY.1, facing(state))),
+        prone: along * flat.max(1.0 - smooth(CARRY.0, CARRY.1, facing(state))),
     }
 }

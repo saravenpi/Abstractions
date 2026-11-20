@@ -13,7 +13,7 @@ use crate::view::{ViewMode, ViewPrefs};
 use crate::world::Planet;
 
 /// Spreads the wings of the body and sends it gliding at `speed` along its heading, sinking at
-/// `sink` metres per second.
+/// `sink` metres per second, the wings asked to fly on along that path.
 fn glide_in(game: &mut Game, speed: f32, sink: f32) {
     game.with_body(|motion, gear| {
         let forward = Vec3::new(-motion.yaw.sin(), 0.0, -motion.yaw.cos());
@@ -22,6 +22,7 @@ fn glide_in(game: &mut Game, speed: f32, sink: f32) {
         gear.state.wings = 1.0;
         gear.state.servo.yaw = motion.yaw;
         gear.state.velocity = forward * speed + Vec3::Y * sink;
+        gear.state.servo.climb = sink.atan2(speed);
     });
 }
 

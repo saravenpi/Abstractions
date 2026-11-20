@@ -2,6 +2,11 @@
 
 use bevy::prelude::*;
 
+/// The constants of a touchdown.
+mod touch;
+
+pub use touch::*;
+
 /// Air density at sea level in kilograms per cubic metre, the same as the ship uses.
 pub const SEA_DENSITY: f32 = 1.2;
 
@@ -31,8 +36,16 @@ pub const AERO: f32 = 0.0453;
 /// stalls under about 15 m/s at [`AOA_MAX`], and a dive runs past 50 m/s.
 pub const WING_DRAG: Vec3 = Vec3::new(0.6, 6.95, 0.091);
 
-/// Drag coefficient of the folded body, the same on every axis.
+/// Drag coefficient of the folded body standing upright or diving head first, the same on
+/// every axis: a terminal speed of about 118 m/s under [`REF_GRAVITY`].
 pub const BODY_DRAG: f32 = 0.035;
+
+/// Drag coefficient of the folded body lying flat across its fall, belly to the air, the same
+/// on every axis: a terminal speed of about 82 m/s under [`REF_GRAVITY`], which is the 55 m/s
+/// of a skydiver belly to earth (https://en.wikipedia.org/wiki/Terminal_velocity) scaled by the
+/// root of the gravity ratio. [`BODY_DRAG`] scales the same way to about 80 m/s head down; the
+/// same page gives about 90 m/s with the limbs pulled in.
+pub const BELLY_DRAG: f32 = 0.072;
 
 /// Density ratio to sea level at which the gear still has 63 percent of its grip on the air.
 ///
@@ -98,8 +111,9 @@ pub const THRUST_TIME: f32 = 0.25;
 pub const PITCH_RATE: f32 = 9.0;
 
 /// Natural frequency of the critically damped pull, in radians per second: the angle of
-/// attack answers faster than the flight frame turns, as a wing does.
-pub const PULL_RATE: f32 = 18.0;
+/// attack answers faster than the flight frame turns, as a wing does, and a held key reaches
+/// the load it asks for in about a tenth of a second.
+pub const PULL_RATE: f32 = 30.0;
 
 /// Natural frequency of the critically damped bank response, in radians per second.
 pub const BANK_RATE: f32 = 6.0;
@@ -122,6 +136,15 @@ pub const ROLL_RATE: f32 = 3.0;
 /// of the body, as far as the wing may pull: a loop in a few seconds, given the speed. A glide
 /// needs about 70 m/s for a loop, about the fastest dive, so loops want the boosters.
 pub const PULL_TURN: f32 = 2.0;
+
+/// Share of the self-level the flight path angle gets while the wing flies clear of the stall,
+/// from 0 to 1: let go of the pitch keys, the path comes back toward the best glide in about
+/// five seconds and not in one, so the wings fly on where the pilot pointed them and the roll
+/// alone levels at [`LEVEL`]. At the stall the nose still comes down at the full rate.
+///
+/// A self-level that also pitches fights the pilot; wingsuit and flight games hold the
+/// attitude and level the roll only (https://vazgriz.com/346/).
+pub const LEVEL_PITCH: f32 = 0.2;
 
 /// Strength of the self-level, from 0 to 1. Let go of the keys, the wings come level and the
 /// nose comes back toward the best glide: at 1 in about a second, at 0 not at all, the body
@@ -175,8 +198,28 @@ pub const MAX_LOAD: f32 = 4.0;
 /// Largest nose-up trim that holds the flight path on the look direction, in radians.
 pub const TRIM_MAX: f32 = 0.2;
 
-/// Load in g per radian the wings pull to bring the flight path onto the asked pitch.
-pub const PATH_LOAD: f32 = 4.0;
+/// Time constant in seconds with which the wings turn the flight path onto the asked angle: the
+/// path rate is the gap over this time, within [`MAX_LOAD`].
+///
+/// A path that lags the attitude by about 0.3 s reads crisp at cruise speed
+/// (https://oucampustest.sjsu.edu/researchfoundation/docs/VFS_2021_Berger.pdf). A load per
+/// radian instead gave a lag that grew with the speed, 0.34 s at 30 m/s and 0.8 s at 70.
+pub const PATH_TIME: f32 = 0.3;
+
+/// Fastest a banked pull turns the heading, in radians per second (40 degrees per second): a
+/// full circle in about nine seconds at the glide speed.
+///
+/// Wingsuits drift through turns rather than carve them
+/// (https://www.skydivemag.com/new/thoughts-on-terrain-flying/), and a glider at 30 m/s turns
+/// 19 to 32 degrees per second at 45 to 60 degrees of bank under Earth gravity
+/// (https://www.gliding.co.uk/wp-content/uploads/sites/3/2022/06/14-ADVANCED-TURNING-1st-Review.pdf).
+/// Only the share of the lift that turns the heading is held to it, so a loop or a pull-up
+/// with the wings level keeps the whole of [`MAX_LOAD`] (https://vazgriz.com/346/).
+pub const TURN_CAP: f32 = 0.7;
+
+/// Largest share of the lift in g that may turn the heading: at speed it holds the turn rate
+/// under [`TURN_CAP`], falling as one over the speed, 18 degrees per second at 70 m/s.
+pub const TURN_LOAD: f32 = 1.0;
 
 /// Largest load factor the trim compensates for in a banked turn.
 pub const TRIM_LOAD: f32 = 2.5;
@@ -201,30 +244,3 @@ pub const FLARE_STEEP: (f32, f32) = (0.2, 0.6);
 
 /// Largest nose-up bias of the ground assist, in radians.
 pub const FLARE_PITCH: f32 = 0.45;
-
-/// Speed lost into a surface above which a touchdown may be a landing roll, in metres per second.
-pub const ROLL_SINK: f32 = 9.0;
-
-/// Share of the speed that must go into the ground for a landing roll (sine of 30 degrees).
-pub const ROLL_SINE: f32 = 0.5;
-
-/// Seconds a landing roll lasts.
-pub const ROLL_TIME: f32 = 0.7;
-
-/// Rate at which a landing roll sheds speed, per second.
-pub const ROLL_DAMP: f32 = 5.0;
-
-/// Ground speed above which a touchdown becomes a slide, in metres per second.
-pub const SLIDE_ENTER: f32 = 9.5;
-
-/// Ground speed at which a slide hands over to the run, in metres per second.
-pub const SLIDE_EXIT: f32 = 8.0;
-
-/// Friction of a slide as a share of the weight.
-pub const SLIDE_G: f32 = 0.35;
-
-/// Extra slide deceleration per metre per second of speed, per second.
-pub const SLIDE_DRAG: f32 = 0.5;
-
-/// Extra share of the speed a wall or cliff hit costs per unit of impact sine.
-pub const SCRUB: f32 = 0.3;

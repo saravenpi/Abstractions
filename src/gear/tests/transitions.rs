@@ -55,7 +55,8 @@ fn boosters_and_wings_switch_mid_flight() {
 }
 
 /// Stopping flight mid-air: the wings fold in about 0.4 s, the velocity carries on
-/// ballistically, and the boots then catch the fall.
+/// ballistically but for the drag of a body flat across the air, under 18 m/s2 at 70 m/s,
+/// and the boots then catch the fall.
 #[test]
 fn stopping_mid_air_is_ballistic_then_boots_catch() {
     let mut flight = Flight::new(Mode::Fly, Vec3::new(0.0, 0.0, -70.0));
@@ -68,9 +69,9 @@ fn stopping_mid_air_is_ballistic_then_boots_catch() {
     let folded = flight.state.velocity;
     flight.tick(&GearInput::default(), DT);
     let accel = (flight.state.velocity - folded) / DT;
-    assert!((accel.y + 22.0).abs() < 1.0, "not ballistic: {accel}");
+    assert!((accel.y + 22.0).abs() < 2.0, "not ballistic: {accel}");
     assert!(
-        accel.with_y(0.0).length() < 9.0,
+        accel.with_y(0.0).length() < 18.0,
         "air brake too hard: {accel}"
     );
     flight.run(&braking(), 6.0);

@@ -36,10 +36,12 @@ impl Weights {
 
     /// Moves every weight toward a body fully in `mode`, by `dt` seconds.
     ///
-    /// The whole change takes the short blend time, or the long one while a sweeping mode is involved.
-    pub fn step(&mut self, mode: Mode, dt: f32) {
+    /// The whole change takes the short blend time, or the long one while a sweeping mode is
+    /// involved or the body lies `flat` in the arch of a fall.
+    pub fn step(&mut self, mode: Mode, dt: f32, flat: bool) {
         let held = Mode::ALL.into_iter().zip(self.0);
         let sweeping = mode.sweeping()
+            || flat
             || held
                 .into_iter()
                 .any(|(mode, weight)| weight > 0.0 && mode.sweeping());

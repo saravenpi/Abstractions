@@ -9,7 +9,6 @@ use super::model::{Place, SAVE_VERSION, WorldSave};
 use super::store::{delete, ids, list, new_entry, write};
 use crate::computer::{Atlas, Target};
 use crate::universe::{GalaxyId, Universe};
-use crate::world::Terrain;
 
 /// Returns an empty unique directory under the system temp folder.
 fn scratch(tag: &str) -> PathBuf {
@@ -62,36 +61,49 @@ created = 1700000000
 last_played = 1700000500
 "#;
 
-/// A v0.5 file loads, keeps its name, seed, play time and dates, and starts at the home spawn.
+/// A v0.5 file loads as an old world, keeps its name, seed, play time and dates untouched, and
+/// is never opened by this game.
 #[test]
-fn a_v05_file_loads_and_starts_at_home() {
+fn a_v05_file_loads_as_an_old_world() {
     let dir = scratch("v05");
     fs::create_dir_all(&dir).unwrap();
     fs::write(dir.join("old-isle.toml"), V05).unwrap();
     let worlds = list(&dir);
     assert_eq!(worlds.len(), 1);
-    let mut save = worlds[0].save.clone();
+    let save = &worlds[0].save;
     assert_eq!(
         (save.version, save.position),
         (0, Some([12.5, 3.0, -40.25]))
     );
-    save.upgrade();
     assert_eq!((save.name.as_str(), save.seed), ("Old Isle", 42));
     assert_eq!(
         (save.play_seconds, save.created, save.last_played),
         (5025.5, 1_700_000_000, 1_700_000_500)
     );
     assert_eq!(
-        (save.version, save.position, save.place),
-        (SAVE_VERSION, None, None)
+        (save.game_version.as_str(), save.made_with()),
+        ("", Some("0.10"))
     );
-    assert_eq!(
-        (save.clock_seconds, &save.atlas, &save.ship),
-        (0.0, &None, &None)
-    );
-    let (universe, terrain) = (Universe::new(42), Terrain::new(42));
-    assert_eq!(save.body(&universe), universe.home());
-    assert_eq!(save.spawn(&terrain), terrain.find_spawn());
+    let _ = fs::remove_dir_all(&dir);
+}
+
+/// A version 2 file, as 0.10 wrote it, loads as an old world and stays byte for byte as it was
+/// after the list is read, while a file of this version is not old and names this game.
+#[test]
+fn a_version_2_file_is_an_old_world_and_a_new_one_is_not() {
+    let dir = scratch("v2");
+    fs::create_dir_all(&dir).unwrap();
+    let text = "name = \"Reef\"\nseed = 5\nversion = 2\n";
+    fs::write(dir.join("reef.toml"), text).unwrap();
+    let old = list(&dir).remove(0).save;
+    assert_eq!((old.version, old.made_with()), (2, Some("0.10")));
+    assert_eq!(fs::read_to_string(dir.join("reef.toml")).unwrap(), text);
+    let fresh = new_entry(&dir, "Fresh", 6).save;
+    assert_eq!(fresh.made_with(), None);
+    assert_eq!(fresh.game_version, env!("CARGO_PKG_VERSION"));
+    write(&dir, "fresh", &fresh).unwrap();
+    let back = list(&dir).into_iter().find(|world| world.id == "fresh");
+    assert_eq!(back.unwrap().save.made_with(), None);
     let _ = fs::remove_dir_all(&dir);
 }
 

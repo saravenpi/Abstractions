@@ -53,7 +53,10 @@ pub fn sort(worlds: &mut [Listed], by: SortBy) {
 /// Reads every world of `dir` with the place its player is at.
 pub fn load(dir: &Path) -> Vec<Listed> {
     let listed = |entry: WorldEntry| Listed {
-        place: place_name(&entry.save),
+        place: match entry.save.made_with() {
+            Some(version) => format!("Made with {version}"),
+            None => place_name(&entry.save),
+        },
         entry,
     };
     list(dir).into_iter().map(listed).collect()

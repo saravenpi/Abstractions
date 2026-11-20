@@ -2,6 +2,9 @@
 
 mod autosave;
 mod capture;
+mod cli;
+#[cfg(test)]
+mod cli_tests;
 mod format;
 mod id;
 #[cfg(test)]
@@ -15,15 +18,12 @@ mod start;
 mod store;
 #[cfg(test)]
 mod store_tests;
-mod upgrade;
-#[cfg(test)]
-mod upgrade_tests;
 mod writer;
 
 pub use autosave::{SaveSet, SavedFlash};
 pub use format::{ago, play_time};
 pub use model::Favourite;
-pub use model::{Place, SAVE_VERSION, WorldEntry, WorldSave};
+pub use model::{GAME_VERSION, OLDER_VERSION, Place, SAVE_VERSION, WorldEntry, WorldSave};
 pub use snapshot::Snapshot;
 pub use start::{Starter, unplayed};
 pub use store::{delete, list, new_entry, now, write};
@@ -64,6 +64,6 @@ fn clear_active(mut commands: Commands) {
 /// Registers the save directory, autosave and active world cleanup.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<SaveDir>()
-        .add_plugins((autosave::plugin, writer::plugin))
+        .add_plugins((autosave::plugin, writer::plugin, cli::plugin))
         .add_systems(OnEnter(Screen::Title), clear_active);
 }

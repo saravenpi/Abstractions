@@ -66,8 +66,7 @@ const CLASSES: [[&str; 7]; 6] = [
 ];
 
 /// The labels of the rows of the card of a planet with neither moons nor rings, in order.
-const ORDER: [&str; 15] = [
-    "From you",
+const ORDER: [&str; 14] = [
     "Surface",
     "Air",
     "Water",
@@ -109,8 +108,9 @@ fn the_card_says_the_whole_record_of_each_class() {
     }
 }
 
-/// The card of a planet goes from how far it is through its surface, climate, body and time,
-/// one fact per row, and a planet not charted gives its size and what to do to learn more.
+/// The card of a planet goes through its surface, climate, body and time, one fact per row,
+/// with no distance, which its row of the list shows, and a planet not charted gives its size
+/// and what to do to learn more.
 #[test]
 fn the_card_groups_the_facts_in_order() {
     let universe = Universe::new(7);
@@ -124,9 +124,10 @@ fn the_card_groups_the_facts_in_order() {
         })
         .collect();
     assert_eq!(order, ORDER);
-    let facts = ["From you", "Radius", "Gravity", "Day", "Year"].map(|label| fact(&home, label));
-    let shown = ["1.00 km", "6.00 km", "1.00 g", "24 min", "3 h 20 min"].map(Some);
+    let facts = ["Radius", "Gravity", "Day", "Year"].map(|label| fact(&home, label));
+    let shown = ["6.00 km", "1.00 g", "24 min", "3 h 20 min"].map(Some);
     assert_eq!(facts, shown);
+    assert_eq!(fact(&home, "From you"), None);
     let uncharted = card(&line, None, &universe);
     assert!(uncharted.subtitle.starts_with("Uncharted planet of "));
     let advice = Row::Note("Visit this system to chart its planets");

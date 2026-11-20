@@ -28,8 +28,9 @@ fn listed(favourites: Option<&Favourites>, markers: Option<&Markers>) -> (usize,
     (saved.min(FAVOURITES), friends.min(PLAYERS))
 }
 
-/// Sizes the square map and the search results for the window and the lists of the panel,
-/// when the window changed size, a list changed length or the screen was just spawned.
+/// Sizes the square map, the search results and the rows of the lists for the window and the
+/// lists of the panel, when the window changed size, a list changed length or the screen was
+/// just spawned.
 /// Without a window, as in a test, the smallest supported one is assumed.
 pub(super) fn fit(
     (windows, fresh): Seen,
@@ -57,5 +58,8 @@ pub(super) fn fit(
     if board.fit != fit.rows {
         board.fit = fit.rows;
         board.step(0);
+    }
+    if board.lists != Some(fit.lists) {
+        board.lists = Some(fit.lists);
     }
 }

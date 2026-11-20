@@ -1,7 +1,7 @@
 //! Narrowing and ordering the list: the filter typed on the keyboard and the sort order.
 
 use super::format::clip;
-use super::layout::LINE_CHARS;
+use super::layout::SUMMARY_CHARS;
 use super::route::Target;
 use super::rows::Line;
 
@@ -91,8 +91,9 @@ pub fn arrange(lines: Vec<Line>, filter: &str, sort: Sort) -> Vec<Line> {
 }
 
 /// Returns the line of the header that names the list: the filter or the heading, which rows
-/// are drawn while the list does not fit, and the order when it is by name. It fits one line of the side panel: a long
-/// heading is cut short.
+/// are drawn while the list does not fit, and the order when it is by name. It fits the right
+/// end of the heading of the search: a long heading is cut short, and dropped when only the
+/// rows fit.
 pub fn summary(
     heading: &str,
     (first, last, count): (usize, usize, usize),
@@ -104,11 +105,13 @@ pub fn summary(
         _ => format!(" - {first}-{last} of {count}{}", sort.label()),
     };
     let (head, tail) = match (count, filter.is_empty()) {
-        (0, true) => (heading.to_string(), " - none charted yet".to_string()),
+        (0, true) => ("None charted yet".to_string(), String::new()),
         (0, false) => (format!("No name holds \"{filter}\""), String::new()),
         (_, true) => (heading.to_string(), rows),
         (_, false) => (format!("\"{filter}\""), rows),
     };
-    let room = LINE_CHARS.saturating_sub(tail.chars().count());
-    format!("{}{tail}", clip(&head, room))
+    match SUMMARY_CHARS.saturating_sub(tail.chars().count()) {
+        room if room < 4 => tail.trim_start_matches(" - ").to_string(),
+        room => format!("{}{tail}", clip(&head, room)),
+    }
 }

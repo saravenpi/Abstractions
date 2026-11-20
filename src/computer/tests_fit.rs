@@ -9,12 +9,20 @@ use crate::map::{named, offer};
 use crate::ui::theme;
 use crate::universe::{BodyId, PlanetClass, PlanetSpec, Rings, Universe};
 
+/// Returns the card of `planet` on `line`, led by its line on life as the panel shows it.
+fn alive(line: &super::Line, planet: &PlanetSpec, universe: &Universe) -> Card {
+    let mut shown = card(line, Some(planet), universe);
+    let life = super::odds::row(universe, planet, line.visited);
+    shown.rows.insert(0, life);
+    shown
+}
+
 /// Returns the cards of every class, of a gas giant with the most moons and wide rings, of a
-/// moon and of a planet not charted.
+/// moon and of a planet not charted, each charted one led by its line on life.
 fn planets(universe: &Universe) -> Vec<Card> {
     let classes = records().map(|record| {
         let (line, planet) = world(record);
-        card(&line, Some(&planet), universe)
+        alive(&line, &planet, universe)
     });
     let (line, planet) = world(records()[0]);
     let mut giant = PlanetSpec {
@@ -28,13 +36,20 @@ fn planets(universe: &Universe) -> Vec<Card> {
         ..planet.clone()
     };
     giant.record.class = PlanetClass::GasGiant;
-    let id = BodyId {
-        moon: 1,
-        ..planet.id
+    let moon = PlanetSpec {
+        id: BodyId {
+            moon: 1,
+            ..planet.id
+        },
+        ..planet
     };
-    let moon = PlanetSpec { id, ..planet };
-    let others = [Some(&giant), Some(&moon), None].map(|body| card(&line, body, universe));
-    classes.into_iter().chain(others).collect()
+    let others = [&giant, &moon].map(|body| alive(&line, body, universe));
+    let uncharted = card(&line, None, universe);
+    classes
+        .into_iter()
+        .chain(others)
+        .chain([uncharted])
+        .collect()
 }
 
 /// Returns the cards of the home star and of every known galaxy.
@@ -98,8 +113,8 @@ fn rows_taken(place: Target, course: Option<Target>, status: RouteStatus) -> usi
     rows.0
 }
 
-/// The buttons of every card wrap into the rows kept for them. While the drive waits one row
-/// fewer is taken, which leaves room for the reason, and the reason fits two lines.
+/// The buttons of every card wrap into the two rows kept for them, whatever the course and the
+/// route, and the reason the drive waits, which has its own line under them, fits two lines.
 #[test]
 fn the_buttons_of_the_card_fit_their_rows() {
     let universe = Universe::new(7);
@@ -113,7 +128,7 @@ fn the_buttons_of_the_card_fit_their_rows() {
     for place in places {
         assert!(rows_taken(place, None, idle) <= DEED_ROWS);
         assert!(rows_taken(place, Some(place), idle) <= DEED_ROWS);
-        assert!(rows_taken(place, Some(place), landed) < DEED_ROWS);
+        assert!(rows_taken(place, Some(place), landed) <= DEED_ROWS);
     }
     let inside = Block::Inside {
         star: true,

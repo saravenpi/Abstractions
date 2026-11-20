@@ -26,6 +26,7 @@ mod lens;
 mod locate;
 mod map;
 mod moons;
+mod odds;
 mod open;
 mod orbits;
 mod pointer;
@@ -37,6 +38,7 @@ mod route;
 mod rows;
 mod scene;
 mod season;
+mod section;
 mod semantic;
 mod show;
 mod sift;
@@ -73,9 +75,13 @@ mod tests_labels;
 #[cfg(test)]
 mod tests_lens;
 #[cfg(test)]
+mod tests_lists;
+#[cfg(test)]
 mod tests_moons;
 #[cfg(test)]
 mod tests_nav;
+#[cfg(test)]
+mod tests_odds;
 #[cfg(test)]
 mod tests_panel;
 #[cfg(test)]
@@ -110,7 +116,7 @@ pub use format::{distance, gravity};
 pub use hand::{Hand, to_map, turn};
 pub use home::{arranged, beacon, homes, homeward, pinned, tab_of, toward};
 pub use labels::{keep, priority, room, scale_bar};
-pub use layout::{GLYPH, clear_of_bands};
+pub use layout::{GLYPH, LIST_ROW, ROOM, clear_of_bands};
 pub use lens::{Lens, MAX_ZOOM};
 pub use locate::{SYSTEM_REACH, here, ship_position, target_position, whereabouts};
 pub use map::{ChartLayer, Field, SIZE, Sheet, body, field, frame, name, ring, ship, spot};
@@ -123,12 +129,13 @@ pub use rim::{APART, home_row, rank, rim, spread};
 pub use route::{Block, Destination, Engage, HOME_LABEL, RouteStatus, Target};
 pub use rows::{Line, View};
 pub use season::{climate_line, direction};
+pub use section::{heading, heading_row, row_node};
 pub use semantic::{DIVE, entry};
 pub use sift::Sort;
 pub use tab::Tab;
 pub use track::Known;
 pub use typing::Typing;
-pub use view::{Area, PANEL, SearchBox};
+pub use view::{Area, PANEL, SearchBox, Slot};
 pub use words::temperature;
 
 use bevy::prelude::*;

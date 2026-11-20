@@ -10,7 +10,7 @@ use super::open::opened;
 use super::sound::impact;
 use super::throw::{Jet, burst, scatter};
 use super::tune::CHIP;
-use super::wound::{Circuit, Cut, Wound};
+use super::wound::{Bled, Circuit, Cut, Wound};
 use crate::audio::{Body, Impact};
 use crate::avatar::strike::{Hit, Outcome};
 use crate::effects::Fling;
@@ -32,6 +32,7 @@ pub struct Strikes<'w, 's> {
     time: Res<'w, Time>,
     flings: MessageWriter<'w, Fling>,
     sounds: MessageWriter<'w, Impact>,
+    bled: MessageWriter<'w, Bled>,
     parts: Query<'w, 's, (&'static GlobalTransform, &'static Aabb), With<Part>>,
     roots: Query<'w, 's, &'static GlobalTransform, With<Beast>>,
 }
@@ -82,6 +83,7 @@ fn wound_of(
         major: open.major,
         age: 0.0,
         owed: 0.0,
+        plugged: false,
     }
 }
 
@@ -127,14 +129,15 @@ fn ring(s: &mut Strikes, hit: &Hit, (species, index): (&Species, usize), cut: bo
     });
 }
 
-/// Adds `cut` to the wound of `victim`, or gives it its first.
-fn record(commands: &mut Commands, victim: Entity, wound: Option<Mut<Wound>>, cut: Cut) {
+/// Adds `cut` to the wound of `victim`, or gives it its first, and says so.
+fn record(s: &mut Strikes, victim: Entity, wound: Option<Mut<Wound>>, cut: Cut) {
+    s.bled.write(Bled { victim, cut });
     match wound {
         Some(mut w) => w.add(cut),
         None => {
             let mut w = Wound::default();
             w.add(cut);
-            commands.entity(victim).insert(w);
+            s.commands.entity(victim).insert(w);
         }
     }
 }
@@ -162,7 +165,6 @@ pub fn cut(
         let normal = normal(&s.parts, hit);
         flake(&mut s, hit, (normal, (species, index), key));
         let gravity = (life, globe.gravity() as f32);
-        let gravity = (life, globe.gravity() as f32);
         let made = opening(
             gravity,
             (species, beast.index),
@@ -174,6 +176,6 @@ pub fn cut(
         if s.settings.gameplay.blood {
             burst(&mut s.flings, &jet, (cut.width, cut.depth), key);
         }
-        record(&mut s.commands, hit.victim, wound, cut);
+        record(&mut s, hit.victim, wound, cut);
     }
 }

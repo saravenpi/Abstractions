@@ -35,7 +35,7 @@ pub fn advance(
     for slot in wound.cuts.iter_mut() {
         let Some(cut) = slot.as_mut() else { continue };
         cut.age += dt;
-        let q = circuit.rate(cut, wound.lost, plugged(cut));
+        let q = circuit.rate(cut, wound.lost, cut.plugged || plugged(cut));
         if q <= 0.0 {
             *slot = None;
             continue;

@@ -57,7 +57,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
-pub use attack::{Broken, Carved, Dead, slay};
+pub use attack::{Attacking, Broken, Carved, Dead, Kind, slay};
 pub use beast::{Beast, Part};
 pub use herds::Herds;
 pub use near::{Nearby, Sighting};

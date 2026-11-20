@@ -26,7 +26,7 @@ use bevy::prelude::*;
 
 pub use open::{refused, stiffness};
 pub use sound::impact;
-pub use wound::{Circuit, Cut, Wound};
+pub use wound::{Bled, Circuit, Cut, Wound};
 
 use crate::avatar::strike::Hit;
 use crate::effects::Landed;
@@ -34,7 +34,7 @@ use crate::screens::playing;
 
 /// Registers the systems of bleeding: the cut before the harm of the blow, the drain after it.
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(
+    app.add_message::<Bled>().add_systems(
         Update,
         (
             cut::cut

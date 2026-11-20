@@ -46,6 +46,7 @@ mod tests;
 
 pub use looks::Looks;
 pub use marks::{Marked, Marks};
+pub use own::Own;
 pub use show::Shown;
 pub use spawn::{Stock, puppet};
 

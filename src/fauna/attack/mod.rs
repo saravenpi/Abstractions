@@ -37,8 +37,10 @@ mod tests_limbs;
 use bevy::prelude::*;
 
 pub use harm::{Dead, harm};
+pub use kinds::Kind;
 pub use limbs::Broken;
 pub use slay::{Carved, slay};
+pub use timing::Attacking;
 
 use crate::screens::{in_control, playing};
 

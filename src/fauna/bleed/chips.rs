@@ -25,7 +25,8 @@ fn hard(material: &Material) -> bool {
 
 /// Returns the chips that `blow` knocks off part `index` of `species`: none when the part has no
 /// hard outer layer or the blow cut through it, unless it `glanced` off along the
-/// surface. They share [`CHIP_SHARE`] of the energy of the blow as motion, so a harder blow throws more of them faster, up to [`CHIP_FAST`].
+/// surface. They share [`CHIP_SHARE`] of the energy of the blow as motion, so a harder blow throws
+/// more of them faster, up to [`CHIP_FAST`].
 pub fn chips(species: &Species, index: usize, blow: &Blow, glanced: bool) -> Option<Chips> {
     let (layers, skin) = stack(species, index);
     let outer = layers.first().filter(|_| skin > 0)?;

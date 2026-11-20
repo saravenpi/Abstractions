@@ -96,7 +96,10 @@ fn a_later_player_finds_the_wounds_and_rocks() {
     let [Event::World(world)] = seen.as_slice() else {
         panic!("the world");
     };
-    let whole = Rock { grams: 1000, ..rock };
+    let whole = Rock {
+        grams: 1000,
+        ..rock
+    };
     assert_eq!(world.rocks, [whole]);
     assert!(world.wounds.len() == 1 && world.wounds[0].1.plugged);
 }

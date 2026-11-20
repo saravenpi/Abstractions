@@ -31,6 +31,7 @@ fn cut(width: f32, major: bool) -> Cut {
         major,
         age: 0.0,
         owed: 0.0,
+        plugged: false,
     }
 }
 

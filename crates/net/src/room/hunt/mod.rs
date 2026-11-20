@@ -71,8 +71,10 @@ impl Hunting {
         hunt.wounds = kept.wounds;
         hunt.wounds.truncate(WOUNDS_MAX);
         for rock in kept.rocks.into_iter().take(ROCKS_MAX) {
-            hunt.rocks
-                .insert((rock.planet, rock.id), (rock.grams.min(rock.whole), rock.whole));
+            hunt.rocks.insert(
+                (rock.planet, rock.id),
+                (rock.grams.min(rock.whole), rock.whole),
+            );
         }
         hunt
     }

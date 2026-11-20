@@ -8,6 +8,7 @@
 //! local one. [`Hunted`] remembers what was sent or taken, so nothing is sent back.
 
 mod blows;
+mod field;
 mod held;
 pub mod hooks;
 mod item;
@@ -30,10 +31,12 @@ use bevy::time::common_conditions::on_timer;
 pub use hooks::Echoes;
 
 use super::link::{FromServer, Link, Receive};
+use crate::audio::Impact;
 use crate::avatar::strike::{Hit, Spear};
 use crate::fauna::Herds;
 use crate::space::Location;
 use crate::world::Terrain;
+use crate::world::rocks::RockTaken;
 
 /// Seconds between two looks at the kill ledger and the carcasses for what is new.
 const LOOK_EVERY: f32 = 0.25;
@@ -55,6 +58,10 @@ pub struct Hunted {
     tag: u32,
     /// What this machine holds, by the id of its item in the pack, as last sent.
     held: Option<u32>,
+    /// The wounds of animals plugged, as the animal and the part, sent or taken.
+    plugged: HashSet<(AnimalKey, u8)>,
+    /// What this machine played for the others, so that it is not sent back.
+    played: Played,
     /// What the server told, not applied yet.
     inbox: Vec<Event>,
     /// Every carcass the server told of, on every body, until it is gone.
@@ -69,6 +76,18 @@ pub struct Hunted {
     holding: HashMap<PlayerId, Vec<u8>>,
 }
 
+/// What the field acts of the others made this machine write into its own messages and components,
+/// until the sender of the same message has seen it.
+#[derive(Debug, Default)]
+pub struct Played {
+    /// The impacts sent to the audio.
+    impacts: Vec<Impact>,
+    /// The rock pieces told to the world.
+    rocks: Vec<RockTaken>,
+    /// The animals that began an attack for the others.
+    attacks: Vec<Entity>,
+}
+
 /// Run condition: this machine struck an animal lately, so its parts may have broken.
 fn watching(hunted: Res<Hunted>) -> bool {
     !hunted.victims.is_empty()
@@ -81,45 +100,67 @@ fn waiting(hunted: Res<Hunted>) -> bool {
 
 /// Registers the hunt of a session. Every system waits for a link, so single player runs none.
 pub fn plugin(app: &mut App) {
-    let linked = resource_exists::<Link>;
-    let look = || on_timer(Duration::from_secs_f32(LOOK_EVERY));
-    let ready = resource_exists::<Terrain>
-        .and_then(resource_exists::<Location>)
-        .and_then(resource_exists::<Herds>);
     app.add_message::<Hit>()
         .init_resource::<Hunted>()
         .init_resource::<Echoes>()
         .add_systems(
             Update,
-            (
-                reset.run_if(resource_added::<Link>),
-                take::receive
-                    .after(Receive)
-                    .run_if(linked)
-                    .run_if(on_message::<FromServer>),
-                (take::apply.run_if(waiting), take::plant.run_if(waiting))
-                    .chain()
-                    .run_if(linked)
-                    .run_if(look())
-                    .run_if(ready),
-                take::dress
-                    .run_if(linked)
-                    .run_if(look())
-                    .run_if(resource_exists::<Terrain>),
-                blows::hits.run_if(linked).run_if(on_message::<Hit>),
-                blows::breaks.run_if(linked).run_if(watching),
-                (ledger::kills, ledger::carves)
-                    .run_if(linked)
-                    .run_if(resource_exists::<Herds>)
-                    .run_if(look()),
-                spears::sticks
-                    .run_if(linked)
-                    .run_if(any_with_component::<Spear>),
-                spears::pulls.run_if(linked),
-                held::holds.run_if(linked),
-            )
-                .chain(),
-        );
+            reset.before(take::receive).run_if(resource_added::<Link>),
+        )
+        .add_plugins((takes, sends, field::plugin));
+}
+
+/// Registers what is taken of the hunt of the others: the server's events, applied once the world
+/// exists.
+fn takes(app: &mut App) {
+    let linked = resource_exists::<Link>;
+    let look = || on_timer(Duration::from_secs_f32(LOOK_EVERY));
+    let ready = resource_exists::<Terrain>
+        .and_then(resource_exists::<Location>)
+        .and_then(resource_exists::<Herds>);
+    app.add_systems(
+        Update,
+        (
+            take::receive
+                .after(Receive)
+                .run_if(linked)
+                .run_if(on_message::<FromServer>),
+            (take::apply.run_if(waiting), take::plant.run_if(waiting))
+                .chain()
+                .run_if(linked)
+                .run_if(look())
+                .run_if(ready),
+            take::dress
+                .run_if(linked)
+                .run_if(look())
+                .run_if(resource_exists::<Terrain>),
+        )
+            .chain(),
+    );
+}
+
+/// Registers what this machine tells of its own hunt: blows, kills, carves, spears and what it holds.
+fn sends(app: &mut App) {
+    let linked = resource_exists::<Link>;
+    let look = || on_timer(Duration::from_secs_f32(LOOK_EVERY));
+    app.add_systems(
+        Update,
+        (
+            blows::hits.run_if(linked).run_if(on_message::<Hit>),
+            blows::breaks.run_if(linked).run_if(watching),
+            (ledger::kills, ledger::carves)
+                .run_if(linked)
+                .run_if(resource_exists::<Herds>)
+                .run_if(look()),
+            spears::sticks
+                .run_if(linked)
+                .run_if(any_with_component::<Spear>),
+            spears::pulls.run_if(linked),
+            held::holds.run_if(linked),
+        )
+            .chain()
+            .after(take::receive),
+    );
 }
 
 /// Forgets what the last session sent or took.

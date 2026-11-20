@@ -1,5 +1,5 @@
 import bevy_pbr::render::forward_io::VertexOutput;
-import bevy_pbr::mesh_view_bindings::globals;
+import bevy_pbr::render::mesh_view_bindings::globals;
 
 struct Sheath {
     centre: vec4<f32>,

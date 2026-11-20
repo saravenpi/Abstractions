@@ -5,7 +5,7 @@ use bevy::math::{Vec2, Vec3, Vec3Swizzles};
 
 use super::motion::{Detail, Drive, Motion};
 use super::react::{Act, Mood};
-use super::tune::{FLEE_SPEED, PULL, SETTLE};
+use super::tune::{APPROACH_SPEED, FLEE_SPEED, PULL, SETTLE, STAND_OFF};
 use crate::life::body::{Body, Locomotion, slope};
 
 /// Where an animal should be and how fast its herd goes, in the animal's frame.
@@ -56,6 +56,33 @@ fn graze(motion: &Motion, body: &Body, ground: &dyn Fn(Vec2) -> f32) -> Vec3 {
     ahead.with_y(ground(ahead.xz()))
 }
 
+/// Returns the velocity and the look of `motion` for `body` doing what `mood` calls for, `towards`
+/// being the velocity that keeps it on its herd place.
+fn motive(
+    (motion, body): (&Motion, &Body),
+    (towards, mood): (Vec3, &Mood),
+    top: f32,
+    ground: &dyn Fn(Vec2) -> f32,
+) -> (Vec3, Option<Vec3>) {
+    let at = motion.root.at;
+    let gap = (mood.threat - at).with_y(0.0);
+    match mood.act() {
+        Act::Graze if towards.length() < 0.3 => (towards, Some(graze(motion, body, ground))),
+        Act::Graze => (towards, None),
+        Act::Alert => (towards * 0.2, Some(mood.threat)),
+        Act::Threaten => (Vec3::ZERO, Some(mood.threat)),
+        Act::Approach if gap.length() < STAND_OFF + body.length => (Vec3::ZERO, Some(mood.threat)),
+        Act::Approach => (
+            gap.normalize_or_zero() * top * APPROACH_SPEED,
+            Some(mood.threat),
+        ),
+        Act::Flee => (
+            -gap.normalize_or(Vec3::NEG_X) * top * FLEE_SPEED,
+            Some(mood.threat),
+        ),
+    }
+}
+
 /// Returns the slope of `ground` at `p` as its uphill gradient, rise over run, read over `span` metres.
 fn gradient(ground: &dyn Fn(Vec2) -> f32, p: Vec2, span: f32) -> Vec2 {
     let dx = ground(p + Vec2::X * span) - ground(p - Vec2::X * span);
@@ -94,15 +121,7 @@ pub fn drive(
 ) -> Drive {
     let at = motion.root.at;
     let towards = follow(at, aim, pace.top);
-    let (velocity, look) = match mood.act() {
-        Act::Graze if towards.length() < 0.3 => (towards, Some(graze(motion, body, ground))),
-        Act::Graze => (towards, None),
-        Act::Alert => (towards * 0.2, Some(mood.threat)),
-        Act::Flee => {
-            let away = (at - mood.threat).with_y(0.0).normalize_or(Vec3::X);
-            (away * pace.top * FLEE_SPEED, Some(mood.threat))
-        }
-    };
+    let (velocity, look) = motive((motion, body), (towards, mood), pace.top, ground);
     let climb = match body.locomotion {
         Locomotion::Fly | Locomotion::Swarm => ground(at.xz()) + cruise(body) - at.y,
         _ => 0.0,

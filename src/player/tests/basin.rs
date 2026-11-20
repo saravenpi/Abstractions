@@ -71,6 +71,7 @@ impl Basin {
             afloat: above_sea(&anchor, &globe, Vec3::Y * DEEP),
             gravity: 22.0,
             air: 1.0,
+            pace: 1.0,
         };
         Self {
             motion: Motion::default(),
@@ -86,6 +87,7 @@ impl Basin {
             forward: 1.0,
             right: 0.0,
             sprint: false,
+            crouch: false,
             jump,
             yaw: 0.0,
             steer: false,

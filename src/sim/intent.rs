@@ -35,6 +35,8 @@ pub enum Intent {
     /// Run. In the air it fires the boots: a brake with the wingsuit folded, the boost with it
     /// spread. Sent while held.
     Boost,
+    /// Crouch: lower the body and walk slowly, on the ground only. Sent while held.
+    Crouch,
     /// Spread or fold the wingsuit, as a jump asked again in the air does. Sent on the step the
     /// key goes down.
     Wings,

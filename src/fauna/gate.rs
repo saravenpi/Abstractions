@@ -8,6 +8,7 @@ use bevy::prelude::*;
 use super::beast::Beast;
 use super::herds::Herds;
 use super::near::Nearby;
+use super::senses::Blood;
 use crate::space::{Anchor, Frame};
 use crate::universe::{BodyId, PlanetSpec};
 use crate::world::Terrain;
@@ -42,13 +43,13 @@ pub fn moved(anchor: Option<Res<Anchor>>, terrain: Option<Res<Terrain>>) -> bool
     anchor.is_some_and(|a| a.is_changed()) || terrain.is_some_and(|t| t.is_changed())
 }
 
-/// Despawns every animal at once and forgets the herds and their marks, when the anchor left the planet they were
-/// drawn on or its life is gone.
+/// Despawns every animal at once and forgets the herds, their marks and the blood, when the anchor
+/// left the planet they were drawn on or its life is gone.
 pub fn forget(
     mut commands: Commands,
     (anchor, terrain): (Option<Res<Anchor>>, Option<Res<Terrain>>),
     mut spec: ResMut<Spec>,
-    (mut herds, mut nearby): (ResMut<Herds>, ResMut<Nearby>),
+    (mut herds, mut nearby, mut blood): (ResMut<Herds>, ResMut<Nearby>, ResMut<Blood>),
     beasts: Query<Entity, With<Beast>>,
 ) {
     let here = anchor.and_then(|a| footing(&a));
@@ -60,6 +61,7 @@ pub fn forget(
         commands.entity(beast).despawn();
     }
     herds.clear();
+    blood.clear();
     *nearby = Nearby::default();
     spec.planet = None;
 }

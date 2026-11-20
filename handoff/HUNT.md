@@ -147,3 +147,48 @@ Starts after 0.11 ships, or in parallel on its own branch `hunt` from `ecosystem
 2. **First weapons:** melee (cut, pierce, crush) **and a thrown spear** in the first release. The spear joins wave H2 (`swing` owns throwing; `weapon` adds a "throw" intent stat: balance point near the middle, flight drag, penetration on arrival).
 3. **Predators hunt the robot** in the first release, with the same visible awareness rules, never right after a landing (wave H3, `attacks`).
 4. **Hitstop on by default,** with a setting to reduce or turn it off (wave H2, `swing`; the option goes in the gameplay settings).
+
+## Corrections from H1 (2026-11-20)
+
+The `craft` model (commits 190dbb3, 7fd58de) found these errors in the plan above; the code follows the corrected rule.
+
+- **Wind-up:** `reach / v × 0.5` gives about 23 ms, far too short. Accelerating evenly over a quarter turn takes `2 · arc / ω`, about 0.13 s for the worked example, stretched by `τ / budget` above the grip budget.
+- **Drying is per class:** dry horn keratin gets tougher (2.56 to 3.86), antler and cuticle lose toughness, and drying raises strength (antler 108 to 188 MPa). One factor for every class is wrong; follow-up: a factor per class.
+- **Thrust speed:** `∝ 1/√m` diverges for light weapons; the model adds 1 kg of arm mass, `v = √(2E / (m + m_arm))`, and the throw uses it too.
+- **Blunt blows** against layers softer than 1 GPa bruise and stop instead of breaking them.
+- **Fire-hardening** needs a heat source; with no fire mechanic, only lava or ground above 600 K counts, so a temperate world cannot fire-harden.
+- **Range of the swing law:** measured up to about 0.5 kg·m²; bigger builds are extrapolation.
+- **Open:** no length limit from the size of the source bone (the solver proposes 1.4 m bone shafts), no buckling check for pierce shafts, obsidian chips on the first blow (harsh), an item is 68 bytes (listing each planet seed once would get it under 60).
+
+## Additions from the owner (2026-11-20, evening)
+
+### Carcasses
+
+- A killed animal does not fade: its body falls with a short physics-driven collapse and stays as a carcass at that place, for every player (the kill ledger records where and when).
+- The carcass is what you harvest: each body part still on it gives its tissue, by the tool rule. Parts taken are gone from the mesh, so a carcass shows what is left.
+- It decays over time into the bones sign that already exists, and scavengers of the food web come to it, as they do for kills between species.
+- A thrown spear that hit stays stuck in the animal, then in the carcass, until you pull it out.
+
+### Robot health by part
+
+- The robot has health per part: head, torso, each arm, each leg, and the gear on its back (wings, boots). Total frame integrity is shown in the HUD corner (roadmap), with one line per damaged part.
+- Where a hit lands decides the part: the attack's contact point against the robot's part bounds.
+- Damage shows on the body, procedurally, so anyone can see what is hurt: dents and scorch on the plates of that part, sparks, a loose or dangling panel, a dimmed or flickering eye for the head.
+- Damage changes what the part can do, read by the systems that already drive it:
+
+| Part | Effect as it is damaged |
+| --- | --- |
+| Leg | Limp in the procedural walk, lower speed and jump; both legs badly hurt: crawl |
+| Arm | Slower swing and weaker throw with that arm, shakier aim; a broken arm drops a two-handed weapon to one hand |
+| Torso | Less carrying capacity, slower recovery after a swing |
+| Head | Static and dropouts in the view and HUD, a shorter companion scan |
+| Wings, boots | Less lift or thrust, uneven: a damaged wing pulls to one side |
+
+- Repair: at the base for free, in the field with carried materials through the crafting grammar (a plate needs hardness, a joint needs a binding). A destroyed robot follows the roadmap rule: you wake in a spare body at the base and your gear waits where you fell.
+- Animals already have health; the same per-part idea applies to them through part breaking (a broken leg limps, a broken horn cannot charge).
+
+### Plan changes
+
+- Wave H3 `attacks` also owns: carcasses, the collapse, the stuck spear, robot health by part with its effects and damage looks.
+- Wave H3 `craft` also owns: harvesting from the carcass by part, and field repair.
+- Wave H4 `net`: carcasses and robot part health on the wire.

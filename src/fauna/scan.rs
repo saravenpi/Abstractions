@@ -64,7 +64,7 @@ pub fn scan(mut s: Scan, mut wants: Local<Vec<Want>>) {
             (eye, from.time),
         );
     }
-    members(life, &s.herds.herds, from, &mut wants);
+    members(life, (&s.herds.herds, &s.herds.ledger), from, &mut wants);
     visitors(life, &s.herds.carcasses, from, &mut wants);
     let mut room = MOST.saturating_sub(keep(&mut s, &wants));
     let now = s.time.elapsed_secs();

@@ -9,6 +9,7 @@ use super::clock::Clock;
 use super::neck::Neck;
 use super::pose::Pose;
 use super::rig::{SEGS, Seg, locals};
+use super::strike::Layer;
 use super::touch::tune::RISE_SECONDS;
 use super::{AvatarPose, Mode};
 use crate::player::wrap;
@@ -116,15 +117,18 @@ pub struct Bone(pub Seg);
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Skeleton(pub [Entity; SEGS]);
 
-/// Poses every body from its own input: every segment turns in its joint, nothing else moves.
+/// Poses every body from its own input, with the strike layer laid over it: every segment turns in
+/// its joint, nothing else moves.
 pub fn animate(
     time: Res<Time>,
-    mut bodies: Query<(&mut Anim, &AvatarPose, &Skeleton)>,
+    mut bodies: Query<(&mut Anim, &AvatarPose, &Skeleton, Option<&Layer>)>,
     mut bones: Query<&mut Transform, With<Bone>>,
 ) {
     let dt = time.delta_secs().min(MAX_DT);
-    for (mut anim, input, skeleton) in &mut bodies {
-        let frames = locals(&anim.step(input, dt));
+    for (mut anim, input, skeleton, layer) in &mut bodies {
+        let pose = anim.step(input, dt);
+        anim.pose = layer.map_or(pose, |layer| layer.apply(pose));
+        let frames = locals(&anim.pose);
         for (bone, frame) in skeleton.0.into_iter().zip(frames) {
             if let Ok(mut transform) = bones.get_mut(bone) {
                 *transform = frame;

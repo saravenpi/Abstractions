@@ -18,10 +18,10 @@ use crate::audio::{AudioCue, Call};
 use crate::fauna::beast::Beast;
 use crate::fauna::gate::Spec;
 use crate::fauna::herds::{Herds, herd_arc};
-use crate::fauna::react::Act;
+use crate::fauna::senses::Stance;
 use crate::fauna::site;
 use crate::life::Life;
-use crate::life::signs::calls::{Calling, Cry, bold, chorus, contact, cries, rhythm, voice};
+use crate::life::signs::calls::{Calling, Cry, chorus, contact, cries, distress, rhythm, voice};
 use crate::render::GameCamera;
 use crate::space::{Anchor, Clock, Placed};
 use crate::world::Terrain;
@@ -88,7 +88,7 @@ pub fn hear(mut h: Hear, mut heard: Local<Heard>) {
         pos,
         view: *camera,
     };
-    gather(&h, life, &mut heard, (from, now));
+    gather(&h, &mut heard, (from, now));
     let Heard { calls, loud, .. } = &mut *heard;
     let tempo = |c: &Calling| {
         let species = life.species.get(usize::from(c.species))?;
@@ -101,9 +101,9 @@ pub fn hear(mut h: Hear, mut heard: Local<Heard>) {
     }
 }
 
-/// Fills the calls of `heard` with the contact calls, hunt cries and robot alarms and threats of
-/// `life` within `span`.
-fn gather(h: &Hear, life: &Life, heard: &mut Heard, span: (f64, f64)) {
+/// Fills the calls of `heard` with the contact calls, hunt cries and robot alarms and threats and
+/// the distress of the hurt, within `span`.
+fn gather(h: &Hear, heard: &mut Heard, span: (f64, f64)) {
     let Heard { calls, fled, .. } = heard;
     calls.clear();
     let herds = &h.herds.herds;
@@ -125,20 +125,31 @@ fn gather(h: &Hear, life: &Life, heard: &mut Heard, span: (f64, f64)) {
             calls.push((c, centre(c.herd).unwrap_or(hunt.to)))
         });
     }
-    alarms(h, life, (calls, fled), span.1);
+    alarms(h, (calls, fled), span.1);
+    cries_of_pain(h, calls, span);
 }
 
-/// Adds to `calls` an alarm for each herd of `life` with an animal fleeing a robot at universe time
-/// `now`, or a threat for a herd of a bold species with an animal standing its ground, one per herd
-/// every [`ALARM_GAP`] seconds, as kept in `fled`.
-fn alarms(h: &Hear, life: &Life, (calls, fled): Lists<'_>, now: f64) {
+/// Adds to `calls` the distress cries of the hurt animals drawn, within the universe times `span`.
+fn cries_of_pain(h: &Hear, calls: &mut Vec<(Calling, DVec3)>, span: (f64, f64)) {
+    for (beast, placed) in &h.beasts {
+        let hurt = 1.0 - beast.wits.health.share();
+        let (herd, slot) = beast.lead.key();
+        let who = (herd, beast.index, slot);
+        if let Some(c) = distress(who, hurt, span) {
+            calls.push((c, placed.pos.normalize()));
+        }
+    }
+}
+
+/// Adds to `calls` an alarm for each herd with an animal fleeing, or a threat for one standing its
+/// ground, at universe time `now`, one per herd every [`ALARM_GAP`] seconds, as kept in `fled`.
+fn alarms(h: &Hear, (calls, fled): Lists<'_>, now: f64) {
     fled.retain(|(_, at)| now - at < ALARM_GAP);
     for (beast, placed) in &h.beasts {
         let (herd, slot) = beast.lead.key();
-        let stands = life.species.get(usize::from(beast.index)).is_some_and(bold);
-        let cry = match beast.mood.act() {
-            Act::Flee => Cry::Alarm,
-            Act::Alert if stands => Cry::Threat,
+        let cry = match (beast.mood.fleeing, beast.wits.stance) {
+            (true, _) => Cry::Alarm,
+            (false, Stance::Threaten) => Cry::Threat,
             _ => continue,
         };
         if fled.iter().any(|(id, _)| *id == herd) {

@@ -10,7 +10,7 @@ use super::clock::Clock;
 use super::pose::{Core, Pose};
 use super::touch::tune::RISE_SECONDS;
 use super::tune::BLEND_SECONDS;
-use super::{AvatarPose, Mode, air, flight, ground, leap, touch, water};
+use super::{AvatarPose, Mode, air, crouch, flight, ground, leap, touch, water};
 use crate::player::wrap;
 
 /// Number of modes.
@@ -72,8 +72,11 @@ impl Weights {
 /// Returns the pose of `mode` for the state `input` at the instant `clock`.
 pub fn pose_of(mode: Mode, input: &AvatarPose, clock: &Clock) -> Pose {
     match mode {
-        Mode::Idle => ground::hands(ground::idle(clock), input, clock),
-        Mode::Walk | Mode::Run => ground::stride(input, clock),
+        Mode::Idle => {
+            let base = ground::hands(ground::idle(clock), input, clock);
+            crouch::bent(base, input, (clock, false))
+        }
+        Mode::Walk | Mode::Run => crouch::bent(ground::stride(input, clock), input, (clock, true)),
         Mode::Jump => leap::jump(clock),
         Mode::Fall => air::fall(input, clock),
         Mode::Land => ground::land(input, clock),

@@ -3,10 +3,11 @@
 //!
 //! The herds of the planet's life are pure functions of universe time, read through one
 //! `life::herd::Watch` around the local robot. A few times a second the scan spawns the members near
-//! the robot and fades out those that went; every frame the walk steps each one towards its place in
-//! its herd, through its own reactions to the robots and hunters near it, and moves to the calls it
-//! makes.
+//! the robot and fades out those that went; every frame the senses fill each one's awareness of the
+//! robots and hunters near it and set its stance, the walk steps it towards its place in its herd
+//! through that stance, and the voice moves its body to the calls it makes.
 
+mod attack;
 mod beast;
 mod fade;
 mod gate;
@@ -24,6 +25,7 @@ mod react;
 #[cfg(test)]
 mod rig;
 mod scan;
+pub mod senses;
 mod signs;
 mod site;
 #[cfg(test)]
@@ -52,6 +54,8 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
+pub use attack::Dead;
+pub use beast::Part;
 pub use near::{Nearby, Sighting};
 
 use crate::life::SpeciesId;
@@ -68,6 +72,13 @@ pub struct Creature {
     pub slot: u8,
 }
 
+/// What swings and spears may strike: a drawn animal that is not [`Dead`].
+pub type Live = (With<Creature>, Without<Dead>);
+
+/// Holds an animal still: its walk skips it while a hitstop freezes it with the robot that struck it.
+#[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct Frozen;
+
 /// Registers the fauna systems: the forgetting of animals when the planet under the anchor changes,
 /// then, on a living planet in play, the scan, the walk and the fades.
 pub(super) fn plugin(app: &mut App) {
@@ -83,6 +94,7 @@ pub(super) fn plugin(app: &mut App) {
                 gate::forget.run_if(gate::moved),
                 (
                     scan,
+                    senses::sense,
                     signs::sing.run_if(signs::sounding),
                     walk::walk,
                     fade::fade,
@@ -95,6 +107,6 @@ pub(super) fn plugin(app: &mut App) {
                 .chain()
                 .after(crate::effects::Sight),
         )
-        .add_plugins(signs::plugin);
+        .add_plugins((senses::plugin, signs::plugin, attack::plugin));
     app.add_plugins(guide::plugin);
 }

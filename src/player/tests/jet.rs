@@ -22,6 +22,7 @@ fn frame(afloat: f32, pitch: f32) -> Step {
         afloat,
         gravity: 22.0,
         air: 1.0,
+        pace: 1.0,
     }
 }
 

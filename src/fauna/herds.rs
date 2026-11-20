@@ -6,7 +6,7 @@ use bevy::prelude::*;
 
 use super::site;
 use super::tune::{WATCH_MOVE, WATCH_RADIUS, WATCH_SPARE};
-use crate::life::herd::{Ground, Herd, Search, Watch};
+use crate::life::herd::{Ground, Herd, Ledger, Search, Watch};
 use crate::life::hunt::{Carcass, Hunt};
 use crate::life::{Life, herd};
 use crate::universe::PlanetSpec;
@@ -38,6 +38,8 @@ pub struct Herds {
     pub hunts: Vec<Hunt>,
     /// Carcasses within the search radius at the last scan.
     pub carcasses: Vec<Carcass>,
+    /// Members killed by players, gone from their herds until they recover.
+    pub ledger: Ledger,
 }
 
 /// Runs `f` with the herds' view of `land` at universe `time`.
@@ -88,6 +90,7 @@ impl Herds {
         self.herds = read(land, time, |g| watch.herds(land.life, g, time));
         self.hunts = watch.hunts(land.life, time);
         self.carcasses = watch.carcasses(land.life, time);
+        self.ledger.prune(time);
     }
 
     /// Returns herd `id` at universe `time`, wherever it has gone, or nothing when the watch does not

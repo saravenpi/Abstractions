@@ -13,6 +13,14 @@ pub fn on_off(value: bool) -> String {
     if value { "On" } else { "Off" }.to_string()
 }
 
+/// Formats a strength from 0 to 1 in tenths, Off at 0.
+pub fn strength(value: f32) -> String {
+    match value > 0.0 {
+        true => format!("{value:.1}"),
+        false => "Off".to_string(),
+    }
+}
+
 /// Returns the value of a graphics toggle, if the field is one.
 fn flag_value(g: &Graphics, field: Field) -> Option<bool> {
     match field {
@@ -72,6 +80,7 @@ pub fn display(settings: &Settings, field: Field) -> String {
         Field::Music => format!("{:.1}", a.music),
         Field::Effects => format!("{:.1}", a.effects),
         Field::CheckUpdates => on_off(settings.updates.check_at_launch),
+        Field::Hitstop => strength(settings.gameplay.hitstop),
         Field::Key(bind) => key_name(bind.key(&c.keys)),
         _ => String::new(),
     }

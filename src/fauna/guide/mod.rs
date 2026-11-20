@@ -15,7 +15,7 @@ pub mod relations;
 #[cfg(test)]
 mod rig;
 pub mod seen;
-mod show;
+pub(crate) mod show;
 pub mod view;
 pub mod words;
 

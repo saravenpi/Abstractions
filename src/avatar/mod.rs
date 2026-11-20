@@ -5,14 +5,12 @@
 //! input is [`AvatarPose`]: one system fills what the player controller already tells
 //! ([`AvatarSet::Fill`]), anything ordered after it may overwrite the result, and
 //! [`AvatarSet::Animate`] turns it into joint angles. [`Shown`] chooses how much of the body is drawn.
-//!
-//! The pose math is pure (`gait`, `ground`, `leap`, `air`, `water`, `flight`, `blend`, `neck`, `rig`,
-//! `wing`, `face`).
 
 mod air;
 mod animate;
 mod blend;
 mod clock;
+mod crouch;
 mod dress;
 mod dust;
 mod face;
@@ -34,6 +32,7 @@ mod rig;
 mod seated;
 mod show;
 mod spawn;
+pub mod strike;
 mod touch;
 pub mod tune;
 mod warm;
@@ -131,9 +130,9 @@ impl Mode {
     }
 }
 
-/// Everything a body needs to know to pose itself, on the root of that body. Angles are
-/// radians, speeds meters per second. The filler and the dresser write the one of the player at
-/// this machine; whatever writes the one of another body makes that body move the same way.
+/// Everything a body needs to pose itself, on its root. Angles are radians, speeds meters per
+/// second. The filler and the dresser write the one of the player at this machine; whatever
+/// writes the one of another body makes that body move the same way.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Default)]
 pub struct AvatarPose {
     /// What the body is doing.
@@ -175,6 +174,8 @@ pub struct AvatarPose {
     pub clearance: f32,
     /// How prone the flight gear lays the body, from 0 (upright) to 1 (flat along its nose).
     pub prone: f32,
+    /// How far the body is crouched, from 0 (standing) to 1 (fully down).
+    pub crouch: f32,
     /// Felt load in g while the gear carries the body: 1 in steady flight, more in a pull-up.
     pub load: f32,
 }
@@ -228,6 +229,7 @@ fn systems(app: &mut App) {
                 .in_set(AvatarSet::Animate),
         );
     seated::systems(app);
+    strike::plugin(app);
 }
 
 /// Registers the avatar: its input, its visibility setting and the systems that run it while

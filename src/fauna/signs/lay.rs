@@ -1,5 +1,6 @@
-//! The lay: once a second, the signs of life around the local robot, read from the watch of the signs
-//! and painted on the ground; and their forgetting when the planet they lie on is left or dead.
+//! The lay: once a second, the signs of life around the local robot, read from the watch of the signs,
+//! with the blood of wounded animals, and painted on the ground; and their forgetting when the planet
+//! they lie on is left or dead.
 
 use bevy::ecs::system::SystemParam;
 use bevy::light::NotShadowCaster;
@@ -13,6 +14,7 @@ use crate::fauna::gate::{Spec, living};
 use crate::fauna::ground::Heights;
 use crate::fauna::herds::{Land, herd_arc, read};
 use crate::fauna::place::Spot;
+use crate::fauna::senses::Blood;
 use crate::life::herd::{Search, Watch};
 use crate::life::signs;
 use crate::life::signs::Mark;
@@ -30,6 +32,7 @@ pub struct Lay<'w, 's> {
     anchor: Res<'w, Anchor>,
     spec: Res<'w, Spec>,
     trail: ResMut<'w, Trail>,
+    blood: ResMut<'w, Blood>,
     cropped: ResMut<'w, Cropped>,
     meshes: ResMut<'w, Assets<Mesh>>,
     materials: ResMut<'w, Assets<StandardMaterial>>,
@@ -92,6 +95,8 @@ pub fn lay(mut l: Lay, heights: Local<Heights>) {
         planet: &planet,
     };
     l.trail.read(land, at, l.clock.seconds);
+    let span = (l.clock.seconds, globe.radius());
+    l.blood.lay((at, RADIUS), span, &mut l.trail.signs);
     crop(&l.trail, &mut l.cropped);
     if l.terrain.is_changed() {
         heights.clear();

@@ -83,7 +83,10 @@ pub fn ship(active: Tab) -> impl Bundle {
 pub fn general(active: Tab) -> impl Bundle {
     (
         page(Tab::General, active),
-        children![toggle("Check for updates at launch", Field::CheckUpdates)],
+        children![
+            toggle("Check for updates at launch", Field::CheckUpdates),
+            stepper("Hitstop", Field::Hitstop),
+        ],
     )
 }
 

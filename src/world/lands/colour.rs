@@ -1,7 +1,7 @@
 //! The one colour of the ground: what a place of a planet looks like, read the same way by the near mesh,
 //! the far mesh, the ball and the map, so a place keeps its colour at every height of the camera.
 //!
-//! The surface follows from the height and the slope of the land read at a fixed scale, as
+//! The surface follows from the height and the slope of the land, read for cells of 125 m or more at a fixed scale, as
 //! [`Globe::glance`] reads them, and never from the facet of the mesh that happens to draw it, whose size
 //! changes with the level of detail. A carpet of ground cover shifts the colour of grass to the mean colour
 //! of its turf, and the ground shader adds only the detail of the turf around that mean.

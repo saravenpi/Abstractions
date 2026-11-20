@@ -1,6 +1,7 @@
 //! What the colour of a triangle reads of the ground under it, and how much turf it holds.
 
 use super::patch::Patch;
+use super::tune::{COARSE, FINE, ROCK_ANGLE, ROCK_BAND};
 use crate::world::SEA_LEVEL;
 use crate::world::lands::Reading;
 
@@ -44,4 +45,18 @@ pub fn read(drawn: f32, reading: Option<Reading>, facet: impl FnOnce() -> f32) -
 pub fn level(v: &[[f32; 3]; 3]) -> f32 {
     let thick = (v[0][2] + v[1][2] + v[2][2]) / 3.0;
     (thick.clamp(0.0, 1.0) * TURF_LEVELS).round()
+}
+
+/// Returns the scale in metres a cell `cell` metres wide is classed at: its own width, from [`FINE`] to
+/// [`COARSE`].
+pub fn scale(cell: f32) -> f32 {
+    cell.clamp(FINE, COARSE)
+}
+
+/// Returns the share from 0 to 1 of rock in a coarse cell whose land rises `slope` over [`COARSE`] metres: a
+/// smooth step over [`ROCK_BAND`] degrees around [`ROCK_ANGLE`].
+pub fn rock_share(slope: f32) -> f32 {
+    let degrees = slope.atan().to_degrees();
+    let t = ((degrees - (ROCK_ANGLE - ROCK_BAND / 2.0)) / ROCK_BAND).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
 }

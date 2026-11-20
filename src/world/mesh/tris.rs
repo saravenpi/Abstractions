@@ -6,7 +6,7 @@
 use bevy::prelude::*;
 
 use super::patch::Patch;
-use super::read::{TURF_BAND, TURF_LEVELS, facet, level, read};
+use super::read::{TURF_BAND, TURF_LEVELS, facet, level, read, rock_share};
 use super::skirt;
 use super::style::{Style, tone};
 use crate::world::lands::Reading;
@@ -34,6 +34,9 @@ pub fn ground(height: f32, slope: f32, base: Biome, near: Biome) -> (f32, f32, f
     home.colour(Reading { height, slope }, [base, near], None).0
 }
 
+/// Slope far over the rock threshold, to read the rock a place would be.
+const STEEP: f32 = 100.0;
+
 /// What one triangle is painted from: its cell, which of the two triangles of the cell it is, and the gain of its tone.
 type Ground = (Cell, usize, f32);
 
@@ -58,17 +61,45 @@ fn shade(
     let reading = read(h.iter().sum::<f32>() / 3.0, cell.reading, || {
         facet(patch, c)
     });
-    let (rgb, surface) = style.lands.colour(reading, biomes, cell.bed);
-    let rgb = match (style.verdure, surface) {
+    let classed = |slope: f32| {
+        style
+            .lands
+            .colour(Reading { slope, ..reading }, biomes, cell.bed)
+    };
+    let (open, surface) = match cell.reading {
+        Some(_) => classed(0.0),
+        None => classed(reading.slope),
+    };
+    let open = carpeted(style, turf, c, (open, surface));
+    let (rgb, surface) = match cell.reading {
+        Some(r) => {
+            let (rock, kind) = classed(STEEP);
+            let share = rock_share(r.slope);
+            let mixed = Vec3::from(open).lerp(Vec3::from(rock), share);
+            let rgb: (f32, f32, f32) = mixed.into();
+            (rgb, if share > 0.5 { kind } else { surface })
+        }
+        None => (open, surface),
+    };
+    (srgb(rgb.0 * gain, rgb.1 * gain, rgb.2 * gain), surface)
+}
+
+/// Returns the colour `ground` of a triangle over vertices `c` with grass moved to the mean colour of its carpet.
+fn carpeted(
+    style: &Style,
+    turf: Option<Turf>,
+    c: [[usize; 2]; 3],
+    ground: ((f32, f32, f32), Surface),
+) -> (f32, f32, f32) {
+    match (style.verdure, ground.1) {
         (Some(verdure), Surface::Grass) => {
             let thick = turf.map_or(verdure.cover, |turf| {
                 level(&c.map(|[i, j]| turf(i, j))) / TURF_LEVELS
             });
-            verdure.carpeted(rgb, thick)
+            verdure.carpeted(ground.0, thick)
         }
-        _ => rgb,
-    };
-    (srgb(rgb.0 * gain, rgb.1 * gain, rgb.2 * gain), surface)
+        _ => ground.0,
+    }
 }
 
 /// Returns the turf coordinates of the three vertices `c` of a triangle of `surface`: their wrapped

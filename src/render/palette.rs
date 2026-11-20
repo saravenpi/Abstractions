@@ -9,6 +9,7 @@ use super::atmosphere::horizon_dip;
 use super::celestial::{smoothstep, sun_direction};
 use super::clock::START_PHASE;
 use super::daylight::{NIGHT_EDGE, daylight};
+use super::exposure::{Metered, lifted};
 use super::moonlight::{Moonlight, moonlit};
 use super::scatter::{peak, scattered, transmit};
 use super::vantage::{LocalSystem, Vantage};
@@ -168,7 +169,7 @@ impl Palette {
 /// and the clear color.
 fn update_palette(
     place: (Res<SunDir>, Res<Vantage>, Res<LocalSystem>, Res<Moonlight>),
-    weather: Res<LocalWeather>,
+    (weather, metered): (Res<LocalWeather>, Res<Metered>),
     mut palette: ResMut<Palette>,
     mut ambient: ResMut<GlobalAmbientLight>,
     mut clear: ResMut<ClearColor>,
@@ -176,7 +177,14 @@ fn update_palette(
     let (sun, vantage, local, moon) = place;
     let (ground, star) = Palette::under(&sun, &vantage, &local);
     let look = weather.look();
-    *palette = moonlit(look.sky(ground).seen(&sun, vantage.air, star), &moon);
+    let seen = moonlit(look.sky(ground).seen(&sun, vantage.air, star), &moon);
+    let gain = metered.gain();
+    *palette = Palette {
+        zenith: lifted(seen.zenith, gain),
+        horizon: lifted(seen.horizon, gain),
+        cloud: lifted(seen.cloud, gain),
+        ..seen
+    };
     ambient.color = srgb(palette.ambient);
     ambient.brightness = palette.ambient_brightness;
     clear.0 = srgb(palette.horizon);
@@ -188,5 +196,7 @@ fn update_palette(
 pub(super) fn plugin(app: &mut App) {
     app.insert_resource(Palette::at(START_PHASE))
         .init_resource::<LocalWeather>()
+        .init_resource::<Metered>()
+        .add_plugins(super::exposure::plugin)
         .add_systems(Update, update_palette);
 }

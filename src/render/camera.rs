@@ -4,7 +4,7 @@ use bevy::camera::{Hdr, RenderTarget};
 use bevy::core_pipeline::prepass::{DepthPrepass, NormalPrepass};
 use bevy::ecs::system::SystemParam;
 use bevy::pbr::ScreenSpaceAmbientOcclusion;
-use bevy::post_process::bloom::Bloom;
+use bevy::post_process::bloom::{Bloom, BloomPrefilter};
 use bevy::prelude::*;
 use bevy::render::view::{Msaa, Tonemapping};
 
@@ -18,6 +18,14 @@ use crate::settings::{Graphics, Persistent, Settings};
 
 /// Strength of the bloom glow.
 const BLOOM_INTENSITY: f32 = 0.12;
+
+/// Brightness in scene light, after the exposure, below which nothing glows. The sun on a white
+/// ground gives about 3.4, on a mid grey ground about 1: only what shines by itself, an exhaust,
+/// a lamp, the star or lava, and the whitest snow in full sun, goes above it.
+const BLOOM_THRESHOLD: f32 = 2.5;
+
+/// Share of [`BLOOM_THRESHOLD`] over which the glow fades in around it, so no edge shows.
+const BLOOM_SOFTNESS: f32 = 0.5;
 
 /// Sets the vertical field of view in degrees on a perspective projection.
 pub fn set_fov(projection: &mut Projection, fov: u32) {
@@ -42,6 +50,10 @@ pub fn configure_camera(commands: &mut Commands, camera: Entity, graphics: &Grap
     match graphics.bloom {
         true => entity.insert(Bloom {
             intensity: BLOOM_INTENSITY,
+            prefilter: BloomPrefilter {
+                threshold: BLOOM_THRESHOLD,
+                threshold_softness: BLOOM_SOFTNESS,
+            },
             ..Bloom::NATURAL
         }),
         false => entity.remove::<(Bloom, Hdr)>(),

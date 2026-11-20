@@ -13,6 +13,7 @@ mod clouds;
 mod daylight;
 mod dome;
 mod entry;
+mod exposure;
 mod fog;
 mod galaxy_light;
 mod glow;

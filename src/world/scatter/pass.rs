@@ -4,41 +4,20 @@ use bevy::prelude::*;
 use rand::RngExt;
 use rand_chacha::ChaCha8Rng;
 
-use super::air::Air;
-use super::density::{Fields, choose};
-use super::grow::Flora;
-use super::metric::Metric;
-use super::relief::Relief;
+pub use super::ctx::Ctx;
+use super::density::choose;
 use super::sow::cost;
 use super::spacing::{crowded, ground, rock, room, sunk};
 use super::{BIG_CAP, Placement, SMALL_CAP, TRI_BUDGET, deep};
 use crate::world::lands::thrive::{frozen, vigor};
 use crate::world::propmesh::{Plant, VARIANTS};
-use crate::world::{Biome, CHUNK_SIZE, SEA_LEVEL, Surface, Terrain};
+use crate::world::{Biome, CHUNK_SIZE, SEA_LEVEL, Surface};
 
 /// Highest ground a willow may stand on.
 const WILLOW_CEILING: f32 = 5.0;
 
 /// Distance from a willow to the pond it leans over, in metres.
 const WILLOW_REACH: f32 = 6.0;
-
-/// What one pass over a chunk needs to look up the world.
-pub struct Ctx<'a> {
-    /// The view of the planet the chunk belongs to.
-    pub terrain: &'a Terrain,
-    /// Chart position of the chunk center.
-    pub center: Vec2,
-    /// Patch noise behind the plant densities.
-    pub fields: Fields,
-    /// True-metre measure of the chunk.
-    pub metric: Metric,
-    /// Visible ground of the chunk. The legacy plane has none and reads the analytic ground.
-    pub relief: Option<Relief<'a>>,
-    /// Climate over the chunk. The legacy plane has none and grows as it always did.
-    pub air: Option<Air>,
-    /// The plant groups of a living or dead planet other than home, or none where the tables of home grow.
-    pub flora: Option<Flora>,
-}
 
 /// The ground under one try.
 pub(super) struct Ground {

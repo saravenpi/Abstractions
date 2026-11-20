@@ -1,10 +1,10 @@
-//! The tall architectures: trunk and branches, stalk and cap, and the crystal lattice. Each starts half a
-//! metre under the ground so that a slope never shows its underside.
+//! The tall architectures besides the tree: stalk and cap, and the crystal lattice. Each starts half a metre
+//! under the ground so that a slope never shows its underside.
 
 use bevy::prelude::*;
 
-use super::bits::bead;
-use super::kit::Kit;
+use super::bits::{bead, spike};
+use super::kit::{Kit, OLD};
 use crate::world::solids::{cone, icosa};
 
 /// Returns the unit direction at `angle` radians round the vertical, lifted by `rise`.
@@ -12,114 +12,108 @@ fn round(angle: f32, rise: f32) -> Vec3 {
     Vec3::new(angle.cos(), rise, angle.sin())
 }
 
-/// Adds the canopy of a broad leaved tree over `top`: one tier per layer, two clumps in each but the
-/// highest, and returns the spots its flowers and fruit hang on.
-fn crown(k: &mut Kit, top: Vec3) -> Vec<Vec3> {
-    let form = k.dials.form;
-    let (tiers, colour) = (u32::from(form.layers.clamp(1, 4)), k.leaves());
-    let size = 0.75 + 0.25 * form.leaf.min(1.4);
-    let mut spots = Vec::new();
+/// Returns how wide and how tall the caps of `k` are against a grown one: a closed bell when young, wide and
+/// flat when old.
+fn bell(k: &Kit) -> (f32, f32) {
+    match k.age {
+        0 => (0.55, 1.6),
+        OLD => (1.2, 0.8),
+        _ => (1.0, 1.0),
+    }
+}
+
+/// Adds `tiers` caps over the stalk top `top`, as wide as the species spreads and hanging as far as it
+/// droops, and pushes onto `spots` where a flower sits on each rim.
+fn caps(k: &mut Kit, top: Vec3, tiers: u32, spots: &mut Vec<Vec3>) {
+    let (form, kind, colour) = (k.dials.form, k.dials.kind, k.leaves());
+    let (wide, tall) = bell(k);
     for t in 0..tiers {
-        let y = top.y + 0.4 + 0.55 * t as f32;
-        let r = (1.5 - 0.25 * t as f32) * size;
-        let clumps = if t + 1 == tiers { 1 } else { 2 };
-        for c in 0..clumps {
-            let side = round(k.rand(t * 4 + c) * 3.2 + c as f32 * 3.1, 0.0) * r * 0.45 * c as f32;
-            let at = Vec3::new(top.x, y, top.z) + side;
-            let radii = Vec3::new(r, r * 0.7, r);
-            icosa(&mut k.mesh, at, radii, (0.2, t * 7 + c), colour);
-            spots.push(at + round(k.rand(t + 40) * 3.0, 0.4).normalize() * r * 0.9);
-        }
-    }
-    spots.truncate(5);
-    spots
-}
-
-/// Builds a tree: a buried trunk swollen where it stores water, two branches, then cones of needles in the
-/// cold, a layered crown of leaves elsewhere, or bare twigs while it is dormant.
-pub fn trunk(k: &mut Kit) {
-    let form = k.dials.form;
-    let girth = if form.store { 0.55 } else { 0.28 };
-    let base = Vec3::new(0.0, -0.5, 0.0);
-    let top = Vec3::new(0.15 * k.rand(1), 2.2, 0.15 * k.rand(2));
-    k.stem(base, top, [girth, girth * 0.6]);
-    k.armour(Vec3::ZERO, top, girth * 0.7);
-    if form.needles {
-        let colour = k.leaves();
-        for t in 0..u32::from(form.layers.clamp(1, 4)) + 1 {
-            let at = Vec3::new(top.x, 0.9 + 0.75 * t as f32, top.z);
-            cone(
-                &mut k.mesh,
-                at,
-                Vec2::new(1.6 - 0.3 * t as f32, 1.3),
-                7,
-                colour,
-            );
-        }
-        return;
-    }
-    let bare = k.dials.paint.leaves.is_none();
-    let arms = if bare { 4 } else { 2 };
-    for a in 0..arms {
-        let tip = top + round(a as f32 * 1.9 + k.rand(a + 3), 0.9) * (0.9 + 0.2 * k.rand(a + 9));
-        k.stem(top * 0.8, tip, [0.12 * girth / 0.28, 0.05]);
-    }
-    if !bare {
-        let spots = crown(k, top);
-        k.dress(&spots, 0.12);
+        let r = (1.3 - 0.25 * t as f32)
+            * (0.8 + 0.2 * form.leaf.min(1.4))
+            * (0.6 + 0.45 * kind.spread)
+            * wide;
+        let h = (0.45 + 0.6 * kind.droop) * tall;
+        let at = top - Vec3::Y * (0.75 * t as f32 + 0.5 * h * kind.droop);
+        cone(&mut k.mesh, at, Vec2::new(r, h), 7, colour);
+        spots.push(at + round(k.rand(t + 20) * 3.0, 0.0) * r * 0.95);
     }
 }
 
-/// Builds a stalk and cap: a buried stalk under one cap per layer, flowers on the rims and fruit beneath.
+/// Adds stalk number `s` of a stalk and cap with a foot `girth` metres thick: the leading one upright and
+/// full height, the others shorter, thinner and splayed beside it, and returns its top.
+fn shoot(k: &mut Kit, s: u32, girth: f32) -> Vec3 {
+    let first = usize::from(s == 0);
+    let side = round(s as f32 * 2.6 + k.rand(s + 44), 0.0) * 0.9 * girth * (1 - first) as f32;
+    let up = (k.axis() + side * 0.6).normalize();
+    let tall = [1.4 + 0.8 * k.rand(s + 40).abs(), 3.0][first];
+    let g = girth * [0.6, 1.0][first];
+    let foot = Vec3::new(0.0, -0.5, 0.0) + side;
+    let top = foot + up * (tall + 0.5);
+    k.stem(foot, top, [g, g * 0.75]);
+    top
+}
+
+/// Builds a stalk and cap: a buried leading stalk under one cap per layer, up to two shorter stalks splayed
+/// beside it with a cap each, a swollen store where it keeps water, flowers on the rims and fruit beneath.
 pub fn stalk(k: &mut Kit) {
-    let form = k.dials.form;
-    let girth = if form.store { 0.42 } else { 0.2 };
-    let top = Vec3::new(0.2 * k.rand(1), 3.0, 0.2 * k.rand(2));
-    k.stem(Vec3::new(0.0, -0.5, 0.0), top, [girth, girth * 0.75]);
-    k.armour(Vec3::ZERO, top, girth * 0.8);
+    let (form, kind) = (k.dials.form, k.dials.kind);
+    let girth = [0.2, 0.42][usize::from(form.store)] * k.grow;
+    let count = 1 + u32::from(k.age > 0) * u32::from(kind.branches.saturating_sub(2)).min(2);
+    let mut spots = Vec::new();
+    let lead = shoot(k, 0, girth);
+    caps(k, lead, u32::from(form.layers.clamp(1, 4)), &mut spots);
+    for s in 1..count {
+        let top = shoot(k, s, girth);
+        caps(k, top, 1, &mut spots);
+    }
+    k.armour(Vec3::ZERO, lead, girth * 0.8);
     if form.store {
         let body = k.tone(k.dials.paint.stem);
         icosa(
             &mut k.mesh,
-            top * 0.45,
+            lead * 0.45,
             Vec3::splat(girth * 1.8),
             (0.15, 3),
             body,
         );
     }
-    let colour = k.leaves();
-    let mut spots = Vec::new();
-    for t in 0..u32::from(form.layers.clamp(1, 4)) {
-        let r = (1.3 - 0.25 * t as f32) * (0.8 + 0.2 * form.leaf.min(1.4));
-        let at = top - Vec3::Y * 0.75 * t as f32;
-        cone(&mut k.mesh, at, Vec2::new(r, 0.45), 7, colour);
-        spots.push(at + round(k.rand(t + 20) * 3.0, 0.0) * r * 0.95);
-    }
     k.dress(&spots, 0.12);
 }
 
-/// Builds a crystal lattice: buried shards leaning out of one root, one more per layer, each tipped with a
-/// facet of the pigment.
+/// Returns how many shards the lattice of `k` grows: few when young, the most when old.
+fn shards(k: &Kit) -> u32 {
+    let layers = u32::from(k.dials.form.layers.clamp(1, 4));
+    match k.age {
+        0 => 2,
+        OLD => 4 + layers.min(3),
+        _ => (2 + u32::from(k.dials.kind.branches.min(4)) + layers / 2).min(7),
+    }
+}
+
+/// Adds shard number `s` of a lattice leaning from `up` by up to `splay` radians, tipped with a facet of
+/// `tip`, and a needle of crystal along one of the first three of a many leaved species.
+fn shard(k: &mut Kit, s: u32, (up, splay): (Vec3, f32), tip: [f32; 4]) {
+    let (kind, first) = (k.dials.kind, usize::from(s == 0));
+    let lean = (1 - first) as f32 * splay * (0.7 + 0.5 * k.rand(s).abs());
+    let a = s as f32 * 2.4 + k.rand(s + 10);
+    let dir = (up * lean.cos() + round(a, 0.0) * lean.sin()).normalize();
+    let length = [1.2 + 0.7 * k.rand(s + 20).abs(), 2.9][first] * k.grow;
+    let girth = [0.18, 0.28][first] * (0.75 + 0.3 * kind.spread);
+    let from = Vec3::new(0.0, -0.5, 0.0) + dir * 0.1;
+    let to = from + dir * length;
+    k.stem(from, to, [girth, girth * 0.3]);
+    bead(&mut k.mesh, to, Vec3::new(0.6, 1.2, 0.6) * girth, tip);
+    if s < 3 && kind.leaves > 6 {
+        let needle = dir + round(a + 1.6, 0.2);
+        spike(&mut k.mesh, from.lerp(to, 0.6), needle, 0.35 * length, tip);
+    }
+}
+
+/// Builds a crystal lattice: buried shards leaning out of one root as wide as the species splays them.
 pub fn lattice(k: &mut Kit) {
-    let form = k.dials.form;
-    let tip = k.leaves();
-    for s in 0..3 + u32::from(form.layers.clamp(1, 4)) {
-        let lean = if s == 0 { 0.0 } else { 0.5 + 0.25 * k.rand(s) };
-        let dir = round(s as f32 * 2.3 + k.rand(s + 10), 1.0 / lean.max(0.2)).normalize();
-        let length = if s == 0 {
-            2.9
-        } else {
-            1.4 + 0.5 * k.rand(s + 20)
-        };
-        let from = Vec3::new(0.0, -0.4, 0.0) + dir * 0.1;
-        let to = from + dir * length;
-        let girth = if s == 0 { 0.28 } else { 0.18 };
-        k.stem(from, to, [girth, girth * 0.3]);
-        bead(
-            &mut k.mesh,
-            to,
-            Vec3::new(girth * 0.6, girth * 1.2, girth * 0.6),
-            tip,
-        );
+    let (tip, splay) = (k.leaves(), 0.25 + 0.45 * k.dials.kind.spread);
+    let up = k.axis();
+    for s in 0..shards(k) {
+        shard(k, s, (up, splay), tip);
     }
 }

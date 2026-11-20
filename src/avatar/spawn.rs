@@ -38,6 +38,8 @@ pub struct Kit {
     pub tint: Vec3,
     /// Thrust as last applied to the glow.
     pub thrust: f32,
+    /// Share of its light the screen shows, as last applied: less while the head is hurt.
+    pub dim: f32,
 }
 
 /// Marks the faint light in front of the screen of the body whose root it names.
@@ -71,6 +73,7 @@ pub(super) fn kit(stock: &mut Stock) -> Kit {
         shown: None,
         tint: Vec3::ZERO,
         thrust: 0.0,
+        dim: 1.0,
     }
 }
 

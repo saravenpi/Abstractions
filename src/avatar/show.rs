@@ -5,7 +5,19 @@ use bevy::prelude::*;
 use super::animate::{Bone, Skeleton};
 use super::own::Own;
 use super::rig::Seg;
-use super::{Avatar, AvatarPose, Shown};
+use super::{Avatar, AvatarPose};
+
+/// How much of the body is drawn. Hidden parts cast no shadow either.
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum Shown {
+    /// The whole body: third person.
+    Full,
+    /// Everything but the head, which would clip a camera at the eyes: first person.
+    #[default]
+    FirstPerson,
+    /// Nothing.
+    Hidden,
+}
 
 /// Pitch of the view above the horizon, in radians, past which the arms are hidden in first
 /// person: swinging or raised, they sit right beside the eyes and would fill a view that looks up.

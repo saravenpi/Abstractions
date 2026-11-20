@@ -30,7 +30,7 @@ const SWIM_UP_SPEED: f32 = 4.0;
 const SURFACE_HOP_SPEED: f32 = 6.5;
 
 /// Depth of the body center below the sea above which the surface hop starts.
-const HOP_DEPTH: f32 = 0.6;
+pub(super) const HOP_DEPTH: f32 = 0.6;
 
 /// What the swimmer asks for this frame.
 pub(super) struct SwimInput {
@@ -64,6 +64,13 @@ fn vertical_target(height: f32, stroke_y: f32, up: bool, time: f32) -> f32 {
         return spring.max(stroke_y);
     }
     spring
+}
+
+/// Returns the vertical speed after `dt` seconds of a body at `height` above the sea that only
+/// floats: it eases toward the floating height as an idle swimmer does.
+pub(super) fn float_speed(current: f32, height: f32, time: f32, dt: f32) -> f32 {
+    let wanted = vertical_target(height, 0.0, false, time);
+    current + (wanted - current) * (1.0 - (-VERTICAL_RATE * dt).exp())
 }
 
 /// Returns the swimming velocity for this step, in the upright frame of the body.

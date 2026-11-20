@@ -7,6 +7,7 @@ use super::aim::{STEEP, aim};
 use super::boots::push;
 use super::command::{command, yawed};
 use super::input::GearInput;
+use super::jet::jetting;
 use super::mode::Mode;
 use super::modes::{next, roll, slide};
 use super::servo::turn;
@@ -85,7 +86,7 @@ fn substep(state: &FlightState, input: &GearInput, h: f32) -> FlightState {
     out.wings = ramp(state.wings, out.mode.winged(), h / WING_TIME);
     out.thrust = ramp(
         state.thrust,
-        input.boost && out.mode.airborne(),
+        input.boost && (out.mode.airborne() || jetting(input)),
         h / THRUST_TIME,
     );
     let wind = airflow(out.mode, input);

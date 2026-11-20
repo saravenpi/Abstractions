@@ -54,6 +54,7 @@ fn air() -> Air {
         look: Vec3::NEG_Z,
         aim: Vec2::ZERO,
         gravity: 22.0,
+        liquid: 1000.0,
     }
 }
 

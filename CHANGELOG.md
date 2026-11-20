@@ -17,6 +17,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Animals that glow light up at night in their own colour.
 - Animals leave signs and make calls. Within 60 m you find the footprints of herds that passed in the last four minutes, spaced wider where they ran, droppings and cropped patches where they grazed, nests and burrows near their homes, and bones where a kill was eaten. Herds call now and then, lower for bigger animals, call the alarm when they flee, and hunters cry as they give chase. Every player finds the same tracks and hears the same calls.
 - Grass grows on living planets that have ground cover. Near you, blades stand dense out to 15 m and thin out to 40 m, sway in the wind and take the colour of the carpet under them. Farther out the ground shows the same carpet: two colours of the planet's ground-cover species in patches with a fine speckle. Blades stay clear of trunks and rocks and of the patches grazers cropped. A planet without ground cover has none.
+- Hold the run key in the water to jet with the boots: underwater the robot dives, climbs and turns where you look, and at the surface it skims along the water. The boots push with the same power as in the air, through the planet's own liquid: about 8 m/s in water, slower in molten rock, nothing in a frozen sea.
+- Wind from a wingsuit, boots or ship tears spray off the sea: low over the water, or fast and low skimming it, flecks fly up and fall back, thrown per metre you travel so they look the same at any frame rate.
+- A fast pass low over the sea leaves a foam wake that spreads behind you in a wedge and fades in a few seconds.
+- Hovering low over the sea rings it with ripples that run outward at the speed of waves under the planet's gravity.
+- The water jet of the boots leaves a trail of bubbles that rise to the surface.
+- The boot water pump thumps, faster as the boots spool up.
 
 ### Changed
 

@@ -97,6 +97,7 @@ impl Basin {
             look: Vec3::NEG_Z,
             aim: Vec2::ZERO,
             gravity: 22.0,
+            liquid: 1000.0,
         };
         for _ in 0..frames {
             let body = (&mut self.motion, &mut self.gear);

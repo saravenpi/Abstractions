@@ -53,7 +53,8 @@ fn landed(state: &FlightState) -> Mode {
 
 /// Returns the mode for the next step.
 ///
-/// Water always folds the gear and hands over to swimming.
+/// Water always folds the wings and hands over to swimming. The boots stay on: under a liquid
+/// they jet the swimming body, see `jet`.
 pub(super) fn next(state: &FlightState, input: &GearInput) -> Mode {
     if input.in_water {
         Mode::Off

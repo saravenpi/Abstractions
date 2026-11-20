@@ -1,5 +1,6 @@
-//! The walk: every frame, each drawn animal heads for its place at universe time, reacts to the robots
-//! and hunters near it, steps its motion on the drawn ground and poses its parts.
+//! The walk: every frame, each drawn animal heads for its place at universe time, or its den when
+//! wounded, acts on the stance its senses set, steps its motion on the drawn ground and poses its
+//! parts.
 
 use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
@@ -14,10 +15,9 @@ use super::motion::{Detail, Motion};
 use super::steer::{Aim, Pace, cruise, drive};
 use super::tune::{DRIFT, FROUDE_TOP, MAX_STEP, NEAR};
 use super::want::Lead;
-use crate::avatar::Avatar;
 use crate::life::Species;
 use crate::life::body::Locomotion;
-use crate::life::herd::{Herd, HerdState};
+use crate::life::herd::Herd;
 use crate::life::hunt::Hunt;
 use crate::player::Player;
 use crate::space::{Anchor, Clock, Placed};
@@ -33,26 +33,18 @@ pub struct Walk<'w, 's> {
     spec: Res<'w, Spec>,
     herds: ResMut<'w, Herds>,
     robot: Query<'w, 's, &'static Transform, With<Player>>,
-    remotes: Remotes<'w, 's>,
     beasts: Query<'w, 's, (&'static mut Beast, &'static mut Placed)>,
     parts: Parts<'w, 's>,
 }
 
-/// The robots of the other players, standing free.
-type Remotes<'w, 's> =
-    Query<'w, 's, &'static Transform, (With<Avatar>, Without<ChildOf>, Without<Player>)>;
-
 /// The drawn parts of the animals.
-type Parts<'w, 's> =
-    Query<'w, 's, &'static mut Transform, (With<Part>, Without<Player>, Without<Avatar>)>;
+type Parts<'w, 's> = Query<'w, 's, &'static mut Transform, (With<Part>, Without<Player>)>;
 
 /// What the walk keeps from frame to frame, so it never allocates once warm.
 #[derive(Default)]
 pub struct Scratch {
     /// Herds of the drawn animals at this frame's time, by identity.
     herds: Vec<(u64, Option<Herd>)>,
-    /// Planet positions of everything animals fear, with the herd each belongs to, 0 for robots.
-    threats: Vec<(DVec3, u64)>,
     /// Heights of the drawn ground read so far.
     heights: Heights,
 }
@@ -84,7 +76,7 @@ pub fn walk(mut w: Walk, mut scratch: Local<Scratch>) {
         life,
         planet: &planet,
     };
-    gather(&mut scratch, &mut w, land, robot);
+    gather(&mut scratch, &mut w, land);
     let ctx = Ctx {
         terrain: &w.terrain,
         time: w.clock.seconds,
@@ -101,18 +93,10 @@ pub fn walk(mut w: Walk, mut scratch: Local<Scratch>) {
     }
 }
 
-/// Fills the scratch with this frame's herds of the drawn animals and the planet positions of the
-/// robots, at `robot` the local one, and of hunters on a chase.
-fn gather(scratch: &mut Scratch, w: &mut Walk, land: Land, robot: DVec3) {
+/// Fills the scratch with this frame's herds of the drawn animals.
+fn gather(scratch: &mut Scratch, w: &mut Walk, land: Land) {
     let time = w.clock.seconds;
     scratch.herds.clear();
-    scratch.threats.clear();
-    scratch.threats.push((robot, 0));
-    let remotes = w
-        .remotes
-        .iter()
-        .map(|t| (w.anchor.to_frame(t.translation), 0));
-    scratch.threats.extend(remotes);
     for (beast, _) in &w.beasts {
         let Lead::Herd { id, .. } = beast.lead else {
             continue;
@@ -120,36 +104,19 @@ fn gather(scratch: &mut Scratch, w: &mut Walk, land: Land, robot: DVec3) {
         if !scratch.herds.iter().any(|(h, _)| *h == id) {
             scratch.herds.push((id, w.herds.herd(land, id, time)));
         }
-        let state = scratch
-            .herds
-            .iter()
-            .find(|(h, _)| *h == id)
-            .and_then(|(_, h)| h.map(|h| h.state));
-        if state == Some(HerdState::Chase) {
-            scratch
-                .threats
-                .push((beast.spot.planet(beast.motion.root.at), id));
-        }
     }
 }
 
-/// Returns the place and distance in the frame of `beast` of the nearest threat that is not of its
-/// own herd.
-fn nearest(ctx: &Ctx, beast: &Beast) -> Option<(Vec3, f32)> {
-    let own = beast.lead.key().0;
-    let at = beast.motion.root.at;
-    ctx.scratch
-        .threats
-        .iter()
-        .filter(|(_, herd)| *herd != own)
-        .map(|(pos, _)| beast.spot.local(*pos))
-        .map(|p| (p, p.distance(at)))
-        .min_by(|a, b| a.1.total_cmp(&b.1))
-}
-
-/// Returns where `beast` of `species` should go this frame, in its frame.
+/// Returns where `beast` of `species` should go this frame, in its frame: its den when it has one.
 fn aim(ctx: &Ctx, beast: &Beast, species: &Species) -> Aim {
     let radius = ctx.terrain.globe().radius();
+    if let Some(den) = beast.wits.den {
+        return Aim {
+            place: beast.spot.local(den * radius),
+            flow: Vec3::ZERO,
+            excite: 0.5,
+        };
+    }
     let own = beast.lead.key().0;
     let herd = ctx
         .scratch
@@ -181,7 +148,7 @@ fn pace(ctx: &Ctx, beast: &Beast, species: &Species) -> Pace {
     };
     Pace {
         gravity,
-        top: species.history.speed.min(gait),
+        top: species.history.speed.min(gait) * beast.wits.health.pace(),
         detail: if near { Detail::Full } else { Detail::Cheap },
     }
 }
@@ -194,9 +161,9 @@ fn step(
     parts: &mut Parts,
 ) {
     let aim = aim(ctx, beast, species);
-    let near = nearest(ctx, beast);
+    let sensed = beast.wits.focus.map(|f| (f.at, beast.wits.stance));
     let temper = beast.temper;
-    beast.mood.feel(&temper, near, ctx.dt);
+    beast.mood.feel(&temper, sensed, ctx.dt);
     let spot = beast.spot;
     let heights = &ctx.scratch.heights;
     let ground = |p: Vec2| spot.ground_by(ctx.terrain, p, |x, z| heights.mesh(ctx.terrain, x, z));
@@ -240,7 +207,7 @@ fn refit(ctx: &Ctx, (beast, placed): (&mut Beast, &mut Placed), species: &Specie
     let at = Vec3::new(0.0, spot.ground(ctx.terrain, Vec2::ZERO) + lift, 0.0);
     let seed = beast.lead.key().0 ^ u64::from(beast.lead.key().1);
     beast.motion = Motion::new(&species.body, at, facing, seed);
-    (beast.mood.threat, beast.mood.last) = (spot.local(old.planet(beast.mood.threat)), None);
+    beast.mood.threat = spot.local(old.planet(beast.mood.threat));
     beast.spot = spot;
     *placed = Placed {
         pos: spot.origin,

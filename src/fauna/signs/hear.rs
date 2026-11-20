@@ -13,6 +13,7 @@ use super::tune::{CALLS, EARSHOT, HALF_LEVEL, HEAR, QUIET};
 use crate::audio::{AudioCue, Call};
 use crate::fauna::beast::Beast;
 use crate::fauna::herds::{Herds, herd_arc};
+use crate::fauna::senses::Stance;
 use crate::life::Life;
 use crate::life::signs::calls::{Calling, Cry, contact, cries, voice};
 use crate::render::GameCamera;
@@ -111,13 +112,14 @@ fn gather(h: &Hear, heard: &mut Heard, span: (f64, f64)) {
     alarms(h, (calls, fled), span.1);
 }
 
-/// Adds to `calls` an alarm for each herd with an animal fleeing a robot at universe time `now`,
+/// Adds to `calls` an alarm for each herd with an animal fleeing or threatening at universe time `now`,
 /// one per herd every [`ALARM_GAP`] seconds, as kept in `fled`.
 fn alarms(h: &Hear, (calls, fled): Lists<'_>, now: f64) {
     fled.retain(|(_, at)| now - at < ALARM_GAP);
     for (beast, placed) in &h.beasts {
         let (herd, _) = beast.lead.key();
-        if !beast.mood.fleeing || fled.iter().any(|(id, _)| *id == herd) {
+        let stands = beast.wits.stance == Stance::Threaten;
+        if !(beast.mood.fleeing || stands) || fled.iter().any(|(id, _)| *id == herd) {
             continue;
         }
         fled.push((herd, now));

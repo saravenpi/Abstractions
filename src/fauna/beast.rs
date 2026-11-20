@@ -9,6 +9,7 @@ use super::fade::Fade;
 use super::motion::{self, Motion};
 use super::place::Spot;
 use super::react::{Mood, Temper};
+use super::senses::Wits;
 use super::want::Lead;
 use crate::life::Species;
 use crate::life::body::Body;
@@ -33,6 +34,8 @@ pub struct Beast {
     pub mood: Mood,
     /// How its species reacts.
     pub temper: Temper,
+    /// What it senses and its health.
+    pub wits: Wits,
     /// Its fade in or out.
     pub fade: Fade,
 }
@@ -134,6 +137,7 @@ pub fn spawn(
         parts,
         mood: Mood::default(),
         temper: Temper::of(species),
+        wits: Wits::of(species),
         fade: Fade::new(Way::In, birth.now),
     };
     commands.entity(root).insert(beast);

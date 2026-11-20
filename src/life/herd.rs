@@ -12,6 +12,8 @@
 mod cells;
 #[cfg(test)]
 pub(super) mod fixtures;
+mod ledger;
+mod roles;
 mod roll;
 mod route;
 mod scene;
@@ -22,6 +24,8 @@ mod tests;
 mod tests_cost;
 #[cfg(test)]
 mod tests_real;
+#[cfg(test)]
+mod tests_roles;
 mod watch;
 
 use bevy::math::{DVec3, Vec2};
@@ -30,6 +34,8 @@ use super::census::Site;
 use super::hunt::{self, Hunt};
 use super::{Life, Species};
 use crate::universe::hash::{Rng, child};
+pub use ledger::{Kill, Ledger};
+pub use roles::lookout;
 pub(super) use roll::{Roam, hunts};
 pub(super) use route::{Pose, open};
 pub(super) use scene::{Scene, Store};

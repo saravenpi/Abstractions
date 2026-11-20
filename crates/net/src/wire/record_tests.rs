@@ -23,7 +23,7 @@ fn body() -> Vec<u8> {
 }
 
 /// Sixteen robot records fit in one datagram of 1162 bytes, the size measured on loopback, and
-/// one record takes 64 bytes at most.
+/// one record takes 66 bytes at most: a 22 byte head and the 44 byte robot body of protocol 3.
 #[test]
 fn sixteen_robots_fit_in_one_datagram() {
     let body = body();
@@ -36,7 +36,7 @@ fn sixteen_robots_fit_in_one_datagram() {
         push(&mut batch, &record);
     }
     assert!(batch.len() <= 1162, "{} bytes", batch.len());
-    assert!(batch.len() <= 16 * 64, "{} bytes", batch.len());
+    assert!(batch.len() <= 16 * 66, "{} bytes", batch.len());
     assert_eq!(records(&batch).count(), 16);
 }
 

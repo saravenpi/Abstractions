@@ -12,7 +12,8 @@ pub struct GalaxyId(pub IVec3);
 pub struct StarId {
     /// Galaxy the star belongs to.
     pub galaxy: GalaxyId,
-    /// Sector of the galaxy, in steps of `SECTOR_GLY` game light-years from the galaxy centre.
+    /// Sector of the galaxy, in steps of `SECTOR_LY` light-years (10 ly) from the galaxy centre,
+    /// which lies on a sector corner.
     pub sector: IVec3,
     /// Rank of the star inside its sector.
     pub index: u8,

@@ -6,7 +6,7 @@ One note for steps 6, 16, 17 and 17b to 17d of `PLANETS.md`. The net crate, the 
 - `PROTOCOL` is 3. Older clients are refused by the join check that already compares it.
 - A position in `Frame::Surface` is three cells and three millimetre offsets. A cell is a signed whole number of 2,000,000 m per axis (`pack::CELL`). The offset is an `i32` count of millimetres from the cell centre, so it never passes 1e9.
 - Cells travel as zigzag LEB128 varints, one byte while the position is within 126,000 km of the origin on that axis. Then three little-endian `i32`. A robot body is 44 bytes, a ship 40, a companion 28.
-- `Frame::Around` and `Frame::System` stay three `f64`.
+- `Frame::Around` and `Frame::System` stay three `f64`. A galaxy frame position (saved as three `f64` too, `ShipState.pos`) is lossless to the step of a 64-bit float: 6e4 m at 5e20 m and 4e6 m at 2.4e22 m from the galaxy centre. The wire has no galaxy frame: between stars a record is in the frame of the last star.
 - No `f32` chart position is ever sent.
 
 ## Explored ground (step 17b)

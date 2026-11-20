@@ -9,7 +9,7 @@ use bevy::tasks::{AsyncComputeTaskPool, Task, block_on};
 use super::depth::{Sighted, lit};
 use super::{MOST_STARS, REACH_GLY, Starfield};
 use crate::render::vantage::Scene;
-use crate::universe::{GLY, GalaxyId, SECTOR_GLY, Universe};
+use crate::universe::{GLY, GalaxyId, SECTOR_GLY, StarId, StarSpec, Universe};
 
 /// The mesh being built for a starfield, and the place it is built for.
 #[derive(Component)]
@@ -21,12 +21,20 @@ pub struct Building {
 }
 
 /// Returns every speck seen from `at` metres from the centre of `galaxy`: the stars within
-/// reach. The star of the current system is one of them: from afar it is this point, and up
-/// close its disc is drawn on it as a body. The galaxies are in the map of `galaxy_light`.
-pub fn gather(universe: &Universe, galaxy: GalaxyId, at: DVec3) -> Vec<Sighted> {
+/// reach. The star of the current system, `own`, is one of them: from afar it is this point, and
+/// up close its disc is drawn on it as a body. The galaxies are in the map of `galaxy_light`.
+pub fn gather(
+    universe: &Universe,
+    galaxy: GalaxyId,
+    at: DVec3,
+    own: Option<StarId>,
+) -> Vec<Sighted> {
     let stars = universe.stars_near(galaxy, at, REACH_GLY);
-    let near = stars.iter().take(MOST_STARS);
-    near.map(|star| Sighted::star(star, at)).collect()
+    let seen = |star: &StarSpec| match own == Some(star.id) {
+        true => Sighted::own(star, at),
+        false => Sighted::star(star, at),
+    };
+    stars.iter().take(MOST_STARS).map(seen).collect()
 }
 
 /// Starts a build when the camera has moved more than a sector since the last one, unless one
@@ -48,12 +56,13 @@ pub fn launch(
     let near =
         |(built, was): (GalaxyId, DVec3)| built == galaxy && was.distance(at) < SECTOR_GLY * GLY;
     let universe = *universe;
+    let own = scene.local.0.as_ref().map(|near| near.id);
     for (entity, field) in &fields {
         if field.built.is_some_and(near) {
             continue;
         }
         let task = AsyncComputeTaskPool::get().spawn(async move {
-            let specks = gather(&universe, galaxy, at);
+            let specks = gather(&universe, galaxy, at, own);
             (!specks.is_empty()).then(|| lit(&specks))
         });
         let place = (galaxy, at);

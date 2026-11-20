@@ -6,7 +6,13 @@ use bevy::math::DVec3;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 
-use crate::universe::{GLY, StarSpec};
+use crate::render::smoothstep;
+use crate::universe::{GLY, StarSpec, system_reach};
+
+/// Light that arrives from a star, as the star field counts it, from which the star shows
+/// through the daylight of a sky, fully one step of ten above it: the star of the system the
+/// camera is in, which is the sun of that sky, and no other. `starfield.wesl` has the same.
+pub const DAY_FLUX: f32 = 1.0;
 
 /// One point of light on the sky shell.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -30,6 +36,21 @@ pub fn star_light(star: &StarSpec, from: DVec3) -> (f64, f32) {
     (distance, flux)
 }
 
+/// Returns the distance and the light of the star of the system the camera is in, seen from `from`.
+///
+/// It is [`star_light`] until the camera is half way out to the reach of the system. Inside, the
+/// star is the sun of the sky and shines through the day as fully as a star ever does, fading to
+/// its plain light at the edge of the system, so it never pops out of the day sky.
+pub fn own_light(star: &StarSpec, from: DVec3) -> (f64, f32) {
+    let (range, flux) = star_light(star, from);
+    let out = smoothstep(
+        0.5,
+        1.0,
+        ((star.pos - from).length() / system_reach(star)) as f32,
+    );
+    (range, flux + (DAY_FLUX + 1.0 - flux).max(0.0) * (1.0 - out))
+}
+
 /// Returns the angular radius in radians and the strength of the colour a star is drawn with
 /// when the light `flux` arrives from it, on a log scale, like magnitudes. `starfield.wesl`
 /// repeats this rule, so a star keeps the right size while the camera closes on it.
@@ -42,7 +63,18 @@ pub fn shine(flux: f32) -> (f32, f32) {
 ///
 /// The light that arrives sets both the size and the strength, and the class gives the colour.
 pub fn star_speck(star: &StarSpec, from: DVec3) -> Speck {
-    let (size, gain) = shine(star_light(star, from).1);
+    speck(star, from, star_light(star, from).1)
+}
+
+/// Returns the speck of the star of the system the camera is in, seen from `from`, drawn with
+/// the light [`own_light`] gives it.
+pub fn own_speck(star: &StarSpec, from: DVec3) -> Speck {
+    speck(star, from, own_light(star, from).1)
+}
+
+/// Returns the speck of a star seen from `from` when the light `flux` arrives from it.
+fn speck(star: &StarSpec, from: DVec3, flux: f32) -> Speck {
+    let (size, gain) = shine(flux);
     Speck {
         dir: (star.pos - from).normalize_or(DVec3::Y).as_vec3(),
         size,

@@ -1,13 +1,14 @@
 //! Tests of what the mesh holds against what the sky shows: every star in sight is in the mesh
 //! until the next build, and a grain of dust is never as bright or as wide as a star.
 
+use bevy::math::DVec3;
+
 use super::build::gather;
-use super::specks::shine;
-use super::specks::star_light;
+use super::specks::{own_light, shine, star_light};
 use super::{MOST_STARS, REACH_GLY};
 use crate::render::scatter::luminance;
 use crate::render::warp::{GRAIN, GRAIN_LIGHT, SIGHT, daylit};
-use crate::universe::{GLY, SECTOR_GLY, Universe};
+use crate::universe::{SECTOR_GLY, StarSpec, Universe, system_reach};
 
 /// The mesh is rebuilt once the camera has moved a sector from where it was built for, and the
 /// build takes a moment at up to five light-years a second. The stars are gathered farther
@@ -21,7 +22,7 @@ fn the_mesh_reaches_past_the_edge_of_sight() {
     );
     let universe = Universe::new(7);
     let star = universe.system(universe.home().star).star;
-    let seen = gather(&universe, star.id.galaxy, star.pos);
+    let seen = gather(&universe, star.id.galaxy, star.pos, None);
     let within = universe
         .stars_near(star.id.galaxy, star.pos, REACH_GLY)
         .len();
@@ -45,7 +46,7 @@ fn a_grain_is_fainter_and_thinner_than_any_star() {
     );
     let universe = Universe::new(7);
     let star = universe.system(universe.home().star).star;
-    let seen = gather(&universe, star.id.galaxy, star.pos);
+    let seen = gather(&universe, star.id.galaxy, star.pos, None);
     let dimmest = seen
         .iter()
         .map(|speck| luminance(speck.color))
@@ -57,26 +58,24 @@ fn a_grain_is_fainter_and_thinner_than_any_star() {
 }
 
 /// The star of the system the camera is in is a point of the star field like the others, and
-/// the only one that shows through the day: from its planets it is the sun, and from a
-/// light-year away, like every other star, the day sky hides it.
+/// the only one that shows through the day: from its planets, as far out as the outermost one, it
+/// is the sun, and from the edge of its system, like every other star, the day sky hides it.
 #[test]
 fn the_own_star_is_the_one_point_the_day_does_not_hide() {
     let universe = Universe::new(7);
     let home = universe.planet(universe.home());
     let star = universe.system(home.id.star).star;
-    let from = star.pos + bevy::math::DVec3::X * home.orbit_radius;
-    assert_eq!(daylit(star_light(&star, from).1), 1.0);
+    let from = star.pos + DVec3::X * home.orbit_radius;
+    assert_eq!(daylit(own_light(&star, from).1), 1.0);
     let system = universe.system(home.id.star);
     let outer = system.planets.last().unwrap().orbit_radius;
-    assert_eq!(
-        daylit(star_light(&star, star.pos + bevy::math::DVec3::X * outer).1),
-        1.0
-    );
+    assert_eq!(daylit(own_light(&star, star.pos + DVec3::X * outer).1), 1.0);
     let others = universe.stars_near(star.id.galaxy, from, 40.0);
-    let hidden = |other: &&crate::universe::StarSpec| daylit(star_light(other, from).1) == 0.0;
-    assert_eq!(others.iter().filter(hidden).count(), others.len() - 1);
-    assert_eq!(
-        daylit(star_light(&star, star.pos + bevy::math::DVec3::X * GLY).1),
-        0.0
-    );
+    let hidden = |other: &&StarSpec| daylit(star_light(other, from).1) == 0.0;
+    let rest = others.iter().filter(|other| other.id != star.id);
+    assert_eq!(rest.clone().filter(hidden).count(), rest.count());
+    let edge = star.pos + DVec3::X * 2.0 * system_reach(&star);
+    assert_eq!(daylit(own_light(&star, edge).1), 0.0);
+    let (_, plain) = star_light(&star, edge);
+    assert_eq!(own_light(&star, edge).1, plain);
 }

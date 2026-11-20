@@ -52,7 +52,7 @@ fn stars_come_from_the_universe() {
     let far = star_speck(&star, star.pos + DVec3::X * 30.0 * GLY);
     assert!((near.dir - Vec3::NEG_X).length() < 1e-5);
     assert!(near.size > far.size && near.color.length() > far.color.length());
-    let seen = gather(&universe, star.id.galaxy, star.pos);
+    let seen = gather(&universe, star.id.galaxy, star.pos, None);
     let others = universe.stars_near(star.id.galaxy, star.pos, 40.0).len();
     assert!(seen.len() >= others.min(4000));
     assert!(

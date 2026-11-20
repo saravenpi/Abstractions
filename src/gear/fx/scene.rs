@@ -5,6 +5,7 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::FlightFx;
+use super::air::felt;
 use super::under::under;
 use crate::avatar::Marks;
 use crate::gear::aero::grip;
@@ -12,9 +13,11 @@ use crate::gear::servo::ease;
 use crate::gear::state::FlightState;
 use crate::gear::{Gear, Mode};
 use crate::player::Player;
-use crate::render::{GameCamera, smoothstep as smooth};
+use crate::render::{CloudCrossing, GameCamera, smoothstep as smooth};
 use crate::space::{Anchor, altitude, on_foot, up};
+use crate::speed::{buffet, dynamic_pressure, moisture};
 use crate::view::{CameraPose, Enabled};
+use crate::weather::Weather;
 use crate::world::Terrain;
 
 /// Height of the boot soles under the body centre, in metres.
@@ -78,6 +81,9 @@ pub struct Scene {
     /// Density of the air at this height in kilograms per cubic metre, thickness of the planet
     /// included: zero above the air and on a planet without any.
     pub air_density: f32,
+    /// How wet the air is, from 0 (dry) to 1 (in a cloud or in rain): the depth in the cloud layer
+    /// under the cover the weather puts in it, or the rain, whichever is more.
+    pub moist: f32,
     /// Free height under the boot soles down to the ground or the sea, in metres.
     pub clearance: f32,
     /// Whether the sea is what lies nearest under the boots.
@@ -128,6 +134,10 @@ pub struct Sight<'w, 's> {
     rig: Option<Res<'w, CameraPose>>,
     /// Whether the rig drives the camera.
     driven: Option<Res<'w, Enabled>>,
+    /// How deep the camera is in the cloud layer.
+    clouds: Option<Res<'w, CloudCrossing>>,
+    /// The weather at the camera.
+    weather: Option<Res<'w, Weather>>,
 }
 
 impl Sight<'_, '_> {
@@ -155,6 +165,8 @@ fn read(sight: &Sight, pose: &Transform, gear: &Gear) -> Scene {
     let height = altitude(anchor, terrain.globe(), pose.translation) - SOLES;
     let (clearance, wet) = under(terrain.globe(), gear.input.clearance, height);
     let camera = sight.camera(pose);
+    let weather = sight.weather.as_deref().copied().unwrap_or_default();
+    let depth = sight.clouds.as_deref().map_or(0.0, |clouds| clouds.depth);
     Scene {
         active: true,
         state: gear.state,
@@ -166,6 +178,7 @@ fn read(sight: &Sight, pose: &Transform, gear: &Gear) -> Scene {
         sigma: grip(gear.input.density),
         thin: 1.0 - gear.input.air.clamp(0.0, 1.0),
         air_density: gear.input.density * gear.input.air.max(0.0),
+        moist: moisture(depth, weather.cloud, weather.rain),
         clearance,
         wet,
         dt: sight.time.delta_secs(),
@@ -184,6 +197,9 @@ fn publish(scene: &Scene, last: &FlightFx) -> FlightFx {
     } else {
         state.load
     };
+    let blown = scene.active && state.mode.airborne();
+    let wind = dynamic_pressure(scene.air_density, state.airspeed);
+    let pressure = wind * f32::from(u8::from(blown));
     let taut = state.spread() * smooth(FLUTTER_SPEED.0, FLUTTER_SPEED.1, state.airspeed);
     FlightFx {
         airspeed: state.airspeed,
@@ -193,6 +209,9 @@ fn publish(scene: &Scene, last: &FlightFx) -> FlightFx {
         mode: state.mode,
         flutter: taut * air * (0.6 + 0.4 * (state.load / 2.0).min(1.0)),
         rush: smooth(RUSH_SPEED.0, RUSH_SPEED.1, state.airspeed) * air,
+        pressure,
+        buffet: felt(last.buffet, buffet(pressure), scene.dt),
+        thinning: 1.0 - scene.sigma.min(1.0),
     }
 }
 

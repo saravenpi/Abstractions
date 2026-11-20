@@ -14,6 +14,7 @@ use super::wakes::Laid;
 use crate::render::{Palette, smoothstep as smooth};
 use crate::screens::Screen;
 use crate::space::Anchor;
+use crate::speed::vortex;
 
 /// Seconds a wingtip trail glows for.
 const TIP_LIFE: f32 = 1.5;
@@ -122,7 +123,8 @@ pub fn spawn(
 }
 
 /// Returns how strongly a wingtip glows: nothing slow or folded, plain in steady flight,
-/// brighter under load in pull-ups and tight turns and in fast dives, like a wingtip vortex.
+/// brighter under load in pull-ups and tight turns and in fast dives, like a wingtip vortex, and
+/// brighter still where the air is wet enough for the vortex to condense.
 pub fn tip_heat(scene: &Scene) -> f32 {
     let state = &scene.state;
     if !scene.active || !state.mode.airborne() {
@@ -136,6 +138,7 @@ pub fn tip_heat(scene: &Scene) -> f32 {
         * scene.sigma.min(1.0)
         * (1.0 - scene.thin)
         * load
+        * vortex(scene.moist)
 }
 
 /// Returns how strongly the exhaust trails: the booster push, once the body travels fast enough

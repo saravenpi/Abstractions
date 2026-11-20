@@ -10,6 +10,7 @@ use super::scene::Scene;
 use crate::render::smoothstep as smooth;
 use crate::screens::Screen;
 use crate::space::Rebased;
+use crate::view::ViewPrefs;
 
 /// Number of speed lines, created once.
 pub const COUNT: u32 = 28;
@@ -85,16 +86,21 @@ fn pose(slot: u32, travel: f32, scene: &Scene) -> Transform {
     }
 }
 
-/// Moves the speed lines: the faster the flight, the more of them show.
+/// Moves the speed lines: the faster the flight, the more of them show, down to none with the
+/// "Speed effects" setting at 0.
 ///
 /// `travel` counts the tube lengths flown, so the lines pass at the true airspeed.
 pub fn draw(
     scene: Res<Scene>,
+    prefs: Res<ViewPrefs>,
     mut travel: Local<f32>,
     mut lines: Query<(&Streak, &mut Transform)>,
 ) {
     let shown = match scene.active {
-        true => strength(scene.state.airspeed, scene.sigma * (1.0 - scene.thin)),
+        true => {
+            strength(scene.state.airspeed, scene.sigma * (1.0 - scene.thin))
+                * prefs.speed_fx.clamp(0.0, 1.0)
+        }
         false => 0.0,
     };
     *travel = (*travel + scene.state.airspeed * scene.dt / DEPTH).fract();

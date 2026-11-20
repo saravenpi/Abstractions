@@ -7,6 +7,8 @@
 //! ([`crate::avatar::Marks`]); the rest is placed from the gear's own attitude. Every other
 //! body marked with a [`Wake`] lays trails of its own the same way.
 
+mod air;
+mod buffet;
 mod churn;
 mod flare;
 mod haze;
@@ -30,6 +32,8 @@ mod tests;
 mod tests_exhaust;
 #[cfg(test)]
 mod tests_fx;
+#[cfg(test)]
+mod tests_speed;
 #[cfg(test)]
 mod tests_trail;
 
@@ -69,6 +73,15 @@ pub struct FlightFx {
     pub flutter: f32,
     /// How far the rush of air closes in on the view at very high speed, from 0 to 1.
     pub rush: f32,
+    /// Dynamic pressure `1/2 rho v^2` of the air on the body in pascals, zero on the ground and in
+    /// a vacuum.
+    pub pressure: f32,
+    /// How hard the air buffets the body, from 0 to 1, from the dynamic pressure: the camera
+    /// shakes and the wind rumbles with it.
+    pub buffet: f32,
+    /// How much thinner than at sea level the air is at this height, from 0 (as dense) to 1 (no
+    /// air): the wind sounds quieter by it.
+    pub thinning: f32,
 }
 
 /// Returns true while the game is on its gameplay screen with no menu over it and the boot
@@ -86,6 +99,7 @@ pub fn live(
 /// Registers the effects: their resources and order, then their systems.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<FlightFx>()
+        .init_resource::<crate::view::ViewPrefs>()
         .init_resource::<scene::Scene>()
         .configure_sets(
             Update,
@@ -120,6 +134,7 @@ fn systems(app: &mut App) {
             (wakes::spawn, wakes::draw).chain(),
             streaks::draw,
             haze::draw,
+            buffet::tremble.run_if(buffet::buffeted),
             flare::draw,
             motes::step,
             churn::feed,

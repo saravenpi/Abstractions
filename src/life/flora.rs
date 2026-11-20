@@ -6,11 +6,16 @@
 mod colour;
 #[cfg(test)]
 pub(crate) mod fixture;
+mod kind;
+mod light;
 mod shape;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_kind;
 
 pub use colour::Paint;
+pub use kind::{Kind, MOST, kinds};
 pub use shape::{Form, productivity};
 
 use super::{Guild, Life, Rung, Species, World};
@@ -54,6 +59,8 @@ pub struct Dials {
     pub form: Form,
     /// Colours of the moment.
     pub paint: Paint,
+    /// The species of the group it draws, which sets its size, proportions and tint.
+    pub kind: Kind,
 }
 
 /// Returns the stage of the year at `latitude` radians when the planet is `season` of the way round its
@@ -84,12 +91,26 @@ pub fn architecture(life: &Life, species: &Species) -> u8 {
 }
 
 /// Returns the dials of producer `species` of `life` on `world`, in a wind of `wind` metres per second
-/// and at `stage` of its year.
+/// and at `stage` of its year, drawn as one plain species.
 pub fn dials(life: &Life, species: &Species, world: &World, wind: f32, stage: Stage) -> Dials {
-    let form = shape::form(life, species, world, wind);
+    of_kind(life, species, (world, wind), stage, Kind::PLAIN)
+}
+
+/// Returns the dials of species `kind` of producer `species` of `life` on a `world` with its wind in metres
+/// per second, at `stage` of its year: the form of its group scaled by the size of the species.
+pub fn of_kind(
+    life: &Life,
+    species: &Species,
+    (world, wind): (&World, f32),
+    stage: Stage,
+    kind: Kind,
+) -> Dials {
+    let mut form = shape::form(life, species, world, wind);
+    form.height *= kind.size;
     Dials {
         architecture: architecture(life, species),
-        paint: colour::paint(life, species, &form, stage),
+        paint: colour::paint(life, species, (&form, &kind), stage),
         form,
+        kind,
     }
 }

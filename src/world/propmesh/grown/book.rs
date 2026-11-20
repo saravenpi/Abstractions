@@ -28,12 +28,15 @@ struct Book {
     pages: Vec<Page>,
     /// The page written over next once all are taken.
     next: usize,
+    /// How many pages were written over so far.
+    edition: usize,
 }
 
 /// The one book of the process.
 static BOOK: RwLock<Book> = RwLock::new(Book {
     pages: Vec::new(),
     next: 0,
+    edition: 0,
 });
 
 /// Returns the placement variant of `look`, writing it into the book with its mesh when it is new.
@@ -56,6 +59,7 @@ pub fn page(look: Look) -> u8 {
             let i = book.next;
             book.pages[i] = Page { look, soup };
             book.next = (i + 1) % PAGES;
+            book.edition += 1;
             i
         }
     };
@@ -72,4 +76,10 @@ pub(in crate::world::propmesh) fn soup(variant: u8) -> Option<Arc<Soup>> {
 /// Returns how many triangles the look of placement variant `variant` has, 0 for one not in the book.
 pub fn tris(variant: u8) -> usize {
     soup(variant).map_or(0, |s| s.positions.len() / 3)
+}
+
+/// Returns how many pages were written over so far: a variant handed out under an older edition may now
+/// name another look.
+pub fn edition() -> usize {
+    BOOK.read().unwrap_or_else(PoisonError::into_inner).edition
 }

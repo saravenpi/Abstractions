@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use super::zones::{Tile, Zone, chunks};
+use super::zones::{LUSH, Tile, Zone, chunks, hold};
 use super::*;
 use crate::life::flora::fixture::garden;
 use crate::world::globe::Globe;
@@ -44,6 +44,7 @@ fn count(scatter: &Scatter) -> usize {
 /// chunk builder that hands in the heights it already has.
 #[test]
 fn globe_scatter_costs_no_more_than_flat() {
+    let _book = hold();
     let flat = Terrain::new(5);
     let globe = Arc::new(Globe::new(5, 6000.0, 22.0));
     let (plane, tiles) = (flat_land(&flat, 12), chunks(&globe, Zone::Centre, 25, 12));
@@ -72,10 +73,11 @@ fn globe_scatter_costs_no_more_than_flat() {
 /// five runs finds every grown mesh in the book, as each later chunk does.
 #[test]
 fn living_scatter_costs_no_more_than_home_rules() {
+    let _book = hold();
     let all = garden(9, &[0, 1, 2, 3, 4, 5, 6, 7], vec![]);
     let (plain, living) = (
-        Arc::new(Globe::new(9, 5000.0, 9.81)),
-        Arc::new(Globe::new(9, 5000.0, 9.81).with_life(Some(all))),
+        Arc::new(Globe::new(LUSH, 5000.0, 9.81)),
+        Arc::new(Globe::new(LUSH, 5000.0, 9.81).with_life(Some(all))),
     );
     let (home, alien) = (
         chunks(&plain, Zone::Centre, 15, 12),

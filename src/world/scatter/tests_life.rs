@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use super::grow::Flora;
-use super::zones::{Tile, Zone, chunks};
+use super::zones::{LUSH, Tile, Zone, chunks};
 use super::*;
 use crate::life::flora::fixture::{MILD, garden, life, producer};
 use crate::life::{Life, Rung};
@@ -13,9 +13,9 @@ use crate::world::globe::Globe;
 use crate::world::propmesh::grown::{grown, habit};
 use Plant::*;
 
-/// Returns six land chunks at face centres of a 5,000 m globe of `gravity` carrying `life`.
+/// Returns six land chunks at face centres of a lush 5,000 m globe of `gravity` carrying `life`.
 fn tiles(gravity: f64, life: Option<Life>) -> Vec<Tile> {
-    let globe = Arc::new(Globe::new(9, 5000.0, gravity).with_life(life));
+    let globe = Arc::new(Globe::new(LUSH, 5000.0, gravity).with_life(life));
     chunks(&globe, Zone::Centre, 15, 6)
 }
 
@@ -113,9 +113,9 @@ fn trees_are_lower_on_a_heavy_world() {
 #[test]
 fn home_plants_its_life() {
     let given = Arc::new(
-        Globe::new(9, HOME_RADIUS, HOME_GRAVITY).with_life(Some(garden(9, &[0, 2], vec![]))),
+        Globe::new(LUSH, HOME_RADIUS, HOME_GRAVITY).with_life(Some(garden(9, &[0, 2], vec![]))),
     );
-    let plain = Arc::new(Globe::new(9, HOME_RADIUS, HOME_GRAVITY));
+    let plain = Arc::new(Globe::new(LUSH, HOME_RADIUS, HOME_GRAVITY));
     let (a, b) = (
         chunks(&given, Zone::Centre, 15, 4),
         chunks(&plain, Zone::Centre, 15, 4),
@@ -124,7 +124,8 @@ fn home_plants_its_life() {
     let mut grew = 0;
     for (x, y) in a.iter().zip(&b) {
         let flora = Flora::of(&x.terrain, chunk_center(x.coord)).expect("a flora at home");
-        assert_eq!(flora.growers.len(), 2);
+        let groups: std::collections::HashSet<u8> = flora.growers.iter().map(|g| g.arch).collect();
+        assert!(groups.len() == 2 && flora.growers.len() >= 4, "{flora:?}");
         assert!(Flora::of(&y.terrain, chunk_center(y.coord)).is_none());
         for (p, _) in x.scatter() {
             assert!(

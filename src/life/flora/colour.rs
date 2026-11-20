@@ -1,7 +1,8 @@
 //! The colours of a producer group: leaves from the pigment of the planet, flowers only for a pollinator,
 //! fruit only for a seed carrier, and the turn of the year.
 
-use super::{Form, Stage};
+use super::light::{star, tinted, under};
+use super::{Form, Kind, Stage};
 use crate::life::{Life, Relation, Species};
 
 /// Linear RGB of the stem of a group without tissues: dark bark.
@@ -53,15 +54,17 @@ fn lerp(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
     std::array::from_fn(|i| a[i] + (b[i] - a[i]) * t)
 }
 
-/// Returns the leaf colour of a group of `form` under a `pigment`: darker as needles, paler under wax.
-fn leaf(pigment: [f32; 3], form: &Form) -> [f32; 3] {
+/// Returns the leaf colour of a species of `form` and `kind` under a `pigment`: darker as needles, paler
+/// under wax, shifted by the tint of the species, then set by the light of the star the pigment came from.
+fn leaf(pigment: [f32; 3], form: &Form, kind: &Kind) -> [f32; 3] {
     let tone = if form.needles { 0.7 } else { 1.0 };
-    let base = pigment.map(|c| c * tone);
-    if form.wax {
+    let base = tinted(pigment.map(|c| c * tone), kind.tint);
+    let waxed = if form.wax {
         lerp(base, BLOOM, 0.3)
     } else {
         base
-    }
+    };
+    under(waxed, star(pigment))
 }
 
 /// Returns the turned colour of a leaf of colour `c` in autumn: its brightest channel goes to red and gold.
@@ -87,12 +90,13 @@ fn tied(relation: &Relation, plant: u16, flowers: bool) -> bool {
     }
 }
 
-/// Returns the colours of producer `species` of `life`, of `form`, at `stage` of its year.
-pub fn paint(life: &Life, species: &Species, form: &Form, stage: Stage) -> Paint {
+/// Returns the colours of species `kind` of producer `species` of `life`, of `form`, at `stage` of its year.
+pub fn paint(life: &Life, species: &Species, (form, kind): (&Form, &Kind), stage: Stage) -> Paint {
     let index = species.id.index;
     let seed = mix(species.id.planet ^ u64::from(index).wrapping_mul(0x9E37_79B9_7F4A_7C15));
+    let seed = seed ^ u64::from(kind.rank).wrapping_mul(0xA24B_AED4_963E_E407);
     let has = |flowers: bool| life.relations.iter().any(|r| tied(r, index, flowers));
-    let green = leaf(life.chemistry.pigment, form);
+    let green = leaf(life.chemistry.pigment, form, kind);
     let leaves = match stage {
         Stage::Dormant if form.deciduous => None,
         Stage::Fruit if form.deciduous => Some(autumn(green)),
@@ -102,7 +106,10 @@ pub fn paint(life: &Life, species: &Species, form: &Form, stage: Stage) -> Paint
     let ripe = matches!(stage, Stage::Ever | Stage::Fruit) && has(false);
     Paint {
         leaves,
-        stem: species.tissues.first().map_or(BARK, |t| t.colour),
+        stem: tinted(
+            species.tissues.first().map_or(BARK, |t| t.colour),
+            kind.tint * 0.5,
+        ),
         flowers: bloom.then(|| pick(seed, green, &PETALS)),
         fruit: ripe.then(|| pick(seed >> 17, green, &FRUIT)),
     }

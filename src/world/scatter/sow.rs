@@ -1,27 +1,29 @@
-//! Sowing a planet with a flora: the stones it keeps whatever lives there, then its producer groups by where
-//! they live, the climate they stand and the patch density.
+//! Sowing a planet with a flora: the stones it keeps whatever lives there, then the species of its producer
+//! groups by where they live, the climate they stand, the plant cover, their stands, the patch density, and
+//! the age of each plant.
 
 use bevy::prelude::*;
 use rand::RngExt;
 use rand_chacha::ChaCha8Rng;
 
 use super::Placement;
+use super::cover::fit;
 use super::density::Density;
 use super::grow::{Flora, Grower};
 use super::pass::{Ctx, Ground, size};
-use crate::climate::Climate;
+use super::stand::{lift, stands};
+use crate::life::Habitat;
 use crate::life::flora::KELP;
-use crate::life::{Habitat, Tolerance};
 use crate::world::Surface;
-use crate::world::propmesh::grown::{grown, tris};
+use crate::world::propmesh::grown::{AGES, grown, tris};
 use crate::world::propmesh::{BIG, Plant, VARIANTS};
 use crate::world::props::small_tris;
 
-/// Kelvin outside its tolerance at which a group no longer grows.
-const WARMTH: f32 = 8.0;
+/// Share of the plants of a species at each age: young, grown and old.
+const AGE_SHARE: [f32; AGES] = [0.32, 0.5, 0.18];
 
-/// Moisture outside its tolerance at which a group no longer grows.
-const WETNESS: f32 = 0.15;
+/// Least and most size of a plant at each age against the typical height of its species.
+const AGE_SIZE: [(f32, f32); AGES] = [(0.55, 0.8), (0.82, 1.1), (1.05, 1.3)];
 
 /// Metres from the shore line within which a shore group grows, on either side.
 const SHORE: f32 = 2.0;
@@ -41,19 +43,6 @@ fn mineral(p: Plant) -> bool {
         p,
         Rock | IceRock | Sandstone | Pebbles | SmoothRock | Boulder
     )
-}
-
-/// Returns how well tolerance `t` stands `air`, from 1 inside it to 0 a few kelvin or a little moisture
-/// outside. Without a climate every group stands it.
-fn fit(t: &Tolerance, air: Option<&Climate>) -> f32 {
-    let Some(air) = air else {
-        return 1.0;
-    };
-    let heat = (t.cold - air.temperature)
-        .max(air.temperature - t.heat)
-        .max(0.0);
-    let damp = (t.dry - air.moisture).max(air.moisture - t.wet).max(0.0);
-    (1.0 - heat / WARMTH).max(0.0) * (1.0 - damp / WETNESS).max(0.0)
 }
 
 /// Returns how much grower `g` gets on `at`, under the liquid when `under`, at patch density `d`: nothing
@@ -84,15 +73,27 @@ pub fn cost(p: &Placement) -> usize {
     }
 }
 
-/// Returns the scale of a group planted at `depth` metres under the liquid (negative on land), or nothing
-/// when it would break the surface. Kelp stops one to two metres under it; sizes spread with the layers.
-fn scale(g: &Grower, rng: &mut ChaCha8Rng, depth: f32) -> Option<f32> {
+/// Returns the age of a new plant drawn from `rng`, by the share of each age.
+fn age(rng: &mut ChaCha8Rng) -> usize {
+    let mut roll: f32 = rng.random();
+    AGE_SHARE
+        .iter()
+        .position(|&share| {
+            roll -= share;
+            roll < 0.0
+        })
+        .unwrap_or(AGES - 1)
+}
+
+/// Returns the scale of a plant of species `g` at `age` planted `depth` metres under the liquid (negative on
+/// land), or nothing when it would break the surface. Kelp stops one to two metres under it.
+fn scale(g: &Grower, rng: &mut ChaCha8Rng, depth: f32, age: usize) -> Option<f32> {
     let reference = g.habit.reference;
     let s = if g.arch == KELP {
         (depth - 1.0 - rng.random_range(0.0..1.5)).max(1.5) / reference
     } else {
-        let spread = 0.12 * f32::from(g.layers);
-        g.height / reference * rng.random_range(1.0 - spread..1.0 + spread)
+        let (low, high) = AGE_SIZE[age];
+        g.height / reference * rng.random_range(low..high)
     };
     (depth < 0.0 || s * reference < depth - 0.5).then_some(s)
 }
@@ -125,18 +126,18 @@ impl Flora {
                 return Some(Pick::Stone(plant));
             }
         }
-        let under = at.height < ctx.terrain.globe().sea_level();
+        let rise = at.height - ctx.terrain.globe().sea_level();
         let (d, air) = (
             ctx.fields.density((ctx.terrain, w), -at.height),
             ctx.air.as_ref().map(|a| a.at(w)),
         );
+        let (thick, key) = lift(ctx, (w, at), rise, big);
+        let held = stands(&self.growers, key);
         let growing = self.growers.iter().filter(|g| g.big() == big);
         growing
             .map(|g| {
-                (
-                    g,
-                    g.chance * fit(&g.tolerance, air) * gain(g, at, under, &d),
-                )
+                let here = fit(&g.tolerance, air) * gain(g, at, rise < 0.0, &d);
+                (g, g.chance * here * thick * held(g))
             })
             .find(|(_, chance)| {
                 acc += chance;
@@ -160,11 +161,10 @@ impl Flora {
         let depth = ctx.terrain.globe().sea_level() - at.height;
         let (plant, scale, variant) = match pick {
             Pick::Stone(plant) => stone(rng, plant, &at, depth)?,
-            Pick::Group(g) => (
-                g.habit.carrier,
-                scale(g, rng, depth)?,
-                g.looks[rng.random_range(0..VARIANTS)],
-            ),
+            Pick::Group(g) => {
+                let age = age(rng);
+                (g.habit.carrier, scale(g, rng, depth, age)?, g.looks[age])
+            }
         };
         Some(Placement {
             pos: Vec3::new(local.x, ctx.rest(w, (plant, scale), &at), local.y),

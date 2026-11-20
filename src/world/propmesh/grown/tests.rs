@@ -6,7 +6,7 @@ use std::collections::HashSet;
 use bevy::prelude::*;
 
 use super::*;
-use crate::life::flora::{Form, Paint};
+use crate::life::flora::{Form, Kind, Paint};
 use crate::world::propmesh::{BIG, merge_props};
 use crate::world::scatter::Placement;
 use crate::world::solids::tests::{triangles, volume};
@@ -17,11 +17,29 @@ pub const BIG_TRIS: usize = 330;
 /// Most triangles a grown plant of the ground cover has.
 pub const SMALL_TRIS: usize = 120;
 
+/// Returns one of three species: `0` at the near end of every range, `1` at the far end, and `2` with the
+/// most branches, arched leaves and the longest droop, the costliest mix.
+fn kind(pick: u8) -> Kind {
+    let end = [0.0, 1.0, 1.0][usize::from(pick % 3)];
+    Kind {
+        rank: pick % 3,
+        size: 0.6 + 0.9 * end,
+        spread: 0.65 + 0.8 * end,
+        lean: 0.3 * end,
+        branches: [2, 5, 5][usize::from(pick % 3)],
+        leaves: [3, 9, 6][usize::from(pick % 3)],
+        tint: 2.0 * end - 1.0,
+        droop: end,
+        ..Kind::PLAIN
+    }
+}
+
 /// Returns the dials of architecture `arch` with every flag set to `on`, `layers` layers, and flowers,
 /// fruit and leaves when `dressed`.
 fn dials(arch: u8, on: bool, layers: u8, dressed: bool) -> Dials {
     let colour = |c: [f32; 3]| dressed.then_some(c);
     Dials {
+        kind: kind(layers + u8::from(on)),
         architecture: arch,
         form: Form {
             height: 3.0,
@@ -44,10 +62,11 @@ fn dials(arch: u8, on: bool, layers: u8, dressed: bool) -> Dials {
     }
 }
 
-/// Returns every look the tests sweep: each architecture, variant, flag setting, layer count and dressing.
+/// Returns every look the tests sweep: each architecture, age, flag setting, layer count, dressing and the
+/// species at both ends of every range.
 fn looks() -> Vec<Look> {
     let flags = [false, true];
-    let all = (0..8u8).flat_map(|a| (0..VARIANTS as u8).map(move |v| (a, v)));
+    let all = (0..8u8).flat_map(|a| (0..AGES as u8).map(move |v| (a, v)));
     all.flat_map(|(a, v)| {
         flags
             .into_iter()

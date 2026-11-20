@@ -6,26 +6,32 @@
 
 mod bits;
 mod book;
+mod bulb;
 mod kit;
 mod low;
+mod rosette;
 mod tall;
 #[cfg(test)]
 mod tests;
+mod tree;
 
 pub(in crate::world::propmesh) use book::soup;
-pub use book::{page, tris};
+pub use book::{edition, page, tris};
 
 use super::{Plant, VARIANTS};
 use crate::life::flora::Dials;
 use crate::world::shapes::FlatMesh;
 use kit::Kit;
 
-/// The look of one grown plant: the dials of its group and which of the shape variants it is.
+/// Ages a species is built at: young, grown and old.
+pub const AGES: usize = 3;
+
+/// The look of one grown plant: the dials of its species and the age it is built at.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Look {
-    /// Dials of its group at this stage of the year.
+    /// Dials of its species at this stage of the year.
     pub dials: Dials,
-    /// Shape variant, below [`VARIANTS`].
+    /// Age, below [`AGES`]: 0 young, 1 grown, 2 old.
     pub variant: u8,
 }
 
@@ -88,13 +94,13 @@ pub fn grown(variant: u8) -> bool {
 pub fn build(look: &Look) -> FlatMesh {
     let mut kit = Kit::new(look);
     match look.dials.architecture {
-        0 => tall::trunk(&mut kit),
-        1 => low::rosette(&mut kit),
+        0 => tree::tree(&mut kit),
+        1 => rosette::rosette(&mut kit),
         2 => low::mat(&mut kit),
         3 => low::vine(&mut kit),
-        4 => low::bulb(&mut kit),
+        4 => bulb::bulb(&mut kit),
         5 => tall::stalk(&mut kit),
-        6 => low::kelp(&mut kit),
+        6 => bulb::kelp(&mut kit),
         _ => tall::lattice(&mut kit),
     }
     kit.mesh

@@ -26,7 +26,7 @@ Every version below has a status: **released**, **in progress** or **planned**. 
 
 ## The setting
 
-You are a human who never leaves a control container on the planet Kodya, in the Vereya system. From there you drive a robot over an instant quantum link. A smaller floating robot travels with you. Everything you see is generated from one seed.
+You are a human who never leaves a control container on your home planet. From there you drive a robot over an instant quantum link. A smaller floating robot travels with you. Everything you see is generated from one seed.
 
 ## Rules that hold in every version
 
@@ -53,7 +53,7 @@ The foundation for everything after it.
 
 - Galaxies on a grid, spiral arms, star classes, solar systems with 2 to 8 planets, generated names.
 - True sphere planets you can walk around, with their own gravity, day length and orbit, and the island generator sampled in 3D so a planet has no seams.
-- Kodya and the Vereya system: you wake up next to the control container, a small station and a landing pad.
+- The home planet and its system: you wake up next to the control container, a small station and a landing pad.
 - A ship with Newtonian flight, landing gear, flight assist, working orbits, a warp drive and an autopilot.
 - A sky lit by the real star, an atmosphere that fades to black, clouds to fly through, stars and galaxies in their true directions.
 - A board computer with the systems and galaxies you discovered, a humanoid robot with a screen face, boot boosters and a wingsuit, a floating companion, generated music and sound, and a black and white interface.
@@ -105,7 +105,7 @@ Planets get a kind, and the kind comes from physics.
 
 Planets at their real size, each with life that belongs to it.
 
-- Real scale: Earth-like Kodya at 6,371 km and 9.81 m/s², stars and orbits at their true sizes, days from each planet's own spin.
+- Real scale: stars, planets and orbits at their true sizes, gravity from each planet's mass, days from each planet's own spin. The home planet is chosen from the universe, not made by hand, and carries a generated name.
 - Continents from tectonic plates, mountain ranges where plates meet, and rivers hundreds of kilometres long; real air and moons that form the way real moons do.
 - Life chosen by physics: whether a planet lives and how far life has come, its chemistry, and plants shaped by its climate and its star's light.
 - A food web per planet: grazers, hunters, scavengers, pollinators and builders, with herds, nests and young.
@@ -187,7 +187,7 @@ The core rule, which planets live and how far life got, arrives with 0.11. This 
 - Tidal heating and thick ice shells allow life on moons and cold worlds.
 - Life under the ice and in the deep, around vents.
 - Dead worlds stay interesting: fossils, the ruins of ecosystems, strange geology, and the silence.
-- The region around Vereya is tuned so that a first trip always finds something alive.
+- Life follows the same rules everywhere, the home system included: a first trip finds life where the physics allows it.
 
 The dice are biased, not the physics. Every planet stays coherent; living ones are just more common than in reality.
 

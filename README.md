@@ -1,6 +1,6 @@
 # Abstractions
 
-A space exploration game with a pixelated, low-poly look. You are a human in a control container on the planet Kodya, in the Vereya system, driving a small robot over a quantum link. A second robot floats along with you. Walk around whole planets, glide over them in a wingsuit, then take the ship through the clouds to other planets, stars and galaxies. Everything comes from one seed.
+A space exploration game in a gigantic universe where every world is its own. You are a human in a control container on your home planet, driving a small robot over a quantum link. A second robot floats along with you. Walk around whole planets, glide over them in a wingsuit, then take the ship through the clouds to other planets, stars and galaxies. Everything comes from one seed.
 
 Where the game is going: [ROADMAP.md](ROADMAP.md).
 
@@ -205,7 +205,7 @@ A missing or broken file is replaced by the defaults.
 - `src/universe`: galaxies, stars, systems and planets generated from the seed.
 - `src/space`: frames of reference, the floating origin and the clock.
 - `src/world`: planets as spheres, terrain, chunk streaming, plants, structures and sea.
-- `src/home`: the base on Kodya.
+- `src/home`: the base on the home planet.
 - `src/player`, `src/avatar`, `src/gear`, `src/view`: movement, the robot body, the wingsuit and boots, the camera.
 - `src/ship`, `src/computer`: the ship, its autopilot, its course and the charts.
 - `src/map`: the map, the explored ground, waypoints and favourite places.

@@ -38,6 +38,10 @@ impl Charted {
     }
 }
 
+/// The dots of the course, apart from the sheet and the mark of the ship.
+type Dashes<'w, 's> =
+    Query<'w, 's, (&'static Dash, &'static mut Node), (Without<Chart>, Without<ShipDot>)>;
+
 /// The nodes that move with the ship.
 #[derive(bevy::ecs::system::SystemParam)]
 pub struct Moving<'w, 's> {
@@ -46,7 +50,7 @@ pub struct Moving<'w, 's> {
     /// The mark of the ship.
     ships: Query<'w, 's, &'static mut Node, (With<ShipDot>, Without<Chart>)>,
     /// The dots of the course.
-    dashes: Query<'w, 's, (&'static Dash, &'static mut Node), (Without<Chart>, Without<ShipDot>)>,
+    dashes: Dashes<'w, 's>,
 }
 
 /// Returns the `left` and `top` that put a node at the chart point `at`.

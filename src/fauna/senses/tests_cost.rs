@@ -35,6 +35,7 @@ fn scene() -> (Senser, Vec<Threat>) {
             key: i,
             herd: 0,
             robot: true,
+            crouch: 0.0,
         })
         .collect();
     (me, threats)

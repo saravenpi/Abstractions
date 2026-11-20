@@ -48,6 +48,22 @@ pub const RAY_STEPS: u32 = 5;
 /// Metres above its root at which a robot is seen: about its chest.
 pub const ROBOT_CHEST: f32 = 1.0;
 
+/// Share of the fill rate a fully crouched robot keeps: a crouch halves it.
+pub const CROUCH_FILL: f32 = 0.5;
+
+/// Least share of the fill rate a threat can keep, crouching and creeping together.
+pub const LEAST_FILL: f32 = 0.25;
+
+/// Share of its footstep noise a fully crouched robot loses.
+pub const CROUCH_QUIET: f32 = 0.5;
+
+/// Share of the sight range a fully crouched robot hides: it sits behind lower ground.
+pub const CROUCH_SIGHT: f32 = 0.25;
+
+/// Metres a fully crouched robot sinks: its chest is that much lower over its root. About
+/// 35 percent of the standing height of 1.8 metres.
+pub const CROUCH_DROP: f32 = 0.63;
+
 /// Walking speed in metres per second of a robot, the speed of loudness 1.
 pub const WALK: f32 = 1.5;
 

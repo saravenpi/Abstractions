@@ -144,11 +144,12 @@ fn robot(key: Entity, pos: DVec3, pose: Option<&AvatarPose>) -> Threat {
     Threat {
         pos,
         speed,
-        loud: loudness(speed, pose.thrust, impact),
+        loud: loudness(speed, pose.thrust, impact, pose.crouch),
         mass: ROBOT_KG,
         key: key.to_bits(),
         herd: 0,
         robot: true,
+        crouch: pose.crouch,
     }
 }
 
@@ -183,6 +184,7 @@ fn hunters(s: &Sense, life: &Life, threats: &mut Vec<Threat>) {
             key: id.rotate_left(8) ^ u64::from(slot),
             herd: id,
             robot: false,
+            crouch: 0.0,
         });
     }
 }

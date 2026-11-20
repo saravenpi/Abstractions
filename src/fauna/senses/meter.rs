@@ -3,7 +3,10 @@
 //! It fills while the animal sees, hears or smells the threat, faster the nearer it is, and drains
 //! slowly once it does not. An animal keeps a meter for a few threats at once, by their keys.
 
-use super::tune::{DRAIN, FAR, FAST, FILL_FAR, FILL_MID, FILL_NEAR, LOUD, MID, NEAR, STILL};
+use super::tune::{
+    CROUCH_FILL, DRAIN, FAR, FAST, FILL_FAR, FILL_MID, FILL_NEAR, LEAST_FILL, LOUD, MID, NEAR,
+    STILL,
+};
 
 /// Threats one animal keeps a meter for at once.
 pub const SLOTS: usize = 4;
@@ -59,15 +62,18 @@ pub fn fill_seconds(metres: f32) -> f32 {
 }
 
 /// Returns the factor of the fill rate for a threat going `speed` metres per second at loudness
-/// `loud`: half for a still or creeping one, twice for a fast or loud one.
-pub fn stealth(speed: f32, loud: f32) -> f32 {
-    if speed > FAST || loud > LOUD {
+/// `loud`, `crouch` down from 0 to 1: half for a still or creeping one, twice for a fast or loud one,
+/// and half again at full crouch, never under [`LEAST_FILL`].
+pub fn stealth(speed: f32, loud: f32, crouch: f32) -> f32 {
+    let base = if speed > FAST || loud > LOUD {
         2.0
     } else if speed < STILL {
         0.5
     } else {
         1.0
-    }
+    };
+    let hidden = 1.0 - (1.0 - CROUCH_FILL) * crouch.clamp(0.0, 1.0);
+    (base * hidden).max(LEAST_FILL)
 }
 
 /// Returns true when a threat `metres` away, seen through senses of range factor `keen`, is close

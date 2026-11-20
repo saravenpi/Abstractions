@@ -5,6 +5,7 @@
 //! marked `Rebased` so an anchor rebase leaves them where they were on the planet.
 
 mod eye;
+mod fleck;
 mod ground;
 mod kind;
 mod pick;
@@ -30,6 +31,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
+pub use fleck::{Fling, Landed};
 pub use water::Churn;
 
 use crate::screens::{Screen, playing};
@@ -43,7 +45,7 @@ pub struct Sight;
 
 /// Registers the ambient particle pool and its systems.
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins(water::plugin)
+    app.add_plugins((water::plugin, fleck::plugin))
         .init_resource::<rng::Rng>()
         .init_resource::<sense::Sensed>()
         .init_resource::<eye::Eye>()

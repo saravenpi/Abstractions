@@ -45,8 +45,13 @@ pub fn mode(rank: u8) -> Mode {
 }
 
 /// Returns the body of a record for `pose`, placed at `pos` with velocity `vel` and heading
-/// `yaw` in the frame of the record.
-pub fn body(pose: &AvatarPose, pos: DVec3, vel: DVec3, yaw: f32) -> RobotBody {
+/// `yaw` in the frame of the record, whose hands do `swing` for `phase` seconds, as
+/// [`super::swing::pack`] gives them.
+pub fn body(
+    pose: &AvatarPose,
+    (pos, vel, yaw): (DVec3, DVec3, f32),
+    (swing, phase): (u8, f32),
+) -> RobotBody {
     RobotBody {
         position: pos,
         velocity: vel.as_vec3(),
@@ -62,6 +67,9 @@ pub fn body(pose: &AvatarPose, pos: DVec3, vel: DVec3, yaw: f32) -> RobotBody {
         airspeed: pose.airspeed,
         look: pose.look,
         landed_hard: pose.landed_hard,
+        crouch: pose.crouch,
+        swing,
+        phase,
     }
 }
 
@@ -105,6 +113,7 @@ pub fn blend(view: &View<RobotBody>, stride: &mut Stride) -> AvatarPose {
         airspeed: mix(a.airspeed, b.airspeed),
         look: a.look.lerp(b.look, t),
         landed_hard: mix(a.landed_hard, b.landed_hard),
+        crouch: mix(a.crouch, b.crouch),
         prone: if mode.winged() {
             mix(a.wings, b.wings)
         } else {

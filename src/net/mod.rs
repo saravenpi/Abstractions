@@ -15,6 +15,7 @@ mod clock;
 pub mod driver;
 mod friends;
 mod host;
+mod hunt;
 mod join;
 mod link;
 mod lobby;
@@ -26,6 +27,7 @@ mod state;
 mod tests;
 
 pub use clock::{NetStats, SessionClock};
+pub use hunt::{Echoes, hooks};
 #[cfg(test)]
 pub use join::{record_of, world_of};
 pub use link::{EVENTS_PER_FRAME, FromServer, Inbox, Link, Receive, Role};

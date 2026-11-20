@@ -116,5 +116,6 @@ pub fn plugin(app: &mut App) {
     edges(app);
     lobby(app);
     super::state::plugin(app);
+    super::hunt::plugin(app);
     super::friends::plugin(app);
 }

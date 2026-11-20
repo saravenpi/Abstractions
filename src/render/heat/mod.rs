@@ -19,8 +19,9 @@ mod tests;
 use bevy::prelude::*;
 
 pub use gas::Gas;
+pub use sheath::{SheathMaterial, SheathUniform};
 pub use state::{Craft, Heat, HeatSet};
-pub use tune::MIN_SPEED;
+pub use tune::{MIN_SPEED, SHEATH_FROM, SHEATH_REACH};
 
 use super::celestial::smoothstep;
 

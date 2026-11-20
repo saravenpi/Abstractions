@@ -2,6 +2,7 @@
 //! record at its own rate, the batch and the body written into buffers that are kept.
 
 mod kinds;
+mod vitals;
 
 pub use kinds::{Here, Pilot, Sent, Trail};
 
@@ -14,10 +15,13 @@ use super::Remote;
 use super::bodies::{Bodies, star_of};
 use super::frame::Place;
 use super::rate::{Cadence, REST_SPEED};
+use crate::avatar::strike::Strike;
 use crate::avatar::{Avatar, AvatarPose};
 use crate::companion::{Companion, Display, Float};
+use crate::condition::Condition;
 use crate::net::link::Link;
 use crate::player::{Motion, Player};
+use crate::render::Heat;
 use crate::ship::{Helm, Ship, ShipTelemetry, WarpState};
 use crate::sim::PlayerId;
 use crate::space::{Anchor, Clock, Location, Placed, Travel};
@@ -32,7 +36,7 @@ pub struct Outbox {
     /// The body of the record being written.
     body: Vec<u8>,
     /// When the next robot, ship and companion record is due, in that order.
-    cadence: [Cadence; 3],
+    cadence: [Cadence; 4],
     /// The star this machine was last at.
     star: Option<StarId>,
     /// Where the companion was on the last frame.
@@ -66,6 +70,7 @@ impl Outbox {
             Kind::Robot => 0,
             Kind::Ship => 1,
             Kind::Companion => 2,
+            Kind::Vitals => 3,
         };
         if !self.cadence[slot].due(stamp.now, sent.rest) {
             return;
@@ -104,6 +109,10 @@ pub struct Scene<'w> {
     telemetry: Option<Res<'w, ShipTelemetry>>,
     /// What the pilot asks of the ship.
     helm: Option<Res<'w, Helm>>,
+    /// The glow of the craft of this machine.
+    heat: Option<Res<'w, Heat>>,
+    /// How whole each part of the robot is.
+    condition: Option<Res<'w, Condition>>,
 }
 
 /// The things of this machine that are sent.
@@ -122,7 +131,16 @@ pub struct Locals<'w, 's> {
         With<Player>,
     >,
     /// The robots, with the body each hangs from.
-    avatars: Query<'w, 's, (&'static ChildOf, &'static AvatarPose), With<Avatar>>,
+    avatars: Query<
+        'w,
+        's,
+        (
+            &'static ChildOf,
+            &'static AvatarPose,
+            Option<&'static Strike>,
+        ),
+        With<Avatar>,
+    >,
     /// The ship of this machine.
     ship: Query<'w, 's, (&'static Ship, Option<&'static Placed>)>,
     /// The companion of this machine.
@@ -169,12 +187,14 @@ impl Scene<'_> {
 
 impl Locals<'_, '_> {
     /// Returns the body of the player at this machine, how it moves and how its robot is posed.
-    fn mine(&self) -> Option<(&GlobalTransform, &Motion, &AvatarPose)> {
+    fn mine(&self) -> Option<(&GlobalTransform, &Motion, (&AvatarPose, (u8, f32)))> {
         let local = |(_, id, ..): &(Entity, &PlayerId, _, _)| **id == PlayerId::LOCAL;
         let (entity, _, at, motion) = self.players.iter().find(local)?;
-        let hung = |(parent, _): &(&ChildOf, &AvatarPose)| parent.parent() == entity;
-        let (_, pose) = self.avatars.iter().find(hung)?;
-        Some((at, motion, pose))
+        let hung =
+            |(parent, ..): &(&ChildOf, &AvatarPose, Option<&Strike>)| parent.parent() == entity;
+        let (_, pose, strike) = self.avatars.iter().find(hung)?;
+        let swing = strike.map_or((0, 0.0), super::swing::pack);
+        Some((at, motion, (pose, swing)))
     }
 
     /// Returns the record of the companion of this machine, which was at `was` a frame ago.
@@ -210,9 +230,10 @@ pub fn send(
     };
     let walker = locals.mine();
     let walker =
-        walker.and_then(|(at, motion, pose)| kinds::robot(&here, at, motion, pose, &mut bodies));
+        walker.and_then(|(at, motion, hands)| kinds::robot(&here, at, motion, hands, &mut bodies));
     out.offer(&stamp, (Kind::Robot, walker), RobotBody::encode);
-    let flown = (scene.drive(), scene.pilot());
+    out.offer_vitals(&stamp, scene.vitals(&here, walker));
+    let flown = scene.flown(&here);
     let hull = ship.and_then(|(ship, placed)| kinds::ship(&here, ship, placed, flown, &mut bodies));
     out.offer(&stamp, (Kind::Ship, hull), ShipBody::encode);
     let bot = locals.bot(&here, out.trail, &mut bodies);

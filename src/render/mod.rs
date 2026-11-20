@@ -80,7 +80,10 @@ pub use clouds::CloudCrossing;
 pub use daylight::{PlaceLight, PlaceLit, PlaceUniform, place_light};
 pub use entry::FlightFx;
 pub use fog::{FOG_END, HORIZON_SHARE, OPEN as FOG_OPEN, THIN_AIR};
-pub use heat::{Craft, Gas, Glow, Heat, MIN_SPEED, descent, entry};
+pub use heat::{
+    Craft, Gas, Glow, Heat, MIN_SPEED, SHEATH_FROM, SHEATH_REACH, SheathMaterial, SheathUniform,
+    descent, entry,
+};
 pub use lighting::{Moon, Sun};
 pub use lowres::{Fit, LowRes, window_changed};
 pub use murk::{Murk, Swell, Waterline, murk};

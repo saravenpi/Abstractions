@@ -29,6 +29,11 @@ pub struct Condition {
     whole: [f32; PARTS],
 }
 
+/// The condition of the body of another player, on its puppet: the walk of the puppet limps by it
+/// as the walk of the local robot limps by the [`Condition`] resource.
+#[derive(Component, Debug, Clone, Copy, PartialEq)]
+pub struct Wounded(pub Condition);
+
 impl Default for Condition {
     /// A robot with every part whole.
     fn default() -> Self {

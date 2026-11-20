@@ -41,7 +41,8 @@ Branch `integrate` (worktree `~/Code/Saravenpi/wt-int`) holds everything merged 
 | 6 | Fix the lights: dark zones appear sometimes | Diagnosed, `light.md` in the same folder. Suspects: SSAO on by default over chunk skirts and LOD seams, coarse chunks shadowing fine ones during the LOD fade, the ground light correction ignoring shadows, shadows cut off at 110 m. Fixes not started |
 | 7 | Seen from outside, ground colours change with altitude | Diagnosed, same file. Causes: the season repaints the whole planet's colour table from the spot under the camera (certain, under 600 m), rock and snow read from the facet slope so they vanish at coarse LOD, three colour functions (meshes, far ball, map), turf carpet only on near chunks, the far ball has its own light model. Fix: one colour function for every range. Not started |
 | 8 | Look up good practices online for 6 and 7 | Done, sources listed in `light.md` |
-| 9 | Review and rework the UI and UX of the game, the map and the whole HUD. Carte blanche. Friends were lost launching a warp and using waypoints | Review running, spec goes to `UX.md` in the same folder. Implementation not started |
+| 9 | Review and rework the UI and UX of the game, the map and the whole HUD. Carte blanche. Friends were lost launching a warp and using waypoints | Review done: spec in `UX.md` in the same folder (488 lines). Three packages: C (theme, icons, HUD) running on `ui-c`; B (pins and map) and A (Go flow and planet card) start when C lands its tokens |
+| 10 | Markers over the world, as in modern games: a pin shows on the screen at its real place; when it is to the side or behind, it slides to the border of the screen with an arrow pointing to it, higher or lower on the border by its real position | Sent to `ui-c` (HUD). Not started |
 
 ## 3. The UI rework: what the owner asked for
 
@@ -66,6 +67,7 @@ Things to fix:
 - An empty map (no data) must show a text, not just black.
 - Planet stats are hard to read. Make them readable at a glance.
 - Remove the dots for monuments on the map.
+- Markers over the world and on the screen border with an arrow, see request 10.
 
 ## 4. Decisions waiting for the owner
 

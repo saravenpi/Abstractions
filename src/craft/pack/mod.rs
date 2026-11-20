@@ -10,6 +10,7 @@ mod load;
 mod make;
 mod pick;
 mod save;
+mod slots;
 mod tune;
 mod words;
 

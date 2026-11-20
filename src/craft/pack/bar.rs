@@ -10,6 +10,7 @@ pub const SLOTS: usize = 6;
 #[serde(default)]
 pub struct Bar {
     /// The item id in each slot.
+    #[serde(with = "super::slots")]
     pub slots: [Option<u32>; SLOTS],
     /// The held slot.
     pub held: usize,

@@ -4,7 +4,7 @@ use bevy::math::DVec3;
 
 use super::*;
 use crate::space::Frame;
-use crate::universe::{GalaxyId, Universe};
+use crate::universe::{GalaxyId, Universe, system_reach};
 
 /// Distances switch unit at 1000 of the smaller one and keep three digits.
 #[test]
@@ -144,17 +144,10 @@ fn whereabouts_follow_the_frame() {
     let (star, galaxy) = (home.star, home.star.galaxy);
     let on_planet = whereabouts(&universe, Frame::Surface(home), DVec3::ZERO);
     assert_eq!(on_planet, (Some(home), Some(star), Some(galaxy)));
-    let near = whereabouts(
-        &universe,
-        Frame::System(star),
-        DVec3::X * 0.5 * SYSTEM_REACH,
-    );
+    let reach = system_reach(&universe.star(star).unwrap());
+    let near = whereabouts(&universe, Frame::System(star), DVec3::X * 0.5 * reach);
     assert_eq!(near, (None, Some(star), Some(galaxy)));
-    let far = whereabouts(
-        &universe,
-        Frame::System(star),
-        DVec3::X * 2.0 * SYSTEM_REACH,
-    );
+    let far = whereabouts(&universe, Frame::System(star), DVec3::X * 1.5 * reach);
     assert_eq!(far, (None, None, Some(galaxy)));
     let radius = universe.galaxy(galaxy).unwrap().radius;
     let inside = whereabouts(&universe, Frame::Galaxy(galaxy), DVec3::Z * 0.5 * radius);

@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 
 use super::*;
-use crate::universe::{GLY, GalaxyId, StarId, Universe};
+use crate::universe::{GalaxyId, LY, StarId, Universe};
 
 /// A new atlas knows the home galaxy and the three galaxies nearest to it, and no other.
 #[test]
@@ -22,7 +22,7 @@ fn a_new_atlas_knows_home_and_three_galaxies() {
     assert!(unknown.count() > 0);
 }
 
-/// A new atlas knows the home system and every system within reach of it, and no other.
+/// A new atlas knows the home system and every system within 10 light-years of it, and no other.
 #[test]
 fn a_new_atlas_knows_only_systems_near_home() {
     let universe = Universe::new(7);
@@ -30,10 +30,10 @@ fn a_new_atlas_knows_only_systems_near_home() {
     let atlas = Atlas::new(&universe);
     let origin = universe.star(home).unwrap().pos;
     let systems = atlas.known_systems(&universe, home.galaxy);
-    let reach = REVEAL_GLY * GLY;
+    let reach = REVEAL_LY * LY;
     assert!(systems.iter().any(|star| star.id == home));
     assert!(systems.iter().all(|s| s.pos.distance(origin) <= reach));
-    let around = universe.stars_near(home.galaxy, origin, REVEAL_GLY);
+    let around = universe.stars_near(home.galaxy, origin, REVEAL_LY);
     assert_eq!(systems.len(), around.len());
     let other = atlas.known_galaxies(&universe)[1].id;
     assert!(atlas.known_systems(&universe, other).is_empty());
@@ -58,10 +58,10 @@ fn visiting_a_system_adds_only_its_neighbours() {
     assert!(
         added
             .clone()
-            .all(|star| star.pos.distance(far.pos) <= REVEAL_GLY * GLY)
+            .all(|star| star.pos.distance(far.pos) <= REVEAL_LY * LY)
     );
     assert!(added.count() > 0);
-    let around = universe.stars_near(home.galaxy, far.pos, REVEAL_GLY);
+    let around = universe.stars_near(home.galaxy, far.pos, REVEAL_LY);
     assert!(around.iter().all(|star| new.contains(&star.id)));
 }
 

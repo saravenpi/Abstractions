@@ -1,9 +1,11 @@
 //! The chart: the rows of a tab laid out as a map seen from above the plane of the system or
 //! of the galaxy.
 //!
-//! A system is drawn around its star with the square root of the distance, so the inner
-//! planets do not vanish beside the outer ones. Stars and galaxies are drawn around the ship
-//! at their true distances.
+//! A system is drawn around its star with the logarithm of the distance, see [`scale`], so the
+//! inner planets do not vanish beside the outer ones. Stars and galaxies are drawn around the
+//! ship at their true distances: a neighbourhood of stars a few light-years apart fills the
+//! map, and a far cluster or a far home leaves it for the pin of the rim, see
+//! [`super::rim::spread`].
 
 use std::f32::consts::TAU;
 
@@ -71,11 +73,11 @@ pub(super) fn flat(offset: DVec3) -> Vec2 {
 /// orbit with its moons on tiny orbits around it, and the ship. The star is the row of a star,
 /// or the first row when the filter left it out.
 fn system(lines: &[Line], ship: UniPos) -> Vec<(Dot, Vec2)> {
-    let Some((origin, reach)) = scale::reading(lines) else {
+    let Some((origin, radial)) = scale::reading(lines) else {
         return Vec::new();
     };
     let around = |at: UniPos| flat(at - origin);
-    let scaled = |at: Vec2| scale::squash(at, reach);
+    let scaled = |at: Vec2| scale::squash(at, radial);
     let raw: Vec<Vec2> = lines.iter().map(|line| scaled(around(line.at))).collect();
     let mut points = raw.clone();
     moons::settle(lines, &mut points);

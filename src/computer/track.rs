@@ -6,7 +6,7 @@ use bevy::prelude::*;
 
 use super::atlas::Atlas;
 use super::board::Board;
-use super::locate::whereabouts;
+use super::locate::whereabouts_with;
 use super::reveal::systems_around;
 use super::route::{Destination, RouteStatus, Target, remember};
 use crate::screens::Screen;
@@ -50,9 +50,15 @@ impl Known {
     }
 }
 
-/// Records the planet, system and galaxy the ship or the player is inside.
-fn track(universe: Res<Universe>, anchor: Res<Anchor>, mut atlas: ResMut<Atlas>) {
-    let (body, star, galaxy) = whereabouts(&universe, anchor.frame, anchor.origin);
+/// Records the planet, system and galaxy the ship or the player is inside. The reach of the
+/// system the ship is in is read once and kept, so the frame does not fill a sector.
+fn track(
+    universe: Res<Universe>,
+    anchor: Res<Anchor>,
+    mut atlas: ResMut<Atlas>,
+    mut memo: Local<Option<(StarId, f64)>>,
+) {
+    let (body, star, galaxy) = whereabouts_with(&universe, anchor.frame, anchor.origin, &mut memo);
     let inside = [
         body.map(Target::Body),
         star.map(Target::Star),

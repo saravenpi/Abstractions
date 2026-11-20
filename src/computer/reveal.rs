@@ -4,8 +4,12 @@ use bevy::math::DVec3;
 
 use crate::universe::{GALAXY_CELL, GalaxyId, GalaxySpec, StarId, StarSpec, Universe};
 
-/// A visited system reveals every system within this many game light-years.
-pub const REVEAL_GLY: f64 = 60.0;
+/// A visited system reveals every system within this many light-years.
+///
+/// At the real density near the Sun, 0.004 stars per cubic light-year, a sphere of this radius
+/// holds about 17 stars, close to the real census of the 10 light-years around the Sun. A
+/// reveal reads about 27 sectors of 10 light-years, each with at most 12 stars.
+pub const REVEAL_LY: f64 = 10.0;
 
 /// A visited galaxy reveals every galaxy within this many grid cells on each axis.
 pub const REVEAL_CELLS: i32 = 2;
@@ -17,11 +21,13 @@ pub const HOME_NEIGHBOURS: usize = 3;
 const SEARCH_CELLS: i32 = 4;
 
 /// Returns the systems a visit to star `id` reveals, itself included, nearest first.
+///
+/// One call to `stars_near`: its cost is the sectors of the sphere, never a galaxy.
 pub fn systems_around(universe: &Universe, id: StarId) -> Vec<StarSpec> {
     let Some(star) = universe.star(id) else {
         return Vec::new();
     };
-    universe.stars_near(id.galaxy, star.pos, REVEAL_GLY)
+    universe.stars_near(id.galaxy, star.pos, REVEAL_LY)
 }
 
 /// Returns the galaxies a visit to galaxy `id` reveals, itself included.

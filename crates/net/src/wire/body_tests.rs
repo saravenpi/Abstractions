@@ -39,14 +39,14 @@ pub(super) fn robot() -> RobotBody {
     }
 }
 
-/// A robot body takes 41 bytes on a surface, under the 48 allowed, and comes back within the
+/// A robot body takes 44 bytes on a surface, under the 48 allowed, and comes back within the
 /// packing error.
 #[test]
 fn a_robot_body_is_small_and_comes_back() {
     let (frame, sent) = (Frame::Surface(planet()), robot());
     let mut bytes = Vec::new();
     sent.encode(&frame, &mut bytes);
-    assert_eq!(bytes.len(), 41);
+    assert_eq!(bytes.len(), 44);
     assert!(bytes.len() <= 48);
     let got = RobotBody::decode(&frame, &bytes).unwrap();
     assert!((got.position - sent.position).abs().max_element() <= 0.000_500_001);
@@ -100,7 +100,23 @@ fn a_position_in_space_comes_back_exactly() {
     }
 }
 
-/// A ship body takes 37 bytes on a surface and comes back within the packing error.
+/// A robot on a planet of 1.2e7 m radius comes back within a millimetre.
+#[test]
+fn a_position_at_planet_scale_comes_back_within_a_millimetre() {
+    let frame = Frame::Surface(planet());
+    for position in [
+        DVec3::new(1.2e7, 0.000_4, -3.3),
+        DVec3::new(-8.5e6, 8.5e6, 1.2e7 - 0.123),
+    ] {
+        let sent = RobotBody { position, ..robot() };
+        let mut bytes = Vec::new();
+        sent.encode(&frame, &mut bytes);
+        let got = RobotBody::decode(&frame, &bytes).unwrap();
+        assert!((got.position - position).abs().max_element() <= 0.001);
+    }
+}
+
+/// A ship body takes 40 bytes on a surface and comes back within the packing error.
 #[test]
 fn a_ship_body_comes_back() {
     let frame = Frame::Surface(planet());
@@ -119,7 +135,7 @@ fn a_ship_body_comes_back() {
     };
     let mut bytes = Vec::new();
     sent.encode(&frame, &mut bytes);
-    assert_eq!(bytes.len(), 37);
+    assert_eq!(bytes.len(), 40);
     let got = ShipBody::decode(&frame, &bytes).unwrap();
     assert!((got.position - sent.position).abs().max_element() <= 0.000_500_001);
     assert!(got.rotation.angle_between(sent.rotation) < 0.005);
@@ -134,7 +150,7 @@ fn a_ship_body_comes_back() {
     assert!((got.boost - sent.boost).abs() < 0.002);
 }
 
-/// A companion body takes 25 bytes on a surface and comes back within the packing error.
+/// A companion body takes 28 bytes on a surface and comes back within the packing error.
 #[test]
 fn a_companion_body_comes_back() {
     let frame = Frame::Surface(planet());
@@ -152,7 +168,7 @@ fn a_companion_body_comes_back() {
     };
     let mut bytes = Vec::new();
     sent.encode(&frame, &mut bytes);
-    assert_eq!(bytes.len(), 25);
+    assert_eq!(bytes.len(), 28);
     let got = CompanionBody::decode(&frame, &bytes).unwrap();
     assert_eq!((got.position, got.wave), (sent.position, 1.0));
     assert!(got.rotation.angle_between(sent.rotation) < 0.005);
@@ -177,7 +193,7 @@ fn bad_bodies_are_refused() {
     bytes.push(0);
     assert!(RobotBody::decode(&surface, &bytes).is_none());
     bytes.pop();
-    bytes[12..16].copy_from_slice(&f32::NAN.to_le_bytes());
+    bytes[15..19].copy_from_slice(&f32::NAN.to_le_bytes());
     assert!(RobotBody::decode(&surface, &bytes).is_none());
     let mut far = Vec::new();
     let lost = RobotBody {

@@ -1,6 +1,6 @@
 //! The body of a companion record: where a player's companion hovers and its body language.
 //!
-//! 25 bytes on a surface, 37 in the other frames. It holds no velocity: a companion is drawn
+//! 28 bytes on a surface, 37 in the other frames. It holds no velocity: a companion is drawn
 //! by blending straight between two samples.
 
 use std::f32::consts::{PI, TAU};

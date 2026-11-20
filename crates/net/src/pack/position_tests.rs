@@ -1,8 +1,8 @@
-//! Tests of millimetre positions: the half-millimetre error, the range and the clamping.
+//! Tests of cell positions: the half-millimetre error at planet scale and bad numbers.
 
 use glam::DVec3;
 
-use super::{MM_RANGE, pack_mm, unpack_mm};
+use super::{CELL, pack_cells, unpack_cells};
 
 /// Positions all over a planet come back within half a millimetre on each axis.
 #[test]
@@ -14,25 +14,34 @@ fn a_position_comes_back_within_half_a_millimetre() {
             (t * 1.913).cos() * 1.3e6,
             (t * 0.277).sin() * 4.2e5 + 0.000_49,
         );
-        let error = (unpack_mm(pack_mm(position)) - position)
+        let error = (unpack_cells(pack_cells(position)) - position)
             .abs()
             .max_element();
         assert!(error <= 0.000_500_001, "error {error} m at {position}");
     }
 }
 
-/// The range is about 2147 km, and a coordinate beyond it is clamped to it.
+/// A position at 1.2e7 m, the radius of the largest rocky planet, and beyond it, keeps a
+/// millimetre.
 #[test]
-fn a_far_coordinate_is_clamped_to_the_range() {
-    assert!((MM_RANGE - 2_147_483.647).abs() < 1e-6);
-    let far = unpack_mm(pack_mm(DVec3::new(9.0e9, -9.0e9, f64::INFINITY)));
-    assert!((far.x - MM_RANGE).abs() < 1e-6);
-    assert!((far.y + MM_RANGE).abs() < 0.002);
-    assert!((far.z - MM_RANGE).abs() < 1e-6);
+fn a_position_at_planet_scale_keeps_a_millimetre() {
+    for n in 0..10_000 {
+        let t = f64::from(n);
+        let position = DVec3::new(
+            1.2e7 + (t * 0.37).sin() * 3.0e5 + 0.000_123,
+            -1.2e7 * (t * 0.011).cos() + 0.000_7,
+            7.0e7 * (t * 0.019).sin() + 0.000_3,
+        );
+        let packed = pack_cells(position);
+        assert!(packed.mm.iter().all(|mm| f64::from(mm.abs()) <= CELL * 500.0));
+        let error = (unpack_cells(packed) - position).abs().max_element();
+        assert!(error <= 0.001, "error {error} m at {position}");
+    }
 }
 
 /// A coordinate that is not a number packs as zero.
 #[test]
 fn a_missing_number_packs_as_zero() {
-    assert_eq!(pack_mm(DVec3::new(f64::NAN, 1.0, -0.0015)), [0, 1000, -2]);
+    let packed = pack_cells(DVec3::new(f64::NAN, 1.0, -0.0015));
+    assert_eq!((packed.cell, packed.mm), ([0, 0, 0], [0, 1000, -2]));
 }

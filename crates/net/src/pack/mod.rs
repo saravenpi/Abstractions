@@ -13,7 +13,7 @@ mod scalar;
 #[cfg(test)]
 mod scalar_tests;
 
-pub use position::{MM_RANGE, pack_mm, unpack_mm};
+pub use position::{CELL, Packed, pack_cells, unpack_cells};
 pub use rotation::{pack_rotation, unpack_rotation};
 pub use scalar::{
     pack_i8, pack_i16, pack_u16, pack_unit, unpack_i8, unpack_i16, unpack_u16, unpack_unit,

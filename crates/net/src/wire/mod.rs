@@ -39,7 +39,7 @@ pub use stream::{CLIENT_MESSAGE_MAX, MESSAGE_MAX, StreamError, decode, encode};
 
 /// Version of the protocol. A player and a server must hold the same number to play together.
 /// Raise it whenever bytes on the wire change meaning.
-pub const PROTOCOL: u16 = 2;
+pub const PROTOCOL: u16 = 3;
 
 /// Columns of the explored grid of a body, longitude 0 first, going east.
 pub const EXPLORED_COLUMNS: u32 = 512;

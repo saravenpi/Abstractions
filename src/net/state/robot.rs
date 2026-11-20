@@ -4,6 +4,7 @@
 use abstractions_net::wire::{RobotBody, stride_delta};
 use bevy::math::{DQuat, DVec3};
 
+use super::store::Tracked;
 use crate::avatar::{AvatarPose, Mode};
 use abstractions_net::jitter::{Snap, View};
 
@@ -21,16 +22,18 @@ pub fn heading(pos: DVec3, rot: DQuat) -> f32 {
     (-ahead.x).atan2(-ahead.z) as f32
 }
 
-/// Returns the snapshot of a robot record sampled at universe time `time`: its orientation is
-/// the heading turned about the local up.
-pub fn snap(time: f64, body: RobotBody) -> Snap<RobotBody> {
-    let rotation = upright(body.position) * DQuat::from_rotation_y(f64::from(body.yaw));
-    Snap {
-        time,
-        position: body.position,
-        velocity: Some(body.velocity),
-        rotation: rotation.as_quat(),
-        extra: body,
+impl Tracked for RobotBody {
+    /// Returns the snapshot of a robot record: its orientation is the heading turned about the
+    /// local up.
+    fn snap(self, time: f64) -> Snap<Self> {
+        let rotation = upright(self.position) * DQuat::from_rotation_y(f64::from(self.yaw));
+        Snap {
+            time,
+            position: self.position,
+            velocity: Some(self.velocity),
+            rotation: rotation.as_quat(),
+            extra: self,
+        }
     }
 }
 

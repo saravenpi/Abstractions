@@ -11,10 +11,12 @@ mod bodies;
 mod draw;
 mod forget;
 mod frame;
+mod held;
 mod rate;
 mod rebase;
 mod robot;
 mod send;
+mod store;
 mod swing;
 #[cfg(test)]
 mod swing_tests;

@@ -4,7 +4,8 @@
 use std::collections::HashMap;
 
 use abstractions_net::jitter::{Buffer, Snap};
-use abstractions_net::wire::{self, CompanionBody, Kind, Record, RobotBody, ShipBody, records};
+use abstractions_net::wire::records;
+use abstractions_net::wire::{self, CompanionBody, Kind, Record, RobotBody, ShipBody, VitalsBody};
 use bevy::prelude::*;
 
 use super::bodies::Bodies;
@@ -61,6 +62,8 @@ pub struct Remotes {
     pub ships: HashMap<PlayerId, Track<ShipBody>>,
     /// The companions.
     pub companions: HashMap<PlayerId, Track<CompanionBody>>,
+    /// How hurt each robot is and how it glows, as the newest record says.
+    pub vitals: HashMap<PlayerId, VitalsBody>,
 }
 
 /// When a record came, on the universe clock the buffers sample on and on the local clock the
@@ -133,6 +136,11 @@ impl Remotes {
             Kind::Ship => {
                 if let Some(body) = ShipBody::decode(frame, bytes) {
                     keep(&mut self.ships, head, hull(time, body), now);
+                }
+            }
+            Kind::Vitals => {
+                if let Some(body) = VitalsBody::decode(bytes) {
+                    self.vitals.insert(head.player, body);
                 }
             }
             Kind::Companion => {

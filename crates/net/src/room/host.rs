@@ -40,6 +40,7 @@ impl Host for Room {
             ClientMsg::Bye => self.leave(conn, out),
             ClientMsg::Explored { body, runs } => self.explored(conn, body, &runs),
             ClientMsg::Waypoint(waypoint) => self.waypoint(conn, waypoint, out),
+            ClientMsg::Hunt(act) => self.hunt(conn, act, now, out),
         }
     }
 
@@ -59,6 +60,7 @@ impl Host for Room {
         self.expire(now, out);
         self.relay(now, out);
         self.spread_explored(now, out);
+        self.sweep(now);
     }
 
     /// Returns true while any connection is open.

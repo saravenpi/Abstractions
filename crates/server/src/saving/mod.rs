@@ -64,16 +64,22 @@ impl Saving {
         }
     }
 
-    /// Saves when the last save is [`SAVE_EVERY`] old.
+    /// Saves when the last save is [`SAVE_EVERY`] old and something changed since, so an idle
+    /// server copies and writes nothing.
     fn due(&mut self, now: f64) {
         if now >= self.next {
-            self.save(now);
+            match self.room.changed() {
+                true => self.save(now),
+                false => self.next = now + SAVE_EVERY,
+            }
         }
     }
 
     /// Hands the world at `now` to the saver thread and plans the next save.
     fn save(&mut self, now: f64) {
-        self.saver.offer(self.room.snapshot(now));
+        if self.saver.offer(self.room.snapshot(now)) {
+            self.room.saved();
+        }
         self.next = now + SAVE_EVERY;
     }
 

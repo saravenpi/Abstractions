@@ -1,0 +1,118 @@
+//! Hunting in a session: this machine tells the server what its robot did to the animals, and the
+//! blows, kills, carcasses, stuck spears and held items of the others come back into the world.
+//!
+//! The game keeps its own hunt (the blows of [`crate::avatar::strike::Hit`], the kill ledger and
+//! the carcasses of [`crate::fauna::Herds`], the spears of [`crate::avatar::strike::Spear`]). The
+//! systems of [`blows`], [`ledger`], [`spears`] and [`held`] read it and send what is new; the
+//! systems of [`take`] write what arrives into the same places, so a remote kill is a kill like a
+//! local one. [`Hunted`] remembers what was sent or taken, so nothing is sent back.
+
+mod blows;
+mod held;
+pub mod hooks;
+mod item;
+mod ledger;
+mod spears;
+mod take;
+
+#[cfg(test)]
+mod tests;
+
+use std::collections::{HashMap, HashSet};
+use std::time::Duration;
+
+use abstractions_net::ids::BodyId;
+use abstractions_net::log::PlayerId;
+use abstractions_net::wire::{AnimalKey, Carcass, Event, Spear as Stuck, SpearKey};
+use bevy::prelude::*;
+use bevy::time::common_conditions::on_timer;
+
+pub use hooks::Echoes;
+
+use super::link::{FromServer, Link, Receive};
+use crate::avatar::strike::{Hit, Spear};
+use crate::space::Location;
+use crate::world::Terrain;
+
+/// Seconds between two looks at the kill ledger and the carcasses for what is new.
+const LOOK_EVERY: f32 = 0.25;
+
+/// What this machine sent or took of the hunt, so that nothing it took goes back to the server.
+#[derive(Resource, Debug, Default)]
+pub struct Hunted {
+    /// The carcasses sent or taken, by their key.
+    known: HashSet<u64>,
+    /// The parts taken of each carcass, as last sent or taken, by its key.
+    taken: HashMap<u64, u64>,
+    /// The parts broken of each animal, as last sent or taken.
+    broken: HashMap<AnimalKey, u64>,
+    /// The animals this machine struck lately, with the frames left to watch them break.
+    victims: Vec<(Entity, u8)>,
+    /// The spears that stand, with their key and the animal they are in.
+    planted: HashMap<Entity, (SpearKey, Entity)>,
+    /// The number the next spear of this machine gets.
+    tag: u32,
+    /// What this machine holds, by the id of its item in the pack, as last sent.
+    held: Option<u32>,
+    /// What the server told, not applied yet.
+    inbox: Vec<Event>,
+    /// Every carcass the server told of, on every body, until it is gone.
+    lying: Vec<Carcass>,
+    /// The body the carcasses were last applied on.
+    at: Option<BodyId>,
+    /// The spears the server told of that are not drawn yet.
+    stuck: Vec<Stuck>,
+    /// The spears pulled out by others, which are to leave the world.
+    pulled: Vec<SpearKey>,
+    /// The item each other player holds, as the bytes of its recipe.
+    holding: HashMap<PlayerId, Vec<u8>>,
+}
+
+/// Run condition: this machine struck an animal lately, so its parts may have broken.
+fn watching(hunted: Res<Hunted>) -> bool {
+    !hunted.victims.is_empty()
+}
+
+/// Run condition: the server told something that is not applied yet, or a spear waits to be drawn.
+fn waiting(hunted: Res<Hunted>) -> bool {
+    !(hunted.inbox.is_empty() && hunted.stuck.is_empty() && hunted.pulled.is_empty())
+}
+
+/// Registers the hunt of a session. Every system waits for a link, so single player runs none.
+pub fn plugin(app: &mut App) {
+    let linked = resource_exists::<Link>;
+    let look = || on_timer(Duration::from_secs_f32(LOOK_EVERY));
+    let ready = resource_exists::<Terrain>.and_then(resource_exists::<Location>);
+    app.add_message::<Hit>()
+        .init_resource::<Hunted>()
+        .init_resource::<Echoes>()
+        .add_systems(
+            Update,
+            (
+                reset.run_if(resource_added::<Link>),
+                take::receive
+                    .after(Receive)
+                    .run_if(on_message::<FromServer>),
+                (take::apply.run_if(waiting), take::plant.run_if(waiting))
+                    .chain()
+                    .run_if(look())
+                    .run_if(ready),
+                take::dress
+                    .run_if(look())
+                    .run_if(resource_exists::<Terrain>),
+                blows::hits.run_if(on_message::<Hit>),
+                blows::breaks.run_if(watching),
+                (ledger::kills, ledger::carves).run_if(look()),
+                spears::sticks.run_if(any_with_component::<Spear>),
+                spears::pulls,
+                held::holds,
+            )
+                .chain()
+                .run_if(linked),
+        );
+}
+
+/// Forgets what the last session sent or took.
+fn reset(mut hunted: ResMut<Hunted>) {
+    *hunted = Hunted::default();
+}

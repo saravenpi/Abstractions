@@ -15,6 +15,9 @@ mod rate;
 mod rebase;
 mod robot;
 mod send;
+mod swing;
+#[cfg(test)]
+mod swing_tests;
 mod tag;
 mod track;
 mod whereabouts;
@@ -44,6 +47,9 @@ fn frame(app: &mut App) {
         draw::robots.run_if(resource_exists::<avatar::Looks>),
         draw::ships.run_if(resource_exists::<ship::Looks>),
         draw::companions.run_if(resource_exists::<Assets<Image>>),
+        draw::wounds.run_if(track::kept),
+        draw::swings.run_if(track::kept),
+        draw::glows.run_if(draw::burning),
         tag::tags,
     );
     let placed = drawn

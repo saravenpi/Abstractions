@@ -56,6 +56,7 @@ pub use held::{Held, Style};
 pub use hit::Hit;
 pub use hurt::Hurt;
 pub use layer::Layer;
+pub use show::{Kit, kit, tool};
 pub use stop::Hitstop;
 
 use bevy::prelude::*;

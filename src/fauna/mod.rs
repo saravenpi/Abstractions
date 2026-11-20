@@ -56,9 +56,11 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
-pub use attack::Dead;
-pub use beast::Part;
+pub use attack::{Broken, Carved, Dead, slay};
+pub use beast::{Beast, Part};
+pub use herds::Herds;
 pub use near::{Nearby, Sighting};
+pub use want::{Lead, carcass_key};
 
 use crate::life::SpeciesId;
 use crate::screens::playing;

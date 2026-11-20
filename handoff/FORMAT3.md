@@ -28,3 +28,38 @@ One note for steps 6, 16, 17 and 17b to 17d of `PLANETS.md`. The net crate, the 
 ## Older releases (step 17)
 - `src/update/older.rs` plans "Open with 0.10": it asks the release host for the tag of the release, takes the asset for this platform, downloads it to `<data>/abstractions/older/<version>/`, checks the SHA-256 against the release's checksum, and launches the binary with `--world <id>`.
 - The game accepts `--world <id>` from 0.11.0: it opens that world from the worlds folder instead of the title screen. The id is the file stem.
+
+## Hunting and the field on the wire (wave H4, `net-h4`)
+
+Still protocol 3: nothing of it was released. An old client is refused at the join check, and a robot or ship record of the old length does not decode (a body must have exactly its length).
+
+### State records (datagrams)
+- Robot: 47 bytes on a surface (was 44), 56 in the other frames. New: `crouch` (1 byte, a share), `swing` (1 byte: act rank in bits 0 to 2 as ready, wind-up, swing, recover, guard, draw, stun; side in bits 3 and 4 as right, left, up, down) and `phase` (1 byte, seconds into the act, 0 to 2 s). Sixteen robot records fit one datagram of 1,100 bytes (test `sixteen_robots_fit_one_datagram`).
+- Ship: 41 bytes on a surface (was 40), 50 elsewhere. New: `heat`, the glow of an entry, 1 byte.
+- New kind `Vitals` (11 bytes in every frame, about twice a second, sent in the frame of the robot record): the harm of the ten parts, one byte each, 0 whole to 255 destroyed, in the order head, torso, left arm, right arm, left leg, right leg, left wing, right wing, left boot, right boot, then the entry glow of the robot (1 byte). It travels apart so that the robot record stays small.
+- The room keeps four kinds per player now (`KINDS` is 4).
+
+### Reliable messages (stream)
+`ClientMsg::Hunt(Act)` (number 8) and `ServerMsg::Hunt(Event)` (number 10) are the only new messages. The server stamps the sending player and never lets a client speak for another. A player may send 30 acts a second.
+
+| Act (client) | Event (server) | What the server does | Size on the wire, worst case, with the 4-byte length |
+| --- | --- | --- | --- |
+| `Hit` animal, part, joules, blunt | `Hit` by, hit | remembers who hurt the animal, tells the others | 40 |
+| `Broke` animal, part | `Broke` | keeps the broken parts of the living animal, tells the others | 36 |
+| `Kill` animal, species, direction, time, grade, lasts | `Killed` carcass (to everyone, the killer too) | lays the carcass once, with the broken parts and the players who hurt it in the 30 s before; a time more than 5 s from the clock of the server is replaced by it | 80, carcass 110 |
+| `Carve` animal, part | `Carved` | takes the part once | 36 |
+| `Stick` spear (key, animal, point, direction, item) | `Stuck` | keeps it until pulled or until its carcass is gone | item + 60 |
+| `Pull` key | `Pulled` | removes it | 40 |
+| `Held` item or nothing | `Held` | keeps it with the seat, tells the others | item + 8 |
+| `Blow` victim, point, joules, cut, direction, momentum | `Blow` (to the victim only) | relays; the victim decides what it does and says it in its records | 50 |
+| `Wound` animal, wound | `Wound` | keeps it until the animal dies or 30 minutes pass | 60 |
+| `Plug` animal, part | `Plug` | marks the wounds of the part plugged | 36 |
+| `Impact` body, point, joules, cut, outer, tool, result | `Impact` | relays only | 70 |
+| `Attack` animal, kind, target, start time | `Attack` | relays only | 50 |
+| `Rock` planet, id | `Rock` | keeps the set, tells the others once per rock | 40 |
+
+- An item is the bytes of its craft recipe in the codec of the streams (about 72 bytes), at most 96. The server never reads it.
+- After the welcome, a server sends `Event::World` when there is anything to tell: the carcasses with their taken and broken parts, the stuck spears, what each player holds, the open wounds and every rock taken. It sends nothing when all is empty.
+- A carcass lasts the `lasts` its killer gave, clamped from 60 s to a day, and goes with the spears stuck in it. At most 1,024 carcasses, 256 spears, 2,048 wounds and 65,536 rocks are kept.
+- The server file `hunt3.bin` (postcard of `HuntWorld`, without the held items) keeps carcasses, spears, wounds and rocks beside `world.toml`. The server writes the world only when something changed since the last save.
+- Open choice: loot. The shared mask of taken parts makes the first cutter win a part. The list of credited players travels in `Killed` so that a later change can give each of them a personal harvest.

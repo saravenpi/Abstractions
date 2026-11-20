@@ -35,6 +35,8 @@ pub(super) struct Ground {
     fresh: Leaves,
     /// Network time of the last broadcast.
     sent: f64,
+    /// `leaves` as runs, rebuilt only when leaves are added, for the welcome and the save.
+    runs: Vec<Run>,
 }
 
 /// Returns the ground of `world`, leaving out bodies past [`BODIES_MAX`].
@@ -47,6 +49,7 @@ pub(super) fn grounds(explored: Vec<(BodyId, Vec<Run>)>) -> HashMap<BodyId, Grou
 /// Returns the ground explored as `leaves`, with nothing new to tell.
 fn ground(leaves: Leaves) -> Ground {
     Ground {
+        runs: leaves.runs(),
         leaves,
         fresh: Leaves::default(),
         sent: f64::NEG_INFINITY,
@@ -70,7 +73,12 @@ impl Room {
             return;
         }
         let new = ground.leaves.merge(&Leaves::from_runs(runs));
+        if new.is_empty() {
+            return;
+        }
         ground.fresh.merge(&new);
+        ground.runs = ground.leaves.runs();
+        self.dirty = true;
     }
 
     /// Tells everyone the new leaves of each body whose last broadcast is a second old.
@@ -113,7 +121,7 @@ impl Room {
     /// Returns the explored ground of every body, as the welcome and the world file carry it.
     pub(super) fn explored_list(&self) -> Vec<(BodyId, Vec<Run>)> {
         let all = self.explored.iter();
-        all.map(|(body, ground)| (*body, ground.leaves.runs()))
+        all.map(|(body, ground)| (*body, ground.runs.clone()))
             .collect()
     }
 

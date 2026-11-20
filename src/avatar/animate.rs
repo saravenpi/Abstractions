@@ -14,7 +14,7 @@ use super::rig::{SEGS, Seg, locals};
 use super::strike::Layer;
 use super::touch::tune::RISE_SECONDS;
 use super::{AvatarPose, Mode};
-use crate::condition::Condition;
+use crate::condition::{Condition, Wounded};
 use crate::player::wrap;
 
 /// Longest simulated frame in seconds, to survive hitches.
@@ -124,18 +124,23 @@ pub struct Skeleton(pub [Entity; SEGS]);
 /// its joint, nothing else moves.
 pub fn animate(
     (time, own, hurt): (Res<Time>, Own, Option<Res<Condition>>),
-    mut bodies: Query<(Entity, &mut Anim, &AvatarPose, &Skeleton, Option<&Layer>)>,
+    mut bodies: Query<(
+        Entity,
+        &mut Anim,
+        &AvatarPose,
+        &Skeleton,
+        (Option<&Layer>, Option<&Wounded>),
+    )>,
     mut bones: Query<&mut Transform, With<Bone>>,
 ) {
     let dt = time.delta_secs().min(MAX_DT);
     let mine = own.body().map(|(_, body)| body);
-    for (body, mut anim, input, skeleton, layer) in &mut bodies {
+    for (body, mut anim, input, skeleton, (layer, wounded)) in &mut bodies {
         let pose = anim.step(input, dt);
         anim.pose = layer.map_or(pose, |layer| layer.apply(pose));
-        if let Some(hurt) = hurt
-            .as_deref()
-            .filter(|_| mine == Some(body) && on_feet(input.mode))
-        {
+        let own = hurt.as_deref().filter(|_| mine == Some(body));
+        let hurt = wounded.map(|wounded| &wounded.0).or(own);
+        if let Some(hurt) = hurt.filter(|_| on_feet(input.mode)) {
             anim.pose = limp(anim.pose, hurt, input.speed);
         }
         let frames = locals(&anim.pose);

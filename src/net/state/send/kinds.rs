@@ -67,12 +67,12 @@ fn framed(anchor: &Anchor, at: &GlobalTransform, vel: Vec3) -> Pose {
 }
 
 /// Returns the record of the robot whose body is at `at`, moved by `motion` and posed by
-/// `pose`. It is at rest standing idle, or seated in a ship at rest.
+/// `pose`, whose hands do `swing`. It is at rest standing idle, or seated in a ship at rest.
 pub fn robot(
     here: &Here,
     at: &GlobalTransform,
     motion: &Motion,
-    pose: &AvatarPose,
+    (pose, swing): (&AvatarPose, (u8, f32)),
     bodies: &mut Bodies,
 ) -> Option<Sent<RobotBody>> {
     let tilt = DQuat::from_rotation_arc(DVec3::Y, up(&here.anchor, at.translation()).as_dvec3());
@@ -82,7 +82,11 @@ pub fn robot(
     let idle = pose.mode == Mode::Idle && wire.vel.length() < REST_SPEED;
     Some(Sent {
         frame,
-        body: body(pose, wire.pos, wire.vel, heading(wire.pos, wire.rot)),
+        body: body(
+            pose,
+            (wire.pos, wire.vel, heading(wire.pos, wire.rot)),
+            swing,
+        ),
         rest: idle || (pose.mode == Mode::Seated && here.still),
     })
 }
@@ -100,14 +104,14 @@ fn warp(state: WarpState) -> (u8, f32) {
 /// the wire carries it.
 pub type Pilot = ([f32; 2], f32);
 
-/// Returns the record of the ship of this machine, flown with `drive` and held as the `Pilot`
-/// says. Its drawn pose is the one at universe time, while the anchor is in its frame; its
-/// state otherwise.
+/// Returns the record of the ship of this machine, flown with `drive`, held as the `Pilot`
+/// says and glowing with `heat`. Its drawn pose is the one at universe time, while the anchor
+/// is in its frame; its state otherwise.
 pub fn ship(
     here: &Here,
     ship: &Ship,
     placed: Option<&Placed>,
-    (drive, (stick, boost)): (WarpState, Pilot),
+    (drive, (stick, boost), heat): (WarpState, Pilot, f32),
     bodies: &mut Bodies,
 ) -> Option<Sent<ShipBody>> {
     let shown = placed.filter(|_| here.anchor.frame == ship.frame);
@@ -134,6 +138,7 @@ pub fn ship(
         warp_level,
         stick,
         boost,
+        heat,
     };
     let rest = ship.landed || wire.vel.length() < REST_SPEED;
     Some(Sent { frame, body, rest })

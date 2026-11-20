@@ -6,7 +6,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-use super::{World, explored};
+use super::{World, explored, hunt};
 
 /// Name of the world file in the data folder.
 pub const FILE: &str = "world.toml";
@@ -29,7 +29,12 @@ pub fn load_or_create(dir: &Path, name_hint: &str) -> io::Result<World> {
             let world: World = toml::from_str(&text)
                 .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
             let explored = explored::load(dir)?;
-            Ok(World { explored, ..world })
+            let hunt = hunt::load(dir)?;
+            Ok(World {
+                explored,
+                hunt,
+                ..world
+            })
         }
         Err(error) if error.kind() == io::ErrorKind::NotFound => {
             let world = World {
@@ -47,7 +52,7 @@ pub fn load_or_create(dir: &Path, name_hint: &str) -> io::Result<World> {
 
 /// Writes `world` to `dir/world.toml` atomically: a temporary file, flushed to disk, then
 /// renamed over the old one. The old file becomes copy 1 at most once every ten minutes. The
-/// explored ground goes to `dir/explored3.bin` the same way.
+/// explored ground goes to `dir/explored3.bin` and the hunt to `dir/hunt3.bin` the same way.
 pub fn save(dir: &Path, world: &World) -> io::Result<()> {
     save_every(dir, world, ROTATE_EVERY)
 }
@@ -65,7 +70,8 @@ pub(super) fn save_every(dir: &Path, world: &World, every: Duration) -> io::Resu
     }
     fs::rename(&tmp, &path)?;
     File::open(dir)?.sync_all()?;
-    explored::save(dir, &world.explored)
+    explored::save(dir, &world.explored)?;
+    hunt::save(dir, &world.hunt)
 }
 
 /// Returns the path of copy `n` of the world file.

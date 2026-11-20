@@ -37,6 +37,8 @@ impl Remotes {
         sweep(commands, &mut self.robots, keep);
         sweep(commands, &mut self.ships, keep);
         sweep(commands, &mut self.companions, keep);
+        let robots = &self.robots;
+        self.vitals.retain(|player, _| robots.contains_key(player));
     }
 }
 

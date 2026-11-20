@@ -7,12 +7,18 @@
 mod companion;
 #[cfg(test)]
 mod companion_tests;
+mod glow;
 mod robot;
 mod ship;
+mod swings;
+mod wounds;
 
 pub use companion::companions;
+pub use glow::{burning, glows};
 pub use robot::robots;
 pub use ship::ships;
+pub use swings::swings;
+pub use wounds::wounds;
 
 use abstractions_net::jitter::View;
 use abstractions_net::wire;

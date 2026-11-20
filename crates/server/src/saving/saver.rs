@@ -32,9 +32,10 @@ impl Saver {
         Ok(Self { worlds, thread })
     }
 
-    /// Hands `world` to the thread without waiting. It is dropped while a write is queued.
-    pub fn offer(&self, world: World) {
-        let _ = self.worlds.try_send(world);
+    /// Hands `world` to the thread without waiting and returns true when it took it. It is
+    /// dropped while a write is queued.
+    pub fn offer(&self, world: World) -> bool {
+        self.worlds.try_send(world).is_ok()
     }
 
     /// Lets the thread write what it holds and waits for it to end.

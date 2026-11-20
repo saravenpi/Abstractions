@@ -23,6 +23,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Hovering low over the sea rings it with ripples that run outward at the speed of waves under the planet's gravity.
 - The water jet of the boots leaves a trail of bubbles that rise to the surface.
 - The boot water pump thumps, faster as the boots spool up.
+- Entering an atmosphere from space now burns. The glow follows the real heating of the nose, which grows with the root of the air density and the cube of your speed through it, so thick air glows early and hard, thin air faintly and late, and a slow entry or level flight not at all. Its colour follows the air of the planet: pink-orange to white over wet worlds, blue-white to violet over dry ones, pale pink to magenta over giants, teal over cold frozen worlds, yellow over molten ones. The cockpit glass glows with plasma streaming past, and from outside, in third person, a shock sheath with plasma streaks, embers and a short tail wraps the ship or the gliding robot. It fades as you slow down and blends into the cloud animation without a step.
 
 ### Changed
 
@@ -36,6 +37,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Calls follow the body: animals that breathe air moan, hoot, whistle, growl or hiss, shelled ones rasp and click, soft ones gurgle, and calls from under water sound muffled. Long, thin bodies and long necks call lower.
 - The map's side panel has more room: Search, Place, Favourites and Players each sit under a heading, with space between them and between the groups of the card. The result count sits beside the Search heading, the save button beside the Favourites heading, and the distance only in the result row. Rows are taller, and in a short window the favourites and players lose their last rows before anything else is cut.
 - The buttons on the card are shorter, so they take two rows: Set course or Engage and Clear, Focus, Set waypoint and Save place.
+- The compass shows the home mark only while you are on the planet of your base, on foot or flying in its air. In space and on other planets it is gone.
 - The wingsuit answers the pitch keys faster: a pull bends the flight path about twice as fast at speed, and let go the wings fly on where you pointed them instead of snapping back to the glide.
 - A banked pull turns no faster than 40 degrees a second, and slower at speed: rolled on edge, the wingsuit drifts round instead of spinning.
 - Folding the wings in the air keeps the body prone and turns it into a skydiver arch, belly down, arms and legs spread, head up. A fast fall from a jump arches too, and the body turns upright and reaches for the ground just before it lands.

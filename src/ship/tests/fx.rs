@@ -5,7 +5,7 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::{above_pole, fly, planet};
-use crate::render::{Drive, Sequence, entry_glow};
+use crate::render::{Drive, Gas, Sequence, descent, entry};
 use crate::ship::flight::Controls;
 use crate::ship::fx::{pace, warp_level};
 use crate::ship::shake::{REACH, eased, roughness, shake};
@@ -47,7 +47,10 @@ fn glow_of(
         seconds,
         |ship, report| {
             let sink = -ship.vel.dot(ship.pos.normalize());
-            glow = glow.max(entry_glow(report.pressure as f32, sink as f32));
+            let speed = ship.vel.length().max(1.0);
+            let air = 2.0 * report.pressure / (speed * speed);
+            let heat = entry(air, speed, Gas::NitrogenOxygen).heat;
+            glow = glow.max(heat * descent(sink as f32));
         },
     );
     glow
@@ -88,10 +91,10 @@ fn a_fast_descent_glows() {
     let planet = planet(6000.0, 4000.0, 1200.0);
     let orbital = (planet.gravity * planet.radius).sqrt();
     let entries = [
-        (0.7, 0.5, 0.5),
-        (0.7, 1.0, 0.9),
-        (1.0, 0.7, 0.9),
-        (1.5, 0.7, 0.9),
+        (0.7, 0.5, 0.05),
+        (0.7, 1.0, 0.1),
+        (1.0, 0.7, 0.1),
+        (1.5, 0.7, 0.1),
     ];
     for (speed, steep, least) in entries {
         let entry = (3900.0, sinking(orbital * speed, steep));
@@ -106,7 +109,7 @@ fn a_fast_descent_glows() {
         ..Controls::default()
     };
     let dive = brightest(&planet, (1500.0, sinking(180.0, 0.5)), (1.0, level), 10.0);
-    assert!(dive > 0.9, "a steep dive under power glows only {dive}");
+    assert!(dive > 0.05, "a steep dive under power glows only {dive}");
 }
 
 /// The warp effect follows the drive, and the shake is zero in calm air, grows with the clouds

@@ -10,6 +10,7 @@
 mod churn;
 mod flare;
 mod haze;
+mod heat;
 mod kit;
 mod lay;
 mod motes;
@@ -106,7 +107,11 @@ fn systems(app: &mut App) {
     )
     .add_systems(
         Update,
-        (flare::equip, haze::fit, live.pipe(scene::observe)).in_set(GearSet::Publish),
+        (
+            (flare::equip, haze::fit),
+            (live.pipe(scene::observe), heat::offer.run_if(heat::fast)).chain(),
+        )
+            .in_set(GearSet::Publish),
     )
     .add_systems(
         Update,

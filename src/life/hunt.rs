@@ -9,6 +9,7 @@
 mod chase;
 mod plan;
 mod prey;
+mod show;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
@@ -16,8 +17,9 @@ mod tests_motion;
 
 use bevy::math::DVec3;
 
-use super::herd::{DEATHS, Death, Ground, Pose, Scene, Search};
-use super::{Guild, Life};
+use super::Life;
+use super::herd::{DEATHS, Death, Ground, Pose, Scene, Search, Watch};
+pub(super) use show::{remains, seen};
 
 /// Seconds a killed member stays missing from its herd before the herd has grown it back.
 pub const RECOVERY: f64 = 1800.0;
@@ -37,6 +39,10 @@ const MEAT: f64 = 900.0;
 
 /// How many times longer bones last than meat.
 const BONES: f64 = 3.0;
+
+/// Seconds before a time whose hunts still show at that time: as a member missing from its herd, or
+/// as a carcass or bones.
+pub(super) const MEMORY: f64 = RECOVERY.max(MEAT * BONES);
 
 /// How a hunt ends.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -118,64 +124,12 @@ pub struct Carcass {
 /// Returns the hunts that are under way, or whose carcass still has meat, at the search time, with
 /// the hunters or the kill within the search radius, in a stable order.
 pub fn hunts_near(life: &Life, ground: &Ground, search: &Search) -> Vec<Hunt> {
-    let scene = Scene::build(life, ground, search);
-    let time = search.time;
-    plan(&scene, (time - MEAT, time), (search.at, search.radius))
-        .into_iter()
-        .filter(|h| h.start <= time && (time < h.end() || time < meat(life, h)))
-        .filter(|h| {
-            [h.from, h.to]
-                .iter()
-                .any(|p| scene.metres(*p, search.at) <= search.radius)
-        })
-        .collect()
+    Watch::new(life, ground, search).hunts(life, search.time)
 }
 
 /// Returns the carcasses and bones within the search radius at the search time, in a stable order.
 pub fn carcasses_near(life: &Life, ground: &Ground, search: &Search) -> Vec<Carcass> {
-    let scene = Scene::build(life, ground, search);
-    let time = search.time;
-    let visitors: Vec<u16> = life
-        .species
-        .iter()
-        .filter(|s| matches!(s.role.guild, Guild::Scavenger | Guild::Decomposer))
-        .map(|s| s.id.index)
-        .collect();
-    plan(
-        &scene,
-        (time - MEAT * BONES, time),
-        (search.at, search.radius),
-    )
-    .into_iter()
-    .filter_map(|h| match h.outcome {
-        Outcome::Kill { slot, at } => Some((h, slot, at)),
-        Outcome::Escape => None,
-    })
-    .map(|(h, slot, at)| Carcass {
-        herd: h.prey,
-        slot,
-        species: h.prey_species,
-        at,
-        since: h.outcome_time(),
-        meat: meat(life, &h),
-        bones: h.outcome_time() + (meat(life, &h) - h.outcome_time()) * BONES,
-        visitors: visitors.clone(),
-    })
-    .filter(|c| c.since <= time && time < c.bones && scene.metres(c.at, search.at) <= search.radius)
-    .collect()
-}
-
-/// Returns the universe time the meat of the kill of `hunt` is gone: minutes, longer for heavier prey.
-/// An escape leaves none.
-fn meat(life: &Life, hunt: &Hunt) -> f64 {
-    let Outcome::Kill { .. } = hunt.outcome else {
-        return f64::NEG_INFINITY;
-    };
-    let mass = life
-        .species
-        .get(usize::from(hunt.prey_species))
-        .map_or(1.0, |s| s.history.mass);
-    hunt.outcome_time() + (60.0 * f64::from(mass).sqrt()).clamp(120.0, MEAT)
+    Watch::new(life, ground, search).carcasses(life, search.time)
 }
 
 /// Returns every hunt that starts within `span`, or is under way at its start, by start time, of the

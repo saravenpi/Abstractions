@@ -59,19 +59,18 @@ pub(super) fn strike(
 
 /// Rolls the outcome of a hunt of `hunter` on `prey` of `kind` from `distance` metres: the slot killed,
 /// or nothing on an escape. Faster hunters do better, the young and the herd edge are easier, and
-/// ambushers strike best from close. The pinned herd never loses its first three slots.
+/// ambushers strike best from close.
 fn kill(
     rng: &mut Rng,
     (hunter, prey, kind): (&Species, &Roam, &Species),
     distance: f64,
 ) -> Option<u8> {
-    let lowest = if prey.pinned { 3 } else { 0 };
     let count = prey.count;
     let edge = count - count.div_ceil(3);
     let (low, high, ease) = match rng.unit() {
-        r if r < 0.4 && prey.young > lowest => (lowest, prey.young, 1.6),
-        r if r < 0.8 => (edge.max(lowest), count, 1.3),
-        _ => (lowest, count, 1.0),
+        r if r < 0.4 && prey.young > 0 => (0, prey.young, 1.6),
+        r if r < 0.8 => (edge, count, 1.3),
+        _ => (0, count, 1.0),
     };
     if low >= high {
         return None;

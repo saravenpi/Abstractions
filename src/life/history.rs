@@ -11,7 +11,7 @@ use crate::universe::hash::Rng;
 #[cfg(test)]
 mod tests;
 
-/// Seconds of one day on the home planet, the unit life spans are counted in.
+/// Seconds of the game day life spans are counted in: twenty minutes, whatever the spin of the planet.
 const DAY: f32 = 1200.0;
 
 /// Gravity in metres per second squared that the speed fit was made for.

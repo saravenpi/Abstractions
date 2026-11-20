@@ -1,4 +1,4 @@
-//! Rolling herds: how many herds of each species a cell holds, and the herd pinned near the robot.
+//! Rolling herds: how many herds of each species a cell holds, from the census at the cell centre.
 
 use bevy::math::{DVec3, IVec3};
 
@@ -6,20 +6,14 @@ use super::cells::Grid;
 use super::sphere::arc;
 use crate::life::census::{self, Site};
 use crate::life::hunt::TERRITORY;
-use crate::life::{Guild, Habitat, Life, Species};
+use crate::life::{Guild, Life, Species};
 use crate::universe::hash::{Rng, cell, child, mix};
 
 /// Farthest a herd roams from its home in metres, whatever its home range.
 pub(in crate::life) const MAX_ROAM: f64 = 800.0;
 
-/// Farthest the pinned herd roams from the pin in metres.
-const PIN_ROAM: f64 = 250.0;
-
 /// Salt of the herd seeds of a planet.
 const HERDS: u64 = 0x4E52_4448;
-
-/// Salt of the pinned herd.
-const PINNED: u64 = 0x5049_4E4E;
 
 /// A herd before time is applied: who it is and where it lives.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -38,8 +32,6 @@ pub(in crate::life) struct Roam {
     pub fallback: DVec3,
     /// Radius in metres of the disc around `home` its waypoints fall in.
     pub reach: f64,
-    /// True for the herd that always lives at the robot's wake point.
-    pub pinned: bool,
 }
 
 /// Returns true for the species that hunt: hunters and ambushers.
@@ -96,43 +88,15 @@ fn in_cell(kinds: &[&Species], grid: &Grid, (at, seed): (IVec3, u64), site: &Sit
         herds.extend((1..=n).map(|k| {
             let mut rng = Rng::new(child(seed, k));
             let home = grid.spot(at, rng.range(0.1, 0.9), rng.range(0.1, 0.9));
-            roam(species, child(seed, k), (home, centre), reach, false)
+            roam(species, child(seed, k), (home, centre), reach)
         }));
     }
     herds
 }
 
-/// Returns the herd of the most common ground grazer of `life` that lives at `pin`, if it has one.
-///
-/// The most common is the lightest, which Damuth's law makes the most numerous.
-pub(super) fn pinned(life: &Life, pin: DVec3) -> Option<Roam> {
-    let species = life
-        .species
-        .iter()
-        .filter(|s| s.role.guild == Guild::Grazer && s.role.habitat == Habitat::Ground)
-        .min_by(|a, b| a.history.mass.total_cmp(&b.history.mass))?;
-    let bits = [pin.x, pin.y, pin.z]
-        .iter()
-        .fold(PINNED, |h, v| mix(h ^ v.to_bits()));
-    let seed = child(child(species.id.planet, bits), u64::from(species.id.index));
-    Some(roam(
-        species,
-        seed,
-        (pin, pin),
-        PIN_ROAM.min(f64::from(species.history.range)),
-        true,
-    ))
-}
-
 /// Returns the herd of `species` with `seed`, living at `home` and falling back to `fallback`, within
-/// `reach`, pinned or not.
-fn roam(
-    species: &Species,
-    seed: u64,
-    (home, fallback): (DVec3, DVec3),
-    reach: f64,
-    pinned: bool,
-) -> Roam {
+/// `reach`.
+fn roam(species: &Species, seed: u64, (home, fallback): (DVec3, DVec3), reach: f64) -> Roam {
     let mut rng = Rng::new(mix(seed));
     let history = &species.history;
     let spread = u32::from(history.group_max.saturating_sub(history.group_min)) + 1;
@@ -150,6 +114,5 @@ fn roam(
         home,
         fallback,
         reach,
-        pinned,
     }
 }

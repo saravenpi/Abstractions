@@ -12,7 +12,7 @@ mod tests;
 
 /// Individuals per square kilometre of a 1 kg species at trophic level 1, before the site.
 ///
-/// Chosen so that a temperate meadow of the home planet holds a few herds per square kilometre.
+/// Chosen so that a temperate meadow holds a few herds per square kilometre.
 const DAMUTH: f32 = 4400.0;
 
 /// Most herds of one species per square kilometre, however small it is.

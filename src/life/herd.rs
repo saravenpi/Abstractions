@@ -6,6 +6,8 @@
 //! route of waypoints inside its home range (see `route`). Hunts (`crate::life::hunt`) bend the
 //! route of hunters and take members from their prey. Herd centres are unit directions; members are
 //! offsets in metres in the tangent plane, x east and y north, north being the spin axis, world +Y.
+//! A [`Watch`] rolls the herds and hunts around one place once, then answers for any time of the next
+//! minutes cheaply, so the runtime can ask for herd positions every frame.
 
 mod cells;
 #[cfg(test)]
@@ -18,6 +20,9 @@ mod sphere;
 mod tests;
 #[cfg(test)]
 mod tests_cost;
+#[cfg(test)]
+mod tests_real;
+mod watch;
 
 use bevy::math::{DVec3, Vec2};
 
@@ -27,10 +32,9 @@ use super::{Life, Species};
 use crate::universe::hash::{Rng, child};
 pub(super) use roll::{Roam, hunts};
 pub(super) use route::{Pose, open};
-pub(super) use scene::Scene;
-#[cfg(test)]
-pub(super) use sphere::arc;
-pub(super) use sphere::{bearing, east, slerp};
+pub(super) use scene::{Scene, Store};
+pub(super) use sphere::{arc, bearing, east, slerp};
+pub use watch::Watch;
 
 /// Most deaths a herd remembers at once.
 pub const DEATHS: usize = 6;
@@ -117,8 +121,6 @@ pub struct Search {
     pub planet: f64,
     /// Universe time in seconds.
     pub time: f64,
-    /// The robot's wake point on the home planet, as a unit direction, whose herd is always there.
-    pub pin: Option<DVec3>,
 }
 
 /// What herds read of the planet: the site at a unit direction, and the daylight, 0 to 1, at a unit
@@ -131,25 +133,13 @@ pub struct Ground<'a> {
 }
 
 /// Returns every herd of `life` with a living member whose centre is within the search radius at the
-/// search time, in a stable order.
+/// search time, in a stable order. For many times around one place, keep a [`Watch`] instead.
 pub fn near(life: &Life, ground: &Ground, search: &Search) -> Vec<Herd> {
-    let scene = Scene::build(life, ground, search);
-    let hunts = hunt::plan(
-        &scene,
-        (search.time - hunt::RECOVERY, search.time),
-        (search.at, search.radius),
-    );
-    scene
-        .roams
-        .iter()
-        .filter(|r| scene.metres(r.home, search.at) <= search.radius + r.reach + scene.side)
-        .filter_map(|r| herd(&scene, r, &hunts, search.time))
-        .filter(|h| h.count > 0 && scene.metres(h.centre, search.at) <= search.radius)
-        .collect()
+    Watch::new(life, ground, search).herds(life, ground, search.time)
 }
 
 /// Returns `roam` at `time`, with the hunts of `hunts`, or nothing when its species is missing.
-fn herd(scene: &Scene, roam: &Roam, hunts: &[Hunt], time: f64) -> Option<Herd> {
+pub(super) fn herd(scene: &Scene, roam: &Roam, hunts: &[Hunt], time: f64) -> Option<Herd> {
     let species = scene.life.species.get(usize::from(roam.species))?;
     let base = scene.pose(roam, time)?;
     let pose = hunts

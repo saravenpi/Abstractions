@@ -15,18 +15,17 @@ pub(super) fn land() -> DVec3 {
     DVec3::new(1.0, 0.3, 0.2).normalize()
 }
 
-/// Returns the search of `radius` metres around `at` at `time`, pinned at [`land`].
+/// Returns the search of `radius` metres around `at` at `time`.
 pub(super) fn search(at: DVec3, radius: f64, time: f64) -> Search {
     Search {
         at,
         radius,
         planet: RADIUS,
         time,
-        pin: Some(land()),
     }
 }
 
-/// Returns the hunts seen around [`land`] over six home days, each once.
+/// Returns the hunts seen around [`land`] over two hours, each once.
 pub(super) fn hunts(life: &Life) -> Vec<Hunt> {
     let ground = Ground {
         sample: &|d| sample(d, 1.0),

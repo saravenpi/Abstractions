@@ -1,6 +1,6 @@
 //! Planning hunts: when each hunter herd hunts, which prey herd it goes for and how the hunt ends.
 //!
-//! A hunter hunts about once per interval: once per home day for a big apex hunter, up to four times
+//! A hunter hunts about once per interval: once per game day for a big apex hunter, up to four times
 //! for a small one. Hunt `i` starts at a drawn time in the first 60 percent of interval `i` and ends
 //! within 40 percent of an interval, so hunts of one herd never overlap.
 
@@ -12,7 +12,7 @@ use crate::life::herd::{Roam, Scene, hunts, open};
 use crate::life::{Guild, Species};
 use crate::universe::hash::{Rng, child};
 
-/// Seconds of one day on the home planet, the unit hunting rates are counted in.
+/// Seconds of the game day hunting rates are counted in: twenty minutes, whatever the spin of the planet.
 const DAY: f64 = 1200.0;
 
 /// Salt of the hunt seeds of a herd.

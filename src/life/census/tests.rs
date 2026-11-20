@@ -51,3 +51,21 @@ fn tolerance_is_smooth() {
     assert_eq!(at(330.0), 0.0);
     assert_eq!(at(240.0), 0.0);
 }
+
+/// Density and herds per square kilometre take under a microsecond a call.
+#[test]
+fn density_is_cheap() {
+    let life = meadow_life();
+    let sites: Vec<Site> = (0..100).map(|i| site(i as f32 - 50.0, 1.0)).collect();
+    let start = std::time::Instant::now();
+    for species in &life.species {
+        for site in &sites {
+            std::hint::black_box((density(species, site), herds(species, site)));
+        }
+    }
+    let each = start.elapsed() / (life.species.len() * sites.len()) as u32;
+    assert!(
+        each < std::time::Duration::from_micros(1),
+        "{each:?} a call"
+    );
+}

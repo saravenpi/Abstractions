@@ -1,29 +1,8 @@
-//! Tests of herds under hunting: smooth chases and the pinned herd.
+//! Tests of herds under hunting: smooth chases.
 
-use super::tests::{RADIUS, herd, hunts, land, search};
-use crate::life::herd::fixtures::{light, meadow_life, sample};
-use crate::life::herd::{Ground, Herd, arc, near};
-
-/// The pinned grazer herd never drops below three members.
-#[test]
-fn pinned_herd_keeps_three() {
-    let life = meadow_life();
-    let ground = Ground {
-        sample: &|d| sample(d, 1.0),
-        light: &light,
-    };
-    for step in 0..60 {
-        let herds = near(
-            &life,
-            &ground,
-            &search(land(), 400.0, 400.0 * f64::from(step)),
-        );
-        let pinned = herds
-            .iter()
-            .find(|h| h.species == 1 && arc(h.home, land()) < 1e-9);
-        assert!(pinned.expect("pinned herd").count >= 3);
-    }
-}
+use super::tests::{RADIUS, herd, hunts};
+use crate::life::herd::fixtures::meadow_life;
+use crate::life::herd::{Herd, arc};
 
 /// The hunter herd moves continuously through the start of the stalk, the chase, the end of the feed
 /// and its return to the route.

@@ -8,10 +8,9 @@ use bevy::prelude::*;
 use super::ShipEvent;
 use super::body::Ship;
 use super::deck::grounded;
-use super::hold::hold;
+use super::hold::{idle, release};
 use super::pilot::Autopilot;
 use super::sky::Skies;
-use super::warp::Warp;
 use crate::computer::Computer;
 use crate::player::{EYE_OFFSET, Player, place, seat};
 use crate::render::GameCamera;
@@ -100,15 +99,6 @@ fn in_reach(dock: &Dock, ship: &Ship, placed: &Placed, body: Vec3) -> bool {
     ship.landed && here && near && dock.location.travel == Travel::OnFoot
 }
 
-/// Stops the motors of a ship its pilot leaves: the throttle to idle and a spooling warp drive
-/// off. The boost and the vertical thrusters are held keys the helm lets go of on foot.
-fn idle(ship: &mut Ship) {
-    ship.throttle = 0.0;
-    if matches!(ship.warp, Warp::Spooling { .. }) {
-        ship.warp = Warp::Off;
-    }
-}
-
 /// Whether the player on foot stands at the hatch of the landed ship, where the board key
 /// works. The ship refreshes it every frame of play; anything may read it, for a prompt.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -163,9 +153,8 @@ pub fn board(
         }
         return;
     }
-    let waited = if pressed { Some(0.0) } else { *dock.held };
-    *dock.held = waited.and_then(|s| hold(s, dock.solid_beside(placed), dock.time.delta_secs()));
-    if waited.is_some() && dock.held.is_none() {
+    let (solid, dt) = (dock.solid_beside(placed), dock.time.delta_secs());
+    if release(&mut dock.held, pressed, solid, dt) {
         leave(&mut dock, &mut commands, (&mut ship, placed), &mut eyes);
     }
 }

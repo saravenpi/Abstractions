@@ -15,6 +15,8 @@ mod tests;
 mod tests_removed;
 #[cfg(test)]
 mod tests_servers;
+#[cfg(test)]
+mod tests_view;
 
 pub use bevy_persistent::Persistent;
 pub use gameplay::Gameplay;

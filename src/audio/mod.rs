@@ -5,6 +5,7 @@
 //! ship and the companion need neither: `wire` reads their instruments and messages.
 
 mod ambience;
+mod call;
 mod cue;
 mod cues;
 mod dsp;
@@ -26,6 +27,7 @@ mod wire;
 #[cfg(test)]
 mod tests;
 
+pub use call::Call;
 pub use cue::{AudioCue, ChirpKind, StepSurface};
 pub(crate) use dsp::rand::Rand;
 pub use scene::{AudioScene, altitude_fade};

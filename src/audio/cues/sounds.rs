@@ -115,5 +115,6 @@ pub fn recipe(cue: AudioCue, rand: &mut Rand) -> (&'static [Blip], f32, f32) {
         AudioCue::WarpExit => (&WARP_EXIT, 1.0, 1.0),
         AudioCue::Chirp(kind) => (chirp(kind), rand.range(0.95, 1.06), 1.0),
         AudioCue::Thunder(level) => (&THUNDER, rand.range(0.85, 1.1), level.clamp(0.0, 1.0)),
+        AudioCue::Call(_) => (&[], 1.0, 0.0),
     }
 }

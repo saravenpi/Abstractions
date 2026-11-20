@@ -3,23 +3,29 @@
 
 use bevy::math::DVec3;
 
-use super::march::{NEAR, SIDE, Source, bake_at};
-use super::rig::{home, texels};
-use super::steps::{STEPS, segments};
+use super::fine::{cones, texel};
+use super::march::{NEAR, SIDE, Source};
+use super::rig::{home, texel as rig_texel};
+use super::steps::{GROWTH, LEAST, STEP, segments};
 use crate::universe::{Glow, LY};
 
-/// Returns the light of the whole sky of a map, texel by texel on its share of the sphere.
+/// Returns the light of the whole sky of a map of one galaxy `offset` metres away, texel by texel
+/// on its share of the sphere, before the bytes round it: a galaxy this far gives under a byte.
 fn glare(offset: DVec3) -> f64 {
     let (_, spec) = home();
-    let far = Source {
+    let far = [Source {
         glow: Glow::of(&spec),
         offset,
         inside: false,
-    };
-    let bytes = bake_at(&[far], SIDE);
-    texels(&bytes, SIDE)
-        .iter()
-        .map(|(_, w, l)| f64::from(w * l))
+    }];
+    let fine = cones(&far, SIDE);
+    let faces = (0..6).flat_map(|f| (0..SIDE).flat_map(move |r| (0..SIDE).map(move |c| (f, c, r))));
+    faces
+        .map(|at| {
+            let (_, weight) = rig_texel(SIDE, at);
+            let light = texel(&far, &fine, SIDE, at);
+            f64::from(weight * (light.x + light.y + light.z) / 3.0)
+        })
         .sum()
 }
 
@@ -39,23 +45,39 @@ fn a_far_galaxy_does_not_flicker_as_the_camera_turns() {
     );
 }
 
-/// A line that starts at the camera has one segment up to the near sphere, then 24 that follow
-/// each other, each longer than the last, the first starting at [`NEAR`] light-years and the last
-/// ending at the far edge.
+/// A line that starts at the camera has one segment up to the near sphere, then steps that
+/// follow each other without a gap, each a quarter of its distance from the camera while that is
+/// under the cap and the cap after, the last ending at the far edge, at most 96 in all.
 #[test]
 fn the_steps_grow_from_the_camera_to_the_far_edge() {
-    let (near, far) = (f64::from(NEAR) * LY, 1.0e5 * LY);
-    let all: Vec<_> = segments(0.0, far).collect();
-    assert_eq!(all.len(), STEPS + 1);
+    let (near, far, radius) = (f64::from(NEAR) * LY, 7.0e4 * LY, 5.0e4 * LY);
+    let all = segments(0.0, far, radius);
     assert_eq!(all[0], (0.0, near));
     assert!((all[1].0 / near - 1.0).abs() < 1e-12);
-    assert!((all[STEPS].1 / far - 1.0).abs() < 1e-9);
+    assert!((all.last().map_or(0.0, |last| last.1) / far - 1.0).abs() < 1e-9);
+    assert!(all.len() > LEAST && all.len() <= 96, "{} steps", all.len());
     for pair in all[1..].windows(2) {
         assert!((pair[1].0 / pair[0].1 - 1.0).abs() < 1e-9);
-        assert!(pair[1].1 - pair[1].0 > pair[0].1 - pair[0].0);
     }
-    let from_afar: Vec<_> = segments(1.0e6 * LY, 1.1e6 * LY).collect();
-    assert_eq!(from_afar.len(), STEPS);
-    assert_eq!(from_afar[0].0, 1.0e6 * LY);
-    assert!(segments(0.0, 10.0 * LY).count() == 1);
+    for (first, last) in &all[1..] {
+        let step = last - first;
+        assert!(step <= STEP * radius * (1.0 + 1e-9), "step {step}");
+        assert!(step <= GROWTH * first * (1.0 + 1e-9) || step >= 0.5 * STEP * radius);
+    }
+    let steps: Vec<f64> = all[1..].iter().map(|(a, b)| b - a).collect();
+    assert!(steps[1] > steps[0] && steps[0] < 0.2 * steps[steps.len() - 1]);
+}
+
+/// A line that meets a galaxy far outside the camera is cut in equal steps of at most the cap,
+/// a short chord in the fewest steps, a line that ends inside the near sphere in one.
+#[test]
+fn a_far_line_is_cut_in_equal_steps_and_a_short_one_in_few() {
+    let radius = 5.0e4 * LY;
+    let from_afar = segments(1.0e6 * LY, 1.0e6 * LY + 1.4 * radius, radius);
+    let widths: Vec<f64> = from_afar.iter().map(|(a, b)| b - a).collect();
+    assert!(widths.iter().all(|w| (w / widths[0] - 1.0).abs() < 1e-9));
+    assert!(widths[0] <= STEP * radius && from_afar.len() <= 96);
+    let short = segments(1.0e6 * LY, 1.0e6 * LY + 0.01 * radius, radius);
+    assert_eq!(short.len(), LEAST);
+    assert_eq!(segments(0.0, 10.0 * LY, radius).len(), 1);
 }

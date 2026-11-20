@@ -76,12 +76,12 @@ type Lamps<'w, 's> = Query<
     ),
 >;
 
+/// The legs of the gear, with the hull each hangs from.
+type Legs<'w, 's> =
+    Query<'w, 's, (&'static ChildOf, &'static Transform), (With<Leg>, Without<Lamp>)>;
+
 /// Sets the intensity and the visibility of the lights of every ship from its exhaust and gear.
-pub fn glare(
-    ships: Query<&Exhaust>,
-    legs: Query<(&ChildOf, &Transform), (With<Leg>, Without<Lamp>)>,
-    mut lamps: Lamps,
-) {
+pub fn glare(ships: Query<&Exhaust>, legs: Legs, mut lamps: Lamps) {
     for (parent, lamp, mut visibility, point, spot) in &mut lamps {
         let Ok(exhaust) = ships.get(parent.parent()) else {
             continue;

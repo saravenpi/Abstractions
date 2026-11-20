@@ -22,6 +22,7 @@ use bevy::pbr::MaterialPlugin;
 use bevy::prelude::*;
 
 pub use material::{StarMaterial, StarUniform};
+#[cfg(test)]
 pub use specks::DAY_FLUX;
 
 use super::palette::Palette;

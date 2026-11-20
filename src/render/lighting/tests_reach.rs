@@ -18,7 +18,7 @@ fn the_reach_follows_the_inverse_square_law() {
     assert!((lux - LOCAL_FLOOR_LUX).abs() < 1.0e-3);
     assert!((reach(850.0) - 3.5).abs() < 0.05, "{}", reach(850.0));
     assert!(reach(60_000.0) > 25.0 && reach(60_000.0) < 35.0);
-    assert!(LOCAL_FLOOR_LUX < MOON_SHADOW_LUX);
+    const { assert!(LOCAL_FLOOR_LUX < MOON_SHADOW_LUX) };
 }
 
 /// Every reach ends its last cascade where it says, the far one has a third cascade, and the

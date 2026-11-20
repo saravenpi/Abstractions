@@ -30,12 +30,29 @@ pub use state::Exhaust;
 
 use super::ShipSet;
 use super::glow;
-use crate::render::GameCamera;
+use crate::render::{GameCamera, Warm};
 use crate::screens::Screen;
+
+/// Hands the plume and its material to the pipeline warm-up, which runs before any ship has
+/// its plumes, so that the first plume does not compile its shader in play.
+fn warm(
+    mut warm: ResMut<Warm>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<plume::ExhaustMaterial>>,
+) {
+    warm.add(
+        meshes.add(jet_mesh()),
+        materials.add(plume::ExhaustMaterial::default()),
+    );
+}
 
 /// Registers the material of the plumes, the pool of dust and the systems that drive them.
 pub(super) fn plugin(app: &mut App) {
     plume::plugin(app);
+    let rendered = resource_exists::<Warm>
+        .and_then(resource_exists::<Assets<Mesh>>)
+        .and_then(resource_exists::<Assets<plume::ExhaustMaterial>>);
+    app.add_systems(Startup, warm.run_if(rendered));
     let drawn = (
         drive::paint,
         drive::stretch,

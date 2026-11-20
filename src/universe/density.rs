@@ -6,6 +6,7 @@ use super::LY;
 use super::galaxy::Shape;
 use super::hash;
 use super::home::HOME_GALAXY;
+use super::place::{Place, smooth};
 use super::spec::{GalaxyKind, GalaxySpec};
 
 /// Stars per sector at the peak of the core: the cap of [`SECTOR_STARS`](super::SECTOR_STARS),
@@ -74,20 +75,17 @@ impl Parts {
     }
 }
 
-/// Returns 0 below `a`, 1 above `b` and a smooth blend between (also works when `a > b`).
-pub(super) fn smooth(a: f64, b: f64, x: f64) -> f64 {
-    let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
-    t * t * (3.0 - 2.0 * t)
-}
-
 impl Shape {
     /// Returns the expected stars per sector at `p` light-years from the galaxy centre.
     pub fn parts(&self, p: DVec3) -> Parts {
-        let q = p / self.radius;
-        let (r, d) = (q.x.hypot(q.z), q.length());
-        let alive = smooth(0.01, 0.03, d) * smooth(1.4, 1.0, d);
+        self.parts_at(&self.place(p))
+    }
+
+    /// Returns the expected stars per sector at `place`, split by the structure they belong to.
+    pub fn parts_at(&self, place: &Place) -> Parts {
+        let Place { q, r, d, alive, .. } = *place;
         let (disc, arm) = match self.kind {
-            GalaxyKind::Spiral => self.spiral(q, r),
+            GalaxyKind::Spiral => self.spiral(place),
             GalaxyKind::Elliptical => (self.ball(q, r), 0.0),
             GalaxyKind::Irregular => self.cloud(q, r),
         };
@@ -99,12 +97,13 @@ impl Shape {
         }
     }
 
-    /// Returns the disc and arm densities of a spiral at `q` radii from the centre, `r` from the axis.
+    /// Returns the disc and arm densities of a spiral at `place`.
     ///
     /// The arms are straight spokes turned by an angle that grows with the distance, which swirls them.
-    fn spiral(&self, q: DVec3, r: f64) -> (f64, f64) {
+    fn spiral(&self, place: &Place) -> (f64, f64) {
+        let Place { q, r, turn, .. } = *place;
         let plane = (-0.5 * (q.y / self.thick).powi(2) - r / 0.3).exp() * smooth(1.0, 0.9, r);
-        let spoke = q.z.atan2(q.x) - self.swirl * r;
+        let spoke = turn - self.swirl * r;
         let wave = 0.5 + 0.5 * (f64::from(self.arms) * spoke).cos();
         (DISC * plane, ARM * plane * wave.powi(3))
     }

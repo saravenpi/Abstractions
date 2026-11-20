@@ -1,11 +1,15 @@
 //! The spawn on a large planet: the shores the drainage grid finds, searched one after the other when no
 //! ground near the origin of a view takes a spawn.
 
-use bevy::math::DVec3;
+use bevy::math::{DVec3, Vec2};
 
 use super::Terrain;
-use super::spawn::{GLOBE_REACH, RINGS, SPAWN_STEP};
+use super::spawn::{GLOBE_REACH, RINGS, SPAWN_STEP, ring_points};
 use crate::world::globe::Chart;
+
+/// Points of a ring skipped between two the search for land looks at: with 16 m between rings this is
+/// about 130 m along a ring, under the 170 m an island must span to take a spawn.
+const SPARSE: usize = 4;
 
 impl Terrain {
     /// Returns the rings of the spawn search: all of them on the legacy plane, and on a globe the share of
@@ -45,5 +49,26 @@ impl Terrain {
             let spot = site.best_spot(self.reach())?;
             Some(site.embed(spot.x, 0.0, spot.y))
         })
+    }
+
+    /// Returns true when one of the points of ring `k` taken at the sparse stride of the search for land
+    /// lies on dry ground.
+    pub(super) fn land_on_ring(&self, k: u32) -> bool {
+        let sea = self.globe().sea_level();
+        ring_points(k)
+            .step_by(SPARSE)
+            .any(|p| self.height(p.x, p.y) >= sea + 2.0)
+    }
+
+    /// Scores the points of ring `k`, and returns the best of them with the score that beats `bound`.
+    pub(super) fn ring_best(
+        &self,
+        k: u32,
+        bound: f32,
+        fallback: &mut Option<Vec2>,
+    ) -> Option<(f32, Vec2)> {
+        ring_points(k)
+            .filter_map(|p| self.candidate((p, k), bound, fallback))
+            .min_by(|a, b| a.0.total_cmp(&b.0))
     }
 }

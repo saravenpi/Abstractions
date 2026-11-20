@@ -83,14 +83,14 @@ impl Source {
             return (Vec3::ZERO, 0.0);
         };
         let (mut light, mut depth) = (Vec3::ZERO, 0.0);
-        for (first, last) in segments(from, to) {
+        for (first, last) in segments(from, to, self.glow.radius()) {
             let (along, step) = (0.5 * (first + last), last - first);
-            let at = dir * along - self.offset;
-            let dim = self.glow.dust(at) * step / LY;
+            let (stars, dust) = self.glow.at(dir * along - self.offset);
+            let dim = dust * step / LY;
             let far = smoothstep(NEAR - FADE, NEAR, (along / LY) as f32);
             if far > 0.0 {
                 let clear = (-(depth + 0.5 * dim)).exp();
-                light += tint(self.glow.stars(at)) * (far * (clear * GAIN * step / LY) as f32);
+                light += tint(stars) * (far * (clear * GAIN * step / LY) as f32);
             }
             depth += dim;
         }
@@ -114,7 +114,7 @@ pub fn radiance(sources: &[Source], dir: DVec3) -> Vec3 {
 /// Returns the texels of rows `first`, `first + stride`, and so on, of a map `side` texels
 /// wide, six faces of `side` rows each, as `(row, bytes)` pairs. A texel in one of `cones` is
 /// sampled finely, see [`texel`].
-fn rows(
+pub(super) fn rows(
     sources: &[Source],
     cones: &[Cone],
     side: usize,
@@ -131,11 +131,17 @@ fn rows(
         .collect()
 }
 
+/// Returns the threads a bake runs on: a share of the cores of the machine, see [`SHARE`], up to
+/// one per face and at least one.
+pub(super) fn workers() -> usize {
+    (thread::available_parallelism().map_or(1, usize::from) / SHARE).clamp(1, FACES)
+}
+
 /// Bakes the cube map of `sources`, `side` texels along a face, on a share of the cores of the
 /// machine, see [`SHARE`], up to one thread per face and at least one. Returns the bytes of the
 /// six faces one after the other.
 pub fn bake_at(sources: &[Source], side: usize) -> Vec<u8> {
-    let workers = (thread::available_parallelism().map_or(1, usize::from) / SHARE).clamp(1, FACES);
+    let workers = workers();
     let fine = cones(sources, side);
     let fine = fine.as_slice();
     let mut bytes = vec![0; FACES * side * side * 4];

@@ -93,3 +93,29 @@ fn home_is_pinned_only_away_from_it() {
     assert_eq!(pinned(Tab::Galaxy, at_home, &universe), None);
     assert_eq!(pinned(Tab::System, [None; 3], &universe), None);
 }
+
+/// In the system view exactly one row says home, the home planet, and the star does not. In the
+/// view of stars, where no planet is drawn, the home star carries it.
+#[test]
+fn the_system_view_has_one_home() {
+    let universe = Universe::new(7);
+    let (home, atlas) = (universe.home(), Atlas::new(&universe));
+    let view = View {
+        universe: &universe,
+        atlas: &atlas,
+        ship: universe.star_position(home.star).unwrap(),
+        time: 0.0,
+    };
+    let says_home = |line: &Line| line.title.ends_with(HOME_LABEL);
+    let system = view.system(home.star);
+    let homes: Vec<Target> = system
+        .iter()
+        .filter(|line| says_home(line))
+        .map(|line| line.target)
+        .collect();
+    assert_eq!(homes, vec![Target::Body(home)]);
+    assert!(!says_home(&system[0]) && system[0].target == Target::Star(home.star));
+    let stars = view.galaxy(home.star.galaxy, std::iter::empty());
+    let marked = stars.iter().filter(|line| says_home(line)).count();
+    assert_eq!(marked, 1);
+}

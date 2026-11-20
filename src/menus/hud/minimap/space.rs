@@ -2,30 +2,36 @@
 //! computer at the size of the minimap, moons and rings included, and turning the arrows of
 //! the minimap to where the player faces.
 //!
-//! The chart is drawn again only when a mark moved by a pixel or the destination changed, and
-//! it is looked at a few times per second: nothing moves fast on a system chart.
+//! The chart is drawn again only when a mark moved a little or the destination changed, and the
+//! system is looked at a few times per second: the planets are slow. The ship is not: it is
+//! placed every frame by [`super::follow`].
 
 use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::follow::{Charted, slide};
 use super::orbit::{Scene, scene, signature};
 use super::pose::Reader;
 use super::widget::{Caption, Chart, MARK, Needle, STEP};
 use crate::computer::{
-    Atlas, Destination, Dot, HOME_LABEL, SIZE, View, arrow, bearing, body, frame, is_moon, ring,
+    Atlas, Destination, Dot, HOME_LABEL, View, arrow, bearing, body, frame, is_moon, ring,
     satellites, seen, ship_position, side, spot,
 };
-use crate::space::{Clock, Frame};
+use crate::space::{Clock, Frame, UniPos};
 use crate::ui::theme;
-use crate::universe::Universe;
+use crate::universe::{StarId, Universe};
 
 /// Dots of the line that shows the course.
 pub const DASHES: usize = 12;
 
-/// Marks one dot of the line that shows the course.
+/// Marks one dot of the line that shows the course, with its step from the ship.
 #[derive(Component, Debug, Clone, Copy)]
-pub struct Dash;
+pub struct Dash(pub usize);
+
+/// Marks the arrow of the ship on the chart.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct ShipDot;
 
 /// Side in pixels of the frame around the destination.
 const CHOSEN: f32 = 12.0;
@@ -47,18 +53,20 @@ pub struct Sky<'w> {
 }
 
 impl Sky<'_> {
-    /// Returns the chart of the system the point `at` of `frame` is in, or nothing between
-    /// the stars.
-    fn scene(&self, (frame, at): (Frame, DVec3)) -> Option<Scene> {
+    /// Returns where the point `at` of `frame` is in the universe.
+    pub fn ship(&self, frame: Frame, at: DVec3) -> Option<UniPos> {
+        let time = self.clock.as_deref().map_or(0.0, |clock| clock.seconds);
+        ship_position(self.universe.as_deref()?, frame, at, time)
+    }
+
+    /// Returns the chart of the system of `star` for a ship at the point `at` of `frame`.
+    fn scene(&self, star: StarId, (frame, at): (Frame, DVec3)) -> Option<Scene> {
         let (universe, atlas) = (self.universe.as_deref()?, self.atlas.as_deref()?);
-        let Frame::System(star) = frame else {
-            return None;
-        };
         let time = self.clock.as_deref().map_or(0.0, |clock| clock.seconds);
         let view = View {
             universe,
             atlas,
-            ship: ship_position(universe, frame, at, time)?,
+            ship: self.ship(frame, at)?,
             time,
         };
         let chosen = self.chosen.as_deref().and_then(|chosen| chosen.0);
@@ -75,6 +83,8 @@ pub struct Canvas<'w, 's> {
     fresh: Query<'w, 's, (), Added<Chart>>,
     /// The text in the corner.
     captions: Query<'w, 's, &'static mut Text, With<Caption>>,
+    /// The chart as it was last looked at, kept for the system that follows the ship.
+    charted: ResMut<'w, Charted>,
 }
 
 /// Spawns the dotted line of the course from the ship to the destination, and a frame around
@@ -87,7 +97,7 @@ fn course(sheet: &mut ChildSpawnerCommands, scene: &Scene) {
     for step in 1..DASHES {
         let at = from.lerp(to, step as f32 / DASHES as f32);
         let node = spot(at, Vec2::splat(-0.5), Vec2::splat(1.0));
-        sheet.spawn((Dash, node, BackgroundColor(theme::MUTED)));
+        sheet.spawn((Dash(step), node, BackgroundColor(theme::MUTED)));
     }
     frame(sheet, to, (CHOSEN, theme::TEXT));
 }
@@ -118,22 +128,10 @@ fn draw(sheet: &mut ChildSpawnerCommands, scene: &Scene) {
             align_items: AlignItems::Center,
             ..spot(at, Vec2::splat(-0.5 * MARK), Vec2::splat(MARK))
         };
-        sheet.spawn(node).with_child((Needle, arrow(STEP)));
+        sheet
+            .spawn((ShipDot, node))
+            .with_child((Needle, arrow(STEP)));
     }
-}
-
-/// Moves and sizes the sheet so that the map shows what the lens of `scene` looks at, or
-/// hides it when there is no chart.
-fn slide(node: &mut Node, scene: Option<&Scene>) {
-    let Some(lens) = scene.map(|scene| scene.lens) else {
-        node.display = Display::None;
-        return;
-    };
-    let corner = lens.to_map(Vec2::new(-1.0, 1.0)) / SIZE * 100.0;
-    let side = percent(lens.zoom * 100.0);
-    node.display = Display::Flex;
-    (node.left, node.top) = (percent(corner.x), percent(corner.y));
-    (node.width, node.height) = (side, side);
 }
 
 /// Returns what the corner says for `scene`: the name of its star alone, without the word
@@ -161,8 +159,26 @@ pub fn steer(reader: Reader, mut needles: Query<&mut UiTransform, With<Needle>>)
     }
 }
 
-/// Draws the system chart while the player is in space, clears it on a planet, and says so
-/// in the corner where there is no system. It only touches the nodes when the picture changed.
+/// Draws the system chart again: clears it on a planet, says so in the corner where there is
+/// no system, and spawns every mark of `scene` otherwise.
+fn redraw(commands: &mut Commands, canvas: &mut Canvas, scene: Option<&Scene>, grounded: bool) {
+    for (sheet, mut node) in &mut canvas.sheets {
+        slide(&mut node, scene);
+        let mut sheet = commands.entity(sheet);
+        sheet.despawn_related::<Children>();
+        if let Some(scene) = scene {
+            sheet.with_children(|sheet| draw(sheet, scene));
+        }
+    }
+    for mut text in canvas.captions.iter_mut().filter(|_| !grounded) {
+        text.0 = title(scene);
+    }
+}
+
+/// Looks at the system while the player is in space, and draws the chart again when a mark
+/// moved by a fraction of a pixel, the zoom parted the moons, or the destination changed. The
+/// ship and the course are not part of that look: [`super::follow::follow`] moves them every
+/// frame. The chart is kept for it.
 pub fn chart(
     mut commands: Commands,
     reader: Reader,
@@ -172,22 +188,13 @@ pub fn chart(
 ) {
     let grounded = reader.pose().is_some();
     let place = reader.place().filter(|_| !grounded);
-    let scene = place.and_then(|at| sky.scene(at));
+    let star = place.and_then(|(frame, _)| canvas.charted.star_in(frame));
+    let scene = star.zip(place).and_then(|(star, at)| sky.scene(star, at));
     let state = vec![IVec2::new(i32::from(grounded), 0)];
     let key = scene.as_ref().map_or(state, signature);
-    if *last == key && canvas.fresh.is_empty() {
-        return;
+    if *last != key || !canvas.fresh.is_empty() {
+        *last = key;
+        redraw(&mut commands, &mut canvas, scene.as_ref(), grounded);
     }
-    *last = key;
-    for (sheet, mut node) in &mut canvas.sheets {
-        slide(&mut node, scene.as_ref());
-        let mut sheet = commands.entity(sheet);
-        sheet.despawn_related::<Children>();
-        if let Some(scene) = scene.as_ref() {
-            sheet.with_children(|sheet| draw(sheet, scene));
-        }
-    }
-    for mut text in canvas.captions.iter_mut().filter(|_| !grounded) {
-        text.0 = title(scene.as_ref());
-    }
+    canvas.charted.scene = scene;
 }

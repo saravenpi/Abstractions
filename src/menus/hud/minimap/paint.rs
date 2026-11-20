@@ -1,17 +1,18 @@
-//! Painting a patch: one ground height per texel turned into a grey, and the structures of the
-//! planet stamped over it. Plain data, made to run on a worker thread.
+//! Painting a patch: one colour per texel, taken from the same palette as the picture of the
+//! full map, and the structures of the planet stamped over it. Plain data, made to run on a
+//! worker thread.
 //!
 //! The budget is one patch at a time and nothing on the main thread but the copy of the
-//! finished image. A patch is `TEXELS` squared heights, 9,216 of them: about 3 microseconds
-//! each and 30 milliseconds in all, measured in `tests/refill.rs`. Listing the structures of
-//! the nearest range adds about 70 milliseconds the first time a worker sees its cells.
+//! finished image. A patch is `TEXELS` squared colours, 9,216 of them, each from a handful of
+//! ground samples. Listing the structures of the nearest range adds about 70 milliseconds the
+//! first time a worker sees its cells.
 
 use std::sync::Arc;
 
 use bevy::math::{IVec2, Vec2};
 
 use super::patch::{Patch, TEXELS};
-use super::tone::{cover, tone};
+use crate::map::raster::colour;
 use crate::world::globe::{Chart, Face};
 use crate::world::structures::{CELL, Kind, structure_in_cell};
 use crate::world::{Globe, Terrain};
@@ -28,19 +29,13 @@ pub const SITES_RANGE: f32 = 250.0;
 /// a chart unit is a metre only in the middle of its face.
 const SLACK: f32 = 1.5;
 
-/// Returns the image of `patch` on `globe`, row by row from the north: a grey for each texel,
-/// fully opaque.
+/// Returns the image of `patch` on `globe`, row by row from the north: the colour of the
+/// planet at each texel, in the palette of the full map with its relief shading, fully opaque.
 pub fn paint(globe: &Globe, patch: &Patch) -> Vec<u8> {
-    let (class, sea) = (globe.record().class, globe.has_sea());
-    let mut pixels = Vec::with_capacity(TEXELS * TEXELS * BYTES);
-    for y in 0..TEXELS {
-        for x in 0..TEXELS {
-            let height = globe.height(patch.dir(x, y));
-            let grey = tone(class, cover(height, sea), (x, y));
-            pixels.extend([grey, grey, grey, 255]);
-        }
-    }
-    pixels
+    let texels = (0..TEXELS).flat_map(|y| (0..TEXELS).map(move |x| (x, y)));
+    texels
+        .flat_map(|(x, y)| colour(globe, patch.dir(x, y)))
+        .collect()
 }
 
 /// Stamps a structure `at` metres east and north of the middle of `patch`: a white dot in a

@@ -8,6 +8,8 @@
 mod paint;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_sea;
 mod work;
 
 pub use paint::colour;

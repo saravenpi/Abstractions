@@ -125,7 +125,10 @@ pub enum SavedFrame {
     Surface(BodyId),
     /// Inertial, origin at a star.
     System(StarId),
-    /// Inertial, origin at a galaxy centre.
+    /// Inertial, origin at a galaxy centre. The position is a 64-bit number of metres from the
+    /// centre: its step is 1e5 m at 5e20 m and 4e6 m at 2.4e22 m. Slow motion, 33 m a frame at the
+    /// slowest warp, is below that step at the rim, so nothing flies slowly in this frame: the
+    /// slowest warp speed applies inside a lock sphere, where the ship is in a system frame.
     Galaxy(GalaxyId),
 }
 

@@ -4,10 +4,19 @@ use bevy::math::DVec3;
 
 use super::body::Ship;
 use super::wells::{Well, beside, nearest};
-use crate::universe::{CARRY, GLY};
+use crate::universe::CARRY;
+
+mod law;
+mod tier;
+mod tune;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_trip;
+
+pub use tier::Tier;
+pub use tune::{CRUISE_CAP, GALAXY_CAP, JUMP_CAP, JUMP_DISTANCE};
 
 /// Seconds the drive spools before it engages.
 pub const SPOOL_TIME: f64 = 4.0;
@@ -18,20 +27,15 @@ pub const RAMP: f64 = 2.0;
 /// Slowest warp speed in metres per second, so leaving the edge of a lock sphere is not endless.
 pub const FLOOR: f64 = 2000.0;
 
-/// Fastest warp speed between the stars of a galaxy, in metres per second.
-pub const CRUISE_CAP: f64 = 5.0 * GLY;
-
-/// Fastest warp speed of a long jump, across a galaxy or between galaxies, in metres per second.
-pub const JUMP_CAP: f64 = 5000.0 * GLY;
-
 /// Share of a lock radius outside the lock sphere at which a closing ship drops out.
 pub const DROP_MARGIN: f64 = 0.1;
 
 /// Returns the warp speed `speed`, in metres per second, as a share of the top speed of the
-/// drive, from 0 to 1. Warp speeds span ten decades, so the share is taken on a logarithmic
-/// scale, from the slowest warp to the fastest jump: a tenfold speed is always the same step.
+/// drive, from 0 to 1. Warp speeds span sixteen decades, so the share is taken on a logarithmic
+/// scale, from the slowest warp to the fastest jump, [`GALAXY_CAP`]: a tenfold speed is always
+/// the same step.
 pub fn fraction(speed: f64) -> f64 {
-    ((speed / FLOOR).max(1.0).ln() / (JUMP_CAP / FLOOR).ln()).min(1.0)
+    ((speed / FLOOR).max(1.0).ln() / (GALAXY_CAP / FLOOR).ln()).min(1.0)
 }
 
 /// State of the warp drive.
@@ -93,15 +97,20 @@ pub fn drop_out(ship: &mut Ship, wells: &[Well]) {
 ///
 /// The clearance falls by the share of it that `RAMP` seconds leave, whatever the frame time: the
 /// speed is the clearance over the ramp time, so it falls to zero at the edge of a lock sphere, and
-/// one move never covers more than half of the clearance. Returns the speed, or nothing when the
-/// ship closes on a lock sphere and must drop out.
+/// one move never covers more than half of the clearance: see [`law::speed`], which is the one
+/// rule that keeps the ship from overshooting into a body at any speed, because the distance
+/// the drive needs to stop scales with the speed and never exceeds the clearance. Returns the
+/// speed, or nothing when the ship closes on a lock sphere and must drop out.
 fn cruise(ship: &mut Ship, wells: &[Well], cap: f64, dt: f64) -> Option<f64> {
     let before = clearance(wells, ship.pos);
     if before <= 0.0 {
         return None;
     }
-    let closing = before * (1.0 - (-dt / RAMP).exp()) / dt;
-    let speed = closing.clamp(FLOOR, cap).min(before * 0.5 / dt);
+    let last = match ship.warp {
+        Warp::Active { speed } => speed,
+        _ => 0.0,
+    };
+    let speed = law::speed(before, last, cap, dt);
     ship.pos += (ship.forward() * speed + carry(wells, ship.pos)) * dt;
     let after = clearance(wells, ship.pos);
     let margin = nearest(wells, ship.pos).map_or(0.0, |well| well.lock * DROP_MARGIN);

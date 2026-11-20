@@ -8,17 +8,16 @@ use super::tune::ESCORT;
 use super::warp::Warp;
 use super::wells::Well;
 use crate::space::Frame;
-use crate::universe::{GalaxyId, ORBIT, PlanetSpec, StarSpec, SystemSpec, Universe};
+use crate::universe::{GalaxyId, PlanetSpec, StarSpec, SystemSpec, Universe, system_reach};
 
 /// Metres above the top of an atmosphere at which a climbing ship leaves the surface frame.
 const AIR_MARGIN: f64 = 50.0;
 
-/// Distance from a star in metres within which a ship flies in the frame of its star: the far
-/// edge of the orbit of the outermost planet of a star of the mass of the Sun, so that every
-/// planet of the system is a well of the frame.
-const SYSTEM_REACH: f64 = ORBIT.1;
-
-/// Share of the reach of a system beyond which a ship leaves the frame of its star.
+/// Share of the reach of a system, [`system_reach`], beyond which a ship leaves the frame of its
+/// star. A ship enters at the reach and leaves at 1.05 times it, so it does not change frame
+/// back and forth at the edge. In the frame of a galaxy a position is a 64-bit number from the
+/// galaxy centre: its step is 1e5 m at 5e20 m and 4e6 m at the rim of the cell, and the margin,
+/// 5 percent of 1.6e13 m for the Sun, is far above both.
 const REACH_MARGIN: f64 = 1.05;
 
 /// Moves a ship between the surface frame of a planet or a moon and the frame of its star: up
@@ -47,9 +46,10 @@ pub fn reframe(ship: &mut Ship, system: &SystemSpec, time: f64) {
     }
 }
 
-/// Moves a ship from the frame of its star to the frame of its galaxy once it is out of reach.
+/// Moves a ship from the frame of its star to the frame of its galaxy once it is out of the
+/// reach of the system of that star.
 pub fn leave_system(ship: &mut Ship, star: &StarSpec) {
-    if ship.pos.length() > SYSTEM_REACH * REACH_MARGIN {
+    if ship.pos.length() > system_reach(star) * REACH_MARGIN {
         to_galaxy(ship, star);
     }
 }
@@ -70,10 +70,12 @@ pub fn change_galaxy(ship: &mut Ship, universe: &Universe, galaxy: GalaxyId) {
     ship.frame = Frame::Galaxy(new.id);
 }
 
-/// Moves a ship between the stars into the frame of the first of `stars` whose reach it is in.
+/// Moves a ship between the stars into the frame of the nearest of `stars` whose reach it is in.
 pub fn enter_system<'a>(ship: &mut Ship, stars: impl IntoIterator<Item = &'a StarSpec>) {
     let gap = |star: &&StarSpec| star.pos.distance(ship.pos);
-    let near = stars.into_iter().filter(|star| gap(star) < SYSTEM_REACH);
+    let near = stars
+        .into_iter()
+        .filter(|star| gap(star) < system_reach(star));
     if let Some(star) = near.min_by(|a, b| gap(a).total_cmp(&gap(b))) {
         to_star(ship, star);
     }

@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use super::{Dial, LEVER, Levers, STICK, STICK_REACH};
 use crate::ship::cruise::top_speed;
 use crate::ship::telemetry::{ShipTelemetry, WarpState};
-use crate::ship::warp::JUMP_CAP;
+use crate::ship::warp::GALAXY_CAP;
 
 /// Returns the controls with the stick at `stick` and the lever at `throttle`.
 pub(super) fn levers(stick: [f32; 3], throttle: f32) -> Levers {
@@ -78,7 +78,7 @@ fn the_instruments_read_the_ship() {
     let off = |speed: f64| Dial::Speed.reading(&flying(speed, 800.0, WarpState::Off), 1.0);
     assert!((off(0.5 * top_speed(800.0)) - 0.5).abs() < 1.0e-6);
     assert_eq!((off(0.0), off(1.0e9), off(f64::NAN)), (0.0, 1.0, 0.0));
-    let jump = flying(0.0, f64::INFINITY, WarpState::Active(JUMP_CAP));
+    let jump = flying(0.0, f64::INFINITY, WarpState::Active(GALAXY_CAP));
     assert_eq!(Dial::Speed.reading(&jump, 0.0), 1.0);
     assert_eq!(Dial::Charge.reading(&jump, 0.0), 1.0);
     let spool = flying(0.0, 0.0, WarpState::Spooling(0.25));

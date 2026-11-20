@@ -16,7 +16,9 @@ use crate::universe::{
 };
 use crate::world::{Globe, Planet};
 
-/// Game light-years around the ship in which stars are looked up between the stars.
+/// Light-years around the ship in which stars are looked up between the stars. A sector is
+/// `SECTOR_LY` wide, so 12 light-years read 64 to 125 sectors, about 29 stars at the density of
+/// the Sun, once per sector the ship crosses.
 const STAR_SCAN: f64 = 12.0;
 
 /// The planet whose surface frame the ship is in.

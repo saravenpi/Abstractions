@@ -77,7 +77,7 @@ fn the_filter_takes_letters_and_shows_in_the_header() {
     };
     assert_eq!(shown(9, ""), "Vereya system - 1-6 of 9");
     assert_eq!(shown(2, "ko"), "\"ko\"");
-    assert!(shown(0, "").starts_with("Vereya system - none charted yet"));
+    assert_eq!(shown(0, ""), "None charted yet");
     assert!(shown(0, "zz").starts_with("No name holds \"zz\""));
     let by_name = summary("Known universe", (1, 4, 4), ("", Sort::Name));
     assert_eq!(by_name, "Known universe by name");

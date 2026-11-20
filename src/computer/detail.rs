@@ -8,8 +8,11 @@ use super::rows::Line;
 use super::words::temperature;
 use crate::universe::{PlanetRecord, PlanetSpec, Universe};
 
-/// Most rows a card has under its title and its subtitle.
+/// Most rows a card has under its title and its subtitle, its line on life included.
 pub const ROWS: usize = 17;
+
+/// Most headings of groups a card has under its first row.
+pub const GROUPS: usize = 4;
 
 /// What a row says in place of the class and the temperature while the record is unknown.
 pub const UNCHARTED: &str = "uncharted";
@@ -103,7 +106,7 @@ fn subtitle(universe: &Universe, body: &PlanetSpec, known: bool) -> String {
 /// of the star or the galaxy.
 pub fn card(line: &Line, world: Option<&PlanetSpec>, universe: &Universe) -> Card {
     let (subtitle, rows) = match (line.target, world) {
-        (Target::Body(_), Some(body)) => (subtitle(universe, body, true), planet(line, body)),
+        (Target::Body(_), Some(body)) => (subtitle(universe, body, true), planet(body)),
         (Target::Body(id), None) => {
             let body = universe.planet(id);
             (subtitle(universe, &body, false), uncharted(line, &body))

@@ -33,7 +33,10 @@ fn read(app: &mut App, [title, subtitle, facts]: Parts) -> (String, String, usiz
         .get::<Children>(facts)
         .map_or(0, |rows| rows.len());
     let universe = *app.world().resource::<Universe>();
-    let wanted = shown(app.world().resource::<Board>(), &universe).rows.len();
+    let odds = &mut Default::default();
+    let wanted = shown(app.world().resource::<Board>(), &universe, odds)
+        .rows
+        .len();
     (said(title), said(subtitle), rows, wanted)
 }
 

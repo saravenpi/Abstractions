@@ -40,7 +40,7 @@ In the ship:
 | X | Cut the throttle |
 | Z | Flight assist on or off |
 | J | Warp drive, away from a planet's gravity |
-| M or Tab | Map. Wheel to zoom, drag to pan, double click to go in, Back or Backspace to go out. A trackpad scroll and a pinch also zoom; W A S D, and the arrows with the pointer on the map, also pan. 0 recentres. Click selects. The card of the selected place has buttons to set the course there, engage the autopilot, clear the course, focus it, set a waypoint or save it as a favourite; Enter also sets the course and right click opens the same menu. The path under the Back button jumps to any level above. Esc lets go of the selection, then closes the map |
+| M or Tab | Map. Wheel to zoom, drag to pan, double click to go in, Back or Backspace to go out. A trackpad scroll and a pinch also zoom; W A S D, and the arrows with the pointer on the map, also pan. 0 recentres. Click selects. The card of the selected place gives its chance of life, or what lives there once you have landed, and has buttons to set the course there, engage the autopilot, clear the course, focus it, set a waypoint or save it as a favourite; Enter also sets the course and right click opens the same menu, on the map or on a search result, favourite or player in the side panel. The path under the Back button jumps to any level above. Esc lets go of the selection, then closes the map |
 | G | Engage the autopilot on the course. The line under the compass says when it cannot, and why |
 | V | First or third person |
 | F | Leave the ship |

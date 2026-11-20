@@ -6,7 +6,7 @@ use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 
 use super::course::{NO_COURSE, arrival, course, progress};
-use super::layout::{FACTS, Measures, RESULTS, ROW, SIDE, SMALLEST, fixed, measure};
+use super::layout::{Measures, RESULTS, ROW, SIDE, SMALLEST, fixed, measure};
 use super::tests_rig::{game, run, tap};
 use super::view::{Panel, Slot};
 use super::*;
@@ -16,9 +16,8 @@ use crate::screens::{in_control, playing};
 
 /// At every window size the side panel keeps its width, the map is the largest square beside
 /// it, and the search results take what the panel leaves within their fewest and most rows.
-/// At the smallest window the search, one result, the top of the card with its buttons and
-/// the lists always fit, and only the facts of the card are cut; at 1280 by 720 the whole
-/// card fits with nothing listed.
+/// At the smallest window nothing listed leaves one result beside the whole top of the card,
+/// and at 1280 by 720 the whole card fits with nothing listed.
 #[test]
 fn the_screen_fits_every_window() {
     for height in [540.0, 600.0, 720.0, 900.0, 1080.0, 1200.0, 1440.0, 2160.0] {
@@ -40,13 +39,9 @@ fn the_screen_fits_every_window() {
         side: SIDE,
         map: 540.0,
         rows: RESULTS.0,
+        lists: (0, 0),
     };
     assert_eq!(measure(SMALLEST, (0, 0)), smallest);
-    for lists in [(0, 0), (2, 1), (5, 0), (3, 3), (1, 6)] {
-        let fit = measure(SMALLEST, lists);
-        let used = fixed(lists) - FACTS + fit.rows as f32 * ROW;
-        assert!(used <= SMALLEST.y, "{lists:?}: {used}");
-    }
     let usual = measure(Vec2::new(1280.0, 720.0), (0, 0));
     assert!(fixed((0, 0)) + usual.rows as f32 * ROW <= 720.0);
 }

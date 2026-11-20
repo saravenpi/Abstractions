@@ -62,12 +62,14 @@ pub fn reason(target: Target, course: Option<Target>, status: RouteStatus) -> St
     }
 }
 
-/// Returns the icon and the words of the button `deed` on `target`.
+/// Returns the icon and the words of the button `deed` on `target`: the words of the menu,
+/// cut to one or two words so the buttons of the card fit two rows.
 pub fn named(deed: Deed, target: Target) -> (Icon, &'static str) {
     match deed {
+        Deed::Choice(Choice::Favourite) => (Icon::Star, "Save place"),
         Deed::Choice(choice) => words(choice, &Under::Place(target)),
-        Deed::Engage => (Icon::Play, "Engage autopilot"),
-        Deed::Clear => (Icon::Close, "Clear course"),
+        Deed::Engage => (Icon::Play, "Engage"),
+        Deed::Clear => (Icon::Close, "Clear"),
     }
 }
 

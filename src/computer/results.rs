@@ -6,6 +6,7 @@ use bevy::ui_widgets::Button;
 
 use super::board::VISIBLE_ROWS;
 use super::layout::{GLYPH, ROW};
+use super::section::{heading, heading_row, row_node};
 use super::view::{Cell, Part, SEARCH_HINT, SearchBox, SearchText, Slot, Summary};
 use crate::ui::{Icon, Look, Selected, Tone, cell, column, frame, icon, label, text, theme};
 
@@ -29,15 +30,7 @@ fn row(slot: usize) -> impl Bundle {
     let small =
         move |part: Part, tone: Tone| (label("", theme::FONT_SMALL, tone), Cell(slot, part));
     let mark = (icon(Icon::Check, Tone::Muted), Cell(slot, Part::Mark));
-    let strip = Node {
-        width: percent(100),
-        height: px(ROW),
-        flex_shrink: 0.0,
-        align_items: AlignItems::Center,
-        column_gap: px(theme::GAP_XS),
-        overflow: Overflow::clip(),
-        ..default()
-    };
+    let strip = row_node(ROW);
     let button = (Button, RelativeCursorPosition::default(), Look::default());
     (
         (button, strip, BackgroundColor(Color::NONE)),
@@ -65,19 +58,27 @@ fn field() -> impl Bundle {
     (SearchBox, frame(), node, inside)
 }
 
-/// The search box over its results: the box, the line that counts them and the pool of rows.
-pub(super) fn search() -> impl Bundle {
-    let rows = (
-        column(percent(100), 0.0),
-        Children::spawn(SpawnIter((0..VISIBLE_ROWS).map(row))),
-    );
-    let title = (
+/// The heading of the search, with the line that names the results and counts them at its
+/// right end, muted.
+fn head() -> impl Bundle {
+    let count = (
         Summary,
         text("", theme::FONT_SMALL, theme::MUTED),
         TextLayout::no_wrap(),
     );
-    (
-        column(percent(100), theme::GAP_XS),
-        children![field(), title, rows],
-    )
+    (heading_row(), children![heading("Search"), count])
+}
+
+/// The search section: its heading with the count, the box and the pool of rows under it.
+pub(super) fn search() -> impl Bundle {
+    let rows = (
+        Node {
+            width: percent(100),
+            flex_direction: FlexDirection::Column,
+            margin: UiRect::top(px(theme::GAP_XS)),
+            ..default()
+        },
+        Children::spawn(SpawnIter((0..VISIBLE_ROWS).map(row))),
+    );
+    (column(percent(100), 0.0), children![head(), field(), rows])
 }

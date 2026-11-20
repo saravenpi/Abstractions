@@ -3,8 +3,10 @@
 //! favourites saves the place picked on the flat map, or where the player is.
 
 use bevy::prelude::*;
+use bevy::ui::RelativeCursorPosition;
 
-use crate::ui::{Icon, Tone, column, frame, icon_slot, label, step_button, text, theme};
+use crate::computer::{LIST_ROW, heading, heading_row, row_node};
+use crate::ui::{Icon, Tone, column, frame, icon_slot, label, step_button, theme};
 
 /// Favourites listed at most.
 pub const FAVOURITES: usize = 5;
@@ -47,7 +49,7 @@ pub struct SaveWords;
 
 /// What the button that saves a favourite says on a planet and on a chart, where it saves
 /// where the player is.
-pub const SAVE: [&str; 2] = ["Save as favourite", "Save my spot"];
+pub const SAVE: [&str; 2] = ["Save place", "Save my spot"];
 
 /// The row of the player at this index of the list of friends, hidden past its end.
 #[derive(Component, Debug, Clone, Copy)]
@@ -61,14 +63,11 @@ pub struct PlayerName(pub usize);
 #[derive(Component, Debug, Clone, Copy)]
 pub struct PlayerDot(pub usize);
 
-/// The node of a row of a list of the panel.
+/// The node of a row of a list of the panel, hidden until it is written.
 fn strip() -> Node {
     Node {
         display: Display::None,
-        width: percent(100),
-        align_items: AlignItems::Center,
-        column_gap: px(theme::GAP_XS),
-        ..default()
+        ..row_node(LIST_ROW)
     }
 }
 
@@ -77,13 +76,15 @@ fn favourite(index: usize) -> impl Bundle {
     let name = Node {
         flex_grow: 1.0,
         min_width: px(0),
+        height: percent(100),
+        align_items: AlignItems::Center,
         overflow: Overflow::clip(),
         ..default()
     };
     let named = (FavName(index), label("", theme::FONT_SMALL, Tone::Plain));
     let button = |symbol: Icon, act: Do| (step_button(symbol), FavButton(index, act));
     (
-        FavRow(index),
+        (FavRow(index), RelativeCursorPosition::default()),
         strip(),
         children![
             (frame(), name, FavButton(index, Do::Go), children![named]),
@@ -94,15 +95,14 @@ fn favourite(index: usize) -> impl Bundle {
     )
 }
 
-/// The favourites: their heading, the button that saves one and the pool of rows.
+/// The favourites: their heading with the button that saves one at its right end, over the
+/// pool of rows.
 pub fn favourites() -> impl Bundle {
-    let head = (
-        text("Favourites", theme::FONT_SMALL, theme::MUTED),
-        TextLayout::no_wrap(),
-    );
     let row = Node {
         align_items: AlignItems::Center,
         column_gap: px(theme::GAP_S),
+        padding: UiRect::horizontal(px(theme::GAP_XS)),
+        margin: UiRect::right(px(-theme::GAP_XS)),
         ..default()
     };
     let words = (SaveWords, label(SAVE[0], theme::FONT_SMALL, Tone::Plain));
@@ -113,10 +113,9 @@ pub fn favourites() -> impl Bundle {
         children![icon_slot(Some(Icon::Star), Tone::Plain), words],
     );
     (
-        column(percent(100), theme::GAP_XS),
+        column(percent(100), 0.0),
         children![
-            head,
-            save,
+            (heading_row(), children![heading("Favourites"), save]),
             (
                 column(percent(100), 0.0),
                 Children::spawn(SpawnIter((0..FAVOURITES).map(favourite)))
@@ -134,7 +133,7 @@ fn player(index: usize) -> impl Bundle {
     };
     (
         frame(),
-        PlayerRow(index),
+        (PlayerRow(index), RelativeCursorPosition::default()),
         strip(),
         children![
             (PlayerDot(index), dot, BackgroundColor(Color::NONE)),
@@ -149,22 +148,17 @@ pub struct Players;
 
 /// The players: their heading over the pool of rows, hidden while there are none.
 pub fn players() -> impl Bundle {
-    let head = (
-        text("Players", theme::FONT_SMALL, theme::MUTED),
-        TextLayout::no_wrap(),
-    );
     let block = Node {
         display: Display::None,
         width: percent(100),
         flex_direction: FlexDirection::Column,
-        row_gap: px(theme::GAP_XS),
         ..default()
     };
     (
         Players,
         block,
         children![
-            head,
+            (heading_row(), children![heading("Players")]),
             (
                 column(percent(100), 0.0),
                 Children::spawn(SpawnIter((0..PLAYERS).map(player)))

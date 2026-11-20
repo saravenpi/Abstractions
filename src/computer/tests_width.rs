@@ -6,7 +6,7 @@ use bevy::math::Vec2;
 
 use super::format::{clip, distance};
 use super::labels::room;
-use super::layout::{GLYPH, LINE_CHARS, ROOM, clear_of_bands};
+use super::layout::{GLYPH, LINE_CHARS, ROOM, SUMMARY_CHARS, clear_of_bands};
 use super::results::{DISTANCE_CHARS, TITLE_CHARS, WIDTHS};
 use super::show::cell_text;
 use super::sift::{FILTER_CHARS, Sort, summary};
@@ -61,17 +61,19 @@ fn every_distance_fits_its_column() {
     assert!(distance(102_007.0 * GLY).chars().count() <= DISTANCE_CHARS);
 }
 
-/// The header over the results stays on one line of the panel, whatever the heading, the
-/// filter, the count and the order.
+/// The line that counts the results fits beside the heading of the search, whatever the
+/// heading, the filter, the count and the order.
 #[test]
 fn the_header_fits_one_line() {
+    let caps = "Search".len() as f32 * (GLYPH + theme::CAPS_SPACING);
+    assert!(caps + theme::GAP_S + SUMMARY_CHARS as f32 * GLYPH <= ROOM);
     let filter = "x".repeat(FILTER_CHARS);
     let headings = ["Vereya system", "Known universe", LONGEST];
     for heading in headings {
         for sort in [Sort::Near, Sort::Name] {
             for (count, typed) in [(0, ""), (0, filter.as_str()), (999, ""), (999, &filter)] {
                 let shown = summary(heading, (991, 999.min(count), count), (typed, sort));
-                assert!(shown.chars().count() <= LINE_CHARS, "{shown}");
+                assert!(shown.chars().count() <= SUMMARY_CHARS, "{shown}");
             }
         }
     }

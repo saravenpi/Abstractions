@@ -10,7 +10,7 @@
 use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
-use super::layout::{LINE_HEIGHT, MARGIN, SIDE};
+use super::layout::{LINE_HEIGHT, MARGIN, SECTION_GAP, SIDE};
 use super::map::field;
 use super::open::Computer;
 use crate::ui::{Blurred, Overlay, text, theme};
@@ -31,7 +31,7 @@ pub struct Area;
 
 /// A result button of the pool, counted from the top of the list.
 #[derive(Component, Debug, Clone, Copy)]
-pub(super) struct Slot(pub usize);
+pub struct Slot(pub usize);
 
 /// Which text of a result a cell is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,15 +68,16 @@ pub struct SearchBox;
 #[derive(Component)]
 pub(super) struct SearchText;
 
-/// The slim panel on the right: the search, the card of the selected result with its
-/// buttons, the favourites and the players. The card gives way first when the window is short.
+/// The slim panel on the right, four sections apart under their headings: the search, the
+/// card of the selected place with its buttons, the favourites and the players. The card gives
+/// way first when the window is short.
 fn side() -> impl Bundle {
     let node = Node {
         width: px(SIDE),
         height: percent(100),
         flex_shrink: 0.0,
         flex_direction: FlexDirection::Column,
-        row_gap: px(theme::GAP_M),
+        row_gap: px(SECTION_GAP),
         padding: UiRect::all(px(MARGIN)),
         overflow: Overflow::clip(),
         ..default()

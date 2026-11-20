@@ -6,15 +6,20 @@
 //! the speed of the chemistry, and only if that wait is shorter than the age of the star. The rung
 //! then follows the time life has had since, at the speed of its chemistry.
 
+mod chance;
 mod tune;
+
+pub use chance::chance;
 
 use super::{Rung, Solvent, World, chem};
 use crate::universe::hash::{Rng, child};
-use crate::universe::{GIANT_RADIUS, NO_AIR};
-use tune::{BARRIER, OLDEST, RATE, RUNG_GYR};
+use chance::{barren, lifetime, rate};
+use tune::{BARRIER, RUNG_GYR};
 
 #[cfg(test)]
 pub(super) mod tests;
+#[cfg(test)]
+mod tests_chance;
 #[cfg(test)]
 mod tests_worlds;
 
@@ -99,18 +104,15 @@ fn ladder(world: &World, solvent: Solvent, years: f32) -> Rung {
 
 /// Returns how far life got on a planet of `world` whose life rolls from `seed`, or nothing on a dead world.
 ///
-/// The star is a seeded share of its life old: about 10 billion years at the home temperature and
-/// shorter the hotter it is, as `(5780 / kelvin)^2.5`, and never older than 12. Gas giants and
-/// airless worlds never live, nor does a world no liquid suits.
+/// The star is a seeded share of its [`lifetime`] old. Gas giants and airless worlds never live,
+/// nor does a world no liquid suits.
 pub fn rung(world: &World, seed: u64) -> Option<Rung> {
-    if world.radius >= GIANT_RADIUS.0 as f32 || world.pressure < NO_AIR as f32 {
+    if barren(world) {
         return None;
     }
     let (solvent, suits) = suitability(world)?;
     let mut rng = Rng::new(child(seed, STREAM));
-    let lifetime = (10.0 * (5780.0 / world.star.max(1000.0)).powf(2.5)).min(OLDEST);
-    let age = rng.unit() as f32 * lifetime;
-    let rate = (RATE * suits * speed(world.temperature)).max(1e-9);
-    let wait = -(1.0 - rng.unit() as f32).ln() / rate;
+    let age = rng.unit() as f32 * lifetime(world);
+    let wait = -(1.0 - rng.unit() as f32).ln() / rate(world, suits);
     (wait < age).then(|| ladder(world, solvent, age - wait))
 }

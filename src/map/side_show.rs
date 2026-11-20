@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use super::favourite::Favourites;
 use super::level::Level;
 use super::side::{FavName, FavRow, PlayerDot, PlayerName, PlayerRow, Players, SAVE, SaveWords};
-use crate::computer::Typing;
+use crate::computer::{Board, Typing};
 use crate::menus::{Marker, MarkerKind, Markers};
 
 /// The rows of the two lists.
@@ -70,10 +70,19 @@ fn players_text(markers: &[Marker], friends: &[usize], faces: &mut Faces) {
     }
 }
 
-/// Writes both lists of the side panel and hides the rows past their ends, and the players
-/// while there are none.
+/// What the lists are written from: the favourites, the name typed, the markers and the board,
+/// which says how many rows of each the window has room for.
+type Lists<'w> = (
+    Res<'w, Favourites>,
+    Res<'w, Typing>,
+    Res<'w, Markers>,
+    Res<'w, Board>,
+);
+
+/// Writes both lists of the side panel and hides the rows past their ends or past the room of
+/// the window, and the players while none is shown.
 pub(super) fn write(
-    (favourites, typing, markers): (Res<Favourites>, Res<Typing>, Res<Markers>),
+    (favourites, typing, markers, board): Lists,
     mut rows: Rows,
     mut faces: Faces,
     mut friends: Local<Vec<usize>>,
@@ -85,11 +94,13 @@ pub(super) fn write(
         .enumerate()
         .filter(|(_, marker)| marker.kind == MarkerKind::Friend);
     friends.extend(found.map(|(index, _)| index));
+    let room = board.lists.unwrap_or((usize::MAX, usize::MAX));
+    let (saved, met) = (favourites.0.len().min(room.0), friends.len().min(room.1));
     for (mut node, favourite, player, block) in &mut rows {
         let shown = match (favourite, player) {
-            (Some(FavRow(index)), _) => *index < favourites.0.len(),
-            (_, Some(PlayerRow(index))) => *index < friends.len(),
-            _ => block && !friends.is_empty(),
+            (Some(FavRow(index)), _) => *index < saved,
+            (_, Some(PlayerRow(index))) => *index < met,
+            _ => block && met > 0,
         };
         let display = [Display::None, Display::Flex][usize::from(shown)];
         if node.display != display {

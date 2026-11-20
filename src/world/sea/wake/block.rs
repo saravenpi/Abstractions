@@ -79,7 +79,9 @@ impl SeaWakes {
     pub fn height(&self, p: Vec2, now: f32) -> f32 {
         let live = self.count.x as usize;
         self.rows[..live * SEA_ROWS]
-            .chunks_exact(SEA_ROWS)
+            .as_chunks::<SEA_ROWS>()
+            .0
+            .iter()
             .map(|row| {
                 let rel = p - Vec2::new(row[0].x, row[0].y);
                 let dir = Vec2::new(row[0].z, row[0].w);

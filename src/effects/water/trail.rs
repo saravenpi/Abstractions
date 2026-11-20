@@ -51,14 +51,11 @@ pub fn lay(
         false => Packet::hover(spot.gravity, spot.size, (amp, spot.now)),
     };
     let on = spot.at - spot.up * spot.height;
-    let way = [
-        spot.velocity.normalize_or(spot.up.any_orthonormal_vector()),
-        spot.up,
-    ];
+    let ahead = spot.velocity.normalize_or(spot.up.any_orthonormal_vector());
     wakes.push(Wake {
         at: anchor.to_frame(on),
-        ahead: anchor.to_frame(on + way[0]),
-        over: anchor.to_frame(on + way[1]),
+        ahead: anchor.to_frame(on + ahead),
+        over: anchor.to_frame(on + spot.up),
         packet,
     });
 }

@@ -49,11 +49,18 @@ fn stirred(wakes: Option<&Wakes>, seat: &Seat, (p, now): (Vec2, f32)) -> f32 {
         })
 }
 
+/// What the swell reads of the world: the anchor, the planet and the wakes, each when it exists.
+type World<'w> = (
+    Option<Res<'w, Anchor>>,
+    Option<Res<'w, Planet>>,
+    Option<Res<'w, Wakes>>,
+);
+
 /// Writes how high the waves stand under the game camera, none where the near sea is not drawn.
 pub fn swell(
     cameras: Query<&GlobalTransform, With<GameCamera>>,
     seas: Query<(&Seat, &Transform, &Visibility), With<Sea>>,
-    world: (Option<Res<Anchor>>, Option<Res<Planet>>, Option<Res<Wakes>>),
+    world: World,
     (wind, time): (Res<Wind>, Res<Time>),
     mut swell: ResMut<Swell>,
 ) {

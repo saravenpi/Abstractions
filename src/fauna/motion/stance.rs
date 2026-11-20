@@ -18,13 +18,10 @@ pub fn attitude(feet: &[Foot], at: Vec3, yaw: Quat) -> Vec3 {
         return Vec3::new(at.y, 0.0, 0.0);
     }
     let back = yaw.inverse();
-    let points: Vec<Vec3> = feet
-        .iter()
-        .map(|f| back * (f.to - at.with_y(0.0)))
-        .collect();
-    let mean = points.iter().copied().sum::<Vec3>() / points.len() as f32;
+    let point = |f: &Foot| back * (f.to - at.with_y(0.0));
+    let mean = feet.iter().map(point).sum::<Vec3>() / feet.len() as f32;
     let (mut xx, mut xz, mut zz, mut xy, mut zy) = (0.0, 0.0, 0.0, 0.0, 0.0);
-    for p in points.iter().map(|p| *p - mean) {
+    for p in feet.iter().map(|f| point(f) - mean) {
         (xx, xz, zz) = (xx + p.x * p.x, xz + p.x * p.z, zz + p.z * p.z);
         (xy, zy) = (xy + p.x * p.y, zy + p.z * p.y);
     }
@@ -45,10 +42,15 @@ pub fn attitude(feet: &[Foot], at: Vec3, yaw: Quat) -> Vec3 {
 /// stays in reach of its hip, the body turned by `turn` about a point `pivot` metres above its
 /// origin; `hips` are each leg's hip in the body frame and its reach. A body with no planted
 /// foot has no cap.
-pub fn cap(feet: &[Foot], hips: &[(Vec3, f32)], at: Vec3, (turn, pivot): (Quat, f32)) -> f32 {
+pub fn cap(
+    feet: &[Foot],
+    hips: impl Iterator<Item = (Vec3, f32)>,
+    at: Vec3,
+    (turn, pivot): (Quat, f32),
+) -> f32 {
     let level = at.with_y(0.0);
     let up = Vec3::Y * pivot;
-    let reach = |(foot, &(hip, reach)): (&Foot, &(Vec3, f32))| {
+    let reach = |(foot, (hip, reach)): (&Foot, (Vec3, f32))| {
         let hip = up + turn * (hip - up);
         let gap = (foot.at - level - hip).with_y(0.0).length();
         foot.at.y + (reach * reach - gap * gap).max(0.0).sqrt() - hip.y

@@ -29,15 +29,15 @@ fn stride(m: &Motion, vel: Vec3, leg: f32, gravity: f32) -> Stride {
 }
 
 /// Returns the hip of every leg of `body` in the body frame of `m` and how far it reaches.
-fn hips(m: &Motion, body: &Body) -> Vec<(Vec3, f32)> {
-    let hip = |bone: Option<&u8>| {
-        bone.and_then(|&b| m.frame.rest.get(usize::from(b)))
-            .map_or(Vec3::ZERO, |r| r.0)
-    };
-    body.legs
-        .iter()
-        .map(|l| (hip(l.bones.first()), 0.97 * l.lengths.iter().sum::<f32>()))
-        .collect()
+fn hips<'a>(m: &'a Motion, body: &'a Body) -> impl Iterator<Item = (Vec3, f32)> + 'a {
+    body.legs.iter().map(move |l| {
+        let hip = l
+            .bones
+            .first()
+            .and_then(|&b| m.frame.rest.get(usize::from(b)))
+            .map_or(Vec3::ZERO, |r| r.0);
+        (hip, 0.97 * l.lengths.iter().sum::<f32>())
+    })
 }
 
 /// Returns the cue of foot `i` of `body` under `m`, which may step out of phase if `free`.
@@ -109,7 +109,7 @@ pub fn step(m: &mut Motion, body: &Body, drive: &Drive, ground: &dyn Fn(Vec2) ->
         let turn = heading(m) * Quat::from_rotation_x(hold.y) * Quat::from_rotation_z(hold.z);
         hold.x = hold
             .x
-            .min(cap(&m.feet, &hips(m, body), m.root.at, (turn, leg)));
+            .min(cap(&m.feet, hips(m, body), m.root.at, (turn, leg)));
         m.root.hold.at.x = hold.x;
     }
     let bob =

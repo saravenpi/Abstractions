@@ -18,6 +18,10 @@ use crate::life::body::{Body, Knee, Locomotion};
 /// A part's position, rotation and scale in the local frame.
 pub type Placed = (Vec3, Quat, Vec3);
 
+/// Legs whose solved joints a body keeps on the stack while it is posed; a body with more uses the
+/// heap.
+const ON_STACK: usize = 16;
+
 /// Returns `turn` swung so that its `axis` points along `dir`.
 fn aimed(turn: Quat, axis: Vec3, dir: Vec3) -> Quat {
     let from = turn * axis;
@@ -32,14 +36,22 @@ impl Motion {
         let raise = self.sung().map_or(0.0, |s| s.raise(body.height));
         let root = (self.root.place + Vec3::Y * raise, self.root.turn);
         let mut placed: Vec<Placed> = Vec::with_capacity(body.parts.len());
-        let mut limbs = vec![[Vec3::ZERO; 4]; body.legs.len()];
+        let mut stack = [[Vec3::ZERO; 4]; ON_STACK];
+        let mut heap = Vec::new();
+        let limbs = match body.legs.len() {
+            n if n <= ON_STACK => &mut stack[..n],
+            n => {
+                heap.resize(n, [Vec3::ZERO; 4]);
+                &mut heap[..]
+            }
+        };
         for (i, part) in body.parts.iter().enumerate() {
             let parent = part.parent.and_then(|p| placed.get(usize::from(p)));
             let base = carry(
                 parent.map_or(root, |&(at, turn, _)| (at, turn)),
                 (part.socket, part.rest),
             );
-            placed.push(self.place(body, i, base, &mut limbs));
+            placed.push(self.place(body, i, base, limbs));
         }
         placed
     }

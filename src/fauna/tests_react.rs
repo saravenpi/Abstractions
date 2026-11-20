@@ -9,6 +9,8 @@ use super::gate::Spec;
 use super::herds::{Herds, Land, member};
 use super::react::Act;
 use super::rig::app;
+use super::senses::stance::plant_eater;
+use super::senses::tune::{PREY_SHARE, ROBOT_KG};
 use super::stage::{put, run, staying};
 use super::want::Lead;
 use crate::world::Terrain;
@@ -71,16 +73,26 @@ fn off_place(app: &mut App, beast: &Beast) -> f32 {
     })
 }
 
-/// A robot a metre and a half from an animal makes it flee, and once the robot is far it calms down
-/// and walks back to its place in the herd.
+/// Returns true when the animal `beast` is a plant eater that a robot outweighs by [`PREY_SHARE`]: it
+/// flees a robot, where a hunter or a heavy animal stands its ground.
+fn skittish(app: &App, beast: &Beast) -> bool {
+    let globe = app.world().resource::<Terrain>().globe().clone();
+    globe.life().is_some_and(|life| {
+        let species = &life.species[usize::from(beast.index)];
+        plant_eater(species.role.guild) && species.history.mass < ROBOT_KG / PREY_SHARE
+    })
+}
+
+/// A robot a metre and a half from a plant eater smaller than twice the robot makes it flee, and
+/// once the robot is far it calms down and walks back to its place in the herd.
 #[test]
 fn animals_flee_a_near_robot_and_come_back() {
     let (mut app, _) = app(true);
     run(&mut app, 30.0, 0.1);
     let herded = staying(&mut app)
         .into_iter()
-        .find(|b| matches!(b.lead, Lead::Herd { .. }));
-    let beast = herded.expect("a herd member");
+        .find(|b| matches!(b.lead, Lead::Herd { .. }) && skittish(&app, b));
+    let beast = herded.expect("a skittish herd member");
     let key = beast.lead.key();
     put(
         &mut app,

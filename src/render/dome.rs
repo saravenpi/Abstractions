@@ -16,7 +16,8 @@ use super::vantage::{LocalSystem, Vantage};
 use super::warp::Lens;
 use crate::screens::Screen;
 
-/// Radius of the dome in metres: behind the stars and every body, which are drawn nearer.
+/// Radius of the dome in metres. Its shader writes the far depth, so the dome lies behind the
+/// stars and every body at any radius, and the radius only has to hold the camera.
 pub const DOME_RADIUS: f32 = 4.0e6;
 
 /// Brightness of the horizon rim against the horizon color at the ground.

@@ -31,7 +31,8 @@ use crate::screens::Screen;
 use crate::universe::{GLY, GalaxyId};
 use dust::Dust;
 
-/// Radius of the star shell in metres: behind every body, in front of the dome.
+/// Radius of the star shell in metres. The shader writes the far depth for every speck, so the
+/// stars lie behind every body at any radius.
 pub const STAR_SHELL: f32 = 3.0e6;
 
 /// Distance in game light-years up to which stars are gathered into the mesh. It is farther

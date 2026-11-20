@@ -58,7 +58,8 @@ pub fn pack() -> Pack {
     pack
 }
 
-/// Returns the life of the first living home planet among the first universes, and its seed.
+/// Returns the life of the first home planet among the first universes that has animals with
+/// parts, and its seed.
 pub fn living() -> (Life, u64) {
     (0..64)
         .find_map(|seed| {
@@ -66,6 +67,10 @@ pub fn living() -> (Life, u64) {
             let body = universe.home();
             let planet = universe.planet(body);
             let life = life::of(&planet, &universe.system(body.star).star)?;
+            life.species
+                .iter()
+                .any(|s| !s.body.parts.is_empty())
+                .then_some(())?;
             Some((life, planet.seed))
         })
         .expect("a living home planet")

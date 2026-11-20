@@ -136,8 +136,8 @@ pub fn berth_at_base(
 }
 
 /// Returns the collider of the ship root: one convex hull for each part of the airframe as it is
-/// drawn, the fuselage, the canopy, the fin, the wings and the winglets, so that the player stands
-/// on the wings and bumps into them.
+/// drawn, the fuselage, the canopy, the fin, the heat shield, the pods of the gear and of the
+/// engines, the wings and the winglets, so that the player stands on the wings and bumps into them.
 pub fn airframe() -> Collider {
     let part = |points: Vec<Vec3>| {
         let hull = Collider::convex_hull(&points).expect("the airframe parts are solid");

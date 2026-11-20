@@ -83,6 +83,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Animals let you nearer: a calm grazer looks up at about 20 m and runs once you walk within about 11 m. Small animals let you come closer, hunters closer still, and an animal lets a robot that stands still come nearer than one that walks.
 - Flying species circle in flocks 8 to 30 m over the ground, and swarms hover low over the plants.
 - The pixel look is the same on every screen: the game always shows about 360 rows of pixels, and every pixel is the same square of screen pixels, also on high-density and 4K screens. Before, a bigger window showed more detail and some rows and columns of pixels came out wider than others.
+- The ship is redesigned. One lofted hull runs from a pointed nose cone through the cockpit to a tapered tail, with a charcoal heat shield under the belly, thick swept wings with a flat top, a flap and a root that grows out of the fuselage, a tail fin and tip fins, twin engine pods with real nozzle bells, a pod and two bay doors for each leg, a hatch with a frame on the left flank, an antenna, and a drag brace on each leg. The hull is painted in three tones, and every part is welded to it or sunk in it, so nothing floats. The wings and the colliders follow what is drawn, pods and shield included. From far away a ship is one cheap mesh.
 
 ### Removed
 

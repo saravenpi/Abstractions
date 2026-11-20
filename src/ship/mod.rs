@@ -45,6 +45,7 @@ mod spawn;
 mod steer;
 mod strike;
 mod telemetry;
+mod tones;
 mod transit;
 mod tune;
 mod view;

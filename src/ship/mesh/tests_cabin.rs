@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use super::bars::frame;
 use super::fittings::{faces, furniture, seat};
 use super::frame::{CANOPY, canopy, fuselage};
-use super::shell::{HALF, MOUTH, arch, glass, hull, lip, mouth};
+use super::shell::{HALF, MOUTH, arch, glass, hull, lip, mouth, station};
 use super::tests_fit::{corners, crosses, inside, positions};
 use super::tub::tub;
 use super::{bar_mesh, cabin_meshes, faces_mesh, lever_mesh, stick_mesh, tub_mesh};
@@ -40,14 +40,20 @@ fn tub_half(z: f32) -> f32 {
 }
 
 /// Every corner of the drawn hull is on the skin of the closed outline, nothing closes the
-/// joint between the nose and the body, and the roof is open over the seat.
+/// joint between the nose and the body, and the roof is open over the seat. A step of 1 cm in from
+/// a corner, straight toward the axis of the hull, is inside the outline, and a step out is not.
 #[test]
 fn the_drawn_hull_is_the_outline_with_a_mouth() {
     let outline = &outlines()[..2];
     let drawn: Vec<Vec3> = hull().into_iter().flat_map(corners).collect();
     for corner in &drawn {
-        let core = Vec3::new(0.0, 0.1, corner.z.clamp(-3.0, 2.5));
-        let inward = (core - *corner).normalize() * 0.01;
+        let spoke = *corner - Vec3::new(0.0, station(corner.z.clamp(-3.95, 3.2))[3], corner.z);
+        let way = if spoke.length() > 0.03 {
+            -spoke.normalize()
+        } else {
+            Vec3::Z * -corner.z.signum()
+        };
+        let inward = way * 0.01;
         assert!(
             within(outline, *corner + inward),
             "{corner} is off the skin"

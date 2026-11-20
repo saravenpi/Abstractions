@@ -43,7 +43,7 @@ pub use why::{Why, explain};
 
 use serde::{Deserialize, Serialize};
 
-use crate::universe::PlanetSpec;
+use crate::universe::{PlanetRecord, PlanetSpec};
 
 /// What the player asks a tool to do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -101,9 +101,14 @@ impl Place {
     /// Returns the place on the surface of `planet`. Air density follows the ideal gas law from the
     /// home air: ρ = 1.225 kg/m³ × pressure × 288 K / temperature.
     pub fn of(planet: &PlanetSpec) -> Self {
-        let record = &planet.record;
+        Self::on(planet.gravity, &planet.record)
+    }
+
+    /// Returns the place on the surface of a planet of `gravity` metres per second squared whose
+    /// record is `record`, as [`Place::of`] reads it.
+    pub fn on(gravity: f64, record: &PlanetRecord) -> Self {
         Self {
-            gravity: planet.gravity as f32,
+            gravity: gravity as f32,
             air: (tune::SEA_AIR * record.pressure * 288.0 / record.temperature.max(1.0)) as f32,
         }
     }

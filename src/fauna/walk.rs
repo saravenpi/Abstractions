@@ -5,6 +5,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::Frozen;
 use super::beast::{Beast, Part};
 use super::gate::Spec;
 use super::ground::Heights;
@@ -34,7 +35,7 @@ pub struct Walk<'w, 's> {
     herds: ResMut<'w, Herds>,
     robot: Query<'w, 's, &'static Transform, With<Player>>,
     remotes: Remotes<'w, 's>,
-    beasts: Query<'w, 's, (&'static mut Beast, &'static mut Placed)>,
+    beasts: Query<'w, 's, (&'static mut Beast, &'static mut Placed), Without<Frozen>>,
     parts: Parts<'w, 's>,
 }
 

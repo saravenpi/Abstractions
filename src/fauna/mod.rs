@@ -24,6 +24,7 @@ mod place;
 mod react;
 #[cfg(test)]
 mod rig;
+mod roll;
 mod scan;
 pub mod senses;
 mod signs;

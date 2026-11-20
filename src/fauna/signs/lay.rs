@@ -9,14 +9,14 @@ use bevy::prelude::*;
 
 use super::Trail;
 use super::paint::{Canvas, material, mesh, paint};
-use super::tune::{MOVE, RADIUS, ROLL};
+use super::tune::RADIUS;
 use crate::fauna::gate::{Spec, living};
 use crate::fauna::ground::Heights;
-use crate::fauna::herds::{Herds, Land, herd_arc, read};
+use crate::fauna::herds::Herds;
 use crate::fauna::place::Spot;
 use crate::fauna::senses::Blood;
 use crate::life::Life;
-use crate::life::herd::{Search, Watch};
+use crate::life::herd::Search;
 use crate::life::signs;
 use crate::life::signs::Mark;
 use crate::player::Player;
@@ -42,46 +42,6 @@ pub struct Lay<'w, 's> {
     placed: Query<'w, 's, &'static mut Placed>,
 }
 
-impl Trail {
-    /// Returns true when the watch must be rolled again for the robot at unit direction `at` on the
-    /// globe of seed `seed` and radius `radius` metres at universe `time`.
-    fn stale(&self, (seed, radius): (u64, f64), at: DVec3, time: f64) -> bool {
-        let (was, from, then) = self.rolled;
-        let far = herd_arc(from, at) * radius > MOVE;
-        self.watch.is_none() || was != seed || far || !(then..then + ROLL).contains(&time)
-    }
-
-    /// Rolls the watch again when needed, then reads the signs around unit direction `at` on `land`
-    /// at universe `time`.
-    pub fn read(&mut self, land: Land, at: DVec3, time: f64) {
-        let (seed, planet) = (land.globe.seed(), land.globe.radius());
-        if self.stale((seed, planet), at, time) {
-            let radius = RADIUS + signs::tune::REACH + MOVE;
-            let search = Search {
-                at,
-                radius,
-                planet,
-                time,
-            };
-            self.watch = Some(read(land, time, |g| Watch::new(land.life, g, &search)));
-            self.rolled = (seed, at, time);
-        }
-        let Some(watch) = self.watch.as_mut() else {
-            return;
-        };
-        let search = Search {
-            at,
-            radius: RADIUS,
-            planet,
-            time,
-        };
-        let out = &mut self.signs;
-        read(land, time, |g| {
-            signs::near(land.life, g, watch, &search, out)
-        });
-    }
-}
-
 /// Reads the signs around the local robot and paints them on the ground.
 pub fn lay(mut l: Lay, heights: Local<Heights>) {
     let globe = l.terrain.globe().clone();
@@ -91,12 +51,7 @@ pub fn lay(mut l: Lay, heights: Local<Heights>) {
         return;
     };
     let at = l.anchor.to_frame(robot.translation).normalize();
-    let land = Land {
-        globe: &globe,
-        life,
-        planet: &planet,
-    };
-    l.trail.read(land, at, l.clock.seconds);
+    l.trail.read((&globe, &planet), at, l.clock.seconds);
     let span = (l.clock.seconds, globe.radius());
     l.blood.lay((at, RADIUS), span, &mut l.trail.signs);
     slain(&mut l, (life, at), globe.radius());

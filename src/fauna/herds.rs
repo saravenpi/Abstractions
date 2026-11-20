@@ -1,10 +1,13 @@
 //! The herds around the local robot: one [`Watch`], rolled again before it stops answering or when the
 //! robot walks far from where it was rolled, and what it shows at the last scan.
 
+use std::sync::Arc;
+
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::attack::Carved;
+use super::roll::{Rolling, roll};
 use super::site;
 use super::tune::{WATCH_MOVE, WATCH_RADIUS, WATCH_SPARE};
 use super::want::carcass_key;
@@ -25,11 +28,14 @@ pub struct Land<'a> {
     pub planet: &'a PlanetSpec,
 }
 
-/// The watch over the herds around the local robot and what it showed at the last scan.
+/// The watch over the herds around the local robot and what it showed at the last scan. A watch is
+/// rolled again by a task while the old one answers.
 #[derive(Resource, Default)]
 pub struct Herds {
     /// The watch, once rolled.
     watch: Option<Watch>,
+    /// The watch being rolled, once the old one is stale.
+    rolling: Option<Rolling>,
     /// Seed of the globe the watch was rolled on.
     seed: u64,
     /// Unit direction the watch was rolled around.
@@ -67,29 +73,60 @@ impl Herds {
     }
 
     /// Returns true when the watch must be rolled again for the robot at unit direction `at` on
-    /// `land` at universe `time`.
-    fn stale(&self, land: Land, at: DVec3, time: f64) -> bool {
-        let far = herd_arc(self.at, at) * land.globe.radius() > WATCH_MOVE;
+    /// `globe` at universe `time`.
+    fn stale(&self, globe: &Globe, at: DVec3, time: f64) -> bool {
+        let far = herd_arc(self.at, at) * globe.radius() > WATCH_MOVE;
         let late = !self
             .watch
             .as_ref()
             .is_some_and(|w| w.covers(time) && w.covers(time + WATCH_SPARE));
-        late || self.seed != land.globe.seed() || far
+        late || self.seed != globe.seed() || far
+    }
+
+    /// Swaps in the watch a task finished rolling, or rolls again when needed: at once when there is
+    /// no watch or it is of another globe, else in a task while the old watch answers. A watch that
+    /// no longer covers `time` is waited for.
+    fn refresh(&mut self, (globe, planet): (&Arc<Globe>, &Arc<PlanetSpec>), at: DVec3, time: f64) {
+        let lapsed = !self.watch.as_ref().is_some_and(|w| w.covers(time));
+        if let Some(rolling) = self.rolling.take().filter(|r| r.seed == globe.seed()) {
+            match rolling.finish(lapsed) {
+                Ok(Some((watch, from, _))) => {
+                    (self.watch, self.seed, self.at) = (Some(watch), globe.seed(), from);
+                }
+                Ok(None) => {}
+                Err(rolling) => self.rolling = Some(rolling),
+            }
+        }
+        if self.rolling.is_some() || !self.stale(globe, at, time) {
+            return;
+        }
+        let search = Search {
+            at,
+            radius: WATCH_RADIUS,
+            planet: globe.radius(),
+            time,
+        };
+        if self.watch.is_none() || self.seed != globe.seed() {
+            self.watch = roll(globe, planet, &search);
+            (self.seed, self.at) = (globe.seed(), at);
+        } else {
+            self.rolling = Some(Rolling::start(globe, planet, search));
+        }
     }
 
     /// Rolls the watch again when needed, then reads the herds, hunts and carcasses around unit
-    /// direction `at` on `land` at universe `time`.
-    pub fn scan(&mut self, land: Land, at: DVec3, time: f64) {
-        if self.stale(land, at, time) {
-            let search = Search {
-                at,
-                radius: WATCH_RADIUS,
-                planet: land.globe.radius(),
-                time,
-            };
-            self.watch = Some(read(land, time, |g| Watch::new(land.life, g, &search)));
-            (self.seed, self.at) = (land.globe.seed(), at);
-        }
+    /// direction `at` on the globe and planet at universe `time`.
+    pub fn scan(&mut self, owned: (&Arc<Globe>, &Arc<PlanetSpec>), at: DVec3, time: f64) {
+        let (globe, planet) = owned;
+        let Some(life) = globe.life() else {
+            return;
+        };
+        let land = Land {
+            globe,
+            life,
+            planet,
+        };
+        self.refresh(owned, at, time);
         let Some(watch) = self.watch.as_mut() else {
             return;
         };

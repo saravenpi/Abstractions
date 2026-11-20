@@ -6,10 +6,10 @@ use bevy::prelude::*;
 
 use super::board::Board;
 use super::chart::{Dot, FILL, flat};
-use super::format::distance;
 use super::layout::{SMALLEST, measure};
 use super::map::{SIZE, spot};
 use super::pointer::MapView;
+use crate::ui::units::distance;
 use crate::ui::{Icon, Tone, icon_sized, text, theme};
 
 /// Height in pixels of a house drawn on the map.

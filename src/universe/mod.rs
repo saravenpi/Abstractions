@@ -76,7 +76,8 @@ pub use spec::{
 pub use spin::breakup;
 pub use system::{ORBIT, PLANETS, reach as system_reach};
 pub use units::{
-    AU, EARTH_RADIUS, STANDARD_GRAVITY, STARLIGHT, SUN_MASS, SUN_RADIUS, SUN_TEMPERATURE, YEAR,
+    AU, EARTH_RADIUS, LIGHT_SPEED, LIGHT_YEAR, STANDARD_GRAVITY, STARLIGHT, SUN_MASS, SUN_RADIUS,
+    SUN_TEMPERATURE, YEAR,
 };
 
 use bevy::math::IVec3;

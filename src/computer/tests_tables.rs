@@ -6,29 +6,20 @@ use super::*;
 use crate::space::Frame;
 use crate::universe::{GalaxyId, Universe};
 
-/// Distances switch unit at 1000 of the smaller one and keep three digits.
+/// The tables write distances with the shared formatter: the units are tested in `ui::units`.
 #[test]
 fn distances_cover_each_unit() {
     let cases = [
         (-5.0, "0 m"),
-        (0.4, "0 m"),
         (999.4, "999 m"),
-        (999.5, "1.00 km"),
-        (1500.0, "1.50 km"),
+        (1500.0, "1.5 km"),
         (12_345.0, "12.3 km"),
-        (999_499.0, "999 km"),
-        (999_500.0, "1.00 Mm"),
-        (4.0e7, "40.0 Mm"),
-        (9.994e8, "999 Mm"),
-        (9.995e8, "0.10 gly"),
-        (1.0e10, "1.00 gly"),
-        (6.0e11, "60.0 gly"),
-        (1.5e13, "1500 gly"),
+        (4.0e10, "0.27 AU"),
+        (1.0e16, "1.06 light-years"),
     ];
     for (metres, shown) in cases {
         assert_eq!(distance(metres), shown, "{metres}");
     }
-    assert_eq!(gravity(crate::universe::STANDARD_GRAVITY), "1.00 g");
 }
 
 /// Returns the finished chart of the systems `atlas` reveals.
@@ -94,7 +85,7 @@ fn the_system_and_universe_tables_follow_the_atlas() {
     let visited = system.iter().filter(|line| line.visited);
     let visited: Vec<Target> = visited.map(|line| line.target).collect();
     assert_eq!(visited, [Target::Star(home.star), Target::Body(home)]);
-    assert!(system[1].detail.contains(" C - radius ") && system[1].detail.contains(" g"));
+    assert!(system[1].detail.contains(" C - radius ") && system[1].detail.contains(" x home"));
     let galaxies = view.universe();
     assert_eq!(galaxies.len(), 1 + HOME_NEIGHBOURS);
     assert_eq!(galaxies[0].target, Target::Galaxy(home.star.galaxy));

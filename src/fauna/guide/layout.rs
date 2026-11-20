@@ -16,7 +16,7 @@ pub const LIST: f32 = 320.0;
 pub const BETWEEN: f32 = theme::GAP_L;
 
 /// Widest card in pixels.
-pub const CARD: f32 = 560.0;
+pub const CARD: f32 = 600.0;
 
 /// Height in pixels of one row of the list.
 pub const ROW: f32 = theme::ROW_COMPACT;
@@ -42,6 +42,12 @@ pub struct Measures {
     pub room: f32,
     /// Width in pixels of the card.
     pub card: f32,
+}
+
+/// Returns the size in logical pixels of a window of `window` pixels: the interface scales with
+/// the window height, so a 960 by 540 window is laid out as 1280 by 720.
+pub fn logical(window: Vec2) -> Vec2 {
+    window / crate::ui::ui_scale_for(window.y)
 }
 
 /// Returns the measures of the guide in a window of `window` logical pixels.

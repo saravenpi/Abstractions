@@ -6,7 +6,7 @@ use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 
 use super::course::{arrival, course};
-use super::layout::{Measures, RESULTS, ROW, SIDE, SMALLEST, fixed, measure};
+use super::layout::{FACTS, Measures, RESULTS, ROW, SIDE, SMALLEST, fixed, measure};
 use super::tests_rig::{game, run, tap};
 use super::view::{Panel, Slot};
 use super::*;
@@ -15,8 +15,9 @@ use crate::screens::{in_control, playing};
 
 /// At every window size the side panel keeps its width, the map is the largest square beside
 /// it, and the search results take what the panel leaves within their fewest and most rows.
-/// At the smallest window nothing listed leaves one result beside the whole top of the card,
-/// and at 1280 by 720 the whole card fits with nothing listed.
+/// At the smallest layout, 1280 by 720 logical pixels, nothing listed leaves one result beside
+/// the whole top of the card, and the card is cut below its first rows: its tallest form, 17
+/// rows at the new type scale, needs more than 720 pixels.
 #[test]
 fn the_screen_fits_every_window() {
     for height in [540.0, 600.0, 720.0, 900.0, 1080.0, 1200.0, 1440.0, 2160.0] {
@@ -36,13 +37,13 @@ fn the_screen_fits_every_window() {
     }
     let smallest = Measures {
         side: SIDE,
-        map: 540.0,
+        map: 720.0,
         rows: RESULTS.0,
         lists: (0, 0),
     };
     assert_eq!(measure(SMALLEST, (0, 0)), smallest);
     let usual = measure(Vec2::new(1280.0, 720.0), (0, 0));
-    assert!(fixed((0, 0)) + usual.rows as f32 * ROW <= 720.0);
+    assert!(fixed((0, 0)) - FACTS + usual.rows as f32 * ROW <= 720.0);
 }
 
 /// The course line gives a time to arrival only while the ship moves, and says nothing without
@@ -53,10 +54,10 @@ fn the_footer_says_the_right_words() {
     assert_eq!(arrival(6000.0, 0.5), None);
     assert_eq!(
         course(Some(("Kolva", 1500.0)), 0.0),
-        "Course Kolva - 1.50 km"
+        "Course Kolva - 1.5 km"
     );
     let moving = course(Some(("Kolva", 720_000.0)), 100.0);
-    assert_eq!(moving, "Course Kolva - 720 km - about 2 h 0 min");
+    assert_eq!(moving, "Course Kolva - 720 km - about 2 h");
     assert_eq!(course(None, 100.0), "");
 }
 

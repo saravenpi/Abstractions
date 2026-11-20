@@ -129,6 +129,9 @@ pub(super) struct Reach<'w> {
     now: Res<'w, Where>,
 }
 
+/// A key with the words of what it does.
+type Keyed = Option<(KeyCode, &'static str)>;
+
 impl Reach<'_> {
     /// Returns the course as the adapter reads it, when one is set.
     fn course(&self) -> Option<Course> {
@@ -141,13 +144,7 @@ impl Reach<'_> {
     }
 
     /// Returns the board row and the hint row: what the board key does and the hint in turn.
-    fn keys(
-        &self,
-        travel: Option<Travel>,
-    ) -> (
-        Option<(KeyCode, &'static str)>,
-        Option<(KeyCode, &'static str)>,
-    ) {
+    fn keys(&self, travel: Option<Travel>) -> (Keyed, Keyed) {
         let keys = &self.settings.controls.keys;
         let at_hatch = self.hatch.as_deref().is_some_and(|hatch| hatch.near);
         let landed = self.telemetry.as_deref().is_some_and(|ship| ship.landed);

@@ -10,6 +10,12 @@ pub const EARTH_RADIUS: f64 = 6.371e6;
 /// Metres in one astronomical unit, the distance at which a star of luminosity 1 gives a flux of 1.
 pub const AU: f64 = 1.495_978_707e11;
 
+/// Metres in one light-year: the distance light travels in a Julian year.
+pub const LIGHT_YEAR: f64 = 9.460_730_472_580_8e15;
+
+/// Metres per second light travels at.
+pub const LIGHT_SPEED: f64 = 299_792_458.0;
+
 /// Mass of the Sun in kilograms, the unit of the star class table.
 pub const SUN_MASS: f64 = 1.988_47e30;
 

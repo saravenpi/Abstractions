@@ -11,17 +11,3 @@ pub enum Tab {
     /// The known galaxies.
     Universe,
 }
-
-impl Tab {
-    /// Every tab, in display order.
-    pub const ALL: [Tab; 3] = [Tab::System, Tab::Galaxy, Tab::Universe];
-
-    /// Returns the name shown on the tab.
-    pub fn label(self) -> &'static str {
-        match self {
-            Tab::System => "System",
-            Tab::Galaxy => "Galaxy",
-            Tab::Universe => "Universe",
-        }
-    }
-}

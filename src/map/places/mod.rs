@@ -11,10 +11,9 @@ mod keys;
 mod name;
 mod store;
 
-pub use name::{NAME_CHARS, edit};
+pub use name::NAME_CHARS;
 
 pub(super) use keys::{announce, arrive, drop_key, leading};
-pub use keys::{press, reached};
 pub(super) use name::name_keys;
 pub(super) use store::{fill, load, plugin, store};
 

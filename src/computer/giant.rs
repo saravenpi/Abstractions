@@ -2,11 +2,11 @@
 //! planet, or the cloud deck of a gas giant with no ground, and the moons and the rings.
 
 use super::detail::Row;
-use super::feel::{bar, lift};
-use super::format::distance;
+use super::feel::lift;
 use super::groups::stat;
-use super::words::{air, water};
+use super::words::water;
 use crate::ui::Icon;
+use crate::ui::units::{distance, pressure_bar, pressure_ratio};
 use crate::universe::{PlanetClass, PlanetSpec, Rings, STANDARD_GRAVITY};
 
 /// What the card says of the ground of a gas giant.
@@ -41,11 +41,16 @@ pub fn surface(planet: &PlanetSpec) -> Row {
     match is_giant(planet) {
         true => stat(
             Icon::Pressure,
-            "Deck pressure",
-            bar(pressure),
-            String::new(),
+            "Deck air",
+            pressure_ratio(pressure),
+            pressure_bar(pressure),
         ),
-        false => stat(Icon::Air, "Air", bar(pressure), air(pressure).to_string()),
+        false => stat(
+            Icon::Air,
+            "Air",
+            pressure_ratio(pressure),
+            pressure_bar(pressure),
+        ),
     }
 }
 

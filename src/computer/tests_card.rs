@@ -12,8 +12,8 @@ use crate::universe::{PlanetRecord, PlanetSpec, Universe};
 const CLASSES: [[&str; 9]; 6] = [
     [
         "Ocean planet",
-        "1.20 bar",
-        "like home",
+        "1.2 x home",
+        "1.2 bar",
         "liquid, oceans 95 %",
         "22 C",
         "Mild",
@@ -23,8 +23,8 @@ const CLASSES: [[&str; 9]; 6] = [
     ],
     [
         "Island planet",
-        "1.00 bar",
-        "like home",
+        "1 x home",
+        "1 bar",
         "liquid, oceans 60 %",
         "14 C",
         "Mild",
@@ -34,8 +34,8 @@ const CLASSES: [[&str; 9]; 6] = [
     ],
     [
         "Desert planet",
-        "0.40 bar",
-        "thin",
+        "0.4 x home",
+        "0.4 bar",
         "none",
         "45 C",
         "Hot",
@@ -45,8 +45,8 @@ const CLASSES: [[&str; 9]; 6] = [
     ],
     [
         "Ice planet",
-        "0.20 bar",
-        "thin",
+        "0.2 x home",
+        "0.2 bar",
         "ice",
         "-120 C",
         "Freezing",
@@ -56,8 +56,8 @@ const CLASSES: [[&str; 9]; 6] = [
     ],
     [
         "Lava planet",
-        "92.0 bar",
-        "thick",
+        "92 x home",
+        "92 bar",
         "steam, molten rock 30 %",
         "1200 C",
         "Scorching",
@@ -67,8 +67,8 @@ const CLASSES: [[&str; 9]; 6] = [
     ],
     [
         "Barren planet",
-        "0.00 bar",
-        "none",
+        "0 x home",
+        "0 bar",
         "none",
         "-273 C",
         "Freezing",
@@ -163,13 +163,10 @@ fn the_card_groups_the_stats_in_order() {
     assert_eq!(order, ORDER);
     let stats = ["Radius", "Gravity", "Day", "Year"].map(|label| stat(&home, label));
     let value = |at: usize| stats[at].map(|(value, _)| value);
-    let shown = ["6 km", "1.00 g", "24 min", "3 h 20 min"];
+    let shown = ["6 km", "1 x home", "24 min", "3 h 20 min"];
     assert_eq!([0, 1, 2, 3].map(value), shown.map(Some));
-    assert!(
-        stats
-            .iter()
-            .all(|stat| stat.unwrap().1.ends_with(" x home"))
-    );
+    let versus = [0, 2, 3].map(|at| stats[at].unwrap().1);
+    assert!(versus.iter().all(|note| note.ends_with(" x home")));
     assert_eq!(fact(&home, "From you"), None);
     let folded = visible(&home.rows, false);
     assert_eq!(folded.last(), Some(&Row::More));
@@ -181,19 +178,23 @@ fn the_card_groups_the_stats_in_order() {
     assert_eq!(uncharted.rows.len(), 5);
 }
 
-/// Against itself, the home planet reads "1.0 x home" for its radius, its gravity, its day
-/// and its year, and a stat always writes its unit.
+/// Against itself, the home planet reads "1.0 x home" for its radius, its day and its year, "1 x home"
+/// for its gravity and its air, and a stat always writes its unit.
 #[test]
 fn the_home_planet_reads_one_against_itself() {
     let universe = Universe::new(7);
     let home = universe.planet(universe.home());
     let (line, _) = world(PlanetRecord::TEMPERATE);
     let shown = card(&line, Some(&home), &universe);
-    for label in ["Radius", "Gravity", "Day", "Year"] {
+    for label in ["Radius", "Day", "Year"] {
         let (_, note) = stat(&shown, label).unwrap();
         assert_eq!(note, "1.0 x home", "{label}");
     }
-    let units = [("Radius", " km"), ("Gravity", " g"), ("Air", " bar")];
+    let units = [
+        ("Radius", " km"),
+        ("Gravity", " x home"),
+        ("Air", " x home"),
+    ];
     for (label, unit) in units {
         let (value, _) = stat(&shown, label).unwrap();
         assert!(value.ends_with(unit), "{label}: {value}");

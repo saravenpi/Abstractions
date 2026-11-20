@@ -33,7 +33,7 @@ fn a_gas_giant_has_a_deck_and_a_moon_a_surface() {
     deep.giant = true;
     assert_eq!(
         reading(Gauge::Altitude, &deep).unwrap(),
-        "3.40 km above deck"
+        "3.4 km above deck"
     );
 }
 

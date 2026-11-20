@@ -23,12 +23,6 @@ pub fn temperature(kelvin: f64) -> String {
     format!("{} C", (kelvin - FREEZING).round() as i64)
 }
 
-/// Returns the word for an air pressure, the home planet having 1: none, thin, like home or thick.
-pub fn air(pressure: f64) -> &'static str {
-    let word = AIR.iter().find(|(limit, _)| pressure < *limit);
-    word.map_or("thick", |(_, word)| word)
-}
-
 /// Returns the word for the state water is in.
 pub const fn state(water: Water) -> &'static str {
     match water {

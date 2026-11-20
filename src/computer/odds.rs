@@ -55,28 +55,45 @@ pub fn row(universe: &Universe, body: &PlanetSpec, landed: bool) -> Row {
     }
 }
 
-/// The line on life of the last body shown, kept while the same body stays selected.
+/// Returns what the line on life means for the player, in one plain sentence.
+pub fn meaning(universe: &Universe, body: &PlanetSpec, landed: bool) -> Row {
+    let world = world(universe, body);
+    let words = match landed {
+        true if odds::rung(&world, body.seed).is_none() => "Barren: nothing lives here",
+        true => "Alive: go down and look",
+        false => match odds::chance(&world) {
+            c if c < 0.05 => "Life is very unlikely",
+            c if c < 0.3 => "Life is unlikely",
+            c if c < 0.6 => "Life is possible",
+            _ => "Life is likely",
+        },
+    };
+    Row::Meaning(words.to_string())
+}
+
+/// The line on life of the last body shown with the sentence under it, kept while the same body
+/// stays selected.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Odds {
-    /// The body, its seed and whether it was landed on, when the line was worked out.
+    /// The body, its seed and whether it was landed on, when the lines were worked out.
     key: Option<(BodyId, u64, bool)>,
-    /// The line worked out for it.
-    row: Option<Row>,
-    /// How many times the line was worked out, for the cost tests.
+    /// The lines worked out for it.
+    rows: Option<[Row; 2]>,
+    /// How many times the lines were worked out, for the cost tests.
     pub worked: usize,
 }
 
 impl Odds {
-    /// Returns the line on life of `body`, working it out again only for another body or
-    /// after a landing.
-    pub fn row(&mut self, universe: &Universe, body: &PlanetSpec, landed: bool) -> Row {
+    /// Returns the line on life of `body` and its meaning, working them out again only for
+    /// another body or after a landing.
+    pub fn rows(&mut self, universe: &Universe, body: &PlanetSpec, landed: bool) -> [Row; 2] {
         let key = Some((body.id, body.seed, landed));
-        match (&self.row, self.key == key) {
-            (Some(row), true) => row.clone(),
+        match (&self.rows, self.key == key) {
+            (Some(rows), true) => rows.clone(),
             _ => {
-                let row = row(universe, body, landed);
-                (self.key, self.row, self.worked) = (key, Some(row.clone()), self.worked + 1);
-                row
+                let rows = [row(universe, body, landed), meaning(universe, body, landed)];
+                (self.key, self.rows, self.worked) = (key, Some(rows.clone()), self.worked + 1);
+                rows
             }
         }
     }

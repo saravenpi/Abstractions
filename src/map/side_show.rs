@@ -9,14 +9,16 @@ use bevy::prelude::*;
 use super::me::Me;
 use super::places::Places;
 use super::side::{
-    NoPlayers, PinActions, PinFar, PinHint, PinName, PinRow, PlayerDot, PlayerName, PlayerRow,
-    Players,
+    NoPlayers, PinActions, PinFar, PinGoKey, PinHint, PinName, PinRow, PlayerDot, PlayerName,
+    PlayerRow, Players,
 };
-use crate::computer::{Board, Typing, distance};
+use crate::computer::{Board, Keys, Typing};
 use crate::menus::{Marker, MarkerKind, Markers};
 use crate::net::Link;
 use crate::saves::Pin;
+use crate::settings::{Persistent, Settings};
 use crate::ui::Selected;
+use crate::ui::units::distance_short;
 use crate::universe::{BodyId, Universe};
 
 /// What the line under the pins says while there is no pin.
@@ -44,45 +46,40 @@ type Rows<'w, 's> = Query<
     )>,
 >;
 
+/// A text of the lists with the one thing that tells it from the other texts.
+type Of<'w, 's, M, F> = Query<'w, 's, (&'static M, &'static mut Text), F>;
+
+/// Filters that tell the names of the pins from the other texts.
+type NotName = (Without<PinFar>, Without<PinHint>, Without<PlayerName>);
+
+/// Filters that tell the distances of the pins from the other texts.
+type NotFar = (Without<PinName>, Without<PinHint>, Without<PlayerName>);
+
+/// Filters that tell the names of the players from the other texts.
+type NotPlayer = (Without<PinName>, Without<PinFar>, Without<PinHint>);
+
 /// The texts of the lists.
 #[derive(SystemParam)]
 pub struct Faces<'w, 's> {
     /// The names of the pins.
-    names: Query<
-        'w,
-        's,
-        (&'static PinName, &'static mut Text),
-        (Without<PinFar>, Without<PinHint>, Without<PlayerName>),
-    >,
+    names: Of<'w, 's, PinName, NotName>,
     /// How far each pin is.
-    far: Query<
-        'w,
-        's,
-        (&'static PinFar, &'static mut Text),
-        (Without<PinName>, Without<PinHint>, Without<PlayerName>),
-    >,
+    far: Of<'w, 's, PinFar, NotFar>,
     /// The line under the pins.
-    hint: Query<
-        'w,
-        's,
-        &'static mut Text,
-        (
-            With<PinHint>,
-            Without<PinName>,
-            Without<PinFar>,
-            Without<PlayerName>,
-        ),
-    >,
+    hint: Query<'w, 's, &'static mut Text, Hint>,
     /// The names of the players.
-    players: Query<
-        'w,
-        's,
-        (&'static PlayerName, &'static mut Text),
-        (Without<PinName>, Without<PinFar>, Without<PinHint>),
-    >,
+    players: Of<'w, 's, PlayerName, NotPlayer>,
     /// The colours of the players.
     dots: Query<'w, 's, (&'static PlayerDot, &'static mut BackgroundColor)>,
 }
+
+/// The line under the pins, told from the other texts of the lists.
+type Hint = (
+    With<PinHint>,
+    Without<PinName>,
+    Without<PinFar>,
+    Without<PlayerName>,
+);
 
 /// Returns the name shown for the pin at `index`: what is typed, with a caret, while it is
 /// renamed.
@@ -100,7 +97,7 @@ pub fn words(count: usize, picked: Option<(&str, Option<f64>)>) -> String {
     match (count, picked) {
         (0, _) => EMPTY.to_string(),
         (_, None) => PICK.to_string(),
-        (_, Some((_, Some(away)))) => format!("Follow it by compass: {}.", distance(away)),
+        (_, Some((_, Some(away)))) => format!("Follow it by compass: {}.", distance_short(away)),
         (_, Some((planet, None))) => {
             let planet: String = planet.chars().take(10).collect();
             format!("Flies to {planet}, then follow.")
@@ -135,7 +132,7 @@ fn pins_text((places, typing, me, universe): &Kept, faces: &mut Faces) {
     };
     let here = me.spot();
     let far = |pin: &Pin| match away(pin, here, universe) {
-        Some(metres) => distance(metres),
+        Some(metres) => distance_short(metres),
         None => universe.planet(pin.body).name,
     };
     for (PinFar(index), mut text) in &mut faces.far {
@@ -208,4 +205,18 @@ pub(super) fn write(
     }
     pins_text(&kept, &mut faces);
     players_text(&markers.0, &friends, &mut faces);
+}
+
+/// Writes the name of the Go key of the settings beside Go on the buttons of the selected pin.
+pub(super) fn go_key(
+    settings: Option<Res<Persistent<Settings>>>,
+    mut keys: Query<&mut Text, With<PinGoKey>>,
+) {
+    let Some(settings) = settings else {
+        return;
+    };
+    let name = Keys::of(&settings.controls.keys).go;
+    for mut text in &mut keys {
+        text.set_if_neq(Text(name.clone()));
+    }
 }

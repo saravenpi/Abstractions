@@ -6,7 +6,9 @@
 mod elements;
 mod here;
 
-pub use elements::{Element, Set, marker_shown, shown};
+#[cfg(test)]
+pub use elements::Set;
+pub use elements::{Element, marker_shown, shown};
 pub use here::{Where, shows_climate, shows_compass, shows_coords, update};
 
 use crate::ship::WarpState;
@@ -82,6 +84,7 @@ pub fn context(facts: &Facts) -> Context {
 
 impl Context {
     /// Every context.
+    #[cfg(test)]
     pub const ALL: [Context; 10] = [
         Context::OnFoot,
         Context::Swimming,

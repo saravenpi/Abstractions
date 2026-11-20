@@ -5,7 +5,8 @@ use bevy::prelude::*;
 use super::board::Board;
 use super::course::{hud_line, running};
 use super::empty::empty;
-use super::format::{clip, distance};
+use super::format::clip;
+use super::gaps;
 use super::home::{arranged, beacon, homes, pinned};
 use super::moons::is_moon;
 use super::open::ready;
@@ -18,6 +19,7 @@ use super::sift;
 use super::tab::Tab;
 use super::view::{Action, Cell, Part, Slot, Status, Summary};
 use crate::settings::{Persistent, Settings};
+use crate::ui::units::distance_short;
 use crate::ui::{Icon, Tone};
 
 /// Seconds between two refreshes of what changes while flying: the distances of the system tab
@@ -79,7 +81,7 @@ pub(super) fn cell_text(line: &Line, part: Part, (chosen, here): (bool, bool)) -
             (clip(&format!("{INDENT}{}", line.title), TITLE_CHARS), seen)
         }
         Part::Title => (clip(&line.title, TITLE_CHARS), seen),
-        Part::Distance => (distance(line.distance), Tone::Plain),
+        Part::Distance => (distance_short(line.distance), Tone::Plain),
     }
 }
 
@@ -97,6 +99,7 @@ fn rows(
     if !(board.is_changed() || destination.is_changed() || !fresh.is_empty()) {
         return;
     }
+    let gaps = gaps::shared(&board);
     for (Cell(slot, part), mut text, mut tone) in &mut cells {
         let Some(line) = board.at(*slot) else {
             continue;
@@ -105,7 +108,7 @@ fn rows(
             destination.0 == Some(line.target),
             board.here.contains(&Some(line.target)),
         );
-        let (shown, wanted) = cell_text(line, *part, marks);
+        let (shown, wanted) = gaps::cell(line, (*part, *slot), marks, &gaps);
         text.set_if_neq(Text(shown));
         tone.set_if_neq(wanted);
     }
@@ -128,16 +131,15 @@ fn summary(board: &Board) -> String {
     sift::summary(&board.heading, (first, last, count), view)
 }
 
+/// The summary line and the sentence of an empty list.
+type Lines<'w, 's> = (
+    Query<'w, 's, &'static mut Text, With<Summary>>,
+    Query<'w, 's, &'static mut Text, (With<Empty>, Without<Summary>)>,
+);
+
 /// Writes the summary line over the results, and the sentence that says why the list is
 /// empty under them, when the table changed.
-fn tabs(
-    board: Res<Board>,
-    fresh: Query<(), Added<Summary>>,
-    mut lines: (
-        Query<&mut Text, With<Summary>>,
-        Query<&mut Text, (With<Empty>, Without<Summary>)>,
-    ),
-) {
+fn tabs(board: Res<Board>, fresh: Query<(), Added<Summary>>, mut lines: Lines) {
     if !(board.is_changed() || !fresh.is_empty()) {
         return;
     }

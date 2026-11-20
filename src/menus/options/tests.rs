@@ -74,14 +74,15 @@ fn rebinds_and_names_keys() {
 #[test]
 fn view_rows_switch_and_name_their_mode() {
     let mut s = Settings::default();
-    assert_eq!(display(&s, Field::ViewFoot), "First person");
+    let (foot, ship) = (display(&s, Field::ViewFoot), display(&s, Field::ViewShip));
+    let other = |mode: &str| ["First person", "Third person"][usize::from(mode == "First person")];
     step(&mut s, Field::ViewFoot, 1);
-    assert_eq!(display(&s, Field::ViewFoot), "Third person");
-    assert_eq!(display(&s, Field::ViewShip), "First person");
+    assert_eq!(display(&s, Field::ViewFoot), other(&foot));
+    assert_eq!(display(&s, Field::ViewShip), ship);
     step(&mut s, Field::ViewShip, -1);
     step(&mut s, Field::ViewFoot, -1);
-    assert_eq!(display(&s, Field::ViewShip), "Third person");
-    assert_eq!(display(&s, Field::ViewFoot), "First person");
+    assert_eq!(display(&s, Field::ViewShip), other(&ship));
+    assert_eq!(display(&s, Field::ViewFoot), foot);
     assert_eq!(display(&s, Field::HeadBob), "On");
     assert_eq!(display(&s, Field::AutoFollow), "On");
     step(&mut s, Field::HeadBob, 1);

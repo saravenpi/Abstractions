@@ -4,7 +4,7 @@ use super::banner::opacity;
 use super::flight::{Flight, Gauge, reading};
 use super::prompt::board_prompt;
 use super::units::{height, percent, speed};
-use crate::ship::{ShipTelemetry, WarpState};
+use crate::ship::ShipTelemetry;
 use crate::space::{Frame, Travel};
 use crate::universe::{BodyId, StarId};
 use bevy::math::Vec3;
@@ -14,18 +14,18 @@ use bevy::math::Vec3;
 fn heights_cover_each_unit_and_sign() {
     let cases = [
         (0.0, "0 m"),
-        (-0.4, "0 m"),
-        (12.4, "12 m"),
+        (-0.4, "-0.4 m"),
+        (12.4, "12.4 m"),
         (999.4, "999 m"),
-        (999.5, "1.00 km"),
-        (-999.5, "-1.00 km"),
+        (999.5, "1 km"),
+        (-999.5, "-1 km"),
         (12_345.0, "12.3 km"),
         (999_499.0, "999 km"),
-        (999_500.0, "1.00 Mm"),
-        (-4.0e7, "-40.0 Mm"),
-        (9.994e8, "999 Mm"),
-        (9.995e8, "0.10 gly"),
-        (1.5e13, "1500 gly"),
+        (999_500.0, "1 000 km"),
+        (-4.0e7, "-40 000 km"),
+        (9.994e8, "999 000 km"),
+        (9.995e8, "1 million km"),
+        (1.5e13, "100 AU"),
     ];
     for (metres, shown) in cases {
         assert_eq!(height(metres), shown, "{metres}");
@@ -38,11 +38,11 @@ fn speeds_and_levers_format_at_each_boundary() {
     let cases = [
         (0.0, "0 m/s"),
         (999.4, "999 m/s"),
-        (999.5, "1.00 km/s"),
-        (7_800.0, "7.80 km/s"),
-        (999_500.0, "1.00 Mm/s"),
-        (9.995e8, "0.10 gly/s"),
-        (3.0e10, "3.00 gly/s"),
+        (999.5, "1 km/s"),
+        (7_800.0, "7.8 km/s"),
+        (999_500.0, "1 000 km/s"),
+        (9.995e8, "3.33 x light speed"),
+        (3.0e10, "100 x light speed"),
     ];
     for (value, shown) in cases {
         assert_eq!(speed(value), shown, "{value}");
@@ -94,9 +94,9 @@ fn instruments_follow_the_frame() {
         "on - rise to take off"
     );
     let space = flying(Frame::System(StarId::default()));
-    assert_eq!(reading(Gauge::Speed, &space).unwrap(), "7.80 km/s orbital");
-    assert_eq!(reading(Gauge::Apoapsis, &space).unwrap(), "52.0 km");
-    assert_eq!(reading(Gauge::Periapsis, &space).unwrap(), "-1.20 km");
+    assert_eq!(reading(Gauge::Speed, &space).unwrap(), "7.8 km/s orbital");
+    assert_eq!(reading(Gauge::Apoapsis, &space).unwrap(), "52 km");
+    assert_eq!(reading(Gauge::Periapsis, &space).unwrap(), "-1.2 km");
 }
 
 /// The prompt shows at the hatch of the landed ship and inside it, and nowhere else.

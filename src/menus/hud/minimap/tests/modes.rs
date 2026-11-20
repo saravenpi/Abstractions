@@ -36,7 +36,7 @@ fn the_key_cycles_the_ranges() {
     let wide = (settle(&mut app), caption(&mut app));
     assert_eq!(wide, (800.0, "800 m".to_string()));
     assert_eq!(part(&mut app, Part::Ground).width, percent(200));
-    assert_eq!(cycled(&mut app), (2500.0, "2.50 km".to_string()));
+    assert_eq!(cycled(&mut app), (2500.0, "2.5 km".to_string()));
 }
 
 /// After the last range the key switches the minimap off, and once more brings it back on

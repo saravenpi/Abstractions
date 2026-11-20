@@ -44,6 +44,7 @@ pub enum Element {
 
 impl Element {
     /// Every element.
+    #[cfg(test)]
     pub const ALL: [Element; 17] = [
         Element::Compass,
         Element::Cardinals,
@@ -87,6 +88,7 @@ impl Set {
     }
 
     /// Returns the elements of the set, in declaration order.
+    #[cfg(test)]
     pub fn elements(self) -> Vec<Element> {
         Element::ALL
             .into_iter()

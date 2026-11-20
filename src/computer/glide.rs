@@ -3,11 +3,11 @@
 
 use bevy::prelude::*;
 
-use super::format::distance;
 use super::labels::scale_bar;
 use super::legend::{ScaleBar, ScaleText};
 use super::map::{SIZE, Sheet};
 use super::pointer::MapView;
+use crate::ui::units::distance;
 
 /// How fast the lens closes the gap to its goal, per second. It covers most of it in a
 /// fifth of a second.

@@ -9,6 +9,14 @@ use crate::ui::{Icon, Tone, entry, frame, icon, text, theme};
 /// Width in pixels of the column of comparisons and meanings at the right end of a stat.
 const NOTE_WIDTH: f32 = 112.0;
 
+/// Returns one line of small text of the given colour that never wraps.
+fn small_text(words: &str, color: Color) -> impl Bundle {
+    (
+        text(words.to_string(), theme::FONT_SMALL, color),
+        TextLayout::no_wrap(),
+    )
+}
+
 /// Spawns one stat of the card under `parent`: its icon, its label at the left, its value, and
 /// its note in a column of its own at the right end, when it has one.
 pub(super) fn stat(
@@ -29,12 +37,7 @@ pub(super) fn stat(
         flex_grow: 1.0,
         ..default()
     };
-    let small = |words: &str, color: Color| {
-        (
-            text(words.to_string(), theme::FONT_SMALL, color),
-            TextLayout::no_wrap(),
-        )
-    };
+    let small = small_text;
     let tail = Node {
         width: px(NOTE_WIDTH),
         justify_content: JustifyContent::FlexEnd,

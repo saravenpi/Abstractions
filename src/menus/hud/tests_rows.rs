@@ -29,7 +29,10 @@ fn flying() -> Flight {
 fn warp_and_glide_speeds_replace_the_ship_speed() {
     let mut flight = flying();
     flight.telemetry.warp = WarpState::Active(2.0e10);
-    assert_eq!(reading(Gauge::Speed, &flight).unwrap(), "2.00 gly/s warp");
+    assert_eq!(
+        reading(Gauge::Speed, &flight).unwrap(),
+        "66.7 x light speed warp"
+    );
     let gliding = Flight {
         glide: Some((812.0, 41.0)),
         ..Flight::default()
@@ -56,8 +59,8 @@ fn the_orbit_rows_are_the_spec_rows() {
             "Speed",
             "Throttle",
             "Stabiliser",
-            "Highest",
-            "Lowest"
+            "Highest point",
+            "Lowest point"
         ]
     );
     assert_eq!(Gauge::ALL.len(), 7);

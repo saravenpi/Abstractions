@@ -6,18 +6,18 @@ use bevy::math::Vec2;
 
 use super::book::book;
 use super::card::card;
-use super::layout::{BETWEEN, EDGE, FOOT, HEAD, LIST, ROW, chars, height, measure};
+use super::layout::{BETWEEN, EDGE, FOOT, HEAD, LIST, ROW, chars, height, logical, measure};
 use super::rig::lives;
 use super::seen::Seen;
 
-/// The windows the guide must fit.
+/// The windows the guide must fit, in pixels: both lay out as 1280 by 720.
 const WINDOWS: [Vec2; 2] = [Vec2::new(960.0, 540.0), Vec2::new(1280.0, 720.0)];
 
 /// The list rows, the header and the footer fit the height, and the card keeps room for its
 /// facts beside the list.
 #[test]
 fn the_guide_fits_both_windows() {
-    for window in WINDOWS {
+    for window in WINDOWS.map(logical) {
         let fit = measure(window);
         let tall = 2.0 * EDGE + HEAD + fit.rows as f32 * ROW + FOOT;
         assert!(tall <= window.y, "{window}: {fit:?}");
@@ -34,7 +34,7 @@ fn the_guide_fits_both_windows() {
 /// smallest window leaves.
 #[test]
 fn every_card_fits_the_smallest_window() {
-    let room = measure(WINDOWS[0]).room;
+    let room = measure(logical(WINDOWS[0])).room;
     let mut tallest = 0.0f32;
     for life in lives(40) {
         let mut seen = Seen::default();

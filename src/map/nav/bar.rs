@@ -8,7 +8,7 @@ use bevy::ui_widgets::Activate;
 use super::Place;
 use super::go::Nav;
 use crate::computer::Typing;
-use crate::ui::{Tone, frame, label, theme};
+use crate::ui::{Tip, Tone, frame, label, theme};
 use crate::universe::Universe;
 
 /// Marks the row the parts of the path are written in.
@@ -48,7 +48,13 @@ fn part(commands: &mut ChildSpawnerCommands, place: Place, name: String, last: b
         return;
     }
     let words = label(name, theme::FONT_SMALL, Tone::Muted);
-    commands.spawn((Crumb(place), frame(), button_node(), children![words]));
+    commands.spawn((
+        Crumb(place),
+        frame(),
+        Tip("Jump to this level"),
+        button_node(),
+        children![words],
+    ));
     commands.spawn(label(">", theme::FONT_SMALL, Tone::Muted));
 }
 

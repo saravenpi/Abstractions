@@ -2,8 +2,9 @@
 
 use std::f64::consts::PI;
 
-use super::feel::{bar, lift};
-use super::words::{AIR, LONG_YEAR, air, flux, state, temperature, tilt, water, year, zone};
+use super::feel::lift;
+use super::words::{AIR, LONG_YEAR, flux, state, temperature, tilt, water, year, zone};
+use crate::ui::units::{pressure_bar, pressure_ratio};
 use crate::universe::{PlanetClass, PlanetRecord, Water, Zone};
 
 /// Temperatures are whole degrees Celsius, rounded to the nearest, with a sign below freezing
@@ -27,30 +28,26 @@ fn temperatures_read_in_celsius() {
     assert_eq!(temperature(PlanetRecord::TEMPERATE.temperature), "15 C");
 }
 
-/// The air is none under a hundredth of home, thin under half, like home under one and a
-/// half, and thick from there, and the pressure reads in bar.
+/// What the air does for the wings follows the thresholds, and the pressure reads as a multiple
+/// of home with bar beside it.
 #[test]
 fn air_words_follow_the_thresholds() {
     let cases = [
-        (0.0, "none", "0.00 bar", "No lift: boots only"),
-        (0.004, "none", "0.00 bar", "No lift: boots only"),
-        (0.01, "thin", "0.01 bar", "Weak lift"),
-        (0.4, "thin", "0.40 bar", "Weak lift"),
-        (0.5, "like home", "0.50 bar", "Wings work"),
-        (1.0, "like home", "1.00 bar", "Wings work"),
-        (1.49, "like home", "1.49 bar", "Wings work"),
-        (1.5, "thick", "1.50 bar", "Strong lift, hard on the wings"),
-        (92.0, "thick", "92.0 bar", "Strong lift, hard on the wings"),
-        (250.0, "thick", "250 bar", "Strong lift, hard on the wings"),
+        (0.0, "0 x home", "No lift: boots only"),
+        (0.01, "0.01 x home", "Weak lift"),
+        (0.4, "0.4 x home", "Weak lift"),
+        (0.5, "0.5 x home", "Wings work"),
+        (1.49, "1.49 x home", "Wings work"),
+        (1.5, "1.5 x home", "Strong lift, hard on the wings"),
+        (92.0, "92 x home", "Strong lift, hard on the wings"),
+        (250.0, "250 x home", "Strong lift, hard on the wings"),
     ];
-    for (pressure, word, number, flight) in cases {
-        assert_eq!(air(pressure), word, "{pressure}");
-        assert_eq!(bar(pressure), number, "{pressure}");
+    for (pressure, number, flight) in cases {
+        assert_eq!(pressure_ratio(pressure), number, "{pressure}");
         assert_eq!(lift(pressure), flight, "{pressure}");
     }
     assert_eq!(AIR.map(|(limit, _)| limit), [0.01, 0.5, 1.5]);
-    assert_eq!(air(-1.0), "none");
-    assert_eq!(bar(-1.0), "0.00 bar");
+    assert_eq!(pressure_bar(0.6), "0.6 bar");
 }
 
 /// Builds a record of `class` whose water is in `state` and whose liquid covers `ocean`.

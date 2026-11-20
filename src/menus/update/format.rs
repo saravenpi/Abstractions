@@ -6,7 +6,7 @@ use crate::update::{Outcome, Release, Stage, Status};
 const MEGABYTE: f64 = 1024.0 * 1024.0;
 
 /// Most characters the label of a main menu entry holds without being cut.
-pub const LABEL_CHARS: usize = 20;
+pub const LABEL_CHARS: usize = 18;
 
 /// Formats a size in megabytes with one decimal: `84.2 MB`.
 pub fn megabytes(bytes: u64) -> String {
@@ -42,7 +42,7 @@ pub fn check_label(status: &Status) -> String {
         Status::Idle => "Check for updates".to_string(),
         Status::Checking => "Checking...".to_string(),
         Status::UpToDate => "You are up to date".to_string(),
-        Status::Available(release) => format!("{} is available", release.version),
+        Status::Available(release) => format!("{} available", release.version),
         Status::Failed(reason) => reason.clone(),
     };
     label.chars().take(LABEL_CHARS).collect()

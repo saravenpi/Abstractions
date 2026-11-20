@@ -53,10 +53,7 @@ fn the_filter_narrows_the_rows_and_the_order_sorts_them() {
     );
     assert!(arrange(rows(), "zz", Sort::Near).is_empty());
     assert!(matches("Varena", "") && matches("Varena", "REN") && !matches("Varena", "x"));
-    assert_eq!(
-        (Sort::default(), Sort::Near.next(), Sort::Name.next()),
-        (Sort::Near, Sort::Name, Sort::Near)
-    );
+    assert_eq!(Sort::default(), Sort::Near);
 }
 
 /// Only letters are typed into the filter, in lower case and up to its length, and the
@@ -162,7 +159,7 @@ fn search_home(app: &mut App) {
 }
 
 /// The search key starts a search, typing then narrows the list, Backspace widens it again,
-/// Escape clears the search before it closes the map, and the sort key changes the order.
+/// and Escape clears the search before it closes the map.
 #[test]
 fn typing_in_the_panel_filters_the_list() {
     let mut app = game("filter");
@@ -185,8 +182,6 @@ fn typing_in_the_panel_filters_the_list() {
     tap(&mut app, KeyCode::Escape, None);
     assert!(open(&app) && rows(&app) == all);
     assert!(app.world().resource::<Board>().filter.is_empty());
-    tap(&mut app, KeyCode::F2, None);
-    assert_eq!(app.world().resource::<Board>().sort, Sort::Name);
     tap(&mut app, KeyCode::Escape, None);
     run(&mut app, 2);
     assert!(!open(&app));

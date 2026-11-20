@@ -11,10 +11,23 @@ use super::keys::on_activate;
 use super::lens::Lens;
 use super::map::{Field, SIZE};
 use super::pointer::{DOUBLE_CLICK, MapView, aim, plot, press, tap};
+use super::readout::More;
 use super::view::Slot;
 use super::*;
 use crate::audio::AudioCue;
 use crate::universe::Universe;
+
+/// Adds the resources the buttons and the pointer read.
+fn resources(app: &mut App) {
+    app.init_resource::<Destination>()
+        .init_resource::<MapView>()
+        .init_resource::<ButtonInput<MouseButton>>()
+        .init_resource::<ButtonInput<KeyCode>>()
+        .init_resource::<AccumulatedMouseScroll>()
+        .init_resource::<Hand>()
+        .init_resource::<More>()
+        .init_resource::<RouteStatus>();
+}
 
 /// Builds an app that holds the open screen of the home system without drawing it: the
 /// table, the map field, the row buttons and the chart laid out.
@@ -22,14 +35,9 @@ pub(super) fn rig() -> App {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, StatesPlugin))
         .init_state::<Computer>()
-        .init_resource::<Destination>()
-        .init_resource::<MapView>()
-        .init_resource::<ButtonInput<MouseButton>>()
-        .init_resource::<ButtonInput<KeyCode>>()
-        .init_resource::<AccumulatedMouseScroll>()
-        .init_resource::<Hand>()
         .add_message::<AudioCue>()
         .add_observer(on_activate);
+    resources(&mut app);
     let universe = Universe::new(11);
     let (atlas, star) = (Atlas::new(&universe), universe.home().star);
     let ship = universe.star_position(star).unwrap() + bevy::math::DVec3::X * 3.0e9;
@@ -116,8 +124,8 @@ fn pointing_at_a_mark_lights_it_and_selects_nothing() {
     assert_eq!(state(&app), (1, None));
 }
 
-/// A click on a mark moves the cursor to its row and picks it, a slow second click on it lets
-/// go of it, and a click on the ship or on empty map lets go of the selection. No click sets
+/// A click on a mark moves the cursor to its row and picks it, a slow second click on it keeps
+/// it, and a click on the ship or on empty map lets go of the selection. No click sets
 /// the destination.
 #[test]
 fn a_click_on_a_mark_selects_its_row_and_never_sets_the_destination() {
@@ -138,7 +146,7 @@ fn a_click_on_a_mark_selects_its_row_and_never_sets_the_destination() {
             });
         state(app)
     };
-    assert_eq!(slow(&mut app, 10.0), (2, false, None));
+    assert_eq!(slow(&mut app, 10.0), (2, true, None));
     assert_eq!(slow(&mut app, 20.0), (2, true, None));
     for empty in [pixel(&app, Dot::Ship), Vec2::new(2.0, 2.0)] {
         point(&mut app, empty);

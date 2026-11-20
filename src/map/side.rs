@@ -6,8 +6,9 @@ use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
 use super::pins_draw::glyph;
+use super::side_buttons::{button, go_button};
 use crate::computer::{LIST_ROW, PIN_FOOT, heading, heading_row, row_node};
-use crate::ui::{Icon, Selected, Tone, column, frame, label, text, theme};
+use crate::ui::{Icon, Selected, Tip, Tone, column, frame, label, text, theme};
 
 /// Pins listed at most: every pin a player can keep.
 pub const PINS: usize = super::places::MAX;
@@ -45,6 +46,10 @@ pub struct PinFar(pub usize);
 /// The line under the pins: what the selected pin does, or the empty text.
 #[derive(Component)]
 pub struct PinHint;
+
+/// The name of the key that sends the ship to the selected pin, written at the right of Go.
+#[derive(Component)]
+pub struct PinGoKey;
 
 /// The row of the three buttons of the selected pin, hidden while none is selected.
 #[derive(Component)]
@@ -93,29 +98,13 @@ fn pin(index: usize) -> impl Bundle {
     (
         (PinRow(index), Selected(false)),
         frame(),
+        Tip("Select this pin"),
         strip(),
         children![
             glyph(Icon::MapPin, theme::ICON_SMALL, theme::PIN),
             (name, children![named]),
             (PinFar(index), label("", theme::FONT_SMALL, Tone::Muted)),
         ],
-    )
-}
-
-/// One button of the selected pin, with its words and its key.
-fn button(act: Do, words: &str) -> impl Bundle {
-    let node = Node {
-        height: px(LIST_ROW),
-        align_items: AlignItems::Center,
-        padding: UiRect::horizontal(px(theme::GAP_S)),
-        ..default()
-    };
-    let tone = [Tone::Plain, Tone::Accent][usize::from(act == Do::Go)];
-    (
-        frame(),
-        PinButton(act),
-        node,
-        children![label(words, theme::FONT_SMALL, tone)],
     )
 }
 
@@ -135,9 +124,9 @@ fn foot() -> impl Bundle {
         ..default()
     };
     let buttons = children![
-        button(Do::Go, "Go"),
-        button(Do::Rename, "Rename [R]"),
-        button(Do::Remove, "Remove [Del]"),
+        go_button(),
+        button(Do::Rename, "Rename [R]", "Type a new name"),
+        button(Do::Remove, "Remove [Del]", "Forget this pin"),
     ];
     let said = (PinHint, text("", theme::FONT_SMALL, theme::TEXT_2));
     (node, children![said, (PinActions, actions, buttons)])
@@ -166,6 +155,7 @@ fn player(index: usize) -> impl Bundle {
     (
         frame(),
         (PlayerRow(index), RelativeCursorPosition::default()),
+        Tip("Look at this player"),
         strip(),
         children![
             (PlayerDot(index), dot, BackgroundColor(Color::NONE)),

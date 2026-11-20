@@ -4,7 +4,7 @@
 use bevy::prelude::KeyCode;
 
 use super::context::Context;
-use super::hints::{Clock, HOLD, Hint, done, due, finished, with};
+use super::hints::{Clock, Hint, done, due, finished, with};
 use crate::settings::{Keymap, Settings};
 
 /// A clock that has waited `seated` seconds in the ship and `afoot` on the ground.
@@ -51,7 +51,6 @@ fn a_hushed_hint_gives_way_to_the_next() {
     assert_eq!(due(0, &clock, Context::ShipLanded), Some(Hint::Map));
     clock.hushed = Hint::Map.bit();
     assert_eq!(due(0, &clock, Context::ShipLanded), Some(Hint::Assist));
-    assert!(HOLD > 0.0);
 }
 
 /// The key of a hint finishes it, and the computer key finishes the map hint.

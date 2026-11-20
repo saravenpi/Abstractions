@@ -31,11 +31,7 @@ pub struct Card {
 
 /// Returns a weight in kilograms in words: grams under 1 kg, tonnes from 1000 kg.
 pub fn weight(kg: f32) -> String {
-    match kg {
-        k if k < 1.0 => format!("{:.0} g", (k * 1000.0).max(1.0)),
-        k if k < 1000.0 => format!("{k:.0} kg"),
-        k => format!("{:.1} t", k / 1000.0),
-    }
+    crate::ui::units::mass(f64::from(kg))
 }
 
 /// Returns the Body rows of an animal: its size, weight, plan, limbs and gait.

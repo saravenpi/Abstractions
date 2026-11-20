@@ -4,7 +4,9 @@
 use bevy::input::keyboard::Key;
 use bevy::math::DVec3;
 
-use super::{HERE, MAX, NEAR, Places, edit, press, reached};
+use super::keys::{press, reached};
+use super::name::edit;
+use super::{HERE, MAX, NEAR, Places};
 use crate::universe::BodyId;
 
 /// Metres in the radius of the body the tests put pins on.

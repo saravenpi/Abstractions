@@ -51,6 +51,13 @@ fn the_minimap_is_a_square_of_the_hud() {
     let mut veils = app
         .world_mut()
         .query_filtered::<&BackgroundColor, With<Blurred>>();
+    for _ in 0..200 {
+        if veils.single(app.world()).unwrap().0 == theme::SCRIM {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+        app.update();
+    }
     assert_eq!(veils.single(app.world()).unwrap().0, theme::SCRIM);
 }
 

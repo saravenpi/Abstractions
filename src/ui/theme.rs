@@ -90,8 +90,9 @@ pub const TEXT_2: Color = Color::srgba(1.0, 1.0, 1.0, 0.72);
 pub const TEXT_OFF: Color = Color::srgba(1.0, 1.0, 1.0, 0.45);
 /// Text on an accent fill.
 pub const INK: Color = Color::srgb(0.02, 0.03, 0.04);
-/// Fill of every HUD panel and strip over the live world.
-pub const PANEL: Color = Color::srgba(0.04, 0.05, 0.07, 0.72);
+/// Fill of every HUD panel and strip over the live world. At 84 percent over a darker tint, the
+/// weakest text, DANGER, keeps 4.7 to 1 over a white sky and 7.1 to 1 over a black one.
+pub const PANEL: Color = Color::srgba(0.02, 0.025, 0.035, 0.84);
 /// Fill of a big blurred panel, laid over the `Blurred` backdrop.
 pub const PANEL_BLUR: Color = Color::srgba(0.04, 0.05, 0.07, 0.55);
 /// Row under the pointer or the keyboard focus.

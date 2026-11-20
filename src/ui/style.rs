@@ -68,7 +68,6 @@ pub fn surface(look: Look, selected: bool) -> Color {
         (Look::Pressed, _) | (_, true) => theme::SELECT,
         (Look::Active, false) => theme::HOVER,
         (Look::Rest, false) => Color::NONE,
-        (Look::Rest, false) => Color::NONE,
     }
 }
 

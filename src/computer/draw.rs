@@ -10,7 +10,6 @@ use bevy::prelude::*;
 
 use super::board::Board;
 use super::chart::Dot;
-use super::format::distance;
 use super::labels::{keep, priority, room};
 use super::layout::clear_of_bands;
 use super::lens::Lens;
@@ -21,6 +20,7 @@ use super::pointer::{MapView, selected};
 use super::rim::{badge, home_row, rank};
 use super::route::{Destination, Target};
 use super::tab::Tab;
+use crate::ui::units::distance;
 use crate::ui::{Icon, Tone, icon, theme};
 
 /// Dots of the line that shows the course.

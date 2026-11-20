@@ -33,8 +33,8 @@ impl Gauge {
         (Gauge::Speed, "Speed"),
         (Gauge::Throttle, "Throttle"),
         (Gauge::Assist, "Stabiliser"),
-        (Gauge::Apoapsis, "Highest"),
-        (Gauge::Periapsis, "Lowest"),
+        (Gauge::Apoapsis, "Highest point"),
+        (Gauge::Periapsis, "Lowest point"),
         (Gauge::Gear, "Gear"),
     ];
 

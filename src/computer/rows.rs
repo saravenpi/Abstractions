@@ -4,10 +4,10 @@ use bevy::math::DVec3;
 
 use super::atlas::Atlas;
 use super::detail::{brief, charted};
-use super::format::{distance, gravity};
 use super::home::homes;
 use super::route::{HOME_LABEL, Target};
 use crate::space::UniPos;
+use crate::ui::units::{distance, gravity_ratio};
 use crate::universe::{GalaxyId, GalaxySpec, PlanetSpec, StarId, StarSpec, Universe};
 
 /// One selectable row of a tab.
@@ -90,7 +90,7 @@ impl View<'_> {
             "{} - radius {} - {}",
             brief(record),
             distance(planet.radius),
-            gravity(planet.gravity)
+            gravity_ratio(planet.gravity)
         );
         let at = origin + planet.position(self.time);
         let title = target.name(self.universe);

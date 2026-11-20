@@ -44,7 +44,7 @@ fn the_check_entry_names_every_state() {
     assert_eq!(check_label(&Status::UpToDate), "You are up to date");
     assert_eq!(
         check_label(&Status::Available(release())),
-        "0.9.1 is available"
+        "0.9.1 available"
     );
     let reasons = [
         Failure::Offline,

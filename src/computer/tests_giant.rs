@@ -50,11 +50,11 @@ fn a_gas_giant_card_says_it_has_no_ground() {
         shown.subtitle
     );
     assert!(shown.rows.contains(&Row::Meaning(NO_GROUND.to_string())));
-    assert_eq!(stat(&shown, "Deck pressure"), Some(("5.00 bar", "")));
+    assert_eq!(stat(&shown, "Deck air"), Some(("5 x home", "5 bar")));
     assert_eq!(stat(&shown, "Water"), None);
     assert_eq!(stat(&shown, "Air"), None);
     assert_eq!(fact(&shown, "Moons"), Some("3"));
-    assert_eq!(fact(&shown, "Rings"), Some("80.0 Mm to 140 Mm"));
+    assert_eq!(fact(&shown, "Rings"), Some("80 000 km to 140 000 km"));
     assert_eq!(stat(&shown, "Radius").map(|(value, _)| value), Some("6 km"));
     assert!(visible(&shown.rows, false).len() <= ROWS);
     let bare = card(&line, Some(&PlanetSpec { moons: 1, ..planet }), &universe);
@@ -76,7 +76,7 @@ fn a_solid_planet_names_its_moons_and_a_moon_its_orbit() {
         ..planet.clone()
     };
     let shown = card(&line, Some(&ringed), &universe);
-    assert_eq!(stat(&shown, "Air"), Some(("1.00 bar", "like home")));
+    assert_eq!(stat(&shown, "Air"), Some(("1 x home", "1 bar")));
     assert_eq!(fact(&shown, "Moons"), Some("2"));
     assert!(fact(&shown, "Rings").is_some());
     let moon = PlanetSpec {

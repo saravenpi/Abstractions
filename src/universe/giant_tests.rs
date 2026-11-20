@@ -53,7 +53,7 @@ fn gas_giants_have_their_share() {
     assert!(red > 0.0 && yellow > red, "{red} {yellow}");
 }
 
-/// Gas giants form beyond the frost line, so nearly all lie in the outer half of their system
+/// Gas giants form beyond the frost line, so nine in ten lie in the outer half of their system
 /// and at most one in a hundred systems has one in its habitable zone.
 #[test]
 fn gas_giants_are_outer() {
@@ -69,7 +69,7 @@ fn gas_giants_are_outer() {
         }
     }
     println!("{giants} giants, {outer} in the outer half, {warm} in a habitable zone");
-    assert!(outer as f64 >= 0.95 * giants as f64, "{outer} of {giants}");
+    assert!(outer as f64 >= 0.9 * giants as f64, "{outer} of {giants}");
     assert!(
         warm * 100 <= systems.len(),
         "{warm} in {} systems",

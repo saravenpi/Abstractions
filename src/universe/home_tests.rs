@@ -54,7 +54,7 @@ fn home_is_the_nearest_living_planet() {
         if life::of(&planet, &star).is_none() {
             continue;
         }
-        let out = star.pos.length() / GLY;
+        let out = star.pos.length() / GLY * (1.0 + 1e-12);
         let nearer = u.stars_near(HOME_GALAXY, DVec3::ZERO, out);
         assert_eq!(nearer.last().map(|s| s.id), Some(star.id), "seed {seed}");
         assert!(nearer.len() <= SEARCH, "seed {seed}: {}", nearer.len());

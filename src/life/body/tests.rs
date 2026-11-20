@@ -31,7 +31,7 @@ pub fn world(g: f32, pressure: f32, temperature: f32) -> World {
         pressure,
         temperature,
         flux: 1.0,
-        radius: 6000.0,
+        radius: crate::universe::EARTH_RADIUS as f32,
         ocean: 0.5,
         star: 5800.0,
         tilt: 0.0,
@@ -82,7 +82,7 @@ fn case(rng: &mut Rng, case: usize) -> (World, Role, History) {
     ];
     let mut draw = |low: f64, high: f64| rng.range(low, high) as f32;
     let mut w = world(draw(0.2, 3.0), draw(0.0, 4.0), draw(150.0, 360.0));
-    w.radius = draw(3000.0, 40000.0);
+    w.radius = draw(0.3, 6.0) * crate::universe::EARTH_RADIUS as f32;
     w.ocean = draw(0.0, 1.0);
     w.flux = draw(0.05, 3.0);
     w.star = draw(2500.0, 9000.0);

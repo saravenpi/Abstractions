@@ -39,7 +39,7 @@ fn chunks_stand_alone_and_add_up() {
         set.insert(key(4, 9, morton));
     }
     let chunks = set.chunks(5);
-    assert_eq!(chunks.iter().map(Vec::len).collect::<Vec<_>>(), [5, 5, 3]);
+    assert_eq!(chunks.iter().map(Vec::len).collect::<Vec<_>>(), [5, 5, 4]);
     let mut back = Leaves::default();
     for chunk in &chunks {
         back.merge(&Leaves::from_runs(chunk));

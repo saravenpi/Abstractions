@@ -11,11 +11,9 @@ pub const CEILING: f32 = 400.0;
 pub enum Kind {
     /// Parked and invisible, so the scene stays sparse.
     Hidden,
-    /// Falling tree leaf.
+    /// Falling leaf of a plant nearby, coloured and sized from its species.
     Leaf,
-    /// Large tropical leaf.
-    BigLeaf,
-    /// Cherry petal.
+    /// Falling petal of a plant in flower nearby.
     Petal,
     /// Snowflake.
     Snow,
@@ -27,7 +25,7 @@ pub enum Kind {
     Bubble,
     /// Drifting plankton speck.
     Plankton,
-    /// Floating pollen speck.
+    /// Floating pollen speck of a plant in flower nearby.
     Pollen,
     /// Falling rain streak.
     Rain,
@@ -70,7 +68,6 @@ impl Kind {
         match self {
             Kind::Hidden => m(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, (1.0, 3.0)),
             Kind::Leaf => m(0.9, 0.5, 0.8, 2.2, 2.5, 0.12, (10.0, 16.0)),
-            Kind::BigLeaf => m(0.7, 0.4, 0.6, 1.6, 1.5, 0.22, (12.0, 18.0)),
             Kind::Petal => m(0.35, 0.6, 0.5, 1.4, 1.8, 0.07, (14.0, 22.0)),
             Kind::Snow => m(0.9, 0.6, 0.15, 1.0, 0.0, 0.05, (12.0, 18.0)),
             Kind::Dust => Motion {
@@ -90,7 +87,12 @@ impl Kind {
 
     /// Returns true for kinds drawn as a leaf shape instead of a dot.
     pub fn is_leafy(self) -> bool {
-        matches!(self, Kind::Leaf | Kind::BigLeaf | Kind::Petal)
+        matches!(self, Kind::Leaf | Kind::Petal)
+    }
+
+    /// Returns true for kinds that come from a plant nearby.
+    pub fn is_shed(self) -> bool {
+        matches!(self, Kind::Leaf | Kind::Petal | Kind::Pollen)
     }
 
     /// Returns true for kinds that live under water.
@@ -112,4 +114,8 @@ pub struct Ambient {
     pub daylight: f32,
     /// Wind strength from 0 to 1.
     pub wind: f32,
+    /// How many leafy plants shed within reach, each weighted by how fast its leaves fall.
+    pub leaves: f32,
+    /// How many plants in flower stand within reach.
+    pub flowers: f32,
 }

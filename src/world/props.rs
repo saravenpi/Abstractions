@@ -52,6 +52,7 @@ impl PropAssets {
         let place = images.add(place_map());
         let extension = Daylit {
             place: place.clone(),
+            turf: default(),
         };
         let material = materials.add(GroundMaterial { base, extension });
         Self { material, place }
@@ -89,6 +90,11 @@ pub fn build_grass_on(scatter: &Scatter, rig: &Rig) -> Mesh {
         (p.pos, m)
     });
     merge_parts_on(parts, &solids(scatter), rig)
+}
+
+/// Returns the radius in metres of the ground the trunk, stem, rock or wreck of big prop `p` stands on.
+pub fn footprint(p: &Placement) -> f32 {
+    BODIES.get(p.plant as usize).map_or(0.0, |b| b[0] * p.scale)
 }
 
 /// Returns the trunk, cactus, rock and wreck colliders of every big prop as one compound, in chunk space.

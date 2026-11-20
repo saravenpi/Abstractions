@@ -13,14 +13,21 @@ mod pool;
 mod respawn;
 mod rng;
 mod sense;
+mod shed;
 mod sim;
 mod sky;
 #[cfg(test)]
 mod tests_pool;
 
+use std::time::Duration;
+
 use bevy::prelude::*;
+use bevy::time::common_conditions::on_timer;
 
 use crate::screens::{Screen, playing};
+
+/// How often the plants within reach of the particles are read again.
+const GATHER: Duration = Duration::from_millis(500);
 
 /// The system that reads the camera of the frame into the eye. Effects run after it.
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -35,7 +42,12 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(OnEnter(Screen::Gameplay), pool::spawn)
         .add_systems(
             Update,
-            (eye::watch.in_set(Sight), sense::sense, sim::step)
+            (
+                eye::watch.in_set(Sight),
+                sense::sense,
+                shed::gather.run_if(on_timer(GATHER)),
+                sim::step,
+            )
                 .chain()
                 .run_if(playing)
                 .run_if(eye::grounded),

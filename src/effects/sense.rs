@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use super::eye::Eye;
 use super::ground::Ground;
+use super::shed::Shedding;
 use super::sky::{Sky, roofed};
 use crate::space::Anchor;
 use crate::weather::Weather;
@@ -20,8 +21,8 @@ const SITE_REACH: f32 = 80.0;
 /// and the step of the search: the camera may float above the feet it follows.
 const FLOOR_PROBE: (f32, f32) = (2.5, 0.5);
 
-/// Biome and surface under the camera, and what the weather drops there.
-#[derive(Resource, Debug, Clone, Copy, PartialEq)]
+/// Biome and surface under the camera, what the weather drops there and what the plants nearby shed.
+#[derive(Resource, Debug, Clone, PartialEq)]
 pub struct Sensed {
     /// Biome under the camera.
     pub biome: Biome,
@@ -29,6 +30,8 @@ pub struct Sensed {
     pub surface: Surface,
     /// What the weather drops around the camera.
     pub sky: Sky,
+    /// The plants within reach of the particle box.
+    pub shed: Shedding,
 }
 
 impl Default for Sensed {
@@ -38,6 +41,7 @@ impl Default for Sensed {
             biome: Biome::Meadow,
             surface: Surface::Grass,
             sky: Sky::default(),
+            shed: Shedding::default(),
         }
     }
 }

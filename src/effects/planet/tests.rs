@@ -11,6 +11,8 @@ fn place(height: f32) -> Ambient {
         height,
         daylight: 1.0,
         wind: 0.9,
+        leaves: 0.0,
+        flowers: 0.0,
     }
 }
 

@@ -73,6 +73,13 @@ pub(in crate::world::propmesh) fn soup(variant: u8) -> Option<Arc<Soup>> {
     book.pages.get(i).map(|p| p.soup.clone())
 }
 
+/// Returns the look of placement variant `variant`, or nothing for a shared mesh of home.
+pub fn look(variant: u8) -> Option<Look> {
+    let i = usize::from(variant).checked_sub(VARIANTS)?;
+    let book = BOOK.read().unwrap_or_else(PoisonError::into_inner);
+    book.pages.get(i).map(|p| p.look)
+}
+
 /// Returns how many triangles the look of placement variant `variant` has, 0 for one not in the book.
 pub fn tris(variant: u8) -> usize {
     soup(variant).map_or(0, |s| s.positions.len() / 3)

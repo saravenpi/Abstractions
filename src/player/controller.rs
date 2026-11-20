@@ -69,6 +69,7 @@ pub(super) struct Env<'w, 's> {
     terrain: Res<'w, Terrain>,
     wind: Option<Res<'w, Wind>>,
     air: Option<Res<'w, Thickness>>,
+    burden: Option<Res<'w, crate::craft::Burden>>,
     slide: MoveAndSlide<'w, 's>,
     query: SpatialQuery<'w, 's>,
 }
@@ -85,6 +86,7 @@ impl Env<'_, '_> {
             afloat: above_sea(&self.anchor, globe, at),
             gravity: local_gravity(&self.anchor, globe, at).length(),
             air: self.air.as_deref().map_or(1.0, |air| air.0),
+            pace: self.burden.as_deref().map_or(1.0, |burden| burden.pace),
         }
     }
 

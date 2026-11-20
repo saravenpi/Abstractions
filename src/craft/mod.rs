@@ -1,13 +1,42 @@
 //! Crafting: what harvested tissues and stones are made of, and the tools built from them.
 //!
-//! Everything here is pure model code: plain data and functions of the planet and the materials a
-//! player carries, so a server can run the same numbers and agree with every client.
+//! [`build`] and [`matter`] are pure model code: plain data and functions of the planet and the
+//! materials a player carries, so a server can run the same numbers and agree with every client.
+//! [`pack`] holds what the robot carries, [`harvest`] takes tissue from a dead animal, [`wield`] is
+//! the held tool, and [`ui`] is the pack screen, the workshop and the hotbar.
 
 pub mod build;
+pub mod harvest;
 pub mod matter;
+pub mod pack;
+#[cfg(test)]
+mod stage;
+pub mod ui;
+pub mod wield;
 
 use bevy::prelude::*;
 
-/// Registers the crafting area. The model has no systems yet: the workshop and the swings that
-/// read it come in later waves.
-pub(super) fn plugin(_app: &mut App) {}
+pub use pack::{Burden, Pack};
+pub use wield::{Held, Hold, Worn};
+
+/// Registers the crafting area: the pack and its save, the held tool and its wear, harvesting and
+/// the screens.
+pub(super) fn plugin(app: &mut App) {
+    let changed = resource_changed::<Pack>;
+    app.init_resource::<Pack>()
+        .init_resource::<Burden>()
+        .init_resource::<Held>()
+        .add_message::<Worn>()
+        .add_message::<harvest::Harvest>()
+        .add_systems(
+            Update,
+            (
+                pack::load,
+                harvest::reap.run_if(on_message::<harvest::Harvest>),
+                wield::wear.run_if(on_message::<Worn>),
+                (pack::store, pack::weigh, wield::hold).run_if(changed),
+            )
+                .chain(),
+        );
+    ui::plugin(app);
+}

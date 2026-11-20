@@ -35,7 +35,7 @@ pub use hit::{Blow, Layer, Mode, Strike, reference, strike};
 pub use inertia::{Piece, balance, inertia, mass, moment};
 pub use part::{Build, Form, Head, Shaft, Weight};
 pub use recipe::{Design, Recipe};
-pub use solve::{Proposal, Proposals, Stock, solve};
+pub use solve::{Proposal, Proposals, Stock, assess, solve};
 pub use swing::{Swing, swing, tip_speed};
 pub use throw::{Throw, throw};
 pub use wear::{Joint, Wear, lives};

@@ -24,6 +24,8 @@ On foot:
 | N | Minimap range, then off |
 | B | Set or clear a waypoint where you stand, or under the pointer on the map |
 | K | Field guide |
+| I | Pack and workshop: what you carry, and making a tool for an intent |
+| 1 to 6 | Hold the tool in that hotbar slot |
 | F | Board the ship |
 | Look down + W | Dive while swimming |
 | Esc | Pause menu, or back |

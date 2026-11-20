@@ -194,6 +194,14 @@ fn best(all: &[Scored], better: impl Fn(&Scored, &Scored) -> bool) -> Option<&Sc
         .reduce(|kept, next| if better(next, kept) { next } else { kept })
 }
 
+/// Returns the proposal `design` makes from `stock` at `place`, as the solver would show it, or
+/// nothing when a material is missing or the stock is short of the mass it needs.
+pub fn assess(design: Design, stock: &[Stock], place: &Place) -> Option<Proposal> {
+    let materials: Vec<Material> = stock.iter().map(|s| s.material).collect();
+    let scored = score(design, stock, &materials, place)?;
+    propose(&scored, &materials, place, &reference())
+}
+
 /// Returns three builds for `intent` from `stock` at `place`, or why none can be made.
 pub fn solve(intent: Intent, stock: &[Stock], place: &Place) -> Result<Proposals, Why> {
     let sharp = intent != Intent::Crush;

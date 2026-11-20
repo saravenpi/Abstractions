@@ -74,10 +74,14 @@ pub fn in_control(
     menu: Res<State<Menu>>,
     warm: Option<Res<State<WarmUp>>>,
     computer: Option<Res<State<Computer>>>,
-    guide: Option<Res<State<Guide>>>,
+    (guide, bench): (
+        Option<Res<State<Guide>>>,
+        Option<Res<State<crate::craft::ui::Workshop>>>,
+    ),
 ) -> bool {
     let open = computer.is_some_and(|computer| *computer.get() == Computer::Open);
-    playing(screen, menu, warm) && !open && !crate::fauna::guide::shown(guide)
+    let over = crate::fauna::guide::shown(guide) || crate::craft::ui::shown(bench);
+    playing(screen, menu, warm) && !open && !over
 }
 
 /// Registers the screen states and every screen plugin.

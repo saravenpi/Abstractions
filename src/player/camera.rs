@@ -31,7 +31,9 @@ fn release_cursor(mut cursor: Single<&mut CursorOptions, With<PrimaryWindow>>) {
 
 /// Registers the cursor systems.
 pub(super) fn plugin(app: &mut App) {
-    let pointing = in_state(Computer::Open).or_else(crate::fauna::guide::shown);
+    let pointing = in_state(Computer::Open)
+        .or_else(crate::fauna::guide::shown)
+        .or_else(crate::craft::ui::shown);
     app.add_systems(
         Update,
         (

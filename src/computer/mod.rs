@@ -41,7 +41,7 @@ mod season;
 mod section;
 mod semantic;
 mod show;
-mod sift;
+pub(crate) mod sift;
 mod tab;
 mod track;
 mod typing;

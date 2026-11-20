@@ -130,7 +130,7 @@ pub use keys::HOME_KEY;
 pub use labels::{keep, priority, room, scale_bar};
 pub use layout::{GLYPH, LIST_ROW, PIN_FOOT, ROOM, clear_of_bands};
 pub use lens::{Lens, MAX_ZOOM};
-pub use locate::{SYSTEM_REACH, here, ship_position, target_position, whereabouts};
+pub use locate::{here, ship_position, target_position, whereabouts};
 pub use map::{ChartLayer, Field, SIZE, Sheet, body, field, frame, name, ring, ship, spot};
 pub use moons::{MOON_STEP, MOON_ZOOM, is_moon, seen};
 pub use open::Computer;

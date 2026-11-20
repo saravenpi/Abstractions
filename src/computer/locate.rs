@@ -4,10 +4,7 @@ use bevy::math::DVec3;
 
 use super::route::Target;
 use crate::space::{Frame, UniPos};
-use crate::universe::{BodyId, GLY, GalaxyId, StarId, Universe};
-
-/// Distance from a star in metres within which the ship counts as inside its system.
-pub const SYSTEM_REACH: f64 = 0.1 * GLY;
+use crate::universe::{BodyId, GalaxyId, StarId, Universe, system_reach};
 
 /// Returns the universe position of the point `at` of `frame` at `time` seconds.
 ///
@@ -41,7 +38,9 @@ pub fn whereabouts(
     match frame {
         Frame::Surface(body) => (Some(body), Some(body.star), Some(body.star.galaxy)),
         Frame::System(star) => {
-            let inside = at.length() <= SYSTEM_REACH;
+            let inside = universe
+                .star(star)
+                .is_some_and(|spec| at.length() <= system_reach(&spec));
             (None, inside.then_some(star), Some(star.galaxy))
         }
         Frame::Galaxy(id) => {

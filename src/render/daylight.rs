@@ -12,6 +12,7 @@ use bevy::prelude::*;
 use super::celestial::smoothstep;
 use super::scatter::{luminance, peak, transmit};
 
+mod ambient;
 mod place;
 mod track;
 
@@ -19,6 +20,8 @@ mod track;
 mod tests;
 #[cfg(test)]
 mod tests_altitude;
+#[cfg(test)]
+mod tests_ambient;
 #[cfg(test)]
 mod tests_place;
 

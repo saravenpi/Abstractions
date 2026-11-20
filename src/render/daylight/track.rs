@@ -3,10 +3,14 @@
 
 use bevy::prelude::*;
 
+use super::ambient::with_ground;
 use super::{PlaceUniform, Sky};
 use crate::render::moonlight::{Moonlight, STARLIGHT};
 use crate::render::sun::SunDir;
 use crate::render::vantage::{LocalSystem, Vantage};
+
+/// Linear grey of the ground of a place whose body is not known, a mean land albedo.
+const GROUND: f32 = 0.2;
 
 /// The uniform block of the light of the planet under the camera, all zero outside a world.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
@@ -56,6 +60,11 @@ pub fn place_light(
 ) {
     let (vantage, local, sun) = place;
     let sky = sky_below(&vantage, &local, &moon);
-    let block = sky.map_or(PlaceUniform::default(), |sky| block(&sky, &vantage, &sun));
+    let ground = local
+        .below(&vantage)
+        .map_or(Vec3::splat(GROUND), |body| body.record.class.look().land);
+    let block = sky.map_or(PlaceUniform::default(), |sky| {
+        with_ground(block(&sky, &vantage, &sun), ground)
+    });
     light.set_if_neq(PlaceLight(block));
 }

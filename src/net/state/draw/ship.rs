@@ -1,6 +1,7 @@
 //! The ships of the other players: a hull dressed from the shared ship look, with no flight
 //! state, no physics and no helm. The legs follow the gear of the records, the stick and the
-//! lever what the pilot holds, the instruments its speed, its drive and its gear. The engine
+//! lever what the pilot holds, the gear lever and the warp switch its gear and its drive, the
+//! instruments its speed, its drive and its gear. The engine
 //! glow and the exhaust, of a material of its own, follow its throttle, boost and warp drive.
 
 use abstractions_net::wire::{ShipBody, WARP_ACTIVE, WARP_SPOOLING};
@@ -10,7 +11,7 @@ use super::{Eye, Sight, drop_puppet, seen, shown, visible};
 use crate::net::state::Remote;
 use crate::net::state::track::{Remotes, Track};
 use crate::screens::Screen;
-use crate::ship::cockpit::{Cockpit, Levers};
+use crate::ship::cockpit::{Cockpit, Levers, Readings, Seen};
 use crate::ship::{self, Engine, Leg, SEAT, level_of, reach, top_speed};
 use crate::space::Placed;
 
@@ -88,15 +89,34 @@ fn drive(state: &ShipBody) -> f32 {
     }
 }
 
+/// Returns where the warp switch of a ship in `state` stands: off, spooling or engaged.
+fn switch(state: &ShipBody) -> f32 {
+    match state.warp {
+        WARP_ACTIVE => 1.0,
+        WARP_SPOOLING => 0.5,
+        _ => 0.0,
+    }
+}
+
 /// Returns what the instruments of a ship in `state` read, `clearance` metres above the
 /// ground: its speed against the top speed there, or its warp speed in warp, the charge of
-/// the drive and the gear.
-fn dials(state: &ShipBody, clearance: f64) -> [f32; 3] {
-    let speed = match state.warp {
-        WARP_ACTIVE => state.warp_level,
-        _ => (f64::from(state.velocity.length()) / top_speed(clearance)) as f32,
+/// the drive, the gear and the throttle. It carries no attitude and no course, so those
+/// instruments stay dark.
+fn dials(state: &ShipBody, clearance: f64) -> Readings {
+    let warping = state.warp == WARP_ACTIVE;
+    let speed = f64::from(state.velocity.length());
+    let load = match warping {
+        true => state.warp_level,
+        false => (speed / top_speed(clearance)) as f32,
     };
-    [speed, drive(state), state.gear].map(|value| value.clamp(0.0, 1.0))
+    Readings::seen(Seen {
+        speed: Some(speed).filter(|_| !warping),
+        load,
+        throttle: state.throttle.max(0.0),
+        clearance,
+        drive: drive(state),
+        gear: state.gear,
+    })
 }
 
 /// Draws one ship of `track`.
@@ -125,6 +145,8 @@ fn draw(
     cockpit.asked = Levers {
         stick: Vec3::new(pitch, 0.0, roll),
         throttle: state.throttle.max(0.0),
+        gear,
+        warp: switch(&state),
     };
     cockpit.read = dials(&state, sight.clearance(track.frame, view.position));
     engine.level = level_of(state.throttle, state.boost, drive(&state));

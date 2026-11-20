@@ -8,9 +8,15 @@
 //! deleted, and a player can be focused or be the course. A star or a galaxy takes no
 //! favourite: a favourite is a place on a planet.
 //!
+//! A right click on a row of the side panel, a search result, a favourite or a player, opens
+//! the same menu for what the row stands for.
+//!
 //! The menu closes on Escape, on a press outside it, on a choice and when the map closes.
 
 mod act;
+#[cfg(test)]
+mod rig;
+mod rows;
 mod show;
 mod spot;
 
@@ -135,9 +141,10 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(OnExit(Computer::Open), closed);
 }
 
-/// The systems of the open map that close, open and draw the menu, in that order.
+/// The systems of the open map that close, open and draw the menu, in that order. A right
+/// click opens it on the map or on a row of the side panel.
 pub(super) fn systems() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
-    (show::dismiss, show::summon, show::draw).chain()
+    (show::dismiss, show::summon, rows::summon, show::draw).chain()
 }
 
 #[cfg(test)]

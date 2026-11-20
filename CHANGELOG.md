@@ -5,8 +5,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- The map's card of a planet or a moon in a visited system gives its chance of life, such as "Chance of life 72 %", from the same odds that decide what lives there. Once you have landed it says what is really there: none, microbial mats, soft-bodied life, shelled life, animals with skeletons or ancient life.
+- Right click a search result, a favourite or a player in the map's side panel for the same menu as on the map.
+
 ### Changed
 
+- The map's side panel has more room: Search, Place, Favourites and Players each sit under a heading, with space between them and between the groups of the card. The result count sits beside the Search heading, the save button beside the Favourites heading, and the distance only in the result row. Rows are taller, and in a short window the favourites and players lose their last rows before anything else is cut.
+- The buttons on the card are shorter, so they take two rows: Set course or Engage and Clear, Focus, Set waypoint and Save place.
 - The wingsuit answers the pitch keys faster: a pull bends the flight path about twice as fast at speed, and let go the wings fly on where you pointed them instead of snapping back to the glide.
 - A banked pull turns no faster than 40 degrees a second, and slower at speed: rolled on edge, the wingsuit drifts round instead of spinning.
 - Folding the wings in the air keeps the body prone and turns it into a skydiver arch, belly down, arms and legs spread, head up. A fast fall from a jump arches too, and the body turns upright and reaches for the ground just before it lands.

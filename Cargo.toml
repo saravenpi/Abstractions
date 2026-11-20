@@ -78,3 +78,8 @@ debug = true
 codegen-units = 1
 lto = "thin"
 strip = "symbols"
+
+[[example]]
+name = "probe"
+path = "examples/probe/main.rs"
+required-features = ["dev"]

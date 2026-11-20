@@ -59,11 +59,16 @@ pub struct PlaceUniform {
     pub eye_sun: Vec4,
     /// Ambient light this rule gives at the camera, which the ambient light of the scene carries.
     pub eye_sky: Vec4,
+    /// Render position of the camera in xyz and its height above sea level in metres in w.
+    pub eye: Vec4,
+    /// Unit vector away from the planet centre at the camera, in render axes, in xyz, and in w the height
+    /// `a` of the camera folded with the radius `R` as `a * a + 2 * R * a`, worked out in 64 bits.
+    pub upward: Vec4,
 }
 
 impl PlaceUniform {
     /// Fields of the block, each one texel where a shader reads it from a texture.
-    pub const FIELDS: usize = 7;
+    pub const FIELDS: usize = 9;
 
     /// Bytes of the block as texels of four 32 bit floats.
     pub const BYTES: usize = 16 * Self::FIELDS;
@@ -79,7 +84,35 @@ impl PlaceUniform {
             self.day,
             self.eye_sun,
             self.eye_sky,
+            self.eye,
+            self.upward,
         ]
+    }
+
+    /// Returns this block measuring heights from a camera at render position `eye`, where `up` points away
+    /// from the planet centre in render axes, `high` metres above the sea level of the block.
+    pub fn seen_from(self, eye: Vec3, up: Vec3, high: f64) -> Self {
+        let radius = f64::from(self.centre.w);
+        Self {
+            eye: eye.extend(high as f32),
+            upward: up.extend((high * high + 2.0 * radius * high) as f32),
+            ..self
+        }
+    }
+
+    /// Returns the height above sea level in metres of render position `world`, with the 32-bit steps of
+    /// `altitude_at` in `daylight.wesl`.
+    ///
+    /// The height is `(|p|^2 + 2 (R + a) p.u + a^2 + 2 R a) / (|q| + R)`, where `p` is `world` seen from the
+    /// camera, `u` the way up there, `a` the height of the camera, `R` the radius and `|q|` the distance of
+    /// `world` from the centre. Unlike `|q| - R`, no term loses the metres in the size of the planet.
+    #[cfg(test)]
+    pub fn altitude_at(&self, world: Vec3) -> f32 {
+        let p = world - self.eye.truncate();
+        let radius = self.centre.w;
+        let lean = 2.0 * (radius + self.eye.w) * p.dot(self.upward.truncate());
+        let rise = p.dot(p) + lean + self.upward.w;
+        rise / ((radius * radius + rise).max(0.0).sqrt() + radius).max(0.001)
     }
 }
 
@@ -150,6 +183,7 @@ impl Sky {
             day: self.day.extend(0.0),
             eye_sun: eye.sun.extend(0.0),
             eye_sky: eye.sky.extend(0.0),
+            ..default()
         }
     }
 }

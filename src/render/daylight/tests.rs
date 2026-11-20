@@ -100,7 +100,7 @@ fn daylight_is_the_light_the_palette_had() {
 #[test]
 fn the_shader_reads_the_block_in_its_order() {
     let names = [
-        "centre", "star", "colour", "air", "day", "eye_sun", "eye_sky",
+        "centre", "star", "colour", "air", "day", "eye_sun", "eye_sky", "eye", "upward",
     ];
     assert_eq!(names.len(), PlaceUniform::FIELDS);
     for (texel, name) in names.iter().enumerate() {

@@ -14,6 +14,8 @@ struct Place {
     day: vec4<f32>,
     eye_sun: vec4<f32>,
     eye_sky: vec4<f32>,
+    eye: vec4<f32>,
+    upward: vec4<f32>,
 }
 
 struct Daylight {
@@ -50,6 +52,8 @@ fn place_from(map: texture_2d<f32>) -> Place {
     place.day = textureLoad(map, vec2<i32>(4, 0), 0);
     place.eye_sun = textureLoad(map, vec2<i32>(5, 0), 0);
     place.eye_sky = textureLoad(map, vec2<i32>(6, 0), 0);
+    place.eye = textureLoad(map, vec2<i32>(7, 0), 0);
+    place.upward = textureLoad(map, vec2<i32>(8, 0), 0);
     return place;
 }
 
@@ -127,10 +131,17 @@ fn light_at(place: Place, height: f32, altitude: f32) -> Light {
     return out;
 }
 
+fn altitude_at(place: Place, world: vec3<f32>) -> f32 {
+    let p = world - place.eye.xyz;
+    let radius = place.centre.w;
+    let rise = dot(p, p) + 2.0 * (radius + place.eye.w) * dot(p, place.upward.xyz) + place.upward.w;
+    return rise / max(sqrt(max(radius * radius + rise, 0.0)) + radius, 0.001);
+}
+
 fn height_at(place: Place, world: vec3<f32>) -> vec2<f32> {
     let out = world - place.centre.xyz;
     let far = max(length(out), 0.001);
-    return vec2<f32>(dot(out / far, place.star.xyz), far - place.centre.w);
+    return vec2<f32>(dot(out / far, place.star.xyz), altitude_at(place, world));
 }
 
 fn light_of(place: Place, world: vec3<f32>) -> Light {

@@ -57,6 +57,11 @@ pub struct WaterUniform {
     pub far: Vec4,
     /// The hand-over, see [`blend::packed`].
     pub blend: Vec4,
+    /// Render position of the focus in xyz and its height above sea level in metres in w.
+    pub eye: Vec4,
+    /// Unit vector away from the planet centre at the focus, in render axes, in xyz, and in w the height `a`
+    /// of the focus folded with the radius `R` as `a * a + 2 * R * a`, worked out in 64 bits.
+    pub upward: Vec4,
 }
 
 /// Sines of the height of the star between which the water goes from its night look to its day

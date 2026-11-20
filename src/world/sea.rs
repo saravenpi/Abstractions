@@ -7,6 +7,7 @@ mod depth;
 mod ember;
 mod floor;
 mod follow;
+mod height;
 mod liquid;
 mod material;
 mod mesh;
@@ -20,6 +21,8 @@ mod waves;
 mod tests_curve;
 #[cfg(test)]
 mod tests_globe;
+#[cfg(test)]
+mod tests_height;
 #[cfg(test)]
 mod tests_light;
 #[cfg(test)]

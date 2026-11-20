@@ -20,6 +20,7 @@ mod react;
 #[cfg(test)]
 mod rig;
 mod scan;
+mod signs;
 mod site;
 #[cfg(test)]
 mod stage;
@@ -73,5 +74,6 @@ pub(super) fn plugin(app: &mut App) {
             )
                 .chain()
                 .after(crate::effects::Sight),
-        );
+        )
+        .add_plugins(signs::plugin);
 }

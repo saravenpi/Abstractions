@@ -12,6 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Animals walk the ground of living planets: the herds of the planet's own species graze, travel and rest around you, up to 48 at once within 150 m, and fade in and out at the edge. Every player sees the same herd in the same place.
 - Animals notice robots, yours and your friends': shy plant eaters look up, then run from you and come back to their herd once you are gone. Hunters stay bolder.
 - Hunts play out where you can see them: hunters stalk and run their prey down, the kill lies where it fell while it has meat, and scavengers gather round it.
+- Animals leave signs and make calls. Within 60 m you find the footprints of herds that passed in the last four minutes, spaced wider where they ran, droppings and cropped patches where they grazed, nests and burrows near their homes, and bones where a kill was eaten. Herds call now and then, lower for bigger animals, call the alarm when they flee, and hunters cry as they give chase. Every player finds the same tracks and hears the same calls.
 
 ### Changed
 

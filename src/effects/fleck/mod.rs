@@ -2,7 +2,7 @@
 //! gravity of the planet and the drag of its air, and a drop that lands says where, so the owner of
 //! the fleck can lay a mark there.
 //!
-//! The pool is fixed: [`SLOTS`] entities made once, sharing one mesh, with one material per colour.
+//! The pool is fixed: `SLOTS` entities made once, sharing one mesh, with one material per colour.
 //! A new fleck takes a free slot, or the oldest live one, so the pool never grows and nothing
 //! allocates per frame.
 
@@ -14,8 +14,6 @@ mod tune;
 mod tests_fleck;
 
 use bevy::prelude::*;
-
-pub use pool::SLOTS;
 
 use crate::screens::{Screen, playing};
 

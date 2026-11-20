@@ -22,9 +22,9 @@ const POLAR: Vec2 = Vec2::new(-3.9, -1.2);
 /// Degrees on each side of a band edge over which two bands blend.
 const BLEND: f32 = 5.0;
 
-/// Day in seconds past which a planet turns too slowly for three cells: one cell spans each
-/// hemisphere and the trades blow all the way to the pole.
-pub(super) const SLOW_DAY: f32 = 3600.0;
+/// Day in seconds past which a planet turns too slowly for three cells: three Earth days. One cell
+/// spans each hemisphere and the trades blow all the way to the pole.
+pub(super) const SLOW_DAY: f32 = 3.0 * 86_400.0;
 
 /// Returns 0 below `edge - BLEND`, 1 above `edge + BLEND` and a smooth step between.
 fn step(edge: f32, x: f32) -> f32 {

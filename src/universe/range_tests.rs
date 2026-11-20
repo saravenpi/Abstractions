@@ -30,17 +30,22 @@ fn within(x: f64, range: (f64, f64)) -> bool {
 }
 
 /// Every star of the sample has a mass, light, radius, temperature, age, colour and place
-/// inside its range, and its light, size and temperature follow its mass.
+/// inside its range, and its light and size follow its mass to a billionth, the rounding of the
+/// kilogram round trip.
 #[test]
 fn stars_stay_in_range() {
+    let close = |a: f64, b: f64| (a - b).abs() <= 1e-9 * a.abs().max(b.abs());
     for (_, star) in sample() {
         let mass = star.mass / SUN_MASS;
         assert!(within(mass, (0.08, 30.0)), "{star:?}");
         assert!(within(star.luminosity, (0.0006, 2.2e5)), "{star:?}");
         assert!(within(star.radius / SUN_RADIUS, (0.13, 7.0)), "{star:?}");
         assert!(within(star.temperature, (2500.0, 47_000.0)), "{star:?}");
-        assert_eq!(star.luminosity, star::light(mass));
-        assert_eq!(star.radius, star::size(mass) * SUN_RADIUS);
+        assert!(close(star.luminosity, star::light(mass)), "{star:?}");
+        assert!(
+            close(star.radius, star::size(mass) * SUN_RADIUS),
+            "{star:?}"
+        );
         let years = star.age / YEAR;
         assert!(years > 0.0 && years <= star::OLDEST, "{star:?}");
         assert!(years <= star::life(mass), "{star:?}");

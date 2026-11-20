@@ -146,7 +146,7 @@ pub fn judge(
     let me = me(species, (herd, slot), beast.wits.health.share(), ctx.grace);
     let weighed = weigh(ctx, (&senser, me, species.body.height), best, &ground);
     let (stance, focus) = alarmed(ctx, own, beast, weighed);
-    if let Some(f) = focus.filter(|_| watch && stance == Stance::Flee) {
+    if let Some(f) = weighed.1.filter(|_| watch && weighed.0 == Stance::Flee) {
         raised.push((own, spot.planet(f.at)));
     }
     (beast.wits.stance, beast.wits.focus) = (stance, focus);

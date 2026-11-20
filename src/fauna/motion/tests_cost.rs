@@ -108,7 +108,7 @@ fn crawler_step_and_pose_are_cheap() {
 }
 
 /// Returns the microseconds one step and pose of `g` take on average over 300 frames.
-fn timed(g: &Grown) -> f64 {
+fn once(g: &Grown) -> f64 {
     let rounds = 300;
     let mut motion = Motion::new(&g.body, Vec3::Y * 0.5, Vec3::NEG_Z, 4);
     let asked = drive(Vec3::NEG_Z * g.body.length.max(0.2), 0.3);
@@ -118,6 +118,11 @@ fn timed(g: &Grown) -> f64 {
         std::hint::black_box(motion.pose(&g.body));
     }
     start.elapsed().as_secs_f64() * 1e6 / f64::from(rounds)
+}
+
+/// Returns the fastest of three runs of [`once`], so that a busy machine does not count against the body.
+fn timed(g: &Grown) -> f64 {
+    (0..3).map(|_| once(g)).fold(f64::MAX, f64::min)
 }
 
 /// Stepping and posing every grown body of every plan and habitat costs on average under the

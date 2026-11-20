@@ -17,6 +17,7 @@ pub mod rest;
 pub mod rig;
 pub mod root;
 pub mod settle;
+pub mod song;
 pub mod spring;
 pub mod stance;
 pub mod strand;
@@ -26,6 +27,7 @@ pub mod walk;
 
 pub use pose::Placed;
 pub use rig::{Detail, Drive, Motion};
+pub use song::Song;
 
 #[cfg(test)]
 mod fixtures;
@@ -49,6 +51,8 @@ mod tests_ik;
 mod tests_plans;
 #[cfg(test)]
 mod tests_size;
+#[cfg(test)]
+mod tests_song;
 #[cfg(test)]
 mod tests_spring;
 #[cfg(test)]

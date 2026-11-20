@@ -2,15 +2,17 @@
 //!
 //! Parts are placed parents first. A part hangs from where its parent is now, then the motion
 //! that owns it moves it: legs reach their feet, chain parts lie along their strands, the head
-//! looks, wings flap, antennae flick, and the torso breathes.
+//! looks, wings flap, antennae flick, and the torso breathes. A calling body lifts its head, drops
+//! its jaw and pumps its chest on every note, and rises for a threat display.
 
-use bevy::math::{Quat, Vec3};
+use bevy::math::{Quat, Vec2, Vec3};
 
 use super::frame::Role;
 use super::ik::{three_bone, two_bone, unit};
 use super::look::tilt;
 use super::rest::{Place, carry};
 use super::rig::Motion;
+use super::song::{JAW, Song};
 use crate::life::body::{Body, Knee, Locomotion};
 
 /// A part's position, rotation and scale in the local frame.
@@ -27,7 +29,8 @@ impl Motion {
     /// Returns the place, rotation and scale of every part of `body`, in the order of its parts,
     /// all in the local frame. `body` must be the body the motion was made for.
     pub fn pose(&self, body: &Body) -> Vec<Placed> {
-        let root = (self.root.place, self.root.turn);
+        let raise = self.sung().map_or(0.0, |s| s.raise(body.height));
+        let root = (self.root.place + Vec3::Y * raise, self.root.turn);
         let mut placed: Vec<Placed> = Vec::with_capacity(body.parts.len());
         let mut limbs = vec![[Vec3::ZERO; 4]; body.legs.len()];
         for (i, part) in body.parts.iter().enumerate() {
@@ -45,9 +48,17 @@ impl Motion {
     fn place(&self, body: &Body, i: usize, base: Place, limbs: &mut [[Vec3; 4]]) -> Placed {
         let (at, turn) = base;
         let breath = 0.015 * self.idle.breath();
+        let song = self.sung();
         match self.frame.roles[i] {
-            Role::Torso => (at, turn, Vec3::new(1.0 + breath, 1.0 + breath, 1.0)),
-            Role::Squash => (at, turn, self.beat.squash),
+            Role::Torso => {
+                let chest = song.map_or(Vec3::ONE, Song::chest);
+                (at, turn, Vec3::new(1.0 + breath, 1.0 + breath, 1.0) * chest)
+            }
+            Role::Squash => (
+                at,
+                turn,
+                self.beat.squash * song.map_or(Vec3::ONE, Song::squash),
+            ),
             Role::Bone(leg, bone) if body.locomotion == Locomotion::Walk => {
                 self.bone(body, (i, usize::from(leg), usize::from(bone)), base, limbs)
             }
@@ -60,12 +71,14 @@ impl Motion {
         }
     }
 
-    /// Returns the turn a part of `role` gets on top of its rest: the head looks, wings flap and
-    /// an antenna flicks when its side's timer fires.
+    /// Returns the turn a part of `role` gets on top of its rest: the head looks and reaches as it
+    /// calls, the jaw drops, wings flap and an antenna flicks when its side's timer fires.
     fn swing(&self, role: Role) -> Quat {
         let turn = self.root.turn;
+        let song = self.sung();
         match role {
-            Role::Head => tilt(self.look.at, turn),
+            Role::Head => tilt(self.look.at + Vec2::Y * song.map_or(0.0, Song::pitch), turn),
+            Role::Jaw => Quat::from_axis_angle(turn * Vec3::X, -JAW * song.map_or(0.0, Song::open)),
             Role::Wing(side) => {
                 Quat::from_axis_angle(turn * Vec3::Z, self.beat.wing * f32::from(side))
             }
@@ -80,6 +93,11 @@ impl Motion {
             }
             _ => Quat::IDENTITY,
         }
+    }
+
+    /// Returns the call the body is making now, if any.
+    fn sung(&self) -> Option<&Song> {
+        self.song.as_ref().filter(|s| s.live())
     }
 
     /// Returns part `i`, bone `bone` of leg `leg` of `body`, laid between the joints its leg solver

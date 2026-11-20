@@ -4,18 +4,22 @@
 //! Once a second the lay reads the signs of `crate::life::signs` within [`tune::RADIUS`] of the robot
 //! from its own `life::herd::Watch`, which can look back along the herds' paths, and writes them into
 //! one flat mesh of fixed size. A few times a second the hearing sends the calls of the herds and
-//! hunts in earshot to the audio as positioned cues. Neither runs off a living planet.
+//! hunts in earshot to the audio as positioned cues, and keeps them for the singing, which moves the
+//! bodies that call each frame before the walk poses them. None runs off a living planet.
 
 mod hear;
 mod lay;
 mod paint;
 mod shapes;
+mod sing;
 #[cfg(test)]
 mod stage;
 #[cfg(test)]
 mod tests_hear;
 #[cfg(test)]
 mod tests_lay;
+#[cfg(test)]
+mod tests_sing;
 pub mod tune;
 
 use std::time::Duration;
@@ -28,6 +32,8 @@ use super::gate;
 use crate::life::herd::Watch;
 use crate::life::signs::Sign;
 use crate::screens::playing;
+
+pub(super) use sing::{Sung, sing, sounding};
 
 /// The signs around the local robot: the watch they are read from, the last signs read, and the
 /// entity and mesh that draw them.
@@ -48,13 +54,15 @@ pub struct Trail {
 pub(super) fn plugin(app: &mut App) {
     let lay = lay::lay.run_if(on_timer(Duration::from_secs_f32(tune::LAY)));
     let hear = hear::hear.run_if(on_timer(Duration::from_secs_f32(tune::HEAR)));
-    app.init_resource::<Trail>().add_systems(
-        Update,
-        (
-            lay::forget.run_if(gate::moved),
-            (lay, hear).run_if(playing).run_if(gate::living),
-        )
-            .chain()
-            .after(crate::effects::Sight),
-    );
+    app.init_resource::<Trail>()
+        .init_resource::<Sung>()
+        .add_systems(
+            Update,
+            (
+                lay::forget.run_if(gate::moved),
+                (lay, hear).run_if(playing).run_if(gate::living),
+            )
+                .chain()
+                .after(crate::effects::Sight),
+        );
 }

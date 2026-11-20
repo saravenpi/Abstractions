@@ -43,7 +43,7 @@ pub const WARY: f32 = 0.3;
 pub const ALARM: f32 = 0.8;
 
 /// Steps of the ray of sight over the height field.
-pub const RAY_STEPS: u32 = 5;
+pub const RAY_STEPS: u32 = 16;
 
 /// Metres above its root at which a robot is seen: about its chest.
 pub const ROBOT_CHEST: f32 = 1.0;

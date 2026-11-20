@@ -26,7 +26,7 @@ fn blood_falls_every_two_metres_and_fades() {
     let mut blood = Blood::default();
     let mut last = None;
     for step in 0..20 {
-        let x = 0.5 * f64::from(step);
+        let x = 0.51 * f64::from(step);
         let at = (DVec3::Y * radius + DVec3::X * x).normalize();
         let drip = Drip {
             at,

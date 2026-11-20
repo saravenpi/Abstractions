@@ -141,9 +141,9 @@ Starts after 0.11 ships, or in parallel on its own branch `hunt` from `ecosystem
 - Probe screenshots of anything visible; the owner plays each wave in a dev or hot build.
 - Cost budgets: senses under 20 µs per animal per frame, a swing and its hit test under 0.1 ms, the solver under 5 ms per request.
 
-## Open questions for the owner
+## Owner decisions (2026-11-20)
 
-1. **Start now or after 0.11?** Running H1 now on its own branch is possible; it touches few files the ecosystems work uses.
-2. **First weapon:** melee only in 0.13.0 (roadmap), or a thrown spear early (the hunting research ranks it first for the stalking loop)?
-3. **Robot as prey:** predators hunting the robot in 0.13.0, or later?
-4. **Hitstop on by default,** with a setting to reduce it? (Monster Hunter's players split on it.)
+1. **Start now,** on branch `hunt` from `ecosystems`, beside the ecosystems fixes.
+2. **First weapons:** melee (cut, pierce, crush) **and a thrown spear** in the first release. The spear joins wave H2 (`swing` owns throwing; `weapon` adds a "throw" intent stat: balance point near the middle, flight drag, penetration on arrival).
+3. **Predators hunt the robot** in the first release, with the same visible awareness rules, never right after a landing (wave H3, `attacks`).
+4. **Hitstop on by default,** with a setting to reduce or turn it off (wave H2, `swing`; the option goes in the gameplay settings).

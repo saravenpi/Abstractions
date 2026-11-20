@@ -92,10 +92,12 @@ pub enum Icon {
     Reload,
     /// `link`
     Link,
+    /// `dog`
+    Animal,
 }
 
 /// Every icon with its codepoint in the pixelarticons font, in declaration order.
-pub(super) const CODEPOINTS: [(Icon, char); 34] = [
+pub(super) const CODEPOINTS: [(Icon, char); 35] = [
     (Icon::Play, '\u{ecd3}'),
     (Icon::Pause, '\u{ecc0}'),
     (Icon::Earth, '\u{eb85}'),
@@ -130,11 +132,12 @@ pub(super) const CODEPOINTS: [(Icon, char); 34] = [
     (Icon::Wifi, '\u{ee01}'),
     (Icon::Reload, '\u{ecfa}'),
     (Icon::Link, '\u{ec5f}'),
+    (Icon::Animal, '\u{eb79}'),
 ];
 
 impl Icon {
     /// Every icon, in declaration order.
-    pub const ALL: [Icon; 34] = [
+    pub const ALL: [Icon; 35] = [
         Icon::Play,
         Icon::Pause,
         Icon::Earth,
@@ -169,6 +172,7 @@ impl Icon {
         Icon::Wifi,
         Icon::Reload,
         Icon::Link,
+        Icon::Animal,
     ];
 
     /// Returns the codepoint of the icon in the pixelarticons font.

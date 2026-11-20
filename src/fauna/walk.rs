@@ -12,7 +12,7 @@ use super::herds::{Herds, Land};
 use super::lead::goal;
 use super::motion::{Detail, Motion};
 use super::steer::{Aim, Pace, cruise, drive};
-use super::tune::{DRIFT, FROUDE_TOP, MAX_STEP, NEAR, RING};
+use super::tune::{DRIFT, FROUDE_TOP, MAX_STEP, NEAR};
 use super::want::Lead;
 use crate::avatar::Avatar;
 use crate::life::Species;
@@ -157,13 +157,12 @@ fn aim(ctx: &Ctx, beast: &Beast, species: &Species) -> Aim {
         .iter()
         .find(|(id, _)| *id == own)
         .and_then(|(_, h)| h.as_ref());
-    let ring = RING + species.body.length;
     let still = Aim {
         place: beast.motion.root.at,
         flow: Vec3::ZERO,
         excite: 0.0,
     };
-    goal(&beast.lead, herd, (ctx.hunts, ring), ctx.time, radius).map_or(still, |g| Aim {
+    goal(&beast.lead, herd, (ctx.hunts, species), ctx.time, radius).map_or(still, |g| Aim {
         place: beast.spot.local(g.dir * radius),
         flow: (beast.spot.rot.inverse() * g.flow).as_vec3(),
         excite: g.excite,
@@ -241,7 +240,7 @@ fn refit(ctx: &Ctx, (beast, placed): (&mut Beast, &mut Placed), species: &Specie
     let at = Vec3::new(0.0, spot.ground(ctx.terrain, Vec2::ZERO) + lift, 0.0);
     let seed = beast.lead.key().0 ^ u64::from(beast.lead.key().1);
     beast.motion = Motion::new(&species.body, at, facing, seed);
-    beast.mood.threat = spot.local(old.planet(beast.mood.threat));
+    (beast.mood.threat, beast.mood.last) = (spot.local(old.planet(beast.mood.threat)), None);
     beast.spot = spot;
     *placed = Placed {
         pos: spot.origin,

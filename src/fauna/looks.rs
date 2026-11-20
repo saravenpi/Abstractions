@@ -1,8 +1,10 @@
 //! The looks of the planet's animals: one mesh per part of each species, made the first time an
-//! animal of that species is drawn and shared by every individual, and one material for all.
+//! animal of that species is drawn and shared by every individual, one material for all, and one
+//! glowing material per species that glows.
 
 use bevy::prelude::*;
 
+use super::glow::{lamp, lit};
 use super::mesh::part_mesh;
 use crate::life::Life;
 
@@ -15,6 +17,9 @@ pub struct Looks {
     skin: Option<Handle<StandardMaterial>>,
     /// Meshes by species index, then part index, made once; `None` for a part with no tissue.
     meshes: Vec<Option<Vec<Option<Handle<Mesh>>>>>,
+    /// Glowing materials by species index, made with its meshes; `None` for a species that does
+    /// not glow.
+    lamps: Vec<Option<Handle<StandardMaterial>>>,
 }
 
 impl Looks {
@@ -30,17 +35,44 @@ impl Looks {
             .clone()
     }
 
+    /// Returns the material of each part of species `index` of `life`: its glowing material for the
+    /// parts that glow, the shared one for the others. Call [`Looks::parts`] first.
+    pub fn paints(
+        &mut self,
+        (life, index): (&Life, u16),
+        materials: &mut Assets<StandardMaterial>,
+    ) -> Vec<Handle<StandardMaterial>> {
+        let skin = self.skin(materials);
+        let Some(species) = life.species.get(usize::from(index)) else {
+            return Vec::new();
+        };
+        let glow = self.lamps.get(usize::from(index)).cloned().flatten();
+        lit(species)
+            .into_iter()
+            .map(|on| glow.clone().filter(|_| on).unwrap_or_else(|| skin.clone()))
+            .collect()
+    }
+
+    /// Returns the species index and the glowing material of every glowing species made so far.
+    pub fn lamps(&self) -> impl Iterator<Item = (usize, &Handle<StandardMaterial>)> {
+        self.lamps
+            .iter()
+            .enumerate()
+            .filter_map(|(i, l)| l.as_ref().map(|l| (i, l)))
+    }
+
     /// Returns the part meshes of species `index` of `life` on the planet of seed `planet`, made the
-    /// first time; meshes of another planet are dropped first.
+    /// first time with its glowing material; meshes of another planet are dropped first.
     pub fn parts(
         &mut self,
         (planet, life): (u64, &Life),
         index: u16,
-        meshes: &mut Assets<Mesh>,
+        (meshes, materials): (&mut Assets<Mesh>, &mut Assets<StandardMaterial>),
     ) -> &[Option<Handle<Mesh>>] {
         if self.planet != planet || self.meshes.len() != life.species.len() {
             self.planet = planet;
             self.meshes = vec![None; life.species.len()];
+            self.lamps = vec![None; life.species.len()];
         }
         let (Some(slot), Some(s)) = (
             self.meshes.get_mut(usize::from(index)),
@@ -48,6 +80,9 @@ impl Looks {
         ) else {
             return &[];
         };
+        if slot.is_none() {
+            self.lamps[usize::from(index)] = lamp(s, materials);
+        }
         slot.get_or_insert_with(|| {
             s.body
                 .parts

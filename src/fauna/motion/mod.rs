@@ -48,6 +48,8 @@ mod tests_ik;
 #[cfg(test)]
 mod tests_plans;
 #[cfg(test)]
+mod tests_size;
+#[cfg(test)]
 mod tests_spring;
 #[cfg(test)]
 mod tests_walk;

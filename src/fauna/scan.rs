@@ -12,6 +12,7 @@ use super::fade::leave;
 use super::gate::{Spec, footing};
 use super::herds::{Herds, Land};
 use super::looks::Looks;
+use super::near::{Nearby, sightings};
 use super::place::Spot;
 use super::steer::cruise;
 use super::tune::{MOST, REACH};
@@ -33,6 +34,7 @@ pub struct Scan<'w, 's> {
     anchor: Res<'w, Anchor>,
     universe: Option<Res<'w, Universe>>,
     herds: ResMut<'w, Herds>,
+    nearby: ResMut<'w, Nearby>,
     spec: ResMut<'w, Spec>,
     looks: ResMut<'w, Looks>,
     stores: (
@@ -50,6 +52,10 @@ pub fn scan(mut s: Scan, mut wants: Local<Vec<Want>>) {
     };
     let Some(life) = globe.life() else {
         return;
+    };
+    *s.nearby = Nearby {
+        body: footing(&s.anchor),
+        herds: sightings(life, &globe, &s.herds.herds, from.robot),
     };
     members(life, &s.herds.herds, from, &mut wants);
     visitors(life, &s.herds.carcasses, from, &mut wants);
@@ -134,18 +140,19 @@ fn born(s: &mut Scan, (life, planet): (&Life, u64), want: &Want, now: f32) {
     };
     let at = Vec3::new(0.0, spot.ground(&s.terrain, Vec2::ZERO) + lift, 0.0);
     let facing = heading(s, want, &spot);
-    let skin = s.looks.skin(&mut s.stores.1);
+    let (meshes, materials) = (&mut s.stores.0, &mut s.stores.1);
     let meshes = s
         .looks
-        .parts((planet, life), want.species, &mut s.stores.0)
+        .parts((planet, life), want.species, (meshes, materials))
         .to_vec();
+    let skins = s.looks.paints((life, want.species), materials);
     let birth = Birth {
         lead: want.lead,
         species: (species, want.species),
         at: (spot, at, facing),
         now,
     };
-    spawn(&mut s.commands, birth, &meshes, &skin);
+    spawn(&mut s.commands, birth, &meshes, &skins);
 }
 
 /// Returns the way `want` faces in the frame `spot`: its herd's heading, or towards the carcass it

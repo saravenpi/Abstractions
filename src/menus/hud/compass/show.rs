@@ -35,6 +35,7 @@ fn icon(kind: MarkerKind) -> Icon {
         MarkerKind::Friend => Icon::User,
         MarkerKind::Waypoint => Icon::MapPin,
         MarkerKind::Favourite => Icon::Star,
+        MarkerKind::Herd => Icon::Animal,
     }
 }
 

@@ -19,9 +19,23 @@ pub const MOST: usize = 48;
 /// foot, leg solvers and chains.
 pub const NEAR: f32 = 40.0;
 
-/// Metres along the ground of the search radius of a watch: [`REACH`] and [`SLACK`] plus the room
-/// the robot walks before the watch is rolled again.
-pub const WATCH_RADIUS: f64 = REACH + SLACK + WATCH_MOVE;
+/// Metres along the ground from the local robot within which herds are marked on the compass and
+/// the minimap.
+pub const MARK_REACH: f64 = 300.0;
+
+/// Most herds marked at once.
+pub const MARKS: usize = 3;
+
+/// Shortest body in metres of a species whose herds are marked: smaller animals are hard to see
+/// from the mark.
+pub const MARK_SIZE: f32 = 0.4;
+
+/// Metres under which a herd is left unmarked beside a nearer marked one.
+pub const MARK_APART: f64 = 60.0;
+
+/// Metres along the ground of the search radius of a watch: [`MARK_REACH`], past [`REACH`] and
+/// [`SLACK`], plus the room the robot walks before the watch is rolled again.
+pub const WATCH_RADIUS: f64 = MARK_REACH + WATCH_MOVE;
 
 /// Metres the robot walks from the search point of a watch before it is rolled again.
 pub const WATCH_MOVE: f64 = 90.0;
@@ -43,14 +57,24 @@ pub const PULL: f32 = 0.8;
 /// Metres from its place within which an animal of a still herd stands still.
 pub const SETTLE: f32 = 0.4;
 
-/// Metres an animal of no size notices a robot from; [`NOTICE_PER_METRE`] more per metre of body.
-pub const NOTICE: f32 = 8.0;
+/// Metres from which an animal of 1 m of body looks up at a threat; [`SIZE_SHARE`] sets how the
+/// distance grows with body length.
+pub const ALERT: f32 = 20.0;
 
-/// Metres added to the notice distance per metre of body length.
-pub const NOTICE_PER_METRE: f32 = 6.0;
+/// Metres under which a shy animal of 1 m of body flees a moving threat. Grazing mammals let a
+/// walker come to about ten metres before they run (Stankowich 2008, "Ungulate flight responses to
+/// human disturbance", Biological Conservation 141, 2159-2173).
+pub const FLEE: f32 = 11.0;
 
-/// Share of the notice distance under which a fully wary animal flees.
-pub const FLEE_SHARE: f32 = 0.6;
+/// Share of the reaction distances that does not grow with body length: an animal of length `l`
+/// metres reacts at `SIZE_SHARE + (1 - SIZE_SHARE) * l` times the distances of a 1 m animal.
+pub const SIZE_SHARE: f32 = 0.6;
+
+/// Share of the flee distance a threat that stands still keeps: a robot that waits is let nearer.
+pub const STILL_SHARE: f32 = 0.6;
+
+/// Speed in metres per second under which a threat counts as standing still.
+pub const STILL: f32 = 0.4;
 
 /// Rise of the alarm per second while a threat is near, a share of the gap to its level.
 pub const ALARM_RISE: f32 = 4.0;
@@ -60,6 +84,17 @@ pub const FLEE_SPEED: f32 = 0.8;
 
 /// Metres an animal of no size scavengers circle a carcass at; one body length more for each.
 pub const RING: f32 = 1.5;
+
+/// Metres of the radius of the loop a flock of flyers of no size circles above its place; it grows
+/// with body length, up to four times.
+pub const SOAR_LOOP: f32 = 14.0;
+
+/// Share of its top speed a circling flyer flies at.
+pub const SOAR_SPEED: f32 = 0.35;
+
+/// Emissive strength, in the linear units of Bevy's emissive colour, of a glow of full strength at
+/// midnight.
+pub const NIGHT_GLOW: f32 = 6.0;
 
 /// Most scavengers drawn at one carcass.
 pub const VISITORS: u8 = 3;

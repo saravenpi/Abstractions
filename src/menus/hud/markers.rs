@@ -22,6 +22,8 @@ pub enum MarkerKind {
     Waypoint,
     /// A favourite place.
     Favourite,
+    /// A herd of animals near the player.
+    Herd,
 }
 
 /// Where a marker is: on a body, in the body's own turning frame, or only a direction.

@@ -5,8 +5,6 @@
 //! input is [`AvatarPose`]: one system fills what the player controller already tells
 //! ([`AvatarSet::Fill`]), anything ordered after it may overwrite the result, and
 //! [`AvatarSet::Animate`] turns it into joint angles. [`Shown`] chooses how much of the body is drawn.
-//!
-//! The pose math is pure and lives in the modules beside it: `gait`, `ground`, `crouch`, `blend`.
 
 mod air;
 mod animate;

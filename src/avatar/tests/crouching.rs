@@ -54,8 +54,10 @@ fn the_crouch_is_blended_by_its_amount() {
 /// A crouched stride swings its feet less far than a standing one at the same speed.
 #[test]
 fn a_crouched_stride_takes_shorter_steps() {
-    let mut clock = Clock::default();
-    clock.phase = 0.7;
+    let clock = Clock {
+        phase: 0.7,
+        ..Clock::default()
+    };
     let reach = |crouch: f32| {
         let pose = pose_of(Mode::Walk, &state(Mode::Walk, 2.0, crouch), &clock);
         (pose.limb(Limb::Hip, 0) - pose.limb(Limb::Hip, 1)).abs()

@@ -19,6 +19,7 @@ fn well(radius: f64, radii: f64) -> Well {
         mu: 1.0,
         radius,
         lock: radius * radii,
+        hill: f64::INFINITY,
     }
 }
 
@@ -29,7 +30,7 @@ fn the_first_failing_check_is_the_reason() {
     let wells = [well(1000.0, 3.0)];
     let inside = Block::Inside {
         star: false,
-        lock: 3,
+        lock: 30,
         tenths: 14,
     };
     assert_eq!(blocker(&ship, &wells), Some(inside));
@@ -40,7 +41,7 @@ fn the_first_failing_check_is_the_reason() {
         near_star,
         Some(Block::Inside {
             star: true,
-            lock: 5,
+            lock: 50,
             tenths: 40
         })
     ));

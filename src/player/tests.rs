@@ -10,6 +10,7 @@ mod flight;
 mod glider;
 mod intents;
 mod jet;
+mod jumps;
 mod lead;
 mod respread;
 mod sends;
@@ -30,7 +31,7 @@ use super::spawn::Home;
 use super::upright::facing;
 use super::{BODY_LENGTH, BODY_RADIUS, Player, place, seat};
 use crate::space::{Anchor, Frame, Shift, altitude, rebased, up};
-use crate::universe::Universe;
+use crate::universe::{STANDARD_GRAVITY, Universe};
 use crate::world::Globe;
 
 /// Sea level radius of the test planet in metres.
@@ -87,7 +88,7 @@ impl Walker {
 /// altitude never leaves a 1 cm band.
 #[test]
 fn walking_straight_goes_around_the_planet() {
-    let globe = Globe::new(4, RADIUS, 22.0);
+    let globe = Globe::new(4, RADIUS, STANDARD_GRAVITY);
     let height = 1.5f32;
     let anchor = tangent_anchor(DVec3::new(0.3, 0.8, -0.52).normalize());
     let mut walker = Walker {

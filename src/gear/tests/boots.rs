@@ -3,13 +3,14 @@
 use bevy::prelude::*;
 
 use super::{DT, Flight, braking, looking};
+use crate::gear::tune::REF_GRAVITY;
 use crate::gear::{GearInput, Mode, descent_target};
 
 /// Vertical speeds the boots are switched on at.
 const CLIMBS: [f32; 8] = [-80.0, -40.0, -10.0, -5.0, -2.0, 0.0, 3.0, 7.0];
 
 /// Gravities of the weakest, the home and the strongest planet.
-const GRAVITIES: [f32; 3] = [6.6, 22.0, 39.6];
+const GRAVITIES: [f32; 3] = [0.3 * REF_GRAVITY, REF_GRAVITY, 1.8 * REF_GRAVITY];
 
 /// Returns the highest point a body reaches in 60 s of boots from `velocity`, sticks pushed.
 fn highest(velocity: Vec3, gravity: f32, density: f32) -> f64 {
@@ -98,7 +99,7 @@ fn boot_descent_converges_without_overshoot() {
 /// The boots take about a second to catch a fast fall and give a modest drift, no more.
 #[test]
 fn boots_brake_soon_and_drift_modestly() {
-    let fall = descent(-40.0, 22.0);
+    let fall = descent(-40.0, REF_GRAVITY);
     assert!(fall[90] > -8.0, "still falling at {} after 1.5 s", fall[90]);
     let mut flight = Flight::new(Mode::BootFall, Vec3::Y * -5.0);
     let input = GearInput {

@@ -12,9 +12,6 @@ pub const TURN_RATE: DVec3 = DVec3::new(1.1, 0.7, 1.8);
 /// How much harder than the pilot the assist may fire the attitude thrusters.
 const ASSIST_GAIN: f64 = 2.5;
 
-/// Acceleration of the vertical thrusters in metres per second squared, with the assist off.
-pub const LIFT_ACCEL: f64 = 55.0;
-
 /// Throttle under which the lever counts as neutral.
 pub const NEUTRAL: f64 = 0.05;
 

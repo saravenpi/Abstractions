@@ -26,7 +26,7 @@ fn near_home(radii: f64) -> (SystemSpec, usize, Ship) {
     (system, index, ship)
 }
 
-/// The drive refuses to spool inside 3 radii of a planet and spools outside.
+/// The drive refuses to spool inside the lock sphere of a planet and spools outside.
 #[test]
 fn warp_refuses_inside_the_lock_sphere() {
     let (system, _, mut ship) = near_home(PLANET_LOCK - 0.05);
@@ -190,6 +190,7 @@ fn detour_goes_around_a_body_in_the_way() {
         mu: 1.0,
         radius: 1000.0,
         lock: 3000.0,
+        hill: 1.0e6,
     };
     let from = DVec3::new(-30_000.0, 200.0, 0.0);
     let bent = detour(&[well], from, DVec3::X, 60_000.0);

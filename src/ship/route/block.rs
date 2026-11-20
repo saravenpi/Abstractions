@@ -26,7 +26,7 @@ pub fn blocker(ship: &Ship, wells: &[Well]) -> Option<Block> {
     let radii = well.lock / well.radius;
     Some(Block::Inside {
         star: (radii - STAR_LOCK).abs() < 1e-6,
-        lock: radii.round() as u8,
+        lock: (radii * 10.0).round() as u8,
         tenths: (well.pos.distance(ship.pos) / well.radius * 10.0) as u32,
     })
 }
@@ -60,6 +60,7 @@ pub fn status(reading: Reading) -> RouteStatus {
         (Phase::Idle, _) => RouteStatus::Idle,
         (Phase::Waiting, Some(block)) => RouteStatus::Blocked(block),
         (Phase::Waiting, None) | (Phase::Aligning, _) => RouteStatus::Aligning(reading.aligned),
+        (Phase::Climbing, _) => RouteStatus::Climbing,
         (Phase::Dropping, _) => RouteStatus::Dropping,
         (Phase::Spooling, _) => RouteStatus::Spooling,
         (Phase::Cruising, _) => RouteStatus::InWarp,

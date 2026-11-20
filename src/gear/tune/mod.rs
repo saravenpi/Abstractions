@@ -1,4 +1,4 @@
-//! Tuning constants of the flight gear. Speeds are quoted for the home planet at sea level.
+//! Tuning constants of the flight gear. Speeds are quoted under standard gravity at sea level.
 
 use bevy::prelude::*;
 
@@ -12,8 +12,8 @@ pub use {touch::*, water::*};
 /// Air density at sea level in kilograms per cubic metre, the same as the ship uses.
 pub const SEA_DENSITY: f32 = 1.2;
 
-/// Gravity in metres per second squared the quoted speeds are measured under.
-pub const REF_GRAVITY: f32 = 22.0;
+/// Gravity in metres per second squared the quoted speeds are measured under: standard gravity.
+pub const REF_GRAVITY: f32 = crate::universe::STANDARD_GRAVITY as f32;
 
 /// Longest internal integration step in seconds. Longer frames are cut into equal substeps.
 pub const MAX_STEP: f32 = 1.0 / 120.0;
@@ -21,8 +21,9 @@ pub const MAX_STEP: f32 = 1.0 / 120.0;
 /// Most substeps one call may take.
 pub const MAX_SUBSTEPS: f32 = 8.0;
 
-/// Drag area over twice the mass at sea level density, per metre.
-pub const AERO: f32 = 0.0453;
+/// Drag area over twice the mass at sea level density, per metre: the 0.0453 tuned under 22 m/s
+/// squared times 9.80665 over 22, so that every speed of the gear stays the same.
+pub const AERO: f32 = 0.020_193;
 
 /// Drag coefficients of the spread wingsuit along the right, dorsal and nose axes.
 ///

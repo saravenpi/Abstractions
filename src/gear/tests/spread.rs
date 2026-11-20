@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::{Flight, gliding};
-use crate::gear::tune::WING_TIME;
+use crate::gear::tune::{REF_GRAVITY, WING_TIME};
 use crate::gear::{GearInput, Mode};
 
 /// Returns the spread after each frame of a fall at 30 m/s whose wings are asked open for
@@ -77,6 +77,6 @@ fn the_spread_is_the_same_at_any_frame_rate() {
 fn opening_the_wings_does_not_jerk_the_body() {
     for rate in [30, 144] {
         let (_, kick) = opening(rate);
-        assert!(kick < 3.0 * 22.0, "{rate} Hz: a kick of {kick} m/s2");
+        assert!(kick < 3.0 * REF_GRAVITY, "{rate} Hz: a kick of {kick} m/s2");
     }
 }

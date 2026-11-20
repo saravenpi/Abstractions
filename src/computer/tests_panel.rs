@@ -70,7 +70,7 @@ fn the_action_line_says_what_the_route_can_do() {
     assert_eq!(action("Kolva b", idle), engage);
     let inside = Block::Inside {
         star: false,
-        lock: 3,
+        lock: 30,
         tenths: 14,
     };
     let blocked = action("Kolva b", RouteStatus::Blocked(inside));
@@ -78,7 +78,7 @@ fn the_action_line_says_what_the_route_can_do() {
         blocked,
         (
             false,
-            "Inside 3 planet radii (now 1.4): fly out first".to_string()
+            "Inside 3.0 planet radii (now 1.4): fly out first".to_string()
         )
     );
     assert_eq!(

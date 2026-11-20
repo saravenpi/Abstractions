@@ -3,6 +3,9 @@
 mod align;
 #[cfg(test)]
 mod align_tests;
+mod ascent;
+#[cfg(test)]
+mod ascent_tests;
 mod block;
 #[cfg(test)]
 mod block_tests;
@@ -11,6 +14,7 @@ mod done;
 mod done_tests;
 mod goal;
 
+use ascent::{climb, climbs};
 use block::{aligned, blocker};
 pub(super) use done::finish;
 pub(super) use goal::ARRIVAL;
@@ -59,6 +63,7 @@ fn beacon(pos: DVec3, to: DVec3, lock: f64) -> Well {
         mu: 0.0,
         radius: lock,
         lock,
+        hill: lock,
     }
 }
 
@@ -140,6 +145,9 @@ pub fn fly(
     let Some(target) = autopilot.target else {
         return;
     };
+    if autopilot.phase == Phase::Climbing || climbs(&ship, Some(target)) {
+        return climb(&mut autopilot, &mut ship, &mut helm, &skies, target);
+    }
     let goal = autopilot
         .goal
         .get_or_insert_with(|| goal::resolve(universe, target));
@@ -150,10 +158,7 @@ pub fn fly(
     };
     if arrived {
         helm.warp = ship.warp != Warp::Off;
-        *autopilot = Autopilot {
-            phase: Phase::Arrived,
-            ..Autopilot::default()
-        };
+        *autopilot = Autopilot::ARRIVED;
         return;
     }
     let (jump, to) = aim_at(goal, universe, (here, time), (to, ship.warp));
@@ -201,7 +206,7 @@ pub fn report(
     let to = to.and_then(|(goal, here)| goal.reached(universe, here, time));
     let reading = block::Reading {
         phase,
-        block: blocker(ship, &skies.wells),
+        block: blocker(ship, &skies.wells).filter(|_| !climbs(ship, destination.0)),
         aligned: to.map_or(0, |(to, _)| aligned(ship.forward(), to)),
         course: destination.0.is_some(),
     };

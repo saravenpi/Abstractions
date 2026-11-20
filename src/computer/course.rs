@@ -54,6 +54,7 @@ pub fn action(name: &str, status: RouteStatus) -> (bool, String) {
     match status {
         RouteStatus::Idle => (true, format!("Engage autopilot to {name}")),
         RouteStatus::Blocked(block) => (false, block.words()),
+        RouteStatus::Climbing => (false, format!("Climbing to orbit around {name}")),
         RouteStatus::Dropping => (false, "Dropping out of warp".to_string()),
         RouteStatus::Aligning(done) => (false, format!("Aligning {done}%")),
         RouteStatus::Spooling => (false, "Spooling the warp drive".to_string()),

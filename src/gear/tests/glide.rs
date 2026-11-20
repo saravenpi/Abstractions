@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use super::measure::{dive, settled_glide};
 use super::pilot::keys;
 use super::{DT, Flight, gliding};
+use crate::gear::tune::REF_GRAVITY;
 use crate::gear::{GearInput, Mode};
 
 /// The range of the hands-off glide ratio under the home gravity and air.
@@ -72,7 +73,7 @@ fn restless(time: f32) -> GearInput {
 /// Whatever the pilot does, a glide never gains mechanical energy from one frame to the next.
 #[test]
 fn glide_never_gains_energy() {
-    for gravity in [6.6, 22.0, 39.6] {
+    for gravity in [0.3 * REF_GRAVITY, REF_GRAVITY, 1.8 * REF_GRAVITY] {
         let mut flight = Flight::new(Mode::Glide, Vec3::new(0.0, -5.0, -45.0));
         let mut energy = flight.energy(gravity);
         for frame in 0..3600 {
@@ -113,7 +114,7 @@ fn a_dive_trades_height_for_speed() {
 #[test]
 fn pull_up_climbs_then_stalls_and_recovers() {
     let mut flight = dive(2.0);
-    let (before, fast) = (flight.energy(22.0), flight.state.airspeed);
+    let (before, fast) = (flight.energy(REF_GRAVITY), flight.state.airspeed);
     let mut track = [(0.0_f64, 0.0_f32, 0.0_f32); 900];
     for (frame, at) in track.iter_mut().enumerate() {
         let stick = f32::from(u8::from(frame < 300));
@@ -132,7 +133,10 @@ fn pull_up_climbs_then_stalls_and_recovers() {
     assert!(top > bottom + 15.0, "climbed only {}", top - bottom);
     assert!(slowest < fast - 30.0, "kept {slowest}");
     assert!(flight.state.airspeed > slowest + 5.0, "no speed back");
-    assert!(flight.energy(22.0) < before, "the pull-up gained energy");
+    assert!(
+        flight.energy(REF_GRAVITY) < before,
+        "the pull-up gained energy"
+    );
     assert!(flight.twist < 0.09, "tumbled by {}", flight.twist);
 }
 

@@ -2,11 +2,12 @@
 
 use bevy::math::DVec3;
 
-use super::frames::planet_velocity;
+use super::frames::{hill_radius, planet_velocity};
 use crate::universe::{PlanetSpec, StarSpec, SystemSpec};
 
-/// Radii from a planet centre inside which the warp drive is locked.
-pub const PLANET_LOCK: f64 = 3.0;
+/// Radii from a planet centre inside which the warp drive is locked: just outside its surface,
+/// so that the lock does not grow into millions of kilometres with the size of the planet.
+pub const PLANET_LOCK: f64 = 1.2;
 
 /// Radii from a star centre inside which the warp drive is locked.
 pub const STAR_LOCK: f64 = 5.0;
@@ -24,6 +25,9 @@ pub struct Well {
     pub radius: f64,
     /// Distance from the centre in metres inside which the warp drive is locked.
     pub lock: f64,
+    /// Radius in metres of the Hill sphere, inside which the body rules the space around it
+    /// against what it goes round. Infinite for a star.
+    pub hill: f64,
 }
 
 impl Well {
@@ -35,6 +39,7 @@ impl Well {
             mu: star.mu(),
             radius: star.radius,
             lock: star.radius * STAR_LOCK,
+            hill: f64::INFINITY,
         }
     }
 
@@ -46,7 +51,14 @@ impl Well {
             mu: planet.mu(),
             radius: planet.radius,
             lock: planet.radius * PLANET_LOCK,
+            hill: hill_radius(planet),
         }
+    }
+
+    /// Returns the distance from the centre to `pos` as a share of the Hill radius: 0 at the
+    /// centre, 1 at the edge of the Hill sphere.
+    pub fn reach(&self, pos: DVec3) -> f64 {
+        self.pos.distance(pos) / self.hill
     }
 
     /// Returns the metres from `pos` to the edge of the lock sphere, negative inside it.

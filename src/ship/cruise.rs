@@ -4,13 +4,16 @@
 use bevy::math::DVec3;
 
 use super::assist::NEUTRAL;
+use super::tune::ORBIT_CAP;
 
 /// Speed in metres per second the full lever asks for at a surface, and the seconds of flight
 /// the ship keeps between itself and the nearest surface at that speed: the top speed is
 /// `SLOW.0 + clearance / SLOW.1`, so the ship is slow where it has to be exact.
 const SLOW: (f64, f64) = (40.0, 4.0);
 
-/// Top speed in metres per second in open space, reached 9.8 km from the nearest surface.
+/// Top speed in metres per second in open space away from big bodies, reached 9.8 km from the
+/// nearest surface. Near a body whose circular orbit is faster than half of it the top speed is
+/// [`ORBIT_CAP`] times that orbit speed, see [`top_speed_at`].
 const FAST: f64 = 2500.0;
 
 /// How many times faster the full lever is with the boost.
@@ -63,7 +66,15 @@ pub const AIR_GRIP: f64 = 0.6;
 /// Returns the speed in metres per second the full lever asks for `clearance` metres from the
 /// nearest surface: slow near the ground or a body, fast in open space.
 pub fn top_speed(clearance: f64) -> f64 {
-    (SLOW.0 + clearance.max(0.0) / SLOW.1).min(FAST)
+    top_speed_at(clearance, 0.0)
+}
+
+/// Returns the speed in metres per second the full lever asks for `clearance` metres from the
+/// nearest surface of a body whose circular orbit at the ship runs at `orbital` metres per
+/// second: as [`top_speed`], but the open space cap is [`ORBIT_CAP`] times that speed where it
+/// is more than the fixed one, so that a ship can reach the orbit of a big planet.
+pub fn top_speed_at(clearance: f64, orbital: f64) -> f64 {
+    (SLOW.0 + clearance.max(0.0) / SLOW.1).min(FAST.max(ORBIT_CAP * orbital))
 }
 
 /// Returns the fastest descent in metres per second the assist flies `clearance` metres above
@@ -108,6 +119,9 @@ pub struct Cruise {
     pub ground: bool,
     /// Share of the push across the nose that is used, from [`AIR_GRIP`] to 1.
     pub grip: f64,
+    /// Speed in metres per second of a circular orbit around the nearest body at the ship's
+    /// distance from its centre, zero without a body.
+    pub orbital: f64,
 }
 
 impl Cruise {
@@ -138,7 +152,7 @@ impl Cruise {
     /// take, and a hovering ship that is not sunk keeps its gear [`FLOOR`] above the ground.
     pub fn target(&self) -> DVec3 {
         let boost = if self.boost { BOOST_SPEED } else { 1.0 };
-        let top = top_speed(self.clearance) * boost;
+        let top = top_speed_at(self.clearance, self.orbital) * boost;
         let ahead = if self.idle() { 0.0 } else { self.throttle };
         let asked = self.nose * (ahead * top) + self.rise * self.climb(top);
         let sink = -asked.dot(self.up) - descent(self.clearance);
@@ -158,7 +172,7 @@ impl Cruise {
     /// sheds all of its speed, whatever the air.
     pub fn push(&self, h: f64) -> DVec3 {
         let err = self.target() - self.vel;
-        let pace = top_speed(self.clearance).max(self.vel.length());
+        let pace = top_speed_at(self.clearance, self.orbital).max(self.vel.length());
         let hard = if self.boost || self.brake { HARD } else { 1.0 };
         let thrust = (THRUST.0 + pace / THRUST.1) * hard;
         if self.idle() {

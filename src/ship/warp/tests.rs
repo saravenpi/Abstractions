@@ -5,7 +5,7 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::{CARRY, CRUISE_CAP, FLOOR, JUMP_CAP, SPOOL_TIME, Warp, advance, fraction, request};
-use crate::render::{CARRIED, Drive, Phase, Sequence};
+use crate::render::{Drive, Phase, Sequence};
 use crate::ship::body::Ship;
 use crate::ship::fx::{pace, warp_level};
 use crate::ship::telemetry::WarpState;
@@ -107,11 +107,11 @@ fn speed_share_spans_the_drive_on_a_log_scale() {
     assert!((fraction(CRUISE_CAP) - 0.711).abs() < 1e-3);
 }
 
-/// The sky carries a body in the bubble between the same radii as the drive does, a cruise
-/// between the stars keeps every single star in sight, and a jump blurs them.
+/// The drive carries a body in the bubble inside its Hill sphere, a cruise between the stars
+/// keeps every single star in sight, and a jump blurs them.
 #[test]
 fn the_sky_follows_the_scales_of_the_drive() {
-    assert_eq!(CARRIED, (CARRY.0 as f32, CARRY.1 as f32));
+    assert!(0.0 < CARRY.0 && CARRY.0 < CARRY.1 && CARRY.1 <= 1.0);
     let settled = |speed: f64| {
         let engaged = shown(Warp::Active { speed });
         (0..600).fold(Sequence::default(), |state, _| state.advance(engaged, 0.1))

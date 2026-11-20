@@ -50,6 +50,7 @@ fn in_space() -> Ship {
         mu: 3.5e8,
         radius: 6000.0,
         lock: 18_000.0,
+        hill: 1.0e6,
     };
     let frame = Frame::System(Default::default());
     let mut ship = Ship::at_rest(frame, DVec3::ZERO, DQuat::from_rotation_y(0.4));

@@ -83,7 +83,7 @@ fn folding_from_a_glide_stays_prone_into_the_arch() {
 fn a_fall_arches_when_fast_and_rights_itself_near_the_ground() {
     let fast = fallen(35.0, 2000.0, 120);
     assert!(fast > FLAT, "a fast fall leans only {fast}");
-    let hop = fallen(7.0, 2000.0, 120);
+    let hop = fallen(4.7, 2000.0, 120);
     assert!(hop < UPRIGHT, "a hop leans {hop}");
     let near = fallen(35.0, 10.0, 120);
     assert!(near < UPRIGHT, "about to land, it leans {near}");

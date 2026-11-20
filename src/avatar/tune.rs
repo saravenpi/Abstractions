@@ -139,7 +139,7 @@ pub const REACH_TIME: (f32, f32) = (0.12, 0.45);
 
 /// Fall speeds in meters per second between which a falling body goes from the upright fall
 /// of a jump into the skydiver arch, belly to the ground: a hop never reaches the first, a drop
-/// of about 18 m on the home planet reaches the second.
+/// of about 40 m under standard gravity reaches the second.
 pub const ARCH_SINK: (f32, f32) = (14.0, 28.0);
 
 /// Seconds before the ground between which a body in the arch turns upright to land: upright

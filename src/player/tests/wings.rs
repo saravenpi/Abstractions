@@ -4,6 +4,7 @@
 use bevy::prelude::*;
 
 use super::stage::{app, body};
+use crate::gear::tune::REF_GRAVITY;
 use crate::gear::{Gear, Mode, descent_target};
 use crate::player::Player;
 use crate::player::asks::gather;
@@ -46,7 +47,7 @@ fn lift(app: &mut App) {
 /// Checks that the body of `app`, the run held for three more seconds, sinks at the descent
 /// speed of the boots with the wings folded, and falls freely again once the run is let go.
 fn brakes(app: &mut App) {
-    let target = descent_target(22.0);
+    let target = descent_target(REF_GRAVITY);
     let (motion, gear, _) = hold(app, 90, &[Intent::Boost]);
     let sink = -gear.state.velocity.y;
     assert!(motion.boots && !motion.wings, "{motion:?}");

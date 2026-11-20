@@ -7,7 +7,7 @@ use crate::gear::{FlightState, Mode as Flight};
 use crate::player::Motion;
 
 /// Pull of gravity on the simulated body, in meters per second squared.
-const GRAVITY: f32 = 22.0;
+const GRAVITY: f32 = crate::gear::tune::REF_GRAVITY;
 
 /// What the body is asked to do for a while.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -151,7 +151,7 @@ impl Body {
             Act::Hop => {
                 if self.motion.grounded {
                     self.motion.grounded = false;
-                    self.motion.velocity.y = 8.0;
+                    self.motion.velocity.y = 5.3;
                 }
                 self.fall(dt);
             }

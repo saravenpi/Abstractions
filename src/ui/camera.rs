@@ -3,8 +3,9 @@
 use bevy::camera::CameraOutputMode;
 use bevy::prelude::*;
 use bevy::render::render_resource::BlendState;
+use bevy::window::PrimaryWindow;
 
-use crate::render::{GameCamera, LowRes};
+use crate::render::{Fit, GameCamera, LowRes};
 
 /// Marks the UI overlay camera.
 #[derive(Component)]
@@ -15,6 +16,9 @@ pub struct UiCamera;
 pub struct WorldView;
 
 /// Spawns the overlay camera and the world view. The camera clears the window and its own layer every frame.
+///
+/// The camera draws without multisampling: it draws only the interface and the game image, which
+/// need none, and a multisampled target at window size would cost four samples per window pixel.
 pub(super) fn spawn_camera(mut commands: Commands, low: Res<LowRes>) {
     commands.spawn((
         UiCamera,
@@ -28,7 +32,7 @@ pub(super) fn spawn_camera(mut commands: Commands, low: Res<LowRes>) {
             },
             ..default()
         },
-        Msaa::Sample4,
+        Msaa::Off,
         IsDefaultUiCamera,
     ));
     commands.spawn((
@@ -56,4 +60,17 @@ pub(super) fn sync_output(
         false => Visibility::Inherited,
     };
     view.set_if_neq(wanted);
+}
+
+/// Shows the game image at its whole scale: the part of it that fits the window, centred, with
+/// every game pixel the same square of window pixels.
+pub(super) fn frame_view(
+    window: Single<&Window, With<PrimaryWindow>>,
+    mut view: Single<&mut ImageNode, With<WorldView>>,
+) {
+    let physical = window.physical_size();
+    let shown = Some(Fit::of(physical).shown(physical));
+    if view.rect != shown {
+        view.rect = shown;
+    }
 }

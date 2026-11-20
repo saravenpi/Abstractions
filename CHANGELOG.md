@@ -34,10 +34,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Animals no longer walk up cliffs. Each body holds a slope as steep as its feet grip, about 39 degrees on pads, more on many clawed legs, less for slitherers; herds walk around ground steeper than that, and an animal led at a cliff follows its foot or stops.
 - Animals let you nearer: a calm grazer looks up at about 20 m and runs once you walk within about 11 m. Small animals let you come closer, hunters closer still, and an animal lets a robot that stands still come nearer than one that walks.
 - Flying species circle in flocks 8 to 30 m over the ground, and swarms hover low over the plants.
+- The pixel look is the same on every screen: the game always shows about 360 rows of pixels, and every pixel is the same square of screen pixels, also on high-density and 4K screens. Before, a bigger window showed more detail and some rows and columns of pixels came out wider than others.
 
 ### Removed
 
 - The fixed birds, butterflies and fireflies. The flying and swarming species of each planet take their place, and dead planets have none.
+- The Pixel size and Color depth options. The pixel size now follows the screen, and the colours keep their 24 levels.
 
 ### Fixed
 

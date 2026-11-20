@@ -31,6 +31,7 @@ mod shade;
 mod sky;
 mod starfield;
 mod sun;
+mod tune;
 mod vantage;
 mod warm;
 mod warp;
@@ -46,6 +47,8 @@ mod tests_air;
 mod tests_dither;
 #[cfg(test)]
 mod tests_fog;
+#[cfg(test)]
+mod tests_lowres;
 #[cfg(test)]
 mod tests_moonday;
 #[cfg(test)]
@@ -75,7 +78,7 @@ pub use entry::FlightFx;
 pub use fog::{FOG_END, HORIZON_SHARE, OPEN as FOG_OPEN, THIN_AIR};
 pub use glow::entry_glow;
 pub use lighting::{Moon, Sun};
-pub use lowres::LowRes;
+pub use lowres::{Fit, LowRes, window_changed};
 pub use observer::Observer;
 pub use palette::Palette;
 pub use pixelate::Pixelate;

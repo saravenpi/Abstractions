@@ -1,5 +1,4 @@
 struct Pixelate {
-    pixel_size: u32,
     levels: f32,
 }
 

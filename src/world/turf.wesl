@@ -59,7 +59,7 @@ fn speckle(p: vec2<f32>) -> f32 {
 }
 
 fn carpet(turf: Turf, p: vec2<f32>) -> vec3<f32> {
-    let patch = lattice(p, 8.0) * 0.65 + lattice(p, 2.0) * 0.35;
-    let t = smoothstep(0.35, 0.65, patch);
+    let clump = lattice(p, 8.0) * 0.65 + lattice(p, 2.0) * 0.35;
+    let t = smoothstep(0.35, 0.65, clump);
     return mix(turf.low.rgb, turf.high.rgb, t) * (0.84 + 0.32 * speckle(p));
 }

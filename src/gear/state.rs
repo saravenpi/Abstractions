@@ -26,6 +26,9 @@ pub struct Servo {
     pub clock: f32,
     /// Speed lost into the last surface hit, in metres per second, until a touchdown reads it.
     pub impact: f32,
+    /// Velocity in metres per second the body had just before it last hit a surface, in the
+    /// upright frame. It stays until the next hit, so the body can tell how it came in.
+    pub struck: Vec3,
 }
 
 /// The flight gear at one instant.

@@ -23,10 +23,14 @@ pub fn deflect(before: Vec3, moved: Vec3) -> Vec3 {
 /// per second, in the upright frame.
 ///
 /// Call it after move and slide in every mode that drives. The speed lost into the surface is
-/// remembered until the next step, where a touchdown reads it to tell a slide from a landing roll.
+/// remembered until the next step, where a touchdown reads it to tell a slide from a landing roll,
+/// and the velocity the body came in at is kept until the next hit.
 pub fn slid(state: &FlightState, moved: Vec3) -> FlightState {
     let mut out = *state;
     let lost = (state.velocity - moved).length();
+    if lost > 0.5 {
+        out.servo.struck = state.velocity;
+    }
     out.velocity = match state.mode.airborne() {
         true => deflect(state.velocity, moved),
         false => moved,

@@ -87,6 +87,7 @@ pub use murk::{Murk, Swell, Waterline, murk};
 pub use observer::Observer;
 pub use palette::Palette;
 pub use pixelate::Pixelate;
+pub use seasons::{SeasonLight, SeasonLit, SeasonUniform};
 pub use sun::SunDir;
 pub use vantage::{LocalSystem, Vantage};
 pub use warm::{WARM_FRAMES, Warm, Warmed, warm_material};

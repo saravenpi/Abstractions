@@ -5,7 +5,7 @@ use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
 use super::colormap;
-use super::ground::{Daylit, GroundMaterial, place_map};
+use super::ground::{Daylit, GroundMaterial, place_map, season_map};
 use super::propmesh::{BIG, merge_parts_on};
 use super::scatter::{Placement, Rig, Scatter};
 use super::shapes::FlatMesh;
@@ -37,6 +37,8 @@ pub struct PropAssets {
     pub material: Handle<GroundMaterial>,
     /// Texture the material reads the light of the planet under the camera from.
     pub place: Handle<Image>,
+    /// Texture the material reads the season of the planet under the camera from.
+    pub season: Handle<Image>,
 }
 
 impl PropAssets {
@@ -50,12 +52,18 @@ impl PropAssets {
             ..default()
         };
         let place = images.add(place_map());
+        let season = images.add(season_map());
         let extension = Daylit {
             place: place.clone(),
             turf: default(),
+            season: season.clone(),
         };
         let material = materials.add(GroundMaterial { base, extension });
-        Self { material, place }
+        Self {
+            material,
+            place,
+            season,
+        }
     }
 }
 

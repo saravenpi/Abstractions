@@ -7,6 +7,7 @@ use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
 
 use super::giant::Giant;
+use crate::render::SeasonUniform;
 use crate::render::daylight::PlaceUniform;
 use crate::universe::{PlanetRecord, PlanetSpec, StarSpec};
 
@@ -84,6 +85,10 @@ pub struct BodyMaterial {
     /// not those of the camera. All zero, a planet stays unlit and shows only its own glow.
     #[uniform(10)]
     pub place: PlaceUniform,
+    /// The season of the planet, which turns the colours of its baked ground as it turns the ground of
+    /// the world. All zero, the colours stay as they were baked.
+    #[uniform(11)]
+    pub season: SeasonUniform,
 }
 
 /// A planet seen from afar, in linear colours.
@@ -126,6 +131,7 @@ impl BodyMaterial {
             },
             cover: None,
             place: default(),
+            season: default(),
         }
     }
 
@@ -154,6 +160,7 @@ impl BodyMaterial {
             },
             cover: None,
             place: default(),
+            season: default(),
         }
     }
 }

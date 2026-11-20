@@ -1,18 +1,20 @@
 //! Galaxies: one per universe grid cell, with about 60 percent of the cells holding one.
 
-use bevy::math::DVec3;
+use bevy::math::IVec3;
 
 use super::hash::{self, Rng};
 use super::home::HOME_GALAXY;
 use super::ids::GalaxyId;
 use super::spec::{GalaxyKind, GalaxySpec};
-use super::{GALAXY_CELL, GLY, names};
+use super::{GALAXY_CELL, LY, SECTOR_M, names};
 
 /// Share of the grid cells that hold a galaxy.
 const FILL: f64 = 0.6;
 
-/// Smallest and largest galaxy radius in game light-years.
-pub const RADIUS_GLY: (f64, f64) = (800.0, 2500.0);
+/// Smallest and largest galaxy radius in light-years: the Milky Way disc is 87,400 light-years
+/// across, so 25,000 to 75,000 covers dwarf to giant spirals
+/// (<https://en.wikipedia.org/wiki/Milky_Way>).
+pub const RADIUS_LY: (f64, f64) = (25_000.0, 75_000.0);
 
 /// Nearest and farthest a galaxy centre lies from the minimum corner of its cell, as a share of the cell.
 pub const CENTER_SPAN: (f64, f64) = (0.2, 0.8);
@@ -35,11 +37,12 @@ pub(super) struct Shape {
     pub kind: GalaxyKind,
     /// Number of arms, 0 unless the galaxy is a spiral.
     pub arms: u8,
-    /// Radius of the star disc in game light-years.
+    /// Radius of the star disc in light-years.
     pub radius: f64,
     /// Deviation of the dense core as a share of the radius, from 0.05 to 0.1.
     pub core: f64,
-    /// Deviation of the disc thickness as a share of the radius, from 0.02 to 0.04.
+    /// Deviation of the disc thickness as a share of the radius, from 0.008 to 0.015: 400 to 750
+    /// light-years at 50,000, for a thin disc of 700 to 1,500 light-years.
     pub thick: f64,
     /// Angle in radians the arms have turned by at the rim, negative for the other winding.
     pub swirl: f64,
@@ -56,7 +59,7 @@ impl Shape {
         };
         let spiral = kind == GalaxyKind::Spiral;
         let arms = ARMS.0 + rng.below(u32::from(ARMS.1 - ARMS.0) + 1) as u8;
-        let radius = rng.range(RADIUS_GLY.0, RADIUS_GLY.1);
+        let radius = rng.range(RADIUS_LY.0, RADIUS_LY.1);
         let winding = if rng.below(2) == 0 { 1.0 } else { -1.0 };
         Self {
             seed,
@@ -64,7 +67,7 @@ impl Shape {
             arms: if spiral { arms } else { 0 },
             radius,
             core: rng.range(0.05, 0.1),
-            thick: rng.range(0.02, 0.04),
+            thick: rng.range(0.008, 0.015),
             swirl: winding * rng.range(3.0, 7.0),
         }
     }
@@ -95,14 +98,17 @@ pub(super) fn shape(universe: u64, id: GalaxyId) -> Option<Shape> {
 pub(super) fn spec(universe: u64, id: GalaxyId) -> Option<GalaxySpec> {
     let shape = shape(universe, id)?;
     let mut rng = Rng::new(hash::child(shape.seed, PARTS[2]));
-    let mut axis = || rng.range(CENTER_SPAN.0, CENTER_SPAN.1) * GALAXY_CELL;
+    let sectors = (GALAXY_CELL / SECTOR_M).round();
+    let mut axis = || (rng.range(CENTER_SPAN.0, CENTER_SPAN.1) * sectors).round() as i32;
+    let center_sector = IVec3::new(axis(), axis(), axis());
     Some(GalaxySpec {
         id,
         seed: shape.seed,
         name: names::galaxy(hash::child(shape.seed, PARTS[3]), id == HOME_GALAXY),
         kind: shape.kind,
         arms: shape.arms,
-        radius: shape.radius * GLY,
-        center: DVec3::new(axis(), axis(), axis()),
+        radius: shape.radius * LY,
+        center_sector,
+        center: center_sector.as_dvec3() * SECTOR_M,
     })
 }

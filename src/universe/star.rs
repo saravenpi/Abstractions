@@ -10,7 +10,7 @@ use super::hash::{self, Rng};
 use super::ids::StarId;
 use super::spec::{StarClass, StarSpec};
 use super::units::{SUN_MASS, SUN_RADIUS, SUN_TEMPERATURE, YEAR};
-use super::{GLY, SECTOR_GLY, names};
+use super::{SECTOR_M, names};
 
 /// Years a star of the mass and light of the Sun shines before it leaves the main sequence.
 const SUN_LIFE: f64 = 1.0e10;
@@ -147,6 +147,7 @@ pub(super) fn build(id: StarId, seed: u64, region: Region) -> StarSpec {
         temperature: SUN_TEMPERATURE * (luminosity / (radius * radius)).powf(0.25),
         age: age(mass, region, rng.unit()) * YEAR,
         color: kind.color,
-        pos: (id.sector.as_dvec3() + within) * SECTOR_GLY * GLY,
+        pos: (id.sector.as_dvec3() + within) * SECTOR_M,
+        local: within * SECTOR_M,
     }
 }

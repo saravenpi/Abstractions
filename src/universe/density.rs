@@ -2,26 +2,32 @@
 
 use bevy::math::DVec3;
 
-use super::GLY;
+use super::LY;
 use super::galaxy::Shape;
 use super::hash;
 use super::home::HOME_GALAXY;
 use super::spec::{GalaxyKind, GalaxySpec};
 
-/// Stars per sector at the peak of the core.
-const CORE: f64 = 3.0;
+/// Stars per sector at the peak of the core: the cap of [`SECTOR_STARS`](super::SECTOR_STARS),
+/// so the dense core is clipped. A real core holds over one star per cubic light-year, which
+/// no sector of 12 stars can show.
+const CORE: f64 = 12.0;
 
-/// Stars per sector at the peak of the plain disc.
-const DISC: f64 = 0.5;
+/// Stars per sector at the peak of the plain disc: 22.6, so that the stars between two arms
+/// at 0.52 radii out in the plane, where the Sun is, number 4 per sector of 1,000 cubic
+/// light-years: `4 / exp(-0.52 / 0.3)`. That is 0.004 per cubic light-year, 0.14 per cubic
+/// parsec (<https://en.wikipedia.org/wiki/Stellar_density>). The cap of 12 per sector clips the
+/// inner disc to three times that.
+const DISC: f64 = 22.6;
 
-/// Stars per sector at the peak of an arm or a clump.
-const ARM: f64 = 2.0;
+/// Stars per sector at the peak of an arm or a clump: 1.5 times the disc.
+const ARM: f64 = 1.5 * DISC;
 
-/// Stars per sector at the peak of a ball galaxy.
-const BALL: f64 = 2.5;
+/// Stars per sector at the peak of a ball galaxy, the cap.
+const BALL: f64 = 12.0;
 
-/// Stars per sector at the peak of the halo.
-const HALO: f64 = 0.004;
+/// Stars per sector at the peak of the halo: 4e-6 per cubic light-year.
+const HALO: f64 = 4.0e-3;
 
 /// The part of a galaxy a place belongs to, which decides how old its stars are.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -75,7 +81,7 @@ pub(super) fn smooth(a: f64, b: f64, x: f64) -> f64 {
 }
 
 impl Shape {
-    /// Returns the expected stars per sector at `p` game light-years from the galaxy centre.
+    /// Returns the expected stars per sector at `p` light-years from the galaxy centre.
     pub fn parts(&self, p: DVec3) -> Parts {
         let q = p / self.radius;
         let (r, d) = (q.x.hypot(q.z), q.length());
@@ -122,10 +128,11 @@ impl GalaxySpec {
     /// Returns the expected number of stars per sector at `pos` metres from the galaxy centre.
     ///
     /// Cheap enough to sample a few thousand times to draw an impression of the galaxy. The disc
-    /// lies on the XZ plane. Values run from 0 in the void to about 3 in the core.
+    /// lies on the XZ plane. Values run from 0 in the void to about 30 in the core, before the
+    /// cap of a sector.
     pub fn density(&self, pos: DVec3) -> f64 {
         Shape::new(self.seed, self.id == HOME_GALAXY)
-            .parts(pos / GLY)
+            .parts(pos / LY)
             .total()
     }
 }

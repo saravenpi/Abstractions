@@ -3,7 +3,7 @@
 
 use bevy::math::DVec3;
 
-use super::GLY;
+use super::LY;
 use super::density::Parts;
 use super::galaxy::Shape;
 use super::home::HOME_GALAXY;
@@ -36,18 +36,18 @@ impl Glow {
     /// Returns the expected stars per sector at `pos` metres from the galaxy centre, split by
     /// the structure they belong to.
     pub fn stars(&self, pos: DVec3) -> Parts {
-        self.shape.parts(pos / GLY)
+        self.shape.parts(pos / LY)
     }
 
-    /// Returns the dust at `pos` metres from the galaxy centre, as the optical depth per game
+    /// Returns the dust at `pos` metres from the galaxy centre, as the optical depth per
     /// light-year.
     pub fn dust(&self, pos: DVec3) -> f64 {
-        self.shape.dust(pos / GLY)
+        self.shape.dust(pos / LY)
     }
 
     /// Returns the radius in metres of the sphere that holds all the light of the galaxy.
     pub fn reach(&self) -> f64 {
-        REACH * self.shape.radius * GLY
+        REACH * self.shape.radius * LY
     }
 
     /// Returns the half thickness in metres of the slab, centred on the plane of the disc, that
@@ -66,6 +66,6 @@ impl Glow {
             GalaxyKind::Elliptical => ROUND,
             GalaxyKind::Irregular => disc.max(SLAB.1 * shape.core).min(ROUND),
         };
-        share * shape.radius * GLY
+        share * shape.radius * LY
     }
 }

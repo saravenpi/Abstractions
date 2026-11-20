@@ -22,6 +22,7 @@ mod planet;
 mod record;
 mod rings;
 mod sector;
+mod shells;
 mod spec;
 mod spin;
 mod star;
@@ -49,6 +50,8 @@ mod record_tests;
 #[cfg(test)]
 mod ring_tests;
 #[cfg(test)]
+mod scale_tests;
+#[cfg(test)]
 mod spin_tests;
 #[cfg(test)]
 mod tests;
@@ -58,7 +61,7 @@ mod volatiles_tests;
 pub use air::{Gas, Mix, NO_AIR, Part, TOP_SCALES, dense, heights};
 pub use class::{MOLTEN, VOLCANIC};
 pub use density::Parts;
-pub use galaxy::{ARMS, CENTER_SPAN, RADIUS_GLY};
+pub use galaxy::{ARMS, CENTER_SPAN, RADIUS_LY};
 pub use giant::{GIANT_MASS, GIANT_RADIUS};
 pub use glow::Glow;
 pub use hill::{CAPTURED_RADIUS, IMPACT_RADIUS, REGULAR_RADIUS};
@@ -70,26 +73,28 @@ pub use record::{PlanetClass, PlanetRecord, Water, Zone};
 pub use rings::{RING_OUTER, ROCHE};
 pub use sector::{SECTOR_STARS, sector_of};
 pub use spec::{
-    CARRY, GRAVITATION, GalaxyKind, GalaxySpec, Orbit, PlanetSpec, Rings, StarClass, StarSpec,
-    SystemSpec,
+    CARRY, GalaxyKind, GalaxySpec, Orbit, PlanetSpec, Rings, StarClass, StarSpec, SystemSpec,
 };
 pub use spin::breakup;
 pub use system::{ORBIT, PLANETS, reach as system_reach};
 pub use units::{
-    AU, EARTH_RADIUS, STANDARD_GRAVITY, STARLIGHT, SUN_MASS, SUN_RADIUS, SUN_TEMPERATURE, YEAR,
+    AU, EARTH_MASS, EARTH_RADIUS, GRAVITATION, JUPITER_RADIUS, LY, PARSEC, SPEED_OF_LIGHT,
+    STANDARD_GRAVITY, STARLIGHT, SUN_MASS, SUN_RADIUS, SUN_TEMPERATURE, YEAR,
 };
 
 use bevy::math::IVec3;
 use bevy::prelude::Resource;
 
-/// Metres in one game light-year.
-pub const GLY: f64 = 1e10;
+/// Width of one star sector in light-years: a cube that holds about 4 stars near the Sun.
+pub const SECTOR_LY: f64 = 10.0;
 
-/// Width of one star sector in game light-years.
-pub const SECTOR_GLY: f64 = 10.0;
+/// Width of one star sector in metres.
+pub const SECTOR_M: f64 = SECTOR_LY * LY;
 
-/// Width in metres of the grid cells that each hold at most one galaxy.
-pub const GALAXY_CELL: f64 = 1e15;
+/// Width in metres of the grid cells that each hold at most one galaxy: 3 million light-years,
+/// the distance from the Milky Way to Andromeda, so neighbour galaxies lie 1.2 to 4.8 million
+/// light-years apart.
+pub const GALAXY_CELL: f64 = 3.0e6 * LY;
 
 /// The whole universe, generated on demand from a seed.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
@@ -101,8 +106,9 @@ pub struct Universe {
 impl Universe {
     /// Builds the universe for a seed. The same seed always gives the same universe.
     ///
-    /// This searches the middle of the home galaxy for the home planet, which takes a few
-    /// milliseconds: keep the universe, do not build it again every frame.
+    /// This searches the neighbourhood of a Sun-like point of the home galaxy for the home
+    /// planet, which takes a few milliseconds: keep the universe, do not build it again every
+    /// frame.
     pub fn new(seed: u64) -> Self {
         let home = home::choose(seed);
         Self { seed, home }
@@ -114,8 +120,8 @@ impl Universe {
     }
 
     /// Returns the planet a new game starts on, always the same one for a seed: the nearest
-    /// planet to the centre of the home galaxy that is solid, landable and alive. It is found
-    /// once, when the universe is built.
+    /// living planet to a Sun-like point of the home galaxy, 0.52 radii out in the plane of the
+    /// disc, that is solid and landable. It is found once, when the universe is built.
     pub fn home(&self) -> BodyId {
         self.home
     }

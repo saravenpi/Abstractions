@@ -15,8 +15,8 @@ pub(super) fn sample() -> Vec<(Universe, StarSpec)> {
         let at = u.star(home).expect("the home star exists").pos;
         let core = DVec3::new(0.04, 0.0, 0.03) * galaxy.radius;
         let found = [
-            u.stars_near(home.galaxy, at, 60.0),
-            u.stars_near(home.galaxy, core, 45.0),
+            u.stars_near(home.galaxy, at, 30.0),
+            u.stars_near(home.galaxy, core, 15.0),
         ];
         stars.extend(found.into_iter().flatten().map(|star| (u, star)));
     }
@@ -124,7 +124,8 @@ fn galaxies_stay_in_range() {
     assert!((0.55..0.65).contains(&share), "{share}");
     let mut kinds = [0; 3];
     for g in &galaxies {
-        assert!(within(g.radius / GLY, RADIUS_GLY), "{g:?}");
+        assert!(within(g.radius / LY, RADIUS_LY), "{g:?}");
+        assert_eq!(g.center, g.center_sector.as_dvec3() * SECTOR_M);
         assert!(
             g.center
                 .to_array()

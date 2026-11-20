@@ -13,6 +13,7 @@ use crate::world::mesh::{
 };
 use crate::world::propmesh::merge_props_on;
 use crate::world::props::{body_collider_on, build_grass_on};
+use crate::world::rocks::{Stand, Taken, key, spare};
 use crate::world::scatter::{Placement, Rig, Scatter, scatter_over};
 use crate::world::structures::{StructureData, build_in, origins_near};
 
@@ -37,6 +38,7 @@ pub struct ChunkData {
     pub(super) frame: Frame,
     pub(super) turfed: bool,
     pub(super) canopy: Canopy,
+    pub(super) stand: Stand,
 }
 
 /// What a worker thread produces for one coarse quadtree node.
@@ -101,18 +103,29 @@ fn clear(scatter: &mut Scatter, terrain: &Terrain, coord: IVec2, warp: &Embeddin
 }
 
 /// Returns the scatter of chunk `coord` over its `heights`, cleared around structures and the
-/// reserved ground, and the embedding that places it.
-fn planted(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>]) -> (Scatter, Embedding) {
+/// reserved ground and left without the rocks of `taken`, and the embedding that places it.
+fn planted(
+    terrain: &Terrain,
+    coord: IVec2,
+    heights: &[Vec<f32>],
+    taken: &Taken,
+) -> (Scatter, Embedding) {
     let warp = Embedding::of(terrain, coord);
     let mut scatter = scatter_over(terrain, coord, heights);
     clear(&mut scatter, terrain, coord, &warp);
+    spare(&mut scatter.props, key(terrain, coord), taken);
     (scatter, warp)
 }
 
 /// Builds the ground cover mesh of chunk `coord` alone, for a chunk that was generated without
 /// it. None when nothing small grows there.
 pub fn ground_cover(terrain: &Terrain, coord: IVec2) -> Option<Mesh> {
-    let (scatter, warp) = planted(terrain, coord, &chunk_heights(terrain, coord, 1));
+    let (scatter, warp) = planted(
+        terrain,
+        coord,
+        &chunk_heights(terrain, coord, 1),
+        &Taken::default(),
+    );
     let (embed, turn) = (|p| warp.point(p), |p| warp.turn(p));
     let rig = Rig {
         embed: &embed,
@@ -123,12 +136,17 @@ pub fn ground_cover(terrain: &Terrain, coord: IVec2) -> Option<Mesh> {
 
 /// Generates the mesh at level `lod`, the colliders, the merged props and the structures of chunk
 /// `coord`, all in the frame of the chunk: the main thread only inserts them. The ground cover is
-/// built only when `turfed` is set.
+/// built only when `turfed` is set. The rocks of `taken` are left out.
 ///
 /// `terrain` is the face chart view of the face of the chunk. Runs on any thread.
-pub fn generate(terrain: &Terrain, coord: IVec2, lod: Lod, turfed: bool) -> ChunkData {
+pub fn generate(
+    terrain: &Terrain,
+    coord: IVec2,
+    (lod, turfed): (Lod, bool),
+    taken: &Taken,
+) -> ChunkData {
     let heights = chunk_heights(terrain, coord, 1);
-    let (scatter, warp) = planted(terrain, coord, &heights);
+    let (scatter, warp) = planted(terrain, coord, &heights, taken);
     let mesh = chunk_mesh(terrain, coord, &subsample(&heights, lod.stride()), lod);
     let (embed, turn) = (|p| warp.point(p), |p| warp.turn(p));
     let rig = Rig {
@@ -146,6 +164,7 @@ pub fn generate(terrain: &Terrain, coord: IVec2, lod: Lod, turfed: bool) -> Chun
         structures: build_in(terrain, coord, &frame),
         heights: ground(terrain, coord, &heights),
         canopy: canopy_on(terrain, coord, (&scatter.props, &scatter.grass), &rig),
+        stand: Stand::of(key(terrain, coord), &scatter.props, &rig),
         lod,
         frame,
         turfed,

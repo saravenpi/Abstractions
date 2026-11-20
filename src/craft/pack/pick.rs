@@ -1,14 +1,20 @@
-//! Picking stones up: a key press on foot stows a handful of a stone that lies on the planet
-//! underfoot, one kind after the other. The world has no rock marker to look for yet, so any ground
-//! gives them, at most once every [`PICK_GAP`] seconds.
+//! Picking stones up: the pick key breaks up the rock under the crosshair, within the reach of the
+//! robot. The stone is one of the stones of the planet, chosen by the id of the rock, so the same rock
+//! always gives the same one. The robot carries off what it can of the rock, and the rock is gone
+//! from the world for good: the rest of it is rubble nobody tracks.
+
+mod aim;
 
 use bevy::prelude::*;
 
-use super::tune::{HANDFUL, PICK_GAP, PICK_KEY};
+use self::aim::Aim;
+use super::tune::PICK_KEY;
 use super::{Burden, Pack, Stack};
 use crate::craft::matter::{Mineral, Stuff};
+use crate::space::Location;
 use crate::universe::PlanetRecord;
 use crate::world::Terrain;
+use crate::world::rocks::{Rock, RockId, RockTaken, Taken};
 
 /// Returns the stones that lie on a planet of `record`.
 pub fn stones(record: &PlanetRecord) -> Vec<Mineral> {
@@ -18,33 +24,50 @@ pub fn stones(record: &PlanetRecord) -> Vec<Mineral> {
         .collect()
 }
 
-/// Returns the handful of the stone `turn` of the stones of `record`, going round, or nothing when
-/// none lies there.
-pub fn handful(record: &PlanetRecord, turn: usize) -> Option<Stack> {
+/// Returns all of `rock` as the stone of the planet of `record` its id picks, or nothing when no
+/// stone lies there. Its mass is its volume times the density of the stone.
+pub fn broken(record: &PlanetRecord, rock: &Rock) -> Option<Stack> {
     let found = stones(record);
-    let stone = *found.get(turn % found.len().max(1))?;
+    let stone = *found.get(rock.id.0 as usize % found.len().max(1))?;
+    let material = stone.material();
     Some(Stack {
         stuff: Stuff::Mineral(stone),
-        material: stone.material(),
-        mass: HANDFUL,
+        material,
+        mass: rock.mass(material.density),
     })
 }
 
-/// Stows a handful of the next stone of the planet underfoot when the pick key goes down, as far
-/// as the robot can carry it.
+/// Breaks up `rock`, when there is one, and stows as much of it as `room` kilograms hold. The rock
+/// is noted as taken and its id returned when the robot carried off any of it. A rock the robot
+/// cannot carry the least of stays where it is.
+pub(super) fn take(
+    rock: Option<Rock>,
+    (record, room): (&PlanetRecord, f32),
+    (pack, taken): (&mut Pack, &mut Taken),
+) -> Option<RockId> {
+    let rock = rock?;
+    let stack = broken(record, &rock)?;
+    (pack.stow(stack, room) > 0.0).then_some(())?;
+    taken.add(rock.id);
+    Some(rock.id)
+}
+
+/// Breaks up the rock under the crosshair when the pick key goes down, and says so.
 pub(crate) fn gather(
-    (keys, time): (Res<ButtonInput<KeyCode>>, Res<Time>),
-    (terrain, burden): (Res<Terrain>, Res<Burden>),
-    mut pack: ResMut<Pack>,
-    mut last: Local<(f32, usize)>,
+    (keys, aim): (Res<ButtonInput<KeyCode>>, Aim),
+    (terrain, burden, location): (Res<Terrain>, Res<Burden>, Res<Location>),
+    (mut pack, mut taken): (ResMut<Pack>, ResMut<Taken>),
+    mut told: MessageWriter<RockTaken>,
 ) {
-    let now = time.elapsed_secs();
-    if !keys.just_pressed(PICK_KEY) || now - last.0 < PICK_GAP {
+    if !keys.just_pressed(PICK_KEY) {
         return;
     }
-    let Some(stack) = handful(terrain.globe().record(), last.1) else {
-        return;
-    };
-    *last = (now, last.1 + 1);
-    pack.stow(stack, burden.room());
+    let record = terrain.globe().record();
+    let tools = (&mut *pack, &mut *taken);
+    if let Some(id) = take(aim.rock(), (record, burden.room()), tools) {
+        told.write(RockTaken {
+            planet: location.body,
+            id,
+        });
+    }
 }

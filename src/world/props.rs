@@ -6,7 +6,7 @@ use bevy::prelude::*;
 
 use super::colormap;
 use super::ground::{Daylit, GroundMaterial, place_map};
-use super::propmesh::{BIG, merge_parts_on};
+use super::propmesh::{BIG, Plant, merge_parts_on};
 use super::scatter::{Placement, Rig, Scatter};
 use super::shapes::FlatMesh;
 
@@ -92,9 +92,17 @@ pub fn build_grass_on(scatter: &Scatter, rig: &Rig) -> Mesh {
     merge_parts_on(parts, &solids(scatter), rig)
 }
 
+/// Returns the radius and the height in metres of the collider of a big prop of kind `plant` at `scale`,
+/// zero for a prop without one.
+pub fn extent(plant: Plant, scale: f32) -> [f32; 2] {
+    BODIES
+        .get(plant as usize)
+        .map_or([0.0; 2], |b| [b[0] * scale, b[1] * scale])
+}
+
 /// Returns the radius in metres of the ground the trunk, stem, rock or wreck of big prop `p` stands on.
 pub fn footprint(p: &Placement) -> f32 {
-    BODIES.get(p.plant as usize).map_or(0.0, |b| b[0] * p.scale)
+    extent(p.plant, p.scale)[0]
 }
 
 /// Returns the trunk, cactus, rock and wreck colliders of every big prop as one compound, in chunk space.

@@ -18,6 +18,7 @@ use crate::world::focus::Frames;
 use crate::world::globe::ChunkId;
 use crate::world::mesh::{Frame, Rings, leaf_coord};
 use crate::world::props::{Cover, PropAssets, spawn_props};
+use crate::world::rocks::Taken;
 use crate::world::structures::spawn_structures;
 use crate::world::{CHUNK_SIZE, Terrain, WorldReady};
 
@@ -31,6 +32,7 @@ pub struct Spawner<'w> {
     reach: Option<Res<'w, Reach>>,
     budget: Option<Res<'w, Budget>>,
     frames: Frames<'w>,
+    pub(super) taken: Option<Res<'w, Taken>>,
 }
 
 impl Spawner<'_> {
@@ -125,5 +127,6 @@ pub fn spawn_chunk(commands: &mut Commands, spawner: &mut Spawner, data: ChunkDa
         solid: false,
         shown: false,
         detail: Detail::new(data.lod, Turf::new(grass, data.turfed), structure),
+        stand: data.stand,
     }
 }

@@ -13,6 +13,7 @@ mod fade;
 mod far;
 mod grow;
 mod lane;
+mod mend;
 mod motion;
 mod near;
 mod nodes;
@@ -42,6 +43,8 @@ mod tests_lane;
 #[cfg(test)]
 mod tests_reach;
 #[cfg(test)]
+mod tests_rocks;
+#[cfg(test)]
 mod tests_stream;
 mod turf;
 mod work;
@@ -63,6 +66,7 @@ use self::far::FarView;
 pub use self::far::watch_far;
 pub use self::grow::grow;
 use self::lane::Lane;
+pub use self::mend::{mend, mending, note};
 use self::motion::Motion;
 pub use self::near::leaf_arc;
 use self::near::{Around, Course};
@@ -107,6 +111,7 @@ pub struct Chunks {
     motion: Motion,
     fades: Fades,
     stretch: Stretch,
+    owed: bool,
 }
 
 impl Chunks {

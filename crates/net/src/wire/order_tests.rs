@@ -32,7 +32,7 @@ fn bodies_of_the_old_format_are_refused() {
     let frame = Frame::Surface(planet());
     let mut bytes = Vec::new();
     robot().encode(&frame, &mut bytes);
-    assert_eq!(bytes.len(), 47);
+    assert_eq!(bytes.len(), 46);
     assert!(RobotBody::decode(&frame, &bytes[..44]).is_none());
     bytes.clear();
     let ship = ShipBody {

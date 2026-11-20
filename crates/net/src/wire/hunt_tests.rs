@@ -2,9 +2,7 @@
 //! numbers of the old messages stay, and bytes of the old format are refused.
 
 use super::body_tests::planet;
-use super::{
-    Act, AnimalKey, Carcass, ClientMsg, Event, Frame, Hit, HuntWorld, ITEM_MAX, Kill, Rock,
-};
+use super::{Act, AnimalKey, Carcass, ClientMsg, Event, Hit, HuntWorld, ITEM_MAX, Kill};
 use super::{ServerMsg, Spear, SpearKey, decode, encode};
 use crate::log::PlayerId;
 
@@ -145,6 +143,7 @@ fn the_other_events_come_back() {
         carcasses: vec![carcass()],
         spears: vec![spear(), other],
         held: vec![(PlayerId(2), vec![1; 70])],
+        ..HuntWorld::default()
     };
     size(&ServerMsg::Hunt(Event::World(world)));
 }

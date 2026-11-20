@@ -42,14 +42,14 @@ pub(super) fn robot() -> RobotBody {
     }
 }
 
-/// A robot body takes 47 bytes on a surface, so sixteen robots fit one datagram, and comes back
+/// A robot body takes 46 bytes on a surface, so sixteen robots fit one datagram, and comes back
 /// within the packing error, crouch and the swing of its hands included.
 #[test]
 fn a_robot_body_is_small_and_comes_back() {
     let (frame, sent) = (Frame::Surface(planet()), robot());
     let mut bytes = Vec::new();
     sent.encode(&frame, &mut bytes);
-    assert_eq!(bytes.len(), 47);
+    assert_eq!(bytes.len(), 46);
     let got = RobotBody::decode(&frame, &bytes).unwrap();
     assert!((got.position - sent.position).abs().max_element() <= 0.000_500_001);
     assert_eq!((got.velocity, got.mode), (sent.velocity, sent.mode));
@@ -62,9 +62,9 @@ fn a_robot_body_is_small_and_comes_back() {
     assert!((got.airspeed - sent.airspeed).abs() < 0.51);
     assert!((got.look - sent.look).abs().max_element() < 0.013);
     assert!((got.landed_hard - sent.landed_hard).abs() < 0.002);
-    assert!((got.crouch - sent.crouch).abs() < 0.002);
+    assert!((got.crouch - sent.crouch).abs() < 0.04);
     assert_eq!(got.swing, sent.swing);
-    assert!((got.phase - sent.phase).abs() < 0.008);
+    assert!((got.phase - sent.phase).abs() < 0.07);
 }
 
 /// A heading past half a turn wraps instead of sticking at the end, and the stride distance
@@ -97,7 +97,7 @@ fn a_position_in_space_comes_back_exactly() {
         };
         let mut bytes = Vec::new();
         sent.encode(&frame, &mut bytes);
-        assert_eq!(bytes.len(), 56);
+        assert_eq!(bytes.len(), 55);
         assert_eq!(
             RobotBody::decode(&frame, &bytes).unwrap().position,
             position

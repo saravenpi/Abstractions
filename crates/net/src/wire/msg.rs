@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::hunt::{Act, Event};
+use super::act::{Act, Event};
 use crate::ids::BodyId;
 use crate::leaves::Run;
 use crate::log::{Change, Changes, Entry, PlayerId};

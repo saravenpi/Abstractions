@@ -34,7 +34,7 @@ One note for steps 6, 16, 17 and 17b to 17d of `PLANETS.md`. The net crate, the 
 Still protocol 3: nothing of it was released. An old client is refused at the join check, and a robot or ship record of the old length does not decode (a body must have exactly its length).
 
 ### State records (datagrams)
-- Robot: 47 bytes on a surface (was 44), 56 in the other frames. New: `crouch` (1 byte, a share), `swing` (1 byte: act rank in bits 0 to 2 as ready, wind-up, swing, recover, guard, draw, stun; side in bits 3 and 4 as right, left, up, down) and `phase` (1 byte, seconds into the act, 0 to 2 s). Sixteen robot records fit one datagram of 1,100 bytes (test `sixteen_robots_fit_one_datagram`).
+- Robot: 46 bytes on a surface (was 44), 55 in the other frames. New: `swing` (1 byte: act rank in bits 0 to 2 as ready, wind-up, swing, recover, guard, draw, stun; side in bits 3 and 4 as right, left, up, down) and one byte with `crouch` (high 4 bits, steps of 1/15) and `phase` (low 4 bits, seconds into the act, 0 to 2 s in steps of 0.13 s). Sixteen robot records fit one datagram of 1,100 bytes (test `sixteen_robots_fit_one_datagram`).
 - Ship: 41 bytes on a surface (was 40), 50 elsewhere. New: `heat`, the glow of an entry, 1 byte.
 - New kind `Vitals` (11 bytes in every frame, about twice a second, sent in the frame of the robot record): the harm of the ten parts, one byte each, 0 whole to 255 destroyed, in the order head, torso, left arm, right arm, left leg, right leg, left wing, right wing, left boot, right boot, then the entry glow of the robot (1 byte). It travels apart so that the robot record stays small.
 - The room keeps four kinds per player now (`KINDS` is 4).

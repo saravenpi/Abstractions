@@ -55,12 +55,12 @@ fn field() -> (
         plugged: true,
     };
     let open = Act::Wound {
-        animal: animal(),
+        animal: animal(0),
         wound,
     };
     act(&mut room, ada, open, (101.0, &mut out));
     let plug = Act::Plug {
-        animal: animal(),
+        animal: animal(0),
         part: 2,
     };
     act(&mut room, ada, plug.clone(), (101.0, &mut out));
@@ -111,7 +111,7 @@ fn impacts_and_attacks_are_relayed_not_kept() {
         result: 0,
     };
     let attack = Attack {
-        animal: animal(),
+        animal: animal(0),
         kind: 1,
         target: Some(PlayerId(2)),
         started: 5_001.0,

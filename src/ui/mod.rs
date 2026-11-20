@@ -35,6 +35,8 @@ pub use widgets::{Overlay, caps, column, hairline, panel, root, root_on, rule, t
 use bevy::input_focus::InputFocus;
 use bevy::prelude::*;
 
+use crate::render::window_changed;
+
 /// Registers the UI camera, the fonts, the backdrop, the widget looks and the interface sounds.
 pub(super) fn plugin(app: &mut App) {
     app.add_plugins(backdrop::plugin)
@@ -43,6 +45,7 @@ pub(super) fn plugin(app: &mut App) {
             (camera::spawn_camera, fps::spawn, icon::load, font::load),
         )
         .add_systems(Update, (fps::update, camera::sync_output))
+        .add_systems(Update, camera::frame_view.run_if(window_changed))
         .add_observer(sound::activated)
         .add_systems(
             Update,

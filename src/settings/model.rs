@@ -54,8 +54,6 @@ impl Default for Settings {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(default)]
 pub struct Graphics {
-    /// Size of one screen pixel block, in window pixels (1 to 8).
-    pub pixel_size: u32,
     /// Chunk radius streamed around the player: the rings of one of the named steps of
     /// [`RENDER_STEPS`]. Any other number in a file moves to the nearest step when read.
     #[serde(deserialize_with = "nearest_step")]
@@ -72,8 +70,6 @@ pub struct Graphics {
     pub bloom: bool,
     /// Whether clouds are drawn in the sky.
     pub clouds: bool,
-    /// Color levels per channel kept by the retro banding (8 to 64).
-    pub color_levels: u32,
     /// Vertical field of view in degrees (60 to 110).
     pub fov: u32,
     /// Whether the frame rate is shown in a corner.
@@ -109,7 +105,6 @@ fn moved_minimap<'de, D: serde::Deserializer<'de>>(reader: D) -> Result<Keymap, 
 impl Default for Graphics {
     fn default() -> Self {
         Self {
-            pixel_size: 3,
             render_distance: 4,
             shadows: true,
             vsync: true,
@@ -117,7 +112,6 @@ impl Default for Graphics {
             ambient_occlusion: true,
             bloom: true,
             clouds: true,
-            color_levels: 24,
             fov: 75,
             show_fps: false,
         }

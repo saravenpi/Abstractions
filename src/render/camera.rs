@@ -29,7 +29,7 @@ pub fn set_fov(projection: &mut Projection, fov: u32) {
 pub fn configure_camera(commands: &mut Commands, camera: Entity, graphics: &Graphics) {
     let mut entity = commands.entity(camera);
     entity.insert((
-        Pixelate::new(graphics.pixel_size, graphics.color_levels),
+        Pixelate::default(),
         Tonemapping::TonyMcMapface,
         Msaa::Off,
         DepthPrepass,

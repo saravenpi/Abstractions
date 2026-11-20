@@ -19,7 +19,11 @@ fn threshold(x: usize, y: usize) -> f32 {
 /// `(x, y)` from its true value: banded and dithered, then softened toward the true value on
 /// bright colours.
 fn error(p: f32, x: usize, y: usize) -> f32 {
-    let (levels, white, soft) = (24.0f32, constant("WHITE_DITHER"), constant("WHITE_SOFT"));
+    let (levels, white, soft) = (
+        super::tune::LEVELS,
+        constant("WHITE_DITHER"),
+        constant("WHITE_SOFT"),
+    );
     let strength = 1.0 + (white - 1.0) * p;
     let banded = (p * levels + 0.5 + (threshold(x, y) - 0.5) * strength).floor();
     (banded - p * levels) * (1.0 - soft * p)
@@ -49,7 +53,7 @@ fn bright_gradients_do_not_band_into_rings() {
 #[test]
 fn flat_bright_colours_keep_a_faint_grain() {
     let spread = |f: f32| {
-        let p = (17.0 + f) / 24.0;
+        let p = (17.0 + f) / super::tune::LEVELS;
         let all: Vec<f32> = (0..1024).map(|k| error(p, k % 32, k / 32)).collect();
         let mean = all.iter().sum::<f32>() / 1024.0;
         (all.iter().map(|e| (e - mean).powi(2)).sum::<f32>() / 1024.0).sqrt()

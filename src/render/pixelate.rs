@@ -11,33 +11,21 @@ use bevy::prelude::*;
 use bevy::render::{RenderApp, extract_component::ExtractComponent, render_resource::ShaderType};
 use bevy::shader::ShaderRef;
 
-/// Color levels per channel used when no setting says otherwise.
-const DEFAULT_LEVELS: u32 = 24;
+use super::tune::LEVELS;
 
-/// Pixelation settings of a camera: the block size sizes its render target, the levels band its colors.
+/// Colour banding of a camera. It runs on the camera's own low-resolution target, so it shades
+/// one fragment per game pixel and its dither stays on the game pixels whatever the window size.
 #[derive(Component, ExtractComponent, Clone, Copy, Debug, ShaderType)]
 #[extract_app(RenderApp)]
 pub struct Pixelate {
-    /// Width and height of one block, in window pixels.
-    pub pixel_size: u32,
     /// Number of color levels per channel.
     pub levels: f32,
 }
 
-impl Pixelate {
-    /// Builds the effect for a block size and color level count taken from the settings.
-    pub fn new(pixel_size: u32, levels: u32) -> Self {
-        Self {
-            pixel_size: pixel_size.max(1),
-            levels: levels.max(2) as f32,
-        }
-    }
-}
-
 impl Default for Pixelate {
-    /// Returns a 3 pixel block with the default color levels.
+    /// Returns the banding of the fixed look, [`LEVELS`] levels per channel.
     fn default() -> Self {
-        Self::new(3, DEFAULT_LEVELS)
+        Self { levels: LEVELS }
     }
 }
 

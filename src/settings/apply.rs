@@ -27,7 +27,7 @@ fn apply_audio(settings: Res<Persistent<Settings>>, mut volume: ResMut<GlobalVol
     volume.volume = Volume::Linear(settings.audio.master.clamp(0.0, 1.0));
 }
 
-/// Applies pixel size, color levels, field of view, ambient occlusion and bloom to the game camera.
+/// Applies the field of view, ambient occlusion and bloom to the game camera.
 ///
 /// Shadows and fog distance follow the settings through the lighting and fog systems.
 fn apply_graphics(

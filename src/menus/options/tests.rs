@@ -12,11 +12,11 @@ use crate::settings::Settings;
 fn steps_clamp_and_toggle() {
     let mut s = Settings::default();
     for _ in 0..20 {
-        step(&mut s, Field::PixelSize, 1);
+        step(&mut s, Field::Fov, 1);
         step(&mut s, Field::Master, -1);
         step(&mut s, Field::Sensitivity, 1);
     }
-    assert_eq!(s.graphics.pixel_size, 8);
+    assert_eq!(s.graphics.fov, 110);
     assert_eq!(s.audio.master, 0.0);
     assert_eq!(s.controls.mouse_sensitivity, 3.0);
     step(&mut s, Field::Shadows, 1);
@@ -28,10 +28,8 @@ fn steps_clamp_and_toggle() {
 fn steps_new_graphics_fields() {
     let mut s = Settings::default();
     for _ in 0..30 {
-        step(&mut s, Field::ColorLevels, 1);
         step(&mut s, Field::Fov, -1);
     }
-    assert_eq!(s.graphics.color_levels, 64);
     assert_eq!(s.graphics.fov, 60);
     step(&mut s, Field::Bloom, 1);
     step(&mut s, Field::Clouds, -1);

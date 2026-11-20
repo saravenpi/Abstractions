@@ -38,7 +38,7 @@ fn the_grid_is_laid_out_as_the_cube_texture() {
     ];
     for (face, major) in majors.into_iter().enumerate() {
         assert_eq!(Patch::around(major).face, face);
-        assert!(texel_dir(face, 31, 31).dot(major) > 0.99);
+        assert!(texel_dir(face, FACE / 2, FACE / 2).dot(major) > 0.99);
     }
     assert!(texel_dir(0, 0, 0).z > 0.0 && texel_dir(0, 0, 0).y > 0.0);
     assert!(texel_dir(2, 0, 0).x < 0.0 && texel_dir(2, 0, 0).z < 0.0);
@@ -50,7 +50,7 @@ fn the_grid_is_laid_out_as_the_cube_texture() {
 #[test]
 fn a_texel_past_an_edge_is_the_neighbour_on_the_next_face() {
     for face in 0..6 {
-        for row in [0, 17, 63] {
+        for row in [0, 17, FACE - 1] {
             let past = Patch::around(texel_dir(face, FACE, row));
             assert_ne!(past.face, face);
             assert!(nearest(&past).iter().any(|at| [0, FACE - 1].contains(at)));

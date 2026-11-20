@@ -44,6 +44,10 @@ pub enum Param {
     Boost,
     /// Flutter of the wingsuit cloth.
     Flutter,
+    /// Speed of the air past a flying body, which sets the pitch of its rush.
+    Speed,
+    /// Buffeting of the air on a flying body.
+    Buffet,
     /// Side of the shoreline: 0 left, 0.5 ahead, 1 right.
     ShoreSide,
     /// Side of the companion: 0 left, 0.5 ahead, 1 right.
@@ -59,7 +63,7 @@ pub enum Param {
 }
 
 /// Number of [`Param`] values.
-pub const PARAMS: usize = 23;
+pub const PARAMS: usize = 25;
 
 impl Param {
     /// Every parameter, in index order.
@@ -81,6 +85,8 @@ impl Param {
         Param::Rush,
         Param::Boost,
         Param::Flutter,
+        Param::Speed,
+        Param::Buffet,
         Param::ShoreSide,
         Param::BuddySide,
         Param::BuddyNear,
@@ -124,7 +130,7 @@ impl Default for Shared {
 }
 
 /// Returns `value` held between 0 and 1, and 0 for a value that is not a number.
-fn unit(value: f32) -> f32 {
+pub(super) fn unit(value: f32) -> f32 {
     if value.is_finite() {
         value.clamp(0.0, 1.0)
     } else {
@@ -168,9 +174,7 @@ impl Shared {
         self.set(Param::Space, flag(scene.in_space || scene.warping));
         self.set(Param::Home, flag(scene.home));
         let outside = 1.0 - flag(scene.in_space || scene.warping);
-        self.set(Param::Rush, unit(scene.rush * outside));
-        self.set(Param::Boost, unit(scene.boost));
-        self.set(Param::Flutter, unit(scene.flutter * outside));
+        self.publish_flight(scene, outside);
         self.set(Param::ShoreSide, unit(0.5 + 0.5 * scene.shore_side));
         self.set(Param::BuddySide, unit(0.5 + 0.5 * scene.companion.x));
         self.set(Param::BuddyNear, unit(scene.companion.y));

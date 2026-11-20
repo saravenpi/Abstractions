@@ -1,5 +1,5 @@
-//! The flight gear: the rush of air past the body, the hum of the boot boosters and the
-//! flutter of the wingsuit cloth.
+//! The flight gear: the rush of air past the body, the rumble of its buffeting, the hum of the
+//! boot boosters and the flutter of the wingsuit cloth.
 
 use super::dsp::filter::Svf;
 use super::dsp::osc::{Phasor, sine};
@@ -7,6 +7,9 @@ use super::dsp::rand::Noise;
 
 /// Level of the rush of air at full speed.
 pub const RUSH_LEVEL: f32 = 0.5;
+
+/// Level of the rumble at full buffeting.
+pub const BUFFET_LEVEL: f32 = 0.9;
 
 /// Level of the boosters at full push.
 pub const HUM_LEVEL: f32 = 0.07;
@@ -23,8 +26,12 @@ const FLAP_HZ: (f32, f32) = (11.0, 17.0);
 /// What the gear sounds follow, each from 0 to 1.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SuitCtl {
-    /// Speed of the air past the body, already thinned by the air.
+    /// How loud the rush of air is: the speed of the air past the body, thinned by the air.
     pub rush: f32,
+    /// Speed of the air past the body, whatever the air: the pitch of the rush follows it.
+    pub speed: f32,
+    /// Buffeting of the air on the body, from its dynamic pressure.
+    pub buffet: f32,
     /// Push of the boot boosters.
     pub boost: f32,
     /// Flutter of the wingsuit cloth.
@@ -36,6 +43,8 @@ pub struct SuitCtl {
 pub struct Suit {
     /// Colour of the rush: it brightens with speed.
     rush: Svf,
+    /// Colour of the rumble of the buffeting: low, and a little higher as it grows.
+    rumble: Svf,
     /// Colour of the booster breath: a low, wide band, so the boots rumble and never whistle.
     hiss: Svf,
     /// Colour of the cloth.
@@ -55,6 +64,7 @@ impl Suit {
     pub fn new(rate: f32) -> Self {
         Self {
             rush: Svf::default(),
+            rumble: Svf::default(),
             hiss: Svf::default(),
             cloth: Svf::default(),
             hum: [Phasor(0.0), Phasor(0.37)],
@@ -66,7 +76,8 @@ impl Suit {
 
     /// Retunes the filters. Call it a few hundred times per second.
     pub fn tune(&mut self, ctl: &SuitCtl) {
-        self.rush.tune(280.0 + 2400.0 * ctl.rush, 0.8, self.rate);
+        self.rush.tune(280.0 + 2400.0 * ctl.speed, 0.8, self.rate);
+        self.rumble.tune(48.0 + 60.0 * ctl.buffet, 1.0, self.rate);
         self.hiss.tune(260.0 + 240.0 * ctl.boost, 0.6, self.rate);
         self.cloth.tune(700.0 + 500.0 * ctl.flutter, 1.4, self.rate);
     }
@@ -86,6 +97,7 @@ impl Suit {
         );
         let beat = (0.5 + 0.5 * flap) * (0.5 + 0.5 * flap);
         let cloth = self.cloth.band(raw) * beat * ctl.flutter * FLUTTER_LEVEL;
-        rush + hum + cloth
+        let rumble = self.rumble.low(raw) * ctl.buffet * BUFFET_LEVEL;
+        rush + rumble + hum + cloth
     }
 }

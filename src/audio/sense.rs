@@ -160,16 +160,20 @@ fn sense_shore(
 /// Airspeeds in metres per second between which the rush of air grows from nothing to full.
 const RUSH_SPEED: (f32, f32) = (6.0, 75.0);
 
-/// Writes the flight gear into the scene: the rush of air by airspeed and by how loud the air
-/// of the planet is, the boosters by their push and the flutter of the cloth. The gear
-/// publishes nothing while nobody is on foot.
+/// Writes the flight gear into the scene: the rush of air by airspeed, with a pitch that follows
+/// the speed and a loudness that follows how loud the air of the planet is and how thin it is at
+/// this height, the rumble of the buffeting by dynamic pressure, the boosters by their push and
+/// the flutter of the cloth. The gear publishes nothing while nobody is on foot.
 fn sense_flight(here: Res<Here>, flight: Option<Res<FlightFx>>, mut scene: ResMut<AudioScene>) {
     let fx = flight.as_deref().copied().unwrap_or_default();
     let air = here
         .0
         .as_ref()
         .map_or(1.0, |(_, spec)| loudness(&spec.record));
-    scene.rush = smoothstep(RUSH_SPEED.0, RUSH_SPEED.1, fx.airspeed) * air;
+    let speed = smoothstep(RUSH_SPEED.0, RUSH_SPEED.1, fx.airspeed);
+    scene.speed = speed;
+    scene.rush = speed * air * (1.0 - fx.thinning).clamp(0.0, 1.0).sqrt();
+    scene.buffet = fx.buffet;
     scene.boost = fx.thrust;
     scene.flutter = fx.flutter;
 }

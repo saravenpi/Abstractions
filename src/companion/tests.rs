@@ -8,7 +8,7 @@ use super::spot::{Probe, Stance};
 use super::spring::{rate, step, stiffness};
 use super::tune::{CLEARANCE, FOLLOW_RATE, YIELD};
 use crate::space::Anchor;
-use crate::universe::{BodyId, HOME_GRAVITY, HOME_RADIUS};
+use crate::universe::{BodyId, EARTH_RADIUS, STANDARD_GRAVITY};
 use crate::world::globe::Face;
 use crate::world::{Globe, Terrain};
 
@@ -103,7 +103,7 @@ fn spot_clears_steep_ground_and_water() {
 /// On a sphere planet the spot clears the ground and the sea along the local vertical.
 #[test]
 fn spot_clears_ground_on_a_sphere() {
-    let globe = Arc::new(Globe::new(7, HOME_RADIUS, HOME_GRAVITY));
+    let globe = Arc::new(Globe::new(7, EARTH_RADIUS, STANDARD_GRAVITY));
     let terrain = Terrain::on(globe.clone(), globe.face_chart(Face::PosY));
     for at in steepest(&terrain, 30).into_iter().take(6) {
         let anchor = Anchor::surface(BodyId::default(), &terrain, at);

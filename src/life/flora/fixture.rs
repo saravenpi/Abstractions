@@ -28,6 +28,8 @@ pub fn world(gravity: f32, star: f32) -> World {
         radius: 5000.0,
         ocean: 0.6,
         star,
+        tilt: 0.0,
+        liquids: [0.6, 0.0375, 0.0375, 0.6],
     }
 }
 

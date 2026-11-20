@@ -1,9 +1,9 @@
 //! Galaxies: one per universe grid cell, with about 60 percent of the cells holding one.
 
-use bevy::math::{DVec3, IVec3};
+use bevy::math::DVec3;
 
 use super::hash::{self, Rng};
-use super::home::{self, HOME_GALAXY};
+use super::home::HOME_GALAXY;
 use super::ids::GalaxyId;
 use super::spec::{GalaxyKind, GalaxySpec};
 use super::{GALAXY_CELL, GLY, names};
@@ -43,8 +43,6 @@ pub(super) struct Shape {
     pub thick: f64,
     /// Angle in radians the arms have turned by at the rim, negative for the other winding.
     pub swirl: f64,
-    /// Sector of the home star when this is the home galaxy.
-    pub home: Option<IVec3>,
 }
 
 impl Shape {
@@ -68,7 +66,6 @@ impl Shape {
             core: rng.range(0.05, 0.1),
             thick: rng.range(0.02, 0.04),
             swirl: winding * rng.range(3.0, 7.0),
-            home: is_home.then(|| home::sector(seed, radius)),
         }
     }
 }

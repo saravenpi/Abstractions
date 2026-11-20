@@ -2,59 +2,60 @@
 
 use super::hash::{self, Rng};
 use super::spec::{PlanetSpec, StarSpec};
-use super::{home, planet};
+use super::units::{AU, SUN_MASS};
+use super::{hill, planet};
 
 /// Fewest and most planets around a star.
 pub const PLANETS: (u8, u8) = (2, 8);
 
-/// Smallest and largest orbit radius of a planet in metres.
-pub const ORBIT: (f64, f64) = (5e6, 5e8);
+/// Smallest and largest orbit radius of a planet around a star of the mass of the Sun, in
+/// metres: 0.03 to 40 astronomical units. Both scale with the mass of the star, since a lighter
+/// star forms its planets from a smaller disc: the planets of a red dwarf of 0.1 Suns orbit
+/// from 0.003 to 4 units out.
+pub const ORBIT: (f64, f64) = (0.03 * AU, 40.0 * AU);
+
+/// Times a planet is moved out and built again to clear the Hill sphere of the one inside it.
+/// Moving out can turn it into a gas giant once, which widens its own sphere, so three do.
+const PUSHES: usize = 3;
 
 /// Returns the planets of a star, ordered outward.
 ///
 /// The span of orbit radii is cut into one equal band per planet on a log scale and each planet
 /// sits in the middle 70 percent of its band, so the radii grow geometrically, with jitter, and
-/// each one is strictly larger than the one before. With `world` set this is the home system:
-/// it has at least 5 planets, the third is the home planet, whose terrain seed is `world`, and
-/// the orbits are those of [`home::orbit`], which keep the order and put the home planet where
-/// its star gives it a flux of 1. The outermost planet of the home system is always a gas
-/// giant, so a new player has a giant and its moons to fly to.
-pub(super) fn planets(star: &StarSpec, world: Option<u64>) -> Vec<PlanetSpec> {
+/// each one is strictly larger than the one before. A planet whose Hill sphere would touch the
+/// sphere of the planet inside it is moved out until it clears it, see [`placed`], so a
+/// crowded system can reach a little past the span.
+pub(super) fn planets(star: &StarSpec) -> Vec<PlanetSpec> {
     let mut rng = Rng::new(hash::child(star.seed, 2));
-    let least = if world.is_some() {
-        home::HOME_PLANETS
-    } else {
-        PLANETS.0
-    };
-    let count = (PLANETS.0 + rng.below(u32::from(PLANETS.1 - PLANETS.0) + 1) as u8).max(least);
-    let mut drawn = [(0.0, 0); PLANETS.1 as usize];
-    for (index, slot) in (0..count).zip(&mut drawn) {
+    let count = PLANETS.0 + rng.below(u32::from(PLANETS.1 - PLANETS.0) + 1) as u8;
+    let scale = star.mass / SUN_MASS;
+    let mut planets: Vec<PlanetSpec> = Vec::with_capacity(usize::from(count));
+    for index in 0..count {
         let band = (f64::from(index) + rng.range(0.15, 0.85)) / f64::from(count);
-        *slot = (band, rng.next());
+        let orbit = scale * ORBIT.0 * (ORBIT.1 / ORBIT.0).powf(band);
+        let planet = placed(star, planets.last(), (index, orbit, rng.next()));
+        planets.push(planet);
     }
-    let home = world.map(|world| (world, drawn[usize::from(home::HOME_INDEX)].0, count - 1));
-    let members = (0..count).zip(drawn);
-    members
-        .map(|(index, drawn)| member(star, index, drawn, home))
-        .collect()
+    planets
 }
 
-/// Returns planet `index` of `star` from the place `band` it drew in the span of orbits, 0 to 1 on
-/// the log scale, and its seed. In the home system `home` gives the world seed, the place the
-/// home planet drew and the index of the outermost planet.
-fn member(
+/// Returns planet `index` of `star` with the seed `seed`, on the orbit of `orbit` metres it
+/// drew or, when that is too close to the planet `inside` it, on the nearest orbit where the
+/// Hill spheres of the two do not touch.
+fn placed(
     star: &StarSpec,
-    index: u8,
-    (band, seed): (f64, u64),
-    home: Option<(u64, f64, u8)>,
+    inside: Option<&PlanetSpec>,
+    (index, orbit, seed): (u8, f64, u64),
 ) -> PlanetSpec {
-    let Some((world, at, last)) = home else {
-        let orbit = ORBIT.0 * (ORBIT.1 / ORBIT.0).powf(band);
-        return planet::build(star, index, orbit, seed, false);
-    };
-    let planet = planet::build(star, index, home::orbit(band, at), seed, index == last);
-    match index == home::HOME_INDEX {
-        true => home::planet(planet, world),
-        false => planet,
+    let floor = inside.map_or(0.0, |p| p.orbit_radius + hill::hill(star, p));
+    let mut planet = planet::build(star, index, orbit, seed);
+    for _ in 0..PUSHES {
+        let share = hill::hill(star, &planet) / planet.orbit_radius;
+        let least = floor / (1.0 - share);
+        if planet.orbit_radius > least {
+            break;
+        }
+        planet = planet::build(star, index, least * (1.0 + 1e-9), seed);
     }
+    planet
 }

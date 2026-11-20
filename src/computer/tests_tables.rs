@@ -28,7 +28,7 @@ fn distances_cover_each_unit() {
     for (metres, shown) in cases {
         assert_eq!(distance(metres), shown, "{metres}");
     }
-    assert_eq!(gravity(crate::universe::HOME_GRAVITY), "1.00 g");
+    assert_eq!(gravity(crate::universe::STANDARD_GRAVITY), "1.00 g");
 }
 
 /// Returns the finished chart of the systems `atlas` reveals.

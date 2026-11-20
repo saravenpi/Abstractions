@@ -15,11 +15,17 @@ use crate::space::{Anchor, Frame};
 use crate::universe::{PlanetSpec, StarSpec, Universe};
 use crate::world::Terrain;
 
-/// Returns the home planet and its star for a seed.
+/// Returns the home planet and its star for a seed. The planet is made to turn 300 times a
+/// year, so that it has days whatever tides did to the one the seed chose.
 fn home(seed: u64) -> (PlanetSpec, StarSpec) {
     let universe = Universe::new(seed);
     let body = universe.home();
-    (universe.planet(body), universe.system(body.star).star)
+    let planet = universe.planet(body);
+    let turning = PlanetSpec {
+        day_seconds: planet.orbit_seconds / 300.0,
+        ..planet
+    };
+    (turning, universe.system(body.star).star)
 }
 
 /// Returns a surface anchor standing at sea level where the planet-fixed direction `up` leaves

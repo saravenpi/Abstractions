@@ -11,7 +11,7 @@ use super::seen::{SIGHT, Seen, sight, sighted};
 use crate::fauna::Creature;
 use crate::life::Guild;
 use crate::player::Player;
-use crate::universe::{HOME_GRAVITY, HOME_RADIUS};
+use crate::universe::{EARTH_RADIUS, STANDARD_GRAVITY};
 use crate::world::globe::Chart;
 use crate::world::{Globe, Terrain};
 
@@ -41,7 +41,7 @@ fn a_near_creature_is_marked_seen() {
         .iter()
         .filter(|s| s.role.guild != Guild::Producer)
         .collect();
-    let globe = Globe::new(1, HOME_RADIUS, HOME_GRAVITY).with_life(Some(life.clone()));
+    let globe = Globe::new(1, EARTH_RADIUS, STANDARD_GRAVITY).with_life(Some(life.clone()));
     let mut app = App::new();
     app.insert_resource(Terrain::on(Arc::new(globe), Chart::Flat))
         .init_resource::<Seen>();

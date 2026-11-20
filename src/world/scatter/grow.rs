@@ -98,6 +98,8 @@ fn world_of(globe: &Globe) -> World {
         radius: globe.radius() as f32,
         ocean: record.ocean as f32,
         star: 0.0,
+        tilt: record.tilt as f32,
+        liquids: record.liquids().map(|share| share as f32),
     }
 }
 

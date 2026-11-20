@@ -1,7 +1,7 @@
 //! The rule table: how the planet and the role of a species shape its body.
 
 use crate::life::{Activity, Habitat, History, Role, World};
-use crate::universe::{HOME_GRAVITY, HOME_RADIUS, NO_AIR};
+use crate::universe::{EARTH_RADIUS, NO_AIR, STANDARD_GRAVITY};
 
 /// Lift ratio, pressure over gravity both against home, under which nothing flies.
 const LIFT_FLOOR: f32 = 0.25;
@@ -65,12 +65,12 @@ pub fn traits(role: &Role, history: &History, world: &World) -> Traits {
     }
 }
 
-/// Returns the surface gravity over the home gravity.
+/// Returns the surface gravity in standard gravities, the pull of the Earth being 1.
 pub fn gravity(world: &World) -> f32 {
-    (world.gravity / HOME_GRAVITY as f32).max(0.05)
+    (world.gravity / STANDARD_GRAVITY as f32).max(0.05)
 }
 
-/// Returns the lift ratio: air pressure over gravity, both against home.
+/// Returns the lift ratio: air pressure over gravity, both against the Earth.
 pub fn lift(world: &World) -> f32 {
     world.pressure / gravity(world)
 }
@@ -82,7 +82,7 @@ fn cold(world: &World) -> f32 {
 
 /// Returns the size factor of island rules: on small or watery worlds the large shrink and the small grow.
 fn insular(world: &World, mass: f32) -> f32 {
-    let small = ((1.0 - world.radius / HOME_RADIUS as f32) / 0.5).clamp(0.0, 1.0);
+    let small = ((1.0 - world.radius / EARTH_RADIUS as f32) / 0.5).clamp(0.0, 1.0);
     let island = ((world.ocean - 0.6) / 0.3).clamp(0.0, 1.0);
     let pressure = small.max(island);
     let bigness = (mass.log10() / 1.7).clamp(0.0, 1.0);

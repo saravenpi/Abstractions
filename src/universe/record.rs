@@ -2,16 +2,18 @@
 
 use std::f64::consts::FRAC_PI_2;
 
+use super::climate::Climate;
 use super::hash::Rng;
 use super::spec::StarSpec;
-use super::{air, class, climate, zone};
+use super::units::{EARTH_RADIUS, STANDARD_GRAVITY, SUN_MASS};
+use super::{air, class, climate, volatiles, zone};
 
 /// The kind of world a planet is, decided by its record.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PlanetClass {
     /// Liquid water over nearly all of the surface, with scattered small islands.
     Ocean,
-    /// Seas and land in balance, like the home planet.
+    /// Seas and land in balance, like the Earth.
     Island,
     /// Air but no open water: sand, rock and dry basins.
     Desert,
@@ -64,18 +66,18 @@ pub enum Zone {
 
 /// The physical record of one planet, derived from its star, its orbit and its seed.
 ///
-/// One record per planet feeds the ground, the sea, the sky and the board computer.
+/// One record per planet feeds the ground, the sea, the sky, life and the board computer.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PlanetRecord {
     /// The kind of world, decided by every value below.
     pub class: PlanetClass,
     /// Where the orbit lies against the habitable zone of the star.
     pub zone: Zone,
-    /// Starlight reaching the planet, the home planet receiving 1.
+    /// Starlight reaching the planet, the Earth receiving 1.
     pub flux: f64,
     /// Angle between the spin axis and the axis of the orbit, in radians.
     pub tilt: f64,
-    /// Air pressure at sea level, the home planet having 1. Under 0.01 there is no air to speak of.
+    /// Air pressure at sea level, the Earth having 1. Under 0.01 there is no air to speak of.
     pub pressure: f64,
     /// Share of the starlight sent back to space, from 0 to 1.
     pub albedo: f64,
@@ -87,6 +89,39 @@ pub struct PlanetRecord {
     pub water: Water,
     /// Share of the surface covered by the liquid of the planet, water or molten rock, from 0 to 1.
     pub ocean: f64,
+    /// Share of the surface under lakes of liquid ammonia, from 0 to 0.3.
+    pub ammonia: f64,
+    /// Share of the surface under lakes of liquid methane and ethane, from 0 to 0.3.
+    pub hydrocarbon: f64,
+    /// Heat the tides of its planet store in a moon, in units of flux: 0 for a planet.
+    pub tide: f64,
+    /// Carbon the planet has to cycle through its air, sea and rock, from 0 to 1.
+    pub carbon: f64,
+}
+
+/// What a body is made of and where, as its record needs it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct Body {
+    /// Surface gravity in metres per second squared.
+    pub gravity: f64,
+    /// Radius in metres.
+    pub radius: f64,
+    /// Radius in metres of its orbit around the star, its planet's for a moon.
+    pub orbit: f64,
+    /// Heat of the tides, in units of flux.
+    pub tide: f64,
+}
+
+impl Body {
+    /// Returns a body that no tide heats.
+    pub fn new(gravity: f64, radius: f64, orbit: f64) -> Self {
+        Self {
+            gravity,
+            radius,
+            orbit,
+            tide: 0.0,
+        }
+    }
 }
 
 impl PlanetRecord {
@@ -96,8 +131,8 @@ impl PlanetRecord {
     /// the island generator puts it.
     pub const BALANCED_OCEAN: f64 = 0.6;
 
-    /// The record of the home planet: a temperate world of seas and islands, tilted like the
-    /// Earth so that it has seasons.
+    /// The record of a temperate world of seas and islands tilted like the Earth. No planet is
+    /// pinned to it: it is the reference a globe built without a planet falls back on.
     pub const TEMPERATE: Self = Self {
         class: PlanetClass::Island,
         zone: Zone::Habitable,
@@ -109,52 +144,55 @@ impl PlanetRecord {
         temperature: 288.0,
         water: Water::Liquid,
         ocean: Self::BALANCED_OCEAN,
+        ammonia: 0.0,
+        hydrocarbon: 0.0,
+        tide: 0.0,
+        carbon: 0.5,
     };
 
-    /// Returns the record of a planet on an orbit of `orbit` metres around `star`.
-    ///
-    /// `gravity` and `size` are the surface gravity and the radius over those of the home
-    /// planet. `seed` gives three draws: the gas the planet was born with, its water and its
-    /// tilt. Starlight, air, climate and class then follow in that order, each from the ones
-    /// before, so the same planet always gets the same record.
-    ///
-    /// Ranges: flux 0.005 to 58,000, tilt 0 to a quarter turn, pressure 0 to 5, albedo 0.08 to
-    /// 0.6, greenhouse 0 to 1,500 K, temperature 40 to 6,000 K, ocean 0 to 1.
-    pub(super) fn derive(star: &StarSpec, orbit: f64, gravity: f64, size: f64, seed: u64) -> Self {
-        Self::heated(star, orbit, [gravity, size], seed, 0.0)
+    /// Returns the share of the surface under each liquid life can use, in the order water,
+    /// ammonia, hydrocarbons, molten rock. [`PlanetRecord::ocean`] is the water of a world whose
+    /// water is liquid and the molten rock of a lava world.
+    pub fn liquids(&self) -> [f64; 4] {
+        let sea = |holds: bool| if holds { self.ocean } else { 0.0 };
+        let lava = self.class == PlanetClass::Lava;
+        [
+            sea(!lava && self.water == Water::Liquid),
+            self.ammonia,
+            self.hydrocarbon,
+            sea(lava),
+        ]
     }
 
-    /// Returns the record of a body lit like a planet on an orbit of `orbit` metres, which also
-    /// warms from inside by `tide`, a heat flow in units of the starlight the home planet gets.
+    /// Returns the record of `body` around `star`, with its draws from `seed`.
     ///
-    /// `body` holds the gravity and the radius over those of the home planet, `seed` gives the
-    /// draws of [`PlanetRecord::derive`]. The heat adds to the starlight the ground absorbs, so
-    /// it warms the climate, but neither the flux nor the zone, which are the starlight alone,
-    /// nor the air, which the star blows away and the inner heat does not. A tide of 0 is the
-    /// record of a planet, bit for bit.
-    pub(super) fn heated(
-        star: &StarSpec,
-        orbit: f64,
-        body: [f64; 2],
-        seed: u64,
-        tide: f64,
-    ) -> Self {
+    /// The seed gives six draws: the gas the body was born with, its water, its tilt, its
+    /// carbon and its lakes of ammonia and of hydrocarbons. Starlight, air, climate and class
+    /// then follow in that order, each from the ones before, so the same body always gets the
+    /// same record. The heat of the tides adds to the starlight the ground absorbs, so it warms
+    /// the climate, but neither the flux nor the zone, which are the starlight alone.
+    ///
+    /// Ranges: flux 0.000003 to 260,000, tilt 0 to a quarter turn, pressure 0 to 5, albedo 0.08
+    /// to 0.6, greenhouse 0 to 1,500 K, temperature 5 to 7,000 K, ocean 0 to 1.
+    pub(super) fn derive(star: &StarSpec, body: &Body, seed: u64) -> Self {
         let mut rng = Rng::new(seed);
-        let flux = zone::flux(star.luminosity, orbit);
-        let pressure = air::pressure(rng.unit(), body[0], body[1], flux);
-        let wet = rng.unit();
-        let climate = climate::settle(flux + tide, pressure, wet);
+        let flux = zone::flux(star.luminosity, body.orbit);
+        let (gravity, size) = (body.gravity / STANDARD_GRAVITY, body.radius / EARTH_RADIUS);
+        let pressure = air::pressure(rng.unit(), gravity, size, flux);
+        let wet = volatiles::water(rng.unit(), flux, star.mass / SUN_MASS);
+        let tilt = tilt(rng.unit());
+        let carbon = volatiles::carbon(rng.unit(), flux);
+        let climate = climate::settle(flux + body.tide, pressure, wet, carbon);
+        let lake = |lake: &volatiles::Lake, roll| {
+            volatiles::lakes(lake, climate.temperature, pressure, roll)
+        };
         let record = Self {
-            class: PlanetClass::Barren,
-            zone: zone::zone(star.temperature, flux),
-            flux,
-            tilt: tilt(rng.unit()),
-            pressure,
-            albedo: climate.albedo,
-            greenhouse: climate.greenhouse,
-            temperature: climate.temperature,
-            water: climate.water,
-            ocean: class::liquid(pressure, &climate, wet),
+            ocean: class::liquid(pressure, &climate, wet, body.tide),
+            ammonia: lake(&volatiles::AMMONIA, rng.unit()),
+            hydrocarbon: lake(&volatiles::HYDROCARBON, rng.unit()),
+            tide: body.tide,
+            carbon,
+            ..Self::lit(star, flux, (tilt, pressure), &climate)
         };
         Self {
             class: class::classify(&record),
@@ -164,12 +202,12 @@ impl PlanetRecord {
 
     /// Returns the record of a gas giant on an orbit of `orbit` metres, read at its cloud deck.
     ///
-    /// `seed` gives the same three draws as [`PlanetRecord::derive`]; the gas stock goes unused,
-    /// since a giant holds all of it. The pressure is the cap, the ground nothing: no liquid
-    /// covers it and its water is ice, steam or nothing as [`climate::deck`] finds it.
+    /// `seed` gives the first three draws of [`PlanetRecord::derive`]; the gas stock goes
+    /// unused, since a giant holds all of it. The pressure is the cap, the ground nothing: no
+    /// liquid covers it and its water is ice, steam or nothing as [`climate::deck`] finds it.
     ///
-    /// Ranges: flux 0.005 to 0.14 (up to 0.26 for the giant of the home system), pressure 5,
-    /// albedo 0.34, greenhouse 74 K, temperature 140 to 260 K, ocean 0.
+    /// Ranges: flux 0.000003 to 0.14, pressure 5, albedo 0.34, greenhouse 74 K, temperature 80
+    /// to 230 K, ocean 0.
     pub(super) fn giant(star: &StarSpec, orbit: f64, seed: u64) -> Self {
         let mut rng = Rng::new(seed);
         let flux = zone::flux(star.luminosity, orbit);
@@ -178,15 +216,27 @@ impl PlanetRecord {
         let climate = climate::deck(flux, wet);
         Self {
             class: PlanetClass::GasGiant,
+            ..Self::lit(star, flux, (tilt(rng.unit()), air::PRESSURE_CAP), &climate)
+        }
+    }
+
+    /// Returns the record of a barren, dry body with its light, its lean, its air and its climate.
+    fn lit(star: &StarSpec, flux: f64, (tilt, pressure): (f64, f64), climate: &Climate) -> Self {
+        Self {
+            class: PlanetClass::Barren,
             zone: zone::zone(star.temperature, flux),
             flux,
-            tilt: tilt(rng.unit()),
-            pressure: air::PRESSURE_CAP,
+            tilt,
+            pressure,
             albedo: climate.albedo,
             greenhouse: climate.greenhouse,
             temperature: climate.temperature,
             water: climate.water,
             ocean: 0.0,
+            ammonia: 0.0,
+            hydrocarbon: 0.0,
+            tide: 0.0,
+            carbon: 0.0,
         }
     }
 }

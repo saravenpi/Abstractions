@@ -17,6 +17,7 @@ use crate::universe::{BodyId, PlanetSpec, Universe};
 /// alike, and its terrain view on the north face.
 pub(super) fn planet_of(body: BodyId, spec: &PlanetSpec, life: Option<Life>) -> (Planet, Terrain) {
     let globe = Arc::new(Globe::of(spec).with_life(life));
+    globe.warm_drainage();
     let terrain = Terrain::on(globe.clone(), globe.face_chart(Face::PosY));
     let planet = Planet {
         body,

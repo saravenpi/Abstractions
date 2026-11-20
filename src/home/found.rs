@@ -16,13 +16,12 @@ use crate::world::{Globe, Terrain};
 
 impl Base {
     /// Returns the base of the home planet `body` whose ground is `globe`: near the spawn the
-    /// terrain finds around a mild northern latitude, at a longitude the seed picks, or around the
-    /// next longitude when no ground near that spawn takes the base. Every spawn is tried within
-    /// the relief limits before any is tried with the looser ones. The same globe always gives the
-    /// same base.
+    /// terrain finds on the first shore of the drainage grid at a mild latitude, or on the next shore
+    /// when no ground near that spawn takes the base. Every spawn is tried within the relief limits
+    /// before any is tried with the looser ones. The same globe always gives the same base.
     pub fn on(globe: &Arc<Globe>, body: BodyId) -> Self {
         let mut spawns = Vec::new();
-        let strict = starts(globe.seed()).find_map(|dir| {
+        let strict = starts(globe).into_iter().find_map(|dir| {
             let spawn = spawn_of(Self::around(globe, dir).view());
             spawns.push(spawn);
             Self::near(globe, body, spawn, SLACK[0])
@@ -41,7 +40,7 @@ impl Base {
     /// Returns the planet position of the first spawn the base is looked for around on `globe`, the ground
     /// of its home planet: where a new game stands while the base is found, near where it will stand.
     pub fn landing(globe: &Arc<Globe>) -> DVec3 {
-        let first = starts(globe.seed()).next().unwrap_or(DVec3::Y);
+        let first = starts(globe).first().copied().unwrap_or(DVec3::Y);
         spawn_of(Self::around(globe, first).view())
     }
 

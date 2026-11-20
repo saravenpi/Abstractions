@@ -1,0 +1,61 @@
+//! Reading the drainage grid: where a direction falls, which cells are land, coast or river, and the path
+//! a drop of water takes to the sea.
+
+use bevy::math::DVec3;
+
+use super::Drainage;
+use super::grid::Grid;
+use super::tune::RIVER;
+
+impl Drainage {
+    /// Returns the grid.
+    pub fn grid(&self) -> Grid {
+        self.grid
+    }
+
+    /// Returns the cell holding unit direction `dir`.
+    pub fn find(&self, dir: DVec3) -> usize {
+        self.grid.find(dir)
+    }
+
+    /// Returns the unit direction of the middle of `cell`.
+    pub fn dir(&self, cell: usize) -> DVec3 {
+        self.grid.dir(cell)
+    }
+
+    /// Returns true when `cell` is above the sea.
+    pub fn is_land(&self, cell: usize) -> bool {
+        self.height[cell] > self.sea
+    }
+
+    /// Returns the cell the water of `cell` flows into, or nothing at the sea and at the bottom of a basin.
+    pub fn next(&self, cell: usize) -> Option<usize> {
+        let to = self.next[cell] as usize;
+        (to != cell).then_some(to)
+    }
+
+    /// Returns true when `cell` is land that drains at least [`RIVER`] cells of land: a trunk river runs
+    /// through it.
+    pub fn is_river(&self, cell: usize) -> bool {
+        self.is_land(cell) && self.area[cell] >= RIVER
+    }
+
+    /// Returns a sea cell next to the land cell `cell`, or nothing inland.
+    pub fn sea_beside(&self, cell: usize) -> Option<usize> {
+        let beside = self.grid.around(cell);
+        beside
+            .into_iter()
+            .find(|k| !self.is_land(*k))
+            .filter(|_| self.is_land(cell))
+    }
+
+    /// Returns the path of the water from `cell` down to its end, both included: a sea cell, or the bottom of
+    /// a closed basin.
+    pub fn course(&self, cell: usize) -> Vec<usize> {
+        let mut path = vec![cell];
+        while let Some(to) = self.next(path[path.len() - 1]) {
+            path.push(to);
+        }
+        path
+    }
+}

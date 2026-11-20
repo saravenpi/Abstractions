@@ -173,7 +173,22 @@ Space is beautiful because of what is in it. Every object below comes from physi
 - Asteroid belts with real gaps from the giant planets' resonances, Trojans, Kuiper belts, and comets whose two tails point the way physics says.
 - A hard frame budget: all of space together costs at most 1 ms of GPU time.
 
-**Played, not assumed.** Players go out of their way to reach an object they first saw as a dot in the sky.
+### Probes
+
+You already drive a robot from far away. A probe is the same link to a smaller machine that you can afford to lose. It goes where the robot cannot go yet.
+
+**The lesson.** The scout of Outer Wilds is a camera you launch: it shows a place and never marks a reward. Mass Effect 2 made scanning a slow sweep repeated for hours, and Elite Dangerous let a scanner stand in for the flight, after which an explorer wrote that strange planets "now appear all the same". Real probes are the better model: Venera 13 lasted 2 hours and 7 minutes on Venus, and the Galileo probe never reached a surface on Jupiter.
+
+- **A camera that falls, not a scanner.** You release the probe from the ship and watch through it on the way down. It gives no map, no icon and no percentage.
+- **The planet decides how long it lives.** Its life follows from the planet record: minutes on a lava world, hours on a cold one. In a gas giant it never lands. It sinks until the pressure ends it.
+- **The release is the skill.** Speed and angle matter under the real gravity and the real air. Too fast and it burns. On a small asteroid it bounces.
+- **The ship is the relay.** When the ship passes behind the planet the picture stops, so a fast-spinning world gives you a window to hold.
+- **A probe is lost for real.** There is no recall. It stays where it came to rest, and other players can find it.
+- **What it brings back:** the view, and what a robot would need to survive there (heat, pressure, acid). That is a reason to build protection in 0.16.
+- **First on a world.** The first probe to reach a world leaves its owner's name there.
+- **A station for a crew.** One flies the ship and holds the link, the other guides the probe.
+
+**Played, not assumed.** Players go out of their way to reach an object they first saw as a dot in the sky. After a probe shows a place, they want to go and stand there.
 
 ## 0.14: together
 
@@ -418,6 +433,11 @@ The sources quoted in this file:
 - Outer Wilds on knowledge and the ship log: https://media.gdcvault.com/GDC+2021/beachum_gdc_2021(1).pdf
 - Kate Compton on generated things that look alike: https://galaxykate0.tumblr.com/post/139774965871/so-you-want-to-build-a-generator
 - Hello Games on looking at generated planets at scale: https://gamesbeat.com/unraveling-the-mysteries-of-no-mans-skys-18-quintillion-planets/
+- The scout of Outer Wilds: https://outerwilds.fandom.com/wiki/Scout_Launcher
+- Scanning in Mass Effect 2, in its director's words: https://www.gamewatcher.com/2010-21-05-mass-effect-3-will-keep-the-mining-mini-game-it-serves-a-purpose
+- An explorer on the Elite Dangerous scanner: https://forums.frontier.co.uk/threads/why-fss-erased-a-lot-of-what-made-exploration-interesting.467000/
+- Venera 13 on Venus: https://nssdc.gsfc.nasa.gov/imgcat/html/object_page/v13_vg261_262.html
+- The Galileo probe in Jupiter: https://science.nasa.gov/mission/galileo-jupiter-atmospheric-probe/
 - Sea of Thieves on shared progress: https://www.windowscentral.com/the-sea-of-thieves-vision-interview
 - Sean Murray on multiplayer in No Man's Sky: https://www.eurogamer.net/the-big-sean-murray-interview
 - Hideo Kojima on traces in Death Stranding: https://gameinformer.com/interview/2019/09/16/hideo-kojima-answers-our-questions-about-death-stranding

@@ -1,14 +1,19 @@
 //! The lands of a planet: what its class and its sea do to the surfaces, the biomes and the life of the ground.
 
+mod colour;
 mod life;
 mod paint;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_colour;
+#[cfg(test)]
 mod tests_paint;
 #[cfg(test)]
 mod tests_thrive;
 pub(in crate::world) mod thrive;
+
+pub use colour::{Reading, Verdure};
 
 use super::SEA_LEVEL;
 use super::biome::Biome;

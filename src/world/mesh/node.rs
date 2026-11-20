@@ -9,10 +9,12 @@ use super::bands;
 use super::frame::Frame;
 use super::patch::Patch;
 use super::span::Span;
-use super::tris::{Style, fill};
+use super::style::Style;
+use super::tris::fill;
 use super::{GRID_POINTS, dithered};
 use crate::world::Terrain;
 use crate::world::globe::ChunkId;
+use crate::world::lands::Verdure;
 use crate::world::shapes::FlatMesh;
 
 /// Adds the terrain of quadtree node `id`, cut into `n` cells per side, to `mesh` in `frame`.
@@ -34,7 +36,7 @@ pub fn fill_node(
     let coarse = Style::coarse(span.step(), terrain.globe().lands());
     let style = Style {
         skirt: [0.0, coarse.skirt][usize::from(skirts)],
-        ..coarse
+        ..coarse.grown(span.step(), Verdure::of(terrain, span.center()))
     };
     if !terrain.globe().has_ground() {
         return bands::fill(mesh, &span, frame, style.skirt);

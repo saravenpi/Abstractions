@@ -92,6 +92,7 @@ Things to fix:
 | Field repair key U; the spare body wakes at the base only when the robot dies on the base's planet | Keep |
 | Big game is sparse on the chosen homes (herds 2 to 3 km apart). Denser? | Keep |
 | Push `integrate` to origin before it is green, to play on the Mac? | Do not push until green |
+| Galaxy scale | Decided: real distances, see 6b |
 
 ## 5. Tests loosened or rewritten: the owner should judge
 
@@ -106,9 +107,15 @@ Things to fix:
 
 Everything in section 1 marked "never run", plus: grass blades and their cost, the waterline pass, the foam wake, the entry sheath, call poses, crouch, the galaxy light, the cloud shell, the far depth of the sky and stars, trunk rivers, the map tiles, "Open with 0.10" on Linux (macOS returns `Unsupported`). Shaders only fail in the running game.
 
-## 6b. Scale problem found by three agents
+## 6b. Real scale everywhere (owner decision, 2026-11-20)
 
-Stars are 1e10 to 1e11 m apart while planet orbits reach 6e12 m, so star systems overlap. Planets are real size, the galaxy is not. The reach of a star system was 1e9 m and is being set from the real orbits. Waiting for the owner: keep the galaxy scale for this version (the lead's advice) or move to real distances between stars.
+The owner decided: planet sizes, distances and orbits must all be realistic, from size and mass. Realism and optimisation.
+
+What was found: planets are real size and orbit at 0.03 to 40 AU, but the game light-year is 1e10 m and stars are 1e10 to 1e11 m apart, so star systems overlap. The real distance between neighbour stars is about 4e16 m.
+
+State: an audit is running. It checks every scale of `src/universe/` against real astrophysics (galaxy size, star density and masses, Kepler periods, mass-radius, gravity from mass and radius, Hill and Roche limits), lists everything that depends on the galaxy scale (position precision, warp speeds and travel times, starfield, galaxy light, map, saves, wire), and writes a plan with work packages to `~/.cache/abstractions-targets/int-logs/scale.md`. Implementation starts when the four test-fix branches are merged, because one of them is unifying the reach of a star system.
+
+This is part of 0.11: the release waits for it.
 
 ## 7. Order of the remaining work
 

@@ -103,8 +103,8 @@ fn air(altitude: f32, height: f32) -> f32 {
 }
 
 fn horizon_dip(altitude: f32, radius: f32) -> f32 {
-    let ratio = radius / max(radius + max(altitude, 0.0), 1.0);
-    return sqrt(max(1.0 - ratio * ratio, 0.0));
+    let high = max(altitude, 0.0);
+    return sqrt(high * (2.0 * radius + high)) / max(radius + high, 1.0);
 }
 
 fn shadow_at(height: f32, altitude: f32, radius: f32) -> f32 {

@@ -17,6 +17,19 @@ impl Terrain {
         }
     }
 
+    /// Returns true when the sea spreads farther than the search of this view reaches from its origin, which
+    /// the drainage grid sees on a planet whose cells are wider than the reach: the search then has nothing to
+    /// find there, and goes straight to the shores.
+    pub(super) fn open_sea(&self) -> bool {
+        let globe = self.globe();
+        if self.chart() == Chart::Flat || !globe.has_ground() {
+            return false;
+        }
+        let reach = f64::from(self.reach()) * f64::from(SPAWN_STEP);
+        let from = self.embed(0.0, 0.0, 0.0).normalize();
+        globe.drainage().sea_around(from, reach, globe.radius())
+    }
+
     /// Returns the planet position of the spawn on the nearest shore of the drainage grid that takes one,
     /// or nothing on the legacy plane and on a planet whose shores take none.
     pub(super) fn landfall(&self) -> Option<DVec3> {

@@ -5,7 +5,7 @@ use super::Globe;
 use super::atlas::{Cell, End, Flow, downhill};
 use super::cube::Face;
 use super::tests_landform::world;
-use crate::universe::{PlanetClass, Water};
+use crate::universe::{PlanetClass, STANDARD_GRAVITY, Water};
 use crate::world::{SEA_LEVEL, Surface};
 
 /// Returns every flow of `globe`, cell by cell over the six faces.
@@ -44,18 +44,20 @@ fn rivers_fall_to_the_sea_or_a_basin() {
 }
 
 /// The ground never stands above a river bed along the river, and above the sea it is a river bed, which
-/// the meshes paint too.
+/// the meshes paint too. Two home planets together have more than ten such beds.
 #[test]
 fn rivers_are_cut_into_the_ground() {
-    let globe = Globe::new(42, 6000.0, 22.0);
     let mut beds = 0;
-    for node in flows(&globe).iter().flat_map(|f| f.nodes.clone()) {
-        let h = globe.height(node.dir);
-        assert!(h <= node.bed.max(SEA_LEVEL) + 1e-3, "{h} over {node:?}");
-        if h > SEA_LEVEL + 0.1 && !globe.pond_at(node.dir) {
-            assert_eq!(globe.surface(node.dir), Surface::River, "{node:?}");
-            assert_eq!(globe.mark(node.dir), Some(Surface::River));
-            beds += 1;
+    for seed in [42, 7] {
+        let globe = Globe::new(seed, 6000.0, STANDARD_GRAVITY);
+        for node in flows(&globe).iter().flat_map(|f| f.nodes.clone()) {
+            let h = globe.height(node.dir);
+            assert!(h <= node.bed.max(SEA_LEVEL) + 1e-3, "{h} over {node:?}");
+            if h > SEA_LEVEL + 0.1 && !globe.pond_at(node.dir) {
+                assert_eq!(globe.surface(node.dir), Surface::River, "{node:?}");
+                assert_eq!(globe.mark(node.dir), Some(Surface::River));
+                beds += 1;
+            }
         }
     }
     assert!(beds > 10, "only {beds} river beds above the sea");

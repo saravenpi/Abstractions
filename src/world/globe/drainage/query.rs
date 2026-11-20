@@ -49,6 +49,21 @@ impl Drainage {
             .filter(|_| self.is_land(cell))
     }
 
+    /// Returns true when every cell of the block of nine around the one holding `dir` is sea and a cell is
+    /// wider than `reach` metres on a planet of `radius` metres, so no land lies within `reach` of `dir`
+    /// but for islands smaller than a cell.
+    pub fn sea_around(&self, dir: DVec3, reach: f64, radius: f64) -> bool {
+        let cell = radius * std::f64::consts::FRAC_PI_2 / f64::from(self.grid.n);
+        let middle = self.find(dir);
+        reach <= cell
+            && !self.is_land(middle)
+            && self
+                .grid
+                .around(middle)
+                .into_iter()
+                .all(|k| !self.is_land(k))
+    }
+
     /// Returns the path of the water from `cell` down to its end, both included: a sea cell, or the bottom of
     /// a closed basin.
     pub fn course(&self, cell: usize) -> Vec<usize> {

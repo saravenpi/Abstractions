@@ -31,15 +31,18 @@ pub fn flood(grid: Grid, height: &[f32], sea: f32) -> Flood {
     let mut seen: Vec<bool> = height.iter().map(|h| *h <= sea).collect();
     let mut level = height.to_vec();
     let mut order = Vec::with_capacity(height.len());
-    let mut heap = BinaryHeap::new();
     if !seen.contains(&true) {
         let low = (0..height.len()).min_by(|a, b| height[*a].total_cmp(&height[*b]));
         low.into_iter().for_each(|k| seen[k] = true);
     }
-    (0..height.len())
+    let packed = |level: f32, k: usize| Reverse((u64::from(key(level)) << 32) | k as u64);
+    let seeds: Vec<_> = (0..height.len())
         .filter(|k| seen[*k])
-        .for_each(|k| heap.push(Reverse((key(level[k]), k))));
-    while let Some(Reverse((_, k))) = heap.pop() {
+        .map(|k| packed(level[k], k))
+        .collect();
+    let mut heap = BinaryHeap::from(seeds);
+    while let Some(Reverse(top)) = heap.pop() {
+        let k = (top & u64::from(u32::MAX)) as usize;
         order.push(k);
         for to in grid.around(k) {
             if std::mem::replace(&mut seen[to], true) {
@@ -47,7 +50,7 @@ pub fn flood(grid: Grid, height: &[f32], sea: f32) -> Flood {
             }
             next[to] = k as u32;
             level[to] = level[k].max(height[to]);
-            heap.push(Reverse((key(level[to]), to)));
+            heap.push(packed(level[to], to));
         }
     }
     let mut area: Vec<u32> = height.iter().map(|h| u32::from(*h > sea)).collect();

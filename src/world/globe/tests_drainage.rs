@@ -1,17 +1,17 @@
 //! Tests of the drainage grid: every path of water ends in the sea or a basin, the build is quick, trunk
 //! rivers run on the ground as flows that fall, and the shores it finds are land near the sea.
 
-use std::time::{Duration, Instant};
-
 use bevy::math::DVec3;
 
 use super::Globe;
 use super::atlas::Cell;
 use super::drainage::Drainage;
 use super::drainage::tune::{LATITUDE, SIDE, STARTS};
+use crate::world::cpu::busy;
 
-/// The most the grid of a planet may take to build, off the main thread.
-const BUILD: Duration = Duration::from_millis(400);
+/// The most processor time the grid of a planet may take to build on one thread, which is 400 ms on three
+/// cores, off the main thread.
+const BUILD: f64 = 1.2;
 
 /// Returns an Earth-sized planet of seed `seed`, with its shore measured so a build times only the grid.
 fn earth(seed: u64) -> Globe {
@@ -48,15 +48,16 @@ fn every_river_path_reaches_the_sea_or_a_basin() {
     }
 }
 
-/// The grid of an Earth has 256 cells along a face side and builds in under 400 ms.
+/// The grid of an Earth has 256 cells along a face side and takes under 1.2 s of one thread to build, as
+/// the clock of the thread says, so that a busy machine does not change what is measured.
 #[test]
 fn the_grid_builds_in_time() {
     let globe = earth(7);
-    let start = Instant::now();
-    let drain = Drainage::build(&globe);
-    let took = start.elapsed();
+    let start = busy();
+    let drain = Drainage::build_on(&globe, 1);
+    let took = busy() - start;
     assert_eq!(drain.grid().n, SIDE);
-    assert!(took < BUILD, "the grid took {took:?}");
+    assert!(took < BUILD, "the grid took {took} s of one thread");
 }
 
 /// Two builds of one planet give the same grid.

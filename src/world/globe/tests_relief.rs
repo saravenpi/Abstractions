@@ -12,9 +12,9 @@ use crate::world::SEA_LEVEL;
 #[test]
 fn relief_factors_follow_gravity_and_radius() {
     assert_eq!(scale(EARTH_RADIUS, STANDARD_GRAVITY), (1.0, 1.0));
-    assert!((scale(6000.0, 22.0 / 1.21).0 - 1.1).abs() < 1e-6);
-    assert_eq!(scale(6000.0, 22.0 / 4.0).0, 1.6);
-    assert_eq!(scale(6000.0, 22.0 * 4.0).0, 0.6);
+    assert!((scale(6000.0, STANDARD_GRAVITY / 1.21).0 - 1.1).abs() < 1e-6);
+    assert_eq!(scale(6000.0, STANDARD_GRAVITY / 4.0).0, 1.6);
+    assert_eq!(scale(6000.0, STANDARD_GRAVITY * 4.0).0, 0.6);
     assert_eq!(scale(12_000.0, 22.0).1, 0.5);
     assert_eq!(scale(3000.0, 22.0).1, 2.0);
 }
@@ -102,7 +102,7 @@ fn the_home_ground_keeps_its_character() {
         (7, [0.3475, 9.866, 13.083, 31.784]),
     ];
     for (seed, was) in before {
-        let now = measure(&Globe::new(seed, 6000.0, 22.0));
+        let now = measure(&Globe::new(seed, 6000.0, STANDARD_GRAVITY));
         let near = |a: f32, b: f32, share: f32| (a - b).abs() <= share * b.abs().max(1.0);
         assert!(
             near(now[0], was[0], 0.02),

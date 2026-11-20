@@ -6,6 +6,8 @@ mod calendar;
 pub mod canopy;
 mod chunks;
 mod colormap;
+#[cfg(test)]
+mod cpu;
 mod enter;
 mod focus;
 pub mod globe;

@@ -104,6 +104,16 @@ impl Terrain {
 }
 
 #[cfg(test)]
+impl Terrain {
+    /// Builds the flat terrain of a 6 km planet of standard gravity: the legacy plane that the frozen
+    /// tests guard bit for bit, which is no longer the home planet of any universe.
+    pub(crate) fn legacy(seed: u64) -> Self {
+        let globe = Globe::new(seed, 6000.0, crate::universe::STANDARD_GRAVITY);
+        Self::on(Arc::new(globe), Chart::Flat)
+    }
+}
+
+#[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tests_root;

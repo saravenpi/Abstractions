@@ -9,7 +9,7 @@ fn fold(hash: u64, value: u32) -> u64 {
 
 /// Returns the hash of everything the flat terrain of `seed` says over a grid of 96 by 96 points.
 fn digest(seed: u64) -> u64 {
-    let t = Terrain::new(seed);
+    let t = Terrain::legacy(seed);
     let spawn = t.find_spawn();
     let start = spawn
         .to_array()

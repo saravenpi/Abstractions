@@ -107,7 +107,7 @@ fn neighbors_share_edges() {
 /// The legacy terrain is the flat chart of a 6 km globe and reads the plane unchanged.
 #[test]
 fn flat_terrain_reads_the_plane() {
-    let t = Terrain::new(5);
+    let t = Terrain::legacy(5);
     assert_eq!(t.chart(), Chart::Flat);
     assert_eq!(t.globe().radius(), 6000.0);
     assert_eq!(

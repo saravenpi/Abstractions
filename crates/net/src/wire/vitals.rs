@@ -4,6 +4,7 @@
 //! robot record sent with it. It travels apart from the robot so that sixteen robots fit one datagram.
 
 use super::bytes::Reader;
+use super::{Body, Frame, Kind};
 use crate::pack::{pack_unit, unpack_unit};
 
 /// Number of parts of the robot that carry health, the length of [`VitalsBody::harm`].
@@ -20,15 +21,19 @@ pub struct VitalsBody {
     pub heat: f32,
 }
 
-impl VitalsBody {
-    /// Adds the body to `out`.
-    pub fn encode(&self, out: &mut Vec<u8>) {
+impl Body for VitalsBody {
+    const KIND: Kind = Kind::Vitals;
+
+    const MAX_LEN: usize = 11;
+
+    /// Adds the body to `out`. A vitals record has no position, so the frame is not read.
+    fn encode(&self, _: &Frame, out: &mut Vec<u8>) {
         out.extend(self.harm.map(pack_unit));
         out.push(pack_unit(self.heat));
     }
 
-    /// Returns the body [`VitalsBody::encode`] wrote, or nothing when `bytes` has the wrong length.
-    pub fn decode(bytes: &[u8]) -> Option<Self> {
+    /// Returns the body [`Body::encode`] wrote, or nothing when `bytes` has the wrong length.
+    fn decode(_: &Frame, bytes: &[u8]) -> Option<Self> {
         let mut reader = Reader(bytes);
         let harm = reader.take::<HARM_PARTS>()?.map(unpack_unit);
         let [heat] = reader.take()?;

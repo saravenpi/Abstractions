@@ -1,25 +1,11 @@
 //! What the records of this machine carry of its craft: the glow of an entry around it and how
 //! hurt each part of the robot is.
 
-use abstractions_net::wire::{Frame, HARM_PARTS, RobotBody, VitalsBody};
+use abstractions_net::wire::{HARM_PARTS, RobotBody, VitalsBody};
 
-use abstractions_net::wire::Kind;
-
-use super::{Here, Outbox, Pilot, Scene, Sent, Stamp};
+use super::{Here, Pilot, Scene, Sent};
 use crate::condition::Condition;
 use crate::ship::WarpState;
-
-/// Adds `body` to `out`. A vitals record has no position, so the frame only names where it is.
-pub fn encode(body: &VitalsBody, _: &Frame, out: &mut Vec<u8>) {
-    body.encode(out);
-}
-
-impl Outbox {
-    /// Adds the vitals record to the batch when it is due.
-    pub(super) fn offer_vitals(&mut self, stamp: &Stamp, vitals: Option<Sent<VitalsBody>>) {
-        self.offer(stamp, (Kind::Vitals, vitals), encode);
-    }
-}
 
 impl Scene<'_> {
     /// Returns the glow of the entry around the craft of this machine, from 0 to 1.

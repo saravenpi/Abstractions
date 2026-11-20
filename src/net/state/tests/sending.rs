@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use abstractions_net::wire::{Frame, Kind, RobotBody, records};
+use abstractions_net::wire::{Body, Frame, Kind, RobotBody, records};
 use bevy::prelude::*;
 use bevy::time::TimeUpdateStrategy;
 

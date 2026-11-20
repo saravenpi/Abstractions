@@ -2,13 +2,7 @@
 
 use crate::host::ConnId;
 use crate::ids::StarId;
-use crate::wire::{Head, Kind, PlayerInfo, Record, Waypoint};
-
-/// Kinds of state record: robot, ship, companion and vitals.
-pub(super) const KINDS: usize = 4;
-
-/// Most bytes of a state body the room keeps. A longer body is dropped.
-pub(super) const BODY_MAX: usize = 128;
+use crate::wire::{BODY_MAX, Head, Kind, PlayerInfo, Record, Waypoint};
 
 /// Most records of one player and kind the room keeps between two ticks.
 pub(super) const DEPTH: usize = 4;
@@ -99,22 +93,12 @@ pub(super) struct Seat {
     pub(super) info: PlayerInfo,
     /// The star of the player's latest record, or nothing before the first one.
     pub(super) star: Option<StarId>,
-    /// The recent records of each kind, in the order of [`kind_index`].
-    pub(super) recent: [Recent; KINDS],
+    /// The recent records of each kind, in the order of [`Kind::index`].
+    pub(super) recent: [Recent; Kind::COUNT],
     /// The player's live waypoint, if any.
     pub(super) waypoint: Option<Waypoint>,
     /// The bytes of the item the player holds, if any.
     pub(super) held: Option<Vec<u8>>,
-}
-
-/// Returns the place of `kind` in [`Seat::latest`].
-pub(super) fn kind_index(kind: Kind) -> usize {
-    match kind {
-        Kind::Robot => 0,
-        Kind::Ship => 1,
-        Kind::Companion => 2,
-        Kind::Vitals => 3,
-    }
 }
 
 impl Seat {
@@ -135,7 +119,7 @@ impl Seat {
     /// over [`BODY_MAX`] bytes, a time that is not a number, or a sample older than the newest
     /// kept is dropped and false is returned.
     pub(super) fn keep(&mut self, record: &Record<'_>, seq: u64) -> bool {
-        let recent = &mut self.recent[kind_index(record.head.kind)];
+        let recent = &mut self.recent[record.head.kind.index()];
         let older = recent
             .newest()
             .is_some_and(|newest| record.head.time < newest.head.time);

@@ -3,7 +3,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use abstractions_net::wire::{self, Head, Kind, Record, RobotBody, push};
+use abstractions_net::wire::{self, Body, Head, Kind, Record, RobotBody, push};
 use bevy::asset::AssetPlugin;
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;

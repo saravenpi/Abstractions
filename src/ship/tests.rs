@@ -26,6 +26,7 @@ mod reroute;
 mod resume;
 mod retarget;
 mod rig;
+mod saved_frame;
 mod space;
 mod steady;
 mod voyage;

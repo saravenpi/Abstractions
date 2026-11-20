@@ -8,7 +8,7 @@ use abstractions_net::ids::BodyId;
 use abstractions_net::io::{Client, ClientEvent, ConnectOpts};
 use abstractions_net::log::PlayerId;
 use abstractions_net::wire::{
-    ClientMsg, Frame, Head, Hello, Kind, PROTOCOL, Record, RobotBody, ServerMsg,
+    Body, ClientMsg, Frame, Head, Hello, Kind, PROTOCOL, Record, RobotBody, ServerMsg,
 };
 use abstractions_net::wire::{push, records};
 use glam::{DVec3, Vec3};

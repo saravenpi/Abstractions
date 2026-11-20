@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use super::warp::Warp;
 use crate::effects::Churn;
 use crate::space::Frame;
-use crate::universe::{BodyId, GalaxyId, StarId};
 
 /// The player's ship: a rigid body simulated in 64 bits.
 ///
@@ -77,7 +76,7 @@ impl Ship {
     /// Returns the plain record of the ship for a save file.
     pub fn state(&self) -> ShipState {
         ShipState {
-            frame: self.frame.into(),
+            frame: self.frame,
             pos: self.pos.to_array(),
             vel: self.vel.to_array(),
             rot: self.rot.to_array(),
@@ -110,7 +109,7 @@ impl Ship {
             touching: state.landed,
             gear: state.gear.map_or(1.0, |gear| gear.clamp(0.0, 1.0)),
             stowed: state.gear.is_some_and(|gear| gear < 1.0),
-            ..Self::at_rest(state.frame.into(), DVec3::from_array(state.pos), rot)
+            ..Self::at_rest(state.frame, DVec3::from_array(state.pos), rot)
         };
         let sound = ship.pos.is_finite() && ship.vel.is_finite() && ship.spin.is_finite();
         let level = ship.throttle.is_finite() && ship.damage.is_finite() && ship.gear.is_finite();
@@ -118,47 +117,11 @@ impl Ship {
     }
 }
 
-/// The frame of a saved ship: [`Frame`] in a form a save file can hold.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SavedFrame {
-    /// Fixed to a planet or a moon and turning with it.
-    Surface(BodyId),
-    /// Inertial, origin at a star.
-    System(StarId),
-    /// Inertial, origin at a galaxy centre. The position is a 64-bit number of metres from the
-    /// centre: its step is 1e5 m at 5e20 m and 4e6 m at 2.4e22 m. Slow motion, 33 m a frame at the
-    /// slowest warp, is below that step at the rim, so nothing flies slowly in this frame: the
-    /// slowest warp speed applies inside a lock sphere, where the ship is in a system frame.
-    Galaxy(GalaxyId),
-}
-
-impl From<Frame> for SavedFrame {
-    /// Returns the saved form of a frame.
-    fn from(frame: Frame) -> Self {
-        match frame {
-            Frame::Surface(body) => Self::Surface(body),
-            Frame::System(star) => Self::System(star),
-            Frame::Galaxy(galaxy) => Self::Galaxy(galaxy),
-        }
-    }
-}
-
-impl From<SavedFrame> for Frame {
-    /// Returns the frame a saved form stands for.
-    fn from(frame: SavedFrame) -> Self {
-        match frame {
-            SavedFrame::Surface(body) => Self::Surface(body),
-            SavedFrame::System(star) => Self::System(star),
-            SavedFrame::Galaxy(galaxy) => Self::Galaxy(galaxy),
-        }
-    }
-}
-
 /// What a save file keeps of the ship. Plain data: metres, metres per second, a unit quaternion.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct ShipState {
     /// Frame the other fields are expressed in.
-    pub frame: SavedFrame,
+    pub frame: Frame,
     /// Position of the hull centre.
     pub pos: [f64; 3],
     /// Velocity relative to the frame.

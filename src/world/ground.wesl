@@ -4,8 +4,14 @@ import bevy_pbr::render::pbr_functions::{alpha_discard, apply_pbr_lighting, main
 @if(VISIBILITY_RANGE_DITHER)
 import bevy_pbr::render::pbr_functions::visibility_range_dither;
 import package::render::daylight::{place_from, relit};
+import package::world::turf::{Turf, carpet, cover, spot};
 
 @group(constants::MATERIAL_BIND_GROUP) @binding(100) var place_map: texture_2d<f32>;
+@group(constants::MATERIAL_BIND_GROUP) @binding(101) var<uniform> turf: Turf;
+
+// How far the normal of a fully turfed triangle leans to the local up: a carpet of blades catches
+// the light as level ground does, whatever the facet under it.
+const SOFT: f32 = 0.6;
 
 @fragment
 fn fragment(vertex_output: VertexOutput, @builtin(front_facing) is_front: bool) -> FragmentOutput {
@@ -18,8 +24,20 @@ fn fragment(vertex_output: VertexOutput, @builtin(front_facing) is_front: bool) 
         pbr_input.material.alpha_cutoff,
         pbr_input.material.base_color
     );
+    let place = place_from(place_map);
+    @if(VERTEX_UVS_B) {
+        let thick = cover(turf, in.uv_b);
+        if (thick > 0.0) {
+            let base = pbr_input.material.base_color;
+            let grass = carpet(turf, spot(in.uv_b));
+            pbr_input.material.base_color = vec4<f32>(mix(base.rgb, grass, thick), base.a);
+            let rise = in.world_position.xyz - place.centre.xyz;
+            let up = select(pbr_input.N, normalize(rise), place.centre.w > 0.0);
+            pbr_input.N = normalize(mix(pbr_input.N, up, SOFT * thick));
+        }
+    }
     var out: FragmentOutput;
-    out.color = relit(pbr_input, apply_pbr_lighting(pbr_input), place_from(place_map));
+    out.color = relit(pbr_input, apply_pbr_lighting(pbr_input), place);
     out.color = main_pass_post_lighting_processing(pbr_input, out.color);
     return out;
 }

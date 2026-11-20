@@ -16,9 +16,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Herds within 300 m show on the compass and the minimap with a small animal mark and their distance, labelled "Herd" until the field guide has their species, then by its name. The nearest three show, one for herds that keep together.
 - Animals that glow light up at night in their own colour.
 - Animals leave signs and make calls. Within 60 m you find the footprints of herds that passed in the last four minutes, spaced wider where they ran, droppings and cropped patches where they grazed, nests and burrows near their homes, and bones where a kill was eaten. Herds call now and then, lower for bigger animals, call the alarm when they flee, and hunters cry as they give chase. Every player finds the same tracks and hears the same calls.
+- Grass grows on living planets that have ground cover. Near you, blades stand dense out to 15 m and thin out to 40 m, sway in the wind and take the colour of the carpet under them. Farther out the ground shows the same carpet: two colours of the planet's ground-cover species in patches with a fine speckle. Blades stay clear of trunks and rocks and of the patches grazers cropped. A planet without ground cover has none.
 
 ### Changed
 
+- Falling leaves, petals and pollen come only from the plants around you. A tree in leaf drops leaves of its own colour and size, more in autumn; a plant in flower drops petals and, by day, pollen; a bare tree and a lifeless planet drop nothing.
 - The map's side panel has more room: Search, Place, Favourites and Players each sit under a heading, with space between them and between the groups of the card. The result count sits beside the Search heading, the save button beside the Favourites heading, and the distance only in the result row. Rows are taller, and in a short window the favourites and players lose their last rows before anything else is cut.
 - The buttons on the card are shorter, so they take two rows: Set course or Engage and Clear, Focus, Set waypoint and Save place.
 - The wingsuit answers the pitch keys faster: a pull bends the flight path about twice as fast at speed, and let go the wings fly on where you pointed them instead of snapping back to the glide.

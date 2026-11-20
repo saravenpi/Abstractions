@@ -15,10 +15,11 @@ use crate::fauna::herds::{Land, herd_arc, read};
 use crate::fauna::place::Spot;
 use crate::life::herd::{Search, Watch};
 use crate::life::signs;
+use crate::life::signs::Mark;
 use crate::player::Player;
 use crate::screens::Screen;
 use crate::space::{Anchor, Clock, Placed};
-use crate::world::Terrain;
+use crate::world::{Cropped, Terrain};
 
 /// What the lay reads and writes.
 #[derive(SystemParam)]
@@ -29,6 +30,7 @@ pub struct Lay<'w, 's> {
     anchor: Res<'w, Anchor>,
     spec: Res<'w, Spec>,
     trail: ResMut<'w, Trail>,
+    cropped: ResMut<'w, Cropped>,
     meshes: ResMut<'w, Assets<Mesh>>,
     materials: ResMut<'w, Assets<StandardMaterial>>,
     robot: Query<'w, 's, &'static Transform, With<Player>>,
@@ -90,10 +92,21 @@ pub fn lay(mut l: Lay, heights: Local<Heights>) {
         planet: &planet,
     };
     l.trail.read(land, at, l.clock.seconds);
+    crop(&l.trail, &mut l.cropped);
     if l.terrain.is_changed() {
         heights.clear();
     }
     draw(&mut l, Spot::at(at, globe.radius()), &heights);
+}
+
+/// Tells the blades where the grazed patches of the trail lie, only when they moved, grew or went.
+fn crop(trail: &Trail, cropped: &mut ResMut<Cropped>) {
+    let grazed = trail.signs.iter().filter(|s| s.mark == Mark::Grazed);
+    let patches = grazed.map(|s| (s.at, s.size * 0.5));
+    if !patches.clone().eq(cropped.0.iter().copied()) {
+        cropped.0.clear();
+        cropped.0.extend(patches);
+    }
 }
 
 /// Paints the signs of the trail into its mesh in the frame `spot`, spawning the mesh the first time.

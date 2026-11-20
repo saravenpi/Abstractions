@@ -26,6 +26,7 @@ pub struct FlatMesh {
     positions: Vec<[f32; 3]>,
     normals: Vec<[f32; 3]>,
     uvs: Vec<[f32; 2]>,
+    turf: Vec<[f32; 2]>,
 }
 
 impl FlatMesh {
@@ -39,9 +40,22 @@ impl FlatMesh {
         normal
     }
 
-    /// Converts the triangles into a Bevy mesh.
-    pub fn into_mesh(self) -> Mesh {
-        textured_mesh(self.positions, self.normals, self.uvs)
+    /// Gives the next triangle added the turf coordinates `uvs` of its three corners: the second uv set
+    /// the ground shader reads its carpet from. Triangles added without any read as bare.
+    pub fn turf(&mut self, uvs: [[f32; 2]; 3]) {
+        self.turf.resize(self.positions.len(), [0.0; 2]);
+        self.turf.extend(uvs);
+    }
+
+    /// Converts the triangles into a Bevy mesh, with the turf coordinates when any triangle has them.
+    pub fn into_mesh(mut self) -> Mesh {
+        let turfed = !self.turf.is_empty();
+        self.turf.resize(self.positions.len(), [0.0; 2]);
+        let mesh = textured_mesh(self.positions, self.normals, self.uvs);
+        match turfed {
+            true => mesh.with_inserted_attribute(Mesh::ATTRIBUTE_UV_1, self.turf),
+            false => mesh,
+        }
     }
 }
 

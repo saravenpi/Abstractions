@@ -65,7 +65,7 @@ use self::motion::Motion;
 pub use self::near::leaf_arc;
 use self::near::{Around, Course};
 use self::nodes::Nodes;
-pub use self::place::{Sited, place};
+pub use self::place::{Sited, place, pose};
 use self::plan::Loaded;
 pub use self::reach::{Reach, STEPS};
 use self::spawn::Spawner;

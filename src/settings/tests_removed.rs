@@ -6,11 +6,11 @@ use super::Settings;
 /// skipped and every other value is kept.
 #[test]
 fn files_with_a_removed_option_load() {
-    let old = "[graphics]\nrender_distance = 6\nray_tracing = true\nfov = 90\n";
+    let old = "[graphics]\nrender_distance = 8\nray_tracing = true\nfov = 90\n";
     let parsed: Settings = toml::from_str(old).unwrap();
     assert_eq!(
         (parsed.graphics.render_distance, parsed.graphics.fov),
-        (6, 90)
+        (8, 90)
     );
     assert_eq!(parsed.controls, Settings::default().controls);
 }

@@ -6,19 +6,17 @@ use bevy::math::{Affine3A, DMat3, DVec2, DVec3};
 use bevy::prelude::*;
 
 use super::tune::Spot;
-use crate::world::globe::{Chart, Face, Tangent};
+use crate::world::globe::{Chart, Tangent};
 use crate::world::{Globe, Terrain};
 
 /// Passes that walk a point of the flat frame onto the ground along the local vertical.
 const PASSES: u32 = 3;
 
 /// Returns the view of `globe` through the chart of the cube face that holds the planet position
-/// `pos`: the chart the chunk meshes the game draws there are built in.
+/// `pos`, rooted near it: the grid of that chart is the one the chunk meshes the game draws there
+/// are built on.
 fn drawn(globe: &Arc<Globe>, pos: DVec3) -> Terrain {
-    Terrain::on(
-        globe.clone(),
-        globe.face_chart(Face::locate(pos.normalize()).0),
-    )
+    Terrain::near(globe, pos)
 }
 
 /// The frame of the base: origin on the ground at the base centre, +x east, +y up there and

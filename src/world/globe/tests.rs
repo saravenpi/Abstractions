@@ -124,7 +124,13 @@ fn flat_terrain_reads_the_plane() {
     assert_eq!(t.globe().leaf_level(), 7);
     let scale = 4096.0;
     let face = Face::PosY;
-    assert_eq!(t.globe().face_chart(face), Chart::Face { face, scale });
+    let origin = bevy::math::DVec2::ZERO;
+    let middle = Chart::Face {
+        face,
+        scale,
+        origin,
+    };
+    assert_eq!(t.globe().face_chart(face), middle);
 }
 
 /// Face and tangent views embed and locate consistently, and a tangent view keeps the site and its axes.

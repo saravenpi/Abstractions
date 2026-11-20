@@ -2,7 +2,7 @@
 
 use std::f64::consts::FRAC_PI_4;
 
-use bevy::math::DVec3;
+use bevy::math::{DVec2, DVec3};
 
 use super::{Chart, Face, Globe};
 use crate::world::CHUNK_SIZE;
@@ -54,9 +54,15 @@ impl Globe {
         }
     }
 
-    /// Returns the chart of `face` in which a node of [`Globe::leaf_level`] is `CHUNK_SIZE` wide.
+    /// Returns the chart of `face` in which a node of [`Globe::leaf_level`] is `CHUNK_SIZE` wide, rooted in
+    /// the middle of the face. Far from the middle of a big planet its positions are coarse: root it nearer
+    /// with [`Chart::near`].
     pub fn face_chart(&self, face: Face) -> Chart {
         let scale = f64::from(CHUNK_SIZE) * (1u64 << self.leaf_level()) as f64 * 0.5;
-        Chart::Face { face, scale }
+        Chart::Face {
+            face,
+            scale,
+            origin: DVec2::ZERO,
+        }
     }
 }

@@ -38,6 +38,8 @@ mod tests_metric;
 #[cfg(test)]
 pub(crate) mod tests_river;
 #[cfg(test)]
+mod tests_root;
+#[cfg(test)]
 mod tests_sphere;
 #[cfg(test)]
 pub(crate) mod tile;
@@ -140,9 +142,11 @@ fn shallow(terrain: &Terrain, coord: IVec2) -> bool {
     })
 }
 
-/// Returns the random stream of chunk `coord`, which differs between the faces of a globe.
+/// Returns the random stream of chunk `coord`, which differs between the faces of a globe. It is drawn from
+/// the chunk counted from the middle of the chart, so it is the same wherever the view is rooted.
 fn stream(terrain: &Terrain, coord: IVec2) -> ChaCha8Rng {
-    let mix = (coord.x as u32 as u64) << 32 | coord.y as u32 as u64;
+    let id = coord + terrain.shift(CHUNK_SIZE);
+    let mix = (id.x as u32 as u64) << 32 | id.y as u32 as u64;
     let face = match terrain.chart() {
         Chart::Face { face, .. } => (face as u64 + 1).wrapping_mul(0xD6E8_FEB8_6659_FD93),
         _ => 0,

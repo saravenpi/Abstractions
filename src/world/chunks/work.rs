@@ -48,9 +48,10 @@ pub fn start_work(
     todo.sort_by_key(|(rank, ..)| *rank);
     let pool = AsyncComputeTaskPool::get();
     for (_, id, work) in todo.into_iter().take(room) {
-        let terrain = spawner.view(id.face);
+        let terrain = spawner.view(id);
+        let coord = leaf_coord(&terrain, id);
         if let Some(l) = loaded.get_mut(&id) {
-            l.detail.begin(work, (terrain, leaf_coord(id)), pool);
+            l.detail.begin(work, (terrain, coord), pool);
         }
     }
 }

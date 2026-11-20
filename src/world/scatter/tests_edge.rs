@@ -27,7 +27,8 @@ fn across(globe: &Arc<Globe>, tile: &Tile) -> Option<Tile> {
     let steps = [(1, 0), (-1, 0), (0, 1), (0, -1)];
     let mut beyond = steps.into_iter().filter_map(|(dx, dy)| id.neighbor(dx, dy));
     let other = beyond.find(|n| n.face != id.face)?;
-    Some(Tile::new(globe, other.face, leaf_coord(other)))
+    let face = Terrain::on(globe.clone(), globe.face_chart(other.face));
+    Some(Tile::new(globe, other.face, leaf_coord(&face, other)))
 }
 
 /// Returns every pair of chunks of `globe` that touch across a cube edge and are both mostly land, once each.

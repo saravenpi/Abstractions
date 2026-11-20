@@ -1,9 +1,9 @@
 //! Keeping the sea under the focus: its seat on the planet, its floor map and its shader values.
 
-use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::floor::SeaFloor;
+use super::height::Sight;
 use super::liquid::Liquid;
 use super::material::WaterMaterial;
 use super::seat::Seat;
@@ -101,29 +101,28 @@ pub fn follow_focus(
     mut sea: Query<SeaItem, With<Sea>>,
     mut materials: ResMut<Assets<WaterMaterial>>,
 ) {
-    let at = focus
-        .planet()
-        .filter(|_| planet.as_ref().is_none_or(|p| p.globe.has_sea()));
+    let sea_here = planet.as_ref().is_none_or(|p| p.globe.has_sea());
+    let at = focus.planet().zip(focus.position()).filter(|_| sea_here);
     let liquid = planet
         .as_ref()
         .map_or(Liquid::WATER, |planet| Liquid::of(&planet.globe));
     let home = Lands::of(&PlanetRecord::TEMPERATE);
     for (pose, handle, floor, seat, mut visibility) in &mut sea {
-        let radius = seat.radius();
-        let low = |at: &DVec3| at.length() < f64::from(radius + HANDOVER);
-        let near = at.filter(|at| liquid.shown && low(at));
+        let top = seat.radius() + f64::from(HANDOVER);
+        let near = at.filter(|(at, _)| liquid.shown && at.length() < top);
         visibility.set_if_neq(match near {
             Some(_) => Visibility::Inherited,
             None => Visibility::Hidden,
         });
-        let Some(at) = near else {
+        let Some((at, eye)) = near else {
             continue;
         };
         if let Some(mut material) = materials.get_mut(&handle.0) {
-            let map = floor.origin().truncate().truncate();
+            let (map, radius) = (floor.origin().truncate().truncate(), seat.radius());
             let lands = planet.as_ref().map_or(home, |planet| planet.globe.lands());
             let water = inputs.uniform(pose.rotation).of(&liquid).over(lands);
-            material.water = placing(water, pose, radius, map, seat.coords(at));
+            let water = Sight::of(pose, &seat.sited(), (eye, at)).onto(water, radius);
+            material.water = placing(water, pose, radius as f32, map, seat.coords(at));
         }
     }
 }

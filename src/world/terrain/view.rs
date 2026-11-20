@@ -67,7 +67,9 @@ impl Terrain {
     }
 
     /// Returns the chart position `(x, z)` and the height `y` above sea level of a position
-    /// given in metres from the planet centre: the inverse of [`Terrain::embed`].
+    /// given in metres from the planet centre: the inverse of [`Terrain::embed`]. On a face chart
+    /// `(x, z)` are offsets from the origin of the chart, which follows the focus: they mean
+    /// something only with this view, and must not be kept from one frame to the next.
     pub fn locate(&self, pos: DVec3) -> Vec3 {
         if matches!(self.chart, Chart::Flat) {
             return pos.as_vec3();

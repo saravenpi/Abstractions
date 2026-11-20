@@ -38,7 +38,8 @@ impl Seat {
         let tangent = Tangent::new(up, east, globe.radius(), DVec2::ZERO);
         Self {
             view: Terrain::on(globe.clone(), Chart::Tangent(tangent)),
-            faces: Face::ALL.map(|face| Terrain::on(globe.clone(), globe.face_chart(face))),
+            faces: Face::ALL
+                .map(|face| Terrain::on(globe.clone(), globe.face_chart(face).near(up))),
         }
     }
 
@@ -48,8 +49,8 @@ impl Seat {
     }
 
     /// Returns the sea level radius of the planet in meters.
-    pub fn radius(&self) -> f32 {
-        self.view.globe().radius() as f32
+    pub fn radius(&self) -> f64 {
+        self.view.globe().radius()
     }
 
     /// Returns the sea coordinates of planet position `at`.

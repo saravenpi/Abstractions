@@ -28,9 +28,10 @@ pub struct Course {
 
 /// The chart of the focus face, the chunk the focus is in and the lane it follows.
 ///
-/// Leaves of other faces get the coordinate of their middle in this chart, continued past its
-/// edge, so rings around the focus also run across a face edge. Near a cube corner two leaves
-/// may share a coordinate and a coordinate may hold no leaf.
+/// Coordinates are whole chunks from the origin of that chart. Leaves of other faces get the
+/// coordinate of their middle in this chart, continued past its edge, so rings around the focus
+/// also run across a face edge. Near a cube corner two leaves may share a coordinate and a
+/// coordinate may hold no leaf.
 pub struct Around {
     terrain: Terrain,
     /// Chunk that holds the focus.
@@ -95,7 +96,7 @@ impl Around {
     /// Returns the chunk coordinate of leaf `id` in the chart of the focus face.
     pub fn coord(&self, id: ChunkId) -> IVec2 {
         match self.terrain.chart() {
-            Chart::Face { face, .. } if face == id.face => leaf_coord(id),
+            Chart::Face { face, .. } if face == id.face => leaf_coord(&self.terrain, id),
             chart => (chart.locate(id.dir(0.5, 0.5)) / CHUNK_SIZE)
                 .floor()
                 .as_ivec2(),

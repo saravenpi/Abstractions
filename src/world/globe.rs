@@ -45,7 +45,7 @@ mod tests_record;
 #[cfg(test)]
 mod tests_relief;
 
-pub use chart::Chart;
+pub use chart::{BLOCK, Chart};
 pub use cube::Face;
 pub use grain::Grain;
 pub use id::ChunkId;

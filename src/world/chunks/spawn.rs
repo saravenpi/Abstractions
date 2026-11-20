@@ -15,11 +15,11 @@ use super::turf::Turf;
 use crate::screens::Screen;
 use crate::space::Placed;
 use crate::world::focus::Frames;
-use crate::world::globe::Face;
-use crate::world::mesh::{Frame, Rings};
+use crate::world::globe::ChunkId;
+use crate::world::mesh::{Frame, Rings, leaf_coord};
 use crate::world::props::{Cover, PropAssets, spawn_props};
 use crate::world::structures::spawn_structures;
-use crate::world::{Terrain, WorldReady};
+use crate::world::{CHUNK_SIZE, Terrain, WorldReady};
 
 /// Meshes, the shared material and terrain, for spawning and refining chunks.
 #[derive(SystemParam)]
@@ -49,10 +49,13 @@ impl Spawner<'_> {
         self.budget.as_ref().map_or(COVERED, |budget| budget.0)
     }
 
-    /// Returns the view of the planet through the chart of `face`, the one its chunks are built in.
-    pub fn view(&self, face: Face) -> Terrain {
+    /// Returns the view node `id` is built in: the chart of its face, rooted on the block that holds its low
+    /// corner. It depends on the node alone, not on where the shared view is rooted, so a chunk comes out
+    /// the same whenever it is built, and its chart positions stay small on a planet of any size.
+    pub fn view(&self, id: ChunkId) -> Terrain {
         let globe = self.terrain.globe();
-        Terrain::on(globe.clone(), globe.face_chart(face))
+        let face = Terrain::on(globe.clone(), globe.face_chart(id.face));
+        face.home(leaf_coord(&face, id), CHUNK_SIZE).view
     }
 
     /// Returns the pose components of an entity whose local coordinates are those of `frame`:

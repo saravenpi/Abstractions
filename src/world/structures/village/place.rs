@@ -69,14 +69,15 @@ fn viable(terrain: &Terrain, site: Site) -> bool {
 /// and laid out on the metric view around it, and must keep the whole village `EDGE` meters away from the
 /// cube edges.
 fn search(terrain: &Terrain, vcell: IVec2) -> Option<Site> {
-    let mix = (vcell.x as u32 as u64) << 32 | vcell.y as u32 as u64;
+    let size = SPAN as f32 * CELL;
+    let id = vcell + terrain.shift(size);
+    let mix = (id.x as u32 as u64) << 32 | id.y as u32 as u64;
     let mut rng = ChaCha8Rng::seed_from_u64(
         terrain.seed().wrapping_mul(0xA24B_AED4_963E_E407) ^ mix ^ 0x0711_A6E5,
     );
     if !terrain.globe().lands().settled() || !rng.random_bool(CHANCE) {
         return None;
     }
-    let size = SPAN as f32 * CELL;
     let min = vcell.as_vec2() * size;
     (0..TRIES).find_map(|_| {
         let span = MARGIN..size - MARGIN;
@@ -100,9 +101,9 @@ fn search(terrain: &Terrain, vcell: IVec2) -> Option<Site> {
 }
 
 /// Returns the village of village cell `vcell` of the chart of `terrain`, if it has one. Depends only on
-/// the planet, the chart and the cell.
+/// the planet, the face and the cell counted from its middle.
 pub fn village_in_cell(terrain: &Terrain, vcell: IVec2) -> Option<Site> {
-    memo(terrain, (Grid::Villages, vcell), || search(terrain, vcell))
+    memo(terrain, (Grid::Villages, vcell), search)
 }
 
 /// Returns true when a village center lies within `CLEAR` meters of `p`.

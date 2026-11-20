@@ -5,10 +5,14 @@ use bevy::prelude::*;
 use crate::world::globe::{Chart, ChunkId};
 use crate::world::{CHUNK_SIZE, Terrain};
 
-/// Returns the chunk coordinate, in the chart of its face, of the leaf level node `id`.
-pub fn leaf_coord(id: ChunkId) -> IVec2 {
-    let half = (1i32 << id.level) / 2;
-    IVec2::new(id.x as i32 - half, id.y as i32 - half)
+/// Returns the chunk coordinate of the low corner of node `id` in the view `terrain` of its face: the chunk
+/// of a leaf level node. Counted in whole chunks from the origin of the view, it names the same ground
+/// wherever the view is rooted.
+pub fn leaf_coord(terrain: &Terrain, id: ChunkId) -> IVec2 {
+    let level = terrain.globe().leaf_level();
+    let leaves = 1i32 << level.saturating_sub(id.level);
+    let corner = IVec2::new(id.x as i32, id.y as i32) * leaves - IVec2::splat((1i32 << level) / 2);
+    corner - terrain.shift(CHUNK_SIZE)
 }
 
 /// Returns the leaf level node of chunk `coord` on `face`, or nothing when it lies off the face.
@@ -17,7 +21,7 @@ fn leaf_node(terrain: &Terrain, coord: IVec2) -> Option<ChunkId> {
         return None;
     };
     let level = terrain.globe().leaf_level();
-    let at = coord + IVec2::splat((1i32 << level) / 2);
+    let at = coord + terrain.shift(CHUNK_SIZE) + IVec2::splat((1i32 << level) / 2);
     let inside = at.min_element() >= 0 && at.max_element() < 1i32 << level;
     inside.then_some(ChunkId {
         face,
@@ -53,12 +57,11 @@ impl Span {
 
     /// Returns the span of quadtree node `id`, cut into `n` cells per side.
     ///
-    /// `terrain` must be the face chart view of the face of the node.
+    /// `terrain` must be a face chart view of the face of the node, rooted anywhere.
     pub fn node(terrain: &Terrain, id: ChunkId, n: usize) -> Self {
         let level = terrain.globe().leaf_level();
         let leaves = 1i32 << (level - id.level);
-        let corner =
-            IVec2::new(id.x as i32, id.y as i32) * leaves - IVec2::splat((1i32 << level) / 2);
+        let corner = leaf_coord(terrain, id);
         Self {
             terrain: terrain.clone(),
             origin: corner.as_vec2() * CHUNK_SIZE,

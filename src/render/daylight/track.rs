@@ -32,15 +32,19 @@ pub fn sky_below(vantage: &Vantage, local: &LocalSystem, moon: &Moonlight) -> Op
 }
 
 /// Returns the uniform block for a camera at `vantage` that sees the star as `sun` does: the
-/// planet centre in render space, the star, the air, and the light the rule gives the camera.
+/// planet centre in render space, the star, the air, the light the rule gives the camera, and the
+/// height of the camera, worked out in 64 bits, that the shader measures every other height from.
 pub fn block(sky: &Sky, vantage: &Vantage, sun: &SunDir) -> PlaceUniform {
     let observer = &vantage.observer;
-    let down = (observer.to_render * (observer.center - observer.eye)).as_vec3();
-    sky.uniform(
+    let below = observer.center - observer.eye;
+    let down = (observer.to_render * below).as_vec3();
+    let place = sky.uniform(
         vantage.camera + down,
         sun.dir,
         (sun.height, vantage.altitude),
-    )
+    );
+    let high = below.length() - f64::from(sky.radius);
+    place.seen_from(vantage.camera, vantage.up, high)
 }
 
 /// Works out the light of the planet under the camera for this frame, once the camera, the star

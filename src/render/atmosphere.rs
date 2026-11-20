@@ -34,10 +34,12 @@ pub fn air(altitude: f32, height: f32) -> f32 {
     (-TOP_SCALES * altitude.max(0.0) / height).exp()
 }
 
-/// Returns the sine of the angle the horizon drops by, seen `altitude` metres above a globe.
+/// Returns the sine of the angle the horizon drops by, seen `altitude` metres above a globe. It is
+/// `sqrt(1 - (R / (R + h))^2)` written as `sqrt(h (2 R + h)) / (R + h)`, which keeps a height of a few
+/// metres on a planet of any size.
 pub fn horizon_dip(altitude: f32, radius: f32) -> f32 {
-    let ratio = radius / (radius + altitude.max(0.0)).max(1.0);
-    (1.0 - ratio * ratio).max(0.0).sqrt()
+    let high = altitude.max(0.0);
+    (high * (2.0 * radius + high)).sqrt() / (radius + high).max(1.0)
 }
 
 /// Returns the share of starlight that reaches a point `from` metres from the centre of a planet

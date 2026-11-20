@@ -142,7 +142,8 @@ pub fn grow(
     let frame = Frame::at(terrain, ground.corner + Vec2::splat(TILE * 0.5));
     let most = TILE * TILE * DENSE;
     let count = (TILE * TILE * if full { DENSE } else { SPARSE }) as usize;
-    let salt = mix(((key.x as u32 as u64) << 32) | key.y as u32 as u64);
+    let id = key + terrain.shift(TILE);
+    let salt = mix(((id.x as u32 as u64) << 32) | id.y as u32 as u64);
     let mut blades = Blades::default();
     for n in 0..count {
         let h = mix(salt ^ (n as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));

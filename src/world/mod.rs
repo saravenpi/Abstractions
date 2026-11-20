@@ -48,7 +48,6 @@ use crate::saves::{ActiveWorld, WorldSave, unplayed};
 use crate::screens::Screen;
 use crate::space::{Anchor, Location, Travel};
 use crate::universe::{BodyId, Universe};
-use globe::Face;
 
 /// Height of the sea surface in world units.
 pub const SEA_LEVEL: f32 = 0.0;
@@ -85,16 +84,15 @@ pub struct Planet {
     pub day_seconds: f64,
 }
 
-/// Returns the view of the cube face that holds the spot `save` was taken at, or `north`
-/// when there is no such spot.
+/// Returns the view of the cube face that holds the spot `save` was taken at, rooted near it, or
+/// `north` when there is no such spot.
 fn saved_view(north: &Terrain, save: Option<&WorldSave>) -> Terrain {
     let globe = north.globe();
     let place = save.and_then(|save| save.place);
     let Some(at) = place.and_then(|place| place.position(globe.radius())) else {
         return north.clone();
     };
-    let face = Face::locate(at.normalize()).0;
-    Terrain::on(globe.clone(), globe.face_chart(face))
+    Terrain::near(globe, at)
 }
 
 /// Returns the terrain view and the chart position a world starts at on the planet whose north face is
@@ -108,10 +106,7 @@ fn start(north: &Terrain, save: Option<&WorldSave>) -> (Terrain, Vec3) {
     }
     let globe = north.globe();
     let at = Base::landing(globe);
-    let view = Terrain::on(
-        globe.clone(),
-        globe.face_chart(Face::locate(at.normalize()).0),
-    );
+    let view = Terrain::near(globe, at);
     let spawn = view.locate(at);
     (view, spawn)
 }

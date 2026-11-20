@@ -152,6 +152,16 @@ The game starts, loads a world, wakes at the base in third person and the probe 
 - The title screen still says v0.10.1 (set at the version bump).
 - A system read `Res<Anchor>` on the title screen and stopped the game (`craft::fall::show::wanted`): fixed. The probe has `PROBE_SOFT` to log such systems instead of stopping.
 
+Second run (ground shader fixed, shots in `~/.cache/abstractions-targets/shots2/shots/`):
+- Grass and small plants show near the robot, lit. The grass ends on a hard line about 40 m out and the ground beyond is flat orange: agent `look-ground`.
+- Everything is red: the home star is a red dwarf and its light tints the ship, the robot and the ground the same salmon. Add chromatic adaptation (white balance toward the colour of the light, as an eye or a camera does) with the exposure: agent `look-sky`, to launch when `join-sky` has merged.
+- The sky keeps its bright grain; a dark band sits at the horizon in flight: same agent.
+- The new ship shows: one hull, canopy frame, thick wing, gear with pads, hatch on the flank. No floating part seen.
+- Cockpit (17-seated): the three dashboard screens are black, the interior is bare: agent `look-ship`, to launch when `fx-ship2` has merged.
+- The landing pad is a dark slab with orange holes (18-tp-ship-pad): terrain pokes through the pad: `look-ground`.
+- HUD: "[F] Board" is drawn under the hotbar, a "Home" label hangs outside the compass, markers overlap at the screen edge: agent `look-hud`.
+- The lead's run was terminated mid-tour by another agent's cleanup; agents were told to kill only their own PID.
+
 ## 7. Order of the remaining work
 
 1. `fix-ship`, `fix-world`, `fix-sky` finish; merge; run the full suite; fix what is left.

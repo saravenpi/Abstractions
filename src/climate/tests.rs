@@ -4,12 +4,23 @@
 use bevy::math::{DVec3, Vec2};
 
 use super::*;
-use crate::universe::Universe;
+use crate::universe::{EARTH_RADIUS, PlanetRecord, STANDARD_GRAVITY};
 
-/// Returns the setting of the home planet of universe 42.
+/// Returns the setting of an Earth-like world: the temperate record, a 24 hour day, standard gravity and
+/// the Earth's radius. The chosen home differs from universe to universe, so the physics is checked here.
 pub(super) fn homeworld() -> Setting {
-    let universe = Universe::new(42);
-    Setting::of(&universe.planet(universe.home()))
+    let record = PlanetRecord::TEMPERATE;
+    Setting {
+        temperature: record.temperature as f32,
+        pressure: record.pressure as f32,
+        ocean: record.ocean as f32,
+        tilt: record.tilt as f32,
+        day_seconds: 86_400.0,
+        gravity: STANDARD_GRAVITY as f32,
+        radius: EARTH_RADIUS as f32,
+        seed: 42,
+        near: None,
+    }
 }
 
 /// Returns a coastal spot at sea level, flat, at `lat` and `lon` degrees.
@@ -31,7 +42,7 @@ fn ring(setting: &Setting, lat: f64, season: f32) -> f32 {
         / 72.0
 }
 
-/// The home planet's equator is about 300 K and its poles about 250 K between the seasons, with its own
+/// The Earth-like world's equator is about 300 K and its poles about 250 K between the seasons, with its own
 /// tilt of about 23 degrees and with none.
 #[test]
 fn home_has_a_warm_equator_and_cold_poles() {

@@ -4,6 +4,7 @@
 //! loses about nine tenths per trophic level, and is shaped by how well the site fits the species.
 //! Producers have no density here: plants are not herds.
 
+use super::body::Locomotion;
 use super::{Guild, Habitat, Species, Tolerance};
 use crate::world::Biome;
 
@@ -40,7 +41,7 @@ pub struct Site {
 
 /// Returns the individuals of `species` per square kilometre at `site`.
 pub fn density(species: &Species, site: &Site) -> f32 {
-    peak(species) * fit(&species.tolerance, site) * habitat(species.role.habitat, site)
+    peak(species) * fit(&species.tolerance, site) * habitat(species, site)
 }
 
 /// Returns the herds of `species` per square kilometre at `site`: its density over its mean group size,
@@ -73,13 +74,15 @@ fn crowd(species: &Species, density: f32) -> f32 {
     herds * CROWD / (herds + CROWD)
 }
 
-/// Returns how well `site` suits a species of `habitat`, 0 to 1.
-fn habitat(habitat: Habitat, site: &Site) -> f32 {
-    match habitat {
+/// Returns how well `site` suits where `species` lives, 0 to 1. A species of the air that cannot
+/// fly or swarm walks the ground, so it never lives over the sea.
+fn habitat(species: &Species, site: &Site) -> f32 {
+    let aloft = matches!(species.body.locomotion, Locomotion::Fly | Locomotion::Swarm);
+    match species.role.habitat {
         Habitat::Water => f32::from(u8::from(site.liquid)),
-        Habitat::Ground => f32::from(u8::from(!site.liquid)),
+        Habitat::Air if aloft => 1.0,
+        Habitat::Ground | Habitat::Air => f32::from(u8::from(!site.liquid)),
         Habitat::Shore => window(site.height, -SHORE, SHORE, SHORE),
-        Habitat::Air => 1.0,
     }
 }
 

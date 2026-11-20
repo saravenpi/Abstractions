@@ -9,7 +9,7 @@ use crate::banner::{Banner, banner};
 fn info() -> Banner<'static> {
     Banner {
         version: "0.10.0",
-        name: "Kodya",
+        name: "Kolva",
         seed: 42,
         file: Path::new("./data/world.toml"),
         port: 24650,
@@ -25,7 +25,7 @@ fn info() -> Banner<'static> {
 fn the_banner_shows_how_to_join() {
     let expected = "\
 Abstractions server v0.10.0
-World     Kodya (seed 42)   ./data/world.toml
+World     Kolva (seed 42)   ./data/world.toml
 Listening UDP 24650 on all addresses (0.0.0.0)
 Players   up to 16 at once
 Join at   192.168.1.20:24650

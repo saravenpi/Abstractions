@@ -13,8 +13,8 @@ use crate::life::{
 /// Terrain seed of the test planet.
 pub const PLANET: u64 = 0x5EED_C0DE;
 
-/// Returns a world like Kodya: heavy, temperate, half sea, 6 km in radius.
-pub fn kodya() -> World {
+/// Returns a world like the home planet: heavy, temperate, half sea, 6 km in radius.
+pub fn homeworld() -> World {
     World {
         gravity: 22.0,
         pressure: 1.0,
@@ -62,7 +62,7 @@ pub fn species(index: u16, role: Role, mass: f32) -> Species {
             dry: 0.1,
             wet: 0.95,
         },
-        history: history::of(u64::from(index), &role, mass, Rung::Skeletal, &kodya()),
+        history: history::of(u64::from(index), &role, mass, Rung::Skeletal, &homeworld()),
         tissues: Vec::new(),
         signature: TissueKind::Hide,
         glow: None,

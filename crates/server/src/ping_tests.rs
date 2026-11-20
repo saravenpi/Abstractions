@@ -9,7 +9,7 @@ use crate::ping::line;
 /// Returns the status of a server of `protocol` with 3 of 16 players.
 fn status(protocol: u16) -> Status {
     Status {
-        name: "Kodya".to_string(),
+        name: "Kolva".to_string(),
         players: 3,
         cap: 16,
         version: "0.9.0".to_string(),
@@ -27,7 +27,7 @@ fn a_status_prints_on_one_line() {
     );
     assert_eq!(
         text,
-        "Kodya   3/16 players   v0.9.0   12 ms   key 7F3A-91C2-0B5E"
+        "Kolva   3/16 players   v0.9.0   12 ms   key 7F3A-91C2-0B5E"
     );
 }
 

@@ -3,7 +3,7 @@
 use super::loading::Arrival;
 use super::wake::{FADE, STATUS_DELAY, line_time, script, timeline};
 use crate::saves::{ActiveWorld, WorldEntry, WorldSave};
-use crate::universe::{HOME_PLANET_NAME, HOME_STAR_NAME};
+use crate::universe::Universe;
 
 /// Returns the active world of a save played for `seconds`.
 fn active(seconds: f64) -> ActiveWorld {
@@ -17,15 +17,22 @@ fn active(seconds: f64) -> ActiveWorld {
     })
 }
 
+/// Returns the generated names of the home planet and its star in universe `seed`.
+fn home_names(seed: u64) -> (String, String) {
+    let universe = Universe::new(seed);
+    let home = universe.home();
+    (
+        universe.planet(home).name,
+        universe.system(home.star).star.name,
+    )
+}
+
 /// A world never played is new and arrives on the home planet; a played one is a return.
 #[test]
 fn a_world_never_played_is_fresh() {
     let new = Arrival::of(Some(&active(0.0)), 7);
     assert!(new.fresh);
-    assert_eq!(
-        (new.planet.as_str(), new.star.as_str()),
-        (HOME_PLANET_NAME, HOME_STAR_NAME)
-    );
+    assert_eq!((new.planet, new.star), home_names(7));
     assert!(!Arrival::of(Some(&active(125.0)), 7).fresh);
     assert!(!Arrival::of(None, 7).fresh);
 }
@@ -46,7 +53,8 @@ fn a_new_world_gets_the_full_wake_up() {
         ]
     );
     assert_eq!(lines[0].1, "ESTABLISHED");
-    assert_eq!(lines[4].1, "KODYA, VEREYA");
+    let (planet, star) = home_names(7);
+    assert_eq!(lines[4].1, format!("{planet}, {star}").to_uppercase());
     let (fade_at, end) = timeline(lines.len());
     assert!((4.0..=6.0).contains(&end), "{end}");
     assert!((end - fade_at - FADE).abs() < 1e-6);

@@ -12,7 +12,7 @@ use crate::universe::{BodyId, Universe};
 use crate::world::{Globe, Planet};
 
 /// Returns the globe and the id of the home planet of the world of `seed`.
-pub fn kodya(seed: u64) -> (Arc<Globe>, BodyId) {
+pub fn homeworld(seed: u64) -> (Arc<Globe>, BodyId) {
     let universe = Universe::new(seed);
     let home = universe.home();
     (Arc::new(Globe::of(&universe.planet(home))), home)
@@ -30,7 +30,7 @@ pub fn planet(universe: &Universe, body: BodyId) -> Planet {
 
 /// Returns the base of the world of `seed` with the globe it stands on.
 pub fn base(seed: u64) -> (Base, Arc<Globe>) {
-    let (globe, home) = kodya(seed);
+    let (globe, home) = homeworld(seed);
     (Base::on(&globe, home), globe)
 }
 

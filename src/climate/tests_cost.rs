@@ -5,7 +5,7 @@ use std::hint::black_box;
 
 use bevy::math::Vec2;
 
-use super::tests::{kodya, spot};
+use super::tests::{homeworld, spot};
 use super::*;
 
 /// A point in time as the C library gives it.
@@ -37,7 +37,7 @@ fn busy() -> f64 {
 /// One call of `at` costs under 150 ns of processor time, over spots spread on the whole globe.
 #[test]
 fn one_sample_costs_under_150_ns() {
-    let home = kodya();
+    let home = homeworld();
     let spots: Vec<Spot> = (0..1024)
         .map(|i| Spot {
             altitude: (i % 9) as f32 * 20.0,

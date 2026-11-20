@@ -1,4 +1,4 @@
-//! The home base on Kodya: the control container, the station and the landing pad.
+//! The home base on the home planet: the control container, the station and the landing pad.
 //!
 //! [`Base`] says where it is. The rest draws it once per world, spawns it while the player is
 //! near it on the home planet, and gives it a little life.

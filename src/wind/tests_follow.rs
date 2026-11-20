@@ -9,10 +9,10 @@ use crate::weather::Weather;
 use crate::world::globe::Face;
 use crate::world::{Globe, Terrain};
 
-/// Under calm weather on Kodya the wind is today's wind: with no prevailing wind bit for bit,
+/// Under calm weather on the home planet the wind is today's wind: with no prevailing wind bit for bit,
 /// and with one only its direction turns, its strength and its breeze stay.
 #[test]
-fn kodya_calm_wind_is_unchanged() {
+fn home_calm_wind_is_unchanged() {
     for step in 0..500 {
         let clock = wind_at(step as f32 * 7.3);
         assert_eq!(carried(weathered(clock, Vec2::ZERO, 0.0), 1.0), clock);

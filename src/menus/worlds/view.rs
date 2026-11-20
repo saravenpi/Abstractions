@@ -90,7 +90,7 @@ fn empty() -> impl Bundle {
         children![
             text("No worlds yet", theme::FONT_HEADING, theme::TEXT),
             text(
-                "Every world is a whole universe grown from one seed. Create one to wake up on Kodya.",
+                "Every world is a whole universe grown from one seed. Create one to wake up on your home planet.",
                 theme::FONT_SMALL,
                 theme::MUTED
             ),

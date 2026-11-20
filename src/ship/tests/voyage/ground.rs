@@ -1,4 +1,4 @@
-//! The start of the voyage: awake at the home base on Kodya, and into the seat of the ship.
+//! The start of the voyage: awake at the home base on the home planet, and into the seat of the ship.
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -12,7 +12,7 @@ use crate::ship::landing::GEAR_DROP;
 use crate::ship::tests::rig::{Game, Log};
 use crate::ship::{Hatch, ShipEvent};
 use crate::space::{Anchor, Location, Placed, Travel};
-use crate::universe::{HOME_PLANET_NAME, Universe};
+use crate::universe::Universe;
 use crate::view::{ViewMode, ViewPrefs};
 
 /// A new game wakes the player at the home base and parks the ship on its pad, nose along the
@@ -28,11 +28,10 @@ pub fn starts_at_the_base(game: &mut Game) {
     assert!(aside < 0.5, "the player woke {aside} m from the wake point");
 }
 
-/// A new game puts the player on foot on the ground of the home planet, Kodya.
-pub fn stands_on_kodya(game: &mut Game) {
+/// A new game puts the player on foot on the ground of the home planet.
+pub fn stands_on_home(game: &mut Game) {
     let (body, planet) = here(game);
     assert_eq!(body, game.get::<Universe>().home());
-    assert_eq!(planet.name, HOME_PLANET_NAME);
     assert_eq!(game.get::<Location>().travel, Travel::OnFoot);
     game.until("the player to stand", 300, |game| game.walker().grounded);
     let walker = game.walker();

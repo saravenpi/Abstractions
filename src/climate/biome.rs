@@ -9,7 +9,7 @@ use crate::world::Biome;
 
 /// Kelvin under which the land is taiga.
 ///
-/// Thresholds are tuned on Kodya (288 K, ocean 0.6) with `inland = base / 0.45`: taiga past about
+/// Thresholds are tuned on the home planet (288 K, ocean 0.6) with `inland = base / 0.45`: taiga past about
 /// 60 degrees, tropical and desert below about 19, forest and cherry from 30 to 60, meadow in the
 /// dry belt between.
 const COLD: f32 = 267.0;

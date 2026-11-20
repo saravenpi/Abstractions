@@ -114,7 +114,7 @@ fn snow_only_where_it_freezes_and_grows_toward_winter() {
     assert_eq!(SeasonLook::at(&setting, &spot(0.5, 0.0), 0.0).snow, 0.0);
 }
 
-/// Kodya leans like the Earth and its poles freeze, but at the spring equinox the ground of
+/// The home planet leans like the Earth and its poles freeze, but at the spring equinox the ground of
 /// its warm and temperate belts, up to 35 degrees north where the base stands, keeps every
 /// colour within one byte of 0.8.1 on the low ground around the base.
 #[test]
@@ -134,7 +134,7 @@ fn home_ground_looks_as_today_at_the_equinox() {
     }
 }
 
-/// Autumn and the start of winter turn the greens of Kodya's middle latitudes, in the north
+/// Autumn and the start of winter turn the greens of the home planet's middle latitudes, in the north
 /// half a year after the south, and leave its rock and sand alone.
 #[test]
 fn autumn_turns_home_greens() {

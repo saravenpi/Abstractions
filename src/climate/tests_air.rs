@@ -2,7 +2,7 @@
 
 use bevy::math::{DVec3, Vec2, Vec3};
 
-use super::tests::{kodya, spot};
+use super::tests::{homeworld, spot};
 use super::*;
 use crate::universe::{PlanetSpec, Universe};
 
@@ -29,7 +29,7 @@ fn a_moon() -> (PlanetSpec, PlanetSpec) {
 /// The wetness falls inland, is low in the subtropical belt, high at the equator and zero on a dry world.
 #[test]
 fn moisture_falls_inland_and_in_the_dry_belts() {
-    let home = kodya();
+    let home = homeworld();
     let wet = |inland: f32, lat: f64| {
         at(
             &home,
@@ -57,7 +57,7 @@ fn moisture_falls_inland_and_in_the_dry_belts() {
 /// A slope that rises into the wind is wetter than flat ground, a lee slope drier, both capped.
 #[test]
 fn windward_slopes_catch_the_rain() {
-    let home = kodya();
+    let home = homeworld();
     let flat = spot(15.0, 0.0);
     let wind = at(&home, &flat, 0.0).wind.normalize();
     let on = |slope: Vec2| at(&home, &Spot { slope, ..flat }, 0.0).moisture;
@@ -72,7 +72,7 @@ fn windward_slopes_catch_the_rain() {
 /// polar winds from the east, mirrored in the south; no air gives no wind.
 #[test]
 fn wind_bands_follow_the_latitude() {
-    let home = kodya();
+    let home = homeworld();
     let wind = |s: &Setting, lat: f64| at(s, &spot(lat, 70.0), 0.0).wind;
     let (trade, west, polar) = (wind(&home, 15.0), wind(&home, 45.0), wind(&home, 75.0));
     assert!(trade.x < 0.0 && trade.y < 0.0 && west.x > 0.0 && west.y > 0.0 && polar.x < 0.0);
@@ -120,7 +120,7 @@ fn a_moon_is_warm_on_its_near_side() {
 /// Returns a hand-built setting for each class: ocean, island, desert, ice, lava, barren, a gas
 /// giant, a close locked moon and a far one, with the extremes of every range.
 fn records() -> [Setting; 9] {
-    let home = kodya();
+    let home = homeworld();
     let near = Some(Vec3::new(0.6, 0.0, -0.8));
     let rows = [
         (288.0, 0.95, 1.4, 0.4, 1200.0, 22.0),

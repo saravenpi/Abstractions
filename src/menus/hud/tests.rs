@@ -115,15 +115,15 @@ fn warp_and_destination_show_only_when_needed() {
     assert_eq!(reading(Gauge::Warp, &flight).unwrap(), "engaged");
     assert_eq!(reading(Gauge::Speed, &flight).unwrap(), "2.00 gly/s warp");
     assert_eq!(reading(Gauge::Altitude, &flight), None);
-    flight.destination = Some(("Kodya".to_string(), 1.2e6));
+    flight.destination = Some(("Kolva".to_string(), 1.2e6));
     assert_eq!(
         reading(Gauge::Destination, &flight).unwrap(),
-        "Kodya  1.20 Mm"
+        "Kolva  1.20 Mm"
     );
     flight.route = RouteStatus::Spooling;
     assert_eq!(
         reading(Gauge::Destination, &flight).unwrap(),
-        "Kodya  1.20 Mm  spooling"
+        "Kolva  1.20 Mm  spooling"
     );
     assert_eq!(Gauge::ALL.len(), 10);
 }

@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use super::Base;
 use super::ground::{firm, harsh, starts};
 use super::site::SLACK;
-use super::tests::{base, kodya};
+use super::tests::{base, homeworld};
 use super::tune::STARTS;
 use crate::world::Terrain;
 use crate::world::globe::Face;
@@ -15,7 +15,7 @@ use crate::world::globe::Face;
 /// Returns the base the search of 0.8 found: near the spawn of the centre of the north face, the
 /// pole of a world tilted on its spin axis, or nothing when no ground near that spawn took it.
 fn polar(seed: u64) -> Option<Base> {
-    let (globe, home) = kodya(seed);
+    let (globe, home) = homeworld(seed);
     let north = Terrain::on(globe.clone(), globe.face_chart(Face::PosY));
     let at = north.find_spawn();
     let spawn = north.embed(at.x, at.y, at.z);

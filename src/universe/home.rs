@@ -10,7 +10,7 @@ use super::record::PlanetRecord;
 use super::spec::{GRAVITATION, PlanetSpec, StarClass, StarSpec};
 use super::system::ORBIT;
 use super::zone::FLUX_ORBIT;
-use super::{SECTOR_GLY, galaxy, names, planet};
+use super::{SECTOR_GLY, galaxy, planet};
 
 /// Sea level radius of the home planet in metres.
 pub const HOME_RADIUS: f64 = 6000.0;
@@ -68,10 +68,11 @@ pub(super) fn body(universe: u64) -> BodyId {
     }
 }
 
-/// Turns the first star of the home sector into the home star, Vereya: a yellow star of unit mass and light at 5,780 K.
+/// Turns the first star of the home sector into the home star: a yellow star of unit mass and light at 5,780 K.
+///
+/// It keeps the name the naming code gave it, like every other star.
 pub(super) fn star(star: StarSpec) -> StarSpec {
     StarSpec {
-        name: names::HOME_STAR_NAME.to_string(),
         class: StarClass::G,
         mass: HOME_STAR_MASS,
         luminosity: 1.0,
@@ -103,16 +104,15 @@ pub(super) fn orbit(band: f64, home: f64) -> f64 {
     ORBIT.0 * span.powf(at)
 }
 
-/// Turns a generated planet into the home planet, Kodya: fixed size, gravity, day and record, and the world seed.
+/// Turns a generated planet into the home planet: fixed size, gravity, day and record, and the world seed.
 ///
 /// Its record is [`PlanetRecord::TEMPERATE`], the same temperate world for every seed, and its
 /// orbit, see [`orbit`], is the one that gives it the flux of that record. It has no moons and
-/// no rings, so its sky stays the same for every seed.
+/// no rings, so its sky stays the same for every seed. It keeps its generated name.
 pub(super) fn planet(planet: PlanetSpec, world: u64) -> PlanetSpec {
     let [atmosphere_height, cloud_base, cloud_top] = planet::air(HOME_RADIUS);
     PlanetSpec {
         seed: world,
-        name: names::HOME_PLANET_NAME.to_string(),
         radius: HOME_RADIUS,
         gravity: HOME_GRAVITY,
         day_seconds: HOME_DAY_SECONDS,

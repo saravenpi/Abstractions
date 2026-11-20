@@ -40,7 +40,7 @@ fn body(index: u8, moon: u8) -> Target {
 fn system() -> Vec<Line> {
     let (east, north) = (DVec3::X, DVec3::NEG_Z);
     vec![
-        row("Vereya", Target::Star(StarId::default()), DVec3::ZERO),
+        row("Varena", Target::Star(StarId::default()), DVec3::ZERO),
         row("Rhea", body(0, 0), east * 1.0e10),
         row("Zed", body(0, 1), east * 1.0e10 + north * 4.0e8),
         row("Ola", body(0, 2), east * 1.0e10 - east * 9.0e8),
@@ -59,9 +59,9 @@ fn names(lines: Vec<Line>) -> Vec<String> {
 #[test]
 fn moons_stay_with_their_planet_in_the_list() {
     let near = names(arrange(system(), "", Sort::Near));
-    assert_eq!(near, ["Vereya", "Rhea", "Zed", "Ola", "Dune", "Ash"]);
+    assert_eq!(near, ["Varena", "Rhea", "Zed", "Ola", "Dune", "Ash"]);
     let by_name = names(arrange(system(), "", Sort::Name));
-    assert_eq!(by_name, ["Dune", "Ash", "Rhea", "Ola", "Zed", "Vereya"]);
+    assert_eq!(by_name, ["Dune", "Ash", "Rhea", "Ola", "Zed", "Varena"]);
     assert_eq!(
         names(arrange(system(), "rhe", Sort::Near)),
         ["Rhea", "Zed", "Ola"]

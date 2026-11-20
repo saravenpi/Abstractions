@@ -64,7 +64,7 @@ fn every_seed_has_a_home_in_the_disc() {
             (planet.gravity, planet.day_seconds),
             (HOME_GRAVITY, HOME_DAY_SECONDS)
         );
-        assert!(!planet.name.starts_with(&star.name));
+        assert!(planet.name.starts_with(&star.name));
     }
 }
 

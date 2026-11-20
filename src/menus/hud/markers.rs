@@ -24,6 +24,8 @@ pub enum MarkerKind {
     Favourite,
     /// A herd of animals near the player.
     Herd,
+    /// The place the course is set to: a body, a star or a galaxy, at any distance.
+    Course,
 }
 
 /// Where a marker is: on a body, in the body's own turning frame, or only a direction.

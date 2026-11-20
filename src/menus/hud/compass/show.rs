@@ -10,6 +10,7 @@ use bevy::prelude::*;
 use super::aim::Around;
 use super::{Bar, Far, Glyph, Pin, ROOM, pin};
 use crate::computer::distance;
+use crate::menus::hud::context::{Where, marker_shown};
 use crate::menus::hud::needle::{WIDTH, fade, slot};
 use crate::menus::{Marker, MarkerKind, Markers};
 use crate::ui::{Icon, theme};
@@ -28,14 +29,27 @@ pub struct Seen {
 }
 
 /// Returns the icon of a marker of `kind`.
-fn icon(kind: MarkerKind) -> Icon {
+pub fn icon(kind: MarkerKind) -> Icon {
     match kind {
         MarkerKind::Home => Icon::Home,
-        MarkerKind::Ship => Icon::Send,
+        MarkerKind::Ship => Icon::ShipParked,
         MarkerKind::Friend => Icon::User,
         MarkerKind::Waypoint => Icon::MapPin,
-        MarkerKind::Favourite => Icon::Star,
+        MarkerKind::Favourite => Icon::MapPin,
         MarkerKind::Herd => Icon::Animal,
+        MarkerKind::Course => Icon::Go,
+    }
+}
+
+/// Returns the name a marker of `kind` shows when it has no label of its own.
+const fn kind_name(kind: MarkerKind) -> &'static str {
+    match kind {
+        MarkerKind::Home => "Home",
+        MarkerKind::Ship => "Ship",
+        MarkerKind::Friend => "Player",
+        MarkerKind::Waypoint | MarkerKind::Favourite => "Pin",
+        MarkerKind::Herd => "Herd",
+        MarkerKind::Course => "Course",
     }
 }
 
@@ -111,15 +125,16 @@ impl Pins<'_, '_> {
             let marker = &markers[mark.index];
             words.clear();
             let gap = distance(mark.gap);
-            let _ = match marker.label.is_empty() {
-                true => write!(words, "{gap}"),
-                false => write!(words, "{}  {gap}", marker.label),
+            let name = match marker.label.is_empty() {
+                true => kind_name(marker.kind),
+                false => marker.label.as_str(),
             };
+            let _ = write!(words, "{name}  {gap}");
             if text.0 != *words {
                 text.0.clone_from(words);
             }
             let tint = match marker.kind {
-                MarkerKind::Home | MarkerKind::Ship => theme::TEXT_2,
+                MarkerKind::Home | MarkerKind::Ship => theme::TEXT,
                 _ => marker.color,
             };
             color.set_if_neq(TextColor(tint.with_alpha(tint.alpha() * mark.alpha)));
@@ -131,13 +146,16 @@ impl Pins<'_, '_> {
 /// ends, all on one level. The bar shows even while empty.
 pub fn update(
     around: Around,
-    markers: Res<Markers>,
+    (markers, now): (Res<Markers>, Res<Where>),
     mut pins: Pins,
     mut seen: Local<Vec<Seen>>,
     mut words: Local<String>,
 ) {
     seen.clear();
     for (index, marker) in markers.0.iter().enumerate() {
+        if !marker_shown(now.0, marker.kind) {
+            continue;
+        }
         let Some((bearing, gap)) = around.reading(marker) else {
             continue;
         };

@@ -62,12 +62,26 @@ pub(super) fn sync_output(
     view.set_if_neq(wanted);
 }
 
+/// Window height in logical pixels the interface is designed for.
+pub const REFERENCE_HEIGHT: f32 = 720.0;
+
+/// Returns the interface scale for a window `height` logical pixels high: 1 at the 720 pixel
+/// reference, 0.75 at the smallest supported window, 3 at most.
+pub fn ui_scale_for(height: f32) -> f32 {
+    (height / REFERENCE_HEIGHT).clamp(0.75, 3.0)
+}
+
 /// Shows the game image at its whole scale: the part of it that fits the window, centred, with
 /// every game pixel the same square of window pixels.
 pub(super) fn frame_view(
     window: Single<&Window, With<PrimaryWindow>>,
     mut view: Single<&mut ImageNode, With<WorldView>>,
+    mut scale: ResMut<UiScale>,
 ) {
+    let wanted = ui_scale_for(window.height());
+    if scale.0 != wanted {
+        scale.0 = wanted;
+    }
     let physical = window.physical_size();
     let shown = Some(Fit::of(physical).shown(physical));
     if view.rect != shown {

@@ -11,7 +11,7 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
 
-use super::paint::{BYTES, render};
+use super::paint::{BYTES, paint};
 use super::patch::{Patch, TEXELS, next};
 use super::pose::Reader;
 use super::range::{Mode, eased, range, step};
@@ -113,7 +113,7 @@ pub fn refill(reader: Reader, mut scope: ResMut<Scope>) {
     let wanted = goal.and_then(|goal| next(scope.patch, pose.at.normalize(), globe.radius(), goal));
     if let Some(patch) = wanted {
         let globe = globe.clone();
-        let task = AsyncComputeTaskPool::get().spawn(async move { render(&globe, &patch) });
+        let task = AsyncComputeTaskPool::get().spawn(async move { paint(&globe, &patch) });
         scope.job = Some((patch, task));
     }
 }

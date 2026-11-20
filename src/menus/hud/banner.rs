@@ -14,6 +14,9 @@ const SECONDS: f32 = 4.5;
 /// Seconds the banner takes to fade in, and to fade out.
 const FADE: f32 = 0.7;
 
+/// Distance in pixels from the top of the screen to the banner, which sits under the compass.
+const BANNER_TOP: f32 = 72.0;
+
 /// Which planet the banner last announced and how long it still shows.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
 pub(super) struct Banner {
@@ -53,19 +56,20 @@ pub(super) fn block() -> impl Bundle {
             display: Display::None,
             position_type: PositionType::Absolute,
             width: percent(100),
-            top: percent(14),
+            top: px(BANNER_TOP),
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::Center,
-            row_gap: px(theme::GAP_XS),
+            row_gap: px(theme::S1),
             ..default()
         },
+        Pickable::IGNORE,
         children![(
             BannerStrip,
             Node {
                 flex_direction: FlexDirection::Column,
                 align_items: AlignItems::Center,
-                row_gap: px(theme::GAP_XS),
-                padding: UiRect::axes(px(theme::GAP_L), px(theme::GAP_S)),
+                row_gap: px(theme::S1),
+                padding: UiRect::axes(px(theme::S4), px(theme::S3)),
                 ..default()
             },
             BackgroundColor(Color::NONE),
@@ -176,13 +180,13 @@ pub(super) fn fade(
         }
     }
     for mut strip in &mut strips {
-        strip.set_if_neq(BackgroundColor(theme::PANEL.with_alpha(0.5 * alpha)));
+        strip.set_if_neq(BackgroundColor(theme::PANEL.with_alpha(theme::PANEL.alpha() * alpha)));
     }
     for mut tint in &mut planets {
         tint.set_if_neq(TextColor(theme::TEXT.with_alpha(alpha)));
     }
     for mut tint in &mut systems {
-        tint.set_if_neq(TextColor(theme::TEXT_2.with_alpha(0.65 * alpha)));
+        tint.set_if_neq(TextColor(theme::TEXT_2.with_alpha(theme::TEXT_2.alpha() * alpha)));
     }
 }
 

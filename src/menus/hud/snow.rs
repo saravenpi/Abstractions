@@ -82,8 +82,14 @@ pub(super) fn update(
     (time, condition): (Res<Time>, Res<Condition>),
     mut cover: Query<&mut BackgroundColor, (With<Cover>, Without<Bar>)>,
     mut bars: Query<(&Bar, &mut Node, &mut BackgroundColor)>,
+    mut clear: Local<bool>,
 ) {
     let (head, now) = (condition.of(Part::Head), time.elapsed_secs());
+    let whole = head >= 1.0;
+    if whole && *clear {
+        return;
+    }
+    *clear = whole;
     for mut shade in &mut cover {
         let out = eye::dim(head, now) < DROPPED;
         shade.set_if_neq(BackgroundColor(match out {
@@ -95,7 +101,10 @@ pub(super) fn update(
         let key = ((now * RATE) as u32)
             .wrapping_mul(BARS as u32)
             .wrapping_add(*at as u32);
-        node.top = percent(luck(key ^ 0x33) * 98.0);
+        let top = percent(luck(key ^ 0x33) * 98.0);
+        if node.top != top {
+            node.top = top;
+        }
         shade.set_if_neq(BackgroundColor(tone(*at, head, now)));
     }
 }

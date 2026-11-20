@@ -1,13 +1,16 @@
-//! The game's own markers: the home base and the ship, rewritten every frame for the compass,
-//! the minimap and the map.
+//! The game's own markers: the home base, the ship and the course, rewritten every frame for
+//! the compass, the minimap and the map.
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::aim::Around;
+use crate::computer::Destination;
 use crate::home::Base;
 use crate::menus::{Marker, MarkerKind, MarkerPlace, Markers};
 use crate::ship::Ship;
 use crate::space::{Anchor, Frame};
+use crate::ui::theme;
 use crate::universe::Universe;
 
 /// Owner of the markers of the game itself.
@@ -59,4 +62,20 @@ pub fn ship(ships: Query<&Ship>, anchor: Option<Res<Anchor>>, mut markers: ResMu
     if let Some(place) = place {
         markers.0.push(game(MarkerKind::Ship, place));
     }
+}
+
+/// Writes the course marker: the place the course is set to, at any distance, in the accent
+/// colour, so that a set course gives a heading on foot as well as seated.
+pub fn course(around: Around, destination: Res<Destination>, mut markers: ResMut<Markers>) {
+    markers.clear(MarkerKind::Course, GAME);
+    let Some((point, label)) = destination.0.and_then(|target| around.course(target)) else {
+        return;
+    };
+    markers.0.push(Marker {
+        kind: MarkerKind::Course,
+        place: MarkerPlace::Anchor(point),
+        color: theme::ACCENT,
+        label,
+        owner: GAME,
+    });
 }

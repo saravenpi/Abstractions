@@ -25,17 +25,17 @@ pub enum Look {
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Selected(pub bool);
 
-/// Kind of a text inside a button. There is no hue: kinds differ by brightness only, and every
-/// text of the current row turns black on its white block.
+/// Kind of a text inside a button. Kinds differ by brightness, and by the accent for the main
+/// action. The row under the pointer is tinted, its texts do not change.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tone {
     /// White.
     Plain,
-    /// White, for the main action of a group. It is told apart by its place, not by a colour.
+    /// The accent colour, for the main action of a group.
     Accent,
     /// Dimmed white.
     Muted,
-    /// White, for a destructive action. Its wording and its confirmation mark it, not a colour.
+    /// White, for a destructive action. Its wording and its confirmation mark it.
     Danger,
     /// Hidden until its row is the current one.
     Marker,
@@ -45,9 +45,9 @@ pub enum Tone {
 pub fn tone_color(tone: Tone, look: Look) -> Color {
     match (tone, look) {
         (Tone::Marker, Look::Rest) => Color::NONE,
+        (Tone::Marker, _) | (Tone::Accent, _) => theme::ACCENT,
         (Tone::Muted, Look::Rest) => theme::TEXT_2,
-        (_, Look::Rest) => theme::TEXT,
-        (_, Look::Active | Look::Pressed) => theme::INK,
+        _ => theme::TEXT,
     }
 }
 
@@ -61,13 +61,13 @@ pub fn shade(tone: Tone, look: Look, selected: bool) -> Color {
     tone_color(shown, look)
 }
 
-/// Returns the background of a button: a white block under the current one, a faint block
-/// under a selected one, nothing otherwise.
+/// Returns the background of a button: a tint under the current one, the selection tint under
+/// a selected one, nothing otherwise. Never a white block.
 pub fn surface(look: Look, selected: bool) -> Color {
     match (look, selected) {
-        (Look::Pressed, _) => theme::BLOCK_PRESSED,
-        (Look::Active, _) => theme::BLOCK,
-        (Look::Rest, true) => theme::SELECT,
+        (Look::Pressed, _) | (_, true) => theme::SELECT,
+        (Look::Active, false) => theme::HOVER,
+        (Look::Rest, false) => Color::NONE,
         (Look::Rest, false) => Color::NONE,
     }
 }
@@ -103,7 +103,7 @@ pub(super) struct ButtonState {
 /// Derives each button's look from focus, hover and press state, then its background.
 ///
 /// A focusable button is the current one while it holds the focus. A pointer-only button is
-/// the current one while hovered. The current button is inverted: black on a white block.
+/// the current one while hovered. The current button is tinted with `HOVER`.
 pub(super) fn update_looks(focus: Res<InputFocus>, mut buttons: Query<ButtonState>) {
     for mut button in &mut buttons {
         let focused = button.focusable && focus.get() == Some(button.entity);
@@ -150,26 +150,25 @@ pub(super) fn paint_texts(
 mod tests {
     use super::*;
 
-    /// A marker is invisible at rest and shows on the white block of the current row, where
-    /// every text is black.
+    /// A marker is invisible at rest and shows in the accent on the current row.
     #[test]
     fn marker_shows_only_when_active() {
         assert_eq!(tone_color(Tone::Marker, Look::Rest), Color::NONE);
-        assert_eq!(tone_color(Tone::Marker, Look::Active), theme::INK);
-        assert_eq!(tone_color(Tone::Muted, Look::Active), theme::INK);
+        assert_eq!(tone_color(Tone::Marker, Look::Active), theme::ACCENT);
+        assert_eq!(tone_color(Tone::Muted, Look::Active), theme::TEXT);
     }
 
-    /// The current row is a white block, a selected row shows without the focus and brightens
-    /// its dimmed texts, and a resting row has no background.
+    /// The current row is tinted, never a white block, a selected row keeps its tint and
+    /// brightens its dimmed texts, and a resting row has no background.
     #[test]
-    fn the_current_row_is_inverted() {
-        assert_eq!(surface(Look::Active, false), theme::BLOCK);
-        assert_eq!(surface(Look::Active, true), theme::BLOCK);
+    fn the_current_row_is_tinted() {
+        assert_eq!(surface(Look::Active, false), theme::HOVER);
+        assert_eq!(surface(Look::Active, true), theme::SELECT);
         assert_eq!(surface(Look::Rest, true), theme::SELECT);
         assert_eq!(surface(Look::Rest, false), Color::NONE);
         assert_eq!(shade(Tone::Muted, Look::Rest, false), theme::TEXT_2);
         assert_eq!(shade(Tone::Muted, Look::Rest, true), theme::TEXT);
         assert_eq!(shade(Tone::Danger, Look::Rest, false), theme::TEXT);
-        assert_eq!(shade(Tone::Plain, Look::Pressed, true), theme::INK);
+        assert_eq!(shade(Tone::Plain, Look::Pressed, true), theme::TEXT);
     }
 }

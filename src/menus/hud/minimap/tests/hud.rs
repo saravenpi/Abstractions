@@ -31,16 +31,16 @@ fn hud_shown(app: &mut App) -> bool {
     *roots.single(app.world()).expect("one HUD") == Visibility::Inherited
 }
 
-/// The minimap is a framed square of the HUD in the top right corner, as far from the edges
+/// The minimap is a square without a border of the HUD in the top right corner, as far from the edges
 /// as the compass is from the top, over a dark veil where the game cannot be blurred.
 #[test]
-fn the_minimap_is_a_framed_square_of_the_hud() {
+fn the_minimap_is_a_square_of_the_hud() {
     let mut app = app("square");
     let frame = part(&mut app, Part::Frame);
-    let (margin, side) = (px(theme::GAP_M), Val::Vh(100.0 * SIDE / 1080.0));
+    let (margin, side) = (px(theme::EDGE), Val::Vh(100.0 * SIDE / 1080.0));
     assert_eq!((frame.top, frame.right), (margin, margin));
     assert_eq!((frame.width, frame.height), (side, side));
-    assert_eq!(frame.border, UiRect::all(px(theme::LINE)));
+    assert_eq!(frame.border, UiRect::ZERO);
     assert_eq!(frame.overflow, Overflow::clip());
     let mut owners = app.world_mut().query::<(&Part, &ChildOf)>();
     let mut frames = owners

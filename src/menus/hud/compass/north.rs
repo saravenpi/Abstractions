@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use super::aim::Around;
 use super::{MARK, ROOM};
 use crate::menus::hud::needle::{WIDTH, fade, slot};
+use crate::menus::hud::context::{Element, Where};
 use crate::ui::text;
 
 /// Marks the room of the north mark, centred on its place on the bar.
@@ -29,19 +30,25 @@ pub(super) fn mark() -> impl Bundle {
             align_items: AlignItems::Center,
             ..default()
         },
-        children![(Letter, text("N", MARK, Color::WHITE), TextLayout::no_wrap())],
+        children![(
+            Letter,
+            text("N", MARK, Color::WHITE),
+            TextLayout::no_wrap(),
+            TextShadow::default()
+        )],
     )
 }
 
 /// Moves the north mark to the bearing of the pole, faded toward the ends of the bar, or hides
 /// it off a planet, at a pole, or behind the player.
 pub fn point(
-    around: Around,
+    (around, now): (Around, Res<Where>),
     mut marks: Query<&mut Node, With<North>>,
     mut letters: Query<&mut TextColor, With<Letter>>,
 ) {
     let shown = around
         .north()
+        .filter(|_| now.has(Element::Cardinals))
         .and_then(|bearing| Some((bearing, fade(bearing)?)));
     for mut node in &mut marks {
         let display = shown.map_or(Display::None, |_| Display::Flex);

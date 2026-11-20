@@ -2,6 +2,8 @@
 
 mod backdrop;
 mod camera;
+#[cfg(test)]
+mod camera_tests;
 mod chrome;
 mod focus;
 mod font;
@@ -40,7 +42,8 @@ use crate::render::window_changed;
 
 /// Registers the UI camera, the fonts, the backdrop, the widget looks and the interface sounds.
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins(backdrop::plugin)
+    app.init_resource::<UiScale>()
+        .add_plugins(backdrop::plugin)
         .add_systems(
             Startup,
             (camera::spawn_camera, fps::spawn, icon::load, font::load),

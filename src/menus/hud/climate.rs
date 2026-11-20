@@ -4,6 +4,8 @@
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::context::Element;
+use super::fade::gate;
 use super::minimap::Reader;
 use crate::computer::temperature;
 use crate::ui::{text, theme};
@@ -39,11 +41,14 @@ pub(super) struct ClimateGauge;
 pub(super) fn line() -> impl Bundle {
     (
         ClimateGauge,
+        gate(Element::Climate),
         Node {
             display: Display::None,
+            padding: UiRect::axes(px(theme::S3), px(theme::S2)),
             ..default()
         },
-        text("", theme::FONT_SMALL, theme::TEXT_2),
+        BackgroundColor(theme::PANEL),
+        text("", theme::FONT_SMALL, theme::TEXT),
         TextLayout::no_wrap(),
     )
 }

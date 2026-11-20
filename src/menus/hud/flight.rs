@@ -2,8 +2,8 @@
 
 use bevy::prelude::*;
 
+use super::context::Element;
 use super::units::{height, percent, speed};
-use crate::computer::{RouteStatus, distance};
 use crate::ship::{ShipTelemetry, WarpState};
 use crate::space::Frame;
 
@@ -18,34 +18,37 @@ pub(super) enum Gauge {
     Throttle,
     /// Flight assist.
     Assist,
-    /// What the ship is measured against.
-    Frame,
     /// Highest point of the orbit.
     Apoapsis,
     /// Lowest point of the orbit.
     Periapsis,
-    /// Warp drive.
-    Warp,
-    /// Where the board computer is set to go.
-    Destination,
     /// Landing gear.
     Gear,
 }
 
 impl Gauge {
     /// Every instrument, in display order, with its label.
-    pub(super) const ALL: [(Gauge, &'static str); 10] = [
-        (Gauge::Altitude, "ALT"),
-        (Gauge::Speed, "SPD"),
-        (Gauge::Throttle, "THR"),
-        (Gauge::Assist, "ASSIST"),
-        (Gauge::Frame, "FRAME"),
-        (Gauge::Apoapsis, "APO"),
-        (Gauge::Periapsis, "PERI"),
-        (Gauge::Warp, "WARP"),
-        (Gauge::Destination, "DEST"),
-        (Gauge::Gear, "GEAR"),
+    pub(super) const ALL: [(Gauge, &'static str); 7] = [
+        (Gauge::Altitude, "Altitude"),
+        (Gauge::Speed, "Speed"),
+        (Gauge::Throttle, "Throttle"),
+        (Gauge::Assist, "Stabiliser"),
+        (Gauge::Apoapsis, "Highest"),
+        (Gauge::Periapsis, "Lowest"),
+        (Gauge::Gear, "Gear"),
     ];
+
+    /// Returns the HUD element this instrument belongs to.
+    pub(super) const fn element(self) -> Element {
+        match self {
+            Gauge::Altitude => Element::Altitude,
+            Gauge::Speed => Element::Speed,
+            Gauge::Throttle => Element::Throttle,
+            Gauge::Assist => Element::Assist,
+            Gauge::Apoapsis | Gauge::Periapsis => Element::Apsides,
+            Gauge::Gear => Element::Gear,
+        }
+    }
 }
 
 /// What the instruments are read from.
@@ -53,12 +56,11 @@ impl Gauge {
 pub struct Flight {
     /// Instruments of the ship.
     pub telemetry: ShipTelemetry,
-    /// How far along its route the ship is.
-    pub route: RouteStatus,
-    /// Name of the destination and distance to it in metres, when one is set.
-    pub destination: Option<(String, f64)>,
     /// Whether the ship flies over a gas giant, which has a cloud deck and no ground.
     pub giant: bool,
+    /// Height above the sea and speed through the air in metres, while the player glides on
+    /// foot. The ship's instruments are not read then.
+    pub glide: Option<(f64, f64)>,
     /// Extension of the landing gear, from 0 (folded) to 1 (down and locked), with a ship.
     pub gear: Option<f64>,
 }
@@ -75,15 +77,6 @@ fn speed_text(flight: &Flight) -> String {
     }
 }
 
-/// Returns the text of the destination instrument.
-fn destination_text(flight: &Flight) -> Option<String> {
-    let (name, gap) = flight.destination.as_ref()?;
-    Some(match flight.route {
-        RouteStatus::Idle => format!("{name}  {}", distance(*gap)),
-        route => format!("{name}  {}  {}", distance(*gap), route.label()),
-    })
-}
-
 /// Returns the text of the gear instrument near a planet with ground: up while folded, down
 /// once locked, moving on its way. Nothing in space or over a gas giant, where no gear helps.
 fn gear_text(flight: &Flight) -> Option<&'static str> {
@@ -97,22 +90,23 @@ fn gear_text(flight: &Flight) -> Option<&'static str> {
 }
 
 /// Returns what an instrument shows, or nothing when it has nothing to show: no orbit outside
-/// space, no warp line while the drive is off, no destination until one is set, no gear away
-/// from a planet.
+/// space, no gear away from a planet. Which instruments show in a place is `context::shown`.
 pub fn reading(gauge: Gauge, flight: &Flight) -> Option<String> {
     let t = &flight.telemetry;
     let in_orbit = matches!(t.frame, Frame::System(_)) && !t.landed;
-    let near = !matches!(t.frame, Frame::Galaxy(_)) && !matches!(t.warp, WarpState::Active(_));
     match gauge {
-        Gauge::Altitude => near.then(|| altitude_text(flight)),
-        Gauge::Speed => Some(speed_text(flight)),
+        Gauge::Altitude => Some(match flight.glide {
+            Some((altitude, _)) => height(altitude),
+            None => altitude_text(flight),
+        }),
+        Gauge::Speed => Some(match flight.glide {
+            Some((_, airspeed)) => format!("{} air", speed(airspeed)),
+            None => speed_text(flight),
+        }),
         Gauge::Throttle => Some(percent(t.throttle)),
         Gauge::Assist => Some(assist_text(t).to_string()),
-        Gauge::Frame => Some(frame_text(flight)),
         Gauge::Apoapsis => t.apoapsis.filter(|_| in_orbit).map(height),
         Gauge::Periapsis => t.periapsis.filter(|_| in_orbit).map(height),
-        Gauge::Warp => warp_text(t.warp),
-        Gauge::Destination => destination_text(flight),
         Gauge::Gear => gear_text(flight).map(str::to_string),
     }
 }
@@ -134,27 +128,5 @@ fn altitude_text(flight: &Flight) -> String {
     match flight.giant && matches!(t.frame, Frame::Surface(_)) {
         true => format!("{} above deck", height(t.altitude_sea)),
         false => height(t.altitude_ground),
-    }
-}
-
-/// Returns the words for the frame the ship is measured in: near a planet or a moon, out in
-/// the space of a star system, or between the stars. Over a gas giant the ship also says it
-/// cannot land.
-fn frame_text(flight: &Flight) -> String {
-    let name = match flight.telemetry.frame {
-        Frame::Surface(_) if flight.giant => "planet - no ground, cannot land",
-        Frame::Surface(_) => "planet",
-        Frame::System(_) => "star system",
-        Frame::Galaxy(_) => "between stars",
-    };
-    name.to_string()
-}
-
-/// Returns the text of the warp instrument, or nothing while the drive is off.
-fn warp_text(warp: WarpState) -> Option<String> {
-    match warp {
-        WarpState::Off => None,
-        WarpState::Spooling(done) => Some(format!("spooling {}", percent(done))),
-        WarpState::Active(_) => Some("engaged".to_string()),
     }
 }

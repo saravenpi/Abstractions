@@ -1,10 +1,10 @@
 //! HUD tests: unit formatting at each boundary, what each instrument shows, the prompt and the banner.
 
 use super::banner::opacity;
+use super::context::{Context, shown};
 use super::flight::{Flight, Gauge, reading};
 use super::prompt::board_prompt;
 use super::units::{height, percent, speed};
-use crate::computer::RouteStatus;
 use crate::ship::{ShipTelemetry, WarpState};
 use crate::space::{Frame, Travel};
 use crate::universe::{BodyId, StarId};
@@ -87,10 +87,7 @@ fn instruments_follow_the_frame() {
     assert_eq!(reading(Gauge::Speed, &air).unwrap(), "312 m/s surface");
     assert_eq!(reading(Gauge::Throttle, &air).unwrap(), "65 %");
     assert_eq!(reading(Gauge::Assist, &air).unwrap(), "on");
-    assert_eq!(reading(Gauge::Frame, &air).unwrap(), "planet");
     assert_eq!(reading(Gauge::Apoapsis, &air), None);
-    assert_eq!(reading(Gauge::Warp, &air), None);
-    assert_eq!(reading(Gauge::Destination, &air), None);
     let mut landed = flying(Frame::Surface(BodyId::default()));
     landed.telemetry.landed = true;
     assert_eq!(
@@ -99,33 +96,41 @@ fn instruments_follow_the_frame() {
     );
     let space = flying(Frame::System(StarId::default()));
     assert_eq!(reading(Gauge::Speed, &space).unwrap(), "7.80 km/s orbital");
-    assert_eq!(reading(Gauge::Frame, &space).unwrap(), "star system");
     assert_eq!(reading(Gauge::Apoapsis, &space).unwrap(), "52.0 km");
     assert_eq!(reading(Gauge::Periapsis, &space).unwrap(), "-1.20 km");
 }
 
-/// The warp line shows the spool progress, then the warp speed replaces the speed, and a set
-/// destination shows its name, its distance and the route state.
+/// The warp speed replaces the speed in warp, and a gliding body reads its own height and air
+/// speed, not the ship's.
 #[test]
-fn warp_and_destination_show_only_when_needed() {
+fn warp_and_glide_speeds_replace_the_ship_speed() {
     let mut flight = flying(Frame::System(StarId::default()));
-    flight.telemetry.warp = WarpState::Spooling(0.434);
-    assert_eq!(reading(Gauge::Warp, &flight).unwrap(), "spooling 43 %");
     flight.telemetry.warp = WarpState::Active(2.0e10);
-    assert_eq!(reading(Gauge::Warp, &flight).unwrap(), "engaged");
     assert_eq!(reading(Gauge::Speed, &flight).unwrap(), "2.00 gly/s warp");
-    assert_eq!(reading(Gauge::Altitude, &flight), None);
-    flight.destination = Some(("Kolva".to_string(), 1.2e6));
+    let gliding = Flight {
+        glide: Some((812.0, 41.0)),
+        ..Flight::default()
+    };
+    assert_eq!(reading(Gauge::Altitude, &gliding).unwrap(), "812 m");
+    assert_eq!(reading(Gauge::Speed, &gliding).unwrap(), "41 m/s air");
+}
+
+/// The rows the context shows for a ship in orbit are exactly altitude, speed, throttle,
+/// stabiliser, highest and lowest point, in that order.
+#[test]
+fn the_orbit_rows_are_the_spec_rows() {
+    let flight = flying(Frame::System(StarId::default()));
+    let rows: Vec<&str> = Gauge::ALL
+        .into_iter()
+        .filter(|(gauge, _)| shown(Context::ShipOrbit).contains(gauge.element()))
+        .filter(|(gauge, _)| reading(*gauge, &flight).is_some())
+        .map(|(_, name)| name)
+        .collect();
     assert_eq!(
-        reading(Gauge::Destination, &flight).unwrap(),
-        "Kolva  1.20 Mm"
+        rows,
+        ["Altitude", "Speed", "Throttle", "Stabiliser", "Highest", "Lowest"]
     );
-    flight.route = RouteStatus::Spooling;
-    assert_eq!(
-        reading(Gauge::Destination, &flight).unwrap(),
-        "Kolva  1.20 Mm  spooling"
-    );
-    assert_eq!(Gauge::ALL.len(), 10);
+    assert_eq!(Gauge::ALL.len(), 7);
 }
 
 /// The prompt shows at the hatch of the landed ship and inside it, and nowhere else.

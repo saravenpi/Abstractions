@@ -14,16 +14,24 @@ mod herds;
 mod north;
 mod show;
 #[cfg(test)]
+mod tests_course;
+#[cfg(test)]
 mod tests_herds;
 
 #[cfg(test)]
 pub(super) use north::North;
 pub(super) use north::point as north;
-pub(super) use show::update;
+pub(super) use aim::{Around, FAVOURITE_REACH};
+pub(super) use show::{icon, update};
+
+use std::time::Duration;
 
 use bevy::prelude::*;
+use bevy::time::common_conditions::on_timer;
 
 use super::MarkerSet;
+use super::context::Element;
+use super::fade::gate;
 use super::needle::WIDTH;
 use crate::menus::MarkerKind;
 use crate::screens::Screen;
@@ -34,10 +42,10 @@ use crate::ui::{ICON_FONT, text, theme};
 const ROOM: f32 = 96.0;
 
 /// Height in pixels of the icon of a mark, small enough to leave the view clear.
-const MARK: f32 = 14.0;
+const MARK: f32 = theme::ICON_SMALL;
 
-/// Height in pixels of the bar with one row of marks.
-const HEIGHT: f32 = MARK * 2.0 + theme::GAP_M;
+/// Height in pixels of the bar with one row of marks: an icon over a line of text.
+const HEIGHT: f32 = MARK + theme::LINE_SMALL + theme::S1 + theme::S2;
 
 /// Marks the bar itself, which shows whenever the HUD does, empty or not.
 #[derive(Component)]
@@ -81,11 +89,13 @@ fn pin(slot: usize) -> impl Bundle {
                 TextFont::from_font_size(MARK).with_font(ICON_FONT),
                 TextLayout::no_wrap(),
                 TextColor(Color::WHITE),
+                TextShadow::default(),
             ),
             (
                 Far(slot),
-                text("", theme::FONT_SMALL, theme::TEXT_2),
+                text("", theme::FONT_SMALL, theme::TEXT),
                 TextLayout::no_wrap(),
+                TextShadow::default(),
             ),
         ],
     )
@@ -98,7 +108,7 @@ fn rule(left: f32, size: Vec2, color: Color) -> impl Bundle {
         Node {
             position_type: PositionType::Absolute,
             left: percent(left),
-            top: px(MARK + theme::GAP_XS),
+            top: px(MARK + theme::S1),
             width: px(size.x),
             height: px(size.y),
             ..default()
@@ -110,14 +120,16 @@ fn rule(left: f32, size: Vec2, color: Color) -> impl Bundle {
 /// The compass, high in the middle of the screen.
 pub(super) fn bar() -> impl Bundle {
     (
+        gate(Element::Compass),
         Node {
             position_type: PositionType::Absolute,
             width: percent(100),
-            top: px(theme::GAP_M),
+            top: px(theme::EDGE),
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::Center,
             ..default()
         },
+        Pickable::IGNORE,
         children![(
             Bar,
             Visibility::Hidden,
@@ -126,9 +138,10 @@ pub(super) fn bar() -> impl Bundle {
                 height: px(HEIGHT),
                 ..default()
             },
+            BackgroundColor(theme::PANEL),
             children![
-                rule(0.0, Vec2::new(WIDTH, theme::LINE), theme::HAIRLINE),
-                rule(50.0, Vec2::new(theme::LINE, theme::GAP_S), theme::TEXT_2),
+                rule(0.0, Vec2::new(WIDTH, theme::LINE), theme::TEXT_2),
+                rule(50.0, Vec2::new(theme::LINE, theme::S2), theme::TEXT),
                 north::mark(),
                 pin(0),
                 pin(1),
@@ -141,8 +154,11 @@ pub(super) fn bar() -> impl Bundle {
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         Update,
-        (beacons::home, beacons::ship, herds::herds)
-            .after(ShipSet::Place)
+        (
+            (beacons::home, beacons::ship).after(ShipSet::Place),
+            herds::herds.run_if(on_timer(Duration::from_secs_f32(herds::EVERY))),
+            beacons::course.after(super::eye::capture),
+        )
             .in_set(MarkerSet::Fill)
             .run_if(in_state(Screen::Gameplay)),
     );

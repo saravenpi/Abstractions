@@ -55,7 +55,7 @@ Branch `integrate` (worktree `~/Code/Saravenpi/wt-int`) holds everything merged 
 | 20 | After that: a complete review, fix what it finds, improve and polish the animations and everything that was added | After the tests are green: review of the whole diff by area, probe shots, polish pass |
 | 21 | Polish the light effects and make them more realistic, from good practices found online, still optimised, with control given to the user for a weak PC | Agent `lightfx` running: research to `handoff/specs/lightfx.md`; exposure that adapts, sky and ground bounce ambient, cloud shadows on the ground, low sun and aerial perspective from the real air, water Fresnel and glint, local lights in physical units; a "Lighting quality" preset plus one switch per costly effect. Low keeps every light and drops only shadows, shafts, occlusion and bloom |
 | 22 | Show units and distances correctly in the UI so everyone understands them easily | Sent to `fx-ui`: one formatting module for the whole UI (metres, km, AU, light-years, each explained once on the screen), a trip time beside every far distance, gravity, air and radius as multiples of home with the SI value beside, plain labels, the same number on the marker and on the map |
-| 23 | (Moved to the next version by the owner, except C5 which is done.) From the owner through the session `abstractions-16`: read the architecture review (`handoff/specs/architecture-review.md`, read at `main` e8f0dd4), make a plan, fix what it lists, fold it into this update; reduce the size of the codebase and optimise the game: less redundancy, one way of doing each thing | Planned as its own wave, after every branch in flight is merged and the tests are green, because it moves and deletes code that eleven branches are editing. See section 6c |
+| 23 | From the owner through the session `abstractions-16`: read the architecture review (`handoff/specs/architecture-review.md`, read at `main` e8f0dd4), make a plan, fix what it lists, fold it into this update; reduce the size of the codebase and optimise the game: less redundancy, one way of doing each thing | Planned as its own wave, after every branch in flight is merged and the tests are green, because it moves and deletes code that eleven branches are editing. See section 6c |
 
 ## 3. The UI rework: what the owner asked for
 
@@ -119,9 +119,9 @@ State: an audit is running. It checks every scale of `src/universe/` against rea
 
 This is part of 0.11: the release waits for it.
 
-## 6c. Architecture wave (request 23): moved to the next version
+## 6c. Architecture wave (request 23): in 0.11
 
-Owner decision, 2026-11-20 evening: the architecture wave is done in the next version (0.11.1 or 0.12), not in 0.11. Already landed in 0.11: C5 (the net seam, before protocol 3), the shore throttle, one system reach, one units formatter, the borders removed, several gating fixes. Everything below is the plan for later.
+Owner decision, 2026-11-20 late evening, final: do the architecture wave in this version too, clean everything, make a beautiful version; the owner went to sleep and left the lead to work and to ship when it is done. (An hour earlier the owner had moved it to the next version; this decision replaces that.) It runs after the four branches in flight are merged and the suite is green. Already landed: C5 (the net seam), the shore throttle, one system reach, one units formatter, the borders removed, several gating fixes.
 
 Source: `handoff/specs/architecture-review.md`, 22 candidates in parts A (celestial and navigation), B (world and actors), C (interface and net), plus Bevy practices (D). It read `main` at e8f0dd4; line numbers have moved, so every finding is checked on `integrate` before it is acted on.
 
@@ -141,6 +141,16 @@ Order, when the tree is green:
 `ROADMAP.md` on `main` moved again (9e62575, ede5233): 0.12 places worth the trip, 0.13 ground you can shape, 0.14 real space and probes, 0.15 together, 0.16 the thread, 0.17 hunting, mining, crafting and building, then 0.18 to 0.23. Merge `main` again before the release and edit only the 0.11 section.
 
 Each step: tests rewritten where behaviour changes on purpose and listed, never weakened; the gate after each step; the line count of `src/` before and after.
+
+## 6d. Seen in the first run of the game (probe, seed 7, 2026-11-20)
+
+The game starts, loads a world, wakes at the base in third person and the probe runs its whole tour. Seen on the shots:
+- The ground shader did not compile (reserved word `cast` in `daylight.wesl`): fixed on `integrate`. The sheath shader had a wrong import: fixed.
+- The sky is covered with a bright grain by day. Not diagnosed.
+- The compass labels "Home" and "Ship" overlap and cannot be read.
+- The home of seed 7 is a red desert at 50 C with no grass and no animal in view. The home must be a world with life to see, by the normal rules, with no special case.
+- The title screen still says v0.10.1 (set at the version bump).
+- A system read `Res<Anchor>` on the title screen and stopped the game (`craft::fall::show::wanted`): fixed. The probe has `PROBE_SOFT` to log such systems instead of stopping.
 
 ## 7. Order of the remaining work
 

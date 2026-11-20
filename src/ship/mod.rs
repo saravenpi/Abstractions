@@ -161,6 +161,7 @@ fn flight(app: &mut App) {
         board::reseat.run_if(seated),
         helm::read,
         board::board,
+        route::halt.run_if(route::halting),
         route::fly,
     );
     let fly = (sim::survey, drive::drive, sim::simulate);
@@ -215,6 +216,7 @@ pub(super) fn plugin(app: &mut App) {
         .chain();
     resources(app);
     app.add_observer(route::on_engage)
+        .add_observer(route::on_cancel)
         .configure_sets(
             Update,
             stages.run_if(playing).run_if(any_with_component::<Ship>),

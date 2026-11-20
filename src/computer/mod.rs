@@ -10,10 +10,15 @@ mod coast;
 mod course;
 mod detail;
 mod draw;
+mod empty;
+mod face;
 mod facts;
+mod feel;
 mod format;
 mod giant;
 mod glide;
+mod go;
+mod groups;
 mod hand;
 mod hold;
 mod home;
@@ -60,11 +65,15 @@ mod tests_close;
 #[cfg(test)]
 mod tests_detail;
 #[cfg(test)]
+mod tests_feel;
+#[cfg(test)]
 mod tests_fit;
 #[cfg(test)]
 mod tests_focus;
 #[cfg(test)]
 mod tests_giant;
+#[cfg(test)]
+mod tests_go;
 #[cfg(test)]
 mod tests_hand;
 #[cfg(test)]
@@ -111,11 +120,13 @@ pub use atlas::Atlas;
 pub use board::{Board, VISIBLE_ROWS};
 pub use chart::{Dot, FILL, GRID, chart, hit, mark, span};
 pub use coast::keyed;
-pub use course::{Act, action};
+pub use course::{Act, Ask, HERE, NO_PLACE, Press, arrival, card_line, hud_line, press, running};
 pub use draw::side;
 pub use format::{distance, gravity};
+pub use go::Go;
 pub use hand::{Hand, to_map, turn};
 pub use home::{arranged, beacon, homes, homeward, pinned, tab_of, toward};
+pub use keys::HOME_KEY;
 pub use labels::{keep, priority, room, scale_bar};
 pub use layout::{GLYPH, LIST_ROW, PIN_FOOT, ROOM, clear_of_bands};
 pub use lens::{Lens, MAX_ZOOM};
@@ -127,7 +138,7 @@ pub use orbits::satellites;
 pub use pointer::{DOUBLE_CLICK, MapView, REACH, RESET_KEY, SLOP, ZOOM_STEP, aimed, selected};
 pub use reveal::{HOME_NEIGHBOURS, REVEAL_CELLS, REVEAL_GLY};
 pub use rim::{APART, home_row, rank, rim, spread};
-pub use route::{Block, Destination, Engage, HOME_LABEL, RouteStatus, Target};
+pub use route::{Block, Cancel, Destination, Engage, HOME_LABEL, Keys, RouteStatus, Target};
 pub use rows::{Line, View};
 pub use scale::ship_dot;
 pub use season::{climate_line, direction};

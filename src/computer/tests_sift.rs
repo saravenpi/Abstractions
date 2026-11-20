@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 
+use super::empty::{NOTHING, empty};
 use super::show::cell_text;
 use super::sift::{FILTER_CHARS, arrange, matches, summary, type_into};
 use super::tests_rig::{game, run, tap};
@@ -59,7 +60,7 @@ fn the_filter_narrows_the_rows_and_the_order_sorts_them() {
 }
 
 /// Only letters are typed into the filter, in lower case and up to its length, and the
-/// header says the order, the filter, and what to do when nothing is left.
+/// header says the order and the filter, and the list says what to do when nothing is left.
 #[test]
 fn the_filter_takes_letters_and_shows_in_the_header() {
     let mut filter = String::new();
@@ -77,8 +78,14 @@ fn the_filter_takes_letters_and_shows_in_the_header() {
     };
     assert_eq!(shown(9, ""), "Varena system - 1-6 of 9");
     assert_eq!(shown(2, "ko"), "\"ko\"");
-    assert_eq!(shown(0, ""), "None charted yet");
-    assert!(shown(0, "zz").starts_with("No name holds \"zz\""));
+    assert_eq!(shown(0, ""), "Varena system");
+    assert_eq!(shown(0, "zz"), "\"zz\"");
+    assert_eq!(empty(0, ""), NOTHING);
+    assert_eq!(
+        empty(0, "zz"),
+        "No place is called \"zz\". Press Esc to clear the search."
+    );
+    assert_eq!(empty(3, "zz"), "");
     let by_name = summary("Known universe", (1, 4, 4), ("", Sort::Name));
     assert_eq!(by_name, "Known universe by name");
 }

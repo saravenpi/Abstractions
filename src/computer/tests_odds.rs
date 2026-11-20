@@ -6,6 +6,7 @@ use std::time::Instant;
 use super::detail::Row;
 use super::odds::{Odds, lives, percent, row, world};
 use crate::life::{Rung, odds};
+use crate::ui::Icon;
 use crate::universe::Universe;
 
 /// A chance reads in whole percent, and only a sure thing reads 0 or 100.
@@ -43,8 +44,14 @@ fn the_line_follows_the_landing() {
     let before = row(&universe, &home, false);
     let after = row(&universe, &home, true);
     println!("home: {before:?}, then {after:?}");
-    assert_eq!(before, Row::Fact("Chance of life", percent(chance)));
-    assert_eq!(after, Row::Fact("Life", lives(rung).to_string()));
+    let life = |label, value: String| Row::Stat {
+        icon: Icon::Life,
+        label,
+        value,
+        note: String::new(),
+    };
+    assert_eq!(before, life("Chance of life", percent(chance)));
+    assert_eq!(after, life("Life", lives(rung).to_string()));
     assert!(chance > 0.5);
 }
 

@@ -1,42 +1,114 @@
-//! Map tests: the buttons under the card follow the row under the cursor and the course.
+//! Map tests: the Go card follows the picked place, the course and the route.
 
 use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 
-use super::deeds::{DeedCourse, Reason, deeds, write};
-use super::{Deed, offer};
-use crate::computer::{Act, Block, Board, Destination, Line, RouteStatus, Target};
+use super::deeds::{Button, Deeds, Sentence, deeds, offer, write};
+use crate::computer::{
+    Act, Ask, Block, Board, Destination, Keys, Line, MapView, NO_PLACE, RouteStatus, Target,
+};
+use crate::space::{Location, Travel};
 use crate::universe::Universe;
 
-/// Returns the acts on the course and the places the course buttons set, and the reason.
-fn shown(app: &mut App) -> (Vec<Act>, Vec<Target>, String) {
-    app.world_mut().run_system_once(write).unwrap();
-    let world = app.world_mut();
-    let acts = world.query::<&Act>().iter(world).copied().collect();
-    let choices = world
-        .query::<&DeedCourse>()
-        .iter(world)
-        .map(|deed| deed.0)
-        .collect();
-    let reason = world
-        .query_filtered::<&Text, With<Reason>>()
-        .single(world)
-        .unwrap();
-    (acts, choices, reason.0.clone())
+/// Returns the names of the default keys.
+fn keys() -> Keys {
+    Keys {
+        board: "F".to_string(),
+        rise: "Space".to_string(),
+        go: "G".to_string(),
+    }
 }
 
-/// Returns an app with an empty table, no course and an idle route, and the card's buttons.
-fn rig() -> App {
+/// Returns the question of a card for Mars with the player seated and the route idle, and a
+/// trip of about four minutes.
+fn base(keys: &Keys) -> Ask<'_> {
+    Ask {
+        name: "Mars",
+        ours: false,
+        here: false,
+        seated: true,
+        status: RouteStatus::Idle,
+        eta: Some("about 4 min"),
+        keys,
+    }
+}
+
+/// Without a place the card says how to pick one and has no button. With one it has a button
+/// that works while the player sits in the ship and the route is idle.
+#[test]
+fn the_offer_without_a_place_and_for_a_ready_ship() {
+    let keys = keys();
+    let nothing = offer(None);
+    assert_eq!(
+        (nothing.button, nothing.sentence.as_str()),
+        (None, NO_PLACE)
+    );
+    let go = Button {
+        stop: false,
+        enabled: true,
+    };
+    let ready = offer(Some(&base(&keys)));
+    assert_eq!(
+        (ready.button, ready.sentence.as_str()),
+        (Some(go), "About 4 min.")
+    );
+}
+
+/// The button reads Stop while the route to the place is flown, and is dim, with its reason,
+/// while the player is on foot or the ship stands on the ground.
+#[test]
+fn the_offer_stops_a_flown_route_and_explains_a_blocked_one() {
+    let keys = keys();
+    let flown = Ask {
+        ours: true,
+        status: RouteStatus::InWarp,
+        ..base(&keys)
+    };
+    let stop = Button {
+        stop: true,
+        enabled: true,
+    };
+    let warp = offer(Some(&flown));
+    assert_eq!(warp.button, Some(stop));
+    assert_eq!(warp.sentence, "Warping to Mars. G stops.");
+    let on_foot = Ask {
+        seated: false,
+        ..base(&keys)
+    };
+    let dim = Button {
+        stop: false,
+        enabled: false,
+    };
+    let foot = offer(Some(&on_foot));
+    assert_eq!(foot.button, Some(dim));
+    assert!(foot.sentence.starts_with("Board your ship first"));
+    let landed = Ask {
+        status: RouteStatus::Blocked(Block::Landed),
+        ..base(&keys)
+    };
+    assert_eq!(offer(Some(&landed)).sentence, "Take off first: hold Space.");
+}
+
+/// Returns an app with a table of one planet, the player seated, the route idle, and the card.
+fn rig() -> (App, Target) {
+    let universe = Universe::new(7);
+    let planet = Target::Body(universe.home());
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .init_resource::<Board>()
+        .init_resource::<MapView>()
         .init_resource::<Destination>()
-        .init_resource::<RouteStatus>();
+        .init_resource::<RouteStatus>()
+        .insert_resource(Location {
+            body: universe.home(),
+            travel: Travel::InShip,
+        })
+        .insert_resource(universe);
     app.world_mut().spawn(deeds());
-    app
+    (app, planet)
 }
 
-/// Returns the row of the planet `target` in a table.
+/// Returns the row of the planet `target` in a table, with no distance to speak of.
 fn row(target: Target) -> Line {
     Line {
         title: "Kolva".to_string(),
@@ -48,26 +120,34 @@ fn row(target: Target) -> Line {
     }
 }
 
-/// Without a row the card has no button. On a planet it offers to set the course, and once the
-/// planet is the course it offers to engage while the route is idle and to clear it, with the
-/// reason the drive waits while it is blocked.
+/// Writes the card and returns its sentence and the acts of its buttons.
+fn shown(app: &mut App) -> (String, Vec<Act>) {
+    app.world_mut().run_system_once(write).unwrap();
+    let world = app.world_mut();
+    let acts = world.query::<&Act>().iter(world).copied().collect();
+    let said = world
+        .query_filtered::<&Text, With<Sentence>>()
+        .single(world)
+        .unwrap();
+    (said.0.clone(), acts)
+}
+
+/// With no row picked the card says how to pick one. Picking a row far from the player gives it
+/// the Go button, and the card of the player's own place says so and has none that works.
 #[test]
-fn the_buttons_follow_the_cursor_and_the_course() {
-    let planet = Target::Body(Universe::new(7).home());
-    let mut app = rig();
-    assert_eq!(shown(&mut app), (vec![], vec![], String::new()));
+fn the_card_follows_the_picked_row() {
+    let (mut app, planet) = rig();
+    assert_eq!(shown(&mut app), (NO_PLACE.to_string(), vec![]));
     let mut board = app.world_mut().resource_mut::<Board>();
     board.fill("Varena system".to_string(), vec![row(planet)]);
-    assert_eq!(shown(&mut app), (vec![], vec![planet], String::new()));
-    app.world_mut().resource_mut::<Destination>().0 = Some(planet);
-    let (acts, courses, _) = shown(&mut app);
-    assert_eq!((acts, courses), (vec![Act::Engage, Act::Clear], vec![]));
-    *app.world_mut().resource_mut::<RouteStatus>() = RouteStatus::Blocked(Block::Landed);
-    let (acts, _, reason) = shown(&mut app);
-    assert_eq!(
-        (acts, reason.as_str()),
-        (vec![Act::Clear], "Landed: take off first")
-    );
-    let free = offer(planet, None, RouteStatus::Idle);
-    assert_eq!(free[0], Deed::Course);
+    assert_eq!(shown(&mut app), (NO_PLACE.to_string(), vec![]));
+    app.world_mut().resource_mut::<MapView>().picked = true;
+    let (said, acts) = shown(&mut app);
+    assert_eq!(acts, vec![Act::Go]);
+    assert_eq!(said, "The autopilot flies there.");
+    app.world_mut().resource_mut::<Board>().here[0] = Some(planet);
+    let (said, acts) = shown(&mut app);
+    assert_eq!((said.as_str(), acts), ("You are here.", vec![]));
+    let mut rows = app.world_mut().query_filtered::<Entity, With<Deeds>>();
+    assert_eq!(rows.iter(app.world()).count(), 1);
 }

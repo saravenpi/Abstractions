@@ -1,5 +1,5 @@
 //! Computer tests: the way home from a system, from a galaxy and from another galaxy, and the
-//! key that sets the course along it, in the open panel.
+//! key that flies the ship home in one command, in the open panel.
 
 use bevy::math::{DQuat, DVec3, IVec3};
 use bevy::prelude::*;
@@ -66,39 +66,39 @@ fn the_way_home_picks_the_right_level() {
     );
 }
 
-/// Puts the ship of `app` at the point `at` of `frame`, presses the Home key and returns the
-/// course, the open tab and the target of the selected row.
-fn press_home(app: &mut App, (frame, at): (Frame, DVec3)) -> (Option<Target>, Tab, Target) {
+/// Counts the courses handed to the autopilot.
+#[derive(Resource, Default)]
+struct Engaged(usize);
+
+/// Puts the ship of `app` at the point `at` of `frame`, with no course and the map open, presses
+/// the home key and returns the course and whether the map is still open.
+fn press_home(app: &mut App, (frame, at): (Frame, DVec3)) -> (Option<Target>, bool) {
     app.insert_resource(anchor(frame, at));
-    run(app, 2);
-    tap(app, KeyCode::Home, None);
-    run(app, 40);
-    let board = app.world().resource::<Board>();
-    let row = (board.tab, board.lines[board.cursor].target);
-    let course = app.world().resource::<Destination>().0;
-    (course, row.0, row.1)
+    app.world_mut().resource_mut::<Destination>().0 = None;
+    tap(app, KeyCode::Tab, None);
+    run(app, 3);
+    tap(app, KeyCode::KeyH, None);
+    run(app, 5);
+    let open = *app.world().resource::<State<Computer>>().get() == Computer::Open;
+    (app.world().resource::<Destination>().0, open)
 }
 
-/// In the open panel, the Home key sets the course to the home galaxy from another galaxy, to
-/// the home star from elsewhere in the home galaxy and to the home planet in the home system,
-/// and each time opens the tab that lists it with the cursor on its row. The saved atlas holds
-/// nothing but the visits and the course.
+/// In the open panel, the home key sets the course to the home planet and hands it to the
+/// autopilot in one command, from the home system, from elsewhere in the home galaxy and from
+/// another galaxy, and the map closes each time. The saved atlas holds nothing but the visits
+/// and the course.
 #[test]
-fn the_home_key_sets_the_course_one_level_at_a_time() {
+fn the_home_key_flies_home_in_one_command() {
     let mut app = game("home");
+    app.init_resource::<Engaged>();
+    app.add_observer(|_: On<Engage>, mut engaged: ResMut<Engaged>| engaged.0 += 1);
     let universe = Universe::new(7);
-    let [body, star, galaxy] = homes(&universe).map(Option::unwrap);
-    let [system, near, lost] = places(&universe);
-    tap(&mut app, KeyCode::Tab, None);
-    run(&mut app, 3);
-    let (course, tab, row) = press_home(&mut app, lost);
-    assert_eq!((course, tab, row), (Some(galaxy), Tab::Universe, galaxy));
-    assert_eq!(app.world().resource::<Board>().cursor, 0);
-    let (course, tab, row) = press_home(&mut app, near);
-    assert_eq!((course, tab, row), (Some(star), Tab::Galaxy, star));
-    assert_eq!(app.world().resource::<Board>().cursor, 0);
-    let (course, tab, row) = press_home(&mut app, system);
-    assert_eq!((course, tab, row), (Some(body), Tab::System, body));
+    let body = Target::Body(universe.home());
+    for (count, place) in places(&universe).into_iter().enumerate() {
+        let (course, open) = press_home(&mut app, place);
+        assert_eq!((course, open), (Some(body), false));
+        assert_eq!(app.world().resource::<Engaged>().0, count + 1);
+    }
     let saved = toml::to_string(app.world().resource::<Atlas>()).unwrap();
     let keys = saved.lines().filter_map(|line| line.split_once(" = "));
     let keys: Vec<&str> = keys.map(|(key, _)| key).collect();

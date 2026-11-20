@@ -3,8 +3,9 @@
 
 use bevy::math::{DVec3, Vec3};
 
-use super::detail::{ROWS, brief, card};
-use super::tests_card::fact;
+use super::detail::{ROWS, Row, brief, card, visible};
+use super::giant::NO_GROUND;
+use super::tests_card::{fact, stat};
 use super::tests_detail::world;
 use super::*;
 use crate::space::Frame;
@@ -30,8 +31,8 @@ fn rings() -> Rings {
     }
 }
 
-/// A gas giant row says so, and its card says it is a gas giant with no ground to land on,
-/// its deck pressure, its moons and its rings.
+/// A gas giant row says so, and its card says it is a gas giant with no ground to land on and
+/// no water, its deck pressure, its moons and its rings.
 #[test]
 fn a_gas_giant_card_says_it_has_no_ground() {
     assert_eq!(brief(Some(&giant())), "gas giant - -150 C");
@@ -48,12 +49,14 @@ fn a_gas_giant_card_says_it_has_no_ground() {
         "{}",
         shown.subtitle
     );
-    assert_eq!(fact(&shown, "Ground"), Some("none to land on"));
-    assert_eq!(fact(&shown, "Deck pressure"), Some("5.00"));
+    assert!(shown.rows.contains(&Row::Meaning(NO_GROUND.to_string())));
+    assert_eq!(stat(&shown, "Deck pressure"), Some(("5.00 bar", "")));
+    assert_eq!(stat(&shown, "Water"), None);
+    assert_eq!(stat(&shown, "Air"), None);
     assert_eq!(fact(&shown, "Moons"), Some("3"));
     assert_eq!(fact(&shown, "Rings"), Some("80.0 Mm to 140 Mm"));
-    assert_eq!(fact(&shown, "Radius"), Some("6.00 km"));
-    assert!(shown.rows.len() <= ROWS);
+    assert_eq!(stat(&shown, "Radius").map(|(value, _)| value), Some("6 km"));
+    assert!(visible(&shown.rows, false).len() <= ROWS);
     let bare = card(&line, Some(&PlanetSpec { moons: 1, ..planet }), &universe);
     assert_eq!(
         (fact(&bare, "Moons"), fact(&bare, "Rings")),
@@ -73,7 +76,7 @@ fn a_solid_planet_names_its_moons_and_a_moon_its_orbit() {
         ..planet.clone()
     };
     let shown = card(&line, Some(&ringed), &universe);
-    assert_eq!(fact(&shown, "Air"), Some("like home, pressure 1.00"));
+    assert_eq!(stat(&shown, "Air"), Some(("1.00 bar", "like home")));
     assert_eq!(fact(&shown, "Moons"), Some("2"));
     assert!(fact(&shown, "Rings").is_some());
     let moon = PlanetSpec {
@@ -92,8 +95,8 @@ fn a_solid_planet_names_its_moons_and_a_moon_its_orbit() {
     let host = universe.planet(moon.id.planet()).name;
     assert_eq!(shown.subtitle, format!("Island moon of {host}"));
     assert_eq!(fact(&shown, "Moons"), None);
-    assert_eq!(fact(&shown, "Orbit"), Some("3 h 20 min"));
-    assert_eq!(fact(&shown, "Year"), None);
+    assert_eq!(stat(&shown, "Orbit"), Some(("3 h 20 min", "")));
+    assert_eq!(stat(&shown, "Year"), None);
 }
 
 /// Standing on a moon is being inside its system and its galaxy, so a visit charts the system

@@ -3,19 +3,21 @@
 use bevy::prelude::*;
 
 use super::board::Board;
-use super::course::progress;
+use super::course::{hud_line, running};
+use super::empty::empty;
 use super::format::{clip, distance};
 use super::home::{arranged, beacon, homes, pinned};
 use super::moons::is_moon;
 use super::open::ready;
 use super::pointer::{MapView, selected};
-use super::results::TITLE_CHARS;
-use super::route::{Destination, HOME_LABEL, RouteStatus, Target};
+use super::results::{Empty, TITLE_CHARS};
+use super::route::{Destination, HOME_LABEL, Keys, RouteStatus, Target};
 use super::rows::Line;
 use super::scene::Scene;
 use super::sift;
 use super::tab::Tab;
 use super::view::{Action, Cell, Part, Slot, Status, Summary};
+use crate::settings::{Persistent, Settings};
 use crate::ui::{Icon, Tone};
 
 /// Seconds between two refreshes of what changes while flying: the distances of the system tab
@@ -126,17 +128,25 @@ fn summary(board: &Board) -> String {
     sift::summary(&board.heading, (first, last, count), view)
 }
 
-/// Writes the summary line over the results, when the table changed.
+/// Writes the summary line over the results, and the sentence that says why the list is
+/// empty under them, when the table changed.
 fn tabs(
     board: Res<Board>,
     fresh: Query<(), Added<Summary>>,
-    mut lines: Query<&mut Text, With<Summary>>,
+    mut lines: (
+        Query<&mut Text, With<Summary>>,
+        Query<&mut Text, (With<Empty>, Without<Summary>)>,
+    ),
 ) {
     if !(board.is_changed() || !fresh.is_empty()) {
         return;
     }
-    for mut text in &mut lines {
+    for mut text in &mut lines.0 {
         text.set_if_neq(Text(summary(&board)));
+    }
+    let why = empty(board.lines.len(), &board.filter);
+    for mut text in &mut lines.1 {
+        text.set_if_neq(Text(why.clone()));
     }
 }
 
@@ -146,12 +156,17 @@ type Route<'w> = (Res<'w, Destination>, Res<'w, RouteStatus>);
 /// The lines the course and the progress of the route are written on.
 type Written = Or<(With<Status>, With<Action>)>;
 
-/// Writes the course with its distance and the state of the route, and under the map the
-/// progress of the route while it is flown: when the course, the route or the selection
-/// changes, and twice a second for the distance. Without a course the course line stays empty
-/// while a row is selected, since the card of the row already offers to set the course.
+/// Writes the course with its distance, and under the map the progress of the route while it
+/// is flown: when the course, the route or the selection changes, and twice a second for the
+/// distance. Without a course the course line stays empty while a row is selected, since the
+/// card of the row already offers to go there.
 fn status(
-    (time, board, view): (Res<Time>, Res<Board>, Res<MapView>),
+    (time, board, view, settings): (
+        Res<Time>,
+        Res<Board>,
+        Res<MapView>,
+        Res<Persistent<Settings>>,
+    ),
     scene: Scene,
     (destination, route): Route,
     mut since: Local<f32>,
@@ -166,10 +181,12 @@ fn status(
     let offered = destination.0.is_none() && selected(&board, &view).is_some();
     let shown = match offered {
         true => String::new(),
-        false => scene.route(destination.0, *route),
+        false => scene.route(destination.0),
     };
+    let keys = Keys::of(&settings.controls.keys);
     let name = destination.0.map(|target| target.name(&scene.universe));
-    let going = name.map_or(String::new(), |name| progress(&name, *route));
+    let name = name.filter(|_| running(*route));
+    let going = name.map_or(String::new(), |name| hud_line(&name, *route, &keys));
     for (mut text, action) in &mut lines {
         let wanted = if action { &going } else { &shown };
         text.set_if_neq(Text(wanted.clone()));

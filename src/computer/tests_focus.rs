@@ -1,5 +1,5 @@
 //! Computer tests: the zoom that frames a place, a double click that goes into it and sets
-//! no course, and Escape letting go of the menu and the selection before it closes the map.
+//! no course, and Escape letting go of the selection before it closes the map.
 
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
@@ -9,7 +9,6 @@ use super::tests_pointer::rig;
 use super::tests_rig::{game, run, tap};
 use super::view::Slot;
 use super::*;
-use crate::map::{ContextMenu, Opened, Under};
 use crate::universe::{GalaxyId, StarId};
 
 /// A star frames its whole system on the system chart; a planet, a moon, a star on the galaxy
@@ -64,25 +63,15 @@ fn a_double_click_on_a_row_goes_into_it_and_sets_no_course() {
     assert_eq!(app.world().resource::<Destination>().0, None);
 }
 
-/// With a menu open and a mark clicked, the first Escape closes the menu, the second lets go of
-/// the row and the third closes the map.
+/// With a mark clicked, the first Escape lets go of the row and the second closes the map.
 #[test]
-fn escape_lets_go_of_the_menu_and_the_selection_before_it_closes() {
+fn escape_lets_go_of_the_selection_before_it_closes() {
     let mut app = game("escape-selection");
     let open = |app: &App| *app.world().resource::<State<Computer>>().get() == Computer::Open;
     tap(&mut app, KeyCode::Tab, None);
     run(&mut app, 5);
-    let menu = Opened {
-        under: Under::Chart(Vec2::ZERO),
-        at: Vec2::ZERO,
-    };
-    app.insert_resource(ContextMenu(Some(menu)));
     let mut view = app.world_mut().resource_mut::<MapView>();
     (view.picked, view.marked) = (true, true);
-    tap(&mut app, KeyCode::Escape, None);
-    run(&mut app, 2);
-    assert!(open(&app) && app.world().resource::<ContextMenu>().0.is_none());
-    assert!(app.world().resource::<MapView>().picked);
     tap(&mut app, KeyCode::Escape, None);
     run(&mut app, 2);
     assert!(open(&app) && !app.world().resource::<MapView>().picked);

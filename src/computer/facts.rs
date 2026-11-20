@@ -1,62 +1,33 @@
-//! The rows of the card of each kind of place: the record of a planet or a moon in groups,
-//! the size of one not yet charted, and the facts of a star and of a galaxy. How far a place is
+//! The rows of the card of each kind of place: the record of a planet or a moon in groups, the
+//! size of one not yet charted, and the facts of a star and of a galaxy. How far a place is
 //! shows in its row of the list, not on its card.
 
 use super::detail::{Row, advice};
-use super::format::{distance, gravity};
-use super::giant::{company, surface};
+use super::format::distance;
+use super::groups::{climate, rarer, size, time, wet_group};
 use super::route::Target;
 use super::rows::Line;
-use super::words::{flux, temperature, tilt, year, zone};
-use crate::saves::play_time;
+use super::words::{flux, temperature};
 use crate::universe::{GalaxyId, PlanetSpec, StarId, Universe};
 
-/// Returns the rows of the size and the pull of `body`, with its moons and rings.
-fn body(planet: &PlanetSpec) -> Vec<Row> {
-    let size = [
-        Row::Heading("Body"),
-        Row::Fact("Radius", distance(planet.radius)),
-        Row::Fact("Gravity", gravity(planet.gravity)),
-    ];
-    size.into_iter().chain(company(planet)).collect()
-}
-
-/// Returns the rows of the record of a planet or a moon whose record is known: its surface, its
-/// climate, its body and its time. The year of a moon is its turn around its planet. How far it
-/// is shows in its row of the list.
-pub fn planet(planet: &PlanetSpec) -> Vec<Row> {
-    let record = &planet.record;
-    let turn = if planet.id.is_moon() { "Orbit" } else { "Year" };
-    let climate = [
-        Row::Heading("Climate"),
-        Row::Fact("Temperature", temperature(record.temperature)),
-        Row::Fact("Light", flux(record.flux)),
-        Row::Fact("Zone", zone(record.zone).to_string()),
-        Row::Fact("Tilt", tilt(record.tilt)),
-    ];
-    let time = [
-        Row::Heading("Time"),
-        Row::Fact("Day", play_time(planet.day_seconds.abs())),
-        Row::Fact(turn, year(planet.orbit_seconds)),
-    ];
-    let mut rows = vec![Row::Heading("Surface")];
-    rows.extend(surface(planet));
-    rows.extend(climate);
-    rows.extend(body(planet));
-    rows.extend(time);
+/// Returns the rows of the record of a planet or a moon whose record is known, against the home
+/// planet `home`: four groups, size and gravity, air and heat, day and year, water and life,
+/// then the More row and the rarer facts behind it. The line on life goes at the end of the
+/// last group, where the screen puts it. How far the place is shows in its row of the list.
+pub fn planet(planet: &PlanetSpec, home: &PlanetSpec) -> Vec<Row> {
+    let mut rows = size(planet, home, true);
+    rows.extend(climate(planet));
+    rows.extend(time(planet, home));
+    rows.extend(wet_group(planet));
+    rows.extend(rarer(planet));
     rows
 }
 
-/// Returns the rows of a planet or a moon whose record is not known: its size and what to do to
-/// learn more.
-pub fn uncharted(line: &Line, planet: &PlanetSpec) -> Vec<Row> {
+/// Returns the rows of a planet or a moon whose record is not known: its size and pull, and what
+/// to do to learn more.
+pub fn uncharted(line: &Line, planet: &PlanetSpec, home: &PlanetSpec) -> Vec<Row> {
     let hint = advice(line.target, line.visited).map(Row::Note);
-    let size = [
-        Row::Heading("Body"),
-        Row::Fact("Radius", distance(planet.radius)),
-        Row::Fact("Gravity", gravity(planet.gravity)),
-    ];
-    size.into_iter().chain(hint).collect()
+    size(planet, home, false).into_iter().chain(hint).collect()
 }
 
 /// Returns the subtitle and the rows of the star `id`: its heat, light and size, and its planets

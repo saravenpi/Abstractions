@@ -93,22 +93,21 @@ pub fn arrange(lines: Vec<Line>, filter: &str, sort: Sort) -> Vec<Line> {
 /// Returns the line of the header that names the list: the filter or the heading, which rows
 /// are drawn while the list does not fit, and the order when it is by name. It fits the right
 /// end of the heading of the search: a long heading is cut short, and dropped when only the
-/// rows fit.
+/// rows fit. A list with no rows counts nothing: the list says why it is empty itself.
 pub fn summary(
     heading: &str,
     (first, last, count): (usize, usize, usize),
     view: (&str, Sort),
 ) -> String {
     let (filter, sort) = view;
-    let rows = match (first, last) {
-        (1, last) if last == count => sort.label().to_string(),
+    let tail = match (first, last, count) {
+        (_, _, 0) => String::new(),
+        (1, last, count) if last == count => sort.label().to_string(),
         _ => format!(" - {first}-{last} of {count}{}", sort.label()),
     };
-    let (head, tail) = match (count, filter.is_empty()) {
-        (0, true) => ("None charted yet".to_string(), String::new()),
-        (0, false) => (format!("No name holds \"{filter}\""), String::new()),
-        (_, true) => (heading.to_string(), rows),
-        (_, false) => (format!("\"{filter}\""), rows),
+    let head = match filter.is_empty() {
+        true => heading.to_string(),
+        false => format!("\"{filter}\""),
     };
     match SUMMARY_CHARS.saturating_sub(tail.chars().count()) {
         room if room < 4 => tail.trim_start_matches(" - ").to_string(),

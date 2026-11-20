@@ -3,7 +3,6 @@
 use bevy::math::{DQuat, DVec3};
 
 use super::ascent::{Fix, altitude, climbs, order};
-use crate::computer::Target;
 use crate::ship::body::Ship;
 use crate::ship::cruise::top_speed_at;
 use crate::ship::flight::{Controls, STEP, Scene, step};
@@ -18,7 +17,7 @@ use crate::universe::{EARTH_RADIUS, PlanetSpec, STANDARD_GRAVITY, Universe};
 const LIMIT: f64 = 180.0;
 
 /// Returns a planet of the size and the gravity of the Earth, with the air ending at 100 km.
-fn earth() -> PlanetSpec {
+pub(super) fn earth() -> PlanetSpec {
     let universe = Universe::new(7);
     PlanetSpec {
         radius: EARTH_RADIUS,
@@ -49,10 +48,10 @@ fn fix_of(ship: &Ship) -> Fix {
     }
 }
 
-/// Flies a ship from 1 km over the equator of `planet` with the climb alone until the climb says
-/// the orbit is reached or [`LIMIT`] seconds are over, and returns the ship, the seconds and
-/// whether it arrived.
-fn climb_from(planet: &PlanetSpec) -> (Ship, f64, bool) {
+/// Flies a ship from 1 km over the equator of `planet` with the climb to the height `goal` alone
+/// until the climb says the orbit is reached or `limit` seconds are over, and returns the ship,
+/// the seconds and whether it arrived.
+pub(super) fn climb_from(planet: &PlanetSpec, (goal, limit): (f64, f64)) -> (Ship, f64, bool) {
     let wells = [body(planet)];
     let scene = Scene {
         planet: None,
@@ -63,8 +62,8 @@ fn climb_from(planet: &PlanetSpec) -> (Ship, f64, bool) {
     let start = DVec3::X * (planet.radius + 1000.0);
     let mut ship = Ship::at_rest(Frame::System(planet.id.star), start, DQuat::IDENTITY);
     let (mut time, mut arrived) = (0.0, false);
-    while time < LIMIT && !arrived {
-        let asked = order(&fix_of(&ship), planet);
+    while time < limit && !arrived {
+        let asked = order(&fix_of(&ship), planet, goal);
         arrived = asked.done;
         (ship.throttle, ship.assist) = (asked.throttle * f64::from(!arrived), !arrived);
         let turn = aim(ship.rot, asked.aim);
@@ -88,7 +87,7 @@ fn climb_from(planet: &PlanetSpec) -> (Ship, f64, bool) {
 #[test]
 fn the_climb_reaches_a_200_km_orbit_in_under_three_minutes() {
     let planet = earth();
-    let (ship, time, arrived) = climb_from(&planet);
+    let (ship, time, arrived) = climb_from(&planet, (altitude(&planet), LIMIT));
     assert!(arrived, "no orbit after {time} s");
     let goal = planet.radius + ORBIT_ALTITUDE;
     let (far, near) = apsides(ship.pos, ship.vel, planet.mu()).expect("a closed orbit");
@@ -108,25 +107,23 @@ fn the_top_speed_follows_the_local_orbit() {
     assert_eq!(top_speed_at(0.0, circular), 40.0);
 }
 
-/// A route to the planet whose air the ship flies in is a climb, and a route to anything else, a
-/// landed ship or a ship in space is not.
+/// A ship in the air of a planet climbs for any route, whatever its target, and a landed ship or
+/// a ship in space does not.
 #[test]
-fn a_route_to_the_planet_underneath_is_a_climb() {
+fn a_ship_in_the_air_climbs_for_every_route() {
     let planet = earth();
-    let target = Some(Target::Body(planet.id));
     let air = Ship::at_rest(Frame::Surface(planet.id), DVec3::Y * 6.4e6, DQuat::IDENTITY);
-    assert!(climbs(&air, target));
-    assert!(!climbs(&air, None));
+    assert!(climbs(&air));
     let landed = Ship {
         landed: true,
         ..air.clone()
     };
-    assert!(!climbs(&landed, target));
+    assert!(!climbs(&landed));
     let space = Ship {
         frame: Frame::System(planet.id.star),
         ..air
     };
-    assert!(!climbs(&space, target));
+    assert!(!climbs(&space));
     assert_eq!(altitude(&planet), ORBIT_ALTITUDE);
     let thick = PlanetSpec {
         atmosphere_height: 3.0e5,

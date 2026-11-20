@@ -48,7 +48,7 @@ mod surface;
 mod tests;
 
 pub use caption::{caption, coords};
-pub use deeds::{Deed, deeds, named, offer, reason};
+pub use deeds::{Button, Offer, deeds, offer};
 pub use fade::veil;
 pub use geo::{coords as place_words, from_chart, lat_lon, to_chart};
 pub use level::{Level, charting, on_planet};
@@ -105,7 +105,6 @@ fn screen(app: &mut App) {
     let after = (MarkerSet::Show, crate::computer::Input);
     app.add_systems(OnEnter(Computer::Open), level::open)
         .add_observer(side_act::on_activate)
-        .add_observer(deeds::on_press)
         .add_systems(
             Update,
             shown.chain().after(after.0).after(after.1).run_if(open),
@@ -140,7 +139,7 @@ pub(super) fn plugin(app: &mut App) {
                 places::drop_key.run_if(playing),
                 places::arrive.run_if(playing).run_if(places::leading),
                 (places::name_keys, side_act::pin_keys).chain().run_if(open),
-                action::engage.run_if(in_control),
+                action::go.run_if(in_control),
                 places::announce,
             ),
         )

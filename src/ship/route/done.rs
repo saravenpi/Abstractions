@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use crate::computer::{Destination, RouteStatus};
 
 /// Seconds the arrival stays on the HUD before the course ends.
-pub const SHOWN: f32 = 6.0;
+pub const SHOWN: f32 = 4.5;
 
 /// Returns how many seconds the route has read as arrived after `delta` more seconds, and
 /// whether the course ends now. A route that does not read as arrived starts again from zero.

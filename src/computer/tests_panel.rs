@@ -1,16 +1,15 @@
-//! Computer tests: the measures of the side panel, the words of the footer, the buttons of
-//! the card, and the open panel leaving the game running.
+//! Computer tests: the measures of the side panel, the words of the footer, and the open panel
+//! leaving the game running.
 
 use avian3d::prelude::{Physics, PhysicsTime};
 use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 
-use super::course::{NO_COURSE, arrival, course, progress};
+use super::course::{arrival, course};
 use super::layout::{Measures, RESULTS, ROW, SIDE, SMALLEST, fixed, measure};
 use super::tests_rig::{game, run, tap};
 use super::view::{Panel, Slot};
 use super::*;
-use crate::map::{Choice, Deed, offer, reason};
 use crate::menus::Menu;
 use crate::screens::{in_control, playing};
 
@@ -46,106 +45,19 @@ fn the_screen_fits_every_window() {
     assert!(fixed((0, 0)) + usual.rows as f32 * ROW <= 720.0);
 }
 
-/// The course line gives a time to arrival only while the ship moves.
+/// The course line gives a time to arrival only while the ship moves, and says nothing without
+/// a course.
 #[test]
 fn the_footer_says_the_right_words() {
-    let idle = RouteStatus::Idle;
     assert_eq!(arrival(6000.0, 100.0).as_deref(), Some("about 1 min"));
     assert_eq!(arrival(6000.0, 0.5), None);
     assert_eq!(
-        course(Some(("Kolva", 1500.0)), 0.0, idle),
-        "Course Kolva - 1.50 km - idle"
+        course(Some(("Kolva", 1500.0)), 0.0),
+        "Course Kolva - 1.50 km"
     );
-    let moving = course(Some(("Kolva", 720_000.0)), 100.0, idle);
-    assert_eq!(moving, "Course Kolva - 720 km - about 2 h 0 min - idle");
-    assert_eq!(course(None, 100.0, idle), NO_COURSE);
-}
-
-/// The action line offers the engage key only while the autopilot can take the course, and
-/// otherwise says why not or how far along the route is.
-#[test]
-fn the_action_line_says_what_the_route_can_do() {
-    let idle = RouteStatus::Idle;
-    let engage = (true, "Engage autopilot to Kolva b".to_string());
-    assert_eq!(action("Kolva b", idle), engage);
-    let inside = Block::Inside {
-        star: false,
-        lock: 30,
-        tenths: 14,
-    };
-    let blocked = action("Kolva b", RouteStatus::Blocked(inside));
-    assert_eq!(
-        blocked,
-        (
-            false,
-            "Inside 3.0 planet radii (now 1.4): fly out first".to_string()
-        )
-    );
-    assert_eq!(
-        action("Kolva b", RouteStatus::Aligning(45)).1,
-        "Aligning 45%"
-    );
-    assert!(!action("Kolva b", RouteStatus::Blocked(Block::Landed)).0);
-    assert_eq!(
-        action("Kolva b", RouteStatus::Arrived).1,
-        "Arrived at Kolva b"
-    );
-}
-
-/// The progress line under the map says how far along the route is while it is flown, and
-/// nothing while the route waits, is blocked or has arrived.
-#[test]
-fn the_progress_line_shows_only_a_route_in_flight() {
-    assert_eq!(progress("Kolva", RouteStatus::Aligning(40)), "Aligning 40%");
-    assert_eq!(progress("Kolva", RouteStatus::InWarp), "In warp to Kolva");
-    let quiet = [
-        RouteStatus::Idle,
-        RouteStatus::Blocked(Block::Landed),
-        RouteStatus::Arrived,
-    ];
-    assert!(
-        quiet
-            .iter()
-            .all(|status| progress("Kolva", *status).is_empty())
-    );
-}
-
-/// The card of a place offers to set the course there while it is not the course, and to
-/// engage while the route to it is idle and to clear it while it is, with the other choices
-/// of the menu of a right click after them. Only the card of the course says why the drive
-/// cannot engage.
-#[test]
-fn the_card_offers_the_buttons_of_the_course() {
-    let universe = crate::universe::Universe::new(7);
-    let (planet, star) = (
-        Target::Body(universe.home()),
-        Target::Star(universe.home().star),
-    );
-    let (idle, landed) = (RouteStatus::Idle, RouteStatus::Blocked(Block::Landed));
-    let menu = |choice| Deed::Choice(choice);
-    let others = [
-        menu(Choice::Focus),
-        menu(Choice::Waypoint),
-        menu(Choice::Favourite),
-    ];
-    let free = offer(planet, Some(star), idle);
-    assert_eq!(free[0], menu(Choice::Course));
-    assert_eq!(free[1..], others);
-    assert_eq!(
-        offer(planet, Some(planet), idle)[..2],
-        [Deed::Engage, Deed::Clear]
-    );
-    assert_eq!(
-        offer(planet, Some(planet), landed)[..2],
-        [Deed::Clear, others[0]]
-    );
-    assert_eq!(offer(star, None, idle), [menu(Choice::Course), others[0]]);
-    assert_eq!(
-        reason(planet, Some(planet), landed),
-        "Landed: take off first"
-    );
-    assert_eq!(reason(star, Some(planet), landed), "");
-    assert_eq!(reason(planet, Some(planet), idle), "");
+    let moving = course(Some(("Kolva", 720_000.0)), 100.0);
+    assert_eq!(moving, "Course Kolva - 720 km - about 2 h 0 min");
+    assert_eq!(course(None, 100.0), "");
 }
 
 /// Opening the map leaves the game running: physics and the game clock are not paused and

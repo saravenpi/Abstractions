@@ -9,13 +9,21 @@ mod ascent_tests;
 mod block;
 #[cfg(test)]
 mod block_tests;
+mod cancel;
+#[cfg(test)]
+mod departure_tests;
 mod done;
 #[cfg(test)]
 mod done_tests;
 mod goal;
+mod handoff;
+#[cfg(test)]
+mod stop_tests;
+mod tune;
 
 use ascent::{climb, climbs};
 use block::{aligned, blocker};
+pub(super) use cancel::{halt, halting, on_cancel};
 pub(super) use done::finish;
 pub(super) use goal::ARRIVAL;
 
@@ -32,7 +40,7 @@ use super::steer::{aim, detour};
 use super::warp::{CRUISE_CAP, JUMP_CAP, Warp};
 use super::wells::Well;
 use crate::computer::{Destination, Engage, RouteStatus, Target, ship_position};
-use crate::space::UniPos;
+use crate::space::{Location, Travel, UniPos};
 use crate::universe::{GLY, Universe};
 
 /// Distance in metres beyond which a route is a long jump: faster, and blind to the stars on the way.
@@ -145,7 +153,7 @@ pub fn fly(
     let Some(target) = autopilot.target else {
         return;
     };
-    if autopilot.phase == Phase::Climbing || climbs(&ship, Some(target)) {
+    if autopilot.phase == Phase::Climbing || climbs(&ship) {
         return climb(&mut autopilot, &mut ship, &mut helm, &skies, target);
     }
     let goal = autopilot
@@ -180,6 +188,7 @@ pub fn on_engage(event: On<Engage>, mut autopilot: ResMut<Autopilot>) {
 type Watch<'w, 's> = (
     Res<'w, Skies>,
     Res<'w, Destination>,
+    Option<Res<'w, Location>>,
     Query<'w, 's, &'static Ship>,
 );
 
@@ -187,7 +196,7 @@ type Watch<'w, 's> = (
 /// from a course that is set. A route that arrived reads as arrived until the course changes.
 pub fn report(
     (cosmos, autopilot): (Cosmos, Res<Autopilot>),
-    (skies, destination, ships): Watch,
+    (skies, destination, location, ships): Watch,
     mut status: ResMut<RouteStatus>,
     mut arrived: Local<Option<Target>>,
 ) {
@@ -206,9 +215,10 @@ pub fn report(
     let to = to.and_then(|(goal, here)| goal.reached(universe, here, time));
     let reading = block::Reading {
         phase,
-        block: blocker(ship, &skies.wells).filter(|_| !climbs(ship, destination.0)),
+        block: blocker(ship, &skies.wells),
         aligned: to.map_or(0, |(to, _)| aligned(ship.forward(), to)),
         course: destination.0.is_some(),
+        seated: location.is_none_or(|at| at.travel == Travel::InShip),
     };
     status.set_if_neq(block::status(reading));
 }

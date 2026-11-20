@@ -1,147 +1,210 @@
-//! The buttons on the card of the selected place, under its name: set the course there,
-//! engage the autopilot, clear the course. Under the buttons, the reason the drive cannot
-//! engage, while the place is the course.
+//! The Go card under the name of the selected place: one button, Go, with its key, that sends
+//! the ship there and reads Stop while the route to the place is flown, and one sentence under
+//! it that says how long the trip takes, what the ship does, or why it cannot start and what to
+//! do. With no place selected the card says how to pick one.
 
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
-use bevy::ui_widgets::Activate;
 
-use crate::computer::{Act, Board, Destination, RouteStatus, Target};
-use crate::ui::{Icon, Tone, column, entry, frame, text, theme};
+use crate::computer::{
+    Act, Ask, Board, Destination, Keys, MapView, NO_PLACE, RouteStatus, Target, arrival, card_line,
+    running, selected,
+};
+use crate::settings::{Keymap, Persistent, Settings};
+use crate::ship::ShipTelemetry;
+use crate::space::{Location, Travel};
+use crate::ui::{Icon, Selected, Tone, column, entry, frame, key_cap, text, theme};
+use crate::universe::Universe;
 
-/// What a button under the card does.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Deed {
-    /// Set the course to the place.
-    Course,
-    /// Hand the course to the autopilot.
-    Engage,
-    /// Forget the course.
-    Clear,
-}
-
-/// Marks a button that sets the course to a place.
-#[derive(Component, Debug, Clone, Copy)]
-pub struct DeedCourse(pub Target);
-
-/// Marks the row the buttons are in.
+/// Marks the row the Go button is in.
 #[derive(Component)]
 pub struct Deeds;
 
-/// Marks the line that says why the drive cannot engage.
+/// Marks the line that says what Go does, or why it cannot.
 #[derive(Component)]
-pub struct Reason;
+pub struct Sentence;
 
-/// Returns the buttons of the card of `target` with the course `course` in the state
-/// `status`: setting the course while the place is not the course, and while it is, engaging
-/// the autopilot when the route is idle and clearing the course.
-pub fn offer(target: Target, course: Option<Target>, status: RouteStatus) -> Vec<Deed> {
-    let engage = (status == RouteStatus::Idle).then_some(Deed::Engage);
-    match course == Some(target) {
-        true => engage.into_iter().chain([Deed::Clear]).collect(),
-        false => vec![Deed::Course],
+/// The Go button as it is drawn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Button {
+    /// True when the button stops the route that is flown instead of starting one.
+    pub stop: bool,
+    /// True when pressing the button does something.
+    pub enabled: bool,
+}
+
+/// What the card offers: its button, if a place is shown, and its sentence.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Offer {
+    /// The button, or nothing while no place is shown.
+    pub button: Option<Button>,
+    /// The sentence under the button.
+    pub sentence: String,
+}
+
+/// Returns what the card of the place `ask` describes offers, or how to pick a place for
+/// nothing. The button stops the route while the route to the place is flown.
+pub fn offer(ask: Option<&Ask>) -> Offer {
+    let Some(ask) = ask else {
+        let sentence = NO_PLACE.to_string();
+        return Offer {
+            button: None,
+            sentence,
+        };
+    };
+    let (enabled, sentence) = card_line(ask);
+    let stop = ask.ours && running(ask.status);
+    Offer {
+        button: Some(Button {
+            stop,
+            enabled: enabled || stop,
+        }),
+        sentence,
     }
 }
 
-/// Returns why the drive cannot engage on the course `course` in the state `status`, in plain
-/// words, when the place `target` is that course, and nothing otherwise.
-pub fn reason(target: Target, course: Option<Target>, status: RouteStatus) -> String {
-    match status {
-        RouteStatus::Blocked(block) if course == Some(target) => block.words(),
-        _ => String::new(),
-    }
-}
-
-/// Returns the icon and the words of the button `deed`.
-pub fn named(deed: Deed) -> (Icon, &'static str) {
-    match deed {
-        Deed::Course => (Icon::Send, "Set course"),
-        Deed::Engage => (Icon::Play, "Engage"),
-        Deed::Clear => (Icon::Close, "Clear"),
-    }
-}
-
-/// The buttons under the card, empty until [`write`] fills them, over the line that says why
-/// the drive cannot engage.
+/// The Go button row and the sentence under it, empty until [`write`] fills them.
 pub fn deeds() -> impl Bundle {
     let row = Node {
         width: percent(100),
-        flex_wrap: FlexWrap::Wrap,
-        column_gap: px(theme::GAP_XS),
-        row_gap: px(theme::GAP_XS),
         ..default()
     };
     (
-        column(percent(100), theme::GAP_XS),
+        column(percent(100), theme::S2),
         children![
             (Deeds, row),
-            (Reason, text("", theme::FONT_SMALL, theme::TEXT))
+            (Sentence, text("", theme::FONT_SMALL, theme::TEXT))
         ],
     )
 }
 
-/// Spawns the button `deed` on `target` under `row`. Engaging and clearing run the acts of the
-/// computer, as their keys do; setting the course does it for the place of the card.
-fn spawn(row: &mut ChildSpawnerCommands, deed: Deed, target: Target) {
-    let (icon, said) = named(deed);
+/// Spawns the Go button under `row`: a block with the key at its right end while it works, and
+/// dim words while it cannot.
+fn spawn(row: &mut ChildSpawnerCommands, button: Button, key: &str) {
+    let (icon, words) = match button.stop {
+        true => (Icon::Stop, "Stop"),
+        false => (Icon::Go, "Go"),
+    };
     let node = Node {
+        width: percent(100),
         align_items: AlignItems::Center,
-        padding: UiRect::horizontal(px(theme::GAP_XS)),
+        justify_content: JustifyContent::SpaceBetween,
+        padding: UiRect::axes(px(theme::S3), px(theme::S2)),
         ..default()
     };
-    let shown = entry(icon, said, theme::FONT_SMALL, Tone::Plain);
-    let mut button = row.spawn((frame(), node, children![shown]));
-    match deed {
-        Deed::Course => button.insert(DeedCourse(target)),
-        Deed::Engage => button.insert(Act::Engage),
-        Deed::Clear => button.insert(Act::Clear),
-    };
+    if !button.enabled {
+        row.spawn((
+            node,
+            children![text(words, theme::FONT_BODY, theme::TEXT_OFF)],
+        ));
+        return;
+    }
+    let shown = entry(icon, words, theme::FONT_BODY, Tone::Accent);
+    row.spawn((
+        frame(),
+        Selected(true),
+        Act::Go,
+        node,
+        children![shown, key_cap(key)],
+    ));
 }
 
-/// What the buttons are worked out from.
-type Course<'w> = (Res<'w, Board>, Res<'w, Destination>, Res<'w, RouteStatus>);
+/// What the card is worked out from.
+#[derive(SystemParam)]
+pub(super) struct Source<'w> {
+    board: Res<'w, Board>,
+    view: Res<'w, MapView>,
+    destination: Res<'w, Destination>,
+    route: Res<'w, RouteStatus>,
+    location: Option<Res<'w, Location>>,
+    settings: Option<Res<'w, Persistent<Settings>>>,
+    telemetry: Option<Res<'w, ShipTelemetry>>,
+    universe: Option<Res<'w, Universe>>,
+}
 
-/// What the buttons showed last: their row, the place and the buttons.
-type Shown = Option<(Entity, Option<Target>, Vec<Deed>)>;
+impl Source<'_> {
+    /// Returns the place the player picked in the table, if any.
+    fn pick(&self) -> Option<Target> {
+        let row = selected(&self.board, &self.view)?;
+        self.board.lines.get(row).map(|line| line.target)
+    }
 
-/// Writes the buttons of the row under the cursor and the reason the drive cannot engage, when
-/// the table, the course or the route changed, or the screen was just opened.
+    /// Returns true when what the card shows may have changed since `pick` was read last.
+    fn moved(&self, pick: Option<Target>, last: Option<Target>) -> bool {
+        let seat = self.location.as_ref().is_some_and(|at| at.is_changed());
+        let (board, course, route) = (&self.board, &self.destination, &self.route);
+        pick != last || board.is_changed() || course.is_changed() || route.is_changed() || seat
+    }
+
+    /// Returns what the card offers for `shown`, and the name of the Go key.
+    fn offer(&self, shown: Option<Target>) -> (Offer, String) {
+        let map = self
+            .settings
+            .as_ref()
+            .map_or(Keymap::default(), |s| s.controls.keys);
+        let keys = Keys::of(&map);
+        let (Some(target), Some(universe)) = (shown, self.universe.as_deref()) else {
+            return (offer(None), keys.go);
+        };
+        let name = target.name(universe);
+        let speed = self
+            .telemetry
+            .as_ref()
+            .map_or(0.0, |ship| ship.orbital_speed);
+        let line = self.board.lines.iter().find(|line| line.target == target);
+        let eta = line.and_then(|line| arrival(line.distance, speed));
+        let seated = self
+            .location
+            .as_ref()
+            .is_some_and(|at| at.travel == Travel::InShip);
+        let ask = Ask {
+            name: &name,
+            ours: self.destination.0 == Some(target),
+            here: self.board.here.contains(&Some(target)),
+            seated,
+            status: *self.route,
+            eta: eta.as_deref(),
+            keys: &keys,
+        };
+        (offer(Some(&ask)), keys.go)
+    }
+}
+
+/// What the card showed last: the place it was written for and its button.
+type Shown = (Option<Target>, Option<Button>, String);
+
+/// Writes the Go button and its sentence when the table, the selection, the course, the route
+/// or the seat changed, or the screen was just opened. The place is the one picked, or the
+/// course while its route is flown.
 pub(super) fn write(
-    (board, destination, route): Course,
+    source: Source,
     (rows, fresh): (Query<Entity, With<Deeds>>, Query<(), Added<Deeds>>),
-    mut reasons: Query<&mut Text, With<Reason>>,
+    mut sentences: Query<&mut Text, With<Sentence>>,
     mut commands: Commands,
-    mut last: Local<Shown>,
+    mut last: Local<Option<Shown>>,
 ) {
-    let changed = board.is_changed() || destination.is_changed() || route.is_changed();
-    let Some(row) = rows.iter().next().filter(|_| changed || !fresh.is_empty()) else {
+    let pick = source.pick();
+    let before = last.as_ref().and_then(|(pick, ..)| *pick);
+    let Some(row) = rows.iter().next() else {
         return;
     };
-    let target = board.lines.get(board.cursor).map(|line| line.target);
-    let said = target.map_or(String::new(), |at| reason(at, destination.0, *route));
-    for mut text in &mut reasons {
-        text.set_if_neq(Text(said.clone()));
+    if !(source.moved(pick, before) || !fresh.is_empty()) {
+        return;
     }
-    let deeds = target.map_or(Vec::new(), |at| offer(at, destination.0, *route));
-    let now = Some((row, target, deeds));
-    if *last == now {
+    let shown = pick.or(source.destination.0.filter(|_| running(*source.route)));
+    let (offered, key) = source.offer(shown);
+    for mut text in &mut sentences {
+        text.set_if_neq(Text(offered.sentence.clone()));
+    }
+    let now = (pick, offered.button, key);
+    if last.as_ref() == Some(&now) && fresh.is_empty() {
         return;
     }
     commands.entity(row).despawn_children();
-    if let Some((_, Some(at), deeds)) = &now {
-        commands.entity(row).with_children(|row| {
-            deeds.iter().for_each(|deed| spawn(row, *deed, *at));
-        });
+    if let Some(button) = offered.button {
+        commands
+            .entity(row)
+            .with_children(|row| spawn(row, button, &now.2));
     }
-    *last = now;
-}
-
-/// Sets the course to the place of the card whose button was pressed.
-pub(super) fn on_press(
-    event: On<Activate>,
-    buttons: Query<&DeedCourse>,
-    mut destination: ResMut<Destination>,
-) {
-    if let Ok(DeedCourse(target)) = buttons.get(event.entity) {
-        destination.0 = Some(*target);
-    }
+    *last = Some(now);
 }

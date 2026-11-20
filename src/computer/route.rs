@@ -4,6 +4,8 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::atlas::Atlas;
+use crate::menus::key_name;
+use crate::settings::Keymap;
 use crate::universe::{BodyId, GalaxyId, StarId, Universe};
 
 /// Something the ship can be sent to.
@@ -43,13 +45,18 @@ pub struct Destination(pub Option<Target>);
 #[derive(Event, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Engage(pub Target);
 
+/// Triggered when the player stops the route the autopilot flies: the drive drops out and the
+/// ship is the pilot's again.
+#[derive(Event, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Cancel;
+
 /// Why the warp drive cannot take the course now, the first of the checks of the route that fails.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Block {
+    /// The player is not in the ship. It comes before every other reason.
+    OnFoot,
     /// The ship stands on the ground.
     Landed,
-    /// The ship flies in the frame of a planet surface, inside its air.
-    Surface,
     /// The ship is inside the lock sphere of a planet or a star.
     Inside {
         /// True for a star, false for a planet or a moon.
@@ -61,16 +68,43 @@ pub enum Block {
     },
 }
 
+/// The names of the keys the sentences of the computer tell the player to press.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Keys {
+    /// Boards the ship.
+    pub board: String,
+    /// Lifts the ship off the ground.
+    pub rise: String,
+    /// Sends the ship to the selected place, or stops the route it flies.
+    pub go: String,
+}
+
+impl Keys {
+    /// Returns the names of the keys of the bindings `map`.
+    pub fn of(map: &Keymap) -> Keys {
+        Keys {
+            board: key_name(map.ship.board),
+            rise: key_name(map.ship.rise),
+            go: key_name(map.engage),
+        }
+    }
+}
+
 impl Block {
-    /// Returns the reason in plain words, with what to do about it.
-    pub fn words(self) -> String {
+    /// Returns the reason in plain words, with what to do about it and the keys to press.
+    pub fn words(self, keys: &Keys) -> String {
         match self {
-            Block::Landed => "Landed: take off first".to_string(),
-            Block::Surface => "In the air of a planet: climb to orbit first".to_string(),
-            Block::Inside { star, lock, tenths } => {
+            Block::OnFoot => format!(
+                "Board your ship first: walk to the hatch and press {}.",
+                keys.board
+            ),
+            Block::Landed => format!("Take off first: hold {}.", keys.rise),
+            Block::Inside { star, .. } => {
                 let body = ["planet", "star"][usize::from(star)];
-                let (lock, now) = (f64::from(lock) / 10.0, f64::from(tenths) / 10.0);
-                format!("Inside {lock:.1} {body} radii (now {now:.1}): fly out first")
+                format!(
+                    "Too close to the {body}: fly away from it, then press {}.",
+                    keys.go
+                )
             }
         }
     }
@@ -84,7 +118,7 @@ pub enum RouteStatus {
     Idle,
     /// A course is set or flown, but the drive cannot take it yet.
     Blocked(Block),
-    /// The ship climbs to an orbit around the planet it is at.
+    /// The ship climbs out of the air of the planet it is over.
     Climbing,
     /// The drive, still running on the course before, drops out first.
     Dropping,
@@ -96,22 +130,6 @@ pub enum RouteStatus {
     InWarp,
     /// The ship has reached the destination.
     Arrived,
-}
-
-impl RouteStatus {
-    /// Returns the words shown for this state.
-    pub fn label(self) -> &'static str {
-        match self {
-            RouteStatus::Idle => "idle",
-            RouteStatus::Blocked(_) => "blocked",
-            RouteStatus::Climbing => "climbing",
-            RouteStatus::Dropping => "dropping out",
-            RouteStatus::Aligning(_) => "aligning",
-            RouteStatus::Spooling => "spooling",
-            RouteStatus::InWarp => "in warp",
-            RouteStatus::Arrived => "arrived",
-        }
-    }
 }
 
 /// Copies a changed destination into the atlas so that it is saved with it.

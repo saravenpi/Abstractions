@@ -9,7 +9,7 @@ use super::atlas::Atlas;
 use super::course::course;
 use super::detail::worlds;
 use super::locate::{here, ship_position, target_position};
-use super::route::{RouteStatus, Target};
+use super::route::Target;
 use super::rows::{Line, View};
 use super::tab::Tab;
 use super::track::Known;
@@ -111,9 +111,9 @@ impl Scene<'_, '_> {
         here(&self.universe, self.anchor.frame, self.anchor.origin)
     }
 
-    /// Returns the course line: the destination, its distance, a rough time to get there at
-    /// the speed of the ship, and the state of the route.
-    pub(super) fn route(&self, destination: Option<Target>, status: RouteStatus) -> String {
+    /// Returns the course line: the destination, its distance and a rough time to get there at
+    /// the speed of the ship.
+    pub(super) fn route(&self, destination: Option<Target>) -> String {
         let name = destination.map(|target| target.name(&self.universe));
         let at = destination
             .and_then(|target| target_position(&self.universe, target, self.clock.seconds));
@@ -122,6 +122,6 @@ impl Scene<'_, '_> {
             .telemetry
             .as_ref()
             .map_or(0.0, |ship| ship.orbital_speed);
-        course(name.as_deref().map(|name| (name, gap)), speed, status)
+        course(name.as_deref().map(|name| (name, gap)), speed)
     }
 }

@@ -61,7 +61,7 @@ pub fn receive(
             Told::Rock(rock) => keep(&mut echoes.rocks, rock),
             Told::World(mut world) => {
                 echoes.wounds.extend(std::mem::take(&mut world.wounds));
-                echoes.rocks.extend(std::mem::take(&mut world.rocks));
+                echoes.totals.extend(std::mem::take(&mut world.rocks));
                 hunted.inbox.push(Told::World(world));
             }
             other => hunted.inbox.push(other),

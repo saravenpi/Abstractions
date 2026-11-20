@@ -11,7 +11,7 @@ use super::wake::{SeaWakes, Wakes};
 use super::waves::{WAVE_COUNT, Wave, waves_for};
 use super::{Planet, Sea};
 use crate::render::{GameCamera, Swell, smoothstep};
-use crate::space::Anchor;
+use crate::space::{Anchor, Clock};
 use crate::wind::Wind;
 
 /// Gravity in metres per second squared the waves travel by, `GRAVITY` in `water.wesl`.
@@ -61,7 +61,7 @@ pub fn swell(
     cameras: Query<&GlobalTransform, With<GameCamera>>,
     seas: Query<(&Seat, &Transform, &Visibility), With<Sea>>,
     world: World,
-    (wind, time): (Res<Wind>, Res<Time>),
+    (wind, clock): (Res<Wind>, Res<Clock>),
     mut swell: ResMut<Swell>,
 ) {
     let (Some(anchor), Some(planet)) = (world.0.as_deref(), world.1.as_deref()) else {
@@ -76,7 +76,7 @@ pub fn swell(
             let at = anchor.to_frame(camera.translation());
             let depth = -planet.globe.height(at.normalize());
             let waves = waves_for(&wind_in_seat(&wind, pose.rotation));
-            let (p, now) = (seat.coords(at), time.elapsed_secs());
+            let (p, now) = (seat.coords(at), clock.phase());
             let wake = stirred(world.2.as_deref(), seat, (p, now));
             crest(&waves, (p, wake), now, depth)
         });

@@ -86,6 +86,17 @@ fn shape(
     };
 }
 
+/// The auras that are drawn, with the material of each.
+type Shown<'w, 's> = Query<
+    'w,
+    's,
+    (
+        &'static mut Transform,
+        &'static MeshMaterial3d<SheathMaterial>,
+    ),
+    With<Aura>,
+>;
+
 /// Draws a sheath on every puppet of another player that glows, and takes away the sheath of every
 /// puppet that stopped.
 pub fn glows(
@@ -93,11 +104,7 @@ pub fn glows(
     remotes: Res<Remotes>,
     sky: (Option<Res<Vantage>>, Option<Res<LocalSystem>>),
     (mut meshes, mut materials): (ResMut<Assets<Mesh>>, ResMut<Assets<SheathMaterial>>),
-    (puppets, mut auras, mut state): (
-        Query<&GlobalTransform, With<Remote>>,
-        Query<(&mut Transform, &MeshMaterial3d<SheathMaterial>), With<Aura>>,
-        Local<Auras>,
-    ),
+    (puppets, mut auras, mut state): (Query<&GlobalTransform, With<Remote>>, Shown, Local<Auras>),
 ) {
     let gas = match sky {
         (Some(vantage), Some(local)) => local.gas(&vantage),

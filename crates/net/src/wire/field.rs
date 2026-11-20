@@ -86,13 +86,18 @@ pub struct Attack {
     pub started: f64,
 }
 
-/// A rock taken from the ground. It stays gone for everyone.
+/// A piece broken off a rock. The pieces add up, and a rock with nothing left stays gone for
+/// everyone. In the list of a world, a record holds all that was taken of its rock.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Rock {
     /// The planet it lay on.
     pub planet: BodyId,
     /// Its id on that planet.
     pub id: u64,
+    /// The mass taken, in grams.
+    pub grams: u32,
+    /// The mass of the whole rock, in grams.
+    pub whole: u32,
 }
 
 /// Returns true when every number is finite.

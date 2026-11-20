@@ -120,6 +120,8 @@ fn wounds_and_rocks_come_back() {
         rocks: vec![Rock {
             planet: planet(),
             id: u64::MAX,
+            grams: 1500,
+            whole: u32::MAX,
         }],
         ..HuntWorld::default()
     };

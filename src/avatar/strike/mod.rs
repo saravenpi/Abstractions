@@ -68,6 +68,7 @@ pub use hit::{Hit, Tip};
 pub use hurt::Hurt;
 pub use layer::Layer;
 pub use outcome::Outcome;
+pub use sense::landed;
 pub use show::{Kit, kit, tool};
 pub use stop::Hitstop;
 pub use swish::Missed;

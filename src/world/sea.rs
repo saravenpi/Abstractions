@@ -54,7 +54,7 @@ use super::focus::Focus;
 use super::{Planet, SEA_LEVEL};
 use crate::render::{GameCamera, Murk, Palette, PlaceLit};
 use crate::screens::Screen;
-use crate::space::Placed;
+use crate::space::{Clock, Placed};
 use crate::wind::Wind;
 
 /// Marks the sea mesh.
@@ -66,7 +66,7 @@ pub struct Sea;
 pub struct SeaInputs<'w, 's> {
     palette: Res<'w, Palette>,
     wind: Res<'w, Wind>,
-    time: Res<'w, Time>,
+    clock: Res<'w, Clock>,
     wakes: Option<Res<'w, Wakes>>,
     fog: Query<'w, 's, (&'static DistanceFog, Option<&'static Murk>), With<GameCamera>>,
 }
@@ -82,14 +82,14 @@ impl SeaInputs<'_, '_> {
             fog.color = murk.colour.extend(1.0);
         }
         let wind = follow::wind_in_seat(&self.wind, pose);
-        WaterUniform::new(&self.palette, &wind, self.time.elapsed_secs(), &fog)
+        WaterUniform::new(&self.palette, &wind, self.clock.phase(), &fog)
     }
 }
 
 impl SeaInputs<'_, '_> {
     /// Returns the live wakes in the sea coordinates of `seat`, none when nothing stirs the sea.
     fn stirred(&self, seat: &Seat) -> SeaWakes {
-        let now = self.time.elapsed_secs();
+        let now = self.clock.phase();
         match self.wakes.as_deref() {
             Some(wakes) if wakes.stirred(now) => SeaWakes::pack(wakes, now, |at| seat.coords(at)),
             _ => SeaWakes::default(),

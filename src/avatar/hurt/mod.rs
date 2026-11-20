@@ -40,7 +40,7 @@ use crate::screens::playing;
 use panel::Loose;
 pub use scar::Scars;
 use spark::Spark;
-pub use stagger::Reel;
+pub use stagger::{Reel, capacity, impulse, reel};
 
 /// Run condition: the marks' meshes and materials can be made and are not yet.
 fn unstocked(

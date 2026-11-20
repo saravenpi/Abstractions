@@ -7,7 +7,7 @@ use bevy::shader::ShaderRef;
 
 use super::foam::{Foam, FoamMesh};
 use super::tune::FOAM_OPACITY;
-use crate::space::Anchor;
+use crate::space::{Anchor, Clock};
 use crate::world::wake::{FoamWakes, Wakes};
 use crate::world::{Liquid, Terrain};
 
@@ -59,12 +59,12 @@ impl Material for FoamMaterial {
 
 /// Sets the clock and the colour of the foam and shows its mesh while some quad still lives.
 pub fn tick(
-    (time, terrain, anchor): (Res<Time>, Res<Terrain>, Res<Anchor>),
+    (clock, terrain, anchor): (Res<Clock>, Res<Terrain>, Res<Anchor>),
     (foam, wakes): (Res<Foam>, Res<Wakes>),
     mut materials: ResMut<Assets<FoamMaterial>>,
     mut meshes: Query<(&mut Visibility, &Transform), With<FoamMesh>>,
 ) {
-    let now = time.elapsed_secs();
+    let now = clock.phase();
     let shown = [Visibility::Hidden, Visibility::Inherited][usize::from(now < foam.until)];
     let mut origin = Vec3::ZERO;
     for (mut visibility, at) in &mut meshes {

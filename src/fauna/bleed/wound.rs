@@ -25,6 +25,17 @@ pub struct Cut {
     pub age: f32,
     /// Blood that left but was not thrown as a drop yet, in cubic metres.
     pub owed: f32,
+    /// True when another player's spear stands in it: it flows as a plugged cut does.
+    pub plugged: bool,
+}
+
+/// A cut opened by a blow of this machine: the animal and the cut, for the network to tell.
+#[derive(Message, Debug, Clone, Copy, PartialEq)]
+pub struct Bled {
+    /// Root of the animal that was cut.
+    pub victim: Entity,
+    /// The cut.
+    pub cut: Cut,
 }
 
 /// The wounds of an animal and the blood it lost through them.

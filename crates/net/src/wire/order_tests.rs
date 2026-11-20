@@ -19,6 +19,8 @@ fn the_hunting_messages_come_last() {
     let rock = ClientMsg::Hunt(Act::Rock(Rock {
         planet: planet(),
         id: 0,
+        grams: 1,
+        whole: 1,
     }));
     assert_eq!(encode(&rock).unwrap()[4], 8);
     assert_eq!(encode(&rock).unwrap()[5], 12);

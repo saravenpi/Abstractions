@@ -19,6 +19,16 @@ fn app() -> App {
     app
 }
 
+/// Returns a piece of a rock.
+fn piece() -> Rock {
+    Rock {
+        planet: BodyId::default(),
+        id: 4,
+        grams: 250,
+        whole: 900,
+    }
+}
+
 /// A blow and a rock go to the echoes at once, a message that is not about hunting is ignored, and
 /// the rest waits for the world.
 #[test]
@@ -32,10 +42,7 @@ fn echoes_wait_for_no_world() {
         dir: [0.0, 0.0, 1.0],
         momentum: 1.0,
     };
-    let rock = Rock {
-        planet: BodyId::default(),
-        id: 4,
-    };
+    let rock = piece();
     for event in [
         Event::Blow {
             by: PlayerId(1),

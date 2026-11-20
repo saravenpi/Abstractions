@@ -56,8 +56,11 @@ Still protocol 3: nothing of it was released. An old client is refused at the jo
 | `Plug` animal, part | `Plug` | marks the wounds of the part plugged | 36 |
 | `Impact` body, point, joules, cut, outer, tool, result | `Impact` | relays only | 70 |
 | `Attack` animal, kind, target, start time | `Attack` | relays only | 50 |
-| `Rock` planet, id | `Rock` | keeps the set, tells the others once per rock | 40 |
+| `Rock` planet, id, grams, whole | `Rock` | adds the grams to what was taken of the rock, never past `whole`, and tells the others; a rock with nothing left is not told | 48 |
 
+- A `Rock` is a piece, in grams, with the mass of the whole rock in grams (`u32` each, so a rock may weigh up to 4,294 tonnes). In `HuntWorld.rocks` one record holds the total taken of its rock. The server keeps the total of each rock, so a joining player tops up what its own world already took.
+- In an `Impact`, `outer` is the position of the layer in `[flesh, hide, shell, plate, bone, horn, robot plate, ground]`, and `tool` is one byte: the stiffness of the head in the high four bits and its mass in the low four, each as a power of two (stiffness `2^(n-4)` GPa, mass `2^(n-6)` kg). `result` is `CLEAN` or `DEFLECTED`. The point is in metres in the turning frame of `body`.
+- In an `Attack`, `kind` is the position in `[trample, sweep, swipe, lunge, bite, charge]`.
 - An item is the bytes of its craft recipe in the codec of the streams (about 72 bytes), at most 96. The server never reads it.
 - After the welcome, a server sends `Event::World` when there is anything to tell: the carcasses with their taken and broken parts, the stuck spears, what each player holds, the open wounds and every rock taken. It sends nothing when all is empty.
 - A carcass lasts the `lasts` its killer gave, clamped from 60 s to a day, and goes with the spears stuck in it. At most 1,024 carcasses, 256 spears, 2,048 wounds and 65,536 rocks are kept.

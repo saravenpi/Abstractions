@@ -12,11 +12,15 @@ use crate::net::state::Remote;
 use crate::player::Player;
 use crate::sim::PlayerId;
 
+/// The robots of this machine, with the hand tool each holds.
+type Hands<'w, 's> =
+    Query<'w, 's, (&'static ChildOf, Option<&'static Held>), (With<Avatar>, Without<Remote>)>;
+
 /// Tells the server which tool the local robot holds in its hands, or that it holds none.
 pub fn holds(
     (mut link, mut hunted): (ResMut<Link>, ResMut<Hunted>),
     players: Query<&PlayerId, With<Player>>,
-    avatars: Query<(&ChildOf, Option<&Held>), (With<Avatar>, Without<Remote>)>,
+    avatars: Hands,
 ) {
     let mine = avatars.iter().find(|(of, _)| {
         players

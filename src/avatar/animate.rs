@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 use super::blend::{Weights, asked, blended};
 use super::clock::Clock;
+use super::hurt::Reel;
 use super::hurt::limp::{limp, on_feet};
 use super::neck::Neck;
 use super::own::Own;
@@ -124,14 +125,22 @@ pub struct Skeleton(pub [Entity; SEGS]);
 /// its joint, nothing else moves.
 pub fn animate(
     (time, own, hurt): (Res<Time>, Own, Option<Res<Condition>>),
-    mut bodies: Query<(Entity, &mut Anim, &AvatarPose, &Skeleton, Option<&Layer>)>,
+    mut bodies: Query<(
+        Entity,
+        &mut Anim,
+        &AvatarPose,
+        &Skeleton,
+        Option<&Layer>,
+        Option<&Reel>,
+    )>,
     mut bones: Query<&mut Transform, With<Bone>>,
 ) {
     let dt = time.delta_secs().min(MAX_DT);
     let mine = own.body().map(|(_, body)| body);
-    for (body, mut anim, input, skeleton, layer) in &mut bodies {
+    for (body, mut anim, input, skeleton, layer, reel) in &mut bodies {
         let pose = anim.step(input, dt);
         anim.pose = layer.map_or(pose, |layer| layer.apply(pose));
+        anim.pose = reel.map_or(anim.pose, |reel| reel.apply(anim.pose));
         if let Some(hurt) = hurt
             .as_deref()
             .filter(|_| mine == Some(body) && on_feet(input.mode))

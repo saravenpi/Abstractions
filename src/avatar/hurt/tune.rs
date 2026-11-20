@@ -76,3 +76,55 @@ pub const DIM: f32 = 0.6;
 
 /// Share of its light a screen keeps in a dropout, unitless.
 pub const LOST: f32 = 0.05;
+
+/// Least impulse that staggers the robot, in metres per second: under it a blow only hurts.
+pub const STAGGER_MIN: f32 = 0.4;
+
+/// Impulse above which the robot loses its footing and falls, in metres per second, for a robot on
+/// its feet, not crouched and not braced.
+pub const FALL_AT: f32 = 3.0;
+
+/// Impulse a robot on its feet absorbs without losing its balance for long, in metres per second:
+/// it sets the recovery time. A crouch doubles it and a block on the side of the blow adds [`BRACE`].
+pub const CAPACITY: f32 = 2.0;
+
+/// Share of the capacity a block on the side of the blow adds, unitless.
+pub const BRACE: f32 = 0.5;
+
+/// Mass of the arm behind a guard, in kilograms: the share of a blow the tool takes is its mass over
+/// its mass and this, as in the thrust speed of the tool.
+pub const ARM_KG: f32 = 1.0;
+
+/// Most of a blow a guard takes, unitless.
+pub const ABSORB_MAX: f32 = 0.8;
+
+/// Seconds a robot takes to recover from an impulse of the size of [`CAPACITY`].
+pub const RECOVER_S: f32 = 0.35;
+
+/// Least and most the recovery stretches by, in shares of [`RECOVER_S`].
+pub const RECOVER_SPAN: [f32; 2] = [0.5, 3.0];
+
+/// Lean of the body at the deepest of a stagger that stops short of a fall, in radians.
+pub const LEAN_MAX: f32 = 0.35;
+
+/// Seconds the lean takes to build.
+pub const RISE: f32 = 0.08;
+
+/// Seconds a fall takes to reach the ground, and the seconds the robot then takes to get up.
+pub const DOWN: [f32; 2] = [0.25, 0.6];
+
+/// Seconds the robot lies on the ground between falling and getting up.
+pub const LIE: f32 = 0.4;
+
+/// Pitch of a body that lies on the ground, in radians.
+pub const LYING: f32 = 1.4;
+
+/// Drop of the pelvis at the deepest of a stagger, in metres.
+pub const KNEES: f32 = 0.06;
+
+/// Share of the direction of a blow along the side of the robot from which a guard on that side
+/// counts as meeting it, unitless.
+pub const GUARD_COS: f32 = 0.3;
+
+/// Fastest impulse the robot is shoved at, in metres per second.
+pub const SHOVE_MAX: f32 = 8.0;

@@ -11,4 +11,8 @@ pub struct Blow {
     pub joules: f32,
     /// True when an edge or point carried the hit, false when it was blunt.
     pub cut: bool,
+    /// Unit direction the blow travelled in, in world space: the way it pushes.
+    pub dir: Vec3,
+    /// Momentum the blow delivered, in kilogram metres per second.
+    pub momentum: f32,
 }

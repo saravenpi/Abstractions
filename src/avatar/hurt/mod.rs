@@ -14,12 +14,16 @@ pub mod limp;
 mod panel;
 pub mod plates;
 mod scar;
+mod shove;
 mod spark;
+mod stagger;
 mod take;
 pub mod tune;
 
 #[cfg(test)]
 mod tests_look;
+#[cfg(test)]
+mod tests_stagger;
 #[cfg(test)]
 mod tests_struck;
 
@@ -36,6 +40,7 @@ use crate::screens::playing;
 use panel::Loose;
 pub use scar::Scars;
 use spark::Spark;
+pub use stagger::Reel;
 
 /// Run condition: the marks' meshes and materials can be made and are not yet.
 fn unstocked(
@@ -73,6 +78,13 @@ pub(super) fn plugin(app: &mut App) {
                 .run_if(playing),
             spark::drizzle.run_if(drizzle).run_if(playing),
             spark::fly.run_if(any_with_component::<Spark>),
+            shove::shove
+                .before(crate::player::PlayerSet::Move)
+                .run_if(on_message::<Blow>)
+                .run_if(playing),
+            shove::recover
+                .before(AvatarSet::Animate)
+                .run_if(any_with_component::<Reel>),
         ),
     );
 }

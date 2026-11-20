@@ -7,6 +7,7 @@ use bevy::math::{Vec2, Vec3Swizzles};
 use bevy::prelude::*;
 
 use super::Dead;
+use super::foe::{Foe, foe_of};
 use super::kinds::Kind;
 use super::ring::heard;
 use super::timing::{Attacking, joules};
@@ -32,14 +33,6 @@ pub struct Fight<'w, 's> {
     robot: Query<'w, 's, &'static Transform, With<Player>>,
     blows: MessageWriter<'w, Blow>,
     sounds: MessageWriter<'w, Impact>,
-}
-
-/// The robot an animal fights: its place in the frame of the animal and in render space.
-#[derive(Clone, Copy)]
-struct Foe {
-    local: Vec3,
-    render: Vec3,
-    up: Vec3,
 }
 
 /// Returns how far the target lies in the horizontal plane of `beast` and the unit way it faces.
@@ -85,6 +78,8 @@ fn landing(kind: Kind, species: &Species, foe: &Foe) -> Blow {
         at: foe.render + foe.up * lift,
         joules: joules(kind, species.history.mass, speed),
         cut: kind.cuts(),
+        dir: foe.away,
+        momentum: species.history.mass * kind.share() * speed,
     }
 }
 
@@ -153,11 +148,7 @@ pub fn attack(
         let Some(species) = life.species.get(usize::from(beast.index)) else {
             continue;
         };
-        let foe = Foe {
-            local: beast.spot.local(here),
-            render: robot.translation,
-            up: robot.up().as_vec3(),
-        };
+        let foe = foe_of(&f.anchor, &beast, (robot, here));
         match going {
             Some(a) if a.over() => {
                 f.commands.entity(entity).remove::<Attacking>();

@@ -22,6 +22,8 @@ mod sim;
 mod sink;
 mod sky;
 #[cfg(test)]
+mod tests_flow;
+#[cfg(test)]
 mod tests_pool;
 mod tune;
 mod water;

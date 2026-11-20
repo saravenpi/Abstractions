@@ -99,3 +99,12 @@ pub const SINK: (f32, f32) = (0.02, 20.0);
 /// Respawns per second of a pool that is mostly parked: its size over the two seconds a parked
 /// particle waits. A share of the respawns is the rate of that kind over this.
 pub const RESPAWNS: f32 = super::pool::POOL_SIZE as f32 / 2.0;
+
+/// Speeds in metres per second of the air against the camera between which the respawns of the
+/// ambient particles start to favour the face of the box the air comes from, and favour it fully.
+/// A wind of 5 m/s is a breeze: 40 m/s is a glide.
+pub const HEAD_ON: (f32, f32) = (6.0, 40.0);
+
+/// Share of the respawns that are not yet on the upwind face and move there in the fastest air:
+/// at full speed 0.6 + 0.4 * 0.75 = 90 percent of the respawns appear where the air comes from.
+pub const HEAD_ON_SHARE: f32 = 0.75;

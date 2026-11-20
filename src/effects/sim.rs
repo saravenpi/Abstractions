@@ -14,6 +14,7 @@ use super::sense::Sensed;
 use super::sink::fall;
 use crate::render::{DayClock, daylight, smoothstep};
 use crate::space::Anchor;
+use crate::view::Target;
 use crate::wind::{Thickness, Wind};
 use crate::world::{SEA_LEVEL, Terrain};
 
@@ -33,6 +34,7 @@ pub struct Env<'w> {
     eye: Res<'w, Eye>,
     pool: Res<'w, Pool>,
     rng: ResMut<'w, Rng>,
+    target: Option<Res<'w, Target>>,
 }
 
 /// Returns true when the particle left the box around the camera, hit the ground or left the
@@ -134,7 +136,12 @@ fn spawner<'a>(env: &'a Env, ground: Ground<'a>, rng: &'a mut Rng) -> Spawn<'a> 
         sky: env.sensed.sky,
         shed: &env.sensed.shed,
         ground,
-        wind: env.wind.direction,
+        flow: env.eye.flow(
+            env.wind.velocity(),
+            env.target
+                .as_deref()
+                .map_or(Vec3::ZERO, |target| target.velocity),
+        ),
         pool: &env.pool,
         rng,
     }

@@ -48,6 +48,15 @@ impl Eye {
     }
 }
 
+impl Eye {
+    /// Returns the velocity in metres per second of the air against a camera that moves over the
+    /// ground at `velocity`, along the local horizontal: the `wind`, given in the local frame,
+    /// less the velocity, given in render axes.
+    pub fn flow(&self, wind: Vec3, velocity: Vec3) -> Vec2 {
+        (wind - self.tilt.inverse() * velocity).xz()
+    }
+}
+
 /// Run condition: the anchor sits on a planet, so render positions can be read as ground.
 pub fn grounded(anchor: Option<Res<Anchor>>, terrain: Option<Res<Terrain>>) -> bool {
     let on_ground = |anchor: Res<Anchor>| anchor.flat || matches!(anchor.frame, Frame::Surface(_));

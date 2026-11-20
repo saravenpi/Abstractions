@@ -1,62 +1,95 @@
-//! Tests of the explored ground: the grid, the reach, the network lists and the save.
+//! Tests of the explored ground: the leaves, the reach, the network lists and the save.
 
+use std::collections::HashSet;
+
+use abstractions_net::leaves::{Run, key, parts};
 use bevy::math::DVec3;
 
-use super::grid::{CELLS, COLS, WORDS, cell_of, centre, disc};
+use super::grid::{centre, depth_for, leaf_of};
 use super::{Explored, REACH_CAP, REACH_FOOT, reach};
 use crate::saves::{Place, WorldSave};
 use crate::universe::{EARTH_RADIUS, Universe};
 
-/// Every cell holds its own centre.
+/// The depth of a body gives leaves of at most 500 m, and an Earth takes depth 15.
 #[test]
-fn every_cell_holds_its_centre() {
-    for cell in 0..CELLS as u32 {
-        assert_eq!(cell_of(centre(cell)), cell);
+fn a_depth_gives_leaves_of_at_most_500_metres() {
+    assert_eq!(depth_for(EARTH_RADIUS), 15);
+    for radius in [1.5e6, 3.0e6, 1.2e7, 7.0e7] {
+        let depth = depth_for(radius);
+        let leaf = std::f64::consts::FRAC_PI_2 * radius / (1u64 << depth) as f64;
+        assert!(leaf <= 500.0, "{leaf} m at {radius}");
+        assert!(leaf > 200.0, "{leaf} m at {radius}");
     }
 }
 
-/// Longitude 0 is +X, east is -Z, and row 0 is at the south pole.
+/// Every leaf of a sample over the six faces holds its own centre.
 #[test]
-fn the_grid_starts_at_the_south_and_runs_east() {
-    assert_eq!(cell_of(DVec3::new(1.0, -1e4, -0.001).normalize()), 0);
-    assert_eq!(
-        cell_of(DVec3::new(0.0, 0.0, -1.0)) % COLS as u32,
-        COLS as u32 / 4
-    );
+fn every_leaf_holds_its_centre() {
+    let depth = 15;
+    for face in 0..6 {
+        for x in (0..1u64 << depth).step_by(997) {
+            for y in (0..1u64 << depth).step_by(1009) {
+                let morton = super::morton::spread(x) | (super::morton::spread(y) << 1);
+                let leaf = key(face, depth, morton);
+                assert_eq!(leaf_of(centre(leaf), depth), leaf, "face {face} {x} {y}");
+            }
+        }
+    }
 }
 
-/// Returns the cells of a disc of `metres` on the home planet around `dir`, without repeats.
-fn cells(dir: DVec3, metres: f64) -> Vec<u32> {
-    let mut cells = Vec::new();
-    disc(dir, metres / EARTH_RADIUS, |cell| cells.push(cell));
-    cells.sort_unstable();
-    cells.dedup();
-    cells
+/// Returns the leaves a walk of 2 km along the equator reveals with `reach` metres, on an Earth,
+/// and the directions it stood at.
+fn walk(reach: f64) -> (HashSet<u64>, Vec<DVec3>) {
+    let body = Universe::new(3).home();
+    let mut explored = Explored::default();
+    let stood: Vec<DVec3> = (0..=200)
+        .map(|step| {
+            let angle = f64::from(step) * 10.0 / EARTH_RADIUS;
+            DVec3::new(angle.cos(), 0.0, -angle.sin())
+        })
+        .collect();
+    for dir in &stood {
+        explored.reveal(body, *dir, reach / EARTH_RADIUS, EARTH_RADIUS);
+    }
+    let leaves = explored.leaves(body).expect("revealed");
+    (leaves.iter().collect(), stood)
 }
 
-/// A walk uncovers about the cells of a 300 m disc, and none farther than the disc and a cell.
+/// Walking 2 km reveals the leaves under the path and those within the reach of it, and no
+/// others.
 #[test]
-fn a_walk_uncovers_the_cells_around_it() {
-    let dir = DVec3::new(1.0, 0.3, -0.4).normalize();
-    let found = cells(dir, REACH_FOOT);
-    let side = std::f64::consts::TAU * EARTH_RADIUS / COLS as f64;
-    let expected = std::f64::consts::PI * REACH_FOOT * REACH_FOOT / (side * side);
-    println!("{} cells for {expected:.0} expected", found.len());
-    assert!((found.len() as f64 - expected).abs() < expected * 0.4);
-    let far = (REACH_FOOT + side) / EARTH_RADIUS;
+fn a_walk_reveals_the_leaves_under_the_path_and_no_others() {
+    let (found, stood) = walk(REACH_FOOT);
+    let depth = depth_for(EARTH_RADIUS);
     assert!(
-        found
+        stood
             .iter()
-            .all(|&cell| centre(cell).angle_between(dir) < far)
+            .all(|dir| found.contains(&leaf_of(*dir, depth)))
     );
+    let far = (REACH_FOOT.max(0.75 * 305.0 * 2.0f64.sqrt()) + 1.0) / EARTH_RADIUS;
+    for leaf in &found {
+        let near = stood
+            .iter()
+            .any(|dir| centre(*leaf).angle_between(*dir) <= far);
+        assert!(near, "leaf {leaf} is off the path");
+    }
+    assert!((8..=60).contains(&found.len()), "{} leaves", found.len());
 }
 
-/// A disc over a pole wraps round every longitude.
+/// A disc over the corner of a cube reveals leaves of three faces.
 #[test]
-fn a_disc_over_the_pole_takes_every_column() {
-    let found = cells(DVec3::new(0.001, 1.0, 0.0).normalize(), REACH_CAP);
-    let top = (CELLS - COLS) as u32;
-    assert!((top..CELLS as u32).all(|cell| found.contains(&cell)));
+fn a_disc_over_a_corner_takes_three_faces() {
+    let body = Universe::new(3).home();
+    let mut explored = Explored::default();
+    let corner = DVec3::ONE.normalize();
+    explored.reveal(body, corner, REACH_CAP / EARTH_RADIUS, EARTH_RADIUS);
+    let faces: HashSet<u64> = explored
+        .leaves(body)
+        .expect("revealed")
+        .iter()
+        .map(|leaf| parts(leaf).0)
+        .collect();
+    assert_eq!(faces.len(), 3);
 }
 
 /// The reach is 300 m on the ground, the horizon higher up, and never past 2 km.
@@ -67,35 +100,37 @@ fn the_reach_grows_with_height_to_a_cap() {
     assert_eq!(reach(5000.0, EARTH_RADIUS), REACH_CAP);
 }
 
-/// Cells uncovered here are handed to the network once; cells from the server never are.
-#[test]
-fn only_local_cells_are_sent_and_only_once() {
-    let body = Universe::new(3).home();
+/// Returns the runs of the one leaf at `dir` on an Earth.
+fn runs_at(dir: DVec3) -> Vec<Run> {
     let mut explored = Explored::default();
-    explored.reveal_cells(body, &[5, 6]);
-    assert!(explored.take_new(body).is_empty());
-    let before = explored.version(body);
-    explored.reveal(body, centre(5), 1e-6);
-    assert_eq!(explored.version(body), before);
-    explored.reveal(body, centre(9), 1e-6);
-    assert_eq!(explored.take_new(body), vec![9]);
-    assert!(explored.take_new(body).is_empty());
-    let mut words = vec![0; WORDS];
-    words[0] = 1 << 40;
-    explored.merge_words(body, &words);
-    assert_eq!(
-        explored.words(body).unwrap()[0],
-        (1 << 40) | (1 << 9) | 0b110_0000
-    );
+    let body = Universe::new(3).home();
+    explored.reveal(body, dir, 0.0, EARTH_RADIUS);
+    explored.leaves(body).expect("revealed").runs()
 }
 
-/// A saved bitset loads as it was; a file without one is uncovered around its last place.
+/// Leaves uncovered here are handed to the network once; leaves from the server never are.
+#[test]
+fn only_local_leaves_are_sent_and_only_once() {
+    let body = Universe::new(3).home();
+    let mut explored = Explored::default();
+    explored.merge_runs(body, &runs_at(DVec3::X));
+    assert!(explored.take_new(body).is_empty());
+    let before = explored.version(body);
+    explored.reveal(body, DVec3::X, 0.0, EARTH_RADIUS);
+    assert_eq!(explored.version(body), before);
+    explored.reveal(body, DVec3::Y, 0.0, EARTH_RADIUS);
+    let new = explored.take_new(body);
+    assert_eq!(new.len(), 1);
+    assert!(new.contains(leaf_of(DVec3::Y, depth_for(EARTH_RADIUS))));
+    assert!(explored.take_new(body).is_empty());
+    assert_eq!(explored.leaves(body).expect("kept").len(), 2);
+}
+
+/// Saved runs load as they were; a file without any is uncovered around its last place.
 #[test]
 fn saves_load_their_ground() {
     let universe = Universe::new(3);
     let body = universe.home();
-    let mut explored = Explored::default();
-    explored.reveal_cells(body, &[1, 700]);
     let mut save = WorldSave {
         seed: 3,
         place: Some(Place {
@@ -105,12 +140,15 @@ fn saves_load_their_ground() {
         }),
         ..WorldSave::default()
     };
-    let words = explored.words(body).unwrap().to_vec();
+    let radius = universe.planet(body).radius;
     let old = Explored::of(&save);
-    assert!(old.words(body).unwrap()[cell_of(DVec3::Z) as usize / 64] != 0);
-    save.explored = toml::from_str::<WorldSave>(&format!("[[explored]]\nwords = {words:?}"))
-        .map(|file| file.explored)
-        .unwrap();
-    save.explored[0].body = body;
-    assert_eq!(Explored::of(&save).words(body).unwrap(), &words[..]);
+    let under = leaf_of(DVec3::Z, depth_for(radius));
+    assert!(old.leaves(body).expect("uncovered").contains(under));
+    let runs = runs_at(DVec3::NEG_Y);
+    save.explored = vec![crate::saves::SavedGround {
+        body,
+        runs: runs.clone(),
+    }];
+    let loaded = Explored::of(&save);
+    assert_eq!(loaded.leaves(body).expect("loaded").runs(), runs);
 }

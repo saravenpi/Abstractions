@@ -108,7 +108,10 @@ fn a_position_at_planet_scale_comes_back_within_a_millimetre() {
         DVec3::new(1.2e7, 0.000_4, -3.3),
         DVec3::new(-8.5e6, 8.5e6, 1.2e7 - 0.123),
     ] {
-        let sent = RobotBody { position, ..robot() };
+        let sent = RobotBody {
+            position,
+            ..robot()
+        };
         let mut bytes = Vec::new();
         sent.encode(&frame, &mut bytes);
         let got = RobotBody::decode(&frame, &bytes).unwrap();

@@ -1,10 +1,10 @@
-//! The explored ground that crosses the network: cells and bitsets from the server, and the
-//! cells uncovered here waiting to be sent.
+//! The explored ground that crosses the network: runs from the server, and the leaves
+//! uncovered here waiting to be sent.
 
+use abstractions_net::leaves::{Leaves, Run};
 use abstractions_net::room::BODIES_MAX;
 
 use super::Explored;
-use super::grid::{CELLS, WORDS};
 use super::ground::Ground;
 use crate::universe::BodyId;
 
@@ -16,47 +16,31 @@ impl Explored {
         (!full).then(|| self.bodies.entry(body).or_default())
     }
 
-    /// Marks cells that another player uncovered. They are not sent back to the server. Cells
-    /// off the grid are ignored, and a list without any keeps nothing.
-    pub fn reveal_cells(&mut self, body: BodyId, cells: &[u32]) {
-        let mut cells = cells
-            .iter()
-            .filter(|cell| (**cell as usize) < CELLS)
-            .peekable();
-        if cells.peek().is_none() {
-            return;
-        }
-        let Some(ground) = self.ground(body) else {
-            return;
-        };
-        for &cell in cells {
-            ground.set(cell);
-        }
-    }
-
-    /// Marks every cell set in `words`, a whole bitset as the server or a save holds it. A
-    /// list of another length, or with no cell set, is ignored.
-    pub fn merge_words(&mut self, body: BodyId, words: &[u64]) {
-        if words.len() != WORDS || words.iter().all(|word| *word == 0) {
+    /// Marks the leaves in `runs`, as another player, a server or a save holds them. They are
+    /// not sent back to the server. Keys that name no leaf are ignored, and a list without any
+    /// leaf keeps nothing.
+    pub fn merge_runs(&mut self, body: BodyId, runs: &[Run]) {
+        let leaves = Leaves::from_runs(runs);
+        if leaves.is_empty() {
             return;
         }
         if let Some(ground) = self.ground(body) {
-            ground.merge(words);
+            ground.merge(&leaves);
         }
     }
 
-    /// Returns the cells of `body` uncovered here since the last call, for the network to send.
-    pub fn take_new(&mut self, body: BodyId) -> Vec<u32> {
+    /// Returns the leaves of `body` uncovered here since the last call, for the network to send.
+    pub fn take_new(&mut self, body: BodyId) -> Leaves {
         self.bodies
             .get_mut(&body)
             .map(|ground| std::mem::take(&mut ground.new))
             .unwrap_or_default()
     }
 
-    /// Forgets the cells uncovered here and not yet sent: without a server they would pile up.
+    /// Forgets the leaves uncovered here and not yet sent: without a server they would pile up.
     pub fn drop_unsent(&mut self) {
         for ground in self.bodies.values_mut() {
-            ground.new.clear();
+            ground.new = Leaves::default();
         }
     }
 }

@@ -1,5 +1,6 @@
 //! The on-disk record of one world.
 
+use abstractions_net::leaves::Run;
 use bevy::math::DVec3;
 use serde::{Deserialize, Serialize};
 
@@ -87,8 +88,7 @@ pub struct WorldSave {
     /// What the players changed, oldest first. A file from before 0.9 has an empty log.
     #[serde(default)]
     pub changes: Changes,
-    /// The ground uncovered on each body, as the words of its explored bitset. A file from
-    /// before 0.10.1 has none.
+    /// The ground uncovered on each body, as runs of leaves. A file from before 0.10.1 has none.
     #[serde(default)]
     pub explored: Vec<Explored>,
     /// The player's favourite places. A file from before 0.10.1 has none.
@@ -96,15 +96,14 @@ pub struct WorldSave {
     pub marks: Vec<Favourite>,
 }
 
-/// The ground uncovered on one body: a 512 by 256 grid in longitude and latitude, one bit a
-/// cell, row by row from the south, packed in 64-bit words.
+/// The ground uncovered on one body: runs of the leaves of its quadtree on the cube-sphere.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[serde(default)]
 pub struct Explored {
     /// The body.
     pub body: BodyId,
-    /// The bits, 2048 words when complete.
-    pub words: Vec<u64>,
+    /// The leaves, as runs of keys.
+    pub runs: Vec<Run>,
 }
 
 /// A place the player saved with a name.

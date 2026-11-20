@@ -19,7 +19,9 @@ pub struct Packed {
 /// Returns `position`, in metres, as a cell and whole millimetres per axis. The error is at
 /// most 0.5 mm anywhere; a coordinate that is not a number packs as 0.
 pub fn pack_cells(position: DVec3) -> Packed {
-    let cell = position.to_array().map(|metres| (metres / CELL).round() as i64);
+    let cell = position
+        .to_array()
+        .map(|metres| (metres / CELL).round() as i64);
     let mm = [0, 1, 2].map(|axis| {
         let rest = position[axis] - cell[axis] as f64 * CELL;
         (rest * 1000.0).round() as i32
@@ -29,7 +31,7 @@ pub fn pack_cells(position: DVec3) -> Packed {
 
 /// Returns the position in metres that [`pack_cells`] stored.
 pub fn unpack_cells(packed: Packed) -> DVec3 {
-    DVec3::from_array([0, 1, 2].map(|axis| {
-        packed.cell[axis] as f64 * CELL + f64::from(packed.mm[axis]) / 1000.0
-    }))
+    DVec3::from_array(
+        [0, 1, 2].map(|axis| packed.cell[axis] as f64 * CELL + f64::from(packed.mm[axis]) / 1000.0),
+    )
 }

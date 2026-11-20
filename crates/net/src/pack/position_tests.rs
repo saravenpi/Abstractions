@@ -33,7 +33,12 @@ fn a_position_at_planet_scale_keeps_a_millimetre() {
             7.0e7 * (t * 0.019).sin() + 0.000_3,
         );
         let packed = pack_cells(position);
-        assert!(packed.mm.iter().all(|mm| f64::from(mm.abs()) <= CELL * 500.0));
+        assert!(
+            packed
+                .mm
+                .iter()
+                .all(|mm| f64::from(mm.abs()) <= CELL * 500.0)
+        );
         let error = (unpack_cells(packed) - position).abs().max_element();
         assert!(error <= 0.001, "error {error} m at {position}");
     }

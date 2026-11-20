@@ -6,6 +6,7 @@ use super::{
     ClientMsg, Hello, PlayerInfo, PlayerRecord, Reason, ServerMsg, Status, Waypoint, Welcome,
 };
 use super::{PROTOCOL, decode, encode};
+use crate::leaves::Run;
 use crate::log::{Change, Changes, Entry, PlayerId};
 
 /// Returns a named waypoint on the test planet.
@@ -36,7 +37,16 @@ fn welcome() -> Welcome {
             id: PlayerId(2),
             name: "Zoé".to_string(),
         }],
-        explored: vec![(planet(), vec![0, u64::MAX, 1 << 63])],
+        explored: vec![(
+            planet(),
+            vec![
+                Run { gap: 7, len: 3 },
+                Run {
+                    gap: 1 << 40,
+                    len: 9,
+                },
+            ],
+        )],
         waypoints: vec![(PlayerId(2), waypoint())],
     }
 }
@@ -104,7 +114,7 @@ fn client_map_messages_come_back() {
     let client = [
         ClientMsg::Explored {
             body: planet(),
-            cells: vec![0, 511, 512 * 256 - 1],
+            runs: vec![Run { gap: 5, len: 2 }, Run { gap: 99, len: 1 }],
         },
         ClientMsg::Waypoint(Some(waypoint())),
         ClientMsg::Waypoint(None),
@@ -124,7 +134,7 @@ fn server_map_messages_come_back() {
     let server = [
         ServerMsg::Explored {
             body: planet(),
-            cells: vec![7, 1024],
+            runs: vec![Run { gap: 7, len: 1 }],
         },
         ServerMsg::Waypoint {
             player: PlayerId(2),

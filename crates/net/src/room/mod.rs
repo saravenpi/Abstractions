@@ -29,7 +29,7 @@ mod scale_tests;
 
 use std::collections::HashMap;
 
-pub use map::{BODIES_MAX, EXPLORED_WORDS};
+pub use map::{BODIES_MAX, RUNS_MAX};
 
 use conn::Conn;
 use map::Ground;

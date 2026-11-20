@@ -3,7 +3,7 @@
 //!
 //! The file is TOML at `world.toml` in the server's data folder. [`save`] writes it whole
 //! through a temporary file, so a crash leaves either the old file or the new one, and keeps
-//! the last three copies. The explored ground goes beside it in `explored.bin`, written the
+//! the last three copies. The explored ground goes beside it in `explored3.bin`, written the
 //! same safe way. [`import`] reads a single-player world of the game.
 
 mod explored;
@@ -26,6 +26,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::ids::BodyId;
+use crate::leaves::Run;
 use crate::log::Changes;
 use crate::wire::PlayerRecord;
 
@@ -71,10 +72,10 @@ pub struct World {
     pub atlas: String,
     /// Every player who ever kept a record here, by identity key in hexadecimal.
     pub players: BTreeMap<String, Member>,
-    /// The ground explored on each body, as bitsets of [`crate::room::EXPLORED_WORDS`] words.
+    /// The ground explored on each body, as runs of leaves.
     /// It lives in [`EXPLORED_FILE`], not in the world file.
     #[serde(skip)]
-    pub explored: Vec<(BodyId, Vec<u64>)>,
+    pub explored: Vec<(BodyId, Vec<Run>)>,
 }
 
 impl Default for World {

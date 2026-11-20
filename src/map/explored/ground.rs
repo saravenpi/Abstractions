@@ -1,49 +1,33 @@
-//! The bitset of one body.
+//! The leaves of one body.
 
-use super::grid::{CELLS, WORDS};
+use abstractions_net::leaves::Leaves;
 
-/// The cells of one body uncovered so far.
-#[derive(Debug, Clone)]
+/// The leaves of one body uncovered so far.
+#[derive(Debug, Clone, Default)]
 pub(super) struct Ground {
-    /// One bit a cell, [`WORDS`] words.
-    pub(super) words: Vec<u64>,
-    /// Cells uncovered here and not yet handed to the network.
-    pub(super) new: Vec<u32>,
-    /// Grows every time a cell is uncovered.
+    /// Every leaf uncovered.
+    pub(super) leaves: Leaves,
+    /// Leaves uncovered here and not yet handed to the network.
+    pub(super) new: Leaves,
+    /// Grows every time a leaf is uncovered.
     pub(super) version: u64,
 }
 
-impl Default for Ground {
-    fn default() -> Self {
-        Self {
-            words: vec![0; WORDS],
-            new: Vec::new(),
-            version: 0,
-        }
-    }
-}
-
 impl Ground {
-    /// Sets the bit of `cell` and returns true when it was not set. Cells off the grid are
-    /// ignored.
-    pub(super) fn set(&mut self, cell: u32) -> bool {
-        if cell as usize >= CELLS {
-            return false;
+    /// Uncovers `leaf` here and keeps it for the network. Returns true when it was not
+    /// uncovered. A key that names no leaf is ignored.
+    pub(super) fn set(&mut self, leaf: u64) -> bool {
+        let fresh = self.leaves.insert(leaf);
+        if fresh {
+            self.new.insert(leaf);
+            self.version += 1;
         }
-        let (word, bit) = (cell as usize / 64, 1u64 << (cell % 64));
-        let fresh = self.words[word] & bit == 0;
-        self.words[word] |= bit;
-        self.version += u64::from(fresh);
         fresh
     }
 
-    /// Sets every bit set in `words`. Words past the grid are ignored.
-    pub(super) fn merge(&mut self, words: &[u64]) {
-        let mut fresh = false;
-        for (mine, theirs) in self.words.iter_mut().zip(words) {
-            fresh |= *theirs & !*mine != 0;
-            *mine |= theirs;
-        }
-        self.version += u64::from(fresh);
+    /// Marks every leaf of `other`, which is not for the network.
+    pub(super) fn merge(&mut self, other: &Leaves) {
+        let fresh = self.leaves.merge(other);
+        self.version += u64::from(!fresh.is_empty());
     }
 }

@@ -5,10 +5,10 @@
 use bevy::input::keyboard::Key;
 use bevy::math::{DVec3, Vec2};
 
-use super::explored::grid::COLS;
 use super::fade::{FADE, shade};
 use super::favourite::{Favourites, edit};
 use super::level::{CLOSEST, GROUND, REFERENCE_MAP, WHOLE, first, framed};
+use super::raster::grid::COLS;
 use super::{Waypoints, to_chart, toggle};
 use crate::universe::BodyId;
 

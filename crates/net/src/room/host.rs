@@ -38,7 +38,7 @@ impl Host for Room {
                 out.send(conn, ServerMsg::Pong { id, sent, clock });
             }
             ClientMsg::Bye => self.leave(conn, out),
-            ClientMsg::Explored { body, cells } => self.explored(conn, body, &cells),
+            ClientMsg::Explored { body, runs } => self.explored(conn, body, &runs),
             ClientMsg::Waypoint(waypoint) => self.waypoint(conn, waypoint, out),
         }
     }

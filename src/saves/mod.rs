@@ -22,6 +22,7 @@ mod writer;
 
 pub use autosave::{SaveSet, SavedFlash};
 pub use format::{ago, play_time};
+pub use model::Explored as SavedGround;
 pub use model::Favourite;
 pub use model::{GAME_VERSION, OLDER_VERSION, Place, SAVE_VERSION, WorldEntry, WorldSave};
 pub use snapshot::Snapshot;

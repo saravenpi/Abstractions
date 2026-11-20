@@ -68,9 +68,9 @@ impl Site<'_> {
             save.changes = changes.clone();
         }
         if let Some(explored) = self.explored.as_deref() {
-            let bodies = explored.bodies().map(|(body, words)| model::Explored {
+            let bodies = explored.bodies().map(|(body, leaves)| model::Explored {
                 body,
-                words: words.to_vec(),
+                runs: leaves.runs(),
             });
             save.explored = bodies.collect();
         }

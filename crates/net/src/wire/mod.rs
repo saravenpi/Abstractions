@@ -41,12 +41,6 @@ pub use stream::{CLIENT_MESSAGE_MAX, MESSAGE_MAX, StreamError, decode, encode};
 /// Raise it whenever bytes on the wire change meaning.
 pub const PROTOCOL: u16 = 3;
 
-/// Columns of the explored grid of a body, longitude 0 first, going east.
-pub const EXPLORED_COLUMNS: u32 = 512;
-
-/// Rows of the explored grid of a body, the south pole first.
-pub const EXPLORED_ROWS: u32 = 256;
-
 /// Default UDP port of the game.
 pub const GAME_PORT: u16 = 24650;
 

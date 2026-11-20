@@ -20,7 +20,7 @@ const ROTATE_EVERY: Duration = Duration::from_secs(600);
 /// Seeds stay under this bound, as the game's random seeds do, so they fit 18 digits.
 const SEED_BOUND: u64 = 1_000_000_000_000_000_000;
 
-/// Returns the world of `dir/world.toml` with the explored ground of `dir/explored.bin`. When there is none, creates the folder and a new
+/// Returns the world of `dir/world.toml` with the explored ground of `dir/explored3.bin`. When there is none, creates the folder and a new
 /// world named `name_hint` with a random seed, and writes it.
 pub fn load_or_create(dir: &Path, name_hint: &str) -> io::Result<World> {
     let path = dir.join(FILE);
@@ -47,7 +47,7 @@ pub fn load_or_create(dir: &Path, name_hint: &str) -> io::Result<World> {
 
 /// Writes `world` to `dir/world.toml` atomically: a temporary file, flushed to disk, then
 /// renamed over the old one. The old file becomes copy 1 at most once every ten minutes. The
-/// explored ground goes to `dir/explored.bin` the same way.
+/// explored ground goes to `dir/explored3.bin` the same way.
 pub fn save(dir: &Path, world: &World) -> io::Result<()> {
     save_every(dir, world, ROTATE_EVERY)
 }

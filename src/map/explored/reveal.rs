@@ -65,13 +65,14 @@ fn walk(eyes: Eyes, mut explored: ResMut<Explored>) {
     let globe = terrain.globe();
     let ground = globe.height_seen(dir, Grain::Far).max(globe.sea_level());
     let height = pos.length() - globe.radius() - f64::from(ground);
-    explored.reveal(body, dir, reach(height, globe.radius()) / globe.radius());
+    let radius = globe.radius();
+    explored.reveal(body, dir, reach(height, radius) / radius, radius);
 }
 
 /// Uncovers the ground around the home base once it is found, so that an old world shows it.
 fn home(base: Res<Base>, mut explored: ResMut<Explored>) {
     let radius = base.centre.length().max(1.0);
-    explored.reveal(base.body, base.centre / radius, REACH_CAP / radius);
+    explored.reveal(base.body, base.centre / radius, REACH_CAP / radius, radius);
 }
 
 /// Forgets the ground of the world that ended.

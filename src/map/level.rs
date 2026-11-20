@@ -5,9 +5,9 @@
 use bevy::math::{DVec3, Vec2};
 use bevy::prelude::*;
 
-use super::explored::grid::COLS;
 use super::geo::to_chart;
 use super::me::Me;
+use super::raster::grid::COLS;
 use crate::computer::{Board, Lens, Tab};
 use crate::universe::BodyId;
 

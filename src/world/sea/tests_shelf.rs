@@ -8,9 +8,9 @@ use super::mesh::lines;
 const SHADER: &str = include_str!("water.wesl");
 
 /// The coarse mesh source, to pin how far below sea level it draws its flat sea.
-const COARSE: &str = include_str!("../mesh/tris.rs");
+const COARSE: &str = include_str!("../mesh/style.rs");
 
-/// Metres below sea level of the flat sea of the coarse mesh, as `SEA_DROP` in `tris.rs`.
+/// Metres below sea level of the flat sea of the coarse mesh, as `SEA_DROP` in `style.rs`.
 const SEA_DROP: f64 = 1.5;
 
 /// Water depths in metres between which the near sea turns from a shallow shelf to deep water,

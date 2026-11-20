@@ -21,10 +21,10 @@ pub(super) fn walkable(
     radius: f64,
     (slope, floor): (f32, f32),
 ) -> bool {
-    let grade = f64::from(slope).tan();
-    if !grade.is_finite() && floor == f32::NEG_INFINITY {
+    if slope >= std::f32::consts::FRAC_PI_2 && floor == f32::NEG_INFINITY {
         return true;
     }
+    let grade = f64::from(slope).tan();
     let span = arc(a, b) * radius;
     let n = ((span / STEP).ceil() as usize).clamp(1, SAMPLES);
     let step = span / n as f64;

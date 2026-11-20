@@ -8,6 +8,7 @@
 //! ([`pounce`]).
 
 mod anatomy;
+mod brace;
 mod carve;
 mod foe;
 mod fracture;
@@ -26,6 +27,8 @@ pub mod tune;
 
 #[cfg(test)]
 mod tests_attack;
+#[cfg(test)]
+mod tests_brace;
 #[cfg(test)]
 mod tests_harm;
 #[cfg(test)]

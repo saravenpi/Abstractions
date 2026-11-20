@@ -7,6 +7,7 @@ use bevy::math::{Vec2, Vec3Swizzles};
 use bevy::prelude::*;
 
 use super::Dead;
+use super::brace::hold;
 use super::foe::{Foe, foe_of};
 use super::kinds::Kind;
 use super::ring::heard;
@@ -149,15 +150,21 @@ pub fn attack(
             continue;
         };
         let foe = foe_of(&f.anchor, &beast, (robot, here));
+        let length = species.body.length;
         match going {
             Some(a) if a.over() => {
                 f.commands.entity(entity).remove::<Attacking>();
+                hold(&mut beast, None, length);
             }
             Some(mut a) => {
                 let out = (&mut f.blows, &mut f.sounds);
                 advance((&mut *beast, &mut *a), species, (&foe, dt), out);
+                hold(&mut beast, Some(&a), length);
             }
-            None => open(&mut f.commands, (entity, &*beast), species, &foe, gravity),
+            None => {
+                hold(&mut beast, None, length);
+                open(&mut f.commands, (entity, &*beast), species, &foe, gravity);
+            }
         }
     }
 }

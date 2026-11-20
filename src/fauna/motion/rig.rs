@@ -6,6 +6,7 @@
 
 use bevy::math::{Quat, Vec2, Vec3};
 
+use super::brace::Brace;
 use super::feet::Foot;
 use super::frame::chains;
 use super::gait::Clock;
@@ -102,6 +103,8 @@ pub struct Motion {
     pub beat: Beat,
     /// The call it is making, if any.
     pub song: Option<Song>,
+    /// How it holds itself for an attack.
+    pub brace: Brace,
     /// Tuning from the body's mass.
     pub tune: Tune,
     /// Detail of the last step, none before the first.
@@ -164,6 +167,7 @@ impl Motion {
             idle: Idle::new(seed),
             beat: Beat::new(seed),
             song: None,
+            brace: Brace::default(),
             tune: Tune::of_body(body),
             detail: None,
             time: 0.0,

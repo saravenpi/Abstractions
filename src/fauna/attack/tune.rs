@@ -73,3 +73,28 @@ pub const CUT_RANGE: f32 = 3.5;
 
 /// Metres past the size of a part within which the line of sight cuts it.
 pub const CUT_SLACK: f32 = 0.25;
+
+/// How far the hips drop in the wind-up of an attack of full commitment, as a share of the hip height.
+pub const CROUCH: f32 = 0.25;
+
+/// Metres of a body length that the weight moves back in the wind-up of an attack of full commitment,
+/// and forward again as it is thrown.
+pub const WEIGHT: f32 = 0.18;
+
+/// Radians a rearing body pitches nose up in the wind-up of a trample, and of a downward swipe.
+pub const REAR: [f32; 2] = [0.6, 0.3];
+
+/// Radians the head end drops in the wind-up of a charge and of a lunge, nose down.
+pub const DUCK: [f32; 2] = [0.15, 0.1];
+
+/// Radians a body turns its flank to the target in the wind-up of a tail sweep, and swings its hips
+/// back through in the blow.
+pub const FLANK: f32 = 0.5;
+
+/// Radians a body is pitched forward, off balance, at the start of its recovery for a full
+/// commitment.
+pub const OFF_BALANCE: f32 = 0.2;
+
+/// Commitment of each attack, in the order of [`super::kinds::Kind`]: how much of its body goes into
+/// it, from 0 to 1. A charge throws the whole weight, a bite only the head.
+pub const COMMIT: [f32; 6] = [1.0, 0.3, 0.6, 0.5, 0.4, 0.8];

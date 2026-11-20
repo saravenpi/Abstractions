@@ -14,7 +14,7 @@ pub struct Tip(pub &'static str);
 
 /// Marks the one tooltip panel.
 #[derive(Component)]
-struct Bubble;
+pub struct Bubble;
 
 /// Marks the text of the tooltip panel.
 #[derive(Component)]

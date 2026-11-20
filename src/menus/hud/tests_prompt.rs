@@ -4,7 +4,7 @@ use bevy::prelude::KeyCode;
 
 use super::course::{Course, words};
 use super::prompt::{State, choose};
-use crate::computer::{Block, RouteStatus};
+use crate::computer::{Block, Keys, RouteStatus};
 
 /// A state with every field set, to take away one at a time.
 fn full() -> State {
@@ -55,21 +55,24 @@ fn the_course_words_follow_the_route() {
         route,
         gap: None,
     };
-    let key = |key: KeyCode| format!("{key:?}").replace("Key", "");
-    let ready = words(&course(RouteStatus::Idle), true, KeyCode::KeyF, key);
+    let key = &Keys {
+        board: "F".to_string(),
+        rise: "Space".to_string(),
+        go: "G".to_string(),
+    };
+    let ready = words(&course(RouteStatus::Idle), true, key);
     assert_eq!(ready.ready.as_deref(), Some("Go to Mars"));
-    let warp = words(&course(RouteStatus::InWarp), true, KeyCode::KeyF, key);
+    let warp = words(&course(RouteStatus::InWarp), true, key);
     assert_eq!(warp.running.as_deref(), Some("Warping to Mars"));
-    let spool = words(&course(RouteStatus::Spooling), true, KeyCode::KeyF, key);
+    let spool = words(&course(RouteStatus::Spooling), true, key);
     assert_eq!(spool.running.as_deref(), Some("Charging the warp drive."));
     let stuck = words(
         &course(RouteStatus::Blocked(Block::Landed)),
         true,
-        KeyCode::KeyF,
         key,
     );
     assert!(stuck.block.is_some() && stuck.running.is_none());
-    let walking = words(&course(RouteStatus::Idle), false, KeyCode::KeyF, key);
+    let walking = words(&course(RouteStatus::Idle), false, key);
     assert_eq!(
         walking.block.as_deref(),
         Some("Board your ship first: walk to the hatch and press F.")

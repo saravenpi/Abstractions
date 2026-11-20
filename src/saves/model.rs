@@ -158,6 +158,7 @@ impl Default for WorldSave {
             pack: Default::default(),
             health: None,
             cache: None,
+            seen: Vec::new(),
         }
     }
 }

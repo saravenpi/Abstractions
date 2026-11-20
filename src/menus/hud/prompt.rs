@@ -8,7 +8,7 @@ use super::context::{Context, Element, Where};
 use super::course::{Course, Words, words};
 use super::fade::gate;
 use super::hints::{Hint, Hinted};
-use crate::computer::{Destination, RouteStatus};
+use crate::computer::{Destination, Keys, RouteStatus};
 use crate::menus::key_name;
 use crate::settings::{Persistent, Settings};
 use crate::ship::{Hatch, ShipTelemetry};
@@ -173,7 +173,7 @@ impl Reach<'_> {
         let seated = travel == Some(Travel::InShip);
         let said = self
             .course()
-            .map(|course| words(&course, seated, keys.ship.board, key_name));
+            .map(|course| words(&course, seated, &Keys::of(keys)));
         let Words {
             block,
             running,

@@ -29,8 +29,12 @@ pub(super) fn stat(
         flex_grow: 1.0,
         ..default()
     };
-    let small =
-        |words: &str, color: Color| (text(words, theme::FONT_SMALL, color), TextLayout::no_wrap());
+    let small = |words: &str, color: Color| {
+        (
+            text(words.to_string(), theme::FONT_SMALL, color),
+            TextLayout::no_wrap(),
+        )
+    };
     let tail = Node {
         width: px(NOTE_WIDTH),
         justify_content: JustifyContent::FlexEnd,

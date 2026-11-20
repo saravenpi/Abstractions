@@ -99,7 +99,7 @@ pub(super) fn coords_text(
         (Level::Planet(body), Some(dir)) => {
             let seen = explored.zip(universe);
             let blind = seen.is_some_and(|(e, u)| unexplored(&e, &u, body, dir));
-            let note = [String::new(), format!("  {UNSEEN}")][usize::from(blind)];
+            let note = if blind { format!("  {UNSEEN}") } else { String::new() };
             format!("{}{note}", words(dir))
         }
         _ => String::new(),

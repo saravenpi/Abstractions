@@ -1,12 +1,9 @@
-//! The words of the course on the prompt line, read from what exists today: `Destination`,
-//! `RouteStatus` and `Block::words`.
-//!
-//! This is the one adapter between the HUD and the Go flow. When the Go flow lands, replace the
-//! body of [`words`] by a call of `computer::hud_line` and keep its signature.
+//! The words of the course on the prompt line, from `Destination`, `RouteStatus` and the
+//! sentences of the Go flow.
 
 use bevy::prelude::*;
 
-use crate::computer::{RouteStatus, distance};
+use crate::computer::{Block, Keys, RouteStatus, distance, hud_line};
 
 /// A course as the prompt line needs it.
 #[derive(Debug, Clone, PartialEq)]
@@ -47,8 +44,9 @@ fn blocked(sentence: String) -> Words {
 }
 
 /// Returns the words of a course the ship, seated, can start or is flying.
-fn flying(course: &Course) -> Words {
+fn flying(course: &Course, keys: &Keys) -> Words {
     let name = &course.name;
+    let line = hud_line(name, course.route, keys);
     match course.route {
         RouteStatus::Idle => Words {
             ready: Some(match course.gap {
@@ -57,28 +55,17 @@ fn flying(course: &Course) -> Words {
             }),
             ..default()
         },
-        RouteStatus::Blocked(block) => blocked(block.words()),
-        RouteStatus::Climbing => running("Climbing out of the air.".to_string()),
-        RouteStatus::Dropping => running("Slowing down.".to_string()),
-        RouteStatus::Aligning(_) => running(format!("Turning toward {name}.")),
-        RouteStatus::Spooling => running("Charging the warp drive.".to_string()),
+        RouteStatus::Blocked(_) | RouteStatus::Arrived => blocked(line),
         RouteStatus::InWarp => running(format!("Warping to {name}")),
-        RouteStatus::Arrived => blocked(format!("Arrived at {name}.")),
+        _ => running(line),
     }
 }
 
-/// Returns the words of `course` for a player who is `seated` in the ship, with the board key.
-pub fn words(
-    course: &Course,
-    seated: bool,
-    board: KeyCode,
-    key_name: impl Fn(KeyCode) -> String,
-) -> Words {
+/// Returns the words of `course` for a player who is `seated` in the ship or not, with the
+/// names of the `keys`.
+pub fn words(course: &Course, seated: bool, keys: &Keys) -> Words {
     match seated {
-        true => flying(course),
-        false => blocked(format!(
-            "Board your ship first: walk to the hatch and press {}.",
-            key_name(board)
-        )),
+        true => flying(course, keys),
+        false => blocked(Block::OnFoot.words(keys)),
     }
 }

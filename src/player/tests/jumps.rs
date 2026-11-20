@@ -20,12 +20,13 @@ fn rise(gravity: f32) -> f32 {
         jump: true,
         yaw: 0.0,
         steer: false,
+        crouch: false,
     };
     let mut motion = Motion {
         grounded: true,
         ..default()
     };
-    motion.velocity.y = land_vertical(&mut motion, &asks, gravity, dt);
+    motion.velocity.y = land_vertical(&mut motion, &asks, (gravity, 1.0), dt);
     let (mut height, mut top) = (0.0f32, 0.0f32);
     while motion.velocity.y > 0.0 {
         height += motion.velocity.y * dt;
@@ -34,7 +35,7 @@ fn rise(gravity: f32) -> f32 {
             jump: false,
             ..asks
         };
-        motion.velocity.y = land_vertical(&mut motion, &calm, gravity, dt);
+        motion.velocity.y = land_vertical(&mut motion, &calm, (gravity, 1.0), dt);
     }
     top
 }

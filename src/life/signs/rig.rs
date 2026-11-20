@@ -32,6 +32,7 @@ pub fn on<T>(f: impl FnOnce(&Ground) -> T) -> T {
     let site = |d| sample(d, 1.0);
     f(&Ground {
         sample: &site,
+        height: &crate::life::herd::fixtures::height,
         light: &light,
     })
 }

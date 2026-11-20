@@ -7,9 +7,11 @@ use super::{Body, Locomotion, archetypes, build, frames};
 use crate::life::{Activity, Guild, Habitat, History, Plan, Role, World};
 use crate::universe::hash::Rng;
 
+mod joints;
 mod legs;
 mod mesh;
 mod rules;
+mod stature;
 
 /// Every plan.
 pub const PLANS: [Plan; 6] = [

@@ -44,8 +44,10 @@ pub struct Herds {
 pub fn read<T>(land: Land, time: f64, f: impl FnOnce(&Ground) -> T) -> T {
     let sample = |dir: DVec3| site::site(land.globe, land.planet, dir, time);
     let light = |dir: DVec3, at: f64| site::light(land.planet, dir, at);
+    let height = |dir: DVec3| land.globe.height(dir);
     f(&Ground {
         sample: &sample,
+        height: &height,
         light: &light,
     })
 }

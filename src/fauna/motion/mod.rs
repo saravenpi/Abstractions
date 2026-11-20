@@ -44,6 +44,8 @@ mod tests_cost;
 #[cfg(test)]
 mod tests_gait;
 #[cfg(test)]
+mod tests_hill;
+#[cfg(test)]
 mod tests_ik;
 #[cfg(test)]
 mod tests_plans;

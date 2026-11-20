@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use bevy::math::DVec3;
 
 use super::cells::Grid;
+use super::path::Path;
 use super::roll::{self, MAX_ROAM, Roam};
 use super::route::{self, Pose};
 use super::sphere::arc;
@@ -27,6 +28,9 @@ const HUNTER_SIDE: f64 = 1024.0;
 /// Waypoints drawn so far and their sites, by herd and leg.
 type Ways = HashMap<(u64, i64), (DVec3, Site)>;
 
+/// Paths read so far, by herd and leg.
+type Paths = HashMap<(u64, i64), Path>;
+
 /// The herds rolled around one search and the waypoints drawn for them so far.
 #[derive(Debug, Clone)]
 pub(in crate::life) struct Store {
@@ -36,6 +40,8 @@ pub(in crate::life) struct Store {
     pub roams: Vec<Roam>,
     /// Waypoints drawn so far, by herd and leg.
     pub ways: Ways,
+    /// Paths read so far, by herd and leg.
+    pub paths: Paths,
 }
 
 impl Store {
@@ -45,6 +51,7 @@ impl Store {
             planet: search.planet,
             roams: roams(life, ground, search),
             ways: HashMap::new(),
+            paths: HashMap::new(),
         }
     }
 }
@@ -63,6 +70,8 @@ pub(in crate::life) struct Scene<'a> {
     pub roams: &'a [Roam],
     /// Waypoints drawn so far, by herd and leg.
     ways: RefCell<&'a mut Ways>,
+    /// Paths read so far, by herd and leg.
+    paths: RefCell<&'a mut Paths>,
 }
 
 impl<'a> Scene<'a> {
@@ -75,6 +84,7 @@ impl<'a> Scene<'a> {
             side: Grid::of(store.planet).side(),
             roams: &store.roams,
             ways: RefCell::new(&mut store.ways),
+            paths: RefCell::new(&mut store.paths),
         }
     }
 
@@ -93,9 +103,21 @@ impl<'a> Scene<'a> {
         if let Some(way) = self.ways.borrow().get(&(roam.id, leg)) {
             return *way;
         }
-        let way = route::draw(roam, species, leg, self.planet, self.ground.sample);
+        let ground = (self.ground.sample, self.ground.height);
+        let way = route::draw(roam, species, leg, self.planet, ground);
         self.ways.borrow_mut().insert((roam.id, leg), way);
         way
+    }
+
+    /// Returns the path of leg `leg` of `roam` of `species` between waypoints `ends`, read once per
+    /// scene.
+    pub fn path(&self, roam: &Roam, species: &Species, leg: i64, ends: (DVec3, DVec3)) -> Path {
+        if let Some(path) = self.paths.borrow().get(&(roam.id, leg)) {
+            return *path;
+        }
+        let path = route::way(roam, species, ends, (self.ground.height, self.planet));
+        self.paths.borrow_mut().insert((roam.id, leg), path);
+        path
     }
 
     /// Returns where `roam` is on its route at `time`, before any hunt bends it.

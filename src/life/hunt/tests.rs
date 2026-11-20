@@ -29,6 +29,7 @@ pub(super) fn search(at: DVec3, radius: f64, time: f64) -> Search {
 pub(super) fn hunts(life: &Life) -> Vec<Hunt> {
     let ground = Ground {
         sample: &|d| sample(d, 1.0),
+        height: &crate::life::herd::fixtures::height,
         light: &light,
     };
     let mut all: Vec<Hunt> = Vec::new();
@@ -53,6 +54,7 @@ pub(super) fn hunts(life: &Life) -> Vec<Hunt> {
 pub(super) fn herd(life: &Life, id: u64, at: DVec3, time: f64) -> Option<Herd> {
     let ground = Ground {
         sample: &|d| sample(d, 1.0),
+        height: &crate::life::herd::fixtures::height,
         light: &light,
     };
     near(life, &ground, &search(at, 2000.0, time))
@@ -73,6 +75,7 @@ fn same_seed_same_hunts_on_prey_only() {
     }
     let ground = Ground {
         sample: &|d| sample(d, 1.0),
+        height: &crate::life::herd::fixtures::height,
         light: &light,
     };
     let at = search(land(), 2500.0, a[0].outcome_time() + 60.0);
@@ -117,6 +120,7 @@ fn kills_leave_carcasses() {
     let (hunt, slot) = first_kill(&life);
     let ground = Ground {
         sample: &|d| sample(d, 1.0),
+        height: &crate::life::herd::fixtures::height,
         light: &light,
     };
     let around = |time| carcasses_near(&life, &ground, &search(hunt.to, 50.0, time));

@@ -19,9 +19,16 @@ pub const MOST: usize = 48;
 /// foot, leg solvers and chains.
 pub const NEAR: f32 = 40.0;
 
-/// Metres along the ground from the local robot within which herds are marked on the compass and
-/// the minimap.
-pub const MARK_REACH: f64 = 300.0;
+/// Metres from the eyes of the local robot within which it sees a herd it looks at: the reach animals
+/// are drawn within, so a herd is never marked from animals the player could not see.
+pub const SIGHT: f64 = REACH;
+
+/// Half the angle of view in radians within which the robot sees a herd, about the field of view of
+/// the camera.
+pub const VIEW: f64 = 0.9;
+
+/// Seconds a herd stays marked at the place it was last seen, fading out.
+pub const MEMORY: f64 = 180.0;
 
 /// Most herds marked at once.
 pub const MARKS: usize = 3;
@@ -33,9 +40,9 @@ pub const MARK_SIZE: f32 = 0.4;
 /// Metres under which a herd is left unmarked beside a nearer marked one.
 pub const MARK_APART: f64 = 60.0;
 
-/// Metres along the ground of the search radius of a watch: [`MARK_REACH`], past [`REACH`] and
+/// Metres along the ground of the search radius of a watch: twice [`SIGHT`], past [`REACH`] and
 /// [`SLACK`], plus the room the robot walks before the watch is rolled again.
-pub const WATCH_RADIUS: f64 = MARK_REACH + WATCH_MOVE;
+pub const WATCH_RADIUS: f64 = 2.0 * SIGHT + WATCH_MOVE;
 
 /// Metres the robot walks from the search point of a watch before it is rolled again.
 pub const WATCH_MOVE: f64 = 90.0;

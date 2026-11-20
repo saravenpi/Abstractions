@@ -22,7 +22,8 @@ fn apex_is_rarest_and_meadow_is_sane() {
     assert!((1.0..10.0).contains(&total), "{total} herds per km²");
 }
 
-/// Habitat decides where a species can live at all.
+/// Habitat decides where a species can live at all: a shore walker wades the shallows but not the
+/// sea.
 #[test]
 fn habitat_matches_the_site() {
     let life = meadow_life();
@@ -31,6 +32,15 @@ fn habitat_matches_the_site() {
     assert!(density(ground, &land) > 0.0 && density(ground, &sea) == 0.0);
     assert!(density(water, &sea) > 0.0 && density(water, &land) == 0.0);
     assert!(density(shore, &beach) > 0.0 && density(shore, &land) == 0.0);
+    assert_eq!(
+        density(shore, &site(-5.0, 1.0)),
+        0.0,
+        "a shore walker out at sea"
+    );
+    assert!(
+        density(shore, &site(-0.2, 1.0)) > 0.0,
+        "a shore walker kept out of the shallows"
+    );
 }
 
 /// Density falls smoothly to nothing outside the tolerated climate.

@@ -31,6 +31,8 @@ mod steer;
 #[cfg(test)]
 mod tests_hunt;
 #[cfg(test)]
+mod tests_meet;
+#[cfg(test)]
 mod tests_near;
 #[cfg(test)]
 mod tests_react;

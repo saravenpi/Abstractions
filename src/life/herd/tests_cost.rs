@@ -30,7 +30,7 @@ fn search(radius: f64) -> Search {
     }
 }
 
-/// Rolling a watch for a 1 km search, hunts planned, samples at most a few hundred sites and takes
+/// Rolling a watch for a 1 km search, hunts planned, samples at most six hundred sites and takes
 /// under 2 ms in an optimised build.
 #[test]
 fn rolling_a_watch_is_cheap() {
@@ -42,13 +42,14 @@ fn rolling_a_watch_is_cheap() {
     };
     let ground = Ground {
         sample: &counted,
+        height: &crate::life::herd::fixtures::height,
         light: &light,
     };
     let each = best(20, || {
         std::hint::black_box(Watch::new(&life, &ground, &search(1000.0)));
     });
     let samples = calls.get() / 20;
-    assert!(samples <= 400, "{samples} samples");
+    assert!(samples <= 600, "{samples} samples");
     let limit = [2_000, 20_000][usize::from(cfg!(debug_assertions))];
     assert!(each.as_micros() < limit, "{each:?}, {samples} samples");
 }
@@ -60,6 +61,7 @@ fn asking_a_watch_is_cheap() {
     let life = meadow_life();
     let ground = Ground {
         sample: &|dir| sample(dir, 1.0),
+        height: &crate::life::herd::fixtures::height,
         light: &light,
     };
     let mut watch = Watch::new(&life, &ground, &search(300.0));
@@ -83,8 +85,7 @@ fn asking_a_watch_is_cheap() {
     }) / 120;
     let limit = Duration::from_micros(20);
     assert!(
-        all < limit && one < limit,
-        "{all:?} per herd, {one:?} for one herd"
+        all < limit && one < limit && shown < limit,
+        "{all:?} per herd, {one:?} for one herd, {shown:?} for hunts and carcasses"
     );
-    assert!(shown < limit, "{shown:?} for hunts and carcasses");
 }

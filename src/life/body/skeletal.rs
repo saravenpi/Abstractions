@@ -4,7 +4,7 @@ use bevy::math::Vec3;
 
 use super::frame::aim;
 use super::head::head;
-use super::leg::{LegSpec, legs, stance};
+use super::leg::{LegSpec, legs, seat, stance};
 use super::make::Make;
 use super::piece::piece;
 use super::trunk::{armour, flat, neck, tail};
@@ -13,6 +13,9 @@ use crate::life::Guild;
 
 /// Number of skeletal archetypes.
 pub const COUNT: u8 = 4;
+
+/// Leg length of a quadruped over its body length scale.
+const LEG: f32 = 0.75;
 
 /// Builds skeletal archetype `archetype`: 0 quadruped grazer, 1 long-necked browser, 2 biped runner,
 /// 3 winged flyer, which walks as a runner where the air cannot carry it.
@@ -49,20 +52,31 @@ fn quadruped(m: &mut Make, browser: bool) {
 
 /// Adds the torso and the four legs of a quadruped, longer legged for a browser. Returns the torso and
 /// its extent.
+///
+/// The leg is [`LEG`] of the body length, which grows as `mass^(1/3)`: mammal limb bones scale
+/// close to geometric similarity (Alexander and others 1979, "Allometry of the limb bones of mammals
+/// from shrews (Sorex) to elephant (Loxodonta)", <https://doi.org/10.1111/j.1469-7998.1979.tb03964.x>),
+/// so a 75 kg grazer stands about 0.8 m at the hip and a 500 kg one about 1.5 m.
 fn stand(m: &mut Make, browser: bool) -> (u8, Vec3) {
     let s = m.t.size;
-    let leg = 0.5 * s * m.t.reach * if browser { 1.35 } else { 1.0 } * m.vary(0.1);
+    let leg = LEG * s * m.t.reach * if browser { 1.35 } else { 1.0 } * m.vary(0.1);
     let girth = m.t.round * m.t.hide;
     let extent = Vec3::new(0.36 * s * girth, 0.34 * s * girth, 0.7 * s * m.vary(0.1));
-    let hip = Vec3::new(0.3 * extent.x, -0.3 * extent.y, 0.34 * extent.z);
-    let torso =
-        piece(PartKind::Torso, ShapeKind::Ball, extent).at(Vec3::Y * (stance(leg, 0.0) - hip.y));
-    let torso = m.kit.add(None, torso);
+    let radius = 0.045 * s * m.t.thick;
+    let body = piece(PartKind::Torso, ShapeKind::Ball, extent);
+    let hip = seat(
+        &body,
+        Vec3::new(0.3 * extent.x, -0.3 * extent.y, 0.34 * extent.z),
+        radius,
+    );
+    let torso = m
+        .kit
+        .add(None, body.at(Vec3::Y * (stance(leg, 0.0) - hip.y)));
     for (rank, z, knee) in [(0, -1.0, Knee::Back), (1, 1.0, Knee::Forward)] {
         let spec = LegSpec {
             hip: hip * Vec3::new(1.0, 1.0, z),
             bones: [0.48 * leg, 0.52 * leg, 0.0],
-            radius: 0.045 * s * m.t.thick,
+            radius,
             knee,
             out: Vec3::ZERO,
             rank,
@@ -119,10 +133,15 @@ fn flyer(m: &mut Make) {
 /// Adds a torso of extent `extent` on a pair of back-kneed legs of length `leg`, split into bones by
 /// `split`, of thigh radius `radius`. Returns the torso.
 fn biped(m: &mut Make, extent: Vec3, (leg, split, radius): (f32, [f32; 3], f32)) -> u8 {
-    let hip = Vec3::new(0.28 * extent.x, -0.3 * extent.y, 0.1 * extent.z);
-    let torso =
-        piece(PartKind::Torso, ShapeKind::Ball, extent).at(Vec3::Y * (stance(leg, 0.0) - hip.y));
-    let torso = m.kit.add(None, torso);
+    let body = piece(PartKind::Torso, ShapeKind::Ball, extent);
+    let hip = seat(
+        &body,
+        Vec3::new(0.28 * extent.x, -0.3 * extent.y, 0.1 * extent.z),
+        radius,
+    );
+    let torso = m
+        .kit
+        .add(None, body.at(Vec3::Y * (stance(leg, 0.0) - hip.y)));
     let spec = LegSpec {
         hip,
         bones: split.map(|f| f * leg),

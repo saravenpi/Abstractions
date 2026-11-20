@@ -9,9 +9,10 @@ use bevy::prelude::*;
 use super::io::Occluder;
 use super::smooth::closed;
 use super::tune::{
-    EASE_OUT, EASE_SPEED, PULL_IN, RADIUS, SKIN, THIN_HOP, THIN_PASS, THIN_SHIFT, THIN_SKIPS,
-    WHISKER_MIN, WHISKERS,
+    AFLOAT, EASE_OUT, EASE_SPEED, PULL_IN, RADIUS, SKIN, THIN_HOP, THIN_PASS, THIN_SHIFT,
+    THIN_SKIPS, WHISKER_MIN, WHISKERS,
 };
+use crate::render::Waterline;
 
 /// A path the camera sphere is cast along.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -126,4 +127,17 @@ pub(super) fn pivot(world: &impl Occluder, origin: Vec3, seat: Vec3) -> Vec3 {
     let length = seat.length();
     let free = world.cast(origin, dir, length, RADIUS);
     origin + dir * free.map_or(length, |hit| (hit - SKIN).max(0.0))
+}
+
+/// Returns `position` moved along the up of `water` until it is at least [`AFLOAT`] from the
+/// water surface, on the side it is on, so the camera never rests on the surface. Without a
+/// sea, or far from where the surface was measured, the camera stays where it is.
+pub(super) fn afloat(position: Vec3, water: &Waterline) -> Vec3 {
+    let Some(height) = water.above(position) else {
+        return position;
+    };
+    if height.abs() >= AFLOAT {
+        return position;
+    }
+    position + water.up * (AFLOAT.copysign(height) - height)
 }

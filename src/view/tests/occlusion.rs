@@ -123,3 +123,30 @@ fn shortens_and_lowers_indoors() {
     assert!(inside.z < open.z - 0.8 && inside.y < open.y - 0.2);
     assert!(roofed.clearance(inside) >= RADIUS - 1.0e-3);
 }
+
+/// A camera within a few centimetres of the water surface moves off it to the side it is on,
+/// and a camera clear of it, far from where it was measured or without a sea stays.
+#[test]
+fn camera_never_rests_on_the_water() {
+    use crate::render::Waterline;
+    use crate::view::occlude::afloat;
+    use crate::view::tune::AFLOAT;
+    let water = Waterline {
+        at: Vec3::ZERO,
+        up: Vec3::Y,
+        height: 0.0,
+        sea: true,
+    };
+    let height = |p: Vec3| water.above(p).unwrap_or(f32::NAN);
+    assert!((height(afloat(Vec3::Y * 0.01, &water)) - AFLOAT).abs() < 1.0e-6);
+    assert!((height(afloat(Vec3::Y * -0.01, &water)) + AFLOAT).abs() < 1.0e-6);
+    assert!((height(afloat(Vec3::ZERO, &water)) - AFLOAT).abs() < 1.0e-6);
+    for clear in [Vec3::Y * 0.3, Vec3::Y * -0.3, Vec3::new(50.0, 0.01, 0.0)] {
+        assert_eq!(afloat(clear, &water), clear);
+    }
+    let dry = Waterline {
+        sea: false,
+        ..water
+    };
+    assert_eq!(afloat(Vec3::Y * 0.01, &dry), Vec3::Y * 0.01);
+}

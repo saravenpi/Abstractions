@@ -70,6 +70,10 @@ pub const HEAD_RADIUS: f32 = 0.12;
 /// Gap kept between that sphere and what it touched.
 pub const SKIN: f32 = 0.02;
 
+/// Least distance in metres the camera keeps from the water surface, on the side it is on, so
+/// its near plane (0.05 m) never rests on the surface.
+pub const AFLOAT: f32 = 0.04;
+
 /// Sideways shifts of the casts that measure an obstacle, near and far. An obstacle is narrow
 /// when both far spheres pass it and at least one near sphere does: one narrower than 0.3 m
 /// always is, one wider than 0.75 m never is.

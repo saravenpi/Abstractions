@@ -146,7 +146,8 @@ fn cross_edge(app: &mut App) -> DVec3 {
         idle,
     );
     let moved = app.world().resource::<Terrain>().chart();
-    assert_eq!(moved, terrain.globe().face_chart(Face::locate(across).0));
+    let across_face = terrain.globe().face_chart(Face::locate(across).0);
+    assert_eq!(moved, across_face.near(across));
     assert_ne!(moved, terrain.chart());
     assert!(!app.world().resource::<Chunks>().loaded.is_empty());
     assert_drawn_once(app);

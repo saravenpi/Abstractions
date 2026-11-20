@@ -37,7 +37,7 @@ struct Tile {
 /// The tiles around the camera, the turf of the chunks they lie on, and the chart they were built in.
 #[derive(Resource, Default)]
 pub struct Meadow {
-    /// Every tile built, by its key: its low corner over [`TILE`].
+    /// Every tile built, by its key: its low corner over [`TILE`], in whole tiles from the origin of the view.
     tiles: HashMap<IVec2, Tile>,
     /// The turf of every chunk a tile was built on, none where no ground cover grows.
     carpets: HashMap<IVec2, Option<Carpet>>,
@@ -64,14 +64,27 @@ pub struct Grower<'w, 's> {
 
 impl Meadow {
     /// Returns true when the tiles may stay for `view`, the view of now or none when the camera is high;
-    /// otherwise despawns every tile and remembers `view`.
+    /// otherwise despawns every tile and remembers `view`. When the view is only rooted elsewhere on the
+    /// same face, the tiles stay on their ground under new keys and only the turf is read again.
     fn keep(&mut self, commands: &mut Commands, view: Option<(u64, Chart)>) -> bool {
         if self.view == view && view.is_some() {
             return true;
         }
-        self.clear(commands);
+        let planet = self.view.zip(view).filter(|(old, new)| old.0 == new.0);
+        let carried = planet.and_then(|(old, new)| old.1.carried(&new.1));
         self.view = view;
-        false
+        let Some(by) = carried else {
+            self.clear(commands);
+            return false;
+        };
+        let by = (by / f64::from(TILE)).round().as_ivec2();
+        self.tiles = self
+            .tiles
+            .drain()
+            .map(|(key, tile)| (key + by, tile))
+            .collect();
+        self.carpets.clear();
+        true
     }
 
     /// Despawns every tile and forgets the turf.

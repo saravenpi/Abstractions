@@ -13,7 +13,7 @@ use bevy::math::{IVec2, Vec2};
 
 use super::patch::{Patch, TEXELS};
 use crate::map::raster::colour;
-use crate::world::globe::{Chart, Face};
+use crate::world::globe::Face;
 use crate::world::structures::{CELL, Kind, structure_in_cell};
 use crate::world::{Globe, Terrain};
 
@@ -60,13 +60,10 @@ pub fn stamp(pixels: &mut [u8], patch: &Patch, at: Vec2, village: bool) {
 /// Returns the structures of the chart `face` that stand on `patch`: where each one is, in
 /// metres east and north of the middle, and whether it is a village.
 fn on_face(face: &Terrain, patch: &Patch) -> Vec<(Vec2, bool)> {
-    let Chart::Face { scale, .. } = face.chart() else {
-        return Vec::new();
-    };
     let middle = face.chart().locate(patch.chart.origin);
-    let (pad, bound) = (patch.half() * SLACK, Vec2::splat(scale as f32));
-    let lo = ((middle - pad).max(-bound) / CELL).floor().as_ivec2();
-    let hi = ((middle + pad).min(bound) / CELL).floor().as_ivec2();
+    let (pad, (low, high)) = (patch.half() * SLACK, face.chart().span());
+    let lo = ((middle - pad).max(low) / CELL).floor().as_ivec2();
+    let hi = ((middle + pad).min(high) / CELL).floor().as_ivec2();
     let cells = (lo.x..=hi.x).flat_map(|x| (lo.y..=hi.y).map(move |y| IVec2::new(x, y)));
     let sites = cells.filter_map(|cell| structure_in_cell(face, cell));
     let placed = sites.map(|site| {
@@ -83,7 +80,8 @@ fn on_face(face: &Terrain, patch: &Patch) -> Vec<(Vec2, bool)> {
 pub fn sites(globe: &Arc<Globe>, patch: &Patch) -> Vec<(Vec2, bool)> {
     let near = |face: &Face| face.axes()[0].dot(patch.chart.origin) > 0.5;
     let faces = Face::ALL.into_iter().filter(near);
-    let charts = faces.map(|face| Terrain::on(globe.clone(), globe.face_chart(face)));
+    let rooted = |face| globe.face_chart(face).near(patch.chart.origin);
+    let charts = faces.map(|face| Terrain::on(globe.clone(), rooted(face)));
     charts.flat_map(|face| on_face(&face, patch)).collect()
 }
 

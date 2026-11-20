@@ -6,7 +6,8 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 
-use super::site::Site;
+use super::site::{CELL, Site};
+use super::village::SPAN;
 use crate::world::globe::Chart;
 use crate::world::{Globe, Terrain};
 
@@ -22,7 +23,18 @@ pub enum Grid {
     Villages,
 }
 
-/// What tells one cell of one chart of one planet from every other.
+impl Grid {
+    /// Returns the side of one cell of the grid in chart units.
+    pub fn side(self) -> f32 {
+        match self {
+            Grid::Structures => CELL,
+            Grid::Villages => SPAN as f32 * CELL,
+        }
+    }
+}
+
+/// What tells one cell of one chart of one planet from every other. The cell is counted in whole cells from
+/// the middle of the chart, never by a chart position, so every view of a face shares one entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Key {
     seed: u64,
@@ -54,11 +66,12 @@ fn air(globe: &Globe) -> [u64; 4] {
     .map(f64::to_bits)
 }
 
-/// Returns the key of `cell` on the chart of `terrain`, or nothing on a chart whose cells are not remembered.
+/// Returns the key of `cell`, counted from the middle of the chart of `terrain`, or nothing on a chart whose
+/// cells are not remembered.
 fn key(terrain: &Terrain, grid: Grid, cell: IVec2) -> Option<Key> {
     let (face, scale) = match terrain.chart() {
         Chart::Flat => (u8::MAX, 0),
-        Chart::Face { face, scale } => (face as u8, scale.to_bits()),
+        Chart::Face { face, scale, .. } => (face as u8, scale.to_bits()),
         Chart::Tangent(_) => return None,
     };
     let globe = terrain.globe();
@@ -77,18 +90,26 @@ fn key(terrain: &Terrain, grid: Grid, cell: IVec2) -> Option<Key> {
 }
 
 /// Returns what `find` returns for `cell` of `grid` on `terrain`, searching only the first time on each thread.
+///
+/// `find` gets the home view of the cell and the cell in it, not `terrain`: the site found is the same from
+/// every view of the face. It comes back at its chart position in `terrain`.
 pub fn memo(
     terrain: &Terrain,
     at: (Grid, IVec2),
-    find: impl FnOnce() -> Option<Site>,
+    find: impl FnOnce(&Terrain, IVec2) -> Option<Site>,
 ) -> Option<Site> {
-    let Some(key) = key(terrain, at.0, at.1) else {
-        return find();
+    let home = terrain.home(at.1, at.0.side());
+    let back = |site: Site| Site {
+        origin: site.origin + home.offset,
+        ..site
+    };
+    let Some(key) = key(&home.view, at.0, home.id) else {
+        return find(terrain, at.1);
     };
     if let Some(hit) = CACHE.with(|c| c.borrow().get(&key).copied()) {
-        return hit;
+        return hit.map(back);
     }
-    let found = find();
+    let found = find(&home.view, home.cell);
     CACHE.with(|c| {
         let mut map = c.borrow_mut();
         if map.len() >= LIMIT {
@@ -96,5 +117,5 @@ pub fn memo(
         }
         map.insert(key, found);
     });
-    found
+    found.map(back)
 }

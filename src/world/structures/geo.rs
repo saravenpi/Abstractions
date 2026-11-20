@@ -24,10 +24,15 @@ pub fn metres(terrain: &Terrain, a: Vec2, b: Vec2) -> f32 {
 /// Returns the distance in meters from chart point `p` to the nearest edge of its cube face: negative off
 /// the face, and without limit on a chart that has no edges.
 pub fn edge_distance(terrain: &Terrain, p: Vec2) -> f32 {
-    let Chart::Face { face, scale } = terrain.chart() else {
+    let Chart::Face {
+        face,
+        scale,
+        origin,
+    } = terrain.chart()
+    else {
         return f32::INFINITY;
     };
-    let (u, v) = (f64::from(p.x) / scale, f64::from(p.y) / scale);
+    let (u, v) = ((origin + p.as_dvec2()) / scale).into();
     if u.abs().max(v.abs()) >= 1.0 {
         return -1.0;
     }
@@ -59,9 +64,13 @@ pub fn transfer(from: &Terrain, to: &Terrain, p: Vec2) -> Vec2 {
 #[cfg(test)]
 pub fn chart_point(terrain: &Terrain, pos: DVec3) -> DVec2 {
     match terrain.chart() {
-        Chart::Face { face, scale } => {
+        Chart::Face {
+            face,
+            scale,
+            origin,
+        } => {
             let (u, v) = face.project(pos.normalize());
-            DVec2::new(u * scale, v * scale)
+            DVec2::new(u * scale, v * scale) - origin
         }
         _ => terrain.locate(pos).xz().as_dvec2(),
     }

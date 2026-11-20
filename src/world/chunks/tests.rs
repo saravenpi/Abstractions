@@ -89,8 +89,8 @@ fn leaves_across_a_face_edge_are_near() {
         y: last,
     };
     let around = Around::new(&terrain, under.dir(0.5, 0.5) * 6000.0).expect("a face chart");
-    assert_eq!(around.center, leaf_coord(under));
-    assert_eq!(around.coord(under), leaf_coord(under));
+    assert_eq!(around.center, leaf_coord(&terrain, under));
+    assert_eq!(around.coord(under), leaf_coord(&terrain, under));
     assert_eq!(around.near.len(), 8);
     assert!(around.near.iter().all(|id| around.solid(*id)));
     let across = under

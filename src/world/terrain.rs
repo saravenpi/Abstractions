@@ -11,12 +11,15 @@ use crate::universe::{HOME_GRAVITY, HOME_RADIUS};
 
 mod coarse;
 mod ponds;
+mod root;
 mod spawn;
 mod view;
 
 /// A flat `(x, z)` view of the ground of one planet, deterministic for a seed.
 ///
-/// The chart says how `(x, z)` maps onto the globe. Heights are metres above sea level.
+/// The chart says how `(x, z)` maps onto the globe. Heights are metres above sea level. On a cube face
+/// `(x, z)` are 32-bit offsets from the 64-bit origin of the chart, so they stay precise on a planet of
+/// any size; whole tiles counted from the middle of the face name ground that outlives a view.
 #[derive(Resource, Clone)]
 pub struct Terrain {
     globe: Arc<Globe>,
@@ -99,5 +102,7 @@ impl Terrain {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_root;
 #[cfg(test)]
 mod tests_spawn;

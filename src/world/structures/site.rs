@@ -162,10 +162,11 @@ fn first_fit(
 }
 
 /// Returns the structure of a cell of the chart of `terrain`, if it has one. Depends only on the planet, the
-/// chart and the cell, so every chunk and every thread finds the same site. A planet without ground has none.
+/// face and the cell counted from its middle, so every chunk, every thread and every view of the face finds
+/// the same site. A planet without ground has none.
 pub fn structure_in_cell(terrain: &Terrain, cell: IVec2) -> Option<Site> {
     let ground = terrain.globe().has_ground();
-    ground.then(|| memo(terrain, (Grid::Structures, cell), || search(terrain, cell)))?
+    ground.then(|| memo(terrain, (Grid::Structures, cell), search))?
 }
 
 /// Searches `cell` for a village origin or a small structure. Each candidate spot is judged on the metric
@@ -177,7 +178,7 @@ fn search(terrain: &Terrain, cell: IVec2) -> Option<Site> {
     {
         return Some(v);
     }
-    let mut rng = cell_rng(terrain.seed(), cell);
+    let mut rng = cell_rng(terrain.seed(), cell + terrain.shift(CELL));
     let empty = !terrain.globe().lands().settled();
     if !rng.random_bool(CHANCE) || (empty && !rng.random_bool(RUINS)) {
         return None;

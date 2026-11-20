@@ -45,6 +45,8 @@ mod tests_react;
 #[cfg(test)]
 mod tests_spawn;
 #[cfg(test)]
+mod tests_survey;
+#[cfg(test)]
 mod tests_temper;
 #[cfg(test)]
 mod tests_walk;

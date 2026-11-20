@@ -12,9 +12,10 @@ use super::paint::{Canvas, material, mesh, paint};
 use super::tune::{MOVE, RADIUS, ROLL};
 use crate::fauna::gate::{Spec, living};
 use crate::fauna::ground::Heights;
-use crate::fauna::herds::{Land, herd_arc, read};
+use crate::fauna::herds::{Herds, Land, herd_arc, read};
 use crate::fauna::place::Spot;
 use crate::fauna::senses::Blood;
+use crate::life::Life;
 use crate::life::herd::{Search, Watch};
 use crate::life::signs;
 use crate::life::signs::Mark;
@@ -33,6 +34,7 @@ pub struct Lay<'w, 's> {
     spec: Res<'w, Spec>,
     trail: ResMut<'w, Trail>,
     blood: ResMut<'w, Blood>,
+    herds: Option<Res<'w, Herds>>,
     cropped: ResMut<'w, Cropped>,
     meshes: ResMut<'w, Assets<Mesh>>,
     materials: ResMut<'w, Assets<StandardMaterial>>,
@@ -97,11 +99,26 @@ pub fn lay(mut l: Lay, heights: Local<Heights>) {
     l.trail.read(land, at, l.clock.seconds);
     let span = (l.clock.seconds, globe.radius());
     l.blood.lay((at, RADIUS), span, &mut l.trail.signs);
+    slain(&mut l, (life, at), globe.radius());
     crop(&l.trail, &mut l.cropped);
     if l.terrain.is_changed() {
         heights.clear();
     }
     draw(&mut l, Spot::at(at, globe.radius()), &heights);
+}
+
+/// Adds the bones of the carcasses players left to the signs of the trail.
+fn slain(l: &mut Lay, (life, at): (&Life, DVec3), planet: f64) {
+    let Some(herds) = l.herds.as_deref() else {
+        return;
+    };
+    let search = Search {
+        at,
+        radius: RADIUS,
+        planet,
+        time: l.clock.seconds,
+    };
+    signs::lay_bones(life, &herds.slain, &search, &mut l.trail.signs);
 }
 
 /// Tells the blades where the grazed patches of the trail lie, only when they moved, grew or went.

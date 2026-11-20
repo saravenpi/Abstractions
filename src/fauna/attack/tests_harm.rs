@@ -1,8 +1,10 @@
-//! Tests of harm: a small blow hurts and a big one kills, goes into the ledger and asks for parts.
+//! Tests of harm: a small blow hurts and a big one kills, goes into the ledger, leaves a carcass and
+//! makes the body fall.
 
 use bevy::prelude::*;
 
 use super::harm::{Dead, harm};
+use super::slump::Slump;
 use crate::avatar::strike::Hit;
 use crate::craft::build::{Blow, Intent, Mode};
 use crate::craft::harvest::Harvest;
@@ -32,8 +34,19 @@ fn hit(victim: Entity, energy: f32) -> Hit {
     }
 }
 
-/// A blow takes its energy from the health, and one past the health kills, records the death and
-/// marks the animal dead, once.
+/// Asserts that `victim` is dead, falling, led by its carcass, and the only carcass there is.
+fn lies(app: &App, victim: Entity) {
+    let body = app.world().entity(victim);
+    assert!(body.contains::<Dead>() && body.contains::<Slump>());
+    assert!(matches!(
+        body.get::<Beast>().expect("kept").lead,
+        Lead::Carcass { .. }
+    ));
+    assert_eq!(app.world().resource::<Herds>().slain.len(), 1);
+}
+
+/// A blow takes its energy from the health, and one past the health kills, records the death, leaves
+/// one carcass and marks the animal dead, once.
 #[test]
 fn a_blow_hurts_and_a_big_one_kills() {
     let (mut app, herd) = app(true);
@@ -56,8 +69,7 @@ fn a_blow_hurts_and_a_big_one_kills() {
     assert!(after.now < before.now && !app.world().entity(victim).contains::<Dead>());
     app.world_mut().write_message(hit(victim, before.max));
     app.world_mut().run_schedule(Update);
-    assert!(app.world().entity(victim).contains::<Dead>());
-    assert!(!app.world().resource::<Messages<Harvest>>().is_empty());
+    lies(&app, victim);
     let Lead::Herd { id, slot } = lead else {
         return;
     };

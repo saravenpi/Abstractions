@@ -18,15 +18,19 @@ pub(in crate::life) fn seen(life: &Life, hunts: &[Hunt], search: &Search) -> Vec
         .collect()
 }
 
-/// Returns the carcasses and bones the kills of `hunts` leave within the search radius at the search time.
-pub(in crate::life) fn remains(life: &Life, hunts: &[Hunt], search: &Search) -> Vec<Carcass> {
-    let time = search.time;
-    let visitors: Vec<u16> = life
-        .species
+/// Returns the indices of the scavenger and decomposer species of `life`: the visitors of a carcass.
+fn scavengers(life: &Life) -> Vec<u16> {
+    life.species
         .iter()
         .filter(|s| matches!(s.role.guild, Guild::Scavenger | Guild::Decomposer))
         .map(|s| s.id.index)
-        .collect();
+        .collect()
+}
+
+/// Returns the carcasses and bones the kills of `hunts` leave within the search radius at the search time.
+pub(in crate::life) fn remains(life: &Life, hunts: &[Hunt], search: &Search) -> Vec<Carcass> {
+    let time = search.time;
+    let visitors = scavengers(life);
     hunts
         .iter()
         .filter_map(|h| match h.outcome {
@@ -47,6 +51,27 @@ pub(in crate::life) fn remains(life: &Life, hunts: &[Hunt], search: &Search) -> 
         .collect()
 }
 
+/// Returns the carcass a player's kill of member `slot` of herd `herd`, of species index `species`,
+/// leaves at unit direction `at` at universe time `since`: it lasts as long as a hunter's kill of the
+/// same animal and draws the same visitors.
+pub fn slain(life: &Life, (herd, slot, species): (u64, u8, u16), at: DVec3, since: f64) -> Carcass {
+    let mass = life
+        .species
+        .get(usize::from(species))
+        .map_or(1.0, |s| s.history.mass);
+    let meat = since + meat_for(mass);
+    Carcass {
+        herd,
+        slot,
+        species,
+        at,
+        since,
+        meat,
+        bones: since + (meat - since) * BONES,
+        visitors: scavengers(life),
+    }
+}
+
 /// Returns true when unit direction `dir` is within the search radius.
 fn within(search: &Search, dir: DVec3) -> bool {
     arc(dir, search.at) * search.planet <= search.radius
@@ -62,5 +87,10 @@ fn meat(life: &Life, hunt: &Hunt) -> f64 {
         .species
         .get(usize::from(hunt.prey_species))
         .map_or(1.0, |s| s.history.mass);
-    hunt.outcome_time() + (60.0 * f64::from(mass).sqrt()).clamp(120.0, MEAT)
+    hunt.outcome_time() + meat_for(mass)
+}
+
+/// Returns the seconds the meat of an animal of `mass` kilograms lasts.
+fn meat_for(mass: f32) -> f64 {
+    (60.0 * f64::from(mass).sqrt()).clamp(120.0, MEAT)
 }

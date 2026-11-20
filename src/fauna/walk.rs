@@ -149,7 +149,9 @@ fn pace(ctx: &Ctx, beast: &Beast, species: &Species) -> Pace {
     };
     Pace {
         gravity,
-        top: species.history.speed.min(gait) * beast.wits.health.pace(),
+        top: species.history.speed.min(gait)
+            * beast.wits.health.pace()
+            * beast.wits.broken.pace(body),
         detail: if near { Detail::Full } else { Detail::Cheap },
     }
 }

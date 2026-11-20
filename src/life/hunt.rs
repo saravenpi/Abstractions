@@ -19,6 +19,7 @@ use bevy::math::DVec3;
 
 use super::Life;
 use super::herd::{DEATHS, Death, Ground, Pose, Scene, Search, Watch};
+pub use show::slain;
 pub(super) use show::{remains, seen};
 
 /// Seconds a killed member stays missing from its herd before the herd has grown it back.

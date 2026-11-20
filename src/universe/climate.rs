@@ -41,9 +41,6 @@ const THERMOSTAT: f64 = 3.0;
 /// Carbon supply, from 0 to 1, from which a planet has all the carbon its thermostat can use.
 const CARBON_FULL: f64 = 0.3;
 
-/// What a boiled sea multiplies the greenhouse by: the runaway greenhouse.
-const RUNAWAY: f64 = 20.0;
-
 /// Times the feedback between cover, albedo and temperature is run. Fixed, so the result is too.
 const ROUNDS: usize = 4;
 
@@ -120,8 +117,8 @@ fn albedo(pressure: f64, wet: f64, was: &Climate) -> f64 {
 /// steady greenhouse: this is what holds seas liquid out to the far edge of the habitable zone.
 /// That thermostat is the cycle of carbon between air, water and rock, so it needs water and
 /// works in proportion to the carbon supply `carbon`, in full from 0.3: a dry or carbon-poor
-/// planet keeps its steady greenhouse. A planet whose sea has boiled gets 20 times its steady
-/// greenhouse, the runaway.
+/// planet keeps its steady greenhouse. A planet whose sea has boiled gets the runaway greenhouse,
+/// see [`air::runaway`].
 fn step(flux: f64, pressure: f64, (wet, carbon): (f64, f64), was: &Climate) -> Climate {
     let albedo = albedo(pressure, wet, was);
     let bare = BLACK_BODY * (flux * (1.0 - albedo)).powf(0.25);
@@ -132,7 +129,7 @@ fn step(flux: f64, pressure: f64, (wet, carbon): (f64, f64), was: &Climate) -> C
         0.0
     };
     let greenhouse = if was.water == Water::Steam {
-        steady * RUNAWAY
+        air::runaway(pressure)
     } else {
         (THAW - bare).clamp(steady, steady * (1.0 + (THERMOSTAT - 1.0) * cycle))
     };
@@ -163,7 +160,7 @@ pub fn settle(flux: f64, pressure: f64, wet: f64, carbon: f64) -> Climate {
 /// Returns the climate at the cloud deck of a gas giant receiving `flux`, for a water stock `wet`.
 ///
 /// The deck sends back 34 percent of the light whatever lies under it, and the air above it is
-/// at the pressure cap, so it warms by the steady greenhouse of 74 K with no feedback to run.
+/// at the pressure cap, so it warms by the steady greenhouse of 109 K with no feedback to run.
 /// Water there is in the state [`state`] gives at that heat and pressure.
 pub fn deck(flux: f64, wet: f64) -> Climate {
     let greenhouse = air::greenhouse(air::PRESSURE_CAP);

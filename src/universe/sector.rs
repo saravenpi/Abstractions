@@ -1,4 +1,4 @@
-//! Sectors: the stars of one 10 gly cube of a galaxy, and the lookups built on them.
+//! Sectors: the stars of one 10 light-year cube of a galaxy, and the lookups built on them.
 
 use bevy::math::{DVec3, IVec3};
 
@@ -6,7 +6,7 @@ use super::galaxy::{self, Shape};
 use super::hash::{self, Rng};
 use super::ids::{GalaxyId, StarId};
 use super::spec::StarSpec;
-use super::{GLY, SECTOR_GLY, Universe, star};
+use super::{LY, SECTOR_LY, SECTOR_M, Universe, star};
 use crate::space::UniPos;
 
 /// Most stars one sector holds.
@@ -14,7 +14,7 @@ pub const SECTOR_STARS: u8 = 12;
 
 /// Appends the stars of one sector to `out`, in index order.
 pub(super) fn fill(shape: &Shape, galaxy: GalaxyId, sector: IVec3, out: &mut Vec<StarSpec>) {
-    let parts = shape.parts((sector.as_dvec3() + 0.5) * SECTOR_GLY);
+    let parts = shape.parts((sector.as_dvec3() + 0.5) * SECTOR_LY);
     let expected = parts.total();
     if expected <= 0.0 {
         return;
@@ -34,7 +34,7 @@ pub(super) fn fill(shape: &Shape, galaxy: GalaxyId, sector: IVec3, out: &mut Vec
 
 /// Returns the sector that holds a point `pos` metres from a galaxy centre.
 pub fn sector_of(pos: DVec3) -> IVec3 {
-    (pos / (SECTOR_GLY * GLY)).floor().as_ivec3()
+    (pos / SECTOR_M).floor().as_ivec3()
 }
 
 impl Universe {
@@ -44,16 +44,16 @@ impl Universe {
         (usize::from(id.index) < stars.len()).then(|| stars.swap_remove(usize::from(id.index)))
     }
 
-    /// Returns the stars within `radius_gly` game light-years of `pos`, nearest first.
+    /// Returns the stars within `radius_ly` light-years of `pos`, nearest first.
     ///
     /// `pos` is in metres from the centre of `galaxy`, like [`StarSpec::pos`]. The cost grows with
-    /// the cube of the radius: 60 gly reads about 2,200 sectors.
-    pub fn stars_near(&self, galaxy: GalaxyId, pos: DVec3, radius_gly: f64) -> Vec<StarSpec> {
+    /// the cube of the radius: 55 light-years read about 2,200 sectors. Ask for no more than 60.
+    pub fn stars_near(&self, galaxy: GalaxyId, pos: DVec3, radius_ly: f64) -> Vec<StarSpec> {
         let mut stars = Vec::new();
         let Some(shape) = galaxy::shape(self.seed, galaxy) else {
             return stars;
         };
-        let reach = radius_gly.max(0.0) * GLY;
+        let reach = radius_ly.max(0.0) * LY;
         let (low, high) = (sector_of(pos - reach), sector_of(pos + reach));
         let n = high - low + 1;
         for i in 0..n.x * n.y * n.z {
@@ -72,13 +72,23 @@ impl Universe {
     /// Returns where a star is in the universe, or nothing when the star does not exist.
     pub fn star_position(&self, id: StarId) -> Option<UniPos> {
         let star = self.star(id)?;
-        Some(self.galaxy(id.galaxy)?.locate(star.pos))
+        let galaxy = self.galaxy(id.galaxy)?;
+        Some(UniPos::sectors(
+            id.galaxy.0,
+            galaxy.center_sector + id.sector,
+            star.local,
+        ))
     }
 }
 
 impl super::GalaxySpec {
     /// Returns the universe position of a point `pos` metres from the centre of this galaxy.
+    ///
+    /// The position is built from whole sectors and the metres inside the sector, so the 64-bit
+    /// rounding of a place far from the centre stays out of it.
     pub fn locate(&self, pos: DVec3) -> UniPos {
-        UniPos::new(self.id.0, self.center + pos)
+        let sector = sector_of(pos);
+        let local = pos - sector.as_dvec3() * SECTOR_M;
+        UniPos::sectors(self.id.0, self.center_sector + sector, local)
     }
 }

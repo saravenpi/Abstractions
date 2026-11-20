@@ -71,11 +71,17 @@ fn air_follows_gravity_and_heat() {
     assert!(air::pressure(0.0, 0.2, 0.3, 200.0) < air::NO_AIR);
 }
 
-/// The home air warms by 33 K, water boils at 373 K under it and hotter under thicker air.
+/// The home air warms by 33 K, the thick air of Venus by about 450 K where the old square root gave
+/// 316 K, the warming grows slower than the pressure, water boils at 373 K under the home air and
+/// hotter under thicker air.
 #[test]
 fn greenhouse_and_boiling_follow_pressure() {
-    assert_eq!(air::greenhouse(1.0), 33.0);
+    assert!((air::greenhouse(1.0) - 33.0).abs() < 0.05);
+    assert!((air::greenhouse(92.0) - 451.0).abs() < 2.0);
+    assert!((air::greenhouse(5.0) - 108.6).abs() < 0.5);
     assert!(air::greenhouse(4.0) > air::greenhouse(1.0));
+    assert!(air::greenhouse(10.0) < 10.0 * air::greenhouse(1.0));
+    assert!((air::runaway(1.0) - 660.0).abs() < 1e-9);
     assert!((air::boiling(1.0) - 373.15).abs() < 1e-9);
     assert!((424.0..427.0).contains(&air::boiling(5.0)));
     assert!(air::boiling(air::TRIPLE_POINT) < FREEZING);

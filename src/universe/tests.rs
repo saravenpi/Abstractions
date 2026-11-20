@@ -29,10 +29,10 @@ fn home_system_is_deterministic() {
     assert_eq!(system.planets[usize::from(home.index)], planet);
 }
 
-/// The home star lies in the middle of the home galaxy, which is a spiral, just past the void
-/// at its centre, and it has a generated name its planets take.
+/// The home star lies within 100 light-years of the Sun-like point of the home galaxy, which is
+/// a spiral, about half way out, and it has a generated name its planets take.
 #[test]
-fn every_seed_has_a_home_near_the_centre() {
+fn every_seed_has_a_home_near_the_sun_point() {
     for seed in 0..30 {
         let u = Universe::new(seed);
         let home = u.home();
@@ -40,8 +40,14 @@ fn every_seed_has_a_home_near_the_centre() {
         assert_eq!(home.star.galaxy, GalaxyId(IVec3::ZERO));
         assert_eq!(galaxy.kind, GalaxyKind::Spiral);
         let star = u.star(home.star).expect("the home star exists");
+        let shape = galaxy::shape(seed, home::HOME_GALAXY).expect("the home galaxy exists");
+        let apart = star.pos.distance(shells::sun_point(&shape)) / LY;
+        assert!(
+            apart < 100.0,
+            "seed {seed}: {apart} light-years from the Sun point"
+        );
         let reach = star.pos.length() / galaxy.radius;
-        assert!((0.005..0.2).contains(&reach), "seed {seed}: {reach}");
+        assert!((0.45..0.6).contains(&reach), "seed {seed}: {reach}");
         assert_eq!(sector_of(star.pos), home.star.sector);
         let planet = u.planet(home);
         assert_eq!(planet.name, names::planet(&star.name, home.index));
@@ -121,17 +127,17 @@ fn near_stars_are_sorted_and_found_again() {
     let at = u.star(home).expect("the home star exists").pos;
     let near = u.stars_near(home.galaxy, at, 60.0);
     assert_eq!(near[0].id, home);
-    assert!(near.len() > 10, "only {} stars within 60 gly", near.len());
+    assert!(near.len() > 10, "only {} stars within 60 ly", near.len());
     assert!(
         near.windows(2)
             .all(|w| w[0].pos.distance(at) <= w[1].pos.distance(at))
     );
     for star in &near {
-        assert!(star.pos.distance(at) <= 60.0 * GLY);
+        assert!(star.pos.distance(at) <= 60.0 * LY);
         assert_eq!(sector_of(star.pos), star.id.sector);
         assert_eq!(u.star(star.id).as_ref(), Some(star));
         let pos = u.star_position(star.id).expect("the star exists");
-        assert_eq!(pos, galaxy.locate(star.pos));
+        assert!((pos - galaxy.locate(star.pos)).length() < 1.0e6);
         assert_eq!(pos.cell, home.galaxy.0);
     }
     assert!(
@@ -163,7 +169,8 @@ fn density_follows_the_galaxy_shape() {
     assert!(ring(0.5, 0.3) > 0.0);
 }
 
-/// One thousand sectors take about 0.3 ms, far under the 50 ms budget: 5 ms still catches a tenfold slowdown.
+/// One thousand sectors hold about 4,000 stars at the real density, eight times the old count:
+/// 40 ms is the old 5 ms budget scaled by the stars, and still catches a tenfold slowdown.
 #[test]
 fn sectors_generate_fast() {
     let u = Universe::new(2);
@@ -178,6 +185,6 @@ fn sectors_generate_fast() {
     };
     let (best, stars) = (0..5).map(|_| run()).min().expect("five runs");
     println!("1000 sectors, {stars} stars, {best:?}");
-    assert!(stars > 20);
-    assert!(best.as_millis() < 5, "1000 sectors took {best:?}");
+    assert!(stars > 2000, "{stars}");
+    assert!(best.as_millis() < 40, "1000 sectors took {best:?}");
 }

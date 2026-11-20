@@ -24,3 +24,24 @@ pub const YEAR: f64 = 3.155_76e7;
 
 /// Watts per square metre in a flux of 1: the sunlight the Earth receives.
 pub const STARLIGHT: f64 = 1361.0;
+
+/// Metres in one light-year: the distance light travels in one Julian year, exactly
+/// 299,792,458 m/s times 31,557,600 s.
+pub const LY: f64 = 9.460_730_472_580_8e15;
+
+/// Metres in one parsec: the astronomical unit over one arcsecond in radians, `AU * 648000 / pi`.
+pub const PARSEC: f64 = 3.085_677_581_491_4e16;
+
+/// Newton's constant in cubic metres per kilogram per second squared (CODATA 2018), linking a
+/// mass in kilograms to the pull it exerts.
+pub const GRAVITATION: f64 = 6.6743e-11;
+
+/// Mass of the Earth in kilograms, the unit planet masses are compared in (IAU 2015 nominal
+/// `GM` of 3.986004e14 over [`GRAVITATION`]).
+pub const EARTH_MASS: f64 = 5.9722e24;
+
+/// Volumetric mean radius of Jupiter in metres, the unit giant sizes are compared in.
+pub const JUPITER_RADIUS: f64 = 6.9911e7;
+
+/// Speed of light in metres per second, exact by the definition of the metre.
+pub const SPEED_OF_LIGHT: f64 = 299_792_458.0;

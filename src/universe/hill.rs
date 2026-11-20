@@ -69,12 +69,18 @@ pub(super) struct Place {
     pub seed: u64,
 }
 
-/// Returns the Hill radius of a planet around its star in metres: `a (m / 3 M)^(1/3)`.
+/// Returns the Hill radius in metres of a body of gravitational parameter `body_mu` on a circular
+/// orbit of `orbit` metres around a mass of parameter `central_mu`: `a (m / 3 M)^(1/3)`.
 ///
-/// The planet mass is its gravity times its radius squared over Newton's constant, so the
-/// mass ratio is the ratio of the gravitational parameters.
+/// This is the one formula every Hill radius in the game comes from. The mass ratio is the
+/// ratio of the gravitational parameters.
+pub(super) fn radius(body_mu: f64, central_mu: f64, orbit: f64) -> f64 {
+    orbit * (body_mu / (3.0 * central_mu)).cbrt()
+}
+
+/// Returns the Hill radius of a planet around its star in metres, by [`radius`].
 pub(super) fn hill(star: &StarSpec, planet: &PlanetSpec) -> f64 {
-    planet.orbit_radius * (planet.mu() / (3.0 * star.mu())).cbrt()
+    radius(planet.mu(), star.mu(), planet.orbit_radius)
 }
 
 /// The moons that fit around one planet so far.

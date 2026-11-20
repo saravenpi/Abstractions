@@ -3,8 +3,6 @@
 use std::collections::HashSet;
 use std::time::Instant;
 
-use bevy::math::DVec3;
-
 use super::home::{HOME_GALAXY, SEARCH};
 use super::range_tests::sample;
 use super::*;
@@ -44,8 +42,8 @@ fn home_is_landable_and_alive() {
     assert!(dead.len() <= 2, "{dead:?}");
 }
 
-/// No star nearer to the centre of the home galaxy than the home star has a living landable
-/// planet: the home is the nearest one.
+/// No star nearer to the Sun-like point of the home galaxy than the home star has a living
+/// landable planet: the home is the nearest one.
 #[test]
 fn home_is_the_nearest_living_planet() {
     for seed in 0..12 {
@@ -54,8 +52,10 @@ fn home_is_the_nearest_living_planet() {
         if life::of(&planet, &star).is_none() {
             continue;
         }
-        let out = star.pos.length() / GLY * (1.0 + 1e-12);
-        let nearer = u.stars_near(HOME_GALAXY, DVec3::ZERO, out);
+        let shape = galaxy::shape(seed, HOME_GALAXY).expect("the home galaxy exists");
+        let from = shells::sun_point(&shape);
+        let out = star.pos.distance(from) / LY * (1.0 + 1e-12);
+        let nearer = u.stars_near(HOME_GALAXY, from, out);
         assert_eq!(nearer.last().map(|s| s.id), Some(star.id), "seed {seed}");
         assert!(nearer.len() <= SEARCH, "seed {seed}: {}", nearer.len());
         let inside = &nearer[..nearer.len() - 1];

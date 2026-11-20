@@ -9,8 +9,10 @@ use super::galaxy::Shape;
 use super::hash;
 use super::spec::GalaxyKind;
 
-/// Optical depth per game light-year at the peak of a lane.
-const DUST: f64 = 0.004;
+/// Optical depth per light-year through the densest lane: 3e-4, so a ray along the plane of the
+/// Milky Way meets about 1 magnitude of extinction per kiloparsec (3,260 light-years). Unverified
+/// figure from memory.
+const DUST: f64 = 3.0e-4;
 
 /// Radians the lanes lie ahead of the stars of the arm, on its inner edge.
 const LANE_SHIFT: f64 = 0.35;
@@ -22,8 +24,8 @@ const BETWEEN: f64 = 0.15;
 const BALL: f64 = 0.1;
 
 impl Shape {
-    /// Returns the dust at `p` game light-years from the galaxy centre, as the optical depth
-    /// per game light-year of a ray through it: 0 in the void and above the disc.
+    /// Returns the dust at `p` light-years from the galaxy centre, as the optical depth
+    /// per light-year of a ray through it: 0 in the void and above the disc.
     pub fn dust(&self, p: DVec3) -> f64 {
         let q = p / self.radius;
         let (r, d) = (q.x.hypot(q.z), q.length());

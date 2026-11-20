@@ -193,8 +193,8 @@ impl PlanetRecord {
     /// unused, since a giant holds all of it. The pressure is the cap, the ground nothing: no
     /// liquid covers it and its water is ice, steam or nothing as [`climate::deck`] finds it.
     ///
-    /// Ranges: flux 0.000003 to 0.14, pressure 5, albedo 0.34, greenhouse 74 K, temperature 80
-    /// to 230 K, ocean 0.
+    /// Ranges: flux 0.000003 to 0.14, pressure 5, albedo 0.34, greenhouse 109 K, temperature 119
+    /// to 263 K, ocean 0.
     pub(super) fn giant(star: &StarSpec, orbit: f64, seed: u64) -> Self {
         let mut rng = Rng::new(seed);
         let flux = zone::flux(star.luminosity, orbit);

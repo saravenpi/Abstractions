@@ -1,9 +1,9 @@
 //! Systems: the planets of a star, on orbits that never cross.
 
 use super::hash::{self, Rng};
+use super::planet;
 use super::spec::{PlanetSpec, StarSpec};
 use super::units::{AU, SUN_MASS};
-use super::{hill, planet};
 
 /// Fewest and most planets around a star.
 pub const PLANETS: (u8, u8) = (2, 8);
@@ -21,17 +21,24 @@ pub fn reach(star: &StarSpec) -> f64 {
     4.0 * ORBIT.1 * star.mass / SUN_MASS
 }
 
-/// Times a planet is moved out and built again to clear the Hill sphere of the one inside it.
-/// Moving out can turn it into a gas giant once, which widens its own sphere, so three do.
+/// Times a planet is moved out and built again to clear the one inside it. Moving out can turn
+/// it into a gas giant once, which widens its Hill radius, so three do.
 const PUSHES: usize = 3;
+
+/// Mutual Hill radii that two neighbouring planets keep between their orbits: `2 sqrt(3)`, the
+/// least spacing at which two planets on circular orbits stay stable (Gladman 1993, "Dynamics
+/// of systems of two close planets", Icarus 106, 247). The mutual Hill radius is
+/// `((m1 + m2) / 3 M)^(1/3) (a1 + a2) / 2`. Real systems keep far more, 10 or so, so this is a
+/// floor, not a typical gap.
+pub const SPACING: f64 = 3.464_101_6;
 
 /// Returns the planets of a star, ordered outward.
 ///
 /// The span of orbit radii is cut into one equal band per planet on a log scale and each planet
 /// sits in the middle 70 percent of its band, so the radii grow geometrically, with jitter, and
-/// each one is strictly larger than the one before. A planet whose Hill sphere would touch the
-/// sphere of the planet inside it is moved out until it clears it, see [`placed`], so a
-/// crowded system can reach a little past the span.
+/// each one is strictly larger than the one before. A planet closer to the one inside it than
+/// [`SPACING`] mutual Hill radii is moved out until it clears it, see [`placed`], so a crowded
+/// system can reach a little past the span.
 pub(super) fn planets(star: &StarSpec) -> Vec<PlanetSpec> {
     let mut rng = Rng::new(hash::child(star.seed, 2));
     let count = PLANETS.0 + rng.below(u32::from(PLANETS.1 - PLANETS.0) + 1) as u8;
@@ -46,20 +53,32 @@ pub(super) fn planets(star: &StarSpec) -> Vec<PlanetSpec> {
     planets
 }
 
+/// Returns the smallest orbit radius in metres for `outer`, a planet of `star`, that keeps it
+/// [`SPACING`] mutual Hill radii outside `inside`.
+///
+/// With `h = SPACING / 2 * ((m1 + m2) / 3 M)^(1/3)` the condition `a2 - a1 >= h (a1 + a2)` gives
+/// `a2 >= a1 (1 + h) / (1 - h)`. The share `h` is held under 0.9, far above any planet.
+fn least_orbit(star: &StarSpec, inside: &PlanetSpec, outer: &PlanetSpec) -> f64 {
+    let pull = (inside.mu() + outer.mu()) / (3.0 * star.mu());
+    let share = (0.5 * SPACING * pull.cbrt()).min(0.9);
+    inside.orbit_radius * (1.0 + share) / (1.0 - share)
+}
+
 /// Returns planet `index` of `star` with the seed `seed`, on the orbit of `orbit` metres it
-/// drew or, when that is too close to the planet `inside` it, on the nearest orbit where the
-/// Hill spheres of the two do not touch.
+/// drew or, when that is closer to the planet `inside` it than [`SPACING`] mutual Hill radii,
+/// on the nearest orbit that is not.
 fn placed(
     star: &StarSpec,
     inside: Option<&PlanetSpec>,
     (index, orbit, seed): (u8, f64, u64),
 ) -> PlanetSpec {
-    let floor = inside.map_or(0.0, |p| p.orbit_radius + hill::hill(star, p));
     let mut planet = planet::build(star, index, orbit, seed);
+    let Some(inside) = inside else {
+        return planet;
+    };
     for _ in 0..PUSHES {
-        let share = hill::hill(star, &planet) / planet.orbit_radius;
-        let least = floor / (1.0 - share);
-        if planet.orbit_radius > least {
+        let least = least_orbit(star, inside, &planet);
+        if planet.orbit_radius >= least {
             break;
         }
         planet = planet::build(star, index, least * (1.0 + 1e-9), seed);

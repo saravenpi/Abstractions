@@ -1,12 +1,12 @@
 //! What the universe says about a galaxy, a star, a planet and a whole system.
 
-use bevy::math::{DVec3, Vec3};
+use bevy::math::{DVec3, IVec3, Vec3};
 
+use super::hill;
 use super::ids::{BodyId, GalaxyId, StarId};
 use super::record::PlanetRecord;
 
-/// Newton's constant in SI units, linking a star mass in kilograms to the pull it exerts.
-pub const GRAVITATION: f64 = 6.674e-11;
+pub use super::units::GRAVITATION;
 
 /// The overall shape of a galaxy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -34,7 +34,12 @@ pub struct GalaxySpec {
     pub arms: u8,
     /// Radius of the star disc in metres.
     pub radius: f64,
-    /// Centre of the galaxy in metres from the minimum corner of its grid cell.
+    /// The sector of the grid cell that holds the centre, counted from its minimum corner: the
+    /// centre lies on its minimum corner, so star sectors and the cell sectors differ by this
+    /// whole number.
+    pub center_sector: IVec3,
+    /// Centre of the galaxy in metres from the minimum corner of its grid cell, the corner of
+    /// [`GalaxySpec::center_sector`].
     ///
     /// Star positions and sectors are measured from this point.
     pub center: DVec3,
@@ -82,8 +87,12 @@ pub struct StarSpec {
     pub age: f64,
     /// Linear RGB colour of the light, each channel from 0 to 1.
     pub color: Vec3,
-    /// Position in metres from the galaxy centre.
+    /// Position in metres from the galaxy centre, rounded to the step of a 64-bit float at that
+    /// distance: 1e5 metres at the rim. Use [`StarSpec::local`] for an exact place.
     pub pos: DVec3,
+    /// Metres from the minimum corner of the sector `id.sector`, exact: the place of the star in
+    /// the universe is the sector of the galaxy plus this.
+    pub local: DVec3,
 }
 
 impl StarSpec {
@@ -120,7 +129,8 @@ pub struct Rings {
     /// the air.
     pub inner: f64,
     /// Outer radius in metres from the centre of the planet, at least 0.3 planet radii past the
-    /// inner one and at most 2.4: inside the Roche limit and inside the innermost moon.
+    /// inner one and at most 2.4: inside the Roche limit of the ring matter and inside the
+    /// innermost moon.
     pub outer: f64,
     /// Share of the light the rings stop, from 0.2 to 0.9.
     pub density: f32,
@@ -173,16 +183,14 @@ pub struct PlanetSpec {
 pub const CARRY: (f64, f64) = (0.25, 0.5);
 
 impl PlanetSpec {
-    /// Returns the Hill radius in metres around what it goes round: `a (m / 3 M)^(1/3)`.
+    /// Returns the Hill radius in metres around what it goes round, by [`hill::radius`].
     ///
     /// The gravitational parameter of what it goes round follows from its orbit, which is
     /// circular: `mu = (2 pi / T)^2 a^3`.
     pub fn hill_radius(&self) -> f64 {
-        let (a, rate) = (
-            self.orbit_radius,
-            std::f64::consts::TAU / self.orbit_seconds,
-        );
-        a * (self.mu() / (3.0 * rate * rate * a * a * a)).cbrt()
+        let a = self.orbit_radius;
+        let rate = std::f64::consts::TAU / self.orbit_seconds;
+        hill::radius(self.mu(), rate * rate * a * a * a, a)
     }
 
     /// Returns the gravitational parameter in cubic metres per second squared.

@@ -68,6 +68,7 @@ Things to fix:
 - Planet stats are hard to read. Make them readable at a glance.
 - Remove the dots for monuments on the map.
 - Markers over the world and on the screen border with an arrow, see request 10.
+- The HUD is contextual: it shows only what means something where the player is. No altitude or weather in open space, no orbit readings on foot, no cardinal compass between the stars. One function decides what is shown for each context (on foot, swimming, gliding, ship landed, ship in air, orbit, open space, between stars, warp, map).
 
 ## 4. Decisions waiting for the owner
 

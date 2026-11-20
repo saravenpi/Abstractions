@@ -7,12 +7,14 @@ use super::eye::Eye;
 use super::ground::Ground;
 use super::kind::{Ambient, Kind};
 use super::pool::{ABOVE, BELOW, HALF_WIDTH, Particle, Pool};
+use super::rate::Air;
 use super::respawn::{Spawn, respawn};
 use super::rng::Rng;
 use super::sense::Sensed;
+use super::sink::fall;
 use crate::render::{DayClock, daylight, smoothstep};
 use crate::space::Anchor;
-use crate::wind::Wind;
+use crate::wind::{Thickness, Wind};
 use crate::world::{SEA_LEVEL, Terrain};
 
 /// Most respawns, and so terrain lookups, in one frame.
@@ -23,7 +25,8 @@ const MAX_RESPAWNS: usize = 24;
 pub struct Env<'w> {
     time: Res<'w, Time>,
     wind: Res<'w, Wind>,
-    sensed: Res<'w, Sensed>,
+    sensed: ResMut<'w, Sensed>,
+    air: Res<'w, Thickness>,
     clock: Res<'w, DayClock>,
     terrain: Res<'w, Terrain>,
     anchor: Res<'w, Anchor>,
@@ -81,7 +84,14 @@ fn drift(particle: &mut Particle, transform: &mut Transform, env: &Env) {
     let gust = 0.6 * env.wind.air + env.wind.strength;
     let flutter =
         Vec3::new(t.sin(), 0.4 * (1.7 * t).cos(), (0.8 * t + 1.0).cos()) * motion.sway * gust;
-    let velocity = env.wind.velocity() * motion.wind + flutter - Vec3::Y * motion.fall;
+    let velocity = env.wind.velocity() * motion.wind + flutter
+        - Vec3::Y
+            * fall(
+                particle.kind,
+                particle.size,
+                env.terrain.globe().gravity() as f32,
+                env.air.0,
+            );
     transform.translation += env.eye.tilt * velocity * dt;
     transform.scale = scale_of(particle, transform.translation.distance(env.eye.at));
     transform.rotation = match (particle.kind, motion.spin > 0.0) {
@@ -111,7 +121,8 @@ fn ambient_of(env: &Env, height: f32) -> Ambient {
         daylight: daylight(env.clock.phase),
         wind: env.wind.strength,
         leaves: env.sensed.shed.leaves(),
-        flowers: env.sensed.shed.flowers(),
+        petals: env.sensed.shed.petals(),
+        pollen: env.sensed.shed.pollen(),
     }
 }
 
@@ -139,6 +150,8 @@ pub fn step(
         &mut MeshMaterial3d<StandardMaterial>,
     )>,
 ) {
+    let air = Air::around(env.wind.velocity().length(), env.air.0, &env.sensed.sky);
+    env.sensed.bypass_change_detection().shed.weigh(&air);
     let ground = Ground::new(&env.anchor, &env.terrain, &env.eye);
     let mut budget = MAX_RESPAWNS;
     let mut rng = *env.rng;

@@ -67,7 +67,7 @@ impl Kind {
         };
         match self {
             Kind::Hidden => m(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, (1.0, 3.0)),
-            Kind::Leaf => m(0.9, 0.5, 0.8, 2.2, 2.5, 0.12, (10.0, 16.0)),
+            Kind::Leaf => m(0.9, 0.7, 0.8, 2.2, 2.5, 0.12, (10.0, 16.0)),
             Kind::Petal => m(0.35, 0.6, 0.5, 1.4, 1.8, 0.07, (14.0, 22.0)),
             Kind::Snow => m(0.9, 0.6, 0.15, 1.0, 0.0, 0.05, (12.0, 18.0)),
             Kind::Dust => Motion {
@@ -114,8 +114,10 @@ pub struct Ambient {
     pub daylight: f32,
     /// Wind strength from 0 to 1.
     pub wind: f32,
-    /// How many leafy plants shed within reach, each weighted by how fast its leaves fall.
+    /// Leaves per second the plants within reach lose.
     pub leaves: f32,
-    /// How many plants in flower stand within reach.
-    pub flowers: f32,
+    /// Petals per second the plants within reach lose.
+    pub petals: f32,
+    /// Pollen specks per second the plants within reach let go.
+    pub pollen: f32,
 }

@@ -4,10 +4,7 @@ use bevy::math::DVec3;
 
 use super::route::Target;
 use crate::space::{Frame, UniPos};
-use crate::universe::{BodyId, GLY, GalaxyId, StarId, Universe};
-
-/// Distance from a star in metres within which the ship counts as inside its system.
-pub const SYSTEM_REACH: f64 = 0.1 * GLY;
+use crate::universe::{BodyId, GalaxyId, StarId, Universe, system_reach};
 
 /// Returns the universe position of the point `at` of `frame` at `time` seconds.
 ///
@@ -33,15 +30,34 @@ pub fn target_position(universe: &Universe, target: Target, time: f64) -> Option
 }
 
 /// Returns the planet, system and galaxy that the point `at` of `frame` lies inside.
+///
+/// A ship is inside a system within [`system_reach`] of its star, the one reach the sky, the
+/// ship and the map share. Reading the star is one sector fill, at most 12 stars.
 pub fn whereabouts(
     universe: &Universe,
     frame: Frame,
     at: DVec3,
 ) -> (Option<BodyId>, Option<StarId>, Option<GalaxyId>) {
+    whereabouts_with(universe, frame, at, &mut None)
+}
+
+/// Returns what [`whereabouts`] returns, keeping in `memo` the reach of the last star it read,
+/// so a ship that stays in one system reads its star once and not every frame.
+pub fn whereabouts_with(
+    universe: &Universe,
+    frame: Frame,
+    at: DVec3,
+    memo: &mut Option<(StarId, f64)>,
+) -> (Option<BodyId>, Option<StarId>, Option<GalaxyId>) {
     match frame {
         Frame::Surface(body) => (Some(body), Some(body.star), Some(body.star.galaxy)),
         Frame::System(star) => {
-            let inside = at.length() <= SYSTEM_REACH;
+            let reach = match *memo {
+                Some((id, reach)) if id == star => Some(reach),
+                _ => universe.star(star).map(|spec| system_reach(&spec)),
+            };
+            *memo = reach.map(|reach| (star, reach));
+            let inside = reach.is_some_and(|reach| at.length() <= reach);
             (None, inside.then_some(star), Some(star.galaxy))
         }
         Frame::Galaxy(id) => {

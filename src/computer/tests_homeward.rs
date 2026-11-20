@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use super::tests_rig::{game, run, tap};
 use super::*;
 use crate::space::{Anchor, Frame};
-use crate::universe::{GLY, GalaxyId, Universe};
+use crate::universe::{GALAXY_CELL, GalaxyId, LY, Universe};
 
 /// Returns a galaxy that exists about ten cells east of the home galaxy.
 fn far_galaxy(universe: &Universe) -> GalaxyId {
@@ -32,7 +32,7 @@ fn places(universe: &Universe) -> [(Frame, DVec3); 3] {
     let star = universe.star(home.star).unwrap();
     [
         (Frame::System(home.star), DVec3::X * 1.0e9),
-        (Frame::Galaxy(home.star.galaxy), star.pos + DVec3::X * GLY),
+        (Frame::Galaxy(home.star.galaxy), star.pos + DVec3::X * LY),
         (Frame::Galaxy(far_galaxy(universe)), DVec3::ZERO),
     ]
 }
@@ -57,9 +57,9 @@ fn the_way_home_picks_the_right_level() {
     assert!(way.distance((planet - system.1).normalize()) < 1e-9);
     assert!((gap - planet.distance(system.1)).abs() < 1.0);
     let (way, gap) = homeward(&universe, galaxy.0, galaxy.1, 0.0).unwrap();
-    assert!(way.distance(DVec3::NEG_X) < 1e-6 && (gap / GLY - 1.0).abs() < 1e-6);
+    assert!(way.distance(DVec3::NEG_X) < 1e-6 && (gap / LY - 1.0).abs() < 1e-6);
     let (way, gap) = homeward(&universe, lost.0, lost.1, 0.0).unwrap();
-    assert!(way.x < -0.9 && gap > 8.0e15, "{way} {gap}");
+    assert!(way.x < -0.9 && gap > 5.0 * GALAXY_CELL, "{way} {gap}");
     assert_eq!(
         homeward(&universe, Frame::Surface(home), DVec3::X, 0.0),
         None

@@ -4,7 +4,9 @@
 
 use bevy::math::{DVec3, Vec2};
 
-use crate::computer::{Board, Dot, FILL, Line, Tab, Target, ship_position, target_position};
+use crate::computer::{
+    Board, Dot, Line, Tab, Target, ship_position, system_point, target_position,
+};
 use crate::menus::{Marker, MarkerPlace};
 use crate::space::{Frame, UniPos};
 use crate::universe::{BodyId, Universe};
@@ -47,21 +49,13 @@ pub fn universe_at(
 }
 
 /// Returns the chart point of the place `at` on the chart of `board`, with `span` metres a
-/// chart unit on a far chart. A system is drawn around its star with
-/// the square root of the distance; far charts are drawn around the ship to scale.
+/// chart unit on a far chart. A system is drawn around its star with the logarithm of the
+/// distance, as [`system_point`] places it; far charts are drawn around the ship to scale.
 pub fn chart_point(board: &Board, span: Option<f64>, at: UniPos) -> Option<Vec2> {
-    let lines = &board.lines;
     if board.tab != Tab::System {
         return span.map(|span| flat(at - board.ship) / span as f32);
     }
-    let star = lines
-        .iter()
-        .find(|line| matches!(line.target, Target::Star(_)));
-    let origin = star.or(lines.first())?.at;
-    let far = lines.iter().map(|line| flat(line.at - origin).length());
-    let reach = far.fold(1.0, f32::max);
-    let gap = flat(at - origin);
-    Some(gap.normalize_or_zero() * (gap.length() / reach).min(1.0).sqrt() * FILL)
+    system_point(&board.lines, at)
 }
 
 /// What a view of the universe needs to place markers: the world, its frame and the time.

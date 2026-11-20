@@ -49,6 +49,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The charts follow the real scale. A visited system reveals the 17 or so stars within 10 light-years, not 450. A system chart spreads its orbits by the logarithm of the distance, so the innermost planet no longer sits on its star. The card and the course line give a trip time from the warp tiers of the drive.
 - A new player starts in third person on foot, and in the cockpit in the ship. The game keeps the last view you chose for each.
 - The robot stops kicking while its boots jet it through the water: its legs stay straight behind it, and the kick comes back as the jet winds down.
 - Leaves, petals and pollen fall when the world says so. In calm summer air a tree loses almost nothing. Gusts tear leaves off in small bursts, harder the stronger the wind and the thicker the air, and rain and storms knock more down. Deciduous trees shed heavily in autumn and are bare in winter, evergreens drop a slow trickle all year, and dry plants shed more. Petals fall only while a plant flowers, pollen only on dry days with some wind. Leaves sink at the speed their size, the air and the planet's gravity give and drift downwind.

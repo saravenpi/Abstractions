@@ -13,6 +13,7 @@ use super::route::Target;
 use super::rows::{Line, View};
 use super::tab::Tab;
 use super::track::Known;
+use super::trip::{pace, same_galaxy};
 use crate::render::GameCamera;
 use crate::ship::{Ship, ShipTelemetry};
 use crate::space::{Anchor, Clock, Frame, Location, UniPos};
@@ -111,17 +112,19 @@ impl Scene<'_, '_> {
         here(&self.universe, self.anchor.frame, self.anchor.origin)
     }
 
-    /// Returns the course line: the destination, its distance and a rough time to get there at
-    /// the speed of the ship.
+    /// Returns the course line: the destination, its distance and a rough time to get there: the
+    /// trip of the warp drive from where the ship is, or at the speed of the ship when that is
+    /// faster, as in warp.
     pub(super) fn route(&self, destination: Option<Target>) -> String {
         let name = destination.map(|target| target.name(&self.universe));
         let at = destination
             .and_then(|target| target_position(&self.universe, target, self.clock.seconds));
         let gap = at.map_or(0.0, |at| at.distance(self.ship()));
-        let speed = self
+        let own = self
             .telemetry
             .as_ref()
             .map_or(0.0, |ship| ship.orbital_speed);
-        course(name.as_deref().map(|name| (name, gap)), speed)
+        let tier = destination.map_or(0.0, |target| pace(gap, same_galaxy(self.here(), target)));
+        course(name.as_deref().map(|name| (name, gap)), own.max(tier))
     }
 }

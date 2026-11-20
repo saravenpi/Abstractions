@@ -68,7 +68,7 @@ pub use save::Logbook;
 pub use spawn::airframe;
 pub use telemetry::{ShipTelemetry, WarpState};
 pub use view::{HULL_RADIUS, SEAT, seated};
-pub use warp::Warp;
+pub use warp::{CRUISE_CAP, GALAXY_CAP, JUMP_CAP, RAMP, SPOOL_TIME, Warp};
 
 use bevy::prelude::*;
 

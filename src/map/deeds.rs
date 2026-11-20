@@ -8,7 +8,7 @@ use bevy::prelude::*;
 
 use crate::computer::{
     Act, Ask, Board, Destination, Keys, MapView, NO_PLACE, RouteStatus, Target, arrival, card_line,
-    running, selected,
+    pace, running, same_galaxy, selected,
 };
 use crate::settings::{Keymap, Persistent, Settings};
 use crate::ship::ShipTelemetry;
@@ -136,6 +136,18 @@ impl Source<'_> {
         pick != last || board.is_changed() || course.is_changed() || route.is_changed() || seat
     }
 
+    /// Returns the time to get to `target`: the trip of the warp drive from where the ship is,
+    /// or at the speed of the ship when that is faster, as in warp.
+    fn eta(&self, target: Target) -> Option<String> {
+        let speed = self
+            .telemetry
+            .as_ref()
+            .map_or(0.0, |ship| ship.orbital_speed);
+        let line = self.board.lines.iter().find(|line| line.target == target)?;
+        let tier = pace(line.distance, same_galaxy(self.board.here, target));
+        arrival(line.distance, speed.max(tier))
+    }
+
     /// Returns what the card offers for `shown`, and the name of the Go key.
     fn offer(&self, shown: Option<Target>) -> (Offer, String) {
         let map = self
@@ -147,12 +159,7 @@ impl Source<'_> {
             return (offer(None), keys.go);
         };
         let name = target.name(universe);
-        let speed = self
-            .telemetry
-            .as_ref()
-            .map_or(0.0, |ship| ship.orbital_speed);
-        let line = self.board.lines.iter().find(|line| line.target == target);
-        let eta = line.and_then(|line| arrival(line.distance, speed));
+        let eta = self.eta(target);
         let seated = self
             .location
             .as_ref()

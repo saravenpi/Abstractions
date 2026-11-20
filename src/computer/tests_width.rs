@@ -13,7 +13,7 @@ use super::sift::{FILTER_CHARS, Sort, summary};
 use super::view::Part;
 use super::{Line, Target};
 use crate::ui::theme;
-use crate::universe::{BodyId, GLY};
+use crate::universe::{BodyId, LY};
 
 /// The longest name a row can carry: a Greek prefix, a long made-up word, a moon numeral and
 /// the home label.
@@ -49,16 +49,16 @@ fn a_result_row_fits_the_panel() {
     assert_eq!(clip("Kolva", TITLE_CHARS), "Kolva");
 }
 
-/// Every distance from a metre to a million game light-years fits the distance column.
+/// Every distance from a metre to a million light-years fits the distance column.
 #[test]
 fn every_distance_fits_its_column() {
     let mut metres = 1.0;
-    while metres < 1e6 * GLY {
+    while metres < 1e6 * LY {
         let shown = distance(metres);
         assert!(shown.chars().count() <= DISTANCE_CHARS, "{shown}");
         metres *= 1.37;
     }
-    assert!(distance(102_007.0 * GLY).chars().count() <= DISTANCE_CHARS);
+    assert!(distance(102_007.0 * LY).chars().count() <= DISTANCE_CHARS);
 }
 
 /// The line that counts the results fits beside the heading of the search, whatever the

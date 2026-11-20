@@ -48,6 +48,16 @@ impl Hitstop {
         self.left > 0.0 && self.attacker == Some(body)
     }
 
+    /// Returns the unit direction of the blow in the frame of the animal struck: the axis its parts
+    /// shake along.
+    fn way(&self, roots: &Query<&GlobalTransform>) -> Vec3 {
+        self.victim
+            .and_then(|v| roots.get(v).ok())
+            .map(|g| g.rotation().inverse() * self.along)
+            .filter(|w| w.length_squared() > 1e-6)
+            .map_or(Vec3::X, Vec3::normalize)
+    }
+
     /// Returns the share of the shake left, 1 at the start to 0 at the end, flipping every frame.
     fn shake(&self) -> f32 {
         let flip = if self.frame.is_multiple_of(2) {
@@ -127,12 +137,7 @@ pub fn hold(
     let done = stop.left <= 0.0;
     let share = if done { 0.0 } else { stop.shake() };
     let victim = stop.victim;
-    let way = victim
-        .and_then(|v| roots.get(v).ok())
-        .map(|g| g.rotation().inverse() * stop.along)
-        .filter(|w| w.length_squared() > 1e-6)
-        .map_or(Vec3::X, Vec3::normalize);
-    let offset = way * SHAKE * share;
+    let offset = stop.way(&roots) * SHAKE * share;
     let delta = offset - stop.shaken;
     stop.shaken = offset;
     for child in victim

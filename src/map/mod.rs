@@ -35,6 +35,8 @@ mod pins_draw;
 mod places;
 mod planet;
 mod roam;
+#[cfg(test)]
+mod rules_tests;
 mod side;
 mod side_act;
 mod side_show;
@@ -95,7 +97,7 @@ fn screen(app: &mut App) {
         planet_systems(),
         nav::systems(),
         (pins::collect, pins_draw::draw),
-        (planet::show, planet::picture),
+        (planet::show, planet::picture, planet::say),
         (caption::caption_text, caption::coords_text),
         (side_show::write, deeds::write),
         fade::fade,

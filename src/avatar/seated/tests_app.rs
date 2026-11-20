@@ -48,6 +48,7 @@ fn crew(app: &mut App) -> Entity {
     let shown = Levers {
         stick: Vec3::new(0.5, 0.0, -1.0),
         throttle: 0.7,
+        ..default()
     };
     world.spawn(Cockpit {
         shown,

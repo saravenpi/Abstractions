@@ -19,6 +19,7 @@ fn swept(i: usize) -> Levers {
     Levers {
         stick: Vec3::new(axis(1), axis(3), axis(9)),
         throttle: (i / 27 % 3) as f32 * 0.5,
+        ..default()
     }
 }
 

@@ -11,6 +11,8 @@ mod sit;
 mod tests;
 #[cfg(test)]
 mod tests_app;
+#[cfg(test)]
+mod tests_feet;
 
 use std::f32::consts::PI;
 
@@ -20,7 +22,7 @@ use super::pose::{Core, Limb, Pose};
 use super::rig::{Seg, globals};
 use super::tune::{FOREARM, UPPER_ARM};
 use crate::ship::SEAT;
-use crate::ship::cockpit::Levers;
+use crate::ship::cockpit::{Levers, PEDAL_REACH};
 use crate::view::FACE;
 
 /// Forward bend of the torso over the pelvis in the seat, toward the controls.
@@ -85,6 +87,14 @@ pub fn seated(grips: [Vec3; 2]) -> Pose {
         pose.sides[side][Limb::Elbow as usize] = elbow;
     }
     pose
+}
+
+/// Returns `pose` with the boots turned by the rudder pedals: the toe of the pushed boot goes
+/// down by the angle the pedal turns, the other boot goes up by as much.
+pub fn shod(pose: Pose, levers: &Levers) -> Pose {
+    let [left, right] = levers.pedals();
+    let (a, b) = (pose.limb(Limb::Ankle, 0), pose.limb(Limb::Ankle, 1));
+    pose.pair(Limb::Ankle, a + left * PEDAL_REACH, b + right * PEDAL_REACH)
 }
 
 /// Registers the systems that seat the body: what is drawn of it before the animation, the

@@ -6,8 +6,10 @@
 //! the held tool, and [`ui`] is the pack screen, the workshop and the hotbar.
 
 pub mod build;
+pub mod fall;
 pub mod harvest;
 pub mod matter;
+pub mod mend;
 pub mod pack;
 #[cfg(test)]
 mod stage;
@@ -22,9 +24,10 @@ pub use wield::{Held, Hold, Worn};
 /// Registers the crafting area: the pack and its save, the held tool and its wear, harvesting and
 /// the screens.
 pub(super) fn plugin(app: &mut App) {
-    let changed = resource_changed::<Pack>;
+    let changed = resource_changed::<Pack>.or_else(resource_changed::<crate::condition::Condition>);
     app.init_resource::<Pack>()
         .init_resource::<Burden>()
+        .init_resource::<crate::condition::Condition>()
         .init_resource::<Held>()
         .add_message::<Worn>()
         .add_message::<harvest::Harvest>()
@@ -39,5 +42,7 @@ pub(super) fn plugin(app: &mut App) {
             )
                 .chain(),
         );
+    fall::plugin(app);
+    mend::plugin(app);
     ui::plugin(app);
 }

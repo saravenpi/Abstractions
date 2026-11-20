@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use super::detail::Detail;
 #[cfg(test)]
 use super::lane::Lane;
+use crate::world::rocks::Stand;
 
 /// Chunks around the focus, in every direction, that carry colliders.
 const SOLID_RADIUS: i32 = 1;
@@ -58,6 +59,8 @@ pub struct Loaded {
     pub shown: bool,
     /// Level of detail, ground cover and structure state.
     pub detail: Detail,
+    /// The big props and the rocks that stand in the chunk.
+    pub stand: Stand,
 }
 
 impl Loaded {

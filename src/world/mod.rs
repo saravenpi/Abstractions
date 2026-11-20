@@ -17,6 +17,7 @@ mod meter;
 mod propmesh;
 mod props;
 mod reserve;
+pub mod rocks;
 mod scatter;
 mod sea;
 mod shapes;
@@ -27,7 +28,7 @@ mod terrain;
 
 pub use biome::{Biome, ground_rgb};
 pub use blades::{BladeAssets, BladeMaterial, Cropped, TurfUniform, turf_at};
-pub use chunks::{Calm, Reach, STEPS as RENDER_STEPS, Sited, dither, leaf_arc};
+pub use chunks::{Calm, Chunks, Reach, STEPS as RENDER_STEPS, Sited, dither, leaf_arc};
 pub use enter::enter_planet;
 pub use focus::{Link, spin};
 pub use globe::Globe;
@@ -174,14 +175,30 @@ pub(super) fn plugin(app: &mut App) {
         .init_resource::<chunks::Calm>()
         .insert_resource(chunks::Reach::of(None))
         .init_resource::<Meter>()
+        .init_resource::<rocks::Taken>()
+        .add_message::<rocks::RockTaken>()
         .add_systems(Startup, chunks::setup_assets)
         .add_systems(
             OnEnter(Screen::Loading),
-            (begin_world, sea::spawn_sea).chain(),
+            (rocks::load, begin_world, sea::spawn_sea).chain(),
+        )
+        .add_systems(
+            Update,
+            rocks::store.run_if(resource_changed::<rocks::Taken>),
         )
         .add_systems(OnEnter(Screen::Title), end_world);
     app.add_plugins((ground::plugin, blades::plugin));
     stream_systems(app);
+    app.add_systems(
+        Update,
+        (
+            chunks::note.run_if(on_message::<rocks::RockTaken>),
+            chunks::mend.run_if(chunks::mending),
+        )
+            .chain()
+            .after(chunks::refine)
+            .run_if(streaming),
+    );
 }
 
 /// Registers the streaming chain: the planet and face under the focus, the quadtree, the detail

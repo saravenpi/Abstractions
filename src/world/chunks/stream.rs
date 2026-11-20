@@ -49,6 +49,7 @@ impl Chunks {
     fn start(&mut self, wanted: Vec<ChunkId>, around: &Around, spawner: &Spawner) {
         let pool = AsyncComputeTaskPool::get();
         let (reach, rings) = (spawner.reach(), spawner.rings());
+        let taken = spawner.taken.as_deref().cloned().unwrap_or_default();
         let room = reach.tasks().saturating_sub(self.pending.len());
         let fits = |(i, id): &(usize, ChunkId)| *i < room || around.solid(*id);
         for (_, id) in wanted.into_iter().enumerate().filter(fits) {
@@ -57,7 +58,8 @@ impl Chunks {
             let rank = around.rank(id);
             let lod = rings.lod(rank).max(around.pace.finest());
             let turfed = around.pace.covers() && rank <= reach.cover() + 1;
-            let build = async move { generate(&terrain, coord, lod, turfed) };
+            let taken = taken.clone();
+            let build = async move { generate(&terrain, coord, (lod, turfed), &taken) };
             self.pending.insert(id, pool.spawn(build));
         }
     }

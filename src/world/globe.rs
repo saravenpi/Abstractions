@@ -6,6 +6,7 @@ mod climate;
 mod craters;
 mod cube;
 mod datum;
+mod elevation;
 pub mod far;
 mod flat;
 mod flows;
@@ -14,8 +15,10 @@ mod ground;
 mod id;
 mod landform;
 mod life;
+mod plates;
 pub mod quadtree;
 mod record;
+mod relief;
 mod reserve;
 mod roll;
 mod scale;
@@ -31,6 +34,8 @@ mod tests;
 #[cfg(test)]
 mod tests_climate;
 #[cfg(test)]
+mod tests_coast;
+#[cfg(test)]
 mod tests_datum;
 #[cfg(test)]
 pub(in crate::world) mod tests_deck;
@@ -39,16 +44,23 @@ mod tests_flows;
 #[cfg(test)]
 mod tests_landform;
 #[cfg(test)]
+mod tests_planet;
+#[cfg(test)]
+mod tests_planet_cost;
+#[cfg(test)]
 mod tests_reach;
 #[cfg(test)]
 mod tests_record;
 #[cfg(test)]
 mod tests_relief;
+#[cfg(test)]
+mod tests_scales;
 
 pub use chart::{BLOCK, Chart};
 pub use cube::Face;
 pub use grain::Grain;
 pub use id::ChunkId;
+pub use plates::{Boundary, Crust, Interior, Plates, Sample as PlateSample};
 pub use reserve::Reserve;
 pub use season::MEAN_SEASON;
 pub(in crate::world) use site::Site;
@@ -57,6 +69,7 @@ pub use tangent::Tangent;
 use std::sync::Arc;
 
 use atlas::Atlas;
+use relief::Relief;
 use season::Season;
 
 use super::biome::Climate;
@@ -78,8 +91,9 @@ pub struct Globe {
     reserve: Option<Reserve>,
     /// What the physics says about the planet, and its class.
     record: PlanetRecord,
-    /// Raw ground height of the sea level, in metres: what every height is measured from.
-    datum: f32,
+    /// Where the sea stands in the local ground, and the large shape of the ground on a planet big enough
+    /// for plates.
+    relief: Relief,
     /// The ground rules the record gives.
     lands: Lands,
     /// Metres from the centre past which the sky draws the planet instead of the world.
@@ -109,7 +123,7 @@ impl Globe {
             climate: Climate::new(seed),
             reserve: None,
             record,
-            datum: 0.0,
+            relief: Relief::of(seed, [radius, gravity], &record, None),
             lands: Lands::of(&record),
             handover: far::handover(radius, None),
             setting: climate::setting(seed, radius, gravity),

@@ -1,6 +1,15 @@
 //! The sea datum: how high the liquid of a planet stands for the share of the surface it covers.
 
+use std::f64::consts::PI;
+
+use bevy::math::DVec3;
+
+use super::elevation::tune::SHORE;
 use crate::universe::PlanetRecord;
+
+/// Sites the shore of a large planet is measured on: enough to place the share of its low ground within
+/// half a percent.
+const SITES: u32 = 16_384;
 
 /// Sea heights in raw ground metres by ocean share: each entry is `(share, height)`, the share of the sphere
 /// whose raw ground lies at or below that height.
@@ -43,4 +52,32 @@ pub fn datum(ocean: f64) -> Option<f32> {
     let ((s0, h0), (s1, h1)) = (LEVELS[k], LEVELS[k + 1]);
     let t = ((share - s0) / (s1 - s0)) as f32;
     Some(h0 + (h1 - h0) * t)
+}
+
+/// Returns the unit directions the shore of a large planet is measured on, spread evenly over the sphere
+/// on a golden spiral.
+pub fn sites() -> impl Iterator<Item = DVec3> {
+    let golden = PI * (3.0 - 5f64.sqrt());
+    (0..SITES).map(move |i| {
+        let y = 1.0 - 2.0 * (f64::from(i) + 0.5) / f64::from(SITES);
+        let (ring, turn) = ((1.0 - y * y).sqrt(), golden * f64::from(i));
+        DVec3::new(ring * turn.cos(), y, ring * turn.sin())
+    })
+}
+
+/// Returns the offset at which the share `low(offset)` of a planet at or under the sea is `lowland`: the
+/// datum of a large planet, measured instead of tabled. `low` must fall as the offset grows.
+///
+/// The offset is halved in on between [`SHORE`]'s two ends, to a millionth of their span. A share no
+/// offset reaches gives the end closest to it.
+pub fn shore(lowland: f64, low: impl Fn(f32) -> f64) -> f32 {
+    let (mut sea, mut land) = SHORE;
+    for _ in 0..22 {
+        let mid = 0.5 * (sea + land);
+        match low(mid) > lowland {
+            true => sea = mid,
+            false => land = mid,
+        }
+    }
+    0.5 * (sea + land)
 }

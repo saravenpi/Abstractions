@@ -46,8 +46,9 @@ pub fn ground(north: f64, east: f64) -> DVec3 {
     (DVec3::X + DVec3::Y * up - DVec3::Z * over).normalize() * radius
 }
 
-/// Returns default settings stored in a scratch directory of its own for the test `tag`.
-fn settings(tag: &str) -> (std::path::PathBuf, Persistent<Settings>) {
+/// Inserts what the interface reads from the other modules, at sixty frames per second, with
+/// default settings stored in a scratch directory of its own for the test `tag`.
+fn stubs(app: &mut App, tag: &str) {
     let name = format!("abstractions-minimap-{tag}-{}", std::process::id());
     let dir = std::env::temp_dir().join(name);
     let _ = std::fs::remove_dir_all(&dir);
@@ -58,12 +59,6 @@ fn settings(tag: &str) -> (std::path::PathBuf, Persistent<Settings>) {
         .default(Settings::default())
         .build()
         .unwrap();
-    (dir, stored)
-}
-
-/// Inserts what the interface reads from the other modules, at sixty frames per second.
-fn stubs(app: &mut App, tag: &str) {
-    let (dir, stored) = settings(tag);
     app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
         16,
     )))

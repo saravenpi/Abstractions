@@ -21,24 +21,16 @@ fn star_temperature_follows_the_class() {
     ];
     let mut stars: Vec<StarSpec> = sample().into_iter().map(|(_, star)| star).collect();
     stars.sort_by(|a, b| a.mass.total_cmp(&b.mass));
-    assert!(
-        stars
-            .windows(2)
-            .all(|w| w[0].temperature <= w[1].temperature)
-    );
-    assert!(
-        stars
-            .windows(2)
-            .all(|w| w[0].class as u8 >= w[1].class as u8)
-    );
+    let steady = |w: &[StarSpec]| {
+        w[0].temperature <= w[1].temperature && w[0].class as u8 >= w[1].class as u8
+    };
+    assert!(stars.windows(2).all(steady));
     for (class, (low, high)) in classes {
         let of = stars.iter().filter(|s| s.class == class);
-        let found = of.clone().count();
         assert!(
             of.clone()
                 .all(|s| low <= s.temperature && s.temperature < high)
         );
-        println!("{class:?}: {found} stars, {low} to {high} K");
     }
     assert_eq!((star::light(1.0), star::size(1.0)), (1.0, 1.0));
     assert!((star::life(1.0) - 1.0e10).abs() < 1.0);

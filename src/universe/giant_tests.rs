@@ -100,6 +100,23 @@ fn solid_planets_keep_their_draws() {
     }
 }
 
+/// The air heights of every gas giant are those its record gives them at its cloud deck, and
+/// its spin lies between the fastest its size allows and the slowest a giant is born with.
+#[test]
+fn giants_have_the_air_and_spin_their_size_gives() {
+    let within = |x: f64, range: (f64, f64)| range.0 <= x && x <= range.1;
+    for system in systems() {
+        for p in system.planets.iter().filter(|p| giant(p)) {
+            let fastest = FASTEST * breakup(p.radius, p.gravity);
+            assert!(p.locked() || within(p.day_seconds, (fastest, SLOWEST_GIANT)));
+            assert_eq!(
+                [p.atmosphere_height, p.cloud_base, p.cloud_top],
+                heights(&p.record, p.gravity, p.radius)
+            );
+        }
+    }
+}
+
 /// Every gas giant has its radius, gravity, spin, air and cloud deck record inside their ranges.
 #[test]
 fn giants_stay_in_range() {
@@ -117,12 +134,6 @@ fn giants_stay_in_range() {
                 within(mass, span) && within(p.gravity, (4.8, 52.0)),
                 "{p:?}"
             );
-            assert_eq!(
-                [p.atmosphere_height, p.cloud_base, p.cloud_top],
-                heights(&p.record, p.gravity, p.radius)
-            );
-            let fastest = FASTEST * breakup(p.radius, p.gravity);
-            assert!(p.locked() || within(p.day_seconds, (fastest, SLOWEST_GIANT)));
             assert_eq!(r.flux, zone::flux(system.star.luminosity, p.orbit_radius));
             assert_eq!(
                 (r.pressure, r.ocean, r.albedo),

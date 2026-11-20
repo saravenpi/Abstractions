@@ -112,13 +112,8 @@ fn trees_are_lower_on_a_heavy_world() {
 /// was never given keeps the hand-made tables.
 #[test]
 fn home_plants_its_life() {
-    let given = Arc::new(
-        Globe::new(LUSH, EARTH_RADIUS, STANDARD_GRAVITY).with_life(Some(garden(
-            9,
-            &[0, 2],
-            vec![],
-        ))),
-    );
+    let life = Some(garden(9, &[0, 2], vec![]));
+    let given = Arc::new(Globe::new(LUSH, EARTH_RADIUS, STANDARD_GRAVITY).with_life(life));
     let plain = Arc::new(Globe::new(LUSH, EARTH_RADIUS, STANDARD_GRAVITY));
     let (a, b) = (
         chunks(&given, Zone::Centre, 15, 4),

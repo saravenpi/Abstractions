@@ -8,6 +8,10 @@ use super::spec::StarSpec;
 use super::units::{EARTH_RADIUS, STANDARD_GRAVITY, SUN_MASS};
 use super::{air, class, climate, volatiles, zone};
 
+mod body;
+
+pub(super) use body::Body;
+
 /// The kind of world a planet is, decided by its record.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PlanetClass {
@@ -100,31 +104,6 @@ pub struct PlanetRecord {
     /// The gases of the air with their shares, as the planet has them without life. A planet
     /// whose life splits water breathes [`air::Mix::breathed`] of it.
     pub mix: air::Mix,
-}
-
-/// What a body is made of and where, as its record needs it.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub(super) struct Body {
-    /// Surface gravity in metres per second squared.
-    pub gravity: f64,
-    /// Radius in metres.
-    pub radius: f64,
-    /// Radius in metres of its orbit around the star, its planet's for a moon.
-    pub orbit: f64,
-    /// Heat of the tides, in units of flux.
-    pub tide: f64,
-}
-
-impl Body {
-    /// Returns a body that no tide heats.
-    pub fn new(gravity: f64, radius: f64, orbit: f64) -> Self {
-        Self {
-            gravity,
-            radius,
-            orbit,
-            tide: 0.0,
-        }
-    }
 }
 
 impl PlanetRecord {

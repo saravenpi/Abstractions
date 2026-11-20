@@ -36,9 +36,8 @@ fn moons_stay_in_range() {
     }
 }
 
-/// Tides heat only the regular moons of gas giants, 2 to the power 7.5 times less at twice the
-/// distance, and a moon placed like Io around a planet like Jupiter gets the heat of Io. The
-/// hottest moons are lava worlds, air or not, and no moon is a gas giant.
+/// Tides heat only the regular moons of gas giants. The hottest moons are lava worlds, air or
+/// not, and no moon is a gas giant.
 #[test]
 fn tides_heat_close_moons() {
     let mut classes = [0u32; 7];
@@ -56,6 +55,12 @@ fn tides_heat_close_moons() {
     println!("moon classes, ocean to gas giant: {classes:?}");
     assert!(classes[PlanetClass::Lava as usize] > 0, "{classes:?}");
     assert_eq!(classes[PlanetClass::GasGiant as usize], 0);
+}
+
+/// A moon placed like Io around a planet like Jupiter gets the heat of Io, and 2 to the power
+/// 7.5 times less at twice the distance.
+#[test]
+fn a_moon_like_io_gets_the_heat_of_io() {
     let (_, jupiter, _) = hosts().swap_remove(0);
     let jupiter = PlanetSpec {
         radius: 6.99e7,

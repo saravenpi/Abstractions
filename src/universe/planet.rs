@@ -8,7 +8,7 @@ use super::record::{Body, PlanetRecord};
 use super::spec::{GRAVITATION, PlanetSpec, StarSpec};
 use super::spin::{self, QUALITY, SLOWEST, Turning};
 use super::units::EARTH_RADIUS;
-use super::{giant, moon, names, rings};
+use super::{air, giant, moon, names, rings};
 
 /// Smallest and largest sea level radius of a solid planet in metres: from a little under the
 /// Moon to nearly twice the Earth.
@@ -24,19 +24,6 @@ const SQUEEZE: f64 = 0.36;
 
 /// Child of the planet seed the record draws from, so the draws of the body itself never shift.
 pub(super) const RECORD_STREAM: u64 = 1;
-
-/// Atmosphere top, cloud base and cloud top of a planet the size of the Earth, in metres above
-/// sea level.
-const EARTH_AIR: [f64; 3] = [4000.0, 900.0, 1500.0];
-
-/// Returns the atmosphere top, cloud base and cloud top of a planet in metres above sea level.
-///
-/// The three heights are 4,000, 900 and 1,500 m times the square root of the radius over the
-/// radius of the Earth.
-pub fn air(radius: f64) -> [f64; 3] {
-    let scale = (radius / EARTH_RADIUS).sqrt();
-    EARTH_AIR.map(|height| height * scale)
-}
 
 /// Returns the seconds a circular orbit of `radius` metres takes around a body of parameter `mu`.
 pub fn orbit_seconds(mu: f64, radius: f64) -> f64 {
@@ -101,12 +88,14 @@ fn drawn(rng: &mut Rng) -> Turning {
 ///
 /// Its size, gravity and spin are those [`drawn`] for it, and the spin is locked to the orbit
 /// where the tides of the star had time to. The record follows from the star, the orbit, the
-/// gravity and the size, with its own draws from a child of the seed.
+/// gravity and the size, with its own draws from a child of the seed, and the air heights from
+/// the record, see [`air::heights`].
 fn solid(star: &StarSpec, index: u8, orbit: f64, seed: u64) -> PlanetSpec {
     let mut rng = Rng::new(seed);
     let born = drawn(&mut rng);
-    let [atmosphere_height, cloud_base, cloud_top] = air(born.radius);
     let body = Body::new(born.gravity, born.radius, orbit);
+    let record = PlanetRecord::derive(star, &body, hash::child(seed, RECORD_STREAM));
+    let [atmosphere_height, cloud_base, cloud_top] = air::heights(&record, born.gravity, born.radius);
     PlanetSpec {
         id: BodyId {
             star: star.id,
@@ -124,7 +113,7 @@ fn solid(star: &StarSpec, index: u8, orbit: f64, seed: u64) -> PlanetSpec {
         atmosphere_height,
         cloud_base,
         cloud_top,
-        record: PlanetRecord::derive(star, &body, hash::child(seed, RECORD_STREAM)),
+        record,
         host: None,
         moons: 0,
         rings: None,

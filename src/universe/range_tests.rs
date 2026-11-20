@@ -78,7 +78,10 @@ fn systems_stay_in_range() {
 const GRAVITY: [(f64, f64); 2] = [(1.28, 41.3), (4.8, 52.0)];
 
 /// Every planet of the sample has a radius, gravity, year and air inside its range, those of
-/// solid worlds or those of gas giants. It has no host and at most 6 moons.
+/// solid worlds or those of gas giants. Its air holds together: a scale height no planet lets
+/// go of, clouds that top out between one scale height and the height where rising air runs
+/// out of pressure, and a cloud base above the ground, at most half way up to that top. It has
+/// no host and at most 6 moons.
 #[test]
 fn planets_stay_in_range() {
     for (u, star) in sample() {
@@ -92,8 +95,14 @@ fn planets_stay_in_range() {
             assert_eq!(p.mu(), p.gravity * p.radius * p.radius);
             assert_eq!(
                 [p.atmosphere_height, p.cloud_base, p.cloud_top],
-                air(p.radius)
+                heights(&p.record, p.gravity, p.radius)
             );
+            let (scale, slack) = (p.scale_height(), 1.0 + 1e-9);
+            let held = scale > 0.0 && scale <= slack * p.radius / 20.0;
+            let topped =
+                scale <= slack * p.cloud_top && p.cloud_top <= scale / p.record.mix.kappa();
+            assert!(held && topped && 0.0 < p.cloud_base, "{p:?}");
+            assert!(p.cloud_base <= 0.5 * p.cloud_top, "{p:?}");
             assert!(p.cloud_base < p.cloud_top && p.cloud_top < p.atmosphere_height);
             assert_eq!(p.name, names::planet(&star.name, p.id.index));
             assert!(p.host.is_none() && p.moons <= 6 && !p.id.is_moon());

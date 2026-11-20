@@ -55,12 +55,13 @@ pub const BELLY_DRAG: f32 = 0.072;
 pub const THIN_AIR: f32 = 0.15;
 
 /// Height above the sea, as a share of the atmosphere height, up to which powered flight still
-/// holds its height: about 1,500 m on the home planet.
+/// holds its height: about 3 scale heights, where 5 percent of the air is left. That is 26 km
+/// on a planet with the 8.4 km scale height of the Earth.
 ///
 /// It is not a limit applied anywhere: it is what [`THIN_AIR`], the wing and the thrust give,
 /// written down and held by a test. To let the wingsuit climb higher, lower [`THIN_AIR`] and
 /// raise this number with it.
-pub const CEILING_SHARE: f32 = 0.38;
+pub const CEILING_SHARE: f32 = 0.253;
 
 /// Booster thrust in powered flight, as a share of the local weight.
 pub const THRUST_G: f32 = 0.9;

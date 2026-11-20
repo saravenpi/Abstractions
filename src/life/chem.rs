@@ -1,6 +1,7 @@
 //! Biochemistry: one roll per living planet.
 
 use super::{Chemistry, Energy, Solvent, Structure, World};
+use crate::universe::Mix;
 use crate::universe::hash::{Rng, child};
 
 mod liquid;
@@ -100,4 +101,15 @@ pub struct Setting {
     pub chemistry: Chemistry,
     /// How far evolution got.
     pub rung: super::Rung,
+}
+
+/// Returns the air of a planet whose life has `chemistry`, from the mix `born` it has without life.
+///
+/// Life that lives in water on starlight splits water and fills the air with oxygen, see
+/// [`Mix::breathed`]. Any other life leaves the air as it found it.
+pub fn air(chemistry: &Chemistry, born: Mix) -> Mix {
+    match (chemistry.solvent, chemistry.energy) {
+        (Solvent::Water, Energy::Light) => born.breathed(),
+        _ => born,
+    }
 }

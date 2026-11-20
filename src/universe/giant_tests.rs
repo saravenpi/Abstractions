@@ -117,6 +117,10 @@ fn giants_stay_in_range() {
                 within(mass, span) && within(p.gravity, (4.8, 52.0)),
                 "{p:?}"
             );
+            assert_eq!(
+                [p.atmosphere_height, p.cloud_base, p.cloud_top],
+                heights(&p.record, p.gravity, p.radius)
+            );
             let fastest = FASTEST * breakup(p.radius, p.gravity);
             assert!(p.locked() || within(p.day_seconds, (fastest, SLOWEST_GIANT)));
             assert_eq!(r.flux, zone::flux(system.star.luminosity, p.orbit_radius));

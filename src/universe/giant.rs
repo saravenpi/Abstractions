@@ -1,5 +1,6 @@
 //! Gas giants: planets that formed beyond the frost line on a core heavy enough to gather gas.
 
+use super::air;
 use super::hash::{self, Rng};
 use super::planet;
 use super::record::PlanetRecord;
@@ -59,8 +60,8 @@ fn gravity(radius: f64, size: f64, pull: f64) -> f64 {
 ///
 /// Radii are spread evenly on a log scale over [`GIANT_RADIUS`] and the gravity follows the
 /// mass, see [`gravity`]. A giant turns fast, see [`SLOWEST_GIANT`], unless the tides of its
-/// star locked it. The air heights scale with the radius as [`planet::air`] scales them, from
-/// the cloud deck. The record is [`PlanetRecord::giant`], drawn from `record_seed`.
+/// star locked it. The record is [`PlanetRecord::giant`], drawn from `record_seed`, and the air
+/// heights follow from it as [`air::heights`] gives them, from the cloud deck.
 pub(super) fn grow(star: &StarSpec, planet: PlanetSpec, record_seed: u64) -> PlanetSpec {
     let [_, size, pull, turn] = draws(planet.seed);
     let radius = GIANT_RADIUS.0 * (GIANT_RADIUS.1 / GIANT_RADIUS.0).powf(size);
@@ -71,7 +72,8 @@ pub(super) fn grow(star: &StarSpec, planet: PlanetSpec, record_seed: u64) -> Pla
         day: spin::born(turn, radius, gravity, SLOWEST_GIANT),
         quality: QUALITY.1,
     };
-    let [atmosphere_height, cloud_base, cloud_top] = planet::air(radius);
+    let record = PlanetRecord::giant(star, planet.orbit_radius, record_seed);
+    let [atmosphere_height, cloud_base, cloud_top] = air::heights(&record, gravity, radius);
     PlanetSpec {
         radius,
         gravity,
@@ -79,7 +81,7 @@ pub(super) fn grow(star: &StarSpec, planet: PlanetSpec, record_seed: u64) -> Pla
         atmosphere_height,
         cloud_base,
         cloud_top,
-        record: PlanetRecord::giant(star, planet.orbit_radius, record_seed),
+        record,
         ..planet
     }
 }

@@ -29,7 +29,7 @@ fn gear(planet: &PlanetSpec, pos: DVec3) -> f64 {
 #[test]
 fn the_air_of_a_giant_thickens_under_its_deck() {
     let (giant, home) = (giant(), planet(6000.0, 4000.0, 1200.0));
-    let scale = giant.atmosphere_height / 8.0;
+    let scale = giant.scale_height();
     let deck = density(&giant, 0.0);
     assert!(density(&giant, -scale) / deck > 2.7 && density(&giant, -scale) / deck < 2.8);
     assert!(density(&giant, -2.0 * scale) > density(&giant, -scale));
@@ -123,7 +123,7 @@ fn plunge(giant: &PlanetSpec) -> (Ship, f64, f64) {
 #[test]
 fn the_deep_air_floats_a_ship_back_up() {
     let giant = giant();
-    let scale = giant.atmosphere_height / 8.0;
+    let scale = giant.scale_height();
     let (mut ship, deepest, loudest) = plunge(&giant);
     assert!(
         deepest > -6.0 * scale && deepest < -scale,
@@ -152,7 +152,7 @@ fn the_deep_air_floats_a_ship_back_up() {
 #[test]
 fn the_deep_air_floats_an_assisted_ship_to_the_floor() {
     let giant = giant();
-    let scale = giant.atmosphere_height / 8.0;
+    let scale = giant.scale_height();
     let mut ship = above_pole(&giant, -3.0 * scale);
     (ship.assist, ship.throttle) = (true, 0.0);
     let (mut time, mut risen, mut most) = (0.0, None, 0.0f64);

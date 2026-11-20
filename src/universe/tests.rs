@@ -18,6 +18,12 @@ fn home_system_is_deterministic() {
     let planet = a.planet(home);
     assert_eq!(planet.id, home);
     assert!(!home.is_moon() && landable(&planet), "{planet:?}");
+    let air = [
+        planet.atmosphere_height,
+        planet.cloud_base,
+        planet.cloud_top,
+    ];
+    assert_eq!(air, heights(&planet.record, planet.gravity, planet.radius));
     let system = a.system(home.star);
     assert!((PLANETS.0..=PLANETS.1).contains(&(system.planets.len() as u8)));
     assert_eq!(system.planets[usize::from(home.index)], planet);

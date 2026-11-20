@@ -25,7 +25,7 @@ fn moons_stay_in_range() {
             assert!(m.day_seconds > 2.0 * breakup(m.radius, m.gravity), "{m:?}");
             assert_eq!(
                 [m.atmosphere_height, m.cloud_base, m.cloud_top],
-                air(m.radius)
+                heights(&m.record, m.gravity, m.radius)
             );
             assert_eq!(r.flux, zone::flux(star.luminosity, p.orbit_radius));
             assert!(within(r.pressure, (0.0, air::PRESSURE_CAP)), "{r:?}");

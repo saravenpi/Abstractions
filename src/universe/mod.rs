@@ -53,7 +53,7 @@ mod tests;
 #[cfg(test)]
 mod volatiles_tests;
 
-pub use air::NO_AIR;
+pub use air::{Gas, Mix, NO_AIR, Part, TOP_SCALES, dense, heights};
 pub use class::{MOLTEN, VOLCANIC};
 pub use galaxy::{ARMS, CENTER_SPAN, RADIUS_GLY};
 pub use giant::{GIANT_MASS, GIANT_RADIUS};
@@ -61,7 +61,7 @@ pub use hill::{CAPTURED_RADIUS, IMPACT_RADIUS, REGULAR_RADIUS};
 pub use home::landable;
 pub use ids::{BodyId, GalaxyId, StarId};
 pub use look::Look;
-pub use planet::{PLANET_RADIUS, ROCK, air, gravity, orbit_seconds};
+pub use planet::{PLANET_RADIUS, ROCK, gravity, orbit_seconds};
 pub use record::{PlanetClass, PlanetRecord, Water, Zone};
 pub use rings::{RING_OUTER, ROCHE};
 pub use sector::{SECTOR_STARS, sector_of};

@@ -8,7 +8,7 @@ use super::planet::{self, RECORD_STREAM};
 use super::record::{Body, PlanetRecord};
 use super::spec::{PlanetSpec, StarSpec};
 use super::units::STARLIGHT;
-use super::{BodyId, Universe, names};
+use super::{BodyId, Universe, air, names};
 
 /// Heat the tides of Jupiter draw out of Io, in units of flux: about 2.5 watts per square metre,
 /// the measure every other tide is scaled from.
@@ -71,11 +71,12 @@ fn build(star: &StarSpec, planet: &PlanetSpec, rank: u8, place: Place) -> Planet
     let mut rng = Rng::new(place.seed);
     let gravity = planet::gravity(place.radius, place.matter);
     let seconds = planet::orbit_seconds(planet.mu(), place.orbit);
-    let [atmosphere_height, cloud_base, cloud_top] = planet::air(place.radius);
     let body = Body {
         tide: tide(planet, &place),
         ..Body::new(gravity, place.radius, planet.orbit_radius)
     };
+    let record = PlanetRecord::derive(star, &body, hash::child(place.seed, RECORD_STREAM));
+    let [atmosphere_height, cloud_base, cloud_top] = air::heights(&record, gravity, place.radius);
     PlanetSpec {
         id: BodyId {
             moon: rank,
@@ -92,7 +93,7 @@ fn build(star: &StarSpec, planet: &PlanetSpec, rank: u8, place: Place) -> Planet
         atmosphere_height,
         cloud_base,
         cloud_top,
-        record: PlanetRecord::derive(star, &body, hash::child(place.seed, RECORD_STREAM)),
+        record,
         host: Some(planet.orbit()),
         moons: 0,
         rings: None,

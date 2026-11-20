@@ -27,6 +27,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Air follows physics. Every planet has its own gases: nitrogen with carbon dioxide where liquid water locks carbon into rock, oxygen only where life makes it, carbon dioxide on dead rocky worlds, hydrogen and helium on gas giants, nitrogen and methane on cold worlds, sulphur dioxide over molten or volcanic ground. The gases, the temperature and the gravity set how fast the air thins with height: by a factor e over one scale height, 8.4 km on a planet like the Earth, with the top of the atmosphere 12 scale heights up. The ship's drag, the wingsuit, the wind, the sounds of the air and the sky all thin the same way now, and cold or heavy air is thicker than its pressure alone says. Clouds start where rising air condenses and end at the top of the weather layer, about 1 to 11 km on a planet like the Earth.
 - The minimap shows the ground of a planet in its real colours, from the same palette as the map, with its relief shading.
 - Falling leaves, petals and pollen come only from the plants around you. A tree in leaf drops leaves of its own colour and size, more in autumn; a plant in flower drops petals and, by day, pollen; a bare tree and a lifeless planet drop nothing.
 - Animals move when they call: the head lifts, the jaw drops on every note, and the chest or the bell swells. Bigger animals call slower. Every player sees the same animal call at the same moment.

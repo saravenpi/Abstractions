@@ -65,3 +65,35 @@ fn chemistry_is_seeded() {
         (Energy::Heat, Structure::Silica)
     );
 }
+
+/// Life in water on starlight fills the air with oxygen and takes the carbon dioxide out; life
+/// in another liquid, or on another energy, leaves the air it found.
+#[test]
+fn only_water_and_light_make_oxygen() {
+    use crate::universe::{Gas, Mix};
+    let born = Mix::of([
+        (Gas::Nitrogen, 0.9),
+        (Gas::CarbonDioxide, 0.09),
+        (Gas::Argon, 0.01),
+        (Gas::Argon, 0.0),
+    ]);
+    let green = Chemistry {
+        solvent: Solvent::Water,
+        energy: Energy::Light,
+        ..chemistry(&world(288.0, 5800.0), 3)
+    };
+    let alive = air(&green, born);
+    assert!(alive.share(Gas::Oxygen) > 0.2 && alive.share(Gas::CarbonDioxide) == 0.0);
+    assert_eq!(alive.main_gas(), Gas::Nitrogen);
+    let other = [
+        Chemistry {
+            solvent: Solvent::Hydrocarbon,
+            ..green
+        },
+        Chemistry {
+            energy: Energy::Chemistry,
+            ..green
+        },
+    ];
+    assert!(other.iter().all(|chemistry| air(chemistry, born) == born));
+}

@@ -97,6 +97,9 @@ pub struct PlanetRecord {
     pub tide: f64,
     /// Carbon the planet has to cycle through its air, sea and rock, from 0 to 1.
     pub carbon: f64,
+    /// The gases of the air with their shares, as the planet has them without life. A planet
+    /// whose life splits water breathes [`air::Mix::breathed`] of it.
+    pub mix: air::Mix,
 }
 
 /// What a body is made of and where, as its record needs it.
@@ -148,6 +151,7 @@ impl PlanetRecord {
         hydrocarbon: 0.0,
         tide: 0.0,
         carbon: 0.5,
+        mix: air::Mix::HOME,
     };
 
     /// Returns the share of the surface under each liquid life can use, in the order water,
@@ -194,8 +198,12 @@ impl PlanetRecord {
             carbon,
             ..Self::lit(star, flux, (tilt, pressure), &climate)
         };
-        Self {
+        let record = Self {
             class: class::classify(&record),
+            ..record
+        };
+        Self {
+            mix: air::born(&record, air::escape(gravity, size), body.tide, seed),
             ..record
         }
     }
@@ -214,9 +222,13 @@ impl PlanetRecord {
         let _stock = rng.unit();
         let wet = rng.unit();
         let climate = climate::deck(flux, wet);
-        Self {
+        let record = Self {
             class: PlanetClass::GasGiant,
             ..Self::lit(star, flux, (tilt(rng.unit()), air::PRESSURE_CAP), &climate)
+        };
+        Self {
+            mix: air::born(&record, f64::INFINITY, 0.0, seed),
+            ..record
         }
     }
 
@@ -237,6 +249,7 @@ impl PlanetRecord {
             hydrocarbon: 0.0,
             tide: 0.0,
             carbon: 0.0,
+            mix: air::Mix::HOME,
         }
     }
 }

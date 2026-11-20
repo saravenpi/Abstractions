@@ -5,6 +5,9 @@ use std::f32::consts::TAU;
 
 use bevy::prelude::*;
 
+use crate::universe::BodyId;
+use crate::world::Terrain;
+
 /// Distances in metres at which the ground around the listener is read, nearest first.
 const RINGS: [f32; 8] = [3.0, 6.0, 10.0, 15.0, 21.0, 28.0, 36.0, 45.0];
 
@@ -12,7 +15,59 @@ const RINGS: [f32; 8] = [3.0, 6.0, 10.0, 15.0, 21.0, 28.0, 36.0, 45.0];
 const SPOKES: usize = 12;
 
 /// Height in metres above the sea at which the shore is no longer heard.
-const CEILING: f32 = 45.0;
+pub const CEILING: f32 = 45.0;
+
+/// Metres a listener may move from the place a shoreline was read before it is read again.
+const REREAD_METRES: f32 = 3.0;
+
+/// Seconds after which a shoreline is read again, even where the listener stood still: ten
+/// reads a second.
+const REREAD_SECONDS: f32 = 0.1;
+
+/// The shoreline read last, kept for a few frames so the ground is not sampled every frame.
+#[derive(Default)]
+pub(super) struct ShoreRead {
+    /// The planet the shoreline was read on.
+    body: Option<BodyId>,
+    /// The chart point the listener stood at when the shoreline was read.
+    from: Vec2,
+    /// The chart point of the nearest shoreline, when one is within reach.
+    edge: Option<Vec2>,
+    /// The time in seconds the shoreline was read at.
+    when: f32,
+}
+
+impl ShoreRead {
+    /// Returns the chart point of the nearest shoreline to `at` on `body`, read again when the
+    /// listener moved too far from the last read or the last read is too old. Nothing is
+    /// heard inland or out at sea, and a globe without a sea is all inland.
+    pub(super) fn read(
+        &mut self,
+        body: BodyId,
+        now: f32,
+        terrain: &Terrain,
+        at: Vec2,
+    ) -> Option<Vec2> {
+        let held = self.body == Some(body) && reuse(self.from.distance(at), now - self.when);
+        if !held {
+            let sea = terrain.globe().sea_level();
+            let ground = |point: Vec2| terrain.height(point.x, point.y) - sea;
+            *self = Self {
+                body: Some(body),
+                from: at,
+                edge: nearest(ground, at).map(|offset| at + offset),
+                when: now,
+            };
+        }
+        self.edge
+    }
+}
+
+/// Returns true when a shoreline read `elapsed` seconds ago, with the listener `moved` metres
+/// away from that place, still holds.
+pub fn reuse(moved: f32, elapsed: f32) -> bool {
+    moved <= REREAD_METRES && elapsed < REREAD_SECONDS
+}
 
 /// Returns the offset in metres from `at` to the nearest shoreline, on the chart: the middle of
 /// the nearest points whose side of the water differs from the one under `at`. Nothing when
@@ -63,6 +118,8 @@ mod tests {
         assert!(nearest(beach, Vec2::new(30.0, 0.0)).unwrap().x < 0.0);
         assert!(closeness(3.0, 1.0) > 0.8 && closeness(45.0, 1.0) == 0.0);
         assert!(closeness(3.0, 60.0) == 0.0);
+        assert!(closeness(3.0, CEILING) == 0.0);
+        assert!(reuse(2.0, 0.05) && !reuse(4.0, 0.0) && !reuse(0.0, 0.1));
         let [left, right] = stereo(1.0, 1.0);
         assert!(right > 1.3 && left > 0.3 && left < 0.5);
         assert_eq!(stereo(0.0, 0.5), [0.5, 0.5]);

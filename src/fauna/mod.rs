@@ -51,6 +51,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
+pub use beast::Part;
 pub use near::{Nearby, Sighting};
 
 use crate::life::SpeciesId;
@@ -66,6 +67,10 @@ pub struct Creature {
     /// Its place in the herd.
     pub slot: u8,
 }
+
+/// Holds an animal still: its walk skips it while a hitstop freezes it with the robot that struck it.
+#[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct Frozen;
 
 /// Registers the fauna systems: the forgetting of animals when the planet under the anchor changes,
 /// then, on a living planet in play, the scan, the walk and the fades.

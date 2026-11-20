@@ -4,6 +4,7 @@ use abstractions_net::wire::MAX_PLAYERS_DEFAULT;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use super::gameplay::Gameplay;
 use super::servers::{SavedServer, default_servers};
 use super::ship_keys::ShipKeys;
 use crate::update::UpdatePrefs;
@@ -26,6 +27,8 @@ pub struct Settings {
     pub view: ViewPrefs,
     /// Update options: whether the game looks for a newer release at launch.
     pub updates: UpdatePrefs,
+    /// Gameplay options: the hitstop.
+    pub gameplay: Gameplay,
     /// The name other players see. Empty until the player first opens the multiplayer menu.
     pub player_name: String,
     /// The servers of the multiplayer menu, in the order the player added them.
@@ -43,6 +46,7 @@ impl Default for Settings {
             world: WorldPrefs::default(),
             view: ViewPrefs::default(),
             updates: UpdatePrefs::default(),
+            gameplay: Gameplay::default(),
             player_name: String::new(),
             servers: default_servers(),
             host_max_players: MAX_PLAYERS_DEFAULT,

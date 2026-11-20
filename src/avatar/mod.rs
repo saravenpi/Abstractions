@@ -34,6 +34,7 @@ mod rig;
 mod seated;
 mod show;
 mod spawn;
+pub mod strike;
 mod touch;
 pub mod tune;
 mod warm;
@@ -228,6 +229,7 @@ fn systems(app: &mut App) {
                 .in_set(AvatarSet::Animate),
         );
     seated::systems(app);
+    strike::plugin(app);
 }
 
 /// Registers the avatar: its input, its visibility setting and the systems that run it while

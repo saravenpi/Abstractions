@@ -48,6 +48,11 @@ Branch `integrate` (worktree `~/Code/Saravenpi/wt-int`) holds everything merged 
 | 13 | H gives stone from nowhere (`src/craft/pack/pick.rs`): stone must come from a real rock under the crosshair, which then is gone. The owner wants it in this version | Agent running on `rocks`: stable prop ids, a saved set of taken rocks, a filter at chunk build, a props rebuild, a crosshair pick |
 | 14 | In multiplayer the other players must see everything the same as we do | Sent to `net-h4` as its acceptance test: crouch, entry sheath, robot damage, strikes and trails, blows and stagger, wounds and blood, impacts and sounds, animal attacks, carcasses, stuck spears, taken rocks, pins, and a check that season, weather, clouds, herds and leaf fall come only from the shared seed and clock |
 | 15 | Take pretty screenshots of the game and add them to the website in a carousel that shows different aspects of the game | Not started: needs the game running. Shots through `examples/probe` on lavapipe (ground at dawn, forest and grass, sea and shore, animals, the base, flight, clouds from above, orbit, a moon, a galaxy, the map and the new HUD). Site lives on branch `landing` (`site/`): carousel with no borders, no rounded corners, no bold, keyboard and touch, alt text per shot |
+| 16 | Third person by default on foot, first person (cockpit) by default in the ship, and the game remembers the last view used | Done on `integrate`: `ViewPrefs` default changed; the last view was already saved by `src/settings/prefs.rs`. `fx-world` makes the tests state their view |
+| 17 | Improve the inside of the cockpit, it is simplistic in first person | Agent `cockpit` running: seat, frame, consoles, controls that follow the real inputs, instruments that show the real state, panel light |
+| 18 | Redesign the ship: it looks like a child's drawing; real engines and real engine fire; no floating parts | Agent `ship-look` running: one lofted hull, wings with roots, nacelles, nozzles, gear bays, hatch, a test that the mesh is one connected piece, exhaust from thrust and air pressure, colliders that follow |
+| 19 | Look up good practices for the sensation of speed, for the ship and the glider, and polish lightly | Agent `speed` running: research to `handoff/specs/speed.md`, then small cues tied to real quantities, with a "Speed effects" setting |
+| 20 | After that: a complete review, fix what it finds, improve and polish the animations and everything that was added | After the tests are green: review of the whole diff by area, probe shots, polish pass |
 
 ## 3. The UI rework: what the owner asked for
 
@@ -99,6 +104,10 @@ Things to fix:
 ## 6. Never seen in the game
 
 Everything in section 1 marked "never run", plus: grass blades and their cost, the waterline pass, the foam wake, the entry sheath, call poses, crouch, the galaxy light, the cloud shell, the far depth of the sky and stars, trunk rivers, the map tiles, "Open with 0.10" on Linux (macOS returns `Unsupported`). Shaders only fail in the running game.
+
+## 6b. Scale problem found by three agents
+
+Stars are 1e10 to 1e11 m apart while planet orbits reach 6e12 m, so star systems overlap. Planets are real size, the galaxy is not. The reach of a star system was 1e9 m and is being set from the real orbits. Waiting for the owner: keep the galaxy scale for this version (the lead's advice) or move to real distances between stars.
 
 ## 7. Order of the remaining work
 

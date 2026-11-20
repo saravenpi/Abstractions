@@ -9,11 +9,12 @@ use super::atmosphere::shadow;
 use super::celestial::sun_direction;
 use super::clock::{START_PHASE, Settled, catch_up};
 use super::observer::Observer;
+use super::starfield::sunlight;
 use super::vantage::{LocalSystem, Nearby, Vantage};
 use super::{DayClock, GameCamera};
 use crate::screens::Screen;
 use crate::space::{Anchor, Clock, Frame, Location};
-use crate::universe::{BodyId, Universe};
+use crate::universe::{BodyId, Universe, system_reach};
 
 /// Where the star of the current system stands, the one source for the lights, the sky and the bodies.
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
@@ -148,7 +149,8 @@ pub(super) fn track(
     *out.vantage = Vantage::of(&observer, local, planet, camera).moving(velocity);
     *out.sun = SunDir::of(&observer, planet.radius);
     out.sun.lit *= local.eclipse(observer.eye, planet.id, space.clock.seconds);
-    out.sun.lit *= super::starfield::sunlight(observer.center.length(), observer.eye.length());
+    let reach = system_reach(star);
+    out.sun.lit *= sunlight(observer.center.length(), observer.eye.length(), reach);
     out.day.phase = observer.phase();
     memory.phase = Some(out.day.phase);
 }

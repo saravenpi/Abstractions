@@ -30,8 +30,7 @@ use super::air::Air;
 use super::atmosphere::HALO_SCALE;
 use super::vantage::{LocalSystem, Scene, Vantage};
 use super::warp::Lens;
-use crate::computer::SYSTEM_REACH;
-use crate::universe::{BodyId, PlanetSpec};
+use crate::universe::{BodyId, PlanetSpec, system_reach};
 use crate::world::Link;
 use crate::world::globe::far::handover;
 
@@ -98,6 +97,7 @@ impl Body {
         };
         let (planet, pos) = scene.body(id)?;
         let (radius, grow) = self.reach(planet)?;
+        let star = &scene.local.0.as_ref()?.system.star;
         let turn = match self {
             Body::Planet(_) => Link::orbiting(planet, scene.clock.seconds).turn,
             _ => DQuat::IDENTITY,
@@ -108,7 +108,7 @@ impl Body {
             radius,
             solid: planet.radius,
             least_angle: PLANET_ANGLE * grow,
-            shown: self.shown(planet, pos, &scene.vantage),
+            shown: self.shown(planet, pos, &scene.vantage, system_reach(star)),
         })
     }
 
@@ -124,16 +124,17 @@ impl Body {
         }
     }
 
-    /// Returns whether the sky draws this body of `planet`, at `pos` metres from the star, now.
+    /// Returns whether the sky draws this body of `planet`, at `pos` metres from the star, now,
+    /// for the camera `vantage` of a system that reaches `reach` metres out.
     ///
     /// The planet or moon below the camera is left to the terrain within its [`handover`],
     /// and its halo only shows from above its air. A body without air has no halo. Rings show
     /// from everywhere, the deck of their own planet included. Nothing of a planet shows from
     /// outside its star system: from there it is far under a pixel, and the dot it is kept at
     /// inside would pile up with the others into a false light where the star is.
-    fn shown(self, planet: &PlanetSpec, pos: DVec3, vantage: &Vantage) -> bool {
+    fn shown(self, planet: &PlanetSpec, pos: DVec3, vantage: &Vantage, reach: f64) -> bool {
         let below = vantage.is(planet.id);
-        if vantage.observer.eye.length() > SYSTEM_REACH {
+        if vantage.observer.eye.length() > reach {
             return false;
         }
         match self {

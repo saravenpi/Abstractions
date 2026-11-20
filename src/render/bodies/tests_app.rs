@@ -19,6 +19,7 @@ fn system() -> (Nearby, PlanetSpec, PlanetSpec) {
     let universe = Universe::new(7);
     let home = universe.home();
     let mut near = Nearby::read(&universe, home.star);
+    near.moons.retain(|moon| moon.id.index != home.index);
     let giant = &mut near.system.planets[usize::from(home.index)];
     giant.record.class = PlanetClass::GasGiant;
     giant.rings = Some(Rings {

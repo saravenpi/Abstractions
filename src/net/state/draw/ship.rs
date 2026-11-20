@@ -128,6 +128,7 @@ fn draw(
     };
     cockpit.read = dials(&state, sight.clearance(track.frame, view.position));
     engine.level = level_of(state.throttle, state.boost, drive(&state));
+    engine.warp = drive(&state);
     let (_, far) = seen(eye, &placed);
     shown.set_if_neq(visible(far, false));
 }

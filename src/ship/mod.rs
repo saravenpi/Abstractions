@@ -17,6 +17,7 @@ mod cruise;
 mod deck;
 mod drag;
 mod drive;
+mod exhaust;
 mod flight;
 mod frames;
 mod fx;
@@ -232,4 +233,5 @@ pub(super) fn plugin(app: &mut App) {
     display(app);
     hull_cast::plugin(app);
     cockpit::plugin(app);
+    exhaust::plugin(app);
 }

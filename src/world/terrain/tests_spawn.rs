@@ -2,12 +2,12 @@
 //! before the planets had cold lands, and a sphere also takes flat snow and rock.
 
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
 
 use super::Terrain;
 use crate::universe::Universe;
+use crate::world::cpu::busy;
 use crate::world::globe::Face;
 use crate::world::{Globe, Surface};
 
@@ -35,11 +35,11 @@ fn only_a_sphere_spawns_on_snow_or_rock() {
     assert!(good > 0, "none of {on} points on snow or rock is a spawn");
 }
 
-/// The most a spawn search may take once the drainage grid is built.
-const SEARCH: Duration = Duration::from_millis(200);
+/// The most processor time in seconds a spawn search may take once the drainage grid is built.
+const SEARCH: f64 = 0.2;
 
 /// On the home planets of 50 seeds the spawn search from the pole of the north face, which is often open
-/// sea or ice on a large planet, finds dry ground every time, within 200 ms once the grid exists.
+/// sea or ice on a large planet, finds dry ground every time, within 200 ms of processor time once the grid exists.
 #[test]
 fn every_seed_spawns_on_land_in_time() {
     for seed in 0..50 {
@@ -47,13 +47,13 @@ fn every_seed_spawns_on_land_in_time() {
         let globe = Arc::new(Globe::of(&universe.planet(universe.home())));
         globe.drainage();
         let view = Terrain::on(globe.clone(), globe.face_chart(Face::PosY));
-        let start = Instant::now();
+        let start = busy();
         let at = view.find_spawn();
-        let took = start.elapsed();
+        let took = busy() - start;
         assert!(
             view.height(at.x, at.z) > globe.sea_level(),
             "seed {seed}: spawns at sea"
         );
-        assert!(took < SEARCH, "seed {seed}: the spawn took {took:?}");
+        assert!(took < SEARCH, "seed {seed}: the spawn took {took} s");
     }
 }

@@ -44,9 +44,22 @@ impl Grid {
         self.join(face, at(u), at(v))
     }
 
-    /// Returns the cells around cell `index`: its eight neighbours, some repeated at a cube corner.
+    /// Returns the cells around cell `index`: its eight neighbours, some repeated at a cube corner. Inside a
+    /// face they are the cells next to it in the index; only the cells on the edge of a face look across it.
     pub fn around(self, index: usize) -> [usize; 8] {
         let (face, i, j) = self.split(index);
+        let inside = (1..self.n - 1).contains(&i) && (1..self.n - 1).contains(&j);
+        let row = self.n as isize;
+        if inside {
+            return AROUND
+                .map(|(di, dj)| (index as isize + di as isize * row + dj as isize) as usize);
+        }
+        self.across(face, i, j)
+    }
+
+    /// Returns the cells around column `i` and row `j` of `face` found by their direction, which reaches
+    /// across the edges of the face.
+    pub(super) fn across(self, face: Face, i: i32, j: i32) -> [usize; 8] {
         AROUND.map(|(di, dj)| {
             let dir = self.cell_dir(face, f64::from(i) + di, f64::from(j) + dj);
             self.find(dir)
@@ -54,7 +67,7 @@ impl Grid {
     }
 
     /// Returns the face and the column and row of cell `index`.
-    fn split(self, index: usize) -> (Face, i32, i32) {
+    pub(super) fn split(self, index: usize) -> (Face, i32, i32) {
         let side = (self.n * self.n) as usize;
         let rest = (index % side) as i32;
         (Face::ALL[index / side], rest / self.n, rest % self.n)

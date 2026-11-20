@@ -18,6 +18,10 @@ pub const STARTS: usize = 8;
 /// and the tropics.
 pub const LATITUDE: (f64, f64) = (20.0, 48.0);
 
+/// Most candidate cells the search for starts measures on the real ground, so that a planet whose grid shores are not shores of
+/// its real ground still ends the search.
+pub const TRIES: usize = 400;
+
 /// Fewest drainage cells between two starts.
 pub const APART: f64 = 6.0;
 

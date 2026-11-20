@@ -23,7 +23,7 @@ fn positions(mesh: &Mesh) -> Vec<u32> {
 
 /// Returns the digest of everything the legacy entry points produce for a block of chunks of `seed`.
 fn digest(seed: u64) -> u64 {
-    let t = Terrain::new(seed);
+    let t = Terrain::legacy(seed);
     let mut d = 0xCBF2_9CE4_8422_2325;
     for coord in (-4..4).flat_map(|x| (-4..4).map(move |y| IVec2::new(x, y))) {
         let s = scatter_chunk(&t, coord);

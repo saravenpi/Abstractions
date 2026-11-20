@@ -137,13 +137,18 @@ fn cross_edge(app: &mut App) -> DVec3 {
     let Chart::Face { face, .. } = terrain.chart() else {
         panic!("the terrain is a face chart");
     };
-    let [normal, u, _] = face.axes();
-    let across = (normal * 0.98 + u).normalize();
+    let [normal, u, v] = face.axes();
+    let globe = terrain.globe();
+    let across = (-8..=8)
+        .map(|k| (normal * 0.98 + u + v * (f64::from(k) * 0.1)).normalize())
+        .find(|dir| globe.height(*dir) > 0.0)
+        .expect("land across an edge of the face");
+    let ground = f64::from(globe.height(across));
     go(
         app,
-        Some(across * (terrain.globe().radius() + 3.0)),
+        Some(across * (globe.radius() + ground + 3.0)),
         "the chunks across the edge",
-        idle,
+        |w| idle(w) && !w.resource::<Chunks>().loaded.is_empty(),
     );
     let moved = app.world().resource::<Terrain>().chart();
     let across_face = terrain.globe().face_chart(Face::locate(across).0);

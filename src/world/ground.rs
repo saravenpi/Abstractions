@@ -176,6 +176,6 @@ mod tests {
         let fields: Vec<f32> = lit.fields().iter().flat_map(Vec4::to_array).collect();
         assert!(kept && numbers == fields);
         assert_eq!(numbers[12..16], [4000.0, 60.0, 1.0, 0.0]);
-        assert_eq!(numbers[24..], [1.0, 2.0, 3.0, 4.0]);
+        assert_eq!(numbers[24..28], [1.0, 2.0, 3.0, 4.0]);
     }
 }

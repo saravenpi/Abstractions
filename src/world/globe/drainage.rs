@@ -11,9 +11,11 @@ mod flood;
 mod grid;
 mod query;
 mod shore;
+#[cfg(test)]
+mod tests_grid;
 pub mod tune;
 
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use bevy::math::DVec3;
 use bevy::tasks::AsyncComputeTaskPool;
@@ -35,6 +37,8 @@ pub struct Drainage {
     area: Vec<u32>,
     /// Height of the sea in the same unit: nothing is under it on a dry planet.
     sea: f32,
+    /// The places a new game may start at, worked out when first asked for.
+    starts: OnceLock<Vec<DVec3>>,
 }
 
 /// Returns the large height of `globe` in unit direction `dir`: the plates and the regional band where the
@@ -52,10 +56,13 @@ fn fill(globe: &Globe, grid: Grid, first: usize, part: &mut [f32]) {
     }
 }
 
-/// Returns the heights of every cell of `grid` on `globe`, read on as many threads as the machine has.
-fn heights(globe: &Globe, grid: Grid) -> Vec<f32> {
+/// Returns the heights of every cell of `grid` on `globe`, read on `threads` threads.
+fn heights(globe: &Globe, grid: Grid, threads: usize) -> Vec<f32> {
     let mut out = vec![0.0; grid.len()];
-    let threads = std::thread::available_parallelism().map_or(1, usize::from);
+    if threads == 1 {
+        fill(globe, grid, 0, &mut out);
+        return out;
+    }
     let size = out.len().div_ceil(threads);
     std::thread::scope(|scope| {
         for (t, part) in out.chunks_mut(size).enumerate() {
@@ -67,12 +74,20 @@ fn heights(globe: &Globe, grid: Grid) -> Vec<f32> {
 
 impl Drainage {
     /// Builds the drainage of `globe`: [`SIDE`] cells along a face, or one per atlas cell on a planet too
-    /// small for that.
+    /// small for that, reading the heights on as many threads as the machine has.
     pub fn build(globe: &Globe) -> Self {
+        Self::build_on(
+            globe,
+            std::thread::available_parallelism().map_or(1, usize::from),
+        )
+    }
+
+    /// Builds the drainage of `globe` reading the heights on `threads` threads.
+    pub fn build_on(globe: &Globe, threads: usize) -> Self {
         let grid = Grid {
             n: globe.cells().clamp(1, SIDE),
         };
-        let height = heights(globe, grid);
+        let height = heights(globe, grid, threads.max(1));
         let sea = globe.sea_level();
         let flood = flood(grid, &height, sea);
         Self {
@@ -81,6 +96,7 @@ impl Drainage {
             next: flood.next,
             area: flood.area,
             sea,
+            starts: OnceLock::new(),
         }
     }
 }

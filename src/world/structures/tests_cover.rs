@@ -98,7 +98,7 @@ impl Found {
 /// Every structure kind, drawn alone in five variants, is solid where it is drawn.
 #[test]
 fn every_kind_is_solid_where_drawn() {
-    let (t, mut found) = (Terrain::new(1), Found::default());
+    let (t, mut found) = (Terrain::legacy(1), Found::default());
     for (kind, variant) in Kind::ALL
         .into_iter()
         .flat_map(|k| (0..5).map(move |v| (k, v)))
@@ -113,7 +113,7 @@ fn every_kind_is_solid_where_drawn() {
 /// Every camp layout, in five variants, is solid where it is drawn.
 #[test]
 fn every_camp_is_solid_where_drawn() {
-    let (t, mut found) = (Terrain::new(1), Found::default());
+    let (t, mut found) = (Terrain::legacy(1), Found::default());
     for (layout, variant) in Layout::ALL
         .into_iter()
         .flat_map(|l| (0..5).map(move |v| (l, v)))
@@ -128,7 +128,7 @@ fn every_camp_is_solid_where_drawn() {
 /// Every house kind, in every village style and eight lot variants, is solid where it is drawn.
 #[test]
 fn every_house_is_solid_where_drawn() {
-    let (t, mut found) = (Terrain::new(1), Found::default());
+    let (t, mut found) = (Terrain::legacy(1), Found::default());
     let styles = BIOMES.into_iter().flat_map(|b| (0..8).map(move |v| (b, v)));
     for (house, (biome, variant)) in ALL_HOUSES
         .into_iter()

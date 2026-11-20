@@ -6,7 +6,7 @@ use std::f64::consts::FRAC_PI_2;
 use bevy::math::DVec3;
 
 use super::Drainage;
-use super::tune::{APART, BISECT, LATITUDE, MOUTH, STARTS};
+use super::tune::{APART, BISECT, LATITUDE, MOUTH, STARTS, TRIES};
 use crate::world::globe::Globe;
 use crate::world::globe::roll::roll;
 
@@ -33,7 +33,9 @@ fn ranked(drain: &Drainage, seed: u64) -> Vec<usize> {
 
 /// Returns the point of the real ground on the shore of drainage cell `cell`, on the land side: the land
 /// middle of the cell and the sea middle beside it narrowed down by bisection on the coarse ground. A cell
-/// that is not land on the real ground gives nothing.
+/// that is not land on the real ground, and a coast cell whose sea is land on the real ground, give nothing:
+/// the local ground draws the coast, and it can differ from the grid by whole hills. An inland cell gives
+/// its middle.
 fn shore(globe: &Globe, drain: &Drainage, cell: usize) -> Option<DVec3> {
     let land = |dir: DVec3| globe.coarse(dir) > globe.sea_level();
     let at = drain.dir(cell);
@@ -43,7 +45,7 @@ fn shore(globe: &Globe, drain: &Drainage, cell: usize) -> Option<DVec3> {
     let (mut on, mut off) = match (land(at), land(sea)) {
         (true, false) => (at, sea),
         (false, true) => (sea, at),
-        (both, _) => return both.then_some(at),
+        _ => return None,
     };
     for _ in 0..BISECT {
         let mid = (on + off).normalize();
@@ -64,17 +66,25 @@ impl Globe {
             return Vec::new();
         }
         let drain = self.drainage();
-        let apart = APART * FRAC_PI_2 / f64::from(drain.grid.n);
-        let mut picked: Vec<usize> = Vec::new();
-        for cell in ranked(&drain, self.seed()) {
-            let far = |other: &usize| drain.dir(*other).angle_between(drain.dir(cell)) > apart;
-            if picked.len() < STARTS && picked.iter().all(far) {
-                picked.push(cell);
-            }
-        }
-        picked
-            .into_iter()
-            .filter_map(|cell| shore(self, &drain, cell))
-            .collect()
+        drain.starts.get_or_init(|| picked(self, &drain)).clone()
     }
+}
+
+/// Returns the places a new game may start at on `globe`, see [`Globe::landfalls`].
+fn picked(globe: &Globe, drain: &Drainage) -> Vec<DVec3> {
+    let apart = APART * FRAC_PI_2 / f64::from(drain.grid.n);
+    let mut picked: Vec<(usize, DVec3)> = Vec::new();
+    let mut tried = 0;
+    for cell in ranked(drain, globe.seed()) {
+        let far =
+            |(other, _): &(usize, DVec3)| drain.dir(*other).angle_between(drain.dir(cell)) > apart;
+        if picked.len() == STARTS || tried == TRIES {
+            break;
+        }
+        if picked.iter().all(far) {
+            tried += 1;
+            picked.extend(shore(globe, drain, cell).map(|dir| (cell, dir)));
+        }
+    }
+    picked.into_iter().map(|(_, dir)| dir).collect()
 }

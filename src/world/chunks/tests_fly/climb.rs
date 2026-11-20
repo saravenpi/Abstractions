@@ -20,14 +20,14 @@ use super::{Route, frame, rest, stage};
 use crate::world::globe::ChunkId;
 
 /// Heights over the sea in metres the headless tour puts the ship at on its way to orbit.
-const TOUR: [f64; 7] = [30.0, 100.0, 300.0, 500.0, 1000.0, 1700.0, 2600.0];
+const TOUR: [f64; 7] = [30.0, 100.0, 300.0, 500.0, 1000.0, 1400.0, 1700.0];
 
 /// Frames the tour holds each height before its shot.
 const HOLD: usize = 40;
 
-/// Height of the orbit in metres over the sea: under the hand-over of 1.5 radii, 3,000 m over this
-/// planet, where the sky takes the planet from the world.
-const ORBIT: f64 = 2600.0;
+/// Height of the orbit in metres over the sea: under the 1.3 radii at which the baked sphere takes over
+/// from the quadtree, 1,800 m over this planet.
+const ORBIT: f64 = 1700.0;
 
 /// Meshes that gained or lost a visibility range without being marked changed: Bevy kept the
 /// pipeline it chose before for them.
@@ -133,8 +133,8 @@ fn climbing_to_orbit_keeps_the_globe_whole() {
 }
 
 /// Heights over the sea in metres the tour puts the ship at over an Earth-sized planet, up to
-/// where the world still draws the baked planet, under the hand-over of 1.5 radii.
-const EARTH_TOUR: [f64; 6] = [30.0, 300.0, 3.0e3, 3.0e4, 3.0e5, 2.4e6];
+/// where the world still draws the quadtree, under the 1.3 radii of the baked sphere.
+const EARTH_TOUR: [f64; 6] = [30.0, 300.0, 3.0e3, 3.0e4, 3.0e5, 1.8e6];
 
 /// Over a planet of 6,371 km, 17 levels deep, the ship that jumps from height to height keeps
 /// the globe drawn whole at every frame, exactly once when everything has settled, and leaves

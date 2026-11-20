@@ -5,6 +5,7 @@ use bevy::material::OpaqueRendererMethod;
 use bevy::prelude::*;
 
 use super::kind::Kind;
+use super::shed::SLOTS;
 use crate::screens::Screen;
 use crate::space::Rebased;
 
@@ -21,17 +22,10 @@ pub const BELOW: f32 = 5.0;
 /// Height of the particle box above the camera, in meters.
 pub const ABOVE: f32 = 9.0;
 
-/// Colors per kind as linear-ish sRGB triples, and whether the material is unlit.
-const LOOKS: [(Kind, [f32; 3], bool); 19] = [
+/// Colors per kind, for the kinds that do not take the colour of a plant, as linear-ish sRGB triples,
+/// and whether the material is unlit.
+const LOOKS: [(Kind, [f32; 3], bool); 11] = [
     (Kind::Hidden, [0.0, 0.0, 0.0], false),
-    (Kind::Leaf, [0.25, 0.5, 0.14], false),
-    (Kind::Leaf, [0.35, 0.58, 0.18], false),
-    (Kind::Leaf, [0.78, 0.68, 0.2], false),
-    (Kind::Leaf, [0.8, 0.4, 0.12], false),
-    (Kind::BigLeaf, [0.15, 0.45, 0.15], false),
-    (Kind::BigLeaf, [0.2, 0.55, 0.2], false),
-    (Kind::Petal, [0.95, 0.6, 0.72], false),
-    (Kind::Petal, [0.98, 0.75, 0.82], false),
     (Kind::Snow, [0.95, 0.97, 1.0], false),
     (Kind::Dust, [0.8, 0.68, 0.45], false),
     (Kind::Dust, [0.7, 0.58, 0.38], false),
@@ -53,6 +47,8 @@ pub struct Particle {
     pub age: f32,
     /// Seconds it lives for.
     pub life: f32,
+    /// Edge length in meters: the size of a leaf of its plant, or the size of its kind.
+    pub size: f32,
     /// Personal phase for flutter, tumble and blink.
     pub phase: f32,
     /// Height above sea level below which it respawns.
@@ -70,6 +66,10 @@ pub struct Pool {
     pub diamond: Handle<Mesh>,
     /// Material for each look.
     pub looks: Vec<(Kind, Handle<StandardMaterial>)>,
+    /// Leaf material of each slot of the plants nearby, in the colour of the plant of the slot.
+    pub leaves: Vec<Handle<StandardMaterial>>,
+    /// Petal material of each slot of the plants nearby.
+    pub petals: Vec<Handle<StandardMaterial>>,
 }
 
 impl Pool {
@@ -95,6 +95,19 @@ impl Pool {
     }
 }
 
+/// Returns the lit, double sided, forward rendered material of linear-ish sRGB `rgb`, `unlit` or not.
+fn matte(rgb: [f32; 3], unlit: bool) -> StandardMaterial {
+    StandardMaterial {
+        base_color: Color::srgb(rgb[0], rgb[1], rgb[2]),
+        perceptual_roughness: 1.0,
+        double_sided: true,
+        cull_mode: None,
+        unlit,
+        opaque_render_method: OpaqueRendererMethod::Forward,
+        ..default()
+    }
+}
+
 /// Builds the shared meshes and materials once at startup.
 pub fn build(
     mut commands: Commands,
@@ -103,23 +116,20 @@ pub fn build(
 ) {
     let looks = LOOKS
         .iter()
-        .map(|&(kind, [r, g, b], unlit)| {
-            let material = StandardMaterial {
-                base_color: Color::srgb(r, g, b),
-                perceptual_roughness: 1.0,
-                double_sided: true,
-                cull_mode: None,
-                unlit,
-                opaque_render_method: OpaqueRendererMethod::Forward,
-                ..default()
-            };
-            (kind, materials.add(material))
-        })
+        .map(|&(kind, rgb, unlit)| (kind, materials.add(matte(rgb, unlit))))
         .collect();
+    let mut slots = || -> Vec<_> {
+        (0..SLOTS)
+            .map(|_| materials.add(matte([1.0; 3], false)))
+            .collect()
+    };
+    let (leaves, petals) = (slots(), slots());
     commands.insert_resource(Pool {
         quad: meshes.add(Rectangle::new(1.0, 1.0)),
         diamond: meshes.add(RegularPolygon::new(0.5, 4)),
         looks,
+        leaves,
+        petals,
     });
 }
 
@@ -136,6 +146,7 @@ pub fn spawn(mut commands: Commands, pool: Res<Pool>, existing: Query<(), With<P
                 kind: Kind::Hidden,
                 age: 0.0,
                 life: 0.0,
+                size: 0.0,
                 phase: 0.0,
                 floor: 0.0,
                 primed: false,

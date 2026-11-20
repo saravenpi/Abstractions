@@ -11,6 +11,7 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{AsBindGroup, Extent3d, TextureDimension, TextureFormat};
 use bevy::shader::ShaderRef;
 
+use super::blades::TurfUniform;
 use super::props::PropAssets;
 use crate::render::{PlaceLight, PlaceLit, PlaceUniform};
 
@@ -26,6 +27,9 @@ pub struct Daylit {
     /// material makes the renderer take up again every mesh that is drawn with it.
     #[texture(100, filterable = false)]
     pub place: Handle<Image>,
+    /// The look of the turf of the planet, which carpets the open ground of its living planets.
+    #[uniform(101)]
+    pub turf: TurfUniform,
 }
 
 impl MaterialExtension for Daylit {
@@ -94,6 +98,12 @@ pub fn light(
 /// tracked, before the frame's asset changes are sent to the renderer.
 pub(super) fn plugin(app: &mut App) {
     embedded_asset!(app, "ground.wesl");
+    if app
+        .world()
+        .contains_resource::<Assets<bevy::shader::Shader>>()
+    {
+        bevy::shader::load_shader_library!(app, "turf.wesl");
+    }
     app.add_plugins(MaterialPlugin::<GroundMaterial>::default())
         .init_resource::<PlaceLight>()
         .add_systems(PostUpdate, light.after(PlaceLit).before(AssetEventSystems));

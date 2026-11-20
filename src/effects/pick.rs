@@ -24,26 +24,38 @@ fn choose(roll: f32, shares: &[(Kind, f32)]) -> Kind {
     Kind::Hidden
 }
 
-/// Picks the kind on land from the biome and the time of day.
+/// Share of the pool each leafy plant within reach adds to the falling leaves, and the most they take.
+const LEAF_SHARE: (f32, f32) = (0.06, 0.45);
+
+/// Share of the pool each plant in flower within reach adds to the falling petals, and the most they take.
+const PETAL_SHARE: (f32, f32) = (0.08, 0.5);
+
+/// Share of the pool each plant in flower within reach adds to the pollen by day, and the most it takes.
+const POLLEN_SHARE: (f32, f32) = (0.03, 0.12);
+
+/// Returns the share of `per` for each of `count` plants, capped at `most`.
+fn share(count: f32, (per, most): (f32, f32)) -> f32 {
+    (count * per).min(most)
+}
+
+/// Picks the kind on land: dust in a desert wind, and only what the plants within reach shed: leaves
+/// from leafy plants, petals from plants in flower, and their pollen by day.
 fn on_land(ambient: &Ambient, roll: f32) -> Kind {
-    let night = ambient.daylight < NIGHT_DAYLIGHT;
-    let dust = if ambient.wind >= STRONG_WIND {
-        0.4
-    } else {
-        0.0
+    let day = ambient.daylight >= NIGHT_DAYLIGHT;
+    let windy = ambient.wind >= STRONG_WIND && ambient.biome == Biome::Desert;
+    let pollen = match day {
+        true => share(ambient.flowers, POLLEN_SHARE),
+        false => 0.0,
     };
-    match (ambient.biome, night) {
-        (Biome::Desert, _) => choose(roll, &[(Kind::Dust, dust)]),
-        (Biome::Cherry, false) => choose(roll, &[(Kind::Petal, 0.7), (Kind::Pollen, 0.08)]),
-        (Biome::Cherry, true) => choose(roll, &[(Kind::Petal, 0.7)]),
-        (Biome::Forest, false) => choose(roll, &[(Kind::Leaf, 0.35)]),
-        (Biome::Forest, true) => choose(roll, &[(Kind::Leaf, 0.15)]),
-        (Biome::Meadow, false) => choose(roll, &[(Kind::Leaf, 0.2), (Kind::Pollen, 0.1)]),
-        (Biome::Meadow, true) => choose(roll, &[(Kind::Leaf, 0.1)]),
-        (Biome::Tropical, false) => choose(roll, &[(Kind::BigLeaf, 0.12)]),
-        (Biome::Tropical, true) => choose(roll, &[(Kind::BigLeaf, 0.05)]),
-        (Biome::Taiga, _) => Kind::Hidden,
-    }
+    choose(
+        roll,
+        &[
+            (Kind::Dust, if windy { 0.4 } else { 0.0 }),
+            (Kind::Leaf, share(ambient.leaves, LEAF_SHARE)),
+            (Kind::Petal, share(ambient.flowers, PETAL_SHARE)),
+            (Kind::Pollen, pollen),
+        ],
+    )
 }
 
 /// Returns true when the camera sits over open sea.
@@ -82,48 +94,5 @@ pub fn pick(ambient: &Ambient, roll: f32) -> Kind {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Builds surroundings on land at ground level.
-    fn land(biome: Biome, daylight: f32, wind: f32) -> Ambient {
-        Ambient {
-            biome,
-            surface: Surface::Grass,
-            height: 5.0,
-            daylight,
-            wind,
-        }
-    }
-
-    /// Every biome yields its signature particle and calm deserts yield nothing.
-    #[test]
-    fn kind_follows_the_surroundings() {
-        assert_eq!(pick(&land(Biome::Cherry, 1.0, 0.3), 0.1), Kind::Petal);
-        assert_eq!(pick(&land(Biome::Taiga, 1.0, 0.3), 0.1), Kind::Snow);
-        assert_eq!(pick(&land(Biome::Forest, 1.0, 0.3), 0.1), Kind::Leaf);
-        let under = Ambient {
-            height: -3.0,
-            ..land(Biome::Forest, 1.0, 0.3)
-        };
-        assert_eq!(pick(&under, 0.1), Kind::Bubble);
-        for step in 0..100 {
-            let roll = step as f32 / 100.0;
-            assert_eq!(pick(&land(Biome::Desert, 1.0, 0.2), roll), Kind::Hidden);
-        }
-        assert_eq!(pick(&land(Biome::Forest, 0.0, 0.3), 0.1), Kind::Leaf);
-        assert_eq!(pick(&land(Biome::Desert, 1.0, 0.9), 0.1), Kind::Dust);
-    }
-
-    /// High above every summit the air is empty, whatever lies below.
-    #[test]
-    fn nothing_drifts_above_the_ceiling() {
-        for biome in [Biome::Cherry, Biome::Taiga, Biome::Forest] {
-            let high = Ambient {
-                height: CEILING + 1.0,
-                ..land(biome, 1.0, 0.9)
-            };
-            assert_eq!(pick(&high, 0.1), Kind::Hidden);
-        }
-    }
-}
+#[path = "tests_pick.rs"]
+mod tests;

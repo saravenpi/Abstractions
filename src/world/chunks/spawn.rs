@@ -99,6 +99,7 @@ impl Spawner<'_> {
 /// Everything in `data` already is in the frame of the chunk: nothing is moved or measured here.
 pub fn spawn_chunk(commands: &mut Commands, spawner: &mut Spawner, data: ChunkData) -> Loaded {
     let entity = spawner.terrain(commands, data.frame, data.mesh);
+    commands.entity(entity).insert(data.canopy);
     let material = spawner.assets.material.clone();
     let cover = Cover {
         props: data.props.map(|m| spawner.meshes.add(m)),

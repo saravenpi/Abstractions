@@ -50,7 +50,7 @@ fn gone(particle: &Particle, position: Vec3, ground: &Ground) -> bool {
 
 /// Returns the draw scale of a particle from its size and fades.
 fn scale_of(particle: &Particle, distance: f32) -> Vec3 {
-    let size = particle.kind.motion().size;
+    let size = particle.size;
     let grow = (particle.age * 2.0)
         .min((particle.life - particle.age) * 2.0)
         .clamp(0.0, 1.0);
@@ -110,6 +110,8 @@ fn ambient_of(env: &Env, height: f32) -> Ambient {
         height,
         daylight: daylight(env.clock.phase),
         wind: env.wind.strength,
+        leaves: env.sensed.shed.leaves(),
+        flowers: env.sensed.shed.flowers(),
     }
 }
 
@@ -119,6 +121,7 @@ fn spawner<'a>(env: &'a Env, ground: Ground<'a>, rng: &'a mut Rng) -> Spawn<'a> 
         ambient: ambient_of(env, env.eye.altitude),
         record: *env.terrain.globe().record(),
         sky: env.sensed.sky,
+        shed: &env.sensed.shed,
         ground,
         wind: env.wind.direction,
         pool: &env.pool,

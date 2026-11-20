@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 use super::embed::Embedding;
 use crate::world::Terrain;
+use crate::world::canopy::{Canopy, canopy_on};
 use crate::world::globe::ChunkId;
 use crate::world::mesh::{
     Frame, Lod, chunk_heights, chunk_mesh, chunk_patch, node_frame, node_mesh, subsample,
@@ -35,6 +36,7 @@ pub struct ChunkData {
     pub(super) lod: Lod,
     pub(super) frame: Frame,
     pub(super) turfed: bool,
+    pub(super) canopy: Canopy,
 }
 
 /// What a worker thread produces for one coarse quadtree node.
@@ -143,6 +145,7 @@ pub fn generate(terrain: &Terrain, coord: IVec2, lod: Lod, turfed: bool) -> Chun
         bodies: body_collider_on(&scatter.props, &rig),
         structures: build_in(terrain, coord, &frame),
         heights: ground(terrain, coord, &heights),
+        canopy: canopy_on(terrain, coord, (&scatter.props, &scatter.grass), &rig),
         lod,
         frame,
         turfed,

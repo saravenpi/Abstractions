@@ -9,6 +9,7 @@ use super::kind::{Ambient, Kind};
 use super::planet::{drift, seen};
 use super::pool::{ABOVE, BELOW, HALF_WIDTH, Particle, Pool};
 use super::rng::Rng;
+use super::shed::{Shedding, Source, start};
 use super::sky::{Sky, fall};
 use crate::universe::PlanetRecord;
 use crate::world::SEA_LEVEL;
@@ -27,6 +28,8 @@ pub struct Spawn<'a> {
     pub record: PlanetRecord,
     /// What the weather drops around the camera.
     pub sky: Sky,
+    /// The plants within reach, which shed the leaves, petals and pollen.
+    pub shed: &'a Shedding,
     /// The ground around the camera, for heights along the local vertical.
     pub ground: Ground<'a>,
     /// Unit wind direction in the local frame of the camera.
@@ -75,13 +78,27 @@ impl Spawn<'_> {
         (eye - BELOW + (BELOW + ABOVE) * rise).max(floor + 0.3)
     }
 
-    /// Puts a visible particle of `kind` in the box and returns the height it dies at. This is
-    /// the one terrain lookup of a respawn.
-    fn settle(&mut self, kind: Kind, primed: bool, transform: &mut Transform) -> f32 {
-        let at = self.offset(primed);
-        let spot = self.ground.eye.at + self.ground.turn(Vec3::new(at.x, 0.0, at.y));
+    /// Puts a visible particle of `kind` in the box, or in the crown of `source` when it comes from a
+    /// plant, and returns the height it dies at. This is the one terrain lookup of a respawn.
+    fn settle(
+        &mut self,
+        kind: Kind,
+        primed: bool,
+        source: Option<&Source>,
+        transform: &mut Transform,
+    ) -> f32 {
+        let local = match source {
+            Some(source) => start(source, kind, self.rng),
+            None => self.offset(primed).extend(0.0).xzy(),
+        };
+        let spot = self.ground.eye.at + self.ground.turn(Vec3::new(local.x, 0.0, local.z));
         let bed = self.ground.height(spot);
-        let level = self.height(kind, bed);
+        let level = match source {
+            Some(_) => {
+                (self.ground.eye.altitude + local.y).max(bed.max(self.ground.sea_level()) + 0.3)
+            }
+            None => self.height(kind, bed),
+        };
         transform.translation = self.ground.raised(spot, level);
         match kind.is_submerged() {
             true => bed,
@@ -104,6 +121,41 @@ fn pick(spawn: &mut Spawn) -> Kind {
     weather.unwrap_or_else(|| drift(&spawn.record, &spawn.ambient, spawn.rng.next()))
 }
 
+/// Returns the kind of a respawning particle and the plant it comes from: a leaf, petal or pollen
+/// speck with no plant to shed it stays hidden.
+fn sourced(spawn: &mut Spawn) -> (Kind, Option<usize>) {
+    let kind = pick(spawn);
+    if !kind.is_shed() {
+        return (kind, None);
+    }
+    match spawn.shed.choose(kind, spawn.rng.next()) {
+        Some(i) => (kind, Some(i)),
+        None => (Kind::Hidden, None),
+    }
+}
+
+/// Gives a placed particle of `kind` its mesh and its material: the colours of its plant `from`
+/// for a leaf or a petal.
+fn dress(
+    look: (&mut Mesh3d, &mut MeshMaterial3d<StandardMaterial>),
+    kind: Kind,
+    from: Option<usize>,
+    spawn: &mut Spawn,
+) {
+    let mesh = spawn.pool.mesh(kind);
+    if look.0.0 != *mesh {
+        look.0.0 = mesh.clone();
+    }
+    let material = match (kind, from) {
+        (Kind::Leaf, Some(i)) => &spawn.pool.leaves[i],
+        (Kind::Petal, Some(i)) => &spawn.pool.petals[i],
+        _ => spawn.pool.material(kind, (spawn.rng.next() * 8.0) as usize),
+    };
+    if look.1.0 != *material {
+        look.1.0 = material.clone();
+    }
+}
+
 /// Re-rolls a particle's kind, position, life and look. A hidden particle only gets a new life:
 /// it is not drawn, so it costs no terrain lookup.
 pub fn respawn(
@@ -112,24 +164,22 @@ pub fn respawn(
     look: (&mut Mesh3d, &mut MeshMaterial3d<StandardMaterial>),
     spawn: &mut Spawn,
 ) {
-    let kind = pick(spawn);
+    let (kind, from) = sourced(spawn);
+    let source = from.and_then(|i| spawn.shed.sources.get(i)).copied();
     let motion = kind.motion();
     transform.scale = Vec3::ZERO;
     particle.kind = kind;
     particle.age = 0.0;
     particle.life = spawn.rng.range(motion.life.0, motion.life.1);
     particle.phase = spawn.rng.range(0.0, TAU);
+    particle.size = match (kind, source) {
+        (Kind::Leaf, Some(source)) => source.shed.size,
+        _ => motion.size,
+    };
     let primed = std::mem::replace(&mut particle.primed, true);
     if kind == Kind::Hidden {
         return;
     }
-    particle.floor = spawn.settle(kind, primed, transform);
-    let mesh = spawn.pool.mesh(kind);
-    if look.0.0 != *mesh {
-        look.0.0 = mesh.clone();
-    }
-    let material = spawn.pool.material(kind, (spawn.rng.next() * 8.0) as usize);
-    if look.1.0 != *material {
-        look.1.0 = material.clone();
-    }
+    particle.floor = spawn.settle(kind, primed, source.as_ref(), transform);
+    dress(look, kind, from, spawn);
 }

@@ -40,7 +40,7 @@ pub fn fill_node(
         return bands::fill(mesh, &span, frame, style.skirt);
     }
     let patch = Patch::new(&span, frame, &span.heights(), style.floor);
-    fill(mesh, &patch, style, &|i, j| {
+    fill(mesh, &patch, (style, None), &|i, j| {
         dithered(terrain, &span, (i, j))
     });
 }

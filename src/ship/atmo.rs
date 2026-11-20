@@ -27,8 +27,8 @@ fn weight(planet: &PlanetSpec, pos: DVec3) -> DVec3 {
 }
 
 /// Returns the acceleration of the engines in frame axes over a step of `h` seconds, where
-/// the weight and the drag pull with `hold.0` and the assist keeps the share `hold.1` of its
-/// push across the nose.
+/// the weight and the drag pull with `hold.0`, the assist keeps the share `hold.1` of its
+/// push across the nose and the circular orbit at the ship runs at `hold.2` metres per second.
 ///
 /// Without assist the lever and the stick are thrusts. With it they ask for speeds against
 /// the ground, and the weight and the drag are cancelled in full, so a ship that is let go
@@ -36,7 +36,13 @@ fn weight(planet: &PlanetSpec, pos: DVec3) -> DVec3 {
 /// air of a giant is not in `hold.0`: the assist leaves it to float the ship back up. A ship
 /// that touches the ground or the sea with idle engines is left to settle on it, unless the
 /// stick asks to rise.
-fn engines(ship: &Ship, controls: &Controls, touch: &Contact, hold: (DVec3, f64), h: f64) -> DVec3 {
+fn engines(
+    ship: &Ship,
+    controls: &Controls,
+    touch: &Contact,
+    hold: (DVec3, f64, f64),
+    h: f64,
+) -> DVec3 {
     if !ship.assist {
         return thrusters(ship, controls);
     }
@@ -57,6 +63,7 @@ fn engines(ship: &Ship, controls: &Controls, touch: &Contact, hold: (DVec3, f64)
         clearance: touch.radar,
         ground: touch.normal != DVec3::ZERO,
         grip: hold.1,
+        orbital: hold.2,
     };
     cruise.push(h) - hold.0
 }
@@ -158,8 +165,9 @@ pub fn step(ship: &mut Ship, controls: &Controls, land: Land, h: f64) -> Report 
     let pull = weight(planet, ship.pos);
     let down = deck::weigh(planet, pull, ship.pos, air);
     let grip = AIR_GRIP + (1.0 - AIR_GRIP) * airless(thickness(&planet.record));
+    let circular = (planet.mu() / ship.pos.length()).sqrt();
     let lost = (slow(ship.rot, ship.vel, air, h) - ship.vel) / h;
-    let held = engines(ship, controls, &touch, (pull + lost, grip), h);
+    let held = engines(ship, controls, &touch, (pull + lost, grip, circular), h);
     let pushed = deck::buoyed(planet, ship, held, [pull, lost, down - pull]) + touch.accel;
     let coriolis = DQuat::from_rotation_y(-2.0 * spin_rate(planet) * h);
     let free = coriolis * (ship.vel + (down + pushed) * h);

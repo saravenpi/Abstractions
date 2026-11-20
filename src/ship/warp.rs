@@ -3,6 +3,7 @@
 use bevy::math::DVec3;
 
 use super::body::Ship;
+use super::tune::CARRY;
 use super::wells::{Well, beside, nearest};
 use crate::universe::GLY;
 
@@ -26,9 +27,6 @@ pub const JUMP_CAP: f64 = 5000.0 * GLY;
 
 /// Share of a lock radius outside the lock sphere at which a closing ship drops out.
 const DROP_MARGIN: f64 = 0.1;
-
-/// Radii from a body inside which it carries the warp bubble fully, and beyond which not at all.
-const CARRY: (f64, f64) = (50.0, 100.0);
 
 /// Returns the warp speed `speed`, in metres per second, as a share of the top speed of the
 /// drive, from 0 to 1. Warp speeds span ten decades, so the share is taken on a logarithmic
@@ -68,10 +66,7 @@ fn body_velocity(wells: &[Well], pos: DVec3) -> DVec3 {
 
 /// Returns the velocity a nearby moving body gives the warp bubble, so a planet can be reached.
 fn carry(wells: &[Well], pos: DVec3) -> DVec3 {
-    let share = |well: &Well| {
-        let radii = well.pos.distance(pos) / well.radius;
-        ((CARRY.1 - radii) / (CARRY.1 - CARRY.0)).clamp(0.0, 1.0)
-    };
+    let share = |well: &Well| ((CARRY.1 - well.reach(pos)) / (CARRY.1 - CARRY.0)).clamp(0.0, 1.0);
     nearest(wells, pos).map_or(DVec3::ZERO, |well| well.vel * share(well))
 }
 

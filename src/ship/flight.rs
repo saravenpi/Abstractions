@@ -83,9 +83,14 @@ pub fn thrusters(ship: &Ship, controls: &Controls) -> DVec3 {
 fn hold(ship: &Ship, controls: &Controls, scene: &Scene) -> Cruise {
     let near = beside(scene.wells, ship.pos).map(|well| {
         let centre = well.pos + well.vel * scene.elapsed;
-        (well.vel, centre.distance(ship.pos) - well.radius)
+        let away = centre.distance(ship.pos);
+        (
+            well.vel,
+            away - well.radius,
+            (well.mu / away.max(1.0)).sqrt(),
+        )
     });
-    let (around, clearance) = near.unwrap_or((DVec3::ZERO, f64::INFINITY));
+    let (around, clearance, orbital) = near.unwrap_or((DVec3::ZERO, f64::INFINITY, 0.0));
     Cruise {
         vel: ship.vel - around,
         nose: ship.forward(),
@@ -98,6 +103,7 @@ fn hold(ship: &Ship, controls: &Controls, scene: &Scene) -> Cruise {
         clearance,
         ground: false,
         grip: 1.0,
+        orbital,
     }
 }
 

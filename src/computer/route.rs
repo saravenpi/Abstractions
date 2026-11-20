@@ -54,7 +54,7 @@ pub enum Block {
     Inside {
         /// True for a star, false for a planet or a moon.
         star: bool,
-        /// Radii of the body the lock sphere reaches.
+        /// Radii of the body the lock sphere reaches, in tenths.
         lock: u8,
         /// Radii from the centre the ship is at now, in tenths.
         tenths: u32,
@@ -69,8 +69,8 @@ impl Block {
             Block::Surface => "In the air of a planet: climb to orbit first".to_string(),
             Block::Inside { star, lock, tenths } => {
                 let body = ["planet", "star"][usize::from(star)];
-                let now = f64::from(tenths) / 10.0;
-                format!("Inside {lock} {body} radii (now {now:.1}): fly out first")
+                let (lock, now) = (f64::from(lock) / 10.0, f64::from(tenths) / 10.0);
+                format!("Inside {lock:.1} {body} radii (now {now:.1}): fly out first")
             }
         }
     }
@@ -84,6 +84,8 @@ pub enum RouteStatus {
     Idle,
     /// A course is set or flown, but the drive cannot take it yet.
     Blocked(Block),
+    /// The ship climbs to an orbit around the planet it is at.
+    Climbing,
     /// The drive, still running on the course before, drops out first.
     Dropping,
     /// The ship is turning toward the destination, this many percent of the way.
@@ -102,6 +104,7 @@ impl RouteStatus {
         match self {
             RouteStatus::Idle => "idle",
             RouteStatus::Blocked(_) => "blocked",
+            RouteStatus::Climbing => "climbing",
             RouteStatus::Dropping => "dropping out",
             RouteStatus::Aligning(_) => "aligning",
             RouteStatus::Spooling => "spooling",

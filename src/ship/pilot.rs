@@ -21,6 +21,8 @@ pub enum Phase {
     /// The drive, still running on the course before, drops out, and the ship holds its heading
     /// until the drop-out has played out. Only then does it turn.
     Dropping,
+    /// The ship climbs from the air of the planet it is at to an orbit around it.
+    Climbing,
     /// The ship turns its nose onto the course.
     Aligning,
     /// The drive spools.
@@ -98,6 +100,16 @@ pub struct Autopilot {
 }
 
 impl Autopilot {
+    /// The autopilot at rest after a route that arrived.
+    pub(super) const ARRIVED: Autopilot = Autopilot {
+        target: None,
+        goal: None,
+        phase: Phase::Arrived,
+        jump: false,
+        fresh: false,
+        settled: 0.0,
+    };
+
     /// Starts a route to `target`: a planet, a moon, a star or a galaxy. The route already
     /// flown to that target goes on as it is.
     pub fn engage(&mut self, target: Target) {

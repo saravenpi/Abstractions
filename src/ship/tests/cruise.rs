@@ -27,6 +27,7 @@ pub(super) fn body(gap: f64, time: f64) -> Well {
         mu: 9.81 * 6000.0 * 6000.0,
         radius: 6000.0,
         lock: 18_000.0,
+        hill: 1.0e6,
     }
 }
 

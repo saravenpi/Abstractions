@@ -8,15 +8,13 @@ use super::body::Ship;
 use super::mooring::anchor_for;
 use super::sim::{Cosmos, Pace};
 use super::sky::Skies;
+use super::tune::BODY_SWITCH;
 use super::warp::Warp;
 use super::wells::Well;
 use crate::player::Player;
 use crate::space::{Anchor, Clock, Frame, Location, Placed, Rebased, Shift, Travel};
 use crate::universe::{BodyId, PlanetSpec};
 use crate::world::enter_planet;
-
-/// Radii from a planet inside which it becomes the planet the world streams.
-const BODY_SWITCH: f64 = 25.0;
 
 /// Returns where the ship is drawn: its position moved by the frame time not yet simulated.
 fn shown(ship: &Ship, carry: f64) -> DVec3 {
@@ -87,12 +85,10 @@ fn body_at(ship: &Ship, skies: &Skies, current: BodyId) -> Option<BodyId> {
         Frame::Galaxy(_) => return None,
     };
     let system = skies.spec().filter(|system| system.star.id == star)?;
-    let radii = |(planet, well): (&PlanetSpec, &Well)| {
-        (well.pos.distance(ship.pos) / planet.radius, planet.id)
-    };
-    let scored = system.planets.iter().zip(skies.wells.get(1..)?).map(radii);
-    let (radii, body) = scored.min_by(|a, b| a.0.total_cmp(&b.0))?;
-    (radii < BODY_SWITCH || current.star != star).then_some(body)
+    let reach = |(planet, well): (&PlanetSpec, &Well)| (well.reach(ship.pos), planet.id);
+    let scored = system.planets.iter().zip(skies.wells.get(1..)?).map(reach);
+    let (reach, body) = scored.min_by(|a, b| a.0.total_cmp(&b.0))?;
+    (reach < BODY_SWITCH || current.star != star).then_some(body)
 }
 
 /// Names the planet the seated player is at and has the world stream it.

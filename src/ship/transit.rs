@@ -4,6 +4,7 @@ use bevy::math::DVec3;
 
 use super::body::Ship;
 use super::frames::{to_galaxy, to_star, to_surface, to_system};
+use super::tune::ESCORT;
 use super::warp::Warp;
 use super::wells::Well;
 use crate::computer::SYSTEM_REACH;
@@ -15,9 +16,6 @@ const AIR_MARGIN: f64 = 50.0;
 
 /// Share of the reach of a system beyond which a ship leaves the frame of its star.
 const REACH_MARGIN: f64 = 1.05;
-
-/// Radii from a planet inside which it carries a ship across a gap in time.
-const ESCORT: f64 = 100.0;
 
 /// Moves a ship between the surface frame of a planet or a moon and the frame of its star: up
 /// above the top of the atmosphere, down below it. A landed ship stays where it is.
@@ -78,17 +76,18 @@ pub fn enter_system<'a>(ship: &mut Ship, stars: impl IntoIterator<Item = &'a Sta
 
 /// Carries a ship in the frame of a star across `gap` seconds in which it was not simulated,
 /// such as a pause: a ship near a planet or a moon keeps its place and speed beside it. Of the
-/// bodies near enough, the one nearest in its own radii carries it, so a moon does beside its
-/// planet.
+/// bodies near enough, the one nearest in its own Hill radii carries it, so a moon does beside
+/// its planet.
 pub fn catch_up(ship: &mut Ship, system: &SystemSpec, time: f64, gap: f64) {
-    let radii =
-        |planet: &PlanetSpec| planet.position(time - gap).distance(ship.pos) / planet.radius;
+    let before = |planet: &PlanetSpec| Well::planet(planet, time - gap);
+    let reach = |then: &Well| then.reach(ship.pos);
     let near = system
         .planets
         .iter()
-        .filter(|planet| radii(planet) < ESCORT);
-    if let Some(planet) = near.min_by(|a, b| radii(a).total_cmp(&radii(b))) {
-        let (then, now) = (Well::planet(planet, time - gap), Well::planet(planet, time));
+        .map(|planet| (planet, before(planet)))
+        .filter(|(_, then)| reach(then) < ESCORT);
+    if let Some((planet, then)) = near.min_by(|a, b| reach(&a.1).total_cmp(&reach(&b.1))) {
+        let now = Well::planet(planet, time);
         ship.pos += now.pos - then.pos;
         ship.vel += now.vel - then.vel;
     }

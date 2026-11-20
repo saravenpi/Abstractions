@@ -6,6 +6,9 @@
 //! the colour of the ground under it. A planet without ground cover has neither.
 
 mod clear;
+mod colour;
+mod flight;
+mod ground;
 mod material;
 mod tile;
 mod tiles;

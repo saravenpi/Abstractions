@@ -209,7 +209,7 @@ fn stream_systems(app: &mut App) {
             (chunks::collect, meter::lap::<5>).chain(),
             (chunks::refine, meter::lap::<6>).chain(),
             (chunks::show, chunks::watch_calm, meter::lap::<7>).chain(),
-            (ready, chunks::place, meter::lap::<8>).chain(),
+            (ready, chunks::place.run_if(chunks::due), meter::lap::<8>).chain(),
             (sea::follow_focus, meter::lap::<9>).chain(),
         )
             .chain()

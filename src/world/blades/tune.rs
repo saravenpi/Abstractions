@@ -20,8 +20,15 @@ pub const FAR: f32 = 40.0;
 /// border builds nothing.
 pub const LINGER: f32 = 4.0;
 
-/// Most tiles built in one frame.
-pub const BUILDS: usize = 2;
+/// Most tiles landed, and most tiles started, in one frame: a tile finished off-thread waits for its turn.
+pub const LANDS: usize = 2;
+
+/// Most tiles being built at once on the compute pool.
+pub const FLIGHTS: usize = 6;
+
+/// Metres added to the sphere that holds the blades of a tile, so a prop is never dropped for a tile whose
+/// blades curve a little past the corners.
+pub const SLACK: f32 = 1.0;
 
 /// Height in metres of the camera above the ground over which no blade is drawn.
 pub const ABOVE: f32 = 30.0;

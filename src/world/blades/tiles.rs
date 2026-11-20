@@ -1,46 +1,46 @@
-//! The tiles of blades around the camera: built nearest first a few per frame, dense inside the inner ring
-//! and sparse out to the outer one, dropped past it, and all dropped when the camera flies high or the
-//! terrain view changes.
+//! The tiles of blades around the camera: built nearest first on the compute pool and landed a few per
+//! frame, dense inside the inner ring and sparse out to the outer one, dropped past it, and all dropped when
+//! the camera flies high or the terrain view changes.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use bevy::ecs::system::SystemParam;
-use bevy::light::NotShadowCaster;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::clear::{footprints, taken};
-use super::tile::{Ground, grow};
-use super::tune::{ABOVE, BUILDS, FAR, LINGER, NEAR, TILE};
+use super::flight::{Flight, fly, land};
+use super::tune::{ABOVE, FAR, LINGER, NEAR, TILE};
 use super::{BladeAssets, Cropped};
 use crate::render::GameCamera;
-use crate::screens::Screen;
-use crate::space::{Anchor, Placed};
+use crate::space::Anchor;
 use crate::world::canopy::Canopy;
-use crate::world::chunks::{Sited, pose};
+use crate::world::chunks::Sited;
 use crate::world::focus::Frames;
 use crate::world::globe::Chart;
-use crate::world::mesh::Frame;
 use crate::world::scatter::Carpet;
 use crate::world::{CHUNK_SIZE, Terrain};
 
 /// One tile of blades.
-struct Tile {
+pub struct Tile {
     /// The entity that draws it, none where no blade grows.
-    entity: Option<Entity>,
+    pub entity: Option<Entity>,
     /// True when it holds the dense blades.
-    full: bool,
+    pub full: bool,
     /// True when a cropped patch changed over it since it was built.
-    stale: bool,
+    pub stale: bool,
 }
 
 /// The tiles around the camera, the turf of the chunks they lie on, and the chart they were built in.
 #[derive(Resource, Default)]
 pub struct Meadow {
     /// Every tile built, by its key: its low corner over [`TILE`], in whole tiles from the origin of the view.
-    tiles: HashMap<IVec2, Tile>,
-    /// The turf of every chunk a tile was built on, none where no ground cover grows.
-    carpets: HashMap<IVec2, Option<Carpet>>,
+    pub(super) tiles: HashMap<IVec2, Tile>,
+    /// The turf of every chunk a tile holds or is built on, none where no ground cover grows. A chunk no tile
+    /// holds any more is forgotten.
+    carpets: HashMap<IVec2, Option<Arc<Carpet>>>,
+    /// The tiles being built on the compute pool, by their key.
+    pub(super) flights: HashMap<IVec2, Flight>,
     /// Seed of the globe and chart of the view the tiles were built in.
     view: Option<(u64, Chart)>,
     /// The cropped patches the tiles were built around.
@@ -50,16 +50,23 @@ pub struct Meadow {
 /// What the meadow reads and writes.
 #[derive(SystemParam)]
 pub struct Grower<'w, 's> {
-    commands: Commands<'w, 's>,
-    terrain: Res<'w, Terrain>,
+    pub(super) commands: Commands<'w, 's>,
+    pub(super) terrain: Res<'w, Terrain>,
     anchor: Res<'w, Anchor>,
-    frames: Frames<'w>,
-    assets: Res<'w, BladeAssets>,
-    cropped: Res<'w, Cropped>,
-    meshes: ResMut<'w, Assets<Mesh>>,
-    meadow: ResMut<'w, Meadow>,
+    pub(super) frames: Frames<'w>,
+    pub(super) assets: Res<'w, BladeAssets>,
+    pub(super) cropped: Res<'w, Cropped>,
+    pub(super) meshes: ResMut<'w, Assets<Mesh>>,
+    pub(super) meadow: ResMut<'w, Meadow>,
     camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
-    chunks: Query<'w, 's, (&'static Sited, &'static Canopy)>,
+    pub(super) chunks: Query<'w, 's, (&'static Sited, &'static Canopy)>,
+}
+
+/// Returns the chunk that holds the middle of tile `key`.
+pub fn chunk_of(key: IVec2) -> IVec2 {
+    ((key.as_vec2() + 0.5) * TILE / CHUNK_SIZE)
+        .floor()
+        .as_ivec2()
 }
 
 impl Meadow {
@@ -70,6 +77,7 @@ impl Meadow {
         if self.view == view && view.is_some() {
             return true;
         }
+        self.flights.clear();
         let planet = self.view.zip(view).filter(|(old, new)| old.0 == new.0);
         let carried = planet.and_then(|(old, new)| old.1.carried(&new.1));
         self.view = view;
@@ -96,10 +104,28 @@ impl Meadow {
         }
         self.tiles.clear();
         self.carpets.clear();
+        self.flights.clear();
     }
 
-    /// Marks stale every tile within reach of a cropped patch that was or now is, and keeps the patches
-    /// `cropped` of now.
+    /// Returns the turf of `chunk`, read once and kept while a tile holds the chunk.
+    pub(super) fn carpet(&mut self, terrain: &Terrain, chunk: IVec2) -> Option<Arc<Carpet>> {
+        let read = || Carpet::of(terrain, chunk).map(Arc::new);
+        self.carpets.entry(chunk).or_insert_with(read).clone()
+    }
+
+    /// Forgets the turf of every chunk that no tile holds or builds on.
+    fn evict(&mut self) {
+        let (tiles, flights) = (&self.tiles, &self.flights);
+        self.carpets.retain(|chunk, _| {
+            tiles
+                .keys()
+                .chain(flights.keys())
+                .any(|k| chunk_of(*k) == *chunk)
+        });
+    }
+
+    /// Marks stale every tile within reach of a cropped patch that was or now is, stops the tiles being
+    /// built there, and keeps the patches `cropped` of now.
     fn recrop(&mut self, terrain: &Terrain, cropped: &[(DVec3, f32)]) {
         let radius = terrain.globe().radius();
         let near = |key: &IVec2, (dir, r): &(DVec3, f32)| {
@@ -110,6 +136,8 @@ impl Meadow {
         for (key, tile) in &mut self.tiles {
             tile.stale |= patches.clone().any(|p| near(key, p));
         }
+        self.flights
+            .retain(|key, _| !patches.clone().any(|p| near(key, p)));
         self.cropped = cropped.to_vec();
     }
 
@@ -117,6 +145,9 @@ impl Meadow {
     /// building: missing, stale, or holding dense blades where sparse ones are wanted or the other way.
     fn plan(&mut self, commands: &mut Commands, at: Vec2, wanted: &mut Vec<(f32, IVec2, bool)>) {
         let centre = |key: &IVec2| (key.as_vec2() + 0.5) * TILE;
+        let before = self.tiles.len() + self.flights.len();
+        self.flights
+            .retain(|key, _| centre(key).distance(at) < FAR + TILE + LINGER);
         self.tiles.retain(|key, tile| {
             let keep = centre(key).distance(at) < FAR + TILE + LINGER;
             if let (false, Some(entity)) = (keep, tile.entity) {
@@ -124,6 +155,9 @@ impl Meadow {
             }
             keep
         });
+        if before != self.tiles.len() + self.flights.len() {
+            self.evict();
+        }
         wanted.clear();
         let reach = ((FAR + TILE) / TILE).ceil() as i32;
         let home = (at / TILE).floor().as_ivec2();
@@ -143,66 +177,9 @@ impl Meadow {
     }
 }
 
-/// Returns the mesh of the blades of tile `key`, dense when `full`, clear of the footprints `near`, and the
-/// frame it is built in, or nothing where no blade grows.
-fn blades_of(
-    g: &mut Grower,
-    key: IVec2,
-    full: bool,
-    near: &[(DVec3, f32)],
-) -> Option<(Mesh, Frame)> {
-    let w = (key.as_vec2() + 0.5) * TILE;
-    let chunk = (w / CHUNK_SIZE).floor().as_ivec2();
-    let terrain = g.terrain.clone();
-    let carpets = &mut g.meadow.carpets;
-    let carpet = carpets
-        .entry(chunk)
-        .or_insert_with(|| Carpet::of(&terrain, chunk));
-    let radius = terrain.globe().radius();
-    let ground = Ground::read(&terrain, key);
-    let clear = |p| taken(p, near, &g.cropped, radius);
-    let (blades, frame) = grow((&terrain, &ground), key, carpet.as_ref()?, full, &clear);
-    Some((blades.into_mesh()?, frame))
-}
-
-/// Spawns the entity that draws `mesh` in `frame`, posed from the anchor of now.
-fn spawn_tile(g: &mut Grower, mesh: Mesh, frame: Frame) -> Entity {
-    let sited = Sited::from(frame);
-    let alone = Placed {
-        pos: sited.pos,
-        rot: sited.rot,
-    };
-    let link = g.frames.link();
-    let (placed, transform) = link.map_or((alone, Transform::default()), |(anchor, link)| {
-        pose(&anchor, &link, &sited)
-    });
-    let look = (
-        Mesh3d(g.meshes.add(mesh)),
-        MeshMaterial3d(g.assets.material.clone()),
-        NotShadowCaster,
-    );
-    let at = (sited, placed, transform, Visibility::default());
-    let name = (Name::new("Blades"), DespawnOnEnter(Screen::Title));
-    g.commands.spawn((name, look, at)).id()
-}
-
-/// Builds tile `key`, dense when `full`, clear of the footprints `near`, and spawns or replaces its entity.
-fn build(g: &mut Grower, key: IVec2, full: bool, near: &[(DVec3, f32)]) {
-    if let Some(entity) = g.meadow.tiles.remove(&key).and_then(|t| t.entity) {
-        g.commands.entity(entity).try_despawn();
-    }
-    let drawn = blades_of(g, key, full, near);
-    let entity = drawn.map(|(mesh, frame)| spawn_tile(g, mesh, frame));
-    let tile = Tile {
-        entity,
-        full,
-        stale: false,
-    };
-    g.meadow.tiles.insert(key, tile);
-}
-
 /// Keeps the tiles of blades around the camera: drops them all when the view changed or the camera is high
-/// over the ground, marks those under a changed cropped patch, then builds the nearest that want it.
+/// over the ground, marks those under a changed cropped patch, lands the tiles that finished building, then
+/// starts building the nearest that want it.
 pub fn tend(
     mut g: Grower,
     mut wanted: Local<Vec<(f32, IVec2, bool)>>,
@@ -228,10 +205,6 @@ pub fn tend(
         meadow.recrop(terrain, &cropped.0);
     }
     meadow.plan(commands, at.xz(), &mut wanted);
-    for &(_, key, full) in wanted.iter().take(BUILDS) {
-        let centre = (key.as_vec2() + 0.5) * TILE;
-        let planet = g.terrain.embed(centre.x, 0.0, centre.y);
-        footprints(&g.chunks, planet, &mut near);
-        build(&mut g, key, full, &near);
-    }
+    land(&mut g);
+    fly(&mut g, &wanted, &mut near);
 }

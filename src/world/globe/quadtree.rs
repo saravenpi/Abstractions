@@ -23,8 +23,20 @@ pub const SPLIT: f64 = 2.0;
 /// A node merges when the focus is farther than this many times its width.
 pub const MERGE: f64 = 2.4;
 
-/// Most nodes split by one selection.
+/// Most nodes split by one selection on a planet whose tree is [`SHALLOW`] levels deep or less.
 pub const MAX_SPLITS: usize = 4;
+
+/// Levels of the tree up to which [`MAX_SPLITS`] splits a selection are enough: a deeper tree
+/// needs a split for every extra level or two to reach its leaves in the time a shallow one does.
+pub const SHALLOW: u8 = 8;
+
+/// Returns the most nodes split by one selection on a planet whose tree is `depth` levels deep:
+/// [`MAX_SPLITS`] up to [`SHALLOW`] levels, then in proportion to the depth, so a 17 level Earth
+/// reaches its leaves as fast as a 7 level home planet. Splits only queue work: the mesh of a
+/// node is built off the main thread and turned into an entity within the frame budget.
+pub fn splits(depth: u8) -> usize {
+    (MAX_SPLITS * usize::from(depth)).div_ceil(usize::from(SHALLOW)).max(MAX_SPLITS)
+}
 
 /// Most nodes the streamer keeps alive, hidden parents included.
 ///

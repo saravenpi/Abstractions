@@ -20,13 +20,14 @@ use super::{Route, frame, rest, stage};
 use crate::world::globe::ChunkId;
 
 /// Heights over the sea in metres the headless tour puts the ship at on its way to orbit.
-const TOUR: [f64; 7] = [30.0, 100.0, 300.0, 500.0, 1000.0, 1700.0, 6400.0];
+const TOUR: [f64; 7] = [30.0, 100.0, 300.0, 500.0, 1000.0, 1700.0, 2600.0];
 
 /// Frames the tour holds each height before its shot.
 const HOLD: usize = 40;
 
-/// Height of the orbit in metres over the sea.
-const ORBIT: f64 = 6400.0;
+/// Height of the orbit in metres over the sea: under the hand-over of 1.5 radii, 3,000 m over this
+/// planet, where the sky takes the planet from the world.
+const ORBIT: f64 = 2600.0;
 
 /// Meshes that gained or lost a visibility range without being marked changed: Bevy kept the
 /// pipeline it chose before for them.
@@ -127,6 +128,27 @@ fn climbing_to_orbit_keeps_the_globe_whole() {
         }
         rest(&mut app, &route);
         assert_covered(&app, true, &format!("orbit at {rate} m/s"));
+    }
+    assert!(app.world().resource::<Stale>().0.is_empty());
+}
+
+/// Heights over the sea in metres the tour puts the ship at over an Earth-sized planet, up to
+/// where the world still draws the baked planet, under the hand-over of 1.5 radii.
+const EARTH_TOUR: [f64; 6] = [30.0, 300.0, 3.0e3, 3.0e4, 3.0e5, 2.4e6];
+
+/// Over a planet of 6,371 km, 17 levels deep, the ship that jumps from height to height keeps
+/// the globe drawn whole at every frame, exactly once when everything has settled, and leaves
+/// no mesh with the pipeline of a fade it left. The world settles after each jump in the five
+/// minutes `rest` allows.
+#[test]
+fn climbing_over_an_earth_keeps_the_globe_whole() {
+    let (mut app, mut route) = stage(6.371e6, 4);
+    app.init_resource::<Stale>().add_systems(Last, watch);
+    for height in EARTH_TOUR {
+        route.height = height;
+        hold_for(&mut app, &mut route, HOLD);
+        rest(&mut app, &route);
+        assert_covered(&app, true, &format!("{height} m over Earth"));
     }
     assert!(app.world().resource::<Stale>().0.is_empty());
 }

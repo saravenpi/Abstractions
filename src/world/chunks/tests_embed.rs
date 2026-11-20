@@ -89,15 +89,15 @@ fn embedded_colliders_follow_the_ground() {
     assert!(axis.dot(Vec3::Y) < 0.999_999);
 }
 
-/// The baked planet replaces the quadtree beyond 3.2 radii, stays down to 3 and stops at 20, and
-/// its mesh holds sixteen nodes per face.
+/// The baked planet replaces the quadtree beyond 1.3 radii, stays down to 1.2 and stops at the
+/// hand-over of 1.5, and its mesh holds sixteen nodes per face.
 #[test]
 fn far_planet_has_hysteresis_and_ninety_six_nodes() {
-    assert_eq!(range(3.1, false), Range::Near);
-    assert_eq!(range(3.1, true), Range::Far);
-    assert_eq!(range(3.3, false), Range::Far);
-    assert_eq!(range(2.9, true), Range::Near);
-    assert_eq!(range(20.5, true), Range::Beyond);
+    assert_eq!(range(1.25, false), Range::Near);
+    assert_eq!(range(1.25, true), Range::Far);
+    assert_eq!(range(1.35, false), Range::Far);
+    assert_eq!(range(1.15, true), Range::Near);
+    assert_eq!(range(1.55, true), Range::Beyond);
     assert_eq!(nodes().len(), 96);
     let globe = Arc::new(Globe::new(9, 3000.0, 22.0));
     let mesh = bake(&globe);

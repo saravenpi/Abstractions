@@ -185,9 +185,12 @@ impl Scene<'_> {
     }
 }
 
+/// The body of the player at this machine, how it moves and how its robot is posed with its swing.
+type Mine<'a> = (&'a GlobalTransform, &'a Motion, (&'a AvatarPose, (u8, f32)));
+
 impl Locals<'_, '_> {
     /// Returns the body of the player at this machine, how it moves and how its robot is posed.
-    fn mine(&self) -> Option<(&GlobalTransform, &Motion, (&AvatarPose, (u8, f32)))> {
+    fn mine(&self) -> Option<Mine<'_>> {
         let local = |(_, id, ..): &(Entity, &PlayerId, _, _)| **id == PlayerId::LOCAL;
         let (entity, _, at, motion) = self.players.iter().find(local)?;
         let hung =

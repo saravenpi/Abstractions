@@ -10,14 +10,17 @@ mod kind;
 mod pick;
 mod planet;
 mod pool;
+mod rate;
 mod respawn;
 mod rng;
 mod sense;
 mod shed;
 mod sim;
+mod sink;
 mod sky;
 #[cfg(test)]
 mod tests_pool;
+mod tune;
 
 use std::time::Duration;
 

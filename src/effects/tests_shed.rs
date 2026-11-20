@@ -3,8 +3,17 @@
 use bevy::ecs::system::RunSystemOnce;
 
 use super::*;
+use crate::effects::rate::Air;
 use crate::effects::sense::Sensed;
+use crate::life::flora::Stage;
 use crate::world::canopy::Crown;
+
+/// A breezy day at home.
+const WINDY: Air = Air {
+    speed: 5.0,
+    thickness: 1.0,
+    rain: 0.0,
+};
 
 /// Returns a crown `away` metres from the eye along x, shedding `leaf` and `flower`.
 fn crown(away: f32, leaf: Option<[f32; 3]>, flower: Option<[f32; 3]>) -> Crown {
@@ -17,7 +26,9 @@ fn crown(away: f32, leaf: Option<[f32; 3]>, flower: Option<[f32; 3]>) -> Crown {
             leaf,
             size: 0.1,
             flower,
-            rate: 1.0,
+            stage: Stage::Fruit,
+            deciduous: true,
+            stress: 0.0,
         }),
     }
 }
@@ -40,16 +51,19 @@ fn gathered(crowns: Vec<Crown>) -> World {
 /// Under bare trees nothing sheds a leaf; a leafy tree nearby gives leaves of its own colour.
 #[test]
 fn leaves_come_only_from_leafy_plants() {
-    let bare = gathered(vec![crown(3.0, None, None)]);
-    let shed = &bare.resource::<Sensed>().shed;
+    let mut bare = gathered(vec![crown(3.0, None, None)]);
+    let shed = &mut bare.resource_mut::<Sensed>().shed;
+    shed.weigh(&WINDY);
     assert_eq!((shed.leaves(), shed.choose(Kind::Leaf, 0.5)), (0.0, None));
     let green = [0.1, 0.4, 0.05];
-    let leafy = gathered(vec![
+    let mut leafy = gathered(vec![
         crown(3.0, Some(green), None),
         crown(90.0, Some([1.0; 3]), None),
     ]);
+    leafy.resource_mut::<Sensed>().shed.weigh(&WINDY);
     let shed = &leafy.resource::<Sensed>().shed;
-    assert_eq!(shed.leaves(), 1.0, "the far tree is out of reach");
+    assert_eq!(shed.sources.len(), 1, "the far tree is out of reach");
+    assert!(shed.leaves() > 0.0);
     let slot = shed.choose(Kind::Leaf, 0.5).expect("a leaf source");
     let pool = leafy.resource::<Pool>();
     let material = leafy
@@ -71,6 +85,9 @@ fn a_leaf_starts_in_its_crown() {
         shed: crown(0.0, Some([0.2; 3]), None)
             .shed
             .expect("a leafy crown"),
+        leaf: 1.0,
+        petal: 0.0,
+        pollen: 0.0,
     };
     for _ in 0..50 {
         let at = start(&source, Kind::Leaf, &mut rng);

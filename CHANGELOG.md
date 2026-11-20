@@ -20,6 +20,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Leaves, petals and pollen fall when the world says so. In calm summer air a tree loses almost nothing. Gusts tear leaves off in small bursts, harder the stronger the wind and the thicker the air, and rain and storms knock more down. Deciduous trees shed heavily in autumn and are bare in winter, evergreens drop a slow trickle all year, and dry plants shed more. Petals fall only while a plant flowers, pollen only on dry days with some wind. Leaves sink at the speed their size, the air and the planet's gravity give and drift downwind.
 - Falling leaves, petals and pollen come only from the plants around you. A tree in leaf drops leaves of its own colour and size, more in autumn; a plant in flower drops petals and, by day, pollen; a bare tree and a lifeless planet drop nothing.
 - The map's side panel has more room: Search, Place, Favourites and Players each sit under a heading, with space between them and between the groups of the card. The result count sits beside the Search heading, the save button beside the Favourites heading, and the distance only in the result row. Rows are taller, and in a short window the favourites and players lose their last rows before anything else is cut.
 - The buttons on the card are shorter, so they take two rows: Set course or Engage and Clear, Focus, Set waypoint and Save place.

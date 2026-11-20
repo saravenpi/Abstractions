@@ -7,6 +7,7 @@
 use bevy::prelude::*;
 
 use super::Terrain;
+use super::lands::thrive::climate_at;
 use super::propmesh::grown::{Look, habit, look};
 use super::props::footprint;
 use super::scatter::{Placement, Rig, chunk_center};
@@ -30,9 +31,6 @@ const CROWN: f32 = 0.35;
 /// Narrowest crown radius in metres.
 const NARROW: f32 = 0.6;
 
-/// How many more leaves fall from a deciduous plant in autumn than in another season.
-const AUTUMN: f32 = 3.0;
-
 /// What falls from one plant.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Shed {
@@ -42,8 +40,12 @@ pub struct Shed {
     pub size: f32,
     /// Linear RGB of its flowers, or none out of flower.
     pub flower: Option<[f32; 3]>,
-    /// How many leaves fall from it against an evergreen of its size, 1 or more.
-    pub rate: f32,
+    /// The stage of its year the plant stands at.
+    pub stage: Stage,
+    /// True when it loses all its leaves in winter.
+    pub deciduous: bool,
+    /// How short of water it is against the climate it grew for, from 0 to 1.
+    pub stress: f32,
 }
 
 /// One prop of the canopy, in the frame of its chunk.
@@ -77,9 +79,20 @@ pub fn stage_at(terrain: &Terrain, center: Vec2) -> Stage {
     flora::stage(globe.season(), latitude, globe.record().tilt as f32)
 }
 
-/// Returns what falls from a plant of `look` at `stage`, standing tall when `tall`: leaves only from a
-/// leafy plant that holds them above the ground, flowers from any plant in flower.
-pub fn shed(look: &Look, stage: Stage, tall: bool) -> Option<Shed> {
+/// Returns how short of water the plants of `terrain` are on chart position `center` against the annual
+/// mean they grew for, from 0 to 1: nothing on the legacy plane, which has no climate.
+pub fn stress_at(terrain: &Terrain, center: Vec2) -> f32 {
+    let Some(mean) = climate_at(terrain, center) else {
+        return 0.0;
+    };
+    let globe = terrain.globe();
+    let air = globe.air(terrain.chart().dir(center.x, center.y), 0.0);
+    (1.0 - air.moisture / mean.moisture.max(f32::EPSILON)).clamp(0.0, 1.0)
+}
+
+/// Returns what falls from a plant of `look` at `stage` under water `stress`, standing tall when `tall`:
+/// leaves only from a leafy plant that holds them above the ground, flowers from any plant in flower.
+pub fn shed(look: &Look, (stage, stress): (Stage, f32), tall: bool) -> Option<Shed> {
     let dials = &look.dials;
     if matches!(dials.architecture, KELP | LATTICE) {
         return None;
@@ -87,7 +100,6 @@ pub fn shed(look: &Look, stage: Stage, tall: bool) -> Option<Shed> {
     let form = &dials.form;
     let leaf = dials.paint.leaves.filter(|_| tall);
     let flower = dials.paint.flowers;
-    let autumn = form.deciduous && stage == Stage::Fruit;
     let size = match form.needles {
         true => NEEDLE,
         false => LEAF_EDGE.0 + LEAF_EDGE.1 * form.leaf,
@@ -96,12 +108,14 @@ pub fn shed(look: &Look, stage: Stage, tall: bool) -> Option<Shed> {
         leaf,
         size,
         flower,
-        rate: if autumn { AUTUMN } else { 1.0 },
+        stage,
+        deciduous: form.deciduous,
+        stress,
     })
 }
 
 /// Returns the crown of placement `p` placed through `rig` at `stage`, standing tall when `tall`.
-fn crown(p: &Placement, rig: &Rig, stage: Stage, tall: bool) -> Crown {
+fn crown(p: &Placement, rig: &Rig, year: (Stage, f32), tall: bool) -> Crown {
     let look = look(p.variant);
     let height = look.map_or(p.scale, |l| habit(l.dials.architecture).reference * p.scale);
     let spread = look.map_or(1.0, |l| l.dials.kind.spread);
@@ -110,7 +124,7 @@ fn crown(p: &Placement, rig: &Rig, stage: Stage, tall: bool) -> Crown {
         height,
         reach: (CROWN * height * spread).max(NARROW),
         foot: if tall { footprint(p) } else { 0.0 },
-        shed: look.and_then(|l| shed(&l, stage, tall)),
+        shed: look.and_then(|l| shed(&l, year, tall)),
     }
 }
 
@@ -122,11 +136,12 @@ pub fn canopy_on(
     (props, grass): (&[Placement], &[Placement]),
     rig: &Rig,
 ) -> Canopy {
-    let stage = stage_at(terrain, chunk_center(coord));
-    let big = props.iter().map(|p| crown(p, rig, stage, true));
+    let center = chunk_center(coord);
+    let year = (stage_at(terrain, center), stress_at(terrain, center));
+    let big = props.iter().map(|p| crown(p, rig, year, true));
     let small = grass
         .iter()
-        .map(|p| crown(p, rig, stage, false))
+        .map(|p| crown(p, rig, year, false))
         .filter(|c| c.shed.is_some())
         .take(SMALL_MOST);
     Canopy(big.chain(small).collect())

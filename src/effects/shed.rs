@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use super::eye::Eye;
 use super::kind::Kind;
 use super::pool::{ABOVE, BELOW, HALF_WIDTH, Pool};
+use super::rate::{self, Air};
 use super::rng::Rng;
 use crate::world::CHUNK_SIZE;
 use crate::world::canopy::{Canopy, Shed};
@@ -27,6 +28,12 @@ pub struct Source {
     pub reach: f32,
     /// What falls from it.
     pub shed: Shed,
+    /// Leaves per second it loses right now.
+    pub leaf: f32,
+    /// Petals per second it loses right now.
+    pub petal: f32,
+    /// Pollen specks per second it lets go right now.
+    pub pollen: f32,
 }
 
 /// The plants within reach of the particle box, nearest first, at most [`SLOTS`].
@@ -37,26 +44,37 @@ pub struct Shedding {
 }
 
 impl Shedding {
-    /// Returns how many leafy plants are within reach, each weighted by how fast its leaves fall.
-    pub fn leaves(&self) -> f32 {
-        let leafy = self.sources.iter().filter(|s| s.shed.leaf.is_some());
-        leafy.map(|s| s.shed.rate).sum()
+    /// Sets what each plant sheds per second in `air`.
+    pub fn weigh(&mut self, air: &Air) {
+        for source in &mut self.sources {
+            source.leaf = rate::leaves(&source.shed, air);
+            source.petal = rate::petals(&source.shed, air);
+            source.pollen = rate::pollen(&source.shed, air);
+        }
     }
 
-    /// Returns how many plants in flower are within reach.
-    pub fn flowers(&self) -> f32 {
-        self.sources
-            .iter()
-            .filter(|s| s.shed.flower.is_some())
-            .count() as f32
+    /// Returns the leaves per second all the plants within reach lose.
+    pub fn leaves(&self) -> f32 {
+        self.sources.iter().map(|s| s.leaf).sum()
+    }
+
+    /// Returns the petals per second all the plants within reach lose.
+    pub fn petals(&self) -> f32 {
+        self.sources.iter().map(|s| s.petal).sum()
+    }
+
+    /// Returns the pollen specks per second all the plants within reach let go.
+    pub fn pollen(&self) -> f32 {
+        self.sources.iter().map(|s| s.pollen).sum()
     }
 
     /// Returns the index of the plant a particle of `kind` comes from, drawn by `roll` in `[0, 1)`
     /// among the plants that shed it, or nothing when none does.
     pub fn choose(&self, kind: Kind, roll: f32) -> Option<usize> {
         let weight = |s: &Source| match kind {
-            Kind::Leaf => s.shed.leaf.map_or(0.0, |_| s.shed.rate),
-            Kind::Petal | Kind::Pollen => s.shed.flower.map_or(0.0, |_| 1.0),
+            Kind::Leaf => s.leaf,
+            Kind::Petal => s.petal,
+            Kind::Pollen => s.pollen,
             _ => 0.0,
         };
         let total: f32 = self.sources.iter().map(weight).sum();
@@ -102,6 +120,9 @@ fn seen(eye: &Eye, foot: Vec3, crown: &crate::world::canopy::Crown) -> Option<So
         height: crown.height,
         reach: crown.reach,
         shed,
+        leaf: 0.0,
+        petal: 0.0,
+        pollen: 0.0,
     })
 }
 

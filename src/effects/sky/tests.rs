@@ -31,7 +31,8 @@ fn meadow(height: f32) -> Ambient {
         daylight: 1.0,
         wind: 0.3,
         leaves: 0.0,
-        flowers: 0.0,
+        petals: 0.0,
+        pollen: 0.0,
     }
 }
 
@@ -118,6 +119,7 @@ fn downpour(sky: Sky) -> App {
         .insert_resource(view)
         .insert_resource(Sensed { sky, ..default() })
         .init_resource::<Wind>()
+        .init_resource::<crate::wind::Thickness>()
         .init_resource::<DayClock>()
         .init_resource::<rng::Rng>()
         .init_resource::<Assets<Mesh>>()

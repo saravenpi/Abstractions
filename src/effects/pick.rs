@@ -1,6 +1,7 @@
 //! Picks the kind of a respawning particle from the surroundings.
 
 use super::kind::{Ambient, CEILING, Kind};
+use super::tune::RESPAWNS;
 use crate::world::{Biome, SEA_LEVEL, Surface};
 
 /// Camera height above sea level from which the air counts as snowy.
@@ -24,35 +25,35 @@ fn choose(roll: f32, shares: &[(Kind, f32)]) -> Kind {
     Kind::Hidden
 }
 
-/// Share of the pool each leafy plant within reach adds to the falling leaves, and the most they take.
-const LEAF_SHARE: (f32, f32) = (0.06, 0.45);
+/// Most of the pool the falling leaves take.
+const LEAF_MOST: f32 = 0.45;
 
-/// Share of the pool each plant in flower within reach adds to the falling petals, and the most they take.
-const PETAL_SHARE: (f32, f32) = (0.08, 0.5);
+/// Most of the pool the falling petals take.
+const PETAL_MOST: f32 = 0.5;
 
-/// Share of the pool each plant in flower within reach adds to the pollen by day, and the most it takes.
-const POLLEN_SHARE: (f32, f32) = (0.03, 0.12);
+/// Most of the pool the pollen takes.
+const POLLEN_MOST: f32 = 0.12;
 
-/// Returns the share of `per` for each of `count` plants, capped at `most`.
-fn share(count: f32, (per, most): (f32, f32)) -> f32 {
-    (count * per).min(most)
+/// Returns the share of the respawns a kind shed at `rate` per second takes, capped at `most`.
+fn share(rate: f32, most: f32) -> f32 {
+    (rate / RESPAWNS).min(most)
 }
 
-/// Picks the kind on land: dust in a desert wind, and only what the plants within reach shed: leaves
-/// from leafy plants, petals from plants in flower, and their pollen by day.
+/// Picks the kind on land: dust in a desert wind, and only what the plants within reach shed at the rate
+/// they shed it: leaves, petals, and pollen by day.
 fn on_land(ambient: &Ambient, roll: f32) -> Kind {
     let day = ambient.daylight >= NIGHT_DAYLIGHT;
     let windy = ambient.wind >= STRONG_WIND && ambient.biome == Biome::Desert;
     let pollen = match day {
-        true => share(ambient.flowers, POLLEN_SHARE),
+        true => share(ambient.pollen, POLLEN_MOST),
         false => 0.0,
     };
     choose(
         roll,
         &[
             (Kind::Dust, if windy { 0.4 } else { 0.0 }),
-            (Kind::Leaf, share(ambient.leaves, LEAF_SHARE)),
-            (Kind::Petal, share(ambient.flowers, PETAL_SHARE)),
+            (Kind::Leaf, share(ambient.leaves, LEAF_MOST)),
+            (Kind::Petal, share(ambient.petals, PETAL_MOST)),
             (Kind::Pollen, pollen),
         ],
     )

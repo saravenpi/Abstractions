@@ -11,7 +11,8 @@ fn land(biome: Biome, daylight: f32, wind: f32, (leaves, flowers): (f32, f32)) -
         daylight,
         wind,
         leaves,
-        flowers,
+        petals: flowers,
+        pollen: flowers,
     }
 }
 

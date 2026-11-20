@@ -12,6 +12,8 @@ fn world(temperature: f32, star: f32) -> World {
         radius: 6000.0,
         ocean: 0.6,
         star,
+        tilt: 0.0,
+        liquids: [0.6, 0.0375, 0.0375, 0.6],
     }
 }
 

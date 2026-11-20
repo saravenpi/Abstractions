@@ -13,10 +13,6 @@ const DAMP: f32 = 0.2;
 /// Share of the surface under liquid from which more standing liquid adds nothing.
 const FULL: f32 = 0.3;
 
-/// Score of a solvent the planet record holds no amount of: ammonia and hydrocarbons, whose
-/// lakes the record does not track.
-const UNTRACKED: f32 = 0.3;
-
 /// Share of the odds of life kept by molten silicate, the most speculative chemistry: no known
 /// molecule long enough to carry a code survives 1,500 K, so lava life stays a rare film.
 const SPECULATIVE: f32 = 0.01;
@@ -103,12 +99,15 @@ fn fit(liquid: &Liquid, kelvin: f32, pressure: f32) -> f32 {
     }
 }
 
-/// Returns how much of `solvent` life finds on `world`: standing liquid counts more than damp
-/// ground. Water and molten rock read the share under liquid of the planet record.
+/// Returns how much of `solvent` life finds on `world`: nothing on a planet that holds none of
+/// it, a little from ground that is only damp, and more from standing liquid, in full from 30
+/// percent of the surface. It reads the share of the surface under each liquid from the planet
+/// record.
 fn amount(solvent: Solvent, world: &World) -> f32 {
-    match solvent {
-        Solvent::Water | Solvent::Silicate => DAMP + (1.0 - DAMP) * (world.ocean / FULL).min(1.0),
-        Solvent::Ammonia | Solvent::Hydrocarbon => UNTRACKED,
+    let share = world.liquids[solvent as usize];
+    match share > 0.0 {
+        true => DAMP + (1.0 - DAMP) * (share / FULL).min(1.0),
+        false => 0.0,
     }
 }
 

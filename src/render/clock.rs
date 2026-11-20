@@ -32,20 +32,26 @@ impl Default for DayClock {
     }
 }
 
-/// Returns the seconds from one noon to the next on a planet or moon: its turn and its trip
-/// round the star add up. A moon goes round the star with its planet, and its own day is
-/// negative, so its noons can come the other way round: the result is then negative.
+/// Returns the seconds from one noon to the next on a planet or moon, from its physical spin
+/// and its orbit alone: nothing sets the length of a day.
+///
+/// A body turns the same way round as it goes round its star, so each turn the star has moved
+/// on a little and noon comes later: the rate of noons is the rate of turns less the rate of
+/// years, `1 / (1 / spin - 1 / year)`. A moon goes round the star with its planet, so its year
+/// is its planet's. A planet that tides locked to its star has no noon: the result is infinite.
+/// A body that turns slower than its year sees the star go backwards: the result is negative.
 pub fn solar_day(planet: &PlanetSpec) -> f64 {
     let year = planet
         .host
         .map_or(planet.orbit_seconds, |host| host.seconds);
-    1.0 / (1.0 / planet.day_seconds + 1.0 / year)
+    1.0 / (1.0 / planet.day_seconds - 1.0 / year)
 }
 
 /// Returns the seconds universe time must move forward for the phase `now` to become `wanted`.
 ///
 /// A wanted phase less than [`PHASE_SLACK`] behind counts as reached, so asking for the current
-/// phase again does not skip a whole day.
+/// phase again does not skip a whole day. On a planet locked to its star the phase never moves,
+/// so no wait reaches another one: the result is 0.
 pub fn catch_up(now: f32, wanted: f32, planet: &PlanetSpec) -> f64 {
     let day = solar_day(planet);
     let ahead = (wanted - now).rem_euclid(1.0);
@@ -54,7 +60,7 @@ pub fn catch_up(now: f32, wanted: f32, planet: &PlanetSpec) -> f64 {
     } else {
         ahead
     };
-    if ahead > 1.0 - PHASE_SLACK {
+    if ahead > 1.0 - PHASE_SLACK || !day.is_finite() {
         return 0.0;
     }
     f64::from(ahead) * day.abs()

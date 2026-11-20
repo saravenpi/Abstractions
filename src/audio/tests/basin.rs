@@ -13,7 +13,7 @@ use crate::audio::steps::footing;
 use crate::player::{BODY_LENGTH, BODY_RADIUS, EYE_OFFSET};
 use crate::render::GameCamera;
 use crate::space::Anchor;
-use crate::universe::{HOME_GRAVITY, HOME_RADIUS, PlanetClass, PlanetRecord, Water};
+use crate::universe::{EARTH_RADIUS, PlanetClass, PlanetRecord, STANDARD_GRAVITY, Water};
 use crate::world::globe::Chart;
 use crate::world::{Globe, Terrain};
 
@@ -52,7 +52,7 @@ fn heard(name: &str, record: PlanetRecord) -> (AudioScene, Option<StepSurface>) 
     let mut app = app(name);
     enter_world(&mut app);
     app.update();
-    let globe = Globe::new(7, HOME_RADIUS, HOME_GRAVITY).with_record(record);
+    let globe = Globe::new(7, EARTH_RADIUS, STANDARD_GRAVITY).with_record(record);
     let terrain = Terrain::on(Arc::new(globe), Chart::Flat);
     let body = basin(&terrain);
     let eyes = terrain.embed(body.x, body.y + EYE_OFFSET, body.z);

@@ -24,9 +24,9 @@ pub const RING_DENSITY: (f32, f32) = (0.2, 0.9);
 /// Narrowest ring disc, in radii of its planet.
 const WIDTH: f64 = 0.3;
 
-/// Share of gas giants and of solid planets that draw rings. Two solid planets in three lose
-/// theirs to their air, see [`of`], so about 3 in 100 of them keep rings.
-const ODDS: (f64, f64) = (0.4, 0.1);
+/// Share of gas giants and of solid planets that have rings: a solid planet rarely holds enough
+/// loose matter inside its Roche limit.
+const ODDS: (f64, f64) = (0.4, 0.03);
 
 /// Kelvin under which a planet is cold enough for ring ice to last.
 const ICE_KELVIN: f64 = 220.0;
@@ -42,9 +42,9 @@ const RING_STREAM: u64 = 4;
 
 /// Returns the rings of a planet, or nothing.
 ///
-/// Four in ten gas giants and about three in a hundred solid planets have rings. The inner edge
+/// Four in ten gas giants and three in a hundred solid planets have rings. The inner edge
 /// lies 1.2 to 1.6 radii out, the outer one at least 0.3 radii further and at most 2.4 radii
-/// out, inside the [`ROCHE`] limit and so inside every moon, which orbit from 4 radii. A disc
+/// out, inside the [`ROCHE`] limit and so inside every moon, which orbit outside it. A disc
 /// whose inner edge would lie in the air is not drawn. Rings are ice under 220 K and dust above.
 pub(super) fn of(planet: &PlanetSpec) -> Option<Rings> {
     let mut rng = Rng::new(hash::child(planet.seed, RING_STREAM));

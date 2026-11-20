@@ -9,9 +9,12 @@ use super::Globe;
 use super::atlas::STEPS;
 use super::season::MEAN_SEASON;
 use crate::climate::{self, Climate, Setting, Spot};
-use crate::universe::{HOME_DAY_SECONDS, PlanetRecord};
+use crate::universe::PlanetRecord;
 use crate::world::biome::Biome;
 use crate::world::islands::{gradient, sub_seed};
+
+/// Seconds the Earth takes per turn against the stars: the spin of a globe built without a planet.
+const EARTH_DAY: f32 = 86_164.0;
 
 /// Metres across the patches of the noise that blurs biome borders.
 const JITTER_SIZE: f64 = 90.0;
@@ -28,7 +31,8 @@ thread_local! {
     static KNOWN: Cell<[Known; 4]> = const { Cell::new([None; 4]) };
 }
 
-/// Returns the climate setting of a planet built without a spec: the home record and the home day.
+/// Returns the climate setting of a planet built without a spec: the temperate record and the
+/// spin of the Earth.
 pub fn setting(seed: u64, radius: f64, gravity: f64) -> Setting {
     let record = PlanetRecord::TEMPERATE;
     Setting {
@@ -36,7 +40,7 @@ pub fn setting(seed: u64, radius: f64, gravity: f64) -> Setting {
         pressure: record.pressure as f32,
         ocean: record.ocean as f32,
         tilt: record.tilt as f32,
-        day_seconds: HOME_DAY_SECONDS as f32,
+        day_seconds: EARTH_DAY,
         gravity: gravity as f32,
         radius: radius as f32,
         seed,

@@ -68,9 +68,9 @@ pub fn span_words((low, high): (f32, f32)) -> String {
 
 /// Returns the climate line of the card for a planet `season` of the way round its year: the
 /// season of the north and the span of temperatures, the near side in place of the season on
-/// a moon that always shows its planet the same face.
+/// a body that tides locked, which always shows the same face to what it goes round.
 pub fn climate_line(spec: &PlanetSpec, season: f32) -> String {
-    let locked = spec.id.is_moon() && spec.day_seconds < 0.0;
+    let locked = spec.locked();
     let lead = match locked {
         true => "near side warm".to_string(),
         false => season_words(spec.record.tilt, season),

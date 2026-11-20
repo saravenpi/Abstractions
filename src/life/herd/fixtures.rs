@@ -23,6 +23,8 @@ pub fn homeworld() -> World {
         radius: 6000.0,
         ocean: 0.5,
         star: 5800.0,
+        tilt: 0.0,
+        liquids: [0.5, 0.0375, 0.0375, 0.5],
     }
 }
 

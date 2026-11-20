@@ -4,14 +4,14 @@
 use super::Globe;
 use super::scale::scale;
 use super::tests_record::sphere_dirs;
-use crate::universe::{HOME_GRAVITY, HOME_RADIUS};
+use crate::universe::{EARTH_RADIUS, STANDARD_GRAVITY};
 use crate::world::SEA_LEVEL;
 
 /// The home planet gets factors of exactly 1; the mountain factor is the square root of the home gravity
 /// over the gravity within 0.6 to 1.6, the continent factor the home radius over the radius.
 #[test]
 fn relief_factors_follow_gravity_and_radius() {
-    assert_eq!(scale(HOME_RADIUS, HOME_GRAVITY), (1.0, 1.0));
+    assert_eq!(scale(EARTH_RADIUS, STANDARD_GRAVITY), (1.0, 1.0));
     assert!((scale(6000.0, 22.0 / 1.21).0 - 1.1).abs() < 1e-6);
     assert_eq!(scale(6000.0, 22.0 / 4.0).0, 1.6);
     assert_eq!(scale(6000.0, 22.0 * 4.0).0, 0.6);
@@ -47,7 +47,7 @@ fn weaker_pull_raises_the_mountains() {
 /// give the same plane bit for bit.
 #[test]
 fn the_plane_ignores_the_physics() {
-    let home = Globe::new(7, HOME_RADIUS, HOME_GRAVITY);
+    let home = Globe::new(7, EARTH_RADIUS, STANDARD_GRAVITY);
     let others = [
         Globe::new(7, 6000.0, 9.8),
         Globe::new(7, 6000.0, 80.0),

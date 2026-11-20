@@ -86,6 +86,8 @@ fn rung_is_seeded_and_spread() {
         radius: 6000.0,
         ocean: 0.6,
         star: 5780.0,
+        tilt: 0.0,
+        liquids: [0.6, 0.0375, 0.0375, 0.6],
     };
     let rungs: Vec<_> = (0..400).filter_map(|seed| rung(&home, seed)).collect();
     assert!(LADDER.iter().all(|r| rungs.contains(r)));

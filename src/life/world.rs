@@ -19,6 +19,11 @@ pub struct World {
     pub ocean: f32,
     /// Surface temperature of the star in kelvin.
     pub star: f32,
+    /// Angle between the spin axis and the axis of the orbit, in radians: how hard the seasons swing.
+    pub tilt: f32,
+    /// Share of the surface under each liquid, in the order of `Solvent`: water, ammonia,
+    /// hydrocarbons and molten rock. Zero where the planet holds none of it.
+    pub liquids: [f32; 4],
 }
 
 impl World {
@@ -33,6 +38,8 @@ impl World {
             radius: planet.radius as f32,
             ocean: record.ocean as f32,
             star: star.temperature as f32,
+            tilt: record.tilt as f32,
+            liquids: record.liquids().map(|share| share as f32),
         }
     }
 }

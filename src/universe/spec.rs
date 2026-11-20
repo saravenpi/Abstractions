@@ -51,7 +51,7 @@ pub enum StarClass {
     A,
     /// Yellow white.
     F,
-    /// Yellow, like the home star.
+    /// Yellow, like the Sun.
     G,
     /// Orange.
     K,
@@ -72,12 +72,14 @@ pub struct StarSpec {
     pub class: StarClass,
     /// Mass in kilograms. Multiply by [`GRAVITATION`] for the pull, see [`StarSpec::mu`].
     pub mass: f64,
-    /// Light output relative to the home star, which is 1.
+    /// Light output in luminosities of the Sun.
     pub luminosity: f64,
     /// Radius in metres.
     pub radius: f64,
-    /// Surface temperature in kelvin, the home star being at 5,780.
+    /// Surface temperature in kelvin.
     pub temperature: f64,
+    /// Age in seconds, shared by every planet and moon of the star.
+    pub age: f64,
     /// Linear RGB colour of the light, each channel from 0 to 1.
     pub color: Vec3,
     /// Position in metres from the galaxy centre.
@@ -91,7 +93,8 @@ impl StarSpec {
     }
 }
 
-/// A circular orbit around the star.
+/// A circular orbit around a star or a planet. Seen from +Y it turns counterclockwise, from +X
+/// toward -Z, the way a body with a positive day spins.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Orbit {
     /// Radius in metres.
@@ -106,7 +109,7 @@ impl Orbit {
     /// Returns the position at `time` seconds in metres from the centre, on the XZ plane.
     pub fn at(&self, time: f64) -> DVec3 {
         let angle = self.phase + std::f64::consts::TAU * time / self.seconds;
-        DVec3::new(angle.cos(), 0.0, angle.sin()) * self.radius
+        DVec3::new(angle.cos(), 0.0, -angle.sin()) * self.radius
     }
 }
 
@@ -139,8 +142,9 @@ pub struct PlanetSpec {
     pub radius: f64,
     /// Surface gravity in metres per second squared.
     pub gravity: f64,
-    /// Seconds for one turn around the +Y axis of the planet, which is one day and night.
-    /// Negative for a moon, which turns the other way, the way its orbit goes.
+    /// Seconds for one turn around its own +Y axis against the stars: the physical spin, the same
+    /// way round as its orbit. Equal to `orbit_seconds` on a tidally locked body. The day from
+    /// noon to noon follows from this and the orbit: the day clock of the renderer works it out.
     pub day_seconds: f64,
     /// Radius of the circular orbit around the star in metres.
     pub orbit_radius: f64,
@@ -158,8 +162,7 @@ pub struct PlanetSpec {
     pub record: PlanetRecord,
     /// For a moon, the orbit of its planet around the star. Nothing for a planet.
     pub host: Option<Orbit>,
-    /// Number of moons: 2 to 6 for a gas giant, 0 to 2 for a solid planet, 0 for the home planet
-    /// and for a moon.
+    /// Number of moons: up to 6 for a gas giant, 0 to 2 for a solid planet, 0 for a moon.
     pub moons: u8,
     /// The rings, if the planet has any.
     pub rings: Option<Rings>,
@@ -169,6 +172,12 @@ impl PlanetSpec {
     /// Returns the gravitational parameter in cubic metres per second squared.
     pub fn mu(&self) -> f64 {
         self.gravity * self.radius * self.radius
+    }
+
+    /// Returns true when tides have locked the spin to the orbit: the body always shows the same
+    /// face to what it goes round, its star for a planet and its planet for a moon.
+    pub fn locked(&self) -> bool {
+        self.day_seconds == self.orbit_seconds
     }
 
     /// Returns its own orbit: around the star for a planet, around its planet for a moon.

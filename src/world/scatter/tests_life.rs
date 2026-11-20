@@ -8,7 +8,7 @@ use super::zones::{LUSH, Tile, Zone, chunks};
 use super::*;
 use crate::life::flora::fixture::{MILD, garden, life, producer};
 use crate::life::{Life, Rung};
-use crate::universe::{HOME_GRAVITY, HOME_RADIUS};
+use crate::universe::{EARTH_RADIUS, STANDARD_GRAVITY};
 use crate::world::globe::Globe;
 use crate::world::propmesh::grown::{grown, habit};
 use Plant::*;
@@ -113,9 +113,13 @@ fn trees_are_lower_on_a_heavy_world() {
 #[test]
 fn home_plants_its_life() {
     let given = Arc::new(
-        Globe::new(LUSH, HOME_RADIUS, HOME_GRAVITY).with_life(Some(garden(9, &[0, 2], vec![]))),
+        Globe::new(LUSH, EARTH_RADIUS, STANDARD_GRAVITY).with_life(Some(garden(
+            9,
+            &[0, 2],
+            vec![],
+        ))),
     );
-    let plain = Arc::new(Globe::new(LUSH, HOME_RADIUS, HOME_GRAVITY));
+    let plain = Arc::new(Globe::new(LUSH, EARTH_RADIUS, STANDARD_GRAVITY));
     let (a, b) = (
         chunks(&given, Zone::Centre, 15, 4),
         chunks(&plain, Zone::Centre, 15, 4),

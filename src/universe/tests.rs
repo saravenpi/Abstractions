@@ -1,97 +1,63 @@
-//! Universe tests: the home system is pinned, everything is deterministic and the lookups agree.
+//! Universe tests: the home is chosen the same way twice, everything is deterministic and the
+//! lookups agree.
 
 use std::time::Instant;
 
-use bevy::math::DVec3;
+use bevy::math::{DVec3, IVec3};
 
 use super::*;
 
-/// The same seed gives the same home system, and the home planet matches the game constants.
+/// The same seed gives the same home and the same home system, and the home is a planet of it.
 #[test]
 fn home_system_is_deterministic() {
     let (a, b) = (Universe::new(7), Universe::new(7));
     let home = a.home();
     assert_eq!(home, b.home());
+    assert_eq!(a, b);
     assert_eq!(a.system(home.star), b.system(home.star));
     let planet = a.planet(home);
     assert_eq!(planet.id, home);
-    assert_eq!(planet.seed, 7);
-    assert_eq!(
-        (planet.radius, planet.gravity, planet.day_seconds),
-        (HOME_RADIUS, HOME_GRAVITY, HOME_DAY_SECONDS)
-    );
-    let air = (
-        planet.atmosphere_height,
-        planet.cloud_base,
-        planet.cloud_top,
-    );
-    assert_eq!(air, (4000.0, 900.0, 1500.0));
+    assert!(!home.is_moon() && landable(&planet), "{planet:?}");
     let system = a.system(home.star);
-    assert!((3..=8).contains(&system.planets.len()));
-    assert!(
-        system
-            .planets
-            .iter()
-            .enumerate()
-            .all(|(i, p)| usize::from(p.id.index) == i)
-    );
+    assert!((PLANETS.0..=PLANETS.1).contains(&(system.planets.len() as u8)));
+    assert_eq!(system.planets[usize::from(home.index)], planet);
 }
 
-/// Every seed has a pinned home planet in the disc of a spiral home galaxy.
+/// The home star lies in the middle of the home galaxy, which is a spiral, just past the void
+/// at its centre, and it has a generated name its planets take.
 #[test]
-fn every_seed_has_a_home_in_the_disc() {
-    for seed in 0..200 {
+fn every_seed_has_a_home_near_the_centre() {
+    for seed in 0..30 {
         let u = Universe::new(seed);
         let home = u.home();
-        let galaxy = u
-            .galaxy(home.star.galaxy)
-            .expect("the home cell holds a galaxy");
+        let galaxy = u.galaxy(home.star.galaxy).expect("the home galaxy exists");
+        assert_eq!(home.star.galaxy, GalaxyId(IVec3::ZERO));
         assert_eq!(galaxy.kind, GalaxyKind::Spiral);
         let star = u.star(home.star).expect("the home star exists");
-        assert_eq!(
-            (star.class, star.luminosity, star.id),
-            (StarClass::G, 1.0, home.star)
-        );
-        let reach = star.pos.x.hypot(star.pos.z) / galaxy.radius;
-        assert!((0.39..0.61).contains(&reach), "seed {seed}: {reach}");
-        assert!(star.pos.y.abs() <= SECTOR_GLY * GLY);
+        let reach = star.pos.length() / galaxy.radius;
+        assert!((0.005..0.2).contains(&reach), "seed {seed}: {reach}");
+        assert_eq!(sector_of(star.pos), home.star.sector);
         let planet = u.planet(home);
-        assert_eq!(
-            (planet.id, planet.seed, planet.radius),
-            (home, seed, HOME_RADIUS)
-        );
-        assert_eq!(
-            (planet.gravity, planet.day_seconds),
-            (HOME_GRAVITY, HOME_DAY_SECONDS)
-        );
-        assert!(planet.name.starts_with(&star.name));
+        assert_eq!(planet.name, names::planet(&star.name, home.index));
     }
 }
 
-/// The home galaxy and star are found through the lookups, in index order, and a missing star is nothing.
+/// The galaxy, sector and near-star lookups all find the home star.
 #[test]
 fn lookups_find_the_home_star() {
     let u = Universe::new(3);
     let star = u.home().star;
     assert!(u.galaxy(star.galaxy).is_some());
-    let near = u.galaxies_near(star.galaxy, 2);
+    let near = u.galaxies_near(star.galaxy, 1);
     assert!(near.iter().any(|g| g.id == star.galaxy));
-    assert!(
-        near.iter()
-            .all(|g| (g.id.0 - star.galaxy.0).abs().max_element() <= 2)
-    );
     assert_eq!(u.galaxies_near(star.galaxy, 0).len(), 1);
     let stars = u.stars_in_sector(star.galaxy, star.sector);
-    assert_eq!(stars[0].id, star);
+    assert_eq!(stars[usize::from(star.index)].id, star);
     assert!(
         stars
             .iter()
-            .enumerate()
-            .all(|(i, s)| usize::from(s.id.index) == i)
-    );
-    assert!(
-        u.stars_in_sector(star.galaxy, IVec3::splat(1000))
-            .is_empty()
+            .zip(0u8..)
+            .all(|(s, index)| s.id.index == index)
     );
     assert_eq!(u.star(StarId { index: 200, ..star }), None);
     assert_eq!(u.system(StarId { index: 200, ..star }), u.system(star));

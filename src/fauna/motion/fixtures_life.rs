@@ -38,6 +38,8 @@ fn world() -> World {
         radius: 6371.0,
         ocean: 0.6,
         star: 5780.0,
+        tilt: 0.0,
+        liquids: [0.6, 0.0375, 0.0375, 0.6],
     }
 }
 

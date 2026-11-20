@@ -9,7 +9,7 @@ use std::f32::consts::{FRAC_PI_2, TAU};
 use bevy::math::Vec3;
 
 use super::{Setting, Spot};
-use crate::universe::HOME_GRAVITY;
+use crate::universe::STANDARD_GRAVITY;
 
 /// Kelvin between the poles and the equator at home air pressure.
 const HOME_GAP: f32 = 40.0;
@@ -77,7 +77,7 @@ fn gap(setting: &Setting) -> f32 {
 /// The latitude shape is `gap * (1/3 - sin^2 lat) * 1.2`, whose equal-area mean is zero so the
 /// planet mean stays the record mean. A tidally locked moon has no such shape: its near side is
 /// 15 K warmer, its far side 15 K colder. The season adds `gap * sin(tilt) * sin(lat) *
-/// cos(2 pi season)`, opposite in the two hemispheres, and height takes 6.5 K per km at home
+/// cos(2 pi season)`, opposite in the two hemispheres, and height takes 6.5 K per km at standard
 /// gravity, scaled by the gravity, above the liquid surface only.
 pub(super) fn temperature(setting: &Setting, spot: &Spot, lat: f32, season: f32) -> f32 {
     let gap = gap(setting);
@@ -87,6 +87,6 @@ pub(super) fn temperature(setting: &Setting, spot: &Spot, lat: f32, season: f32)
         None => gap * (MEAN_SQUARE - sin * sin) * SHAPE,
     };
     let swing = gap * setting.tilt.sin() * sin * (TAU * season).cos();
-    let lapse = LAPSE * setting.gravity / HOME_GRAVITY as f32 * spot.altitude.max(0.0);
+    let lapse = LAPSE * setting.gravity / STANDARD_GRAVITY as f32 * spot.altitude.max(0.0);
     setting.temperature + shape + swing - lapse
 }

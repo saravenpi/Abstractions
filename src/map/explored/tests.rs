@@ -5,7 +5,7 @@ use bevy::math::DVec3;
 use super::grid::{CELLS, COLS, WORDS, cell_of, centre, disc};
 use super::{Explored, REACH_CAP, REACH_FOOT, reach};
 use crate::saves::{Place, WorldSave};
-use crate::universe::{HOME_RADIUS, Universe};
+use crate::universe::{EARTH_RADIUS, Universe};
 
 /// Every cell holds its own centre.
 #[test]
@@ -28,7 +28,7 @@ fn the_grid_starts_at_the_south_and_runs_east() {
 /// Returns the cells of a disc of `metres` on the home planet around `dir`, without repeats.
 fn cells(dir: DVec3, metres: f64) -> Vec<u32> {
     let mut cells = Vec::new();
-    disc(dir, metres / HOME_RADIUS, |cell| cells.push(cell));
+    disc(dir, metres / EARTH_RADIUS, |cell| cells.push(cell));
     cells.sort_unstable();
     cells.dedup();
     cells
@@ -39,11 +39,11 @@ fn cells(dir: DVec3, metres: f64) -> Vec<u32> {
 fn a_walk_uncovers_the_cells_around_it() {
     let dir = DVec3::new(1.0, 0.3, -0.4).normalize();
     let found = cells(dir, REACH_FOOT);
-    let side = std::f64::consts::TAU * HOME_RADIUS / COLS as f64;
+    let side = std::f64::consts::TAU * EARTH_RADIUS / COLS as f64;
     let expected = std::f64::consts::PI * REACH_FOOT * REACH_FOOT / (side * side);
     println!("{} cells for {expected:.0} expected", found.len());
     assert!((found.len() as f64 - expected).abs() < expected * 0.4);
-    let far = (REACH_FOOT + side) / HOME_RADIUS;
+    let far = (REACH_FOOT + side) / EARTH_RADIUS;
     assert!(
         found
             .iter()
@@ -62,9 +62,9 @@ fn a_disc_over_the_pole_takes_every_column() {
 /// The reach is 300 m on the ground, the horizon higher up, and never past 2 km.
 #[test]
 fn the_reach_grows_with_height_to_a_cap() {
-    assert_eq!(reach(-5.0, HOME_RADIUS), REACH_FOOT);
-    assert!((reach(100.0, HOME_RADIUS) - 1100.0).abs() < 1.0);
-    assert_eq!(reach(5000.0, HOME_RADIUS), REACH_CAP);
+    assert_eq!(reach(-5.0, EARTH_RADIUS), REACH_FOOT);
+    assert!((reach(100.0, EARTH_RADIUS) - 1100.0).abs() < 1.0);
+    assert_eq!(reach(5000.0, EARTH_RADIUS), REACH_CAP);
 }
 
 /// Cells uncovered here are handed to the network once; cells from the server never are.

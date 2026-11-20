@@ -27,13 +27,15 @@ pub const PLANS: [Plan; 6] = [
 /// otherwise.
 pub fn world(g: f32, pressure: f32, temperature: f32) -> World {
     World {
-        gravity: g * crate::universe::HOME_GRAVITY as f32,
+        gravity: g * crate::universe::STANDARD_GRAVITY as f32,
         pressure,
         temperature,
         flux: 1.0,
         radius: 6000.0,
         ocean: 0.5,
         star: 5800.0,
+        tilt: 0.0,
+        liquids: [0.5, 0.0375, 0.0375, 0.5],
     }
 }
 

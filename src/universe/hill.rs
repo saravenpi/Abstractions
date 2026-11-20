@@ -1,36 +1,70 @@
-//! Moon orbits: how many moons fit around a planet and where, inside its Hill sphere.
+//! Moon orbits: which moons a planet has, by how they form, and where they fit around it.
+
+use std::f64::consts::PI;
 
 use super::hash::{self, Rng};
-use super::planet::PLANET_RADIUS;
 use super::record::PlanetClass;
-use super::spec::{PlanetSpec, StarSpec};
+use super::rings::ROCHE;
+use super::spec::{GRAVITATION, PlanetSpec, StarSpec};
 
-/// Smallest and largest radius of a moon in metres. It stays inside `PLANET_RADIUS`, so the
-/// ground of a moon streams like the ground of a planet.
-pub const MOON_RADIUS: (f64, f64) = (3000.0, 15_000.0);
+/// Share of the solid planets a giant impact left with one large moon, as the Earth was.
+pub const IMPACT_SHARE: f64 = 0.25;
 
-/// Fewest and most moons of a gas giant.
-pub const GIANT_MOONS: (u8, u8) = (2, 6);
+/// Share of the solid planets that caught one or two small moons, as Mars did.
+pub const CAPTURE_SHARE: f64 = 0.15;
 
-/// Radius of the innermost moon orbit allowed, in radii of the planet.
-pub const INNERMOST: f64 = 4.0;
+/// Smallest and largest radius of an impact moon, in radii of its planet.
+pub const IMPACT_RADIUS: (f64, f64) = (0.1, 0.3);
 
-/// Share of the Hill radius every moon stays inside: past a third, the star pulls moons away.
-pub const HILL_SHARE: f64 = 1.0 / 3.0;
+/// Closest and farthest orbit of an impact moon, in radii of its planet.
+pub const IMPACT_ORBIT: (f64, f64) = (20.0, 80.0);
 
-/// Least gap between two neighbouring moon orbits, in sums of the radii of both moons.
-pub const SPACING: f64 = 4.0;
+/// Smallest and largest radius of a captured moon in metres.
+pub const CAPTURED_RADIUS: (f64, f64) = (1.0e4, 5.0e4);
+
+/// Closest orbit of a captured moon, as a share of the Hill radius of its planet.
+pub const CAPTURED_ORBIT: f64 = 0.15;
+
+/// Fewest and most regular moons of a gas giant, the ones that formed in the disc around it.
+pub const REGULAR_MOONS: (u8, u8) = (2, 6);
+
+/// Most small moons a gas giant caught on top of its regular ones.
+pub const STRAYS: u8 = 2;
+
+/// Smallest and largest radius of a regular moon in metres: from under Europa to Ganymede.
+pub const REGULAR_RADIUS: (f64, f64) = (1.0e6, 2.6e6);
+
+/// Closest and farthest orbit of a regular moon, in radii of its planet.
+pub const REGULAR_ORBIT: (f64, f64) = (5.0, 30.0);
+
+/// Most moons one planet holds.
+pub const MOST: usize = 6;
+
+/// Share of the Hill radius every moon stays inside: past a half, the star pulls moons away.
+pub const HILL_SHARE: f64 = 0.5;
+
+/// Least ratio between the orbits of two neighbouring moons.
+pub const SPACING: f64 = 1.2;
+
+/// Lightest and densest matter of an impact moon, a captured one and a regular one, in
+/// kilograms per cubic metre: mantle rock, rubble, and ice to rock.
+const MATTER: [(f64, f64); 3] = [(3000.0, 3400.0), (1500.0, 2500.0), (1500.0, 3500.0)];
 
 /// Child of the planet seed the moon draws come from.
 const MOON_STREAM: u64 = 3;
 
-/// Where one moon goes around its planet.
+/// Where one moon goes around its planet, and what it is.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub(super) struct Place {
     /// Radius of the circular orbit in metres from the centre of the planet.
     pub orbit: f64,
     /// Radius of the moon in metres.
     pub radius: f64,
+    /// Density of its matter in kilograms per cubic metre, before its own weight squeezes it.
+    pub matter: f64,
+    /// How hard its neighbours keep its orbit out of round, which is what lets tides heat it:
+    /// the square of its eccentricity over that of Io, 0 to 4 for a regular moon, else 0.
+    pub forcing: f64,
     /// Seed of the moon, its ground and its record.
     pub seed: u64,
 }
@@ -43,90 +77,117 @@ pub(super) fn hill(star: &StarSpec, planet: &PlanetSpec) -> f64 {
     planet.orbit_radius * (planet.mu() / (3.0 * star.mu())).cbrt()
 }
 
-/// Returns how many moons a planet asks for before they are fitted around it.
-///
-/// A gas giant asks for 2 to 6. A solid planet asks for 0 to 2, more often the bigger it is:
-/// one in seven of the smallest ask for one, six in ten of the largest.
-fn wanted(rng: &mut Rng, planet: &PlanetSpec) -> u32 {
-    if planet.record.class == PlanetClass::GasGiant {
-        let span = GIANT_MOONS.1 - GIANT_MOONS.0;
-        return u32::from(GIANT_MOONS.0) + rng.below(u32::from(span) + 1);
-    }
-    let size = (planet.radius / PLANET_RADIUS.0).ln() / (PLANET_RADIUS.1 / PLANET_RADIUS.0).ln();
-    let chance = 0.15 + 0.45 * size.clamp(0.0, 1.0);
-    let roll = rng.unit();
-    u32::from(roll < chance) + u32::from(roll < chance * 0.3)
-}
-
-/// The orbits the moons of one planet may use: from `low` to `high` metres out, for moons of
-/// at most `largest` metres.
-struct Span {
-    /// Radius of the innermost orbit allowed, in metres.
+/// The moons that fit around one planet so far.
+struct Fit {
+    /// The moons kept, outward.
+    slots: [Place; MOST],
+    /// How many of the slots are used.
+    used: usize,
+    /// Radius in metres every orbit stays outside: the Roche limit for a moon as dense as the
+    /// planet.
     low: f64,
-    /// Radius in metres no moon reaches past.
+    /// Mean density of the planet in kilograms per cubic metre.
+    density: f64,
+    /// Radius in metres every orbit stays inside: [`HILL_SHARE`] of the Hill radius.
     high: f64,
-    /// Largest radius of a moon of this planet, in metres.
-    largest: f64,
 }
 
-/// Returns the span of moon orbits of a planet, or nothing when no moon fits around it.
-///
-/// Orbits run from 4 planet radii to a third of the Hill radius. Moons are 3 to 15 km, and at
-/// most half the radius of a solid planet. A moon has no moons.
-fn span(star: &StarSpec, planet: &PlanetSpec) -> Option<Span> {
-    let giant = planet.record.class == PlanetClass::GasGiant;
-    let half = if giant {
-        f64::INFINITY
-    } else {
-        0.5 * planet.radius
-    };
-    let span = Span {
-        low: INNERMOST * planet.radius,
-        high: HILL_SHARE * hill(star, planet),
-        largest: MOON_RADIUS.1.min(half),
-    };
-    let fits = span.largest >= MOON_RADIUS.0 && span.high > span.low;
-    (fits && !planet.id.is_moon()).then_some(span)
+impl Fit {
+    /// Keeps `place` when its orbit lies outside the Roche limit, inside the Hill share and
+    /// [`SPACING`] times past the moon before it, and drops it otherwise. The Roche limit of a
+    /// moon lighter than its planet lies further out, by the cube root of the ratio of their
+    /// densities.
+    fn add(&mut self, place: Place) {
+        let inside = self
+            .used
+            .checked_sub(1)
+            .map_or(0.0, |i| self.slots[i].orbit);
+        let roche = self.low * (self.density / place.matter).cbrt().max(1.0);
+        let clear = place.orbit > roche.max(inside * SPACING) && place.orbit < self.high;
+        if clear && self.used < MOST {
+            self.slots[self.used] = place;
+            self.used += 1;
+        }
+    }
 }
 
-/// Draws moon `index` of `count` in `span`, outside the moon `inside` it.
-///
-/// The span is cut into one equal band per moon on a log scale and the moon sits in the middle
-/// 70 percent of its band, then is pushed out until it clears the moon inside it by
-/// [`SPACING`] times their radii.
-fn place(rng: &mut Rng, span: &Span, inside: Place, (index, count): (u32, u32)) -> Place {
-    let radius = MOON_RADIUS.0 * (span.largest / MOON_RADIUS.0).powf(rng.unit());
-    let band = (f64::from(index) + rng.range(0.15, 0.85)) / f64::from(count);
-    let clear = inside.orbit + SPACING * (inside.radius + radius);
+/// Draws a moon of kind `kind` (0 impact, 1 captured, 2 regular) with a radius spread on a log
+/// scale over `radius` metres, on the orbit `orbit` metres out. Every kind takes the same draws.
+fn moon(rng: &mut Rng, kind: usize, radius: (f64, f64), orbit: f64) -> Place {
+    let forcing = (2.0 * rng.unit()).powi(2);
     Place {
-        orbit: (span.low * (span.high / span.low).powf(band)).max(clear),
-        radius,
+        orbit,
+        radius: radius.0 * (radius.1 / radius.0).powf(rng.unit()),
+        matter: rng.range(MATTER[kind].0, MATTER[kind].1),
+        forcing: if kind == 2 { forcing } else { 0.0 },
         seed: rng.next(),
+    }
+}
+
+/// Returns the orbit of moon `index` of `count` in the span from `low` to `high` metres: the
+/// span is cut into one equal band per moon on a log scale and the moon sits in the middle 70
+/// percent of its band.
+fn banded(rng: &mut Rng, (low, high): (f64, f64), (index, count): (u32, u32)) -> f64 {
+    let band = (f64::from(index) + rng.range(0.15, 0.85)) / f64::from(count);
+    low * (high / low).max(1.0).powf(band)
+}
+
+/// Adds the moons of a gas giant of `radius` metres to `fit`: 2 to 6 regular moons from 5 to 30
+/// radii out, then up to 2 small captured ones from 15 percent of the Hill radius out.
+fn around_giant(rng: &mut Rng, fit: &mut Fit, radius: f64) {
+    let more = u32::from(REGULAR_MOONS.1 - REGULAR_MOONS.0) + 1;
+    let regular = u32::from(REGULAR_MOONS.0) + rng.below(more);
+    let span = (REGULAR_ORBIT.0 * radius, REGULAR_ORBIT.1 * radius);
+    for index in 0..regular {
+        let orbit = banded(rng, span, (index, regular));
+        fit.add(moon(rng, 2, REGULAR_RADIUS, orbit));
+    }
+    let strays = rng.below(u32::from(STRAYS) + 1);
+    let far = (CAPTURED_ORBIT / HILL_SHARE * fit.high, fit.high);
+    for index in 0..strays {
+        let orbit = banded(rng, far, (index, strays));
+        fit.add(moon(rng, 1, CAPTURED_RADIUS, orbit));
+    }
+}
+
+/// Adds the moons of a solid planet of `radius` metres to `fit`: one large impact moon for a
+/// quarter of them, 0.1 to 0.3 of the planet across and 20 to 80 radii out, one or two small
+/// captured moons for 15 in 100, and none for the rest.
+fn around_solid(rng: &mut Rng, fit: &mut Fit, radius: f64) {
+    let roll = rng.unit();
+    if roll < IMPACT_SHARE {
+        let size = (IMPACT_RADIUS.0 * radius, IMPACT_RADIUS.1 * radius);
+        let orbit = radius * rng.range(IMPACT_ORBIT.0, IMPACT_ORBIT.1);
+        fit.add(moon(rng, 0, size, orbit));
+    } else if roll < IMPACT_SHARE + CAPTURE_SHARE {
+        let caught = 1 + rng.below(2);
+        let far = (CAPTURED_ORBIT / HILL_SHARE * fit.high, fit.high);
+        for index in 0..caught {
+            let orbit = banded(rng, far, (index, caught));
+            fit.add(moon(rng, 1, CAPTURED_RADIUS, orbit));
+        }
     }
 }
 
 /// Returns the moons of a planet as places, outward, and how many of the slots are used.
 ///
-/// Each moon the planet asks for is drawn by [`place`] inside the [`span`] of the planet. A
-/// moon that does not fit inside the span is dropped with every one beyond it, and the draws
-/// go on, so the moons kept never depend on the ones dropped.
-pub(super) fn places(star: &StarSpec, planet: &PlanetSpec) -> ([Place; 6], usize) {
-    let mut slots = [Place::default(); GIANT_MOONS.1 as usize];
-    let mut rng = Rng::new(hash::child(planet.seed, MOON_STREAM));
-    let wanted = wanted(&mut rng, planet);
-    let Some(span) = span(star, planet) else {
-        return (slots, 0);
+/// Every orbit lies between the Roche limit and half the Hill radius of the planet. A moon
+/// that does not fit there is dropped, and the draws go on, so the moons kept never depend on
+/// the ones dropped: a planet close to its star, whose Hill sphere is small, keeps none. A
+/// moon has no moons.
+pub(super) fn places(star: &StarSpec, planet: &PlanetSpec) -> ([Place; MOST], usize) {
+    let mut fit = Fit {
+        slots: [Place::default(); MOST],
+        used: 0,
+        low: ROCHE * planet.radius,
+        density: 3.0 * planet.gravity / (4.0 * PI * GRAVITATION * planet.radius),
+        high: HILL_SHARE * hill(star, planet),
     };
-    let mut used = 0usize;
-    for index in 0..wanted {
-        let inside = used
-            .checked_sub(1)
-            .map_or(Place::default(), |last| slots[last]);
-        let next = place(&mut rng, &span, inside, (index, wanted));
-        if used == index as usize && next.orbit + next.radius <= span.high {
-            slots[used] = next;
-            used += 1;
-        }
+    let mut rng = Rng::new(hash::child(planet.seed, MOON_STREAM));
+    match planet.record.class {
+        _ if planet.id.is_moon() => {}
+        PlanetClass::GasGiant => around_giant(&mut rng, &mut fit, planet.radius),
+        _ => around_solid(&mut rng, &mut fit, planet.radius),
     }
-    (slots, used)
+    (fit.slots, fit.used)
 }

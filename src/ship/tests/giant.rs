@@ -12,7 +12,7 @@ use crate::ship::deck::{FLOOR, grounded};
 use crate::ship::drag::density;
 use crate::ship::flight::{Controls, STEP, Scene, step};
 use crate::ship::landing::GEAR_DROP;
-use crate::universe::{HOME_GRAVITY, PlanetSpec};
+use crate::universe::{PlanetSpec, STANDARD_GRAVITY};
 
 /// Returns the hand-built gas giant.
 fn giant() -> PlanetSpec {
@@ -164,7 +164,7 @@ fn the_deep_air_floats_an_assisted_ship_to_the_floor() {
         480.0,
         |ship, report| {
             time += STEP;
-            let felt = report.proper.length() / HOME_GRAVITY;
+            let felt = report.proper.length() / STANDARD_GRAVITY;
             most = most.max(if time > 1.0 { felt } else { 0.0 });
             if risen.is_none() && gear(&giant, ship.pos) > FLOOR - 1.0 {
                 risen = Some(time);
@@ -177,7 +177,7 @@ fn the_deep_air_floats_an_assisted_ship_to_the_floor() {
     assert!((held - FLOOR).abs() < 1.0, "held at {held} m");
     let weight = giant.gravity * (giant.radius / (giant.radius - 3.0 * scale)).powi(2);
     assert!(
-        most < 1.2 * weight / HOME_GRAVITY,
+        most < 1.2 * weight / STANDARD_GRAVITY,
         "the readout showed {most} g"
     );
 }

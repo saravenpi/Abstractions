@@ -7,6 +7,7 @@ use super::hill::{self, Place};
 use super::planet::{self, RECORD_STREAM};
 use super::record::{Body, PlanetRecord};
 use super::spec::{PlanetSpec, StarSpec};
+use super::spin::{self, QUALITY, SLOWEST, Turning};
 use super::units::STARLIGHT;
 use super::{BodyId, Universe, air, names};
 
@@ -61,22 +62,47 @@ pub(super) fn tide(planet: &PlanetSpec, place: &Place) -> f64 {
     IO_HEAT * place.forcing * mass * size * (IO[2] / place.orbit).powf(7.5)
 }
 
+/// Returns the record of the moon at `place` with surface gravity `gravity`: lit by the star at
+/// the orbit of its planet and warmed by [`tide`].
+fn record(star: &StarSpec, planet: &PlanetSpec, place: &Place, gravity: f64) -> PlanetRecord {
+    let body = Body {
+        tide: tide(planet, place),
+        ..Body::new(gravity, place.radius, planet.orbit_radius)
+    };
+    PlanetRecord::derive(star, &body, hash::child(place.seed, RECORD_STREAM))
+}
+
+/// Returns the day in seconds of the moon at `place` around `planet`, a planet of `star`, born
+/// with the spin of a draw `roll` from 0 to 1: the orbit of the moon once the tides of the
+/// planet have had the age of the star to lock it, else the day it was born with.
+fn day(star: &StarSpec, planet: &PlanetSpec, place: &Place, roll: f64) -> f64 {
+    let gravity = planet::gravity(place.radius, place.matter);
+    let year = planet::orbit_seconds(planet.mu(), place.orbit);
+    let born = Turning {
+        radius: place.radius,
+        gravity,
+        day: spin::born(roll, place.radius, gravity, SLOWEST),
+        quality: QUALITY.0,
+    };
+    spin::settled(&born, (planet.mu(), place.orbit, year), star.age)
+}
+
 /// Builds moon number `rank` of `planet` from its place.
 ///
 /// A moon is a small planet. Its gravity follows its size and its matter as a planet's does.
-/// Tides locked it long ago: it turns once per orbit, the same way round, so it always shows
-/// the same face to its planet. Its record is lit by the star at the orbit of its planet and
-/// warmed by [`tide`].
+/// It is born with a spin like a planet's, see [`spin::born`], and the tides of its planet lock
+/// it by the same rule that locks a planet to its star, see [`spin::settled`], over the age of
+/// the star. A locked moon turns once per orbit and always shows the same face to its planet.
+/// A small moon far out keeps the spin it was born with. Its record is lit by the star at the
+/// orbit of its planet and warmed by [`tide`].
 fn build(star: &StarSpec, planet: &PlanetSpec, rank: u8, place: Place) -> PlanetSpec {
     let mut rng = Rng::new(place.seed);
     let gravity = planet::gravity(place.radius, place.matter);
     let seconds = planet::orbit_seconds(planet.mu(), place.orbit);
-    let body = Body {
-        tide: tide(planet, &place),
-        ..Body::new(gravity, place.radius, planet.orbit_radius)
-    };
-    let record = PlanetRecord::derive(star, &body, hash::child(place.seed, RECORD_STREAM));
+    let record = record(star, planet, &place, gravity);
     let [atmosphere_height, cloud_base, cloud_top] = air::heights(&record, gravity, place.radius);
+    let orbit_phase = rng.range(0.0, TAU);
+    let day_seconds = day(star, planet, &place, rng.unit());
     PlanetSpec {
         id: BodyId {
             moon: rank,
@@ -86,10 +112,10 @@ fn build(star: &StarSpec, planet: &PlanetSpec, rank: u8, place: Place) -> Planet
         name: names::moon(&planet.name, rank),
         radius: place.radius,
         gravity,
-        day_seconds: seconds,
+        day_seconds,
         orbit_radius: place.orbit,
         orbit_seconds: seconds,
-        orbit_phase: rng.range(0.0, TAU),
+        orbit_phase,
         atmosphere_height,
         cloud_base,
         cloud_top,

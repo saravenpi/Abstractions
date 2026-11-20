@@ -10,6 +10,7 @@ use super::giant_tests::{giant, systems};
 use super::hill::{
     CAPTURE_SHARE, HILL_SHARE, IMPACT_ORBIT, IMPACT_SHARE, MOST, REGULAR_MOONS, SPACING, hill,
 };
+use super::spin::{QUALITY, Turning, lock_seconds};
 use super::*;
 
 /// Returns every planet of the sample that has moons, with its star and its moons.
@@ -53,14 +54,31 @@ fn moon_orbits_fit_inside_the_hill_sphere() {
     }
 }
 
-/// Every moon turns once per orbit, the same way round, takes the year its planet's mass
-/// gives it, and has no moons or rings of its own.
+/// Every moon is locked by the tides of its planet, and turns once per orbit, or the tides had
+/// not the age of its star to lock it, and it keeps a spin it could have been born with. Every
+/// moon takes the year its planet's mass gives it and has no moons or rings of its own.
 #[test]
-fn moons_are_tidally_locked() {
+fn moons_are_locked_by_tides_or_keep_their_spin() {
+    let (mut locked, mut free) = (0, 0);
     for (star, p, moons) in hosts() {
         for (m, rank) in moons.iter().zip(1u8..) {
-            assert_eq!(m.day_seconds, m.orbit_seconds);
-            assert!(m.locked());
+            if m.locked() {
+                assert_eq!(m.day_seconds, m.orbit_seconds);
+                locked += 1;
+            } else {
+                let born = Turning {
+                    radius: m.radius,
+                    gravity: m.gravity,
+                    day: m.day_seconds,
+                    quality: QUALITY.0,
+                };
+                assert!(
+                    lock_seconds(&born, p.mu(), m.orbit_radius) >= star.age,
+                    "{m:?}"
+                );
+                assert!(m.day_seconds >= 2.0 * breakup(m.radius, m.gravity), "{m:?}");
+                free += 1;
+            }
             assert_eq!(m.orbit_seconds, orbit_seconds(p.mu(), m.orbit_radius));
             assert_eq!(m.host, Some(p.orbit()));
             assert_eq!(m.id, BodyId { moon: rank, ..p.id });
@@ -69,6 +87,8 @@ fn moons_are_tidally_locked() {
             assert!(moon::of(&star, m).is_empty());
         }
     }
+    println!("moons locked by tides {locked}, keeping their spin {free}");
+    assert!(locked > free);
 }
 
 /// Seen from a moon's own turning ground, the direction to its planet stays fixed over a whole
@@ -76,7 +96,7 @@ fn moons_are_tidally_locked() {
 #[test]
 fn moons_keep_one_face_to_their_planet() {
     for (_, _, moons) in hosts().into_iter().take(300) {
-        for m in &moons {
+        for m in moons.iter().filter(|m| m.locked()) {
             let seen = |time: f64| {
                 let spin = DQuat::from_rotation_y(TAU * time / m.day_seconds);
                 spin.inverse() * -m.orbit().at(time).normalize()

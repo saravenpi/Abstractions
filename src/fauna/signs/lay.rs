@@ -109,13 +109,15 @@ fn crop(trail: &Trail, cropped: &mut ResMut<Cropped>) {
     }
 }
 
-/// Paints the signs of the trail into its mesh in the frame `spot`, spawning the mesh the first time.
+/// Paints the signs of the trail into its mesh in the frame `spot`, spawning the mesh the first time
+/// and again when the title screen took its entity away.
 fn draw(l: &mut Lay, spot: Spot, heights: &Heights) {
     let placed = Placed {
         pos: spot.origin,
         rot: spot.rot,
     };
-    let (entity, handle) = match l.trail.drawn.clone() {
+    let alive = |drawn: &(Entity, Handle<Mesh>)| l.placed.contains(drawn.0);
+    let (entity, handle) = match l.trail.drawn.clone().filter(alive) {
         Some(drawn) => drawn,
         None => spawn(l, placed),
     };
@@ -165,7 +167,7 @@ pub fn forget(
         return;
     }
     if let Some((entity, _)) = trail.drawn.take() {
-        commands.entity(entity).despawn();
+        commands.entity(entity).try_despawn();
     }
     trail.signs.clear();
     trail.watch = None;

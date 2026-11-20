@@ -63,6 +63,7 @@ fn the_card_writes_the_span_of_temperatures() {
     assert_eq!(span_words((288.0, 288.3)), "15 C everywhere");
     let planet = PlanetSpec {
         orbit_phase: 0.0,
+        day_seconds: 86_400.0,
         ..home()
     };
     let shown = climate_line(&planet, 0.5);
@@ -72,6 +73,6 @@ fn the_card_writes_the_span_of_temperatures() {
         "{shown}"
     );
     let mut moon = planet.clone();
-    (moon.id.moon, moon.day_seconds) = (1, -600.0);
+    (moon.id.moon, moon.day_seconds) = (1, moon.orbit_seconds);
     assert!(climate_line(&moon, 0.5).starts_with("near side warm - "));
 }

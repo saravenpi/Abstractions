@@ -106,8 +106,10 @@ fn arrived(game: &mut Game, far: BodyId) {
     assert_eq!(game.get::<FlightFx>().warp, 0.0);
 }
 
-/// Puts the ship 12 m over dry, level ground of the streamed planet `far`, at rest. The descent
-/// from the lock distance is flown by hand in the game and is not part of this test.
+/// Puts the ship 12 m over dry, level ground of the streamed planet `far`, at rest: over the sea
+/// level on a planet with a sea, over the ground itself on one without, where a basin may lie
+/// under it. The descent from the lock distance is flown by hand in the game and is not part of
+/// this test.
 fn hover_over_land(game: &mut Game, far: BodyId) {
     let globe = game.get::<Planet>().globe;
     let north = Terrain::on(globe.clone(), globe.face_chart(Face::PosY));
@@ -115,7 +117,8 @@ fn hover_over_land(game: &mut Game, far: BodyId) {
     let height = |pos: DVec3| f64::from(globe.height(pos.normalize()));
     let near = north.embed(spawn.x, 0.0, spawn.z);
     let up = landing_spot(&height, near, 0.0).normalize();
-    let ground = globe.radius() + height(up).max(0.0);
+    let sea = game.get::<Universe>().planet(far).record.ocean > 0.0;
+    let ground = globe.radius() + if sea { height(up).max(0.0) } else { height(up) };
     game.with_ship(|ship| {
         ship.frame = Frame::Surface(far);
         ship.pos = up * (ground + GEAR_DROP + 12.0);

@@ -63,25 +63,27 @@ fn a_click_on_a_row_selects_and_a_double_click_on_a_mark_goes_into_it() {
         let found = slots.iter(app.world()).find(|(_, slot)| slot.0 == wanted);
         found.unwrap().0
     };
-    let entity = slot(&mut app, 3);
+    let rows = app.world().resource::<Board>().lines.len();
+    let (pick, mark) = (rows - 1, rows - 2);
+    let entity = slot(&mut app, pick);
     app.world_mut().trigger(Activate { entity });
     let state = |app: &App| {
         let course = app.world().resource::<Destination>().0;
         (app.world().resource::<Board>().cursor, course)
     };
-    assert_eq!(state(&app), (3, None));
+    assert_eq!(state(&app), (pick, None));
     assert!(app.world().resource::<MapView>().picked);
-    let mark = pixel(&app, Dot::Row(2));
-    point(&mut app, mark);
+    let at = pixel(&app, Dot::Row(mark));
+    point(&mut app, at);
     click(&mut app, Vec2::ZERO);
     click(&mut app, Vec2::ZERO);
-    assert_eq!(state(&app), (2, None));
+    assert_eq!(state(&app), (mark, None));
     let (view, board) = (
         app.world().resource::<MapView>(),
         app.world().resource::<Board>(),
     );
-    assert!(view.picked && Some(view.goal) == aimed(board, view, Dot::Row(2)));
-    assert_eq!(view.into, Some(board.lines[2].target));
+    assert!(view.picked && Some(view.goal) == aimed(board, view, Dot::Row(mark)));
+    assert_eq!(view.into, Some(board.lines[mark].target));
 }
 
 /// Returns the words of the progress line under the map.

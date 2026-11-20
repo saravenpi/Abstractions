@@ -4,7 +4,7 @@
 use super::detail::{Card, Row, card};
 use super::tests_detail::{records, world};
 use super::*;
-use crate::universe::{PlanetRecord, Universe};
+use crate::universe::{PlanetRecord, PlanetSpec, Universe};
 
 /// For each class in the order of `records`: the start of the subtitle, then the air, the
 /// water, the temperature, the light, the zone and the tilt.
@@ -115,6 +115,7 @@ fn the_card_says_the_whole_record_of_each_class() {
 fn the_card_groups_the_facts_in_order() {
     let universe = Universe::new(7);
     let (line, planet) = world(PlanetRecord::TEMPERATE);
+    let planet = PlanetSpec { moons: 0, ..planet };
     let home = card(&line, Some(&planet), &universe);
     let order: Vec<&str> = home
         .rows

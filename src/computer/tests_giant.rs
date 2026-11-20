@@ -86,6 +86,7 @@ fn a_solid_planet_names_its_moons_and_a_moon_its_orbit() {
             seconds: 1.0e6,
             phase: 0.0,
         }),
+        moons: 0,
         ..planet
     };
     let shown = card(&line, Some(&moon), &universe);

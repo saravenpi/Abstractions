@@ -3,7 +3,7 @@
 
 use bevy::math::{Vec2, Vec3, Vec3Swizzles};
 
-use super::tune::{BECALMED, BOOTS, EAR, LANDING, RAY_STEPS, SCENT_HALF, WALK};
+use super::tune::{BECALMED, BOOTS, CROUCH_QUIET, EAR, LANDING, RAY_STEPS, SCENT_HALF, WALK};
 
 /// Returns true when the line from `eye` to `target`, both in the animal's frame, clears the ground
 /// read through `ground`: a few points along it, each above the ground under it.
@@ -15,9 +15,11 @@ pub fn clear(ground: &dyn Fn(Vec2) -> f32, eye: Vec3, target: Vec3) -> bool {
 }
 
 /// Returns how loud a robot is: 1 at a walk, more running, with its boots at `thrust` 0 to 1, and
-/// at a landing `impact` metres per second lost into the ground.
-pub fn loudness(speed: f32, thrust: f32, impact: f32) -> f32 {
-    speed / WALK + BOOTS * thrust + LANDING * impact
+/// at a landing `impact` metres per second lost into the ground. A robot `crouch` down, from 0 to 1,
+/// walks quieter by up to [`CROUCH_QUIET`].
+pub fn loudness(speed: f32, thrust: f32, impact: f32, crouch: f32) -> f32 {
+    let steps = speed / WALK * (1.0 - CROUCH_QUIET * crouch);
+    steps + BOOTS * thrust + LANDING * impact
 }
 
 /// Returns true when a threat of loudness `loud` is heard from `metres` away through ears of range

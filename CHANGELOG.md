@@ -12,6 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A hotbar of six slots at the bottom of the screen. The keys 1 to 6 hold a tool; the held slot is lit and each slot shows the wear left. Pressing the key of the held slot puts the tool away or draws it again.
 - H picks up a handful of stone from the ground, one kind after the other, as far as you can carry it.
 - Blows hurt animals by their energy. A hurt animal limps and cries out, and one that dies stays dead for a while; its largest parts go into your pack, graded by how many blows it took. Every blow wears the tool that struck it.
+- Hold Left Ctrl to crouch (rebind it in the controls): you walk at under half speed, cannot sprint, and your eyes sink over a quarter of a second. Animals notice a crouched robot at half the rate, hear it less and lose it behind lower ground. Other players do not see your crouch yet.
 - The map's card of a planet or a moon in a visited system gives its chance of life, such as "Chance of life 72 %", from the same odds that decide what lives there. Once you have landed it says what is really there: none, microbial mats, soft-bodied life, shelled life, animals with skeletons or ancient life.
 - Right click a search result, a favourite or a player in the map's side panel for the same menu as on the map.
 - Animals walk the ground of living planets: the herds of the planet's own species graze, travel and rest around you, up to 48 at once within 150 m, and fade in and out at the edge. Every player sees the same herd in the same place.
@@ -30,14 +31,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The water jet of the boots leaves a trail of bubbles that rise to the surface.
 - The boot water pump thumps, faster as the boots spool up.
 - Entering an atmosphere from space now burns. The glow follows the real heating of the nose, which grows with the root of the air density and the cube of your speed through it, so thick air glows early and hard, thin air faintly and late, and a slow entry or level flight not at all. Its colour follows the air of the planet: pink-orange to white over wet worlds, blue-white to violet over dry ones, pale pink to magenta over giants, teal over cold frozen worlds, yellow over molten ones. The cockpit glass glows with plasma streaming past, and from outside, in third person, a shock sheath with plasma streaks, embers and a short tail wraps the ship or the gliding robot. It fades as you slow down and blends into the cloud animation without a step.
-
 - Animals move when they call: the head lifts, the jaw drops on every note, and the chest or the bell swells. Bigger animals call slower. Every player sees the same animal call at the same moment.
 - Animals have more to say. A hunter growls and rears up, head low, just before it charges, and hunters and horned animals do the same when you come too close. A caught animal cries in distress, and young call back to their parents. Herds call more around sunrise and sunset, in a dawn and a dusk chorus.
 
 ### Changed
 
 - Falling leaves, petals and pollen come only from the plants around you. A tree in leaf drops leaves of its own colour and size, more in autumn; a plant in flower drops petals and, by day, pollen; a bare tree and a lifeless planet drop nothing.
->>>>>>> ecosystems
+- The minimap shows the ground of a planet in its real colours, from the same palette as the map, with its relief shading.
 - Calls follow the body: animals that breathe air moan, hoot, whistle, growl or hiss, shelled ones rasp and click, soft ones gurgle, and calls from under water sound muffled. Long, thin bodies and long necks call lower.
 - The map's side panel has more room: Search, Place, Favourites and Players each sit under a heading, with space between them and between the groups of the card. The result count sits beside the Search heading, the save button beside the Favourites heading, and the distance only in the result row. Rows are taller, and in a short window the favourites and players lose their last rows before anything else is cut.
 - The buttons on the card are shorter, so they take two rows: Set course or Engage and Clear, Focus, Set waypoint and Save place.

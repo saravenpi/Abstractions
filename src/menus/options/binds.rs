@@ -5,13 +5,14 @@ use bevy::prelude::KeyCode;
 use crate::settings::{Keymap, ShipKeys};
 
 /// The name of each action, in the order of [`Bind`].
-const LABELS: [&str; 29] = [
+const LABELS: [&str; 30] = [
     "Forward",
     "Back",
     "Left",
     "Right",
     "Jump",
     "Sprint / boots",
+    "Crouch (hold)",
     "Wings (toggle)",
     "Board or leave ship",
     "Throttle up, boost",
@@ -46,6 +47,7 @@ pub enum Bind {
     Right,
     Jump,
     Sprint,
+    Crouch,
     Wings,
     Board,
     Thrust,
@@ -75,13 +77,14 @@ impl Bind {
     /// The actions used on foot, in display order. The view and board keys work in the ship too,
     /// and the turn keys turn the wingsuit as they turn the ship. The field guide and the pack open
     /// on foot only.
-    pub const FOOT: [Bind; 16] = [
+    pub const FOOT: [Bind; 17] = [
         Bind::Forward,
         Bind::Back,
         Bind::Left,
         Bind::Right,
         Bind::Jump,
         Bind::Sprint,
+        Bind::Crouch,
         Bind::Wings,
         Bind::YawLeft,
         Bind::YawRight,
@@ -132,10 +135,9 @@ impl Bind {
             Bind::Right => &mut keys.right,
             Bind::Jump => &mut keys.jump,
             Bind::Sprint => &mut keys.sprint,
+            Bind::Crouch => &mut keys.crouch,
             Bind::Wings => &mut keys.wings,
             Bind::View => &mut keys.view,
-            Bind::Computer => &mut keys.computer,
-            Bind::Engage => &mut keys.engage,
             Bind::Minimap => &mut keys.minimap,
             Bind::Map => &mut keys.map,
             Bind::Waypoint => &mut keys.waypoint,

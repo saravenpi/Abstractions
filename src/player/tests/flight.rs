@@ -65,6 +65,7 @@ fn held() -> Intent {
         forward: 1.0,
         right: -1.0,
         sprint: true,
+        crouch: false,
         jump: false,
         yaw: 0.5,
         steer: false,

@@ -162,6 +162,8 @@ pub struct Keymap {
     /// Run faster. Held in the air it fires the boot boosters: they brake a fall with the
     /// wingsuit folded and push with it spread.
     pub sprint: KeyCode,
+    /// Crouch while held: slower, quieter and lower on the ground.
+    pub crouch: KeyCode,
     /// Open and close the board computer while seated in the ship.
     pub computer: KeyCode,
     /// Hand the destination of the board computer to the autopilot.
@@ -193,6 +195,7 @@ impl Default for Keymap {
             right: KeyCode::KeyD,
             jump: KeyCode::Space,
             sprint: KeyCode::ShiftLeft,
+            crouch: KeyCode::ControlLeft,
             computer: KeyCode::Tab,
             engage: KeyCode::KeyG,
             wings: KeyCode::KeyR,

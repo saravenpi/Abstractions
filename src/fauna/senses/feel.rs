@@ -6,7 +6,7 @@ use bevy::math::{DVec3, Vec2, Vec3, Vec3Swizzles};
 use super::cues::{clear, heard, smelt};
 use super::meter::{Meter, fill_seconds, in_sight, stealth};
 use super::stance::hunter;
-use super::tune::{DRAIN, NOSE_GRAZER, NOSE_HUNTER, ROBOT_CHEST};
+use super::tune::{CROUCH_DROP, CROUCH_SIGHT, DRAIN, NOSE_GRAZER, NOSE_HUNTER, ROBOT_CHEST};
 use crate::fauna::place::Spot;
 use crate::life::Guild;
 
@@ -27,6 +27,8 @@ pub struct Threat {
     pub herd: u64,
     /// True for a robot.
     pub robot: bool,
+    /// How far a robot is crouched, from 0 to 1.
+    pub crouch: f32,
 }
 
 /// One animal as it senses: its frame, its place, its eyes, its range and its herd.
@@ -77,7 +79,9 @@ fn noticed(
         return true;
     }
     let eye = me.at + Vec3::Y * me.eye;
-    in_sight(metres, me.keen) && clear(air.ground, eye, local + Vec3::Y * ROBOT_CHEST)
+    let chest = ROBOT_CHEST - CROUCH_DROP * threat.crouch;
+    let range = me.keen * (1.0 - CROUCH_SIGHT * threat.crouch);
+    in_sight(metres, range) && clear(air.ground, eye, local + Vec3::Y * chest)
 }
 
 /// Steps the `meter` of `me` by one frame against `threats`, and returns the index of the threat it
@@ -99,7 +103,8 @@ pub fn perceive(
         let local = me.spot.local(threat.pos);
         let metres = local.distance(me.at);
         let aware = if noticed(me, (threat, local, metres), air, wind) {
-            let rate = stealth(threat.speed, threat.loud) / fill_seconds(metres / me.keen);
+            let rate =
+                stealth(threat.speed, threat.loud, threat.crouch) / fill_seconds(metres / me.keen);
             meter.raise(threat.key, (rate + DRAIN) * air.dt)
         } else {
             meter.of(threat.key)

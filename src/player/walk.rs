@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use super::controller::Motion;
+use super::crouch;
 use super::dive::{SwimInput, swim_velocity, swim_wish};
 use super::flight::{Air, carried, input, touching};
 use super::ground::{Ground, RISING_SPEED, slope_velocity, snap_velocity, walkable};
@@ -49,10 +50,10 @@ pub(super) struct Step {
 
 /// Returns the horizontal velocity for this step.
 fn horizontal(motion: &Motion, intent: &Intent, step: &Step) -> Vec3 {
-    let base = if intent.sprint {
+    let base = if intent.sprint && !intent.crouch && motion.crouch <= 0.0 {
         SPRINT_SPEED
     } else {
-        WALK_SPEED
+        WALK_SPEED * crouch::pace(motion.crouch)
     };
     let rate = if motion.grounded {
         GROUND_ACCEL
@@ -128,6 +129,8 @@ pub(super) fn velocity(
     let gap = walkable(floor, false).map(|ground| ground.gap);
     let ground = walkable(floor, motion.velocity.y > RISING_SPEED);
     motion.swimming = swim::next_swimming(motion.swimming, step.afloat, gap);
+    let down = intent.crouch && crouch::allowed(motion, gear);
+    motion.crouch = crouch::settle(motion.crouch, down, step.dt);
     let on = (touching(gear.state.mode, ground), motion.swimming);
     let told = GearInput {
         air: step.air,

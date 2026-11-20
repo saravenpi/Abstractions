@@ -21,6 +21,8 @@ mod tests_blood;
 #[cfg(test)]
 mod tests_cost;
 #[cfg(test)]
+mod tests_crouch;
+#[cfg(test)]
 mod tests_stance;
 pub mod tune;
 

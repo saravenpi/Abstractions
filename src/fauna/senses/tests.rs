@@ -10,7 +10,7 @@ use super::tune::{LOOKOUT, NOSE_GRAZER};
 use crate::fauna::place::Spot;
 
 /// Returns a grazer at the origin of a frame on a planet of 1000 km, with senses of range `keen`.
-fn grazer(keen: f32) -> Senser {
+pub(super) fn grazer(keen: f32) -> Senser {
     Senser {
         spot: Spot::at(DVec3::Y, 1.0e6),
         at: Vec3::ZERO,
@@ -23,7 +23,7 @@ fn grazer(keen: f32) -> Senser {
 
 /// Returns a robot at `local` in the frame of `me`, going `speed` metres per second at loudness
 /// `loud`.
-fn robot(me: &Senser, local: Vec3, (speed, loud): (f32, f32)) -> Threat {
+pub(super) fn robot(me: &Senser, local: Vec3, (speed, loud): (f32, f32)) -> Threat {
     Threat {
         pos: me.spot.planet(local),
         speed,
@@ -32,12 +32,18 @@ fn robot(me: &Senser, local: Vec3, (speed, loud): (f32, f32)) -> Threat {
         key: 9,
         herd: 0,
         robot: true,
+        crouch: 0.0,
     }
 }
 
 /// Returns the seconds `me` takes to be fully aware of `threat` over `ground` with `wind`, or
 /// nothing within 20 s.
-fn fill(me: &Senser, threat: Threat, ground: &dyn Fn(Vec2) -> f32, wind: DVec3) -> Option<f32> {
+pub(super) fn fill(
+    me: &Senser,
+    threat: Threat,
+    ground: &dyn Fn(Vec2) -> f32,
+    wind: DVec3,
+) -> Option<f32> {
     let mut meter = Meter::default();
     let dt = 0.01;
     let air = Air { wind, ground, dt };

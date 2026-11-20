@@ -45,6 +45,8 @@ pub struct Motion {
     pub coyote: f32,
     /// Whether the body is swimming instead of walking.
     pub swimming: bool,
+    /// How far the body is crouched, from 0 (standing) to 1 (fully down).
+    pub crouch: f32,
     /// Whether the wingsuit is asked open. Only the air keeps it: landing and water fold it.
     pub wings: bool,
     /// Whether the boots are fired: the run key is held in the air, pressed there, on the wings

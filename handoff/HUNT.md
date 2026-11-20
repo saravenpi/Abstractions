@@ -147,3 +147,15 @@ Starts after 0.11 ships, or in parallel on its own branch `hunt` from `ecosystem
 2. **First weapons:** melee (cut, pierce, crush) **and a thrown spear** in the first release. The spear joins wave H2 (`swing` owns throwing; `weapon` adds a "throw" intent stat: balance point near the middle, flight drag, penetration on arrival).
 3. **Predators hunt the robot** in the first release, with the same visible awareness rules, never right after a landing (wave H3, `attacks`).
 4. **Hitstop on by default,** with a setting to reduce or turn it off (wave H2, `swing`; the option goes in the gameplay settings).
+
+## Corrections from H1 (2026-11-20)
+
+The `craft` model (commits 190dbb3, 7fd58de) found these errors in the plan above; the code follows the corrected rule.
+
+- **Wind-up:** `reach / v × 0.5` gives about 23 ms, far too short. Accelerating evenly over a quarter turn takes `2 · arc / ω`, about 0.13 s for the worked example, stretched by `τ / budget` above the grip budget.
+- **Drying is per class:** dry horn keratin gets tougher (2.56 to 3.86), antler and cuticle lose toughness, and drying raises strength (antler 108 to 188 MPa). One factor for every class is wrong; follow-up: a factor per class.
+- **Thrust speed:** `∝ 1/√m` diverges for light weapons; the model adds 1 kg of arm mass, `v = √(2E / (m + m_arm))`, and the throw uses it too.
+- **Blunt blows** against layers softer than 1 GPa bruise and stop instead of breaking them.
+- **Fire-hardening** needs a heat source; with no fire mechanic, only lava or ground above 600 K counts, so a temperate world cannot fire-harden.
+- **Range of the swing law:** measured up to about 0.5 kg·m²; bigger builds are extrapolation.
+- **Open:** no length limit from the size of the source bone (the solver proposes 1.4 m bone shafts), no buckling check for pierce shafts, obsidian chips on the first blow (harsh), an item is 68 bytes (listing each planet seed once would get it under 60).

@@ -19,12 +19,15 @@ mod tests_air;
 mod tests_biome;
 #[cfg(all(test, target_os = "linux"))]
 mod tests_cost;
+#[cfg(test)]
+mod tests_terms;
 
 use bevy::math::{DVec3, Vec2, Vec3};
 
 use crate::universe::PlanetSpec;
 
 pub use biome::{SNOW_LINE, biome, snow};
+pub use heat::{Terms, terms};
 pub use season::season;
 
 /// The planet as the climate sees it: its record and the parts of its spec that shape weather.

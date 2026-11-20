@@ -7,126 +7,62 @@
 //! [`MAX`] nodes is spawned once and refilled every frame without allocating. Nothing shows in
 //! the map, in menus or when the setting is off.
 
+mod draw;
+mod pick;
 mod place;
+mod pool;
 #[cfg(test)]
 mod tests;
 
-pub use place::{Placed, choose, dimmed, place};
+use place::{MAX, dimmed, place};
 
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
-use super::compass::{Around, FAVOURITE_REACH, icon};
-use super::context::{Element, Where, marker_shown};
+use super::compass::{Around, icon};
+use super::context::{Element, Where};
 use super::fade::gate;
-use crate::computer::distance;
-use crate::menus::{Marker, MarkerKind, Markers};
+use crate::menus::Markers;
 use crate::settings::{Persistent, Settings};
-use crate::ui::{ICON_FONT, text, theme};
-use place::MAX;
-use std::fmt::Write;
-
-/// Metres under which a marker is hidden: it is right here.
-const HERE: f64 = 5.0;
-
-/// Pixels the safe rectangle must be crossed by, going back on screen, once a marker sits on the
-/// border: it stops the icon from flickering between the two forms.
-const HYSTERESIS: f32 = 8.0;
+use crate::ui::theme;
+use pick::State;
+use pool::Nodes;
 
 /// How fast an icon follows its target, per second.
 const FOLLOW: f32 = 25.0;
 
-/// Width of the room of one marker, centred on its icon.
-const ROOM: f32 = 96.0;
+/// What one frame needs besides the markers: the settings, the scale of the interface, the
+/// time and the window.
+#[derive(bevy::ecs::system::SystemParam)]
+pub(super) struct View<'w, 's> {
+    markers: Res<'w, Markers>,
+    settings: Res<'w, Persistent<Settings>>,
+    scale: Option<Res<'w, UiScale>>,
+    time: Res<'w, Time>,
+    window: Single<'w, 's, &'static Window, With<PrimaryWindow>>,
+}
 
-/// Pixels from the centre of an icon to the centre of its arrow.
-const ARROW_REACH: f32 = 22.0;
-
-/// Marks the room of the marker of the pool at this slot.
-#[derive(Component)]
-struct Slot(usize);
-
-/// Marks the icon of the marker of the pool at this slot.
-#[derive(Component)]
-struct Glyph(usize);
-
-/// Marks the arrow of the marker of the pool at this slot.
-#[derive(Component)]
-struct Arrow(usize);
-
-/// Marks the distance of the marker of the pool at this slot.
-#[derive(Component)]
-struct Label(usize);
-
-/// One marker chosen to show this frame.
+/// The numbers of one frame: the screen in interface pixels, the field of view, how far an icon
+/// moves toward its target and how far in from the screen edge icons stay.
 #[derive(Debug, Clone, Copy)]
-struct Pick {
-    /// Its index in [`Markers`].
-    index: usize,
-    /// Its direction in the camera frame.
-    dir: Vec3,
-    /// Its distance in metres.
-    gap: f64,
+struct Lens {
+    screen: Vec2,
+    fov: f32,
+    follow: f32,
+    inset: f32,
 }
 
-/// What a slot drew last frame.
-#[derive(Debug, Default, Clone, Copy)]
-struct Memory {
-    /// The marker it showed: its kind and index.
-    who: Option<(MarkerKind, usize)>,
-    /// Where its icon was, in pixels.
-    pos: Vec2,
-    /// Whether it sat on the border.
-    edge: bool,
-}
-
-/// One slot of the pool: a room with an arrow, an icon and a distance, hidden.
-fn slot(at: usize) -> impl Bundle {
-    let shadow = TextShadow::default();
-    (
-        Slot(at),
-        Node {
-            display: Display::None,
-            position_type: PositionType::Absolute,
-            width: px(ROOM),
-            flex_direction: FlexDirection::Column,
-            align_items: AlignItems::Center,
-            ..default()
-        },
-        Pickable::IGNORE,
-        children![
-            (
-                Glyph(at),
-                Text::default(),
-                TextFont::from_font_size(theme::ICON).with_font(ICON_FONT),
-                TextLayout::no_wrap(),
-                TextColor(Color::WHITE),
-                shadow,
-            ),
-            (
-                Arrow(at),
-                Text::new(crate::ui::Icon::Arrow.glyph()),
-                TextFont::from_font_size(theme::ICON).with_font(ICON_FONT),
-                TextLayout::no_wrap(),
-                TextColor(Color::WHITE),
-                shadow,
-                Node {
-                    display: Display::None,
-                    position_type: PositionType::Absolute,
-                    left: px((ROOM - theme::ICON) * 0.5),
-                    top: px(0),
-                    ..default()
-                },
-                UiTransform::default(),
-            ),
-            (
-                Label(at),
-                text("", theme::FONT_SMALL, theme::TEXT),
-                TextLayout::no_wrap(),
-                shadow,
-            ),
-        ],
-    )
+impl View<'_, '_> {
+    /// Returns the numbers of this frame.
+    fn lens(&self) -> Lens {
+        let scale = self.scale.as_ref().map_or(1.0, |scale| scale.0).max(0.1);
+        Lens {
+            screen: Vec2::new(self.window.width(), self.window.height()) / scale,
+            fov: (self.settings.graphics.fov as f32).to_radians(),
+            follow: 1.0 - (-FOLLOW * self.time.delta_secs()).exp(),
+            inset: theme::EDGE + theme::ICON * 0.5,
+        }
+    }
 }
 
 /// The layer of markers over the world, full screen, with its pool of hidden slots.
@@ -140,178 +76,45 @@ pub(super) fn layer() -> impl Bundle {
             ..default()
         },
         Pickable::IGNORE,
-        Children::spawn(SpawnIter((0..MAX).map(slot))),
+        pool::slots(),
     )
 }
 
-/// The adapter between the markers and the pin system: whether `marker` is the active pin,
-/// which shows at any distance. Today it is the player's own waypoint. When `Places` lands,
-/// replace the body by a comparison with `Places::active()`.
-fn is_active(marker: &Marker) -> bool {
-    marker.kind == MarkerKind::Waypoint && marker.owner == 0
+/// Draws slot `at`: places the marker it shows, or hides it.
+fn show(at: usize, (state, view, lens): (&mut State, &View, Lens), nodes: &mut Nodes) {
+    let Some(pick) = state.chosen(at) else {
+        state.memory[at].who = None;
+        draw::room(nodes, at, None);
+        return;
+    };
+    let marker = &view.markers.0[pick.index];
+    let inset = lens.inset + state.stickiness(at);
+    let placed = place(pick.dir, lens.fov, lens.screen, inset);
+    let pos = state.settle(at, (marker.kind, pick.index), placed, lens.follow);
+    let on_screen = placed.arrow.is_none();
+    let dim = if on_screen {
+        dimmed((-pick.dir.z).clamp(-1.0, 1.0).acos())
+    } else {
+        1.0
+    };
+    let color = pick::tint(marker).with_alpha(dim);
+    draw::room(nodes, at, Some(pos));
+    draw::icon(nodes, at, icon(marker.kind), color);
+    draw::arrow(nodes, at, placed.arrow, color);
+    draw::label(nodes, at, (pick.gap, dim), &mut state.words);
 }
-
-/// Returns whether `marker` at `gap` metres is worth drawing: the course and the active pin at
-/// any distance, other pins within reach, the rest unless right here.
-fn worth(marker: &Marker, gap: f64) -> bool {
-    let pin = matches!(marker.kind, MarkerKind::Waypoint | MarkerKind::Favourite);
-    gap > HERE && (!pin || is_active(marker) || gap <= FAVOURITE_REACH)
-}
-
-/// Returns the colour a marker is drawn in: the accent for the course, the pin colour for pins,
-/// its own for friends, white for home and the ship.
-fn tint(marker: &Marker) -> Color {
-    match marker.kind {
-        MarkerKind::Course => theme::ACCENT,
-        MarkerKind::Waypoint | MarkerKind::Favourite => theme::PIN,
-        MarkerKind::Friend => marker.color,
-        _ => theme::TEXT,
-    }
-}
-
-/// The nodes of the pool.
-type Nodes<'w, 's> = (
-    Query<'w, 's, (&'static Slot, &'static mut Node), (Without<Arrow>, Without<Glyph>)>,
-    Query<
-        'w,
-        's,
-        (&'static Glyph, &'static mut Text, &'static mut TextColor),
-        (Without<Arrow>, Without<Label>),
-    >,
-    Query<
-        'w,
-        's,
-        (
-            &'static Arrow,
-            &'static mut Node,
-            &'static mut UiTransform,
-            &'static mut TextColor,
-        ),
-        (Without<Slot>, Without<Glyph>, Without<Label>),
-    >,
-    Query<
-        'w,
-        's,
-        (&'static Label, &'static mut Text, &'static mut TextColor),
-        (Without<Glyph>, Without<Arrow>),
-    >,
-);
 
 /// Chooses the markers to show, places each and writes the pool.
 pub(super) fn update(
     (around, now): (Around, Res<Where>),
-    (markers, settings, scale, time): (
-        Res<Markers>,
-        Res<Persistent<Settings>>,
-        Option<Res<UiScale>>,
-        Res<Time>,
-    ),
-    window: Single<&Window, With<PrimaryWindow>>,
-    (mut picks, mut items, mut order): (Local<Vec<Pick>>, Local<Vec<(bool, f64)>>, Local<Vec<usize>>),
-    (mut memory, mut words): (Local<[Memory; MAX]>, Local<String>),
-    (mut slots, mut glyphs, mut arrows, mut labels): Nodes,
+    view: View,
+    mut state: Local<State>,
+    mut nodes: Nodes,
 ) {
-    picks.clear();
-    items.clear();
-    for (index, marker) in markers.0.iter().enumerate() {
-        if !marker_shown(now.0, marker.kind) || marker.kind == MarkerKind::Herd {
-            continue;
-        }
-        let Some((dir, gap)) = around.seen(marker) else {
-            continue;
-        };
-        if worth(marker, gap) {
-            picks.push(Pick { index, dir, gap });
-            let always = marker.kind == MarkerKind::Course || is_active(marker);
-            items.push((always, gap));
-        }
-    }
-    choose(&items, &mut order);
-    let screen = Vec2::new(window.width(), window.height()) / scale.map_or(1.0, |scale| scale.0).max(0.1);
-    let fov = (settings.graphics.fov as f32).to_radians();
-    let follow = 1.0 - (-FOLLOW * time.delta_secs()).exp();
-    let inset = theme::EDGE + theme::ICON * 0.5;
+    state.gather(&around, &view.markers, now.0);
+    let lens = view.lens();
     for at in 0..MAX {
-        let pick = order.get(at).map(|chosen| picks[*chosen]);
-        let marker = pick.map(|pick| &markers.0[pick.index]);
-        let placed = pick.map(|pick| {
-            let more = if memory[at].edge { HYSTERESIS } else { 0.0 };
-            place(pick.dir, fov, screen, inset + more)
-        });
-        if let (Some(pick), Some(placed), Some(marker)) = (pick, placed, marker) {
-            let who = Some((marker.kind, pick.index));
-            let moved = if memory[at].who == who {
-                memory[at].pos.lerp(placed.pos, follow)
-            } else {
-                placed.pos
-            };
-            memory[at] = Memory {
-                who,
-                pos: moved,
-                edge: placed.arrow.is_some(),
-            };
-        } else {
-            memory[at].who = None;
-        }
-        for (Slot(slot), mut node) in &mut slots {
-            if *slot != at {
-                continue;
-            }
-            let display = [Display::None, Display::Flex][usize::from(pick.is_some())];
-            let (left, top) = (
-                px(memory[at].pos.x - ROOM * 0.5),
-                px(memory[at].pos.y - theme::ICON * 0.5),
-            );
-            if (node.display, node.left, node.top) != (display, left, top) {
-                (node.display, node.left, node.top) = (display, left, top);
-            }
-        }
-        let (Some(pick), Some(placed), Some(marker)) = (pick, placed, marker) else {
-            continue;
-        };
-        let dim = match placed.arrow {
-            None => dimmed((-pick.dir.z).clamp(-1.0, 1.0).acos()),
-            Some(_) => 1.0,
-        };
-        let color = tint(marker).with_alpha(dim);
-        let symbol = icon(marker.kind);
-        for (Glyph(slot), mut text, mut paint) in &mut glyphs {
-            if *slot == at {
-                if !text.0.starts_with(symbol.codepoint()) {
-                    text.0 = symbol.glyph();
-                }
-                paint.set_if_neq(TextColor(color));
-            }
-        }
-        for (Arrow(slot), mut node, mut turn, mut paint) in &mut arrows {
-            if *slot != at {
-                continue;
-            }
-            let display = [Display::None, Display::Flex][usize::from(placed.arrow.is_some())];
-            if node.display != display {
-                node.display = display;
-            }
-            if let Some(angle) = placed.arrow {
-                let (x, y) = (angle.sin() * ARROW_REACH, -angle.cos() * ARROW_REACH);
-                let wanted = UiTransform {
-                    translation: Val2::px(x, y),
-                    rotation: Rot2::radians(angle),
-                    ..UiTransform::IDENTITY
-                };
-                turn.set_if_neq(wanted);
-            }
-            paint.set_if_neq(TextColor(color));
-        }
-        words.clear();
-        let _ = write!(words, "{}", distance(pick.gap));
-        for (Label(slot), mut text, mut paint) in &mut labels {
-            if *slot == at {
-                if text.0 != *words {
-                    text.0.clone_from(&words);
-                }
-                paint.set_if_neq(TextColor(theme::TEXT.with_alpha(dim)));
-            }
-        }
+        show(at, (&mut *state, &view, lens), &mut nodes);
     }
 }
 

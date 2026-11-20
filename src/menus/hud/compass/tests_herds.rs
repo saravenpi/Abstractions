@@ -7,11 +7,11 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::herds::herds;
-use crate::menus::hud::context::{Context, Where};
 use crate::fauna::guide::Seen;
 use crate::fauna::tune::MEMORY;
 use crate::fauna::{Nearby, Sighting};
 use crate::life::SpeciesId;
+use crate::menus::hud::context::{Context, Where};
 use crate::menus::{MarkerKind, MarkerPlace, Markers};
 use crate::space::{Anchor, Frame};
 use crate::universe::Universe;

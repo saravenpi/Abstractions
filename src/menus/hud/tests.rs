@@ -1,7 +1,6 @@
 //! HUD tests: unit formatting at each boundary, what each instrument shows, the prompt and the banner.
 
 use super::banner::opacity;
-use super::context::{Context, shown};
 use super::flight::{Flight, Gauge, reading};
 use super::prompt::board_prompt;
 use super::units::{height, percent, speed};
@@ -98,39 +97,6 @@ fn instruments_follow_the_frame() {
     assert_eq!(reading(Gauge::Speed, &space).unwrap(), "7.80 km/s orbital");
     assert_eq!(reading(Gauge::Apoapsis, &space).unwrap(), "52.0 km");
     assert_eq!(reading(Gauge::Periapsis, &space).unwrap(), "-1.20 km");
-}
-
-/// The warp speed replaces the speed in warp, and a gliding body reads its own height and air
-/// speed, not the ship's.
-#[test]
-fn warp_and_glide_speeds_replace_the_ship_speed() {
-    let mut flight = flying(Frame::System(StarId::default()));
-    flight.telemetry.warp = WarpState::Active(2.0e10);
-    assert_eq!(reading(Gauge::Speed, &flight).unwrap(), "2.00 gly/s warp");
-    let gliding = Flight {
-        glide: Some((812.0, 41.0)),
-        ..Flight::default()
-    };
-    assert_eq!(reading(Gauge::Altitude, &gliding).unwrap(), "812 m");
-    assert_eq!(reading(Gauge::Speed, &gliding).unwrap(), "41 m/s air");
-}
-
-/// The rows the context shows for a ship in orbit are exactly altitude, speed, throttle,
-/// stabiliser, highest and lowest point, in that order.
-#[test]
-fn the_orbit_rows_are_the_spec_rows() {
-    let flight = flying(Frame::System(StarId::default()));
-    let rows: Vec<&str> = Gauge::ALL
-        .into_iter()
-        .filter(|(gauge, _)| shown(Context::ShipOrbit).contains(gauge.element()))
-        .filter(|(gauge, _)| reading(*gauge, &flight).is_some())
-        .map(|(_, name)| name)
-        .collect();
-    assert_eq!(
-        rows,
-        ["Altitude", "Speed", "Throttle", "Stabiliser", "Highest", "Lowest"]
-    );
-    assert_eq!(Gauge::ALL.len(), 7);
 }
 
 /// The prompt shows at the hatch of the landed ship and inside it, and nowhere else.

@@ -66,5 +66,9 @@ pub fn choose(items: &[(bool, f64)], out: &mut Vec<usize>) {
 /// Returns the opacity of a marker drawn on the screen whose target lies `angle` radians from
 /// the middle of the view: faint near the middle so it never hides what the player looks at.
 pub fn dimmed(angle: f32) -> f32 {
-    if angle < 15.0_f32.to_radians() { 0.4 } else { 1.0 }
+    if angle < 15.0_f32.to_radians() {
+        0.4
+    } else {
+        1.0
+    }
 }

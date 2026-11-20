@@ -34,7 +34,10 @@ fn the_priority_order_holds() {
         Some((Some(KeyCode::KeyG), "Go to Mars".to_string()))
     );
     state.ready = None;
-    assert_eq!(choose(&state), Some((Some(KeyCode::KeyF), "Board".to_string())));
+    assert_eq!(
+        choose(&state),
+        Some((Some(KeyCode::KeyF), "Board".to_string()))
+    );
     state.board = None;
     assert_eq!(
         choose(&state),
@@ -59,7 +62,12 @@ fn the_course_words_follow_the_route() {
     assert_eq!(warp.running.as_deref(), Some("Warping to Mars"));
     let spool = words(&course(RouteStatus::Spooling), true, KeyCode::KeyF, key);
     assert_eq!(spool.running.as_deref(), Some("Charging the warp drive."));
-    let stuck = words(&course(RouteStatus::Blocked(Block::Landed)), true, KeyCode::KeyF, key);
+    let stuck = words(
+        &course(RouteStatus::Blocked(Block::Landed)),
+        true,
+        KeyCode::KeyF,
+        key,
+    );
     assert!(stuck.block.is_some() && stuck.running.is_none());
     let walking = words(&course(RouteStatus::Idle), false, KeyCode::KeyF, key);
     assert_eq!(

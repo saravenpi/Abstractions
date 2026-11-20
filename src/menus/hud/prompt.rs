@@ -5,8 +5,8 @@
 use bevy::prelude::*;
 
 use super::context::{Context, Element, Where};
-use super::fade::gate;
 use super::course::{Course, Words, words};
+use super::fade::gate;
 use super::hints::{Hint, Hinted};
 use crate::computer::{Destination, RouteStatus};
 use crate::menus::key_name;
@@ -54,8 +54,16 @@ pub fn choose(state: &State) -> Option<(Option<KeyCode>, String)> {
         .map(|sentence| (None, sentence.clone()))
         .or_else(|| state.running.as_ref().map(key))
         .or_else(|| state.ready.as_ref().map(key))
-        .or_else(|| state.board.map(|(key, words)| (Some(key), words.to_string())))
-        .or_else(|| state.hint.map(|(key, words)| (Some(key), words.to_string())))
+        .or_else(|| {
+            state
+                .board
+                .map(|(key, words)| (Some(key), words.to_string()))
+        })
+        .or_else(|| {
+            state
+                .hint
+                .map(|(key, words)| (Some(key), words.to_string()))
+        })
 }
 
 /// Returns what the board key does right now, or nothing when it does nothing: boarding from
@@ -66,6 +74,30 @@ pub fn board_prompt(travel: Travel, at_hatch: bool, landed: bool) -> Option<&'st
         Travel::InShip if landed => Some("Leave the ship"),
         _ => None,
     }
+}
+
+/// The row of the prompt: a key and its words on a panel, hidden until there is something to say.
+fn row() -> impl Bundle {
+    (
+        Prompt,
+        gate(Element::Prompt),
+        Node {
+            display: Display::None,
+            align_items: AlignItems::Center,
+            column_gap: px(theme::S2),
+            padding: UiRect::axes(px(theme::S3), px(theme::S2)),
+            ..default()
+        },
+        BackgroundColor(theme::PANEL),
+        children![
+            (PromptKey, label("", theme::FONT_SMALL, Tone::Plain)),
+            (
+                PromptAction,
+                text("", theme::FONT_SMALL, theme::TEXT),
+                TextLayout::no_wrap()
+            ),
+        ],
+    )
 }
 
 /// The hidden prompt, bottom centre at the screen edge. `update` fills it.
@@ -79,30 +111,7 @@ pub(super) fn line() -> impl Bundle {
             ..default()
         },
         Pickable::IGNORE,
-        children![(
-            Prompt,
-            gate(Element::Prompt),
-            Node {
-                display: Display::None,
-                align_items: AlignItems::Center,
-                column_gap: px(theme::S2),
-                padding: UiRect::axes(px(theme::S3), px(theme::S2)),
-                ..default()
-            },
-            BackgroundColor(theme::PANEL),
-            children![
-                (
-                    PromptKey,
-                    label("", theme::FONT_SMALL, Tone::Plain),
-                    TextLayout::no_wrap()
-                ),
-                (
-                    PromptAction,
-                    text("", theme::FONT_SMALL, theme::TEXT),
-                    TextLayout::no_wrap()
-                ),
-            ],
-        )],
+        children![row()],
     )
 }
 
@@ -121,50 +130,70 @@ pub(super) struct Reach<'w> {
 }
 
 impl Reach<'_> {
-    /// Returns the state of the line for this frame.
-    fn state(&self) -> State {
+    /// Returns the course as the adapter reads it, when one is set.
+    fn course(&self) -> Option<Course> {
+        let target = self.destination.0?;
+        Some(Course {
+            name: target.name(self.universe.as_deref()?),
+            route: *self.route,
+            gap: None,
+        })
+    }
+
+    /// Returns the board row and the hint row: what the board key does and the hint in turn.
+    fn keys(
+        &self,
+        travel: Option<Travel>,
+    ) -> (
+        Option<(KeyCode, &'static str)>,
+        Option<(KeyCode, &'static str)>,
+    ) {
         let keys = &self.settings.controls.keys;
-        let travel = self.location.as_deref().map(|at| at.travel);
-        let context = self.now.0;
-        let mut state = State::default();
-        if context == Context::Gliding || context == Context::Menu {
-            return state;
-        }
         let at_hatch = self.hatch.as_deref().is_some_and(|hatch| hatch.near);
         let landed = self.telemetry.as_deref().is_some_and(|ship| ship.landed);
-        state.board = travel
+        let board = travel
             .and_then(|travel| board_prompt(travel, at_hatch, landed))
             .map(|action| (keys.ship.board, action));
-        state.hint = self
+        let hint = self
             .hinted
             .0
             .map(|hint: Hint| (hint.key(keys), hint.words()));
-        let course = self.destination.0.zip(self.universe.as_deref()).map(|(target, universe)| {
-            Course {
-                name: target.name(universe),
-                route: *self.route,
-                gap: None,
-            }
-        });
-        if let Some(course) = course {
-            let said = words(&course, travel == Some(Travel::InShip), keys.ship.board, key_name);
-            let Words {
-                block,
-                running,
-                ready,
-            } = said;
-            let engage = keys.engage;
-            state.block = block;
-            state.running = running.map(|words| (engage, words));
-            state.ready = ready.map(|words| (engage, words));
+        (board, hint)
+    }
+
+    /// Returns the state of the line for this frame: empty while gliding or in a menu.
+    fn state(&self) -> State {
+        let travel = self.location.as_deref().map(|at| at.travel);
+        let mut state = State::default();
+        if matches!(self.now.0, Context::Gliding | Context::Menu) {
+            return state;
         }
+        (state.board, state.hint) = self.keys(travel);
+        let keys = &self.settings.controls.keys;
+        let seated = travel == Some(Travel::InShip);
+        let said = self
+            .course()
+            .map(|course| words(&course, seated, keys.ship.board, key_name));
+        let Words {
+            block,
+            running,
+            ready,
+        } = said.unwrap_or_default();
+        state.block = block;
+        state.running = running.map(|words| (keys.engage, words));
+        state.ready = ready.map(|words| (keys.engage, words));
         state
     }
 }
 
 /// The texts of the prompt: the action and the key.
 type Texts<'w, 's> = (
-    Query<'w, 's, (&'static mut Text, &'static mut TextColor), (With<PromptAction>, Without<PromptKey>)>,
+    Query<
+        'w,
+        's,
+        (&'static mut Text, &'static mut TextColor),
+        (With<PromptAction>, Without<PromptKey>),
+    >,
     Query<'w, 's, &'static mut Text, (With<PromptKey>, Without<PromptAction>)>,
 );
 

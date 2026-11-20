@@ -4,40 +4,8 @@
 use bevy::prelude::*;
 
 use super::backdrop::{backdrop_luminance, contrast};
+use super::color_rig::{luminance, on_panel};
 use super::theme;
-
-/// Converts one sRGB channel to linear light.
-fn linear(c: f32) -> f32 {
-    if c <= 0.04045 {
-        c / 12.92
-    } else {
-        ((c + 0.055) / 1.055).powf(2.4)
-    }
-}
-
-/// Returns the relative luminance of an opaque sRGB colour.
-fn luminance(c: Srgba) -> f32 {
-    0.2126 * linear(c.red) + 0.7152 * linear(c.green) + 0.0722 * linear(c.blue)
-}
-
-/// Lays `top` over the opaque colour `under`, as the screen does, channel by channel in sRGB.
-fn over(top: Color, under: Srgba) -> Srgba {
-    let t = top.to_srgba();
-    let mix = |a: f32, b: f32| a * t.alpha + b * (1.0 - t.alpha);
-    Srgba::new(
-        mix(t.red, under.red),
-        mix(t.green, under.green),
-        mix(t.blue, under.blue),
-        1.0,
-    )
-}
-
-/// Contrast of `text` drawn on `PANEL` over a world of the given brightness.
-fn on_panel(text: Color, world: f32) -> f32 {
-    let sky = Srgba::new(world, world, world, 1.0);
-    let panel = over(theme::PANEL, sky);
-    contrast(luminance(over(text, panel)), luminance(panel))
-}
 
 /// What sits over the game lets it show: every backdrop is translucent, text is solid.
 #[test]
@@ -63,12 +31,32 @@ fn white_text_keeps_its_contrast_over_a_white_world() {
 /// Text on `PANEL` stays readable over a pure white sky, the worst case, and over black.
 #[test]
 fn text_on_the_panel_is_readable_over_a_white_sky() {
-    assert!(on_panel(theme::TEXT, 1.0) >= 7.0, "{}", on_panel(theme::TEXT, 1.0));
-    assert!(on_panel(theme::TEXT_2, 1.0) >= 4.5, "{}", on_panel(theme::TEXT_2, 1.0));
-    assert!(on_panel(theme::ACCENT, 1.0) >= 4.5, "{}", on_panel(theme::ACCENT, 1.0));
-    assert!(on_panel(theme::PIN, 1.0) >= 4.5, "{}", on_panel(theme::PIN, 1.0));
+    assert!(
+        on_panel(theme::TEXT, 1.0) >= 7.0,
+        "{}",
+        on_panel(theme::TEXT, 1.0)
+    );
+    assert!(
+        on_panel(theme::TEXT_2, 1.0) >= 4.5,
+        "{}",
+        on_panel(theme::TEXT_2, 1.0)
+    );
+    assert!(
+        on_panel(theme::ACCENT, 1.0) >= 4.5,
+        "{}",
+        on_panel(theme::ACCENT, 1.0)
+    );
+    assert!(
+        on_panel(theme::PIN, 1.0) >= 4.5,
+        "{}",
+        on_panel(theme::PIN, 1.0)
+    );
     for warning in [theme::WARN, theme::DANGER] {
-        assert!(on_panel(warning, 1.0) >= 3.5, "{warning:?} {}", on_panel(warning, 1.0));
+        assert!(
+            on_panel(warning, 1.0) >= 3.5,
+            "{warning:?} {}",
+            on_panel(warning, 1.0)
+        );
         assert!(on_panel(warning, 0.0) >= 7.0);
     }
     assert!(on_panel(theme::TEXT, 0.0) >= 15.0);
@@ -85,7 +73,11 @@ fn ink_is_readable_on_the_accent() {
 /// Secondary text is dimmer than primary and brighter than disabled.
 #[test]
 fn text_tones_are_ordered() {
-    let (a, b, c) = (theme::TEXT.alpha(), theme::TEXT_2.alpha(), theme::TEXT_OFF.alpha());
+    let (a, b, c) = (
+        theme::TEXT.alpha(),
+        theme::TEXT_2.alpha(),
+        theme::TEXT_OFF.alpha(),
+    );
     assert!(a > b && b > c);
 }
 

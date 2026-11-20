@@ -67,7 +67,11 @@ impl Around<'_> {
         }
         let (offset, gap) = self.target(eye, marker)?;
         let right = eye.forward.cross(eye.up);
-        let local = DVec3::new(offset.dot(right), offset.dot(eye.up), -offset.dot(eye.forward));
+        let local = DVec3::new(
+            offset.dot(right),
+            offset.dot(eye.up),
+            -offset.dot(eye.forward),
+        );
         Some((local.normalize_or_zero().as_vec3(), gap))
     }
 

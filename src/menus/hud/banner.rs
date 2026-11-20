@@ -180,13 +180,17 @@ pub(super) fn fade(
         }
     }
     for mut strip in &mut strips {
-        strip.set_if_neq(BackgroundColor(theme::PANEL.with_alpha(theme::PANEL.alpha() * alpha)));
+        strip.set_if_neq(BackgroundColor(
+            theme::PANEL.with_alpha(theme::PANEL.alpha() * alpha),
+        ));
     }
     for mut tint in &mut planets {
         tint.set_if_neq(TextColor(theme::TEXT.with_alpha(alpha)));
     }
     for mut tint in &mut systems {
-        tint.set_if_neq(TextColor(theme::TEXT_2.with_alpha(theme::TEXT_2.alpha() * alpha)));
+        tint.set_if_neq(TextColor(
+            theme::TEXT_2.with_alpha(theme::TEXT_2.alpha() * alpha),
+        ));
     }
 }
 

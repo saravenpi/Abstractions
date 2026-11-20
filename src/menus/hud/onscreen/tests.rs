@@ -26,7 +26,10 @@ fn left_lands_on_the_left_edge() {
     assert!((at.pos.x - INSET).abs() < 1e-3, "{:?}", at.pos);
     assert!((at.pos.y - SCREEN.y * 0.5).abs() < 1e-2);
     let arrow = at.arrow.expect("an arrow");
-    assert!((arrow + std::f32::consts::FRAC_PI_2).abs() < 1e-3, "{arrow}");
+    assert!(
+        (arrow + std::f32::consts::FRAC_PI_2).abs() < 1e-3,
+        "{arrow}"
+    );
 }
 
 /// A target directly behind and a little up lands on the top edge, not mirrored into the view.
@@ -49,7 +52,11 @@ fn behind_and_down_lands_on_the_bottom_edge() {
 #[test]
 fn behind_up_left_lands_upper_left() {
     let at = place(Vec3::new(-1.0, 1.0, 1.0).normalize(), FOV, SCREEN, INSET);
-    assert!(at.pos.x < SCREEN.x * 0.5 && at.pos.y < SCREEN.y * 0.5, "{:?}", at.pos);
+    assert!(
+        at.pos.x < SCREEN.x * 0.5 && at.pos.y < SCREEN.y * 0.5,
+        "{:?}",
+        at.pos
+    );
     assert!(at.arrow.is_some());
 }
 
@@ -67,8 +74,14 @@ fn positions_stay_inside_the_safe_rect() {
                 -yaw.cos() * pitch.cos(),
             );
             let at = place(dir, FOV, SCREEN, INSET);
-            assert!(at.pos.x >= INSET - 1e-2 && at.pos.x <= SCREEN.x - INSET + 1e-2, "{dir:?}");
-            assert!(at.pos.y >= INSET - 1e-2 && at.pos.y <= SCREEN.y - INSET + 1e-2, "{dir:?}");
+            assert!(
+                at.pos.x >= INSET - 1e-2 && at.pos.x <= SCREEN.x - INSET + 1e-2,
+                "{dir:?}"
+            );
+            assert!(
+                at.pos.y >= INSET - 1e-2 && at.pos.y <= SCREEN.y - INSET + 1e-2,
+                "{dir:?}"
+            );
         }
     }
 }

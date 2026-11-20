@@ -4,7 +4,7 @@
 use bevy::prelude::KeyCode;
 
 use super::context::Context;
-use super::hints::{Clock, Hint, HOLD, done, due, finished, with};
+use super::hints::{Clock, HOLD, Hint, done, due, finished, with};
 use crate::settings::{Keymap, Settings};
 
 /// A clock that has waited `seated` seconds in the ship and `afoot` on the ground.
@@ -20,8 +20,14 @@ fn waited(seated: f32, afoot: f32) -> Clock {
 #[test]
 fn the_map_hint_shows_once() {
     assert_eq!(due(0, &waited(4.0, 0.0), Context::ShipLanded), None);
-    assert_eq!(due(0, &waited(6.0, 0.0), Context::ShipLanded), Some(Hint::Map));
-    assert_eq!(due(Hint::Map.bit(), &waited(6.0, 0.0), Context::ShipLanded), None);
+    assert_eq!(
+        due(0, &waited(6.0, 0.0), Context::ShipLanded),
+        Some(Hint::Map)
+    );
+    assert_eq!(
+        due(Hint::Map.bit(), &waited(6.0, 0.0), Context::ShipLanded),
+        None
+    );
     assert_eq!(due(0, &waited(6.0, 0.0), Context::OnFoot), None);
 }
 
@@ -31,7 +37,10 @@ fn the_pin_hint_needs_the_map_first() {
     let clock = waited(0.0, 61.0);
     assert_ne!(due(0, &clock, Context::OnFoot), Some(Hint::Pin));
     let seen = with(0, Hint::Map);
-    assert_eq!(due(with(seen, Hint::Minimap), &clock, Context::OnFoot), Some(Hint::Pin));
+    assert_eq!(
+        due(with(seen, Hint::Minimap), &clock, Context::OnFoot),
+        Some(Hint::Pin)
+    );
 }
 
 /// A hint given up for the session is not offered again before the next session, and at most one

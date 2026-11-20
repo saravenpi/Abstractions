@@ -30,15 +30,6 @@ pub(super) const fn gate(element: Element) -> Gate {
     }
 }
 
-/// Returns `alpha` moved `dt` seconds toward whole when `want`, toward gone otherwise.
-pub fn approach(alpha: f32, want: bool, dt: f32) -> f32 {
-    let step = dt / motion::FADE;
-    match want {
-        true => (alpha + step).min(1.0),
-        false => (alpha - step).max(0.0),
-    }
-}
-
 /// The colours remembered while a fade lasts: the whole colour and the one written last.
 type Memory = HashMap<Entity, (Color, Color)>;
 
@@ -59,33 +50,43 @@ fn dim(memory: &mut Memory, entity: Entity, now: Color, level: f32) -> Color {
     shown
 }
 
+/// What a fade reads and writes under a root: the nodes below it and their colours.
+type Under<'w, 's> = (
+    Query<'w, 's, &'static Children>,
+    Query<'w, 's, &'static mut TextColor>,
+    Query<'w, 's, &'static mut BackgroundColor>,
+);
+
+/// Sets the opacity of the root and everything under it to `level`.
+fn dim_under(root: Entity, level: f32, under: &mut Under, memory: &mut (Memory, Memory)) {
+    let (kids, texts, fills) = under;
+    for below in std::iter::once(root).chain(kids.iter_descendants(root)) {
+        if let Ok(mut color) = texts.get_mut(below) {
+            let out = dim(&mut memory.0, below, color.0, level);
+            color.set_if_neq(TextColor(out));
+        }
+        if let Ok(mut color) = fills.get_mut(below) {
+            let out = dim(&mut memory.1, below, color.0, level);
+            color.set_if_neq(BackgroundColor(out));
+        }
+    }
+}
+
 /// Moves every gate toward what its element's context wants, and fades what is under it.
 pub(super) fn step(
     (time, now): (Res<Time>, Res<Where>),
     mut gates: Query<(Entity, &mut Gate, &mut Visibility)>,
-    kids: Query<&Children>,
-    (mut texts, mut fills): (Query<&mut TextColor>, Query<&mut BackgroundColor>),
+    mut under: Under,
     mut memory: Local<(Memory, Memory)>,
 ) {
     for (root, mut gate, mut visibility) in &mut gates {
         let before = gate.alpha;
-        let after = approach(before, now.has(gate.element), time.delta_secs());
+        let after = motion::approach(before, now.has(gate.element), time.delta_secs());
         let shown = [Visibility::Hidden, Visibility::Inherited][usize::from(after > 0.0)];
         visibility.set_if_neq(shown);
-        if after == before {
-            continue;
-        }
-        gate.alpha = after;
-        let level = motion::ease_out(after);
-        for under in std::iter::once(root).chain(kids.iter_descendants(root)) {
-            if let Ok(mut color) = texts.get_mut(under) {
-                let out = dim(&mut memory.0, under, color.0, level);
-                color.set_if_neq(TextColor(out));
-            }
-            if let Ok(mut color) = fills.get_mut(under) {
-                let out = dim(&mut memory.1, under, color.0, level);
-                color.set_if_neq(BackgroundColor(out));
-            }
+        if after != before {
+            gate.alpha = after;
+            dim_under(root, motion::ease_out(after), &mut under, &mut memory);
         }
     }
 }

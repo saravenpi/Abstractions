@@ -44,6 +44,10 @@ mod tests_frame;
 mod tests_hints;
 #[cfg(test)]
 mod tests_prompt;
+#[cfg(test)]
+mod tests_rows;
+#[cfg(test)]
+mod tests_shown;
 mod units;
 
 pub use climate::HudWeather;
@@ -143,12 +147,21 @@ fn hurt(app: &mut App) {
     );
 }
 
-/// Registers the HUD systems.
-pub(super) fn plugin(app: &mut App) {
-    markers::plugin(app);
-    eye::plugin(app);
-    compass::plugin(app);
-    hurt(app);
+/// The steps of the HUD in a frame, in order.
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum Step {
+    /// Where the player is is worked out.
+    Context,
+    /// The elements read the world while the player controls the game.
+    Playing,
+    /// The banner announces and fades.
+    Banner,
+    /// Elements that entered or left their context fade.
+    Fade,
+}
+
+/// The elements that read the world while the player controls the game.
+fn readouts(app: &mut App) {
     let every = || on_timer(Duration::from_secs_f32(REFRESH));
     let place = coords::update
         .run_if(context::shows_coords)
@@ -158,34 +171,58 @@ pub(super) fn plugin(app: &mut App) {
         compass::north,
         place,
     );
+    let weather = climate::update
+        .run_if(context::shows_climate)
+        .run_if(on_timer(Duration::from_secs_f32(CLIMATE_EVERY)));
+    let playing = (
+        hints::update,
+        (panel::refresh, panel::spool).run_if(every()),
+        prompt::update.run_if(every()),
+        marks.in_set(MarkerSet::Show),
+        weather,
+        banner::watch,
+    );
+    app.add_systems(Update, playing.chain().in_set(Step::Playing));
+}
+
+/// Registers the steps and the systems that are not elements.
+fn steps(app: &mut App) {
+    app.configure_sets(
+        Update,
+        (
+            Step::Context,
+            Step::Playing.run_if(in_control),
+            Step::Banner,
+            Step::Fade,
+        )
+            .chain()
+            .run_if(in_state(Screen::Gameplay)),
+    )
+    .add_systems(
+        Update,
+        (in_control.pipe(show), in_control.pipe(context::update)).in_set(Step::Context),
+    )
+    .add_systems(
+        Update,
+        (banner::announce, banner::fade.run_if(banner::showing))
+            .chain()
+            .in_set(Step::Banner),
+    )
+    .add_systems(Update, fade::step.in_set(Step::Fade));
+}
+
+/// Registers the HUD systems.
+pub(super) fn plugin(app: &mut App) {
+    markers::plugin(app);
+    eye::plugin(app);
+    compass::plugin(app);
+    hurt(app);
     app.init_resource::<banner::Banner>()
         .init_resource::<context::Where>()
         .init_resource::<hints::Hinted>()
         .init_resource::<hints::Clock>()
-        .add_plugins(minimap::plugin)
-        .add_systems(OnEnter(Screen::Gameplay), spawn)
-        .add_systems(
-            Update,
-            (
-                in_control.pipe(show),
-                in_control.pipe(context::update),
-                hints::update.run_if(in_control),
-                (panel::refresh, panel::spool)
-                    .run_if(in_control)
-                    .run_if(every()),
-                prompt::update.run_if(in_control).run_if(every()),
-                marks.run_if(in_control).in_set(MarkerSet::Show),
-                climate::update
-                    .run_if(in_control)
-                    .run_if(context::shows_climate)
-                    .run_if(on_timer(Duration::from_secs_f32(CLIMATE_EVERY))),
-                banner::watch.run_if(in_control),
-                banner::announce,
-                banner::fade.run_if(banner::showing),
-                fade::step,
-            )
-                .chain()
-                .run_if(in_state(Screen::Gameplay)),
-        )
-        .add_plugins(onscreen::plugin);
+        .add_plugins((minimap::plugin, onscreen::plugin))
+        .add_systems(OnEnter(Screen::Gameplay), spawn);
+    steps(app);
+    readouts(app);
 }

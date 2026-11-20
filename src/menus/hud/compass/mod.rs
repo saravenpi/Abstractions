@@ -18,10 +18,10 @@ mod tests_course;
 #[cfg(test)]
 mod tests_herds;
 
+pub(super) use aim::{Around, FAVOURITE_REACH};
 #[cfg(test)]
 pub(super) use north::North;
 pub(super) use north::point as north;
-pub(super) use aim::{Around, FAVOURITE_REACH};
 pub(super) use show::{icon, update};
 
 use std::time::Duration;

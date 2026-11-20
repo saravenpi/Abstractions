@@ -5,8 +5,8 @@ use bevy::prelude::*;
 
 use super::aim::Around;
 use super::{MARK, ROOM};
-use crate::menus::hud::needle::{WIDTH, fade, slot};
 use crate::menus::hud::context::{Element, Where};
+use crate::menus::hud::needle::{WIDTH, fade, slot};
 use crate::ui::text;
 
 /// Marks the room of the north mark, centred on its place on the bar.

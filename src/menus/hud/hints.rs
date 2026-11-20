@@ -122,9 +122,9 @@ pub fn due(bits: u8, clock: &Clock, context: Context) -> Option<Hint> {
 
 /// Returns the hint a pressed key finishes: the map hint also ends with the computer key.
 pub fn finished(keys: &Keymap, pressed: impl Fn(KeyCode) -> bool) -> Option<Hint> {
-    Hint::ALL.into_iter().find(|hint| {
-        pressed(hint.key(keys)) || (*hint == Hint::Map && pressed(keys.computer))
-    })
+    Hint::ALL
+        .into_iter()
+        .find(|hint| pressed(hint.key(keys)) || (*hint == Hint::Map && pressed(keys.computer)))
 }
 
 /// Counts the time spent in each place, picks the hint to show, and writes the bit of one the

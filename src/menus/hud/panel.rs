@@ -3,8 +3,8 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use super::flight::{Flight, Gauge, reading};
 use super::context::{Context, Element, Where};
+use super::flight::{Flight, Gauge, reading};
 use crate::gear::Gear;
 use crate::player::Player;
 use crate::ship::{Ship, ShipTelemetry, WarpState};
@@ -120,7 +120,11 @@ impl Glider<'_, '_> {
         if self.now.0 != Context::Gliding {
             return None;
         }
-        let ((at, gear), (anchor, planet)) = self.players.iter().next().zip(self.anchor.as_deref().zip(self.planet.as_deref()))?;
+        let ((at, gear), (anchor, planet)) = self
+            .players
+            .iter()
+            .next()
+            .zip(self.anchor.as_deref().zip(self.planet.as_deref()))?;
         let height = altitude(anchor, &planet.globe, at.translation);
         Some((f64::from(height), f64::from(gear.state.airspeed)))
     }
@@ -184,7 +188,9 @@ pub(super) fn spool(
     mut bars: Query<&mut Node, (With<SpoolBar>, Without<Track>)>,
     mut tracks: Query<&mut Node, (With<Track>, Without<SpoolBar>)>,
 ) {
-    let warp = telemetry.as_deref().map_or(WarpState::Off, |telemetry| telemetry.warp);
+    let warp = telemetry
+        .as_deref()
+        .map_or(WarpState::Off, |telemetry| telemetry.warp);
     let (spooled, display) = match warp {
         WarpState::Spooling(done) => ((done * 100.0).round() as f32, Display::Flex),
         _ => (0.0, Display::None),

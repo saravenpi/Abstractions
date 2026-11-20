@@ -5,8 +5,12 @@ mod camera;
 #[cfg(test)]
 mod camera_tests;
 mod chrome;
+#[cfg(test)]
+mod color_rig;
 mod focus;
 mod font;
+#[cfg(test)]
+mod font_rig;
 mod fps;
 mod icon;
 #[cfg(test)]
@@ -14,6 +18,8 @@ mod icon_tests;
 mod item;
 mod list;
 pub mod motion;
+#[cfg(test)]
+mod rules_tests;
 mod scroll;
 mod sound;
 mod style;
@@ -21,6 +27,7 @@ mod table;
 pub mod theme;
 #[cfg(test)]
 mod theme_tests;
+mod tooltip;
 mod widgets;
 
 pub use backdrop::{Backdrop, Blurred, backdrop_luminance, contrast, warm_up};
@@ -33,6 +40,7 @@ pub use scroll::{Scroller, scroller};
 pub use sound::Cancels;
 pub use style::{Look, Selected, Tone};
 pub use table::{cell, head, row_with, table_head, table_row, value_cell};
+pub use tooltip::Tip;
 pub use widgets::{Overlay, caps, column, hairline, panel, root, root_on, rule, text};
 
 use bevy::input_focus::InputFocus;
@@ -40,16 +48,27 @@ use bevy::prelude::*;
 
 use crate::render::window_changed;
 
-/// Registers the UI camera, the fonts, the backdrop, the widget looks and the interface sounds.
-pub(super) fn plugin(app: &mut App) {
+/// Registers the camera, the fonts and the overlays that draw above the game.
+fn overlay(app: &mut App) {
     app.init_resource::<UiScale>()
-        .add_plugins(backdrop::plugin)
         .add_systems(
             Startup,
-            (camera::spawn_camera, fps::spawn, icon::load, font::load),
+            (
+                camera::spawn_camera,
+                fps::spawn,
+                icon::load,
+                font::load,
+                tooltip::spawn,
+            ),
         )
-        .add_systems(Update, (fps::update, camera::sync_output))
-        .add_systems(Update, camera::frame_view.run_if(window_changed))
+        .add_systems(Update, (fps::update, camera::sync_output, tooltip::update))
+        .add_systems(Update, camera::frame_view.run_if(window_changed));
+}
+
+/// Registers the UI camera, the fonts, the backdrop, the widget looks and the interface sounds.
+pub(super) fn plugin(app: &mut App) {
+    overlay(app);
+    app.add_plugins(backdrop::plugin)
         .add_observer(sound::activated)
         .add_systems(
             Update,

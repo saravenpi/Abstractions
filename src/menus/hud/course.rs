@@ -30,23 +30,25 @@ pub struct Words {
     pub ready: Option<String>,
 }
 
-/// Returns the words of `course` for a player who `seated` in the ship, with the board key.
-pub fn words(course: &Course, seated: bool, board: KeyCode, key_name: impl Fn(KeyCode) -> String) -> Words {
-    let name = &course.name;
-    if !seated {
-        let sentence = format!(
-            "Board your ship first: walk to the hatch and press {}.",
-            key_name(board)
-        );
-        return Words {
-            block: Some(sentence),
-            ..default()
-        };
-    }
-    let run = |sentence: String| Words {
+/// Returns a words value with only `sentence` as its running line.
+fn running(sentence: String) -> Words {
+    Words {
         running: Some(sentence),
         ..default()
-    };
+    }
+}
+
+/// Returns a words value with only `sentence` as its block line.
+fn blocked(sentence: String) -> Words {
+    Words {
+        block: Some(sentence),
+        ..default()
+    }
+}
+
+/// Returns the words of a course the ship, seated, can start or is flying.
+fn flying(course: &Course) -> Words {
+    let name = &course.name;
     match course.route {
         RouteStatus::Idle => Words {
             ready: Some(match course.gap {
@@ -55,18 +57,28 @@ pub fn words(course: &Course, seated: bool, board: KeyCode, key_name: impl Fn(Ke
             }),
             ..default()
         },
-        RouteStatus::Blocked(block) => Words {
-            block: Some(block.words()),
-            ..default()
-        },
-        RouteStatus::Climbing => run("Climbing out of the air.".to_string()),
-        RouteStatus::Dropping => run("Slowing down.".to_string()),
-        RouteStatus::Aligning(_) => run(format!("Turning toward {name}.")),
-        RouteStatus::Spooling => run("Charging the warp drive.".to_string()),
-        RouteStatus::InWarp => run(format!("Warping to {name}")),
-        RouteStatus::Arrived => Words {
-            block: Some(format!("Arrived at {name}.")),
-            ..default()
-        },
+        RouteStatus::Blocked(block) => blocked(block.words()),
+        RouteStatus::Climbing => running("Climbing out of the air.".to_string()),
+        RouteStatus::Dropping => running("Slowing down.".to_string()),
+        RouteStatus::Aligning(_) => running(format!("Turning toward {name}.")),
+        RouteStatus::Spooling => running("Charging the warp drive.".to_string()),
+        RouteStatus::InWarp => running(format!("Warping to {name}")),
+        RouteStatus::Arrived => blocked(format!("Arrived at {name}.")),
+    }
+}
+
+/// Returns the words of `course` for a player who is `seated` in the ship, with the board key.
+pub fn words(
+    course: &Course,
+    seated: bool,
+    board: KeyCode,
+    key_name: impl Fn(KeyCode) -> String,
+) -> Words {
+    match seated {
+        true => flying(course),
+        false => blocked(format!(
+            "Board your ship first: walk to the hatch and press {}.",
+            key_name(board)
+        )),
     }
 }

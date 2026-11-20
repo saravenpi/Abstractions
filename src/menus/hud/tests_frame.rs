@@ -43,7 +43,10 @@ fn the_frame_rows_sit_under_the_instruments() {
     let order: Vec<Entity> = stacked.get(&world, stack).unwrap().iter().collect();
     assert_eq!(order.len(), 2);
     for (parent, node) in rows {
-        assert_eq!(world.get::<ChildOf>(parent.parent()).map(ChildOf::parent), Some(stack));
+        assert_eq!(
+            world.get::<ChildOf>(parent.parent()).map(ChildOf::parent),
+            Some(stack)
+        );
         assert_ne!(node.position_type, PositionType::Absolute);
     }
     let column = world.get::<Node>(stack).expect("the stack node");

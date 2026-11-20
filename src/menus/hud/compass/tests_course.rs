@@ -45,7 +45,9 @@ fn app() -> App {
 #[test]
 fn a_course_to_a_star_shows_on_the_compass() {
     let mut app = app();
-    app.world_mut().run_system_once(course).expect("the course marker");
+    app.world_mut()
+        .run_system_once(course)
+        .expect("the course marker");
     let readings = app
         .world_mut()
         .run_system_once(|around: Around, markers: Res<Markers>| {
@@ -67,9 +69,18 @@ fn a_course_to_a_star_shows_on_the_compass() {
 #[test]
 fn no_course_no_marker() {
     let mut app = app();
-    app.world_mut().run_system_once(course).expect("the course marker");
+    app.world_mut()
+        .run_system_once(course)
+        .expect("the course marker");
     app.world_mut().insert_resource(Destination(None));
-    app.world_mut().run_system_once(course).expect("the course marker");
+    app.world_mut()
+        .run_system_once(course)
+        .expect("the course marker");
     let markers = app.world().resource::<Markers>();
-    assert!(markers.0.iter().all(|marker| marker.kind != MarkerKind::Course));
+    assert!(
+        markers
+            .0
+            .iter()
+            .all(|marker| marker.kind != MarkerKind::Course)
+    );
 }

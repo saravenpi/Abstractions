@@ -127,7 +127,10 @@ fn square() -> Node {
 /// chart and the marks, all hidden until there is something to show.
 pub fn frame() -> impl Bundle {
     let symbol = |symbol: Icon| (icon_sized(symbol, Tone::Plain, MARK), TextShadow::default());
-    let north = (text("N", theme::FONT_SMALL, theme::TEXT), TextShadow::default());
+    let north = (
+        text("N", theme::FONT_SMALL, theme::TEXT),
+        TextShadow::default(),
+    );
     (
         Part::Frame,
         gate(Element::Minimap),

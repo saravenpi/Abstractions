@@ -14,7 +14,7 @@ use super::herds::{Herds, Land};
 use super::lead::goal;
 use super::motion::{Detail, Motion};
 use super::steer::{Aim, Pace, cruise, drive};
-use super::tune::{DRIFT, FROUDE_TOP, MAX_STEP, NEAR};
+use super::tune::{DRIFT, MAX_STEP, NEAR};
 use super::want::Lead;
 use crate::life::Species;
 use crate::life::body::Locomotion;
@@ -143,15 +143,9 @@ fn pace(ctx: &Ctx, beast: &Beast, species: &Species) -> Pace {
     let near = here.distance(ctx.robot) < f64::from(NEAR);
     let gravity = ctx.terrain.globe().gravity() as f32;
     let body = &species.body;
-    let gait = match body.locomotion {
-        Locomotion::Walk => (FROUDE_TOP * gravity * body.height.max(0.05)).sqrt(),
-        _ => f32::MAX,
-    };
     Pace {
         gravity,
-        top: species.history.speed.min(gait)
-            * beast.wits.health.pace()
-            * beast.wits.broken.pace(body),
+        top: species.history.speed * beast.wits.health.pace() * beast.wits.broken.pace(body),
         detail: if near { Detail::Full } else { Detail::Cheap },
     }
 }

@@ -26,6 +26,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The wake of a fast or low source is a V: foam arms at the wedge angle of its speed, size and the planet's gravity (19.47 degrees when slow, narrower when fast), with a turbulent band between them. The sea surface itself carries the wake as moving waves, arms, transverse waves and ripple rings, and the foam rides them.
 - The minimap shows the ground of a planet in its real colours, from the same palette as the map, with its relief shading.
 - Falling leaves, petals and pollen come only from the plants around you. A tree in leaf drops leaves of its own colour and size, more in autumn; a plant in flower drops petals and, by day, pollen; a bare tree and a lifeless planet drop nothing.
 - Animals move when they call: the head lifts, the jaw drops on every note, and the chest or the bell swells. Bigger animals call slower. Every player sees the same animal call at the same moment.

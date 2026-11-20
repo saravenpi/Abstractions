@@ -9,10 +9,10 @@
 use std::f32::consts::{PI, TAU};
 
 use super::tune::{
-    BOW_SHARE, KELVIN, MAX_THROWN, RIPPLE_PRESSURE, RIPPLE_WAVELENGTH, SKIM_DEPTH, SKIM_SPRAY,
-    SPRAY_PRESSURE,
+    BOW_SHARE, CENTRE_SPREAD, MAX_THROWN, RIPPLE_PRESSURE, SKIM_DEPTH, SKIM_SPRAY, SPRAY_PRESSURE,
 };
 use crate::render::smoothstep;
+use crate::world::wake::HOVER_WAVELENGTH;
 
 /// Returns the far wash speed in metres per second of a source `size` metres across that pushes
 /// `push` newtons on air of `density` kilograms per cubic metre while moving at `speed`.
@@ -56,15 +56,15 @@ pub fn skim(speed: f32, height: f32, size: f32) -> f32 {
 }
 
 /// Returns the speed in metres per second at which ripples run out over a sea under `gravity`:
-/// the phase speed of deep water waves `RIPPLE_WAVELENGTH` long.
+/// the phase speed of deep water waves `HOVER_WAVELENGTH` long.
 pub fn ripple_speed(gravity: f32) -> f32 {
-    (gravity.max(0.0) * RIPPLE_WAVELENGTH / TAU).sqrt()
+    (gravity.max(0.0) * HOVER_WAVELENGTH / TAU).sqrt()
 }
 
-/// Returns the rate in metres per second at which the half width of the wake of a source
-/// moving at `speed` grows: the Kelvin wedge.
-pub fn kelvin_spread(speed: f32) -> f32 {
-    speed.max(0.0) * KELVIN.tan()
+/// Returns the rate in metres per second at which the half width of the turbulent band behind a
+/// source moving at `speed` grows.
+pub fn spread(speed: f32) -> f32 {
+    speed.max(0.0) * CENTRE_SPREAD
 }
 
 /// Adds `amount` to the running count `due` and returns how many whole drops to throw now, at

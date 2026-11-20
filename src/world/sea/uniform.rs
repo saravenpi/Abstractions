@@ -6,13 +6,14 @@ use bevy::render::render_resource::ShaderType;
 
 use super::blend;
 use super::liquid::Liquid;
+use super::wake::SeaWakes;
 use super::waves::waves_for;
 use crate::render::Palette;
 use crate::universe::PlanetRecord;
 use crate::wind::Wind;
 use crate::world::lands::Lands;
 
-/// Uniform block read by `water.wesl`. Every field is a `vec4` so the layout never needs padding.
+/// Uniform block read by `water.wesl`. Every field is a `vec4`, or a block of them, so the layout never needs padding.
 ///
 /// Wave directions are in sea coordinates, the chart of the seat, not in render axes.
 #[derive(Clone, Copy, Debug, Default, ShaderType)]
@@ -57,6 +58,8 @@ pub struct WaterUniform {
     pub far: Vec4,
     /// The hand-over, see [`blend::packed`].
     pub blend: Vec4,
+    /// The wakes that stir the sea, see [`SeaWakes`].
+    pub wake: SeaWakes,
 }
 
 /// Sines of the height of the star between which the water goes from its night look to its day
@@ -137,6 +140,11 @@ impl WaterUniform {
         water
             .of(&Liquid::WATER)
             .over(Lands::of(&PlanetRecord::TEMPERATE))
+    }
+
+    /// Returns these values with the sea stirred by `wake`.
+    pub fn stirred(self, wake: SeaWakes) -> Self {
+        Self { wake, ..self }
     }
 
     /// Returns these values over the coarse sea of `lands` in place of the one they had.

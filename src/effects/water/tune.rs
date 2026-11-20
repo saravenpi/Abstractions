@@ -30,16 +30,25 @@ pub const FOAM_LIFE: f32 = 4.0;
 /// Seconds between two ripple rings under a hovering source.
 pub const RIPPLE_PERIOD: f32 = 0.45;
 
-/// Wavelength in metres of the ripples a wash raises: their speed is the speed of deep water
-/// waves of this length under the local gravity.
-pub const RIPPLE_WAVELENGTH: f32 = 1.5;
-
 /// Width in metres of the band of one ripple ring.
 pub const RIPPLE_BAND: f32 = 0.35;
 
-/// Half angle of a Kelvin wake in radians, 19.47 degrees: its half width grows at the speed of
-/// the source times the tangent of this.
-pub const KELVIN: f32 = 0.3398;
+/// Share of its speed at which the turbulent band along the track of a source widens, in metres
+/// per second per metre per second.
+pub const CENTRE_SPREAD: f32 = 0.03;
+
+/// Half width in metres of the foam of an arm of a wake when it is laid.
+pub const ARM_BAND: f32 = 0.25;
+
+/// Share of the speed at which an arm moves out that its half width grows by.
+pub const ARM_WIDEN: f32 = 0.15;
+
+/// Share of the strength of the spray that the foam of an arm gets.
+pub const ARM_SHARE: f32 = 0.8;
+
+/// Metres between the last point of a wake and a new one past which the wake breaks off, as when
+/// a source jumps.
+pub const WAKE_BREAK: f32 = 40.0;
 
 /// Height in metres of the foam above the still sea, so that it lies on the water.
 pub const FOAM_LIFT: f32 = 0.06;
@@ -71,8 +80,9 @@ pub const DROP_SIZE: (f32, f32) = (0.09, 0.05);
 /// Pooled spray flecks and bubbles.
 pub const DROPS: usize = 256;
 
-/// Pooled quads of foam: wake segments and the pieces of ripple rings.
-pub const QUADS: usize = 768;
+/// Pooled quads of foam: three per wake segment, the centre band and the two arms, and the pieces
+/// of ripple rings.
+pub const QUADS: usize = 1536;
 
 /// Pieces of one ripple ring.
 pub const RING_PIECES: usize = 16;

@@ -7,6 +7,8 @@ use bevy::shader::ShaderRef;
 
 use super::foam::{Foam, FoamMesh};
 use super::tune::FOAM_OPACITY;
+use crate::space::Anchor;
+use crate::world::wake::{FoamWakes, Wakes};
 use crate::world::{Liquid, Terrain};
 
 /// Uniform block read by `foam.wesl`. Every field is a `vec4` so the layout never needs padding.
@@ -16,6 +18,8 @@ pub struct FoamUniform {
     pub color: Vec4,
     /// The foam clock in seconds in x, the clock the quads were laid by.
     pub clock: Vec4,
+    /// The live wakes of the sea, in the space of the foam mesh.
+    pub wake: FoamWakes,
 }
 
 /// Material of the foam mesh.
@@ -55,16 +59,17 @@ impl Material for FoamMaterial {
 
 /// Sets the clock and the colour of the foam and shows its mesh while some quad still lives.
 pub fn tick(
-    time: Res<Time>,
-    terrain: Res<Terrain>,
-    foam: Res<Foam>,
+    (time, terrain, anchor): (Res<Time>, Res<Terrain>, Res<Anchor>),
+    (foam, wakes): (Res<Foam>, Res<Wakes>),
     mut materials: ResMut<Assets<FoamMaterial>>,
-    mut meshes: Query<&mut Visibility, With<FoamMesh>>,
+    mut meshes: Query<(&mut Visibility, &Transform), With<FoamMesh>>,
 ) {
     let now = time.elapsed_secs();
     let shown = [Visibility::Hidden, Visibility::Inherited][usize::from(now < foam.until)];
-    for mut visibility in &mut meshes {
+    let mut origin = Vec3::ZERO;
+    for (mut visibility, at) in &mut meshes {
         visibility.set_if_neq(shown);
+        origin = at.translation;
     }
     if now >= foam.until {
         return;
@@ -74,6 +79,7 @@ pub fn tick(
         material.foam = FoamUniform {
             color: color.extend(FOAM_OPACITY),
             clock: Vec4::new(now, 0.0, 0.0, 0.0),
+            wake: FoamWakes::pack(&wakes, now, |at| anchor.to_render(at) - origin),
         };
     }
 }

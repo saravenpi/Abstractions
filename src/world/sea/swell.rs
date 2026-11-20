@@ -7,6 +7,7 @@ use bevy::prelude::*;
 
 use super::follow::wind_in_seat;
 use super::seat::Seat;
+use super::wake::{SeaWakes, Wakes};
 use super::waves::{WAVE_COUNT, Wave, waves_for};
 use super::{Planet, Sea};
 use crate::render::{GameCamera, Swell, smoothstep};
@@ -22,9 +23,10 @@ const SEEDS: [f32; WAVE_COUNT] = [0.0, 1.7, 3.1, 4.9];
 /// Depth in metres of water over which the waves die out toward the shore, `SHOAL_DEPTH` in `water.wesl`.
 const SHOAL_DEPTH: f32 = 2.5;
 
-/// Returns the height in metres of `waves` above the mean sea at sea coordinates `p` and
-/// `time` seconds, in water `depth` metres deep, as `water.wesl` raises them.
-pub fn crest(waves: &[Wave; WAVE_COUNT], p: Vec2, time: f32, depth: f32) -> f32 {
+/// Returns the height in metres of `waves` and of the `wake` height on top of them above the
+/// mean sea at sea coordinates `p` and `time` seconds, in water `depth` metres deep, as
+/// `water.wesl` raises them.
+pub fn crest(waves: &[Wave; WAVE_COUNT], (p, wake): (Vec2, f32), time: f32, depth: f32) -> f32 {
     let open: f32 = waves
         .iter()
         .zip(SEEDS)
@@ -34,14 +36,24 @@ pub fn crest(waves: &[Wave; WAVE_COUNT], p: Vec2, time: f32, depth: f32) -> f32 
             wave.amplitude * phase.sin()
         })
         .sum();
-    open * smoothstep(0.0, SHOAL_DEPTH, depth)
+    (open + wake) * smoothstep(0.0, SHOAL_DEPTH, depth)
+}
+
+/// Returns the height in metres the live `wakes` raise at sea coordinates `p` at clock `now`, in the
+/// chart of `seat`, none when nothing stirs the sea.
+fn stirred(wakes: Option<&Wakes>, seat: &Seat, (p, now): (Vec2, f32)) -> f32 {
+    wakes
+        .filter(|wakes| wakes.stirred(now))
+        .map_or(0.0, |wakes| {
+            SeaWakes::pack(wakes, now, |at| seat.coords(at)).height(p, now)
+        })
 }
 
 /// Writes how high the waves stand under the game camera, none where the near sea is not drawn.
 pub fn swell(
     cameras: Query<&GlobalTransform, With<GameCamera>>,
     seas: Query<(&Seat, &Transform, &Visibility), With<Sea>>,
-    world: (Option<Res<Anchor>>, Option<Res<Planet>>),
+    world: (Option<Res<Anchor>>, Option<Res<Planet>>, Option<Res<Wakes>>),
     (wind, time): (Res<Wind>, Res<Time>),
     mut swell: ResMut<Swell>,
 ) {
@@ -57,7 +69,9 @@ pub fn swell(
             let at = anchor.to_frame(camera.translation());
             let depth = -planet.globe.height(at.normalize());
             let waves = waves_for(&wind_in_seat(&wind, pose.rotation));
-            crest(&waves, seat.coords(at), time.elapsed_secs(), depth)
+            let (p, now) = (seat.coords(at), time.elapsed_secs());
+            let wake = stirred(world.2.as_deref(), seat, (p, now));
+            crest(&waves, (p, wake), now, depth)
         });
     swell.set_if_neq(Swell(height));
 }

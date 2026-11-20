@@ -12,13 +12,15 @@ use super::super::rng::Rng;
 use super::drops::{Drop, Drops};
 use super::foam::{Foam, FoamMesh};
 use super::throw::{Hand, Mark, Spot, ring, wake};
+use super::trail;
 use super::tune::{
     BUBBLES_PER_METRE, BUBBLES_PER_SECOND, JUMP, RIPPLE_PERIOD, SPRAY_PER_METRE, SPRAY_PER_SECOND,
 };
 use super::wash::{Flow, flow, ripple_speed, skim, thrown};
 use crate::render::smoothstep;
 use crate::space::{Anchor, altitude, up};
-use crate::world::{Globe, Terrain};
+use crate::world::wake::Wakes;
+use crate::world::{Globe, Liquid, Terrain};
 
 /// What a source remembers between two frames.
 #[derive(Debug, Default, Clone, Copy)]
@@ -33,6 +35,8 @@ struct Trace {
     rings: f32,
     /// The last point of its wake.
     mark: Option<Mark>,
+    /// Seconds since the last packet of waves.
+    waked: f32,
 }
 
 /// A body that churns the sea under it. Its owner sets the first four fields every frame.
@@ -76,6 +80,8 @@ pub struct Sea<'w, 's> {
     terrain: Res<'w, Terrain>,
     /// The foam.
     foam: ResMut<'w, Foam>,
+    /// The waves the sources leave in the sea.
+    wakes: ResMut<'w, Wakes>,
     /// The meshes, for the foam.
     meshes: ResMut<'w, Assets<Mesh>>,
     /// The pool order of the drops.
@@ -94,6 +100,10 @@ struct Work<'a, 'w, 's> {
     meshes: &'a mut Assets<Mesh>,
     /// The foam.
     foam: &'a mut Foam,
+    /// The waves the sources leave in the sea.
+    wakes: &'a mut Wakes,
+    /// Density in kilograms per cubic metre of the liquid of the sea.
+    liquid: f32,
     /// Where the foam mesh stands in render space.
     origin: Vec3,
     /// The render anchor.
@@ -176,6 +186,15 @@ impl Work<'_, '_, '_> {
         self.bubbles(&mut churn.trace, (spot, churn.jet), metres);
         self.wake(&mut churn.trace, spot, strength);
         self.rings(&mut churn.trace, (spot, &wash));
+        let density = ((churn.air, self.liquid), self.dt);
+        let cause = (spot, &wash, strength);
+        trail::lay(
+            self.wakes,
+            self.anchor,
+            &mut churn.trace.waked,
+            cause,
+            density,
+        );
     }
 }
 
@@ -199,6 +218,8 @@ pub fn churn(
         },
         meshes: &mut sea.meshes,
         foam: &mut sea.foam,
+        wakes: &mut sea.wakes,
+        liquid: Liquid::of(sea.terrain.globe()).density,
         origin,
         anchor: &sea.anchor,
         dt,

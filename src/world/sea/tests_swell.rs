@@ -18,9 +18,16 @@ fn crest_follows_the_waves_and_calms_ashore() {
     let waves = waves_for(&wind);
     let top: f32 = waves.iter().map(|w| w.amplitude).sum();
     let open: Vec<f32> = (0..200)
-        .map(|i| crest(&waves, Vec2::new(i as f32 * 0.7, 3.0), i as f32 * 0.1, 10.0))
+        .map(|i| {
+            crest(
+                &waves,
+                (Vec2::new(i as f32 * 0.7, 3.0), 0.0),
+                i as f32 * 0.1,
+                10.0,
+            )
+        })
         .collect();
     assert!(open.iter().all(|h| h.abs() <= top + 1.0e-6));
     assert!(open.iter().any(|h| *h > 0.05) && open.iter().any(|h| *h < -0.05));
-    assert_eq!(crest(&waves, Vec2::new(4.0, 1.0), 2.0, 0.0), 0.0);
+    assert_eq!(crest(&waves, (Vec2::new(4.0, 1.0), 0.0), 2.0, 0.0), 0.0);
 }

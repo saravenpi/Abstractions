@@ -123,6 +123,7 @@ pub fn follow_focus(
             let map = floor.origin().truncate().truncate();
             let lands = planet.as_ref().map_or(home, |planet| planet.globe.lands());
             let water = inputs.uniform(pose.rotation).of(&liquid).over(lands);
+            let water = water.stirred(inputs.stirred(seat));
             material.water = placing(water, pose, radius, map, seat.coords(at));
         }
     }

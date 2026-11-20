@@ -29,14 +29,21 @@ use crate::universe::Universe;
 use crate::world::globe::Face;
 use crate::world::{Globe, Planet, Terrain};
 
-/// Radius in metres of the home planet, where the tests stand.
-pub const RADIUS: f64 = 6000.0;
+/// Universe seed of the rig.
+const SEED: u64 = 7;
+
+/// Returns the radius in metres of the home planet the generated universe gives, where the tests stand.
+pub fn radius() -> f64 {
+    let universe = Universe::new(SEED);
+    universe.planet(universe.home()).radius
+}
 
 /// Returns the point of the ground `north` and `east` metres from the place the tests start
 /// at, in the frame of the planet. The start is on the equator, where +Y is north.
 pub fn ground(north: f64, east: f64) -> DVec3 {
-    let (up, over) = ((north / RADIUS).tan(), (east / RADIUS).tan());
-    (DVec3::X + DVec3::Y * up - DVec3::Z * over).normalize() * RADIUS
+    let radius = radius();
+    let (up, over) = ((north / radius).tan(), (east / radius).tan());
+    (DVec3::X + DVec3::Y * up - DVec3::Z * over).normalize() * radius
 }
 
 /// Returns default settings stored in a scratch directory of its own for the test `tag`.
@@ -72,7 +79,7 @@ fn stubs(app: &mut App, tag: &str) {
 
 /// Puts the home planet in `app` with the player on foot at the start, and starts playing.
 fn world(app: &mut App) {
-    let universe = Universe::new(7);
+    let universe = Universe::new(SEED);
     let body = universe.home();
     let spec = universe.planet(body);
     let globe = Arc::new(Globe::of(&spec));

@@ -59,6 +59,8 @@ Who checks what:
 | The owner | Feel and looks: flight, camera, animation, plants, interface | As soon as the work lands, in a dev or hot build |
 | The lead | The full gate: every test of the workspace | Once, after merging, before anything reaches `next` |
 
+An agent that changes something the player sees must also look at it: `examples/probe.rs` (untracked, a copy of `examples/smoke.rs`) drives the real game through a tour from a seed and saves screenshots (`SMOKE_SEED=1 SMOKE_DIR=<dir> cargo run --features dev --example probe`). Extend it to stand next to the thing you changed, then read the screenshots. Passing tests are not enough: on 2026-11-20 every fauna test passed while the owner saw no animals in the game.
+
 An agent does not run the full workspace test suite: it takes minutes and the lead runs it after the merge. An agent that changes something the player sees says in its report exactly what the owner should try in the game.
 
 A change anywhere in `src/` rebuilds the whole game crate. Batch your edits between builds.

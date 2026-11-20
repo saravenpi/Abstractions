@@ -10,8 +10,8 @@ use crate::view::Target;
 
 /// Run condition: the player is seated in a ship that flies fast enough, through air, for its
 /// nose to heat.
-pub fn hot(location: Res<Location>, telemetry: Res<ShipTelemetry>) -> bool {
-    location.travel == Travel::InShip
+pub fn hot(location: Option<Res<Location>>, telemetry: Res<ShipTelemetry>) -> bool {
+    location.is_some_and(|location| location.travel == Travel::InShip)
         && telemetry.dynamic_pressure > 0.0
         && telemetry.surface_speed >= MIN_SPEED
 }

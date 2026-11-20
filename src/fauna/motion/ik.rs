@@ -36,8 +36,31 @@ pub fn two_bone(root: Vec3, target: Vec3, (a, b): (f32, f32), pole: Vec3) -> [Ve
     [root + dir * along + bend * rise, root + dir * dist]
 }
 
+/// Returns the direction of the last bone, `c` long, of a limb whose first two bones reach `reach`
+/// from `root`: `last` if its ankle is in reach, else turned toward the line from `root` to
+/// `target` just enough to bring the ankle in reach.
+fn swung(root: Vec3, target: Vec3, (reach, c): (f32, f32), last: Vec3) -> Vec3 {
+    let in_reach = |dir: Vec3| (target - dir * c).distance(root) <= reach;
+    if in_reach(last) {
+        return last;
+    }
+    let straight = unit(target - root, last);
+    let (mut low, mut high) = (0.0f32, 1.0f32);
+    for _ in 0..10 {
+        let mid = 0.5 * (low + high);
+        match in_reach(unit(last.lerp(straight, mid), straight)) {
+            true => high = mid,
+            false => low = mid,
+        }
+    }
+    unit(last.lerp(straight, high), straight)
+}
+
 /// Returns the three joints after the root of a three-bone limb reaching for `target`, its last
 /// bone held along `last`, its knee bent toward `pole`.
+///
+/// When the held last bone would leave the ankle out of reach, the last bone turns toward the
+/// root just enough that the end still meets a target within the whole limb's reach.
 pub fn three_bone(
     root: Vec3,
     target: Vec3,
@@ -45,7 +68,8 @@ pub fn three_bone(
     last: Vec3,
     pole: Vec3,
 ) -> [Vec3; 3] {
-    let last = unit(last, Vec3::NEG_Y);
+    let reach = lengths[0] + lengths[1];
+    let last = swung(root, target, (reach, lengths[2]), unit(last, Vec3::NEG_Y));
     let ankle = target - last * lengths[2];
     let [knee, held] = two_bone(root, ankle, (lengths[0], lengths[1]), pole);
     [knee, held, held + last * lengths[2]]

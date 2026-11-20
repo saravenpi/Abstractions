@@ -32,7 +32,11 @@ mod fixtures;
 #[cfg(test)]
 mod fixtures_legs;
 #[cfg(test)]
+mod fixtures_life;
+#[cfg(test)]
 mod fixtures_soft;
+#[cfg(test)]
+mod tests_bodies;
 #[cfg(test)]
 mod tests_chain;
 #[cfg(test)]

@@ -61,6 +61,25 @@ fn three_bone_holds_its_last_bone() {
     assert!(knee.z > root.z.min(ankle.z));
 }
 
+/// A three-bone leg whose held last bone would leave its ankle out of reach turns that bone and
+/// still meets a target inside the whole leg's reach.
+#[test]
+fn three_bone_turns_its_last_bone_to_reach() {
+    let (root, pole, last) = (
+        Vec3::Y,
+        Vec3::new(0.0, 1.0, 1.0),
+        Vec3::new(0.0, -0.8, -0.6),
+    );
+    let target = Vec3::new(0.0, 0.0, 0.6);
+    let [_, ankle, end] = three_bone(root, target, [0.5, 0.5, 0.2], last, pole);
+    assert!(
+        end.distance(target) < 2e-3,
+        "missed by {}",
+        end.distance(target)
+    );
+    assert!((end.distance(ankle) - 0.2).abs() < 1e-4);
+}
+
 /// FABRIK reaches a reachable target in three passes and keeps every segment's length.
 #[test]
 fn fabrik_reaches_and_keeps_lengths() {

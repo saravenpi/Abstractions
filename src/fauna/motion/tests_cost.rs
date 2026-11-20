@@ -7,10 +7,12 @@ use bevy::math::{Quat, Vec3};
 
 use super::fixtures::quadruped_with;
 use super::fixtures_legs::{biped, crawler};
+use super::fixtures_life::{Grown, grown};
 use super::fixtures_soft::{crystal, fish, flyer, jelly, slime, snake};
 use super::pose::Placed;
 use super::rig::{Detail, Motion};
 use super::tests_plans::{drive, hills};
+use crate::life::Habitat;
 
 /// Every fixture poses one finite place per part, near or far, and switching detail back seats
 /// its feet on the ground again.
@@ -103,4 +105,40 @@ fn crawler_step_and_pose_are_cheap() {
     let budget = if cfg!(debug_assertions) { 200.0 } else { 20.0 };
     assert!(each < budget, "{each} microseconds a step");
     assert_eq!(parts, rounds as usize * body.parts.len());
+}
+
+/// Returns the microseconds one step and pose of `g` take on average over 300 frames.
+fn timed(g: &Grown) -> f64 {
+    let rounds = 300;
+    let mut motion = Motion::new(&g.body, Vec3::Y * 0.5, Vec3::NEG_Z, 4);
+    let asked = drive(Vec3::NEG_Z * g.body.length.max(0.2), 0.3);
+    let start = Instant::now();
+    for _ in 0..rounds {
+        motion.step(&g.body, &asked, &hills, 1.0 / 30.0);
+        std::hint::black_box(motion.pose(&g.body));
+    }
+    start.elapsed().as_secs_f64() * 1e6 / f64::from(rounds)
+}
+
+/// Stepping and posing every grown body of every plan and habitat costs on average under the
+/// budget of 20 microseconds a creature a frame, so the 48 animated creatures take under a
+/// millisecond, and the dearest body stays under twice that.
+#[test]
+fn grown_bodies_step_and_pose_within_budget() {
+    let habitats = [Habitat::Ground, Habitat::Air, Habitat::Water];
+    let bodies: Vec<Grown> = habitats.into_iter().flat_map(grown).collect();
+    let costs: Vec<f64> = bodies.iter().map(timed).collect();
+    let mean = costs.iter().sum::<f64>() / costs.len() as f64;
+    let (worst, cost) = costs
+        .iter()
+        .enumerate()
+        .fold((0, 0.0), |a, (i, &c)| if c > a.1 { (i, c) } else { a });
+    let g = &bodies[worst];
+    let name = format!("{:?} {} {} kg", g.plan, g.archetype, g.mass);
+    println!(
+        "{} bodies: mean {mean:.2} us, dearest {cost:.2} us ({name})",
+        bodies.len()
+    );
+    assert!(mean < 20.0, "mean {mean} microseconds a creature");
+    assert!(cost < 40.0, "{name} took {cost} microseconds");
 }

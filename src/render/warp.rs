@@ -31,7 +31,6 @@ pub use dust::MOTES;
 #[cfg(test)]
 pub use dust::{GRAIN, GRAIN_LIGHT};
 pub use lens::Lens;
-pub use optics::CARRIED;
 #[cfg(test)]
 pub use shader::{SIGHT, daylit};
 

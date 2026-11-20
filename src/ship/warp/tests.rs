@@ -4,13 +4,14 @@
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
-use super::{CARRY, CRUISE_CAP, FLOOR, JUMP_CAP, SPOOL_TIME, Warp, advance, fraction, request};
+use super::{CRUISE_CAP, FLOOR, JUMP_CAP, SPOOL_TIME, Warp, advance, fraction, request};
 use crate::render::{Drive, Phase, Sequence};
 use crate::ship::body::Ship;
 use crate::ship::fx::{pace, warp_level};
 use crate::ship::telemetry::WarpState;
 use crate::ship::wells::{Well, system_wells};
 use crate::space::Frame;
+use crate::universe::CARRY;
 use crate::universe::{SystemSpec, Universe};
 
 /// The stages a whole warp goes through.

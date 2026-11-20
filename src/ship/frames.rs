@@ -55,12 +55,3 @@ pub fn to_star(ship: &mut Ship, star: &StarSpec) {
     ship.pos -= star.pos;
     ship.frame = Frame::System(star.id);
 }
-
-/// Returns the Hill radius in metres of `planet` around what it goes round: `a (m / 3 M)^(1/3)`.
-///
-/// The gravitational parameter of what it goes round follows from its orbit, which is circular:
-/// `mu = (2 pi / T)^2 a^3`.
-pub fn hill_radius(planet: &PlanetSpec) -> f64 {
-    let (a, rate) = (planet.orbit_radius, TAU / planet.orbit_seconds);
-    a * (planet.mu() / (3.0 * rate * rate * a * a * a)).cbrt()
-}

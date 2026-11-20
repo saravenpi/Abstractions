@@ -44,6 +44,10 @@ pub const STAR_POINT: f32 = 0.0009;
 /// so a far planet stays a steady dot.
 const PLANET_ANGLE: f32 = 0.0035;
 
+/// Radii of a star that its warp bubble reaches. A star has no Hill sphere and does not move, so
+/// this stands for it: its bubble is carried between the shares of it that planets use.
+const STAR_REACH: f64 = 200.0;
+
 /// A body of the current system drawn by the sky.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Body {
@@ -63,7 +67,7 @@ struct Orb {
     pos: DVec3,
     turn: DQuat,
     radius: f64,
-    solid: f64,
+    carried: f64,
     least_angle: f32,
     shown: bool,
 }
@@ -83,7 +87,7 @@ fn star(scene: &Scene) -> Option<Orb> {
         pos: DVec3::ZERO,
         turn: DQuat::IDENTITY,
         radius,
-        solid: radius,
+        carried: radius * STAR_REACH,
         least_angle: 0.0,
         shown: angle(radius, scene.vantage.observer.eye.length()) >= STAR_POINT,
     })
@@ -106,7 +110,7 @@ impl Body {
             pos,
             turn,
             radius,
-            solid: planet.radius,
+            carried: planet.hill_radius(),
             least_angle: PLANET_ANGLE * grow,
             shown: self.shown(planet, pos, &scene.vantage),
         })
@@ -162,7 +166,7 @@ fn follow(
         let Some(orb) = body.orb(&scene) else {
             continue;
         };
-        let seen = lens.body(observer.to_render * (orb.pos - observer.eye), orb.solid);
+        let seen = lens.body(observer.to_render * (orb.pos - observer.eye), orb.carried);
         let at = seen.offset.as_vec3();
         let size = (orb.radius as f32 * seen.scale).max(orb.least_angle * at.length());
         let turn = match body {

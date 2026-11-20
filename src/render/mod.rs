@@ -90,7 +90,7 @@ pub use pixelate::Pixelate;
 pub use sun::SunDir;
 pub use vantage::{LocalSystem, Vantage};
 pub use warm::{WARM_FRAMES, Warm, Warmed, warm_material};
-pub use warp::{CARRIED, Drive, Lens, Phase, Sequence};
+pub use warp::{Drive, Lens, Phase, Sequence};
 pub use weather::{LocalWeather, WeatherLook};
 
 use bevy::prelude::*;

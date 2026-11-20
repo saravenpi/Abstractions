@@ -70,7 +70,8 @@ pub use record::{PlanetClass, PlanetRecord, Water, Zone};
 pub use rings::{RING_OUTER, ROCHE};
 pub use sector::{SECTOR_STARS, sector_of};
 pub use spec::{
-    GRAVITATION, GalaxyKind, GalaxySpec, Orbit, PlanetSpec, Rings, StarClass, StarSpec, SystemSpec,
+    CARRY, GRAVITATION, GalaxyKind, GalaxySpec, Orbit, PlanetSpec, Rings, StarClass, StarSpec,
+    SystemSpec,
 };
 pub use spin::breakup;
 pub use system::{ORBIT, PLANETS};

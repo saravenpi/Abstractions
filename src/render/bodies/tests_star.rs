@@ -5,12 +5,11 @@
 use bevy::math::DVec3;
 
 use super::{Body, STAR_POINT, angle};
-use crate::computer::SYSTEM_REACH;
 use crate::render::observer::Observer;
 use crate::render::starfield::sunlight;
 use crate::render::vantage::Vantage;
 use crate::render::warp::{Drive, Sequence};
-use crate::universe::{GLY, Universe};
+use crate::universe::{Universe, system_reach};
 
 /// The disc of the star is drawn with its radius over its distance, at any distance, from its
 /// true position and size in 32 bits.
@@ -37,7 +36,7 @@ fn the_disc_is_gone_far_outside_the_system() {
     let star = universe.system(home.id.star).star;
     let seen = angle(star.radius, home.orbit_radius);
     assert!(seen > STAR_POINT, "the star is {seen} rad from home");
-    assert!(angle(star.radius, SYSTEM_REACH) < STAR_POINT);
+    assert!(angle(star.radius, system_reach(&star)) < STAR_POINT);
     assert!(angle(star.radius, 1.0e10) < 0.05 * STAR_POINT);
     let angles: Vec<f32> = (1..=60)
         .map(|i| angle(star.radius, home.orbit_radius * f64::from(i)))
@@ -52,20 +51,25 @@ fn the_disc_is_gone_far_outside_the_system() {
 /// more closer in, falls without a step, and is nothing at the edge of the system and beyond.
 #[test]
 fn the_light_of_the_star_falls_with_the_square_of_the_distance() {
+    let reach = 1.0e13;
     let orbit = 4.0e7;
     assert_eq!(
-        (sunlight(orbit, orbit), sunlight(orbit, 0.5 * orbit)),
+        (
+            sunlight(orbit, orbit, reach),
+            sunlight(orbit, 0.5 * orbit, reach)
+        ),
         (1.0, 1.0)
     );
-    assert!((sunlight(orbit, 10.0 * orbit) - 0.01).abs() < 1e-6);
-    assert!((sunlight(orbit, 2.0 * orbit) - 0.25).abs() < 1e-6);
-    assert_eq!(sunlight(orbit, SYSTEM_REACH), 0.0);
-    assert_eq!(sunlight(orbit, 40.0 * SYSTEM_REACH), 0.0);
+    assert!((sunlight(orbit, 10.0 * orbit, reach) - 0.01).abs() < 1e-6);
+    assert!((sunlight(orbit, 2.0 * orbit, reach) - 0.25).abs() < 1e-6);
+    assert_eq!(sunlight(orbit, reach, reach), 0.0);
+    assert_eq!(sunlight(orbit, 40.0 * reach, reach), 0.0);
     let lights: Vec<f32> = (0..=2000)
         .map(|i| {
             sunlight(
                 orbit,
-                orbit + (SYSTEM_REACH - orbit) * f64::from(i) / 2000.0,
+                orbit + (reach - orbit) * f64::from(i) / 2000.0,
+                reach,
             )
         })
         .collect();
@@ -74,39 +78,31 @@ fn the_light_of_the_star_falls_with_the_square_of_the_distance() {
     }
 }
 
-/// Half way between two stars neither is a disc. The disc of the star left behind, the only
-/// one drawn as a body, is far under the size it is drawn from, and so would be the disc of the
-/// star ahead, for every star within reach of the home star, the largest ones too. Both are
-/// then the points of the star field, and the planets of the system left behind are gone.
+/// Past the reach of its system, whichever way the camera went, the disc of the star left
+/// behind is far under the size it is drawn from, so it is the point of the star field, and the
+/// planets of the system are gone. At this scale the stars near home lie closer than the reach, so
+/// the camera is taken that far out along the line to each one.
 #[test]
-fn half_way_between_two_stars_neither_is_a_disc() {
+fn past_the_reach_of_a_system_the_star_is_not_a_disc() {
     let universe = Universe::new(7);
     let home = universe.planet(universe.home());
     let from = universe.system(home.id.star).star;
+    let reach = system_reach(&from);
     let stars = universe.stars_near(from.id.galaxy, from.pos, 40.0);
     assert!(stars.len() > 5, "{} stars near home", stars.len());
     for to in stars.iter().filter(|star| star.id != from.id) {
-        let half = 0.5 * to.pos.distance(from.pos);
-        assert!(
-            half > SYSTEM_REACH,
-            "two stars {} light-years apart",
-            2.0 * half / GLY
-        );
-        let (behind, ahead) = (angle(from.radius, half), angle(to.radius, half));
-        assert!(
-            behind < STAR_POINT && ahead < STAR_POINT,
-            "{behind} {ahead}"
-        );
+        let out = (to.pos - from.pos).normalize() * reach * 1.01;
+        assert!(angle(from.radius, out.length()) < STAR_POINT);
         let vantage = Vantage {
             observer: Observer {
-                eye: (to.pos - from.pos) * 0.5,
+                eye: out,
                 ..Observer::default()
             },
             ..Vantage::default()
         };
-        let planet = Body::Planet(home.id).shown(&home, home.position(0.0), &vantage);
-        let halo = Body::Halo(home.id).shown(&home, home.position(0.0), &vantage);
-        assert!(!planet && !halo, "a planet shows from between the stars");
+        let planet = Body::Planet(home.id).shown(&home, home.position(0.0), &vantage, reach);
+        let halo = Body::Halo(home.id).shown(&home, home.position(0.0), &vantage, reach);
+        assert!(!planet && !halo, "a planet shows from outside its system");
     }
 }
 

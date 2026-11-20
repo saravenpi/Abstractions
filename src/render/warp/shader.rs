@@ -4,6 +4,8 @@
 
 use bevy::prelude::*;
 
+use crate::render::starfield::DAY_FLUX;
+
 /// Power of the Doppler factor the brightness of a star follows. Physics has `D^(3-α)` for the
 /// light of a point source at one frequency and `D^4` for all of it
 /// (https://en.wikipedia.org/wiki/Relativistic_beaming), which at the cap would leave one
@@ -71,11 +73,6 @@ pub fn spread(half: f32) -> f32 {
 pub fn streak(travel: f32, sin: f32, range: f32, factor: f32) -> f32 {
     (0.5 * travel * sin / (range * factor)).min(STREAK_MOST)
 }
-
-/// Light that arrives from a star, as the star field counts it, from which the star shows
-/// through the daylight of a sky, fully one step of ten above it: the star of the system the
-/// camera is in, which is the sun of that sky, and no other.
-pub const DAY_FLUX: f32 = 1.0;
 
 /// Returns how far a star from which the light `flux` arrives shows through a sky that hides
 /// the stars, from 0 to 1: the sun is the same point of the star field as from afar, and the

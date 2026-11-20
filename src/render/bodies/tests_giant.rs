@@ -121,7 +121,10 @@ fn handed_over(planet: &PlanetSpec, away: f64) -> (bool, bool) {
         moon: planet.id.moon,
         ..Vantage::default()
     };
-    (world, Body::Planet(planet.id).shown(planet, pos, &vantage))
+    (
+        world,
+        Body::Planet(planet.id).shown(planet, pos, &vantage, 1.0e15),
+    )
 }
 
 /// For planets of 6 km to 12,000 km, the world and the sky hand the planet over at the same

@@ -1,8 +1,9 @@
 //! The tiles of the cloud shell: a cube sphere cut into tiles of [`TILE`] cells a side, each
 //! pushed onto the vertices and triangles of the mesh on its own.
 
-use std::f32::consts::FRAC_PI_4;
+use std::f64::consts::FRAC_PI_4;
 
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::lift;
@@ -21,11 +22,17 @@ pub const FACES: [[Vec3; 3]; 6] = [
     [Vec3::NEG_Z, Vec3::NEG_X, Vec3::NEG_Y],
 ];
 
+/// Returns the unit direction at corner `column`, `row` of a face of `cells` cells per side, in
+/// 64 bits.
+pub fn unit(face: usize, column: u32, row: u32, cells: u32) -> DVec3 {
+    let [major, along, down] = FACES[face].map(Vec3::as_dvec3);
+    let slope = |at: u32| (FRAC_PI_4 * (2.0 * f64::from(at) / f64::from(cells) - 1.0)).tan();
+    (major + along * slope(column) + down * slope(row)).normalize()
+}
+
 /// Returns the unit direction at corner `column`, `row` of a face of `cells` cells per side.
 pub fn corner(face: usize, column: u32, row: u32, cells: u32) -> Vec3 {
-    let [major, along, down] = FACES[face];
-    let slope = |at: u32| (FRAC_PI_4 * (2.0 * at as f32 / cells as f32 - 1.0)).tan();
-    (major + along * slope(column) + down * slope(row)).normalize()
+    unit(face, column, row, cells).as_vec3()
 }
 
 /// Pushes the vertices and the triangles of tile `tile` of `face` onto `vertices` and `indices`.

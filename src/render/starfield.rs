@@ -22,11 +22,11 @@ use bevy::pbr::MaterialPlugin;
 use bevy::prelude::*;
 
 pub use material::{StarMaterial, StarUniform};
+pub use specks::DAY_FLUX;
 
 use super::palette::Palette;
 use super::vantage::Vantage;
 use super::warp::Lens;
-use crate::computer::SYSTEM_REACH;
 use crate::screens::Screen;
 use crate::universe::{GLY, GalaxyId};
 use dust::Dust;
@@ -67,15 +67,16 @@ impl Starfield {
 }
 
 /// Returns the share of the light of its star that reaches a camera `distance` metres from it,
-/// against the light at the planet it is at, whose centre is `orbit` metres from the star.
+/// against the light at the planet it is at, whose centre is `orbit` metres from the star, in a
+/// system that reaches `reach` metres out.
 ///
 /// The light falls off with the square of the distance: ten times as far out it is one
 /// hundredth. Closer in than the planet it stays what the planet gets. Over the outer half of
 /// the reach of the system it fades to nothing, so between the stars no star lights the ship
 /// as a sun: they are all just stars.
-pub fn sunlight(orbit: f64, distance: f64) -> f32 {
+pub fn sunlight(orbit: f64, distance: f64, reach: f64) -> f32 {
     let square = (orbit / distance.max(1.0e-9)).powi(2).min(1.0);
-    let out = ((distance / SYSTEM_REACH - 0.5) / 0.5).clamp(0.0, 1.0);
+    let out = ((distance / reach - 0.5) / 0.5).clamp(0.0, 1.0);
     (square * (1.0 - out * out * (3.0 - 2.0 * out))) as f32
 }
 

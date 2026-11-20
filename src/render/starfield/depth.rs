@@ -6,7 +6,7 @@ use std::ops::Deref;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::specks::{Speck, mesh, star_light, star_speck};
+use super::specks::{Speck, mesh, own_light, own_speck, star_light, star_speck};
 use crate::universe::StarSpec;
 
 /// A speck with its depth, as seen from the place the mesh is built for.
@@ -36,6 +36,19 @@ impl Sighted {
         let (range, flux) = star_light(star, from);
         Self {
             speck: star_speck(star, from),
+            range: range as f32,
+            flux,
+        }
+    }
+}
+
+impl Sighted {
+    /// Returns the star of the system the camera is in, seen from `from`, both in metres from
+    /// the galaxy centre.
+    pub fn own(star: &StarSpec, from: DVec3) -> Self {
+        let (range, flux) = own_light(star, from);
+        Self {
+            speck: own_speck(star, from),
             range: range as f32,
             flux,
         }

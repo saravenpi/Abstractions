@@ -74,7 +74,7 @@ pub use spec::{
     SystemSpec,
 };
 pub use spin::breakup;
-pub use system::{ORBIT, PLANETS};
+pub use system::{ORBIT, PLANETS, reach as system_reach};
 pub use units::{
     AU, EARTH_RADIUS, STANDARD_GRAVITY, STARLIGHT, SUN_MASS, SUN_RADIUS, SUN_TEMPERATURE, YEAR,
 };

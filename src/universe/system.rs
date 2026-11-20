@@ -14,6 +14,13 @@ pub const PLANETS: (u8, u8) = (2, 8);
 /// from 0.003 to 4 units out.
 pub const ORBIT: (f64, f64) = (0.03 * AU, 40.0 * AU);
 
+/// Returns the distance in metres from `star` within which the star shines on its system and the
+/// sky draws its planets: four times the widest orbit a planet of this star can have, so the
+/// planets pushed out past the span and the dim edge of the system are all inside it.
+pub fn reach(star: &StarSpec) -> f64 {
+    4.0 * ORBIT.1 * star.mass / SUN_MASS
+}
+
 /// Times a planet is moved out and built again to clear the Hill sphere of the one inside it.
 /// Moving out can turn it into a gas giant once, which widens its own sphere, so three do.
 const PUSHES: usize = 3;

@@ -8,10 +8,11 @@ mod tile;
 use std::f32::consts::{FRAC_PI_2, SQRT_2};
 
 use bevy::asset::RenderAssetUsages;
+use bevy::math::DVec3;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 
-use self::tile::{FACES, TILE, corner, push};
+use self::tile::{FACES, TILE, corner, push, unit};
 
 /// Most metres any point of the shell mesh lies from the true sphere of the shell when the
 /// camera is close to it: the finest the mesh is ever built.
@@ -35,11 +36,14 @@ pub struct Cap {
 
 /// Returns the share of the radius the vertices of a mesh of `cells` cells per face side lie
 /// above the true sphere, so that the flat faces sag below it by as much as the vertices stand
-/// above it. The worst sag is at the middle of the longest face of a cell, which spans
-/// `FRAC_PI_2 / cells` radians along the diagonal of a cell.
+/// above it. The worst sag is in the triangle at a corner of the cube, where a cell is widest
+/// across its short diagonal: with `d` the distance of its plane from the middle of the sphere,
+/// the balance is `(1 - d) / (1 + d)`.
 pub fn lift(cells: u32) -> f32 {
-    let span = FRAC_PI_2 / cells as f32 / SQRT_2;
-    (span * 0.5).tan().powi(2)
+    let at = |column, row| unit(0, column, row, cells);
+    let (a, b, c) = (at(0, 0), at(1, 0), at(0, 1));
+    let flat = (b - a).cross(c - a).normalize().dot(a).abs();
+    ((1.0 - flat) / (1.0 + flat)) as f32
 }
 
 /// Returns the most metres a point of the mesh of `cells` cells per face side lies from a

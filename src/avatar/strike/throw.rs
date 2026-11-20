@@ -11,7 +11,7 @@ use super::held::Held;
 use super::hit::Hit;
 use super::hurt::steadied;
 use super::input::{Loose, Robot};
-use super::pull::Reach;
+use super::pull::{Reach, take};
 use super::sense::{Parts, first};
 use super::show::{Kit, tool};
 use super::tune::{LOFT, PICK, REST_SPEED};
@@ -227,16 +227,5 @@ pub fn pick(
     if let Some((entity, spear, _, _)) = near {
         take(&mut commands, body, spear, pack.as_deref_mut());
         commands.entity(entity).despawn();
-    }
-}
-
-/// Gives the item of `spear` back to `body`: into the hotbar slot it was lent from, or into the
-/// hands when nothing lent it.
-pub fn take(commands: &mut Commands, body: Entity, spear: &Spear, pack: Option<&mut Pack>) {
-    match (spear.lent.clone(), pack) {
-        (Some(lent), Some(pack)) => pack.restore(lent),
-        _ => {
-            commands.entity(body).insert(spear.item.clone());
-        }
     }
 }

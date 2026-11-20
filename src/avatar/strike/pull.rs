@@ -6,10 +6,9 @@ use bevy::prelude::*;
 use super::flight::{Rest, Spear};
 use super::held::Held;
 use super::input::Robot;
-use super::throw::take;
 use super::tune::PULL;
-use crate::fauna::Creature;
 use crate::craft::Pack;
+use crate::fauna::Creature;
 use crate::player::Player;
 use crate::settings::{Persistent, Settings};
 
@@ -20,15 +19,18 @@ pub type Reach<'w, 's> = (
     Query<'w, 's, (), With<Creature>>,
 );
 
+/// What a pull reads and writes: the keys, the settings that bind them and the pack.
+type Hand<'w> = (
+    Res<'w, ButtonInput<KeyCode>>,
+    Res<'w, Persistent<Settings>>,
+    Option<ResMut<'w, Pack>>,
+);
+
 /// Gives the nearest spear stuck in an animal back to the local robot when the interact key goes
 /// down and its hands are empty.
 pub fn pull(
     mut commands: Commands,
-    (keys, settings, mut pack): (
-        Res<ButtonInput<KeyCode>>,
-        Res<Persistent<Settings>>,
-        Option<ResMut<Pack>>,
-    ),
+    (keys, settings, mut pack): Hand,
     robot: Robot,
     spears: Query<(Entity, &Spear, &GlobalTransform, &ChildOf)>,
     (players, full, creatures): Reach,
@@ -51,5 +53,16 @@ pub fn pull(
     if let Some((entity, spear, _, _)) = spears.iter().find(reach) {
         take(&mut commands, body, spear, pack.as_deref_mut());
         commands.entity(entity).despawn();
+    }
+}
+
+/// Gives the item of `spear` back to `body`: into the hotbar slot it was lent from, or into the
+/// hands when nothing lent it.
+pub fn take(commands: &mut Commands, body: Entity, spear: &Spear, pack: Option<&mut Pack>) {
+    match (spear.lent.clone(), pack) {
+        (Some(lent), Some(pack)) => pack.restore(lent),
+        _ => {
+            commands.entity(body).insert(spear.item.clone());
+        }
     }
 }

@@ -109,7 +109,8 @@ impl View<'_> {
     }
 
     /// Returns the rows of the system tab: the star, then its planets ordered outward, each
-    /// followed by its moons ordered outward once the system is visited.
+    /// followed by its moons ordered outward once the system is visited. Only the home planet
+    /// says home here: the star of the home system does not, since the planet is drawn.
     pub fn system(&self, star: StarId) -> Vec<Line> {
         let system = self.universe.system(star);
         let origin = self
@@ -117,7 +118,13 @@ impl View<'_> {
             .star_position(system.star.id)
             .unwrap_or_default();
         let charted = self.atlas.visited(Target::Star(system.star.id));
-        let mut lines = vec![self.star(origin, &system.star)];
+        let mut sun = self.star(origin, &system.star);
+        sun.title = sun
+            .title
+            .trim_end_matches(HOME_LABEL)
+            .trim_end()
+            .to_string();
+        let mut lines = vec![sun];
         for planet in &system.planets {
             lines.push(self.planet(origin, planet));
             let moons = match charted && planet.moons > 0 {

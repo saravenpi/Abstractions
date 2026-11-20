@@ -164,6 +164,10 @@ Second run (ground shader fixed, shots in `~/.cache/abstractions-targets/shots2/
 - HUD: "[F] Board" is drawn under the hotbar, a "Home" label hangs outside the compass, markers overlap at the screen edge: agent `look-hud`.
 - The lead's run was terminated mid-tour by another agent's cleanup; agents were told to kill only their own PID.
 
+## 6e. Final instruction before the owner slept (2026-11-20, about 22:00)
+
+"Add that to the next release, review well, polish well, and release the new version as soon as you have finished everything. Review everything properly so it is clean, polished, optimised and beautiful. Tomorrow morning I want to be able to play and everything must be clean." The redesign of the robot, the companion and the ship (request 25) is part of this release. The lead ships when done, without asking again.
+
 ## 7. Order of the remaining work
 
 1. `fix-ship`, `fix-world`, `fix-sky` finish; merge; run the full suite; fix what is left.

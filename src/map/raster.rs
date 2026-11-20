@@ -11,9 +11,16 @@ mod paint;
 mod tests;
 #[cfg(test)]
 mod tests_sea;
+#[cfg(test)]
+mod tests_tile;
+pub mod tile;
+mod tile_paint;
+mod tiles;
+mod tiles_view;
 mod work;
 
 pub use paint::colour;
+pub use tiles_view::tile_layer;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -98,13 +105,28 @@ fn blank() -> Image {
 }
 
 /// Forgets the pictures of the world that ended: the same body of another world looks else.
-fn forget(mut rasters: ResMut<Rasters>) {
+fn forget(mut rasters: ResMut<Rasters>, mut tiles: ResMut<tiles::Tiles>) {
     *rasters = Rasters::default();
+    *tiles = tiles::Tiles::default();
 }
 
 /// Registers the painting of body pictures.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Rasters>()
+        .init_resource::<tiles::Tiles>()
+        .add_systems(
+            Update,
+            (
+                tiles::want,
+                tiles::start,
+                tiles::collect,
+                tiles::trim,
+                tiles_view::show,
+            )
+                .chain()
+                .run_if(super::on_planet)
+                .run_if(super::open),
+        )
         .add_systems(
             Update,
             (work::open, work::plan, work::collect)

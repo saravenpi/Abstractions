@@ -8,7 +8,7 @@
 use bevy::prelude::*;
 
 use super::level::Level;
-use super::raster::Rasters;
+use super::raster::{Rasters, tile_layer};
 use super::surface::PlanetSheet;
 use crate::computer::ChartLayer;
 
@@ -57,7 +57,11 @@ pub fn planet_layer() -> impl Bundle {
     (
         PlanetLayer,
         layer,
-        children![(PlanetSheet, cover, children![tile(-1), tile(0), tile(1)])],
+        children![(
+            PlanetSheet,
+            cover,
+            children![tile(-1), tile(0), tile(1), tile_layer()]
+        )],
     )
 }
 

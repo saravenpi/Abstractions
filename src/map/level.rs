@@ -7,19 +7,16 @@ use bevy::prelude::*;
 
 use super::geo::to_chart;
 use super::me::Me;
-use super::raster::grid::COLS;
-use crate::computer::{Board, Lens, Tab};
+use crate::computer::{Board, Lens, MAX_ZOOM, Tab};
 use crate::universe::BodyId;
-
-/// Most screen pixels one cell of the planet picture takes at the closest zoom.
-const CELL_PIXELS: f32 = 6.0;
 
 /// Side in pixels of the square map in a 1280 by 720 window, which the closest zoom is set for.
 pub(super) const REFERENCE_MAP: f32 = 720.0;
 
-/// Closest zoom of the flat map: one cell of the picture is then [`CELL_PIXELS`] wide on the
-/// map of a 1280 by 720 window, so the picture stays readable.
-pub(super) const CLOSEST: f32 = CELL_PIXELS * COLS as f32 / REFERENCE_MAP;
+/// Closest zoom of the flat map, the closest of the board computer: the tiles of the planet
+/// keep it sharp, a pixel of the finest tile being then under two pixels of the map of a 1280
+/// by 720 window.
+pub(super) const CLOSEST: f32 = MAX_ZOOM;
 
 /// Zoom of the flat map the screen opens at on the ground: the land around the player, as close
 /// as the map goes.

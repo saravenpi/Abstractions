@@ -52,6 +52,26 @@ pub struct Tiles {
 }
 
 impl Tiles {
+    /// Returns the tiles asked for now that need a worker, at most as many as the free workers.
+    fn todo(&self, body: BodyId, version: u64) -> Vec<TileId> {
+        let running = self
+            .slots
+            .values()
+            .filter(|slot| slot.job.is_some())
+            .count();
+        self.wanted
+            .1
+            .iter()
+            .map(|(_, id)| *id)
+            .filter(|id| {
+                self.slots.get(&(body, *id)).is_some_and(|slot| {
+                    slot.job.is_none() && !(slot.image.is_some() && slot.seen == version)
+                })
+            })
+            .take(JOBS.saturating_sub(running))
+            .collect()
+    }
+
     /// Returns the tiles asked for now whose picture is ready, with the picture.
     pub fn ready(&self) -> Vec<(i64, TileId, Handle<Image>)> {
         let Some(body) = self.wanted.0 else {
@@ -88,6 +108,9 @@ pub(super) fn want(level: Res<Level>, surface: Res<Surface>, mut tiles: ResMut<T
         true => visible(lens, level_for(lens.zoom)),
         false => Vec::new(),
     };
+    if tiles.wanted.0 == Some(body) && tiles.wanted.1 == asked {
+        return;
+    }
     tiles.frame += 1;
     let frame = tiles.frame;
     for (_, id) in &asked {
@@ -101,6 +124,11 @@ pub(super) fn start(mut tiles: ResMut<Tiles>, rasters: Res<Rasters>, explored: R
     let Some(body) = tiles.wanted.0 else {
         return;
     };
+    let version = explored.version(body);
+    let todo = tiles.todo(body, version);
+    if todo.is_empty() {
+        return;
+    }
     let Some(globe) = rasters
         .bodies
         .get(&body)
@@ -108,22 +136,10 @@ pub(super) fn start(mut tiles: ResMut<Tiles>, rasters: Res<Rasters>, explored: R
     else {
         return;
     };
-    let version = explored.version(body);
     let leaves = explored.leaves(body).cloned().unwrap_or_default();
-    let mut running = tiles
-        .slots
-        .values()
-        .filter(|slot| slot.job.is_some())
-        .count();
-    let asked: Vec<TileId> = tiles.wanted.1.iter().map(|(_, id)| *id).collect();
-    for id in asked {
-        let Some(slot) = tiles.slots.get_mut(&(body, id)) else {
-            continue;
-        };
-        let current = slot.image.is_some() && slot.seen == version;
-        if running < JOBS && slot.job.is_none() && !current {
+    for id in todo {
+        if let Some(slot) = tiles.slots.get_mut(&(body, id)) {
             slot.job = Some((spawn(globe.clone(), leaves.clone(), id), version));
-            running += 1;
         }
     }
 }
@@ -138,6 +154,9 @@ pub(super) fn collect(mut tiles: ResMut<Tiles>, images: Option<ResMut<Assets<Ima
     let Some(mut images) = images else {
         return;
     };
+    if tiles.slots.values().all(|slot| slot.job.is_none()) {
+        return;
+    }
     for slot in tiles.slots.values_mut() {
         let done = slot
             .job

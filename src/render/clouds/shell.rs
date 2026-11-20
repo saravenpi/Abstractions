@@ -5,10 +5,9 @@
 
 mod tile;
 
-use std::f32::consts::{FRAC_PI_2, SQRT_2};
+use std::f32::consts::FRAC_PI_2;
 
 use bevy::asset::RenderAssetUsages;
-use bevy::math::DVec3;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 
@@ -47,9 +46,10 @@ pub fn lift(cells: u32) -> f32 {
 }
 
 /// Returns the most metres a point of the mesh of `cells` cells per face side lies from a
-/// sphere of `radius` metres.
+/// sphere of `radius` metres: the sag of its cells and the rounding of its vertices to 32 bits,
+/// which is two shares of the radius of [`f32::EPSILON`], and so reaches metres on a planet.
 pub fn error(radius: f32, cells: u32) -> f32 {
-    radius * lift(cells)
+    radius * (lift(cells) + 2.0 * f32::EPSILON)
 }
 
 /// Returns the cells per face side the shell of a sphere of `radius` metres is built with: the

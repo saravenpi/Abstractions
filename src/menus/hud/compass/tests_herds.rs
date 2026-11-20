@@ -1,5 +1,6 @@
-//! Tests of the herd markers: a herd the fauna found near the robot gets a marker on the planet the
-//! robot stands on, named "Herd" until its species is in the field guide.
+//! Tests of the herd markers: a herd the robot has seen gets a marker on the planet the robot stands
+//! on, named "Herd" until its species is in the field guide, fading out with the time since it was
+//! seen.
 
 use bevy::ecs::system::RunSystemOnce;
 use bevy::math::{DQuat, DVec3};
@@ -7,6 +8,7 @@ use bevy::prelude::*;
 
 use super::herds::herds;
 use crate::fauna::guide::Seen;
+use crate::fauna::tune::MEMORY;
 use crate::fauna::{Nearby, Sighting};
 use crate::life::SpeciesId;
 use crate::menus::{MarkerKind, MarkerPlace, Markers};
@@ -36,8 +38,8 @@ fn marks(nearby: Nearby, seen: Seen) -> Vec<crate::menus::Marker> {
         .collect()
 }
 
-/// A herd 200 m away on the robot's planet is marked as a herd, then by its name once seen; a herd
-/// on another planet is not marked.
+/// A herd seen 200 m away on the robot's planet is marked as a herd, then by its name once in the
+/// field guide; a herd on another planet is not marked.
 #[test]
 fn a_near_herd_is_marked() {
     let home = Universe::new(1).home();
@@ -46,10 +48,12 @@ fn a_near_herd_is_marked() {
         index: 3,
     };
     let sighting = Sighting {
+        id: 9,
         at: DVec3::new(200.0, 6000.0, 0.0),
         species,
         name: "Kruseth".into(),
         metres: 200.0,
+        seen: 0.0,
     };
     let nearby = |body| Nearby {
         body,
@@ -63,4 +67,28 @@ fn a_near_herd_is_marked() {
     seen.mark(species);
     assert_eq!(marks(nearby(Some(home)), seen)[0].label, "Kruseth");
     assert!(marks(nearby(None), Seen::default()).is_empty());
+}
+
+/// A herd seen half its memory ago is marked at half the strength of a fresh one.
+#[test]
+fn an_old_sighting_fades() {
+    let home = Universe::new(1).home();
+    let sighting = Sighting {
+        id: 9,
+        at: DVec3::new(200.0, 6000.0, 0.0),
+        species: SpeciesId {
+            planet: 7,
+            index: 3,
+        },
+        name: "Kruseth".into(),
+        metres: 200.0,
+        seen: 0.0,
+    };
+    let fresh = super::herds::mark(&sighting, home, (false, 0.0))
+        .color
+        .alpha();
+    let half = super::herds::mark(&sighting, home, (false, MEMORY * 0.5))
+        .color
+        .alpha();
+    assert!((half - 0.5 * fresh).abs() < 1e-4, "{half} of {fresh}");
 }

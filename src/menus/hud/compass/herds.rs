@@ -1,12 +1,13 @@
-//! The herd markers: the nearest herds within a few hundred metres, rewritten every frame for the
-//! compass and the minimap, each named for its species once the field guide has it, else "Herd".
+//! The herd markers: the herds the robot has seen, at the place each was last seen and fading out,
+//! rewritten every frame for the compass and the minimap, each named for its species once the field
+//! guide has it, else "Herd".
 
 use bevy::prelude::*;
 
 use crate::fauna::guide::Seen;
 use crate::fauna::{Nearby, Sighting};
 use crate::menus::{Marker, MarkerKind, MarkerPlace, Markers};
-use crate::space::{Anchor, Frame};
+use crate::space::{Anchor, Clock, Frame};
 use crate::universe::BodyId;
 
 /// Owner of the markers of the game itself.
@@ -15,12 +16,13 @@ const GAME: u32 = 0;
 /// The muted sand colour of a herd marker, quiet beside the colours of players and waypoints.
 pub const HERD: Color = Color::srgba(0.82, 0.74, 0.56, 0.8);
 
-/// Returns the marker of the herd `sighting` on `body`, named for its species when `named`.
-pub fn mark(sighting: &Sighting, body: BodyId, named: bool) -> Marker {
+/// Returns the marker of the herd `sighting` on `body` at universe `time`, named for its species when
+/// `named`, faded by the time since it was seen.
+pub fn mark(sighting: &Sighting, body: BodyId, (named, time): (bool, f64)) -> Marker {
     Marker {
         kind: MarkerKind::Herd,
         place: MarkerPlace::Body(body, sighting.at),
-        color: HERD,
+        color: HERD.with_alpha(HERD.alpha() * sighting.fresh(time)),
         label: if named {
             sighting.name.clone()
         } else {
@@ -30,11 +32,17 @@ pub fn mark(sighting: &Sighting, body: BodyId, named: bool) -> Marker {
     }
 }
 
-/// Writes a marker for every herd the fauna found near the robot, while the robot stands on the
-/// planet they are on.
+/// What the herd markers read: the herds seen, the field guide and the universe clock.
+type Reads<'w> = (
+    Option<Res<'w, Nearby>>,
+    Option<Res<'w, Seen>>,
+    Option<Res<'w, Clock>>,
+);
+
+/// Writes a marker for every herd the robot has seen, while the robot stands on the planet they are
+/// on.
 pub fn herds(
-    nearby: Option<Res<Nearby>>,
-    seen: Option<Res<Seen>>,
+    (nearby, seen, clock): Reads<'_>,
     anchor: Option<Res<Anchor>>,
     mut markers: ResMut<Markers>,
 ) {
@@ -48,6 +56,7 @@ pub fn herds(
     }
     for sighting in &nearby.herds {
         let named = seen.as_deref().is_some_and(|s| s.has(sighting.species));
-        markers.0.push(mark(sighting, body, named));
+        let time = clock.as_deref().map_or(sighting.seen, |c| c.seconds);
+        markers.0.push(mark(sighting, body, (named, time)));
     }
 }

@@ -8,7 +8,7 @@ use bevy::prelude::*;
 
 use super::Base;
 use super::ground::{firm, harsh, spread};
-use super::site::SLACK;
+use super::site::PASSES;
 use super::tests::{base, homeworld};
 use super::tune::STARTS;
 use crate::world::globe::Face;
@@ -21,9 +21,9 @@ fn polar(seed: u64) -> Option<Base> {
     let north = Terrain::on(globe.clone(), globe.face_chart(Face::PosY));
     let at = north.find_spawn();
     let spawn = north.embed(at.x, at.y, at.z);
-    SLACK
-        .into_iter()
-        .find_map(|slack| Base::near(&globe, home, spawn, slack))
+    [PASSES[0], PASSES[2]]
+        .iter()
+        .find_map(|pass| Base::near(&globe, home, spawn, *pass))
 }
 
 /// Returns the latitude in degrees of the planet position `at`.
@@ -45,7 +45,7 @@ fn every_seed_founds_its_base_on_good_ground() {
             "seed {seed}: lands near a pole"
         );
         assert!(
-            globe.height(landing.normalize()) > 0.0,
+            globe.height(landing.normalize()) > globe.sea_level(),
             "seed {seed}: lands at sea"
         );
         assert!(
@@ -54,9 +54,11 @@ fn every_seed_founds_its_base_on_good_ground() {
         );
         let lot = found.lot(&globe);
         assert!(firm(lot.view(), Vec2::ZERO), "seed {seed}: soft ground");
+        let view = Terrain::near(&globe, landing);
+        let there = view.locate(landing);
         assert!(
-            !harsh(lot.view(), Vec2::ZERO),
-            "seed {seed}: in a harsh heart"
+            !harsh(lot.view(), Vec2::ZERO) || harsh(&view, Vec2::new(there.x, there.z)),
+            "seed {seed}: in a harsh heart, off a landing that is not"
         );
         let at = latitude(found.up);
         assert!(at.abs() < 75.0, "seed {seed}: base at {at} degrees");

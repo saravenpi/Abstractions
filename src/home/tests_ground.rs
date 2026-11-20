@@ -4,7 +4,6 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use crate::world::Terrain;
-use crate::world::globe::Face;
 
 use super::glow::{Glow, Mood, flash};
 use super::lights::{noticed, swell};
@@ -31,10 +30,7 @@ fn every_foot_meets_the_ground() {
         for foot in feet {
             let planet = lot.planet(foot);
             let globe = lot.view().globe();
-            let drawn = Terrain::on(
-                globe.clone(),
-                globe.face_chart(Face::locate(planet.normalize()).0),
-            );
+            let drawn = Terrain::near(globe, planet);
             let at = drawn.locate(planet);
             let gap = (at.y - drawn.mesh_height(at.x, at.z)).abs();
             assert!(gap < FOOT_GAP, "seed {seed}: foot {foot} is {gap} m off");

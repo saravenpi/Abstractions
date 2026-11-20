@@ -21,9 +21,35 @@ const RING_STEP: f32 = 8.0;
 /// distance in metres between two samples on a circle.
 const SHORE: (u32, f32) = (4, 6.0);
 
-/// How many times the relief limits a later pass of the search allows, when a stricter pass
-/// found nothing.
-pub const SLACK: [f32; 2] = [1.0, 2.0];
+/// What one pass of the search allows.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Pass {
+    /// How many times the relief limits the pass allows.
+    pub slack: f32,
+    /// Whether the pass takes the heart of a taiga or a desert, which the others keep clear of.
+    pub heart: bool,
+}
+
+/// The passes of the search around one start, in order: flat ground before bumpy ground, and out of the
+/// heart of a desert before inside it, for a home planet that is mostly one.
+pub const PASSES: [Pass; 4] = [
+    Pass {
+        slack: 1.0,
+        heart: false,
+    },
+    Pass {
+        slack: 1.0,
+        heart: true,
+    },
+    Pass {
+        slack: 2.0,
+        heart: false,
+    },
+    Pass {
+        slack: 2.0,
+        heart: true,
+    },
+];
 
 /// Returns `count` points evenly spaced on the circle of `radius` around `at`.
 fn circle(at: Vec2, radius: f32, count: u32) -> impl Iterator<Item = Vec2> {
@@ -70,23 +96,23 @@ pub fn inland(view: &Terrain, at: Vec2) -> bool {
 }
 
 /// Returns what a site at `at` costs in metres, its distance plus its relief, or nothing when
-/// the ground there cannot take the base with `slack` times the relief limits, is not firm, or
-/// lies in the heart of a taiga or a desert. Taiga or desert near the site adds to its cost.
-fn cost(view: &Terrain, at: Vec2, slack: f32) -> Option<f32> {
+/// the ground there cannot take the base within `pass`, is not firm, or lies in the heart of a taiga or a
+/// desert that `pass` keeps clear of. Taiga or desert near the site adds to its cost.
+fn cost(view: &Terrain, at: Vec2, pass: Pass) -> Option<f32> {
+    let slack = pass.slack;
     let edge = edge_distance(view.up(at.x, at.y), view.globe().radius());
     if edge < FOOTPRINT + EDGE_CLEAR || view.height(at.x, at.y) < DRY {
         return None;
     }
     let pad = relief(view, at + PAD.at, PAD_HALF * 1.5, PAD_RELIEF * slack)?;
     let whole = relief(view, at, FOOTPRINT as f32, MAX_RELIEF * slack)?;
-    let ground = inland(view, at) && !harsh(view, at) && firm(view, at);
+    let ground = inland(view, at) && (pass.heart || !harsh(view, at)) && firm(view, at);
     let relief = whole * RELIEF_COST.0 + pad * RELIEF_COST.1;
     ground.then(|| at.length() + relief + fringe(view, at))
 }
 
-/// Returns the cheapest site on rings around the origin of `view`, with `slack` times the
-/// relief limits.
-fn search(view: &Terrain, slack: f32) -> Option<Vec2> {
+/// Returns the cheapest site on rings around the origin of `view` within `pass`.
+fn search(view: &Terrain, pass: Pass) -> Option<Vec2> {
     let (first, step, rings) = SEARCH;
     let mut best: Option<(f32, Vec2)> = None;
     for reach in (0..rings).map(|k| first + step * k as f32) {
@@ -94,14 +120,14 @@ fn search(view: &Terrain, slack: f32) -> Option<Vec2> {
             break;
         }
         let rated = circle(Vec2::ZERO, reach, (TAU * reach / step) as u32)
-            .filter_map(|at| Some((cost(view, at, slack)?, at)));
+            .filter_map(|at| Some((cost(view, at, pass)?, at)));
         best = rated.chain(best).min_by(|a, b| a.0.total_cmp(&b.0));
     }
     best.map(|(_, at)| at)
 }
 
 /// Returns the site of the base in the metric `view` centred on a terrain spawn: the cheapest fit
-/// within `slack` times the relief limits, or nothing when no ground within reach takes the base.
-pub fn find(view: &Terrain, slack: f32) -> Option<Vec2> {
-    search(view, slack)
+/// within `pass`, or nothing when no ground within reach takes the base.
+pub fn find(view: &Terrain, pass: Pass) -> Option<Vec2> {
+    search(view, pass)
 }

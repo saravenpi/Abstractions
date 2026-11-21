@@ -77,7 +77,7 @@ pub fn spawn(
                 bubble,
                 ..Drop::default()
             },
-            Mesh3d(pool.quad.clone()),
+            Mesh3d(pool.disc.clone()),
             MeshMaterial3d(pool.material(kind, 0).clone()),
             Transform::from_scale(Vec3::ZERO),
             Rebased,

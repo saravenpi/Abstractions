@@ -42,7 +42,7 @@ fn a_fast_point_drives_in() {
     assert!(depth(fast, area, earth) >= STICK);
     assert!(depth(0.01, area, earth) < STICK);
     assert!(depth(fast, area, snow) > depth(fast, area, earth));
-    assert!(DEEPEST > STICK);
+    const { assert!(DEEPEST > STICK) };
 }
 
 /// A glance sends back a share of the speed into the surface and keeps a share of the speed along it.

@@ -74,7 +74,7 @@ fn verb(
 fn named(names: &mut Vec<(u32, &'static str)>, spear: &Spear) -> &'static str {
     let id = spear.item.id;
     if let Some((_, name)) = names.iter().find(|(known, _)| *known == id) {
-        return *name;
+        return name;
     }
     let name = spear
         .lent
@@ -85,16 +85,19 @@ fn named(names: &mut Vec<(u32, &'static str)>, spear: &Spear) -> &'static str {
     name
 }
 
+/// The robot, the game camera and the names of the tools out, made once each.
+type Looking<'w, 's> = (
+    Robot<'w, 's>,
+    Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
+    Local<'s, Vec<(u32, &'static str)>>,
+);
+
 /// Offers to take the thrown tool the robot looks at or stands by, and gives it back to the robot
 /// when the interact key goes down while the prompt names that take.
 pub fn pull(
     mut commands: Commands,
     (keys, settings, mut pack, mut interact): Hand,
-    (robot, camera, mut names): (
-        Robot,
-        Query<&GlobalTransform, With<GameCamera>>,
-        Local<Vec<(u32, &'static str)>>,
-    ),
+    (robot, camera, mut names): Looking,
     spears: Query<(Entity, &Spear, &GlobalTransform, Option<&ChildOf>)>,
     (players, full, creatures): Reach,
 ) {

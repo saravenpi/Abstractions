@@ -126,10 +126,10 @@ fn the_pilot_steps_out_onto_the_drawn_ground_before_its_collider() {
     tap(&mut game);
     assert_eq!(game.get::<Location>().travel, Travel::OnFoot);
     game.step(60);
-    let gap = game.walker().gap;
+    let drawn = game.walker().gap;
     assert!(
-        (-0.3..0.5).contains(&gap),
-        "feet {gap} m from the drawn ground"
+        (-0.3..0.5).contains(&drawn),
+        "feet {drawn} m from the drawn ground"
     );
     for entity in &loose {
         game.app

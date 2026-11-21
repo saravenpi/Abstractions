@@ -11,12 +11,11 @@ use super::super::hit::{Bounds, enter};
 use super::super::input::Robot;
 use super::super::javelin::{Planet, far};
 use super::super::sense::Parts;
+use super::super::solid::Land;
 use super::bend::shoulder;
 use super::tune::{AIM_PAD, AIM_SIGHT, GROUND_CLEAR, LUNGE};
 use crate::fauna::Live;
 use crate::render::GameCamera;
-use crate::space::Anchor;
-use crate::world::{Chunks, Terrain};
 
 /// What the crosshair of the local robot points at.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Default)]
@@ -82,14 +81,6 @@ fn aiming(act: Act) -> bool {
         Act::Ready | Act::Windup(_) | Act::Guard(_) | Act::Draw(_)
     )
 }
-
-/// What the throw of a javelin reads of the world: where render space sits, the height field and
-/// the meshes drawn.
-type Land<'w> = (
-    Option<Res<'w, Anchor>>,
-    Option<Res<'w, Terrain>>,
-    Option<Res<'w, Chunks>>,
-);
 
 /// Returns the point a strike of `held` in `act` aims at, in the frame of the body placed at
 /// `placed`: for a javelin drawn back, the point the crosshair ray from `ray` meets on the drawn

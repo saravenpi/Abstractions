@@ -4,7 +4,7 @@
 use bevy::math::{DVec3, Vec2};
 
 use super::Terrain;
-use super::spawn::{GLOBE_REACH, RINGS, SPAWN_STEP, ring_points};
+use super::spawn::{GLOBE_REACH, RINGS, SPAWN_STEP, ring_points, ring_stride};
 use crate::world::globe::Chart;
 
 /// Points of a ring skipped between two the search for land looks at: with 16 m between rings this is
@@ -55,9 +55,7 @@ impl Terrain {
     /// lies on dry ground.
     pub(super) fn land_on_ring(&self, k: u32) -> bool {
         let sea = self.globe().sea_level();
-        ring_points(k)
-            .step_by(SPARSE)
-            .any(|p| self.height(p.x, p.y) >= sea + 2.0)
+        ring_stride(k, SPARSE).any(|p| self.height(p.x, p.y) >= sea + 2.0)
     }
 
     /// Scores the points of ring `k`, and returns the best of them with the score that beats `bound`.

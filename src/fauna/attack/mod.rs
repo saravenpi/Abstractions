@@ -37,6 +37,8 @@ mod tests_brace;
 #[cfg(test)]
 mod tests_close;
 #[cfg(test)]
+mod tests_flinch;
+#[cfg(test)]
 mod tests_harm;
 #[cfg(test)]
 mod tests_limbs;

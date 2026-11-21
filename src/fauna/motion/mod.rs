@@ -41,6 +41,8 @@ mod fixtures_soft;
 #[cfg(test)]
 mod tests_bodies;
 #[cfg(test)]
+mod tests_carcass;
+#[cfg(test)]
 mod tests_chain;
 #[cfg(test)]
 mod tests_cost;

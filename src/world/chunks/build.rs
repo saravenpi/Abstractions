@@ -16,16 +16,9 @@ use crate::world::propmesh::merge_props_on;
 use crate::world::props::{body_collider_on, build_grass_on};
 use crate::world::rocks::{Stand, Taken, key, spare};
 use crate::world::scatter::{Placement, Rig, Scatter, scatter_over};
-use crate::world::structures::{StructureData, build_in, origins_near};
-
-/// Radius in metres around a structure origin kept free of plants.
-const CLEARING: f32 = 11.0;
 
 /// Radius in metres around the reserved ground of a planet kept free of plants.
 const RESERVE_CLEARING: f64 = 3.0;
-
-/// How many chart units the clearing may span where the chart is squeezed the most.
-const SQUEEZE: f32 = 1.5;
 
 /// Everything a worker thread produces for one chunk.
 pub struct ChunkData {
@@ -34,7 +27,6 @@ pub struct ChunkData {
     pub(super) grass: Option<Mesh>,
     pub(super) props: Option<Mesh>,
     pub(super) bodies: Option<Collider>,
-    pub(super) structures: Option<StructureData>,
     pub(super) lod: Lod,
     pub(super) frame: Frame,
     pub(super) turfed: bool,
@@ -76,38 +68,30 @@ fn ground(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>]) -> Collider {
     Collider::trimesh(patch.positions().to_vec(), patch.triangles())
 }
 
-/// Removes from `scatter` what stands within the clearing of a structure of chunk `coord`, and the props and only
-/// the props on the reserved ground of the planet, both measured in metres on the sea level sphere. The ground
-/// cover keeps to the base, except on the square of the landing pad.
-fn clear(scatter: &mut Scatter, terrain: &Terrain, coord: IVec2, warp: &Embedding) {
+/// Removes from `scatter` the props and only the props on the reserved ground of the planet, measured in metres
+/// on the sea level sphere. The ground cover keeps to the base, except on the square of the landing pad.
+fn clear(scatter: &mut Scatter, terrain: &Terrain, warp: &Embedding) {
     let sea = |p: Vec3| warp.point(Vec3::new(p.x, 0.0, p.z));
-    let center = warp.center();
-    let taken: Vec<Vec3> = origins_near(terrain, coord, CLEARING * SQUEEZE)
-        .into_iter()
-        .map(|o| sea(Vec3::new(o.x - center.x, 0.0, o.y - center.y)))
-        .collect();
     let frame = warp.frame();
-    let kept = terrain.globe().reserve().filter(|reserve| {
-        let reach = f64::from(crate::world::CHUNK_SIZE) * 2.0 + RESERVE_CLEARING;
-        reserve.covers(frame.origin, reach)
-    });
-    if taken.is_empty() && kept.is_none() {
+    let reach = f64::from(crate::world::CHUNK_SIZE) * 2.0 + RESERVE_CLEARING;
+    let Some(reserve) = terrain
+        .globe()
+        .reserve()
+        .filter(|r| r.covers(frame.origin, reach))
+    else {
         return;
-    }
+    };
     let free = |p: &Placement, disc: bool| {
-        let at = sea(p.pos);
-        let planet = frame.origin + frame.rot * at.as_dvec3();
-        let off_disc = kept.is_none_or(|reserve| !reserve.covers(planet, RESERVE_CLEARING));
-        taken.iter().all(|o| o.distance(at) > CLEARING)
-            && (off_disc || !disc)
-            && !terrain.globe().on_pad(planet, PAD_MARGIN)
+        let planet = frame.origin + frame.rot * sea(p.pos).as_dvec3();
+        let off_disc = !reserve.covers(planet, RESERVE_CLEARING);
+        (off_disc || !disc) && !terrain.globe().on_pad(planet, PAD_MARGIN)
     };
     scatter.props.retain(|p| free(p, true));
     scatter.grass.retain(|p| free(p, false));
 }
 
-/// Returns the scatter of chunk `coord` over its `heights`, cleared around structures and the
-/// reserved ground and left without the rocks of `taken`, and the embedding that places it.
+/// Returns the scatter of chunk `coord` over its `heights`, cleared on the reserved ground and left
+/// without the rocks of `taken`, and the embedding that places it.
 pub(in crate::world) fn planted(
     terrain: &Terrain,
     coord: IVec2,
@@ -116,7 +100,7 @@ pub(in crate::world) fn planted(
 ) -> (Scatter, Embedding) {
     let warp = Embedding::of(terrain, coord);
     let mut scatter = scatter_over(terrain, coord, heights);
-    clear(&mut scatter, terrain, coord, &warp);
+    clear(&mut scatter, terrain, &warp);
     spare(&mut scatter.props, key(terrain, coord), taken);
     (scatter, warp)
 }
@@ -138,9 +122,9 @@ pub fn ground_cover(terrain: &Terrain, coord: IVec2) -> Option<Mesh> {
     (!scatter.grass.is_empty()).then(|| render_only(build_grass_on(&scatter, &rig)))
 }
 
-/// Generates the mesh at level `lod`, the colliders, the merged props and the structures of chunk
-/// `coord`, all in the frame of the chunk: the main thread only inserts them. The ground cover is
-/// built only when `turfed` is set. The rocks of `taken` are left out or drawn smaller.
+/// Generates the mesh at level `lod`, the colliders and the merged props of chunk `coord`, all in the
+/// frame of the chunk: the main thread only inserts them. The ground cover is built only when `turfed` is
+/// set. The rocks of `taken` are left out or drawn smaller.
 ///
 /// `terrain` is the face chart view of the face of the chunk. Runs on any thread.
 pub fn generate(
@@ -165,7 +149,6 @@ pub fn generate(
         grass: (turfed && !scatter.grass.is_empty()).then(grass),
         props: (!scatter.props.is_empty()).then(props),
         bodies: body_collider_on(&scatter.props, &rig),
-        structures: build_in(terrain, coord, &frame),
         heights: ground(terrain, coord, &heights),
         canopy: canopy_on(terrain, coord, (&scatter.props, &scatter.grass), &rig),
         stand: Stand::of(key(terrain, coord), &scatter.props, &rig, taken),

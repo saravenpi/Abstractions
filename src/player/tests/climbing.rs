@@ -20,10 +20,10 @@ pub(super) const FLOOR: f32 = 10.5;
 /// Height of a body centre above the soles.
 pub(super) const SOLES: f32 = BODY_LENGTH * 0.5 + BODY_RADIUS;
 
-/// Rise of one stair step, as `world::structures::steps` builds them at most.
+/// Rise of one stair step in metres: the steepest stair a walker climbs.
 pub(super) const RISE: f32 = 0.29;
 
-/// Depth of one stair step, as `world::structures::steps` builds them.
+/// Depth of one stair step in metres.
 pub(super) const RUN: f32 = 0.36;
 
 /// Returns a stage with one body at rest on the ground, moved by intents, followed by the
@@ -49,7 +49,7 @@ pub(super) fn block(app: &mut App, (near, far): (f32, f32), top: f32) {
 }
 
 /// Adds a stair of `steps` steps of [`RISE`] by [`RUN`] going up ahead of the body from
-/// `near` metres away, the way `world::structures::steps` lays its boxes: one column per step
+/// `near` metres away: one column of boxes per step
 /// from the ground up. The top step goes on for 6 metres.
 pub(super) fn stair(app: &mut App, near: f32, steps: usize) {
     for index in 0..steps {

@@ -5,11 +5,11 @@ use bevy::math::Affine3A;
 use bevy::prelude::*;
 
 use super::block::{BULK, Block, pruned};
+use super::cover::{NEAR, SIZE, THIN, bare, triangles};
 use super::plan::plan;
 use super::soup::Soup;
 use super::spawn::solid;
 use super::tests::base;
-use crate::world::structures::cover::{NEAR, SIZE, THIN, bare, triangles};
 
 /// On twelve worlds, every lit triangle of the base that is neither a rod nor a cable lies within reach of
 /// a solid box, or on the ground: the container with its vent, dish and legs, the station with its canopy,

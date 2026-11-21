@@ -60,7 +60,7 @@ fn slot(at: usize, one: &Slot) -> impl Bundle {
         node(),
         children![
             key_cap(format!("{}", at + 1)),
-            badge(one.shape, None, ROW),
+            badge(one.shape, None, ROW, false),
             words(one)
         ],
     )

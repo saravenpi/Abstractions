@@ -18,9 +18,9 @@ use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::ui::ComputedNode;
 
 use super::intent;
-use super::raster::raster;
+use super::raster::{raster, shade};
 use crate::craft::build::Look;
-use crate::ui::{Icon, Tone, icon_sized, meter};
+use crate::ui::{Icon, Tone, icon_sized, meter, reach};
 
 /// Logical size of the icon of a tool in a slot of the hotbar of the game, under its number.
 pub const HUD: f32 = 16.0;
@@ -42,6 +42,8 @@ pub struct Picture {
     pub look: Look,
     /// Its logical size.
     pub size: f32,
+    /// Whether it carries the HUD shadow, as the texts and icons over the live world do.
+    pub shadow: bool,
 }
 
 /// Returns the pixels a picture `size` logical pixels wide takes at `scale` physical pixels per
@@ -51,20 +53,23 @@ pub fn snap(size: f32, scale: f32) -> (u32, f32) {
     (pixels as u32, pixels / scale.max(f32::EPSILON))
 }
 
-/// Returns the handle the picture of `look` drawn `pixels` wide is kept under.
-pub fn handle(look: &Look, pixels: u32) -> Handle<Image> {
-    let key = KIN | u128::from(look.code()) << 32 | u128::from(pixels);
+/// Returns the handle the picture of `look` drawn `pixels` wide, with a shadow `reach` pixels
+/// away or none at 0, is kept under.
+pub fn handle(look: &Look, pixels: u32, reach: u32) -> Handle<Image> {
+    let key = KIN | u128::from(look.code()) << 32 | u128::from(reach) << 24 | u128::from(pixels);
     Handle::Uuid(Uuid::from_u128(key), PhantomData)
 }
 
-/// Returns the image of `look` drawn `pixels` wide, sampled to the nearest pixel.
-fn image(look: &Look, pixels: u32) -> Image {
+/// Returns the image of `look` drawn `pixels` wide with its shadow `reach` pixels away, sampled
+/// to the nearest pixel.
+fn image(look: &Look, pixels: u32, reach: u32) -> Image {
     let size = Extent3d {
         width: pixels,
         height: pixels,
         depth_or_array_layers: 1,
     };
-    let data = raster(look, pixels);
+    let mut data = raster(look, pixels);
+    shade(&mut data, pixels as usize, reach as usize);
     let format = TextureFormat::Rgba8UnormSrgb;
     let mut image = Image::new(
         size,
@@ -79,8 +84,9 @@ fn image(look: &Look, pixels: u32) -> Image {
 
 /// Returns the icon of a tool of `look`, or of a material named by `glyph`, in a room `size`
 /// logical pixels square: the drawn picture of a tool with parts, the icon of the intent of a tool
-/// without, the glyph of a material, or nothing.
-pub fn badge(look: Option<Look>, glyph: Option<Icon>, size: f32) -> impl Bundle {
+/// without, the glyph of a material, or nothing. Over the live world the picture is drawn with
+/// the HUD `shadow`; a glyph there gets it as every HUD text does.
+pub fn badge(look: Option<Look>, glyph: Option<Icon>, size: f32, shadow: bool) -> impl Bundle {
     let room = Node {
         width: px(size),
         height: px(size),
@@ -95,7 +101,8 @@ pub fn badge(look: Option<Look>, glyph: Option<Icon>, size: f32) -> impl Bundle 
                 color: Color::NONE,
                 ..default()
             };
-            parent.spawn((Picture { look, size }, unseen, room_of(size)));
+            let picture = Picture { look, size, shadow };
+            parent.spawn((picture, unseen, room_of(size)));
         } else if let Some(symbol) = look.map(|look| intent::icon(look.intent)).or(glyph) {
             parent.spawn(icon_sized(symbol, Tone::Plain, size));
         }
@@ -113,9 +120,10 @@ fn room_of(size: f32) -> Node {
     }
 }
 
-/// Returns the icon of a tool of `shape` as a slot of the hotbar of the game shows it.
+/// Returns the icon of a tool of `shape` as a slot of the hotbar of the game shows it, over the
+/// live world, with the HUD shadow.
 pub fn silhouette(shape: Option<Look>) -> impl Bundle {
-    badge(shape, None, HUD)
+    badge(shape, None, HUD, true)
 }
 
 /// Returns a wear bar `width` pixels wide, filled with what is left of a tool `worn` 0 to 1.
@@ -136,9 +144,10 @@ pub(super) fn paint(
     for (picture, computed, mut shown, mut node) in &mut pictures {
         let scale = 1.0 / computed.inverse_scale_factor.max(f32::EPSILON);
         let (pixels, logical) = snap(picture.size, scale);
-        let wanted = handle(&picture.look, pixels);
+        let reach = [0, reach(scale) as u32][usize::from(picture.shadow)];
+        let wanted = handle(&picture.look, pixels, reach);
         if !images.contains(wanted.id())
-            && let Err(error) = images.insert(wanted.id(), image(&picture.look, pixels))
+            && let Err(error) = images.insert(wanted.id(), image(&picture.look, pixels, reach))
         {
             warn!("could not keep the picture of a tool: {error}");
         }

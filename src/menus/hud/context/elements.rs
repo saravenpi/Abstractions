@@ -163,7 +163,7 @@ pub fn marker_shown(context: Context, kind: MarkerKind) -> bool {
     match kind {
         MarkerKind::Herd => shown(context).contains(Element::Herds),
         _ if context == Context::Warp => kind == MarkerKind::Course,
-        MarkerKind::Waypoint | MarkerKind::Favourite => !context.in_space(),
+        MarkerKind::Waypoint | MarkerKind::Favourite | MarkerKind::Tool => !context.in_space(),
         _ => true,
     }
 }

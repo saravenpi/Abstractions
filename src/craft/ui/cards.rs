@@ -96,7 +96,11 @@ fn tool_card(at: usize, tool: &Tool) -> impl Bundle {
     (
         Press::Card(at),
         card(tool.focused),
-        children![badge(tool.shape, None, CARD), words(tool), bars(tool)],
+        children![
+            badge(tool.shape, None, CARD, false),
+            words(tool),
+            bars(tool)
+        ],
     )
 }
 

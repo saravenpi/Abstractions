@@ -25,7 +25,7 @@ pub struct Bind {
     pub code: KeyCode,
 }
 
-/// The actions of the pack pane, on the selected entry.
+/// The actions of the pack pane, on the selected entry: X drops a material, never a tool.
 pub const PACK_BINDS: [Bind; 2] = [
     Bind {
         press: Press::Hold,
@@ -37,7 +37,7 @@ pub const PACK_BINDS: [Bind; 2] = [
     Bind {
         press: Press::Drop,
         icon: Some(Icon::Trash),
-        label: "Drop",
+        label: "Drop material",
         key: "X",
         code: KeyCode::KeyX,
     },

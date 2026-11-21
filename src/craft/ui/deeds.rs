@@ -1,5 +1,5 @@
 //! The deeds of the screen, one place for the keys and the pointer: choosing a row, an intent or a
-//! card, holding, slotting and dropping from the pack. Making and treating are in `make`.
+//! card, holding and slotting a tool, and dropping a material from the pack. Making and treating are in `make`.
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
@@ -71,16 +71,13 @@ impl Deed<'_> {
         }
     }
 
-    /// Drops the selected entry of the pack, and keeps the cursor on the list.
+    /// Drops the selected material, and keeps the cursor on the list. A tool is never dropped: it
+    /// would be gone for good.
     fn drop_selected(&mut self) {
-        match self.selected() {
-            Some(What::Item(id)) => {
-                self.pack.bar.forget(id);
-                self.pack.items.retain(|item| item.id != id);
-            }
-            Some(What::Stack(at)) => _ = self.pack.stacks.remove(at),
-            None => return,
-        }
+        let Some(What::Stack(at)) = self.selected() else {
+            return;
+        };
+        self.pack.stacks.remove(at);
         let last = self.lines().len().saturating_sub(1);
         self.bench.cursor = self.bench.cursor.min(last);
     }

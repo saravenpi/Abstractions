@@ -16,6 +16,21 @@ pub const THROW: f32 = 1.2;
 /// Drop of the way a neck is thrown out, in metres per metre ahead: a little down, toward the target.
 pub const THROW_DIP: f32 = 0.25;
 
+/// Share by which one breath may be shorter or longer than the resting rate, drawn at each breath.
+pub const BREATH_JITTER: f32 = 0.12;
+
+/// Breath rate at full effort over the resting rate: a body that just ran or fought pants.
+pub const PANT: f32 = 2.5;
+
+/// Seconds the effort of a body takes to rise to a run or an alarm.
+pub const EFFORT_RISE: f32 = 1.5;
+
+/// Seconds the effort of a body takes to fall back once it rests: its breath slows over them.
+pub const RECOVER: f32 = 20.0;
+
+/// Weight shifts per second of a standing body, each individual a little faster or slower.
+pub const SHIFT_RATE: f32 = 0.13;
+
 /// How a species moves, from its mass.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Tune {

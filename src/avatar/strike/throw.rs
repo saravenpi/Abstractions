@@ -120,8 +120,21 @@ fn arrive(spear: &mut Spear, place: &mut Transform, point: Vec3, normal: Vec3) {
     }
 }
 
+/// Returns where a spear going to the render position `to` meets the drawn ground of `terrain`, and
+/// the local up there, when `to` lies under it: far from the robot the ground has no collider, and a
+/// spear must not fall through it and fly on forever.
+pub(super) fn under(anchor: &Anchor, terrain: &Terrain, to: Vec3) -> Option<(Vec3, Vec3)> {
+    let at = terrain.locate(anchor.to_frame(to));
+    let ground = terrain.mesh_height(at.x, at.z);
+    (at.y < ground).then(|| {
+        let point = anchor.to_render(terrain.embed(at.x, ground, at.z));
+        let up = anchor.rotation * terrain.up(at.x, at.z);
+        (point, up.as_vec3())
+    })
+}
+
 /// Flies every spear in the air one frame, under the gravity of the planet and the drag of its
-/// air, and lands it on whatever the world has in its way.
+/// air, and lands it on whatever the world has in its way, or on the drawn ground it fell under.
 pub fn soar(
     time: Res<Time>,
     (anchor, terrain): (Res<Anchor>, Res<Terrain>),
@@ -129,10 +142,7 @@ pub fn soar(
     mut spears: Query<(&mut Spear, &mut Transform)>,
 ) {
     let dt = time.delta_secs();
-    for (mut spear, mut place) in &mut spears {
-        if spear.rest != Rest::Flying {
-            continue;
-        }
+    for (mut spear, mut place) in spears.iter_mut().filter(|(s, _)| s.rest == Rest::Flying) {
         let gravity = local_gravity(&anchor, terrain.globe(), place.translation);
         let from = place.translation;
         let (to, velocity) = fly(from, spear.velocity, gravity, spear.item.throw.drag, dt);
@@ -140,10 +150,12 @@ pub fn soar(
         let filter = SpatialQueryFilter::default().with_excluded_entities([spear.thrower]);
         let way = Dir3::new(to - from).ok();
         let met = way.and_then(|way| world.cast_ray(from, way, from.distance(to), true, &filter));
-        if let (Some(way), Some(met)) = (way, met) {
-            let point = from + way * met.distance;
+        let hit = way
+            .zip(met)
+            .map(|(way, met)| (from + way * met.distance, met.normal));
+        if let Some((point, normal)) = hit.or_else(|| under(&anchor, &terrain, to)) {
             let landed = grounded(&spear, point);
-            arrive(&mut spear, &mut place, point, met.normal);
+            arrive(&mut spear, &mut place, point, normal);
             sounds.write(Impact {
                 deflected: spear.rest != Rest::Stuck,
                 ..landed
@@ -194,7 +206,8 @@ pub fn pierce(
     }
 }
 
-/// Gives a spear that came to rest back to the local robot when it stands within reach of it with
+/// Gives a spear that came to rest back to the local robot when it stands within reach of it: one of
+/// its own pack goes back to its hotbar slot whatever the hands hold, one of another player only into
 /// empty hands. A spear stuck in an animal stays there until [`super::pull::pull`] draws it out.
 pub fn pick(
     mut commands: Commands,
@@ -207,12 +220,11 @@ pub fn pick(
         return;
     };
     let Ok(at) = players.get(player) else { return };
-    if full.contains(body) {
-        return;
-    }
+    let free = !full.contains(body);
     let lying = |of: &Option<&ChildOf>| !of.is_some_and(|of| creatures.contains(of.parent()));
     let near = spears.iter().find(|(_, spear, placed, of)| {
         spear.rest != Rest::Flying
+            && (free || spear.lent.is_some())
             && lying(of)
             && placed.translation().distance(at.translation) < PICK
     });

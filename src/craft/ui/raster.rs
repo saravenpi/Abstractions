@@ -2,11 +2,15 @@
 //! the diagonal, its head at the top right as the tools of the icon font do, and each pixel is
 //! either on or off: it is tested at its centre against the shapes, with no blend at the edges,
 //! so the picture stays crisp at any size. The shaft is one stroke of the icon font wide, a
-//! twelfth of the picture, and each part is drawn in the grey of its material.
+//! twelfth of the picture, and each part is drawn in the grey of its material. Over the live world
+//! the HUD shadow is laid under it, as under every HUD text.
 
 use std::f32::consts::FRAC_1_SQRT_2;
 
+use bevy::color::ColorToPacked;
+
 use crate::craft::build::{Figure, Look};
+use crate::ui::theme;
 
 /// Bytes of one pixel: red, green, blue and alpha.
 pub const BYTES: usize = 4;
@@ -109,4 +113,21 @@ pub fn raster(look: &Look, pixels: u32) -> Vec<u8> {
         }
     }
     out
+}
+
+/// Lays the HUD shadow under `out`, a picture `side` pixels wide: every clear pixel `reach` pixels
+/// down and to the right of an inked one takes the shadow colour. Nothing changes at a reach of 0.
+pub fn shade(out: &mut [u8], side: usize, reach: usize) {
+    if reach == 0 {
+        return;
+    }
+    let dark = theme::HUD_SHADOW.to_srgba().to_u8_array();
+    let inked = |x: usize, y: usize, out: &[u8]| out[(y * side + x) * BYTES + 3] > 0;
+    for at in (0..side * side).rev() {
+        let (x, y) = (at % side, at / side);
+        let under = x >= reach && y >= reach && inked(x - reach, y - reach, out);
+        if under && !inked(x, y, out) {
+            out[at * BYTES..(at + 1) * BYTES].copy_from_slice(&dark);
+        }
+    }
 }

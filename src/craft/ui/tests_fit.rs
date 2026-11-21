@@ -41,18 +41,19 @@ fn panes(window: Vec2) -> f32 {
 const STRIP: f32 = theme::S4 + theme::ROW_HEIGHT;
 
 /// Height of a tool card that is not focused: its padding, its name and its reason.
-const CARD: f32 = 2.0 * theme::S3 + theme::LINE_BODY + theme::LINE_SMALL;
+const RESTING: f32 = 2.0 * theme::S3 + theme::LINE_BODY + theme::LINE_SMALL;
 
 /// The workshop keeps room for one whole card under its title, its tiles and the line on the
-/// intent, above its actions; the pack keeps room for a group title and two rows.
+/// intent, above its actions; the pack keeps room for a group title and two rows above its
+/// actions, which may take two lines on the narrow pane.
 #[test]
 fn the_panes_fit_every_height() {
     for window in layouts() {
         let room = panes(window);
         let title = theme::ICON + theme::TITLE_BELOW;
         let tiles = theme::ROW_TALL + theme::S2 + theme::LINE_SMALL + theme::S3;
-        assert!(room - title - tiles - STRIP >= CARD, "{window}: {room}");
-        let list = room - title - STRIP;
+        assert!(room - title - tiles - STRIP >= RESTING, "{window}: {room}");
+        let list = room - title - STRIP - theme::ROW_HEIGHT - theme::S1;
         assert!(
             list >= theme::ICON + theme::TITLE_BELOW + 2.0 * theme::ROW_TALL,
             "{window}"

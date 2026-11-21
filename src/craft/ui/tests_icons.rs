@@ -6,7 +6,7 @@ use bevy::math::Vec2;
 use super::bench::INTENTS;
 use super::glyph::{CARD, HUD, ROW, snap};
 use super::kind::material_icon;
-use super::raster::{BYTES, raster};
+use super::raster::{BYTES, raster, shade};
 use crate::craft::build::{Figure, Intent, Look, Tint};
 use crate::craft::matter::{Class, Mineral, Stuff};
 use crate::craft::stage::tissue;
@@ -121,4 +121,23 @@ fn pictures_are_pixel_aligned_at_every_interface_size() {
         );
         assert!(density != 1.0 || logical == size, "{size} at {scale}");
     }
+}
+
+/// The HUD shadow lays dark pixels only on clear ones beside the drawing, and none at a reach of 0.
+#[test]
+fn the_hud_shadow_sits_beside_the_drawing() {
+    let plain = raster(&drawn(Figure::Hammer), 32);
+    let mut none = plain.clone();
+    shade(&mut none, 32, 0);
+    assert_eq!(none, plain);
+    let mut dark = plain.clone();
+    shade(&mut dark, 32, 1);
+    let added = dark
+        .chunks_exact(BYTES)
+        .zip(plain.chunks_exact(BYTES))
+        .filter(|(a, b)| a != b);
+    let added: Vec<_> = added.collect();
+    assert!(!added.is_empty());
+    assert!(added.iter().all(|(_, before)| before[3] == 0));
+    assert_eq!(count(&dark, 255), count(&plain, 255));
 }

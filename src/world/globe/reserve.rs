@@ -1,4 +1,4 @@
-//! Reserved ground: a disc of a planet that props and structure sites keep out of.
+//! Reserved ground: a disc of a planet that props keep out of.
 
 use bevy::math::DVec3;
 
@@ -26,7 +26,7 @@ impl Pad {
     }
 }
 
-/// A disc of ground kept free of props and structure sites, such as the footprint of the home base.
+/// A disc of ground kept free of props, such as the footprint of the home base.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Reserve {
     /// Centre of the disc in metres from the planet centre.
@@ -48,7 +48,7 @@ impl Reserve {
 }
 
 impl Globe {
-    /// Returns this globe with `reserve` kept free of props and structure sites.
+    /// Returns this globe with `reserve` kept free of props.
     pub fn reserving(mut self, reserve: Reserve) -> Self {
         self.reserve = Some(reserve);
         self

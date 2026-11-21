@@ -54,7 +54,7 @@ fn row(at: usize, one: &Row) -> impl Bundle {
     (
         Press::Row(at),
         row_tall(
-            badge(one.line.shape, one.line.icon, ROW),
+            badge(one.line.shape, one.line.icon, ROW, false),
             one.lit,
             (line(), children![(name, grow())]),
             (line(), children![(under, grow()), bar]),

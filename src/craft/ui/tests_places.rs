@@ -59,6 +59,7 @@ fn a_tools_icon_is_identical_in_the_three_places() {
         assert_eq!([row, slot, hud], [card; 3], "{intent:?}");
         let card = card.expect("a look");
         assert_eq!(raster(&card, 24), raster(&card, 24));
-        assert_ne!(handle(&card, 24), handle(&card, 32));
+        assert_ne!(handle(&card, 24, 0), handle(&card, 32, 0));
+        assert_ne!(handle(&card, 16, 0), handle(&card, 16, 1));
     }
 }

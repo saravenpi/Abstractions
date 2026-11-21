@@ -1,5 +1,6 @@
 //! The banner: the name of a planet and of its system, shown briefly on arrival, and the line
-//! that says a player joined or left the session, or what the network has to say.
+//! that says a player joined or left the session, or what the network has to say. It has no
+//! strip behind it: both names are in `TEXT` and carry the HUD shadow, which fades with them.
 
 use bevy::prelude::*;
 
@@ -30,10 +31,6 @@ pub(super) struct Banner {
 #[derive(Component)]
 pub(super) struct BannerBlock;
 
-/// Marks the dark strip behind the names, which keeps them readable on any sky.
-#[derive(Component)]
-pub(super) struct BannerStrip;
-
 /// Marks the planet name of the banner.
 #[derive(Component)]
 pub(super) struct PlanetName;
@@ -63,21 +60,10 @@ pub(super) fn block() -> impl Bundle {
             ..default()
         },
         Pickable::IGNORE,
-        children![(
-            BannerStrip,
-            Node {
-                flex_direction: FlexDirection::Column,
-                align_items: AlignItems::Center,
-                row_gap: px(theme::S1),
-                padding: UiRect::axes(px(theme::S4), px(theme::S3)),
-                ..default()
-            },
-            BackgroundColor(Color::NONE),
-            children![
-                (PlanetName, text("", theme::FONT_HEADING, Color::NONE)),
-                (SystemName, caps("")),
-            ],
-        )],
+        children![
+            (PlanetName, text("", theme::FONT_HEADING, Color::NONE)),
+            (SystemName, caps("")),
+        ],
     )
 }
 
@@ -164,7 +150,6 @@ pub(super) fn fade(
     time: Res<Time>,
     mut banner: ResMut<Banner>,
     mut blocks: Query<&mut Node, With<BannerBlock>>,
-    mut strips: Query<&mut BackgroundColor, With<BannerStrip>>,
     (mut planets, mut systems): Tints,
 ) {
     banner.left = (banner.left - time.delta_secs()).max(0.0);
@@ -179,18 +164,11 @@ pub(super) fn fade(
             node.display = display;
         }
     }
-    for mut strip in &mut strips {
-        strip.set_if_neq(BackgroundColor(
-            theme::PANEL.with_alpha(theme::PANEL.alpha() * alpha),
-        ));
-    }
     for mut tint in &mut planets {
         tint.set_if_neq(TextColor(theme::TEXT.with_alpha(alpha)));
     }
     for mut tint in &mut systems {
-        tint.set_if_neq(TextColor(
-            theme::TEXT_2.with_alpha(theme::TEXT_2.alpha() * alpha),
-        ));
+        tint.set_if_neq(TextColor(theme::TEXT.with_alpha(alpha)));
     }
 }
 

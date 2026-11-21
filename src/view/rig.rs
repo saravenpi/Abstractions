@@ -80,8 +80,9 @@ impl Rig {
 
     /// Returns the orientation of the orbit in the axes of the target, and lets the camera
     /// catch up with the rotation of the target.
-    fn look(&mut self, target: &Target, stance: &Stance, shot: &Shot) -> Quat {
-        let goal = stance.frame.inverse() * basis::chase(target, shot.third);
+    fn look(&mut self, moment: &Moment, stance: &Stance, shot: &Shot) -> Quat {
+        let follow = moment.prefs.auto_follow;
+        let goal = stance.frame.inverse() * basis::chase(&moment.target, shot.third, follow);
         let swept = stance.spin * stance.dt;
         self.rel = match stance.fresh {
             true => goal,
@@ -154,8 +155,7 @@ impl Rig {
         let shot = Shot::of(target, self.blend.person(), self.blend.flight());
         self.aim.flight = self.blend.flight();
         self.aim.step(moment, &stance, shot.third);
-        self.aim.heading = curve::head(target.kind, self.aim.heading, shot.third);
-        let look = self.look(target, &stance, &shot);
+        let look = self.look(moment, &stance, &shot);
         self.sway.step(moment, &stance, &shot, look);
         let bend = self.bend(target, &stance, shot.third, world);
         let seat = stance.frame * curve::seat(&shot, &bend);
@@ -175,7 +175,7 @@ impl Rig {
         Shown {
             pose,
             fade: BodyFade(curve::fade(shot.third, position.distance(head))),
-            heading: self.aim.heading,
+            heading: self.aim.view,
         }
     }
 }

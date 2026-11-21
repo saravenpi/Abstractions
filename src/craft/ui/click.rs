@@ -18,7 +18,7 @@ pub enum Press {
     Card(usize),
     /// Holds the selected tool.
     Hold,
-    /// Drops the selected entry of the pack.
+    /// Drops the selected material of the pack; a tool stays.
     Drop,
     /// Makes the focused tool.
     Make,

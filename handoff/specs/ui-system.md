@@ -69,7 +69,7 @@ y = 0
 - The back action lives in the footer zone, first, on every page: icon, a word for what Escape does there ("Back", "Resume", "Cancel"), and "Esc". A page has no other Back button.
 - The status of a page (a count, "Saved") lives at the right end of the heading zone.
 - The legend is `ui::legend` from `map-ui`: label first in `TEXT`, key after it in `TEXT_2`, `KEY_GAP` = S3 between them and `HINT_GAP` = S5 between hints.
-- Fill by context: a page over the blurred game is `SCRIM` on `Blurred` and its content has no panel. A panel over the live world is `PANEL`, a row that can hold `WARN` or `DANGER` text is `PANEL_DEEP`, a big panel over the blur is `PANEL_BLUR`, a panel over a slide of the title screen is `PANEL`.
+- Fill by context: a page over the blurred game is `SCRIM` on `Blurred` and its content has no panel. A panel over the live world outside the HUD is `PANEL`, a big panel over the blur is `PANEL_BLUR`, a panel over a slide of the title screen is `PANEL`. The in-game HUD has no panel (owner decision of 2026-11-21): its texts and icons carry `HUD_SHADOW`, warnings `HUD_SHADOW_WARN`, see 2.3.
 
 ### 1.5 Section titles (`ui::section`)
 
@@ -137,9 +137,9 @@ To build in round 2, with the screens that use them:
 | Form field | Label as a section title (icon, capitals) with `TITLE_BELOW` under it, box `ROW_TALL` high and `span(6)` wide, padding `INSET`, fill `HOVER`, `GROUP_ABOVE` between fields | Value 20 `TEXT`, placeholder `TEXT_2` |
 | Card | Padding `S4`, fill by context, groups inside `GROUP_ABOVE` apart | |
 | Modal confirm | The question replaces the row it is about, the two answers are an action bar, the safe one chosen first | Question 20, `Tone::Danger` on the destructive answer |
-| HUD strip | One line, padding `S3` by `S2`, gap `S2`, icon 16 in a 16 line, fill `PANEL` or `PANEL_DEEP`, `S2` between two strips | 16 |
-| HUD panel | Padding `S4`, fill `PANEL`, rows 24 high with icon, label column, value | 16 |
-| Toast | A HUD strip that fades in `FADE` and leaves by itself | 16 |
+| HUD line | One line, no fill, no padding, gap `S2`, icon 16 in a 16 line, the HUD shadow on text and icons | 16 `TEXT` |
+| HUD block | No fill, no padding, rows 24 high with icon, label column, value | 16 `TEXT` |
+| Toast | A HUD line that fades in `FADE` and leaves by itself, its shadow fading with it | 16 |
 
 ### 1.7 Icons
 
@@ -286,6 +286,8 @@ Verdicts: **break** means it breaks a rule of AGENTS.md, **drift** means it diff
 | Update | Page | 600 wide, notes 160 high, bar 4, gaps 16 and 8 | | ok on the scale, 600 on no grid |
 
 ### 2.3 HUD
+
+The table is the audit of 2026-11-20. Since the owner decision of 2026-11-21 no HUD element has a panel, a strip or a padding: the coordinates, climate, instruments, frame rows, prompt, banner, compass, marker labels and minimap caption start on their margin and carry the HUD shadow (`ui::shade`). The compass line and tick lie on a copy of themselves in `HUD_SHADOW`. The minimap caption sits under the picture, right-aligned on the edge. The hotbar slots keep `SLOT_FULL` and `SLOT_EMPTY`.
 
 | Screen | Element | Value today | Rule | Verdict |
 | --- | --- | --- | --- | --- |

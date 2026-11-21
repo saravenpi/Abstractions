@@ -57,7 +57,7 @@ pub struct Loaded {
     pub solid: bool,
     /// Whether the chunk is drawn: false while a coarser node still covers its place.
     pub shown: bool,
-    /// Level of detail, ground cover and structure state.
+    /// Level of detail and ground cover state.
     pub detail: Detail,
     /// The big props and the rocks that stand in the chunk.
     pub stand: Stand,
@@ -71,7 +71,6 @@ impl Loaded {
         }
         self.solid = on;
         let bodies = self.props.zip(self.bodies.as_ref());
-        let structure = self.detail.structure();
         match on {
             true => {
                 commands
@@ -80,17 +79,11 @@ impl Loaded {
                 if let Some((e, c)) = bodies {
                     commands.entity(e).try_insert(c.clone());
                 }
-                if let Some((e, c)) = structure {
-                    commands.entity(*e).try_insert(c.clone());
-                }
             }
             false => {
                 commands.entity(self.entity).try_remove::<Collider>();
                 if let Some((e, _)) = bodies {
                     commands.entity(e).try_remove::<Collider>();
-                }
-                if let Some((e, _)) = structure {
-                    commands.entity(*e).try_remove::<Collider>();
                 }
             }
         }

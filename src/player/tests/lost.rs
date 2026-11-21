@@ -12,7 +12,7 @@ use crate::player::controller::drive;
 use crate::player::lost::{Rescues, Stranded, plugin};
 use crate::player::spawn::Home;
 use crate::player::{BODY_LENGTH, BODY_RADIUS, Player, PlayerSet};
-use crate::sim::PlayerId;
+use crate::sim::{Intent, IntentOf, PlayerId};
 use crate::space::{Anchor, Location, Travel};
 use crate::universe::{BodyId, PlanetClass, PlanetRecord, STANDARD_GRAVITY, Water};
 use crate::view::Cut;
@@ -133,4 +133,38 @@ fn a_body_with_no_collider_under_it_waits_then_stands() {
     assert!((transform.translation.y - standing(height)).abs() < 0.1);
     assert_eq!(app.world().resource::<Rescues>().count, 1);
     assert!(!stranded(&mut app));
+}
+
+/// Right after a rescue the body stands on the ground at rest, nothing left of the fall, and
+/// walks off at once: a second ahead takes it metres over the ground, still on its feet.
+#[test]
+fn a_rescued_body_stands_and_walks() {
+    let (mut app, height) = stage();
+    sink(&mut app, height);
+    app.update();
+    let (start, motion, gear) = body(&mut app, PlayerId::LOCAL);
+    assert!(
+        motion.grounded && motion.velocity == Vec3::ZERO,
+        "{motion:?}"
+    );
+    assert!(!gear.state.mode.airborne() && !motion.wings);
+    for _ in 0..30 {
+        let intent = Intent::Move {
+            forward: 1.0,
+            strafe: 0.0,
+        };
+        let player = PlayerId::LOCAL;
+        app.world_mut().write_message(IntentOf { player, intent });
+        app.update();
+    }
+    let (end, motion, _) = body(&mut app, PlayerId::LOCAL);
+    let walked = end
+        .translation
+        .with_y(0.0)
+        .distance(start.translation.with_y(0.0));
+    assert!(
+        motion.grounded && walked > 2.0,
+        "walked {walked} m, {motion:?}"
+    );
+    assert_eq!(app.world().resource::<Rescues>().count, 1);
 }

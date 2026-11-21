@@ -10,17 +10,21 @@ use bevy::math::{DVec3, Vec3};
 
 use crate::render::smoothstep;
 
-/// Width in metres of one cell of the cloud noise.
-pub const CELL: f32 = 450.0;
+/// Width in metres of one cell of the cloud noise: a puff is one to a few cells across, a cumulus
+/// of a few kilometres. At 450 m a puff seen from the ground under a high cloud band was a few
+/// pixels wide overhead and under one at the horizon, a sky of dashes.
+pub const CELL: f32 = 1800.0;
 
-/// Cells of the cloud noise the puffs drift by in one second of universe time.
-pub const WIND: Vec3 = Vec3::new(0.011, 0.0, 0.0045);
+/// Cells of the cloud noise the puffs drift by in one second of universe time: 5 m/s to the east.
+pub const WIND: Vec3 = Vec3::new(0.00275, 0.0, 0.001125);
 
 /// Width of the soft edge of a puff, in noise value.
 pub const EDGE: f32 = 0.12;
 
-/// Noise value a puff starts at under no cover and under full cover.
-pub const THRESHOLD: (f32, f32) = (0.72, 0.4);
+/// Noise value a puff starts at under no cover and under full cover. The noise has a mean near
+/// 0.47, so half a cover puts cloud over about half the sky, and a full cover leaves only rare
+/// breaks in the deck. At 0.4 for a full cover two fifths of an overcast sky were gaps.
+pub const THRESHOLD: (f32, f32) = (0.72, 0.25);
 
 /// Density a puff must reach before it shows at all, and from which it shows in full, under a clear
 /// sky: a lone tip of the noise barely over the threshold is no cloud. The cut eases off as the cover

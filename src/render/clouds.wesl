@@ -21,6 +21,7 @@ struct Clouds {
 @group(constants::MATERIAL_BIND_GROUP) @binding(2) var cover_sampler: sampler;
 
 const LUMA: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
+const EDGE_PIXELS: f32 = 1.5;
 
 fn strongest(v: vec3<f32>) -> vec3<f32> {
     return v / max(max(v.x, max(v.y, v.z)), 0.001);
@@ -48,9 +49,12 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let to_eye = view.world_position - in.world_position.xyz;
     let dist = length(to_eye);
     let facing = dot(n, to_eye / max(dist, 0.001));
-    let cloud = puff(spot, to_fixed * light, facing, cover);
+    let footprint = max(length(dpdx(spot)), length(dpdy(spot)));
+    let cloud = puff(spot, to_fixed * light, facing, cover, footprint);
     let through = exp(-clouds.fade.xyz * dist);
-    let alpha = max(cloud.thick * lone(cloud, cover), whiteout);
+    let body = cloud.thick * lone(cloud, cover);
+    let edge = clamp(0.5 + (body - 0.5) / max(fwidth(body) * EDGE_PIXELS, 0.0001), 0.0, 1.0);
+    let alpha = max(edge, whiteout);
     if (alpha <= dither(in.position.xy)) {
         discard;
     }

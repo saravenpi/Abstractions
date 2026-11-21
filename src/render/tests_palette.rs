@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use super::air::Air;
 use super::celestial::smoothstep;
 use super::palette::Palette;
-use super::scatter::{luminance, peak, scattered, transmit};
+use super::scatter::{lit_cloud, luminance, peak, scattered, transmit};
 use super::sun::SunDir;
 use super::vantage::{LocalSystem, Vantage};
 use crate::universe::PlanetRecord;
@@ -70,28 +70,56 @@ fn sun(height: f32) -> SunDir {
     }
 }
 
-/// At the home pressure with a white air tint the palette is the old one bit for bit, at every
-/// height of the star and for every star colour, from the ground and as the camera sees it.
+/// Returns the old palette at `height` under a white star with the clouds of `now`: the clouds are
+/// lit by the star against the Sun since 0.11, see [`lit_cloud`].
+fn kept(height: f32, now: &Palette) -> Palette {
+    Palette {
+        cloud: now.cloud,
+        ..frozen(height, Vec3::ONE)
+    }
+}
+
+/// At the home pressure with a white air tint, under a white star, the palette is the old one bit
+/// for bit but for the clouds, at every height of the star, from the ground and as the camera
+/// sees it. By day the clouds are the colour of the light of the star against the Sun.
 #[test]
 fn home_air_keeps_the_old_palette() {
     let home = Air::of(&PlanetRecord::TEMPERATE);
-    let stars = [
-        Vec3::ONE,
-        Vec3::new(1.0, 0.5, 0.3),
-        Vec3::new(0.7, 0.8, 1.0),
-    ];
     for step in 0..=400 {
         let height = step as f32 / 200.0 - 1.0;
-        for star in stars {
-            let old = frozen(height, star);
-            assert_eq!(Palette::through(height, star, &home), old, "{height}");
-            assert_eq!(Palette::lit(height, star), old, "{height}");
-        }
-        let old = frozen(height, Vec3::ONE);
-        let seen =
-            Palette::through(height, Vec3::ONE, &home).seen(&sun(height), home.share(), Vec3::ONE);
+        let now = Palette::through(height, Vec3::ONE, &home);
+        let old = kept(height, &now);
+        assert_eq!(now, old, "{height}");
+        assert_eq!(Palette::lit(height, Vec3::ONE), old, "{height}");
+        let seen = now.seen(&sun(height), home.share(), Vec3::ONE);
         assert_eq!(seen, old.seen(&sun(height), 1.0, Vec3::ONE), "{height}");
         let under = Palette::under(&sun(height), &Vantage::default(), &LocalSystem::default());
         assert_eq!(under, (old, Vec3::ONE), "{height}");
     }
+    let noon = Palette::lit(1.0, Vec3::ONE);
+    let lit = lit_cloud(noon.sun_color);
+    assert!((noon.cloud - lit).abs().max_element() < 1.0e-6);
+}
+
+/// Under a red star and under a blue one the sky is bluer than the light of the star, as the air
+/// scatters blue most whatever the star: the zenith holds more blue against red than the light
+/// does, the horizon lies between the two, and the red star still gives the redder sky.
+#[test]
+fn the_sky_is_bluer_than_the_light_of_its_star() {
+    let blue_share = |c: Vec3| c.z / c.x;
+    let stars = [Vec3::new(1.0, 0.5, 0.3), Vec3::new(0.7, 0.8, 1.0)];
+    for star in stars {
+        for height in [0.2, 0.5, 0.9] {
+            let sky = Palette::lit(height, star);
+            let light = blue_share(sky.sun_color);
+            assert!(blue_share(sky.zenith) > 1.5 * light, "{star} {height}");
+            assert!(blue_share(sky.horizon) > light, "{star} {height}");
+            assert!(
+                blue_share(sky.horizon) < blue_share(sky.zenith),
+                "{star} {height}"
+            );
+        }
+    }
+    let (red, blue) = (Palette::lit(0.9, stars[0]), Palette::lit(0.9, stars[1]));
+    assert!(blue_share(red.zenith) < blue_share(blue.zenith));
 }

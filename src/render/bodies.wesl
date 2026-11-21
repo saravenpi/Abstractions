@@ -78,12 +78,12 @@ fn surface(n: vec3<f32>) -> vec3<f32> {
     return mix(banded, body.spot.rgb, spot);
 }
 
-fn clouds(n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, texel: vec2<f32>) -> vec3<f32> {
+fn clouds(n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, texel: vec2<f32>, span: f32) -> vec3<f32> {
     let to_fixed = mat3x3<f32>(body.fixed_x.xyz, body.fixed_y.xyz, body.fixed_z.xyz);
     let dir = to_fixed * n;
     let cover = broad_cover(cover_map, cover_sampler, dir, body.cloud.w);
     let spot = dir * body.map.w + body.drift.xyz;
-    let cloud = puff(spot, to_fixed * l, dot(n, v), cover);
+    let cloud = puff(spot, to_fixed * l, dot(n, v), cover, span * body.map.w);
     if (cloud.thick * lone(cloud, cover) * body.sun.w * body.map.z <= dither(texel)) {
         discard;
     }
@@ -95,12 +95,13 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let n = normalize(in.world_normal);
     let v = normalize(view.world_position - in.world_position.xyz);
     let facing = max(dot(n, v), 0.0);
+    let span = max(length(dpdx(n)), length(dpdy(n)));
     if (body.color.w > 0.0) {
         return vec4<f32>(body.color.rgb * body.color.w * (0.65 + 0.35 * facing), 1.0);
     }
     let l = body.light.xyz;
     if (in.uv.x > SHELL) {
-        return vec4<f32>(clouds(n, v, l, in.position.xy), 1.0);
+        return vec4<f32>(clouds(n, v, l, in.position.xy, span), 1.0);
     }
     let baked = tinted(in.color.rgb, look_at(season, n, 0.0));
     let albedo = mix(surface(n), baked, body.map.z);

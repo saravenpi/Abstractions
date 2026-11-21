@@ -57,7 +57,7 @@ fn the_near_distance_follows_how_the_player_travels() {
 fn the_middle_of_the_view_dims() {
     assert!((centre(0.0) - 0.35).abs() < 1e-6);
     assert!((centre(20.0_f32.to_radians()) - 1.0).abs() < 1e-6);
-    let mut last = 0.0;
+    let mut last = centre(0.0);
     for tenth in 0..200 {
         let now = centre((tenth as f32 * 0.1).to_radians());
         assert!(now >= last && now - last < 0.05, "{tenth}");

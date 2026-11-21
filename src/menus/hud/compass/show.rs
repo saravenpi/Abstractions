@@ -54,10 +54,10 @@ type Words = (&'static Count, &'static mut Text, &'static mut TextColor);
 /// The distance under a mark: its slot, its words and their colour.
 type Distances = (&'static Far, &'static mut Text, &'static mut TextColor);
 
-/// The nodes of the compass.
 /// The parts of a mark's icon that a frame writes.
 type GlyphParts = (&'static Glyph, &'static mut Text, &'static mut TextColor);
 
+/// The nodes of the compass.
 #[derive(SystemParam)]
 pub struct Pins<'w, 's> {
     /// Spawns marks when the pool is too small.

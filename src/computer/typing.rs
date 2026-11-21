@@ -10,11 +10,18 @@ use bevy::ui_widgets::Activate;
 use super::Computer;
 use super::board::Board;
 use super::sift::type_into;
-use super::view::{SEARCH_HINT, SearchBox, SearchText};
+use super::view::{SearchBox, SearchText};
+use crate::settings::{KeyLabels, Labels};
 use crate::ui::Tone;
 
 /// The key that starts a search.
 pub(super) const SEARCH_KEY: KeyCode = KeyCode::Slash;
+
+/// Returns what the search box says while nothing is typed: its name and the key that starts a
+/// search, as `labels` prints it.
+pub(super) fn search_hint(labels: &KeyLabels) -> String {
+    labels.fill("Search ({})", &[SEARCH_KEY])
+}
 
 /// Where the letters typed on the map screen go. While they go anywhere, the keys of the map
 /// (the map key, the engage key, the pin key, the reset key) type instead.
@@ -36,17 +43,17 @@ impl Typing {
     }
 }
 
-/// Applies one pressed key to the search and returns true when the search changed. Escape
-/// clears it and ends the search.
-fn edit(filter: &mut String, key: &Key, typing: &mut Typing) -> bool {
+/// Applies one pressed key and the `text` it types to the search, and returns true when the
+/// search changed. Escape clears it and ends the search. The text is what the layout types,
+/// dead keys and AltGr included, so an accent typed in two presses arrives whole.
+fn edit(filter: &mut String, (key, text): (&Key, &str), typing: &mut Typing) -> bool {
     match key {
         Key::Escape => {
             *typing = Typing::Off;
             !std::mem::take(filter).is_empty()
         }
         Key::Backspace => filter.pop().is_some(),
-        Key::Character(text) => type_into(filter, text),
-        _ => false,
+        _ => type_into(filter, text),
     }
 }
 
@@ -74,7 +81,8 @@ pub(super) fn type_filter(
     for key in typed.read().filter(|key| key.state == ButtonState::Pressed) {
         match (&*typing, &key.logical_key) {
             (Typing::Search, _) | (Typing::Off, Key::Escape) => {
-                changed |= edit(&mut filter, &key.logical_key, &mut typing);
+                let typed = key.text.as_deref().unwrap_or_default();
+                changed |= edit(&mut filter, (&key.logical_key, typed), &mut typing);
             }
             _ => {}
         }
@@ -98,18 +106,19 @@ pub(super) fn on_search(
 }
 
 /// Writes the search box: the search with a caret while it is typed, what was typed after it
-/// ended, or the hint while nothing is.
+/// ended, or the hint with the search key while nothing is.
 pub(super) fn show_search(
     typing: Res<Typing>,
     board: Res<Board>,
+    labels: Labels,
     mut texts: Query<(&mut Text, &mut Tone), With<SearchText>>,
 ) {
-    if !(typing.is_changed() || board.is_changed()) {
+    if !(typing.is_changed() || board.is_changed() || labels.is_changed()) {
         return;
     }
     let (words, tone) = match (&*typing, board.filter.is_empty()) {
         (Typing::Search, _) => (format!("{}_", board.filter), Tone::Plain),
-        (_, true) => (SEARCH_HINT.to_string(), Tone::Muted),
+        (_, true) => (search_hint(&labels.get()), Tone::Muted),
         (_, false) => (board.filter.clone(), Tone::Plain),
     };
     for (mut text, mut shown) in &mut texts {

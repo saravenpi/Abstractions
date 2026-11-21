@@ -4,9 +4,9 @@ use bevy::prelude::KeyCode;
 
 use super::binds::Bind;
 use super::field::{Field, step};
-use super::format::{KEY_CHARS, display, key_name};
 use super::reference::ACTION_CHARS;
-use crate::settings::Settings;
+use super::rig::display;
+use crate::settings::{KeyLabels, LABEL_CHARS, Settings};
 use crate::ui::theme;
 
 /// Every setting that is not a key.
@@ -84,11 +84,19 @@ fn every_value_fits_the_value_column() {
     }
     assert_eq!(widest(Field::Fov), "110 deg".len());
     for key in LONG_KEYS {
-        let name = key_name(key);
-        assert!(name.chars().count() <= KEY_CHARS, "{name}");
+        let name = KeyLabels::default().label(key);
+        assert!(name.chars().count() <= LABEL_CHARS, "{name}");
+        assert!(!name.is_empty(), "{key:?}");
     }
     assert!(PLANNED.iter().all(|name| name.len() <= theme::VALUE_CHARS));
-    assert_eq!(key_name(KeyCode::ControlLeft), "Left Ctrl");
+    assert_eq!(
+        KeyLabels::default().label(KeyCode::ControlLeft),
+        "Left Ctrl"
+    );
+    assert!(
+        LABEL_CHARS + 2 <= theme::VALUE_CHARS,
+        "a key and the mark of a conflict fit"
+    );
 }
 
 /// The value column is wide enough for its character budget in body text, and a settings row

@@ -5,17 +5,38 @@ use bevy::prelude::*;
 
 use super::Workshop;
 use super::bench::Tab;
+use super::keys::{DROP_KEY, MAKE_KEYS, SEARCH_KEY, SORT_KEY};
 use super::layout::LIST;
+use crate::craft::pack::SLOTS;
+use crate::craft::wield::KEYS;
 use crate::fauna::guide::layout::{BETWEEN, CARD, EDGE, FOOT, HEAD};
-use crate::ui::{Blurred, Overlay, text, theme};
+use crate::ui::{Blurred, KeyLine, KeySlot, Overlay, bound, key_text, text, theme};
 
-/// What the footer says on the pack tab.
-pub const PACK_HINTS: &str =
-    "Up/Down choose  / search  F2 sort  Enter hold  1-6 slot  X drop  Tab workshop  I close";
+/// What the footer says on the pack tab, with a `{}` for each key the layout names.
+const PACK_HINTS: &str =
+    "Up/Down choose  {} search  {} sort  Enter hold  {}-{} slot  {} drop  Tab workshop  {} close";
 
-/// What the footer says on the workshop tab.
-pub const MAKE_HINTS: &str =
-    "Left/Right intent  Up/Down proposal  H head  J shaft  T treat  Enter make  Tab pack  I close";
+/// What the footer says on the workshop tab, with a `{}` for each key the layout names.
+const MAKE_HINTS: &str = "Left/Right intent  Up/Down proposal  {} head  {} shaft  {} treat  \
+                          Enter make  Tab pack  {} close";
+
+/// Returns the slots of `keys`, which no setting moves.
+fn fixed(keys: &[KeyCode]) -> impl Iterator<Item = KeySlot> + '_ {
+    keys.iter().copied().map(KeySlot::from)
+}
+
+/// Returns the key hints of `tab`: every key as the layout of the player prints it, and the key
+/// that closes the screen as it is bound.
+pub fn hints(tab: Tab) -> KeyLine {
+    let close = bound(|keys| keys.pack);
+    match tab {
+        Tab::Pack => {
+            let keys = [SEARCH_KEY, SORT_KEY, KEYS[0], KEYS[SLOTS - 1], DROP_KEY];
+            KeyLine::new(PACK_HINTS, fixed(&keys).chain([close]))
+        }
+        Tab::Make => KeyLine::new(MAKE_HINTS, fixed(&MAKE_KEYS).chain([close])),
+    }
+}
 
 /// Marks the name of a tab in the header.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -109,7 +130,7 @@ pub fn spawn(commands: &mut Commands) {
     };
     let hints = (
         Hints,
-        text(PACK_HINTS, theme::FONT_SMALL, theme::TEXT_2),
+        key_text(hints(Tab::Pack), theme::FONT_SMALL, theme::TEXT_2),
         TextLayout::no_wrap(),
     );
     let screen = (Overlay, Blurred, root, BackgroundColor(theme::SCRIM));

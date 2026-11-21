@@ -4,6 +4,8 @@ use bevy::prelude::*;
 
 use super::icon::Icon;
 use super::item::{entry, frame, label};
+use super::key_line::KeyLine;
+use super::keys::key_label;
 use super::style::Tone;
 use super::theme;
 use super::widgets::{caps, text};
@@ -31,7 +33,7 @@ pub fn key_cap(key: impl Into<String>) -> impl Bundle {
 pub fn action(
     symbol: impl Into<Option<Icon>>,
     content: &str,
-    key: &str,
+    key: impl Into<KeyLine>,
     tone: Tone,
 ) -> impl Bundle {
     (
@@ -44,7 +46,7 @@ pub fn action(
         },
         children![
             entry(symbol, content, theme::FONT_SMALL, tone),
-            key_cap(key)
+            key_label(key, theme::FONT_SMALL, Tone::Muted)
         ],
     )
 }

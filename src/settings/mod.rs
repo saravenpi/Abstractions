@@ -5,6 +5,7 @@
 
 mod apply;
 mod gameplay;
+mod layout;
 mod lighting;
 mod model;
 mod prefs;
@@ -13,6 +14,8 @@ mod shadows;
 mod ship_keys;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_keys;
 #[cfg(test)]
 mod tests_lighting;
 #[cfg(test)]
@@ -24,6 +27,9 @@ mod tests_view;
 
 pub use bevy_persistent::Persistent;
 pub use gameplay::Gameplay;
+#[cfg(test)]
+pub(crate) use layout::plugin as key_labels;
+pub use layout::{KeyLabels, LABEL_CHARS, Labels, Layout};
 pub use lighting::{Lighting, Quality};
 pub use model::{Audio, Controls, Graphics, Keymap, Settings, WorldPrefs, render_step};
 pub use servers::{SavedServer, default_servers};
@@ -60,7 +66,8 @@ pub fn load() -> Persistent<Settings> {
     load_from(config_dir().join("settings.toml"))
 }
 
-/// Registers the systems that apply the settings. The resource itself comes from [`load`].
+/// Registers the systems that apply the settings and the labels of the keys. The settings
+/// themselves come from [`load`].
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins((apply::plugin, prefs::plugin));
+    app.add_plugins((apply::plugin, prefs::plugin, layout::plugin));
 }

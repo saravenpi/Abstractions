@@ -15,9 +15,6 @@ use super::map::field;
 use super::open::Computer;
 use crate::ui::{Blurred, Overlay, text, theme};
 
-/// What the search box says while nothing is typed.
-pub(super) const SEARCH_HINT: &str = "Search (/)";
-
 /// Marks the whole screen.
 #[derive(Component)]
 pub(super) struct Panel;

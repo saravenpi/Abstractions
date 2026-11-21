@@ -137,12 +137,15 @@ pub(super) fn on_activate(event: On<Activate>, roles: Query<Role>, mut desk: Des
     }
 }
 
-/// Renames the selected pin on R and removes it on Delete, unless a search or a name is typed.
+/// The key that renames the selected pin.
+pub(super) const RENAME_KEY: KeyCode = KeyCode::KeyR;
+
+/// Renames the selected pin on its key and removes it on Delete, unless a search or a name is typed.
 pub(super) fn pin_keys(keys: Res<ButtonInput<KeyCode>>, mut desk: Desk) {
     if !desk.typing.is_off() {
         return;
     }
-    if keys.just_pressed(KeyCode::KeyR) {
+    if keys.just_pressed(RENAME_KEY) {
         desk.pin(Do::Rename);
     }
     if keys.just_pressed(KeyCode::Delete) {

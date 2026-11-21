@@ -7,8 +7,10 @@
 use bevy::prelude::*;
 use bevy::text::LetterSpacing;
 
+use super::keys::HOME_KEY;
 use super::layout::LEGEND;
-use crate::ui::{text, theme};
+use super::typing::SEARCH_KEY;
+use crate::ui::{KeyLine, bound, key_text, text, theme};
 
 /// The heading of a section of the side panel: its name in white spaced capitals. The section
 /// keeps [`theme::GAP_S`] under it.
@@ -50,10 +52,19 @@ pub fn row_node(height: f32) -> Node {
 }
 
 /// The keys of the map, in small text that wraps to the two lines the foot of the panel keeps.
+/// Each key is named as the layout of the player prints it, and Go and the pin follow their
+/// bindings.
 pub fn legend() -> impl Bundle {
     let node = Node {
         margin: UiRect::top(auto()),
         ..default()
     };
-    (node, text(LEGEND, theme::FONT_SMALL, theme::TEXT))
+    let keys = [
+        bound(|keys| keys.engage),
+        bound(|keys| keys.waypoint),
+        HOME_KEY.into(),
+        SEARCH_KEY.into(),
+    ];
+    let line = KeyLine::new(LEGEND, keys);
+    (node, key_text(line, theme::FONT_SMALL, theme::TEXT))
 }

@@ -98,14 +98,18 @@ fn rename_keeps_the_old_name_on_escape() {
     let mut places = Places::default();
     dropped(&mut places, DVec3::X);
     let mut name = String::from("Camp");
-    assert!(!edit(&mut name, &Key::Character("s".into()), "Pin 1"));
-    assert!(!edit(&mut name, &Key::Backspace, "Pin 1"));
-    assert!(edit(&mut name, &Key::Enter, "Pin 1"));
+    assert!(!edit(
+        &mut name,
+        (&Key::Character("s".into()), "s"),
+        "Pin 1"
+    ));
+    assert!(!edit(&mut name, (&Key::Backspace, ""), "Pin 1"));
+    assert!(edit(&mut name, (&Key::Enter, "\r"), "Pin 1"));
     places.rename(0, &name);
     assert_eq!(places.pins[0].name, "Camp");
     places.rename(0, "   ");
     assert_eq!(places.pins[0].name, "Camp");
-    assert!(edit(&mut name, &Key::Escape, "Pin 1"));
+    assert!(edit(&mut name, (&Key::Escape, ""), "Pin 1"));
     assert_eq!(name, "Pin 1");
     places.rename(0, &name);
     assert_eq!(places.pins[0].name, "Pin 1");

@@ -16,6 +16,8 @@ mod icon;
 #[cfg(test)]
 mod icon_tests;
 mod item;
+mod key_line;
+mod keys;
 mod list;
 pub mod motion;
 #[cfg(test)]
@@ -37,6 +39,8 @@ pub use chrome::{action, footer, heading, key_cap, notice, strip};
 pub use focus::move_focus;
 pub use icon::{ICON_FONT, ICONS_VERSION, Icon, icon, icon_sized, icon_slot};
 pub use item::{entry, frame, item, item_with, label, link, step_button};
+pub use key_line::{KeyLine, KeySlot, bound};
+pub use keys::{key_label, key_text};
 pub use list::Window;
 pub use scroll::{Scroller, scroller};
 pub use sound::Cancels;
@@ -87,6 +91,7 @@ pub(super) fn plugin(app: &mut App) {
                 sound::escaped,
                 scroll::wheel,
                 (sound::moved, scroll::follow_focus).run_if(resource_changed::<InputFocus>),
+                keys::write.run_if(keys::stale),
             ),
         );
 }

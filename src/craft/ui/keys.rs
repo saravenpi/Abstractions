@@ -16,6 +16,24 @@ use crate::craft::matter::Treatment;
 use crate::craft::pack::Pack;
 use crate::craft::wield::pressed;
 
+/// The key that starts a search in the pack.
+pub(super) const SEARCH_KEY: KeyCode = KeyCode::Slash;
+
+/// The key that changes the order of the pack. F2 does too, on a keyboard that has it.
+pub(super) const SORT_KEY: KeyCode = KeyCode::KeyT;
+
+/// The key that drops the selected entry of the pack.
+pub(super) const DROP_KEY: KeyCode = KeyCode::KeyX;
+
+/// The keys of the workshop: the next head, the next shaft, and the treatment of the head.
+pub(super) const MAKE_KEYS: [KeyCode; 3] = [KeyCode::KeyH, KeyCode::KeyJ, KeyCode::KeyT];
+
+/// Returns true when the order of the pack is asked to change: on F2, or on the sort key while
+/// no search is typed, since the key then types its letter.
+fn sorts(keys: &ButtonInput<KeyCode>, typing: bool) -> bool {
+    keys.just_pressed(KeyCode::F2) || (!typing && keys.just_pressed(SORT_KEY))
+}
+
 /// Returns the sum of the moves of the keys pressed this frame among `moves`.
 fn moved(keys: &ButtonInput<KeyCode>, moves: &[(KeyCode, isize)]) -> isize {
     moves
@@ -25,8 +43,8 @@ fn moved(keys: &ButtonInput<KeyCode>, moves: &[(KeyCode, isize)]) -> isize {
         .sum()
 }
 
-/// Starts a search on the slash key, edits it with the keys pressed this frame, ends it on Escape
-/// or Enter, and changes the order on F2. Keys pressed before the screen opened are dropped.
+/// Starts a search on its key, edits it with what the keys pressed this frame type, ends it on
+/// Escape or Enter, and changes the order on F2 or the sort key. Keys pressed before the screen opened are dropped.
 pub(super) fn type_filter(
     mut typed: MessageReader<KeyboardInput>,
     (keys, opened): (Res<ButtonInput<KeyCode>>, Res<State<Workshop>>),
@@ -36,13 +54,13 @@ pub(super) fn type_filter(
         typed.clear();
         return;
     }
-    if !bench.typing && keys.just_pressed(KeyCode::Slash) {
+    if sorts(&keys, bench.typing) {
+        bench.sort = bench.sort.next();
+    }
+    if !bench.typing && keys.just_pressed(SEARCH_KEY) {
         bench.typing = true;
         typed.clear();
         return;
-    }
-    if keys.just_pressed(KeyCode::F2) {
-        bench.sort = bench.sort.next();
     }
     if !bench.typing {
         typed.clear();
@@ -53,8 +71,7 @@ pub(super) fn type_filter(
         match &key.logical_key {
             Key::Escape | Key::Enter => bench.typing = false,
             Key::Backspace => _ = filter.pop(),
-            Key::Character(text) => _ = type_into(&mut filter, text),
-            _ => {}
+            _ => _ = type_into(&mut filter, key.text.as_deref().unwrap_or_default()),
         }
     }
     if filter != bench.filter {
@@ -109,7 +126,7 @@ fn pack_keys(keys: &ButtonInput<KeyCode>, pack: &mut Pack, here: &Here, bench: &
             let slot = pack.bar.held;
             pack.bar.put(slot, id);
         }
-        What::Item(id) if keys.just_pressed(KeyCode::KeyX) => {
+        What::Item(id) if keys.just_pressed(DROP_KEY) => {
             pack.bar.forget(id);
             pack.items.retain(|item| item.id != id);
         }
@@ -118,19 +135,17 @@ fn pack_keys(keys: &ButtonInput<KeyCode>, pack: &mut Pack, here: &Here, bench: &
                 pack.bar.put(slot, id);
             }
         }
-        What::Stack(at) if keys.just_pressed(KeyCode::KeyX) => _ = pack.stacks.remove(at),
+        What::Stack(at) if keys.just_pressed(DROP_KEY) => _ = pack.stacks.remove(at),
         What::Stack(_) => {}
     }
 }
 
 /// Swaps a piece, treats the head material or makes the chosen proposal.
 fn make_keys(keys: &ButtonInput<KeyCode>, pack: &mut Pack, here: &Here, bench: &mut Bench) {
-    bench.swap[0] += usize::from(keys.just_pressed(KeyCode::KeyJ));
-    bench.swap[1] += usize::from(keys.just_pressed(KeyCode::KeyH));
-    let (treat, make) = (
-        keys.just_pressed(KeyCode::KeyT),
-        keys.just_pressed(KeyCode::Enter),
-    );
+    let [head, shaft, treat] = MAKE_KEYS;
+    bench.swap[0] += usize::from(keys.just_pressed(shaft));
+    bench.swap[1] += usize::from(keys.just_pressed(head));
+    let (treat, make) = (keys.just_pressed(treat), keys.just_pressed(KeyCode::Enter));
     if !treat && !make {
         return;
     }

@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use super::Tab;
 use super::field::{Bind, Field};
-use super::rows::{binding, stepper, toggle};
+use super::rows::{binding, reset, stepper, toggle};
 
 /// Marks the container of one tab.
 #[derive(Component)]
@@ -62,7 +62,7 @@ pub fn graphics(active: Tab) -> impl Bundle {
     )
 }
 
-/// Controls tab: the mouse, the camera and the keys used on foot.
+/// Controls tab: the mouse, the camera, the keys used on foot and the row that resets the keys.
 pub fn controls(active: Tab) -> impl Bundle {
     (
         page(Tab::Controls, active),
@@ -75,6 +75,7 @@ pub fn controls(active: Tab) -> impl Bundle {
             Spawn(toggle("Camera auto-follow", Field::AutoFollow)),
             Spawn(stepper("Speed effects", Field::SpeedFx)),
             SpawnIter(Bind::FOOT.into_iter().map(binding)),
+            Spawn(reset()),
         )),
     )
 }
@@ -87,7 +88,7 @@ pub fn ship(active: Tab) -> impl Bundle {
         .filter(move |bind| !shared.contains(bind));
     (
         page(Tab::Ship, active),
-        Children::spawn(SpawnIter(seated.map(binding))),
+        Children::spawn((SpawnIter(seated.map(binding)), Spawn(reset()))),
     )
 }
 

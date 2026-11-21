@@ -6,10 +6,12 @@ use bevy::prelude::*;
 
 use super::Guide;
 use super::layout::{BETWEEN, CARD, EDGE, FOOT, HEAD, LIST, ROW, measure};
-use crate::ui::{Blurred, Overlay, Selected, Tone, frame, label, text, theme};
+use crate::ui::{
+    Blurred, KeyLine, Overlay, Selected, Tone, bound, frame, key_text, label, text, theme,
+};
 
-/// What the footer says.
-pub const HINTS: &str = "Up and Down to choose  -  K or Esc to close";
+/// What the footer says, with a `{}` for the key of the field guide.
+const HINTS: &str = "Up and Down to choose  -  {} or Esc to close";
 
 /// Marks the count line under the title.
 #[derive(Component)]
@@ -153,7 +155,11 @@ pub fn spawn(window: Vec2, commands: &mut Commands) {
     };
     let hints = (
         foot,
-        children![text(HINTS, theme::FONT_SMALL, theme::TEXT_2)],
+        children![key_text(
+            KeyLine::new(HINTS, [bound(|keys| keys.guide)]),
+            theme::FONT_SMALL,
+            theme::TEXT_2
+        )],
     );
     let screen = (Overlay, Blurred, root, BackgroundColor(theme::SCRIM));
     commands.spawn((

@@ -1,11 +1,8 @@
 //! Display text of individual settings.
 
-use bevy::prelude::KeyCode;
-
 use super::field::Field;
 use super::lights;
-use crate::settings::{Graphics, Settings, render_step};
-use crate::ui::theme;
+use crate::settings::{Graphics, KeyLabels, Settings, render_step};
 use crate::view::{ViewMode, ViewPrefs};
 use crate::world::RENDER_STEPS;
 
@@ -68,8 +65,8 @@ fn display_view(view: &ViewPrefs, field: Field) -> Option<String> {
     }
 }
 
-/// Formats the current value of a setting for display.
-pub fn display(settings: &Settings, field: Field) -> String {
+/// Formats the current value of a setting for display. A key is named as `labels` prints it.
+pub fn display(settings: &Settings, labels: &KeyLabels, field: Field) -> String {
     let (c, a) = (&settings.controls, &settings.audio);
     let known = display_graphics(&settings.graphics, field);
     if let Some(shown) = known.or_else(|| display_view(&settings.view, field)) {
@@ -85,39 +82,7 @@ pub fn display(settings: &Settings, field: Field) -> String {
         Field::WorldMarkers => on_off(settings.gameplay.world_markers),
         Field::Blood => on_off(settings.gameplay.blood),
         Field::Hitstop => strength(settings.gameplay.hitstop),
-        Field::Key(bind) => key_name(bind.key(&c.keys)),
+        Field::Key(bind) => labels.label(bind.key(&c.keys)),
         _ => String::new(),
     }
-}
-
-/// Most characters of a key name: the value column less the two of the conflict mark.
-pub const KEY_CHARS: usize = theme::VALUE_CHARS - 2;
-
-/// Readable names of keys whose code name is long or unclear.
-const NAMES: [(KeyCode, &str); 12] = [
-    (KeyCode::ShiftLeft, "Left Shift"),
-    (KeyCode::ShiftRight, "Right Shift"),
-    (KeyCode::ControlLeft, "Left Ctrl"),
-    (KeyCode::ControlRight, "Right Ctrl"),
-    (KeyCode::AltLeft, "Left Alt"),
-    (KeyCode::AltRight, "Right Alt"),
-    (KeyCode::ArrowUp, "Up"),
-    (KeyCode::ArrowDown, "Down"),
-    (KeyCode::ArrowLeft, "Left"),
-    (KeyCode::ArrowRight, "Right"),
-    (KeyCode::Backquote, "`"),
-    (KeyCode::NumpadEnter, "Num Enter"),
-];
-
-/// Returns a short readable name for a key, never longer than the value column holds.
-pub fn key_name(key: KeyCode) -> String {
-    if let Some((_, name)) = NAMES.iter().find(|(code, _)| *code == key) {
-        return name.to_string();
-    }
-    let name = format!("{key:?}");
-    let short = ["Key", "Digit"]
-        .iter()
-        .find_map(|prefix| name.strip_prefix(prefix));
-    let short = short.unwrap_or(&name).replace("Numpad", "Num ");
-    short.chars().take(KEY_CHARS).collect()
 }

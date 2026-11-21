@@ -4,7 +4,8 @@
 use bevy::prelude::*;
 
 use super::course::Act;
-use crate::ui::{Icon, Tip, Tone, entry, frame, key_cap, theme};
+use super::keys::HOME_KEY;
+use crate::ui::{Icon, Tip, Tone, entry, frame, key_label, theme};
 
 /// The Home control: the way home with its key, which flies the ship home as the key does.
 fn home() -> impl Bundle {
@@ -22,7 +23,7 @@ fn home() -> impl Bundle {
         node,
         children![
             entry(Icon::Home, "Home", theme::FONT_SMALL, Tone::Plain),
-            key_cap("H")
+            key_label(HOME_KEY, theme::FONT_SMALL, Tone::Muted)
         ],
     )
 }

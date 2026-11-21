@@ -9,8 +9,7 @@ use super::course::{Course, Words, words};
 use super::fade::gate;
 use super::hints::{Hint, Hinted};
 use crate::computer::{Destination, Keys, RouteStatus};
-use crate::menus::key_name;
-use crate::settings::{Persistent, Settings};
+use crate::settings::{Labels, Persistent, Settings};
 use crate::ship::{Hatch, ShipTelemetry};
 use crate::space::{Location, Travel};
 use crate::ui::{Tone, label, text, theme};
@@ -122,6 +121,7 @@ pub(super) struct Reach<'w> {
     hatch: Option<Res<'w, Hatch>>,
     telemetry: Option<Res<'w, ShipTelemetry>>,
     settings: Res<'w, Persistent<Settings>>,
+    labels: Labels<'w>,
     destination: Res<'w, Destination>,
     route: Res<'w, RouteStatus>,
     universe: Option<Res<'w, Universe>>,
@@ -170,7 +170,7 @@ impl Reach<'_> {
         let seated = travel == Some(Travel::InShip);
         let said = self
             .course()
-            .map(|course| words(&course, seated, &Keys::of(keys)));
+            .map(|course| words(&course, seated, &Keys::of(keys, &self.labels.get())));
         let Words {
             block,
             running,
@@ -194,15 +194,18 @@ type Texts<'w, 's> = (
     Query<'w, 's, &'static mut Text, (With<PromptKey>, Without<PromptAction>)>,
 );
 
-/// Shows the row the line chooses, and rewrites it only when it changes.
+/// Shows the row the line chooses, and rewrites it only when it or the label of its key
+/// changes.
 pub(super) fn update(
     reach: Reach,
-    mut shown: Local<Option<(Option<KeyCode>, String)>>,
+    mut shown: Local<Option<(String, String)>>,
     fresh: Query<(), Added<Prompt>>,
     mut rows: Query<&mut Node, With<Prompt>>,
     (mut actions, mut keys): Texts,
 ) {
-    let wanted = choose(&reach.state());
+    let labels = reach.labels.get();
+    let cap = |key: Option<KeyCode>| key.map_or(String::new(), |key| labels.fill("[{}]", &[key]));
+    let wanted = choose(&reach.state()).map(|(key, words)| (cap(key), words));
     if wanted == *shown && fresh.is_empty() {
         return;
     }
@@ -211,11 +214,10 @@ pub(super) fn update(
     for mut node in &mut rows {
         node.display = display;
     }
-    let Some((key, words)) = wanted else {
+    let Some((cap, words)) = wanted else {
         return;
     };
-    let cap = key.map_or(String::new(), |key| format!("[{}]", key_name(key)));
-    let tone = [theme::WARN, theme::TEXT][usize::from(key.is_some())];
+    let tone = [theme::WARN, theme::TEXT][usize::from(!cap.is_empty())];
     for (mut text, mut color) in &mut actions {
         text.set_if_neq(Text(words.clone()));
         color.set_if_neq(TextColor(tone));

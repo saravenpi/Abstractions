@@ -8,7 +8,9 @@ use bevy::ui_widgets::Button;
 use super::board::VISIBLE_ROWS;
 use super::layout::{GLYPH, ROW};
 use super::section::{heading, heading_row, row_node};
-use super::view::{Cell, Part, SEARCH_HINT, SearchBox, SearchText, Slot, Summary};
+use super::typing::search_hint;
+use super::view::{Cell, Part, SearchBox, SearchText, Slot, Summary};
+use crate::settings::KeyLabels;
 use crate::ui::units::SHORT_NOTE;
 use crate::ui::{Icon, Look, Selected, Tip, Tone, cell, column, frame, icon, label, text, theme};
 
@@ -65,9 +67,10 @@ fn field() -> impl Bundle {
         padding: UiRect::horizontal(px(theme::GAP_S)),
         ..default()
     };
-    let words = label(SEARCH_HINT, theme::FONT_SMALL, Tone::Muted);
+    let hint = search_hint(&KeyLabels::default());
+    let words = label(hint, theme::FONT_SMALL, Tone::Muted);
     let inside = children![(SearchText, words)];
-    (SearchBox, frame(), Tip("Search places [/]"), node, inside)
+    (SearchBox, frame(), Tip("Search places"), node, inside)
 }
 
 /// The heading of the search, with the line that names the results and counts them at its

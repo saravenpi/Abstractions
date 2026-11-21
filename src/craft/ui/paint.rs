@@ -11,13 +11,13 @@ use super::layout::{BAR, NAME, SIGNATURE};
 use super::lines::{Line, arrange, lines};
 use super::offer::offer;
 use super::sheet::sheet;
-use super::view::{Facts, Hints, MAKE_HINTS, PACK_HINTS, Rows, TabName, Tally};
+use super::view::{Facts, Hints, Rows, TabName, Tally, hints};
 use crate::craft::matter::Treatment;
 use crate::craft::pack::{Burden, Pack};
 use crate::craft::wield::Held;
 use crate::fauna::guide::card::Card;
 use crate::fauna::guide::show::{clip, rows};
-use crate::ui::{Selected, Tone, frame, label, text, theme};
+use crate::ui::{KeyLine, Selected, Tone, frame, label, text, theme};
 
 /// Returns the rows of the pack as the bench filters and orders them.
 pub fn arranged(bench: &Bench, pack: &Pack, here: &Here) -> Vec<Line> {
@@ -69,12 +69,13 @@ type Texts<'w, 's> = Query<
         &'static mut Text,
         &'static mut TextColor,
         Option<&'static TabName>,
-        Has<Hints>,
+        Option<&'static mut KeyLine>,
     ),
     Or<(With<TabName>, With<Tally>, With<Hints>)>,
 >;
 
-/// Writes the tab names, the count line and the hints.
+/// Writes the tab names and the count line, and hands the key hints of the open tab to the
+/// footer, which names each key as the layout of the player prints it.
 fn heads(bench: &Bench, count: (usize, usize), burden: &Burden, texts: &mut Texts) {
     let tally = format!(
         "{} of {} entries{} - {:.1} of {:.1} kg{}",
@@ -89,14 +90,14 @@ fn heads(bench: &Bench, count: (usize, usize), burden: &Burden, texts: &mut Text
             (false, true) => String::new(),
         }
     );
-    for (mut words, mut color, tab, hints) in texts.iter_mut() {
-        match (tab, hints) {
+    for (mut words, mut color, tab, keys) in texts.iter_mut() {
+        match (tab, keys) {
             (Some(tab), _) => {
                 let on = tab.0 == bench.tab;
                 color.set_if_neq(TextColor([theme::TEXT_2, theme::TEXT][usize::from(on)]));
             }
-            (None, true) => words.0 = [PACK_HINTS, MAKE_HINTS][bench.tab as usize].to_string(),
-            (None, false) => words.0 = tally.clone(),
+            (None, Some(mut keys)) => *keys = hints(bench.tab),
+            (None, None) => words.0 = tally.clone(),
         }
     }
 }

@@ -5,6 +5,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- The game names every key as your keyboard prints it. Actions are bound to the place of a key, so the hand rests on the same keys on every layout: the keys of walking show W A S D on QWERTY and Z Q S D on AZERTY, with nothing to rebind. The prompts, the first-time hints, the settings, the controls reference, the map legend, the pack and workshop hints, the field guide and the menu shortcuts all follow. The game learns the labels from the keys you press and guesses the rest from the layouts it knows (QWERTY US and UK, AZERTY, QWERTZ, Swiss, Dvorak, Colemak, BEPO, Swedish, Norwegian, Danish, Spanish, Italian). On Linux it reads the layout of the system before the first press; on Windows and macOS the labels are QWERTY until the first press of a letter that tells. A layout switched while playing is followed at the next key that prints something else.
+- Settings > Controls and Settings > Ship have a row "Reset all keys", which puts every key back on its default. A row that waits for a key says "Press a key".
+- The pack sorts on T as well as F2, for keyboards without a function row.
+
+### Changed
+
+- The number row always shows its digits, also on layouts where a digit needs Shift, so hotbar slot 1 is the key marked 1.
+- The search of the map, the search of the pack and the name of a pin take what the keyboard types, so an accent made with a dead key and a sign behind AltGr go in, and a pin name takes spaces.
+- The key hints of the pack, the workshop, the field guide and the map follow a rebound key. They showed the default letter before.
+
 ### Fixed
 
 - Leaving in orbit brings you back in orbit. A ship beside a planet or a moon is saved against that body, so it comes back on the same orbit with the same velocity wherever the body has gone while you were away, also on a server whose clock kept running. Seated in the ship, your place is the place of the ship, in the air, in orbit or in open space, and no longer the last spot you flew over. When a world starts, the ship is checked against the universe: seated inside a planet, under the deck of a gas giant or too close to a star, it is put on a circular orbit just above the air, or outside the warp lock of the star, in the same direction from the centre, and the banner says so. A ship left without you that cannot come back, or that is not on the body you stand on, is landed beside you. On foot you are never left in space or falling where there is no air to glide in: you start on the ground below.

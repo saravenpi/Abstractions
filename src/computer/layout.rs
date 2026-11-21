@@ -108,7 +108,7 @@ pub const PIN_FOOT: f32 = LINE_HEIGHT + theme::GAP_XS + LIST_ROW;
 
 /// What the legend at the foot of the panel says: the keys of the map, in the order of the
 /// table of keys.
-pub const LEGEND: &str = "Click select  G go  B pin  H home  / search  Esc close";
+pub const LEGEND: &str = "Click select  {} go  {} pin  {} home  {} search  Esc close";
 
 /// Lines the legend takes at most.
 pub const LEGEND_LINES: usize = 2;

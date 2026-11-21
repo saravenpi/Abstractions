@@ -18,7 +18,7 @@ use super::scene::Scene;
 use super::sift;
 use super::tab::Tab;
 use super::view::{Action, Cell, Part, Slot, Status, Summary};
-use crate::settings::{Persistent, Settings};
+use crate::settings::{Labels, Persistent, Settings};
 use crate::ui::units::distance_short;
 use crate::ui::{Icon, Tone};
 
@@ -163,11 +163,12 @@ type Written = Or<(With<Status>, With<Action>)>;
 /// distance. Without a course the course line stays empty while a row is selected, since the
 /// card of the row already offers to go there.
 fn status(
-    (time, board, view, settings): (
+    (time, board, view, settings, labels): (
         Res<Time>,
         Res<Board>,
         Res<MapView>,
         Res<Persistent<Settings>>,
+        Labels,
     ),
     scene: Scene,
     (destination, route): Route,
@@ -185,7 +186,7 @@ fn status(
         true => String::new(),
         false => scene.route(destination.0),
     };
-    let keys = Keys::of(&settings.controls.keys);
+    let keys = Keys::of(&settings.controls.keys, &labels.get());
     let name = destination.0.map(|target| target.name(&scene.universe));
     let name = name.filter(|_| running(*route));
     let going = name.map_or(String::new(), |name| hud_line(&name, *route, &keys));

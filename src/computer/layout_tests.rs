@@ -1,12 +1,14 @@
 //! Tests of the measures of the map screen: the lists of the panel, the legend and the grid.
 
 use bevy::math::Vec2;
+use bevy::prelude::KeyCode;
 
 use super::{
     GLYPH, LEGEND, LEGEND_LINES, LINE_CHARS, LIST_ROW, MARGIN, PAD, ROOM, ROW, SECTION_GAP, SIDE,
     listed, measure,
 };
 use crate::map::PINS;
+use crate::settings::{KeyLabels, Layout};
 
 /// The smallest window, 960 by 540 pixels, is laid out as 1280 by 720 once the interface scales
 /// by 0.75, and there the card keeps the room of its compact form, so no pin is listed. A tall
@@ -56,10 +58,15 @@ fn wrapped(words: &str, chars: usize) -> Vec<String> {
 /// table of keys of the map.
 #[test]
 fn the_legend_fits_two_lines() {
+    let keys = [KeyCode::KeyG, KeyCode::KeyB, KeyCode::KeyH, KeyCode::Slash];
+    let legend = KeyLabels::default().fill(LEGEND, &keys);
     assert!(
-        wrapped(LEGEND, LINE_CHARS).len() <= LEGEND_LINES,
-        "{LEGEND}"
+        wrapped(&legend, LINE_CHARS).len() <= LEGEND_LINES,
+        "{legend}"
     );
+    let french = KeyLabels::of(Layout::Azerty).fill(LEGEND, &keys);
+    assert!(french.contains("! search"), "{french}");
+    assert!(wrapped(&french, LINE_CHARS).len() <= LEGEND_LINES);
     for key in [
         "Click select",
         "G go",
@@ -68,7 +75,7 @@ fn the_legend_fits_two_lines() {
         "/ search",
         "Esc close",
     ] {
-        assert!(LEGEND.contains(key), "{key}");
+        assert!(legend.contains(key), "{key}");
     }
     assert_eq!(LINE_CHARS, (ROOM / GLYPH) as usize);
 }

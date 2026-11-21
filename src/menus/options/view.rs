@@ -12,7 +12,7 @@ use super::rebind::Rebinding;
 use super::rows::Value;
 use super::{SettingsTab, Tab, hint, reference};
 use crate::menus::{Menu, Nav};
-use crate::settings::{Persistent, Settings};
+use crate::settings::{Labels, Persistent, Settings};
 use crate::ui::{
     Cancels, Icon, Scroller, Selected, Tone, column, entry, footer, heading, item_with, panel,
     root, scroller, theme,
@@ -127,26 +127,31 @@ fn show_tab(
     }
 }
 
-/// Writes the current setting values into their texts. A value that is off is dimmed, and a key
-/// in conflict with another is followed by an exclamation mark. Does nothing while nothing changed.
+/// Writes the current setting values into their texts. A key is named as the layout of the
+/// player prints it, a value that is off is dimmed, and a key in conflict with another is
+/// followed by an exclamation mark. Does nothing while nothing changed.
 fn show_values(
-    settings: Res<Persistent<Settings>>,
+    (settings, labels): (Res<Persistent<Settings>>, Labels),
     rebinding: Res<Rebinding>,
     fresh: Query<(), Added<Value>>,
     mut values: Query<(&Value, &mut Text, &mut Tone)>,
 ) {
-    if !(settings.is_changed() || rebinding.is_changed() || !fresh.is_empty()) {
+    let stale = settings.is_changed() || labels.is_changed() || rebinding.is_changed();
+    if !(stale || !fresh.is_empty()) {
         return;
     }
-    let keys = &settings.controls.keys;
+    let (keys, labels) = (&settings.controls.keys, labels.get());
     for (value, mut text, mut tone) in &mut values {
         let (shown, wanted) = match value.0 {
-            Field::Key(bind) if rebinding.bind() == Some(bind) => ("...".to_string(), Tone::Plain),
-            Field::Key(bind) if conflicted(keys, bind) => {
-                (format!("{} !", display(&settings, value.0)), Tone::Plain)
+            Field::Key(bind) if rebinding.bind() == Some(bind) => {
+                ("Press a key".to_string(), Tone::Plain)
             }
+            Field::Key(bind) if conflicted(keys, bind) => (
+                format!("{} !", display(&settings, &labels, value.0)),
+                Tone::Plain,
+            ),
             field => {
-                let shown = display(&settings, field);
+                let shown = display(&settings, &labels, field);
                 let tone = if shown == "Off" {
                     Tone::Muted
                 } else {

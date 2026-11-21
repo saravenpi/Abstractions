@@ -5,6 +5,7 @@ mod computer;
 mod flow;
 mod heard;
 mod kept;
+mod layouts;
 mod look;
 mod multiplayer;
 mod password;

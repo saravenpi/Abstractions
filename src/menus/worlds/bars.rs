@@ -38,7 +38,7 @@ pub(super) struct Choice(pub bool);
 
 /// The actions on the selected world, creating a world and going back.
 fn browse() -> impl Bundle {
-    let new_world = action(Icon::Plus, "New world", "N", Tone::Plain);
+    let new_world = action(Icon::Plus, "New world", KeyCode::KeyN, Tone::Plain);
     let back = action(Icon::Back, "Back", "Esc", Tone::Muted);
     (
         Bar::Browse,
@@ -46,18 +46,21 @@ fn browse() -> impl Bundle {
         children![
             (action(Icon::Play, "Play", "Enter", Tone::Accent), Act::Play),
             (
-                action(Icon::Pencil, "Rename", "R", Tone::Plain),
+                action(Icon::Pencil, "Rename", KeyCode::KeyR, Tone::Plain),
                 Act::Rename
             ),
             (
-                action(Icon::Copy, "Duplicate", "C", Tone::Plain),
+                action(Icon::Copy, "Duplicate", KeyCode::KeyC, Tone::Plain),
                 Act::Duplicate
             ),
             (
                 action(Icon::Trash, "Delete", "Del", Tone::Danger),
                 Act::Delete
             ),
-            (action(Icon::Sort, "Sort", "T", Tone::Plain), Act::Sort),
+            (
+                action(Icon::Sort, "Sort", KeyCode::KeyT, Tone::Plain),
+                Act::Sort
+            ),
             (new_world, Nav::To(Menu::NewGame)),
             (back, Nav::Back, Cancels),
         ],

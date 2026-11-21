@@ -9,20 +9,17 @@ use bevy::prelude::*;
 use super::me::Me;
 use super::places::Places;
 use super::side::{
-    NoPlayers, PinActions, PinFar, PinGoKey, PinHint, PinName, PinRow, PlayerDot, PlayerName,
-    PlayerRow, Players,
+    NoPlayers, PinActions, PinFar, PinHint, PinName, PinRow, PlayerDot, PlayerName, PlayerRow,
+    Players,
 };
-use crate::computer::{Board, Keys, Typing};
+use crate::computer::{Board, Typing};
 use crate::menus::{Marker, MarkerKind, Markers};
 use crate::net::Link;
 use crate::saves::Pin;
-use crate::settings::{Persistent, Settings};
+use crate::settings::{Keymap, Labels, Persistent, Settings};
 use crate::ui::Selected;
 use crate::ui::units::distance_short;
 use crate::universe::{BodyId, Universe};
-
-/// What the line under the pins says while there is no pin.
-pub const EMPTY: &str = "No pins yet. Press B or right-click the ground to drop one.";
 
 /// What the line under the pins says while a pin can be selected and none is.
 pub const PICK: &str = "Click a pin to select it.";
@@ -92,10 +89,11 @@ fn shown(places: &Places, typing: &Typing, index: usize) -> Option<String> {
 }
 
 /// Returns the line under the pins for `count` pins and the selected one: the planet it is on
-/// and how far it is when the player is on that planet.
-pub fn words(count: usize, picked: Option<(&str, Option<f64>)>) -> String {
+/// and how far it is when the player is on that planet. With no pin it says how to drop one,
+/// with `key`, the name of the pin key.
+pub fn words(count: usize, picked: Option<(&str, Option<f64>)>, key: &str) -> String {
     match (count, picked) {
-        (0, _) => EMPTY.to_string(),
+        (0, _) => format!("No pins yet. Press {key} or right-click the ground to drop one."),
         (_, None) => PICK.to_string(),
         (_, Some((_, Some(away)))) => format!("Follow it by compass: {}.", distance_short(away)),
         (_, Some((planet, None))) => {
@@ -112,16 +110,29 @@ fn away(pin: &Pin, here: Option<(BodyId, DVec3)>, universe: &Universe) -> Option
     Some((DVec3::from_array(pin.dir) * radius - at).length())
 }
 
-/// What the pins are written from: the pins, the name typed, and where the player is.
+/// What names the pin key: the labels of the keys and the bindings.
+type PinKey<'w> = (Labels<'w>, Option<Res<'w, Persistent<Settings>>>);
+
+/// Returns the name of the pin key, as the layout of the player prints it.
+fn pin_key((labels, settings): &PinKey) -> String {
+    let keys = settings
+        .as_ref()
+        .map_or_else(Keymap::default, |s| s.controls.keys);
+    labels.get().label(keys.waypoint)
+}
+
+/// What the pins are written from: the pins, the name typed, where the player is, and the name
+/// of the pin key.
 type Kept<'w, 's> = (
     Res<'w, Places>,
     Res<'w, Typing>,
     Me<'w, 's>,
     Option<Res<'w, Universe>>,
+    PinKey<'w>,
 );
 
 /// Writes the rows of the pins, how far each is and the line under them.
-fn pins_text((places, typing, me, universe): &Kept, faces: &mut Faces) {
+fn pins_text((places, typing, me, universe, key): &Kept, faces: &mut Faces) {
     for (PinName(index), mut text) in &mut faces.names {
         if let Some(name) = shown(places, typing, *index) {
             text.set_if_neq(Text(name));
@@ -147,6 +158,7 @@ fn pins_text((places, typing, me, universe): &Kept, faces: &mut Faces) {
         picked
             .as_ref()
             .map(|(name, metres)| (name.as_str(), *metres)),
+        &pin_key(key),
     );
     for mut text in &mut faces.hint {
         text.set_if_neq(Text(said.clone()));
@@ -205,18 +217,4 @@ pub(super) fn write(
     }
     pins_text(&kept, &mut faces);
     players_text(&markers.0, &friends, &mut faces);
-}
-
-/// Writes the name of the Go key of the settings beside Go on the buttons of the selected pin.
-pub(super) fn go_key(
-    settings: Option<Res<Persistent<Settings>>>,
-    mut keys: Query<&mut Text, With<PinGoKey>>,
-) {
-    let Some(settings) = settings else {
-        return;
-    };
-    let name = Keys::of(&settings.controls.keys).go;
-    for mut text in &mut keys {
-        text.set_if_neq(Text(name.clone()));
-    }
 }

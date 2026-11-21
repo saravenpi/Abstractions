@@ -66,3 +66,17 @@ pub fn binding(bind: Bind) -> impl Bundle {
         SettingsAction::Rebind(bind),
     )
 }
+
+/// Row that puts every key, on foot and in the ship, back on its default when activated. The
+/// defaults are physical keys, so they are the same places on every keyboard layout.
+pub fn reset() -> impl Bundle {
+    let what = label("To defaults", theme::FONT_BODY, Tone::Plain);
+    (
+        row_with(
+            1,
+            name("Reset all keys"),
+            value_cell(JustifyContent::FlexEnd, what),
+        ),
+        SettingsAction::ResetKeys,
+    )
+}

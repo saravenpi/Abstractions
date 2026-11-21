@@ -100,7 +100,7 @@ fn screen(app: &mut App) {
         (pins::collect, pins_draw::draw),
         (planet::show, planet::picture, planet::say),
         (caption::caption_text, caption::coords_text),
-        (side_show::write, side_show::go_key, deeds::write),
+        (side_show::write, deeds::write),
         fade::fade,
     );
     let after = (MarkerSet::Show, crate::computer::Input);

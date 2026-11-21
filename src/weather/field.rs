@@ -23,8 +23,9 @@ const BROAD: f64 = 1500.0;
 /// cover grid wide on the largest, where the cells grow with the planet.
 const CELLS: (f64, f64) = (1.0, 40.0);
 
-/// Metres per second the broad weather drifts east at the equator, round the spin axis.
-const DRIFT: f64 = 4.0;
+/// Metres per second the broad weather drifts east at the equator, round the spin axis: the
+/// wind the puffs drift by too, so they ride their cover.
+const DRIFT: f64 = super::puff::WIND;
 
 /// Noise level from which a storm starts and the level at which it is full.
 const STORM: (f32, f32) = (0.55, 0.8);

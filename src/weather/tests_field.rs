@@ -5,7 +5,7 @@ use bevy::math::DVec3;
 
 use super::field::{Field, Overhead};
 use super::grid::{Patch, SNAPSHOT};
-use super::puff::{CELL, WRAP, density_at, drift};
+use super::puff::{CELL, density_at};
 use super::rules::{Planet, RAIN, Weather, forecast, under};
 use super::wet::Wet;
 use crate::universe::{EARTH_RADIUS, PlanetRecord, PlanetSpec, Universe};
@@ -129,7 +129,6 @@ fn the_field_never_steps_in_time() {
             assert!((puff(t + FRAME) - puff(t)).abs() < 0.02, "puff at {t}");
         }
     }
-    assert!(drift(WRAP - 1.0).length() < 2048.0 && drift(WRAP + 3.0) == drift(3.0));
 }
 
 /// Walking a hundred metres at a time once round the planet, over the edges of the cube the cover

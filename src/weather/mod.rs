@@ -16,6 +16,8 @@ mod wet;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_drift;
+#[cfg(test)]
 mod tests_field;
 #[cfg(test)]
 mod tests_grid;
@@ -23,6 +25,8 @@ mod tests_grid;
 mod tests_ground;
 #[cfg(test)]
 mod tests_puff;
+#[cfg(test)]
+mod tests_seen;
 #[cfg(test)]
 mod tests_time;
 

@@ -101,13 +101,13 @@ impl Screen {
         let on_panel = |across: f32| Transform {
             translation: RAKE.0 + tilt * Vec3::new(across, 0.012, 0.002),
             rotation: tilt,
-            scale: Vec3::new(0.09, 0.09, 1.0),
+            scale: Vec3::new(0.088, 0.088, 1.0),
         };
         match self {
             Screen::Speed => on_pod(-0.2075),
             Screen::Height => on_pod(0.2075),
-            Screen::Horizon => on_panel(-0.052),
-            Screen::Scope => on_panel(0.052),
+            Screen::Horizon => on_panel(-0.05),
+            Screen::Scope => on_panel(0.05),
         }
     }
 }

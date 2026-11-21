@@ -4,6 +4,7 @@
 use bevy::mesh::VertexAttributeValues;
 use bevy::prelude::*;
 
+use super::parts::parts;
 use super::{Skin, far_mesh, hinges, hull_meshes, lamp_meshes, leg_mesh, material};
 
 /// Returns the positions of a mesh.
@@ -49,8 +50,9 @@ fn ship_is_low_poly_and_has_a_cheap_far_mesh() {
     );
 }
 
-/// The ship is symmetric, sits above its gear feet, and nearly all of the hull faces away from
-/// the line under its middle. The flaps, the pods and the heat shield are on the hull skin.
+/// The ship is symmetric, sits above its gear feet, and every part of it is wound outward: the
+/// volume the triangles of each part enclose is positive, which a part turned inside out, or
+/// one with a face the wrong way round, would not give.
 #[test]
 fn hull_faces_outward() {
     let [hull, _, _, _, _] = hull_meshes();
@@ -65,12 +67,15 @@ fn hull_faces_outward() {
         .fold(f32::MAX, f32::min);
     assert!((feet - super::GEAR[0].y as f32).abs() < 1e-4 && low.y > feet + 0.3);
     assert!(high.x > 3.1 && low.x < -3.1, "{low} {high}");
-    let outward = points.chunks(3).filter(|tri| {
-        let normal = (tri[1] - tri[0]).cross(tri[2] - tri[0]);
-        let mid = (tri[0] + tri[1] + tri[2]) / 3.0;
-        normal.dot(mid - Vec3::new(0.0, -0.4, mid.z)) > 0.0
-    });
-    assert!(outward.count() * 10 >= points.len() / 3 * 9);
+    for part in parts() {
+        let volume: f32 = part
+            .solid
+            .tris
+            .iter()
+            .map(|tri| tri[0].dot(tri[1].cross(tri[2])) / 6.0)
+            .sum();
+        assert!(volume > 0.0, "{} encloses {volume} m3", part.group);
+    }
 }
 
 /// Only the glow is unlit and only the glass is see-through.

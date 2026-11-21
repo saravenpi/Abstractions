@@ -121,17 +121,24 @@ pub struct Bone(pub Seg);
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Skeleton(pub [Entity; SEGS]);
 
+/// What a body is posed from: its pose, its input, its skeleton, and the layers laid over the pose.
+type Posed = (
+    Entity,
+    &'static mut Anim,
+    &'static AvatarPose,
+    &'static Skeleton,
+    (
+        Option<&'static Layer>,
+        Option<&'static Wounded>,
+        Option<&'static Reel>,
+    ),
+);
+
 /// Poses every body from its own input, with the strike layer laid over it: every segment turns in
 /// its joint, nothing else moves.
 pub fn animate(
     (time, own, hurt): (Res<Time>, Own, Option<Res<Condition>>),
-    mut bodies: Query<(
-        Entity,
-        &mut Anim,
-        &AvatarPose,
-        &Skeleton,
-        (Option<&Layer>, Option<&Wounded>, Option<&Reel>),
-    )>,
+    mut bodies: Query<Posed>,
     mut bones: Query<&mut Transform, With<Bone>>,
 ) {
     let dt = time.delta_secs().min(MAX_DT);

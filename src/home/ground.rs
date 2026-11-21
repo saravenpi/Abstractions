@@ -6,6 +6,9 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::tune::{FOOTPRINT, HARSH, HEART, STARTS};
+use crate::climate;
+use crate::universe::MILD;
+use crate::world::globe::MEAN_SEASON;
 use crate::world::{Biome, Globe, Surface, Terrain};
 
 /// Points on each circle the cover and the biome are checked at.
@@ -50,15 +53,29 @@ pub fn fringe(view: &Terrain, at: Vec2) -> f32 {
     cost * f32::from(u8::from(rough))
 }
 
+/// Returns true when life thrives around unit direction `dir` of `globe`: its annual mean air is
+/// between 0 and 35 C and its biome is not a desert, so that plants stand there.
+fn thrives(globe: &Globe, dir: DVec3) -> bool {
+    let air = climate::at(globe.setting(), &globe.spot(dir), MEAN_SEASON);
+    let (cold, hot) = (MILD.0 as f32, MILD.1 as f32);
+    (cold..=hot).contains(&air.temperature) && globe.biome(dir) != Biome::Desert
+}
+
 /// Returns the planet directions around which the base is looked for, in order: the shores of the land at a
-/// mild latitude that the drainage grid of `globe` finds, river mouths first. A planet whose grid finds
-/// none, a dry one, is looked at on a ring instead, see [`spread`].
-pub fn starts(globe: &Globe) -> Vec<DVec3> {
+/// mild latitude that the drainage grid of `globe` finds, river mouths first, those where life thrives
+/// before the others, see [`thrives`]. A planet whose grid finds none, a dry one, is looked at on a ring
+/// instead, see [`spread`]. The climate is read lazily, shore by shore, only as far as the search goes.
+pub fn starts(globe: &Globe) -> impl Iterator<Item = DVec3> + '_ {
     let shores = globe.landfalls();
-    match shores.is_empty() {
+    let shores = match shores.is_empty() {
         true => spread(globe.seed()).collect(),
         false => shores,
-    }
+    };
+    let alive = shores
+        .clone()
+        .into_iter()
+        .filter(|dir| thrives(globe, *dir));
+    alive.chain(shores.into_iter().filter(|dir| !thrives(globe, *dir)))
 }
 
 /// Returns the planet directions of the ring of fallback starts, in order: on a mild northern latitude,

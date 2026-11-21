@@ -56,6 +56,8 @@ Branch `integrate` (worktree `~/Code/Saravenpi/wt-int`) holds everything merged 
 | 21 | Polish the light effects and make them more realistic, from good practices found online, still optimised, with control given to the user for a weak PC | Agent `lightfx` running: research to `handoff/specs/lightfx.md`; exposure that adapts, sky and ground bounce ambient, cloud shadows on the ground, low sun and aerial perspective from the real air, water Fresnel and glint, local lights in physical units; a "Lighting quality" preset plus one switch per costly effect. Low keeps every light and drops only shadows, shafts, occlusion and bloom |
 | 22 | Show units and distances correctly in the UI so everyone understands them easily | Sent to `fx-ui`: one formatting module for the whole UI (metres, km, AU, light-years, each explained once on the screen), a trip time beside every far distance, gravity, air and radius as multiples of home with the SI value beside, plain labels, the same number on the marker and on the map |
 | 23 | From the owner through the session `abstractions-16`: read the architecture review (`handoff/specs/architecture-review.md`, read at `main` e8f0dd4), make a plan, fix what it lists, fold it into this update; reduce the size of the codebase and optimise the game: less redundancy, one way of doing each thing | Planned as its own wave, after every branch in flight is merged and the tests are green, because it moves and deletes code that eleven branches are editing. See section 6c |
+| 24 | Research the skills and tools that give better quality 3D model design, and polish the models of the robot, the companion and the ship, staying on the same idea | Research in `handoff/specs/models.md`. Agent `look-models` (robot and companion) and `look-ship` (ship) work by a turntable of shots, a critique, edits to the existing mesh code, and tests that no part floats in any pose |
+| 25 | Art direction for the robot, the companion and the ship (2026-11-20 night): the pixelated render stays; "low poly with more polygons" for richer shapes, still optimised; stylish futuristic character designs with a hint of space samurai (the owner named Destiny as the mood: an original design, nothing copied), "not samurai either" | Sent to `look-models` and `look-ship`: sleek silhouettes, layered plates over a dark frame, a swept helmet crest, thin emissive accents, one accent colour, same family for the three. More research on character design and on Claude skills for 3D is in `handoff/specs/models.md` |
 
 ## 3. The UI rework: what the owner asked for
 
@@ -87,7 +89,9 @@ Things to fix:
 
 | Question | Default if no answer |
 | --- | --- |
-| Exclude tidally locked planets (one side in permanent night) from the home choice? One line in `landable` (`src/universe/home.rs`), but it is a special case | Leave the rule as is, say it in the changelog. One test depends on it: `computer::tests_climate::the_card_writes_the_span_of_temperatures` |
+| Exclude tidally locked planets from the home choice? | DECIDED 2026-11-20 night: no, they stay ("I want realism"). About 6 homes in 10 are locked worlds of red dwarfs, and more once the thermostat is physical |
+| The climate thermostat warms far planets beyond the habitable zone (up to 3 times the steady greenhouse) | DECIDED 2026-11-20 night: realism. Cap it by physics (no liquid water beyond the outer edge of the zone). Agent `home-life` |
+| The old world of the public server `space.facile.studio` | DECIDED 2026-11-20 night: it may be overwritten at the update |
 | Harvest tool: pick the best tool in the pack, or use the one in hand? | Keep the one in hand |
 | Carry limit: 25 kg at 9.81 m/s² | Keep |
 | Wake V floored at 4 degrees (physical wedge at flight speed: 1 to 2 degrees) | Keep |
@@ -161,6 +165,14 @@ Second run (ground shader fixed, shots in `~/.cache/abstractions-targets/shots2/
 - The landing pad is a dark slab with orange holes (18-tp-ship-pad): terrain pokes through the pad: `look-ground`.
 - HUD: "[F] Board" is drawn under the hotbar, a "Home" label hangs outside the compass, markers overlap at the screen edge: agent `look-hud`.
 - The lead's run was terminated mid-tour by another agent's cleanup; agents were told to kill only their own PID.
+
+## 6e. Final instruction before the owner slept (2026-11-20, about 22:00)
+
+"Add that to the next release, review well, polish well, and release the new version as soon as you have finished everything. Review everything properly so it is clean, polished, optimised and beautiful. Tomorrow morning I want to be able to play and everything must be clean." The redesign of the robot, the companion and the ship (request 25) is part of this release. The lead ships when done, without asking again.
+
+## 6f. Multiplayer must be ready in the morning (owner, 2026-11-20 night)
+
+The owner told friends the new version is out tomorrow morning and that they will play together. So the release includes: multiplayer proven with real processes (agent `mp-check`: dedicated server plus bot plus two real clients, hosting from the game, everything of request 14 seen on both screens, a soak with 8 bots, the server starting on a 0.10 world file), and after the tag the public server redeployed on the new image. The public server is the Dokploy compose "Space server" (raw compose pinned to `ghcr.io/saravenpi/abstractions-server:0.10.0`, world in the named volume `space-data`, UDP 24650, `space.facile.studio`): after the release, set the tag to the new version and deploy, keep the volume (losing it changes the server key and every player's game then refuses the server), then check from outside that it answers. 0.10 clients cannot join a 0.11 server: friends must update.
 
 ## 7. Order of the remaining work
 

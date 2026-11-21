@@ -38,17 +38,38 @@ pub struct Target {
     pub index: usize,
 }
 
-/// Returns the part of a body among `parts` that the line from `from` along `ahead` passes closest
-/// to, within [`CUT_RANGE`], when `dead` says its animal is dead: the part and its animal.
-fn aimed(parts: &Parts, dead: &Carcasses, (from, ahead): (Vec3, Vec3)) -> Option<(Entity, Entity)> {
+/// Returns how far off the line of sight from `from` along the unit `ahead` a part centred at
+/// `centre`, `size` metres across from its middle, lies, when it is ahead of the eyes and within
+/// [`CUT_RANGE`] of the robot at `robot`, or of the eyes with no robot: in third person the camera
+/// stands metres behind the robot, and the reach is the robot's.
+pub fn sighted(
+    centre: Vec3,
+    size: f32,
+    (from, ahead): (Vec3, Vec3),
+    robot: Option<Vec3>,
+) -> Option<f32> {
+    let rel = centre - from;
+    let along = rel.dot(ahead);
+    let off = (rel - ahead * along).length();
+    let near = robot.map_or(along <= CUT_RANGE, |robot| {
+        robot.distance(centre) <= CUT_RANGE + size
+    });
+    (along >= 0.0 && near && off <= size + CUT_SLACK).then_some(off)
+}
+
+/// Returns the part of a carcass nearest the line of sight `view` within reach of the robot at
+/// `robot`, with the carcass.
+fn aimed(
+    parts: &Parts,
+    dead: &Carcasses,
+    view: (Vec3, Vec3),
+    robot: Option<Vec3>,
+) -> Option<(Entity, Entity)> {
     let near = parts.iter().filter_map(|(part, placed, aabb, of)| {
         dead.contains(of.parent()).then_some(())?;
-        let rel = placed.transform_point(Vec3::from(aabb.center)) - from;
-        let along = rel.dot(ahead);
-        let off = (rel - ahead * along).length();
+        let centre = placed.transform_point(Vec3::from(aabb.center));
         let size = Vec3::from(aabb.half_extents).length() * placed.scale().max_element();
-        let seen = (0.0..=CUT_RANGE).contains(&along) && off <= size + CUT_SLACK;
-        seen.then_some((off, part, of.parent()))
+        Some((sighted(centre, size, view, robot)?, part, of.parent()))
     });
     near.min_by(|a, b| a.0.total_cmp(&b.0))
         .map(|(_, p, b)| (p, b))
@@ -64,12 +85,12 @@ fn worth(species: &Species, index: usize) -> bool {
 /// Returns the part of a carcass that an eye at `eye` looks at and that is worth cutting, among the
 /// animals of `life`.
 pub fn target(
-    eye: &GlobalTransform,
+    (eye, robot): (&GlobalTransform, Option<Vec3>),
     (parts, dead): (&Parts, &Carcasses),
     life: &Life,
 ) -> Option<Target> {
     let view = (eye.translation(), eye.forward().as_vec3());
-    let (part, body) = aimed(parts, dead, view)?;
+    let (part, body) = aimed(parts, dead, view, robot)?;
     let beast = dead.get(body).ok()?;
     let index = beast.parts.iter().position(|p| *p == Some(part))?;
     let species = life.species.get(usize::from(beast.index))?;

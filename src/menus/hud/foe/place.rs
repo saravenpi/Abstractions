@@ -43,19 +43,19 @@ pub fn hung(pos: Vec2, screen: Vec2) -> (f32, f32) {
     (step(left), step(bottom))
 }
 
-/// The placed bounds of the parts of the animals, with the animal of each.
+/// The placed bounds of the parts of the animals.
 pub(super) type Bounds<'w, 's> =
-    Query<'w, 's, (&'static GlobalTransform, &'static Aabb, &'static ChildOf), With<Part>>;
+    Query<'w, 's, (&'static GlobalTransform, &'static Aabb), With<Part>>;
 
-/// Returns the top of the animal `root`, from the bounds of its parts among `parts`, raised by
-/// [`HEAD`] along its up.
-pub(super) fn top(root: (Entity, &GlobalTransform), parts: &Bounds) -> Vec3 {
-    let (animal, placed) = root;
+/// Returns the top of an animal placed at `placed` whose parts are `limbs`, from their bounds in
+/// `parts`, raised by [`HEAD`] along its up. Only its own parts are read.
+pub(super) fn top(placed: &GlobalTransform, limbs: &[Option<Entity>], parts: &Bounds) -> Vec3 {
     let (at, up) = (placed.translation(), placed.up().as_vec3());
-    let height = parts
+    let height = limbs
         .iter()
-        .filter(|(_, _, of)| of.parent() == animal)
-        .map(|(part, aabb, _)| {
+        .flatten()
+        .filter_map(|limb| parts.get(*limb).ok())
+        .map(|(part, aabb)| {
             let centre = part.transform_point(Vec3::from(aabb.center));
             let reach = (Vec3::from(aabb.half_extents) * part.scale().abs()).max_element();
             up.dot(centre - at) + reach

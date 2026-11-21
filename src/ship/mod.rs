@@ -88,6 +88,7 @@ use crate::home::Base;
 use crate::render::Warm;
 use crate::saves::unplayed;
 use crate::screens::{Screen, playing};
+use crate::space::FrameSet;
 use crate::view::ViewSet;
 use crate::world::SpawnPoint;
 
@@ -161,12 +162,7 @@ fn flight(app: &mut App) {
 
 /// Registers the systems that place the ship and report on it.
 fn display(app: &mut App) {
-    let place = (
-        place::track,
-        place::moor,
-        place::pose,
-        view::carry.run_if(seated),
-    );
+    let place = (place::track, place::pose, view::carry.run_if(seated));
     let report = (
         (
             telemetry::update,
@@ -186,7 +182,15 @@ fn display(app: &mut App) {
             report.in_set(ShipSet::Report),
         ),
     )
-    .configure_sets(Update, ViewSet::Rig.after(ShipSet::Place));
+    .configure_sets(Update, ViewSet::Rig.after(ShipSet::Place))
+    .add_systems(
+        PostUpdate,
+        (place::moor, place::pose, view::carry.run_if(seated))
+            .chain()
+            .before(FrameSet::Sync)
+            .run_if(playing)
+            .run_if(any_with_component::<Ship>),
+    );
 }
 
 /// Registers the ship resources, messages and systems. Calm water mirrors the ship.

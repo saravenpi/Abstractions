@@ -5,7 +5,7 @@ use abstractions::world::{BladeMaterial, GroundMaterial, Sited};
 use avian3d::prelude::RigidBody;
 use bevy::diagnostic::DiagnosticsStore;
 use bevy::ecs::change_detection::Tick;
-use bevy::light::CascadeShadowConfig;
+use bevy::light::{CascadeShadowConfig, NotShadowCaster};
 
 use super::*;
 
@@ -167,6 +167,10 @@ pub fn log_perf(world: &mut World, phase: &str, (frame, last): (u32, bool)) {
     let texts =
         world.query::<&Text>().iter(world).count() + world.query::<&TextSpan>().iter(world).count();
     let shine = lights(world);
+    let ranges = world
+        .get_resource::<RangeTally>()
+        .map_or(0, |tally| tally.0.len());
+    let casting = world.query::<&NotShadowCaster>().iter(world).count();
     let (written, moved) = {
         let mut perf = world.resource_mut::<Perf>();
         (
@@ -177,7 +181,8 @@ pub fn log_perf(world: &mut World, phase: &str, (frame, last): (u32, bool)) {
     info!(
         "PROBE perf {phase} f{frame}: frame mean {mean:.1} ms max {max:.1} ms over {} frames; {entities} entities; \
          {meshes} meshes, {} in view, {} triangles in view; coarse {} ({} tris), chunks {} ({} tris), grass {} ({} tris) \
-         in view; lights {shine}; ui {ui} nodes, {texts} texts, {written} text writes and {moved} node writes",
+         in view; lights {shine}; ui {ui} nodes, {texts} texts, {written} text writes and {moved} node writes; \
+         {ranges} distinct visibility ranges in the run; {casting} meshes without shadow",
         perf.len(),
         all.count,
         all.triangles,

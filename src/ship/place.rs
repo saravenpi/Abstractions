@@ -40,7 +40,13 @@ pub struct Berth<'w> {
 }
 
 /// Keeps the render anchor at the ship while the player is seated, and carries the free
-/// entities of a planet along when its tangent frame moves.
+/// entities of a planet along when its tangent frame moves. The seated body is placed again
+/// after it, under the new anchor.
+///
+/// It runs at the end of the frame, before the poses are copied and propagated: every system of
+/// `Update` reads one anchor with the transforms and global transforms made under it. Moved in
+/// `Update`, it left the systems after it reading the new anchor against transforms of the old,
+/// off by a whole rebase for a frame, which made the ground, the sky and the map flash.
 pub fn moor(
     berth: Berth,
     mut anchor: ResMut<Anchor>,

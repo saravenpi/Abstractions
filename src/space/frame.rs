@@ -3,6 +3,9 @@
 use avian3d::interpolation::TransformEasingSystems;
 use bevy::prelude::*;
 use bevy::transform::TransformSystems;
+use bevy::transform::systems::{
+    mark_dirty_trees, propagate_parent_transforms, sync_simple_transforms,
+};
 
 use super::rebase::rebase_on_foot;
 use super::{Anchor, Location, Placed, Travel};
@@ -47,7 +50,9 @@ pub(super) fn sync_placed(
     }
 }
 
-/// Registers the frame systems.
+/// Registers the frame systems. After a rebase on foot the global transforms are propagated at
+/// once, so the systems of `Update` read the new anchor with global transforms made under it,
+/// not those of the frame before, off by the whole rebase.
 pub(super) fn plugin(app: &mut App) {
     let rebase = FrameSet::Rebase
         .after(TransformEasingSystems::Reset)
@@ -64,4 +69,17 @@ pub(super) fn plugin(app: &mut App) {
                 .in_set(FrameSet::Rebase),
         )
         .add_systems(PostUpdate, sync_placed.in_set(FrameSet::Sync));
+    let propagate = (
+        mark_dirty_trees,
+        propagate_parent_transforms,
+        sync_simple_transforms,
+    );
+    app.add_systems(
+        FixedFirst,
+        propagate
+            .chain()
+            .after(FrameSet::Rebase)
+            .before(TransformEasingSystems::UpdateStart)
+            .run_if(resource_exists_and_changed::<Anchor>),
+    );
 }

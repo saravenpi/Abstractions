@@ -1,11 +1,9 @@
-//! Tests of which animals carry a strip: one near the crosshair within range does, one beyond the
-//! range or off the cone does not unless it stands close by, never more than two strips show, and
-//! each fades in and out.
+//! Tests of the animal looked at: one near the crosshair within range is, one beyond the range or
+//! off the cone is not unless it stands close by.
 
 use bevy::prelude::*;
 
-use super::pick::{CONE, NEAR, RANGE, labels, looked};
-use super::{FADE, Fade, SLOTS, faded};
+use super::pick::{CONE, NEAR, RANGE, looked};
 
 /// Returns the entity of index `n`.
 fn animal(n: u32) -> Entity {
@@ -28,36 +26,4 @@ fn the_looked_at_animal_is_near_the_crosshair() {
     assert_eq!(one(at(NEAR * 0.6, -NEAR * 0.5)), Some(animal(0)));
     let many = [(animal(1), at(3.0, -4.0)), (animal(2), at(0.2, -10.0))];
     assert_eq!(looked(many.into_iter(), SIGHT), Some(animal(2)));
-}
-
-/// The fought animal keeps its strip and the looked-at one takes the other, never the same twice
-/// and never more than two.
-#[test]
-fn never_more_than_two_strips() {
-    let shown = labels(Some(animal(1)), Some(animal(2)));
-    assert_eq!(shown, [Some(animal(1)), Some(animal(2))]);
-    assert_eq!(
-        labels(Some(animal(1)), Some(animal(1))),
-        [Some(animal(1)), None]
-    );
-    assert_eq!(shown.len(), SLOTS);
-    const { assert!(SLOTS <= 2) };
-}
-
-/// A strip fades in over the fade time, keeps its animal while it fades out, and lets it go once
-/// gone.
-#[test]
-fn a_strip_fades_in_and_out() {
-    let dt = FADE / 4.0;
-    let mut fade = Fade::default();
-    for _ in 0..4 {
-        fade = faded(fade, Some(animal(3)), dt);
-    }
-    assert!((fade.alpha - 1.0).abs() < 1e-5 && fade.animal == Some(animal(3)));
-    fade = faded(fade, None, dt);
-    assert!(fade.alpha < 1.0 && fade.animal == Some(animal(3)));
-    for _ in 0..4 {
-        fade = faded(fade, None, dt);
-    }
-    assert_eq!(fade, Fade::default());
 }

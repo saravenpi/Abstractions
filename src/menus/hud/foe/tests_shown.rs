@@ -9,11 +9,20 @@ use bevy::time::TimeUpdateStrategy;
 
 use super::super::context::{Context, Element, Where};
 use super::super::fade::{Gate, step};
-use super::{Foe, Strips, draw, layer};
+use super::draw::{Strips, write};
+use super::{Foe, Label, SLOTS, layer};
 
-/// Shows a strip in slot 1 over an animal looked at, as the strips do with nothing in the hands.
+/// Shows a strip in slot 1 over an animal in view, as the strips do with nothing in the hands.
 fn looked_at(mut strips: Strips) {
-    draw(&mut strips, 1, Some((0.5, "grazer", (-64.0, 40.0))), 1.0);
+    let mut labels = [None; SLOTS];
+    labels[1] = Some(Label {
+        species: 0,
+        health: 0.5,
+        at: (-64.0, 40.0),
+        alpha: 1.0,
+        named: true,
+    });
+    write(&mut strips, &labels, None);
 }
 
 /// Returns an app on foot with the layer of the strips, its gate opening with the context and a

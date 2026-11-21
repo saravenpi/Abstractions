@@ -1,5 +1,5 @@
-//! Which animals carry a strip: the one fought while the fight lasts, and one more, the living
-//! animal the crosshair points at within a short range, or else one standing close by.
+//! The animal the robot attends to: the living animal the crosshair points at within a short range,
+//! or else one standing close by. Its strip, and the one of the animal fought, show brightest.
 
 use bevy::prelude::*;
 
@@ -32,10 +32,4 @@ pub fn looked(
         .filter_map(|(animal, at)| Some((score(at)?, animal)))
         .min_by(|a, b| a.0.total_cmp(&b.0))
         .map(|(_, animal)| animal)
-}
-
-/// Returns the animals that carry a strip: the one `fought`, then the one `looked` at when it is
-/// another. Never more than two.
-pub fn labels(fought: Option<Entity>, looked: Option<Entity>) -> [Option<Entity>; 2] {
-    [fought, looked.filter(|animal| Some(*animal) != fought)]
 }

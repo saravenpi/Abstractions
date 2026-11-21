@@ -21,18 +21,18 @@ fn the_reach_follows_the_inverse_square_law() {
     const { assert!(LOCAL_FLOOR_LUX < MOON_SHADOW_LUX) };
 }
 
-/// Every reach ends its last cascade where it says, starts with the 12 m cascade of the robot,
-/// and its bounds rise by a constant ratio of at most 4.6.
+/// Every reach ends its last cascade where it says, starts with the 12 m cascade of the robot on
+/// High with bounds rising by at most 4.6, and drops one cascade on Low detail.
 #[test]
 fn the_cascades_end_at_the_reach() {
     let counts = [
-        (ShadowReach::Near, 2),
-        (ShadowReach::Normal, 3),
-        (ShadowReach::Far, 4),
+        (ShadowReach::Near, 2, 1),
+        (ShadowReach::Normal, 3, 2),
+        (ShadowReach::Far, 4, 3),
     ];
-    for (reach, count) in counts {
-        let CascadeShadowConfig { bounds, .. } = cascades(reach);
-        assert_eq!((bounds.len(), reach.cascades()), (count, count));
+    for (reach, high, low) in counts {
+        let CascadeShadowConfig { bounds, .. } = cascades(reach, ShadowDetail::High);
+        assert_eq!((bounds.len(), reach.cascades()), (high, high));
         assert!((bounds[bounds.len() - 1] - reach.metres()).abs() < 1.0e-3);
         assert!((bounds[0] - FIRST_BOUND).abs() < 1.0e-3);
         assert!(
@@ -40,8 +40,14 @@ fn the_cascades_end_at_the_reach() {
                 .windows(2)
                 .all(|pair| pair[1] > pair[0] && pair[1] < 4.6 * pair[0])
         );
+        let low_bounds = cascades(reach, ShadowDetail::Low).bounds;
+        assert_eq!(
+            (low_bounds.len(), reach.cascades_for(ShadowDetail::Low)),
+            (low, low)
+        );
+        assert!((low_bounds[low_bounds.len() - 1] - reach.metres()).abs() < 1.0e-3);
     }
-    let normal = cascades(ShadowReach::Normal).bounds;
+    let normal = cascades(ShadowReach::Normal, ShadowDetail::High).bounds;
     assert!((normal[1] - 36.3).abs() < 0.1, "{normal:?}");
 }
 

@@ -81,7 +81,8 @@ impl Aim {
 
 /// Spawns the sun and the moon when the world starts loading.
 fn spawn_lights(mut commands: Commands, settings: Res<Persistent<Settings>>) {
-    let reach = settings.graphics.lighting.shadow_reach;
+    let own = &settings.graphics.lighting;
+    let config = cascades(own.shadow_reach, own.shadow_detail);
     let light = DirectionalLight {
         shadow_maps_enabled: false,
         ..default()
@@ -89,7 +90,7 @@ fn spawn_lights(mut commands: Commands, settings: Res<Persistent<Settings>>) {
     commands.spawn((
         Sun,
         light,
-        cascades(reach),
+        config.clone(),
         Transform::default(),
         Visibility::default(),
         DespawnOnEnter(Screen::Title),
@@ -97,7 +98,7 @@ fn spawn_lights(mut commands: Commands, settings: Res<Persistent<Settings>>) {
     commands.spawn((
         Moon,
         light,
-        cascades(reach),
+        config,
         Transform::default(),
         Visibility::default(),
         DespawnOnEnter(Screen::Title),

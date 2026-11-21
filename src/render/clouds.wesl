@@ -78,7 +78,10 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     var col = shaded(base, cloud, facing > 0.0, clouds.ambient.rgb);
     col = col * through + fog.base_color.rgb * (vec3<f32>(1.0) - through);
     if (whiteout > 0.0) {
-        let near = around(-to_eye / max(dist, 0.001), to_fixed, cover);
+        var near = 0.5;
+        if (clouds.slice.x == 0.0) {
+            near = around(-to_eye / max(dist, 0.001), to_fixed, cover);
+        }
         let veil = whiteout * mix(0.55, 1.0, near);
         col = mix(col, clouds.color.rgb * mix(0.8, 1.04, near), veil);
     }

@@ -1,7 +1,8 @@
 //! Tests of the depth of the cloud band: the slices the layer draws and the volume the whiteout
 //! and the fly-through read are one profile, and there is no volume where no slice is drawn.
 
-use super::puff::{SLICES, SOFT, drawn_at, reached, slice, volume};
+use super::puff::{SLICES, SOFT, active_slices, drawn_at, reached, slice, volume};
+use crate::settings::Quality;
 
 /// The shader that draws the slices.
 const SHADER: &str = include_str!("../render/clouds.wesl");
@@ -48,4 +49,16 @@ fn there_is_no_volume_where_no_slice_is_drawn() {
         });
         assert_eq!(highest, top, "{body}");
     }
+}
+
+/// Low and Medium draw only the base cloud shell, High and Ultra draw all slices, and the
+/// shader restricts `around` to slice 0.
+#[test]
+fn quality_scales_active_slices_and_guards_around() {
+    assert_eq!(active_slices(Quality::Low), 1);
+    assert_eq!(active_slices(Quality::Medium), 1);
+    assert_eq!(active_slices(Quality::High), SLICES);
+    assert_eq!(active_slices(Quality::Ultra), SLICES);
+    assert_eq!(active_slices(Quality::Custom), SLICES);
+    assert!(SHADER.contains("if (clouds.slice.x == 0.0)"));
 }

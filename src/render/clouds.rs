@@ -49,7 +49,7 @@ use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
 use crate::space::Clock;
 pub(super) use crate::weather::CELL;
-use crate::weather::{SLICES, Weather, slice};
+use crate::weather::{SLICES, Weather, active_slices, slice};
 
 /// Marks the cloud shell.
 #[derive(Component, Debug, Clone, Copy)]
@@ -161,11 +161,12 @@ pub(super) fn drift(
     let center = vantage
         .observer
         .place(vantage.observer.center, vantage.camera);
+    let active = active_slices(inputs.settings.graphics.quality());
     let mut ready = None;
     for (k, mesh, mut transform, mut global, mut visibility, handle) in &mut shells {
         let sight = (vantage.radius, vantage.altitude, at(1.0));
-        let shown =
-            *ready.get_or_insert_with(|| wanted && assets.remesh(&mesh.0, sight, vantage.up));
+        let shown = k.0 < active
+            && *ready.get_or_insert_with(|| wanted && assets.remesh(&mesh.0, sight, vantage.up));
         let radius = at(slice(k.0));
         let pose = Transform::from_translation(center).with_scale(Vec3::splat(radius));
         super::pin(pose, &mut transform, &mut global);

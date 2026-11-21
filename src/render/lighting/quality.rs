@@ -6,15 +6,16 @@ use bevy::prelude::*;
 
 use super::tune::{FIRST_BOUND, OVERLAP};
 use super::{Moon, Sun};
-use crate::settings::{Persistent, Settings, ShadowReach};
+use crate::settings::{Persistent, Settings, ShadowDetail, ShadowReach};
 
-/// Returns the cascade setup for a shadow `reach`: [`ShadowReach::cascades`] cascades out to its
-/// distance, the first ending at [`FIRST_BOUND`] and the others spaced by a constant ratio. The
-/// ground shader fades the last fifth of the last cascade out, so the end of the reach shows no line.
-pub fn cascades(reach: ShadowReach) -> CascadeShadowConfig {
+/// Returns the cascade setup for a shadow `reach` and `detail`: [`ShadowReach::cascades_for`]
+/// cascades out to its distance, the first ending at [`FIRST_BOUND`] when there are several and
+/// the others spaced by a constant ratio. The ground shader fades the last fifth of the last
+/// cascade out, so the end of the reach shows no line.
+pub fn cascades(reach: ShadowReach, detail: ShadowDetail) -> CascadeShadowConfig {
     let far = reach.metres();
     CascadeShadowConfigBuilder {
-        num_cascades: reach.cascades(),
+        num_cascades: reach.cascades_for(detail),
         minimum_distance: 0.1,
         first_cascade_far_bound: FIRST_BOUND,
         maximum_distance: far,
@@ -40,7 +41,7 @@ fn apply(
     if map.size != size {
         map.size = size;
     }
-    let wanted = cascades(own.shadow_reach);
+    let wanted = cascades(own.shadow_reach, own.shadow_detail);
     for mut config in &mut lights {
         if config.bounds != wanted.bounds {
             *config = wanted.clone();

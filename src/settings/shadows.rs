@@ -60,6 +60,16 @@ impl ShadowReach {
         }
     }
 
+    /// Returns the number of shadow cascades for this reach at shadow `detail`. Low detail drops
+    /// one cascade (1 on Near, 2 on Normal, 3 on Far) to cut shadow pass cost; High keeps
+    /// [`Self::cascades`].
+    pub fn cascades_for(self, detail: ShadowDetail) -> usize {
+        match detail {
+            ShadowDetail::Low => (self.cascades() - 1).max(1),
+            ShadowDetail::High => self.cascades(),
+        }
+    }
+
     /// Returns the name shown in the menu.
     pub fn name(self) -> &'static str {
         match self {

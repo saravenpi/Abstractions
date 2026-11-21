@@ -10,9 +10,19 @@
 //! slice is drawn.
 
 use crate::render::smoothstep;
+use crate::settings::Quality;
 
 /// Shells the cloud band is drawn with, the lowest at its base and the highest at its top.
 pub const SLICES: u32 = 3;
+
+/// Returns how many cloud shells are drawn for `quality`: only the base shell on Low and
+/// Medium, and all [`SLICES`] shells on High, Ultra and Custom.
+pub fn active_slices(quality: Quality) -> u32 {
+    match quality {
+        Quality::Low | Quality::Medium => 1,
+        Quality::High | Quality::Ultra | Quality::Custom => SLICES,
+    }
+}
 
 /// Share of the depth of the band over which the volume eases in under the base and out over
 /// the highest slice a column reaches: a few tens of metres. Unit: share of the band.

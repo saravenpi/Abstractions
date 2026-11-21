@@ -20,7 +20,7 @@ use bevy::math::{Mat3, Vec3, Vec4};
 
 #[cfg(test)]
 pub use graze::{CLAMP, CUT, GRAZE, MEAN, SPREAD, TAIL, TALL, drawn};
-pub use layer::{SLICES, slice, volume};
+pub use layer::{SLICES, active_slices, slice, volume};
 #[cfg(test)]
 pub use layer::{SOFT, drawn_at, reached};
 pub use seen::density_at;

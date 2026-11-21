@@ -19,6 +19,7 @@ fn spot(dir: DVec3) -> Pin {
         name: String::new(),
         body: Universe::new(3).home(),
         dir: dir.to_array(),
+        height: None,
     }
 }
 

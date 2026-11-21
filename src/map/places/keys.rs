@@ -61,7 +61,7 @@ pub(in crate::map) fn leading(places: Res<Places>) -> bool {
 /// Returns true when the player at the point `at` of `body`, a body `radius` metres wide, is
 /// within [`HERE`] metres of `pin`.
 pub fn reached(pin: &Pin, (body, at): (BodyId, DVec3), radius: f64) -> bool {
-    pin.body == body && (at - DVec3::from_array(pin.dir) * radius).length() <= HERE
+    pin.body == body && (at - pin.point(radius)).length() <= HERE
 }
 
 /// Lets go of the active pin once the player is within [`HERE`] metres of it. The pin stays,

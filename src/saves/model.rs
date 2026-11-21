@@ -137,6 +137,17 @@ pub struct Pin {
     pub body: BodyId,
     /// Direction from the body centre in the frame that turns with the body.
     pub dir: [f64; 3],
+    /// Height in metres above sea level of the ground or the sea the pin lies on, once the
+    /// ground of its body was read. A pin of an older file, or of another player, has none yet.
+    pub height: Option<f64>,
+}
+
+impl Pin {
+    /// Returns where the pin lies in metres from the centre of its body, a body `radius` metres
+    /// in radius: on its ground, or at sea level while its height is not known.
+    pub fn point(&self, radius: f64) -> DVec3 {
+        DVec3::from_array(self.dir) * (radius + self.height.unwrap_or(0.0))
+    }
 }
 
 impl Default for WorldSave {

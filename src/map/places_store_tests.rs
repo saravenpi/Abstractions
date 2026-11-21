@@ -18,6 +18,7 @@ fn kept() -> Vec<Pin> {
         name: name.to_string(),
         body,
         dir: dir.to_array(),
+        height: None,
     };
     vec![pin("Camp", DVec3::X), pin("Cove", DVec3::Y)]
 }
@@ -106,6 +107,7 @@ fn pins_are_drawn_once_the_universe_exists() {
             name: "Mine".to_string(),
             body: home,
             dir: DVec3::Z.to_array(),
+            height: None,
         },
     );
     app.update();

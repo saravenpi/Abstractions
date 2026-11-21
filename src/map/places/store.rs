@@ -1,7 +1,6 @@
 //! Keeping the pins: loaded from the active world and written back into it, drawn as markers
 //! for the compass, the minimap and the map, and forgotten when their world or session ends.
 
-use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::Places;
@@ -40,7 +39,7 @@ pub(in crate::map) fn store(places: Res<Places>, active: Option<ResMut<ActiveWor
 fn marker(pin: &Pin, kind: MarkerKind, (owner, color): (u32, Color), radius: f64) -> Marker {
     Marker {
         kind,
-        place: MarkerPlace::Body(pin.body, DVec3::from_array(pin.dir) * radius),
+        place: MarkerPlace::Body(pin.body, pin.point(radius)),
         color,
         label: pin.name.clone(),
         owner,

@@ -2,12 +2,14 @@
 
 use bevy::prelude::*;
 
+/// The constants of the opening of the wings and of the lie of the body.
+mod start;
 /// The constants of a touchdown.
 mod touch;
 /// The constants of the boot water jet.
 mod water;
 
-pub use {touch::*, water::*};
+pub use {start::*, touch::*, water::*};
 
 /// Air density at sea level in kilograms per cubic metre, the same as the ship uses.
 pub const SEA_DENSITY: f32 = 1.2;
@@ -105,9 +107,6 @@ pub const BOOT_AIR_DAMP: f32 = 0.6;
 /// Horizontal acceleration of a free falling body leaning into the air, at sea level.
 pub const FALL_AIR_ACCEL: f32 = 2.0;
 
-/// Seconds the wings take to spread or fold: one eased motion, see `FlightState::spread`.
-pub const WING_TIME: f32 = 0.4;
-
 /// Seconds the boosters take to spool up or down.
 pub const THRUST_TIME: f32 = 0.25;
 
@@ -121,9 +120,6 @@ pub const PULL_RATE: f32 = 30.0;
 
 /// Natural frequency of the critically damped bank response, in radians per second.
 pub const BANK_RATE: f32 = 6.0;
-
-/// Natural frequency of the critically damped turn between upright and prone, in radians per second.
-pub const PRONE_RATE: f32 = 4.5;
 
 /// Rate at which the nose heading follows its target while the wings are spread, per second.
 pub const YAW_RATE: f32 = 12.0;
@@ -236,9 +232,6 @@ pub const BANK_SPEED: (f32, f32) = (8.0, 20.0);
 
 /// Airspeeds between which the pitch limits around the flight path come in.
 pub const LIMIT_SPEED: (f32, f32) = (3.0, 12.0);
-
-/// Airspeeds between which the body turns from upright to prone.
-pub const PRONE_SPEED: (f32, f32) = (6.0, 20.0);
 
 /// Seconds to impact between which the ground assist goes from full to none.
 pub const FLARE_TIME: (f32, f32) = (0.6, 2.0);

@@ -3,6 +3,7 @@
 mod air;
 mod airless;
 mod aloft;
+mod belly;
 mod crash;
 mod crossing;
 mod cruise;
@@ -33,6 +34,7 @@ mod rig;
 mod saved_frame;
 mod space;
 mod steady;
+mod top;
 mod voyage;
 
 use bevy::math::{DQuat, DVec3};

@@ -1,6 +1,7 @@
 //! What drives the exhaust of a ship, read from its real state: the main engines from the
-//! level of its engine, the lift nozzles from the push of the vertical thrusters, the attitude
-//! jets from the stick and the turn the stabiliser still has to make, the warp plume from the
+//! level of its engine, the lift nozzles from the push of the vertical thrusters while the ship
+//! hovers or flies slowly, the attitude jets from the stick and the turn the stabiliser still
+//! has to make, the warp plume from the
 //! spool of the drive, and the air around it from the planet and the height. Everything follows
 //! the real value over the spool time of the engine, so a plume rises and dies, not blinks.
 
@@ -10,16 +11,17 @@ use bevy::prelude::*;
 
 use super::plume::ExhaustMaterial;
 use super::shape::{ease, spool};
-use super::tune::{HEAT_DOWN, HEAT_UP, HOVER_PRESSURE, RCS_SPOOL};
+use super::tune::{CARRY, HEAT_DOWN, HEAT_UP, RCS_SPOOL};
 use crate::ship::assist::TURN_RATE;
 use crate::ship::body::Ship;
-use crate::ship::cockpit::Cockpit;
+use crate::ship::cockpit::{Cockpit, Lamp};
 use crate::ship::flight::Report;
 use crate::ship::glow::Engine;
 use crate::ship::helm::Helm;
 use crate::ship::sim::Pace;
 use crate::ship::sky::Skies;
 use crate::ship::tune::LIFT_ACCEL;
+use crate::ship::wells::beside;
 use crate::ship::{SEA_DENSITY, density};
 use crate::space::{Anchor, Frame, Placed};
 
@@ -63,24 +65,57 @@ pub struct Scene<'w> {
     helm: Res<'w, Helm>,
 }
 
-/// Returns the thrust of the lift nozzles of a ship: the push of its vertical thrusters from
-/// the step report, as a share of their full push. On the gear it is what the pilot asks of the
-/// lever, because the push the crew feels there is the ground's. They are shut when the ship
-/// rests and when the air has grown fast enough for the wings to carry it.
-pub(super) fn lift(ship: &Ship, report: &Report, asked: f64) -> f32 {
-    if ship.landed || report.pressure > HOVER_PRESSURE {
+/// Returns the share of the push across the nose of a ship that its lift nozzles give, when
+/// it flies `forward` metres per second along its nose: all of it in a hover, none once the
+/// wing carries the ship in air, or its main engines and the attitude of its hull in space.
+/// The share eases across [`CARRY`], so the nozzles fade out and never pop.
+pub fn hovering(forward: f64) -> f64 {
+    let x = ((forward - CARRY.0) / (CARRY.1 - CARRY.0)).clamp(0.0, 1.0);
+    1.0 - x * x * (3.0 - 2.0 * x)
+}
+
+/// Returns the thrust of the lift nozzles of a ship, as a share of their full push: the push
+/// along its roof from the step report, times the share of it they give at the speed along the
+/// nose of `vel`, its velocity against the ground or the body it is beside (see
+/// [`hovering`]). A pitch in forward flight turns the path with the wing or the hull, so it
+/// fires the attitude jets and never the lift nozzles. On the gear it is what the pilot asks
+/// of the lever, `asked`, because the push the crew feels there is the ground's. They are shut
+/// when the ship rests.
+pub fn lift(ship: &Ship, report: &Report, (asked, vel): (f64, DVec3)) -> f32 {
+    if ship.landed {
         return 0.0;
     }
+    let hover = hovering(vel.dot(ship.forward()));
     if ship.touching {
-        return asked.clamp(0.0, 1.0) as f32;
+        return (asked.clamp(0.0, 1.0) * hover) as f32;
     }
     let push = (ship.rot.inverse() * report.proper).y / LIFT_ACCEL;
-    push.clamp(0.0, 1.5) as f32
+    (push.clamp(0.0, 1.5) * hover) as f32
+}
+
+/// Returns the thrust of the lift nozzles of a ship of another player, whose record carries
+/// no push: the share of its weight under `gravity` they hold at the speed its instruments
+/// read (see [`hovering`]), and nothing when it is landed, in warp or away from a planet.
+pub fn held(cockpit: &Cockpit, gravity: f64) -> f32 {
+    let landed = cockpit.read.lamps[Lamp::Landed as usize];
+    let Some(speed) = cockpit.read.speed.filter(|_| !landed) else {
+        return 0.0;
+    };
+    (hovering(speed) * gravity / LIFT_ACCEL) as f32
+}
+
+/// Returns the velocity of a ship against the ground under it, or in space against the body
+/// it is beside.
+fn moving(skies: &Skies, ship: &Ship) -> DVec3 {
+    let Frame::System(_) = ship.frame else {
+        return ship.vel;
+    };
+    beside(&skies.wells, ship.pos).map_or(ship.vel, |well| ship.vel - well.vel)
 }
 
 /// Returns the fire of the attitude jets on each axis. With the assist the jets close the gap
 /// between the turn the stick asks for and the turn the ship has; without it they follow the stick.
-pub(super) fn demand(stick: Vec3, ship: Option<&Ship>) -> Vec3 {
+pub fn demand(stick: Vec3, ship: Option<&Ship>) -> Vec3 {
     match ship.filter(|ship| ship.assist) {
         Some(ship) => ((stick.as_dvec3() * TURN_RATE - ship.spin) / ERROR)
             .clamp(DVec3::NEG_ONE, DVec3::ONE)
@@ -89,13 +124,15 @@ pub(super) fn demand(stick: Vec3, ship: Option<&Ship>) -> Vec3 {
     }
 }
 
-/// Returns the air at a ship placed at `placed` as a share of the air at sea level at home: none
-/// away from a planet.
-fn air(scene: &Scene, placed: &Placed) -> f32 {
+/// Returns the air at a ship placed at `placed` as a share of the air at sea level at home,
+/// and the surface gravity of the planet in metres per second squared: neither away from a
+/// planet.
+fn air(scene: &Scene, placed: &Placed) -> (f32, f64) {
     let (Frame::Surface(_), Some(planet)) = (scene.anchor.frame, scene.skies.planet()) else {
-        return 0.0;
+        return (0.0, 0.0);
     };
-    (density(planet, placed.pos.length() - planet.radius) / SEA_DENSITY) as f32
+    let thick = density(planet, placed.pos.length() - planet.radius) / SEA_DENSITY;
+    (thick as f32, planet.gravity)
 }
 
 /// The parts of a ship the exhaust is read from.
@@ -112,8 +149,18 @@ pub fn feed(scene: Scene, mut ships: Query<Hulls>) {
     let dt = scene.time.delta_secs().min(0.1);
     for (engine, cockpit, placed, ship, mut exhaust) in &mut ships {
         let thrust = if engine.warp > 0.0 { 0.0 } else { engine.level };
+        let (thick, gravity) = air(&scene, placed);
         let asked = scene.helm.controls.lift;
-        let pushed = ship.map_or(0.0, |ship| lift(ship, &scene.pace.report, asked));
+        let pushed = ship.map_or_else(
+            || held(cockpit, gravity),
+            |ship| {
+                lift(
+                    ship,
+                    &scene.pace.report,
+                    (asked, moving(&scene.skies, ship)),
+                )
+            },
+        );
         let jets = demand(cockpit.asked.stick, ship);
         let share = 1.0 - (-dt / RCS_SPOOL).exp();
         exhaust.main = spool(exhaust.main, thrust, dt);
@@ -127,6 +174,6 @@ pub fn feed(scene: Scene, mut ships: Query<Hulls>) {
             dt,
         );
         exhaust.rcs = exhaust.rcs.lerp(jets, share);
-        exhaust.air = air(&scene, placed);
+        exhaust.air = thick;
     }
 }

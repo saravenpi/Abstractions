@@ -85,6 +85,9 @@ fn on_the_ground() -> Ship {
 /// not move with what the seed makes of the home planet. The ground changes again with the look
 /// of the ship: the feet now hold the weight of a ship that settles on a slope, so it stops
 /// where it stands instead of creeping down the 10 degree slope until the ground holds it.
+/// The air and the ground change again with the clean nose of 0.11.0: the drag nose first is a
+/// quarter of what it was, so the ship in the air slows less and the drop meets the slope a
+/// little faster. The space number does not move: there is no air there.
 #[test]
 fn the_manual_ship_is_bit_identical() {
     let seen = [in_the_air(), in_space(), on_the_ground()].map(|ship| digest(&ship));

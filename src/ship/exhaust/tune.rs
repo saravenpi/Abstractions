@@ -28,9 +28,13 @@ pub const SCROLL: f32 = 5.0;
 /// vacuum, where the plume runs on much farther.
 pub const LENGTH: (f32, f32) = (3.0, 8.0);
 
-/// Widest radius of the plume of a nozzle at full thrust, in exit radii, in thick air and in
-/// vacuum, where it expands into the lack of pressure around it.
-pub const WIDTH: (f32, f32) = (1.0, 2.8);
+/// Radius of the plume of a nozzle at full thrust where it leaves the nozzle, in exit radii, in
+/// thick air and in vacuum, where it expands into the lack of pressure around it. The mesh swells
+/// to 1.15 times that and its bright core is 0.42 of it, so in vacuum the envelope is 2.1 exit
+/// radii and the core stays inside the exit. A real plume in vacuum spreads much farther, but the
+/// same gas over a wider section shines as one over that section squared: past this the eye sees
+/// nothing, so the envelope stops here and fades as it widens: see `Shape::spread`.
+pub const WIDTH: (f32, f32) = (1.0, 1.8);
 
 /// Share of its brightness a plume keeps in vacuum: the same gas spread over a far larger
 /// volume shines much less.
@@ -64,9 +68,11 @@ pub const HEADLIGHT: (f32, f32, f32) = (40_000.0, 0.45, 0.08);
 /// Light of a navigation lamp at the tip of a winglet, in lumens: it lights the winglet and the
 /// wing tip around it, 2.9 m by the inverse square law.
 pub const TIP_LIGHT: f32 = 600.0;
-/// Dynamic pressure in pascals, 25 metres per second in air at sea level, above which the lift
-/// thrusters are taken to be shut, the ship flying on its wings and its main engines.
-pub const HOVER_PRESSURE: f64 = 400.0;
+/// Forward speeds in metres per second between which the push across the nose passes from the
+/// lift nozzles to the wing in air, and to the main engines and the attitude of the hull in
+/// space: under the first the lift nozzles carry the ship, over the second they are shut. The
+/// wing of the ship carries its weight from about 25 metres per second in air at sea level.
+pub const CARRY: (f64, f64) = (20.0, 40.0);
 
 /// Height in metres under which the lift nozzles raise dust, and the dust of a nozzle at full
 /// thrust on the ground, in puffs per second.

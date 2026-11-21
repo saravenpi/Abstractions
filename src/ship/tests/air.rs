@@ -62,7 +62,8 @@ fn dive(planet: &PlanetSpec, top: f64) -> (f64, f64, f64) {
 
 /// In thin air the ship falls faster and in thick air slower, each at the speed where the drag
 /// of that air equals the weight. The atmosphere is 1,200 km deep, a scale height of 100 km, so
-/// that the air hardly changes over the distance the thin air needs to settle the speed.
+/// that the air hardly changes over the distance the thin air needs to settle the speed. The
+/// fall starts at 24 km: the clean nose of 0.11.0 falls twice as fast and needs the room.
 #[test]
 fn terminal_speed_follows_the_air() {
     let speeds = [0.3, 1.0, 3.0].map(|at| {
@@ -70,7 +71,7 @@ fn terminal_speed_follows_the_air() {
             atmosphere_height: 1_200_000.0,
             ..world(air(at))
         };
-        let (speed, height, _) = dive(&planet, 12_000.0);
+        let (speed, height, _) = dive(&planet, 24_000.0);
         let pull = planet.mu() / (planet.radius + height).powi(2);
         let expected = (pull / (DRAG.z * density(&planet, height))).sqrt();
         let off = (speed / expected - 1.0).abs();

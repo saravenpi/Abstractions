@@ -66,6 +66,8 @@ mod tests_glare_band;
 #[cfg(test)]
 mod tests_lens;
 #[cfg(test)]
+mod tests_lod;
+#[cfg(test)]
 mod tests_lowres;
 #[cfg(test)]
 mod tests_moonday;

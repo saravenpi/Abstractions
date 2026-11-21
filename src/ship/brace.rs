@@ -70,20 +70,29 @@ pub fn buffet(
 /// The player body in the seat, which is neither the camera nor the hull.
 type Seated = (With<Player>, Without<GameCamera>, Without<Ship>);
 
+/// The clock, the buffet, the view, the target and the anchor the brace reads.
+type Bracing<'w> = (
+    Res<'w, Time>,
+    Res<'w, Buffet>,
+    Res<'w, ViewPrefs>,
+    Res<'w, Target>,
+    Res<'w, Anchor>,
+);
+
+/// The game camera, which is neither the hull nor the body.
+type Eye = (With<GameCamera>, Without<Ship>, Without<Player>);
+
+/// The hull, which is not the camera.
+type Hull = (With<Ship>, Without<GameCamera>);
+
 /// Turns the drawn hull, with the cockpit and the canopy on it, and the body in the seat with the
 /// camera, about the eye, by the tilt the camera took from the seat. The hull is posed from its
 /// [`Placed`] pose every frame, so nothing adds up and a calm view leaves it as the frame copy
 /// wrote it.
 pub fn brace(
-    (time, level, prefs, target, anchor): (
-        Res<Time>,
-        Res<Buffet>,
-        Res<ViewPrefs>,
-        Res<Target>,
-        Res<Anchor>,
-    ),
-    eye: Single<&Transform, (With<GameCamera>, Without<Ship>, Without<Player>)>,
-    mut hull: Single<(&Placed, &mut Transform), (With<Ship>, Without<GameCamera>)>,
+    (time, level, prefs, target, anchor): Bracing,
+    eye: Single<&Transform, Eye>,
+    mut hull: Single<(&Placed, &mut Transform), Hull>,
     mut body: Single<&mut Transform, Seated>,
 ) {
     if !aboard(eye.translation, &target) {

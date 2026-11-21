@@ -29,6 +29,8 @@ mod tests_skin;
 use bevy::prelude::*;
 
 pub use gas::Gas;
+#[cfg(test)]
+pub use gas::incandescence;
 pub use sheath::{SheathMaterial, SheathUniform};
 pub use skin::kelvin_of;
 pub use state::{Craft, Heat};

@@ -156,15 +156,18 @@ fn gather((points, spots): &Lights, eye: Vec3, lamps: &mut Vec<Lamp>) {
     lamps.retain(|lamp| lamp.at.distance(eye) < lamp.range + REACH as f32);
 }
 
+/// The game camera, and the lamps that may light the near cloud.
+type Eye<'w, 's> = (
+    Single<'w, 's, &'static GlobalTransform, (With<GameCamera>, Without<NearCloud>)>,
+    Lights<'w, 's>,
+);
+
 /// Lays the puffs of the field around the camera into the mesh of the near cloud, lit by the
 /// sun and by the lamps near it, and shows it, or hides it far from the band.
 fn draw(
     (vantage, palette, metered, clock): Sky,
     (forced, weather, settings): Cover,
-    (camera, lights): (
-        Single<&GlobalTransform, (With<GameCamera>, Without<NearCloud>)>,
-        Lights,
-    ),
+    (camera, lights): Eye,
     mut near: Single<Near, With<NearCloud>>,
     (mut meshes, mut puffs, mut discs, mut lamps): Kept,
 ) {

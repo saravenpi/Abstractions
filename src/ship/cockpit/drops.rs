@@ -103,11 +103,14 @@ fn mesh() -> Mesh {
 #[derive(Component, Debug, Clone, Copy)]
 pub struct Wetted;
 
+/// A canopy hinge that has no drops yet.
+type Dry = (With<Canopy>, Without<Wetted>);
+
 /// Gives the canopy of the ship this machine flies its drops, once.
 pub fn spawn(
     mut commands: Commands,
     (mut meshes, mut materials): (ResMut<Assets<Mesh>>, ResMut<Assets<StandardMaterial>>),
-    hinges: Query<(Entity, &ChildOf), (With<Canopy>, Without<Wetted>)>,
+    hinges: Query<(Entity, &ChildOf), Dry>,
     ships: Query<(), With<Ship>>,
 ) {
     for (hinge, parent) in &hinges {

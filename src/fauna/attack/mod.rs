@@ -37,6 +37,8 @@ mod tests_brace;
 mod tests_harm;
 #[cfg(test)]
 mod tests_limbs;
+#[cfg(test)]
+mod tests_pounce;
 
 use bevy::prelude::*;
 

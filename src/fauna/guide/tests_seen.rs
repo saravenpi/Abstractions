@@ -107,3 +107,38 @@ fn seen_species_survive_a_save_round_trip() {
     }
     assert_eq!(&restored, app.world().resource::<Seen>());
 }
+
+/// What is seen is per player: with the robot of another player in the world, standing next to a
+/// creature the local robot is too far to see, the local robot still marks the creature near itself
+/// and does not mark the one the other player sees.
+#[test]
+fn a_species_is_seen_by_the_local_robot_with_another_player_present() {
+    use crate::avatar::{Avatar, AvatarPose};
+    let life = web();
+    let animals: Vec<_> = life
+        .species
+        .iter()
+        .filter(|s| s.role.guild != Guild::Producer)
+        .collect();
+    let globe = Globe::new(1, EARTH_RADIUS, STANDARD_GRAVITY).with_life(Some(life.clone()));
+    let mut app = App::new();
+    app.insert_resource(Terrain::on(Arc::new(globe), Chart::Flat))
+        .init_resource::<Seen>();
+    let world = app.world_mut();
+    world.spawn((Player, GlobalTransform::from_xyz(5.0, 0.0, 5.0)));
+    let far = SIGHT * 3.0;
+    let other = GlobalTransform::from_xyz(far, 0.0, 5.0);
+    world.spawn((Avatar, AvatarPose::default(), other));
+    for (slot, x) in [20.0, far + 3.0].into_iter().enumerate() {
+        let (species, slot) = (animals[slot].id, slot as u8);
+        let creature = Creature {
+            species,
+            herd: 7,
+            slot,
+        };
+        world.spawn((creature, GlobalTransform::from_xyz(x, 2.0, 10.0)));
+    }
+    world.run_system_once(sight).expect("sight runs");
+    let seen = app.world().resource::<Seen>();
+    assert!(seen.has(animals[0].id) && !seen.has(animals[1].id));
+}

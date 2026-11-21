@@ -48,7 +48,7 @@ pub fn leave(left: &mut Left, pack: &mut Pack, (body, at): (crate::universe::Bod
 /// Replaces a destroyed robot with a spare one: the gear it carried goes into the cache where it
 /// fell, every part is whole again, and the body stands at the wake point of the base when the
 /// planet it fell on is the one the base stands on.
-fn wake(
+pub(crate) fn wake(
     mut commands: Commands,
     (mut condition, mut pack, mut left): (ResMut<Condition>, ResMut<Pack>, ResMut<Left>),
     (anchor, base): (Res<Anchor>, Option<Res<Base>>),

@@ -45,6 +45,13 @@ use crate::sim::PlayerId;
 
 /// Marker for a player body entity.
 ///
+/// In the game exactly one entity carries it: the body of the player at this machine. The robots,
+/// ships and companions of the other players of a session are puppets marked `net::Remote`, which
+/// never carry `Player` (a robot puppet is an `Avatar` with no `Player` parent), so a query
+/// `With<Player>` is the local body and `single()` on it holds in multiplayer. Each machine runs
+/// its own robot: its condition, its pack, what it has seen, and the animals that go for it. A
+/// test, `net::tests::two_players`, fails if a puppet ever gains this marker.
+///
 /// The body origin is the capsule center and its +Y is the local up. It carries the
 /// [`PlayerId`] of its player, [`PlayerId::LOCAL`] unless it is given another, and the
 /// [`Intents`] it moves by. The camera, marked [`crate::render::GameCamera`], is a child of the

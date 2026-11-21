@@ -13,6 +13,8 @@ pub mod mend;
 pub mod pack;
 #[cfg(test)]
 mod stage;
+#[cfg(test)]
+mod tests_two;
 pub mod ui;
 pub mod wield;
 

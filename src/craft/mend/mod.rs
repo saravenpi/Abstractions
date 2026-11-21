@@ -8,6 +8,8 @@ mod field;
 mod tests;
 pub mod tune;
 
+#[cfg(test)]
+pub(crate) use base::tend;
 pub use field::{patch, supply, worst};
 
 use bevy::prelude::*;

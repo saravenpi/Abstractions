@@ -50,6 +50,15 @@ fn centre_star(universe: &Universe, id: GalaxyId) -> Option<StarSpec> {
         .find_map(|share| near(share).into_iter().next())
 }
 
+/// Returns the galaxy `target` lies in.
+fn galaxy_of(target: Target) -> GalaxyId {
+    match target {
+        Target::Body(body) => body.star.galaxy,
+        Target::Star(star) => star.galaxy,
+        Target::Galaxy(galaxy) => galaxy,
+    }
+}
+
 /// Returns whether `target` lies in another galaxy than the one the frame of a ship is in: the
 /// route is then a jump between galaxies.
 pub(super) fn abroad(frame: Frame, target: Target) -> bool {
@@ -58,12 +67,22 @@ pub(super) fn abroad(frame: Frame, target: Target) -> bool {
         Frame::System(star) => star.galaxy,
         Frame::Galaxy(galaxy) => galaxy,
     };
-    let goal = match target {
-        Target::Body(body) => body.star.galaxy,
-        Target::Star(star) => star.galaxy,
-        Target::Galaxy(galaxy) => galaxy,
-    };
-    ship != goal
+    ship != galaxy_of(target)
+}
+
+/// Returns whether a ship in `frame`, `gap` metres from `target`, is still between the galaxies: its
+/// frame is another galaxy than that of the target, or it is the frame of the target galaxy but farther
+/// from the target than the galaxy is wide. A ship enters the frame of a galaxy at the edge of its grid
+/// cell, millions of light-years before the galaxy itself, and flies the galaxy tier until then.
+pub(super) fn between_galaxies(
+    universe: &Universe,
+    frame: Frame,
+    (target, gap): (Target, f64),
+) -> bool {
+    let wide = universe
+        .galaxy(galaxy_of(target))
+        .is_none_or(|galaxy| gap > 2.0 * galaxy.radius);
+    abroad(frame, target) || wide
 }
 
 /// Returns the goal for a target: its lock sphere and where to drop out. A galaxy becomes a star

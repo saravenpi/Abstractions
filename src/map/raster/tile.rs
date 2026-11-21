@@ -4,18 +4,21 @@
 
 use std::f64::consts::{PI, TAU};
 
-use bevy::math::{DVec3, Vec2};
+use bevy::math::{DVec2, DVec3, Vec2};
 
-use crate::computer::{Lens, direction};
+use super::tiles_view::corner;
+use crate::computer::direction;
+use crate::map::geo::copy_near;
 use crate::map::lat_lon;
 use crate::map::level::REFERENCE_MAP;
+use crate::map::sight::Sight;
 
 /// Pixels along one side of a tile.
 pub const SIDE: usize = 256;
 
-/// Deepest level of the pyramid: a pixel then spans about 10 m on an Earth, which the closest
+/// Deepest level of the pyramid: a pixel then spans about 1.2 m on an Earth, which the closest
 /// zoom of the flat map draws on under two pixels.
-pub const LEVEL_MAX: u8 = 13;
+pub const LEVEL_MAX: u8 = 16;
 
 /// Zoom of the flat map from which tiles are drawn over the picture.
 pub const ZOOM_FROM: f32 = 3.0;
@@ -77,13 +80,13 @@ pub fn level_for(zoom: f32) -> u8 {
 /// Returns the tiles `lens` looks at on `level`, nearest the middle first and at most
 /// [`SHOWN_MAX`], each with its column counted without wrapping, so that it is placed where the
 /// lens sees it. The identity of a tile east of the seam wraps round.
-pub fn visible(lens: Lens, level: u8) -> Vec<(i64, TileId)> {
+pub fn visible(lens: Sight, level: u8) -> Vec<(i64, TileId)> {
     let (cols, rows) = (
         f64::from(TileId::cols(level)),
         f64::from(TileId::rows(level)),
     );
     let half = 1.0 / f64::from(lens.zoom);
-    let (x, y) = (f64::from(lens.centre.x), f64::from(lens.centre.y));
+    let (x, y) = (lens.centre.x, lens.centre.y);
     let east = |x: f64| ((x + 1.0) * 0.5 * cols).floor() as i64;
     let south = |y: f64| (((0.5 - y) * rows).floor().max(0.0) as i64).min(rows as i64 - 1);
     let mut tiles = Vec::new();
@@ -115,4 +118,17 @@ fn nearest(mut tiles: Vec<(i64, TileId)>, middle: Vec2) -> Vec<(i64, TileId)> {
     tiles.sort_by(|a, b| away(a).total_cmp(&away(b)));
     tiles.truncate(SHOWN_MAX);
     tiles
+}
+
+/// Returns how far tile `id` is from what `lens` shows: the levels between it and the level
+/// shown, then the chart distance from its middle to the centre of the view, round the turn of
+/// longitude the shorter way. The cache drops the farthest first.
+pub fn away(id: TileId, lens: Sight) -> (u8, f64) {
+    let (cols, rows) = (
+        f64::from(TileId::cols(id.level)),
+        f64::from(TileId::rows(id.level)),
+    );
+    let middle = corner(id.level, i64::from(id.col), id.row) + DVec2::new(1.0 / cols, -0.5 / rows);
+    let gap = copy_near(middle, lens.centre.x) - lens.centre;
+    (id.level.abs_diff(level_for(lens.zoom)), gap.length())
 }

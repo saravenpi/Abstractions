@@ -1,5 +1,5 @@
-//! Tests of the weather particles: what falls, nothing under a roof, and a downpour that stays
-//! inside the fixed pool.
+//! Tests of the weather particles: what falls where, and a downpour that stays inside the fixed
+//! pool.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -16,10 +16,8 @@ use crate::effects::{rng, sim};
 use crate::render::DayClock;
 use crate::space::Anchor;
 use crate::universe::Universe;
-use crate::weather::Weather;
 use crate::wind::Wind;
 use crate::world::globe::Face;
-use crate::world::structures::{entries, stilt_village};
 use crate::world::{Biome, Globe, Surface, Terrain};
 
 /// Returns open meadow surroundings `height` metres above sea level.
@@ -37,7 +35,7 @@ fn meadow(height: f32) -> Ambient {
 }
 
 /// Each weather particle takes its share of the rolls, nothing falls from a clear sky, under
-/// a roof, under the sea or above every summit.
+/// the sea or above every summit.
 #[test]
 fn weather_falls_only_in_the_open() {
     let rolls = || (0..100).map(|step| step as f32 / 100.0);
@@ -54,52 +52,10 @@ fn weather_falls_only_in_the_open() {
     };
     assert_eq!(fall(&snow, &meadow(5.0), 0.1), Some(Kind::Snow));
     assert_eq!(fall(&snow, &meadow(5.0), 0.6), Some(Kind::Dust));
-    let roof = Sky {
-        sheltered: true,
-        ..rain
-    };
-    for (sky, height) in [
-        (Sky::default(), 5.0),
-        (roof, 5.0),
-        (rain, -3.0),
-        (rain, 900.0),
-    ] {
+    for (sky, height) in [(Sky::default(), 5.0), (rain, -3.0), (rain, 900.0)] {
         assert!(rolls().all(|roll| fall(&sky, &meadow(height), roll).is_none()));
     }
-    assert!(!Sky::default().falling() && !roof.falling() && rain.falling());
-}
-
-/// A roof is only over the plank floor of a house or a hut, or the floor of a cabin or a
-/// lighthouse: not over a pier or bare ground.
-#[test]
-fn a_roof_is_over_roofed_floors_only() {
-    assert!(roofed(Some(FloorKind::Wood), Some(Site::Village)));
-    assert!(roofed(Some(FloorKind::Stone), Some(Site::Cabin)));
-    assert!(!roofed(Some(FloorKind::Wood), Some(Site::Dock)));
-    assert!(!roofed(None, Some(Site::Village)));
-}
-
-/// In a stilt village, whose house floors, platforms and streets are all planks, rain falls on the plaza
-/// boardwalk and not inside a house.
-#[test]
-fn rain_falls_on_a_boardwalk_and_not_indoors() {
-    let (view, site, seen) = stilt_village();
-    let (village, lift) = (Some(Site::Village), 0.02);
-    let rain = Weather {
-        rain: 1.0,
-        ..default()
-    };
-    let plaza = view.embed(site.origin.x, site.floor + lift, site.origin.y);
-    assert_eq!(seen.floor_at(plaza), Some(FloorKind::Wood));
-    let open = Sky::of(&rain, roofed(seen.room_at(plaza), village));
-    assert_eq!(fall(&open, &meadow(5.0), 0.1), Some(Kind::Rain));
-    let houses = entries(&view, &site);
-    assert!(!houses.is_empty());
-    for (middle, ..) in houses {
-        let floor = seen.room_at(middle + middle.normalize() * f64::from(lift));
-        let indoors = Sky::of(&rain, roofed(floor, village));
-        assert_eq!(fall(&indoors, &meadow(5.0), 0.1), None);
-    }
+    assert!(!Sky::default().falling() && rain.falling());
 }
 
 /// Returns an app that moves the particle pool around a camera two metres over the ground of
@@ -148,7 +104,7 @@ fn rain_after(mut app: App) -> (usize, usize) {
 }
 
 /// A downpour fills most of the fixed pool with rain streaks and never adds a particle; under
-/// a roof the same pool carries no rain at all.
+/// a clear sky the same pool carries no rain at all.
 #[test]
 fn a_downpour_stays_within_the_pool() {
     let rain = Sky {
@@ -158,9 +114,5 @@ fn a_downpour_stays_within_the_pool() {
     let (all, streaks) = rain_after(downpour(rain));
     assert_eq!(all, POOL_SIZE);
     assert!(streaks >= POOL_SIZE / 2, "{streaks}");
-    let roof = Sky {
-        sheltered: true,
-        ..rain
-    };
-    assert_eq!(rain_after(downpour(roof)), (POOL_SIZE, 0));
+    assert_eq!(rain_after(downpour(Sky::default())), (POOL_SIZE, 0));
 }

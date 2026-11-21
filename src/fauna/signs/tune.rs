@@ -36,3 +36,6 @@ pub const CALLS: usize = 2;
 
 /// Least level, 0 to 1, a call must arrive at to be sent.
 pub const QUIET: f32 = 0.07;
+
+/// Seconds over which the members of a herd join a herd cry, each at its own seeded delay.
+pub const CHORUS: f64 = 0.4;

@@ -1,6 +1,6 @@
 //! What a foot stands on, read from what the world has there: the deck and the pad of the
-//! base, the wing and the hull of a ship, the built floors of a village, and the natural ground,
-//! its cover, its biome, its water and the rain on it.
+//! base, the wing and the hull of a ship, and the natural ground, its cover, its biome, its
+//! water and the rain on it.
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
@@ -11,7 +11,6 @@ use crate::audio::StepSurface;
 use crate::home::Base;
 use crate::space::{Anchor, Location};
 use crate::weather::Weather;
-use crate::world::structures::{FloorKind, Surroundings};
 use crate::world::{Biome, Surface, Terrain};
 
 /// The world around the feet.
@@ -27,22 +26,17 @@ pub struct Site<'w> {
     pub location: Res<'w, Location>,
     /// The ships one can stand on.
     pub hulls: Res<'w, Hulls>,
-    /// The built floors near the player.
-    pub floors: Option<Res<'w, Surroundings>>,
     /// The base of the player.
     pub base: Option<Res<'w, Base>>,
     /// The weather where the player is.
     pub weather: Option<Res<'w, Weather>>,
 }
 
-/// Returns the step of a built floor, wet earth turned to mud.
-pub fn floor(kind: FloorKind, rain: f32) -> StepSurface {
-    match kind {
-        FloorKind::Wood => StepSurface::Wood,
-        FloorKind::Stone => StepSurface::Rock,
-        FloorKind::Sand => StepSurface::Sand,
-        FloorKind::Earth if rain > MUDDY => StepSurface::Mud,
-        FloorKind::Earth => StepSurface::Soil,
+/// Returns the step of earth under `rain` from 0 to 1: soil, turned to mud once wet.
+pub fn soil(rain: f32) -> StepSurface {
+    match rain > MUDDY {
+        true => StepSurface::Mud,
+        false => StepSurface::Soil,
     }
 }
 
@@ -69,7 +63,7 @@ pub fn natural(terrain: &Terrain, feet: Vec3, rain: f32) -> Option<(StepSurface,
     if depth > WADE.0 {
         return Some((StepSurface::Water, depth));
     }
-    let soil = floor(FloorKind::Earth, rain);
+    let earth = soil(rain);
     let surface = match terrain.surface(feet.x, feet.z) {
         Surface::River => return Some((StepSurface::Water, RIVER)),
         Surface::Water | Surface::Shallows | Surface::Sand => StepSurface::Sand,
@@ -78,7 +72,7 @@ pub fn natural(terrain: &Terrain, feet: Vec3, rain: f32) -> Option<(StepSurface,
         Surface::Rock => rock(terrain, feet),
         Surface::Snow => StepSurface::Snow,
         Surface::Grass => match terrain.biome(feet.x, feet.z) {
-            Biome::Forest | Biome::Taiga | Biome::Tropical => soil,
+            Biome::Forest | Biome::Taiga | Biome::Tropical => earth,
             _ => StepSurface::Grass,
         },
     };
@@ -86,14 +80,13 @@ pub fn natural(terrain: &Terrain, feet: Vec3, rain: f32) -> Option<(StepSurface,
 }
 
 /// Returns what a foot at render position `feet` stands on, with the depth of the water it
-/// stands in. Raised over the ground it stands on a ship, a deck of the base, a built floor or a
-/// boulder; on the ground, on the landing pad, a built floor or the natural ground.
+/// stands in. Raised over the ground it stands on a ship, a deck of the base or a boulder; on
+/// the ground, on the landing pad or the natural ground.
 pub fn footing(site: &Site, feet: Vec3) -> Option<(StepSurface, f32)> {
     let (terrain, at) = (&*site.terrain, site.anchor.to_frame(feet));
     let chart = terrain.locate(at);
     let raised = chart.y - terrain.height(chart.x, chart.z) > RAISED;
     let rain = site.weather.as_ref().map_or(0.0, |weather| weather.rain);
-    let built = site.floors.as_ref().and_then(|floors| floors.floor_at(at));
     let base = site
         .base
         .as_ref()
@@ -102,10 +95,9 @@ pub fn footing(site: &Site, feet: Vec3) -> Option<(StepSurface, f32)> {
     let mut ships = site.hulls.0.iter();
     let hull = raised && ships.any(|(centre, reach)| centre.distance(at) <= f64::from(*reach));
     let plain = |surface| Some((surface, 0.0));
-    match (hull, deck, built) {
-        (true, _, _) => plain(StepSurface::Hull),
-        (_, true, _) => plain(StepSurface::Metal),
-        (_, _, Some(kind)) => plain(floor(kind, rain)),
+    match (hull, deck) {
+        (true, _) => plain(StepSurface::Hull),
+        (_, true) => plain(StepSurface::Metal),
         _ if raised => plain(StepSurface::Rock),
         _ => natural(terrain, chart, rain),
     }

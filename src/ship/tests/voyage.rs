@@ -5,6 +5,7 @@ mod away;
 mod back;
 mod cross;
 mod flight;
+mod galaxy;
 mod ground;
 mod stranded;
 

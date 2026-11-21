@@ -18,6 +18,7 @@ mod entry;
 mod exposure;
 mod fog;
 mod galaxy_light;
+mod glare;
 mod glow;
 mod heat;
 mod lighting;
@@ -56,6 +57,10 @@ mod tests_dither;
 mod tests_fog;
 #[cfg(test)]
 mod tests_fresnel;
+#[cfg(test)]
+mod tests_glare;
+#[cfg(test)]
+mod tests_glare_band;
 #[cfg(test)]
 mod tests_lens;
 #[cfg(test)]

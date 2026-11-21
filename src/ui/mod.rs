@@ -26,6 +26,9 @@ mod page;
 mod rules_tests;
 mod scroll;
 mod section;
+mod shade;
+#[cfg(test)]
+mod shade_tests;
 pub mod sign;
 mod sound;
 mod state;
@@ -58,6 +61,9 @@ pub use scroll::{BAR, BAR_GAP, ScrollArea, Scroller, Thumb, scroll_area, scrolle
 pub use section::{
     Section, SectionTitle, Sections, groups, rows, section, section_title, sections,
 };
+pub use shade::{OverWorld, Unshaded};
+#[cfg(test)]
+pub use shade::{hud_shadow, reach};
 pub use sound::Cancels;
 pub use state::{EmptyState, NoticeRow, empty_state, notice_row};
 pub use style::{Filled, Look, Selected, Tone};
@@ -91,7 +97,7 @@ fn overlay(app: &mut App) {
 /// Registers the UI camera, the fonts, the backdrop, the widget looks and the interface sounds.
 pub(super) fn plugin(app: &mut App) {
     overlay(app);
-    app.add_plugins(backdrop::plugin)
+    app.add_plugins((backdrop::plugin, shade::plugin))
         .add_observer(sound::activated)
         .add_systems(
             Update,

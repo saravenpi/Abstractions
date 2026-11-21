@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use super::context::{Context, Element, Where};
 use super::flight::{Flight, Gauge, reading, symbol};
+use crate::computer::{Destination, RouteStatus, status_line};
 use crate::gear::Gear;
 use crate::menus::key_name;
 use crate::player::Player;
@@ -56,9 +57,9 @@ fn row((gauge, name): (Gauge, &'static str)) -> impl Bundle {
         children![
             (
                 Symbol(gauge),
-                icon_sized(Icon::Radius, Tone::Muted, theme::ICON_SMALL)
+                icon_sized(Icon::Radius, Tone::Plain, theme::ICON_SMALL)
             ),
-            cell(LABEL_WIDTH, text(name, theme::FONT_SMALL, theme::TEXT_2)),
+            cell(LABEL_WIDTH, text(name, theme::FONT_SMALL, theme::TEXT)),
             (
                 Reading(gauge),
                 text("", theme::FONT_SMALL, theme::TEXT),
@@ -93,19 +94,17 @@ fn bar() -> impl Bundle {
     )
 }
 
-/// The instrument block: one row per instrument and the spool bar, on a panel. It sits in the
-/// bottom-left stack, above the frame rows, and shows only while a row has something to say.
-/// `refresh` fills it.
+/// The instrument block: one row per instrument and the spool bar, with no panel behind them,
+/// so its icons start at the edge margin. It sits in the bottom-left stack, above the frame rows,
+/// and shows only while a row has something to say. `refresh` fills it.
 pub(super) fn block() -> impl Bundle {
     (
         Instruments,
         Node {
             display: Display::None,
             flex_direction: FlexDirection::Column,
-            padding: UiRect::axes(px(theme::S4), px(theme::S3)),
             ..default()
         },
-        BackgroundColor(theme::PANEL),
         Children::spawn((SpawnIter(Gauge::ALL.into_iter().map(row)), Spawn(bar()))),
     )
 }
@@ -118,6 +117,8 @@ pub(super) struct Source<'w, 's> {
     ships: Query<'w, 's, &'static Ship>,
     glider: Glider<'w, 's>,
     settings: Option<Res<'w, Persistent<Settings>>>,
+    destination: Option<Res<'w, Destination>>,
+    route: Option<Res<'w, RouteStatus>>,
 }
 
 /// What the instruments read while the player glides on foot.
@@ -155,7 +156,13 @@ impl Source<'_, '_> {
             }
             _ => false,
         };
+        let name = self.destination.as_deref().and_then(|set| set.0);
+        let name = name.zip(self.universe.as_deref());
+        let course = name
+            .zip(self.route.as_deref())
+            .map(|((target, universe), route)| status_line(&target.name(universe), *route));
         Flight {
+            course: course.filter(|line| !line.is_empty()),
             telemetry,
             giant,
             glide: self.glider.reading(),

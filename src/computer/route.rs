@@ -66,6 +66,8 @@ pub enum Block {
         /// Radii from the centre the ship is at now, in tenths.
         tenths: u32,
     },
+    /// The autopilot dropped the course after spooling the drive again and again without coming nearer.
+    Lost,
 }
 
 /// The names of the keys the sentences of the computer tell the player to press.
@@ -99,6 +101,10 @@ impl Block {
                 keys.board
             ),
             Block::Landed => format!("Take off first: hold {}.", keys.rise),
+            Block::Lost => format!(
+                "The course came no nearer and was dropped: press {} to try again.",
+                keys.go
+            ),
             Block::Inside { star, .. } => {
                 let body = ["planet", "star"][usize::from(star)];
                 format!(

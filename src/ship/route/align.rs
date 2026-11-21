@@ -1,8 +1,6 @@
 //! The rule of the turn: the ship aligns before the drive spools, aims where the destination
 //! will be when the ship gets there, and never turns while the drive runs.
 
-use std::f64::consts::FRAC_PI_2;
-
 use bevy::math::{DQuat, DVec3};
 
 use crate::ship::body::Ship;
@@ -90,14 +88,16 @@ pub fn snap(ship: &mut Ship, course: DVec3) {
 /// Returns true when a ship in warp has flown its leg and the drive drops out: it has flown past
 /// `way`, the point beside a body in the way that it was sent to, or without one it flies a
 /// heading that would miss a destination `to` metres off, with a lock sphere of `lock` metres, by
-/// more than the drive can make up. The ship then aligns again.
+/// more than the drive can make up. The ship then aligns again. The miss is the length of the cross
+/// product of the heading and the course: the angle between them, taken from an arc cosine, cannot
+/// be told from zero under 1.5e-8 radians, which is thousands of light-years across a galaxy.
 pub fn missed(ship: &Ship, way: Option<DVec3>, (to, lock): (DVec3, f64)) -> bool {
-    let angle = ship.forward().angle_between(to);
     let off = match way {
         Some(at) => (at - ship.pos).dot(ship.forward()) <= 0.0,
         None => {
-            (angle > FRAC_PI_2 && to.length() > PAST * lock)
-                || angle.sin() * to.length() > OFF * lock
+            let behind = ship.forward().dot(to) < 0.0;
+            let aside = ship.forward().cross(to).length();
+            (behind && to.length() > PAST * lock) || aside > OFF * lock
         }
     };
     matches!(ship.warp, Warp::Active { .. }) && off

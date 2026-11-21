@@ -1,7 +1,8 @@
 //! The frame rows: the integrity of the whole body and one line for each part that is hurt.
 //! They sit in the bottom-left stack, under the instrument block, so the two never overlap.
 //! Nothing shows while the body is whole. Each row has the colour of what it reads: the warning
-//! colour under half, the danger colour under a quarter, where a part is broken.
+//! colour under half, the danger colour under a quarter, where a part is broken. They have no
+//! panel: a row in a warning colour carries the deeper HUD shadow, `theme::HUD_SHADOW_WARN`.
 
 use bevy::ecs::spawn::SpawnIter;
 use bevy::prelude::*;
@@ -41,10 +42,8 @@ fn row(at: usize) -> impl Bundle {
         Row(at),
         Node {
             display: Display::None,
-            padding: UiRect::axes(px(theme::S3), px(theme::S2)),
             ..default()
         },
-        BackgroundColor(theme::PANEL_DEEP),
         text("", theme::FONT_SMALL, theme::TEXT),
         TextLayout::no_wrap(),
     )

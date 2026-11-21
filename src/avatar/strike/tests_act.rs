@@ -84,13 +84,14 @@ fn a_guard_parries_at_first() {
     assert_eq!((held.parry(), knife().parry()), (PARRY, PARRY_LIGHT));
 }
 
-/// A spear draws while the button is held and lets go on release, with the share of a full draw.
+/// A spear draws while the throw key is held and lets go on its release, with the share of a full
+/// draw.
 #[test]
 fn a_spear_draws_and_throws() {
     let held = spear();
     let timing = Timing::of(&held, &Path::of(held.style, Dir::Right));
     let hold = Ask {
-        strike: true,
+        throw: true,
         holding: true,
         ..default()
     };

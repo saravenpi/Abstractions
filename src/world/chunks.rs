@@ -1,5 +1,5 @@
 //! Chunk streaming: a quadtree of coarse terrain nodes over the whole planet, and detail chunks
-//! with props, structures and colliders built off-thread around the focus.
+//! with props and colliders built off-thread around the focus.
 
 mod budget;
 mod build;

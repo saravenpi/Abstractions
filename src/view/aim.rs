@@ -1,13 +1,15 @@
 //! The look angles: what the player turns, what the rig turns by itself, and the short trail behind them.
 //!
 //! The player always wins. The rig only turns the camera by itself once the player has left
-//! it alone, and any input takes it back at once.
+//! it alone, and any input takes it back at once. With auto-follow off it never turns it by
+//! itself: the look the player left stays, relative to the ship, until the recentre key.
 
 use std::f32::consts::{FRAC_PI_2, PI};
 
 use bevy::prelude::*;
 
 use super::basis::Stance;
+use super::curve;
 use super::io::{Heading, Kind, Moment};
 use super::smooth::{closed, trail, wrap};
 use super::tune::{
@@ -19,7 +21,11 @@ use super::tune::{
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub(super) struct Aim {
     /// What the player aims at. On foot it is the heading; in the ship, the free look around it.
+    /// It is kept whole while the pilot seat holds the view inside the reach of the head, so a
+    /// chase angle comes back when the view leaves the seat again.
     pub heading: Heading,
+    /// The heading as the view takes it: inside the reach of the head in the pilot seat.
+    pub view: Heading,
     /// How far the camera trails behind the heading, in yaw and in pitch.
     trail: Vec2,
     /// Seconds since the player last turned the camera.
@@ -52,18 +58,27 @@ impl Aim {
     pub(super) fn settled(heading: Heading) -> Self {
         Self {
             heading,
+            view: heading,
             ..default()
         }
     }
 
-    /// Returns the turn that springs the free look around the ship back to its nose, once the
-    /// player has left the mouse alone for [`ORBIT_HOLD`].
-    fn recentre(&mut self, dt: f32) -> Vec2 {
-        if self.idle < ORBIT_HOLD {
+    /// Returns the turn that brings the free look around the ship back to its nose: all of it
+    /// on the frame the recentre key is pressed, and with auto-follow on a spring once the
+    /// player has left the mouse alone for [`ORBIT_HOLD`]. With auto-follow off and no key the
+    /// look stays where the player left it.
+    fn recentre(&mut self, moment: &Moment, dt: f32) -> Vec2 {
+        let asked = moment.look.recentre;
+        let sprung = moment.prefs.auto_follow && self.idle >= ORBIT_HOLD;
+        if !asked && !sprung {
             return Vec2::ZERO;
         }
         self.heading.yaw = wrap(self.heading.yaw);
-        -Vec2::new(self.heading.yaw, self.heading.pitch) * closed(ORBIT_RETURN, dt)
+        let share = match asked {
+            true => 1.0,
+            false => closed(ORBIT_RETURN, dt),
+        };
+        -Vec2::new(self.heading.yaw, self.heading.pitch) * share
     }
 
     /// Returns the yaw that drifts a third person camera behind the direction of travel.
@@ -82,24 +97,29 @@ impl Aim {
         gap * closed(FOLLOW_RATE * gap.cos().max(0.0) * third, stance.dt)
     }
 
-    /// Turns the aim by what the player asks, or by itself when the player asks nothing.
+    /// Turns the aim by what the player asks, or by itself when the player asks nothing, and
+    /// keeps the view inside the reach of the head in the pilot seat. The mouse turns the view
+    /// from where it shows, so it never moves the heading unseen past that reach.
     pub(super) fn step(&mut self, moment: &Moment, stance: &Stance, third: f32) {
-        let (look, ship) = (&moment.look, moment.target.kind == Kind::Ship);
+        let (look, kind) = (&moment.look, moment.target.kind);
         let asked = Vec2::new(look.yaw_delta, look.pitch_delta);
         self.idle = match asked == Vec2::ZERO {
             true => self.idle + stance.dt,
             false => 0.0,
         };
-        let own = match ship {
-            true => self.recentre(stance.dt),
+        if asked != Vec2::ZERO {
+            self.heading = curve::head(kind, self.heading, third);
+        }
+        let own = match kind == Kind::Ship {
+            true => self.recentre(moment, stance.dt),
             false => Vec2::X * self.follow(moment, stance, third),
         };
         let before = Vec2::new(self.heading.yaw, self.heading.pitch);
-        let turned = before + asked + own;
-        self.heading = bound(moment.target.kind == Kind::Flying, turned);
+        self.heading = bound(kind == Kind::Flying, before + asked + own);
         let turned = Vec2::new(self.heading.yaw, self.heading.pitch) - before;
         let turned = Vec2::new(turned.x, wrap(turned.y));
         self.trail = trail(self.trail, turned, TRAIL_RATE, stance.dt);
+        self.view = curve::head(kind, self.heading, third);
     }
 
     /// Returns the yaw and pitch the camera shows, `third` of the way to a third person view:
@@ -107,8 +127,8 @@ impl Aim {
     /// Behind a flying body it does not stop: a camera held at a pole while the view goes over
     /// the top of a loop would jump to the other pole when the view comes round.
     pub(super) fn shown(&self, third: f32) -> (f32, f32) {
-        let yaw = self.heading.yaw - self.trail.x * third;
-        let pitch = self.heading.pitch - self.trail.y * third;
+        let yaw = self.view.yaw - self.trail.x * third;
+        let pitch = self.view.pitch - self.trail.y * third;
         let short = pitch.clamp(-THIRD_DOWN, THIRD_UP);
         (yaw, pitch.lerp(short, third * (1.0 - self.flight)))
     }

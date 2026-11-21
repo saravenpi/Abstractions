@@ -1,6 +1,7 @@
 //! The hotbar: six slots at the bottom centre of the game, black and white, the held one
 //! lit and marked by the accent bar along its foot, each with its number, the silhouette of its
-//! tool and a thin wear bar.
+//! tool and a thin wear bar. The slots keep a very light fill, so a full slot and an empty one
+//! read apart; the numbers carry the HUD shadow.
 
 use bevy::prelude::*;
 
@@ -9,16 +10,13 @@ use super::here::Here;
 use crate::craft::pack::{Pack, SLOTS};
 use crate::screens::{Screen, in_control};
 use crate::space::on_foot;
-use crate::ui::{text, theme};
+use crate::ui::{OverWorld, text, theme};
 
 /// Side in pixels of one slot, which is also the height of the hotbar the prompt line stands above.
 pub const SIDE: f32 = 56.0;
 
 /// Height in pixels of the accent bar that marks the held slot.
 const MARK: f32 = theme::S1;
-
-/// Fill of a slot that holds nothing: lighter than the fill of one that does.
-const EMPTY: Color = Color::srgba(0.02, 0.025, 0.035, 0.32);
 
 /// Width in pixels of the wear bar of a slot.
 const BAR: f32 = 32.0;
@@ -39,6 +37,7 @@ fn spawn(mut commands: Commands) {
     };
     commands.spawn((
         Hotbar,
+        OverWorld,
         DespawnOnExit(Screen::Gameplay),
         node,
         Pickable::IGNORE,
@@ -76,8 +75,8 @@ fn slot(at: usize, tool: Option<(Shape, f32)>, held: bool) -> impl Bundle {
         ..default()
     };
     let back = match tool.is_some() {
-        true => theme::PANEL,
-        false => EMPTY,
+        true => theme::SLOT_FULL,
+        false => theme::SLOT_EMPTY,
     };
     let ink = [theme::TEXT_2, theme::TEXT][usize::from(held)];
     let (shape, worn) = tool.unwrap_or((None, 1.0));

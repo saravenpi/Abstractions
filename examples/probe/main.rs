@@ -6,8 +6,8 @@
 //! Environment:
 //! - `SMOKE_DIR`: the screenshot folder.
 //! - `SMOKE_SEED`: the world seed, default 7.
-//! - `PROBE_STAGES`: comma list of stage groups, default all. Groups: `water` (lens tour and room walls),
-//!   `grass` (turf and trees), `ground` (one patch of grass from the horizon and from 2 m to 30 km), `fauna` (animals), `tour` (base, village, flight, orbit, warp) and `zoo`.
+//! - `PROBE_STAGES`: comma list of stage groups, default all. Groups: `water` (the lens tour),
+//!   `grass` (turf and trees), `ground` (one patch of grass from the horizon and from 2 m to 30 km), `fauna` (animals), `tour` (base, flight, orbit, warp) and `zoo`.
 //!   `ui` (the menus, the map at each level, the guide, the pack and the pause menu) and `play` (the game
 //!   being played: the map of explored ground, stones picked and a tool made, a herd stalked, a fight, a
 //!   kill carved, the robot hurt and mended, the pack and the guide after the hunt; see the `play` module).
@@ -56,7 +56,6 @@ use abstractions::space::{Anchor, Frame, Location, Travel};
 use abstractions::universe::{BodyId, Universe};
 use abstractions::view::{Cut, Heading, ViewMode, ViewPrefs};
 use abstractions::world::globe::Face;
-use abstractions::world::structures::{CELL, Kind, entries, structure_in_cell};
 use abstractions::world::{METER_STEPS, Meter, Planet, Terrain};
 use bevy::ecs::system::RunSystemOnce;
 use bevy::input::ButtonState;
@@ -106,7 +105,6 @@ mod playherd;
 mod playloot;
 mod playmap;
 mod postcards;
-mod room;
 mod saved;
 mod screens;
 mod seen;
@@ -117,7 +115,6 @@ mod stops;
 mod tour;
 mod trees;
 mod util;
-mod walls;
 mod watch;
 mod water;
 mod wing;
@@ -161,7 +158,6 @@ use playherd::*;
 use playloot::*;
 use playmap::*;
 use postcards::*;
-use room::*;
 use saved::*;
 use screens::*;
 use seen::*;
@@ -172,7 +168,6 @@ use stops::*;
 use tour::*;
 use trees::*;
 use util::*;
-use walls::*;
 use watch::*;
 use water::*;
 use wing::*;

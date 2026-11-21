@@ -2,7 +2,7 @@
 
 use bevy::prelude::KeyCode;
 
-use super::course::{Course, words};
+use super::course::{CANCEL, Course, words};
 use super::prompt::{State, choose, offered};
 use crate::computer::{Block, Keys, RouteStatus};
 use crate::player::{Offer, Verb};
@@ -15,12 +15,11 @@ fn full() -> State {
         running: Some((KeyCode::KeyG, "Warping to Mars".to_string())),
         ready: Some((KeyCode::KeyG, "Go to Mars".to_string())),
         act: Some((KeyCode::KeyF, "Board".to_string())),
-        hint: Some((KeyCode::KeyM, "Open the map")),
     }
 }
 
-/// A block beats a running course, which beats a course ready, which beats the action of a key, which
-/// beats a hint; with nothing, there is no row.
+/// A block beats a running course, which beats a course ready, which beats the action of a key; with
+/// nothing, there is no row.
 #[test]
 fn the_priority_order_holds() {
     let mut state = full();
@@ -41,11 +40,6 @@ fn the_priority_order_holds() {
         Some((Some(KeyCode::KeyF), "Board".to_string()))
     );
     state.act = None;
-    assert_eq!(
-        choose(&state),
-        Some((Some(KeyCode::KeyM), "Open the map".to_string()))
-    );
-    state.hint = None;
     assert_eq!(choose(&state), None);
 }
 
@@ -65,9 +59,9 @@ fn the_course_words_follow_the_route() {
     let ready = words(&course(RouteStatus::Idle), true, key);
     assert_eq!(ready.ready.as_deref(), Some("Go to Mars"));
     let warp = words(&course(RouteStatus::InWarp), true, key);
-    assert_eq!(warp.running.as_deref(), Some("Warping to Mars"));
+    assert_eq!(warp.running.as_deref(), Some(CANCEL));
     let spool = words(&course(RouteStatus::Spooling), true, key);
-    assert_eq!(spool.running.as_deref(), Some("Charging the warp drive."));
+    assert_eq!(spool.running.as_deref(), Some(CANCEL));
     let stuck = words(&course(RouteStatus::Blocked(Block::Landed)), true, key);
     assert!(stuck.block.is_some() && stuck.running.is_none());
     let walking = words(&course(RouteStatus::Idle), false, key);

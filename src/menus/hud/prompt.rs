@@ -1,8 +1,8 @@
 //! The one prompt line: a key and what it does, bottom centre above the hotbar. Exactly one
 //! row, the highest priority wins: a warning or block sentence, a course that runs, a course
 //! ready to go, the action a key does right now to what the robot looks at or stands by
-//! ([`crate::player::Interact`]: pull a spear, cut a part, board, leave, break stone off, mend), a
-//! first-time hint, nothing.
+//! ([`crate::player::Interact`]: pull a spear, cut a part, board, leave, break stone off, mend), or
+//! nothing.
 
 use bevy::prelude::*;
 
@@ -10,16 +10,20 @@ use super::context::{Context, Element, Where};
 use super::course::{Course, Words, words};
 use super::fade::gate;
 use super::glide::{Bodies, mine, spoken};
-use super::hints::{Hint, Hinted};
 use crate::computer::{Destination, Keys, RouteStatus};
 use crate::craft::pack::PICK_KEY;
 use crate::menus::key_name;
 use crate::player::{Interact, Offer, Verb};
 use crate::settings::{Keymap, Persistent, Settings};
+use crate::ship::Hatch;
 use crate::space::{Location, Travel};
-use crate::ui::{KEY_GAP, key_cap, text, theme};
+use crate::ui::{KEY_GAP, text, theme};
 use crate::universe::Universe;
 use crate::wind::Thickness;
+
+/// What the line says while the pilot of a landed ship cannot step out yet: the ground beside
+/// the hatch has no collider.
+pub const UNREADY: &str = "Ground not ready.";
 
 /// Marks the prompt row.
 #[derive(Component)]
@@ -44,13 +48,10 @@ pub struct State {
     pub ready: Option<(KeyCode, String)>,
     /// The action a key does right now: its key and its words.
     pub act: Option<(KeyCode, String)>,
-    /// A first-time hint: its key and its words.
-    pub hint: Option<(KeyCode, &'static str)>,
 }
 
 /// Returns the one row the line shows: its key, if it has one, and its words. A block beats a
-/// running course, which beats a course ready to go, which beats the action of a key, which beats
-/// a hint.
+/// running course, which beats a course ready to go, which beats the action of a key.
 pub fn choose(state: &State) -> Option<(Option<KeyCode>, String)> {
     let key = |(key, words): &(KeyCode, String)| (Some(*key), words.clone());
     state
@@ -60,11 +61,6 @@ pub fn choose(state: &State) -> Option<(Option<KeyCode>, String)> {
         .or_else(|| state.running.as_ref().map(key))
         .or_else(|| state.ready.as_ref().map(key))
         .or_else(|| state.act.as_ref().map(key))
-        .or_else(|| {
-            state
-                .hint
-                .map(|(key, words)| (Some(key), words.to_string()))
-        })
 }
 
 /// Returns the key that does the action of `offer` under the bindings `keys`, and the words that
@@ -81,8 +77,8 @@ pub fn offered(offer: Offer, keys: &Keymap) -> (KeyCode, String) {
     }
 }
 
-/// The row of the prompt: its words, then the key that does it in the muted tone of a key, on a
-/// panel, hidden until there is something to say.
+/// The row of the prompt: its words, then the key that does it, with no panel behind them,
+/// hidden until there is something to say.
 fn row() -> impl Bundle {
     (
         Prompt,
@@ -91,17 +87,15 @@ fn row() -> impl Bundle {
             display: Display::None,
             align_items: AlignItems::Center,
             column_gap: px(KEY_GAP),
-            padding: UiRect::axes(px(theme::S3), px(theme::S2)),
             ..default()
         },
-        BackgroundColor(theme::PANEL),
         children![
             (
                 PromptAction,
                 text("", theme::FONT_SMALL, theme::TEXT),
                 TextLayout::no_wrap()
             ),
-            (PromptKey, Node::default(), key_cap("")),
+            (PromptKey, Node::default(), super::switch::cap()),
         ],
     )
 }
@@ -126,18 +120,15 @@ pub(super) fn line() -> impl Bundle {
 pub(super) struct Reach<'w, 's> {
     location: Option<Res<'w, Location>>,
     interact: Option<Res<'w, Interact>>,
+    hatch: Option<Res<'w, Hatch>>,
     settings: Res<'w, Persistent<Settings>>,
     destination: Res<'w, Destination>,
     route: Res<'w, RouteStatus>,
     universe: Option<Res<'w, Universe>>,
-    hinted: Res<'w, Hinted>,
     now: Res<'w, Where>,
     air: Option<Res<'w, Thickness>>,
     players: Bodies<'w, 's>,
 }
-
-/// A key with the words of what it does.
-type Keyed = Option<(KeyCode, &'static str)>;
 
 impl Reach<'_, '_> {
     /// Returns the course as the adapter reads it, when one is set.
@@ -150,17 +141,12 @@ impl Reach<'_, '_> {
         })
     }
 
-    /// Returns the action row and the hint row: what a key does right now and the hint in turn.
-    /// In a fall the key that spreads the wings comes before any other action.
-    fn keys(&self, wings: Option<(KeyCode, String)>) -> (Option<(KeyCode, String)>, Keyed) {
+    /// Returns the action a key does right now: its key and its words. In a fall the key that
+    /// spreads the wings, `wings`, comes before any other action.
+    fn act(&self, wings: Option<(KeyCode, String)>) -> Option<(KeyCode, String)> {
         let keys = &self.settings.controls.keys;
         let chosen = self.interact.as_deref().and_then(Interact::chosen);
-        let act = wings.or_else(|| chosen.map(|offer| offered(offer, keys)));
-        let hint = self
-            .hinted
-            .0
-            .map(|hint: Hint| (hint.key(keys), hint.words()));
-        (act, hint)
+        wings.or_else(|| chosen.map(|offer| offered(offer, keys)))
     }
 
     /// Returns the state of the line for this frame: empty in a menu, and while gliding only
@@ -176,7 +162,7 @@ impl Reach<'_, '_> {
         if matches!(self.now.0, Context::Gliding | Context::Menu) {
             return state;
         }
-        (state.act, state.hint) = self.keys(wings);
+        state.act = self.act(wings);
         let seated = self.location.as_deref().map(|at| at.travel) == Some(Travel::InShip);
         let told = self
             .course()
@@ -186,7 +172,12 @@ impl Reach<'_, '_> {
             running,
             ready,
         } = told.unwrap_or_default();
-        state.block = state.block.or(block);
+        let waiting = self
+            .hatch
+            .as_deref()
+            .is_some_and(|hatch| hatch.waiting && seated);
+        let unready = || waiting.then(|| UNREADY.to_string());
+        state.block = state.block.or(block).or_else(unready);
         state.running = running.map(|words| (keys.engage, words));
         state.ready = ready.map(|words| (keys.engage, words));
         state
@@ -214,7 +205,7 @@ pub(super) fn update(
     reach: Reach,
     mut shown: Local<Option<(Option<KeyCode>, String)>>,
     fresh: Query<(), Added<Prompt>>,
-    mut rows: Query<(&mut Node, &mut BackgroundColor), With<Prompt>>,
+    mut rows: Query<&mut Node, With<Prompt>>,
     (mut actions, mut keys): Texts,
 ) {
     let wanted = choose(&reach.state());
@@ -223,11 +214,8 @@ pub(super) fn update(
     }
     shown.clone_from(&wanted);
     let display = [Display::None, Display::Flex][usize::from(wanted.is_some())];
-    let fill = [theme::PANEL_DEEP, theme::PANEL]
-        [usize::from(wanted.as_ref().is_none_or(|(key, _)| key.is_some()))];
-    for (mut node, mut back) in &mut rows {
+    for mut node in &mut rows {
         node.display = display;
-        back.set_if_neq(BackgroundColor(fill));
     }
     let Some((key, words)) = wanted else {
         return;

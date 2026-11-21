@@ -29,13 +29,11 @@ pub enum StepSurface {
     Metal,
     /// The wing and the hull of a ship: a thin panel that drums.
     Hull,
-    /// Planks: floors, piers and decks.
-    Wood,
 }
 
 impl StepSurface {
     /// Every surface, in code order.
-    pub const ALL: [StepSurface; 11] = [
+    pub const ALL: [StepSurface; 10] = [
         StepSurface::Grass,
         StepSurface::Soil,
         StepSurface::Gravel,
@@ -46,7 +44,6 @@ impl StepSurface {
         StepSurface::Water,
         StepSurface::Metal,
         StepSurface::Hull,
-        StepSurface::Wood,
     ];
 }
 

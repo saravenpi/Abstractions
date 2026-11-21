@@ -41,8 +41,10 @@ fn fixed(key: &str, action: &str) -> impl Bundle {
 }
 
 /// What the mouse and held keys do on foot, which no row can rebind.
-const FOOT_FIXED: [(&str, &str); 5] = [
+const FOOT_FIXED: [(&str, &str); 7] = [
     ("Mouse", "Look around"),
+    ("Left mouse", "Swing, stab"),
+    ("Right mouse", "Guard"),
     ("Wheel", "Zoom camera"),
     ("Jump in air", "Spread or fold"),
     ("Sprint, fall", "Boots brake"),

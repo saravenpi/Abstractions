@@ -96,7 +96,8 @@ fn note() -> impl Bundle {
 }
 
 /// The hidden layer of the planet: the sheet the lens moves, holding the picture in its middle
-/// half, twice as wide as it is high, with a copy on each side so the map wraps east and west.
+/// half, twice as wide as it is high, with a copy on each side so the map wraps east and west,
+/// and over it the tiles, laid in the frame of the map.
 pub fn planet_layer() -> impl Bundle {
     let cover = Node {
         position_type: PositionType::Absolute,
@@ -112,11 +113,8 @@ pub fn planet_layer() -> impl Bundle {
         PlanetLayer,
         layer,
         children![
-            (
-                PlanetSheet,
-                cover,
-                children![tile(-1), tile(0), tile(1), tile_layer()]
-            ),
+            (PlanetSheet, cover, children![tile(-1), tile(0), tile(1)]),
+            tile_layer(),
             note()
         ],
     )

@@ -1,25 +1,26 @@
 //! Map tests: a click on the flat map selects a marker or lets go of it, a double click
 //! focuses the map on it, and zooming and panning keep the place under the pointer.
 
-use bevy::math::DVec3;
+use bevy::math::{DVec2, DVec3};
 use bevy::prelude::*;
 
 use super::tap;
-use crate::computer::{DOUBLE_CLICK, Lens, SIZE};
+use crate::computer::{DOUBLE_CLICK, SIZE};
 use crate::map::level::WHOLE;
 use crate::map::pins::{Pin, Pins};
 use crate::map::roam::{FOCUS, focused, scaled, slid};
+use crate::map::sight::Sight;
 use crate::map::surface::Surface;
 
 /// Two markers on the flat map.
 fn pins() -> Pins {
     Pins(vec![
         Pin {
-            at: Vec2::new(0.3, 0.1),
+            at: DVec2::new(0.3, 0.1),
             marker: Some(0),
         },
         Pin {
-            at: Vec2::new(-0.2, 0.0),
+            at: DVec2::new(-0.2, 0.0),
             marker: Some(1),
         },
     ])
@@ -27,9 +28,9 @@ fn pins() -> Pins {
 
 /// Returns the flat map seen whole with the pointer on the marker `hover`.
 fn whole(hover: Option<usize>) -> Surface {
-    let lens = Lens {
+    let lens = Sight {
         zoom: WHOLE,
-        centre: Vec2::ZERO,
+        centre: DVec2::ZERO,
     };
     Surface {
         lens,
@@ -64,9 +65,9 @@ fn a_double_click_focuses_the_marker_or_the_place() {
     let mut surface = whole(Some(0));
     tap(&mut surface, &pins, 1.0);
     tap(&mut surface, &pins, 1.0 + DOUBLE_CLICK * 0.5);
-    let wanted = Lens {
+    let wanted = Sight {
         zoom: FOCUS,
-        centre: Vec2::new(0.3, 0.1),
+        centre: DVec2::new(0.3, 0.1),
     };
     assert_eq!(surface.goal, wanted);
     assert_eq!(focused(wanted.centre, WHOLE), wanted);
@@ -83,9 +84,9 @@ fn a_double_click_focuses_the_marker_or_the_place() {
 /// runs on east past the turn of longitude, and the poles stop it.
 #[test]
 fn zooming_and_panning_the_flat_map_keep_the_place_under_the_pointer() {
-    let lens = Lens {
+    let lens = Sight {
         zoom: 2.5,
-        centre: Vec2::new(0.9, 0.0),
+        centre: DVec2::new(0.9, 0.0),
     };
     let pointer = Vec2::new(60.0, 170.0);
     let held = lens.to_chart(pointer);
@@ -97,5 +98,5 @@ fn zooming_and_panning_the_flat_map_keep_the_place_under_the_pointer() {
     let far = (0..100).fold(lens, |lens, _| slid(lens, Vec2::new(-SIZE * 0.25, 0.0)));
     assert!(far.centre.x > 2.0);
     let north = slid(lens, Vec2::new(0.0, SIZE * 40.0));
-    assert!((north.centre.y - (0.5 - 1.0 / lens.zoom)).abs() < 1e-6);
+    assert!((north.centre.y - (0.5 - 1.0 / f64::from(lens.zoom))).abs() < 1e-6);
 }

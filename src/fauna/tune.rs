@@ -53,6 +53,12 @@ pub const SCAN: f32 = 0.5;
 /// flat frame never leans far from the local vertical.
 pub const DRIFT: f32 = 120.0;
 
+/// Seconds a grazing animal crops one patch before it steps to the next.
+pub const GRAZE_EVERY: f64 = 9.0;
+
+/// Spacings of its herd from its place within which a grazing animal steps to a new patch.
+pub const GRAZE_REACH: f32 = 0.6;
+
 /// Pull per second of an animal towards its place in the herd: a share of the gap closed each
 /// second.
 pub const PULL: f32 = 0.8;
@@ -89,8 +95,17 @@ pub const VISIT_DELAY: f64 = 25.0;
 /// Longest step in seconds an animal takes in one frame.
 pub const MAX_STEP: f32 = 0.1;
 
-/// Share of its top speed a hunter walks up to a robot at.
+/// Share of its top speed an attacker stalks up to a robot at, past [`RUSH`] metres.
 pub const APPROACH_SPEED: f32 = 0.5;
 
-/// Metres past its own length a hunter stops short of a robot it walks up to.
+/// Metres past its own length a body with no attack stops short of a robot it walks up to.
 pub const STAND_OFF: f32 = 2.0;
+
+/// Share of the reach of its attack at which an attacker stops closing, so the blow lands.
+pub const STRIKE_SHARE: f32 = 0.8;
+
+/// Metres from a threat within which an attacker runs at its top speed instead of stalking.
+pub const RUSH: f32 = 12.0;
+
+/// Metres past its strike within which an animal that stands its ground goes for a threat.
+pub const GUARD: f32 = 3.0;

@@ -10,7 +10,7 @@ use super::specks::{own_light, shine, star_light};
 use super::{MOST_STARS, REACH_LY};
 use crate::render::scatter::luminance;
 use crate::render::warp::{GRAIN, GRAIN_LIGHT, SIGHT, daylit};
-use crate::universe::{SECTOR_LY, StarSpec, Universe, system_reach};
+use crate::universe::{LY, SECTOR_LY, StarSpec, Universe, system_reach};
 
 /// The mesh is rebuilt once the camera has moved a sector from where it was built for, and the
 /// build takes a moment at the one light-year a second of the cruise. The stars are gathered farther
@@ -92,7 +92,9 @@ fn a_grain_is_fainter_and_thinner_than_any_star() {
 
 /// The star of the system the camera is in is a point of the star field like the others, and
 /// the only one that shows through the day: from its planets, as far out as the outermost one, it
-/// is the sun, and from the edge of its system, like every other star, the day sky hides it.
+/// is the sun. From the edge of its system it is its plain light, which at the real scale is
+/// still far above the day: the Sun at 320 AU is brighter than the full moon. Like every other
+/// star, the day sky hides it from a distance of the square root of its luminosity in light-years.
 #[test]
 fn the_own_star_is_the_one_point_the_day_does_not_hide() {
     let universe = Universe::new(7);
@@ -108,7 +110,9 @@ fn the_own_star_is_the_one_point_the_day_does_not_hide() {
     let rest = others.iter().filter(|other| other.id != star.id);
     assert_eq!(rest.clone().filter(hidden).count(), rest.count());
     let edge = star.pos + DVec3::X * 2.0 * system_reach(&star);
-    assert_eq!(daylit(own_light(&star, edge).1), 0.0);
     let (_, plain) = star_light(&star, edge);
     assert_eq!(own_light(&star, edge).1, plain);
+    assert_eq!(daylit(plain), 1.0);
+    let hidden_from = star.pos + DVec3::X * star.luminosity.sqrt().max(1.0) * LY;
+    assert_eq!(daylit(own_light(&star, hidden_from).1), 0.0);
 }

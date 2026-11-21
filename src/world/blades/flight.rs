@@ -48,6 +48,9 @@ fn blades_of(
     Some((blades.into_mesh()?, frame))
 }
 
+/// The footprints that clear blades and the cropped patches, as positions with radii.
+pub type Around = (Vec<(DVec3, f32)>, Vec<(DVec3, f32)>);
+
 impl Flight {
     /// Starts building tile `key`, dense when `full`, over `carpet`, clear of the footprints and cropped
     /// patches in `around`.
@@ -55,7 +58,7 @@ impl Flight {
         terrain: &Terrain,
         carpet: Arc<Carpet>,
         at: (IVec2, bool),
-        around: (Vec<(DVec3, f32)>, Vec<(DVec3, f32)>),
+        around: Around,
     ) -> Self {
         let terrain = terrain.clone();
         let (near, cropped) = (around.0, Cropped(around.1));

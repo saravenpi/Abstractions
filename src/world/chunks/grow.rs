@@ -69,12 +69,6 @@ impl Chunks {
     }
 }
 
-/// Returns the metres a focus at `height` is taken down to be as high over the sea level sphere as it is
-/// over the ground.
-pub(super) fn drop(height: &Height) -> f64 {
-    height.altitude - height.clearance.max(0.0)
-}
-
 /// Returns the path the quadtree is selected for: from planet position `at` to the point the
 /// focus will reach, with `reach`. The nodes lie at the sea level radius, so the path is measured from
 /// there as high over them as the focus is over the ground, which keeps a focus in a basin or on a
@@ -96,11 +90,11 @@ fn path_of(chunks: &Chunks, spawner: &Spawner, at: DVec3, reach: &Reach) -> Path
     };
     let leaf = view.arc(view.deepest) * f64::from(u8::from(globe.has_ground()));
     view.reach = f64::from(reach.rings + 1) * leaf;
-    let down = at.normalize_or(DVec3::Y) * drop(&Height::of(globe, at));
+    let down = at.normalize_or(DVec3::Y) * Height::of(globe, at).drop();
     view.focus -= down;
     Path {
         view,
-        ahead: chunks.motion.ahead(at, globe.radius()) - down,
+        ahead: chunks.motion.ahead(view.focus, globe.radius()),
         reach: f64::from(chunks.motion.pace.rings(reach.rings) + 1) * leaf,
     }
 }

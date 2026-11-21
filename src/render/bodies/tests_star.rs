@@ -38,6 +38,7 @@ fn the_disc_is_gone_far_outside_the_system() {
     assert!(seen > STAR_POINT, "the star is {seen} rad from home");
     assert!(angle(star.radius, system_reach(&star)) < STAR_POINT);
     assert!(angle(star.radius, LY) < 0.05 * STAR_POINT);
+    assert!(angle(star.radius, 10.0 * system_reach(&star)) < 0.05 * STAR_POINT);
     let angles: Vec<f32> = (1..=60)
         .map(|i| angle(star.radius, home.orbit_radius * f64::from(i)))
         .collect();
@@ -48,7 +49,8 @@ fn the_disc_is_gone_far_outside_the_system() {
 }
 
 /// The light of the star is whole at the planet, one hundredth ten times as far out, never
-/// more closer in, falls without a step, and is nothing at the edge of the system and beyond.
+/// more closer in, falls without a step over every octave of distance, and is nothing at the
+/// edge of the system and beyond.
 #[test]
 fn the_light_of_the_star_falls_with_the_square_of_the_distance() {
     let reach = 1.0e13;
@@ -68,7 +70,7 @@ fn the_light_of_the_star_falls_with_the_square_of_the_distance() {
         .map(|i| {
             sunlight(
                 orbit,
-                orbit + (reach - orbit) * f64::from(i) / 2000.0,
+                orbit * (reach / orbit).powf(f64::from(i) / 2000.0),
                 reach,
             )
         })

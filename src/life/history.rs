@@ -20,11 +20,22 @@ const DAY: f32 = 1200.0;
 /// Gravity in metres per second squared that the speed fit was made for.
 const EARTH_GRAVITY: f32 = 9.81;
 
+/// Highest Froude number, `v^2 / (g * leg)`, a walker is driven at: a full gallop, past which its
+/// feet could no longer keep up with its body (Alexander and Jayes 1983, "A dynamic similarity
+/// hypothesis for the gaits of quadrupedal mammals", Journal of Zoology 201, 135-152).
+const FROUDE_TOP: f32 = 3.5;
+
 /// Home range radius in metres of a 100 kg plant eater.
 const RANGE_100KG: f32 = 400.0;
 
 /// Mass in kilograms from which grazers live in large herds.
 const LARGE_GRAZER: f32 = 20.0;
+
+/// Returns the fastest gallop in metres per second of a walker of leg `height` metres on a world of
+/// surface `gravity`.
+pub fn gait(height: f32, gravity: f32) -> f32 {
+    (FROUDE_TOP * gravity * height.max(0.05)).sqrt()
+}
 
 /// Returns the life history of a species of `role` and adult `mass` in kilograms on `world`.
 pub fn of(seed: u64, role: &Role, mass: f32, rung: Rung, world: &World) -> History {

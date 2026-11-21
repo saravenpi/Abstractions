@@ -4,7 +4,9 @@
 use bevy::prelude::*;
 
 use super::PlaceUniform;
-use super::ambient::{BOUNCE_CAP, bounce, ground, hemisphere, twilight, with_ground};
+use super::ambient::{
+    BOUNCE_CAP, TWILIGHT_SHARE, bounce, ground, hemisphere, twilight, with_ground,
+};
 use crate::render::scatter::luminance;
 
 /// The sky colour comes for a normal up, the bounce for a normal down, their mean across.
@@ -73,4 +75,11 @@ fn the_ground_colour_rides_in_the_free_slots() {
     assert_eq!(with.air.truncate(), place.air.truncate());
     assert_eq!(with.eye_sky.truncate(), place.eye_sky.truncate());
     assert_eq!(ground(&place), Vec3::ZERO);
+}
+
+/// The share of the ambient light the twilight arch adds is the one the shader has.
+#[test]
+fn the_twilight_share_is_the_shaders() {
+    let shader = include_str!("../daylight.wesl");
+    assert!(shader.contains(&format!("const TWILIGHT_SHARE: f32 = {TWILIGHT_SHARE};")));
 }

@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::world::Boxes;
-use super::{apart, moment, run, seen, third, first};
+use super::{apart, first, moment, run, seen, third};
 use crate::view::{Kind, Moment, Rig};
 
 /// Largest change of the view of a body in one frame at 60 Hz, in metres and in radians. A

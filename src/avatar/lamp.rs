@@ -8,9 +8,10 @@ use super::own::Own;
 use super::spawn::Lamp;
 use crate::settings::{Persistent, Settings};
 
-/// Returns true when the lamp shadow setting changed or a lamp was just spawned.
-pub fn changed(settings: Res<Persistent<Settings>>, fresh: Query<(), Added<Lamp>>) -> bool {
-    settings.is_changed() || !fresh.is_empty()
+/// Returns true when the lamp shadow setting changed or a lamp was just spawned. A world without
+/// settings has no shadows to set.
+pub fn changed(settings: Option<Res<Persistent<Settings>>>, fresh: Query<(), Added<Lamp>>) -> bool {
+    settings.is_some_and(|settings| settings.is_changed() || !fresh.is_empty())
 }
 
 /// Lets the own lamp cast shadows when the setting allows it, and no other lamp.

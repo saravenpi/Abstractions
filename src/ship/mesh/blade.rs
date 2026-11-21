@@ -17,21 +17,25 @@ pub(super) const FIN: [[f32; 4]; 4] = [
 ];
 
 /// Stations of the fin at a wing tip, like [`FIN`]: the fin starts under the wing end and
-/// stands 0.41 m above the top of it, higher than a body steps up, so it stops a body on the wing.
+/// stands 0.56 m above the top of it, well over the 0.35 m a body steps up, so it stops a body
+/// on the wing.
 pub(super) const WINGLET: [[f32; 4]; 3] = [
     [-0.32, 0.85, 2.25, 0.05],
     [-0.035, 1.075, 2.325, 0.05],
-    [0.25, 1.3, 2.4, 0.04],
+    [0.4, 1.4, 2.45, 0.04],
 ];
 
 /// The section of a blade: the share of the chord from the leading edge, and the share of the
-/// half thickness across, of each corner.
-const SECTION: [(f32, f32); 5] = [
+/// half thickness across, of each corner. The faces are flat over most of the chord, so that a
+/// body that walks into a blade meets a wall, which it cannot slide along and round the tip.
+const SECTION: [(f32, f32); 7] = [
     (0.0, 0.0),
-    (0.35, 1.0),
+    (0.2, 1.0),
+    (0.8, 1.0),
     (1.0, 0.3),
     (1.0, -0.3),
-    (0.35, -1.0),
+    (0.8, -1.0),
+    (0.2, -1.0),
 ];
 
 /// Returns the section of a blade standing at `x` metres from the middle, at a station.

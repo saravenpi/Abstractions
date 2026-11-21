@@ -15,6 +15,7 @@ use crate::gear::{Gear, Mode};
 use crate::player::{Motion, Player, place};
 use crate::settings::{Keymap, Persistent, Settings};
 use crate::space::{Anchor, altitude, up};
+use crate::view::{ViewMode, ViewPrefs};
 use crate::world::Terrain;
 use watch::Watch;
 
@@ -104,6 +105,7 @@ fn the_gear_flies_and_hands_back_to_walking_and_swimming() {
     let game = &mut game;
     game.start("Aloft", None);
     game.until("the player to stand", 300, |game| game.walker().grounded);
+    game.app.world_mut().resource_mut::<ViewPrefs>().on_foot = ViewMode::First;
     let mut watch = Watch::default();
     let feet = ground::jumps(game, &mut watch);
     stages::boots(game, &mut watch);

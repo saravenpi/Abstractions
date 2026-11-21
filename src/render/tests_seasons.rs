@@ -45,11 +45,13 @@ fn the_look_of_a_point_does_not_depend_on_the_camera() {
 /// planet and none on a warm one, whatever height the camera looks from.
 #[test]
 fn the_block_gives_the_look_of_the_rules() {
-    let planet = home();
+    let mut planet = home();
+    planet.record.tilt = 0.409;
     let setting = Setting::of(&planet);
     let here = spot(FRAC_PI_4, 0.0);
     let want = SeasonLook::at(&setting, &here, 0.4);
-    let got = block(0.4, DQuat::IDENTITY).look(here.dir.as_vec3(), 0.0);
+    let leaning = SeasonUniform::of(&planet, when(&planet, 0.4), DQuat::IDENTITY);
+    let got = leaning.look(here.dir.as_vec3(), 0.0);
     assert!(
         (got.autumn - want.autumn).abs() < 1.0e-3,
         "{got:?} {want:?}"

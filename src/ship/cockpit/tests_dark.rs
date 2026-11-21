@@ -7,7 +7,7 @@ use super::paint::{key, value, words};
 use super::readings::{Dial, Lamp, Readings};
 use super::screens::{Face, Screen};
 use crate::ship::telemetry::{ShipTelemetry, WarpState};
-use crate::ship::warp::JUMP_CAP;
+use crate::ship::warp::GALAXY_CAP;
 use crate::space::Frame;
 use crate::universe::BodyId;
 
@@ -72,11 +72,11 @@ fn a_bar_reads_the_telemetry() {
     assert_eq!(bar(&flying, Dial::Charge), 0.25);
     assert!((bar(&flying, Dial::Gear) - 0.6).abs() < 1.0e-6);
     assert_eq!(flying.speed, Some(0.5 * top));
-    let warp = read(&aloft(0.0, 800.0, WarpState::Active(JUMP_CAP)));
+    let warp = read(&aloft(0.0, 800.0, WarpState::Active(GALAXY_CAP)));
     assert_eq!(bar(&warp, Dial::Speed), 1.0);
     assert_eq!(bar(&warp, Dial::Charge), 1.0);
     assert_eq!(warp.bars[Dial::Throttle as usize], None);
-    assert_eq!(warp.speed, Some(JUMP_CAP));
+    assert_eq!(warp.speed, Some(GALAXY_CAP));
     let low = bar(&read(&aloft(0.0, 10.0, WarpState::Off)), Dial::Altitude);
     let high = bar(&read(&aloft(0.0, 10_000.0, WarpState::Off)), Dial::Altitude);
     assert!(low > 0.0 && high > low && high < 1.0);

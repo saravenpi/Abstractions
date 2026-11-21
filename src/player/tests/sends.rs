@@ -18,15 +18,22 @@ fn sent(world: &mut World) -> Vec<Intent> {
     out.drain().map(|message| message.intent).collect()
 }
 
+/// Returns a gliding world whose player looks from the eyes.
+fn first_person() -> World {
+    let mut world = gliding();
+    let on_foot = ViewMode::First;
+    world.insert_resource(ViewPrefs {
+        on_foot,
+        ..default()
+    });
+    world
+}
+
 /// The look the local player sends is the view on the wings as on foot. The steer button
 /// sends the steer intent and the turn keys of the ship send the yaw of the wings.
 #[test]
 fn the_look_is_the_view_and_the_steer_and_yaw_keys_are_sent() {
-    let mut world = gliding();
-    world.insert_resource(ViewPrefs {
-        on_foot: ViewMode::First,
-        ..default()
-    });
+    let mut world = first_person();
     world.init_resource::<Messages<IntentOf>>();
     *world.resource_mut::<Heading>() = Heading {
         yaw: 1.0,

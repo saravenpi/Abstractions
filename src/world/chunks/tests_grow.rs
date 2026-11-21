@@ -3,7 +3,6 @@
 
 use bevy::math::DVec3;
 
-use super::grow::drop;
 use super::sight::Height;
 use crate::world::globe::quadtree::{View, leaf_at};
 
@@ -28,11 +27,11 @@ fn a_focus_in_a_basin_splits_the_nodes_under_it() {
     };
     let at = DVec3::Y * (radius + basin.altitude);
     assert!(!view(at).splits(node));
-    assert!(view(at - DVec3::Y * drop(&basin)).splits(node));
+    assert!(view(at - DVec3::Y * basin.drop()).splits(node));
     let plain = Height {
         altitude: 12.0,
         clearance: 12.0,
         radius,
     };
-    assert_eq!(drop(&plain), 0.0);
+    assert_eq!(plain.drop(), 0.0);
 }

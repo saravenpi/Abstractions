@@ -8,9 +8,10 @@ use super::{above_pole, fly, planet};
 use crate::render::{Drive, Gas, Sequence, descent, entry};
 use crate::ship::flight::Controls;
 use crate::ship::fx::{pace, warp_level};
-use crate::ship::shake::{REACH, eased, roughness, shake};
+use crate::ship::shake::{eased, roughness, shake};
 use crate::ship::telemetry::WarpState;
 use crate::ship::warp::{CRUISE_CAP, GALAXY_CAP, JUMP_CAP};
+use crate::speed::shake::REACH;
 use crate::universe::{LY, PlanetSpec};
 
 /// Returns the strongest glow of a flight of `seconds` with the assist on that starts `height`

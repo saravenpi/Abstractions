@@ -132,21 +132,23 @@ fn the_field_never_steps_in_time() {
     assert!(drift(WRAP - 1.0).length() < 2048.0 && drift(WRAP + 3.0) == drift(3.0));
 }
 
-/// Walking a metre at a time round the planet, over the edges of the cube the cover grid is
-/// laid on, the broad cover never jumps, and it does change from place to place.
+/// Walking a hundred metres at a time once round the planet, over the edges of the cube the cover
+/// grid is laid on, the broad cover never jumps, and it does change from place to place.
 #[test]
 fn the_cover_never_steps_from_place_to_place() {
     let field = Field::new(&PlanetRecord::TEMPERATE, 11, EARTH_RADIUS);
     let axis = DVec3::new(0.3, 1.0, -0.2).normalize();
     let start = axis.cross(DVec3::X).normalize();
-    let metre = 1.0 / EARTH_RADIUS;
-    let cover = |step: u32| {
-        let dir = bevy::math::DQuat::from_axis_angle(axis, f64::from(step) * metre) * start;
+    let step = 100.0 / EARTH_RADIUS;
+    let cover = |index: u32| {
+        let dir = bevy::math::DQuat::from_axis_angle(axis, f64::from(index) * step) * start;
         field.cover(&Patch::around(dir), [0.8; 4], 1234.5)
     };
-    let walk: Vec<f32> = (0..38_000).map(cover).collect();
+    let steps = (std::f64::consts::TAU / step) as u32;
+    let walk: Vec<f32> = (0..steps).map(cover).collect();
     let jump = walk.windows(2).map(|pair| (pair[1] - pair[0]).abs());
-    assert!(jump.fold(0.0, f32::max) < 0.003);
+    let worst = jump.fold(0.0, f32::max);
+    assert!(worst < 0.003, "the cover jumps by {worst} in a step");
     let (low, high) = walk.iter().fold((1.0_f32, 0.0_f32), |(low, high), c| {
         (low.min(*c), high.max(*c))
     });

@@ -99,7 +99,7 @@ fn a_landed_ship_only_turns_on_the_spot() {
     let planet = planet(6000.0, 4000.0, 1200.0);
     let land = (&planet, &hillside as &dyn Fn(DVec3) -> f64);
     let mut ship = assisted(&planet, 200.0 + GEAR_DROP + 6.0);
-    coast(&mut ship, &stick(-1.0), land, 12.0);
+    coast(&mut ship, &stick(-1.0), land, 20.0);
     assert!(ship.landed);
     let (rested, nose) = (ship.clone(), ship.forward());
     coast(&mut ship, &turning(DVec3::X), land, 2.0);

@@ -131,7 +131,8 @@ fn rebind(
 
 /// Embeds the shader and registers the material where UI is rendered, and the systems everywhere.
 pub(super) fn plugin(app: &mut App) {
-    app.init_resource::<Backdrop>();
+    app.init_resource::<Backdrop>()
+        .add_message::<AssetEvent<Image>>();
     if app.is_plugin_added::<bevy::ui_render::UiRenderPlugin>() {
         embedded_asset!(app, "backdrop.wesl");
         app.add_plugins(UiMaterialPlugin::<BlurMaterial>::default());

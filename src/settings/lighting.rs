@@ -44,8 +44,11 @@ pub struct Lighting {
     pub shadow_detail: ShadowDetail,
     /// How far the sun casts shadows.
     pub shadow_reach: ShadowReach,
-    /// Whether the clouds shade the ground, the plants and the props.
-    pub cloud_shadows: bool,
+    /// Whether the clouds shade the ground, the plants and the props. It is opt-in and no preset
+    /// sets it. Files written before it was opt-in saved it as `cloud_shadows`, on by default; that
+    /// key is no longer read, so every old file starts with it off once and keeps what the player
+    /// sets from then on.
+    pub cloud_shade: bool,
     /// Whether the camera exposure follows the light, as an eye adapts. Off keeps one exposure.
     pub auto_exposure: bool,
     /// Whether the camera adapts its white to the colour of the light, as an eye does.
@@ -61,7 +64,7 @@ impl Default for Lighting {
         Self {
             shadow_detail: ShadowDetail::High,
             shadow_reach: ShadowReach::Normal,
-            cloud_shadows: true,
+            cloud_shade: false,
             auto_exposure: true,
             white_balance: true,
             local_shadows: false,
@@ -72,7 +75,8 @@ impl Default for Lighting {
 
 impl Graphics {
     /// Returns the options a preset sets, or `self` unchanged for `Custom`. The render distance,
-    /// the clouds in the sky, the vsync and the field of view are not lighting and stay.
+    /// the clouds in the sky, the vsync and the field of view are not lighting and stay, and the
+    /// cloud shadows are opt-in, outside every preset.
     pub fn with_quality(&self, quality: Quality) -> Graphics {
         let (shadows, detail, reach) = match quality {
             Quality::Low => (false, ShadowDetail::Low, ShadowReach::Near),
@@ -89,7 +93,7 @@ impl Graphics {
             lighting: Lighting {
                 shadow_detail: detail,
                 shadow_reach: reach,
-                cloud_shadows: high,
+                cloud_shade: self.lighting.cloud_shade,
                 auto_exposure: quality != Quality::Low,
                 white_balance: quality != Quality::Low,
                 local_shadows: quality == Quality::Ultra,

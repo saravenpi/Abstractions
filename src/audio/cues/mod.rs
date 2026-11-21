@@ -1,7 +1,6 @@
-//! One-shot sounds: a fixed pool of blip voices fed by cues, each heard through its own ears
-//! from where its cue starts.
+//! One-shot sounds: a fixed pool of blip voices fed by cues, and the voices of the animals, each
+//! heard through its own ears from where its cue starts.
 
-pub(super) mod calls;
 mod chirps;
 mod hits;
 pub(super) mod sounds;
@@ -12,12 +11,11 @@ use voice::{Blip, Voice};
 use super::cue::AudioCue;
 use super::dsp::rand::Rand;
 use super::spatial::Spot;
+use super::throat::Throats;
+use super::throat::tune::BUDDY_UNDER;
 
 /// Blips that can sound at once. A cue that finds no free voice loses the blips that do not fit.
 const VOICES: usize = 16;
-
-/// Voices a call of an animal leaves free for every other cue.
-const CALL_SPARE: usize = 6;
 
 /// Voices a blow leaves free for every other cue: with 16 voices, blows hold 10 at most, about three
 /// of them at once.
@@ -37,6 +35,8 @@ pub struct Pool {
     rate: f32,
     /// What the last frame sent the cabin around ears in the seat.
     sent: f32,
+    /// The voices of the animals.
+    throats: Throats,
 }
 
 impl Pool {
@@ -47,37 +47,32 @@ impl Pool {
             rand: Rand::new(VARIATION_SEED, 0),
             rate,
             sent: 0.0,
+            throats: Throats::new(rate),
         }
     }
 
-    /// Starts every blip of `cue` on free voices, heard as `spot` says. A cue under the floor of
-    /// hearing takes no voice. An animal call or a blow only starts when it leaves voices free for
-    /// the rest.
+    /// Starts `cue` heard as `spot` says: an animal call on the voices of the animals, a blow only
+    /// when it leaves voices free for the rest, anything else on free blip voices. A cue under the
+    /// floor of hearing takes no voice. The companion speaks under a calling animal.
     pub fn play(&mut self, cue: AudioCue, spot: &Spot) {
         if !spot.heard() {
             return;
         }
         match cue {
-            AudioCue::Call(call) => {
-                let (blips, count) = calls::call(&call, &mut self.rand);
-                self.spare(&blips[..count], CALL_SPARE, spot);
-            }
+            AudioCue::Call(call) => self.throats.play(call, spot),
             AudioCue::Hit(sound) => {
                 let (blips, count) = hits::hit(&sound, &mut self.rand);
-                self.spare(&blips[..count], HIT_SPARE, spot);
+                let free = self.voices.iter().filter(|voice| voice.idle()).count();
+                if free >= count + HIT_SPARE {
+                    self.start(&blips[..count], (1.0, 1.0), spot);
+                }
             }
             _ => {
                 let (blips, pitch, gain) = sounds::recipe(cue, &mut self.rand);
-                self.start(blips, (pitch, gain), spot);
+                let busy = matches!(cue, AudioCue::Chirp(_)) && self.throats.busy();
+                let under = if busy { BUDDY_UNDER } else { 1.0 };
+                self.start(blips, (pitch, gain * under), spot);
             }
-        }
-    }
-
-    /// Starts `blips` from `spot` only when `spare` voices stay free for the rest.
-    fn spare(&mut self, blips: &[Blip], spare: usize, spot: &Spot) {
-        let free = self.voices.iter().filter(|voice| voice.idle()).count();
-        if free >= blips.len() + spare {
-            self.start(blips, (1.0, 1.0), spot);
         }
     }
 
@@ -96,16 +91,22 @@ impl Pool {
         }
     }
 
-    /// Returns how many voices are free.
+    /// Returns how many blip voices are free.
     #[cfg(test)]
     pub fn free(&self) -> usize {
         self.voices.iter().filter(|voice| voice.idle()).count()
     }
 
-    /// Returns true while any blip is sounding or waiting to.
+    /// Returns true while any blip or animal is sounding or waiting to.
     #[cfg(test)]
     pub fn busy(&self) -> bool {
-        self.voices.iter().any(|voice| !voice.idle())
+        self.voices.iter().any(|voice| !voice.idle()) || self.throats.busy()
+    }
+
+    /// Returns the voices of the animals.
+    #[cfg(test)]
+    pub fn throats(&self) -> &Throats {
+        &self.throats
     }
 
     /// Returns what the last frame sent the cabin, for its reflections.
@@ -115,7 +116,7 @@ impl Pool {
 
     /// Renders one stereo frame.
     pub fn frame(&mut self) -> [f32; 2] {
-        let (mut sum, mut sent) = ([0.0; 2], 0.0);
+        let (mut sum, mut sent) = (self.throats.frame(), 0.0);
         for voice in self.voices.iter_mut().filter(|voice| !voice.idle()) {
             let sample = voice.frame();
             let [left, right] = voice.ear.frame(sample, sample);

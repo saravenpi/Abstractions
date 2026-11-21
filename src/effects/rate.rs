@@ -22,12 +22,12 @@ pub struct Air {
 
 impl Air {
     /// Returns the air of a place where the wind blows at `speed` metres per second in air of `thickness`
-    /// under `sky`: no rain reaches a sheltered place.
+    /// under `sky`.
     pub fn around(speed: f32, thickness: f32, sky: &Sky) -> Self {
         Self {
             speed,
             thickness,
-            rain: if sky.sheltered { 0.0 } else { sky.rain },
+            rain: sky.rain,
         }
     }
 

@@ -43,7 +43,8 @@ fn the_shader_holds_the_same_constants() {
     );
     for line in [
         "let back = (1.0 - shadow.share) * shadow.fade;",
-        "let sun = (shift * shadow.share + here.sun * back) * sun_response(in, place.star.xyz);",
+        "if (wanted > 0.0 || back > 0.0) {",
+        "sun = (shift * shadow.share + here.sun * back) * sun_response(in, place.star.xyz);",
         "let shift = here.sun - place.eye_sun.rgb;",
     ] {
         assert!(SHADER.contains(line), "{line}");

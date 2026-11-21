@@ -86,7 +86,8 @@ fn joint(at: [f32; 3], turn: Quat) -> Transform {
 
 /// Returns the transforms of the three trunk segments, each in the frame of its parent.
 fn trunk(pose: &Pose) -> [Transform; 3] {
-    let lean = Quat::from_rotation_z(-pose.core(Core::Roll))
+    let lean = pose.lean
+        * Quat::from_rotation_z(-pose.core(Core::Roll))
         * Quat::from_rotation_x(-pose.core(Core::Pitch));
     let chest = Quat::from_rotation_y(pose.core(Core::Twist))
         * Quat::from_rotation_x(-pose.core(Core::Spine));

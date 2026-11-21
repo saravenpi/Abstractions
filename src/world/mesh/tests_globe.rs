@@ -69,7 +69,7 @@ fn coarse_nodes_draw_a_flat_sea() {
         x: 1,
         y: 0,
     };
-    let n = GRID_POINTS - 1;
+    let n = super::node::cells_of(&terrain, id);
     let mesh = node_mesh(&terrain, id);
     assert_eq!(mesh.count_vertices(), (n * n * 2 + n * 8) * 3);
     let frame = node_frame(&terrain, id);

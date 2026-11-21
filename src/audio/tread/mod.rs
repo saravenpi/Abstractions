@@ -75,10 +75,11 @@ impl Treads {
             _ => 1.0,
         };
         let hard = ((step.force - TICK.0) / (1.0 - TICK.0)).clamp(0.0, 1.0);
+        let push = force * level * wade;
         let own = if spot.body > 0.0 { FEET.1 * foot } else { 0.0 };
         Shape {
             pitch: (pitch, pitch * (MASS_REF / step.mass.max(1.0)).sqrt()),
-            push: force * level * wade,
+            push,
             grains: (step.load.max(0.0) / LOAD_REF, force.sqrt() * level * wade),
             spread: self.rand.unit(),
             times: self.times(step, spot.delay),
@@ -86,7 +87,7 @@ impl Treads {
                 side: (spot.side + own).clamp(-1.0, 1.0),
                 ..*spot
             },
-            tick: TICK.3 * hard * f32::from(u8::from(step.contact == Contact::Landing)),
+            tick: TICK.3 * hard * push * f32::from(u8::from(step.contact == Contact::Landing)),
         }
     }
 

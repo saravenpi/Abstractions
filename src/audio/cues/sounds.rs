@@ -4,6 +4,7 @@ use super::chirps::chirp;
 use super::voice::{Blip, Wave};
 use crate::audio::cue::AudioCue;
 use crate::audio::dsp::rand::Rand;
+use crate::audio::tune::CHIRP_LEVEL;
 
 /// Builds a pitched blip gliding from `from` to `to` hertz.
 pub(super) const fn tone(from: f32, to: f32, seconds: f32, delay: f32, gain: f32) -> Blip {
@@ -130,7 +131,7 @@ pub fn recipe(cue: AudioCue, rand: &mut Rand) -> (&'static [Blip], f32, f32) {
         AudioCue::WarpSpool => (&WARP_SPOOL, 1.0, 1.0),
         AudioCue::WarpEngage => (&WARP_ENGAGE, 1.0, 1.0),
         AudioCue::WarpExit => (&WARP_EXIT, 1.0, 1.0),
-        AudioCue::Chirp(kind) => (chirp(kind), rand.range(0.95, 1.06), 1.0),
+        AudioCue::Chirp(kind) => (chirp(kind), rand.range(0.95, 1.06), CHIRP_LEVEL),
         AudioCue::Thunder(level) => (&THUNDER, rand.range(0.85, 1.1), level.clamp(0.0, 1.0)),
         AudioCue::Pump(strength) => (
             &PUMP,

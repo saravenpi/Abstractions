@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use super::animate::{Bone, Skeleton};
 use super::own::Own;
 use super::rig::Seg;
+use super::strike::{Act, Strike};
 use super::{Avatar, AvatarPose};
 
 /// How much of the body is drawn. Hidden parts cast no shadow either.
@@ -71,21 +72,24 @@ fn arm(seg: Seg) -> bool {
 }
 
 /// Applies the visibility setting to the body at this machine: its root, its head and its
-/// arms. Any other body is drawn whole.
+/// arms, which stay in a first person view that looks up while they strike. Any other body is
+/// drawn whole.
 pub fn show(
     shown: Res<Shown>,
     own: Own,
-    bodies: Query<(&AvatarPose, &Skeleton)>,
+    bodies: Query<(&AvatarPose, &Skeleton, Option<&Strike>)>,
     mut roots: Query<&mut Visibility, (With<Avatar>, Without<Bone>)>,
     mut bones: Query<(&Bone, &mut Visibility), Without<Avatar>>,
 ) {
     let Some((_, body)) = own.body() else {
         return;
     };
-    let (Ok((input, skeleton)), Ok(mut root)) = (bodies.get(body), roots.get_mut(body)) else {
+    let (Ok((input, skeleton, strike)), Ok(mut root)) = (bodies.get(body), roots.get_mut(body))
+    else {
         return;
     };
-    let parts = drawn(*shown, input.look.y);
+    let striking = strike.is_some_and(|strike| strike.act != Act::Ready);
+    let parts = drawn(*shown, if striking { 0.0 } else { input.look.y });
     root.set_if_neq(parts.body);
     let mut bones = bones.iter_many_mut(skeleton.0);
     while let Some(found) = bones.fetch_next() {

@@ -58,7 +58,7 @@ impl Lands {
 
     /// Returns the one biome that covers the whole planet, or nothing where the climate decides.
     ///
-    /// Plants, structures, creatures and sounds all follow the biome, so one answer here fits them all.
+    /// Plants, creatures and sounds all follow the biome, so one answer here fits them all.
     pub fn biome(self) -> Option<Biome> {
         match self.class {
             PlanetClass::Ocean | PlanetClass::Island => None,

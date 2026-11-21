@@ -8,6 +8,7 @@
 mod blow;
 mod hit;
 mod inertia;
+mod look;
 mod part;
 mod recipe;
 mod solve;
@@ -33,11 +34,13 @@ mod tests_wear;
 pub use blow::blow;
 pub use hit::{Blow, Layer, Mode, Strike, reference, strike};
 pub use inertia::{Piece, balance, inertia, mass, moment};
+pub use look::{Figure, Look, Tint};
 pub use part::{Build, Form, Head, Shaft, Weight};
 pub use recipe::{Design, Recipe};
 pub use solve::{Proposal, Proposals, Stock, assess, solve};
 pub use swing::{Swing, swing, tip_speed};
 pub use throw::{Throw, throw};
+pub use tune::EDGE_MIN;
 pub use wear::{Joint, Wear, lives};
 pub use why::{Why, explain};
 

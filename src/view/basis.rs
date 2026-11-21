@@ -38,14 +38,16 @@ pub(super) fn frame(target: &Target) -> Quat {
 /// Returns the axes the camera of `target` aims to look along, `third` of the way to a third person view.
 ///
 /// For a body they are its own. The chase camera of the ship keeps the axes of the hull in
-/// space, where nothing is up. Low in an atmosphere it levels toward the local up and, at
-/// speed, turns from the nose toward where the ship is going.
-pub(super) fn chase(target: &Target, third: f32) -> Quat {
+/// space, where nothing is up. Low in an atmosphere it levels toward the local up, which only
+/// rolls it around the nose. When it may `follow`, as with auto-follow on, it also turns at
+/// speed from the nose toward where the ship is going; else it keeps to the nose, so the angle
+/// the player chose around the hull holds.
+pub(super) fn chase(target: &Target, third: f32, follow: bool) -> Quat {
     if target.kind != Kind::Ship {
         return frame(target);
     }
     let near = target.ground.length().min(1.0) * third;
-    let speed = target.velocity.length();
+    let speed = target.velocity.length() * f32::from(u8::from(follow));
     let along = target.velocity.try_normalize().unwrap_or(target.forward);
     let fast = smoothstep(CHASE_BAND.0, CHASE_BAND.1, speed);
     let share = near * CHASE_ALONG * fast * along.dot(target.forward).max(0.0);

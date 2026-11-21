@@ -7,10 +7,13 @@
 //! over the grip budget, the swing turns at ω, then the hands recover. After the transforms are
 //! propagated the head is swept against the bounds of the parts of the animals and the first one
 //! it meets takes a [`Hit`]; a [`Hitstop`] freezes both for a few frames and shakes the animal.
+//! The strike aims where the crosshair points, with the whole body behind it, and every contact
+//! reads on screen, as the `feel` module lays out.
 
 mod act;
 mod canvas;
 mod dir;
+mod feel;
 mod flight;
 mod held;
 mod hit;
@@ -49,6 +52,8 @@ mod tests_cost;
 #[cfg(test)]
 mod tests_flight;
 #[cfg(test)]
+mod tests_ground;
+#[cfg(test)]
 mod tests_hit;
 #[cfg(test)]
 mod tests_hurt;
@@ -56,6 +61,8 @@ mod tests_hurt;
 mod tests_ik;
 #[cfg(test)]
 mod tests_outcome;
+#[cfg(test)]
+mod tests_stab;
 #[cfg(test)]
 mod tests_stock;
 #[cfg(test)]
@@ -67,6 +74,9 @@ mod tests_trail;
 
 pub use act::{Act, Strike};
 pub use dir::Dir;
+pub use feel::knap::Knap;
+pub use feel::mark::Mark;
+pub use feel::sight::Sight;
 pub use flight::{Rest, Spear};
 pub use held::{Held, Style};
 pub use hit::{Hit, Tip};
@@ -134,6 +144,7 @@ fn update(app: &mut App) {
 fn hands() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
     (
         hurt::feel,
+        feel::sight::look.run_if(in_control),
         input::ask.run_if(in_control),
         layer::lay,
         show::wield.run_if(armed),
@@ -188,6 +199,7 @@ pub(super) fn plugin(app: &mut App) {
                 .run_if(playing),
         );
     update(app);
+    feel::plugin(app);
     app.add_systems(Update, swings());
     #[cfg(feature = "dev")]
     app.add_systems(Update, starter::give.run_if(in_control).before(input::ask));

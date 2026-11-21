@@ -139,9 +139,24 @@ impl Foot {
         self.at = path.with_y(path.y.max(floor) + lift * (PI * self.t).sin());
     }
 
-    /// Puts the foot where the phase alone says, on a flat ground at `base`, moving along `dir`
+    /// Sets a planted foot back on `ground` where it stands: the drawn ground under it may have
+    /// changed level as the chunks streamed. A swinging foot lands on the ground of its own.
+    pub fn seat(&mut self, ground: &dyn Fn(Vec2) -> f32) {
+        if self.planted {
+            self.at = on(ground, self.at.x, self.at.z);
+            self.to = self.at;
+        }
+    }
+
+    /// Puts the foot where the phase alone says, on `ground` under where it is, moving along `dir`
     /// over a stride `length` long: the cheap foot of a distant body.
-    pub fn sketch(&mut self, cue: &Cue, stride: &Stride, (base, dir): (f32, Vec3), length: f32) {
+    pub fn sketch(
+        &mut self,
+        cue: &Cue,
+        stride: &Stride,
+        (ground, dir): (&dyn Fn(Vec2) -> f32, Vec3),
+        length: f32,
+    ) {
         let travel = stride.duty * length;
         let (ahead, up, planted) = match cue.phase < stride.duty {
             true => (travel * (0.5 - cue.phase / stride.duty), 0.0, true),
@@ -154,7 +169,11 @@ impl Foot {
                 )
             }
         };
-        let at = cue.rest + dir * ahead;
-        (self.at, self.to, self.planted) = (at.with_y(base + up), at.with_y(base), planted);
+        let at = on(
+            ground,
+            cue.rest.x + dir.x * ahead,
+            cue.rest.z + dir.z * ahead,
+        );
+        (self.at, self.to, self.planted) = (at + Vec3::Y * up, at, planted);
     }
 }

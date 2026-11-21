@@ -16,6 +16,7 @@ mod paint;
 mod patch;
 mod pose;
 mod range;
+mod rings;
 mod scope;
 mod sight;
 mod space;

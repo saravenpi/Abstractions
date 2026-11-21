@@ -35,7 +35,7 @@ pub(super) fn hold(app: &mut App, frames: usize, asked: &[Intent]) -> (Motion, G
 }
 
 /// Puts the body 190 m higher, at rest, with nothing under it.
-fn lift(app: &mut App) {
+pub(super) fn lift(app: &mut App) {
     let world = app.world_mut();
     let mut bodies = world.query_filtered::<(&mut Transform, &mut Motion), With<Player>>();
     for (mut transform, mut motion) in bodies.iter_mut(world) {

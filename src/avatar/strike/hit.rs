@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::outcome::Outcome;
-use super::tune::SWEET_FLOOR;
+use super::tune::{SAMPLES, SWEET_FLOOR};
 use crate::craft::build::{Blow, Intent};
 
 /// The head of the tool that struck, as the sound and the harm read it.
@@ -92,9 +92,11 @@ pub fn radius(grip: Vec3, tip: Vec3, point: Vec3) -> f32 {
     (point - grip).dot(blade / length).clamp(0.0, length)
 }
 
-/// Returns where the head path `was` → `now` (each a grip and a tip, in render space) first
+/// Returns where the blade swept from `was` to `now` (each a grip and a tip, in render space) first
 /// touches a part of `bounds` placed by `part`, or else where the blade `now` lies in it, or
-/// nothing. The paths are tested in the frame of the part, padded by `pad` metres.
+/// nothing. The sweep is tested at the head and at points down the blade, so a part the shaft
+/// passes through between two frames is met too. The paths are tested in the frame of the part,
+/// padded by `pad` metres.
 pub fn touch(
     was: [Vec3; 2],
     now: [Vec3; 2],
@@ -106,8 +108,11 @@ pub fn touch(
     let scale = part.scale().abs().max(Vec3::splat(1e-3));
     let local = |p: Vec3| inverse.transform_point3(p);
     let pad = Vec3::splat(pad) / scale;
-    let head = enter(local(was[1]), local(now[1]), bounds, pad).map(|s| was[1].lerp(now[1], s));
-    head.or_else(|| {
+    let swept = SAMPLES.into_iter().find_map(|share| {
+        let (from, to) = (was[0].lerp(was[1], share), now[0].lerp(now[1], share));
+        enter(local(from), local(to), bounds, pad).map(|s| from.lerp(to, s))
+    });
+    swept.or_else(|| {
         enter(local(now[0]), local(now[1]), bounds, pad).map(|s| now[0].lerp(now[1], s))
     })
 }

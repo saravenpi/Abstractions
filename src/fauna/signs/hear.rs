@@ -4,7 +4,7 @@
 //! Contact calls and the cries of hunts come from `crate::life::signs::calls`, pure functions of the
 //! herds and universe time, so every player hears them at the same moment. Alarms at a robot are
 //! local, as the flight they come with is; so are the threats of bold animals that stand their
-//! ground. Herds call more around sunrise and sunset, by the daylight at their home. Every call heard
+//! ground, and the last cry of an animal as it dies. Herds call more around sunrise and sunset, by the daylight at their home. Every call heard
 //! is kept for the singing, which moves the bodies that make it; only the [`CALLS`] loudest calls of
 //! one hearing are sent to the audio.
 
@@ -16,15 +16,19 @@ use super::sing::Sung;
 use super::tune::{CALLS, EARSHOT, HALF_LEVEL, HEAR, QUIET};
 use crate::audio::spatial::tune::CALL;
 use crate::audio::{AudioCue, Call, Origin, Sound};
+use crate::fauna::Dead;
 use crate::fauna::beast::Beast;
 use crate::fauna::gate::Spec;
 use crate::fauna::herds::{Herds, herd_arc};
 use crate::fauna::senses::Stance;
 use crate::fauna::site;
 use crate::life::Life;
-use crate::life::signs::calls::{Calling, Cry, chorus, contact, cries, distress, rhythm, voice};
+use crate::life::signs::calls::{
+    Calling, Cry, Voice, chorus, contact, cries, distress, rhythm, voice,
+};
 use crate::render::GameCamera;
 use crate::space::{Anchor, Clock, Placed};
+use crate::universe::hash::child;
 use crate::world::Terrain;
 
 /// Seconds between two alarms at a robot of one herd.
@@ -43,7 +47,8 @@ pub struct Hear<'w, 's> {
     spec: Res<'w, Spec>,
     sung: ResMut<'w, Sung>,
     camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
-    beasts: Query<'w, 's, (&'static Beast, &'static Placed)>,
+    beasts: Query<'w, 's, (&'static Beast, &'static Placed), Without<Dead>>,
+    dying: Query<'w, 's, (&'static Beast, &'static Placed), Added<Dead>>,
     sounds: MessageWriter<'w, Sound>,
 }
 
@@ -128,8 +133,20 @@ fn gather(h: &Hear, heard: &mut Heard, span: (f64, f64)) {
     cries_of_pain(h, calls, span);
 }
 
-/// Adds to `calls` the distress cries of the hurt animals drawn, within the universe times `span`.
+/// Adds to `calls` the distress cries of the hurt animals drawn within the universe times `span`, and
+/// the death cry of each animal that died since the last hearing.
 fn cries_of_pain(h: &Hear, calls: &mut Vec<(Calling, DVec3)>, span: (f64, f64)) {
+    for (beast, placed) in &h.dying {
+        let (herd, slot) = beast.lead.key();
+        let calling = Calling {
+            herd,
+            species: beast.index,
+            slot,
+            cry: Cry::Death,
+            at: span.1,
+        };
+        calls.push((calling, placed.pos.normalize()));
+    }
     for (beast, placed) in &h.beasts {
         let hurt = 1.0 - beast.wits.health.share();
         let (herd, slot) = beast.lead.key();
@@ -187,21 +204,24 @@ pub fn weigh(
             continue;
         }
         let from = anchor.to_render(*dir * ear.pos.length());
-        let call = Call {
-            voice: voice(species, life.rung),
-            cry: calling.cry,
-        };
         let reach = CALL * HALF_LEVEL * species.history.mass.max(1e-3).cbrt();
-        loud.push((
-            near,
-            Sound {
-                cue: AudioCue::Call(call),
-                from: Origin::At(from, reach),
-            },
-        ));
+        let sound = Sound {
+            cue: AudioCue::Call(heard(calling, voice(species, life.rung))),
+            from: Origin::At(from, reach),
+        };
+        loud.push((near, sound));
     }
     loud.sort_unstable_by(|a, b| b.0.total_cmp(&a.0));
     loud.truncate(CALLS);
+}
+
+/// Returns `calling` in `voice`: the member that calls gives it its own pitch and pace.
+fn heard(calling: &Calling, voice: Voice) -> Call {
+    Call {
+        voice,
+        cry: calling.cry,
+        one: (child(calling.herd, u64::from(calling.slot)) >> 32) as u8,
+    }
 }
 
 /// Returns the level, 0 to 1, a call of an animal of `mass` kilograms arrives at from `metres` away:

@@ -37,7 +37,7 @@ const SOLID: (f32, f32, f32, f32, f32, f32) = (1000.0, 1000.0, 1.0, 0.0, 0.05, 0
 const DRY: (f32, f32, f32, f32, f32) = (500.0, 500.0, 0.1, 0.0, 0.0);
 
 /// The answer of every ground, in the order of [`StepSurface::ALL`].
-const GROUNDS: [Material; 11] = [
+const GROUNDS: [Material; 10] = [
     Material {
         thud: (75.0, 1.5, 0.137),
         click: (900.0, 0.8, 0.008, 0.0328),
@@ -106,13 +106,6 @@ const GROUNDS: [Material; 11] = [
         click: (2600.0, 1.2, 0.004, 0.054),
         grain: SOLID,
         ring: (430.0, 18.0, 0.045, 0.0),
-        wet: DRY,
-    },
-    Material {
-        thud: (170.0, 5.0, 0.0888),
-        click: (1600.0, 1.2, 0.005, 0.0518),
-        grain: SOLID,
-        ring: (420.0, 8.0, 0.0222, 0.0),
         wet: DRY,
     },
 ];

@@ -109,10 +109,10 @@ pub const BOB: (f32, f32) = (0.035, 2.1);
 pub const TILT: (f32, f32) = (0.07, 0.38);
 
 /// How far a hand trails behind per meter per second, and the farthest it trails, in meters.
-pub const HAND_LAG: (f32, f32) = (0.035, 0.11);
+pub const HAND_LAG: (f32, f32) = (0.012, 0.04);
 
 /// Luminous power of the screen light in lumens at full glow and full size, in the dark: the
-/// power of the lamp of the robot. A village torch gives 26 000.
+/// power of the lamp of the robot. A torch gives 26 000.
 pub const LIGHT_POWER: f32 = 850.0;
 
 /// Illuminance of the place in lux under which the screen light is at full power, and over which
@@ -142,8 +142,8 @@ pub const IDLE_REST: (f32, f32) = (2.0, 5.5);
 pub const DOZE_AFTER: f32 = 50.0;
 
 /// Weights of what it may look at when its eyes move on: the player, the way a fast player
-/// runs, the ship, the door of the home base, a structure, and a look around at nothing.
-pub const GAZE_WEIGHT: [f32; 6] = [3.0, 9.0, 1.6, 1.2, 1.4, 2.4];
+/// runs, the ship, the door of the home base, and a look around at nothing.
+pub const GAZE_WEIGHT: [f32; 5] = [3.0, 9.0, 1.6, 1.2, 2.4];
 
 /// Player speed in metres per second above which the companion looks where the player runs.
 pub const FAST_SPEED: f32 = 5.0;
@@ -163,9 +163,6 @@ pub const WORRY_DEPTH: f32 = 0.25;
 
 /// Climb rate of the ship in meters per second beyond which the companion is wide-eyed.
 pub const TAKEOFF_CLIMB: f32 = 6.0;
-
-/// Distance in meters within which a structure makes the companion curious, and it may go and inspect it.
-pub const CURIOUS_REACH: f32 = 14.0;
 
 /// Seconds the delighted face stays after a discovery.
 pub const DELIGHT_SECONDS: f32 = 6.0;
@@ -228,3 +225,12 @@ pub const TAIL_GAIN: f32 = 1.5;
 
 /// How much brighter its thruster glows in flight.
 pub const THRUST_GLOW: f32 = 1.8;
+
+/// Seconds after anything it said before it says something else, but a warning.
+pub const SPEAK_GAP: f32 = 8.0;
+
+/// Seconds between two warnings.
+pub const WARN_GAP: f32 = 30.0;
+
+/// Seconds between two sounds it makes on its own, when it speaks often and when it speaks rarely.
+pub const CHATTER_GAP: (f32, f32) = (60.0, 150.0);

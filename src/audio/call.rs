@@ -1,13 +1,19 @@
-//! The call of an animal as a one-shot cue: its voice and why it calls. Where it is travels with it
-//! as a [`super::Sound`].
+//! The call of an animal as a one-shot cue: its voice, why it calls and who calls. Where it is
+//! travels with it as a [`super::Sound`].
 
 use crate::life::signs::calls::{CRIES, Cry, TIMBRES, Voice};
 
-/// Lowest frequency in hertz a call can carry; steps go up from it in eighths of an octave.
+/// Lowest frequency in hertz a call can carry; steps go up from it in sixteenths of an octave.
 const BASE_HZ: f32 = 40.0;
 
 /// Pitch steps per octave in a packed call.
-const STEPS_PER_OCTAVE: f32 = 8.0;
+const STEPS_PER_OCTAVE: f32 = 16.0;
+
+/// Lowest spacing of the formants in hertz; steps go up from it in eighths of an octave.
+const BASE_FORMANT: f32 = 50.0;
+
+/// Formant steps per octave in a packed call.
+const FORMANT_STEPS: f32 = 8.0;
 
 /// One animal call.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -16,35 +22,47 @@ pub struct Call {
     pub voice: Voice,
     /// Why it calls.
     pub cry: Cry,
+    /// Who calls in its herd, a byte that shifts its pitch and its pace a little.
+    pub one: u8,
+}
+
+/// Returns `value` as the whole number of `steps` per octave over `base`, at most `top`.
+fn octaves(value: f32, base: f32, steps: f32, top: u64) -> u64 {
+    ((steps * (value / base).max(1.0).log2()).round() as u64).min(top)
 }
 
 impl Call {
-    /// Packs the call into 15 bits: pitch 6, timbre 3, notes 2, cry 3, muffled 1. The pitch is
-    /// rounded to an eighth of an octave.
-    pub(super) fn pack(self) -> u32 {
-        let step = (STEPS_PER_OCTAVE * (self.voice.hz / BASE_HZ).max(1.0).log2()).round() as u32;
-        let timbre = TIMBRES
-            .iter()
-            .position(|t| *t == self.voice.timbre)
-            .unwrap_or(0) as u32;
-        let notes = u32::from(self.voice.notes.clamp(1, 4) - 1);
-        let cry = CRIES.iter().position(|c| *c == self.cry).unwrap_or(0) as u32;
-        let muffled = u32::from(self.voice.muffled);
-        step.min(63) | timbre << 6 | notes << 9 | cry << 11 | muffled << 14
+    /// Packs the call into 38 bits: pitch 7, timbre 3, notes 2, cry 3, muffled 1, formant 6, print 8
+    /// and individual 8. The pitch is rounded to a sixteenth of an octave, the formants to an eighth.
+    pub(super) fn pack(self) -> u64 {
+        let v = self.voice;
+        let timbre = TIMBRES.iter().position(|t| *t == v.timbre).unwrap_or(0) as u64;
+        let cry = CRIES.iter().position(|c| *c == self.cry).unwrap_or(0) as u64;
+        octaves(v.hz, BASE_HZ, STEPS_PER_OCTAVE, 127)
+            | timbre << 7
+            | u64::from(v.notes.clamp(1, 4) - 1) << 10
+            | cry << 12
+            | u64::from(v.muffled) << 15
+            | octaves(v.formant, BASE_FORMANT, FORMANT_STEPS, 63) << 16
+            | u64::from(v.print) << 22
+            | u64::from(self.one) << 30
     }
 
     /// Unpacks a call packed by [`Call::pack`], or nothing when the bits hold none.
-    pub(super) fn unpack(bits: u32) -> Option<Self> {
+    pub(super) fn unpack(bits: u64) -> Option<Self> {
         let field = |shift: u32, width: u32| ((bits >> shift) & ((1 << width) - 1)) as usize;
         let voice = Voice {
-            hz: BASE_HZ * (field(0, 6) as f32 / STEPS_PER_OCTAVE).exp2(),
-            timbre: *TIMBRES.get(field(6, 3))?,
-            notes: field(9, 2) as u8 + 1,
-            muffled: field(14, 1) == 1,
+            hz: BASE_HZ * (field(0, 7) as f32 / STEPS_PER_OCTAVE).exp2(),
+            timbre: *TIMBRES.get(field(7, 3))?,
+            notes: field(10, 2) as u8 + 1,
+            muffled: field(15, 1) == 1,
+            formant: BASE_FORMANT * (field(16, 6) as f32 / FORMANT_STEPS).exp2(),
+            print: field(22, 8) as u8,
         };
         Some(Self {
             voice,
-            cry: *CRIES.get(field(11, 3))?,
+            cry: *CRIES.get(field(12, 3))?,
+            one: field(30, 8) as u8,
         })
     }
 }

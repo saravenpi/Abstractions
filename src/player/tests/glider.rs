@@ -48,6 +48,7 @@ pub(super) fn launch(velocity: Vec3, settle: f32) -> App {
             mode: Mode::Glide,
             velocity,
             wings: 1.0,
+            prone: 1.0,
             pitch: climb,
             ..FlightState::default()
         };

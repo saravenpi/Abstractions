@@ -77,3 +77,7 @@ pub const CUES_GAIN: f32 = 1.25;
 /// view switches between the seat and the chase or the player boards: through the hull and back out
 /// in about 0.3 seconds, with no click.
 pub const VIEW_FADE: f32 = 0.1;
+
+/// Level of the voice of the companion against its phrases as written: 4.4 decibels down, so it
+/// speaks under the world rather than over it.
+pub const CHIRP_LEVEL: f32 = 0.6;

@@ -60,6 +60,7 @@ fn shape(cry: Cry) -> (f32, f32) {
         Cry::Distress => (1.3, 0.7),
         Cry::Threat => (1.8, 1.4),
         Cry::Young => (0.6, 0.8),
+        Cry::Death => (2.2, 1.0),
     }
 }
 
@@ -71,7 +72,7 @@ pub fn rhythm(voice: &Voice, cry: Cry) -> Rhythm {
     let (stretch, pace) = shape(cry);
     let notes = match cry {
         Cry::Distress => voice.notes + 1,
-        Cry::Threat => 1,
+        Cry::Threat | Cry::Death => 1,
         _ => voice.notes,
     };
     Rhythm {

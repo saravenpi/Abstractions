@@ -45,10 +45,7 @@ fn seas_and_islands_keep_the_ground_of_home() {
             );
         }
         assert_eq!(lands.sea_rgb(), [0.23, 0.6, 0.76]);
-        assert_eq!(
-            (lands.growth(), lands.sea_life(), lands.settled()),
-            (1.0, true, true)
-        );
+        assert_eq!((lands.growth(), lands.sea_life()), (1.0, true));
     }
 }
 
@@ -92,13 +89,11 @@ fn bare_classes_have_one_biome() {
     }
 }
 
-/// Plants grow thinner on a desert and on ice, not at all on molten or bare rock, where nobody lives either.
+/// Plants grow thinner on a desert and on ice, not at all on molten or bare rock.
 #[test]
 fn life_follows_the_class() {
     let growth = PlanetClass::ALL.map(|class| lands(class, 0.5).growth());
     assert_eq!(growth, [1.0, 1.0, 0.5, 0.4, 0.0, 0.0, 0.0]);
-    let settled = PlanetClass::ALL.map(|class| lands(class, 0.5).settled());
-    assert_eq!(settled, [true, true, true, true, false, false, false]);
     let sea_life = PlanetClass::ALL.map(|class| lands(class, 0.5).sea_life());
     assert_eq!(sea_life, [true, true, false, false, false, false, false]);
     let ponds = PlanetClass::ALL.map(|class| lands(class, 0.5).ponds());

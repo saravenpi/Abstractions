@@ -12,20 +12,25 @@ use crate::settings::Keymap;
 fn full() -> State {
     State {
         block: Some("Take off first.".to_string()),
+        notice: Some((KeyCode::KeyH, "Flint 1.2 kg".to_string())),
         running: Some((KeyCode::KeyG, "Warping to Mars".to_string())),
         ready: Some((KeyCode::KeyG, "Go to Mars".to_string())),
         act: Some((KeyCode::KeyF, "Board".to_string())),
-        hint: Some((KeyCode::KeyM, "Open the map")),
     }
 }
 
-/// A block beats a running course, which beats a course ready, which beats the action of a key, which
-/// beats a hint; with nothing, there is no row.
+/// A block beats the notice of what was just picked up, which beats a running course, which beats a
+/// course ready, which beats the action of a key; with nothing, there is no row.
 #[test]
 fn the_priority_order_holds() {
     let mut state = full();
     assert_eq!(choose(&state), Some((None, "Take off first.".to_string())));
     state.block = None;
+    assert_eq!(
+        choose(&state),
+        Some((Some(KeyCode::KeyH), "Flint 1.2 kg".to_string()))
+    );
+    state.notice = None;
     assert_eq!(
         choose(&state),
         Some((Some(KeyCode::KeyG), "Warping to Mars".to_string()))
@@ -41,11 +46,6 @@ fn the_priority_order_holds() {
         Some((Some(KeyCode::KeyF), "Board".to_string()))
     );
     state.act = None;
-    assert_eq!(
-        choose(&state),
-        Some((Some(KeyCode::KeyM), "Open the map".to_string()))
-    );
-    state.hint = None;
     assert_eq!(choose(&state), None);
 }
 

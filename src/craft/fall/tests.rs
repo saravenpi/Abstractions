@@ -28,3 +28,18 @@ fn the_gear_waits_where_it_fell() {
     assert!((kept.pack.mass() - 2.0 * mass).abs() < 1e-3);
     assert_eq!(kept.at, [1.0, 2.0, 3.0]);
 }
+
+/// A robot that fell with its kit wakes in a spare body still kitted: the kit waits in the cache,
+/// and no second one is made.
+#[test]
+fn a_fall_gives_no_second_kit() {
+    let universe = crate::universe::Universe::new(3);
+    let planet = universe.planet(universe.home());
+    let mut carried = Pack::default();
+    assert_eq!(carried.equip(&planet.record, planet.gravity), 2);
+    let mut left = Left::default();
+    leave(&mut left, &mut carried, (BodyId::default(), DVec3::ZERO));
+    assert!(carried.kitted && carried.items.is_empty());
+    assert_eq!(carried.equip(&planet.record, planet.gravity), 0);
+    assert_eq!(left.0.expect("a cache").pack.items.len(), 2);
+}

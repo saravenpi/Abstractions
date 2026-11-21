@@ -75,6 +75,8 @@ pub struct Look {
     pub pitch_delta: f32,
     /// Wheel notches, positive toward the body.
     pub zoom_delta: f32,
+    /// Whether the player pressed the recentre key: in the ship the view goes back to the nose.
+    pub recentre: bool,
 }
 
 impl Look {
@@ -87,6 +89,7 @@ impl Look {
             yaw_delta: -motion.x * scale,
             pitch_delta: -motion.y * scale * y_sign,
             zoom_delta: wheel,
+            recentre: false,
         }
     }
 }

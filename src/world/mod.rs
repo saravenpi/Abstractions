@@ -25,7 +25,6 @@ mod scatter;
 mod sea;
 mod shapes;
 mod solids;
-pub mod structures;
 mod surface;
 mod terrain;
 #[cfg(test)]
@@ -37,7 +36,7 @@ mod tests_footing;
 
 pub use biome::{Biome, ground_rgb};
 pub use blades::{BladeAssets, BladeMaterial, Cropped, TurfUniform, turf_at};
-pub use chunks::{Calm, Chunks, Reach, STEPS as RENDER_STEPS, Sited, dither, leaf_arc};
+pub use chunks::{Calm, Chunks, Drawn, Reach, STEPS as RENDER_STEPS, Sited, dither, leaf_arc};
 pub use enter::{Resettled, enter_planet};
 pub use focus::{Link, spin};
 pub use globe::Globe;
@@ -175,7 +174,7 @@ fn streaming(
 
 /// Registers the world systems.
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins((sea::plugin, structures::plugin, calendar::plugin))
+    app.add_plugins((sea::plugin, calendar::plugin))
         .init_resource::<chunks::Chunks>()
         .init_resource::<chunks::Budget>()
         .init_resource::<chunks::Calm>()
@@ -232,7 +231,8 @@ fn stream_systems(app: &mut App) {
             (chunks::stream.run_if(reserve::settled), meter::lap::<4>).chain(),
             (chunks::collect, meter::lap::<5>).chain(),
             (chunks::refine, meter::lap::<6>).chain(),
-            (chunks::show, chunks::watch_calm, meter::lap::<7>).chain(),
+            (chunks::show, chunks::horizon, chunks::watch_calm).chain(),
+            meter::lap::<7>,
             (ready, chunks::place.run_if(chunks::due), meter::lap::<8>).chain(),
             (sea::follow_focus, meter::lap::<9>).chain(),
         )

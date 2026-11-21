@@ -4,8 +4,9 @@ use bevy::prelude::KeyCode;
 
 use super::binds::{Bind, conflicted, conflicts};
 use super::field::{Field, set_key};
-use super::format::{display, key_name};
+use super::format::display;
 use super::hint::conflict_line;
+use super::names::key_name;
 use crate::settings::{Settings, ShipKeys};
 
 /// The default bindings have no conflict, although walking and flying share keys.

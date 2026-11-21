@@ -62,18 +62,20 @@ fn spaced(value: Val) -> bool {
     }
 }
 
-/// Whether a position or a size is left to the layout, a share of its parent, or a whole
-/// number of 4 pixel steps.
+/// Whether a position or a size is left to the layout, a share of its parent, the whole window,
+/// or a whole number of 4 pixel steps.
 fn on_grid(value: Val) -> bool {
     match value {
         Val::Auto | Val::Percent(_) => true,
+        Val::Vw(share) | Val::Vh(share) => share == 100.0,
         Val::Px(pixels) => pixels % 4.0 == 0.0,
         _ => false,
     }
 }
 
 /// Every padding, margin and gap is on the spacing scale, every position and size on the 4
-/// pixel grid, and no node has a border, a rounded corner, an outline or a shadow.
+/// pixel grid, and no node has a border, a rounded corner, an outline or a shadow: a page keeps
+/// its panel, and the HUD shadow is for the in-game HUD alone.
 #[test]
 fn every_node_is_on_the_scale_and_plain() {
     each_page("scale", |world, found, menu| {

@@ -34,12 +34,19 @@ pub(super) fn plugin(app: &mut App) {
         .init_resource::<Held>()
         .add_message::<Worn>()
         .add_message::<harvest::Harvest>()
+        .init_resource::<pack::Notice>()
+        .add_message::<pack::Knock>()
+        .add_message::<pack::Knocked>()
+        .add_message::<crate::audio::Impact>()
+        .add_message::<crate::effects::Fling>()
         .add_systems(
             Update,
             (
                 pack::load,
                 pack::kit.run_if(crate::screens::in_control.and_then(pack::unkitted)),
                 pack::gather.run_if(crate::screens::in_control.and_then(crate::space::on_foot)),
+                pack::split.run_if(on_message::<pack::Knocked>),
+                pack::fade.run_if(pack::fading),
                 harvest::reap.run_if(on_message::<harvest::Harvest>),
                 wield::wear.run_if(on_message::<Worn>),
                 (pack::store, pack::weigh, wield::hold).run_if(changed),

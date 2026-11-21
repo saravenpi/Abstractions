@@ -13,11 +13,10 @@ fn channels(color: Color) -> [f32; 4] {
 }
 
 /// The fills a page may use.
-const FILLS: [Color; 9] = [
+const FILLS: [Color; 8] = [
     Color::NONE,
     theme::SCRIM,
     theme::PANEL,
-    theme::PANEL_DEEP,
     theme::PANEL_BLUR,
     theme::HOVER,
     theme::SELECT,

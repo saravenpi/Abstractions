@@ -9,7 +9,7 @@ use crate::world::{SEA_LEVEL, Terrain};
 /// Room a tree of scale one keeps around its trunk, in meters.
 const TREE_ROOM: f32 = 1.1;
 
-/// Room a bush, rock, log or wreck of scale one keeps around its center, in meters.
+/// Room a bush, rock or log of scale one keeps around its center, in meters.
 const LOW_ROOM: f32 = 0.6;
 
 /// Step of the finite difference that measures the slope under a rock, in meters.

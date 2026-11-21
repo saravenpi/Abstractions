@@ -71,14 +71,14 @@ How other games do it:
 - **Audio thread:** about 25 operations per sample per live one-shot voice (16 blips and 8 treads at most; idle voices cost nothing). Plus 20 for the cabin room. Ships unchanged plus about 10 for the pan.
 - **Game thread:** a few hundred operations per placed one-shot (the spot, plus 7 terrain heights for occlusion). The air fit runs once a frame: two 24-step searches of the ISO law.
 
-## For the `creature-sound` merge
+## The `creature-sound` merge
 
-`creature-sound` (not merged) adds `side`, `near` and `metres` to `Call` and pans its throats with `stereo(call.side, 1.0)` and `tract::air(metres)`. After this branch:
+The merge with `staging` followed this recipe:
 
-- `Call` carries no place. Drop `side`, `near` and `metres` from it and from `Call::pack`; keep `one`, `formant` and `print`.
-- `Throats::play(call, spot: &Spot)`: give each `Throat` an `audio::spatial::Ear` (`Ear::new(1.0)`, `ear.place(spot, rate)`) in place of `sides`. Render with `ear.frame(sample, sample)`, and start the throat `spot.delay` seconds late.
-- Drop the air low-pass from the tract: the ear's way filter is the air now. Keep the muffle for a call from under water.
-- Set the plan's `gain` from `LEVEL * mood.gain * muffle`, with no `near`: the spot carries the distance.
-- In `Pool::play`, `self.buddy` is gone (the companion is placed by its spot). `BUDDY_UNDER` can scale the blip gain of a `Chirp` while throats are busy.
-- `fauna/signs/hear.rs` already sends `Sound { cue: Call(..), from: Origin::At(herd point, reach) }`. Keep that, and add `one` to the `Call` it builds.
+- `Call` keeps `voice`, `cry` and `one`, and carries no place. It packs into 38 bits.
+- Each `Throat` has an `Ear`. It starts `spot.delay` seconds late and is placed by its spot. Its tract keeps only the muffle of the water surface; the air on the way is the spatial path's, so `throat::tract::air` and the `AIR` tunings are gone.
+- The level of a plan is `LEVEL * mood.gain * muffle`. The distance is in the spot.
+- The companion ducks under a calling animal through the gain of its chirp (`BUDDY_UNDER`).
+- The chorus at dusk lives in `audio/tests/dusk.rs`, placed all around. The fauna takes place each call by its reach, `CALL * 12 m * cbrt(mass)`.
+- The armour tick of a hard landing now scales with the strike of the landing (`tread::tune::TICK`). At 0.06 absolute, a landing at full force buried it under the soil click, and `treads_heard::only_a_hard_landing_ticks` failed on staging.
 - The render takes here are numbered 30 to 39 so they do not collide with creature-sound's 21 to 29.

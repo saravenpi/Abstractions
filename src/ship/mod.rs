@@ -17,6 +17,7 @@ mod cruise;
 mod deck;
 mod drag;
 mod drive;
+mod events;
 mod exhaust;
 mod flight;
 mod frames;
@@ -35,6 +36,7 @@ mod mesh;
 mod moons;
 mod mooring;
 mod orbit;
+mod orbital;
 mod pilot;
 mod place;
 mod rest;
@@ -65,11 +67,13 @@ pub use board::{Hatch, near_hatch};
 pub use body::{Beside, Ship, ShipState};
 pub use cruise::top_speed;
 pub use drag::{SEA_DENSITY, density};
+pub use events::{Impact, ShipEvent};
 pub use gear::reach;
 pub use glow::{Engine, level_of};
 pub use helm::Helm;
 pub use legs::Leg;
 pub use mesh::{Looks, dress};
+pub use orbital::{Note, Orbital, Reading, Regime};
 pub use pilot::{Autopilot, Phase};
 pub use save::Logbook;
 pub use spawn::airframe;
@@ -85,46 +89,6 @@ use crate::saves::unplayed;
 use crate::screens::{Screen, playing};
 use crate::view::ViewSet;
 use crate::world::SpawnPoint;
-
-/// Something that happened to the ship. Read it with `MessageReader<ShipEvent>`.
-#[derive(Message, Debug, Clone, Copy, PartialEq)]
-pub enum ShipEvent {
-    /// The ship left the ground it rested on.
-    Liftoff,
-    /// The ship touched the ground after flying.
-    Touchdown {
-        /// Speed of the touchdown in metres per second. Above 6 on the gear it damages the ship.
-        speed: f64,
-        /// Damage of the ship after the touchdown, from 0 to 1.
-        damage: f64,
-    },
-    /// The warp drive did not spool or stopped spooling: the ship is landed, in an atmosphere
-    /// or inside a lock sphere.
-    WarpRefused,
-    /// The warp drive started to spool.
-    WarpSpooling,
-    /// The ship went into warp.
-    WarpEngaged,
-    /// The ship dropped out of warp.
-    WarpDropped,
-    /// The player took the seat.
-    Boarded,
-    /// The player left the ship.
-    Left,
-    /// The pilot switched the headlight: on when true.
-    Headlight(bool),
-}
-
-/// A crash: a touchdown at or above the crash speed of the point that took it, 25 m/s on the
-/// locked gear and 10 m/s on the hull or a folded gear. Nothing damages the ship for it yet;
-/// read it with `MessageReader<Impact>`.
-#[derive(Message, Debug, Clone, Copy, PartialEq)]
-pub struct Impact {
-    /// Approach speed of the point that hit, in metres per second along the ground normal.
-    pub speed: f64,
-    /// Where it hit, in the axes of the surface frame of the planet the ship is on.
-    pub at: bevy::math::DVec3,
-}
 
 /// The stages of the ship systems, in this order in `Update`, while playing with a ship.
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -146,6 +110,7 @@ fn reset(commands: &mut Commands) {
     commands.insert_resource(sky::Skies::default());
     commands.insert_resource(sim::Pace::default());
     commands.insert_resource(Autopilot::default());
+    commands.insert_resource(Orbital::default());
     commands.insert_resource(ShipTelemetry::default());
     commands.insert_resource(Hatch::default());
     commands.insert_resource(shake::Buffet::default());
@@ -158,6 +123,7 @@ fn resources(app: &mut App) {
         .init_resource::<sky::Skies>()
         .init_resource::<sim::Pace>()
         .init_resource::<Autopilot>()
+        .init_resource::<Orbital>()
         .init_resource::<ShipTelemetry>()
         .init_resource::<Hatch>()
         .init_resource::<shake::Buffet>()
@@ -175,8 +141,14 @@ fn flight(app: &mut App) {
         board::board,
         route::halt.run_if(route::halting),
         route::fly,
+        orbital::watch.run_if(seated),
     );
-    let fly = (sim::survey, drive::drive, sim::simulate);
+    let fly = (
+        sim::survey,
+        drive::drive,
+        orbital::carry.run_if(orbital::cruising),
+        sim::simulate.run_if(not(orbital::cruising)),
+    );
     app.add_systems(
         Update,
         (
@@ -229,6 +201,7 @@ pub(super) fn plugin(app: &mut App) {
     resources(app);
     app.add_observer(route::on_engage)
         .add_observer(route::on_cancel)
+        .add_observer(orbital::on_homeward)
         .configure_sets(
             Update,
             stages.run_if(playing).run_if(any_with_component::<Ship>),

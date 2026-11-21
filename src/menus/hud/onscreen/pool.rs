@@ -41,12 +41,11 @@ type Arrows = (
     &'static mut TextColor,
 );
 
-/// The words of a slot: their mark, their text, their colour, their strip and their node.
+/// The words of a slot: their mark, their text, their colour and their node.
 type Words = (
     &'static Label,
     &'static mut Text,
     &'static mut TextColor,
-    &'static mut BackgroundColor,
     &'static mut Node,
 );
 
@@ -93,7 +92,7 @@ fn arrow(at: usize) -> impl Bundle {
     )
 }
 
-/// The words under a marker, on their strip.
+/// The words under a marker, with no strip behind them: they carry the HUD shadow.
 fn label(at: usize) -> impl Bundle {
     (
         Label(at),
@@ -101,10 +100,8 @@ fn label(at: usize) -> impl Bundle {
         TextLayout::no_wrap(),
         Node {
             display: Display::None,
-            padding: UiRect::horizontal(px(theme::S1)),
             ..default()
         },
-        BackgroundColor(theme::PANEL),
     )
 }
 

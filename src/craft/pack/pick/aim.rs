@@ -23,9 +23,10 @@ pub struct Aim<'w, 's> {
 }
 
 impl Aim<'_, '_> {
-    /// Returns the rock under the crosshair when it is within [`REACH`] of the local robot, and
-    /// nothing when the ray meets the ground, a plant, or nothing first.
-    pub fn rock(&self) -> Option<Rock> {
+    /// Returns the rock under the crosshair when it is within [`REACH`] of the local robot, with the
+    /// point the ray meets it at in render space, and nothing when the ray meets the ground, a
+    /// plant, or nothing first.
+    pub fn rock(&self) -> Option<(Rock, Vec3)> {
         let eye = self.camera.single().ok()?;
         let body = self
             .players
@@ -41,6 +42,8 @@ impl Aim<'_, '_> {
         (point.distance(body.0.translation()) <= REACH).then_some(())?;
         let props = self.placed.get(hit.entity).ok()?;
         let local = props.affine().inverse().transform_point3(point);
-        self.chunks.rock_under(hit.entity, local)
+        self.chunks
+            .rock_under(hit.entity, local)
+            .map(|rock| (rock, point))
     }
 }

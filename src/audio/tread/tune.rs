@@ -33,8 +33,10 @@ pub const FEET: (f32, f32, f32) = (0.03, 0.06, 0.08);
 pub const HEEL_TOE: (f32, f32) = (0.6, 0.4);
 
 /// The armour of the robot on a hard landing: the force it starts to tick at, its tone, its
-/// resonance and its level at the hardest landing. Faint: a robot is not a bell.
-pub const TICK: (f32, f32, f32, f32) = (0.45, 3900.0, 60.0, 0.06);
+/// resonance, and its level against the strike of the landing at the hardest one. A harder landing
+/// rings the plates harder: at the hardest the tick peaks about 9 dB under the thud of the landing,
+/// faint but heard, for a robot is not a bell.
+pub const TICK: (f32, f32, f32, f32) = (0.45, 3900.0, 60.0, 0.05);
 
 /// Seconds the scrape of one stretch of a slide takes to die, and how many more grains a
 /// slide breaks than a step.

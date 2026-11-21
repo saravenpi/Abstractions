@@ -11,6 +11,7 @@ use super::patch::Patch;
 use super::span::Span;
 use super::style::Style;
 use super::tris::fill;
+use super::tune::SPARSE_LEVELS;
 use super::{GRID_POINTS, dithered};
 use crate::world::Terrain;
 use crate::world::globe::ChunkId;
@@ -71,20 +72,32 @@ pub fn node_frame(terrain: &Terrain, id: ChunkId) -> Frame {
 }
 
 /// Returns the cells along one side of the mesh of a node `above` levels above the leaves: the
-/// leaves get the 8 m grid of a far detail chunk, coarser nodes twice and four times as many cells.
+/// leaves get the 8 m grid of a far detail chunk, coarser nodes twice and four times as many cells,
+/// and the far nodes of [`SPARSE_LEVELS`] half and a quarter of that again.
 pub fn node_cells(above: u8) -> usize {
-    (GRID_POINTS - 1) >> 2u8.saturating_sub(above)
+    let cells = (GRID_POINTS - 1) >> 2u8.saturating_sub(above);
+    let sparse = usize::from(above >= SPARSE_LEVELS.0) + usize::from(above >= SPARSE_LEVELS.1);
+    cells >> sparse
 }
 
-/// Builds the terrain-only mesh of quadtree node `id`, with [`node_cells`] cells per side, or the
-/// [`bands::CELLS`] of a deck.
+/// Returns the cells along one side of the mesh of quadtree node `id` of the planet of `terrain`.
+pub fn cells_of(terrain: &Terrain, id: ChunkId) -> usize {
+    match terrain.globe().has_ground() {
+        true => node_cells(terrain.globe().leaf_level().saturating_sub(id.level)),
+        false => bands::CELLS,
+    }
+}
+
+/// Builds the terrain-only mesh of quadtree node `id`, with the cells per side of [`cells_of`].
 pub fn node_mesh(terrain: &Terrain, id: ChunkId) -> Mesh {
     let mut mesh = FlatMesh::default();
     let frame = node_frame(terrain, id);
-    let cells = match terrain.globe().has_ground() {
-        true => node_cells(terrain.globe().leaf_level().saturating_sub(id.level)),
-        false => bands::CELLS,
-    };
-    fill_node(&mut mesh, terrain, (id, cells), &frame, true);
+    fill_node(
+        &mut mesh,
+        terrain,
+        (id, cells_of(terrain, id)),
+        &frame,
+        true,
+    );
     mesh.into_mesh()
 }

@@ -3,11 +3,12 @@
 
 use bevy::prelude::*;
 
+use super::calls::calling;
+use super::dusk::dusk;
 use super::planet;
 use super::rig::{parked, seated};
 use super::takes::{flyby, throttle, warp};
 use super::takes_ground::liftoff;
-use crate::audio::call::Call;
 use crate::audio::cue::{AudioCue, ChirpKind, StepSurface};
 use crate::audio::hit::{HitSound, Kind};
 use crate::audio::scene::AudioScene;
@@ -16,6 +17,7 @@ use crate::audio::spatial::tune::{BUDDY, HIT, STEP, THUNDER};
 use crate::audio::spatial::{Between, Listener, Origin, Spot, spot};
 use crate::audio::step::Step;
 use crate::audio::tune::{BUSY, CALM, TITLE};
+use crate::life::signs::calls::{Cry, Timbre};
 
 /// One scene: its name, its length in seconds, the integrated loudness it aims at in LUFS, the
 /// scene at each moment, and the cue of each frame of the game, sixty per second, with how it
@@ -106,7 +108,10 @@ fn fight(frame: usize) -> Option<(AudioCue, Spot)> {
     let hit = heard(Origin::At(Vec3::new(0.3, 0.0, -0.95), HIT.0));
     let animal = heard(Origin::At(Vec3::new(1.0, 0.0, -1.7), 5.6));
     match (frame % 120, frame % 32) {
-        (60, _) => Call::unpack(24 | 1 << 9).map(|call| (AudioCue::Call(call), animal)),
+        (60, _) => Some((
+            AudioCue::Call(calling(Timbre::Low, 320.0, Cry::Contact)),
+            animal,
+        )),
         (_, 0) => Some((AudioCue::Hit(blow(Kind::Clean, 1.0)), hit)),
         (_, 16) => Some((AudioCue::Hit(blow(Kind::Whoosh, 0.7)), hit)),
         _ => None,
@@ -126,7 +131,7 @@ fn jump(frame: usize) -> Option<(AudioCue, Spot)> {
 
 /// Every scene of the table. The seat is 4 dB under the chase view since 0.11.0, at the wish of the
 /// owner, so a burn heard from the seat is busy play, no longer the loudest.
-pub(super) const SCENES: [Scene; 10] = [
+pub(super) const SCENES: [Scene; 11] = [
     ("title", 30.0, TITLE, |_| AudioScene::default(), |_| None),
     ("base_calm", 30.0, CALM, |_| fair(), |_| None),
     ("walking", 30.0, CALM, |_| fair(), walk),
@@ -142,6 +147,16 @@ pub(super) const SCENES: [Scene; 10] = [
         thunder,
     ),
     ("fight", 20.0, BUSY, |_| fair(), fight),
+    (
+        "dusk_chorus",
+        30.0,
+        CALM,
+        |_| AudioScene {
+            daylight: 0.5,
+            ..fair()
+        },
+        dusk,
+    ),
     (
         "liftoff_inside",
         13.0,

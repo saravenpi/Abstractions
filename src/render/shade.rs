@@ -10,6 +10,7 @@ mod tune;
 #[cfg(test)]
 mod tests;
 
+use bevy::core_pipeline::prepass::NormalPrepass;
 use bevy::pbr::ScreenSpaceAmbientOcclusion;
 use bevy::prelude::*;
 
@@ -46,7 +47,7 @@ fn occlusion(
         } else if !wanted && has {
             commands
                 .entity(camera)
-                .remove::<ScreenSpaceAmbientOcclusion>();
+                .remove::<(ScreenSpaceAmbientOcclusion, NormalPrepass)>();
         }
     }
 }

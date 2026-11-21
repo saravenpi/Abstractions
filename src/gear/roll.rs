@@ -11,7 +11,6 @@ use std::f32::consts::PI;
 use super::aim::wrap;
 use super::command::bank;
 use super::input::GearInput;
-use super::mode::Mode;
 use super::state::FlightState;
 use super::tune::{BANK_RATE, BANK_SPEED, LEVEL, ROLL_RATE};
 use crate::render::smoothstep as smooth;
@@ -69,11 +68,13 @@ pub(super) fn roll(state: &FlightState, input: &GearInput) -> f32 {
 }
 
 /// Keeps the angles of `state` within a half turn of zero, and reads the body upright while it
-/// neither flies on its wings nor falls along its path: the same attitude with the heading
-/// turned round, the pitch mirrored across the vertical and the bank a half turn over.
+/// does not fly on its wings: the same attitude with the heading turned round, the pitch
+/// mirrored across the vertical and the bank a half turn over.
+///
+/// So wings folded after a half loop leave the heading on the way the body really goes, and
+/// the fall it folds into is read the right way up: the body is not turned by any of it.
 pub(super) fn settle(state: &mut FlightState) {
-    let along = state.mode.winged() || state.mode == Mode::Fall;
-    if !along && state.pitch.cos() < 0.0 {
+    if !state.mode.winged() && state.pitch.cos() < 0.0 {
         let pole = PI.copysign(state.pitch);
         state.servo.yaw = wrap(state.servo.yaw + PI);
         (state.pitch, state.servo.climb) = (pole - state.pitch, pole - state.servo.climb);

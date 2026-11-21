@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 pub const HULLS: usize = 3;
 
 /// Number of [`Ch`] values.
-pub const CHANNELS: usize = 19;
+pub const CHANNELS: usize = 25;
 
 /// One number of the sound of a ship.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -17,6 +17,9 @@ pub enum Ch {
     Present,
     /// 1 while the listener sits in this ship, 0 when it is heard from outside.
     Inside,
+    /// 1 while the listener rides along with this ship from outside, in the chase view: the air
+    /// rushes past the ears at the speed of the ship.
+    Riding,
     /// 1 while the engines run: someone is aboard or the ship flies.
     Power,
     /// Thrust of the main engines: 1 at full throttle, more with the boost.
@@ -45,10 +48,21 @@ pub enum Ch {
     Rough,
     /// How hard the air heats the nose in an entry, from 0 to 1.
     Roar,
+    /// Angle of attack in radians: how far the nose points off the flight path, up or down.
+    Attack,
+    /// Sideslip in radians: how far the air comes from the side, positive from the right.
+    Slip,
+    /// How fast the ship rolls and yaws, in radians per second.
+    Turn,
+    /// Load of a turn, in g: 1 in level flight, more when the stick is pulled hard.
+    Load,
     /// Distance from the listener to the ship, in metres.
     Distance,
-    /// Side of the ship for the listener, from -1 (left) to 1 (right).
+    /// Side of the ship for the listener, the sine of its bearing, from -1 (left) to 1 (right).
     Side,
+    /// How far ahead of the listener the ship is, the cosine of its bearing, from -1 (behind) to
+    /// 1 (ahead).
+    Front,
     /// Cosine of the angle between the exhaust and the line from the ship to the listener: 1
     /// straight behind the nozzles, -1 ahead of the nose.
     Aspect,
@@ -62,7 +76,10 @@ impl Ch {
             Ch::Air => (0.0, 8.0),
             Ch::Sound => (50.0, 3000.0),
             Ch::Speed | Ch::Height | Ch::Distance => (0.0, 1.0e5),
-            Ch::Side | Ch::Aspect => (-1.0, 1.0),
+            Ch::Side | Ch::Front | Ch::Aspect => (-1.0, 1.0),
+            Ch::Attack => (0.0, 1.6),
+            Ch::Slip => (-1.6, 1.6),
+            Ch::Turn | Ch::Load => (0.0, 20.0),
             _ => (0.0, 1.0),
         }
     }

@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::{Sung, Trail, hear, lay};
-use crate::audio::AudioCue;
+use crate::audio::{AudioCue, Sound};
 use crate::fauna::herds::Herds;
 use crate::life::herd::Herd;
 use crate::render::GameCamera;
@@ -14,10 +14,10 @@ use crate::render::GameCamera;
 pub struct Sent(pub Vec<usize>);
 
 /// Counts the calls sent this frame.
-fn count(mut cues: MessageReader<AudioCue>, mut sent: ResMut<Sent>) {
-    let calls = cues
+fn count(mut sounds: MessageReader<Sound>, mut sent: ResMut<Sent>) {
+    let calls = sounds
         .read()
-        .filter(|c| matches!(c, AudioCue::Call(_)))
+        .filter(|s| matches!(s.cue, AudioCue::Call(_)))
         .count();
     sent.0.push(calls);
 }
@@ -30,7 +30,7 @@ pub fn app(alive: bool) -> (App, Option<Herd>) {
         .init_resource::<crate::world::Cropped>()
         .init_resource::<Sung>()
         .init_resource::<Sent>()
-        .add_message::<AudioCue>()
+        .add_message::<Sound>()
         .add_systems(
             Update,
             (lay::forget, lay::lay, hear::hear, count)

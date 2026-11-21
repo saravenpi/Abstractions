@@ -1,17 +1,18 @@
 //! One footfall being heard: the heel strikes, the sole rolls, the toe lands and the foot lifts,
 //! and the ground answers with its thud, its click, its grains, its ring and its wet sweep. A
 //! landing strikes once with both feet, and a slide scrapes. What arrives is carried by the air
-//! to the listener, and the listener's own step comes through the body as well.
+//! to the ears, and the thud and the ring of the listener's own step come through the body too.
 
 use super::grain::Grains;
 use super::material::{Material, of};
 use super::sweep::Sweep;
 use super::tune::{HEEL_TOE, SCRAPE, TAIL, TICK};
 use crate::audio::cue::StepSurface;
-use crate::audio::dsp::filter::{Lag, Svf};
+use crate::audio::dsp::filter::Svf;
 use crate::audio::dsp::rand::Noise;
 use crate::audio::ship::law::band_gain;
 use crate::audio::ship::ring::Ringer;
+use crate::audio::spatial::{Ear, Spot};
 use crate::audio::step::{Contact, Step};
 
 /// What the pool works out of one step before a voice plays it.
@@ -27,12 +28,8 @@ pub struct Shape {
     pub spread: f32,
     /// Samples until the sound arrives, until the toe lands and until the foot lifts.
     pub times: (u32, u32, u32),
-    /// Gain of what the air carries, and of what the body carries.
-    pub ears: (f32, f32),
-    /// Left and right gains.
-    pub sides: [f32; 2],
-    /// Coefficient of the low-pass of the air on the way.
-    pub dull: f32,
+    /// How it reaches the ears.
+    pub spot: Spot,
     /// Level of the tick of the armour, 0 for none.
     pub tick: f32,
 }
@@ -58,8 +55,8 @@ pub struct Tread {
     grains: Grains,
     /// The wet sweep.
     wet: Sweep,
-    /// The low-pass of the air.
-    dull: Lag,
+    /// The ears.
+    ear: Ear,
     /// Noise source.
     noise: Noise,
     /// Sample rate in hertz.
@@ -79,9 +76,7 @@ impl Tread {
                 grains: (0.0, 0.0),
                 spread: 0.5,
                 times: (0, 0, 0),
-                ears: (0.0, 0.0),
-                sides: [0.0; 2],
-                dull: 1.0,
+                spot: Spot::FLAT,
                 tick: 0.0,
             },
             left: 0,
@@ -90,7 +85,7 @@ impl Tread {
             snap: (0.0, 0.0, 0.0),
             grains: Grains::default(),
             wet: Sweep::default(),
-            dull: Lag::default(),
+            ear: Ear::new(1.0),
             noise: Noise::new(seed),
             rate,
         }
@@ -120,7 +115,7 @@ impl Tread {
         self.grains
             .tune(&stuff, (shape.spread, pitch), shape.grains, rate);
         self.wet = Sweep::default();
-        self.dull = Lag::default();
+        self.ear.place(&shape.spot, rate);
         let tail = (stuff.grain.4 * 6.0).max(stuff.wet.2).max(TAIL);
         self.left = shape.times.0 + shape.times.1.max(shape.times.2) + (tail * rate) as u32;
         (self.step, self.stuff, self.shape) = (Some(*step), stuff, shape);
@@ -207,12 +202,6 @@ impl Tread {
         let wet = self.wet.frame(&mut self.noise, self.rate);
         let [thud, ring, tick] = &mut self.solid;
         let body = thud.frame() + ring.frame() + tick.frame();
-        let (air, inner) = self.shape.ears;
-        let heard = self
-            .dull
-            .to((body + hard + loose + wet) * air, self.shape.dull)
-            + body * inner;
-        let sides = self.shape.sides;
-        [heard * sides[0], heard * sides[1]]
+        self.ear.frame(body + hard + loose + wet, body)
     }
 }

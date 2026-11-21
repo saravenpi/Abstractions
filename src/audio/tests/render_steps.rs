@@ -12,6 +12,7 @@ use super::{RATE, frames, planet};
 use crate::audio::cue::AudioCue;
 use crate::audio::dsp::limit::CEILING;
 use crate::audio::scene::AudioScene;
+use crate::audio::spatial::Air;
 
 /// Returns the scene a take plays over: a fair day with a light wind, or a world with no air.
 fn day(vacuum: bool) -> AudioScene {
@@ -32,14 +33,14 @@ fn day(vacuum: bool) -> AudioScene {
 fn record(take: &Take) -> Vec<[f32; 2]> {
     let vacuum = take.0.contains("vacuum");
     let (mut mixer, shared) = super::mixer(&day(vacuum));
-    let mut due = steps(take, if vacuum { 0.0 } else { 1.0 })
+    let mut due = steps(take, if vacuum { Air::VACUUM } else { Air::home() })
         .into_iter()
         .peekable();
     let mut out = Vec::with_capacity(frames(take.1));
     for i in 0..frames(take.1) {
         let t = i as f32 / RATE;
-        while let Some((_, step)) = due.next_if(|(at, _)| *at <= t) {
-            shared.push(AudioCue::Footstep(step));
+        while let Some((_, step, spot)) = due.next_if(|(at, _, _)| *at <= t) {
+            shared.push(AudioCue::Footstep(step), &spot);
         }
         out.push(mixer.frame());
     }

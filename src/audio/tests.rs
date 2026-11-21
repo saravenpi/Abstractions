@@ -14,6 +14,7 @@ mod mix;
 mod music;
 mod planet;
 mod render;
+mod render_space;
 mod render_steps;
 mod rig;
 mod scene;
@@ -27,6 +28,7 @@ mod takes_ground;
 mod takes_steps;
 mod treads;
 mod treads_heard;
+mod views;
 mod weather;
 mod wire;
 

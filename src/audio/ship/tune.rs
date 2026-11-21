@@ -102,28 +102,6 @@ pub const LIGHT: (f32, f32) = (0.18, 0.3);
 /// Share of the thrust of the lift nozzles the pumps feed as they feed the main engines.
 pub const LIFT_FEED: f32 = 0.6;
 
-/// Centre of the wind over the canopy at rest, what each metre per second adds, and its top.
-pub const WIND_HZ: (f32, f32, f32) = (220.0, 5.0, 2600.0);
-
-/// Resonance of the wind band and its level at the full dynamic pressure.
-pub const WIND: (f32, f32) = (0.6, 0.12);
-
-/// Dynamic pressure in pascals at which the wind over the canopy is at its level.
-pub const FULL_PRESSURE: f32 = 7.5e4;
-
-/// Corner of the thuds of the buffet and their level in the roughest air.
-pub const BUFFET: (f32, f32) = (45.0, 0.22);
-
-/// Centre and resonance of the rattle of the airframe, the share of the samples that carry a
-/// knock, and the peak of a knock in the roughest air.
-pub const RATTLE: (f32, f32, f32, f32) = (1700.0, 6.0, 0.002, 0.05);
-
-/// Corner in hertz of the deep roar of an entry through the hull, and its level at full heat.
-pub const ROAR: (f32, f32) = (70.0, 0.3);
-
-/// Rate of the gusts on the canopy and their depth.
-pub const GUST: (f32, f32) = (0.8, 0.35);
-
 /// How rough the passage of Mach 1 is in thick air, and the width of the band it is felt in.
 pub const TRANSONIC: (f32, f32) = (0.55, 0.08);
 
@@ -221,15 +199,6 @@ pub const LIFT_BODY: f32 = 1.9;
 
 /// Distance in metres past which a ship is not heard.
 pub const EARSHOT: f32 = 2000.0;
-
-/// Corner of the air over one kilometre at sea level at home: absorption reaches 3 decibels there.
-pub const ABSORB_HZ: f32 = 1370.0;
-
-/// Lowest and highest corner the air between a ship and the listener makes.
-pub const DULLEST_HZ: f32 = 180.0;
-
-/// Corner of air that absorbs nothing audible.
-pub const OPEN_HZ: f32 = 18_000.0;
 
 /// Seconds of sound a ship keeps on its way to the listener: earshot at 330 metres per second.
 pub const TRAVEL: f32 = 6.2;

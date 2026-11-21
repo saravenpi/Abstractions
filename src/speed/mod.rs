@@ -19,5 +19,5 @@ mod tests_air;
 #[cfg(test)]
 mod tests_cues;
 
-pub use air::{dynamic_pressure, mach, sound_speed, temperature_at};
+pub use air::{dynamic_pressure, mach, sound_at, sound_speed, temperature_at, temperature_over};
 pub use cues::{buffet, condensation, cone, contrail, moisture, persistence, saturation, vortex};

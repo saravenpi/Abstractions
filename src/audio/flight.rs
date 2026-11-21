@@ -1,4 +1,4 @@
-//! The values of the flight gear the game hands to the audio thread.
+//! The values of the flight gear and of the air the game hands to the audio thread.
 
 use super::scene::AudioScene;
 use super::shared::{Param, Shared, unit};
@@ -17,5 +17,20 @@ impl Shared {
         for (param, level) in aloft {
             self.set(param, unit(level * outside));
         }
+    }
+
+    /// Stores what the air carries: the wind, the shore, the rain and the dust, as loud as the air
+    /// of the planet carries them and none of the rain and dust in space, where `outside` is 0,
+    /// and how the air around the listener takes the high end with distance.
+    pub(super) fn publish_air(&self, scene: &AudioScene, outside: f32) {
+        let air = scene.air;
+        self.set(Param::Wind, unit(scene.wind * scene.altitude_fade * air));
+        self.set(Param::Shore, unit(scene.shore * air));
+        self.set(Param::ShoreSide, unit(0.5 + 0.5 * scene.shore_side));
+        for (param, level) in [(Param::Rain, scene.rain), (Param::Dust, scene.dust)] {
+            self.set(param, unit(level * scene.altitude_fade * air * outside));
+        }
+        self.set(Param::AirFar, scene.absorb.far);
+        self.set(Param::AirSlope, scene.absorb.slope);
     }
 }

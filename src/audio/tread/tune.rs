@@ -29,20 +29,6 @@ pub const ROLL_STRAY: f32 = 0.15;
 /// own feet are heard, and how far apart their levels are: no two legs are built alike.
 pub const FEET: (f32, f32, f32) = (0.03, 0.06, 0.08);
 
-/// Height of the ears over the soles: the distance the listener hears their own feet from,
-/// and the distance under which a step of someone else gets no louder.
-pub const EAR: f32 = 1.7;
-
-/// Distance past which a step is not heard.
-pub const EARSHOT: f32 = 60.0;
-
-/// Speed of sound in the air of home, which carries the steps of others to the listener.
-pub const SOUND: f32 = 343.0;
-
-/// Share of the thud and of the ring of the listener's own step that comes through the body,
-/// which is all of it that is heard in a vacuum.
-pub const BODY: f32 = 0.5;
-
 /// Share of a step the heel strikes with, and the share the toe lands with after the roll.
 pub const HEEL_TOE: (f32, f32) = (0.6, 0.4);
 

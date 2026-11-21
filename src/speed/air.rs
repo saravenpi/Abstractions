@@ -1,6 +1,6 @@
 //! The air a body flies through: dynamic pressure, the speed of sound and the Mach number.
 
-use crate::universe::{GAS_CONSTANT, Mix};
+use crate::universe::{GAS_CONSTANT, Mix, PlanetSpec, heights};
 
 /// Returns the dynamic pressure in pascals of air of `density` kilograms per cubic metre meeting a
 /// body at `speed` metres per second: `1/2 rho v^2`. It is zero without air, whatever the speed.
@@ -22,6 +22,21 @@ pub fn sound_speed(temperature: f64, mix: &Mix) -> f32 {
 /// the top of the weather layer, above which the air keeps its temperature.
 pub fn temperature_at(surface: f64, kappa: f64, (scale, limit): (f64, f64), height: f64) -> f64 {
     surface * (-kappa * height.clamp(0.0, limit) / scale).exp()
+}
+
+/// Returns the temperature in kelvin of the air `height` metres over the sea of `planet`: it cools
+/// as it rises up to the top of the weather layer.
+pub fn temperature_over(planet: &PlanetSpec, height: f64) -> f64 {
+    let record = &planet.record;
+    let top = heights(record, planet.gravity, planet.radius)[2];
+    let layer = (planet.scale_height(), top);
+    temperature_at(record.temperature, record.mix.kappa(), layer, height)
+}
+
+/// Returns the speed of sound in metres per second `height` metres over the sea of `planet`,
+/// from the gas of its air and its temperature at that height.
+pub fn sound_at(planet: &PlanetSpec, height: f64) -> f32 {
+    sound_speed(temperature_over(planet, height), &planet.record.mix)
 }
 
 /// Returns the Mach number of a body at `speed` metres per second in air where sound travels at

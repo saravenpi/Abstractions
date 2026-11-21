@@ -9,6 +9,7 @@ use crate::audio::cue::AudioCue;
 use crate::audio::mix::BLOCK;
 use crate::audio::ship::Fleet;
 use crate::audio::ship::feed::{Ch, Deck, HULLS, HullSound};
+use crate::audio::spatial::{Air, Spot};
 use crate::settings::Audio as Volumes;
 
 /// Largest step between two samples the seat may hear when the state of the ship jumps. The
@@ -113,7 +114,7 @@ fn locks_and_landings_thump() {
     let landing = |strength: f32| {
         let (mut mixer, shared) = mixer(&alone(seated(parked().with(Ch::Power, 0.0))));
         listen(&mut mixer, 6.0);
-        shared.push(AudioCue::Land(strength));
+        shared.push(AudioCue::Land(strength), &Spot::FLAT);
         listen(&mut mixer, 1.0).peak
     };
     assert!(landing(1.0) > landing(0.1));
@@ -130,14 +131,15 @@ fn the_ships_cost_little() {
     deck.publish(&[seated(loud).with(Ch::Warp, 1.0), loud, loud]);
     let dt = BLOCK as f32 / RATE;
     let mut fleet = Fleet::new(RATE, dt);
+    let absorb = Air::home().absorb;
     let seconds = 4.0;
     let clock = Instant::now();
     let mut peak = 0.0_f32;
     for i in 0..frames(seconds) {
         if i % BLOCK as usize == 0 {
-            fleet.tune(&deck, 0.0, dt);
+            fleet.tune(&deck, (0.0, absorb), dt);
         }
-        peak = peak.max(fleet.frame(0.0)[0].abs());
+        peak = peak.max(fleet.frame()[0].abs());
     }
     let spent = clock.elapsed().as_secs_f32();
     println!("{HULLS} ships: {:.1} times real time", seconds / spent);

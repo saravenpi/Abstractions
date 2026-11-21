@@ -4,10 +4,12 @@
 use super::RATE;
 use crate::audio::mix::BLOCK;
 use crate::audio::ship::feed::{Ch, HullSound};
-use crate::audio::ship::law::{absorb_hz, lobe, peak_hz, spread};
+use crate::audio::ship::law::{lobe, peak_hz, spread};
 use crate::audio::ship::path::Path;
 use crate::audio::ship::pump::Pump;
 use crate::audio::ship::tune::{EARSHOT, HELMHOLTZ, LOBE_FLOOR, NEAR, PUMP_IDLE};
+use crate::audio::spatial::Air;
+use crate::universe::PlanetRecord;
 
 /// The roar peaks where the Helmholtz number says, lower for a wider nozzle and in slower air,
 /// and a jet is loudest at an angle behind its nozzle, weakest ahead of the nose.
@@ -22,16 +24,27 @@ fn a_jet_follows_its_size_and_its_angle() {
 }
 
 /// Sound spreads as the inverse of the distance and is gone at the edge of earshot, and the air
-/// takes more of the high end the farther and the thinner it is.
+/// of the planet takes more of the high end the farther and the thinner it is: about 700 Hz is
+/// left of a kilometre of the air of home.
 #[test]
 fn distance_and_air_follow_their_laws() {
     assert!((spread(NEAR.1) - 1.0).abs() < 1.0e-3);
     assert!((spread(200.0) / spread(400.0) - 2.0).abs() < 0.02);
     assert_eq!(spread(EARSHOT), 0.0);
     assert_eq!(spread(0.0), spread(NEAR.0));
-    assert!(absorb_hz(100.0, 1.0) > absorb_hz(1000.0, 1.0));
-    assert!(absorb_hz(1000.0, 1.0) > absorb_hz(1000.0, 0.2));
-    assert!((absorb_hz(1000.0, 1.0) - 1370.0).abs() < 1.0);
+    let home = Air::home().absorb;
+    let thin = Air::sea(&PlanetRecord {
+        pressure: 0.1,
+        ..PlanetRecord::TEMPERATE
+    })
+    .absorb;
+    assert!(home.corner(100.0) > home.corner(1000.0));
+    assert!(home.corner(1000.0) > thin.corner(1000.0));
+    assert!(
+        (600.0..800.0).contains(&home.corner(1000.0)),
+        "{}",
+        home.corner(1000.0)
+    );
 }
 
 /// Runs `pump` toward `asked` for `seconds` and returns its speed.
@@ -72,7 +85,7 @@ fn at(distance: f32) -> HullSound {
 #[test]
 fn sound_arrives_late() {
     let mut path = Path::new(RATE);
-    path.clear(&at(340.0));
+    path.clear(&at(340.0), &Air::home().absorb);
     let mut first = None;
     for i in 0..(2.0 * RATE) as usize {
         path.write(if i < 480 { 0.5 } else { 0.0 });
@@ -89,13 +102,14 @@ fn sound_arrives_late() {
 #[test]
 fn a_closing_ship_is_heard_higher() {
     let mut path = Path::new(RATE);
-    path.clear(&at(900.0));
+    let home = Air::home().absorb;
+    path.clear(&at(900.0), &home);
     let (mut rises, mut before) = (0, 0.0_f32);
     for i in 0..(6.0 * RATE) as usize {
         let seconds = i as f32 / RATE;
         if i % BLOCK as usize == 0 {
             let frame = (seconds * 60.0).floor() / 60.0;
-            path.tune(&at(900.0 - 100.0 * frame));
+            path.tune(&at(900.0 - 100.0 * frame), &home);
         }
         path.write((std::f32::consts::TAU * 1000.0 * seconds).sin());
         let now = path.read()[0];

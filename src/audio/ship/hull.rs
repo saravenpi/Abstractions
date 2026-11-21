@@ -5,6 +5,7 @@
 //!
 //! In a vacuum nothing is radiated, so outside there is silence and inside only the airframe.
 
+use super::air_tune::HUSH;
 use super::airframe::{Airframe, Flow};
 use super::cabin::Cabin;
 use super::drive::Drive;
@@ -19,6 +20,8 @@ use super::tune::{
 };
 use super::works::Works;
 use crate::audio::dsp::filter::{Lag, glide, pole};
+use crate::audio::spatial::Absorb;
+use crate::audio::tune::VIEW_FADE;
 use crate::render::smoothstep;
 use crate::speed::mach;
 
@@ -65,8 +68,11 @@ pub struct Hull {
     wall: Lag,
     /// What the last tuning worked out.
     mix: Mix,
-    /// Coefficient of the smoothing.
-    k: f32,
+    /// Coefficients of the smoothing, of the move of the ears into the cabin and out, and of the
+    /// low-pass the hull makes of the wind for ears in the seat.
+    k: (f32, f32, f32),
+    /// The wind on the airframe through the hull.
+    hush: Lag,
     /// Sample rate in hertz.
     rate: f32,
 }
@@ -88,7 +94,12 @@ impl Hull {
             path: Path::new(rate),
             wall: Lag::default(),
             mix: Mix::default(),
-            k: glide(SMOOTH_SECONDS, rate),
+            k: (
+                glide(SMOOTH_SECONDS, rate),
+                glide(VIEW_FADE, rate),
+                pole(HUSH, rate),
+            ),
+            hush: Lag::default(),
             rate,
         }
     }
@@ -99,12 +110,12 @@ impl Hull {
     }
 
     /// Starts from the state of a ship that has just appeared, silent, so that nothing glides
-    /// in from the state of the ship this voice played before.
-    fn wake(&mut self) {
+    /// in from the state of the ship this voice played before, in air that absorbs as `absorb`.
+    fn wake(&mut self, absorb: &Absorb) {
         self.now = self.goal.0.map(Lag);
         self.now[Ch::Present as usize] = Lag(0.0);
         self.works.rest(&self.goal);
-        self.path.clear(&self.goal);
+        self.path.clear(&self.goal, absorb);
     }
 
     /// Aims the two kinds of jet: the main engines by where the listener stands around the
@@ -143,12 +154,8 @@ impl Hull {
         let feed = hull.at(Ch::Thrust).max(LIFT_FEED * hull.at(Ch::Lift)) / FULL_THRUST;
         let open = hull.at(Ch::Canopy);
         let behind = 1.0 - smoothstep(OUTRUN.0, OUTRUN.1, fast);
-        self.flow.tune(&Flow {
-            speed,
-            pressure: pressure(air, speed),
-            rough: hull.at(Ch::Rough).max(sonic),
-            roar: hull.at(Ch::Roar),
-        });
+        let rough = hull.at(Ch::Rough).max(sonic);
+        self.flow.tune(&Flow::of(hull, pressure(air, speed), rough));
         self.mix = Mix {
             lit,
             spin: feed.min(1.0).sqrt().max(PUMP_IDLE),
@@ -161,18 +168,19 @@ impl Hull {
     }
 
     /// Takes what the game says of the ship and retunes every layer, `dt` seconds after the
-    /// last call. Call it a few hundred times per second.
+    /// last call, in air that takes the high end as `absorb` says. Call it a few hundred times
+    /// per second.
     ///
     /// The way to a listener outside follows where the game puts them, not the smoothed place,
     /// and only while they are outside: one who gets in hears the outside fade from where they
     /// stood, and one who gets out is heard at once from where they stand, while the outside
     /// is still silent. The seat sits at no distance, so a smoothed place would sweep the delay
     /// through it.
-    pub fn tune(&mut self, goal: HullSound, dt: f32) {
+    pub fn tune(&mut self, goal: HullSound, absorb: &Absorb, dt: f32) {
         let was = self.goal;
         self.goal = goal;
         if was.at(Ch::Present) <= 0.5 && goal.at(Ch::Present) > 0.5 {
-            self.wake();
+            self.wake(absorb);
         }
         if !self.live() {
             return;
@@ -188,16 +196,17 @@ impl Hull {
         self.works.tune(&hull, lit, dt);
         match (goal.at(Ch::Inside) > 0.5, was.at(Ch::Inside) > 0.5) {
             (true, _) => {}
-            (false, true) => self.path.jump(&goal),
-            (false, false) => self.path.tune(&goal),
+            (false, true) => self.path.jump(&goal, absorb),
+            (false, false) => self.path.tune(&goal, absorb),
         }
     }
 
     /// Renders one sample of what a listener in the seat hears: the `air` outside through the
-    /// canopy, what the airframe carries in `body`, the wind, the drive and the cabin bed.
-    fn seat(&mut self, hull: &HullSound, air: f32, body: f32) -> f32 {
+    /// canopy, the `wind` on the airframe, what the airframe carries in `body`, the drive and the
+    /// cabin bed.
+    fn seat(&mut self, hull: &HullSound, (air, wind): (f32, f32), body: f32) -> f32 {
         let through = self.wall.to(air * self.mix.leak, self.mix.wall);
-        let ride = self.flow.frame() + self.drive.frame(hull.at(Ch::Warp));
+        let ride = self.hush.to(wind, self.k.2) + self.drive.frame(hull.at(Ch::Warp));
         through + body + ride + self.cabin.frame(hull.at(Ch::Power))
     }
 
@@ -206,9 +215,9 @@ impl Hull {
         if !self.live() {
             return [0.0; 2];
         }
-        let k = self.k;
-        for (now, goal) in self.now.iter_mut().zip(self.goal.0) {
-            now.settle(goal, k);
+        let (k, fade, _) = self.k;
+        for (ch, (now, goal)) in self.now.iter_mut().zip(self.goal.0).enumerate() {
+            now.settle(goal, if ch == Ch::Inside as usize { fade } else { k });
         }
         let hull = HullSound(self.now.map(|lag| lag.0));
         let (jet, roar) = self.main.frame();
@@ -218,15 +227,20 @@ impl Hull {
         let air = (jet + wash + whine + works) * hull.at(Ch::Air).min(AIR_CAP);
         self.path.write(air);
         let inside = hull.at(Ch::Inside);
+        let (wind, rush) = self
+            .flow
+            .heard(inside, hull.at(Ch::Riding), hull.at(Ch::Slip));
+        let body = roar + LIFT_BODY * shake + shaft + knocks;
         let seat = match inside > 0.0 {
-            true => self.seat(&hull, air, roar + LIFT_BODY * shake + shaft + knocks),
+            true => self.seat(&hull, (air, wind), body),
             false => 0.0,
         };
-        let outside = match inside < 1.0 {
-            true => self.path.read(),
-            false => [0.0; 2],
+        let heard = if inside < 1.0 {
+            self.path.read()
+        } else {
+            [0.0; 2]
         };
         let level = hull.at(Ch::Present);
-        outside.map(|side| (side * (1.0 - inside) + seat * inside) * level)
+        [0, 1].map(|i| ((heard[i] + rush[i]) * (1.0 - inside) + seat * inside) * level)
     }
 }

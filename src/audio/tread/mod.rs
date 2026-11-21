@@ -1,7 +1,7 @@
 //! Footsteps: a small pool of voices, one per footfall being heard. Every step is synthesised
 //! from the ground under the foot, the speed and the mass it strikes with and the weight it
-//! carries, turned a little its own way, and carried to the listener as the sound of a ship
-//! is: late by its distance over the speed of sound, spread as `1 / r`, dulled by the air.
+//! carries, turned a little its own way, and carried to the listener by the spatial path: late by
+//! its distance over the speed of sound, spread as `1 / r`, dulled by the air.
 //!
 //! The model follows the footstep chapter of Farnell, "Designing Sound" (MIT Press, 2010): a
 //! step is a heel strike, a roll and a toe, each exciting a model of the ground, and Turchet,
@@ -15,17 +15,12 @@ mod sweep;
 pub(super) mod tune;
 mod voice;
 
-use tune::{
-    BODY, EAR, EARSHOT, FEET, FORCE_REF, GROWTH, LOAD_REF, MASS_REF, ROLL_STRAY, SOUND, STRAY,
-    TICK, WADE,
-};
+use tune::{FEET, FORCE_REF, GROWTH, LOAD_REF, MASS_REF, ROLL_STRAY, STRAY, TICK, WADE};
 use voice::{Shape, Tread};
 
 use super::cue::{AudioCue, StepSurface};
-use super::dsp::filter::pole;
 use super::dsp::rand::Rand;
-use super::ship::law::absorb_hz;
-use super::shore::stereo;
+use super::spatial::Spot;
 use super::step::{Contact, Step};
 
 /// Footfalls that can sound at once. One more takes the voice nearest its end.
@@ -42,13 +37,6 @@ pub struct Treads {
     rate: f32,
 }
 
-/// Returns the level a step `far` metres away arrives at against the listener's own: 1 within
-/// reach of the ears, then `1 / r`, and nothing at the edge of earshot.
-pub fn near(far: f32) -> f32 {
-    let edge = 1.0 - (far / EARSHOT).clamp(0.0, 1.0).powi(4);
-    EAR / far.max(EAR) * edge
-}
-
 impl Treads {
     /// Builds a silent pool for a sample rate.
     pub fn new(rate: f32) -> Self {
@@ -61,23 +49,9 @@ impl Treads {
         }
     }
 
-    /// Returns the gains of the air and of the body, the left and right gains, and the
-    /// coefficient of the low-pass of the air, for `step` and its `foot`, -1 for the left.
-    fn ears(&self, step: &Step, foot: f32) -> ((f32, f32), [f32; 2], f32) {
-        let own = step.far <= 0.0;
-        let air = step.air.clamp(0.0, 1.0);
-        let (inner, side) = if own {
-            (BODY, FEET.1 * foot)
-        } else {
-            (0.0, step.side)
-        };
-        let dull = pole(absorb_hz(step.far, air.max(0.02)), self.rate);
-        ((air, inner), stereo(side, near(step.far)), dull)
-    }
-
-    /// Returns the samples until `step` arrives, until its toe lands and until it lifts: not
-    /// before the wet sweep of the foot going in is over.
-    fn times(&mut self, step: &Step) -> (u32, u32, u32) {
+    /// Returns the samples until `step` arrives `delay` seconds late, until its toe lands and
+    /// until it lifts: not before the wet sweep of the foot going in is over.
+    fn times(&mut self, step: &Step, delay: f32) -> (u32, u32, u32) {
         let roll = step.roll * self.rand.range(1.0 - ROLL_STRAY, 1.0 + ROLL_STRAY);
         let toe = match step.contact {
             Contact::Stride => (roll * self.rate) as u32 + 1,
@@ -85,12 +59,13 @@ impl Treads {
         };
         let late = step.lift.max(roll).max(material::of(step.surface).wet.2);
         let lift = (late * self.rate) as u32 + 1;
-        ((step.far / SOUND * self.rate) as u32 + 1, toe, lift)
+        ((delay * self.rate) as u32 + 1, toe, lift)
     }
 
     /// Works out how `step` sounds this time: its turn, its levels from the physics of the
-    /// strike, and its way to the listener.
-    fn shape(&mut self, step: &Step) -> Shape {
+    /// strike, and its way to the listener from `spot`. The listener's own feet, which the body
+    /// carries, are heard a little to the side of each foot.
+    fn shape(&mut self, step: &Step, spot: &Spot) -> Shape {
         let foot = if step.left { -1.0 } else { 1.0 };
         let pitch = self.rand.range(1.0 - STRAY.0, 1.0 + STRAY.0) * (1.0 + FEET.0 * foot);
         let level = self.rand.range(STRAY.1, 1.0) * (1.0 + FEET.2 * foot);
@@ -100,37 +75,37 @@ impl Treads {
             _ => 1.0,
         };
         let hard = ((step.force - TICK.0) / (1.0 - TICK.0)).clamp(0.0, 1.0);
-        let (ears, sides, dull) = self.ears(step, foot);
+        let own = if spot.body > 0.0 { FEET.1 * foot } else { 0.0 };
         Shape {
             pitch: (pitch, pitch * (MASS_REF / step.mass.max(1.0)).sqrt()),
             push: force * level * wade,
             grains: (step.load.max(0.0) / LOAD_REF, force.sqrt() * level * wade),
             spread: self.rand.unit(),
-            times: self.times(step),
-            ears,
-            sides,
-            dull,
+            times: self.times(step, spot.delay),
+            spot: Spot {
+                side: (spot.side + own).clamp(-1.0, 1.0),
+                ..*spot
+            },
             tick: TICK.3 * hard * f32::from(u8::from(step.contact == Contact::Landing)),
         }
     }
 
-    /// Starts `step` on a free voice, or on the one nearest its end. A step out of earshot,
-    /// or someone else's in a vacuum, is not heard.
-    pub fn play(&mut self, step: &Step) {
-        let silent = step.far > 0.0 && step.air <= 0.0;
-        if step.far >= EARSHOT || silent {
+    /// Starts `step` heard as `spot` says on a free voice, or on the one nearest its end. A step
+    /// under the floor of hearing, such as someone else's in a vacuum, is not played.
+    pub fn play(&mut self, step: &Step, spot: &Spot) {
+        if !spot.heard() {
             return;
         }
-        let shape = self.shape(step);
+        let shape = self.shape(step, spot);
         if let Some(voice) = self.voices.iter_mut().min_by_key(|voice| voice.left()) {
             voice.start(step, shape);
         }
     }
 
-    /// Plays `cue` if it is a footfall.
-    pub fn hear(&mut self, cue: AudioCue) {
+    /// Plays `cue` heard as `spot` says, if it is a footfall.
+    pub fn hear(&mut self, cue: AudioCue, spot: &Spot) {
         if let AudioCue::Footstep(step) = cue {
-            self.play(&step);
+            self.play(&step, spot);
         }
     }
 

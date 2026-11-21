@@ -7,9 +7,10 @@ use crate::audio::cue::AudioCue;
 use crate::audio::cues::Pool;
 use crate::audio::cues::calls::call;
 use crate::audio::dsp::rand::Rand;
+use crate::audio::spatial::Spot;
 use crate::life::signs::calls::{CRIES, Cry, TIMBRES, Timbre, Voice};
 
-/// Returns a call of `timbre` at `hz`, from straight ahead at full level.
+/// Returns a call of `timbre` at `hz`.
 fn calling(timbre: Timbre, hz: f32, cry: Cry) -> Call {
     Call {
         voice: Voice {
@@ -19,13 +20,11 @@ fn calling(timbre: Timbre, hz: f32, cry: Cry) -> Call {
             muffled: false,
         },
         cry,
-        side: 0.0,
-        near: 1.0,
     }
 }
 
-/// A call packed into a cue comes back with its pitch within an eighth of an octave, its place
-/// within a fifteenth, and every cry and the muffling whole.
+/// A call packed into a cue comes back with its pitch within an eighth of an octave, and every
+/// cry and the muffling whole. Where it is travels in its spot, not in the call.
 #[test]
 fn calls_cross_whole() {
     let voices = [
@@ -34,11 +33,7 @@ fn calls_cross_whole() {
         (Timbre::Rasp, 3000.0),
     ];
     for ((t, hz), cry) in voices.into_iter().cycle().zip(CRIES) {
-        let mut sent = Call {
-            side: -0.6,
-            near: 0.4,
-            ..calling(t, hz, cry)
-        };
+        let mut sent = calling(t, hz, cry);
         sent.voice.muffled = cry == Cry::Young;
         let Some(AudioCue::Call(got)) = AudioCue::decode(AudioCue::Call(sent).encode()) else {
             panic!("the call did not come back");
@@ -55,7 +50,6 @@ fn calls_cross_whole() {
             got.voice.muffled,
         );
         assert_eq!(kept, (sent.voice.timbre, 3, cry, sent.voice.muffled));
-        assert!((got.side + 0.6).abs() < 0.07 && (got.near - 0.4).abs() < 0.04);
     }
 }
 
@@ -65,7 +59,7 @@ fn every_call_renders() {
     for t in TIMBRES {
         for cry in CRIES {
             let mut pool = Pool::new(RATE);
-            pool.play(AudioCue::Call(calling(t, 220.0, cry)));
+            pool.play(AudioCue::Call(calling(t, 220.0, cry)), &Spot::FLAT);
             let buffer: Vec<f32> = (0..frames(4.0)).map(|_| pool.frame()[0]).collect();
             let peak = buffer.iter().fold(0.0_f32, |p, x| p.max(x.abs()));
             let jump = buffer
@@ -95,14 +89,11 @@ fn call_pitch_follows_the_voice() {
 fn calls_leave_voices_free() {
     let mut pool = Pool::new(RATE);
     for k in 0..20 {
-        pool.play(AudioCue::Call(calling(
-            TIMBRES[k % TIMBRES.len()],
-            300.0,
-            Cry::Alarm,
-        )));
+        let call = calling(TIMBRES[k % TIMBRES.len()], 300.0, Cry::Alarm);
+        pool.play(AudioCue::Call(call), &Spot::FLAT);
     }
     assert!(pool.free() >= 6, "{} voices free", pool.free());
-    pool.play(AudioCue::UiConfirm);
+    pool.play(AudioCue::UiConfirm, &Spot::FLAT);
     assert!(pool.busy());
 }
 

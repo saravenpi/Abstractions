@@ -17,11 +17,9 @@ pub const TITLE: f32 = -23.0;
 /// Integrated loudness of calm play, in LUFS: standing or walking on a planet in fair weather.
 pub const CALM: f32 = -26.0;
 
-/// Integrated loudness of busy play, in LUFS: a storm, a fight, a ship idling or cruising.
+/// Integrated loudness of busy play, in LUFS: a storm, a fight, a ship idling or cruising, and a
+/// burn heard from the seat, 4 dB under the chase view.
 pub const BUSY: f32 = -21.0;
-
-/// Integrated loudness of the loudest sustained play, in LUFS: a lift-off, full throttle.
-pub const LOUD: f32 = -17.0;
 
 /// How far over the integrated loudness of a calm day the loudest moment of a ship passing
 /// 100 metres away must rise, in LU: the pass is an event in a calm scene, and it must be one.
@@ -74,3 +72,8 @@ pub const BED_MUSIC: f32 = 0.708;
 /// Gain of the one-shot sounds, the interface, the steps, the blows and the voices of the
 /// companion and the animals: 2 decibels up, so that they read over the beds.
 pub const CUES_GAIN: f32 = 1.25;
+
+/// Seconds the ears take to cover 63 percent of a move between the cabin and the outside, when the
+/// view switches between the seat and the chase or the player boards: through the hull and back out
+/// in about 0.3 seconds, with no click.
+pub const VIEW_FADE: f32 = 0.1;

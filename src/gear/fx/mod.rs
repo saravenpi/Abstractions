@@ -47,7 +47,7 @@ pub use trail::Trail;
 pub use wakes::Wake;
 
 use super::mode::Mode;
-use crate::audio::AudioCue;
+use crate::audio::Sound;
 use crate::screens::{Screen, WarmUp, playing};
 
 /// When the gear systems run, in `Update`.
@@ -143,7 +143,7 @@ fn systems(app: &mut App) {
             flare::draw,
             motes::step,
             churn::feed,
-            pump::pump.run_if(resource_exists::<Messages<AudioCue>>),
+            pump::pump.run_if(resource_exists::<Messages<Sound>>),
         )
             .in_set(GearSet::Draw)
             .run_if(playing),

@@ -12,7 +12,7 @@ use super::beast::{Beast, Part};
 use super::bulk::capsule;
 use super::motion::Motion;
 use super::tune::{LOOK, MAX_STEP, RISE};
-use super::{Frozen, near, walk};
+use super::{Dead, Frozen, near, walk};
 use crate::life::body::Locomotion;
 use crate::screens::playing;
 use crate::space::Anchor;
@@ -77,12 +77,12 @@ pub fn look(m: &mut Motion, cast: Cast, (radius, dt): (f32, f32)) -> Vec3 {
     lift
 }
 
-/// Steers every drawn flyer, swarm member and floater clear of the colliders of the world after the
-/// walk moved it, and moves its parts with it when a step was taken back.
+/// Steers every living drawn flyer, swarm member and floater clear of the colliders of the world after
+/// the walk moved it, and moves its parts with it when a step was taken back.
 pub fn clear(
     (terrain, anchor, time): (Res<Terrain>, Res<Anchor>, Res<Time>),
     query: SpatialQuery,
-    mut beasts: Query<&mut Beast, Without<Frozen>>,
+    mut beasts: Query<&mut Beast, (Without<Frozen>, Without<Dead>)>,
     mut parts: Parts,
 ) {
     let Some(life) = terrain.globe().life() else {

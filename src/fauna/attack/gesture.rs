@@ -4,6 +4,7 @@
 
 use bevy::prelude::*;
 
+use super::Dead;
 use super::tune::FLINCH;
 use crate::fauna::beast::{Beast, Part};
 
@@ -22,14 +23,21 @@ pub struct Flinch {
 /// The drawn parts, the ones a flinch moves.
 type Limbs<'w, 's> = Query<'w, 's, &'static mut Transform, With<Part>>;
 
-/// Moves the part hit of every animal that flinches from a blow, and lets it go once it sprang back.
+/// Moves the part hit of every living animal that flinches from a blow, and lets it go once it sprang
+/// back. The walk poses the parts of a living animal again every frame, so the push is drawn over that
+/// pose; a dead body is posed no more, so its flinch is dropped: added up frame after frame, it carried
+/// the part hit, by the killing blow or by a cut, away from the carcass into the air.
 pub fn gesture(
     mut commands: Commands,
     time: Res<Time>,
-    mut beasts: Query<(Entity, &Beast, &mut Flinch)>,
+    mut beasts: Query<(Entity, &Beast, &mut Flinch, Has<Dead>)>,
     mut parts: Limbs,
 ) {
-    for (entity, beast, mut flinch) in &mut beasts {
+    for (entity, beast, mut flinch, dead) in &mut beasts {
+        if dead {
+            commands.entity(entity).remove::<Flinch>();
+            continue;
+        }
         flinch.age += time.delta_secs();
         let push = flinch.push * (1.0 - flinch.age / FLINCH).max(0.0);
         let part = beast.parts.get(usize::from(flinch.part)).copied().flatten();

@@ -1,7 +1,6 @@
 //! One drawn animal: a root placed on the planet in its own flat frame, with one child entity per
 //! body part, faded in when it comes and out when it goes.
 
-use bevy::math::DQuat;
 use bevy::prelude::*;
 
 use super::Creature;
@@ -57,18 +56,26 @@ pub struct Birth<'a> {
     pub now: f32,
 }
 
-/// Returns the root of a body of `body` lying dead on its side at `at` in the frame `spot`, and how it
-/// lies there, so it is laid on the drawn ground; moves its standing `pose` about the middle of its
-/// torso into that root.
-fn lay(spot: &Spot, body: &Body, at: Vec3, pose: &mut [motion::Placed]) -> (Placed, Option<Lain>) {
+/// Returns the root of a body of `body` lying dead on its side at `at` in the frame `spot`, rolled over
+/// about the way it faces, `facing`, and how it lies there, so it is laid on the drawn ground; moves its
+/// standing `pose` about the middle of its torso into that root. Rolled about any other axis it stood
+/// on its head or its tail, half of it in the air.
+pub(super) fn lay(
+    spot: &Spot,
+    body: &Body,
+    (at, facing): (Vec3, Vec3),
+    pose: &mut [motion::Placed],
+) -> (Placed, Option<Lain>) {
     let middle = at + Vec3::Y * body.height;
     for part in pose.iter_mut() {
         part.0 -= middle;
     }
     let side = (0.3 * body.height).max(0.05);
+    let along = facing.with_y(0.0).normalize_or(Vec3::NEG_Z);
+    let turn = Quat::from_axis_angle(along, std::f32::consts::FRAC_PI_2);
     let lain = Lain {
         pivot: Vec3::ZERO,
-        turn: Quat::from_rotation_z(std::f32::consts::FRAC_PI_2),
+        turn,
         at: Vec2::new(at.x, at.z),
         middle: Vec2::ZERO,
         side,
@@ -76,7 +83,7 @@ fn lay(spot: &Spot, body: &Body, at: Vec3, pose: &mut [motion::Placed]) -> (Plac
     };
     let placed = Placed {
         pos: spot.planet(at + Vec3::Y * side),
-        rot: spot.rot * DQuat::from_rotation_z(std::f64::consts::FRAC_PI_2),
+        rot: spot.rot * turn.as_dquat(),
     };
     (placed, Some(lain))
 }
@@ -146,7 +153,7 @@ pub fn spawn(
         rot: spot.rot,
     };
     let placed = match birth.lead {
-        Lead::Carcass { .. } => lay(&spot, &species.body, at, &mut pose),
+        Lead::Carcass { .. } => lay(&spot, &species.body, (at, facing), &mut pose),
         _ => (standing, None),
     };
     let root = root(commands, birth.lead, species, placed);

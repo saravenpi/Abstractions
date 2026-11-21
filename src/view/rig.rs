@@ -9,6 +9,7 @@ use super::blend::Blend;
 use super::curve::{self, Bend};
 use super::io::{BodyFade, CameraPose, Heading, Kind, Moment, Occluder, Shown, Target};
 use super::occlude::{self, Probe};
+use super::sane;
 use super::shot::Shot;
 use super::sway::Sway;
 use super::tune::{
@@ -16,6 +17,10 @@ use super::tune::{
     RADIUS, SKIN,
 };
 use crate::render::smoothstep;
+
+#[cfg(test)]
+#[path = "rig_tests.rs"]
+mod tests;
 
 /// The state of the camera between frames.
 ///
@@ -60,19 +65,25 @@ impl Rig {
     }
 
     /// Returns true when this step is a cut, and puts the state at rest if so. A step is a cut
-    /// when one was asked for, on the first step, and when the target changes to or from the ship.
+    /// when one was asked for, on the first step, when the target changes to or from the ship,
+    /// and when a value of the state is not a finite number: the rig then heals in one frame,
+    /// on the look it had when that look is still a number.
     fn begin(&mut self, moment: &Moment) -> bool {
         let ship = moment.target.kind == Kind::Ship;
         let crossed = self.seen.is_some_and(|was| (was == Kind::Ship) != ship);
-        let fresh = self.cut || crossed || self.seen.is_none();
+        let mine = self.rel.is_finite() && Vec2::new(self.short, self.indoor).is_finite();
+        let sound = mine && self.aim.sound() && self.sway.sound() && self.blend.sound();
+        let fresh = self.cut || crossed || !sound || self.seen.is_none();
         if fresh {
-            let heading = match crossed && ship {
+            let held = Vec2::new(self.aim.heading.yaw, self.aim.heading.pitch).is_finite();
+            let heading = match (crossed && ship) || !held {
                 true => Heading::default(),
                 false => self.aim.heading,
             };
             self.aim = Aim::settled(heading);
             self.blend = Blend::settled(moment.target.kind, &moment.prefs);
             self.sway = Sway::settled(moment.prefs.zoom);
+            (self.rel, self.short, self.indoor) = (Quat::IDENTITY, 0.0, 0.0);
         }
         (self.seen, self.cut) = (Some(moment.target.kind), false);
         fresh
@@ -146,8 +157,10 @@ impl Rig {
         gap
     }
 
-    /// Runs the rig for one frame and returns the camera.
+    /// Runs the rig for one frame and returns the camera. What it reads is first brought within
+    /// bounds, see [`sane::moment`].
     pub fn step(&mut self, moment: &Moment, world: &impl Occluder) -> Shown {
+        let moment = &sane::moment(moment);
         let target = &moment.target;
         let dt = moment.dt.clamp(DT_RANGE.0, DT_RANGE.1);
         let stance = Stance::of(target, dt, self.begin(moment));

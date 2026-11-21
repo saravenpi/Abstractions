@@ -18,13 +18,13 @@ use super::tune::{
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub(super) struct Sway {
     /// How far the camera lags behind the moving target, with the dip of a landing.
-    lag: Spring,
+    pub(super) lag: Spring,
     /// Steps walked, as a fraction of the current one.
-    stride: f32,
+    pub(super) stride: f32,
     /// Height of the head bob right now.
-    bob: f32,
+    pub(super) bob: f32,
     /// Vertical speed of the target on the last step.
-    fall: f32,
+    pub(super) fall: f32,
     /// Roll of the camera around where it looks.
     pub roll: Roll,
     /// Turn of the camera toward the flight path: yaw and pitch.
@@ -100,6 +100,15 @@ impl Sway {
         self.zoom += (moment.prefs.zoom - self.zoom) * stance.gain(ZOOM_RATE);
         let goal = rush(target.kind, stance.drift.length()) * moment.prefs.speed_fx.clamp(0.0, 1.0);
         self.rush += (goal - self.rush) * stance.gain(RUSH_RATE);
+    }
+
+    /// Returns true when every value of the state is a finite number.
+    pub(super) fn sound(&self) -> bool {
+        let lag = self.lag.value.is_finite() && self.lag.velocity.is_finite();
+        let walk = Vec3::new(self.stride, self.bob, self.fall).is_finite();
+        let view =
+            Vec3::new(self.lead.x, self.lead.y, self.zoom).is_finite() && self.rush.is_finite();
+        lag && walk && view && self.roll.sound()
     }
 
     /// Returns the offset of the camera in the axes of the target: the lag and the head bob.

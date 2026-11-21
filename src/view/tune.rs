@@ -181,6 +181,18 @@ pub const RUSH_RATE: f32 = 2.0;
 /// Widest field of view the rig asks for.
 pub const MAX_FOV: f32 = 2.1;
 
+/// Narrowest field of view the rig gives, in radians (40 degrees): under the narrowest setting.
+pub const MIN_FOV: f32 = 0.7;
+
+/// Field of view the rig takes when the one it is given is not a number, in radians: the
+/// default setting of 75 degrees.
+pub const BASE_FOV: f32 = 1.308_997;
+
+/// Highest speed the rig reads, in metres per second. Every speed effect is full far below it,
+/// and its square stays well inside the range of f32: a warp between galaxies, 3.4e19 m/s,
+/// squares past that range to infinity.
+pub const FASTEST: f32 = 1.0e12;
+
 /// Share of the way the chase camera turns from the nose to the velocity, in atmosphere at speed.
 pub const CHASE_ALONG: f32 = 0.5;
 

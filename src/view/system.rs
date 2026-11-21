@@ -142,6 +142,7 @@ struct Asked<'w, 's> {
 }
 
 /// Runs the rig for the frame: applies the cuts and the zoom, steps, and publishes the results.
+/// A camera that is not a number is never published: the last one stays and the next step cuts.
 fn drive(
     mut asked: Asked,
     sight: Sight,
@@ -167,6 +168,10 @@ fn drive(
         dt: asked.time.delta_secs(),
     };
     let mut shown = rig.step(&moment, &sight);
+    if !shown.sound() {
+        rig.cut();
+        return;
+    }
     if let Some(water) = asked.water.as_deref() {
         shown.pose.position = occlude::afloat(shown.pose.position, water);
     }

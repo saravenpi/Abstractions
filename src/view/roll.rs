@@ -19,7 +19,7 @@ pub(super) struct Roll {
     /// Roll of the camera, positive to the right.
     pub angle: f32,
     /// The orientation of the view on the last step while it followed the back of a body.
-    look: Option<Quat>,
+    pub(super) look: Option<Quat>,
 }
 
 impl Roll {
@@ -37,6 +37,13 @@ impl Roll {
         let wanted = back.map_or(Some(target.bank), |back| roof(look, back));
         let wanted = wanted.map_or(carried, |roll| lean(roll, share));
         self.angle = half_turn(carried + half_turn(wanted - carried) * gain);
+    }
+}
+
+impl Roll {
+    /// Returns true when the roll and the view it was measured against are finite.
+    pub(super) fn sound(&self) -> bool {
+        self.angle.is_finite() && self.look.is_none_or(|look| look.is_finite())
     }
 }
 

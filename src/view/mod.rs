@@ -35,6 +35,7 @@ mod mode;
 mod occlude;
 mod rig;
 mod roll;
+mod sane;
 mod shot;
 mod smooth;
 mod sway;

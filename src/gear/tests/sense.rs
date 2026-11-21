@@ -54,7 +54,7 @@ const UPS: [Vec3; 8] = [
     Vec3::Z,
     Vec3::NEG_Z,
     Vec3::new(0.017_452, 0.999_848, 0.0),
-    Vec3::new(0.5, 0.5, -0.707_107),
+    Vec3::new(0.5, 0.5, -std::f32::consts::FRAC_1_SQRT_2),
 ];
 
 /// Returns a body on its wings with its nose at `heading`, pitched and banked as `attitude`

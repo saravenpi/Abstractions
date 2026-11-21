@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 use super::body::Ship;
 use super::mooring::anchor_for;
+use super::route::ARRIVAL;
 use super::sim::{Cosmos, Pace};
 use super::sky::Skies;
 use super::tune::BODY_SWITCH;
@@ -77,7 +78,9 @@ pub fn pose(anchor: Res<Anchor>, pace: Res<Pace>, ship: Single<(&Ship, &mut Plac
 }
 
 /// Returns the planet the ship is at: the one whose surface frame it is in, or in the frame of
-/// a star the nearest planet once it is close or `current` is not of that star.
+/// a star the nearest planet once it is within [`BODY_SWITCH`] of its Hill radius or within the
+/// distance the autopilot drops out at, which a planet close to its star reaches long before the share
+/// of its small Hill sphere, or `current` is not of that star.
 fn body_at(ship: &Ship, skies: &Skies, current: BodyId) -> Option<BodyId> {
     let star = match ship.frame {
         Frame::Surface(body) => return Some(body),
@@ -85,10 +88,13 @@ fn body_at(ship: &Ship, skies: &Skies, current: BodyId) -> Option<BodyId> {
         Frame::Galaxy(_) => return None,
     };
     let system = skies.spec().filter(|system| system.star.id == star)?;
-    let reach = |(planet, well): (&PlanetSpec, &Well)| (well.reach(ship.pos), planet.id);
-    let scored = system.planets.iter().zip(skies.wells.get(1..)?).map(reach);
-    let (reach, body) = scored.min_by(|a, b| a.0.total_cmp(&b.0))?;
-    (reach < BODY_SWITCH || current.star != star).then_some(body)
+    let score = |(planet, well): (&PlanetSpec, &Well)| {
+        let docked = well.pos.distance(ship.pos) <= well.lock * ARRIVAL;
+        (well.reach(ship.pos), planet.id, docked)
+    };
+    let scored = system.planets.iter().zip(skies.wells.get(1..)?).map(score);
+    let (reach, body, docked) = scored.min_by(|a, b| a.0.total_cmp(&b.0))?;
+    (reach < BODY_SWITCH || docked || current.star != star).then_some(body)
 }
 
 /// Names the planet the seated player is at and has the world stream it.

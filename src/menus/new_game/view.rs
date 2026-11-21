@@ -9,9 +9,16 @@ use super::{Action, Kind, NewWorld};
 use crate::menus::slots::Slot;
 use crate::menus::{Menu, Nav};
 use crate::ui::{
-    Cancels, Filled, Icon, Look, Tone, caps, column, entry, footer, heading, item, item_with, link,
-    panel, root, text, theme,
+    Cancels, Filled, Icon, Look, Tone, caps, column, entry, footer, heading, hints, item,
+    item_with, link, panel, root, text, theme,
 };
+
+/// Key hints shown at the bottom of the screen.
+const HINTS: [(&str, &str); 3] = [
+    ("Switch fields", "Tab or arrows"),
+    ("Create", "Enter"),
+    ("Back", "Esc"),
+];
 
 /// Width of a text field in pixels: wide enough for the longest name and seed.
 const FIELD_WIDTH: f32 = theme::MENU_WIDTH * 1.5;
@@ -117,9 +124,6 @@ pub(super) fn spawn(mut commands: Commands, mut input: ResMut<NewWorld>) {
     commands.spawn((
         DespawnOnExit(Menu::NewGame),
         root(),
-        children![
-            card(),
-            footer("Tab or arrows switch fields. Enter creates. Esc goes back"),
-        ],
+        children![card(), footer(hints(&HINTS)),],
     ));
 }

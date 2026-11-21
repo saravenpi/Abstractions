@@ -8,7 +8,9 @@ use super::{Ended, Waiting};
 use crate::menus::{Menu, Nav, Trail};
 use crate::net::{LeaveSession, Session, SessionEnded};
 use crate::screens::Screen;
-use crate::ui::{Cancels, Icon, Tone, column, footer, heading, item, panel, root, text, theme};
+use crate::ui::{
+    Cancels, Icon, Tone, column, footer, heading, hints, item, panel, root, text, theme,
+};
 
 /// Returns the line of the joining screen: "Connecting to <address>".
 pub(super) fn connecting(session: &Session) -> String {
@@ -51,7 +53,7 @@ fn spawn(mut commands: Commands, session: Res<Session>) {
                 panel(),
                 children![heading("Multiplayer"), line, waiting_line(), entries]
             ),
-            footer("Esc cancels"),
+            footer(hints(&[("Cancel", "Esc")])),
         ],
     ));
 }

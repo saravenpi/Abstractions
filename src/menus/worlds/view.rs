@@ -7,8 +7,8 @@ use super::{Mode, Notice, VISIBLE_ROWS, Worlds, bars, ops};
 use crate::menus::{Menu, Nav};
 use crate::saves::SaveDir;
 use crate::ui::{
-    Icon, Selected, Tone, cell, column, footer, head, heading, item, label, notice, panel, root,
-    table_head, table_row, text, theme,
+    Icon, Selected, Tone, cell, column, footer, head, heading, hints, item, label, notice, panel,
+    root, table_head, table_row, text, theme,
 };
 
 /// Widths in pixels of the world, seed, play time and last played columns.
@@ -18,8 +18,12 @@ const WIDTHS: [f32; 4] = [270.0, 165.0, 110.0, 160.0];
 const ROW: f32 = 44.0;
 
 /// Key hints shown at the bottom of the screen.
-const HINT: &str =
-    "Up and down select. Enter plays. While deleting, left and right choose and Enter applies";
+const HINTS: [(&str, &str); 4] = [
+    ("Select", "Up Down"),
+    ("Play", "Enter"),
+    ("Choose while deleting", "Left Right"),
+    ("Apply", "Enter"),
+];
 
 /// Marks the line that counts the worlds and names their order.
 #[derive(Component)]
@@ -129,7 +133,7 @@ pub(super) fn spawn(mut commands: Commands, dir: Res<SaveDir>, mut worlds: ResMu
                     bars::bars(),
                 ]
             ),
-            footer(HINT),
+            footer(hints(&HINTS)),
         ],
     ));
 }

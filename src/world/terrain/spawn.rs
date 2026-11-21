@@ -34,21 +34,27 @@ impl Terrain {
     /// flat. The legacy plane keeps to grass and sand, as it always did.
     pub(super) fn good_spawn(&self, x: f32, z: f32) -> bool {
         let sea = self.globe().sea_level();
-        let dry = |dx: f32, dz: f32| {
-            self.height(x + dx, z + dz) > sea + 1.5 && !self.river_at(x + dx, z + dz)
-        };
+        if self.height(x, z) < sea + 2.0 {
+            return false;
+        }
+        let near = |dx: f32, dz: f32| self.height(x + dx, z + dz);
+        let (east, west) = (near(6.0, 0.0), near(-6.0, 0.0));
+        if (east - west).abs() >= 2.5 {
+            return false;
+        }
+        let (south, north) = (near(0.0, 6.0), near(0.0, -6.0));
         let stands = || match self.surface(x, z) {
             Surface::Grass | Surface::Sand => true,
             Surface::Snow | Surface::Rock => self.chart() != Chart::Flat,
             _ => false,
         };
-        self.height(x, z) >= sea + 2.0
-            && (self.height(x + 6.0, z) - self.height(x - 6.0, z)).abs() < 2.5
-            && (self.height(x, z + 6.0) - self.height(x, z - 6.0)).abs() < 2.5
+        let dry = |h: f32, dx: f32, dz: f32| h > sea + 1.5 && !self.river_at(x + dx, z + dz);
+        (south - north).abs() < 2.5
             && stands()
-            && [(6.0, 0.0), (-6.0, 0.0), (0.0, 6.0), (0.0, -6.0)]
-                .iter()
-                .all(|&(dx, dz)| dry(dx, dz))
+            && dry(east, 6.0, 0.0)
+            && dry(west, -6.0, 0.0)
+            && dry(south, 0.0, 6.0)
+            && dry(north, 0.0, -6.0)
     }
 
     /// Returns a penalty in metres for a spawn that is high, in an harsh biome or on snow or rock, so that
@@ -139,8 +145,13 @@ impl Terrain {
 /// Returns the points of search ring `k`, evenly spaced about 33 m apart: a spot is flat over 12 m and the
 /// spawn is scored by its distance in tens of metres, so a finer mesh only pays for samples.
 pub(super) fn ring_points(k: u32) -> impl Iterator<Item = Vec2> {
+    ring_stride(k, 1)
+}
+
+/// Returns every `stride`th point of search ring `k`, working out only the points it returns.
+pub(super) fn ring_stride(k: u32, stride: usize) -> impl Iterator<Item = Vec2> {
     let n = (k * 3).max(1);
-    (0..n).map(move |a| {
+    (0..n).step_by(stride).map(move |a| {
         Vec2::from_angle(a as f32 * std::f32::consts::TAU / n as f32) * (k as f32 * SPAWN_STEP)
     })
 }

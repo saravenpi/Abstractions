@@ -129,8 +129,8 @@ fn albedo(pressure: f64, wet: f64, was: &Climate) -> f64 {
 /// The temperature is `278.5 K * (flux * (1 - albedo))^0.25` plus the greenhouse. The air of a
 /// cold planet thickens in heat-trapping gas until the ground reaches 280 K, up to [`thaw`]: this
 /// is what holds seas liquid out to the far edge of the habitable zone and not beyond it, where
-/// no air warms more than that maximum greenhouse, not even a steady one. That thermostat is the cycle of carbon between air, water and rock, so it needs water and
-/// works in proportion to the carbon supply `carbon`, in full from 0.3: a dry or carbon-poor
+/// no air warms more than that maximum greenhouse, not even a steady one. That thermostat is
+/// the cycle of carbon between air, water and rock, so it needs water and works in proportion to the carbon supply `carbon`, in full from 0.3: a dry or carbon-poor
 /// planet keeps its steady greenhouse. `flux` is the starlight and the flux at the outer edge of
 /// the zone of the star. A planet whose sea has boiled gets the runaway greenhouse,
 /// see [`air::runaway`].
@@ -139,8 +139,7 @@ fn step(flux: (f64, f64), pressure: f64, (wet, carbon): (f64, f64), was: &Climat
     let albedo = albedo(pressure, wet, was);
     let bare = BLACK_BODY * (flux * (1.0 - albedo)).powf(0.25);
     let steady = air::greenhouse(pressure);
-    let old = std::env::var_os("OLD_THERMOSTAT").is_some();
-    let steady = if flux < outer && !old {
+    let steady = if flux < outer {
         steady.min(thaw(outer))
     } else {
         steady
@@ -153,11 +152,7 @@ fn step(flux: (f64, f64), pressure: f64, (wet, carbon): (f64, f64), was: &Climat
     let greenhouse = if was.water == Water::Steam {
         air::runaway(pressure)
     } else {
-        let top = if old {
-            steady * (1.0 + 2.0 * cycle)
-        } else {
-            steady + (thaw(outer) - steady).max(0.0) * cycle
-        };
+        let top = steady + (thaw(outer) - steady).max(0.0) * cycle;
         (THAW - bare).clamp(steady, top)
     };
     let temperature = bare + greenhouse;

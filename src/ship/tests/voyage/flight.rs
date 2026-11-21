@@ -2,8 +2,8 @@
 
 use super::away::distance_to;
 use crate::computer::RouteStatus;
+use crate::ship::route::shell;
 use crate::ship::tests::rig::Game;
-use crate::ship::wells::PLANET_LOCK;
 use crate::ship::{Autopilot, Phase};
 use crate::universe::{BodyId, Universe};
 
@@ -19,7 +19,7 @@ fn report(game: &mut Game, far: BodyId) -> String {
     let phase = game.get::<Autopilot>().phase();
     let route = game.get::<RouteStatus>();
     let gap = distance_to(game, far);
-    let lock = game.get::<Universe>().planet(far).radius * PLANET_LOCK;
+    let lock = shell::lock(&game.get::<Universe>().planet(far));
     format!(
         "phase {phase:?}, route {route:?}, warp {:?}, speed {:.4e} m/s, {gap:.4e} m from the planet, {:.2} lock \
          radii, frame {:?}",

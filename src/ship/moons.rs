@@ -4,7 +4,7 @@
 use bevy::math::DVec3;
 
 use super::pilot::Goal;
-use super::route::ARRIVAL;
+use super::route::{ARRIVAL, shell};
 use super::wells::PLANET_LOCK;
 use crate::computer::Target;
 use crate::universe::{PlanetSpec, SystemSpec, Universe};
@@ -45,7 +45,7 @@ impl Standoff {
     /// sphere of the moon by the arrival share of planets, and as far from the planet as the
     /// lock sphere or the top of the air of the planet, whichever is farther, by the same share.
     pub fn of(moon: &PlanetSpec, host: &PlanetSpec) -> Self {
-        let own = moon.radius * PLANET_LOCK * ARRIVAL;
+        let own = shell::radius(moon);
         let shelter = (host.radius * PLANET_LOCK).max(host.radius + host.atmosphere_height);
         Self {
             moon: moon.clone(),
@@ -70,9 +70,9 @@ impl Standoff {
     /// The second keeps a ship that the warp drops out on the near side of the moon there,
     /// instead of spooling again for the far side.
     pub fn reached(&self, pos: DVec3, time: f64) -> bool {
-        let lock = self.moon.radius * PLANET_LOCK;
+        let lock = shell::lock(&self.moon);
         let host = self.moon.host.map_or(DVec3::ZERO, |host| host.at(time));
-        let near = pos.distance(self.moon.position(time)) <= lock * ARRIVAL;
+        let near = pos.distance(self.moon.position(time)) <= shell::radius(&self.moon);
         pos.distance(self.point(time)) <= lock * NEAR || (near && pos.distance(host) > self.shelter)
     }
 }
@@ -80,7 +80,7 @@ impl Standoff {
 /// Returns the goal of a route to `moon`, whose planet is `host`: the point beside it, or the
 /// space around the moon clear of its planet, see [`Standoff::reached`].
 pub fn goal(moon: &PlanetSpec, host: &PlanetSpec) -> Goal {
-    let lock = moon.radius * PLANET_LOCK;
+    let lock = shell::lock(moon);
     Goal {
         target: Target::Body(moon.id),
         lock,

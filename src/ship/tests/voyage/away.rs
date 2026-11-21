@@ -10,9 +10,9 @@ use crate::computer::{Atlas, Engage, RouteStatus, Target, ship_position, target_
 use crate::render::FlightFx;
 use crate::ship::berth::landing_spot;
 use crate::ship::landing::GEAR_DROP;
+use crate::ship::route::shell;
 use crate::ship::tests::rig::{FRAME, Game, Log};
 use crate::ship::warp::Warp;
-use crate::ship::wells::PLANET_LOCK;
 use crate::ship::{Autopilot, Phase, ShipEvent, ShipTelemetry};
 use crate::space::{Clock, Frame, Location, Travel};
 use crate::universe::{BodyId, Universe};
@@ -78,9 +78,9 @@ pub fn warps_to_another_planet(game: &mut Game, home: BodyId) -> BodyId {
 /// Checks the arrival: out of warp within the lock distance the autopilot aims for, the events
 /// and the sounds in order, and the new planet streamed.
 fn arrived(game: &mut Game, far: BodyId) {
-    let lock = game.get::<Universe>().planet(far).radius * PLANET_LOCK;
+    let lock = shell::lock(&game.get::<Universe>().planet(far));
     let gap = distance_to(game, far) / lock;
-    assert!(gap > 1.0 && gap < 1.35, "dropped out at {gap} lock radii");
+    assert!(gap > 1.0 && gap < 1.12, "dropped out at {gap} shell locks");
     assert_eq!(game.ship().warp, Warp::Off);
     assert_eq!(game.get::<RouteStatus>(), RouteStatus::Arrived);
     let log = game.get::<Log>();

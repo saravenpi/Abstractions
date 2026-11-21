@@ -47,6 +47,9 @@ pub struct Skies {
     /// The destination of a long jump in the frame of the ship. While it is set, the stars on
     /// the way are ignored between the stars.
     pub beacon: Option<Well>,
+    /// The body a course is aimed at and the radius of its lock while the course flies to it: its
+    /// arrival shell, which the drive may reach, where every other lock sphere stays as it is.
+    pub arrive: Option<(BodyId, f64)>,
     /// The home base, whose landing pad is ground the ship can stand on.
     pub base: Option<Base>,
 }
@@ -141,5 +144,22 @@ impl Skies {
                     .collect()
             }
         };
+        self.shrink_target();
+    }
+
+    /// Sets the lock of the well of the body a course is aimed at to the radius of its arrival shell,
+    /// when the ship is in the system of that body.
+    fn shrink_target(&mut self) {
+        let Some((body, lock)) = self.arrive else {
+            return;
+        };
+        let Some((_, system)) = self.system.as_ref().filter(|(star, _)| *star == body.star) else {
+            return;
+        };
+        let rank = system.planets.iter().position(|planet| planet.id == body);
+        let well = rank.and_then(|rank| self.wells.get_mut(rank + 1));
+        if let Some(well) = well {
+            well.lock = lock;
+        }
     }
 }

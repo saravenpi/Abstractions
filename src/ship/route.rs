@@ -20,6 +20,7 @@ mod goal;
 #[cfg(test)]
 mod goal_tests;
 mod handoff;
+pub(super) mod shell;
 #[cfg(test)]
 mod spool_tests;
 #[cfg(test)]
@@ -139,7 +140,7 @@ pub fn fly(
     mut ship: Single<&mut Ship>,
 ) {
     let (universe, time) = (&cosmos.universe, cosmos.clock.seconds);
-    skies.beacon = None;
+    (skies.beacon, skies.arrive) = (None, None);
     let held = autopilot.tier;
     let Some(target) = autopilot.target else {
         return;
@@ -151,6 +152,9 @@ pub fn fly(
         .goal
         .get_or_insert_with(|| goal::resolve(universe, target));
     let lock = goal.lock;
+    if let Target::Body(body) = goal.target {
+        skies.arrive = Some((body, lock));
+    }
     let here = ship_position(universe, ship.frame, ship.pos, time);
     let Some((to, arrived)) = here.and_then(|here| goal.reached(universe, here, time)) else {
         return autopilot.cancel();

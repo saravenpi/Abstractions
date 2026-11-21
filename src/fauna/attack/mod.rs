@@ -20,6 +20,7 @@ mod kinds;
 mod limbs;
 mod pounce;
 mod raise;
+mod rest;
 mod ring;
 mod slay;
 mod slump;
@@ -43,12 +44,15 @@ mod tests_limbs;
 mod tests_pose;
 #[cfg(test)]
 mod tests_pounce;
+#[cfg(test)]
+mod tests_rest;
 
 use bevy::prelude::*;
 
 pub use harm::{Dead, harm};
 pub use kinds::Kind;
 pub use limbs::Broken;
+pub use rest::Lain;
 pub use slay::{Carved, slay};
 pub use timing::Attacking;
 
@@ -56,11 +60,12 @@ use crate::screens::{in_control, playing};
 
 /// Registers the harm of blows: before the scan, so a kill leaves the scan's wants at once. The attacks
 /// run after the senses set the stances and before the walk, the flinches after the walk posed the
-/// parts, the collapse and the carving beside them.
+/// parts, the collapse and the carving beside them, and the carcasses laid on the ground after the collapse.
 pub(super) fn plugin(app: &mut App) {
     let scan = super::scan::scan;
     let walk = super::walk::walk;
     crate::player::interacting(app);
+    rest::plugin(app);
     app.add_systems(
         Update,
         (

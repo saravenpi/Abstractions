@@ -5,6 +5,7 @@ use bevy::math::DQuat;
 use bevy::prelude::*;
 
 use super::Creature;
+use super::attack::Lain;
 use super::fade::Fade;
 use super::motion::{self, Motion};
 use super::place::Spot;
@@ -56,22 +57,38 @@ pub struct Birth<'a> {
     pub now: f32,
 }
 
-/// Returns the root of a body of `body` lying dead on its side at `at` in the frame `spot`, and moves
-/// its standing `pose` about the middle of its torso into that root.
-fn lay(spot: &Spot, body: &Body, at: Vec3, pose: &mut [motion::Placed]) -> Placed {
+/// Returns the root of a body of `body` lying dead on its side at `at` in the frame `spot`, and how it
+/// lies there, so it is laid on the drawn ground; moves its standing `pose` about the middle of its
+/// torso into that root.
+fn lay(spot: &Spot, body: &Body, at: Vec3, pose: &mut [motion::Placed]) -> (Placed, Option<Lain>) {
     let middle = at + Vec3::Y * body.height;
     for part in pose.iter_mut() {
         part.0 -= middle;
     }
     let side = (0.3 * body.height).max(0.05);
-    Placed {
+    let lain = Lain {
+        pivot: Vec3::ZERO,
+        turn: Quat::from_rotation_z(std::f32::consts::FRAC_PI_2),
+        at: Vec2::new(at.x, at.z),
+        middle: Vec2::ZERO,
+        side,
+        reach: (0.5 * body.length).max(0.05),
+    };
+    let placed = Placed {
         pos: spot.planet(at + Vec3::Y * side),
         rot: spot.rot * DQuat::from_rotation_z(std::f64::consts::FRAC_PI_2),
-    }
+    };
+    (placed, Some(lain))
 }
 
-/// Spawns the root of the animal led by `lead` of `species`, at `placed`.
-fn root(commands: &mut Commands, lead: Lead, species: &Species, placed: Placed) -> Entity {
+/// Spawns the root of the animal led by `lead` of `species`, at `placed`, lying as it says when it is a
+/// carcass.
+fn root(
+    commands: &mut Commands,
+    lead: Lead,
+    species: &Species,
+    (placed, lain): (Placed, Option<Lain>),
+) -> Entity {
     let (herd, slot) = lead.key();
     let creature = Creature {
         species: species.id,
@@ -80,7 +97,11 @@ fn root(commands: &mut Commands, lead: Lead, species: &Species, placed: Placed) 
     };
     let marks = (creature, placed, DespawnOnEnter(Screen::Title));
     let shown = (Transform::default(), Visibility::default());
-    commands.spawn((Name::new("Animal"), marks, shown)).id()
+    let mut root = commands.spawn((Name::new("Animal"), marks, shown));
+    if let Some(lain) = lain {
+        root.insert(lain);
+    }
+    root.id()
 }
 
 /// Spawns one child of `root` per part mesh of `meshes` drawn with its material of `skins` at its
@@ -120,13 +141,14 @@ pub fn spawn(
     let seed = birth.lead.key().0 ^ u64::from(birth.lead.key().1);
     let motion = Motion::new(&species.body, at, facing, seed);
     let mut pose = motion.pose(&species.body);
-    let mut placed = Placed {
+    let standing = Placed {
         pos: spot.origin,
         rot: spot.rot,
     };
-    if matches!(birth.lead, Lead::Carcass { .. }) {
-        placed = lay(&spot, &species.body, at, &mut pose);
-    }
+    let placed = match birth.lead {
+        Lead::Carcass { .. } => lay(&spot, &species.body, at, &mut pose),
+        _ => (standing, None),
+    };
     let root = root(commands, birth.lead, species, placed);
     let parts = limbs(commands, root, (meshes, skins), pose);
     let beast = Beast {

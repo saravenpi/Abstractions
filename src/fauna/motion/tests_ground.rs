@@ -40,14 +40,14 @@ fn uphill(speed: f32, detail: Detail) -> Drive {
 }
 
 /// Returns how far the body origin of `m` stands under `ground` below its root, in metres.
-fn sunk(m: &Motion, ground: &dyn Fn(Vec2) -> f32) -> f32 {
+pub(super) fn sunk(m: &Motion, ground: &dyn Fn(Vec2) -> f32) -> f32 {
     ground(Vec2::new(m.root.at.x, m.root.at.z)) - m.root.hold.at.x
 }
 
 /// Asserts that no foot of `m` stands 2 cm under `ground`, nor a planted one 1 cm off it, and that no
 /// drawn corner of a part of `body` posed by `m` goes 2 cm into it, the legs left out: their feet stand
 /// for them.
-fn grounded(m: &Motion, body: &Body, ground: &dyn Fn(Vec2) -> f32, what: &str) {
+pub(super) fn grounded(m: &Motion, body: &Body, ground: &dyn Fn(Vec2) -> f32, what: &str) {
     for (i, foot) in m.feet.iter().enumerate() {
         let under = ground(Vec2::new(foot.at.x, foot.at.z)) - foot.at.y;
         assert!(under < 0.02, "{what}: foot {i} {under} m under the ground");

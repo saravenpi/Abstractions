@@ -28,6 +28,7 @@ mod rig;
 mod roll;
 mod scan;
 pub mod senses;
+mod shore;
 mod signs;
 mod site;
 mod slant;

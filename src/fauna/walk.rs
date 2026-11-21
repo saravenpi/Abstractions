@@ -153,6 +153,18 @@ fn pace(ctx: &Ctx, beast: &Beast, species: &Species) -> Pace {
         top: species.history.speed * beast.wits.health.pace() * beast.wits.broken.pace(body),
         detail: if near { Detail::Full } else { Detail::Cheap },
         strike: strike(beast, species),
+        sea: sea(ctx, beast),
+    }
+}
+
+/// Returns the height of the sea surface in the frame of `beast` where it stands: minus infinity on a
+/// world without a sea.
+fn sea(ctx: &Ctx, beast: &Beast) -> f32 {
+    let globe = ctx.terrain.globe();
+    let level = globe.radius() + f64::from(globe.sea_level());
+    match globe.has_sea() {
+        true => beast.spot.rise(beast.motion.root.at.xz(), level),
+        false => f32::NEG_INFINITY,
     }
 }
 

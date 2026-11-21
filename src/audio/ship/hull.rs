@@ -147,6 +147,7 @@ impl Hull {
             speed,
             pressure: pressure(air, speed),
             rough: hull.at(Ch::Rough).max(sonic),
+            roar: hull.at(Ch::Roar),
         });
         self.mix = Mix {
             lit,

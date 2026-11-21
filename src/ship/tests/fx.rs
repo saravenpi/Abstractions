@@ -1,34 +1,24 @@
-//! Flight effects on the real air: the glow of a fast descent, none in powered flight, and a
-//! shake that stays small and smooth.
+//! Flight effects on the real air: the glow of a fast fall from orbit, none in powered flight
+//! near the ground, and a shake that stays small and smooth.
 
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::{above_pole, fly, planet};
-use crate::render::{Drive, Gas, Sequence, descent, entry};
+use crate::render::{Drive, Gas, Sequence, entry};
 use crate::ship::flight::Controls;
 use crate::ship::fx::{pace, warp_level};
 use crate::ship::shake::{eased, roughness, shake};
 use crate::ship::telemetry::WarpState;
 use crate::ship::warp::{CRUISE_CAP, GALAXY_CAP, JUMP_CAP};
 use crate::speed::shake::REACH;
-use crate::universe::{LY, PlanetSpec};
+use crate::universe::{EARTH_RADIUS, LY, PlanetSpec};
 
-/// Returns the strongest glow of a flight of `seconds` with the assist on that starts `height`
-/// metres above the sea of `planet` at velocity `vel`, nose first, with the lever at `throttle`
-/// and `controls`.
-fn brightest(
-    planet: &PlanetSpec,
-    start: (f64, DVec3),
-    power: (f64, Controls),
-    seconds: f64,
-) -> f32 {
-    glow_of(planet, start, power, (seconds, true))
-}
-
-/// Returns the strongest glow of the same flight, of `run.0` seconds, with the assist on or
-/// off as `run.1` says. With the assist on and the engines idle the ship stops in the air, so
-/// only a ship without assist falls in from the top of the air.
+/// Returns the strongest glow of a flight of `run.0` seconds over `planet`, with the assist on or
+/// off as `run.1` says, that starts `start.0` metres above the sea at velocity `start.1`, nose
+/// first, with the lever at `power.0` and the controls `power.1`. With the assist on and the
+/// engines idle the ship stops in the air, so only a ship without assist falls in from the top
+/// of the air.
 fn glow_of(
     planet: &PlanetSpec,
     start: (f64, DVec3),
@@ -47,11 +37,9 @@ fn glow_of(
         (planet, &|_| 0.0),
         seconds,
         |ship, report| {
-            let sink = -ship.vel.dot(ship.pos.normalize());
             let speed = ship.vel.length().max(1.0);
             let air = 2.0 * report.pressure / (speed * speed);
-            let heat = entry(air, speed, Gas::NitrogenOxygen).heat;
-            glow = glow.max(heat * descent(sink as f32));
+            glow = glow.max(entry(air, speed, Gas::NitrogenOxygen).heat);
         },
     );
     glow
@@ -62,8 +50,9 @@ fn sinking(speed: f64, steep: f64) -> DVec3 {
     DVec3::new((1.0 - steep * steep).sqrt(), -steep, 0.0) * speed
 }
 
-/// Under full power or full boost, flying level or in a shallow descent never glows, and
-/// neither does a landing approach.
+/// Under full power or full boost, flying level, in a shallow descent or in a steep dive near
+/// the ground never glows, and neither does a landing approach: a few hundred metres per second
+/// heat no nose to a glow, whichever way the ship flies.
 #[test]
 fn powered_flight_and_approaches_never_glow() {
     let planet = planet(6000.0, 4000.0, 1200.0);
@@ -75,42 +64,31 @@ fn powered_flight_and_approaches_never_glow() {
         boost: true,
         ..level
     };
-    for (steep, controls) in [(0.0, level), (0.1, level), (0.0, boosted), (0.1, boosted)] {
+    let flights = [(0.0, level), (0.1, level), (0.0, boosted), (0.5, level)];
+    for (steep, controls) in flights {
         let start = (1500.0, sinking(180.0, steep));
-        let glow = brightest(&planet, start, (1.0, controls), 10.0);
+        let glow = glow_of(&planet, start, (1.0, controls), (10.0, true));
         assert!(glow < 0.01, "powered flight at slope {steep} glows {glow}");
     }
     let approach = (200.0, DVec3::new(20.0, -6.0, 0.0));
-    let glow = brightest(&planet, approach, (0.0, Controls::default()), 20.0);
+    let glow = glow_of(&planet, approach, (0.0, Controls::default()), (20.0, true));
     assert_eq!(glow, 0.0, "a landing approach glows");
 }
 
-/// Falling in from the top of the air without assist glows, at any speed around the orbital
-/// one, and so does a steep dive under power with it.
+/// Falling in from the top of the air of a planet of the size of the Earth without assist, at
+/// the speed of a low orbit and at a range of slopes, glows nearly in full.
 #[test]
-fn a_fast_descent_glows() {
-    let planet = planet(6000.0, 4000.0, 1200.0);
+fn a_fall_from_orbit_glows() {
+    let planet = planet(EARTH_RADIUS, 1.0e5, 86_400.0);
     let orbital = (planet.gravity * planet.radius).sqrt();
-    let entries = [
-        (0.7, 0.5, 0.05),
-        (0.7, 1.0, 0.1),
-        (1.0, 0.7, 0.1),
-        (1.5, 0.7, 0.1),
-    ];
-    for (speed, steep, least) in entries {
-        let entry = (3900.0, sinking(orbital * speed, steep));
-        let glow = glow_of(&planet, entry, (0.0, Controls::default()), (60.0, false));
+    for steep in [0.03, 0.06, 0.1] {
+        let start = (9.9e4, sinking(orbital, steep));
+        let glow = glow_of(&planet, start, (0.0, Controls::default()), (120.0, false));
         assert!(
-            glow > least,
-            "entry at {speed} orbital, slope {steep}: {glow}"
+            glow > 0.8,
+            "a fall from orbit at slope {steep} glows only {glow}"
         );
     }
-    let level = Controls {
-        lift: 0.4,
-        ..Controls::default()
-    };
-    let dive = brightest(&planet, (1500.0, sinking(180.0, 0.5)), (1.0, level), 10.0);
-    assert!(dive > 0.05, "a steep dive under power glows only {dive}");
 }
 
 /// The warp effect follows the drive, and the shake is zero in calm air, grows with the clouds

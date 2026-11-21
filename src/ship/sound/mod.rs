@@ -125,6 +125,7 @@ impl Ears<'_, '_> {
             .with(Ch::Side, 0.0)
             .with(Ch::Aspect, -1.0)
             .with(Ch::Rough, self.buffet.level.max(heat))
+            .with(Ch::Roar, heat)
     }
 }
 

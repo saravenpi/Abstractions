@@ -1,7 +1,7 @@
 //! The glow of an entry around the robots and ships of the other players: the same sheath as the
 //! one around the craft of this player, one on each puppet that glows, made when its glow starts
-//! and gone when it dies. The colour is the one the gas of the air under this player's camera
-//! gives, as the sheath of the local craft takes it.
+//! and gone when it dies, placed and shaped as the sheath of the local craft. The colour is the
+//! one the gas of the air under this player's camera gives, as the sheath of the local craft takes it.
 
 use std::collections::HashMap;
 
@@ -12,7 +12,7 @@ use bevy::prelude::*;
 use crate::net::state::Remote;
 use crate::net::state::track::Remotes;
 use crate::render::Vantage;
-use crate::render::{Gas, LocalSystem, SHEATH_FROM, SHEATH_REACH, SheathMaterial, SheathUniform};
+use crate::render::{Craft, Gas, Glow, LocalSystem, SHEATH_FROM, SheathMaterial, skin};
 use crate::ship::HULL_RADIUS;
 
 /// Radius in metres of the sphere that holds the body of a robot, which its sheath wraps.
@@ -67,23 +67,28 @@ fn spawn(
         .id()
 }
 
-/// Writes the sheath `aura` of the puppet at `at`, glowing `heat` in `colour`: its place on the
-/// puppet and the uniform of its material.
+/// Writes the sheath `aura` of the puppet at `puppet`, glowing `heat` in `gas`: its place on the
+/// puppet and the uniform of its material. The skin glows as a nose at that heat does.
 fn shape(
     (puppet, aura): (&GlobalTransform, (&mut Transform, &mut SheathMaterial)),
     (heat, (radius, lift)): (f32, (f32, f32)),
-    colour: Vec3,
+    gas: Gas,
 ) {
     let (transform, material) = aura;
-    *transform =
-        Transform::from_translation(Vec3::Y * lift).with_scale(Vec3::splat(radius * SHEATH_REACH));
-    let centre = puppet.translation() + puppet.up() * lift;
-    material.sheath = SheathUniform {
-        centre: centre.extend(radius),
-        axis: puppet.forward().as_vec3().extend(0.0),
-        glow: colour.extend(heat),
-        load: Vec4::ZERO,
+    let craft = Craft {
+        centre: puppet.translation() + puppet.up() * lift,
+        heading: puppet.forward().as_vec3(),
+        radius,
+        roof: puppet.up().as_vec3(),
     };
+    *transform = GlobalTransform::from(craft.bound()).reparented_to(puppet);
+    let glow = Glow {
+        heat,
+        pressure: 0.0,
+        color: gas.color(heat),
+        skin: skin(heat),
+    };
+    material.sheath = craft.sheath(&glow);
 }
 
 /// The auras that are drawn, with the material of each.
@@ -124,11 +129,7 @@ pub fn glows(
             continue;
         };
         if let Some(mut material) = materials.get_mut(&handle.0) {
-            shape(
-                (at, (&mut *transform, &mut *material)),
-                (heat, size),
-                gas.color(heat),
-            );
+            shape((at, (&mut *transform, &mut *material)), (heat, size), gas);
         }
     }
     retire(&mut commands, made, lit);

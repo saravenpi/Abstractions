@@ -118,11 +118,13 @@ pub const BUFFET: (f32, f32) = (45.0, 0.22);
 /// knock, and the peak of a knock in the roughest air.
 pub const RATTLE: (f32, f32, f32, f32) = (1700.0, 6.0, 0.002, 0.05);
 
+/// Corner in hertz of the deep roar of an entry through the hull, and its level at full heat.
+pub const ROAR: (f32, f32) = (70.0, 0.3);
+
 /// Rate of the gusts on the canopy and their depth.
 pub const GUST: (f32, f32) = (0.8, 0.35);
 
-/// How rough the passage of the speed of sound is in thick air, and the width of the band
-/// around Mach 1 it is felt in.
+/// How rough the passage of Mach 1 is in thick air, and the width of the band it is felt in.
 pub const TRANSONIC: (f32, f32) = (0.55, 0.08);
 
 /// Mach numbers between which the cabin outruns the sound of its own engines in the air.

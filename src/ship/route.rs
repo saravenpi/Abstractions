@@ -10,6 +10,8 @@ mod block;
 #[cfg(test)]
 mod block_tests;
 mod cancel;
+#[cfg(test)]
+mod cool_tests;
 mod course;
 #[cfg(test)]
 mod departure_tests;

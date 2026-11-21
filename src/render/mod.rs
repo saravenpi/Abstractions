@@ -93,8 +93,8 @@ pub use dome::SkyDome;
 pub use entry::FlightFx;
 pub use exposure::scene_lux;
 pub use heat::{
-    Craft, Gas, Glow, Heat, MIN_SPEED, SHEATH_FROM, SHEATH_REACH, SheathMaterial, SheathUniform,
-    descent, entry,
+    Craft, Gas, Glow, Heat, MIN_SPEED, SHEATH_FROM, SheathMaterial, SheathUniform, cool_speed,
+    entry, skin,
 };
 pub use lighting::{Moon, Sun, reach};
 pub use lowres::{Fit, LowRes, window_changed};

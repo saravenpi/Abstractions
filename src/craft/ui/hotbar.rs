@@ -45,8 +45,8 @@ fn spawn(mut commands: Commands) {
     ));
 }
 
-/// The silhouette of a tool: shaft length, head size and form, if its build is whole.
-type Shape = Option<(f32, f32, crate::craft::build::Form)>;
+/// The look of a tool, which its icon is drawn from.
+type Shape = Option<crate::craft::build::Look>;
 
 /// Returns the bar along the foot of a slot: the accent while `held`, else clear.
 fn accent(held: bool) -> impl Bundle {

@@ -1,10 +1,11 @@
-//! The workshop's offer: the solver's three proposals for the intent, the chosen one with its swaps,
-//! and the names they are shown by.
+//! The workshop's offer: the solver's three proposals for the intent, the focused one with its
+//! swaps, the names they are shown by and what each takes from the pack.
 
 use super::bench::Bench;
 use crate::craft::build::{Place, Why};
 use crate::craft::build::{Proposal, Proposals, Stock, assess, solve};
-use crate::craft::pack::{called, noun};
+use crate::craft::pack::{called, cost, noun};
+use crate::ui::units::fixed;
 
 /// The names of the three proposals, in pick order.
 pub const KINDS: [&str; 3] = ["Lightest", "Hardest hitting", "Most durable"];
@@ -14,7 +15,7 @@ pub const KINDS: [&str; 3] = ["Lightest", "Hardest hitting", "Most durable"];
 pub struct Offer {
     /// The three proposals, in pick order.
     pub three: [Proposal; 3],
-    /// The chosen proposal after its swaps, or nothing when the swap cannot be made.
+    /// The focused proposal after its swaps, or nothing when the swap cannot be made.
     pub chosen: Option<Proposal>,
 }
 
@@ -53,15 +54,14 @@ pub fn title(proposal: &Proposal, stock: &[Stock]) -> String {
     format!("{} {word}", head.map_or("bare", |s| called(&s.stuff)))
 }
 
-/// Returns what `proposal` is made of from `stock`: head on shaft, and the binding.
-pub fn made_of(proposal: &Proposal, stock: &[Stock]) -> String {
-    let name = |at: usize| {
-        let index = usize::from(proposal.design.of[at]);
-        stock.get(index).map(|s| called(&s.stuff))
-    };
-    let (head, shaft) = (name(1).unwrap_or("?"), name(0).unwrap_or("?"));
-    match name(2) {
-        Some(bind) => format!("{head} on {shaft}, {bind} bound"),
-        None => format!("{head} on {shaft}"),
-    }
+/// Returns what `proposal` takes from `stock` in words: each material and its mass, head first.
+pub fn parts(proposal: &Proposal, stock: &[Stock]) -> String {
+    let mut taken = cost(proposal, stock);
+    let head = usize::from(proposal.design.of[1]);
+    taken.sort_by_key(|(at, _)| *at != head);
+    let words: Vec<String> = taken
+        .iter()
+        .map(|(at, kg)| format!("{} {} kg", called(&stock[*at].stuff), fixed(*kg, 2)))
+        .collect();
+    format!("Uses {}", words.join(", "))
 }

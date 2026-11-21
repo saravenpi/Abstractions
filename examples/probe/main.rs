@@ -12,6 +12,8 @@
 //!   being played: the map of explored ground, stones picked and a tool made, a herd stalked, a fight, a
 //!   kill carved, the robot hurt and mended, the pack and the guide after the hunt; see the `play` module).
 //!   `stars` shoots the star field in space and in orbit (see the `stars` module).
+//!   `craft` shoots the pack and the workshop on a staged pack: empty, stones and a hide, each intent,
+//!   a card focused and a tool made (see the `workshop` module).
 //!   The title, loading, boot and wake stages always run.
 //! - `glide` opens the wingsuit from the top of a jump on flat ground, off a cliff at a run, out of a long fall
 //!   and from a jump off the parked ship, three shots each, with `PROBE glide` lines (see the `opening` module).
@@ -118,6 +120,7 @@ mod util;
 mod watch;
 mod water;
 mod wing;
+mod workshop;
 mod zoo;
 
 use air::*;
@@ -171,6 +174,7 @@ use util::*;
 use watch::*;
 use water::*;
 use wing::*;
+use workshop::*;
 
 /// Runs the zoo when `PROBE_STAGES` names it, else the tour of the game.
 fn main() -> AppExit {

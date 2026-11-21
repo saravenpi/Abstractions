@@ -25,7 +25,7 @@ On foot:
 | N | Minimap range, then off |
 | B | Drop a pin where you stand, or remove the pin within 10 m. On the map, a pin under the pointer. You keep up to eight |
 | K | Field guide: the species of the planet underfoot |
-| I | Pack: what you carry. The robot wakes with a stone spear in slot 1 and a stone knife in slot 2, empty-handed. Tab opens the workshop, where you make a tool for an intent |
+| I | Pack and workshop: what you carry on the left, the tools you can make for an intent on the right. The robot wakes with a stone spear in slot 1 and a stone knife in slot 2, empty-handed. Tab moves between the two |
 | 1 to 6 | Hold the tool in that hotbar slot; the key of the held slot stows or draws it |
 | Left mouse, right mouse | Swing the held tool or stab with a spear, guard |
 | T held | Draw the spear in hand back; let go to throw it. A thrown spear is marked on the compass, the map and over the world until you pick it up |

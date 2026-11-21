@@ -1,20 +1,107 @@
-//! The keys of the open screen: the search, moving through the list and the proposals, and the
-//! actions of each tab.
+//! The keys of the open screen: Tab between the panes, the arrows through the pack, the intents
+//! and the cards, the number keys for the hotbar, and the actions of each pane. Each action is a
+//! [`Bind`]: the button that shows it on screen carries the same label and key.
 
-use bevy::input::ButtonState;
-use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::prelude::*;
 
-use super::Workshop;
-use super::bench::{Bench, Tab, step_intent};
-use super::here::Here;
-use super::lines::What;
-use super::offer::{offer, title};
-use super::paint::arranged;
-use crate::computer::sift::type_into;
-use crate::craft::matter::Treatment;
-use crate::craft::pack::Pack;
+use super::bench::{Pane, step_intent};
+use super::click::Press;
+use super::deeds::Deed;
 use crate::craft::wield::pressed;
+use crate::ui::Icon;
+
+/// One action of a pane: what it does, how its button shows it, and its key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Bind {
+    /// What it does.
+    pub press: Press,
+    /// The icon of its button.
+    pub icon: Option<Icon>,
+    /// The word of its button.
+    pub label: &'static str,
+    /// The name of its key, as the button shows it.
+    pub key: &'static str,
+    /// Its key.
+    pub code: KeyCode,
+}
+
+/// The actions of the pack pane, on the selected entry: X drops a material, never a tool.
+pub const PACK_BINDS: [Bind; 2] = [
+    Bind {
+        press: Press::Hold,
+        icon: None,
+        label: "Hold",
+        key: "Enter",
+        code: KeyCode::Enter,
+    },
+    Bind {
+        press: Press::Drop,
+        icon: Some(Icon::Trash),
+        label: "Drop material",
+        key: "X",
+        code: KeyCode::KeyX,
+    },
+];
+
+/// The actions of the workshop pane, on the focused card. Make comes first: it is the primary one.
+pub const MAKE_BINDS: [Bind; 4] = [
+    Bind {
+        press: Press::Make,
+        icon: Some(Icon::Plus),
+        label: "Make",
+        key: "Enter",
+        code: KeyCode::Enter,
+    },
+    Bind {
+        press: Press::Head,
+        icon: Some(Icon::Shuffle),
+        label: "Other head",
+        key: "H",
+        code: KeyCode::KeyH,
+    },
+    Bind {
+        press: Press::Shaft,
+        icon: Some(Icon::Shuffle),
+        label: "Other shaft",
+        key: "J",
+        code: KeyCode::KeyJ,
+    },
+    Bind {
+        press: Press::Treat,
+        icon: None,
+        label: "Treat",
+        key: "T",
+        code: KeyCode::KeyT,
+    },
+];
+
+/// The moves of the pack pane, as the legend shows them: what each key does, then the key.
+pub const PACK_LEGEND: [(&str, &str); 3] =
+    [("Workshop", "Tab"), ("Choose", "Up Down"), ("Slot", "1-6")];
+
+/// The moves of the workshop pane, as the legend shows them.
+pub const MAKE_LEGEND: [(&str, &str); 4] = [
+    ("Pack", "Tab"),
+    ("Intent", "Left Right"),
+    ("Tool", "Up Down"),
+    ("Slot", "1-6"),
+];
+
+/// Returns the actions of `pane`.
+pub fn binds(pane: Pane) -> &'static [Bind] {
+    match pane {
+        Pane::Pack => &PACK_BINDS,
+        Pane::Workshop => &MAKE_BINDS,
+    }
+}
+
+/// Returns the moves of `pane`, as its legend shows them.
+pub fn moves(pane: Pane) -> &'static [(&'static str, &'static str)] {
+    match pane {
+        Pane::Pack => &PACK_LEGEND,
+        Pane::Workshop => &MAKE_LEGEND,
+    }
+}
 
 /// Returns the sum of the moves of the keys pressed this frame among `moves`.
 fn moved(keys: &ButtonInput<KeyCode>, moves: &[(KeyCode, isize)]) -> isize {
@@ -25,156 +112,41 @@ fn moved(keys: &ButtonInput<KeyCode>, moves: &[(KeyCode, isize)]) -> isize {
         .sum()
 }
 
-/// Starts a search on the slash key, edits it with the keys pressed this frame, ends it on Escape
-/// or Enter, and changes the order on F2. Keys pressed before the screen opened are dropped.
-pub(super) fn type_filter(
-    mut typed: MessageReader<KeyboardInput>,
-    (keys, opened): (Res<ButtonInput<KeyCode>>, Res<State<Workshop>>),
-    mut bench: ResMut<Bench>,
-) {
-    if opened.is_changed() || bench.tab != Tab::Pack {
-        typed.clear();
-        return;
-    }
-    if !bench.typing && keys.just_pressed(KeyCode::Slash) {
-        bench.typing = true;
-        typed.clear();
-        return;
-    }
-    if keys.just_pressed(KeyCode::F2) {
-        bench.sort = bench.sort.next();
-    }
-    if !bench.typing {
-        typed.clear();
-        return;
-    }
-    let mut filter = bench.filter.clone();
-    for key in typed.read().filter(|key| key.state == ButtonState::Pressed) {
-        match &key.logical_key {
-            Key::Escape | Key::Enter => bench.typing = false,
-            Key::Backspace => _ = filter.pop(),
-            Key::Character(text) => _ = type_into(&mut filter, text),
-            _ => {}
-        }
-    }
-    if filter != bench.filter {
-        (bench.filter, bench.window) = (filter, Default::default());
-    }
-}
-
-/// Switches tabs on Tab, moves through the list on the pack tab, and through the proposals and
-/// the intents on the workshop tab.
-pub(super) fn step(
-    keys: Res<ButtonInput<KeyCode>>,
-    (pack, here): (Res<Pack>, Here),
-    mut bench: ResMut<Bench>,
-) {
+/// Switches panes on Tab, moves the cursor of the pack, or the intent and the focused card of
+/// the workshop, with the arrows.
+pub(super) fn step(keys: Res<ButtonInput<KeyCode>>, mut deed: Deed) {
     if keys.just_pressed(KeyCode::Tab) {
-        bench.tab = bench.tab.next();
-        bench.typing = false;
-        bench.note.clear();
+        deed.bench.pane = deed.bench.pane.next();
         return;
     }
-    let ups = [(KeyCode::ArrowDown, 1), (KeyCode::ArrowUp, -1)];
-    match bench.tab {
-        Tab::Pack => {
-            let page = bench.rows.max(1) as isize;
-            let pages = [(KeyCode::PageDown, page), (KeyCode::PageUp, -page)];
-            let by = moved(&keys, &ups) + moved(&keys, &pages);
-            if by != 0 && !bench.typing {
-                let (len, rows) = (arranged(&bench, &pack, &here).len(), bench.rows);
-                bench.window.step(len, rows, by);
-            }
+    let down = moved(&keys, &[(KeyCode::ArrowDown, 1), (KeyCode::ArrowUp, -1)]);
+    let side = moved(&keys, &[(KeyCode::ArrowRight, 1), (KeyCode::ArrowLeft, -1)]);
+    let pane = deed.bench.pane;
+    match pane {
+        Pane::Pack if down != 0 => {
+            let last = deed.lines().len().saturating_sub(1);
+            deed.bench.cursor = deed.bench.cursor.saturating_add_signed(down).min(last);
         }
-        Tab::Make => {
-            let pick = moved(&keys, &ups);
-            let side = moved(&keys, &[(KeyCode::ArrowRight, 1), (KeyCode::ArrowLeft, -1)]);
-            if pick != 0 || side != 0 {
-                bench.pick = (bench.pick as isize + pick).rem_euclid(3) as usize;
-                bench.intent = step_intent(bench.intent, side);
-                bench.swap = [0, 0];
-            }
+        Pane::Workshop if down != 0 || side != 0 => {
+            let pick = (deed.bench.pick as isize + down).rem_euclid(3) as usize;
+            let intent = step_intent(deed.bench.intent, side);
+            deed.ask(intent, pick);
         }
+        _ => {}
     }
 }
 
-/// Holds or slots the selected tool of the pack, or drops the selected material. A tool is never
-/// dropped: it would be gone for good.
-fn pack_keys(keys: &ButtonInput<KeyCode>, pack: &mut Pack, here: &Here, bench: &mut Bench) {
-    let all = arranged(bench, pack, here);
-    let Some(line) = all.get(bench.window.cursor) else {
-        return;
-    };
-    match line.what {
-        What::Item(id) if keys.just_pressed(KeyCode::Enter) => {
-            let slot = pack.bar.held;
-            pack.bar.put(slot, id);
-        }
-        What::Item(id) => {
-            if let Some(slot) = pressed(keys) {
-                pack.bar.put(slot, id);
-            }
-        }
-        What::Stack(at) if keys.just_pressed(KeyCode::KeyX) => _ = pack.stacks.remove(at),
-        What::Stack(_) => {}
-    }
-}
-
-/// Swaps a piece, treats the head material or makes the chosen proposal.
-fn make_keys(keys: &ButtonInput<KeyCode>, pack: &mut Pack, here: &Here, bench: &mut Bench) {
-    bench.swap[0] += usize::from(keys.just_pressed(KeyCode::KeyJ));
-    bench.swap[1] += usize::from(keys.just_pressed(KeyCode::KeyH));
-    let (treat, make) = (
-        keys.just_pressed(KeyCode::KeyT),
-        keys.just_pressed(KeyCode::Enter),
-    );
-    if !treat && !make {
+/// Runs the action whose key was pressed this frame in the pane the keys drive, and the number
+/// keys of the hotbar.
+pub(super) fn act(keys: Res<ButtonInput<KeyCode>>, mut deed: Deed) {
+    if keys.get_just_pressed().next().is_none() {
         return;
     }
-    let stock = pack.stock();
-    let chosen = offer(bench, &stock, &here.place())
-        .ok()
-        .and_then(|o| o.chosen);
-    let Some(chosen) = chosen else {
-        bench.note = "nothing to make from what is carried".to_string();
-        return;
-    };
-    bench.note = match make {
-        true => match pack.make(&chosen, &stock) {
-            Some(_) => format!("made a {}", title(&chosen, &stock)),
-            None => "not enough material".to_string(),
-        },
-        false => treat_head(pack, here, &stock[usize::from(chosen.design.of[1])].stuff),
-    };
-    bench.swap = [0, 0];
-}
-
-/// Treats the head material `stuff` with the first treatment the planet allows that it has not
-/// had, and returns what happened in words.
-fn treat_head(pack: &mut Pack, here: &Here, stuff: &crate::craft::matter::Stuff) -> String {
-    let Some(planet) = here.planet() else {
-        return "no planet underfoot".to_string();
-    };
-    let can = Treatment::ALL
-        .into_iter()
-        .filter(|t| t.possible(&planet.record));
-    match can.into_iter().find(|t| pack.treat(stuff, *t)) {
-        Some(t) => format!("head material {}", super::lines::treated(t)),
-        None => "no treatment left for this material here".to_string(),
+    if let Some(slot) = pressed(&keys) {
+        deed.press(Press::Slot(slot));
     }
-}
-
-/// Runs the actions of the open tab, unless a search is being typed.
-pub(super) fn act(
-    keys: Res<ButtonInput<KeyCode>>,
-    (mut pack, here): (ResMut<Pack>, Here),
-    mut bench: ResMut<Bench>,
-) {
-    if bench.typing || keys.get_just_pressed().next().is_none() {
-        return;
-    }
-    match bench.tab {
-        Tab::Pack => pack_keys(&keys, &mut pack, &here, &mut bench),
-        Tab::Make => make_keys(&keys, &mut pack, &here, &mut bench),
+    let pane = deed.bench.pane;
+    for bind in binds(pane).iter().filter(|b| keys.just_pressed(b.code)) {
+        deed.press(bind.press);
     }
 }

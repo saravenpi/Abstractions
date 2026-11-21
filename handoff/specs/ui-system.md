@@ -123,6 +123,12 @@ All in `src/ui`. A screen file names content. It sets no pixel.
 | Notice | `notice()`, `notice_row(icon, words)` | One line, keeps its height while empty | 16 `TEXT`, `WARN` or `DANGER` by meaning |
 | Key hint, legend | `key_hint`, `legend` from `map-ui` | 1.4 | |
 | Tooltip | `Tip` | Padding `S3` by `S2`, `PANEL` | 16 |
+| Meter | `meter(width, share)` | `METER` = `S1` high, the share filled | Fill `TEXT` over a `HAIRLINE` track |
+| Stat row | `stat(label, share, value)` | One line of `LINE_SMALL`: label in `STAT_LABEL` = 64, meter of `STAT_METER` = 64, value, `S2` apart | 16, label `TEXT_2`, value `TEXT` |
+| Card | `card(chosen)` | Pointer button, padding `S3`, blocks `S3` apart side by side, the last ones wrap under the others on a narrow card | Rest none, pointer `HOVER`, chosen `SELECT` |
+| Tall row | `row_tall(icon, chosen, top, under)` | Pointer button, `ROW_TALL` high, padding `INSET`, icon slot, then two `line()`s | Rest none, pointer `HOVER`, chosen `SELECT` |
+| Line | `line()` | One line inside a row or a card, children `S2` apart, one child with `flex_grow` pushes the rest to the right end | |
+| Reveal | `Reveal` | A node under a screen's own cursor: its scroll area brings it into view once, then the wheel scrolls freely | |
 
 To build in round 2, with the screens that use them:
 
@@ -175,6 +181,24 @@ Vocabulary used by the converted screens:
 | Bloom (borrowed) | `Radial` | `flare` |
 | Hitstop (borrowed, wants `front_hand`) | `Pause` | `pause` |
 | Interface size (borrowed, wants `format_size`) | `Zoom` | `zoom_in` |
+| The pack | `Pack` | `backpack` |
+| The workshop, a made tool | `Workshop` | `construction` |
+| Cut, pierce, crush, throw | `Cut`, `Pierce`, `Crush`, `Throw` | `content_cut`, `push_pin`, `hardware`, `sports_handball` |
+| Stone (borrowed, wants `landslide`) | `Terrain` | `landscape` |
+| Bone | `Skeleton` | `skeleton` |
+| Horn and shell | `Shield` | `shield` |
+| Hide (borrowed) | `Animal` | `pets` |
+| Wood | `Tree` | `park` |
+| Flint, obsidian, glass (borrowed) | `Crystal` | `diamond` |
+| Ice (borrowed, wants `ac_unit`) | `Snow` | `weather_snowy` |
+| Resin (borrowed) | `Water` | `water_drop` |
+| A made tool, by intent when it has no parts | `Cut`, `Pierce`, `Crush`, `Throw` | see above |
+
+Made tools have no glyph: each has a picture drawn from its parts (`craft::ui::glyph`). The head's figure tells the kind (knife, blade, axe, spear, javelin, club, hammer), the shaft's length and each part's grey tell the rest: stone white, bone, horn and shell, then wood dimmest, no colour. The tool lies on the diagonal, head at the top right, shaft one twelfth of the picture wide, as the font icons draw their strokes, flat with no shadow and no outline. Each pixel is on or off, tested at its centre, and the picture is drawn at the physical pixel size its node shows at, its node sized to cover exactly those pixels, sampled to the nearest: crisp at every interface size. It is drawn once per look and size and kept as an image. Sizes: 24 in a pack row and a slot of the pack screen, 48 on a workshop card, 16 under the number of a slot of the game's hotbar. A tool with no parts shows the glyph of its intent.
+| Make a tool | `Plus` | `add` |
+| Swap a part | `Shuffle` | `shuffle` |
+| A strength, a flaw | `Check`, `Danger` | `check`, `warning` |
+| A note after an action | `Info` | `info` |
 
 Glyphs the subset lacks, by Material Symbols name. Rows that need them keep an empty slot today:
 
@@ -333,7 +357,11 @@ The table is the audit of 2026-11-20. Since the owner decision of 2026-11-21 no 
 
 ### 3.2 Round 2, to do
 
-Main menu (title on the icon line, no rule, entries on `span(4)`), new world and multiplayer (form field component), pause and players, update notes, joining, pack and workshop, hotbar, HUD strips and panels, loading and boot, the title version strip. Then `root`, `root_on`, `panel`, `heading`, `rule`, `keys::footer`, `MENU_WIDTH` and the `GAP_*` aliases can go.
+Main menu (title on the icon line, no rule, entries on `span(4)`), new world and multiplayer (form field component), pause and players, update notes, joining, the HUD hotbar, HUD strips and panels, loading and boot, the title version strip.
+
+Pack and workshop, done (`src/craft/ui`): one page over the blur. Heading zone: "Pack and workshop", the load as the status. Content zone: the pack pane on `span(4)` (title, groups by kind in a scroll area, one `row_tall` per entry, Hold and Drop as actions), a gutter, the workshop pane taking the rest (title, four intent tiles `ROW_TALL` high, the line on the intent, the three tool cards as `card`s in a scroll area, Make in `ACCENT` first in the action bar with its note), and the hotbar under both, six slots `ROW_TALL` high, `S4` above. Footer: Close (Esc), then the legend of the pane the keys drive. It fits 960 by 540 logical: the cards and the pack scroll. `fauna::guide::layout` no longer serves it.
+
+Once the rest of round 2 is done, `root`, `root_on`, `panel`, `heading`, `rule`, `keys::footer`, `MENU_WIDTH` and the `GAP_*` aliases can go.
 
 ### 3.3 Open questions for the owner
 

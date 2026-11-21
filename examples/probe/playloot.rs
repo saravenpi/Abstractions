@@ -173,8 +173,8 @@ pub fn offer_words(world: &World) -> String {
         Err(why) => format!("no proposal: {why}"),
     };
     format!(
-        "workshop tab {:?}, intent {:?}, pick {}, {said}; note \"{}\"",
-        bench.tab, bench.intent, bench.pick, bench.note
+        "workshop pane {:?}, intent {:?}, pick {}, {said}; note \"{}\"",
+        bench.pane, bench.intent, bench.pick, bench.note
     )
 }
 

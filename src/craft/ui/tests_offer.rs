@@ -1,27 +1,62 @@
-//! Tests of the workshop: three proposals for each intent, a swap that changes the numbers, and
-//! numbers read against the held tool.
+//! Tests of the workshop: every intent shows three tool cards or says what the pack lacks, a swap
+//! changes the numbers, and the bars read the numbers.
 
-use super::bench::{Bench, INTENTS};
-use super::offer::{offer, title};
-use super::sheet::{sheet, versus};
-use crate::craft::stage::{earth, pack};
+use super::bench::{Bench, INTENTS, Pane};
+use super::offer::offer;
+use super::scene::{Ground, Scene, scene, status};
+use super::sheet::{Sheet, gauges, sheet};
+use crate::craft::build::Intent;
+use crate::craft::matter::Class;
+use crate::craft::pack::{Burden, Pack};
+use crate::craft::stage::{earth, pack, tissue};
 
-/// Every intent gets three proposals from the staged pack, each with a name and a reason.
+/// Returns the scene of `pack` with the workshop asked for `intent`, on Earth.
+fn shown(pack: &Pack, intent: Intent) -> Scene {
+    let bench = Bench {
+        pane: Pane::Workshop,
+        intent,
+        ..Bench::default()
+    };
+    let ground = Ground {
+        place: earth(),
+        life: None,
+        burden: Burden::of(pack.mass(), 9.81),
+    };
+    scene(&bench, pack, &ground)
+}
+
+/// Every intent gets three cards from the staged pack, one focused, each with a name, a reason,
+/// the parts it takes and four bars inside their range.
 #[test]
-fn every_intent_gets_three_proposals() {
-    let stock = pack().stock();
+fn every_intent_shows_three_cards() {
     for intent in INTENTS {
-        let bench = Bench {
-            intent,
-            ..Bench::default()
-        };
-        let shown = offer(&bench, &stock, &earth()).expect("an offer");
-        assert!(shown.chosen.is_some(), "{intent:?}");
-        for proposal in &shown.three {
-            assert!(!title(proposal, &stock).is_empty());
-            assert!(!proposal.why.is_empty());
+        let tools = shown(&pack(), intent).tools.expect("three cards");
+        assert_eq!(tools.len(), 3, "{intent:?}");
+        assert_eq!(tools.iter().filter(|t| t.focused).count(), 1);
+        for tool in &tools {
+            assert!(
+                !tool.name.is_empty() && !tool.reason.words.is_empty(),
+                "{tool:?}"
+            );
+            assert!(tool.parts.starts_with("Uses "), "{tool:?}");
+            assert!(tool.shape.is_some());
+            assert!(tool.gauges.iter().all(|g| (0.0..=1.0).contains(&g.share)));
         }
     }
+}
+
+/// An empty pack says, for every intent, how to get stone; a pack of hide alone says that nothing
+/// holds an edge when asked to cut.
+#[test]
+fn an_intent_with_no_card_says_why() {
+    for intent in INTENTS {
+        let why = shown(&Pack::default(), intent).tools.expect_err("no card");
+        assert!(why.contains("press H"), "{intent:?}: {why}");
+    }
+    let mut hide = Pack::default();
+    hide.stow(tissue(Class::Hide, 2, 1.0), f32::INFINITY);
+    let why = shown(&hide, Intent::Cut).tools.expect_err("no edge");
+    assert!(why.contains("edge"), "{why}");
 }
 
 /// Swapping the head material makes another build with other numbers.
@@ -46,10 +81,33 @@ fn a_swap_changes_the_numbers() {
     assert_ne!(a, b);
 }
 
-/// A number reads plain without a held tool, and with its signed difference against one.
+/// The bars of a tool read its reach, mass, depth and swing against their full scale, with the
+/// word for what its head does.
 #[test]
-fn numbers_read_against_the_held_tool() {
-    assert_eq!(versus(0.62, None, " kg", 2), "0.62 kg");
-    assert_eq!(versus(0.62, Some(0.72), " kg", 2), "0.62 kg (-0.10)");
-    assert_eq!(versus(14.0, Some(12.5), " m/s", 1), "14.0 m/s (+1.5)");
+fn the_bars_read_the_numbers() {
+    let numbers = Sheet {
+        mass: 1.5,
+        reach: 0.8,
+        speed: 10.0,
+        depth: 1.0,
+        life: 100.0,
+    };
+    let bars = gauges(&numbers, Intent::Cut);
+    let labels: Vec<&str> = bars.iter().map(|g| g.label).collect();
+    assert_eq!(labels, ["Reach", "Mass", "Edge", "Swing"]);
+    assert!(
+        bars.iter().all(|g| (g.share - 0.5).abs() < 1e-6),
+        "{bars:?}"
+    );
+    assert_eq!(bars[0].value, "0.80 m");
+    assert_eq!(bars[2].value, "50 %");
+    assert_eq!(gauges(&numbers, Intent::Crush)[2].label, "Impact");
+}
+
+/// The load of an empty pack reads zero, never a negative zero.
+#[test]
+fn an_empty_pack_weighs_zero_without_a_sign() {
+    let words = status(&Burden::of(Pack::default().mass(), 9.81));
+    assert!(words.starts_with("0.0 of "), "{words}");
+    assert!(!words.contains('-'), "{words}");
 }

@@ -73,7 +73,10 @@ impl Player {
         let mut key = [0xb0; 32];
         key[0] = index as u8;
         let hello = Hello {
-            protocol: PROTOCOL,
+            protocol: std::env::var("BOT_PROTOCOL")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(PROTOCOL),
             name: format!("Bot {}", index + 1),
             key,
             password: args.password.clone(),

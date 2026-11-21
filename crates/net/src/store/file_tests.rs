@@ -103,3 +103,22 @@ fn crash_before_rename_keeps_the_old_file() {
     assert_eq!(load_or_create(&dir, "ignored").unwrap(), world);
     fs::remove_dir_all(dir).unwrap();
 }
+
+/// A 0.10 world file has no version: it is kept as a backup and a new world starts.
+#[test]
+fn a_world_from_0_10_is_backed_up_and_replaced() {
+    let dir = scratch("old-world");
+    let old = "name = \"Old\"\nseed = 42\nclock = 9.5\n";
+    fs::write(dir.join(FILE), old).unwrap();
+    let key = dir.join("key.der");
+    fs::write(&key, b"key").unwrap();
+    let world = load_or_create(&dir, "New").unwrap();
+    assert_eq!(world.name, "New");
+    assert_ne!(world.seed, 42);
+    assert_eq!(
+        fs::read_to_string(dir.join("world.toml.0.10.bak")).unwrap(),
+        old
+    );
+    assert_eq!(fs::read(&key).unwrap(), b"key");
+    assert_eq!(load_or_create(&dir, "Other").unwrap().seed, world.seed);
+}

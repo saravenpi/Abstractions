@@ -25,17 +25,17 @@ fn moon() -> PlanetSpec {
 }
 
 /// What a ship did from its first touch: when it touched, when it rested, and the highest it rose after.
-struct Set {
+pub(super) struct Set {
     /// Seconds into the flight of the first touch.
-    touched: f64,
+    pub touched: f64,
     /// Seconds into the flight of the rest.
-    rested: f64,
+    pub rested: f64,
     /// Highest height of the hull centre over the ground after the touch, in metres.
-    highest: f64,
+    pub highest: f64,
 }
 
 /// Sinks a ship with the stick held to the ground of `moon`, lets go at the first touch and flies 30 seconds.
-fn sets_down(moon: &PlanetSpec) -> Option<Set> {
+pub(super) fn sets_down(moon: &PlanetSpec) -> Option<Set> {
     let ground = |_: DVec3| 0.0;
     let scene = Scene {
         planet: Some(moon),

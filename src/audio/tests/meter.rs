@@ -60,14 +60,14 @@ fn powers(sound: &[[f32; 2]]) -> Vec<f64> {
             },
         )
     };
-    let hop = |frames: &[[f32; 2]]| {
+    let mut hop = |frames: &[[f32; 2]; HOP]| {
         let energy: f64 = frames
             .iter()
             .map(|frame| weigh(0, frame[0]).powi(2) + weigh(1, frame[1]).powi(2))
             .sum();
         energy / HOP as f64
     };
-    sound.chunks_exact(HOP).map(hop).collect()
+    sound.as_chunks::<HOP>().0.iter().map(&mut hop).collect()
 }
 
 /// Returns the mean power of every window of `tenths` tenths of a second, a tenth apart.

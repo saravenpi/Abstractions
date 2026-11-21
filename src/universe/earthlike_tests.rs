@@ -24,12 +24,13 @@ fn home(universe: &Universe) -> (PlanetSpec, StarSpec) {
 
 /// The home of every one of 200 seeds is Earth-like: 0.7 to 1.5 bar of air of nitrogen and the
 /// oxygen of its life, 0.85 to 1.05 standard gravities, a mean of 5 to 30 C, and homely, with seas,
-/// plants and herds. A seed whose search ran out of its [`REACH`] falls back on a homely planet
-/// and fails here. The seeds that fail are printed, with the pressures of the homes and the
+/// plants and herds, as it was born or fitted at generation when the search found none. The
+/// seeds that fail are printed, with the seeds whose home was fitted, with the pressures of the homes and the
 /// share of seeds whose home differs from the first rule.
 #[test]
 fn every_home_is_earthlike() {
     let (mut failed, mut moved, mut pressures) = (Vec::new(), 0, Vec::new());
+    let mut fitted = Vec::new();
     for seed in 0..SEEDS {
         let universe = Universe::new(seed);
         let (planet, star) = home(&universe);
@@ -43,6 +44,7 @@ fn every_home_is_earthlike() {
             failed.push((seed, record.pressure, planet.gravity / STANDARD_GRAVITY));
         }
         moved += usize::from(Universe::under(seed, 0).home() != universe.home());
+        fitted.extend(universe.fitted().then_some(seed));
     }
     pressures.sort_by(f64::total_cmp);
     let at = |share: f64| pressures[((pressures.len() - 1) as f64 * share).round() as usize];
@@ -53,6 +55,7 @@ fn every_home_is_earthlike() {
         at(1.0)
     );
     println!("homes that moved from the first rule: {moved} of {SEEDS}");
+    println!("homes fitted to the Earth at generation: {fitted:?}");
     println!("homes that are not Earth-like (seed, bar, g): {failed:?}");
     assert!(failed.is_empty(), "{failed:?}");
 }
@@ -91,6 +94,41 @@ fn the_rules_differ_only_in_the_home() {
         assert_eq!(first.seed(), now.seed());
         for id in [first.home(), now.home()] {
             assert_eq!(first.planet(id), now.planet(id), "seed {seed}");
+        }
+    }
+}
+
+/// Fitting a home changes that planet alone, and only its pull, its record and its air: every
+/// other planet of its system, and its own size, seed, orbit, day and moons, are as generated.
+/// A home found as it was born is not touched. Seeds 11 and 24 had no Earth-like planet in reach.
+#[test]
+fn a_fitted_home_keeps_the_rest_of_its_system() {
+    for seed in [0, 1, 11, 24, 56] {
+        let universe = Universe::new(seed);
+        let id = universe.home();
+        let ours = universe.system(id.star);
+        let born = system::planets(&ours.star);
+        let index = usize::from(id.index);
+        for (i, (planet, natural)) in ours.planets.iter().zip(&born).enumerate() {
+            if i != index || !universe.fitted() {
+                assert_eq!(planet, natural, "seed {seed} planet {i}");
+                continue;
+            }
+            let kept = (
+                planet.radius,
+                planet.seed,
+                planet.orbit_radius,
+                planet.day_seconds,
+            );
+            let was = (
+                natural.radius,
+                natural.seed,
+                natural.orbit_radius,
+                natural.day_seconds,
+            );
+            assert_eq!((kept, planet.moons), (was, natural.moons), "seed {seed}");
+            assert!((PULL.0..=PULL.1).contains(&planet.gravity), "seed {seed}");
+            assert_eq!(universe.planet(id), *planet, "seed {seed}");
         }
     }
 }

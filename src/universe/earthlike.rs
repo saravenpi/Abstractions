@@ -2,7 +2,9 @@
 //!
 //! A home of 0.11.0 only had to be [`homely`]: half of them had under 0.23 bar of air, too thin
 //! for the wingsuit to glide and far from the Earth. A new world now starts on the nearest
-//! homely planet whose air, pull and warmth are close to the Earth's, see [`earthlike`].
+//! homely planet whose air, pull and warmth are close to the Earth's, see [`earthlike`]. When the
+//! search reaches none, the nearest homely planet that can be is fitted to the Earth at
+//! generation, see `nudge`.
 
 use super::air::Gas;
 use super::home::{Fit, SEARCH, homely};
@@ -72,7 +74,7 @@ impl Universe {
     /// before the home had to be Earth-like, [`HOME_RULE`] for a new one. Only the home differs
     /// between rules: every galaxy, star and planet is the same.
     pub fn under(seed: u64, rule: u32) -> Self {
-        let home = home::choose(seed, rule);
-        Self { seed, home }
+        let (home, fitted) = home::choose(seed, rule);
+        Self { seed, home, fitted }
     }
 }

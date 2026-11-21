@@ -131,6 +131,7 @@ type Lights<'w, 's> = (
             &'static PointLight,
             &'static ViewVisibility,
         ),
+        Without<NearCloud>,
     >,
     Query<
         'w,
@@ -140,6 +141,7 @@ type Lights<'w, 's> = (
             &'static SpotLight,
             &'static ViewVisibility,
         ),
+        Without<NearCloud>,
     >,
 );
 

@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::backdrop::{backdrop_luminance, contrast};
-use super::color_rig::{luminance, on_fill, on_panel};
+use super::color_rig::{holds, luminance, on_fill, on_panel};
 use super::theme;
 
 /// What sits over the game lets it show: every backdrop is translucent, text is solid.
@@ -26,14 +26,6 @@ fn white_text_keeps_its_contrast_over_a_white_world() {
     assert!(contrast(1.0, worst) >= 4.5, "{}", contrast(1.0, worst));
     assert!(contrast(1.0, backdrop_luminance(0.0, theme::TINT)) > 20.0);
     assert!((contrast(0.0, 1.0) - 21.0).abs() < 1e-3);
-}
-
-/// Asserts that each of `floors` (text, least contrast) holds on `PANEL` over a sky of `world`.
-fn holds(world: f32, floors: &[(Color, f32)]) {
-    for (text, floor) in floors {
-        let got = on_panel(*text, world);
-        assert!(got >= *floor, "{text:?} over {world}: {got} under {floor}");
-    }
 }
 
 /// Text on the light `PANEL`, over a pure white sky, the worst case no tonemapper reaches: `TEXT`

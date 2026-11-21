@@ -42,3 +42,11 @@ pub fn on_fill(text: Color, fill: Color, world: f32) -> f32 {
 pub fn on_panel(text: Color, world: f32) -> f32 {
     on_fill(text, theme::PANEL, world)
 }
+
+/// Asserts that each of `floors` (text, least contrast) holds on `PANEL` over a sky of `world`.
+pub fn holds(world: f32, floors: &[(Color, f32)]) {
+    for (text, floor) in floors {
+        let got = on_panel(*text, world);
+        assert!(got >= *floor, "{text:?} over {world}: {got} under {floor}");
+    }
+}

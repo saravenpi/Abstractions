@@ -4,6 +4,7 @@
 
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::light::NotShadowCaster;
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::field::Field;
@@ -11,7 +12,7 @@ use super::{Air, Flown};
 use crate::gear::{Kit, Strip, Trail, ribbon_mesh, show, trace};
 use crate::screens::Screen;
 use crate::ship::exhaust::{Exhaust, HullLamp, lamp_place};
-use crate::space::Anchor;
+use crate::space::{Anchor, Placed};
 
 /// Where the vortex leaves the left wing, in hull axes: the trailing edge of the tip. The right
 /// one mirrors it.
@@ -20,7 +21,7 @@ const WING_TIP: Vec3 = Vec3::new(-3.2, -0.2, 2.35);
 /// Metres between two points of a vortex trail and of a lamp streak, and the jump in metres
 /// over which either starts over: a ship in air covers under 60 m in a frame, and one that
 /// moves farther was put somewhere else or flies too fast to leave a line.
-const SPACING: (f64, f64, f64) = (6.0, 2.0, 60.0);
+const SPACING: (f64, f64, f64) = (2.5, 2.0, 60.0);
 
 /// What lays a ribbon.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -95,13 +96,19 @@ pub fn spawn(
     }
 }
 
-/// The hulls that leave trails: where each is drawn, whether it shows, and how it flew.
+/// The hulls that leave trails: where each is in the frame of the anchor, whether it shows,
+/// and how it flew.
+///
+/// The pose is the [`Placed`] one, which is the truth of this frame. The `Transform` of a hull
+/// is copied from it after `Update`, so here it still holds the pose of the frame before, under
+/// an anchor that has already moved on with the ship: a trail fed from it lies a frame of
+/// flight away from the wing.
 type Hulls<'w, 's> = Query<
     'w,
     's,
     (
         Entity,
-        &'static Transform,
+        &'static Placed,
         &'static Visibility,
         &'static mut Flown,
     ),
@@ -111,17 +118,22 @@ type Hulls<'w, 's> = Query<
 type Ribbons<'w, 's> =
     Query<'w, 's, (&'static mut Streak, &'static Mesh3d, &'static mut Transform), Without<Flown>>;
 
-/// The flight of one ship this frame: the ship, where it is drawn and the air it flies in.
-type Flight = (Entity, Transform, Air);
+/// The flight of one ship this frame: the ship, its pose and the air it flies in.
+type Flight = (Entity, Placed, Air);
 
-/// Reads the flight of every ship from where it is drawn. A hidden ship flies in no air, so it
-/// lays nothing.
+/// Returns where `source` of a hull posed as `placed` is, in the frame of the anchor.
+pub fn tip(placed: &Placed, source: Source) -> DVec3 {
+    placed.pos + placed.rot * emitter(source).as_dvec3()
+}
+
+/// Reads the flight of every ship from its pose. A hidden ship flies in no air, so it lays
+/// nothing.
 fn observe(field: &Field, anchor: &Anchor, hulls: &mut Hulls, flights: &mut Vec<Flight>) {
     flights.clear();
-    for (ship, at, shown, mut flown) in hulls.iter_mut() {
-        let air = field.read(anchor, at.translation, &mut flown);
+    for (ship, placed, shown, mut flown) in hulls.iter_mut() {
+        let air = field.read(anchor, placed.pos, &mut flown);
         let seen = *shown != Visibility::Hidden;
-        flights.push((ship, *at, if seen { air } else { Air::default() }));
+        flights.push((ship, *placed, if seen { air } else { Air::default() }));
     }
 }
 
@@ -137,20 +149,19 @@ pub fn draw(
     let Some(anchor) = field.anchor.as_deref() else {
         return;
     };
-    let eye = field.eye();
-    let dt = field.dt();
+    let (eye, dt) = (field.eye(), field.dt());
     observe(&field, anchor, &mut hulls, &mut flights);
     for (mut streak, handle, mut transform) in &mut ribbons {
-        let Some((_, at, air)) = flights.iter().find(|flight| flight.0 == streak.ship) else {
+        let Some((_, placed, air)) = flights.iter().find(|flight| flight.0 == streak.ship) else {
             continue;
         };
         let (heat, look) = field.style(streak.source, air, eye);
-        let point = anchor.to_frame(at.transform_point(emitter(streak.source)));
         let spacing = match streak.source {
             Source::Vortex(_) => SPACING.0,
             Source::Lamp(_) => SPACING.1,
         };
         let streak = &mut *streak;
+        let point = tip(placed, streak.source);
         streak.trail.feed_by(point, heat, dt, (spacing, SPACING.2));
         if let Some(head) = trace(&streak.trail, &mut streak.drawn, (look, anchor), &mut strip) {
             show(head, (handle, &mut transform), &strip, &mut meshes);

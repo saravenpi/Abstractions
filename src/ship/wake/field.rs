@@ -2,6 +2,7 @@
 //! of the planet, the weather and the time of day at the camera.
 
 use bevy::ecs::system::SystemParam;
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::lay::Source;
@@ -17,8 +18,8 @@ use crate::weather::Weather;
 use crate::wind::Thickness;
 use crate::world::Terrain;
 
-/// Seconds a vortex trail glows for.
-const VORTEX_LIFE: f32 = 2.5;
+/// Seconds a vortex trail glows for: about a hundred metres of ribbon behind a ship at 130 m/s.
+const VORTEX_LIFE: f32 = 0.8;
 
 /// What the trails are read from, besides the ships.
 #[derive(SystemParam)]
@@ -69,17 +70,17 @@ impl Field<'_, '_> {
         (dense.min(1.0) * planet.clamp(0.0, 1.0), gravity)
     }
 
-    /// Reads the flight of the hull drawn at `at` this frame into `flown`, and returns it with
-    /// the air around it.
-    pub fn read(&self, anchor: &Anchor, at: Vec3, flown: &mut Flown) -> Air {
-        let dt = self.dt();
+    /// Reads the flight of the hull that is at `pos` in the frame of the anchor this frame
+    /// into `flown`, and returns it with the air around it.
+    pub fn read(&self, anchor: &Anchor, pos: DVec3, flown: &mut Flown) -> Air {
+        let (dt, at) = (self.dt(), anchor.to_render(pos));
         let vel = match flown.was {
             Some((frame, was)) if frame == anchor.frame && dt > 0.0 => {
                 Some((at - anchor.to_render(was)) / dt)
             }
             _ => None,
         };
-        flown.was = Some((anchor.frame, anchor.to_frame(at)));
+        flown.was = Some((anchor.frame, pos));
         let (thick, gravity) = self.air(anchor, at);
         let (speed, load) = flown.advance(vel, (up(anchor, at), gravity), dt);
         let depth = self.clouds.as_deref().map_or(0.0, |clouds| clouds.depth);

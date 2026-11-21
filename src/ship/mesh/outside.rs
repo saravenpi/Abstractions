@@ -134,11 +134,13 @@ pub fn studs() -> Solid {
 
 /// Where the navigation lamps are: the middle of the housing at the top rear tip of each winglet,
 /// the left one first. The real lights of the lamps stand at the same points.
-pub const TIP_LAMPS: [Vec3; 2] = [Vec3::new(-3.2, 0.475, 2.71), Vec3::new(3.2, 0.475, 2.71)];
+pub const TIP_LAMPS: [Vec3; 2] = [Vec3::new(-3.2, 0.44, 2.66), Vec3::new(3.2, 0.44, 2.66)];
 
-/// Half size of the housing of a navigation lamp, in metres: it stands proud of the faces of the
-/// winglet and of its top, so the lamp shows from the front, the side and the rear.
-const TIP_LAMP: Vec3 = Vec3::new(0.035, 0.045, 0.07);
+/// Half size of the housing of a navigation lamp, in metres: a block 10 cm wide, 18 cm tall and
+/// 28 cm long that caps the top rear corner of the winglet. It stands proud of the faces of the
+/// winglet and of its top, so the lamp reads as a red or a green tip from the front, the side
+/// and the rear, by day too.
+const TIP_LAMP: Vec3 = Vec3::new(0.05, 0.09, 0.14);
 
 /// Where the lens of the headlight is in the nose: its middle. The real light stands there.
 pub const HEAD_LAMP: Vec3 = Vec3::new(0.0, -0.3, -3.37);

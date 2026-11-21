@@ -143,17 +143,15 @@ const LIT: [View; 2] = [
     ),
 ];
 
-/// Half a day later: the landed ship from outside, with the whole pilot in the seat, the
+/// At the next night: the landed ship from outside, with the whole pilot in the seat, the
 /// cockpit from the seat, then the headlight switched on with its key, from the seat and from
-/// outside, and switched off again. The clock is then put on by another half day.
-pub fn night(world: &mut World, _: &mut Notes, frame: u32) -> Act {
-    let half = world.resource::<Planet>().day_seconds * 0.5;
+/// outside, and switched off again. Where the star never sets the stage is left out. The clock
+/// goes back to where it was at the end.
+pub fn night(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
     let switch = bound(world, |s| s.controls.keys.ship.headlight);
     match frame {
-        1 => {
-            world.resource_mut::<abstractions::space::Clock>().seconds += half;
-            view(world, ViewMode::First, ViewMode::Third);
-        }
+        1 if !nightfall(world, notes) => return Act::Next,
+        1 => view(world, ViewMode::First, ViewMode::Third),
         60..=135 => {
             views(world, frame - 59, "33-night", &OUT);
         }
@@ -169,7 +167,7 @@ pub fn night(world: &mut World, _: &mut Notes, frame: u32) -> Act {
         270.. if views(world, frame - 269, "33-night", &LIT) => {
             with_ship(world, |ship| ship.headlight = false);
             view(world, ViewMode::First, ViewMode::First);
-            world.resource_mut::<abstractions::space::Clock>().seconds += half;
+            daybreak(world, notes);
             return Act::Next;
         }
         _ => {}

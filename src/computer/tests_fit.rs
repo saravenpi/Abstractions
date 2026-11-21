@@ -2,8 +2,8 @@
 //! smallest window, and every sentence of Go fits two lines.
 
 use super::course::hud_line;
-use super::detail::{Card, ROWS, Row, card, visible};
-use super::layout::{GLYPH, LINE_CHARS, NAME_CHARS, ROOM};
+use super::detail::{Card, ROWS, Row, card, compacted, visible};
+use super::layout::{COMPACT, GLYPH, LINE_CHARS, LINE_HEIGHT, NAME_CHARS, ROOM};
 use super::route::Keys;
 use super::tests_detail::{records, world};
 use super::{Atlas, Block, RouteStatus, View};
@@ -175,5 +175,31 @@ fn the_go_sentences_fit_two_lines() {
     for status in route {
         let words = hud_line(&name, status, &keys);
         assert!(words.chars().count() <= 2 * LINE_CHARS, "{words}");
+    }
+}
+
+/// The compact form of every planet card, which a window of 1280 by 720 shows, drops the headings
+/// and the meanings, keeps every stat and the More row, and is no taller than the room that
+/// layout keeps for it.
+#[test]
+fn the_compact_card_fits_its_room() {
+    let universe = Universe::new(7);
+    for shown in planets(&universe) {
+        let rows = compacted(&shown.rows, false);
+        assert!(
+            rows.iter()
+                .all(|row| !matches!(row, Row::Heading(_) | Row::Meaning(_))),
+            "{shown:?}"
+        );
+        let height: f32 = rows
+            .iter()
+            .map(|row| match row {
+                Row::Stat { .. } => theme::LINE_SMALL,
+                Row::More => theme::ROW_COMPACT,
+                Row::Note(_) => 2.0 * LINE_HEIGHT,
+                _ => LINE_HEIGHT,
+            })
+            .sum();
+        assert!(height <= COMPACT, "{height} for {shown:?}");
     }
 }

@@ -6,7 +6,7 @@
 use bevy::prelude::*;
 
 use super::board::Board;
-use super::detail::{Card, Row, card as of, visible};
+use super::detail::{Card, Row, card as of, compacted, visible};
 use super::face::{meaning, more, stat};
 use super::format::clip;
 use super::layout::{LINE_CHARS, NAME_CHARS};
@@ -173,7 +173,12 @@ pub(super) fn write(
             .entity(column)
             .despawn_children()
             .with_children(|parent| {
-                for (at, fact) in visible(&shown.rows, open).iter().enumerate() {
+                let stats = shown.rows.iter().any(|row| matches!(row, Row::Stat { .. }));
+                let rows: Vec<&Row> = match board.compact && stats && !open {
+                    true => compacted(&shown.rows, open),
+                    false => visible(&shown.rows, open).iter().collect(),
+                };
+                for (at, fact) in rows.into_iter().enumerate() {
                     row(parent, fact, (at == 0, open));
                 }
             });

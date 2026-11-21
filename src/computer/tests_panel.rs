@@ -6,7 +6,9 @@ use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 
 use super::course::{arrival, course};
-use super::layout::{FACTS, Measures, RESULTS, ROW, SIDE, SMALLEST, fixed, measure};
+use super::layout::{
+    COMPACT, FACTS, Measures, RESULTS, ROW, SIDE, SMALLEST, facts_room, fixed, measure,
+};
 use super::tests_rig::{game, run, tap};
 use super::view::{Panel, Slot};
 use super::*;
@@ -40,10 +42,27 @@ fn the_screen_fits_every_window() {
         map: 720.0,
         rows: RESULTS.0,
         lists: (0, 0),
+        compact: true,
     };
     assert_eq!(measure(SMALLEST, (0, 0)), smallest);
     let usual = measure(Vec2::new(1280.0, 720.0), (0, 0));
     assert!(fixed((0, 0)) - FACTS + usual.rows as f32 * ROW <= 720.0);
+}
+
+/// At 1280 by 720 the card is whole: the top of the card with its Go button is never cut, and
+/// the facts, in their compact form, fit the room left whatever the lists hold. A tall window
+/// shows them in full.
+#[test]
+fn the_card_fits_at_1280_by_720() {
+    for lists in [(0, 0), (2, 1), (5, 0), (3, 3), (1, 6), (8, 6)] {
+        let fit = measure(SMALLEST, lists);
+        assert!(fit.compact, "{lists:?}");
+        let room = facts_room(SMALLEST.y, fit.lists, fit.rows);
+        assert!(room >= COMPACT, "{lists:?}: {room}");
+    }
+    let tall = measure(Vec2::new(1920.0, 1440.0), (0, 0));
+    assert!(!tall.compact);
+    assert!(facts_room(1440.0, tall.lists, tall.rows) >= FACTS);
 }
 
 /// The course line gives a time to arrival only while the ship moves, and says nothing without

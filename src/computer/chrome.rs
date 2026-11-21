@@ -67,6 +67,9 @@ pub(super) fn fit(
         board.fit = fit.rows;
         board.step(0);
     }
+    if board.compact != fit.compact {
+        board.compact = fit.compact;
+    }
     if board.lists != Some(fit.lists) {
         board.lists = Some(fit.lists);
     }

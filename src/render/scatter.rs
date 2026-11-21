@@ -48,7 +48,6 @@ pub fn luminance(light: Vec3) -> f32 {
     light.dot(LUMA)
 }
 
-
 /// Share of white a cloud keeps whatever the light: droplets scatter every wavelength alike.
 const CLOUD_WHITEN: f32 = 0.15;
 

@@ -276,7 +276,7 @@ fn vista(world: &mut World, frame: u32, views: &[View]) -> Act {
             }
             pace(world, ADAPT);
         }
-        n if n == 100 => pace(world, WALK),
+        100 => pace(world, WALK),
         n if n == VISTA - 5 => {
             return match index + 1 == views.len() {
                 true => Act::Shoot(view.name.into()),

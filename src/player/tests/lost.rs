@@ -17,7 +17,9 @@ use crate::view::Cut;
 use crate::world::Terrain;
 
 /// Returns a stage whose flat ground stands at the height the planet gives under the body, with
-/// the controller and the rescue on, and that height.
+/// the controller and the rescue on, and that height, run for a few frames so the ground's
+/// collider is where it was moved. The app is already finished, so the rescue is added by its
+/// function, not as a plugin.
 fn stage() -> (App, f32) {
     let mut app = app(&[(PlayerId::LOCAL, 0.0)]);
     app.add_message::<Cut>()
@@ -25,8 +27,8 @@ fn stage() -> (App, f32) {
             body: BodyId::default(),
             travel: Travel::OnFoot,
         })
-        .add_plugins(plugin)
         .add_systems(Update, (gather, drive).chain().in_set(PlayerSet::Move));
+    plugin(&mut app);
     let anchor = *app.world().resource::<Anchor>();
     let terrain = app.world().resource::<Terrain>().clone();
     let chart = terrain.locate(anchor.to_frame(Vec3::ZERO));
@@ -41,6 +43,9 @@ fn stage() -> (App, f32) {
     let home = Home(anchor.to_frame(Vec3::Y * (height + 1.0)));
     let start = Transform::from_translation(Vec3::Y * standing(height));
     world.entity_mut(player).insert((home, start));
+    for _ in 0..3 {
+        app.update();
+    }
     (app, height)
 }
 
@@ -69,9 +74,6 @@ fn stranded(app: &mut App) -> bool {
 #[test]
 fn a_body_under_the_ground_is_stood_on_the_collider_once() {
     let (mut app, height) = stage();
-    for _ in 0..3 {
-        app.update();
-    }
     sink(&mut app, height);
     for _ in 0..30 {
         app.update();

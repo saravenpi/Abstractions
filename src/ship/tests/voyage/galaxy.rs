@@ -2,10 +2,10 @@
 //! the middle of the course that resumes and completes.
 
 use super::{ground, key, lifts_off};
-use crate::computer::{Destination, Engage, Target};
+use crate::computer::{Destination, Engage, RouteStatus, Target, ship_position, target_position};
 use crate::ship::tests::rig::{Game, Log};
 use crate::ship::{Autopilot, Phase, ShipEvent};
-use crate::space::Location;
+use crate::space::{Clock, Location};
 use crate::universe::{GalaxyId, Universe};
 
 /// Frames the whole course may take, at a tenth of a second each.
@@ -48,15 +48,41 @@ fn sets_out(game: &mut Game, tag: &str) -> GalaxyId {
     far
 }
 
-/// Runs frames until the autopilot arrives, within [`FRAMES`], and returns how many frames it took.
-fn flies(game: &mut Game, from: usize) -> usize {
+/// Frames between two lines of the report while the ship flies.
+const EVERY: usize = 2_000;
+
+/// Describes the flight now: the route and its guard, the drive, the frame, the metres left to the
+/// centre of the galaxy and the spools so far.
+fn report(game: &mut Game, far: GalaxyId) -> String {
+    let (ship, pilot) = (game.ship(), game.get::<Autopilot>());
+    let (universe, time) = (game.get::<Universe>(), game.get::<Clock>().seconds);
+    let here = ship_position(&universe, ship.frame, ship.pos, time);
+    let there = target_position(&universe, Target::Galaxy(far), time);
+    let left = here.zip(there).map(|(here, there)| here.distance(there));
+    let route = game.get::<RouteStatus>();
+    let spooled = spools(game);
+    format!(
+        "{pilot:?}, route {route:?}, warp {:?}, frame {:?}, {left:?} m left, {spooled} spools",
+        ship.warp, ship.frame
+    )
+}
+
+/// Runs frames until the autopilot arrives, within [`FRAMES`], printing the flight every [`EVERY`] frames,
+/// and returns how many frames it took. It fails with the report of the flight otherwise.
+fn flies(game: &mut Game, far: GalaxyId, from: usize) -> usize {
     for frame in from..FRAMES {
         if game.get::<Autopilot>().phase() == Phase::Arrived {
             return frame;
         }
         game.step(1);
+        if frame % EVERY == EVERY - 1 {
+            println!("voyage: {}", report(game, far));
+        }
     }
-    panic!("the course to the other galaxy never arrived");
+    panic!(
+        "the course to the other galaxy never arrived: {}",
+        report(game, far)
+    );
 }
 
 /// Counts the times the drive spooled up so far.
@@ -75,7 +101,7 @@ fn a_course_to_another_galaxy_arrives_in_a_few_cycles() {
     let mut game = Game::full("galaxy");
     let game = &mut game;
     let far = sets_out(game, "Galaxy");
-    flies(game, 0);
+    flies(game, far, 0);
     game.step(3);
     assert_eq!(game.get::<Location>().body.star.galaxy, far);
     let cycles = spools(game);
@@ -97,7 +123,7 @@ fn a_save_in_the_middle_of_a_galaxy_course_resumes_and_arrives() {
     game.start("", Some(entry));
     assert_eq!(game.get::<Destination>().0, course);
     game.app.world_mut().trigger(Engage(Target::Galaxy(far)));
-    let frames = flies(game, 0);
+    let frames = flies(game, far, 0);
     game.step(3);
     assert_eq!(game.get::<Location>().body.star.galaxy, far);
     println!("voyage: the resumed course arrived after {frames} frames");

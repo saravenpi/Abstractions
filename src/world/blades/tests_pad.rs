@@ -55,6 +55,17 @@ fn cells_near(terrain: &Terrain, pad: DVec3, size: f32) -> Vec<IVec2> {
         .collect()
 }
 
+/// Prints the colours of the turf at the pad of `base` and the mean colour the ground bakes there.
+fn describe(seed: u64, terrain: &Terrain, base: &Base) {
+    let at = terrain.locate(base.pad);
+    let at = Vec2::new(at.x, at.z);
+    let seen = Verdure::of(terrain, at);
+    let colours = Flora::of(terrain, at)
+        .and_then(|flora| turf_of(&flora))
+        .map(|turf| turf.colours);
+    println!("PAD seed {seed}: turf colours {colours:?}, baked mean {seen:?}");
+}
+
 /// On the home planets of seeds 0 to 9, no blade root of the tiles around the pad lies over its square grown by
 /// the margin, and blades still stand within three metres outside it.
 #[test]
@@ -63,12 +74,7 @@ fn no_blade_stands_on_the_pad() {
     let (mut turfed, mut bare) = (0, 0);
     for seed in 0..10 {
         let (globe, base, terrain) = base_of(seed);
-        let at = terrain.locate(base.pad);
-        let seen = Verdure::of(&terrain, Vec2::new(at.x, at.z));
-        let colours = Flora::of(&terrain, Vec2::new(at.x, at.z))
-            .and_then(|flora| turf_of(&flora))
-            .map(|turf| turf.colours);
-        println!("PAD seed {seed}: turf colours {colours:?}, baked mean {seen:?}");
+        describe(seed, &terrain, &base);
         let none = Cropped::default();
         let clear = |p: DVec3| blocked(p, (&[], &none), &globe);
         for key in cells_near(&terrain, base.pad, TILE) {

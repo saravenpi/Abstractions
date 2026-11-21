@@ -13,6 +13,8 @@ mod tests;
 #[cfg(test)]
 mod tests_cross;
 #[cfg(test)]
+mod tests_rebase;
+#[cfg(test)]
 mod tests_shell;
 #[cfg(test)]
 mod tests_stage;
@@ -157,11 +159,11 @@ impl CloudInputs<'_> {
             space: air.clouds_from_space().extend(0.0),
             ambient: linear(self.palette.ambient).truncate().extend(0.0),
             fade: Haze::seen(vantage, &air, self.sky.as_deref(), radius).extend(0.0),
-            drift: drifted(seconds).extend(0.0),
+            drift: drifted(seconds, radius / CELL),
             fixed_x: fixed.x_axis.extend(0.0),
             fixed_y: fixed.y_axis.extend(0.0),
             fixed_z: fixed.z_axis.extend(0.0),
-            eye: (fixed * vantage.up * (radius / CELL) + drifted(seconds)).extend(CELL),
+            eye: (fixed * vantage.up * (radius / CELL)).extend(CELL),
         }
     }
 }

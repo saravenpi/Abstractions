@@ -1,6 +1,6 @@
 import bevy_pbr::render::forward_io::VertexOutput;
 import bevy_pbr::render::mesh_view_bindings::{view, fog};
-import package::render::cloud_field::{Puff, broad_cover, day_side, density, dither, fbm_seen, lone, puff};
+import package::render::cloud_field::{Puff, broad_cover, day_side, density, dither, fbm_seen, lone, puff, spot_at};
 
 struct Clouds {
     light: vec4<f32>,
@@ -42,7 +42,8 @@ fn around(ray: vec3<f32>, to_fixed: mat3x3<f32>, cover: f32) -> f32 {
     var dense = 0.0;
     for (var k = 1; k <= 4; k = k + 1) {
         let metres = 40.0 * f32(k * k);
-        dense = dense + density(fbm_seen(clouds.eye.xyz + step * metres, 4, 0.0), cover);
+        let at = spot_at(clouds.eye.xyz + step * metres, clouds.drift);
+        dense = dense + density(fbm_seen(at, 4, 0.0), cover);
     }
     return dense * 0.25;
 }
@@ -58,14 +59,14 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let dir = to_fixed * n;
     let mapped = broad_cover(cover_map, cover_sampler, dir, clouds.color.w);
     let cover = select(mapped, clouds.params.w, clouds.params.z > 0.5);
-    let spot = dir * clouds.params.x + clouds.drift.xyz;
+    let spot = dir * clouds.params.x;
     let to_eye = view.world_position - in.world_position.xyz;
     let dist = length(to_eye);
     let facing = dot(n, to_eye / max(dist, 0.001));
     let footprint = max(length(dpdx(spot)), length(dpdy(spot)));
-    let cloud = puff(spot, to_fixed * light, facing, cover, footprint);
+    let cloud = puff(spot, clouds.drift, to_fixed * light, facing, cover, footprint);
     let through = exp(-clouds.fade.xyz * dist);
-    let body = cloud.thick * lone(cloud, cover);
+    let body = cloud.density * lone(cloud, cover);
     let edge = clamp(0.5 + (body - 0.5) / max(fwidth(body) * EDGE_PIXELS, 0.0001), 0.0, 1.0);
     let alpha = max(edge, whiteout);
     if (alpha <= dither(in.position.xy)) {

@@ -42,7 +42,7 @@ fn dress(
     uniform.sun = star_light(star).extend(f32::from(u8::from(cloudy)));
     let clouds = Air::of(&planet.record).clouds_from_space();
     uniform.cloud = clouds.extend(toward_second(seconds));
-    uniform.drift = drift(seconds).extend(0.0);
+    uniform.drift = drift(seconds, uniform.map.w);
     uniform.map.z = uniform.glow.w * detail(angle);
 }
 

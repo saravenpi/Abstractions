@@ -82,9 +82,9 @@ fn clouds(n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, texel: vec2<f32>, span: f32)
     let to_fixed = mat3x3<f32>(body.fixed_x.xyz, body.fixed_y.xyz, body.fixed_z.xyz);
     let dir = to_fixed * n;
     let cover = broad_cover(cover_map, cover_sampler, dir, body.cloud.w);
-    let spot = dir * body.map.w + body.drift.xyz;
-    let cloud = puff(spot, to_fixed * l, dot(n, v), cover, span * body.map.w);
-    if (cloud.thick * lone(cloud, cover) * body.sun.w * body.map.z <= dither(texel)) {
+    let spot = dir * body.map.w;
+    let cloud = puff(spot, body.drift, to_fixed * l, dot(n, v), cover, span * body.map.w);
+    if (cloud.density * lone(cloud, cover) * body.sun.w * body.map.z <= dither(texel)) {
         discard;
     }
     return shade(day_side(body.cloud.rgb, n, l), cloud, true);

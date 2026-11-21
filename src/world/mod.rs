@@ -57,7 +57,7 @@ use crate::home::Base;
 use crate::saves::{ActiveWorld, WorldSave, unplayed};
 use crate::screens::Screen;
 use crate::space::{Anchor, Location, Travel};
-use crate::universe::{BodyId, Universe};
+use crate::universe::{BodyId, HOME_RULE, Universe};
 
 /// Height of the sea surface in world units.
 pub const SEA_LEVEL: f32 = 0.0;
@@ -122,7 +122,7 @@ fn start(north: &Terrain, save: Option<&WorldSave>) -> (Terrain, Vec3) {
 }
 
 /// Builds the universe, the planet the world starts on, its terrain view, the spawn point, the
-/// anchor and the readiness flag from the world seed.
+/// anchor and the readiness flag from the world seed, under the home rule of the save.
 ///
 /// A new world starts on the home planet where its base is looked for. A resumed world starts on the
 /// planet and at the spot its save names, unless that is a body without ground, a body that does not
@@ -133,7 +133,10 @@ fn begin_world(
     seed: Option<Res<WorldSeed>>,
     mut active: Option<ResMut<ActiveWorld>>,
 ) {
-    let universe = Universe::new(seed.map_or(0, |s| s.0));
+    let rule = active
+        .as_ref()
+        .map_or(HOME_RULE, |active| active.0.save.home);
+    let universe = Universe::under(seed.map_or(0, |s| s.0), rule);
     let (body, north) = arrive(&mut commands, &universe, active.as_mut());
     let save = active.as_ref().map(|active| &active.0.save);
     let (terrain, spawn) = start(&north, save);

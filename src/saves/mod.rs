@@ -6,6 +6,8 @@ mod cli;
 #[cfg(test)]
 mod cli_tests;
 mod format;
+#[cfg(test)]
+mod home_tests;
 mod id;
 #[cfg(test)]
 mod log_tests;

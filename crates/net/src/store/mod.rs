@@ -21,6 +21,8 @@ mod file_tests;
 #[cfg(test)]
 mod ground_tests;
 #[cfg(test)]
+mod home_tests;
+#[cfg(test)]
 mod import_tests;
 #[cfg(test)]
 mod place_tests;
@@ -67,6 +69,11 @@ impl Member {
 /// Version of the world format this build writes. 0.11 is 3, like the game's saves.
 pub const WORLD_VERSION: u32 = 3;
 
+/// The home rule a new world is made under: 1, the Earth-like home. A world file without one
+/// was made under rule 0, the first rule, and keeps its home. It is the game's
+/// `universe::HOME_RULE`; the server never reads it, it only hands it to the players.
+pub const HOME_RULE: u32 = 1;
+
 /// Returns the version of a world file that has none: the 0.10 format.
 fn old_version() -> u32 {
     0
@@ -84,6 +91,9 @@ pub struct World {
     pub name: String,
     /// Seed the whole universe is generated from.
     pub seed: u64,
+    /// The home rule the world was made under, see [`HOME_RULE`]: 0 for a file without it.
+    #[serde(default)]
+    pub home: u32,
     /// Universe time in seconds when the file was written.
     pub clock: f64,
     /// Every change the players made, oldest first.
@@ -112,6 +122,7 @@ impl Default for World {
             version: WORLD_VERSION,
             name: "World".to_string(),
             seed: 0,
+            home: HOME_RULE,
             clock: 0.0,
             changes: Changes::default(),
             atlas: String::new(),

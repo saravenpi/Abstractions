@@ -99,6 +99,8 @@ pub struct Welcome {
     pub you: PlayerId,
     /// Seed of the universe.
     pub seed: u64,
+    /// The home rule of the world, which picks its home planet from the seed.
+    pub home: u32,
     /// Universe time now, in seconds.
     pub clock: f64,
     /// Every change made to the world so far.

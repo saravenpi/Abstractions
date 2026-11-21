@@ -6,7 +6,7 @@ use super::{Screen, WarmUp};
 use crate::menus::Menu;
 use crate::saves::ActiveWorld;
 use crate::ui::{root_on, text, theme};
-use crate::universe::Universe;
+use crate::universe::{HOME_RULE, Universe};
 use crate::world::{WorldReady, WorldSeed};
 
 /// Seconds of play under which a world counts as new: it gets the full wake-up sequence.
@@ -27,8 +27,8 @@ impl Arrival {
     /// Returns the arrival of the active world: its saved planet, or the home planet of a new
     /// world. Without an active world, as in test runs, it is a return to the home planet.
     pub fn of(active: Option<&ActiveWorld>, seed: u64) -> Self {
-        let universe = Universe::new(seed);
         let save = active.map(|active| &active.0.save);
+        let universe = Universe::under(seed, save.map_or(HOME_RULE, |save| save.home));
         let body = save.map_or_else(|| universe.home(), |save| save.body(&universe));
         Self {
             fresh: save.is_some_and(|save| save.play_seconds < NEW_WORLD_SECONDS),

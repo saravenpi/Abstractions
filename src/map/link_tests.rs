@@ -28,6 +28,7 @@ fn welcome(waypoints: Vec<(PlayerId, Wire)>) -> ServerMsg {
     ServerMsg::Welcome(Welcome {
         you: PlayerId(3),
         seed: 3,
+        home: crate::universe::HOME_RULE,
         clock: 0.0,
         changes: Changes::default(),
         atlas: String::new(),

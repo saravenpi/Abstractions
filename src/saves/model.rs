@@ -9,7 +9,7 @@ use crate::computer::Atlas;
 use crate::life::SpeciesId;
 use crate::render::DayClock;
 use crate::sim::Changes;
-use crate::universe::BodyId;
+use crate::universe::{BodyId, HOME_RULE};
 
 /// Version written into world files. Files from before v0.6 carry none and read as 0, files
 /// from v0.6 to 0.8.1 carry 1, 2 is the ground of 0.9, and 3 is the universe of 0.11: real
@@ -63,6 +63,10 @@ pub struct WorldSave {
     /// none.
     #[serde(default)]
     pub game_version: String,
+    /// The home rule the world was made under, see [`HOME_RULE`]: 0 for a file without it, made
+    /// before the home had to be Earth-like, so that it keeps the home it had.
+    #[serde(default)]
+    pub home: u32,
     /// Body position on the legacy flat world, if the player ever entered it.
     ///
     /// A world on a globe stores [`WorldSave::place`] instead.
@@ -161,6 +165,7 @@ impl Default for WorldSave {
             seed: 0,
             version: SAVE_VERSION,
             game_version: GAME_VERSION.to_string(),
+            home: HOME_RULE,
             position: None,
             yaw: 0.0,
             pitch: 0.0,

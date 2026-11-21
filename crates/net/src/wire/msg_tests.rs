@@ -25,6 +25,7 @@ fn welcome() -> Welcome {
     Welcome {
         you: PlayerId(3),
         seed: 0xdead_beef_cafe,
+        home: 1,
         clock: 98_765.432_1,
         changes,
         atlas: "[[seen]]\nindex = 2\n".to_string(),

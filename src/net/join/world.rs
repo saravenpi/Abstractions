@@ -38,7 +38,7 @@ pub fn atlas_of(text: &str, universe: &Universe) -> Atlas {
 /// Returns the world of `welcome`, named `name`: the seed, the universe time, the shared log
 /// and atlas, and the place and ship the server kept of the player, if any.
 pub fn world_of(welcome: &Welcome, name: &str) -> WorldEntry {
-    let universe = Universe::new(welcome.seed);
+    let universe = Universe::under(welcome.seed, welcome.home);
     let mut atlas = atlas_of(&welcome.atlas, &universe);
     merge(&mut atlas, &welcome.changes);
     let record = welcome.record.clone().unwrap_or_default();
@@ -52,6 +52,7 @@ pub fn world_of(welcome: &Welcome, name: &str) -> WorldEntry {
         name: name.to_string(),
         seed: welcome.seed,
         version: SAVE_VERSION,
+        home: welcome.home,
         clock_seconds: welcome.clock,
         place: place.filter(|_| !record.place.trim().is_empty()),
         atlas: Some(atlas),

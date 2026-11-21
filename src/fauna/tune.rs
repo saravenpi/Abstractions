@@ -111,8 +111,8 @@ pub const SHORE_AHEAD: f32 = 0.5;
 /// so no land animal runs through water.
 pub const WADE: f32 = 0.75;
 
-/// Metres under the drawn ground past which the sunk check of a dev build logs a foot of an animal.
-#[cfg(feature = "dev")]
+/// Metres under the drawn ground past which the sunk check sets a walker back on it, and a dev build
+/// logs it.
 pub const SUNK: f32 = 0.05;
 
 /// Metres per second at which the robot standing in the body of a lighter animal pushes it aside.

@@ -37,7 +37,6 @@ mod slant;
 #[cfg(test)]
 mod stage;
 mod steer;
-#[cfg(any(test, feature = "dev"))]
 mod sunk;
 #[cfg(test)]
 mod tests_ground;
@@ -134,7 +133,11 @@ pub(super) fn plugin(app: &mut App) {
                 .after(crate::effects::Sight),
         )
         .add_plugins((senses::plugin, signs::plugin, attack::plugin, bleed::plugin));
-    #[cfg(feature = "dev")]
-    app.add_plugins(sunk::plugin);
-    app.add_plugins((guide::plugin, bulk::plugin, near::plugin, wing::plugin));
+    app.add_plugins((guide::plugin, after_walk));
+}
+
+/// Registers what follows the walk each frame: flyers steered clear of colliders, the live herd marks,
+/// the bodies the player meets, and once a second the walkers set back on the ground.
+fn after_walk(app: &mut App) {
+    app.add_plugins((wing::plugin, near::plugin, bulk::plugin, sunk::plugin));
 }

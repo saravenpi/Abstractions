@@ -49,19 +49,6 @@ fn a_cancelled_fade_casts_again() {
     assert!(!world.entity(part).contains::<NotShadowCaster>());
 }
 
-/// A far node that casts no shadow still casts none once a fade on it ends, in or out.
-#[test]
-fn a_fade_leaves_a_shadowless_node_without_shadow() {
-    for way in [Way::In, Way::Hide] {
-        let mut world = World::new();
-        let part = world
-            .spawn((Mesh3d::default(), Shadowless, NotShadowCaster))
-            .id();
-        let mut fades = Fades::default();
-        begin(&mut world, &mut fades, part, way);
-        cancel(&mut world, &mut fades, part);
-        assert!(world.entity(part).contains::<NotShadowCaster>(), "{way:?}");
-    }
 /// A coarse node casts no shadow, and neither a fade in nor the end of a fade gives it one.
 #[test]
 fn a_shadowless_node_never_casts() {

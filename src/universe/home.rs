@@ -12,7 +12,7 @@ use super::galaxy;
 use super::ids::{BodyId, GalaxyId, StarId};
 use super::record::{PlanetClass, Water};
 use super::spec::{PlanetSpec, StarSpec};
-use super::{LY, SECTOR_LY, shells, system};
+use super::{LY, SECTOR_LY, STANDARD_GRAVITY, shells, system};
 use crate::life::{Rung, Solvent, World, chem, odds};
 
 /// Grid cell of the home galaxy, the one cell that always holds a galaxy: the centre of the
@@ -48,18 +48,29 @@ pub fn landable(planet: &PlanetSpec) -> bool {
 /// some latitude of the planet, or some longitude of a locked one, is walkable all year.
 pub const MILD: (f64, f64) = (273.15, 308.15);
 
+/// Lowest and highest surface gravity in metres per second squared of a home: 0.7 and 1.3
+/// standard gravities.
+///
+/// It is what a body built for 9.81 m/s2 walks and flies in comfortably. At 0.7 the jump rises
+/// 1.59 m (1.11 m at standard), the pack carries 35.7 kg (25 kg at standard), and the vertical
+/// thrusters give the ship 1.8 standard gravities of net lift. At 1.3 the jump rises 0.86 m, the
+/// pack carries 19.2 kg, and the net lift is 1.2 standard gravities. At 2.4 the jump is 0.46 m,
+/// the pack 10.2 kg and the net lift 0.1 standard gravities.
+pub const COMFORT: (f64, f64) = (0.7 * STANDARD_GRAVITY, 1.3 * STANDARD_GRAVITY);
+
 /// Returns true when a new player can wake on `planet`, around `star`, and find life to see.
 ///
 /// Every planet gets the same test, on what is true of it: its life climbed to the skeletal
 /// rung or higher, where plants stand in layered forests and animals walk in herds, that life
 /// is built on water, the planet has seas and land in balance, water is liquid at the surface,
-/// and the mean temperature is between 0 and 35 C.
+/// the mean temperature is between 0 and 35 C, and the surface gravity is within [`COMFORT`].
 pub(super) fn homely(planet: &PlanetSpec, rung: Rung, world: &World) -> bool {
     let record = &planet.record;
     let water = chem::solvent(world).is_some_and(|(solvent, _)| solvent == Solvent::Water);
     let mild = (MILD.0..=MILD.1).contains(&record.temperature);
     let seas = record.class == PlanetClass::Island && record.water == Water::Liquid;
-    rung >= Rung::Skeletal && water && mild && seas
+    let pull = (COMFORT.0..=COMFORT.1).contains(&planet.gravity);
+    rung >= Rung::Skeletal && water && mild && seas && pull
 }
 
 /// Returns the planet of `planets`, the planets of `star`, a new game would start on: the landable

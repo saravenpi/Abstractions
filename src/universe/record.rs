@@ -165,7 +165,13 @@ impl PlanetRecord {
         let wet = volatiles::water(rng.unit(), flux, star.mass / SUN_MASS);
         let tilt = tilt(rng.unit());
         let carbon = volatiles::carbon(rng.unit(), flux);
-        let climate = climate::settle(flux + body.tide, pressure, wet, carbon);
+        let climate = climate::settle(
+            flux + body.tide,
+            zone::outer(star.temperature),
+            pressure,
+            wet,
+            carbon,
+        );
         let lake = |lake: &volatiles::Lake, roll| {
             volatiles::lakes(lake, climate.temperature, pressure, roll)
         };

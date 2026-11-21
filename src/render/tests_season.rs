@@ -113,6 +113,7 @@ fn snow_only_where_it_freezes_and_grows_toward_winter() {
     assert!(cover.windows(2).all(|pair| pair[1] >= pair[0]) && cover[10] == 1.0);
     let mut setting = Setting::of(&home());
     setting.temperature = 250.0;
+    setting.tilt = 0.0;
     assert_eq!(SeasonLook::at(&setting, &spot(0.5, 0.0), 0.0).snow, 1.0);
     setting.pressure = 0.0;
     assert_eq!(SeasonLook::at(&setting, &spot(0.5, 0.0), 0.0).snow, 0.0);

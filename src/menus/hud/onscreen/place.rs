@@ -35,6 +35,7 @@ pub struct Frustum {
 impl Frustum {
     /// Returns the frustum of a camera seeing `fov` radians up and down whose picture fills a
     /// screen of exactly `screen` interface pixels.
+    #[cfg(test)]
     pub fn whole(fov: f32, screen: Vec2) -> Self {
         let image = Rect::from_corners(Vec2::ZERO, screen);
         Self { fov, image }

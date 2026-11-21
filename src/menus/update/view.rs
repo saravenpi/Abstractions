@@ -5,12 +5,16 @@ use bevy::prelude::*;
 use super::pages;
 use super::parts::WIDTH;
 use crate::menus::Menu;
-use crate::ui::{column, footer, heading, panel, root, theme};
+use crate::ui::{column, footer, heading, hints, panel, root, theme};
 use crate::update::{Outcome, Plan, Stage, Updates};
 
 /// Key hints shown at the bottom of the screen.
-const HINT: &str = "Up and down move. Enter chooses. Page up and page down scroll the notes. \
-Esc goes back";
+const HINTS: [(&str, &str); 4] = [
+    ("Move", "Up Down"),
+    ("Choose", "Enter"),
+    ("Scroll the notes", "PgUp PgDn"),
+    ("Back", "Esc"),
+];
 
 /// The page the update menu shows.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -64,7 +68,7 @@ pub(super) fn spawn(mut commands: Commands) {
                     (Body::default(), column(px(WIDTH), theme::GAP_M))
                 ]
             ),
-            footer(HINT),
+            footer(hints(&HINTS)),
         ],
     ));
 }

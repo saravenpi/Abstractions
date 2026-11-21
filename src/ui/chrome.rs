@@ -1,9 +1,10 @@
-//! Screen furniture: headings, key hints, pointer actions with a key hint, footers and notices.
+//! Screen furniture: headings, pointer actions with a key hint, strips and notices.
 
 use bevy::prelude::*;
 
 use super::icon::Icon;
-use super::item::{entry, frame, label};
+use super::item::{entry, frame};
+use super::keys::{KEY_GAP, key_cap};
 use super::style::Tone;
 use super::theme;
 use super::widgets::{caps, text};
@@ -19,12 +20,6 @@ pub fn heading(content: &str) -> impl Bundle {
     )
 }
 
-/// The name of a key, dimmed. It has no box: it is told apart by its brightness. Every action
-/// shows its key: pair this with the label of the action.
-pub fn key_cap(key: impl Into<String>) -> impl Bundle {
-    label(key, theme::FONT_SMALL, Tone::Muted)
-}
-
 /// Pointer button with an icon, a label and the key that does the same thing.
 ///
 /// It takes no keyboard focus: the key is its keyboard access.
@@ -38,7 +33,7 @@ pub fn action(
         frame(),
         Node {
             align_items: AlignItems::Center,
-            column_gap: px(theme::S2),
+            column_gap: px(KEY_GAP),
             padding: UiRect::axes(px(theme::S3), px(theme::S2)),
             ..default()
         },
@@ -59,21 +54,6 @@ pub fn strip() -> Node {
         margin: UiRect::vertical(px(theme::S3)),
         ..default()
     }
-}
-
-/// Dimmed hint pinned to the bottom of the screen, in line with the content of a screen: the same
-/// side margin, and one edge margin from the bottom.
-pub fn footer(content: &str) -> impl Bundle {
-    (
-        text(content, theme::FONT_SMALL, theme::TEXT_2),
-        Node {
-            position_type: PositionType::Absolute,
-            left: percent(5),
-            right: percent(5),
-            bottom: px(theme::EDGE),
-            ..default()
-        },
-    )
 }
 
 /// One line for a short message, empty until something writes it. It keeps its height.

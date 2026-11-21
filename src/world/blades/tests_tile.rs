@@ -20,14 +20,14 @@ use crate::world::scatter::Carpet;
 use crate::world::scatter::zones::{LUSH, hold};
 
 /// Returns the view of the middle face of the lush test globe whose life holds the producers `archs`.
-fn view(archs: &[u8]) -> Terrain {
+pub(super) fn view(archs: &[u8]) -> Terrain {
     let life = garden(LUSH, archs, vec![]);
     let globe = Arc::new(Globe::new(LUSH, 5000.0, 9.81).with_life(Some(life)));
     Terrain::on(globe.clone(), globe.face_chart(Face::ALL[0]))
 }
 
 /// Returns the first tile near the middle of the face with turf, its carpet and how many dense blades it grows.
-fn turfed(terrain: &Terrain) -> Option<(IVec2, Carpet, usize)> {
+pub(super) fn turfed(terrain: &Terrain) -> Option<(IVec2, Carpet, usize)> {
     let keys = (-40..40).flat_map(|x| (-40..40).map(move |y| IVec2::new(x * 3, y * 3)));
     keys.filter_map(|key| {
         let chunk = (key.as_vec2() * TILE / crate::world::CHUNK_SIZE)

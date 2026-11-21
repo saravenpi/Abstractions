@@ -1,6 +1,6 @@
 # Abstractions
 
-A space exploration game in a gigantic universe where every world is its own. You are a human in a control container on your home planet, driving a small robot over a quantum link. A second robot floats along with you. Walk around whole planets, glide over them in a wingsuit, then take the ship through the clouds to other planets, stars and galaxies. Everything comes from one seed.
+A space exploration game in a gigantic universe where every world is its own. You are a human in a control container on your home planet, driving a small robot over a quantum link. A second robot floats along with you. Walk around whole planets at their real size, glide over them in a wingsuit, then take the ship through the clouds to other planets, stars and galaxies. Planets that live have plants, herds and hunters you can meet, track and hunt. Everything comes from one seed.
 
 Where the game is going: [ROADMAP.md](ROADMAP.md).
 
@@ -19,15 +19,18 @@ On foot:
 | A D in the wingsuit | Roll. Hold to roll over and on round. Let go and the wings level |
 | Q E in the wingsuit | Turn |
 | Left mouse held in the wingsuit | Steer toward where you look |
+| Left Ctrl | Crouch: slower, quieter, and animals notice you less |
 | V | First or third person |
 | M | Map |
 | N | Minimap range, then off |
-| B | Set or clear a waypoint where you stand, or under the pointer on the map |
-| K | Field guide |
-| I | Pack and workshop: what you carry, and making a tool for an intent |
+| B | Drop a pin where you stand, or remove the pin within 10 m. On the map, a pin under the pointer. You keep up to eight |
+| K | Field guide: the species of the planet underfoot |
+| I | Pack: what you carry. Tab opens the workshop, where you make a tool for an intent |
 | 1 to 6 | Hold the tool in that hotbar slot; the key of the held slot stows or draws it |
+| Left mouse, right mouse | Swing or throw the held tool, guard |
 | H | Break a piece off the rock you look at |
-| F | Board the ship |
+| U | Patch the worst hurt part of the robot with what you carry. Near the base every part mends itself |
+| F | Board the ship. Cut a part off the carcass you look at, or pull out a stuck spear |
 | Look down + W | Dive while swimming |
 | Esc | Pause menu, or back |
 
@@ -44,14 +47,14 @@ In the ship:
 | X | Cut the throttle |
 | Z | Flight assist on or off |
 | J | Warp drive, away from a planet's gravity |
-| M or Tab | Map. Wheel to zoom, drag to pan, double click to go in, Back or Backspace to go out. A trackpad scroll and a pinch also zoom; W A S D, and the arrows with the pointer on the map, also pan. 0 recentres. Click selects. The card of the selected place gives its chance of life, or what lives there once you have landed, and has buttons to set the course there, engage the autopilot, clear the course, focus it, set a waypoint or save it as a favourite; Enter also sets the course and right click opens the same menu, on the map or on a search result, favourite or player in the side panel. The path under the Back button jumps to any level above. Esc lets go of the selection, then closes the map |
-| G | Engage the autopilot on the course. The line under the compass says when it cannot, and why |
+| M or Tab | Map. Wheel to zoom, drag to pan, double click to go in, Back or Backspace to go out. A trackpad scroll and a pinch also zoom; W A S D, and the arrows with the pointer on the map, also pan. 0 recentres. Click selects. The card of the selected place gives its chance of life, or what lives there once you have landed, and its Go button sets the course there and engages the autopilot. Enter also presses Go, and right click opens a menu, on the map or on a search result, pin or player in the side panel. The path under the Back button jumps to any level above. Esc lets go of the selection, then closes the map |
+| G | Go: engage the autopilot on the course. The line at the bottom of the screen says when it cannot, and why |
 | V | First or third person |
 | F | Leave the ship |
 
-The compass at the top of the screen shows north, the home base, the ship, your friends, waypoints and nearby favourite places ahead of you. They fade toward its ends and hide behind you. Your coordinates, altitude and the weather sit in the top-left corner.
+The compass at the top of the screen shows north, the home base, the ship, your friends, your pins and the herds you have seen ahead of you. They fade toward its ends and hide behind you. Pins, the course, home, your ship and your friends also show over the world at their real place, and slide to the screen edge with an arrow when out of view. The HUD shows only what means something where you are: on foot, in the ship, in orbit, in open space or in warp.
 
-The map shows each planet flat and in colour, but only the ground someone has explored. On a server, ground one player uncovers is uncovered for everyone. Right click a place on the map to set a waypoint there, save it as a favourite, copy its coordinates or centre the map on it. Right click a planet, a favourite or your waypoint to set the course to it or focus the map on it.
+The map shows each planet flat and in colour, but only the ground someone has explored. On a server, ground one player uncovers is uncovered for everyone. Right click a place on the map to drop a pin there, copy its coordinates or centre the map on it. Right click a planet or a pin to set the course to it or focus the map on it.
 
 Rebind every key in Settings > Controls.
 
@@ -60,6 +63,8 @@ Rebind every key in Settings > Controls.
 New world asks for a name and a seed. Leave the seed empty for a random world. The same seed always gives the same world.
 
 The game saves where you are, your ship, what you have discovered and the time when you pause, when you quit, and every minute. Continue on the main menu reopens the last world. Worlds lists all of them, where you can rename, duplicate or delete a world.
+
+A world records the version of the game that made it. A world made with 0.10 or earlier lists as "Made with 0.10" and does not open in 0.11. Play on it downloads the 0.10.1 release and opens the world with it (Linux and Windows).
 
 Saves are one small file per world:
 
@@ -105,7 +110,7 @@ The first start creates a world with a random seed in `./data` (`/data` in Docke
 | `--data` | `ABSTRACTIONS_DATA` | `./data` | Folder of the world and the key |
 | `--import` | | | Start from a single-player world file |
 
-`abstractions-server ping <address>` asks a server for its name, players, version and key, and exits 0 when it answers. The world is saved every 30 seconds, when a player leaves and on shutdown, with the last 3 copies kept. A player holds one seat: joining again from another game closes the older session. Players need the same game version as the server.
+`abstractions-server ping <address>` asks a server for its name, players, version and key, and exits 0 when it answers. The world is saved every 30 seconds and on shutdown, with the last 3 copies kept. Players need the same game version as the server: a 0.10 game cannot join a 0.11 server. A server that finds a 0.10 `world.toml` keeps it as `world.toml.0.10.bak` and starts a new world.
 
 To build the image yourself: `docker build -f crates/server/Dockerfile -t abstractions-server .` from the repository root.
 
@@ -206,7 +211,9 @@ A missing or broken file is replaced by the defaults.
 ## Source layout
 
 - `src/lib.rs`: root plugin that wires every module together.
-- `src/universe`: galaxies, stars, systems and planets generated from the seed.
+- `src/universe`: galaxies, stars, systems and planets, at real size, generated from the seed.
+- `src/life`, `src/fauna`: whether a planet lives, its species and food web, and the herds, hunts and calls drawn around you.
+- `src/craft`, `src/condition`: the pack, tools and the workshop, and the health of each part of the robot.
 - `src/space`: frames of reference, the floating origin and the clock.
 - `src/world`: planets as spheres, terrain, chunk streaming, plants, structures and sea.
 - `src/home`: the base on the home planet.
@@ -216,7 +223,7 @@ A missing or broken file is replaced by the defaults.
 - `src/companion`: the second robot.
 - `src/audio`: generated music and sounds.
 - `src/render`: low-resolution target, sun, sky, atmosphere, clouds, stars and fog.
-- `src/effects`, `src/wind`: particles, creatures and the shared wind.
+- `src/effects`, `src/wind`, `src/weather`, `src/speed`: particles, the shared wind, clouds and weather, and what speed does to the picture and the sound.
 - `src/screens`, `src/menus`, `src/ui`: states, menus and widgets.
 - `src/saves`, `src/settings`: saved worlds and settings.
 - `src/update`: the self-update: the check, the download, its checks and the swap.

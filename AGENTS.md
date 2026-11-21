@@ -12,16 +12,18 @@ Abstractions is a space exploration game written in Rust on Bevy 0.20. This file
 | `assets/` | Fonts and other files the game embeds. |
 | `packaging/` | Per-platform bundling for releases. |
 | `docs/` | Design contracts and handoff notes. |
+| `handoff/` | Notes of the 0.11 work: owner requests, plans, formats and design specs. |
+| `examples/probe/` | The probe: drives the real game through a tour and saves screenshots. The lead runs it. |
 | `ROADMAP.md`, `CHANGELOG.md` | Where the game is going, and what each version changed. |
 
 Areas of `src/`, from the base to the top. A lower area must not import a higher one.
 
 | Layer | Areas |
 | --- | --- |
-| Base | `universe`, `space`, `climate`, `sim`, `settings`, `saves` (model) |
+| Base | `universe`, `life`, `space`, `climate`, `sim`, `condition`, `speed`, `settings`, `saves` (model) |
 | Drawing | `render`, `weather`, `wind`, `ui` |
 | World | `world`, `home`, `effects` |
-| Actors | `player`, `view`, `gear` (wingsuit and boots), `avatar`, `companion`, `audio` |
+| Actors | `player`, `view`, `gear` (wingsuit and boots), `avatar`, `companion`, `fauna`, `craft`, `audio` |
 | Navigation | `computer` (charts and the course), `map` |
 | Ship | `ship` |
 | Session | `net`, `update` |
@@ -31,7 +33,7 @@ Some imports still point upward today, for example `screens` using `menus::Menu`
 
 ## Commands
 
-Run through `mise` where a task exists.
+Run through `mise` where a task exists. The lead runs these. Agents do not: see The loop.
 
 | Goal | Command |
 | --- | --- |
@@ -47,27 +49,32 @@ The `dev` feature links Bevy dynamically. A dev binary only starts through `carg
 
 ## The loop
 
-1. Edit, and let `cargo check` or bacon tell you about errors.
-2. Run the tests of the area you touched, with a filter.
-3. Before you commit: `cargo fmt --all --check`, clippy, the tests of every area you touched, and `filet check .`.
+Agents never compile. On the night of 2026-11-20 eight agents each ran a Bevy build at once and the build machine crashed. Since then the lead builds one branch at a time, and agents work without a compiler.
+
+An agent may read and edit files, use `git` in its own worktree, run `cargo fmt --all` and run `filet check .`. An agent must not run `cargo build`, `check`, `clippy`, `test` or `run`, `bacon`, a `mise` task, `dx`, the probe, Xvfb or `rustc`, and must not kill a process.
+
+1. Read the code that you change and the code around it. Check every type, import and signature, and every Bevy 0.20 API in `~/.cargo/registry/src/*/bevy*-0.20*`, by reading.
+2. Write the change and its tests, as if you could not compile.
+3. Before you commit: `cargo fmt --all`, then `filet check .`.
+4. Report which tests to run (exact filters), which probe stages to run (`PROBE_STAGES` and the env), and what to look for on each screenshot.
 
 Who checks what:
 
 | Who | Checks | When |
 | --- | --- | --- |
-| An agent | It compiles, clippy, the tests of its own areas, filet | Before each commit |
+| An agent | Reads its change through, rewrites the tests it touches, runs `cargo fmt` and filet | Before each commit |
+| The lead | It compiles, clippy, the tests of the areas touched, the probe, then the full gate: every test of the workspace | One branch at a time, after merging, before anything reaches `next` |
 | The owner | Feel and looks: flight, camera, animation, plants, interface | As soon as the work lands, in a dev or hot build |
-| The lead | The full gate: every test of the workspace | Once, after merging, before anything reaches `next` |
 
-An agent that changes something the player sees must also look at it: `examples/probe/` drives the real game through a tour from a seed and saves screenshots (`SMOKE_SEED=1 SMOKE_DIR=<dir> cargo run --features dev --example probe`). Pick stages with `PROBE_STAGES` (`water,grass,fauna,tour,zoo`) and extend it to stand next to the thing you changed, then read the screenshots. Passing tests are not enough: on 2026-11-20 every fauna test passed while the owner saw no animals in the game.
+The lead drives the probe: `SMOKE_SEED=1 SMOKE_DIR=<dir> cargo run --features dev --example probe`, with stages picked by `PROBE_STAGES` (`water,grass,fauna,tour,zoo`). Passing tests are not enough: on 2026-11-20 every fauna test passed while the owner saw no animals in the game. An agent that changes something the player sees says in its report exactly what to look at.
 
-An agent does not run the full workspace test suite: it takes minutes and the lead runs it after the merge. An agent that changes something the player sees says in its report exactly what the owner should try in the game.
+The lead sends back the compile errors, the test output and the screenshot paths, and the agent fixes and reports again.
 
-A change anywhere in `src/` rebuilds the whole game crate. Batch your edits between builds.
+A change anywhere in `src/` rebuilds the whole game crate. The lead batches builds.
 
 ## The gate
 
-All four must pass before a commit:
+The lead runs all four before a branch reaches `next`. An agent runs only `cargo fmt --all` and `filet check .` before a commit:
 
 ```sh
 cargo fmt --all --check
@@ -127,9 +134,8 @@ Direction of 2026-11-20. Tokens live in `src/ui/theme.rs`, durations in `src/ui/
 ## Several agents at once
 
 - Each agent works in its own git worktree, on its own branch. Never commit on `next` or `main`: the lead merges.
-- Each agent sets its own `CARGO_TARGET_DIR`. Two builds in one target directory block each other.
-- At most two builds at a time on an 8-core, 16 GB machine. More makes every build slower than running them in turn.
-- Do not push. Report the commit hashes, the gate output and what you could not check.
+- No agent builds. The lead builds one branch at a time.
+- Do not push. Report the commit hashes, the tests and probe stages the lead should run, and what you could not check.
 
 ## Releases
 

@@ -28,6 +28,8 @@ mod tests_cross;
 mod tests_glide;
 #[cfg(test)]
 mod tests_home;
+#[cfg(test)]
+mod tests_turn;
 
 pub(super) use carry::carry;
 pub(super) use home::on_homeward;
@@ -96,8 +98,12 @@ pub struct Orbital {
     pub(super) height: f64,
     /// Speed of the cruise in metres per second.
     pub(super) speed: f64,
-    /// Unit direction of the cruise, in the axes of the frame of the ship.
+    /// Unit direction of the course of the cruise, in the axes of the frame of the ship.
     pub(super) heading: DVec3,
+    /// Speed in radians per second at which the ship turns onto the course.
+    pub(super) slew: f64,
+    /// Whether the nose has come onto the course, so that the cruise builds its speed.
+    pub(super) aligned: bool,
     /// Whether the ship could start a cruise now.
     pub(super) ready: bool,
     /// The distances and the time to the target.

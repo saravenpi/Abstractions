@@ -1,15 +1,16 @@
 //! The flight of the ship in cruise: in place of the flight steps, the drive carries it along
-//! its track for the universe time the frame covers, its nose along the track and its roof up.
+//! its track for the universe time the frame covers. The ship first turns onto the course at a
+//! bounded rate, easing in and out, and the speed builds once its nose is on it.
 //! The ship keeps the velocity the drive gives it, so the instruments and the other players see
 //! it move.
 
-use bevy::math::DVec3;
+use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::glide::{self, handover};
 use super::near::{Over, over};
-use super::skim::{Ask, Band, Skim, Stride, attitude, step};
-use super::tune::{ALIGN, PACE};
+use super::skim::{Ask, Band, Skim, Stride, attitude, course, step};
+use super::tune::{ALIGNED, PACE};
 use super::{Note, Orbital, Reading};
 use crate::ship::body::Ship;
 use crate::ship::flight::Report;
@@ -48,18 +49,59 @@ fn read(skim: &Skim, over: &Over, goal: Option<DVec3>) -> Option<Reading> {
     })
 }
 
-/// Moves `ship` over `over` to the end of `stride`, `dt` seconds on: the planet moved on by its
-/// own velocity, the ship by the step on top of it, the nose easing onto the track.
-fn fly(ship: &mut Ship, over: &Over, stride: &Stride, dt: f64) {
+/// Moves `ship` over `over` to the end of `stride`, `dt` seconds on, turned to `rot`: the planet
+/// moved on by its own velocity, the ship by the step on top of it. Returns the turn of the
+/// vertical over the step, which carries the nose and the course round the planet with the ship.
+fn fly(ship: &mut Ship, over: &Over, stride: &Stride, (rot, dt): (DQuat, f64)) -> DQuat {
+    let from = (ship.pos - over.centre).normalize_or(DVec3::Y);
+    let carried = DQuat::from_rotation_arc(from, stride.skim.pos.normalize_or(from));
     ship.pos = over.centre + over.vel * dt + stride.skim.pos;
     ship.vel = over.vel + stride.vel;
-    let up = stride.skim.pos.normalize_or(DVec3::Y);
-    let wanted = attitude(up, stride.skim.heading, 0.0);
-    ship.rot = ship
-        .rot
-        .slerp(wanted, 1.0 - (-dt / ALIGN).exp())
-        .normalize();
+    ship.rot = (carried * rot).normalize();
     ship.spin = DVec3::ZERO;
+    carried
+}
+
+/// Flies one frame of `dt` seconds of the cruise of `ship` over `over`, as `asked`: the ship
+/// turns onto the course at its own rate, the speed builds only once the nose is on it, and the
+/// drive carries the ship along the way the nose points. Returns the step, or nothing when the
+/// pilot asks to go lower than the floor and the cruise ends there.
+pub(super) fn advance(
+    orbital: &mut Orbital,
+    ship: &mut Ship,
+    over: &Over,
+    asked: &Ask,
+    dt: f64,
+) -> Option<Stride> {
+    let rel = ship.pos - over.centre;
+    let up = rel.normalize_or(DVec3::Y);
+    let skim = Skim {
+        pos: rel,
+        heading: orbital.heading,
+        speed: orbital.speed,
+        height: orbital.height,
+    };
+    let way = course(&skim, asked, dt);
+    let rot = orbital.turn(ship.rot, attitude(up, way, 0.0), dt);
+    let nose = rot * DVec3::NEG_Z;
+    let flat = (nose - up * nose.dot(up)).normalize_or(way);
+    orbital.aligned |= flat.angle_between(way) < ALIGNED;
+    let held = Ask {
+        throttle: asked.throttle * f64::from(u8::from(orbital.aligned)),
+        ..*asked
+    };
+    let skim = Skim {
+        heading: flat,
+        ..skim
+    };
+    let stride = step(&skim, &Band::of(&over.planet), &held, dt.max(1e-6));
+    if stride.floor {
+        return None;
+    }
+    let carried = fly(ship, over, &stride, (rot, dt));
+    (orbital.heading, orbital.speed) = (carried * way, stride.skim.speed);
+    orbital.height = stride.skim.height;
+    Some(stride)
 }
 
 /// Carries the ship in cruise through the universe time of the frame, as the flight steps would
@@ -76,20 +118,10 @@ pub fn carry(
     let Some(over) = over(&ship, &skies, (clock.seconds - dt, 0.0)) else {
         return orbital.off(None);
     };
-    let skim = Skim {
-        pos: ship.pos - over.centre,
-        heading: orbital.heading,
-        speed: orbital.speed,
-        height: orbital.height,
-    };
     let asked = ask(&orbital, &helm, &ship, &over);
-    let stride = step(&skim, &Band::of(&over.planet), &asked, dt.max(1e-6));
-    if stride.floor {
+    let Some(stride) = advance(&mut orbital, &mut ship, &over, &asked, dt) else {
         return orbital.rest(&mut ship, &over, Some(Note::Floor));
-    }
-    fly(&mut ship, &over, &stride, dt);
-    (orbital.heading, orbital.speed) = (stride.skim.heading, stride.skim.speed);
-    orbital.height = stride.skim.height;
+    };
     orbital.reading = read(&stride.skim, &over, asked.goal);
     if stride.done {
         orbital.descend(&mut ship, &over);

@@ -85,9 +85,11 @@ pub struct Stride {
     pub floor: bool,
 }
 
-/// Returns the heading of the step: along the great circle to the goal, or the one before turned
-/// by the yaw stick, square to the unit direction `up` either way.
-fn steer(skim: &Skim, ask: &Ask, up: DVec3, dt: f64) -> DVec3 {
+/// Returns the course of the cruise of `skim` for a step of `dt` seconds: along the great circle
+/// to the goal, or its heading turned by the yaw stick, square to the vertical either way. The
+/// ship turns onto it at its own rate; the step flies the heading the nose has.
+pub fn course(skim: &Skim, ask: &Ask, dt: f64) -> DVec3 {
+    let up = skim.pos.normalize_or(DVec3::Y);
     let wanted = match ask.goal {
         Some(goal) => (goal - up * goal.dot(up))
             .try_normalize()
@@ -125,10 +127,12 @@ fn advance(up: DVec3, heading: DVec3, radius: f64, distance: f64) -> (DVec3, DVe
     ((turn * up).normalize() * radius, turn * heading)
 }
 
-/// Returns one step of `dt` seconds of the cruise of `skim` over `band`, as `ask` asks.
+/// Returns one step of `dt` seconds of the cruise of `skim` over `band`, along its heading, as
+/// `ask` asks of its speed and its height.
 pub fn step(skim: &Skim, band: &Band, ask: &Ask, dt: f64) -> Stride {
     let up = skim.pos.normalize_or(DVec3::Y);
-    let heading = steer(skim, ask, up, dt);
+    let heading =
+        (skim.heading - up * skim.heading.dot(up)).normalize_or(up.any_orthonormal_vector());
     let height = held(skim.height, band, ask, dt);
     let left = ask
         .goal

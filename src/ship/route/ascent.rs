@@ -6,7 +6,7 @@
 use bevy::math::DVec3;
 
 use super::handoff::reached;
-use super::tune::LOCK_MARGIN;
+use super::tune::{CLIMB_STICK, LOCK_MARGIN};
 use crate::computer::Target;
 use crate::render::cool_speed;
 use crate::ship::body::Ship;
@@ -159,7 +159,7 @@ fn steer_up(
         return Some(true);
     }
     helm.controls = Controls {
-        turn: aim(ship.rot, order.aim),
+        turn: aim(ship.rot, order.aim).clamp_length_max(CLIMB_STICK),
         ..Controls::default()
     };
     (ship.throttle, ship.assist) = (order.throttle, true);

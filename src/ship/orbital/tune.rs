@@ -24,8 +24,17 @@ pub const CLIMB: (f64, f64) = (0.5, 2000.0);
 /// Radians per second the heading of a manual cruise turns at full yaw.
 pub const TURN: f64 = 0.5;
 
-/// Seconds in which the nose of a cruising ship closes most of the gap to its track.
-pub const ALIGN: f64 = 0.5;
+/// Fastest turn of the ship onto the course of a cruise, in radians per second (40 degrees a
+/// second), and the angular acceleration in radians per second squared it eases in and out with.
+pub const SLEW: (f64, f64) = (0.698_131_7, 1.2);
+
+/// Radians between the nose and the course under which the cruise starts to build its speed:
+/// five degrees.
+pub const ALIGNED: f64 = 0.087_266_46;
+
+/// Largest stick the glide gives the attitude thrusters: 0.6 of the pitch rate of the assist,
+/// 38 degrees a second, so it noses down into the glide as a pilot would.
+pub const GLIDE_STICK: f64 = 0.6;
 
 /// Angle in radians below the horizon of the glide into the air: 40 degrees, within the 35 to 45
 /// of the orbital glide of Elite Dangerous.

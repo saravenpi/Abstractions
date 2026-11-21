@@ -99,7 +99,7 @@ fn screen(app: &mut App) {
         planet_systems(),
         nav::systems(),
         (pins::collect, pins_draw::draw),
-        (planet::show, planet::picture, planet::say),
+        (planet::show, planet::picture, planet::veil, planet::say),
         (caption::caption_text, caption::coords_text),
         (side_show::write, side_show::go_key, deeds::write),
         fade::fade,

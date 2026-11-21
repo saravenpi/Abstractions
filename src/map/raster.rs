@@ -4,11 +4,18 @@
 //! Each body asked for keeps its picture. A cell is painted, on a worker thread and once, when
 //! a leaf of the explored ground falls in it. The rest stays clear.
 //! Painting waits while the map is closed, and the pictures stay painted.
+//!
+//! Zoomed in, tiles painted from the planet's own ground functions lie over the picture, never
+//! from the terrain the world has loaded. While a tile is painted, a coarser one that holds it
+//! is drawn in its place.
 
+mod cover;
 pub mod grid;
 mod paint;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_bake;
 #[cfg(test)]
 mod tests_coast;
 #[cfg(test)]
@@ -24,6 +31,7 @@ mod tiles_view;
 mod work;
 
 pub use paint::colour;
+pub use tiles::Tiles;
 pub use tiles_view::tile_layer;
 
 use std::collections::HashMap;

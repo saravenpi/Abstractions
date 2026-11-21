@@ -22,6 +22,10 @@ pub const EDGE: f32 = 0.12;
 /// Noise value a puff starts at under no cover and under full cover.
 pub const THRESHOLD: (f32, f32) = (0.72, 0.4);
 
+/// Density a puff must reach before it shows at all, and from which it shows in full: a lone tip
+/// of the noise barely over the threshold is no cloud. Twin of `LONE` in the shader.
+pub const LONE: (f32, f32) = (0.3, 0.8);
+
 /// How many times finer each octave of the noise is than the one before.
 pub const OCTAVE_SCALE: f32 = 2.03;
 
@@ -89,7 +93,8 @@ pub fn drift(seconds: f64) -> Vec3 {
 /// `density` in the shader, without the thickening the shader adds at the limb.
 pub fn density(spot: Vec3, cover: f32) -> f32 {
     let from = threshold(cover);
-    smoothstep(from, from + EDGE, fbm(spot, OCTAVES))
+    let dense = smoothstep(from, from + EDGE, fbm(spot, OCTAVES));
+    dense * smoothstep(LONE.0, LONE.1, dense)
 }
 
 /// Returns how much cloud there is in the planet-fixed unit direction `dir` of a shell

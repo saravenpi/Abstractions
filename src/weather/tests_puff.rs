@@ -4,7 +4,7 @@
 use bevy::math::Vec3;
 
 use super::puff::{
-    EDGE, OCTAVE_SCALE, OCTAVE_SHIFT, OCTAVES, THRESHOLD, density, fbm, hash31, space_noise,
+    EDGE, LONE, OCTAVE_SCALE, OCTAVE_SHIFT, OCTAVES, THRESHOLD, density, fbm, hash31, space_noise,
     threshold,
 };
 
@@ -66,6 +66,7 @@ fn the_noise_and_the_puffs_match_the_shader() {
 fn the_constants_match_the_shader() {
     assert_eq!(constant("EDGE"), [EDGE]);
     assert_eq!(constant("THRESHOLD"), [THRESHOLD.0, THRESHOLD.1]);
+    assert_eq!(constant("LONE"), [LONE.0, LONE.1]);
     assert_eq!(constant("OCTAVE_SCALE"), [OCTAVE_SCALE]);
     assert_eq!(constant("OCTAVE_SHIFT"), OCTAVE_SHIFT.to_array());
     assert_eq!(constant("OCTAVES"), [OCTAVES as f32]);

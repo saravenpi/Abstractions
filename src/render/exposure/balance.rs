@@ -35,6 +35,8 @@ pub struct Balanced {
     pub white: Vec2,
     /// Whether the white was ever set from the light of a place.
     pub set: bool,
+    /// Whether the balance was on at the last update: switching it on again snaps to the light.
+    pub live: bool,
 }
 
 impl Default for Balanced {
@@ -42,6 +44,7 @@ impl Default for Balanced {
         Self {
             white: D65,
             set: false,
+            live: false,
         }
     }
 }
@@ -130,11 +133,11 @@ pub(super) fn run(
         true => adapted(light, lux),
         false => D65,
     };
-    let white = match balanced.set && live {
+    let white = match balanced.set && balanced.live && live {
         true => eased(balanced.white, target, time.delta_secs()),
         false => target,
     };
     let set = live || balanced.set;
-    balanced.set_if_neq(Balanced { white, set });
+    balanced.set_if_neq(Balanced { white, set, live });
     apply(balanced.white, &mut cameras, &mut commands);
 }

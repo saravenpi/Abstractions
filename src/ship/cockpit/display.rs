@@ -33,16 +33,18 @@ pub fn picture(screen: Screen) -> Image {
     image
 }
 
-/// Run condition: a display was just fitted.
-pub fn fitted(screens: Query<(), Added<Screen>>) -> bool {
+/// Run condition: a display has no picture yet. It asks what is there, not what was just
+/// added: a condition is evaluated on every frame, also while its set does not run, so a display
+/// fitted before the game plays would be seen as new once, too early, and never get its picture.
+pub fn fitted(screens: Query<(), (With<Screen>, Without<Display>)>) -> bool {
     !screens.is_empty()
 }
 
-/// Gives every display that was just fitted its own image and its own unlit material, which
-/// shows the image. Ships share every mesh, but never a picture.
+/// Gives every display that has none its own image and its own unlit material, which shows the
+/// image. Ships share every mesh, but never a picture.
 pub fn equip(
     mut commands: Commands,
-    screens: Query<(Entity, &Screen), Added<Screen>>,
+    screens: Query<(Entity, &Screen), Without<Display>>,
     (mut images, mut materials): (ResMut<Assets<Image>>, ResMut<Assets<StandardMaterial>>),
 ) {
     for (entity, screen) in &screens {

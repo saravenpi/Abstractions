@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::world::Boxes;
-use super::{apart, first, moment, run, seen, third};
+use super::{apart, moment, run, seen, third, first};
 use crate::view::keys::free;
 use crate::view::tune::{COCKPIT_TURN, COCKPIT_UP};
 use crate::view::{FACE, Kind, Moment, Rig, ViewPrefs};

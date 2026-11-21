@@ -1,5 +1,5 @@
 //! The wings: one aerofoil section lofted through four stations, from a thick root inside the
-//! fuselage, with the leading edge of the root swept forward into a strake, out to a thin tip.
+//! fuselage, along a strake that leaves the chine, out to a thin swept tip.
 //! The top is flat over the middle of the chord and falls a little toward the tip; the rear
 //! quarter is the flap, set off from the wing by a shallow step and a second tone.
 
@@ -9,13 +9,14 @@ use super::loft::{Section, solid};
 use crate::ship::solid::Solid;
 
 /// Stations of the right wing from the root to the tip: x, z of the leading edge, chord and
-/// thickness, in metres. The root is inside the fuselage. The span is 6.4 m across the tips, and
-/// each wing shows 6.5 square metres of planform outside the root.
+/// thickness, in metres. The root is inside the fuselage. From it a long strake runs out to the
+/// crank, then a swept panel to a short tip; the trailing edge is swept forward. The span is
+/// 6.4 m across the tips.
 pub(super) const STATIONS: [[f32; 4]; 4] = [
-    [0.45, -0.7, 2.8, 0.36],
-    [1.0, -0.45, 3.2, 0.4],
-    [1.9, 0.14, 2.38, 0.28],
-    [3.2, 1.0, 1.2, 0.1],
+    [0.45, -1.3, 3.8, 0.26],
+    [1.25, -0.1, 2.85, 0.3],
+    [1.9, 0.5, 2.15, 0.26],
+    [3.2, 1.7, 0.72, 0.09],
 ];
 
 /// Height of the flat top of the wing at `x` metres from the middle: 0.04 m at the root, falling

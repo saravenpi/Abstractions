@@ -10,6 +10,7 @@ use super::drive::look;
 use super::jets::Kind;
 use super::state::Exhaust;
 use super::tune::{LANDING_LIGHT, LIFT_LIGHT, MAIN_LIGHT, OFF};
+use crate::render::reach;
 use crate::ship::legs::Leg;
 use crate::ship::mesh::NOZZLE_Z;
 
@@ -26,26 +27,26 @@ pub enum Lamp {
 
 /// Adds the three lights of a ship to `entity`, out.
 pub fn fit(entity: &mut EntityCommands) {
-    let glow = |(intensity, range): (f32, f32), color: Color| PointLight {
-        intensity,
-        range,
+    let glow = |lumens: f32, color: Color| PointLight {
+        intensity: 0.0,
+        range: reach(lumens),
         color,
         radius: 0.1,
         shadow_maps_enabled: false,
         ..default()
     };
-    let main = glow((0.0, MAIN_LIGHT.1), Color::srgb(0.6, 0.75, 1.0));
-    let lift = glow((0.0, LIFT_LIGHT.1), Color::srgb(0.8, 0.85, 1.0));
+    let main = glow(MAIN_LIGHT, Color::srgb(0.6, 0.75, 1.0));
+    let lift = glow(LIFT_LIGHT, Color::srgb(0.8, 0.85, 1.0));
     let beam = SpotLight {
         intensity: 0.0,
-        range: LANDING_LIGHT.1,
-        outer_angle: LANDING_LIGHT.2,
-        inner_angle: LANDING_LIGHT.2 * 0.5,
+        range: reach(LANDING_LIGHT.0),
+        outer_angle: LANDING_LIGHT.1,
+        inner_angle: LANDING_LIGHT.1 * 0.5,
         shadow_maps_enabled: false,
         ..default()
     };
     let nose =
-        Transform::from_xyz(0.0, -0.34, -3.45).looking_to(Vec3::new(0.0, -0.3, -1.0), Vec3::Y);
+        Transform::from_xyz(0.0, -0.36, -3.4).looking_to(Vec3::new(0.0, -0.3, -1.0), Vec3::Y);
     let tail = Transform::from_xyz(0.0, 0.2, NOZZLE_Z + 0.6);
     let belly = Transform::from_xyz(0.0, -0.95, 0.2);
     entity.with_child((Lamp::Main, main, tail, Visibility::Hidden));
@@ -91,8 +92,8 @@ pub fn glare(ships: Query<&Exhaust>, legs: Legs, mut lamps: Lamps) {
             .any(|(leg, at)| leg.parent() == parent.parent() && at.scale.y >= 0.999);
         let share = power(*lamp, exhaust, down);
         let lumens = match lamp {
-            Lamp::Main => MAIN_LIGHT.0,
-            Lamp::Lift => LIFT_LIGHT.0,
+            Lamp::Main => MAIN_LIGHT,
+            Lamp::Lift => LIFT_LIGHT,
             Lamp::Landing => LANDING_LIGHT.0,
         } * share;
         visibility.set_if_neq(if share > OFF {

@@ -1,32 +1,28 @@
-//! The layered plates of the hull: three lames on the top of each wing, three on each flank
-//! of the fuselage and a band of them on each engine pod, each row stepping up a little from
-//! the one in front like the plates of a guard. Under them the dark frame shows in the gaps,
-//! and a thin line of glow runs along the last wing lame. Every plate is sunk into the part
-//! that carries it.
+//! The layered plates of the hull: three lames over each wing root, each overlapping the next
+//! like the plates of a shoulder guard, on a dark plate of the frame that shows round them, and
+//! three bands round each engine nacelle. A triangle of the accent colour marks the middle lame
+//! of each wing. Every plate is sunk into the part that carries it.
 
 use bevy::prelude::*;
 
 use super::loft::{Section, round, solid};
-use super::outside::layer;
 use super::tail::{ENGINES, ring_radius};
 use super::wing::{STATIONS, top};
 use crate::ship::solid::Solid;
 
-/// The shares of the chord each lame of a wing covers, from the leading edge: they overlap by a
-/// few centimetres, and each stands 1.2 cm higher than the one in front.
-const WING_LAMES: [(f32, f32); 3] = [(0.26, 0.44), (0.4, 0.58), (0.54, 0.72)];
+/// Where along the span each lame of a wing root starts and ends, in metres from the middle, and
+/// how far it stands over the wing. The first is the highest and overlaps the second.
+const LAMES: [(f32, f32, f32); 3] = [(0.9, 1.34, 0.055), (1.26, 1.7, 0.04), (1.62, 2.06, 0.025)];
 
-/// Where along the span the lames of a wing start and end, in metres from the middle.
-const SPAN: (f32, f32) = (0.7, 2.85);
+/// The shares of the chord the lames cover, from the leading edge.
+const CHORD: (f32, f32) = (0.27, 0.62);
 
-/// Where the lames of the flank are along z, front and back, in metres.
-const FLANK: [(f32, f32); 3] = [(-0.7, 0.05), (-0.02, 0.8), (0.75, 1.55)];
+/// How far a plate is sunk into the wing, and how far the dark plate of the frame shows round
+/// the lames, in metres.
+const SEAT: (f32, f32) = (0.03, 0.05);
 
-/// The stations of the crest: z and the height of its top.
-const CREST: [(f32, f32); 4] = [(0.25, 0.8), (1.2, 0.95), (2.2, 0.98), (3.0, 0.8)];
-
-/// Where along z the bands of an engine pod are, and their length.
-const BANDS: ([f32; 3], f32) = ([2.55, 2.8, 3.05], 0.14);
+/// Where along z the bands of an engine nacelle start, their length and how far they stand out.
+const BANDS: ([f32; 3], f32, f32) = ([2.3, 2.6, 2.9], 0.22, 0.03);
 
 /// Returns the leading edge and the chord of the wing `x` metres out, between its stations.
 fn chord_at(x: f32) -> (f32, f32) {
@@ -42,99 +38,73 @@ fn on_top(x: f32, share: f32) -> Vec3 {
     Vec3::new(x, top(x), front + share * chord)
 }
 
-/// Returns the three lames of the right wing and, in the second part, the line of glow along
-/// the edge of the last one.
-fn wing_lames() -> (Solid, Solid) {
-    let (mut lames, mut line) = (Solid::default(), Solid::default());
-    for (k, (from, to)) in WING_LAMES.into_iter().enumerate() {
-        lames.set_tone([1, 2, 1][k]);
-        let base = [(SPAN.0, from), (SPAN.1, from), (SPAN.1, to), (SPAN.0, to)]
-            .map(|(x, share)| on_top(x, share) - Vec3::Y * 0.03);
-        lames.plate(base, Vec3::Y * (0.03 + 0.012 * (k as f32 + 1.0)));
-    }
-    let (last, rise) = (WING_LAMES[2].1, 0.012 * 3.0);
-    let base = [
-        (1.0, last - 0.022),
-        (2.7, last - 0.022),
-        (2.7, last - 0.008),
-        (1.0, last - 0.008),
-    ]
-    .map(|(x, share)| on_top(x, share) + Vec3::Y * (rise - 0.01));
-    line.plate(base, Vec3::Y * 0.02);
-    (lames, line)
+/// Adds a plate on the top of the right wing between the spans `x` and the chord shares `chord`,
+/// sunk into the wing and standing `lift` metres over it.
+fn tile(solid: &mut Solid, x: (f32, f32), chord: (f32, f32), lift: f32) {
+    let base = [(x.0, chord.0), (x.1, chord.0), (x.1, chord.1), (x.0, chord.1)]
+        .map(|(x, share)| on_top(x, share) - Vec3::Y * SEAT.0);
+    solid.plate(base, Vec3::Y * (SEAT.0 + lift));
 }
 
-/// Returns the lames of the left flank of the fuselage.
-fn flank_lames() -> Solid {
-    let mut lames = Solid::default();
-    for (k, span) in FLANK.into_iter().enumerate() {
-        lames.set_tone([2, 1, 2][k]);
-        layer(&mut lames, span, (0.1, 0.78), 0.012 * (k as f32 + 1.0));
+/// Adds a closed wedge: the triangle `base`, extruded by `depth`.
+fn wedge(solid: &mut Solid, base: [Vec3; 3], depth: Vec3) {
+    let top = base.map(|p| p + depth);
+    let centre = (base[0] + base[1] + base[2]) / 3.0 + depth * 0.5;
+    solid.tri(base, -depth);
+    solid.tri(top, depth);
+    for i in 0..3 {
+        let j = (i + 1) % 3;
+        let side = [base[i], base[j], top[j], top[i]];
+        solid.quad(side, (base[i] + top[j]) * 0.5 - centre);
     }
-    lames
 }
 
-/// Returns the bands round the engine pod on the axis `at`: rings a little wider than the pod,
-/// chamfered at both ends into it, that step out one after the other toward the nozzle.
+/// Returns the plates of the root of the right wing: the three lames, the dark plate of the
+/// frame under them, and the triangle of the accent colour on the middle lame, which points at
+/// the nose.
+fn root() -> [Solid; 3] {
+    let [mut lames, mut under, mut mark] = [Solid::default(), Solid::default(), Solid::default()];
+    for (k, (from, to, lift)) in LAMES.into_iter().enumerate() {
+        lames.set_tone([1, 0, 1][k]);
+        tile(&mut lames, (from, to), CHORD, lift);
+    }
+    let span = (LAMES[0].0, LAMES[2].1 + SEAT.1);
+    let chord = (CHORD.0 - 0.02, CHORD.1 + 0.02);
+    tile(&mut under, span, chord, 0.012);
+    let (lift, x) = (LAMES[1].2, (LAMES[1].0 + 0.12, LAMES[1].1 - 0.08));
+    let base = [(x.0, 0.5), (x.1, 0.5), ((x.0 + x.1) * 0.5, 0.36)]
+        .map(|(x, share)| on_top(x, share) + Vec3::Y * (lift - 0.01));
+    wedge(&mut mark, base, Vec3::Y * 0.02);
+    [lames, under, mark]
+}
+
+/// Returns the bands round the engine nacelle on the axis `at`: rings wider than the nacelle,
+/// chamfered at both ends into it, in two tones.
 fn bands(at: Vec2) -> Solid {
     let mut bands = Solid::default();
-    for (k, z) in BANDS.0.into_iter().enumerate() {
-        let (low, wide) = (-0.05, 0.012 * (k as f32 + 1.0));
+    let (starts, length, out) = BANDS;
+    for (k, z) in starts.into_iter().enumerate() {
         let stations = [
-            (z, low),
-            (z + 0.03, wide),
-            (z + BANDS.1 - 0.03, wide),
-            (z + BANDS.1, low),
+            (z, -0.05),
+            (z + 0.03, out),
+            (z + length - 0.03, out),
+            (z + length, -0.05),
         ];
         let sections: Vec<Section> = stations
             .map(|(z, grow)| round(at.extend(z), ring_radius(z) + grow, 10))
             .into();
-        solid(&mut bands, &sections, |_, _| 3);
+        solid(&mut bands, &sections, |_, _| [1, 0, 1][k]);
     }
     bands
 }
 
-/// Returns the crest: a thin ridge along the spine from behind the canopy to the fin, rising
-/// to it, chamfered along its top.
-fn crest() -> Solid {
-    let section = |(z, height): (f32, f32)| -> Section {
-        [
-            (-0.07, 0.5),
-            (0.07, 0.5),
-            (0.07, height - 0.04),
-            (0.03, height),
-            (-0.03, height),
-            (-0.07, height - 0.04),
-        ]
-        .map(|(x, y)| Vec3::new(x, y, z))
-        .into()
-    };
-    let sections: Vec<Section> = CREST.into_iter().map(section).collect();
-    let mut crest = Solid::default();
-    solid(&mut crest, &sections, |_, _| 3);
-    crest
-}
-
-/// Returns `solid` and its mirror image on the other side of the ship.
-fn both(solid: &Solid) -> Solid {
-    let mut all = solid.clone();
-    for (tri, tone) in solid.tris.iter().zip(&solid.tones) {
-        let [a, b, c] = tri.map(|p| Vec3::new(-p.x, p.y, p.z));
-        all.tris.push([a, c, b]);
-        all.tones.push(*tone);
-    }
-    all
-}
-
-/// Returns the plates of the airframe: the lames of the wings and of the flanks, the line of
-/// glow along the wings, the bands of the engine pods and the crest.
+/// Returns the plates of the airframe: the lames of the wing roots, the dark plates under them,
+/// the triangles of the accent colour, and the bands of the engine nacelles.
 pub fn lames() -> [Solid; 4] {
-    let (wing, line) = wing_lames();
-    let mut plates = both(&wing);
-    plates.merge(&both(&flank_lames()), Vec3::ZERO);
-    let mut pods = Solid::default();
+    let [lames, under, mark] = root();
+    let mut rings = Solid::default();
     for at in ENGINES {
-        pods.merge(&bands(at), Vec3::ZERO);
+        rings.merge(&bands(at), Vec3::ZERO);
     }
-    [plates, both(&line), pods, crest()]
+    [lames.mirrored(), under.mirrored(), mark.mirrored(), rings]
 }

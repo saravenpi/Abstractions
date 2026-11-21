@@ -6,12 +6,13 @@ use bevy::prelude::*;
 
 use super::stage::{Puppet, app, bytes, count, edit, lit, part, state};
 use super::tests::levers;
+use super::pixels::Ink;
 use super::{Cockpit, Dial, Display, Lamp, Levers, Part, Readings, Screen};
 use crate::ship::body::Ship;
 use crate::ship::mesh::Looks;
 
-/// A cockpit is a stick, a lever, a gear lever, a warp switch, two pedals, a strap, five bars,
-/// six lamps and four displays, and none of it has a collider: the hull box is all the player
+/// A cockpit is a stick, a lever, a gear lever, a warp switch, two pedals, a strap and three
+/// displays, and none of it has a collider: the hull box is all the player
 /// and the ground ever touch. Two ships share every mesh and every material of the cockpit; each
 /// display has its own image and its own material.
 #[test]
@@ -19,10 +20,10 @@ fn the_cockpit_adds_no_collider_and_is_shared() {
     let mut app = app();
     assert_eq!(count::<Collider>(&mut app), 0);
     assert_eq!(count::<Cockpit>(&mut app), 2);
-    assert_eq!(count::<Part>(&mut app), 2 * 18);
+    assert_eq!(count::<Part>(&mut app), 2 * 7);
     assert_eq!(
         (count::<Screen>(&mut app), count::<Display>(&mut app)),
-        (8, 8)
+        (6, 6)
     );
     assert_eq!(
         part::<Ship>(&mut app, Part::Stick).translation,
@@ -36,7 +37,7 @@ fn the_cockpit_adds_no_collider_and_is_shared() {
     assert_eq!(count::<Mesh3d>(&mut app), 2 * 58);
     assert_eq!(looks, 21);
     assert_eq!(app.world().resource::<Assets<Mesh>>().len(), 23);
-    assert_eq!(app.world().resource::<Assets<Image>>().len(), 8);
+    assert_eq!(app.world().resource::<Assets<Image>>().len(), 6);
     assert_eq!(app.world().resource::<Assets<StandardMaterial>>().len(), 22);
 }
 
@@ -102,7 +103,7 @@ fn a_display_repaints_only_when_its_value_changes() {
     let show = |speed: Option<f64>| move |cockpit: &mut Cockpit| cockpit.read.speed = speed;
     edit::<Ship>(&mut app, show(Some(1500.0)));
     app.update();
-    let first = bytes::<Ship>(&mut app, Screen::Speed);
+    let first = bytes::<Ship>(&mut app, Screen::Flight);
     assert!(lit(&first));
     let mut images = app.world_mut().resource_mut::<Assets<Image>>();
     let handles: Vec<_> = images.iter().map(|(id, _)| id).collect();
@@ -116,18 +117,18 @@ fn a_display_repaints_only_when_its_value_changes() {
     edit::<Ship>(&mut app, show(Some(1500.5)));
     app.update();
     assert!(
-        bytes::<Ship>(&mut app, Screen::Speed)
+        bytes::<Ship>(&mut app, Screen::Flight)
             .iter()
             .all(|byte| *byte == 7)
     );
     edit::<Ship>(&mut app, show(Some(1700.0)));
     app.update();
-    let moved = bytes::<Ship>(&mut app, Screen::Speed);
+    let moved = bytes::<Ship>(&mut app, Screen::Flight);
     assert!(lit(&moved) && moved != first);
     edit::<Ship>(&mut app, show(None));
     app.update();
-    assert!(!lit(&bytes::<Ship>(&mut app, Screen::Speed)));
-    assert!(!lit(&bytes::<Puppet>(&mut app, Screen::Speed)));
+    assert!(!lit(&bytes::<Ship>(&mut app, Screen::Flight)));
+    assert!(!lit(&bytes::<Puppet>(&mut app, Screen::Flight)));
 }
 
 /// A ship nobody at this machine flies shows its own cockpit: its parts follow its own
@@ -159,8 +160,7 @@ fn a_puppet_ship_shows_its_own_cockpit() {
     assert!(mine.angle_between(levers([1.0, 0.0, 0.0], 0.0).stick_turn()) < 1.0e-3);
     let cockpit = state::<Puppet>(&mut app);
     assert!((cockpit.gauges[0].expect("lit") - 0.25).abs() < 1.0e-3 && cockpit.gauges[2].is_none());
-    let hot = part::<Puppet>(&mut app, Part::Lamp(Lamp::Hot));
-    assert_eq!(hot, Lamp::Hot.place(true));
-    let cold = part::<Ship>(&mut app, Part::Lamp(Lamp::Hot));
-    assert_eq!(cold, Lamp::Hot.place(false));
+    let amber = |bytes: Vec<u8>| bytes.chunks(4).any(|pixel| pixel == Ink::Amber.rgba());
+    assert!(amber(bytes::<Puppet>(&mut app, Screen::Status)));
+    assert!(!amber(bytes::<Ship>(&mut app, Screen::Status)));
 }

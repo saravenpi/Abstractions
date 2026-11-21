@@ -82,17 +82,18 @@ pub const SLACK: f32 = 2.0;
 pub const SPRING_STEP: f32 = 1.0 / 30.0;
 
 /// Centre of the raked instrument panel, and its half width across and half length up the
-/// slope, in metres. The slope rises 45 degrees toward the nose: the face looks up at the pilot,
-/// and the top edge is under the line of the nose, so the world shows over it.
-pub const RAKE: (Vec3, f32, f32) = (Vec3::new(0.0, 0.41, -2.03), 0.29, 0.125);
-
+/// slope, in metres. Its top edge is under the rim of the hull, so the nose shows over it, and
+/// the panel faces the eye of the pilot.
+pub const RAKE: (Vec3, f32, f32) = (Vec3::new(0.0, 0.331, -2.052), 0.31, 0.17);
 /// Tilt of the raked panel from upright, in radians: its face looks up at the pilot.
-pub const RAKE_TILT: f32 = std::f32::consts::FRAC_PI_4;
-
-/// Side of a pixel of the displays on the panel, in metres: a capital of the font is 2.9 cm
-/// tall, as tall as nine pixels of the game image at the distance of the eye.
-pub const TEXEL: f32 = 0.0041;
-
+pub const RAKE_TILT: f32 = 0.611;
+/// Side of a pixel of the displays on the panel, in metres: about one pixel of the game image
+/// at the distance of the eye, so a capital of the font is seven of them tall.
+pub const TEXEL: f32 = 0.004;
+/// The displays of the panel from left to right, the drive, the flight and the status: where
+/// the middle of each is across the panel, and its width, in metres. All are as tall as the
+/// flight display is wide.
+pub const BAYS: [(f32, f32); 3] = [(-0.228, 0.128), (0.0, 0.288), (0.228, 0.128)];
 /// Height in metres at which the altitude bar is full. It reads on a logarithmic scale, so a
 /// hand over the ground and a high orbit both show.
 pub const ALTITUDE_SPAN: f64 = 100_000.0;
@@ -124,14 +125,14 @@ pub const DAY_DIM: (f32, f32) = (0.8, 0.6);
 
 /// Brightness of the lit faces of the instruments in full day and at night, as a share of
 /// white. Unlit white would wash out in the light of the day.
-pub const SCREEN_GLOW: (f32, f32) = (0.45, 1.0);
+pub const SCREEN_GLOW: (f32, f32) = (0.8, 1.0);
 
 /// Distances in metres from the camera to the cockpit between which it is drawn: past the
 /// second it is hidden, between them it fades out.
 pub const DRAW: Range<f32> = 70.0..90.0;
 
 /// Where the canopy hinges: across the back of the mouth, on the line of the roof of the hull.
-pub const HINGE: Vec3 = Vec3::new(0.0, 0.62, -0.95);
+pub const HINGE: Vec3 = Vec3::new(0.0, 1.27, -0.85);
 
 /// How far the canopy opens, in radians, and how fast it swings, in radians per second.
 pub const CANOPY_OPEN: (f32, f32) = (1.0, 0.7);

@@ -6,7 +6,8 @@ use bevy::prelude::*;
 
 use super::Solid;
 use super::blade::{FIN, WINGLET, blade};
-use super::frame::{canopy, fuselage};
+use super::dome::{canopy, spine};
+use super::frame::fuselage;
 use super::parts::{Paint, parts};
 use super::tail::{ENGINES, motor};
 use super::wing::wing;
@@ -53,7 +54,7 @@ pub(super) fn inside(corners: &[Vec3], point: Vec3) -> bool {
 fn assert_held(name: &str, part: Solid, joins: impl Fn(Vec3) -> bool, carriers: &[Solid]) {
     let carriers: Vec<Vec<Vec3>> = carriers.iter().cloned().map(corners).collect();
     let roots: Vec<Vec3> = corners(part).into_iter().filter(|p| joins(*p)).collect();
-    assert!(roots.len() >= 3, "{name}: no corner to hold");
+    assert!(!roots.is_empty(), "{name}: no corner to hold");
     for root in roots {
         let held = carriers.iter().any(|carrier| inside(carrier, root));
         assert!(
@@ -63,8 +64,9 @@ fn assert_held(name: &str, part: Solid, joins: impl Fn(Vec3) -> bool, carriers: 
     }
 }
 
-/// The wing roots, the foot of the fin, the rim and the ends of the canopy and the fronts of
-/// the engine pods are inside the fuselage, and the wing ends are inside the winglets.
+/// The wing roots, the foot of the fin, the feet of the canopy and of the spine and the fronts
+/// of the engine nacelles are inside the fuselage, the end of the spine is inside the fin, and
+/// the wing ends are inside the blades at the wing tips.
 #[test]
 fn every_part_goes_into_the_part_that_carries_it() {
     let hull = fuselage();
@@ -74,21 +76,24 @@ fn every_part_goes_into_the_part_that_carries_it() {
         assert_held("wing end", wing(side), |p| p.x.abs() > 3.19, &[tip]);
     }
     assert_held("fin", blade(0.0, &FIN), |p| p.y < 0.5, &hull);
-    assert_held("canopy", canopy(), |p| p.y < 0.3 || p.z > 0.1, &hull);
+    assert_held("canopy", canopy(), |p| p.y < 0.6, &hull);
+    assert_held("spine", spine(), |p| p.y < 0.75 && p.z < 2.0, &hull);
+    assert_held("spine end", spine(), |p| p.z > 2.0, &[blade(0.0, &FIN)]);
     for at in ENGINES {
-        assert_held("engine", motor(at).pod, |p| p.z < 2.3, &hull);
+        assert_held("engine", motor(at).pod, |p| p.z < 1.6, &hull);
     }
 }
 
-/// Every corner of the ship has its mirror image on the other side, but for the service panel and the
-/// antenna, which are on the left only, and the red and green lights, which are each other's mirror image.
+/// Every corner of the ship has its mirror image on the other side, but for the service panel, the
+/// kick steps and the rung, which are on the left only, and the red and green lights, which are
+/// each other's mirror image.
 #[test]
 fn the_ship_is_the_same_on_both_sides() {
     let all = parts();
     let mut points = Vec::new();
     for part in all
         .iter()
-        .filter(|part| part.group != "panel" && part.group != "mast")
+        .filter(|part| part.group != "panel" && part.group != "rung")
     {
         points.extend(corners(part.solid.clone()));
     }

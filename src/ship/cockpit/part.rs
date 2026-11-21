@@ -2,7 +2,6 @@
 
 use bevy::prelude::*;
 
-use super::readings::Lamp;
 use super::state::Cockpit;
 
 /// A part of the cockpit that moves, a child of the ship that carries it.
@@ -20,13 +19,11 @@ pub enum Part {
     Pedal(usize),
     /// The loose strap.
     Strap,
-    /// A lamp.
-    Lamp(Lamp),
 }
 
 impl Part {
     /// Returns where the part stands in `cockpit` when it stands at `rest` with nothing asked
-    /// of it. The levers turn in their hinges, the lamps are placed outright.
+    /// of it: each one turns in its hinge.
     pub fn placed(self, cockpit: &Cockpit, rest: Transform) -> Transform {
         let shown = &cockpit.shown;
         match self {
@@ -36,7 +33,6 @@ impl Part {
             Part::Switch => rest.with_rotation(shown.switch_turn()),
             Part::Pedal(side) => rest.with_rotation(shown.pedal_turn(side)),
             Part::Strap => rest.with_rotation(cockpit.strap.turn()),
-            Part::Lamp(lamp) => lamp.place(cockpit.read.lamps[lamp as usize]),
         }
     }
 }

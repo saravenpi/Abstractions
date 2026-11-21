@@ -15,9 +15,9 @@ mod attitude;
 mod canopy;
 mod controls;
 mod display;
+mod faces;
 mod fit;
 mod font;
-mod gauges;
 mod kit;
 mod light;
 mod others;
@@ -61,7 +61,7 @@ pub use remote::Seen;
 pub use screens::{Display, Face, Screen};
 pub use state::Cockpit;
 pub use tune::{
-    BACK, FLOOR, FOLLOW, GEAR_LEVER, HINGE, LEVER, LEVER_LENGTH, LEVER_SWING, PAN, PEDAL,
+    BACK, BAYS, FLOOR, FOLLOW, GEAR_LEVER, HINGE, LEVER, LEVER_LENGTH, LEVER_SWING, PAN, PEDAL,
     PEDAL_LENGTH, PEDAL_REACH, RAKE, RAKE_TILT, SETTLE, STICK, STICK_LENGTH, STICK_REACH, TEXEL,
     WARP_SWITCH,
 };

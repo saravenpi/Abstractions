@@ -45,6 +45,24 @@ fn the_sink_key_lands_on_a_slope_and_only_a_rise_takes_off() {
     assert!(!ship.landed && ship.pos.length() - rested.pos.length() > 10.0);
 }
 
+/// A ship set down on a 20 degree slope stands still on its feet before the ground holds it:
+/// over the quarter second before it comes to rest it moves at under 2 cm/s. The friction of the
+/// feet carries the weight along the slope, so the ship does not creep down it.
+#[test]
+fn the_feet_hold_on_a_slope_without_creeping() {
+    let planet = planet(6000.0, 4000.0, 1200.0);
+    let land = (&planet, &hillside as &dyn Fn(DVec3) -> f64);
+    let mut ship = assisted(&planet, 200.0 + GEAR_DROP + 8.0);
+    let mut track = Vec::new();
+    fly(&mut ship, &stick(-1.0), land, 20.0, |ship, _| {
+        track.push((ship.vel.length(), ship.landed));
+    });
+    let rested = track.iter().position(|step| step.1).expect("a rest");
+    let before = &track[rested.saturating_sub(15)..rested];
+    let creep = before.iter().map(|step| step.0).fold(0.0, f64::max);
+    assert!(creep < 0.02, "the ship creeps at {creep} m/s before it rests");
+}
+
 /// On a planet without a sea the ship starts on the floor of a basin below sea level and
 /// rests there. On a planet with a sea it starts on dry land beside the same basin.
 #[test]

@@ -8,8 +8,8 @@ use bevy::prelude::*;
 
 use super::fit::Lit;
 use super::state::Cockpit;
-use super::tune::{DAY_DIM, LUMENS, REACH, SCREEN_GLOW};
-use crate::render::{DayClock, Heat, daylight};
+use super::tune::{DAY_DIM, LUMENS, SCREEN_GLOW};
+use crate::render::{DayClock, Heat, daylight, reach};
 use crate::ship::board::Hatch;
 use crate::ship::body::Ship;
 
@@ -65,8 +65,8 @@ pub fn glow(day: f32) -> f32 {
 pub fn rig(mut commands: Commands, ships: Query<Entity, (Added<Cockpit>, With<Ship>)>) {
     for ship in &ships {
         for (kind, at, range) in [
-            (Beam::Panel, Vec3::new(0.0, 0.62, -1.75), REACH.0),
-            (Beam::Cabin, Vec3::new(0.0, 0.75, -1.1), REACH.1),
+            (Beam::Panel, Vec3::new(0.0, 0.62, -1.75), reach(LUMENS.0)),
+            (Beam::Cabin, Vec3::new(0.0, 0.85, -1.2), reach(LUMENS.1 + LUMENS.2)),
         ] {
             let light = PointLight {
                 intensity: 0.0,

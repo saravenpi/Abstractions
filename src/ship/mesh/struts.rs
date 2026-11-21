@@ -1,5 +1,5 @@
-//! The landing gear: a leg with an oleo strut, a piston, a collar, a drag brace and a round pad,
-//! and the three pods that hold the legs when they fold. A leg hangs from its hinge at the origin
+//! The landing gear: a leg with a sleeve, an oleo piston, a torque link, a drag brace and a long
+//! skid foot, and the three pods that hold the legs when they fold. A leg hangs from its hinge at the origin
 //! and is scaled along y to fold: its top end, and the top end of its brace, stay in the hinge.
 
 use bevy::prelude::*;
@@ -33,7 +33,7 @@ const TONES: [u8; 9] = [0, 0, 2, 2, 4, 4, 2, 2, 0];
 
 /// Returns the section of a pod at a station, centred `x` metres from the middle.
 fn section(x: f32, [z, half, top, bottom]: [f32; 4]) -> Section {
-    let c = (half * 0.5).min(0.08);
+    let c = (half * 0.5).min(0.12);
     let at = |dx: f32, y: f32| Vec3::new(x + dx, y, z);
     vec![
         at(-half + c, top),
@@ -71,30 +71,59 @@ fn brace() -> Solid {
     brace
 }
 
-/// Returns one leg of the gear, hanging from its hinge at the origin, its pad flat on the
-/// foot [`STRUT`] metres down.
+/// Returns the torque link in front of the piston: two flat arms from the sleeve to a knee and
+/// back to the ankle, which keep the foot from turning.
+fn link() -> Solid {
+    let knee = [
+        Vec3::new(0.0, -0.4, -0.07),
+        Vec3::new(0.0, -0.7, -0.24),
+        Vec3::new(0.0, -0.99, -0.07),
+    ];
+    let wide = Vec3::X * 0.035;
+    let mut link = Solid::default();
+    for pair in knee.windows(2) {
+        let (a, b) = (pair[0], pair[1]);
+        let thick = (b - a).cross(Vec3::X).normalize() * 0.03;
+        link.plate([a - wide, a + wide, b + wide, b - wide], thick);
+    }
+    link
+}
+
+/// Returns the foot: a long skid plate with a raised toe and heel, flat on the ground [`STRUT`]
+/// metres under the hinge. Folded, it lies under its pod and closes the bay.
+fn foot() -> Solid {
+    let low = -STRUT as f32;
+    let section = |z: f32, half: f32, top: f32, bottom: f32| -> Section {
+        [(-half, top), (half, top), (half, bottom), (-half, bottom)]
+            .map(|(x, y)| Vec3::new(x, low + y, z))
+            .into()
+    };
+    let sections = [
+        section(-0.38, 0.07, 0.1, 0.07),
+        section(-0.26, 0.13, 0.06, 0.0),
+        section(0.2, 0.13, 0.06, 0.0),
+        section(0.3, 0.09, 0.08, 0.04),
+    ];
+    let mut foot = Solid::default();
+    solid(&mut foot, &sections, |_, _| 0);
+    foot.slab(Vec3::new(-0.07, low + 0.05, -0.1), Vec3::new(0.07, low + 0.16, 0.1));
+    foot
+}
+
+/// Returns one leg of the gear, hanging from its hinge at the origin: the sleeve with its
+/// collar, the piston of the oleo, the torque link, the drag brace and the foot.
 pub fn leg() -> Solid {
     let mut leg = Solid::default();
-    column(
-        &mut leg,
-        Vec3::ZERO,
-        &[(0.0, 0.075), (-0.55, 0.075)],
-        (SIDES, 0),
-    );
-    column(
-        &mut leg,
-        Vec3::ZERO,
-        &[(-0.5, 0.1), (-0.6, 0.1)],
-        (SIDES, 0),
-    );
-    column(
-        &mut leg,
-        Vec3::ZERO,
-        &[(-0.55, 0.05), (-1.02, 0.05)],
-        (SIDES, 0),
-    );
-    let pad = [(-0.98, 0.1), (-1.03, 0.3), (-STRUT as f32, 0.3)];
-    column(&mut leg, Vec3::ZERO, &pad, (SIDES, 0));
-    leg.merge(&brace(), Vec3::ZERO);
+    let rings: [&[(f32, f32)]; 3] = [
+        &[(0.0, 0.09), (-0.44, 0.09)],
+        &[(-0.38, 0.115), (-0.47, 0.115)],
+        &[(-0.42, 0.05), (-1.0, 0.05)],
+    ];
+    for ring in rings {
+        column(&mut leg, Vec3::ZERO, ring, (SIDES, 0));
+    }
+    for part in [foot(), link(), brace()] {
+        leg.merge(&part, Vec3::ZERO);
+    }
     leg
 }

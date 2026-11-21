@@ -68,6 +68,17 @@ impl Solid {
         self.tones.extend(other.tones.iter());
     }
 
+    /// Returns the solid with its mirror image on the other side of the ship added to it.
+    pub fn mirrored(&self) -> Solid {
+        let mut all = self.clone();
+        for (tri, tone) in self.tris.iter().zip(&self.tones) {
+            let [a, b, c] = tri.map(|p| Vec3::new(-p.x, p.y, p.z));
+            all.tris.push([a, c, b]);
+            all.tones.push(*tone);
+        }
+        all
+    }
+
     /// Converts the triangles into a mesh: positions, flat normals, one UV, tangents, `u32` indices,
     /// and vertex colours when any triangle is not of the plain tone.
     pub fn into_mesh(self) -> Mesh {

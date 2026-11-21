@@ -1,5 +1,5 @@
-//! Fitting a cockpit to a ship: the fixed interior, the controls in their hinges, the bars,
-//! the lamps and the displays, each a child of the ship.
+//! Fitting a cockpit to a ship: the fixed interior, the canopy on its hinge, the controls in
+//! their hinges and the displays, each a child of the ship.
 
 use bevy::camera::visibility::VisibilityRange;
 use bevy::light::NotShadowCaster;
@@ -8,7 +8,6 @@ use bevy::prelude::*;
 use super::canopy::Canopy;
 use super::kit::{Drawn, Kit};
 use super::part::Part;
-use super::readings::Lamp;
 use super::screens::Screen;
 use super::state::Cockpit;
 use super::tune::{DRAW, GEAR_LEVER, HINGE, LEVER, PEDAL, STICK, STRAP, WARP_SWITCH};
@@ -77,18 +76,8 @@ fn controls(entity: &mut EntityCommands, kit: &Kit) {
     entity.with_child(strap);
 }
 
-/// Adds the lamps and the displays to the ship `entity`, dark until a reading
-/// lights them.
+/// Adds the displays to the ship `entity`, dark until a reading lights them.
 fn instruments(entity: &mut EntityCommands, kit: &Kit) {
-    for lamp in Lamp::ALL {
-        let lit = (kit.screen.clone(), kit.glass(lamp));
-        entity.with_child((
-            Part::Lamp(lamp),
-            Lit(lamp.tone()),
-            drawn(&lit),
-            lamp.place(false),
-        ));
-    }
     for screen in Screen::ALL {
         let shape = (Mesh3d(kit.screen.clone()), NotShadowCaster, range());
         entity.with_child((screen, shape, screen.placed()));

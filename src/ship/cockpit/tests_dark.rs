@@ -51,9 +51,12 @@ fn an_instrument_without_a_source_is_dark() {
     assert_eq!(far.bars[Dial::Gear as usize], None);
     assert_eq!(far.height, None);
     assert!(far.bars[Dial::Speed as usize].is_some() && far.speed == Some(800.0));
-    assert_eq!(Screen::Height.face(&seen(far)), Face::Dark);
-    assert_eq!(Screen::Horizon.face(&seen(far)), Face::Dark);
-    assert_eq!(Screen::Scope.face(&seen(far)), Face::Dark);
+    let Face::Flight([speed, height], _, level, marks) = Screen::Flight.face(&seen(far)) else {
+        panic!("the flight display is dark");
+    };
+    assert!(speed.is_some() && height.is_none() && level.is_none() && marks == [None; 2]);
+    assert_eq!(Screen::Flight.face(&seen(Readings::default())), Face::Dark);
+    assert_eq!(Screen::Drive.face(&seen(Readings::default())), Face::Dark);
     let nothing = Readings::of(&aloft(f64::NAN, f64::NAN, WarpState::Off), f64::NAN);
     assert_eq!(nothing.height, None);
     assert_eq!(nothing.bars[Dial::Altitude as usize], None);
@@ -104,8 +107,8 @@ fn the_lamps_follow_the_state() {
     assert!(flying.lamps.iter().all(|lit| !lit));
 }
 
-/// A text display reads the value of its source in steps of half a percent, and goes dark
-/// without a source.
+/// The flight display reads the value of its source in steps of half a percent, a figure
+/// without a source is left out, and the display is dark with none.
 #[test]
 fn a_text_display_shows_its_value_in_steps() {
     let read = Readings {
@@ -113,20 +116,32 @@ fn a_text_display_shows_its_value_in_steps() {
         height: None,
         ..default()
     };
-    let Face::Block(Some(step), ..) = Screen::Speed.face(&seen(read)) else {
-        panic!("the speed display is dark");
+    let Face::Flight([Some(step), None], ..) = Screen::Flight.face(&seen(read)) else {
+        panic!("the flight display does not show the speed alone");
     };
     assert!((value(step) / 1500.0 - 1.0).abs() < 0.003);
-    assert_eq!(Screen::Height.face(&seen(read)), Face::Dark);
     assert_eq!(key(1000.0), key(1000.4));
     assert_ne!(key(1000.0), key(1010.0));
     assert_eq!(key(-5.0), 0);
     assert_eq!(words(0, true), "0 m/s");
-    assert_eq!(Screen::Speed.painted(Face::Dark).count(), 0);
-    assert!(
-        Screen::Speed
-            .painted(Face::Block(Some(step), None, [None; 2]))
-            .count()
-            > 10
-    );
+    assert_eq!(Screen::Flight.painted(Face::Dark).count(), 0);
+    let shown = Face::Flight([Some(step), None], [None; 2], None, [None; 2]);
+    assert!(Screen::Flight.painted(shown).count() > 10);
+}
+
+/// The status display shows the lamps that are read, each in its place, and the drive display
+/// the bars of the throttle, of the warp drive and of the gear.
+#[test]
+fn the_side_displays_show_the_lamps_and_the_bars() {
+    let mut cockpit = seen(Readings::of(&aloft(100.0, 800.0, WarpState::Spooling(0.5)), 1.0));
+    cockpit.read.lamps[Lamp::Hot as usize] = true;
+    cockpit.gauges = cockpit.read.bars;
+    let Face::Status(lamps) = Screen::Status.face(&cockpit) else {
+        panic!("the status display is dark");
+    };
+    assert!(lamps[Lamp::Hot as usize] && !lamps[Lamp::Failing as usize]);
+    let Face::Drive([throttle, charge, gear]) = Screen::Drive.face(&cockpit) else {
+        panic!("the drive display is dark");
+    };
+    assert_eq!((throttle, charge, gear), (Some(0), Some(16), Some(32)));
 }

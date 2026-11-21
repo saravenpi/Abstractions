@@ -1,8 +1,9 @@
-//! The look of the ship: a small flat-shaded hull with wings, a fin, a canopy, engines and gear,
-//! and the cockpit under the canopy.
+//! The look of the ship: a flat-shaded dart with a chined hull, a canopy that runs back into a
+//! spine and a swept fin, wings, engine nacelles and gear, and the cockpit under the canopy.
 
 mod bars;
 mod blade;
+mod dome;
 mod fittings;
 mod frame;
 mod lames;
@@ -38,9 +39,9 @@ use parts::{Paint, parts};
 /// The materials a ship is made of. Each one is drawn as its own mesh.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Skin {
-    /// Light grey hull plates.
+    /// Bone hull plates, toned by their vertex colours.
     Hull,
-    /// Orange trim.
+    /// The accent colour.
     Trim,
     /// Dark metal of the engines and the gear.
     Dark,
@@ -91,11 +92,12 @@ pub fn lamp_meshes() -> [Mesh; 3] {
 }
 
 /// Builds what is inside the cockpit and does not move, each mesh with its skin: the dark
-/// furniture and the cushions of the seat.
-pub fn cabin_meshes() -> [(Skin, Mesh); 2] {
+/// frame of the furniture, its light plates and the accents of the seat.
+pub fn cabin_meshes() -> [(Skin, Mesh); 3] {
     [
         (Skin::Dark, fittings::furniture().into_mesh()),
-        (Skin::Trim, fittings::seat().into_mesh()),
+        (Skin::Hull, fittings::plates().into_mesh()),
+        (Skin::Trim, fittings::accents().into_mesh()),
     ]
 }
 
@@ -104,7 +106,7 @@ pub fn cabin_meshes() -> [(Skin, Mesh); 2] {
 pub fn canopy_meshes() -> [(Skin, Mesh); 2] {
     let at = |solid: Solid| solid.into_mesh().translated_by(-HINGE);
     [
-        (Skin::Glass, at(shell::glass())),
+        (Skin::Glass, at(dome::glass())),
         (Skin::Dark, at(bars::frame())),
     ]
 }
@@ -112,11 +114,6 @@ pub fn canopy_meshes() -> [(Skin, Mesh); 2] {
 /// Builds the tub of the cockpit, which takes its own grey lining.
 pub fn tub_mesh() -> Mesh {
     tub::tub().into_mesh()
-}
-
-/// Builds the black faces of the instruments, which take their own unlit black.
-pub fn faces_mesh() -> Mesh {
-    fittings::faces().into_mesh()
 }
 
 /// Builds one leg of the gear, strut and pad, hanging from its hinge at the origin: scaled
@@ -138,11 +135,11 @@ pub fn material(skin: Skin) -> StandardMaterial {
         ..default()
     };
     match skin {
-        Skin::Hull => paint(0.78, 0.8, 0.82, 0.55),
-        Skin::Trim => paint(0.92, 0.45, 0.12, 0.6),
-        Skin::Dark => paint(0.14, 0.15, 0.18, 0.8),
+        Skin::Hull => paint(0.86, 0.86, 0.82, 0.55),
+        Skin::Trim => paint(0.95, 0.48, 0.16, 0.6),
+        Skin::Dark => paint(0.09, 0.1, 0.13, 0.8),
         Skin::Glass => StandardMaterial {
-            base_color: Color::srgba(0.9, 0.9, 0.9, 0.08),
+            base_color: Color::srgba(0.42, 0.6, 0.72, 0.16),
             alpha_mode: AlphaMode::Blend,
             perceptual_roughness: 0.05,
             reflectance: 0.5,
@@ -173,5 +170,7 @@ mod tests_fit;
 mod tests_gear;
 #[cfg(test)]
 mod tests_graph;
+#[cfg(test)]
+mod tests_shell;
 #[cfg(test)]
 mod tests_view;

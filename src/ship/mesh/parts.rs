@@ -4,9 +4,10 @@
 
 use bevy::prelude::*;
 
-use super::blade::{FIN, WINGLET, blade};
+use super::blade::{FIN, WINGLET, band, blade};
+use super::dome;
 use super::lames::lames;
-use super::outside::{lamps, mast, service_panel, shield};
+use super::outside::{AERIAL, lamps, left_side, rung, shield, studs};
 use super::ports::{nozzles, sockets};
 use super::shell;
 use super::struts::{MAIN, NOSE, pod};
@@ -17,9 +18,9 @@ use crate::ship::solid::Solid;
 /// What a part is painted with: the five skins of the ship, and the three lights.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Paint {
-    /// Light grey hull plates.
+    /// Bone hull plates, toned by their vertex colours.
     Hull,
-    /// Orange trim.
+    /// The accent colour.
     Trim,
     /// Dark metal.
     Dark,
@@ -60,18 +61,23 @@ fn part(group: &'static str, paint: Paint, far: bool, solid: Solid) -> Part {
     }
 }
 
-/// Returns the hull and what is fixed to its skin: the glass, the heat shield, the fin, the
-/// service panel, the antenna and the sockets of the jets under the belly and in the skin.
+/// Returns the hull and what is fixed to its skin: the glass, the spine, the heat shield, the
+/// fin with its stripe, the aerial, the fittings of the left flank, the studs and the sockets of
+/// the jets under the belly and in the skin.
 fn hull() -> Vec<Part> {
     let [body, nose] = shell::hull();
     vec![
         part("body", Paint::Hull, true, body),
         part("nose", Paint::Hull, true, nose),
-        part("canopy", Paint::Glass, true, shell::glass()),
-        part("shield", Paint::Hull, true, shield()),
-        part("fin", Paint::Trim, true, blade(0.0, &FIN)),
-        part("panel", Paint::Hull, false, service_panel()),
-        part("mast", Paint::Dark, false, mast()),
+        part("canopy", Paint::Glass, true, dome::glass()),
+        part("spine", Paint::Hull, true, dome::spine()),
+        part("shield", Paint::Hull, false, shield()),
+        part("fin", Paint::Hull, true, blade(0.0, &FIN)),
+        part("marks", Paint::Trim, true, band(0.0, &FIN, (1.48, 1.66), 0.012)),
+        part("mast", Paint::Dark, false, blade(0.0, &AERIAL)),
+        part("panel", Paint::Hull, false, left_side()),
+        part("rung", Paint::Dark, false, rung()),
+        part("studs", Paint::Hull, false, studs()),
         part("ports", Paint::Dark, false, sockets()),
         part("lift", Paint::Dark, false, nozzles()),
         part("pods", Paint::Hull, false, pod(0.0, &NOSE)),
@@ -84,7 +90,7 @@ fn wings() -> Vec<Part> {
     for side in [-1.0, 1.0] {
         let tip = blade(3.2 * side, &WINGLET);
         all.push(part("wing", Paint::Hull, true, wing(side)));
-        all.push(part("winglet", Paint::Trim, true, tip));
+        all.push(part("winglet", Paint::Hull, false, tip));
         all.push(part("pods", Paint::Hull, false, pod(1.9 * side, &MAIN)));
     }
     all
@@ -111,15 +117,15 @@ fn engines() -> Vec<Part> {
     all
 }
 
-/// Returns the plates over the airframe: the lames, the line of glow, the bands of the engine
-/// pods and the crest.
+/// Returns the plates over the airframe: the lames of the wing roots on the dark plates of the
+/// frame, their triangles of the accent colour, and the bands of the engine nacelles.
 fn plates() -> Vec<Part> {
-    let [lames, line, bands, crest] = lames();
+    let [lames, under, marks, bands] = lames();
     vec![
         part("lames", Paint::Hull, false, lames),
-        part("lines", Paint::Glow, false, line),
+        part("lames", Paint::Dark, false, under),
+        part("marks", Paint::Trim, false, marks),
         part("bands", Paint::Hull, false, bands),
-        part("crest", Paint::Hull, true, crest),
     ]
 }
 

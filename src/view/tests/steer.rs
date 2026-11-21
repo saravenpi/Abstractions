@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::world::Boxes;
-use super::{first, moment, run, third};
+use super::{moment, run, third, first};
 use crate::view::tune::{FOLLOW_DELAY, PITCH_LIMIT};
 use crate::view::{Kind, Moment, Rig, ViewPrefs};
 

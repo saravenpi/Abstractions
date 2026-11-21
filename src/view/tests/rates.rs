@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::world::Boxes;
-use super::{apart, first, moment, run, seen, third};
+use super::{apart, moment, run, seen, third, first};
 use crate::view::smooth::Spring;
 use crate::view::{Kind, Moment, Rig};
 

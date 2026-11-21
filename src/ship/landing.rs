@@ -38,7 +38,9 @@ const REBOUND: f64 = 0.5;
 /// Friction coefficient of the ground: the ship holds on slopes whose tangent is below it.
 pub const FRICTION: f64 = 0.6;
 
-/// Sideways braking per metre per second of slip, before the friction limit caps it.
+/// Sideways braking per metre per second of slip, before the friction limit caps it. A point at
+/// rest holds its share of the weight along the ground besides, so the braking only has to
+/// stop a slip, not to carry the ship: it leaves no creep on a slope.
 const GRIP: f64 = 8.0;
 
 /// Buoyancy per metre of depth, the depth at which it stops growing and the drag of water, per point.
@@ -97,6 +99,8 @@ pub struct Rig<'a> {
     pub normal: DVec3,
     /// Whether the planet has a sea to float on.
     pub sea: bool,
+    /// Acceleration of gravity at the ship in frame axes, in metres per second squared.
+    pub pull: DVec3,
 }
 
 /// A contact point and the ground under it, sampled once per step.
@@ -145,10 +149,15 @@ fn points(ship: &Ship, rig: &Rig) -> [Point; 9] {
     })
 }
 
-/// Adds to `out` what the ground and the sea do to the point `p` of a ship moving as `motion`.
-/// The springs press with the depth the point keeps once the ship is set back by `out.sunk`:
-/// the depth a fast ship had when its hit was seen is not theirs to give back.
-fn touch(ship: &Ship, rig: &Rig, p: &Point, motion: &Motion, out: &mut Contact) {
+/// Adds to `out` what the ground and the sea do to the point `p` of a ship moving as `motion`,
+/// which carries the `share` of the weight that each point on the ground carries. The springs
+/// press with the depth the point keeps once the ship is set back by `out.sunk`: the depth a
+/// fast ship had when its hit was seen is not theirs to give back.
+///
+/// The friction brakes the slip of the point and holds its share of the pull of gravity along
+/// the ground, up to the friction limit of what presses it: under that limit a ship on a slope
+/// stands still, and over it the ship slides.
+fn touch(ship: &Ship, rig: &Rig, (p, share): (&Point, f64), motion: &Motion, out: &mut Contact) {
     let arm = ship.rot * p.body;
     let vel = motion.at(ship, p.body);
     let (spring, damper, _) = SPRINGS[p.kind];
@@ -158,8 +167,9 @@ fn touch(ship: &Ship, rig: &Rig, p: &Point, motion: &Motion, out: &mut Contact) 
         let fade = (1.0 + closing / REBOUND).clamp(0.0, 1.0);
         let press = (spring * depth + damper * closing).max(0.0) * fade;
         let slip = vel + rig.normal * closing;
-        let grip = GRIP.min(FRICTION * press / slip.length().max(1e-9));
-        accel += rig.normal * press - slip * grip;
+        let downhill = rig.pull - rig.normal * rig.pull.dot(rig.normal);
+        let hold = -slip * GRIP - downhill * share;
+        accel += rig.normal * press + hold.clamp_length_max(FRICTION * press);
         out.ground = true;
         out.gear += u8::from(p.kind == 0);
         out.points += 1;
@@ -181,9 +191,11 @@ fn press(ship: &Ship, rig: &Rig, out: &mut Contact) {
     let mut motion = Motion::of(ship);
     points.iter().for_each(|p| note(ship, rig, p, out));
     out.sunk = absorb(ship, rig, &points, &mut motion);
+    let pressed = points.iter().filter(|p| p.depth > out.sunk).count();
+    let share = 1.0 / pressed.max(1) as f64;
     points
         .iter()
-        .for_each(|p| touch(ship, rig, p, &motion, out));
+        .for_each(|p| touch(ship, rig, (p, share), &motion, out));
     (out.kick, out.twist) = (motion.vel - ship.vel, motion.spin - ship.spin);
 }
 
@@ -210,6 +222,7 @@ pub fn contact(ship: &Ship, planet: &PlanetSpec, ground: &dyn Fn(DVec3) -> f64) 
         up,
         normal: normal(ground, ship.pos, up),
         sea,
+        pull: -up * (planet.mu() / (r * r)),
     };
     press(ship, &rig, &mut out);
     let afloat = floor > bed && !out.ground;

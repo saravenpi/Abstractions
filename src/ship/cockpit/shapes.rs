@@ -11,10 +11,12 @@ use crate::ship::solid::Solid;
 fn lever(length: f32, half: f32, grip: f32) -> Mesh {
     let mut lever = Solid::default();
     let shaft = length - grip;
+    lever.set_tone(3);
     lever.slab(
         Vec3::new(-0.007, 0.0, -0.007),
-        Vec3::new(0.007, shaft, 0.007),
+        Vec3::new(0.007, shaft + 0.005, 0.007),
     );
+    lever.set_tone(0);
     lever.slab(
         Vec3::new(-half, shaft, -half * 0.7),
         Vec3::new(half, length, half * 0.7),
@@ -33,12 +35,16 @@ pub fn switch_mesh() -> Mesh {
 }
 
 /// Builds a rudder pedal: a plate under the boot that runs from its heel at the origin to
-/// its toe along -Z.
+/// its toe along -Z, with a stop that the toe of the boot rests against.
 pub fn pedal_mesh() -> Mesh {
     let mut pedal = Solid::default();
     pedal.slab(
         Vec3::new(-0.045, -0.012, -PEDAL_LENGTH),
         Vec3::new(0.045, 0.012, 0.0),
+    );
+    pedal.slab(
+        Vec3::new(-0.045, 0.006, -PEDAL_LENGTH),
+        Vec3::new(0.045, 0.04, -PEDAL_LENGTH + 0.02),
     );
     pedal.into_mesh()
 }

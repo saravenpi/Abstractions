@@ -119,7 +119,12 @@ impl Terrain {
     }
 
     /// Scores the points of ring `k`, and returns the best of them with the score that beats `bound`.
-    fn ring_best(&self, k: u32, bound: f32, fallback: &mut Option<Vec2>) -> Option<(f32, Vec2)> {
+    fn ring_best(
+        &self,
+        k: u32,
+        bound: f32,
+        fallback: &mut Option<Vec2>,
+    ) -> Option<(f32, Vec2)> {
         ring_points(k)
             .filter_map(|p| self.candidate((p, k), bound, fallback))
             .min_by(|a, b| a.0.total_cmp(&b.0))

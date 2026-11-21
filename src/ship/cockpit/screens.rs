@@ -4,23 +4,22 @@
 use bevy::prelude::*;
 
 use super::attitude::{project, steps};
-use super::paint::{BALL, BAR_STEPS, REACH, TEXT, block, horizon, key, scope, words};
+use super::faces::{FLIGHT, REACH, SIDE, drive, flight, status};
+use super::paint::{BAR_STEPS, key, words};
 use super::pixels::Pixels;
-use super::readings::Dial;
+use super::readings::{Dial, LAMPS};
 use super::state::Cockpit;
-use super::tune::{ANGLE_STEP, RAKE, RAKE_TILT, TEXEL};
+use super::tune::{ANGLE_STEP, BAYS, RAKE, RAKE_TILT};
 
-/// A display of the dashboard.
+/// A display of the dashboard, in the order of [`BAYS`].
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Screen {
-    /// The block of the speed, the throttle and the drive, on the left of the panel.
-    Speed,
-    /// The block of the height and of the gear, on the right. Dark away from a surface.
-    Height,
-    /// The attitude ball, in the middle. Dark where there is no horizon.
-    Horizon,
-    /// The scope of the course and of the body, under the ball.
-    Scope,
+    /// The drive, on the left: the throttle, the warp drive and the gear.
+    Drive,
+    /// The flight, in the middle: the speed, the height, the attitude and the course.
+    Flight,
+    /// The status, on the right: the lamps.
+    Status,
 }
 
 /// One picture of a display, the values it shows in steps. A display is repainted only when
@@ -29,12 +28,19 @@ pub enum Screen {
 pub enum Face {
     /// Nothing: the display has nothing true to show.
     Dark,
-    /// A block: the figure in the steps of [`key`] and the steps of its gauge and of its bars.
-    Block(Option<i32>, Option<u8>, [Option<u8>; 2]),
-    /// The attitude: pitch up and roll to the right, in steps.
-    Horizon(IVec2),
-    /// The marks of the course and of the body, in pixels from the centre.
-    Scope(Option<IVec2>, Option<IVec2>),
+    /// The steps of the bars of the throttle, of the warp drive and of the gear.
+    Drive([Option<u8>; 3]),
+    /// The speed and the height in the steps of [`key`], the steps of their gauges, the pitch
+    /// up and the roll to the right in steps, and the marks of the course and of the body in
+    /// pixels from the centre of the ball.
+    Flight(
+        [Option<i32>; 2],
+        [Option<u8>; 2],
+        Option<IVec2>,
+        [Option<IVec2>; 2],
+    ),
+    /// Which lamps are lit.
+    Status([bool; LAMPS]),
 }
 
 /// The picture a display shows now and the image it is painted on.
@@ -51,100 +57,70 @@ fn step(share: Option<f32>) -> Option<u8> {
     share.map(|share| (share.clamp(0.0, 1.0) * f32::from(BAR_STEPS)).round() as u8)
 }
 
+/// Returns the face of the flight display for what `cockpit` reads and its bars show.
+fn flown(cockpit: &Cockpit) -> Face {
+    let (read, bars) = (&cockpit.read, &cockpit.gauges);
+    let figures = [read.speed.map(key), read.height.map(key)];
+    let gauges = [Dial::Speed, Dial::Altitude].map(|dial| step(bars[dial as usize]));
+    let level = read.attitude.map(|a| {
+        let step = |angle: f32| steps(angle, ANGLE_STEP);
+        IVec2::new(step(a.x), step(a.y))
+    });
+    let marks = [read.course, read.body].map(|to| to.map(|to| project(to, REACH)));
+    let nothing = figures == [None; 2] && gauges == [None; 2] && level.is_none() && marks == [None; 2];
+    match nothing {
+        true => Face::Dark,
+        false => Face::Flight(figures, gauges, level, marks),
+    }
+}
+
 impl Screen {
     /// Every display.
-    pub const ALL: [Screen; 4] = [
-        Screen::Speed,
-        Screen::Height,
-        Screen::Horizon,
-        Screen::Scope,
-    ];
+    pub const ALL: [Screen; 3] = [Screen::Drive, Screen::Flight, Screen::Status];
 
     /// Returns the size in pixels of the picture of the display.
     pub fn size(self) -> (usize, usize) {
         match self {
-            Screen::Speed | Screen::Height => TEXT,
-            Screen::Horizon | Screen::Scope => (BALL, BALL),
+            Screen::Flight => FLIGHT,
+            Screen::Drive | Screen::Status => SIDE,
         }
     }
 
     /// Returns the face the display shows for what the cockpit reads and its bars show. A
     /// source that is `None` gives a dark face.
     pub fn face(self, cockpit: &Cockpit) -> Face {
-        let (read, bars) = (&cockpit.read, &cockpit.gauges);
-        let mark = |direction: Vec3| project(direction, REACH);
-        let bar = |dial: Dial| step(bars[dial as usize]);
+        let bar = |dial: Dial| step(cockpit.gauges[dial as usize]);
         match self {
-            Screen::Speed => match (read.speed, bar(Dial::Speed)) {
-                (None, None) => Face::Dark,
-                (speed, gauge) => Face::Block(
-                    speed.map(key),
-                    gauge,
-                    [bar(Dial::Throttle), bar(Dial::Charge)],
-                ),
+            Screen::Drive => match [Dial::Throttle, Dial::Charge, Dial::Gear].map(bar) {
+                [None, None, None] => Face::Dark,
+                bars => Face::Drive(bars),
             },
-            Screen::Height => match (read.height, bar(Dial::Altitude)) {
-                (None, None) => Face::Dark,
-                (height, gauge) => Face::Block(height.map(key), gauge, [bar(Dial::Gear), None]),
-            },
-            Screen::Horizon => read.attitude.map_or(Face::Dark, |a| {
-                let step = |angle: f32| steps(angle, ANGLE_STEP);
-                Face::Horizon(IVec2::new(step(a.x), step(a.y)))
-            }),
-            Screen::Scope => match (read.course, read.body) {
-                (None, None) => Face::Dark,
-                (course, body) => Face::Scope(course.map(mark), body.map(mark)),
-            },
+            Screen::Flight => flown(cockpit),
+            Screen::Status => Face::Status(cockpit.read.lamps),
         }
     }
 
     /// Returns the picture of `face` on this display.
     pub fn painted(self, face: Face) -> Pixels {
-        let figure = |at: Option<i32>, per_second: bool| at.map(|at| words(at, per_second));
         match (self, face) {
-            (Screen::Speed, Face::Block(speed, gauge, [throttle, charge])) => {
-                let speed = figure(speed, true);
-                let bars = [("THR", throttle), ("WARP", charge)];
-                block(
-                    "SPEED",
-                    speed.as_deref(),
-                    gauge,
-                    (&bars, ["STB", "LND", "CLS"]),
-                )
+            (Screen::Drive, Face::Drive(bars)) => drive(bars),
+            (Screen::Flight, Face::Flight([speed, height], gauges, level, marks)) => {
+                let speed = speed.map(|at| words(at, true));
+                let height = height.map(|at| words(at, false));
+                let figures = [(speed.as_deref(), gauges[0]), (height.as_deref(), gauges[1])];
+                flight(figures, level, marks)
             }
-            (Screen::Height, Face::Block(height, gauge, [gear, _])) => {
-                let height = figure(height, false);
-                block(
-                    "HEIGHT",
-                    height.as_deref(),
-                    gauge,
-                    (&[("GEAR", gear)], ["HOT", "FRM", "ERR"]),
-                )
-            }
-            (Screen::Horizon, Face::Horizon(at)) => horizon(at.x, at.y),
-            (Screen::Scope, Face::Scope(course, body)) => scope(course, body),
+            (Screen::Status, Face::Status(lamps)) => status(lamps),
             _ => Pixels::dark(self.size().0, self.size().1),
         }
     }
 
-    /// Returns where the display stands on the raked panel: the blocks left and right, the
-    /// ball over the scope between them.
+    /// Returns where the display stands on the raked panel: in its bay, a hair off the face.
     pub fn placed(self) -> Transform {
-        let (width, height) = self.size();
-        let size = Vec3::new(width as f32 * TEXEL, height as f32 * TEXEL, 1.0);
-        let (u, v) = match self {
-            Screen::Speed => (-BLOCK.0 - size.x * 0.5, BLOCK.1 - size.y * 0.5),
-            Screen::Height => (BLOCK.0 + size.x * 0.5, BLOCK.1 - size.y * 0.5),
-            Screen::Horizon => (0.0, BLOCK.1 - size.y * 0.5),
-            Screen::Scope => (0.0, BLOCK.1 - size.y * 1.5 - 0.01),
-        };
-        on_panel(Vec2::new(u, v), 0.002).with_scale(size)
+        let (across, width) = BAYS[self as usize];
+        on_panel(Vec2::new(across, 0.0), 0.002).with_scale(Vec3::new(width, BAYS[1].1, 1.0))
     }
 }
-
-/// Where the blocks stand: the half gap between them across, and the height of their top
-/// edge on the panel.
-pub const BLOCK: (f32, f32) = (0.04, 0.115);
 
 /// Returns where the point `at` of the raked panel is in the hull, `lift` metres off its face,
 /// turned to face the pilot.

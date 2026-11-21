@@ -30,6 +30,9 @@ pub(super) fn walkable(
     let n = ((span / STEP).ceil() as usize).clamp(1, SAMPLES);
     let step = span / n as f64;
     let mut last = height(a);
+    if last < floor {
+        return false;
+    }
     (1..=n).all(|i| {
         let next = height(slerp(a, b, i as f64 / n as f64));
         let fine = f64::from((next - last).abs()) <= grade * step && next >= floor;

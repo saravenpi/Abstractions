@@ -135,13 +135,12 @@ fn roams(life: &Life, ground: &Ground, search: &Search) -> Vec<Roam> {
     let seen = search.radius + MAX_ROAM + fine.side();
     let grazing = seen + 2.0 * TERRITORY;
     let hunting = seen + TERRITORY + coarse.side();
-    let sample = |dir| (ground.sample)(dir);
-    let mut roams = roll::around(life, &fine, (search.at, grazing), &sample, false);
+    let mut roams = roll::around(life, &fine, (search.at, grazing), ground, false);
     roams.extend(roll::around(
         life,
         &coarse,
         (search.at, hunting),
-        &sample,
+        ground,
         true,
     ));
     roams

@@ -1,6 +1,8 @@
 //! The stars in space, with the interface hidden: the chase view with the star behind the camera
-//! and to the side, the cockpit looking away from the star, and low orbit over the day side and
-//! over the night side. Every shot must show the star field. Selected with `PROBE_STAGES=stars`.
+//! and to the side, the cockpit looking away from the star, low orbit over the day side and over
+//! the night side, then the chase view with the star in the middle of the frame and at its edge.
+//! Every shot must show the star field, and around the star a smooth glow that fades into it with
+//! no dark ring. Selected with `PROBE_STAGES=stars`.
 
 use abstractions::screens::HideHud;
 
@@ -17,18 +19,20 @@ const ADAPTED: u32 = 62;
 const ADAPT: f64 = 1.0;
 
 /// The views: the name of the shot and whether the camera is outside the ship.
-const VIEWS: [(&str, bool); 4] = [
+const VIEWS: [(&str, bool); 6] = [
     ("S1-chase-space", true),
     ("S2-cockpit-space", false),
     ("S3-orbit-day", true),
     ("S4-orbit-night", true),
+    ("S5-star-centre", true),
+    ("S6-star-edge", true),
 ];
 
 /// Returns where the view `index` puts the ship for the star along the unit planet direction
 /// `light`: the planet direction under it, its height over the sea and where its nose points,
 /// as `hover` takes them. The views in space stand two radii up beside the planet, the orbits
 /// at 1.6 times the height of the air, the star 53 degrees up on the day side, 53 degrees down
-/// on the night side.
+/// on the night side. The last two look at the star, then 40 degrees to its side.
 fn pose(world: &World, index: usize, light: DVec3) -> (DVec3, f64, DVec3) {
     let radius = world.resource::<Planet>().globe.radius();
     let body = world.resource::<Location>().body;
@@ -39,7 +43,9 @@ fn pose(world: &World, index: usize, light: DVec3) -> (DVec3, f64, DVec3) {
         0 => (across, radius * 2.0, -light * 0.8 + side * 0.6),
         1 => (across, radius * 2.0, -light),
         2 => ((light * 0.8 + across * 0.6).normalize(), air * 1.6, -light),
-        _ => ((-light * 0.8 + across * 0.6).normalize(), air * 1.6, side),
+        3 => ((-light * 0.8 + across * 0.6).normalize(), air * 1.6, side),
+        4 => (across, radius * 2.0, light),
+        _ => (across, radius * 2.0, light * 0.77 + side * 0.64),
     }
 }
 

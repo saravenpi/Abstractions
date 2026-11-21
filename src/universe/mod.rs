@@ -138,8 +138,8 @@ impl Universe {
     /// planet to a Sun-like point of the home galaxy, 0.52 radii out in the plane of the disc,
     /// that is solid, landable and homely: life with plants and herds on water, seas and land,
     /// a mean temperature between 0 and 35 C and a surface gravity of 0.7 to 1.3 standard. Under
-    /// the Earth-like rule it also has 0.7 to 1.5 bar of nitrogen and oxygen, 5 to 30 C and 0.8
-    /// to 1.2 standard gravities, see [`PRESSURE`]. It is found once, when the universe is built.
+    /// the Earth-like rule it also has 0.7 to 1.5 bar of nitrogen and oxygen, 5 to 30 C and 0.85
+    /// to 1.05 standard gravities, see [`PRESSURE`]. It is found once, when the universe is built.
     pub fn home(&self) -> BodyId {
         self.home
     }

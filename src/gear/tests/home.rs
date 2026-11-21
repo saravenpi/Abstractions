@@ -1,5 +1,5 @@
 //! The wingsuit on the home planets of new worlds: the air of every one carries a glide, with
-//! a fifth more of it than the glide needs.
+//! a third more of it than the glide needs.
 
 use crate::gear::glides;
 use crate::gear::tune::SEA_DENSITY;
@@ -9,10 +9,12 @@ use crate::wind::thickness;
 /// Seeds the test looks at.
 const SEEDS: u64 = 200;
 
-/// How much thicker than the thinnest air that carries a glide the air of every home is.
-const MARGIN: f32 = 1.2;
+/// How much thicker than the thinnest air that carries a glide the air of every home is: the
+/// thinnest home air, 0.65 of the home air, against the 0.46 the glide needs under the strongest
+/// home pull, 1.05 g, is 1.42.
+const MARGIN: f32 = 1.35;
 
-/// On the home of each of 200 seeds, at sea level and under its pull, air a fifth thinner than
+/// On the home of each of 200 seeds, at sea level and under its pull, air 1.35 times thinner than
 /// its own still carries a hands-off glide, see [`glides`]: the suit glides there with room to
 /// spare. The thinnest margin is printed.
 #[test]

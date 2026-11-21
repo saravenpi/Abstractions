@@ -23,8 +23,9 @@ fn home(universe: &Universe) -> (PlanetSpec, StarSpec) {
 }
 
 /// The home of every one of 200 seeds is Earth-like: 0.7 to 1.5 bar of air of nitrogen and the
-/// oxygen of its life, 0.8 to 1.2 standard gravities, a mean of 5 to 30 C, and homely, with seas,
-/// plants and herds. The seeds that fail are printed, with the pressures of the homes and the
+/// oxygen of its life, 0.85 to 1.05 standard gravities, a mean of 5 to 30 C, and homely, with seas,
+/// plants and herds. A seed whose search ran out of its [`REACH`] falls back on a homely planet
+/// and fails here. The seeds that fail are printed, with the pressures of the homes and the
 /// share of seeds whose home differs from the first rule.
 #[test]
 fn every_home_is_earthlike() {

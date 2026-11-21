@@ -25,7 +25,7 @@ const SETTLE: (f32, u32) = (12.0, 15);
 /// The worlds of the test: a name, the gravity in metres per second squared and the thickness
 /// of the air against home. Home air under standard gravity; and two edges thinner than any
 /// home, half the home air per standard gravity of pull, under 1 g and under 1.3 g. The thinnest
-/// air of a home is 0.65 of the home air under at most 1.2 g, see `universe::PRESSURE`.
+/// air of a home is 0.65 of the home air under at most 1.05 g, see `universe::PRESSURE`.
 const WORLDS: [(&str, f32, f32); 3] = [
     ("home", REF_GRAVITY, 1.0),
     ("edge", REF_GRAVITY, 0.5),

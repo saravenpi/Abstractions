@@ -29,18 +29,25 @@ pub const PRESSURE: (f64, f64) = (2.0e3, 6.0e4);
 /// smooth, so that it never steps from one frame to the next.
 pub const PLASMA_EASE: f32 = 4.0;
 
-/// Heat capacity of the skin of the nose per square metre, in joules per kelvin: a millimetre
-/// of nickel alloy, 8,000 kg/m3 times 450 J/(kg K) times 0.001 m. It sets how fast the skin
-/// heats up in an entry, over seconds, and how slowly it cools by radiation after, over tens of
-/// seconds, faster while it is hot.
-pub const SKIN_CAPACITY: f32 = 3600.0;
+/// Heat capacity of the skin of the nose and the leading edges per square metre, in joules per
+/// kelvin: half a millimetre of nickel alloy, 8,000 kg/m3 times 450 J/(kg K) times 0.0005 m,
+/// the thin skin of a leading edge. It sets how fast the skin heats up in an entry, over about a
+/// second, and how it cools by radiation after: a skin at 2,100 K is under 1,370 K, where its
+/// glow is lost in daylight, in about 4 s, under 1,110 K, where it is lost at night, in about 8 s,
+/// and dark at the Draper point in about 23 s.
+pub const SKIN_CAPACITY: f32 = 1800.0;
 
 /// Temperature in kelvin of a skin that no air heats: where a skin starts warming from.
 pub const AMBIENT: f32 = 280.0;
 
-/// Temperature in kelvin at which a hot skin starts to glow, the Draper point of a dull red,
-/// and at which its glow is full, a bright orange.
+/// Temperature in kelvin at which a hot skin starts to glow at all, the Draper point of a dull
+/// red seen in the dark, and at which its glow is full, a bright orange.
 pub const SKIN_GLOW: (f32, f32) = (798.0, 1800.0);
+
+/// Wavelength in metres of the red the glow of the skin is weighed at: the visible radiance of a
+/// hot body falls as `1 / (exp(hc / (lambda k T)) - 1)`, by about a hundred times from 1,500 K
+/// to 1,000 K.
+pub const RED: f32 = 650.0e-9;
 
 /// Longest step in seconds the temperature of the skin is integrated over at once.
 pub const SKIN_STEP: f32 = 0.05;

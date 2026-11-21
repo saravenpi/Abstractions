@@ -1,6 +1,7 @@
 //! The hot skin of the nose and the leading edges: a temperature that the heat flux of the air
-//! raises and radiation lowers, so the skin warms over seconds in an entry and keeps glowing a
-//! dull red for tens of seconds after the air is gone.
+//! raises and radiation lowers, so the skin warms over about a second in an entry and, once the
+//! air is gone, fades from sight within seconds by day, a faint red edge lingering a little
+//! longer at night.
 //!
 //! `C dT/dt = q - e sigma T^4`, with `C` the heat capacity of the skin per square metre, `q` the
 //! heat flux of the air and `e sigma T^4` what the skin radiates away. Radiation cools a hot skin
@@ -8,9 +9,8 @@
 
 use super::temperature;
 use super::tune::{
-    AMBIENT, EMISSIVITY, HEATING, SKIN_CAPACITY, SKIN_GLOW, SKIN_STEP, STEFAN_BOLTZMANN,
+    AMBIENT, EMISSIVITY, HEATING, RED, SKIN_CAPACITY, SKIN_GLOW, SKIN_STEP, STEFAN_BOLTZMANN,
 };
-use crate::render::celestial::smoothstep;
 
 /// Returns the temperature in kelvin of a skin at `kelvin` after `dt` seconds under the heat
 /// flux `flux` in watts per square metre. A skin at 0 is cold and dark: it starts from
@@ -39,9 +39,17 @@ pub fn warmed(kelvin: f32, flux: f32, dt: f32) -> f32 {
     }
 }
 
-/// Returns how strongly a skin at `kelvin` glows, from 0 under the Draper point to 1.
+/// Returns how strongly a skin at `kelvin` glows, from 0 under the Draper point to 1 at the
+/// full glow and above: its radiance in the red of [`RED`] against the one at the full glow, by
+/// Planck's law. It falls steeply as the skin cools, so a skin that is still hot to the touch is
+/// soon dark to the eye.
 pub fn glowing(kelvin: f32) -> f32 {
-    smoothstep(SKIN_GLOW.0, SKIN_GLOW.1, kelvin)
+    if kelvin < SKIN_GLOW.0 {
+        return 0.0;
+    }
+    let band = 1.438_777e-2 / RED;
+    let full = (band / SKIN_GLOW.1).exp() - 1.0;
+    (full / ((band / kelvin).exp() - 1.0)).min(1.0)
 }
 
 /// Returns the temperature in kelvin of the skin of a craft whose records carry only the heat

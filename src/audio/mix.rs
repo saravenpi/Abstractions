@@ -12,6 +12,7 @@ use super::scene::TITLE_SEED;
 use super::shared::{PARAMS, Param, Shared};
 use super::ship::Fleet;
 use super::suit::{Suit, SuitCtl};
+use super::tread::Treads;
 use super::tune::{BED_MUSIC, CUES_GAIN};
 use crate::universe::PlanetClass;
 
@@ -48,6 +49,8 @@ pub struct Mixer {
     suit: Suit,
     /// One-shot voices.
     cues: Pool,
+    /// Footfall voices.
+    treads: Treads,
     /// How the music gives way to the effects.
     duck: Duck,
     /// The master bus.
@@ -74,6 +77,7 @@ impl Mixer {
             fleet: Fleet::new(rate, BLOCK as f32 / rate),
             suit: Suit::new(rate),
             cues: Pool::new(rate),
+            treads: Treads::new(rate),
             duck: Duck::new(rate),
             master: Master::new(rate),
             count: 0,
@@ -129,6 +133,7 @@ impl Mixer {
             .locate(buddy, self.targets[Param::BuddyNear as usize]);
         while let Some(cue) = self.shared.pop() {
             self.fleet.hear(cue);
+            self.treads.hear(cue);
             self.cues.play(cue);
         }
         let dt = BLOCK as f32 / self.rate;
@@ -162,7 +167,8 @@ impl Mixer {
         let air = self.air.frame(&self.air_ctl());
         let gear = self.suit.frame(&self.suit_ctl());
         let ships = self.fleet.frame(self.cloud());
-        let cues = self.cues.frame().map(|side| side * CUES_GAIN);
+        let (blips, steps) = (self.cues.frame(), self.treads.frame());
+        let cues = [0, 1].map(|i| (blips[i] + steps[i]) * CUES_GAIN);
         let (wide, fx) = (
             self.at(Param::Music) * MUSIC_GAIN,
             self.at(Param::Effects) * EFFECTS_GAIN,

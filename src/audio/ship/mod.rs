@@ -18,7 +18,7 @@ pub(super) mod law;
 mod motor;
 pub(super) mod path;
 pub(super) mod pump;
-mod ring;
+pub(super) mod ring;
 pub(super) mod tune;
 mod works;
 

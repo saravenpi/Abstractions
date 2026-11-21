@@ -100,26 +100,14 @@ pub fn spawn(commands: &mut Commands, images: &mut Assets<Image>) -> Handle<Imag
         clear_color: ClearColorConfig::Custom(Color::NONE),
         ..default()
     };
+    let mirror = MirrorCamera {
+        target: image.clone(),
+        blank: blank.clone(),
+    };
+    let look = (Hdr, Tonemapping::None, DebandDither::Disabled, Msaa::Off);
     commands.spawn((
-        (
-            Name::new("WaterMirror"),
-            MirrorCamera {
-                target: image.clone(),
-                blank: blank.clone(),
-            },
-        ),
-        (
-            Camera3d::default(),
-            camera,
-            RenderTarget::from(image.clone()),
-        ),
-        (
-            Hdr,
-            Tonemapping::None,
-            DebandDither::Disabled,
-            Msaa::Off,
-            Exposure::default(),
-        ),
+        (Name::new("WaterMirror"), mirror, look, Exposure::default()),
+        (Camera3d::default(), camera, RenderTarget::from(image)),
         (RenderLayers::layer(REFLECTED), Transform::default()),
         DespawnOnEnter(Screen::Title),
     ));

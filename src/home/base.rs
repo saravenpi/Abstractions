@@ -3,7 +3,8 @@
 use bevy::math::{DMat3, DQuat, DVec3};
 use bevy::prelude::*;
 
-use super::tune::{FOOTPRINT, PAD_HALF};
+use super::container;
+use super::tune::{CONTAINER, FOOTPRINT, PAD_HALF};
 use crate::universe::BodyId;
 use crate::world::globe::{Pad, Reserve};
 
@@ -52,6 +53,14 @@ impl Base {
     pub fn look(&self) -> DVec3 {
         let (up, toward) = (self.wake.normalize(), self.door - self.wake);
         (toward - up * toward.dot(up)).normalize()
+    }
+
+    /// Returns where home is: the point above the roof of the container the operator lives in.
+    /// The compass, the minimap, the map and the marker over the world all point at it, so the
+    /// house icon sits on the building. The pad keeps the marker of the ship.
+    pub fn home(&self) -> DVec3 {
+        let turn = self.rot() * DQuat::from_rotation_y(f64::from(CONTAINER.yaw));
+        self.door + turn * (container::HOME - container::DOOR).as_dvec3()
     }
 
     /// Returns true when the planet position `pos` lies over the footprint of the base grown by

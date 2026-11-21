@@ -35,6 +35,7 @@ pub fn describe_general(field: Field) -> &'static str {
     match field {
         Field::CheckUpdates => "Looks for a newer release each time the game starts.",
         Field::Interface => "Size of the HUD and the menus together. It applies at once.",
+        Field::WorldMarkers => "Minimal keeps the course, the active pin and friends.",
         _ => "",
     }
 }

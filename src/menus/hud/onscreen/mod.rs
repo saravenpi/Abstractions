@@ -1,32 +1,49 @@
-//! Markers over the world: the active pin, the course, home, the ship on foot, friends and the
-//! pins within reach, drawn where they really are. In view, the icon sits at the projected
-//! place of the target with its distance under it. Out of view, it slides to the border of the
-//! screen with an arrow toward it, at the height of the real position.
+//! Markers over the world: the course, the pin the player follows, friends, home, the ship on
+//! foot and the pins within reach, drawn where they really are. In view, the icon sits at the
+//! projected place of the target with its name and its distance under it. Out of view, it
+//! slides to the border of the safe rectangle with an arrow toward it.
+//!
+//! One rule set, written down with its numbers and sources in `handoff/specs/markers.md`: a
+//! marker whose target is near is reduced, then hidden, because the thing is its own sign
+//! ([`rule`]); it fades in the middle of the view; it keeps out of the room of the rest of the
+//! HUD ([`zones`]); and two that meet are settled by rank ([`overlap`]).
 //!
 //! One source of truth: the shared [`Markers`] list the compass and the minimap read. A pool of
 //! [`MAX`] nodes is spawned once and refilled every frame without allocating. Nothing shows in
 //! the map, in menus or when the setting is off.
 
 mod draw;
+mod overlap;
 mod pick;
 mod place;
 mod pool;
+mod rule;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_face;
+#[cfg(test)]
+mod tests_overlap;
+#[cfg(test)]
+mod tests_rule;
+#[cfg(test)]
+mod tests_zones;
+mod tune;
+mod zones;
 
-use place::{MAX, dimmed, place};
+use place::{MAX, place};
 
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use super::compass::{Around, icon};
-use super::context::{Element, Where};
+use super::context::{Context, Element, Where};
 use super::fade::gate;
-use crate::menus::Markers;
+use crate::menus::{Marker, Markers};
 use crate::settings::{Persistent, Settings};
-use crate::ui::theme;
 use pick::State;
 use pool::Nodes;
+use rule::Face;
 
 /// How fast an icon follows its target, per second.
 const FOLLOW: f32 = 25.0;
@@ -43,24 +60,27 @@ pub(super) struct View<'w, 's> {
 }
 
 /// The numbers of one frame: the screen in interface pixels, the field of view, how far an icon
-/// moves toward its target and how far in from the screen edge icons stay.
+/// moves toward its target, the rectangle icons stay in and where the player is.
 #[derive(Debug, Clone, Copy)]
 struct Lens {
     screen: Vec2,
     fov: f32,
     follow: f32,
-    inset: f32,
+    safe: Rect,
+    context: Context,
 }
 
 impl View<'_, '_> {
-    /// Returns the numbers of this frame.
-    fn lens(&self) -> Lens {
+    /// Returns the numbers of this frame in `context`.
+    fn lens(&self, context: Context) -> Lens {
         let scale = self.scale.as_ref().map_or(1.0, |scale| scale.0).max(0.1);
+        let screen = Vec2::new(self.window.width(), self.window.height()) / scale;
         Lens {
-            screen: Vec2::new(self.window.width(), self.window.height()) / scale,
+            screen,
             fov: (self.settings.graphics.fov as f32).to_radians(),
             follow: 1.0 - (-FOLLOW * self.time.delta_secs()).exp(),
-            inset: theme::EDGE + theme::ICON * 0.5,
+            safe: zones::safe(screen),
+            context,
         }
     }
 }
@@ -80,34 +100,26 @@ pub(super) fn layer() -> impl Bundle {
     )
 }
 
-/// Height in pixels of one marker, icon and distance, plus the gap that keeps two apart.
-const STACK: f32 = 56.0;
+/// What is written into a slot: where its icon is, its arrow and how it is drawn.
+type Drawn = (Vec2, Option<f32>, Face);
 
-/// Returns `pos` moved down, or up at the bottom of the screen, until its marker clears every one
-/// of `taken`, so two markers that fall together never print over each other.
-fn apart(pos: Vec2, taken: &[Vec2], screen: Vec2) -> Vec2 {
-    let clash = |at: Vec2| {
-        taken
-            .iter()
-            .any(|t| (t.x - at.x).abs() < pool::ROOM * 0.8 && (t.y - at.y).abs() < STACK)
-    };
-    let floor = screen.y - theme::EDGE - STACK * 0.5;
-    let step = [STACK, -STACK][usize::from(pos.y + STACK > floor)];
-    let mut at = pos;
-    for _ in 0..MAX {
-        if !clash(at) {
-            break;
-        }
-        at.y += step;
-    }
-    at
+/// Writes slot `at`: the icon of `marker`, its arrow and its `words`.
+fn paint(nodes: &mut Nodes, at: usize, marker: &Marker, drawn: Drawn, words: &str) {
+    let (pos, arrow, face) = drawn;
+    let side = draw::side(face);
+    let color = draw::tint(marker).with_alpha(face.glyph);
+    draw::room(nodes, at, Some((pos, side)));
+    draw::icon(nodes, at, icon(marker.kind), (color, side));
+    draw::arrow(nodes, at, arrow.filter(|_| side > 0.0), color);
+    draw::label(nodes, at, words, face.label);
 }
 
-/// Draws slot `at`: places the marker it shows, or hides it.
+/// Draws slot `at`: places the marker it shows, works out how near, how central and how
+/// crowded it is, and writes it, or hides it.
 fn show(
     at: usize,
     (state, view, lens): (&mut State, &View, Lens),
-    (nodes, taken): (&mut Nodes, &mut Vec<Vec2>),
+    (nodes, taken): (&mut Nodes, &mut Vec<Rect>),
 ) {
     let Some(pick) = state.chosen(at) else {
         state.memory[at].who = None;
@@ -115,42 +127,43 @@ fn show(
         return;
     };
     let marker = &view.markers.0[pick.index];
-    let inset = lens.inset + state.stickiness(at);
-    let placed = place(pick.dir, lens.fov, lens.screen, inset);
+    let safe = lens.safe.inflate(-state.stickiness(at));
+    let placed = place(pick.dir, lens.fov, lens.screen, safe);
     let pos = state.settle(at, (marker.kind, pick.index), placed, lens.follow);
-    let pos = apart(pos, taken, lens.screen);
-    taken.push(pos);
-    let on_screen = placed.arrow.is_none();
-    let dim = if on_screen {
-        dimmed((-pick.dir.z).clamp(-1.0, 1.0).acos())
-    } else {
-        1.0
+    let pos = zones::fit(pos, lens.screen, lens.context.is_ship());
+    let look = state.look(at, marker, pick.gap, lens.context);
+    let angle = (-pick.dir.z).clamp(-1.0, 1.0).acos();
+    let dim = placed.arrow.is_none().then(|| rule::centre(angle));
+    let wanted = rule::face(marker.kind, look, dim);
+    let Some(face) = overlap::settle(wanted, pos, taken) else {
+        draw::room(nodes, at, None);
+        return;
     };
-    let color = pick::tint(marker).with_alpha(dim);
-    draw::room(nodes, at, Some(pos));
-    draw::icon(nodes, at, icon(marker.kind), color);
-    draw::arrow(nodes, at, placed.arrow, color);
-    draw::label(nodes, at, (pick.gap, dim), &mut state.words);
+    let far = (look.detail >= 0.5).then_some(pick.gap);
+    draw::say(&mut state.words, (draw::name(marker), far));
+    paint(nodes, at, marker, (pos, placed.arrow, face), &state.words);
 }
 
 /// Chooses the markers to show, places each and writes the pool.
 pub(super) fn update(
     (around, now): (Around, Res<Where>),
     view: View,
-    (mut state, mut taken): (Local<State>, Local<Vec<Vec2>>),
+    (mut state, mut taken): (Local<State>, Local<Vec<Rect>>),
     mut nodes: Nodes,
 ) {
-    state.gather(&around, &view.markers, now.0);
-    let lens = view.lens();
+    let level = view.settings.gameplay.markers();
+    state.gather(&around, &view.markers, (now.0, level));
+    let lens = view.lens(now.0);
     taken.clear();
     for at in 0..MAX {
         show(at, (&mut *state, &view, lens), (&mut nodes, &mut taken));
     }
 }
 
-/// Run condition: the player turned markers over the world on.
-fn enabled(settings: Res<Persistent<Settings>>, now: Res<Where>) -> bool {
-    settings.gameplay.world_markers && now.has(Element::Markers)
+/// Run condition: markers over the world mean something where the player is. The setting is
+/// read by `update`, which hides every slot when it is off.
+fn enabled(now: Res<Where>) -> bool {
+    now.has(Element::Markers)
 }
 
 /// Registers the markers over the world, drawn after the markers are filled and the compass

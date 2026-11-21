@@ -85,7 +85,7 @@ pub fn display(settings: &Settings, field: Field) -> String {
         Field::Range => a.range.label().to_string(),
         Field::Mono => on_off(a.mono),
         Field::CheckUpdates => on_off(settings.updates.check_at_launch),
-        Field::WorldMarkers => on_off(settings.gameplay.world_markers),
+        Field::WorldMarkers => settings.gameplay.markers().label().to_string(),
         Field::Blood => on_off(settings.gameplay.blood),
         Field::Interface => settings.gameplay.interface.label().to_string(),
         Field::ReduceMotion => on_off(settings.gameplay.reduce_motion),

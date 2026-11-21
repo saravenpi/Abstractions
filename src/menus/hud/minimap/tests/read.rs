@@ -11,11 +11,12 @@ use crate::ship::Ship;
 use crate::space::Frame;
 use crate::universe::Universe;
 
-/// Puts the home base 100 m north of the start and the ship a kilometre east of it.
+/// Puts the home base 100 m north of the start, its home point right at its centre, and the
+/// ship a kilometre east of it.
 pub fn furnish(app: &mut App) {
     let body = app.world().resource::<Universe>().home();
     let centre = ground(100.0, 0.0);
-    app.insert_resource(Base {
+    let mut base = Base {
         body,
         centre,
         up: centre.normalize(),
@@ -25,7 +26,10 @@ pub fn furnish(app: &mut App) {
         pad: centre,
         heading: DVec3::Y,
         door: centre,
-    });
+    };
+    let shift = centre - base.home();
+    base.door += shift;
+    app.insert_resource(base);
     let ship = Ship::at_rest(Frame::Surface(body), ground(0.0, 1000.0), DQuat::IDENTITY);
     app.world_mut().spawn(ship);
 }

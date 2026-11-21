@@ -124,7 +124,7 @@ pub fn step(settings: &mut Settings, field: Field, dir: i32) {
         Field::Range => a.range = a.range.toggled(),
         Field::Mono => a.mono = !a.mono,
         Field::CheckUpdates => updates.check_at_launch = !updates.check_at_launch,
-        Field::WorldMarkers => play.world_markers = !play.world_markers,
+        Field::WorldMarkers => play.set_markers(play.markers().moved(dir)),
         Field::Blood => play.blood = !play.blood,
         Field::Interface => play.interface = play.interface.moved(dir),
         Field::ReduceMotion => play.reduce_motion = !play.reduce_motion,

@@ -1,4 +1,4 @@
-//! Tests of the brightness of the lit scene: the reference day shows mean ground near 0.8, a night
+//! Tests of the brightness of the lit scene: the reference day shows mean ground near 0.89, a night
 //! twenty times darker, and that hides the stars by day under a whole sky, not by night, and not
 //! under no air, as in space past a sunlit hull.
 

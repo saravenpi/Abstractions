@@ -28,12 +28,15 @@ const EMPTY: (i32, i32, f32) = (i32::MIN, i32::MIN, 0.0);
 /// An empty grid slot.
 const NO_GRID: (IVec2, Option<Drawn>) = (IVec2::MIN, None);
 
+/// A chunk and the grid drawn over it, if any.
+type Slot = Cell<(IVec2, Option<Drawn>)>;
+
 /// The cached heights, by grid point, direct mapped, and the drawn grids, by chunk.
 pub struct Heights {
     /// Grid point and height of each slot.
     slots: Box<[Cell<(i32, i32, f32)>]>,
     /// Chunk and the grid drawn over it of each slot.
-    grids: Box<[Cell<(IVec2, Option<Drawn>)>]>,
+    grids: Box<[Slot]>,
 }
 
 impl Default for Heights {

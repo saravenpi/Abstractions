@@ -18,13 +18,17 @@ pub fn depth(beast: &Beast, ground: &dyn Fn(Vec2) -> f32) -> Option<f32> {
         .reduce(f32::max)
 }
 
+/// The living animals, drawn and not frozen.
+#[cfg(feature = "dev")]
+type Living = (Without<super::Dead>, Without<super::Frozen>);
+
 /// Logs the living drawn animal whose feet stand deepest under the drawn ground, when they stand
 /// more than [`SUNK`](super::tune::SUNK) under it, with its species, its herd and its place in the herd.
 #[cfg(feature = "dev")]
 pub fn check(
     terrain: Res<crate::world::Terrain>,
     chunks: Option<Res<crate::world::Chunks>>,
-    beasts: Query<(&Beast, &super::Creature), (Without<super::Dead>, Without<super::Frozen>)>,
+    beasts: Query<(&Beast, &super::Creature), Living>,
     heights: Local<super::ground::Heights>,
 ) {
     heights.clear();

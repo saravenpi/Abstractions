@@ -19,7 +19,7 @@ pub const FLIGHT: (usize, usize) = (72, 72);
 
 /// Centre of the attitude ball in the flight display, its radius, and the pixels a radian of
 /// pitch moves its horizon.
-pub const BALL: (IVec2, f32, f32) = (IVec2::new(36, 52), 18.0, 14.0);
+pub const BALL: (IVec2, f32, f32) = (IVec2::new(36, 50), 18.0, 14.0);
 
 /// Radius in pixels of the area of the ball the marks of the course and of the body move in.
 pub const REACH: f32 = 15.0;

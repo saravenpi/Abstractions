@@ -9,10 +9,11 @@ use super::fittings::{accents, furniture, plates};
 use super::frame::{CANOPY, GLAZED};
 use super::shell::hull;
 use super::tests_cabin::outlines;
-use super::tests_fit::{corners, inside};
+use super::tests_fit::{corners, inside, positions};
 use super::tub::tub;
+use super::{lever_mesh, stick_mesh};
 use crate::ship::SEAT;
-use crate::ship::cockpit::{HINGE, Screen};
+use crate::ship::cockpit::{HINGE, LEVER, STICK, Screen};
 
 /// Returns how far along `dir` the ray from `from` meets the triangle `tri`, and whether it
 /// meets its front.
@@ -76,6 +77,33 @@ fn the_cabin_has_no_hole_seen_from_the_eye() {
             "a back face along {dir}"
         );
         assert!(dir.y > -0.77 || seen.is_some(), "nothing along {dir}");
+    }
+}
+
+/// From the eye every display shows whole: the rays toward its middle and toward its four
+/// corners, a fiftieth of its size in from the bezel, meet nothing in front of it. The hood, the
+/// bezels, the hull, the stick and the lever are all behind or beside every display.
+#[test]
+fn every_display_is_in_full_view_from_the_eye() {
+    let (eye, mut shell) = (SEAT.as_vec3(), shell());
+    for (hinge, mesh) in [(STICK, stick_mesh()), (LEVER, lever_mesh())] {
+        shell.extend(positions(&mesh).into_iter().map(|p| hinge + p));
+    }
+    let points = [
+        (0.0, 0.0),
+        (-0.48, -0.48),
+        (0.48, -0.48),
+        (0.48, 0.48),
+        (-0.48, 0.48),
+    ];
+    for placed in Screen::ALL.map(|screen| screen.placed()) {
+        for (x, y) in points {
+            let target = placed * Vec3::new(x, y, 0.0);
+            let reach = target.distance(eye);
+            let seen = first(&shell, eye, (target - eye) / reach);
+            let free = seen.is_none_or(|(at, _)| at >= reach - 1e-3);
+            assert!(free, "the display is hidden at {target}: {seen:?}");
+        }
     }
 }
 

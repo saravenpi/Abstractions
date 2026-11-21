@@ -1,8 +1,10 @@
 //! Paint tests: the pixel font, the strokes, the canvases and their bytes.
 
+use bevy::prelude::IVec2;
+
 use super::faces::{FLIGHT, SIDE, drive, flight, status};
 use super::font::{ADVANCE, HEIGHT, WIDTH, glyph};
-use super::paint::{bar, flush, write};
+use super::paint::{MARGIN, WIDEST, bar, flush, key, words, write};
 use super::pixels::{Ink, Pixels};
 use super::readings::Lamp;
 use super::screens::Screen;
@@ -107,5 +109,47 @@ fn a_canvas_makes_its_bytes() {
         let bay = BAYS[screen as usize];
         assert!((width as f32 * TEXEL - bay.1).abs() < 1.0e-5);
         assert!((height as f32 * TEXEL - BAYS[1].1).abs() < 1.0e-5);
+    }
+}
+
+/// Returns true when no painted pixel of `pixels` is in the margin of [`MARGIN`] pixels along
+/// its four edges.
+fn framed(pixels: &Pixels) -> bool {
+    let (width, height) = (pixels.width as i32, pixels.height as i32);
+    let inside = |x: i32, y: i32| {
+        (MARGIN..width - MARGIN).contains(&x) && (MARGIN..height - MARGIN).contains(&y)
+    };
+    (0..height).all(|y| (0..width).all(|x| inside(x, y) || !pixels.is_lit(x, y)))
+}
+
+/// Every display keeps its margin free in every state: the bars at any step, every lamp lit or
+/// out, and the flight display with values from a negative one to billions of light-years, the
+/// horizon at its limits and the marks on the rim of the ball. No value is longer than the
+/// display is wide, so none is cut.
+#[test]
+fn every_display_keeps_its_margin_in_every_state() {
+    for step in [0, 1, 16, 31, 32] {
+        let bars = [Some(step), Some(32 - step), Some(step)];
+        assert!(framed(&drive(bars)), "the drive at {step}");
+    }
+    assert!(framed(&status([true; 6])) && framed(&status([false; 6])));
+    let values = [
+        -5.0, 0.0, 7.0, 12_345.0, 99_999.0, 654_321.0, 9.9e8, 4.0e10, 9.4e20, 1.0e25,
+    ];
+    let turns = [(0, 0), (31, 63), (-31, -63), (12, -20)].map(|(x, y)| IVec2::new(x, y));
+    let marks = [(15, 0), (-15, 0), (0, 15), (0, -15)].map(|(x, y)| IVec2::new(x, y));
+    for (i, value) in values.into_iter().enumerate() {
+        let (speed, height) = (words(key(value), true), words(key(value), false));
+        assert!(speed.chars().count() <= WIDEST, "{speed}");
+        let figures = [
+            (Some(speed.as_str()), Some(32)),
+            (Some(height.as_str()), Some(i as u8)),
+        ];
+        let (level, mark) = (turns[i % 4], marks[i % 4]);
+        let shown = flight(figures, Some(level), [Some(mark), Some(-mark)]);
+        assert!(
+            framed(&shown),
+            "the flight display with {speed} and {height}"
+        );
     }
 }

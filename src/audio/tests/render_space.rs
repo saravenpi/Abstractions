@@ -36,8 +36,11 @@ const MOO: Call = Call {
         timbre: Timbre::Low,
         notes: 3,
         muffled: false,
+        formant: 600.0,
+        print: 0,
     },
     cry: Cry::Contact,
+    one: 0,
 };
 
 /// Returns how a sound at `at` of `reach` reaches a listener at the origin facing ahead in `air`.

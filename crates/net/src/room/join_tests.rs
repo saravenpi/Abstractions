@@ -2,7 +2,7 @@
 
 use std::net::SocketAddr;
 
-use super::kit::{hello, join, messages, room};
+use super::kit::{hello, join, messages, place_text, room};
 use crate::host::{ConnId, Host, Op, Outbox};
 use crate::log::PlayerId;
 use crate::wire::{ClientMsg, PROTOCOL, PlayerInfo, PlayerRecord, Reason, ServerMsg};
@@ -43,7 +43,7 @@ fn welcome_back_carries_the_record() {
     let mut out = Outbox::default();
     let ada = join(&mut room, 1, hello("Ada", 1), 100.0, &mut out);
     let record = PlayerRecord {
-        place: "p".to_string(),
+        place: place_text("2.0"),
         ship: "s".to_string(),
         marks: "m".to_string(),
     };

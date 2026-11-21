@@ -71,7 +71,8 @@ impl Player {
     /// Returns bot number `index`, already connecting.
     pub fn new(index: usize, args: &Args, known: &Path) -> Self {
         let mut key = [0xb0; 32];
-        key[0] = index as u8;
+        key[..4].copy_from_slice(&(index as u32).to_le_bytes());
+        key[4..8].copy_from_slice(&std::process::id().to_le_bytes());
         let hello = Hello {
             protocol: std::env::var("BOT_PROTOCOL")
                 .ok()

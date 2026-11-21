@@ -14,13 +14,15 @@ pub(crate) const LAGGING: VarInt = VarInt::from_u32(100);
 pub(crate) const BROKEN: VarInt = VarInt::from_u32(101);
 
 /// Every reason, in the order of their codes: a reason's code is its place plus one.
-const REASONS: [Reason; 6] = [
+const REASONS: [Reason; 8] = [
     Reason::WrongPassword,
     Reason::Full,
     Reason::Outdated,
     Reason::Newer,
     Reason::Flooding,
     Reason::Closing,
+    Reason::Replaced,
+    Reason::Silent,
 ];
 
 /// Returns the code a connection closes with for `reason`.

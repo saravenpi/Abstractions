@@ -5,11 +5,13 @@
 //! through a temporary file, so a crash leaves either the old file or the new one, and keeps
 //! the last three copies. The explored ground goes beside it in `explored3.bin` and the hunt in
 //! `hunt3.bin`, written the same safe way. [`import`] reads a single-player world of the game.
+//! [`place`] checks the place kept of each player.
 
 mod explored;
 mod file;
 mod hunt;
 mod import;
+pub mod place;
 
 #[cfg(test)]
 mod explored_tests;
@@ -17,6 +19,8 @@ mod explored_tests;
 mod file_tests;
 #[cfg(test)]
 mod import_tests;
+#[cfg(test)]
+mod place_tests;
 
 pub use explored::EXPLORED_FILE;
 pub use file::{FILE, load_or_create, save};

@@ -13,6 +13,8 @@ fn every_reason_has_its_own_code() {
         Reason::Newer,
         Reason::Flooding,
         Reason::Closing,
+        Reason::Replaced,
+        Reason::Silent,
     ];
     for one in all {
         assert_eq!(reason(code(one)), Some(one));

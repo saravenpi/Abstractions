@@ -1,32 +1,16 @@
-//! What joined players do on the reliable stream: keep their record, change the world, leave.
+//! What joined players do on the reliable stream: change the world and leave, and the one seat
+//! a player key may hold.
 
 use super::Room;
 use super::conn::CHANGES_PER_SECOND;
-use super::join::hex;
 use crate::host::{ConnId, Outbox};
 use crate::log::{Change, Entry};
-use crate::wire::{PlayerRecord, ServerMsg};
+use crate::wire::{Reason, ServerMsg};
 
 impl Room {
     /// Returns the seat of `conn`, when it joined.
     pub(super) fn seat_of(&self, conn: ConnId) -> Option<usize> {
         self.conns.get(&conn).and_then(|open| open.seat)
-    }
-
-    /// Keeps the place, ship and saved places of the player on `conn`, under their key.
-    pub(super) fn record(&mut self, conn: ConnId, record: PlayerRecord) {
-        let Some(seat) = self
-            .seat_of(conn)
-            .and_then(|slot| self.seats[slot].as_ref())
-        else {
-            return;
-        };
-        let member = self.world.players.entry(hex(&seat.key)).or_default();
-        member.name.clone_from(&seat.info.name);
-        member.place = record.place;
-        member.ship = record.ship;
-        member.marks = record.marks;
-        self.dirty = true;
     }
 
     /// Adds the change of the player on `conn` to the log and tells everyone, the player
@@ -70,6 +54,26 @@ impl Room {
             self.broadcast(&ServerMsg::Waypoint { player, waypoint }, out);
         }
         self.broadcast(&ServerMsg::Left(seat.info.id), out);
+    }
+
+    /// Returns a free seat for the player with `key`, or nothing when the room is full. When
+    /// `admit` is true the player is let in, so an older connection that holds a seat under the
+    /// same key is sent away first and its seat freed: the newest join wins, and nothing the
+    /// older connection sends afterwards is read.
+    pub(super) fn seat_for(
+        &mut self,
+        key: &[u8; 32],
+        admit: bool,
+        out: &mut Outbox,
+    ) -> Option<usize> {
+        let mut held = self.seats.iter().flatten();
+        let older = held.find(|seat| seat.key == *key).map(|seat| seat.conn);
+        if let Some(old) = older.filter(|_| admit) {
+            out.send(old, ServerMsg::Kick(Reason::Replaced));
+            self.forget(old, out);
+            out.close(old, Reason::Replaced);
+        }
+        self.seats.iter().position(Option::is_none)
     }
 
     /// Lets the player on `conn` leave and forgets the connection.

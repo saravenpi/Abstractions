@@ -1,6 +1,6 @@
 //! Tests of joined players: the log, pings, records, leaving, flooding and the snapshot.
 
-use super::kit::{hello, join, messages, room};
+use super::kit::{hello, join, messages, place_text, room};
 use crate::host::{Host, Op, Outbox};
 use crate::ids::BodyId;
 use crate::log::{Change, Entry, PlayerId};
@@ -92,7 +92,7 @@ fn snapshot_keeps_clock_and_records() {
     let mut out = Outbox::default();
     let ada = join(&mut room, 1, hello("Ada", 0xab), 100.0, &mut out);
     let record = PlayerRecord {
-        place: "here".to_string(),
+        place: place_text("7.5"),
         ship: "red".to_string(),
         marks: "lake".to_string(),
     };
@@ -108,7 +108,7 @@ fn snapshot_keeps_clock_and_records() {
             member.ship.as_str(),
             member.marks.as_str()
         ),
-        ("Ada", "here", "red", "lake")
+        ("Ada", place_text("7.5").as_str(), "red", "lake")
     );
     assert!(!room.busy());
 }

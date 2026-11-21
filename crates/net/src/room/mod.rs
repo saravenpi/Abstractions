@@ -2,14 +2,15 @@
 //! and datagrams come out. The server and a game open to LAN run the same room.
 //!
 //! The room never simulates and never decodes a state body. It owns the world (seed, clock,
-//! log, atlas, player records, hunt), lets players in, keeps the last few states of each player
-//! and kind, and copies them to the others every tick: all of them around the same star, the
-//! newest once a second elsewhere.
+//! log, atlas, player records, hunt), lets players in, one seat per player key, keeps the last
+//! few states of each player and kind, and copies them to the others every tick: all of them
+//! around the same star, the newest once a second elsewhere.
 
 mod conn;
 mod host;
 mod hunt;
 mod join;
+mod keep;
 mod map;
 mod play;
 mod relay;
@@ -37,6 +38,10 @@ mod play_tests;
 mod relay_tests;
 #[cfg(test)]
 mod scale_tests;
+#[cfg(test)]
+mod session_tests;
+#[cfg(test)]
+mod stored_tests;
 
 use std::collections::HashMap;
 

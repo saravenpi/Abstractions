@@ -23,6 +23,7 @@ impl Host for Room {
         let Some(open) = self.conns.get_mut(&conn) else {
             return;
         };
+        open.heard = now;
         if !open.messages.allow(now, MESSAGES_PER_SECOND) {
             self.forget(conn, out);
             out.close(conn, Reason::Flooding);
@@ -44,8 +45,11 @@ impl Host for Room {
         }
     }
 
-    /// Keeps the state records of a batch.
-    fn datagram(&mut self, conn: ConnId, bytes: &[u8], _now: f64, _out: &mut Outbox) {
+    /// Keeps the state records of a batch, and notes that the connection was heard.
+    fn datagram(&mut self, conn: ConnId, bytes: &[u8], now: f64, _out: &mut Outbox) {
+        if let Some(open) = self.conns.get_mut(&conn) {
+            open.heard = now;
+        }
         self.ingest(conn, bytes);
     }
 
@@ -54,8 +58,8 @@ impl Host for Room {
         self.forget(conn, out);
     }
 
-    /// Closes connections that never joined, sends every player the others' state, then the
-    /// newly explored ground that is due.
+    /// Closes connections that never joined and frees the seats of players gone silent, sends
+    /// every player the others' state, then the newly explored ground that is due.
     fn tick(&mut self, now: f64, out: &mut Outbox) {
         self.expire(now, out);
         self.relay(now, out);

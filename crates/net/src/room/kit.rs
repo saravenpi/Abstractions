@@ -71,6 +71,16 @@ pub(super) fn heads(out: &Outbox, conn: ConnId) -> Vec<Head> {
         .collect()
 }
 
+/// Returns the text of a place as the game writes it: `altitude` metres above the sea level of
+/// the first planet of a star, straight up its axis. `altitude` is written as given, so `nan`
+/// and `inf` make a damaged place.
+pub(super) fn place_text(altitude: &str) -> String {
+    format!(
+        "dir = [0.0, 1.0, 0.0]\naltitude = {altitude}\n\n[body]\nindex = 0\nmoon = 0\n\n\
+         [body.star]\ngalaxy = [0, 0, 0]\nsector = [35, 0, -44]\nindex = 0\n"
+    )
+}
+
 /// Returns the star with rank `index` in the home sector.
 pub(super) fn star(index: u8) -> StarId {
     StarId {

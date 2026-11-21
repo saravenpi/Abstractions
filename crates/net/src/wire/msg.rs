@@ -73,6 +73,10 @@ pub enum Reason {
     Flooding,
     /// The server is closing.
     Closing,
+    /// The same player joined again from another game, which took the seat.
+    Replaced,
+    /// The server heard nothing from the player's game for too long.
+    Silent,
 }
 
 /// How a player asks to join.

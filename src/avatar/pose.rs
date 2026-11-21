@@ -2,6 +2,8 @@
 
 use std::f32::consts::PI;
 
+use bevy::prelude::Quat;
+
 /// The joints of the trunk and the head.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Core {
@@ -82,6 +84,10 @@ pub struct Pose {
     pub core: [f32; CORES],
     /// Side joints, indexed by side then by [`Limb`].
     pub sides: [[f32; LIMBS]; 2],
+    /// Turn of the whole body in the frame of the player entity, on top of the lean and the
+    /// roll of the trunk: the attitude of the flight gear, see `lean::lain`. It is no joint
+    /// and does not blend: the identity for every pose of a mode.
+    pub lean: Quat,
 }
 
 impl Pose {

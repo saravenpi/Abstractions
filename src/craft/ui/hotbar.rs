@@ -1,24 +1,23 @@
 //! The hotbar: six slots at the bottom centre of the game, black and white, the held one
 //! lit and marked by the accent bar along its foot, each with its number, the silhouette of its
-//! tool and a thin wear bar.
+//! tool and a thin wear bar. The slots keep a very light fill, so a full slot and an empty one
+//! read apart; the numbers carry the HUD shadow.
 
 use bevy::prelude::*;
 
 use super::glyph::{silhouette, wear_bar};
 use super::here::Here;
 use crate::craft::pack::{Pack, SLOTS};
+use crate::player::Squared;
 use crate::screens::{Screen, in_control};
 use crate::space::on_foot;
-use crate::ui::{text, theme};
+use crate::ui::{OverWorld, text, theme};
 
 /// Side in pixels of one slot, which is also the height of the hotbar the prompt line stands above.
 pub const SIDE: f32 = 56.0;
 
 /// Height in pixels of the accent bar that marks the held slot.
 const MARK: f32 = theme::S1;
-
-/// Fill of a slot that holds nothing: lighter than the fill of one that does.
-const EMPTY: Color = Color::srgba(0.02, 0.025, 0.035, 0.32);
 
 /// Width in pixels of the wear bar of a slot.
 const BAR: f32 = 32.0;
@@ -39,6 +38,7 @@ fn spawn(mut commands: Commands) {
     };
     commands.spawn((
         Hotbar,
+        OverWorld,
         DespawnOnExit(Screen::Gameplay),
         node,
         Pickable::IGNORE,
@@ -46,8 +46,8 @@ fn spawn(mut commands: Commands) {
     ));
 }
 
-/// The silhouette of a tool: shaft length, head size and form, if its build is whole.
-type Shape = Option<(f32, f32, crate::craft::build::Form)>;
+/// The look of a tool, which its icon is drawn from.
+type Shape = Option<crate::craft::build::Look>;
 
 /// Returns the bar along the foot of a slot: the accent while `held`, else clear.
 fn accent(held: bool) -> impl Bundle {
@@ -64,8 +64,9 @@ fn accent(held: bool) -> impl Bundle {
     )
 }
 
-/// Returns one slot: its number, the silhouette of its tool and the wear left, lit when `held`.
-fn slot(at: usize, tool: Option<(Shape, f32)>, held: bool) -> impl Bundle {
+/// Returns one slot: its number, the silhouette of its tool and the wear left, marked when `held`
+/// and lit while its tool is `drawn` in the hands; a held tool slung over the back stays dim.
+fn slot(at: usize, tool: Option<(Shape, f32)>, (held, drawn): (bool, bool)) -> impl Bundle {
     let node = Node {
         width: px(SIDE),
         height: px(SIDE),
@@ -76,12 +77,12 @@ fn slot(at: usize, tool: Option<(Shape, f32)>, held: bool) -> impl Bundle {
         ..default()
     };
     let back = match tool.is_some() {
-        true => theme::PANEL,
-        false => EMPTY,
+        true => theme::SLOT_FULL,
+        false => theme::SLOT_EMPTY,
     };
-    let ink = [theme::TEXT_2, theme::TEXT][usize::from(held)];
+    let ink = [theme::TEXT_2, theme::TEXT][usize::from(held && drawn)];
     let (shape, worn) = tool.unwrap_or((None, 1.0));
-    let drawn = match tool.is_some() {
+    let shown = match tool.is_some() {
         true => Visibility::Inherited,
         false => Visibility::Hidden,
     };
@@ -90,15 +91,20 @@ fn slot(at: usize, tool: Option<(Shape, f32)>, held: bool) -> impl Bundle {
         BackgroundColor(back),
         children![
             text(format!("{}", at + 1), theme::FONT_SMALL, ink),
-            (silhouette(shape), drawn),
-            (wear_bar(BAR, worn), drawn),
+            (silhouette(shape), shown),
+            (wear_bar(BAR, worn), shown),
             accent(held),
         ],
     )
 }
 
-/// Draws the slots again when the pack changes.
-fn fill(pack: Res<Pack>, here: Here, bars: Query<Entity, With<Hotbar>>, mut commands: Commands) {
+/// Draws the slots again when the pack changes or the held tool is drawn or slung.
+fn fill(
+    (pack, squared): (Res<Pack>, Res<Squared>),
+    here: Here,
+    bars: Query<Entity, With<Hotbar>>,
+    mut commands: Commands,
+) {
     let place = here.place();
     let tool = |at: usize| {
         let item = pack.bar.slots[at].and_then(|id| pack.item(id))?;
@@ -107,7 +113,7 @@ fn fill(pack: Res<Pack>, here: Here, bars: Query<Entity, With<Hotbar>>, mut comm
     for bar in &bars {
         commands.entity(bar).despawn_children();
         let slots: Vec<_> = (0..SLOTS)
-            .map(|at| slot(at, tool(at), at == pack.bar.held))
+            .map(|at| slot(at, tool(at), (at == pack.bar.held, squared.drawn)))
             .collect();
         commands.entity(bar).with_children(|parent| {
             for one in slots {
@@ -135,8 +141,11 @@ fn show(
 
 /// Registers the hotbar, its number keys and the held tool.
 pub(crate) fn plugin(app: &mut App) {
-    let drawn = resource_changed::<Pack>.or_else(any_match_filter::<Added<Hotbar>>);
-    app.add_systems(OnEnter(Screen::Gameplay), spawn)
+    let drawn = resource_changed::<Pack>
+        .or_else(resource_changed::<Squared>)
+        .or_else(any_match_filter::<Added<Hotbar>>);
+    app.init_resource::<Squared>()
+        .add_systems(OnEnter(Screen::Gameplay), spawn)
         .add_systems(
             Update,
             (

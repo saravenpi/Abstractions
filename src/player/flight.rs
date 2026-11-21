@@ -79,7 +79,7 @@ pub(super) fn touching(mode: Mode, floor: Option<Ground>) -> bool {
 pub(super) fn input(motion: &Motion, intent: &Intent, air: &Air, on: (bool, bool)) -> GearInput {
     GearInput {
         deploy: motion.wings,
-        boost: motion.boots || (motion.wings && intent.sprint),
+        boost: motion.boots,
         pitch: -intent.forward,
         roll: intent.right,
         yaw: intent.yaw,

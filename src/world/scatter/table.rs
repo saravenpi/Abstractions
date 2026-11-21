@@ -11,15 +11,8 @@ const ROCKY: &[(Plant, f32)] = &[(Rock, 0.12)];
 /// Ice-grey stones on snow.
 const SNOWY: &[(Plant, f32)] = &[(IceRock, 0.06)];
 
-/// Kelp forests, boulders and rare sunken things on the deep sea floor.
-const DEEP: &[(Plant, f32)] = &[
-    (Kelp, 0.25),
-    (Boulder, 0.012),
-    (Boat, 0.0002),
-    (Anchor, 0.0003),
-    (Amphora, 0.0005),
-    (Chest, 0.0002),
-];
+/// Kelp forests and boulders on the deep sea floor.
+const DEEP: &[(Plant, f32)] = &[(Kelp, 0.25), (Boulder, 0.012)];
 
 /// Seagrass, shells, starfish, smooth rocks and driftwood on the pale shelf.
 const SHALLOWS: &[(Plant, f32)] = &[

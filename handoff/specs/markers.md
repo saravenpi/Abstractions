@@ -1,6 +1,6 @@
 # Markers over the world: the rules, their numbers and their sources
 
-Written 2026-11-21 by `markers`. Code: `src/menus/hud/onscreen/` (`rule.rs`, `zones.rs`, `overlap.rs`, `place.rs`, numbers in `tune.rs`), `home::Base::home`.
+Written 2026-11-21 by `markers`. Code: `src/menus/hud/onscreen/` (`rule.rs`, `zones.rs`, `overlap.rs`, `place.rs`, numbers in `tune.rs`), `src/menus/hud/compass/horizon.rs` (the planet between), `home::Base::home`.
 
 Owner request: the home marker marks the container house, and a marker stops showing when we are close to what it marks.
 
@@ -33,6 +33,7 @@ A marker answers "where is it". Once the thing is large in view it answers that 
 | 13 | Far, a pin nobody follows has no marker over the world | On foot and swimming 1 km, gliding 5 km, in the ship (landed or flying) 15 km. Whole under the limit, fades over the next quarter (1 to 1.25 km on foot), gone past it. Once gone it comes back only a fifth nearer: whole again under 833 m, fading from 1042 m. Not picked into the pool past the band, so it takes no slot. Exempt, at any distance: the course, the followed pin, friends, home, the ship | About two minutes of travel: a sprint of 8.5 m/s (`player/walk.rs`), a glide of about 45 m/s, the ship at 140 m/s 400 m over the ground (`ship/cruise.rs`). Past that the pin is noise over the world; the compass, the minimap and the map still show it. What the player follows is the point of following it, and friends, home and the ship are one each | A far limit beside the near one: [1]. Show only what is needed now: [21] [22]. Too many marks: [23]. The numbers are this game's speeds |
 | 14 | The compass says how far, not what | Every compass icon has its distance on one line under the bar's rule, short (`ui::units::distance_short`: "340 m", "1.2 km", "3.2 M km"), 16 px, `TEXT_2`, faded with its icon. No name. The bar grows once by that line: 32 + 24 = 56 px (`compass::HEIGHT`), the rule and the middle tick stay under the row of icons | Owner request. Distance is the one reading the compass adds to a bearing; the name is on the marker over the world and on the map. A secondary reading takes the secondary tone and the smallest size | [3] [9] |
 | 15 | Two compass icons that meet: the first in front, the other dimmed behind | Icons whose centres are under 32 px apart (`space::BASE`, the 16 px icon with 8 px each side) meet. The one that ranks first (rule 10), then the nearer, is opaque and drawn last, so in front. The other is at 40 % of its opacity (`space::BEHIND`), its distance dimmed with it. A distance that would print over one already said is left out (width: characters x 16 x 0.6 + 8 px). No mark moves off its bearing. Friends past five fold into the nearest one with "+N" | The compass is the bearing instrument: a mark pushed aside points the wrong way. Dimming keeps both marks at their true bearing and says which one matters | Owner request. Same order as [4] [13] |
+| 16 | Home is found from anywhere over its planet, and a marker the planet hides is drawn hollow, not hidden | Home has a place on the compass and over the world on its planet, in its air and in orbit while the world streams that planet. The planet hides a place when the line of sight passes through its sea-level sphere (100 m under the place and under the eye, so the ground a place stands on never hides it): the icon is drawn at half its opacity at its true place and its words end in ", behind the planet". Home's words give the distance over the ground: along the ground to the point under it, with the height between on top | After a warp the ship can drop out on the far side of the home planet; the owner "did not know where the house was any more". Elite Dangerous and Star Citizen keep a target behind a planet on screen in a hollow or dashed style. A sphere test costs nothing next to a ray cast | Owner request, 0.11 (`orbital-cruise`) |
 
 ## What shows where
 
@@ -42,7 +43,7 @@ A marker answers "where is it". Once the thing is large in view it answers that 
 | --- | --- |
 | On foot, swimming, gliding | Course, the followed pin, other pins within 1 km (5 km gliding), friends, home, ship |
 | Ship landed or in the air | Course, the followed pin, other pins within 15 km, friends, home. The ship itself has no marker while seated |
-| Orbit, open space, between stars | Course (a body, a star or a galaxy) and friends. No pins. Home and the ship have a place only on the planet the player stands on |
+| Orbit, open space, between stars | Course (a body, a star or a galaxy) and friends. No pins. Home has a place over its planet while the world streams it (rule 16); the ship only on the planet the player stands on |
 | Warp | The course only |
 | Map, menus | Nothing |
 
@@ -51,7 +52,7 @@ Herds have no marker over the world: the animals are their own sign. They stay o
 ## Decisions
 
 - Near means reduced, then hidden. Hidden alone would pop the icon away at 60 m while the container is still small. Reduced alone would not answer "do not show them anymore".
-- No occlusion test. A marker shows through a hill, as in every game read for this. A ray cast per marker per frame buys little.
+- No occlusion test against the ground. A marker shows through a hill, as in every game read for this. A ray cast per marker per frame buys little. The planet itself is the one thing that hides a place (rule 16), by a sphere test, and the marker stays, drawn hollow.
 - Two icon sizes, 24 and 16 px, no continuous scaling: Bevy builds a font atlas per size.
 - No "always show" switch and no scan key. The compass and the minimap already show every mark at any distance. A scan or focus mode [13] [18] [19] is a feature of its own.
 - Colour is never the only sign: every kind has its own icon shape [20].

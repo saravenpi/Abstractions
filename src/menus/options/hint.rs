@@ -8,7 +8,7 @@ use super::actions::SettingsAction;
 use super::binds::conflicts;
 use super::describe::{COSTS, describe, describe_general};
 use super::field::Field;
-use super::format::key_name;
+use super::names::key_label;
 use super::{SettingsTab, Tab};
 use crate::menus::Menu;
 use crate::settings::{Keymap, Persistent, Settings, render_step};
@@ -58,7 +58,7 @@ pub fn conflict_line(keys: &Keymap) -> String {
     };
     format!(
         "{} is bound to both \"{}\" and \"{}\"{more}",
-        key_name(first.key(keys)),
+        key_label(first.key(keys)),
         first.label(),
         second.label()
     )

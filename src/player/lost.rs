@@ -94,7 +94,8 @@ fn strand(commands: &mut Commands, entity: Entity, left: Option<Stranded>) {
 }
 
 /// Puts every lost player back: once, at rest, the flight gear folded, on the collider under the
-/// place [`rescue`] gives, or held there until that collider loads. The camera of the local body
+/// place [`rescue`] gives, or held there until that collider loads. A place that is not a finite
+/// position is never written: it would break the physics of the body. The camera of the local body
 /// cuts when it is moved there and when it stands.
 pub(super) fn recover(
     (anchor, terrain, time): Ground,
@@ -105,8 +106,8 @@ pub(super) fn recover(
 ) {
     for (entity, id, mut transform, mut motion, mut gear, home, stranded) in &mut player {
         let held = stranded.map(|held| anchor.to_render(held.0));
-        let Some(back) = held.or_else(|| rescue(&anchor, &terrain, transform.translation, home.0))
-        else {
+        let lost = held.or_else(|| rescue(&anchor, &terrain, transform.translation, home.0));
+        let Some(back) = lost.filter(|back| back.is_finite()) else {
             continue;
         };
         if stranded.is_none() {

@@ -22,7 +22,7 @@ use crate::life::herd::Herd;
 use crate::life::hunt::Hunt;
 use crate::player::Player;
 use crate::space::{Anchor, Clock, Placed};
-use crate::world::Terrain;
+use crate::world::{Chunks, Terrain};
 
 /// What the walk reads and writes.
 #[derive(SystemParam)]
@@ -30,6 +30,7 @@ pub struct Walk<'w, 's> {
     clock: Res<'w, Clock>,
     time: Res<'w, Time>,
     terrain: Res<'w, Terrain>,
+    chunks: Option<Res<'w, Chunks>>,
     anchor: Res<'w, Anchor>,
     spec: Res<'w, Spec>,
     herds: ResMut<'w, Herds>,
@@ -53,6 +54,7 @@ pub struct Scratch {
 /// What every animal reads this frame.
 struct Ctx<'a> {
     terrain: &'a Terrain,
+    chunks: Option<&'a Chunks>,
     time: f64,
     dt: f32,
     robot: DVec3,
@@ -69,9 +71,6 @@ pub fn walk(mut w: Walk, mut scratch: Local<Scratch>) {
         return;
     };
     let robot = w.anchor.to_frame(robot.translation);
-    if w.terrain.is_changed() {
-        scratch.heights.clear();
-    }
     let land = Land {
         globe: &globe,
         life,
@@ -80,6 +79,7 @@ pub fn walk(mut w: Walk, mut scratch: Local<Scratch>) {
     gather(&mut scratch, &mut w, land);
     let ctx = Ctx {
         terrain: &w.terrain,
+        chunks: w.chunks.as_deref(),
         time: w.clock.seconds,
         dt: w.time.delta_secs().min(MAX_STEP),
         robot,
@@ -94,8 +94,13 @@ pub fn walk(mut w: Walk, mut scratch: Local<Scratch>) {
     }
 }
 
-/// Fills the scratch with this frame's herds of the drawn animals.
+/// Readies the scratch for this frame: fills it with the herds of the drawn animals, forgets which grid
+/// each chunk is drawn on, and every height read when the terrain changed.
 fn gather(scratch: &mut Scratch, w: &mut Walk, land: Land) {
+    if w.terrain.is_changed() {
+        scratch.heights.clear();
+    }
+    scratch.heights.regrid();
     let time = w.clock.seconds;
     scratch.herds.clear();
     for (beast, _) in &w.beasts {
@@ -179,9 +184,10 @@ fn step(
     let sensed = beast.wits.focus.map(|f| (f.at, beast.wits.stance));
     let temper = beast.temper;
     beast.mood.feel(&temper, sensed, ctx.dt);
-    let spot = beast.spot;
-    let heights = &ctx.scratch.heights;
-    let ground = |p: Vec2| spot.ground_by(ctx.terrain, p, |x, z| heights.mesh(ctx.terrain, x, z));
+    let (spot, heights) = (beast.spot, &ctx.scratch.heights);
+    let slant = spot.slant(ctx.terrain, beast.motion.root.at.xz());
+    let drawn = |x: f32, z: f32| heights.drawn(ctx.terrain, ctx.chunks, x, z);
+    let ground = |p: Vec2| spot.ground_near(ctx.terrain, (&slant, p), drawn);
     let pace = pace(ctx, beast, species);
     let drive = drive(
         &beast.motion,

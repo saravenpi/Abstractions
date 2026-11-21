@@ -10,7 +10,7 @@ use crate::life::body::soup;
 use crate::life::{Habitat, Pattern, Plan, Reaction, Tissue, TissueKind};
 
 /// A plain hide, whose look does not change the shape of a part.
-const HIDE: Tissue = Tissue {
+pub(super) const HIDE: Tissue = Tissue {
     kind: TissueKind::Hide,
     hardness: 2.0,
     toughness: 0.5,

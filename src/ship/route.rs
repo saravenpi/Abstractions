@@ -32,6 +32,8 @@ mod spool_tests;
 mod steer;
 #[cfg(test)]
 mod stop_tests;
+#[cfg(test)]
+mod tier_tests;
 mod tune;
 
 #[cfg(test)]

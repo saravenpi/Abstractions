@@ -1,10 +1,12 @@
 //! The stars in space, with the interface hidden: the chase view with the star behind the camera
 //! and to the side, the cockpit looking away from the star, low orbit over the day side and over
-//! the night side, then the chase view with the star in the middle of the frame and at its edge.
-//! Every shot must show the star field, and around the star a smooth glow that fades into it with
-//! no dark ring. Selected with `PROBE_STAGES=stars`.
+//! the night side, then the chase view with the star in the middle of the frame and at its edge,
+//! and last with the star in front of the brightest stretch of the band of the galaxy. Every shot
+//! must show the star field, and around the star a smooth glow that fades into it with no dark
+//! ring, and that the band shows through without a notch. Selected with `PROBE_STAGES=stars`.
 
 use abstractions::screens::HideHud;
+use abstractions::space::Clock;
 
 use super::*;
 
@@ -19,20 +21,21 @@ const ADAPTED: u32 = 62;
 const ADAPT: f64 = 1.0;
 
 /// The views: the name of the shot and whether the camera is outside the ship.
-const VIEWS: [(&str, bool); 6] = [
+const VIEWS: [(&str, bool); 7] = [
     ("S1-chase-space", true),
     ("S2-cockpit-space", false),
     ("S3-orbit-day", true),
     ("S4-orbit-night", true),
     ("S5-star-centre", true),
     ("S6-star-edge", true),
+    ("S7-star-on-band", true),
 ];
 
 /// Returns where the view `index` puts the ship for the star along the unit planet direction
 /// `light`: the planet direction under it, its height over the sea and where its nose points,
 /// as `hover` takes them. The views in space stand two radii up beside the planet, the orbits
 /// at 1.6 times the height of the air, the star 53 degrees up on the day side, 53 degrees down
-/// on the night side. The last two look at the star, then 40 degrees to its side.
+/// on the night side. The last three look at the star, 40 degrees to its side, then at it again.
 fn pose(world: &World, index: usize, light: DVec3) -> (DVec3, f64, DVec3) {
     let radius = world.resource::<Planet>().globe.radius();
     let body = world.resource::<Location>().body;
@@ -44,9 +47,34 @@ fn pose(world: &World, index: usize, light: DVec3) -> (DVec3, f64, DVec3) {
         1 => (across, radius * 2.0, -light),
         2 => ((light * 0.8 + across * 0.6).normalize(), air * 1.6, -light),
         3 => ((-light * 0.8 + across * 0.6).normalize(), air * 1.6, side),
-        4 => (across, radius * 2.0, light),
-        _ => (across, radius * 2.0, light * 0.77 + side * 0.64),
+        5 => (across, radius * 2.0, light * 0.77 + side * 0.64),
+        _ => (across, radius * 2.0, light),
     }
+}
+
+/// Moves the clock, within one year of the home planet, to when the star stands toward the
+/// centre of the galaxy seen from the planet: the orbits and the disc of the galaxy share their
+/// plane, so the star is always on the band, and there in front of its brightest stretch.
+fn toward_core(world: &mut World) {
+    let body = world.resource::<Location>().body;
+    let universe = world.resource::<Universe>();
+    let (spec, centre) = (universe.planet(body), -universe.system(body.star).star.pos);
+    let now = world.resource::<Clock>().seconds;
+    let year = spec.orbit_seconds;
+    let facing = |t: f64| {
+        (-universe.planet_position(body, t))
+            .normalize()
+            .dot(centre.normalize())
+    };
+    let best = (0..720)
+        .map(|k| now + year * f64::from(k) / 720.0)
+        .max_by(|a, b| facing(*a).total_cmp(&facing(*b)))
+        .unwrap_or(now);
+    eprintln!(
+        "PROBE star toward the galaxy centre: clock moved {:.0} s",
+        best - now
+    );
+    world.resource_mut::<Clock>().seconds = best;
 }
 
 /// Seats the pilot, hides the interface and holds the ship in each of the [`VIEWS`] in turn,
@@ -64,6 +92,9 @@ pub fn space_stars(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
     };
     match at {
         1 => {
+            if index == 6 {
+                toward_core(world);
+            }
             lens(world, 60);
             view(
                 world,

@@ -22,6 +22,8 @@ struct Clouds {
 
 const LUMA: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
 const EDGE_PIXELS: f32 = 1.5;
+const SHADE_SKY: f32 = 0.45;
+const SHADE_LEVEL: f32 = 0.62;
 
 fn strongest(v: vec3<f32>) -> vec3<f32> {
     return v / max(max(v.x, max(v.y, v.z)), 0.001);
@@ -29,8 +31,8 @@ fn strongest(v: vec3<f32>) -> vec3<f32> {
 
 fn shaded(base: vec3<f32>, cloud: Puff, above: bool, ambient: vec3<f32>) -> vec3<f32> {
     let body = select(mix(1.0, 0.72, cloud.density), mix(0.82, 1.05, cloud.density), above);
-    let sky = strongest(ambient);
-    let dark = sky * (dot(base, LUMA) * 0.55 / max(dot(sky, LUMA), 0.01));
+    let sky = mix(vec3<f32>(1.0), strongest(ambient), SHADE_SKY);
+    let dark = sky * (dot(base, LUMA) * SHADE_LEVEL / max(dot(sky, LUMA), 0.01));
     return mix(dark, base * 1.05, cloud.relief) * body;
 }
 

@@ -1,5 +1,6 @@
-//! Rule tests: nothing in the interface code is rounded, the fades ease out and stay in range,
-//! the alignment grid and the section gaps hold, and one concept has one icon. The rules that
+//! Rule tests: nothing in the interface code is rounded, only the HUD shadow is ever cast, the
+//! fades ease out and stay in range, the alignment grid and the section gaps hold, and one
+//! concept has one icon. The rules that
 //! need a built page are held in `menus/tests/rules.rs`.
 
 use std::path::{Path, PathBuf};
@@ -53,6 +54,36 @@ fn no_corner_is_rounded() {
             let rounded = code.contains("BorderRadius") && !code.contains("ZERO");
             let rounded = rounded && !code.trim_start().starts_with("use ");
             assert!(!rounded, "{name}:{}: {line}", at + 1);
+        }
+    }
+}
+
+/// Returns whether the file at `name`, relative to `src`, is a test or a test rig.
+fn is_test(name: &str) -> bool {
+    name.contains("test") || name.ends_with("rig.rs") || name.ends_with("stage.rs")
+}
+
+/// No code of the game casts a shadow but `ui/shade.rs`: a `TextShadow` is only ever the HUD
+/// shadow it gives the texts over the world, and nothing casts a `BoxShadow`.
+#[test]
+fn only_the_hud_shadow_is_cast() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut files = Vec::new();
+    sources(&root, &mut files);
+    for file in files {
+        let name = file
+            .strip_prefix(&root)
+            .unwrap()
+            .to_string_lossy()
+            .replace('\\', "/");
+        if name == "ui/shade.rs" || is_test(&name) {
+            continue;
+        }
+        let text = std::fs::read_to_string(&file).unwrap();
+        for (at, line) in text.lines().enumerate() {
+            let code = line.split("//").next().unwrap_or_default();
+            let cast = code.contains("TextShadow") || code.contains("BoxShadow");
+            assert!(!cast, "{name}:{}: {line}", at + 1);
         }
     }
 }

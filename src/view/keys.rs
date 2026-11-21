@@ -1,4 +1,4 @@
-//! The hand on the camera: the mouse, the wheel and the view key.
+//! The hand on the camera: the mouse, the wheel, the view key and the recentre key.
 
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::prelude::*;
@@ -50,5 +50,18 @@ pub(super) fn toggle(
 ) {
     if keys.just_pressed(settings.controls.keys.view) {
         prefs.toggle(target.kind);
+    }
+}
+
+/// Asks the rig to bring the view back to the nose of the ship when the recentre key is pressed.
+/// It runs after [`read_look`], which writes the whole of [`Look`] anew every frame. On foot the
+/// rig leaves the request alone.
+pub(super) fn recentre(
+    keys: Res<ButtonInput<KeyCode>>,
+    settings: Res<Persistent<Settings>>,
+    mut look: ResMut<Look>,
+) {
+    if keys.just_pressed(settings.controls.keys.recentre) {
+        look.recentre = true;
     }
 }

@@ -13,9 +13,14 @@
 //! of clicks (<https://en.wikipedia.org/wiki/Stridulation>). Soft bodies only push fluid through
 //! themselves, a gurgle. A call made in water is muffled where a listener stands in air: the
 //! surface reflects almost all of it (<https://en.wikipedia.org/wiki/Acoustic_impedance>).
+//!
+//! The formants of a call are the resonances of the tract: a tube of length `L` closed at the source
+//! rings at odd multiples of `c / 4L`, a spacing of `c / 2L` (Fitch 1997, above). The tract runs from
+//! the voice box to the mouth: a share of the body, plus the neck when there is one.
 
 use crate::life::body::Locomotion;
 use crate::life::{Guild, Habitat, Plan, Rung, Species};
+use crate::universe::hash::child;
 
 /// Frequency in hertz of the call of a one kilogram animal.
 const HZ_PER_KG: f32 = 1000.0;
@@ -38,6 +43,18 @@ const NECK: f32 = 0.85;
 
 /// Kilograms from which a stridulator rasps rather than clicks.
 const RASP_MASS: f32 = 2.0;
+
+/// Speed of sound in the warm, wet air of a vocal tract, in metres per second.
+const TRACT_SOUND: f32 = 350.0;
+
+/// Share of the length of a body its vocal tract takes, without the neck: about 0.15 in dogs and deer.
+const TRACT_SHARE: f32 = 0.15;
+
+/// Lowest and highest spacing of the formants in hertz.
+const FORMANT_SPAN: (f32, f32) = (60.0, 8000.0);
+
+/// Salt of the voice print of a species.
+const PRINT: u64 = 0x0071_CE5E;
 
 /// How a call sounds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -96,6 +113,10 @@ pub struct Voice {
     pub notes: u8,
     /// True when it calls from under water, heard muffled from the air.
     pub muffled: bool,
+    /// Spacing of the formants in hertz, `c / 2L` for a tract of length `L`: lower for longer tracts.
+    pub formant: f32,
+    /// The voice print of the species: bits that pick its vowel, its vibrato and its melody.
+    pub print: u8,
 }
 
 /// Returns how `species` on a planet whose life reached `rung` makes its sounds.
@@ -140,6 +161,23 @@ fn tract(species: &Species, organ: Organ) -> f32 {
     shape * if neck { NECK } else { 1.0 }
 }
 
+/// Returns the spacing in hertz of the formants of `species`: its tract is a share of its length
+/// plus its neck.
+pub fn formant(species: &Species) -> f32 {
+    let neck: f32 = species
+        .body
+        .neck
+        .as_ref()
+        .map_or(0.0, |neck| neck.lengths.iter().sum());
+    let tract = (TRACT_SHARE * species.body.length + neck).max(1e-3);
+    (TRACT_SOUND / (2.0 * tract)).clamp(FORMANT_SPAN.0, FORMANT_SPAN.1)
+}
+
+/// Returns the voice print of `species`: the same for every player, different for every species.
+fn print(species: &Species) -> u8 {
+    (child(species.id.planet ^ PRINT, u64::from(species.id.index)) >> 24) as u8
+}
+
 /// Returns the voice of `species` on a planet whose life reached `rung`: lower for bigger animals,
 /// sounding as its body makes sound.
 pub fn voice(species: &Species, rung: Rung) -> Voice {
@@ -160,5 +198,7 @@ pub fn voice(species: &Species, rung: Rung) -> Voice {
         timbre,
         notes,
         muffled,
+        formant: formant(species),
+        print: print(species),
     }
 }

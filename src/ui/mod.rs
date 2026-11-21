@@ -20,12 +20,19 @@ mod keys;
 #[cfg(test)]
 mod keys_tests;
 mod list;
+#[cfg(test)]
+mod measure_rig;
+mod meter;
 pub mod motion;
 mod page;
+mod reveal;
 #[cfg(test)]
 mod rules_tests;
 mod scroll;
 mod section;
+mod shade;
+#[cfg(test)]
+mod shade_tests;
 pub mod sign;
 mod sound;
 mod state;
@@ -36,6 +43,7 @@ mod tests_panel;
 pub mod theme;
 #[cfg(test)]
 mod theme_tests;
+mod tile;
 mod tooltip;
 pub mod units;
 mod widgets;
@@ -50,20 +58,27 @@ pub use keys::{
     HINT_GAP, HintLabel, KEY_GAP, KeyName, Legend, footer, hints, key_cap, key_hint, legend,
 };
 pub use list::Window;
+#[cfg(test)]
+pub use measure_rig::text_width;
+pub use meter::{METER, STAT_LABEL, STAT_METER, Stat, meter, stat};
 pub use page::{
     PAGE_FOOT, PAGE_HEAD, Page, Zone, page, page_body, page_foot, page_frame, page_head,
     page_status, page_title,
 };
+pub use reveal::Reveal;
 pub use scroll::{BAR, BAR_GAP, ScrollArea, Scroller, Thumb, scroll_area, scroller, thumb};
 pub use section::{
     Section, SectionTitle, Sections, groups, rows, section, section_title, sections,
 };
+pub use shade::hud_shadow;
+pub use shade::{OverWorld, Unshaded, reach};
 pub use sound::Cancels;
 pub use state::{EmptyState, NoticeRow, empty_state, notice_row};
 pub use style::{Filled, Look, Selected, Tone};
 pub use table::{cell, head, row_with, table_head, table_row, value_cell};
-pub use tooltip::Tip;
-pub use widgets::{Overlay, caps, column, panel, root, root_on, rule, text};
+pub use tile::{TallRow, Tile, card, line, row_tall};
+pub use tooltip::{Tip, TipText};
+pub use widgets::{Overlay, caps, column, panel, root, root_on, rule, text, yielding};
 
 use bevy::input_focus::InputFocus;
 use bevy::prelude::*;
@@ -91,7 +106,7 @@ fn overlay(app: &mut App) {
 /// Registers the UI camera, the fonts, the backdrop, the widget looks and the interface sounds.
 pub(super) fn plugin(app: &mut App) {
     overlay(app);
-    app.add_plugins(backdrop::plugin)
+    app.add_plugins((backdrop::plugin, shade::plugin))
         .add_observer(sound::activated)
         .add_systems(
             Update,
@@ -108,6 +123,7 @@ pub(super) fn plugin(app: &mut App) {
                 sound::escaped,
                 scroll::wheel,
                 scroll::bars.run_if(any_with_component::<scroll::ScrollArea>),
+                reveal::keep_in_view.run_if(any_with_component::<reveal::Reveal>),
                 (sound::moved, scroll::follow_focus).run_if(resource_changed::<InputFocus>),
             ),
         );

@@ -133,3 +133,14 @@ fn a_reloaded_companion_does_not_celebrate_again() {
         planet(home.index + 2)
     ));
 }
+
+/// A trailing hand stays close to the body at any speed: never more than 12 cm off its surface.
+#[test]
+fn hands_stay_close_to_the_body() {
+    for speed in [0.0, 2.0, 8.0, 60.0] {
+        let lag = trail(Vec3::new(speed, 0.0, -speed));
+        let hand = hand_pose(1.0, lag, &Pose::default(), 0.0).translation;
+        let surface = super::tune::HALF[0];
+        assert!(hand.length() - surface < 0.12, "{speed} m/s: {hand}");
+    }
+}

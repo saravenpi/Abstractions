@@ -8,6 +8,7 @@ use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::po
 
 use super::budget::Spend;
 use super::build::{NodeData, coarse};
+use super::horizon::Bounds;
 use super::spawn::Spawner;
 use super::stretch::Stretch;
 use crate::world::globe::ChunkId;
@@ -23,14 +24,21 @@ const NODE_BUDGET: usize = 8;
 pub struct Node {
     /// The mesh entity.
     pub entity: Entity,
-    /// Whether it is drawn now.
+    /// Whether it is on the draw cut.
     pub visible: bool,
+    /// Where it lies on the planet.
+    pub bounds: Bounds,
+    /// Whether it lies wholly below the horizon of the focus, and is hidden even on the cut.
+    pub beyond: bool,
+    /// Whether it is too far from the focus to cast or receive a shadow.
+    pub shadowless: bool,
 }
 
 impl Node {
-    /// Applies the visibility of the node to its entity.
+    /// Applies the visibility of the node to its entity: drawn when it is on the cut and above
+    /// the horizon.
     pub fn show(&self, commands: &mut Commands) {
-        let visibility = match self.visible {
+        let visibility = match self.visible && !self.beyond {
             true => Visibility::Inherited,
             false => Visibility::Hidden,
         };

@@ -76,6 +76,7 @@ fn extremes() -> Vec<Pose> {
         let whole = Pose {
             core: CORE_LIMITS.map(pick),
             sides: [LIMB_LIMITS.map(pick); 2],
+            ..Pose::default()
         };
         all.push(whole);
         all.extend((0..CORES + LIMBS).map(|joint| alone(&whole, joint)));

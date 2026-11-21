@@ -32,6 +32,7 @@ mod sights;
 mod soar;
 mod solid;
 mod spawn;
+mod speech;
 mod spot;
 mod spring;
 mod tail;
@@ -74,6 +75,8 @@ mod tests_place;
 mod tests_soar;
 #[cfg(test)]
 mod tests_solid;
+#[cfg(test)]
+mod tests_speech;
 #[cfg(test)]
 mod tests_tour;
 #[cfg(test)]

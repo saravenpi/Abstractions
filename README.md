@@ -12,9 +12,9 @@ On foot:
 | --- | --- |
 | W A S D | Move |
 | Mouse | Look |
-| Space | Jump, or swim up. Pressed again in the air and held: boot boosters, which slow a fall |
-| Shift | Sprint. Held with the wingsuit spread: boot boosters, which make you fly |
-| R | Spread or fold the wingsuit in the air. Folded, you fall belly down in a skydiver arch |
+| Space | Jump, or swim up. Pressed again in the air: spread the wingsuit, and once more to fold it. Off a cliff or in a fall, one press is enough |
+| Shift | Sprint. Pressed in the air: boot boosters, which slow a fall with the wingsuit folded and make you fly with it spread. A sprint held over an edge does not fire them: press Shift again |
+| R | Spread or fold the wingsuit in the air, as Space pressed again does. Folded, you fall belly down in a skydiver arch |
 | W S in the wingsuit | Dive and climb. Hold S to loop with the boosters on. A plain glide is too slow and stalls out of the climb. Let go and the wings fly on where you pointed them, easing back to the glide over a few seconds. Rolled on edge, S turns you round in a wide drift |
 | A D in the wingsuit | Roll. Hold to roll over and on round. Let go and the wings level |
 | Q E in the wingsuit | Turn |
@@ -25,9 +25,10 @@ On foot:
 | N | Minimap range, then off |
 | B | Drop a pin where you stand, or remove the pin within 10 m. On the map, a pin under the pointer. You keep up to eight |
 | K | Field guide: the species of the planet underfoot |
-| I | Pack: what you carry. The robot wakes with a stone spear in slot 1 and a stone knife in slot 2. Tab opens the workshop, where you make a tool for an intent. X puts the chosen tool or stack down on the ground, Shift X half the stack |
+| I | Pack and workshop: what you carry on the left, the tools you can make for an intent on the right. The robot wakes with a stone spear in slot 1 and a stone knife in slot 2, empty-handed. Tab moves between the two. X puts the chosen tool or stack down on the ground, Shift X half the stack |
 | 1 to 6 | Hold the tool in that hotbar slot; the key of the held slot stows or draws it |
-| Left mouse, right mouse | Swing or throw the held tool, guard |
+| Left mouse, right mouse | Swing the held tool or stab with a spear, guard |
+| T held | Draw the spear in hand back; let go to throw it. A thrown spear is marked on the compass, the map and over the world until you pick it up |
 | H | Break a piece off the rock you look at |
 | U | Patch the worst hurt part of the robot with what you carry. Near the base every part mends itself |
 | F | Board the ship. Cut a part off the carcass you look at, pull out a stuck spear, or take the tool or stone you look at off the ground |
@@ -44,16 +45,18 @@ In the ship:
 | Q E | Turn left, turn right |
 | Shift, Ctrl | Throttle up, throttle down. Shift held at full throttle boosts. Ctrl held at idle brakes in space |
 | Space, C | Vertical thrusters up and down |
-| Mouse | Look around. The view comes back to the nose by itself |
+| Mouse | Look around. With "Camera auto-follow" on, the view comes back to the nose by itself; off, it stays where you leave it |
+| R | Bring the view back to the nose |
 | X | Cut the throttle |
 | Z | Flight assist on or off |
-| J | Warp drive, away from a planet's gravity |
+| J | Warp drive, away from a planet's gravity. Above the air of a planet, where the warp drive is locked, it starts and stops the orbital cruise: a fast flight around the planet at the height you hold. Shift and Ctrl set its speed, Q and E turn, Space and C change the height |
+| H | Fly home. Above the home planet the ship cruises to the base, glides down into the air and hands back to you a few kilometres short of it, for you to land. Pitch up or press J to take the glide back. In the air far from the base it climbs out first; from farther away it sets the course home and cruises on arrival |
 | M or Tab | Map. Wheel to zoom, drag to pan, double click to go in, Back or Backspace to go out. A trackpad scroll and a pinch also zoom; W A S D, and the arrows with the pointer on the map, also pan. 0 recentres. Click selects. The card of the selected place gives its chance of life, or what lives there once you have landed, and its Go button sets the course there and engages the autopilot. Enter also presses Go, and right click opens a menu, on the map or on a search result, pin or player in the side panel. The path under the Back button jumps to any level above. Esc lets go of the selection, then closes the map |
 | G | Go: engage the autopilot on the course. The line at the bottom of the screen says when it cannot, and why |
 | V | First or third person |
 | F | Leave the ship |
 
-The compass at the top of the screen shows north, the home base, the ship, your friends, your pins and the herds you have seen ahead of you, as icons on one row. Names and distances are on the map and on the markers over the world. They fade toward its ends and hide behind you. Pins, the course, home, your ship and your friends also show over the world at their real place, and slide to the screen edge with an arrow when out of view. A marker shrinks, then hides, when you are close to what it marks. The HUD shows only what means something where you are: on foot, in the ship, in orbit, in open space or in warp.
+The compass at the top of the screen shows north, the home base, the ship, your friends, your pins and the herds you have seen ahead of you, as icons on one row. Names and distances are on the map and on the markers over the world. They fade toward its ends and hide behind you. Pins, the course, home, your ship and your friends also show over the world at their real place, and slide to the screen edge with an arrow when out of view. A marker shrinks, then hides, when you are close to what it marks. Home shows from orbit too, with its distance over the ground; when the planet stands between you and the base its marker stays where the base is, faint, and says so. The HUD shows only what means something where you are: on foot, in the ship, in orbit, in open space or in warp.
 
 The map shows each planet flat and in colour, but only the ground someone has explored. On a server, ground one player uncovers is uncovered for everyone. Right click a place on the map to drop a pin there, copy its coordinates or centre the map on it. Right click a planet or a pin to set the course to it or focus the map on it.
 
@@ -216,7 +219,7 @@ A missing or broken file is replaced by the defaults.
 - `src/life`, `src/fauna`: whether a planet lives, its species and food web, and the herds, hunts and calls drawn around you.
 - `src/craft`, `src/condition`: the pack, tools and the workshop, and the health of each part of the robot.
 - `src/space`: frames of reference, the floating origin and the clock.
-- `src/world`: planets as spheres, terrain, chunk streaming, plants, structures and sea.
+- `src/world`: planets as spheres, terrain, chunk streaming, plants and sea.
 - `src/home`: the base on the home planet.
 - `src/player`, `src/avatar`, `src/gear`, `src/view`: movement, the robot body, the wingsuit and boots, the camera.
 - `src/ship`, `src/computer`: the ship, its autopilot, its course and the charts.

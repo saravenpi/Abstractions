@@ -147,7 +147,9 @@ pub use orbits::satellites;
 pub use pointer::{DOUBLE_CLICK, MapView, REACH, RESET_KEY, SLOP, ZOOM_STEP, aimed, selected};
 pub use reveal::{HOME_NEIGHBOURS, REVEAL_CELLS, REVEAL_LY};
 pub use rim::{APART, home_row, rank, rim, spread};
-pub use route::{Block, Cancel, Destination, Engage, HOME_LABEL, Keys, RouteStatus, Target};
+pub use route::{
+    Block, Cancel, Destination, Engage, HOME_LABEL, Homeward, Keys, RouteStatus, Target,
+};
 pub use rows::{Line, View};
 pub use scale::{ship_dot, system_point};
 pub use season::{climate_line, direction};

@@ -1,200 +1,72 @@
-//! Writes the open screen from the bench and the pack: the tab names, the count line, the drawn
-//! rows of the list, the card and the key hints.
+//! Draws the open screen from the bench and the pack: the load and the line on the intent, then
+//! every holder again, from the one [`Scene`] of this frame.
 
 use bevy::prelude::*;
 
-use super::bench::{Bench, Tab};
-use super::card::{Shown, make_card, pack_card};
-use super::glyph::{silhouette, wear_bar};
+use super::bench::{Bench, Pane};
+use super::click::Press;
 use super::here::Here;
-use super::layout::{BAR, NAME, SIGNATURE};
-use super::lines::{Line, arrange, lines};
-use super::offer::offer;
-use super::sheet::sheet;
-use super::view::{Facts, Hints, Rows, TabName, Tally};
-use crate::craft::matter::Treatment;
+use super::keys::{Bind, MAKE_BINDS, PACK_BINDS, moves};
+use super::scene::{Ground, Scene, scene};
+use super::view::{Holder, Words};
+use super::{cards, intent, rows, slots, tiles};
 use crate::craft::pack::{Burden, Pack};
-use crate::craft::wield::Held;
-use crate::fauna::guide::card::Card;
-use crate::fauna::guide::show::{clip, rows};
-use crate::ui::units::fixed;
-use crate::ui::{Selected, Tone, frame, label, text, theme};
+use crate::ui::{Icon, Tone, action, hints, legend, notice_row, text, theme};
 
-/// Returns the rows of the pack as the bench filters and orders them.
-pub fn arranged(bench: &Bench, pack: &Pack, here: &Here) -> Vec<Line> {
-    arrange(
-        lines(pack, &here.place(), here.life()),
-        &bench.filter,
-        bench.sort,
-    )
-}
-
-/// Returns one row of the list for `line`, marked when `chosen`.
-fn row(line: &Line, chosen: bool) -> impl Bundle {
-    let node = Node {
-        width: percent(100),
-        height: px(crate::fauna::guide::layout::ROW),
-        flex_shrink: 0.0,
-        align_items: AlignItems::Center,
-        column_gap: px(theme::GAP_S),
-        padding: UiRect::horizontal(px(theme::GAP_S)),
-        ..default()
-    };
-    let grow = Node {
-        flex_grow: 1.0,
-        ..default()
-    };
-    let small = |words: String| label(words, theme::FONT_SMALL, Tone::Muted);
-    let name = label(clip(&line.name, NAME), theme::FONT_BODY, Tone::Plain);
-    let sign = small(clip(&line.signature, SIGNATURE));
-    let mass = small(format!("{} kg", fixed(line.mass, 2)));
-    (
-        frame(),
-        Selected(chosen),
-        node,
-        children![
-            silhouette(line.shape),
-            (name, grow),
-            sign,
-            mass,
-            wear_bar(BAR, line.wear.unwrap_or(0.0))
-        ],
-    )
-}
-
-/// The texts of the header and the footer.
-type Texts<'w, 's> = Query<
-    'w,
-    's,
-    (
-        &'static mut Text,
-        &'static mut TextColor,
-        Option<&'static TabName>,
-    ),
-    Or<(With<TabName>, With<Tally>)>,
->;
-
-/// The columns of the list and of the card, and the key hints of each tab.
-type Columns<'w, 's> = (
-    Query<'w, 's, Entity, With<Rows>>,
-    Query<'w, 's, Entity, With<Facts>>,
-    Query<'w, 's, (&'static Hints, &'static mut Node)>,
-);
-
-/// Shows the key hints of the open tab and hides those of the other.
-fn keys(bench: &Bench, hints: &mut Query<(&Hints, &mut Node)>) {
-    for (Hints(tab), mut node) in hints.iter_mut() {
-        let display = [Display::None, Display::Flex][usize::from(*tab == bench.tab)];
-        if node.display != display {
-            node.display = display;
-        }
+/// Spawns the buttons of `binds` under `parent` when `shown`, the first in the accent when it
+/// makes a tool, then `note` when there is one.
+fn actions(parent: &mut ChildSpawnerCommands, binds: &[Bind], shown: bool, note: &str) {
+    for bind in binds.iter().filter(|_| shown) {
+        let tone = match bind.press {
+            Press::Make => Tone::Accent,
+            _ => Tone::Plain,
+        };
+        parent.spawn((bind.press, action(bind.icon, bind.label, bind.key, tone)));
+    }
+    if !note.is_empty() {
+        let words = text(note, theme::FONT_SMALL, theme::TEXT);
+        parent.spawn(notice_row(Icon::Info, (words, TextLayout::no_wrap())));
     }
 }
 
-/// Writes the tab names and the count line.
-fn heads(bench: &Bench, count: (usize, usize), burden: &Burden, texts: &mut Texts) {
-    let tally = format!(
-        "{} of {} entries{} - {} of {} kg{}",
-        count.0,
-        count.1,
-        bench.sort.label(),
-        fixed(burden.load, 1),
-        fixed(burden.capacity, 1),
-        match (bench.typing, bench.filter.is_empty()) {
-            (true, _) => format!(" - search: {}_", bench.filter),
-            (false, false) => format!(" - \"{}\"", bench.filter),
-            (false, true) => String::new(),
-        }
-    );
-    for (mut words, mut color, tab) in texts.iter_mut() {
-        match tab {
-            Some(tab) => {
-                let on = tab.0 == bench.tab;
-                color.set_if_neq(TextColor([theme::TEXT_2, theme::TEXT][usize::from(on)]));
-            }
-            None => words.0 = tally.clone(),
+/// Spawns what `holder` shows of `shown` under `parent`.
+fn fill(parent: &mut ChildSpawnerCommands, holder: Holder, shown: &Scene, bench: &Bench) {
+    match holder {
+        Holder::List => rows::list(parent, &shown.rows, bench.pane == Pane::Pack),
+        Holder::PackDeeds => actions(parent, &PACK_BINDS, !shown.rows.is_empty(), ""),
+        Holder::Intents => tiles::intents(parent, bench.intent),
+        Holder::Cards => cards::cards(parent, &shown.tools, bench.intent),
+        Holder::Deeds => actions(parent, &MAKE_BINDS, shown.tools.is_ok(), &bench.note),
+        Holder::Slots => slots::slots(parent, &shown.slots),
+        Holder::Legend => {
+            parent.spawn(legend(hints(moves(bench.pane))));
         }
     }
-}
-
-/// Returns the card of the open tab.
-fn card_of(bench: &Bench, shown: &Shown, line: Option<&Line>) -> Card {
-    match bench.tab {
-        Tab::Pack => pack_card(line, shown),
-        Tab::Make => {
-            let made = offer(bench, shown.stock, &shown.place);
-            make_card(bench, made.as_ref().map_err(|why| *why), shown)
-        }
-    }
-}
-
-/// Spawns `card` under `column`: its title, its subtitle and its rows.
-fn card_into(commands: &mut Commands, column: Entity, card: &Card, most: usize) {
-    commands.entity(column).despawn_children();
-    commands.entity(column).with_children(|parent| {
-        parent.spawn((
-            text(
-                clip(&card.title, most * 7 / 9),
-                theme::FONT_BODY,
-                theme::TEXT,
-            ),
-            TextLayout::no_wrap(),
-        ));
-        parent.spawn((
-            text(clip(&card.subtitle, most), theme::FONT_SMALL, theme::TEXT_2),
-            TextLayout::no_wrap(),
-        ));
-        rows(parent, card, most);
-    });
 }
 
 /// Redraws the screen when the bench or the pack changes.
 pub(super) fn draw(
-    (bench, pack, burden, held): (Res<Bench>, Res<Pack>, Res<Burden>, Res<Held>),
+    (bench, pack, burden): (Res<Bench>, Res<Pack>, Res<Burden>),
     here: Here,
-    mut texts: Texts,
-    mut columns: Columns,
+    holders: Query<(Entity, &Holder)>,
+    mut words: Query<(&mut Text, &Words)>,
     mut commands: Commands,
 ) {
-    let all = arranged(&bench, &pack, &here);
-    let count = (all.len(), pack.items.len() + pack.stacks.len());
-    heads(&bench, count, &burden, &mut texts);
-    keys(&bench, &mut columns.2);
-    let place = here.place();
-    let treatments = here.planet().map_or_else(Vec::new, |p| {
-        Treatment::ALL
-            .into_iter()
-            .filter(|t| t.possible(&p.record))
-            .collect()
-    });
-    let stock = pack.stock();
-    let shown = Shown {
-        pack: &pack,
-        stock: &stock,
-        place,
+    let ground = Ground {
+        place: here.place(),
+        life: here.life(),
         burden: *burden,
-        held: held.0.map(|h| sheet(&h.build, h.intent, &place)),
-        treatments,
     };
-    let card = card_of(&bench, &shown, all.get(bench.window.cursor));
-    for column in &columns.1 {
-        card_into(&mut commands, column, &card, bench.chars);
+    let shown = scene(&bench, &pack, &ground);
+    for (mut said, which) in &mut words {
+        said.0 = match which {
+            Words::Status => shown.status.clone(),
+            Words::Explain => intent::line(bench.intent).to_string(),
+        };
     }
-    for column in &columns.0 {
-        rows_into(&mut commands, column, &bench, &all);
+    for (entity, holder) in &holders {
+        let mut held = commands.entity(entity);
+        held.despawn_children();
+        held.with_children(|parent| fill(parent, *holder, &shown, &bench));
     }
-}
-
-/// Spawns the drawn rows of `all` under `column`.
-fn rows_into(commands: &mut Commands, column: Entity, bench: &Bench, all: &[Line]) {
-    commands.entity(column).despawn_children();
-    let drawn = (0..bench.rows).filter_map(|slot| bench.window.index(all.len(), slot));
-    let built: Vec<_> = drawn
-        .map(|i| row(&all[i], i == bench.window.cursor))
-        .collect();
-    commands.entity(column).with_children(|parent| {
-        for line in built {
-            parent.spawn(line);
-        }
-    });
 }

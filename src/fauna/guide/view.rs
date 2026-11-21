@@ -187,8 +187,8 @@ fn body(rows: usize) -> impl Bundle {
 /// Spawns the guide for a window of `window` logical pixels, with as many list rows as fit.
 pub fn spawn(window: Vec2, commands: &mut Commands) {
     let root = Node {
-        width: percent(100),
-        height: percent(100),
+        width: vw(100),
+        height: vh(100),
         flex_direction: FlexDirection::Column,
         padding: UiRect::all(px(EDGE)),
         ..default()

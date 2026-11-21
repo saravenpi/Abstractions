@@ -16,6 +16,8 @@ mod ship_keys;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_cloud_shade;
+#[cfg(test)]
 mod tests_lighting;
 #[cfg(test)]
 mod tests_markers;
@@ -30,7 +32,7 @@ mod tests_ship_keys;
 #[cfg(test)]
 mod tests_view;
 
-pub use audio::{Audio, Range};
+pub use audio::{Audio, Chatter, Range};
 pub use bevy_persistent::Persistent;
 pub use gameplay::{Gameplay, InterfaceSize};
 pub use lighting::{Lighting, Quality};

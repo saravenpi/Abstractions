@@ -9,8 +9,8 @@
 
 use bevy::prelude::*;
 
-use super::Pack;
 use super::tune::KIT_STONE;
+use super::{Pack, SLOTS};
 use crate::craft::build::{Intent, Place, Proposal, Stock, solve};
 use crate::craft::matter::{Material, Mineral, Stuff};
 use crate::universe::PlanetRecord;
@@ -63,7 +63,8 @@ impl Pack {
 
     /// Gives the pack its kit on a planet of `record` under `gravity` metres per second squared,
     /// once: unless the pack already holds a tool, it makes each tool of [`KIT`] that the stone
-    /// underfoot allows and holds the first slot. The pack is kitted afterwards either way. Returns
+    /// underfoot allows, in the first hotbar slots, and holds the first empty slot, so the robot
+    /// wakes empty-handed and draws the spear with the key of slot 1. The pack is kitted afterwards either way. Returns
     /// how many tools it made.
     pub fn equip(&mut self, record: &PlanetRecord, gravity: f64) -> usize {
         if self.kitted {
@@ -79,7 +80,8 @@ impl Pack {
             .filter_map(|(intent, instead)| lightest(intent, instead, &stock, &place))
             .filter_map(|proposal| self.knap(&proposal, &stock))
             .count();
-        self.bar.select(0);
+        let empty = self.bar.slots.iter().position(Option::is_none);
+        self.bar.select(empty.unwrap_or(SLOTS));
         made
     }
 }

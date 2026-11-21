@@ -86,10 +86,8 @@ pub(super) fn line() -> impl Bundle {
             display: Display::None,
             align_items: AlignItems::Center,
             column_gap: px(theme::S2),
-            padding: UiRect::axes(px(theme::S3), px(theme::S2)),
             ..default()
         },
-        BackgroundColor(theme::PANEL),
         children![
             icon_sized(Icon::Temperature, Tone::Plain, theme::ICON_SMALL),
             (

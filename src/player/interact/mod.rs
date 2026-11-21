@@ -59,6 +59,15 @@ pub struct Offer {
     pub grams: Option<u32>,
 }
 
+impl Offer {
+    /// Returns the mass of what the action acts on as the prompt says it after its name, such as
+    /// " 1.2 kg", or nothing when it has none.
+    pub fn weight(&self) -> String {
+        let mass = |grams: u32| format!(" {}", crate::ui::units::mass(f64::from(grams) / 1e3));
+        self.grams.map_or(String::new(), mass)
+    }
+}
+
 /// The actions offered this frame and the one kept from the last frame.
 #[derive(Resource, Debug, Default, Clone, PartialEq, Eq)]
 pub struct Interact {

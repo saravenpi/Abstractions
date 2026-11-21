@@ -60,6 +60,8 @@ mod tests_fresnel;
 #[cfg(test)]
 mod tests_glare;
 #[cfg(test)]
+mod tests_glare_band;
+#[cfg(test)]
 mod tests_lens;
 #[cfg(test)]
 mod tests_lowres;
@@ -81,6 +83,8 @@ mod tests_seasons;
 mod tests_sky;
 #[cfg(test)]
 mod tests_skylight;
+#[cfg(test)]
+mod tests_sunset;
 #[cfg(test)]
 mod tests_weather;
 

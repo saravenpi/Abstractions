@@ -16,7 +16,7 @@ pub fn leaf_coord(terrain: &Terrain, id: ChunkId) -> IVec2 {
 }
 
 /// Returns the leaf level node of chunk `coord` on `face`, or nothing when it lies off the face.
-fn leaf_node(terrain: &Terrain, coord: IVec2) -> Option<ChunkId> {
+pub fn leaf_node(terrain: &Terrain, coord: IVec2) -> Option<ChunkId> {
     let Chart::Face { face, .. } = terrain.chart() else {
         return None;
     };

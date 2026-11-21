@@ -1,32 +1,61 @@
 //! The pack and the workshop: one screen over the blurred game, opened on its key on foot.
 //!
-//! - The pack tab lists what the robot carries, with a card of the selected entry.
-//! - The workshop tab asks for an intent and shows the solver's three proposals as differences
-//!   against the held tool, with the one reason that matters, and makes the chosen one.
-//! - [`hotbar`] draws the six slots at the bottom of the game.
+//! - The pack pane on the left lists what the robot carries, grouped by kind, each row with its
+//!   mass and the wear of a tool.
+//! - The workshop pane on the right asks for an intent and shows the solver's three proposals as
+//!   tool cards: a silhouette, the one reason that matters, what it takes from the pack, which the
+//!   pack pane lights, and its numbers as bars. Make takes the focused one.
+//! - The hotbar runs under both panes, so a made tool is seen going into its slot.
+//! - [`hotbar`] draws the six slots at the bottom of the game while the screen is closed.
+//! - Every tool has one icon, drawn from its parts and kept as an image, in all these places;
+//!   every material has the icon of what it is.
+//!
+//! Every action is a button with its key; the keys and the pointer run the same deeds.
 
 mod bench;
-mod card;
+mod cards;
+mod click;
+mod deeds;
 mod glyph;
 mod here;
 pub mod hotbar;
+mod intent;
 mod keys;
-mod layout;
+mod kind;
 mod lines;
+mod make;
 mod offer;
 mod open;
 mod paint;
+mod raster;
+mod reason;
+mod rows;
+mod scene;
 mod sheet;
+mod slots;
+mod tiles;
+mod tune;
 mod view;
 
+#[cfg(test)]
+mod tests_drop;
+#[cfg(test)]
+mod tests_fit;
+#[cfg(test)]
+mod tests_icons;
+#[cfg(test)]
+mod tests_keys;
 #[cfg(test)]
 mod tests_lines;
 #[cfg(test)]
 mod tests_offer;
 #[cfg(test)]
-mod tests_zero;
+mod tests_parts;
+#[cfg(test)]
+mod tests_places;
 
-pub use bench::{Bench, Sort, Tab};
+pub use bench::{Bench, Pane};
+pub use kind::material_icon;
 
 use bevy::prelude::*;
 
@@ -47,16 +76,17 @@ pub fn shown(state: Option<Res<State<Workshop>>>) -> bool {
     state.is_some_and(|state| *state.get() == Workshop::Open)
 }
 
-/// Registers the open screen: its keys first, then its texts when what they show changes.
+/// Registers the open screen: its keys first, then its drawing when what it shows changes, and the
+/// clicks on its buttons.
 fn screen(app: &mut App) {
     let changed = resource_changed::<Bench>.or_else(resource_changed::<Pack>);
-    let keys = (keys::type_filter, keys::step, keys::act, open::wheel);
     app.add_systems(OnEnter(Workshop::Open), open::enter)
+        .add_observer(click::on_activate)
         .add_systems(
             Update,
             (
                 crate::screens::playing.pipe(open::toggle),
-                keys.run_if(in_state(Workshop::Open)),
+                (keys::step, keys::act).run_if(in_state(Workshop::Open)),
                 paint::draw.run_if(in_state(Workshop::Open).and_then(changed)),
             )
                 .chain()
@@ -64,9 +94,13 @@ fn screen(app: &mut App) {
         );
 }
 
-/// Registers the pack screen and the hotbar.
+/// Registers the pack screen, the hotbar and the pictures of tools they show.
 pub(crate) fn plugin(app: &mut App) {
     app.init_state::<Workshop>().init_resource::<Bench>();
+    app.add_systems(
+        Update,
+        glyph::paint.run_if(any_with_component::<glyph::Picture>),
+    );
     screen(app);
     hotbar::plugin(app);
 }

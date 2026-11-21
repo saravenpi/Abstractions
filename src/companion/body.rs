@@ -1,6 +1,7 @@
 //! The companion's meshes, built in code. It is the helmet of the robot flying on its own: the
-//! same dome, visor box, brow hood, ear discs and swept fin, over a nozzle bell, with three lames
-//! round the lower back; and its hand, a small gauntlet.
+//! same dome, visor box and ear discs, a low crest that rises out of the crown and carries the
+//! antenna tip, a nozzle bell, and three lames round the lower back; and its hand, a small
+//! gauntlet.
 
 use bevy::prelude::*;
 
@@ -14,8 +15,8 @@ pub const SCREEN: Vec2 = Vec2::new(0.118, 0.059);
 /// Distance of the lit screen in front of the body centre, in meters.
 pub const SCREEN_FRONT: f32 = HALF[2] + 0.012;
 
-/// Where the antenna ends: the rear tip of the fin, above and behind the head.
-pub const ANTENNA_TIP: Vec3 = Vec3::new(0.0, 0.232, 0.19);
+/// Where the antenna ends: the top of the crest, above and behind the crown.
+pub const ANTENNA_TIP: Vec3 = Vec3::new(0.0, 0.22, 0.108);
 
 /// Where the thruster glows: the mouth of the nozzle bell.
 pub const NOZZLE: Vec3 = Vec3::new(0.0, -HALF[1] - 0.03, 0.0);
@@ -39,8 +40,16 @@ const BELL: [Section; 2] = [
     Section::new(-HALF[1] + 0.01, 0.055, 0.055),
 ];
 
-/// The visor box, the brow hood, the fin, and the three lames round the lower back.
-const PLATES: [Plate; 6] = [
+/// The crest: a fairing that starts inside the crown, as wide as the crown is there, and tapers
+/// up and back to the antenna tip. It is half as long as a fin would be and has no root to show.
+const CREST: [Section; 3] = [
+    Section::new(0.115, 0.042, 0.085).back(0.035),
+    Section::new(0.185, 0.022, 0.06).back(0.075),
+    Section::new(0.215, 0.008, 0.02).back(0.108),
+];
+
+/// The visor box, the brow hood, and the three lames round the lower back.
+const PLATES: [Plate; 5] = [
     Plate::new(
         [0.0, 0.0, 0.002 - SCREEN_FRONT + VISOR[2]],
         VISOR,
@@ -50,7 +59,6 @@ const PLATES: [Plate; 6] = [
     Plate::new([0.0, 0.092, -0.128], [0.125, 0.012, 0.036], [SHELL, SHELL])
         .turned(0.14, 0.0, 0.0)
         .fine(),
-    Plate::new([0.0, 0.185, 0.07], [0.013, 0.028, 0.115], [SHELL, SHELL]).turned(-0.32, 0.0, 0.0),
     Plate::new([0.0, -0.085, 0.134], [0.07, 0.045, 0.008], [SHADE, SHADE])
         .turned(-0.3, 0.0, 0.0)
         .fine(),
@@ -97,6 +105,12 @@ pub fn shell(detail: Detail) -> Soup {
         &BELL,
         detail.ring(Ring::Round(10, 2.0)),
         |_, _| DARK,
+    );
+    loft(
+        &mut soup,
+        &CREST,
+        detail.ring(Ring::Round(8, 2.0)),
+        |_, _| SHELL,
     );
     plates(&mut soup, &PLATES, detail);
     discs(&mut soup, &DISCS, detail);

@@ -60,8 +60,8 @@ fn triangle_budgets_hold() {
 }
 
 /// The screen lies on the front of the visor box, a hair proud of it; the antenna tip sits on
-/// the end of the fin and the thruster glows in the mouth of the bell; and the body stays
-/// inside the ball it is to the solids, but for the fin over its crown.
+/// the top of the crest and the thruster glows in the mouth of the bell; and the body stays
+/// inside the ball it is to the solids, but for the crest over its crown.
 #[test]
 fn the_glowing_parts_sit_on_the_body() {
     let body = pieces(&shell(Detail::Near));
@@ -80,8 +80,8 @@ fn the_glowing_parts_sit_on_the_body() {
         );
     }
     assert!(
-        held(ANTENNA_TIP + Vec3::new(0.0, -0.012, -0.03)),
-        "the tip is off the fin"
+        held(ANTENNA_TIP + Vec3::new(0.0, -0.015, -0.003)),
+        "the tip is off the crest"
     );
     assert!(held(NOZZLE + Vec3::Y * 0.02) && !held(NOZZLE - Vec3::Y * 0.03));
     let whole = shell(Detail::Near);

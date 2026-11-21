@@ -53,7 +53,6 @@ mod telemetry;
 mod tones;
 mod transit;
 mod tune;
-mod vapour;
 mod view;
 mod wake;
 mod warp;
@@ -244,7 +243,6 @@ pub(super) fn plugin(app: &mut App) {
     display(app);
     hull_cast::plugin(app);
     cockpit::plugin(app);
-    vapour::plugin(app);
     exhaust::plugin(app);
     wake::plugin(app);
     sound::plugin(app);

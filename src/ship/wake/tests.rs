@@ -17,6 +17,7 @@ fn humid(speed: f32, load: f32) -> Air {
         thick: 1.0,
         moist: 1.0,
         day: 0.0,
+        ..Air::default()
     }
 }
 

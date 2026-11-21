@@ -37,6 +37,12 @@ impl<'a> Relief<'a> {
         (0..25).any(|i| self.heights[at(i % 5)][at(i / 5)] > floor)
     }
 
+    /// Returns the height of the mesh at the point of the chunk nearest chart position `w`.
+    pub fn near(&self, w: Vec2) -> f32 {
+        let edge = self.corner + Vec2::splat(CHUNK_SIZE * 0.999);
+        self.at(w.clamp(self.corner, edge)).0
+    }
+
     /// Returns the height of the mesh at chart position `w` of the chunk, and the gradient of the triangle
     /// there, in metres per chart unit along x and z.
     pub fn at(&self, w: Vec2) -> (f32, Vec2) {

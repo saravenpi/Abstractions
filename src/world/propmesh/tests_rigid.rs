@@ -16,6 +16,7 @@ fn sample(plant: Plant) -> Placement {
         scale: 1.2,
         plant,
         variant: 2,
+        lean: Vec2::ZERO,
     }
 }
 

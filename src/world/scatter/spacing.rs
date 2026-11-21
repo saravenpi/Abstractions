@@ -15,15 +15,22 @@ const LOW_ROOM: f32 = 0.6;
 /// Step of the finite difference that measures the slope under a rock, in meters.
 const SLOPE_STEP: f32 = 1.0;
 
-/// How far a rock of scale one sinks per unit of slope, about the radius of its rim.
-const RIM: f32 = 0.9;
+/// How far a rock of scale one sinks per unit of slope, in metres: it lies tilted to the slope, so only
+/// the unevenness of the ground under its base needs hiding.
+const RIM: f32 = 0.3;
+
+/// How far a rock of scale one sinks into level ground, in metres: it sits in the ground, not on it.
+const SETTLE: f32 = 0.05;
 
 /// Deepest a rock of scale one sinks into a slope, in meters.
 const SINK_CAP: f32 = 0.5;
 
 /// Returns true for the rocks that sink into slopes.
 pub fn rock(plant: Plant) -> bool {
-    matches!(plant, Plant::Rock | Plant::IceRock | Plant::Sandstone)
+    matches!(
+        plant,
+        Plant::Rock | Plant::IceRock | Plant::Sandstone | Plant::Flint | Plant::Obsidian
+    )
 }
 
 /// Returns true for the stones that still lie above the snow line of the climate, where nothing grows.
@@ -49,14 +56,13 @@ pub fn crowded(placed: &[(Vec3, f32)], spot: Vec3, room: f32) -> bool {
         .any(|(at, kept)| at.distance(spot) < kept + room)
 }
 
-/// Returns how far a rock of scale `scale` sinks into ground of `slope`, rise over run, so that its downhill
-/// rim meets it.
+/// Returns how far a rock of scale `scale` sinks into ground of `slope`, rise over run: a little on level
+/// ground, more on a slope, where the ground under its tilted base is uneven.
 pub fn sunk(slope: f32, scale: f32) -> f32 {
-    (slope * RIM).min(SINK_CAP) * scale
+    (SETTLE + slope * RIM).min(SINK_CAP) * scale
 }
 
-/// Returns how far a rock of scale `scale` at `w` of the legacy plane sinks so that its downhill rim meets the
-/// ground.
+/// Returns how far a rock of scale `scale` at `w` of the legacy plane sinks into the ground it lies tilted on.
 fn sink(terrain: &Terrain, w: Vec2, scale: f32) -> f32 {
     let d = |o: Vec2| terrain.height(w.x + o.x, w.y + o.y) - terrain.height(w.x - o.x, w.y - o.y);
     let slope =

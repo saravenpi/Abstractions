@@ -1,6 +1,7 @@
 //! Tests of the plant tables and of the placement budgets.
 
 use super::rules::{check_gaps, check_pond, check_sea, on_land, underwater};
+use super::spacing::rock;
 use super::*;
 use crate::world::propmesh::{BIG, TREES};
 use crate::world::{Biome, CHUNK_SIZE};
@@ -127,7 +128,7 @@ fn land_props_touch_the_visible_ground() {
         let t = Terrain::new(seed);
         for (p, w) in chunks().flat_map(|c| on_land(&t, c)) {
             let lift = p.pos.y - t.mesh_height(w.x, w.y);
-            if matches!(p.plant, Rock | IceRock | Sandstone) {
+            if rock(p.plant) {
                 rocks += 1;
                 sunk += usize::from(lift < -0.05);
                 assert!(

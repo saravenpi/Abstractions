@@ -106,6 +106,7 @@ mod tests {
             scale: 1.0,
             plant: Plant::Oak,
             variant: 1,
+            lean: Vec2::ZERO,
         };
         let one = merge_props(&[at(0.0)]);
         let two = merge_props(&[at(0.0), at(10.0)]);

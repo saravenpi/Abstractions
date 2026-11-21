@@ -114,6 +114,7 @@ impl Ctx<'_> {
             return flora.place(self, rng, (w, local), (roll, big));
         }
         let (plant, at) = self.pick(w, roll, big)?;
+        let (plant, lean) = self.settle(rng, w, plant)?;
         let yaw = rng.random_range(0.0..std::f32::consts::TAU);
         let scale = size(rng, plant, at.surface, at.height);
         if at.height < self.terrain.globe().sea_level() && -at.height < plant.draft() * scale {
@@ -126,6 +127,7 @@ impl Ctx<'_> {
             scale,
             plant,
             variant,
+            lean,
         })
     }
 }

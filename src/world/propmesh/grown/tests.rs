@@ -147,6 +147,7 @@ fn the_book_names_each_look() {
         scale: 1.0,
         plant: habit(5).carrier,
         variant: pa,
+        lean: Vec2::ZERO,
     };
     assert_eq!(merge_props(&[placed]).count_vertices(), tris(pa) * 3);
 }

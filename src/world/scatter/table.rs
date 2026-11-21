@@ -48,6 +48,12 @@ const POND: &[(Plant, f32)] = &[
     (Pebbles, 0.02),
 ];
 
+/// Cobbles and pebbles in a river bed, where the water leaves the stones it rolled down.
+const RIVER: &[(Plant, f32)] = &[(Rock, 0.05), (Pebbles, 0.04)];
+
+/// Ice and pebbles in the bed of a frozen river.
+const FROZEN_RIVER: &[(Plant, f32)] = &[(IceRock, 0.04), (Pebbles, 0.03)];
+
 /// Only a few reeds in a frozen pond.
 const FROZEN_POND: &[(Plant, f32)] = &[(Reed, 0.03)];
 
@@ -73,7 +79,7 @@ const TABLE: [[&[(Plant, f32)]; 8]; 6] = [
         (Grass, 0.02), (Pebbles, 0.02)],
         &[(Saguaro, 0.04), (RoundCactus, 0.05), (DeadBush, 0.05), (DeadTree, 0.01), (Sandstone, 0.03),
         (Grass, 0.03)],
-        &[(Sandstone, 0.12)], SNOWY],
+        &[(Sandstone, 0.09), (Rock, 0.04)], SNOWY],
     [DEEP, SHALLOWS, REEF, FROZEN_POND, &[(IceRock, 0.04), (Pebbles, 0.03)],
         &[(SnowPine, 0.28), (Pine, 0.08), (DeadTree, 0.03), (DeadBush, 0.04), (IceRock, 0.03),
         (Grass, 0.12), (Fern, 0.03)],
@@ -85,11 +91,15 @@ const TABLE: [[&[(Plant, f32)]; 8]; 6] = [
         ROCKY, SNOWY],
 ];
 
-/// Returns the plants that may grow on a surface of a biome, with their chance per try. A surface the
-/// table has no column for, such as a river bed, grows nothing.
+/// Returns the plants that may grow on a surface of a biome, with their chance per try. Nothing grows in
+/// a river bed: only stones lie there.
 pub fn plants_for(biome: Biome, surface: Surface) -> &'static [(Plant, f32)] {
-    TABLE[biome as usize]
-        .get(surface as usize)
-        .copied()
-        .unwrap_or_default()
+    match (surface, biome) {
+        (Surface::River, Biome::Taiga) => FROZEN_RIVER,
+        (Surface::River, _) => RIVER,
+        _ => TABLE[biome as usize]
+            .get(surface as usize)
+            .copied()
+            .unwrap_or_default(),
+    }
 }

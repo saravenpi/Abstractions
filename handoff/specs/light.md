@@ -51,3 +51,19 @@ Not done
 - Props end at the detail radius (256 m at Medium) and now show it. Coarse terrain is what the horizon is made of and smears at speed.
 - `WaterUniform.params.zw` and `FogLook.start/end` are no longer read by the shader.
 - Probe: `look-isolate` hides by taking `Mesh3d` off. Never hide through `Visibility`.
+
+## light2 pass (2026-11-21): clouds and sky colour
+
+Found from the `look-isolate` shots
+- The sky flecks are the clouds at light cover: forced cover 0 gives a clean sky. The noise cell was 450 m under a cloud band whose middle is 7.5 km up, so a puff was a few pixels overhead and under one at the horizon. Overcast was a quilt because a full cover started puffs at a noise value of 0.4, which left two fifths of the sky as gaps.
+- The clouds read blue because the sky was too red, not because the clouds were wrong: `Palette::through` multiplied the scattered light by the colour of the star a second time, so under a red star the sky and the sky fill were redder than the star light, the white balance adapted to that, and anything lit by the star alone looked blue against it.
+
+Changed
+- `weather/puff.rs`: `CELL` 1800 m, `WIND` kept at 5 m/s, `THRESHOLD` (0.72, 0.25). The ground shadows and the whiteout read the same field, so cloud shadows are four times wider.
+- `cloud_field.wesl`: `fbm_seen` fades each octave of the noise to its mean once its cells are under two to four pixels, so no cloud detail can be smaller than that at any distance. The Rust twin keeps every octave: the two agree near the camera.
+- `clouds.wesl`: the cut-out edge is 1.5 pixels wide whatever the distance (`EDGE_PIXELS`), dithered inside that band only.
+- `palette.rs`: the star colour enters the sky once.
+
+Not done
+- Cloud shading is still one relief term from the noise toward the star. No separate lit top and shaded base by height.
+- The isolate stage could not say why I07 to I16 showed no cloud: the cover of the weather moves during the run. It now forces a reference cover of 0.3 for every shot and logs the weather cover.

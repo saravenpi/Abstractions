@@ -57,12 +57,15 @@ fn retired(app: &App) -> bool {
     )
 }
 
+/// A way to leave a pin with the player: its name and what it does to the places.
+type Way = (&'static str, fn(&mut Places));
+
 /// The pin key at the feet, a right click on the map and a pin kept in the world each retire
 /// the hint: they all leave a pin with the player.
 #[test]
 fn a_pin_dropped_in_any_way_retires_the_hint() {
     let body = BodyId::default();
-    let ways: [(&str, fn(&mut Places)); 3] = [
+    let ways: [Way; 3] = [
         ("key", |places| {
             places.drop(BodyId::default(), DVec3::X);
         }),

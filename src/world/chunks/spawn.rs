@@ -2,7 +2,7 @@
 
 use avian3d::prelude::*;
 use bevy::ecs::system::SystemParam;
-use bevy::light::NotShadowCaster;
+use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy::prelude::*;
 
 use super::budget::{Budget, COVERED, Shares};
@@ -88,8 +88,8 @@ impl Spawner<'_> {
         commands.spawn((bundle, RigidBody::Static, hidden)).id()
     }
 
-    /// Spawns the hidden entity of a coarse node, or of the far planet, around its mesh. It casts
-    /// no shadow: it lies beyond their reach, see [`Shadowless`].
+    /// Spawns the hidden entity of a coarse node, or of the far planet, around its mesh. It starts
+    /// shadowless until the horizon pass sees whether it lies within shadow reach, see [`Shadowless`].
     pub fn coarse(&mut self, commands: &mut Commands, data: NodeData) -> Node {
         let mesh = self.meshes.add(data.mesh);
         let material = MeshMaterial3d(self.assets.material.clone());
@@ -98,6 +98,7 @@ impl Spawner<'_> {
             Visibility::Hidden,
             DespawnOnEnter(Screen::Title),
             NotShadowCaster,
+            NotShadowReceiver,
             Shadowless,
         );
         Node {
@@ -105,7 +106,7 @@ impl Spawner<'_> {
             visible: false,
             bounds: data.bounds,
             beyond: false,
-            shadowless: false,
+            shadowless: true,
         }
     }
 }

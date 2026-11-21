@@ -2,11 +2,13 @@
 //! unless it is a shadowless node, which casts none at all.
 
 use bevy::ecs::world::CommandQueue;
-use bevy::light::NotShadowCaster;
+use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy::prelude::*;
 
 use super::dither::{Shadowless, Way};
 use super::fade::Fades;
+use super::horizon::{Bounds, shade};
+use super::nodes::Node;
 
 /// Starts a fade of `way` on `part`, which is its own root, and applies the commands.
 fn begin(world: &mut World, fades: &mut Fades, part: Entity, way: Way) {
@@ -64,4 +66,33 @@ fn a_shadowless_node_never_casts() {
     begin(&mut world, &mut fades, part, Way::Hide);
     cancel(&mut world, &mut fades, part);
     assert!(world.entity(part).contains::<NotShadowCaster>());
+}
+
+/// A coarse node spawned shadowless gets shadows back on its first near horizon pass.
+#[test]
+fn a_near_coarse_node_casts_and_receives_shadows() {
+    let mut world = World::new();
+    let entity = world
+        .spawn((
+            Mesh3d::default(),
+            NotShadowCaster,
+            NotShadowReceiver,
+            Shadowless,
+        ))
+        .id();
+    let mut node = Node {
+        entity,
+        visible: false,
+        bounds: Bounds::WHOLE,
+        beyond: false,
+        shadowless: true,
+    };
+    let mut queue = CommandQueue::default();
+    let mut commands = Commands::new(&mut queue, &world);
+    shade(&mut commands, &mut node, false, None);
+    queue.apply(&mut world);
+    assert!(!node.shadowless);
+    assert!(!world.entity(entity).contains::<Shadowless>());
+    assert!(!world.entity(entity).contains::<NotShadowCaster>());
+    assert!(!world.entity(entity).contains::<NotShadowReceiver>());
 }

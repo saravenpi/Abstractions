@@ -109,7 +109,7 @@ pub const BOB: (f32, f32) = (0.035, 2.1);
 pub const TILT: (f32, f32) = (0.07, 0.38);
 
 /// How far a hand trails behind per meter per second, and the farthest it trails, in meters.
-pub const HAND_LAG: (f32, f32) = (0.035, 0.11);
+pub const HAND_LAG: (f32, f32) = (0.012, 0.04);
 
 /// Luminous power of the screen light in lumens at full glow and full size, in the dark: the
 /// power of the lamp of the robot. A torch gives 26 000.

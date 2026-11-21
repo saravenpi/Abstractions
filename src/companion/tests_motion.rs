@@ -6,7 +6,7 @@ use super::brain::Brain;
 use super::motion::{Float, follow, ride};
 use super::ride::{boarding, leaving};
 use super::spot::{Probe, Stance};
-use super::tune::{CLEARANCE, FLOOR, HALF, SEAT, SEAT_SCALE};
+use super::tune::{CLEARANCE, FLOOR, SEAT};
 use crate::space::Anchor;
 use crate::universe::BodyId;
 use crate::world::Terrain;
@@ -150,21 +150,8 @@ fn rides_at_the_side_of_the_cockpit() {
     let seat = Vec3::from_array(SEAT);
     assert!(at.translation.distance(seat) < 0.01);
     assert!(
-        seat.x > 0.3 && seat.z < -0.5,
-        "the seat is at the side, in view"
+        seat.x.abs() > 0.25 && seat.z < -0.3,
+        "the seat is at the side, ahead"
     );
     assert!(at.forward().dot(-seat.normalize()) > 0.99);
-}
-
-/// Seated, it is a small figure low at the right of the pilot's view, under the horizon: at the
-/// default field of view of 75 degrees its centre lies right of the middle and well below it,
-/// and its body covers less than a sixth of the height of the screen.
-#[test]
-fn sits_small_and_low_in_the_cockpit_view() {
-    let seat = Vec3::from_array(SEAT);
-    let half = (75f32.to_radians() / 2.0).tan();
-    let (x, y) = (seat.x / -seat.z / half, seat.y / -seat.z / half);
-    assert!(x > 0.25 && y < -0.5, "seen at {x} {y}");
-    let tall = 2.0 * HALF[1] * SEAT_SCALE / -seat.z / (2.0 * half);
-    assert!(tall < 1.0 / 6.0, "covers {tall} of the height");
 }

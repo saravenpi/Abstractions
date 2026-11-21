@@ -68,9 +68,10 @@ pub const LEASH: f32 = 60.0;
 pub const ENTRY: (f32, f32) = (7.0, 2.5);
 
 /// Where it rides in the cockpit, in the space of the pilot seat: right, up and back (negative
-/// is ahead), in meters. It perches on the right of the dashboard, inside the canopy, below the
-/// horizon of the pilot.
-pub const SEAT: [f32; 3] = [0.4, -0.33, -0.62];
+/// is ahead), in meters. It hovers over the high front of the left console, which carries no
+/// lever, inside the wall of the tub, ahead of the hand on the throttle: beside the displays
+/// and under the forward view, where the pilot sees it by looking down to the left.
+pub const SEAT: [f32; 3] = [-0.3, -0.545, -0.42];
 
 /// Its size in the cockpit, as a share of its size outside, so it stays a small part of the view.
 pub const SEAT_SCALE: f32 = 0.33;
@@ -110,14 +111,17 @@ pub const TILT: (f32, f32) = (0.07, 0.38);
 /// How far a hand trails behind per meter per second, and the farthest it trails, in meters.
 pub const HAND_LAG: (f32, f32) = (0.035, 0.11);
 
-/// Luminous power of the screen light in lumens at full glow. A village torch gives 26 000.
-pub const LIGHT_POWER: f32 = 2600.0;
+/// Luminous power of the screen light in lumens at full glow and full size, in the dark: the
+/// power of the lamp of the robot. A village torch gives 26 000.
+pub const LIGHT_POWER: f32 = 850.0;
 
-/// Reach of the screen light in meters.
-pub const LIGHT_RANGE: f32 = 5.5;
+/// Illuminance of the place in lux under which the screen light is at full power, and over which
+/// it is off: the night is about 310 lux and a full day 13 000. It is a lamp for the dark.
+pub const LAMP_LUX: (f32, f32) = (400.0, 2000.0);
 
-/// Share of the light power kept in full daylight.
-pub const LIGHT_DAY_SHARE: f32 = 0.3;
+/// Radius of the source of the screen light at full size, in meters: smaller than its distance
+/// to the screen, so the light is never inside what it lights.
+pub const LAMP_RADIUS: f32 = 0.04;
 
 /// Brightness of the lit screen pixels, as a multiple of white, so bloom makes the face glow.
 pub const SCREEN_HDR: f32 = 3.2;

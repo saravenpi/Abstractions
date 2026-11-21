@@ -86,6 +86,12 @@ pub fn encode(depth: f32, pond: bool) -> [u8; 4] {
     [high, low, if pond { 255 } else { 0 }, 255]
 }
 
+/// Returns whether the texel `bytes` hold water: a bed below the sea, deeper than zero.
+pub fn wet(bytes: &[u8]) -> bool {
+    let dry = (LAND / (DEEP + LAND) * 65535.0).round() as u16;
+    bytes.len() >= 2 && u16::from_be_bytes([bytes[0], bytes[1]]) > dry
+}
+
 /// Returns the bytes of a texel read through the chart of `terrain`: how far the bed lies under
 /// the sea and whether a pond holds it.
 pub fn sample(terrain: &Terrain, texel: IVec2) -> [u8; 4] {

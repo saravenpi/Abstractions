@@ -28,6 +28,9 @@ pub fn describe(field: Field) -> &'static str {
         }
         Field::LocalShadows => "The robot lamp casts shadows. Costs a lot. Ultra only.",
         Field::WaterGlint => "Sun and moon glint on the sea, not only the sky. Costs little.",
+        Field::WaterReflections => {
+            "Robot, ship and animals mirrored in calm water. One small pass near water."
+        }
         _ => "",
     }
 }

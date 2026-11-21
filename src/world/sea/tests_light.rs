@@ -49,6 +49,7 @@ fn the_sea_takes_the_light_of_the_planet() {
         water,
         floor: Handle::default(),
         place: default(),
+        mirror: Handle::default(),
     });
     app.insert_resource(materials)
         .init_resource::<PlaceLight>()

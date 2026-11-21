@@ -189,8 +189,9 @@ fn display(app: &mut App) {
     .configure_sets(Update, ViewSet::Rig.after(ShipSet::Place));
 }
 
-/// Registers the ship resources, messages and systems.
+/// Registers the ship resources, messages and systems. Calm water mirrors the ship.
 pub(super) fn plugin(app: &mut App) {
+    app.register_required_components::<Ship, crate::world::Reflected>();
     let stages = (
         ShipSet::Input,
         ShipSet::Flight,

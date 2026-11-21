@@ -21,6 +21,7 @@ mod galaxy_light;
 mod glare;
 mod glow;
 mod heat;
+mod layers;
 mod lighting;
 mod lowres;
 mod moonlight;
@@ -106,6 +107,7 @@ pub use exposure::scene_lux;
 pub use heat::{
     Craft, Gas, Glow, Heat, MIN_SPEED, SheathMaterial, SheathUniform, cool_speed, entry, kelvin_of,
 };
+pub use layers::{REFLECTED, mirror_only, reflected, seen_only};
 pub use lighting::{Moon, Sun, reach};
 pub use lowres::{Fit, LowRes, window_changed};
 pub use murk::{Murk, Swell, Waterline, murk};

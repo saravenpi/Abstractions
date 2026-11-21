@@ -27,6 +27,8 @@ struct Body {
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> body: Body;
 @group(constants::MATERIAL_BIND_GROUP) @binding(1) var cover_map: texture_cube<f32>;
 @group(constants::MATERIAL_BIND_GROUP) @binding(2) var cover_sampler: sampler;
+@group(constants::MATERIAL_BIND_GROUP) @binding(3) var surface_map: texture_2d_array<f32>;
+@group(constants::MATERIAL_BIND_GROUP) @binding(4) var surface_sampler: sampler;
 @group(constants::MATERIAL_BIND_GROUP) @binding(10) var<uniform> place: Place;
 @group(constants::MATERIAL_BIND_GROUP) @binding(11) var<uniform> season: Season;
 
@@ -38,6 +40,7 @@ const RING_EDGE: f32 = 0.04;
 const ROUGHNESS: f32 = 0.95;
 const REFLECTANCE: f32 = 0.05;
 const SHELL: f32 = 1.5;
+const QUARTER: f32 = 0.78539816;
 
 fn ring_cover(u: f32, inner: f32, density: f32) -> f32 {
     if (u < inner || u > 1.0) {
@@ -90,6 +93,43 @@ fn clouds(n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, texel: vec2<f32>, span: f32)
     return shade(day_side(body.cloud.rgb, n, l), cloud, true);
 }
 
+fn face_of(d: vec3<f32>) -> vec3<f32> {
+    let a = abs(d);
+    var layer = 0.0;
+    var n = vec3<f32>(1.0, 0.0, 0.0);
+    var u = vec3<f32>(0.0, 0.0, 1.0);
+    var v = vec3<f32>(0.0, 1.0, 0.0);
+    if (a.x >= a.y && a.x >= a.z) {
+        if (d.x <= 0.0) {
+            layer = 1.0;
+            n = vec3<f32>(-1.0, 0.0, 0.0);
+            u = vec3<f32>(0.0, 1.0, 0.0);
+            v = vec3<f32>(0.0, 0.0, 1.0);
+        }
+    } else if (a.y >= a.z) {
+        layer = select(3.0, 2.0, d.y > 0.0);
+        n = vec3<f32>(0.0, sign(d.y), 0.0);
+        u = vec3<f32>(1.0, 0.0, 0.0);
+        v = vec3<f32>(0.0, 0.0, sign(d.y));
+    } else {
+        layer = select(5.0, 4.0, d.z > 0.0);
+        n = vec3<f32>(0.0, 0.0, sign(d.z));
+        u = select(vec3<f32>(1.0, 0.0, 0.0), vec3<f32>(0.0, 1.0, 0.0), d.z > 0.0);
+        v = select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), d.z > 0.0);
+    }
+    let depth = dot(d, n);
+    let at = vec2<f32>(atan(dot(d, u) / depth), atan(dot(d, v) / depth)) / QUARTER;
+    return vec3<f32>(at * 0.5 + 0.5, layer);
+}
+
+fn ground_map(n: vec3<f32>, span: f32) -> vec4<f32> {
+    let to_fixed = mat3x3<f32>(body.fixed_x.xyz, body.fixed_y.xyz, body.fixed_z.xyz);
+    let at = face_of(to_fixed * n);
+    let side = f32(textureDimensions(surface_map).x);
+    let lod = max(log2(max(span, 1.0e-6) * side / (2.0 * QUARTER)), 0.0);
+    return textureSampleLevel(surface_map, surface_sampler, at.xy, i32(at.z), lod);
+}
+
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let n = normalize(in.world_normal);
@@ -103,9 +143,13 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     if (in.uv.x > SHELL) {
         return vec4<f32>(clouds(n, v, l, in.position.xy, span), 1.0);
     }
-    let baked = tinted(in.color.rgb, look_at(season, n, 0.0));
+    var mapped = vec4<f32>(body.color.rgb, 0.0);
+    if (body.glow.w > 0.0) {
+        mapped = ground_map(n, span);
+    }
+    let baked = tinted(mapped.rgb, look_at(season, n, 0.0));
     let albedo = mix(surface(n), baked, body.map.z);
-    let ember = mix(body.ember.rgb, body.glow.rgb * in.color.a, body.map.z);
+    let ember = mix(body.ember.rgb, body.glow.rgb * mapped.a, body.map.z);
     let limb = select(1.0, mix(LIMB, 1.0, sqrt(facing)), body.axis.w > 0.0);
     var ground = pbr_input_new();
     ground.material.base_color = vec4<f32>(albedo, 1.0);

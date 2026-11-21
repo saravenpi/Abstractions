@@ -1,4 +1,4 @@
-//! The far planet: one baked mesh shown instead of the quadtree when the focus is in space.
+//! The far planet: one baked mesh shown while the quadtree is not yet covering the globe.
 
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
@@ -73,9 +73,9 @@ fn covered(chunks: &Chunks) -> bool {
     })
 }
 
-/// Swaps between the quadtree and the baked planet with the distance of the focus: the baked
-/// planet beyond a radius and a third, nothing beyond the hand-over of a radius and a half, where
-/// the sky draws the planet.
+/// Drops the quadtree beyond the hand-over of a radius and a half, where the sky draws the planet,
+/// and streams it again under a radius and two fifths. The baked planet only stands in while the
+/// quadtree has not covered the globe yet: in between the sky draws its sharper ball.
 ///
 /// As the first step of the chain that sees the focus, it also notes how the focus moves and
 /// how far the budget of the frame stretches for the work that waits.
@@ -100,6 +100,6 @@ pub fn watch_far(
         chunks.drop_near(&mut commands);
     }
     chunks.far.active = far;
-    let visible = seen != Range::Beyond && (far || !covered(chunks));
+    let visible = seen == Range::Near && !covered(chunks);
     chunks.far.set_visible(&mut commands, visible);
 }

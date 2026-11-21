@@ -1,38 +1,48 @@
-//! The ball: the small sphere of a planet the sky draws once the world has handed the planet over.
+//! The ball: the surface of a planet the sky draws once the world has handed the planet over,
+//! baked into one square map per face of the cube sphere.
 //!
-//! It is the far mesh of the world, baked through the same ground rules and the same colour
-//! lookup, then cut down: every block of four by four cells becomes one cell in the mean colour
-//! of the block, so a planet keeps its colours across the hand-over, coast for coast. It is a unit
-//! sphere: the sky scales it. One ball is baked off the main thread for every solid body of a
-//! star system.
+//! Every texel is one cell of the coarse nodes of the world, built through the same ground rules
+//! and the same colour lookup, so a planet keeps its colours across the hand-over, coast for coast.
+//! The finest map has the cells of the nodes of level 4, which the world draws just under the
+//! hand-over. A face reads only its arguments and is safe on any thread.
 
 use std::sync::Arc;
 
-use bevy::asset::RenderAssetUsages;
-use bevy::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
+use bevy::math::DVec3;
+use bevy::mesh::VertexAttributeValues;
 use bevy::prelude::*;
 
-use super::{CELLS, bake};
+use crate::world::Terrain;
 use crate::world::colormap;
-use crate::world::globe::Globe;
+use crate::world::globe::{ChunkId, Face, Globe};
+use crate::world::mesh::{Frame, fill_node};
 use crate::world::sea::sea_glow;
-use crate::world::shapes::srgb;
+use crate::world::shapes::{FlatMesh, srgb};
 
-/// Cells of the far mesh along one side of a cell of the ball.
-pub const BLOCK: usize = 4;
+/// Texels along one side of a face map at each level a body is baked at: a dot, a disc, and a
+/// disc filling the screen at the hand-over.
+pub const SIDES: [usize; 3] = [64, 256, 1024];
 
-/// Triangles of a ball: a sixteenth of the far mesh, about a pixel each where the sky takes the
-/// planet over.
-pub const TRIANGLES: usize = 3072;
+/// Cells along one side of a node read into a map: those of the coarse nodes of the world.
+pub const NODE_CELLS: usize = 64;
 
-/// A planet baked for the sky.
+/// One face of the ball.
+pub struct Map {
+    /// Texels along one side.
+    pub side: usize,
+    /// The texels row by row from `v = -1`, each from `u = -1`: the linear colour of the cell and
+    /// in w the share of it the flat sea covers.
+    pub texels: Vec<Vec4>,
+    /// Sum over the face of the colour and the sea of every cell times its area in square metres.
+    pub total: Vec4,
+    /// Area of the face in square metres.
+    pub area: f32,
+}
+
+/// What a planet shows as a dot.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Ball {
-    /// The unit sphere with the relief of the planet. Each vertex carries the linear colour of its
-    /// cell, and in alpha the share of the cell the flat sea covers. Its normals are those of the
-    /// smooth sphere: a planet a few pixels wide is lit as a ball, without the flicker of facets.
-    pub mesh: Mesh,
-    /// Linear colour of the whole surface, each cell counted by its area: what the planet shows
-    /// when it is only a dot.
+    /// Linear colour of the whole surface, each cell counted by its area.
     pub mean: Vec3,
     /// Share of the surface the flat sea covers.
     pub sea: f32,
@@ -54,121 +64,122 @@ pub(super) fn texel(image: &Image, uv: [f32; 2]) -> Vec3 {
     Vec3::new(c.red, c.green, c.blue)
 }
 
-/// The triangles of the far mesh: three corners each, and the linear colour and the area of each,
-/// the area negative for a triangle of the flat sea.
-struct Fine {
-    points: Vec<[f32; 3]>,
-    paint: Vec<(Vec3, f32)>,
+/// The cells of a face being read: the colour lookup, the texture coordinates of the flat sea,
+/// and for every texel the sum of colour and sea times area and the area.
+struct Sums {
+    face: Face,
+    side: usize,
+    image: Image,
+    sea: [f32; 2],
+    paint: Vec<Vec4>,
+    area: Vec<f32>,
 }
 
-impl Fine {
-    /// Reads the far mesh `mesh` of a planet whose flat sea has the texture coordinates `sea`.
-    fn read(mesh: &Mesh, sea: [f32; 2]) -> Self {
-        let image = colormap::image();
-        let points = match mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
-            Some(VertexAttributeValues::Float32x3(points)) => points.clone(),
-            _ => Vec::new(),
+impl Sums {
+    /// Starts reading `face` of `globe` into `side` by `side` texels.
+    fn new(globe: &Globe, face: Face, side: usize) -> Self {
+        let [r, g, b] = globe.lands().sea_rgb();
+        Self {
+            face,
+            side,
+            image: colormap::image(),
+            sea: colormap::uv(srgb(r, g, b)),
+            paint: vec![Vec4::ZERO; side * side],
+            area: vec![0.0; side * side],
+        }
+    }
+
+    /// Returns the texel of the face that the direction `dir` falls in.
+    fn index(&self, dir: DVec3) -> usize {
+        let (u, v) = self.face.project(dir);
+        let cell = |t: f64| (((t + 1.0) * 0.5 * self.side as f64) as usize).min(self.side - 1);
+        cell(v) * self.side + cell(u)
+    }
+
+    /// Adds every triangle of the node mesh `mesh`, in the planet frame, to the texel its middle
+    /// falls in, by its area.
+    fn add(&mut self, mesh: &Mesh) {
+        let (
+            Some(VertexAttributeValues::Float32x3(points)),
+            Some(VertexAttributeValues::Float32x2(uvs)),
+        ) = (
+            mesh.attribute(Mesh::ATTRIBUTE_POSITION),
+            mesh.attribute(Mesh::ATTRIBUTE_UV_0),
+        )
+        else {
+            return;
         };
-        let uvs = match mesh.attribute(Mesh::ATTRIBUTE_UV_0) {
-            Some(VertexAttributeValues::Float32x2(uvs)) => uvs.clone(),
-            _ => Vec::new(),
-        };
-        let corners = points.as_chunks::<3>().0.iter();
-        let paint = corners.zip(uvs.iter().step_by(3)).map(|(corners, uv)| {
+        for (corners, uv) in points.as_chunks::<3>().0.iter().zip(uvs.iter().step_by(3)) {
             let [a, b, c] = corners.map(Vec3::from);
             let area = (b - a).cross(c - a).length();
-            (texel(&image, *uv), if *uv == sea { -area } else { area })
-        });
-        Self {
-            paint: paint.collect(),
-            points,
+            let at = self.index((a + b + c).as_dvec3());
+            let wet = f32::from(u8::from(*uv == self.sea));
+            self.paint[at] += (texel(&self.image, *uv) * area).extend(wet * area);
+            self.area[at] += area;
         }
     }
 
-    /// Returns the four corners of the block of cells whose first cell is `(i, j)` of the node that
-    /// starts at triangle `node`, and the mean colour of the block with the share of sea in alpha.
-    fn block(&self, node: usize, (i, j): (usize, usize)) -> ([Vec3; 4], Vec4) {
-        let tri = |i: usize, j: usize| node + (i * CELLS + j) * 2;
-        let last = BLOCK - 1;
-        let at = |t: usize, corner: usize| Vec3::from(self.points[t * 3 + corner]);
-        let corners = [
-            at(tri(i, j), 0),
-            at(tri(i, j + last), 1),
-            at(tri(i + last, j), 2),
-            at(tri(i + last, j + last) + 1, 2),
-        ];
-        let cells = (0..BLOCK).flat_map(|a| (0..BLOCK).map(move |b| (a, b)));
-        let tris = cells.flat_map(|(a, b)| [tri(i + a, j + b), tri(i + a, j + b) + 1]);
-        let (mut sum, mut wet, mut total) = (Vec3::ZERO, 0.0, 0.0);
-        for (colour, area) in tris.map(|t| self.paint[t]) {
-            sum += colour * area.abs();
-            wet += (-area).max(0.0);
-            total += area.abs();
-        }
-        let total = total.max(f32::MIN_POSITIVE);
-        (corners, (sum / total).extend(wet / total))
-    }
-}
-
-/// The vertices of a ball being built.
-#[derive(Default)]
-struct Soup {
-    points: Vec<[f32; 3]>,
-    colours: Vec<[f32; 4]>,
-    sum: Vec4,
-    area: f32,
-}
-
-impl Soup {
-    /// Adds the two triangles over the `corners` of a cell, shrunk by `shrink`, in `colour`.
-    fn cell(&mut self, corners: [Vec3; 4], colour: Vec4, shrink: f32) {
-        let [a, b, c, d] = corners.map(|p| p * shrink);
-        let area = (b - a).cross(c - a).length() + (b - c).cross(d - c).length();
-        self.points.extend([a, b, c, c, b, d].map(|p| p.to_array()));
-        self.colours.extend([colour.to_array(); 6]);
-        self.sum += colour * area;
-        self.area += area;
-    }
-
-    /// Returns the mesh of the ball, with the normals of the smooth sphere.
-    fn mesh(self) -> Mesh {
-        let smooth = |p: &[f32; 3]| Vec3::from(*p).normalize_or_zero().to_array();
-        let normals: Vec<[f32; 3]> = self.points.iter().map(smooth).collect();
-        let count = self.points.len();
-        Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
-        )
-        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, vec![[0.0, 0.0]; count])
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, self.points)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_COLOR, self.colours)
-        .with_inserted_indices(Indices::U32((0..count as u32).collect()))
-    }
-}
-
-/// Bakes the ball of `globe`: the far mesh of the world, each block of [`BLOCK`] by [`BLOCK`]
-/// cells drawn as one cell in its mean colour, shrunk to a unit sphere. It reads only its
-/// argument and is safe on any thread.
-pub fn ball(globe: &Arc<Globe>) -> Ball {
-    let [r, g, b] = globe.lands().sea_rgb();
-    let fine = Fine::read(&bake(globe), colormap::uv(srgb(r, g, b)));
-    let shrink = (1.0 / globe.radius()) as f32;
-    let mut soup = Soup::default();
-    let per_node = CELLS * CELLS * 2;
-    let blocks = (0..CELLS / BLOCK).flat_map(|i| (0..CELLS / BLOCK).map(move |j| (i, j)));
-    for node in (0..fine.paint.len() / per_node).map(|k| k * per_node) {
-        for (i, j) in blocks.clone() {
-            let (corners, colour) = fine.block(node, (i * BLOCK, j * BLOCK));
-            soup.cell(corners, colour, shrink);
+    /// Returns the map: each texel its mean, and a texel no cell fell in the mean of its
+    /// neighbours that have one, or of the face.
+    fn finish(self) -> Map {
+        let (total, area) = (
+            self.paint.iter().sum::<Vec4>(),
+            self.area.iter().sum::<f32>(),
+        );
+        let mean = total / area.max(f32::MIN_POSITIVE);
+        let side = self.side as isize;
+        let own = |i: isize, j: isize| {
+            let inside = (0..side).contains(&i) && (0..side).contains(&j);
+            let at = (j * side + i) as usize;
+            (inside && self.area[at] > 0.0).then(|| self.paint[at] / self.area[at])
+        };
+        let mend = |at: usize| {
+            let (i, j) = ((at % self.side) as isize, (at / self.side) as isize);
+            own(i, j).unwrap_or_else(|| {
+                let around =
+                    [(i - 1, j), (i + 1, j), (i, j - 1), (i, j + 1)].map(|(i, j)| own(i, j));
+                let (sum, count) = around
+                    .into_iter()
+                    .flatten()
+                    .fold((Vec4::ZERO, 0.0), |(s, n), t| (s + t, n + 1.0));
+                if count > 0.0 { sum / count } else { mean }
+            })
+        };
+        Map {
+            side: self.side,
+            texels: (0..self.paint.len()).map(mend).collect(),
+            total,
+            area,
         }
     }
-    let mean = soup.sum / soup.area.max(f32::MIN_POSITIVE);
-    let glow = sea_glow(Some(globe.as_ref()));
+}
+
+/// Bakes `face` of `globe` into a map of `side` texels a side: the nodes that tile the face with
+/// [`NODE_CELLS`] cells each, or one node of `side` cells for a smaller map, one texel a cell.
+pub fn face(globe: &Arc<Globe>, face: Face, side: usize) -> Map {
+    let cells = side.min(NODE_CELLS);
+    let nodes = (side / cells).max(1) as u32;
+    let level = nodes.trailing_zeros() as u8;
+    let terrain = Terrain::on(globe.clone(), globe.face_chart(face));
+    let mut sums = Sums::new(globe, face, side);
+    for (x, y) in (0..nodes).flat_map(|y| (0..nodes).map(move |x| (x, y))) {
+        let id = ChunkId { face, level, x, y };
+        let mut mesh = FlatMesh::default();
+        fill_node(&mut mesh, &terrain, (id, cells), &Frame::PLANET, false);
+        sums.add(&mesh.into_mesh());
+    }
+    sums.finish()
+}
+
+/// Returns what `globe` shows as a dot from the `maps` of its six faces.
+pub fn ball(globe: &Globe, maps: &[Map]) -> Ball {
+    let total = maps.iter().map(|map| map.total).sum::<Vec4>();
+    let area = maps.iter().map(|map| map.area).sum::<f32>();
+    let mean = total / area.max(f32::MIN_POSITIVE);
+    let glow = sea_glow(Some(globe));
     Ball {
         mean: mean.truncate(),
         sea: mean.w,
         glow: Vec3::new(glow.red, glow.green, glow.blue),
-        mesh: soup.mesh(),
     }
 }

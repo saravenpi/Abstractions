@@ -6,6 +6,7 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::Body;
+use super::bake::cloudy;
 use super::material::BodyMaterial;
 use crate::render::air::Air;
 use crate::render::observer::Observer;
@@ -106,7 +107,8 @@ fn moons_and_rings_follow_their_planet() {
     let all: Vec<Body> = bodies.iter(app.world()).copied().collect();
     let ringed = near.bodies().filter(|body| body.rings.is_some()).count();
     let bodies = near.system.planets.len() + near.moons.len();
-    assert_eq!(all.len(), 1 + 2 * bodies + ringed);
+    let clouded = near.bodies().filter(|body| cloudy(body)).count();
+    assert_eq!(all.len(), 1 + 2 * bodies + ringed + clouded);
 }
 
 /// Every planet and moon is lit through its own air by its own star, from where that star

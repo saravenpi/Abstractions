@@ -1,12 +1,16 @@
 //! The star, the planets and the moons of the current system, drawn as spheres in their true
-//! directions, with the rings of the planets that have them.
+//! directions with the detail their size on the screen needs, with the clouds and the rings of
+//! the planets that have them.
 
 mod bake;
 mod giant;
 mod light;
+mod lod;
 mod material;
 mod rings;
 mod spawn;
+mod sphere;
+mod surface;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
@@ -16,7 +20,11 @@ mod tests_bake;
 #[cfg(test)]
 mod tests_giant;
 #[cfg(test)]
+mod tests_lod;
+#[cfg(test)]
 mod tests_star;
+#[cfg(test)]
+mod tests_surface;
 
 use bevy::asset::embedded_asset;
 use bevy::math::{DQuat, DVec3};
@@ -32,7 +40,7 @@ use super::vantage::{LocalSystem, Scene, Vantage};
 use super::warp::Lens;
 use crate::universe::{BodyId, PlanetSpec, system_reach};
 use crate::world::Link;
-use crate::world::globe::far::handover;
+use crate::world::globe::far::{handover, sky_from};
 
 /// Angular radius in radians under which the disc of the star is not drawn: a ball under two
 /// pixels across cannot be drawn steadily. The star is then the point the star field draws
@@ -42,6 +50,10 @@ pub const STAR_POINT: f32 = 0.0009;
 /// Smallest angular radius in radians a planet is drawn with: about one pixel of the game view,
 /// so a far planet stays a steady dot.
 const PLANET_ANGLE: f32 = 0.0035;
+
+/// Share of its radius the ground of the body under the camera is drawn at while the world may
+/// still draw its quadtree: just under the sea and the lowest ground, so the quadtree covers it.
+pub const SUNK: f64 = 0.998;
 
 /// Radii of a star that its warp bubble reaches. A star has no Hill sphere and does not move, so
 /// this stands for it: its bubble is carried between the shares of it that planets use.
@@ -56,6 +68,8 @@ pub enum Body {
     Planet(BodyId),
     /// The halo of air around a planet or a moon.
     Halo(BodyId),
+    /// The cloud shell around a solid planet or moon with clouds.
+    Clouds(BodyId),
     /// The rings of a planet.
     Rings(BodyId),
 }
@@ -97,10 +111,11 @@ impl Body {
     fn orb(self, scene: &Scene) -> Option<Orb> {
         let id = match self {
             Body::Star => return star(scene),
-            Body::Planet(id) | Body::Halo(id) | Body::Rings(id) => id,
+            Body::Planet(id) | Body::Halo(id) | Body::Clouds(id) | Body::Rings(id) => id,
         };
         let (planet, pos) = scene.body(id)?;
         let (radius, grow) = self.reach(planet)?;
+        let radius = radius * self.sunk(planet, pos, &scene.vantage);
         let star = &scene.local.0.as_ref()?.system.star;
         let turn = match self {
             Body::Planet(_) => Link::orbiting(planet, scene.clock.seconds).turn,
@@ -124,18 +139,34 @@ impl Body {
             Body::Rings(_) => planet
                 .rings
                 .map(|rings| (rings.outer, (rings.outer / planet.radius) as f32)),
+            Body::Clouds(_) => {
+                bake::shell_radius(planet).map(|shell| (shell, (shell / planet.radius) as f32))
+            }
             _ => Some((planet.radius, 1.0)),
+        }
+    }
+
+    /// Returns the share of its radius this body of `planet`, at `pos` metres from the star, is
+    /// drawn at for the camera `vantage`: [`SUNK`] for the ground of the body under the camera
+    /// within its [`handover`], where the world may draw its quadtree over it, and 1 otherwise.
+    fn sunk(self, planet: &PlanetSpec, pos: DVec3, vantage: &Vantage) -> f64 {
+        let within = pos.distance(vantage.observer.eye) < handover(planet.radius);
+        match self {
+            Body::Planet(_) if within && vantage.is(planet.id) => SUNK,
+            _ => 1.0,
         }
     }
 
     /// Returns whether the sky draws this body of `planet`, at `pos` metres from the star, now,
     /// for the camera `vantage` of a system that reaches `reach` metres out.
     ///
-    /// The planet or moon below the camera is left to the terrain within its [`handover`],
-    /// and its halo only shows from above its air. A body without air has no halo. Rings show
-    /// from everywhere, the deck of their own planet included. Nothing of a planet shows from
-    /// outside its star system: from there it is far under a pixel, and the dot it is kept at
-    /// inside would pile up with the others into a false light where the star is.
+    /// The ground of the planet or moon below the camera shows from [`sky_from`], where the world
+    /// may still draw the quadtree over it and draws nothing once it has dropped it, its clouds
+    /// from its [`handover`], where the clouds of the world end, and its halo from above its air.
+    /// A body without air has no halo. Rings show from everywhere, the deck of their own planet
+    /// included. Nothing of a planet shows from outside its star system: from there it is far
+    /// under a pixel, and the dot it is kept at inside would pile up with the others into a false
+    /// light where the star is.
     fn shown(self, planet: &PlanetSpec, pos: DVec3, vantage: &Vantage, reach: f64) -> bool {
         let below = vantage.is(planet.id);
         if vantage.observer.eye.length() > reach {
@@ -147,7 +178,10 @@ impl Body {
                 airy && (!below || vantage.air <= 0.0)
             }
             Body::Rings(_) => true,
-            _ => !below || pos.distance(vantage.observer.eye) > handover(planet.radius),
+            Body::Clouds(_) => {
+                !below || pos.distance(vantage.observer.eye) > handover(planet.radius)
+            }
+            _ => !below || pos.distance(vantage.observer.eye) > sky_from(planet.radius),
         }
     }
 }
@@ -195,12 +229,14 @@ pub(super) fn plugin(app: &mut App) {
         MaterialPlugin::<BodyMaterial>::default(),
         MaterialPlugin::<RingMaterial>::default(),
     ))
+    .init_resource::<sphere::Spheres>()
     .add_systems(
         PostUpdate,
         (
             spawn::populate.run_if(resource_changed::<LocalSystem>),
-            bake::finish,
+            (bake::finish, sphere::finish),
             follow.after(super::warp::run),
+            (lod::shape, lod::sharpen).after(follow),
             light::planets,
             light::rings,
         )

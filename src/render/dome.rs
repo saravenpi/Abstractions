@@ -78,6 +78,7 @@ impl SkyInputs<'_> {
             up: vantage.up,
             dip: horizon_dip(vantage.altitude, vantage.radius),
             sun_height: self.sun.height,
+            sun_lit: self.sun.lit,
             air: vantage.air,
             whiteout: self.crossing.depth,
             rim: rim * (share - vantage.air) * (1.0 - leaving),
@@ -104,7 +105,8 @@ fn update_dome(
     mut materials: ResMut<Assets<SkyMaterial>>,
 ) {
     let mut sky = SkyUniform::new(&inputs.palette, &inputs.look());
-    sky.galaxy.x *= skylight::band(skylight::veil(inputs.field.luminance()));
+    let veil = skylight::veil(inputs.field.luminance(), inputs.vantage.air);
+    sky.galaxy.x *= skylight::band(veil);
     let pose =
         Transform::from_translation(inputs.vantage.camera).with_scale(Vec3::splat(DOME_RADIUS));
     for (mut transform, mut global, handle) in &mut domes {

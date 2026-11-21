@@ -10,6 +10,11 @@
 //! (Fairchild and Reniff, 1995, https://digitalarchive.rit.edu/xmlui/handle/1850/3112).
 //! Bevy's colour grading applies the transform in LMS space to the whole image after the exposure,
 //! so the sky, the fog and the unlit materials adapt with the lit ones.
+//!
+//! The eye adapts to the star, not to the hour: the white is the light the place would get with
+//! its star straight overhead (`PlaceUniform::noon`), whatever its height now. Adapting to the
+//! light of a low star took the gold out of a sunset and turned its yellow sky green, and adapting
+//! to the blue night sky turned the dusk grey-green. A photographer keeps a daylight white for both.
 
 use std::f32::consts::PI;
 
@@ -117,8 +122,9 @@ fn apply(
     }
 }
 
-/// Adapts the white of the camera to the colour of the light and writes it as the colour grading
-/// white balance, slowly. Without a place, or with the setting off, the white is D65 at once.
+/// Adapts the white of the camera to the colour of the star at noon, by the degree the light of the
+/// place gives, and writes it as the colour grading white balance, slowly. Without a place, or with
+/// the setting off, the white is D65 at once.
 pub(super) fn run(
     (time, place, palette): (Res<Time>, Res<PlaceLight>, Res<Palette>),
     settings: Res<Persistent<Settings>>,
@@ -128,9 +134,8 @@ pub(super) fn run(
 ) {
     let live = place.0.air.z > 0.0 && settings.graphics.lighting.white_balance;
     let lux = scene_lux(&place.0, palette.moon_lux);
-    let light = place.0.eye_sun.truncate() + PI * place.0.eye_sky.truncate();
     let target = match live {
-        true => adapted(light, lux),
+        true => adapted(place.0.noon(), lux),
         false => D65,
     };
     let white = match balanced.set && balanced.live && live {

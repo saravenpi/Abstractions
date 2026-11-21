@@ -9,11 +9,17 @@
 //! pixel, so a range that comes or goes marks the mesh changed.
 //!
 //! The shadow pass does not dither. A mesh that fades out would cast its whole shadow onto what
-//! replaces it until the last frame, so it casts none while it fades.
+//! replaces it until the last frame, so it casts none while it fades. A coarse node never casts:
+//! it lies past the detail ground, beyond the reach of the shadows, and drawing its kilometres of
+//! triangles into every shadow cascade its box touched cost a pass for nothing.
 
 use bevy::camera::visibility::VisibilityRange;
 use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
+
+/// Marks a mesh that never casts a shadow, whatever its fades: a coarse node or the far planet.
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct Shadowless;
 
 /// Seconds a fade lasts.
 pub const FADE_SECONDS: f32 = 0.4;
@@ -107,11 +113,6 @@ pub fn redither(commands: &mut Commands, part: Entity, range: Option<VisibilityR
             }
         });
 }
-
-/// Marks a mesh that casts no shadow whatever its fades: a coarse node beyond the reach of the
-/// shadows. A fade that ends leaves its [`NotShadowCaster`] on.
-#[derive(Component, Debug, Clone, Copy, Default)]
-pub struct Shadowless;
 
 /// Stops `part` casting shadows while it fades out, `way` being the fade it is in, and lets it
 /// cast them again when it is in no fade or fades in, unless it is [`Shadowless`].

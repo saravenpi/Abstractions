@@ -16,6 +16,8 @@ mod ship_keys;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_cloud_shade;
+#[cfg(test)]
 mod tests_lighting;
 #[cfg(test)]
 mod tests_markers;

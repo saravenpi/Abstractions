@@ -84,6 +84,8 @@ mod tests_sky;
 #[cfg(test)]
 mod tests_skylight;
 #[cfg(test)]
+mod tests_sunset;
+#[cfg(test)]
 mod tests_weather;
 
 pub use aerial::{Haze, sight};

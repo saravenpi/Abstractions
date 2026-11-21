@@ -64,6 +64,11 @@ const NIGHT_CLOUD: Vec3 = Vec3::new(0.12, 0.14, 0.24);
 /// scattered every colour.
 const HAZE: f32 = 0.6;
 
+/// Power of the reddening of the light of the star that tints the whole horizon, 1 for as red as
+/// the direct light. Low, the horizon away from a setting star stays pale, and the orange is the
+/// band the dome and the haze draw on the side of the star (`sunset_band` in `sky.wesl`). A power.
+const HORIZON_WARMTH: f32 = 0.45;
+
 impl Palette {
     /// Illuminance in lux of a full moon as large as the old painted one when it stands high.
     pub const MOON_LUX: f32 = 350.0;
@@ -71,8 +76,11 @@ impl Palette {
     /// Ambient brightness at night, low enough that torches and lamps make visible pools of light.
     pub const NIGHT_AMBIENT: f32 = 40.0;
 
-    /// Ambient brightness of the full day.
-    pub const DAY_AMBIENT: f32 = 350.0;
+    /// Ambient brightness of the full day: the light of the blue sky, which fills the shadows. Under
+    /// it level ground gets pi times as much, about 2,000 lux against the 12,000 of the star, a key
+    /// to fill of 6 to 1, where a clear day on the Earth gives 4 to 8 to 1. At 350 the shadows were
+    /// 11 times darker than the sunlit ground and read black.
+    pub const DAY_AMBIENT: f32 = 650.0;
 
     /// Illuminance in lux of the star in open space, and straight overhead through the air.
     pub const SPACE_LUX: f32 = 12_000.0;
@@ -107,8 +115,8 @@ impl Palette {
         let dusk = smoothstep(-0.2, 0.1, height);
         let white = HAZE + (1.0 - HAZE) * (1.0 - 1.0 / depth);
         let blue = scattered(star).lerp(peak(star), 0.1) * peak(transmit(height, 0.2 * depth));
-        let haze =
-            scattered(star).lerp(peak(star), white) * peak(transmit(height, depth)).powf(0.7);
+        let haze = scattered(star).lerp(peak(star), white)
+            * peak(transmit(height, depth)).powf(HORIZON_WARMTH);
         let zenith = air.stain(NIGHT_ZENITH.lerp(blue * 0.92, day), star);
         let horizon = air.stain(NIGHT_HORIZON.lerp(haze * 0.95, dusk), star);
         let sky = peak(zenith + horizon).lerp(Vec3::ONE, 0.4);

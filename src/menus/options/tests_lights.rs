@@ -1,5 +1,5 @@
 //! Tests of the lighting rows of the graphics tab: they step, show their value and describe
-//! themselves, and a preset step moves the options that belong to it.
+//! themselves, and a preset step moves the options that belong to it and not the cloud shadows.
 
 use super::describe::{COSTS, describe};
 use super::field::{Field, step};
@@ -18,8 +18,18 @@ fn the_preset_row_walks_and_reads_custom() {
     (0..3).for_each(|_| step(&mut s, Field::LightingQuality, -1));
     assert_eq!(display(&s, Field::LightingQuality), "Low");
     assert!(!s.graphics.shadows && !s.graphics.bloom);
-    step(&mut s, Field::CloudShadows, 1);
+    step(&mut s, Field::AutoExposure, 1);
     assert_eq!(display(&s, Field::LightingQuality), "Custom");
+}
+
+/// The cloud shadows start off and step on without moving the preset: they are opt-in.
+#[test]
+fn the_cloud_shadow_row_is_outside_the_preset() {
+    let mut s = Settings::default();
+    assert_eq!(display(&s, Field::CloudShadows), "Off");
+    step(&mut s, Field::CloudShadows, 1);
+    assert_eq!(display(&s, Field::CloudShadows), "On");
+    assert_eq!(display(&s, Field::LightingQuality), "High");
 }
 
 /// Every lighting row shows its two or three values and steps between them, and each one has a

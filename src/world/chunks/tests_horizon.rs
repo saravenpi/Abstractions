@@ -39,24 +39,24 @@ fn eye(up: f64) -> Eye {
 #[test]
 fn the_curve_hides_low_far_nodes_and_not_high_ones() {
     let small = 200.0 / RADIUS;
-    assert!(node(20_000.0, small, 0.0).hidden(&eye(2.0)));
-    assert!(!node(20_000.0, small, 1000.0).hidden(&eye(2.0)));
-    assert!(!node(3_000.0, small, 0.0).hidden(&eye(2.0)));
-    assert!(!node(0.0, small, 0.0).hidden(&eye(2.0)));
-    assert!(!node(20_000.0, small, 0.0).hidden(&eye(100.0)));
+    assert!(node(20_000.0, small, 0.0).hidden(&eye(2.0), false));
+    assert!(!node(20_000.0, small, 1000.0).hidden(&eye(2.0), false));
+    assert!(!node(3_000.0, small, 0.0).hidden(&eye(2.0), false));
+    assert!(!node(0.0, small, 0.0).hidden(&eye(2.0), false));
+    assert!(!node(20_000.0, small, 0.0).hidden(&eye(100.0), false));
 }
 
 /// A node wider than its gap to the eye is never hidden, nor anything for an eye under the floor.
 #[test]
 fn a_wide_node_or_a_low_eye_hides_nothing() {
     let wide = 30_000.0 / RADIUS;
-    assert!(!node(20_000.0, wide, 0.0).hidden(&eye(2.0)));
+    assert!(!node(20_000.0, wide, 0.0).hidden(&eye(2.0), false));
     let under = Eye {
         floor: RADIUS + 10.0,
         ..eye(2.0)
     };
-    assert!(!node(20_000.0, 200.0 / RADIUS, 0.0).hidden(&under));
-    assert!(!Bounds::WHOLE.hidden(&eye(2.0)));
+    assert!(!node(20_000.0, 200.0 / RADIUS, 0.0).hidden(&under, false));
+    assert!(!Bounds::WHOLE.hidden(&eye(2.0), false));
 }
 
 /// The nearest point of a node is its gap along the ground, and nothing for a node under the eye.
@@ -92,4 +92,18 @@ fn a_built_node_holds_its_ground() {
         "{}",
         bounds.angle
     );
+}
+
+/// A node at the threshold does not flash: once shown it is hidden only a little past the
+/// horizon, and once hidden it stays hidden until it reaches the horizon again.
+#[test]
+fn a_node_at_the_horizon_does_not_flash() {
+    let small = 200.0 / RADIUS;
+    let eye = eye(2.0);
+    let limit = (RADIUS / eye.height).acos() * RADIUS + 200.0;
+    let just_past = node(limit * 1.02, small, 0.0);
+    assert!(!just_past.hidden(&eye, false));
+    assert!(just_past.hidden(&eye, true));
+    let well_past = node(limit * 1.2, small, 0.0);
+    assert!(well_past.hidden(&eye, false) && well_past.hidden(&eye, true));
 }

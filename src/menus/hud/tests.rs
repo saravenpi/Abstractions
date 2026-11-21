@@ -1,10 +1,10 @@
-//! HUD tests: unit formatting at each boundary, what each instrument shows, the prompt and the banner.
+//! HUD tests: unit formatting at each boundary, what each instrument shows and the banner.
 
 use super::banner::opacity;
 use super::flight::{Flight, Gauge, reading};
 use super::units::{height, percent, speed};
 use crate::ship::ShipTelemetry;
-use crate::space::{Frame, Travel};
+use crate::space::Frame;
 use crate::universe::{BodyId, StarId};
 use bevy::math::Vec3;
 

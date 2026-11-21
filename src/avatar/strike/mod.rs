@@ -11,7 +11,9 @@
 //! reads on screen, as the `feel` module lays out.
 
 mod act;
+mod bump;
 mod canvas;
+mod cramp;
 mod dir;
 mod feel;
 mod flight;
@@ -32,6 +34,7 @@ mod recoil;
 mod ribbon;
 mod sense;
 mod show;
+mod solid;
 #[cfg(feature = "dev")]
 mod starter;
 #[cfg(any(test, feature = "dev"))]
@@ -50,7 +53,11 @@ mod stage;
 #[cfg(test)]
 mod tests_act;
 #[cfg(test)]
+mod tests_bump;
+#[cfg(test)]
 mod tests_cost;
+#[cfg(test)]
+mod tests_cramp;
 #[cfg(test)]
 mod tests_flight;
 #[cfg(test)]
@@ -130,6 +137,10 @@ fn update(app: &mut App) {
             show::place
                 .after(AvatarSet::Animate)
                 .run_if(any_with_component::<Wielded>),
+            cramp::cramp
+                .after(show::place)
+                .run_if(any_with_component::<Held>)
+                .run_if(resource_exists::<avian3d::collider_tree::ColliderTrees>),
             spears.after(input::ask),
             sync::sync
                 .run_if(sync::stale)
@@ -204,6 +215,10 @@ pub(super) fn plugin(app: &mut App) {
             PostUpdate,
             (
                 sense::sense.run_if(sense::swinging),
+                bump::block
+                    .after(sense::sense)
+                    .run_if(sense::swinging)
+                    .run_if(resource_exists::<avian3d::collider_tree::ColliderTrees>),
                 throw::pierce.run_if(any_with_component::<Spear>),
             )
                 .after(TransformSystems::Propagate)

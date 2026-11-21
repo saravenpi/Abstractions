@@ -9,12 +9,13 @@ use super::super::own::Own;
 use super::super::pose::{Core, Limb, Pose};
 use super::super::show::Shown;
 use super::act::{Strike, Timing, key};
+use super::cramp::{Cramped, ease};
 use super::feel::bend::Bend;
 use super::feel::body::{phase, stand, still};
 use super::held::Held;
 use super::ik::reach;
 use super::javelin::{Release, draw, drawing, released};
-use super::key::Key;
+use super::key::{Key, raised};
 use super::path::Path;
 use super::tune::SECOND_HAND;
 use crate::craft::build::Hands;
@@ -46,6 +47,8 @@ pub struct Layer {
     /// Unit direction of a drawn javelin in the frame of the body, which [`Layer::axis`] gives in
     /// the torso only as near as the torso follows the layer: the shaft lies along the aim exactly.
     pub aim: Option<Vec3>,
+    /// How far the tool at rest is raised out of a wall, 0 carried to 1 by the chest.
+    pub raise: f32,
 }
 
 impl Layer {
@@ -98,8 +101,8 @@ impl Layer {
 }
 
 /// Returns the layer `strike` lays with `held` on a body posed by `pose`: the key of its act turned
-/// toward its aim as far as the strike is under way, with the body behind it, eased from the layer
-/// `before` over `dt` seconds.
+/// toward its aim as far as the strike is under way, raised out of a wall as far as `before` is
+/// while it is not, with the body behind it, eased from the layer `before` over `dt` seconds.
 pub fn posed(
     strike: &Strike,
     held: &Held,
@@ -113,11 +116,12 @@ pub fn posed(
     let bend = Bend::of(strike.aim, still(pose));
     let (engage, _) = phase(strike.act, &timing);
     let key = bend.turn(&key(strike.act, &path, &timing, strike.dir), engage);
-    Layer::held(&key, held.build.hands, strike.hurt.usable).bodied(
-        (strike, held),
-        (&bend, &timing),
-        (before, dt),
-    )
+    let key = key.toward(&raised(), before.raise * (1.0 - engage));
+    let layer = Layer::held(&key, held.build.hands, strike.hurt.usable);
+    Layer {
+        raise: before.raise,
+        ..layer.bodied((strike, held), (&bend, &timing), (before, dt))
+    }
 }
 
 /// The bodies a strike lays its layer on.
@@ -131,6 +135,7 @@ type Bodies<'w, 's> = Query<
         Option<&'static Held>,
         Option<&'static AvatarPose>,
         Option<&'static mut Release>,
+        Option<&'static Cramped>,
     ),
 >;
 
@@ -160,8 +165,10 @@ pub fn lay(
     let dt = time.delta_secs();
     let mine = own.body().map(|(_, body)| body);
     let seen = shown.is_some_and(|shown| *shown == Shown::FirstPerson);
-    for (body, mut layer, strike, held, pose, release) in &mut bodies {
+    for (body, mut layer, strike, held, pose, release, cramped) in &mut bodies {
         let pose = pose.copied().unwrap_or_default();
+        let raise = ease(layer.raise, cramped.map_or(0.0, |c| c.0), dt);
+        let before = Layer { raise, ..*layer };
         let first = seen && mine == Some(body);
         let thrown = release.and_then(|mut release| {
             release.age += dt;
@@ -172,7 +179,7 @@ pub fn lay(
             whip
         });
         let next = match held.filter(|held| held.out) {
-            Some(held) => holding(strike, held, &pose, (&layer, dt, first)),
+            Some(held) => holding(strike, held, &pose, (&before, dt, first)),
             None => thrown.unwrap_or_default(),
         };
         layer.set_if_neq(next);

@@ -1,6 +1,11 @@
-//! Shared test setups for strikes: tools built from anchor materials on an Earth-like place.
+//! Shared test setups for strikes: tools built from anchor materials on an Earth-like place, and
+//! flat solids a tool meets.
+
+use bevy::prelude::*;
 
 use super::held::Held;
+use super::javelin::Soil;
+use super::solid::{Meets, Touch};
 use crate::craft::build::{Design, Intent, Place, Recipe, Wear};
 use crate::craft::matter::{Class, Grade, Material, Mineral, Stuff, Treatments};
 
@@ -65,4 +70,34 @@ pub fn spear() -> Held {
 /// Returns a club: a 0.6 m shaft with a 1.5 kg block.
 pub fn club() -> Held {
     tool(Intent::Crush, 0.6, 1.5)
+}
+
+/// A flat solid filling the side of a plane its normal points away from: a floor or a wall.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Plane {
+    /// A point of the face.
+    pub at: Vec3,
+    /// The unit normal of the face, out of the solid.
+    pub normal: Vec3,
+}
+
+impl Meets for Plane {
+    /// Returns where the segment enters the solid through its face.
+    fn meet(&self, from: Vec3, to: Vec3) -> Option<Touch> {
+        let (a, b) = (
+            (from - self.at).dot(self.normal),
+            (to - self.at).dot(self.normal),
+        );
+        let share = match (a >= 0.0, b < 0.0) {
+            (true, true) => a / (a - b).max(f32::EPSILON),
+            (false, _) => 0.0,
+            _ => return None,
+        };
+        Some(Touch {
+            share,
+            at: from.lerp(to, share),
+            normal: self.normal,
+            soil: Soil::Hard,
+        })
+    }
 }

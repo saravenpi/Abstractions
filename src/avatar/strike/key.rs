@@ -79,3 +79,14 @@ pub fn slung() -> Key {
         spine: -0.05,
     }
 }
+
+/// Returns the key of a tool raised out of the way of a wall: the hand drawn in by the chest, the
+/// shaft up and a little back, as a rifle is raised near a wall.
+pub fn raised() -> Key {
+    Key {
+        grip: Vec3::new(0.2, 0.22, -0.1),
+        axis: Vec3::new(0.05, 1.0, 0.12).normalize(),
+        twist: 0.0,
+        spine: 0.0,
+    }
+}

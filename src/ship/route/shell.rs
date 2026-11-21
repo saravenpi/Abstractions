@@ -23,8 +23,13 @@ pub(in crate::ship) fn lock(planet: &PlanetSpec) -> f64 {
     aired.max(planet.radius * (1.0 + CLEAR))
 }
 
+/// Share of the lock the arrival shell lies past the drop-out margin of the drive: more than a frame of
+/// the ramp-down covers (under half a percent of the lock), so that the route ends the drive, which leaves
+/// the ship at rest against the body, before the drive drops itself and the ship coasts a frame.
+const SLACK: f64 = 0.01;
+
 /// Returns the radius in metres from the centre of `planet` of its arrival shell, where the drive of a
-/// course aimed at it drops out: the drop-out margin outside [`lock`].
+/// course aimed at it drops out: the drop-out margin and [`SLACK`] outside [`lock`].
 pub(in crate::ship) fn radius(planet: &PlanetSpec) -> f64 {
-    lock(planet) * (1.0 + DROP_MARGIN)
+    lock(planet) * (1.0 + DROP_MARGIN + SLACK)
 }

@@ -118,7 +118,9 @@ fn rebind(
     };
     let renewed = events
         .read()
-        .fold(false, |seen, event| seen || event.is_modified(&low.0));
+        .filter(|event| event.is_modified(&low.0))
+        .count()
+        > 0;
     let (Some(handle), Some(mut materials)) = (backdrop.0.as_ref(), materials) else {
         return;
     };

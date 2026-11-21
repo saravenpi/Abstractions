@@ -26,7 +26,7 @@ pub const TURN: f64 = 0.5;
 /// Fastest turn of the ship onto the course of a cruise, in radians per second (45 degrees a
 /// second), and the angular acceleration in radians per second squared it eases in and out with:
 /// half a turn in 4.5 s.
-pub const SLEW: (f64, f64) = (0.785_398_2, 1.5);
+pub const SLEW: (f64, f64) = (std::f64::consts::FRAC_PI_4, 1.5);
 
 /// Radians between the nose and the course under which the cruise starts to build its speed:
 /// five degrees.

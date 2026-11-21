@@ -79,7 +79,7 @@ Players and servers must both run 0.11.0: the multiplayer protocol and the world
 - Pins replace waypoints and favourites. B drops a pin at your feet, or removes the one within 10 m. You keep up to eight, they are saved with the world, and one is the active pin. Your friends see your active pin in your colour.
 - Pins, the course, home, your ship and your friends show over the world at their real place with their distance, and slide to the screen edge with an arrow when out of view. Options, General, Markers over the world turns them off.
 - One Go command sends the ship to a place: pick it on the map, read what it is and how far, press Go. Enter and G do the same. When it cannot start, one sentence says why.
-- The map card of a planet gives its chance of life, and what really lives there once you have landed. A map with no data says why. Right click a search result, a favourite or a player for the same menu as on the map. The minimap shows the ground in the planet's real colours and no longer shows monuments.
+- The map card of a planet gives its chance of life, and what really lives there once you have landed. A map with no data says why. Right click a search result, a pin or a player for the same menu as on the map. The minimap shows the ground in the planet's real colours and no longer shows monuments.
 - One formatter writes every distance, speed, time, mass, pull and air pressure: metres, km, AU, light-years, and gravity and air as a multiple of home.
 - The map follows the real scale: a visited system reveals the stars within 10 light-years, and a system chart spaces orbits by the logarithm of the distance.
 - The compass shows the home mark only on the planet of your base.

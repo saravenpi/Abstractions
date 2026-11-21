@@ -24,6 +24,11 @@ pub struct StarUniform {
     /// The dust of a warp: the laps the flow has run in x, its laps per second in y and the
     /// share of the dust that is in in z, which is nothing outside a galaxy.
     pub flow: Vec4,
+    /// Unit vector away from the planet in render axes in xyz, and in w the luminance of the sky
+    /// straight up, in linear light: what hides the stars, see `skylight`.
+    pub dome: Vec4,
+    /// The luminance of the sky at the horizon in x, in linear light.
+    pub base: Vec4,
 }
 
 /// Material of the starfield.

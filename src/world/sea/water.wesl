@@ -286,7 +286,11 @@ fn coarse_sea(world: vec3<f32>, up: vec3<f32>, frag: vec4<f32>) -> vec3<f32> {
     input.world_normal = up;
     input.N = up;
     input.V = calculate_view(vec4<f32>(world, 1.0), false);
-    return relit(input, apply_pbr_lighting(input), place).rgb;
+    let body = relit(input, apply_pbr_lighting(input), place).rgb;
+    let ndv = max(dot(up, input.V), 0.0);
+    let fresnel = (WATER_F0 + (1.0 - WATER_F0) * pow(1.0 - ndv, 5.0)) * water.deep.w;
+    let mirror = sky_color(ndv) * daytime(world).z;
+    return mix(body, mirror, fresnel);
 }
 
 fn daytime(world: vec3<f32>) -> vec3<f32> {

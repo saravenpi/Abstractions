@@ -33,6 +33,7 @@ mod season;
 mod seasons;
 mod shade;
 mod sky;
+mod skylight;
 mod starfield;
 mod sun;
 mod tune;
@@ -74,13 +75,15 @@ mod tests_seasons;
 #[cfg(test)]
 mod tests_sky;
 #[cfg(test)]
+mod tests_skylight;
+#[cfg(test)]
 mod tests_weather;
 
 pub use air::Air;
 pub use camera::{configure_camera, set_fov};
 pub use celestial::{daylight, smoothstep, sun_direction};
 pub use clock::DayClock;
-pub use clouds::CloudCrossing;
+pub use clouds::{CloudCrossing, CloudShell};
 pub use cloudshade::CloudShade;
 pub use daylight::{PlaceLight, PlaceLit, PlaceUniform, place_light};
 pub use entry::FlightFx;
@@ -96,6 +99,7 @@ pub use observer::Observer;
 pub use palette::Palette;
 pub use pixelate::Pixelate;
 pub use seasons::{SeasonLight, SeasonLit, SeasonUniform};
+pub use starfield::Starfield;
 pub use sun::SunDir;
 pub use vantage::{LocalSystem, Vantage};
 pub use warm::{WARM_FRAMES, Warm, Warmed, warm_material};

@@ -22,10 +22,10 @@ use bevy::pbr::MaterialPlugin;
 use bevy::prelude::*;
 
 pub use material::{StarMaterial, StarUniform};
-#[cfg(test)]
 pub use specks::DAY_FLUX;
 
 use super::palette::Palette;
+use super::skylight;
 use super::vantage::Vantage;
 use super::warp::Lens;
 use crate::screens::Screen;
@@ -138,6 +138,8 @@ fn follow(
                 heading: lens.heading.extend(lens.beta),
                 drift: field.drift(&vantage).extend(0.0),
                 flow: Vec4::new(lens.phase, lens.flow, lens.medium(vantage.band), 0.0),
+                dome: vantage.up.extend(skylight::luminance(palette.zenith)),
+                base: Vec4::new(skylight::luminance(palette.horizon), 0.0, 0.0, 0.0),
             };
         }
     }

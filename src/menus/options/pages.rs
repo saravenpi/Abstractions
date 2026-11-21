@@ -45,6 +45,7 @@ pub fn graphics(active: Tab) -> impl Bundle {
         Spawn(toggle("Clouds", Field::Clouds)),
         Spawn(toggle("Cloud shadows", Field::CloudShadows)),
         Spawn(toggle("Auto exposure", Field::AutoExposure)),
+        Spawn(toggle("White balance", Field::WhiteBalance)),
         Spawn(toggle("Lamp shadows", Field::LocalShadows)),
         Spawn(toggle("Sea reflections", Field::WaterGlint)),
     );

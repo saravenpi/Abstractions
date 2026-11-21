@@ -18,6 +18,7 @@ pub enum Field {
     ShadowDistance,
     CloudShadows,
     AutoExposure,
+    WhiteBalance,
     LocalShadows,
     WaterGlint,
     Vsync,

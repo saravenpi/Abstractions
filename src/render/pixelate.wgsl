@@ -18,6 +18,8 @@ const WHITE_DITHER: f32 = 0.8;
 
 const WHITE_SOFT: f32 = 0.5;
 
+const DITHER_BAND: f32 = 0.25;
+
 fn dither(texel: vec2<i32>) -> f32 {
     let p = vec2<f32>(texel);
     return fract(IGN_SCALE * fract(p.x * IGN_X + p.y * IGN_Y));
@@ -30,8 +32,10 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let perceptual = pow(clamp(color.rgb, vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(1.0 / 2.2));
     let bright = max(perceptual.r, max(perceptual.g, perceptual.b));
     let strength = mix(1.0, WHITE_DITHER, bright);
-    let offset = 0.5 + (dither(texel) - 0.5) * strength;
-    let banded = floor(perceptual * settings.levels + vec3<f32>(offset)) / settings.levels;
+    let scaled = perceptual * settings.levels;
+    let base = floor(scaled);
+    let share = clamp((scaled - base - 0.5) / (2.0 * DITHER_BAND * strength) + 0.5, vec3<f32>(0.0), vec3<f32>(1.0));
+    let banded = (base + step(vec3<f32>(dither(texel)), share)) / settings.levels;
     let shown = mix(banded, perceptual, WHITE_SOFT * bright);
     return vec4<f32>(pow(shown, vec3<f32>(2.2)), color.a);
 }

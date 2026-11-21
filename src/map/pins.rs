@@ -6,6 +6,7 @@
 //! waypoints, on the mark of the body they are on.
 
 use bevy::ecs::system::SystemParam;
+use bevy::math::DVec2;
 use bevy::prelude::*;
 
 use super::geo::{copy_near, to_chart};
@@ -26,8 +27,9 @@ pub const POOL: usize = 32;
 /// One marker to draw: its chart point and the marker it stands for, or nothing for the player.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Pin {
-    /// Chart point of the marker on the level shown.
-    pub at: Vec2,
+    /// Chart point of the marker on the level shown, in f64 so that a flat map zoomed close
+    /// draws it on its pixel.
+    pub at: DVec2,
     /// Index of the marker in [`Markers`], or nothing for the player.
     pub marker: Option<usize>,
 }
@@ -134,7 +136,7 @@ pub struct Source<'w, 's> {
 
 impl Source<'_, '_> {
     /// Returns the chart point of the marker at `index` on the flat map of the planet shown.
-    fn on_planet(&self, index: usize) -> Option<Vec2> {
+    fn on_planet(&self, index: usize) -> Option<DVec2> {
         let Level::Planet(body) = *self.level else {
             return None;
         };
@@ -148,15 +150,16 @@ impl Source<'_, '_> {
 
     /// Returns the chart point of the marker at `index` on the chart shown: friends and
     /// the active pin only, since the chart draws home and the ship itself.
-    fn on_chart(&self, index: usize) -> Option<Vec2> {
+    fn on_chart(&self, index: usize) -> Option<DVec2> {
         let marker = self.markers.0.get(index)?;
         let (universe, clock, anchor) = self.world.as_ref()?;
         let kinds = [MarkerKind::Friend, MarkerKind::Waypoint];
         let chart = (&*self.board, self.view.dots.as_slice(), self.view.span);
         let sky = (&**universe, anchor.frame, clock.seconds);
-        kinds
+        let at = kinds
             .contains(&marker.kind)
-            .then(|| place(marker, chart, sky))?
+            .then(|| place(marker, chart, sky))??;
+        Some(at.as_dvec2())
     }
 }
 
@@ -194,9 +197,9 @@ pub(super) fn collect(source: Source, mut pins: ResMut<Pins>, mut found: Local<P
 
 /// Returns the pixel of the map the chart point `at` is drawn at on the level shown: on a
 /// planet, its copy nearest the longitude the lens looks at.
-pub(super) fn pixel(level: Level, (surface, view): (&Surface, &MapView), at: Vec2) -> Vec2 {
+pub(super) fn pixel(level: Level, (surface, view): (&Surface, &MapView), at: DVec2) -> Vec2 {
     match level {
-        Level::Chart => view.lens.to_map(at),
+        Level::Chart => view.lens.to_map(at.as_vec2()),
         Level::Planet(_) => surface.lens.to_map(copy_near(at, surface.lens.centre.x)),
     }
 }

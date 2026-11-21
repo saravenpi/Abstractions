@@ -31,7 +31,7 @@ pub struct SkyUniform {
     /// Linear color of the bright rim along the horizon, already scaled by its strength.
     pub rim: Vec4,
     /// Strength of the light of the galaxies in x, in y 1 once their map is baked, and in z the
-    /// share of the light of the star that reaches the camera, whose glare hides the band around it.
+    /// strength of the glare of the star seen under no air, see `glare`.
     pub galaxy: Vec4,
     /// First column of the rotation from render axes to galaxy axes, the axes of the map.
     pub to_galaxy_x: Vec4,
@@ -55,8 +55,9 @@ pub struct SkyLook {
     pub dip: f32,
     /// Sine of the height of the star above the horizon.
     pub sun_height: f32,
-    /// Share of the light of the star that reaches the camera: 0 in the shadow of the planet.
-    pub sun_lit: f32,
+    /// Strength of the glare of the star, see `glare::strength`: 0 in the shadow of the planet
+    /// and under a whole sky.
+    pub halo: f32,
     /// Share of the atmosphere left above the camera.
     pub air: f32,
     /// How deep the camera is in the cloud layer, from 0 to 1.
@@ -102,7 +103,7 @@ impl SkyUniform {
             galaxy: Vec4::new(
                 skylight::band_of(palette.zenith, palette.horizon) * dry,
                 f32::from(u8::from(look.mapped)),
-                look.sun_lit * dry,
+                look.halo * dry,
                 0.0,
             ),
             to_galaxy_x: look.to_galaxy.x_axis.extend(0.0),

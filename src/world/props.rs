@@ -27,7 +27,7 @@ const BODIES: [[f32; 2]; BIG] = [
     [0.35, 3.0], [0.42, 3.0],
     [0.35, 2.8], [0.45, 0.8], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0],
     [0.7, 0.9], [0.7, 0.9], [0.7, 0.9],
-    [0.0, 0.0], [1.3, 1.8], [0.0, 0.0], [1.1, 0.8], [0.9, 0.5], [0.3, 1.0], [0.5, 0.55],
+    [0.0, 0.0], [1.3, 1.8], [0.0, 0.0],
 ];
 
 /// The one material every world mesh shares.
@@ -108,18 +108,18 @@ pub fn extent(plant: Plant, scale: f32) -> [f32; 2] {
         .map_or([0.0; 2], |b| [b[0] * scale, b[1] * scale])
 }
 
-/// Returns the radius in metres of the ground the trunk, stem, rock or wreck of big prop `p` stands on.
+/// Returns the radius in metres of the ground the trunk, stem or rock of big prop `p` stands on.
 pub fn footprint(p: &Placement) -> f32 {
     extent(p.plant, p.scale)[0]
 }
 
-/// Returns the trunk, cactus, rock and wreck colliders of every big prop as one compound, in chunk space.
+/// Returns the trunk, cactus and rock colliders of every big prop as one compound, in chunk space.
 #[cfg(test)]
 pub fn body_collider(props: &[Placement]) -> Option<Collider> {
     body_collider_on(props, &Rig::PLAIN)
 }
 
-/// Returns the trunk, cactus, rock and wreck colliders of every big prop as one compound, in the frame of `rig`.
+/// Returns the trunk, cactus and rock colliders of every big prop as one compound, in the frame of `rig`.
 ///
 /// Each cylinder keeps its true size and stands along the local up at the origin of its prop. It reads only
 /// its arguments and is safe on any thread.

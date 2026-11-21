@@ -52,6 +52,8 @@ mod tests_cost;
 #[cfg(test)]
 mod tests_flight;
 #[cfg(test)]
+mod tests_ground;
+#[cfg(test)]
 mod tests_hit;
 #[cfg(test)]
 mod tests_hurt;
@@ -59,6 +61,8 @@ mod tests_hurt;
 mod tests_ik;
 #[cfg(test)]
 mod tests_outcome;
+#[cfg(test)]
+mod tests_stab;
 #[cfg(test)]
 mod tests_stock;
 #[cfg(test)]

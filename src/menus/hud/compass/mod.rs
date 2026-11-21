@@ -6,7 +6,9 @@
 //! hides past them. A mark never leaves its bearing: where two meet, the one that ranks first is
 //! drawn whole in front and the other dimmed behind it, and a distance that would print over
 //! another is left out. Friends past a limit fold into the nearest one with a count. On a planet
-//! an N marks north. The bar shows even while empty. The ship only shows on the planet
+//! an N marks north. The bar shows even while empty. It has no panel: its line and its tick
+//! lie on a dark copy of themselves, the HUD shadow, and its texts carry the shadow of all HUD
+//! text. The ship only shows on the planet
 //! it stands on and while the player is on foot; favourites only nearby. The home mark only
 //! shows on the planet of the home base, on foot or in its air, and nowhere else.
 
@@ -22,6 +24,9 @@ mod tests_course;
 mod tests_herds;
 #[cfg(test)]
 mod tests_space;
+#[cfg(test)]
+mod tests_tools;
+mod tools;
 
 pub(super) use aim::Around;
 #[cfg(test)]
@@ -132,16 +137,16 @@ fn pin(slot: usize) -> impl Bundle {
             head(slot),
             (
                 Far(slot),
-                text("", theme::FONT_SMALL, theme::TEXT_2),
+                text("", theme::FONT_SMALL, theme::TEXT),
                 TextLayout::no_wrap(),
             ),
         ],
     )
 }
 
-/// The line of the bar, or the tick at its middle: a rule `size` pixels wide and high, `left`
-/// percent along the bar, standing on the bottom of the row of icons.
-fn rule(left: f32, size: Vec2, color: Color) -> impl Bundle {
+/// A rule of the bar `size` pixels wide and high in `color`, `left` percent along the bar,
+/// standing on the bottom of the row of icons and moved `shift` pixels down and to the right.
+fn laid(left: f32, size: Vec2, color: Color, shift: f32) -> impl Bundle {
     (
         Node {
             position_type: PositionType::Absolute,
@@ -149,10 +154,22 @@ fn rule(left: f32, size: Vec2, color: Color) -> impl Bundle {
             top: px(ROW - size.y),
             width: px(size.x),
             height: px(size.y),
+            margin: UiRect::new(px(shift), px(0), px(shift), px(0)),
             ..default()
         },
         BackgroundColor(color),
     )
+}
+
+/// The line of the bar, or the tick at its middle, in `color`.
+fn rule(left: f32, size: Vec2, color: Color) -> impl Bundle {
+    laid(left, size, color, 0.0)
+}
+
+/// The shadow of a rule: the same rule in `theme::HUD_SHADOW`, one line down and to the right,
+/// as HUD text casts. It is spawned before its rule, so it lies under it.
+fn cast(left: f32, size: Vec2) -> impl Bundle {
+    laid(left, size, theme::HUD_SHADOW, theme::LINE)
 }
 
 /// The compass, high in the middle of the screen.
@@ -176,8 +193,9 @@ pub(super) fn bar() -> impl Bundle {
                 height: px(HEIGHT),
                 ..default()
             },
-            BackgroundColor(theme::PANEL),
             children![
+                cast(0.0, Vec2::new(WIDTH, theme::LINE)),
+                cast(50.0, Vec2::new(theme::LINE, theme::S2)),
                 rule(0.0, Vec2::new(WIDTH, theme::LINE), theme::TEXT_2),
                 rule(50.0, Vec2::new(theme::LINE, theme::S2), theme::TEXT),
                 north::mark(),
@@ -188,13 +206,14 @@ pub(super) fn bar() -> impl Bundle {
     )
 }
 
-/// Registers the home, ship and herd markers, written once the ship has placed the world.
+/// Registers the home, ship, herd and tool markers, written once the ship has placed the world.
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         Update,
         (
             (beacons::home, beacons::ship).after(ShipSet::Place),
             herds::herds.run_if(on_timer(Duration::from_secs_f32(herds::EVERY))),
+            tools::tools.run_if(on_timer(Duration::from_secs_f32(herds::EVERY))),
             beacons::course.after(super::eye::capture),
         )
             .in_set(MarkerSet::Fill)

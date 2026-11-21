@@ -49,14 +49,6 @@ pub enum Plant {
     Boulder,
     /// Weathered branch lying in the shallows.
     Driftwood,
-    /// Broken rowing boat.
-    Boat,
-    /// Old anchor lying on its side.
-    Anchor,
-    /// Terracotta amphora.
-    Amphora,
-    /// Sunken wooden chest.
-    Chest,
     /// Grass tuft.
     Grass,
     /// Tall reed with a brown head.
@@ -158,11 +150,10 @@ impl Plant {
         match self {
             Seagrass | TubeCoral => 1.5,
             Starfish | Shell | Pebbles => 0.1,
-            SmoothRock | Anemone | Clam | Chest => 0.9,
-            Driftwood | Anchor => 0.6,
+            SmoothRock | Anemone | Clam => 0.9,
+            Driftwood => 0.6,
             Boulder => 1.9,
-            Boat | Sponge | BranchCoral => 1.3,
-            Amphora => 1.6,
+            Sponge | BranchCoral => 1.3,
             BrainCoral | FanCoral => 1.1,
             _ => 0.0,
         }

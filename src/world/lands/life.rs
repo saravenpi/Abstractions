@@ -1,4 +1,4 @@
-//! What may live on the lands of each class: how thick the plants grow, and who builds there.
+//! What may live on the lands of each class: how thick the plants grow, and what lives on the sea floor.
 
 use super::Lands;
 use crate::universe::PlanetClass;
@@ -17,7 +17,7 @@ impl Lands {
         }
     }
 
-    /// Returns true when the sea floor carries life and wrecks: kelp, seagrass, coral, shells and sunken boats.
+    /// Returns true when the sea floor carries life: kelp, seagrass, coral and shells.
     pub fn sea_life(self) -> bool {
         self.sea && self.temperate()
     }
@@ -30,14 +30,5 @@ impl Lands {
             true => &[],
             false => plants_for(biome, surface),
         }
-    }
-
-    /// Returns true when people live on the planet: villages, camps, cabins, docks and lighthouses.
-    /// The other planets keep only ruins.
-    pub fn settled(self) -> bool {
-        !matches!(
-            self.class,
-            PlanetClass::Lava | PlanetClass::Barren | PlanetClass::GasGiant
-        )
     }
 }

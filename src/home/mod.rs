@@ -27,6 +27,10 @@ mod tune;
 mod works;
 
 #[cfg(test)]
+mod cover;
+#[cfg(test)]
+mod stage;
+#[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tests_app;

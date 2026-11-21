@@ -11,7 +11,7 @@ use super::pose::Pose;
 use super::scene::Scene;
 use super::sense::CompanionSense;
 use super::spot::Stance;
-use super::tune::{CLEARANCE, CURIOUS_REACH, FLIGHT_CLEARANCE, LOW_CLEARANCE};
+use super::tune::{CLEARANCE, FLIGHT_CLEARANCE, LOW_CLEARANCE};
 use crate::space::{Anchor, Frame};
 
 /// Share of the inspect idle spent away, before it heads back to the player.
@@ -109,18 +109,10 @@ impl Brain {
         told || fresh
     }
 
-    /// Returns the structure close enough to be curious about, if any.
-    pub fn nearby(&self, sense: &CompanionSense) -> Option<Vec3> {
-        sense
-            .structure
-            .filter(|at| at.distance(self.stance.eye) < CURIOUS_REACH)
-    }
-
-    /// Chooses what the inspect idle looks at: the nearby structure, else the ground in front
-    /// of the player the way the companion itself faces.
-    pub fn choose_inspect(&mut self, sense: &CompanionSense) {
-        let ground = self.stance.eye + self.scene.ahead() * INSPECT_REACH - self.stance.up * 1.4;
-        self.inspect = self.nearby(sense).unwrap_or(ground);
+    /// Chooses what the inspect idle looks at: the ground in front of the player the way the
+    /// companion itself faces.
+    pub fn choose_inspect(&mut self) {
+        self.inspect = self.stance.eye + self.scene.ahead() * INSPECT_REACH - self.stance.up * 1.4;
     }
 
     /// Returns true while the inspect idle keeps the companion away from the player.

@@ -43,6 +43,7 @@ pub(super) fn plugin(app: &mut App) {
             Update,
             (
                 pack::load,
+                pack::kit.run_if(crate::screens::in_control.and_then(pack::unkitted)),
                 pack::gather.run_if(crate::screens::in_control.and_then(crate::space::on_foot)),
                 pack::split.run_if(on_message::<pack::Knocked>),
                 pack::fade.run_if(pack::fading),

@@ -19,7 +19,7 @@ fn sample(plant: Plant) -> Placement {
     }
 }
 
-/// A tree, a willow and a wreck merged through a rig start, end and reach as far as the flat ones within 1 mm, at
+/// A tree, a willow and a boulder merged through a rig start, end and reach as far as the flat ones within 1 mm, at
 /// a face centre, at an edge midpoint and next to a corner, and they stand along the true up of the planet.
 #[test]
 fn props_keep_their_shape_on_the_globe() {
@@ -29,7 +29,7 @@ fn props_keep_their_shape_on_the_globe() {
             embed: &embed,
             turn: &turn,
         };
-        for p in [Plant::Oak, Plant::Willow, Plant::Boat].map(sample) {
+        for p in [Plant::Oak, Plant::Willow, Plant::Boulder].map(sample) {
             let flat = extent(&merge_props(&[p]), p.pos, Vec3::Y);
             let (origin, up) = (tile.point(p.pos), tile.turn(p.pos) * Vec3::Y);
             let rigid = extent(&merge_props_on(&[p], &rig), origin, up);

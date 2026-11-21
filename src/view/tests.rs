@@ -6,10 +6,13 @@ mod cockpit;
 mod comfort;
 mod cuts;
 mod framing;
+mod hold;
 mod occlusion;
 mod rates;
+mod recentre;
 mod screen;
 mod ship;
+mod stage;
 mod steer;
 mod world;
 

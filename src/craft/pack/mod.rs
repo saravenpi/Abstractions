@@ -2,10 +2,11 @@
 //!
 //! Tools are kept as recipes, materials stack by where they came from (species, tissue, grade and
 //! treatments, or the stone). [`Burden`] says what the load weighs on this world and how much it
-//! slows the walk. The pack is saved in the world file.
+//! slows the walk. The pack is saved in the world file. A robot wakes with a kit of stone tools.
 
 mod bar;
 mod item;
+mod kit;
 mod lend;
 mod load;
 mod make;
@@ -19,6 +20,8 @@ mod words;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_kit;
+#[cfg(test)]
 mod tests_knock;
 #[cfg(test)]
 mod tests_lend;
@@ -27,6 +30,7 @@ mod tests_pick;
 
 pub use bar::{Bar, SLOTS};
 pub use item::Item;
+pub(crate) use kit::{kit, unkitted};
 pub use lend::{Lent, Out};
 pub use load::{Burden, capacity, pace};
 pub use make::cost;
@@ -70,6 +74,8 @@ pub struct Pack {
     pub next: u32,
     /// The tools that are out in the world: thrown and not picked up yet. They weigh nothing here.
     pub out: Vec<Out>,
+    /// True once the pack was given the kit a robot wakes with; false in a world saved before.
+    pub kitted: bool,
 }
 
 impl Pack {

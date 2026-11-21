@@ -55,3 +55,7 @@ pub const FIST_MASS: f32 = 0.5;
 
 /// Speed a piece broken off a rock flies off at, in metres per second.
 pub const PIECE_SPEED: f32 = 2.5;
+
+/// Kilograms of each stone underfoot the workshop may draw on to make the kit, more than any of its
+/// tools weighs. The kit takes nothing from the pack: the robot wakes with its tools made.
+pub const KIT_STONE: f32 = 10.0;

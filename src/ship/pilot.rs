@@ -3,12 +3,17 @@
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+mod progress;
+
 use super::moons::Standoff;
 use super::warp::Tier;
 use crate::computer::{Target, target_position};
 use crate::render::Sequence;
 use crate::space::UniPos;
 use crate::universe::{BodyId, StarId, Universe};
+pub(super) use progress::Progress;
+#[cfg(test)]
+pub(super) use progress::SPOOLS;
 
 /// What the autopilot is doing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -102,6 +107,10 @@ pub struct Autopilot {
     pub(super) leaving: Option<BodyId>,
     /// Whether the pilot stopped the route: the drive that runs is dropped out on the next frame.
     pub(super) halt: bool,
+    /// How the route comes on: the nearest it has been and the spools since it came nearer.
+    pub(super) progress: Progress,
+    /// Whether the route was dropped for spooling again and again without coming nearer.
+    pub(super) lost: bool,
 }
 
 impl Autopilot {
@@ -115,6 +124,11 @@ impl Autopilot {
         settled: 0.0,
         leaving: None,
         halt: false,
+        progress: Progress {
+            best: None,
+            spools: 0,
+        },
+        lost: false,
     };
 
     /// Starts a route to `target`: a planet, a moon, a star or a galaxy. The route already

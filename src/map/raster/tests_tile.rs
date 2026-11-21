@@ -4,15 +4,15 @@
 use std::f64::consts::{PI, TAU};
 
 use abstractions_net::leaves::Leaves;
-use bevy::math::{DVec3, Vec2};
+use bevy::math::{DVec2, DVec3};
 
 use super::grid;
 use super::tile::{LEVEL_MAX, SHOWN_MAX, SIDE, TileId, level_for, visible};
 use super::tile_paint::lit;
-use crate::computer::Lens;
 use crate::map::explored::grid::{depth_for, leaf_of};
 use crate::map::lat_lon;
 use crate::map::level::CLOSEST;
+use crate::map::sight::Sight;
 
 /// Returns the tile of `level` that holds unit direction `dir`.
 pub(super) fn tile_at(dir: DVec3, level: u8) -> TileId {
@@ -51,13 +51,13 @@ fn a_lens_looks_at_a_few_tiles_that_hold_its_centre() {
     assert_eq!(level_for(CLOSEST), LEVEL_MAX);
     assert!(level_for(6.0) <= level_for(12.0));
     let lenses = [
-        (3.0, Vec2::ZERO),
-        (9.0, Vec2::new(0.3, 0.2)),
-        (32.0, Vec2::new(0.99, -0.4)),
-        (CLOSEST, Vec2::new(-0.37, 0.21)),
+        (3.0, DVec2::ZERO),
+        (9.0, DVec2::new(0.3, 0.2)),
+        (32.0, DVec2::new(0.99, -0.4)),
+        (CLOSEST, DVec2::new(-0.37, 0.21)),
     ];
     for (zoom, centre) in lenses {
-        let tiles = visible(Lens { zoom, centre }, level_for(zoom));
+        let tiles = visible(Sight { zoom, centre }, level_for(zoom));
         assert!(!tiles.is_empty() && tiles.len() <= SHOWN_MAX, "{zoom}");
         let dir = crate::map::from_chart(centre).expect("on the map");
         let holds = tiles.iter().any(|(_, id)| id.pixel(dir).is_some());
@@ -68,9 +68,9 @@ fn a_lens_looks_at_a_few_tiles_that_hold_its_centre() {
 /// A lens at the seam looks at tiles east of the last column, which wrap to the first.
 #[test]
 fn a_lens_at_the_seam_wraps_its_tiles() {
-    let lens = Lens {
+    let lens = Sight {
         zoom: 32.0,
-        centre: Vec2::new(0.999, 0.0),
+        centre: DVec2::new(0.999, 0.0),
     };
     let cols = i64::from(TileId::cols(5));
     let seam = visible(lens, 5);

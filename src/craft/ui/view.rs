@@ -16,7 +16,7 @@ pub const PACK_HINTS: [(&str, &str); 8] = [
     ("Sort", "F2"),
     ("Hold", "Enter"),
     ("Slot", "1-6"),
-    ("Drop", "X"),
+    ("Drop material", "X"),
     ("Workshop", "Tab"),
     ("Close", "I"),
 ];

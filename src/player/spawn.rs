@@ -17,7 +17,7 @@ use crate::saves::{ActiveWorld, WorldSave};
 use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
 use crate::sim::PlayerId;
-use crate::space::{Anchor, Rebased, altitude, on_foot, up};
+use crate::space::{Anchor, Rebased, altitude, up};
 use crate::view::{Cut, Heading};
 use crate::world::{SpawnPoint, StreamAnchor, Terrain};
 
@@ -170,46 +170,8 @@ pub(super) fn rescue(anchor: &Anchor, terrain: &Terrain, at: Vec3, home: DVec3) 
     (height < ground - SUNK).then(|| at + up(anchor, at) * (stand - height))
 }
 
-/// The parts of a player body that are put back when lost.
-type Lost = (
-    &'static PlayerId,
-    &'static mut Transform,
-    &'static mut Motion,
-    &'static mut Gear,
-    &'static Home,
-);
-
-/// Puts every lost player back: at rest, the flight gear folded, and with a cut of the camera
-/// when it is the local one.
-fn respawn_when_lost(
-    anchor: Res<Anchor>,
-    terrain: Res<Terrain>,
-    mut player: Query<Lost, With<Player>>,
-    mut cuts: MessageWriter<Cut>,
-) {
-    for (id, mut transform, mut motion, mut gear, home) in &mut player {
-        let Some(back) = rescue(&anchor, &terrain, transform.translation, home.0) else {
-            continue;
-        };
-        transform.translation = back;
-        *motion = Motion {
-            yaw: motion.yaw,
-            ..default()
-        };
-        *gear = Gear::default();
-        if *id == PlayerId::LOCAL {
-            cuts.write(Cut::default());
-        }
-    }
-}
-
-/// Registers spawning and respawn systems.
+/// Registers the spawn of the body, and the rescue of a lost one, see [`super::lost`].
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(
-        Update,
-        (
-            spawn_player.run_if(resource_added::<SpawnPoint>),
-            respawn_when_lost.run_if(on_foot),
-        ),
-    );
+    app.add_systems(Update, spawn_player.run_if(resource_added::<SpawnPoint>))
+        .add_plugins(super::lost::plugin);
 }

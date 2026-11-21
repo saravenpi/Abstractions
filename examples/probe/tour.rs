@@ -23,12 +23,6 @@ pub enum Act {
 /// Facts found on the way and reused by later stages.
 #[derive(Default)]
 pub struct Notes {
-    /// Planet position of the nearest village origin.
-    pub village: Option<DVec3>,
-    /// Planet position of the middle of that room on its floor.
-    pub room: Option<DVec3>,
-    /// Planet position of the threshold of its door, and the unit direction out of it.
-    pub door: Option<(DVec3, DVec3)>,
     /// Planet position of a shore point near the base.
     pub shore: Option<DVec3>,
     /// The planet the ship warps to.

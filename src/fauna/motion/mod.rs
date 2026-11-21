@@ -49,6 +49,8 @@ mod tests_gait;
 #[cfg(test)]
 mod tests_hill;
 #[cfg(test)]
+mod tests_idle;
+#[cfg(test)]
 mod tests_ik;
 #[cfg(test)]
 mod tests_plans;

@@ -77,7 +77,8 @@ impl Held {
         }
     }
 
-    /// Returns true when the item is made to be thrown: the primary button draws and throws it.
+    /// Returns true when the item is made to be thrown: the throw key draws and throws it, a click
+    /// stabs with it.
     pub fn thrown(&self) -> bool {
         self.recipe.design.intent == Intent::Throw
     }

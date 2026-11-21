@@ -30,7 +30,7 @@ fn a_low_box_is_climbed() {
     );
 }
 
-/// A stair of ten steps laid out as the village builds them is climbed at a walk to its top,
+/// A stair of ten steps of the steepest rise is climbed at a walk to its top,
 /// at 30 frames a second and at 144.
 #[test]
 fn a_stair_is_climbed() {

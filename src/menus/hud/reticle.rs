@@ -69,14 +69,14 @@ fn at([left, top, width, height]: [f32; 4]) -> Node {
     }
 }
 
-/// Returns the strip of the animal fought: its name over its health bar, on a panel, hidden.
+/// Returns the strip of the animal fought: its name over its health bar, straight over the world
+/// with no panel, hidden.
 fn foe() -> impl Bundle {
     let strip = Node {
         display: Display::None,
         flex_direction: FlexDirection::Column,
         align_items: AlignItems::Center,
         row_gap: px(theme::S1),
-        padding: UiRect::axes(px(theme::S2), px(theme::S1)),
         height: Val::Auto,
         ..at([-BAR.0, BAR.2, 2.0 * BAR.0, 0.0])
     };
@@ -86,9 +86,9 @@ fn foe() -> impl Bundle {
         ..default()
     };
     let fill = (FoeBar, Node::default(), BackgroundColor(theme::TEXT));
-    let name = text("", theme::FONT_SMALL, theme::TEXT_2);
+    let name = text("", theme::FONT_SMALL, theme::TEXT);
     (
-        (Foe, strip, BackgroundColor(theme::PANEL)),
+        (Foe, strip),
         children![
             (FoeName, name, TextLayout::no_wrap()),
             (track, BackgroundColor(theme::HAIRLINE), children![fill]),

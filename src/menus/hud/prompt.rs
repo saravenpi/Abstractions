@@ -6,7 +6,7 @@
 use bevy::prelude::*;
 
 use super::context::{Context, Element, Where};
-use super::course::{Course, words};
+use super::course::{Course, words, yielded};
 use super::cruise::{merge, read};
 use super::fade::gate;
 use super::glide::{Bodies, mine, spoken};
@@ -74,11 +74,11 @@ pub fn offered(offer: Offer, keys: &Keymap) -> (KeyCode, String) {
     let (thing, weight) = (offer.thing, offer.weight());
     match offer.verb {
         Verb::Pull => (keys.ship.board, format!("Pull out the {thing}")),
-        Verb::Carve => (keys.ship.board, format!("Cut the {thing}")),
+        Verb::Carve => (keys.ship.board, format!("Cut the {thing}{weight}")),
         Verb::Take => (keys.ship.board, format!("Take the {thing}{weight}")),
         Verb::Board => (keys.ship.board, "Board".to_string()),
         Verb::Leave => (keys.ship.board, "Leave the ship".to_string()),
-        Verb::Stone => (PICK_KEY, "Break stone off".to_string()),
+        Verb::Stone => (PICK_KEY, "Break off stone".to_string()),
         Verb::Mend => (keys.mend, format!("Mend the {}", thing.to_lowercase())),
     }
 }
@@ -189,6 +189,7 @@ impl Reach<'_, '_> {
             .as_deref()
             .is_some_and(|hatch| hatch.waiting && seated);
         let unready = || waiting.then(|| UNREADY.to_string());
+        let block = yielded(block, seated, state.act.is_some());
         state.block = state.block.or(block).or_else(unready);
         (state.running, state.ready) = (running, ready);
         state

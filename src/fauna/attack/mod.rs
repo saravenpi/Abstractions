@@ -45,6 +45,8 @@ mod tests_pose;
 #[cfg(test)]
 mod tests_pounce;
 #[cfg(test)]
+mod tests_reach;
+#[cfg(test)]
 mod tests_rest;
 
 use bevy::prelude::*;

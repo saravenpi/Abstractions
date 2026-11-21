@@ -73,3 +73,10 @@ pub fn words(course: &Course, seated: bool, keys: &Keys) -> Words {
         false => blocked(Block::OnFoot.words(keys)),
     }
 }
+
+/// Returns the sentence of the course, `block`, as the line keeps it: on foot it gives way to an
+/// action a key can do now (cut a carcass, break stone, take a javelin), since boarding the ship to
+/// fly the course can wait; in the ship it stands.
+pub fn yielded(block: Option<String>, seated: bool, acting: bool) -> Option<String> {
+    block.filter(|_| seated || !acting)
+}

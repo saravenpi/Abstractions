@@ -103,7 +103,7 @@ fn every_offered_action_names_its_key_and_its_thing() {
     );
     assert_eq!(said(Verb::Board, ""), row(KeyCode::KeyT, "Board"));
     assert_eq!(said(Verb::Leave, ""), row(KeyCode::KeyT, "Leave the ship"));
-    assert_eq!(said(Verb::Stone, ""), row(KeyCode::KeyH, "Break stone off"));
+    assert_eq!(said(Verb::Stone, ""), row(KeyCode::KeyH, "Break off stone"));
     assert_eq!(
         said(Verb::Mend, "Left arm"),
         row(KeyCode::KeyY, "Mend the left arm")
@@ -133,4 +133,39 @@ fn a_take_names_the_thing_and_its_mass() {
         ..flint
     };
     assert_eq!(said(unweighed), "Take the flint");
+}
+
+/// On foot a course set to fly gives the line to an action a key can do now, and keeps it with
+/// nothing to do; in the ship it keeps the line.
+#[test]
+fn an_action_on_foot_beats_the_course() {
+    let board = Some("Board the ship to fly: press E.".to_string());
+    assert_eq!(super::course::yielded(board.clone(), false, true), None);
+    assert_eq!(super::course::yielded(board.clone(), false, false), board);
+    assert_eq!(super::course::yielded(board.clone(), true, true), board);
+}
+
+/// A cut names the part and what it gives, and breaking stone names its key.
+#[test]
+fn a_cut_and_a_stone_name_themselves() {
+    let mut keys = Keymap::default();
+    keys.ship.board = KeyCode::KeyF;
+    let cut = Offer {
+        verb: Verb::Carve,
+        thing: "thigh",
+        grams: Some(4_200),
+    };
+    assert_eq!(
+        offered(cut, &keys),
+        (KeyCode::KeyF, "Cut the thigh 4.2 kg".to_string())
+    );
+    let stone = Offer {
+        verb: Verb::Stone,
+        thing: "",
+        grams: None,
+    };
+    assert_eq!(
+        offered(stone, &keys),
+        (KeyCode::KeyH, "Break off stone".to_string())
+    );
 }

@@ -116,7 +116,7 @@ pub fn harvest(life: &Life, planet: u64, cut: Cut, tool: Option<Tool>) -> Option
 }
 
 /// Returns the tool the held item makes.
-fn tool(held: &Held) -> Option<Tool> {
+pub(crate) fn tool(held: &Held) -> Option<Tool> {
     held.0.as_ref().map(|hold| Tool {
         intent: hold.intent,
         hardness: hold.build.head.material.hardness,

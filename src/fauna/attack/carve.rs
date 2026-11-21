@@ -1,5 +1,5 @@
-//! Carving: the interact key cuts the part of a carcass the robot looks at, when the prompt names
-//! that cut. The tool rule of the harvest decides what it gives, and the part is gone from the body
+//! Carving: the interact key cuts the part of a carcass the robot looks at within its reach, with a
+//! tool or bare hands, when the prompt names that cut and what it gives. The tool rule of the harvest decides what it gives, and the part is gone from the body
 //! for everyone who sees it.
 
 use bevy::ecs::system::SystemParam;
@@ -9,25 +9,50 @@ use super::aim::{Carcasses, Parts, Target, named, target};
 use super::slay::Carved;
 use super::tune::CARVE;
 use crate::audio::{Body, Impact};
-use crate::craft::harvest::{Claims, Cut, Harvest};
+use crate::craft::Held;
+use crate::craft::harvest::{Claims, Cut, Harvest, harvest, tool};
 use crate::craft::matter::Grade;
 use crate::fauna::beast::Beast;
 use crate::fauna::bleed::impact;
 use crate::fauna::herds::Herds;
 use crate::fauna::want::Lead;
-use crate::life::Species;
-use crate::player::{Interact, Verb};
+use crate::life::{Life, Species};
+use crate::player::{Interact, Player, Verb};
 use crate::render::GameCamera;
 use crate::settings::{Persistent, Settings};
+use crate::sim::PlayerId;
 use crate::world::Terrain;
 
-/// What reads the key and the view.
+/// What reads the key and the view: the camera, the local robot whose reach the cut is, the keys,
+/// their bindings, the action the interact key does and the tool in the hand.
 #[derive(SystemParam)]
 pub struct Eyes<'w, 's> {
     camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
+    robots: Query<'w, 's, (&'static GlobalTransform, &'static PlayerId), With<Player>>,
     keys: Res<'w, ButtonInput<KeyCode>>,
     settings: Res<'w, Persistent<Settings>>,
     interact: ResMut<'w, Interact>,
+    held: Option<Res<'w, Held>>,
+}
+
+impl Eyes<'_, '_> {
+    /// Returns where the local robot stands, when it does.
+    fn robot(&self) -> Option<Vec3> {
+        let mine = self.robots.iter().find(|(_, id)| **id == PlayerId::LOCAL);
+        mine.map(|(placed, _)| placed.translation())
+    }
+
+    /// Offers `cut` of a carcass of `species` of `life` on the planet `seed`, named with what it
+    /// gives with the tool in the hand, bare hands giving less, and returns true when the interact
+    /// key takes it now.
+    fn offer(&mut self, (life, seed): (&Life, u64), (species, cut): (&Species, Cut)) -> bool {
+        let tool = self.held.as_deref().and_then(tool);
+        let grams = harvest(life, seed, cut, tool).map(|stack| (stack.mass * 1e3).round() as u32);
+        let name = named(species, usize::from(cut.part));
+        self.interact.weighed(Verb::Carve, name, grams);
+        let key = self.settings.controls.keys.ship.board;
+        self.interact.pressed(Verb::Carve, &self.keys, key)
+    }
 }
 
 /// Returns the grade of the kill of the carcass `lead` of `herds`, poor when it is not recorded.
@@ -95,7 +120,8 @@ pub fn carve(
     let (Ok(eye), Some(life)) = (eyes.camera.single().copied(), globe.life()) else {
         return;
     };
-    let Some(Target { part, body, index }) = target(&eye, (&parts, &dead), life) else {
+    let Some(Target { part, body, index }) = target((&eye, eyes.robot()), (&parts, &dead), life)
+    else {
         return;
     };
     let Ok(mut beast) = dead.get_mut(body) else {
@@ -104,17 +130,15 @@ pub fn carve(
     let Some(species) = life.species.get(usize::from(beast.index)) else {
         return;
     };
-    eyes.interact.offer(Verb::Carve, named(species, index));
-    let key = eyes.settings.controls.keys.ship.board;
-    if !eyes.interact.pressed(Verb::Carve, &eyes.keys, key) {
+    let cut = cut_of(&herds, &beast, index);
+    if !eyes.offer((life, terrain.seed()), (species, cut)) {
         return;
     }
     let at = parts
         .get(part)
         .map_or(eye.translation(), |p| p.1.translation());
     sounds.write(knife(species, index, at));
-    let cut = (index, cut_of(&herds, &beast, index));
-    if let Some(cut) = claim(claims.as_deref_mut(), beast.lead, cut) {
+    if let Some(cut) = claim(claims.as_deref_mut(), beast.lead, (index, cut)) {
         asks.write(Harvest(cut));
     }
     note(&mut herds, beast.lead, index);

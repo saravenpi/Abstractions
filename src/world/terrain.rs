@@ -10,6 +10,7 @@ use super::surface::Surface;
 use crate::universe::Universe;
 
 mod coarse;
+mod island;
 mod landfall;
 mod ponds;
 mod root;

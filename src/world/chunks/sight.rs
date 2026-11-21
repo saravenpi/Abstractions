@@ -31,6 +31,13 @@ pub struct Height {
 }
 
 impl Height {
+    /// Returns the metres the focus is taken down to be as high over the sea level sphere, where the
+    /// nodes of the quadtree lie, as it is over the ground: a focus in a basin or on a mountain is then
+    /// as near its nodes as one on a plain.
+    pub fn drop(&self) -> f64 {
+        self.altitude - self.clearance.max(0.0)
+    }
+
     /// Returns how high planet position `focus` is over the sea and over the ground of `globe`.
     pub fn of(globe: &Globe, focus: DVec3) -> Self {
         let altitude = focus.length() - globe.radius();
@@ -63,9 +70,10 @@ impl Eye {
     pub fn of(globe: &Globe, at: DVec3, ground: f64) -> Self {
         let air = render::Air::of(globe.record());
         let thick = f64::from((air.share() * air.haze()).max(render::THIN_AIR));
-        let veil = (veil(ground, &Height::of(globe, at)) / thick).min(SIGHT * globe.radius());
+        let height = Height::of(globe, at);
+        let veil = (veil(ground, &height) / thick).min(SIGHT * globe.radius());
         Self {
-            at,
+            at: at - at.normalize_or(DVec3::Y) * height.drop(),
             radius: globe.radius(),
             veil,
         }

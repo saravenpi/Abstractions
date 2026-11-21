@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 use std::time::Instant;
 
-use super::home::{HOME_GALAXY, SEARCH};
+use super::home::{HOME_GALAXY, SEARCH, homely};
 use super::range_tests::sample;
 use super::*;
 use crate::life;
@@ -17,16 +17,21 @@ fn home(seed: u64) -> (PlanetSpec, StarSpec) {
     (u.planet(u.home()), u.system(u.home().star).star)
 }
 
-/// Returns true when a landable planet of `star` holds life under the normal odds.
-fn lives(u: &Universe, star: &StarSpec) -> bool {
+/// Returns true when a landable planet of `star` is homely under the normal odds.
+fn welcomes(u: &Universe, star: &StarSpec) -> bool {
     let planets = u.system(star.id).planets;
-    let alive = |p: &PlanetSpec| landable(p) && life::of(p, star).is_some();
-    planets.iter().any(alive)
+    let fits = |p: &PlanetSpec| {
+        let world = life::World::of(p, star);
+        let rung = life::odds::rung(&world, p.seed);
+        landable(p) && rung.is_some_and(|rung| homely(p, rung, &world))
+    };
+    planets.iter().any(fits)
 }
 
 /// The home is a solid planet a robot can land on, and it holds life under the same odds as
-/// every other planet. A seed whose nearest systems are all dead may fall back on a dead
-/// planet: that is printed, and stays rare.
+/// every other planet, with seas, plants and herds and a mild mean temperature. A seed whose
+/// nearest systems hold no such planet may fall back on a less fitting one: that is printed,
+/// and stays rare.
 #[test]
 fn home_is_landable_and_alive() {
     let mut dead = Vec::new();
@@ -34,22 +39,26 @@ fn home_is_landable_and_alive() {
         let (planet, star) = home(seed);
         assert!(landable(&planet) && !planet.id.is_moon(), "seed {seed}");
         assert!(planet.record.class != PlanetClass::GasGiant, "seed {seed}");
-        if life::of(&planet, &star).is_none() {
+        let world = life::World::of(&planet, &star);
+        let rung = life::odds::rung(&world, planet.seed);
+        if !rung.is_some_and(|rung| homely(&planet, rung, &world)) {
             dead.push(seed);
         }
     }
-    println!("seeds with a dead home: {dead:?}");
-    assert!(dead.len() <= 2, "{dead:?}");
+    println!("seeds whose home is not homely: {dead:?}");
+    assert!(dead.is_empty(), "{dead:?}");
 }
 
-/// No star nearer to the Sun-like point of the home galaxy than the home star has a living
+/// No star nearer to the Sun-like point of the home galaxy than the home star has a homely
 /// landable planet: the home is the nearest one.
 #[test]
-fn home_is_the_nearest_living_planet() {
+fn home_is_the_nearest_homely_planet() {
     for seed in 0..12 {
         let u = Universe::new(seed);
         let (planet, star) = home(seed);
-        if life::of(&planet, &star).is_none() {
+        let world = life::World::of(&planet, &star);
+        let rung = life::odds::rung(&world, planet.seed);
+        if !rung.is_some_and(|rung| homely(&planet, rung, &world)) {
             continue;
         }
         let shape = galaxy::shape(seed, HOME_GALAXY).expect("the home galaxy exists");
@@ -59,7 +68,7 @@ fn home_is_the_nearest_living_planet() {
         assert_eq!(nearer.last().map(|s| s.id), Some(star.id), "seed {seed}");
         assert!(nearer.len() <= SEARCH, "seed {seed}: {}", nearer.len());
         let inside = &nearer[..nearer.len() - 1];
-        assert!(inside.iter().all(|s| !lives(&u, s)), "seed {seed}");
+        assert!(inside.iter().all(|s| !welcomes(&u, s)), "seed {seed}");
     }
 }
 

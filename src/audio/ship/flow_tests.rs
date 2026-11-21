@@ -1,10 +1,12 @@
 //! Tests of the air on the airframe against the real flow: it rises with the dynamic pressure, a
-//! high angle of attack is louder and broader, a sideslip pans it, and a step of the stick is
-//! heard within 0.2 seconds.
+//! high angle of attack is louder and broader, a sideslip pans it, a step of the stick is heard
+//! within 0.2 seconds, steady flight with a restless stick is steady, and a hard roll whooshes once.
 
 use super::airframe::{Airframe, Flow, balance};
-use super::airframe_tests::{RATE, loudness};
+use super::airframe_tests::{DT, RATE, loudness};
+use super::whirl::Whirl;
 use crate::audio::dsp::filter::Svf;
+use crate::audio::dsp::rand::Rand;
 
 /// A cruise at 120 metres per second at sea level at home: about 8.6 kPa.
 const CRUISE: Flow = Flow {
@@ -17,7 +19,7 @@ const CRUISE: Flow = Flow {
 /// at a quarter and at four times the centre, over the level at the centre.
 fn breadth(flow: Flow) -> f32 {
     let mut frame = Airframe::new(RATE, 3);
-    frame.tune(&flow);
+    frame.tune(&flow, DT);
     let centre = 220.0 + 5.0 * flow.speed;
     let mut bands = [centre * 0.25, centre, centre * 4.0].map(|hz| {
         let mut band = Svf::default();
@@ -71,7 +73,7 @@ fn a_sideslip_pans_the_air() {
 #[test]
 fn a_step_of_the_stick_is_heard_within_a_fifth_of_a_second() {
     let mut eased = Airframe::new(RATE, 5);
-    eased.tune(&CRUISE);
+    eased.tune(&CRUISE, DT);
     for _ in 0..(0.5 * RATE) as usize {
         eased.frame();
     }
@@ -80,7 +82,7 @@ fn a_step_of_the_stick_is_heard_within_a_fifth_of_a_second() {
         load: 5.0,
         ..CRUISE
     };
-    eased.tune(&pull);
+    eased.tune(&pull, DT);
     let mut jumped = eased;
     jumped.snap();
     let window = |frame: &mut Airframe| {
@@ -92,4 +94,61 @@ fn a_step_of_the_stick_is_heard_within_a_fifth_of_a_second() {
         .collect();
     assert!(share[0] < 0.6 && share[3] > 0.75, "{share:?}");
     assert!(share.windows(2).all(|pair| pair[1] > pair[0]), "{share:?}");
+}
+
+/// A minute of steady cruise in calm air, with the small corrections of a restless stick on the
+/// angle, the sideslip, the rates and the load, is steady: no half second differs from another by
+/// more than the grain of the noise itself.
+#[test]
+fn steady_flight_is_steady() {
+    let mut frame = Airframe::new(RATE, 11);
+    let mut rand = Rand::new(5, 0);
+    let mut windows = Vec::new();
+    let (block, window) = ((DT * RATE) as usize, (0.5 * RATE) as usize);
+    let mut sum = 0.0_f32;
+    for n in 0..(60.0 / DT) as usize {
+        frame.tune(
+            &Flow {
+                attack: rand.range(0.02, 0.06),
+                slip: rand.range(-0.02, 0.02),
+                turn: rand.range(0.0, 0.5),
+                load: rand.range(0.8, 1.4),
+                ..CRUISE
+            },
+            DT,
+        );
+        for i in 0..block {
+            sum += frame.frame().powi(2);
+            if (n * block + i + 1) % window == 0 {
+                windows.push(sum.sqrt());
+                sum = 0.0;
+            }
+        }
+    }
+    let settled = &windows[2..];
+    let (low, high) = settled
+        .iter()
+        .fold((f32::MAX, 0.0_f32), |(l, h), x| (l.min(*x), h.max(*x)));
+    let depth = (high - low) / (high + low);
+    assert!(depth < 0.15, "the bed swings by {depth}");
+}
+
+/// A single hard roll whooshes once, however the rate wavers about the onset, and the small rates
+/// of steady flight never do.
+#[test]
+fn a_hard_roll_whooshes_once() {
+    let whooshes = |rate: fn(f32) -> f32| {
+        let mut whirl = Whirl::default();
+        let mut rand = Rand::new(9, 0);
+        let (mut count, mut before) = (0, 0.0);
+        for n in 0..(4.0 / DT) as usize {
+            whirl.tune(rate(n as f32 * DT) + rand.range(-0.4, 0.4), DT);
+            count += usize::from(whirl.level() > before + 0.5);
+            before = whirl.level();
+        }
+        count
+    };
+    let roll = |t: f32| if (0.5..2.0).contains(&t) { 2.0 } else { 0.0 };
+    assert_eq!(whooshes(roll), 1);
+    assert_eq!(whooshes(|_| 0.5), 0);
 }

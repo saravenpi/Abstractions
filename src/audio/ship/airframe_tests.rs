@@ -6,11 +6,14 @@ use super::airframe::{Airframe, Flow};
 /// Sample rate of the tests, in hertz.
 pub(super) const RATE: f32 = 48_000.0;
 
+/// Seconds between two tunings, as the mixer tunes: 32 samples.
+pub(super) const DT: f32 = 32.0 / RATE;
+
 /// Returns the root mean square of a second of the airframe in `flow`, after half a second to
 /// settle.
 pub(super) fn loudness(flow: Flow) -> f32 {
     let mut frame = Airframe::new(RATE, 7);
-    frame.tune(&flow);
+    frame.tune(&flow, DT);
     let settle = (RATE * 0.5) as usize;
     let samples: Vec<f32> = (0..settle + RATE as usize).map(|_| frame.frame()).collect();
     let tail = &samples[settle..];

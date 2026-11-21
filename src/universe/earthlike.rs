@@ -17,15 +17,17 @@ use crate::life::{Rung, World, chem};
 pub const HOME_RULE: u32 = 1;
 
 /// Systems the search for an Earth-like home looks at before it settles for a homely planet:
-/// four times [`SEARCH`], since about one homely planet in five has air like the Earth's.
-pub const REACH: usize = 4 * SEARCH;
+/// eight times [`SEARCH`], since about one homely planet in five has air like the Earth's and
+/// about one in three of those a pull within [`PULL`].
+pub const REACH: usize = 8 * SEARCH;
 
 /// Lowest and highest air pressure at sea level of an Earth-like home, the Earth having 1.
 pub const PRESSURE: (f64, f64) = (0.7, 1.5);
 
-/// Lowest and highest surface gravity in metres per second squared of an Earth-like home: 0.8
-/// and 1.2 standard gravities.
-pub const PULL: (f64, f64) = (0.8 * STANDARD_GRAVITY, 1.2 * STANDARD_GRAVITY);
+/// Lowest and highest surface gravity in metres per second squared of an Earth-like home: 0.85
+/// and 1.05 standard gravities, a little on the light side of the Earth, so the robot takes off
+/// and the ship lifts easily.
+pub const PULL: (f64, f64) = (0.85 * STANDARD_GRAVITY, 1.05 * STANDARD_GRAVITY);
 
 /// Coldest and warmest mean surface temperature in kelvin of an Earth-like home: 5 to 30 C,
 /// around the 15 C of the Earth.
@@ -43,8 +45,8 @@ pub const BREATH: f64 = 0.15;
 /// `(TRIM_SINK / MOST_SINK)^2 g / g0`, 0.434 of the home air per standard gravity, see
 /// `gear::glides`. The thinnest air these bounds let through, 0.7 bar of nitrogen with a
 /// hundredth of carbon dioxide and of argon at 30 C, is 0.65 of the home air, see
-/// [`super::dense`], and the strongest pull, 1.2 g, asks 0.52: a quarter more air than the glide
-/// needs. Water boils at 90 C under 0.7 bar, so the seas stay liquid.
+/// [`super::dense`], and the strongest pull, 1.05 g, asks 0.46: two fifths more air than the
+/// glide needs, more under a lighter pull. Water boils at 90 C under 0.7 bar, so the seas stay liquid.
 pub(super) fn earthlike(planet: &PlanetSpec, rung: Rung, world: &World) -> bool {
     let record = &planet.record;
     let within = |(low, high): (f64, f64), value: f64| (low..=high).contains(&value);

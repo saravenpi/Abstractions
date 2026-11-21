@@ -1,6 +1,6 @@
 import bevy_pbr::render::forward_io::VertexOutput;
 import bevy_pbr::render::mesh_view_bindings::{view, fog};
-import package::render::cloud_field::{Puff, broad_cover, day_side, dither, lone, puff};
+import package::render::cloud_field::{Puff, broad_cover, day_side, density, dither, fbm_seen, lone, puff};
 
 struct Clouds {
     light: vec4<f32>,
@@ -14,6 +14,7 @@ struct Clouds {
     fixed_y: vec4<f32>,
     fixed_z: vec4<f32>,
     fade: vec4<f32>,
+    eye: vec4<f32>,
 }
 
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> clouds: Clouds;
@@ -34,6 +35,16 @@ fn shaded(base: vec3<f32>, cloud: Puff, above: bool, ambient: vec3<f32>) -> vec3
     let sky = mix(vec3<f32>(1.0), strongest(ambient), SHADE_SKY);
     let dark = sky * (dot(base, LUMA) * SHADE_LEVEL / max(dot(sky, LUMA), 0.01));
     return mix(dark, base * 1.05, cloud.relief) * body;
+}
+
+fn around(ray: vec3<f32>, to_fixed: mat3x3<f32>, cover: f32) -> f32 {
+    let step = to_fixed * ray / clouds.eye.w;
+    var dense = 0.0;
+    for (var k = 1; k <= 4; k = k + 1) {
+        let metres = 40.0 * f32(k * k);
+        dense = dense + density(fbm_seen(clouds.eye.xyz + step * metres, 4, 0.0), cover);
+    }
+    return dense * 0.25;
 }
 
 @fragment
@@ -64,6 +75,10 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let base = mix(day_side(clouds.space.rgb, n, light), clouds.color.rgb, air);
     var col = shaded(base, cloud, facing > 0.0, clouds.ambient.rgb);
     col = col * through + fog.base_color.rgb * (vec3<f32>(1.0) - through);
-    col = mix(col, clouds.color.rgb, whiteout);
+    if (whiteout > 0.0) {
+        let near = around(-to_eye / max(dist, 0.001), to_fixed, cover);
+        let veil = whiteout * mix(0.55, 1.0, near);
+        col = mix(col, clouds.color.rgb * mix(0.8, 1.04, near), veil);
+    }
     return vec4<f32>(col, 1.0);
 }

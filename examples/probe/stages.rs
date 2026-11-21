@@ -87,6 +87,8 @@ pub const STAGES: [(&str, &str, Stage); 142] = [
     ("entry-seat", "entry", entry_seat),
     ("exit", "exit", exit),
     ("cruise-home", "cruise", cruise_home),
+    ("cloud", "cloud", cloud),
+    ("cloud-seat", "cloud", cloud_seat),
     ("stop-2m", "tour", stop_2m),
     ("stop-10km", "tour", stop_10km),
     ("stop-100km", "tour", stop_100km),

@@ -17,29 +17,31 @@ struct Sheath {
 struct Ray {
     o: vec3<f32>,
     d: vec3<f32>,
+    near: f32,
     far: f32,
 }
 
 const ROOT_PI: f32 = 1.7724539;
 const GAIN: f32 = 2.0;
-const SHOCK_TIP: f32 = 1.08;
-const SHOCK_OPEN: f32 = 2.72;
+const SHOCK_TIP: f32 = 0.972;
+const SHOCK_OPEN: f32 = 2.82;
 const SHOCK_THICK: f32 = 0.05;
-const NOSE: f32 = 0.98;
+const NOSE: f32 = 0.956;
 const WING_ROOT: vec3<f32> = vec3<f32>(0.29, 0.1, 0.0);
 const WING_TIP: vec3<f32> = vec3<f32>(-0.38, 0.71, 0.0);
 const TAIL: f32 = -0.75;
 const FLOW: f32 = 3.0;
+const CANOPY: f32 = 1.5;
 
 fn blob(ray: Ray, c: vec3<f32>, sigma: f32) -> f32 {
     let t = dot(c - ray.o, ray.d);
     let off = ray.o + ray.d * t - c;
-    let seen = clamp((ray.far - t) / sigma + 0.5, 0.0, 1.0) * clamp(t / sigma + 0.5, 0.0, 1.0);
+    let seen = clamp((ray.far - t) / sigma + 0.5, 0.0, 1.0) * clamp((t - ray.near) / sigma + 0.5, 0.0, 1.0);
     return ROOT_PI * sigma * exp(-dot(off, off) / (sigma * sigma)) * seen;
 }
 
 fn sheet(ray: Ray, t: f32, time: f32) -> f32 {
-    if (t <= 0.0 || t >= ray.far) {
+    if (t <= ray.near || t >= ray.far) {
         return 0.0;
     }
     let p = ray.o + ray.d * t;
@@ -68,25 +70,32 @@ fn shock(ray: Ray, time: f32) -> f32 {
 }
 
 fn stagnation(ray: Ray) -> f32 {
-    let at = vec3<f32>(NOSE + 0.04, 0.0, 0.0);
-    return 3.0 * blob(ray, at, 0.1) + 1.2 * blob(ray, at, 0.22);
+    let tip = 12.0 * blob(ray, vec3<f32>(NOSE, 0.0, 0.0), 0.012);
+    let spear = 8.0 * blob(ray, vec3<f32>(NOSE - 0.035, 0.0, 0.0), 0.016);
+    return tip + spear + 5.0 * blob(ray, vec3<f32>(NOSE - 0.085, 0.0, 0.0), 0.022);
 }
 
 fn edges(ray: Ray) -> f32 {
     var sum = 0.0;
     for (var k = 0; k < 4; k++) {
-        let along = mix(WING_ROOT, WING_TIP, f32(k) / 3.0) + vec3<f32>(0.04, 0.0, 0.0);
-        sum += blob(ray, along, 0.07) + blob(ray, along * vec3<f32>(1.0, -1.0, 1.0), 0.07);
+        let along = mix(WING_ROOT, WING_TIP, f32(k) / 3.0) + vec3<f32>(0.01, 0.0, 0.0);
+        sum += 2.0 * (blob(ray, along, 0.035) + blob(ray, along * vec3<f32>(1.0, -1.0, 1.0), 0.035));
     }
     return sum;
 }
 
 fn envelope(ray: Ray) -> f32 {
+    var stations = array<vec2<f32>, 5>(
+        vec2<f32>(0.71, 0.127),
+        vec2<f32>(0.4, 0.22),
+        vec2<f32>(-0.09, 0.255),
+        vec2<f32>(-0.33, 0.255),
+        vec2<f32>(-0.53, 0.23),
+    );
     var sum = 0.0;
     for (var k = 0; k < 5; k++) {
-        let share = f32(k) / 4.0;
-        let at = vec3<f32>(mix(0.75, -0.6, share), 0.0, 0.0);
-        sum += blob(ray, at, mix(0.16, 0.3, share)) * mix(1.0, 0.4, share);
+        let station = stations[k];
+        sum += blob(ray, vec3<f32>(station.x, 0.0, 0.0), station.y) * mix(1.0, 0.4, f32(k) / 4.0);
     }
     return sum;
 }
@@ -148,7 +157,8 @@ fn local_ray(in: VertexOutput) -> Ray {
     let rel = (eye - sheath.centre.xyz) / radius;
     let o = vec3<f32>(dot(rel, axis), dot(rel, span), dot(rel, roof));
     let d = vec3<f32>(dot(dir, axis), dot(dir, span), dot(dir, roof));
-    return Ray(o, d, scene_far(in.position, travelled) / radius);
+    let near = select(0.0, CANOPY / radius, length(o) < 1.0);
+    return Ray(o, d, near, scene_far(in.position, travelled) / radius);
 }
 
 @fragment
@@ -160,9 +170,10 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let core = mix(skin, vec3<f32>(1.0), 0.45);
     let cool = mix(gas, vec3<f32>(1.0, 0.42, 0.22), 0.35);
     let pulse = 1.0 + 0.1 * sin(time * 9.0) + 0.07 * sin(time * 23.0 + 1.3);
-    let hot = core * (1.5 * stagnation(ray)) + skin * (1.4 * edges(ray));
+    let hot = (core * (1.5 * stagnation(ray)) + skin * (1.4 * edges(ray))) * sheath.skin.w;
     let shocked = gas * (shock(ray, time) + 0.6 * envelope(ray));
-    let trailing = cool * (0.9 * wake(ray, time) + 0.8 * streamers(ray, time, sheath.skin.w));
-    let colour = (hot + shocked + trailing) * (sheath.glow.w * pulse * GAIN);
+    let trailing = cool * (0.9 * wake(ray, time) + 0.8 * streamers(ray, time, sheath.roof.w));
+    let plasma = (shocked + trailing) * (sheath.glow.w * pulse);
+    let colour = (hot + plasma) * GAIN;
     return vec4<f32>(colour, 0.0);
 }

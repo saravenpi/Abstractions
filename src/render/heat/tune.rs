@@ -24,24 +24,34 @@ pub const STEFAN_BOLTZMANN: f64 = 5.670_374e-8;
 /// they are full.
 pub const PRESSURE: (f64, f64) = (2.0e3, 6.0e4);
 
-/// Rate per second at which the glow rises toward its value and at which it dies out. The heat
-/// of a hull builds up and cools slowly, so it never steps.
-pub const EASE: (f32, f32) = (3.0, 0.8);
+/// Rate per second at which the glow of the shock follows the heat flux of this moment, up and
+/// down alike: fast, since the plasma lives as long as the air flows through the shock, and
+/// smooth, so that it never steps from one frame to the next.
+pub const PLASMA_EASE: f32 = 4.0;
+
+/// Heat capacity of the skin of the nose per square metre, in joules per kelvin: a millimetre
+/// of nickel alloy, 8,000 kg/m3 times 450 J/(kg K) times 0.001 m. It sets how fast the skin
+/// heats up in an entry, over seconds, and how slowly it cools by radiation after, over tens of
+/// seconds, faster while it is hot.
+pub const SKIN_CAPACITY: f32 = 3600.0;
+
+/// Temperature in kelvin of a skin that no air heats: where a skin starts warming from.
+pub const AMBIENT: f32 = 280.0;
+
+/// Temperature in kelvin at which a hot skin starts to glow, the Draper point of a dull red,
+/// and at which its glow is full, a bright orange.
+pub const SKIN_GLOW: (f32, f32) = (798.0, 1800.0);
+
+/// Longest step in seconds the temperature of the skin is integrated over at once.
+pub const SKIN_STEP: f32 = 0.05;
 
 /// Rate per second at which the colour of the glow follows the gas the ship flies through.
 pub const HUE_RATE: f32 = 4.0;
-
-/// Heat share that makes a craft show its sheath; under it nothing is drawn.
-pub const SHEATH_FROM: f32 = 0.02;
 
 /// Where the sphere that holds the sheath sits, in radii of the craft: how far behind the
 /// centre of the craft along its flight, and its radius. It reaches from just ahead of the bow
 /// shock to the end of the wake, ten radii behind.
 pub const SHEATH_BOUND: (f32, f32) = (4.4, 5.8);
-
-/// Luminous power in lumens of the light the hot shock casts on the hull at full heat: about
-/// 2,000 lux on the hull three metres from the nose. It casts no shadow.
-pub const HULL_LUMENS: f32 = 2.0e5;
 
 /// Speed in metres per second under which the nose of a craft does not glow in any air of the
 /// game: it would take air of 680 kilograms per cubic metre to glow at this speed.

@@ -2,7 +2,9 @@
 //! into a thin air starts to glow and peaks at the heights the physics of a ballistic entry gives,
 //! nothing glows in a vacuum or on a slow climb, and the glow is the same going up and going down.
 
-use super::tune::SHEATH_FROM;
+/// Heat share at which a glow reads as begun.
+const SHEATH_FROM: f32 = 0.02;
+
 use super::{Gas, cool_speed, entry};
 
 /// Mass over drag area of the ship flying nose first, in kilograms per square metre: one over

@@ -12,7 +12,7 @@ use bevy::prelude::*;
 use crate::net::state::Remote;
 use crate::net::state::track::Remotes;
 use crate::render::Vantage;
-use crate::render::{Craft, Gas, Glow, LocalSystem, SHEATH_FROM, SheathMaterial, skin};
+use crate::render::{Craft, Gas, Glow, LocalSystem, SheathMaterial, kelvin_of};
 use crate::ship::HULL_RADIUS;
 
 /// Radius in metres of the sphere that holds the body of a robot, which its sheath wraps.
@@ -43,9 +43,7 @@ fn hot(remotes: &Remotes) -> impl Iterator<Item = (Entity, f32, (f32, f32))> + '
     });
     let ships = remotes.ships.values();
     let ships = ships.filter_map(|t| Some((t.puppet?, t.latest.heat, (HULL_RADIUS, 0.0))));
-    robots
-        .chain(ships)
-        .filter(|(_, heat, _)| *heat > SHEATH_FROM)
+    robots.chain(ships).filter(|(_, heat, _)| *heat > 0.0)
 }
 
 /// Run condition: a puppet glows, or a sheath is left to take away.
@@ -86,7 +84,8 @@ fn shape(
         heat,
         pressure: 0.0,
         color: gas.color(heat),
-        skin: skin(heat),
+        flux: 0.0,
+        kelvin: kelvin_of(heat),
     };
     material.sheath = craft.sheath(&glow);
 }

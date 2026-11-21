@@ -170,6 +170,8 @@ mod tests_fit;
 #[cfg(test)]
 mod tests_gear;
 #[cfg(test)]
+mod tests_glow;
+#[cfg(test)]
 mod tests_graph;
 #[cfg(test)]
 mod tests_shell;

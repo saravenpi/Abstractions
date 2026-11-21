@@ -15,7 +15,7 @@ use super::galaxy;
 use super::ids::{BodyId, GalaxyId, StarId};
 use super::record::{PlanetClass, Water};
 use super::spec::{PlanetSpec, StarSpec};
-use super::{LY, SECTOR_LY, STANDARD_GRAVITY, shells, system};
+use super::{LY, SECTOR_LY, STANDARD_GRAVITY, dense, shells, system};
 use crate::climate::{Fair, Setting};
 use crate::life::{Rung, Solvent, World, chem, odds};
 
@@ -81,20 +81,48 @@ const GRID: (usize, usize) = (5, 120);
 /// the pack 10.2 kg and the net lift 0.1 standard gravities.
 pub const COMFORT: (f64, f64) = (0.7 * STANDARD_GRAVITY, 1.3 * STANDARD_GRAVITY);
 
+/// Thinnest air a home may have, as its density at sea level against the home air, see [`dense`],
+/// per standard gravity of its pull: 0.5, so that the wingsuit glides there.
+///
+/// The spread suit has the drag coefficients 0.6, 6.95 and 0.091 on its right, dorsal and nose
+/// axes (`gear::tune::WING_DRAG`) and a drag area over twice its 80 kg mass of 0.0202 per metre
+/// in the home air (`gear::tune::AERO`). Let go of the keys it trims to a glide of four to one:
+/// 4.4 degrees of angle of attack, a lift coefficient `(6.95 - 0.091) sin a cos a` of 0.527 and
+/// a path 14 degrees down. The lift `AERO rho v^2 C_L` carries `g cos 14°`, so the glide flies at
+/// `29.9 sqrt(g / g0 / rho)` m/s and sinks at `7.25 sqrt(g / g0 / rho)`, `rho` being the density
+/// against the home air: 30 and 7 at home, as the gear is tuned. The thinner the air or the
+/// stronger the pull, the faster it must fly for the same lift.
+///
+/// A real suit sinks at 11 m/s and more and its pilot lives, and a touchdown at 11 m/s is a
+/// landing roll (over `gear::tune::ROLL_SINK`, 9 m/s) well short of a hard landing (22 m/s,
+/// `avatar::IMPACT_SPAN`). A sink of 11 m/s at most needs `rho >= (7.25 / 11)^2 g / g0`, 0.43
+/// per standard gravity. 0.5 leaves room for a trim that sinks up to 7.8 m/s at home, where the
+/// gear tests allow 8, and the glide then flies at 42 m/s, slower than the 50 m/s of a dive. In
+/// the home air at 288 K it is 0.35 bar under 0.7 g, 0.5 bar under 1 g and 0.65 bar under 1.3 g.
+///
+/// Liquid seas need less, and this rule holds them too. Water boils at 35 C, the warm end of
+/// [`MILD`], under 0.063 bar by the Clausius-Clapeyron relation, see `air::boiling`. The thinnest
+/// air the rule lets a home have, carbon dioxide at 0 C under 0.7 g, is 0.22 bar, under which
+/// water boils at 61 C.
+pub const GLIDE_AIR: f64 = 0.5;
+
 /// Returns true when a new player can wake on `planet`, around `star`, and find life to see.
 ///
 /// Every planet gets the same test, on what is true of it: its life climbed to the skeletal
 /// rung or higher, where plants stand in layered forests and animals walk in herds, that life
 /// is built on water, the planet has seas and land in balance, water is liquid at the surface,
-/// the mean temperature is between 0 and 35 C, the surface gravity is within [`COMFORT`], and
-/// some place where a base can stand is fair, see [`fair`].
+/// the mean temperature is between 0 and 35 C, the surface gravity is within [`COMFORT`], the
+/// air is thick enough for the wingsuit to glide and the seas to stay liquid, see [`GLIDE_AIR`],
+/// and some place where a base can stand is fair, see [`fair`]. The air is the same over the
+/// whole planet up to heights no base stands at, so the base search needs no rule of its own.
 pub(super) fn homely(planet: &PlanetSpec, rung: Rung, world: &World) -> bool {
     let record = &planet.record;
     let water = chem::solvent(world).is_some_and(|(solvent, _)| solvent == Solvent::Water);
     let mild = (MILD.0..=MILD.1).contains(&record.temperature);
     let seas = record.class == PlanetClass::Island && record.water == Water::Liquid;
     let pull = (COMFORT.0..=COMFORT.1).contains(&planet.gravity);
-    rung >= Rung::Skeletal && water && mild && seas && pull && fair(planet)
+    let wings = dense(record) >= GLIDE_AIR * planet.gravity / STANDARD_GRAVITY;
+    rung >= Rung::Skeletal && water && mild && seas && pull && wings && fair(planet)
 }
 
 /// Returns true when some place of `planet` at the latitudes a base stands at, [`SHORES`], is fair:

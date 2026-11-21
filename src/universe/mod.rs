@@ -76,7 +76,7 @@ pub use galaxy::{ARMS, CENTER_SPAN, RADIUS_LY};
 pub use giant::{GIANT_MASS, GIANT_RADIUS};
 pub use glow::Glow;
 pub use hill::{CAPTURED_RADIUS, IMPACT_RADIUS, REGULAR_RADIUS};
-pub use home::{COMFORT, LIT, MILD, SHORES, landable};
+pub use home::{COMFORT, GLIDE_AIR, LIT, MILD, SHORES, landable};
 pub use ids::{BodyId, GalaxyId, StarId};
 pub use look::Look;
 pub use planet::{PLANET_RADIUS, ROCK, gravity, orbit_seconds};
@@ -133,7 +133,8 @@ impl Universe {
     /// Returns the planet a new game starts on, always the same one for a seed: the nearest
     /// planet to a Sun-like point of the home galaxy, 0.52 radii out in the plane of the disc,
     /// that is solid, landable and homely: life with plants and herds on water, seas and land,
-    /// a mean temperature between 0 and 35 C and a surface gravity of 0.7 to 1.3 standard. It is found once, when the universe is built.
+    /// a mean temperature between 0 and 35 C, a surface gravity of 0.7 to 1.3 standard and air
+    /// thick enough to glide in. It is found once, when the universe is built.
     pub fn home(&self) -> BodyId {
         self.home
     }

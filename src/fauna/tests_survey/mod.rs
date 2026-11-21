@@ -1,13 +1,16 @@
 //! The survey of home planets: for every seed of a range, what the home is like where a new game
 //! wakes, printed and counted, and what the rule of the home must give.
 
+mod glide;
 mod herd;
 mod row;
 mod shares;
 
 use row::{Row, measure};
 
-use crate::universe::{COMFORT, EARTH_RADIUS, LIT, MILD, PlanetClass, SUN_MASS};
+use crate::universe::{
+    COMFORT, EARTH_RADIUS, GLIDE_AIR, LIT, MILD, PlanetClass, STANDARD_GRAVITY, SUN_MASS, dense,
+};
 
 /// Seeds the survey looks at.
 const SEEDS: u64 = 100;
@@ -43,7 +46,7 @@ fn show(r: &Row) {
     let land = &r.shares;
     println!(
         "{} life {:?} plants{} walkers{} desert{:.2} grass{:.2} forest{:.2} snow{:.2} spawn{:.0}K {:?} herd{} \
-         star{:.0}deg",
+         star{:.0}deg glide{:.1}m/s sink{:.1}m/s",
         planet(r),
         rung,
         plants,
@@ -56,7 +59,38 @@ fn show(r: &Row) {
         r.biome,
         u8::from(r.herd),
         r.noon.min(1.0).asin().to_degrees(),
+        r.glide.forward,
+        r.glide.sink,
     );
+}
+
+/// Prints the distribution of the home pressures and the glides, and checks that every home has
+/// the air [`GLIDE_AIR`] asks for and that the wingsuit glides over its base inside the flyable
+/// envelope, see [`glide::Glide::flyable`]. Prints the seeds that do not.
+fn air(rows: &[Row]) {
+    let mut pressures: Vec<f64> = rows.iter().map(|r| r.planet.record.pressure).collect();
+    pressures.sort_by(f64::total_cmp);
+    let at = |share: f64| pressures[((pressures.len() - 1) as f64 * share).round() as usize];
+    println!(
+        "pressure min {:.2} quartile {:.2} median {:.2} quartile {:.2} max {:.2} bar",
+        at(0.0),
+        at(0.25),
+        at(0.5),
+        at(0.75),
+        at(1.0)
+    );
+    let worst = rows.iter().map(|r| r.glide.sink).fold(0.0, f32::max);
+    println!("fastest glide sink {worst:.1} m/s");
+    let seeds = |f: &dyn Fn(&Row) -> bool| -> Vec<u64> {
+        rows.iter().filter(|r| f(r)).map(|r| r.seed).collect()
+    };
+    let thin =
+        seeds(&|r| dense(&r.planet.record) < GLIDE_AIR * r.planet.gravity / STANDARD_GRAVITY);
+    let grounded = seeds(&|r| !r.glide.flyable());
+    println!("air too thin {thin:?}");
+    println!("glide out of the envelope {grounded:?}");
+    assert!(thin.is_empty(), "air too thin on {thin:?}");
+    assert!(grounded.is_empty(), "no glide on {grounded:?}");
 }
 
 /// Counts the homes by kind and prints the distribution.
@@ -117,12 +151,13 @@ fn fair(rows: &[Row]) {
 /// Surveys the homes of the first seeds, prints them and the distribution, and asserts that nearly
 /// all of them are worlds a new player wakes on with life around: liquid water, plants at the
 /// spawn, a walking species and a mean air of 0 to 40 C there, and a herd within a walk of it. Every
-/// one of them wakes in daylight, see [`fair`].
+/// one of them wakes in daylight, see [`fair`], and glides in its air, see [`air`].
 #[test]
 fn homes_have_life_to_see() {
     let rows: Vec<Row> = (0..SEEDS).map(measure).collect();
     rows.iter().for_each(show);
     fair(&rows);
+    air(&rows);
     let good = tally(&rows);
     let herds = rows.iter().filter(|r| r.herd).count();
     let (low, high) = COMFORT;

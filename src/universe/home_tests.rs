@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 use std::time::Instant;
 
+use super::air::boiling;
 use super::home::{HOME_GALAXY, SEARCH, homely};
 use super::range_tests::sample;
 use super::*;
@@ -128,4 +129,34 @@ fn the_home_search_is_cheap() {
     let worst = worst.flatten().max().expect("twenty seeds");
     println!("slowest home search of 20 seeds: {worst:?}");
     assert!(worst.as_millis() < 100, "{worst:?}");
+}
+
+/// The air [`GLIDE_AIR`] asks of a home keeps its seas liquid too: the thinnest air it lets
+/// through, of the home mix or of carbon dioxide alone, at 0 C under 0.7 g, boils water above
+/// the 35 C of [`MILD`]. The glide is the rule that binds.
+#[test]
+fn air_to_glide_in_keeps_the_seas_liquid() {
+    let carbon = Mix::of([
+        (Gas::CarbonDioxide, 1.0),
+        (Gas::Nitrogen, 0.0),
+        (Gas::Argon, 0.0),
+        (Gas::Oxygen, 0.0),
+    ]);
+    for mix in [Mix::HOME, carbon] {
+        let cold = PlanetRecord {
+            pressure: 1.0,
+            temperature: MILD.0,
+            mix,
+            ..PlanetRecord::TEMPERATE
+        };
+        let least = GLIDE_AIR * COMFORT.0 / STANDARD_GRAVITY / dense(&cold);
+        println!(
+            "thinnest home air of {mix:?}: {least:.3} bar, boils at {:.1} K",
+            boiling(least)
+        );
+        assert!(
+            least > 0.2 && boiling(least) > MILD.1,
+            "{least} bar of {mix:?}"
+        );
+    }
 }

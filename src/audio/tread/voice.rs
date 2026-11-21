@@ -98,7 +98,7 @@ impl Tread {
 
     /// Starts `step` with what the pool worked out of it.
     pub fn start(&mut self, step: &Step, shape: Shape) {
-        let (stuff, rate) = (ground(step.surface, step.depth), self.rate);
+        let (stuff, rate) = (ground(step), self.rate);
         let ((pitch, thud), click) = (shape.pitch, stuff.click);
         self.solid[0].tune(stuff.thud.0 * thud, stuff.thud.1, rate);
         self.solid[1].tune(stuff.ring.0 * pitch, stuff.ring.1, rate);

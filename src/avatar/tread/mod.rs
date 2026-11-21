@@ -31,6 +31,7 @@ use crate::screens::shown;
 use crate::space::{Anchor, Location, up};
 use crate::world::Terrain;
 use ground::Site;
+use tune::SQUEAK;
 
 /// The ships a robot can stand on: the centre of each hull in frame metres and the reach of its
 /// airframe from that centre. The ship writes it every frame.
@@ -47,9 +48,11 @@ fn heard(site: &Site, step: Step, body: Vec3, own: bool) -> Option<Sound> {
         true => Origin::Held(feet, STEP.0, STEP.1),
         false => Origin::At(feet, STEP.0),
     };
+    let cold = site.terrain.globe().record().temperature < SQUEAK;
     let step = Step {
         surface,
         depth,
+        cold,
         ..step
     };
     Some(Sound {

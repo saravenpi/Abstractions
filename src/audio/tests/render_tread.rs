@@ -20,39 +20,72 @@ use crate::avatar::AvatarPose;
 use crate::avatar::tread::stage::live;
 use crate::universe::STANDARD_GRAVITY;
 
-/// One take: its file name, its length in seconds, its ground, the depth of water on it in metres,
-/// and what the body does.
-type Take = (&'static str, f32, StepSurface, f32, fn(f32) -> AvatarPose);
+/// One take: its file name, its length in seconds, its ground, the depth of water on it in metres
+/// and whether the world is cold enough for snow to squeak, and what the body does.
+type Take = (
+    &'static str,
+    f32,
+    StepSurface,
+    (f32, bool),
+    fn(f32) -> AvatarPose,
+);
 
 /// Every take.
-const TAKES: [Take; 5] = [
-    ("40_walk_sand", 6.0, StepSurface::Sand, 0.0, walk),
-    ("41_walk_shallow_water", 6.0, StepSurface::Water, 0.1, walk),
-    ("42_wade_knee_deep", 6.0, StepSurface::Water, 0.5, walk),
+const TAKES: [Take; 7] = [
+    ("40_walk_sand", 6.0, StepSurface::Sand, (0.0, false), walk),
+    (
+        "41_walk_shallow_water",
+        6.0,
+        StepSurface::Water,
+        (0.1, false),
+        walk,
+    ),
+    (
+        "42_wade_knee_deep",
+        6.0,
+        StepSurface::Water,
+        (0.5, false),
+        walk,
+    ),
     (
         "43_glide_landing_slide_grass",
         4.0,
         StepSurface::Grass,
-        0.0,
+        (0.0, false),
         slide,
     ),
     (
         "44_glide_landing_slide_sand",
         4.0,
         StepSurface::Sand,
-        0.0,
+        (0.0, false),
         slide,
+    ),
+    (
+        "46_walk_snow_warm",
+        6.0,
+        StepSurface::Snow,
+        (0.0, false),
+        walk,
+    ),
+    (
+        "46_walk_snow_cold",
+        6.0,
+        StepSurface::Snow,
+        (0.0, true),
+        walk,
     ),
 ];
 
 /// Renders `take` over a still, silent day, each step pushed at the sample it is due.
-fn record(&(_, seconds, surface, depth, script): &Take) -> Vec<[f32; 2]> {
+fn record(&(_, seconds, surface, (depth, cold), script): &Take) -> Vec<[f32; 2]> {
     let (mut mixer, shared) = mixer(&alone(HullSound::default()));
     let own = heard(0.0, 0.0, Air::home());
     let placed = |(t, step): (f32, Step)| {
         let step = Step {
             surface,
             depth,
+            cold,
             ..step
         };
         (t + 0.5, step)

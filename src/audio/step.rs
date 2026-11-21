@@ -19,10 +19,10 @@ pub enum Contact {
 const CONTACTS: [Contact; 3] = [Contact::Stride, Contact::Landing, Contact::Skid];
 
 /// Unit each packed field is stored in, in the order of [`Step::fields`].
-const UNITS: [f32; 9] = [1.0, 1.0, 1.0 / 63.0, 0.25, 4.0, 0.008, 0.01, 0.04, 1.0];
+const UNITS: [f32; 10] = [1.0, 1.0, 1.0 / 63.0, 0.25, 4.0, 0.008, 0.01, 0.04, 1.0, 1.0];
 
-/// Width in bits of each packed field, in the order of [`Step::fields`]: 39 bits in all.
-const WIDTHS: [u32; 9] = [4, 2, 6, 6, 5, 5, 6, 4, 1];
+/// Width in bits of each packed field, in the order of [`Step::fields`]: 40 bits in all.
+const WIDTHS: [u32; 10] = [4, 2, 6, 6, 5, 5, 6, 4, 1, 1];
 
 /// One footfall.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -48,6 +48,8 @@ pub struct Step {
     pub depth: f32,
     /// Whether it is the left foot. The two feet of a body do not sound alike.
     pub left: bool,
+    /// Whether the ground is cold enough for packed snow to squeak, under about -10 degrees.
+    pub cold: bool,
 }
 
 impl Step {
@@ -63,11 +65,12 @@ impl Step {
             lift: 0.07,
             depth: 0.0,
             left: false,
+            cold: false,
         }
     }
 
     /// Returns the fields as numbers, in packing order.
-    fn fields(&self) -> [f32; 9] {
+    fn fields(&self) -> [f32; 10] {
         [
             self.surface as u8 as f32,
             self.contact as u8 as f32,
@@ -78,10 +81,11 @@ impl Step {
             self.lift,
             self.depth,
             f32::from(u8::from(self.left)),
+            f32::from(u8::from(self.cold)),
         ]
     }
 
-    /// Packs the step into 39 bits. Each field is rounded to its unit and held in its width.
+    /// Packs the step into 40 bits. Each field is rounded to its unit and held in its width.
     pub(super) fn pack(self) -> u64 {
         let mut shift = 0;
         let mut bits = 0_u64;
@@ -97,7 +101,7 @@ impl Step {
     /// Unpacks a step packed by [`Step::pack`], or nothing when the bits hold none.
     pub(super) fn unpack(bits: u64) -> Option<Self> {
         let mut shift = 0;
-        let mut f = [0.0; 9];
+        let mut f = [0.0; 10];
         for ((field, unit), width) in f.iter_mut().zip(UNITS).zip(WIDTHS) {
             *field = ((bits >> shift) & ((1_u64 << width) - 1)) as f32 * unit;
             shift += width;
@@ -112,6 +116,7 @@ impl Step {
             lift: f[6],
             depth: f[7],
             left: f[8] > 0.5,
+            cold: f[9] > 0.5,
         })
     }
 }

@@ -59,10 +59,7 @@ impl Treads {
             Contact::Stride => (roll * self.rate) as u32 + 1,
             _ => 0,
         };
-        let late = step
-            .lift
-            .max(roll)
-            .max(material::ground(step.surface, step.depth).wet.2);
+        let late = step.lift.max(roll).max(material::ground(step).wet.2);
         let lift = (late * self.rate) as u32 + 1;
         ((delay * self.rate) as u32 + 1, toe, lift)
     }

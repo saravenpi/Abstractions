@@ -166,13 +166,11 @@ pub fn night(world: &mut World, _: &mut Notes, frame: u32) -> Act {
             views(world, frame - 239, "33-night-light", &looks()[..1]);
         }
         254 => view(world, ViewMode::First, ViewMode::Third),
-        270.. => {
-            if views(world, frame - 269, "33-night", &LIT) {
-                with_ship(world, |ship| ship.headlight = false);
-                view(world, ViewMode::First, ViewMode::First);
-                world.resource_mut::<abstractions::space::Clock>().seconds += half;
-                return Act::Next;
-            }
+        270.. if views(world, frame - 269, "33-night", &LIT) => {
+            with_ship(world, |ship| ship.headlight = false);
+            view(world, ViewMode::First, ViewMode::First);
+            world.resource_mut::<abstractions::space::Clock>().seconds += half;
+            return Act::Next;
         }
         _ => {}
     }

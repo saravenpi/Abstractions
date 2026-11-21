@@ -137,10 +137,7 @@ pub fn draw(
     let Some(anchor) = field.anchor.as_deref() else {
         return;
     };
-    let eye = field
-        .camera
-        .single()
-        .map_or(Vec3::ZERO, |eye| eye.translation());
+    let eye = field.eye();
     let dt = field.dt();
     observe(&field, anchor, &mut hulls, &mut flights);
     for (mut streak, handle, mut transform) in &mut ribbons {

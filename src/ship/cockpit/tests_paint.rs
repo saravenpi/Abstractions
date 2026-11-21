@@ -79,7 +79,7 @@ fn a_display_is_dark_without_a_source() {
     let driven = drive([Some(16), None, Some(32)]);
     assert!(driven.count() > 150 && !driven.is_lit(2, 30));
     let flown = flight([(Some("10 m/s"), Some(8)), (None, None)], None, [None; 2]);
-    assert!(flown.count() > 60 && flown.ink(2, 3) == Ink::Dim);
+    assert!(flown.count() > 60 && flown.ink(3, 3) == Ink::Dim);
     let out = status([false; 6]);
     assert!(out.count() > 100 && (0..72).all(|y| (0..32).all(|x| out.ink(x, y) != Ink::Lit)));
     let hot = status(Lamp::ALL.map(|lamp| lamp == Lamp::Hot || lamp == Lamp::Failing));

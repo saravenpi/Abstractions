@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use super::dome::{arch, canopy, glass};
+use super::dome::{arch, canopy, glass, spine};
 use super::fittings::{accents, furniture, plates};
 use super::frame::{CANOPY, FUSELAGE, GLAZED, fuselage};
 use super::shell::{HALF, MOUTH, hull, lip, mouth, station};
@@ -76,7 +76,9 @@ fn the_drawn_hull_is_the_outline_with_a_mouth() {
 }
 
 /// The glass covers the whole mouth and its feet go under the skin of the hull outside the
-/// walls of the tub: no gap between the two, and no pane inside the cockpit.
+/// walls of the tub: no gap between the two, and no pane inside the cockpit. Every corner of a
+/// pane is held by the hull, by the outline of the canopy or, for the hoop at its back, by the
+/// spine it shuts on.
 #[test]
 fn the_glass_closes_on_the_hull_around_the_mouth() {
     let all = outlines();
@@ -99,8 +101,12 @@ fn the_glass_closes_on_the_hull_around_the_mouth() {
             );
         }
     }
+    let mut shut = all.clone();
+    shut.push(corners(spine()));
+    for pane in corners(glass()) {
+        assert!(held(&shut, pane), "the glass is loose at {pane}");
+    }
     let panes = corners(glass());
-    assert!(panes.iter().all(|p| held(&all, *p)));
     assert_eq!(panes.len() / 3, 15);
 }
 

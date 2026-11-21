@@ -44,6 +44,10 @@ fn shell() -> Vec<Vec3> {
     solids.into_iter().flat_map(corners).collect()
 }
 
+/// Metres past its target a ray may meet the cabin: a display stands 2 mm off the face of the
+/// panel, which is what the ray toward its middle meets behind it.
+const PROUD: f32 = 4e-3;
+
 /// From the eye, every ray toward a point of the walls, the floor and the bulkheads of the tub
 /// and toward the displays meets the front of something at that point or before it, every ray
 /// that looks steeply down meets something, and no ray anywhere meets a surface from behind.
@@ -59,7 +63,7 @@ fn the_cabin_has_no_hole_seen_from_the_eye() {
     for target in targets {
         let reach = target.distance(eye);
         let seen = first(&shell, eye, (target - eye) / reach);
-        let closed = seen.is_some_and(|(at, front)| front && at <= reach + 2e-3);
+        let closed = seen.is_some_and(|(at, front)| front && at <= reach + PROUD);
         assert!(closed, "a hole toward {target}: {seen:?}");
     }
     for (yaw, pitch) in (0..60).flat_map(|i| (-17..17).map(move |j| (i, j))) {

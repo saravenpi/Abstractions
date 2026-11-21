@@ -34,11 +34,11 @@ fn the_cockpit_adds_no_collider_and_is_shared() {
         super::LEVER
     );
     let looks = app.world().resource::<Looks>().parts().len();
-    assert_eq!(count::<Mesh3d>(&mut app), 2 * 58);
-    assert_eq!(looks, 21);
-    assert_eq!(app.world().resource::<Assets<Mesh>>().len(), 23);
+    assert_eq!(count::<Mesh3d>(&mut app), 2 * 47);
+    assert_eq!(looks, 22);
+    assert_eq!(app.world().resource::<Assets<Mesh>>().len(), 24);
     assert_eq!(app.world().resource::<Assets<Image>>().len(), 6);
-    assert_eq!(app.world().resource::<Assets<StandardMaterial>>().len(), 22);
+    assert_eq!(app.world().resource::<Assets<StandardMaterial>>().len(), 16);
 }
 
 /// Returns an app whose local ship is asked for `asked` and reads half a spool, after 90 frames.

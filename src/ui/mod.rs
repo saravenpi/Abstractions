@@ -24,6 +24,8 @@ mod scroll;
 mod sound;
 mod style;
 mod table;
+#[cfg(test)]
+mod tests_panel;
 pub mod theme;
 #[cfg(test)]
 mod theme_tests;

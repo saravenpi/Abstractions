@@ -51,7 +51,6 @@ fn frame(app: &mut App) {
         draw::companions.run_if(resource_exists::<Assets<Image>>),
         draw::wounds.run_if(track::kept),
         draw::swings.run_if(track::kept),
-        draw::glows.run_if(draw::burning),
         tag::tags,
     );
     let placed = drawn
@@ -84,9 +83,11 @@ pub fn plugin(app: &mut App) {
         )
         .add_systems(
             PostUpdate,
-            send::send
-                .after(TransformSystems::Propagate)
-                .run_if(resource_exists::<Link>),
+            (
+                send::send.run_if(resource_exists::<Link>),
+                draw::glows.run_if(resource_exists::<Link>.and_then(draw::burning)),
+            )
+                .after(TransformSystems::Propagate),
         );
     frame(app);
 }

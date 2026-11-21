@@ -7,7 +7,7 @@ use crate::host::{ConnId, Outbox};
 use crate::log::PlayerId;
 use crate::room::Room;
 use crate::wire::{
-    AnimalKey, Attack, Blow, Event, Impact, PARTS_MAX, Rock, ServerMsg, Wound, finite,
+    AnimalKey, Attack, Blow, Event, Impact, PARTS_MAX, Rock, SKEW, ServerMsg, Wound, finite,
 };
 
 impl Room {
@@ -26,10 +26,11 @@ impl Room {
     }
 
     /// Keeps a wound opened on a part of `animal` and tells the others. A wound on a dead animal,
-    /// or one that is not a number, is dropped.
+    /// or one that is not a number, is dropped. An opening time farther than [`SKEW`] from `clock`
+    /// is clamped to `clock`.
     pub(super) fn wounded(
         &mut self,
-        conn: ConnId,
+        (conn, clock): (ConnId, f64),
         (animal, wound): (AnimalKey, Wound),
         out: &mut Outbox,
     ) {
@@ -39,7 +40,13 @@ impl Room {
         if !sane || self.hunting.dead(&animal) || self.hunting.wounds.len() >= WOUNDS_MAX {
             return;
         }
+        let opened = if (wound.opened - clock).abs() > SKEW {
+            clock
+        } else {
+            wound.opened
+        };
         let wound = Wound {
+            opened,
             plugged: false,
             ..wound
         };

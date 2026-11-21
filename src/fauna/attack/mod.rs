@@ -4,7 +4,7 @@
 //! and a kill makes it fall ([`slump`]) and stay as a carcass ([`slay`]) that scavengers come to and
 //! that decays into bones. The robot cuts parts from the carcass ([`carve`]). Animals that fight or
 //! hunt the robot pick an attack from their body ([`kinds`]), wind up with a telegraph that grows with
-//! their size ([`timing`], [`gesture`]) and send a [`crate::avatar::blow::Blow`] when it lands
+//! their size ([`timing`], [`brace`]) and send a [`crate::avatar::blow::Blow`] when it lands
 //! ([`pounce`]).
 
 mod aim;
@@ -38,6 +38,8 @@ mod tests_harm;
 #[cfg(test)]
 mod tests_limbs;
 #[cfg(test)]
+mod tests_pose;
+#[cfg(test)]
 mod tests_pounce;
 
 use bevy::prelude::*;
@@ -51,7 +53,7 @@ pub use timing::Attacking;
 use crate::screens::{in_control, playing};
 
 /// Registers the harm of blows: before the scan, so a kill leaves the scan's wants at once. The attacks
-/// run after the senses set the stances and before the walk, the telegraphs after the walk posed the
+/// run after the senses set the stances and before the walk, the flinches after the walk posed the
 /// parts, the collapse and the carving beside them.
 pub(super) fn plugin(app: &mut App) {
     let scan = super::scan::scan;
@@ -68,10 +70,9 @@ pub(super) fn plugin(app: &mut App) {
                 .after(super::senses::sense)
                 .before(walk)
                 .run_if(any_with_component::<super::beast::Beast>),
-            gesture::gesture.after(walk).run_if(
-                any_with_component::<timing::Attacking>
-                    .or_else(any_with_component::<gesture::Flinch>),
-            ),
+            gesture::gesture
+                .after(walk)
+                .run_if(any_with_component::<gesture::Flinch>),
             slump::slump
                 .after(walk)
                 .run_if(any_with_component::<slump::Slump>),

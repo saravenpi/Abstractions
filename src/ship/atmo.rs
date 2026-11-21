@@ -36,7 +36,9 @@ fn weight(planet: &PlanetSpec, pos: DVec3) -> DVec3 {
 /// hangs still and a ship under way flies the speed asked for in any air. The lift of the deep
 /// air of a giant is not in `hold.0`: the assist leaves it to float the ship back up. A ship
 /// that touches the ground or the sea with idle engines is left to settle on it, unless the
-/// stick asks to rise.
+/// stick asks to rise. A ship whose gear is on the ground with no rise asked is set down whatever
+/// the lever was: the lever is put back to idle, since a lever left up would hold the engines on
+/// and keep the ship from ever resting.
 fn engines(
     ship: &Ship,
     controls: &Controls,

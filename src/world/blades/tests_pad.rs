@@ -10,17 +10,14 @@ use bevy::prelude::*;
 use super::Cropped;
 use super::clear::blocked;
 use super::ground::Ground;
-use super::tests_tile::{turfed, view};
 use super::tile::grow;
 use super::tune::{PAD_MARGIN, TILE};
 use crate::home::Base;
 use crate::universe::Universe;
 use crate::world::chunks::planted;
-use crate::world::globe::{Pad, Reserve};
 use crate::world::lands::Verdure;
 use crate::world::mesh::chunk_heights;
 use crate::world::rocks::Taken;
-use crate::world::scatter::zones::hold;
 use crate::world::scatter::{Carpet, Flora, turf_of};
 use crate::world::{CHUNK_SIZE, Globe, Terrain};
 
@@ -94,6 +91,9 @@ fn no_blade_stands_on_the_pad() {
             }
         }
     }
+    println!(
+        "PAD tiles with turf {turfed}, without {bare}, blades {total}, near {outside}, over {inside}"
+    );
     assert_eq!(inside, 0, "{inside} blades stand over the pad");
     assert!(
         outside > 0,

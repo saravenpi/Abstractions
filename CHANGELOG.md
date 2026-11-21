@@ -27,6 +27,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A thrown spear is never lost. When the animal it stands in leaves the world, or the world is closed and opened again, the spear falls to the ground where it last was and waits there. The pack keeps it in the save. A robot that is destroyed keeps the spears it has out.
 - A blow of a big animal throws the robot more than it crushes it. The robot is a free body of 80 kg, so a blow lands with at most that mass, and a charge is as fast as its run-up allows, not at top speed from a standstill. A 300 kg animal that charges from 4 m leaves 1.2 kJ where it left 19 kJ: it breaks an arm and knocks the robot down, and no longer destroys a whole robot in one blow. A long charge of a 600 kg animal still does. A trample breaks the leg it lands on.
 - An animal reads the pose of the robot of this machine, never the pose of another player seated in a ship.
+- A pin lies on the ground where you drop it. It was kept at sea level under that place, so a pin dropped at your feet on ground 600 m high showed 600 m away, and you never arrived at it. Pins of older worlds and the pins of your friends find their ground when you reach their planet.
 
 ## [0.11.0] - 2026-11-21
 

@@ -7,12 +7,14 @@
 //! ground of the map drops one there. On a server the active pin goes out to the others and
 //! theirs come back into [`Places::friends`].
 
+mod ground;
 mod keys;
 mod name;
 mod store;
 
 pub use name::NAME_CHARS;
 
+pub(super) use ground::settled;
 pub(super) use keys::{announce, arrive, drop_key, leading};
 pub(super) use name::name_keys;
 pub(super) use store::{fill, load, plugin, store};
@@ -59,6 +61,7 @@ fn shifted(index: Option<usize>, gone: usize) -> Option<usize> {
 impl Places {
     /// Drops a pin at the direction `dir` of `body`, named with the next free number, and
     /// returns its index. Nothing happens when [`MAX`] pins are kept or `dir` is no direction.
+    /// Its height is read from the ground once the world streams that body.
     pub fn drop(&mut self, body: BodyId, dir: DVec3) -> Option<usize> {
         let dir = dir.try_normalize().filter(|_| self.pins.len() < MAX)?;
         let name = (1..)
@@ -68,6 +71,7 @@ impl Places {
             name,
             body,
             dir: dir.to_array(),
+            height: None,
         });
         Some(self.pins.len() - 1)
     }

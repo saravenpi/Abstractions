@@ -19,7 +19,10 @@ fn the_body_shows_the_ground_elements() {
     let ground = [
         Compass, Cardinals, Minimap, Coords, Place, Climate, Integrity, Prompt, Markers,
     ];
-    exactly(Context::OnFoot, &[&ground[..], &[Herds, Reticle]].concat());
+    exactly(
+        Context::OnFoot,
+        &[&ground[..], &[Herds, Reticle, Labels]].concat(),
+    );
     exactly(Context::Swimming, &ground);
     exactly(
         Context::Gliding,

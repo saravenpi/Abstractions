@@ -52,6 +52,8 @@ mod tests_horizon;
 mod tests_life;
 #[cfg(test)]
 mod tests_paint;
+#[cfg(test)]
+mod tests_shadow;
 
 use bevy::prelude::*;
 

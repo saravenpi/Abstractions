@@ -34,7 +34,7 @@ fn share_of(value: Val, room: f32) -> f32 {
 }
 
 /// Returns `root` and every node under it, `root` first.
-fn under(world: &World, root: Entity) -> Vec<Entity> {
+pub(super) fn under(world: &World, root: Entity) -> Vec<Entity> {
     let mut found = vec![root];
     let mut at = 0;
     while at < found.len() {

@@ -1,6 +1,7 @@
 //! Headless app tests: the menus, the HUD, the boot screen and the board computer inside an app
 //! without a window. This file is the harness; the tests are in the modules below.
 
+mod backdrop;
 mod computer;
 mod fit;
 mod fit_screens;

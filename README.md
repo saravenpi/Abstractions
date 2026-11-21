@@ -25,7 +25,7 @@ On foot:
 | N | Minimap range, then off |
 | B | Drop a pin where you stand, or remove the pin within 10 m. On the map, a pin under the pointer. You keep up to eight |
 | K | Field guide: the species of the planet underfoot |
-| I | Pack: what you carry. Tab opens the workshop, where you make a tool for an intent |
+| I | Pack and workshop: what you carry on the left, the tools you can make for an intent on the right. Tab moves between them |
 | 1 to 6 | Hold the tool in that hotbar slot; the key of the held slot stows or draws it |
 | Left mouse, right mouse | Swing or throw the held tool, guard |
 | H | Break a piece off the rock you look at |

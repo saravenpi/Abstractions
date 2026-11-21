@@ -4,12 +4,13 @@
 
 use bevy::prelude::*;
 
-use super::glyph::{silhouette, wear_bar};
+use super::glyph::{SMALL, silhouette};
 use super::here::Here;
+use super::scene::Shape;
 use crate::craft::pack::{Pack, SLOTS};
 use crate::screens::{Screen, in_control};
 use crate::space::on_foot;
-use crate::ui::{text, theme};
+use crate::ui::{meter, text, theme};
 
 /// Side in pixels of one slot, which is also the height of the hotbar the prompt line stands above.
 pub const SIDE: f32 = 56.0;
@@ -45,9 +46,6 @@ fn spawn(mut commands: Commands) {
         Visibility::Hidden,
     ));
 }
-
-/// The silhouette of a tool: shaft length, head size and form, if its build is whole.
-type Shape = Option<(f32, f32, crate::craft::build::Form)>;
 
 /// Returns the bar along the foot of a slot: the accent while `held`, else clear.
 fn accent(held: bool) -> impl Bundle {
@@ -90,8 +88,8 @@ fn slot(at: usize, tool: Option<(Shape, f32)>, held: bool) -> impl Bundle {
         BackgroundColor(back),
         children![
             text(format!("{}", at + 1), theme::FONT_SMALL, ink),
-            (silhouette(shape), drawn),
-            (wear_bar(BAR, worn), drawn),
+            (silhouette(shape, SMALL), drawn),
+            (meter(BAR, 1.0 - worn), drawn),
             accent(held),
         ],
     )

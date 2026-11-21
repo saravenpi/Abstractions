@@ -1,12 +1,15 @@
-//! The rows of the pack: each tool and each stack of material, with what the list shows of it, and
-//! the filter and order that arrange them.
+//! The rows of the pack: each tool and each stack of material, with what the list shows of it,
+//! grouped by kind.
 
-use super::bench::Sort;
-use crate::computer::sift::matches;
+use std::cmp::Ordering;
+
+use super::intent;
+use super::kind::Kind;
 use crate::craft::build::{Form, Place};
 use crate::craft::matter::{Grade, Stuff, Treatment};
 use crate::craft::pack::{Pack, Stack, called};
 use crate::life::Life;
+use crate::ui::Icon;
 
 /// What a row stands for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,6 +25,10 @@ pub enum What {
 pub struct Line {
     /// What it stands for.
     pub what: What,
+    /// The group it is shown in.
+    pub kind: Kind,
+    /// The icon that tells it apart in its group: the intent of a tool, nothing for a material.
+    pub icon: Option<Icon>,
     /// Its name.
     pub name: String,
     /// What it is made of, or how good it is.
@@ -80,10 +87,22 @@ fn stack_signature(stuff: &Stuff) -> String {
         .join(", ")
 }
 
-/// Returns a row for every tool and stack in `pack`, tools first, their wear read at `place`.
+/// Returns the order of two rows of one group: tools as they were made, materials heaviest first.
+fn order(a: &Line, b: &Line) -> Ordering {
+    let tools = matches!(a.what, What::Item(_)) && matches!(b.what, What::Item(_));
+    match tools {
+        true => Ordering::Equal,
+        false => b.mass.total_cmp(&a.mass),
+    }
+}
+
+/// Returns a row for every tool and stack in `pack`, grouped by kind in [`Kind::ALL`] order, tools
+/// first, their wear read at `place`.
 pub fn lines(pack: &Pack, place: &Place, life: Option<(&Life, u64)>) -> Vec<Line> {
     let tools = pack.items.iter().map(|item| Line {
         what: What::Item(item.id),
+        kind: Kind::Tool,
+        icon: Some(intent::icon(item.intent())),
         name: item.name(),
         signature: item.signature(),
         mass: item.mass(),
@@ -92,22 +111,15 @@ pub fn lines(pack: &Pack, place: &Place, life: Option<(&Life, u64)>) -> Vec<Line
     });
     let stacks = pack.stacks.iter().enumerate().map(|(at, stack)| Line {
         what: What::Stack(at),
+        kind: Kind::of(&stack.stuff),
+        icon: None,
         name: stack_name(stack, life),
         signature: stack_signature(&stack.stuff),
         mass: stack.mass,
         wear: None,
         shape: None,
     });
-    tools.chain(stacks).collect()
-}
-
-/// Returns the rows whose name or signature holds `filter`, in the order `sort` asks for.
-pub fn arrange(mut lines: Vec<Line>, filter: &str, sort: Sort) -> Vec<Line> {
-    lines.retain(|line| matches(&line.name, filter) || matches(&line.signature, filter));
-    match sort {
-        Sort::Kept => {}
-        Sort::Name => lines.sort_by_key(|line| line.name.to_lowercase()),
-        Sort::Mass => lines.sort_by(|a, b| b.mass.total_cmp(&a.mass)),
-    }
-    lines
+    let mut all: Vec<Line> = tools.chain(stacks).collect();
+    all.sort_by(|a, b| a.kind.cmp(&b.kind).then_with(|| order(a, b)));
+    all
 }

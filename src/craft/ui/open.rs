@@ -1,22 +1,16 @@
-//! Opening and closing the pack screen, and scrolling its list.
+//! Opening and closing the pack screen.
 //!
 //! The pack key opens it on foot while the player controls the game and the map and the field
-//! guide are closed. The same key or Escape closes it, unless a search is being typed, and so does
-//! leaving the ground or opening a menu.
+//! guide are closed. The same key or Escape closes it, and so does leaving the ground or opening a
+//! menu. The Close button of its footer runs the same deed as Escape.
 
-use bevy::input::mouse::AccumulatedMouseScroll;
 use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
 
 use super::Workshop;
-use super::bench::Bench;
-use super::here::Here;
-use super::layout::fit;
-use super::paint::arranged;
+use super::bench::{Bench, Pane};
 use super::view::spawn;
 use crate::audio::AudioCue;
 use crate::computer::Computer;
-use crate::craft::pack::Pack;
 use crate::fauna::guide::Guide;
 use crate::space::{Location, Travel};
 
@@ -45,16 +39,15 @@ pub(super) fn toggle(
         Res<crate::settings::Persistent<crate::settings::Settings>>,
     ),
     (state, computer, guide): Screens,
-    (location, bench): (Option<Res<Location>>, Res<Bench>),
+    location: Option<Res<Location>>,
     (mut next, mut cues): (ResMut<NextState<Workshop>>, MessageWriter<AudioCue>),
 ) {
     let map = computer.is_some_and(|c| *c.get() == Computer::Open);
     let foot = location.is_some_and(|l| l.travel == Travel::OnFoot);
     let open = *state.get() == Workshop::Open;
-    let free = !bench.typing;
     let pressed = (
-        free && keys.just_pressed(settings.controls.keys.pack),
-        free && keys.just_pressed(KeyCode::Escape),
+        keys.just_pressed(settings.controls.keys.pack),
+        keys.just_pressed(KeyCode::Escape),
     );
     let can = playing && foot && !map && !crate::fauna::guide::shown(guide);
     let Some(wanted) = next_state(open, can, pressed) else {
@@ -69,35 +62,12 @@ pub(super) fn toggle(
     }
 }
 
-/// Measures the window, keeps the bench's choices but starts at the top, and spawns the screen.
-pub(super) fn enter(
-    window: Query<&bevy::window::Window, With<PrimaryWindow>>,
-    mut bench: ResMut<Bench>,
-    mut commands: Commands,
-) {
-    let size = window
-        .single()
-        .map_or(Vec2::new(1280.0, 720.0), |w| w.size());
-    let (rows, _, chars) = fit(size);
-    bench.rows = rows;
-    bench.chars = chars;
-    bench.typing = false;
-    bench.window = Default::default();
+/// Opens on the pack pane at its first row, keeps the intent and the focused card, and spawns
+/// the screen.
+pub(super) fn enter(mut bench: ResMut<Bench>, mut commands: Commands) {
+    bench.pane = Pane::Pack;
+    bench.cursor = 0;
+    bench.made = None;
     bench.note.clear();
     spawn(&mut commands);
-}
-
-/// Scrolls the list with the mouse wheel.
-pub(super) fn wheel(
-    wheel: Res<AccumulatedMouseScroll>,
-    (pack, here): (Res<Pack>, Here),
-    mut bench: ResMut<Bench>,
-) {
-    if wheel.delta.y == 0.0 {
-        return;
-    }
-    let by = -wheel.delta.y.signum() as isize;
-    let len = arranged(&bench, &pack, &here).len();
-    let rows = bench.rows;
-    bench.window.scroll(len, rows, by);
 }

@@ -38,6 +38,7 @@ pub use recipe::{Design, Recipe};
 pub use solve::{Proposal, Proposals, Stock, assess, solve};
 pub use swing::{Swing, swing, tip_speed};
 pub use throw::{Throw, throw};
+pub use tune::EDGE_MIN;
 pub use wear::{Joint, Wear, lives};
 pub use why::{Why, explain};
 

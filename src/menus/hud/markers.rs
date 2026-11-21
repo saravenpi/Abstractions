@@ -26,6 +26,8 @@ pub enum MarkerKind {
     Herd,
     /// The place the course is set to: a body, a star or a galaxy, at any distance.
     Course,
+    /// A tool of the pack that is out in the world: a thrown spear where it came to rest.
+    Tool,
 }
 
 /// Where a marker is: on a body, in the body's own turning frame, or only a direction.
@@ -61,14 +63,14 @@ impl Marker {
 
     /// Returns the place of this marker in the order that settles who is drawn in front when
     /// two meet, over the world and on the compass: the course, the followed pin, friends, home,
-    /// the ship, pins, herds.
+    /// the ship, a tool out in the world, pins, herds.
     pub fn rank(&self) -> u8 {
         match self.kind {
             MarkerKind::Course => 0,
             MarkerKind::Waypoint if self.owner == 0 => 1,
             MarkerKind::Friend => 2,
             MarkerKind::Home => 3,
-            MarkerKind::Ship => 4,
+            MarkerKind::Ship | MarkerKind::Tool => 4,
             MarkerKind::Waypoint | MarkerKind::Favourite => 5,
             MarkerKind::Herd => 6,
         }

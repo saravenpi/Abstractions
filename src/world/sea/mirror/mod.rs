@@ -2,8 +2,8 @@
 //! calm water.
 //!
 //! A planar reflection: a second camera, the game camera mirrored about the water plane under the
-//! focus, draws only the actors into an
-//! image the size of the game view, before the game camera. Its near plane is the water itself,
+//! focus, draws only the actors into an image the size of the game view, before the game camera.
+//! Its near plane is the water itself,
 //! by the oblique clip plane of Bevy's `PerspectiveProjection::near_clip_plane` (Lengyel,
 //! https://terathon.com/lengyel/Lengyel-Oblique.pdf), so nothing under the surface shows. The
 //! image lines up with the game view pixel for pixel, as in Bevy's own `mirror` example

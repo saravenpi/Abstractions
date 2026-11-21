@@ -35,6 +35,8 @@ pub struct ShipKeys {
     pub warp: KeyCode,
     /// Board the ship, or leave it.
     pub board: KeyCode,
+    /// Switch the headlight in the nose on or off.
+    pub headlight: KeyCode,
 }
 
 impl Default for ShipKeys {
@@ -54,6 +56,7 @@ impl Default for ShipKeys {
             cut: KeyCode::KeyX,
             warp: KeyCode::KeyJ,
             board: KeyCode::KeyF,
+            headlight: KeyCode::KeyL,
         }
     }
 }

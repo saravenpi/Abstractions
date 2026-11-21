@@ -11,7 +11,7 @@ use super::{Eye, Sight, drop_puppet, seen, shown, visible};
 use crate::net::state::Remote;
 use crate::net::state::track::{Remotes, Track};
 use crate::screens::Screen;
-use crate::ship::cockpit::{Cockpit, Levers, Readings, Seen};
+use crate::ship::cockpit::{Cockpit, Lamp, Levers, Readings, Seen};
 use crate::ship::{self, Engine, Leg, SEAT, level_of, reach, top_speed};
 use crate::space::Placed;
 
@@ -149,6 +149,9 @@ fn draw(
         warp: switch(&state),
     };
     cockpit.read = dials(&state, sight.clearance(track.frame, view.position));
+    cockpit.read.lamps[Lamp::Landed as usize] = state.landed;
+    cockpit.read.lamps[Lamp::Light as usize] = state.headlight;
+    cockpit.open = state.canopy;
     engine.level = level_of(state.throttle, state.boost, drive(&state));
     engine.warp = drive(&state);
     let (_, far) = seen(eye, &placed);

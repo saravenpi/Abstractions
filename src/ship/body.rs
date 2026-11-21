@@ -45,6 +45,8 @@ pub struct Ship {
     pub calm: f64,
     /// Whether the hull met a built solid on the last step.
     pub scraped: bool,
+    /// Whether the headlight in the nose is switched on.
+    pub headlight: bool,
 }
 
 impl Ship {
@@ -66,6 +68,7 @@ impl Ship {
             touching: false,
             calm: 0.0,
             scraped: false,
+            headlight: false,
         }
     }
 
@@ -87,6 +90,7 @@ impl Ship {
             damage: self.damage,
             manual: !self.assist,
             seated: false,
+            headlight: self.headlight,
             gear: Some(self.gear),
             beside: None,
         }
@@ -109,6 +113,7 @@ impl Ship {
             assist: !state.manual,
             landed: state.landed,
             touching: state.landed,
+            headlight: state.headlight,
             gear: state.gear.map_or(1.0, |gear| gear.clamp(0.0, 1.0)),
             stowed: state.gear.is_some_and(|gear| gear < 1.0),
             ..Self::at_rest(state.frame, DVec3::from_array(state.pos), rot)
@@ -147,6 +152,10 @@ pub struct ShipState {
     /// Whether the player sat in the ship when the record was taken.
     #[serde(default)]
     pub seated: bool,
+    /// Whether the headlight was on. A record written before the headlight had a switch does
+    /// not hold it, and reads as off.
+    #[serde(default)]
+    pub headlight: bool,
     /// Extension of the landing gear from 0 (folded) to 1 (down). A record written before the
     /// gear folded does not hold it.
     #[serde(default, skip_serializing_if = "Option::is_none")]

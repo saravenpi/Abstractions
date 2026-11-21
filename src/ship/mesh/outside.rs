@@ -132,8 +132,20 @@ pub fn studs() -> Solid {
     studs.mirrored()
 }
 
-/// Returns the lights of the hull: the red lamp on the left wing tip, the green one on the
-/// right, and the white ones, the tail light and the lens of the landing light.
+/// Where the navigation lamps are: the middle of the housing at the top rear tip of each winglet,
+/// the left one first. The real lights of the lamps stand at the same points.
+pub const TIP_LAMPS: [Vec3; 2] = [Vec3::new(-3.2, 0.475, 2.71), Vec3::new(3.2, 0.475, 2.71)];
+
+/// Half size of the housing of a navigation lamp, in metres: it stands proud of the faces of the
+/// winglet and of its top, so the lamp shows from the front, the side and the rear.
+const TIP_LAMP: Vec3 = Vec3::new(0.035, 0.045, 0.07);
+
+/// Where the lens of the headlight is in the nose: its middle. The real light stands there.
+pub const HEAD_LAMP: Vec3 = Vec3::new(0.0, -0.3, -3.37);
+
+/// Returns the lights of the hull: the red lamp at the tip of the left winglet, the green one at
+/// the tip of the right winglet, and the white ones, the tail light and the lens of the
+/// headlight in the nose.
 pub fn lamps() -> [Solid; 3] {
     let lamp = |lo: Vec3, hi: Vec3| {
         let mut lamp = Solid::default();
@@ -141,16 +153,8 @@ pub fn lamps() -> [Solid; 3] {
         lamp
     };
     let mut white = lamp(Vec3::new(-0.012, 1.9, 3.86), Vec3::new(0.012, 1.97, 3.98));
-    white.merge(
-        &lamp(
-            Vec3::new(-0.05, -0.35, -3.42),
-            Vec3::new(0.05, -0.25, -3.32),
-        ),
-        Vec3::ZERO,
-    );
-    [
-        lamp(Vec3::new(-3.3, 0.12, 2.05), Vec3::new(-3.2, 0.2, 2.18)),
-        lamp(Vec3::new(3.2, 0.12, 2.05), Vec3::new(3.3, 0.2, 2.18)),
-        white,
-    ]
+    let lens = Vec3::new(0.05, 0.05, 0.05);
+    white.merge(&lamp(HEAD_LAMP - lens, HEAD_LAMP + lens), Vec3::ZERO);
+    let [red, green] = TIP_LAMPS.map(|at| lamp(at - TIP_LAMP, at + TIP_LAMP));
+    [red, green, white]
 }

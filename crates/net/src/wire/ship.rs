@@ -47,6 +47,38 @@ pub struct ShipBody {
     pub boost: f32,
     /// Glow of an atmospheric entry around the hull, from 0 to 1.
     pub heat: f32,
+    /// Whether the headlight in the nose is on.
+    pub headlight: bool,
+    /// Whether the canopy is open.
+    pub canopy: bool,
+}
+
+/// Bit of the state byte of a ship record that says the ship is landed. A record written before
+/// the headlight and the canopy were sent has the other bits clear: both read as off and shut.
+const LANDED: u8 = 1;
+
+/// Bit of the state byte that says the headlight is on.
+const HEADLIGHT: u8 = 2;
+
+/// Bit of the state byte that says the canopy is open.
+const CANOPY: u8 = 4;
+
+impl ShipBody {
+    /// Returns a body at rest with the switches of the state byte `state` and nothing else.
+    fn switched(state: u8) -> Self {
+        Self {
+            landed: state & LANDED != 0,
+            headlight: state & HEADLIGHT != 0,
+            canopy: state & CANOPY != 0,
+            ..Self::default()
+        }
+    }
+
+    /// Returns the state byte: which of landed, headlight and canopy are set.
+    fn state(&self) -> u8 {
+        let bit = |on: bool, bit: u8| if on { bit } else { 0 };
+        bit(self.landed, LANDED) | bit(self.headlight, HEADLIGHT) | bit(self.canopy, CANOPY)
+    }
 }
 
 impl Body for ShipBody {
@@ -63,7 +95,7 @@ impl Body for ShipBody {
             pack_i8(self.throttle, 1.0) as u8,
             pack_unit(self.gear),
             pack_unit(self.damage),
-            u8::from(self.landed),
+            self.state(),
             self.warp,
             pack_unit(self.warp_level),
             pack_i8(self.stick[0], 1.0) as u8,
@@ -99,12 +131,12 @@ impl Body for ShipBody {
             throttle: unpack_i8(throttle as i8, 1.0),
             gear: unpack_unit(gear),
             damage: unpack_unit(damage),
-            landed: state & 1 != 0,
             warp,
             warp_level: unpack_unit(level),
             stick: [unpack_i8(x as i8, 1.0), unpack_i8(y as i8, 1.0)],
             boost: unpack_unit(boost),
             heat: unpack_unit(heat),
+            ..Self::switched(state)
         })
     }
 }

@@ -101,8 +101,8 @@ fn warp(state: WarpState) -> (u8, f32) {
 }
 
 /// What the pilot of a ship holds: the stick, pitch up then roll left, and the boost, each as
-/// the wire carries it.
-pub type Pilot = ([f32; 2], f32);
+/// the wire carries it, and whether the canopy stands open for the pilot at the hatch.
+pub type Pilot = ([f32; 2], f32, bool);
 
 /// Returns the record of the ship of this machine, flown with `drive`, held as the `Pilot`
 /// says and glowing with `heat`. Its drawn pose is the one at universe time, while the anchor
@@ -111,7 +111,7 @@ pub fn ship(
     here: &Here,
     ship: &Ship,
     placed: Option<&Placed>,
-    (drive, (stick, boost), heat): (WarpState, Pilot, f32),
+    (drive, (stick, boost, canopy), heat): (WarpState, Pilot, f32),
     bodies: &mut Bodies,
 ) -> Option<Sent<ShipBody>> {
     let shown = placed.filter(|_| here.anchor.frame == ship.frame);
@@ -139,6 +139,8 @@ pub fn ship(
         stick,
         boost,
         heat,
+        headlight: ship.headlight,
+        canopy,
     };
     let rest = ship.landed || wire.vel.length() < REST_SPEED;
     Some(Sent { frame, body, rest })

@@ -11,6 +11,7 @@
 //!   `ui` (the menus, the map at each level, the guide, the pack and the pause menu) and `play` (the game
 //!   being played: the map of explored ground, stones picked and a tool made, a herd stalked, a fight, a
 //!   kill carved, the robot hurt and mended, the pack and the guide after the hunt; see the `play` module).
+//!   `far-bodies` (planets and moons seen from afar, see the `farbody` module) runs only when named.
 //!   The title, loading, boot and wake stages always run.
 //! - `SMOKE_ONLY` and `SMOKE_SKIP`: comma lists of stage names to keep or to leave out.
 //! - `SMOKE_TARGET` and `SMOKE_FLASH`: see the `warp` and `boot` stages.
@@ -67,6 +68,8 @@ mod cards_foot;
 mod cards_land;
 mod cards_life;
 mod coarse;
+mod farbody;
+mod farshots;
 mod foot;
 mod grass;
 mod ground;
@@ -116,6 +119,8 @@ use cards_foot::*;
 use cards_land::*;
 use cards_life::*;
 use coarse::*;
+use farbody::*;
+use farshots::*;
 use foot::*;
 use grass::*;
 use ground::*;

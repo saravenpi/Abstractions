@@ -13,6 +13,8 @@ mod tests;
 mod tests_depth;
 #[cfg(test)]
 mod tests_sight;
+#[cfg(test)]
+mod tests_space;
 
 use bevy::asset::embedded_asset;
 use bevy::camera::visibility::NoFrustumCulling;
@@ -28,6 +30,7 @@ pub use specks::DAY_FLUX;
 use super::exposure::Field;
 use super::palette::Palette;
 use super::skylight;
+use super::sun::SunDir;
 use super::vantage::Vantage;
 use super::warp::Lens;
 use crate::screens::Screen;
@@ -86,6 +89,21 @@ pub fn sunlight(orbit: f64, distance: f64, reach: f64) -> f32 {
     (square * (1.0 - out * out * (3.0 - 2.0 * out))) as f32
 }
 
+/// Returns the part of the values of the star shader that says what hides the stars: the
+/// luminance of the sky over `up` and at the horizon as `palette` colours it, or the `veil` of the
+/// lit scene where it is brighter, and the star `sun`, whose glare hides the stars around its
+/// disc. The veil is nothing under no air (see `skylight::veil`): a dark adapted eye in space sees
+/// the stars past a sunlit hull.
+pub fn hiding(palette: &Palette, veil: f32, sun: &SunDir, up: Vec3) -> StarUniform {
+    let hides = |sky: Vec3| skylight::luminance(sky).max(veil);
+    StarUniform {
+        dome: up.extend(hides(palette.zenith)),
+        base: Vec4::new(hides(palette.horizon), 0.0, 0.0, 0.0),
+        sun: sun.dir.extend(sun.lit),
+        ..default()
+    }
+}
+
 /// Spawns the starfield without a mesh when the world starts loading, and the dust with its
 /// fixed mesh and the same material, hidden until a warp.
 fn spawn(
@@ -113,11 +131,12 @@ type DustPose<'a> = (
 );
 
 /// Keeps the shell around the camera, turned with the galaxy, fades the stars with the sky and
-/// hands the shader the warp lens: the same stars crowd ahead, streak by their own apparent
-/// motion and come back to rest, and the dust shows only while a warp inside a galaxy has some in.
+/// the glare of the star and hands the shader the warp lens: the same stars crowd ahead, streak
+/// by their own apparent motion and come back to rest, and the dust shows only while a warp
+/// inside a galaxy has some in.
 fn follow(
     vantage: Res<Vantage>,
-    (palette, lens, field): (Res<Palette>, Res<Lens>, Field),
+    (palette, lens, sun, field): (Res<Palette>, Res<Lens>, Res<SunDir>, Field),
     mut fields: Query<(
         &Starfield,
         &mut Transform,
@@ -127,8 +146,7 @@ fn follow(
     mut dust: Query<DustPose, (With<Dust>, Without<Starfield>)>,
     mut materials: ResMut<Assets<StarMaterial>>,
 ) {
-    let veil = skylight::veil(field.luminance());
-    let hides = |sky: Vec3| skylight::luminance(sky).max(veil);
+    let veil = skylight::veil(field.luminance(), vantage.air);
     let pose = Transform {
         translation: vantage.camera,
         rotation: vantage.observer.to_render.as_quat(),
@@ -142,8 +160,7 @@ fn follow(
                 heading: lens.heading.extend(lens.beta),
                 drift: field.drift(&vantage).extend(0.0),
                 flow: Vec4::new(lens.phase, lens.flow, lens.medium(vantage.band), 0.0),
-                dome: vantage.up.extend(hides(palette.zenith)),
-                base: Vec4::new(hides(palette.horizon), 0.0, 0.0, 0.0),
+                ..hiding(&palette, veil, &sun, vantage.up)
             };
         }
     }

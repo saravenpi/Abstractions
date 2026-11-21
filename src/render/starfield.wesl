@@ -9,6 +9,7 @@ struct Stars {
     flow: vec4<f32>,
     dome: vec4<f32>,
     base: vec4<f32>,
+    sun: vec4<f32>,
 }
 
 struct StarVertex {
@@ -57,10 +58,15 @@ const DAY_FLUX: f32 = 1.0;
 const SKY_DAY: f32 = 0.3;
 const SKY_SPAN: f32 = 3.0;
 const SKY_LEAST: f32 = 0.0001;
+const GLARE_OUT: f32 = 0.94;
+const GLARE_IN: f32 = 0.996;
+const GLARE_SKY: f32 = 3.0;
 
 fn lit_by_night(flux: f32, dir: vec3<f32>) -> f32 {
     let height = clamp(dot(dir, stars.dome.xyz), 0.0, 1.0);
-    let sky = mix(stars.base.x, stars.dome.w, sqrt(height));
+    let toward = clamp((dot(dir, stars.sun.xyz) - GLARE_OUT) / (GLARE_IN - GLARE_OUT), 0.0, 1.0);
+    let glare = GLARE_SKY * clamp(stars.sun.w, 0.0, 1.0) * toward * toward;
+    let sky = max(mix(stars.base.x, stars.dome.w, sqrt(height)), glare);
     let hide = min(DAY_FLUX + SKY_SPAN * log(max(sky, SKY_LEAST) / SKY_DAY) / LOG10, DAY_FLUX);
     return smoothstep(hide, hide + 1.0, flux);
 }

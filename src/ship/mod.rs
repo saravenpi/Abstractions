@@ -23,6 +23,7 @@ mod frames;
 mod fx;
 mod gear;
 mod glow;
+mod headlight;
 mod heat;
 mod helm;
 mod hold;
@@ -53,6 +54,7 @@ mod transit;
 mod tune;
 mod vapour;
 mod view;
+mod wake;
 mod warp;
 mod wells;
 
@@ -109,6 +111,8 @@ pub enum ShipEvent {
     Boarded,
     /// The player left the ship.
     Left,
+    /// The pilot switched the headlight: on when true.
+    Headlight(bool),
 }
 
 /// A crash: a touchdown at or above the crash speed of the point that took it, 25 m/s on the
@@ -166,6 +170,7 @@ fn flight(app: &mut App) {
     let input = (
         board::reseat.run_if(seated),
         helm::read,
+        headlight::switch,
         board::board,
         route::halt.run_if(route::halting),
         route::fly,
@@ -239,4 +244,5 @@ pub(super) fn plugin(app: &mut App) {
     cockpit::plugin(app);
     vapour::plugin(app);
     exhaust::plugin(app);
+    wake::plugin(app);
 }

@@ -5,7 +5,7 @@ use bevy::prelude::KeyCode;
 use crate::settings::{Keymap, ShipKeys};
 
 /// The name of each action, in the order of [`Bind`].
-const LABELS: [&str; 31] = [
+const LABELS: [&str; 32] = [
     "Forward",
     "Back",
     "Left",
@@ -37,6 +37,7 @@ const LABELS: [&str; 31] = [
     "Field guide",
     "Pack, workshop",
     "Mend a part",
+    "Headlight",
 ];
 
 /// One rebindable action.
@@ -73,6 +74,7 @@ pub enum Bind {
     Guide,
     Pack,
     Mend,
+    Headlight,
 }
 
 impl Bind {
@@ -101,7 +103,7 @@ impl Bind {
     ];
 
     /// The actions used while seated in the ship, in display order.
-    pub const SHIP: [Bind; 20] = [
+    pub const SHIP: [Bind; 21] = [
         Bind::Thrust,
         Bind::Brake,
         Bind::PitchDown,
@@ -115,6 +117,7 @@ impl Bind {
         Bind::Assist,
         Bind::Cut,
         Bind::Warp,
+        Bind::Headlight,
         Bind::View,
         Bind::Board,
         Bind::Computer,
@@ -170,6 +173,7 @@ impl Bind {
             Bind::Assist => &mut ship.assist,
             Bind::Cut => &mut ship.cut,
             Bind::Warp => &mut ship.warp,
+            Bind::Headlight => &mut ship.headlight,
             _ => return None,
         })
     }

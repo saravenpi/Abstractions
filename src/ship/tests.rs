@@ -12,6 +12,7 @@ mod gearing;
 mod giant;
 mod ground;
 mod handling;
+mod headlight;
 mod helm;
 mod hold;
 mod hover;

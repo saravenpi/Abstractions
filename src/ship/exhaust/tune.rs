@@ -56,8 +56,14 @@ pub const OFF: f32 = 0.02;
 pub const MAIN_LIGHT: f32 = 90_000.0;
 /// Light of the four lift nozzles together at full thrust, in lumens.
 pub const LIFT_LIGHT: f32 = 60_000.0;
-/// Light of the landing lamp, in lumens, and the half angle of its beam in radians.
-pub const LANDING_LIGHT: (f32, f32) = (400_000.0, 0.5);
+/// Light of the headlight in the nose, in lumens, the half angle of its beam in radians and the
+/// radius of its lens in metres. An aircraft landing light gives some tens of thousands of
+/// lumens: this one lights the ground 24 m ahead by the inverse square law without burning it
+/// white, and its lens is wide enough for a near surface to take a soft highlight.
+pub const HEADLIGHT: (f32, f32, f32) = (40_000.0, 0.45, 0.08);
+/// Light of a navigation lamp at the tip of a winglet, in lumens: it lights the winglet and the
+/// wing tip around it, 2.9 m by the inverse square law.
+pub const TIP_LIGHT: f32 = 600.0;
 /// Dynamic pressure in pascals, 25 metres per second in air at sea level, above which the lift
 /// thrusters are taken to be shut, the ship flying on its wings and its main engines.
 pub const HOVER_PRESSURE: f64 = 400.0;

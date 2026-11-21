@@ -25,6 +25,8 @@ pub struct Cockpit {
     pub strap: Strap,
     /// The player entity that sits in the seat, when one does.
     pub pilot: Option<Entity>,
+    /// Whether the canopy is asked open: while the owner of the ship stands at its hatch.
+    pub open: bool,
 }
 
 impl Cockpit {

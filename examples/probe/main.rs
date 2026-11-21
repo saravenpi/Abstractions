@@ -76,6 +76,7 @@ mod util;
 mod walls;
 mod watch;
 mod water;
+mod wing;
 mod zoo;
 
 use air::*;
@@ -106,6 +107,7 @@ use util::*;
 use walls::*;
 use watch::*;
 use water::*;
+use wing::*;
 
 /// Runs the zoo when `PROBE_STAGES` names it, else the tour of the game.
 fn main() -> AppExit {

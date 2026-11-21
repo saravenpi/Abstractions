@@ -13,6 +13,7 @@ use crate::computer::{Destination, ship_position, target_position};
 use crate::condition::Condition;
 use crate::player::Player;
 use crate::render::Heat;
+use crate::ship::board::Hatch;
 use crate::ship::body::Ship;
 use crate::ship::helm::Helm;
 use crate::ship::sim::{Cosmos, Pace};
@@ -55,6 +56,8 @@ pub struct Flight<'w> {
     condition: Option<Res<'w, Condition>>,
     /// Where the player is.
     location: Res<'w, Location>,
+    /// Whether the player stands at the hatch.
+    hatch: Option<Res<'w, Hatch>>,
 }
 
 impl Flight<'_> {
@@ -106,6 +109,7 @@ impl Flight<'_> {
         lamps[Lamp::Hot as usize] = hot;
         lamps[Lamp::Frame as usize] = integrity < FRAME_LAMPS.0;
         lamps[Lamp::Failing as usize] = integrity < FRAME_LAMPS.1;
+        lamps[Lamp::Light as usize] = ship.headlight;
         lamps
     }
 
@@ -144,6 +148,7 @@ pub fn feed(
         },
         read: flight.readings(ship, placed),
         pilot: local.filter(|_| seated).map(|(player, _)| player),
+        open: flight.hatch.as_ref().is_some_and(|hatch| hatch.near),
         ..*cockpit
     };
     cockpit.set_if_neq(fed);

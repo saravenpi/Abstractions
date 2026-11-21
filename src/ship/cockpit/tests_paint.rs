@@ -2,11 +2,11 @@
 
 use bevy::prelude::IVec2;
 
-use super::faces::{FLIGHT, SIDE, drive, flight, status};
+use super::faces::{FLIGHT, LAMP_ROWS, SIDE, drive, flight, status};
 use super::font::{ADVANCE, HEIGHT, WIDTH, glyph};
 use super::paint::{MARGIN, WIDEST, bar, flush, key, words, write};
 use super::pixels::{Ink, Pixels};
-use super::readings::Lamp;
+use super::readings::{LAMPS, Lamp};
 use super::screens::Screen;
 use super::tune::{BAYS, TEXEL};
 
@@ -82,12 +82,12 @@ fn a_display_is_dark_without_a_source() {
     assert!(driven.count() > 150 && !driven.is_lit(2, 30));
     let flown = flight([(Some("10 m/s"), Some(8)), (None, None)], None, [None; 2]);
     assert!(flown.count() > 60 && flown.ink(3, 3) == Ink::Dim);
-    let out = status([false; 6]);
+    let out = status([false; LAMPS]);
     assert!(out.count() > 100 && (0..72).all(|y| (0..32).all(|x| out.ink(x, y) != Ink::Lit)));
     let hot = status(Lamp::ALL.map(|lamp| lamp == Lamp::Hot || lamp == Lamp::Failing));
-    assert_eq!(hot.ink(5, 4 + 11 * 3 + 3), Ink::Amber);
-    assert_eq!(hot.ink(5, 4 + 11 * 5 + 3), Ink::Red);
-    assert_eq!(hot.ink(5, 4 + 3), Ink::Dark);
+    assert_eq!(hot.ink(5, LAMP_ROWS.1 + LAMP_ROWS.0 * 3 + 3), Ink::Amber);
+    assert_eq!(hot.ink(5, LAMP_ROWS.1 + LAMP_ROWS.0 * 5 + 3), Ink::Red);
+    assert_eq!(hot.ink(5, LAMP_ROWS.1 + 3), Ink::Dark);
 }
 
 /// The bytes of a canvas are four per pixel, lit white over dark, a pixel outside the canvas
@@ -132,7 +132,7 @@ fn every_display_keeps_its_margin_in_every_state() {
         let bars = [Some(step), Some(32 - step), Some(step)];
         assert!(framed(&drive(bars)), "the drive at {step}");
     }
-    assert!(framed(&status([true; 6])) && framed(&status([false; 6])));
+    assert!(framed(&status([true; LAMPS])) && framed(&status([false; LAMPS])));
     let values = [
         -5.0, 0.0, 7.0, 12_345.0, 99_999.0, 654_321.0, 9.9e8, 4.0e10, 9.4e20, 1.0e25,
     ];

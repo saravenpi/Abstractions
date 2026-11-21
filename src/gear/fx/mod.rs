@@ -19,6 +19,7 @@ mod motes;
 mod pump;
 mod ribbon;
 mod scene;
+mod spaced;
 mod streaks;
 mod trail;
 mod trails;
@@ -39,6 +40,10 @@ mod tests_trail;
 
 use bevy::prelude::*;
 
+pub use kit::Kit;
+pub use lay::{show, trace};
+pub use ribbon::{Look, Strip, mesh as ribbon_mesh};
+pub use trail::Trail;
 pub use wakes::Wake;
 
 use super::mode::Mode;

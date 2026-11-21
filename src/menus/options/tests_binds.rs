@@ -56,7 +56,7 @@ fn the_board_key_conflicts_with_both_groups() {
     );
 }
 
-/// Every action reads and writes its own key, and the 14 ship keys all have a row.
+/// Every action reads and writes its own key, and the 15 ship keys all have a row.
 #[test]
 fn every_action_has_its_own_key() {
     let all: Vec<Bind> = Bind::FOOT.into_iter().chain(Bind::SHIP).collect();
@@ -74,7 +74,7 @@ fn every_action_has_its_own_key() {
         ..ship
     };
     assert_eq!(ship, twelve);
-    assert_eq!(toml::to_string(&ship).unwrap().matches("F12").count(), 14);
+    assert_eq!(toml::to_string(&ship).unwrap().matches("F12").count(), 15);
     assert_eq!(
         (s.controls.keys.computer, s.controls.keys.engage),
         (KeyCode::F12, KeyCode::F12)

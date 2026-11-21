@@ -21,8 +21,8 @@ fn a_slot_holds_its_number_icon_and_wear() {
         NUMBER + number <= (SIDE - HUD) / 2.0,
         "the number runs into the icon"
     );
-    assert!(BAR <= SIDE - 2.0 * theme::S1);
-    assert!(HUD >= theme::ICON);
+    const { assert!(BAR <= SIDE - 2.0 * theme::S1) };
+    const { assert!(HUD >= theme::ICON) };
 }
 
 /// At every window and interface size the icon of a slot covers whole pixels at its own size,

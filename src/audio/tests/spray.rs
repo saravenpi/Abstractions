@@ -43,7 +43,7 @@ fn the_spray_has_no_rate() {
         .map(|part| (part.iter().map(|f| f[0] * f[0]).sum::<f32>() / part.len() as f32).sqrt())
         .collect();
     let mut power = [0.0_f32; 21];
-    for segment in envelope.chunks_exact(100).take(10) {
+    for segment in envelope.as_chunks::<100>().0.iter().take(10) {
         let mean = segment.iter().sum::<f32>() / 100.0;
         for (k, bin) in power.iter_mut().enumerate().skip(3) {
             let (re, im) = segment

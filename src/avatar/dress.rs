@@ -29,13 +29,15 @@ const SHOW_HEAD: f32 = 0.5;
 const ROLL_HARD: f32 = 0.7;
 
 /// Returns the mode of a body the filler put in `filled`, whose gear is in `state` and takes a
-/// touchdown as `touched`, `deep` under the sea or not.
+/// touchdown as `touched`, `deep` under the sea or not. A body the gear lays prone that rises
+/// with its wings folded, as out of a climb, falls in the arch, never stands up in the rise of a
+/// jump.
 pub fn mode(filled: Mode, state: &FlightState, touched: Touch, deep: bool) -> Mode {
     match state.mode {
         Flight::BootFall => Mode::BootFall,
         Flight::Glide => Mode::Glide,
         Flight::Fly => Mode::Fly,
-        Flight::Fall if state.velocity.y > 0.5 => Mode::Jump,
+        Flight::Fall if state.velocity.y > 0.5 && state.prone < 0.5 => Mode::Jump,
         Flight::Fall => Mode::Fall,
         Flight::Roll | Flight::Slide => touched.mode(),
         Flight::Off if filled == Mode::Swim && deep => Mode::Dive,

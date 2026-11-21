@@ -73,8 +73,9 @@ fn held() -> Intent {
     }
 }
 
-/// Fired boots reach the gear, the sprint key alone only with the wingsuit asked open, the
-/// forward key pushes the nose down and the yaw keys turn.
+/// Fired boots reach the gear, the sprint key alone never, the wingsuit asked open or not: the
+/// boots are fired by a press in the air, see `asks::ask`. The forward key pushes the nose down
+/// and the yaw keys turn.
 #[test]
 fn keys_map_to_the_gear() {
     let (air, mut intent) = (air(), held());
@@ -84,7 +85,7 @@ fn keys_map_to_the_gear() {
     assert_eq!((told.pitch, told.roll, told.wind), (-1.0, -1.0, Vec3::X));
     assert_eq!(told.yaw, 0.5);
     motion.wings = true;
-    assert!(input(&motion, &intent, &air, (false, false)).boost);
+    assert!(!input(&motion, &intent, &air, (false, false)).boost);
     (motion.wings, intent.sprint, motion.boots) = (false, false, true);
     let told = input(&motion, &intent, &air, (true, true));
     assert!(told.boost && told.grounded && told.in_water);

@@ -1,7 +1,8 @@
 //! Whether the air can carry a glide at all: the one rule the wings and the interface share.
 
-use super::aero::grip;
-use super::tune::{MOST_SINK, REF_GRAVITY, TRIM_SINK};
+use super::aero::{bite, grip};
+use super::input::GearInput;
+use super::tune::{MOST_SINK, REF_GRAVITY, STALL_SCALE, TRIM_SINK};
 
 /// Returns true when air of thickness `air` against the home planet, at a height where home air
 /// would weigh `density` kilograms per cubic metre, under `gravity` metres per second squared,
@@ -16,4 +17,14 @@ pub fn glides(air: f32, density: f32, gravity: f32) -> bool {
     let bite = grip(density) * air.max(0.0);
     let needed = (TRIM_SINK / MOST_SINK).powi(2) * gravity.max(0.0) / REF_GRAVITY;
     bite > 0.0 && bite >= needed
+}
+
+/// Returns how much faster than at home the wing must fly in the air of `input` to carry the
+/// weight: the root of the gravity against home over the bite of the air, at most
+/// [`STALL_SCALE`]. Every speed of a glide scales by it, the stall speed too.
+pub(super) fn stall_scale(input: &GearInput) -> f32 {
+    let weight = input.gravity.max(0.0) / REF_GRAVITY;
+    (weight / bite(input).max(1e-6))
+        .sqrt()
+        .clamp(1e-3, STALL_SCALE)
 }

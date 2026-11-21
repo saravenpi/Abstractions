@@ -11,6 +11,12 @@ pub const WING_TIME: f32 = 0.4;
 /// upright into a dive would turn more than 7 degrees in a frame.
 pub const PRONE_RATE: f32 = 6.0;
 
+/// Fastest the whole body turns, in radians per second (286 degrees per second): the inertia of
+/// a body, which no servo of the gear outruns. An opening that lays the body from upright into a
+/// dive, the nose that falls at a stall and a pull at the stall angle all turn it at most this
+/// fast, under 5 degrees a frame at sixty frames a second.
+pub const BODY_RATE: f32 = 5.0;
+
 /// Airspeeds in metres per second between which a body the gear took over turns from upright
 /// to prone with the wings folded. Spread, the wings lay it prone at once, see
 /// `aim::lain`.
@@ -28,6 +34,10 @@ pub const FALL_ARCH: (f32, f32) = (14.0, 28.0);
 /// `sqrt(9.81 cos 14 / (AERO 0.527)) sin 14`. The glide sinks at this times
 /// `sqrt(g / g0 / bite)`, `bite` being how well the wing bites the air against home.
 pub const TRIM_SINK: f32 = 7.25;
+
+/// Most times the home stall speed the stall protection is moved up to in thin air or under a
+/// strong pull: past it the air does not carry the wing anyway, see [`MOST_SINK`].
+pub const STALL_SCALE: f32 = 4.0;
 
 /// Fastest sink in metres per second the game still calls a glide: the 11 m/s and more of a
 /// real suit (https://thaiskyadventures.com/blog/wingsuit-flying/). In air thinner than gives

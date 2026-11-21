@@ -68,7 +68,7 @@ fn intents(
 /// the body takes over.
 pub(super) fn send(
     (keys, settings): (Res<ButtonInput<KeyCode>>, Res<Persistent<Settings>>),
-    (buttons, squared): (Res<ButtonInput<MouseButton>>, Res<Squared>),
+    (buttons, squared): (Res<ButtonInput<MouseButton>>, Option<Res<Squared>>),
     (heading, look, prefs): (Res<Heading>, Res<Look>, Res<ViewPrefs>),
     mut out: MessageWriter<IntentOf>,
 ) {
@@ -76,7 +76,7 @@ pub(super) fn send(
     let moving =
         axis(&keys, map.forward, map.back) != 0.0 || axis(&keys, map.right, map.left) != 0.0;
     let mut view = View::ahead(&heading, &look, prefs.on_foot);
-    view.third &= !squared.squares(moving);
+    view.third &= !squared.is_some_and(|squared| squared.squares(moving));
     let held = (&*keys, buttons.pressed(STEER));
     let asked = intents(held, &settings, view, look.yaw_delta);
     out.write_batch(asked.into_iter().flatten().map(|intent| IntentOf {

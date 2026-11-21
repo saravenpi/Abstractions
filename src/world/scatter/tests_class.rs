@@ -12,13 +12,16 @@ use crate::world::propmesh::Plant;
 
 use Plant::*;
 
-/// The plants of the desert tables.
-const DESERT: [Plant; 7] = [
+/// The plants of the desert tables, with the hard stones a plain rock of the tables can be.
+const DESERT: [Plant; 10] = [
     Saguaro,
     RoundCactus,
     DeadBush,
     DeadTree,
     Sandstone,
+    Rock,
+    Flint,
+    Obsidian,
     Grass,
     Pebbles,
 ];

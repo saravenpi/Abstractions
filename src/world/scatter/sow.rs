@@ -98,12 +98,23 @@ fn scale(g: &Grower, rng: &mut ChaCha8Rng, depth: f32, age: usize) -> Option<f32
     (depth < 0.0 || s * reference < depth - 0.5).then_some(s)
 }
 
-/// Returns stone `plant` as it lies on `at`, `depth` metres under the liquid (negative on land), with its
-/// scale and variant drawn from `rng`, or nothing where the water is too shallow to hide it.
-fn stone(rng: &mut ChaCha8Rng, plant: Plant, at: &Ground, depth: f32) -> Option<(Plant, f32, u8)> {
+/// What a stone lays: its plant, scale, variant and the grade it is tilted to.
+type Laid = (Plant, f32, u8, Vec2);
+
+/// Returns the stone a table pick of `plant` lays at chart position `w` over `at`, `depth` metres under
+/// the liquid (negative on land), with its scale and variant drawn from `rng`, or nothing where it could
+/// not rest or the water is too shallow to hide it.
+fn stone(
+    ctx: &Ctx,
+    rng: &mut ChaCha8Rng,
+    (w, plant): (Vec2, Plant),
+    at: &Ground,
+    depth: f32,
+) -> Option<Laid> {
+    let (plant, lean) = ctx.settle(rng, w, plant)?;
     let scale = size(rng, plant, at.surface, at.height);
     let variant = rng.random_range(0..VARIANTS) as u8;
-    (depth <= 0.0 || depth >= plant.draft() * scale).then_some((plant, scale, variant))
+    (depth <= 0.0 || depth >= plant.draft() * scale).then_some((plant, scale, variant, lean))
 }
 
 impl Flora {
@@ -159,11 +170,12 @@ impl Flora {
         let pick = self.choose(ctx, (w, &at), roll, big)?;
         let yaw = rng.random_range(0.0..std::f32::consts::TAU);
         let depth = ctx.terrain.globe().sea_level() - at.height;
-        let (plant, scale, variant) = match pick {
-            Pick::Stone(plant) => stone(rng, plant, &at, depth)?,
+        let (plant, scale, variant, lean) = match pick {
+            Pick::Stone(plant) => stone(ctx, rng, (w, plant), &at, depth)?,
             Pick::Group(g) => {
                 let age = age(rng);
-                (g.habit.carrier, scale(g, rng, depth, age)?, g.looks[age])
+                let grown = scale(g, rng, depth, age)?;
+                (g.habit.carrier, grown, g.looks[age], Vec2::ZERO)
             }
         };
         Some(Placement {
@@ -172,6 +184,7 @@ impl Flora {
             scale,
             plant,
             variant,
+            lean,
         })
     }
 }

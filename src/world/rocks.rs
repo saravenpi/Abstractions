@@ -9,6 +9,7 @@
 mod id;
 mod save;
 mod stand;
+mod stone;
 mod taken;
 #[cfg(test)]
 mod tests;
@@ -21,6 +22,7 @@ use bevy::prelude::*;
 pub use self::id::{id_of, is_rock, key, spare};
 pub use self::save::{load, store};
 pub use self::stand::Stand;
+pub use self::stone::{Mineral, mineral_of};
 pub use self::taken::{Quarry, Taken};
 pub use super::propmesh::Plant;
 use super::props::extent;

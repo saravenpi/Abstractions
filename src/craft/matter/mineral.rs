@@ -1,50 +1,10 @@
-//! Minerals: the stones a planet's geology leaves on the ground, keyed by what the planet record says.
-
-use serde::{Deserialize, Serialize};
+//! Minerals: the stones a planet's geology leaves on the ground. The world names them, since a rock
+//! shows the stone it is made of; this file gives each its measured numbers.
 
 use super::Material;
-use crate::universe::{PlanetClass, PlanetRecord, Water};
-
-/// A stone that can be picked up and worked.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Mineral {
-    /// Dark volcanic rock, on every solid world: heavy, hard, and tough for a stone.
-    Basalt,
-    /// Volcanic glass: the sharpest edge there is, and the most brittle.
-    Obsidian,
-    /// Chert grown from silica in water: hard, and knaps to a lasting edge.
-    Flint,
-    /// Frozen water: light, soft and brittle.
-    Ice,
-}
+pub use crate::world::rocks::Mineral;
 
 impl Mineral {
-    /// Every mineral, in a stable order.
-    pub const ALL: [Mineral; 4] = [
-        Mineral::Basalt,
-        Mineral::Obsidian,
-        Mineral::Flint,
-        Mineral::Ice,
-    ];
-
-    /// Returns true when the planet of `record` has this stone on its ground.
-    ///
-    /// Basalt lies on every solid world. Obsidian needs lava cooled fast, so molten rock now or an
-    /// atmosphere, the sign of a geology that still outgasses. Flint needs liquid water, or a sea of
-    /// it once. Ice needs the cold.
-    pub fn lies_on(self, record: &PlanetRecord) -> bool {
-        let solid = record.class != PlanetClass::GasGiant;
-        let wet = record.water == Water::Liquid;
-        let active =
-            record.class == PlanetClass::Lava || record.pressure >= crate::universe::NO_AIR;
-        match self {
-            Mineral::Basalt => solid,
-            Mineral::Obsidian => solid && active,
-            Mineral::Flint => solid && wet,
-            Mineral::Ice => solid && record.water == Water::Ice,
-        }
-    }
-
     /// Returns the measured numbers of the stone.
     ///
     /// Obsidian: hardness 5 to 5.5 (https://en.wikipedia.org/wiki/Obsidian), K_IC of glass 0.7 to

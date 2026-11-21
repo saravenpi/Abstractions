@@ -1,4 +1,5 @@
-//! Rigs: how the frame of a chunk takes the origin of a prop and the way the ground turns there.
+//! Rigs: how the frame of a chunk takes the origin of a prop and the way the ground turns there, and how a
+//! stone is tilted to the slope it lies on.
 
 use bevy::prelude::*;
 
@@ -28,6 +29,12 @@ impl Rig<'static> {
     };
 }
 
+/// Returns the turn that carries the local up onto the normal of ground of grade `grade`, rise over run
+/// along x and z.
+fn square(grade: Vec2) -> Quat {
+    Quat::from_rotation_arc(Vec3::Y, Vec3::new(-grade.x, 1.0, -grade.y).normalize())
+}
+
 impl Rig<'_> {
     /// Returns the position and rotation, in the chunk frame, of a rigid body whose origin is chunk space
     /// point `at`.
@@ -35,9 +42,14 @@ impl Rig<'_> {
         ((self.embed)(at), (self.turn)(at))
     }
 
-    /// Returns the position and rotation of prop `p` in the chunk frame, its yaw included.
+    /// Returns the position and rotation of prop `p` in the chunk frame, its yaw included, and for a
+    /// stone the tilt that sets it square to the ground it lies on.
     pub fn pose(&self, p: &Placement) -> (Vec3, Quat) {
         let (origin, turn) = self.frame(p.pos);
-        (origin, turn * Quat::from_rotation_y(p.yaw))
+        let yaw = Quat::from_rotation_y(p.yaw);
+        match p.lean == Vec2::ZERO {
+            true => (origin, turn * yaw),
+            false => (origin, turn * square(p.lean) * yaw),
+        }
     }
 }

@@ -1,9 +1,10 @@
-//! Parts of the land solids: trees, cacti, bushes, logs and rocks.
+//! Parts of the land solids: trees, cacti, bushes and logs.
 
 use super::Part::{self, *};
 
 /// The parts of every land solid, in `Plant` order from oak to sandstone, willow after bamboo. Trunks start half a
-/// meter under the ground so that a slope never shows their underside.
+/// meter under the ground so that a slope never shows their underside. The rocks have no parts: each stone is
+/// built by its own builder in `stones`.
 #[rustfmt::skip]
 pub const SPECS: [&[Part]; 19] = [
     &[
@@ -125,19 +126,7 @@ pub const SPECS: [&[Part]; 19] = [
         Stem([0.2, 0.3, 0.05], [0.5, 0.75, 0.2], [0.07, 0.05], [0.4, 0.28, 0.17]),
         Ball([-0.3, 0.55, 0.02], [0.4, 0.15, 0.3], [0.25, 0.5, 0.2]),
     ],
-    &[
-        Ball([0.0, 0.45, 0.0], [0.95, 0.65, 0.85], [0.47, 0.47, 0.5]),
-        Ball([0.8, 0.25, 0.3], [0.45, 0.3, 0.4], [0.42, 0.42, 0.45]),
-        Ball([-0.6, 0.2, -0.4], [0.35, 0.25, 0.3], [0.5, 0.5, 0.53]),
-    ],
-    &[
-        Ball([0.0, 0.45, 0.0], [0.95, 0.65, 0.85], [0.62, 0.72, 0.8]),
-        Ball([0.8, 0.25, 0.3], [0.45, 0.3, 0.4], [0.55, 0.65, 0.75]),
-        Ball([-0.6, 0.2, -0.4], [0.35, 0.25, 0.3], [0.7, 0.8, 0.88]),
-    ],
-    &[
-        Ball([0.0, 0.45, 0.0], [0.95, 0.65, 0.85], [0.78, 0.55, 0.33]),
-        Ball([0.8, 0.25, 0.3], [0.45, 0.3, 0.4], [0.72, 0.48, 0.28]),
-        Ball([-0.6, 0.2, -0.4], [0.35, 0.25, 0.3], [0.84, 0.62, 0.4]),
-    ],
+    &[],
+    &[],
+    &[],
 ];

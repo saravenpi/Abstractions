@@ -7,6 +7,7 @@ use super::spacing::stone;
 use crate::world::Terrain;
 use crate::world::globe::Chart;
 use crate::world::propmesh::{BIG, FLOWER, Plant, TREES};
+use crate::world::rocks::tune::LODE_FREQ;
 
 /// Shallowest water in which kelp grows.
 const KELP_TOP: f32 = 5.5;
@@ -57,13 +58,19 @@ impl Spot for (&Terrain, Vec2) {
     }
 }
 
-/// The low-frequency noise fields behind [`Density`].
-pub struct Fields([Perlin; 4]);
+/// The low-frequency noise fields behind [`Density`], and the lode that picks the stone of a field of rocks.
+pub struct Fields([Perlin; 5]);
 
 impl Fields {
     /// Builds the fields from the world seed.
     pub fn new(seed: u64) -> Self {
-        Self([0x51, 0xA3, 0x7B, 0xC9].map(|salt| Perlin::new(seed as u32 ^ salt)))
+        Self([0x51, 0xA3, 0x7B, 0xC9, 0xE7].map(|salt| Perlin::new(seed as u32 ^ salt)))
+    }
+
+    /// Returns the lode at `w`: a slow field from 0 to 1 that picks which hard stone a field of rocks is
+    /// made of, so a scree is mostly one stone.
+    pub fn lode(&self, w: impl Spot) -> f32 {
+        (w.read(&self.0[4], LODE_FREQ) as f32 * 0.9 + 0.5).clamp(0.0, 1.0)
     }
 
     /// Returns the densities at `w` over a floor `depth` meters below the sea, negative on land.
@@ -123,39 +130,4 @@ pub fn choose(table: &[(Plant, f32)], roll: f32, d: &Density, big: bool) -> Opti
         }
     }
     None
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-
-    use super::*;
-    use crate::world::globe::{Face, Globe};
-
-    /// The flat view reads the plane, and two face charts give the same density on their shared edge.
-    #[test]
-    fn density_has_no_seam() {
-        let fields = Fields::new(7);
-        let w = Vec2::new(130.5, -77.25);
-        let flat = Terrain::new(7);
-        assert_eq!(
-            fields.density((&flat, w), 2.0).grove,
-            fields.density(w, 2.0).grove
-        );
-        let globe = Arc::new(Globe::new(7, 6000.0, 22.0));
-        let view = |face| Terrain::on(globe.clone(), globe.face_chart(face));
-        let (a, b) = (view(Face::PosY), view(Face::PosX));
-        for i in 0..200 {
-            let dir = Face::PosY.dir(0.999, -0.95 + 0.0095 * f64::from(i));
-            let (pa, pb) = (a.chart().locate(dir), b.chart().locate(dir));
-            let (da, db) = (fields.density((&a, pa), 8.0), fields.density((&b, pb), 8.0));
-            let gap = (da.grove - db.grove)
-                .abs()
-                .max((da.forest - db.forest).abs());
-            assert!(
-                gap < 1e-3,
-                "density differs by {gap} across the edge at {dir}"
-            );
-        }
-    }
 }

@@ -12,6 +12,7 @@ fn prop(plant: Plant, x: f32, z: f32) -> Placement {
         scale: 1.0,
         plant,
         variant: 1,
+        lean: Vec2::ZERO,
     }
 }
 
@@ -20,7 +21,7 @@ fn stand() -> Stand {
     let props = [
         prop(Plant::Rock, -10.0, 3.0),
         prop(Plant::Oak, 5.0, 5.0),
-        prop(Plant::Sandstone, 12.0, -8.0),
+        prop(Plant::Flint, 12.0, -8.0),
     ];
     Stand::of(7, &props, &Rig::PLAIN, &Taken::default())
 }
@@ -85,7 +86,7 @@ fn a_rock_is_gone_only_when_its_mass_is_used_up() {
 fn spare_leaves_out_and_shrinks_the_quarried_rocks() {
     let mut props = vec![
         prop(Plant::Rock, 1.0, 1.0),
-        prop(Plant::Sandstone, 8.0, 1.0),
+        prop(Plant::Flint, 8.0, 1.0),
         prop(Plant::Oak, 1.0, 1.0),
     ];
     let mut taken = Taken::default();

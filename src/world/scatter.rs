@@ -8,6 +8,7 @@ mod density;
 mod grow;
 mod metric;
 mod pass;
+mod perch;
 mod relief;
 mod rig;
 #[cfg(test)]
@@ -30,6 +31,8 @@ mod tests_cost;
 #[cfg(test)]
 mod tests_cover;
 #[cfg(test)]
+mod tests_density;
+#[cfg(test)]
 mod tests_edge;
 #[cfg(test)]
 mod tests_frozen;
@@ -39,6 +42,8 @@ mod tests_life;
 mod tests_mean;
 #[cfg(test)]
 mod tests_metric;
+#[cfg(test)]
+mod tests_perch;
 #[cfg(test)]
 pub(crate) mod tests_river;
 #[cfg(test)]
@@ -111,6 +116,9 @@ pub struct Placement {
     pub plant: Plant,
     /// Which of the shared mesh variants to show.
     pub variant: u8,
+    /// Rise over run of the ground under a stone along chart x and z, which it is tilted square to. Zero
+    /// for everything that stands straight up along the local up.
+    pub lean: Vec2,
 }
 
 /// Everything that stands on one chunk.

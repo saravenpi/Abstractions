@@ -29,7 +29,7 @@ On foot:
 | 1 to 6 | Hold the tool in that hotbar slot; the key of the held slot stows or draws it |
 | Left mouse, right mouse | Swing the held tool or stab with a spear, guard |
 | T held | Draw the spear in hand back; let go to throw it. A thrown spear is marked on the compass, the map and over the world until you pick it up |
-| H | Break a piece off the rock you look at |
+| H | Break a piece off the rock you look at: you get the stone it looks like (basalt, flint, obsidian or ice) |
 | U | Patch the worst hurt part of the robot with what you carry. Near the base every part mends itself |
 | F | Board the ship. Cut a part off the carcass you look at, pull out a stuck spear, or take the tool or stone you look at off the ground |
 | Look down + W | Dive while swimming |

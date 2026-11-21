@@ -36,7 +36,7 @@ pub use load::{Burden, capacity, pace};
 pub use make::cost;
 pub use notice::Notice;
 pub(crate) use notice::{fade, fading};
-pub use pick::{Knock, Knocked, stones};
+pub use pick::{Knock, Knocked};
 pub(crate) use pick::{gather, split};
 pub(crate) use save::{load, store, weigh};
 pub use tune::PICK_KEY;

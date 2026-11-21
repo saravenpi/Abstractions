@@ -13,7 +13,7 @@ pub(crate) mod tests;
 const PHI: f32 = std::f32::consts::GOLDEN_RATIO;
 
 /// Icosahedron faces as indices into [`icosa_vertices`].
-const FACES: [[usize; 3]; 20] = [
+pub(in crate::world) const FACES: [[usize; 3]; 20] = [
     [0, 11, 5],
     [0, 5, 1],
     [0, 1, 7],
@@ -37,7 +37,7 @@ const FACES: [[usize; 3]; 20] = [
 ];
 
 /// Returns the twelve unit vertices of an icosahedron.
-fn icosa_vertices() -> [Vec3; 12] {
+pub(in crate::world) fn icosa_vertices() -> [Vec3; 12] {
     [
         Vec3::new(-1.0, PHI, 0.0),
         Vec3::new(1.0, PHI, 0.0),

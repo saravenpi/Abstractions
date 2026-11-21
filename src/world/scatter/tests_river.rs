@@ -1,11 +1,12 @@
-//! Tests that river beds stay bare: the scatter reads a bed the way the terrain mesh paints it, so no plant
-//! grows in a river.
+//! Tests that nothing grows in a river bed: the scatter reads a bed the way the terrain mesh paints it, so
+//! only the stones the water rolled down lie in a river.
 
 use std::sync::Arc;
 
 use bevy::prelude::*;
 
 use super::chunk_center;
+use super::spacing::stone;
 use super::tile::Tile;
 use crate::world::Surface;
 use crate::world::globe::{Face, Globe};
@@ -50,10 +51,11 @@ pub(crate) fn rivers() -> Arc<Globe> {
     Arc::new(Globe::new(3, 6000.0, 22.0))
 }
 
-/// On chunks a river runs through, the ground under every river bed point reads as a river, and not one
-/// plant of the scatter stands on a river bed.
+/// On chunks a river runs through, the ground under every river bed point reads as a river, not one plant
+/// of the scatter stands on a river bed, and some stones lie in the beds.
 #[test]
 fn nothing_grows_in_a_river() {
+    let mut stones = 0;
     let found = river_chunks(&rivers(), 6);
     assert!(found.len() >= 3, "only {} river chunks", found.len());
     for (tile, beds) in &found {
@@ -65,11 +67,14 @@ fn nothing_grows_in_a_river() {
         let centre = chunk_center(tile.coord);
         for (placement, _) in tile.scatter() {
             let w = centre + placement.pos.xz();
+            let wet = t.river_at(w.x, w.y);
             assert!(
-                !t.river_at(w.x, w.y),
+                !wet || stone(placement.plant),
                 "{:?} in a river at {w}",
                 placement.plant
             );
+            stones += usize::from(wet);
         }
     }
+    assert!(stones > 0, "no stone in any river bed");
 }

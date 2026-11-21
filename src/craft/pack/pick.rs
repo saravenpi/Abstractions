@@ -1,6 +1,6 @@
 //! Picking stones up: the pick key has the robot strike the rock under the crosshair, within its
-//! reach, and the blow breaks a piece off it. The stone is one of the stones of the planet, chosen
-//! by the id of the rock, so the same rock always gives the same one. A pick takes at most
+//! reach, and the blow breaks a piece off it. The stone is the one the rock looks like: a basalt
+//! column gives basalt, a flint nodule flint. A pick takes at most
 //! [`HANDFUL`] kilograms and what the robot can still carry; the rock keeps the rest, shrinks as it
 //! is quarried and is gone when its mass is used up.
 
@@ -21,9 +21,8 @@ use crate::craft::wield::Held;
 use crate::effects::Fling;
 use crate::player::{Interact, Verb};
 use crate::space::{Anchor, Location, up};
-use crate::universe::PlanetRecord;
 use crate::world::Terrain;
-use crate::world::rocks::{Rock, RockId, RockTaken, Taken};
+use crate::world::rocks::{Rock, RockId, RockTaken, Taken, mineral_of};
 
 /// The robot asks to strike `rock` at `at`, a point in render space, to break a piece off it.
 #[derive(Message, Debug, Clone, Copy, PartialEq)]
@@ -43,19 +42,10 @@ pub struct Knocked {
     pub at: Vec3,
 }
 
-/// Returns the stones that lie on a planet of `record`.
-pub fn stones(record: &PlanetRecord) -> Vec<Mineral> {
-    Mineral::ALL
-        .into_iter()
-        .filter(|m| m.lies_on(record))
-        .collect()
-}
-
-/// Returns the stone of the planet of `record` that the rock `id` is made of, or nothing when no
-/// stone lies there.
-pub fn stone_of(record: &PlanetRecord, id: RockId) -> Option<Mineral> {
-    let found = stones(record);
-    found.get(id.0 as usize % found.len().max(1)).copied()
+/// Returns the stone the rock `rock` is made of, the one its look shows, or nothing for a rock that
+/// gives no stone to knap.
+pub fn stone_of(rock: &Rock) -> Option<Mineral> {
+    mineral_of(rock.plant)
 }
 
 /// Breaks a piece off `rock`, when there is one, and stows it: at most [`HANDFUL`] kilograms, at most
@@ -64,11 +54,11 @@ pub fn stone_of(record: &PlanetRecord, id: RockId) -> Option<Mineral> {
 /// leaves the rock as it is.
 pub(super) fn take(
     rock: Option<Rock>,
-    (record, room): (&PlanetRecord, f32),
+    room: f32,
     (pack, taken): (&mut Pack, &mut Taken),
 ) -> Option<(RockId, f32)> {
     let rock = rock?;
-    let stone = stone_of(record, rock.id)?;
+    let stone = stone_of(&rock)?;
     let material = stone.material();
     let whole = taken
         .whole(rock.id)
@@ -89,14 +79,10 @@ pub(super) fn take(
 /// the pick key goes down: the piece comes away when the blow reaches the rock, in [`split`].
 pub(crate) fn gather(
     (keys, aim): (Res<ButtonInput<KeyCode>>, Aim),
-    terrain: Res<Terrain>,
     mut interact: ResMut<Interact>,
     mut knocks: MessageWriter<Knock>,
 ) {
-    let record = terrain.globe().record();
-    let found = aim
-        .rock()
-        .filter(|(rock, _)| stone_of(record, rock.id).is_some());
+    let found = aim.rock().filter(|(rock, _)| stone_of(rock).is_some());
     let Some((rock, at)) = found else {
         return;
     };
@@ -183,12 +169,11 @@ pub(crate) fn split(
     let globe = terrain.globe();
     let place = Place::on(globe.gravity(), globe.record());
     for blow in knocked.read() {
-        let Some(stone) = stone_of(globe.record(), blow.rock.id) else {
+        let Some(stone) = stone_of(&blow.rock) else {
             continue;
         };
         let tools = (&mut *pack, &mut *taken);
-        let Some((id, kilograms)) = take(Some(blow.rock), (globe.record(), burden.room()), tools)
-        else {
+        let Some((id, kilograms)) = take(Some(blow.rock), burden.room(), tools) else {
             continue;
         };
         told.write(RockTaken {

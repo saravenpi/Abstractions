@@ -4,11 +4,16 @@
 //! The hips drop by a share of the hip height that grows with the commitment of the attack, the weight
 //! moves back, a trample or a downward swipe rears, a charge or a lunge ducks its head end, a tail
 //! sweep turns the flank. The blow throws the weight forward and the recovery shows it off balance
-//! for as long as the animal is open, then everything is back at ease.
+//! for as long as the animal is open, then everything is back at ease. The part that strikes turns on
+//! its joints: the neck bends back and throws the head out, a forefoot lifts and strikes, the tail
+//! cocks and sweeps.
 
 use super::kinds::Kind;
 use super::timing::Attacking;
-use super::tune::{COMMIT, CROUCH, DUCK, FLANK, OFF_BALANCE, REAR, RECOVER, WEIGHT};
+use super::tune::{
+    COMMIT, CROUCH, DRAW_BACK, DUCK, FLANK, HEAD_DOWN, LASH, OFF_BALANCE, PAW, REAR, RECOVER,
+    STAMP, WEIGHT,
+};
 use crate::fauna::beast::Beast;
 use crate::fauna::motion::brace::Brace;
 
@@ -56,6 +61,43 @@ pub fn brace(attack: &Attacking, length: f32) -> Brace {
         shift: WEIGHT * length * commit * (load - thrown),
         pitch: (rear - duck) * commit * load - OFF_BALANCE * commit * thrown,
         yaw: turn * (load - thrown),
+        ..striker(kind, (load, thrown))
+    }
+}
+
+/// Returns the brace of the part that makes an attack of `kind`, `load` wound up and `thrown` out,
+/// each 0 to 1, the body itself at ease: a bite or a lunge draws the neck back and opens the jaw, then
+/// throws the head out along the neck's reach; a charge drops the head and drives the horns ahead; a
+/// swipe lifts a forefoot and strikes ahead with it; a trample lifts the forefeet and stamps them
+/// down; a tail sweep cocks the tail and sweeps it through. Joints turn, lengths stay.
+fn striker(kind: Kind, (load, thrown): (f32, f32)) -> Brace {
+    let at_ease = Brace::default();
+    match kind {
+        Kind::Bite | Kind::Lunge => Brace {
+            neck: DRAW_BACK * load,
+            reach: thrown,
+            gape: load,
+            ..at_ease
+        },
+        Kind::Charge => Brace {
+            neck: -HEAD_DOWN * load.max(thrown),
+            reach: thrown,
+            ..at_ease
+        },
+        Kind::Swipe => Brace {
+            lift: PAW[0] * (load + 0.5 * thrown).min(1.0),
+            claw: PAW[1] * thrown,
+            ..at_ease
+        },
+        Kind::Trample => Brace {
+            lift: STAMP[0] * load,
+            claw: STAMP[1] * thrown,
+            ..at_ease
+        },
+        Kind::Sweep => Brace {
+            lash: LASH * (load - thrown),
+            ..at_ease
+        },
     }
 }
 

@@ -15,6 +15,7 @@ use super::looks::{Looks, paint};
 use super::mesh::{SCREEN_FRONT, fabric};
 use super::pose::Pose;
 use super::rig::{SEGS, Seg, locals};
+use super::tread::Footfall;
 use super::tune::{ANKLE_RISE, HEAD, LIGHT_RANGE, NECK, NOZZLE};
 use super::wing::Panel;
 use super::{Avatar, AvatarPose};
@@ -177,6 +178,7 @@ pub fn puppet(
         Anim::default(),
         Kick::default(),
         Visor::default(),
+        Footfall::default(),
         Transform::default(),
         Visibility::default(),
     );

@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 pub const HULLS: usize = 3;
 
 /// Number of [`Ch`] values.
-pub const CHANNELS: usize = 18;
+pub const CHANNELS: usize = 19;
 
 /// One number of the sound of a ship.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -43,6 +43,8 @@ pub enum Ch {
     Canopy,
     /// How hard the air shakes the hull, from 0 to 1.
     Rough,
+    /// How hard the air heats the nose in an entry, from 0 to 1.
+    Roar,
     /// Distance from the listener to the ship, in metres.
     Distance,
     /// Side of the ship for the listener, from -1 (left) to 1 (right).

@@ -31,3 +31,7 @@ pub const SIGHT: f32 = 12.0;
 
 /// The key that picks a stone up off the ground.
 pub const PICK_KEY: bevy::input::keyboard::KeyCode = bevy::input::keyboard::KeyCode::KeyH;
+
+/// Kilograms of each stone underfoot the workshop may draw on to make the kit, more than any of its
+/// tools weighs. The kit takes nothing from the pack: the robot wakes with its tools made.
+pub const KIT_STONE: f32 = 10.0;

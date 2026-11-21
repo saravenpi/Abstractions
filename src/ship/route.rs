@@ -10,6 +10,8 @@ mod block;
 #[cfg(test)]
 mod block_tests;
 mod cancel;
+#[cfg(test)]
+mod cool_tests;
 mod course;
 #[cfg(test)]
 mod departure_tests;
@@ -20,11 +22,14 @@ mod goal;
 #[cfg(test)]
 mod goal_tests;
 mod handoff;
+#[cfg(test)]
+mod loop_tests;
 pub(super) mod shell;
 #[cfg(test)]
 mod shell_tests;
 #[cfg(test)]
 mod spool_tests;
+mod steer;
 #[cfg(test)]
 mod stop_tests;
 mod tune;
@@ -36,6 +41,7 @@ use block::{aligned, blocker};
 pub(super) use cancel::{halt, halting, on_cancel};
 pub(super) use done::finish;
 pub(super) use goal::ARRIVAL;
+use steer::{arrive, mark, steer};
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -43,13 +49,13 @@ use bevy::prelude::*;
 use super::body::Ship;
 use super::flight::Controls;
 use super::helm::Helm;
-use super::pilot::{Autopilot, Goal, Phase, Settle};
+use super::pilot::{Autopilot, Phase};
 use super::sim::Cosmos;
 use super::sky::Skies;
 use super::steer::{aim, waypoint};
-use super::warp::{Tier, Warp};
+use super::warp::Warp;
 use super::wells::Well;
-use crate::computer::{Destination, Engage, RouteStatus, Target, ship_position};
+use crate::computer::{Block, Destination, Engage, RouteStatus, Target, ship_position};
 use crate::space::{Location, Travel};
 
 /// Returns what the autopilot does next, and whether it asks to switch the warp drive.
@@ -124,23 +130,6 @@ pub(super) fn hold(
     phase
 }
 
-/// Tells the sky what the course aims at: the beacon of a jump that is blind to the stars on the way, and
-/// the body whose lock shrinks to its arrival shell for the course that is flown to it.
-fn mark(skies: &mut Skies, goal: &Goal, (tier, pos, to): (Tier, DVec3, DVec3)) {
-    skies.beacon = tier.blind().then(|| beacon(pos, to, goal.lock));
-    if let Target::Body(body) = goal.target {
-        skies.arrive = Some((body, goal.lock));
-    }
-}
-
-/// Stops the drive that ran on the course before when `settle` asks for it, lets go of every
-/// control so that the ship holds its heading, and returns what the autopilot is doing.
-fn drop_first(helm: &mut Helm, settle: Settle) -> Phase {
-    helm.controls = Controls::default();
-    helm.warp |= settle == Settle::Stop;
-    Phase::Dropping
-}
-
 /// Flies the route: stops a drive still running on another course and waits for the drop-out,
 /// then steers onto the course, asks for the warp drive and ends the route on arrival.
 pub fn fly(
@@ -168,18 +157,17 @@ pub fn fly(
         return autopilot.cancel();
     };
     if arrived {
-        helm.warp = ship.warp != Warp::Off;
-        *autopilot = Autopilot::ARRIVED;
-        return;
+        return arrive(&mut autopilot, &mut helm, &ship);
     }
     let (tier, to) = course::plan(goal, universe, (here, time), &ship, (to, held));
     mark(&mut skies, goal, (tier, ship.pos, to));
     autopilot.tier = tier;
-    let settle = autopilot.settle(ship.warp != Warp::Off, time);
-    autopilot.phase = match settle {
-        Settle::Clear => hold(&mut ship, &mut helm, &skies.wells, (to, lock)),
-        _ => drop_first(&mut helm, settle),
-    };
+    steer(
+        &mut autopilot,
+        (&mut ship, &mut helm),
+        &skies,
+        (time, to, lock),
+    );
 }
 
 /// Starts a route when the board computer hands over a destination.
@@ -218,7 +206,7 @@ pub fn report(
     let to = to.and_then(|(goal, here)| goal.reached(universe, here, time));
     let reading = block::Reading {
         phase,
-        block: blocker(ship, &skies.wells),
+        block: blocker(ship, &skies.wells).or(autopilot.lost.then_some(Block::Lost)),
         aligned: to.map_or(0, |(to, _)| aligned(ship.forward(), to)),
         course: destination.0.is_some(),
         seated: location.is_none_or(|at| at.travel == Travel::InShip),

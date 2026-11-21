@@ -1,4 +1,4 @@
-//! First-time hints: at most four in the whole game, shown one at a time on the prompt line,
+//! First-time hints: at most five in the whole game, shown one at a time on the prompt line,
 //! only while nothing with a higher priority shows. A hint never comes back once its action
 //! is done, and shows at most [`HOLD`] seconds in all in a session, however often the player
 //! leaves the place it shows in and comes back. They are kept in the `hints` bitset of the
@@ -26,6 +26,9 @@ const ASSIST_AFTER: f32 = 15.0;
 /// Seconds on the ground before the minimap range hint shows.
 const MINIMAP_AFTER: f32 = 10.0;
 
+/// Seconds on the ground before the kit hint shows: the robot has looked around first.
+const KIT_AFTER: f32 = 4.0;
+
 /// Seconds on the ground before the pin hint shows.
 const PIN_AFTER: f32 = 60.0;
 
@@ -40,11 +43,13 @@ pub enum Hint {
     Minimap,
     /// The stabiliser key of the ship.
     Assist,
+    /// Open the pack, where the kit the robot woke with waits.
+    Kit,
 }
 
 impl Hint {
     /// Every hint, in the order they are offered.
-    pub const ALL: [Hint; 4] = [Hint::Map, Hint::Assist, Hint::Minimap, Hint::Pin];
+    pub const ALL: [Hint; 5] = [Hint::Kit, Hint::Map, Hint::Assist, Hint::Minimap, Hint::Pin];
 
     /// Returns the bit of the hint in the settings.
     pub const fn bit(self) -> u8 {
@@ -53,6 +58,7 @@ impl Hint {
             Hint::Pin => 2,
             Hint::Minimap => 4,
             Hint::Assist => 8,
+            Hint::Kit => 16,
         }
     }
 
@@ -63,6 +69,7 @@ impl Hint {
             Hint::Pin => "Drop a pin",
             Hint::Minimap => "Minimap range",
             Hint::Assist => "Stabiliser",
+            Hint::Kit => "Your kit: a stone spear and knife",
         }
     }
 
@@ -73,6 +80,7 @@ impl Hint {
             Hint::Pin => keys.waypoint,
             Hint::Minimap => keys.minimap,
             Hint::Assist => keys.ship.assist,
+            Hint::Kit => keys.pack,
         }
     }
 }
@@ -106,6 +114,7 @@ pub fn due(bits: u8, clock: &Clock, context: Context) -> Option<Hint> {
             Hint::Map => seated && clock.seated >= MAP_AFTER,
             Hint::Assist => landed && clock.seated >= ASSIST_AFTER,
             Hint::Minimap => minimap && clock.afoot >= MINIMAP_AFTER,
+            Hint::Kit => context == Context::OnFoot && clock.afoot >= KIT_AFTER,
             Hint::Pin => {
                 context == Context::OnFoot && done(bits, Hint::Map) && clock.afoot >= PIN_AFTER
             }

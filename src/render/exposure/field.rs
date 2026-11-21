@@ -43,4 +43,9 @@ impl Field<'_> {
         }
         shown(scene_lux(&place.0, self.palette.moon_lux), metered.ev)
     }
+
+    /// Returns how many times brighter than the reference exposure the camera draws the picture.
+    pub fn gain(&self) -> f32 {
+        self.metered.as_deref().map_or(1.0, Metered::gain)
+    }
 }

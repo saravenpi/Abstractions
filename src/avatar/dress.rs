@@ -9,6 +9,8 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::air::level;
+use super::animate::Anim;
+use super::blend::Weights;
 use super::fill::hardness;
 use super::own::Own;
 use super::touch::{Touch, touch};
@@ -16,7 +18,7 @@ use super::{AvatarPose, Mode, Shown};
 use crate::gear::{FlightState, Gear, Mode as Flight};
 use crate::player::{Motion, Player, above_sea, wrap};
 use crate::space::{Anchor, Location, Travel};
-use crate::view::{BodyFade, Heading};
+use crate::view::{BodyFade, Cut, Heading};
 use crate::world::Terrain;
 
 /// Height of the body centre above the liquid surface under which a swimming body dives, in metres.
@@ -105,6 +107,8 @@ pub struct Worn<'w, 's> {
     heading: Res<'w, Heading>,
     /// How much of the body the camera wants drawn.
     fade: Res<'w, BodyFade>,
+    /// Camera cuts, which also reset the held flight attitude after a teleport.
+    cuts: MessageReader<'w, 's, Cut>,
     /// Where the player is.
     location: Option<Res<'w, Location>>,
     /// The render anchor.
@@ -124,19 +128,33 @@ pub fn attitude(state: &FlightState, yaw: f32, held: &mut Quat) -> Quat {
     Quat::from_rotation_y(-yaw) * *held
 }
 
+/// Resets the held flight attitude and animation blend after a camera cut.
+fn reset_cut(gear: &Gear, mode: Mode, held: &mut Quat, anim: Option<Mut<Anim>>) {
+    if gear.state.attitude.is_finite() {
+        *held = gear.state.attitude;
+    }
+    if let Some(mut anim) = anim {
+        *anim = Anim {
+            weights: Weights::only(mode),
+            ..Anim::default()
+        };
+    }
+}
+
 /// Dresses the pose input of the body at this machine from its gear and the view, and chooses
 /// what is drawn of it.
 pub fn wear(
-    worn: Worn,
-    mut poses: Query<&mut AvatarPose>,
+    mut worn: Worn,
+    mut bodies: Query<(&mut AvatarPose, Option<&mut Anim>)>,
     mut drawn: ResMut<Shown>,
     mut held: Local<Quat>,
 ) {
+    let cut = worn.cuts.read().last().is_some();
     let Some((player, body)) = worn.own.body() else {
         return;
     };
-    let (Ok((transform, motion, gear)), Ok(mut pose)) =
-        (worn.players.get(player), poses.get_mut(body))
+    let (Ok((transform, motion, gear)), Ok((mut pose, anim))) =
+        (worn.players.get(player), bodies.get_mut(body))
     else {
         return;
     };
@@ -150,6 +168,9 @@ pub fn wear(
         false => looked(&worn.heading, motion.yaw),
     };
     dress(&mut pose, &gear.state, look, height < DIVE_BELOW);
+    if cut {
+        reset_cut(gear, pose.mode, &mut held, anim);
+    }
     pose.attitude = Some(attitude(&gear.state, motion.yaw, &mut held));
     pose.clearance = match motion.grounded {
         true => 0.0,

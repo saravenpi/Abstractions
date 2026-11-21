@@ -8,6 +8,7 @@ mod crash;
 mod crossing;
 mod cruise;
 mod drive;
+mod fade;
 mod fx;
 mod gearing;
 mod giant;

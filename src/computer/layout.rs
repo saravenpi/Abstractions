@@ -49,7 +49,7 @@ pub const ROW: f32 = theme::ROW_HEIGHT;
 pub const LIST_ROW: f32 = theme::ROW_COMPACT;
 
 /// Pixels between two sections of the side panel.
-pub const SECTION_GAP: f32 = theme::S4;
+pub const SECTION_GAP: f32 = theme::S3;
 
 /// Height in pixels of the heading of a section in spaced capitals, with the room under it.
 pub const HEADING: f32 = LINE_HEIGHT + theme::GAP_S;
@@ -97,6 +97,10 @@ pub const CARD_HEAD: f32 = HEADING
 pub const FACTS: f32 =
     super::detail::ROWS as f32 * theme::LINE_SMALL + (super::detail::GROUPS - 1) as f32 * theme::S3;
 
+/// Height in pixels of the card facts in their compact form, which a short window shows: every
+/// stat of the four groups and the line on life at the height of a stat, and the More row.
+pub const COMPACT: f32 = 9.0 * theme::LINE_SMALL + theme::ROW_COMPACT;
+
 /// Height in pixels of the foot of the pins: a line that says what the selected pin does, and
 /// under it the row of its three buttons. With no pin selected the same room holds the empty
 /// text, which takes two lines.
@@ -136,13 +140,22 @@ pub struct Measures {
     pub rows: usize,
     /// Rows of pins and of players drawn.
     pub lists: (usize, usize),
+    /// True when the window has no room for the facts of the card in full: it shows them
+    /// compact, without the headings and the meanings.
+    pub compact: bool,
+}
+
+/// Returns the height in pixels the facts of the card have in a window `height` pixels high with
+/// `lists` rows of pins and players and `rows` search results.
+pub fn facts_room(height: f32, lists: (usize, usize), rows: usize) -> f32 {
+    height - (fixed(lists) - FACTS) - rows as f32 * ROW
 }
 
 /// Returns how many of `lists` rows of pins and players a window `height` pixels high draws:
 /// what is left once the search with its fewest results and the top of the card fit, the pins
 /// first. The players show only while one of them fits under their heading.
 pub fn listed(height: f32, (pins, players): (usize, usize)) -> (usize, usize) {
-    let room = height - (fixed((0, 0)) - FACTS) - RESULTS.0 as f32 * ROW;
+    let room = height - (fixed((0, 0)) - FACTS) - RESULTS.0 as f32 * ROW - COMPACT;
     let fits = |room: f32| (room / LIST_ROW).floor().max(0.0) as usize;
     let saved = pins.min(fits(room));
     let left = room - saved as f32 * LIST_ROW - SECTION_GAP - HEADING;
@@ -157,11 +170,13 @@ pub fn measure(window: Vec2, lists: (usize, usize)) -> Measures {
     let room = Vec2::new(window.x - SIDE, window.y);
     let lists = listed(window.y, lists);
     let rows = ((window.y - fixed(lists)) / ROW).floor().max(0.0) as usize;
+    let rows = rows.clamp(RESULTS.0, RESULTS.1);
     Measures {
         side: SIDE,
         map: room.min_element().max(0.0).floor(),
-        rows: rows.clamp(RESULTS.0, RESULTS.1),
+        rows,
         lists,
+        compact: facts_room(window.y, lists, rows) < FACTS,
     }
 }
 

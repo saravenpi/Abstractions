@@ -135,6 +135,17 @@ fn row(parent: &mut ChildSpawnerCommands, row: &Row, (first, open): (bool, bool)
     }
 }
 
+/// Returns the rows of a card as it draws them: those of [`visible`], without the headings and
+/// the meanings of the groups when `compact` and the card has stats, so a short window shows
+/// every stat.
+pub(super) fn drawn(rows: &[Row], open: bool, compact: bool) -> Vec<&Row> {
+    let stats = rows.iter().any(|row| matches!(row, Row::Stat { .. }));
+    let keep = |row: &&Row| {
+        !(compact && stats && !open) || !matches!(row, Row::Heading(_) | Row::Meaning(_))
+    };
+    visible(rows, open).iter().filter(keep).collect()
+}
+
 /// The name, the subtitle and the rows of the card.
 type Parts<'w, 's> = (
     Query<'w, 's, &'static mut Text, With<Title>>,
@@ -173,7 +184,8 @@ pub(super) fn write(
             .entity(column)
             .despawn_children()
             .with_children(|parent| {
-                for (at, fact) in visible(&shown.rows, open).iter().enumerate() {
+                let rows = drawn(&shown.rows, open, board.compact);
+                for (at, fact) in rows.into_iter().enumerate() {
                     row(parent, fact, (at == 0, open));
                 }
             });

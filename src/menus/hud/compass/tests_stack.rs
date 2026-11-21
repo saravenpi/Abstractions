@@ -14,6 +14,7 @@ fn seen(at: f32, gap: f64) -> Seen {
         gap,
         row: 0,
         wide: 120.0,
+        more: 0,
     }
 }
 
@@ -40,10 +41,15 @@ fn marks_apart_share_a_row_and_stay_on_the_bar() {
     );
 }
 
-/// A fourth mark on the same spot finds no row and is dropped.
+/// Marks past the third row on the same spot are not drawn, but the last row counts them.
 #[test]
-fn a_mark_with_no_free_row_is_dropped() {
-    let mut marks: Vec<Seen> = (0..4).map(|i| seen(240.0, f64::from(i))).collect();
+fn marks_with_no_free_row_are_counted_on_the_last_row() {
+    let mut marks: Vec<Seen> = (0..5).map(|i| seen(240.0, f64::from(i))).collect();
     stack(&mut marks);
     assert_eq!(marks.len(), 3);
+    assert_eq!(
+        marks.iter().map(|mark| mark.more).collect::<Vec<_>>(),
+        [0, 0, 2]
+    );
+    assert!(marks[2].wide > 120.0);
 }

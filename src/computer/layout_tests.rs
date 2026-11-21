@@ -9,17 +9,15 @@ use super::{
 use crate::map::PINS;
 
 /// The smallest window, 960 by 540 pixels, is laid out as 1280 by 720 once the interface scales
-/// by 0.75, and there the panel lists all eight pins. With fewer pins it lists as many.
+/// by 0.75, and there the card keeps the room of its compact form, so no pin is listed. A tall
+/// window lists all eight pins.
 #[test]
-fn the_panel_lists_eight_pins_in_the_smallest_window() {
+fn the_panel_lists_the_pins_the_card_leaves_room_for() {
     let logical = 540.0 / 0.75;
     assert_eq!(PINS, 8);
-    assert_eq!(listed(logical, (PINS, 0)), (PINS, 0));
-    assert_eq!(listed(logical, (3, 0)), (3, 0));
-    assert_eq!(
-        measure(Vec2::new(1280.0, 720.0), (PINS, 0)).lists,
-        (PINS, 0)
-    );
+    assert_eq!(listed(logical, (PINS, 0)), (0, 0));
+    assert_eq!(listed(1080.0, (PINS, 0)), (PINS, 0));
+    assert_eq!(listed(1080.0, (3, 0)), (3, 0));
     assert_eq!(
         measure(Vec2::new(2560.0, 1440.0), (PINS, 0)).lists,
         (PINS, 0)

@@ -37,6 +37,8 @@ pub struct Board {
     /// Rows of favourites and of players the window has room for, or nothing before the panel
     /// was sized.
     pub lists: Option<(usize, usize)>,
+    /// True when the window has no room for the facts of the card in full.
+    pub compact: bool,
     /// The letters typed to narrow the list to the names that hold them.
     pub filter: String,
     /// How the rows are ordered.

@@ -82,8 +82,8 @@ fn a_section_title_is_nearer_to_its_content() {
         "only {} sections were checked",
         seen.get()
     );
-    assert!(theme::SECTION_ABOVE > theme::TITLE_BELOW);
-    assert!(theme::GROUP_ABOVE > theme::TITLE_BELOW);
+    const { assert!(theme::SECTION_ABOVE > theme::TITLE_BELOW) };
+    const { assert!(theme::GROUP_ABOVE > theme::TITLE_BELOW) };
 }
 
 /// Whether `entity` is a text drawn in the icon font.

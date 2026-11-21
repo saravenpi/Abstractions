@@ -38,7 +38,7 @@ fn every_legend_entry_is_a_label_then_a_muted_key() {
         assert_eq!(world.get::<Tone>(parts[1]), Some(&Tone::Key));
         assert!(!said(parts[1]).contains('['));
     }
-    assert!(KEY_GAP >= theme::S3 && HINT_GAP > KEY_GAP);
+    const { assert!(KEY_GAP >= theme::S3 && HINT_GAP > KEY_GAP) };
 }
 
 /// The key of a button keeps the secondary text colour whatever the look of the button and

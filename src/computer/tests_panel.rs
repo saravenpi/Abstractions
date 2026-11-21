@@ -40,7 +40,7 @@ fn the_screen_fits_every_window() {
 /// one, where the picture keeps a square at least as wide as the panel.
 #[test]
 fn the_panel_leaves_the_picture_its_room() {
-    assert!(SIDE / SMALLEST.x < 0.34);
+    const { assert!(SIDE / SMALLEST.x < 0.34) };
     let tight = measure(TIGHTEST);
     assert!(tight.map >= SIDE, "{tight:?}");
     assert!(tight.rows >= RESULTS.0 && body(TIGHTEST) > 0.0);

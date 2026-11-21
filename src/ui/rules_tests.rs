@@ -99,8 +99,8 @@ fn the_space_above_a_title_is_larger_than_the_space_below() {
     for gap in [theme::SECTION_ABOVE, theme::GROUP_ABOVE, theme::TITLE_BELOW] {
         assert!(scale.contains(&gap));
     }
-    assert!(theme::SECTION_ABOVE > theme::GROUP_ABOVE);
-    assert!(theme::GROUP_ABOVE > theme::TITLE_BELOW);
+    const { assert!(theme::SECTION_ABOVE > theme::GROUP_ABOVE) };
+    const { assert!(theme::GROUP_ABOVE > theme::TITLE_BELOW) };
 }
 
 /// One concept, one icon: no two icons share a glyph, and no concept that borrows an icon is

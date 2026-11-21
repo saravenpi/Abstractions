@@ -3,7 +3,6 @@
 
 use bevy::ecs::system::RunSystemOnce;
 use bevy::input::mouse::{AccumulatedMouseScroll, MouseScrollUnit};
-use bevy::prelude::*;
 use bevy::ui::{ComputedNode, RelativeCursorPosition};
 
 use super::*;

@@ -1,6 +1,7 @@
 //! Tests of the plants the particles read: leaves only near leafy plants, in the colour of their species.
 
 use bevy::ecs::system::RunSystemOnce;
+use bevy::math::{DQuat, DVec3};
 
 use super::*;
 use crate::effects::eye::Eye;
@@ -8,6 +9,8 @@ use crate::effects::pool::Pool;
 use crate::effects::rate::Air;
 use crate::effects::sense::Sensed;
 use crate::life::flora::Stage;
+use crate::space::{Anchor, Frame};
+use crate::universe::Universe;
 use crate::world::canopy::{Canopy, Crown};
 
 /// A breezy day at home.
@@ -41,6 +44,12 @@ fn gathered(crowns: Vec<Crown>) -> World {
     world.init_resource::<Assets<Mesh>>();
     world.init_resource::<Assets<StandardMaterial>>();
     world.init_resource::<Eye>();
+    world.insert_resource(Anchor {
+        frame: Frame::Surface(Universe::new(1).home()),
+        origin: DVec3::ZERO,
+        rotation: DQuat::IDENTITY,
+        flat: true,
+    });
     world.init_resource::<Sensed>();
     world
         .run_system_once(super::super::pool::build)
@@ -76,12 +85,13 @@ fn leaves_come_only_from_leafy_plants() {
     assert_eq!(shed.choose(Kind::Petal, 0.5), None);
 }
 
-/// A leaf starts in the crown of its plant and inside the particle box.
+/// A leaf starts in the crown of its plant and inside the particle box, or is skipped once outside.
 #[test]
 fn a_leaf_starts_in_its_crown() {
     let mut rng = Rng::default();
+    let foot = Vec3::new(4.0, 0.0, 1.0);
     let source = Source {
-        at: Vec3::new(4.0, 0.0, 1.0),
+        at: foot.as_dvec3(),
         height: 6.0,
         reach: 2.0,
         shed: crown(0.0, Some([0.2; 3]), None)
@@ -92,8 +102,10 @@ fn a_leaf_starts_in_its_crown() {
         pollen: 0.0,
     };
     for _ in 0..50 {
-        let at = start(&source, Kind::Leaf, &mut rng);
-        assert!(at.xz().distance(source.at.xz()) <= source.reach + 1e-4);
+        let at = start(&source, foot, Kind::Leaf, &mut rng).expect("inside the box");
+        assert!(at.xz().distance(foot.xz()) <= source.reach + 1e-4);
         assert!((2.7..=6.0).contains(&at.y), "{at}");
     }
+    let far = Vec3::new(HALF_WIDTH + 20.0, 0.0, 0.0);
+    assert_eq!(start(&source, far, Kind::Leaf, &mut rng), None);
 }

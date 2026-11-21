@@ -228,6 +228,7 @@ pub(super) fn plugin(app: &mut App) {
     compass::plugin(app);
     hurt(app);
     app.init_resource::<banner::Banner>()
+        .add_message::<crate::craft::ground::Note>()
         .init_resource::<context::Where>()
         .init_resource::<hints::Hinted>()
         .init_resource::<hints::Clock>()

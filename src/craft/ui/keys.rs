@@ -12,6 +12,7 @@ use super::lines::What;
 use super::offer::{offer, title};
 use super::paint::arranged;
 use crate::computer::sift::type_into;
+use crate::craft::ground::{Shed, shed_item, shed_stack};
 use crate::craft::matter::Treatment;
 use crate::craft::pack::Pack;
 use crate::craft::wield::pressed;
@@ -98,8 +99,14 @@ pub(super) fn step(
     }
 }
 
-/// Holds, slots or drops the selected entry of the pack.
-fn pack_keys(keys: &ButtonInput<KeyCode>, pack: &mut Pack, here: &Here, bench: &mut Bench) {
+/// Holds, slots or drops the selected entry of the pack: a dropped tool or stack goes into `shed`,
+/// to be put down on the ground, half the stack with Shift held.
+fn pack_keys(
+    keys: &ButtonInput<KeyCode>,
+    (pack, shed): (&mut Pack, &mut Shed),
+    here: &Here,
+    bench: &mut Bench,
+) {
     let all = arranged(bench, pack, here);
     let Some(line) = all.get(bench.window.cursor) else {
         return;
@@ -109,16 +116,16 @@ fn pack_keys(keys: &ButtonInput<KeyCode>, pack: &mut Pack, here: &Here, bench: &
             let slot = pack.bar.held;
             pack.bar.put(slot, id);
         }
-        What::Item(id) if keys.just_pressed(KeyCode::KeyX) => {
-            pack.bar.forget(id);
-            pack.items.retain(|item| item.id != id);
-        }
+        What::Item(id) if keys.just_pressed(KeyCode::KeyX) => shed_item(pack, shed, id),
         What::Item(id) => {
             if let Some(slot) = pressed(keys) {
                 pack.bar.put(slot, id);
             }
         }
-        What::Stack(at) if keys.just_pressed(KeyCode::KeyX) => _ = pack.stacks.remove(at),
+        What::Stack(at) if keys.just_pressed(KeyCode::KeyX) => {
+            let half = keys.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
+            shed_stack(pack, shed, at, [1.0, 0.5][usize::from(half)]);
+        }
         What::Stack(_) => {}
     }
 }
@@ -170,14 +177,14 @@ fn treat_head(pack: &mut Pack, here: &Here, stuff: &crate::craft::matter::Stuff)
 /// Runs the actions of the open tab, unless a search is being typed.
 pub(super) fn act(
     keys: Res<ButtonInput<KeyCode>>,
-    (mut pack, here): (ResMut<Pack>, Here),
+    (mut pack, here, mut shed): (ResMut<Pack>, Here, ResMut<Shed>),
     mut bench: ResMut<Bench>,
 ) {
     if bench.typing || keys.get_just_pressed().next().is_none() {
         return;
     }
     match bench.tab {
-        Tab::Pack => pack_keys(&keys, &mut pack, &here, &mut bench),
+        Tab::Pack => pack_keys(&keys, (&mut *pack, &mut *shed), &here, &mut bench),
         Tab::Make => make_keys(&keys, &mut pack, &here, &mut bench),
     }
 }

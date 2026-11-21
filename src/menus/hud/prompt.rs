@@ -1,8 +1,7 @@
-//! The one prompt line: a key and what it does, bottom centre above the hotbar. Exactly one
-//! row, the highest priority wins: a warning or block sentence, a course that runs, a course
-//! ready to go, the action a key does right now to what the robot looks at or stands by
-//! ([`crate::player::Interact`]: pull a spear, cut a part, board, leave, break stone off, mend), a
-//! first-time hint, nothing.
+//! The one prompt line: a key and what it does, bottom centre above the hotbar. Exactly one row,
+//! the highest priority wins: a warning or block sentence, a course that runs, a course ready to
+//! go, the action a key does now ([`crate::player::Interact`]: pull, cut, take, board, leave, break
+//! stone, mend), a first-time hint, nothing.
 
 use bevy::prelude::*;
 
@@ -17,6 +16,7 @@ use crate::player::{Interact, Offer, Verb};
 use crate::settings::{Keymap, Persistent, Settings};
 use crate::ship::Hatch;
 use crate::space::{Location, Travel};
+use crate::ui::units::mass;
 use crate::ui::{KEY_GAP, key_cap, text, theme};
 use crate::universe::Universe;
 
@@ -74,9 +74,13 @@ pub fn choose(state: &State) -> Option<(Option<KeyCode>, String)> {
 /// name it and what it acts on.
 pub fn offered(offer: Offer, keys: &Keymap) -> (KeyCode, String) {
     let thing = offer.thing;
+    let weight = offer
+        .grams
+        .map_or(String::new(), |g| mass(f64::from(g) / 1e3));
     match offer.verb {
         Verb::Pull => (keys.ship.board, format!("Pull the {thing}")),
         Verb::Carve => (keys.ship.board, format!("Cut the {thing}")),
+        Verb::Take => (keys.ship.board, format!("Take the {thing}{weight}")),
         Verb::Board => (keys.ship.board, "Board".to_string()),
         Verb::Leave => (keys.ship.board, "Leave the ship".to_string()),
         Verb::Stone => (PICK_KEY, "Break stone off".to_string()),

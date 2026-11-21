@@ -62,6 +62,7 @@ fn an_offer_lasts_one_frame_and_keeps_its_name() {
     let thigh = Offer {
         verb: Verb::Carve,
         thing: "thigh",
+        grams: None,
     };
     assert_eq!(chosen, Some(thigh));
     app.update();

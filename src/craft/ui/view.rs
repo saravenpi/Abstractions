@@ -10,13 +10,14 @@ use crate::fauna::guide::layout::{BETWEEN, CARD, EDGE, FOOT, HEAD};
 use crate::ui::{Blurred, Overlay, hints, legend, text, theme};
 
 /// The key hints of the pack tab: what each key does, then the key.
-pub const PACK_HINTS: [(&str, &str); 8] = [
+pub const PACK_HINTS: [(&str, &str); 9] = [
     ("Choose", "Up Down"),
     ("Search", "/"),
     ("Sort", "F2"),
     ("Hold", "Enter"),
     ("Slot", "1-6"),
     ("Drop", "X"),
+    ("Drop half", "Shift X"),
     ("Workshop", "Tab"),
     ("Close", "I"),
 ];

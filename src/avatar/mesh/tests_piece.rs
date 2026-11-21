@@ -17,15 +17,27 @@ const SPARE: f32 = 0.005;
 /// triangle is degenerate.
 #[test]
 fn every_shape_is_closed_and_faces_outward() {
-    for (seg, detail) in Seg::ALL.into_iter().flat_map(|s| [(s, Detail::Near), (s, Detail::Far)]) {
+    for (seg, detail) in Seg::ALL
+        .into_iter()
+        .flat_map(|s| [(s, Detail::Near), (s, Detail::Far)])
+    {
         let soup = build(seg, detail);
         for tri in soup.tris() {
             let area = (tri[1] - tri[0]).cross(tri[2] - tri[0]).length();
             assert!(area > 1e-8, "{seg:?} {detail:?}: degenerate {tri:?}");
         }
         for piece in pieces(&soup) {
-            assert_eq!(open_edges(&piece), 0, "{seg:?} {detail:?}: open at {:?}", piece[0]);
-            assert!(volume(&piece) > 1e-7, "{seg:?} {detail:?}: inside out at {:?}", piece[0]);
+            assert_eq!(
+                open_edges(&piece),
+                0,
+                "{seg:?} {detail:?}: open at {:?}",
+                piece[0]
+            );
+            assert!(
+                volume(&piece) > 1e-7,
+                "{seg:?} {detail:?}: inside out at {:?}",
+                piece[0]
+            );
         }
     }
 }
@@ -40,6 +52,21 @@ fn no_shape_of_a_segment_floats() {
     }
 }
 
+/// Returns the rest pose with the joint `joint` alone, on both sides for a limb, at its value
+/// in `whole`. The trunk joints count first, then the joints of a side.
+fn alone(whole: &Pose, joint: usize) -> Pose {
+    let mut pose = Pose::default();
+    match joint.checked_sub(CORES) {
+        None => pose.core[joint] = whole.core[joint],
+        Some(limb) => {
+            for (mine, theirs) in pose.sides.iter_mut().zip(whole.sides) {
+                mine[limb] = theirs[limb];
+            }
+        }
+    }
+    pose
+}
+
 /// Returns the poses that put each joint in turn at its lowest and at its highest, then all at
 /// their lowest and all at their highest, and the rest pose.
 fn extremes() -> Vec<Pose> {
@@ -51,18 +78,7 @@ fn extremes() -> Vec<Pose> {
             sides: [LIMB_LIMITS.map(pick); 2],
         };
         all.push(whole);
-        for joint in 0..CORES + LIMBS {
-            let mut pose = Pose::default();
-            match joint.checked_sub(CORES) {
-                None => pose.core[joint] = whole.core[joint],
-                Some(limb) => pose.sides = [0, 1].map(|side| {
-                    let mut row = [0.0; LIMBS];
-                    row[limb] = whole.sides[side][limb];
-                    row
-                }),
-            }
-            all.push(pose);
-        }
+        all.extend((0..CORES + LIMBS).map(|joint| alone(&whole, joint)));
     }
     all
 }

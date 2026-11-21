@@ -1,19 +1,21 @@
 //! The compass reads the markers: marks fade toward the ends of the bar and hide past them,
-//! every mark sits on one level, and a rebase in the frame keeps both the
-//! compass and the minimap on the true place of the player.
+//! every mark sits at its bearing with its distance under it, the one in front whole and the
+//! others dimmed behind, and a rebase in the frame keeps both the compass and the minimap on
+//! the true place of the player.
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::read::{at, furnish};
 use super::rig::{app, ground, look, settle};
-use crate::menus::hud::compass::Pin;
+use crate::menus::hud::compass::{BEHIND, Pin};
 use crate::menus::hud::minimap::scope::Scope;
 use crate::menus::hud::minimap::widget::Part;
 use crate::menus::hud::needle::{SPAN, fade};
 use crate::menus::{Marker, MarkerKind, MarkerPlace, Markers};
 use crate::render::GameCamera;
 use crate::space::Anchor;
+use crate::ui::theme;
 
 /// A mark is fully opaque over the middle 70% of the span, fades to nothing at its ends and
 /// is hidden past them, behind the player included.
@@ -39,27 +41,41 @@ fn friend(app: &App, name: &str, at: DVec3) -> Marker {
     }
 }
 
-/// Returns the place in pixels along the bar of every shown mark of `kind`, in ascending order.
-/// A mark sets only its `left`: every mark is on the one row of the bar, so its `top` stays auto.
-fn shown(app: &mut App, kind: MarkerKind) -> Vec<f32> {
-    let mut pins = app.world_mut().query::<(&Pin, &Node)>();
-    let mut found: Vec<f32> = pins
-        .iter(app.world())
-        .filter(|(pin, node)| pin.kind == Some(kind) && node.display == Display::Flex)
-        .map(|(_, node)| match (node.left, node.top) {
-            (Val::Px(left), Val::Auto) => left,
-            other => panic!("placed with {other:?}"),
+/// What a shown mark of the compass draws: its place in pixels along the bar, the opacity of
+/// its icon and the distance written under it.
+type Drawn = (f32, f32, String);
+
+/// Returns what every shown mark of `kind` draws, read through the nodes of the mark: its row
+/// holds the icon then the count, and the line under it the distance.
+fn drawn(app: &mut App, kind: MarkerKind) -> Vec<Drawn> {
+    let mut pins = app.world_mut().query::<(&Pin, &Node, &Children)>();
+    let world = app.world();
+    pins.iter(world)
+        .filter(|(pin, node, _)| pin.kind == Some(kind) && node.display == Display::Flex)
+        .map(|(_, node, children)| {
+            let Val::Px(left) = node.left else {
+                panic!("placed with {:?}", node.left);
+            };
+            let head = world
+                .get::<Children>(children[0])
+                .expect("the row of the mark");
+            let icon = world.get::<TextColor>(head[0]).expect("the icon").0.alpha();
+            let far = world
+                .get::<Text>(children[1])
+                .expect("the distance")
+                .0
+                .clone();
+            (left, icon, far)
         })
-        .collect();
-    found.sort_by(f32::total_cmp);
-    found
+        .collect()
 }
 
-/// Eight friends 300 m ahead show as five icons on one row, no two closer than a mark's room and
-/// in bearing order, none of them with a name or a distance; the three past the limit fold into
-/// the last one as "+3". A ninth one behind the player shows nowhere.
+/// Eight friends 300 m ahead show as five icons at their one bearing, none moved aside: the
+/// one in front whole with "300 m" under it, the four behind it at the reduced opacity and
+/// without a distance, which would print over the front one's. The three past the limit fold
+/// into the front one as "+3". A ninth one behind the player shows nowhere.
 #[test]
-fn the_compass_spaces_friends_ahead_on_one_row() {
+fn the_compass_keeps_friends_ahead_at_their_bearing() {
     let mut app = app("friends");
     let ahead = ground(300.0, 0.0);
     let mut marks: Vec<Marker> = (0..8)
@@ -70,12 +86,18 @@ fn the_compass_spaces_friends_ahead_on_one_row() {
     for _ in 0..4 {
         app.update();
     }
-    let found = shown(&mut app, MarkerKind::Friend);
+    let found = drawn(&mut app, MarkerKind::Friend);
     assert_eq!(found.len(), 5, "{found:?}");
-    assert!(
-        found.windows(2).all(|pair| pair[1] - pair[0] >= 31.99),
-        "{found:?}"
-    );
+    assert!(found.iter().all(|mark| mark.0 == found[0].0), "{found:?}");
+    let front: Vec<&Drawn> = found.iter().filter(|mark| mark.1 > 0.99).collect();
+    assert_eq!(front.len(), 1, "{found:?}");
+    assert_eq!(front[0].2, "300 m");
+    let back: Vec<&Drawn> = found
+        .iter()
+        .filter(|mark| (mark.1 - BEHIND).abs() < 1e-3)
+        .collect();
+    assert_eq!(back.len(), 4, "{found:?}");
+    assert!(back.iter().all(|mark| mark.2.is_empty()), "{found:?}");
     let mut words = app.world_mut().query::<&Text>();
     let spoken: Vec<&str> = words
         .iter(app.world())
@@ -85,29 +107,35 @@ fn the_compass_spaces_friends_ahead_on_one_row() {
     assert_eq!(spoken, ["+3"]);
 }
 
-/// A mark is an icon: under it there is no text but its count, empty unless friends fold into it.
+/// A mark is an icon with its distance on the line under it, in the secondary tone, and no
+/// name anywhere: the count beside the icon stays empty unless friends fold into it.
 #[test]
-fn a_mark_holds_an_icon_and_no_name() {
+fn a_mark_holds_an_icon_and_its_distance_and_no_name() {
     let mut app = app("icons");
     let marks = vec![friend(&app, "Ada", ground(300.0, 0.0))];
     app.world_mut().resource_mut::<Markers>().0.extend(marks);
     for _ in 0..4 {
         app.update();
     }
+    let found = drawn(&mut app, MarkerKind::Friend);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].2, "300 m");
     let mut pins = app.world_mut().query::<(&Pin, &Children)>();
-    let held = pins
-        .iter(app.world())
+    let world = app.world();
+    let (_, children) = pins
+        .iter(world)
         .find(|(pin, _)| pin.kind == Some(MarkerKind::Friend))
-        .map(|(_, children)| children.to_vec())
         .unwrap();
-    let words: Vec<String> = held
-        .iter()
-        .filter_map(|child| app.world().get::<Text>(*child))
-        .map(|text| text.0.clone())
-        .collect();
-    assert_eq!(words.len(), 2, "{words:?}");
-    assert!(words.iter().skip(1).all(String::is_empty), "{words:?}");
-    assert!(words.iter().all(|word| !word.contains("Ada")), "{words:?}");
+    let head = world.get::<Children>(children[0]).unwrap();
+    let count = world.get::<Text>(head[1]).unwrap();
+    assert!(count.0.is_empty(), "{count:?}");
+    let tone = world.get::<TextColor>(children[1]).unwrap().0;
+    assert!(
+        (tone.alpha() - theme::TEXT_2.alpha()).abs() < 1e-4,
+        "{tone:?}"
+    );
+    let mut texts = app.world_mut().query::<&Text>();
+    assert!(texts.iter(app.world()).all(|text| !text.0.contains("Ada")));
 }
 
 /// Moves the anchor 500 m along the planet and the camera with it in one frame, leaving a
@@ -131,7 +159,7 @@ fn rebase(app: &mut App, at: DVec3, toward: DVec3) {
 
 /// Returns the place in pixels along the bar of the home mark.
 fn home_left(app: &mut App) -> f32 {
-    shown(app, MarkerKind::Home)[0]
+    drawn(app, MarkerKind::Home)[0].0
 }
 
 /// A rebase in the frame keeps the centre of the minimap on the true place of the player

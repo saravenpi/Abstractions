@@ -108,10 +108,12 @@ fn label(at: usize) -> impl Bundle {
     )
 }
 
-/// One slot of the pool: a room with an icon, an arrow and its words, hidden.
+/// One slot of the pool: a room with an icon, an arrow and its words, hidden. The first slot,
+/// which shows the marker that ranks first, is drawn in front of the others.
 fn slot(at: usize) -> impl Bundle {
     (
         Slot(at),
+        ZIndex(-i32::try_from(at).unwrap_or(i32::MAX)),
         Node {
             display: Display::None,
             position_type: PositionType::Absolute,

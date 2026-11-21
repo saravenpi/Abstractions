@@ -26,7 +26,7 @@ pub(super) fn mark() -> impl Bundle {
             position_type: PositionType::Absolute,
             width: px(ROOM),
             top: px(0),
-            height: px(super::HEIGHT),
+            height: px(super::ROW),
             align_items: AlignItems::Center,
             justify_content: JustifyContent::Center,
             ..default()

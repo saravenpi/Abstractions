@@ -8,6 +8,7 @@ use bevy::prelude::*;
 
 use super::tune::{ARROW_REACH, HALF};
 use crate::craft::ui::hotbar;
+use crate::menus::hud::compass::HEIGHT;
 use crate::menus::hud::minimap::widget;
 use crate::ui::theme;
 
@@ -25,7 +26,7 @@ const PROMPT: f32 = 36.0;
 /// each with the room of the arrow or of the words.
 pub fn safe(screen: Vec2) -> Rect {
     let side = theme::EDGE + ARROW_REACH + theme::ICON * 0.5 + theme::S1 * 0.5;
-    let top = theme::EDGE + theme::ROW_HEIGHT + theme::S2 + HALF.1;
+    let top = theme::EDGE + HEIGHT + theme::S2 + HALF.1;
     let below = theme::EDGE + hotbar::SIDE + theme::S2 + PROMPT + theme::S2 + HALF.1;
     let (min, max) = (Vec2::new(side, top), screen - Vec2::new(side, below));
     Rect::from_corners(min, max.max(min))

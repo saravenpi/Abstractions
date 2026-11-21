@@ -14,4 +14,5 @@ mod north;
 mod read;
 mod refill;
 mod rig;
+mod shadows;
 mod view;

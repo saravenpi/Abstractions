@@ -126,11 +126,8 @@ fn square() -> Node {
 /// The minimap: a square over the blurred, darkened game, holding the ground, the
 /// chart and the marks, all hidden until there is something to show.
 pub fn frame() -> impl Bundle {
-    let symbol = |symbol: Icon| (icon_sized(symbol, Tone::Plain, MARK), TextShadow::default());
-    let north = (
-        text("N", theme::FONT_SMALL, theme::TEXT),
-        TextShadow::default(),
-    );
+    let symbol = |symbol: Icon| icon_sized(symbol, Tone::Plain, MARK);
+    let north = text("N", theme::FONT_SMALL, theme::TEXT);
     (
         Part::Frame,
         gate(Element::Minimap),

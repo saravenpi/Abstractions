@@ -115,7 +115,7 @@ Direction of 2026-11-20. Tokens live in `src/ui/theme.rs`, durations in `src/ui/
 
 - No borders anywhere. Separate things with space, tone and translucency. No rounded corners: `BorderRadius` stays zero, a test checks it.
 - The font is Undefined Medium only. Never bold text: the game font renders badly in bold.
-- Panels are translucent. Over the live world use `PANEL`; big blurred panels use `PANEL_BLUR` on top of `Blurred`. Text without a panel gets a `TextShadow` and a `PANEL` strip.
+- Panels are translucent. Over the live world use `PANEL`; big blurred panels use `PANEL_BLUR` on top of `Blurred`. An icon never casts a shadow, and text on a panel or a `PANEL` strip has none: legibility over the live world comes from the strip alone. Text with neither gets a strip, never a `TextShadow` or `BoxShadow`.
 - Colour has a meaning, one token each. `TEXT` is primary text, `TEXT_2` secondary text, `TEXT_OFF` disabled only. `ACCENT` marks the primary action, selection and the course. `PIN` marks pins. `WARN` marks a blocked course, weather and heat warnings, a frame under 50 percent. `DANGER` marks a frame under 25 percent and a broken part. A friend has one colour per player. Home and the ship use `TEXT` and differ by icon shape. Use no other colour in interface chrome. Colour is free in the map picture.
 - Icons are real pictures from `crate::ui::Icon` (Material Symbols Sharp, square, no round caps). No black box behind an icon. Every icon has a name in words somewhere on screen, and an icon-only control carries a `Tip`.
 - Type scale 16, 20, 32, 72 at the 720 pixel reference, at most three sizes on one screen. `UiScale` scales the whole interface with the window height.

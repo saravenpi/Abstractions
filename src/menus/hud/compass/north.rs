@@ -34,8 +34,7 @@ pub(super) fn mark() -> impl Bundle {
         children![(
             Letter,
             text("N", theme::FONT_SMALL, Color::WHITE),
-            TextLayout::no_wrap(),
-            TextShadow::default()
+            TextLayout::no_wrap()
         )],
     )
 }

@@ -99,13 +99,11 @@ fn pin(slot: usize) -> impl Bundle {
                 TextFont::from_font_size(MARK).with_font(ICON_FONT),
                 TextLayout::no_wrap(),
                 TextColor(Color::WHITE),
-                TextShadow::default(),
             ),
             (
                 Far(slot),
                 text("", theme::FONT_SMALL, theme::TEXT),
                 TextLayout::no_wrap(),
-                TextShadow::default(),
             ),
         ],
     )

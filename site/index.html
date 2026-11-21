@@ -13,21 +13,22 @@
 <meta property="og:title" content="Abstractions, a gigantic universe, and every world is its own">
 <meta property="og:description" content="Wake up as a small robot on a living planet, with a ship and a universe to cross. Free for Linux, Windows and macOS.">
 <meta property="og:url" content="https://abstractions.facile.studio/">
-<meta property="og:image" content="https://abstractions.facile.studio/og.png?v=5">
+<meta property="og:image" content="https://abstractions.facile.studio/og.png?v=6">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="A small robot stands on the orange plains of the planet Kodya under a blue sky. Over a dark band at the bottom: a white square, the title Abstractions and the line A gigantic universe, and every world is its own.">
+<meta property="og:image:alt" content="A white square, the title Abstractions and the line A gigantic universe, and every world is its own, on a black card.">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' shape-rendering='crispEdges'%3E%3Crect width='100' height='100'/%3E%3Crect x='29' y='29' width='42' height='42' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="alternate icon" type="image/png" sizes="96x96" href="favicon.png?v=1">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=1">
 <link rel="preload" href="fonts/undefined-medium.woff2?v=1" as="font" type="font/woff2" crossorigin>
-<link rel="preload" as="image" type="image/webp" imagesrcset="hero/01-1280.webp?v=1 1280w, hero/01-1920.webp?v=1 1920w" imagesizes="100vw" fetchpriority="high">
-<link rel="stylesheet" href="style.css?v=8">
+<!-- hero-head:start -->
+<!-- hero-head:end -->
+<link rel="stylesheet" href="style.css?v=9">
 <script src="app.js?v=5" defer></script>
 <script src="reveal.js?v=1" defer></script>
-<script src="hero.js?v=1" defer></script>
-<script src="carousel.js?v=2" defer></script>
+<script src="hero.js?v=2" defer></script>
+<script src="carousel.js?v=3" defer></script>
 </head>
 <body>
 <div class="light" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -41,10 +42,8 @@
 <main>
   <section class="hero wrap" aria-labelledby="name">
     <div class="show" id="show">
-      <figure class="layer on go">
-        <picture><source type="image/webp" srcset="hero/01-1280.webp?v=1 1280w, hero/01-1920.webp?v=1 1920w" sizes="100vw"><img src="hero/01-1280.jpg?v=1" srcset="hero/01-1280.jpg?v=1 1280w, hero/01-1920.jpg?v=1 1920w" sizes="100vw" width="1280" height="596" alt="The robot seen from behind on orange plains beside a grey landing pad, under a hazy sky with a pale sun." fetchpriority="high" decoding="async"></picture>
-      </figure>
-      <figure class="layer" aria-hidden="true"><picture><source type="image/webp"><img width="1280" height="596" alt="" decoding="async"></picture></figure>
+      <!-- hero:start -->
+      <!-- hero:end -->
     </div>
     <h1 id="name">Abstractions</h1>
     <div class="intro">
@@ -88,7 +87,7 @@
       <h2 class="label" id="shots-title">In the game<span class="pre">, version 0.11 arriving today</span></h2>
       <div class="shots-nav" hidden>
         <button type="button" data-step="-1" aria-label="Previous screenshot">Previous</button>
-        <span class="count" aria-live="polite"><span id="shot-now">1</span> / <span id="shot-total">6</span></span>
+        <span class="count" aria-live="polite"><span id="shot-now">1</span> / <span id="shot-total">5</span></span>
         <button type="button" data-step="1" aria-label="Next screenshot">Next</button>
       </div>
     </div>
@@ -98,24 +97,20 @@
         <figcaption><span>01</span> At the home base</figcaption>
       </figure>
       <figure class="shot" id="shot-2">
-        <picture><source type="image/webp" srcset="shots/02-characters.webp?v=4113994779"><img src="shots/02-characters.jpg?v=4113994779" width="1280" height="720" alt="The robot and its floating companion on a flat grey plain: white plates with orange accents over a dark frame, and a screen for a face on each." loading="lazy" decoding="async"></picture>
-        <figcaption><span>02</span> The robot and its companion</figcaption>
+        <picture><source type="image/webp" srcset="shots/02-ship.webp?v=473875626"><img src="shots/02-ship.jpg?v=473875626" width="1280" height="720" alt="The ship on its landing pad with the canopy shut and the pilot seated: a swept delta wing, a tail fin and twin engines." loading="lazy" decoding="async"></picture>
+        <figcaption><span>02</span> The ship</figcaption>
       </figure>
       <figure class="shot" id="shot-3">
-        <picture><source type="image/webp" srcset="shots/03-ship.webp?v=3789731072"><img src="shots/03-ship.jpg?v=3789731072" width="1280" height="720" alt="The robot stands before the ship on its landing pad, canopy open: a swept delta wing, a tail fin and twin engines." loading="lazy" decoding="async"></picture>
-        <figcaption><span>03</span> The ship</figcaption>
+        <picture><source type="image/webp" srcset="shots/03-cockpit.webp?v=1330081952"><img src="shots/03-cockpit.jpg?v=1330081952" width="1280" height="720" alt="The cockpit seen from the pilot seat: a dashboard with throttle, warp and gear bars, a speed and altitude readout and an attitude ball, and the companion floating by the window." loading="lazy" decoding="async"></picture>
+        <figcaption><span>03</span> The cockpit</figcaption>
       </figure>
       <figure class="shot" id="shot-4">
-        <picture><source type="image/webp" srcset="shots/04-cockpit.webp?v=1330081952"><img src="shots/04-cockpit.jpg?v=1330081952" width="1280" height="720" alt="The cockpit seen from the pilot seat: a dashboard with throttle, warp and gear bars, a speed and altitude readout and an attitude ball, and the companion floating by the window." loading="lazy" decoding="async"></picture>
-        <figcaption><span>04</span> The cockpit</figcaption>
+        <picture><source type="image/webp" srcset="shots/04-flight.webp?v=2476303413"><img src="shots/04-flight.jpg?v=2476303413" width="1280" height="720" alt="The ship flying at 300 metres along a coast with its engine lit, over brown hills, green land and a blue sea." loading="lazy" decoding="async"></picture>
+        <figcaption><span>04</span> Flight over the planet</figcaption>
       </figure>
       <figure class="shot" id="shot-5">
-        <picture><source type="image/webp" srcset="shots/06-flight.webp?v=2476303413"><img src="shots/06-flight.jpg?v=2476303413" width="1280" height="720" alt="The ship flying at 300 metres along a coast with its engine lit, over brown hills, green land and a blue sea." loading="lazy" decoding="async"></picture>
-        <figcaption><span>05</span> Flight over the planet</figcaption>
-      </figure>
-      <figure class="shot" id="shot-6">
-        <picture><source type="image/webp" srcset="shots/07-orbit.webp?v=761032583"><img src="shots/07-orbit.jpg?v=761032583" width="1280" height="720" alt="The ship with its engine burning in orbit over a pale planet with blue seas, against a black sky of stars." loading="lazy" decoding="async"></picture>
-        <figcaption><span>06</span> In orbit</figcaption>
+        <picture><source type="image/webp" srcset="shots/05-orbit.webp?v=761032583"><img src="shots/05-orbit.jpg?v=761032583" width="1280" height="720" alt="The ship with its engine burning in orbit over a pale planet with blue seas, against a black sky of stars." loading="lazy" decoding="async"></picture>
+        <figcaption><span>05</span> In orbit</figcaption>
       </figure>
     </div>
   </section>

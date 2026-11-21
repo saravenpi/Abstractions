@@ -1,4 +1,4 @@
-"""Render site/og.png from the hero screenshot and report the text contrast.
+"""Render site/og.png, the white square and the title on black, and report the text contrast.
 
 Needs ImageMagick 7 (`magick`) and fontTools with brotli. Run from anywhere:
     python3 site/tools/og.py
@@ -51,17 +51,8 @@ def layout():
 
 
 def background(out):
-    """Crop the screenshot to fill the card and darken it towards the text."""
-    shade = (
-        "-size", f"{WIDTH}x{HEIGHT}", "gradient:",
-        "-fx", "0.02+0.8*pow(min(1,max(0,(j/h-0.42)/0.3)),1.2)",
-        "-alpha", "off",
-    )
-    magick(
-        str(SITE / "hero.jpg"), "-resize", f"{WIDTH}x{HEIGHT}^", "-gravity", "center", "-extent", f"{WIDTH}x{HEIGHT}", "+gravity",
-        "(", "-size", f"{WIDTH}x{HEIGHT}", "xc:black", "(", *shade, ")", "-compose", "CopyOpacity", "-composite", ")",
-        "-compose", "over", "-composite", str(out),
-    )
+    """Write a plain black card."""
+    magick("-size", f"{WIDTH}x{HEIGHT}", "xc:black", str(out))
 
 
 def luminance(path, box):

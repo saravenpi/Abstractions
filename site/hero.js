@@ -1,6 +1,7 @@
 (function () {
   const SLIDES = [
-    { base: "hero/01", v: "1", alt: "The robot seen from behind on orange plains beside a grey landing pad, under a hazy sky with a pale sun." },
+    // hero:start
+    // hero:end
   ];
   const HOLD = 6000;
   const FADE = 1500;
@@ -10,6 +11,15 @@
   if (!show || SLIDES.length < 2) return;
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const layers = Array.from(show.querySelectorAll(".layer"));
+  if (!layers.length) return;
+  if (layers.length < 2) {
+    const spare = document.createElement("figure");
+    spare.className = "layer";
+    spare.setAttribute("aria-hidden", "true");
+    spare.innerHTML = '<picture><source type="image/webp"><img alt="" decoding="async"></picture>';
+    show.append(spare);
+    layers.push(spare);
+  }
   const hero = show.parentElement;
   let front = 0;
   let index = 0;

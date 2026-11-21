@@ -64,7 +64,7 @@ impl Tab {
         match self {
             Tab::Graphics => (Some(Icon::Monitor), "Graphics"),
             Tab::Controls => (Some(Icon::Keyboard), "Controls"),
-            Tab::Ship => (Some(Icon::Send), "Ship"),
+            Tab::Ship => (Some(Icon::ShipParked), "Ship"),
             Tab::Audio => (Some(Icon::Volume), "Audio"),
             Tab::General => (Some(Icon::Home), "General"),
             Tab::Help => (Some(Icon::Info), "Reference"),

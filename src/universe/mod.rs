@@ -19,11 +19,13 @@ mod ids;
 mod look;
 mod moon;
 mod names;
+mod nudge;
 mod orbit;
 mod place;
 mod planet;
 mod record;
 mod rings;
+mod search;
 mod sector;
 mod shells;
 mod spec;
@@ -116,6 +118,7 @@ pub const GALAXY_CELL: f64 = 3.0e6 * LY;
 pub struct Universe {
     seed: u64,
     home: BodyId,
+    fitted: Option<nudge::Fitted>,
 }
 
 impl Universe {
@@ -172,7 +175,7 @@ impl Universe {
         let star = self.star(id).or_else(|| self.star(self.home.star));
         let star = star.expect("the home galaxy always holds the home star");
         SystemSpec {
-            planets: system::planets(&star),
+            planets: self.planets_of(&star),
             star,
         }
     }

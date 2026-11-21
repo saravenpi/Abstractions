@@ -5,12 +5,13 @@ use std::f64::consts::FRAC_PI_2;
 use super::climate::Climate;
 use super::hash::Rng;
 use super::spec::StarSpec;
-use super::units::{EARTH_RADIUS, STANDARD_GRAVITY, SUN_MASS};
-use super::{air, class, climate, volatiles, zone};
+use super::{air, climate, zone};
 
 mod body;
+mod derive;
 
 pub(super) use body::Body;
+pub(super) use derive::Nudge;
 
 /// The kind of world a planet is, decided by its record.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -145,52 +146,6 @@ impl PlanetRecord {
             self.hydrocarbon,
             sea(lava),
         ]
-    }
-
-    /// Returns the record of `body` around `star`, with its draws from `seed`.
-    ///
-    /// The seed gives six draws: the gas the body was born with, its water, its tilt, its
-    /// carbon and its lakes of ammonia and of hydrocarbons. Starlight, air, climate and class
-    /// then follow in that order, each from the ones before, so the same body always gets the
-    /// same record. The heat of the tides adds to the starlight the ground absorbs, so it warms
-    /// the climate, but neither the flux nor the zone, which are the starlight alone.
-    ///
-    /// Ranges: flux 0.000003 to 260,000, tilt 0 to a quarter turn, pressure 0 to 5, albedo 0.08
-    /// to 0.6, greenhouse 0 to 1,500 K, temperature 5 to 7,000 K, ocean 0 to 1.
-    pub(super) fn derive(star: &StarSpec, body: &Body, seed: u64) -> Self {
-        let mut rng = Rng::new(seed);
-        let flux = zone::flux(star.luminosity, body.orbit);
-        let (gravity, size) = (body.gravity / STANDARD_GRAVITY, body.radius / EARTH_RADIUS);
-        let pressure = air::pressure(rng.unit(), gravity, size, flux);
-        let wet = volatiles::water(rng.unit(), flux, star.mass / SUN_MASS);
-        let tilt = tilt(rng.unit());
-        let carbon = volatiles::carbon(rng.unit(), flux);
-        let climate = climate::settle(
-            flux + body.tide,
-            zone::outer(star.temperature),
-            pressure,
-            wet,
-            carbon,
-        );
-        let lake = |lake: &volatiles::Lake, roll| {
-            volatiles::lakes(lake, climate.temperature, pressure, roll)
-        };
-        let record = Self {
-            ocean: class::liquid(pressure, &climate, wet, body.tide),
-            ammonia: lake(&volatiles::AMMONIA, rng.unit()),
-            hydrocarbon: lake(&volatiles::HYDROCARBON, rng.unit()),
-            tide: body.tide,
-            carbon,
-            ..Self::lit(star, flux, (tilt, pressure), &climate)
-        };
-        let record = Self {
-            class: class::classify(&record),
-            ..record
-        };
-        Self {
-            mix: air::born(&record, air::escape(gravity, size), body.tide, seed),
-            ..record
-        }
     }
 
     /// Returns the record of a gas giant on an orbit of `orbit` metres, read at its cloud deck.

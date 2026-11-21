@@ -14,9 +14,11 @@ use super::daystar::Daystar;
 use super::earthlike;
 use super::galaxy;
 use super::ids::{BodyId, GalaxyId, StarId};
+use super::nudge::Fitted;
 use super::record::{PlanetClass, Water};
+use super::search::Found;
 use super::spec::{PlanetSpec, StarSpec};
-use super::{LY, SECTOR_LY, STANDARD_GRAVITY, shells, system};
+use super::{STANDARD_GRAVITY, shells};
 use crate::climate::{Fair, Setting};
 use crate::life::{Rung, Solvent, World, chem, odds};
 
@@ -31,7 +33,7 @@ pub const SEARCH: usize = 300;
 const SHELL: f64 = 10.0;
 
 /// The body a universe without a single solid planet starts on. No seed gets there.
-const NOWHERE: BodyId = BodyId {
+pub(super) const NOWHERE: BodyId = BodyId {
     star: StarId {
         galaxy: HOME_GALAXY,
         sector: IVec3::ZERO,
@@ -127,7 +129,7 @@ pub(super) type Fit = fn(&PlanetSpec, Rung, &World) -> bool;
 /// Returns the planet of `planets`, the planets of `star`, a new game would start on: the landable
 /// one whose life climbed highest under the normal odds, the inner one of two alike, or nothing
 /// when none lives. With a `fit` only those that pass it count.
-fn living(star: &StarSpec, planets: &[PlanetSpec], fit: Option<Fit>) -> Option<BodyId> {
+pub(super) fn living(star: &StarSpec, planets: &[PlanetSpec], fit: Option<Fit>) -> Option<BodyId> {
     let alive = |p: &PlanetSpec| {
         let world = World::of(p, star);
         let rung = odds::rung(&world, p.seed)?;
@@ -140,90 +142,27 @@ fn living(star: &StarSpec, planets: &[PlanetSpec], fit: Option<Fit>) -> Option<B
 
 /// Returns the landable planet of `planets`, the planets of `star`, most likely to hold life,
 /// with that chance, the inner one of two alike.
-fn suited(star: &StarSpec, planets: &[PlanetSpec]) -> Option<(f32, BodyId)> {
+pub(super) fn suited(star: &StarSpec, planets: &[PlanetSpec]) -> Option<(f32, BodyId)> {
     let chance = |p: &PlanetSpec| (odds::chance(&World::of(p, star)), p.id);
     let landable = planets.iter().rev().filter(|p| landable(p));
     landable.map(chance).max_by(|a, b| a.0.total_cmp(&b.0))
 }
 
-/// What the search has found so far.
-struct Found {
-    /// The point the search goes out from, in metres from the galaxy centre.
-    from: DVec3,
-    /// The test a home passes.
-    fit: Fit,
-    /// Systems looked at before the search settles for less than a home.
-    reach: usize,
-    /// The nearest planet that passes [`Found::fit`] and the metres from the search point to its
-    /// star.
-    home: Option<(f64, BodyId)>,
-    /// The nearest [`homely`] planet and the metres to its star.
-    homely: Option<(f64, BodyId)>,
-    /// The nearest living planet, homely or not, and the metres to its star.
-    living: Option<(f64, BodyId)>,
-    /// The planet most likely to hold life and that chance.
-    spare: Option<(f32, BodyId)>,
-    /// How many systems were looked at.
-    seen: usize,
-}
-
-impl Found {
-    /// Looks at the system of `star`, unless a home nearer than it is already known.
-    fn look(&mut self, star: &StarSpec) {
-        let out = star.pos.distance(self.from);
-        if self.home.is_some_and(|(nearest, _)| out >= nearest) {
-            return;
-        }
-        let planets = system::planets(star);
-        self.seen += 1;
-        let at = |id: BodyId| (out, id);
-        self.home = living(star, &planets, Some(self.fit)).map(at).or(self.home);
-        if self.homely.is_none_or(|(nearest, _)| out < nearest) {
-            self.homely = living(star, &planets, Some(homely)).map(at).or(self.homely);
-        }
-        if self.living.is_none() {
-            self.living = living(star, &planets, None).map(at);
-        }
-        let spare = suited(star, &planets);
-        if spare.is_some_and(|(chance, _)| self.spare.is_none_or(|(best, _)| chance > best)) {
-            self.spare = spare;
-        }
-    }
-
-    /// Returns true when no shell from `low` light-years out can change the answer: the
-    /// nearest home is closer than any star left, or [`Found::reach`] systems had none.
-    fn settled(&self, low: f64) -> bool {
-        let slack = 0.5 * 3f64.sqrt() * SECTOR_LY;
-        let nearer = |(out, _): (f64, BodyId)| out < (low - slack) * LY;
-        self.home.map_or(self.seen >= self.reach, nearer)
-    }
-}
-
-/// Returns the home planet of a universe under the home `rule`, see [`earthlike::rule`]: the
-/// nearest planet to the Sun-like point of the home galaxy that is solid, landable, alive under
-/// the normal odds of life and passes the test of the rule, [`homely`] or
-/// [`earthlike::earthlike`].
+/// Returns the home planet of a universe under the home `rule`, see [`earthlike::rule`], and how
+/// it was fitted to the Earth if it was: the nearest planet to the Sun-like point of the home
+/// galaxy that is solid, landable, alive under the normal odds of life and passes the test of
+/// the rule, [`homely`] or [`earthlike::earthlike`].
 ///
 /// The search goes through the stars shell by shell from that point. When the systems the rule
-/// reaches hold no home it takes the nearest homely planet among them, failing that the nearest
-/// living one, and failing that the landable planet most likely to hold life. The same seed and
-/// rule always give the same home.
-pub(super) fn choose(universe: u64, rule: u32) -> BodyId {
+/// reaches hold no home, it takes what [`Found::answer`] settles for. The same seed and rule
+/// always give the same home.
+pub(super) fn choose(universe: u64, rule: u32) -> (BodyId, Option<Fitted>) {
     let Some(shape) = galaxy::shape(universe, HOME_GALAXY) else {
-        return NOWHERE;
+        return (NOWHERE, None);
     };
     let (fit, reach) = earthlike::rule(rule);
     let from = shells::sun_point(&shape);
-    let mut found = Found {
-        from,
-        fit,
-        reach,
-        home: None,
-        homely: None,
-        living: None,
-        spare: None,
-        seen: 0,
-    };
+    let mut found = Found::new(from, fit, reach);
     let rounds = (2.0 * shape.radius / SHELL).ceil() as u32;
     for round in 0..rounds {
         let low = f64::from(round) * SHELL;
@@ -233,7 +172,5 @@ pub(super) fn choose(universe: u64, rule: u32) -> BodyId {
         let stars = shells::shell(&shape, HOME_GALAXY, from, (low, SHELL));
         stars.iter().for_each(|star| found.look(star));
     }
-    let chosen = found.home.or(found.homely).or(found.living);
-    let chosen = chosen.map(|(_, id)| id).or(found.spare.map(|(_, id)| id));
-    chosen.unwrap_or(NOWHERE)
+    found.answer(rule > 0)
 }

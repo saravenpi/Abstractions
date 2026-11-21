@@ -6,18 +6,21 @@
 //! The wind follows the real flow, not the airspeed alone. Its level in decibels follows the log of
 //! the dynamic pressure `1/2 rho v^2`, and its centre rises with the speed. A high angle of attack
 //! or a sideslip tears the flow off the canopy and the wings: the band widens and grows, and the
-//! buffet rumbles under it. A fast roll or yaw whooshes, and a hard pull of the stick buffets.
-//! Every level eases over a tenth of a second, so the air follows the stick and never clicks.
+//! buffet rumbles under it. A hard roll or yaw whooshes once, and a hard pull of the stick
+//! buffets. Gusts come only with rough air. Every level is a continuous modulation of the bed that
+//! eases over a tenth of a second, so the air follows the stick, never clicks, and steady flight in
+//! calm air is steady.
 
 use std::f32::consts::TAU;
 
 use super::air_tune::{
-    BUFFET, CHASE_WIND, FLOW_EASE, FULL_PRESSURE, GUST, PULL, RATTLE, ROAR, SLIP_LEAN, TORN, WHIRL,
-    WIND, WIND_HZ,
+    BUFFET, CHASE_WIND, FLOW_EASE, FULL_PRESSURE, GUST, PULL, RATTLE, ROAR, SLIP_LEAN, SLOW, TORN,
+    WHIRL, WIND, WIND_HZ,
 };
 use super::feed::{Ch, HullSound};
 use super::jet::swell;
 use super::law::band_gain;
+use super::whirl::Whirl;
 use crate::audio::dsp::filter::glide;
 use crate::audio::dsp::filter::{Lag, Svf};
 use crate::audio::dsp::rand::Noise;
@@ -87,10 +90,13 @@ impl Flow {
 pub struct Airframe {
     /// Colours: the wind, the thuds, the rattle and the roar.
     bands: [Svf; 4],
-    /// Gains the wind, the thuds, the knocks of the rattle and the roar move toward.
-    gains: [f32; 4],
-    /// The same gains, eased, and the coefficient of the easing.
-    eased: ([Lag; 4], f32),
+    /// Gains the wind, the thuds, the knocks of the rattle and the roar move toward, and how rough
+    /// the air is for the gusts.
+    gains: [f32; 5],
+    /// The same, eased, and the coefficient of the easing.
+    eased: ([Lag; 5], f32),
+    /// The whoosh of a hard roll or yaw.
+    whirl: Whirl,
     /// The random walk of the gusts.
     gust: Lag,
     /// Coefficient and gain of the gusts.
@@ -110,8 +116,9 @@ impl Airframe {
         bands[3].tune(ROAR.0, 0.7, rate);
         Self {
             bands,
-            gains: [0.0; 4],
-            eased: ([Lag::default(); 4], glide(FLOW_EASE, rate)),
+            gains: [0.0; 5],
+            eased: ([Lag::default(); 5], glide(FLOW_EASE, rate)),
+            whirl: Whirl::default(),
             gust: Lag::default(),
             swell: swell(GUST.0, rate),
             noise: Noise::new(seed),
@@ -122,23 +129,25 @@ impl Airframe {
     /// Retunes the wind and sets the gains. The pressure fluctuations under a boundary layer
     /// follow the dynamic pressure, and the level is its square root, 10 dB for each tenfold
     /// pressure; the pitch rises with the speed. A torn flow widens the band and adds to its level
-    /// and to the buffet, a roll or a yaw adds a whoosh, a hard pull buffets. The roar follows the
-    /// heat of the entry.
-    pub fn tune(&mut self, flow: &Flow) {
+    /// and to the buffet, the onset of a hard roll or yaw adds one whoosh, a hard pull buffets. The
+    /// roar follows the heat of the entry. Call it every `dt` seconds.
+    pub fn tune(&mut self, flow: &Flow, dt: f32) {
         let hz = (WIND_HZ.0 + WIND_HZ.1 * flow.speed).min(WIND_HZ.2);
         let loud = (flow.pressure / FULL_PRESSURE).clamp(0.0, 1.0).sqrt();
-        let torn = smoothstep(TORN.0, TORN.1, flow.attack.max(flow.slip.abs()));
-        let whirl = smoothstep(WHIRL.0, WHIRL.1, flow.turn);
+        let moving = smoothstep(SLOW.0, SLOW.1, flow.speed);
+        let torn = smoothstep(TORN.0, TORN.1, flow.attack.max(flow.slip.abs())) * moving;
+        self.whirl.tune(flow.turn, dt);
         let pulled = smoothstep(PULL.0, PULL.1, flow.load);
         let q = WIND.0 * (1.0 - TORN.2 * torn);
         let rough = flow.rough.max(loud * (TORN.3 * torn).max(pulled));
         self.bands[0].tune(hz, q, self.rate);
-        let swell = 1.0 + TORN.4 * torn + WHIRL.2 * whirl;
+        let swell = 1.0 + TORN.4 * torn + WHIRL.4 * self.whirl.level();
         self.gains = [
             loud * WIND.1 * swell * band_gain(hz, q, self.rate),
             rough * BUFFET.1 * band_gain(BUFFET.0, 1.0 / 0.9, self.rate),
             rough * rough * RATTLE.3 / RATTLE.2 * self.rate / (TAU * RATTLE.0),
             flow.roar.clamp(0.0, 1.0) * ROAR.1 * band_gain(ROAR.0, 1.0 / 0.7, self.rate),
+            rough,
         ];
     }
 
@@ -164,10 +173,10 @@ impl Airframe {
     /// Renders one sample of what the air does to the airframe.
     pub fn frame(&mut self) -> f32 {
         let (eased, k) = &mut self.eased;
-        let gains: [f32; 4] = std::array::from_fn(|i| eased[i].to(self.gains[i], *k));
+        let gains: [f32; 5] = std::array::from_fn(|i| eased[i].to(self.gains[i], *k));
         let white = self.noise.tick();
         let walk = self.gust.to(self.noise.tick(), self.swell.0) * self.swell.1;
-        let gust = (1.0 + GUST.1 * walk).max(0.0);
+        let gust = (1.0 + GUST.1 * gains[4] * walk).max(0.0);
         let knock = (self.noise.tick() - (1.0 - RATTLE.2)).max(0.0) * gains[2];
         let [wind, thud, rattle, roar] = &mut self.bands;
         let deep = thud.low(white) * gains[1] + roar.low(white) * gains[3];

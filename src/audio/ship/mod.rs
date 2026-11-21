@@ -25,6 +25,7 @@ pub(super) mod path;
 pub(super) mod pump;
 pub(super) mod ring;
 pub(super) mod tune;
+mod whirl;
 mod works;
 
 use feed::{Deck, HULLS};

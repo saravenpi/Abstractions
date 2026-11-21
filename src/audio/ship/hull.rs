@@ -145,8 +145,9 @@ impl Hull {
 
     /// Sets what the air does to the airframe and to the cabin: the wind and the buffet, rougher
     /// around the speed of sound, the pumps, the canopy as a low-pass that opens with it, and the
-    /// sound of the engines in the air, which a cabin faster than sound leaves behind.
-    fn ride(&mut self, hull: &HullSound, lit: f32) {
+    /// sound of the engines in the air, which a cabin faster than sound leaves behind, `dt` seconds
+    /// after the last call.
+    fn ride(&mut self, hull: &HullSound, lit: f32, dt: f32) {
         let (air, speed) = (hull.at(Ch::Air), hull.at(Ch::Speed));
         let fast = mach(speed, hull.at(Ch::Sound));
         let band = (fast - 1.0) / TRANSONIC.1;
@@ -155,7 +156,8 @@ impl Hull {
         let open = hull.at(Ch::Canopy);
         let behind = 1.0 - smoothstep(OUTRUN.0, OUTRUN.1, fast);
         let rough = hull.at(Ch::Rough).max(sonic);
-        self.flow.tune(&Flow::of(hull, pressure(air, speed), rough));
+        self.flow
+            .tune(&Flow::of(hull, pressure(air, speed), rough), dt);
         self.mix = Mix {
             lit,
             spin: feed.min(1.0).sqrt().max(PUMP_IDLE),
@@ -191,7 +193,7 @@ impl Hull {
             self.works.light();
         }
         self.aim(&hull, lit);
-        self.ride(&hull, lit);
+        self.ride(&hull, lit, dt);
         self.drive.tune();
         self.works.tune(&hull, lit, dt);
         match (goal.at(Ch::Inside) > 0.5, was.at(Ch::Inside) > 0.5) {

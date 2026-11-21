@@ -101,18 +101,20 @@ fn free_fall_matches_the_closed_form() {
     );
 }
 
-/// With air a nose-down fall settles at the speed where drag equals weight.
+/// With air a nose-down fall settles at the speed where drag equals weight. Since the clean
+/// nose of 0.11.0 that speed is twice what it was, so the fall starts higher, in an atmosphere
+/// with a 100 km scale height, for the speed to settle before 1 km.
 #[test]
 fn terminal_velocity_matches_the_closed_form() {
-    let planet = planet(40_000.0, 80_000.0, 1e9);
-    let mut ship = above_pole(&planet, 4000.0);
+    let planet = planet(40_000.0, 1_200_000.0, 1e9);
+    let mut ship = above_pole(&planet, 9000.0);
     ship.rot = DQuat::from_rotation_x(-TAU / 4.0);
     let mut seen = (0.0, 0.0);
     fly(
         &mut ship,
         &Controls::default(),
         (&planet, &|_| 0.0),
-        60.0,
+        90.0,
         |ship, _| {
             let height = ship.pos.length() - planet.radius;
             if height >= 1000.0 {

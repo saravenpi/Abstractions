@@ -4,14 +4,23 @@
 use bevy::math::DVec3;
 
 use super::assist::NEUTRAL;
+use super::drag::terminal;
+use super::flight::BOOST;
 use super::tune::ORBIT_CAP;
 
-/// Speed in metres per second the full lever asks for at a surface, and the seconds of flight
-/// the ship keeps between itself and the nearest surface at that speed: the top speed is
-/// `SLOW.0 + clearance / SLOW.1`, so the ship is slow where it has to be exact.
-const SLOW: (f64, f64) = (40.0, 4.0);
+/// Speed in metres per second the full lever asks for at a surface, and the seconds the
+/// clearance lasts at the speed it adds: the top speed is `SLOW.0 + clearance / SLOW.1`, so the
+/// ship is slow where it has to be exact. Since 0.11.0 the second number is 1.6 s, down from
+/// 4 s: the full lever asks for 219 m/s at 286 m, where it asked for 112, as a fast small craft
+/// flies low. In air the thrust against the drag caps it, see [`terminal`].
+const SLOW: (f64, f64) = (40.0, 1.6);
 
-/// Top speed in metres per second in open space away from big bodies, reached 9.8 km from the
+/// Seconds of flight the ship keeps between itself and the ground under it when it sinks,
+/// and over which the climb of a hover grows with the height: the descent and the hover are
+/// as slow as before the top speed was raised.
+const REACH: f64 = 4.0;
+
+/// Top speed in metres per second in open space away from big bodies, reached 3.9 km from the
 /// nearest surface. Near a body whose circular orbit is faster than half of it the top speed is
 /// [`ORBIT_CAP`] times that orbit speed, see [`top_speed_at`].
 const FAST: f64 = 2500.0;
@@ -48,8 +57,8 @@ const SETTLE: f64 = 0.25;
 const FIRM: f64 = 4.0;
 
 /// Hardest push along the nose: metres per second squared at rest, and the seconds in which
-/// the engine can make or shed the top speed. The second number is under `SLOW.1`, so a ship
-/// that flies at a surface always sheds its speed in time.
+/// the engine can make or shed the top speed. The second number is under [`REACH`], so a ship
+/// that sinks toward a surface always sheds its speed in time.
 const THRUST: (f64, f64) = (40.0, 3.0);
 
 /// Hardest push across the nose: metres per second squared at rest, and what each metre per
@@ -80,7 +89,7 @@ pub fn top_speed_at(clearance: f64, orbital: f64) -> f64 {
 /// Returns the fastest descent in metres per second the assist flies `clearance` metres above
 /// the ground: under the speed that harms the hull near it, faster higher up.
 pub fn descent(clearance: f64) -> f64 {
-    SINK.0 + (clearance - SINK.1).max(0.0) / SLOW.1
+    SINK.0 + (clearance - SINK.1).max(0.0) / REACH
 }
 
 /// Returns the acceleration that closes the speed error `err` over a step of `h` seconds
@@ -122,6 +131,9 @@ pub struct Cruise {
     /// Speed in metres per second of a circular orbit around the nearest body at the ship's
     /// distance from its centre, zero without a body.
     pub orbital: f64,
+    /// Density of the air around the ship in kilograms per cubic metre, zero in space: the
+    /// assist flies no faster than the engine can hold against its drag.
+    pub air: f64,
 }
 
 impl Cruise {
@@ -143,16 +155,22 @@ impl Cruise {
         } else {
             HOVER_RATES.1
         };
-        let high = (self.clearance - HOVER_CEILING).max(0.0) / SLOW.1;
+        let high = (self.clearance - HOVER_CEILING).max(0.0) / REACH;
         self.lift * (rate + high * CLIMB_SHARE)
     }
 
     /// Returns the velocity the pilot asks for: the lever along the nose and the vertical
-    /// stick along `rise`. Toward the ground it is never faster than a descent the gear can
-    /// take, and a hovering ship that is not sunk keeps its gear [`FLOOR`] above the ground.
+    /// stick along `rise`, never faster than the engine holds against the drag of the air.
+    /// Toward the ground it is never faster than a descent the gear can take, and a hovering
+    /// ship that is not sunk keeps its gear [`FLOOR`] above the ground.
     pub fn target(&self) -> DVec3 {
-        let boost = if self.boost { BOOST_SPEED } else { 1.0 };
-        let top = top_speed_at(self.clearance, self.orbital) * boost;
+        let (boost, push) = if self.boost {
+            (BOOST_SPEED, BOOST)
+        } else {
+            (1.0, 1.0)
+        };
+        let top =
+            (top_speed_at(self.clearance, self.orbital) * boost).min(terminal(self.air, push));
         let ahead = if self.idle() { 0.0 } else { self.throttle };
         let asked = self.nose * (ahead * top) + self.rise * self.climb(top);
         let sink = -asked.dot(self.up) - descent(self.clearance);

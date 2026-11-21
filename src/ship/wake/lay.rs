@@ -18,10 +18,16 @@ use crate::space::{Anchor, Placed};
 /// one mirrors it.
 const WING_TIP: Vec3 = Vec3::new(-3.2, -0.2, 2.35);
 
-/// Metres between two points of a vortex trail and of a lamp streak, and the jump in metres
-/// over which either starts over: a ship in air covers under 60 m in a frame, and one that
-/// moves farther was put somewhere else or flies too fast to leave a line.
-const SPACING: (f64, f64, f64) = (2.5, 2.0, 60.0);
+/// Least metres between two points of a vortex trail and of a lamp streak, and the jump in
+/// metres over which either starts over: a ship in air covers under 60 m in a frame of 0.1 s,
+/// even boosted, and one that moves twice that far was put somewhere else or flies too fast
+/// to leave a line.
+const SPACING: (f64, f64, f64) = (2.5, 2.0, 120.0);
+
+/// Points of a ribbon its whole life is spread over at speed: a few under the 64 a trail
+/// keeps. At 275 m/s a vortex that glows 0.8 s is 220 m long, which 2.5 m points would cut at
+/// 160 m.
+const ROOM: f64 = 60.0;
 
 /// What lays a ribbon.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -121,6 +127,17 @@ type Ribbons<'w, 's> =
 /// The flight of one ship this frame: the ship, its pose and the air it flies in.
 type Flight = (Entity, Placed, Air);
 
+/// Returns the metres between two points of a ribbon of `source` laid at `speed` metres per
+/// second that lives `life` seconds: the least spacing of [`SPACING`], stretched at speed so that
+/// the whole life of the ribbon fits in [`ROOM`] points.
+fn spacing(source: Source, speed: f32, life: f32) -> f64 {
+    let least = match source {
+        Source::Vortex(_) => SPACING.0,
+        Source::Lamp(_) => SPACING.1,
+    };
+    least.max(f64::from(speed * life) / ROOM)
+}
+
 /// Returns where `source` of a hull posed as `placed` is, in the frame of the anchor.
 pub fn tip(placed: &Placed, source: Source) -> DVec3 {
     placed.pos + placed.rot * emitter(source).as_dvec3()
@@ -156,13 +173,10 @@ pub fn draw(
             continue;
         };
         let (heat, look) = field.style(streak.source, air, eye);
-        let spacing = match streak.source {
-            Source::Vortex(_) => SPACING.0,
-            Source::Lamp(_) => SPACING.1,
-        };
+        let gap = spacing(streak.source, air.speed, look.life);
         let streak = &mut *streak;
         let point = tip(placed, streak.source);
-        streak.trail.feed_by(point, heat, dt, (spacing, SPACING.2));
+        streak.trail.feed_by(point, heat, dt, (gap, SPACING.2));
         if let Some(head) = trace(&streak.trail, &mut streak.drawn, (look, anchor), &mut strip) {
             show(head, (handle, &mut transform), &strip, &mut meshes);
         }

@@ -104,6 +104,7 @@ fn hold(ship: &Ship, controls: &Controls, scene: &Scene) -> Cruise {
         ground: false,
         grip: 1.0,
         orbital,
+        air: 0.0,
     }
 }
 

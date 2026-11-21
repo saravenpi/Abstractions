@@ -21,7 +21,7 @@ const GAME_FRAME: usize = 800;
 fn nothing_swells_in_the_band_of_a_pulse() {
     let below = SURGE.1 * (2.0 / PI * (5.0 / SURGE.0).atan()).sqrt();
     assert!(20.0 * (1.0 + below).log10() < 0.5, "{below}");
-    assert!(1.0 / ((TWIN - 1.0) * SHAFT_HZ) > 10.0);
+    const { assert!(1.0 / ((TWIN - 1.0) * SHAFT_HZ) > 10.0) };
     assert!(1.0 / GUST.0 >= 10.0);
 }
 

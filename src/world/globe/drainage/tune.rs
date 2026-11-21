@@ -14,9 +14,7 @@ pub const STATION: f64 = 2000.0;
 /// Candidate bases the shore search returns, at most.
 pub const STARTS: usize = 8;
 
-/// Lowest and highest latitude in degrees, north or south, a start is taken from: mild land, off the poles
-/// and the tropics.
-pub const LATITUDE: (f64, f64) = (20.0, 48.0);
+pub use crate::universe::SHORES as LATITUDE;
 
 /// Most candidate cells the search for starts measures on the real ground, so that a planet whose grid shores are not shores of
 /// its real ground still ends the search.

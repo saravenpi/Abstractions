@@ -15,7 +15,7 @@ use crate::world::Biome;
 const COLD: f32 = 267.0;
 
 /// Kelvin over which the land is desert or tropical.
-const HOT: f32 = 299.0;
+pub(super) const HOT: f32 = 299.0;
 
 /// Wetness under which hot land is desert.
 const ARID: f32 = 0.4;

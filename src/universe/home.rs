@@ -6,7 +6,7 @@
 //! of a galaxy cannot serve: at real scale it is a void hundreds of light-years wide inside a
 //! core packed to the cap, and a search from there finds no neighbourhood like ours.
 
-use std::f64::consts::{PI, TAU};
+use std::f64::consts::TAU;
 
 use bevy::math::{DVec3, IVec3};
 
@@ -62,9 +62,14 @@ pub const MILD: (f64, f64) = (273.15, 308.15);
 /// of the hills on the horizon.
 pub const LIT: f64 = 25.0;
 
-/// Latitudes and longitudes of the grid a planet is looked over for a fair place: every 12 degrees
-/// from 60 south to 60 north, every 3 degrees round.
-const GRID: (usize, usize) = (11, 120);
+/// Lowest and highest latitude in degrees, north or south, a new game starts at and a home base
+/// stands at: mild land, off the poles and the tropics. The shores of the drainage grid are taken
+/// from it, and a home must have a fair place in it.
+pub const SHORES: (f64, f64) = (20.0, 48.0);
+
+/// Latitudes in each half and longitudes of the grid a planet is looked over for a fair place:
+/// every 7 degrees across [`SHORES`], north and south, every 3 degrees round.
+const GRID: (usize, usize) = (5, 120);
 
 /// Lowest and highest surface gravity in metres per second squared of a home: 0.7 and 1.3
 /// standard gravities.
@@ -82,7 +87,7 @@ pub const COMFORT: (f64, f64) = (0.7 * STANDARD_GRAVITY, 1.3 * STANDARD_GRAVITY)
 /// rung or higher, where plants stand in layered forests and animals walk in herds, that life
 /// is built on water, the planet has seas and land in balance, water is liquid at the surface,
 /// the mean temperature is between 0 and 35 C, the surface gravity is within [`COMFORT`], and
-/// some place is fair, see [`fair`].
+/// some place where a base can stand is fair, see [`fair`].
 pub(super) fn homely(planet: &PlanetSpec, rung: Rung, world: &World) -> bool {
     let record = &planet.record;
     let water = chem::solvent(world).is_some_and(|(solvent, _)| solvent == Solvent::Water);
@@ -92,17 +97,22 @@ pub(super) fn homely(planet: &PlanetSpec, rung: Rung, world: &World) -> bool {
     rung >= Rung::Skeletal && water && mild && seas && pull && fair(planet)
 }
 
-/// Returns true when some place of `planet` is mild and lit: over a day the star reaches [`LIT`]
-/// there and the annual mean air is within [`MILD`], see [`Fair::lack`]. A planet that turns
-/// always has one. A planet locked to its star has none when its day side is too hot wherever the
-/// star stands that high, and then its only mild ground lies in the dusk or the dark: no base
-/// would see the day on it.
+/// Returns true when some place of `planet` at the latitudes a base stands at, [`SHORES`], is fair:
+/// over a day the star reaches [`LIT`] there and the annual mean air is mild and under the heat of
+/// a desert, see [`Fair::lack`]. The base search ranks its shores by the same rule at the same
+/// latitudes. A planet that turns has such a place. A planet locked to its star has none when its
+/// day side is a desert wherever the star stands that high, over a mean of about 19 C: its green
+/// ground then lies in the dusk or the dark, and no base would see both the day and a plant on it.
 fn fair(planet: &PlanetSpec) -> bool {
     let rule = Fair::of(&Setting::of(planet), Daystar::of(planet));
     let (rows, columns) = GRID;
-    (0..rows * columns).any(|i| {
-        let lat = ((i / columns) as f64 / (rows - 1) as f64 - 0.5) * PI * 2.0 / 3.0;
-        let lon = (i % columns) as f64 * TAU / columns as f64;
+    (0..2 * rows * columns).any(|i| {
+        let (row, side) = (i / columns % rows, [1.0, -1.0][i / columns / rows]);
+        let degrees = SHORES.0 + (SHORES.1 - SHORES.0) * row as f64 / (rows - 1) as f64;
+        let (lat, lon) = (
+            side * degrees.to_radians(),
+            (i % columns) as f64 * TAU / columns as f64,
+        );
         let dir = DVec3::new(lat.cos() * lon.cos(), lat.sin(), -lat.cos() * lon.sin());
         rule.lack(dir) == 0.0
     })

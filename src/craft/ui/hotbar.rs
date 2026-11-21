@@ -17,6 +17,9 @@ pub const SIDE: f32 = 56.0;
 /// Height in pixels of the accent bar that marks the held slot.
 const MARK: f32 = theme::S1;
 
+/// Fill of a slot that holds nothing: lighter than the fill of one that does.
+const EMPTY: Color = Color::srgba(0.02, 0.025, 0.035, 0.32);
+
 /// Width in pixels of the wear bar of a slot.
 const BAR: f32 = 32.0;
 
@@ -72,7 +75,10 @@ fn slot(at: usize, tool: Option<(Shape, f32)>, held: bool) -> impl Bundle {
         padding: UiRect::axes(px(theme::S1), px(theme::S2)),
         ..default()
     };
-    let back = [theme::PANEL, theme::SELECT][usize::from(held)];
+    let back = match tool.is_some() {
+        true => theme::PANEL,
+        false => EMPTY,
+    };
     let ink = [theme::TEXT_2, theme::TEXT][usize::from(held)];
     let (shape, worn) = tool.unwrap_or((None, 1.0));
     let drawn = match tool.is_some() {

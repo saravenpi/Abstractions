@@ -199,7 +199,7 @@ pub(super) fn update(
     reach: Reach,
     mut shown: Local<Option<(Option<KeyCode>, String)>>,
     fresh: Query<(), Added<Prompt>>,
-    mut rows: Query<&mut Node, With<Prompt>>,
+    mut rows: Query<(&mut Node, &mut BackgroundColor), With<Prompt>>,
     (mut actions, mut keys): Texts,
 ) {
     let wanted = choose(&reach.state());
@@ -208,8 +208,11 @@ pub(super) fn update(
     }
     shown.clone_from(&wanted);
     let display = [Display::None, Display::Flex][usize::from(wanted.is_some())];
-    for mut node in &mut rows {
+    let fill = [theme::PANEL_DEEP, theme::PANEL]
+        [usize::from(wanted.as_ref().is_none_or(|(key, _)| key.is_some()))];
+    for (mut node, mut back) in &mut rows {
         node.display = display;
+        back.set_if_neq(BackgroundColor(fill));
     }
     let Some((key, words)) = wanted else {
         return;

@@ -43,6 +43,8 @@ mod tests_frame;
 #[cfg(test)]
 mod tests_hints;
 #[cfg(test)]
+mod tests_icons;
+#[cfg(test)]
 mod tests_prompt;
 #[cfg(test)]
 mod tests_rows;

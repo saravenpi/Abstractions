@@ -30,6 +30,8 @@ pub enum Element {
     Apsides,
     /// Landing gear.
     Gear,
+    /// The headlight switch of the ship.
+    Headlight,
     /// The warp spool bar.
     Spool,
     /// The frame integrity row. It hides by itself while the body is whole.
@@ -45,7 +47,7 @@ pub enum Element {
 impl Element {
     /// Every element.
     #[cfg(test)]
-    pub const ALL: [Element; 17] = [
+    pub const ALL: [Element; 18] = [
         Element::Compass,
         Element::Cardinals,
         Element::Minimap,
@@ -58,6 +60,7 @@ impl Element {
         Element::Assist,
         Element::Apsides,
         Element::Gear,
+        Element::Headlight,
         Element::Spool,
         Element::Integrity,
         Element::Prompt,
@@ -128,13 +131,14 @@ pub const fn shown(context: Context) -> Set {
         Context::OnFoot => (GROUND, &[Element::Herds]),
         Context::Swimming => (GROUND, &[]),
         Context::Gliding => (GROUND, &[Element::Altitude, Element::Speed, Element::Herds]),
-        Context::ShipLanded => (Set(GROUND.0 | HELM.0), &[Element::Gear]),
+        Context::ShipLanded => (Set(GROUND.0 | HELM.0), &[Element::Gear, Element::Headlight]),
         Context::ShipAir => (
             Set(GROUND.0 | HELM.0),
             &[
                 Element::Altitude,
                 Element::Speed,
                 Element::Gear,
+                Element::Headlight,
                 Element::Herds,
             ],
         ),

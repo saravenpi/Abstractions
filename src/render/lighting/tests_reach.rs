@@ -4,8 +4,8 @@ use bevy::light::CascadeShadowConfig;
 
 use super::quality::cascades;
 use super::reach::reach;
-use super::tune::{LOCAL_FLOOR_LUX, MOON_SHADOW_LUX};
-use crate::settings::ShadowReach;
+use super::tune::{FIRST_BOUND, LOCAL_FLOOR_LUX, MOON_SHADOW_LUX};
+use crate::settings::{ShadowDetail, ShadowReach};
 
 /// The reach follows the inverse square law: four times the power doubles it, and at the reach the
 /// lamp gives the floor in lux. The lamp of the robot, 850 lm, keeps its 3.5 m.
@@ -21,15 +21,47 @@ fn the_reach_follows_the_inverse_square_law() {
     const { assert!(LOCAL_FLOOR_LUX < MOON_SHADOW_LUX) };
 }
 
-/// Every reach ends its last cascade where it says, the far one has a third cascade, and the
-/// bounds rise.
+/// Every reach ends its last cascade where it says, starts with the 12 m cascade of the robot,
+/// and its bounds rise by a constant ratio of at most 4.6.
 #[test]
 fn the_cascades_end_at_the_reach() {
-    for reach in [ShadowReach::Near, ShadowReach::Normal, ShadowReach::Far] {
+    let counts = [
+        (ShadowReach::Near, 2),
+        (ShadowReach::Normal, 3),
+        (ShadowReach::Far, 4),
+    ];
+    for (reach, count) in counts {
         let CascadeShadowConfig { bounds, .. } = cascades(reach);
-        assert_eq!(bounds.len(), reach.cascades());
+        assert_eq!((bounds.len(), reach.cascades()), (count, count));
         assert!((bounds[bounds.len() - 1] - reach.metres()).abs() < 1.0e-3);
-        assert!(bounds.windows(2).all(|pair| pair[1] > pair[0]));
+        assert!((bounds[0] - FIRST_BOUND).abs() < 1.0e-3);
+        assert!(
+            bounds
+                .windows(2)
+                .all(|pair| pair[1] > pair[0] && pair[1] < 4.6 * pair[0])
+        );
     }
-    assert!((cascades(ShadowReach::Normal).bounds[0] - 28.0).abs() < 1.0e-3);
+    let normal = cascades(ShadowReach::Normal).bounds;
+    assert!((normal[1] - 36.3).abs() < 0.1, "{normal:?}");
+}
+
+/// Returns the size in metres of one texel of the first cascade on a map of `side` texels, for a
+/// camera with the game's 75 degree vertical field of view on a 16 by 9 picture: the cascade is as
+/// wide as the far face of the first slice of the view, as Bevy sizes it.
+fn first_texel(side: f32) -> f32 {
+    let half_high = FIRST_BOUND * (75.0f32.to_radians() / 2.0).tan();
+    let half_wide = half_high * 16.0 / 9.0;
+    2.0 * half_high.hypot(half_wide) / side
+}
+
+/// The first cascade gives the robot and the companion texels under 2 cm on a High map and under
+/// 4 cm on a Low one, so the 5 by 5 filter of the shadow spans less than a limb on High.
+#[test]
+fn the_first_cascade_draws_limbs() {
+    let (high, low) = (
+        first_texel(ShadowDetail::High.map_size() as f32),
+        first_texel(ShadowDetail::Low.map_size() as f32),
+    );
+    assert!(high < 0.02 && low < 0.04, "{high} {low}");
+    assert!(5.0 * high < 0.1);
 }

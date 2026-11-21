@@ -3,7 +3,7 @@
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
-use super::{here, key};
+use super::{flight, here, key};
 use crate::audio::{AudioCue, ChirpKind};
 use crate::companion::CompanionChirp;
 use crate::computer::{Atlas, Engage, RouteStatus, Target, ship_position, target_position};
@@ -33,7 +33,7 @@ fn neighbour(game: &Game, home: BodyId) -> BodyId {
 }
 
 /// Returns the metres from the ship to the centre of planet `body`.
-fn distance_to(game: &mut Game, body: BodyId) -> f64 {
+pub(super) fn distance_to(game: &mut Game, body: BodyId) -> f64 {
     let (universe, time) = (game.get::<Universe>(), game.get::<Clock>().seconds);
     let ship = game.ship();
     let here = ship_position(&universe, ship.frame, ship.pos, time).expect("the ship is somewhere");
@@ -69,9 +69,7 @@ pub fn warps_to_another_planet(game: &mut Game, home: BodyId) -> BodyId {
     game.step(40);
     assert!(game.get::<FlightFx>().warp > 0.9, "no warp effect");
     assert!(game.get::<crate::audio::AudioScene>().warping);
-    game.until("the ship to arrive", 9000, |game| {
-        game.get::<Autopilot>().phase() == Phase::Arrived
-    });
+    flight::until_arrived(game, far);
     game.step(3);
     arrived(game, far);
     far

@@ -9,9 +9,12 @@ use crate::render::{Craft, Heat, LocalSystem, MIN_SPEED, Vantage, entry};
 /// Radius in metres of the sphere that holds the body of the robot.
 const BODY_RADIUS: f32 = 0.9;
 
-/// Run condition: the robot flies fast enough, through air, for its nose to heat.
-pub fn fast(scene: Res<Scene>) -> bool {
-    scene.active && scene.air_density > 0.0 && f64::from(scene.state.airspeed) >= MIN_SPEED
+/// Run condition: the robot flies fast enough, through air, for its nose to heat, or its skin
+/// still glows or cools after the air.
+pub fn fast(scene: Res<Scene>, heat: Option<Res<Heat>>) -> bool {
+    let heating = scene.air_density > 0.0 && f64::from(scene.state.airspeed) >= MIN_SPEED;
+    let cooling = heat.is_some_and(|heat| heat.glow.heat > 0.0 || heat.glow.kelvin > 0.0);
+    scene.active && (heating || cooling)
 }
 
 /// Offers the heat of the robot: the glow of its speed through the air it is in.

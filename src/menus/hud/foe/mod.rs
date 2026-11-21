@@ -211,7 +211,7 @@ pub(super) fn show(
             gather(
                 found,
                 (&camera, screen, frustum),
-                (&beasts, &parts),
+                (&beasts, &parts, anchor.as_deref()),
                 mark.victim,
             );
             lay(found, screen, labels, taken);

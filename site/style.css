@@ -277,12 +277,54 @@ footer a.brand {
   inset: -12rem calc(50% - 50vw) 0;
   z-index: -1;
   background:
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 28%, rgba(0, 0, 0, 0.3) 52%, rgba(0, 0, 0, 0.85) 82%, var(--black)),
-    url("hero.jpg?v=1") 50% 62% / cover no-repeat;
-  background:
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 28%, rgba(0, 0, 0, 0.3) 52%, rgba(0, 0, 0, 0.85) 82%, var(--black)),
-    image-set(url("hero.webp?v=1") type("image/webp"), url("hero.jpg?v=1") type("image/jpeg")) 50% 62% / cover no-repeat;
-  image-rendering: pixelated;
+    linear-gradient(rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0.28)),
+    linear-gradient(to right, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0) 60%),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 28%, rgba(0, 0, 0, 0.3) 52%, rgba(0, 0, 0, 0.85) 82%, var(--black));
+}
+
+.show {
+  position: absolute;
+  inset: -12rem calc(50% - 50vw) 0;
+  z-index: -2;
+  overflow: hidden;
+  background: var(--black);
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  transition: opacity 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity;
+}
+
+.layer.on {
+  opacity: 1;
+}
+
+.layer img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 62%;
+  transform: scale(1.05);
+  transform-origin: 50% 62%;
+}
+
+.layer.go img {
+  animation: pan 9s linear both;
+  will-change: transform;
+}
+
+.show.idle .layer.go img {
+  animation-play-state: paused;
+}
+
+@keyframes pan {
+  from { transform: scale(1.05) translate3d(0, 0, 0); }
+  to { transform: scale(1.1) translate3d(var(--px, -1.2%), var(--py, -0.8%), 0); }
 }
 
 h1 {
@@ -459,6 +501,7 @@ section + section {
 }
 
 .facts li {
+  position: relative;
   padding: var(--s5) var(--s4) var(--s6);
   background: var(--fill);
 }
@@ -859,11 +902,8 @@ pre.sample code {
 
   .hero::before {
     background:
-      linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.45) 40%, rgba(0, 0, 0, 0.6) 70%, var(--black)),
-      url("hero.jpg?v=1") 50% 62% / cover no-repeat;
-    background:
-      linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.45) 40%, rgba(0, 0, 0, 0.6) 70%, var(--black)),
-      image-set(url("hero.webp?v=1") type("image/webp"), url("hero.jpg?v=1") type("image/jpeg")) 50% 62% / cover no-repeat;
+      linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2)),
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.45) 40%, rgba(0, 0, 0, 0.6) 70%, var(--black));
   }
 
   .intro .label,
@@ -991,6 +1031,14 @@ pre.sample code {
   footer a {
     transition: none;
   }
+
+  .layer {
+    transition-duration: 0.01s;
+  }
+
+  .layer.go img {
+    animation: none;
+  }
 }
 
 .shots .head {
@@ -1091,4 +1139,25 @@ pre.sample code {
   .shot {
     flex-basis: 88%;
   }
+}
+
+[data-release="pre"] .live,
+[data-release="live"] .pre {
+  display: none;
+}
+
+.arrives {
+  order: -1;
+  flex: 1 0 100%;
+  color: var(--white);
+}
+
+.facts .tag {
+  position: absolute;
+  top: var(--s4);
+  right: var(--s4);
+  font-size: var(--t-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--white);
 }

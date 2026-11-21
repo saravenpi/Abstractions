@@ -16,7 +16,7 @@ The order from 0.12 on was set on 2026-11-20 from a study of what other explorat
 | 0.8 | Physical planets | released |
 | 0.9 | Climate and terrain | released |
 | 0.10 | Multiplayer | released |
-| 0.11 | Living worlds at real size | released |
+| 0.11 | Living worlds at real size | in progress |
 | 0.12 | Places worth the trip | planned |
 | 0.13 | Ground you can shape | planned |
 | 0.14 | Real space | planned |
@@ -120,7 +120,7 @@ Planets get a kind, and the kind comes from physics.
 
 ## 0.11: living worlds at real size
 
-**Status:** released
+**Status:** in progress
 
 Planets and the galaxy at their real size, each living planet with life that belongs to it.
 
@@ -134,12 +134,6 @@ Planets and the galaxy at their real size, each living planet with life that bel
 - Tracks, calls and nests lead you to animals, and the companion's field guide fills in as you watch.
 - A first step of hunting: creatures and the robot have health, and rocks are quarried by mass. The full loop is 0.17.
 - A reworked interface: one Go command, pins in place of waypoints and favourites, a HUD that shows only what applies, and markers on screen.
-- A living home planet: grass, herds, tracks and calls, with animals that notice you over time.
-- A redesigned ship with one hull, real engines and exhaust that follows thrust and air, and a full cockpit: seat, stick, throttle, pedals, gear lever and instruments that read the real flight state.
-- A redesigned robot and companion, in the same style as the ship.
-- Hunting and combat: blows hurt by their energy, the robot has health by part, and a pack, a hotbar and a workshop to make tools.
-- Lighting you can tune, from a Low preset for weak machines to Ultra.
-- Play with friends on the public server space.facile.studio, or on your own server.
 - Worlds made with 0.10 keep opening with 0.10. A 0.10 game cannot join a 0.11 server.
 
 ## 0.12: places worth the trip

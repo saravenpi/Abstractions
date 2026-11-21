@@ -3,6 +3,7 @@
   if (!track) return;
   const nav = document.querySelector(".shots-nav");
   const now = document.getElementById("shot-now");
+  document.getElementById("shot-total").textContent = track.children.length;
   const slides = Array.from(track.children);
   const calm = matchMedia("(prefers-reduced-motion: reduce)");
 

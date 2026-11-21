@@ -64,7 +64,7 @@
       <p>Start it:</p>
       <div class="cmd"><pre><code>abstractions-server</code></pre></div>
       <p>The first start creates a <code>data</code> folder where you run it, with a new world and a random seed. Then it prints something like this:</p>
-      <pre class="sample" aria-label="Sample output"><code>Abstractions server v0.11.0
+      <pre class="sample" aria-label="Sample output"><code>Abstractions server v0.10.1
 World     My universe (seed 482190773615204871)   ./data/world.toml
 Listening UDP 24650 on all addresses (0.0.0.0)
 Join at   192.168.1.20:24650
@@ -192,7 +192,7 @@ Environment="ABSTRACTIONS_PASSWORD=change-me"</code></pre></div>
     <div class="body">
       <p>The world is <code>data/world.toml</code>. The server saves it every 30 seconds and when it stops. It keeps the last 3 copies beside it, <code>world.toml.1</code> to <code>world.toml.3</code>.</p>
       <p>To back up, copy the whole data folder. It holds the world and the key.</p>
-      <p>A 0.10 game cannot join a 0.11 server. The multiplayer protocol changed, so your friends must update the game first.</p>
+      <p>A server and its players must run the same version. Version 0.11 changes the multiplayer protocol, so a 0.10 game cannot join a 0.11 server. When 0.11 is out, update the game and the server together.</p>
       <p>To update, run the install command again, then restart the server. With <code>--service</code>, the script restarts it for you.</p>
       <p>With Docker:</p>
       <div class="cmd"><pre><code>docker pull ghcr.io/saravenpi/abstractions-server

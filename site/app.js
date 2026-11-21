@@ -40,6 +40,15 @@
     return true;
   }
 
+  function newer(tag) {
+    const parts = /^v(\d+)\.(\d+)\.\d+$/.exec(tag);
+    return Boolean(parts) && (+parts[1] > 0 || +parts[2] >= 11);
+  }
+
+  function stage(live) {
+    document.documentElement.dataset.release = live ? "live" : "pre";
+  }
+
   function apply(release) {
     const date = new Date(release.published_at);
     const released = document.getElementById("released");
@@ -49,6 +58,7 @@
     released.dateTime = date.toISOString().slice(0, 10);
     released.textContent = date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
     buttons.forEach((button) => link(button, assets, release.tag_name));
+    stage(newer(release.tag_name));
   }
 
   highlight(detect());
@@ -57,5 +67,7 @@
   })
     .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
     .then(apply)
-    .catch(function () {});
+    .catch(function () {
+      stage(Date.now() > Date.parse("2026-11-23"));
+    });
 })();

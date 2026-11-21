@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-release="pre">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -22,10 +22,12 @@
 <link rel="alternate icon" type="image/png" sizes="96x96" href="favicon.png?v=1">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=1">
 <link rel="preload" href="fonts/undefined-medium.woff2?v=1" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="preload" as="image" type="image/webp" imagesrcset="hero/01-1280.webp?v=1 1280w, hero/01-1920.webp?v=1 1920w" imagesizes="100vw" fetchpriority="high">
+<link rel="stylesheet" href="style.css?v=8">
 <script src="app.js?v=5" defer></script>
 <script src="reveal.js?v=1" defer></script>
-<script src="carousel.js?v=1" defer></script>
+<script src="hero.js?v=1" defer></script>
+<script src="carousel.js?v=2" defer></script>
 </head>
 <body>
 <div class="light" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -38,10 +40,16 @@
 </header>
 <main>
   <section class="hero wrap" aria-labelledby="name">
+    <div class="show" id="show">
+      <figure class="layer on go">
+        <picture><source type="image/webp" srcset="hero/01-1280.webp?v=1 1280w, hero/01-1920.webp?v=1 1920w" sizes="100vw"><img src="hero/01-1280.jpg?v=1" srcset="hero/01-1280.jpg?v=1 1280w, hero/01-1920.jpg?v=1 1920w" sizes="100vw" width="1280" height="596" alt="The robot seen from behind on orange plains beside a grey landing pad, under a hazy sky with a pale sun." fetchpriority="high" decoding="async"></picture>
+      </figure>
+      <figure class="layer" aria-hidden="true"><picture><source type="image/webp"><img width="1280" height="596" alt="" decoding="async"></picture></figure>
+    </div>
     <h1 id="name">Abstractions</h1>
     <div class="intro">
       <p class="label">Free and open source</p>
-      <p class="lead">Galaxies of stars at their real distances, and every planet around them a whole world at its real size, its climate and its life set by physics. Walk it, glide off its cliffs, fly to the next star. Bring friends.</p>
+      <p class="lead">Galaxies of stars, and every planet around them a whole world, its climate set by physics. Walk it, glide off its cliffs, fly to the next star. Bring friends.</p>
     </div>
     <div id="download">
       <ul class="platforms">
@@ -68,7 +76,8 @@
         </li>
       </ul>
       <div class="under">
-        <p class="release">Latest release <span id="version">v0.11.0</span>, <time id="released" datetime="2026-11-21">21 November 2026</time></p>
+        <p class="release">Latest release <span id="version">v0.10.1</span>, <time id="released" datetime="2026-11-19">19 November 2026</time></p>
+        <p class="arrives pre">Version 0.11 arrives today. Until then the buttons download 0.10.1.</p>
         <p class="note" id="link-note">Each button downloads the latest release from GitHub. The file name says its version.</p>
       </div>
     </div>
@@ -76,62 +85,54 @@
 
   <section class="shots wrap reveal" aria-roledescription="carousel" aria-label="Screenshots of the game">
     <div class="head">
-      <h2 class="label" id="shots-title">In the game</h2>
+      <h2 class="label" id="shots-title">In the game<span class="pre">, version 0.11 arriving today</span></h2>
       <div class="shots-nav" hidden>
         <button type="button" data-step="-1" aria-label="Previous screenshot">Previous</button>
-        <span class="count" aria-live="polite"><span id="shot-now">1</span> / 8</span>
+        <span class="count" aria-live="polite"><span id="shot-now">1</span> / <span id="shot-total">6</span></span>
         <button type="button" data-step="1" aria-label="Next screenshot">Next</button>
       </div>
     </div>
     <div class="track" tabindex="0" role="group" aria-labelledby="shots-title">
       <figure class="shot" id="shot-1">
-        <picture><source type="image/webp" srcset="shots/01-home.webp?v=1"><img src="shots/01-home.jpg?v=1" width="1280" height="720" alt="The robot stands at its home base on the planet Kodya, seen from behind in third person, with its small floating companion beside it." decoding="async"></picture>
+        <picture><source type="image/webp" srcset="shots/01-home.webp?v=1266679379"><img src="shots/01-home.jpg?v=1266679379" width="1280" height="720" alt="The robot stands in front of its base on a green hillside: a grey cabin, a solar shelter and the ship on its pad, under a pink sky." decoding="async"></picture>
         <figcaption><span>01</span> At home on Kodya</figcaption>
       </figure>
       <figure class="shot" id="shot-2">
-        <picture><source type="image/webp" srcset="shots/02-ship.webp?v=1"><img src="shots/02-ship.jpg?v=1" width="1280" height="720" alt="The redesigned ship on the ground, seen from outside: one hull, swept wings, twin engines and landing gear." loading="lazy" decoding="async"></picture>
-        <figcaption><span>02</span> The ship</figcaption>
+        <picture><source type="image/webp" srcset="shots/02-characters.webp?v=4113994779"><img src="shots/02-characters.jpg?v=4113994779" width="1280" height="720" alt="The robot and its floating companion on a flat grey plain: white plates with orange accents over a dark frame, and a screen for a face on each." loading="lazy" decoding="async"></picture>
+        <figcaption><span>02</span> The robot and its companion</figcaption>
       </figure>
       <figure class="shot" id="shot-3">
-        <picture><source type="image/webp" srcset="shots/03-cockpit.webp?v=1"><img src="shots/03-cockpit.jpg?v=1" width="1280" height="720" alt="The cockpit seen from the pilot seat: the stick, the throttle lever and a dashboard of gauges, with the planet through the window." loading="lazy" decoding="async"></picture>
-        <figcaption><span>03</span> The cockpit</figcaption>
+        <picture><source type="image/webp" srcset="shots/03-ship.webp?v=3789731072"><img src="shots/03-ship.jpg?v=3789731072" width="1280" height="720" alt="The robot stands before the ship on its landing pad, canopy open: a swept delta wing, a tail fin and twin engines." loading="lazy" decoding="async"></picture>
+        <figcaption><span>03</span> The ship</figcaption>
       </figure>
       <figure class="shot" id="shot-4">
-        <picture><source type="image/webp" srcset="shots/04-herd.webp?v=1"><img src="shots/04-herd.jpg?v=1" width="1280" height="720" alt="A herd of grazing animals on the grass of the home planet." loading="lazy" decoding="async"></picture>
-        <figcaption><span>04</span> A herd at home</figcaption>
+        <picture><source type="image/webp" srcset="shots/04-cockpit.webp?v=1330081952"><img src="shots/04-cockpit.jpg?v=1330081952" width="1280" height="720" alt="The cockpit seen from the pilot seat: a dashboard with throttle, warp and gear bars, a speed and altitude readout and an attitude ball, and the companion floating by the window." loading="lazy" decoding="async"></picture>
+        <figcaption><span>04</span> The cockpit</figcaption>
       </figure>
       <figure class="shot" id="shot-5">
-        <picture><source type="image/webp" srcset="shots/05-flight.webp?v=1"><img src="shots/05-flight.jpg?v=1" width="1280" height="720" alt="The ship flying low over the land and sea of the home planet." loading="lazy" decoding="async"></picture>
+        <picture><source type="image/webp" srcset="shots/06-flight.webp?v=2476303413"><img src="shots/06-flight.jpg?v=2476303413" width="1280" height="720" alt="The ship flying at 300 metres along a coast with its engine lit, over brown hills, green land and a blue sea." loading="lazy" decoding="async"></picture>
         <figcaption><span>05</span> Flight over the planet</figcaption>
       </figure>
       <figure class="shot" id="shot-6">
-        <picture><source type="image/webp" srcset="shots/06-orbit.webp?v=1"><img src="shots/06-orbit.jpg?v=1" width="1280" height="720" alt="The home planet seen from orbit, with its clouds, seas and the line of dawn." loading="lazy" decoding="async"></picture>
-        <figcaption><span>06</span> From orbit</figcaption>
-      </figure>
-      <figure class="shot" id="shot-7">
-        <picture><source type="image/webp" srcset="shots/07-map.webp?v=1"><img src="shots/07-map.jpg?v=1" width="1280" height="720" alt="The map of a planet with pins and a course drawn on it." loading="lazy" decoding="async"></picture>
-        <figcaption><span>07</span> The map</figcaption>
-      </figure>
-      <figure class="shot" id="shot-8">
-        <picture><source type="image/webp" srcset="shots/08-together.webp?v=1"><img src="shots/08-together.jpg?v=1" width="1280" height="720" alt="Two players side by side, each a robot with its floating companion." loading="lazy" decoding="async"></picture>
-        <figcaption><span>08</span> Together</figcaption>
+        <picture><source type="image/webp" srcset="shots/07-orbit.webp?v=761032583"><img src="shots/07-orbit.jpg?v=761032583" width="1280" height="720" alt="The ship with its engine burning in orbit over a pale planet with blue seas, against a black sky of stars." loading="lazy" decoding="async"></picture>
+        <figcaption><span>06</span> In orbit</figcaption>
       </figure>
     </div>
   </section>
 
   <section class="game wrap reveal" aria-labelledby="game-title">
     <div class="head">
-      <h2 class="label" id="game-title">The game today</h2>
+      <h2 class="label" id="game-title">The game</h2>
       <p class="statement">Walk, glide, fly and warp. There are no quests.</p>
       <p class="aside">You walk, glide, fly and warp. There is no goal but to see what is past the next star. A second robot floats along with you.</p>
     </div>
     <ul class="facts">
       <li><svg class="icon big" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20h2v2H2V6h2v14Zm12 0h2v2h-4v-2h-2v-2h2V8h-2V6h4v14Zm-8 0H6v-2h2v2Zm12 0h-2v-2h2v2ZM10 4h2v2h-2v10h2v2H8V4H6V2h4v2Zm12 14h-2V4h-2V2h4v16ZM6 6H4V4h2v2Zm12 0h-2V4h2v2Z"/></svg><h3>One seed</h3><p>Every galaxy, star, planet and moon comes from one number. Visiting a system reveals the systems around it.</p></li>
-      <li><svg class="icon big" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 2h2v2h-2zM9 4h2v2H9zm4 0h2v2h-2zm2 2h2v2h-2zM7 6h2v2H7zm0 4h2v2H7zm-2 2h2v2H5zm2 2h2v2H7zm-2 2h2v2H5zm-2 2h18v2H3zM13 8h2v2h-2zm2 2h2v2h-2zM9 8h2v2H9zm8 4h2v2h-2zm-2 2h2v2h-2zm2 2h2v2h-2zm-6 4h2v2h-2z"/></svg><h3>Real-size planets</h3><p>Kodya is 6,371 km across, with the gravity of Earth. Stars are light-years apart. Each planet has its own day, climate and seasons, and you can walk all the way around it.</p></li>
-      <li><svg class="icon big" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 12h2v8h-2zM9 20h6v2H9zM5 6h2v2H5zM7 8h4v2H7zM17 6h2v2h-2zM13 8h4v2h-4zM3 4h2v2H3zM19 4h2v2h-2z"/></svg><h3>A living home planet</h3><p>Grass, herds, tracks and calls. Plants and animals follow the climate and the star of their planet. Remove the hunters from a valley and the grazers rise.</p></li>
-      <li><svg class="icon big" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 2h2v5h-2zM11 17h2v5h-2zM2 11h5v2H2zM17 11h5v2h-5zM9 7h6v2H9zM9 15h6v2H9zM7 9h2v6H7zM15 9h2v6h-2z"/></svg><h3>Hunting</h3><p>Hunters stalk and herds flee. A blow hurts by its energy, and the robot has health by part. Make tools from what you carry.</p></li>
-      <li><svg class="icon big" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 9h2v6h-2zm-2-2h2v2h-2zm0 8h2v2h-2zm-6 2h6v2h-6zm0-12h6v2h-6zM2 7h2v10H2zm2 2h2v2H4zm0 4h2v2H4zm2-2h2v2H6zm2-2h2v2H8zm0 4h2v2H8zm2 2h2v2h-2zm0-8h2v2h-2zm5 3h2v2h-2z"/></svg><h3>A ship with a cockpit</h3><p>Take off through the clouds and land anywhere. The flight is Newtonian, with real orbits, a warp drive and an autopilot. In the cockpit, the stick, the throttle and the gauges show what the ship does.</p></li>
-      <li><svg class="icon big" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 2h2v3h-2zM7 5h10v2H7zM5 7h2v8H5zM17 7h2v8h-2zM7 15h10v2H7zM9 9h2v2H9zM13 9h2v2h-2zM8 19h3v2H8zM13 19h3v2h-3z"/></svg><h3>A new robot and companion</h3><p>The robot, its floating companion and the ship were redrawn as one family, with sleek plates over a dark frame.</p></li>
+      <li><svg class="icon big" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 2h2v2h-2zM9 4h2v2H9zm4 0h2v2h-2zm2 2h2v2h-2zM7 6h2v2H7zm0 4h2v2H7zm-2 2h2v2H5zm2 2h2v2H7zm-2 2h2v2H5zm-2 2h18v2H3zM13 8h2v2h-2zm2 2h2v2h-2zM9 8h2v2H9zm8 4h2v2h-2zm-2 2h2v2h-2zm2 2h2v2h-2zm-6 4h2v2h-2z"/></svg><p class="tag"><span class="pre">Arrives with 0.11</span><span class="live">New in 0.11</span></p><h3>Real-size planets</h3><p>Kodya is 6,371 km across, with the gravity of Earth. Stars are light-years apart. Each planet has its own day, climate and seasons, and you can walk all the way around it.</p></li>
+      <li><svg class="icon big" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 12h2v8h-2zM9 20h6v2H9zM5 6h2v2H5zM7 8h4v2H7zM17 6h2v2h-2zM13 8h4v2h-4zM3 4h2v2H3zM19 4h2v2h-2z"/></svg><p class="tag"><span class="pre">Arrives with 0.11</span><span class="live">New in 0.11</span></p><h3>A living home planet</h3><p>Grass, herds, tracks and calls. Plants and animals follow the climate and the star of their planet. Remove the hunters from a valley and the grazers rise.</p></li>
+      <li><svg class="icon big" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 2h2v5h-2zM11 17h2v5h-2zM2 11h5v2H2zM17 11h5v2h-5zM9 7h6v2H9zM9 15h6v2H9zM7 9h2v6H7zM15 9h2v6h-2z"/></svg><p class="tag"><span class="pre">Arrives with 0.11</span><span class="live">New in 0.11</span></p><h3>Hunting</h3><p>Hunters stalk and herds flee. A blow hurts by its energy, and the robot has health by part. Make tools from what you carry.</p></li>
+      <li><svg class="icon big" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 9h2v6h-2zm-2-2h2v2h-2zm0 8h2v2h-2zm-6 2h6v2h-6zm0-12h6v2h-6zM2 7h2v10H2zm2 2h2v2H4zm0 4h2v2H4zm2-2h2v2H6zm2-2h2v2H8zm0 4h2v2H8zm2 2h2v2h-2zm0-8h2v2h-2zm5 3h2v2h-2z"/></svg><p class="tag"><span class="pre">Arrives with 0.11</span><span class="live">New in 0.11</span></p><h3>A ship with a cockpit</h3><p>Take off through the clouds and land anywhere. The flight is Newtonian, with real orbits, a warp drive and an autopilot. In the cockpit, the stick, the throttle and the gauges show what the ship does.</p></li>
+      <li><svg class="icon big" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 2h2v3h-2zM7 5h10v2H7zM5 7h2v8H5zM17 7h2v8h-2zM7 15h10v2H7zM9 9h2v2H9zM13 9h2v2h-2zM8 19h3v2H8zM13 19h3v2h-3z"/></svg><p class="tag"><span class="pre">Arrives with 0.11</span><span class="live">New in 0.11</span></p><h3>A new robot and companion</h3><p>The robot, its floating companion and the ship were redrawn as one family, with sleek plates over a dark frame.</p></li>
       <li><svg class="icon big" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20h16v2H4zm16-10h2v10h-2zM2 10h2v10H2zm2-2h2v2H4zm2-2h2v2H6zm2-2h2v2H8zm2-2h4v2h-4zm4 2h2v2h-2zm2 2h2v2h-2zm2 2h2v2h-2zM8 14h2v6H8zm2-2h4v2h-4zm4 2h2v6h-2z"/></svg><h3>Wingsuit and boots</h3><p>Jump off a mountain and glide. Fire the boots to climb again. They never run out.</p></li>
       <li><svg class="icon big" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 22H8v-2h10v2ZM8 20H6v-2h2v2Zm12 0h-2v-2h2v2ZM6 18H4v-2h2v2Zm16 0h-2v-4h-2v-2h2v-2h2v8ZM4 16H2V6h2v10Zm14 0h-6v-2h6v2Zm-6-2h-2v-2h2v2Zm-2-2H8V6h2v6ZM6 6H4V4h2v2Zm8-2h-2v2h-2V4H6V2h8v2Z"/></svg><h3>Music per planet</h3><p>Each planet plays its own generated chords. In space you hear nothing.</p></li>
       <li><svg class="icon big" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 18H9v-4h2v4Zm-4-1H5v-2h2v2Zm12-2v2h-2v-2h2ZM5 15H3v-2h2v2Zm16 0h-2v-2h2v2Zm-8-1h-2v-4h2v4ZM3 13H1v-2h2v2Zm20 0h-2v-2h2v2ZM5 11H3V9h2v2Zm16 0h-2V9h2v2Zm-6-1h-2V6h2v4ZM7 9H5V7h2v2Zm12 0h-2V7h2v2Z"/></svg><h3>Open source</h3><p>Free to download. The code is MIT licensed and on GitHub.</p></li>
@@ -161,7 +162,7 @@
         <li><svg class="icon " xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 19h2v2h-2zm-4-3h2v2H7zm8 0h2v2h-2zm-6-2h6v2H9zm-5-1h2v2H4zm2-2h2v2H6zm2-2h8v2H8zm-7 1h2v2H1zm20 0h2v2h-2zM3 8h2v2H3zm2-2h2v2H5zm2-2h10v2H7zm12 4h2v2h-2zm-2-2h2v2h-2zm1 7h2v2h-2zm-2-2h2v2h-2z"/></svg><span>Pause and open your world to your local network. Friends on the same network find it under Multiplayer.</span></li>
         <li><svg class="icon " xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 7h4v2H6zm0 8h4v2H6zM2 5h2v14H2zm18 0h2v14h-2zM4 19h16v2H4zM4 3h16v2H4zm0 8h16v2H4z"/></svg><span>Join the public server space.facile.studio. It is already in the game's server list.</span></li>
         <li><svg class="icon " xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 7h4v2H6zm0 8h4v2H6zM2 5h2v14H2zm18 0h2v14h-2zM4 19h16v2H4zM4 3h16v2H4zm0 8h16v2H4z"/></svg><span>Or run a server on Linux, a Raspberry Pi or Docker. It takes one command.</span></li>
-        <li><svg class="icon " xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 15v4h-2v-4zm-2 4v2H5v-2zM5 15v4H3v-4zm8-12v14h-2V3z"/><path d="M7 11v2h10v-2zm2 2v2h2v-2zm4 0v2h2v-2z"/><path d="M15 11v2h2v-2z"/></svg><span>Every player needs version 0.11. A 0.10 game cannot join a 0.11 server, so friends must update.</span></li>
+        <li><svg class="icon " xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 15v4h-2v-4zm-2 4v2H5v-2zM5 15v4H3v-4zm8-12v14h-2V3z"/><path d="M7 11v2h10v-2zm2 2v2h2v-2zm4 0v2h2v-2z"/><path d="M15 11v2h2v-2z"/></svg><span class="pre">Version 0.11 changes the multiplayer protocol. A 0.10 game cannot join a 0.11 server, so when it is out, friends must update.</span><span class="live">Every player needs version 0.11. A 0.10 game cannot join a 0.11 server, so friends must update.</span></li>
       </ul>
     </div>
     <a class="button" href="/server/">

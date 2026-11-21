@@ -85,7 +85,7 @@ latest_tag() {
 
 check_tag() {
 	[ "$1" = "<latest>" ] && return 0
-	printf '%s\n' "$1" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || fail "'$1' is not a version like v0.11.0."
+	printf '%s\n' "$1" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || fail "'$1' is not a version like v0.10.1."
 }
 
 sha256() {

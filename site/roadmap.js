@@ -21,6 +21,7 @@
   let shown = "";
   let live = false;
   let current = "all";
+  let tagged = false;
 
   function escape(text) {
     return String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -303,6 +304,22 @@
     rules.hidden = !data.rules;
   }
 
+  function released() {
+    const arrives = document.getElementById("arrives");
+    const hide = function () {
+      tagged = true;
+      arrives.hidden = true;
+    };
+    if (Date.now() > Date.parse("2026-11-23")) return hide();
+    fetch("https://api.github.com/repos/saravenpi/Abstractions/releases/latest", { headers: { Accept: "application/vnd.github+json" } })
+      .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
+      .then(function (release) {
+        const tag = /^v(\d+)\.(\d+)\.\d+$/.exec(release.tag_name);
+        if (tag && (+tag[1] > 0 || +tag[2] >= 11)) hide();
+      })
+      .catch(function () {});
+  }
+
   function draw(data) {
     const first = !timeline.children.length;
     const opened = new Set(Array.from(timeline.querySelectorAll(".stone.is-open"), (li) => li.id));
@@ -312,6 +329,7 @@
       fragment.append(card(stone, first ? stone === lead : opened.has(stone.id)));
     });
     intro(data);
+    document.getElementById("arrives").hidden = tagged || !data.milestones.some((stone) => stone.id === "v0-11" && stone.kind === "progress");
     timeline.replaceChildren(fragment);
     summary.textContent = counts(data.milestones);
     filter.hidden = false;
@@ -345,6 +363,7 @@
   });
   window.addEventListener("hashchange", jump);
   note.textContent = "Loading the roadmap.";
+  released();
 
   const shipped = get(SHIPPED).then((text) => show(text, "shipped"));
   const fresh = get(LIVE, { Accept: "application/vnd.github.raw" }).then((text) => show(text, "live"));

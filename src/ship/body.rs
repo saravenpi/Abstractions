@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use super::warp::Warp;
 use crate::effects::Churn;
 use crate::space::Frame;
+use crate::universe::BodyId;
 
 /// The player's ship: a rigid body simulated in 64 bits.
 ///
@@ -87,6 +88,7 @@ impl Ship {
             manual: !self.assist,
             seated: false,
             gear: Some(self.gear),
+            beside: None,
         }
     }
 
@@ -149,4 +151,24 @@ pub struct ShipState {
     /// gear folded does not hold it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gear: Option<f64>,
+    /// The planet or moon the ship is beside in the frame of a star, when it is inside its Hill
+    /// sphere. The body moves on while nobody plays, so the ship is brought back by this and not
+    /// by `pos`. A ship on a surface or in open space has none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub beside: Option<Beside>,
+}
+
+/// Where a ship is against the body it is beside: what stays true while the body goes round
+/// its star.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+pub struct Beside {
+    /// The planet or the moon.
+    pub body: BodyId,
+    /// Position in metres from the centre of the body, in the axes of the system.
+    pub pos: [f64; 3],
+    /// Velocity in metres per second relative to the body, in the axes of the system.
+    pub vel: [f64; 3],
+    /// Universe time in seconds the record was taken at: at that time `pos` of the record is
+    /// exact and is used as it is.
+    pub clock: f64,
 }

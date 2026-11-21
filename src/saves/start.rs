@@ -11,7 +11,6 @@ use crate::map::explored::Explored;
 use crate::menus::Menu;
 use crate::screens::Screen;
 use crate::space::Clock;
-use crate::universe::Universe;
 use crate::world::WorldSeed;
 
 /// Run condition: the world being loaded has never been played on a planet, so it starts as a
@@ -41,7 +40,7 @@ impl Starter<'_, '_> {
             return;
         }
         entry.save.last_played = now();
-        let universe = Universe::new(entry.save.seed);
+        let universe = entry.save.universe();
         let atlas = entry.save.atlas.clone();
         let atlas = atlas.unwrap_or_else(|| Atlas::new(&universe));
         self.commands

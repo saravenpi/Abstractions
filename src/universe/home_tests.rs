@@ -49,13 +49,14 @@ fn home_is_landable_and_alive() {
     assert!(dead.is_empty(), "{dead:?}");
 }
 
-/// No star nearer to the Sun-like point of the home galaxy than the home star has a homely
+/// Under the rule of 0.11.0, the rule of the worlds saved before the home had to be Earth-like,
+/// no star nearer to the Sun-like point of the home galaxy than the home star has a homely
 /// landable planet: the home is the nearest one.
 #[test]
 fn home_is_the_nearest_homely_planet() {
     for seed in 0..12 {
-        let u = Universe::new(seed);
-        let (planet, star) = home(seed);
+        let u = Universe::under(seed, 0);
+        let (planet, star) = (u.planet(u.home()), u.system(u.home().star).star);
         let world = life::World::of(&planet, &star);
         let rung = life::odds::rung(&world, planet.seed);
         if !rung.is_some_and(|rung| homely(&planet, rung, &world)) {

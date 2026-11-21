@@ -92,6 +92,7 @@ impl Room {
         Welcome {
             you,
             seed: self.world.seed,
+            home: self.world.home,
             clock: self.clock(now),
             changes: self.world.changes.clone(),
             atlas: self.world.atlas.clone(),

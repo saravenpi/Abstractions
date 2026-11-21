@@ -79,7 +79,7 @@ pub use vitals::{HARM_PARTS, VitalsBody};
 
 /// Version of the protocol. A player and a server must hold the same number to play together.
 /// Raise it whenever bytes on the wire change meaning.
-pub const PROTOCOL: u16 = 3;
+pub const PROTOCOL: u16 = 4;
 
 /// Default UDP port of the game.
 pub const GAME_PORT: u16 = 24650;

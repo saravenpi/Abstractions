@@ -8,6 +8,12 @@ use crate::world::Terrain;
 use crate::world::globe::Chart;
 
 impl WorldSave {
+    /// Returns the universe of the world: its seed under the home rule it was made with, so a
+    /// world saved before the home had to be Earth-like keeps its home.
+    pub fn universe(&self) -> Universe {
+        Universe::under(self.seed, self.home)
+    }
+
     /// Returns the planet the world starts on: the one the player last stood on, or the home planet.
     pub fn body(&self, universe: &Universe) -> BodyId {
         self.place

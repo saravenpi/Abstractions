@@ -19,6 +19,8 @@ struct GameWorld {
     name: Option<String>,
     /// Seed of the universe.
     seed: u64,
+    /// The home rule of the world, 0 for a file made before it had one.
+    home: u32,
     /// Universe time in seconds.
     clock_seconds: f64,
     /// What the player discovered, kept as a table and never interpreted.
@@ -43,6 +45,7 @@ pub fn import(path: &Path) -> io::Result<World> {
     Ok(World {
         name: game.name.unwrap_or_else(|| World::default().name),
         seed: game.seed,
+        home: game.home,
         clock: game.clock_seconds,
         changes: game.changes,
         atlas,

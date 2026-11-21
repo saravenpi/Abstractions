@@ -1,7 +1,6 @@
 //! Human readable facts of a saved world: when it was last played and where the player is.
 
 use crate::saves::WorldSave;
-use crate::universe::Universe;
 
 /// Seconds in a minute, an hour, a day, a week, a month of 30 days and a year of 365 days.
 const SPANS: [(u64, &str); 6] = [
@@ -34,7 +33,7 @@ pub fn relative(now: u64, then: u64) -> String {
 ///
 /// A new world and a world from before v0.6 have no saved place: they start on the home planet.
 pub fn place_name(save: &WorldSave) -> String {
-    let universe = Universe::new(save.seed);
+    let universe = save.universe();
     let body = save.body(&universe);
     let planet = universe.planet(body).name;
     let star = universe.system(body.star).star.name;

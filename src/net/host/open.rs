@@ -110,6 +110,7 @@ impl Opening<'_, '_> {
         Some(World {
             name: save.name.clone(),
             seed: save.seed,
+            home: save.home,
             clock: self.clock.seconds,
             changes: self.changes.as_deref().cloned().unwrap_or_default(),
             atlas: atlas.unwrap_or_default(),

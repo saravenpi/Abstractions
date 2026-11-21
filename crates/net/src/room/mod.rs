@@ -24,6 +24,8 @@ mod field_tests;
 #[cfg(test)]
 mod ground_tests;
 #[cfg(test)]
+mod home_tests;
+#[cfg(test)]
 mod hunt_kit;
 #[cfg(test)]
 mod hunt_tests;

@@ -90,6 +90,7 @@ pub fn welcome(seed: u64, changes: Changes, record: Option<PlayerRecord>) -> Wel
     Welcome {
         you: PlayerId(3),
         seed,
+        home: crate::universe::HOME_RULE,
         clock: 1234.5,
         changes,
         atlas: String::new(),

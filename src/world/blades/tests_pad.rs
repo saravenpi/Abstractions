@@ -17,10 +17,11 @@ use crate::home::Base;
 use crate::universe::Universe;
 use crate::world::chunks::planted;
 use crate::world::globe::{Pad, Reserve};
+use crate::world::lands::Verdure;
 use crate::world::mesh::chunk_heights;
 use crate::world::rocks::Taken;
-use crate::world::scatter::Carpet;
 use crate::world::scatter::zones::hold;
+use crate::world::scatter::{Carpet, Flora, turf_of};
 use crate::world::{CHUNK_SIZE, Globe, Terrain};
 
 /// Metres from the middle of the pad within which tiles and chunks are checked: past its corner and its margin.
@@ -54,20 +55,35 @@ fn cells_near(terrain: &Terrain, pad: DVec3, size: f32) -> Vec<IVec2> {
         .collect()
 }
 
+/// Prints the colours of the turf at the pad of `base` and the mean colour the ground bakes there.
+fn describe(seed: u64, terrain: &Terrain, base: &Base) {
+    let at = terrain.locate(base.pad);
+    let at = Vec2::new(at.x, at.z);
+    let seen = Verdure::of(terrain, at);
+    let colours = Flora::of(terrain, at)
+        .and_then(|flora| turf_of(&flora))
+        .map(|turf| turf.colours);
+    println!("PAD seed {seed}: turf colours {colours:?}, baked mean {seen:?}");
+}
+
 /// On the home planets of seeds 0 to 9, no blade root of the tiles around the pad lies over its square grown by
 /// the margin, and blades still stand within three metres outside it.
 #[test]
 fn no_blade_stands_on_the_pad() {
     let (mut inside, mut outside, mut total) = (0, 0, 0);
+    let (mut turfed, mut bare) = (0, 0);
     for seed in 0..10 {
         let (globe, base, terrain) = base_of(seed);
+        describe(seed, &terrain, &base);
         let none = Cropped::default();
         let clear = |p: DVec3| blocked(p, (&[], &none), &globe);
         for key in cells_near(&terrain, base.pad, TILE) {
             let chunk = (key.as_vec2() * TILE / CHUNK_SIZE).floor().as_ivec2();
             let Some(carpet) = Carpet::of(&terrain, chunk) else {
+                bare += 1;
                 continue;
             };
+            turfed += 1;
             let ground = Ground::read(&terrain, key);
             let (blades, frame) = grow((&terrain, &ground), key, &carpet, true, &clear);
             for root in blades.roots().iter().step_by(3) {

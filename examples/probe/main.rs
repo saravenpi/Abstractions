@@ -13,6 +13,8 @@
 //!   kill carved, the robot hurt and mended, the pack and the guide after the hunt; see the `play` module).
 //!   `stars` shoots the star field in space and in orbit (see the `stars` module).
 //!   The title, loading, boot and wake stages always run.
+//! - `glide` opens the wingsuit from the top of a jump on flat ground, off a cliff at a run, out of a long fall
+//!   and from a jump off the parked ship, three shots each, with `PROBE glide` lines (see the `opening` module).
 //! - `entry` (a fall from a low orbit into the air, from a chase camera and from the seat) and `exit`
 //!   (the climb from the pad to orbit under the autopilot) shoot the heat of an entry and leaving the air.
 //! - `SMOKE_ONLY` and `SMOKE_SKIP`: comma lists of stage names to keep or to leave out.
@@ -92,6 +94,7 @@ mod models;
 mod mp;
 mod mpact;
 mod mpspot;
+mod opening;
 mod orbital;
 mod play;
 mod playbook;
@@ -144,6 +147,7 @@ use meter::*;
 use mp::*;
 use mpact::*;
 use mpspot::*;
+use opening::*;
 use orbital::*;
 use play::*;
 use playbook::*;

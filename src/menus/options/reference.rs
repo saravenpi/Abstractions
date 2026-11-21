@@ -46,7 +46,7 @@ const FOOT_FIXED: [(&str, &str); 7] = [
     ("Left mouse", "Swing, stab"),
     ("Right mouse", "Guard"),
     ("Wheel", "Zoom camera"),
-    ("Jump in air", "Wings out or in"),
+    ("Jump in air", "Spread or fold"),
     ("Sprint, fall", "Boots brake"),
     ("Sprint, wings", "Boost"),
 ];

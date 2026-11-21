@@ -9,6 +9,7 @@ use bevy::prelude::*;
 use super::context::{Context, Element, Where};
 use super::course::{Course, Words, words};
 use super::fade::gate;
+use super::glide::{Bodies, mine, spoken};
 use crate::computer::{Destination, Keys, RouteStatus};
 use crate::craft::pack::PICK_KEY;
 use crate::menus::key_name;
@@ -18,6 +19,7 @@ use crate::ship::Hatch;
 use crate::space::{Location, Travel};
 use crate::ui::{KEY_GAP, text, theme};
 use crate::universe::Universe;
+use crate::wind::Thickness;
 
 /// What the line says while the pilot of a landed ship cannot step out yet: the ground beside
 /// the hatch has no collider.
@@ -115,7 +117,7 @@ pub(super) fn line() -> impl Bundle {
 
 /// What decides the prompt.
 #[derive(bevy::ecs::system::SystemParam)]
-pub(super) struct Reach<'w> {
+pub(super) struct Reach<'w, 's> {
     location: Option<Res<'w, Location>>,
     interact: Option<Res<'w, Interact>>,
     hatch: Option<Res<'w, Hatch>>,
@@ -124,9 +126,11 @@ pub(super) struct Reach<'w> {
     route: Res<'w, RouteStatus>,
     universe: Option<Res<'w, Universe>>,
     now: Res<'w, Where>,
+    air: Option<Res<'w, Thickness>>,
+    players: Bodies<'w, 's>,
 }
 
-impl Reach<'_> {
+impl Reach<'_, '_> {
     /// Returns the course as the adapter reads it, when one is set.
     fn course(&self) -> Option<Course> {
         let target = self.destination.0?;
@@ -137,36 +141,43 @@ impl Reach<'_> {
         })
     }
 
-    /// Returns the action a key does right now: its key and its words.
-    fn act(&self) -> Option<(KeyCode, String)> {
+    /// Returns the action a key does right now: its key and its words. In a fall the key that
+    /// spreads the wings, `wings`, comes before any other action.
+    fn act(&self, wings: Option<(KeyCode, String)>) -> Option<(KeyCode, String)> {
         let keys = &self.settings.controls.keys;
         let chosen = self.interact.as_deref().and_then(Interact::chosen);
-        chosen.map(|offer| offered(offer, keys))
+        wings.or_else(|| chosen.map(|offer| offered(offer, keys)))
     }
 
-    /// Returns the state of the line for this frame: empty while gliding or in a menu.
+    /// Returns the state of the line for this frame: empty in a menu, and while gliding only
+    /// why the air cannot carry the wings, see [`spoken`].
     fn state(&self) -> State {
-        let travel = self.location.as_deref().map(|at| at.travel);
-        let mut state = State::default();
+        let keys = &self.settings.controls.keys;
+        let air = self.air.as_deref().map_or(1.0, |air| air.0);
+        let (block, wings) = spoken(mine(&self.players), air, keys.jump, self.now.0);
+        let mut state = State {
+            block,
+            ..State::default()
+        };
         if matches!(self.now.0, Context::Gliding | Context::Menu) {
             return state;
         }
-        state.act = self.act();
-        let keys = &self.settings.controls.keys;
-        let seated = travel == Some(Travel::InShip);
-        let said = self
+        state.act = self.act(wings);
+        let seated = self.location.as_deref().map(|at| at.travel) == Some(Travel::InShip);
+        let told = self
             .course()
             .map(|course| words(&course, seated, &Keys::of(keys)));
         let Words {
             block,
             running,
             ready,
-        } = said.unwrap_or_default();
+        } = told.unwrap_or_default();
         let waiting = self
             .hatch
             .as_deref()
             .is_some_and(|hatch| hatch.waiting && seated);
-        state.block = block.or_else(|| waiting.then(|| UNREADY.to_string()));
+        let unready = || waiting.then(|| UNREADY.to_string());
+        state.block = state.block.or(block).or_else(unready);
         state.running = running.map(|words| (keys.engage, words));
         state.ready = ready.map(|words| (keys.engage, words));
         state

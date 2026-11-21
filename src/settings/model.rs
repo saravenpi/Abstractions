@@ -163,8 +163,9 @@ pub struct Keymap {
     pub right: KeyCode,
     /// Jump, or swim up in water. Pressed again in the air, it spreads or folds the wingsuit.
     pub jump: KeyCode,
-    /// Run faster. Held in the air it fires the boot boosters: they brake a fall with the
-    /// wingsuit folded and push with it spread.
+    /// Run faster. Pressed in the air it fires the boot boosters until let go: they brake a
+    /// fall with the wingsuit folded and push with it spread. Held from a run, only a fast fall
+    /// with the wingsuit folded fires them.
     pub sprint: KeyCode,
     /// Crouch while held: slower, quieter and lower on the ground.
     pub crouch: KeyCode,

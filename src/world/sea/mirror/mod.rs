@@ -120,7 +120,7 @@ fn pin(add: On<Add<GameCamera>>, mut commands: Commands) {
 /// camera sees, and the mirror camera is posed after the transforms and before Bevy reads its
 /// pose, its lens and the water material.
 pub(super) fn plugin(app: &mut App) {
-    let resized = window_changed.or(any_match_filter::<Added<MirrorCamera>>);
+    let resized = window_changed.or_else(any_match_filter::<Added<MirrorCamera>>);
     app.add_plugins(HierarchyPropagatePlugin::<RenderLayers>::new(PostUpdate))
         .configure_sets(
             PostUpdate,
@@ -131,7 +131,7 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(
             PostUpdate,
             (
-                fit.run_if(resource_exists::<LowRes>.and(resized)),
+                fit.run_if(resource_exists::<LowRes>.and_then(resized)),
                 aim::aim.run_if(any_with_component::<MirrorCamera>),
             )
                 .chain()

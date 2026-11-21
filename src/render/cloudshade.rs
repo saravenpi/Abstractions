@@ -28,7 +28,9 @@ mod tests_follow;
 
 use bevy::prelude::*;
 
-pub use self::cast::{Cast, sunward_hit};
+pub use self::cast::Cast;
+#[cfg(test)]
+pub use self::cast::sunward_hit;
 use self::tune::HEAD;
 use super::clouds::CloudCover;
 use super::{LocalSystem, SunDir, Vantage};

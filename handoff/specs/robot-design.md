@@ -4,7 +4,7 @@ Written by the designer of the robot and the companion, before the build and cor
 
 ## The idea in one sentence
 
-A small pilot in armour too big for it: a large round helmet with a television face under a brow wing, a compact chest on a thin dark waist, a slate coat of hinged plates round the hips, and heavy bone blocks at the ends of thin dark limbs.
+A small pilot in armour too big for it: a large round helmet with a television face and a swept vane at each ear, a compact chest under one flat breastplate on a thin dark waist, a slate coat of hinged plates round the hips, and heavy bone blocks at the ends of thin dark limbs.
 
 Cute face, cool armour: the contrast is the design.
 
@@ -20,7 +20,7 @@ Cute face, cool armour: the contrast is the design.
 | Accent | One orange, `[0.95, 0.48, 0.16]`, the ship trim. Under 4 percent of the surface. |
 | Markings | Two kinds: a triangle, and a stripe across a block near its end. Few. |
 | Three layers | Bone is armour. Slate is what hangs or is soft: the coat plates, the collar, the bedroll, the cuffs. Dark is the frame. |
-| Echoes | The brow wing of the robot is the cranked wing of the ship. The fin of the companion is the raked fin of the ship. |
+| Echoes | The side vanes of the robot are the swept wings of the ship. The crest of the companion is the raked fin of the ship, cut short. |
 
 ## Palette (sRGB)
 
@@ -29,7 +29,7 @@ Cute face, cool armour: the contrast is the design.
 | Frame | `[0.09, 0.10, 0.13]` (unchanged) | limbs, joints, waist, pelvis, visor box, soles, hands |
 | Bone | `[0.93, 0.91, 0.85]` (was `[0.93, 0.93, 0.90]`) | helmet, chest, back plate, shoulder blocks, gauntlets, greaves, toe caps |
 | Slate | `[0.47, 0.56, 0.64]` (was `[0.70, 0.78, 0.86]`, too close to the bone at 8 m) | tassets, collar, bedroll, helmet rim, cuffs, boot upper |
-| Accent | `[0.95, 0.48, 0.16]` (unchanged) | brow wing tips, chest triangle, bedroll straps, one stripe per gauntlet, greave and tasset, the edge of the left shoulder lame |
+| Accent | `[0.95, 0.48, 0.16]` (unchanged) | side vane tips, chest triangle, bedroll straps, one stripe per gauntlet, greave and tasset, the edge of the left shoulder lame |
 
 ## Proportions, standing 1.8 m (height above the sole, full width)
 
@@ -44,7 +44,7 @@ Cute face, cool armour: the contrast is the design.
 | Chest | 1.08 | 1.35 | 0.37 | 0.22, the back plate 0.02 more, the bedroll 0.04 |
 | Shoulder blocks | 1.14 | 1.32 | 0.60 over both | 0.16 |
 | Head | 1.41 | 1.73 | 0.35 (0.42 over the ear discs) | 0.30, the visor box 0.03 more |
-| Brow wing | 1.66 | 1.74 | 0.46 tip to tip | 0.09 |
+| Side vanes | 1.58 | 1.60 | 0.53 tip to tip | each runs 0.12 back from its ear |
 | Upper arm frame | 1.05 | 1.28 | 0.07 | 0.07 |
 | Gauntlet | 0.80 | 1.01 | 0.10 | 0.15 |
 | Hand | 0.75 | 0.85 | 0.05 | 0.07 |
@@ -56,12 +56,12 @@ The head is 0.32 of 1.8 m: more than a sixth, where a person has an eighth. The 
 Head
 - Helmet: a twelve-sided dome, bone, slate under the rim. 0.35 wide, where it was 0.31.
 - Visor box: a dark chamfered box proud of the helmet that holds the screen. The screen is unchanged, 0.23 by 0.12 m.
-- Brow wing (the signature): two bone blades over the visor that meet in the middle and reach 6 cm past the helmet on each side, rolled up 14 degrees and swept back 11, with orange tips. It is the antenna, it shades the screen, and it gives the cute face a determined brow.
+- Side vanes (the signature): a flat horizontal bone blade grows out of the back of each ear housing, swept back 57 degrees, 12 cm long, 6 cm wide and 2 cm thick, with a small orange tip. From the front they read as ears, from above and behind as swept wings. They are the antenna. Nothing stands over the visor (owner, 2026-11-21: the brow wing read as eyebrows).
 - Ear discs: the joint disc at each side, bone cap. Speakers and microphones.
 
 Torso
 - Waist: a slim dark frame with two bone belly lames.
-- Chest shell: a chamfered loft, bone, slate under the ribs, with two breast plates that meet in a V and the orange triangle on the left breast.
+- Chest shell: a chamfered loft, bone, slate under the ribs, under one flat breastplate 23 cm wide with a slate ridge down its middle and the orange triangle on its left. No paired plate, disc or bulge on the front (owner, 2026-11-21: the two breast plates read as a bust). The two orange discs at chest height are the bedroll straps, on the back.
 - Collar: a slate ring that holds the neck.
 - Shoulder housings: dark drums sunk into the chest.
 - Back plate: bone, with a slate inset, two dark vents and the dark wing roots on its sides. The wingsuit unfolds from it. It is thin: seated, it stops 2 mm in front of the backrest.
@@ -88,7 +88,7 @@ Legs
 The coat is eight plates: three tassets on each thigh, the shoulder blocks and the left lame. Each is part of the limb segment it hangs on and starts at that limb's joint, so it turns about the joint with the limb: it cannot open a gap and cannot cut its own limb. Each stays outside the widest part of the trunk at its height: the tassets start under the pelvis plates, the shoulder blocks start outside the chest. The rear tasset is short so the calf does not reach it in a deep crouch, and thin so it stays over the seat pan. No plate hangs from the pelvis below the pelvis core.
 
 Known contacts:
-- An arm raised straight overhead passes through the tip of the brow wing, as it passed through the ear of the old head.
+- An arm raised straight overhead passes through the ear disc, as it did on the old head. The vane does not add to it: outside the ear it lies behind the raised arm.
 - Seated, the lower edge of the outer tasset sinks up to 4 cm into the pan pad of the seat, and the shoulder blocks (0.60 m over both, from 0.44 to 0.62 m above the floor of the pan, reaching back to z = -1.03 in hull axes) cut about 4 cm into the side wings of the seat shell drawn in `ship-design.md` (x from 0.20 to 0.25, front at z = -1.065). The seat wings should stop under 0.44 m or stand 0.31 m out.
 
 ## Limits the game sets
@@ -97,8 +97,8 @@ Three boxes bound the armour. They were checked by hand against the poses; the t
 
 | Limit | Where it binds | Margin left |
 | --- | --- | --- |
-| Player collider, 0.35 m radius | The gauntlet in the braced landing; the knee of a running leg; the brow wing in a banked run | 3 mm, 5 mm, 13 mm |
-| Backrest of the seat | The vents of the back plate and the rear plate of the pelvis | 2 mm |
+| Player collider, 0.35 m radius | The gauntlet in the braced landing; the knee of a running leg; the side vanes in a banked run | 3 mm, 5 mm, 10 mm |
+| Backrest of the seat | The vents of the back plate and the rear plate of the pelvis; the vane tips, which pass beside the headrest | 2 mm; 10 mm |
 | Tub of the cockpit, 0.72 m wide | The arms on the controls | See "Seat fit": it depends on where the controls are |
 
 ## Seat fit
@@ -135,13 +135,13 @@ The numbers come from a Python port of the rig and the meshes, `~/.cache/abstrac
 
 ## Companion (0.34 wide, 0.32 high, 0.29 deep)
 
-The companion is the robot's helmet flying on its own: the same dome, the same dark visor box, the same ear discs, here with an orange centre. Its own signature is a fin swept back over the crown that carries the glowing antenna tip. A small bone peak sits over the visor. Under the dome a dark nozzle bell holds the thruster glow. Three slate lames hang round the lower back as a neck guard: its coat. The hands are two small gauntlets with the orange stripe and a dark cuff. It stays round and friendly: nothing points at the player.
+The companion is the robot's helmet flying on its own: the same dome, the same dark visor box, the same ear discs, here with an orange centre. Its own signature is a low crest: a fairing that starts inside the crown, as wide as the crown is there, and tapers up and back to the glowing antenna tip, 6 cm over the crown and 11 cm behind the middle, half the reach of the fin it replaces (owner, 2026-11-21: the fin was too long and stuck on). It keeps one crest on top and gets no side vanes, because its hands float where vanes would be and would cut them. A small bone peak sits over the visor. Under the dome a dark nozzle bell holds the thruster glow. Three slate lames hang round the lower back as a neck guard: its coat. The hands are two small gauntlets with the orange stripe and a dark cuff. It stays round and friendly: nothing points at the player.
 
 ## Budgets
 
 | Model | Before | Near | Far |
 | --- | --- | --- | --- |
-| Robot, fifteen segments | 808 | 3,492 | 756 |
-| Companion, body and two hands | 224 | 752 | 212 |
+| Robot, fifteen segments | 808 | 3,460 | 744 |
+| Companion, body and two hands | 224 | 756 | 224 |
 
 The far level is the same design with half the sides, no chamfers and none of the small parts. `VisibilityRange` swaps it in at 24 m for the robot and 12 m for the companion, where the two levels cover the same game pixels. One material and one draw per part, as before.

@@ -1,6 +1,6 @@
 //! The head: a big round helmet on a thin neck, the dark visor box that holds the screen, an ear
-//! disc on each side, and the brow wing: two blades over the visor that reach past
-//! the helmet in a shallow V. The wing is the antenna and the mark of the silhouette.
+//! disc on each side, and a side vane growing out of each ear: a flat horizontal blade swept
+//! back. The vanes are the antenna and the mark of the silhouette; nothing stands over the visor.
 
 use bevy::prelude::*;
 
@@ -26,12 +26,20 @@ const DOME: [Section; 6] = [
     Section::new(MID + HEAD.1[1], 0.06, 0.06),
 ];
 
-/// Half extents of a blade of the brow wing, and how far it rolls up and sweeps back, in radians.
-/// The wing is as wide as a run banked into a turn leaves room for inside the player collider.
-const BLADE: ([f32; 3], f32, f32) = ([0.108, 0.015, 0.042], 0.24, 0.2);
+/// Height of the side vanes above the neck joint: the height of the ears, in meters.
+const EAR: f32 = MID - 0.01;
 
-/// The visor box, the two blades of the brow wing with their accent tips, and the slate hatch
-/// with its two dark vents on the back of the helmet.
+/// How far a side vane is swept back from straight out to the side, in radians.
+const SWEEP: f32 = 1.0;
+
+/// Half extents of a side vane, along its length, its thickness and its chord, and of its accent
+/// tip. A vane starts in the back of its ear housing and ends 6 cm outside the ear, behind an arm
+/// raised overhead, in front of the headrest of the seat and inside the player collider in a
+/// banked run.
+const VANE: [[f32; 3]; 2] = [[0.06, 0.011, 0.03], [0.014, 0.014, 0.034]];
+
+/// The visor box, the two side vanes with their accent tips, and the slate hatch with its two
+/// dark vents on the back of the helmet.
 const PLATES: [Plate; 8] = [
     Plate::new(
         [0.0, MID, 0.002 - SCREEN_FRONT + VISOR[2]],
@@ -39,23 +47,14 @@ const PLATES: [Plate; 8] = [
         [DARK, DARK],
     )
     .cut(LARGE),
-    Plate::new([0.121, MID + 0.11, -0.119], BLADE.0, [SHELL, SHELL]).turned(0.1, -BLADE.2, BLADE.1),
-    Plate::new([-0.121, MID + 0.11, -0.119], BLADE.0, [SHELL, SHELL])
-        .turned(0.1, BLADE.2, -BLADE.1),
-    Plate::new(
-        [0.212, MID + 0.133, -0.101],
-        [0.02, 0.019, 0.046],
-        [ACCENT, ACCENT],
-    )
-    .turned(0.1, -BLADE.2, BLADE.1)
-    .cut(0.0),
-    Plate::new(
-        [-0.212, MID + 0.133, -0.101],
-        [0.02, 0.019, 0.046],
-        [ACCENT, ACCENT],
-    )
-    .turned(0.1, BLADE.2, -BLADE.1)
-    .cut(0.0),
+    Plate::new([0.204, EAR, 0.105], VANE[0], [SHELL, SHELL]).turned(0.0, -SWEEP, 0.0),
+    Plate::new([-0.204, EAR, 0.105], VANE[0], [SHELL, SHELL]).turned(0.0, SWEEP, 0.0),
+    Plate::new([0.23, EAR, 0.146], VANE[1], [ACCENT, ACCENT])
+        .turned(0.0, -SWEEP, 0.0)
+        .cut(0.0),
+    Plate::new([-0.23, EAR, 0.146], VANE[1], [ACCENT, ACCENT])
+        .turned(0.0, SWEEP, 0.0)
+        .cut(0.0),
     Plate::new(
         [0.0, MID + 0.015, 0.143],
         [0.075, 0.055, 0.01],
@@ -76,12 +75,12 @@ const DISCS: [Disc; 5] = [
     Disc::new([0.0, 0.02, 0.0], Vec3::Y, [0.042, 0.05], DARK)
         .sides(8)
         .fine(),
-    Disc::new([0.178, MID - 0.01, 0.015], Vec3::X, [0.07, 0.022], DARK),
-    Disc::new([-0.178, MID - 0.01, 0.015], Vec3::X, [0.07, 0.022], DARK),
-    Disc::new([0.202, MID - 0.01, 0.015], Vec3::X, [0.04, 0.008], SHELL)
+    Disc::new([0.178, EAR, 0.015], Vec3::X, [0.07, 0.022], DARK),
+    Disc::new([-0.178, EAR, 0.015], Vec3::X, [0.07, 0.022], DARK),
+    Disc::new([0.202, EAR, 0.015], Vec3::X, [0.04, 0.008], SHELL)
         .sides(8)
         .fine(),
-    Disc::new([-0.202, MID - 0.01, 0.015], Vec3::X, [0.04, 0.008], SHELL)
+    Disc::new([-0.202, EAR, 0.015], Vec3::X, [0.04, 0.008], SHELL)
         .sides(8)
         .fine(),
 ];

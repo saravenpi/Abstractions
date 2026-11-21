@@ -1,5 +1,6 @@
-//! The torso: a slim dark waist, a chest shell with its proud plate and marking, the collar, a
-//! housing for each shoulder, and the pack on the back that carries the wing roots.
+//! The torso: a slim dark waist, a chest shell under one flat breastplate with a ridge down its
+//! middle and one marking, the collar, a housing for each shoulder, and the pack on the back that
+//! carries the wing roots.
 
 use bevy::prelude::*;
 
@@ -29,17 +30,15 @@ const COLLAR: [Section; 3] = [
     Section::new(0.45, 0.1, 0.082),
 ];
 
-/// The two breast plates that meet in a V, two belly lames, the back plate with its slate
-/// inset and two vents, and the wing roots on its sides. The back plate and what it carries stay
-/// in front of the backrest of the seat, which the seated torso leans on.
+/// The breastplate, one flat plate across the chest, and the ridge down its middle, two belly
+/// lames, the back plate with its slate inset and two vents, and the wing roots on its sides. The
+/// back plate and what it carries stay in front of the backrest of the seat, which the seated
+/// torso leans on.
 const PLATES: [Plate; 10] = [
-    Plate::new([0.062, 0.29, -0.113], [0.066, 0.058, 0.012], [SHELL, SHELL]).turned(0.0, -0.1, 0.2),
-    Plate::new(
-        [-0.062, 0.29, -0.113],
-        [0.066, 0.058, 0.012],
-        [SHELL, SHELL],
-    )
-    .turned(0.0, 0.1, -0.2),
+    Plate::new([0.0, 0.285, -0.112], [0.115, 0.072, 0.012], [SHELL, SHELL]),
+    Plate::new([0.0, 0.285, -0.127], [0.008, 0.06, 0.006], [SHADE, SHADE])
+        .cut(0.0)
+        .fine(),
     Plate::new([0.0, 0.045, -0.068], [0.055, 0.03, 0.01], [SHELL, SHELL])
         .cut(0.0)
         .fine(),
@@ -68,7 +67,7 @@ const PLATES: [Plate; 10] = [
 const SUNK: f32 = 0.015;
 
 /// The housing of each shoulder, sunk into the chest, the roll on top of the pack with its two
-/// accent straps, and the triangle marking on the left breast.
+/// accent straps, both on the back, and the one triangle marking on the left of the breastplate.
 const DISCS: [Disc; 6] = [
     Disc::new(
         [SHOULDER[0] - SUNK, SHOULDER[1], 0.0],

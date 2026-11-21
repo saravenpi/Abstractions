@@ -12,9 +12,11 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
 
+#[cfg(test)]
+use super::BYTES;
+use super::Rasters;
 use super::tile::{SIDE, TileId, ZOOM_FROM, away, level_for, visible};
 use super::tile_paint::{lit, paint};
-use super::{BYTES, Rasters};
 use crate::map::explored::Explored;
 use crate::map::{Level, Surface};
 use crate::universe::BodyId;
@@ -27,6 +29,7 @@ const JOBS: usize = 2;
 pub const KEPT: usize = 96;
 
 /// Bytes the pictures of the tiles kept take at most.
+#[cfg(test)]
 pub const KEPT_BYTES: usize = KEPT * SIDE * SIDE * BYTES;
 
 /// One tile of the cache.

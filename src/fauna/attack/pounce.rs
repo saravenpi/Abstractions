@@ -141,14 +141,14 @@ fn advance(
     }
 }
 
+/// Filter of the animals that can act: not dead and not held still.
+type Alive = (Without<Dead>, Without<Frozen>);
+
 /// Lets every animal that fights the robot wind up, strike and recover. An animal a hitstop holds
 /// waits with it, as its walk does.
 pub fn attack(
     mut f: Fight,
-    mut beasts: Query<
-        (Entity, &mut Beast, Option<&mut Attacking>),
-        (Without<Dead>, Without<Frozen>),
-    >,
+    mut beasts: Query<(Entity, &mut Beast, Option<&mut Attacking>), Alive>,
 ) {
     let globe = f.terrain.globe().clone();
     let (Some(life), Ok(robot)) = (globe.life(), f.robot.single()) else {

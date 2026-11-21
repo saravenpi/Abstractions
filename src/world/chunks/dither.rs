@@ -108,15 +108,26 @@ pub fn redither(commands: &mut Commands, part: Entity, range: Option<VisibilityR
         });
 }
 
+/// Marks a mesh that casts no shadow whatever its fades: a coarse node beyond the reach of the
+/// shadows. A fade that ends leaves its [`NotShadowCaster`] on.
+#[derive(Component, Debug, Clone, Copy, Default)]
+pub struct Shadowless;
+
 /// Stops `part` casting shadows while it fades out, `way` being the fade it is in, and lets it
-/// cast them again when it is in no fade or fades in.
+/// cast them again when it is in no fade or fades in, unless it is [`Shadowless`].
 pub fn casting(commands: &mut Commands, part: Entity, way: Option<Way>) {
     match way {
         Some(Way::Hide | Way::Leave) => {
             commands.entity(part).try_insert(NotShadowCaster);
         }
         Some(Way::In) | None => {
-            commands.entity(part).try_remove::<NotShadowCaster>();
+            commands
+                .entity(part)
+                .queue_silenced(|mut entity: EntityWorldMut| {
+                    if !entity.contains::<Shadowless>() {
+                        entity.remove::<NotShadowCaster>();
+                    }
+                });
         }
     }
 }

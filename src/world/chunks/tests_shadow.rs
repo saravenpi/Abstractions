@@ -1,10 +1,11 @@
-//! Tests that a chunk casts no shadow while it fades out, and casts again when the fade stops.
+//! Tests that a chunk casts no shadow while it fades out, and casts again when the fade stops,
+//! unless it is a far node that casts none at all.
 
 use bevy::ecs::world::CommandQueue;
 use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
-use super::dither::Way;
+use super::dither::{Shadowless, Way};
 use super::fade::Fades;
 
 /// Starts a fade of `way` on `part`, which is its own root, and applies the commands.
@@ -46,4 +47,19 @@ fn a_cancelled_fade_casts_again() {
     assert!(world.entity(part).contains::<NotShadowCaster>());
     cancel(&mut world, &mut fades, part);
     assert!(!world.entity(part).contains::<NotShadowCaster>());
+}
+
+/// A far node that casts no shadow still casts none once a fade on it ends, in or out.
+#[test]
+fn a_fade_leaves_a_shadowless_node_without_shadow() {
+    for way in [Way::In, Way::Hide] {
+        let mut world = World::new();
+        let part = world
+            .spawn((Mesh3d::default(), Shadowless, NotShadowCaster))
+            .id();
+        let mut fades = Fades::default();
+        begin(&mut world, &mut fades, part, way);
+        cancel(&mut world, &mut fades, part);
+        assert!(world.entity(part).contains::<NotShadowCaster>(), "{way:?}");
+    }
 }

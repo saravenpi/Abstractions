@@ -12,6 +12,7 @@ mod face;
 mod fade;
 mod far;
 mod grow;
+mod horizon;
 mod lane;
 mod mend;
 mod motion;
@@ -41,6 +42,8 @@ mod tests_fade;
 mod tests_fly;
 #[cfg(test)]
 mod tests_grow;
+#[cfg(test)]
+mod tests_horizon;
 #[cfg(test)]
 mod tests_lane;
 #[cfg(test)]
@@ -76,6 +79,7 @@ use self::fade::Fades;
 use self::far::FarView;
 pub use self::far::watch_far;
 pub use self::grow::grow;
+pub use self::horizon::horizon;
 use self::lane::Lane;
 pub use self::mend::{mend, mending, note};
 use self::motion::Motion;

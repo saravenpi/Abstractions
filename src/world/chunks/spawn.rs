@@ -96,6 +96,9 @@ impl Spawner<'_> {
         Node {
             entity: commands.spawn((bundle, hidden)).id(),
             visible: false,
+            bounds: data.bounds,
+            beyond: false,
+            shadowless: false,
         }
     }
 }

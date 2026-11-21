@@ -34,11 +34,12 @@ mod tests_plane;
 
 use bevy::app::{HierarchyPropagatePlugin, Propagate, PropagateSet};
 use bevy::asset::AssetEventSystems;
+use bevy::asset::RenderAssetUsages;
 use bevy::camera::visibility::{RenderLayers, VisibilitySystems};
 use bevy::camera::{CameraUpdateSystems, Exposure, Hdr, RenderTarget};
 use bevy::image::ImageSampler;
 use bevy::prelude::*;
-use bevy::render::render_resource::{Extent3d, TextureFormat};
+use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::render::view::{Msaa, Tonemapping};
 use bevy::transform::TransformSystems;
 
@@ -49,9 +50,23 @@ use crate::screens::Screen;
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct Reflected;
 
-/// Marks the camera that draws the mirrored actors, with the image it draws into.
+/// Marks the camera that draws the mirrored actors, with the image it draws into and the
+/// see-through pixel the water reads while it does not draw.
 #[derive(Component, Debug, Clone)]
-pub struct MirrorCamera(pub Handle<Image>);
+pub struct MirrorCamera {
+    /// The image the camera draws into, the size of the game view.
+    pub target: Handle<Image>,
+    /// One see-through pixel of an ordinary texture.
+    pub blank: Handle<Image>,
+}
+
+impl MirrorCamera {
+    /// Returns the image the water reads: the camera's image while it draws, else the blank
+    /// pixel, so the water never binds a render target the camera left alone.
+    pub fn shown(&self, pass: bool) -> &Handle<Image> {
+        if pass { &self.target } else { &self.blank }
+    }
+}
 
 /// Returns an image of `size` game pixels the mirror camera draws into: light beyond white kept,
 /// see-through where no actor is, and read pixel for pixel.
@@ -61,9 +76,23 @@ fn target(size: UVec2) -> Image {
     image
 }
 
-/// Spawns the mirror camera, inactive, and returns the image it draws into, for the water.
+/// Returns one see-through pixel of an ordinary texture, which the water reads while the mirror
+/// camera does not draw.
+fn blank() -> Image {
+    Image::new_fill(
+        Extent3d::default(),
+        TextureDimension::D2,
+        &[0, 0, 0, 0],
+        TextureFormat::Rgba8Unorm,
+        RenderAssetUsages::default(),
+    )
+}
+
+/// Spawns the mirror camera, inactive, and returns the blank pixel the water reads until the
+/// camera draws.
 pub fn spawn(commands: &mut Commands, images: &mut Assets<Image>) -> Handle<Image> {
     let image = images.add(target(UVec2::new(320, 180)));
+    let blank = images.add(blank());
     let camera = Camera {
         order: -1,
         is_active: false,
@@ -72,7 +101,13 @@ pub fn spawn(commands: &mut Commands, images: &mut Assets<Image>) -> Handle<Imag
         ..default()
     };
     commands.spawn((
-        (Name::new("WaterMirror"), MirrorCamera(image.clone())),
+        (
+            Name::new("WaterMirror"),
+            MirrorCamera {
+                target: image.clone(),
+                blank: blank.clone(),
+            },
+        ),
         (
             Camera3d::default(),
             camera,
@@ -82,7 +117,7 @@ pub fn spawn(commands: &mut Commands, images: &mut Assets<Image>) -> Handle<Imag
         (RenderLayers::layer(REFLECTED), Transform::default()),
         DespawnOnEnter(Screen::Title),
     ));
-    image
+    blank
 }
 
 /// Resizes the mirror image to the game view, so the two line up pixel for pixel.
@@ -97,9 +132,9 @@ fn fit(low: Res<LowRes>, mirrors: Query<&MirrorCamera>, mut images: ResMut<Asset
     };
     for mirror in &mirrors {
         if images
-            .get(&mirror.0)
+            .get(&mirror.target)
             .is_some_and(|image| image.size() != want)
-            && let Some(mut image) = images.get_mut(&mirror.0)
+            && let Some(mut image) = images.get_mut(&mirror.target)
         {
             image.resize(size);
         }

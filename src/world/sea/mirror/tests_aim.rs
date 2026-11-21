@@ -32,9 +32,14 @@ fn settings(tag: &str, value: Reflections) -> Persistent<Settings> {
     settings
 }
 
-/// Spawns a sea at height 0 under a focus 2 m up, over a full map of water, and returns it.
-fn sea(world: &mut World) -> Entity {
+/// Spawns a sea at height 0 under a focus 2 m up, over a full map of water, reading the blank
+/// pixel, and returns it with the images of a mirror camera.
+fn sea(world: &mut World) -> (Entity, MirrorCamera) {
     let mut images = Assets::<Image>::default();
+    let mirror = MirrorCamera {
+        target: images.add(Image::default()),
+        blank: images.add(Image::default()),
+    };
     let mut materials = Assets::<WaterMaterial>::default();
     let water = WaterUniform {
         eye: Vec4::new(0.0, 2.0, 0.0, 2.0),
@@ -46,12 +51,12 @@ fn sea(world: &mut World) -> Entity {
         water,
         floor: Handle::default(),
         place: default(),
-        mirror: Handle::default(),
+        mirror: mirror.blank.clone(),
     });
     let floor = SeaFloor::new(&mut images);
     world.insert_resource(materials);
     let sea = (Sea, MeshMaterial3d(handle), floor, Visibility::Inherited);
-    world.spawn(sea).id()
+    (world.spawn(sea).id(), mirror)
 }
 
 /// Returns a world with the sea of [`sea`], the robot standing in it 10 m ahead, the game camera
@@ -59,7 +64,7 @@ fn sea(world: &mut World) -> Entity {
 /// returns the sea.
 fn shore(value: Reflections, pitch: f32, tag: &str) -> (World, Entity) {
     let mut world = World::new();
-    let sea = sea(&mut world);
+    let (sea, images) = sea(&mut world);
     world.spawn((Reflected, GlobalTransform::from_xyz(0.0, 1.0, -10.0)));
     let eye = Transform::from_xyz(0.0, 3.0, 5.0).with_rotation(Quat::from_rotation_x(pitch));
     let lens = Projection::Perspective(PerspectiveProjection {
@@ -73,13 +78,7 @@ fn shore(value: Reflections, pitch: f32, tag: &str) -> (World, Entity) {
         ..default()
     };
     let pose = (Transform::default(), GlobalTransform::default());
-    world.spawn((
-        MirrorCamera(Handle::default()),
-        off,
-        pose,
-        lens,
-        Exposure::default(),
-    ));
+    world.spawn((images, off, pose, lens, Exposure::default()));
     world.insert_resource(settings(tag, value));
     (world, sea)
 }
@@ -106,23 +105,45 @@ fn aimed(world: &mut World, sea: Entity) -> (bool, Vec3, f32, f32) {
     (active, at, ev, strength)
 }
 
+/// Returns whether the water of `sea` reads the image the mirror camera draws into, and not the
+/// blank pixel.
+fn reads_target(world: &mut World, sea: Entity) -> bool {
+    let handle = world
+        .get::<MeshMaterial3d<WaterMaterial>>(sea)
+        .expect("a sea")
+        .0
+        .clone();
+    let mut mirrors = world.query::<&MirrorCamera>();
+    let target = mirrors
+        .single(world)
+        .expect("one mirror camera")
+        .target
+        .clone();
+    let material = world
+        .resource::<Assets<WaterMaterial>>()
+        .get(&handle)
+        .expect("a material");
+    material.mirror == target
+}
+
 /// At the shore the mirror camera draws from the eye's reflection under the water, with the
 /// exposure of the game camera, and the water reads its image.
 #[test]
 fn at_a_shore_the_mirror_draws() {
     let (mut world, sea) = shore(Reflections::Actors, -0.15, "on");
     let (active, at, ev, strength) = aimed(&mut world, sea);
-    assert!(active && strength == 1.0);
+    assert!(active && strength == 1.0 && reads_target(&mut world, sea));
     assert!((at - Vec3::new(0.0, -3.0, 5.0)).length() < 1e-4, "{at}");
     assert_eq!(ev, 11.0);
 }
 
 /// With the setting off, the sea hidden, no water near or the camera looking up the mirror camera
-/// stays off and the water reads the sky only.
+/// stays off and the water reads the sky only, through the blank pixel, never the render target.
 #[test]
 fn the_mirror_is_off_without_the_setting_or_water_in_view() {
     let (mut world, sea) = shore(Reflections::Off, -0.15, "off");
-    assert!(!aimed(&mut world, sea).0);
+    let (active, _, _, strength) = aimed(&mut world, sea);
+    assert!(!active && strength == 0.0 && !reads_target(&mut world, sea));
     let (mut world, sea) = shore(Reflections::Actors, 1.3, "up");
     let (active, _, _, strength) = aimed(&mut world, sea);
     assert!(!active && strength == 0.0);
@@ -140,5 +161,5 @@ fn the_mirror_is_off_without_the_setting_or_water_in_view() {
         .lighting
         .reflections = Reflections::Off;
     let (active, _, _, strength) = aimed(&mut world, sea);
-    assert!(!active && strength == 0.0);
+    assert!(!active && strength == 0.0 && !reads_target(&mut world, sea));
 }

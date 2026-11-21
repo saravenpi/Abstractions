@@ -26,19 +26,14 @@ const QUIET: (f32, f32) = (10.0, 1.5);
 const CURIOUS_TILT: f32 = 0.17;
 
 /// Turns something that happened in the mind into a reaction of the face and a chirp.
-fn react(
-    cue: Cue,
-    brain: &mut Brain,
-    face: &mut Face,
-    sense: &CompanionSense,
-) -> Option<ChirpKind> {
+fn react(cue: Cue, brain: &mut Brain, face: &mut Face) -> Option<ChirpKind> {
     match cue {
         Cue::Woke => {
             face.react(Expression::Surprised, WAKE_SECONDS);
             Some(ChirpKind::Wake)
         }
         Cue::Started(Idle::Inspect) => {
-            brain.choose_inspect(sense);
+            brain.choose_inspect();
             None
         }
         Cue::Started(Idle::Hum) => Some(ChirpKind::Hum),
@@ -52,7 +47,7 @@ fn wanted(brain: &Brain, sense: &CompanionSense) -> Expression {
         (true, _) => Some(Expression::Sleepy),
         (false, idle) => idle.map(Idle::face),
     };
-    ambient(sense, idle, brain.nearby(sense).is_some())
+    ambient(sense, idle)
 }
 
 /// What the thinking reads and writes besides the companion itself.
@@ -141,7 +136,7 @@ pub fn think(
         dt,
     };
     let cue = brain.mind.advance(&input);
-    let mut heard = cue.and_then(|cue| react(cue, &mut brain, &mut face, &sense));
+    let mut heard = cue.and_then(|cue| react(cue, &mut brain, &mut face));
     heard = heard.or(events.stir(&mut brain, &mut face, around.location.body));
     let changed = face.advance(wanted(&brain, &sense), dt);
     heard = heard.or(changed.and_then(chirp));

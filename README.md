@@ -218,7 +218,7 @@ A missing or broken file is replaced by the defaults.
 - `src/life`, `src/fauna`: whether a planet lives, its species and food web, and the herds, hunts and calls drawn around you.
 - `src/craft`, `src/condition`: the pack, tools and the workshop, and the health of each part of the robot.
 - `src/space`: frames of reference, the floating origin and the clock.
-- `src/world`: planets as spheres, terrain, chunk streaming, plants, structures and sea.
+- `src/world`: planets as spheres, terrain, chunk streaming, plants and sea.
 - `src/home`: the base on the home planet.
 - `src/player`, `src/avatar`, `src/gear`, `src/view`: movement, the robot body, the wingsuit and boots, the camera.
 - `src/ship`, `src/computer`: the ship, its autopilot, its course and the charts.

@@ -1,4 +1,4 @@
-//! Biomes: the climate regions that decide ground colors, plants and structures.
+//! Biomes: the climate regions that decide ground colors and plants.
 
 use noise::{Fbm, MultiFractal, Perlin};
 

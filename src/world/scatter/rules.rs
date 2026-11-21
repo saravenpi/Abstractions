@@ -14,10 +14,6 @@ pub fn underwater(p: Plant) -> bool {
         SmoothRock
             | Boulder
             | Driftwood
-            | Boat
-            | Anchor
-            | Amphora
-            | Chest
             | Seagrass
             | Starfish
             | Shell

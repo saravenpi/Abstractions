@@ -29,7 +29,7 @@ pub(crate) fn triangles(mesh: &Mesh) -> Vec<[Vec3; 3]> {
 
 /// Returns the length and the width of `tri` as half of a drawn face: its middle side, and the height over
 /// that side. Half of a box face 2 m by 0.1 m is 2 m long and 0.1 m wide, whatever its diagonal.
-pub(crate) fn extent(tri: &[Vec3; 3]) -> (f32, f32) {
+fn extent(tri: &[Vec3; 3]) -> (f32, f32) {
     let sides = [tri[1] - tri[0], tri[2] - tri[1], tri[0] - tri[2]];
     let mut lengths = sides.map(|s| s.length());
     lengths.sort_by(f32::total_cmp);
@@ -38,13 +38,13 @@ pub(crate) fn extent(tri: &[Vec3; 3]) -> (f32, f32) {
 }
 
 /// Returns true when `tri` is large enough to be part of a thing a body can run into.
-pub(crate) fn sizable(tri: &[Vec3; 3]) -> bool {
+fn sizable(tri: &[Vec3; 3]) -> bool {
     let (long, wide) = extent(tri);
     long >= SIZE && wide >= THIN
 }
 
 /// Returns points spread over `tri`, corners included, no farther apart than [`STEP`].
-pub(crate) fn spread(tri: &[Vec3; 3]) -> Vec<Vec3> {
+fn spread(tri: &[Vec3; 3]) -> Vec<Vec3> {
     let sides = [tri[1] - tri[0], tri[2] - tri[0]].map(|s| s.length());
     let n = ((sides[0].max(sides[1]) / STEP).ceil() as u32).clamp(1, 40);
     let at = |i: u32, j: u32| {
@@ -58,7 +58,7 @@ pub(crate) fn spread(tri: &[Vec3; 3]) -> Vec<Vec3> {
 }
 
 /// Returns the distance in metres from `point` to `solid`, which stands at the origin: zero inside it.
-pub(crate) fn reach(solid: &Collider, point: Vec3) -> f32 {
+fn reach(solid: &Collider, point: Vec3) -> f32 {
     solid.distance_to_point(Vec3::ZERO, Quat::IDENTITY, point, true)
 }
 

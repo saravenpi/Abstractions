@@ -81,28 +81,28 @@ fn blinks_come_at_natural_intervals() {
     );
 }
 
-/// The mood goes from the most urgent to the least: worried, surprised, the idle, sleepy, curious, neutral.
+/// The mood goes from the most urgent to the least: worried, surprised, the idle, sleepy, neutral.
 #[test]
 fn mood_follows_the_surroundings() {
     let calm = CompanionSense::default();
-    assert_eq!(ambient(&calm, None, false), Expression::Neutral);
-    assert_eq!(ambient(&calm, None, true), Expression::Curious);
+    assert_eq!(ambient(&calm, None), Expression::Neutral);
+    assert_eq!(
+        ambient(&calm, Some(Expression::Curious)),
+        Expression::Curious
+    );
     let night = CompanionSense {
         night: SLEEPY_NIGHT + 0.1,
         ..calm
     };
-    assert_eq!(ambient(&night, None, true), Expression::Sleepy);
-    assert_eq!(
-        ambient(&night, Some(Expression::Love), true),
-        Expression::Love
-    );
+    assert_eq!(ambient(&night, None), Expression::Sleepy);
+    assert_eq!(ambient(&night, Some(Expression::Love)), Expression::Love);
     let mut takeoff = night;
     takeoff.climb = TAKEOFF_CLIMB + 1.0;
     let mut clouds = night;
     clouds.in_clouds = true;
     for sense in [takeoff, clouds] {
         assert_eq!(
-            ambient(&sense, Some(Expression::Happy), true),
+            ambient(&sense, Some(Expression::Happy)),
             Expression::Surprised
         );
     }
@@ -110,7 +110,7 @@ fn mood_follows_the_surroundings() {
         depth: WORRY_DEPTH + 0.1,
         ..takeoff
     };
-    assert_eq!(ambient(&dive, None, false), Expression::Worried);
+    assert_eq!(ambient(&dive, None), Expression::Worried);
     assert_eq!(chirp(Expression::Neutral), None);
     assert_eq!(chirp(Expression::Love), Some(ChirpKind::Delight));
 }

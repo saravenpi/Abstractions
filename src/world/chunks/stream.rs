@@ -1,4 +1,4 @@
-//! Detail chunk streaming: which leaves around the focus get props, structures and colliders.
+//! Detail chunk streaming: which leaves around the focus get props and colliders.
 
 use std::collections::{HashMap, HashSet};
 

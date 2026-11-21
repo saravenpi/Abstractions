@@ -62,11 +62,12 @@ fn spaced(value: Val) -> bool {
     }
 }
 
-/// Whether a position or a size is left to the layout, a share of its parent, or a whole
-/// number of 4 pixel steps.
+/// Whether a position or a size is left to the layout, a share of its parent, the whole window,
+/// or a whole number of 4 pixel steps.
 fn on_grid(value: Val) -> bool {
     match value {
         Val::Auto | Val::Percent(_) => true,
+        Val::Vw(share) | Val::Vh(share) => share == 100.0,
         Val::Px(pixels) => pixels % 4.0 == 0.0,
         _ => false,
     }

@@ -1,18 +1,19 @@
 //! What the trails of the ships are read from: the frame clock, the anchor, the air and the sky
-//! of the planet, the weather and the time of day at the camera.
+//! of the planet at the height of each hull, the weather and the time of day at the camera.
 
 use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::lay::Source;
+use super::sky::{Column, column};
 use super::{Air, Flown, lamp_heat, lamp_life, vortex_heat};
 use crate::gear::{Look, air_density};
 use crate::render::{CloudCrossing, DayClock, GameCamera, Palette, daylight};
 use crate::ship::drag::SEA_DENSITY;
 use crate::ship::exhaust::TIP_COLORS;
 use crate::space::{Anchor, Frame, altitude, up};
-use crate::speed::moisture;
+use crate::speed::{contrail, moisture, persistence, saturation};
 use crate::universe::heights;
 use crate::weather::Weather;
 use crate::wind::Thickness;
@@ -57,17 +58,24 @@ impl Field<'_, '_> {
     }
 
     /// Returns the thickness of the air at the render position `at`, against the sea level at
-    /// home, and the pull of the planet there. No air and no pull away from a surface.
-    fn air(&self, anchor: &Anchor, at: Vec3) -> (f32, f32) {
+    /// home, the pull of the planet there and the column of its air at that height. No air and
+    /// no pull away from a surface.
+    fn air(&self, anchor: &Anchor, at: Vec3) -> (f32, f32, Column) {
         let (Some(terrain), Frame::Surface(_)) = (self.terrain.as_deref(), anchor.frame) else {
-            return (0.0, 0.0);
+            return (0.0, 0.0, Column::default());
         };
         let globe = terrain.globe();
         let gravity = globe.setting().gravity;
         let [top, ..] = heights(globe.record(), f64::from(gravity), globe.radius());
-        let dense = air_density(top as f32, altitude(anchor, globe, at)) / SEA_DENSITY as f32;
+        let height = altitude(anchor, globe, at);
+        let dense = air_density(top as f32, height) / SEA_DENSITY as f32;
         let planet = self.thickness.as_deref().map_or(1.0, |air| air.0);
-        (dense.min(1.0) * planet.clamp(0.0, 1.0), gravity)
+        let sky = column(
+            globe.record(),
+            (f64::from(gravity), globe.radius()),
+            f64::from(height),
+        );
+        (dense.min(1.0) * planet.clamp(0.0, 1.0), gravity, sky)
     }
 
     /// Reads the flight of the hull that is at `pos` in the frame of the anchor this frame
@@ -81,17 +89,24 @@ impl Field<'_, '_> {
             _ => None,
         };
         flown.was = Some((anchor.frame, pos));
-        let (thick, gravity) = self.air(anchor, at);
+        let (thick, gravity, sky) = self.air(anchor, at);
         let (speed, load) = flown.advance(vel, (up(anchor, at), gravity), dt);
         let depth = self.clouds.as_deref().map_or(0.0, |clouds| clouds.depth);
         let weather = self.weather.as_deref().copied().unwrap_or_default();
+        let wet =
+            moisture(depth, weather.cloud, weather.rain).max(saturation(sky.below, weather.cloud));
         let clock = self.clock.as_deref();
         Air {
             speed,
             load,
             thick,
-            moist: moisture(depth, weather.cloud, weather.rain),
+            moist: wet,
             day: clock.map_or(1.0, |clock| daylight(clock.phase)),
+            mach: crate::speed::mach(speed, sky.sound),
+            cold: sky.cold,
+            pressure: sky.pressure,
+            cover: weather.cloud,
+            engine: 0.0,
         }
     }
 
@@ -106,7 +121,7 @@ impl Field<'_, '_> {
 
     /// Returns how `source` glows in `air` and how its ribbon is drawn, seen from `eye`: a wing
     /// tip a pale line of the colour of the sky that widens like a vortex, a lamp a thin line of
-    /// its own colour.
+    /// its own colour, a contrail a broad white band lit by the day that spreads as it ages.
     pub fn style(&self, source: Source, air: &Air, eye: Vec3) -> (f32, Look) {
         let (heat, width, spread, life, tint) = match source {
             Source::Vortex(_) => {
@@ -116,6 +131,11 @@ impl Field<'_, '_> {
             Source::Lamp(side) => {
                 let own = Vec3::from_array(TIP_COLORS[side.min(1)]) * 4.0;
                 (lamp_heat(air), 0.03, 1.0, lamp_life(air.thick), own)
+            }
+            Source::Contrail => {
+                let lit = self.sky().lerp(Vec3::ONE, 0.75) * (0.2 + 1.4 * air.day.clamp(0.0, 1.0));
+                let heat = contrail(air.cold, air.pressure, air.thick, air.engine);
+                (heat, 1.2, 6.0, persistence(air.cover), lit)
             }
         };
         let look = Look {

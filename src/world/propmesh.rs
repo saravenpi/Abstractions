@@ -1,4 +1,4 @@
-//! The plant vocabulary and the meshes of the solid props: trees, cacti, rocks, wrecks, corals and sea life.
+//! The plant vocabulary and the meshes of the solid props: trees, cacti, rocks, corals and sea life.
 
 pub(in crate::world) mod grown;
 mod land;
@@ -18,7 +18,7 @@ use bevy::prelude::*;
 
 use super::scatter::{Placement, Rig};
 use super::shapes::{FlatMesh, shade};
-use super::solids::{cone, fan, frustum, icosa, slab};
+use super::solids::{cone, fan, frustum, icosa};
 
 #[cfg(test)]
 pub use merge::merge_props;
@@ -29,7 +29,7 @@ pub use rigid::merge_parts_on;
 pub const VARIANTS: usize = 3;
 
 /// Number of big plants, which come first in [`Plant`]; the ground cover follows.
-pub const BIG: usize = Plant::Chest as usize + 1;
+pub const BIG: usize = Plant::Driftwood as usize + 1;
 
 /// Number of tree kinds, which come first in [`Plant`].
 pub const TREES: usize = Plant::Willow as usize + 1;
@@ -54,8 +54,6 @@ enum Part {
     Ball([f32; 3], [f32; 3], [f32; 3]),
     /// Double sided fan of leaves: center, fan shape, color.
     Fronds([f32; 3], [f32; 5], [f32; 3]),
-    /// Closed box: center, half sizes, roll around the x axis, color.
-    Slab([f32; 3], [f32; 3], f32, [f32; 3]),
     /// Double sided curtain of leaves hanging from a point, facing away from the trunk: top center, then width,
     /// length and how far it swings outward, color.
     Drape([f32; 3], [f32; 3], [f32; 3]),
@@ -70,7 +68,6 @@ impl Part {
             Stem(..) => 24,
             Cone(..) => 14,
             Ball(..) => 20,
-            Slab(..) => 12,
             Drape(..) => 10,
             Fronds(_, f, _) => f[0] as usize * if f[3] == 0.0 { 2 } else { 6 },
         }
@@ -136,7 +133,6 @@ fn add_part(m: &mut FlatMesh, kind: usize, variant: usize, i: usize) {
             icosa(m, at(a), Vec3::from(r) * s, shape, paint(c));
         }
         Fronds(a, f, c) => fan(m, at(a), f, variant as f32 * 0.8, paint(c)),
-        Slab(a, h, roll, c) => slab(m, at(a), Vec3::from(h) * s, roll, paint(c)),
         Drape(a, d, c) => drape(m, at(a), Vec3::from(d) * Vec3::new(s.x, s.y, s.x), paint(c)),
     }
 }

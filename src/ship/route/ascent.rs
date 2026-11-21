@@ -8,8 +8,10 @@ use bevy::math::DVec3;
 use super::handoff::reached;
 use super::tune::LOCK_MARGIN;
 use crate::computer::Target;
+use crate::render::cool_speed;
 use crate::ship::body::Ship;
 use crate::ship::cruise::top_speed_at;
+use crate::ship::drag::density;
 use crate::ship::flight::Controls;
 use crate::ship::frames::spin_rate;
 use crate::ship::helm::Helm;
@@ -72,7 +74,9 @@ pub(in crate::ship) fn climbs(ship: &Ship) -> bool {
 /// The speed hold flies the velocity the climb wants: up at a speed that closes the gap to the
 /// orbit in [`CLIMB_TIME`] seconds, and along the equator at the speed of a circular orbit,
 /// which it reaches at the share [`ORBIT_RAMP`] of the height. The sideways speed grows with the
-/// square of the height, so the ship climbs through the air and turns over above it.
+/// square of the height, so the ship climbs through the air and turns over above it. Through
+/// the air the speed is held under the one at which the nose would start to glow, as a real
+/// ascent is slow where the air is thick and fast only where it is thin.
 pub(in crate::ship) fn order(fix: &Fix, planet: &PlanetSpec, goal: f64) -> Order {
     let radius = fix.pos.length();
     let up = fix.pos / radius;
@@ -84,7 +88,7 @@ pub(in crate::ship) fn order(fix: &Fix, planet: &PlanetSpec, goal: f64) -> Order
         .unwrap_or_else(|| up.any_orthonormal_vector());
     let share = (height / (goal * ORBIT_RAMP)).clamp(0.0, 1.0);
     let wish = up * ((goal - height) / CLIMB_TIME) + east * (circular * share * share);
-    let ask = wish - fix.frame;
+    let ask = (wish - fix.frame).clamp_length_max(cool_speed(density(planet, height)));
     let top = top_speed_at(height, circular);
     let target = planet.radius + goal;
     let done = apsides(fix.pos, fix.vel, planet.mu()).is_some_and(|(far, near)| {

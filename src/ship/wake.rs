@@ -1,5 +1,6 @@
 //! The trails a ship leaves in flight: a vortex trail from each wing tip while the wing makes
-//! lift in air, and a thin streak of light behind each navigation lamp.
+//! lift in air, a thin streak of light behind each navigation lamp, a contrail behind the engines
+//! in cold air and the vapour cone that wraps the hull through Mach 1 in wet air.
 //!
 //! Everything is read from how the hull moves, frame after frame, and from the air at that
 //! place: the speed, the load on the wing, the thickness and the wetness of the air. The ship
@@ -7,13 +8,17 @@
 //! drawn, so both show the same trails for the same flight and the records carry nothing more.
 //! The ribbons are the ones of the wingsuit: [`crate::gear::Trail`] and its strip.
 
+mod cone;
 mod field;
 mod lay;
+mod sky;
 
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tests_arc;
+#[cfg(test)]
+mod tests_sky;
 
 use bevy::prelude::*;
 
@@ -60,6 +65,16 @@ pub struct Air {
     pub moist: f32,
     /// Daylight, from 0 at night to 1 at noon.
     pub day: f32,
+    /// Speed against the speed of sound in that air.
+    pub mach: f32,
+    /// Temperature of the air in kelvin.
+    pub cold: f32,
+    /// Pressure of the air in pascals.
+    pub pressure: f32,
+    /// Share of the sky the clouds cover, which says how wet the air is aloft.
+    pub cover: f32,
+    /// Level of the main engines, from 0 at idle to 1 at full throttle and above.
+    pub engine: f32,
 }
 
 /// Returns the load on the wing of a hull that moves at `vel` and gains `accel` metres per
@@ -103,6 +118,8 @@ pub struct Flown {
     vel: Option<Vec3>,
     /// The load on its wing, eased.
     pub load: f32,
+    /// The air it flew in on this frame, which its vapour cone reads.
+    pub air: Air,
 }
 
 impl Default for Flown {
@@ -112,6 +129,7 @@ impl Default for Flown {
             was: None,
             vel: None,
             load: 1.0,
+            air: Air::default(),
         }
     }
 }
@@ -141,12 +159,12 @@ impl Flown {
     }
 }
 
-/// Registers the trails: every ship gets its ribbons, and they are fed once the ships are
-/// placed for the frame.
+/// Registers the trails: every ship gets its ribbons and its cone, and they are fed once the
+/// ships are placed for the frame.
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         Update,
-        (lay::spawn, lay::draw)
+        (lay::spawn, cone::spawn, lay::draw, cone::draw)
             .chain()
             .in_set(ShipSet::Report)
             .run_if(any_with_component::<Exhaust>),

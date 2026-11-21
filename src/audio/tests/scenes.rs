@@ -11,6 +11,7 @@ use crate::audio::cue::{AudioCue, ChirpKind, StepSurface};
 use crate::audio::hit::{HitSound, Kind};
 use crate::audio::scene::AudioScene;
 use crate::audio::ship::feed::{Ch, HullSound};
+use crate::audio::step::Step;
 use crate::audio::tune::{BUSY, CALM, LOUD, TITLE};
 use crate::life::signs::calls::{Cry, Timbre};
 
@@ -58,7 +59,10 @@ fn in_space(hull: HullSound, warping: bool) -> AudioScene {
 fn walk(frame: usize) -> Option<AudioCue> {
     match (frame % 27, frame % 400) {
         (_, 200) => Some(AudioCue::Chirp(ChirpKind::Curious)),
-        (0, _) => Some(AudioCue::Footstep(StepSurface::Grass)),
+        (0, _) => Some(AudioCue::Footstep(Step {
+            left: frame.is_multiple_of(54),
+            ..Step::on(StepSurface::Grass)
+        })),
         _ => None,
     }
 }

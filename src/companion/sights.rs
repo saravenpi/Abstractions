@@ -1,4 +1,4 @@
-//! What catches the companion's eye, read from the world: the ship, the home base, a structure,
+//! What catches the companion's eye, read from the world: the ship, the home base,
 //! and where the player and the camera are. A few distance checks per frame, nothing more.
 
 use bevy::ecs::system::SystemParam;
@@ -6,8 +6,8 @@ use bevy::prelude::*;
 
 use super::motion::Float;
 use super::scene::{Scene, course};
-use super::sense::{Around, CompanionSense};
-use super::tune::{CURIOUS_REACH, SIGHT_REACH};
+use super::sense::Around;
+use super::tune::SIGHT_REACH;
 use crate::home::Base;
 use crate::ship::Ship;
 use crate::space::Frame;
@@ -19,8 +19,6 @@ pub struct Sights<'w, 's> {
     ship: Query<'w, 's, &'static Ship>,
     /// The home base, once it is placed.
     base: Option<Res<'w, Base>>,
-    /// What the companion senses, with the nearest structure.
-    sense: Res<'w, CompanionSense>,
 }
 
 /// Returns `pos` when it lies within `reach` meters of `here`.
@@ -29,9 +27,9 @@ fn within(pos: Option<Vec3>, here: Vec3, reach: f32) -> Option<Vec3> {
 }
 
 impl Sights<'_, '_> {
-    /// Returns the render positions of the ship, the door of the home base and the nearest
-    /// structure, each only when it is close to `here` and the player is not seated.
-    fn sights(&self, around: &Around, here: Vec3) -> [Option<Vec3>; 3] {
+    /// Returns the render positions of the ship and the door of the home base, each only when it
+    /// is close to `here` and the player is not seated.
+    fn sights(&self, around: &Around, here: Vec3) -> [Option<Vec3>; 2] {
         let anchor = &*around.anchor;
         let ship = self
             .ship
@@ -46,7 +44,6 @@ impl Sights<'_, '_> {
         [
             within(ship.filter(|_| free), here, SIGHT_REACH.0),
             within(door.filter(|_| free), here, SIGHT_REACH.1),
-            within(self.sense.structure.filter(|_| free), here, CURIOUS_REACH),
         ]
     }
 

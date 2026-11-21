@@ -9,6 +9,8 @@
 //! floating point operations per sample while its ship is in earshot, and nothing otherwise.
 
 mod airframe;
+#[cfg(test)]
+mod airframe_tests;
 mod cabin;
 mod drive;
 pub(super) mod feed;
@@ -18,7 +20,7 @@ pub(super) mod law;
 mod motor;
 pub(super) mod path;
 pub(super) mod pump;
-mod ring;
+pub(super) mod ring;
 pub(super) mod tune;
 mod works;
 

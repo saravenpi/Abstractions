@@ -1,7 +1,7 @@
 //! Map tests: a level fades in, the flat map opens where it was asked to look and no closer
 //! than its cap, pins cross the wire, and crowded names on it are left out.
 
-use bevy::math::{DVec3, Vec2};
+use bevy::math::{DVec2, DVec3, Vec2};
 
 use super::fade::{FADE, shade};
 use super::level::{CLOSEST, GROUND, REFERENCE_MAP, WHOLE, first, framed};
@@ -15,10 +15,11 @@ fn a_level_fades_in_and_opens_where_asked() {
     assert!((shade(FADE * 0.5) - 0.5).abs() < 1e-6);
     assert_eq!(shade(FADE * 2.0), 0.0);
     let whole = first(None, None);
-    assert_eq!((whole.zoom, whole.centre), (WHOLE, Vec2::ZERO));
+    assert_eq!((whole.zoom, whole.centre), (WHOLE, DVec2::ZERO));
     let here = DVec3::new(0.3, 0.2, -0.9);
     let close = first(None, Some(here));
-    assert_eq!((close.zoom, GROUND), (CLOSEST, CLOSEST));
+    assert_eq!(close.zoom, GROUND);
+    const { assert!(GROUND < CLOSEST) };
     assert!(close.centre.distance(to_chart(here)) < 1e-6);
     let asked = first(Some(DVec3::Z), Some(here));
     assert!(asked.centre.distance(to_chart(DVec3::Z)) < 1e-6);
@@ -38,18 +39,18 @@ fn the_closest_zoom_keeps_tile_pixels_small() {
 /// past the poles, so the picture fills the view. East and west it pans on and wraps.
 #[test]
 fn the_planet_lens_keeps_the_picture_in_view() {
-    use crate::computer::Lens;
-    let far = framed(Lens {
+    use super::sight::Sight;
+    let far = framed(Sight {
         zoom: 1.0,
-        centre: Vec2::new(0.9, 0.9),
+        centre: DVec2::new(0.9, 0.9),
     });
-    assert_eq!((far.zoom, far.centre), (WHOLE, Vec2::new(0.9, 0.0)));
-    let close = framed(Lens {
+    assert_eq!((far.zoom, far.centre), (WHOLE, DVec2::new(0.9, 0.0)));
+    let close = framed(Sight {
         zoom: 1.0e6,
-        centre: Vec2::new(-2.0, -0.6),
+        centre: DVec2::new(-2.0, -0.6),
     });
     assert_eq!(close.zoom, CLOSEST);
-    assert!((close.centre.y - (1.0 / CLOSEST - 0.5)).abs() < 1e-6);
+    assert!((close.centre.y - (1.0 / f64::from(CLOSEST) - 0.5)).abs() < 1e-9);
     assert_eq!(close.centre.x, -2.0);
 }
 

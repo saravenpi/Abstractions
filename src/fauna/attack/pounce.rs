@@ -16,6 +16,7 @@ use super::timing::Attacking;
 use super::tune::{SLACK, SPREAD, STRIKE};
 use crate::audio::Impact;
 use crate::avatar::blow::Blow;
+use crate::fauna::Frozen;
 use crate::fauna::beast::Beast;
 use crate::fauna::senses::Stance;
 use crate::fauna::senses::tune::ALARM;
@@ -114,8 +115,8 @@ fn reaches(kind: Kind, (beast, species): (&Beast, &Species), foe: &Foe) -> bool 
     gap.length() <= kind.reach(&species.body) * SLACK
 }
 
-/// Moves the attack on `dt` seconds under `gravity`: a dash carries the body forward, and the blow
-/// lands once.
+/// Moves the attack on `dt` seconds under `gravity`: a dash drives the body forward at its top speed,
+/// through its velocity so that its legs run and the walk carries it, and the blow lands once.
 fn advance(
     (beast, attack): (&mut Beast, &mut Attacking),
     species: &Species,
@@ -128,8 +129,9 @@ fn advance(
     }
     if attack.kind.dashes() {
         let (_, facing) = geometry(beast, foe);
-        let run = facing * species.history.speed * dt;
-        beast.motion.root.at += Vec3::new(run.x, 0.0, run.y);
+        let run = facing * species.history.speed;
+        beast.motion.root.vel.at = Vec3::new(run.x, 0.0, run.y);
+        beast.motion.root.vel.vel = Vec3::ZERO;
     }
     if !attack.struck && reaches(attack.kind, (beast, species), foe) {
         attack.struck = true;
@@ -139,10 +141,14 @@ fn advance(
     }
 }
 
-/// Lets every animal that fights the robot wind up, strike and recover.
+/// Filter of the animals that can act: not dead and not held still.
+type Alive = (Without<Dead>, Without<Frozen>);
+
+/// Lets every animal that fights the robot wind up, strike and recover. An animal a hitstop holds
+/// waits with it, as its walk does.
 pub fn attack(
     mut f: Fight,
-    mut beasts: Query<(Entity, &mut Beast, Option<&mut Attacking>), Without<Dead>>,
+    mut beasts: Query<(Entity, &mut Beast, Option<&mut Attacking>), Alive>,
 ) {
     let globe = f.terrain.globe().clone();
     let (Some(life), Ok(robot)) = (globe.life(), f.robot.single()) else {

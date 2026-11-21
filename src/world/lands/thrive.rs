@@ -1,4 +1,4 @@
-//! How well life does at a place: the climate field read where plants and settlers stand, and what its
+//! How well life does at a place: the climate field read where plants stand, and what its
 //! warmth and wetness mean for each biome.
 
 use bevy::math::{DVec3, Vec2};
@@ -7,13 +7,6 @@ use crate::climate::{self, Climate};
 use crate::world::Terrain;
 use crate::world::biome::Biome;
 use crate::world::globe::{Chart, Globe, MEAN_SEASON};
-
-/// Coldest and warmest air in kelvin a village is built in.
-pub const VILLAGE_AIR: (f32, f32) = (265.0, 315.0);
-
-/// Air in kelvin over which a desert with less moisture than the given wetness is a sea of dunes,
-/// its heart, where nobody camps.
-pub const DUNE_SEA: (f32, f32) = (295.0, 0.15);
 
 /// Temperature in kelvin under which even the pines of the taiga stop: the tree line of the cold.
 /// Above it a taiga is a forest of snow pines, colder than the snow line of the other biomes.
@@ -35,7 +28,7 @@ const COMFORT: [(f32, f32, f32); 6] = [
 ];
 
 /// Returns the annual mean climate of `globe` in planet-frame unit direction `dir`, read at the place the
-/// globe picks its biomes from, so plants and settlers feel the climate their biome was chosen for.
+/// globe picks its biomes from, so plants feel the climate their biome was chosen for.
 pub fn climate_on(globe: &Globe, dir: DVec3) -> Climate {
     climate::at(globe.setting(), &globe.spot(dir), MEAN_SEASON)
 }
@@ -65,16 +58,4 @@ pub fn frozen(biome: Biome, air: &Climate) -> bool {
         Biome::Taiga => air.temperature < TREE_LINE,
         _ => climate::snow(air),
     }
-}
-
-/// Returns true when `air` is neither too cold nor too hot for a village.
-pub fn livable(air: &Climate) -> bool {
-    (VILLAGE_AIR.0..=VILLAGE_AIR.1).contains(&air.temperature)
-}
-
-/// Returns true when chart position `w` of `terrain` lies in the heart of a desert, a hot sea of
-/// dunes. The legacy plane has no climate and no such heart.
-pub fn dune_sea(terrain: &Terrain, w: Vec2) -> bool {
-    let hot = |air: Climate| air.temperature > DUNE_SEA.0 && air.moisture < DUNE_SEA.1;
-    terrain.biome(w.x, w.y) == Biome::Desert && climate_at(terrain, w).is_some_and(hot)
 }

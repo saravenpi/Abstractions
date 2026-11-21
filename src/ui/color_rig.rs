@@ -1,4 +1,5 @@
-//! Test rig: contrast of text on the HUD panel over a sky of a given brightness.
+//! Test rig: contrast of text on a fill, the panel or the HUD shadow, over a sky of a given
+//! brightness.
 
 use bevy::prelude::*;
 

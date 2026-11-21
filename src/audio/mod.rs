@@ -23,11 +23,12 @@ mod ship;
 mod shore;
 mod sky;
 mod source;
-mod steps;
+mod step;
 mod suit;
 #[cfg(test)]
 mod tests_speed;
 mod throat;
+mod tread;
 pub mod tune;
 mod wire;
 
@@ -41,6 +42,7 @@ pub use hit::{Body, Impact, Outer, Whoosh};
 pub use scene::{AudioScene, altitude_fade};
 pub use ship::feed::{Ch, HULLS, HullSound};
 pub use ship::tune::EARSHOT;
+pub use step::{Contact, Step};
 
 use bevy::audio::AddAudioSource;
 use bevy::prelude::*;
@@ -61,7 +63,6 @@ pub(super) fn plugin(app: &mut App) {
             hit::plugin,
             sense::plugin,
             sky::plugin,
-            steps::plugin,
             wire::plugin,
         ));
 }

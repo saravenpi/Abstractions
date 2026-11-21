@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::{Place, Stop, Trail};
+use super::{Look, Place, Stop, Trail};
 use crate::computer::{Lens, Tab, Target};
 use crate::map::level::Level;
 use crate::universe::{BodyId, GalaxyId, StarId};
@@ -62,7 +62,7 @@ fn back_goes_to_the_level_before_or_around() {
     assert_eq!(trail.back(Place::Planet(body)), Some(up));
     let before = Stop {
         place: Place::Universe,
-        lens: Some(Lens::default()),
+        lens: Some(Look::Chart(Lens::default())),
     };
     trail.stops.push(before);
     assert_eq!(trail.back(Place::Planet(body)), Some(before));

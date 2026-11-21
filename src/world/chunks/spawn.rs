@@ -19,7 +19,6 @@ use crate::world::globe::ChunkId;
 use crate::world::mesh::{Frame, Rings, leaf_coord};
 use crate::world::props::{Cover, PropAssets, spawn_props};
 use crate::world::rocks::Taken;
-use crate::world::structures::spawn_structures;
 use crate::world::{CHUNK_SIZE, Terrain, WorldReady};
 
 /// Meshes, the shared material and terrain, for spawning and refining chunks.
@@ -111,14 +110,6 @@ pub fn spawn_chunk(commands: &mut Commands, spawner: &mut Spawner, data: ChunkDa
         grass: data.grass.map(|m| spawner.meshes.add(m)),
     };
     let [props, grass] = spawn_props(commands, entity, &material, cover);
-    let built = spawn_structures(
-        commands,
-        entity,
-        &spawner.assets,
-        &mut spawner.meshes,
-        data.structures,
-    );
-    let structure = built.and_then(|(child, collider)| Some((child, collider?)));
     Loaded {
         entity,
         props,
@@ -126,7 +117,7 @@ pub fn spawn_chunk(commands: &mut Commands, spawner: &mut Spawner, data: ChunkDa
         bodies: data.bodies,
         solid: false,
         shown: false,
-        detail: Detail::new(data.lod, Turf::new(grass, data.turfed), structure),
+        detail: Detail::new(data.lod, Turf::new(grass, data.turfed)),
         stand: data.stand,
     }
 }

@@ -4,12 +4,10 @@
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
-use super::Chunks;
 use crate::space::{Anchor, Frame as Space, Placed};
+use crate::world::Planet;
 use crate::world::focus::{Frames, Link};
-use crate::world::globe::quadtree::leaf_at;
 use crate::world::mesh::Frame;
-use crate::world::{Globe, Planet};
 
 /// Pose of an entity fixed to the streamed planet, in the planet frame.
 ///
@@ -65,14 +63,5 @@ pub fn place(frames: Frames, mut sited: Query<(&Sited, &mut Placed, &mut Transfo
             *placed = pose;
             *transform = wanted;
         }
-    }
-}
-
-impl Chunks {
-    /// Returns true when the detail chunk under unit direction `dir` of `globe` has its colliders on, which
-    /// a body released there stands on.
-    pub fn solid_under(&self, globe: &Globe, dir: DVec3) -> bool {
-        let leaf = leaf_at(dir, globe.leaf_level());
-        self.loaded.get(&leaf).is_some_and(|loaded| loaded.solid)
     }
 }

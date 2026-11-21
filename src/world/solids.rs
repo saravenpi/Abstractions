@@ -1,4 +1,4 @@
-//! Low-poly solids appended to a [`FlatMesh`]: cones, prisms, boxes and jittered icospheres.
+//! Low-poly solids appended to a [`FlatMesh`]: cones, prisms, frustums, fans and jittered icospheres.
 
 use std::f32::consts::TAU;
 
@@ -6,11 +6,8 @@ use bevy::prelude::*;
 
 use super::shapes::FlatMesh;
 
-mod slab;
 #[cfg(test)]
 pub(crate) mod tests;
-
-pub use slab::slab;
 
 /// Golden ratio used by the icosahedron vertices.
 const PHI: f32 = std::f32::consts::GOLDEN_RATIO;

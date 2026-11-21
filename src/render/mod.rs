@@ -18,6 +18,7 @@ mod entry;
 mod exposure;
 mod fog;
 mod galaxy_light;
+mod glare;
 mod glow;
 mod heat;
 mod lighting;
@@ -57,6 +58,10 @@ mod tests_fog;
 #[cfg(test)]
 mod tests_fresnel;
 #[cfg(test)]
+mod tests_glare;
+#[cfg(test)]
+mod tests_glare_band;
+#[cfg(test)]
 mod tests_lens;
 #[cfg(test)]
 mod tests_lowres;
@@ -93,8 +98,8 @@ pub use dome::SkyDome;
 pub use entry::FlightFx;
 pub use exposure::scene_lux;
 pub use heat::{
-    Craft, Gas, Glow, Heat, MIN_SPEED, SHEATH_FROM, SHEATH_REACH, SheathMaterial, SheathUniform,
-    descent, entry,
+    Craft, Gas, Glow, Heat, MIN_SPEED, SHEATH_FROM, SheathMaterial, SheathUniform, cool_speed,
+    entry, skin,
 };
 pub use lighting::{Moon, Sun, reach};
 pub use lowres::{Fit, LowRes, window_changed};

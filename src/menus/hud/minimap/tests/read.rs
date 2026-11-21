@@ -1,5 +1,6 @@
 //! Reading the minimap back out of the app: where each part is, what the corner says and what
-//! is drawn on the sheet of the chart. Also the home base and the ship the marks point at.
+//! is drawn on the sheet of the chart, which nodes lie under a root. Also the home base and the
+//! ship the marks point at.
 
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
@@ -63,7 +64,7 @@ pub fn turn(app: &mut App) -> UiTransform {
     *grounds.next().expect("the image of the ground").1
 }
 
-/// Returns the text in the corner of the minimap.
+/// Returns the caption under the minimap.
 pub fn caption(app: &mut App) -> String {
     let mut captions = app.world_mut().query_filtered::<&Text, With<Caption>>();
     captions.single(app.world()).expect("one caption").0.clone()
@@ -76,4 +77,26 @@ pub fn drawn(app: &mut App) -> usize {
         .query_filtered::<Option<&Children>, With<Chart>>();
     let children = sheets.single(app.world()).expect("one sheet");
     children.map_or(0, |children| children.len())
+}
+
+/// Returns the square of the minimap picture: the node that holds the image of the ground.
+pub fn square(app: &mut App) -> Entity {
+    let mut parts = app.world_mut().query::<(&Part, &ChildOf)>();
+    let mut grounds = parts
+        .iter(app.world())
+        .filter(|(part, _)| **part == Part::Ground);
+    grounds.next().expect("the image of the ground").1.parent()
+}
+
+/// Returns `root` and every entity under it, the root first.
+pub fn under(world: &World, root: Entity) -> Vec<Entity> {
+    let mut found = vec![root];
+    let mut at = 0;
+    while at < found.len() {
+        if let Some(children) = world.get::<Children>(found[at]) {
+            found.extend(children.into_iter().copied());
+        }
+        at += 1;
+    }
+    found
 }

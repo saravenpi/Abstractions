@@ -25,10 +25,10 @@ use crate::universe::BodyId;
 const CURIOUS_TILT: f32 = 0.17;
 
 /// Turns something that happened in the mind into a reaction of the face and what it would say.
-fn react(cue: Cue, brain: &mut Brain, face: &mut Face, sense: &CompanionSense) -> Said {
+fn react(cue: Cue, brain: &mut Brain, face: &mut Face) -> Said {
     match cue {
         Cue::Woke => face.react(Expression::Surprised, WAKE_SECONDS),
-        Cue::Started(Idle::Inspect) => brain.choose_inspect(sense),
+        Cue::Started(Idle::Inspect) => brain.choose_inspect(),
         Cue::Started(_) | Cue::Dozed => {}
     }
     spoken(cue)
@@ -40,7 +40,7 @@ fn wanted(brain: &Brain, sense: &CompanionSense) -> Expression {
         (true, _) => Some(Expression::Sleepy),
         (false, idle) => idle.map(Idle::face),
     };
-    ambient(sense, idle, brain.nearby(sense).is_some())
+    ambient(sense, idle)
 }
 
 /// What the thinking reads and writes besides the companion itself.
@@ -141,7 +141,7 @@ pub fn think(
         dt,
     };
     let cue = brain.mind.advance(&input);
-    let mut heard = cue.and_then(|cue| react(cue, &mut brain, &mut face, &sense));
+    let mut heard = cue.and_then(|cue| react(cue, &mut brain, &mut face));
     heard = heard.or(events.stir(&mut brain, &mut face, around.location.body));
     let changed = face.advance(wanted(&brain, &sense), dt);
     heard = heard.or(changed

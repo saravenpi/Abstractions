@@ -1,6 +1,6 @@
 //! The room the markers leave the rest of the HUD: a safe rectangle for their icons, clear of
 //! the compass row at the top and of the prompt and the hotbar at the bottom, and the corners
-//! they move out of, where the place strip, the minimap and the instruments sit.
+//! they move out of, where the place lines, the minimap and its caption and the instruments sit.
 //!
 //! Everything is in interface pixels, so the room follows the "Interface size" setting.
 
@@ -12,7 +12,7 @@ use crate::menus::hud::compass::HEIGHT;
 use crate::menus::hud::minimap::widget;
 use crate::ui::theme;
 
-/// Width in pixels of the strip of the place, top left, at its widest.
+/// Width and height in pixels of the place lines, top left, at their widest.
 const PLACE: Vec2 = Vec2::new(272.0, 72.0);
 
 /// Width and height in pixels of the instruments and the frame rows, bottom left, in the ship.
@@ -32,15 +32,21 @@ pub fn safe(screen: Vec2) -> Rect {
     Rect::from_corners(min, max.max(min))
 }
 
-/// Returns the corners of a screen of `screen` pixels the markers keep out of: the place strip
-/// top left, the minimap top right and, while `seated`, the instruments bottom left.
+/// Returns the corners of a screen of `screen` pixels the markers keep out of: the place lines
+/// top left, the minimap and its caption top right and, while `seated`, the instruments bottom
+/// left.
 pub fn corners(screen: Vec2, seated: bool) -> [Rect; 3] {
     let gap = theme::EDGE + theme::S2;
     let map = (screen.y * widget::SIDE / 1080.0).clamp(widget::LIMITS.0, widget::LIMITS.1);
     let deck = DECK * f32::from(u8::from(seated));
     [
         Rect::from_corners(Vec2::ZERO, PLACE + gap),
-        Rect::new(screen.x - map - gap, 0.0, screen.x, map + gap),
+        Rect::new(
+            screen.x - map - gap,
+            0.0,
+            screen.x,
+            map + widget::CAPTION + gap,
+        ),
         Rect::new(0.0, screen.y - deck.y, deck.x, screen.y),
     ]
 }

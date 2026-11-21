@@ -50,7 +50,7 @@ fn run(play: impl Fn(f32) -> (f32, CompanionSense), voice: Chatter) -> Heard {
             true => Some(Expression::Sleepy),
             false => mind.idle.map(Idle::face),
         };
-        let changed = face.advance(ambient(&sense, idle, false), DT);
+        let changed = face.advance(ambient(&sense, idle), DT);
         let said = cue.and_then(spoken).or(changed
             .and_then(chirp)
             .map(|kind| (kind, reason(kind, &sense))));

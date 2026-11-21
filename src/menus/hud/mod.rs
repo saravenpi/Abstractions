@@ -6,7 +6,8 @@
 //! What shows is one rule: `context::shown` maps where the player is to the elements that
 //! mean something there, and every element asks it. One edge margin, `theme::EDGE`, frames
 //! the screen: top left the place, top centre the compass, top right the minimap, bottom left
-//! the instruments and frame, bottom centre the prompt line.
+//! the instruments and frame, bottom centre the prompt line. Nothing of the HUD sits on a
+//! panel: its texts and icons carry the HUD shadow of `ui::shade`, and start at the margin.
 
 mod banner;
 mod climate;
@@ -18,7 +19,6 @@ mod eye;
 mod fade;
 mod flight;
 mod frame;
-mod hints;
 mod markers;
 mod minimap;
 mod needle;
@@ -42,11 +42,7 @@ mod tests_deck;
 #[cfg(test)]
 mod tests_frame;
 #[cfg(test)]
-mod tests_hints;
-#[cfg(test)]
 mod tests_icons;
-#[cfg(test)]
-mod tests_pin_hint;
 #[cfg(test)]
 mod tests_prompt;
 #[cfg(test)]
@@ -55,6 +51,8 @@ mod tests_rows;
 mod tests_shown;
 #[cfg(test)]
 mod tests_size;
+#[cfg(test)]
+mod tests_status;
 mod units;
 
 pub use climate::HudWeather;
@@ -67,8 +65,7 @@ use bevy::time::common_conditions::on_timer;
 
 use crate::condition::Condition;
 use crate::screens::{Screen, in_control};
-use crate::settings::{Persistent, Settings};
-use crate::ui::theme;
+use crate::ui::{OverWorld, theme};
 
 /// Seconds between two refreshes of the flight instruments and the prompt line.
 const REFRESH: f32 = 0.1;
@@ -108,6 +105,7 @@ fn spawn(mut commands: Commands) {
     commands.insert_resource(banner::Banner::default());
     commands.spawn((
         HudRoot,
+        OverWorld,
         DespawnOnExit(Screen::Gameplay),
         Node {
             position_type: PositionType::Absolute,
@@ -183,7 +181,6 @@ fn readouts(app: &mut App) {
         .run_if(context::shows_climate)
         .run_if(on_timer(Duration::from_secs_f32(CLIMATE_EVERY)));
     let playing = (
-        hints::update,
         (panel::refresh, panel::spool, switch::write).run_if(every()),
         prompt::update.run_if(every()),
         marks.in_set(MarkerSet::Show),
@@ -227,16 +224,8 @@ pub(super) fn plugin(app: &mut App) {
     hurt(app);
     app.init_resource::<banner::Banner>()
         .init_resource::<context::Where>()
-        .init_resource::<hints::Hinted>()
-        .init_resource::<hints::Clock>()
         .add_plugins((minimap::plugin, onscreen::plugin))
-        .add_systems(OnEnter(Screen::Gameplay), spawn)
-        .add_systems(
-            Update,
-            hints::retire
-                .run_if(resource_exists::<Persistent<Settings>>)
-                .run_if(resource_exists_and_changed::<crate::map::Places>),
-        );
+        .add_systems(OnEnter(Screen::Gameplay), spawn);
     steps(app);
     readouts(app);
 }

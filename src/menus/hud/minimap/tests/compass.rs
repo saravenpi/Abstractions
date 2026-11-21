@@ -92,9 +92,10 @@ fn the_compass_keeps_friends_ahead_at_their_bearing() {
     let front: Vec<&Drawn> = found.iter().filter(|mark| mark.1 > 0.99).collect();
     assert_eq!(front.len(), 1, "{found:?}");
     assert_eq!(front[0].2, "300 m");
+    let whole = front[0].1;
     let back: Vec<&Drawn> = found
         .iter()
-        .filter(|mark| (mark.1 - BEHIND).abs() < 1e-3)
+        .filter(|mark| (mark.1 - BEHIND * whole).abs() < 1e-4)
         .collect();
     assert_eq!(back.len(), 4, "{found:?}");
     assert!(back.iter().all(|mark| mark.2.is_empty()), "{found:?}");
@@ -107,8 +108,10 @@ fn the_compass_keeps_friends_ahead_at_their_bearing() {
     assert_eq!(spoken, ["+3"]);
 }
 
-/// A mark is an icon with its distance on the line under it, in the secondary tone, and no
-/// name anywhere: the count beside the icon stays empty unless friends fold into it.
+/// A mark is an icon with its distance on the line under it, in the primary tone, and no name
+/// anywhere: the count beside the icon stays empty unless friends fold into it. With no panel
+/// behind the bar the secondary tone is too faint over a bright sky. The fade of the HUD in
+/// multiplies every colour alike, so the distance is read against its icon.
 #[test]
 fn a_mark_holds_an_icon_and_its_distance_and_no_name() {
     let mut app = app("icons");
@@ -129,10 +132,12 @@ fn a_mark_holds_an_icon_and_its_distance_and_no_name() {
     let head = world.get::<Children>(children[0]).unwrap();
     let count = world.get::<Text>(head[1]).unwrap();
     assert!(count.0.is_empty(), "{count:?}");
+    let icon = world.get::<TextColor>(head[0]).unwrap().0.alpha();
     let tone = world.get::<TextColor>(children[1]).unwrap().0;
+    let share = tone.alpha() / icon;
     assert!(
-        (tone.alpha() - theme::TEXT_2.alpha()).abs() < 1e-4,
-        "{tone:?}"
+        (share - theme::TEXT.alpha()).abs() < 1e-3,
+        "{tone:?} {icon}"
     );
     let mut texts = app.world_mut().query::<&Text>();
     assert!(texts.iter(app.world()).all(|text| !text.0.contains("Ada")));

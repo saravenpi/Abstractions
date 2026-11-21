@@ -6,7 +6,6 @@ use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::Frozen;
 use super::beast::{Beast, Part};
 use super::gate::Spec;
 use super::ground::Heights;
@@ -14,8 +13,9 @@ use super::herds::{Herds, Land};
 use super::lead::goal;
 use super::motion::{Detail, Motion};
 use super::steer::{Aim, Pace, cruise, drive};
-use super::tune::{DRIFT, MAX_STEP, NEAR};
+use super::tune::{DRIFT, MAX_STEP, NEAR, STAND_OFF, STRIKE_SHARE};
 use super::want::Lead;
+use super::{Frozen, Kind};
 use crate::life::Species;
 use crate::life::body::Locomotion;
 use crate::life::herd::Herd;
@@ -147,6 +147,24 @@ fn pace(ctx: &Ctx, beast: &Beast, species: &Species) -> Pace {
         gravity,
         top: species.history.speed * beast.wits.health.pace() * beast.wits.broken.pace(body),
         detail: if near { Detail::Full } else { Detail::Cheap },
+        strike: strike(beast, species),
+    }
+}
+
+/// Returns the metres from its root within which `beast` of `species` strikes what it goes for:
+/// [`STRIKE_SHARE`] of the reach of its longest attack that neither runs nor sweeps behind, or
+/// [`STAND_OFF`] past its length when it has none.
+fn strike(beast: &Beast, species: &Species) -> f32 {
+    let near = [Kind::Trample, Kind::Swipe, Kind::Lunge, Kind::Bite];
+    let reach = near
+        .into_iter()
+        .filter(|k| k.can(species, beast.wits.broken))
+        .map(|k| k.reach(&species.body))
+        .fold(0.0, f32::max);
+    if reach > 0.0 {
+        STRIKE_SHARE * reach
+    } else {
+        STAND_OFF + species.body.length
     }
 }
 

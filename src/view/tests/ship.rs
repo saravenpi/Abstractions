@@ -82,7 +82,7 @@ fn chase_keeps_the_ship_up_in_space_and_levels_near_a_planet() {
 }
 
 /// The mouse looks around the ship, the view holds for a moment once the mouse stops, and
-/// then the camera springs back behind the ship.
+/// then, with auto-follow on as by default, the camera springs back behind the ship.
 #[test]
 fn the_mouse_looks_around_and_the_view_springs_back() {
     let (mut rig, world) = (Rig::default(), Boxes::default());

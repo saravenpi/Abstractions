@@ -9,7 +9,7 @@ use super::app::{app, enter_world};
 use crate::audio::cue::StepSurface;
 use crate::audio::scene::AudioScene;
 use crate::audio::sense::Here;
-use crate::audio::steps::footing;
+use crate::avatar::tread::ground::natural;
 use crate::player::{BODY_LENGTH, BODY_RADIUS, EYE_OFFSET};
 use crate::render::GameCamera;
 use crate::space::Anchor;
@@ -69,7 +69,12 @@ fn heard(name: &str, record: PlanetRecord) -> (AudioScene, Option<StepSurface>) 
     app.update();
     (
         *app.world().resource::<AudioScene>(),
-        footing(&terrain, body),
+        natural(
+            &terrain,
+            body - Vec3::Y * (0.5 * BODY_LENGTH + BODY_RADIUS),
+            0.0,
+        )
+        .map(|(surface, _)| surface),
     )
 }
 

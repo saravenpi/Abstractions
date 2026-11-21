@@ -4,7 +4,7 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use super::{DIVE_TIME, Place, Stop, Trail};
+use super::{DIVE_TIME, Look, Place, Stop, Trail};
 use crate::computer::{Board, Lens, MapView, Tab, Target};
 use crate::map::level::Level;
 use crate::map::surface::Surface;
@@ -38,8 +38,8 @@ impl Nav<'_> {
         let chart = (self.board.tab, self.board.inside);
         let place = Place::shown(*self.level, chart, ship);
         let lens = match *self.level {
-            Level::Chart => self.view.goal,
-            Level::Planet(_) => self.surface.goal,
+            Level::Chart => Look::Chart(self.view.goal),
+            Level::Planet(_) => Look::Planet(self.surface.goal),
         };
         Stop {
             place,
@@ -64,11 +64,15 @@ impl Nav<'_> {
     /// Shows the level of `stop`, looked at as it was, or as it opens.
     pub fn go(&mut self, stop: Stop) {
         let same = self.here().place == stop.place;
-        let lens = stop.lens.unwrap_or_default();
+        let (lens, sight) = match stop.lens {
+            Some(Look::Chart(lens)) => (lens, None),
+            Some(Look::Planet(sight)) => (Lens::default(), Some(sight)),
+            None => (Lens::default(), None),
+        };
         match stop.place {
-            Place::Planet(_) if same => self.surface.goal = stop.lens.unwrap_or(self.surface.goal),
+            Place::Planet(_) if same => self.surface.goal = sight.unwrap_or(self.surface.goal),
             Place::Planet(body) => {
-                self.surface.again = stop.lens;
+                self.surface.again = sight;
                 *self.level = Level::Planet(body);
             }
             Place::Universe => self.chart((Tab::Universe, None), lens, same),

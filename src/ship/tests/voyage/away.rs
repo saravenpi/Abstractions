@@ -6,7 +6,9 @@ use bevy::prelude::*;
 use super::{flight, here, key};
 use crate::audio::{AudioCue, ChirpKind};
 use crate::companion::CompanionChirp;
-use crate::computer::{Atlas, Engage, RouteStatus, Target, ship_position, target_position};
+use crate::computer::{
+    Atlas, Destination, Engage, RouteStatus, Target, ship_position, target_position,
+};
 use crate::player::{Interact, Verb};
 use crate::render::FlightFx;
 use crate::ship::berth::landing_spot;
@@ -53,6 +55,7 @@ fn order<T: PartialEq + std::fmt::Debug>(seen: &[T], wanted: &[T]) -> Vec<usize>
 /// the ship out at the lock distance of that planet, which becomes the planet the world streams.
 pub fn warps_to_another_planet(game: &mut Game, home: BodyId) -> BodyId {
     let far = neighbour(game, home);
+    game.app.world_mut().resource_mut::<Destination>().0 = Some(Target::Body(far));
     game.app.world_mut().trigger(Engage(Target::Body(far)));
     game.until("the drive to spool", 3000, |game| {
         game.get::<Autopilot>().phase() == Phase::Spooling

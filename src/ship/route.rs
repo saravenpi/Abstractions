@@ -202,7 +202,7 @@ pub fn report(
         *arrived = autopilot.target;
     }
     let other = destination.0.is_some_and(|wanted| Some(wanted) != *arrived);
-    let left = autopilot.phase == Phase::Arrived && other;
+    let left = autopilot.phase == Phase::Arrived && (other || destination.0.is_none());
     let phase = [autopilot.phase, Phase::Idle][usize::from(left)];
     let (universe, time) = (&cosmos.universe, cosmos.clock.seconds);
     let here = ship_position(universe, ship.frame, ship.pos, time);

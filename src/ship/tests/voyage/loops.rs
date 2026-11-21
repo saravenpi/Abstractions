@@ -5,7 +5,7 @@
 use super::pick::{neighbour, other_star};
 use super::place::{beside, into_low_orbit, into_orbit};
 use super::{ground, key, lifts_off};
-use crate::computer::{Destination, Engage, Target};
+use crate::computer::{Destination, Engage, RouteStatus, Target};
 use crate::ship::tests::rig::{Game, Log};
 use crate::ship::{Autopilot, Phase, ShipEvent};
 use crate::space::Location;

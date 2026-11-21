@@ -20,7 +20,7 @@ pub fn root_on(background: Color, justify: JustifyContent) -> impl Bundle {
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::FlexStart,
             justify_content: justify,
-            padding: UiRect::axes(percent(5), percent(4)),
+            padding: UiRect::axes(percent(5), px(theme::S5)),
             ..default()
         },
         BackgroundColor(background),
@@ -84,9 +84,4 @@ pub fn rule() -> impl Bundle {
         },
         BackgroundColor(theme::TEXT),
     )
-}
-
-/// Border color of a dividing line.
-pub fn hairline() -> BorderColor {
-    BorderColor::all(theme::HAIRLINE)
 }

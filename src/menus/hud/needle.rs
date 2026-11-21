@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 /// Width of the bar in pixels.
-pub const WIDTH: f32 = 360.0;
+pub const WIDTH: f32 = 480.0;
 
 /// Angle in radians from the middle of the bar to either end.
 pub const SPAN: f32 = 1.2;

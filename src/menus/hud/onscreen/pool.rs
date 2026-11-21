@@ -91,6 +91,11 @@ fn label(at: usize) -> impl Bundle {
         text("", theme::FONT_SMALL, theme::TEXT),
         TextLayout::no_wrap(),
         TextShadow::default(),
+        Node {
+            padding: UiRect::horizontal(px(theme::S1)),
+            ..default()
+        },
+        BackgroundColor(theme::PANEL),
     )
 }
 

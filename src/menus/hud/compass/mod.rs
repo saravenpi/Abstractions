@@ -2,8 +2,9 @@
 //! player, each where it lies, with its name and distance under it.
 //!
 //! A mark slides along the bar as the player turns, fades out toward the ends of the bar and
-//! hides past them. Every mark sits on one level, its icon over the line and its distance under
-//! it, even where marks overlap. On a planet an N marks north. The bar shows even
+//! hides past them. A mark is an icon beside its name and distance. Marks that would overlap
+//! stack in rows under the bar, the nearest on top, and a mark with no free row hides. On a
+//! planet an N marks north. The bar shows even
 //! while empty. The ship only shows on the planet it stands on and while the player is on foot;
 //! favourites only nearby. The home mark only shows on the planet of the home base, on foot or in
 //! its air, and nowhere else.
@@ -13,10 +14,13 @@ mod beacons;
 mod herds;
 mod north;
 mod show;
+mod stack;
 #[cfg(test)]
 mod tests_course;
 #[cfg(test)]
 mod tests_herds;
+#[cfg(test)]
+mod tests_stack;
 
 pub(super) use aim::{Around, FAVOURITE_REACH};
 #[cfg(test)]
@@ -38,14 +42,18 @@ use crate::screens::Screen;
 use crate::ship::ShipSet;
 use crate::ui::{ICON_FONT, text, theme};
 
-/// Width in pixels of the room of one mark, which is centred on its place on the bar.
-const ROOM: f32 = 96.0;
+/// Width in pixels of the room of the north mark, which is centred on its place on the bar.
+const ROOM: f32 = 24.0;
+
+/// Rows of marks the compass stacks: the first is in the bar, the others hang under it.
+pub(super) const ROWS: usize = 3;
 
 /// Height in pixels of the icon of a mark, small enough to leave the view clear.
 const MARK: f32 = theme::ICON_SMALL;
 
-/// Height in pixels of the bar with one row of marks: an icon over a line of text.
-const HEIGHT: f32 = MARK + theme::LINE_SMALL + theme::S1 + theme::S2;
+/// Height in pixels of the bar, and of every row of marks under it: an icon beside a line of
+/// text, in a strip.
+pub(super) const HEIGHT: f32 = theme::ROW_HEIGHT;
 
 /// Marks the bar itself, which shows whenever the HUD does, empty or not.
 #[derive(Component)]
@@ -76,12 +84,14 @@ fn pin(slot: usize) -> impl Bundle {
         Node {
             display: Display::None,
             position_type: PositionType::Absolute,
-            width: px(ROOM),
-            top: px(0),
-            flex_direction: FlexDirection::Column,
+            height: px(HEIGHT),
+            column_gap: px(theme::S1),
+            padding: UiRect::horizontal(px(theme::S2)),
             align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
             ..default()
         },
+        BackgroundColor(Color::NONE),
         children![
             (
                 Glyph(slot),
@@ -108,7 +118,7 @@ fn rule(left: f32, size: Vec2, color: Color) -> impl Bundle {
         Node {
             position_type: PositionType::Absolute,
             left: percent(left),
-            top: px(MARK + theme::S1),
+            top: px(HEIGHT - size.y),
             width: px(size.x),
             height: px(size.y),
             ..default()

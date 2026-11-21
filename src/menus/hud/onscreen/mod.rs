@@ -80,8 +80,35 @@ pub(super) fn layer() -> impl Bundle {
     )
 }
 
+/// Height in pixels of one marker, icon and distance, plus the gap that keeps two apart.
+const STACK: f32 = 56.0;
+
+/// Returns `pos` moved down, or up at the bottom of the screen, until its marker clears every one
+/// of `taken`, so two markers that fall together never print over each other.
+fn apart(pos: Vec2, taken: &[Vec2], screen: Vec2) -> Vec2 {
+    let clash = |at: Vec2| {
+        taken
+            .iter()
+            .any(|t| (t.x - at.x).abs() < pool::ROOM * 0.8 && (t.y - at.y).abs() < STACK)
+    };
+    let floor = screen.y - theme::EDGE - STACK * 0.5;
+    let step = [STACK, -STACK][usize::from(pos.y + STACK > floor)];
+    let mut at = pos;
+    for _ in 0..MAX {
+        if !clash(at) {
+            break;
+        }
+        at.y += step;
+    }
+    at
+}
+
 /// Draws slot `at`: places the marker it shows, or hides it.
-fn show(at: usize, (state, view, lens): (&mut State, &View, Lens), nodes: &mut Nodes) {
+fn show(
+    at: usize,
+    (state, view, lens): (&mut State, &View, Lens),
+    (nodes, taken): (&mut Nodes, &mut Vec<Vec2>),
+) {
     let Some(pick) = state.chosen(at) else {
         state.memory[at].who = None;
         draw::room(nodes, at, None);
@@ -91,6 +118,8 @@ fn show(at: usize, (state, view, lens): (&mut State, &View, Lens), nodes: &mut N
     let inset = lens.inset + state.stickiness(at);
     let placed = place(pick.dir, lens.fov, lens.screen, inset);
     let pos = state.settle(at, (marker.kind, pick.index), placed, lens.follow);
+    let pos = apart(pos, taken, lens.screen);
+    taken.push(pos);
     let on_screen = placed.arrow.is_none();
     let dim = if on_screen {
         dimmed((-pick.dir.z).clamp(-1.0, 1.0).acos())
@@ -108,13 +137,14 @@ fn show(at: usize, (state, view, lens): (&mut State, &View, Lens), nodes: &mut N
 pub(super) fn update(
     (around, now): (Around, Res<Where>),
     view: View,
-    mut state: Local<State>,
+    (mut state, mut taken): (Local<State>, Local<Vec<Vec2>>),
     mut nodes: Nodes,
 ) {
     state.gather(&around, &view.markers, now.0);
     let lens = view.lens();
+    taken.clear();
     for at in 0..MAX {
-        show(at, (&mut *state, &view, lens), &mut nodes);
+        show(at, (&mut *state, &view, lens), (&mut nodes, &mut taken));
     }
 }
 

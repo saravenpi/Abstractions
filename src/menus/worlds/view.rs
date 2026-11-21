@@ -12,7 +12,7 @@ use crate::ui::{
 };
 
 /// Widths in pixels of the world, seed, play time and last played columns.
-const WIDTHS: [f32; 4] = [270.0, 165.0, 110.0, 125.0];
+const WIDTHS: [f32; 4] = [270.0, 165.0, 110.0, 160.0];
 
 /// Height of one world row in pixels: a name with the place under it.
 const ROW: f32 = 44.0;

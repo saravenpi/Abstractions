@@ -40,10 +40,10 @@ pub use item::{entry, frame, item, item_with, label, link, step_button};
 pub use list::Window;
 pub use scroll::{Scroller, scroller};
 pub use sound::Cancels;
-pub use style::{Look, Selected, Tone};
+pub use style::{Filled, Look, Selected, Tone};
 pub use table::{cell, head, row_with, table_head, table_row, value_cell};
 pub use tooltip::Tip;
-pub use widgets::{Overlay, caps, column, hairline, panel, root, root_on, rule, text};
+pub use widgets::{Overlay, caps, column, panel, root, root_on, rule, text};
 
 use bevy::input_focus::InputFocus;
 use bevy::prelude::*;

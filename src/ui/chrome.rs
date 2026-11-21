@@ -61,14 +61,15 @@ pub fn strip() -> Node {
     }
 }
 
-/// Dimmed hint pinned to the bottom of the screen, one edge margin from its sides and bottom.
+/// Dimmed hint pinned to the bottom of the screen, in line with the content of a screen: the same
+/// side margin, and one edge margin from the bottom.
 pub fn footer(content: &str) -> impl Bundle {
     (
         text(content, theme::FONT_SMALL, theme::TEXT_2),
         Node {
             position_type: PositionType::Absolute,
-            left: px(theme::EDGE),
-            right: px(theme::EDGE),
+            left: percent(5),
+            right: percent(5),
             bottom: px(theme::EDGE),
             ..default()
         },

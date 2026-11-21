@@ -3,11 +3,11 @@
 
 use bevy::prelude::*;
 
+use super::ROOM;
 use super::aim::Around;
-use super::{MARK, ROOM};
 use crate::menus::hud::context::{Element, Where};
 use crate::menus::hud::needle::{WIDTH, fade, slot};
-use crate::ui::text;
+use crate::ui::{text, theme};
 
 /// Marks the room of the north mark, centred on its place on the bar.
 #[derive(Component)]
@@ -26,13 +26,14 @@ pub(super) fn mark() -> impl Bundle {
             position_type: PositionType::Absolute,
             width: px(ROOM),
             top: px(0),
-            flex_direction: FlexDirection::Column,
+            height: px(super::HEIGHT),
             align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
             ..default()
         },
         children![(
             Letter,
-            text("N", MARK, Color::WHITE),
+            text("N", theme::FONT_SMALL, Color::WHITE),
             TextLayout::no_wrap(),
             TextShadow::default()
         )],

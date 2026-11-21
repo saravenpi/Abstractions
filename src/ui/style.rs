@@ -20,6 +20,11 @@ pub enum Look {
     Pressed,
 }
 
+/// Marks a button that rests on a faint fill, such as a text field: it has no outline, so the fill
+/// shows where it is.
+#[derive(Component, Debug, Clone, Copy, Default)]
+pub struct Filled;
+
 /// Marks a button as the chosen one of its group: the open tab, the destination row, the armed
 /// choice. It changes the look only, never the keyboard focus.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -97,6 +102,7 @@ pub(super) struct ButtonState {
     selected: Option<&'static Selected>,
     pressed: Has<Pressed>,
     focusable: Has<TabIndex>,
+    filled: Has<Filled>,
 }
 
 /// Derives each button's look from focus, hover and press state, then its background.
@@ -114,9 +120,12 @@ pub(super) fn update_looks(focus: Res<InputFocus>, mut buttons: Query<ButtonStat
         };
         button.look.set_if_neq(wanted);
         let selected = button.selected.is_some_and(|selected| selected.0);
-        button
-            .background
-            .set_if_neq(BackgroundColor(surface(wanted, selected)));
+        let rests = button.filled && wanted == Look::Rest && !selected;
+        let fill = match rests {
+            true => theme::HOVER,
+            false => surface(wanted, selected || (button.filled && wanted != Look::Rest)),
+        };
+        button.background.set_if_neq(BackgroundColor(fill));
     }
 }
 

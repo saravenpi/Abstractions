@@ -23,7 +23,7 @@ const HINT: &str =
     "Up and down move. Left and right change a value. Enter rebinds a key. Esc goes back";
 
 /// Rows of a page visible at once. A longer page scrolls.
-const VISIBLE_ROWS: f32 = 11.0;
+const VISIBLE_ROWS: f32 = 16.0;
 
 /// One tab item in the left column. The open tab is selected, which is not the keyboard focus.
 fn tab_item(tab: Tab, active: Tab) -> impl Bundle {

@@ -1,4 +1,4 @@
-//! The one prompt line: a key and what it does, bottom centre at the screen edge. Exactly one
+//! The one prompt line: a key and what it does, bottom centre above the hotbar. Exactly one
 //! row, the highest priority wins: a warning or block sentence, a course that runs, a course
 //! ready to go, the board key, a first-time hint, nothing.
 
@@ -100,13 +100,13 @@ fn row() -> impl Bundle {
     )
 }
 
-/// The hidden prompt, bottom centre at the screen edge. `update` fills it.
+/// The hidden prompt, bottom centre, above the row of the hotbar. `update` fills it.
 pub(super) fn line() -> impl Bundle {
     (
         Node {
             position_type: PositionType::Absolute,
             width: percent(100),
-            bottom: px(theme::EDGE),
+            bottom: px(theme::EDGE + crate::craft::ui::hotbar::SIDE + theme::S2),
             justify_content: JustifyContent::Center,
             ..default()
         },

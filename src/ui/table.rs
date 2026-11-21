@@ -5,9 +5,9 @@ use bevy::prelude::*;
 
 use super::item::frame;
 use super::theme;
-use super::widgets::{caps, hairline};
+use super::widgets::caps;
 
-/// The node of a full-width row of `height` pixels, closed by a hairline.
+/// The node of a full-width row of `height` pixels.
 fn strip(height: f32, justify: JustifyContent) -> Node {
     Node {
         width: percent(100),
@@ -17,19 +17,17 @@ fn strip(height: f32, justify: JustifyContent) -> Node {
         justify_content: justify,
         column_gap: px(theme::GAP_M),
         padding: UiRect::horizontal(px(theme::GAP_S)),
-        border: UiRect::bottom(px(theme::LINE)),
         overflow: Overflow::clip(),
         ..default()
     }
 }
 
-/// Settings row with a name on the left and a value on the right, closed by a hairline.
+/// Settings row with a name on the left and a value on the right.
 pub fn row_with(group: i32, name: impl Bundle, value: impl Bundle) -> impl Bundle {
     (
         frame(),
         TabIndex(group),
         strip(theme::ROW_HEIGHT, JustifyContent::SpaceBetween),
-        hairline(),
         children![name, value],
     )
 }
@@ -56,18 +54,13 @@ pub fn table_row(group: i32, height: f32, cells: impl Bundle) -> impl Bundle {
         frame(),
         TabIndex(group),
         strip(height, JustifyContent::FlexStart),
-        hairline(),
         cells,
     )
 }
 
 /// The line of column names above a table. `cells` is a `children!` list of [`head`]s and buttons.
 pub fn table_head(cells: impl Bundle) -> impl Bundle {
-    (
-        strip(theme::ROW_COMPACT, JustifyContent::FlexStart),
-        hairline(),
-        cells,
-    )
+    (strip(theme::ROW_COMPACT, JustifyContent::FlexStart), cells)
 }
 
 /// One column of a row: `width` pixels wide whatever it holds. Content that does not fit is cut.

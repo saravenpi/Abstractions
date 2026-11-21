@@ -63,7 +63,7 @@ pub const GAP_L: f32 = S4;
 pub const GAP_XL: f32 = S6;
 
 /// Width of a menu item column.
-pub const MENU_WIDTH: f32 = 300.0;
+pub const MENU_WIDTH: f32 = 360.0;
 /// Height of one settings or table row. Also the smallest hit target.
 pub const ROW_HEIGHT: f32 = 32.0;
 /// Height of one row of a dense table.

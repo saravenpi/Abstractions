@@ -136,6 +136,25 @@ fn roots(
     blades.roots().iter().step_by(3).map(at).collect()
 }
 
+/// Returns `globe` with a pad of two metres a side kept bare around planet position `at`.
+fn padded(globe: &Arc<Globe>, at: DVec3) -> Arc<Globe> {
+    let up = at.normalize();
+    let heading = up.cross(DVec3::Y).normalize_or(DVec3::X);
+    let square = Pad {
+        centre: at,
+        up,
+        heading,
+        half: 1.0,
+    };
+    let reserve = Reserve {
+        centre: at,
+        up,
+        radius: 0.0,
+        pad: Some(square),
+    };
+    Arc::new(globe.as_ref().clone().reserving(reserve))
+}
+
 /// Where blades certainly grow, a pad of two metres a side bares its square and a margin of one blade and nothing
 /// else: the same tile grows blades there without the pad, none with it, and the same ones everywhere else.
 #[test]
@@ -145,21 +164,7 @@ fn the_pad_bares_only_its_square() {
     let (key, carpet, _) = turfed(&terrain).expect("a turfed tile");
     let ground = Ground::read(&terrain, key);
     let (_, frame) = grow((&terrain, &ground), key, &carpet, true, &|_| false);
-    let up = frame.origin.normalize();
-    let heading = up.cross(DVec3::Y).normalize_or(DVec3::X);
-    let square = Pad {
-        centre: frame.origin,
-        up,
-        heading,
-        half: 1.0,
-    };
-    let reserve = Reserve {
-        centre: frame.origin,
-        up,
-        radius: 0.0,
-        pad: Some(square),
-    };
-    let shut = Arc::new(terrain.globe().as_ref().clone().reserving(reserve));
+    let shut = padded(terrain.globe(), frame.origin);
     let none = Cropped::default();
     let tile = (&terrain, &ground, key, &carpet);
     let all = roots(tile, &|_| false);

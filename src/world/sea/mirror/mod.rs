@@ -40,7 +40,7 @@ use bevy::camera::{CameraUpdateSystems, Exposure, Hdr, RenderTarget};
 use bevy::image::ImageSampler;
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
-use bevy::render::view::{Msaa, Tonemapping};
+use bevy::render::view::{DebandDither, Msaa, Tonemapping};
 use bevy::transform::TransformSystems;
 
 use crate::render::{GameCamera, LowRes, REFLECTED, reflected, seen_only, window_changed};
@@ -113,7 +113,13 @@ pub fn spawn(commands: &mut Commands, images: &mut Assets<Image>) -> Handle<Imag
             camera,
             RenderTarget::from(image.clone()),
         ),
-        (Hdr, Tonemapping::None, Msaa::Off, Exposure::default()),
+        (
+            Hdr,
+            Tonemapping::None,
+            DebandDither::Disabled,
+            Msaa::Off,
+            Exposure::default(),
+        ),
         (RenderLayers::layer(REFLECTED), Transform::default()),
         DespawnOnEnter(Screen::Title),
     ));

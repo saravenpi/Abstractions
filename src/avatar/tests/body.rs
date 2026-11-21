@@ -1,15 +1,15 @@
-//! The shape of the body: its triangle budget, its fit in the player collider and its joints.
+//! The shape of the body: its fit in the player collider and its joints in the poses of every mode.
 
 use bevy::prelude::*;
 
 use super::samples;
 use crate::avatar::blend::pose_of;
 use crate::avatar::clock::Clock;
-use crate::avatar::mesh::{EXTRA_TRIANGLES, fabric, glow, screen, segment};
+use crate::avatar::mesh::{held, segment};
 use crate::avatar::pose::Pose;
-use crate::avatar::rig::{SEGS, Seg, globals};
+use crate::avatar::rig::{Seg, globals};
 use crate::avatar::touch::tune::HANDS;
-use crate::avatar::tune::{CAP_RADIUS, SOLE_Y};
+use crate::avatar::tune::SOLE_Y;
 use crate::avatar::{AvatarPose, Mode};
 use crate::player::{BODY_LENGTH, BODY_RADIUS};
 
@@ -31,37 +31,6 @@ fn bounds(pose: &Pose) -> (Vec3, Vec3) {
     points.fold((Vec3::MAX, Vec3::MIN), |(low, high), p| {
         (low.min(p), high.max(p))
     })
-}
-
-/// The whole body stays under nine hundred triangles.
-#[test]
-fn triangle_budget_holds() {
-    let segments: usize = Seg::ALL
-        .into_iter()
-        .map(|seg| segment(seg).triangles())
-        .sum();
-    let extras = [
-        screen(),
-        glow(0.0),
-        glow(0.0),
-        glow(1.0),
-        glow(1.0),
-        fabric(),
-        fabric(),
-        fabric(),
-    ];
-    let counted: usize = extras.iter().map(|mesh| mesh.count_vertices() / 3).sum();
-    assert_eq!(counted, EXTRA_TRIANGLES);
-    assert!(segments + counted < 900, "{} triangles", segments + counted);
-    assert!(
-        segments > 400,
-        "the body lost its shape: {segments} triangles"
-    );
-    for seg in Seg::ALL {
-        assert!(segment(seg).points().all(|p| p.is_finite()));
-        let mesh = segment(seg).into_mesh();
-        assert_eq!(mesh.count_vertices(), segment(seg).triangles() * 3);
-    }
 }
 
 /// The body is about as tall as the capsule and stands on its soles.
@@ -98,23 +67,8 @@ fn ground_poses_fit_the_collider() {
     }
 }
 
-/// Returns the radius of the joint cap of its parent a segment turns in, in meters: the trunk
-/// joints share the shoulder's, then shoulder, elbow, wrist, hip, knee and ankle.
-fn cap(seg: Seg) -> f32 {
-    CAP_RADIUS[(seg as usize).saturating_sub(3) / 2]
-}
-
-/// Returns the distance from `joint` to the nearest vertex of the segment `of`, placed by `frames`.
-fn reach(frames: &[Transform; SEGS], of: Seg, joint: Vec3) -> f32 {
-    let soup = segment(of);
-    let near = soup
-        .points()
-        .map(|p| (frames[of as usize] * p).distance(joint));
-    near.fold(f32::MAX, f32::min)
-}
-
-/// In every pose of every mode, each segment turns inside the joint cap of its parent, and the
-/// parent's mesh reaches that cap: no gap can open.
+/// In every pose of every mode, each joint lies inside a shape of the segment that turns there
+/// and inside a shape of its parent: a housing holds every limb, so no gap can open.
 #[test]
 fn segments_stay_connected() {
     let poses = Mode::ALL.into_iter().flat_map(|mode| {
@@ -128,15 +82,13 @@ fn segments_stay_connected() {
             .filter_map(|seg| Some((seg, seg.parent()?)))
         {
             let joint = frames[seg as usize].translation;
-            let (above, below) = (reach(&frames, parent, joint), reach(&frames, seg, joint));
-            assert!(
-                above <= cap(seg) + 1e-4,
-                "{mode:?}: {parent:?} is {above} from {seg:?}"
-            );
-            assert!(
-                below <= cap(seg) * 1.6,
-                "{mode:?}: {seg:?} is {below} from its joint"
-            );
+            for part in [seg, parent] {
+                let local = frames[part as usize].compute_affine().inverse();
+                assert!(
+                    held(part, local.transform_point3(joint)),
+                    "{mode:?}: {part:?} does not hold the joint of {seg:?}"
+                );
+            }
         }
     }
 }

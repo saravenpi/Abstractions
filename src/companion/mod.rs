@@ -43,6 +43,8 @@ mod wing;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_body;
+#[cfg(test)]
 mod tests_face;
 #[cfg(test)]
 mod tests_flight;

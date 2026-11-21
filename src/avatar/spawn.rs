@@ -1,6 +1,6 @@
 //! Spawning the body under the player: its segments, materials, screen, fabric, plumes and light.
 
-use bevy::camera::visibility::NoFrustumCulling;
+use bevy::camera::visibility::{NoFrustumCulling, VisibilityRange};
 use bevy::ecs::system::SystemParam;
 use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
@@ -22,6 +22,10 @@ use crate::player::Player;
 
 /// How far in front of the screen the light sits, in meters, so it does not burn a spot on the bezel.
 const LAMP_REACH: f32 = 0.16;
+
+/// Distance from the camera, in meters, at which a body changes between its rich meshes and its
+/// light ones: there it is under thirty game pixels tall and the two look the same.
+const SWAP: f32 = 24.0;
 
 /// The picture and the materials that change while the body lives, and what they currently show.
 #[derive(Component, Debug, Clone)]
@@ -78,21 +82,29 @@ pub(super) fn kit(stock: &mut Stock) -> Kit {
 }
 
 /// Spawns the fifteen segments under `root`, each a child of its parent segment, and returns them.
+/// A segment wears its rich mesh near the camera; its light mesh is a child that shows from afar.
 ///
 /// Every part states its visibility itself, so the body does not depend on the renderer adding it.
 fn bones(commands: &mut Commands, looks: &Looks, root: Entity) -> [Entity; SEGS] {
     let rest = locals(&Pose::default());
+    let shell = MeshMaterial3d(looks.shell.clone());
     let mut all = [root; SEGS];
     for seg in Seg::ALL {
         let parent = seg.parent().map_or(root, |parent| all[parent as usize]);
-        let bone = (
-            Bone(seg),
+        let near = (
             Mesh3d(looks.segments[seg as usize].clone()),
-            MeshMaterial3d(looks.shell.clone()),
-            rest[seg as usize],
-            Visibility::default(),
+            shell.clone(),
+            VisibilityRange::abrupt(0.0, SWAP),
         );
-        all[seg as usize] = commands.spawn((bone, ChildOf(parent))).id();
+        let bone = (Bone(seg), near, rest[seg as usize], Visibility::default());
+        let bone = commands.spawn((bone, ChildOf(parent))).id();
+        let far = (
+            Mesh3d(looks.far[seg as usize].clone()),
+            shell.clone(),
+            VisibilityRange::abrupt(SWAP, f32::INFINITY),
+        );
+        commands.spawn((far, Visibility::default(), ChildOf(bone)));
+        all[seg as usize] = bone;
     }
     all
 }
@@ -123,7 +135,7 @@ fn glows(
     commands.spawn((Lamp(root), light, ahead, ChildOf(torso)));
     let burn = MeshMaterial3d(kit.glow.clone());
     for boot in [bones[Seg::BootL as usize], bones[Seg::BootR as usize]] {
-        let under = Transform::from_xyz(0.0, -ANKLE_RISE + 0.004, NOZZLE.1);
+        let under = Transform::from_xyz(0.0, -ANKLE_RISE - 0.002, NOZZLE.1);
         let rim = under.with_scale(Vec3::splat(NOZZLE.0 * 0.85));
         let disc = (Mesh3d(looks.disc.clone()), burn.clone(), rim);
         commands.spawn((disc, Visibility::default(), NotShadowCaster, ChildOf(boot)));

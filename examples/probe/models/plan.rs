@@ -130,6 +130,10 @@ pub fn shots() -> Vec<Shot> {
             }
         }
     }
+    for (tag, dist) in [("swap-before", 23.0), ("swap-after", 25.0)] {
+        let view = (View::Around(45.0), dist);
+        all.push(shot(format!("pair-{tag}"), Who::Both, view, rest));
+    }
     let stances = [
         ("idle", Stance::Idle),
         ("walk", Stance::Walk),

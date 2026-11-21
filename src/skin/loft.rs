@@ -1,9 +1,10 @@
-//! The loft: a shape through cross-sections along the Y axis, its rings rounded rectangles.
+//! The loft: a closed shape through cross-sections stacked along the Y axis.
 
 use std::f32::consts::TAU;
 
 use bevy::prelude::*;
 
+use super::Rgb;
 use super::soup::Soup;
 
 /// One cross-section of a loft: its height, the middle of its ring and the half extents of the ring.
@@ -19,7 +20,7 @@ pub struct Section {
 
 impl Section {
     /// Returns a section at height `y` centred on the axis, `x` wide and `z` deep, half extents.
-    pub fn new(y: f32, x: f32, z: f32) -> Self {
+    pub const fn new(y: f32, x: f32, z: f32) -> Self {
         Self {
             y,
             at: Vec2::ZERO,
@@ -27,66 +28,79 @@ impl Section {
         }
     }
 
-    /// Returns the section moved by `x` and `z`.
-    pub fn shifted(mut self, x: f32, z: f32) -> Self {
-        self.at += Vec2::new(x, z);
+    /// Returns the section moved by `z`, toward the back when positive.
+    pub const fn back(mut self, z: f32) -> Self {
+        self.at = Vec2::new(self.at.x, self.at.y + z);
         self
     }
 
-    /// Returns corner `i` of `sides` of the ring, a superellipse of `power`: 2 is round, more is squarer.
-    fn corner(&self, i: u32, sides: u32, power: f32) -> Vec3 {
-        let angle = (i % sides) as f32 / sides as f32 * TAU;
-        let curve = |t: f32| t.signum() * t.abs().powf(2.0 / power);
-        let (x, z) = (curve(angle.cos()), curve(angle.sin()));
-        Vec3::new(self.at.x + x * self.half.x, self.y, self.at.y + z * self.half.y)
+    /// Returns the point of the ring at `x` and `z`, each from -1 to 1 across the section.
+    fn point(&self, x: f32, z: f32) -> Vec3 {
+        Vec3::new(
+            self.at.x + x * self.half.x,
+            self.y,
+            self.at.y + z * self.half.y,
+        )
     }
 }
 
-/// Adds a lofted shape through `sections`, ordered along Y, of `sides` sides and ring `power`. The
-/// side `i` of the span `s` takes `tone(s, i)`. With `capped`, both ends are closed.
-pub fn lathe(
-    soup: &mut Soup,
-    sections: &[Section],
-    (sides, power, capped): (u32, f32, bool),
-    tone: impl Fn(usize, u32) -> [f32; 3],
-) {
-    let ring = |s: &Section| -> Vec<Vec3> { (0..sides).map(|i| s.corner(i, sides, power)).collect() };
-    let rings: Vec<Vec<Vec3>> = sections.iter().map(ring).collect();
+/// The outline every ring of a loft has.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Ring {
+    /// A superellipse of this many corners and this power: 2 is round, more is squarer.
+    Round(u32, f32),
+    /// A rectangle whose corners are cut by this many meters. Zero leaves the rectangle.
+    Cut(f32),
+}
+
+impl Ring {
+    /// Returns the corners of the ring of `section`, the same number and order for every section.
+    fn corners(self, section: &Section) -> Vec<Vec3> {
+        match self {
+            Ring::Round(sides, power) => {
+                let curve = |t: f32| t.signum() * t.abs().powf(2.0 / power);
+                let corner = |i: u32| {
+                    let angle = i as f32 / sides as f32 * TAU;
+                    section.point(curve(angle.cos()), curve(angle.sin()))
+                };
+                (0..sides).map(corner).collect()
+            }
+            Ring::Cut(cut) => {
+                let cut = cut.min(section.half.min_element() * 0.8);
+                let (x, z) = (1.0 - cut / section.half.x, 1.0 - cut / section.half.y);
+                let all = [(1.0, -z), (1.0, z), (x, 1.0), (-x, 1.0)];
+                let all = all.into_iter().chain(all.map(|(x, z)| (-x, -z)));
+                let step = if cut > 0.0 { 1 } else { 2 };
+                all.step_by(step).map(|(x, z)| section.point(x, z)).collect()
+            }
+        }
+    }
+}
+
+/// Adds the lid of a loft: a fan over `ring` facing `out`, in the colour `rgb`.
+fn lid(soup: &mut Soup, ring: &[Vec3], out: Vec3, rgb: Rgb) {
+    let heart = ring.iter().sum::<Vec3>() / ring.len() as f32;
+    for (i, corner) in ring.iter().enumerate() {
+        soup.tri([heart, *corner, ring[(i + 1) % ring.len()]], out, rgb);
+    }
+}
+
+/// Adds a closed shape through `sections`, ordered along Y, each ring of the outline `ring`.
+/// A side of the span `span` that faces `out` takes the colour `tone(span, out)`; a lid takes the
+/// colour of its span, facing up or down.
+pub fn loft(soup: &mut Soup, sections: &[Section], ring: Ring, tone: impl Fn(usize, Vec3) -> Rgb) {
+    let rings: Vec<Vec<Vec3>> = sections.iter().map(|s| ring.corners(s)).collect();
     let heart = |r: &[Vec3]| r.iter().sum::<Vec3>() / r.len() as f32;
     for (span, pair) in rings.windows(2).enumerate() {
         let middle = (heart(&pair[0]) + heart(&pair[1])) * 0.5;
-        for i in 0..sides as usize {
-            let j = (i + 1) % sides as usize;
+        for i in 0..pair[0].len() {
+            let j = (i + 1) % pair[0].len();
             let quad = [pair[0][i], pair[0][j], pair[1][j], pair[1][i]];
             let out = (quad[0] + quad[1] + quad[2] + quad[3]) * 0.25 - middle;
-            soup.quad(quad, out, tone(span, i as u32));
+            soup.quad(quad, out, tone(span, out.normalize_or_zero()));
         }
     }
-    let ends = [(0, 1), (rings.len() - 1, rings.len().saturating_sub(2))];
-    for (end, (at, next)) in ends.into_iter().enumerate().filter(|_| capped) {
-        let (c, out) = (heart(&rings[at]), heart(&rings[at]) - heart(&rings[next]));
-        let span = if end == 0 { 0 } else { rings.len() - 2 };
-        for i in 0..sides as usize {
-            let j = (i + 1) % sides as usize;
-            soup.tri([c, rings[at][i], rings[at][j]], out, tone(span, i as u32));
-        }
-    }
-}
-
-/// Adds a drum of `radius` and half length `half` around `at`, its axis along `axis`, of `sides`
-/// sides: a joint housing. The caps are closed.
-pub fn drum(soup: &mut Soup, (at, axis): (Vec3, Vec3), (radius, half): (f32, f32), (sides, rgb): (u32, [f32; 3])) {
-    let mut body = Soup::default();
-    let rings = [Section::new(-half, radius, radius), Section::new(half, radius, radius)];
-    lathe(&mut body, &rings, (sides, 2.0, true), |_, _| rgb);
-    soup.extend(&body, (at, Quat::from_rotation_arc(Vec3::Y, axis.normalize())));
-}
-
-/// Adds a ball of `radius` around `at`, of `sides` sides: five rings, a joint cap that reads round.
-pub fn orb(soup: &mut Soup, at: Vec3, radius: f32, (sides, rgb): (u32, [f32; 3])) {
-    let ring = |y: f32, r: f32| Section::new(y * radius, r * radius, r * radius);
-    let rings = [ring(-0.95, 0.3), ring(-0.6, 0.8), ring(0.0, 1.0), ring(0.6, 0.8), ring(0.95, 0.3)];
-    let mut body = Soup::default();
-    lathe(&mut body, &rings, (sides, 2.0, true), |_, _| rgb);
-    soup.extend(&body, (at, Quat::IDENTITY));
+    let last = rings.len() - 1;
+    lid(soup, &rings[0], Vec3::NEG_Y, tone(0, Vec3::NEG_Y));
+    lid(soup, &rings[last], Vec3::Y, tone(last - 1, Vec3::Y));
 }

@@ -62,6 +62,17 @@ impl Soup {
         self.positions.iter().map(|p| Vec3::from_array(*p))
     }
 
+    /// Returns the soup mirrored across the plane X = 0, still facing outward.
+    pub fn mirrored(mut self) -> Self {
+        let flip = |v: &mut [f32; 3]| v[0] = -v[0];
+        self.positions.iter_mut().for_each(flip);
+        self.normals.iter_mut().for_each(flip);
+        self.positions
+            .chunks_exact_mut(3)
+            .for_each(|tri| tri.swap(1, 2));
+        self
+    }
+
     /// Converts the triangles into a mesh with vertex colours.
     pub fn into_mesh(self) -> Mesh {
         let count = self.positions.len() as u32;

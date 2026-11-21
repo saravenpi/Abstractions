@@ -23,13 +23,11 @@ pub struct Robot;
 #[derive(Component)]
 pub struct Buddy;
 
-/// Spawns the ground, the light, the camera, the robot and the companion.
+/// Spawns the ground, the light and the camera, and builds the shared look of the robot.
 pub fn stage(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut robot: abstractions::avatar::Stock,
-    mut buddy: abstractions::companion::Stock,
 ) {
     let ground = materials.add(Color::srgb(0.55, 0.56, 0.54));
     commands.spawn((
@@ -47,16 +45,24 @@ pub fn stage(
         brightness: 500.0,
         ..default()
     });
-    let looks = Looks::new(&mut meshes, &mut materials);
-    let body = puppet(&mut commands, &mut robot, &looks, None);
-    commands.entity(body).insert(Robot);
-    let bot = abstractions::companion::look(&mut commands, &mut buddy, Transform::IDENTITY);
-    commands.entity(bot).insert((Buddy, Face::new(5)));
+    commands.insert_resource(Looks::new(&mut meshes, &mut materials));
     let lens = Projection::Perspective(PerspectiveProjection {
         fov: 60f32.to_radians(),
         ..default()
     });
     commands.spawn((Camera3d::default(), lens, Transform::default()));
+}
+
+/// Spawns the robot from the shared look.
+pub fn robot(mut commands: Commands, mut stock: abstractions::avatar::Stock, looks: Res<Looks>) {
+    let body = puppet(&mut commands, &mut stock, &looks, None);
+    commands.entity(body).insert(Robot);
+}
+
+/// Spawns the companion.
+pub fn buddy(mut commands: Commands, mut stock: abstractions::companion::Stock) {
+    let bot = abstractions::companion::look(&mut commands, &mut stock, Transform::IDENTITY);
+    commands.entity(bot).insert((Buddy, Face::new(5)));
 }
 
 /// Returns the pose of the robot for `stance` at frame `frame`.

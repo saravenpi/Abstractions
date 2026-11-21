@@ -58,7 +58,7 @@ pub fn run() -> AppExit {
             STEP,
         )))
         .insert_resource(ClearColor(Color::srgb(0.62, 0.72, 0.82)))
-        .add_systems(Startup, set::stage);
+        .add_systems(Startup, (set::stage, set::robot, set::buddy).chain());
     abstractions::avatar::studio(&mut app);
     abstractions::companion::studio(&mut app);
     app.add_systems(
@@ -84,7 +84,7 @@ fn drive(mut commands: Commands, mut plan: ResMut<Plan>, mut exit: MessageWriter
             .spawn(Screenshot::primary_window())
             .observe(save_to_disk(path));
     }
-    if plan.waited > SETTLE + 4 {
+    if plan.waited > SETTLE + 8 {
         plan.todo.pop();
         plan.waited = 0;
         if plan.todo.is_empty() {

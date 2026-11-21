@@ -16,9 +16,6 @@ const HAND_RATE: f32 = 7.0;
 /// Where a hand rests beside the body: out to its side, below the middle, slightly forward, in meters.
 const HAND_REST: Vec3 = Vec3::new(HALF[0] + 0.065, -0.05, -0.03);
 
-/// Size of a hand as a scale of the shared orb.
-pub const HAND: Vec3 = Vec3::new(1.5, 2.1, 1.5);
-
 /// Size of the thruster glow as a scale of the shared orb.
 pub const THRUSTER: Vec3 = Vec3::new(2.6, 1.2, 2.6);
 

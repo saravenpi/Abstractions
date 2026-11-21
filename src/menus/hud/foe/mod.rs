@@ -8,15 +8,19 @@ mod pick;
 mod place;
 #[cfg(test)]
 mod tests_pick;
+#[cfg(test)]
+mod tests_shown;
 
 pub use pick::{labels, looked};
 pub use place::{hung, over};
 
 use bevy::prelude::*;
 
+use super::context::Element;
+use super::fade::gate;
 use crate::avatar::strike::Mark;
 use crate::fauna::{Beast, Live};
-use crate::ui::{text, theme};
+use crate::ui::{OverWorld, text, theme};
 use crate::world::Terrain;
 use pick::RANGE;
 use place::{Bounds, Lens, sight, top};
@@ -49,9 +53,34 @@ pub(super) struct FoeTrack(usize);
 #[derive(Component)]
 pub(super) struct FoeBar(usize);
 
+/// Returns the layer of the strips: its own root over the whole screen, gated by
+/// [`Element::Labels`] and not by the reticle, so it shows on foot with or without a tool, and a
+/// point at the centre of the screen the strips hang from.
+pub(super) fn layer() -> impl Bundle {
+    let whole = Node {
+        position_type: PositionType::Absolute,
+        width: percent(100),
+        height: percent(100),
+        ..default()
+    };
+    let centre = Node {
+        position_type: PositionType::Absolute,
+        left: percent(50),
+        top: percent(50),
+        width: px(0),
+        height: px(0),
+        ..default()
+    };
+    let strips = (0..SLOTS).map(strip);
+    (
+        (gate(Element::Labels), OverWorld, whole, Pickable::IGNORE),
+        children![(centre, Pickable::IGNORE, Children::spawn(SpawnIter(strips)))],
+    )
+}
+
 /// Returns the strip of slot `slot`, to hang from the centre of the screen: a name over a health
 /// bar, with no panel, hidden.
-pub(super) fn strip(slot: usize) -> impl Bundle {
+fn strip(slot: usize) -> impl Bundle {
     let node = Node {
         display: Display::None,
         position_type: PositionType::Absolute,
@@ -196,4 +225,15 @@ pub(super) fn show(
         });
         draw(&mut strips, slot, shown, fades[slot].alpha);
     }
+}
+
+/// Registers the strips: they follow the animals every frame while the player controls the game,
+/// after the eye of the HUD is captured.
+pub(super) fn plugin(app: &mut App) {
+    app.add_systems(
+        Update,
+        show.after(super::eye::capture)
+            .run_if(any_with_component::<Beast>)
+            .in_set(super::Step::Playing),
+    );
 }

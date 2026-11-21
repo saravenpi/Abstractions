@@ -1,7 +1,6 @@
 //! The reticle: four ticks around the crosshair while a tool is drawn, closing in and lit when an
 //! animal is within its reach; a hit mark at the four corners after a blow, bright for a clean one
-//! and dim for a glance; and, hung from it, the strip of the animal fought that [`super::foe`] puts
-//! over its head. A swing that meets nothing shows nothing: its whoosh says it.
+//! and dim for a glance. The names and health of animals over their heads are [`super::foe`]. A swing that meets nothing shows nothing: its whoosh says it.
 
 use bevy::prelude::*;
 
@@ -74,12 +73,11 @@ pub(super) fn layer() -> impl Bundle {
             let place = [x * out - side / 2.0, y * out - side / 2.0, side, side];
             (Corner, at(place), BackgroundColor(Color::NONE))
         });
-    let strips = (0..super::foe::SLOTS).map(super::foe::strip);
     (
         gate(Element::Reticle),
         centre,
         Pickable::IGNORE,
-        Children::spawn((SpawnIter(ticks), SpawnIter(corners), SpawnIter(strips))),
+        Children::spawn((SpawnIter(ticks), SpawnIter(corners))),
     )
 }
 
@@ -133,9 +131,6 @@ pub(super) fn plugin(app: &mut App) {
             (
                 aim.run_if(aimed),
                 strike.run_if(resource_exists_and_changed::<Mark>),
-                super::foe::show
-                    .after(super::eye::capture)
-                    .run_if(any_with_component::<crate::fauna::Beast>),
             )
                 .in_set(super::Step::Playing),
         );

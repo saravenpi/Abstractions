@@ -8,12 +8,13 @@ use bevy::prelude::*;
 
 use super::air::{Air, still};
 use super::chunk_center;
-use super::cover::{Cover, Sampler};
+use super::cover::Cover;
 use super::grow::{Flora, Grower};
+use super::sampler::Sampler;
 use crate::life::Habitat;
 use crate::life::flora::MAT;
-use crate::world::lands::thrive::climate_at;
 use crate::world::Terrain;
+use crate::world::lands::thrive::climate_at;
 use crate::world::propmesh::grown::{Look, look};
 
 /// The rosette architecture: tufts of blades from one root.

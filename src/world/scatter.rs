@@ -12,6 +12,7 @@ mod relief;
 mod rig;
 #[cfg(test)]
 mod rules;
+mod sampler;
 mod shelf;
 mod sow;
 mod spacing;
@@ -33,6 +34,8 @@ mod tests_edge;
 mod tests_frozen;
 #[cfg(test)]
 mod tests_life;
+#[cfg(test)]
+mod tests_mean;
 #[cfg(test)]
 mod tests_metric;
 #[cfg(test)]

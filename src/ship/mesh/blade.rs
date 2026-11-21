@@ -19,11 +19,13 @@ pub(super) const FIN: [[f32; 4]; 4] = [
 
 /// Stations of the blade at a wing tip, like [`FIN`]: it starts under the wing end, holds it,
 /// and stands 0.66 m above the top of it, well over the 0.35 m a body steps up, so it stops a
-/// body on the wing.
+/// body on the wing. Its leading edge is swept only 0.37 m over that height, so that across the
+/// middle of the wing tip its faces are flat at the height of a body: a body that walks into it
+/// meets a wall, not the slant of a swept edge, which would slide it off the leading edge.
 pub(super) const WINGLET: [[f32; 4]; 3] = [
     [-0.36, 1.62, 2.4, 0.04],
     [-0.1, 1.58, 2.5, 0.055],
-    [0.5, 2.25, 2.85, 0.03],
+    [0.5, 1.95, 2.75, 0.03],
 ];
 
 /// The section of a blade: the share of the chord from the leading edge, and the share of the

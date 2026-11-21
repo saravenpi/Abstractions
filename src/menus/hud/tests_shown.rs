@@ -33,7 +33,7 @@ fn the_ship_near_the_ground_shows_its_rows() {
     let ground = [
         Compass, Cardinals, Minimap, Coords, Place, Climate, Integrity, Prompt, Markers,
     ];
-    let helm = [Throttle, Assist, Gear];
+    let helm = [Throttle, Assist, Gear, Headlight];
     exactly(Context::ShipLanded, &[&ground[..], &helm[..]].concat());
     let air = [Altitude, Speed, Herds];
     exactly(
@@ -72,7 +72,12 @@ fn no_ground_element_shows_in_space() {
         Element::Coords,
         Element::Climate,
     ];
-    let more = [Element::Gear, Element::Herds, Element::Place];
+    let more = [
+        Element::Gear,
+        Element::Headlight,
+        Element::Herds,
+        Element::Place,
+    ];
     for context in [
         Context::ShipOrbit,
         Context::ShipSpace,

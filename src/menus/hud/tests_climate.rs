@@ -7,7 +7,9 @@ use bevy::ecs::system::RunSystemOnce;
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
-use super::climate::{CLEAR, ClimateGauge, HudWeather, reading, update};
+use super::climate::{
+    CLEAR, ClimateGauge, Degrees, HudWeather, Sky, WORDS, reading, sky_icon, update,
+};
 use super::eye::{HudPose, capture};
 use crate::render::GameCamera;
 use crate::space::{Anchor, Clock, Frame};
@@ -36,12 +38,7 @@ fn standing(height: f64) -> App {
         .insert_resource(Clock::default());
     app.world_mut().spawn((GameCamera, Transform::IDENTITY));
     app.init_resource::<HudPose>();
-    let hidden = Node {
-        display: Display::None,
-        ..default()
-    };
-    app.world_mut()
-        .spawn((ClimateGauge, hidden, Text::default()));
+    app.world_mut().spawn(super::climate::line());
     app
 }
 
@@ -50,9 +47,17 @@ fn read(app: &mut App) -> Option<String> {
     app.world_mut().run_system_once(capture).unwrap();
     app.world_mut().run_system_once(update).unwrap();
     let world = app.world_mut();
-    let mut gauges = world.query_filtered::<(&Node, &Text), With<ClimateGauge>>();
-    let (node, text) = gauges.single(world).unwrap();
-    (node.display == Display::Flex).then(|| text.0.clone())
+    let mut lines = world.query_filtered::<&Node, With<ClimateGauge>>();
+    let shown = lines.single(world).unwrap().display == Display::Flex;
+    let mut says = |word: bool| {
+        let mut degrees = world.query_filtered::<&Text, With<Degrees>>();
+        let mut skies = world.query_filtered::<&Text, With<Sky>>();
+        match word {
+            true => skies.single(world).unwrap().0.clone(),
+            false => degrees.single(world).unwrap().0.clone(),
+        }
+    };
+    shown.then(|| format!("{} - {}", says(false), says(true)))
 }
 
 /// On the ground the line gives the temperature and the weather, clear until the weather says
@@ -79,7 +84,21 @@ fn the_climate_line_hides_above_the_air() {
     let spec = universe.planet(universe.home());
     let globe = Globe::of(&spec);
     let low = DVec3::Y * (spec.radius + 10.0);
-    assert!(reading(&spec, &globe, low, CLEAR).is_some());
+    assert!(reading(&spec, &globe, low).is_some());
     let high = DVec3::Y * (spec.radius + spec.atmosphere_height + 3000.0);
-    assert_eq!(reading(&spec, &globe, high, CLEAR), None);
+    assert_eq!(reading(&spec, &globe, high), None);
+}
+
+/// Every word the weather feed writes has an icon of its own, a clear sky has a sun by day and a
+/// moon by night, and a word the feed does not write has none.
+#[test]
+fn every_weather_word_has_an_icon() {
+    let icons: Vec<_> = WORDS.iter().map(|word| sky_icon(word, true)).collect();
+    assert!(icons.iter().all(Option::is_some), "{icons:?}");
+    let mut seen = icons.clone();
+    seen.sort_by_key(|icon| icon.map(|icon| icon as usize));
+    seen.dedup();
+    assert_eq!(seen.len(), WORDS.len());
+    assert_ne!(sky_icon("clear", true), sky_icon("clear", false));
+    assert_eq!(sky_icon("hail", true), None);
 }

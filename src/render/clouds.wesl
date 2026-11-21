@@ -1,5 +1,5 @@
 import bevy_pbr::render::forward_io::VertexOutput;
-import bevy_pbr::render::mesh_view_bindings::view;
+import bevy_pbr::render::mesh_view_bindings::{view, fog};
 import package::render::cloud_field::{Puff, broad_cover, day_side, dither, lone, puff};
 
 struct Clouds {
@@ -13,6 +13,7 @@ struct Clouds {
     fixed_x: vec4<f32>,
     fixed_y: vec4<f32>,
     fixed_z: vec4<f32>,
+    fade: vec4<f32>,
 }
 
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> clouds: Clouds;
@@ -20,7 +21,6 @@ struct Clouds {
 @group(constants::MATERIAL_BIND_GROUP) @binding(2) var cover_sampler: sampler;
 
 const LUMA: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
-const KOSCHMIEDER: f32 = 2.9957323;
 
 fn strongest(v: vec3<f32>) -> vec3<f32> {
     return v / max(max(v.x, max(v.y, v.z)), 0.001);
@@ -49,7 +49,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let dist = length(to_eye);
     let facing = dot(n, to_eye / max(dist, 0.001));
     let cloud = puff(spot, to_fixed * light, facing, cover);
-    let far = 1.0 - exp(-KOSCHMIEDER * dist / max(clouds.ambient.w, 1.0));
+    let through = exp(-clouds.fade.xyz * dist);
     let alpha = max(cloud.thick * lone(cloud, cover), whiteout);
     if (alpha <= dither(in.position.xy)) {
         discard;
@@ -57,7 +57,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let base = mix(day_side(clouds.space.rgb, n, light), clouds.color.rgb, air);
     var col = shaded(base, cloud, facing > 0.0, clouds.ambient.rgb);
-    col = mix(col, clouds.haze.rgb, far * air);
+    col = col * through + fog.base_color.rgb * (vec3<f32>(1.0) - through);
     col = mix(col, clouds.color.rgb, whiteout);
     return vec4<f32>(col, 1.0);
 }

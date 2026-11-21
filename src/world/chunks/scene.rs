@@ -5,7 +5,6 @@ use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::reach::Reach;
 use super::sight::Eye;
 use crate::world::Terrain;
 use crate::world::focus::Focus;
@@ -18,7 +17,6 @@ pub struct Scene<'w, 's> {
     children: Query<'w, 's, &'static Children>,
     meshes: Query<'w, 's, &'static Mesh3d>,
     terrain: Option<Res<'w, Terrain>>,
-    reach: Option<Res<'w, Reach>>,
 }
 
 impl Scene<'_, '_> {
@@ -51,12 +49,10 @@ impl Scene<'_, '_> {
             .map_or(0.0, |time| time.elapsed_secs_f64())
     }
 
-    /// Returns what the focus can see through the fog, or nothing without a focus on a planet.
+    /// Returns what the focus can see through the air, or nothing without a focus on a planet.
     pub fn eye(&self) -> Option<Eye> {
         let (at, terrain) = (self.at()?, self.terrain.as_ref()?);
-        let reach = self.reach.as_deref().copied().unwrap_or(Reach::of(None));
-        let ground = f64::from(reach.sight(terrain.globe()));
-        Some(Eye::of(terrain.globe(), at, ground))
+        Some(Eye::of(terrain.globe(), at))
     }
 
     /// Returns the mesh `entity` draws.

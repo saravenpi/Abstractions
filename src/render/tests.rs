@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use super::atmosphere::{air, horizon_dip, shadow};
 use super::clock::{catch_up, solar_day};
 use super::clouds::crossing_depth;
-use super::fog::{Height, fog_sight};
+use super::fog::cull_distance;
 use super::observer::Observer;
 use super::sun::SunDir;
 use crate::space::{Anchor, Frame};
@@ -122,7 +122,7 @@ fn phase_rises_through_a_day() {
 
 /// The air is whole at the ground, thins by a factor e over each scale height, a twelfth of the
 /// atmosphere, and is gone at its top, the horizon drops and
-/// the fog reaches farther with height, and the planet casts a shadow behind it only.
+/// the view of a planet without air culls at its reach in radii, and the planet casts a shadow behind it only.
 #[test]
 fn air_thins_with_height() {
     let height = 4000.0;
@@ -141,13 +141,7 @@ fn air_thins_with_height() {
     );
     assert_eq!(horizon_dip(0.0, 6000.0), 0.0);
     assert!((horizon_dip(4000.0, 6000.0) - 0.8).abs() < 1e-5);
-    let space = Height {
-        altitude: 4200.0,
-        clearance: 4000.0,
-        radius: 3000.0,
-        air: air(4200.0, height),
-    };
-    assert_eq!(fog_sight(256.0, &space), SIGHT as f32 * space.radius);
+    assert_eq!(cull_distance(Vec3::ZERO, 3000.0), SIGHT as f32 * 3000.0);
     let (sun, radius) = (DVec3::X, 6000.0);
     assert_eq!(shadow(DVec3::new(7000.0, 0.0, 0.0), sun, radius), 1.0);
     assert_eq!(shadow(DVec3::new(-7000.0, 100.0, 0.0), sun, radius), 0.0);

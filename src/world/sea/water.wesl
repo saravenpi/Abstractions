@@ -1,6 +1,6 @@
 import bevy_pbr::render::forward_io::{Vertex, decompress_vertex};
 import bevy_pbr::render::mesh_functions;
-import bevy_pbr::render::mesh_view_bindings::view;
+import bevy_pbr::render::mesh_view_bindings::{view, fog};
 import bevy_pbr::render::view_transformations::{position_world_to_clip, depth_ndc_to_view_z};
 import bevy_pbr::render::pbr_types::{PbrInput, pbr_input_new};
 import bevy_pbr::render::pbr_functions::{apply_pbr_lighting, calculate_view};
@@ -88,7 +88,6 @@ const MAP_HIGH: f32 = 120.0;
 const COARSE_ROUGHNESS: f32 = 0.95;
 const COARSE_REFLECTANCE: f32 = 0.05;
 const WATER_F0: f32 = 0.02;
-const FOG_SQUARED: f32 = 1.8;
 const DAY_EDGE: vec2<f32> = vec2<f32>(-0.1, 0.3);
 const SUN_UP_EDGE: vec2<f32> = vec2<f32>(-0.05, 0.12);
 
@@ -420,14 +419,13 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
         }
     }
 
-    let reach = dist * FOG_SQUARED / max(water.params.w, 1.0);
-    let linear_fog = clamp((dist - water.params.z) / max(water.params.w - water.params.z, 1.0), 0.0, 1.0);
-    let fog_amount = select(linear_fog, 1.0 - exp(-reach * reach), water.params.z <= 0.0);
+    let through = exp(-fog.be * dist);
+    let fog_amount = 1.0 - dot(through, vec3<f32>(1.0 / 3.0));
     let near = 1.0 - smoothstep(water.frame.w * HAND_SOFT, water.frame.w, dist);
     let far_side = f32(below) * step(WAVE_TOP, eye_height);
     let alpha = mix(col.a, 1.0, fog_amount) * near * (1.0 - far_side);
     if (alpha <= 0.0) {
         discard;
     }
-    return vec4<f32>(mix(col.rgb, water.fog.rgb, fog_amount), alpha);
+    return vec4<f32>(col.rgb * through + fog.base_color.rgb * (vec3<f32>(1.0) - through), alpha);
 }

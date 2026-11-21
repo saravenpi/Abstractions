@@ -126,11 +126,18 @@ fn the_sky_blends_into_the_local_weather() {
         let air = f32::from(step) / 2000.0;
         LocalWeather(seen(&storm, air)).look()
     };
-    let values = |look: WeatherLook| [look.haze, look.dust, look.sight()];
+    let values = |look: WeatherLook| [look.haze, look.dust];
     for step in 0..2000 {
-        let (here, next) = (values(drawn(step)), values(drawn(step + 1)));
-        let jump = here.iter().zip(next).map(|(a, b)| (a - b).abs());
+        let (here, next) = (drawn(step), drawn(step + 1));
+        let jump = values(here)
+            .iter()
+            .zip(values(next))
+            .map(|(a, b)| (a - b).abs());
         assert!(jump.fold(0.0, f32::max) < 0.01, "at {step}");
+        assert!(
+            (here.sight() - next.sight()).abs() < 0.06,
+            "sight at {step}"
+        );
     }
     assert_eq!(seen(&storm, 0.0), None);
     assert_eq!(seen(&storm, 0.05), None);

@@ -3,6 +3,7 @@
 //! The sky is a real place: the sun stands where the star is, the air thins with height, and the
 //! clouds, the stars and the other bodies of the system are drawn around the camera.
 
+mod aerial;
 mod air;
 mod atmosphere;
 mod bodies;
@@ -79,6 +80,7 @@ mod tests_skylight;
 #[cfg(test)]
 mod tests_weather;
 
+pub use aerial::{Haze, sight};
 pub use air::Air;
 pub use camera::{configure_camera, set_fov};
 pub use celestial::{daylight, smoothstep, sun_direction};
@@ -89,7 +91,6 @@ pub use daylight::{PlaceLight, PlaceLit, PlaceUniform, place_light};
 pub use dome::SkyDome;
 pub use entry::FlightFx;
 pub use exposure::scene_lux;
-pub use fog::{FOG_END, HORIZON_SHARE, OPEN as FOG_OPEN, THIN_AIR};
 pub use heat::{
     Craft, Gas, Glow, Heat, MIN_SPEED, SHEATH_FROM, SHEATH_REACH, SheathMaterial, SheathUniform,
     descent, entry,

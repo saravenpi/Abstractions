@@ -4,10 +4,12 @@
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
+use super::aerial::Haze;
 use super::air::Air;
-use super::fog::{Height, fog_sight};
+use super::fog::{cull_distance, extinction};
 use super::observer::Observer;
 use super::vantage::{LocalSystem, Nearby, Vantage};
+use super::weather::WeatherLook;
 use crate::universe::{PlanetClass, PlanetRecord, Universe};
 
 /// Returns the home record with another class and pressure.
@@ -136,19 +138,15 @@ fn halo_follows_the_air() {
     assert!(red.z / red.x < 0.5 * home.z / home.x && red.max_element() <= 1.0);
 }
 
-/// The fog on foot is the home fog at the home pressure, reaches farther as the air thins,
-/// has no reach worth the name without air, and closes in under thick air.
+/// The view on foot reaches tens of kilometres at the home pressure, farther as the air thins,
+/// to the reach of the world without air, and closes in under thick air without closing shut.
 #[test]
 fn fog_follows_the_pressure() {
     let sight = |pressure: f64| {
         let (vantage, local) = at_sea_level(world(PlanetClass::Desert, pressure));
-        let height = Height {
-            altitude: 2.0,
-            clearance: 2.0,
-            radius: vantage.radius,
-            air: vantage.air * local.air(vantage.body).haze(),
-        };
-        fog_sight(230.0, &height)
+        let air = local.air(vantage.body);
+        let haze = Haze::of(&air, vantage.atmosphere, &WeatherLook::CALM);
+        cull_distance(extinction(&haze, (2.0, 2.0), 0.0), vantage.radius)
     };
     let sights: Vec<f32> = [5.0, 2.0, 1.0, 0.6, 0.3, 0.1, 0.03, 0.0]
         .iter()
@@ -158,6 +156,6 @@ fn fog_follows_the_pressure() {
         sights.windows(2).all(|pair| pair[1] > pair[0]),
         "{sights:?}"
     );
-    assert_eq!(sights[2], 230.0);
-    assert!(sights[0] > 120.0 && sights[7] > 1.0e5);
+    assert!((30_000.0..120_000.0).contains(&sights[2]), "{sights:?}");
+    assert!(sights[0] > 10_000.0 && sights[7] > 1.0e8);
 }

@@ -1,4 +1,4 @@
-//! How far the fog lets the focus see: what arrives beyond it needs no fade.
+//! How far the air lets the focus see: what arrives beyond it needs no fade.
 
 use std::f64::consts::FRAC_PI_2;
 
@@ -9,15 +9,19 @@ use crate::world::Globe;
 use crate::world::globe::ChunkId;
 use crate::world::globe::far::SIGHT;
 
-/// Heights above the ground in metres between which the fog opens from the edge of the detailed
-/// ground to the horizon, read from `render::fog`, which draws the fog.
-const OPEN: (f64, f64) = (render::FOG_OPEN.0 as f64, render::FOG_OPEN.1 as f64);
+/// Heights above the ground in metres between which the detailed ground stops being all the
+/// focus looks at: on foot a gap in it shows, a few hundred metres up the coarse planet carries
+/// the view. The flight tests weigh the gaps of the detailed ground by it.
+#[cfg(test)]
+const OPEN: (f64, f64) = (15.0, 300.0);
 
-/// Fog reach in horizon distances once open.
-const HORIZON_SHARE: f64 = render::HORIZON_SHARE as f64;
+/// Reach of that measure in horizon distances once open.
+#[cfg(test)]
+const HORIZON_SHARE: f64 = 2.5;
 
-/// Share of the fog reach at which the linear fog hides everything.
-const FOG_END: f64 = render::FOG_END as f64;
+/// Share of the reach of the detailed ground within which a gap in it shows.
+#[cfg(test)]
+const FOG_END: f64 = 0.9;
 
 /// Where the focus is over the planet.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -64,22 +68,24 @@ pub struct Eye {
 }
 
 impl Eye {
-    /// Returns the eye of a focus at planet position `at` over `globe`, where the fog on foot
-    /// lets it see `ground` metres. Thin air lets it see farther and thick air less, as the
-    /// drawn fog does.
-    pub fn of(globe: &Globe, at: DVec3, ground: f64) -> Self {
-        let air = render::Air::of(globe.record());
-        let thick = f64::from((air.share() * air.haze()).max(render::THIN_AIR));
+    /// Returns the eye of a focus at planet position `at` over `globe`: it sees as far as the
+    /// clear air of the planet lets it, by the aerial perspective the camera draws, and at most
+    /// [`SIGHT`] planet radii. Thin air lets it see farther and thick air less.
+    pub fn of(globe: &Globe, at: DVec3) -> Self {
         let height = Height::of(globe, at);
-        let veil = (veil(ground, &height) / thick).min(SIGHT * globe.radius());
+        let top = crate::universe::heights(globe.record(), globe.gravity(), globe.radius())[0];
+        let air = render::Air::of(globe.record());
+        let haze = render::Haze::of(&air, top as f32, &render::WeatherLook::CALM);
+        let ground = (height.altitude - height.clearance.max(0.0)) as f32;
+        let seen = f64::from(render::sight(haze.toward(height.altitude as f32, ground)));
         Self {
             at: at - at.normalize_or(DVec3::Y) * height.drop(),
             radius: globe.radius(),
-            veil,
+            veil: seen.min(SIGHT * globe.radius()),
         }
     }
 
-    /// Returns true when the nearest part of node `id` lies within the fog distance.
+    /// Returns true when the nearest part of node `id` lies within that distance.
     pub fn sees(&self, id: ChunkId) -> bool {
         let width = self.radius * FRAC_PI_2 / (1u64 << id.level) as f64;
         let middle = id.dir(0.5, 0.5) * self.radius;
@@ -87,9 +93,10 @@ impl Eye {
     }
 }
 
-/// Returns the distance in metres at which the fog hides everything from a focus at `height`,
-/// when the fog on foot lets it see `ground` metres: on foot nine tenths of that, and beyond the
+/// Returns the distance in metres within which a gap in the detailed ground shows to a focus at
+/// `height`, when that ground reaches `ground` metres: on foot nine tenths of it, and beyond the
 /// horizon once the focus has climbed.
+#[cfg(test)]
 pub fn veil(ground: f64, height: &Height) -> f64 {
     let up = height.altitude.max(0.0);
     let horizon = (up * (2.0 * height.radius + up)).sqrt();
@@ -120,18 +127,39 @@ mod tests {
         assert!(heights.collect::<Vec<_>>().windows(2).all(|w| w[0] <= w[1]));
     }
 
-    /// The eye sees a node whose near edge is within the fog, not one beyond it.
+    /// The eye sees a node whose near edge is within its sight, not one beyond it.
     #[test]
-    fn eye_sees_what_is_within_the_fog() {
-        let globe = Globe::new(7, 6000.0, 9.81);
+    fn eye_sees_what_is_within_its_sight() {
         let leaf = crate::world::globe::quadtree::leaf_at(DVec3::Y, 7);
-        let at = leaf.dir(0.5, 0.5) * 6002.0;
         let along = |steps: u32| ChunkId {
             x: leaf.x + steps,
             ..leaf
         };
-        let eye = Eye::of(&globe, at, 230.0);
+        let eye = Eye {
+            at: leaf.dir(0.5, 0.5) * 6000.0,
+            radius: 6000.0,
+            veil: 207.0,
+        };
         assert!(eye.sees(leaf) && eye.sees(along(2)));
         assert!(!eye.sees(along(6)));
+    }
+
+    /// Through the air of a planet the eye sees the coarse ground far past the detailed ground,
+    /// kilometres away, and never past the reach the world draws at all.
+    #[test]
+    fn the_eye_sees_through_the_air_to_the_far_ground() {
+        let globe = Globe::new(7, 6000.0, 9.81);
+        let leaf = crate::world::globe::quadtree::leaf_at(DVec3::Y, 7);
+        let eye = Eye::of(&globe, leaf.dir(0.5, 0.5) * 6002.0);
+        assert!(
+            eye.veil > 2000.0 && eye.veil <= SIGHT * 6000.0,
+            "{}",
+            eye.veil
+        );
+        let far = ChunkId {
+            x: leaf.x + 6,
+            ..leaf
+        };
+        assert!(eye.sees(leaf) && eye.sees(far));
     }
 }

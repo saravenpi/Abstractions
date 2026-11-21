@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- The fog wall around the player is gone. On foot the view ended about 200 m away in a wall of horizon colour, because the fog hid the edge of the detailed ground. The fog is now the air alone: a clear day shows the far hills and the sea tens of kilometres away, each ridge paler and bluer than the one before, and rain or dust shorten the view for a real reason. The sea and the clouds fade by the same rule.
 - The map of a planet zooms in to the ground. Its closest zoom showed about 1,200 km on a planet the size of Earth, so the ground a new player had explored was a dot under their own marker and the map read as a black rectangle. It now opens on about 5 km around the player, where the 2 km explored around the home base and the 300 m uncovered on foot fill the picture. One notch of the wheel zooms three times as far on a planet, so the whole planet is still about twenty notches away.
 - Explored ground is filled on the map at every zoom. Close up it was drawn as one dot for each 500 m cell.
 - A thrown spear leaves along the view. It left turned by the heading of the body a second time, so it flew true only when the robot faced north.

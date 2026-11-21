@@ -85,7 +85,7 @@ impl Game {
             let filter = SpatialQueryFilter::from_excluded_entities(ships.iter());
             let down = Dir3::new(-up).expect("a vertical");
             query
-                .cast_ray(at + up * PROBE.0, down, PROBE.1, true, &filter)
+                .cast_ray(at + up * Self::PROBE.0, down, Self::PROBE.1, true, &filter)
                 .is_some()
         };
         let found = self.app.world_mut().run_system_once(probe);

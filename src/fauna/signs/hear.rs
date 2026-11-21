@@ -22,6 +22,7 @@ use crate::fauna::gate::Spec;
 use crate::fauna::herds::{Herds, herd_arc};
 use crate::fauna::senses::Stance;
 use crate::fauna::site;
+use crate::fauna::want::Lead;
 use crate::life::Life;
 use crate::life::signs::calls::{
     Calling, Cry, Voice, chorus, contact, cries, distress, rhythm, voice,
@@ -106,10 +107,15 @@ pub fn hear(mut h: Hear, mut heard: Local<Heard>) {
 }
 
 /// Fills the calls of `heard` with the contact calls, hunt cries and robot alarms and threats and
-/// the distress of the hurt, within `span`.
+/// the distress of the hurt, within `span`. Only a herd with a living member drawn calls: a herd past
+/// the drawn ring, or one whose members all died, is not heard, so what the player hears they can find.
 fn gather(h: &Hear, heard: &mut Heard, span: (f64, f64)) {
     let Heard { calls, fled, .. } = heard;
     calls.clear();
+    let seen = |id: u64| {
+        let of = |b: &Beast| matches!(b.lead, Lead::Herd { id: herd, .. } if herd == id);
+        h.beasts.iter().any(|(b, _)| of(b))
+    };
     let herds = &h.herds.herds;
     let centre = |id: u64| {
         herds
@@ -118,7 +124,7 @@ fn gather(h: &Hear, heard: &mut Heard, span: (f64, f64)) {
             .map(|herd| herd.centre)
     };
     let planet = h.spec.planet.as_deref();
-    for herd in herds {
+    for herd in herds.iter().filter(|herd| seen(herd.id)) {
         let dawn = |t: f64| planet.map_or(0.0, |p| chorus(site::light(p, herd.home, t)));
         if let Some(c) = contact(herd, &dawn, span) {
             calls.push((c, herd.centre));
@@ -126,7 +132,9 @@ fn gather(h: &Hear, heard: &mut Heard, span: (f64, f64)) {
     }
     for hunt in &h.herds.hunts {
         cries(hunt, span, |c| {
-            calls.push((c, centre(c.herd).unwrap_or(hunt.to)))
+            if seen(c.herd) {
+                calls.push((c, centre(c.herd).unwrap_or(hunt.to)));
+            }
         });
     }
     alarms(h, (calls, fled), span.1);

@@ -231,7 +231,8 @@ fn stream_systems(app: &mut App) {
             (chunks::stream.run_if(reserve::settled), meter::lap::<4>).chain(),
             (chunks::collect, meter::lap::<5>).chain(),
             (chunks::refine, meter::lap::<6>).chain(),
-            (chunks::show, chunks::watch_calm, meter::lap::<7>).chain(),
+            (chunks::show, chunks::horizon, chunks::watch_calm).chain(),
+            meter::lap::<7>,
             (ready, chunks::place.run_if(chunks::due), meter::lap::<8>).chain(),
             (sea::follow_focus, meter::lap::<9>).chain(),
         )

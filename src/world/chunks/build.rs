@@ -5,6 +5,7 @@ use bevy::asset::RenderAssetUsages;
 use bevy::prelude::*;
 
 use super::embed::Embedding;
+use super::horizon::Bounds;
 use crate::world::Terrain;
 use crate::world::blades::tune::PAD_MARGIN;
 use crate::world::canopy::{Canopy, canopy_on};
@@ -38,6 +39,7 @@ pub struct ChunkData {
 pub struct NodeData {
     pub(super) mesh: Mesh,
     pub(super) frame: Frame,
+    pub(super) bounds: Bounds,
 }
 
 /// Drops the CPU copy of a mesh once it is uploaded to the GPU.
@@ -56,9 +58,11 @@ pub fn terrain_mesh(terrain: &Terrain, coord: IVec2, lod: Lod) -> Mesh {
 ///
 /// `terrain` must be the face chart view of the face of the node.
 pub fn coarse(terrain: &Terrain, id: ChunkId) -> NodeData {
+    let (mesh, frame) = (node_mesh(terrain, id), node_frame(terrain, id));
     NodeData {
-        mesh: render_only(node_mesh(terrain, id)),
-        frame: node_frame(terrain, id),
+        bounds: Bounds::of(id, &mesh, &frame),
+        mesh: render_only(mesh),
+        frame,
     }
 }
 

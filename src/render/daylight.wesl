@@ -339,7 +339,10 @@ fn relit_under(in: PbrInput, lit: vec4<f32>, place: Place, cloud: f32) -> vec4<f
     let wanted = select(0.0, 1.0, moved > SHIFT_MIN * max(eye_top, 1.0));
     let shadow = sun_shadow(in, place.star.xyz, wanted);
     let back = (1.0 - shadow.share) * shadow.fade;
-    let sun = (shift * shadow.share + here.sun * back) * sun_response(in, place.star.xyz);
+    var sun = vec3<f32>(0.0);
+    if (wanted > 0.0 || back > 0.0) {
+        sun = (shift * shadow.share + here.sun * back) * sun_response(in, place.star.xyz);
+    }
     let near = 1.0 - smoothstep(OCCLUSION_RANGE.x, OCCLUSION_RANGE.y, -view_z(in.world_position));
     let seen = mix(vec3<f32>(1.0), in.diffuse_occlusion, near);
     let up = normalize(in.world_position.xyz - place.centre.xyz);

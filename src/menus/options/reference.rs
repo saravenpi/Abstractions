@@ -10,10 +10,6 @@ use super::pages::page;
 use super::rows::value;
 use crate::ui::{Icon, Tone, cell, entry, rows, section, sign, text, theme};
 
-/// Most characters an action of the reference may have to stay on one line.
-#[cfg(test)]
-pub const ACTION_CHARS: usize = 15;
-
 /// One line: what is done, and the key that does it.
 fn line(key: impl Bundle, action: &str) -> impl Bundle {
     let node = Node {

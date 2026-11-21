@@ -2,18 +2,21 @@
 //! without a window. This file is the harness; the tests are in the modules below.
 
 mod computer;
+mod fit;
 mod flow;
 mod heard;
 mod kept;
 mod look;
 mod multiplayer;
 mod password;
+mod rig;
 mod rules;
 mod rules_colour;
 mod rules_page;
 mod schedules;
 mod session;
 mod settings;
+pub(super) mod stage;
 mod update;
 mod worlds;
 

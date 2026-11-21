@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use super::actions::SettingsAction;
 use super::field::{Bind, Field};
 use super::icons;
-use crate::ui::{Icon, Tone, entry, label, row_with, step_button, theme, value_cell};
+use crate::ui::{Icon, TipText, Tone, entry, label, row_with, step_button, theme, value_cell};
 
 /// Shows the live value of one setting.
 #[derive(Component)]
@@ -71,11 +71,13 @@ pub fn toggle(text: &str, field: Field) -> impl Bundle {
     )
 }
 
-/// Row that shows the key of an action and waits for a new one when activated.
+/// Row that shows the key of an action and waits for a new one when activated. A key whose name
+/// is cut short is named in full in the tooltip of the row.
 pub fn binding(bind: Bind) -> impl Bundle {
     let field = Field::Key(bind);
     (
         row_with(1, name(field, bind.label()), zone(field, steps())),
         SettingsAction::Rebind(bind),
+        TipText::default(),
     )
 }

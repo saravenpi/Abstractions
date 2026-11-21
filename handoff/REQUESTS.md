@@ -181,3 +181,7 @@ The owner told friends the new version is out tomorrow morning and that they wil
 3. Run the probe: shots at 2 m, 10 km, 100 km, 1,000 km and 20,000 km, galaxy shots, frame times before and after.
 4. Review the whole diff against `ecosystems`. Update `AGENTS.md`, `CHANGELOG.md`, `README.md`, `ROADMAP.md`.
 5. `/ship` version 0.11.0 (protocol 3 and save format 3 are in), then show the new version on `landing`.
+
+## 8. Asked for a later version (owner, 2026-11-21)
+
+- A seat for the companion in the ship. The owner: "like R2-D2, the tiny companion could have its own slot in the ship so that it would not just be hanging and floating in the ship; redesign the ship for the companion to have its own place to be in; not in this update, add it to the plan for the next versions". Written in `ROADMAP.md` under 0.12. Not part of 0.11.

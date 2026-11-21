@@ -153,6 +153,7 @@ A real-size planet has thousands of times more ground than the small ones before
 - **Low flight is a pleasure.** The wingsuit rides ridge lift and rising warm air from the real wind and the sunlit ground. The ship can hold a height above the terrain.
 - **No shortcut across a planet.** You fly, glide or walk there. Warp stays for the distance between worlds.
 - **Seen and not reached.** The companion keeps what you looked at from afar and did not visit, as open questions. It never tells you where to go.
+- **A seat for the companion.** The ship is redesigned with a socket of its own for the companion, as an astromech droid has on a fighter. When you board, it flies to its place, locks in and rides there, seen from the cockpit and from outside, in single player and for friends. It no longer floats loose in the cabin.
 - **Small worlds stay small.** Moons and asteroids at their real size are places you walk around in minutes.
 - **The sight test.** The probe lands on a thousand seeded points per planet class, counts what is in sight, travels, and counts again. A class below the numbers fails the build. It also saves one picture per planet on a sheet, to catch planets that look alike.
 

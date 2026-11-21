@@ -78,7 +78,7 @@ fn the_course_words_follow_the_route() {
 }
 
 /// Every action a key does names itself and what it acts on, with the key bound to it: the
-/// interact key for the four that share it, the pick key for stone, the mend key for a patch.
+/// interact key for the five that share it, the pick key for stone, the mend key for a patch.
 #[test]
 fn every_offered_action_names_its_key_and_its_thing() {
     let mut keys = Keymap::default();
@@ -91,8 +91,12 @@ fn every_offered_action_names_its_key_and_its_thing() {
         row(KeyCode::KeyT, "Cut the thigh")
     );
     assert_eq!(
-        said(Verb::Pull, "spear"),
-        row(KeyCode::KeyT, "Pull the spear")
+        said(Verb::Pull, "flint javelin"),
+        row(KeyCode::KeyT, "Pull out the flint javelin")
+    );
+    assert_eq!(
+        said(Verb::Take, "flint javelin"),
+        row(KeyCode::KeyT, "Take the flint javelin")
     );
     assert_eq!(said(Verb::Board, ""), row(KeyCode::KeyT, "Board"));
     assert_eq!(said(Verb::Leave, ""), row(KeyCode::KeyT, "Leave the ship"));

@@ -9,15 +9,17 @@
 use bevy::prelude::*;
 
 /// Number of actions that can be offered.
-const VERBS: usize = 6;
+const VERBS: usize = 7;
 
 /// An action a key does to what the robot looks at or stands by.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Verb {
-    /// Pull a spear out of the animal it stands in, or pick a spear up off the ground it fell on.
+    /// Pull a spear out of the animal or the ground it stands in.
     Pull,
     /// Cut a part off a carcass.
     Carve,
+    /// Take a thing off the ground into the pack.
+    Take,
     /// Take the seat of the landed ship.
     Board,
     /// Step out of the landed ship.
@@ -29,11 +31,12 @@ pub enum Verb {
 }
 
 impl Verb {
-    /// Every action, the one the prompt prefers first. The four that share the interact key
+    /// Every action, the one the prompt prefers first. The five that share the interact key
     /// come first, so the one of them that is kept is also the one the line shows.
     pub const ALL: [Verb; VERBS] = [
         Verb::Pull,
         Verb::Carve,
+        Verb::Take,
         Verb::Board,
         Verb::Leave,
         Verb::Stone,

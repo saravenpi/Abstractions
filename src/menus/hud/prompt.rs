@@ -1,7 +1,7 @@
 //! The one prompt line: a key and what it does, bottom centre above the hotbar. Exactly one
 //! row, the highest priority wins: a warning or block sentence, what was just picked up, a course
 //! or an orbital cruise that runs, a course or a cruise ready to go, the action a key does right now to what the robot looks at or
-//! stands by ([`crate::player::Interact`]: pull a spear, cut a part, board, leave, break stone off,
+//! stands by ([`crate::player::Interact`]: pull a spear out, cut a part, take a thing, board, leave, break stone off,
 //! mend), or nothing.
 
 use bevy::prelude::*;
@@ -74,8 +74,9 @@ pub fn choose(state: &State) -> Option<(Option<KeyCode>, String)> {
 pub fn offered(offer: Offer, keys: &Keymap) -> (KeyCode, String) {
     let thing = offer.thing;
     match offer.verb {
-        Verb::Pull => (keys.ship.board, format!("Pull the {thing}")),
+        Verb::Pull => (keys.ship.board, format!("Pull out the {thing}")),
         Verb::Carve => (keys.ship.board, format!("Cut the {thing}")),
+        Verb::Take => (keys.ship.board, format!("Take the {thing}")),
         Verb::Board => (keys.ship.board, "Board".to_string()),
         Verb::Leave => (keys.ship.board, "Leave the ship".to_string()),
         Verb::Stone => (PICK_KEY, "Break stone off".to_string()),

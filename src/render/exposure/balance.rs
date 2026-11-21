@@ -49,8 +49,8 @@ impl Default for Balanced {
 /// Returns the CIE 1931 xy chromaticity of the linear sRGB colour `rgb`, or D65 for black.
 pub fn chromaticity(rgb: Vec3) -> Vec2 {
     let x = 0.412_456_4 * rgb.x + 0.357_576_1 * rgb.y + 0.180_437_5 * rgb.z;
-    let y = 0.212_672_9 * rgb.x + 0.715_152_2 * rgb.y + 0.072_175_0 * rgb.z;
-    let z = 0.019_333_9 * rgb.x + 0.119_192_0 * rgb.y + 0.950_304_1 * rgb.z;
+    let y = 0.212_672_9 * rgb.x + 0.715_152_2 * rgb.y + 0.072_175 * rgb.z;
+    let z = 0.019_333_9 * rgb.x + 0.119_192 * rgb.y + 0.950_304_1 * rgb.z;
     let sum = x + y + z;
     match sum > 1.0e-9 {
         true => Vec2::new(x / sum, y / sum),

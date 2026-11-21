@@ -11,18 +11,22 @@
 
 use bevy::prelude::*;
 
+#[cfg(test)]
 use super::starfield::DAY_FLUX;
 
 /// Luminance in linear light of the clear home noon sky: what hides every star but the star of
 /// the system.
+#[cfg(test)]
 pub const DAY: f32 = 0.3;
 
 /// Steps of star flux gained for each decade the luminance of the sky falls under [`DAY`]. The
 /// palette keeps the night sky about two decades under the day one, and the stars of the field
 /// span about six steps of flux.
+#[cfg(test)]
 pub const SPAN: f32 = 3.0;
 
 /// Smallest luminance read, under which the sky is black.
+#[cfg(test)]
 pub const LEAST: f32 = 0.0001;
 
 /// Luminance of the sky under which the band of the galaxy shows in full, and over which it is
@@ -37,12 +41,14 @@ pub fn luminance(srgb: Vec3) -> f32 {
 
 /// Returns the flux under which a star is hidden by a sky of luminance `sky`, and over which
 /// plus one it is shown in full. It is never over [`DAY_FLUX`]: a brighter sky hides no more.
+#[cfg(test)]
 pub fn hide_flux(sky: f32) -> f32 {
     (DAY_FLUX + SPAN * (sky.max(LEAST) / DAY).log10()).min(DAY_FLUX)
 }
 
 /// Returns how far a star with the light `flux` shows through a sky of luminance `sky`, from 0
 /// to 1. `starfield.wesl` has the same rule.
+#[cfg(test)]
 pub fn shown(flux: f32, sky: f32) -> f32 {
     let t = (flux - hide_flux(sky)).clamp(0.0, 1.0);
     t * t * (3.0 - 2.0 * t)

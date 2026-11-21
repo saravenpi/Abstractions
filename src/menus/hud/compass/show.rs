@@ -2,15 +2,12 @@
 //! into a pool of marks that grows when more markers show than it holds. Every mark sits on one
 //! level.
 
-use std::fmt::Write;
-
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::aim::Around;
 use super::stack::{phrase, stack, width};
 use super::{Bar, Far, Glyph, HEIGHT, Pin, pin};
-use crate::computer::distance;
 use crate::menus::hud::context::{Where, marker_shown};
 use crate::menus::hud::needle::{WIDTH, fade, slot};
 use crate::menus::{Marker, MarkerKind, Markers};

@@ -9,13 +9,12 @@ use bevy::math::DVec3;
 use bevy::pbr::{DistanceFog, FogFalloff};
 use bevy::prelude::*;
 
-use super::aerial::{AEROSOL, CONTRAST, Haze, sight};
+use super::aerial::{CONTRAST, Haze, sight};
 use super::air::Air;
 use super::clouds::CloudCrossing;
 use super::exposure::{Metered, lifted};
 use super::murk::clearance;
 use super::palette::{Palette, srgb};
-use super::scatter::DEPTH;
 use super::vantage::{LocalSystem, Vantage};
 use super::weather::{LocalWeather, WeatherLook};
 use super::{GameCamera, SunDir};
@@ -56,24 +55,9 @@ impl FogKey {
         Self {
             color,
             extinction: Haze::HOME.toward(0.0, 0.0),
-            layers: layers(&Haze::HOME, 0.0),
+            layers: Haze::HOME.layers().extend(0.0),
         }
     }
-}
-
-/// Returns what the ground shader works the air out from at every point it draws, so a valley
-/// fills with haze and a peak stands clear of it: the gas per metre at sea level as a multiple of
-/// the optical depth [`DEPTH`], the aerosols as a multiple of [`AEROSOL`], the scale height in
-/// metres, and the whiteout of the cloud around the camera per metre. `aerial` in `daylight.wesl`
-/// reads them and holds the two constants under the same names.
-pub fn layers(haze: &Haze, cloud: f32) -> Vec4 {
-    let white = CONTRAST / WHITEOUT_VISIBILITY * cloud.clamp(0.0, 1.0);
-    Vec4::new(
-        haze.gas.y / DEPTH.y,
-        haze.aerosol.y / AEROSOL.y,
-        haze.scale,
-        white,
-    )
 }
 
 /// Returns the share of red, green and blue light taken per metre from what a camera sees,
@@ -83,8 +67,14 @@ pub fn layers(haze: &Haze, cloud: f32) -> Vec4 {
 /// up sees the ground through the whole depth of the air, and the whiteout of the cloud.
 pub fn extinction(haze: &Haze, (altitude, clearance): (f32, f32), cloud: f32) -> Vec3 {
     let ground = altitude - clearance.max(0.0);
-    let white = CONTRAST / WHITEOUT_VISIBILITY * cloud.clamp(0.0, 1.0);
-    haze.toward(altitude, ground) + Vec3::splat(white)
+    haze.toward(altitude, ground) + Vec3::splat(white(cloud))
+}
+
+/// Returns the share of light of every colour taken per metre by the cloud around a camera
+/// `cloud` deep in the cloud layer, from 0 to 1: in its middle the camera sees
+/// [`WHITEOUT_VISIBILITY`] metres.
+pub fn white(cloud: f32) -> f32 {
+    CONTRAST / WHITEOUT_VISIBILITY * cloud.clamp(0.0, 1.0)
 }
 
 /// Returns the distance in metres a camera culls at over a planet of `radius` metres when the
@@ -99,7 +89,7 @@ pub fn cull_distance(extinction: Vec3, radius: f32) -> f32 {
 /// replaced by as much of the colour of the horizon. Bevy's own fog, on every standard material,
 /// takes the mean of the air between the camera and the ground under it. The ground shader reads
 /// the layers from the colour of the directional light of the fog, which Bevy leaves unread while
-/// its alpha is 0, and from its exponent.
+/// its alpha is 0, and the whiteout of the cloud from its exponent: see [`Haze::layers`].
 pub(super) fn fog_for(key: FogKey) -> DistanceFog {
     let [gas, aerosol, scale, white] = key.layers.to_array();
     DistanceFog {
@@ -180,7 +170,7 @@ fn update_fog(
         let key = FogKey {
             color,
             extinction: extinction(&haze, (vantage.altitude, clearance), cloud),
-            layers: layers(&haze, cloud),
+            layers: haze.layers().extend(white(cloud)),
         };
         if *last != Some(key) {
             *last = Some(key);

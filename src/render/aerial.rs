@@ -15,8 +15,8 @@ mod tests;
 
 use bevy::prelude::*;
 
-pub use self::tune::{AEROSOL, AEROSOL_SCALE, CONTRAST};
-use self::tune::{DUST_AIR, FLAT, HOME_SCALE, LEFT};
+pub use self::tune::{AEROSOL, CONTRAST};
+use self::tune::{AEROSOL_SCALE, DUST_AIR, FLAT, HOME_SCALE, LEFT};
 use super::air::Air;
 use super::scatter::DEPTH;
 use super::vantage::Vantage;
@@ -77,6 +77,15 @@ impl Haze {
     pub fn seen(vantage: &Vantage, air: &Air, sky: Option<&LocalWeather>, radius: f32) -> Vec3 {
         let haze = Self::of(air, vantage.atmosphere, &WeatherLook::of(sky));
         haze.toward(vantage.altitude, radius - vantage.radius)
+    }
+
+    /// Returns what the ground shader works the air out from at every point it draws, so a valley
+    /// fills with haze and a peak stands clear of it: the gas per metre at sea level as a multiple
+    /// of the optical depth [`DEPTH`], the aerosols as a multiple of [`AEROSOL`], and the scale
+    /// height in metres. `aerial` in `daylight.wesl` reads them and holds the two constants under
+    /// the same names.
+    pub fn layers(&self) -> Vec3 {
+        Vec3::new(self.gas.y / DEPTH.y, self.aerosol.y / AEROSOL.y, self.scale)
     }
 
     /// Returns the share of red, green and blue light the air takes per metre, on average, along a

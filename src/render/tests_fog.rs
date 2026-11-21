@@ -5,7 +5,7 @@ use bevy::pbr::FogFalloff;
 use bevy::prelude::*;
 
 use super::aerial::{AEROSOL, CONTRAST, Haze};
-use super::fog::{FogKey, cull_distance, extinction, fog_for, layers};
+use super::fog::{FogKey, cull_distance, extinction, fog_for, white};
 use super::scatter::DEPTH;
 use crate::world::globe::far::SIGHT;
 
@@ -68,16 +68,14 @@ fn the_view_is_counted_in_radii() {
 /// camera carries them where Bevy's own fog does not read, and a cloud adds its whiteout.
 #[test]
 fn the_layers_carry_the_haze_to_the_ground_shader() {
-    let held = layers(&Haze::HOME, 0.0);
+    let held = Haze::HOME.layers();
     assert!((DEPTH * held.x - Haze::HOME.gas).abs().max_element() < 1.0e-9);
     assert!((AEROSOL * held.y - Haze::HOME.aerosol).abs().max_element() < 1.0e-9);
-    assert_eq!((held.z, held.w), (Haze::HOME.scale, 0.0));
-    assert!((layers(&Haze::HOME, 1.0).w - CONTRAST / 70.0).abs() < 1.0e-6);
+    assert_eq!(held.z, Haze::HOME.scale);
+    assert_eq!(white(0.0), 0.0);
+    assert!((white(1.0) - CONTRAST / 70.0).abs() < 1.0e-6);
     let fog = fog_for(FogKey::home(Vec3::ONE));
     let light = LinearRgba::from(fog.directional_light_color);
-    assert_eq!(
-        (light.red, light.green, light.blue),
-        (held.x, held.y, held.z)
-    );
+    assert_eq!(Vec3::new(light.red, light.green, light.blue), held);
     assert_eq!((light.alpha, fog.directional_light_exponent), (0.0, 0.0));
 }

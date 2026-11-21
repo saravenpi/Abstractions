@@ -111,8 +111,8 @@ fn body() -> impl Bundle {
 /// Spawns the empty screen.
 pub fn spawn(commands: &mut Commands) {
     let root = Node {
-        width: percent(100),
-        height: percent(100),
+        width: vw(100),
+        height: vh(100),
         flex_direction: FlexDirection::Column,
         padding: UiRect::all(px(EDGE)),
         ..default()

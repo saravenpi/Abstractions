@@ -11,7 +11,7 @@ use crate::net::{Lobby, RefreshLobby};
 use crate::settings::{Persistent, Settings};
 use crate::ui::{
     Icon, Tone, caps, cell, column, footer, heading, hints, icon, label, notice, panel, root,
-    scroller, table_row, text, theme,
+    scroller, table_row, text, theme, yielding,
 };
 
 /// Widths in pixels of the name and the status columns.
@@ -95,7 +95,7 @@ fn empty(content: &str) -> impl Bundle {
 fn list_pane() -> impl Bundle {
     (
         Pane::List,
-        column(px(WIDTH), 0.0),
+        yielding(px(WIDTH), 0.0),
         children![(List, scroller(LIST_HEIGHT))],
     )
 }

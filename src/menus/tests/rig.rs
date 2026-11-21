@@ -46,7 +46,7 @@ fn in_flow(world: &World, entity: Entity) -> bool {
 }
 
 /// Returns the children of `entity` that take room in its flow.
-fn flowing(world: &World, entity: Entity) -> Vec<Entity> {
+pub fn flowing(world: &World, entity: Entity) -> Vec<Entity> {
     let Some(children) = world.get::<Children>(entity) else {
         return Vec::new();
     };

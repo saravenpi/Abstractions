@@ -73,7 +73,7 @@ pub use state::{EmptyState, NoticeRow, empty_state, notice_row};
 pub use style::{Filled, Look, Selected, Tone};
 pub use table::{cell, head, row_with, table_head, table_row, value_cell};
 pub use tooltip::{Tip, TipText};
-pub use widgets::{Overlay, caps, column, panel, root, root_on, rule, text};
+pub use widgets::{Overlay, caps, column, panel, root, root_on, rule, text, yielding};
 
 use bevy::input_focus::InputFocus;
 use bevy::prelude::*;

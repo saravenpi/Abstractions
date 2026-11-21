@@ -68,9 +68,11 @@ pub const HEADLIGHT: (f32, f32, f32) = (40_000.0, 0.45, 0.08);
 /// Light of a navigation lamp at the tip of a winglet, in lumens: it lights the winglet and the
 /// wing tip around it, 2.9 m by the inverse square law.
 pub const TIP_LIGHT: f32 = 600.0;
-/// Dynamic pressure in pascals, 25 metres per second in air at sea level, above which the lift
-/// thrusters are taken to be shut, the ship flying on its wings and its main engines.
-pub const HOVER_PRESSURE: f64 = 400.0;
+/// Forward speeds in metres per second between which the push across the nose passes from the
+/// lift nozzles to the wing in air, and to the main engines and the attitude of the hull in
+/// space: under the first the lift nozzles carry the ship, over the second they are shut. The
+/// wing of the ship carries its weight from about 25 metres per second in air at sea level.
+pub const CARRY: (f64, f64) = (20.0, 40.0);
 
 /// Height in metres under which the lift nozzles raise dust, and the dust of a nozzle at full
 /// thrust on the ground, in puffs per second.

@@ -6,7 +6,7 @@ use bevy::prelude::*;
 
 use super::shape::{Shape, ease, shape, spool, warp};
 use super::state::{demand, lift};
-use super::tune::{HOVER_PRESSURE, SCROLL, SPOOL_DOWN, SPOOL_UP};
+use super::tune::{CARRY, SCROLL, SPOOL_DOWN, SPOOL_UP};
 use crate::ship::body::Ship;
 use crate::ship::flight::Report;
 use crate::ship::tune::LIFT_ACCEL;
@@ -78,36 +78,35 @@ fn flying() -> Ship {
 }
 
 /// The lift nozzles carry the push of the vertical thrusters, as a share of their full push, the
-/// lever on the gear, and are shut at rest and in fast air.
+/// lever on the gear, and are shut at rest and in fast forward flight. Before 0.11.0 they shut
+/// over a dynamic pressure of 400 Pa, so in thin air and in space a pitch fired them.
 #[test]
 fn the_lift_nozzles_follow_the_vertical_push() {
     let ship = flying();
+    let still = (0.0, DVec3::ZERO);
     let report = Report {
         proper: DVec3::Y * LIFT_ACCEL * 0.4,
         ..Report::default()
     };
-    assert!((lift(&ship, &report, 0.0) - 0.4).abs() < 1.0e-5);
+    assert!((lift(&ship, &report, still) - 0.4).abs() < 1.0e-5);
     let landed = Ship {
         landed: true,
         ..ship.clone()
     };
-    assert_eq!(lift(&landed, &report, 1.0), 0.0);
-    let fast = Report {
-        pressure: HOVER_PRESSURE * 2.0,
-        ..report
-    };
-    assert_eq!(lift(&ship, &fast, 1.0), 0.0);
+    assert_eq!(lift(&landed, &report, (1.0, DVec3::ZERO)), 0.0);
+    let fast = (1.0, ship.forward() * CARRY.1 * 2.0);
+    assert_eq!(lift(&ship, &report, fast), 0.0);
     let turned = Ship {
         rot: DQuat::from_rotation_x(std::f64::consts::PI),
         ..ship
     };
-    assert_eq!(lift(&turned, &report, 0.0), 0.0);
+    assert_eq!(lift(&turned, &report, still), 0.0);
     let gear = Ship {
         touching: true,
         ..flying()
     };
-    assert_eq!(lift(&gear, &report, 0.0), 0.0);
-    assert!((lift(&gear, &report, 0.6) - 0.6).abs() < 1.0e-6);
+    assert_eq!(lift(&gear, &report, still), 0.0);
+    assert!((lift(&gear, &report, (0.6, DVec3::ZERO)) - 0.6).abs() < 1.0e-6);
 }
 
 /// The attitude jets follow the stick without the assist, and with it the gap between the turn

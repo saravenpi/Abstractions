@@ -15,6 +15,9 @@
 //!   The title, loading, boot and wake stages always run.
 //! - `entry` (a fall from a low orbit into the air, from a chase camera and from the seat) and `exit`
 //!   (the climb from the pad to orbit under the autopilot) shoot the heat of an entry and leaving the air.
+//! - `cruise` drops the ship at the arrival shell over the far side of the home planet, presses the home key
+//!   and shoots the orbital cruise, the glide into the air and its end near the base, with the HUD shown
+//!   (see the `cruise` module). Run it with `SMOKE_SEED=57`.
 //! - `SMOKE_ONLY` and `SMOKE_SKIP`: comma lists of stage names to keep or to leave out.
 //! - `SMOKE_TARGET` and `SMOKE_FLASH`: see the `warp` and `boot` stages.
 //! - `PROBE_JOIN=<address>`: join that server instead of starting a world, with `PROBE_NAME` as the player name
@@ -76,6 +79,7 @@ mod cards_foot;
 mod cards_land;
 mod cards_life;
 mod coarse;
+mod cruise;
 mod entry;
 mod feel;
 mod foot;
@@ -131,6 +135,7 @@ use cards_foot::*;
 use cards_land::*;
 use cards_life::*;
 use coarse::*;
+use cruise::*;
 use entry::*;
 use feel::*;
 use foot::*;

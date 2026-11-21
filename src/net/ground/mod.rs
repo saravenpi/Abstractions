@@ -38,8 +38,8 @@ fn hand_over(link: Res<Link>, mut ground: ResMut<Ground>) {
 }
 
 /// Run condition: the ground has something to ask the server.
-fn asking(ground: Res<Ground>) -> bool {
-    !ground.asks.is_empty()
+fn asking(ground: Option<Res<Ground>>) -> bool {
+    ground.is_some_and(|ground| !ground.asks.is_empty())
 }
 
 /// Sends what the ground asks of the server, oldest first.

@@ -84,10 +84,13 @@ fn shaded(
         .unwrap_or(false)
 }
 
+/// A text added this frame that has no shadow yet.
+type Fresh = (Added<Text>, Without<TextShadow>);
+
 /// Gives the HUD shadow to every text added under an [`OverWorld`] root and outside an
 /// [`Unshaded`] node. Each text is looked at once, on the frame after it is added.
 fn adopt(
-    added: Query<(Entity, &TextColor, &ComputedNode), (Added<Text>, Without<TextShadow>)>,
+    added: Query<(Entity, &TextColor, &ComputedNode), Fresh>,
     parents: Query<&ChildOf>,
     marks: Query<(Has<OverWorld>, Has<Unshaded>)>,
     mut commands: Commands,

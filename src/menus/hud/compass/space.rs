@@ -1,63 +1,45 @@
-//! Spacing the marks of the compass: every mark is an icon on the one row of the bar at its
-//! bearing, two that would overlap are nudged sideways by the least that clears them, and a crowd
-//! of friends past a limit folds into the last one with a count.
+//! Settling the marks of the compass: every mark is an icon at its true bearing with its
+//! distance under it, and none is moved off it. Where two icons meet, the one that ranks first,
+//! then the nearer, is drawn whole in front and the other at [`BEHIND`] of its opacity behind
+//! it, its distance dimmed with it. A distance that would print over the distance of a mark that
+//! settled before it is left out. A crowd of friends past a limit folds into the nearest one
+//! with a count.
+
+use std::cmp::Ordering;
 
 use super::show::Seen;
-use crate::menus::hud::needle::WIDTH;
 use crate::menus::{MarkerKind, Markers};
 use crate::ui::theme;
+use crate::ui::units::distance_short;
 
-/// Width in pixels of the room of one mark, which is also the least distance between the centres
-/// of two marks on the bar.
+/// Width in pixels of the room of one icon on the bar: two icons whose centres are nearer than
+/// this meet, and the one behind is dimmed.
 pub(super) const BASE: f32 = theme::ICON_SMALL + 2.0 * theme::S2;
 
-/// Most friends the bar draws as icons. The ones past it fold into the last one drawn.
+/// Share of its opacity, from 0 to 1, a mark keeps when it is drawn behind another, over the
+/// world and on the compass: faint enough to read as behind, clear enough to be seen.
+pub(in crate::menus::hud) const BEHIND: f32 = 0.4;
+
+/// Most friends the bar draws as icons. The ones past it fold into the nearest one.
 pub(super) const FRIENDS: usize = 5;
 
-/// Moves the places `at`, in ascending order, the least that leaves [`BASE`] pixels between two
-/// neighbours: the marks of a crowd spread evenly around where the crowd was.
-pub(super) fn spread(at: &mut [f32]) {
-    let mut blocks: Vec<(f32, usize)> = Vec::new();
-    for (i, place) in at.iter().enumerate() {
-        blocks.push((place - i as f32 * BASE, 1));
-        while let [.., (a, n), (b, m)] = blocks[..] {
-            if a / n as f32 <= b / m as f32 {
-                break;
-            }
-            blocks.truncate(blocks.len() - 2);
-            blocks.push((a + b, n + m));
-        }
-    }
-    let mut i = 0;
-    for (sum, count) in blocks {
-        for _ in 0..count {
-            at[i] = sum / count as f32 + i as f32 * BASE;
-            i += 1;
-        }
-    }
+/// Returns the width in pixels the distance under a mark `gap` metres away takes on the bar,
+/// with the gap that keeps two apart.
+pub(super) fn wide(gap: f64) -> f32 {
+    let chars = distance_short(gap).chars().count() as f32;
+    chars * theme::FONT_SMALL * theme::GLYPH_ASPECT + theme::S2
 }
 
-/// Keeps the places `at`, in ascending order, with their room on the bar, moving them together
-/// when the first is too far left or the last too far right.
-pub(super) fn inside(at: &mut [f32]) {
-    let reach = BASE * 0.5;
-    let (Some(first), Some(last)) = (at.first().copied(), at.last().copied()) else {
-        return;
-    };
-    let push = (reach - first).max(0.0) - (last - (WIDTH - reach)).max(0.0);
-    at.iter_mut().for_each(|place| *place += push);
-}
-
-/// Folds the friends of `seen` past [`FRIENDS`], farthest first, into the last friend kept, and
+/// Folds the friends of `seen` past [`FRIENDS`], farthest first, into the nearest friend, and
 /// counts them in its `more`.
 fn fold(seen: &mut Vec<Seen>, markers: &Markers) {
     let friend = |mark: &Seen| markers.0[mark.index].kind == MarkerKind::Friend;
     let mut near: Vec<usize> = (0..seen.len()).filter(|&i| friend(&seen[i])).collect();
-    near.sort_by(|&a, &b| seen[a].gap.total_cmp(&seen[b].gap));
-    let Some(&kept) = near.get(FRIENDS.saturating_sub(1)) else {
+    if near.len() <= FRIENDS {
         return;
-    };
-    seen[kept].more = near.len() - FRIENDS;
+    }
+    near.sort_by(|&a, &b| seen[a].gap.total_cmp(&seen[b].gap));
+    seen[near[0]].more = near.len() - FRIENDS;
     let mut gone: Vec<usize> = near[FRIENDS..].to_vec();
     gone.sort_unstable_by(|a, b| b.cmp(a));
     gone.into_iter().for_each(|i| {
@@ -65,16 +47,35 @@ fn fold(seen: &mut Vec<Seen>, markers: &Markers) {
     });
 }
 
-/// Gives each of `seen` its place `at` on the bar: spread by bearing so no two overlap, then
-/// ordered farthest first so the nearest is drawn in front.
+/// Returns which of `a` and `b`, two marks of `markers`, settles first and is drawn in front:
+/// the one that ranks first, then the nearer.
+fn first(a: &Seen, b: &Seen, markers: &Markers) -> Ordering {
+    let rank = |mark: &Seen| markers.0[mark.index].rank();
+    rank(a).cmp(&rank(b)).then(a.gap.total_cmp(&b.gap))
+}
+
+/// Settles `seen`, the first to settle first: a mark whose icon meets the icon of one before it
+/// is dimmed to [`BEHIND`], and its distance is left out when it would meet a distance already
+/// said.
+pub(super) fn settle(seen: &mut [Seen]) {
+    for i in 0..seen.len() {
+        let (before, rest) = seen.split_at_mut(i);
+        let mark = &mut rest[0];
+        if before.iter().any(|other| (other.at - mark.at).abs() < BASE) {
+            mark.alpha *= BEHIND;
+        }
+        let (at, room) = (mark.at, mark.wide);
+        let clear = |other: &Seen| (other.at - at).abs() >= (other.wide + room) * 0.5;
+        mark.said = before.iter().filter(|other| other.said).all(clear);
+    }
+}
+
+/// Settles every mark of `seen` at its bearing and orders them last to first, so the pool,
+/// which draws its later marks over its earlier ones, puts the first in front.
 pub(super) fn space(seen: &mut Vec<Seen>, markers: &Markers) {
     fold(seen, markers);
-    seen.sort_by(|a, b| a.at.total_cmp(&b.at));
-    let mut at: Vec<f32> = seen.iter().map(|mark| mark.at).collect();
-    spread(&mut at);
-    inside(&mut at);
-    seen.iter_mut()
-        .zip(at)
-        .for_each(|(mark, place)| mark.at = place);
-    seen.sort_by(|a, b| b.gap.total_cmp(&a.gap));
+    seen.iter_mut().for_each(|mark| mark.wide = wide(mark.gap));
+    seen.sort_by(|a, b| first(a, b, markers));
+    settle(seen);
+    seen.reverse();
 }

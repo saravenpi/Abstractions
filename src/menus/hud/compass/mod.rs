@@ -1,11 +1,12 @@
 //! The compass: a thin bar at the top of the screen with a mark for every marker around the
-//! player, each where it lies, as an icon alone: names and distances are on the map and on the
-//! marker over the world.
+//! player, each where it lies, as an icon with its distance on the line under it and no name:
+//! names are on the map and on the marker over the world.
 //!
 //! A mark slides along the bar as the player turns, fades out toward the ends of the bar and
-//! hides past them. Marks that would overlap are nudged apart sideways by the least that clears
-//! them, the nearest in front, and friends past a limit fold into the last one with a count. On
-//! a planet an N marks north. The bar shows even while empty. The ship only shows on the planet
+//! hides past them. A mark never leaves its bearing: where two meet, the one that ranks first is
+//! drawn whole in front and the other dimmed behind it, and a distance that would print over
+//! another is left out. Friends past a limit fold into the nearest one with a count. On a planet
+//! an N marks north. The bar shows even while empty. The ship only shows on the planet
 //! it stands on and while the player is on foot; favourites only nearby. The home mark only
 //! shows on the planet of the home base, on foot or in its air, and nowhere else.
 
@@ -27,6 +28,7 @@ pub(super) use aim::Around;
 pub(super) use north::North;
 pub(super) use north::point as north;
 pub(super) use show::{icon, update};
+pub(super) use space::BEHIND;
 
 use std::time::Duration;
 
@@ -48,8 +50,15 @@ const ROOM: f32 = 24.0;
 /// Height in pixels of the icon of a mark, small enough to leave the view clear.
 const MARK: f32 = theme::ICON_SMALL;
 
-/// Height in pixels of the bar: one row of icons.
-pub(super) const HEIGHT: f32 = theme::ROW_HEIGHT;
+/// Height in pixels of the row of icons, over the line of the bar.
+const ROW: f32 = theme::ROW_HEIGHT;
+
+/// Height in pixels of the bar: the row of icons, then one line of distances under its line.
+pub(super) const HEIGHT: f32 = ROW + theme::LINE_SMALL;
+
+/// Width in pixels of the room of one mark, centred on its place on the bar: wide enough for
+/// the longest short distance under the icon, such as "12 400 km".
+pub(super) const LANE: f32 = 96.0;
 
 /// Marks the bar itself, which shows whenever the HUD does, empty or not.
 #[derive(Component)]
@@ -73,16 +82,19 @@ pub(super) struct Glyph(usize);
 #[derive(Component)]
 pub(super) struct Count(usize);
 
-/// One hidden mark of the pool at `slot`: its icon and its count.
-fn pin(slot: usize) -> impl Bundle {
+/// Marks the distance under the mark of the pool at this slot.
+#[derive(Component)]
+pub(super) struct Far(usize);
+
+/// The row of the mark of the pool at `slot`: its icon centred on the place of the mark, and
+/// the count beside it.
+fn head(slot: usize) -> impl Bundle {
     (
-        Pin { slot, kind: None },
         Node {
-            display: Display::None,
-            position_type: PositionType::Absolute,
-            height: px(HEIGHT),
+            width: percent(100),
+            height: px(ROW),
             column_gap: px(theme::S1),
-            padding: UiRect::left(px(theme::S2)),
+            padding: UiRect::left(px((LANE - MARK) * 0.5)),
             align_items: AlignItems::Center,
             ..default()
         },
@@ -103,14 +115,38 @@ fn pin(slot: usize) -> impl Bundle {
     )
 }
 
+/// One hidden mark of the pool at `slot`: its row, then its distance on the line under it.
+fn pin(slot: usize) -> impl Bundle {
+    (
+        Pin { slot, kind: None },
+        Node {
+            display: Display::None,
+            position_type: PositionType::Absolute,
+            width: px(LANE),
+            height: px(HEIGHT),
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        children![
+            head(slot),
+            (
+                Far(slot),
+                text("", theme::FONT_SMALL, theme::TEXT_2),
+                TextLayout::no_wrap(),
+            ),
+        ],
+    )
+}
+
 /// The line of the bar, or the tick at its middle: a rule `size` pixels wide and high, `left`
-/// percent along the bar.
+/// percent along the bar, standing on the bottom of the row of icons.
 fn rule(left: f32, size: Vec2, color: Color) -> impl Bundle {
     (
         Node {
             position_type: PositionType::Absolute,
             left: percent(left),
-            top: px(HEIGHT - size.y),
+            top: px(ROW - size.y),
             width: px(size.x),
             height: px(size.y),
             ..default()

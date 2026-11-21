@@ -105,7 +105,7 @@ The first start creates a world with a random seed in `./data` (`/data` in Docke
 | `--data` | `ABSTRACTIONS_DATA` | `./data` | Folder of the world and the key |
 | `--import` | | | Start from a single-player world file |
 
-`abstractions-server ping <address>` asks a server for its name, players, version and key, and exits 0 when it answers. The world is saved every 30 seconds and on shutdown, with the last 3 copies kept. Players need the same game version as the server.
+`abstractions-server ping <address>` asks a server for its name, players, version and key, and exits 0 when it answers. The world is saved every 30 seconds, when a player leaves and on shutdown, with the last 3 copies kept. A player holds one seat: joining again from another game closes the older session. Players need the same game version as the server.
 
 To build the image yourself: `docker build -f crates/server/Dockerfile -t abstractions-server .` from the repository root.
 

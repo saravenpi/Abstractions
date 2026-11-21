@@ -10,7 +10,7 @@ use super::super::path::Path;
 use super::super::stage::blade;
 use super::stow::{self, stows};
 use super::tune::STOW;
-use crate::gear::Gear;
+use crate::gear::{FlightState, Gear, GearInput, Mode as Flight, step};
 use crate::player::{Motion, Player};
 use crate::sim::PlayerId;
 
@@ -59,4 +59,40 @@ fn opening_the_wingsuit_stows_the_tool() {
     app.update();
     let strike = *app.world().get::<Strike>(body).expect("a strike");
     assert_eq!(strike.act, Act::Stow(0.0));
+}
+
+/// The sling is the first phase of the opening: run frame by frame beside a gear whose wings are
+/// asked open as the controller asks them once [`crate::player::SLING`] has run, the tool is in
+/// the hand only while the wing is folded, and never once the arms spread.
+#[test]
+fn the_tool_leaves_the_hand_before_the_wings_spread() {
+    let held = blade();
+    let timing = Timing::of(&held, &Path::of(held.style, Dir::Right));
+    let dt = 1.0 / 60.0;
+    let (mut act, mut out) = (Act::Stow(0.0), true);
+    let mut state = FlightState {
+        mode: Flight::Fall,
+        velocity: Vec3::new(0.0, -10.0, -8.0),
+        ..FlightState::default()
+    };
+    for frame in 0..60 {
+        let t = frame as f32 * dt;
+        let input = GearInput {
+            deploy: t >= crate::player::SLING,
+            ..GearInput::default()
+        };
+        state = step(&state, &input, dt);
+        let stowing = matches!(act, Act::Stow(_));
+        act = next(act, &Ask::default(), &timing, false, dt).0;
+        out &= !(stowing && !matches!(act, Act::Stow(_)));
+        assert!(
+            !out || state.spread() == 0.0,
+            "frame {frame}: tool in a spread wing"
+        );
+    }
+    assert!(
+        !out && state.spread() > 0.5,
+        "out {out}, spread {}",
+        state.spread()
+    );
 }

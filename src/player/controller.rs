@@ -12,12 +12,14 @@ use bevy::prelude::*;
 use super::asks::{Intents, ask, gather};
 use super::climb::{Reach, ease};
 use super::flight::{Air, clearance, density, settle};
-use super::ground::{MIN_GROUND_NORMAL, probe};
+use super::floor::Floor;
+use super::ground::{Ground, MIN_GROUND_NORMAL, probe};
 use super::keys::send;
 use super::lead::lead;
+pub use super::motion::Motion;
 use super::sea::above_sea;
 use super::spread::{Spread, tell};
-use super::steer::{Steer, Turn};
+use super::surface::Bare;
 use super::upright::{facing, tilt};
 use super::walk::{Step, velocity};
 use super::{Player, PlayerSet};
@@ -28,42 +30,10 @@ use crate::sim::IntentOf;
 use crate::space::{Anchor, altitude, local_gravity, on_foot, up};
 use crate::view::ViewSet;
 use crate::wind::{Thickness, Wind};
-use crate::world::Terrain;
+use crate::world::{Chunks, Terrain};
 
 /// Longest simulated frame, to survive hitches.
 const MAX_DT: f32 = 0.05;
-
-/// Movement state owned by the controller.
-#[derive(Component, Debug, Default, Clone, Copy)]
-pub struct Motion {
-    /// Current velocity in the upright frame of the body: +Y is the local up.
-    pub velocity: Vec3,
-    /// Heading of the body in radians around the local up. The body orientation follows it. In
-    /// first person it is the heading of the view; in third person the body turns to where it goes.
-    pub yaw: f32,
-    /// Whether walkable ground was touched on the last step.
-    pub grounded: bool,
-    /// Remaining seconds in which a jump is still allowed.
-    pub coyote: f32,
-    /// Whether the body is swimming instead of walking.
-    pub swimming: bool,
-    /// How far the body is crouched, from 0 (standing) to 1 (fully down).
-    pub crouch: f32,
-    /// Whether the wingsuit is asked open. Only the air keeps it: landing and water fold it.
-    pub wings: bool,
-    /// Whether the boots are fired: the run key is held in the air, pressed there, on the wings
-    /// or in a fast fall. A run that only carries on through a jump never fires them.
-    pub boots: bool,
-    /// Whether the held jump key already worked the gear in the air, and so starts no jump
-    /// until let go.
-    pub spent: bool,
-    /// The heading the movement keys are read against.
-    pub steer: Steer,
-    /// How the body turns to its heading.
-    pub turn: Turn,
-    /// How far the eyes trail the body after a step-up, in the upright frame. It fades away.
-    pub lag: Vec3,
-}
 
 /// Services the controller needs besides the player query.
 #[derive(SystemParam)]
@@ -77,9 +47,34 @@ pub(super) struct Env<'w, 's> {
     body: Option<Res<'w, Condition>>,
     slide: MoveAndSlide<'w, 's>,
     query: SpatialQuery<'w, 's>,
+    floor: Floor<'w, 's>,
+    chunks: Option<Res<'w, Chunks>>,
 }
 
-impl Env<'_, '_> {
+impl<'w, 's> Env<'w, 's> {
+    /// Returns the planet's own ground, which bodies stand on where no collider is loaded.
+    fn bare(&self) -> Bare<'_, 'w, 's> {
+        Bare {
+            anchor: &self.anchor,
+            terrain: &self.terrain,
+            floor: &self.floor,
+            streamed: self.chunks.is_some(),
+        }
+    }
+
+    /// Returns the ground under a body: the colliders a downward cast of its `collider` meets
+    /// from `at`, turned by `tilt` from its upright frame, or where none is loaded the ground
+    /// the terrain draws.
+    fn ground(
+        &self,
+        (collider, at): (&Collider, &Transform),
+        tilt: Quat,
+        filter: &SpatialQueryFilter,
+    ) -> Option<Ground> {
+        probe(&self.query, collider, at, tilt, filter)
+            .or_else(|| self.bare().ground(at.translation))
+    }
+
     /// Reads the per-frame values of a body at render position `at` that is asked `asks`.
     fn step(&self, at: Vec3, asks: &Intents) -> Step {
         let globe = self.terrain.globe();
@@ -98,7 +93,8 @@ impl Env<'_, '_> {
     }
 
     /// Reads the air around a body at `at` whose local down is `down`, with the free height
-    /// under its soles. That height is only measured off the ground, where the gear reads it.
+    /// under its soles, down to a collider or to the bare ground. That height is only measured
+    /// off the ground, where the gear reads it.
     ///
     /// The wind blows along the tangent plane of the anchor in render axes; carried to the
     /// body by the tilt of its vertical, it has the same components in the upright frame.
@@ -111,7 +107,11 @@ impl Env<'_, '_> {
     ) -> Air {
         let free = match grounded {
             true => 0.0,
-            false => clearance(&self.query, at, down, filter),
+            false => clearance(&self.query, at, down, filter).min(
+                self.bare()
+                    .gap(at)
+                    .map_or(f32::INFINITY, |gap| gap.max(0.0)),
+            ),
         };
         let wind = self.wind.as_deref().map_or(Vec3::ZERO, Wind::velocity);
         Air {
@@ -126,7 +126,8 @@ impl Env<'_, '_> {
     }
 
     /// Moves a body at `from` by `velocity`, given in render axes, for `dt` seconds, sliding
-    /// along what it meets. Also returns whether it met something too steep to stand on.
+    /// along what it meets, and over bare ground never under it. Also returns whether it met
+    /// something too steep to stand on.
     fn moved(
         &self,
         (collider, from): (&Collider, &Transform),
@@ -136,7 +137,7 @@ impl Env<'_, '_> {
     ) -> (MoveAndSlideOutput, bool) {
         let up = from.rotation * Vec3::Y;
         let mut steep = false;
-        let out = self.slide.move_and_slide(
+        let mut out = self.slide.move_and_slide(
             collider,
             from.translation,
             from.rotation,
@@ -149,6 +150,7 @@ impl Env<'_, '_> {
                 MoveAndSlideHitResponse::Accept
             },
         );
+        self.bare().keep(from.translation, &mut out);
         (out, steep)
     }
 }
@@ -195,7 +197,7 @@ fn step_body(
     let to_render = tilt(up(&env.anchor, transform.translation));
     let intent = ask(&mut motion, asks, &step);
     let filter = SpatialQueryFilter::from_excluded_entities([entity]);
-    let floor = probe(&env.query, collider, &transform, to_render, &filter);
+    let floor = env.ground((collider, &transform), to_render, &filter);
     let down = (transform.translation, to_render * Vec3::NEG_Y);
     let air = env.air(down, motion.grounded, &filter, &step);
     let wanted = velocity((&mut motion, &mut gear), &intent, floor, &air, &step);

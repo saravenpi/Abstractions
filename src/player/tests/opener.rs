@@ -6,7 +6,7 @@ use bevy::prelude::*;
 
 use super::wings::{hold, lift, world};
 use crate::gear::Mode;
-use crate::player::{Player, Spread};
+use crate::player::{Player, SLING, Spread, Squared};
 use crate::sim::Intent;
 
 /// The forward key held.
@@ -74,4 +74,32 @@ fn every_change_of_the_wings_is_told_once() {
             open: false
         }]
     );
+}
+
+/// Returns the seconds from the jump pressed again in the air to the first frame the gear spreads
+/// the wings, with a tool `drawn` in the hands or not. Every frame after the press asks them open.
+fn first_spread(drawn: bool) -> f32 {
+    let mut app = world();
+    app.insert_resource(Squared {
+        drawn,
+        striking: false,
+    });
+    lift(&mut app);
+    hold(&mut app, 6, &[]);
+    let (open, _, _) = hold(&mut app, 1, &[Intent::Jump]);
+    assert!(open.wings, "not asked open");
+    (1..30_u32)
+        .find(|_| hold(&mut app, 1, &[]).1.state.wings > 0.0)
+        .map_or(f32::INFINITY, |frame| frame as f32 / 30.0)
+}
+
+/// With a tool in the hands the jump pressed again in the air asks the wings open at once, the
+/// tool is slung meanwhile, and the gear spreads them only once [`SLING`] has run: not a frame
+/// of spread before it. With empty hands they spread from the press.
+#[test]
+fn a_drawn_tool_is_slung_before_the_wings_spread() {
+    let slung = first_spread(true);
+    assert!((SLING - 0.01..SLING + 0.07).contains(&slung), "{slung} s");
+    let bare = first_spread(false);
+    assert!(bare < 0.04, "{bare} s");
 }

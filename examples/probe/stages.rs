@@ -60,6 +60,7 @@ pub const STAGES: [(&str, &str, Stage); 143] = [
     ("open-cliff", "glide", open_cliff),
     ("open-fall", "glide", open_fall),
     ("open-ship", "glide", open_ship),
+    ("open-cliff-armed", "glide", open_cliff_armed),
     ("board", "tour", board),
     ("cockpit", "tour", cockpit),
     ("hands", "tour", hands),

@@ -3,6 +3,7 @@
 //! side at three moments after the jump key is pressed again, the spread, the middle of the lie
 //! and the glide, with a `PROBE glide` line of the airspeed, the sink and the pitch.
 
+use abstractions::craft::Held;
 use abstractions::gear::Gear;
 
 use super::*;
@@ -23,9 +24,14 @@ fn log(world: &mut World, case: &str, moment: &str) {
     let Some((state, wings)) = found else {
         return;
     };
+    let held = world
+        .query::<&Held>()
+        .iter(world)
+        .next()
+        .map(|held| held.out);
     eprintln!(
         "PROBE glide {case} {moment}: mode {:?} wings {wings} spread {:.2} prone {:.2} airspeed {:.1} m/s \
-         sink {:.1} m/s pitch {:.1} deg clearance {:.1} m",
+         sink {:.1} m/s pitch {:.1} deg clearance {:.1} m tool in hand {held:?}",
         state.mode,
         state.spread(),
         state.prone,
@@ -37,7 +43,7 @@ fn log(world: &mut World, case: &str, moment: &str) {
 }
 
 /// Follows the robot from its right side, looking along `heading`.
-fn beside(world: &mut World, heading: DVec3) {
+pub fn beside(world: &mut World, heading: DVec3) {
     *world.resource_mut::<Tripod>() = Tripod::Follow {
         robot: true,
         heading: heading.normalize_or(DVec3::X),
@@ -48,7 +54,7 @@ fn beside(world: &mut World, heading: DVec3) {
 
 /// Runs frame `frame` of the opening of `case` whose jump key is pressed again at frame
 /// `press`: the press, then the three shots with their lines, then the next stage.
-fn opening(world: &mut World, frame: u32, (case, press): (&str, u32)) -> Act {
+pub fn opening(world: &mut World, frame: u32, (case, press): (&str, u32)) -> Act {
     let jump = bound(world, |s| s.controls.keys.jump);
     if frame == press {
         key(world, jump, true);
@@ -70,7 +76,7 @@ fn opening(world: &mut World, frame: u32, (case, press): (&str, u32)) -> Act {
 }
 
 /// Returns the home base and a direction along the ground from it, or a failure.
-fn site(world: &World) -> Result<(DVec3, DVec3), Act> {
+pub fn site(world: &World) -> Result<(DVec3, DVec3), Act> {
     let base = world
         .get_resource::<Base>()
         .copied()

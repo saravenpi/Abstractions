@@ -31,9 +31,9 @@ fn the_gear_touches_down_on_contact_and_slides_along_the_ground() {
         gap: 0.3,
     };
     let on = Ground { gap: 0.02, ..near };
-    assert!(!touching(Mode::Fly, Some(near)) && touching(Mode::Fly, Some(on)));
-    assert!(touching(Mode::Slide, Some(near)) && touching(Mode::Off, Some(near)));
-    assert!(!touching(Mode::Off, None));
+    assert!(!touching(Mode::Fly, Some(near), 0) && touching(Mode::Fly, Some(on), 0));
+    assert!(touching(Mode::Slide, Some(near), 0) && touching(Mode::Off, Some(near), 0));
+    assert!(!touching(Mode::Off, None, 0));
     let fast = Vec3::new(0.0, -2.0, -12.0);
     assert_eq!(carried(&gear(Mode::Off, fast), Some(on), 0.016), None);
     assert_eq!(

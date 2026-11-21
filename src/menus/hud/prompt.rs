@@ -150,29 +150,30 @@ impl Reach<'_, '_> {
         })
     }
 
-    /// Returns the action a key does right now: its key and its words. In a fall the key that
-    /// spreads the wings, `wings`, comes before any other action.
-    fn act(&self, wings: Option<(KeyCode, String)>) -> Option<(KeyCode, String)> {
-        let keys = &self.settings.controls.keys;
-        let chosen = self.interact.as_deref().and_then(Interact::chosen);
-        wings.or_else(|| chosen.map(|offer| offered(offer, keys)))
-    }
-
-    /// Returns the state of the line for this frame: empty in a menu, and while gliding only
-    /// why the air cannot carry the wings, see [`spoken`]. The orbital cruise takes the course rows
-    /// while it runs; a cruise ready to start comes after a course ready to go.
-    fn state(&self) -> State {
+    /// Returns the rows of the wings and of the action key, see [`spoken`]: in a fall the key
+    /// that spreads the wings comes before any other action.
+    fn act(&self) -> State {
         let keys = &self.settings.controls.keys;
         let air = self.air.as_deref().map_or(1.0, |air| air.0);
         let (block, wings) = spoken(mine(&self.players), air, keys.jump, self.now.0);
-        let mut state = State {
+        let chosen = self.interact.as_deref().and_then(Interact::chosen);
+        let act = wings.or_else(|| chosen.map(|offer| offered(offer, keys)));
+        State {
             block,
+            act,
             ..State::default()
-        };
+        }
+    }
+
+    /// Returns the state of the line: empty in a menu, the wings alone while gliding. The cruise
+    /// takes the course rows while it runs; one ready to start comes after a course ready to go.
+    fn state(&self) -> State {
+        let mut state = self.act();
         if matches!(self.now.0, Context::Gliding | Context::Menu) {
+            state.act = None;
             return state;
         }
-        state.act = self.act(wings);
+        let keys = &self.settings.controls.keys;
         let picked = self.notice.as_deref().and_then(Notice::shown);
         state.notice = picked.map(|words| (PICK_KEY, words.to_string()));
         let seated = self.location.as_deref().map(|at| at.travel) == Some(Travel::InShip);

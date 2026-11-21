@@ -4,20 +4,23 @@
 use bevy::pbr::FogFalloff;
 use bevy::prelude::*;
 
-use super::aerial::{CONTRAST, Haze};
-use super::fog::{FogKey, cull_distance, extinction, fog_for};
+use super::aerial::cull_distance;
+use super::aerial::{AEROSOL, CONTRAST, Haze};
+use super::fog::{FogKey, extinction, fog_for, white};
+use super::scatter::DEPTH;
 use crate::world::globe::far::SIGHT;
 
 /// Radius of the Earth in metres.
 const EARTH: f32 = 6.371e6;
 
-/// On foot in clear home air the camera sees between 60 and 110 km, far past any detailed ground,
+/// On foot in ordinary home air the last of the far ground is lost between 25 and 45 km, far past
+/// any detailed ground,
 /// and climbing never shortens the view.
 #[test]
 fn the_air_shows_tens_of_kilometres_on_foot() {
     let seen =
         |altitude: f32| cull_distance(extinction(&Haze::HOME, (altitude, altitude), 0.0), EARTH);
-    assert!((60_000.0..110_000.0).contains(&seen(2.0)), "{}", seen(2.0));
+    assert!((25_000.0..45_000.0).contains(&seen(2.0)), "{}", seen(2.0));
     let sights: Vec<f32> = (0..=400).map(|k| seen(k as f32 * 100.0)).collect();
     assert!(sights.windows(2).all(|pair| pair[1] >= pair[0]));
     assert!(sights[400] > 3.0 * sights[0]);
@@ -60,4 +63,20 @@ fn the_view_is_counted_in_radii() {
     let most = SIGHT as f32 * EARTH;
     assert_eq!(cull_distance(Vec3::ZERO, EARTH), most);
     assert!(cull_distance(extinction(&Haze::HOME, (3.0e6, 3.0e6), 0.0), EARTH) < most);
+}
+
+/// The layers handed to the ground shader give back the haze they were made from, the fog of the
+/// camera carries them where Bevy's own fog does not read, and a cloud adds its whiteout.
+#[test]
+fn the_layers_carry_the_haze_to_the_ground_shader() {
+    let held = Haze::HOME.layers();
+    assert!((DEPTH * held.x - Haze::HOME.gas).abs().max_element() < 1.0e-9);
+    assert!((AEROSOL * held.y - Haze::HOME.aerosol).abs().max_element() < 1.0e-9);
+    assert_eq!(held.z, Haze::HOME.scale);
+    assert_eq!(white(0.0), 0.0);
+    assert!((white(1.0) - CONTRAST / 70.0).abs() < 1.0e-6);
+    let fog = fog_for(FogKey::home(Vec3::ONE));
+    let light = LinearRgba::from(fog.directional_light_color);
+    assert_eq!(Vec3::new(light.red, light.green, light.blue), held);
+    assert_eq!((light.alpha, fog.directional_light_exponent), (0.0, 0.0));
 }

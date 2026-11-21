@@ -6,6 +6,8 @@ use std::sync::Arc;
 use bevy::math::{DVec3, IVec3};
 use bevy::prelude::*;
 
+mod arrive;
+
 use super::body::Ship;
 use super::moons::with_moons;
 use super::wells::{Well, system_wells};
@@ -47,6 +49,9 @@ pub struct Skies {
     /// The destination of a long jump in the frame of the ship. While it is set, the stars on
     /// the way are ignored between the stars.
     pub beacon: Option<Well>,
+    /// The body a course is aimed at and the radius of its lock while the course flies to it: its
+    /// arrival shell, which the drive may reach, where every other lock sphere stays as it is.
+    pub arrive: Option<(BodyId, f64)>,
     /// The home base, whose landing pad is ground the ship can stand on.
     pub base: Option<Base>,
 }
@@ -141,5 +146,6 @@ impl Skies {
                     .collect()
             }
         };
+        self.shrink_target();
     }
 }

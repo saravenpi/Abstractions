@@ -6,6 +6,7 @@ mod eye;
 mod ground;
 mod loops;
 mod stages;
+mod touch;
 mod watch;
 
 use bevy::prelude::*;

@@ -9,9 +9,10 @@ use crate::ship::flight::{STEP, Scene, rotate, step};
 use crate::ship::helm::Helm;
 use crate::ship::moons::{Standoff, goal};
 use crate::ship::pilot::Goal;
+use crate::ship::route::shell;
 use crate::ship::route::{hold, led, spool};
 use crate::ship::warp::{CRUISE_CAP, Warp, advance, drop_out, request};
-use crate::ship::wells::{PLANET_LOCK, Well, system_wells};
+use crate::ship::wells::{Well, system_wells};
 use crate::space::Frame;
 use crate::universe::{BodyId, PlanetSpec, SystemSpec, Universe};
 
@@ -79,7 +80,10 @@ pub(super) fn voyage(system: &SystemSpec, goal: &Goal, ship: &mut Ship) -> (f64,
     let beyond = goal.beyond.as_ref().unwrap();
     let (mut helm, mut time, mut spools) = (Helm::default(), 0.0, 0);
     while time < 1200.0 {
-        let wells = system_wells(system, time);
+        let mut wells = system_wells(system, time);
+        if let Some(moon) = wells.last_mut() {
+            moon.lock = goal.lock;
+        }
         if beyond.reached(ship.pos, time) {
             drop_out(ship, &wells);
             return (time, spools);
@@ -121,7 +125,7 @@ fn a_route_to_a_moon_ends_at_rest_beside_it() {
         (ship.vel - own.vel).length() < 1e-9,
         "not at rest beside the moon"
     );
-    assert!(own.clearance(ship.pos) > 0.0 && host.clearance(ship.pos) > 0.0);
+    assert!(own.pos.distance(ship.pos) > shell::lock(moon) && host.clearance(ship.pos) > 0.0);
     let air = giant.radius + giant.atmosphere_height;
     assert!(host.pos.distance(ship.pos) > air);
 }
@@ -165,7 +169,7 @@ fn a_route_to_a_moon_arrives_from_every_side() {
             (ship.vel - own.vel).length() < 1e-9,
             "{side:?}: not at rest"
         );
-        assert!(own.clearance(ship.pos) > 0.0 && host.clearance(ship.pos) > 0.0);
+        assert!(own.pos.distance(ship.pos) > shell::lock(moon) && host.clearance(ship.pos) > 0.0);
         assert!(own.pos.distance(ship.pos) <= own.lock * 1.45, "{side:?}");
     }
 }
@@ -185,7 +189,7 @@ fn the_point_beside_a_moon_clears_its_giant() {
     }
     let (far, index) = giant_system(40.0);
     let near = Standoff::of(far.planets.last().unwrap(), &far.planets[index]);
-    assert_eq!(near.gap, 3000.0 * PLANET_LOCK * 1.3);
+    assert_eq!(near.gap, shell::radius(far.planets.last().unwrap()));
 }
 
 /// A ship saved in the surface frame of a moon comes back on that moon, and a record written

@@ -3,7 +3,8 @@ import bevy_pbr::render::pbr_fragment::pbr_input_from_standard_material;
 import bevy_pbr::render::pbr_functions::{alpha_discard, apply_pbr_lighting, main_pass_post_lighting_processing};
 @if(VISIBILITY_RANGE_DITHER)
 import bevy_pbr::render::pbr_functions::visibility_range_dither;
-import package::render::daylight::{altitude_at, cloud_shade, place_from, relit_under};
+import bevy_pbr::render::pbr_types::STANDARD_MATERIAL_FLAGS_FOG_ENABLED_BIT;
+import package::render::daylight::{aerial, altitude_at, cloud_shade, place_from, relit_under};
 import package::render::season::{look_at, season_from, tinted};
 import package::world::turf::{Turf, carpet, cover, spot};
 
@@ -49,6 +50,10 @@ fn fragment(vertex_output: VertexOutput, @builtin(front_facing) is_front: bool) 
     var out: FragmentOutput;
     let cloud = cloud_shade(place_map, place, in.world_position.xyz);
     out.color = relit_under(pbr_input, apply_pbr_lighting(pbr_input), place, cloud);
+    if ((pbr_input.material.flags & STANDARD_MATERIAL_FLAGS_FOG_ENABLED_BIT) != 0u) {
+        out.color = aerial(out.color, in.world_position.xyz, place);
+        pbr_input.material.flags = pbr_input.material.flags & ~STANDARD_MATERIAL_FLAGS_FOG_ENABLED_BIT;
+    }
     out.color = main_pass_post_lighting_processing(pbr_input, out.color);
     return out;
 }

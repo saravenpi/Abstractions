@@ -126,7 +126,7 @@ fn the_sky_blends_into_the_local_weather() {
         let air = f32::from(step) / 2000.0;
         LocalWeather(seen(&storm, air)).look()
     };
-    let values = |look: WeatherLook| [look.haze, look.dust];
+    let values = |look: WeatherLook| [look.haze, look.dust, look.damp];
     for step in 0..2000 {
         let (here, next) = (drawn(step), drawn(step + 1));
         let (now, then) = (values(here), values(next));
@@ -154,7 +154,7 @@ fn leaving_the_world_clears_the_sky_and_the_hud() {
     });
     world.insert_resource(LocalWeather(Some(WeatherLook {
         haze: 1.0,
-        dust: 0.0,
+        ..WeatherLook::CALM
     })));
     world.insert_resource(HudWeather { word: "rain" });
     world.run_system_once(super::watch::clear).unwrap();

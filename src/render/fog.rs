@@ -9,7 +9,7 @@ use bevy::math::DVec3;
 use bevy::pbr::{DistanceFog, FogFalloff};
 use bevy::prelude::*;
 
-use super::aerial::{CONTRAST, Haze, sight};
+use super::aerial::{CONTRAST, Haze, cull_distance};
 use super::air::Air;
 use super::clouds::CloudCrossing;
 use super::exposure::{Metered, lifted};
@@ -20,7 +20,6 @@ use super::weather::{LocalWeather, WeatherLook};
 use super::{GameCamera, SunDir};
 use crate::space::{Anchor, Frame};
 use crate::world::Planet;
-use crate::world::globe::far::SIGHT;
 
 /// Fog and sky color seen from below the surface of water, in sRGB. The underwater pass draws
 /// it, so the distance fog of the camera stays the fog of the air.
@@ -28,9 +27,6 @@ pub const UNDERWATER: Vec3 = Vec3::new(0.04, 0.27, 0.35);
 
 /// Distance in meters at which the water hides everything.
 pub(super) const UNDERWATER_VISIBILITY: f32 = 25.0;
-
-/// Distance in metres the camera culls at least, as Bevy does by default.
-const NEAR_FAR: f32 = 1000.0;
 
 /// Distance in meters at which the middle of the cloud layer hides everything.
 const WHITEOUT_VISIBILITY: f32 = 70.0;
@@ -45,6 +41,7 @@ pub struct Clearance(pub f32);
 pub(super) struct FogKey {
     color: Vec3,
     extinction: Vec3,
+    layers: Vec4,
 }
 
 impl FogKey {
@@ -54,6 +51,7 @@ impl FogKey {
         Self {
             color,
             extinction: Haze::HOME.toward(0.0, 0.0),
+            layers: Haze::HOME.layers().extend(0.0),
         }
     }
 }
@@ -65,28 +63,31 @@ impl FogKey {
 /// up sees the ground through the whole depth of the air, and the whiteout of the cloud.
 pub fn extinction(haze: &Haze, (altitude, clearance): (f32, f32), cloud: f32) -> Vec3 {
     let ground = altitude - clearance.max(0.0);
-    let white = CONTRAST / WHITEOUT_VISIBILITY * cloud.clamp(0.0, 1.0);
-    haze.toward(altitude, ground) + Vec3::splat(white)
+    haze.toward(altitude, ground) + Vec3::splat(white(cloud))
 }
 
-/// Returns the distance in metres a camera culls at over a planet of `radius` metres when the
-/// air takes `extinction` per metre: where the air has hidden everything, at most
-/// [`SIGHT`] planet radii, where nothing of the world is drawn any more, and no closer than
-/// Bevy's default. The depth of the camera has no far plane, so this only culls.
-pub fn cull_distance(extinction: Vec3, radius: f32) -> f32 {
-    sight(extinction).min(SIGHT as f32 * radius).max(NEAR_FAR)
+/// Returns the share of light of every colour taken per metre by the cloud around a camera
+/// `cloud` deep in the cloud layer, from 0 to 1: in its middle the camera sees
+/// [`WHITEOUT_VISIBILITY`] metres.
+pub fn white(cloud: f32) -> f32 {
+    CONTRAST / WHITEOUT_VISIBILITY * cloud.clamp(0.0, 1.0)
 }
 
 /// Builds the camera fog for a key: each colour of a far thing is taken at its own rate and
-/// replaced by as much of the colour of the horizon.
+/// replaced by as much of the colour of the horizon. Bevy's own fog, on every standard material,
+/// takes the mean of the air between the camera and the ground under it. The ground shader reads
+/// the layers from the colour of the directional light of the fog, which Bevy leaves unread while
+/// its alpha is 0, and the whiteout of the cloud from its exponent: see [`Haze::layers`].
 pub(super) fn fog_for(key: FogKey) -> DistanceFog {
+    let [gas, aerosol, scale, white] = key.layers.to_array();
     DistanceFog {
         color: srgb(key.color),
         falloff: FogFalloff::Atmospheric {
             extinction: key.extinction,
             inscattering: key.extinction,
         },
-        ..default()
+        directional_light_color: Color::LinearRgba(LinearRgba::new(gas, aerosol, scale, 0.0)),
+        directional_light_exponent: white,
     }
 }
 
@@ -157,6 +158,7 @@ fn update_fog(
         let key = FogKey {
             color,
             extinction: extinction(&haze, (vantage.altitude, clearance), cloud),
+            layers: haze.layers().extend(white(cloud)),
         };
         if *last != Some(key) {
             *last = Some(key);

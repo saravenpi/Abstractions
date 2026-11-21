@@ -48,6 +48,8 @@ fn halo(v: vec3<f32>) -> f32 {
 fn washed(light: f32, glow: f32) -> f32 {
     let hold = max(light, BAND_HOLD);
     return hold / (hold + max(glow, 0.0));
+}
+
 fn sunset_band(v: vec3<f32>, sun: vec3<f32>, up: vec3<f32>, over: f32) -> f32 {
     let rise = dot(sun, up);
     let flat_v = v - up * dot(v, up);

@@ -180,7 +180,12 @@ impl Reach<'_, '_> {
             .course()
             .map(|course| words(&course, seated, &Keys::of(keys)));
         let found = (self.location.as_deref(), self.base.as_deref());
-        let cruise = read(self.orbital.as_deref(), found, self.destination.0.is_some(), keys);
+        let cruise = read(
+            self.orbital.as_deref(),
+            found,
+            self.destination.0.is_some(),
+            keys,
+        );
         let (block, running, ready) = merge(cruise, told.unwrap_or_default(), keys.engage);
         let waiting = self
             .hatch

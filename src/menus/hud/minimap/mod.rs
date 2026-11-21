@@ -2,12 +2,15 @@
 //! player on a planet, heading up, and the chart of the system in space.
 //!
 //! On a planet the ground is painted into a small image fixed to the planet and wider than the
-//! view, off the main thread, so that walking and turning only move and turn that image. The
+//! view, off the main thread, so that walking and turning only move and turn that image. A new
+//! image is swapped in whole, painted ahead of a fast player, and the view never reaches past
+//! the image shown. The
 //! home base, the ship, friends, waypoints and favourites are marks that wait on the rim while
 //! they are out of range. In space
 //! the board computer lends its chart and its marks. The minimap is part of the HUD, so it
 //! hides behind every menu and behind the computer, which has the large map.
 
+mod ahead;
 mod dots;
 mod follow;
 mod marks;
@@ -56,7 +59,7 @@ fn cycle(
 /// the view is laid out while the player controls the game.
 pub(super) fn plugin(app: &mut App) {
     let chart = space::chart.run_if(on_timer(Duration::from_secs_f32(CHART_EVERY)));
-    let ground = (scope::fresh, scope::track, scope::refill, scope::collect);
+    let ground = (scope::fresh, scope::collect, scope::track, scope::refill);
     let shown = (
         cycle,
         marks::place,

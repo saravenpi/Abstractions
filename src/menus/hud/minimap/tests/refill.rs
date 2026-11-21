@@ -1,12 +1,13 @@
-//! The refill budget: when a new patch is painted, how many texels a walk costs and how long
-//! one patch takes.
+//! The refill budget: when a new patch is painted, how many texels a walk costs, how long
+//! one patch takes, how little a moved patch samples, and where a fast player's patch goes.
 
 use std::time::Instant;
 
-use bevy::math::{DVec3, Vec2};
+use bevy::math::{DVec3, IVec2, Vec2};
 
-use crate::menus::hud::minimap::paint::paint;
-use crate::menus::hud::minimap::patch::{DRIFT, Patch, TEXELS, next};
+use crate::menus::hud::minimap::ahead::{ahead, cover, next};
+use crate::menus::hud::minimap::paint::{BYTES, paint, repaint};
+use crate::menus::hud::minimap::patch::{DRIFT, Patch, TEXELS};
 use crate::menus::hud::minimap::range::RANGES;
 use crate::world::Globe;
 
@@ -107,4 +108,59 @@ fn a_patch_is_painted_within_its_budget() {
     println!("minimap patch: {texels} texels in {spent:?}, {each:.2} us per texel");
     assert_eq!(texels, TEXELS * TEXELS);
     assert!(spent.as_secs_f64() < 2.0, "{spent:?}");
+}
+
+/// Radius in metres of a planet of real size.
+const EARTH: f64 = 6.371e6;
+
+/// A patch moved 750 m north on a planet of real size takes seven rows of texels from the one
+/// before and samples only its new edge: under a tenth of the samples of a whole patch, the new
+/// rows exactly as a whole paint gives them and nearly every other texel too. On a planet a few
+/// kilometres wide the ground curves too much to reuse texels, and the patch is painted whole.
+#[test]
+fn a_moved_patch_samples_only_its_new_edge() {
+    let globe = Globe::new(7, EARTH, 9.8);
+    let first = Patch::around(DVec3::new(0.6, 0.3, -0.74).normalize(), EARTH, 2500.0);
+    let old = paint(&globe, &first);
+    let moved = first.moved(Vec2::new(0.0, 750.0));
+    assert_eq!(moved.texels_in(&first), Some(IVec2::new(0, -7)));
+    let before = Globe::sampled();
+    let whole = paint(&globe, &moved);
+    let full = Globe::sampled() - before;
+    let edge = repaint(&globe, &moved, Some((&first, &old)));
+    let taken = Globe::sampled() - before - full;
+    assert!(taken * 10 < full, "{taken} samples of {full}");
+    let rows = 7 * TEXELS * BYTES;
+    assert_eq!(edge[..rows], whole[..rows]);
+    let same = edge
+        .chunks_exact(BYTES)
+        .zip(whole.chunks_exact(BYTES))
+        .filter(|(a, b)| a == b)
+        .count();
+    assert!(same * 100 >= TEXELS * TEXELS * 99, "{same} texels match");
+    let small = Patch::around(DVec3::X, RADIUS, 2000.0);
+    assert_eq!(small.moved(Vec2::new(0.0, 600.0)).texels_in(&small), None);
+}
+
+/// A fast player's next patch is centred ahead of it, never past the drift of a patch, and a
+/// patch covers less of the map the farther the player is from its middle.
+#[test]
+fn a_fast_player_is_painted_ahead() {
+    let at = DVec3::X * EARTH;
+    let north = DVec3::Y * 300.0;
+    let patch = Patch::around(DVec3::X, EARTH, 2500.0);
+    let led = patch.locate(ahead(at, north, 2500.0));
+    assert!((led.y - 150.0).abs() < 0.5 && led.x.abs() < 0.5, "{led}");
+    let capped = patch.locate(ahead(at, north * 100.0, 2500.0));
+    assert!((capped.y - DRIFT * 2500.0).abs() < 0.5, "{capped}");
+    let middle = cover(&patch, DVec3::X);
+    assert!(
+        (middle - 5000.0 / std::f32::consts::SQRT_2).abs() < 0.5,
+        "{middle}"
+    );
+    let off = cover(&patch, ahead(at, north * 100.0, 2500.0));
+    assert!(
+        (middle - off - DRIFT * 2500.0 / std::f32::consts::SQRT_2).abs() < 0.5,
+        "{off}"
+    );
 }

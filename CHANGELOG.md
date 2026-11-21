@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### The interface
+
+- Settings and Worlds share one page layout: the title at the same place, the same margin on every side, Back and the keys at the bottom. The settings are grouped in titled sections with icons, every value starts on the same line, and the page scrolls to the height of the window.
+
 ## [0.11.0] - 2026-11-21
 
 Players and servers must both run 0.11.0: the multiplayer protocol and the world format changed. A 0.10 game cannot join a 0.11 server. Worlds from 0.10 open with 0.10 only.

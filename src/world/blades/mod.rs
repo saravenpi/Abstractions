@@ -1,12 +1,14 @@
 //! Blades of grass near the camera: on ground the ground-cover species of a living planet carpet, sparse
-//! procedural blades grown by the vertex shader, dense within the inner ring and thinning out to the
-//! outer one, bent by the wind, cleared under props and on the patches grazers cropped.
+//! procedural blades grown by the vertex shader, dense near the camera and thinning out blade by blade with
+//! the distance, shorter far off, shrinking away before they go, bent by the wind, cleared under props and on
+//! the patches grazers cropped.
 //!
 //! The ground shader draws the same carpet farther out from the same turf, so a blade always stands in
 //! the colour of the ground under it. A planet without ground cover has neither.
 
 mod clear;
 mod colour;
+mod fade;
 mod flight;
 mod ground;
 mod material;
@@ -73,14 +75,13 @@ fn setup(
 /// changed: the ground cover of the season of that latitude, or bare ground.
 fn look(
     (terrain, anchor): (Res<Terrain>, Res<Anchor>),
-    camera: Query<&GlobalTransform, With<GameCamera>>,
+    (camera, transforms): (Query<Entity, With<GameCamera>>, TransformHelper),
     (props, blades): (Res<PropAssets>, Res<BladeAssets>),
     mut grounds: ResMut<Assets<GroundMaterial>>,
     mut materials: ResMut<Assets<BladeMaterial>>,
 ) {
-    let at = camera.single().map_or(Vec3::ZERO, |c| {
-        terrain.locate(anchor.to_frame(c.translation()))
-    });
+    let seen = |c| tiles::seen(&terrain, &anchor, &transforms, c);
+    let at = camera.single().ok().and_then(seen).unwrap_or(Vec3::ZERO);
     let flora = Flora::of(&terrain, at.xz());
     let turf = TurfUniform::of(flora.as_ref().and_then(turf_of).as_ref());
     if grounds
@@ -140,8 +141,14 @@ pub(super) fn plugin(app: &mut App) {
 }
 
 #[cfg(test)]
+mod tests_cost;
+#[cfg(test)]
+mod tests_fade;
+#[cfg(test)]
 mod tests_pad;
 #[cfg(test)]
 mod tests_square;
+#[cfg(test)]
+mod tests_stream;
 #[cfg(test)]
 mod tests_tile;

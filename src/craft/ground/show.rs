@@ -128,13 +128,19 @@ type Stores<'w> = (
     ResMut<'w, Assets<StandardMaterial>>,
 );
 
+/// The robot, and what is drawn on the ground already.
+type Seen<'w, 's> = (
+    Query<'w, 's, &'static Transform, With<Player>>,
+    Query<'w, 's, (Entity, &'static Lies)>,
+);
+
 /// Draws what lies within [`DRAW`] metres of the robot and is not drawn yet, and takes away what
 /// was taken, changed or left behind: farther than a quarter more, or on another body.
 pub(super) fn show(
     mut commands: Commands,
     (ground, anchor): (Res<Ground>, Res<Anchor>),
     (shown, mut meshes, mut materials): Stores,
-    (robot, drawn): (Query<&Transform, With<Player>>, Query<(Entity, &Lies)>),
+    (robot, drawn): Seen,
     mut ids: Local<Vec<u64>>,
 ) {
     let here = match (anchor.frame, robot.single()) {

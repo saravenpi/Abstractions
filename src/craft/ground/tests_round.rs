@@ -72,8 +72,10 @@ fn heaps_merge_and_come_back() {
     let flint = Stuff::Mineral(Mineral::Flint);
     let of = |pack: &Pack| pack.stacks.iter().position(|s| s.stuff == flint);
     let mut shed = Shed::default();
-    shed_stack(&mut pack, &mut shed, of(&pack).expect("flint"), 0.5);
-    shed_stack(&mut pack, &mut shed, of(&pack).expect("half left"), 1.0);
+    let at = of(&pack).expect("flint");
+    shed_stack(&mut pack, &mut shed, at, 0.5);
+    let at = of(&pack).expect("half left");
+    shed_stack(&mut pack, &mut shed, at, 1.0);
     assert!(of(&pack).is_none());
     let mut ground = Ground::default();
     for (n, thing) in std::mem::take(&mut shed.0).into_iter().enumerate() {

@@ -6,7 +6,8 @@ use bevy::prelude::*;
 
 use super::beast::Beast;
 use super::gate::Spec;
-use super::herds::{Herds, Land, member};
+use super::herds::{Herds, Land};
+use super::lead::in_herd;
 use super::react::Act;
 use super::rig::app_of;
 use super::senses::stance::plant_eater;
@@ -52,7 +53,8 @@ fn find(app: &mut App, key: (u64, u8)) -> Option<Beast> {
     staying(app).into_iter().find(|b| b.lead.key() == key)
 }
 
-/// Returns the metres along the ground in its frame from `beast` to its place in its herd now.
+/// Returns the metres along the ground in its frame from `beast` to its place in its herd now, the
+/// patch it crops when the herd grazes.
 fn off_place(app: &mut App, beast: &Beast) -> f32 {
     let world = app.world_mut();
     let globe = world.resource::<Terrain>().globe().clone();
@@ -67,9 +69,9 @@ fn off_place(app: &mut App, beast: &Beast) -> f32 {
     };
     let id = beast.lead.key().0;
     let herd = world.resource_mut::<Herds>().herd(land, id, time);
-    let place = herd.and_then(|h| member(&h, beast.lead.key().1, time, globe.radius()));
-    place.map_or(f32::MAX, |(_, dir)| {
-        let at = beast.spot.local(dir * globe.radius());
+    let place = herd.and_then(|h| in_herd(&h, beast.lead.key().1, &[], time, globe.radius()));
+    place.map_or(f32::MAX, |goal| {
+        let at = beast.spot.local(goal.dir * globe.radius());
         (at - beast.motion.root.at).with_y(0.0).length()
     })
 }

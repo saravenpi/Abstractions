@@ -5,7 +5,7 @@ use bevy::math::{Vec2, Vec3, Vec3Swizzles};
 
 use super::motion::{Detail, Drive, Motion};
 use super::react::{Act, Mood};
-use super::tune::{APPROACH_SPEED, FLEE_SPEED, PULL, SETTLE, STAND_OFF};
+use super::tune::{APPROACH_SPEED, FLEE_SPEED, GUARD, PULL, RUSH, SETTLE};
 use crate::life::body::{Body, Locomotion, slope};
 
 /// Where an animal should be and how fast its herd goes, in the animal's frame.
@@ -29,6 +29,8 @@ pub struct Pace {
     pub top: f32,
     /// Level of detail.
     pub detail: Detail,
+    /// Metres from its root within which its attack reaches what it goes for: where it stops closing.
+    pub strike: f32,
 }
 
 /// Returns the height in metres a flyer or a swarm of `body` cruises at above the ground: swarms
@@ -56,30 +58,37 @@ fn graze(motion: &Motion, body: &Body, ground: &dyn Fn(Vec2) -> f32) -> Vec3 {
     ahead.with_y(ground(ahead.xz()))
 }
 
+/// Returns the velocity that takes a body going as `pace` allows from a threat `gap` away, flat in
+/// its frame, to within its strike: a stalking walk while far, a run once within [`RUSH`] metres,
+/// and a stop where its attack reaches.
+fn close(gap: Vec3, pace: &Pace) -> Vec3 {
+    let metres = gap.length();
+    if metres <= pace.strike {
+        return Vec3::ZERO;
+    }
+    let share = if metres < RUSH { 1.0 } else { APPROACH_SPEED };
+    gap.normalize_or_zero() * pace.top * share
+}
+
 /// Returns the velocity and the look of `motion` for `body` doing what `mood` calls for, `towards`
-/// being the velocity that keeps it on its herd place.
+/// being the velocity that keeps it on its herd place. An animal that stands its ground goes for a
+/// threat that comes within [`GUARD`] metres of its strike; one that attacks closes to its strike.
 fn motive(
     (motion, body): (&Motion, &Body),
     (towards, mood): (Vec3, &Mood),
-    top: f32,
+    pace: &Pace,
     ground: &dyn Fn(Vec2) -> f32,
 ) -> (Vec3, Option<Vec3>) {
     let at = motion.root.at;
     let gap = (mood.threat - at).with_y(0.0);
+    let look = Some(mood.threat);
     match mood.act() {
         Act::Graze if towards.length() < 0.3 => (towards, Some(graze(motion, body, ground))),
         Act::Graze => (towards, None),
-        Act::Alert => (towards * 0.2, Some(mood.threat)),
-        Act::Threaten => (Vec3::ZERO, Some(mood.threat)),
-        Act::Approach if gap.length() < STAND_OFF + body.length => (Vec3::ZERO, Some(mood.threat)),
-        Act::Approach => (
-            gap.normalize_or_zero() * top * APPROACH_SPEED,
-            Some(mood.threat),
-        ),
-        Act::Flee => (
-            -gap.normalize_or(Vec3::NEG_X) * top * FLEE_SPEED,
-            Some(mood.threat),
-        ),
+        Act::Alert => (towards * 0.2, look),
+        Act::Threaten if gap.length() > pace.strike + GUARD => (Vec3::ZERO, look),
+        Act::Threaten | Act::Approach => (close(gap, pace), look),
+        Act::Flee => (-gap.normalize_or(Vec3::NEG_X) * pace.top * FLEE_SPEED, look),
     }
 }
 
@@ -121,7 +130,7 @@ pub fn drive(
 ) -> Drive {
     let at = motion.root.at;
     let towards = follow(at, aim, pace.top);
-    let (velocity, look) = motive((motion, body), (towards, mood), pace.top, ground);
+    let (velocity, look) = motive((motion, body), (towards, mood), &pace, ground);
     let climb = match body.locomotion {
         Locomotion::Fly | Locomotion::Swarm => ground(at.xz()) + cruise(body) - at.y,
         _ => 0.0,

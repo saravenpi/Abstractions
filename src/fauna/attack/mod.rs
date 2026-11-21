@@ -34,6 +34,8 @@ mod tests_blow;
 #[cfg(test)]
 mod tests_brace;
 #[cfg(test)]
+mod tests_close;
+#[cfg(test)]
 mod tests_harm;
 #[cfg(test)]
 mod tests_limbs;
@@ -69,6 +71,7 @@ pub(super) fn plugin(app: &mut App) {
             pounce::attack
                 .after(super::senses::sense)
                 .before(walk)
+                .run_if(super::gate::living)
                 .run_if(any_with_component::<super::beast::Beast>),
             gesture::gesture
                 .after(walk)

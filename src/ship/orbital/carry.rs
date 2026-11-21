@@ -10,14 +10,14 @@ use bevy::prelude::*;
 use super::glide::{self, handover};
 use super::near::{Over, over};
 use super::skim::{Ask, Band, Skim, Stride, attitude, course, step};
-use super::tune::{ALIGNED, PACE};
+use super::tune::{ALIGNED, SPOOL};
 use super::{Note, Orbital, Reading};
 use crate::ship::body::Ship;
 use crate::ship::flight::Report;
 use crate::ship::helm::Helm;
 use crate::ship::sim::Pace;
 use crate::ship::sky::Skies;
-use crate::ship::warp::RAMP;
+use crate::ship::warp::FLOOR;
 use crate::space::Clock;
 
 /// Returns what the helm and the target ask of the cruise of `ship` over `over`: toward a target
@@ -33,15 +33,16 @@ fn ask(orbital: &Orbital, helm: &Helm, ship: &Ship, over: &Over) -> Ask {
 }
 
 /// Returns what the HUD reads of a cruise at `skim` over `over` toward the unit direction
-/// `goal`: the arc to it, the arc to the start of the glide, and the time at full lever then
-/// along the glide.
+/// `goal`: the arc to it, the arc to the start of the glide, and the time at full lever, with
+/// the spool up and down, then along the glide.
 fn read(skim: &Skim, over: &Over, goal: Option<DVec3>) -> Option<Reading> {
     let goal = goal?;
     let band = Band::of(&over.planet);
     let arc = skim.pos.angle_between(goal) * band.radius;
-    let sloped = handover(skim.height).min(arc);
-    let descent = arc - sloped;
-    let eta = descent / band.top(skim.height) + RAMP + sloped / (PACE * glide::top(&over.planet));
+    let descent = (arc - handover(skim.height)).max(0.0);
+    let top = band.top(skim.height);
+    let spool = 2.0 * SPOOL * (top / FLOOR).max(1.0).ln();
+    let eta = descent / top + spool + glide::time(&over.planet, skim.height);
     Some(Reading {
         arc,
         eta,

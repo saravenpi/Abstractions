@@ -7,7 +7,7 @@ use bevy::math::{DQuat, DVec3};
 use super::glide::{self, Fix, handover, order};
 use super::rig::earth;
 use super::skim::{Band, attitude};
-use super::tune::GLIDE_ANGLE;
+use super::tune::{GLIDE_ANGLE, GLIDE_STICK};
 use crate::render::cool_speed;
 use crate::ship::body::Ship;
 use crate::ship::drag::density;
@@ -16,8 +16,9 @@ use crate::ship::steer::aim;
 use crate::space::Frame;
 use crate::universe::PlanetSpec;
 
-/// Seconds the glide may take from the cruise floor to its end.
-const LIMIT: f64 = 400.0;
+/// Seconds the glide may take from the cruise floor to its end: about 72 s on an Earth, the time
+/// the speed at which the nose glows takes to get down through the air.
+const LIMIT: f64 = 85.0;
 
 /// How a glide ended: the ship, the seconds it took, whether it ended, and the highest share of
 /// the speed at which the nose glows that it flew at.
@@ -58,7 +59,8 @@ fn fly(ship: &mut Ship, planet: &PlanetSpec, scene: &Scene) -> bool {
     let asked = order(&fix, planet);
     (ship.throttle, ship.assist) = (asked.throttle, true);
     let controls = Controls {
-        turn: aim(ship.rot, asked.aim),
+        turn: aim(ship.rot, asked.aim).clamp_length_max(GLIDE_STICK),
+        boost: true,
         ..Controls::default()
     };
     step(ship, &controls, scene, STEP);

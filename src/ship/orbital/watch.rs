@@ -102,10 +102,8 @@ fn glide(deck: &mut Deck, orbital: &mut Orbital, ship: &mut Ship, over: Option<&
         return orbital.off(None);
     }
     let rel = ship.pos - over.centre;
-    let ground = match ship.frame {
-        Frame::Surface(_) => deck.skies.height(ship.pos),
-        _ => 0.0,
-    };
+    let surface = matches!(ship.frame, Frame::Surface(_));
+    let ground = [0.0, deck.skies.height(ship.pos)][usize::from(surface)];
     let toward = over.toward(goal);
     let fix = Fix {
         pos: rel,
@@ -121,6 +119,7 @@ fn glide(deck: &mut Deck, orbital: &mut Orbital, ship: &mut Ship, over: Option<&
     }
     deck.helm.controls = Controls {
         turn: aim(ship.rot, order.aim).clamp_length_max(GLIDE_STICK),
+        boost: true,
         ..Controls::default()
     };
     (ship.throttle, ship.assist) = (order.throttle, true);

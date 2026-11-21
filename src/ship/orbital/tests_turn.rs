@@ -1,4 +1,4 @@
-//! Tests of the turn onto the course of a cruise: from the press of the home key the ship turns
+//! Tests of the turn onto the course of a cruise: from Fly home on the map the ship turns
 //! at a bounded rate, easing in and out, onto the course within a few seconds, builds its speed
 //! only once its nose is on it, and keeps its nose at the handover to the glide.
 
@@ -14,8 +14,8 @@ use crate::ship::body::Ship;
 use crate::space::Frame;
 use crate::universe::PlanetSpec;
 
-/// Seconds the turn onto a course behind the ship may take: half a turn at 40 degrees a second,
-/// with the easing in and out.
+/// Seconds the turn onto a course behind the ship may take: half a turn at 45 degrees a second,
+/// with the easing in and out, 4.5 s.
 const TURNED: f64 = 6.0;
 
 /// Returns the planet still at the origin of its own axes.
@@ -30,7 +30,7 @@ fn still(planet: &PlanetSpec) -> Over {
 }
 
 /// Flies one frame of the cruise and returns how far the ship turned in it, checked to stay under
-/// 40 degrees a second, with the sweep of the cruise, and to change smoothly from the swing
+/// 45 degrees a second, with the sweep of the cruise, and to change smoothly from the swing
 /// `last` of the frame before.
 fn swung(orbital: &mut Orbital, ship: &mut Ship, over: &Over, asked: &Ask, last: f64) -> f64 {
     let before = ship.rot;
@@ -58,8 +58,8 @@ fn off(ship: &Ship) -> (f64, f64) {
     (nose.angle_between(course), flat.angle_between(course))
 }
 
-/// From a nose pointing away from home and pitched up, the home key turns the ship by at most
-/// 40 degrees a second onto the course, the turn never jumping from one frame to the next, the
+/// From a nose pointing away from home and pitched up, Fly home turns the ship by at most
+/// 45 degrees a second onto the course, the turn never jumping from one frame to the next, the
 /// speed staying at nothing until the nose is within five degrees and building after.
 #[test]
 fn the_ship_turns_onto_the_course_before_it_speeds_up() {

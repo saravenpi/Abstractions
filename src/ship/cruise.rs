@@ -27,7 +27,7 @@ const REACH: f64 = 4.0;
 const FAST: f64 = 2500.0;
 
 /// How many times faster the full lever is with the boost.
-const BOOST_SPEED: f64 = 2.0;
+pub(in crate::ship) const BOOST_SPEED: f64 = 2.0;
 
 /// Share of the top speed the vertical thrusters give at full stick.
 const CLIMB_SHARE: f64 = 0.3;

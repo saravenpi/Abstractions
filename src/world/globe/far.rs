@@ -4,6 +4,8 @@
 mod ball;
 #[cfg(test)]
 mod tests_ball;
+#[cfg(test)]
+mod tests_relief;
 
 use std::sync::Arc;
 

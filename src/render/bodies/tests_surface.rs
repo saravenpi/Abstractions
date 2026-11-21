@@ -1,13 +1,13 @@
 //! Surface texture tests: the six faces of a ball become six layers with every mipmap, a body of
-//! a few pixels reads the mean colour of its surface from the last of them, and the texture
-//! memory of each level is what the report states.
+//! a few pixels reads the mean colour of its surface from the last of them and no relief, and the
+//! texture memory of each level is what the report states.
 
 use std::sync::Arc;
 
 use bevy::prelude::*;
-use bevy::render::render_resource::TextureViewDimension;
+use bevy::render::render_resource::{TextureFormat, TextureViewDimension};
 
-use super::surface::{bytes, halve, image, layers, mips};
+use super::surface::{Kind, bytes, halve, image, layers, mips};
 use crate::universe::Universe;
 use crate::world::Globe;
 use crate::world::globe::Face;
@@ -53,7 +53,7 @@ fn the_texture_holds_every_mipmap() {
 #[test]
 fn a_ball_becomes_a_layered_texture() {
     let (_, maps) = home();
-    let texture = image(&maps);
+    let texture = image(&maps, Kind::Colour);
     let size = texture.texture_descriptor.size;
     assert_eq!(
         (size.width, size.height, size.depth_or_array_layers),
@@ -74,7 +74,7 @@ fn a_ball_becomes_a_layered_texture() {
 fn a_dot_keeps_the_mean_colour() {
     let (globe, maps) = home();
     let dot = ball(&globe, &maps);
-    let data = layers(&maps);
+    let data = layers(&maps, Kind::Colour);
     let layer = data.len() / 6;
     let last = (0..6).map(|k| decode(&data[(k + 1) * layer - 4..(k + 1) * layer]));
     let seen = last.sum::<Vec4>() / 6.0;
@@ -87,4 +87,24 @@ fn a_dot_keeps_the_mean_colour() {
         dot.sea
     );
     assert!(dot.mean.max_element() > 0.01, "{}", dot.mean);
+}
+
+/// The relief of a ball is a texture of six layers of plain numbers, as large as the colour, and
+/// a dot reads almost no lean from its last mipmap: the slopes of a whole face cancel out.
+#[test]
+fn a_dot_shows_no_relief() {
+    let (_, maps) = home();
+    let relief = image(&maps, Kind::Relief);
+    assert_eq!(relief.texture_descriptor.format, TextureFormat::Rgba8Unorm);
+    assert_eq!(relief.data.as_ref().map(Vec::len), Some(bytes(64)));
+    let data = layers(&maps, Kind::Relief);
+    let layer = data.len() / 6;
+    for k in 0..6 {
+        let last = &data[(k + 1) * layer - 4..(k + 1) * layer];
+        let lean = last[..3]
+            .iter()
+            .map(|b| (f32::from(*b) / 255.0 * 2.0 - 1.0).abs());
+        assert!(lean.fold(0.0, f32::max) < 0.05, "face {k}: {last:?}");
+        assert_eq!(last[3], 255);
+    }
 }

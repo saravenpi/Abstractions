@@ -22,6 +22,8 @@ mod tests_giant;
 #[cfg(test)]
 mod tests_lod;
 #[cfg(test)]
+mod tests_sphere;
+#[cfg(test)]
 mod tests_star;
 #[cfg(test)]
 mod tests_surface;
@@ -35,25 +37,26 @@ pub use material::BodyMaterial;
 pub use rings::RingMaterial;
 
 use super::air::Air;
-use super::atmosphere::HALO_SCALE;
+use super::atmosphere::halo_scale;
 use super::vantage::{LocalSystem, Scene, Vantage};
 use super::warp::Lens;
 use crate::universe::{BodyId, PlanetSpec, system_reach};
 use crate::world::Link;
 use crate::world::globe::far::{handover, sky_from};
 
-/// Angular radius in radians under which the disc of the star is not drawn: a ball under two
-/// pixels across cannot be drawn steadily. The star is then the point the star field draws
-/// for it, which is already far wider and brighter than a disc that small.
+/// Angular radius in radians under which the disc of the star is not drawn: a ball under two pixels
+/// across is not steady, and the point the star field draws for it is far wider and brighter.
 pub const STAR_POINT: f32 = 0.0009;
 
-/// Smallest angular radius in radians a planet is drawn with: about one pixel of the game view,
-/// so a far planet stays a steady dot.
+/// Smallest angular radius in radians a planet is drawn with: about a pixel, a steady dot.
 const PLANET_ANGLE: f32 = 0.0035;
 
 /// Share of its radius the ground of the body under the camera is drawn at while the world may
 /// still draw its quadtree: just under the sea and the lowest ground, so the quadtree covers it.
 pub const SUNK: f64 = 0.998;
+
+/// Times its hand-over within which the ground of the body under the camera stays sunk.
+pub const SINK: f64 = 1.1;
 
 /// Radii of a star that its warp bubble reaches. A star has no Hill sphere and does not move, so
 /// this stands for it: its bubble is carried between the shares of it that planets use.
@@ -114,7 +117,8 @@ impl Body {
             Body::Planet(id) | Body::Halo(id) | Body::Clouds(id) | Body::Rings(id) => id,
         };
         let (planet, pos) = scene.body(id)?;
-        let (radius, grow) = self.reach(planet)?;
+        let size = angle(planet.radius, pos.distance(scene.vantage.observer.eye));
+        let (radius, grow) = self.reach(planet, size)?;
         let radius = radius * self.sunk(planet, pos, &scene.vantage);
         let star = &scene.local.0.as_ref()?.system.star;
         let turn = match self {
@@ -131,11 +135,12 @@ impl Body {
         })
     }
 
-    /// Returns the radius in metres of what this body draws around `planet`, and that radius
-    /// over the radius of the planet, or nothing for the rings of a planet without rings.
-    fn reach(self, planet: &PlanetSpec) -> Option<(f64, f32)> {
+    /// Returns the radius in metres of what this body draws around `planet`, whose radius covers
+    /// `size` radians, and that radius over the radius of the planet, or nothing for the rings of
+    /// a planet without rings.
+    fn reach(self, planet: &PlanetSpec, size: f32) -> Option<(f64, f32)> {
         match self {
-            Body::Halo(_) => Some((planet.radius * f64::from(HALO_SCALE), HALO_SCALE)),
+            Body::Halo(_) => Some(halo_scale(planet, size)).map(|k| (planet.radius * k as f64, k)),
             Body::Rings(_) => planet
                 .rings
                 .map(|rings| (rings.outer, (rings.outer / planet.radius) as f32)),
@@ -147,10 +152,10 @@ impl Body {
     }
 
     /// Returns the share of its radius this body of `planet`, at `pos` metres from the star, is
-    /// drawn at for the camera `vantage`: [`SUNK`] for the ground of the body under the camera
-    /// within its [`handover`], where the world may draw its quadtree over it, and 1 otherwise.
+    /// drawn at for the camera `vantage`: [`SUNK`] for the ground of the body under the camera within
+    /// [`SINK`] hand-overs, where the world draws its quadtree over it or dithers it out, else 1.
     fn sunk(self, planet: &PlanetSpec, pos: DVec3, vantage: &Vantage) -> f64 {
-        let within = pos.distance(vantage.observer.eye) < handover(planet.radius);
+        let within = pos.distance(vantage.observer.eye) < SINK * handover(planet.radius);
         match self {
             Body::Planet(_) if within && vantage.is(planet.id) => SUNK,
             _ => 1.0,
@@ -237,7 +242,7 @@ pub(super) fn plugin(app: &mut App) {
             (bake::finish, sphere::finish),
             follow.after(super::warp::run),
             (lod::shape, lod::sharpen).after(follow),
-            light::planets,
+            light::planets.after(follow),
             light::rings,
         )
             .after(super::sun::track),

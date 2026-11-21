@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
 
 use super::material::BodyMaterial;
-use super::surface::image;
+use super::surface::{Kind, image};
 use crate::render::air::Air;
 use crate::universe::{PlanetClass, PlanetSpec};
 use crate::world::Globe;
@@ -22,6 +22,15 @@ pub const SHELL_UV: [f32; 2] = [2.0, 2.0];
 /// A bake of one level of [`SIDES`] being done: the level and its task.
 type Pending = (usize, Task<Baked>);
 
+/// The two textures of a baked level: the colour and sea of the surface, and the tilt of its relief.
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct Textures {
+    /// The colour in sRGB and the share of sea in alpha.
+    pub(super) colour: Handle<Image>,
+    /// How far the ground leans from level, in the axes fixed to the body.
+    pub(super) relief: Handle<Image>,
+}
+
 /// The baked surface of a solid body: the textures of the levels baked so far, the bake under
 /// way, and the globe they are read from once the first bake has built it.
 #[derive(Component)]
@@ -30,18 +39,20 @@ pub(super) struct Surface {
     spec: PlanetSpec,
     /// Its globe, once built.
     globe: Option<Arc<Globe>>,
-    /// The texture of each level of [`SIDES`], once baked.
-    pub(super) held: [Option<Handle<Image>>; SIDES.len()],
+    /// The textures of each level of [`SIDES`], once baked.
+    pub(super) held: [Option<Textures>; SIDES.len()],
     /// The bake under way.
     task: Option<Pending>,
 }
 
-/// A baked level: the globe it was read from, its texture, and what the body shows as a dot.
+/// A baked level: the globe it was read from, its textures, and what the body shows as a dot.
 pub(super) struct Baked {
     /// The globe.
     globe: Arc<Globe>,
-    /// The texture of the six faces with its mipmaps.
+    /// The colour of the six faces with its mipmaps.
     image: Image,
+    /// The relief of the six faces with its mipmaps.
+    relief: Image,
     /// The mean colour, sea and glow of the surface.
     pub(super) ball: Ball,
 }
@@ -74,7 +85,8 @@ pub(super) async fn bake(spec: PlanetSpec, globe: Option<Arc<Globe>>, level: usi
     }
     Baked {
         ball: ball(&globe, &maps),
-        image: image(&maps),
+        image: image(&maps, Kind::Colour),
+        relief: image(&maps, Kind::Relief),
         globe,
     }
 }
@@ -108,8 +120,8 @@ impl Surface {
         self.task = Some((level, AsyncComputeTaskPool::get().spawn(task)));
     }
 
-    /// Returns the finest texture held, if any.
-    pub(super) fn finest(&self) -> Option<Handle<Image>> {
+    /// Returns the finest textures held, if any.
+    pub(super) fn finest(&self) -> Option<Textures> {
         self.held.iter().rev().flatten().next().cloned()
     }
 
@@ -121,7 +133,7 @@ impl Surface {
     }
 }
 
-/// Gives every body whose bake is done its texture and its material values, a frame after the
+/// Gives every body whose bake is done its textures and its material values, a frame after the
 /// task is done. Nothing else happens on the main thread.
 pub(super) fn finish(
     mut baking: Query<(&mut Surface, &MeshMaterial3d<BodyMaterial>)>,
@@ -136,14 +148,17 @@ pub(super) fn finish(
         let Some(baked) = block_on(poll_once(task)) else {
             continue;
         };
-        let texture = images.add(baked.image);
-        surface.held[level] = Some(texture.clone());
+        let textures = Textures {
+            colour: images.add(baked.image),
+            relief: images.add(baked.relief),
+        };
+        surface.held[level] = Some(textures.clone());
         surface.globe = Some(baked.globe);
         surface.task = None;
-        if surface.finest() == Some(texture.clone())
+        if surface.finest().as_ref() == Some(&textures)
             && let Some(mut material) = materials.get_mut(&handle.0)
         {
-            material.baked(&surface.spec, &baked.ball, texture);
+            material.baked(&surface.spec, &baked.ball, textures);
         }
     }
 }

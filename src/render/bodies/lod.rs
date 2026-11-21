@@ -50,6 +50,14 @@ pub fn level(need: f32, ahead: f32) -> usize {
     SIDES.iter().position(fits).unwrap_or(SIDES.len() - 1)
 }
 
+/// Returns the game pixels the rim of a ball covers from the middle of the view, for a ball whose
+/// radius over its distance is `share`, `ppr` pixels a radian: the tangent of the angle the rim
+/// stands at, which grows past the share as the ball comes near.
+pub fn rim_pixels(ppr: f32, share: f32) -> f32 {
+    let sine = share.clamp(0.0, 0.999);
+    ppr * sine / (1.0 - sine * sine).sqrt()
+}
+
 /// Returns the pixels a radian covers in the game view now.
 fn ppr(cameras: &Query<&Projection, With<GameCamera>>) -> f32 {
     let fov = cameras.iter().find_map(|projection| match projection {
@@ -59,8 +67,8 @@ fn ppr(cameras: &Query<&Projection, With<GameCamera>>) -> f32 {
     pixels_per_radian(fov.unwrap_or(FOV))
 }
 
-/// Gives every shown star, planet, moon and cloud shell the sphere its size on the screen needs,
-/// once it is built.
+/// Gives every shown star, planet, moon, halo and cloud shell the sphere its size on the screen
+/// needs, once it is built.
 pub(super) fn shape(
     vantage: Res<Vantage>,
     cameras: Query<&Projection, With<GameCamera>>,
@@ -70,15 +78,15 @@ pub(super) fn shape(
     let ppr = ppr(&cameras);
     for (body, transform, seen, mut mesh) in &mut bodies {
         let shell = match body {
-            Body::Halo(_) | Body::Rings(_) => continue,
+            Body::Rings(_) => continue,
             Body::Clouds(_) => true,
-            Body::Star | Body::Planet(_) => false,
+            Body::Star | Body::Planet(_) | Body::Halo(_) => false,
         };
         if *seen == Visibility::Hidden {
             continue;
         }
         let distance = (transform.translation - vantage.camera).length();
-        let pixels = transform.scale.x / distance.max(f32::MIN_POSITIVE) * ppr;
+        let pixels = rim_pixels(ppr, transform.scale.x / distance.max(f32::MIN_POSITIVE));
         if let Some(handle) = spheres.pick(sphere_level(pixels), shell)
             && handle != mesh.0
         {
@@ -89,7 +97,7 @@ pub(super) fn shape(
 
 /// Asks every solid body for the level of its surface its size on the screen will soon need, never
 /// nearer than [`LEAVE`] radii where the sky first draws it, and lets go of a level it has long
-/// outgrown, its material drawing from the finest level left.
+/// outgrown when a coarser one is held, its material drawing from the finest level left.
 pub(super) fn sharpen(
     vantage: Res<Vantage>,
     cameras: Query<&Projection, With<GameCamera>>,
@@ -108,10 +116,11 @@ pub(super) fn sharpen(
         let need = need(ppr, radius, distance.max(LEAVE as f32 * radius));
         surface.ask(level(need, AHEAD));
         let keep = level(need, KEEP);
-        if surface.held.iter().skip(keep + 1).any(Option::is_some) {
+        let coarser = surface.held.iter().take(keep + 1).any(Option::is_some);
+        if coarser && surface.held.iter().skip(keep + 1).any(Option::is_some) {
             surface.keep(keep);
             if let Some(mut material) = materials.get_mut(&handle.0) {
-                material.surface = surface.finest();
+                material.show(surface.finest());
             }
         }
     }

@@ -7,13 +7,17 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
 
+mod rim;
+#[cfg(test)]
+mod tests_rim;
+
+pub use self::rim::halo_scale;
+use self::rim::limb;
+
 use super::air::Air;
-use super::bodies::Body;
+use super::bodies::{Body, angle};
 use super::celestial::smoothstep;
 use super::vantage::Scene;
-
-/// Radius of the halo shell in planet radii.
-pub const HALO_SCALE: f32 = 1.08;
 
 /// Distances from the axis of the shadow of a planet, in planet radii, between which a point
 /// behind it goes from its shadow into the light of the star.
@@ -87,16 +91,16 @@ impl Material for HaloMaterial {
     }
 }
 
-/// Lights every halo from its star, in the colour and strength of the air of its planet; the
-/// halo of the planet below fades in above its air. A material is written only when what it
-/// holds changes, and a halo that is hidden keeps the light it was last given.
+/// Lights every halo from its star, in the colour and strength of the air of its planet, with the
+/// limb where [`halo_scale`] puts it this frame; the halo of the planet below fades in above its
+/// air. A material is written only when what it holds changes, and a halo that is hidden keeps
+/// the light it was last given.
 fn light_halos(
     scene: Scene,
     halos: Query<(&Body, &MeshMaterial3d<HaloMaterial>, &Visibility)>,
     mut materials: ResMut<Assets<HaloMaterial>>,
 ) {
     let vantage = &scene.vantage;
-    let limb = (1.0 - 1.0 / (HALO_SCALE * HALO_SCALE)).sqrt();
     let local = scene.local.0.as_ref();
     let star = local.map_or(Vec3::ONE, |near| near.system.star.color);
     for (body, handle, seen) in &halos {
@@ -112,9 +116,10 @@ fn light_halos(
         let glow = Air::of(&planet.record).halo(star);
         let leaving = smoothstep(1.0, 1.5, vantage.altitude / vantage.atmosphere.max(1.0));
         let strength = if vantage.is(id) { leaving } else { 1.0 };
+        let size = angle(planet.radius, pos.distance(vantage.observer.eye));
         let halo = HaloUniform {
             color: glow.truncate().extend(glow.w * strength),
-            light: vantage.sunward(pos).extend(limb),
+            light: vantage.sunward(pos).extend(limb(halo_scale(planet, size))),
         };
         if halo != old.halo
             && let Some(mut material) = materials.get_mut(&handle.0)

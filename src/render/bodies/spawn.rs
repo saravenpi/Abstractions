@@ -40,7 +40,7 @@ fn common(mesh: &Handle<Mesh>) -> impl Bundle {
 }
 
 /// Segments along a face of the spheres a body is drawn on until the sphere its size needs is
-/// built: 3,072 triangles, round up to a radius of about 20 pixels.
+/// built: 3,072 triangles, which hug a ball up to a radius of about 180 pixels.
 const FIRST: u32 = 16;
 
 /// Spawns `body` with its halo, its cloud shell and its rings, on the first spheres `balls`: the

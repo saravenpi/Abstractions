@@ -10,7 +10,7 @@ use bevy::tasks::{AsyncComputeTaskPool, TaskPool, block_on};
 use bevy_persistent::StorageFormat;
 
 use super::Body;
-use super::bake::{Surface, bake, cloudy, shell_radius};
+use super::bake::{Surface, Textures, bake, cloudy, shell_radius};
 use super::light::star_light;
 use super::material::BodyMaterial;
 use crate::render::clouds::CELL;
@@ -42,7 +42,11 @@ fn baked(body: &PlanetSpec) -> BodyMaterial {
     AsyncComputeTaskPool::get_or_init(TaskPool::new);
     let baked = block_on(bake(body.clone(), None, 0));
     let mut material = BodyMaterial::planet(body);
-    material.baked(body, &baked.ball, Handle::default());
+    let textures = Textures {
+        colour: Handle::default(),
+        relief: Handle::default(),
+    };
+    material.baked(body, &baked.ball, textures);
     material
 }
 
@@ -58,7 +62,7 @@ fn a_cloudy_body_is_baked_with_its_cloud_shell() {
     );
     let material = baked(&home);
     assert_eq!(material.body.map.w, shell as f32 / CELL);
-    assert!(cloudy(&home) && material.surface.is_some());
+    assert!(cloudy(&home) && material.surface.is_some() && material.relief.is_some());
     let bare = PlanetSpec {
         record: PlanetRecord {
             class: PlanetClass::Barren,
@@ -161,6 +165,7 @@ fn every_solid_body_gets_its_surface() {
         let baked = material.body.glow.w == 1.0;
         assert_eq!(baked, !giant, "{id:?}");
         assert_eq!(material.surface.is_some(), !giant, "{id:?}");
+        assert_eq!(material.relief.is_some(), !giant, "{id:?}");
         solid += usize::from(!giant);
     }
     assert!(solid >= 1 && solid <= near.bodies().count());

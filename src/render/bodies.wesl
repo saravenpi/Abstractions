@@ -2,7 +2,7 @@ import bevy_pbr::render::forward_io::VertexOutput;
 import bevy_pbr::render::mesh_view_bindings::view;
 import bevy_pbr::render::pbr_types::pbr_input_new;
 import package::render::cloud_field::{broad_cover, day_side, dither, lone, puff, shade};
-import package::render::daylight::{Place, light_at, sky_response, sun_response};
+import package::render::daylight::{Place, light_at, sky_response, sun_response, transmit};
 import package::render::season::{Season, look_at, tinted};
 
 struct Body {
@@ -22,6 +22,14 @@ struct Body {
     fixed_y: vec4<f32>,
     fixed_z: vec4<f32>,
     drift: vec4<f32>,
+    orb: vec4<f32>,
+}
+
+struct Seen {
+    n: vec3<f32>,
+    v: vec3<f32>,
+    at: vec3<f32>,
+    miss: f32,
 }
 
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> body: Body;
@@ -29,6 +37,8 @@ struct Body {
 @group(constants::MATERIAL_BIND_GROUP) @binding(2) var cover_sampler: sampler;
 @group(constants::MATERIAL_BIND_GROUP) @binding(3) var surface_map: texture_2d_array<f32>;
 @group(constants::MATERIAL_BIND_GROUP) @binding(4) var surface_sampler: sampler;
+@group(constants::MATERIAL_BIND_GROUP) @binding(5) var relief_map: texture_2d_array<f32>;
+@group(constants::MATERIAL_BIND_GROUP) @binding(6) var relief_sampler: sampler;
 @group(constants::MATERIAL_BIND_GROUP) @binding(10) var<uniform> place: Place;
 @group(constants::MATERIAL_BIND_GROUP) @binding(11) var<uniform> season: Season;
 
@@ -41,6 +51,7 @@ const ROUGHNESS: f32 = 0.95;
 const REFLECTANCE: f32 = 0.05;
 const SHELL: f32 = 1.5;
 const QUARTER: f32 = 0.78539816;
+const SCATTER: f32 = 0.0795775;
 
 fn ring_cover(u: f32, inner: f32, density: f32) -> f32 {
     if (u < inner || u > 1.0) {
@@ -122,20 +133,61 @@ fn face_of(d: vec3<f32>) -> vec3<f32> {
     return vec3<f32>(at * 0.5 + 0.5, layer);
 }
 
-fn ground_map(n: vec3<f32>, span: f32) -> vec4<f32> {
+fn face_at(n: vec3<f32>, span: f32) -> vec4<f32> {
     let to_fixed = mat3x3<f32>(body.fixed_x.xyz, body.fixed_y.xyz, body.fixed_z.xyz);
     let at = face_of(to_fixed * n);
     let side = f32(textureDimensions(surface_map).x);
     let lod = max(log2(max(span, 1.0e-6) * side / (2.0 * QUARTER)), 0.0);
-    return textureSampleLevel(surface_map, surface_sampler, at.xy, i32(at.z), lod);
+    return vec4<f32>(at, lod);
+}
+
+fn lean(at: vec4<f32>) -> vec3<f32> {
+    let stored = textureSampleLevel(relief_map, relief_sampler, at.xy, i32(at.z), at.w).xyz;
+    let to_fixed = mat3x3<f32>(body.fixed_x.xyz, body.fixed_y.xyz, body.fixed_z.xyz);
+    return transpose(to_fixed) * (stored * 2.0 - 1.0);
+}
+
+fn seen(in: VertexOutput) -> Seen {
+    let eye = view.world_position;
+    var out: Seen;
+    out.n = normalize(in.world_normal);
+    out.v = normalize(eye - in.world_position.xyz);
+    out.at = in.world_position.xyz;
+    out.miss = 0.0;
+    let radius = select(body.orb.w, body.map.x, in.uv.x > SHELL);
+    if (radius <= 0.0) {
+        return out;
+    }
+    let d = -out.v;
+    let o = (eye - body.orb.xyz) / radius;
+    let p = o - d * dot(o, d);
+    let off = dot(p, p);
+    out.n = normalize(p - d * sqrt(max(1.0 - off, 0.0)));
+    out.at = body.orb.xyz + out.n * radius;
+    out.miss = off - 1.0;
+    return out;
+}
+
+fn veiled(lit: vec3<f32>, sun: vec3<f32>, facing: f32) -> vec3<f32> {
+    let share = place.colour.w;
+    if (share <= 0.0) {
+        return lit;
+    }
+    let through = mix(vec3<f32>(1.0), transmit(facing, place.star.w), share);
+    let haze = sun * (SCATTER * place.air.z) * view.exposure;
+    return lit * through + haze * (vec3<f32>(1.0) - through);
 }
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
-    let n = normalize(in.world_normal);
-    let v = normalize(view.world_position - in.world_position.xyz);
+    let hit = seen(in);
+    let n = hit.n;
+    let v = hit.v;
     let facing = max(dot(n, v), 0.0);
     let span = max(length(dpdx(n)), length(dpdy(n)));
+    if (hit.miss > 0.0) {
+        discard;
+    }
     if (body.color.w > 0.0) {
         return vec4<f32>(body.color.rgb * body.color.w * (0.65 + 0.35 * facing), 1.0);
     }
@@ -144,24 +196,28 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         return vec4<f32>(clouds(n, v, l, in.position.xy, span), 1.0);
     }
     var mapped = vec4<f32>(body.color.rgb, 0.0);
+    var tilt = vec3<f32>(0.0);
     if (body.glow.w > 0.0) {
-        mapped = ground_map(n, span);
+        let at = face_at(n, span);
+        mapped = textureSampleLevel(surface_map, surface_sampler, at.xy, i32(at.z), at.w);
+        tilt = lean(at);
     }
     let baked = tinted(mapped.rgb, look_at(season, n, 0.0));
     let albedo = mix(surface(n), baked, body.map.z);
     let ember = mix(body.ember.rgb, body.glow.rgb * mapped.a, body.map.z);
     let limb = select(1.0, mix(LIMB, 1.0, sqrt(facing)), body.axis.w > 0.0);
+    let bent = normalize(n + tilt * body.map.z);
     var ground = pbr_input_new();
     ground.material.base_color = vec4<f32>(albedo, 1.0);
     ground.material.perceptual_roughness = ROUGHNESS;
     ground.material.reflectance = vec3<f32>(REFLECTANCE);
-    ground.world_position = in.world_position;
-    ground.world_normal = n;
-    ground.N = n;
+    ground.world_position = vec4<f32>(hit.at, 1.0);
+    ground.world_normal = bent;
+    ground.N = bent;
     ground.V = v;
     let here = light_at(place, dot(n, l), 0.0);
     let direct = here.sun * (sun_response(ground, l) * (ring_shade(n, l) * body.light.w * place.air.z));
     let around = sky_response(ground) * here.sky * place.air.z;
     let lit = (direct + around) * limb * view.exposure + ember;
-    return vec4<f32>(lit, 1.0);
+    return vec4<f32>(veiled(lit, here.sun, facing), 1.0);
 }

@@ -7,6 +7,7 @@ use bevy::prelude::*;
 
 use super::Cropped;
 use super::clear::blocked;
+use super::fade::ALL;
 use super::ground::Ground;
 use super::tests_tile::{turfed, view};
 use super::tile::grow;
@@ -23,7 +24,7 @@ fn roots(
     (terrain, ground, key, carpet): (&Terrain, &Ground, IVec2, &Carpet),
     clear: &dyn Fn(DVec3) -> bool,
 ) -> Vec<DVec3> {
-    let (blades, frame) = grow((terrain, ground), key, carpet, true, clear);
+    let (blades, frame) = grow((terrain, ground), key, carpet, ALL, clear);
     let at = |root: &[f32; 3]| frame.origin + frame.rot * Vec3::from_array(*root).as_dvec3();
     blades.roots().iter().step_by(3).map(at).collect()
 }
@@ -55,7 +56,7 @@ fn the_pad_bares_only_its_square() {
     let terrain = view(&[0, 2, 5]);
     let (key, carpet, _) = turfed(&terrain).expect("a turfed tile");
     let ground = Ground::read(&terrain, key);
-    let (_, frame) = grow((&terrain, &ground), key, &carpet, true, &|_| false);
+    let (_, frame) = grow((&terrain, &ground), key, &carpet, ALL, &|_| false);
     let shut = padded(terrain.globe(), frame.origin);
     let none = Cropped::default();
     let tile = (&terrain, &ground, key, &carpet);

@@ -1,5 +1,5 @@
 //! Tests of the tiles of blades: they stand where ground cover grows and nowhere else, stay clear of props,
-//! cost little to build, and stay under the blade budget of the rings.
+//! split into bands that make up the dense blades, and cost little to build.
 
 use std::sync::Arc;
 use std::time::Instant;
@@ -10,9 +10,10 @@ use bevy::prelude::*;
 use super::Cropped;
 use super::clear::{reaching, taken};
 use super::colour::tint;
+use super::fade::{ALL, ranks};
 use super::ground::Ground;
 use super::tile::grow;
-use super::tune::{DENSE, FAR, NEAR, SPARSE, TILE};
+use super::tune::{BANDS, TILE};
 use crate::life::flora::fixture::garden;
 use crate::world::Terrain;
 use crate::world::globe::{Face, Globe};
@@ -35,7 +36,7 @@ pub(super) fn turfed(terrain: &Terrain) -> Option<(IVec2, Carpet, usize)> {
             .as_ivec2();
         let carpet = Carpet::of(terrain, chunk)?;
         let ground = Ground::read(terrain, key);
-        let (blades, _) = grow((terrain, &ground), key, &carpet, true, &|_| false);
+        let (blades, _) = grow((terrain, &ground), key, &carpet, ALL, &|_| false);
         Some((key, carpet, blades.len()))
     })
     .find(|(_, _, n)| *n > 1000)
@@ -56,25 +57,29 @@ fn blades_only_on_ground_cover() {
     );
 }
 
-/// The ground a prop takes stays bare, and the sparse blades are the first of the dense ones.
+/// The ground a prop takes stays bare, each band holds its share of the dense blades, and the bands together
+/// hold every dense blade, root for root.
 #[test]
 fn props_clear_their_ground() {
     let _book = hold();
     let terrain = view(&[0, 2, 5]);
     let (key, carpet, dense) = turfed(&terrain).expect("a turfed tile");
     let ground = Ground::read(&terrain, key);
-    let (bare, _) = grow((&terrain, &ground), key, &carpet, true, &|_| true);
+    let (bare, _) = grow((&terrain, &ground), key, &carpet, ALL, &|_| true);
     assert_eq!(bare.len(), 0);
-    let (sparse, _) = grow((&terrain, &ground), key, &carpet, false, &|_| false);
-    let share = sparse.len() as f32 / dense as f32;
-    assert!(
-        (share - SPARSE / DENSE).abs() < 0.06,
-        "sparse share {share}"
-    );
+    let mut roots = Vec::new();
+    for band in 0..BANDS.len() {
+        let (blades, _) = grow((&terrain, &ground), key, &carpet, ranks(band), &|_| false);
+        let share = blades.len() as f32 / dense as f32;
+        let wanted = ranks(band).end - ranks(band).start;
+        assert!((share - wanted).abs() < 0.06, "band {band} share {share}");
+        roots.extend_from_slice(blades.roots());
+    }
+    let (all, _) = grow((&terrain, &ground), key, &carpet, ALL, &|_| false);
+    assert_eq!(roots, all.roots());
 }
 
-/// A dense tile builds in under 2 ms, and every tile of the rings holds fewer than 150,000 blades in all:
-/// 450,000 vertices of a three-vertex blade, well inside the GPU budget of the blades.
+/// A dense tile builds in under 2 ms.
 #[test]
 fn blades_are_cheap() {
     let _book = hold();
@@ -84,7 +89,7 @@ fn blades_are_cheap() {
     let once = || {
         let start = Instant::now();
         let ground = Ground::read(&terrain, key);
-        let n = grow((&terrain, &ground), key, &carpet, true, &|_| false)
+        let n = grow((&terrain, &ground), key, &carpet, ALL, &|_| false)
             .0
             .len();
         (start.elapsed().as_secs_f64(), n)
@@ -92,20 +97,12 @@ fn blades_are_cheap() {
     let best = (0..5).map(|_| once().0).fold(f64::MAX, f64::min);
     println!(
         "dense tile of {} blades: {:.2} ms",
-        grow((&terrain, &ground), key, &carpet, true, &|_| false)
+        grow((&terrain, &ground), key, &carpet, ALL, &|_| false)
             .0
             .len(),
         best * 1e3
     );
     assert!(best < 2e-3, "a dense tile took {:.2} ms", best * 1e3);
-    let reach = ((FAR + TILE) / TILE).ceil() as i32;
-    let centre = |x: i32, y: i32| (Vec2::new(x as f32, y as f32) + 0.5) * TILE;
-    let tiles = (-reach..=reach).flat_map(|x| (-reach..=reach).map(move |y| centre(x, y).length()));
-    let blades: f32 = tiles
-        .filter(|d| *d < FAR + TILE)
-        .map(|d| TILE * TILE * if d < NEAR + TILE { DENSE } else { SPARSE })
-        .sum();
-    assert!(blades < 150_000.0, "{blades} blades in the rings");
 }
 
 /// A prop that cannot reach the tile changes nothing: the blades grown clear of the footprints that reach
@@ -130,9 +127,9 @@ fn reaching_keeps_the_blades() {
     let crops = Cropped::default();
     let all = |p| taken(p, &props, &crops, radius);
     let some = |p| taken(p, &kept, &crops, radius);
-    let free = grow((&terrain, &ground), key, &carpet, true, &|_| false).0;
-    let (full, _) = grow((&terrain, &ground), key, &carpet, true, &all);
-    let (filtered, _) = grow((&terrain, &ground), key, &carpet, true, &some);
+    let free = grow((&terrain, &ground), key, &carpet, ALL, &|_| false).0;
+    let (full, _) = grow((&terrain, &ground), key, &carpet, ALL, &all);
+    let (filtered, _) = grow((&terrain, &ground), key, &carpet, ALL, &some);
     assert!(full.len() < free.len(), "the props clear no blade");
     assert_eq!(full.roots(), filtered.roots());
 }

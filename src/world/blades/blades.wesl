@@ -20,11 +20,16 @@ import package::world::turf::{Turf, cover};
 @group(constants::MATERIAL_BIND_GROUP) @binding(101) var<uniform> turf: Turf;
 @group(constants::MATERIAL_BIND_GROUP) @binding(102) var wind_map: texture_2d<f32>;
 
-// The inner ring radius in metres, inside which every blade stands, the outer ring radius past which
-// none does, and the share of the blades kept between them.
-const NEAR: f32 = 15.0;
-const FAR: f32 = 40.0;
-const EDGE: f32 = 0.16;
+// Radius in metres within which every blade stands; past it the share kept falls with the square of the
+// distance. END is the distance in metres past which none stands, FADE the metres before END over which
+// every blade shrinks to nothing, SOFT the share of its keep over which a blade the distance thins out
+// shrinks away, and SHORT the height of the farthest blades as a share of the nearest. `fade.rs` mirrors
+// these and `tune.rs` holds the same values.
+const FULL: f32 = 9.0;
+const END: f32 = 50.0;
+const FADE: f32 = 12.0;
+const SOFT: f32 = 0.3;
+const SHORT: f32 = 0.6;
 
 // A blade is lit as a rough diffuse sheet that leans to the local up: the lights of the scene with the
 // shadow of the ground under it, the point and spot lights of its cluster without shadow or specular, the light of the place of the planet the way `relit` adds it, and the
@@ -33,8 +38,14 @@ const EDGE: f32 = 0.16;
 const PI: f32 = 3.14159265;
 
 fn kept(distance: f32) -> f32 {
-    let inner = mix(1.0, EDGE, smoothstep(NEAR - 3.0, NEAR + 2.0, distance));
-    return inner * (1.0 - smoothstep(FAR - 8.0, FAR, distance));
+    let r = FULL / max(distance, FULL);
+    return r * r;
+}
+
+fn grown(rank: f32, keep: f32, distance: f32) -> f32 {
+    let thin = saturate((1.0 - rank / keep) / SOFT);
+    let end = 1.0 - smoothstep(END - FADE, END, distance);
+    return thin * end * mix(1.0, SHORT, smoothstep(FULL, END, distance));
 }
 
 fn pixel(distance: f32) -> f32 {
@@ -64,14 +75,20 @@ fn vertex(packed: Vertex) -> VertexOutput {
     let to_eye = view.world_position - root;
     let distance = length(to_eye);
     let thick = cover(turf, v.uv_b);
-    if (rank >= kept(distance) * thick) {
+    let keep = kept(distance) * thick;
+    if (rank >= keep) {
         out.position = vec4<f32>(0.0, 0.0, 0.0, 1.0);
         return out;
     }
-    let height = turf.shape.x * (0.55 + 0.9 * seed) * (0.6 + 0.4 * thick);
+    let grow = grown(rank, keep, distance);
+    if (grow <= 0.0) {
+        out.position = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+        return out;
+    }
+    let height = turf.shape.x * (0.55 + 0.9 * seed) * (0.6 + 0.4 * thick) * grow;
     let across = cross(up, to_eye);
     let side = select(vec3<f32>(1.0, 0.0, 0.0), across / max(length(across), 1e-4), length(across) > 1e-4);
-    let width = max(height * 0.08, pixel(distance) * 1.2);
+    let width = max(height * 0.08, pixel(distance) * 1.2 * saturate(grow * 3.0));
     let lean = bend(root, up, seed) + side * (seed - 0.5) * 0.4;
     let tip = root + (up * (1.0 - 0.35 * dot(lean, lean)) + lean) * height;
     var at = root + side * (v.uv.x * width * 0.5);

@@ -25,6 +25,7 @@ pub const STAGES: [(&str, &str, Stage); 159] = [
     ("grass-stand", "grass", grass_stand),
     ("grass-low", "grass", grass_low),
     ("grass-out", "grass", grass_out),
+    ("grass-walk", "grass", grass_walk),
     ("leafy-tree", "grass", leafy_tree),
     ("bare-tree", "grass", bare_tree),
     ("grass-up", "grass", grass_up),

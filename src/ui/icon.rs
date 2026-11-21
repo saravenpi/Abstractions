@@ -2,7 +2,9 @@
 //!
 //! The look follows the owner's direction of 2026-11-20: square corners, no borders, no round
 //! caps. The font is a subset of `MaterialSymbolsSharp[FILL,GRAD,opsz,wght].ttf`, instanced at
-//! weight 400, FILL 0, GRAD 0, optical size 24, cut to the glyphs below. The exact commands
+//! weight 400, FILL 0, GRAD 0, optical size 24, cut to the glyphs below. `packaging/icons.py`
+//! builds it and writes `icon/codes.rs` from the names on the doc lines of [`Icon`]: to add an
+//! icon, add its variant with its Material name and run the script. The source and its commit
 //! are in `packaging/icons.md`. The licence (Apache-2.0) is in `LICENSES/`. Icons are real
 //! pictures with a name on screen somewhere: an icon never stands alone without a text, and
 //! no black box sits behind it. Colour comes from the tokens of `ui::theme`: `ACCENT` for the
@@ -137,6 +139,164 @@ pub enum Icon {
     ShipWarp,
     /// `build`
     ShipDamaged,
+    /// `clear_night`
+    ClearNight,
+    /// `partly_cloudy_day`
+    PartlyCloudy,
+    /// `partly_cloudy_night`
+    PartlyCloudyNight,
+    /// `cloud`
+    Cloudy,
+    /// `rainy`
+    Rain,
+    /// `weather_snowy`
+    Snow,
+    /// `thunderstorm`
+    Storm,
+    /// `foggy`
+    Fog,
+    /// `grain`
+    Dust,
+    /// `light_mode`
+    Light,
+    /// `weight`
+    Mass,
+    /// `humidity_percentage`
+    Moisture,
+    /// `schedule`
+    Clock,
+    /// `hourglass_empty`
+    Age,
+    /// `orbit`
+    Orbit,
+    /// `distance`
+    Distance,
+    /// `altitude`
+    Altitude,
+    /// `height`
+    Height,
+    /// `target`
+    Zone,
+    /// `rotate_right`
+    Tilt,
+    /// `trip_origin`
+    Rings,
+    /// `storm`
+    Spiral,
+    /// `category`
+    Class,
+    /// `explore`
+    Compass,
+    /// `potted_plant`
+    Plant,
+    /// `park`
+    Tree,
+    /// `grass`
+    Grass,
+    /// `local_florist`
+    Flower,
+    /// `spa`
+    Bulb,
+    /// `beach_access`
+    Cap,
+    /// `waves`
+    Kelp,
+    /// `diamond`
+    Crystal,
+    /// `psychiatry`
+    Vine,
+    /// `warning`
+    Danger,
+    /// `skull`
+    Skull,
+    /// `flashlight_on`
+    HeadlightOn,
+    /// `flashlight_off`
+    HeadlightOff,
+    /// `flight_land`
+    GearDown,
+    /// `flight_takeoff`
+    GearUp,
+    /// `speed`
+    Speed,
+    /// `bolt`
+    Throttle,
+    /// `balance`
+    Assist,
+    /// `vertical_align_top`
+    Apoapsis,
+    /// `vertical_align_bottom`
+    Periapsis,
+    /// `route`
+    Route,
+    /// `search`
+    Search,
+    /// `filter_list`
+    Filter,
+    /// `mouse`
+    Mouse,
+    /// `unfold_more`
+    Scroll,
+    /// `zoom_in`
+    Zoom,
+    /// `visibility`
+    Eye,
+    /// `visibility_off`
+    EyeOff,
+    /// `question_mark`
+    Unknown,
+    /// `menu_book`
+    Guide,
+    /// `expand_more`
+    ExpandMore,
+    /// `expand_less`
+    ExpandLess,
+    /// `backpack`
+    Pack,
+    /// `construction`
+    Workshop,
+    /// `content_cut`
+    Cut,
+    /// `push_pin`
+    Pierce,
+    /// `hardware`
+    Crush,
+    /// `sports_handball`
+    Throw,
+    /// `handyman`
+    Repair,
+    /// `favorite`
+    Health,
+    /// `restaurant`
+    Diet,
+    /// `nutrition`
+    Eats,
+    /// `landscape`
+    Terrain,
+    /// `directions_run`
+    Flees,
+    /// `shield`
+    Shield,
+    /// `inventory_2`
+    Yield,
+    /// `egg`
+    Egg,
+    /// `workspaces`
+    Herd,
+    /// `footprint`
+    Footprint,
+    /// `skeleton`
+    Skeleton,
+    /// `sprint`
+    Moves,
+    /// `microbiology`
+    Blob,
+    /// `flare`
+    Radial,
+    /// `linear_scale`
+    Segments,
+    /// `hive`
+    Swarm,
 }
 
 impl Icon {

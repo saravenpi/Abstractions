@@ -61,7 +61,13 @@ pub fn wing(side: f32) -> Solid {
     wing
 }
 
-/// Returns the corner points of the wing of one side, for its collider.
-pub fn corners(side: f32) -> Vec<Vec3> {
-    STATIONS.iter().flat_map(|&at| section(side, at)).collect()
+/// Returns the corner points of the wing of one side as two convex pieces, for its colliders:
+/// the strake, from the root to the crank, and the panel, from the crank to the tip. The leading
+/// edge is swept less outside the crank, so one convex piece round the whole wing would reach
+/// 0.3 m ahead of the leading edge that is drawn.
+pub fn pieces(side: f32) -> [Vec<Vec3>; 2] {
+    let corners = |stations: &[[f32; 4]]| -> Vec<Vec3> {
+        stations.iter().flat_map(|&at| section(side, at)).collect()
+    };
+    [corners(&STATIONS[..2]), corners(&STATIONS[1..])]
 }

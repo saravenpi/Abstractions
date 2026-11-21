@@ -17,10 +17,10 @@ impl Base {
     /// Returns the base of the home planet `body` whose ground is `globe`: near the spawn the terrain
     /// finds on the first shore of the drainage grid at a mild latitude that is not in the heart of a taiga
     /// or a desert, or on the next such shore when no ground near that spawn takes the base within any
-    /// pass of the search. The shores in such a heart come last. The shores come in the order of
-    /// [`super::ground::starts`]: where the star climbs high over a day and the air is mild first, so the
-    /// base stands in daylight on every planet, on the day side of one locked to its star. The same globe
-    /// always gives the same base.
+    /// pass of the search. The shores in such a heart come last. The fair shores of
+    /// [`super::ground::starts`] are all tried before any other: where the star climbs high over a day and
+    /// the air is mild, so the base stands in daylight on every planet, on the day side of one locked to its
+    /// star. The same globe always gives the same base.
     pub fn on(globe: &Arc<Globe>, body: BodyId) -> Self {
         let (found, first) = Self::choose(globe, |spawn| Self::within(globe, body, spawn));
         found.map(|(_, base)| base).unwrap_or_else(|| {

@@ -1,8 +1,9 @@
-//! Fair places: where the star climbs high over a day and the mean air is mild, which is what a
-//! home base needs of the ground it stands on.
+//! Fair places: where the star climbs high over a day and the mean air is mild enough for plants,
+//! which is what a home base needs of the ground it stands on.
 
 use bevy::math::DVec3;
 
+use super::biome::HOT;
 use super::{MEAN_SEASON, Setting, Terms, terms};
 use crate::universe::{Daystar, LIT, MILD};
 
@@ -33,14 +34,15 @@ impl Fair {
     }
 
     /// Returns what the place in unit direction `dir` lacks to be fair, 0 when it lacks nothing:
-    /// over a day the star reaches [`LIT`] there, and the annual mean air at sea level is within
-    /// [`MILD`]. A mild place the star stays low over lacks the sine it stays short by, at most
-    /// 1.5. A place that is not mild lacks [`HARSH`] more. The same rule reads a planet that
-    /// turns and one locked to its star: only where the star goes differs.
+    /// over a day the star reaches [`LIT`] there, and the annual mean air at sea level is between
+    /// the cold end of [`MILD`] and the heat over which dry land turns to desert, 299 K, so that
+    /// plants stand in the light. A mild place the star stays low over lacks the sine it stays
+    /// short by, at most 1.5. A place that is not mild lacks [`HARSH`] more. The same rule reads
+    /// a planet that turns and one locked to its star: only where the star goes differs.
     pub fn lack(&self, dir: DVec3) -> f32 {
-        let air = f64::from(self.terms.at(dir.y as f32, dir.as_vec3(), 0.0));
+        let air = self.terms.at(dir.y as f32, dir.as_vec3(), 0.0);
         let dim = (self.lit - self.star.peak(dir)).max(0.0) as f32;
-        match (MILD.0..=MILD.1).contains(&air) {
+        match (MILD.0 as f32..=HOT).contains(&air) {
             true => dim,
             false => HARSH + dim,
         }

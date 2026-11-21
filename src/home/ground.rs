@@ -61,28 +61,27 @@ fn thrives(globe: &Globe, dir: DVec3) -> bool {
     (cold..=hot).contains(&air.temperature) && globe.biome(dir) != Biome::Desert
 }
 
-/// Returns the planet directions around which the base is looked for, in order: the shores of the land at a
-/// mild latitude that the drainage grid of `globe` finds, river mouths first. Those that are fair come before
-/// the others: over a day the star climbs to `LIT` there and the mean air is mild, see [`Globe::fair`], so
-/// that the base stands in daylight on a planet locked to its star as on one that turns. Among them those
-/// where life thrives come first, see [`thrives`]. A planet whose grid finds none, a dry one, is looked at on
-/// a ring instead, see [`spread`]. The climate is read lazily, shore by shore, only as far as the search goes.
-pub fn starts(globe: &Globe) -> impl Iterator<Item = DVec3> + '_ {
+/// Returns the planet directions around which the base is looked for, in two groups, each in order: the
+/// shores of the land at a mild latitude that the drainage grid of `globe` finds, river mouths first. The
+/// first group holds those that are fair: over a day the star climbs to `LIT` there and the mean air is mild
+/// and under the heat of a desert, see [`Globe::fair`]. The second holds the others. A base is looked for in
+/// the whole first group before the second, so that it stands in daylight on a planet locked to its star as
+/// on one that turns. A planet whose grid finds no shore, a dry one, is looked at on a ring instead, see
+/// [`spread`].
+pub fn starts(globe: &Globe) -> [Vec<DVec3>; 2] {
     let shores = globe.landfalls();
     let shores = match shores.is_empty() {
         true => spread(globe.seed()).collect(),
         false => shores,
     };
     let fair = globe.fair();
-    let (lit, dim): (Vec<DVec3>, Vec<DVec3>) =
-        shores.into_iter().partition(|dir| fair.lack(*dir) == 0.0);
+    let (lit, dim) = shores.into_iter().partition(|dir| fair.lack(*dir) == 0.0);
     [lit, dim]
-        .into_iter()
-        .flat_map(move |group| alive_first(globe, group))
 }
 
-/// Returns `shores` in order, those where life thrives on `globe` before the others, see [`thrives`].
-fn alive_first(globe: &Globe, shores: Vec<DVec3>) -> impl Iterator<Item = DVec3> + '_ {
+/// Returns `shores` in order, those where life thrives on `globe` before the others, see [`thrives`]. The
+/// climate is read lazily, shore by shore, only as far as the search goes.
+pub fn alive_first(globe: &Globe, shores: Vec<DVec3>) -> impl Iterator<Item = DVec3> + '_ {
     let alive = shores
         .clone()
         .into_iter()

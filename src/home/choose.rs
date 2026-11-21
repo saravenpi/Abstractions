@@ -6,22 +6,39 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::base::Base;
-use super::ground::{harsh, starts};
+use super::ground::{alive_first, harsh, starts};
 use super::site::{self, PASSES};
 use super::tune::DRY;
 use crate::universe::BodyId;
 use crate::world::Globe;
 
 impl Base {
-    /// Walks the spawns of the shores in the order of the base: the shores out of the heart of a taiga or a
-    /// desert first, then the others. Returns the first spawn `found` takes with what it made of it, and
-    /// the first spawn there is, which stands in when none is taken.
+    /// Walks the spawns of the shores in the order of the base: the fair shores, where the star climbs high
+    /// and the air is mild, before the others, see [`starts`], and in each group the shores out of the heart of
+    /// a taiga or a desert first. Returns the first spawn `found` takes with what it made of it, and the first
+    /// spawn there is, which stands in when none is taken.
     pub(super) fn choose<T>(
         globe: &Arc<Globe>,
         found: impl Fn(DVec3) -> Option<T>,
     ) -> (Option<(DVec3, T)>, Option<DVec3>) {
-        let (mut first, mut hearts) = (None, Vec::new());
-        let clear = starts(globe).find_map(|dir| {
+        let mut first = None;
+        let taken = starts(globe)
+            .into_iter()
+            .find_map(|group| Self::among(globe, group, &found, &mut first));
+        (taken, first)
+    }
+
+    /// Walks the spawns of the shores of `group` in order, those where life thrives first and those in the
+    /// heart of a taiga or a desert last. Returns the first spawn `found` takes with what it made of it, and
+    /// notes in `first` the first spawn there is.
+    fn among<T>(
+        globe: &Arc<Globe>,
+        group: Vec<DVec3>,
+        found: &impl Fn(DVec3) -> Option<T>,
+        first: &mut Option<DVec3>,
+    ) -> Option<(DVec3, T)> {
+        let mut hearts = Vec::new();
+        let clear = alive_first(globe, group).find_map(|dir| {
             let (spawn, heart) = Self::lay(globe, dir)?;
             first.get_or_insert(spawn);
             if heart {
@@ -31,7 +48,7 @@ impl Base {
             found(spawn).map(|made| (spawn, made))
         });
         let heart = || hearts.iter().find_map(|s| found(*s).map(|made| (*s, made)));
-        (clear.or_else(heart), first)
+        clear.or_else(heart)
     }
 
     /// Returns true when some pass of the search finds a site for the base around `spawn`.

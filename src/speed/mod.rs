@@ -22,3 +22,9 @@ mod tests_cues;
 
 pub use air::{dynamic_pressure, mach, sound_at, sound_speed, temperature_at, temperature_over};
 pub use cues::{buffet, condensation, cone, contrail, moisture, persistence, saturation, vortex};
+
+/// Hermite interpolation of `x` between `a` and `b`, clamped to 0..1.
+fn smoothstep(a: f32, b: f32, x: f32) -> f32 {
+    let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}

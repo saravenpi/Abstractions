@@ -39,7 +39,7 @@ impl Go<'_, '_> {
     }
 
     /// Closes the map, if it is open, once the ship is on its way.
-    fn close(&mut self) {
+    pub fn close(&mut self) {
         let open = self
             .state
             .as_deref()

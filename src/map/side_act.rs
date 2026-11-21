@@ -11,7 +11,7 @@ use super::me::Me;
 use super::places::Places;
 use super::side::{Do, PinButton, PinRow, PlayerRow};
 use super::surface::Surface;
-use crate::computer::{Board, Computer, Destination, Engage, RouteStatus, Target, Typing};
+use crate::computer::{Board, Go, Target, Typing};
 use crate::menus::{MarkerKind, MarkerPlace, Markers};
 use crate::saves::Pin;
 use crate::space::{Anchor, Frame};
@@ -41,16 +41,14 @@ pub struct Desk<'w, 's> {
     pub(super) places: ResMut<'w, Places>,
     /// Where the letters typed go.
     pub(super) typing: ResMut<'w, Typing>,
-    /// The course, and the route that can take it.
-    pub(super) course: (ResMut<'w, Destination>, Option<Res<'w, RouteStatus>>),
     /// The rows of the chart and the search.
     pub(super) board: ResMut<'w, Board>,
     /// The level shown and the flat map.
     pub(super) view: (ResMut<'w, Level>, ResMut<'w, Surface>),
     /// The markers, the render anchor and the player.
     pub(super) world: (Res<'w, Markers>, Option<Res<'w, Anchor>>, Me<'w, 's>),
-    /// Closing the map and handing a course to the autopilot.
-    pub(super) screen: (ResMut<'w, NextState<Computer>>, Commands<'w, 's>),
+    /// Starting a course and closing the map.
+    pub(super) go: Go<'w, 's>,
 }
 
 impl Desk<'_, '_> {
@@ -70,8 +68,9 @@ impl Desk<'_, '_> {
         self.look(pin.body, DVec3::from_array(pin.dir));
     }
 
-    /// Goes to the selected pin and closes the map, see [`commit`]: a pin on another planet sets the course to
-    /// that planet, handed to the autopilot when it can take it.
+    /// Goes to the selected pin, see [`commit`]: on its planet it becomes the active pin and the
+    /// map closes; from anywhere else [`Go::press`] handles the course, the seat, the route and
+    /// flying home.
     fn go(&mut self) {
         let Some(index) = self.places.selected else {
             return;
@@ -80,13 +79,10 @@ impl Desk<'_, '_> {
             return;
         };
         let here = self.world.2.spot().map(|(body, _)| body);
-        if let Some(target) = commit(&mut self.places, (index, &pin), here) {
-            self.course.0.0 = Some(target);
-            if self.course.1.as_deref() == Some(&RouteStatus::Idle) {
-                self.screen.1.trigger(Engage(target));
-            }
+        match commit(&mut self.places, (index, &pin), here) {
+            Some(target) => self.go.press(Some(target)),
+            None => self.go.close(),
         }
-        self.screen.0.set(Computer::Closed);
     }
 
     /// Runs the button `act` on the selected pin. Renaming one ends and clears a search, so

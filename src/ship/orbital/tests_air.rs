@@ -12,13 +12,13 @@ use crate::ship::body::Ship;
 use crate::ship::drag::density;
 use crate::space::Frame;
 
-/// Held down at full lever from 800 km, the cruise comes down to its floor above the air and no
-/// lower, and asks to end there within half a minute.
+/// Held down at full lever from 150 km, the cruise comes down at 2 km/s to its floor above the
+/// air and no lower, and asks to end there within half a minute.
 #[test]
 fn the_cruise_never_enters_the_air() {
     let planet = earth();
     let band = band(&planet);
-    let mut skim = skim_at(&planet, 800_000.0);
+    let mut skim = skim_at(&planet, 150_000.0);
     let ask = Ask {
         throttle: 1.0,
         climb: -1.0,

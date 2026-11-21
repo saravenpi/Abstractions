@@ -112,7 +112,7 @@ pub fn general(active: Tab) -> impl Bundle {
     let game = children![
         toggle("Check for updates", Field::CheckUpdates),
         stepper("Hitstop", Field::Hitstop),
-        toggle("Markers over the world", Field::WorldMarkers),
+        stepper("Markers over the world", Field::WorldMarkers),
         toggle("Blood", Field::Blood),
     ];
     let interface = children![

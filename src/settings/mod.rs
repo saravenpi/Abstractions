@@ -6,6 +6,7 @@
 mod apply;
 mod gameplay;
 mod lighting;
+mod markers;
 mod model;
 mod prefs;
 mod servers;
@@ -15,6 +16,8 @@ mod ship_keys;
 mod tests;
 #[cfg(test)]
 mod tests_lighting;
+#[cfg(test)]
+mod tests_markers;
 #[cfg(test)]
 mod tests_removed;
 #[cfg(test)]
@@ -27,6 +30,7 @@ mod tests_view;
 pub use bevy_persistent::Persistent;
 pub use gameplay::{Gameplay, InterfaceSize};
 pub use lighting::{Lighting, Quality};
+pub use markers::WorldMarkers;
 pub use model::{Audio, Controls, Graphics, Keymap, Settings, WorldPrefs, render_step};
 pub use servers::{SavedServer, default_servers};
 pub use shadows::{ShadowDetail, ShadowReach};

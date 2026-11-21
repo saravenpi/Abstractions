@@ -17,7 +17,7 @@
 mod draw;
 mod overlap;
 mod pick;
-mod place;
+pub(super) mod place;
 mod pool;
 mod rule;
 #[cfg(test)]

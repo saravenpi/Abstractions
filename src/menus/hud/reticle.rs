@@ -1,17 +1,15 @@
 //! The reticle: four ticks around the crosshair while a tool is drawn, closing in and lit when an
 //! animal is within its reach; a hit mark at the four corners after a blow, bright for a clean one
-//! and dim for a glance; and under it, while the fight lasts, the name of the animal and how much
-//! health it has left. A swing that meets nothing shows nothing: its whoosh says it.
+//! and dim for a glance; and, hung from it, the strip of the animal fought that [`super::foe`] puts
+//! over its head. A swing that meets nothing shows nothing: its whoosh says it.
 
 use bevy::prelude::*;
 
 use super::context::Element;
 use super::fade::gate;
 use crate::avatar::strike::{Mark, Outcome, Sight};
-use crate::fauna::Beast;
 use crate::player::Squared;
-use crate::ui::{text, theme};
-use crate::world::Terrain;
+use crate::ui::theme;
 
 /// Thickness and length of a tick, in pixels.
 const TICK: (f32, f32) = (2.0, 8.0);
@@ -22,10 +20,6 @@ const GAP: (f32, f32) = (16.0, 8.0);
 /// Side of a corner of the hit mark, and its pixels from the centre along each axis.
 const CORNER: (f32, f32) = (4.0, 12.0);
 
-/// Width of the health bar of the animal fought, its height, and how far under the centre its
-/// strip sits, in pixels.
-const BAR: (f32, f32, f32) = (64.0, 4.0, 48.0);
-
 /// Marks tick `0` up, `1` right, `2` down, `3` left.
 #[derive(Component)]
 pub(super) struct Tick(usize);
@@ -33,18 +27,6 @@ pub(super) struct Tick(usize);
 /// Marks a corner of the hit mark.
 #[derive(Component)]
 pub(super) struct Corner;
-
-/// Marks the strip of the animal fought.
-#[derive(Component)]
-pub(super) struct Foe;
-
-/// Marks the name of the animal fought.
-#[derive(Component)]
-pub(super) struct FoeName;
-
-/// Marks the fill of the health bar of the animal fought.
-#[derive(Component)]
-pub(super) struct FoeBar;
 
 /// Returns the left, top, width and height of tick `k` at `gap` pixels from the centre.
 pub fn tick(k: usize, gap: f32) -> [f32; 4] {
@@ -67,33 +49,6 @@ fn at([left, top, width, height]: [f32; 4]) -> Node {
         height: px(height),
         ..default()
     }
-}
-
-/// Returns the strip of the animal fought: its name over its health bar, straight over the world
-/// with no panel, hidden.
-fn foe() -> impl Bundle {
-    let strip = Node {
-        display: Display::None,
-        flex_direction: FlexDirection::Column,
-        align_items: AlignItems::Center,
-        row_gap: px(theme::S1),
-        height: Val::Auto,
-        ..at([-BAR.0, BAR.2, 2.0 * BAR.0, 0.0])
-    };
-    let track = Node {
-        width: px(BAR.0),
-        height: px(BAR.1),
-        ..default()
-    };
-    let fill = (FoeBar, Node::default(), BackgroundColor(theme::TEXT));
-    let name = text("", theme::FONT_SMALL, theme::TEXT);
-    (
-        (Foe, strip),
-        children![
-            (FoeName, name, TextLayout::no_wrap()),
-            (track, BackgroundColor(theme::HAIRLINE), children![fill]),
-        ],
-    )
 }
 
 /// Returns the reticle: a point at the centre of the screen holding the ticks, the corners of the
@@ -123,7 +78,11 @@ pub(super) fn layer() -> impl Bundle {
         gate(Element::Reticle),
         centre,
         Pickable::IGNORE,
-        Children::spawn((SpawnIter(ticks), SpawnIter(corners), Spawn(foe()))),
+        Children::spawn((
+            SpawnIter(ticks),
+            SpawnIter(corners),
+            Spawn(super::foe::strip()),
+        )),
     )
 }
 
@@ -154,40 +113,13 @@ pub fn marked(outcome: Outcome, left: f32) -> Color {
     whole.with_alpha(whole.alpha() * left.clamp(0.0, 1.0))
 }
 
-/// The corners of the hit mark, apart from the strip of the struck animal.
-type Corners = (With<Corner>, Without<FoeBar>, Without<Foe>);
-
-/// Shows the hit mark of the last blow at the corners, and the name and health of the animal it
-/// struck under the crosshair while the fight lasts.
-pub(super) fn strike(
-    (mark, beasts, terrain): (Res<Mark>, Query<&Beast>, Option<Res<Terrain>>),
-    mut corners: Query<&mut BackgroundColor, Corners>,
-    mut strips: Query<&mut Node, (With<Foe>, Without<FoeBar>)>,
-    mut bars: Query<&mut Node, (With<FoeBar>, Without<Foe>)>,
-    mut names: Query<&mut Text, With<FoeName>>,
-) {
+/// Shows the hit mark of the last blow at the corners.
+pub(super) fn strike(mark: Res<Mark>, mut corners: Query<&mut BackgroundColor, With<Corner>>) {
     let tone = mark
         .shown()
         .map_or(Color::NONE, |(o, left)| marked(o, left));
     for mut back in &mut corners {
         back.set_if_neq(BackgroundColor(tone));
-    }
-    let foe = mark.victim.and_then(|victim| beasts.get(victim).ok());
-    let life = terrain.as_deref().and_then(|t| t.globe().life());
-    let named =
-        foe.and_then(|beast| Some((beast, &life?.species.get(usize::from(beast.index))?.name)));
-    let display = [Display::None, Display::Flex][usize::from(named.is_some())];
-    for mut strip in &mut strips {
-        strip.display = display;
-    }
-    let Some((beast, name)) = named else { return };
-    for mut bar in &mut bars {
-        bar.width = percent(100.0 * beast.wits.health.share());
-    }
-    for mut text in &mut names {
-        if text.0 != *name {
-            text.0.clone_from(name);
-        }
     }
 }
 
@@ -204,6 +136,7 @@ pub(super) fn plugin(app: &mut App) {
             (
                 aim.run_if(aimed),
                 strike.run_if(resource_exists_and_changed::<Mark>),
+                super::foe::show.run_if(resource_exists_and_changed::<Mark>),
             )
                 .in_set(super::Step::Playing),
         );

@@ -19,6 +19,7 @@ mod cruise;
 mod eye;
 mod fade;
 mod flight;
+mod foe;
 mod frame;
 mod glide;
 mod markers;
@@ -44,6 +45,8 @@ mod tests_coords;
 mod tests_cruise;
 #[cfg(test)]
 mod tests_deck;
+#[cfg(test)]
+mod tests_foe;
 #[cfg(test)]
 mod tests_frame;
 #[cfg(test)]

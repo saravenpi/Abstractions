@@ -36,7 +36,7 @@ const SWEEP: f32 = 1.0;
 /// tip. A vane starts in the back of its ear housing and ends 6 cm outside the ear, behind an arm
 /// raised overhead, in front of the headrest of the seat and inside the player collider in a
 /// banked run.
-const VANE: [[f32; 3]; 2] = [[0.06, 0.011, 0.03], [0.014, 0.014, 0.034]];
+const VANE: [[f32; 3]; 2] = [[0.06, 0.016, 0.03], [0.014, 0.02, 0.034]];
 
 /// The visor box, the two side vanes with their accent tips, and the slate hatch with its two
 /// dark vents on the back of the helmet.

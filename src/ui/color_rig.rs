@@ -31,9 +31,22 @@ pub fn over(top: Color, under: Srgba) -> Srgba {
     )
 }
 
+/// Contrast of `text` drawn on `fill` over a world of the given brightness.
+pub fn on_fill(text: Color, fill: Color, world: f32) -> f32 {
+    let sky = Srgba::new(world, world, world, 1.0);
+    let panel = over(fill, sky);
+    contrast(luminance(over(text, panel)), luminance(panel))
+}
+
 /// Contrast of `text` drawn on `PANEL` over a world of the given brightness.
 pub fn on_panel(text: Color, world: f32) -> f32 {
-    let sky = Srgba::new(world, world, world, 1.0);
-    let panel = over(theme::PANEL, sky);
-    contrast(luminance(over(text, panel)), luminance(panel))
+    on_fill(text, theme::PANEL, world)
+}
+
+/// Asserts that each of `floors` (text, least contrast) holds on `PANEL` over a sky of `world`.
+pub fn holds(world: f32, floors: &[(Color, f32)]) {
+    for (text, floor) in floors {
+        let got = on_panel(*text, world);
+        assert!(got >= *floor, "{text:?} over {world}: {got} under {floor}");
+    }
 }

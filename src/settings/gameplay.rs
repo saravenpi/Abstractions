@@ -58,6 +58,9 @@ pub struct Gameplay {
     pub blood: bool,
     /// How large the interface is, the HUD and the menus together.
     pub interface: InterfaceSize,
+    /// True to calm the interface: the pictures of the title screen do not drift and change
+    /// with a short fade.
+    pub reduce_motion: bool,
 }
 
 impl Default for Gameplay {
@@ -67,6 +70,7 @@ impl Default for Gameplay {
             world_markers: true,
             blood: true,
             interface: InterfaceSize::Normal,
+            reduce_motion: false,
         }
     }
 }

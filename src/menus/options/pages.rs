@@ -101,6 +101,7 @@ pub fn general(active: Tab) -> impl Bundle {
             toggle("Markers over the world", Field::WorldMarkers),
             toggle("Blood", Field::Blood),
             stepper("Interface size", Field::Interface),
+            toggle("Reduce motion", Field::ReduceMotion),
         ],
     )
 }

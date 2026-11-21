@@ -44,7 +44,7 @@ fn row(at: usize) -> impl Bundle {
             padding: UiRect::axes(px(theme::S3), px(theme::S2)),
             ..default()
         },
-        BackgroundColor(theme::PANEL),
+        BackgroundColor(theme::PANEL_DEEP),
         text("", theme::FONT_SMALL, theme::TEXT),
         TextLayout::no_wrap(),
     )

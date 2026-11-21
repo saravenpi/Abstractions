@@ -88,6 +88,7 @@ const MAP_HIGH: f32 = 120.0;
 const COARSE_ROUGHNESS: f32 = 0.95;
 const COARSE_REFLECTANCE: f32 = 0.05;
 const WATER_F0: f32 = 0.02;
+const FOG_SQUARED: f32 = 1.8;
 const DAY_EDGE: vec2<f32> = vec2<f32>(-0.1, 0.3);
 const SUN_UP_EDGE: vec2<f32> = vec2<f32>(-0.05, 0.12);
 
@@ -419,7 +420,9 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
         }
     }
 
-    let fog_amount = clamp((dist - water.params.z) / max(water.params.w - water.params.z, 1.0), 0.0, 1.0);
+    let reach = dist * FOG_SQUARED / max(water.params.w, 1.0);
+    let linear_fog = clamp((dist - water.params.z) / max(water.params.w - water.params.z, 1.0), 0.0, 1.0);
+    let fog_amount = select(linear_fog, 1.0 - exp(-reach * reach), water.params.z <= 0.0);
     let near = 1.0 - smoothstep(water.frame.w * HAND_SOFT, water.frame.w, dist);
     let far_side = f32(below) * step(WAVE_TOP, eye_height);
     let alpha = mix(col.a, 1.0, fog_amount) * near * (1.0 - far_side);

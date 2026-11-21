@@ -131,7 +131,9 @@ fn starts_again_behind_when_left_far_behind() {
     assert!(away.x < 0.0, "it should be behind a player heading +X");
 }
 
-/// In the cockpit it settles on its seat at the side of the view and turns its screen to the player.
+/// In the cockpit it settles on its seat at the side, ahead of the pilot, and turns its screen to
+/// what it looks at, here the head of the pilot: the head on its neck faces it, and the body
+/// follows as far as it stays upright.
 #[test]
 fn rides_at_the_side_of_the_cockpit() {
     let eye = Transform::from_xyz(50.0, 900.0, -20.0).with_rotation(Quat::from_rotation_y(1.1));
@@ -144,7 +146,7 @@ fn rides_at_the_side_of_the_cockpit() {
     );
     assert!(back.translation.distance(Vec3::new(50.5, 900.2, -21.0)) < 1e-3);
     let mut float = Float::default();
-    for _ in 0..120 {
+    for _ in 0..600 {
         ride(Vec3::ZERO, &mut at, &mut float, DT);
     }
     let seat = Vec3::from_array(SEAT);
@@ -153,5 +155,10 @@ fn rides_at_the_side_of_the_cockpit() {
         seat.x.abs() > 0.25 && seat.z < -0.3,
         "the seat is at the side, ahead"
     );
-    assert!(at.forward().dot(-seat.normalize()) > 0.99);
+    let screen = at.rotation * float.neck.rotation() * Vec3::NEG_Z;
+    assert!(
+        screen.dot(-seat.normalize()) > 0.99,
+        "the screen faces {screen}"
+    );
+    assert!(at.forward().dot(-seat.normalize()) > 0.5 && at.up().y > 0.3);
 }

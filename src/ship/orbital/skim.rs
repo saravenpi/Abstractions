@@ -10,7 +10,7 @@
 use bevy::math::{DMat3, DQuat, DVec3};
 
 use super::glide::remaining;
-use super::tune::{CLIMB, LOCK_SLACK, RATE, SPOOL, TURN};
+use super::tune::{CLIMB, EASE, LOCK_SLACK, RATE, SINK, SPOOL, TURN};
 use crate::ship::route::shell::lock;
 use crate::ship::warp::FLOOR;
 use crate::ship::wells::PLANET_LOCK;
@@ -57,6 +57,8 @@ pub struct Skim {
     pub speed: f64,
     /// Height held, in metres above sea level.
     pub height: f64,
+    /// Speed in metres per second at which the held height changes, up positive.
+    pub rise: f64,
 }
 
 /// What the pilot or the computer asks of one step of the cruise.
@@ -101,12 +103,29 @@ pub fn course(skim: &Skim, ask: &Ask, dt: f64) -> DVec3 {
         .unwrap_or_else(|| up.any_orthonormal_vector())
 }
 
-/// Returns the height held after the step. Toward a goal it goes down to the floor, otherwise
-/// it follows the vertical stick; it never leaves the band.
-fn held(height: f64, band: &Band, ask: &Ask, dt: f64) -> f64 {
-    let climb = ask.goal.map_or(ask.climb.clamp(-1.0, 1.0), |_| -1.0);
-    let rate = ((height - band.floor).max(0.0) * CLIMB.0).max(CLIMB.1);
-    (height + climb * rate * dt).clamp(band.floor, band.ceiling)
+/// Returns the height held after the step and the speed it changes at. The vertical stick asks
+/// for [`CLIMB`]: a few percent of the height a second, within its least and most. Toward a goal
+/// the computer takes the ship down to the floor faster, at [`SINK`]. Either way the rate eases
+/// in and out over [`EASE`] seconds, slows to stop at the floor and the ceiling, and never leaves
+/// the band.
+fn held(skim: &Skim, band: &Band, ask: &Ask, dt: f64) -> (f64, f64) {
+    let (climb, most) = match ask.goal {
+        Some(_) => (-1.0, ((skim.height - band.floor) * SINK.0).max(SINK.1)),
+        None => (
+            ask.climb.clamp(-1.0, 1.0),
+            (skim.height * CLIMB.0).clamp(CLIMB.1, CLIMB.2),
+        ),
+    };
+    let ease = most / EASE;
+    let room = |gap: f64| (2.0 * ease * gap.max(0.0)).sqrt();
+    let wanted = (climb * most).clamp(
+        -room(skim.height - band.floor),
+        room(band.ceiling - skim.height),
+    );
+    let rise = skim.rise + (wanted - skim.rise).clamp(-ease * dt, ease * dt);
+    let height = (skim.height + rise * dt).clamp(band.floor, band.ceiling);
+    let free = height > band.floor && height < band.ceiling;
+    (height, [0.0, rise][usize::from(free)])
 }
 
 /// Returns the speed of the step after `last`, at most `top`, and, with `left` metres to go,
@@ -133,7 +152,7 @@ pub fn step(skim: &Skim, band: &Band, ask: &Ask, dt: f64) -> Stride {
     let up = skim.pos.normalize_or(DVec3::Y);
     let heading =
         (skim.heading - up * skim.heading.dot(up)).normalize_or(up.any_orthonormal_vector());
-    let height = held(skim.height, band, ask, dt);
+    let (height, rise) = held(skim, band, ask, dt);
     let left = ask
         .goal
         .map(|goal| remaining(up, goal, band.radius, height));
@@ -145,6 +164,7 @@ pub fn step(skim: &Skim, band: &Band, ask: &Ask, dt: f64) -> Stride {
             heading,
             speed,
             height,
+            rise,
         },
         vel: (pos - skim.pos) / dt.max(1e-9),
         done: left.is_some_and(|left| left <= speed * dt + 1.0),

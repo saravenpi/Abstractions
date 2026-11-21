@@ -22,7 +22,7 @@ impl Orbital {
         self.heading = (ahead - up * ahead.dot(up)).normalize_or(up.any_orthonormal_vector());
         self.height = (rel.length() - band.radius).clamp(band.floor, band.ceiling);
         (self.regime, self.goal, self.speed) = (Regime::Cruise, goal, 0.0);
-        (self.slew, self.aligned) = (0.0, false);
+        (self.slew, self.aligned, self.rise) = (0.0, false, 0.0);
         (self.pending, self.note, self.ready) = (None, None, false);
         (ship.throttle, ship.assist, ship.spin) = (1.0, true, DVec3::ZERO);
     }

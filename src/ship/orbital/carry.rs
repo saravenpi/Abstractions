@@ -81,6 +81,7 @@ pub(super) fn advance(
         heading: orbital.heading,
         speed: orbital.speed,
         height: orbital.height,
+        rise: orbital.rise,
     };
     let way = course(&skim, asked, dt);
     let rot = orbital.turn(ship.rot, attitude(up, way, 0.0), dt);
@@ -101,7 +102,7 @@ pub(super) fn advance(
     }
     let carried = fly(ship, over, &stride, (rot, dt));
     (orbital.heading, orbital.speed) = (carried * way, stride.skim.speed);
-    orbital.height = stride.skim.height;
+    (orbital.height, orbital.rise) = (stride.skim.height, stride.skim.rise);
     Some(stride)
 }
 

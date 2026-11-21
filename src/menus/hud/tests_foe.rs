@@ -5,9 +5,16 @@
 use bevy::prelude::*;
 
 use super::foe::{hung, over};
+use super::onscreen::place::Frustum;
 
 /// The screen of the tests in interface pixels, and its vertical field of view in radians.
 const LENS: (f32, Vec2) = (1.2, Vec2::new(1280.0, 720.0));
+
+/// Returns what the camera of the tests sees on their screen, and the screen.
+fn lens() -> (Frustum, Vec2) {
+    let (fov, screen) = LENS;
+    (Frustum::whole(fov, screen), screen)
+}
 
 /// Returns the screen rectangle of the strip hung for a head at `pos`, from its left and bottom.
 fn rect(pos: Vec2) -> Rect {
@@ -29,7 +36,7 @@ fn the_strip_hangs_over_the_head() {
         Transform::from_xyz(-2.0, 2.0, 30.0).looking_at(head, Vec3::Y),
     ];
     for pose in poses {
-        let pos = over(head, &GlobalTransform::from(pose), LENS).expect("the head is on screen");
+        let pos = over(head, &GlobalTransform::from(pose), lens()).expect("the head is on screen");
         let strip = rect(pos);
         assert!(
             strip.max.y <= pos.y + 2.0,
@@ -46,9 +53,9 @@ fn the_strip_hangs_over_the_head() {
 #[test]
 fn the_strip_is_absent_off_screen() {
     let camera = GlobalTransform::from(Transform::from_xyz(0.0, 1.6, 0.0));
-    assert!(over(Vec3::new(0.0, 1.2, 6.0), &camera, LENS).is_none());
-    assert!(over(Vec3::new(40.0, 1.2, -2.0), &camera, LENS).is_none());
-    assert!(over(Vec3::new(0.0, 1.2, -6.0), &camera, LENS).is_some());
+    assert!(over(Vec3::new(0.0, 1.2, 6.0), &camera, lens()).is_none());
+    assert!(over(Vec3::new(40.0, 1.2, -2.0), &camera, lens()).is_none());
+    assert!(over(Vec3::new(0.0, 1.2, -6.0), &camera, lens()).is_some());
 }
 
 /// A head under the crosshair puts the strip above the ticks, not over them.

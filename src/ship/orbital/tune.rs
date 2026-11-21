@@ -15,10 +15,18 @@ pub const SPOOL: f64 = 0.75;
 /// leaves the sphere it runs in.
 pub const LOCK_SLACK: f64 = 0.01;
 
-/// Share of its height over the cruise floor that the held height moves by per second at full
-/// vertical stick, and the slowest such move in metres per second: from 800 km down to the floor
-/// in about ten seconds, and 2 km/s away from it.
-pub const CLIMB: (f64, f64) = (0.5, 2000.0);
+/// The change of the held height at full vertical stick: the share of the height above the sea
+/// it moves by each second, and the least and the most metres per second: 3 percent of the
+/// height, so 2 km/s from 67 km up and 50 m/s only near a low surface.
+pub const CLIMB: (f64, f64, f64) = (0.03, 50.0, 2000.0);
+
+/// The descent of a cruise to a target down to its floor, flown by the computer: the share of
+/// the height over the floor it falls by each second, and the least metres per second. From
+/// 800 km it is at the floor in about ten seconds; the drive carries the crew without a load.
+pub const SINK: (f64, f64) = (0.5, 2000.0);
+
+/// Seconds over which a change of the held height reaches its full rate, and stops from it.
+pub const EASE: f64 = 1.0;
 
 /// Radians per second the heading of a manual cruise turns at full yaw.
 pub const TURN: f64 = 0.5;

@@ -125,9 +125,10 @@ impl State {
         [0.0, HYSTERESIS][usize::from(self.memory[at].edge)]
     }
 
-    /// Records that slot `at` drew `who` as `placed`, and returns where its icon is drawn: it
-    /// follows its target smoothly, and jumps and forgets its fades when the slot shows another
-    /// marker.
+    /// Records that slot `at` drew `who` as `placed`, and returns where its icon is drawn. On
+    /// the place of its target the icon sits exactly there, so it never trails the view as the
+    /// camera turns; on the border, with its arrow, it glides there smoothly. It jumps and
+    /// forgets its fades when the slot shows another marker.
     pub fn settle(
         &mut self,
         at: usize,
@@ -137,7 +138,7 @@ impl State {
     ) -> Vec2 {
         let before = self.memory[at];
         let same = before.who == Some(who);
-        let pos = match same {
+        let pos = match same && placed.arrow.is_some() {
             true => before.pos.lerp(placed.pos, follow),
             false => placed.pos,
         };

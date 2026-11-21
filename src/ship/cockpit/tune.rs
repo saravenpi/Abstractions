@@ -14,20 +14,23 @@ pub const PAN: f32 = 0.06;
 /// Where the front of the backrest and of the headrest is along z: the back of the pilot.
 pub const BACK: f32 = -0.975;
 
-/// Where the side stick hinges, on a pedestal that stands in from the right console beside the
-/// knee. The grip is 0.22 m under the shoulder of the pilot and 2 cm outboard of it, so the bent
-/// elbow stays inside the tub: the widest point of the body is 0.343 m from the middle.
-pub const STICK: Vec3 = Vec3::new(0.23, 0.24, -1.5);
+/// Where the side stick hinges: inside the pedestal that stands in from the right console
+/// beside the knee, 6 cm under its top, so the shaft comes up through the boot. The grip is
+/// 0.22 m under the shoulder of the pilot and 2 cm outboard of it, so the bent elbow stays inside
+/// the tub: the widest point of the body is 0.344 m from the middle.
+pub const STICK: Vec3 = Vec3::new(0.23, 0.18, -1.5);
 
 /// Length of the stick from its hinge to the top of its grip, and how far under the top the
-/// hand holds it, in metres: a short side stick, so a tilt moves the hand little.
-pub const STICK_LENGTH: (f32, f32) = (0.16, 0.04);
+/// hand holds it, in metres.
+pub const STICK_LENGTH: (f32, f32) = (0.22, 0.04);
 
 /// Tilt of the stick at full pitch or roll, and its twist at full yaw, in radians. The hand
-/// moves 4 cm either way.
-pub const STICK_REACH: (f32, f32) = (0.36, 0.3);
+/// moves 4 cm either way, and a full deflection asked at once turns the stick under 0.08 rad in
+/// a frame.
+pub const STICK_REACH: (f32, f32) = (0.235, 0.3);
 
-/// Where the throttle lever hinges, on the pedestal of the left console, across from the stick.
+/// Where the throttle lever hinges, on top of the pedestal of the left console, across from the
+/// stick.
 pub const LEVER: Vec3 = Vec3::new(-0.23, 0.24, -1.5);
 
 /// Length of the throttle lever from its hinge to the top of its handle, and how far under the

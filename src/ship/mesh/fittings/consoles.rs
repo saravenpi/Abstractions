@@ -42,8 +42,8 @@ pub fn frames() -> Solid {
         beam(&mut right, ends, 0.015, 0);
     }
     let boot = (
-        v(STICK.x - 0.03, STICK.y - 0.01, STICK.z - 0.05),
-        v(STICK.x + 0.03, STICK.y + 0.02, STICK.z + 0.05),
+        v(STICK.x - 0.03, CONSOLE.1 - 0.01, STICK.z - 0.05),
+        v(STICK.x + 0.03, CONSOLE.1 + 0.02, STICK.z + 0.05),
     );
     right.slab(boot.0, boot.1);
     right.mirrored()

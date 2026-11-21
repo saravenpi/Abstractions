@@ -35,7 +35,7 @@ pub fn shell() -> Solid {
     let v = Vec3::new;
     let middle = [
         (v(-0.15, FLOOR, -1.32), v(0.15, -0.02, -1.0)),
-        (v(-HALF.0, -0.03, -1.44), v(HALF.0, 0.0, REAR)),
+        (v(-HALF.0, -0.04, -1.44), v(HALF.0, 0.0, REAR)),
         (v(-HALF.0, 0.0, BACK + 0.04), v(HALF.0, 0.7, REAR)),
         (v(-0.13, 0.68, BACK + 0.03), v(0.13, 1.02, REAR)),
     ];

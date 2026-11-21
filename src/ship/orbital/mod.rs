@@ -23,6 +23,8 @@ mod rig;
 #[cfg(test)]
 mod tests_air;
 #[cfg(test)]
+mod tests_climb;
+#[cfg(test)]
 mod tests_cross;
 #[cfg(test)]
 mod tests_glide;
@@ -96,6 +98,8 @@ pub struct Orbital {
     pub(super) pending: Option<Pending>,
     /// Height held, in metres above sea level.
     pub(super) height: f64,
+    /// Speed in metres per second at which the held height changes.
+    pub(super) rise: f64,
     /// Speed of the cruise in metres per second.
     pub(super) speed: f64,
     /// Unit direction of the course of the cruise, in the axes of the frame of the ship.
@@ -132,6 +136,11 @@ impl Orbital {
     /// Returns why the last cruise ended, while the prompt still says so.
     pub fn note(&self) -> Option<Note> {
         self.note.map(|(note, _)| note)
+    }
+
+    /// Returns the height in metres above sea level the cruise holds.
+    pub fn height(&self) -> f64 {
+        self.height
     }
 
     /// Returns whether the ship climbs or warps toward a target to cruise to.

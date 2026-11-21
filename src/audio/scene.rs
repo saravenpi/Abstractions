@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 
+use super::ship::feed::{HULLS, HullSound};
 use crate::universe::PlanetClass;
 
 /// Seed of the piece played on the title screen, before any world exists.
@@ -10,8 +11,8 @@ pub const TITLE_SEED: u64 = 0x00AB_5712_AC71_0115;
 /// What the listener's surroundings sound like right now.
 ///
 /// The audio module fills the fields it can read from the world itself every frame while the game
-/// is played, `throttle`, `dynamic_pressure` and `warping` from the instruments of the ship, and
-/// `rush`, `boost` and `flutter` from the flight gear, `rain` and `dust` from the weather.
+/// is played, `warping` from the instruments of the ship, and `rush`, `boost` and `flutter` from
+/// the flight gear, `rain` and `dust` from the weather. The ship module writes `hulls`.
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct AudioScene {
     /// Seed of the planet whose music plays.
@@ -39,10 +40,6 @@ pub struct AudioScene {
     /// Where the companion is for the listener: its side from -1 (left) to 1 (right) in x, and
     /// how near it is from 0 (out of earshot) to 1 (beside the head) in y.
     pub companion: Vec2,
-    /// Engine throttle from 0 to 1.
-    pub throttle: f32,
-    /// Dynamic pressure on the hull from 0 to 1, 1 being the strongest buffeting.
-    pub dynamic_pressure: f32,
     /// How deep the listener is inside the cloud layer, from 0 (clear air) to 1 (its middle).
     pub cloud_depth: f32,
     /// 1 while the listener sits in the ship cabin, 0 outside.
@@ -62,6 +59,9 @@ pub struct AudioScene {
     pub rain: f32,
     /// How much dust the wind blows past, from 0 to 1.
     pub dust: f32,
+    /// What every ship in earshot sounds like: first the ship this machine flies, then the
+    /// nearest of the others.
+    pub hulls: [HullSound; HULLS],
 }
 
 impl Default for AudioScene {
@@ -80,8 +80,6 @@ impl Default for AudioScene {
             shore: 0.0,
             shore_side: 0.0,
             companion: Vec2::Y,
-            throttle: 0.0,
-            dynamic_pressure: 0.0,
             cloud_depth: 0.0,
             cabin: 0.0,
             rush: 0.0,
@@ -91,6 +89,7 @@ impl Default for AudioScene {
             buffet: 0.0,
             rain: 0.0,
             dust: 0.0,
+            hulls: [HullSound::default(); HULLS],
         }
     }
 }

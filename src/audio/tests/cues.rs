@@ -78,7 +78,8 @@ fn cues_round_trip() {
         assert_eq!(shared.pop(), Some(*cue));
     }
     assert_eq!(shared.pop(), None);
-    assert_eq!(AudioCue::all().count(), 20);
+    assert_eq!(AudioCue::all().count(), 21);
+    assert!(cues.contains(&AudioCue::Switch));
     assert!(cues.contains(&AudioCue::Chirp(ChirpKind::Sleepy)));
 }
 

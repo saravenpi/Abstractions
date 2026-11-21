@@ -5,7 +5,7 @@ use bevy::ecs::message::Messages;
 use bevy::prelude::*;
 
 use super::app::{app, enter_world};
-use crate::audio::wire::{FULL_PRESSURE, HARD_LANDING, ship_cue, ship_scene};
+use crate::audio::wire::{HARD_LANDING, ship_cue, warping};
 use crate::audio::{AudioCue, AudioScene, ChirpKind};
 use crate::companion::CompanionChirp;
 use crate::ship::{ShipEvent, ShipTelemetry, WarpState};
@@ -22,26 +22,22 @@ const CHIRPS: [ChirpKind; 8] = [
     ChirpKind::Wake,
 ];
 
-/// The lever, the buffeting and the warp of the ship reach the scene, each within 0 to 1.
+/// The warp of the ship reaches the scene and silences the music; a drive that only spools
+/// does not.
 #[test]
-fn ship_instruments_fill_the_scene() {
+fn the_warp_of_the_ship_fills_the_scene() {
     let mut flying = ShipTelemetry {
-        throttle: -0.5,
-        dynamic_pressure: FULL_PRESSURE / 4.0,
         warp: WarpState::Spooling(0.5),
         ..ShipTelemetry::default()
     };
-    assert_eq!(ship_scene(&flying), (0.5, 0.25, false));
-    flying.dynamic_pressure = FULL_PRESSURE * 9.0;
+    assert!(!warping(&flying) && !warping(&ShipTelemetry::default()));
     flying.warp = WarpState::Active(1.0e9);
-    assert_eq!(ship_scene(&flying), (0.5, 1.0, true));
-    assert_eq!(ship_scene(&ShipTelemetry::default()), (0.0, 0.0, false));
+    assert!(warping(&flying));
     let mut app = app("wire-scene");
     enter_world(&mut app);
     app.insert_resource(flying);
     app.update();
     let scene = *app.world().resource::<AudioScene>();
-    assert_eq!((scene.throttle, scene.dynamic_pressure), (0.5, 1.0));
     assert!(scene.warping && scene.music_level() == 0.0);
 }
 
@@ -63,6 +59,10 @@ fn ship_events_map_to_cues() {
         Some(AudioCue::WarpEngage)
     );
     assert_eq!(ship_cue(&ShipEvent::WarpDropped), Some(AudioCue::WarpExit));
+    assert_eq!(
+        ship_cue(&ShipEvent::Headlight(true)),
+        Some(AudioCue::Switch)
+    );
     for silent in [ShipEvent::Boarded, ShipEvent::Left, ShipEvent::Liftoff] {
         assert_eq!(ship_cue(&silent), None);
     }

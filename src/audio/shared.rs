@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use super::cue::AudioCue;
 use super::planet::code;
 use super::scene::AudioScene;
+use super::ship::feed::Deck;
 use crate::settings::Audio as Volumes;
 
 /// A live value read by the audio thread.
@@ -26,10 +27,6 @@ pub enum Param {
     Wind,
     /// Shore closeness.
     Shore,
-    /// Engine throttle.
-    Throttle,
-    /// Dynamic pressure.
-    Pressure,
     /// Depth inside the clouds.
     Cloud,
     /// Whether the listener is in the cabin.
@@ -63,7 +60,7 @@ pub enum Param {
 }
 
 /// Number of [`Param`] values.
-pub const PARAMS: usize = 25;
+pub const PARAMS: usize = 23;
 
 impl Param {
     /// Every parameter, in index order.
@@ -76,8 +73,6 @@ impl Param {
         Param::Submerged,
         Param::Wind,
         Param::Shore,
-        Param::Throttle,
-        Param::Pressure,
         Param::Cloud,
         Param::Cabin,
         Param::Space,
@@ -112,6 +107,8 @@ pub struct Shared {
     head: AtomicUsize,
     /// Slots read so far.
     tail: AtomicUsize,
+    /// What every ship in earshot sounds like.
+    pub hulls: Deck,
 }
 
 impl Default for Shared {
@@ -123,6 +120,7 @@ impl Default for Shared {
             cues: std::array::from_fn(|_| AtomicU32::new(0)),
             head: AtomicUsize::new(0),
             tail: AtomicUsize::new(0),
+            hulls: Deck::default(),
         };
         shared.publish(&AudioScene::default(), &Volumes::default());
         shared
@@ -167,8 +165,7 @@ impl Shared {
         self.set(Param::Submerged, unit(scene.submerged));
         self.set(Param::Wind, unit(scene.wind * scene.altitude_fade));
         self.set(Param::Shore, unit(scene.shore));
-        self.set(Param::Throttle, unit(scene.throttle));
-        self.set(Param::Pressure, unit(scene.dynamic_pressure));
+        self.hulls.publish(&scene.hulls);
         self.set(Param::Cloud, unit(scene.cloud_depth));
         self.set(Param::Cabin, unit(scene.cabin));
         self.set(Param::Space, flag(scene.in_space || scene.warping));

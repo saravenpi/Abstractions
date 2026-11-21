@@ -5,6 +5,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- The ship sounds like a ship. Its engines roar with the noise of a real jet: a low broad roar that deepens as the throttle opens, the hiss of the nozzle, the crackle of a hard burn in air, and the whine of the pumps, which lags the lever and winds down after a shutdown. The lift nozzles have their own higher voice and grow harsh near the ground. The gear whirs and locks with a thump, the canopy latches and seals, the stabiliser hisses, hot nozzles tick as they cool, and the cabin hums. The warp drive spools as rising, beating tones and cruises on a bed of its own.
+- Where you listen from changes what you hear. In the seat the canopy muffles the engines and the airframe carries their rumble, the wind over the canopy grows with speed and thick air, and the hull shakes through the speed of sound. Outside, a ship is heard from where it is, quieter and duller with distance, late by the time its sound takes to arrive, higher as it comes and lower as it goes, and with a boom when it passes faster than sound. Thin air carries less, and in a vacuum there is silence outside and only the airframe inside. The ships of other players are heard the same way.
+
 ### Fixed
 
 - The fog wall around the player is gone. On foot the view ended about 200 m away in a wall of horizon colour, because the fog hid the edge of the detailed ground. The fog is now the air alone: a clear day shows the far hills and the sea tens of kilometres away, each ridge paler and bluer than the one before, and rain or dust shorten the view for a real reason. The sea and the clouds fade by the same rule.

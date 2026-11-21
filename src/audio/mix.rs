@@ -9,7 +9,7 @@ use super::dsp::limit::{DcBlock, limit};
 use super::music::{Music, MusicCtl};
 use super::planet::class;
 use super::shared::{PARAMS, Param, Shared};
-use super::ship::{Ship, ShipCtl};
+use super::ship::Fleet;
 use super::suit::{Suit, SuitCtl};
 use crate::universe::PlanetClass;
 
@@ -44,7 +44,7 @@ pub struct Mixer {
     /// Ambience voices.
     air: Air,
     /// Ship voices.
-    ship: Ship,
+    fleet: Fleet,
     /// Flight gear voices.
     suit: Suit,
     /// One-shot voices.
@@ -72,7 +72,7 @@ impl Mixer {
             now,
             music,
             air: Air::new(rate),
-            ship: Ship::new(rate),
+            fleet: Fleet::new(rate, BLOCK as f32 / rate),
             suit: Suit::new(rate),
             cues: Pool::new(rate),
             dc: [DcBlock::default(); 2],
@@ -104,15 +104,9 @@ impl Mixer {
         }
     }
 
-    /// Returns what the ship follows.
-    fn ship_ctl(&self) -> ShipCtl {
-        ShipCtl {
-            throttle: self.at(Param::Throttle),
-            pressure: self.at(Param::Pressure),
-            cloud: self.at(Param::Cloud),
-            cabin: self.at(Param::Cabin),
-            space: self.at(Param::Space),
-        }
+    /// Returns how deep the listener is in the cloud layer of a planet: nothing in space.
+    fn cloud(&self) -> f32 {
+        self.at(Param::Cloud) * (1.0 - self.at(Param::Space))
     }
 
     /// Returns what the flight gear follows.
@@ -135,6 +129,7 @@ impl Mixer {
         self.cues
             .locate(buddy, self.targets[Param::BuddyNear as usize]);
         while let Some(cue) = self.shared.pop() {
+            self.fleet.hear(cue);
             self.cues.play(cue);
         }
         let dt = BLOCK as f32 / self.rate;
@@ -148,7 +143,7 @@ impl Mixer {
         self.music.dress(class(self.targets[Param::Class as usize]));
         self.music.steer(&orders, dt);
         self.air.tune(&self.air_ctl(), dt);
-        self.ship.tune(&self.ship_ctl());
+        self.fleet.tune(&self.shared.hulls, self.cloud(), dt);
         self.suit.tune(&self.suit_ctl());
     }
 
@@ -164,7 +159,7 @@ impl Mixer {
         let music = self.music.frame();
         let air = self.air.frame(&self.air_ctl());
         let gear = self.suit.frame(&self.suit_ctl());
-        let mono = self.ship.frame(&self.ship_ctl()) + gear;
+        let ships = self.fleet.frame(self.cloud());
         let cues = self.cues.frame();
         let (wide, fx) = (
             self.at(Param::Music) * MUSIC_GAIN,
@@ -172,7 +167,7 @@ impl Mixer {
         );
         let (master, r) = (self.at(Param::Master), self.r);
         [0, 1].map(|i| {
-            let sum = music[i] * wide + (air[i] + mono + cues[i]) * fx;
+            let sum = music[i] * wide + (air[i] + gear + ships[i] + cues[i]) * fx;
             limit(self.dc[i].run(sum * master, r))
         })
     }

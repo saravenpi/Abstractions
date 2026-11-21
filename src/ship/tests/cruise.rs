@@ -114,9 +114,14 @@ fn the_assist_cancels_gravity_in_space() {
 
 /// Returns the last moment in 6 seconds at which the path of a ship at half lever was off its
 /// nose after a quarter turn, and the largest shares of its speed by which it went past the
-/// speed asked for and back along the way it came.
+/// speed asked for and back along the way it came. The ship flies straight past a round body,
+/// so it ends up to `(6 s * speed)^2 / (2 * radius)` metres higher, where the lever asks for a
+/// little more: since the top speed of 0.11.0 grows by a metre per second for every 1.6 m of
+/// clearance, that is 1.9 percent more at the surface, which counts as asked, not as past it.
 fn quarter_turn(gap: f64) -> (f64, f64, f64) {
     let speed = 0.5 * top_speed(gap);
+    let rise = (6.0 * speed).powi(2) / (2.0 * body(gap, 0.0).radius);
+    let most = 0.5 * top_speed(gap + rise);
     let mut ship = beside(DVec3::NEG_Z * speed, 0.5);
     ship.rot = DQuat::from_rotation_y(FRAC_PI_2);
     let nose = ship.forward();
@@ -131,7 +136,7 @@ fn quarter_turn(gap: f64) -> (f64, f64, f64) {
             if across > 0.02 * speed || (along / speed - 1.0).abs() > 0.05 {
                 off = time;
             }
-            over = over.max(along / speed - 1.0);
+            over = over.max(along / most - 1.0);
             back = back.max(drift.z / speed);
         },
     );

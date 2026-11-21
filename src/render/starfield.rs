@@ -25,6 +25,7 @@ pub use material::{StarMaterial, StarUniform};
 #[cfg(test)]
 pub use specks::DAY_FLUX;
 
+use super::exposure::Field;
 use super::palette::Palette;
 use super::skylight;
 use super::vantage::Vantage;
@@ -116,7 +117,7 @@ type DustPose<'a> = (
 /// motion and come back to rest, and the dust shows only while a warp inside a galaxy has some in.
 fn follow(
     vantage: Res<Vantage>,
-    (palette, lens): (Res<Palette>, Res<Lens>),
+    (palette, lens, field): (Res<Palette>, Res<Lens>, Field),
     mut fields: Query<(
         &Starfield,
         &mut Transform,
@@ -126,6 +127,8 @@ fn follow(
     mut dust: Query<DustPose, (With<Dust>, Without<Starfield>)>,
     mut materials: ResMut<Assets<StarMaterial>>,
 ) {
+    let veil = skylight::veil(field.luminance());
+    let hides = |sky: Vec3| skylight::luminance(sky).max(veil);
     let pose = Transform {
         translation: vantage.camera,
         rotation: vantage.observer.to_render.as_quat(),
@@ -139,8 +142,8 @@ fn follow(
                 heading: lens.heading.extend(lens.beta),
                 drift: field.drift(&vantage).extend(0.0),
                 flow: Vec4::new(lens.phase, lens.flow, lens.medium(vantage.band), 0.0),
-                dome: vantage.up.extend(skylight::luminance(palette.zenith)),
-                base: Vec4::new(skylight::luminance(palette.horizon), 0.0, 0.0, 0.0),
+                dome: vantage.up.extend(hides(palette.zenith)),
+                base: Vec4::new(hides(palette.horizon), 0.0, 0.0, 0.0),
             };
         }
     }

@@ -9,9 +9,11 @@ use super::SunDir;
 use super::atmosphere::horizon_dip;
 use super::celestial::smoothstep;
 use super::clouds::CloudCrossing;
+use super::exposure::Field;
 use super::galaxy_light::GalaxyLight;
 use super::palette::Palette;
 use super::sky::{SkyLook, SkyMaterial, SkyUniform};
+use super::skylight;
 use super::vantage::{LocalSystem, Vantage};
 use super::warp::Lens;
 use crate::screens::Screen;
@@ -58,6 +60,7 @@ struct SkyInputs<'w> {
     crossing: Res<'w, CloudCrossing>,
     lens: Res<'w, Lens>,
     light: Res<'w, GalaxyLight>,
+    field: Field<'w>,
 }
 
 impl SkyInputs<'_> {
@@ -100,7 +103,8 @@ fn update_dome(
     >,
     mut materials: ResMut<Assets<SkyMaterial>>,
 ) {
-    let sky = SkyUniform::new(&inputs.palette, &inputs.look());
+    let mut sky = SkyUniform::new(&inputs.palette, &inputs.look());
+    sky.galaxy.x *= skylight::band(skylight::veil(inputs.field.luminance()));
     let pose =
         Transform::from_translation(inputs.vantage.camera).with_scale(Vec3::splat(DOME_RADIUS));
     for (mut transform, mut global, handle) in &mut domes {

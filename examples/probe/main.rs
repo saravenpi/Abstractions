@@ -23,7 +23,7 @@
 //!
 //! `PROBE_STAGES=postcards` takes the clean pictures for the website and the title screen, stages `p01-home`
 //! to `p22-river` (see the `postcards` module). It is left out of a run of all groups. Without `SMOKE_SEED` it
-//! plays seed 18. `PROBE_SIZE=1920x1080` sets the window size and `POSTCARD_SETTLE` the frames a card waits.
+//! plays seed 57. `PROBE_SIZE=1920x1080` sets the window size and `POSTCARD_SETTLE` the frames a card waits.
 //!
 //! `PROBE_STAGES=models` opens the model studio (see the `models` module): the robot and the companion alone.
 //!

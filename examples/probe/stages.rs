@@ -3,7 +3,7 @@
 use super::*;
 
 /// The stages in order: name, group and function. The `core` stages always run.
-pub const STAGES: [(&str, &str, Stage); 129] = [
+pub const STAGES: [(&str, &str, Stage); 130] = [
     ("menus", "ui", menus),
     ("title", "core", title),
     ("loading", "core", loading),
@@ -95,6 +95,7 @@ pub const STAGES: [(&str, &str, Stage); 129] = [
     ("look-grain", "look", look_grain),
     ("look-cover", "look", look_cover),
     ("look-vista-light", "look", look_vista_light),
+    ("look-vista-side", "look", look_vista_side),
     ("look-vista-height", "look", look_vista_height),
     ("look-noon", "look", look_noon),
     ("look-sunset", "look", look_sunset),

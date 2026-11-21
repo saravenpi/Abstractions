@@ -61,11 +61,14 @@ impl Style {
     }
 }
 
-/// Returns a stable value in `[0.92, 1.08]` for a grid cell and triangle index.
+/// Returns a stable value in `[0.97, 1.03]` for a grid cell and triangle index. At 8 percent either way
+/// the tone moved a triangle by two of the 24 colour levels of the picture, and level ground read as a quilt
+/// of triangles; at 3 percent it stays within one level, a grain, and the slope of each facet under the
+/// light carries the relief.
 pub fn tone(i: usize, j: usize, half: usize) -> f32 {
     let h = (i as u32).wrapping_mul(73_856_093)
         ^ (j as u32).wrapping_mul(19_349_663)
         ^ (half as u32 * 83_492_791);
     let h = (h ^ (h >> 15)).wrapping_mul(0x2C1B_3C6D);
-    0.92 + ((h >> 10) & 0xFF) as f32 / 255.0 * 0.16
+    0.97 + ((h >> 10) & 0xFF) as f32 / 255.0 * 0.06
 }

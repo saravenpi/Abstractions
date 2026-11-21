@@ -42,7 +42,7 @@ pub fn nightfall(world: &mut World, notes: &mut Notes) -> bool {
     };
     let Some(found) = (0..240).find(|k| low(k) < NIGHT) else {
         eprintln!(
-            "PROBE night: skipped, the star cannot set here, use a seed whose home turns (SMOKE_SEED=18)"
+            "PROBE night: skipped, the star cannot set here, use a seed whose home turns (SMOKE_SEED=57)"
         );
         return false;
     };

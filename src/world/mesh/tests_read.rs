@@ -50,14 +50,14 @@ fn a_triangle_holds_quarters_of_turf() {
     assert_eq!((thick(-1.0), thick(7.0)), (0.0, 4.0));
 }
 
-/// The tone of a triangle stays between 0.92 and 1.08 and averages 1, so toning the finest cells and not
+/// The tone of a triangle stays between 0.97 and 1.03 and averages 1, so toning the finest cells and not
 /// the coarse ones leaves the mean colour of a place the same at every level.
 #[test]
 fn the_tone_has_zero_mean() {
     let tones: Vec<f32> = (0..64)
         .flat_map(|i| (0..64).flat_map(move |j| [tone(i, j, 0), tone(i, j, 1)]))
         .collect();
-    assert!(tones.iter().all(|t| (0.92..=1.08).contains(t)));
+    assert!(tones.iter().all(|t| (0.97..=1.03).contains(t)));
     let mean = tones.iter().sum::<f32>() / tones.len() as f32;
     assert!((mean - 1.0).abs() < 0.005, "{mean}");
 }

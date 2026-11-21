@@ -37,6 +37,8 @@ mod tests_found;
 #[cfg(test)]
 mod tests_ground;
 #[cfg(test)]
+mod tests_home;
+#[cfg(test)]
 mod tests_points;
 #[cfg(test)]
 mod tests_solid;

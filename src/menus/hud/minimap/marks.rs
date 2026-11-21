@@ -70,12 +70,7 @@ pub fn lens(reader: &Reader, scope: &Scope) -> Option<(Pose, Patch)> {
 fn seen(reader: &Reader, scope: &Scope, base: Option<&Base>) -> Option<Sight> {
     let (pose, patch) = lens(reader, scope)?;
     let home = base.filter(|base| base.body == pose.body);
-    Some(sight(
-        &pose,
-        &patch,
-        scope.radius,
-        home.map(|base| base.centre),
-    ))
+    Some(sight(&pose, &patch, scope.radius, home.map(Base::home)))
 }
 
 /// Places every part of the ground view: the frame hides while the map is off, the image

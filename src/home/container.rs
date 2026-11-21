@@ -27,6 +27,10 @@ pub const CLEAR: f32 = 0.4;
 /// Centre of the hatch, on the front wall.
 pub const DOOR: Vec3 = Vec3::new(-0.9, 1.3, 1.36);
 
+/// Where the home marker stands: above the middle of the roof, clear of the antenna mast, so
+/// that its icon sits on the building the operator lives in.
+pub const HOME: Vec3 = Vec3::new(0.0, SIZE.y + 1.5, 0.0);
+
 /// Where the cables leave the box, on the end wall that faces the station.
 pub const SOCKET: Vec3 = Vec3::new(-3.0, 0.35, 0.0);
 

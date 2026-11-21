@@ -27,7 +27,7 @@ fn game(kind: MarkerKind, place: MarkerPlace) -> Marker {
     }
 }
 
-/// Writes the home marker: the base once it is found, else the home planet itself while the
+/// Writes the home marker: the container of the base once it is found, else the home planet itself while the
 /// player is away from it.
 pub fn home(
     base: Option<Res<Base>>,
@@ -39,7 +39,7 @@ pub fn home(
     let planet = universe.map(|universe| universe.home());
     let away = anchor.is_some_and(|anchor| planet.map(Frame::Surface) != Some(anchor.frame));
     let place = match base.as_deref() {
-        Some(base) => Some(MarkerPlace::Body(base.body, base.centre)),
+        Some(base) => Some(MarkerPlace::Body(base.body, base.home())),
         None => planet
             .filter(|_| away)
             .map(|planet| MarkerPlace::Body(planet, DVec3::ZERO)),

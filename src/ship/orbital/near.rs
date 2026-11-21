@@ -46,7 +46,7 @@ impl Over {
 /// of the star, the nearest in its own radii, with its index among the wells.
 fn locked<'a>(skies: &'a Skies, pos: DVec3) -> Option<(&'a PlanetSpec, usize)> {
     let system = skies.spec()?;
-    let reach = |(index, planet): (usize, &PlanetSpec)| {
+    let reach = |(index, planet): (usize, &'a PlanetSpec)| {
         let well = skies.wells.get(index + 1)?;
         let radii = well.pos.distance(pos) / planet.radius;
         (radii < PLANET_LOCK).then_some((planet, index + 1, radii))

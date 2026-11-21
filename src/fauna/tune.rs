@@ -109,3 +109,7 @@ pub const RUSH: f32 = 12.0;
 
 /// Metres past its strike within which an animal that stands its ground goes for a threat.
 pub const GUARD: f32 = 3.0;
+
+/// Metres under the drawn ground past which the sunk check of a dev build logs a foot of an animal.
+#[cfg(feature = "dev")]
+pub const SUNK: f32 = 0.05;

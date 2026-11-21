@@ -34,6 +34,10 @@ mod slant;
 #[cfg(test)]
 mod stage;
 mod steer;
+#[cfg(any(test, feature = "dev"))]
+mod sunk;
+#[cfg(test)]
+mod tests_ground;
 #[cfg(test)]
 mod tests_hunt;
 #[cfg(test)]
@@ -117,5 +121,7 @@ pub(super) fn plugin(app: &mut App) {
                 .after(crate::effects::Sight),
         )
         .add_plugins((senses::plugin, signs::plugin, attack::plugin, bleed::plugin));
+    #[cfg(feature = "dev")]
+    app.add_plugins(sunk::plugin);
     app.add_plugins(guide::plugin);
 }

@@ -67,9 +67,8 @@ impl Soup {
         let flip = |v: &mut [f32; 3]| v[0] = -v[0];
         self.positions.iter_mut().for_each(flip);
         self.normals.iter_mut().for_each(flip);
-        self.positions
-            .chunks_exact_mut(3)
-            .for_each(|tri| tri.swap(1, 2));
+        let (triangles, _) = self.positions.as_chunks_mut::<3>();
+        triangles.iter_mut().for_each(|tri| tri.swap(1, 2));
         self
     }
 

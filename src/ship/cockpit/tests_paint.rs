@@ -56,7 +56,7 @@ fn a_text_is_painted_in_the_font() {
     let mut amber = Pixels::dark(8, 9);
     write(&mut amber, "H", (0, 0), Ink::Amber);
     assert_eq!(amber.ink(0, 0), Ink::Amber);
-    assert!(HEIGHT * 2 + 4 <= 34 && ADVANCE == WIDTH + 1);
+    const { assert!(HEIGHT * 2 + 4 <= 34 && ADVANCE == WIDTH + 1) };
 }
 
 /// A bar is lit up to its step and dotted in grey beyond, between the margins of the display.

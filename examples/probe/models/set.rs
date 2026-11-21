@@ -169,13 +169,19 @@ fn camera(shot: &Shot, aim: Vec3) -> Transform {
     Transform::from_translation(aim + eye * shot.dist).looking_at(aim, up)
 }
 
+/// Filter that keeps the companion and leaves the robot out.
+type OnlyBuddy = (With<Buddy>, Without<Robot>);
+
+/// Filter that keeps the camera and leaves both models out.
+type OnlyEye = (With<Camera3d>, Without<Robot>, Without<Buddy>);
+
 /// Sets the scene up for the shot in hand and keeps its walking going.
 pub fn advance(
     mut commands: Commands,
     plan: Res<Plan>,
     mut robot: Query<(Entity, &mut AvatarPose, &mut Transform), With<Robot>>,
-    mut buddy: Query<(&mut Float, &mut Face, &mut Transform), (With<Buddy>, Without<Robot>)>,
-    mut eye: Query<&mut Transform, (With<Camera3d>, Without<Robot>, Without<Buddy>)>,
+    mut buddy: Query<(&mut Float, &mut Face, &mut Transform), OnlyBuddy>,
+    mut eye: Query<&mut Transform, OnlyEye>,
 ) {
     let Some(shot) = plan.todo.last() else {
         return;

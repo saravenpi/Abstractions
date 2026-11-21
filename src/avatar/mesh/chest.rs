@@ -84,9 +84,9 @@ const DISCS: [Disc; 6] = [
         DARK,
     )
     .fine(),
-    Disc::new([0.0, 0.318, 0.1], Vec3::X, [0.04, 0.115], SHADE).fine(),
-    Disc::new([0.07, 0.318, 0.1], Vec3::X, [0.044, 0.012], ACCENT).fine(),
-    Disc::new([-0.07, 0.318, 0.1], Vec3::X, [0.044, 0.012], ACCENT).fine(),
+    Disc::new([0.0, 0.317, 0.1], Vec3::X, [0.04, 0.115], SHADE).fine(),
+    Disc::new([0.07, 0.317, 0.1], Vec3::X, [0.044, 0.012], ACCENT).fine(),
+    Disc::new([-0.07, 0.317, 0.1], Vec3::X, [0.044, 0.012], ACCENT).fine(),
     Disc::new([-0.07, 0.3, -0.127], Vec3::Z, [0.026, 0.005], ACCENT)
         .sides(3)
         .fine(),

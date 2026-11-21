@@ -97,11 +97,9 @@ pub fn night(world: &mut World, _: &mut Notes, frame: u32) -> Act {
             views(world, frame - 59, "33-night", &OUT);
         }
         100 => view(world, ViewMode::First, ViewMode::First),
-        140.. => {
-            if views(world, frame - 139, "33-night", &looks()[..4]) {
-                world.resource_mut::<abstractions::space::Clock>().seconds += half;
-                return Act::Next;
-            }
+        140.. if views(world, frame - 139, "33-night", &looks()[..4]) => {
+            world.resource_mut::<abstractions::space::Clock>().seconds += half;
+            return Act::Next;
         }
         _ => {}
     }

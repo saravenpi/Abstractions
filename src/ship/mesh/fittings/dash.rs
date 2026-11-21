@@ -11,10 +11,12 @@ use crate::ship::solid::Solid;
 /// of a bezel round its display, in metres.
 const PANEL: (f32, f32, f32) = (0.04, 0.012, 0.014);
 
+/// Two lengths in metres that go together: a rear and a front value.
+type Pair = (f32, f32);
+
 /// The hood: where its rear and its front edge are along z, their half widths, the height of
 /// their top, and its thickness.
-const HOOD: ((f32, f32), (f32, f32), (f32, f32), f32) =
-    ((-2.12, -2.45), (0.33, 0.2), (0.535, 0.47), 0.12);
+const HOOD: (Pair, Pair, Pair, f32) = ((-2.12, -2.45), (0.33, 0.2), (0.535, 0.47), 0.12);
 
 /// Returns the point of the raked panel `across` metres from its middle and `along` metres up
 /// its slope, lifted `lift` metres off its face.

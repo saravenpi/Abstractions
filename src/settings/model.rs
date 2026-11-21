@@ -176,6 +176,8 @@ pub struct Keymap {
     pub wings: KeyCode,
     /// Switch between first and third person, in the ship and on foot.
     pub view: KeyCode,
+    /// Bring the view in the ship back behind the nose, or to the nose from the pilot seat.
+    pub recentre: KeyCode,
     /// Step the minimap through its ranges, then off.
     pub minimap: KeyCode,
     /// Open and close the map, on foot and in the ship.
@@ -209,6 +211,7 @@ impl Default for Keymap {
             engage: KeyCode::KeyG,
             wings: KeyCode::KeyR,
             view: KeyCode::KeyV,
+            recentre: KeyCode::KeyR,
             minimap: KeyCode::KeyN,
             map: KeyCode::KeyM,
             waypoint: KeyCode::KeyB,

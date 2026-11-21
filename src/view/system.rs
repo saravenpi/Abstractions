@@ -8,7 +8,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::io::{BodyFade, CameraPose, Heading, Look, Moment, Occluder, Target};
-use super::keys::{read_look, toggle};
+use super::keys::{read_look, recentre, toggle};
 use super::mode::ViewPrefs;
 use super::occlude;
 use super::rig::Rig;
@@ -199,7 +199,8 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(
             Update,
             (
-                (read_look, toggle)
+                (read_look, toggle, recentre)
+                    .chain()
                     .run_if(in_control)
                     .in_set(ViewSet::Input),
                 (drive, apply).chain().in_set(ViewSet::Rig),

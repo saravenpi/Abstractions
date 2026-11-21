@@ -45,7 +45,8 @@ In the ship:
 | Q E | Turn left, turn right |
 | Shift, Ctrl | Throttle up, throttle down. Shift held at full throttle boosts. Ctrl held at idle brakes in space |
 | Space, C | Vertical thrusters up and down |
-| Mouse | Look around. The view comes back to the nose by itself |
+| Mouse | Look around. With "Camera auto-follow" on, the view comes back to the nose by itself; off, it stays where you leave it |
+| R | Bring the view back to the nose |
 | X | Cut the throttle |
 | Z | Flight assist on or off |
 | J | Warp drive, away from a planet's gravity |

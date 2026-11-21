@@ -1,14 +1,20 @@
 //! First-time hints: at most four in the whole game, shown one at a time on the prompt line,
 //! only while nothing with a higher priority shows. A hint never comes back once its action
-//! is done, and stays at most [`HOLD`] seconds in a session. They are kept in the `hints` bitset
-//! of the settings.
+//! is done, and shows at most [`HOLD`] seconds in all in a session, however often the player
+//! leaves the place it shows in and comes back. They are kept in the `hints` bitset of the
+//! settings, which outlive every world: the player learnt the key, not the world.
+
+mod clock;
+
+pub use clock::Clock;
+pub(super) use clock::{retire, update};
 
 use bevy::prelude::*;
 
-use super::context::{Context, Element, Where, shown};
-use crate::settings::{Keymap, Persistent, Settings};
+use super::context::{Context, Element, shown};
+use crate::settings::Keymap;
 
-/// Seconds a hint stays on the line before it is given up for the session.
+/// Seconds in all a hint stays on the line in a session before it is given up for the session.
 pub const HOLD: f32 = 10.0;
 
 /// Seconds seated in the ship before the map hint shows.
@@ -75,19 +81,6 @@ impl Hint {
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Hinted(pub Option<Hint>);
 
-/// Time spent in each place this session, and what was given up.
-#[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
-pub struct Clock {
-    /// Seconds seated in the ship.
-    pub seated: f32,
-    /// Seconds on the ground, on foot or seated.
-    pub afoot: f32,
-    /// Seconds the current hint has been on the line.
-    pub shown: f32,
-    /// Bits of the hints given up for this session.
-    pub hushed: u8,
-}
-
 /// Returns whether the hint's action was done once.
 pub const fn done(bits: u8, hint: Hint) -> bool {
     bits & hint.bit() != 0
@@ -125,39 +118,4 @@ pub fn finished(keys: &Keymap, pressed: impl Fn(KeyCode) -> bool) -> Option<Hint
     Hint::ALL
         .into_iter()
         .find(|hint| pressed(hint.key(keys)) || (*hint == Hint::Map && pressed(keys.computer)))
-}
-
-/// Counts the time spent in each place, picks the hint to show, and writes the bit of one the
-/// player just did.
-pub(super) fn update(
-    (time, keys, now): (Res<Time>, Res<ButtonInput<KeyCode>>, Res<Where>),
-    mut settings: ResMut<Persistent<Settings>>,
-    (mut clock, mut hinted): (ResMut<Clock>, ResMut<Hinted>),
-) {
-    let (dt, context) = (time.delta_secs(), now.0);
-    if shown(context).contains(Element::Cardinals) {
-        clock.afoot += dt;
-    }
-    if context.is_ship() {
-        clock.seated += dt;
-    }
-    let bits = settings.hints;
-    if let Some(hint) = finished(&settings.controls.keys, |key| keys.just_pressed(key))
-        && !done(bits, hint)
-    {
-        let marked = with(bits, hint);
-        if let Err(error) = settings.update(|settings| settings.hints = marked) {
-            warn!("could not save the hints: {error}");
-        }
-    }
-    let wanted = due(settings.hints, &clock, context);
-    if wanted == hinted.0 {
-        clock.shown += dt * f32::from(u8::from(wanted.is_some()));
-        if let Some(hint) = wanted.filter(|_| clock.shown >= HOLD) {
-            clock.hushed |= hint.bit();
-        }
-        return;
-    }
-    clock.shown = 0.0;
-    hinted.0 = wanted;
 }

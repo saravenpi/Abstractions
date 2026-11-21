@@ -46,6 +46,8 @@ mod tests_hints;
 #[cfg(test)]
 mod tests_icons;
 #[cfg(test)]
+mod tests_pin_hint;
+#[cfg(test)]
 mod tests_prompt;
 #[cfg(test)]
 mod tests_rows;
@@ -65,6 +67,7 @@ use bevy::time::common_conditions::on_timer;
 
 use crate::condition::Condition;
 use crate::screens::{Screen, in_control};
+use crate::settings::{Persistent, Settings};
 use crate::ui::theme;
 
 /// Seconds between two refreshes of the flight instruments and the prompt line.
@@ -227,7 +230,13 @@ pub(super) fn plugin(app: &mut App) {
         .init_resource::<hints::Hinted>()
         .init_resource::<hints::Clock>()
         .add_plugins((minimap::plugin, onscreen::plugin))
-        .add_systems(OnEnter(Screen::Gameplay), spawn);
+        .add_systems(OnEnter(Screen::Gameplay), spawn)
+        .add_systems(
+            Update,
+            hints::retire
+                .run_if(resource_exists::<Persistent<Settings>>)
+                .run_if(resource_exists_and_changed::<crate::map::Places>),
+        );
     steps(app);
     readouts(app);
 }

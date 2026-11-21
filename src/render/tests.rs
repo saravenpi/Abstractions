@@ -4,10 +4,10 @@
 use bevy::math::{DMat3, DQuat, DVec3};
 use bevy::prelude::*;
 
+use super::aerial::cull_distance;
 use super::atmosphere::{air, horizon_dip, shadow};
 use super::clock::{catch_up, solar_day};
 use super::clouds::crossing_depth;
-use super::fog::cull_distance;
 use super::observer::Observer;
 use super::sun::SunDir;
 use crate::space::{Anchor, Frame};

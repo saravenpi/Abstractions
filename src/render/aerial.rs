@@ -21,6 +21,7 @@ use super::air::Air;
 use super::scatter::DEPTH;
 use super::vantage::Vantage;
 use super::weather::{LocalWeather, WeatherLook};
+use crate::world::globe::far::SIGHT;
 
 /// Scale heights between the sea level and the top of the air, as the universe has it.
 const TOP_SCALES: f32 = crate::universe::TOP_SCALES as f32;
@@ -121,6 +122,17 @@ pub fn sight(extinction: Vec3) -> f32 {
         return f32::INFINITY;
     }
     -LEFT.ln() / least
+}
+
+/// Distance in metres the camera culls at least, as Bevy does by default.
+const NEAR_FAR: f32 = 1000.0;
+
+/// Returns the distance in metres a camera culls at over a planet of `radius` metres when the
+/// air takes `extinction` per metre: where the air has hidden everything, at most
+/// [`SIGHT`] planet radii, where nothing of the world is drawn any more, and no closer than
+/// Bevy's default. The depth of the camera has no far plane, so this only culls.
+pub fn cull_distance(extinction: Vec3, radius: f32) -> f32 {
+    sight(extinction).min(SIGHT as f32 * radius).max(NEAR_FAR)
 }
 
 /// Returns the share of red, green and blue light left after `distance` metres of air that

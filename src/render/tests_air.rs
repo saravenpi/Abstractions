@@ -5,8 +5,9 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::aerial::Haze;
+use super::aerial::cull_distance;
 use super::air::Air;
-use super::fog::{cull_distance, extinction};
+use super::fog::extinction;
 use super::observer::Observer;
 use super::vantage::{LocalSystem, Nearby, Vantage};
 use super::weather::WeatherLook;

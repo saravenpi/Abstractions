@@ -4,8 +4,9 @@
 use bevy::pbr::FogFalloff;
 use bevy::prelude::*;
 
+use super::aerial::cull_distance;
 use super::aerial::{AEROSOL, CONTRAST, Haze};
-use super::fog::{FogKey, cull_distance, extinction, fog_for, white};
+use super::fog::{FogKey, extinction, fog_for, white};
 use super::scatter::DEPTH;
 use crate::world::globe::far::SIGHT;
 

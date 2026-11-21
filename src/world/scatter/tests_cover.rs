@@ -113,7 +113,8 @@ fn cover_keeps_the_plant_count() {
 }
 
 /// A coarse mesh reads the cover of a place as the chunk that holds it does: at the grid points of the cover of a
-/// chunk, the spread of the stretch and the carpet of the chunk agree.
+/// chunk, the spread of the stretch and the carpet of the chunk agree. The carpet clamps a read on the far edge of
+/// its chunk a thousandth of a cell inside, which is why the bound is not tighter.
 #[test]
 fn spread_reads_the_cover_of_the_chunks() {
     let _book = hold();
@@ -126,7 +127,7 @@ fn spread_reads_the_cover_of_the_chunks() {
         let far = super::air::calm(|| spread.at(terrain, w));
         let near = super::air::calm(|| super::turf::Carpet::of(terrain, coord).map(|c| c.at(w)));
         assert!(
-            (near.expect("a carpet") - far).abs() < 1e-4,
+            (near.expect("a carpet") - far).abs() < 5e-3,
             "{near:?} {far}"
         );
     }

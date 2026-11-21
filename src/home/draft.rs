@@ -65,6 +65,12 @@ impl<'a> Draft<'a> {
         self.lot.ground(root.x, root.z) - self.pose.translation.y
     }
 
+    /// Returns the height of the highest ground near the point `at` of the piece, see [`Lot::crest`].
+    pub fn crest(&self, at: Vec2) -> f32 {
+        let root = self.at(Vec3::new(at.x, 0.0, at.y));
+        self.lot.crest(root.x, root.z) - self.pose.translation.y
+    }
+
     /// Returns true when the box `block` of the piece rises above what the ground itself carries.
     fn proud(&self, block: &Block) -> bool {
         let corners = block.corners();

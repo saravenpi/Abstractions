@@ -21,7 +21,7 @@ fn every_part_of_the_base_is_solid_where_drawn() {
         let lot = base.lot(&globe);
         let plan = plan(&lot);
         let tris = triangles(&plan.lit);
-        let grounded = |p: Vec3| p.y <= lot.ground(p.x, p.z) + NEAR;
+        let grounded = |p: Vec3| p.y <= lot.crest(p.x, p.z) + NEAR;
         let found = bare(&tris, &solid(&plan.blocks), |_, p| grounded(p));
         let (lo, hi) = found
             .iter()

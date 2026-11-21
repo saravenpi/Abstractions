@@ -3,7 +3,7 @@
 use super::*;
 
 /// The stages in order: name, group and function. The `core` stages always run.
-pub const STAGES: [(&str, &str, Stage); 88] = [
+pub const STAGES: [(&str, &str, Stage); 110] = [
     ("menus", "ui", menus),
     ("title", "core", title),
     ("loading", "core", loading),
@@ -92,4 +92,26 @@ pub const STAGES: [(&str, &str, Stage); 88] = [
     ("land", "tour", land),
     ("step-out", "tour", step_out),
     ("pause", "ui", pause),
+    ("p01-home", "postcards", card_home),
+    ("p02-pair", "postcards", card_pair),
+    ("p03-walk", "postcards", card_walk),
+    ("p04-ship", "postcards", card_ship),
+    ("p05-cockpit", "postcards", card_cockpit),
+    ("p06-liftoff", "postcards", card_liftoff),
+    ("p07-coast", "postcards", card_coast),
+    ("p08-peaks", "postcards", card_peaks),
+    ("p09-herd", "postcards", card_herd),
+    ("p10-beast", "postcards", card_beast),
+    ("p11-glide", "postcards", card_glide),
+    ("p12-orbit", "postcards", card_orbit),
+    ("p13-star", "postcards", card_star),
+    ("p14-night-base", "postcards", card_night_base),
+    ("p15-night-ship", "postcards", card_night_ship),
+    ("p16-ridge", "postcards", card_ridge),
+    ("p17-valley", "postcards", card_valley),
+    ("p18-cliffs", "postcards", card_cliffs),
+    ("p19-overlook", "postcards", card_overlook),
+    ("p20-twilight", "postcards", card_twilight),
+    ("p21-noon", "postcards", card_noon),
+    ("p22-river", "postcards", card_river),
 ];

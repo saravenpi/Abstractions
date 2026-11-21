@@ -59,6 +59,7 @@ fn cells_near(terrain: &Terrain, pad: DVec3, size: f32) -> Vec<IVec2> {
 #[test]
 fn no_blade_stands_on_the_pad() {
     let (mut inside, mut outside, mut total) = (0, 0, 0);
+    let (mut turfed, mut bare) = (0, 0);
     for seed in 0..10 {
         let (globe, base, terrain) = base_of(seed);
         let none = Cropped::default();
@@ -66,8 +67,10 @@ fn no_blade_stands_on_the_pad() {
         for key in cells_near(&terrain, base.pad, TILE) {
             let chunk = (key.as_vec2() * TILE / CHUNK_SIZE).floor().as_ivec2();
             let Some(carpet) = Carpet::of(&terrain, chunk) else {
+                bare += 1;
                 continue;
             };
+            turfed += 1;
             let ground = Ground::read(&terrain, key);
             let (blades, frame) = grow((&terrain, &ground), key, &carpet, true, &clear);
             for root in blades.roots().iter().step_by(3) {

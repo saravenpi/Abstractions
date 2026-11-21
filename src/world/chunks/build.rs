@@ -76,8 +76,9 @@ fn ground(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>]) -> Collider {
     Collider::trimesh(patch.positions().to_vec(), patch.triangles())
 }
 
-/// Removes from `scatter` what stands within the clearing of a structure of chunk `coord`, or on
-/// the reserved ground of the planet, both measured in metres on the sea level sphere.
+/// Removes from `scatter` what stands within the clearing of a structure of chunk `coord`, and the props and only
+/// the props on the reserved ground of the planet, both measured in metres on the sea level sphere. The ground
+/// cover keeps to the base, except on the square of the landing pad.
 fn clear(scatter: &mut Scatter, terrain: &Terrain, coord: IVec2, warp: &Embedding) {
     let sea = |p: Vec3| warp.point(Vec3::new(p.x, 0.0, p.z));
     let center = warp.center();
@@ -93,15 +94,16 @@ fn clear(scatter: &mut Scatter, terrain: &Terrain, coord: IVec2, warp: &Embeddin
     if taken.is_empty() && kept.is_none() {
         return;
     }
-    let free = |p: &Placement| {
+    let free = |p: &Placement, disc: bool| {
         let at = sea(p.pos);
         let planet = frame.origin + frame.rot * at.as_dvec3();
+        let off_disc = kept.is_none_or(|reserve| !reserve.covers(planet, RESERVE_CLEARING));
         taken.iter().all(|o| o.distance(at) > CLEARING)
-            && kept.is_none_or(|reserve| !reserve.covers(planet, RESERVE_CLEARING))
+            && (off_disc || !disc)
             && !terrain.globe().on_pad(planet, PAD_MARGIN)
     };
-    scatter.props.retain(free);
-    scatter.grass.retain(free);
+    scatter.props.retain(|p| free(p, true));
+    scatter.grass.retain(|p| free(p, false));
 }
 
 /// Returns the scatter of chunk `coord` over its `heights`, cleared around structures and the

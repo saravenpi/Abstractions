@@ -86,14 +86,15 @@ fn lingers(ship: &Ship, skies: &Skies, target: Target) -> Option<BodyId> {
 }
 
 /// Returns whether the route climbs this frame: it is in the air of a planet, in a climb already, or
-/// under the departure orbit of a planet it does not go to, in which case it sets the climb off.
+/// under the departure orbit of a planet it does not go to while the drive is off, in which case it sets
+/// the climb off: a ship in warp is never taken out of it by the climb.
 pub(super) fn climbing(
     autopilot: &mut Autopilot,
     ship: &Ship,
     skies: &Skies,
     target: Target,
 ) -> bool {
-    if !climbs(ship) {
+    if ship.warp == Warp::Off && !climbs(ship) {
         autopilot.leaving = lingers(ship, skies, target).or(autopilot.leaving);
     }
     autopilot.phase == Phase::Climbing || climbs(ship) || autopilot.leaving.is_some()

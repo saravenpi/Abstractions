@@ -20,6 +20,11 @@ const PAST: f64 = 2.0;
 /// than a millisecond of the time of flight.
 const PASSES: usize = 2;
 
+/// Lock radii from the destination within which the heading is no longer corrected: the last stretch
+/// takes seconds, in which a destination that moves has gone a few hundredths of its lock radius, and
+/// a new aim each time the target point moved a little is what spools the drive again and again.
+const CLOSE: f64 = 20.0;
+
 /// Share of the lock radius a course in warp may miss by before the drive drops out to align again.
 const OFF: f64 = 0.8;
 
@@ -97,7 +102,8 @@ pub fn missed(ship: &Ship, way: Option<DVec3>, (to, lock): (DVec3, f64)) -> bool
         None => {
             let behind = ship.forward().dot(to) < 0.0;
             let aside = ship.forward().cross(to).length();
-            (behind && to.length() > PAST * lock) || aside > OFF * lock
+            let closing = to.length() <= CLOSE * lock;
+            (behind && to.length() > PAST * lock) || (aside > OFF * lock && !closing)
         }
     };
     matches!(ship.warp, Warp::Active { .. }) && off

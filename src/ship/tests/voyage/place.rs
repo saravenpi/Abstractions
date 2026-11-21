@@ -6,7 +6,7 @@ use crate::ship::frames::planet_velocity;
 use crate::ship::tests::rig::Game;
 use crate::ship::warp::Warp;
 use crate::space::{Clock, Frame};
-use crate::universe::Universe;
+use crate::universe::{BodyId, Universe};
 
 /// Radii from the centre of the home planet the ship is put at at rest, outside its lock sphere.
 pub const ORBIT: f64 = 3.0;
@@ -14,13 +14,13 @@ pub const ORBIT: f64 = 3.0;
 /// Radii from the centre of the home planet of a low circular orbit, inside its lock sphere.
 const LOW: f64 = 1.1;
 
-/// Puts the ship at rest beside the home planet, [`ORBIT`] radii out, in the frame of the star.
-pub fn into_orbit(game: &mut Game) {
+/// Puts the ship at rest [`ORBIT`] radii from the centre of the planet `body`, in the frame of its star.
+pub fn beside(game: &mut Game, body: BodyId) {
     let (universe, time) = (game.get::<Universe>(), game.get::<Clock>().seconds);
-    let planet = universe.planet(universe.home());
+    let planet = universe.planet(body);
     let up = DVec3::X;
     let pos = planet.position(time) + up * planet.radius * ORBIT;
-    let frame = Frame::System(universe.home().star);
+    let frame = Frame::System(body.star);
     game.with_ship(|ship| {
         ship.frame = frame;
         ship.pos = pos;
@@ -30,6 +30,12 @@ pub fn into_orbit(game: &mut Game) {
         ship.warp = Warp::Off;
     });
     game.step(5);
+}
+
+/// Puts the ship at rest beside the home planet, [`ORBIT`] radii out, in the frame of the star.
+pub fn into_orbit(game: &mut Game) {
+    let home = game.get::<Universe>().home();
+    beside(game, home);
 }
 
 /// Puts the ship in a circular orbit [`LOW`] radii from the centre of the home planet, nose along its

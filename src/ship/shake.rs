@@ -1,5 +1,5 @@
 //! The shake of the view: in rough air small, smooth and never a jolt, and after a crash a
-//! short hard jolt that dies out in half a second.
+//! short hard jolt that dies out in half a second. Under a menu the view holds still.
 
 use bevy::prelude::*;
 
@@ -57,4 +57,31 @@ pub fn eased(level: f32, wanted: f32, rate: f32, dt: f32) -> f32 {
     } else {
         next
     }
+}
+
+/// Seconds over which the shake eases back into the view once the menu over the world closes.
+pub const RESUME: f32 = 0.2;
+
+/// How much of the shake reaches the view, from 0 while a menu or a screen covers the world to
+/// 1 in play. The world goes on under a menu in a session; only the view holds still.
+#[derive(Resource, Debug, Clone, Copy, PartialEq)]
+pub struct Steady(pub f32);
+
+impl Default for Steady {
+    /// The whole shake, as in play.
+    fn default() -> Self {
+        Self(1.0)
+    }
+}
+
+/// Stops the shake of the view at once: a menu covers the world.
+pub fn hush(mut steady: ResMut<Steady>) {
+    steady.set_if_neq(Steady(0.0));
+}
+
+/// Eases the shake back into the view over [`RESUME`] seconds of the wall clock once play
+/// goes on.
+pub fn wake(time: Res<Time<Real>>, mut steady: ResMut<Steady>) {
+    let next = (steady.0 + time.delta_secs() / RESUME).min(1.0);
+    steady.set_if_neq(Steady(next));
 }

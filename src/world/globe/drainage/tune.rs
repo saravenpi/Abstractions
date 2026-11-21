@@ -28,5 +28,13 @@ pub const APART: f64 = 6.0;
 /// Share of its score a river mouth takes off a start: mouths are sheltered, wet and flat.
 pub const MOUTH: f32 = 0.35;
 
+/// Sine of star height a start may lack before it falls one step behind the others: 0.1, about 6 degrees
+/// near the horizon. Starts within one step are told apart by their shore.
+pub const DIM: f32 = 0.1;
+
+/// What each step of [`DIM`] a start lacks adds to its score: more than the whole span of the score of a
+/// shore, which runs from 0 to under 2.
+pub const UNFAIR: f32 = 2.0;
+
 /// Bisection steps that narrow the shore between a land cell and a sea cell, 2^-14 of their distance.
 pub const BISECT: u32 = 14;

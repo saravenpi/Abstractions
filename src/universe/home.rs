@@ -6,13 +6,17 @@
 //! of a galaxy cannot serve: at real scale it is a void hundreds of light-years wide inside a
 //! core packed to the cap, and a search from there finds no neighbourhood like ours.
 
+use std::f64::consts::{PI, TAU};
+
 use bevy::math::{DVec3, IVec3};
 
+use super::daystar::Daystar;
 use super::galaxy;
 use super::ids::{BodyId, GalaxyId, StarId};
 use super::record::{PlanetClass, Water};
 use super::spec::{PlanetSpec, StarSpec};
 use super::{LY, SECTOR_LY, STANDARD_GRAVITY, shells, system};
+use crate::climate::{Fair, Setting};
 use crate::life::{Rung, Solvent, World, chem, odds};
 
 /// Grid cell of the home galaxy, the one cell that always holds a galaxy: the centre of the
@@ -48,6 +52,20 @@ pub fn landable(planet: &PlanetSpec) -> bool {
 /// some latitude of the planet, or some longitude of a locked one, is walkable all year.
 pub const MILD: (f64, f64) = (273.15, 308.15);
 
+/// Height in degrees above the horizon the star must reach over a day where a home base stands.
+///
+/// At 25 degrees the ground takes 0.42 of the light of a star overhead and the sky is in full day,
+/// which begins at 14.5 degrees (a sine of 0.25, the top of `render::daylight`), so the plants around
+/// the base grow in real light and shadows are 2.1 times as long as what casts them. On a planet
+/// that turns, every latitude under 65 degrees has it. On a planet locked to its star, where the
+/// star never moves, it keeps the base 25 degrees inside the day side, with the star well clear
+/// of the hills on the horizon.
+pub const LIT: f64 = 25.0;
+
+/// Latitudes and longitudes of the grid a planet is looked over for a fair place: every 12 degrees
+/// from 60 south to 60 north, every 3 degrees round.
+const GRID: (usize, usize) = (11, 120);
+
 /// Lowest and highest surface gravity in metres per second squared of a home: 0.7 and 1.3
 /// standard gravities.
 ///
@@ -63,14 +81,31 @@ pub const COMFORT: (f64, f64) = (0.7 * STANDARD_GRAVITY, 1.3 * STANDARD_GRAVITY)
 /// Every planet gets the same test, on what is true of it: its life climbed to the skeletal
 /// rung or higher, where plants stand in layered forests and animals walk in herds, that life
 /// is built on water, the planet has seas and land in balance, water is liquid at the surface,
-/// the mean temperature is between 0 and 35 C, and the surface gravity is within [`COMFORT`].
+/// the mean temperature is between 0 and 35 C, the surface gravity is within [`COMFORT`], and
+/// some place is fair, see [`fair`].
 pub(super) fn homely(planet: &PlanetSpec, rung: Rung, world: &World) -> bool {
     let record = &planet.record;
     let water = chem::solvent(world).is_some_and(|(solvent, _)| solvent == Solvent::Water);
     let mild = (MILD.0..=MILD.1).contains(&record.temperature);
     let seas = record.class == PlanetClass::Island && record.water == Water::Liquid;
     let pull = (COMFORT.0..=COMFORT.1).contains(&planet.gravity);
-    rung >= Rung::Skeletal && water && mild && seas && pull
+    rung >= Rung::Skeletal && water && mild && seas && pull && fair(planet)
+}
+
+/// Returns true when some place of `planet` is mild and lit: over a day the star reaches [`LIT`]
+/// there and the annual mean air is within [`MILD`], see [`Fair::lack`]. A planet that turns
+/// always has one. A planet locked to its star has none when its day side is too hot wherever the
+/// star stands that high, and then its only mild ground lies in the dusk or the dark: no base
+/// would see the day on it.
+fn fair(planet: &PlanetSpec) -> bool {
+    let rule = Fair::of(&Setting::of(planet), Daystar::of(planet));
+    let (rows, columns) = GRID;
+    (0..rows * columns).any(|i| {
+        let lat = ((i / columns) as f64 / (rows - 1) as f64 - 0.5) * PI * 2.0 / 3.0;
+        let lon = (i % columns) as f64 * TAU / columns as f64;
+        let dir = DVec3::new(lat.cos() * lon.cos(), lat.sin(), -lat.cos() * lon.sin());
+        rule.lack(dir) == 0.0
+    })
 }
 
 /// Returns the planet of `planets`, the planets of `star`, a new game would start on: the landable

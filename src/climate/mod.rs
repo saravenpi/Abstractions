@@ -7,6 +7,7 @@
 
 mod bands;
 mod biome;
+mod fair;
 mod heat;
 mod rain;
 mod season;
@@ -27,8 +28,12 @@ use bevy::math::{DVec3, Vec2, Vec3};
 use crate::universe::PlanetSpec;
 
 pub use biome::{SNOW_LINE, biome, snow};
+pub use fair::Fair;
 pub use heat::{Terms, terms};
 pub use season::season;
+
+/// The season of the annual mean, when the tilt warms neither hemisphere: what the ground is shaped by.
+pub const MEAN_SEASON: f32 = 0.25;
 
 /// The planet as the climate sees it: its record and the parts of its spec that shape weather.
 #[derive(Debug, Clone, Copy, PartialEq)]

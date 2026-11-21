@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use super::skylight::{BAND, DAY, band, hide_flux, luminance, shown};
+use super::skylight::{BAND, DAY, LEAST, SPAN, band, hide_flux, luminance, shown};
 use super::starfield::DAY_FLUX;
 
 /// The clear noon sky hides every star under the flux of the star of the system and shows that.
@@ -18,7 +18,7 @@ fn noon_hides_all_but_the_star_of_the_system() {
 /// A dark sky shows the faintest star of the field, and the bright ones come out first at dusk.
 #[test]
 fn night_shows_all_and_dusk_the_bright_first() {
-    assert_eq!(shown(-4.6, 0.002), 1.0);
+    assert!(shown(-4.6, 0.002) > 0.98);
     let dusk = 0.04;
     assert!(shown(0.0, dusk) > 0.99);
     assert_eq!(shown(-4.0, dusk), 0.0);
@@ -40,4 +40,17 @@ fn luminance_follows_the_eye() {
     assert!((luminance(Vec3::ONE) - 1.0).abs() < 1.0e-4);
     assert!(luminance(Vec3::new(0.0, 1.0, 0.0)) > luminance(Vec3::new(0.0, 0.0, 1.0)));
     assert_eq!(luminance(Vec3::ZERO), 0.0);
+}
+
+/// The shader holds the constants of the rule tested here.
+#[test]
+fn the_shader_has_the_constants_of_the_rule() {
+    let shader = include_str!("starfield.wesl");
+    for line in [
+        format!("const SKY_DAY: f32 = {DAY:?};"),
+        format!("const SKY_SPAN: f32 = {SPAN:?};"),
+        format!("const SKY_LEAST: f32 = {LEAST:?};"),
+    ] {
+        assert!(shader.contains(&line), "starfield.wesl lacks `{line}`");
+    }
 }

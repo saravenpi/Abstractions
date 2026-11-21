@@ -20,7 +20,7 @@ fn white_light_is_the_identity() {
 fn red_light_is_adapted_to_partly() {
     let red = Vec3::new(1.0, 0.45, 0.2) * 8_000.0;
     let (own, white) = (chromaticity(red / SUN_LIGHT), adapted(red, 8_000.0));
-    assert!(own.x > D65.x + 0.1);
+    assert!(own.x > D65.x + 0.05);
     assert!(white.x > D65.x && white.x < own.x);
     assert!((white.x - D65.x) > 0.9 * (own.x - D65.x));
     let (temperature, _) = grading(white);

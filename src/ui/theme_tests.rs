@@ -28,56 +28,30 @@ fn white_text_keeps_its_contrast_over_a_white_world() {
     assert!((contrast(0.0, 1.0) - 21.0).abs() < 1e-3);
 }
 
+/// Asserts that each of `floors` (text, least contrast) holds on `PANEL` over a sky of `world`.
+fn holds(world: f32, floors: &[(Color, f32)]) {
+    for (text, floor) in floors {
+        let got = on_panel(*text, world);
+        assert!(got >= *floor, "{text:?} over {world}: {got} under {floor}");
+    }
+}
+
 /// Text on the light `PANEL`, over a pure white sky, the worst case no tonemapper reaches: `TEXT`
-/// keeps 5.5 to 1, the secondary text 3.5 to 1, and the pin and accent colours 4 and 3 to 1. Over
-/// a bright sky of 0.8, which the game's tonemapper does not exceed in the shots taken so far
+/// keeps 5.5 to 1, the secondary text 3.5 to 1, and the pin and accent colours 4 and 3 to 1.
+#[test]
+fn text_on_the_panel_is_readable_over_a_white_sky() {
+    let (t, t2, pin, accent) = (theme::TEXT, theme::TEXT_2, theme::PIN, theme::ACCENT);
+    holds(1.0, &[(t, 5.5), (t2, 3.5), (pin, 4.0), (accent, 3.0)]);
+}
+
+/// Over a bright sky of 0.8, which the game's tonemapper does not exceed in the shots taken so far
 /// (an assumption to check on new shots), the secondary text reaches 4.5 to 1. Over black every
 /// text keeps 7 to 1 or more.
 #[test]
-fn text_on_the_panel_is_readable_over_a_white_sky() {
-    assert!(
-        on_panel(theme::TEXT, 1.0) >= 5.5,
-        "{}",
-        on_panel(theme::TEXT, 1.0)
-    );
-    assert!(
-        on_panel(theme::TEXT_2, 1.0) >= 3.5,
-        "{}",
-        on_panel(theme::TEXT_2, 1.0)
-    );
-    assert!(
-        on_panel(theme::PIN, 1.0) >= 4.0,
-        "{}",
-        on_panel(theme::PIN, 1.0)
-    );
-    assert!(
-        on_panel(theme::ACCENT, 1.0) >= 3.0,
-        "{}",
-        on_panel(theme::ACCENT, 1.0)
-    );
-    assert!(
-        on_panel(theme::TEXT_2, 0.8) >= 4.5,
-        "{}",
-        on_panel(theme::TEXT_2, 0.8)
-    );
-    assert!(
-        on_panel(theme::PIN, 0.8) >= 5.0,
-        "{}",
-        on_panel(theme::PIN, 0.8)
-    );
-    assert!(
-        on_panel(theme::ACCENT, 0.8) >= 4.0,
-        "{}",
-        on_panel(theme::ACCENT, 0.8)
-    );
-    for text in [theme::TEXT, theme::TEXT_2, theme::PIN, theme::ACCENT] {
-        assert!(
-            on_panel(text, 0.0) >= 7.0,
-            "{text:?} {}",
-            on_panel(text, 0.0)
-        );
-    }
-    assert!(on_panel(theme::TEXT, 0.0) >= 15.0);
+fn text_on_the_panel_is_readable_over_a_bright_sky_and_black() {
+    let (t, t2, pin, accent) = (theme::TEXT, theme::TEXT_2, theme::PIN, theme::ACCENT);
+    holds(0.8, &[(t2, 4.5), (pin, 5.0), (accent, 4.0)]);
+    holds(0.0, &[(t, 15.0), (t2, 7.0), (pin, 7.0), (accent, 7.0)]);
 }
 
 /// The rows that can hold warning text sit on `PANEL_DEEP`, where `WARN` and `DANGER` keep 4.5 to 1

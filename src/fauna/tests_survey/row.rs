@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use bevy::math::DVec3;
 
-use super::glide::{Glide, glide};
 use super::herd::{herd, walker};
 use super::shares::{Shares, climate_at, shares};
 use crate::climate::{self, Climate, Spot};
@@ -37,8 +36,6 @@ pub struct Row {
     pub shares: Shares,
     /// Whether a herd of a walking species lives within [`WALK`] of the spawn.
     pub herd: bool,
-    /// The hands-off glide of the wingsuit from 300 m above the spawn.
-    pub glide: Glide,
 }
 
 /// Returns true for a land plant species.
@@ -54,8 +51,7 @@ pub fn measure(seed: u64) -> Row {
     let star = universe.system(body.star).star;
     let life = life::of(&planet, &star);
     let globe = Arc::new(Globe::of(&planet).with_life(life.clone()));
-    let landing = Base::landing(&globe);
-    let dir = landing.normalize();
+    let dir = Base::landing(&globe).normalize();
     let spot = |dir: DVec3| Spot {
         dir,
         altitude: 0.0,
@@ -72,7 +68,6 @@ pub fn measure(seed: u64) -> Row {
         biome: globe.biome(dir),
         shares: shares(&globe),
         herd: walks,
-        glide: glide(&planet, (landing.length() - planet.radius) as f32),
         star,
         planet,
         life,

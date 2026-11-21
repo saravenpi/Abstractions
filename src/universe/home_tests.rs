@@ -3,7 +3,6 @@
 use std::collections::HashSet;
 use std::time::Instant;
 
-use super::air::boiling;
 use super::home::{HOME_GALAXY, SEARCH, homely};
 use super::range_tests::sample;
 use super::*;
@@ -50,13 +49,14 @@ fn home_is_landable_and_alive() {
     assert!(dead.is_empty(), "{dead:?}");
 }
 
-/// No star nearer to the Sun-like point of the home galaxy than the home star has a homely
+/// Under the rule of 0.11.0, the rule of the worlds saved before the home had to be Earth-like,
+/// no star nearer to the Sun-like point of the home galaxy than the home star has a homely
 /// landable planet: the home is the nearest one.
 #[test]
 fn home_is_the_nearest_homely_planet() {
     for seed in 0..12 {
-        let u = Universe::new(seed);
-        let (planet, star) = home(seed);
+        let u = Universe::under(seed, 0);
+        let (planet, star) = (u.planet(u.home()), u.system(u.home().star).star);
         let world = life::World::of(&planet, &star);
         let rung = life::odds::rung(&world, planet.seed);
         if !rung.is_some_and(|rung| homely(&planet, rung, &world)) {
@@ -129,34 +129,4 @@ fn the_home_search_is_cheap() {
     let worst = worst.flatten().max().expect("twenty seeds");
     println!("slowest home search of 20 seeds: {worst:?}");
     assert!(worst.as_millis() < 100, "{worst:?}");
-}
-
-/// The air [`GLIDE_AIR`] asks of a home keeps its seas liquid too: the thinnest air it lets
-/// through, of the home mix or of carbon dioxide alone, at 0 C under 0.7 g, boils water above
-/// the 35 C of [`MILD`]. The glide is the rule that binds.
-#[test]
-fn air_to_glide_in_keeps_the_seas_liquid() {
-    let carbon = Mix::of([
-        (Gas::CarbonDioxide, 1.0),
-        (Gas::Nitrogen, 0.0),
-        (Gas::Argon, 0.0),
-        (Gas::Oxygen, 0.0),
-    ]);
-    for mix in [Mix::HOME, carbon] {
-        let cold = PlanetRecord {
-            pressure: 1.0,
-            temperature: MILD.0,
-            mix,
-            ..PlanetRecord::TEMPERATE
-        };
-        let least = GLIDE_AIR * COMFORT.0 / STANDARD_GRAVITY / dense(&cold);
-        println!(
-            "thinnest home air of {mix:?}: {least:.3} bar, boils at {:.1} K",
-            boiling(least)
-        );
-        assert!(
-            least > 0.2 && boiling(least) > MILD.1,
-            "{least} bar of {mix:?}"
-        );
-    }
 }

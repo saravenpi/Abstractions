@@ -17,7 +17,8 @@ pub struct Course {
 }
 
 /// The action of the prompt while a course runs: the engage key stops it. What the course is doing is not
-/// said here, since a status in the slot of an action reads as an action: see `crate::computer::status_line`, shown by the course row of the instruments.
+/// said here, since a status in the slot of an action reads as an action: see
+/// `crate::computer::status_line`, shown by the course row of the instruments.
 pub const CANCEL: &str = "Cancel the course";
 
 /// What the course says on the prompt line. At most one field is set.

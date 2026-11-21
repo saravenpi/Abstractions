@@ -6,6 +6,8 @@
 
 use bevy::prelude::*;
 
+use super::exposure::SUN_LIGHT;
+
 /// Optical depth of one air mass for red, green and blue light: blue is scattered most.
 pub const DEPTH: Vec3 = Vec3::new(0.045, 0.10, 0.23);
 
@@ -61,4 +63,17 @@ mod tests {
         assert!(sky.z == 1.0 && sky.x < 0.3 && sky.y < 0.6);
         assert_eq!(peak(Vec3::ZERO), Vec3::ONE);
     }
+}
+
+/// Share of white a cloud keeps whatever the light: droplets scatter every wavelength alike.
+const CLOUD_WHITEN: f32 = 0.15;
+
+/// Returns the sRGB colour of a cloud lit by the star light `tint`, a linear colour of the
+/// strongest channel 1. The clouds take the colour of the light the ground takes, measured against
+/// the Sun that the white balance takes for neutral: a cloud is white under the Sun and orange
+/// under a red star, and the balance that whitens the hull whitens it too.
+pub fn lit_cloud(tint: Vec3) -> Vec3 {
+    let white = peak(tint / SUN_LIGHT).lerp(Vec3::ONE, CLOUD_WHITEN);
+    let encoded = Srgba::from(LinearRgba::rgb(white.x, white.y, white.z));
+    Vec3::new(encoded.red, encoded.green, encoded.blue)
 }

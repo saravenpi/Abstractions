@@ -9,9 +9,9 @@ use super::atmosphere::horizon_dip;
 use super::celestial::{smoothstep, sun_direction};
 use super::clock::START_PHASE;
 use super::daylight::{NIGHT_EDGE, daylight};
-use super::exposure::{Metered, SUN_LIGHT, lifted};
+use super::exposure::{Metered, lifted};
 use super::moonlight::{Moonlight, moonlit};
-use super::scatter::{peak, scattered, transmit};
+use super::scatter::{lit_cloud, peak, scattered, transmit};
 use super::vantage::{LocalSystem, Vantage};
 use super::weather::LocalWeather;
 
@@ -46,19 +46,6 @@ pub struct Palette {
 /// Converts an sRGB triple to a color.
 pub fn srgb(v: Vec3) -> Color {
     Color::srgb(v.x, v.y, v.z)
-}
-
-/// Share of white a cloud keeps whatever the light: droplets scatter every wavelength alike.
-const CLOUD_WHITEN: f32 = 0.15;
-
-/// Returns the sRGB colour of a cloud lit by the star light `tint`, a linear colour of the
-/// strongest channel 1. The clouds take the colour of the light the ground takes, measured against
-/// the Sun that the white balance takes for neutral: a cloud is white under the Sun and orange
-/// under a red star, and the balance that whitens the hull whitens it too.
-fn lit_cloud(tint: Vec3) -> Vec3 {
-    let white = peak(tint / SUN_LIGHT).lerp(Vec3::ONE, CLOUD_WHITEN);
-    let encoded = Srgba::from(LinearRgba::rgb(white.x, white.y, white.z));
-    Vec3::new(encoded.red, encoded.green, encoded.blue)
 }
 
 /// Sky color straight up at night, in sRGB.

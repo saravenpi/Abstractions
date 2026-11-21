@@ -86,6 +86,8 @@ pub const STAGES: [(&str, &str, Stage); 92] = [
     ("ground-30km", "ground", ground_30km),
     ("look-grain", "look", look_grain),
     ("look-cover", "look", look_cover),
+    ("look-vista-light", "look", look_vista_light),
+    ("look-vista-height", "look", look_vista_height),
     ("look-noon", "look", look_noon),
     ("look-sunset", "look", look_sunset),
     ("look-dusk", "look", look_dusk),

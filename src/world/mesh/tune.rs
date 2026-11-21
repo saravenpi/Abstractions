@@ -29,3 +29,7 @@ pub const ROCK_BAND: f32 = 20.0;
 /// and gets 16 cells of 3.6 to 9 pixels; seven levels up, 16 km away or more, the air has taken
 /// nine tenths, and it gets 8. Unit: quadtree levels.
 pub const SPARSE_LEVELS: (u8, u8) = (4, 7);
+
+/// Metres the skirts of a coarse node hang below the deepest gap a coarser neighbour can leave,
+/// for the sag of its triangles and the rounding of the heights. Unit: metres.
+pub const SKIRT_FLOOR: f32 = 3.0;

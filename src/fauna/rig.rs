@@ -36,11 +36,6 @@ pub fn planet(alive: bool) -> (BodyId, Arc<Globe>, Option<Life>) {
     (body, Arc::new(globe), life)
 }
 
-/// Returns the first herd of a drawn species near one of a few spots of the planet of `globe`.
-pub fn herd(globe: &Arc<Globe>, life: &Life, body: BodyId) -> Option<Herd> {
-    herd_of(globe, life, body, |_| true)
-}
-
 /// Returns the first herd of a drawn walking species that `fits` near one of a few spots of the
 /// planet of `globe`.
 pub fn herd_of(

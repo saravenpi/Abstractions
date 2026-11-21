@@ -24,7 +24,9 @@ mod tests_shown;
 
 pub use lay::{FAR, Found, Label, lay};
 pub use pick::looked;
-pub use place::{hung, over};
+#[cfg(test)]
+pub use place::hung;
+pub use place::over;
 
 use bevy::prelude::*;
 

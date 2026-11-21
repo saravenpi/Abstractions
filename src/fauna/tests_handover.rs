@@ -8,7 +8,6 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::Nearby;
-use super::beast::Beast;
 use super::herds::{Herds, member};
 use super::rig::app;
 use super::stage::{run, staying};

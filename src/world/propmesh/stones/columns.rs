@@ -19,9 +19,12 @@ pub(super) const OBSIDIAN_TRIS: usize = 20 + 4 * 16;
 /// Edge cut off the top of a basalt column, in metres at size one.
 const CHAMFER: f32 = 0.05;
 
+/// One column: corners, radius range, height range, distance from the middle and turn.
+type Column = (usize, [f32; 2], [f32; 2], f32, f32);
+
 /// The columns of a basalt rock: corners, radius and height ranges in metres, distance from the middle
 /// in metres, and the share of a turn between it and the first one around.
-const COLUMNS: [(usize, [f32; 2], [f32; 2], f32, f32); 3] = [
+const COLUMNS: [Column; 3] = [
     (6, [0.34, 0.42], [0.75, 1.0], 0.0, 0.0),
     (5, [0.26, 0.32], [0.45, 0.7], 0.62, 0.0),
     (5, [0.24, 0.3], [0.3, 0.5], 0.58, 0.36),
@@ -30,7 +33,7 @@ const COLUMNS: [(usize, [f32; 2], [f32; 2], f32, f32); 3] = [
 /// Paints a face of basalt column `column`: dark grey walls, a few of them weathered brown, a lighter edge
 /// and a lighter top.
 fn dark(f: &Facet, column: usize) -> [f32; 4] {
-    let rust = (f.corner + column * 2) % 5 == 0;
+    let rust = (f.corner + column * 2).is_multiple_of(5);
     let rgb = match (f.band, rust) {
         (3, _) => [0.34, 0.34, 0.35],
         (2, _) => [0.28, 0.28, 0.3],

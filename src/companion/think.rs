@@ -1,4 +1,5 @@
-//! The thinking system: watches the player, runs the mind and the face, and sends the chirps.
+//! The thinking system: watches the player, runs the mind and the face, and sends the chirps the
+//! speech lets through.
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
@@ -13,32 +14,24 @@ use super::mood::{ChirpKind, CompanionChirp, ambient, chirp};
 use super::motion::{Float, blend};
 use super::sense::{Around, CompanionSense};
 use super::sights::Sights;
+use super::speech::{Said, Speech, Why, reason, spoken};
 use super::tune::{DELIGHT_SECONDS, FLIGHT_RATE, SLEEPY_NIGHT, TAKEOFF_SECONDS, WAKE_SECONDS};
 use crate::computer::Atlas;
+use crate::settings::{Chatter, Persistent, Settings};
 use crate::ship::ShipEvent;
 use crate::universe::BodyId;
-
-/// Seconds the companion waits before it says the same thing again, and before it says
-/// anything else, so it never chatters.
-const QUIET: (f32, f32) = (10.0, 1.5);
 
 /// Head tilt in radians of the curious face.
 const CURIOUS_TILT: f32 = 0.17;
 
-/// Turns something that happened in the mind into a reaction of the face and a chirp.
-fn react(cue: Cue, brain: &mut Brain, face: &mut Face) -> Option<ChirpKind> {
+/// Turns something that happened in the mind into a reaction of the face and what it would say.
+fn react(cue: Cue, brain: &mut Brain, face: &mut Face) -> Said {
     match cue {
-        Cue::Woke => {
-            face.react(Expression::Surprised, WAKE_SECONDS);
-            Some(ChirpKind::Wake)
-        }
-        Cue::Started(Idle::Inspect) => {
-            brain.choose_inspect();
-            None
-        }
-        Cue::Started(Idle::Hum) => Some(ChirpKind::Hum),
-        Cue::Started(_) | Cue::Dozed => None,
+        Cue::Woke => face.react(Expression::Surprised, WAKE_SECONDS),
+        Cue::Started(Idle::Inspect) => brain.choose_inspect(),
+        Cue::Started(_) | Cue::Dozed => {}
     }
+    spoken(cue)
 }
 
 /// Returns the face the surroundings and the idle in progress call for.
@@ -61,6 +54,8 @@ pub struct Events<'w, 's> {
     ship: MessageReader<'w, 's, ShipEvent>,
     /// Where the chirps go.
     chirps: MessageWriter<'w, CompanionChirp>,
+    /// How often the player lets the companion speak.
+    settings: Option<Res<'w, Persistent<Settings>>>,
 }
 
 impl Events<'_, '_> {
@@ -79,26 +74,36 @@ impl Events<'_, '_> {
         landed && atlas.walk(body)
     }
 
-    /// Reacts to what just happened around the companion: a delighted face for a discovery,
-    /// a happy one with a delighted chirp when the player takes off with the gear, and a
-    /// wide-eyed one with its chirp when the ship lifts off.
-    fn stir(&mut self, brain: &mut Brain, face: &mut Face, body: BodyId) -> Option<ChirpKind> {
+    /// Reacts to what just happened around the companion: a delighted face and chirp for a
+    /// discovery, a happy face with a delighted chirp when the player takes off with the gear, and
+    /// a wide-eyed one with its chirp when the ship lifts off.
+    fn stir(&mut self, brain: &mut Brain, face: &mut Face, body: BodyId) -> Said {
         let sense = *self.sense;
         let fresh = self.first_steps(body);
-        if brain.discovered(&sense, fresh) {
+        let found = brain.discovered(&sense, fresh);
+        if found {
             face.react(Expression::Love, DELIGHT_SECONDS);
         }
         let took_off = sense.flying && !brain.aloft;
         brain.aloft = sense.flying;
-        if took_off {
-            face.react(Expression::Happy, TAKEOFF_SECONDS);
-            return Some(ChirpKind::Delight);
-        }
-        if !self.liftoff() {
-            return None;
-        }
-        face.react(Expression::Surprised, TAKEOFF_SECONDS);
-        Some(ChirpKind::Surprised)
+        let lifted = self.liftoff();
+        let (kind, face_of) = match (took_off, lifted, found) {
+            (true, ..) => (ChirpKind::Delight, Expression::Happy),
+            (_, true, _) => (ChirpKind::Surprised, Expression::Surprised),
+            (_, _, true) => return Some((ChirpKind::Delight, Why::Event)),
+            _ => return None,
+        };
+        face.react(face_of, TAKEOFF_SECONDS);
+        Some((kind, Why::Event))
+    }
+
+    /// Returns how often the companion may speak, and whether the player is in the air or the ship.
+    fn voice(&self) -> (Chatter, bool) {
+        let voice = self
+            .settings
+            .as_ref()
+            .map_or(Chatter::Rare, |s| s.audio.companion);
+        (voice, self.sense.flying || self.sense.seated)
     }
 }
 
@@ -114,13 +119,13 @@ fn settle(brain: &mut Brain, face: &Face, dt: f32) {
     }
 }
 
-/// Watches the player, advances the idle mind, the attention and the face, and sends the
-/// chirps, with a pause after each one.
+/// Watches the player, advances the idle mind, the attention and the face, and sends the chirps
+/// the speech lets through.
 pub fn think(
     (around, sights): (Around, Sights),
     mut events: Events,
     bot: Single<(&mut Brain, &mut Face, &Transform, &Float), With<Companion>>,
-    mut said: Local<Option<(ChirpKind, f32)>>,
+    mut speech: Local<Speech>,
 ) {
     let (mut brain, mut face, at, float) = bot.into_inner();
     let (dt, sense) = (around.dt(), *events.sense);
@@ -139,17 +144,11 @@ pub fn think(
     let mut heard = cue.and_then(|cue| react(cue, &mut brain, &mut face));
     heard = heard.or(events.stir(&mut brain, &mut face, around.location.body));
     let changed = face.advance(wanted(&brain, &sense), dt);
-    heard = heard.or(changed.and_then(chirp));
+    heard = heard.or(changed
+        .and_then(chirp)
+        .map(|kind| (kind, reason(kind, &sense))));
     settle(&mut brain, &face, dt);
-    let last = said.map(|(kind, ago)| (kind, ago + dt));
-    *said = last;
-    let wait = |kind: ChirpKind| match last {
-        Some((same, ago)) if same == kind => ago < QUIET.0,
-        Some((_, ago)) => ago < QUIET.1,
-        None => false,
-    };
-    if let Some(kind) = heard.filter(|kind| !wait(*kind)) {
-        *said = Some((kind, 0.0));
+    if let Some(kind) = speech.hear(heard, events.voice(), dt) {
         events.chirps.write(CompanionChirp(kind));
     }
 }

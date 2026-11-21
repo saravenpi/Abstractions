@@ -225,3 +225,12 @@ pub const TAIL_GAIN: f32 = 1.5;
 
 /// How much brighter its thruster glows in flight.
 pub const THRUST_GLOW: f32 = 1.8;
+
+/// Seconds after anything it said before it says something else, but a warning.
+pub const SPEAK_GAP: f32 = 8.0;
+
+/// Seconds between two warnings.
+pub const WARN_GAP: f32 = 30.0;
+
+/// Seconds between two sounds it makes on its own, when it speaks often and when it speaks rarely.
+pub const CHATTER_GAP: (f32, f32) = (60.0, 150.0);

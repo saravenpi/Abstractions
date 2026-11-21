@@ -57,14 +57,13 @@ fn a_vacuum_leaves_the_airframe() {
     assert!(rms(&heard(off, 2.0)) > 0.001, "the cabin bed stays");
 }
 
-/// Distance makes a ship quieter and duller: the sound spreads, by the compressed law of the
-/// mix, and the air takes its high end.
+/// Distance makes a ship quieter and duller: the sound spreads, and the air takes its high end.
 #[test]
 fn distance_thins_and_dulls_the_sound() {
     let burning = parked().with(Ch::Thrust, 1.0);
     let near = heard(burning, 3.0);
     let far = heard(burning.with(Ch::Distance, 600.0), 3.0);
-    assert!(rms(&near) > 1.8 * rms(&far), "{} {}", rms(&near), rms(&far));
+    assert!(rms(&near) > 4.0 * rms(&far), "{} {}", rms(&near), rms(&far));
     assert!(rms(&far) > 0.0);
     let bright = |samples: &[f32]| band(samples, 4000.0) / band(samples, 110.0);
     assert!(bright(&near) > 1.5 * bright(&far));

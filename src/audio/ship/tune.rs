@@ -202,19 +202,17 @@ pub const STANDBY: f32 = 0.6;
 pub const CANOPY_HZ: (f32, f32) = (260.0, 6000.0);
 
 /// Gain of the air outside into the cabin with the canopy shut and open. The seat is 4 metres
-/// ahead of the nozzles, five times nearer than the reference distance.
+/// ahead of the nozzles.
 pub const LEAK: (f32, f32) = (0.5, 2.5);
 
 /// Highest density of the air, as a share of the home sea level, that makes a jet louder.
 pub const AIR_CAP: f32 = 2.0;
 
 /// Distance in metres under which a ship gets no louder, and the reference distance the
-/// levels are given at.
-pub const NEAR: (f32, f32) = (6.0, 20.0);
-
-/// Power of the distance the level of a ship falls with: 1 in free air, compressed here so
-/// that a ship passing 100 metres away is still the loudest thing around.
-pub const ROLLOFF: f32 = 0.4;
+/// levels are given at. Past it the pressure falls as `1 / r`, as in free air. The reference
+/// is far, because an engine is the loudest thing there is: a pass 100 metres away must rise
+/// over a calm day, and a listener 20 metres from a burn gets all the mix can give.
+pub const NEAR: (f32, f32) = (13.5, 45.0);
 
 /// Gain of the rumble of the lift nozzles in the seat: they sit in the belly under the cabin.
 pub const LIFT_BODY: f32 = 1.9;

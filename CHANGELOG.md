@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - The robot wakes with a kit: a stone spear in hotbar slot 1 and a stone knife in slot 2, knapped from the stone of the home planet, and nothing in its hands: press 1 to draw the spear. They are the lightest tools the workshop proposes, with their real mass and wear, so the first animal that goes for you can be fought and every tool you make after is better. A world saved before gets the kit once on its next load, when its pack holds no tool. In a session every player gets their own.
+- A thrown tool is marked: a spear out in the world shows as "Your" and its name on the compass, the minimap, the map and over the world, where it came to rest, also in an animal that carries it off, until it is back in the pack.
 
 ### Removed
 
@@ -31,6 +32,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- A spear no longer leaves the hand by a click. A click stabs with it; the throw key (T, rebindable on the controls page) held draws it back and its release throws it. A click held a moment used to throw the spear the owner meant to stab with.
+- A spear of your own is picked up when you walk over it, and pulled out of an animal, whatever your hands hold. With a knife drawn you used to walk over your spear without taking it back.
+- A spear thrown far no longer falls through the ground where it has no collider yet and flies on forever: it lands on the ground there.
+- X in the pack drops a material only. On a tool it used to delete the tool for good.
+- A robot that falls does not get a second kit in its spare body: the first waits in the cache where it fell.
 - Leaving the landed ship works on the frame you press the key. In 0.11.0 the prompt offered "Leave the ship" while the ground beside the hatch was not loaded yet, the key then did nothing for up to 10 seconds, each press started the wait again, and the robot was finally put down on ground that had nothing to stand on, fell through it and was put back again and again. Now "Leave the ship" shows only once the ground beside the hatch is solid; until then the line says "Ground not ready." and the key keeps you seated. You step out onto that ground, on a slope too, or onto the sea.
 - A robot that falls under the ground is put back once, onto solid ground. Where the ground is not loaded yet it waits still at the surface until it is, instead of falling through and coming back in a loop.
 - The crouched robot looks where you look. In 0.11.0 its head pointed at the ground the whole time it crouched, still or walking, because the neck nodded it further down with the lean of the trunk instead of taking the lean back. Now the robot crouches as a hunter does: hips down and back over the heels, knees bent, the chest leaned 13 degrees for balance, and the head level, turning up, down and to the sides with the view and steady through every step. The crouch is a little shallower, so the knees and the head stay inside the body of the player. Other players see the same crouch.

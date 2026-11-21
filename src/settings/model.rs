@@ -188,6 +188,9 @@ pub struct Keymap {
     pub pack: KeyCode,
     /// Patch the worst damaged part of the robot with what the pack holds, on foot.
     pub mend: KeyCode,
+    /// Held, draws the spear in hand back; let go, throws it. A click of the primary button stabs
+    /// with it instead, so a spear never leaves the hand by a click.
+    pub throw: KeyCode,
     /// Ship controls, used while seated in the ship and to board it.
     pub ship: ShipKeys,
 }
@@ -212,6 +215,7 @@ impl Default for Keymap {
             guide: KeyCode::KeyK,
             pack: KeyCode::KeyI,
             mend: KeyCode::KeyU,
+            throw: KeyCode::KeyT,
             ship: ShipKeys::default(),
         }
     }

@@ -27,7 +27,8 @@ On foot:
 | K | Field guide: the species of the planet underfoot |
 | I | Pack: what you carry. The robot wakes with a stone spear in slot 1 and a stone knife in slot 2, empty-handed. Tab opens the workshop, where you make a tool for an intent |
 | 1 to 6 | Hold the tool in that hotbar slot; the key of the held slot stows or draws it |
-| Left mouse, right mouse | Swing or throw the held tool, guard |
+| Left mouse, right mouse | Swing the held tool or stab with a spear, guard |
+| T held | Draw the spear in hand back; let go to throw it. A thrown spear is marked on the compass, the map and over the world until you pick it up |
 | H | Break a piece off the rock you look at |
 | U | Patch the worst hurt part of the robot with what you carry. Near the base every part mends itself |
 | F | Board the ship. Cut a part off the carcass you look at, or pull out a stuck spear |

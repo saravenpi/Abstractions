@@ -1,6 +1,6 @@
-//! The hands of the local robot: the primary button swings or throws, the secondary one guards, the
-//! mouse over the last moment picks the side, and the number key of the held hotbar slot draws or
-//! stows the tool.
+//! The hands of the local robot: the primary button swings, or stabs with a spear; the throw key
+//! held draws a spear back and its release throws it; the secondary button guards; the mouse over the
+//! last moment picks the side; and the number key of the held hotbar slot draws or stows the tool.
 
 use bevy::ecs::system::SystemParam;
 use bevy::input::mouse::AccumulatedMouseMotion;
@@ -15,9 +15,10 @@ use super::path::Path;
 use super::stop::Hitstop;
 use crate::craft::{Pack, wield::pressed};
 use crate::player::Player;
+use crate::settings::{Persistent, Settings};
 use crate::sim::PlayerId;
 
-/// The button that swings, or draws and throws a spear.
+/// The button that swings, or stabs with a spear.
 pub const PRIMARY: MouseButton = MouseButton::Left;
 
 /// The button that holds a guard up.
@@ -66,11 +67,18 @@ fn standing(mode: Mode) -> bool {
     matches!(mode, Mode::Idle | Mode::Walk | Mode::Run | Mode::Land)
 }
 
-/// Returns what the buttons ask of hands that are `free` to strike, the mouse asking `dir`.
-fn asked(buttons: &ButtonInput<MouseButton>, free: bool, dir: Dir) -> Ask {
+/// Returns what the buttons and the throw key `throw` of `keys` ask of hands that are `free` to
+/// strike, the mouse asking `dir`.
+fn asked(
+    (buttons, keys): (&ButtonInput<MouseButton>, &ButtonInput<KeyCode>),
+    throw: KeyCode,
+    free: bool,
+    dir: Dir,
+) -> Ask {
     Ask {
         strike: free && buttons.just_pressed(PRIMARY),
-        holding: buttons.pressed(PRIMARY),
+        throw: free && keys.just_pressed(throw),
+        holding: keys.pressed(throw),
         guard: free && buttons.pressed(SECONDARY),
         dir,
     }
@@ -104,7 +112,7 @@ pub fn ask(
         Res<ButtonInput<KeyCode>>,
     ),
     (motion, mut strokes, stop): (Res<AccumulatedMouseMotion>, ResMut<Strokes>, Res<Hitstop>),
-    (robot, pack): (Robot, Res<Pack>),
+    (robot, pack, settings): (Robot, Res<Pack>, Res<Persistent<Settings>>),
     mut bodies: Query<(&mut Strike, &mut Held, &AvatarPose)>,
     mut loose: MessageWriter<Loose>,
 ) {
@@ -119,7 +127,13 @@ pub fn ask(
         held.out = !held.out;
         strike.act = Act::Ready;
     }
-    let ask = asked(&buttons, held.out && standing(pose.mode), dir);
+    let throw = settings.controls.keys.throw;
+    let ask = asked(
+        (&buttons, &keys),
+        throw,
+        held.out && standing(pose.mode),
+        dir,
+    );
     let dt = if stop.holds(body) {
         0.0
     } else {

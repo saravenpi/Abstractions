@@ -20,9 +20,11 @@ mod hit;
 mod hurt;
 mod ik;
 mod input;
+mod javelin;
 mod key;
 mod landing;
 mod layer;
+mod loose;
 mod outcome;
 mod path;
 mod pull;
@@ -68,6 +70,8 @@ mod tests_stock;
 #[cfg(test)]
 mod tests_stray;
 #[cfg(test)]
+mod tests_take;
+#[cfg(test)]
 mod tests_throw;
 #[cfg(test)]
 mod tests_trail;
@@ -96,8 +100,8 @@ use crate::screens::{in_control, playing};
 use crate::view::ViewSet;
 use show::Wielded;
 
-/// A body with a tool in its hands or on show.
-type Drawn = Or<(With<Held>, With<Wielded>)>;
+/// A body with a tool in its hands or on show, or whose hand still whips through a throw.
+type Drawn = Or<(With<Held>, With<Wielded>, With<javelin::Release>)>;
 
 /// Run condition: some body holds a tool or still has one drawn.
 fn armed(held: Query<(), Drawn>) -> bool {
@@ -152,11 +156,16 @@ fn hands() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
         .chain()
 }
 
-/// Returns the systems of the spears: thrown, then flown and picked up.
+/// Returns the systems of the spears: thrown, flown, shaken and trailed, then taken again.
 fn spears() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
     (
-        throw::loose.run_if(on_message::<input::Loose>),
-        (throw::soar, throw::pick).run_if(any_with_component::<Spear>),
+        loose::loose.run_if(on_message::<input::Loose>),
+        throw::soar.run_if(any_with_component::<Spear>),
+        (
+            javelin::quiver.run_if(any_with_component::<javelin::Quiver>),
+            javelin::rig.run_if(javelin::bare),
+            javelin::trace.run_if(any_with_component::<javelin::Streak>),
+        ),
         pull::pull
             .run_if(any_with_component::<Spear>)
             .run_if(crate::screens::in_control.and_then(crate::space::on_foot)),

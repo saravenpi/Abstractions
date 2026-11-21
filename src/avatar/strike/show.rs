@@ -155,7 +155,10 @@ fn grip(bones: &[Transform], layer: &Layer, out: bool) -> (Vec3, Vec3) {
     match out {
         true => (
             hand.transform_point(Vec3::new(0.0, -HAND_GRIP, 0.0)),
-            (torso.rotation * layer.axis).normalize_or(Vec3::NEG_Z),
+            layer
+                .aim
+                .unwrap_or(torso.rotation * layer.axis)
+                .normalize_or(Vec3::NEG_Z),
         ),
         false => (
             torso.transform_point(Vec3::from_array(SLING)),

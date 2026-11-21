@@ -94,23 +94,14 @@ pub const CAMERA_SHAKE: f32 = 0.012;
 /// loose soil, our estimate.
 pub const GROUND: (f32, f32) = (0.05, 500.0);
 
-/// Pressure soil puts against a point driven into it, in pascals.
-pub const SOIL: f32 = 1.0e6;
-
 /// Least depth a spear must reach in the ground to stand in it, in metres.
 pub const STICK: f32 = 0.05;
 
-/// Share of its speed a spear keeps when it bounces, unitless.
+/// Share of its speed into a surface a spear keeps back out of it when it glances, unitless.
 pub const RESTITUTION: f32 = 0.3;
 
 /// Speed under which a bouncing spear comes to rest, in metres per second.
 pub const REST_SPEED: f32 = 1.0;
-
-/// Distance within which the robot picks a lying spear up, in metres.
-pub const PICK: f32 = 1.5;
-
-/// Upward tilt of a throw over the view, in radians.
-pub const LOFT: f32 = 0.08;
 
 /// Metres from the robot within which a spear stuck in an animal can be pulled out.
 pub const PULL: f32 = 3.0;

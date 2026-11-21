@@ -5,12 +5,15 @@ use bevy::prelude::*;
 
 use super::super::AvatarPose;
 use super::super::ground::Stance;
+use super::super::own::Own;
 use super::super::pose::{Core, Limb, Pose};
+use super::super::show::Shown;
 use super::act::{Strike, Timing, key};
 use super::feel::bend::Bend;
 use super::feel::body::{phase, stand, still};
 use super::held::Held;
 use super::ik::reach;
+use super::javelin::{Release, draw, drawing, released};
 use super::key::Key;
 use super::path::Path;
 use super::tune::SECOND_HAND;
@@ -40,6 +43,9 @@ pub struct Layer {
     pub stance: Stance,
     /// Shoulder, lift and elbow of the free left arm that balances a one-handed blow.
     pub free: Option<[f32; 3]>,
+    /// Unit direction of a drawn javelin in the frame of the body, which [`Layer::axis`] gives in
+    /// the torso only as near as the torso follows the layer: the shaft lies along the aim exactly.
+    pub aim: Option<Vec3>,
 }
 
 impl Layer {
@@ -114,18 +120,60 @@ pub fn posed(
     )
 }
 
-/// Lays the strike of every body over its pose: the key of its act with the tool out, nothing with
-/// the tool stowed or gone.
+/// The bodies a strike lays its layer on.
+type Bodies<'w, 's> = Query<
+    'w,
+    's,
+    (
+        Entity,
+        &'static mut Layer,
+        &'static Strike,
+        Option<&'static Held>,
+        Option<&'static AvatarPose>,
+        Option<&'static mut Release>,
+    ),
+>;
+
+/// Returns the layer of a body whose strike is `strike`, holding `held` out, posed by `pose`, eased
+/// from `before` over `dt` seconds, seen in `first` person: a javelin drawn along the aim, else the
+/// key of its act.
+fn holding(
+    strike: &Strike,
+    held: &Held,
+    pose: &AvatarPose,
+    (before, dt, first): (&Layer, f32, bool),
+) -> Layer {
+    match drawing(strike, held) {
+        Some(aim) => draw((strike, held), pose, aim, (before, dt), first),
+        None => posed(strike, held, pose, (before, dt)),
+    }
+}
+
+/// Lays the strike of every body over its pose: the key of its act with the tool out, a javelin
+/// drawn back along the aim, the whip of one just let go, and nothing with the tool stowed or gone.
+/// The local body in first person holds a drawn javelin where its eyes see it.
 pub fn lay(
-    time: Res<Time>,
-    mut bodies: Query<(&mut Layer, &Strike, Option<&Held>, Option<&AvatarPose>)>,
+    mut commands: Commands,
+    (time, shown, own): (Res<Time>, Option<Res<Shown>>, Own),
+    mut bodies: Bodies,
 ) {
     let dt = time.delta_secs();
-    for (mut layer, strike, held, pose) in &mut bodies {
+    let mine = own.body().map(|(_, body)| body);
+    let seen = shown.is_some_and(|shown| *shown == Shown::FirstPerson);
+    for (body, mut layer, strike, held, pose, release) in &mut bodies {
         let pose = pose.copied().unwrap_or_default();
+        let first = seen && mine == Some(body);
+        let thrown = release.and_then(|mut release| {
+            release.age += dt;
+            let whip = released(&release, strike.hurt.usable, first);
+            if whip.is_none() {
+                commands.entity(body).remove::<Release>();
+            }
+            whip
+        });
         let next = match held.filter(|held| held.out) {
-            Some(held) => posed(strike, held, &pose, (&layer, dt)),
-            None => Layer::default(),
+            Some(held) => holding(strike, held, &pose, (&layer, dt, first)),
+            None => thrown.unwrap_or_default(),
         };
         layer.set_if_neq(next);
     }

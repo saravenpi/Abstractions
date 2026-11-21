@@ -4,7 +4,8 @@
 use bevy::prelude::*;
 
 use super::held::Held;
-use super::tune::{RESTITUTION, SOIL, STICK};
+use super::javelin::tune::{SKID, TUMBLE, VANE};
+use super::tune::RESTITUTION;
 use crate::craft::Lent;
 use crate::craft::build::{Blow, reference, strike};
 
@@ -40,23 +41,36 @@ pub struct Spear {
 }
 
 /// Returns the point and the velocity `dt` seconds after `at` and `velocity` under `gravity`, with
-/// a drag of `drag` per metre: the speed falls as e^(−drag·distance) (semi-implicit Euler).
+/// a drag of `drag` per metre: the speed falls as e^(−drag·distance). The point moves by the mean
+/// of the two velocities, which follows the parabola of a throw in vacuum exactly.
 pub fn fly(at: Vec3, velocity: Vec3, gravity: Vec3, drag: f32, dt: f32) -> (Vec3, Vec3) {
-    let velocity = velocity + gravity * dt;
-    let velocity = velocity * (-drag * velocity.length() * dt).exp();
-    (at + velocity * dt, velocity)
+    let next = velocity + gravity * dt;
+    let next = next * (-drag * next.length() * dt).exp();
+    (at + (velocity + next) * 0.5 * dt, next)
 }
 
-/// Returns how deep a point arriving with `energy` joules over `area` square metres drives into the
-/// ground, in metres: the work over the pressure the soil holds against it.
-pub fn depth(energy: f32, area: f32) -> f32 {
-    energy / (SOIL * area.max(1e-6))
+/// Returns the shaft `axis` of a spear turned over `dt` seconds by the air it flies through at
+/// `velocity`: one balanced ahead of its middle (`stable`) noses over along its path, its axis
+/// closing on the path over [`VANE`] metres of flight; one balanced behind tumbles end over end.
+pub fn vane(axis: Vec3, velocity: Vec3, stable: bool, dt: f32) -> Vec3 {
+    let speed = velocity.length();
+    if speed < f32::EPSILON {
+        return axis;
+    }
+    let way = velocity / speed;
+    if !stable {
+        let spin = way.cross(axis).normalize_or(way.any_orthonormal_vector());
+        return (Quat::from_axis_angle(spin, TUMBLE * dt) * axis).normalize();
+    }
+    let share = 1.0 - (-speed * dt / VANE).exp();
+    let turn = Quat::IDENTITY.slerp(Quat::from_rotation_arc(axis, way), share);
+    (turn * axis).normalize()
 }
 
-/// Returns true when a spear that flies point first (`stable`) arriving with `energy` joules over
-/// `area` stands in the ground.
-pub fn stands(stable: bool, energy: f32, area: f32) -> bool {
-    stable && depth(energy, area) >= STICK
+/// Returns how deep a point arriving with `energy` joules over `area` square metres drives into
+/// ground that holds `pressure` pascals against it, in metres: the work over the force.
+pub fn depth(energy: f32, area: f32, pressure: f32) -> f32 {
+    energy / (pressure * area).max(1e-6)
 }
 
 /// Returns true when `blow` gets through the first layer of the reference target: a spear that
@@ -65,7 +79,9 @@ pub fn pierces(blow: &Blow) -> bool {
     strike(blow, &reference()).passed > 0
 }
 
-/// Returns `velocity` bounced off a surface of unit `normal`, keeping [`RESTITUTION`] of it.
-pub fn bounce(velocity: Vec3, normal: Vec3) -> Vec3 {
-    velocity.reflect(normal) * RESTITUTION
+/// Returns `velocity` glanced off a surface of unit `normal`: [`RESTITUTION`] of the speed into it
+/// comes back out, [`SKID`] of the speed along it is kept.
+pub fn glance(velocity: Vec3, normal: Vec3) -> Vec3 {
+    let into = normal * velocity.dot(normal);
+    (velocity - into) * SKID - into * RESTITUTION
 }

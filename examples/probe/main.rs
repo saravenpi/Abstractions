@@ -15,7 +15,9 @@
 //!   a card focused and a tool made (see the `workshop` module).
 //!   `stars` shoots the star field in space and in orbit (see the `stars` module). `feel` shoots swings at
 //!   a small and a large animal in third and first person, a rock struck with H and the wingsuit opened
-//!   with a tool drawn (see the `playfeel` module; run it on `SMOKE_SEED=57`).
+//!   with a tool drawn (see the `playfeel` module; run it on `SMOKE_SEED=57`). `throw` draws a javelin
+//!   at three pitches in third and first person, throws it into soft ground and at a rock (see the
+//!   `playthrow` module; run it on `SMOKE_SEED=57`).
 //!   The title, loading, boot and wake stages always run.
 //! - `glide` opens the wingsuit from the top of a jump on flat ground, off a cliff at a run, out of a long fall
 //!   and from a jump off the parked ship, three shots each, with `PROBE glide` lines (see the `opening` module).
@@ -119,6 +121,7 @@ mod playframe;
 mod playherd;
 mod playloot;
 mod playmap;
+mod playthrow;
 mod postcards;
 mod saved;
 mod screens;
@@ -176,6 +179,7 @@ use playframe::*;
 use playherd::*;
 use playloot::*;
 use playmap::*;
+use playthrow::*;
 use postcards::*;
 use saved::*;
 use screens::*;

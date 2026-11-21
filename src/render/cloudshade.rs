@@ -119,14 +119,17 @@ fn header(vantage: &Vantage, cast: &Cast) -> [Vec4; HEAD] {
 /// drawn with, or clears them when the clouds or their shadows are off.
 fn refresh(
     sky: (Res<Vantage>, Res<LocalSystem>, Res<SunDir>),
-    (clock, weather, forced): (Res<Clock>, Option<Res<Weather>>, Res<CloudCover>),
-    settings: Res<Persistent<Settings>>,
+    (clock, weather, forced): (Option<Res<Clock>>, Option<Res<Weather>>, Res<CloudCover>),
+    settings: Option<Res<Persistent<Settings>>>,
     mut shade: ResMut<CloudShade>,
 ) {
     let cover = forced
         .0
         .unwrap_or_else(|| weather.as_deref().map_or(0.0, |weather| weather.cloud));
-    let cast = want((&sky.0, &sky.1, &sky.2), (&clock, cover), &settings);
+    let cast = clock
+        .as_deref()
+        .zip(settings.as_deref())
+        .and_then(|(clock, settings)| want((&sky.0, &sky.1, &sky.2), (clock, cover), settings));
     let head = cast.map_or([Vec4::ZERO; HEAD], |cast| header(&sky.0, &cast));
     if shade.head == head && shade.cast == cast {
         return;
@@ -150,9 +153,9 @@ pub(super) fn plugin(app: &mut App) {
                 .after(super::sun::track)
                 .before(super::PlaceLit)
                 .run_if(
-                    resource_changed::<Clock>
+                    resource_exists_and_changed::<Clock>
                         .or_else(resource_changed::<Vantage>)
-                        .or_else(resource_changed::<Persistent<Settings>>),
+                        .or_else(resource_exists_and_changed::<Persistent<Settings>>),
                 ),
         );
 }

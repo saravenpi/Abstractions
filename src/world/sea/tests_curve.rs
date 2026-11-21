@@ -138,7 +138,8 @@ fn keep(k: f32, foot: f32) -> f32 {
 
 /// A wave leaves the water normal before a pixel covers half its length, so far water cannot
 /// alias into rings: every swell and ripple term of the normal goes through that fade, the
-/// glints and flecks fade with the pixel too, and nothing but the fades reads the distance.
+/// glints and flecks fade with the pixel too, and nothing but the fades reads the distance: the
+/// view vector, the depth, the detail and hand-over fades, and the fade of the water mirror.
 #[test]
 fn far_water_normals_fade_before_they_alias() {
     for wavelength in [22.0_f32, 11.0, 6.0, 4.0, 1.9, 1.1] {
@@ -167,7 +168,8 @@ fn far_water_normals_fade_before_they_alias() {
     assert_eq!(fragment.matches("vertex.position").count(), 0);
     assert_eq!(
         fragment.matches("dist").count(),
-        6,
+        7,
         "only the view vector, depth and fades"
     );
+    assert!(fragment.contains("let seen = mirrored(world, n, up, dist);"));
 }

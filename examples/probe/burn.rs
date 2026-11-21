@@ -16,13 +16,13 @@ const BURN: (Vec3, Vec3) = (Vec3::new(5.5, 1.6, 6.5), Vec3::new(0.0, 0.2, 5.5));
 const WAKE: (Vec3, Vec3) = (Vec3::new(-11.0, 1.0, 6.0), Vec3::new(0.0, 0.2, 5.0));
 
 /// Holds the camera at `eye`, in hull axes, and draws the whole pilot in the seat.
-fn outside(world: &mut World, eye: (Vec3, Vec3)) {
+pub fn outside(world: &mut World, eye: (Vec3, Vec3)) {
     world.resource_mut::<Eye>().0 = Some(eye);
     view(world, ViewMode::First, ViewMode::Third);
 }
 
 /// Frees the camera, gives the ship its first person view back and ends the stage.
-fn inside(world: &mut World, notes: &mut Notes) -> Act {
+pub fn inside(world: &mut World, notes: &mut Notes) -> Act {
     world.resource_mut::<Eye>().0 = None;
     notes.shot_at = None;
     view(world, ViewMode::First, ViewMode::First);
@@ -31,7 +31,7 @@ fn inside(world: &mut World, notes: &mut Notes) -> Act {
 
 /// Takes the last shot of a stage from the held camera. The stage ends on the next frame, once
 /// the shot is taken.
-fn last(world: &mut World, notes: &mut Notes, (frame, name): (u32, &str)) {
+pub fn last(world: &mut World, notes: &mut Notes, (frame, name): (u32, &str)) {
     shot(world, name);
     notes.shot_at = Some(frame);
 }
@@ -59,7 +59,7 @@ pub fn lift(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
 }
 
 /// Sets the throttle of the ship.
-fn throttle(world: &mut World, to: f64) {
+pub fn throttle(world: &mut World, to: f64) {
     with_ship(world, |ship| ship.throttle = to);
 }
 

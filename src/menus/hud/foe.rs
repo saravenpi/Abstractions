@@ -140,14 +140,17 @@ type Strips<'w, 's> = (
     Query<'w, 's, &'static mut Text, With<FoeName>>,
 );
 
+/// The last blow, the animals and the terrain.
+type Struck<'w, 's> = (
+    Res<'w, Mark>,
+    Query<'w, 's, (&'static Beast, &'static GlobalTransform)>,
+    Option<Res<'w, Terrain>>,
+);
+
 /// Shows the name and the health of the animal the last blow struck over its head while the fight
 /// lasts and it is on screen.
 pub(super) fn show(
-    (mark, beasts, terrain): (
-        Res<Mark>,
-        Query<(&Beast, &GlobalTransform)>,
-        Option<Res<Terrain>>,
-    ),
+    (mark, beasts, terrain): Struck,
     parts: Bounds,
     lens: Lens,
     (mut strips, mut bars, mut names): Strips,

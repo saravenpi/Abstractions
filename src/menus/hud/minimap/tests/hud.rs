@@ -7,7 +7,7 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 use bevy::ui::Val2;
 
-use super::read::{at, caption, furnish, part, turn};
+use super::read::{at, caption, furnish, part, square, turn};
 use super::rig::{app, ground, look, settle, tap};
 use crate::computer::Computer;
 use crate::map::raster::colour;
@@ -31,17 +31,21 @@ fn hud_shown(app: &mut App) -> bool {
     *roots.single(app.world()).expect("one HUD") == Visibility::Inherited
 }
 
-/// The minimap is a square without a border of the HUD in the top right corner, as far from the edges
-/// as the compass is from the top, over a dark veil where the game cannot be blurred.
+/// The minimap is a square without a border of the HUD in the top right corner, as far from the
+/// edges as the compass is from the top, over a dark veil where the game cannot be blurred, with
+/// its caption under it.
 #[test]
 fn the_minimap_is_a_square_of_the_hud() {
     let mut app = app("square");
     let frame = part(&mut app, Part::Frame);
     let (margin, side) = (px(theme::EDGE), Val::Vh(100.0 * SIDE / 1080.0));
     assert_eq!((frame.top, frame.right), (margin, margin));
-    assert_eq!((frame.width, frame.height), (side, side));
-    assert_eq!(frame.border, UiRect::ZERO);
-    assert_eq!(frame.overflow, Overflow::clip());
+    assert_eq!(frame.padding, UiRect::ZERO);
+    let picture = square(&mut app);
+    let node = app.world().get::<Node>(picture).unwrap().clone();
+    assert_eq!((node.width, node.height), (side, side));
+    assert_eq!(node.border, UiRect::ZERO);
+    assert_eq!(node.overflow, Overflow::clip());
     let mut owners = app.world_mut().query::<(&Part, &ChildOf)>();
     let mut frames = owners
         .iter(app.world())

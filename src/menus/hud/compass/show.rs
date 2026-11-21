@@ -134,7 +134,7 @@ impl Pins<'_, '_> {
         }
     }
 
-    /// Writes the distance under every shown mark, short, in the secondary tone and faded with
+    /// Writes the distance under every shown mark, short, in the primary tone and faded with
     /// its mark, and nothing under a mark whose distance would print over another.
     fn say(&mut self, seen: &[Seen], words: &mut String) {
         for (far, mut text, mut color) in &mut self.far {
@@ -148,7 +148,7 @@ impl Pins<'_, '_> {
             if text.0 != *words {
                 text.0.clone_from(words);
             }
-            let tone = theme::TEXT_2;
+            let tone = theme::TEXT;
             color.set_if_neq(TextColor(tone.with_alpha(tone.alpha() * mark.alpha)));
         }
     }

@@ -51,10 +51,13 @@ pub(super) fn spawn(mut commands: Commands) {
     }
 }
 
+/// The sun and the moon, which are not twins.
+type Sources = (Or<(With<Sun>, With<Moon>)>, Without<Twin>);
+
 /// Gives each twin the pose, the colour and the strength its source has this frame. The twin
 /// never casts a shadow.
 pub(super) fn follow(
-    sources: Query<Source, (Or<(With<Sun>, With<Moon>)>, Without<Twin>)>,
+    sources: Query<Source, Sources>,
     mut twins: Query<Copied, (Without<Sun>, Without<Moon>)>,
 ) {
     for (global, light, moon) in &sources {

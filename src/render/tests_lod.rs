@@ -28,11 +28,14 @@ fn settings() -> Persistent<Settings> {
         .unwrap()
 }
 
+/// The point and spot lights.
+type Lamps = Or<(With<PointLight>, With<SpotLight>)>;
+
 /// Returns the entity Bevy measures the levels of detail of the shadow passes from.
 fn origin(
     mut cameras: Query<(Entity, &RenderTarget), With<Camera>>,
     mut marked: Query<Entity, With<ShadowLodOrigin>>,
-    mut lights: Query<Entity, Or<(With<PointLight>, With<SpotLight>)>>,
+    mut lights: Query<Entity, Lamps>,
 ) -> Option<Entity> {
     get_shadow_lod_origin(
         cameras.transmute_lens_filtered(),

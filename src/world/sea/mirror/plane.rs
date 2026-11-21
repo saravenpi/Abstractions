@@ -9,6 +9,7 @@ use bevy::prelude::*;
 use super::super::uniform::WaterUniform;
 
 /// Reflectance of water seen straight down, `WATER_F0` in `water.wesl`.
+#[cfg(test)]
 pub const WATER_F0: f32 = 0.02;
 
 /// A flat water surface: a point on it and the way up.
@@ -69,6 +70,7 @@ impl Plane {
 /// Returns the share of the light that water of reflectance [`WATER_F0`] mirrors for a view whose
 /// angle to the normal has the cosine `cos`: the Schlick rule of `water.wesl`. It is 2 percent
 /// looking straight down and all of it at a grazing angle.
+#[cfg(test)]
 pub fn fresnel(cos: f32) -> f32 {
     WATER_F0 + (1.0 - WATER_F0) * (1.0 - cos.clamp(0.0, 1.0)).powi(5)
 }

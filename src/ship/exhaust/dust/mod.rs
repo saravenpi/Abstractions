@@ -54,11 +54,15 @@ pub struct Cloud {
     class: Option<PlanetClass>,
 }
 
+/// The planet, its wind and the anchor, each when there is one.
+type Place<'w> = (
+    Option<Res<'w, Terrain>>,
+    Option<Res<'w, Wind>>,
+    Option<Res<'w, Anchor>>,
+);
+
 /// Run condition: the pool is made and there is a planet, its wind and an anchor to fly in.
-pub fn ready(
-    cloud: Option<Res<Cloud>>,
-    (terrain, wind, anchor): (Option<Res<Terrain>>, Option<Res<Wind>>, Option<Res<Anchor>>),
-) -> bool {
+pub fn ready(cloud: Option<Res<Cloud>>, (terrain, wind, anchor): Place) -> bool {
     cloud.is_some() && terrain.is_some() && wind.is_some() && anchor.is_some()
 }
 

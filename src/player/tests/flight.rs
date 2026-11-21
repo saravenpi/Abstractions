@@ -91,7 +91,8 @@ fn keys_map_to_the_gear() {
     assert!(told.boost && told.grounded && told.in_water);
 }
 
-/// Folded the view always aims the body; on the wings only while the steer button is held.
+/// Folded the view aims the body, but a body that moves over the ground heads where it goes, so
+/// its wings open along its way; on the wings only while the steer button is held.
 #[test]
 fn the_view_aims_the_wings_only_while_it_steers() {
     let (air, mut intent) = (air(), held());
@@ -100,6 +101,10 @@ fn the_view_aims_the_wings_only_while_it_steers() {
         input(&motion, &intent, &air, (false, false)).aim,
         Some(Vec2::ZERO)
     );
+    motion.velocity = Vec3::new(8.0, -1.0, 0.0);
+    let headed = input(&motion, &intent, &air, (false, false)).aim;
+    assert!(headed.is_some_and(|aim| (aim.x + std::f32::consts::FRAC_PI_2).abs() < 1e-5));
+    motion.velocity = Vec3::ZERO;
     motion.wings = true;
     assert_eq!(input(&motion, &intent, &air, (false, false)).aim, None);
     intent.steer = true;

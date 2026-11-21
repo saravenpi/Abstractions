@@ -90,6 +90,22 @@ pub(super) fn aground(rested: u8, mode: Mode, floor: Option<Ground>, speed: f32)
     }
 }
 
+/// Ground speed in metres per second above which a body with its wings folded heads where it
+/// goes rather than where the view looks.
+const HEADED: f32 = 2.0;
+
+/// Returns the heading and pitch that aim the gear of a body moving as `motion`, the view being
+/// `view`. Folded and moving over the ground it heads where it goes, on its feet as in the air,
+/// so the wings open on the way the body runs or falls and never with the nose against it, as
+/// on a run toward the camera; on the wings and when still, it is the view.
+fn aimed(motion: &Motion, view: Vec2) -> Vec2 {
+    let flat = motion.velocity.with_y(0.0);
+    match !motion.wings && flat.length() > HEADED {
+        true => Vec2::new((-flat.x).atan2(-flat.z), view.y),
+        false => view,
+    }
+}
+
 /// Returns what the gear is told this frame.
 ///
 /// The run key held in the air fires the boots: a brake with the wingsuit folded, the boost with
@@ -104,7 +120,7 @@ pub(super) fn input(motion: &Motion, intent: &Intent, air: &Air, on: (bool, bool
         roll: intent.right,
         yaw: intent.yaw,
         look: air.look,
-        aim: (!motion.wings || intent.steer).then_some(air.aim),
+        aim: (!motion.wings || intent.steer).then_some(aimed(motion, air.aim)),
         grounded: on.0,
         in_water: on.1,
         liquid: air.liquid,

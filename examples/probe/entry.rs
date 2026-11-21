@@ -3,7 +3,7 @@
 //! above the pad to orbit under the autopilot, seen from the chase camera. The interface is
 //! hidden; every shot logs the height, the speed and the glow.
 
-use abstractions::render::Heat;
+use abstractions::render::{CloudCrossing, Heat};
 use abstractions::ship::SEAT;
 use abstractions::speed::{sound_speed, temperature_at};
 use abstractions::universe::{TOP_SCALES, heights};
@@ -19,7 +19,7 @@ const CHASE: (Vec3, Vec3) = (Vec3::new(-14.0, 5.0, 16.0), Vec3::new(0.0, 0.0, -3
 const EVERY: (u32, u32) = (30, 100);
 
 /// Frames a flight may run before it ends.
-const LONGEST: u32 = 2500;
+const LONGEST: u32 = 4000;
 
 /// Path angle in radians below the horizon of the fall from orbit: four degrees.
 const SLOPE: f64 = 0.07;
@@ -62,6 +62,20 @@ fn record(world: &mut World, t: u32, name: &str) {
     shot(world, &format!("{name}-{t:04}"));
 }
 
+/// Takes the shot `name` once, the first time the camera is well inside a real cloud: the view
+/// should white out as thickly as the cloud field is there, with no lines on it.
+fn cloudy(world: &mut World, notes: &mut Notes, name: &str) {
+    let depth = world
+        .get_resource::<CloudCrossing>()
+        .map_or(0.0, |cloud| cloud.depth);
+    let mark = DVec3::splat(-1.0);
+    if depth > 0.3 && !notes.spots.contains(&mark) {
+        notes.spots.push(mark);
+        eprintln!("PROBE {name} in cloud {depth:.2}");
+        shot(world, name);
+    }
+}
+
 /// Gives the camera back to the game and ends a flight stage.
 fn landed(world: &mut World, notes: &mut Notes) -> Act {
     pace(world, WALK);
@@ -69,7 +83,7 @@ fn landed(world: &mut World, notes: &mut Notes) -> Act {
 }
 
 /// Falls from orbit with the camera at `eye` in hull axes, seen from outside when `out`, and
-/// shoots the flight down to 15 km.
+/// shoots the flight down through the cloud layer to 1.5 km.
 fn fall(
     world: &mut World,
     notes: &mut Notes,
@@ -85,12 +99,14 @@ fn fall(
         let seen = [ViewMode::First, ViewMode::Third][usize::from(out)];
         view(world, ViewMode::First, seen);
         from_orbit(world);
+        notes.spots.clear();
         pace(world, FLIGHT);
         return Act::Wait;
     }
     record(world, t, name);
+    cloudy(world, notes, &format!("{name}-cloud"));
     let height = world.resource::<ShipTelemetry>().altitude_sea;
-    match t > LONGEST || height < 15_000.0 {
+    match t > LONGEST || height < 1500.0 {
         true => landed(world, notes),
         false => Act::Wait,
     }
@@ -171,6 +187,7 @@ pub fn exit(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
             shot(world, name);
         }
     }
+    cloudy(world, notes, "X-cloud");
     if t % EVERY.1 == 0 {
         record(world, t, "X-climb");
     }

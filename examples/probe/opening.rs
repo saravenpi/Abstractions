@@ -28,7 +28,7 @@ fn log(world: &mut World, case: &str, moment: &str) {
         .query::<&Held>()
         .iter(world)
         .next()
-        .map(|held| held.out);
+        .map(|held| held.0.is_some());
     eprintln!(
         "PROBE glide {case} {moment}: mode {:?} wings {wings} spread {:.2} prone {:.2} airspeed {:.1} m/s \
          sink {:.1} m/s pitch {:.1} deg clearance {:.1} m tool in hand {held:?}",

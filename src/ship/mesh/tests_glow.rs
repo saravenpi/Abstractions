@@ -40,7 +40,7 @@ fn the_nose_glow_sits_on_the_nose() {
     );
     let standoff = (constant("SHOCK_TIP") - constant("NOSE")) * HULL_RADIUS;
     assert!(
-        standoff >= 0.0 && standoff < 0.14 * NOSE_RADIUS + 0.02,
+        (0.0..0.14 * NOSE_RADIUS + 0.02).contains(&standoff),
         "{standoff} m"
     );
     assert!(

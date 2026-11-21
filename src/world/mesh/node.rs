@@ -18,6 +18,9 @@ use crate::world::lands::Verdure;
 use crate::world::scatter::Spread;
 use crate::world::shapes::FlatMesh;
 
+/// Points along one side of the lattice on which a node reads how thick its turf grows.
+const LATTICE: usize = 5;
+
 /// Adds the terrain of quadtree node `id`, cut into `n` cells per side, to `mesh` in `frame`.
 ///
 /// `terrain` must be the face chart view of the face of the node. Every node gets a flat sea, and
@@ -43,8 +46,12 @@ pub fn fill_node(
         return bands::fill(mesh, &span, frame, style.skirt);
     }
     let patch = Patch::new(&span, frame, &span.heights(), style.floor);
-    let spread = Spread::of(terrain, span.center());
-    let thick = spread.as_ref().map(|s| move |w: Vec2| s.at(terrain, w));
+    let spread = Spread::over(
+        terrain,
+        (span.chart(0, 0, 0.0), span.chart(span.n, span.n, 0.0)),
+        LATTICE,
+    );
+    let thick = spread.as_ref().map(|s| move |w: Vec2| s.at(w));
     let thick = thick.as_ref().map(|t| t as &dyn Fn(Vec2) -> f32);
     fill(mesh, &patch, (style, None), &|i, j| {
         dithered(terrain, &span, (i, j), thick)

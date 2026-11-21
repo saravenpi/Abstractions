@@ -81,7 +81,7 @@ fn a_step_of_the_stick_is_heard_within_a_fifth_of_a_second() {
         ..CRUISE
     };
     eased.tune(&pull);
-    let mut jumped = eased.clone();
+    let mut jumped = eased;
     jumped.snap();
     let window = |frame: &mut Airframe| {
         let samples: Vec<f32> = (0..(0.05 * RATE) as usize).map(|_| frame.frame()).collect();

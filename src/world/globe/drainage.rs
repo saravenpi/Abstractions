@@ -1,9 +1,10 @@
 //! The drainage grid: one coarse height and one flow direction per cell of a grid of 6 by 256 by 256 cells
 //! over the cube sphere, about 40 km wide on an Earth.
 //!
-//! It is a pure function of the planet, built once per planet and shared by every copy of its globe. A
-//! priority flood from the sea gives every land cell the neighbour its water leaves by, so every path ends
-//! in the sea or in a closed basin, and the area draining through a cell tells the trunks of the rivers.
+//! It is a pure function of the planet, built once per planet and shared by every copy of its globe and
+//! by every globe of the same planet made later, see [`shared`]. A priority flood from the sea gives every
+//! land cell the neighbour its water leaves by, so every path ends in the sea or in a closed basin, and the
+//! area draining through a cell tells the trunks of the rivers.
 //! The trunks guide the local flows of the atlas, and the shores of the land near mild latitudes are where a
 //! new game starts.
 
@@ -11,6 +12,7 @@ mod course;
 mod flood;
 mod grid;
 mod query;
+mod shared;
 mod shore;
 #[cfg(test)]
 mod tests_grid;
@@ -108,7 +110,7 @@ impl Globe {
     pub fn drainage(&self) -> Arc<Drainage> {
         self.atlas
             .drainage
-            .get_or_init(|| Arc::new(Drainage::build(self)))
+            .get_or_init(|| shared::of(self.atlas.print, || Drainage::build(self)))
             .clone()
     }
 

@@ -9,6 +9,10 @@ use super::*;
 use crate::space::{Anchor, Frame};
 use crate::universe::{GALAXY_CELL, GalaxyId, LY, Universe};
 
+/// Metres a position can be off by at the far end of a sector, where a 64-bit float steps by 16 m: the
+/// star of the home is far from the corner of its sector, so its planet is placed to that.
+const SECTOR_STEP: f64 = 16.0;
+
 /// Returns a galaxy that exists about ten cells east of the home galaxy.
 fn far_galaxy(universe: &Universe) -> GalaxyId {
     let cell = universe.home().star.galaxy.0 + IVec3::new(10, 0, 0);
@@ -55,7 +59,7 @@ fn the_way_home_picks_the_right_level() {
     let planet = universe.planet_position(home, 30.0);
     let (way, gap) = homeward(&universe, system.0, system.1, 30.0).unwrap();
     assert!(way.distance((planet - system.1).normalize()) < 1e-9);
-    assert!((gap - planet.distance(system.1)).abs() < 1.0);
+    assert!((gap - planet.distance(system.1)).abs() < SECTOR_STEP);
     let (way, gap) = homeward(&universe, galaxy.0, galaxy.1, 0.0).unwrap();
     assert!(way.distance(DVec3::NEG_X) < 1e-6 && (gap / LY - 1.0).abs() < 1e-6);
     let (way, gap) = homeward(&universe, lost.0, lost.1, 0.0).unwrap();

@@ -31,9 +31,10 @@ struct Walk {
 }
 
 impl Walk {
-    /// Returns a walk starting at `player` on the world of `seed`, the companion at the player's eyes.
+    /// Returns a walk starting at `player` on the flat legacy plane of `seed`, which does not move with the
+    /// planet the universe chooses as home, the companion at the player's eyes.
     fn new(seed: u64, player: Vec2) -> Self {
-        let terrain = Terrain::new(seed);
+        let terrain = Terrain::legacy(seed);
         let mut walk = Self {
             anchor: Anchor::surface(BodyId::default(), &terrain, Vec3::ZERO),
             terrain,

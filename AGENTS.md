@@ -139,4 +139,4 @@ Direction of 2026-11-20. Tokens live in `src/ui/theme.rs`, durations in `src/ui/
 
 ## Releases
 
-A release goes from `next`: the full gate, a dry run of `.github/workflows/release.yml` on a throwaway branch, then `main` is fast-forwarded and the tag `vX.Y.Z` is pushed. The tag builds every platform and the server image.
+A release goes from `staging`, the integration branch of the release: the lead merges the branches into it, runs the full gate, a dry run of `.github/workflows/release.yml` on a throwaway branch, then merges it to `main` and pushes the tag `vX.Y.Z`. The tag builds every platform and the server image.

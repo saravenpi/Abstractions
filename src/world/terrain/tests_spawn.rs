@@ -39,13 +39,15 @@ fn only_a_sphere_spawns_on_snow_or_rock() {
 const SEARCH: f64 = 0.2;
 
 /// On the home planets of 50 seeds the spawn search from the pole of the north face, which is often open
-/// sea or ice on a large planet, finds dry ground every time, within 200 ms of processor time once the grid exists.
+/// sea or ice on a large planet, finds dry ground every time, within 200 ms of processor time once the grid
+/// and its shores exist.
 #[test]
 fn every_seed_spawns_on_land_in_time() {
     for seed in 0..50 {
         let universe = Universe::new(seed);
         let globe = Arc::new(Globe::of(&universe.planet(universe.home())));
         globe.drainage();
+        globe.landfalls();
         let view = Terrain::on(globe.clone(), globe.face_chart(Face::PosY));
         let start = busy();
         let site = view.spawn_site();

@@ -12,6 +12,7 @@ mod cadence;
 mod companion;
 mod field;
 mod frame;
+mod ground;
 mod hunt;
 mod msg;
 mod name;
@@ -32,6 +33,8 @@ mod cells_tests;
 mod far_tests;
 #[cfg(test)]
 mod field_tests;
+#[cfg(test)]
+mod ground_tests;
 #[cfg(test)]
 mod hunt_tests;
 #[cfg(test)]
@@ -57,6 +60,7 @@ pub use field::{
     Attack, Blow, CLEAN, DEFLECTED, Impact, MISS, Opened, Rock, STOPPED, Wound, finite,
 };
 pub use frame::{Frame, Kind};
+pub use ground::{GROUND_CHUNK, HEAP, LYING_BYTES, LYING_MASS, Lying, TOOL};
 pub use hunt::{
     AnimalKey, CARCASSES_MAX, CREDIT_WINDOW, Carcass, Hit, ITEM_MAX, Kill, LASTS, PARTS_MAX, SKEW,
     SPEARS_MAX, Spear, SpearKey,

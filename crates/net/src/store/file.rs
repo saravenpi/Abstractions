@@ -6,7 +6,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-use super::{WORLD_VERSION, World, explored, hunt};
+use super::{GROUND_FILE, HUNT_FILE, WORLD_VERSION, World, explored, hunt};
 
 /// Name of the world file in the data folder.
 pub const FILE: &str = "world.toml";
@@ -20,8 +20,9 @@ const ROTATE_EVERY: Duration = Duration::from_secs(600);
 /// Seeds stay under this bound, as the game's random seeds do, so they fit 18 digits.
 const SEED_BOUND: u64 = 1_000_000_000_000_000_000;
 
-/// Returns the world of `dir/world.toml` with the explored ground of `dir/explored3.bin`. When
-/// there is none, creates the folder and a new world named `name_hint` with a random seed, and writes it.
+/// Returns the world of `dir/world.toml` with the explored ground, the hunt and the things on the
+/// ground of the files beside it. When there is none, creates the folder and a new world named
+/// `name_hint` with a random seed, and writes it.
 pub fn load_or_create(dir: &Path, name_hint: &str) -> io::Result<World> {
     let path = dir.join(FILE);
     match fs::read_to_string(&path) {
@@ -31,11 +32,10 @@ pub fn load_or_create(dir: &Path, name_hint: &str) -> io::Result<World> {
             if world.version < WORLD_VERSION {
                 return replace_old(dir, &path, name_hint);
             }
-            let explored = explored::load(dir)?;
-            let hunt = hunt::load(dir)?;
             Ok(World {
-                explored,
-                hunt,
+                explored: explored::load(dir)?,
+                hunt: hunt::load(dir, HUNT_FILE)?,
+                ground: hunt::load(dir, GROUND_FILE)?,
                 ..world
             })
         }
@@ -74,7 +74,7 @@ fn replace_old(dir: &Path, path: &Path, name_hint: &str) -> io::Result<World> {
 
 /// Writes `world` to `dir/world.toml` atomically: a temporary file, flushed to disk, then
 /// renamed over the old one. The old file becomes copy 1 at most once every ten minutes. The
-/// explored ground goes to `dir/explored3.bin` and the hunt to `dir/hunt3.bin` the same way.
+/// explored ground, the hunt and the things on the ground go to the files beside it the same way.
 pub fn save(dir: &Path, world: &World) -> io::Result<()> {
     save_every(dir, world, ROTATE_EVERY)
 }
@@ -93,7 +93,8 @@ pub(super) fn save_every(dir: &Path, world: &World, every: Duration) -> io::Resu
     fs::rename(&tmp, &path)?;
     File::open(dir)?.sync_all()?;
     explored::save(dir, &world.explored)?;
-    hunt::save(dir, &world.hunt)
+    hunt::save(dir, HUNT_FILE, &world.hunt)?;
+    hunt::save(dir, GROUND_FILE, &world.ground)
 }
 
 /// Returns the path of copy `n` of the world file.

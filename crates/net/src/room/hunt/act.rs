@@ -37,6 +37,8 @@ impl Room {
             Act::Impact(impact) => self.impact(conn, impact, out),
             Act::Attack(attack) => self.attack(conn, attack, out),
             Act::Rock(rock) => self.rock(conn, rock, out),
+            Act::Drop(lying) => self.dropped(conn, (me, clock), lying, out),
+            Act::Take { id, mass } => self.picked(conn, me, (id, mass), out),
         }
     }
 

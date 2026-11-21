@@ -1,8 +1,8 @@
 //! The airframe as a few convex parts, each given by its corner points in ship-root space: the
 //! fuselage, the canopy, the fin, the heat shield, the three pods of the gear, the two engine
-//! pods, and the wing and the winglet of each side. They come from the same stations the drawn
-//! parts are made of, so what the ship collides with is what is seen. The fittings smaller than
-//! 15 cm, the antenna, the ports, the lamps and the hatch, are left out.
+//! pods, and the two pieces of the wing and the winglet of each side. They come from the same
+//! stations the drawn parts are made of, so what the ship collides with is what is seen. The
+//! fittings smaller than 15 cm, the antenna, the ports, the lamps and the hatch, are left out.
 
 use bevy::prelude::*;
 
@@ -24,7 +24,7 @@ pub fn hulls() -> Vec<Vec<Vec3>> {
         struts::corners(0.0, &NOSE),
     ];
     for side in [-1.0, 1.0] {
-        parts.push(wing::corners(side));
+        parts.extend(wing::pieces(side));
         parts.push(blade::corners(3.2 * side, &WINGLET));
         parts.push(struts::corners(1.9 * side, &MAIN));
     }

@@ -129,10 +129,8 @@ fn the_sky_blends_into_the_local_weather() {
     let values = |look: WeatherLook| [look.haze, look.dust];
     for step in 0..2000 {
         let (here, next) = (drawn(step), drawn(step + 1));
-        let jump = values(here)
-            .iter()
-            .zip(values(next))
-            .map(|(a, b)| (a - b).abs());
+        let (now, then) = (values(here), values(next));
+        let jump = now.iter().zip(then).map(|(a, b)| (a - b).abs());
         assert!(jump.fold(0.0, f32::max) < 0.01, "at {step}");
         assert!(
             (here.sight() - next.sight()).abs() < 0.06,

@@ -82,3 +82,18 @@ The merge with `staging` followed this recipe:
 - The chorus at dusk lives in `audio/tests/dusk.rs`, placed all around. The fauna takes place each call by its reach, `CALL * 12 m * cbrt(mass)`.
 - The armour tick of a hard landing now scales with the strike of the landing (`tread::tune::TICK`). At 0.06 absolute, a landing at full force buried it under the soil click, and `treads_heard::only_a_hard_landing_ticks` failed on staging.
 - The render takes here are numbered 30 to 39 so they do not collide with creature-sound's 21 to 29.
+
+## Steady flight: every modulation of the ship voice
+
+| Source | Before | Now |
+| --- | --- | --- |
+| Jet roar, slow swell (`SURGE`) | 1.3 Hz, 22% RMS: heard as a puff in a loop | removed |
+| Jet roar, fast swell (`SURGE`) | 11 Hz corner, 30% RMS, which also reached under 5 Hz | 25 Hz corner, 8% RMS: 0.24 dB below 5 Hz |
+| Two pumps beating (`TWIN`) | 1.007, so 2.9 Hz at full speed, full depth on the shaft tones | 1.0002, once every 12 s |
+| Airframe gusts (`GUST`) | 0.8 Hz, ±35%, in any air | 0.1 Hz, scaled by how rough the air is: none in calm air |
+| Roll and yaw whoosh (`WHIRL`) | followed the rate | one swell per onset over 1.5 rad/s, with a 1.5 s refractory time |
+| Chase camera sway | the distance followed the camera's spring: level and Doppler pulsed with it | in the chase view the distance follows over 2 s (`RIDE_FOLLOW`) |
+| Pump speed wander (`WANDER`) | 0.6 Hz, 0.4% of speed: pitch only | unchanged, under 0.04 dB |
+| Warp drive beat (`WARP_BEAT`) | 0.7 to 6.7 Hz | unchanged: only in warp, where it is the sound of the drive |
+| Spot of a one-shot | worked out once when it starts | unchanged: nothing is stepped |
+| Ship path | tuned every block (0.67 ms) and smoothed | unchanged: nothing is stepped |

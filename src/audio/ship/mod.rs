@@ -8,7 +8,7 @@
 //! constants. The audio thread never allocates and never locks here: a voice costs about 700
 //! floating point operations per sample while its ship is in earshot, and nothing otherwise.
 
-mod air_tune;
+pub(super) mod air_tune;
 mod airframe;
 #[cfg(test)]
 mod airframe_tests;

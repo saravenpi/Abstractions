@@ -42,9 +42,10 @@ pub const RATTLE: (f32, f32, f32, f32) = (1700.0, 6.0, 0.002, 0.05);
 /// Corner in hertz of the deep roar of an entry through the hull, and its level at full heat.
 pub const ROAR: (f32, f32) = (70.0, 0.3);
 
-/// Rate of the gusts on the canopy, and their depth in the roughest air. In calm air there is no
-/// gust and steady flight is steady: the gusts follow how rough the air is.
-pub const GUST: (f32, f32) = (0.8, 0.35);
+/// Rate of the gusts on the canopy, about one every ten seconds, and their depth in the roughest
+/// air. In calm air there is no gust and steady flight is steady: the gusts follow how rough the
+/// air is.
+pub const GUST: (f32, f32) = (0.1, 0.35);
 
 /// Share of the wind on the airframe that a chase view riding along with the ship hears rushing
 /// past its own ears.

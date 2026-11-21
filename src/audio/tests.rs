@@ -28,6 +28,7 @@ mod ship;
 mod ship_law;
 mod ship_mix;
 mod slides;
+mod steady;
 mod takes;
 mod takes_ground;
 mod takes_steps;

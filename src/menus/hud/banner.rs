@@ -14,9 +14,8 @@ const SECONDS: f32 = 4.5;
 /// Seconds the banner takes to fade in, and to fade out.
 const FADE: f32 = 0.7;
 
-/// Distance in pixels from the top of the screen to the banner, which sits under every row of the compass.
-const BANNER_TOP: f32 =
-    theme::EDGE + super::compass::ROWS as f32 * super::compass::HEIGHT + theme::S4;
+/// Distance in pixels from the top of the screen to the banner, which sits under the compass.
+const BANNER_TOP: f32 = theme::EDGE + super::compass::HEIGHT + theme::S4;
 
 /// Which planet the banner last announced and how long it still shows.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]

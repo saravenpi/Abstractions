@@ -1,12 +1,12 @@
 //! The compass: a thin bar at the top of the screen with a mark for every marker around the
-//! player, each where it lies, with its name and distance under it.
+//! player, each where it lies, as an icon alone: names and distances are on the map and on the
+//! marker over the world.
 //!
 //! A mark slides along the bar as the player turns, fades out toward the ends of the bar and
-//! hides past them. A mark is an icon beside its name and distance. Marks that would overlap
-//! stack in rows under the bar, the nearest on top, and a mark with no free row hides. On a
-//! planet an N marks north. The bar shows even
-//! while empty. The ship only shows on the planet it stands on and while the player is on foot;
-//! favourites only nearby. The home mark only shows on the planet of the home base, on foot or in
+//! hides past them. Marks that would overlap are nudged apart sideways by the least that clears
+//! them, the nearest in front, and friends past a limit fold into the last one with a count. On
+//! a planet an N marks north. The bar shows even while empty. The ship only shows on the planet it stands on and
+//! while the player is on foot; favourites only nearby. The home mark only shows on the planet of the home base, on foot or in
 //! its air, and nowhere else.
 
 mod aim;
@@ -14,13 +14,13 @@ mod beacons;
 mod herds;
 mod north;
 mod show;
-mod stack;
+mod space;
 #[cfg(test)]
 mod tests_course;
 #[cfg(test)]
 mod tests_herds;
 #[cfg(test)]
-mod tests_stack;
+mod tests_space;
 
 pub(super) use aim::{Around, FAVOURITE_REACH};
 #[cfg(test)]
@@ -45,14 +45,10 @@ use crate::ui::{ICON_FONT, text, theme};
 /// Width in pixels of the room of the north mark, which is centred on its place on the bar.
 const ROOM: f32 = 24.0;
 
-/// Rows of marks the compass stacks: the first is in the bar, the others hang under it.
-pub(super) const ROWS: usize = 3;
-
 /// Height in pixels of the icon of a mark, small enough to leave the view clear.
 const MARK: f32 = theme::ICON_SMALL;
 
-/// Height in pixels of the bar, and of every row of marks under it: an icon beside a line of
-/// text, in a strip.
+/// Height in pixels of the bar: one row of icons.
 pub(super) const HEIGHT: f32 = theme::ROW_HEIGHT;
 
 /// Marks the bar itself, which shows whenever the HUD does, empty or not.
@@ -73,11 +69,11 @@ pub(super) struct Pin {
 #[derive(Component)]
 pub(super) struct Glyph(usize);
 
-/// Marks the label of the mark of the pool at this slot: its name and distance.
+/// Marks the count of friends folded into the mark of the pool at this slot, empty for most.
 #[derive(Component)]
-pub(super) struct Far(usize);
+pub(super) struct Count(usize);
 
-/// One hidden mark of the pool at `slot`: its icon over its label.
+/// One hidden mark of the pool at `slot`: its icon and its count.
 fn pin(slot: usize) -> impl Bundle {
     (
         Pin { slot, kind: None },
@@ -86,12 +82,10 @@ fn pin(slot: usize) -> impl Bundle {
             position_type: PositionType::Absolute,
             height: px(HEIGHT),
             column_gap: px(theme::S1),
-            padding: UiRect::horizontal(px(theme::S2)),
+            padding: UiRect::left(px(theme::S2)),
             align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
             ..default()
         },
-        BackgroundColor(Color::NONE),
         children![
             (
                 Glyph(slot),
@@ -101,7 +95,7 @@ fn pin(slot: usize) -> impl Bundle {
                 TextColor(Color::WHITE),
             ),
             (
-                Far(slot),
+                Count(slot),
                 text("", theme::FONT_SMALL, theme::TEXT),
                 TextLayout::no_wrap(),
             ),

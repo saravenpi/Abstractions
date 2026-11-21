@@ -1,13 +1,15 @@
 //! Laying the compass out every frame: which markers it shows, where and how faded, written
-//! into a pool of marks that grows when more markers show than it holds. Every mark sits on one
-//! level.
+//! into a pool of marks that grows when more markers show than it holds. Every mark is an icon
+//! on the one row of the bar.
+
+use std::fmt::Write;
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::aim::Around;
-use super::stack::{extra, phrase, stack, width};
-use super::{Bar, Far, Glyph, HEIGHT, Pin, pin};
+use super::space::{BASE, space};
+use super::{Bar, Count, Glyph, Pin, pin};
 use crate::menus::hud::context::{Where, marker_shown};
 use crate::menus::hud::needle::{WIDTH, fade, slot};
 use crate::menus::{Marker, MarkerKind, Markers};
@@ -24,11 +26,7 @@ pub struct Seen {
     pub alpha: f32,
     /// Its distance in metres.
     pub gap: f64,
-    /// The row it stands in, 0 for the bar.
-    pub row: usize,
-    /// Its width in pixels, icon and words in their strip.
-    pub wide: f32,
-    /// How many marks that found no row hide behind it.
+    /// How many friends past the limit of the bar fold into it.
     pub more: usize,
 }
 
@@ -45,20 +43,8 @@ pub fn icon(kind: MarkerKind) -> Icon {
     }
 }
 
-/// Returns the name a marker of `kind` shows when it has no label of its own.
-pub(super) const fn kind_name(kind: MarkerKind) -> &'static str {
-    match kind {
-        MarkerKind::Home => "Home",
-        MarkerKind::Ship => "Ship",
-        MarkerKind::Friend => "Player",
-        MarkerKind::Waypoint | MarkerKind::Favourite => "Pin",
-        MarkerKind::Herd => "Herd",
-        MarkerKind::Course => "Course",
-    }
-}
-
-/// The label of a mark: its slot, its words and their colour.
-type Words = (&'static Far, &'static mut Text, &'static mut TextColor);
+/// The count of a mark: its slot, its words and their colour.
+type Words = (&'static Count, &'static mut Text, &'static mut TextColor);
 
 /// The nodes of the compass.
 #[derive(SystemParam)]
@@ -68,20 +54,11 @@ pub struct Pins<'w, 's> {
     /// The bar and its visibility.
     bars: Query<'w, 's, (Entity, &'static mut Visibility), With<Bar>>,
     /// The marks of the pool.
-    pins: Query<
-        'w,
-        's,
-        (
-            &'static mut Pin,
-            &'static mut Node,
-            &'static mut BackgroundColor,
-        ),
-        Without<Bar>,
-    >,
+    pins: Query<'w, 's, (&'static mut Pin, &'static mut Node), Without<Bar>>,
     /// The icons of the marks.
     glyphs:
-        Query<'w, 's, (&'static Glyph, &'static mut Text, &'static mut TextColor), Without<Far>>,
-    /// The labels of the marks.
+        Query<'w, 's, (&'static Glyph, &'static mut Text, &'static mut TextColor), Without<Count>>,
+    /// The counts of the marks.
     words: Query<'w, 's, Words, Without<Glyph>>,
 }
 
@@ -99,26 +76,15 @@ impl Pins<'_, '_> {
 
     /// Moves every mark of the pool to the marker it shows, or hides it.
     fn place(&mut self, seen: &[Seen], markers: &[Marker]) {
-        for (mut pin, mut node, mut fill) in &mut self.pins {
+        for (mut pin, mut node) in &mut self.pins {
             let mark = seen.get(pin.slot);
             let kind = mark.map(|mark| markers[mark.index].kind);
             pin.set_if_neq(Pin { kind, ..*pin });
             let display = mark.map_or(Display::None, |_| Display::Flex);
-            let (left, top, wide) = mark.map_or((node.left, node.top, node.width), |mark| {
-                (
-                    px(mark.at - mark.wide * 0.5),
-                    px(mark.row as f32 * HEIGHT),
-                    px(mark.wide),
-                )
-            });
-            let back = match mark {
-                Some(mark) if mark.row > 0 => theme::PANEL,
-                _ => Color::NONE,
-            };
-            if (node.display, node.left, node.top, node.width) != (display, left, top, wide) {
-                (node.display, node.left, node.top, node.width) = (display, left, top, wide);
+            let left = mark.map_or(node.left, |mark| px(mark.at - BASE * 0.5));
+            if (node.display, node.left) != (display, left) {
+                (node.display, node.left) = (display, left);
             }
-            fill.set_if_neq(BackgroundColor(back));
         }
     }
 
@@ -137,32 +103,28 @@ impl Pins<'_, '_> {
         }
     }
 
-    /// Writes the name and distance of every shown mark, faded, in its colour for a friend,
-    /// a waypoint or a favourite, under its icon.
-    fn label(&mut self, seen: &[Seen], markers: &[Marker], words: &mut String) {
-        for (far, mut text, mut color) in &mut self.words {
-            let Some(mark) = seen.get(far.0) else {
+    /// Writes the count of every shown mark that folds friends into it, faded, in its colour,
+    /// and nothing for the others.
+    fn count(&mut self, seen: &[Seen], markers: &[Marker], words: &mut String) {
+        for (count, mut text, mut color) in &mut self.words {
+            let Some(mark) = seen.get(count.0) else {
                 continue;
             };
-            let marker = &markers[mark.index];
-            phrase(marker, mark.gap, words);
+            words.clear();
             if mark.more > 0 {
-                words.push_str(&extra(mark.more));
+                let _ = write!(words, "+{}", mark.more);
             }
             if text.0 != *words {
                 text.0.clone_from(words);
             }
-            let tint = match marker.kind {
-                MarkerKind::Home | MarkerKind::Ship => theme::TEXT,
-                _ => marker.color,
-            };
+            let tint = markers[mark.index].color;
             color.set_if_neq(TextColor(tint.with_alpha(tint.alpha() * mark.alpha)));
         }
     }
 }
 
 /// Shows every marker that lies inside the span of the bar where it lies, faded toward the
-/// ends, all on one level. The bar shows even while empty.
+/// ends, all on one row. The bar shows even while empty.
 pub fn update(
     around: Around,
     (markers, now): (Res<Markers>, Res<Where>),
@@ -180,22 +142,18 @@ pub fn update(
         };
         if let Some(alpha) = fade(bearing) {
             let at = slot(bearing) * WIDTH;
-            phrase(marker, gap, &mut words);
-            let wide = width(&words);
             seen.push(Seen {
                 index,
                 at,
                 alpha,
                 gap,
-                row: 0,
-                wide,
                 more: 0,
             });
         }
     }
-    stack(&mut seen);
+    space(&mut seen, &markers);
     pins.frame(seen.len());
     pins.place(&seen, &markers.0);
     pins.paint(&seen, &markers.0);
-    pins.label(&seen, &markers.0, &mut words);
+    pins.count(&seen, &markers.0, &mut words);
 }

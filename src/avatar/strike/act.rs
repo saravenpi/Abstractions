@@ -9,7 +9,9 @@ use super::hurt::Hurt;
 use super::key::{Key, carry, drawn, guard, slung};
 use super::outcome::Outcome;
 use super::path::Path;
-use super::tune::{BRAKE, COAST, DRAW, GUARD_IN, LEAST_DRAW, OVERSHOOT, RECOVER};
+use super::tune::{
+    BRAKE, COAST, COCK, DRAW, GUARD_IN, LEAST_DRAW, OVERSHOOT, RECOVER, WINDUP_FLOOR,
+};
 
 /// What the hands are doing. Every time is seconds since the act began.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -98,15 +100,19 @@ pub struct Timing {
 }
 
 impl Timing {
-    /// Returns the timing of `held` along `path`: a swing turns at the build's spin, a thrust moves
-    /// at its thrust speed.
+    /// Returns the timing of `held` along `path`: a swing turns at the build's spin after a wind-up
+    /// of 2·arc / ω, a thrust moves at its thrust speed after cocking back over [`COCK`] times its
+    /// length; no wind-up is shorter than [`WINDUP_FLOOR`].
     pub fn of(held: &Held, path: &Path) -> Self {
-        let speed = match path {
-            Path::Sweep { .. } => held.swing.spin,
-            Path::Line { .. } => held.swing.thrust,
+        let (speed, windup) = match path {
+            Path::Sweep { .. } => (held.swing.spin, held.swing.windup),
+            Path::Line { .. } => {
+                let thrust = held.swing.thrust.max(f32::EPSILON);
+                (thrust, COCK * path.length() / thrust)
+            }
         };
         Self {
-            windup: held.swing.windup,
+            windup: windup.max(WINDUP_FLOOR),
             swing: path.length() / speed.max(f32::EPSILON),
             recover: RECOVER.max(BRAKE * held.swing.windup),
             over: OVERSHOOT * held.swing.inertia / (held.swing.inertia + COAST),
@@ -134,12 +140,13 @@ fn timed(t: f32, dt: f32, length: f32, (then, same): (Act, fn(f32) -> Act)) -> A
 }
 
 /// Returns the act after `act` has run `dt` more seconds under `ask`, and the share of a full draw
-/// when a spear is let go this step.
+/// when a spear is let go this step. A click while the tool comes back starts the next blow.
 pub fn next(act: Act, ask: &Ask, timing: &Timing, thrown: bool, dt: f32) -> (Act, Option<f32>) {
     let act = match act {
         Act::Ready => ready(ask, thrown),
         Act::Windup(t) => timed(t, dt, timing.windup, (Act::Swing(0.0), Act::Windup)),
         Act::Swing(t) => timed(t, dt, timing.swing, (Act::Recover(0.0), Act::Swing)),
+        Act::Recover(_) if ask.strike => Act::Windup(0.0),
         Act::Recover(t) => timed(t, dt, timing.recover, (Act::Ready, Act::Recover)),
         Act::Stun(left, _) if left <= dt => Act::Recover(0.0),
         Act::Stun(left, at) => Act::Stun(left - dt, at),

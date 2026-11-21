@@ -64,6 +64,8 @@ mod tests_ik;
 #[cfg(test)]
 mod tests_outcome;
 #[cfg(test)]
+mod tests_pace;
+#[cfg(test)]
 mod tests_stab;
 #[cfg(test)]
 mod tests_stock;

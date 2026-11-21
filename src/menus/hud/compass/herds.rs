@@ -9,13 +9,14 @@ use crate::fauna::{Nearby, Sighting};
 use crate::menus::hud::context::{Element, Where};
 use crate::menus::{Marker, MarkerKind, MarkerPlace, Markers};
 use crate::space::{Anchor, Frame};
+use crate::ui::theme;
 use crate::universe::BodyId;
 
 /// Owner of the markers of the game itself.
 const GAME: u32 = 0;
 
-/// The muted sand colour of a herd marker, quiet beside the colours of players and waypoints.
-pub const HERD: Color = Color::srgba(0.82, 0.74, 0.56, 0.8);
+/// The primary text colour of a herd marker, matching the shared interface palette.
+pub const HERD: Color = theme::TEXT;
 
 /// Returns the marker of the herd `sighting` on `body`, named for its species when `named`.
 pub fn mark(sighting: &Sighting, body: BodyId, named: bool) -> Marker {

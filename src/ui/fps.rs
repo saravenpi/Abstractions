@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 
+use super::shade::OverWorld;
 use super::theme;
 use super::units::fixed;
 use crate::settings::{Persistent, Settings};
@@ -32,9 +33,10 @@ fn readout(frame: f32) -> String {
 pub(super) fn spawn(mut commands: Commands) {
     commands.spawn((
         FpsText::default(),
+        OverWorld,
         Text::new(String::new()),
         TextFont::from_font_size(theme::FONT_SMALL),
-        TextColor(theme::TEXT_2),
+        TextColor(theme::TEXT),
         Node {
             position_type: PositionType::Absolute,
             top: px(theme::GAP_S),

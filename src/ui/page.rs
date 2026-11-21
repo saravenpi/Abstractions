@@ -98,7 +98,7 @@ pub fn page_body(direction: FlexDirection) -> impl Bundle {
         flex_basis: px(0),
         min_height: px(0),
         column_gap: px(theme::GUTTER),
-        overflow: Overflow::clip(),
+        overflow: Overflow::clip_y(),
         ..default()
     };
     (Zone::Body, node)

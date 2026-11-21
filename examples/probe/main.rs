@@ -47,6 +47,11 @@
 //! a low fast flight and a hover in orbit, with a `PROBE perf` line every 30 frames and the render pass costs of
 //! Bevy's render diagnostics. It is left out of a run of all groups.
 //!
+//! `PROBE_STAGES=reflect` runs the `reflect` stage (see the `mirror` module): the robot at a lake shore near the
+//! base and the ship hovering low over the water, from behind the robot, from just above the water and looking
+//! down in first person, each with the water reflections on and off, with a `PROBE reflect` line per shot. Run it
+//! with `SMOKE_SEED=57`. It is left out of a run of all groups.
+//!
 //! `PROBE_STAGES=models` opens the model studio (see the `models` module): the robot and the companion alone.
 //!
 //! `PROBE_STAGES=zoo` does not tour the game. It shows every animal of the seed's home planet walking in a
@@ -102,6 +107,7 @@ mod long;
 mod longlog;
 mod look;
 mod meter;
+mod mirror;
 mod models;
 mod mp;
 mod mpact;
@@ -161,6 +167,7 @@ use long::*;
 use longlog::*;
 use look::*;
 use meter::*;
+use mirror::*;
 use mp::*;
 use mpact::*;
 use mpspot::*;

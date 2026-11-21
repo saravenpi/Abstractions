@@ -89,6 +89,10 @@ impl Palette {
     /// Returns the palette at the ground under a star of linear colour `star` whose height
     /// above the horizon has the sine `height`, seen through `air` at its full pressure.
     ///
+    /// The colour of the star enters the sky once, in what the air scatters out of its light, and
+    /// the path of the light through the air reddens it by itself. Counting the star again made the
+    /// sky of a red star redder than its light, and the clouds, which take the light, blue against it.
+    ///
     /// Nothing here is keyed on the hour. The star light is what the air lets through on its
     /// path, so it reddens and dims as the star sinks, the more so the thicker the air; the sky
     /// is what the air scatters out of it, stained by what the air carries; the ambient light
@@ -102,9 +106,9 @@ impl Palette {
         let (tint, day) = (light.tint, light.sky);
         let dusk = smoothstep(-0.2, 0.1, height);
         let white = HAZE + (1.0 - HAZE) * (1.0 - 1.0 / depth);
-        let blue =
-            scattered(star).lerp(peak(star), 0.1) * peak(star * transmit(height, 0.2 * depth));
-        let haze = scattered(star).lerp(peak(star), white) * tint.powf(0.7);
+        let blue = scattered(star).lerp(peak(star), 0.1) * peak(transmit(height, 0.2 * depth));
+        let haze =
+            scattered(star).lerp(peak(star), white) * peak(transmit(height, depth)).powf(0.7);
         let zenith = air.stain(NIGHT_ZENITH.lerp(blue * 0.92, day), star);
         let horizon = air.stain(NIGHT_HORIZON.lerp(haze * 0.95, dusk), star);
         let sky = peak(zenith + horizon).lerp(Vec3::ONE, 0.4);

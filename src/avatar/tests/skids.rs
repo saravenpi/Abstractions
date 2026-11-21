@@ -75,8 +75,8 @@ fn the_skid_leans_the_way_it_came_in() {
 
 /// Returns the largest change of a joint, of the lift less what the turn carries, and of the
 /// whole-body turn in one frame over the frames of `body` once the gear took the touchdown, the
-/// turn taken out of the joints. The two frames of the hit itself belong to the fall pose, whose legs stop reaching as the
-/// fall speed it reads eases to zero.
+/// turn taken out of the joints. The two frames of the hit itself belong to the fall pose, whose
+/// legs stop reaching as the fall speed it reads eases to zero.
 fn worst(body: &Touchdown) -> Vec3 {
     let still = |pose: &Pose| pose.with(Core::Lift, 0.0);
     let steps = body.frames[SETTLE + 2..].windows(2).map(|pair| {

@@ -173,7 +173,9 @@ fn hands() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
 fn spears() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
     (
         loose::loose.run_if(on_message::<input::Loose>),
-        throw::soar.run_if(any_with_component::<Spear>),
+        throw::soar
+            .run_if(any_with_component::<Spear>)
+            .run_if(resource_exists::<avian3d::collider_tree::ColliderTrees>),
         (
             javelin::quiver.run_if(any_with_component::<javelin::Quiver>),
             javelin::rig.run_if(javelin::bare),

@@ -38,6 +38,11 @@ pub fn stow(
     }
 }
 
+/// Run condition: some body holds a tool, or [`Squared`] still needs clearing.
+pub fn squaring(held: Query<(), With<Held>>, squared: Res<Squared>) -> bool {
+    !held.is_empty() || *squared != Squared::default()
+}
+
 /// Tells the controller whether the local robot has a tool drawn and strikes with it, so the body
 /// squares to the view.
 pub fn square(robot: Robot, bodies: Query<(&Strike, &Held)>, mut squared: ResMut<Squared>) {

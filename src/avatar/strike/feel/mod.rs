@@ -33,7 +33,7 @@ use super::layer::lay;
 use crate::audio::Impact;
 use crate::craft::pack::{Knock, Knocked};
 use crate::effects::Fling;
-use crate::player::Squared;
+use crate::player::{PlayerSet, Squared};
 use crate::screens::{in_control, playing};
 
 /// Registers the feel of strikes: the stow and the facing before the hands are read, the knap over
@@ -52,7 +52,7 @@ pub(super) fn plugin(app: &mut App) {
                 stow::stow
                     .run_if(in_control.and_then(any_with_component::<Held>))
                     .before(ask),
-                stow::square,
+                stow::square.before(PlayerSet::Move).run_if(stow::squaring),
                 (
                     knap::start.run_if(on_message::<Knock>),
                     knap::knap.run_if(any_with_component::<knap::Knap>),

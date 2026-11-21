@@ -51,7 +51,7 @@ fn from_orbit(world: &mut World) {
 fn record(world: &mut World, t: u32, name: &str) {
     let heat = world.resource::<Heat>().glow.heat;
     let every = if heat > 0.01 { EVERY.0 } else { EVERY.1 };
-    if t % every != 0 {
+    if !t.is_multiple_of(every) {
         return;
     }
     let telemetry = *world.resource::<ShipTelemetry>();

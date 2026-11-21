@@ -25,7 +25,7 @@ use bevy::prelude::*;
 
 pub use gas::Gas;
 pub use sheath::{SheathMaterial, SheathUniform};
-pub use state::{Craft, Heat, HeatSet};
+pub use state::{Craft, Heat};
 pub use tune::{MIN_SPEED, SHEATH_FROM};
 
 use super::celestial::smoothstep;

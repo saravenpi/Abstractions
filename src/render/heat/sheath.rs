@@ -131,12 +131,15 @@ type Posed = (
     &'static mut Visibility,
 );
 
+/// Filter of the light ahead of the nose, apart from the sheath.
+type HullOnly = (With<HullLight>, Without<Sheath>);
+
 /// Moves the sheath to the craft and shows it while the craft glows, and lights the hull from
 /// just ahead of the nose with the colour and the strength of the glow.
 fn follow(
     heat: Res<Heat>,
     mut sheaths: Query<(Posed, &MeshMaterial3d<SheathMaterial>), With<Sheath>>,
-    mut lights: Query<(Posed, &mut PointLight), (With<HullLight>, Without<Sheath>)>,
+    mut lights: Query<(Posed, &mut PointLight), HullOnly>,
     mut materials: ResMut<Assets<SheathMaterial>>,
 ) {
     let (craft, glow) = (heat.craft, heat.glow);

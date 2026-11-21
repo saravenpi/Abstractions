@@ -1,6 +1,6 @@
 import bevy_pbr::render::forward_io::VertexOutput;
 import bevy_pbr::render::mesh_view_bindings::view;
-import package::render::cloud_field::{broad_cover, day_side, dither, lone, puff, shade};
+import package::render::cloud_field::{Puff, broad_cover, day_side, dither, lone, puff};
 
 struct Clouds {
     light: vec4<f32>,
@@ -8,6 +8,7 @@ struct Clouds {
     haze: vec4<f32>,
     params: vec4<f32>,
     space: vec4<f32>,
+    ambient: vec4<f32>,
     drift: vec4<f32>,
     fixed_x: vec4<f32>,
     fixed_y: vec4<f32>,
@@ -17,6 +18,20 @@ struct Clouds {
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> clouds: Clouds;
 @group(constants::MATERIAL_BIND_GROUP) @binding(1) var cover_map: texture_cube<f32>;
 @group(constants::MATERIAL_BIND_GROUP) @binding(2) var cover_sampler: sampler;
+
+const LUMA: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
+const KOSCHMIEDER: f32 = 2.9957323;
+
+fn strongest(v: vec3<f32>) -> vec3<f32> {
+    return v / max(max(v.x, max(v.y, v.z)), 0.001);
+}
+
+fn shaded(base: vec3<f32>, cloud: Puff, above: bool, ambient: vec3<f32>) -> vec3<f32> {
+    let body = select(mix(1.0, 0.72, cloud.density), mix(0.82, 1.05, cloud.density), above);
+    let sky = strongest(ambient);
+    let dark = sky * (dot(base, LUMA) * 0.55 / max(dot(sky, LUMA), 0.01));
+    return mix(dark, base * 1.05, cloud.relief) * body;
+}
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
@@ -34,14 +49,14 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let dist = length(to_eye);
     let facing = dot(n, to_eye / max(dist, 0.001));
     let cloud = puff(spot, to_fixed * light, facing, cover);
-    let far = smoothstep(0.35, 1.0, dist / max(clouds.params.y, 1.0));
+    let far = 1.0 - exp(-KOSCHMIEDER * dist / max(clouds.ambient.w, 1.0));
     let alpha = max(cloud.thick * lone(cloud), whiteout);
     if (alpha <= dither(in.position.xy)) {
         discard;
     }
 
     let base = mix(day_side(clouds.space.rgb, n, light), clouds.color.rgb, air);
-    var col = shade(base, cloud, facing > 0.0);
+    var col = shaded(base, cloud, facing > 0.0, clouds.ambient.rgb);
     col = mix(col, clouds.haze.rgb, far * air);
     col = mix(col, clouds.color.rgb, whiteout);
     return vec4<f32>(col, 1.0);

@@ -126,8 +126,9 @@ pub const BODY: f32 = 9.0 * theme::LINE_SMALL;
 
 /// Height in pixels of what never scrolls in the side panel, the search results apart: the
 /// margins of the screen over and under the panel, the padding, the gaps between the four parts,
-/// the search with its heading and its box, the head of the card and the legend. The rest of the height goes to the results and to the part that
-/// scrolls: the facts of the card, the pins and the players.
+/// the search with its heading and its box, the head of the card and the legend. The rest of the
+/// height goes to the results and to the part that scrolls: the facts of the card, the pins and
+/// the players.
 pub const FIXED: f32 = 2.0 * EDGE
     + 2.0 * PAD
     + 3.0 * SECTION_GAP

@@ -40,12 +40,8 @@ pub const GLIDE_STICK: f64 = 0.6;
 /// still flattens out over the base. The glide starts 58 km short of the target on an Earth.
 pub const GLIDE_ANGLE: f64 = 1.134_464;
 
-/// Share of the speed at which the nose would start to glow that the glide flies at: the speed
-/// hold lags the falling bound by a fraction of a second, two percent of it at the top of the air.
-pub const COOL_SHARE: f64 = 0.95;
-
 /// Fastest glide in metres per second, over a body with no air to set it.
-pub const GLIDE_MOST: f64 = 6000.0;
+pub const GLIDE_MOST: f64 = 8000.0;
 
 /// Metres above the ground the glide aims for, and the metres along the ground before the target
 /// it aims at: the glide ends about 2 km up and a few kilometres short, the target ahead.

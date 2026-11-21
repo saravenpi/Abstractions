@@ -3,7 +3,8 @@
 use bevy::math::{DQuat, DVec3};
 
 use super::deck::{DEEPEST, giant};
-use super::tune::MAIN_ACCEL;
+use super::tune::{HEAT, MAIN_ACCEL};
+use crate::render::cool_speed;
 use crate::universe::PlanetSpec;
 use crate::wind::thickness;
 
@@ -61,6 +62,13 @@ pub fn pressure(density: f64, speed: f64) -> f64 {
 /// drag `DRAG.z * density * v^2` equals the thrust. Without air there is no such limit.
 pub fn terminal(density: f64, boost: f64) -> f64 {
     (MAIN_ACCEL * boost / (DRAG.z * density.max(0.0))).sqrt()
+}
+
+/// Returns the fastest speed in metres per second the assist and the autopilot fly through air
+/// of `density` kilograms per cubic metre: [`HEAT`] times the speed at which the nose starts to
+/// glow there, a mild glow. Without air there is no bound.
+pub fn heat_cap(density: f64) -> f64 {
+    HEAT * cool_speed(density)
 }
 
 /// Returns the velocity after `h` seconds of drag in air of `density`, for a ship with orientation `rot`.

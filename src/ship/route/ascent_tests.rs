@@ -95,15 +95,16 @@ fn the_climb_reaches_a_200_km_orbit_in_under_three_minutes() {
     assert!((near - goal).abs() < ORBIT_TOLERANCE, "periapsis {near}");
 }
 
-/// The speed hold may fly as fast as twice the speed of a circular orbit at 200 km over an
-/// Earth, about 15.6 km/s, and keeps its fixed 2,500 m/s over a small body.
+/// Far from a surface the speed hold flies the space cap of 30 km/s over an Earth, whose orbit
+/// at 200 km runs at under 9 km/s, and twice the orbit speed near a giant whose orbit is faster
+/// than half the cap. At the surface it asks for 40 m/s.
 #[test]
 fn the_top_speed_follows_the_local_orbit() {
     let planet = earth();
     let circular = (planet.mu() / (planet.radius + ORBIT_ALTITUDE)).sqrt();
     assert!((7.0e3..9.0e3).contains(&circular), "{circular}");
-    assert_eq!(top_speed_at(1.0e9, circular), 2.0 * circular);
-    assert_eq!(top_speed_at(1.0e9, 100.0), 2500.0);
+    assert_eq!(top_speed_at(1.0e9, circular), 30_000.0);
+    assert_eq!(top_speed_at(1.0e9, 20_000.0), 40_000.0);
     assert_eq!(top_speed_at(0.0, circular), 40.0);
 }
 

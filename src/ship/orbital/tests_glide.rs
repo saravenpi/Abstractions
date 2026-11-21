@@ -1,6 +1,6 @@
 //! Tests of the glide from the cruise into the air: flown by the real flight step with the
 //! assist, it ends low, a few kilometres short of the target with the target ahead, and the nose
-//! never glows on the way.
+//! glows no more than mildly on the way.
 
 use bevy::math::{DQuat, DVec3};
 
@@ -13,12 +13,13 @@ use crate::ship::body::Ship;
 use crate::ship::drag::density;
 use crate::ship::flight::{Controls, STEP, Scene, step};
 use crate::ship::steer::aim;
+use crate::ship::tune::HEAT;
 use crate::space::Frame;
 use crate::universe::PlanetSpec;
 
-/// Seconds the glide may take from the cruise floor to its end: about 72 s on an Earth, the time
-/// the speed at which the nose glows takes to get down through the air.
-const LIMIT: f64 = 85.0;
+/// Seconds the glide may take from the cruise floor to its end: about 55 s on an Earth, the time
+/// the heat cap takes to get down through the air.
+const LIMIT: f64 = 65.0;
 
 /// How a glide ended: the ship, the seconds it took, whether it ended, and the highest share of
 /// the speed at which the nose glows that it flew at.
@@ -93,9 +94,10 @@ fn glide_down(planet: &PlanetSpec) -> Flown {
 }
 
 /// From the cruise floor over an Earth the glide ends within [`LIMIT`] seconds, 1 to 8 km above
-/// the ground and under 15 km short of the target, flying toward it, and the nose never glows.
+/// the ground and under 15 km short of the target, flying toward it, and the nose never goes
+/// past 1.4 times the speed at which it starts to glow, with the lag of the speed hold.
 #[test]
-fn the_glide_ends_low_and_short_of_the_target_with_the_nose_dark() {
+fn the_glide_ends_low_and_short_of_the_target_with_a_mild_glow() {
     let planet = earth();
     let flown = glide_down(&planet);
     assert!(flown.done, "the glide ran {} s", flown.time);
@@ -107,22 +109,23 @@ fn the_glide_ends_low_and_short_of_the_target_with_the_nose_dark() {
     let toward = (DVec3::X - up * up.x).normalize();
     assert!(flown.ship.vel.dot(toward) > 0.0, "the target is behind");
     assert!(
-        flown.worst < 1.0,
+        flown.worst < HEAT * 1.03,
         "the nose glowed: {} of the bound",
         flown.worst
     );
 }
 
-/// Through the air the glide never asks for a speed at which the nose would glow.
+/// Through the air the glide never asks for more than 1.4 times the speed at which the nose
+/// starts to glow.
 #[test]
-fn the_glide_asks_for_a_dark_nose_at_every_height() {
+fn the_glide_asks_for_a_mild_glow_at_most_at_every_height() {
     let planet = earth();
     for km in 0..140 {
         let height = f64::from(km) * 1000.0;
         let asked = glide::speed(&planet, height);
         let cool = cool_speed(density(&planet, height));
         assert!(
-            asked > 0.0 && asked < cool,
+            asked > 0.0 && asked <= HEAT * cool * (1.0 + 1.0e-9),
             "{asked} m/s at {km} km, over {cool}"
         );
     }

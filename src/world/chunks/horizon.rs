@@ -67,7 +67,7 @@ impl Bounds {
         let (low, high) = points
             .iter()
             .map(radius)
-            .fold((f64::INFINITY, 0.0), |(low, high), r| {
+            .fold((f64::INFINITY, 0.0_f64), |(low, high), r| {
                 (low.min(r), high.max(r))
             });
         let cell = 2.0 * angle / cells.max(1) as f64;

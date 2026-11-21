@@ -34,7 +34,7 @@ use bevy::prelude::*;
 
 pub use self::frame::Frame;
 pub use self::lod::{Lod, ring_distance, subsample};
-pub use self::node::{fill_node, node_cells, node_frame, node_mesh};
+pub use self::node::{cells_of, fill_node, node_cells, node_frame, node_mesh};
 pub use self::patch::Patch;
 use self::read::scale;
 pub use self::rings::Rings;

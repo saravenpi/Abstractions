@@ -24,6 +24,8 @@ pub struct Cell {
     pub bed: Option<Surface>,
     /// Its height and slope read at the cell centre, or nothing on the legacy plane.
     pub reading: Option<Reading>,
+    /// How thick the turf grows at the cell centre, where the mesh has no turf of its own to read it from.
+    pub cover: Option<f32>,
 }
 
 /// Returns the sRGB colour the home planet gives ground at `height` and `slope` in the biome `base`,
@@ -70,7 +72,7 @@ fn shade(
         Some(_) => classed(0.0),
         None => classed(reading.slope),
     };
-    let open = carpeted(style, turf, c, (open, surface));
+    let open = carpeted((style, turf), cell.cover, c, (open, surface));
     let (rgb, surface) = match cell.reading {
         Some(r) => {
             let (rock, kind) = classed(STEEP);
@@ -86,14 +88,14 @@ fn shade(
 
 /// Returns the colour `ground` of a triangle over vertices `c` with grass moved to the mean colour of its carpet.
 fn carpeted(
-    style: &Style,
-    turf: Option<Turf>,
+    (style, turf): (&Style, Option<Turf>),
+    cover: Option<f32>,
     c: [[usize; 2]; 3],
     ground: ((f32, f32, f32), Surface),
 ) -> (f32, f32, f32) {
     match (style.verdure, ground.1) {
         (Some(verdure), Surface::Grass) => {
-            let thick = turf.map_or(verdure.cover, |turf| {
+            let thick = turf.map_or(cover.unwrap_or(verdure.cover), |turf| {
                 level(&c.map(|[i, j]| turf(i, j))) / TURF_LEVELS
             });
             verdure.carpeted(ground.0, thick)

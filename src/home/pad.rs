@@ -18,6 +18,22 @@ const PANEL: f32 = 0.4;
 /// Height in metres of a corner light above the ground, and its distance beyond the corner.
 const CORNER: (f32, f32) = (0.45, 0.4);
 
+/// Metres around a grid point of the surface within which the ground is read, so a bump of the 2 m terrain mesh
+/// between two grid points of the pad does not rise through the deck.
+const REACH: f32 = 0.9;
+
+/// Directions around a grid point at which the ground is read, besides the point itself.
+const SPREAD: [[f32; 2]; 8] = [
+    [1.0, 0.0],
+    [-1.0, 0.0],
+    [0.0, 1.0],
+    [0.0, -1.0],
+    [1.0, 1.0],
+    [-1.0, 1.0],
+    [1.0, -1.0],
+    [-1.0, -1.0],
+];
+
 /// Returns the position of grid line `i` across the pad, from one edge to the other.
 fn line(i: usize) -> f32 {
     let inner = PAD_HALF - PANEL;
@@ -46,7 +62,11 @@ fn surface(draft: &mut Draft) -> Vec<Vec<Vec3>> {
         let at = Vec2::new(line(i), line(j));
         let ground = Vec3::new(at.x, draft.ground(at), at.y);
         draft.feet.push(draft.at(ground));
-        ground + Vec3::Y * PAD_LIFT
+        let crest = SPREAD
+            .iter()
+            .map(|d| draft.ground(at + Vec2::from_array(*d) * REACH))
+            .fold(ground.y, f32::max);
+        Vec3::new(at.x, crest + PAD_LIFT, at.y)
     };
     (0..=CELLS)
         .map(|i| (0..=CELLS).map(|j| point(draft, i, j)).collect())

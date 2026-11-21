@@ -12,6 +12,7 @@ mod relief;
 mod rig;
 #[cfg(test)]
 mod rules;
+mod sampler;
 mod shelf;
 mod sow;
 mod spacing;
@@ -33,6 +34,8 @@ mod tests_edge;
 mod tests_frozen;
 #[cfg(test)]
 mod tests_life;
+#[cfg(test)]
+mod tests_mean;
 #[cfg(test)]
 mod tests_metric;
 #[cfg(test)]
@@ -70,7 +73,7 @@ use super::{SEA_LEVEL, Surface};
 pub use self::grow::Flora;
 pub use self::rig::Rig;
 pub use self::table::plants_for;
-pub use self::turf::{Carpet, Turf, turf_of};
+pub use self::turf::{Carpet, Spread, Turf, turf_of};
 
 /// Most big props on one chunk of `CHUNK_SIZE` metres, sea floor ones included.
 const BIG_CAP: usize = 55;

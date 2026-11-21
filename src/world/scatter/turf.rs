@@ -10,9 +10,11 @@ use super::air::{Air, still};
 use super::chunk_center;
 use super::cover::Cover;
 use super::grow::{Flora, Grower};
+use super::sampler::Sampler;
 use crate::life::Habitat;
 use crate::life::flora::MAT;
 use crate::world::Terrain;
+use crate::world::lands::thrive::climate_at;
 use crate::world::propmesh::grown::{Look, look};
 
 /// The rosette architecture: tufts of blades from one root.
@@ -102,5 +104,37 @@ impl Carpet {
     /// Returns how thick the turf grows at chart position `w` of the chunk, 0 (barren) to 1.
     pub fn at(&self, w: Vec2) -> f32 {
         self.cover.at(w)[0] * self.turf.density.sqrt()
+    }
+}
+
+/// The turf of a stretch wider than a chunk, read place by place: the same cover the chunks hold, so a coarse
+/// mesh shows the carpet its fine chunks grow.
+pub struct Spread {
+    /// The density of the turf of the stretch.
+    density: f32,
+    /// The noises of the cover.
+    sampler: Sampler,
+}
+
+impl Spread {
+    /// Returns the turf of the stretch around chart position `center` of `terrain`, or nothing where no
+    /// ground cover grows.
+    pub fn of(terrain: &Terrain, center: Vec2) -> Option<Self> {
+        let flora = Flora::of(terrain, center)?;
+        let turf = turf_of(&flora)?;
+        Some(Self {
+            density: turf.density,
+            sampler: Sampler::new(terrain, flora.patchiness),
+        })
+    }
+
+    /// Returns how thick the turf grows at chart position `w` of `terrain`, 0 (barren) to 1, in the
+    /// annual mean climate of the place.
+    pub fn at(&self, terrain: &Terrain, w: Vec2) -> f32 {
+        let wet = match still() {
+            true => 0.5,
+            false => climate_at(terrain, w).map_or(0.5, |c| c.moisture.min(1.2)),
+        };
+        self.sampler.at(terrain, w, wet)[0] * self.density.sqrt()
     }
 }

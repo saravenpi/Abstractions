@@ -16,7 +16,7 @@ use crate::world::propmesh::grown::grown;
 const BEFORE: (usize, usize) = (513, 3942);
 
 /// Returns `want` land chunks of a 5,000 m globe of seed `seed` carrying one producer of every architecture.
-fn planet(seed: u64, want: usize) -> Vec<Tile> {
+pub(super) fn planet(seed: u64, want: usize) -> Vec<Tile> {
     let all = garden(seed, &[0, 1, 2, 3, 4, 5, 6, 7], vec![]);
     let globe = Arc::new(Globe::new(seed, 5000.0, 9.81).with_life(Some(all)));
     chunks(&globe, Zone::Centre, 15, want)
@@ -110,4 +110,24 @@ fn cover_keeps_the_plant_count() {
         near(big, BEFORE.0) && near(all, BEFORE.1),
         "big {big} all {all} against {BEFORE:?}"
     );
+}
+
+/// A coarse mesh reads the cover of a place as the chunk that holds it does: at the grid points of the cover of a
+/// chunk, the spread of the stretch and the carpet of the chunk agree.
+#[test]
+fn spread_reads_the_cover_of_the_chunks() {
+    let _book = hold();
+    let tile = planet(3, 1).remove(0);
+    let (coord, terrain) = (tile.coord, &tile.terrain);
+    let spread = super::turf::Spread::of(terrain, chunk_center(coord)).expect("a spread");
+    let corner = coord.as_vec2() * CHUNK_SIZE;
+    for k in 0..5 {
+        let w = corner + Vec2::new(k as f32, 4.0 - k as f32) * CHUNK_SIZE / 4.0;
+        let far = super::air::calm(|| spread.at(terrain, w));
+        let near = super::air::calm(|| super::turf::Carpet::of(terrain, coord).map(|c| c.at(w)));
+        assert!(
+            (near.expect("a carpet") - far).abs() < 1e-4,
+            "{near:?} {far}"
+        );
+    }
 }

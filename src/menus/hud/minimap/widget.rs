@@ -17,7 +17,7 @@ use crate::ui::{Blurred, Icon, Tone, icon_sized, text, theme};
 pub const SIDE: f32 = 160.0;
 
 /// Smallest and largest side of the map in pixels, whatever the window.
-const LIMITS: (f32, f32) = (128.0, 240.0);
+pub const LIMITS: (f32, f32) = (128.0, 240.0);
 
 /// Size in pixels of the icon of a mark.
 pub const MARK: f32 = theme::ICON_SMALL;

@@ -1,15 +1,14 @@
-//! Choosing the markers to draw and remembering where each slot drew last frame.
+//! Choosing the markers to draw and remembering what each slot drew last frame.
 
 use bevy::prelude::*;
 
 use super::place::{MAX, Placed, choose};
+use super::rule::{self, Look, Sticky};
+use super::tune::FRIEND_LIFT;
 use crate::menus::hud::compass::{Around, FAVOURITE_REACH};
 use crate::menus::hud::context::{Context, marker_shown};
 use crate::menus::{Marker, MarkerKind, Markers};
-use crate::ui::theme;
-
-/// Metres under which a marker is hidden: it is right here.
-const HERE: f64 = 5.0;
+use crate::settings::WorldMarkers;
 
 /// Pixels a marker on the border must come inside the safe rectangle before it goes back on the
 /// screen: it stops the icon from flickering between the two forms.
@@ -20,7 +19,7 @@ const HYSTERESIS: f32 = 8.0;
 pub struct Pick {
     /// Its index in [`Markers`].
     pub index: usize,
-    /// Its direction in the camera frame.
+    /// The direction its icon is drawn in, in the camera frame.
     pub dir: Vec3,
     /// Its distance in metres.
     pub gap: f64,
@@ -35,30 +34,31 @@ pub struct Memory {
     pub pos: Vec2,
     /// Whether it sat on the border.
     pub edge: bool,
+    /// Which of its fades have run to their end.
+    pub sticky: Sticky,
 }
 
-/// The adapter between the markers and the pin system: whether `marker` is the active pin,
-/// which shows at any distance. Today it is the player's own waypoint. When `Places` lands,
-/// replace the body by a comparison with `Places::active()`.
-pub fn is_active(marker: &Marker) -> bool {
-    marker.kind == MarkerKind::Waypoint && marker.owner == 0
-}
-
-/// Returns whether `marker` at `gap` metres is worth drawing: the course and the active pin at
-/// any distance, other pins within reach, the rest unless right here.
-fn worth(marker: &Marker, gap: f64) -> bool {
+/// Returns whether `marker` at `gap` metres is one the player asked to see at `level`, within
+/// reach: at Minimal only what they follow and friends, and a pin they do not follow only
+/// while it is close enough to walk to.
+fn wanted(marker: &Marker, gap: f64, level: WorldMarkers) -> bool {
     let pin = matches!(marker.kind, MarkerKind::Waypoint | MarkerKind::Favourite);
-    gap > HERE && (!pin || is_active(marker) || gap <= FAVOURITE_REACH)
+    let kept = rule::tracked(marker) || marker.kind == MarkerKind::Friend;
+    match level {
+        WorldMarkers::Off => false,
+        WorldMarkers::Minimal => kept,
+        WorldMarkers::All => kept || !pin || gap <= FAVOURITE_REACH,
+    }
 }
 
-/// Returns the colour a marker is drawn in: the accent for the course, the pin colour for pins,
-/// its own for friends, white for home and the ship.
-pub fn tint(marker: &Marker) -> Color {
-    match marker.kind {
-        MarkerKind::Course => theme::ACCENT,
-        MarkerKind::Waypoint | MarkerKind::Favourite => theme::PIN,
-        MarkerKind::Friend => marker.color,
-        _ => theme::TEXT,
+/// Returns the direction the icon of a marker of `kind` is drawn in, for a target `gap` metres
+/// away in `dir`: over the head of a friend, on the target itself for the rest.
+fn lifted(kind: MarkerKind, dir: Vec3, gap: f64) -> Vec3 {
+    match kind {
+        MarkerKind::Friend => (dir * gap as f32 + Vec3::Y * FRIEND_LIFT)
+            .try_normalize()
+            .unwrap_or(dir),
+        _ => dir,
     }
 }
 
@@ -68,19 +68,26 @@ pub fn tint(marker: &Marker) -> Color {
 pub struct State {
     /// The markers worth drawing.
     picks: Vec<Pick>,
-    /// For each pick, whether it must show and its distance.
-    items: Vec<(bool, f64)>,
+    /// For each pick, its rank and its distance.
+    items: Vec<(u8, f64)>,
     /// The picks to draw, in slot order.
     order: Vec<usize>,
     /// What each slot drew last frame.
     pub memory: [Memory; MAX],
-    /// The text of the distance being written.
+    /// The words being written.
     pub words: String,
 }
 
 impl State {
-    /// Collects the markers worth drawing in `context` and chooses at most [`MAX`] of them.
-    pub fn gather(&mut self, around: &Around, markers: &Markers, context: Context) {
+    /// Collects the markers the player asked for at `level` that show in `context`, and chooses
+    /// at most [`MAX`] of them, by rank. Herds have no marker over the world: the animals are
+    /// their own sign.
+    pub fn gather(
+        &mut self,
+        around: &Around,
+        markers: &Markers,
+        (context, level): (Context, WorldMarkers),
+    ) {
         self.picks.clear();
         self.items.clear();
         for (index, marker) in markers.0.iter().enumerate() {
@@ -88,10 +95,10 @@ impl State {
             let Some((dir, gap)) = around.seen(marker).filter(|_| shown) else {
                 continue;
             };
-            if worth(marker, gap) {
+            if wanted(marker, gap, level) {
+                let dir = lifted(marker.kind, dir, gap);
                 self.picks.push(Pick { index, dir, gap });
-                let always = marker.kind == MarkerKind::Course || is_active(marker);
-                self.items.push((always, gap));
+                self.items.push((rule::rank(marker), gap));
             }
         }
         choose(&self.items, &mut self.order);
@@ -102,14 +109,15 @@ impl State {
         self.order.get(at).map(|chosen| self.picks[*chosen])
     }
 
-    /// Returns the extra inset the slot `at` needs to leave the border: it stays there until it
-    /// is well inside.
+    /// Returns how far inside the safe rectangle the slot `at` must come to leave the border:
+    /// it stays there until it is well inside.
     pub fn stickiness(&self, at: usize) -> f32 {
         [0.0, HYSTERESIS][usize::from(self.memory[at].edge)]
     }
 
-    /// Records that slot `at` drew `kind` at `index` as `placed`, and returns where its icon is
-    /// drawn: it follows its target smoothly, and jumps when the slot shows another marker.
+    /// Records that slot `at` drew `who` as `placed`, and returns where its icon is drawn: it
+    /// follows its target smoothly, and jumps and forgets its fades when the slot shows another
+    /// marker.
     pub fn settle(
         &mut self,
         at: usize,
@@ -118,7 +126,8 @@ impl State {
         follow: f32,
     ) -> Vec2 {
         let before = self.memory[at];
-        let pos = match before.who == Some(who) {
+        let same = before.who == Some(who);
+        let pos = match same {
             true => before.pos.lerp(placed.pos, follow),
             false => placed.pos,
         };
@@ -126,7 +135,13 @@ impl State {
             who: Some(who),
             pos,
             edge: placed.arrow.is_some(),
+            sticky: [Sticky::default(), before.sticky][usize::from(same)],
         };
         pos
+    }
+
+    /// Returns how near the marker of slot `at` is drawn in `context`, remembering its fades.
+    pub fn look(&mut self, at: usize, marker: &Marker, gap: f64, context: Context) -> Look {
+        rule::look(marker, gap, context, &mut self.memory[at].sticky)
     }
 }

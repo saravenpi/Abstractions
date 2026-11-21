@@ -1,12 +1,12 @@
-//! The pool of six marker nodes, spawned once: a room with an icon, an arrow and a distance.
+//! The pool of six marker nodes, spawned once: a room with an icon, an arrow and its words.
 
 use bevy::prelude::*;
 
 use super::place::MAX;
 use crate::ui::{ICON_FONT, Icon, text, theme};
 
-/// Width of the room of one marker, centred on its icon.
-pub const ROOM: f32 = 96.0;
+/// Width of the room of one marker, centred on its icon: wide enough for a name and a distance.
+pub const ROOM: f32 = 192.0;
 
 /// Marks the room of the marker of the pool at this slot.
 #[derive(Component)]
@@ -20,36 +20,47 @@ pub struct Glyph(pub usize);
 #[derive(Component)]
 pub struct Arrow(pub usize);
 
-/// Marks the distance of the marker of the pool at this slot.
+/// Marks the words of the marker of the pool at this slot: a name, a distance or both.
 #[derive(Component)]
 pub struct Label(pub usize);
 
+/// The icon of a slot: its mark, its symbol, its colour, its size and its node.
+type Icons = (
+    &'static Glyph,
+    &'static mut Text,
+    &'static mut TextColor,
+    &'static mut TextFont,
+    &'static mut Node,
+);
+
+/// The arrow of a slot: its mark, its node, its turn and its colour.
+type Arrows = (
+    &'static Arrow,
+    &'static mut Node,
+    &'static mut UiTransform,
+    &'static mut TextColor,
+);
+
+/// The words of a slot: their mark, their text, their colour, their strip and their node.
+type Words = (
+    &'static Label,
+    &'static mut Text,
+    &'static mut TextColor,
+    &'static mut BackgroundColor,
+    &'static mut Node,
+);
+
 /// The nodes of the pool, by kind. The filters keep the queries apart.
 pub type Nodes<'w, 's> = (
-    Query<'w, 's, (&'static Slot, &'static mut Node), (Without<Arrow>, Without<Glyph>)>,
     Query<
         'w,
         's,
-        (&'static Glyph, &'static mut Text, &'static mut TextColor),
-        (Without<Arrow>, Without<Label>),
+        (&'static Slot, &'static mut Node),
+        (Without<Arrow>, Without<Glyph>, Without<Label>),
     >,
-    Query<
-        'w,
-        's,
-        (
-            &'static Arrow,
-            &'static mut Node,
-            &'static mut UiTransform,
-            &'static mut TextColor,
-        ),
-        (Without<Slot>, Without<Glyph>, Without<Label>),
-    >,
-    Query<
-        'w,
-        's,
-        (&'static Label, &'static mut Text, &'static mut TextColor),
-        (Without<Glyph>, Without<Arrow>),
-    >,
+    Query<'w, 's, Icons, (Without<Slot>, Without<Arrow>, Without<Label>)>,
+    Query<'w, 's, Arrows, (Without<Slot>, Without<Glyph>, Without<Label>)>,
+    Query<'w, 's, Words, (Without<Slot>, Without<Glyph>, Without<Arrow>)>,
 );
 
 /// The icon of a marker, hidden until a marker fills it.
@@ -82,13 +93,14 @@ fn arrow(at: usize) -> impl Bundle {
     )
 }
 
-/// The distance under a marker.
+/// The words under a marker, on their strip.
 fn label(at: usize) -> impl Bundle {
     (
         Label(at),
         text("", theme::FONT_SMALL, theme::TEXT),
         TextLayout::no_wrap(),
         Node {
+            display: Display::None,
             padding: UiRect::horizontal(px(theme::S1)),
             ..default()
         },
@@ -96,7 +108,7 @@ fn label(at: usize) -> impl Bundle {
     )
 }
 
-/// One slot of the pool: a room with an icon, an arrow and a distance, hidden.
+/// One slot of the pool: a room with an icon, an arrow and its words, hidden.
 fn slot(at: usize) -> impl Bundle {
     (
         Slot(at),

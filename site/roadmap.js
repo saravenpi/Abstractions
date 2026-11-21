@@ -307,8 +307,9 @@
     const first = !timeline.children.length;
     const opened = new Set(Array.from(timeline.querySelectorAll(".stone.is-open"), (li) => li.id));
     const fragment = document.createDocumentFragment();
+    const lead = data.milestones.find((stone) => stone.kind === "progress") || data.milestones.find((stone) => stone.kind === "planned");
     data.milestones.forEach(function (stone) {
-      fragment.append(card(stone, first ? stone.kind === "progress" : opened.has(stone.id)));
+      fragment.append(card(stone, first ? stone === lead : opened.has(stone.id)));
     });
     intro(data);
     timeline.replaceChildren(fragment);

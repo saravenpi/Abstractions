@@ -42,7 +42,8 @@ fn warp_and_glide_speeds_replace_the_ship_speed() {
 }
 
 /// The rows the context shows for a ship in orbit are exactly altitude, speed, throttle,
-/// stabiliser, highest and lowest point, in that order.
+/// stabiliser, highest and lowest point, in that order. Of the eight rows, the gear and the
+/// headlight are left out: in orbit there is no ground to land on or to light.
 #[test]
 fn the_orbit_rows_are_the_spec_rows() {
     let flight = flying();
@@ -63,5 +64,6 @@ fn the_orbit_rows_are_the_spec_rows() {
             "Lowest point"
         ]
     );
-    assert_eq!(Gauge::ALL.len(), 7);
+    assert_eq!(Gauge::ALL.len(), 8);
+    assert!(!shown(Context::ShipOrbit).contains(Gauge::Headlight.element()));
 }

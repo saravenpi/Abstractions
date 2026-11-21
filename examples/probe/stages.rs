@@ -3,7 +3,7 @@
 use super::*;
 
 /// The stages in order: name, group and function. The `core` stages always run.
-pub const STAGES: [(&str, &str, Stage); 149] = [
+pub const STAGES: [(&str, &str, Stage); 151] = [
     ("menus", "ui", menus),
     ("title", "core", title),
     ("loading", "core", loading),
@@ -118,6 +118,8 @@ pub const STAGES: [(&str, &str, Stage); 149] = [
     ("far-home-2000km", "far-bodies", far_home_2000km),
     ("far-home-20000km", "far-bodies", far_home_20000km),
     ("far-home-200000km", "far-bodies", far_home_200000km),
+    ("far-handover-in", "far-bodies", far_handover_in),
+    ("far-handover-out", "far-bodies", far_handover_out),
     ("far-neighbour-near", "far-bodies", far_neighbour_near),
     ("far-neighbour-far", "far-bodies", far_neighbour_far),
     ("far-moon-near", "far-bodies", far_moon_near),

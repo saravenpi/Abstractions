@@ -74,15 +74,12 @@ pub(super) fn layer() -> impl Bundle {
             let place = [x * out - side / 2.0, y * out - side / 2.0, side, side];
             (Corner, at(place), BackgroundColor(Color::NONE))
         });
+    let strips = (0..super::foe::SLOTS).map(super::foe::strip);
     (
         gate(Element::Reticle),
         centre,
         Pickable::IGNORE,
-        Children::spawn((
-            SpawnIter(ticks),
-            SpawnIter(corners),
-            Spawn(super::foe::strip()),
-        )),
+        Children::spawn((SpawnIter(ticks), SpawnIter(corners), SpawnIter(strips))),
     )
 }
 
@@ -136,7 +133,7 @@ pub(super) fn plugin(app: &mut App) {
             (
                 aim.run_if(aimed),
                 strike.run_if(resource_exists_and_changed::<Mark>),
-                super::foe::show.run_if(resource_exists_and_changed::<Mark>),
+                super::foe::show.run_if(any_with_component::<crate::fauna::Beast>),
             )
                 .in_set(super::Step::Playing),
         );

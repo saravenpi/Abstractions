@@ -41,13 +41,15 @@ fn since() -> f64 {
         .ok()
         .and_then(|t| t.parse::<f64>().ok())
         .unwrap_or(0.0);
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0.0, |d| d.as_secs_f64());
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0.0, |d| d.as_secs_f64());
     now - t0
 }
 
 /// Returns the planet position and the pose of the first other robot drawn.
 fn remote(world: &mut World) -> Option<(DVec3, AvatarPose)> {
-    let anchor = *world.resource::<Anchor>();
+    let anchor = *world.get_resource::<Anchor>()?;
     let (at, pose) = world
         .query_filtered::<(&GlobalTransform, &AvatarPose), With<Remote>>()
         .iter(world)
@@ -57,6 +59,10 @@ fn remote(world: &mut World) -> Option<(DVec3, AvatarPose)> {
 
 /// Logs what the game sees of the others.
 fn report(world: &mut World, label: &str) {
+    if world.get_resource::<Anchor>().is_none() {
+        info!("MP {label}: no anchor yet");
+        return;
+    }
     let me = robot(world);
     let session = world.resource::<Session>().clone();
     let players = world.resource::<Players>().0.clone();
@@ -130,6 +136,9 @@ pub fn mp_act(world: &mut World, _: &mut Notes, frame: u32) -> Act {
         return Act::Next;
     }
     let seconds = since();
+    if seconds < 0.0 {
+        return Act::Wait;
+    }
     let phase = (seconds / PHASE).floor().max(0.0) as u32;
     if phase >= PHASES {
         return Act::Next;
@@ -161,9 +170,19 @@ pub fn mp_act(world: &mut World, _: &mut Notes, frame: u32) -> Act {
     }
     let marks = [12.0, 30.0];
     let i = marks.iter().rposition(|m| into >= *m);
-    let name = |i: usize| format!("3{phase}-{i}-{}-{}", role(), ["acts", "sees"][usize::from(!acts)]);
+    let name = |i: usize| {
+        format!(
+            "3{phase}-{i}-{}-{}",
+            role(),
+            ["acts", "sees"][usize::from(!acts)]
+        )
+    };
     match i {
-        Some(i) if SHOT.fetch_or(1 << (phase * 2 + i as u32), Ordering::Relaxed) & (1 << (phase * 2 + i as u32)) == 0 => {
+        Some(i)
+            if SHOT.fetch_or(1 << (phase * 2 + i as u32), Ordering::Relaxed)
+                & (1 << (phase * 2 + i as u32))
+                == 0 =>
+        {
             shot(world, &name(i));
             Act::Wait
         }

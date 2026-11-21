@@ -15,6 +15,7 @@ use super::{GRID_POINTS, dithered};
 use crate::world::Terrain;
 use crate::world::globe::ChunkId;
 use crate::world::lands::Verdure;
+use crate::world::scatter::Spread;
 use crate::world::shapes::FlatMesh;
 
 /// Adds the terrain of quadtree node `id`, cut into `n` cells per side, to `mesh` in `frame`.
@@ -42,8 +43,11 @@ pub fn fill_node(
         return bands::fill(mesh, &span, frame, style.skirt);
     }
     let patch = Patch::new(&span, frame, &span.heights(), style.floor);
+    let spread = Spread::of(terrain, span.center());
+    let thick = spread.as_ref().map(|s| move |w: Vec2| s.at(terrain, w));
+    let thick = thick.as_ref().map(|t| t as &dyn Fn(Vec2) -> f32);
     fill(mesh, &patch, (style, None), &|i, j| {
-        dithered(terrain, &span, (i, j))
+        dithered(terrain, &span, (i, j), thick)
     });
 }
 

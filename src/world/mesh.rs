@@ -60,7 +60,12 @@ pub fn chunk_heights(terrain: &Terrain, coord: IVec2, stride: usize) -> Vec<Vec<
 
 /// Returns the biome of cell `(i, j)` of `span`, then the biomes of its two triangles, dithered
 /// across biome borders, and the channel bed at its middle on a globe.
-pub(super) fn dithered(terrain: &Terrain, span: &Span, (i, j): (usize, usize)) -> Cell {
+pub(super) fn dithered(
+    terrain: &Terrain,
+    span: &Span,
+    (i, j): (usize, usize),
+    cover: Option<&dyn Fn(Vec2) -> f32>,
+) -> Cell {
     let centre = span.chart(i, j, 0.5);
     let near = |half: usize| {
         let jitter = |salt: usize| (tone(i + salt, j, half) - 1.0) / 0.08 * DITHER_REACH;
@@ -76,6 +81,7 @@ pub(super) fn dithered(terrain: &Terrain, span: &Span, (i, j): (usize, usize)) -
         },
         bed: terrain.bed(centre.x, centre.y),
         reading: glanced.map(|(height, spot)| Reading::glanced(height, &spot)),
+        cover: cover.map(|cover| cover(centre)),
     }
 }
 
@@ -103,11 +109,10 @@ pub fn chunk_mesh(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>], lod: Lo
     let style = style.grown(span.step(), Verdure::of(terrain, span.center()));
     let patch = patch_above(terrain, coord, heights, style.floor);
     let mut mesh = FlatMesh::default();
-    let carpet = (lod != Lod::Distant)
-        .then(|| Carpet::of(terrain, coord))
-        .flatten();
+    let carpet = Carpet::of(terrain, coord);
+    let seen = (lod != Lod::Distant).then_some(carpet.as_ref()).flatten();
     let chart = &span;
-    let turf = carpet.as_ref().map(|carpet| {
+    let turf = seen.map(|carpet| {
         move |i: usize, j: usize| {
             let w = chart.chart(i, j, 0.0);
             let [x, z] = wrap(coord, w);
@@ -117,8 +122,10 @@ pub fn chunk_mesh(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>], lod: Lo
     let turf = turf
         .as_ref()
         .map(|t| t as &dyn Fn(usize, usize) -> [f32; 3]);
+    let thick = carpet.as_ref().map(|carpet| move |w: Vec2| carpet.at(w));
+    let thick = thick.as_ref().map(|t| t as &dyn Fn(Vec2) -> f32);
     fill(&mut mesh, &patch, (style, turf), &|i, j| {
-        dithered(terrain, &span, (i, j))
+        dithered(terrain, &span, (i, j), thick)
     });
     mesh.into_mesh()
 }

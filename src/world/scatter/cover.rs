@@ -63,21 +63,43 @@ fn ease(a: f32, b: f32, x: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
+/// The noises the cover is read from on one planet, so that single places can be read without a chunk.
+pub struct Sampler {
+    /// The noises of barren stretches, of clearings and of the stands of each species.
+    fields: [Perlin; 3],
+    /// Cover level the planet is cut at.
+    cut: f32,
+}
+
+impl Sampler {
+    /// Returns the sampler of `terrain` on a planet of `patchiness`.
+    pub fn new(terrain: &Terrain, patchiness: f32) -> Self {
+        Self {
+            fields: SALTS.map(|salt| Perlin::new(terrain.seed() as u32 ^ salt)),
+            cut: CUT.0 + CUT.1 * patchiness,
+        }
+    }
+
+    /// Returns the cover, kin key and moisture `wet` at chart position `w` of `terrain`.
+    pub fn at(&self, terrain: &Terrain, w: Vec2, wet: f32) -> [f32; 3] {
+        let p = terrain.embed(w.x, 0.0, w.y);
+        let read = |f: usize| self.fields[f].get((p * FREQ[f]).to_array()) as f32;
+        let level = 0.5 + 0.8 * read(0) + 0.35 * read(1) + 0.3 * (wet - 0.5);
+        let key = (0.5 + 1.3 * read(2)).clamp(0.0, 1.0);
+        [ease(self.cut - SOFT, self.cut + SOFT, level), key, wet]
+    }
+}
+
 impl Cover {
     /// Reads the cover of chunk `coord` of `terrain` on a planet of `patchiness`, in the climate `air`.
     pub fn new(terrain: &Terrain, coord: IVec2, patchiness: f32, air: Option<&Air>) -> Self {
-        let fields = SALTS.map(|salt| Perlin::new(terrain.seed() as u32 ^ salt));
+        let sampler = Sampler::new(terrain, patchiness);
         let corner = coord.as_vec2() * CHUNK_SIZE;
         let step = CHUNK_SIZE / (POINTS - 1) as f32;
-        let cut = CUT.0 + CUT.1 * patchiness;
         let at = |i: usize, j: usize| {
             let w = corner + Vec2::new(i as f32, j as f32) * step;
-            let p = terrain.embed(w.x, 0.0, w.y);
-            let read = |f: usize| fields[f].get((p * FREQ[f]).to_array()) as f32;
             let wet = air.map_or(0.5, |a| a.at(w).moisture.min(1.2));
-            let level = 0.5 + 0.8 * read(0) + 0.35 * read(1) + 0.3 * (wet - 0.5);
-            let key = (0.5 + 1.3 * read(2)).clamp(0.0, 1.0);
-            [ease(cut - SOFT, cut + SOFT, level), key, wet]
+            sampler.at(terrain, w, wet)
         };
         Self {
             grid: std::array::from_fn(|i| std::array::from_fn(|j| at(i, j))),

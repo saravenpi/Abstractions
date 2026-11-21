@@ -7,7 +7,7 @@
 //! - `SMOKE_DIR`: the screenshot folder.
 //! - `SMOKE_SEED`: the world seed, default 7.
 //! - `PROBE_STAGES`: comma list of stage groups, default all. Groups: `water` (lens tour and room walls),
-//!   `grass` (turf and trees), `fauna` (animals), `tour` (base, village, flight, orbit, warp) and `zoo`.
+//!   `grass` (turf and trees), `ground` (one patch of grass from the horizon and from 2 m to 30 km), `fauna` (animals), `tour` (base, village, flight, orbit, warp) and `zoo`.
 //!   The title, loading, boot and wake stages always run.
 //! - `SMOKE_ONLY` and `SMOKE_SKIP`: comma lists of stage names to keep or to leave out.
 //! - `SMOKE_TARGET` and `SMOKE_FLASH`: see the `warp` and `boot` stages.
@@ -48,6 +48,7 @@ mod boot;
 mod camera;
 mod foot;
 mod grass;
+mod ground;
 mod herd;
 mod launch;
 mod meter;
@@ -71,6 +72,7 @@ use boot::*;
 use camera::*;
 use foot::*;
 use grass::*;
+use ground::*;
 use herd::*;
 use launch::*;
 use meter::*;

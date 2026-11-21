@@ -111,3 +111,48 @@ fn cover_keeps_the_plant_count() {
         "big {big} all {all} against {BEFORE:?}"
     );
 }
+
+/// A coarse mesh reads the cover of a place as the chunk that holds it does: at the grid points of the cover of a
+/// chunk, the spread of the stretch and the carpet of the chunk agree.
+#[test]
+fn spread_reads_the_cover_of_the_chunks() {
+    let _book = hold();
+    let tile = planet(3, 1).remove(0);
+    let (coord, terrain) = (tile.coord, &tile.terrain);
+    let spread = super::turf::Spread::of(terrain, chunk_center(coord)).expect("a spread");
+    let corner = coord.as_vec2() * CHUNK_SIZE;
+    for k in 0..5 {
+        let w = corner + Vec2::new(k as f32, 4.0 - k as f32) * CHUNK_SIZE / 4.0;
+        let far = super::air::calm(|| spread.at(terrain, w));
+        let near = super::air::calm(|| super::turf::Carpet::of(terrain, coord).map(|c| c.at(w)));
+        assert!((near.expect("a carpet") - far).abs() < 1e-4, "{near:?} {far}");
+    }
+}
+
+/// Returns the mean colour of the first `top` vertices of `mesh`, its ground without the skirts.
+fn mean_colour(mesh: &Mesh, top: usize) -> Vec3 {
+    let colours = mesh.attribute(Mesh::ATTRIBUTE_COLOR);
+    let Some(bevy::mesh::VertexAttributeValues::Float32x4(colours)) = colours else {
+        panic!("the mesh has colours");
+    };
+    let sum: Vec3 = colours[..top].iter().map(|c| Vec3::new(c[0], c[1], c[2])).sum();
+    sum / top as f32
+}
+
+/// A chunk keeps its mean colour at every level of detail: its carpet colours the 8 m grid of a far chunk as
+/// it does the 2 m grid of a near one.
+#[test]
+fn a_chunk_keeps_its_mean_colour_at_every_level() {
+    use crate::world::mesh::{GRID_POINTS, Lod, chunk_heights, chunk_mesh};
+    let _book = hold();
+    for tile in planet(3, 4) {
+        let (terrain, coord) = (&tile.terrain, tile.coord);
+        let mean = |lod: Lod| {
+            let heights = chunk_heights(terrain, coord, lod.stride());
+            let cells = (GRID_POINTS - 1) / lod.stride();
+            mean_colour(&chunk_mesh(terrain, coord, &heights, lod), cells * cells * 6)
+        };
+        let (near, far) = (mean(Lod::Near), mean(Lod::Distant));
+        assert!((near - far).abs().max_element() < 0.08, "{near} against {far}");
+    }
+}

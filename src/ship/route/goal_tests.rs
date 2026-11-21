@@ -2,9 +2,10 @@
 //! system and another galaxy, and the stars at the centre of a galaxy.
 
 use super::goal::{abroad, resolve};
+use super::shell;
 use crate::computer::{Target, target_position};
 use crate::ship::warp::{GALAXY_CAP, JUMP_CAP, Tier};
-use crate::ship::wells::{PLANET_LOCK, STAR_LOCK};
+use crate::ship::wells::STAR_LOCK;
 use crate::space::Frame;
 use crate::universe::{BodyId, GalaxyId, LY, Universe, system_reach};
 
@@ -49,7 +50,7 @@ fn home_is_one_route_from_another_system_and_another_galaxy() {
     let goal = resolve(&universe, Target::Body(home));
     assert_eq!(goal.target, Target::Body(home));
     let planet = universe.planet(home);
-    assert!((goal.lock - planet.radius * PLANET_LOCK).abs() < 1.0 && goal.arrival > goal.lock);
+    assert!((goal.lock - shell::lock(&planet)).abs() < 1.0 && goal.arrival > goal.lock);
     let at = universe.star(home.star).unwrap().pos;
     let near = universe.stars_near(home.star.galaxy, at, 12.0);
     let star = near.iter().find(|star| star.id != home.star).unwrap();

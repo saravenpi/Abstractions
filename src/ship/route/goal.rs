@@ -2,10 +2,11 @@
 
 use bevy::math::DVec3;
 
+use super::shell;
 use crate::computer::Target;
 use crate::ship::moons;
 use crate::ship::pilot::Goal;
-use crate::ship::wells::{PLANET_LOCK, STAR_LOCK};
+use crate::ship::wells::STAR_LOCK;
 use crate::space::Frame;
 use crate::universe::{BodyId, GalaxyId, LY, StarSpec, Universe};
 
@@ -22,11 +23,10 @@ fn body(universe: &Universe, id: BodyId) -> Goal {
     if id.is_moon() {
         return moons::goal(&planet, &universe.planet(id.planet()));
     }
-    let lock = planet.radius * PLANET_LOCK;
     Goal {
         target: Target::Body(id),
-        lock,
-        arrival: lock * ARRIVAL,
+        lock: shell::lock(&planet),
+        arrival: shell::radius(&planet),
         beyond: None,
     }
 }

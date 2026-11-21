@@ -1,16 +1,17 @@
 //! The water mirror: the robot, the companion, the ship, other players and the animals seen in
 //! calm water.
 //!
-//! A planar reflection (https://en.wikipedia.org/wiki/Planar_reflection): a second camera, the
-//! game camera mirrored about the water plane under the focus, draws only the actors into an
+//! A planar reflection: a second camera, the game camera mirrored about the water plane under the
+//! focus, draws only the actors into an
 //! image the size of the game view, before the game camera. Its near plane is the water itself,
 //! by the oblique clip plane of Bevy's `PerspectiveProjection::near_clip_plane` (Lengyel,
 //! https://terathon.com/lengyel/Lengyel-Oblique.pdf), so nothing under the surface shows. The
 //! image lines up with the game view pixel for pixel, as in Bevy's own `mirror` example
-//! (https://github.com/bevyengine/bevy/blob/v0.17.0/examples/3d/mirror.rs); the water shader reads
+//! (https://github.com/bevyengine/bevy/blob/main/examples/3d/mirror.rs); the water shader reads
 //! it where it shows the sky, bent by the waves, by the Fresnel share, and fading with distance.
 //!
-//! Screen-space reflections were not taken: Bevy's `ScreenSpaceReflections` needs the deferred
+//! Screen-space reflections were not taken: Bevy's `ScreenSpaceReflections`
+//! (https://docs.rs/bevy/latest/bevy/pbr/struct.ScreenSpaceReflections.html) needs the deferred
 //! renderer, which the game does not use, it would not reach the see-through water, and it
 //! misses whatever is off screen, as the underside of the ship always is.
 //!

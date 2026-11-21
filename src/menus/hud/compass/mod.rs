@@ -22,6 +22,9 @@ mod tests_course;
 mod tests_herds;
 #[cfg(test)]
 mod tests_space;
+#[cfg(test)]
+mod tests_tools;
+mod tools;
 
 pub(super) use aim::Around;
 #[cfg(test)]
@@ -188,13 +191,14 @@ pub(super) fn bar() -> impl Bundle {
     )
 }
 
-/// Registers the home, ship and herd markers, written once the ship has placed the world.
+/// Registers the home, ship, herd and tool markers, written once the ship has placed the world.
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         Update,
         (
             (beacons::home, beacons::ship).after(ShipSet::Place),
             herds::herds.run_if(on_timer(Duration::from_secs_f32(herds::EVERY))),
+            tools::tools.run_if(on_timer(Duration::from_secs_f32(herds::EVERY))),
             beacons::course.after(super::eye::capture),
         )
             .in_set(MarkerSet::Fill)

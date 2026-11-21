@@ -1,15 +1,14 @@
 //! The one prompt line: a key and what it does, bottom centre above the hotbar. Exactly one
 //! row, the highest priority wins: a warning or block sentence, a course that runs, a course
 //! ready to go, the action a key does right now to what the robot looks at or stands by
-//! ([`crate::player::Interact`]: pull a spear, cut a part, board, leave, break stone off, mend), a
-//! first-time hint, nothing.
+//! ([`crate::player::Interact`]: pull a spear, cut a part, board, leave, break stone off, mend), or
+//! nothing.
 
 use bevy::prelude::*;
 
 use super::context::{Context, Element, Where};
 use super::course::{Course, Words, words};
 use super::fade::gate;
-use super::hints::{Hint, Hinted};
 use crate::computer::{Destination, Keys, RouteStatus};
 use crate::craft::pack::PICK_KEY;
 use crate::menus::key_name;
@@ -47,13 +46,10 @@ pub struct State {
     pub ready: Option<(KeyCode, String)>,
     /// The action a key does right now: its key and its words.
     pub act: Option<(KeyCode, String)>,
-    /// A first-time hint: its key and its words.
-    pub hint: Option<(KeyCode, &'static str)>,
 }
 
 /// Returns the one row the line shows: its key, if it has one, and its words. A block beats a
-/// running course, which beats a course ready to go, which beats the action of a key, which beats
-/// a hint.
+/// running course, which beats a course ready to go, which beats the action of a key.
 pub fn choose(state: &State) -> Option<(Option<KeyCode>, String)> {
     let key = |(key, words): &(KeyCode, String)| (Some(*key), words.clone());
     state
@@ -63,11 +59,6 @@ pub fn choose(state: &State) -> Option<(Option<KeyCode>, String)> {
         .or_else(|| state.running.as_ref().map(key))
         .or_else(|| state.ready.as_ref().map(key))
         .or_else(|| state.act.as_ref().map(key))
-        .or_else(|| {
-            state
-                .hint
-                .map(|(key, words)| (Some(key), words.to_string()))
-        })
 }
 
 /// Returns the key that does the action of `offer` under the bindings `keys`, and the words that
@@ -134,12 +125,8 @@ pub(super) struct Reach<'w> {
     destination: Res<'w, Destination>,
     route: Res<'w, RouteStatus>,
     universe: Option<Res<'w, Universe>>,
-    hinted: Res<'w, Hinted>,
     now: Res<'w, Where>,
 }
-
-/// A key with the words of what it does.
-type Keyed = Option<(KeyCode, &'static str)>;
 
 impl Reach<'_> {
     /// Returns the course as the adapter reads it, when one is set.
@@ -152,16 +139,11 @@ impl Reach<'_> {
         })
     }
 
-    /// Returns the action row and the hint row: what a key does right now and the hint in turn.
-    fn keys(&self) -> (Option<(KeyCode, String)>, Keyed) {
+    /// Returns the action a key does right now: its key and its words.
+    fn act(&self) -> Option<(KeyCode, String)> {
         let keys = &self.settings.controls.keys;
         let chosen = self.interact.as_deref().and_then(Interact::chosen);
-        let act = chosen.map(|offer| offered(offer, keys));
-        let hint = self
-            .hinted
-            .0
-            .map(|hint: Hint| (hint.key(keys), hint.words()));
-        (act, hint)
+        chosen.map(|offer| offered(offer, keys))
     }
 
     /// Returns the state of the line for this frame: empty while gliding or in a menu.
@@ -171,7 +153,7 @@ impl Reach<'_> {
         if matches!(self.now.0, Context::Gliding | Context::Menu) {
             return state;
         }
-        (state.act, state.hint) = self.keys();
+        state.act = self.act();
         let keys = &self.settings.controls.keys;
         let seated = travel == Some(Travel::InShip);
         let said = self

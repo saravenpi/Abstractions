@@ -41,3 +41,17 @@ fn files_with_the_minimap_on_m_move_it_to_n() {
     let keys = toml::from_str::<Settings>(new).unwrap().controls.keys;
     assert_eq!((keys.minimap, keys.map), (KeyCode::KeyK, KeyCode::KeyL));
 }
+
+/// A file of 0.11 written while the first-time hints existed still loads: their bits are skipped,
+/// every other value is kept, and saving it again drops them.
+#[test]
+fn files_with_the_hint_bits_load() {
+    let old = "hints = 7\nplayer_name = \"Ada\"\n\n[graphics]\nfov = 90\n";
+    let parsed: Settings = toml::from_str(old).unwrap();
+    assert_eq!(
+        (parsed.player_name.as_str(), parsed.graphics.fov),
+        ("Ada", 90)
+    );
+    let saved = toml::to_string(&parsed).unwrap();
+    assert!(!saved.contains("hints"), "{saved}");
+}

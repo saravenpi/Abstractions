@@ -5,7 +5,7 @@ use bevy::prelude::KeyCode;
 use crate::settings::{Keymap, ShipKeys};
 
 /// The name of each action, in the order of [`Bind`].
-const LABELS: [&str; 32] = [
+const LABELS: [&str; 33] = [
     "Forward",
     "Back",
     "Left",
@@ -38,6 +38,7 @@ const LABELS: [&str; 32] = [
     "Pack, workshop",
     "Mend a part",
     "Headlight",
+    "Throw (hold)",
 ];
 
 /// One rebindable action.
@@ -75,13 +76,14 @@ pub enum Bind {
     Pack,
     Mend,
     Headlight,
+    Throw,
 }
 
 impl Bind {
     /// The actions used on foot, in display order. The view and board keys work in the ship too,
     /// and the turn keys turn the wingsuit as they turn the ship. The field guide, the pack and the
     /// field repair work on foot only.
-    pub const FOOT: [Bind; 18] = [
+    pub const FOOT: [Bind; 19] = [
         Bind::Forward,
         Bind::Back,
         Bind::Left,
@@ -100,6 +102,7 @@ impl Bind {
         Bind::Guide,
         Bind::Pack,
         Bind::Mend,
+        Bind::Throw,
     ];
 
     /// The actions used while seated in the ship, in display order.
@@ -150,6 +153,7 @@ impl Bind {
             Bind::Guide => &mut keys.guide,
             Bind::Pack => &mut keys.pack,
             Bind::Mend => &mut keys.mend,
+            Bind::Throw => &mut keys.throw,
             Bind::Computer => &mut keys.computer,
             Bind::Engage => &mut keys.engage,
             ship => ship.ship_slot(&mut keys.ship).expect("a ship key"),

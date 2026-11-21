@@ -44,6 +44,7 @@ pub fn icon(kind: MarkerKind) -> Icon {
         MarkerKind::Waypoint => Icon::MapPin,
         MarkerKind::Favourite => Icon::MapPin,
         MarkerKind::Herd => Icon::Animal,
+        MarkerKind::Tool => Icon::Pack,
         MarkerKind::Course => Icon::Go,
     }
 }

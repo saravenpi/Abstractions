@@ -7,7 +7,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- The robot wakes with a kit: a stone spear in hotbar slot 1, held, and a stone knife in slot 2, knapped from the stone of the home planet. They are the lightest tools the workshop proposes, with their real mass and wear, so the first animal that goes for you can be fought and every tool you make after is better. A first-time hint on the ground points to the pack (I). A world saved before gets the kit once on its next load, when its pack holds no tool. In a session every player gets their own.
+- The robot wakes with a kit: a stone spear in hotbar slot 1 and a stone knife in slot 2, knapped from the stone of the home planet, and nothing in its hands: press 1 to draw the spear. They are the lightest tools the workshop proposes, with their real mass and wear, so the first animal that goes for you can be fought and every tool you make after is better. A world saved before gets the kit once on its next load, when its pack holds no tool. In a session every player gets their own.
+- A thrown tool is marked: a spear out in the world shows as "Your" and its name on the compass, the minimap, the map and over the world, where it came to rest, also in an animal that carries it off, until it is back in the pack.
+
+### Removed
+
+- The first-time hints are gone: the prompt line no longer suggests opening the map, dropping a pin, the minimap range or the stabiliser. It shows only what a key does right now. Every key stays on the controls page and in the menus, and a settings file that kept the hints done still loads.
 
 ### Changed
 
@@ -27,6 +32,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- A spear no longer leaves the hand by a click. A click stabs with it; the throw key (T, rebindable on the controls page) held draws it back and its release throws it. A click held a moment used to throw the spear the owner meant to stab with.
+- A spear of your own is picked up when you walk over it, and pulled out of an animal, whatever your hands hold. With a knife drawn you used to walk over your spear without taking it back.
+- A spear thrown far no longer falls through the ground where it has no collider yet and flies on forever: it lands on the ground there.
+- X in the pack drops a material only. On a tool it used to delete the tool for good.
+- A robot that falls does not get a second kit in its spare body: the first waits in the cache where it fell.
 - Leaving the landed ship works on the frame you press the key. In 0.11.0 the prompt offered "Leave the ship" while the ground beside the hatch was not loaded yet, the key then did nothing for up to 10 seconds, each press started the wait again, and the robot was finally put down on ground that had nothing to stand on, fell through it and was put back again and again. Now "Leave the ship" shows only once the ground beside the hatch is solid; until then the line says "Ground not ready." and the key keeps you seated. You step out onto that ground, on a slope too, or onto the sea.
 - A robot that falls under the ground is put back once, onto solid ground. Where the ground is not loaded yet it waits still at the surface until it is, instead of falling through and coming back in a loop.
 - The crouched robot looks where you look. In 0.11.0 its head pointed at the ground the whole time it crouched, still or walking, because the neck nodded it further down with the lean of the trunk instead of taking the lean back. Now the robot crouches as a hunter does: hips down and back over the heels, knees bent, the chest leaned 13 degrees for balance, and the head level, turning up, down and to the sides with the view and steady through every step. The crouch is a little shallower, so the knees and the head stay inside the body of the player. Other players see the same crouch.
@@ -44,9 +54,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A blow of a big animal throws the robot more than it crushes it. The robot is a free body of 80 kg, so a blow lands with at most that mass, and a charge is as fast as its run-up allows, not at top speed from a standstill. A 300 kg animal that charges from 4 m leaves 1.2 kJ where it left 19 kJ: it breaks an arm and knocks the robot down, and no longer destroys a whole robot in one blow. A long charge of a 600 kg animal still does. A trample breaks the leg it lands on.
 - An animal reads the pose of the robot of this machine, never the pose of another player seated in a ship.
 - Animals react to the robot with their bodies. A hunter that goes for you stalks up, then runs the last 12 m and closes until its bite reaches, where it used to stop two metres plus its length away and stand. An animal that stands its ground faces you and goes for you once you come within 3 m of its reach, where it stood like a statue and struck only what walked into it. A grazing herd steps from patch to patch as it feeds, where its members stood still. A charge runs on the legs, which now gallop, instead of sliding the body.
+- A herd no longer moves in lockstep. Each animal starts its stride, its tail swish, its wing beat or pulse and its weight shift at its own phase, so a herd spawned together no longer breathes and swishes as one. Each breath is a little longer or shorter than the last, a heavy animal breathes slower than a light one (about 15 a minute at 70 kg, 9 at 600 kg), and an animal that ran or fought pants and calms down over about 20 s. A herd cry reaches each member up to 0.4 s apart, so a herd calls as a ragged chorus instead of pumping every chest at once.
 - An attack of an animal bends its body instead of sliding its parts. The head no longer sinks into the torso and the neck no longer vanishes: in the wind-up the neck draws the head back while the body crouches, then it throws the head out along its reach; a forefoot lifts and strikes, a trample lifts the forefeet and stamps, a tail cocks and sweeps. The neck and the tail now stay on the body when it crouches or rears, and the jaw opens before a bite.
 - A pin lies on the ground where you drop it. It was kept at sea level under that place, so a pin dropped at your feet on ground 600 m high showed 600 m away, and you never arrived at it. Pins of older worlds and the pins of your friends find their ground when you reach their planet.
-- The "Drop a pin" hint stops showing once you have a pin, dropped with B, from the map or kept in the world, and never comes back. Opening and closing the map no longer gives it ten more seconds each time.
 
 ## [0.11.0] - 2026-11-21
 

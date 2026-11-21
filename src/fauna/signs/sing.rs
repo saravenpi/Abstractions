@@ -5,11 +5,13 @@
 
 use bevy::prelude::*;
 
+use super::tune::CHORUS;
 use crate::fauna::beast::Beast;
 use crate::fauna::motion::Song;
 use crate::fauna::want::Lead;
 use crate::life::signs::calls::{Calling, Rhythm};
 use crate::space::Clock;
+use crate::universe::hash::{Rng, child};
 
 /// The calls whose bodies may still be moving, with their rhythm.
 #[derive(Resource, Default)]
@@ -34,7 +36,8 @@ impl Sung {
     }
 
     /// Returns the latest call member `slot` of herd `herd` is making at universe time `now`, as the
-    /// song its body moves to.
+    /// song its body moves to. A herd cry reaches each member up to [`CHORUS`] seconds after the
+    /// first, seeded by its slot, so a herd calls as a ragged chorus and never in lockstep.
     pub fn song(&self, (herd, slot): (u64, u8), now: f64) -> Option<Song> {
         let (calling, rhythm) = self.calls.iter().rev().find(|(c, r)| {
             let age = now - c.at;
@@ -42,8 +45,12 @@ impl Sung {
                 && (c.cry.whole() || c.slot == slot)
                 && (0.0..f64::from(r.seconds())).contains(&age)
         })?;
+        let lag = match calling.cry.whole() {
+            true => CHORUS * Rng::new(child(herd, u64::from(slot))).unit(),
+            false => 0.0,
+        };
         Some(Song {
-            age: (now - calling.at) as f32,
+            age: (now - calling.at - lag) as f32,
             rhythm: *rhythm,
             cry: calling.cry,
         })

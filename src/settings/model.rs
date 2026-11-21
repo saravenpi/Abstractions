@@ -36,8 +36,6 @@ pub struct Settings {
     pub servers: Vec<SavedServer>,
     /// Most players a world opened to LAN takes, the host included.
     pub host_max_players: u16,
-    /// The first-time hints already done, one bit each. See `menus::hud` hints.
-    pub hints: u8,
 }
 
 impl Default for Settings {
@@ -53,7 +51,6 @@ impl Default for Settings {
             player_name: String::new(),
             servers: default_servers(),
             host_max_players: MAX_PLAYERS_DEFAULT,
-            hints: 0,
         }
     }
 }
@@ -191,6 +188,9 @@ pub struct Keymap {
     pub pack: KeyCode,
     /// Patch the worst damaged part of the robot with what the pack holds, on foot.
     pub mend: KeyCode,
+    /// Held, draws the spear in hand back; let go, throws it. A click of the primary button stabs
+    /// with it instead, so a spear never leaves the hand by a click.
+    pub throw: KeyCode,
     /// Ship controls, used while seated in the ship and to board it.
     pub ship: ShipKeys,
 }
@@ -215,6 +215,7 @@ impl Default for Keymap {
             guide: KeyCode::KeyK,
             pack: KeyCode::KeyI,
             mend: KeyCode::KeyU,
+            throw: KeyCode::KeyT,
             ship: ShipKeys::default(),
         }
     }

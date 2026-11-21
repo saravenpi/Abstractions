@@ -13,6 +13,7 @@ const CUT: f32 = 0.066;
 const TALL: f32 = 1.0;
 const GRAZE: f32 = 0.02;
 const CLAMP: f32 = 9.0;
+const SKEW: mat3x3<f32> = mat3x3<f32>(0.648638, 0.682114, -0.337622, -0.574003, 0.729721, 0.37152, 0.499789, -0.047186, 0.864861);
 const IGN: vec3<f32> = vec3<f32>(0.06711056, 0.00583715, 52.9829189);
 const IGN_SHIFT: vec2<f32> = vec2<f32>(17.0, 31.0);
 
@@ -62,7 +63,7 @@ fn turned(v: vec3<f32>, c: f32, s: f32) -> vec3<f32> {
 }
 
 fn spot_at(p: vec3<f32>, drift: vec4<f32>) -> Spot {
-    return Spot(turned(p, drift.x, drift.y), turned(p, drift.z, drift.w));
+    return Spot(SKEW * turned(p, drift.x, drift.y), SKEW * turned(p, drift.z, drift.w));
 }
 
 fn fbm_seen(spot: Spot, octaves: i32, footprint: f32) -> f32 {

@@ -5,6 +5,7 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::Game;
+use super::touch;
 use super::watch::Watch;
 use crate::avatar::Mode as Pose;
 use crate::gear::Mode;
@@ -85,27 +86,6 @@ fn over_the_start(game: &mut Game, watch: &mut Watch, feet: DVec3) {
     watch.cut();
 }
 
-/// Frames a glide in over the ground of the start may take to touch down: ten seconds, enough for a slope
-/// that falls away along the run.
-const GLIDE: usize = 300;
-
-/// Runs frames until the body is out of the air, and fails with the state of the body when it is not
-/// within [`GLIDE`] frames.
-fn touches_down(game: &mut Game) {
-    for _ in 0..GLIDE {
-        if !game.body().gear.state.mode.airborne() {
-            return;
-        }
-        game.step(1);
-    }
-    let body = game.body();
-    let down = !body.gear.state.mode.airborne();
-    assert!(
-        down,
-        "the body to touch down: not within {GLIDE} frames, {body:?}"
-    );
-}
-
 /// Gliding in shallow and fast just over the ground near the start with the run keys held,
 /// the body slides and runs on with its momentum.
 pub fn lands_running(game: &mut Game, watch: &mut Watch, feet: DVec3) {
@@ -117,7 +97,7 @@ pub fn lands_running(game: &mut Game, watch: &mut Watch, feet: DVec3) {
     run.iter().for_each(|key| game.press(*key));
     glide_in(game, 22.0, -1.0);
     watch.cut();
-    touches_down(game);
+    touch::touches_down(game);
     let mut slid = game.body().motion.velocity.with_y(0.0).length();
     for _ in 0..120 {
         watch.step(game, 1);

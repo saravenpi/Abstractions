@@ -22,6 +22,8 @@ mod goal_tests;
 mod handoff;
 pub(super) mod shell;
 #[cfg(test)]
+mod shell_tests;
+#[cfg(test)]
 mod spool_tests;
 #[cfg(test)]
 mod stop_tests;
@@ -41,11 +43,11 @@ use bevy::prelude::*;
 use super::body::Ship;
 use super::flight::Controls;
 use super::helm::Helm;
-use super::pilot::{Autopilot, Phase, Settle};
+use super::pilot::{Autopilot, Goal, Phase, Settle};
 use super::sim::Cosmos;
 use super::sky::Skies;
 use super::steer::{aim, waypoint};
-use super::warp::Warp;
+use super::warp::{Tier, Warp};
 use super::wells::Well;
 use crate::computer::{Destination, Engage, RouteStatus, Target, ship_position};
 use crate::space::{Location, Travel};
@@ -122,6 +124,15 @@ pub(super) fn hold(
     phase
 }
 
+/// Tells the sky what the course aims at: the beacon of a jump that is blind to the stars on the way, and
+/// the body whose lock shrinks to its arrival shell for the course that is flown to it.
+fn mark(skies: &mut Skies, goal: &Goal, (tier, pos, to): (Tier, DVec3, DVec3)) {
+    skies.beacon = tier.blind().then(|| beacon(pos, to, goal.lock));
+    if let Target::Body(body) = goal.target {
+        skies.arrive = Some((body, goal.lock));
+    }
+}
+
 /// Stops the drive that ran on the course before when `settle` asks for it, lets go of every
 /// control so that the ship holds its heading, and returns what the autopilot is doing.
 fn drop_first(helm: &mut Helm, settle: Settle) -> Phase {
@@ -152,9 +163,6 @@ pub fn fly(
         .goal
         .get_or_insert_with(|| goal::resolve(universe, target));
     let lock = goal.lock;
-    if let Target::Body(body) = goal.target {
-        skies.arrive = Some((body, lock));
-    }
     let here = ship_position(universe, ship.frame, ship.pos, time);
     let Some((to, arrived)) = here.and_then(|here| goal.reached(universe, here, time)) else {
         return autopilot.cancel();
@@ -165,8 +173,8 @@ pub fn fly(
         return;
     }
     let (tier, to) = course::plan(goal, universe, (here, time), &ship, (to, held));
+    mark(&mut skies, goal, (tier, ship.pos, to));
     autopilot.tier = tier;
-    skies.beacon = tier.blind().then(|| beacon(ship.pos, to, lock));
     let settle = autopilot.settle(ship.warp != Warp::Off, time);
     autopilot.phase = match settle {
         Settle::Clear => hold(&mut ship, &mut helm, &skies.wells, (to, lock)),

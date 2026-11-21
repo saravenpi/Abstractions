@@ -6,6 +6,8 @@ use std::sync::Arc;
 use bevy::math::{DVec3, IVec3};
 use bevy::prelude::*;
 
+mod arrive;
+
 use super::body::Ship;
 use super::moons::with_moons;
 use super::wells::{Well, system_wells};
@@ -145,21 +147,5 @@ impl Skies {
             }
         };
         self.shrink_target();
-    }
-
-    /// Sets the lock of the well of the body a course is aimed at to the radius of its arrival shell,
-    /// when the ship is in the system of that body.
-    fn shrink_target(&mut self) {
-        let Some((body, lock)) = self.arrive else {
-            return;
-        };
-        let Some((_, system)) = self.system.as_ref().filter(|(star, _)| *star == body.star) else {
-            return;
-        };
-        let rank = system.planets.iter().position(|planet| planet.id == body);
-        let well = rank.and_then(|rank| self.wells.get_mut(rank + 1));
-        if let Some(well) = well {
-            well.lock = lock;
-        }
     }
 }

@@ -57,9 +57,9 @@ fn row((gauge, name): (Gauge, &'static str)) -> impl Bundle {
         children![
             (
                 Symbol(gauge),
-                icon_sized(Icon::Radius, Tone::Muted, theme::ICON_SMALL)
+                icon_sized(Icon::Radius, Tone::Plain, theme::ICON_SMALL)
             ),
-            cell(LABEL_WIDTH, text(name, theme::FONT_SMALL, theme::TEXT_2)),
+            cell(LABEL_WIDTH, text(name, theme::FONT_SMALL, theme::TEXT)),
             (
                 Reading(gauge),
                 text("", theme::FONT_SMALL, theme::TEXT),
@@ -94,19 +94,17 @@ fn bar() -> impl Bundle {
     )
 }
 
-/// The instrument block: one row per instrument and the spool bar, on a panel. It sits in the
-/// bottom-left stack, above the frame rows, and shows only while a row has something to say.
-/// `refresh` fills it.
+/// The instrument block: one row per instrument and the spool bar, with no panel behind them,
+/// so its icons start at the edge margin. It sits in the bottom-left stack, above the frame rows,
+/// and shows only while a row has something to say. `refresh` fills it.
 pub(super) fn block() -> impl Bundle {
     (
         Instruments,
         Node {
             display: Display::None,
             flex_direction: FlexDirection::Column,
-            padding: UiRect::axes(px(theme::S4), px(theme::S3)),
             ..default()
         },
-        BackgroundColor(theme::PANEL),
         Children::spawn((SpawnIter(Gauge::ALL.into_iter().map(row)), Spawn(bar()))),
     )
 }

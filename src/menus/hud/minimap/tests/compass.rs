@@ -108,9 +108,10 @@ fn the_compass_keeps_friends_ahead_at_their_bearing() {
     assert_eq!(spoken, ["+3"]);
 }
 
-/// A mark is an icon with its distance on the line under it, in the secondary tone, and no
-/// name anywhere: the count beside the icon stays empty unless friends fold into it. The fade
-/// of the HUD in multiplies every colour alike, so the distance is read against its icon.
+/// A mark is an icon with its distance on the line under it, in the primary tone, and no name
+/// anywhere: the count beside the icon stays empty unless friends fold into it. With no panel
+/// behind the bar the secondary tone is too faint over a bright sky. The fade of the HUD in
+/// multiplies every colour alike, so the distance is read against its icon.
 #[test]
 fn a_mark_holds_an_icon_and_its_distance_and_no_name() {
     let mut app = app("icons");
@@ -135,7 +136,7 @@ fn a_mark_holds_an_icon_and_its_distance_and_no_name() {
     let tone = world.get::<TextColor>(children[1]).unwrap().0;
     let share = tone.alpha() / icon;
     assert!(
-        (share - theme::TEXT_2.alpha()).abs() < 1e-3,
+        (share - theme::TEXT.alpha()).abs() < 1e-3,
         "{tone:?} {icon}"
     );
     let mut texts = app.world_mut().query::<&Text>();

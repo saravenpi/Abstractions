@@ -16,7 +16,7 @@ use crate::player::{Interact, Offer, Verb};
 use crate::settings::{Keymap, Persistent, Settings};
 use crate::ship::Hatch;
 use crate::space::{Location, Travel};
-use crate::ui::{KEY_GAP, key_cap, text, theme};
+use crate::ui::{KEY_GAP, text, theme};
 use crate::universe::Universe;
 
 /// What the line says while the pilot of a landed ship cannot step out yet: the ground beside
@@ -75,8 +75,8 @@ pub fn offered(offer: Offer, keys: &Keymap) -> (KeyCode, String) {
     }
 }
 
-/// The row of the prompt: its words, then the key that does it in the muted tone of a key, on a
-/// panel, hidden until there is something to say.
+/// The row of the prompt: its words, then the key that does it, with no panel behind them,
+/// hidden until there is something to say.
 fn row() -> impl Bundle {
     (
         Prompt,
@@ -85,17 +85,15 @@ fn row() -> impl Bundle {
             display: Display::None,
             align_items: AlignItems::Center,
             column_gap: px(KEY_GAP),
-            padding: UiRect::axes(px(theme::S3), px(theme::S2)),
             ..default()
         },
-        BackgroundColor(theme::PANEL),
         children![
             (
                 PromptAction,
                 text("", theme::FONT_SMALL, theme::TEXT),
                 TextLayout::no_wrap()
             ),
-            (PromptKey, Node::default(), key_cap("")),
+            (PromptKey, Node::default(), super::switch::cap()),
         ],
     )
 }
@@ -196,7 +194,7 @@ pub(super) fn update(
     reach: Reach,
     mut shown: Local<Option<(Option<KeyCode>, String)>>,
     fresh: Query<(), Added<Prompt>>,
-    mut rows: Query<(&mut Node, &mut BackgroundColor), With<Prompt>>,
+    mut rows: Query<&mut Node, With<Prompt>>,
     (mut actions, mut keys): Texts,
 ) {
     let wanted = choose(&reach.state());
@@ -205,11 +203,8 @@ pub(super) fn update(
     }
     shown.clone_from(&wanted);
     let display = [Display::None, Display::Flex][usize::from(wanted.is_some())];
-    let fill = [theme::PANEL_DEEP, theme::PANEL]
-        [usize::from(wanted.as_ref().is_none_or(|(key, _)| key.is_some()))];
-    for (mut node, mut back) in &mut rows {
+    for mut node in &mut rows {
         node.display = display;
-        back.set_if_neq(BackgroundColor(fill));
     }
     let Some((key, words)) = wanted else {
         return;

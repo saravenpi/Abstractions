@@ -35,7 +35,12 @@ fn elements(screen: Vec2, seated: bool) -> Vec<Rect> {
             floor - SIDE - 8.0,
         ),
         Rect::new(edge, edge, edge + 264.0, edge + 72.0),
-        Rect::new(screen.x - edge - map, edge, screen.x - edge, edge + map),
+        Rect::new(
+            screen.x - edge - map,
+            edge,
+            screen.x - edge,
+            edge + map + widget::CAPTION,
+        ),
     ];
     if seated {
         all.push(Rect::new(edge, floor - 240.0, edge + 300.0, floor));

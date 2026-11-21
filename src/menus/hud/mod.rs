@@ -6,7 +6,8 @@
 //! What shows is one rule: `context::shown` maps where the player is to the elements that
 //! mean something there, and every element asks it. One edge margin, `theme::EDGE`, frames
 //! the screen: top left the place, top centre the compass, top right the minimap, bottom left
-//! the instruments and frame, bottom centre the prompt line.
+//! the instruments and frame, bottom centre the prompt line. Nothing of the HUD sits on a
+//! panel: its texts and icons carry the HUD shadow of `ui::shade`, and start at the margin.
 
 mod banner;
 mod climate;
@@ -64,7 +65,7 @@ use bevy::time::common_conditions::on_timer;
 
 use crate::condition::Condition;
 use crate::screens::{Screen, in_control};
-use crate::ui::theme;
+use crate::ui::{OverWorld, theme};
 
 /// Seconds between two refreshes of the flight instruments and the prompt line.
 const REFRESH: f32 = 0.1;
@@ -104,6 +105,7 @@ fn spawn(mut commands: Commands) {
     commands.insert_resource(banner::Banner::default());
     commands.spawn((
         HudRoot,
+        OverWorld,
         DespawnOnExit(Screen::Gameplay),
         Node {
             position_type: PositionType::Absolute,

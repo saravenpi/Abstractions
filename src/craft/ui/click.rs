@@ -4,12 +4,15 @@
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
+use super::bench::Pane;
 use super::deeds::Deed;
 use crate::craft::build::Intent;
 
 /// What a button of the screen does when it is activated.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Press {
+    /// Opens the tab of this pane.
+    Pane(Pane),
     /// Selects the row of the pack at this index.
     Row(usize),
     /// Asks the workshop for this intent.

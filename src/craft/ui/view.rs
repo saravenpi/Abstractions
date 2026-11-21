@@ -1,16 +1,15 @@
-//! The skeleton of the open screen over the blurred game, on the shared page: the title and the
-//! load in the heading zone; the pack on the left and the workshop on the right in the content
-//! zone, the hotbar under both; Close and the key legend in the footer. `paint` fills the holders.
+//! The skeleton of the open screen over the blurred game, on the shared page: two tabs, Pack and
+//! Workshop, and the load in the heading zone; the pane of the open tab in the content zone, the
+//! hotbar under it on both tabs; Close and the key legend in the footer. `paint` fills the holders
+//! and shows the pane of the open tab only, so crafting shows only when it is asked for.
 //!
 //! ```text
-//! Pack and workshop                                   4.2 of 29.7 kg carried, pace 100 %
+//! [ Pack ]  Workshop  Tab                             4.2 of 29.7 kg carried, pace 100 %
 //!
-//! [b] PACK                      [w] WORKSHOP
-//!     [~] STONE                 [ Cut   ][ Pierce ][ Crush  ][ Throw  ]
-//!     [ flint        ]          Slash with a hard edge of flint, obsidian or bone.
-//!     [ 1.50 kg      ]          [ picture | Flint knife .. Lightest | Reach ### ]
-//!                               [ picture | Bone axe ..... Hardest  | ...       ]
-//!                               Make Enter   Other head H   Other shaft J   Treat T
+//! [~] STONE                          (Workshop tab: [ Cut ][ Pierce ][ Crush ][ Throw ]
+//! [ flint                     ]       Slash with a hard edge of flint, obsidian or bone.
+//! [ 1.50 kg, stone            ]       [ icon | Flint knife .. Lightest | Reach ### ]
+//! Hold Enter   Drop X                 Make Enter   Other head H   Other shaft J   Treat T)
 //! [ 1 Flint knife ][ 2 Empty ][ 3 Empty ][ 4 Empty ][ 5 Empty ][ 6 Empty ]
 //! Close Esc      Workshop Tab   Choose Up Down   Slot 1-6   Half Shift X
 //! ```
@@ -18,18 +17,24 @@
 use bevy::prelude::*;
 
 use super::Workshop;
+use super::bench::Pane;
 use super::click::Press;
 use crate::ui::{
-    Icon, back, page, page_body, page_foot, page_head, page_status, page_title, scroll_area,
-    section_title, strip, text, theme,
+    back, page, page_body, page_foot, page_head, page_status, scroll_area, strip, text, theme,
 };
 
-/// Width in pixels of the pack pane: four columns of the grid.
-pub const PACK: f32 = theme::span(4);
+/// Widest the pack pane grows, in pixels: eight columns of the grid, so its rows stay readable.
+pub const PACK: f32 = theme::span(8);
+
+/// Marks the pane of a tab: only the pane of the open tab shows.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Tabbed(pub Pane);
 
 /// The holders `paint` fills again when what they show changes.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Holder {
+    /// The two tabs in the heading zone.
+    Tabs,
     /// The groups of rows of the pack.
     List,
     /// The actions under the pack.
@@ -55,32 +60,27 @@ pub enum Words {
     Explain,
 }
 
-/// Returns the pack pane: its title, then its rows in a scroll area.
+/// Returns the pack pane, the Pack tab: its rows in a scroll area, then its actions.
 fn pack_pane() -> impl Bundle {
     let node = Node {
-        width: px(PACK),
-        flex_shrink: 0.0,
+        width: percent(100),
+        max_width: px(PACK),
         flex_direction: FlexDirection::Column,
-        row_gap: px(theme::TITLE_BELOW),
         ..default()
     };
     (
+        Tabbed(Pane::Pack),
         node,
-        children![
-            section_title(Icon::Pack, "Pack"),
-            scroll_area(Holder::List),
-            (Holder::PackDeeds, strip())
-        ],
+        children![scroll_area(Holder::List), (Holder::PackDeeds, strip())],
     )
 }
 
-/// Returns the row of the four intent tiles, under the title of the workshop.
+/// Returns the row of the four intent tiles, at the top of the workshop.
 fn intent_row() -> impl Bundle {
     let node = Node {
         height: px(theme::ROW_TALL),
         flex_shrink: 0.0,
         column_gap: px(theme::S2),
-        margin: UiRect::top(px(theme::TITLE_BELOW)),
         ..default()
     };
     (Holder::Intents, node)
@@ -115,19 +115,20 @@ fn cards_area() -> impl Bundle {
     (node, children![scroll_area(Holder::Cards)])
 }
 
-/// Returns the workshop pane: its title, the intent tiles, the line on the chosen intent, the tool
-/// cards in a scroll area and the actions under them.
+/// Returns the workshop pane, the Workshop tab: the intent tiles, the line on the chosen intent,
+/// the tool cards in a scroll area and the actions under them. It shows only on its tab.
 fn workshop_pane() -> impl Bundle {
     let node = Node {
+        display: Display::None,
         flex_grow: 1.0,
         min_width: px(0),
         flex_direction: FlexDirection::Column,
         ..default()
     };
     (
+        Tabbed(Pane::Workshop),
         node,
         children![
-            section_title(Icon::Workshop, "Workshop"),
             intent_row(),
             explain_line(),
             cards_area(),
@@ -136,13 +137,12 @@ fn workshop_pane() -> impl Bundle {
     )
 }
 
-/// Returns the content zone: the two panes side by side, the hotbar under them.
+/// Returns the content zone: the pane of the open tab, the hotbar under it on both tabs.
 fn body() -> impl Bundle {
     let panes = Node {
         flex_grow: 1.0,
         flex_basis: px(0),
         min_height: px(0),
-        column_gap: px(theme::GUTTER),
         ..default()
     };
     let slots = Node {
@@ -163,8 +163,13 @@ fn body() -> impl Bundle {
 
 /// Spawns the empty screen.
 pub fn spawn(commands: &mut Commands) {
+    let tabs = Node {
+        align_items: AlignItems::Center,
+        column_gap: px(theme::S2),
+        ..default()
+    };
     let head = page_head(children![
-        page_title("Pack and workshop"),
+        (Holder::Tabs, tabs),
         (Words::Status, page_status(""))
     ]);
     let foot = page_foot(children![

@@ -1,7 +1,7 @@
 //! Tests that the screen fits every window from 960 by 540 to 2560 by 1440 at every interface
-//! size: the zones of the page, the hotbar, the fixed parts of both panes and one whole tool card
-//! stack inside the height, and the panes, the intent tiles, the line on the intent, a card, the
-//! hotbar slots and the footer sit inside the width. The lists scroll inside what is left.
+//! size: the zones of the page, the hotbar, the fixed parts of each tab and one whole tool card
+//! stack inside the height, and the tabs, each pane, the intent tiles, the line on the intent, a
+//! card, the hotbar slots and the footer sit inside the width. The lists scroll inside what is left.
 
 use bevy::math::Vec2;
 
@@ -43,17 +43,16 @@ const STRIP: f32 = theme::S4 + theme::ROW_HEIGHT;
 /// Height of a tool card that is not focused: its padding, its name and its reason.
 const RESTING: f32 = 2.0 * theme::S3 + theme::LINE_BODY + theme::LINE_SMALL;
 
-/// The workshop keeps room for one whole card under its title, its tiles and the line on the
-/// intent, above its actions; the pack keeps room for a group title and two rows above its
-/// actions, which may take two lines on the narrow pane.
+/// On its tab the workshop keeps room for one whole card under its tiles and the line on the
+/// intent, above its actions; on its own the pack keeps room for a group title and two rows above
+/// its actions.
 #[test]
 fn the_panes_fit_every_height() {
     for window in layouts() {
         let room = panes(window);
-        let title = theme::ICON + theme::TITLE_BELOW;
         let tiles = theme::ROW_TALL + theme::S2 + theme::LINE_SMALL + theme::S3;
-        assert!(room - title - tiles - STRIP >= RESTING, "{window}: {room}");
-        let list = room - title - STRIP - theme::ROW_HEIGHT - theme::S1;
+        assert!(room - tiles - STRIP >= RESTING, "{window}: {room}");
+        let list = room - STRIP;
         assert!(
             list >= theme::ICON + theme::TITLE_BELOW + 2.0 * theme::ROW_TALL,
             "{window}"
@@ -93,15 +92,26 @@ fn footer_needs() -> f32 {
     close + KEY_GAP + theme::GUTTER + longer
 }
 
-/// The pack, the gutter and the workshop fit across; so do the six hotbar slots and the footer.
+/// Returns the width the heading zone needs: the two tabs at the page title size, the Tab key,
+/// then the load at its longest.
+fn header_needs() -> f32 {
+    let tab = |name: &str| 2.0 * theme::INSET + wide(name.len(), theme::FONT_HEADING);
+    let tabs = tab("Pack") + tab("Workshop") + 2.0 * theme::S2 + wide(3, theme::FONT_SMALL);
+    let load = "29.7 of 29.7 kg carried, pace 100 %";
+    tabs + theme::GUTTER + wide(load.len(), theme::FONT_SMALL)
+}
+
+/// The tabs and the load fit across the heading, the workshop and the pack each fit the width on
+/// their own tab, and so do the six hotbar slots and the footer.
 #[test]
 fn the_panes_fit_every_width() {
     let words = wide(1, theme::FONT_SMALL) + wide(NAME, theme::FONT_SMALL);
     let slot = 2.0 * theme::INSET + words + 2.0 * theme::S2 + ROW;
     for window in layouts() {
         let inner = window.x - 2.0 * theme::EDGE;
-        let workshop = inner - PACK - theme::GUTTER;
-        assert!(workshop_needs() <= workshop, "{window}: {workshop}");
+        assert!(header_needs() <= inner, "{window}: heading");
+        assert!(workshop_needs() <= inner, "{window}: workshop");
+        assert!(PACK <= inner, "{window}: pack");
         assert!(6.0 * slot + 5.0 * theme::S2 <= inner, "{window}: slots");
         assert!(footer_needs() <= inner, "{window}: footer");
     }

@@ -8,7 +8,7 @@ use super::click::Press;
 use super::here::Here;
 use super::keys::{Bind, MAKE_BINDS, PACK_BINDS, moves};
 use super::scene::{Ground, Scene, scene};
-use super::view::{Holder, Words};
+use super::view::{Holder, Tabbed, Words};
 use super::{cards, intent, rows, slots, tiles};
 use crate::craft::pack::{Burden, Pack};
 use crate::ui::{Icon, Tone, action, hints, legend, notice_row, text, theme};
@@ -32,6 +32,7 @@ fn actions(parent: &mut ChildSpawnerCommands, binds: &[Bind], shown: bool, note:
 /// Spawns what `holder` shows of `shown` under `parent`.
 fn fill(parent: &mut ChildSpawnerCommands, holder: Holder, shown: &Scene, bench: &Bench) {
     match holder {
+        Holder::Tabs => tiles::tabs(parent, bench.pane),
         Holder::List => rows::list(parent, &shown.rows, bench.pane == Pane::Pack),
         Holder::PackDeeds => actions(parent, &PACK_BINDS, !shown.rows.is_empty(), ""),
         Holder::Intents => tiles::intents(parent, bench.intent),
@@ -68,5 +69,15 @@ pub(super) fn draw(
         let mut held = commands.entity(entity);
         held.despawn_children();
         held.with_children(|parent| fill(parent, *holder, &shown, &bench));
+    }
+}
+
+/// Shows the pane of the open tab and hides the other.
+pub(super) fn show_tab(bench: Res<Bench>, mut panes: Query<(&Tabbed, &mut Node)>) {
+    for (Tabbed(pane), mut node) in &mut panes {
+        let display = [Display::None, Display::Flex][usize::from(*pane == bench.pane)];
+        if node.display != display {
+            node.display = display;
+        }
     }
 }

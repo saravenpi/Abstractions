@@ -162,18 +162,21 @@ type Told<'w> = (
     ResMut<'w, Notice>,
 );
 
+/// The ground, the load, the place, the held tool and the anchor a split reads.
+type Scene<'w> = (
+    Res<'w, Terrain>,
+    Res<'w, Burden>,
+    Res<'w, Location>,
+    Res<'w, Held>,
+    Res<'w, Anchor>,
+);
+
 /// Breaks the piece off every rock a blow reached and stows it: the rock is noted smaller for
 /// everyone, the stone cracks where it was struck, the piece flies off it, and the prompt line
 /// says what was picked up.
 pub(crate) fn split(
     mut knocked: MessageReader<Knocked>,
-    (terrain, burden, location, held, anchor): (
-        Res<Terrain>,
-        Res<Burden>,
-        Res<Location>,
-        Res<Held>,
-        Res<Anchor>,
-    ),
+    (terrain, burden, location, held, anchor): Scene,
     (mut pack, mut taken): (ResMut<Pack>, ResMut<Taken>),
     (mut told, mut sounds, mut flings, mut notice): Told,
 ) {

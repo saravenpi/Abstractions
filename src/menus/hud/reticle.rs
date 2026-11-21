@@ -30,9 +30,9 @@ const BAR: (f32, f32, f32) = (64.0, 4.0, 48.0);
 #[derive(Component)]
 pub(super) struct Tick(usize);
 
-/// Marks corner `0` to `3` of the hit mark, clockwise from the top left.
+/// Marks a corner of the hit mark.
 #[derive(Component)]
-pub(super) struct Corner(usize);
+pub(super) struct Corner;
 
 /// Marks the strip of the animal fought.
 #[derive(Component)]
@@ -115,10 +115,9 @@ pub(super) fn layer() -> impl Bundle {
     let (side, out) = CORNER;
     let corners = [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)]
         .into_iter()
-        .enumerate()
-        .map(move |(k, (x, y))| {
+        .map(move |(x, y)| {
             let place = [x * out - side / 2.0, y * out - side / 2.0, side, side];
-            (Corner(k), at(place), BackgroundColor(Color::NONE))
+            (Corner, at(place), BackgroundColor(Color::NONE))
         });
     (
         gate(Element::Reticle),
@@ -155,11 +154,14 @@ pub fn marked(outcome: Outcome, left: f32) -> Color {
     whole.with_alpha(whole.alpha() * left.clamp(0.0, 1.0))
 }
 
+/// The corners of the hit mark, apart from the strip of the struck animal.
+type Corners = (With<Corner>, Without<FoeBar>, Without<Foe>);
+
 /// Shows the hit mark of the last blow at the corners, and the name and health of the animal it
 /// struck under the crosshair while the fight lasts.
 pub(super) fn strike(
     (mark, beasts, terrain): (Res<Mark>, Query<&Beast>, Option<Res<Terrain>>),
-    mut corners: Query<&mut BackgroundColor, (With<Corner>, Without<FoeBar>, Without<Foe>)>,
+    mut corners: Query<&mut BackgroundColor, Corners>,
     mut strips: Query<&mut Node, (With<Foe>, Without<FoeBar>)>,
     mut bars: Query<&mut Node, (With<FoeBar>, Without<Foe>)>,
     mut names: Query<&mut Text, With<FoeName>>,

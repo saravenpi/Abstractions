@@ -7,6 +7,7 @@
 //! Levels are peaks for a walk at home, against a full scale of 1, frequencies are in hertz and
 //! times in seconds.
 
+use super::tune::{HISS_Q, KNEE, WET_Q};
 use crate::audio::cue::StepSurface;
 
 /// The answer of one kind of ground.
@@ -22,9 +23,10 @@ pub struct Material {
     /// The ring of the floor: tone, resonance, level of a strike, and the share of each grain
     /// that sets it ringing too, which makes snow squeak.
     pub ring: (f32, f32, f32, f32),
-    /// The wet sweep: the centre it starts from and the one it ends on as the foot goes in,
-    /// the other way as it pulls out, its seconds, and its level going in and pulling out.
-    pub wet: (f32, f32, f32, f32, f32),
+    /// The wet sweep: the centre it starts from and the one it ends on as the foot goes in, the
+    /// other way as it pulls out, its seconds, its level going in and pulling out, and the
+    /// resonance of its band.
+    pub wet: (f32, f32, f32, f32, f32, f32),
 }
 
 /// Ground with no ring: loose or soft ground swallows the sole.
@@ -34,7 +36,7 @@ const DEAD: (f32, f32, f32, f32) = (500.0, 4.0, 0.0, 0.0);
 const SOLID: (f32, f32, f32, f32, f32, f32) = (1000.0, 1000.0, 1.0, 0.0, 0.05, 0.0);
 
 /// Dry ground: nothing wet.
-const DRY: (f32, f32, f32, f32, f32) = (500.0, 500.0, 0.1, 0.0, 0.0);
+const DRY: (f32, f32, f32, f32, f32, f32) = (500.0, 500.0, 0.1, 0.0, 0.0, WET_Q);
 
 /// The answer of every ground, in the order of [`StepSurface::ALL`].
 const GROUNDS: [Material; 10] = [
@@ -67,9 +69,9 @@ const GROUNDS: [Material; 10] = [
         wet: DRY,
     },
     Material {
-        thud: (60.0, 1.2, 0.0892),
-        click: (1200.0, 0.7, 0.012, 0.0204),
-        grain: (1500.0, 5000.0, 0.8, 9000.0, 0.1, 0.0459),
+        thud: (110.0, 0.7, 0.03),
+        click: (2500.0, 0.6, 0.006, 0.02),
+        grain: (2000.0, 7000.0, 0.7, 5000.0, 0.06, 0.035),
         ring: DEAD,
         wet: DRY,
     },
@@ -85,14 +87,14 @@ const GROUNDS: [Material; 10] = [
         click: (400.0, 0.7, 0.02, 0.0072),
         grain: (300.0, 900.0, 8.0, 120.0, 0.25, 0.0216),
         ring: DEAD,
-        wet: (420.0, 150.0, 0.14, 0.0288, 0.036),
+        wet: (420.0, 150.0, 0.14, 0.0288, 0.036, WET_Q),
     },
     Material {
-        thud: (85.0, 1.0, 0.125),
-        click: (1500.0, 0.6, 0.03, 0.0939),
-        grain: (1200.0, 4000.0, 14.0, 500.0, 0.25, 0.125),
+        thud: (70.0, 0.7, 0.05),
+        click: (2200.0, 0.5, 0.04, 0.08),
+        grain: (1500.0, 5000.0, 3.0, 250.0, 0.3, 0.06),
         ring: DEAD,
-        wet: (3000.0, 900.0, 0.15, 0.06, 0.035),
+        wet: (2500.0, 700.0, 0.18, 0.05, 0.03, HISS_Q),
     },
     Material {
         thud: (150.0, 5.0, 0.0755),
@@ -113,4 +115,42 @@ const GROUNDS: [Material; 10] = [
 /// Returns the answer of `surface`.
 pub const fn of(surface: StepSurface) -> Material {
     GROUNDS[surface as usize]
+}
+
+/// Returns the answer of `surface` under a foot in water `depth` metres deep: only water wades.
+pub fn ground(surface: StepSurface, depth: f32) -> Material {
+    match surface {
+        StepSurface::Water => wading(of(surface), depth),
+        _ => of(surface),
+    }
+}
+
+/// Returns `stuff` for a leg `depth` metres into the water. Toward the knee the splash, the thud
+/// and the drops fade, since the foot no longer breaks the surface, and the slosh of the leg
+/// lengthens into a swish that overlaps the next step and falls an octave as more water moves.
+fn wading(stuff: Material, depth: f32) -> Material {
+    let deep = (depth / KNEE).clamp(0.0, 1.0);
+    let (thud, click, grain, wet) = (stuff.thud, stuff.click, stuff.grain, stuff.wet);
+    let low = 1.0 / (1.0 + deep);
+    Material {
+        thud: (thud.0, thud.1, thud.2 * (1.0 - 0.7 * deep)),
+        click: (click.0, click.1, click.2, click.3 * (1.0 - 0.8 * deep)),
+        grain: (
+            grain.0,
+            grain.1,
+            grain.2,
+            grain.3 * (1.0 - 0.8 * deep),
+            grain.4,
+            grain.5,
+        ),
+        wet: (
+            wet.0 * low,
+            wet.1 * low,
+            wet.2 * (1.0 + 3.0 * deep),
+            wet.3,
+            wet.4,
+            wet.5,
+        ),
+        ..stuff
+    }
 }

@@ -38,12 +38,26 @@ pub const HEEL_TOE: (f32, f32) = (0.6, 0.4);
 /// faint but heard, for a robot is not a bell.
 pub const TICK: (f32, f32, f32, f32) = (0.45, 3900.0, 60.0, 0.05);
 
-/// Seconds the scrape of one stretch of a slide takes to die, and how many more grains a
-/// slide breaks than a step.
-pub const SCRAPE: (f32, f32) = (0.12, 2.0);
+/// The scrape of a slide, sent every 0.1 seconds while the body slides: the seconds one stretch
+/// swells and dies over, twice the gap so that the stretches overlap into one even rustle; the
+/// share of a step's grains it breaks; the level of the rustle at full speed, about the level of a
+/// walk, a few decibels over it at most; and the force of the slide, from its speed, that counts
+/// as full speed: 14 metres per second.
+pub const SCRAPE: (f32, f32, f32, f32) = (0.2, 0.3, 0.03, 0.4);
 
-/// Resonance of the band of a splash or a suck.
+/// Most a strike may push against a walk at home: 8 dB. A hard landing is a short, firm thud, not a
+/// crash.
+pub const PUSH_MAX: f32 = 2.5;
+
+/// Depth of water, in metres, at which a foot wades to the knee: the splash, the thud and the drops
+/// are gone and the slosh of the leg is a long, low swish.
+pub const KNEE: f32 = 0.5;
+
+/// Resonance of the band of the suck of mud.
 pub const WET_Q: f32 = 2.5;
+
+/// Resonance of the band of a splash, a slosh or a scrape: broad, so it hisses and never whistles.
+pub const HISS_Q: f32 = 1.0;
 
 /// Depth of water at which a splash has the level its ground gives it, and the least and the
 /// most of that level a shallower or deeper splash has.

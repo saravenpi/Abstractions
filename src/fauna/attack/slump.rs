@@ -4,6 +4,7 @@
 use bevy::math::DQuat;
 use bevy::prelude::*;
 
+use super::rest::Lain;
 use super::tune::BOUNCE;
 use crate::fauna::beast::Beast;
 use crate::space::Placed;
@@ -87,7 +88,12 @@ pub fn slump(
             let (angle, rate, done) = tip((s.angle, s.rate), (s.length, gravity, s.rest), dt);
             (s.angle, s.rate) = (angle, rate);
             if done {
-                commands.entity(entity).remove::<Slump>();
+                let lain = Lain::tipped(
+                    s.pivot,
+                    Quat::from_axis_angle(s.axis, s.rest),
+                    (s.side, 0.5 * s.length),
+                );
+                commands.entity(entity).remove::<Slump>().insert(lain);
             }
         }
         *placed = lie(&s, beast);

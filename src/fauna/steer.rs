@@ -5,6 +5,7 @@ use bevy::math::{Vec2, Vec3, Vec3Swizzles};
 
 use super::motion::{Detail, Drive, Motion};
 use super::react::{Act, Mood};
+use super::shore::shore;
 use super::tune::{APPROACH_SPEED, FLEE_SPEED, GUARD, PULL, RUSH, SETTLE};
 use crate::life::body::{Body, Locomotion, slope};
 
@@ -31,6 +32,9 @@ pub struct Pace {
     pub detail: Detail,
     /// Metres from its root within which its attack reaches what it goes for: where it stops closing.
     pub strike: f32,
+    /// Height in its frame of the sea surface where it stands, which a body on the ground keeps out of;
+    /// minus infinity on a world without a sea.
+    pub sea: f32,
 }
 
 /// Returns the height in metres a flyer or a swarm of `body` cruises at above the ground: swarms
@@ -136,7 +140,13 @@ pub fn drive(
         _ => 0.0,
     };
     Drive {
-        velocity: hold(velocity.with_y(climb), at, body, ground),
+        velocity: shore(
+            hold(velocity.with_y(climb), at, body, ground),
+            at,
+            body,
+            ground,
+            pace.sea,
+        ),
         look,
         gravity: pace.gravity,
         excite: mood.alarm.max(aim.excite),

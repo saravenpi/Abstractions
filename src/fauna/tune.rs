@@ -110,6 +110,10 @@ pub const RUSH: f32 = 12.0;
 /// Metres past its strike within which an animal that stands its ground goes for a threat.
 pub const GUARD: f32 = 3.0;
 
+/// Seconds of its speed past a stride ahead at which a body on the ground looks for the sea, so that
+/// a body running at full speed stops on the shore and not in the water.
+pub const SHORE_AHEAD: f32 = 0.5;
+
 /// Metres under the drawn ground past which the sunk check of a dev build logs a foot of an animal.
 #[cfg(feature = "dev")]
 pub const SUNK: f32 = 0.05;

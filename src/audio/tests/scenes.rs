@@ -1,29 +1,40 @@
 //! Scenes of the whole mix for the loudness table: what a player hears in a kind of moment,
 //! music, weather, ship and cues together, with the loudness that kind of moment aims at.
 
+use bevy::prelude::*;
+
 use super::calls::calling;
+use super::dusk::dusk;
 use super::planet;
 use super::rig::{parked, seated};
 use super::takes::{flyby, throttle, warp};
 use super::takes_ground::liftoff;
-use crate::audio::call::Call;
 use crate::audio::cue::{AudioCue, ChirpKind, StepSurface};
 use crate::audio::hit::{HitSound, Kind};
 use crate::audio::scene::AudioScene;
 use crate::audio::ship::feed::{Ch, HullSound};
+use crate::audio::spatial::tune::{BUDDY, HIT, STEP, THUNDER};
+use crate::audio::spatial::{Between, Listener, Origin, Spot, spot};
 use crate::audio::step::Step;
-use crate::audio::tune::{BUSY, CALM, LOUD, TITLE};
+use crate::audio::tune::{BUSY, CALM, TITLE};
 use crate::life::signs::calls::{Cry, Timbre};
 
 /// One scene: its name, its length in seconds, the integrated loudness it aims at in LUFS, the
-/// scene at each moment, and the cue of each frame of the game, sixty per second.
+/// scene at each moment, and the cue of each frame of the game, sixty per second, with how it
+/// reaches the listener.
 pub(super) type Scene = (
     &'static str,
     f32,
     f32,
     fn(f32) -> AudioScene,
-    fn(usize) -> Option<AudioCue>,
+    fn(usize) -> Option<(AudioCue, Spot)>,
 );
+
+/// Returns how a sound from `from` reaches a listener standing at the origin, facing ahead, in the
+/// air of home.
+fn heard(from: Origin) -> Spot {
+    spot(&Listener::default(), from, Between::default())
+}
 
 /// Returns a fair day on the ground of a planet, with a light wind and a shore not far off.
 fn fair() -> AudioScene {
@@ -55,92 +66,71 @@ fn in_space(hull: HullSound, warping: bool) -> AudioScene {
     scene
 }
 
-/// Returns the footsteps of a walk on grass, with the companion saying something now and then.
-fn walk(frame: usize) -> Option<AudioCue> {
+/// Returns the footsteps of a walk on grass, the listener's own, with the companion saying
+/// something now and then from beside the head.
+fn walk(frame: usize) -> Option<(AudioCue, Spot)> {
+    let feet = Origin::Held(Vec3::NEG_Y * STEP.0, STEP.0, STEP.1);
+    let buddy = Origin::At(Vec3::new(0.9, 0.2, -0.6), BUDDY);
     match (frame % 27, frame % 400) {
-        (_, 200) => Some(AudioCue::Chirp(ChirpKind::Curious)),
-        (0, _) => Some(AudioCue::Footstep(Step {
-            left: frame.is_multiple_of(54),
-            ..Step::on(StepSurface::Grass)
-        })),
+        (_, 200) => Some((AudioCue::Chirp(ChirpKind::Curious), heard(buddy))),
+        (0, _) => Some((
+            AudioCue::Footstep(Step {
+                left: frame.is_multiple_of(54),
+                ..Step::on(StepSurface::Grass)
+            }),
+            heard(feet),
+        )),
         _ => None,
     }
 }
 
-/// Returns the thunder of a storm: one near roll, one far.
-fn thunder(frame: usize) -> Option<AudioCue> {
+/// Returns the thunder of a storm: one near roll, one far, a kilometre off on either side.
+fn thunder(frame: usize) -> Option<(AudioCue, Spot)> {
+    let off = |side: f32| heard(Origin::At(Vec3::new(side, 0.3, -0.5) * THUNDER, THUNDER));
     match frame {
-        240 => Some(AudioCue::Thunder(0.9)),
-        620 => Some(AudioCue::Thunder(0.4)),
+        240 => Some((AudioCue::Thunder(0.9), off(0.8))),
+        620 => Some((AudioCue::Thunder(0.4), off(-0.8))),
         _ => None,
     }
 }
 
-/// Returns the cues of a fight beside the listener: a hard wet blow twice a second, a swing
-/// between two blows, and an animal that calls every other second.
-fn fight(frame: usize) -> Option<AudioCue> {
+/// Returns the cues of a fight beside the listener: a hard wet blow twice a second a metre off
+/// to the right, a swing between two blows, and an animal two metres off that calls every other
+/// second.
+fn fight(frame: usize) -> Option<(AudioCue, Spot)> {
     let blow = |kind: Kind, level: f32| HitSound {
         kind,
         level,
         hz: 420.0,
         hard: 0.6,
         wet: kind == Kind::Clean,
-        side: 0.3,
-        near: 1.0,
     };
+    let hit = heard(Origin::At(Vec3::new(0.3, 0.0, -0.95), HIT.0));
+    let animal = heard(Origin::At(Vec3::new(1.0, 0.0, -1.7), 5.6));
     match (frame % 120, frame % 32) {
-        (60, _) => Some(AudioCue::Call(Call {
-            side: 0.33,
-            near: 0.87,
-            metres: 4.0,
-            ..calling(Timbre::Low, 320.0, Cry::Contact)
-        })),
-        (_, 0) => Some(AudioCue::Hit(blow(Kind::Clean, 1.0))),
-        (_, 16) => Some(AudioCue::Hit(blow(Kind::Whoosh, 0.7))),
+        (60, _) => Some((
+            AudioCue::Call(calling(Timbre::Low, 320.0, Cry::Contact)),
+            animal,
+        )),
+        (_, 0) => Some((AudioCue::Hit(blow(Kind::Clean, 1.0)), hit)),
+        (_, 16) => Some((AudioCue::Hit(blow(Kind::Whoosh, 0.7)), hit)),
         _ => None,
     }
 }
 
-/// The timbres and pitches of the seven species of the chorus at dusk.
-const CHORUS_VOICES: [(Timbre, f32); 7] = [
-    (Timbre::Whistle, 2400.0),
-    (Timbre::Whistle, 1700.0),
-    (Timbre::Low, 140.0),
-    (Timbre::Hoot, 320.0),
-    (Timbre::Click, 4000.0),
-    (Timbre::Whistle, 3100.0),
-    (Timbre::Croak, 260.0),
-];
-
-/// Returns the calls of a chorus at dusk: once a second an animal of one of seven species keeps in
-/// touch, from 15 to 200 metres away, birds and crickets among them.
-pub(super) fn dusk(frame: usize) -> Option<AudioCue> {
-    if frame % 60 != 30 {
-        return None;
-    }
-    let k = frame / 60;
-    let (timbre, hz) = CHORUS_VOICES[k * 3 % CHORUS_VOICES.len()];
-    let metres = 15.0 + (k * 53 % 186) as f32;
-    let mut call = calling(timbre, hz, Cry::Contact);
-    call.voice.print = (k * 3 % CHORUS_VOICES.len()) as u8 * 37;
-    call.one = (k * 11) as u8;
-    call.side = ((k * 7 % 9) as f32 / 4.0) - 1.0;
-    call.near = 37.0 / (37.0 + metres);
-    call.metres = metres;
-    Some(AudioCue::Call(call))
+/// Returns the cues of a warp, in the cabin: the drive starts to spool, engages and drops out.
+fn jump(frame: usize) -> Option<(AudioCue, Spot)> {
+    let cue = match frame {
+        60 => AudioCue::WarpSpool,
+        300 => AudioCue::WarpEngage,
+        600 => AudioCue::WarpExit,
+        _ => return None,
+    };
+    Some((cue, Spot::FLAT))
 }
 
-/// Returns the cues of a warp: the drive starts to spool, engages and drops out.
-fn jump(frame: usize) -> Option<AudioCue> {
-    match frame {
-        60 => Some(AudioCue::WarpSpool),
-        300 => Some(AudioCue::WarpEngage),
-        600 => Some(AudioCue::WarpExit),
-        _ => None,
-    }
-}
-
-/// Every scene of the table.
+/// Every scene of the table. The seat is 4 dB under the chase view since 0.11.0, at the wish of the
+/// owner, so a burn heard from the seat is busy play, no longer the loudest.
 pub(super) const SCENES: [Scene; 11] = [
     ("title", 30.0, TITLE, |_| AudioScene::default(), |_| None),
     ("base_calm", 30.0, CALM, |_| fair(), |_| None),
@@ -170,14 +160,14 @@ pub(super) const SCENES: [Scene; 11] = [
     (
         "liftoff_inside",
         13.0,
-        LOUD,
+        BUSY,
         |t| with_ship(liftoff(t), true),
         |_| None,
     ),
     (
         "full_throttle_inside",
         20.0,
-        LOUD,
+        BUSY,
         |_| with_ship(throttle(5.0), true),
         |_| None,
     ),

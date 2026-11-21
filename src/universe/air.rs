@@ -13,7 +13,7 @@ mod tests_column;
 mod tests_mix;
 
 pub use born::{born, escape};
-pub use column::{dense, heights};
+pub use column::{dense, heights, humidity};
 pub use gas::Gas;
 pub use mix::{Mix, Part};
 pub use tune::{GAS_CONSTANT, TOP_SCALES};

@@ -5,8 +5,7 @@
 use std::f32::consts::PI;
 
 use super::tune::{
-    ABSORB_HZ, DULLEST_HZ, EARSHOT, GROUND_REACH, HELMHOLTZ, LOBE, LOBE_FLOOR, NEAR, OPEN_HZ,
-    SEA_AIR, THROTTLE_FLOOR,
+    EARSHOT, GROUND_REACH, HELMHOLTZ, LOBE, LOBE_FLOOR, NEAR, SEA_AIR, THROTTLE_FLOOR,
 };
 
 /// Returns the frequency in hertz at which the mixing noise of a supersonic jet peaks, for a
@@ -43,14 +42,6 @@ pub fn lobe(aspect: f32) -> f32 {
 pub fn spread(distance: f32) -> f32 {
     let edge = 1.0 - (distance / EARSHOT).clamp(0.0, 1.0).powi(4);
     NEAR.1 / distance.max(NEAR.0) * edge
-}
-
-/// Returns the corner in hertz of the low-pass that `distance` metres of air of density `air`
-/// make. Air absorbs sound as the square of its frequency and more as it thins, so the corner
-/// falls as `sqrt(air / distance)`.
-pub fn absorb_hz(distance: f32, air: f32) -> f32 {
-    let far = (distance / 1000.0).max(1.0e-4);
-    (ABSORB_HZ * (air.clamp(0.02, 1.0) / far).sqrt()).clamp(DULLEST_HZ, OPEN_HZ)
 }
 
 /// Returns the gain that brings white noise through a band-pass at `hz` of resonance `q` to a

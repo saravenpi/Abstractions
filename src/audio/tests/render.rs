@@ -14,6 +14,7 @@ use super::{RATE, frames, mixer};
 use crate::audio::cue::AudioCue;
 use crate::audio::dsp::limit::CEILING;
 use crate::audio::ship::feed::HullSound;
+use crate::audio::spatial::Spot;
 use crate::settings::Audio as Volumes;
 
 /// The state of the ship at each moment of a take, and the cues that fire in it.
@@ -77,7 +78,7 @@ fn record((_, seconds, seat, (at, cues)): &Take) -> Vec<[f32; 2]> {
             shared.publish(&scene(t), &Volumes::default());
         }
         for (_, cue) in cues.iter().filter(|(due, _)| (t..next).contains(due)) {
-            shared.push(*cue);
+            shared.push(*cue, &Spot::FLAT);
         }
         out.push(mixer.frame());
     }

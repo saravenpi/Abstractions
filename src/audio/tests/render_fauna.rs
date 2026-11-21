@@ -5,18 +5,22 @@
 //! `SHIP_AUDIO_DIR=/tmp/ship-audio cargo test --features dev --lib -- audio::tests::render --nocapture`.
 //!
 //! Each call is built as the hearing builds it: the size of the animal follows from its pitch by the
-//! frequency law of `crate::life::signs::voice`, its tract from its size, and its level from its
-//! distance and size by the law of `crate::fauna::signs`.
+//! frequency law of `crate::life::signs::voice`, its tract from its size, and its reach from its size
+//! as `crate::fauna::signs` gives it; the spatial path does the rest.
 
 use std::path::Path;
 
+use bevy::prelude::*;
+
+use super::dusk::dusk;
 use super::render::write;
-use super::scenes::dusk;
 use super::{frames, mixer, planet};
 use crate::audio::call::Call;
 use crate::audio::cue::AudioCue;
 use crate::audio::dsp::limit::CEILING;
 use crate::audio::scene::AudioScene;
+use crate::audio::spatial::tune::CALL;
+use crate::audio::spatial::{Between, Listener, Origin, Spot, spot};
 use crate::life::signs::calls::{Cry, Timbre, Voice};
 use crate::settings::Audio as Volumes;
 
@@ -110,9 +114,9 @@ const TAKES: [Take; 9] = [
 /// Frames between two frames of the game.
 const GAME_FRAME: usize = 800;
 
-/// Returns the call of `row`: the size of the animal from its pitch, its tract from its size, its level
-/// from its size and distance.
-fn call(&(at, timbre, hz, cry, metres, side, print): &Row) -> Call {
+/// Returns the call of `row` and how it reaches a listener facing ahead in the air of home: the size
+/// of the animal from its pitch, its tract and its reach from its size, from `side` at `metres`.
+fn call(&(at, timbre, hz, cry, metres, side, print): &Row) -> (Call, Spot) {
     let kg = (1000.0 / hz).powf(2.5);
     let length = 2.5 * (kg / 1000.0).cbrt();
     let half = 12.0 * kg.cbrt();
@@ -124,29 +128,32 @@ fn call(&(at, timbre, hz, cry, metres, side, print): &Row) -> Call {
         formant: (350.0 / (0.3 * length)).clamp(60.0, 8000.0),
         print,
     };
-    Call {
+    let call = Call {
         voice,
         cry,
         one: (at * 37.0) as u8,
-        side,
-        near: half / (half + metres),
-        metres,
-    }
+    };
+    let toward = Vec3::new(side, 0.0, -(1.0 - side * side).max(0.0).sqrt());
+    let from = Origin::At(toward * metres, CALL * half);
+    (call, spot(&Listener::default(), from, Between::default()))
 }
 
 /// Returns the cues of a take with the frame each one starts on: its calls, and the chorus at dusk
 /// once per game frame when it has one.
-fn cues((_, seconds, _, rows, chorus): &Take) -> Vec<(usize, AudioCue)> {
-    let mut cues: Vec<(usize, AudioCue)> = rows
+fn cues((_, seconds, _, rows, chorus): &Take) -> Vec<(usize, AudioCue, Spot)> {
+    let mut cues: Vec<(usize, AudioCue, Spot)> = rows
         .iter()
-        .map(|row| (frames(row.0), AudioCue::Call(call(row))))
+        .map(|row| {
+            let (call, spot) = call(row);
+            (frames(row.0), AudioCue::Call(call), spot)
+        })
         .collect();
     let games = if *chorus {
         frames(*seconds) / GAME_FRAME
     } else {
         0
     };
-    cues.extend((0..games).filter_map(|g| dusk(g).map(|cue| (g * GAME_FRAME, cue))));
+    cues.extend((0..games).filter_map(|g| dusk(g).map(|(cue, spot)| (g * GAME_FRAME, cue, spot))));
     cues
 }
 
@@ -168,8 +175,8 @@ fn record(take: &Take) -> Vec<[f32; 2]> {
         if i % GAME_FRAME == 0 {
             shared.publish(&scene, &volumes);
         }
-        for (_, cue) in cues.iter().filter(|(at, _)| *at == i) {
-            shared.push(*cue);
+        for (_, cue, spot) in cues.iter().filter(|(at, ..)| *at == i) {
+            shared.push(*cue, spot);
         }
         out.push(mixer.frame());
     }

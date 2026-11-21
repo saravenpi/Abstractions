@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use super::ship::feed::{HULLS, HullSound};
+use super::spatial::{Absorb, Air};
 use crate::universe::PlanetClass;
 
 /// Seed of the piece played on the title screen, before any world exists.
@@ -12,7 +13,8 @@ pub const TITLE_SEED: u64 = 0x00AB_5712_AC71_0115;
 ///
 /// The audio module fills the fields it can read from the world itself every frame while the game
 /// is played, `warping` from the instruments of the ship, and `rush`, `boost` and `flutter` from
-/// the flight gear, `rain` and `dust` from the weather. The ship module writes `hulls`.
+/// the flight gear, `rain` and `dust` from the weather. The ship module writes `hulls` and
+/// `cockpit`.
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct AudioScene {
     /// Seed of the planet whose music plays.
@@ -37,12 +39,15 @@ pub struct AudioScene {
     pub shore: f32,
     /// Where the shoreline is for the listener, from -1 (left) to 1 (right).
     pub shore_side: f32,
-    /// Where the companion is for the listener: its side from -1 (left) to 1 (right) in x, and
-    /// how near it is from 0 (out of earshot) to 1 (beside the head) in y.
-    pub companion: Vec2,
+    /// How well the air of the planet carries sound: its density at sea level against home, 0
+    /// without air and at most 1. The wind, the rain, the dust and the shore are multiplied by it.
+    pub air: f32,
+    /// How the air around the listener takes the high end with distance: the ships follow it.
+    pub absorb: Absorb,
     /// How deep the listener is inside the cloud layer, from 0 (clear air) to 1 (its middle).
     pub cloud_depth: f32,
-    /// 1 while the listener sits in the ship cabin, 0 outside.
+    /// 1 while the ears are in the ship cabin, seated with the view from the seat, 0 outside,
+    /// the chase view included.
     pub cabin: f32,
     /// Rush of the air past the flying body, from 0 (still) to 1 (very fast).
     pub rush: f32,
@@ -62,6 +67,9 @@ pub struct AudioScene {
     /// What every ship in earshot sounds like: first the ship this machine flies, then the
     /// nearest of the others.
     pub hulls: [HullSound; HULLS],
+    /// Where the cabin of the ship this machine flies is, in render space, when there is one: its
+    /// relays and chimes are heard from there through the hull by ears outside it.
+    pub cockpit: Option<Vec3>,
 }
 
 impl Default for AudioScene {
@@ -79,7 +87,8 @@ impl Default for AudioScene {
             wind: 0.0,
             shore: 0.0,
             shore_side: 0.0,
-            companion: Vec2::Y,
+            air: 1.0,
+            absorb: Air::home().absorb,
             cloud_depth: 0.0,
             cabin: 0.0,
             rush: 0.0,
@@ -90,6 +99,7 @@ impl Default for AudioScene {
             rain: 0.0,
             dust: 0.0,
             hulls: [HullSound::default(); HULLS],
+            cockpit: None,
         }
     }
 }

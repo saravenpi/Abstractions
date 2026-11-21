@@ -11,9 +11,10 @@ use super::planet::class;
 use super::scene::TITLE_SEED;
 use super::shared::{PARAMS, Param, Shared};
 use super::ship::Fleet;
+use super::spatial::{Absorb, Seat};
 use super::suit::{Suit, SuitCtl};
 use super::tread::Treads;
-use super::tune::{BED_MUSIC, CUES_GAIN};
+use super::tune::{BED_MUSIC, CUES_GAIN, VIEW_FADE};
 use crate::universe::PlanetClass;
 
 /// Frames between two readings of the shared values.
@@ -45,6 +46,8 @@ pub struct Mixer {
     air: Air,
     /// Ship voices.
     fleet: Fleet,
+    /// The seat and the cabin around it.
+    seat: Seat,
     /// Flight gear voices.
     suit: Suit,
     /// One-shot voices.
@@ -57,8 +60,9 @@ pub struct Mixer {
     master: Master,
     /// Frames rendered in the current block.
     count: u32,
-    /// Per-sample coefficient of the value smoothing.
-    k: f32,
+    /// Per-sample coefficient of the smoothing of each value: the move of the ears into the cabin
+    /// and out is slower than the rest.
+    k: [f32; PARAMS],
 }
 
 impl Mixer {
@@ -75,13 +79,17 @@ impl Mixer {
             music,
             air: Air::new(rate),
             fleet: Fleet::new(rate, BLOCK as f32 / rate),
+            seat: Seat::new(rate),
             suit: Suit::new(rate),
             cues: Pool::new(rate),
             treads: Treads::new(rate),
             duck: Duck::new(rate),
             master: Master::new(rate),
             count: 0,
-            k: glide(SMOOTH_SECONDS, rate),
+            k: Param::ALL.map(|param| match param {
+                Param::Cabin => glide(VIEW_FADE, rate),
+                _ => glide(SMOOTH_SECONDS, rate),
+            }),
         }
     }
 
@@ -107,11 +115,6 @@ impl Mixer {
         }
     }
 
-    /// Returns how deep the listener is in the cloud layer of a planet: nothing in space.
-    fn cloud(&self) -> f32 {
-        self.at(Param::Cloud) * (1.0 - self.at(Param::Space))
-    }
-
     /// Returns what the flight gear follows.
     fn suit_ctl(&self) -> SuitCtl {
         SuitCtl {
@@ -123,18 +126,35 @@ impl Mixer {
         }
     }
 
+    /// Returns how the air around the listener takes the high end with distance.
+    fn absorb(&self) -> Absorb {
+        Absorb {
+            far: self.targets[Param::AirFar as usize],
+            slope: self.targets[Param::AirSlope as usize],
+        }
+    }
+
+    /// Renders one stereo frame of every effect at the effects volume: the ambience, the flight
+    /// gear, the ships from the seat or outside, the one-shot sounds and the steps.
+    fn effects(&mut self) -> [f32; 2] {
+        let air = self.air.frame(&self.air_ctl());
+        let gear = self.suit.frame(&self.suit_ctl());
+        let (blips, steps) = (self.cues.frame(), self.treads.frame());
+        let (ships, sent, cabin) = (self.fleet.frame(), self.cues.sent(), self.at(Param::Cabin));
+        let ships = self.seat.frame(ships, sent, cabin);
+        let fx = self.at(Param::Effects) * EFFECTS_GAIN;
+        [0, 1].map(|i| (air[i] + gear + ships[i] + (blips[i] + steps[i]) * CUES_GAIN) * fx)
+    }
+
     /// Reads the shared values, starts waiting cues and retunes every filter.
     fn control(&mut self) {
         for param in Param::ALL {
             self.targets[param as usize] = self.shared.get(param);
         }
-        let buddy = self.targets[Param::BuddySide as usize] * 2.0 - 1.0;
-        self.cues
-            .locate(buddy, self.targets[Param::BuddyNear as usize]);
-        while let Some(cue) = self.shared.pop() {
+        while let Some((cue, spot)) = self.shared.pop() {
             self.fleet.hear(cue);
-            self.treads.hear(cue);
-            self.cues.play(cue);
+            self.treads.hear(cue, &spot);
+            self.cues.play(cue, &spot);
         }
         let dt = BLOCK as f32 / self.rate;
         let seed = self.shared.seed();
@@ -149,7 +169,9 @@ impl Mixer {
         self.music.dress(class(self.targets[Param::Class as usize]));
         self.music.steer(&orders, dt);
         self.air.tune(&self.air_ctl(), dt);
-        self.fleet.tune(&self.shared.hulls, self.cloud(), dt);
+        let cloud = self.at(Param::Cloud) * (1.0 - self.at(Param::Space));
+        self.fleet
+            .tune(&self.shared.hulls, (cloud, self.absorb()), dt);
         self.suit.tune(&self.suit_ctl());
         self.master.tune();
     }
@@ -160,20 +182,12 @@ impl Mixer {
             self.control();
         }
         self.count = (self.count + 1) % BLOCK;
-        for (now, target) in self.now.iter_mut().zip(self.targets) {
-            now.settle(target, self.k);
+        for ((now, target), k) in self.now.iter_mut().zip(self.targets).zip(self.k) {
+            now.settle(target, k);
         }
         let music = self.music.frame();
-        let air = self.air.frame(&self.air_ctl());
-        let gear = self.suit.frame(&self.suit_ctl());
-        let ships = self.fleet.frame(self.cloud());
-        let (blips, steps) = (self.cues.frame(), self.treads.frame());
-        let cues = [0, 1].map(|i| (blips[i] + steps[i]) * CUES_GAIN);
-        let (wide, fx) = (
-            self.at(Param::Music) * MUSIC_GAIN,
-            self.at(Param::Effects) * EFFECTS_GAIN,
-        );
-        let effects = [0, 1].map(|i| (air[i] + gear + ships[i] + cues[i]) * fx);
+        let effects = self.effects();
+        let wide = self.at(Param::Music) * MUSIC_GAIN;
         let under = self.duck.gain(effects) * wide;
         let output = Output {
             volume: self.at(Param::Master),

@@ -5,6 +5,7 @@ use crate::audio::cue::{AudioCue, ChirpKind};
 use crate::audio::cues::Pool;
 use crate::audio::scene::AudioScene;
 use crate::audio::shared::Shared;
+use crate::audio::spatial::Spot;
 
 /// A scene with no music and no ambience, so that only cues sound.
 fn quiet() -> AudioScene {
@@ -19,7 +20,7 @@ fn quiet() -> AudioScene {
 fn every_cue_renders() {
     for cue in AudioCue::all() {
         let mut pool = Pool::new(RATE);
-        pool.play(cue);
+        pool.play(cue, &Spot::FLAT);
         let buffer: Vec<f32> = (0..frames(5.0)).map(|_| pool.frame()[0]).collect();
         let peak = buffer.iter().fold(0.0_f32, |peak, x| peak.max(x.abs()));
         let jump = buffer
@@ -38,7 +39,7 @@ fn cues_cross_to_the_mixer() {
     for cue in AudioCue::all() {
         let (mut mixer, shared) = mixer(&quiet());
         assert_eq!(listen(&mut mixer, 0.5).peak, 0.0);
-        assert!(shared.push(cue));
+        assert!(shared.push(cue, &Spot::FLAT));
         let stats = listen(&mut mixer, 4.0);
         assert!(
             !stats.broken && stats.peak > 0.01 && stats.peak <= 1.0,
@@ -54,25 +55,36 @@ fn cue_flood_is_bounded() {
     let (mut mixer, shared) = mixer(&quiet());
     let mut dropped = 0;
     for _ in 0..40 {
-        dropped += AudioCue::all().filter(|cue| !shared.push(*cue)).count();
+        dropped += AudioCue::all()
+            .filter(|cue| !shared.push(*cue, &Spot::FLAT))
+            .count();
         let stats = listen(&mut mixer, 0.05);
         assert!(!stats.broken && stats.peak <= 1.0);
     }
     assert_eq!(dropped, 0);
-    let pushed = (0..200).filter(|_| shared.push(AudioCue::UiMove)).count();
+    let pushed = (0..200)
+        .filter(|_| shared.push(AudioCue::UiMove, &Spot::FLAT))
+        .count();
     assert_eq!(pushed, 64);
 }
 
-/// Cues survive the trip through one word.
+/// Cues survive the trip through one word, each with its spot whole.
 #[test]
 fn cues_round_trip() {
     let shared = Shared::default();
     let cues: Vec<AudioCue> = AudioCue::all().chain([AudioCue::Land(0.25)]).collect();
-    for cue in &cues {
-        assert!(shared.push(*cue));
+    let spot = |i: usize| Spot {
+        air: 0.01 * i as f32,
+        side: -0.5,
+        delay: 0.3,
+        corner: 2500.0,
+        ..Spot::FLAT
+    };
+    for (i, cue) in cues.iter().enumerate() {
+        assert!(shared.push(*cue, &spot(i)));
     }
-    for cue in &cues {
-        assert_eq!(shared.pop(), Some(*cue));
+    for (i, cue) in cues.iter().enumerate() {
+        assert_eq!(shared.pop(), Some((*cue, spot(i))));
     }
     assert_eq!(shared.pop(), None);
     assert_eq!(AudioCue::all().count(), 16);

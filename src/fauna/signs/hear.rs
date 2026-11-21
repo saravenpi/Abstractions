@@ -1,5 +1,5 @@
 //! The hearing: a few times a second, the calls of the herds and hunts in earshot of the listener,
-//! and the alarms of the animals that flee a robot, sent to the audio as positioned cues.
+//! and the alarms of the animals that flee a robot, sent to the audio as sounds from where they call.
 //!
 //! Contact calls and the cries of hunts come from `crate::life::signs::calls`, pure functions of the
 //! herds and universe time, so every player hears them at the same moment. Alarms at a robot are
@@ -14,7 +14,8 @@ use bevy::prelude::*;
 
 use super::sing::Sung;
 use super::tune::{CALLS, EARSHOT, HALF_LEVEL, HEAR, QUIET};
-use crate::audio::{AudioCue, Call};
+use crate::audio::spatial::tune::CALL;
+use crate::audio::{AudioCue, Call, Origin, Sound};
 use crate::fauna::Dead;
 use crate::fauna::beast::Beast;
 use crate::fauna::gate::Spec;
@@ -48,7 +49,7 @@ pub struct Hear<'w, 's> {
     camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
     beasts: Query<'w, 's, (&'static Beast, &'static Placed), Without<Dead>>,
     dying: Query<'w, 's, (&'static Beast, &'static Placed), Added<Dead>>,
-    cues: MessageWriter<'w, AudioCue>,
+    sounds: MessageWriter<'w, Sound>,
 }
 
 /// What the hearing keeps from one hearing to the next, so it never allocates once warm.
@@ -61,17 +62,16 @@ pub struct Heard {
     /// The herds that called an alarm at a robot, and when.
     fled: Vec<(u64, f64)>,
     /// Calls to send, with the level they arrive at.
-    loud: Vec<(f32, Call)>,
+    loud: Vec<(f32, Sound)>,
 }
 
-/// The listener: the camera and its place in the frame of the anchor.
+/// The listener: the place of the camera in the frame of the anchor. The audio places each call
+/// for the ears itself; the hearing only picks which calls are worth sending.
 pub struct Ear {
     /// Unit direction of the listener from the planet centre.
     pub dir: DVec3,
     /// Its place in the frame of the anchor.
     pub pos: DVec3,
-    /// Its render transform.
-    pub view: GlobalTransform,
 }
 
 /// Keeps the calls heard since the last hearing for the singing and sends the loudest.
@@ -91,7 +91,6 @@ pub fn hear(mut h: Hear, mut heard: Local<Heard>) {
     let ear = Ear {
         dir: pos.normalize(),
         pos,
-        view: *camera,
     };
     gather(&h, &mut heard, (from, now));
     let Heard { calls, loud, .. } = &mut *heard;
@@ -101,8 +100,8 @@ pub fn hear(mut h: Hear, mut heard: Local<Heard>) {
     };
     h.sung.remember(now, calls.iter().map(|(c, _)| *c), tempo);
     weigh(life, calls, (&ear, &h.anchor, globe.radius()), loud);
-    for (_, call) in loud.iter() {
-        h.cues.write(AudioCue::Call(*call));
+    for (_, sound) in loud.iter() {
+        h.sounds.write(*sound);
     }
 }
 
@@ -185,12 +184,14 @@ fn alarms(h: &Hear, (calls, fled): Lists<'_>, now: f64) {
 }
 
 /// Fills `loud` with the [`CALLS`] loudest of `calls` of `life` as heard by `ear`, on a planet of
-/// `radius` metres seen through `anchor`, leaving out those out of earshot or too quiet.
+/// `radius` metres seen through `anchor`, leaving out those out of earshot or too quiet. Each is a
+/// sound from where the animals call, at the height of the ears, whose reach grows with the size
+/// of the animal.
 pub fn weigh(
     life: &Life,
     calls: &[(Calling, DVec3)],
     (ear, anchor, radius): (&Ear, &Anchor, f64),
-    loud: &mut Vec<(f32, Call)>,
+    loud: &mut Vec<(f32, Sound)>,
 ) {
     loud.clear();
     for (calling, dir) in calls {
@@ -203,25 +204,23 @@ pub fn weigh(
             continue;
         }
         let from = anchor.to_render(*dir * ear.pos.length());
-        let toward = (from - ear.view.translation()).normalize_or_zero();
-        let side = toward.dot(ear.view.right().as_vec3());
-        let voice = voice(species, life.rung);
-        loud.push((near, heard(calling, voice, (side, near, metres))));
+        let reach = CALL * HALF_LEVEL * species.history.mass.max(1e-3).cbrt();
+        let sound = Sound {
+            cue: AudioCue::Call(heard(calling, voice(species, life.rung))),
+            from: Origin::At(from, reach),
+        };
+        loud.push((near, sound));
     }
     loud.sort_unstable_by(|a, b| b.0.total_cmp(&a.0));
     loud.truncate(CALLS);
 }
 
-/// Returns `calling` in `voice` as it arrives: from `side`, at the level `near`, `metres` away. The
-/// member that calls gives it its own pitch and pace.
-fn heard(calling: &Calling, voice: Voice, (side, near, metres): (f32, f32, f64)) -> Call {
+/// Returns `calling` in `voice`: the member that calls gives it its own pitch and pace.
+fn heard(calling: &Calling, voice: Voice) -> Call {
     Call {
         voice,
         cry: calling.cry,
         one: (child(calling.herd, u64::from(calling.slot)) >> 32) as u8,
-        side,
-        near,
-        metres: metres as f32,
     }
 }
 

@@ -2,7 +2,11 @@
 //! passes by, its real leg cycle turns that into steps, and each step is played on a ground and
 //! from a place. `render_steps` plays them over a calm day and writes them down.
 
+use bevy::prelude::*;
+
 use crate::audio::cue::StepSurface;
+use crate::audio::spatial::tune::STEP;
+use crate::audio::spatial::{Air, Between, Listener, Origin, Spot, spot};
 use crate::audio::step::Step;
 use crate::avatar::tread::stage::{live, moving};
 use crate::avatar::{AvatarPose, Mode};
@@ -147,22 +151,38 @@ pub(super) fn takes() -> Vec<Take> {
     grounds.chain(moments).collect()
 }
 
-/// Returns the steps of `take` with the second each is due at, on its ground and placed for
-/// the listener, in air of density `air`.
-pub(super) fn steps((_, seconds, surface, script, place): &Take, air: f32) -> Vec<(f32, Step)> {
+/// Returns how a step `far` metres off on `side` reaches a listener in `air`: the listener's own
+/// at no distance, from under the ears.
+pub(super) fn heard(far: f32, side: f32, air: Air) -> Spot {
+    let ear = Listener {
+        air,
+        ..Listener::default()
+    };
+    let ahead = (1.0 - side * side).max(0.0).sqrt();
+    let from = match far > 0.0 {
+        true => Origin::At(
+            Vec3::new(side, 0.0, -ahead) * far - Vec3::Y * STEP.0,
+            STEP.0,
+        ),
+        false => Origin::Held(Vec3::NEG_Y * STEP.0, STEP.0, STEP.1),
+    };
+    spot(&ear, from, Between::default())
+}
+
+/// Returns the steps of `take` with the second each is due at, on its ground, and how each reaches
+/// a listener in `air`.
+pub(super) fn steps(
+    (_, seconds, surface, script, place): &Take,
+    air: Air,
+) -> Vec<(f32, Step, Spot)> {
     let placed = |(t, step): (f32, Step)| {
         let (far, side) = place(t);
-        (
-            t,
-            Step {
-                surface: *surface,
-                depth: 0.15,
-                air,
-                far,
-                side,
-                ..step
-            },
-        )
+        let step = Step {
+            surface: *surface,
+            depth: 0.15,
+            ..step
+        };
+        (t, step, heard(far, side, air))
     };
     live(script, HOME, *seconds)
         .into_iter()

@@ -4,8 +4,8 @@
 //! vocal folds that pulse with jitter and shimmer and, when strained, subharmonics and chaos; a syrinx
 //! that sweeps a pure tone; a file whose teeth ring a shell; or breath alone, a hiss or a snort. The
 //! filter is the vocal tract, three formants spaced by its length, so a long body or a long neck sounds
-//! big whatever its pitch (Fitch 1997, <https://doi.org/10.1121/1.421048>). The way to the ear takes the
-//! highs the air absorbs with distance and, from under water, nearly everything the surface reflects.
+//! big whatever its pitch (Fitch 1997, <https://doi.org/10.1121/1.421048>). A call from under water loses
+//! nearly everything the surface reflects; the way to the ear, distance and air, is the spatial path's.
 //!
 //! A pool of a few voices sounds the calls. Contact calls take turns: no more than [`tune::CHORUS`] at
 //! once, and an animal does not start over another of its species that has just begun, so a dawn
@@ -27,7 +27,7 @@ pub(super) use shape::Source;
 
 use super::call::Call;
 use super::dsp::rand::Rand;
-use super::shore::stereo;
+use super::spatial::Spot;
 use shape::urgent;
 use tune::{CHORUS, THROATS, TURN};
 use voice::Throat;
@@ -95,14 +95,14 @@ impl Throats {
         free.or_else(|| if pressing { self.steal() } else { None })
     }
 
-    /// Starts `call` from where it is, if a voice can take it.
-    pub fn play(&mut self, call: Call) {
+    /// Starts `call` heard as `spot` says, if a voice can take it.
+    pub fn play(&mut self, call: Call, spot: &Spot) {
         let Some(i) = self.slot(&call) else {
             return;
         };
         let plan = plan(&call, &mut self.rand);
         let seed = self.rand.unit();
-        self.voices[i].start(plan, stereo(call.side, 1.0), seed);
+        self.voices[i].start(plan, spot, seed);
         self.who[i] = (call.voice.print, urgent(call.cry));
     }
 
@@ -121,10 +121,8 @@ impl Throats {
     pub fn frame(&mut self) -> [f32; 2] {
         self.voices.iter_mut().fold([0.0; 2], |sum, voice| {
             let sample = voice.frame();
-            [
-                sum[0] + sample * voice.sides[0],
-                sum[1] + sample * voice.sides[1],
-            ]
+            let [left, right] = voice.ear.frame(sample, sample);
+            [sum[0] + left, sum[1] + right]
         })
     }
 }

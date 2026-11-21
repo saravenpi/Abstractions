@@ -29,8 +29,8 @@ pub struct StarUniform {
     pub dome: Vec4,
     /// The luminance of the sky at the horizon in x, in linear light.
     pub base: Vec4,
-    /// Unit vector toward the star of the system in render axes in xyz, and in w the share of its
-    /// light that reaches the camera: its glare hides the stars around its disc.
+    /// Unit vector toward the star of the system in render axes in xyz, and in w the strength of
+    /// its glare, which outshines the stars around its disc: see `glare`.
     pub sun: Vec4,
 }
 

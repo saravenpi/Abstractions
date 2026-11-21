@@ -51,6 +51,7 @@ pub(super) struct Sky;
 pub(super) struct SkyIcon;
 
 /// Every word the weather feed writes, which [`sky_icon`] has an icon for.
+#[cfg(test)]
 pub const WORDS: [&str; 7] = ["clear", "overcast", "rain", "snow", "storm", "wind", "dust"];
 
 /// Returns the icon of a weather `word`, a sun by day and a moon by night for a clear sky. The

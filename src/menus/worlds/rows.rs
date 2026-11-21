@@ -135,6 +135,12 @@ pub(super) fn show_lines(
     }
 }
 
+/// Filter of the two blocks of which one shows: the table of worlds or the invitation.
+type Block = Or<(With<Empty>, With<Listing>)>;
+
+/// Filter of everything that is neither of those two blocks.
+type NotBlock = (Without<Empty>, Without<Listing>);
+
 /// Returns the display of something drawn only when `shown`.
 fn display(shown: bool) -> Display {
     if shown { Display::Flex } else { Display::None }
@@ -145,8 +151,8 @@ fn display(shown: bool) -> Display {
 /// is a world to list.
 pub(super) fn show_bars(
     (worlds, mode): Source,
-    mut bars: Query<(&Bar, &mut Node), (Without<Empty>, Without<Listing>)>,
-    mut blocks: Query<(&mut Node, Has<Empty>), Or<(With<Empty>, With<Listing>)>>,
+    mut bars: Query<(&Bar, &mut Node), NotBlock>,
+    mut blocks: Query<(&mut Node, Has<Empty>), Block>,
     invites: Query<Entity, With<Invite>>,
     mut focus: ResMut<InputFocus>,
 ) {

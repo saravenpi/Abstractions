@@ -4,6 +4,13 @@
 /// metres: clear of the robot's body, at its feet.
 pub const AHEAD: f32 = 0.6;
 
+/// Turns about the robot's up, in radians, at which a tool is tried in turn when another thing
+/// lies where it would go: ahead, then to each side, then further around the feet.
+pub const TURNS: [f32; 7] = [0.0, 0.8, -0.8, 1.6, -1.6, 2.4, -2.4];
+
+/// Seconds a place a thing was put down at stays taken before the ground tells of the thing.
+pub const RECENT: f64 = 10.0;
+
 /// Longest drop from the middle of the robot down to the ground under a thing put down, in metres.
 pub const FALL: f32 = 3.0;
 

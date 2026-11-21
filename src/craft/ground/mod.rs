@@ -20,6 +20,8 @@ mod tune;
 mod tests_full;
 #[cfg(test)]
 mod tests_round;
+#[cfg(test)]
+mod tests_spread;
 
 pub use ask::{NO_ROOM, TAKEN};
 pub use codec::{lying, thing};

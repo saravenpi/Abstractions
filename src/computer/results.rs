@@ -10,7 +10,7 @@ use super::layout::{GLYPH, ROW};
 use super::section::{heading, heading_row, row_node};
 use super::view::{Cell, Part, SEARCH_HINT, SearchBox, SearchText, Slot, Summary};
 use crate::ui::units::SHORT_NOTE;
-use crate::ui::{Icon, Look, Selected, Tip, Tone, cell, column, frame, icon, label, text, theme};
+use crate::ui::{Icon, Look, Selected, Tip, Tone, cell, frame, icon, key_cap, label, text, theme};
 
 /// Most characters of the name of a result; a longer name is cut short.
 pub(super) const TITLE_CHARS: usize = 19;
@@ -65,9 +65,19 @@ fn field() -> impl Bundle {
         padding: UiRect::horizontal(px(theme::GAP_S)),
         ..default()
     };
+    let grow = Node {
+        flex_grow: 1.0,
+        min_width: px(0),
+        overflow: Overflow::clip(),
+        ..default()
+    };
     let words = label(SEARCH_HINT, theme::FONT_SMALL, Tone::Muted);
-    let inside = children![(SearchText, words)];
-    (SearchBox, frame(), Tip("Search places [/]"), node, inside)
+    let inside = children![
+        icon(Icon::Search, Tone::Muted),
+        (grow, children![(SearchText, words)]),
+        key_cap("/")
+    ];
+    (SearchBox, frame(), Tip("Search places"), node, inside)
 }
 
 /// The heading of the search, with the line that names the results and counts them at its
@@ -78,7 +88,10 @@ fn head() -> impl Bundle {
         text("", theme::FONT_SMALL, theme::TEXT_2),
         TextLayout::no_wrap(),
     );
-    (heading_row(), children![heading("Search"), count])
+    (
+        heading_row(),
+        children![heading(Icon::Search, "Search"), count],
+    )
 }
 
 /// The search section: its heading with the count, the box and the pool of rows under it.
@@ -93,8 +106,11 @@ pub(super) fn search() -> impl Bundle {
         Children::spawn(SpawnIter((0..VISIBLE_ROWS).map(row))),
     );
     let empty = (Empty, text("", theme::FONT_SMALL, theme::TEXT_2));
-    (
-        column(percent(100), 0.0),
-        children![head(), field(), rows, empty],
-    )
+    let node = Node {
+        width: percent(100),
+        flex_direction: FlexDirection::Column,
+        flex_shrink: 0.0,
+        ..default()
+    };
+    (node, children![head(), field(), rows, empty])
 }

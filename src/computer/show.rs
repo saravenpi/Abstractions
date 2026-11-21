@@ -15,6 +15,7 @@ use super::results::{Empty, TITLE_CHARS};
 use super::route::{Destination, HOME_LABEL, Keys, RouteStatus, Target};
 use super::rows::Line;
 use super::scene::Scene;
+use super::section::kind;
 use super::sift;
 use super::tab::Tab;
 use super::view::{Action, Cell, Part, Slot, Status, Summary};
@@ -51,16 +52,13 @@ fn rebuild(time: Res<Time>, scene: Scene, mut board: ResMut<Board>, mut since: L
 /// What the name of a moon starts with, so that it reads as part of its planet.
 const INDENT: &str = "  ";
 
-/// Returns the icon of a row: a pin on the destination, the ship where the ship is, and
-/// otherwise what the row is, a star, a planet or a galaxy.
+/// Returns the icon of a row: the course icon on the destination, the ship where the ship is,
+/// and otherwise what the row is, a star, a planet, a moon or a galaxy.
 fn sign(target: Target, chosen: bool, here: bool) -> Icon {
-    match (chosen, here, target) {
-        (true, _, _) => Icon::MapPin,
-        (_, true, _) => Icon::Send,
-        (_, _, Target::Star(_)) => Icon::Star,
-        (_, _, Target::Body(body)) if body.is_moon() => Icon::Moon,
-        (_, _, Target::Body(_)) => Icon::Planet,
-        (_, _, Target::Galaxy(_)) => Icon::Map,
+    match (chosen, here) {
+        (true, _) => Icon::Go,
+        (_, true) => Icon::ShipParked,
+        _ => kind(target),
     }
 }
 

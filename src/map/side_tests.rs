@@ -9,10 +9,11 @@ use bevy::prelude::*;
 use super::places::Places;
 use super::side::{ALONE, NoPlayers, PinActions, PinHint, PinRow, Players, pins, players};
 use super::side_show::{EMPTY, PICK, words, write};
-use crate::computer::{Board, GLYPH, ROOM, Typing};
+use crate::computer::{Board, GLYPH, Keys, ROOM, Typing};
 use crate::menus::Markers;
 use crate::net::{Link, Role, Script, Source, Wire};
-use crate::ui::theme;
+use crate::settings::Keymap;
+use crate::ui::{KEY_GAP, theme};
 use crate::universe::Universe;
 
 /// Returns a headless app that holds the side panel and writes it.
@@ -112,10 +113,16 @@ fn the_line_under_a_pin_fits_the_panel() {
     assert!(said.chars().count() <= line, "{said}");
 }
 
-/// The three buttons of a pin sit on one row of the panel.
+/// The three buttons of a pin sit on one row of the panel, each with its words, the gap of a
+/// key and its key, with the usual key of Go. A longer key name wraps the row.
 #[test]
 fn the_pin_buttons_fit_one_row() {
-    let width = |words: &str| words.chars().count() as f32 * GLYPH + 2.0 * theme::GAP_S;
-    let row = width("Go") + width("Rename [R]") + width("Remove [Del]") + 2.0 * theme::GAP_S;
+    let width = |words: &str, key: &str| {
+        let chars = (words.chars().count() + key.chars().count()) as f32;
+        chars * GLYPH + KEY_GAP + 2.0 * theme::GAP_S
+    };
+    let go = Keys::of(&Keymap::default()).go;
+    let buttons = width("Go", &go) + width("Rename", "R") + width("Remove", "Del");
+    let row = buttons + 2.0 * theme::GAP_S;
     assert!(row <= ROOM, "{row}");
 }

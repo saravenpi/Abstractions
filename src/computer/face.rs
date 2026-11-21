@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::course::Act;
-use crate::ui::{Icon, Tone, entry, frame, icon, text, theme};
+use crate::ui::{Icon, Tone, caps, entry, frame, icon, text, theme};
 
 /// Width in pixels of the column of comparisons and meanings at the right end of a stat.
 const NOTE_WIDTH: f32 = 112.0;
@@ -35,6 +35,8 @@ pub(super) fn stat(
     let (value, note) = words;
     let grow = Node {
         flex_grow: 1.0,
+        min_width: px(0),
+        overflow: Overflow::clip(),
         ..default()
     };
     let small = small_text;
@@ -54,6 +56,19 @@ pub(super) fn stat(
     });
 }
 
+/// Spawns the heading of a group under `parent`: its icon and its name in spaced capitals, with
+/// `gap` pixels over it to set the group apart from the one above.
+pub(super) fn group(parent: &mut ChildSpawnerCommands, (symbol, name): (Icon, &str), gap: f32) {
+    let line = Node {
+        height: px(theme::LINE_SMALL),
+        align_items: AlignItems::Center,
+        column_gap: px(theme::S2),
+        margin: UiRect::top(px(gap)),
+        ..default()
+    };
+    parent.spawn((line, children![icon(symbol, Tone::Muted), caps(name)]));
+}
+
 /// Spawns the plain meaning of a group under `parent`, in line with the labels of its stats.
 pub(super) fn meaning(parent: &mut ChildSpawnerCommands, words: &str) {
     let node = Node {
@@ -67,8 +82,8 @@ pub(super) fn meaning(parent: &mut ChildSpawnerCommands, words: &str) {
 /// and Less while they show.
 pub(super) fn more(parent: &mut ChildSpawnerCommands, open: bool) {
     let (symbol, words) = match open {
-        true => (Icon::Close, "Less"),
-        false => (Icon::Plus, "More"),
+        true => (Icon::ExpandLess, "Less"),
+        false => (Icon::ExpandMore, "More"),
     };
     let node = Node {
         height: px(theme::ROW_COMPACT),

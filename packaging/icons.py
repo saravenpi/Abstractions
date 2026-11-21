@@ -3,15 +3,15 @@
 
 Usage: icons.py [--check] [--font PATH --codepoints PATH]
 
-The source of truth is the enum `Icon` in src/ui/icon.rs: each variant has one doc
-line with the Material Symbols name of its glyph between backticks. This script
-reads those lines, looks every name up in the `.codepoints` file of the font, and
+The source of truth is the list in src/ui/icon/names.rs: one line an icon, its
+variant of `Icon` and the Material Symbols name of its glyph. This script reads
+those lines, looks every name up in the `.codepoints` file of the font, and
 writes two files:
 
   src/ui/icon/codes.rs                           the codepoint of every icon
   assets/fonts/material-symbols-sharp-subset.ttf the glyphs of those icons only
 
-To add an icon: add its variant and its doc line to `Icon`, then run this script.
+To add an icon: add its line to names.rs, then run this script.
 
 The font is Material Symbols Sharp (Apache-2.0, LICENSES/MaterialSymbols-Apache-2.0.txt),
 the variable font of Google's repository at the commit pinned below, instanced at the
@@ -34,7 +34,7 @@ from fontTools.ttLib import TTFont
 from fontTools.varLib import instancer
 
 ROOT = Path(__file__).resolve().parent.parent
-ENUM = ROOT / "src/ui/icon.rs"
+NAMES = ROOT / "src/ui/icon/names.rs"
 CODES = ROOT / "src/ui/icon/codes.rs"
 SUBSET = ROOT / "assets/fonts/material-symbols-sharp-subset.ttf"
 
@@ -70,12 +70,12 @@ def sources(args):
 
 def icons():
     """Returns the variants of `Icon` with the Material name of each, in declaration order."""
-    body = ENUM.read_text().split("pub enum Icon {", 1)[1].split("\n}", 1)[0]
-    found = re.findall(r"/// `([a-z0-9_]+)`\n\s+([A-Z][A-Za-z0-9]*),", body)
-    variants = re.findall(r"^\s+([A-Z][A-Za-z0-9]*),$", body, re.M)
-    if [variant for _, variant in found] != variants:
-        sys.exit("every variant of Icon needs one doc line with its Material name in backticks")
-    return [(variant, name) for name, variant in found]
+    lines = [line.strip() for line in NAMES.read_text().split("icons! {", 1)[1].splitlines()]
+    lines = [line for line in lines if line and line != "}"]
+    found = [re.fullmatch(r'([A-Z][A-Za-z0-9]*) => "([a-z0-9_]+)",', line) for line in lines]
+    if not all(found):
+        sys.exit("every line of names.rs must read: Variant => \"material_name\",")
+    return [(match[1], match[2]) for match in found]
 
 
 def table(pairs, names):
@@ -94,19 +94,13 @@ def table(pairs, names):
 
 def rust(rows):
     """Returns the text of codes.rs for `rows`, as cargo fmt leaves it."""
-    count = len(rows)
     points = "".join(f"    (Icon::{variant}, '\\u{{{code}}}'),\n" for variant, code in rows)
-    every = "".join(f"        Icon::{variant},\n" for variant, _ in rows)
     return (
         "//! The codepoint of every icon in the icon font. Written by `packaging/icons.py`: do not\n"
         "//! edit by hand.\n\n"
         "use super::Icon;\n\n"
         "/// Every icon with its codepoint in the icon font, in declaration order.\n"
-        f"pub const CODEPOINTS: [(Icon, char); {count}] = [\n{points}];\n\n"
-        "impl Icon {\n"
-        "    /// Every icon, in declaration order.\n"
-        f"    pub const ALL: [Icon; {count}] = [\n{every}    ];\n"
-        "}\n"
+        f"pub const CODEPOINTS: [(Icon, char); {len(rows)}] = [\n{points}];\n"
     )
 
 

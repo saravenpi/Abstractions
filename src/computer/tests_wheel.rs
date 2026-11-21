@@ -4,6 +4,7 @@
 use bevy::ecs::system::RunSystemOnce;
 use bevy::input::mouse::{AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::prelude::*;
+use bevy::ui::RelativeCursorPosition;
 
 use super::chart::Dot;
 use super::keys::navigate;
@@ -13,6 +14,7 @@ use super::pointer::{MapView, RESET_KEY, ZOOM_STEP, plot, zoom};
 use super::semantic::DIVE;
 use super::tests_pointer::{pixel, point, rig};
 use super::*;
+use crate::ui::Scroller;
 
 /// Turns the wheel by `notches` for one frame of the zoom and of the table.
 fn turn(app: &mut App, notches: f32) {
@@ -52,6 +54,31 @@ fn the_wheel_scrolls_the_table_or_zooms_the_map() {
     assert!(lens.to_map(held).distance(at) < 1e-3);
     turn(&mut app, -9.0);
     assert_eq!(state(&app), (6, Lens::default()));
+}
+
+/// While the pointer is over the part of the panel that scrolls, the wheel belongs to it: the
+/// results stay where they are and the map does not zoom. Once the pointer leaves it the wheel
+/// scrolls the results again.
+#[test]
+fn the_wheel_over_the_scrolling_part_leaves_the_results_and_the_map() {
+    let mut app = rig();
+    let mut board = app.world_mut().resource_mut::<Board>();
+    let long: Vec<Line> = board.lines.iter().cycle().take(100).cloned().collect();
+    board.fill("Long table".to_string(), long);
+    let over = |cursor_over: bool| RelativeCursorPosition {
+        cursor_over,
+        normalized: None,
+    };
+    let body = app.world_mut().spawn((Scroller, over(true))).id();
+    let state = |app: &App| {
+        let lens = app.world().resource::<MapView>().goal;
+        (app.world().resource::<Board>().top, lens)
+    };
+    turn(&mut app, -2.0);
+    assert_eq!(state(&app), (0, Lens::default()));
+    app.world_mut().entity_mut(body).insert(over(false));
+    turn(&mut app, -1.0);
+    assert_eq!(state(&app), (3, Lens::default()));
 }
 
 /// The reset key shows the whole chart again, the chart around this one opens close on the

@@ -11,23 +11,14 @@ use super::words::temperature;
 use crate::ui::Icon;
 use crate::universe::{PlanetRecord, PlanetSpec, Universe};
 
-/// Most rows a card shows under its title and its subtitle with its rarer facts folded, its
-/// line on life included.
-pub const ROWS: usize = 17;
-
-/// Most headings of groups a card has under its first row.
-pub const GROUPS: usize = 4;
-
 /// What a row says in place of the class and the temperature while the record is unknown.
 pub const UNCHARTED: &str = "uncharted";
 
 /// One row of a card.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Row {
-    /// The heading of the group of facts under it.
-    Heading(&'static str),
-    /// One fact: its label and its value.
-    Fact(&'static str, String),
+    /// The heading of the group of facts under it, with the icon of the group.
+    Heading(Icon, &'static str),
     /// A sentence on its own, such as what to do to learn more.
     Note(&'static str),
     /// One measure of a planet: an icon, a label, a value with its unit and a few words, such

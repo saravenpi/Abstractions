@@ -20,6 +20,11 @@ pub fn stat(icon: Icon, label: &'static str, value: String, note: String) -> Row
     }
 }
 
+/// Returns one fact with no comparison: an icon, a label and a value.
+pub fn fact(icon: Icon, label: &'static str, value: String) -> Row {
+    stat(icon, label, value, String::new())
+}
+
 /// Returns the group of the radius and the pull of `planet`, against `home`. `known` is true
 /// when the record of the planet is: only then does the group tell a gas giant from a planet
 /// with ground.
@@ -30,7 +35,7 @@ pub fn size(planet: &PlanetSpec, home: &PlanetSpec, known: bool) -> Vec<Row> {
         false => Row::Meaning(gravity_feel(pull).to_string()),
     };
     vec![
-        Row::Heading("Size and gravity"),
+        Row::Heading(Icon::Planet, "Size and gravity"),
         stat(
             Icon::Radius,
             "Radius",
@@ -57,7 +62,11 @@ pub fn climate(planet: &PlanetSpec) -> Vec<Row> {
         temperature(kelvin),
         heat(kelvin).to_string(),
     );
-    let rows = [Row::Heading("Air and heat"), surface(planet), heat];
+    let rows = [
+        Row::Heading(Icon::Cloudy, "Air and heat"),
+        surface(planet),
+        heat,
+    ];
     rows.into_iter().chain(flying(planet)).collect()
 }
 
@@ -74,7 +83,7 @@ pub fn time(planet: &PlanetSpec, home: &PlanetSpec) -> Vec<Row> {
         .is_finite()
         .then(|| Row::Meaning(day_feel(ratio).to_string()));
     let rows = [
-        Row::Heading("Day and year"),
+        Row::Heading(Icon::Clock, "Day and year"),
         stat(
             Icon::Day,
             "Day",
@@ -89,7 +98,7 @@ pub fn time(planet: &PlanetSpec, home: &PlanetSpec) -> Vec<Row> {
 /// Returns the heading of the group of the water and the life of `planet`, then its water, for
 /// a planet with ground. The line on life goes after it.
 pub fn wet_group(planet: &PlanetSpec) -> Vec<Row> {
-    [Row::Heading("Water and life")]
+    [Row::Heading(Icon::Plant, "Water and life")]
         .into_iter()
         .chain(wet(planet))
         .collect()
@@ -101,9 +110,9 @@ pub fn rarer(planet: &PlanetSpec) -> Vec<Row> {
     let record = &planet.record;
     let facts = [
         Row::More,
-        Row::Fact("Light", flux(record.flux)),
-        Row::Fact("Zone", zone(record.zone).to_string()),
-        Row::Fact("Tilt", tilt(record.tilt)),
+        fact(Icon::Light, "Light", flux(record.flux)),
+        fact(Icon::Zone, "Zone", zone(record.zone).to_string()),
+        fact(Icon::Tilt, "Tilt", tilt(record.tilt)),
     ];
     facts.into_iter().chain(company(planet)).collect()
 }

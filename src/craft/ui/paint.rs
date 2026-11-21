@@ -156,12 +156,8 @@ pub(super) fn draw(
     mut commands: Commands,
 ) {
     let all = arranged(&bench, &pack, &here);
-    heads(
-        &bench,
-        (all.len(), pack.items.len() + pack.stacks.len()),
-        &burden,
-        &mut texts,
-    );
+    let count = (all.len(), pack.items.len() + pack.stacks.len());
+    heads(&bench, count, &burden, &mut texts);
     keys(&bench, &mut columns.2);
     let place = here.place();
     let treatments = here.planet().map_or_else(Vec::new, |p| {

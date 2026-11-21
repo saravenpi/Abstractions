@@ -152,7 +152,7 @@ pub(super) fn place(
     if !(board.is_changed() || view.is_changed()) {
         return;
     }
-    let side = [measure(SMALLEST, (0, 0)).map, view.side][usize::from(view.side > 0.0)];
+    let side = [measure(SMALLEST).map, view.side][usize::from(view.side > 0.0)];
     let drawn = |at: Vec2| view.lens.to_map(at) / SIZE * side;
     let at = point(&board, &view).and_then(|at| rim(drawn(at), side, 0.5 * PIN));
     let corner = at.map(|at| at - 0.5 * PIN);

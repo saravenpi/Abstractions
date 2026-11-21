@@ -1,82 +1,46 @@
-//! Tests of the measures of the map screen: the lists of the panel, the legend and the grid.
-
-use bevy::math::Vec2;
+//! Tests of the measures of the map screen: the legend of the keys and the grid.
 
 use super::{
-    GLYPH, LEGEND, LEGEND_LINES, LINE_CHARS, LIST_ROW, MARGIN, PAD, ROOM, ROW, SECTION_GAP, SIDE,
-    listed, measure,
+    BETWEEN, EDGE, GLYPH, LEGEND, LEGEND_LINES, LINE_CHARS, LIST_ROW, MARGIN, PAD, ROOM, ROW,
+    SECTION_GAP, SIDE,
 };
-use crate::map::PINS;
+use crate::ui::{HINT_GAP, KEY_GAP};
 
-/// The smallest window, 960 by 540 pixels, is laid out as 1280 by 720 once the interface scales
-/// by 0.75, and there the card keeps the room of its compact form, so no pin is listed. A tall
-/// window lists all eight pins.
-#[test]
-fn the_panel_lists_the_pins_the_card_leaves_room_for() {
-    let logical = 540.0 / 0.75;
-    assert_eq!(PINS, 8);
-    assert_eq!(listed(logical, (PINS, 0)), (0, 0));
-    assert_eq!(listed(1080.0, (PINS, 0)), (PINS, 0));
-    assert_eq!(listed(1080.0, (3, 0)), (3, 0));
-    assert_eq!(
-        measure(Vec2::new(2560.0, 1440.0), (PINS, 0)).lists,
-        (PINS, 0)
-    );
+/// Returns the width in pixels of one hint of the legend: its label, the gap and its key.
+fn hint((words, key): (&str, &str)) -> f32 {
+    (words.chars().count() + key.chars().count()) as f32 * GLYPH + KEY_GAP
 }
 
-/// A window too short for the pins lists the rows it has room for, and never a part of a row.
-#[test]
-fn a_short_window_lists_fewer_pins() {
-    let (rows, _) = listed(600.0, (PINS, 0));
-    assert!(rows < PINS);
-    let (none, _) = listed(300.0, (PINS, 0));
-    assert_eq!(none, 0);
-}
-
-/// Wraps `words` greedily on spaces into lines of at most `chars` characters, keeping the
-/// double spaces, and returns the lines.
-fn wrapped(words: &str, chars: usize) -> Vec<String> {
-    let mut lines = vec![String::new()];
-    for word in words.split(' ') {
-        let line = lines.last_mut().unwrap();
-        let used = line.chars().count();
-        if used > 0 && used + 1 + word.chars().count() > chars {
-            lines.push(word.to_string());
-        } else if used > 0 {
-            line.push(' ');
-            line.push_str(word);
+/// Returns how many lines the hints of `legend` take in a row `room` pixels wide that wraps,
+/// with the gap of a legend between two hints of one line.
+fn lines(legend: &[(&str, &str)], room: f32) -> usize {
+    let (mut count, mut used) = (1, 0.0);
+    for width in legend.iter().copied().map(hint) {
+        if used > 0.0 && used + HINT_GAP + width > room {
+            (count, used) = (count + 1, width);
         } else {
-            line.push_str(word);
+            used += [0.0, HINT_GAP][usize::from(used > 0.0)] + width;
         }
     }
-    lines
+    count
 }
 
-/// The legend of the keys fits the lines the panel keeps for it, and names every key of the
-/// table of keys of the map.
+/// The legend of the keys fits the lines the panel keeps for it, each hint fits one line, and it
+/// names the keys no control of the screen shows: Go, Home and the search carry their own.
 #[test]
-fn the_legend_fits_two_lines() {
-    assert!(
-        wrapped(LEGEND, LINE_CHARS).len() <= LEGEND_LINES,
-        "{LEGEND}"
-    );
-    for key in [
-        "Click select",
-        "G go",
-        "B pin",
-        "H home",
-        "/ search",
-        "Esc close",
-    ] {
-        assert!(LEGEND.contains(key), "{key}");
-    }
+fn the_legend_fits_its_lines() {
+    assert!(lines(&LEGEND, ROOM) <= LEGEND_LINES, "{LEGEND:?}");
+    assert!(LEGEND.iter().all(|pair| hint(*pair) <= ROOM));
+    let keys: Vec<&str> = LEGEND.iter().map(|(_, key)| *key).collect();
+    assert_eq!(keys, ["Click", "B", "Wheel", "Esc"]);
+    assert!(LEGEND.iter().all(|(words, _)| !words.contains('[')));
     assert_eq!(LINE_CHARS, (ROOM / GLYPH) as usize);
 }
 
 /// The measures of the screen sit on the grid of four pixels.
 #[test]
 fn the_measures_sit_on_the_grid() {
-    for size in [SIDE, PAD, MARGIN, SECTION_GAP, LIST_ROW, ROW] {
+    for size in [SIDE, PAD, MARGIN, EDGE, BETWEEN, SECTION_GAP, LIST_ROW, ROW] {
         assert_eq!(size % 4.0, 0.0, "{size}");
     }
 }

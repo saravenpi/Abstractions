@@ -4,14 +4,14 @@
 use bevy::prelude::*;
 
 use super::course::Act;
-use crate::ui::{Icon, Tip, Tone, entry, frame, key_cap, theme};
+use crate::ui::{Icon, KEY_GAP, Tip, Tone, entry, frame, key_cap, theme};
 
 /// The Home control: the way home with its key, which flies the ship home as the key does.
 fn home() -> impl Bundle {
     let node = Node {
         height: px(theme::ROW_COMPACT),
         align_items: AlignItems::Center,
-        column_gap: px(theme::S2),
+        column_gap: px(KEY_GAP),
         padding: UiRect::horizontal(px(theme::S2)),
         ..default()
     };

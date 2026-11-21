@@ -4,6 +4,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::input::mouse::{AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::input_focus::{FocusCause, InputFocus};
 use bevy::prelude::*;
+use bevy::ui::RelativeCursorPosition;
 use bevy::ui_widgets::Activate;
 
 use super::board::{Board, VISIBLE_ROWS};
@@ -19,7 +20,7 @@ use super::typing::Typing;
 use super::view::Slot;
 use crate::audio::AudioCue;
 use crate::settings::{Persistent, Settings};
-use crate::ui::theme;
+use crate::ui::{Scroller, theme};
 
 /// Rows a jump to the first or the last row moves by: more than any table holds.
 const FAR: isize = 1_000_000;
@@ -42,17 +43,20 @@ pub const HOME_KEY: KeyCode = KeyCode::KeyH;
 /// The components that say what an activated button of the screen does.
 type Role = (Option<&'static Slot>, Option<&'static Act>);
 
-/// Moves the cursor with the arrows, Page Up and Down and End, and scrolls with the wheel
-/// unless the pointer is over the map, where the arrows and the wheel move the map instead. A
+/// Moves the cursor with the arrows, Page Up and Down and End, and scrolls the results with the
+/// wheel unless the pointer is over the map, where the arrows and the wheel move the map instead,
+/// or over the part of the panel that scrolls, which the wheel then scrolls. A
 /// key that moves the cursor picks its row. A move that scrolls the table under a cursor that
 /// stays on the same drawn row is sounded here, since the focus does not move.
 pub(super) fn navigate(
     keys: Res<ButtonInput<KeyCode>>,
     (wheel, mut view): (Res<AccumulatedMouseScroll>, ResMut<MapView>),
+    scrolling: Query<&RelativeCursorPosition, With<Scroller>>,
     mut board: ResMut<Board>,
     mut cues: MessageWriter<AudioCue>,
 ) {
     let over = view.over;
+    let elsewhere = over || scrolling.iter().any(|pointer| pointer.cursor_over);
     let held = |key: KeyCode| keys.just_pressed(key) && !(over && arrow(key));
     let pressed = MOVES.iter().filter(|(key, _)| held(*key));
     let by: isize = pressed.map(|(_, by)| by).sum();
@@ -68,7 +72,7 @@ pub(super) fn navigate(
         MouseScrollUnit::Line => wheel.delta.y * WHEEL_ROWS,
         MouseScrollUnit::Pixel => wheel.delta.y / theme::ROW_HEIGHT,
     };
-    if rows.round() != 0.0 && !over {
+    if rows.round() != 0.0 && !elsewhere {
         board.scroll(-rows.round() as isize);
     }
 }

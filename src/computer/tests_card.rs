@@ -103,10 +103,7 @@ const ORDER: [&str; 18] = [
 
 /// Returns the value of the fact labelled `label` on `card`, if it has one.
 pub(super) fn fact<'a>(card: &'a Card, label: &str) -> Option<&'a str> {
-    card.rows.iter().find_map(|row| match row {
-        Row::Fact(name, value) if *name == label => Some(value.as_str()),
-        _ => None,
-    })
+    stat(card, label).map(|(value, _)| value)
 }
 
 /// Returns the value and the note of the stat labelled `label` on `card`, if it has one.
@@ -154,7 +151,7 @@ fn the_card_groups_the_stats_in_order() {
     let planet = PlanetSpec { moons: 0, ..planet };
     let home = card(&line, Some(&planet), &universe);
     let name = |row: &Row| match row {
-        Row::Heading(name) | Row::Fact(name, _) | Row::Note(name) => name.to_string(),
+        Row::Heading(_, name) | Row::Note(name) => name.to_string(),
         Row::Stat { label, .. } => label.to_string(),
         Row::Meaning(_) => "~".to_string(),
         Row::More => "+".to_string(),

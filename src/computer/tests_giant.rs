@@ -3,9 +3,10 @@
 
 use bevy::math::{DVec3, Vec3};
 
-use super::detail::{ROWS, Row, brief, card, visible};
+use super::detail::{Row, brief, card, visible};
 use super::giant::NO_GROUND;
 use super::tests_card::{fact, stat};
+use super::tests_detail::ROWS;
 use super::tests_detail::world;
 use super::*;
 use crate::space::Frame;

@@ -68,19 +68,10 @@ pub fn scroll_area(content: impl Bundle) -> impl Bundle {
         width: px(BAR),
         ..default()
     };
-    let view = (
-        Scroller,
-        ScrollPosition::default(),
-        RelativeCursorPosition::default(),
-    );
-    (
-        ScrollArea,
-        area,
-        children![
-            (view, column, content),
-            (Thumb, bar, BackgroundColor(theme::TEXT_2))
-        ],
-    )
+    let view = (Scroller, ScrollPosition::default(), column);
+    let pointed = RelativeCursorPosition::default();
+    let thumb = (Thumb, bar, BackgroundColor(theme::TEXT_2));
+    (ScrollArea, area, children![(view, pointed, content), thumb])
 }
 
 /// Returns where the bar of a view `view` pixels tall sits over content `content` pixels tall

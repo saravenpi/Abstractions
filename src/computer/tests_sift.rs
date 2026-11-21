@@ -105,9 +105,9 @@ fn a_row_shows_what_it_is_and_whether_it_was_visited() {
     let cases = [
         (&star, plain, Icon::Star, Tone::Muted),
         (&planet, plain, Icon::Planet, Tone::Plain),
-        (&galaxy, plain, Icon::Map, Tone::Muted),
-        (&star, (false, true), Icon::Send, Tone::Plain),
-        (&star, (true, true), Icon::MapPin, Tone::Accent),
+        (&galaxy, plain, Icon::Galaxy, Tone::Muted),
+        (&star, (false, true), Icon::ShipParked, Tone::Plain),
+        (&star, (true, true), Icon::Go, Tone::Accent),
     ];
     for (row, marks, icon, tone) in cases {
         assert_eq!(mark(row, marks), (icon.glyph(), tone));

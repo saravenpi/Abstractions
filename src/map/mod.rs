@@ -2,7 +2,7 @@
 //! the whole universe.
 //!
 //! - [`explored`] keeps the ground each body has had uncovered and shares it on a server.
-//! - [`raster`] paints the flat coloured picture of a body, black where nobody has been.
+//! - [`raster`] paints the flat coloured picture of a body, clear where nobody has been.
 //! - The levels: the flat map of a planet, then the charts of the board computer for a
 //!   system, a galaxy and the universe, one at a time. A double click goes into a place, the
 //!   path over the map comes out of it, and each fades in.

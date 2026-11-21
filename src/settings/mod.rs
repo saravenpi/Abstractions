@@ -23,7 +23,7 @@ mod tests_servers;
 mod tests_view;
 
 pub use bevy_persistent::Persistent;
-pub use gameplay::Gameplay;
+pub use gameplay::{Gameplay, InterfaceSize};
 pub use lighting::{Lighting, Quality};
 pub use model::{Audio, Controls, Graphics, Keymap, Settings, WorldPrefs, render_step};
 pub use servers::{SavedServer, default_servers};

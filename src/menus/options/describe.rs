@@ -29,3 +29,11 @@ pub fn describe(field: Field) -> &'static str {
         _ => "",
     }
 }
+
+/// Returns the description of a setting of the general tab, or an empty line for one that has none.
+pub fn describe_general(field: Field) -> &'static str {
+    match field {
+        Field::Interface => "Size of the HUD and the menus together. It applies at once.",
+        _ => "",
+    }
+}

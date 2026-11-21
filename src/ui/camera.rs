@@ -6,6 +6,7 @@ use bevy::render::render_resource::BlendState;
 use bevy::window::PrimaryWindow;
 
 use crate::render::{Fit, GameCamera, LowRes};
+use crate::settings::{InterfaceSize, Persistent, Settings};
 
 /// Marks the UI overlay camera.
 #[derive(Component)]
@@ -71,14 +72,32 @@ pub fn ui_scale_for(height: f32) -> f32 {
     (height / REFERENCE_HEIGHT).clamp(0.75, 3.0)
 }
 
+/// Narrowest window, in logical pixels, the settings page fits at any scale: the scale never
+/// leaves less than this across, so the player can always get back to the step they chose.
+pub const MIN_WIDTH: f32 = 960.0;
+
+/// Returns the interface scale of a window `window` logical pixels large at the step `size`: the
+/// scale of the window height times the factor of the step, on a multiple of a quarter so every
+/// size of the type scale, 16, 20, 32 and 72 pixels, lands on whole pixels, held to what leaves
+/// [`MIN_WIDTH`] across and within 0.75 to 3.
+pub fn ui_scale(window: Vec2, size: InterfaceSize) -> f32 {
+    let wanted = (ui_scale_for(window.y) * size.factor() * 4.0).round() / 4.0;
+    let room = (window.x / MIN_WIDTH * 4.0).floor() / 4.0;
+    wanted.min(room).clamp(0.75, 3.0)
+}
+
 /// Shows the game image at its whole scale: the part of it that fits the window, centred, with
 /// every game pixel the same square of window pixels.
 pub(super) fn frame_view(
     window: Single<&Window, With<PrimaryWindow>>,
     mut view: Single<&mut ImageNode, With<WorldView>>,
     mut scale: ResMut<UiScale>,
+    settings: Option<Res<Persistent<Settings>>>,
 ) {
-    let wanted = ui_scale_for(window.height());
+    let size = settings.map_or(InterfaceSize::Normal, |settings| {
+        settings.gameplay.interface
+    });
+    let wanted = ui_scale(Vec2::new(window.width(), window.height()), size);
     if scale.0 != wanted {
         scale.0 = wanted;
     }

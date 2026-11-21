@@ -89,13 +89,21 @@ pub(super) fn toggle(
 pub(super) fn enter(
     (terrain, seen): (Option<Res<Terrain>>, Res<Seen>),
     (universe, location): (Option<Res<Universe>>, Option<Res<Location>>),
-    window: Query<&bevy::window::Window, With<PrimaryWindow>>,
+    (window, scale): (
+        Query<&bevy::window::Window, With<PrimaryWindow>>,
+        Option<Res<UiScale>>,
+    ),
     mut shelf: ResMut<Shelf>,
     mut commands: Commands,
 ) {
-    let size = window
-        .single()
-        .map_or(Vec2::new(1280.0, 720.0), |w| logical(w.size()));
+    let size = window.single().map_or(Vec2::new(1280.0, 720.0), |w| {
+        logical(
+            w.size(),
+            scale
+                .as_ref()
+                .map_or_else(|| crate::ui::ui_scale_for(w.height()), |scale| scale.0),
+        )
+    });
     let measures = measure(size);
     let life = terrain.as_deref().and_then(|t| t.globe().life());
     let planet = universe.zip(location).map(|(u, l)| u.planet(l.body).name);

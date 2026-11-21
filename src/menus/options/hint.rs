@@ -6,7 +6,7 @@ use bevy::prelude::*;
 
 use super::actions::SettingsAction;
 use super::binds::conflicts;
-use super::describe::{COSTS, describe};
+use super::describe::{COSTS, describe, describe_general};
 use super::field::Field;
 use super::format::key_name;
 use super::{SettingsTab, Tab};
@@ -95,6 +95,10 @@ fn show_hint(
             theme::TEXT_2,
         ),
         Tab::Controls | Tab::Ship => (conflict_line(&settings.controls.keys), theme::TEXT),
+        Tab::General => (
+            field.map_or("", describe_general).to_string(),
+            theme::TEXT_2,
+        ),
         _ => (String::new(), theme::TEXT_2),
     };
     for (mut line, mut tint) in &mut lines {

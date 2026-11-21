@@ -7,6 +7,7 @@
 //! The trunks guide the local flows of the atlas, and the shores of the land near mild latitudes are where a
 //! new game starts.
 
+mod course;
 mod flood;
 mod grid;
 mod query;

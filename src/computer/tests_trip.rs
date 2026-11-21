@@ -3,9 +3,9 @@
 
 use bevy::math::IVec3;
 
-use super::trip::{CRUISE_RANGE, pace, same_galaxy, trip_seconds};
+use super::trip::{pace, same_galaxy, trip_seconds};
 use super::*;
-use crate::ship::SPOOL_TIME;
+use crate::ship::{JUMP_DISTANCE, SPOOL_TIME};
 use crate::universe::{BodyId, GALAXY_CELL, GalaxyId, LY, StarId};
 
 /// A trip to a star a few light-years away takes about a minute and a trip over ten
@@ -28,20 +28,22 @@ fn a_galaxy_takes_minutes_and_the_next_one_a_quarter_hour() {
     assert!(next > 840.0 && next < 1000.0, "{next} s");
 }
 
-/// Inside a tier a longer trip never takes less time, and the average speed times the time is
-/// the distance.
+/// Inside a tier a longer trip never takes less time, from 0.1 light-year to 3 million, and the
+/// average speed times the time is the distance. The sweep stops at the end of each tier: the
+/// jump tier flies faster than the cruise tier, so a trip just over [`JUMP_DISTANCE`] may take
+/// less time than one just under it.
 #[test]
 fn a_longer_trip_takes_longer_within_a_tier() {
     let tiers = [
-        (true, 0.01 * LY, CRUISE_RANGE),
-        (true, 1.1 * CRUISE_RANGE, 1.0e5 * LY),
-        (false, GALAXY_CELL, 10.0 * GALAXY_CELL),
+        (true, 0.1 * LY, JUMP_DISTANCE),
+        (true, 1.001 * JUMP_DISTANCE, 1.0e5 * LY),
+        (false, 0.1 * LY, 10.0 * GALAXY_CELL),
     ];
     for (same, from, to) in tiers {
         let mut gap = from;
         let mut before = trip_seconds(gap, same);
         while gap < to {
-            gap *= 1.37;
+            gap = (gap * 1.37).min(to);
             let now = trip_seconds(gap, same);
             assert!(now >= before, "{gap} m: {now} s after {before} s");
             assert!((pace(gap, same) * now - gap).abs() <= 1e-9 * gap);

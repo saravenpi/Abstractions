@@ -1,8 +1,6 @@
 //! The cost of a strike: posing a swing and sweeping its head against two hundred parts stays under
 //! 0.1 ms a frame.
 
-use std::time::Instant;
-
 use bevy::prelude::*;
 
 use super::super::pose::Pose;
@@ -11,8 +9,9 @@ use super::dir::Dir;
 use super::hit::{Bounds, touch};
 use super::layer::{Layer, posed};
 use super::stage::club;
+use crate::world::cpu::busy;
 
-/// A swing posed and swept against 200 placed parts costs less than 0.1 ms per frame.
+/// A swing posed and swept against 200 placed parts costs less than 0.1 ms of processor time per frame.
 #[test]
 fn a_swing_and_its_hit_test_are_cheap() {
     let held = club();
@@ -24,7 +23,7 @@ fn a_swing_and_its_hit_test_are_cheap() {
         half: Vec3::splat(0.2),
     };
     let frames = 200;
-    let start = Instant::now();
+    let start = busy();
     let mut touched = 0;
     for frame in 0..frames {
         let strike = Strike {
@@ -42,7 +41,7 @@ fn a_swing_and_its_hit_test_are_cheap() {
             .count();
         std::hint::black_box(pose);
     }
-    let each = start.elapsed().as_secs_f64() / f64::from(frames);
+    let each = (busy() - start) / f64::from(frames);
     std::hint::black_box(touched);
     assert!(each < 1.0e-4, "{each} s per frame");
 }

@@ -63,14 +63,4 @@ impl Drainage {
                 .into_iter()
                 .all(|k| !self.is_land(k))
     }
-
-    /// Returns the path of the water from `cell` down to its end, both included: a sea cell, or the bottom of
-    /// a closed basin.
-    pub fn course(&self, cell: usize) -> Vec<usize> {
-        let mut path = vec![cell];
-        while let Some(to) = self.next(path[path.len() - 1]) {
-            path.push(to);
-        }
-        path
-    }
 }

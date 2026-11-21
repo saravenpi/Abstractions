@@ -39,7 +39,7 @@ pub enum Paint {
 pub struct Part {
     /// The group the part belongs to: the parts of a group are closed shapes together. Only the
     /// tests read it.
-    #[cfg_attr(not(test), allow(dead_code))]
+    #[cfg(test)]
     pub group: &'static str,
     /// What it is painted with.
     pub paint: Paint,
@@ -50,9 +50,10 @@ pub struct Part {
 }
 
 /// Returns a part of `group`.
-fn part(group: &'static str, paint: Paint, far: bool, solid: Solid) -> Part {
+fn part(_group: &'static str, paint: Paint, far: bool, solid: Solid) -> Part {
     Part {
-        group,
+        #[cfg(test)]
+        group: _group,
         paint,
         far,
         solid,

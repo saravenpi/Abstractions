@@ -90,10 +90,10 @@ pub(super) fn point(board: &Board, view: &MapView) -> Option<Vec2> {
     if let Some((_, at)) = dot {
         return Some(*at);
     }
-    let away = flat(to - board.ship);
+    let away = to - board.ship;
     Some(match view.span {
-        Some(span) => away / span as f32,
-        None => away.normalize_or_zero() * OFF,
+        Some(span) => flat(away / span),
+        None => flat(away.with_y(0.0).normalize_or_zero() * f64::from(OFF)),
     })
 }
 

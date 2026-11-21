@@ -2,12 +2,18 @@
 
 use super::season::{climate_line, season_words, span_words};
 use crate::climate::season as orbit_season;
-use crate::universe::{Orbit, PlanetSpec, Universe};
+use crate::universe::{Orbit, PlanetRecord, PlanetSpec, Universe};
 
-/// Returns the home planet of seed 7.
+/// Returns the home planet of seed 7 made a temperate world tilted like the Earth that turns in a
+/// day, so that the test does not depend on which planet the seed chooses as home.
 pub(super) fn home() -> PlanetSpec {
     let universe = Universe::new(7);
-    universe.planet(universe.home())
+    PlanetSpec {
+        record: PlanetRecord::TEMPERATE,
+        day_seconds: 86_400.0,
+        orbit_seconds: 365.0 * 86_400.0,
+        ..universe.planet(universe.home())
+    }
 }
 
 /// The north goes through summer, autumn, winter and spring as the year turns, and a planet

@@ -110,7 +110,7 @@ fn dials(state: &ShipBody, clearance: f64) -> Readings {
         false => (speed / top_speed(clearance)) as f32,
     };
     Readings::seen(Seen {
-        speed: Some(speed).filter(|_| !warping),
+        speed: (!warping).then_some(speed),
         load,
         throttle: state.throttle.max(0.0),
         clearance,

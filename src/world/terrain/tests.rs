@@ -72,11 +72,12 @@ fn world_has_sea_biomes_peaks_and_reefs() {
     }
 }
 
-/// The spawn sits inside a real island and no cold land touches a desert.
+/// The spawn sits inside a real island and no cold land touches a desert, on the flat legacy plane
+/// whose sea is at [`SEA_LEVEL`], not on the home planet of the seed, whose sea is its own.
 #[test]
 fn spawn_is_inland_and_biomes_have_neighbours() {
     for seed in SEEDS {
-        let t = Terrain::new(seed);
+        let t = Terrain::legacy(seed);
         let p = t.find_spawn();
         let dry = (0..16)
             .filter(|&a| {

@@ -96,14 +96,23 @@ fn system(lines: &[Line], ship: UniPos) -> Vec<(Dot, Vec2)> {
     dots
 }
 
+/// Returns the farthest horizontal distance in metres from `ship` to a row, at least one metre.
+/// It is worked out in double precision: a squared distance between galaxies overflows a float.
+fn reach(lines: &[Line], ship: UniPos) -> f64 {
+    let gap = |line: &Line| {
+        let offset = line.at - ship;
+        offset.x.hypot(offset.z)
+    };
+    lines.iter().map(gap).fold(1.0, f64::max)
+}
+
 /// Returns the points of a chart of far things around the ship, which stands in the middle.
 fn field(lines: &[Line], ship: UniPos) -> Vec<(Dot, Vec2)> {
-    let around = |line: &Line| flat(line.at - ship);
-    let reach = lines
-        .iter()
-        .map(|line| around(line).length())
-        .fold(1.0, f32::max);
-    let place = |(index, line): (usize, &Line)| (Dot::Row(index), around(line) / reach * FILL);
+    let reach = reach(lines, ship);
+    let place = |(index, line): (usize, &Line)| {
+        let offset = (line.at - ship) / reach * f64::from(FILL);
+        (Dot::Row(index), flat(offset))
+    };
     let mut dots: Vec<(Dot, Vec2)> = lines.iter().enumerate().map(place).collect();
     dots.push((Dot::Ship, Vec2::ZERO));
     dots
@@ -128,9 +137,7 @@ pub fn hit<'a>(
 /// Returns the metres one chart unit stands for on the chart of `tab`, or nothing for a system
 /// chart, whose orbits are drawn closer together than they are.
 pub fn span(tab: Tab, lines: &[Line], ship: UniPos) -> Option<f64> {
-    let gap = |line: &Line| flat(line.at - ship).length();
-    let reach = lines.iter().map(gap).fold(1.0, f32::max);
-    (tab != Tab::System).then_some(f64::from(reach / FILL))
+    (tab != Tab::System).then_some(reach(lines, ship) / f64::from(FILL))
 }
 
 /// Returns every dot of the chart of `tab` with its place on the map, from -1 to 1 on both

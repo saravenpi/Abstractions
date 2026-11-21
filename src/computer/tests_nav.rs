@@ -14,7 +14,7 @@ use bevy::ui_widgets::Activate;
 use super::chart::Dot;
 use super::hover::{light, look, surface};
 use super::pointer::MapView;
-use super::tests_pointer::{click, pixel, point, rig};
+use super::tests_pointer::{click, point, rig};
 use super::tests_rig::{game, run, tap};
 use super::view::{Action, Slot};
 use super::*;
@@ -51,8 +51,16 @@ fn hovering_a_row_or_a_mark_lights_it_and_selects_nothing() {
     assert_eq!(app.world().resource::<Board>().cursor, 0);
 }
 
-/// A click on a row of the list selects it and sets no course, and two quick clicks on a mark
-/// that was not selected select it, ease the map onto it and ask to go into its place, still
+/// Returns the last two rows of `board` that are not moons, which the map hides until it is zoomed in.
+fn last_planets(board: &Board) -> (usize, usize) {
+    let planets: Vec<usize> = (0..board.lines.len())
+        .filter(|row| !is_moon(board.lines[*row].target))
+        .collect();
+    (planets[planets.len() - 1], planets[planets.len() - 2])
+}
+
+/// A click on a row of the list selects it and sets no course, and two quick clicks on the mark of a
+/// planet, since the map hides moons until it is zoomed in, that was not selected select it, ease the map onto it and ask to go into its place, still
 /// with no course.
 #[test]
 fn a_click_on_a_row_selects_and_a_double_click_on_a_mark_goes_into_it() {
@@ -62,8 +70,7 @@ fn a_click_on_a_row_selects_and_a_double_click_on_a_mark_goes_into_it() {
         let found = slots.iter(app.world()).find(|(_, slot)| slot.0 == wanted);
         found.unwrap().0
     };
-    let rows = app.world().resource::<Board>().lines.len();
-    let (pick, mark) = (rows - 1, rows - 2);
+    let (pick, mark) = last_planets(app.world().resource::<Board>());
     let entity = slot(&mut app, pick);
     app.world_mut().trigger(Activate { entity });
     let state = |app: &App| {
@@ -72,7 +79,9 @@ fn a_click_on_a_row_selects_and_a_double_click_on_a_mark_goes_into_it() {
     };
     assert_eq!(state(&app), (pick, None));
     assert!(app.world().resource::<MapView>().picked);
-    let at = pixel(&app, Dot::Row(mark));
+    let view = app.world().resource::<MapView>();
+    let found = view.dots.iter().find(|(dot, _)| *dot == Dot::Row(mark));
+    let at = view.lens.to_map(found.unwrap().1);
     point(&mut app, at);
     click(&mut app, Vec2::ZERO);
     click(&mut app, Vec2::ZERO);

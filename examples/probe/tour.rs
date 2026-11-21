@@ -75,7 +75,12 @@ impl Tour {
 fn wanted(group: &str, name: &str) -> bool {
     let list = std::env::var("PROBE_STAGES").unwrap_or_default();
     let groups = |g: &str| list.split(',').any(|x| x == g);
-    let own = |g: &str| matches!(g, "zoo" | "postcards" | "long" | "perf" | "dust" | "reflect");
+    let own = |g: &str| {
+        matches!(
+            g,
+            "zoo" | "postcards" | "long" | "perf" | "dust" | "reflect"
+        )
+    };
     let by_group =
         group == "core" || groups(group) || (!own(group) && (list.is_empty() || groups("all")));
     let only = std::env::var("SMOKE_ONLY").unwrap_or_default();

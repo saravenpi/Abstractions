@@ -133,6 +133,11 @@ Planets and the galaxy at their real size, each living planet with life that bel
 - A first step of hunting: animals and the robot have health by part, blows have weight, animals bleed, you carry a pack and make tools, and rocks are quarried by mass. The full loop is 0.17.
 - A redesigned ship with a working cockpit and real exhaust, a redesigned robot and companion, entry heat, and speed you can feel.
 - Light that adapts: exposure and white balance follow the light of the star, one ground colour at every range, and a Lighting quality setting.
+- A food web per planet: grazers, hunters, scavengers, pollinators and builders, with herds, nests and young.
+- Animals act from their needs: they graze, hunt, flee, flock and sleep.
+- Remove the hunters from a valley and the grazers rise, then the plants thin: cascades you can cause.
+- Tracks, calls and nests lead you to animals, and the companion's field guide fills in as you watch.
+- A first step of hunting: creatures and the robot have health, and rocks are quarried by mass. The full loop is 0.17.
 - A reworked interface: one Go command, pins in place of waypoints and favourites, a HUD that shows only what applies, and markers on screen.
 - A saved place that is never lost: one seat per player on a server, orbits that come back, and a loading screen that always ends.
 - Multiplayer protocol 3, save format 3. Worlds made with 0.10 keep opening with 0.10. A 0.10 game cannot join a 0.11 server, and the public server started a new world.

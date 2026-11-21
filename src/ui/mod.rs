@@ -20,8 +20,10 @@ mod keys;
 #[cfg(test)]
 mod keys_tests;
 mod list;
+mod meter;
 pub mod motion;
 mod page;
+mod reveal;
 #[cfg(test)]
 mod rules_tests;
 mod scroll;
@@ -36,6 +38,7 @@ mod tests_panel;
 pub mod theme;
 #[cfg(test)]
 mod theme_tests;
+mod tile;
 mod tooltip;
 pub mod units;
 mod widgets;
@@ -50,10 +53,12 @@ pub use keys::{
     HINT_GAP, HintLabel, KEY_GAP, KeyName, Legend, footer, hints, key_cap, key_hint, legend,
 };
 pub use list::Window;
+pub use meter::{METER, STAT_LABEL, STAT_METER, Stat, meter, stat};
 pub use page::{
     PAGE_FOOT, PAGE_HEAD, Page, Zone, page, page_body, page_foot, page_frame, page_head,
     page_status, page_title,
 };
+pub use reveal::Reveal;
 pub use scroll::{BAR, BAR_GAP, ScrollArea, Scroller, Thumb, scroll_area, scroller, thumb};
 pub use section::{
     Section, SectionTitle, Sections, groups, rows, section, section_title, sections,
@@ -62,6 +67,7 @@ pub use sound::Cancels;
 pub use state::{EmptyState, NoticeRow, empty_state, notice_row};
 pub use style::{Filled, Look, Selected, Tone};
 pub use table::{cell, head, row_with, table_head, table_row, value_cell};
+pub use tile::{TallRow, Tile, card, line, row_tall};
 pub use tooltip::Tip;
 pub use widgets::{Overlay, caps, column, panel, root, root_on, rule, text};
 
@@ -108,6 +114,7 @@ pub(super) fn plugin(app: &mut App) {
                 sound::escaped,
                 scroll::wheel,
                 scroll::bars.run_if(any_with_component::<scroll::ScrollArea>),
+                reveal::keep_in_view.run_if(any_with_component::<reveal::Reveal>),
                 (sound::moved, scroll::follow_focus).run_if(resource_changed::<InputFocus>),
             ),
         );

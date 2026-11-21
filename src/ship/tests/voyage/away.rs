@@ -136,7 +136,7 @@ pub fn lands(game: &mut Game, far: BodyId) {
     );
     let before = game.get::<Log>().ship.len();
     game.press(key(game, |keys| keys.ship.sink));
-    game.until("the ship to land", 900, |game| game.ship().landed);
+    flight::until_landed(game);
     game.release(key(game, |keys| keys.ship.sink));
     game.step(2);
     let (log, telemetry) = (game.get::<Log>(), game.get::<ShipTelemetry>());

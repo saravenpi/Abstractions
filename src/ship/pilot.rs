@@ -11,7 +11,9 @@ use crate::computer::{Target, target_position};
 use crate::render::Sequence;
 use crate::space::UniPos;
 use crate::universe::{BodyId, StarId, Universe};
-pub(super) use progress::{Progress, SPOOLS};
+pub(super) use progress::Progress;
+#[cfg(test)]
+pub(super) use progress::SPOOLS;
 
 /// What the autopilot is doing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

@@ -13,6 +13,9 @@ use crate::settings::{Persistent, Settings};
 use crate::ship::{Hatch, Ship};
 use crate::space::{Anchor, Location, Travel, up};
 
+/// Filter of what moves and must not stop the probe ray: ships and the player.
+type Movers = Or<(With<Ship>, With<Player>)>;
+
 /// Returns the interact key.
 fn key(game: &Game) -> KeyCode {
     let settings = game.app.world().resource::<Persistent<Settings>>();
@@ -29,8 +32,7 @@ fn offered(game: &mut Game) -> bool {
 fn gap(game: &mut Game) -> Option<f32> {
     let (feet, anchor) = (game.walker().feet, game.get::<Anchor>());
     let vertical = up(&anchor, feet);
-    let probe = move |query: SpatialQuery,
-                      movers: Query<Entity, Or<(With<Ship>, With<Player>)>>| {
+    let probe = move |query: SpatialQuery, movers: Query<Entity, Movers>| {
         let filter = SpatialQueryFilter::from_excluded_entities(movers.iter());
         let down = Dir3::new(-vertical).expect("a vertical");
         let hit = query.cast_ray(feet + vertical * 2.0, down, 12.0, true, &filter);

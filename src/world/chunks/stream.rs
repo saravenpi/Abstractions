@@ -12,10 +12,8 @@ use super::plan::batch;
 use super::scene::Scene;
 use super::spawn::{Spawner, spawn_chunk};
 use super::{Chunks, Settled};
-use crate::world::focus::Focus;
 use crate::world::globe::{Chart, ChunkId};
 use crate::world::mesh::leaf_coord;
-use crate::world::{Terrain, WorldReady};
 
 impl Chunks {
     /// Returns the leaves of the deepest level, the only nodes that can carry detail.
@@ -151,26 +149,5 @@ pub fn collect(
         loaded.set_solid(&mut commands, around.solid(id));
         chunks.loaded.insert(id, loaded);
         chunks.touch();
-    }
-}
-
-/// Flags the world ready once the chunk under the focus and the chunks that touch it all exist with colliders.
-/// A planet without ground has nothing that must be solid: it is ready at once.
-pub fn mark_ready(
-    chunks: Res<Chunks>,
-    focus: Focus,
-    terrain: Res<Terrain>,
-    mut ready: ResMut<WorldReady>,
-) {
-    if !terrain.globe().has_ground() {
-        ready.set_if_neq(WorldReady(true));
-        return;
-    }
-    let Some(around) = focus.planet().and_then(|at| Around::new(&terrain, at)) else {
-        return;
-    };
-    let solid = |id: &ChunkId| chunks.loaded.get(id).is_some_and(|l| l.solid);
-    if around.near.iter().all(solid) && !ready.0 {
-        ready.0 = true;
     }
 }

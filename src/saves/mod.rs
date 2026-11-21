@@ -16,6 +16,9 @@ mod moon_tests;
 mod old_tests;
 mod resume;
 mod snapshot;
+mod sound;
+#[cfg(test)]
+mod sound_tests;
 mod start;
 mod store;
 #[cfg(test)]

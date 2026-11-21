@@ -21,6 +21,7 @@ mod pace;
 mod place;
 mod plan;
 mod reach;
+mod ready;
 mod scene;
 mod sight;
 mod spawn;
@@ -44,6 +45,8 @@ mod tests_grow;
 mod tests_lane;
 #[cfg(test)]
 mod tests_reach;
+#[cfg(test)]
+mod tests_ready;
 #[cfg(test)]
 mod tests_rocks;
 #[cfg(test)]
@@ -78,8 +81,9 @@ use self::nodes::Nodes;
 pub use self::place::{Sited, due, place, pose};
 use self::plan::Loaded;
 pub use self::reach::{Reach, STEPS};
+pub use self::ready::mark_ready;
 use self::spawn::Spawner;
-pub use self::stream::{collect, mark_ready, stream};
+pub use self::stream::{collect, stream};
 use self::stretch::Stretch;
 use super::globe::quadtree::Tree;
 use super::globe::{ChunkId, Face};

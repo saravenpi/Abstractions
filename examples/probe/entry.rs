@@ -140,8 +140,8 @@ fn mach(world: &World, body: BodyId) -> f64 {
 }
 
 /// Climbs from 40 m over the pad to orbit under the autopilot, from the chase camera: a shot as
-/// the ship passes Mach 1, one at 9 km where contrails form, one at the edge of space, and one
-/// every ten seconds besides.
+/// the ship passes Mach 1, one at 9 km where contrails form, one at the edge of space, one every
+/// ten seconds besides, and one every five seconds for thirty seconds above the air.
 pub fn exit(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
     let Some(t) = card_ready(world, notes, frame, true) else {
         return card_wait(frame);
@@ -191,7 +191,29 @@ pub fn exit(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
     if t % EVERY.1 == 0 {
         record(world, t, "X-climb");
     }
-    match t > LONGEST || height > 1.2 * top {
+    above(world, notes, (t, height > top))
+}
+
+/// Seconds of the game, in frames, the climb goes on above the air: the plasma should fade and
+/// the skin cool from orange to dark red, with no pop.
+const SPACE: u32 = 300;
+
+/// Follows the climb into space once the ship is `out` of the air at frame `t`: a shot every
+/// five seconds for [`SPACE`] frames, then the end of the stage.
+fn above(world: &mut World, notes: &mut Notes, (t, out): (u32, bool)) -> Act {
+    if out && notes.shot_at.is_none() {
+        notes.shot_at = Some(t);
+    }
+    let since = notes.shot_at.map(|left| t - left);
+    if let Some(since) = since.filter(|since| since % 50 == 0) {
+        let glow = world.resource::<Heat>().glow;
+        eprintln!(
+            "PROBE exit {since} frames out of the air: plasma {:.3}, skin {:.0} K",
+            glow.heat, glow.kelvin
+        );
+        shot(world, &format!("X-space-{since:03}"));
+    }
+    match t > LONGEST || since.is_some_and(|since| since > SPACE) {
         true => landed(world, notes),
         false => Act::Wait,
     }

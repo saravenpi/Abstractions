@@ -17,6 +17,7 @@ struct Sheath {
 struct Ray {
     o: vec3<f32>,
     d: vec3<f32>,
+    near: f32,
     far: f32,
 }
 
@@ -30,16 +31,17 @@ const WING_ROOT: vec3<f32> = vec3<f32>(0.29, 0.1, 0.0);
 const WING_TIP: vec3<f32> = vec3<f32>(-0.38, 0.71, 0.0);
 const TAIL: f32 = -0.75;
 const FLOW: f32 = 3.0;
+const CANOPY: f32 = 1.5;
 
 fn blob(ray: Ray, c: vec3<f32>, sigma: f32) -> f32 {
     let t = dot(c - ray.o, ray.d);
     let off = ray.o + ray.d * t - c;
-    let seen = clamp((ray.far - t) / sigma + 0.5, 0.0, 1.0) * clamp(t / sigma + 0.5, 0.0, 1.0);
+    let seen = clamp((ray.far - t) / sigma + 0.5, 0.0, 1.0) * clamp((t - ray.near) / sigma + 0.5, 0.0, 1.0);
     return ROOT_PI * sigma * exp(-dot(off, off) / (sigma * sigma)) * seen;
 }
 
 fn sheet(ray: Ray, t: f32, time: f32) -> f32 {
-    if (t <= 0.0 || t >= ray.far) {
+    if (t <= ray.near || t >= ray.far) {
         return 0.0;
     }
     let p = ray.o + ray.d * t;
@@ -155,7 +157,8 @@ fn local_ray(in: VertexOutput) -> Ray {
     let rel = (eye - sheath.centre.xyz) / radius;
     let o = vec3<f32>(dot(rel, axis), dot(rel, span), dot(rel, roof));
     let d = vec3<f32>(dot(dir, axis), dot(dir, span), dot(dir, roof));
-    return Ray(o, d, scene_far(in.position, travelled) / radius);
+    let near = select(0.0, CANOPY / radius, length(o) < 1.0);
+    return Ray(o, d, near, scene_far(in.position, travelled) / radius);
 }
 
 @fragment

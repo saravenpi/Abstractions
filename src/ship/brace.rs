@@ -5,6 +5,10 @@
 //! of the shake: the cockpit stays still in the view and only the world outside trembles. The
 //! seat keeps no offset, so the eye never leaves the cabin, and nothing shakes the image itself.
 
+#[cfg(test)]
+#[path = "brace_tests.rs"]
+mod tests;
+
 use bevy::prelude::*;
 use bevy::transform::TransformSystems;
 

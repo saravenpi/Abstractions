@@ -11,8 +11,6 @@ mod berth;
 mod board;
 mod body;
 mod brace;
-#[cfg(test)]
-mod brace_tests;
 mod churn;
 mod clear;
 pub mod cockpit;

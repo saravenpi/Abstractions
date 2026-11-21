@@ -3,8 +3,8 @@
 
 use bevy::prelude::*;
 
-use super::brace::{braced, felt};
-use super::shake::JOLT;
+use super::{braced, felt};
+use crate::ship::shake::JOLT;
 
 /// Angle in radians of one pixel of the 640 by 360 picture under a vertical field of view of
 /// 70 degrees.

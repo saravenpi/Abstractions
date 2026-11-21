@@ -2,7 +2,7 @@
 //! grown plants reach and what falls from them, read from the looks of their species, so that only real
 //! leaves and real flowers come down.
 //!
-//! The legacy plants of home, rocks and wrecks shed nothing: they have no species.
+//! The legacy plants of home, rocks shed nothing: they have no species.
 
 use bevy::prelude::*;
 

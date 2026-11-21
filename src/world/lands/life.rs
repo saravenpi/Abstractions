@@ -17,7 +17,7 @@ impl Lands {
         }
     }
 
-    /// Returns true when the sea floor carries life and wrecks: kelp, seagrass, coral, shells and sunken boats.
+    /// Returns true when the sea floor carries life: kelp, seagrass, coral and shells.
     pub fn sea_life(self) -> bool {
         self.sea && self.temperate()
     }

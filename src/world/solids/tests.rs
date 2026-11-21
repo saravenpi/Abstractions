@@ -50,10 +50,6 @@ fn closed_meshes() -> Vec<(&'static str, Vec<[Vec3; 3]>)> {
             "icosa",
             build(|m| icosa(m, base, Vec3::new(1.0, 0.5, 0.8), (0.0, 3), c)),
         ),
-        (
-            "slab",
-            build(|m| slab(m, base, Vec3::new(1.0, 0.3, 0.5), 0.4, c)),
-        ),
     ]
 }
 

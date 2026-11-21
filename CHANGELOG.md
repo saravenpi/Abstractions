@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Removed
 
 - No village, camp, cabin, lighthouse, dock, stilt hut, shrine, ruin, tower, pyramid, obelisk or stone circle stands on a planet any more, with their rooms, lamps, torches, fires and smoke. Peoples and what they build come back with the intelligent species of a later version. The home base and its landing pad stay. Worlds saved before open as they were, without them.
+- The sea floor holds no more sunken boats, anchors, amphorae or chests: kelp, boulders, driftwood and sea life stay.
 - With the buildings go what came with them: the companion's curiosity about them, the roofs that kept rain and snow off, and the footstep on planks.
 
 ### Changed

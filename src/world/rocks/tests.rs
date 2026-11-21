@@ -127,8 +127,8 @@ fn a_quarried_rock_shrinks_and_then_leaves_the_stand() {
     assert!(!stand.dirty());
 }
 
-/// A point on the body of a rock finds that rock, a point in the air finds none, and a rock weighs its
-/// volume times the density of its stone.
+/// A point on the body of a rock finds that rock, a point in the air finds none, a leaning rock tilts its
+/// midpoint along the slope normal, and a rock weighs its volume times the density of its stone.
 #[test]
 fn a_point_on_a_rock_finds_it_and_it_has_a_weight() {
     let stand = stand();
@@ -140,4 +140,11 @@ fn a_point_on_a_rock_finds_it_and_it_has_a_weight() {
     let volume = 2.0 / 3.0 * std::f32::consts::PI * 0.7 * 0.7 * 0.9;
     assert!((rock.mass(3000.0) - volume * 3000.0).abs() < 1.0);
     assert!(rock.mass(917.0) < rock.mass(3000.0));
+    let leaning = Placement {
+        lean: Vec2::new(0.6, 0.0),
+        ..prop(Plant::Rock, 0.0, 0.0)
+    };
+    let tilted = Stand::of(1, &[leaning], &Rig::PLAIN, &Taken::default()).rocks()[0];
+    let want = tilted.at + Vec3::new(-0.6, 1.0, 0.0).normalize() * (0.9 * 0.5);
+    assert!(tilted.mid.distance(want) < 1e-5, "{:?}", tilted.mid);
 }

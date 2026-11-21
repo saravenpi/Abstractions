@@ -6,7 +6,7 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::Base;
-use super::site::edge_distance;
+use super::site::{self, PASSES, Pass, edge_distance};
 use super::tune::{DRY, EDGE_CLEAR, FOOTPRINT, MAX_RELIEF, SHORE_CLEAR};
 use crate::universe::{BodyId, Universe};
 use crate::world::{Globe, Planet};
@@ -61,7 +61,17 @@ fn site_is_deterministic_and_follows_the_seed() {
     assert!(others[0].centre.distance(others[1].centre) > 1.0);
 }
 
-/// On 50 seeds the site is dry, within the slope limit, inland and clear of the cube edges.
+/// Returns the pass of the search that founded the base on `globe`, or the widest pass if none did.
+fn used_pass(globe: &Arc<Globe>) -> Pass {
+    let around = Base::around(globe, Base::landing(globe));
+    PASSES
+        .iter()
+        .copied()
+        .find(|pass| site::find(around.view(), *pass).is_some())
+        .unwrap_or(PASSES[PASSES.len() - 1])
+}
+
+/// On 50 seeds the site is dry, within the slope limit of the pass used, inland and clear of the cube edges.
 #[test]
 fn sites_are_dry_gentle_inland_and_off_the_edges() {
     for seed in 1..=50 {
@@ -71,9 +81,10 @@ fn sites_are_dry_gentle_inland_and_off_the_edges() {
             low > DRY - 0.5,
             "seed {seed}: ground at {low} m under the base"
         );
+        let limit = MAX_RELIEF * used_pass(&globe).slack + 1.0;
         assert!(
-            high - low < MAX_RELIEF + 1.0,
-            "seed {seed}: relief {}",
+            high - low < limit,
+            "seed {seed}: relief {} over {limit}",
             high - low
         );
         let shore = span(&base, &globe, FOOTPRINT as f32 + SHORE_CLEAR - 2.0).0;

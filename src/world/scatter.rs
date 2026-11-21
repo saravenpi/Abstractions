@@ -114,8 +114,8 @@ pub struct Placement {
     pub scale: f32,
     /// What stands here.
     pub plant: Plant,
-    /// Which of the shared mesh variants to show.
-    pub variant: u8,
+    /// Which of the shared mesh variants or book pages to show.
+    pub variant: u16,
     /// Rise over run of the ground under a stone along chart x and z, which it is tilted square to. Zero
     /// for everything that stands straight up along the local up.
     pub lean: Vec2,

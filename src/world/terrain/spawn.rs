@@ -142,13 +142,8 @@ impl Terrain {
     }
 }
 
-/// Returns the points of search ring `k`, evenly spaced about 33 m apart: a spot is flat over 12 m and the
-/// spawn is scored by its distance in tens of metres, so a finer mesh only pays for samples.
-pub(super) fn ring_points(k: u32) -> impl Iterator<Item = Vec2> {
-    ring_stride(k, 1)
-}
-
-/// Returns every `stride`th point of search ring `k`, working out only the points it returns.
+/// Returns every `stride`th point of search ring `k`, working out only the points it returns. At stride 1
+/// points are spaced about 33 m apart.
 pub(super) fn ring_stride(k: u32, stride: usize) -> impl Iterator<Item = Vec2> {
     let n = (k * 3).max(1);
     (0..n).step_by(stride).map(move |a| {

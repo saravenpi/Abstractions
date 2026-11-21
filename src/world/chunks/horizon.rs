@@ -149,7 +149,7 @@ fn hide(commands: &mut Commands, node: &mut Node, beyond: bool) {
 
 /// Makes `node` cast and receive no shadow when it is `far`, and gives both back when it comes
 /// near, leaving a node that fades out without shadow until its fade ends.
-fn shade(commands: &mut Commands, node: &mut Node, far: bool, fading: Option<Way>) {
+pub(super) fn shade(commands: &mut Commands, node: &mut Node, far: bool, fading: Option<Way>) {
     if node.shadowless == far {
         return;
     }

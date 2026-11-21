@@ -120,7 +120,7 @@ impl Ctx<'_> {
         if at.height < self.terrain.globe().sea_level() && -at.height < plant.draft() * scale {
             return None;
         }
-        let variant = rng.random_range(0..VARIANTS) as u8;
+        let variant = rng.random_range(0..VARIANTS) as u16;
         Some(Placement {
             pos: Vec3::new(local.x, self.rest(w, (plant, scale), &at), local.y),
             yaw,

@@ -33,11 +33,11 @@ fn covered(t: &Tile) -> f32 {
 
 /// Returns the architecture and look of every grown plant of `tile`, read again when another test wrote over
 /// a page of the book meanwhile: the variants of a flora name pages that a full book hands to other looks.
-fn kinds_of(tile: &Tile) -> Vec<(u8, u8)> {
+fn kinds_of(tile: &Tile) -> Vec<(u8, u16)> {
     loop {
         let before = edition();
         let flora = Flora::of(&tile.terrain, chunk_center(tile.coord)).expect("a flora");
-        let found: Vec<Option<(u8, u8)>> = tile
+        let found: Vec<Option<(u8, u16)>> = tile
             .scatter()
             .into_iter()
             .filter(|(p, _)| grown(p.variant))
@@ -59,7 +59,7 @@ fn kinds_of(tile: &Tile) -> Vec<(u8, u8)> {
 #[test]
 fn every_architecture_shows_many_looks() {
     let _book = hold();
-    let mut looks: HashMap<u8, HashSet<u8>> = HashMap::new();
+    let mut looks: HashMap<u8, HashSet<u16>> = HashMap::new();
     for seed in [1, 5, 8] {
         for tile in planet(seed, 8) {
             for (arch, variant) in kinds_of(&tile) {

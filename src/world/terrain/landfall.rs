@@ -4,7 +4,7 @@
 use bevy::math::{DVec3, Vec2};
 
 use super::Terrain;
-use super::spawn::{GLOBE_REACH, RINGS, SPAWN_STEP, ring_points, ring_stride};
+use super::spawn::{GLOBE_REACH, RINGS, SPAWN_STEP, ring_stride};
 use crate::world::globe::Chart;
 
 /// Points of a ring skipped between two the search for land looks at: with 16 m between rings this is
@@ -65,7 +65,7 @@ impl Terrain {
         bound: f32,
         fallback: &mut Option<Vec2>,
     ) -> Option<(f32, Vec2)> {
-        ring_points(k)
+        ring_stride(k, 1)
             .filter_map(|p| self.candidate((p, k), bound, fallback))
             .min_by(|a, b| a.0.total_cmp(&b.0))
     }

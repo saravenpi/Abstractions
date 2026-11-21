@@ -1,10 +1,11 @@
 //! Flight effects and the values other modules read.
 //!
 //! Everything drawn here is pooled: the entities, meshes and materials are made once and only
-//! moved afterwards. Free entities are `Rebased`, and the trail ribbons keep their points in the planet frame, so an anchor rebase leaves nothing
-//! behind. The wingtip trails and the boot exhaust leave from the limbs of the drawn body
-//! ([`crate::avatar::Marks`]); the rest is placed from the gear's own attitude. Every other
-//! body marked with a [`Wake`] lays trails of its own the same way.
+//! moved afterwards. Free entities are `Rebased`, and the trail ribbons keep their points in the
+//! planet frame, so an anchor rebase leaves nothing behind. The wingtip trails and the boot
+//! exhaust leave from the limbs of the drawn body ([`crate::avatar::Marks`]); the rest is placed
+//! from the gear's own attitude. Every other body marked with a [`Wake`] lays trails of its own
+//! the same way.
 
 mod air;
 mod buffet;

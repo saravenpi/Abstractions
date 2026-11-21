@@ -4,6 +4,8 @@
 use std::time::Duration;
 
 use avian3d::prelude::{Collider, ColliderDisabled};
+use bevy::app::Propagate;
+use bevy::camera::visibility::RenderLayers;
 use bevy::prelude::*;
 use bevy::time::TimeUpdateStrategy;
 
@@ -11,6 +13,7 @@ use crate::avatar::animate::{Anim, Bone};
 use crate::avatar::rig::{Seg, locals};
 use crate::avatar::{Avatar, Shown};
 use crate::player::{Motion, Player, seat};
+use crate::render::mirror_only;
 use crate::ship::SEAT;
 use crate::ship::cockpit::{Cockpit, Levers};
 use crate::space::{Location, Travel};
@@ -59,17 +62,21 @@ fn crew(app: &mut App) -> Entity {
     player
 }
 
-/// Returns the visibility of the root of the body and of its head.
-fn drawn(app: &mut App) -> (Visibility, Visibility) {
+/// Returns the visibility of the root of the body and of its head, and the head's propagated
+/// render layers if any.
+fn drawn(app: &mut App) -> (Visibility, Visibility, Option<RenderLayers>) {
     let mut roots = app
         .world_mut()
         .query_filtered::<&Visibility, With<Avatar>>();
     let root = *roots.single(app.world()).expect("one body");
-    let mut bones = app.world_mut().query::<(&Bone, &Visibility)>();
+    let mut bones = app
+        .world_mut()
+        .query::<(&Bone, &Visibility, Option<&Propagate<RenderLayers>>)>();
     let head = bones
         .iter(app.world())
-        .find(|(bone, _)| bone.0 == Seg::Head);
-    (root, *head.expect("a head").1)
+        .find(|(bone, _, _)| bone.0 == Seg::Head)
+        .expect("a head");
+    (root, *head.1, head.2.map(|layers| layers.0.clone()))
 }
 
 /// Returns where the left and the right palm are in the frame of the `player` entity.
@@ -93,7 +100,7 @@ fn the_seated_body_is_drawn_and_has_no_collider() {
     assert_eq!(*app.world().resource::<Shown>(), Shown::Full);
     assert_eq!(
         drawn(&mut app),
-        (Visibility::Inherited, Visibility::Inherited)
+        (Visibility::Inherited, Visibility::Inherited, None)
     );
     for (side, palm) in palms(&mut app, player).into_iter().enumerate() {
         let mut ships = app.world_mut().query::<&Cockpit>();
@@ -104,7 +111,14 @@ fn the_seated_body_is_drawn_and_has_no_collider() {
     app.insert_resource(BodyFade(0.0));
     app.update();
     assert_eq!(*app.world().resource::<Shown>(), Shown::FirstPerson);
-    assert_eq!(drawn(&mut app), (Visibility::Inherited, Visibility::Hidden));
+    assert_eq!(
+        drawn(&mut app),
+        (
+            Visibility::Inherited,
+            Visibility::Inherited,
+            Some(mirror_only())
+        )
+    );
 }
 
 /// Leaving the ship puts the root of the body back on the player at once, switches the

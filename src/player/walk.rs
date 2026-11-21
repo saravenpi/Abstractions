@@ -90,6 +90,11 @@ fn walk_step(motion: &mut Motion, intent: &Intent, ground: Option<Ground>, step:
     }
 }
 
+/// Returns true when the body is moving away from `floor` faster than [`RISING_SPEED`].
+fn rising(floor: Option<Ground>, velocity: Vec3) -> bool {
+    floor.is_some_and(|ground| velocity.dot(ground.normal) > RISING_SPEED)
+}
+
 /// Returns the swimming or walking velocity for this frame, as the swim state says.
 ///
 /// Boots that jet under a liquid replace the strokes, see [`jet_velocity`].
@@ -100,7 +105,7 @@ fn velocity_for(
     step: &Step,
 ) -> Vec3 {
     if !motion.swimming {
-        let ground = walkable(floor, motion.velocity.y > RISING_SPEED);
+        let ground = walkable(floor, rising(floor, motion.velocity));
         return walk_step(motion, intent, ground, step);
     }
     motion.grounded = false;
@@ -145,7 +150,7 @@ pub(super) fn velocity(
     step: &Step,
 ) -> Vec3 {
     let gap = walkable(floor, false).map(|ground| ground.gap);
-    let ground = walkable(floor, motion.velocity.y > RISING_SPEED);
+    let ground = walkable(floor, rising(floor, motion.velocity));
     motion.swimming = swim::next_swimming(motion.swimming, step.afloat, gap);
     let down = (intent.crouch || step.body.crawling()) && crouch::allowed(motion, gear);
     motion.crouch = crouch::settle(motion.crouch, down, step.dt);

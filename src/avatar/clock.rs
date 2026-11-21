@@ -115,8 +115,9 @@ impl Clock {
     /// Advances the crouch of the knees by `dt` seconds.
     ///
     /// The knees give way fast under a landing and push the body back up, both more slowly the
-    /// harder it was, so the hands of a hard landing reach the ground over a few frames. A jump starts with a short dip: the legs fold as they push off, on the
-    /// first frames of the rise, so the real jump is never delayed by it.
+    /// harder it was, so the hands of a hard landing reach the ground over a few frames. A jump
+    /// starts with a short dip: the legs fold as they push off, on the first frames of the rise,
+    /// so the real jump is never delayed by it.
     fn absorb(&mut self, input: &AvatarPose, dt: f32) {
         let standing = matches!(input.mode, Mode::Idle | Mode::Walk | Mode::Run | Mode::Land)
             || input.mode.floored();

@@ -114,7 +114,7 @@ impl Timing {
         Self {
             windup: windup.max(WINDUP_FLOOR),
             swing: path.length() / speed.max(f32::EPSILON),
-            recover: RECOVER.max(BRAKE * held.swing.windup),
+            recover: RECOVER.max(BRAKE * windup),
             over: OVERSHOOT * held.swing.inertia / (held.swing.inertia + COAST),
         }
     }

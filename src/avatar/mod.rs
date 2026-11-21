@@ -185,13 +185,14 @@ fn systems(app: &mut App) {
 }
 
 /// Registers the avatar, which calm water mirrors: its input, its visibility setting and the
-/// systems that run it while the world is shown, behind the boot screen too. The pose is filled once the controller moved
-/// the body, then dressed with the gear and the view once the camera rig ran.
+/// systems that run it while the world is shown, behind the boot screen too. The pose is filled
+/// once the controller moved the body, then dressed with the gear and the view once the camera
+/// rig ran.
 pub(super) fn plugin(app: &mut App) {
     app.register_required_components::<Avatar, crate::world::Reflected>();
     systems(app);
     tread::plugin(app);
-    app.add_message::<blow::Blow>();
+    app.add_message::<crate::view::Cut>();
     app.configure_sets(Update, (AvatarSet::Fill, AvatarSet::Animate).run_if(shown))
         .configure_sets(Update, AvatarSet::Fill.after(PlayerSet::Move))
         .add_systems(

@@ -4,6 +4,7 @@
 
 mod chart;
 mod compass;
+mod far;
 mod follow;
 mod ground;
 mod home;

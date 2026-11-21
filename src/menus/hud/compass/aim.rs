@@ -21,7 +21,7 @@ use crate::world::{Planet, spin};
 const HERE: f64 = 12.0;
 
 /// Distance in metres past which a favourite leaves the compass.
-pub const FAVOURITE_REACH: f64 = 2000.0;
+const FAVOURITE_REACH: f64 = 2000.0;
 
 /// What the compass reads to aim at markers.
 #[derive(SystemParam)]

@@ -22,7 +22,7 @@ mod tests_herds;
 #[cfg(test)]
 mod tests_space;
 
-pub(super) use aim::{Around, FAVOURITE_REACH};
+pub(super) use aim::Around;
 #[cfg(test)]
 pub(super) use north::North;
 pub(super) use north::point as north;

@@ -8,7 +8,7 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::glide::{Fix, order};
-use super::home::{answer, apply, spot};
+use super::home::{Move, answer, apply, spot};
 use super::near::{Over, free, over};
 use super::tune::ABORT;
 use super::{Note, Orbital, Reading, Regime};
@@ -41,25 +41,24 @@ pub struct Deck<'w> {
     course: ResMut<'w, Destination>,
 }
 
-/// With no cruise: the warp key starts one where the ship is free, and a target asked for starts
-/// one, or the climb to it, when it can. The warp key forgets a target asked for, and away from a
-/// planet it still works the warp drive.
+/// With no cruise: the warp key of the pilot starts one where the ship is free, and a target
+/// asked for starts one, or the climb to it, when it can. The warp key of the pilot forgets a
+/// target asked for, and away from a planet it still works the warp drive, as does a route.
 fn idle(deck: &mut Deck, orbital: &mut Orbital, ship: &mut Ship, over: Option<&Over>, free: bool) {
-    if deck.helm.warp {
+    let pilot = deck.helm.warp && deck.autopilot.target().is_none();
+    if pilot {
         orbital.pending = None;
     }
-    if let Some(over) = over.filter(|_| deck.helm.warp && free) {
+    if let Some(over) = over.filter(|_| pilot && free) {
         deck.helm.warp = false;
         return orbital.start(ship, over, None);
     }
     let Some(pending) = orbital.pending else {
         return;
     };
-    let motion = answer(
-        &pending,
-        spot(ship, over, &pending, free),
-        deck.autopilot.target(),
-    );
+    let spot = spot(ship, over, &pending, free);
+    let motion = answer(&pending, spot, deck.autopilot.target());
+    deck.helm.warp &= motion != Move::Cruise;
     let wheel = (orbital, &mut *deck.autopilot, &mut *deck.course);
     apply(motion, pending, wheel, ship, over);
 }

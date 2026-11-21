@@ -180,12 +180,8 @@ impl Reach<'_, '_> {
             .course()
             .map(|course| words(&course, seated, &Keys::of(keys)));
         let found = (self.location.as_deref(), self.base.as_deref());
-        let cruise = read(
-            self.orbital.as_deref(),
-            found,
-            self.destination.0.is_some(),
-            keys,
-        );
+        let set = self.destination.0.is_some();
+        let cruise = read(self.orbital.as_deref(), found, set, keys);
         let (block, running, ready) = merge(cruise, told.unwrap_or_default(), keys.engage);
         let waiting = self
             .hatch
@@ -193,8 +189,7 @@ impl Reach<'_, '_> {
             .is_some_and(|hatch| hatch.waiting && seated);
         let unready = || waiting.then(|| UNREADY.to_string());
         state.block = state.block.or(block).or_else(unready);
-        state.running = running;
-        state.ready = ready;
+        (state.running, state.ready) = (running, ready);
         state
     }
 }

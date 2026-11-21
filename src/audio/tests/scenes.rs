@@ -181,14 +181,14 @@ pub(super) const SCENES: [Scene; 11] = [
     (
         "warp_inside",
         13.0,
-        BUSY,
+        CALM,
         |t| in_space(warp(t), t > 5.0 && t < 10.0),
         jump,
     ),
     (
         "space_cruise_inside",
         20.0,
-        CALM,
+        -30.0,
         |_| in_space(parked().with(Ch::Thrust, 0.3), false),
         |_| None,
     ),

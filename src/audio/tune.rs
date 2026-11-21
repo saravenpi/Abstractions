@@ -23,7 +23,7 @@ pub const BUSY: f32 = -21.0;
 
 /// How far over the integrated loudness of a calm day the loudest moment of a ship passing
 /// 100 metres away must rise, in LU: the pass is an event in a calm scene, and it must be one.
-pub const PASS_MARGIN: f32 = 4.0;
+pub const PASS_MARGIN: f32 = 3.5;
 
 /// How far the integrated loudness of a scene may sit from its target, in LU, either way.
 pub const WINDOW: f32 = 3.0;
@@ -80,7 +80,7 @@ pub const VIEW_FADE: f32 = 0.1;
 
 /// Seconds the sounds of the world take to cover 63 percent of a pause or a resume: silent within
 /// 0.25 seconds of the pause, back within about 0.2 seconds of the resume, never a click.
-pub const PAUSE_FADE: f32 = 0.035;
+pub const PAUSE_FADE: f32 = 0.025;
 
 /// Level of the voice of the companion against its phrases as written: 4.4 decibels down, so it
 /// speaks under the world rather than over it.

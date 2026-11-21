@@ -94,9 +94,11 @@ fn watching(hunted: Res<Hunted>) -> bool {
     !hunted.victims.is_empty()
 }
 
-/// Run condition: the server told something that is not applied yet, or a spear waits to be drawn.
-fn waiting(hunted: Res<Hunted>) -> bool {
+/// Run condition: the server told something that is not applied yet, a spear waits to be drawn, or
+/// carcasses wait on a body the player just arrived at.
+fn waiting(hunted: Res<Hunted>, location: Option<Res<Location>>) -> bool {
     !(hunted.inbox.is_empty() && hunted.stuck.is_empty() && hunted.pulled.is_empty())
+        || location.is_some_and(|loc| hunted.at != Some(loc.body) && !hunted.lying.is_empty())
 }
 
 /// Registers the hunt of a session. Every system waits for a link, so single player runs none.

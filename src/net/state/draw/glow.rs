@@ -51,35 +51,42 @@ pub fn burning(remotes: Res<Remotes>, auras: Query<(), With<Aura>>) -> bool {
     !auras.is_empty() || hot(&remotes).next().is_some()
 }
 
-/// Spawns the hidden sheath of `puppet` with its own material, on the sphere `mesh`.
+/// Spawns the sheath of `puppet` with its own material, on the sphere `mesh`, at its constant
+/// local offset for `(radius, lift)`.
 fn spawn(
     commands: &mut Commands,
     mesh: Handle<Mesh>,
     material: Handle<SheathMaterial>,
     puppet: Entity,
+    (radius, lift): (f32, f32),
 ) -> Entity {
+    let local = Craft {
+        centre: Vec3::Y * lift,
+        heading: Vec3::NEG_Z,
+        radius,
+        roof: Vec3::Y,
+    }
+    .bound();
     let marks = (Aura, NotShadowCaster, NoFrustumCulling, ChildOf(puppet));
     let look = (Mesh3d(mesh), MeshMaterial3d(material));
     commands
-        .spawn((look, marks, Transform::default(), Visibility::Inherited))
+        .spawn((look, marks, local, Visibility::Inherited))
         .id()
 }
 
-/// Writes the sheath `aura` of the puppet at `puppet`, glowing `heat` in `gas`: its place on the
-/// puppet and the uniform of its material. The skin glows as a nose at that heat does.
+/// Writes the sheath uniform of `material` for the puppet at `puppet`, glowing `heat` in `gas`.
+/// The skin glows as a nose at that heat does.
 fn shape(
-    (puppet, aura): (&GlobalTransform, (&mut Transform, &mut SheathMaterial)),
+    (puppet, material): (&GlobalTransform, &mut SheathMaterial),
     (heat, (radius, lift)): (f32, (f32, f32)),
     gas: Gas,
 ) {
-    let (transform, material) = aura;
     let craft = Craft {
         centre: puppet.translation() + puppet.up() * lift,
         heading: puppet.forward().as_vec3(),
         radius,
         roof: puppet.up().as_vec3(),
     };
-    *transform = GlobalTransform::from(craft.bound()).reparented_to(puppet);
     let glow = Glow {
         heat,
         pressure: 0.0,
@@ -92,15 +99,7 @@ fn shape(
 }
 
 /// The auras that are drawn, with the material of each.
-type Shown<'w, 's> = Query<
-    'w,
-    's,
-    (
-        &'static mut Transform,
-        &'static MeshMaterial3d<SheathMaterial>,
-    ),
-    With<Aura>,
->;
+type Shown<'w, 's> = Query<'w, 's, &'static MeshMaterial3d<SheathMaterial>, With<Aura>>;
 
 /// Draws a sheath on every puppet of another player that glows, and takes away the sheath of every
 /// puppet that stopped.
@@ -109,7 +108,7 @@ pub fn glows(
     remotes: Res<Remotes>,
     sky: (Option<Res<Vantage>>, Option<Res<LocalSystem>>),
     (mut meshes, mut materials): (ResMut<Assets<Mesh>>, ResMut<Assets<SheathMaterial>>),
-    (puppets, mut auras, mut state): (Query<&GlobalTransform, With<Remote>>, Shown, Local<Auras>),
+    (puppets, auras, mut state): (Query<&GlobalTransform, With<Remote>>, Shown, Local<Auras>),
 ) {
     let gas = match sky {
         (Some(vantage), Some(local)) => local.gas(&vantage),
@@ -122,14 +121,13 @@ pub fn glows(
         let shared = mesh.get_or_insert_with(|| meshes.add(Sphere::new(1.0).mesh().uv(32, 16)));
         let aura = *made.entry(puppet).or_insert_with(|| {
             let material = materials.add(SheathMaterial::default());
-            spawn(&mut commands, shared.clone(), material, puppet)
+            spawn(&mut commands, shared.clone(), material, puppet, size)
         });
-        let (Ok(at), Ok((mut transform, handle))) = (puppets.get(puppet), auras.get_mut(aura))
-        else {
+        let (Ok(at), Ok(handle)) = (puppets.get(puppet), auras.get(aura)) else {
             continue;
         };
-        if let Some(mut material) = materials.get_mut(&handle.0) {
-            shape((at, (&mut *transform, &mut *material)), (heat, size), gas);
+        if let Some(material) = materials.get_mut(&handle.0) {
+            shape((at, material), (heat, size), gas);
         }
     }
     retire(&mut commands, made, lit);

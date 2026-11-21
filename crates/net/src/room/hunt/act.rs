@@ -32,7 +32,7 @@ impl Room {
             Act::Pull(key) => self.pulled(conn, me, key, out),
             Act::Held(item) => self.held(conn, me, item, out),
             Act::Blow(blow) => self.blow(me, blow, out),
-            Act::Wound { animal, wound } => self.wounded(conn, (animal, wound), out),
+            Act::Wound { animal, wound } => self.wounded((conn, clock), (animal, wound), out),
             Act::Plug { animal, part } => self.plugged(conn, (animal, part), out),
             Act::Impact(impact) => self.impact(conn, impact, out),
             Act::Attack(attack) => self.attack(conn, attack, out),

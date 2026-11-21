@@ -28,7 +28,6 @@ pub use wield::{Held, Hold, Worn};
 /// Registers the crafting area: the pack and its save, the ground, the held tool and its wear,
 /// harvesting and the screens.
 pub(super) fn plugin(app: &mut App) {
-    let changed = resource_changed::<Pack>.or_else(resource_changed::<crate::condition::Condition>);
     crate::player::interacting(app);
     app.init_resource::<Pack>()
         .init_resource::<Burden>()
@@ -42,19 +41,27 @@ pub(super) fn plugin(app: &mut App) {
         .add_message::<pack::Knocked>()
         .add_message::<crate::audio::Impact>()
         .add_message::<crate::effects::Fling>()
-        .add_systems(
-            Update,
-            (
-                pack::load,
-                pack::kit.run_if(crate::screens::in_control.and_then(pack::unkitted)),
-                pack::gather.run_if(crate::screens::in_control.and_then(crate::space::on_foot)),
-                pack::split.run_if(on_message::<pack::Knocked>),
-                pack::fade.run_if(pack::fading),
-                harvest::reap.run_if(on_message::<harvest::Harvest>),
-                wield::wear.run_if(on_message::<Worn>),
-                (pack::store, pack::weigh, wield::hold).run_if(changed),
-            )
-                .chain(),
-        );
-    app.add_plugins((fall::plugin, ground::plugin, mend::plugin, ui::plugin));
+        .add_plugins((fall::plugin, ground::plugin, mend::plugin, ui::plugin));
+    systems(app);
+}
+
+/// Registers the crafting update systems.
+fn systems(app: &mut App) {
+    let changed = resource_changed::<Pack>
+        .or_else(resource_changed::<crate::condition::Condition>)
+        .or_else(resource_exists_and_changed::<crate::world::Terrain>);
+    app.add_systems(
+        Update,
+        (
+            pack::load,
+            pack::kit.run_if(crate::screens::in_control.and_then(pack::unkitted)),
+            pack::gather.run_if(crate::screens::in_control.and_then(crate::space::on_foot)),
+            pack::split.run_if(on_message::<pack::Knocked>),
+            pack::fade.run_if(pack::fading),
+            harvest::reap.run_if(on_message::<harvest::Harvest>),
+            wield::wear.run_if(on_message::<Worn>),
+            (pack::store, pack::weigh, wield::hold).run_if(changed),
+        )
+            .chain(),
+    );
 }

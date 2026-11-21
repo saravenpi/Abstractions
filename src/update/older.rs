@@ -2,7 +2,8 @@
 //!
 //! The game downloads the build of the release for this platform into a folder of the game's
 //! data directory, checks its SHA-256 against the release's checksum list, and starts it with
-//! `--world <id>`. A build already there and still matching its checksum is not downloaded again.
+//! `--world <id>`. Releases that do not parse `--world` (such as `v0.10.1`) open to their world
+//! list instead. A build already there and still matching its checksum is not downloaded again.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -20,7 +21,7 @@ use super::run::background;
 use super::signals::Signals;
 use super::updates::{Event, Updates};
 
-/// The release that opens worlds made by 0.10.
+/// The release that opens worlds made by 0.10. It ignores `--world` and opens to its world list.
 pub const OLDER_TAG: &str = "v0.10.1";
 
 /// Where GitHub describes one release of the game, by tag.
@@ -81,9 +82,10 @@ fn fetch(
     moved
 }
 
-/// Opens the world with id `world` in the build of the release tagged `tag`, kept in `data`.
-/// Fails without starting anything when the release has no build for this computer, a download
-/// is cut or damaged, or the player cancels.
+/// Opens the world with id `world` in the build of the release tagged `tag`, kept in `data`,
+/// passing `--world <world>` (releases such as `v0.10.1` open to their world list). Fails without
+/// starting anything when the release has no build for this computer, a download is cut or
+/// damaged, or the player cancels.
 pub fn open(
     host: &dyn Host,
     place: &Place,

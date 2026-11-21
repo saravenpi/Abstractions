@@ -91,11 +91,11 @@ fn a_pick_takes_at_most_the_room_and_nothing_without_it() {
 #[test]
 fn a_small_rock_goes_whole_and_is_gone() {
     let (mut pack, mut taken) = (Pack::default(), Taken::default());
-    let small = rock(4, 0.1);
+    let small = rock(4, 0.08);
     let hit = take(Some(small), 25.0, (&mut pack, &mut taken));
     let (id, kilograms) = hit.expect("a piece");
     let density = pack.stacks[0].material.density;
-    let volume = 2.0 / 3.0 * std::f32::consts::PI * 0.07 * 0.07 * 0.09;
+    let volume = 2.0 / 3.0 * std::f32::consts::PI * 0.056 * 0.056 * 0.072;
     assert!((kilograms - volume * density).abs() < 1.0e-3);
     assert!(kilograms < HANDFUL);
     assert_eq!(taken.left(id), 0.0);

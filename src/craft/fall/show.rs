@@ -21,18 +21,21 @@ const SIZE: Vec3 = Vec3::new(0.5, 0.3, 0.4);
 #[derive(Component)]
 pub struct Waiting;
 
+/// Returns true when the cache in `left` lies on the body `anchor` is on.
+fn on_body(left: &Left, anchor: Option<&Anchor>) -> bool {
+    left.0
+        .as_ref()
+        .zip(anchor)
+        .is_some_and(|(cache, anchor)| anchor.frame == Frame::Surface(cache.body))
+}
+
 /// Run condition: a cache lies on the planet the anchor is on and is not drawn yet.
 pub fn wanted(
     left: Res<Left>,
     anchor: Option<Res<Anchor>>,
     waiting: Query<(), With<Waiting>>,
 ) -> bool {
-    let here = left
-        .0
-        .as_ref()
-        .zip(anchor)
-        .is_some_and(|(cache, anchor)| anchor.frame == Frame::Surface(cache.body));
-    here && waiting.is_empty()
+    on_body(&left, anchor.as_deref()) && waiting.is_empty()
 }
 
 /// Draws the cache as a crate lying where the robot fell.
@@ -51,14 +54,22 @@ pub fn show(mut commands: Commands, (left, anchor, scars): (Res<Left>, Res<Ancho
     ));
 }
 
-/// Takes the cache back into the pack when the robot stands next to it.
+/// Takes the cache back into the pack when the robot stands next to it, or hides the drawn crate
+/// when the robot has left the planet it lies on.
 pub fn recover(
     mut commands: Commands,
-    (mut left, mut pack): (ResMut<Left>, ResMut<Pack>),
+    (mut left, mut pack, anchor): (ResMut<Left>, ResMut<Pack>, Option<Res<Anchor>>),
     player: Query<&Transform, With<Player>>,
     waiting: Query<(Entity, &Transform), With<Waiting>>,
 ) {
-    let (Ok(body), Ok((entity, crate_at))) = (player.single(), waiting.single()) else {
+    let Ok((entity, crate_at)) = waiting.single() else {
+        return;
+    };
+    if !on_body(&left, anchor.as_deref()) {
+        commands.entity(entity).despawn();
+        return;
+    }
+    let Ok(body) = player.single() else {
         return;
     };
     if body.translation.distance(crate_at.translation) > PICK {

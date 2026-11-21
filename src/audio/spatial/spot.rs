@@ -206,7 +206,12 @@ pub fn spot(ear: &Listener, from: Origin, between: Between) -> Spot {
     };
     let to = at - ear.at;
     let metres = to.length();
-    let way = Way::of(&ear.air, (ear.wet, between.wet));
+    let air = if ear.cabin && metres <= HULL.0 {
+        Air::home()
+    } else {
+        ear.air
+    };
+    let way = Way::of(&air, (ear.wet, between.wet));
     let toward = ear.turn.inverse() * to.normalize_or_zero();
     let side = toward.x * way.width;
     let (lose, dull) = walls(between, ear.cabin, metres);

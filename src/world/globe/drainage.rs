@@ -2,8 +2,9 @@
 //! over the cube sphere, about 40 km wide on an Earth.
 //!
 //! It is a pure function of the planet, built once per planet and shared by every copy of its globe and
-//! by every globe of the same planet made later, see [`shared`]. A priority
-//! flood from the sea gives every land cell the neighbour its water leaves by, so every path ends in the sea or in a closed basin, and the area draining through a cell tells the trunks of the rivers.
+//! by every globe of the same planet made later, see [`shared`]. A priority flood from the sea gives every
+//! land cell the neighbour its water leaves by, so every path ends in the sea or in a closed basin, and the
+//! area draining through a cell tells the trunks of the rivers.
 //! The trunks guide the local flows of the atlas, and the shores of the land near mild latitudes are where a
 //! new game starts.
 

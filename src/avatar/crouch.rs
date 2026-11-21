@@ -1,5 +1,6 @@
-//! The crouch layer: knees and hips bent, the torso leaned forward, blended by how far down the
-//! body is. Walking crouched takes shorter steps.
+//! The crouch layer: hips down and back over the heels, knees bent, the torso leaned forward a
+//! little for balance and the head held level against that lean, blended by how far down the body
+//! is. Walking crouched takes shorter steps and keeps the trunk still, so the head stays steady.
 
 use super::AvatarPose;
 use super::air::mix;
@@ -7,37 +8,45 @@ use super::clock::Clock;
 use super::gait::{Foot, bob, foot};
 use super::ground::{Stance, planted};
 use super::pose::{Core, Limb, Pose};
-use super::tune::{HUNCH, SHORT_STEP, SINK, SQUAT};
+use super::tune::{HEELS, HUNCH, SHORT_STEP, SINK, SQUAT};
 
-/// Returns `foot` with its reach and its lift cut to the short steps of a body `amount` down.
-fn shortened(foot: Foot, amount: f32) -> Foot {
-    let keep = 1.0 - (1.0 - SHORT_STEP) * amount;
+/// Returns `foot` with its reach and its lift cut to the short steps of a fully crouched body,
+/// and set [`HEELS`] behind the hips.
+fn shortened(foot: Foot) -> Foot {
     Foot {
-        ahead: foot.ahead * keep,
-        lift: foot.lift * keep,
+        ahead: foot.ahead * SHORT_STEP - HEELS,
+        lift: foot.lift * SHORT_STEP,
         ..foot
     }
 }
 
 /// Returns the pose of a body fully crouched, its feet on the cycle of `clock` at the speed of
 /// `input` when it `walks`, else side by side.
+///
+/// The neck nods the head up by the whole lean of the trunk, so the head looks level, and the
+/// view turns it from there as it does standing.
 fn deep(input: &AvatarPose, clock: &Clock, walks: bool) -> Pose {
     let speed = input.speed;
+    let still = Foot {
+        ahead: -HEELS,
+        ..Foot::default()
+    };
     let mut stance = Stance {
         lift: -SINK.0 - SQUAT,
         lean: HUNCH.0,
+        feet: [still, still],
         ..Stance::default()
     };
     if walks {
-        stance.lift = -SINK.1 + 0.5 * bob(clock.phase, speed) - SQUAT;
+        stance.lift += 0.5 * bob(clock.phase, speed);
         stance.feet = [
-            shortened(foot(clock.phase, speed), 1.0),
-            shortened(foot(clock.phase + 0.5, speed), 1.0),
+            shortened(foot(clock.phase, speed)),
+            shortened(foot(clock.phase + 0.5, speed)),
         ];
     }
     planted(&stance)
         .with(Core::Spine, HUNCH.1)
-        .with(Core::HeadPitch, -0.5 * (HUNCH.0 + HUNCH.1))
+        .with(Core::HeadPitch, HUNCH.0 + HUNCH.1)
         .both(Limb::Shoulder, 0.1)
         .both(Limb::Elbow, 0.5)
 }

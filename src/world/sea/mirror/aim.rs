@@ -47,6 +47,8 @@ pub struct Cameras<'w, 's> {
     game: Query<'w, 's, Eye, (With<GameCamera>, Without<MirrorCamera>)>,
     /// The mirror camera, written.
     mirror: Query<'w, 's, Mirror, (With<MirrorCamera>, Without<GameCamera>)>,
+    /// The images of the mirror camera.
+    images: Query<'w, 's, &'static MirrorCamera>,
 }
 
 /// Returns whether a camera with the lens `lens` posed by `pose` sees water under `up`.
@@ -129,6 +131,10 @@ pub fn aim(
         (sea, water, cameras.game.iter().next())
     else {
         cameras.mirror.iter_mut().for_each(place_off);
+        let image = cameras.images.iter().next().map(|m| m.shown(false).clone());
+        if let Some((handle, ..)) = sea {
+            tell(&mut materials, &handle.0, Vec4::ZERO, image);
+        }
         return;
     };
     let actors = actors.iter().map(GlobalTransform::translation);
@@ -138,10 +144,28 @@ pub fn aim(
         place(mirror, eye, &plane, pass);
     }
     let mirror = Vec4::new(f32::from(u8::from(pass)), FADE, REACH, WOBBLE);
-    if water.mirror != mirror
-        && let Some(mut material) = materials.get_mut(&handle.0)
-    {
+    let image = cameras.images.iter().next().map(|m| m.shown(pass).clone());
+    tell(&mut materials, &handle.0, mirror, image);
+}
+
+/// Hands the water material `handle` the mirror values `mirror` and the image `image` it reads,
+/// keeping its image when none is given, and touches the material only when one of them changed.
+fn tell(
+    materials: &mut Assets<WaterMaterial>,
+    handle: &Handle<WaterMaterial>,
+    mirror: Vec4,
+    image: Option<Handle<Image>>,
+) {
+    let Some(material) = materials.get(handle) else {
+        return;
+    };
+    let image = image.unwrap_or_else(|| material.mirror.clone());
+    if material.water.mirror == mirror && material.mirror == image {
+        return;
+    }
+    if let Some(mut material) = materials.get_mut(handle) {
         material.water.mirror = mirror;
+        material.mirror = image;
     }
 }
 

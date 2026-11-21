@@ -27,9 +27,10 @@ pub struct WaterMaterial {
     /// The light of the planet under the camera, so that sea seen from far is lit as its place is.
     #[uniform(3)]
     pub place: PlaceUniform,
-    /// The actors the mirror camera drew under the water, lined up with the game view.
+    /// The actors the mirror camera drew under the water, lined up with the game view, or one
+    /// see-through pixel while it does not draw. The shader reads it texel by texel, with no
+    /// sampler: Metal allows 16 samplers in a fragment shader and the view takes most of them.
     #[texture(4)]
-    #[sampler(5)]
     pub mirror: Handle<Image>,
 }
 

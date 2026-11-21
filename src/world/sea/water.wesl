@@ -46,7 +46,6 @@ struct SeaVertex {
 @group(constants::MATERIAL_BIND_GROUP) @binding(2) var floor_sampler: sampler;
 @group(constants::MATERIAL_BIND_GROUP) @binding(3) var<uniform> place: Place;
 @group(constants::MATERIAL_BIND_GROUP) @binding(4) var mirror_map: texture_2d<f32>;
-@group(constants::MATERIAL_BIND_GROUP) @binding(5) var mirror_sampler: sampler;
 
 const GRAVITY: f32 = 9.81;
 const WAKE_CELL: f32 = 2.0;
@@ -91,6 +90,7 @@ const MAP_HIGH: f32 = 120.0;
 const COARSE_ROUGHNESS: f32 = 0.95;
 const COARSE_REFLECTANCE: f32 = 0.05;
 const WATER_F0: f32 = 0.02;
+const MIRROR_MAX: f32 = 64.0;
 const DAY_EDGE: vec2<f32> = vec2<f32>(-0.1, 0.3);
 const SUN_UP_EDGE: vec2<f32> = vec2<f32>(-0.05, 0.12);
 
@@ -215,9 +215,12 @@ fn mirrored(world: vec3<f32>, n: vec3<f32>, up: vec3<f32>, dist: f32) -> vec4<f3
     let clip = position_world_to_clip(world + tilt * water.mirror.w);
     let ndc = clip.xy / clip.w;
     let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
-    let seen = textureSampleLevel(mirror_map, mirror_sampler, uv, 0.0);
+    let size = vec2<i32>(textureDimensions(mirror_map));
+    let texel = clamp(vec2<i32>(uv * vec2<f32>(size)), vec2<i32>(0), size - vec2<i32>(1));
+    let seen = textureLoad(mirror_map, texel, 0);
     let fade = 1.0 - smoothstep(water.mirror.y, water.mirror.z, dist);
-    return vec4<f32>(seen.rgb, saturate(seen.a) * fade * water.mirror.x);
+    let bright = clamp(seen.rgb, vec3<f32>(0.0), vec3<f32>(MIRROR_MAX));
+    return vec4<f32>(bright, saturate(seen.a) * fade * saturate(water.mirror.x));
 }
 
 fn glitter(r: vec3<f32>, light: vec3<f32>, cell: vec2<f32>, t: f32) -> f32 {

@@ -185,3 +185,4 @@ The owner told friends the new version is out tomorrow morning and that they wil
 ## 8. Asked for a later version (owner, 2026-11-21)
 
 - A seat for the companion in the ship. The owner: "like R2-D2, the tiny companion could have its own slot in the ship so that it would not just be hanging and floating in the ship; redesign the ship for the companion to have its own place to be in; not in this update, add it to the plan for the next versions". Written in `ROADMAP.md` under 0.12. Not part of 0.11.
+- Keyboard layouts (owner, 2026-11-21): keys bound by physical position, labels shown as the player's layout prints them, nice defaults on any layout. Moved by the owner from 0.11.0 to the next version (0.11.1) to release sooner. Work is on branch `keys` (worktree `../wt-keys`), not merged.

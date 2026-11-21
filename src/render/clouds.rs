@@ -6,6 +6,7 @@ mod map;
 mod maps;
 mod material;
 mod mesh;
+mod near;
 mod shell;
 #[cfg(test)]
 mod tests;
@@ -225,6 +226,7 @@ pub(super) fn plugin(app: &mut App) {
     if app.world().contains_resource::<Assets<Shader>>() {
         load_shader_library!(app, "cloud_field.wesl");
     }
+    near::plugin(app);
     app.add_plugins(MaterialPlugin::<CloudMaterial>::default())
         .init_resource::<CloudCrossing>()
         .init_resource::<CloudMaps>()

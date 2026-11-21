@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use super::context::{Context, Element, Where};
 use super::flight::{Flight, Gauge, reading, symbol};
+use crate::computer::{Destination, RouteStatus, status_line};
 use crate::gear::Gear;
 use crate::menus::key_name;
 use crate::player::Player;
@@ -118,6 +119,8 @@ pub(super) struct Source<'w, 's> {
     ships: Query<'w, 's, &'static Ship>,
     glider: Glider<'w, 's>,
     settings: Option<Res<'w, Persistent<Settings>>>,
+    destination: Option<Res<'w, Destination>>,
+    route: Option<Res<'w, RouteStatus>>,
 }
 
 /// What the instruments read while the player glides on foot.
@@ -155,7 +158,13 @@ impl Source<'_, '_> {
             }
             _ => false,
         };
+        let name = self.destination.as_deref().and_then(|set| set.0);
+        let name = name.zip(self.universe.as_deref());
+        let course = name
+            .zip(self.route.as_deref())
+            .map(|((target, universe), route)| status_line(&target.name(universe), *route));
         Flight {
+            course: course.filter(|line| !line.is_empty()),
             telemetry,
             giant,
             glide: self.glider.reading(),

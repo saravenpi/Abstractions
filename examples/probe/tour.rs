@@ -37,6 +37,8 @@ pub struct Notes {
     pub animal: Option<(Entity, DVec3)>,
     /// The frame at which a stage took its last shot from a held camera: it ends on the next.
     pub shot_at: Option<u32>,
+    /// The universe time a night stage left, which it goes back to when it ends.
+    pub day: Option<f64>,
     /// The frame of a postcard before the one at which the robot was on foot or seated as it wants.
     pub ready: Option<u32>,
     /// Position and orientation of the ship parked on the landing pad.

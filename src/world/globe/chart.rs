@@ -6,8 +6,8 @@ use super::cube::Face;
 use super::tangent::Tangent;
 
 /// Side in chart units of the blocks the origin of a face chart snaps to. It is a whole number of chunks
-/// (64), structure cells (160), village cells (480), turf periods (256), blade tiles (8) and mesh grid steps
-/// (2), so every grid of the chart keeps its lines when the origin moves by whole blocks.
+/// (64), turf periods (256), blade tiles (8) and mesh grid steps (2), so every grid of the chart keeps its
+/// lines when the origin moves by whole blocks.
 pub const BLOCK: f64 = 3840.0;
 
 /// Smallest cosine between a direction and the middle of a face at which a face chart is rooted near it.

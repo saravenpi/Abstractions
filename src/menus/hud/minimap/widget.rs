@@ -1,8 +1,7 @@
 //! The minimap as nodes: a square in the top right corner over the blurred game, the image of
 //! the ground, the sheet of the system chart, and the marks over them.
 //!
-//! Every mark is a white glyph with a shadow and no box behind it. The ground is painted
-//! without structures.
+//! Every mark is a white glyph with a shadow and no box behind it.
 
 use bevy::prelude::*;
 use bevy::ui::widget::NodeImageMode;

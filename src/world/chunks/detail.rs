@@ -1,6 +1,5 @@
 //! Per-chunk level of detail: terrain mesh swaps and ground cover on demand.
 
-use avian3d::prelude::*;
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
 
@@ -27,24 +26,17 @@ pub struct Detail {
     pub(super) lod: Lod,
     /// The grass and flowers of the chunk.
     pub turf: Turf,
-    structure: Option<(Entity, Collider)>,
     remesh: Option<(Lod, Task<Mesh>)>,
 }
 
 impl Detail {
-    /// Starts at level `lod` with its ground cover and the structure child and its collider.
-    pub fn new(lod: Lod, turf: Turf, structure: Option<(Entity, Collider)>) -> Self {
+    /// Starts at level `lod` with its ground cover.
+    pub fn new(lod: Lod, turf: Turf) -> Self {
         Self {
             lod,
             turf,
-            structure,
             remesh: None,
         }
-    }
-
-    /// Returns the structure child and its collider, when the chunk has solid structures.
-    pub fn structure(&self) -> Option<&(Entity, Collider)> {
-        self.structure.as_ref()
     }
 
     /// Starts the task that does `work` for the chunk at `coord` of the chart `terrain`.

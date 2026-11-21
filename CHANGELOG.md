@@ -5,6 +5,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Removed
+
+- No village, camp, cabin, lighthouse, dock, stilt hut, shrine, ruin, tower, pyramid, obelisk or stone circle stands on a planet any more, with their rooms, lamps, torches, fires and smoke. Peoples and what they build come back with the intelligent species of a later version. The home base and its landing pad stay. Worlds saved before open as they were, without them.
+- With the buildings go what came with them: the companion's curiosity about them, the roofs that kept rain and snow off, and the footstep on planks.
+
 ### Changed
 
 - The ship flies twice as fast low over a planet. Its nose is clean, a quarter of the drag it had, so its engines hold 275 m/s in air at sea level instead of 137, and more in thinner air higher up. With the stabiliser the full lever asks for 219 m/s at 286 m over the ground, where it asked for 112, and the speed still drops near the ground: take-off, hover and landing are as before. In thick air the ship flies no faster than its engines can push against the drag.

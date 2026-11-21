@@ -13,9 +13,6 @@ use crate::player::{BODY_LENGTH, BODY_RADIUS};
 /// Radius of the dropped ball, the radius of the player.
 pub(crate) const BALL: f32 = BODY_RADIUS;
 
-/// Distance from the centre of the capsule of the player to its top and to its bottom.
-pub(crate) const HALF_BODY: f32 = BODY_LENGTH * 0.5 + BODY_RADIUS;
-
 /// Returns a headless physics app at 30 frames a second that holds `solid` as a static body, with the
 /// collider trees already built.
 pub(crate) fn stage(solid: Collider) -> App {

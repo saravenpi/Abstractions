@@ -14,8 +14,6 @@ pub enum StepSurface {
     Grass,
     /// Bare rock.
     Rock,
-    /// Planks: floors, piers and decks.
-    Wood,
     /// Snow.
     Snow,
 }
@@ -80,11 +78,10 @@ pub enum AudioCue {
 }
 
 /// Every surface, in code order.
-const SURFACES: [StepSurface; 5] = [
+const SURFACES: [StepSurface; 4] = [
     StepSurface::Sand,
     StepSurface::Grass,
     StepSurface::Rock,
-    StepSurface::Wood,
     StepSurface::Snow,
 ];
 

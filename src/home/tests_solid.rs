@@ -6,9 +6,9 @@ use bevy::prelude::*;
 
 use super::plan::draw;
 use super::spawn::solid;
+use super::stage::{BALL, dropped, pushed, stage};
 use super::tests::base;
 use super::{container, station};
-use crate::world::structures::touch::{BALL, dropped, pushed, stage};
 
 /// Height in metres of the top of the canopy of the station above its origin.
 const CANOPY: f32 = 2.63;

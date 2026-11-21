@@ -2,9 +2,9 @@
 //!
 //! Every step is a soft servo tick, then a damped metallic tap of two partials that are not in
 //! tune, like a struck bar, then the answer of the ground. The ground colours the step: sand
-//! and grass swallow the upper partial, rock and wood ring it, snow crunches.
+//! and grass swallow the upper partial, rock rings it, snow crunches.
 
-use super::sounds::{deep, noise, tone};
+use super::sounds::{noise, tone};
 use super::voice::{Blip, Wave};
 use crate::audio::cue::StepSurface;
 
@@ -55,17 +55,6 @@ const STEP_ROCK: [Blip; 4] = [
     ground(3800.0, 0.012, 0.001, 0.045),
 ];
 
-/// Wood: a bright tap over the hollow knock of the planks.
-const STEP_WOOD: [Blip; 4] = [
-    SERVO,
-    metal(560.0, 0.07, 0.06),
-    metal(560.0 * BAR, 0.045, 0.03),
-    Blip {
-        delay: REACH,
-        ..deep(tone(170.0, 120.0, 0.06, 0.0, 0.08))
-    },
-];
-
 /// Snow: a muted tap inside a two-grain crunch.
 const STEP_SNOW: [Blip; 4] = [
     SERVO,
@@ -80,7 +69,6 @@ pub(super) fn step(surface: StepSurface) -> &'static [Blip] {
         StepSurface::Sand => &STEP_SAND,
         StepSurface::Grass => &STEP_GRASS,
         StepSurface::Rock => &STEP_ROCK,
-        StepSurface::Wood => &STEP_WOOD,
         StepSurface::Snow => &STEP_SNOW,
     }
 }

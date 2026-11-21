@@ -25,7 +25,6 @@ mod scatter;
 mod sea;
 mod shapes;
 mod solids;
-pub mod structures;
 mod surface;
 mod terrain;
 #[cfg(test)]
@@ -175,7 +174,7 @@ fn streaming(
 
 /// Registers the world systems.
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins((sea::plugin, structures::plugin, calendar::plugin))
+    app.add_plugins((sea::plugin, calendar::plugin))
         .init_resource::<chunks::Chunks>()
         .init_resource::<chunks::Budget>()
         .init_resource::<chunks::Calm>()

@@ -14,10 +14,6 @@ use crate::player::{EYE_OFFSET, Player, above_sea};
 use crate::render::{DayClock, GameCamera, daylight};
 use crate::space::{Anchor, Frame, Location, Travel, up};
 use crate::world::Terrain;
-use crate::world::structures::Surroundings;
-
-/// Distance in meters within which the nearest structure is looked for.
-const STRUCTURE_REACH: f32 = 60.0;
 
 /// What happens around the player, as far as the companion cares.
 ///
@@ -35,8 +31,6 @@ pub struct CompanionSense {
     pub climb: f32,
     /// True while the seated player crosses the cloud layer. Filled from the sky's cloud crossing.
     pub in_clouds: bool,
-    /// Render position of the nearest structure or village, refreshed every frame.
-    pub structure: Option<Vec3>,
     /// Count of discoveries worth a delighted face: add one for each. Needs a producer.
     pub delight: u32,
     /// True while the flight gear carries the player through the air. Filled from the gear.
@@ -61,8 +55,6 @@ pub struct Around<'w, 's> {
     /// The player body. On foot the eyes are above its centre; seated it sits at the eye point
     /// of the pilot, turned with the ship.
     pub body: Single<'w, 's, &'static Transform, (With<Player>, Without<Companion>)>,
-    /// The structures the world has surveyed around the player.
-    sites: Option<Res<'w, Surroundings>>,
 }
 
 impl Around<'_, '_> {
@@ -111,17 +103,6 @@ impl Around<'_, '_> {
     }
 }
 
-/// Returns the render position of the structure or village nearest to the eyes, for
-/// [`CompanionSense::structure`], from what the world has surveyed around the player.
-fn nearest_structure(around: &Around) -> Option<Vec3> {
-    let Frame::Surface(_) = around.anchor.frame else {
-        return None;
-    };
-    let eye = around.anchor.to_frame(around.stance().eye);
-    let near = around.sites.as_deref()?.nearest(eye, STRUCTURE_REACH)?;
-    Some(around.anchor.to_render(near.pos))
-}
-
 /// Fills the sensed values: night from the day clock, depth from the eyes, the seat, the
 /// climb and the clouds from the ship, and the flight from the gear.
 pub fn fill(
@@ -142,7 +123,6 @@ pub fn fill(
         depth,
         climb,
         in_clouds,
-        structure: nearest_structure(&around),
         delight: sense.delight,
         flying: flying && !flight.seated,
         diving: diving && !flight.seated,

@@ -46,8 +46,6 @@ pub enum Focus {
     Ship,
     /// The door of the home base.
     Home,
-    /// A structure nearby.
-    Structure,
     /// A look around at nothing in particular.
     Wander,
     /// The camera, for a moment, when the player has been watching it.
@@ -56,12 +54,11 @@ pub enum Focus {
 
 impl Focus {
     /// What it chooses among when its eyes move on, in the order of `GAZE_WEIGHT`.
-    pub const CHOICES: [Focus; 6] = [
+    pub const CHOICES: [Focus; 5] = [
         Focus::Player,
         Focus::Travel,
         Focus::Ship,
         Focus::Home,
-        Focus::Structure,
         Focus::Wander,
     ];
 
@@ -70,7 +67,6 @@ impl Focus {
         match self {
             Focus::Ship => Some(0),
             Focus::Home => Some(1),
-            Focus::Structure => Some(2),
             _ => None,
         }
     }

@@ -16,9 +16,9 @@ use super::puppet::{Parts, Tracked};
 use super::screen::{Display, picture};
 use super::shapes::{Shapes, unlit};
 use super::shine::Lamp;
-use super::tune::{LIGHT_RANGE, SIDE};
+use super::tune::{LAMP_RADIUS, LIGHT_POWER, SIDE};
 use super::{ribbon, tail};
-use crate::render::{GameCamera, Warm};
+use crate::render::{GameCamera, Warm, reach};
 use crate::screens::Screen;
 use crate::space::Rebased;
 
@@ -74,8 +74,8 @@ fn glows(head: &mut ChildSpawnerCommands, ball: Mesh3d, display: &Display) {
     head.spawn((ball, glow, tip, NotShadowCaster));
     let light = PointLight {
         intensity: 0.0,
-        range: LIGHT_RANGE,
-        radius: 0.06,
+        range: reach(LIGHT_POWER),
+        radius: LAMP_RADIUS,
         shadow_maps_enabled: false,
         ..default()
     };

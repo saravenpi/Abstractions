@@ -9,7 +9,7 @@ use super::motion::lean;
 use super::pose::Pose;
 use super::sense::CompanionSense;
 use super::shine::{self, lumens};
-use super::tune::{HAND_LAG, LIGHT_DAY_SHARE, LIGHT_POWER, TILT};
+use super::tune::{HAND_LAG, LIGHT_POWER, TILT};
 use crate::computer::Atlas;
 use crate::universe::BodyId;
 
@@ -36,14 +36,12 @@ fn lean_and_hands_stay_within_limits() {
     assert!((left.translation.x + rest.translation.x).abs() < 1e-5);
 }
 
-/// The light is weak and weaker by day.
+/// The light is weak: in the dark it gives its set power, far less than a torch.
 #[test]
-fn light_is_weak_and_follows_the_night() {
-    assert!((lumens(1.0) - LIGHT_POWER).abs() < 1e-3);
-    assert!((lumens(0.0) - LIGHT_POWER * LIGHT_DAY_SHARE).abs() < 1e-3);
-    assert!(lumens(0.5) > lumens(0.0) && lumens(0.5) < lumens(1.0));
+fn light_is_weak() {
+    assert!((lumens(0.0, 1.0) - LIGHT_POWER).abs() < 1e-3);
     assert!(
-        lumens(1.0) < 26_000.0 / 4.0,
+        lumens(0.0, 1.0) < 26_000.0 / 4.0,
         "weaker than a quarter of a torch"
     );
 }
@@ -55,7 +53,7 @@ fn night_light_dims_only_while_dozing() {
     let calm = Expression::Neutral.glow();
     assert_eq!(shine::glow(Expression::Sleepy, false), calm);
     assert!(shine::glow(Expression::Sleepy, true) < 0.7 * calm);
-    assert_eq!(lumens(1.0), LIGHT_POWER);
+    assert_eq!(lumens(310.0, 1.0), LIGHT_POWER);
     for expr in Expression::ALL {
         assert!(shine::glow(expr, false) >= shine::glow(expr, true));
         assert!(

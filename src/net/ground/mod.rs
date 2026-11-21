@@ -105,7 +105,8 @@ fn take_back(mut ground: ResMut<Ground>, mut pack: ResMut<Pack>) {
     ground.release(&mut pack);
 }
 
-/// Registers the ground of a session. Every system waits for a link, so single player runs none.
+/// Registers the ground of a session. Every system waits for a link, so single player runs none,
+/// and for the ground, which a world with no pack has not.
 pub(super) fn plugin(app: &mut App) {
     let linked = resource_exists::<Link>;
     app.add_systems(
@@ -119,6 +120,7 @@ pub(super) fn plugin(app: &mut App) {
             send.run_if(linked).run_if(asking),
             take_back.run_if(resource_removed::<Link>),
         )
-            .chain(),
+            .chain()
+            .run_if(resource_exists::<Ground>),
     );
 }

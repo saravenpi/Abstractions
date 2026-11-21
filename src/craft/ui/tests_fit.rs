@@ -7,7 +7,7 @@ use bevy::math::Vec2;
 
 use super::bench::INTENTS;
 use super::cards::WORDS;
-use super::glyph::LARGE;
+use super::glyph::{CARD, ROW};
 use super::intent;
 use super::keys::{MAKE_LEGEND, PACK_LEGEND};
 use super::slots::NAME;
@@ -74,7 +74,7 @@ fn workshop_needs() -> f32 {
         .map(|one| intent::line(one).len())
         .max()
         .unwrap_or(0);
-    let card = 2.0 * theme::S3 + LARGE.wide + theme::S3 + WORDS;
+    let card = 2.0 * theme::S3 + CARD + theme::S3 + WORDS;
     tiles
         .max(theme::INSET + wide(line, theme::FONT_SMALL))
         .max(card)
@@ -95,7 +95,8 @@ fn footer_needs() -> f32 {
 /// The pack, the gutter and the workshop fit across; so do the six hotbar slots and the footer.
 #[test]
 fn the_panes_fit_every_width() {
-    let slot = 2.0 * theme::INSET + wide(1 + NAME, theme::FONT_SMALL) + theme::S2;
+    let words = wide(1, theme::FONT_SMALL) + wide(NAME, theme::FONT_SMALL);
+    let slot = 2.0 * theme::INSET + words + 2.0 * theme::S2 + ROW;
     for window in layouts() {
         let inner = window.x - 2.0 * theme::EDGE;
         let workshop = inner - PACK - theme::GUTTER;

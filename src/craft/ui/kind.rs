@@ -1,7 +1,7 @@
 //! The kinds the pack groups its rows by: made tools first, then each family of material, each with
-//! its name and its icon.
+//! its name and its icon, and the icon of each material.
 
-use crate::craft::matter::{Class, Stuff};
+use crate::craft::matter::{Class, Mineral, Stuff};
 use crate::ui::{Icon, sign};
 
 /// A group of the pack.
@@ -68,5 +68,22 @@ impl Kind {
             Kind::Hide => sign::HIDE,
             Kind::Wood => Icon::Tree,
         }
+    }
+}
+
+/// Returns the icon of a carried material: the stone it is, or the tissue, from the icon font.
+pub fn material_icon(stuff: &Stuff) -> Icon {
+    match stuff {
+        Stuff::Mineral(Mineral::Basalt) => sign::STONE,
+        Stuff::Mineral(Mineral::Flint | Mineral::Obsidian) => sign::SHARD,
+        Stuff::Mineral(Mineral::Ice) => sign::ICE,
+        Stuff::Tissue { class, .. } => match class {
+            Class::Glass => sign::SHARD,
+            Class::Bone | Class::Antler => Icon::Skeleton,
+            Class::Keratin | Class::Cuticle => Icon::Shield,
+            Class::Hide => sign::HIDE,
+            Class::Wood => Icon::Tree,
+            Class::Resin => sign::RESIN,
+        },
     }
 }

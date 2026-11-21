@@ -8,6 +8,7 @@
 mod blow;
 mod hit;
 mod inertia;
+mod look;
 mod part;
 mod recipe;
 mod solve;
@@ -33,6 +34,7 @@ mod tests_wear;
 pub use blow::blow;
 pub use hit::{Blow, Layer, Mode, Strike, reference, strike};
 pub use inertia::{Piece, balance, inertia, mass, moment};
+pub use look::{Figure, Look, Tint};
 pub use part::{Build, Form, Head, Shaft, Weight};
 pub use recipe::{Design, Recipe};
 pub use solve::{Proposal, Proposals, Stock, assess, solve};

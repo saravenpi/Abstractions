@@ -4,15 +4,14 @@
 //!
 //! ```text
 //! card      [ picture | words ............ | numbers ]   padding S3, blocks S3 apart
-//! row_tall  [ [i] name ......................... mass ]   ROW_TALL high, padding INSET
+//! row_tall  [ [i] name ......................... mass ]   ROW_TALL high, padding INSET, any mark
 //!           [     fact .................. value  bar  ]
 //! ```
 
 use bevy::prelude::*;
 
-use super::icon::{Icon, icon_slot};
 use super::item::frame;
-use super::style::{Selected, Tone};
+use super::style::Selected;
 use super::theme;
 
 /// Marks a card.
@@ -52,10 +51,11 @@ pub fn line() -> Node {
     }
 }
 
-/// A row of two lines, [`theme::ROW_TALL`] high: `symbol` on the icon line, then `top` over
-/// `under`, each built on a [`line`]. Tinted while `chosen`.
+/// A row of two lines, [`theme::ROW_TALL`] high: `mark` on the icon line, an [`super::icon_slot`] or any
+/// picture of the same [`theme::ICON`] size, then `top` over `under`, each built on a [`line`].
+/// Tinted while `chosen`.
 pub fn row_tall(
-    symbol: impl Into<Option<Icon>>,
+    mark: impl Bundle,
     chosen: bool,
     top: impl Bundle,
     under: impl Bundle,
@@ -81,9 +81,6 @@ pub fn row_tall(
         frame(),
         Selected(chosen),
         node,
-        children![
-            icon_slot(symbol.into(), Tone::Plain),
-            (words, children![top, under])
-        ],
+        children![mark, (words, children![top, under])],
     )
 }

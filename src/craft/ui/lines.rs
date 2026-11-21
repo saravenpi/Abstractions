@@ -3,9 +3,8 @@
 
 use std::cmp::Ordering;
 
-use super::intent;
-use super::kind::Kind;
-use crate::craft::build::{Form, Place};
+use super::kind::{Kind, material_icon};
+use crate::craft::build::{Look, Place};
 use crate::craft::matter::{Grade, Stuff, Treatment};
 use crate::craft::pack::{Pack, Stack, called};
 use crate::life::Life;
@@ -27,7 +26,7 @@ pub struct Line {
     pub what: What,
     /// The group it is shown in.
     pub kind: Kind,
-    /// The icon that tells it apart in its group: the intent of a tool, nothing for a material.
+    /// The icon of a material, from the icon font; a tool shows its picture instead.
     pub icon: Option<Icon>,
     /// Its name.
     pub name: String,
@@ -37,8 +36,8 @@ pub struct Line {
     pub mass: f32,
     /// How worn a tool is, 0 new to 1 broken; nothing for a material.
     pub wear: Option<f32>,
-    /// Shaft length, head size and form of a tool, in metres.
-    pub shape: Option<(f32, f32, Form)>,
+    /// The look the picture of a tool is drawn from; nothing for a material.
+    pub shape: Option<Look>,
 }
 
 /// Returns the name of a treatment as the pack shows it.
@@ -102,7 +101,7 @@ pub fn lines(pack: &Pack, place: &Place, life: Option<(&Life, u64)>) -> Vec<Line
     let tools = pack.items.iter().map(|item| Line {
         what: What::Item(item.id),
         kind: Kind::Tool,
-        icon: Some(intent::icon(item.intent())),
+        icon: None,
         name: item.name(),
         signature: item.signature(),
         mass: item.mass(),
@@ -112,7 +111,7 @@ pub fn lines(pack: &Pack, place: &Place, life: Option<(&Life, u64)>) -> Vec<Line
     let stacks = pack.stacks.iter().enumerate().map(|(at, stack)| Line {
         what: What::Stack(at),
         kind: Kind::of(&stack.stuff),
-        icon: None,
+        icon: Some(material_icon(&stack.stuff)),
         name: stack_name(stack, life),
         signature: stack_signature(&stack.stuff),
         mass: stack.mass,

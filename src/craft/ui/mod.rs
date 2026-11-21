@@ -7,6 +7,8 @@
 //!   pack pane lights, and its numbers as bars. Make takes the focused one.
 //! - The hotbar runs under both panes, so a made tool is seen going into its slot.
 //! - [`hotbar`] draws the six slots at the bottom of the game while the screen is closed.
+//! - Every tool has one icon, drawn from its parts and kept as an image, in all these places;
+//!   every material has the icon of what it is.
 //!
 //! Every action is a button with its key; the keys and the pointer run the same deeds.
 
@@ -25,6 +27,7 @@ mod make;
 mod offer;
 mod open;
 mod paint;
+mod raster;
 mod reason;
 mod rows;
 mod scene;
@@ -37,6 +40,8 @@ mod view;
 #[cfg(test)]
 mod tests_fit;
 #[cfg(test)]
+mod tests_icons;
+#[cfg(test)]
 mod tests_keys;
 #[cfg(test)]
 mod tests_lines;
@@ -44,8 +49,11 @@ mod tests_lines;
 mod tests_offer;
 #[cfg(test)]
 mod tests_parts;
+#[cfg(test)]
+mod tests_places;
 
 pub use bench::{Bench, Pane};
+pub use kind::material_icon;
 
 use bevy::prelude::*;
 
@@ -84,9 +92,13 @@ fn screen(app: &mut App) {
         );
 }
 
-/// Registers the pack screen and the hotbar.
+/// Registers the pack screen, the hotbar and the pictures of tools they show.
 pub(crate) fn plugin(app: &mut App) {
     app.init_state::<Workshop>().init_resource::<Bench>();
+    app.add_systems(
+        Update,
+        glyph::paint.run_if(any_with_component::<glyph::Picture>),
+    );
     screen(app);
     hotbar::plugin(app);
 }

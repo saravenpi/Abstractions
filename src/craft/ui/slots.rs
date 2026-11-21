@@ -1,17 +1,17 @@
 //! The hotbar on the open screen: the six slots under both panes, each with its number key, the
-//! name and silhouette of its tool and its wear, the held one lit. A click on a slot puts the
+//! icon of its tool, the word for it and its wear, the held one lit. A click on a slot puts the
 //! selected tool in it, or holds it.
 
 use bevy::prelude::*;
 
 use super::click::Press;
-use super::glyph::{SMALL, silhouette};
+use super::glyph::{ROW, badge};
 use super::scene::Slot;
 use crate::fauna::guide::show::clip;
 use crate::ui::{Selected, Tone, frame, key_cap, label, line, meter, theme};
 
-/// Characters of small text the name of a tool in a slot shows.
-pub const NAME: usize = 11;
+/// Characters of small text the word for a tool in a slot shows: "javelin" is the longest.
+pub const NAME: usize = 7;
 
 /// Width in pixels of the wear bar of a slot.
 pub const WEAR: f32 = 32.0;
@@ -31,7 +31,7 @@ fn node() -> Node {
     }
 }
 
-/// Returns the words of `one`: the name of its tool, or "Empty", over its silhouette and wear.
+/// Returns the words of `one`: the word for its tool, or "Empty", over its wear.
 fn words(one: &Slot) -> impl Bundle {
     let column = Node {
         flex_direction: FlexDirection::Column,
@@ -43,25 +43,26 @@ fn words(one: &Slot) -> impl Bundle {
         None => ("Empty".to_string(), Tone::Muted),
     };
     let drawn = [Visibility::Hidden, Visibility::Inherited][usize::from(one.name.is_some())];
-    let marks = (
-        line(),
-        drawn,
-        children![silhouette(one.shape, SMALL), meter(WEAR, 1.0 - one.worn)],
-    );
+    let wear = (line(), drawn, children![meter(WEAR, 1.0 - one.worn)]);
     (
         column,
-        children![label(name, theme::FONT_SMALL, tone), marks],
+        children![label(name, theme::FONT_SMALL, tone), wear],
     )
 }
 
-/// Returns the slot `one`, at `at`: its number key, then its words, lit when held.
+/// Returns the slot `one`, at `at`: its number key, the icon of its tool, then its words, lit when
+/// held.
 fn slot(at: usize, one: &Slot) -> impl Bundle {
     (
         Press::Slot(at),
         frame(),
         Selected(one.held),
         node(),
-        children![key_cap(format!("{}", at + 1)), words(one)],
+        children![
+            key_cap(format!("{}", at + 1)),
+            badge(one.shape, None, ROW),
+            words(one)
+        ],
     )
 }
 

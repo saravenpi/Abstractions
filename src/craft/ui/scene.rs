@@ -7,13 +7,13 @@ use super::lines::{Line, What, lines};
 use super::offer::{KINDS, offer, parts, title};
 use super::reason::{Reason, missing, reason};
 use super::sheet::{Gauge, gauges, sheet};
-use crate::craft::build::{Form, Place, Proposal, Stock};
+use crate::craft::build::{Look, Place, Proposal, Stock};
 use crate::craft::pack::{Burden, Pack, SLOTS, cost};
 use crate::life::Life;
 use crate::ui::units::fixed;
 
-/// The silhouette of a tool: shaft length, head size and form, in metres.
-pub type Shape = Option<(f32, f32, Form)>;
+/// The look the picture of a tool is drawn from.
+pub type Shape = Option<Look>;
 
 /// One row of the pack as the screen shows it.
 #[derive(Debug, Clone, PartialEq)]
@@ -48,7 +48,7 @@ pub struct Tool {
 /// One slot of the hotbar as the screen shows it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Slot {
-    /// The name of its tool, or nothing for an empty slot.
+    /// The word for its tool, such as "spear", or nothing for an empty slot.
     pub name: Option<String>,
     /// The silhouette of its tool.
     pub shape: Shape,
@@ -92,6 +92,18 @@ pub fn status(burden: &Burden) -> String {
     )
 }
 
+/// Returns the look of the tool `proposal` makes from `stock`: the same look the tool has once
+/// made, in the pack and on the hotbar.
+pub fn look(proposal: &Proposal, stock: &[Stock]) -> Look {
+    let stuff = |at: usize| {
+        stock
+            .get(usize::from(proposal.design.of[at]))
+            .map(|s| &s.stuff)
+    };
+    let intent = proposal.design.intent;
+    Look::of(&proposal.build, intent, stuff(1), stuff(0))
+}
+
 /// Returns the card of `proposal`, the one at `at`, focused or not.
 fn tool(proposal: &Proposal, at: usize, focused: bool, stock: &[Stock], place: &Place) -> Tool {
     let build = &proposal.build;
@@ -104,7 +116,7 @@ fn tool(proposal: &Proposal, at: usize, focused: bool, stock: &[Stock], place: &
             &sheet(build, proposal.design.intent, place),
             proposal.design.intent,
         ),
-        shape: Some((build.shaft.length, build.head.size(), build.head.form)),
+        shape: Some(look(proposal, stock)),
         focused,
     }
 }
@@ -158,13 +170,18 @@ fn rows(bench: &Bench, all: Vec<Line>, used: &[(usize, f32)]) -> Vec<Row> {
         .collect()
 }
 
+/// Returns the last word of the name of a tool: what it is, its picture showing what of.
+fn word(name: &str) -> String {
+    name.rsplit(' ').next().unwrap_or(name).to_string()
+}
+
 /// Returns the six slots of the hotbar of `pack`, wear read at `place`.
 fn slots(pack: &Pack, place: &Place) -> Vec<Slot> {
     (0..SLOTS)
         .map(|at| {
             let item = pack.bar.slots[at].and_then(|id| pack.item(id));
             Slot {
-                name: item.map(|i| i.name()),
+                name: item.map(|i| word(&i.name())),
                 shape: item.and_then(|i| i.shape()),
                 worn: item.map_or(0.0, |i| i.worn(place).0),
                 held: at == pack.bar.held,

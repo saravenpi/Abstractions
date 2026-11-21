@@ -1,13 +1,13 @@
 //! The tool cards of the workshop pane drawn: the three cards of the chosen intent, or the empty
 //! state that says what the pack lacks.
 //!
-//! A card shows the silhouette of the tool, its name and which of the three it is, the one reason
+//! A card shows the icon of the tool, its name and which of the three it is, the one reason
 //! that matters, and once focused what it takes from the pack and its four bars.
 
 use bevy::prelude::*;
 
 use super::click::Press;
-use super::glyph::{LARGE, silhouette};
+use super::glyph::{CARD, badge};
 use super::intent;
 use super::scene::Tool;
 use crate::craft::build::Intent;
@@ -96,7 +96,7 @@ fn tool_card(at: usize, tool: &Tool) -> impl Bundle {
     (
         Press::Card(at),
         card(tool.focused),
-        children![silhouette(tool.shape, LARGE), words(tool), bars(tool)],
+        children![badge(tool.shape, None, CARD), words(tool), bars(tool)],
     )
 }
 

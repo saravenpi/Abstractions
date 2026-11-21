@@ -7,6 +7,7 @@
 use bevy::prelude::*;
 
 use super::click::Press;
+use super::glyph::{ROW, badge};
 use super::kind::Kind;
 use super::reason::missing;
 use super::scene::Row;
@@ -53,7 +54,7 @@ fn row(at: usize, one: &Row) -> impl Bundle {
     (
         Press::Row(at),
         row_tall(
-            one.line.icon,
+            badge(one.line.shape, one.line.icon, ROW),
             one.lit,
             (line(), children![(name, grow())]),
             (line(), children![(under, grow()), bar]),

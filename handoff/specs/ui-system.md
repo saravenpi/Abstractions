@@ -189,6 +189,12 @@ Vocabulary used by the converted screens:
 | Horn and shell | `Shield` | `shield` |
 | Hide (borrowed) | `Animal` | `pets` |
 | Wood | `Tree` | `park` |
+| Flint, obsidian, glass (borrowed) | `Crystal` | `diamond` |
+| Ice (borrowed, wants `ac_unit`) | `Snow` | `weather_snowy` |
+| Resin (borrowed) | `Water` | `water_drop` |
+| A made tool, by intent when it has no parts | `Cut`, `Pierce`, `Crush`, `Throw` | see above |
+
+Made tools have no glyph: each has a picture drawn from its parts (`craft::ui::glyph`). The head's figure tells the kind (knife, blade, axe, spear, javelin, club, hammer), the shaft's length and each part's grey tell the rest: stone white, bone, horn and shell, then wood dimmest, no colour. The tool lies on the diagonal, head at the top right, shaft one twelfth of the picture wide, as the font icons draw their strokes, flat with no shadow and no outline. Each pixel is on or off, tested at its centre, and the picture is drawn at the physical pixel size its node shows at, its node sized to cover exactly those pixels, sampled to the nearest: crisp at every interface size. It is drawn once per look and size and kept as an image. Sizes: 24 in a pack row and a slot of the pack screen, 48 on a workshop card, 16 under the number of a slot of the game's hotbar. A tool with no parts shows the glyph of its intent.
 | Make a tool | `Plus` | `add` |
 | Swap a part | `Shuffle` | `shuffle` |
 | A strength, a flaw | `Check`, `Danger` | `check`, `warning` |

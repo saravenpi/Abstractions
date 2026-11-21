@@ -1,6 +1,8 @@
 //! The pack and the workshop on a staged pack, the rest of the HUD hidden under the screen: the
-//! empty pack, a pack of stones and a hide, each intent with its proposals, a card focused with its
-//! parts lit, and a tool made going into the hotbar: shots `f0` to `f7`.
+//! empty pack, a pack of stones and a hide with the icon of each material, each intent with its
+//! proposals and their tool icons, a card focused with its parts lit, a tool made going into the
+//! hotbar with the same icon on its card, its pack row and its slot, then the hotbar of the game
+//! with that icon once the screen is closed: shots `f0` to `f8`.
 
 use abstractions::craft::Pack;
 use abstractions::craft::matter::{Class, Grade, Mineral, Stuff, Treatments};
@@ -88,7 +90,7 @@ fn intents(world: &mut World, frame: u32) {
 }
 
 /// The staged pack on the screen, step by step: empty, stones and a hide, then bone and wood for
-/// shafts, each intent, the most durable card focused, and a tool made.
+/// shafts, each intent, the most durable card focused, a tool made, and the hotbar of the game.
 pub fn play_workshop(world: &mut World, _: &mut Notes, frame: u32) -> Act {
     let pack_key = bound(world, |s| s.controls.keys.pack);
     start(world, pack_key, frame);
@@ -122,7 +124,8 @@ pub fn play_workshop(world: &mut World, _: &mut Notes, frame: u32) -> Act {
         241..=242 => tap(world, KeyCode::Enter, frame, 241),
         270 => shoot(world, "f7-made"),
         271..=272 => tap(world, pack_key, frame, 271),
-        300 => return Act::Next,
+        310 => shoot(world, "f8-hud-hotbar"),
+        330 => return Act::Next,
         _ => {}
     }
     Act::Wait

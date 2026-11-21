@@ -8,8 +8,8 @@ use super::open::next_state;
 use crate::craft::build::{Intent, solve};
 use crate::craft::stage::{earth, pack};
 
-/// Tools come first and show their wear and their intent; the materials follow in groups, in the
-/// order of the kinds, each group heaviest first, with their grade.
+/// Tools come first and show their wear and their picture; the materials follow in groups, in the
+/// order of the kinds, each group heaviest first, with their grade and the icon of what they are.
 #[test]
 fn rows_are_grouped_by_kind() {
     let mut pack = pack();
@@ -19,11 +19,11 @@ fn rows_are_grouped_by_kind() {
     let all = lines(&pack, &earth(), None);
     assert_eq!(all[0].what, What::Item(id));
     assert_eq!((all[0].kind, all[0].wear), (Kind::Tool, Some(0.0)));
-    assert!(all[0].icon.is_some() && all[0].shape.is_some());
+    assert!(all[0].icon.is_none() && all[0].shape.is_some_and(|l| l.figure.is_some()));
     assert!(
         all.iter()
             .skip(1)
-            .all(|l| l.wear.is_none() && l.icon.is_none())
+            .all(|l| l.wear.is_none() && l.icon.is_some() && l.shape.is_none())
     );
     assert!(all.windows(2).all(|w| w[0].kind <= w[1].kind));
     let stacks = &all[1..];

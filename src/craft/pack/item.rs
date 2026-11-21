@@ -6,8 +6,8 @@
 use serde::{Deserialize, Serialize};
 
 use super::words::{called, noun};
-use crate::craft::build::{Build, Form, Intent, Joint, Place, Recipe, lives, mass, swing};
-use crate::craft::matter::Material;
+use crate::craft::build::{Build, Intent, Joint, Look, Place, Recipe, lives, mass, swing};
+use crate::craft::matter::{Material, Stuff};
 
 /// A made tool in the pack.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -36,10 +36,10 @@ impl Item {
         self.build().map_or(0.0, |build| mass(&build.pieces()))
     }
 
-    /// Returns the name of the material at slot `at` of the design: shaft, head, binding.
-    fn part(&self, at: usize) -> Option<&'static str> {
+    /// Returns the material at slot `at` of the design: shaft, head, binding.
+    fn part(&self, at: usize) -> Option<&Stuff> {
         let index = usize::from(*self.recipe.design.of.get(at)?);
-        self.recipe.stuff.get(index).map(called)
+        self.recipe.stuff.get(index)
     }
 
     /// Returns the name of the item: its head material and the word for its shape.
@@ -49,13 +49,14 @@ impl Item {
         };
         let share = build.head.mass / mass(&build.pieces()).max(f32::EPSILON);
         let word = noun(self.intent(), share, build.reach());
-        format!("{} {word}", self.part(1).unwrap_or("bare"))
+        format!("{} {word}", self.part(1).map_or("bare", called))
     }
 
     /// Returns the signature of the item: the head on the shaft, and the binding.
     pub fn signature(&self) -> String {
-        let (head, shaft) = (self.part(1).unwrap_or("?"), self.part(0).unwrap_or("?"));
-        match self.part(2) {
+        let name = |at: usize| self.part(at).map_or("?", called);
+        let (head, shaft) = (name(1), name(0));
+        match self.part(2).map(called) {
             Some(bind) => format!("{head} on {shaft}, {bind} bound"),
             None => format!("{head} on {shaft}"),
         }
@@ -75,9 +76,12 @@ impl Item {
         (used(joint).clamp(0.0, 1.0), joint)
     }
 
-    /// Returns the shape the item is drawn with: shaft length, head size and form.
-    pub fn shape(&self) -> Option<(f32, f32, Form)> {
-        let build = self.build()?;
-        Some((build.shaft.length, build.head.size(), build.head.form))
+    /// Returns the look the icon of the item is drawn from: its head, shaft and materials, or the
+    /// bare look of its intent when its recipe lost a material. Every item has one.
+    pub fn shape(&self) -> Option<Look> {
+        let Some(build) = self.build() else {
+            return Some(Look::bare(self.intent()));
+        };
+        Some(Look::of(&build, self.intent(), self.part(1), self.part(0)))
     }
 }

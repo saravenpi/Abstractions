@@ -74,26 +74,36 @@ pub fn cockpit(world: &mut World, _: &mut Notes, frame: u32) -> Act {
     }
 }
 
-/// Half a day later: the landed ship from outside and the cockpit from the seat, at night. The
-/// clock is then put on by another half day.
-pub fn night(world: &mut World, _: &mut Notes, frame: u32) -> Act {
-    let half = world.resource::<Planet>().day_seconds * 0.5;
-    if frame == 1 {
-        world.resource_mut::<abstractions::space::Clock>().seconds += half;
-    }
-    if frame < 60 {
-        return Act::Wait;
-    }
-    let mut list = looks()[..4].to_vec();
-    list.push(("out", Vec3::new(-4.4, 1.2, -6.4), Vec3::new(0.0, 0.2, -0.6)));
-    list.push((
+/// The views of the landed ship from outside, at night.
+const OUT: [View; 2] = [
+    ("out", Vec3::new(-4.4, 1.2, -6.4), Vec3::new(0.0, 0.2, -0.6)),
+    (
         "canopy",
         Vec3::new(-2.4, 1.5, -3.3),
         Vec3::new(0.0, 0.6, -1.5),
-    ));
-    if views(world, frame - 59, "33-night", &list) {
-        world.resource_mut::<abstractions::space::Clock>().seconds += half;
-        return Act::Next;
+    ),
+];
+
+/// Half a day later: the landed ship from outside, with the whole pilot in the seat, and the
+/// cockpit from the seat, at night. The clock is then put on by another half day.
+pub fn night(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let half = world.resource::<Planet>().day_seconds * 0.5;
+    match frame {
+        1 => {
+            world.resource_mut::<abstractions::space::Clock>().seconds += half;
+            view(world, ViewMode::First, ViewMode::Third);
+        }
+        60..=99 => {
+            views(world, frame - 59, "33-night", &OUT);
+        }
+        100 => view(world, ViewMode::First, ViewMode::First),
+        140.. => {
+            if views(world, frame - 139, "33-night", &looks()[..4]) {
+                world.resource_mut::<abstractions::space::Clock>().seconds += half;
+                return Act::Next;
+            }
+        }
+        _ => {}
     }
     Act::Wait
 }

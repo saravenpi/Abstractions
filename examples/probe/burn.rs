@@ -15,23 +15,44 @@ const BURN: (Vec3, Vec3) = (Vec3::new(5.5, 1.6, 6.5), Vec3::new(0.0, 0.2, 5.5));
 /// The camera of a burn seen from the side, far enough to hold the whole plume.
 const WAKE: (Vec3, Vec3) = (Vec3::new(-11.0, 1.0, 6.0), Vec3::new(0.0, 0.2, 5.0));
 
-/// Holds the vertical thrusters from the pad and watches from outside: a shot as the gear
-/// leaves the ground, with the dust, and one 8 m up.
-pub fn lift(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+/// Holds the camera at `eye`, in hull axes, and draws the whole pilot in the seat.
+fn outside(world: &mut World, eye: (Vec3, Vec3)) {
+    world.resource_mut::<Eye>().0 = Some(eye);
+    view(world, ViewMode::First, ViewMode::Third);
+}
+
+/// Frees the camera, gives the ship its first person view back and ends the stage.
+fn inside(world: &mut World, notes: &mut Notes) -> Act {
+    world.resource_mut::<Eye>().0 = None;
+    notes.shot_at = None;
+    view(world, ViewMode::First, ViewMode::First);
+    Act::Next
+}
+
+/// Takes the last shot of a stage from the held camera. The stage ends on the next frame, once
+/// the shot is taken.
+fn last(world: &mut World, notes: &mut Notes, (frame, name): (u32, &str)) {
+    shot(world, name);
+    notes.shot_at = Some(frame);
+}
+
+/// Holds the vertical thrusters from the pad and watches from outside: a shot a second after
+/// the nozzles light, with the dust, and one 8 m up.
+pub fn lift(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
     let up = bound(world, |s| s.controls.keys.ship.rise);
     let height = world.resource::<ShipTelemetry>().altitude_ground;
     match frame {
+        _ if notes.shot_at.is_some() => {
+            key(world, up, false);
+            return inside(world, notes);
+        }
         1 => {
             pace(world, FLIGHT);
-            world.resource_mut::<Eye>().0 = Some(LIFT);
-            key(world, up, true);
+            outside(world, LIFT);
         }
-        12 => shot(world, "34-lift-dust"),
-        _ if height > 8.0 || frame > 400 => {
-            key(world, up, false);
-            world.resource_mut::<Eye>().0 = None;
-            return Act::Shoot("34-lift-8m".into());
-        }
+        20 => key(world, up, true),
+        30 => shot(world, "34-lift-dust"),
+        f if f > 30 && (height > 8.0 || f > 400) => last(world, notes, (f, "34-lift-8m")),
         _ => {}
     }
     Act::Wait
@@ -44,7 +65,7 @@ fn throttle(world: &mut World, to: f64) {
 
 /// The main engines 300 m over the pad: full throttle seen from behind and from the side, then
 /// the nozzles a moment after the shutdown.
-pub fn burn(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+pub fn burn(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
     let Some(hull) = ship(world) else {
         return Act::Fail("no ship".into());
     };
@@ -52,55 +73,55 @@ pub fn burn(world: &mut World, _: &mut Notes, frame: u32) -> Act {
         1 => {
             let ahead = hull.rot * DVec3::NEG_Z;
             hover(world, hull.pos.normalize(), 300.0, (ahead, 0.0));
-            world.resource_mut::<Eye>().0 = Some(BURN);
+            outside(world, BURN);
         }
         2..=44 => throttle(world, 1.0),
         _ => throttle(world, 0.0),
     }
     match frame {
         30 => shot(world, "35-burn-air"),
-        31 => world.resource_mut::<Eye>().0 = Some(WAKE),
+        31 => outside(world, WAKE),
         44 => shot(world, "35-burn-air-side"),
-        45 => world.resource_mut::<Eye>().0 = Some(BURN),
+        45 => outside(world, BURN),
         58 => shot(world, "35-burn-ember"),
-        60 => {
-            world.resource_mut::<Eye>().0 = None;
-            return Act::Next;
-        }
+        60 => return inside(world, notes),
         _ => {}
     }
     Act::Wait
 }
 
-/// The main engines above the air: full throttle seen from the side, then the warp drive
-/// spooling.
-pub fn vacuum(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+/// The main engines above the air: full throttle seen from the side. Then the ship is put past
+/// the lock sphere of the planet, where the warp drive may spool, and the spool is shot.
+pub fn vacuum(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
     let Some(hull) = ship(world) else {
         return Act::Fail("no ship".into());
     };
     let body = world.resource::<Location>().body;
     let air = world.resource::<Universe>().planet(body).atmosphere_height;
+    let radius = world.resource::<Planet>().globe.radius();
+    let (up, ahead) = (hull.pos.normalize(), hull.rot * DVec3::NEG_Z);
+    let spooling = matches!(hull.warp, Warp::Spooling { left } if left > SPOOL_TIME * 0.3);
     match frame {
-        1 => {
-            let ahead = hull.rot * DVec3::NEG_Z;
-            hover(world, hull.pos.normalize(), air * 1.6, (ahead, 0.0));
-            world.resource_mut::<Eye>().0 = Some(WAKE);
+        _ if notes.shot_at.is_some() => {
+            with_ship(world, |ship| ship.warp = Warp::Off);
+            return inside(world, notes);
         }
-        2..=40 => throttle(world, 1.0),
+        1 => {
+            hover(world, up, air * 1.6, (ahead, 0.0));
+            outside(world, WAKE);
+        }
+        2..=39 => throttle(world, 1.0),
+        40 => shot(world, "36-burn-vacuum"),
         41 => {
+            hover(world, up, radius * 2.5, (ahead, 0.0));
             throttle(world, 0.0);
             with_ship(world, |ship| {
                 ship.warp = Warp::Spooling { left: SPOOL_TIME }
             });
         }
-        _ => {}
-    }
-    match frame {
-        40 => shot(world, "36-burn-vacuum"),
-        f if f > 41 && !matches!(hull.warp, Warp::Spooling { left } if left > SPOOL_TIME * 0.3) => {
-            world.resource_mut::<Eye>().0 = None;
-            with_ship(world, |ship| ship.warp = Warp::Off);
-            return Act::Shoot("36-warp-spool".into());
+        f if f > 42 && !spooling => {
+            info!("SMOKE warp spool shot with the drive {:?}", hull.warp);
+            last(world, notes, (f, "36-warp-spool"));
         }
         _ => {}
     }

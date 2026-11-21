@@ -28,6 +28,9 @@ pub const NO_PLACE: &str = "Click a place to see how to get there.";
 /// What the card says when the place is where the player is.
 pub const HERE: &str = "You are here.";
 
+/// What the card of the home planet says while the player sits in the ship.
+pub const FLY_HOME: &str = "The ship flies to the base and glides down near it.";
+
 /// What the card says when the autopilot can take the course but no time can be told yet.
 pub const READY: &str = "The autopilot flies there.";
 
@@ -103,6 +106,9 @@ pub struct Ask<'a> {
     pub eta: Option<&'a str>,
     /// The names of the keys the sentences mention.
     pub keys: &'a Keys,
+    /// Whether the place is the home planet: Go flies home through the orbital cruise, from
+    /// anywhere, its own air and orbit included.
+    pub home: bool,
 }
 
 /// Returns `words` with its first letter in capitals and a full stop at its end.
@@ -121,6 +127,9 @@ pub fn card_line(ask: &Ask) -> (bool, String) {
     let flown = !matches!(ask.status, RouteStatus::Idle | RouteStatus::Blocked(_));
     if ask.ours && flown {
         return (false, hud_line(ask.name, ask.status, ask.keys));
+    }
+    if ask.home && ask.seated {
+        return (true, FLY_HOME.to_string());
     }
     if ask.here {
         return (false, HERE.to_string());

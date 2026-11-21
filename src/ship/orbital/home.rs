@@ -1,4 +1,4 @@
-//! Flying home through the cruise: the home key on or above the home planet asks for the base,
+//! Flying home through the cruise: Fly home on the map, on or above the home planet, asks for the base,
 //! and the ship cruises to it at once above the air, climbs out of the air first when the base
 //! is far, or warps to the planet first when the computer set that course. Near the base in the
 //! air there is nothing to cruise: the marker shows the way.
@@ -118,7 +118,7 @@ pub(super) fn apply(
     }
 }
 
-/// Takes the home base as the target to cruise to when the home key asks for it on or above its
+/// Takes the home base as the target to cruise to when Fly home on the map asks for it on or above its
 /// planet. Without a known base there is nothing to cruise to.
 pub fn on_homeward(event: On<Homeward>, base: Option<Res<Base>>, mut orbital: ResMut<Orbital>) {
     let Some(base) = base.filter(|base| base.body == event.0) else {

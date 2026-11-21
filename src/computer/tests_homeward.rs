@@ -1,6 +1,8 @@
 //! Computer tests: the way home from a system, from a galaxy and from another galaxy, and the
-//! key that flies the ship home in one command, in the open panel.
+//! Fly home on the card of the home planet, which flies the ship home in one command, in the
+//! open panel.
 
+use bevy::ecs::system::RunSystemOnce;
 use bevy::math::{DQuat, DVec3, IVec3};
 use bevy::prelude::*;
 
@@ -70,38 +72,45 @@ fn the_way_home_picks_the_right_level() {
     );
 }
 
-/// Counts the courses handed to the autopilot.
+/// Counts the courses handed to the autopilot, and the asks to fly home to the base.
 #[derive(Resource, Default)]
-struct Engaged(usize);
+struct Engaged(usize, usize);
 
 /// Puts the ship of `app` at the point `at` of `frame`, with no course and the map open, presses
-/// the home key and returns the course and whether the map is still open.
+/// Fly home on the card of the home planet, the Go button there, and returns the course and
+/// whether the map is still open.
 fn press_home(app: &mut App, (frame, at): (Frame, DVec3)) -> (Option<Target>, bool) {
     app.insert_resource(anchor(frame, at));
     app.world_mut().resource_mut::<Destination>().0 = None;
     tap(app, KeyCode::Tab, None);
     run(app, 3);
-    tap(app, KeyCode::KeyH, None);
+    let home = Target::Body(Universe::new(7).home());
+    app.world_mut()
+        .run_system_once(move |mut go: Go| go.press(Some(home)))
+        .expect("the Go flow runs");
     run(app, 5);
     let open = *app.world().resource::<State<Computer>>().get() == Computer::Open;
     (app.world().resource::<Destination>().0, open)
 }
 
-/// In the open panel, the home key sets the course to the home planet and hands it to the
-/// autopilot in one command, from the home system, from elsewhere in the home galaxy and from
-/// another galaxy, and the map closes each time. The saved atlas holds nothing but the visits
-/// and the course.
+/// In the open panel, Fly home on the card of the home planet sets the course to the home planet
+/// and hands it to the autopilot in one command, from the home system, from elsewhere in the
+/// home galaxy and from another galaxy, asks the ship to fly home to the base, and the map
+/// closes each time. No key of its own does it. The saved atlas holds nothing but the visits and
+/// the course.
 #[test]
-fn the_home_key_flies_home_in_one_command() {
+fn fly_home_on_the_map_flies_home_in_one_command() {
     let mut app = game("home");
     app.init_resource::<Engaged>();
     app.add_observer(|_: On<Engage>, mut engaged: ResMut<Engaged>| engaged.0 += 1);
+    app.add_observer(|_: On<Homeward>, mut asked: ResMut<Engaged>| asked.1 += 1);
     let universe = Universe::new(7);
     let body = Target::Body(universe.home());
     for (count, place) in places(&universe).into_iter().enumerate() {
         let (course, open) = press_home(&mut app, place);
         assert_eq!((course, open), (Some(body), false));
-        assert_eq!(app.world().resource::<Engaged>().0, count + 1);
+        let engaged = app.world().resource::<Engaged>();
+        assert_eq!((engaged.0, engaged.1), (count + 1, count + 1));
     }
     let saved = toml::to_string(app.world().resource::<Atlas>()).unwrap();
     let keys = saved.lines().filter_map(|line| line.split_once(" = "));

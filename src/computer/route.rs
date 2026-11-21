@@ -46,7 +46,7 @@ pub struct Destination(pub Option<Target>);
 pub struct Engage(pub Target);
 
 /// Triggered when the player asks to fly home while seated on or above the home planet `0`: the
-/// ship cruises over it to the base, or climbs out of the air first. Away from it, the home key
+/// ship cruises over it to the base, or climbs out of the air first. Away from it, Fly home
 /// also sets the course to the planet, and the cruise follows the arrival.
 #[derive(Event, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Homeward(pub BodyId);

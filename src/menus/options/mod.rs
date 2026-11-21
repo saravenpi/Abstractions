@@ -18,6 +18,8 @@ mod tests;
 #[cfg(test)]
 mod tests_binds;
 #[cfg(test)]
+mod tests_fixed;
+#[cfg(test)]
 mod tests_lights;
 #[cfg(test)]
 mod tests_size;

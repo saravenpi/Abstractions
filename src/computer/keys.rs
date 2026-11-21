@@ -37,9 +37,6 @@ const MOVES: [(KeyCode, isize); 5] = [
     (KeyCode::End, FAR),
 ];
 
-/// The key that flies the ship home. It types a letter while a search is typed.
-pub const HOME_KEY: KeyCode = KeyCode::KeyH;
-
 /// The components that say what an activated button of the screen does.
 type Role = (Option<&'static Slot>, Option<&'static Act>);
 
@@ -142,8 +139,8 @@ impl Desk<'_, '_> {
     }
 }
 
-/// Sends the ship to the row under the cursor on Enter, presses Go on the engage key of the
-/// settings, which stops a route that is flown, and flies home on the home key. Enter also works
+/// Sends the ship to the row under the cursor on Enter and presses Go on the engage key of the
+/// settings, which stops a route that is flown; on the home planet Go flies home. Enter also works
 /// while a search is typed; nothing does while a pin is named, and the other keys type into a
 /// search.
 fn action_keys(
@@ -161,9 +158,6 @@ fn action_keys(
     }
     if keys.just_pressed(settings.controls.keys.engage) && off {
         desk.run(Act::Go);
-    }
-    if keys.just_pressed(HOME_KEY) && off {
-        desk.run(Act::Home);
     }
 }
 

@@ -1,4 +1,4 @@
-//! Tests of flying home through the cruise: the home key takes the base as the target, which
+//! Tests of flying home through the cruise: Fly home on the map takes the base as the target, which
 //! the ship cruises to at once above the air, climbs out of the air to when it is far, warps to
 //! when the planet is away, and leaves to the marker when it is close.
 

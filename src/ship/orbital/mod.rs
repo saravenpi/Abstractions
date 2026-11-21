@@ -5,7 +5,7 @@
 //! a speed that keeps the nose dark, to a few kilometres above and short of the target. The
 //! landing is the pilot's.
 //!
-//! The warp key starts and stops a cruise; the home key flies home through it. The cruise never
+//! The warp key starts and stops a cruise; Fly home on the map flies home through it. The cruise never
 //! goes into the air: at its floor, a pilot who asks to go lower is dropped at rest over the
 //! ground first, at a speed no entry can heat.
 

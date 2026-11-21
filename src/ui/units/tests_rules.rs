@@ -5,7 +5,7 @@ use std::fs;
 use std::path::Path;
 
 /// The folders of the interface code.
-const UI_PATHS: [&str; 6] = [
+pub(super) const UI_PATHS: [&str; 6] = [
     "src/computer",
     "src/map",
     "src/menus",
@@ -27,7 +27,7 @@ const ALLOWED: [(&str, &str); 4] = [
 ];
 
 /// Pushes every Rust file under `dir` that is not a test file or this module into `found`.
-fn walk(dir: &Path, found: &mut Vec<std::path::PathBuf>) {
+pub(super) fn walk(dir: &Path, found: &mut Vec<std::path::PathBuf>) {
     for entry in fs::read_dir(dir).unwrap().flatten() {
         let path = entry.path();
         let name = path.to_string_lossy().to_string();

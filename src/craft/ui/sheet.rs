@@ -1,6 +1,7 @@
 //! The numbers a player compares tools by, and how a number reads against the held tool's.
 
 use crate::craft::build::{Build, Intent, Place, blow, lives, mass, reference, strike, swing};
+use crate::ui::units::fixed;
 
 /// What a tool does here, in the units the workshop shows.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -35,12 +36,12 @@ pub fn sheet(build: &Build, intent: Intent, place: &Place) -> Sheet {
 /// Returns `value` with `digits` decimals and its `unit`, followed by its difference from `held`
 /// in brackets when there is a held value.
 pub fn versus(value: f32, held: Option<f32>, unit: &str, digits: usize) -> String {
-    let shown = format!("{value:.digits$}{unit}");
+    let shown = format!("{}{unit}", fixed(value, digits));
     match held {
         Some(was) => {
-            let by = value - was;
-            let sign = if by >= 0.0 { "+" } else { "-" };
-            format!("{shown} ({sign}{:.digits$})", by.abs())
+            let by = fixed(value - was, digits);
+            let sign = if by.starts_with('-') { "" } else { "+" };
+            format!("{shown} ({sign}{by})")
         }
         None => shown,
     }

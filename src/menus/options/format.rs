@@ -6,6 +6,7 @@ use super::field::Field;
 use super::lights;
 use crate::settings::{Graphics, Settings, render_step};
 use crate::ui::theme;
+use crate::ui::units::fixed;
 use crate::view::{ViewMode, ViewPrefs};
 use crate::world::RENDER_STEPS;
 
@@ -17,7 +18,7 @@ pub fn on_off(value: bool) -> String {
 /// Formats a strength from 0 to 1 in tenths, Off at 0.
 pub fn strength(value: f32) -> String {
     match value > 0.0 {
-        true => format!("{value:.1}"),
+        true => fixed(value, 1),
         false => "Off".to_string(),
     }
 }
@@ -76,11 +77,11 @@ pub fn display(settings: &Settings, field: Field) -> String {
         return shown;
     }
     match field {
-        Field::Sensitivity => format!("{:.1}", c.mouse_sensitivity),
+        Field::Sensitivity => fixed(c.mouse_sensitivity, 1),
         Field::InvertY => on_off(c.invert_y),
-        Field::Master => format!("{:.1}", a.master),
-        Field::Music => format!("{:.1}", a.music),
-        Field::Effects => format!("{:.1}", a.effects),
+        Field::Master => fixed(a.master, 1),
+        Field::Music => fixed(a.music, 1),
+        Field::Effects => fixed(a.effects, 1),
         Field::CheckUpdates => on_off(settings.updates.check_at_launch),
         Field::WorldMarkers => on_off(settings.gameplay.world_markers),
         Field::Blood => on_off(settings.gameplay.blood),

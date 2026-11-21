@@ -1,7 +1,8 @@
 //! The dust the jets of a ship raise off loose ground: the lift nozzles in a hover or a landing,
 //! and the main engines when they blow on the ground close under a tail. Each jet is followed
 //! from its nozzle to where its flow meets the ground; within its reach, which grows with its
-//! thrust, it raises sand, earth, snow or the dust of a bare world, never rock, water or ice. The
+//! thrust, it raises sand, earth, snow or the dust of a bare world, a thin grit off rock, ice and
+//! the landing pad, and nothing off water, where the churn of the sea throws spray. The
 //! puffs fly out along the ground as fast as the jet still blows there, slow to the wind, settle
 //! toward the centre of the planet at the speed of their grains and fade over a few seconds.
 //!
@@ -19,6 +20,8 @@ mod tune;
 
 #[cfg(test)]
 mod rig;
+#[cfg(test)]
+mod tests_app;
 #[cfg(test)]
 mod tests_draw;
 #[cfg(test)]
@@ -52,6 +55,8 @@ pub struct Cloud {
     soils: [Handle<StandardMaterial>; crate::avatar::Soil::ALL.len()],
     /// The class of planet the materials are coloured for.
     class: Option<PlanetClass>,
+    /// Puffs thrown so far, which seeds the next one.
+    serial: u32,
 }
 
 /// The planet, its wind and the anchor, each when there is one.
@@ -105,5 +110,6 @@ pub fn spawn(
         live: 0,
         soils,
         class: Some(class),
+        serial: 0,
     });
 }

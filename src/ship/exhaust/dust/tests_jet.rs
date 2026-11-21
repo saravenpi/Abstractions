@@ -1,12 +1,13 @@
 //! Tests of where the jets of a ship meet the ground and what the ground gives: dust is raised
-//! only under a jet within its reach of loose ground.
+//! under a jet within its reach of dry ground, a full cloud off loose soil and a thin grit off
+//! rock and ice, and none off water.
 
 use bevy::math::{DQuat, DVec3};
 
 use super::super::Exhaust;
 use super::jet::{ENGINE, Hit, JETS, Jet, NOZZLE, impinge, jets, reach};
 use super::soil::loose;
-use super::tune::REACH;
+use super::tune::{GRIT, REACH};
 use crate::avatar::Soil;
 use crate::space::Placed;
 use crate::universe::PlanetClass;
@@ -32,9 +33,9 @@ fn nozzle(height: f64) -> Jet {
     }
 }
 
-/// Returns where a hovering lift nozzle `height` metres up meets loose ground of `surface`, and
-/// what that ground gives: dust only when both hold.
-fn raised(height: f64, surface: Surface) -> Option<(Hit, Soil)> {
+/// Returns where a hovering lift nozzle `height` metres up meets dry ground of `surface`, and
+/// what that ground gives with its share of a full cloud: dust only when both hold.
+fn raised(height: f64, surface: Surface) -> Option<(Hit, (Soil, f32))> {
     let hit = impinge(&nozzle(height), flat)?;
     Some((hit, loose(PlanetClass::Island, surface, 20.0)?))
 }
@@ -87,38 +88,34 @@ fn only_a_jet_that_points_down_meets_the_ground() {
     assert!(hit.at.x > 4.0 && hit.run > 6.0, "{hit:?}");
 }
 
-/// Dust rises from sand, the earth under grass and snow on land under a low jet, and from none
-/// of them out of its reach. Rock, the sea, the shallows, a river, a pond and the ice of a frozen
-/// sea give none, nor does the cloud deck of a gas giant.
+/// A low jet raises a full cloud off sand, the earth under grass and snow on land, a thin grit
+/// off rock and the ice of a frozen sea, and none of them out of its reach. The sea, the shallows,
+/// a reef, a river and a pond give no dust, nor does the cloud deck of a gas giant.
 #[test]
-fn dust_rises_only_under_a_jet_within_reach_of_loose_ground() {
-    for (surface, soil) in [
-        (Surface::Sand, Soil::Sand),
-        (Surface::Grass, Soil::Earth),
-        (Surface::Snow, Soil::Snow),
+fn dust_rises_under_a_jet_within_reach_of_dry_ground() {
+    for (surface, soil, share) in [
+        (Surface::Sand, Soil::Sand, 1.0),
+        (Surface::Grass, Soil::Earth, 1.0),
+        (Surface::Snow, Soil::Snow, 1.0),
+        (Surface::Rock, Soil::Rock, GRIT.0),
     ] {
-        assert_eq!(
-            raised(5.0, surface).map(|(_, s)| s),
-            Some(soil),
-            "{surface:?}"
-        );
+        let got = raised(5.0, surface).map(|(_, given)| given);
+        assert_eq!(got, Some((soil, share)), "{surface:?}");
         assert!(raised(40.0, surface).is_none(), "{surface:?} at 40 m");
     }
-    let bare = [
-        Surface::Rock,
+    let wet = [
         Surface::Water,
         Surface::Shallows,
         Surface::River,
         Surface::Pond,
         Surface::Reef,
     ];
-    assert!(bare.iter().all(|surface| raised(5.0, *surface).is_none()));
-    assert_eq!(loose(PlanetClass::Ice, Surface::Snow, -3.0), None);
+    assert!(wet.iter().all(|surface| raised(5.0, *surface).is_none()));
+    let ice = loose(PlanetClass::Ice, Surface::Snow, -3.0);
+    assert_eq!(ice, Some((Soil::Snow, GRIT.0)));
     assert_eq!(loose(PlanetClass::GasGiant, Surface::Sand, 0.0), None);
-    assert_eq!(
-        loose(PlanetClass::Barren, Surface::Sand, 5.0),
-        Some(Soil::Land)
-    );
+    let bare = loose(PlanetClass::Barren, Surface::Rock, 5.0);
+    assert_eq!(bare, Some((Soil::Land, GRIT.0)));
 }
 
 /// A level ship blows its lift nozzles down under its belly and its main engines back behind

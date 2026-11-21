@@ -7,7 +7,8 @@
 //! The shader integrates the light of the glowing gas along each view ray in closed form and
 //! stops the ray at the depth of the scene, so the hull and the ground hide what lies behind
 //! them and nothing is drawn in specks. Cost: one sphere of 512 triangles, one fragment per
-//! pixel it covers with about forty Gaussian line integrals each, only while the craft glows.
+//! pixel it covers with about fifteen line integrals of glowing tubes each, only while the craft
+//! glows. The hot nose and leading edges are lines along the hull, never spots.
 
 use bevy::asset::embedded_asset;
 use bevy::camera::visibility::NoFrustumCulling;

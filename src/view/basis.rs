@@ -47,7 +47,10 @@ pub(super) fn chase(target: &Target, third: f32, follow: bool) -> Quat {
         return frame(target);
     }
     let near = target.ground.length().min(1.0) * third;
-    let speed = target.velocity.length() * f32::from(u8::from(follow));
+    let speed = match follow {
+        true => target.velocity.length(),
+        false => 0.0,
+    };
     let along = target.velocity.try_normalize().unwrap_or(target.forward);
     let fast = smoothstep(CHASE_BAND.0, CHASE_BAND.1, speed);
     let share = near * CHASE_ALONG * fast * along.dot(target.forward).max(0.0);

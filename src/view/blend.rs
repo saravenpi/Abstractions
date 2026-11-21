@@ -10,9 +10,9 @@ use crate::render::smoothstep;
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub(super) struct Blend {
     /// From first person, 0, to third person, 1.
-    person: f32,
+    pub(super) person: f32,
     /// From the ground rig, 0, to the flight rig, 1.
-    flight: f32,
+    pub(super) flight: f32,
 }
 
 /// Returns where the two blends are heading for a target of `kind`.
@@ -36,6 +36,11 @@ impl Blend {
         let (person, flight) = goals(kind, prefs);
         self.person = toward(self.person, person, dt / SWITCH_TIME);
         self.flight = toward(self.flight, flight, dt / FLIGHT_TIME);
+    }
+
+    /// Returns true when both blends are finite numbers.
+    pub(super) fn sound(&self) -> bool {
+        self.person.is_finite() && self.flight.is_finite()
     }
 
     /// Returns how much of a third person view to show, eased at both ends.

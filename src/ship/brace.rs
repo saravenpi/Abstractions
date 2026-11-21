@@ -20,7 +20,7 @@ use super::view::{HULL_RADIUS, seated};
 use crate::player::Player;
 use crate::render::GameCamera;
 use crate::screens::in_control;
-use crate::space::{Anchor, FrameSet, Placed};
+use crate::space::{Anchor, FrameSet, Location, Placed};
 use crate::view::{Target, ViewPrefs, ViewSet};
 
 /// Returns the offset in metres and the tilt of the view at `time` seconds for a shake of
@@ -86,8 +86,8 @@ pub fn buffet(
     eye.rotation = (eye.rotation * tilt).normalize();
 }
 
-/// The clock, the buffet, the view, the target, the anchor and the share of the shake the view
-/// takes, which the brace reads.
+/// The clock, the buffet, the view, the target, the anchor, the share of the shake the view
+/// takes and where the player is, which the brace reads.
 type Bracing<'w> = (
     Res<'w, Time>,
     Res<'w, Buffet>,
@@ -95,6 +95,7 @@ type Bracing<'w> = (
     Res<'w, Target>,
     Res<'w, Anchor>,
     Res<'w, Steady>,
+    Option<Res<'w, Location>>,
 );
 
 /// The hull, which is not the camera.
@@ -104,35 +105,33 @@ type Hull = (With<Ship>, Without<GameCamera>);
 /// seat and the camera together, as one rigid body, about the eye by the tilt of the shake:
 /// the cockpit holds still in the view and the world outside trembles. A camera that rides the
 /// body turns with it. The hull is posed from its [`Placed`] pose every frame, so nothing adds
-/// up and a calm view leaves it as the frame copy wrote it.
+/// up and a calm view leaves it as the frame copy wrote it. Out of the seat, with the camera
+/// behind the ship or the player out of it, the hull is put back on its [`Placed`] pose and
+/// nothing is turned, so no tilt of the shake stays on it.
 pub fn brace(
-    (time, level, prefs, target, anchor, steady): Bracing,
+    (time, level, prefs, target, anchor, steady, location): Bracing,
     mut eye: Single<(&mut Transform, Option<&ChildOf>), Eye>,
     mut hull: Single<(&Placed, &mut Transform), Hull>,
     mut body: Single<(Entity, &mut Transform), Seated>,
 ) {
-    let (camera, parent) = &mut *eye;
-    let (seat, sitting) = &mut *body;
-    let rides = parent.map(|parent| parent.parent());
-    if rides.is_some_and(|ridden| ridden != *seat) {
-        return;
-    }
-    let world = eye_world(camera, rides.map(|_| &**sitting));
-    if !aboard(world.translation, &target) {
-        return;
-    }
-    let (_, tilt) = felt(
-        time.elapsed_secs_wrapped(),
-        strength(&level, &prefs, &steady),
-        true,
-    );
-    let turn = world.rotation * tilt * world.rotation.inverse();
     let (placed, transform) = &mut *hull;
     let pose = Transform {
         translation: anchor.to_render(placed.pos),
         rotation: anchor.rotation_to_render(placed.rot),
         scale: transform.scale,
     };
+    let (camera, parent) = &mut *eye;
+    let (seat, sitting) = &mut *body;
+    let rides = parent.map(|parent| parent.parent());
+    let world = eye_world(camera, rides.map(|_| &**sitting));
+    let mine = rides.is_none_or(|ridden| ridden == *seat);
+    if !(seated(location) && mine && aboard(world.translation, &target)) {
+        transform.set_if_neq(pose);
+        return;
+    }
+    let strength = strength(&level, &prefs, &steady);
+    let (_, tilt) = felt(time.elapsed_secs_wrapped(), strength, true);
+    let turn = world.rotation * tilt * world.rotation.inverse();
     transform.set_if_neq(braced(pose, world.translation, turn));
     **sitting = braced(**sitting, world.translation, turn);
     if rides.is_none() {
@@ -141,7 +140,8 @@ pub fn brace(
 }
 
 /// Registers the shake: how much of it the view takes, on the camera after the rig, and on the
-/// hull after the frame copy.
+/// hull after the frame copy, and once more on the frame the player leaves the seat to put the
+/// hull back on its pose.
 pub(super) fn plugin(app: &mut App) {
     let steady = (
         shaking::hush.run_if(not(in_control)),
@@ -153,7 +153,7 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(
             PostUpdate,
             brace
-                .run_if(seated)
+                .run_if(seated.or_else(condition_changed_to(false, seated)))
                 .after(FrameSet::Sync)
                 .before(TransformSystems::Propagate),
         );

@@ -128,6 +128,15 @@ pub struct Heading {
     pub pitch: f32,
 }
 
+impl Shown {
+    /// Returns true when the camera and the look angles are all finite numbers.
+    pub fn sound(&self) -> bool {
+        let pose = &self.pose;
+        let angles = Vec3::new(pose.fov, self.heading.yaw, self.heading.pitch);
+        pose.position.is_finite() && pose.rotation.is_finite() && angles.is_finite()
+    }
+}
+
 /// Something that can tell how far a sphere travels before it touches the world.
 pub trait Occluder {
     /// Returns how far the centre of a sphere of `radius` travels from `origin` along the unit

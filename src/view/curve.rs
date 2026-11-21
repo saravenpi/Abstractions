@@ -9,8 +9,8 @@ use super::io::{Heading, Kind};
 use super::shot::Shot;
 use super::smooth::wrap;
 use super::tune::{
-    COCKPIT_TURN, COCKPIT_UP, FADE_BAND, INDOOR_DROP, INDOOR_SHORTEN, MAX_FOV, PITCH_LIMIT,
-    TILT_DROP, TILT_FOV, TILT_REACH,
+    COCKPIT_TURN, COCKPIT_UP, FADE_BAND, INDOOR_DROP, INDOOR_SHORTEN, MAX_FOV, MIN_FOV,
+    PITCH_LIMIT, TILT_DROP, TILT_FOV, TILT_REACH,
 };
 use crate::render::smoothstep;
 
@@ -62,10 +62,11 @@ pub(super) fn boom(shot: &Shot, bend: &Bend) -> Vec3 {
 }
 
 /// Returns the field of view of `shot` over the `base` setting: wider when looking up from close
-/// by, narrower when looking down from afar, and wider with speed.
+/// by, narrower when looking down from afar, and wider with speed, always between [`MIN_FOV`]
+/// and [`MAX_FOV`] or the setting when it is wider.
 pub(super) fn fov(base: f32, shot: &Shot, bend: &Bend) -> f32 {
     let framed = base * (1.0 + TILT_FOV * bend.tilt * shot.third);
-    (framed + shot.widen * bend.rush).min(MAX_FOV.max(base))
+    (framed + shot.widen * bend.rush).clamp(MIN_FOV, MAX_FOV.max(base))
 }
 
 /// Returns how much of the body to draw in a view `third` of the way to third person, with the

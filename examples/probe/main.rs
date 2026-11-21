@@ -22,6 +22,8 @@
 //! - `entry` (a fall from a low orbit into the air, from a chase camera and from the seat) and `exit`
 //!   (the climb from the pad to orbit under the autopilot) shoot the heat of an entry and leaving the air;
 //!   `cloud` climbs through an overcast cloud base, a shot every 0.2 s from the chase camera and the seat.
+//! - `skyfly` holds the ship 3 km, 15 km and 400 km up under a broken cover with the cloud shadows on, a shot
+//!   every second of the game over ten seconds (see the `skyfly` module).
 //! - `cruise` drops the ship at the arrival shell over the far side of the home planet, presses the home key
 //!   and shoots the orbital cruise, the glide into the air and its end near the base, with the HUD shown
 //!   (see the `cruise` module). Run it with `SMOKE_SEED=57`.
@@ -126,6 +128,7 @@ mod saved;
 mod screens;
 mod seen;
 mod shots;
+mod skyfly;
 mod stages;
 mod stars;
 mod stops;
@@ -185,6 +188,7 @@ use saved::*;
 use screens::*;
 use seen::*;
 use shots::*;
+use skyfly::*;
 use stages::STAGES;
 use stars::*;
 use stops::*;

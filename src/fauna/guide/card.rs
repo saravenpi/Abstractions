@@ -7,6 +7,7 @@ use super::seen::{SIGHT, Seen};
 use super::temper::{temper, yields};
 use super::words::{active, climate, diet, habitat, kind, limbs, moves, plan};
 use crate::life::{Guild, Life, Species};
+use crate::ui::units::fixed;
 
 /// One row of a card.
 #[derive(Debug, Clone, PartialEq)]
@@ -43,7 +44,11 @@ fn body(species: &Species) -> Vec<Row> {
         Row::Heading("Body"),
         Row::Fact(
             "Size",
-            format!("{:.1} m long, {:.1} m tall", body.length, body.height),
+            format!(
+                "{} m long, {} m tall",
+                fixed(body.length, 1),
+                fixed(body.height, 1)
+            ),
         ),
         Row::Fact("Weight", weight(species.history.mass)),
         Row::Fact("Plan", plan(species.plan).to_string()),
@@ -132,7 +137,10 @@ plants once you land, and an animal once you have come close to one.";
 
 /// Returns how to learn about a species not seen yet.
 pub fn how() -> String {
-    format!("Come within {SIGHT:.0} m of one to learn about it.")
+    format!(
+        "Come within {} m of one to learn about it.",
+        fixed(SIGHT, 0)
+    )
 }
 
 /// Returns the card of species `index` of `life`, an unknown card while it is unseen, and the

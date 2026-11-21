@@ -45,7 +45,7 @@ fn the_planet_lens_keeps_the_picture_in_view() {
     });
     assert_eq!((far.zoom, far.centre), (WHOLE, Vec2::new(0.9, 0.0)));
     let close = framed(Lens {
-        zoom: 99.0,
+        zoom: 1.0e6,
         centre: Vec2::new(-2.0, -0.6),
     });
     assert_eq!(close.zoom, CLOSEST);

@@ -5,6 +5,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The map of a planet zooms in to the ground. Its closest zoom showed about 1,200 km on a planet the size of Earth, so the ground a new player had explored was a dot under their own marker and the map read as a black rectangle. It now opens on about 5 km around the player, where the 2 km explored around the home base and the 300 m uncovered on foot fill the picture. One notch of the wheel zooms three times as far on a planet, so the whole planet is still about twenty notches away.
+- Explored ground is filled on the map at every zoom. Close up it was drawn as one dot for each 500 m cell.
+- A thrown spear leaves along the view. It left turned by the heading of the body a second time, so it flew true only when the robot faced north.
+- No number in the interface reads "-0.0". An empty pack said "-0.0 of 29.7 kg".
+- Each frame row of the HUD has the colour of its own part: a broken part is in the danger colour and a part under half in the warning colour, also while the frame as a whole is sound.
+
 ## [0.11.0] - 2026-11-21
 
 Players and servers must both run 0.11.0: the multiplayer protocol and the world format changed. A 0.10 game cannot join a 0.11 server. Worlds from 0.10 open with 0.10 only.
@@ -91,6 +99,9 @@ Players and servers must both run 0.11.0: the multiplayer protocol and the world
 - The field guide shows a silhouette for each species, a question mark for one not seen yet, an icon for every fact, how an animal reacts to you (shy, stands its ground, hunts you) and what it yields. Its card scrolls when it is taller than the window.
 - A key is shown after its label in a dimmer tone, without brackets, in every legend and on every button.
 - The icon font has 132 glyphs, with their own pictures for weather, ship readouts, tools and life forms.
+- The title screen is a slideshow of pictures of the game. Each one drifts slowly and the next fades in over it, and it opens on a different picture each time. The main menu sits on a translucent panel, so the picture shows at full light around it.
+- F1 hides the whole interface in the world and shows it again: a clean view for a screenshot. Menus and the map still open. The key is listed in Options, Help.
+- Options, General, Reduce motion stops the drift of the title pictures and changes them with a short fade.
 
 ### Multiplayer
 

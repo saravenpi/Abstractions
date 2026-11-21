@@ -11,6 +11,8 @@
 pub mod balance;
 mod tune;
 
+pub use tune::SUN_LIGHT;
+
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

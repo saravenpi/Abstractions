@@ -3,6 +3,7 @@
 
 use crate::life::body::{Body, Locomotion};
 use crate::life::{Activity, Energy, Guild, Habitat, Plan, Tolerance};
+use crate::ui::units::fixed;
 
 /// Names of the growth architectures of plants, in the order of the contract.
 pub const GROWTHS: [&str; 8] = [
@@ -106,7 +107,9 @@ pub fn limbs(body: &Body) -> String {
         1 => Some(format!("1 {one}")),
         n => Some(format!("{n} {one}s")),
     };
-    let wings = body.wings.map(|w| format!("wings {:.1} m across", w.span));
+    let wings = body
+        .wings
+        .map(|w| format!("wings {} m across", fixed(w.span, 1)));
     let parts: Vec<String> = [
         count(body.legs.len(), "leg"),
         wings,

@@ -43,6 +43,16 @@ fn launched(held: &Held, aim: Vec3, by: (Entity, Entity), point: Vec3) -> Spear 
     }
 }
 
+/// Returns the unit direction a spear leaves along: the view of `heading`, tilted up by [`LOFT`],
+/// in the upright frame of the body at `player`. The heading is counted around the local up from
+/// the north of that frame, as the camera rig counts it, and not from where the body faces: a body
+/// already turned to the view must not turn the throw a second time.
+pub fn aimed(player: &Transform, heading: &Heading) -> Vec3 {
+    let upright = Quat::from_rotation_arc(Vec3::Y, player.up().as_vec3());
+    let look = Quat::from_rotation_y(heading.yaw) * Quat::from_rotation_x(heading.pitch + LOFT);
+    upright * look * Vec3::NEG_Z
+}
+
 /// What a throw reads: the players, where they look and the kit that draws the spear.
 type Aim<'w, 's> = (
     Query<'w, 's, &'static Transform, With<Player>>,
@@ -68,8 +78,7 @@ pub fn loose(
         let Ok(player) = players.get(of.parent()) else {
             continue;
         };
-        let look = Quat::from_rotation_y(heading.yaw) * Quat::from_rotation_x(heading.pitch + LOFT);
-        let aim = player.rotation * look * Vec3::NEG_Z;
+        let aim = aimed(player, &heading);
         let key = (time.elapsed_secs() * 1000.0) as u32;
         let aim = steadied(aim, strike.hurt.steady, key);
         let point = player.transform_point(strike.blade[0][1]);

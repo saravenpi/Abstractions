@@ -232,3 +232,103 @@ pub fn look_cover(world: &mut World, _: &mut Notes, frame: u32) -> Act {
     }
     Act::Wait
 }
+
+/// Frames each shot of a vista gets: the clock and the place are set, the eye adapts, then it shoots.
+const VISTA: u32 = 130;
+
+/// One shot of a vista: its name, the height of the star to move the clock to (a sine, rising or
+/// not) when the clock is to move, the cloud cover to force (`None` is no shell at all), and the
+/// metres over the ground the view is taken from, 0 for the robot on foot.
+struct View {
+    /// Name of the shot.
+    name: &'static str,
+    /// Star height to move the clock to.
+    star: Option<(f64, bool)>,
+    /// Forced cover, or no clouds.
+    cover: Option<f32>,
+    /// Metres over the ground.
+    high: f64,
+}
+
+/// Runs the views one after the other, `VISTA` frames each, and ends on the last shot.
+fn vista(world: &mut World, frame: u32, views: &[View]) -> Act {
+    let index = (frame.saturating_sub(1) / VISTA) as usize;
+    let at = frame.saturating_sub(1) % VISTA;
+    let Some(view) = views.get(index) else {
+        return Act::Wait;
+    };
+    match at {
+        0 => {
+            if let Some((height, rising)) = view.star {
+                clock_at(world, height, rising);
+            }
+            world.resource_mut::<Persistent<Settings>>().graphics.clouds = view.cover.is_some();
+            cover(world, view.cover);
+            let feet = player_at(world);
+            let up = feet.normalize();
+            let east = up.cross(DVec3::Y).normalize_or(DVec3::X);
+            match view.high > 0.0 {
+                true => {
+                    let radius = world.resource::<Planet>().globe.radius();
+                    hover(world, up, feet.length() - radius + view.high, (east, 0.12));
+                }
+                false => gaze(world, 0.08, true),
+            }
+            pace(world, ADAPT);
+        }
+        100 => pace(world, WALK),
+        n if n == VISTA - 5 => {
+            return match index + 1 == views.len() {
+                true => Act::Shoot(view.name.into()),
+                false => {
+                    shot(world, view.name);
+                    Act::Wait
+                }
+            };
+        }
+        _ => {}
+    }
+    Act::Wait
+}
+
+/// The light of a day from the ground, with broken cloud: noon, a low star near 8 degrees, the
+/// star on the horizon, twilight and night. On a turning home the clock moves to each height. On
+/// a locked home it cannot, so fly to the terminator first. Shots `V1-noon` to `V1-night`.
+pub fn look_vista_light(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let view = |name, height, rising| View {
+        name,
+        star: Some((height, rising)),
+        cover: Some(0.45),
+        high: 0.0,
+    };
+    let views = [
+        view("V1-noon", 0.8, true),
+        view("V1-low-star", 0.14, false),
+        view("V1-horizon", 0.0, false),
+        view("V1-twilight", -0.12, false),
+        view("V1-night", -0.8, false),
+    ];
+    vista(world, frame, &views)
+}
+
+/// The same place from the ground and from 300 m, 3 km and 30 km up, at the hour it is, each
+/// without clouds and with a broken sky. Shots `V2-<height>-clear` and `V2-<height>-broken`.
+pub fn look_vista_height(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let view = |name, cover, high| View {
+        name,
+        star: None,
+        cover,
+        high,
+    };
+    let views = [
+        view("V2-ground-clear", Some(0.0), 0.0),
+        view("V2-ground-broken", Some(0.45), 0.0),
+        view("V2-300m-clear", Some(0.0), 300.0),
+        view("V2-300m-broken", Some(0.45), 300.0),
+        view("V2-3km-clear", Some(0.0), 3.0e3),
+        view("V2-3km-broken", Some(0.45), 3.0e3),
+        view("V2-30km-clear", Some(0.0), 3.0e4),
+        view("V2-30km-broken", Some(0.45), 3.0e4),
+    ];
+    vista(world, frame, &views)
+}

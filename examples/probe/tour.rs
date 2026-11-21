@@ -37,6 +37,14 @@ pub struct Notes {
     pub animal: Option<(Entity, DVec3)>,
     /// The frame at which a stage took its last shot from a held camera: it ends on the next.
     pub shot_at: Option<u32>,
+    /// The frame of a postcard before the one at which the robot was on foot or seated as it wants.
+    pub ready: Option<u32>,
+    /// Position and orientation of the ship parked on the landing pad.
+    pub berth: Option<(DVec3, DQuat)>,
+    /// Planet positions a postcard found on its first frame and uses on the next ones.
+    pub spots: Vec<DVec3>,
+    /// What the play stage under way keeps between frames.
+    pub play: Play,
 }
 
 /// One stage of the tour.
@@ -66,13 +74,14 @@ impl Tour {
 }
 
 /// Returns whether the stage `name` of `group` runs: `core` stages always do, the others when `PROBE_STAGES`
-/// names their group (all groups but `zoo` when it is empty or `all`), unless `SMOKE_ONLY` leaves the stage out
+/// names their group (all groups but `zoo` and `postcards` when it is empty or `all`), unless `SMOKE_ONLY` leaves the stage out
 /// or `SMOKE_SKIP` lists it.
 fn wanted(group: &str, name: &str) -> bool {
     let list = std::env::var("PROBE_STAGES").unwrap_or_default();
     let groups = |g: &str| list.split(',').any(|x| x == g);
+    let own = |g: &str| g == "zoo" || g == "postcards";
     let by_group =
-        group == "core" || groups(group) || (group != "zoo" && (list.is_empty() || groups("all")));
+        group == "core" || groups(group) || (!own(group) && (list.is_empty() || groups("all")));
     let only = std::env::var("SMOKE_ONLY").unwrap_or_default();
     let skipped = std::env::var("SMOKE_SKIP").unwrap_or_default();
     let by_name = group == "core" || only.is_empty() || only.split(',').any(|keep| keep == name);

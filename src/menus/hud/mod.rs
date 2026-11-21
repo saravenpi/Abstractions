@@ -26,6 +26,7 @@ mod onscreen;
 mod panel;
 mod prompt;
 mod snow;
+mod switch;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
@@ -42,6 +43,8 @@ mod tests_deck;
 mod tests_frame;
 #[cfg(test)]
 mod tests_hints;
+#[cfg(test)]
+mod tests_icons;
 #[cfg(test)]
 mod tests_prompt;
 #[cfg(test)]
@@ -178,7 +181,7 @@ fn readouts(app: &mut App) {
         .run_if(on_timer(Duration::from_secs_f32(CLIMATE_EVERY)));
     let playing = (
         hints::update,
-        (panel::refresh, panel::spool).run_if(every()),
+        (panel::refresh, panel::spool, switch::write).run_if(every()),
         prompt::update.run_if(every()),
         marks.in_set(MarkerSet::Show),
         weather,

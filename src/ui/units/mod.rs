@@ -12,12 +12,14 @@ mod planet;
 mod tests;
 #[cfg(test)]
 mod tests_rules;
+#[cfg(test)]
+mod tests_zero;
 
 pub use distance::{
     AU_NOTE, LIGHT_YEAR_NOTE, SHORT_NOTE, distance, distance_short, distances, distances_short,
 };
 pub use measure::{duration, speed};
-pub use number::{plain, spaced};
+pub use number::{fixed, plain, spaced};
 pub use planet::{
     gravity, gravity_ratio, gravity_si, mass, pressure, pressure_bar, pressure_ratio,
 };

@@ -2,6 +2,7 @@
 //! and a plain word for the pull, the air, the heat and the length of the day.
 
 use super::words::{AIR, FREEZING};
+use crate::ui::units::fixed;
 
 /// What the air does for a glider, from none to thick, in the order of [`AIR`] and one more.
 const LIFT: [&str; 4] = [
@@ -59,8 +60,8 @@ pub fn versus(value: f64, home: f64) -> String {
         return String::new();
     }
     match ratio {
-        r if r < 0.1 => format!("{r:.2} x home"),
-        r if r < 100.0 => format!("{r:.1} x home"),
-        r => format!("{r:.0} x home"),
+        r if r < 0.1 => format!("{} x home", fixed(r, 2)),
+        r if r < 100.0 => format!("{} x home", fixed(r, 1)),
+        r => format!("{} x home", fixed(r, 0)),
     }
 }

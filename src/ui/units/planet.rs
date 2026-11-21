@@ -1,6 +1,6 @@
 //! The quantities of a planet: mass, pull and air.
 
-use super::number::plain;
+use super::number::{fixed, plain};
 use crate::universe::STANDARD_GRAVITY;
 
 /// Returns a mass: "300 g", "12 kg" or "1.5 t".
@@ -19,7 +19,7 @@ pub fn gravity_ratio(acceleration: f64) -> String {
 
 /// Returns a pull in the SI unit: "11.8 m/s2".
 pub fn gravity_si(acceleration: f64) -> String {
-    format!("{acceleration:.1} m/s2")
+    format!("{} m/s2", fixed(acceleration, 1))
 }
 
 /// Returns a pull as a multiple of home with the SI value beside it: "1.2 x home, 11.8 m/s2".

@@ -11,6 +11,7 @@ use std::f64::consts::{FRAC_PI_2, PI, TAU};
 use bevy::math::{DVec3, Vec2};
 
 use crate::computer::direction;
+use crate::ui::units::fixed;
 
 /// Returns the latitude and the longitude of the direction `dir` in radians: the latitude
 /// from -pi/2 at the south pole to pi/2 at the north pole, the longitude from 0 to a full turn
@@ -54,5 +55,9 @@ pub fn coords(dir: DVec3) -> String {
     let north = ["S", "N"][usize::from(lat >= 0.0)];
     let east = ["W", "E"][usize::from(lon >= 0.0)];
     let degrees = |angle: f64| (angle.abs() / FRAC_PI_2 * 90.0 * 10.0).round() / 10.0;
-    format!("{:.1}° {north}  {:.1}° {east}", degrees(lat), degrees(lon))
+    format!(
+        "{}° {north}  {}° {east}",
+        fixed(degrees(lat), 1),
+        fixed(degrees(lon), 1)
+    )
 }

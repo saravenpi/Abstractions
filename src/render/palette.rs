@@ -11,7 +11,7 @@ use super::clock::START_PHASE;
 use super::daylight::{NIGHT_EDGE, daylight};
 use super::exposure::{Metered, lifted};
 use super::moonlight::{Moonlight, moonlit};
-use super::scatter::{peak, scattered, transmit};
+use super::scatter::{lit_cloud, peak, scattered, transmit};
 use super::vantage::{LocalSystem, Vantage};
 use super::weather::LocalWeather;
 
@@ -117,7 +117,7 @@ impl Palette {
             sun_color: tint,
             sun_lux: Self::SPACE_LUX * light.through * light.risen,
             moon_lux: Self::MOON_LUX * smoothstep(NIGHT_EDGE.0, NIGHT_EDGE.1, -height),
-            cloud: NIGHT_CLOUD.lerp(tint.lerp(Vec3::ONE, 0.35), day) * air.tint,
+            cloud: NIGHT_CLOUD.lerp(lit_cloud(tint), day) * air.tint,
             stars: 1.0 - smoothstep(-0.2, 0.0, height),
             sun_dir: Vec3::Y,
             moon_dir: Vec3::NEG_Y,

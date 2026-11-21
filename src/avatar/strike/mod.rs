@@ -58,6 +58,8 @@ mod tests_outcome;
 #[cfg(test)]
 mod tests_stock;
 #[cfg(test)]
+mod tests_throw;
+#[cfg(test)]
 mod tests_trail;
 
 pub use act::{Act, Strike};

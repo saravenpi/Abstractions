@@ -8,6 +8,9 @@
 //! - `SMOKE_SEED`: the world seed, default 7.
 //! - `PROBE_STAGES`: comma list of stage groups, default all. Groups: `water` (lens tour and room walls),
 //!   `grass` (turf and trees), `ground` (one patch of grass from the horizon and from 2 m to 30 km), `fauna` (animals), `tour` (base, village, flight, orbit, warp) and `zoo`.
+//!   `ui` (the menus, the map at each level, the guide, the pack and the pause menu) and `play` (the game
+//!   being played: the map of explored ground, stones picked and a tool made, a herd stalked, a fight, a
+//!   kill carved, the robot hurt and mended, the pack and the guide after the hunt; see the `play` module).
 //!   The title, loading, boot and wake stages always run.
 //! - `SMOKE_ONLY` and `SMOKE_SKIP`: comma lists of stage names to keep or to leave out.
 //! - `SMOKE_TARGET` and `SMOKE_FLASH`: see the `warp` and `boot` stages.
@@ -17,6 +20,10 @@
 //!   to shoot `wake` and `menus` at each step.
 //! - `PROBE_SOFT`: when set, a system whose parameters fail validation is logged and skipped instead of
 //!   stopping the game, so one run lists every such system.
+//!
+//! `PROBE_STAGES=postcards` takes the clean pictures for the website and the title screen, stages `p01-home`
+//! to `p22-river` (see the `postcards` module). It is left out of a run of all groups. Without `SMOKE_SEED` it
+//! plays seed 18. `PROBE_SIZE=1920x1080` sets the window size and `POSTCARD_SETTLE` the frames a card waits.
 //!
 //! `PROBE_STAGES=models` opens the model studio (see the `models` module): the robot and the companion alone.
 //!
@@ -55,11 +62,16 @@ mod boot;
 mod burn;
 mod cabin;
 mod camera;
+mod cards_air;
+mod cards_foot;
+mod cards_land;
+mod cards_life;
 mod foot;
 mod grass;
 mod ground;
 mod herd;
 mod hull;
+mod isolate;
 mod launch;
 mod look;
 mod meter;
@@ -68,6 +80,15 @@ mod mp;
 mod mpact;
 mod mpspot;
 mod orbital;
+mod play;
+mod playbook;
+mod playcarve;
+mod playfight;
+mod playframe;
+mod playherd;
+mod playloot;
+mod playmap;
+mod postcards;
 mod room;
 mod screens;
 mod seen;
@@ -89,11 +110,16 @@ use boot::*;
 use burn::*;
 use cabin::*;
 use camera::*;
+use cards_air::*;
+use cards_foot::*;
+use cards_land::*;
+use cards_life::*;
 use foot::*;
 use grass::*;
 use ground::*;
 use herd::*;
 use hull::*;
+use isolate::*;
 use launch::*;
 use look::*;
 use meter::*;
@@ -101,6 +127,15 @@ use mp::*;
 use mpact::*;
 use mpspot::*;
 use orbital::*;
+use play::*;
+use playbook::*;
+use playcarve::*;
+use playfight::*;
+use playframe::*;
+use playherd::*;
+use playloot::*;
+use playmap::*;
+use postcards::*;
 use room::*;
 use screens::*;
 use seen::*;
@@ -150,6 +185,14 @@ fn main() -> AppExit {
     app.add_systems(
         PostUpdate,
         lower.after(bevy::transform::TransformSystems::Propagate),
+    );
+    app.init_resource::<Tripod>();
+    app.add_systems(Startup, size_window);
+    app.add_systems(
+        PostUpdate,
+        tripod
+            .after(bevy::transform::TransformSystems::Propagate)
+            .after(hold),
     );
     app.init_resource::<Tris>();
     app.add_systems(Last, (measure, count_tris, probe));

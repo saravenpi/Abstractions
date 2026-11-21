@@ -83,7 +83,7 @@ pub use air::Air;
 pub use camera::{configure_camera, set_fov};
 pub use celestial::{daylight, smoothstep, sun_direction};
 pub use clock::{DayClock, START_PHASE, catch_up};
-pub use clouds::{CloudCover, CloudCrossing, CloudShell};
+pub use clouds::{CloudCover, CloudCrossing, CloudMaterial, CloudShell};
 pub use cloudshade::CloudShade;
 pub use daylight::{PlaceLight, PlaceLit, PlaceUniform, place_light};
 pub use dome::SkyDome;

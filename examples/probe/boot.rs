@@ -27,10 +27,11 @@ pub fn title(world: &mut World, _: &mut Notes, frame: u32) -> Act {
         }
         30 if std::env::var("PROBE_JOIN").is_ok() => join(world),
         30 => {
+            let cards = std::env::var("PROBE_STAGES").is_ok_and(|l| l.contains("postcards"));
             let seed = std::env::var("SMOKE_SEED")
                 .ok()
                 .and_then(|s| s.parse().ok())
-                .unwrap_or(7);
+                .unwrap_or(if cards { 18 } else { 7 });
             let dir = world.resource::<SaveDir>().0.clone();
             let entry = new_entry(&dir, "Smoke world", seed);
             let started =

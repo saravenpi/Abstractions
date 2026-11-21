@@ -37,6 +37,10 @@ pub(super) struct Hint;
 #[derive(Component)]
 pub(super) struct Empty;
 
+/// Marks the table of worlds, column names included, hidden when there is no world.
+#[derive(Component)]
+pub(super) struct Listing;
+
 /// Marks the button of the invitation, which creates a world.
 #[derive(Component)]
 pub(super) struct Invite;
@@ -73,6 +77,7 @@ fn row(slot: usize) -> impl Bundle {
 /// The column names and the pool of rows.
 fn table() -> impl Bundle {
     (
+        Listing,
         column(px(WIDTHS.iter().sum::<f32>() + theme::GAP_M * 4.0), 0.0),
         Children::spawn((
             Spawn(table_head(children![

@@ -10,6 +10,7 @@ use super::context::Element;
 use super::fade::gate;
 use super::minimap::Reader;
 use super::units::height;
+use crate::ui::units::fixed;
 use crate::ui::{text, theme};
 
 /// Marks the text of the coordinates line.
@@ -67,9 +68,9 @@ pub(super) fn ground(out: &mut String, at: DVec3, radius: f64) {
     let rise = height(at.length() - radius);
     let _ = write!(
         out,
-        "{:.1}° {north}  {:.1}° {east}  {rise}",
-        lat.abs(),
-        lon.abs()
+        "{}° {north}  {}° {east}  {rise}",
+        fixed(lat.abs(), 1),
+        fixed(lon.abs(), 1)
     );
 }
 

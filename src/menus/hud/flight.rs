@@ -6,6 +6,7 @@ use super::context::Element;
 use super::units::{height, percent, speed};
 use crate::ship::{ShipTelemetry, WarpState};
 use crate::space::Frame;
+use crate::ui::Icon;
 
 /// One instrument. Its row is hidden while it has nothing to show.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,11 +25,13 @@ pub(super) enum Gauge {
     Periapsis,
     /// Landing gear.
     Gear,
+    /// The headlight in the nose.
+    Headlight,
 }
 
 impl Gauge {
     /// Every instrument, in display order, with its label.
-    pub(super) const ALL: [(Gauge, &'static str); 7] = [
+    pub(super) const ALL: [(Gauge, &'static str); 8] = [
         (Gauge::Altitude, "Altitude"),
         (Gauge::Speed, "Speed"),
         (Gauge::Throttle, "Throttle"),
@@ -36,6 +39,7 @@ impl Gauge {
         (Gauge::Apoapsis, "Highest point"),
         (Gauge::Periapsis, "Lowest point"),
         (Gauge::Gear, "Gear"),
+        (Gauge::Headlight, "Headlight"),
     ];
 
     /// Returns the HUD element this instrument belongs to.
@@ -47,6 +51,7 @@ impl Gauge {
             Gauge::Assist => Element::Assist,
             Gauge::Apoapsis | Gauge::Periapsis => Element::Apsides,
             Gauge::Gear => Element::Gear,
+            Gauge::Headlight => Element::Headlight,
         }
     }
 }
@@ -63,6 +68,8 @@ pub struct Flight {
     pub glide: Option<(f64, f64)>,
     /// Extension of the landing gear, from 0 (folded) to 1 (down and locked), with a ship.
     pub gear: Option<f64>,
+    /// Whether the headlight is on and the name of the key that switches it, with a ship.
+    pub headlight: Option<(bool, String)>,
 }
 
 /// Returns the text of the speed instrument: the warp speed in warp, the speed over the surface
@@ -89,6 +96,37 @@ fn gear_text(flight: &Flight) -> Option<&'static str> {
     })
 }
 
+/// Returns the text of the headlight instrument near a planet: on or off. Its row shows the key
+/// that switches it after it. Nothing in space, where the lamp lights nothing.
+fn headlight_text(flight: &Flight) -> Option<String> {
+    let near = matches!(flight.telemetry.frame, Frame::Surface(_));
+    let (on, _) = flight.headlight.as_ref().filter(|_| near)?;
+    Some(["off", "on"][usize::from(*on)].to_string())
+}
+
+/// Returns the icon of an instrument. The gear shows its state by its icon, down, up or on its
+/// way, and the headlight a lit lamp or a lamp struck out; the words beside the icon say the
+/// state too.
+pub(super) fn symbol(gauge: Gauge, flight: &Flight) -> Icon {
+    match gauge {
+        Gauge::Altitude => Icon::Altitude,
+        Gauge::Speed => Icon::Speed,
+        Gauge::Throttle => Icon::Throttle,
+        Gauge::Assist => Icon::Assist,
+        Gauge::Apoapsis => Icon::Apoapsis,
+        Gauge::Periapsis => Icon::Periapsis,
+        Gauge::Gear => match gear_text(flight) {
+            Some("down") => Icon::GearDown,
+            Some("moving") => Icon::Reload,
+            _ => Icon::GearUp,
+        },
+        Gauge::Headlight => match flight.headlight {
+            Some((true, _)) => Icon::HeadlightOn,
+            _ => Icon::HeadlightOff,
+        },
+    }
+}
+
 /// Returns what an instrument shows, or nothing when it has nothing to show: no orbit outside
 /// space, no gear away from a planet. Which instruments show in a place is `context::shown`.
 pub fn reading(gauge: Gauge, flight: &Flight) -> Option<String> {
@@ -108,6 +146,7 @@ pub fn reading(gauge: Gauge, flight: &Flight) -> Option<String> {
         Gauge::Apoapsis => t.apoapsis.filter(|_| in_orbit).map(height),
         Gauge::Periapsis => t.periapsis.filter(|_| in_orbit).map(height),
         Gauge::Gear => gear_text(flight).map(str::to_string),
+        Gauge::Headlight => headlight_text(flight),
     }
 }
 

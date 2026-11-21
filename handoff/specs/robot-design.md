@@ -56,7 +56,7 @@ The head is 0.32 of 1.8 m: more than a sixth, where a person has an eighth. The 
 Head
 - Helmet: a twelve-sided dome, bone, slate under the rim. 0.35 wide, where it was 0.31.
 - Visor box: a dark chamfered box proud of the helmet that holds the screen. The screen is unchanged, 0.23 by 0.12 m.
-- Side vanes (the signature): a flat horizontal bone blade grows out of the back of each ear housing, swept back 57 degrees, 12 cm long, 6 cm wide and 2 cm thick, with a small orange tip. From the front they read as ears, from above and behind as swept wings. They are the antenna. Nothing stands over the visor (owner, 2026-11-21: the brow wing read as eyebrows).
+- Side vanes (the signature): a flat horizontal bone blade grows out of the back of each ear housing, swept back 57 degrees, 12 cm long, 6 cm wide and 3 cm thick, with a small orange tip. From the front they read as ears, from above and behind as swept wings. They are the antenna. Nothing stands over the visor (owner, 2026-11-21: the brow wing read as eyebrows).
 - Ear discs: the joint disc at each side, bone cap. Speakers and microphones.
 
 Torso

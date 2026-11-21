@@ -146,7 +146,8 @@ pub(super) fn start(mut tiles: ResMut<Tiles>, rasters: Res<Rasters>, explored: R
 
 /// Starts a worker that paints tile `id` of `globe`, lit where `leaves` reach it.
 fn spawn(globe: Arc<Globe>, leaves: Leaves, id: TileId) -> Task<Vec<u8>> {
-    AsyncComputeTaskPool::get().spawn(async move { paint(&globe, id, Some(&lit(&leaves, id))) })
+    AsyncComputeTaskPool::get()
+        .spawn(async move { paint(&globe, id, Some(&lit(&leaves, id, globe.radius()))) })
 }
 
 /// Puts the tiles the workers finished into pictures.

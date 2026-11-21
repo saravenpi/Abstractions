@@ -26,6 +26,12 @@
 //! to `p22-river` (see the `postcards` module). It is left out of a run of all groups. Without `SMOKE_SEED` it
 //! plays seed 57. `PROBE_SIZE=1920x1080` sets the window size and `POSTCARD_SETTLE` the frames a card waits.
 //!
+//! `PROBE_STAGES=long` runs the `long-play` stage (see the `long` module): the universe clock days to ten years
+//! ahead and a fast flight from 50 m to 30 km, with `PROBE long` lines on the clock, the anchor, the camera
+//! planes, the fog, the exposure and the visibility ranges. `PROBE_SAVE=<dir>` starts the run from the most
+//! recently played world file in that folder (or in its `worlds` folder), copied to `SMOKE_DIR/probe-save`,
+//! with a `settings.toml` beside it applied to the run (see the `saved` module).
+//!
 //! `PROBE_STAGES=models` opens the model studio (see the `models` module): the robot and the companion alone.
 //!
 //! `PROBE_STAGES=zoo` does not tour the game. It shows every animal of the seed's home planet walking in a
@@ -76,6 +82,8 @@ mod herd;
 mod hull;
 mod isolate;
 mod launch;
+mod long;
+mod longlog;
 mod look;
 mod meter;
 mod models;
@@ -93,6 +101,7 @@ mod playloot;
 mod playmap;
 mod postcards;
 mod room;
+mod saved;
 mod screens;
 mod seen;
 mod shots;
@@ -127,6 +136,8 @@ use herd::*;
 use hull::*;
 use isolate::*;
 use launch::*;
+use long::*;
+use longlog::*;
 use look::*;
 use meter::*;
 use mp::*;
@@ -143,6 +154,7 @@ use playloot::*;
 use playmap::*;
 use postcards::*;
 use room::*;
+use saved::*;
 use screens::*;
 use seen::*;
 use shots::*;
@@ -202,6 +214,7 @@ fn main() -> AppExit {
             .after(hold),
     );
     app.init_resource::<Tris>();
-    app.add_systems(Last, (measure, count_tris, probe));
+    app.init_resource::<RangeTally>();
+    app.add_systems(Last, (measure, count_tris, probe, tally));
     app.run()
 }

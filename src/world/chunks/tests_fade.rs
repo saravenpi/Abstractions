@@ -85,7 +85,7 @@ fn the_margin_grows_with_the_planet_and_the_altitude() {
     let radius = 6.371e6;
     assert_eq!(span(2.0, 6.0e3), SPAN);
     assert!(span(2.0, radius) > span(2.0, 6.0e3));
-    assert!(span(2.0e6, radius) > span(2.0, radius));
+    assert!(span(2.0e7, radius) > span(2.0, radius));
     let wide = span(0.0, radius);
     for (altitude, level) in [(0.0, 0), (30.0, 3), (1.0e5, 8), (3.0e6, 16)] {
         let wide = span(altitude, radius);

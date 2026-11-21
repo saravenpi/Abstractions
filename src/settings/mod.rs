@@ -20,6 +20,8 @@ mod tests_lighting;
 #[cfg(test)]
 mod tests_markers;
 #[cfg(test)]
+mod tests_prefs;
+#[cfg(test)]
 mod tests_removed;
 #[cfg(test)]
 mod tests_servers;

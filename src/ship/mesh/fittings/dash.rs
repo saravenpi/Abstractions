@@ -9,14 +9,15 @@ use crate::ship::solid::Solid;
 
 /// Thickness of the panel behind its face, how far a bezel stands off the face, and the width
 /// of a bezel round its display, in metres.
-const PANEL: (f32, f32, f32) = (0.04, 0.012, 0.014);
+const PANEL: (f32, f32, f32) = (0.04, 0.006, 0.014);
 
 /// Two lengths in metres that go together: a rear and a front value.
 type Pair = (f32, f32);
 
 /// The hood: where its rear and its front edge are along z, their half widths, the height of
-/// their top, and its thickness.
-const HOOD: (Pair, Pair, Pair, f32) = ((-2.12, -2.45), (0.33, 0.2), (0.535, 0.47), 0.12);
+/// their top, and its thickness. It is a thin plate whose rear edge is behind the top edge of
+/// the panel and over it, so that seen from the eye of the pilot it hides no part of a display.
+const HOOD: (Pair, Pair, Pair, f32) = ((-2.155, -2.45), (0.33, 0.2), (0.535, 0.47), 0.05);
 
 /// Returns the point of the raked panel `across` metres from its middle and `along` metres up
 /// its slope, lifted `lift` metres off its face.

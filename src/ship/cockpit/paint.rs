@@ -4,12 +4,12 @@
 use super::font::{ADVANCE, HEIGHT, WIDTH, glyph};
 use super::pixels::{Ink, Pixels};
 use super::tune::TEXT_STEPS;
-use crate::computer::distance;
+use crate::ui::units::distance_short;
 
 /// Steps of a bar from empty to full.
 pub const BAR_STEPS: u8 = 32;
 
-/// Pixels a display keeps free along its left and its right edge.
+/// Pixels a display keeps free along each of its four edges: nothing is painted in them.
 pub const MARGIN: i32 = 2;
 
 /// Returns the step of the text display that shows `value`: its natural logarithm in steps of
@@ -23,14 +23,21 @@ pub fn value(key: i32) -> f64 {
     (f64::from(key) / TEXT_STEPS).exp() - 1.0
 }
 
-/// Returns the words of the step `key`: its value in the units of the HUD, with the light-year
-/// shortened to fit the display, and per second for a speed.
+/// Most characters a value of the flight display may have: what fits between its margins.
+pub const WIDEST: usize = 11;
+
+/// Returns the words of the step `key`: its value in the short units of the HUD, per second for
+/// a speed. A value too long for the display loses the space between its thousands, so that
+/// "990 000 km/s" reads "990000 km/s" and nothing is cut.
 pub fn words(key: i32, per_second: bool) -> String {
     let unit = if per_second { "/s" } else { "" };
-    format!(
-        "{}{unit}",
-        distance(value(key)).replace("light-years", "ly")
-    )
+    let mut words = format!("{}{unit}", distance_short(value(key)));
+    if words.chars().count() > WIDEST
+        && let Some(gap) = words.find(' ')
+    {
+        words.remove(gap);
+    }
+    words
 }
 
 /// Returns the column a text of `count` characters starts at to end against the right margin

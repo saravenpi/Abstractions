@@ -14,6 +14,7 @@ mod compass;
 mod context;
 mod coords;
 mod course;
+mod cruise;
 mod eye;
 mod fade;
 mod flight;
@@ -37,6 +38,8 @@ mod tests_climate;
 mod tests_context;
 #[cfg(test)]
 mod tests_coords;
+#[cfg(test)]
+mod tests_cruise;
 #[cfg(test)]
 mod tests_deck;
 #[cfg(test)]

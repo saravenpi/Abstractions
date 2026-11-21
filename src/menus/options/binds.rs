@@ -27,7 +27,7 @@ const LABELS: [&str; 32] = [
     "Nose up",
     "Stabiliser",
     "Cut throttle",
-    "Warp drive",
+    "Warp or cruise",
     "Switch view",
     "Board computer",
     "Go or stop",

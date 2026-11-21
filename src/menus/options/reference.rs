@@ -49,8 +49,13 @@ const FOOT_FIXED: [(&str, &str); 5] = [
     ("Sprint, wings", "Boost"),
 ];
 
-/// What the mouse does in the ship.
-const SHIP_FIXED: [(&str, &str); 2] = [("Mouse", "Look around"), ("Wheel", "Zoom camera")];
+/// What the mouse does in the ship, and the home key: home through the orbital cruise near the
+/// home planet, a course to it from afar.
+const SHIP_FIXED: [(&str, &str); 3] = [
+    ("Mouse", "Look around"),
+    ("Wheel", "Zoom camera"),
+    ("H", "Fly home"),
+];
 
 /// The lines of one half of the reference: the fixed lines, the rebindable ones, then the two
 /// keys that work everywhere.

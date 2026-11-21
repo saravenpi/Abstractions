@@ -3,7 +3,7 @@
 
 use super::calls::{Cry, Timbre, chorus, contact, distress, rhythm, voice};
 use super::rig::find;
-use crate::life::body::Locomotion;
+use crate::life::body::{Chain, Locomotion};
 use crate::life::herd::fixtures::{meadow_life, role, species};
 use crate::life::herd::{Herd, HerdState};
 use crate::life::{Activity, Guild, Habitat, Plan, Rung};
@@ -39,6 +39,31 @@ fn long_bodies_call_lower() {
     let mut long = stout.clone();
     long.body.length = 3.0;
     assert!(voice(&long, Rung::Skeletal).hz < voice(&stout, Rung::Skeletal).hz);
+}
+
+/// A longer body and a long neck lower the formants, and every species carries its own voice print,
+/// the same each time it is asked for.
+#[test]
+fn formants_follow_the_tract() {
+    let grazer = role(Guild::Grazer, Habitat::Ground, Activity::Day, 2.0);
+    let short = species(1, grazer, 300.0);
+    let mut long = short.clone();
+    long.body.length = 4.0;
+    let mut necked = short.clone();
+    necked.body.neck = Some(Chain {
+        parts: vec![0, 1],
+        lengths: vec![0.6, 0.6],
+        limit: 0.5,
+    });
+    let of = |s: &crate::life::Species| voice(s, Rung::Skeletal);
+    assert!(of(&long).formant < of(&short).formant);
+    assert!(of(&necked).formant < of(&short).formant);
+    assert!((of(&short).formant - 350.0 / 0.3).abs() < 1.0);
+    let prints: Vec<u8> = (0..8)
+        .map(|i| of(&species(i, grazer, 300.0)).print)
+        .collect();
+    assert_eq!(prints[3], of(&species(3, grazer, 300.0)).print);
+    assert!(prints.iter().any(|p| *p != prints[0]), "{prints:?}");
 }
 
 /// Bigger animals call slower, and a threat lasts longer than an alarm.

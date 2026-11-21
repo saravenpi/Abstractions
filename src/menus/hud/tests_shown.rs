@@ -11,14 +11,15 @@ fn exactly(context: Context, want: &[Element]) {
     );
 }
 
-/// On foot, swimming and gliding show the ground elements, and gliding adds its two rows.
+/// On foot, swimming and gliding show the ground elements, gliding adds its two rows, and only on
+/// foot does the reticle of a drawn tool show.
 #[test]
 fn the_body_shows_the_ground_elements() {
     use Element::*;
     let ground = [
         Compass, Cardinals, Minimap, Coords, Place, Climate, Integrity, Prompt, Markers,
     ];
-    exactly(Context::OnFoot, &[&ground[..], &[Herds]].concat());
+    exactly(Context::OnFoot, &[&ground[..], &[Herds, Reticle]].concat());
     exactly(Context::Swimming, &ground);
     exactly(
         Context::Gliding,

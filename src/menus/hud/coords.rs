@@ -1,5 +1,5 @@
 //! The coordinates line in the top left corner: latitude, longitude and height on a planet,
-//! such as `12.4° N  103.2° E  245 m`, on a strip. It shows only on or near a ground.
+//! such as `12.4° N  103.2° E  245 m`, with no panel behind it. It shows only on or near a ground.
 
 use std::fmt::Write;
 
@@ -18,7 +18,7 @@ use crate::ui::{text, theme};
 pub(super) struct Coords;
 
 /// The top-left corner of the screen: the coordinates line over the climate line, as far from
-/// the edges as the minimap is in the top-right corner. Each line has its own strip.
+/// the edges as the minimap is in the top-right corner. Its text starts at the edge margin.
 pub(super) fn corner() -> impl Bundle {
     (
         Node {
@@ -41,10 +41,8 @@ fn line() -> impl Bundle {
         gate(Element::Coords),
         Node {
             display: Display::None,
-            padding: UiRect::axes(px(theme::S3), px(theme::S2)),
             ..default()
         },
-        BackgroundColor(theme::PANEL),
         text("", theme::FONT_SMALL, theme::TEXT),
         TextLayout::no_wrap(),
     )

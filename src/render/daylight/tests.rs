@@ -88,7 +88,7 @@ fn daylight_is_the_light_the_palette_had() {
             assert_eq!((palette.sun_color, palette.sun_lux), (light.tint, lux));
             assert_eq!(
                 palette.ambient_brightness,
-                40.0 + (350.0 - 40.0) * light.sky
+                40.0 + (Palette::DAY_AMBIENT - 40.0) * light.sky
             );
             assert_eq!(palette.moon_lux, 350.0 * smoothstep(-0.02, 0.3, -height));
         }

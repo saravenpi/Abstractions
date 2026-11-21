@@ -8,9 +8,9 @@ use bevy::prelude::*;
 use super::course::{Press, press};
 use super::locate::here;
 use super::open::Computer;
-use super::route::{Cancel, Destination, Engage, RouteStatus, Target};
-use crate::space::{Anchor, Location, Travel};
-use crate::universe::Universe;
+use super::route::{Cancel, Destination, Engage, Homeward, RouteStatus, Target};
+use crate::space::{Anchor, Frame, Location, Travel};
+use crate::universe::{BodyId, Universe};
 
 /// What a press of Go reads and writes.
 #[derive(SystemParam)]
@@ -65,12 +65,35 @@ impl Go<'_, '_> {
         }
     }
 
-    /// Presses Go on the home planet: one command, whatever galaxy the ship is in.
+    /// Returns whether the player is on the home planet `home` or above it in its system, where
+    /// the world streams it: the ship can cruise there.
+    fn over(&self, home: BodyId) -> bool {
+        let streamed = self.location.as_deref().is_some_and(|at| at.body == home);
+        let frame = self.world.as_ref().map(|(_, anchor)| anchor.frame);
+        let near = match frame {
+            Some(Frame::Surface(body)) => body == home,
+            Some(Frame::System(star)) => star == home.star,
+            _ => false,
+        };
+        streamed && near
+    }
+
+    /// Presses Go on the home planet: one command, whatever galaxy the ship is in. Seated on or
+    /// above the home planet, it asks the ship to cruise to the base instead; away from it, the
+    /// ship also cruises to the base once the route arrives.
     pub fn home(&mut self) {
-        let home = self
-            .world
-            .as_ref()
-            .map(|(universe, _)| Target::Body(universe.home()));
-        self.press(home);
+        let Some(home) = self.world.as_ref().map(|(universe, _)| universe.home()) else {
+            return;
+        };
+        let (seated, over) = (self.seated(), self.over(home));
+        if !(seated && over) {
+            self.press(Some(Target::Body(home)));
+        }
+        if seated {
+            self.commands.trigger(Homeward(home));
+        }
+        if seated && over {
+            self.close();
+        }
     }
 }

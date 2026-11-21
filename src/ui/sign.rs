@@ -22,10 +22,20 @@ pub const ON_FOOT: Icon = Icon::User;
 pub const FRAME_RATE: Icon = Icon::Speed;
 /// Looking for a newer release.
 pub const UPDATES: Icon = Icon::Reload;
+/// Stone picked off a rock, as a group of the pack. Wants `landslide`.
+pub const STONE: Icon = Icon::Terrain;
+/// Skin and sinew taken from an animal, as a group of the pack: the paw of the animal it came from.
+pub const HIDE: Icon = Icon::Animal;
+/// Flint, obsidian and glassy tissue: stone that knaps to an edge, drawn as a cut gem.
+pub const SHARD: Icon = Icon::Crystal;
+/// Frozen water picked up as a stone. Wants `ac_unit`.
+pub const ICE: Icon = Icon::Snow;
+/// Resin, a drop of plant gum.
+pub const RESIN: Icon = Icon::Water;
 
 /// Every borrowed icon: the concept, the icon it borrows and the Material Symbols name of the
 /// glyph it wants. An empty name means the borrowed glyph is the wanted one.
-pub const BORROWED: [(&str, Icon, &str); 8] = [
+pub const BORROWED: [(&str, Icon, &str); 13] = [
     ("bloom", BLOOM, "flare"),
     ("invert the mouse", INVERT, ""),
     ("hitstop", HITSTOP, "front_hand"),
@@ -34,4 +44,9 @@ pub const BORROWED: [(&str, Icon, &str); 8] = [
     ("on foot", ON_FOOT, ""),
     ("frame rate", FRAME_RATE, ""),
     ("updates", UPDATES, ""),
+    ("stone", STONE, "landslide"),
+    ("hide", HIDE, ""),
+    ("flint and obsidian", SHARD, ""),
+    ("ice", ICE, "ac_unit"),
+    ("resin", RESIN, ""),
 ];

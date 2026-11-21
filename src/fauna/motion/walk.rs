@@ -8,7 +8,7 @@ use super::feet::{Cue, Foot, Stride, on};
 use super::gait::ramp;
 use super::ik::unit;
 use super::rig::{Detail, Drive, Motion};
-use super::root::{heading, place, travel};
+use super::root::{heading, place, ride, travel};
 use super::stance::{attitude, cap};
 use crate::life::body::Body;
 
@@ -65,6 +65,9 @@ fn plant(
             *foot = Foot::new(on(ground, foot.at.x, foot.at.z));
         }
     }
+    for foot in &mut m.feet {
+        foot.seat(ground);
+    }
     let most = (m.feet.len() / 3).max(1);
     let mut up = m.feet.iter().filter(|f| !f.planted).count();
     for i in 0..m.feet.len() {
@@ -75,13 +78,13 @@ fn plant(
     }
 }
 
-/// Puts every foot of `m` where its phase says, on the ground under the root at `base`.
-fn sketch(m: &mut Motion, body: &Body, stride: &Stride, base: f32) {
+/// Puts every foot of `m` where its phase says, on `ground` under it.
+fn sketch(m: &mut Motion, body: &Body, stride: &Stride, ground: &dyn Fn(Vec2) -> f32) {
     let dir = unit(stride.vel, heading(m) * Vec3::NEG_Z);
     let length = m.clock.stride;
     for i in 0..m.feet.len() {
         let cue = cue(m, body, i, false);
-        m.feet[i].sketch(&cue, stride, (base, dir), length);
+        m.feet[i].sketch(&cue, stride, (ground, dir), length);
     }
 }
 
@@ -89,6 +92,7 @@ fn sketch(m: &mut Motion, body: &Body, stride: &Stride, base: f32) {
 pub fn step(m: &mut Motion, body: &Body, drive: &Drive, ground: &dyn Fn(Vec2) -> f32, dt: f32) {
     let leg = body.height.max(0.05);
     let vel = travel(m, drive, true, dt);
+    let base = ride(m, ground);
     let speed = vel.length();
     m.clock.advance(speed * dt, speed, drive.gravity, leg);
     let stride = stride(m, vel, leg, drive.gravity);
@@ -99,9 +103,8 @@ pub fn step(m: &mut Motion, body: &Body, drive: &Drive, ground: &dyn Fn(Vec2) ->
             attitude(&m.feet, m.root.at, heading(m))
         }
         Detail::Cheap => {
-            let base = ground(Vec2::new(m.root.at.x, m.root.at.z));
-            sketch(m, body, &stride, base);
-            Vec3::new(base, 0.0, 0.0)
+            sketch(m, body, &stride, ground);
+            attitude(&m.feet, m.root.at, heading(m)).with_x(base)
         }
     };
     let mut hold = m.root.hold.step(&m.tune.body(), target, dt);

@@ -23,6 +23,10 @@ pub struct Pick {
     pub dir: Vec3,
     /// Its distance in metres.
     pub gap: f64,
+    /// The distance its words say, in metres: over the ground for a place on the planet below.
+    pub said: f64,
+    /// Whether the planet stands between the eye and the place.
+    pub hidden: bool,
 }
 
 /// What a slot drew last frame.
@@ -95,7 +99,15 @@ impl State {
             };
             if wanted(marker, gap, (context, level)) {
                 let dir = lifted(marker.kind, dir, gap);
-                self.picks.push(Pick { index, dir, gap });
+                let said = around.over_ground(marker).unwrap_or(gap);
+                let hidden = around.hidden(marker);
+                self.picks.push(Pick {
+                    index,
+                    dir,
+                    gap,
+                    said,
+                    hidden,
+                });
                 self.items.push((marker.rank(), gap));
             }
         }

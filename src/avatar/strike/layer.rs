@@ -1,10 +1,14 @@
-//! The strike layer: what a strike lays over the blended pose of the body, the chest turned and the
-//! arms on the grip.
+//! The strike layer: what a strike lays over the blended pose of the body, the chest turned, the
+//! arms on the grip, the legs and the hips behind the blow and the free arm against it.
 
 use bevy::prelude::*;
 
+use super::super::AvatarPose;
+use super::super::ground::Stance;
 use super::super::pose::{Core, Limb, Pose};
 use super::act::{Strike, Timing, key};
+use super::feel::bend::Bend;
+use super::feel::body::{phase, stand, still};
 use super::held::Held;
 use super::ik::reach;
 use super::key::Key;
@@ -24,6 +28,18 @@ pub struct Layer {
     pub trunk: [f32; 2],
     /// Shoulder, lift and elbow of each arm that holds the grip, left then right.
     pub arms: [Option<[f32; 3]>; 2],
+    /// Unit direction of the tool from the grip, in the frame of the torso.
+    pub axis: Vec3,
+    /// How far the strike is under way, 0 at rest to 1 in the blow.
+    pub engage: f32,
+    /// How far the strike is coiled, -1 cocked to 1 followed through.
+    pub coil: f32,
+    /// How much of the stance the legs take, 0 to 1.
+    pub legs: f32,
+    /// Where the legs and the hips stand behind the blow.
+    pub stance: Stance,
+    /// Shoulder, lift and elbow of the free left arm that balances a one-handed blow.
+    pub free: Option<[f32; 3]>,
 }
 
 impl Layer {
@@ -48,11 +64,14 @@ impl Layer {
             weight: 1.0,
             trunk: [key.twist, key.spine],
             arms,
+            axis: key.axis,
+            ..default()
         }
     }
 
     /// Returns `pose` with this layer laid over it: the chest turn and bend added, the arms that
-    /// hold the grip blended to their reach, every joint kept inside its limits.
+    /// hold the grip blended to their reach, the legs and the free arm behind the blow, every joint
+    /// kept inside its limits.
     pub fn apply(&self, pose: Pose) -> Pose {
         if self.weight <= 0.0 {
             return pose;
@@ -68,29 +87,44 @@ impl Layer {
                 out.sides[side][joint as usize] = base + (value - base) * w;
             }
         }
-        out.bounded()
+        stand(out, self, w).bounded()
     }
 }
 
-/// Returns the key `strike` poses with `held` now.
-pub fn posed(strike: &Strike, held: &Held) -> Key {
+/// Returns the layer `strike` lays with `held` on a body posed by `pose`: the key of its act turned
+/// toward its aim as far as the strike is under way, with the body behind it, eased from the layer
+/// `before` over `dt` seconds.
+pub fn posed(
+    strike: &Strike,
+    held: &Held,
+    pose: &AvatarPose,
+    (before, dt): (&Layer, f32),
+) -> Layer {
     let path = Path::of(held.style, strike.dir);
-    key(
-        strike.act,
-        &path,
-        &Timing::of(held, &path)
-            .felt(&strike.hurt)
-            .braked(strike.result),
-        strike.dir,
+    let timing = Timing::of(held, &path)
+        .felt(&strike.hurt)
+        .braked(strike.result);
+    let bend = Bend::of(strike.aim, still(pose));
+    let (engage, _) = phase(strike.act, &timing);
+    let key = bend.turn(&key(strike.act, &path, &timing, strike.dir), engage);
+    Layer::held(&key, held.build.hands, strike.hurt.usable).bodied(
+        (strike, held),
+        (&bend, &timing),
+        (before, dt),
     )
 }
 
 /// Lays the strike of every body over its pose: the key of its act with the tool out, nothing with
 /// the tool stowed or gone.
-pub fn lay(mut bodies: Query<(&mut Layer, &Strike, Option<&Held>)>) {
-    for (mut layer, strike, held) in &mut bodies {
+pub fn lay(
+    time: Res<Time>,
+    mut bodies: Query<(&mut Layer, &Strike, Option<&Held>, Option<&AvatarPose>)>,
+) {
+    let dt = time.delta_secs();
+    for (mut layer, strike, held, pose) in &mut bodies {
+        let pose = pose.copied().unwrap_or_default();
         let next = match held.filter(|held| held.out) {
-            Some(held) => Layer::held(&posed(strike, held), held.build.hands, strike.hurt.usable),
+            Some(held) => posed(strike, held, &pose, (&layer, dt)),
             None => Layer::default(),
         };
         layer.set_if_neq(next);

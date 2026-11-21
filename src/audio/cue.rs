@@ -29,13 +29,11 @@ pub enum StepSurface {
     Metal,
     /// The wing and the hull of a ship: a thin panel that drums.
     Hull,
-    /// Planks: floors, piers and decks.
-    Wood,
 }
 
 impl StepSurface {
     /// Every surface, in code order.
-    pub const ALL: [StepSurface; 11] = [
+    pub const ALL: [StepSurface; 10] = [
         StepSurface::Grass,
         StepSurface::Soil,
         StepSurface::Gravel,
@@ -46,7 +44,6 @@ impl StepSurface {
         StepSurface::Water,
         StepSurface::Metal,
         StepSurface::Hull,
-        StepSurface::Wood,
     ];
 }
 
@@ -66,7 +63,7 @@ pub enum ChirpKind {
     Worried,
     /// A discovery: a bright rising trill.
     Delight,
-    /// The start of a hummed tune: four soft notes.
+    /// The start of a hummed tune: three soft notes.
     Hum,
     /// Waking up: a low blip, then a quick rise.
     Wake,
@@ -157,7 +154,7 @@ impl AudioCue {
             AudioCue::WarpExit => (8, 0),
             AudioCue::Chirp(kind) => (9, kind as u64),
             AudioCue::Thunder(level) => (10, strength(level)),
-            AudioCue::Call(call) => (11, u64::from(call.pack())),
+            AudioCue::Call(call) => (11, call.pack()),
             AudioCue::Pump(level) => (12, strength(level)),
             AudioCue::Hit(sound) => (13, u64::from(sound.pack())),
             AudioCue::Switch => (14, 0),
@@ -181,7 +178,7 @@ impl AudioCue {
             8 => Some(AudioCue::WarpExit),
             9 => CHIRPS.get(arg).copied().map(AudioCue::Chirp),
             10 => Some(AudioCue::Thunder(arg as f32 / STRENGTH_STEPS)),
-            11 => Call::unpack(bits as u32).map(AudioCue::Call),
+            11 => Call::unpack(bits).map(AudioCue::Call),
             12 => Some(AudioCue::Pump(arg as f32 / STRENGTH_STEPS)),
             13 => HitSound::unpack(bits as u32).map(AudioCue::Hit),
             14 => Some(AudioCue::Switch),

@@ -68,3 +68,14 @@ pub fn drawn() -> Key {
         spine: -0.12,
     }
 }
+
+/// Returns the key of a tool being slung over the back: the hand up behind the right shoulder, the
+/// shaft hanging down across the back.
+pub fn slung() -> Key {
+    Key {
+        grip: Vec3::new(0.24, 0.5, 0.1),
+        axis: Vec3::new(-0.3, -1.0, 0.15).normalize(),
+        twist: 0.2,
+        spine: -0.05,
+    }
+}

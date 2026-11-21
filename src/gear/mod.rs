@@ -27,6 +27,7 @@ mod aero;
 mod aim;
 mod assist;
 mod boots;
+mod carry;
 mod command;
 mod contact;
 mod fx;
@@ -45,6 +46,7 @@ pub mod tune;
 mod tests;
 
 pub use boots::descent_target;
+pub use carry::glides;
 pub use contact::{deflect, slid};
 pub use fx::{FlightFx, GearSet, Kit, Look, Strip, Trail, Wake, ribbon_mesh, show, trace};
 pub use input::{GearInput, air_density};

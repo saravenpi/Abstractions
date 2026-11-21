@@ -1,13 +1,11 @@
 //! Tests of how the climate shapes life: thick in the heart of a biome, thinner towards its edges,
-//! nothing above the snow line, and the air villages and camps keep to.
+//! nothing above the snow line, and a climate on globes only.
 
 use std::sync::Arc;
 
 use bevy::math::Vec2;
 
-use super::thrive::{
-    DUNE_SEA, TREE_LINE, VILLAGE_AIR, climate_at, dune_sea, frozen, livable, vigor,
-};
+use super::thrive::{TREE_LINE, climate_at, frozen, vigor};
 use crate::climate::{Climate, SNOW_LINE as FROST};
 use crate::universe::{PlanetClass, PlanetRecord};
 use crate::world::Terrain;
@@ -78,18 +76,13 @@ fn a_forest_thins_towards_the_steppe() {
     assert!(vigor(Biome::Desert, &air(305.0, 0.1)) > 2.0 * forest(0.1));
 }
 
-/// The snow line, the tree line of the taiga, the village range and the desert heart sit
-/// exactly at their numbers.
+/// The snow line and the tree line of the taiga sit exactly at their numbers.
 #[test]
 fn the_limits_sit_at_their_numbers() {
     let meadow = |t: f32| frozen(Biome::Meadow, &air(t, 1.0));
     assert!(meadow(FROST - 0.01) && !meadow(FROST));
     let taiga = |t: f32| frozen(Biome::Taiga, &air(t, 1.0));
     assert!(!taiga(FROST - 10.0) && taiga(TREE_LINE - 0.01) && !taiga(TREE_LINE));
-    let (cold, hot) = VILLAGE_AIR;
-    assert!(livable(&air(cold, 0.5)) && livable(&air(hot, 0.5)));
-    assert!(!livable(&air(cold - 0.01, 0.5)) && !livable(&air(hot + 0.01, 0.5)));
-    assert!(DUNE_SEA.0 > VILLAGE_AIR.0 && DUNE_SEA.1 < 0.5);
 }
 
 /// Returns the face view of a 6 km globe of seed 5 with the home record changed into `class`,
@@ -105,17 +98,12 @@ fn view(class: PlanetClass, ocean: f64, temperature: f64) -> Terrain {
     Terrain::on(globe.clone(), globe.face_chart(Face::PosZ))
 }
 
-/// The legacy plane has no climate, a globe has one that the same place always gives, and only a
-/// hot dry desert has a heart nobody camps in.
+/// The legacy plane has no climate, and a globe has one that the same place always gives.
 #[test]
 fn the_climate_is_read_on_globes_only() {
     let w = Vec2::new(120.0, -40.0);
-    assert!(climate_at(&Terrain::new(5), w).is_none() && !dune_sea(&Terrain::new(5), w));
+    assert!(climate_at(&Terrain::new(5), w).is_none());
     let home = view(PlanetClass::Island, PlanetRecord::BALANCED_OCEAN, 288.0);
     assert!(climate_at(&home, w).is_some_and(|air| air.temperature > 200.0));
     assert_eq!(climate_at(&home, w), climate_at(&home, w));
-    assert!(!dune_sea(&home, w));
-    let sands = view(PlanetClass::Desert, 0.0, 320.0);
-    let hearts = (0..40).filter(|i| dune_sea(&sands, w + Vec2::X * 90.0 * *i as f32));
-    assert!(hearts.count() > 0, "a hot dry desert has no heart");
 }

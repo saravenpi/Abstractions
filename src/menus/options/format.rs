@@ -1,11 +1,9 @@
 //! Display text of individual settings.
 
-use bevy::prelude::KeyCode;
-
 use super::field::Field;
 use super::lights;
+use super::names::key_name;
 use crate::settings::{Graphics, Settings, render_step};
-use crate::ui::theme;
 use crate::ui::units::fixed;
 use crate::view::{ViewMode, ViewPrefs};
 use crate::world::RENDER_STEPS;
@@ -84,6 +82,7 @@ pub fn display(settings: &Settings, field: Field) -> String {
         Field::Effects => fixed(a.effects, 1),
         Field::Range => a.range.label().to_string(),
         Field::Mono => on_off(a.mono),
+        Field::CompanionVoice => a.companion.label().to_string(),
         Field::CheckUpdates => on_off(settings.updates.check_at_launch),
         Field::WorldMarkers => settings.gameplay.markers().label().to_string(),
         Field::Blood => on_off(settings.gameplay.blood),
@@ -93,36 +92,4 @@ pub fn display(settings: &Settings, field: Field) -> String {
         Field::Key(bind) => key_name(bind.key(&c.keys)),
         _ => String::new(),
     }
-}
-
-/// Most characters of a key name: the value column less the two of the conflict mark.
-pub const KEY_CHARS: usize = theme::VALUE_CHARS - 2;
-
-/// Readable names of keys whose code name is long or unclear.
-const NAMES: [(KeyCode, &str); 12] = [
-    (KeyCode::ShiftLeft, "Left Shift"),
-    (KeyCode::ShiftRight, "Right Shift"),
-    (KeyCode::ControlLeft, "Left Ctrl"),
-    (KeyCode::ControlRight, "Right Ctrl"),
-    (KeyCode::AltLeft, "Left Alt"),
-    (KeyCode::AltRight, "Right Alt"),
-    (KeyCode::ArrowUp, "Up"),
-    (KeyCode::ArrowDown, "Down"),
-    (KeyCode::ArrowLeft, "Left"),
-    (KeyCode::ArrowRight, "Right"),
-    (KeyCode::Backquote, "`"),
-    (KeyCode::NumpadEnter, "Num Enter"),
-];
-
-/// Returns a short readable name for a key, never longer than the value column holds.
-pub fn key_name(key: KeyCode) -> String {
-    if let Some((_, name)) = NAMES.iter().find(|(code, _)| *code == key) {
-        return name.to_string();
-    }
-    let name = format!("{key:?}");
-    let short = ["Key", "Digit"]
-        .iter()
-        .find_map(|prefix| name.strip_prefix(prefix));
-    let short = short.unwrap_or(&name).replace("Numpad", "Num ");
-    short.chars().take(KEY_CHARS).collect()
 }

@@ -16,6 +16,7 @@ use super::ground::{MIN_GROUND_NORMAL, probe};
 use super::keys::send;
 use super::lead::lead;
 use super::sea::above_sea;
+use super::spread::{Spread, tell};
 use super::steer::{Steer, Turn};
 use super::upright::{facing, tilt};
 use super::walk::{Step, velocity};
@@ -162,14 +163,21 @@ type Body = (
     &'static Intents,
 );
 
-/// Moves every player body by the intents of its player.
-pub(super) fn drive(env: Env, mut players: Query<Body, With<Player>>) {
+/// Moves every player body by the intents of its player, and tells when its wings change.
+pub(super) fn drive(
+    env: Env,
+    mut players: Query<Body, With<Player>>,
+    mut spread: Option<ResMut<Messages<Spread>>>,
+) {
     for body in &mut players {
-        step_body(&env, body);
+        let (entity, was) = (body.0, body.2.wings);
+        let now = step_body(&env, body);
+        tell(spread.as_deref_mut(), entity, (was, now));
     }
 }
 
-/// Runs one step of intents, ground detection, flight gear and collision-aware movement.
+/// Runs one step of intents, ground detection, flight gear and collision-aware movement, and
+/// returns whether the wings are asked open after it.
 ///
 /// A body on foot that move and slide stops against a steep contact climbs a low step.
 fn step_body(
@@ -182,7 +190,7 @@ fn step_body(
         Mut<Gear>,
         &Intents,
     ),
-) {
+) -> bool {
     let step = env.step(transform.translation, asks);
     let to_render = tilt(up(&env.anchor, transform.translation));
     let intent = ask(&mut motion, asks, &step);
@@ -210,6 +218,7 @@ fn step_body(
     body.yaw = body.turn.step(body.yaw, toward, step.dt);
     transform.translation = at;
     transform.rotation = facing(up(&env.anchor, at), motion.yaw);
+    motion.wings
 }
 
 /// Registers the controller: the local intents are sent after the mouse is read, then every
@@ -217,6 +226,7 @@ fn step_body(
 /// gathered on every frame, so the step before the body takes over is never stale.
 pub(super) fn plugin(app: &mut App) {
     app.add_message::<IntentOf>()
+        .add_message::<Spread>()
         .configure_sets(
             Update,
             (PlayerSet::Intend, PlayerSet::Move)

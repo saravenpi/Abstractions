@@ -1,38 +1,46 @@
-//! Tests of the pack list: rows for tools and stacks, the filter and the orders, and the screen
-//! opening and closing on its keys.
+//! Tests of the pack list: rows for tools and stacks grouped by kind, and the screen opening and
+//! closing on its keys.
 
 use super::Workshop;
-use super::bench::Sort;
-use super::lines::{What, arrange, lines};
+use super::kind::Kind;
+use super::lines::{What, lines};
 use super::open::next_state;
 use crate::craft::build::{Intent, solve};
 use crate::craft::stage::{earth, pack};
 
-/// Tools come first and show their wear; stacks follow with their grade; the filter reads names
-/// and signatures; the orders sort by name and by mass.
+/// Tools come first and show their wear and their picture; the materials follow in groups, in the
+/// order of the kinds, each group heaviest first, with their grade and the icon of what they are.
 #[test]
-fn rows_filter_and_sort() {
+fn rows_are_grouped_by_kind() {
     let mut pack = pack();
     let stock = pack.stock();
     let made = solve(Intent::Cut, &stock, &earth()).expect("a cut");
     let id = pack.make(&made.hardest, &stock).expect("made");
     let all = lines(&pack, &earth(), None);
     assert_eq!(all[0].what, What::Item(id));
-    assert_eq!(all[0].wear, Some(0.0));
-    assert!(all[0].shape.is_some());
-    assert!(all.iter().skip(1).all(|l| l.wear.is_none()));
-    assert!(all.iter().any(|l| l.signature == "stone"));
-    assert!(all.iter().any(|l| l.signature == "clean"));
-    let flint = arrange(all.clone(), "FLI", Sort::Kept);
-    assert!(!flint.is_empty() && flint.iter().all(|l| format!("{l:?}").contains("flint")));
-    let named = arrange(all.clone(), "", Sort::Name);
+    assert_eq!((all[0].kind, all[0].wear), (Kind::Tool, Some(0.0)));
+    assert!(all[0].icon.is_none() && all[0].shape.is_some_and(|l| l.figure.is_some()));
     assert!(
-        named
-            .windows(2)
-            .all(|w| w[0].name.to_lowercase() <= w[1].name.to_lowercase())
+        all.iter()
+            .skip(1)
+            .all(|l| l.wear.is_none() && l.icon.is_some() && l.shape.is_none())
     );
-    let heavy = arrange(all, "", Sort::Mass);
-    assert!(heavy.windows(2).all(|w| w[0].mass >= w[1].mass));
+    assert!(all.windows(2).all(|w| w[0].kind <= w[1].kind));
+    let stacks = &all[1..];
+    assert!(
+        stacks
+            .windows(2)
+            .all(|w| w[0].kind != w[1].kind || w[0].mass >= w[1].mass)
+    );
+    assert!(
+        all.iter()
+            .any(|l| l.kind == Kind::Stone && l.signature == "stone")
+    );
+    assert!(
+        all.iter()
+            .any(|l| l.kind == Kind::Hide && l.signature == "clean")
+    );
+    assert!(all.iter().any(|l| l.kind == Kind::Wood) && all.iter().any(|l| l.kind == Kind::Bone));
 }
 
 /// The key opens the screen where it can be open; the key, Escape or losing the ground close it.

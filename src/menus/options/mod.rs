@@ -8,6 +8,7 @@ mod format;
 mod hint;
 mod icons;
 mod lights;
+mod names;
 mod pages;
 mod rebind;
 mod reference;
@@ -30,7 +31,7 @@ use bevy::prelude::*;
 pub(super) use actions::SettingsAction;
 #[cfg(test)]
 pub(super) use field::Field;
-pub use format::key_name;
+pub use names::key_name;
 pub(super) use rebind::capturing;
 
 use crate::ui::Icon;

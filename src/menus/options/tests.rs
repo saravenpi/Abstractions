@@ -3,8 +3,9 @@
 use bevy::prelude::KeyCode;
 
 use super::field::{Bind, Field, set_key, step};
-use super::format::{display, key_name};
+use super::format::display;
 use super::hint::graphics_line;
+use super::names::key_name;
 use crate::settings::Settings;
 
 /// Numbers clamp at both ends and toggles flip.

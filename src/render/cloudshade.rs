@@ -116,7 +116,7 @@ fn want(
     settings: &Settings,
 ) -> Option<Cast> {
     let graphics = &settings.graphics;
-    let on = graphics.clouds && graphics.lighting.cloud_shadows;
+    let on = graphics.clouds && graphics.lighting.cloud_shade;
     let body = local
         .below(vantage)
         .filter(|body| on && Field::of(body, false).deck)?;

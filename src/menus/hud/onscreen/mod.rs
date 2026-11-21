@@ -4,7 +4,8 @@
 //! under it. Out of view, it slides to the border of the safe rectangle with an arrow toward it.
 //!
 //! One rule set, written down with its numbers and sources in `handoff/specs/markers.md`: a
-//! marker whose target is near is reduced, then hidden, because the thing is its own sign, and
+//! marker whose target is near is reduced, then hidden, because the thing is its own sign; one
+//! whose place lies behind the planet stays at its place, faint, its words saying so; and
 //! a pin nobody follows fades out far away, where it is noise ([`rule`]); it fades in the middle
 //! of the view; it keeps out of the room of the rest of the HUD ([`zones`]); and two that meet
 //! are settled by rank, the one behind dimmed ([`overlap`]).
@@ -25,6 +26,8 @@ mod tests;
 mod tests_face;
 #[cfg(test)]
 mod tests_far;
+#[cfg(test)]
+mod tests_hidden;
 #[cfg(test)]
 mod tests_overlap;
 #[cfg(test)]
@@ -142,9 +145,25 @@ fn show(
         draw::room(nodes, at, None);
         return;
     };
-    let far = (look.detail >= 0.5).then_some(pick.gap);
+    let far = (look.detail >= 0.5).then_some(pick.said);
     draw::say(&mut state.words, (draw::name(marker), far));
+    let face = behind(&mut state.words, face, pick.hidden);
     paint(nodes, at, marker, (pos, placed.arrow, face), &state.words);
+}
+
+/// Returns `face` as drawn while the planet stands between the eye and the place, when
+/// `hidden`: the icon fainter and the words saying so. Otherwise it is left as it is.
+fn behind(words: &mut String, face: Face, hidden: bool) -> Face {
+    if !hidden {
+        return face;
+    }
+    if !words.is_empty() && face.label > 0.0 {
+        words.push_str(tune::HIDDEN_WORDS);
+    }
+    Face {
+        glyph: face.glyph * tune::HIDDEN_ALPHA,
+        ..face
+    }
 }
 
 /// Chooses the markers to show, places each and writes the pool.

@@ -13,7 +13,7 @@ fn preset(quality: Quality) -> Graphics {
 fn low_drops_every_costly_effect() {
     let low = preset(Quality::Low);
     assert!(!low.shadows && !low.ambient_occlusion && !low.bloom);
-    assert!(!low.lighting.cloud_shadows && !low.lighting.auto_exposure);
+    assert!(!low.lighting.cloud_shade && !low.lighting.auto_exposure);
     assert!(!low.lighting.local_shadows && !low.lighting.water_glint);
     assert_eq!(low.lighting.shadow_detail, ShadowDetail::Low);
     assert_eq!(low.lighting.shadow_reach, ShadowReach::Near);
@@ -24,7 +24,7 @@ fn low_drops_every_costly_effect() {
 fn medium_keeps_the_cheap_effects() {
     let medium = preset(Quality::Medium);
     assert!(medium.shadows && medium.bloom && medium.lighting.auto_exposure);
-    assert!(!medium.ambient_occlusion && !medium.lighting.cloud_shadows);
+    assert!(!medium.ambient_occlusion && !medium.lighting.cloud_shade);
     assert!(!medium.lighting.local_shadows);
     assert_eq!(medium.lighting.shadow_detail, ShadowDetail::Low);
 }
@@ -64,13 +64,13 @@ fn presets_keep_the_rest_and_read_back() {
 #[test]
 fn a_single_change_is_custom() {
     let mut own = Graphics::default();
-    own.lighting.cloud_shadows = false;
+    own.lighting.auto_exposure = false;
     assert_eq!(own.quality(), Quality::Custom);
     assert_eq!(own.with_quality(Quality::Custom), own);
     own.step_quality(1);
     assert_eq!(own.quality(), Quality::Ultra);
     let mut low = Graphics::default();
-    low.lighting.cloud_shadows = false;
+    low.lighting.auto_exposure = false;
     low.step_quality(-1);
     assert_eq!(low.quality(), Quality::Low);
 }

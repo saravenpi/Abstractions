@@ -53,7 +53,7 @@ fn day_sky_darkens_as_pressure_falls() {
     }
     let thin = skies[pressures.len() - 1];
     assert!(luminance(thin.zenith) < 0.03 * luminance(skies[0].zenith));
-    assert!(thin.ambient_brightness < 350.0 * (Palette::SPACE_AMBIENT + 0.05));
+    assert!(thin.ambient_brightness < Palette::DAY_AMBIENT * (Palette::SPACE_AMBIENT + 0.05));
 }
 
 /// Without air the sky is black at noon, the stars are out, the ambient light is the one of
@@ -66,7 +66,10 @@ fn no_air_gives_a_black_sky_and_stars_at_noon() {
         let (noon, low) = (standing(&record, 0.95), standing(&record, 0.05));
         assert_eq!((noon.zenith, noon.horizon), (Vec3::ZERO, Vec3::ZERO));
         assert_eq!((noon.stars, low.stars), (1.0, 1.0));
-        assert_eq!(noon.ambient_brightness, 350.0 * Palette::SPACE_AMBIENT);
+        assert_eq!(
+            noon.ambient_brightness,
+            Palette::DAY_AMBIENT * Palette::SPACE_AMBIENT
+        );
         assert_eq!((noon.sun_color, low.sun_color), (Vec3::ONE, Vec3::ONE));
         assert_eq!((noon.sun_lux, low.sun_lux), (full, full));
     }

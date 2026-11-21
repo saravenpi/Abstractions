@@ -1,20 +1,13 @@
 //! Tests of the interface size setting: each step sets the scale it names, the scale lands on
-//! whole pixel sizes, the setting survives a save, and the settings page fits the smallest window
-//! at the largest step.
+//! whole pixel sizes, the setting survives a save, and the settings page fits every window at
+//! every step, a Retina one too.
 
 use bevy::math::Vec2;
 
 use super::view::{ROWS, TABS};
+use crate::menus::tests::stage::{layout, windows};
 use crate::settings::{InterfaceSize, Settings};
 use crate::ui::{MIN_WIDTH, PAGE_FOOT, PAGE_HEAD, theme, ui_scale};
-
-/// Windows from the smallest supported to a large one.
-const WINDOWS: [Vec2; 4] = [
-    Vec2::new(960.0, 540.0),
-    Vec2::new(1280.0, 720.0),
-    Vec2::new(1920.0, 1080.0),
-    Vec2::new(2560.0, 1440.0),
-];
 
 /// At the 720 pixel reference the steps scale the interface by 0.75, 1 and 1.25, and at 1080 by 1.25,
 /// 1.5 and 2, held to what leaves the settings page its width.
@@ -30,7 +23,7 @@ fn each_step_sets_its_scale() {
 /// on whole pixels, and the smallest step keeps 16 pixel text at 12 pixels or more.
 #[test]
 fn every_scale_keeps_text_on_whole_pixels() {
-    for window in WINDOWS {
+    for window in windows() {
         for size in InterfaceSize::ALL {
             let scale = ui_scale(window, size);
             assert_eq!(scale * 4.0, (scale * 4.0).round(), "{window} {size:?}");
@@ -72,19 +65,27 @@ fn the_stepper_walks_the_steps() {
 /// Fewest rows of a page that must show at once, whatever the size of the interface.
 const MIN_ROWS: f32 = 6.0;
 
-/// At every step and in every window, from 960 by 540 up, the settings page has the width of its
-/// tabs, a gutter and its page inside the screen edges, and its scrolling column keeps the height
-/// of its fewest rows between the heading zone, the line under the rows and the footer zone.
+/// Most lines the line under the rows takes. `tests_width` holds every description to it.
+pub(super) const HINT_LINES: usize = 2;
+
+/// Most lines the key legend takes. `menus::tests::fit` holds every legend to it.
+const LEGEND_LINES: f32 = 2.0;
+
+/// At every step and in every window, from 960 by 540 up and on a Retina screen, the settings
+/// page has the width of its tabs, a gutter and its page inside the screen edges, and its
+/// scrolling column keeps the height of its fewest rows between the heading zone, the line under
+/// the rows at its most lines and the footer zone with its legend on two lines.
 #[test]
 fn the_settings_page_fits_at_every_step() {
     let needed = theme::span(TABS) + theme::GUTTER + theme::span(ROWS) + 2.0 * theme::EDGE;
     assert_eq!(theme::span(TABS + ROWS), needed - 2.0 * theme::EDGE);
     assert!(needed <= MIN_WIDTH);
-    let line = theme::S3 + theme::LINE_SMALL;
-    let chrome = PAGE_HEAD + line + PAGE_FOOT;
-    for window in WINDOWS {
+    let line = theme::S3 + HINT_LINES as f32 * theme::LINE_SMALL;
+    let legend = LEGEND_LINES * theme::LINE_SMALL + theme::S1 - theme::ROW_HEIGHT;
+    let chrome = PAGE_HEAD + line + PAGE_FOOT + legend;
+    for window in windows() {
         for size in InterfaceSize::ALL {
-            let logical = window / ui_scale(window, size);
+            let logical = layout(window, size);
             assert!(logical.x >= needed, "{window} {size:?}: {logical}");
             let rows = ((logical.y - chrome) / theme::ROW_HEIGHT).floor();
             assert!(rows >= MIN_ROWS, "{window} {size:?}: {rows} rows");

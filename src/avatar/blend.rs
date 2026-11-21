@@ -10,7 +10,7 @@ use super::clock::Clock;
 use super::pose::{Core, Pose};
 use super::touch::tune::RISE_SECONDS;
 use super::tune::BLEND_SECONDS;
-use super::{AvatarPose, Mode, air, crouch, flight, ground, leap, touch, water};
+use super::{AvatarPose, Mode, air, crouch, flight, ground, lean, leap, touch, water};
 use crate::player::wrap;
 
 /// Number of modes.
@@ -125,7 +125,9 @@ pub fn asked(weights: &Weights, input: &AvatarPose, clock: &Clock) -> Vec2 {
 /// on top of them: it is eased by itself, so it never adds to the step of a change of mode.
 ///
 /// The whole-body turn of a roll comes on top as well, and as far as the body lies or rolls on
-/// the ground its pelvis is moved until the lowest part of it rests there.
+/// the ground its pelvis is moved until the lowest part of it rests there. While a winged pose
+/// weighs and the input carries the attitude of the gear, the trunk lies at that attitude,
+/// see [`lean::lain`].
 pub fn blended(weights: &Weights, input: &AvatarPose, clock: &Clock) -> Pose {
     let (mut pose, mut free, mut floor) = (Pose::default(), 0.0, 0.0);
     for (mode, weight) in Mode::ALL.into_iter().zip(weights.eased()) {
@@ -147,5 +149,5 @@ pub fn blended(weights: &Weights, input: &AvatarPose, clock: &Clock) -> Pose {
     let turned = held
         .with(Core::Pitch, pitch)
         .with(Core::Roll, held.core(Core::Roll) + clock.turn.y);
-    touch::grounded(turned, floor)
+    touch::grounded(lean::lain(turned, weights, input, clock), floor)
 }

@@ -2,11 +2,13 @@
 
 use avian3d::prelude::*;
 use bevy::ecs::system::SystemParam;
+use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
 use super::budget::{Budget, COVERED, Shares};
 use super::build::{ChunkData, NodeData};
 use super::detail::Detail;
+use super::dither::Shadowless;
 use super::nodes::Node;
 use super::place::{Sited, pose};
 use super::plan::Loaded;
@@ -19,7 +21,6 @@ use crate::world::globe::ChunkId;
 use crate::world::mesh::{Frame, Rings, leaf_coord};
 use crate::world::props::{Cover, PropAssets, spawn_props};
 use crate::world::rocks::Taken;
-use crate::world::structures::spawn_structures;
 use crate::world::{CHUNK_SIZE, Terrain, WorldReady};
 
 /// Meshes, the shared material and terrain, for spawning and refining chunks.
@@ -87,15 +88,24 @@ impl Spawner<'_> {
         commands.spawn((bundle, RigidBody::Static, hidden)).id()
     }
 
-    /// Spawns the hidden entity of a coarse node, or of the far planet, around its mesh.
+    /// Spawns the hidden entity of a coarse node, or of the far planet, around its mesh. It casts
+    /// no shadow: it lies beyond their reach, see [`Shadowless`].
     pub fn coarse(&mut self, commands: &mut Commands, data: NodeData) -> Node {
         let mesh = self.meshes.add(data.mesh);
         let material = MeshMaterial3d(self.assets.material.clone());
         let bundle = (Mesh3d(mesh), material, self.sited(data.frame));
-        let hidden = (Visibility::Hidden, DespawnOnEnter(Screen::Title));
+        let hidden = (
+            Visibility::Hidden,
+            DespawnOnEnter(Screen::Title),
+            NotShadowCaster,
+            Shadowless,
+        );
         Node {
             entity: commands.spawn((bundle, hidden)).id(),
             visible: false,
+            bounds: data.bounds,
+            beyond: false,
+            shadowless: false,
         }
     }
 }
@@ -111,14 +121,6 @@ pub fn spawn_chunk(commands: &mut Commands, spawner: &mut Spawner, data: ChunkDa
         grass: data.grass.map(|m| spawner.meshes.add(m)),
     };
     let [props, grass] = spawn_props(commands, entity, &material, cover);
-    let built = spawn_structures(
-        commands,
-        entity,
-        &spawner.assets,
-        &mut spawner.meshes,
-        data.structures,
-    );
-    let structure = built.and_then(|(child, collider)| Some((child, collider?)));
     Loaded {
         entity,
         props,
@@ -126,7 +128,7 @@ pub fn spawn_chunk(commands: &mut Commands, spawner: &mut Spawner, data: ChunkDa
         bodies: data.bodies,
         solid: false,
         shown: false,
-        detail: Detail::new(data.lod, Turf::new(grass, data.turfed), structure),
+        detail: Detail::new(data.lod, Turf::new(grass, data.turfed)),
         stand: data.stand,
     }
 }

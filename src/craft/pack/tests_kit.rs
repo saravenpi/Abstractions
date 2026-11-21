@@ -1,5 +1,5 @@
 //! Tests of the kit a robot wakes with: a new pack gets a spear and a knife of the stone underfoot
-//! with a weapon in the first slot, held; a pack of an old world without tools gets it once; a pack
+//! with a weapon in the first slot and nothing in hand; a pack of an old world without tools gets it once; a pack
 //! that has tools is left alone.
 
 use super::*;
@@ -14,7 +14,7 @@ fn home(seed: u64) -> PlanetSpec {
 }
 
 /// A new pack on the home of the rig gets a spear and a knife knapped from the stone underfoot, each
-/// with its mass and unworn, the spear in the first slot and held, and takes no stone from the pack.
+/// with its mass and unworn, the spear in the first slot and nothing held, slot 1 drawing the spear, and takes no stone from the pack.
 #[test]
 fn a_new_pack_gets_a_spear_and_a_knife() {
     let planet = home(3);
@@ -23,9 +23,11 @@ fn a_new_pack_gets_a_spear_and_a_knife() {
     assert!(pack.kitted && pack.stacks.is_empty());
     let intents: Vec<Intent> = pack.items.iter().map(Item::intent).collect();
     assert_eq!(intents, vec![Intent::Throw, Intent::Cut]);
-    let held = pack.held().expect("the first slot holds a tool");
-    assert_eq!(held.intent(), Intent::Throw);
-    assert_eq!(pack.bar.held, 0);
+    let first = pack.bar.slots[0].and_then(|id| pack.item(id));
+    assert_eq!(first.map(Item::intent), Some(Intent::Throw));
+    assert!(pack.held().is_none(), "the robot wakes with a tool in hand");
+    pack.bar.select(0);
+    assert_eq!(pack.held().map(Item::intent), Some(Intent::Throw));
     for item in &pack.items {
         let stone = item
             .recipe

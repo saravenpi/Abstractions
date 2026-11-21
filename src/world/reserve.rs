@@ -1,4 +1,4 @@
-//! The ground of the home base: kept free of props and structure sites on its planet.
+//! The ground of the home base: kept free of props on its planet.
 
 use std::sync::Arc;
 

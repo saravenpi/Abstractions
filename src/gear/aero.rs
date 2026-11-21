@@ -31,10 +31,17 @@ pub(super) fn bite(input: &GearInput) -> f32 {
 
 /// Returns the drag coefficients along the right, dorsal and nose axes of `state`: the folded
 /// body, streamlined upright and spread flat across the air as far as it lies prone, opening
-/// into the wing as far as it is spread.
+/// into the wing as far as it is spread and lies along the flight frame.
+///
+/// The wing is the fabric between the arms and the legs, and it flies only as far as the body
+/// lies along the frame it is read in, which is the attitude the body is drawn at
+/// (`FlightState::pose`). An upright body with its arms out meets a fall edge on and does not
+/// glide; laid prone it does. So the air carries exactly the body the eye sees, through the
+/// whole opening.
 fn coefficients(state: &FlightState) -> Vec3 {
-    let body = BODY_DRAG.lerp(BELLY_DRAG, state.prone.clamp(0.0, 1.0));
-    Vec3::splat(body).lerp(WING_DRAG, state.spread())
+    let prone = state.prone.clamp(0.0, 1.0);
+    let body = BODY_DRAG.lerp(BELLY_DRAG, prone);
+    Vec3::splat(body).lerp(WING_DRAG, state.spread() * prone)
 }
 
 /// Returns the acceleration air of grip `sigma` gives a body flying at `velocity`.

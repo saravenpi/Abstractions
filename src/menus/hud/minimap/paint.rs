@@ -1,6 +1,5 @@
 //! Painting a patch: one colour per texel, taken from the same palette as the picture of the
-//! full map. Plain data, made to run on a worker thread. The minimap shows the ground only: no
-//! structure is stamped on it.
+//! full map. Plain data, made to run on a worker thread. The minimap shows the ground only.
 //!
 //! The budget is one patch at a time and nothing on the main thread but the copy of the
 //! finished image. A patch is `TEXELS` squared colours, 9,216 of them, each from a handful of

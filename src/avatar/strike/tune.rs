@@ -169,3 +169,11 @@ pub const STRAY_NEAR: f32 = 60.0;
 
 /// Metres above its noted place a tool put back in the world falls from.
 pub const STRAY_LIFT: f32 = 1.0;
+
+/// Least padding of the swept tool against the bounds of a part, in metres: a blade that passes
+/// within this of a small animal meets it.
+pub const REACH_PAD: f32 = 0.08;
+
+/// Shares along the blade from the grip at which its sweep between two frames is tested, the head
+/// first.
+pub const SAMPLES: [f32; 4] = [1.0, 0.75, 0.5, 0.25];

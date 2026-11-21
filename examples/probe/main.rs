@@ -6,16 +6,26 @@
 //! Environment:
 //! - `SMOKE_DIR`: the screenshot folder.
 //! - `SMOKE_SEED`: the world seed, default 7.
-//! - `PROBE_STAGES`: comma list of stage groups, default all. Groups: `water` (lens tour and room walls),
-//!   `grass` (turf and trees), `ground` (one patch of grass from the horizon and from 2 m to 30 km), `fauna` (animals), `tour` (base, village, flight, orbit, warp) and `zoo`.
+//! - `PROBE_STAGES`: comma list of stage groups, default all. Groups: `water` (the lens tour),
+//!   `grass` (turf and trees), `ground` (one patch of grass from the horizon and from 2 m to 30 km), `fauna` (animals), `tour` (base, flight, orbit, warp) and `zoo`.
 //!   `ui` (the menus, the map at each level, the guide, the pack and the pause menu) and `play` (the game
 //!   being played: the map of explored ground, stones picked and a tool made, a herd stalked, a fight, a
 //!   kill carved, the robot hurt and mended, the pack and the guide after the hunt; see the `play` module).
-//!   `stars` shoots the star field in space and in orbit (see the `stars` module).
+//!   `craft` shoots the pack and the workshop on a staged pack: empty, stones and a hide, each intent,
+//!   a card focused and a tool made (see the `workshop` module).
+//!   `stars` shoots the star field in space and in orbit (see the `stars` module). `feel` shoots swings at
+//!   a small and a large animal in third and first person, a rock struck with H and the wingsuit opened
+//!   with a tool drawn (see the `playfeel` module; run it on `SMOKE_SEED=57`).
 //!   The title, loading, boot and wake stages always run.
+//! - `glide` opens the wingsuit from the top of a jump on flat ground, off a cliff at a run, out of a long fall
+//!   and from a jump off the parked ship, three shots each, with `PROBE glide` lines (see the `opening` module).
 //! - `entry` (a fall from a low orbit into the air, from a chase camera and from the seat) and `exit`
 //!   (the climb from the pad to orbit under the autopilot) shoot the heat of an entry and leaving the air;
-//!   `cloud` climbs through an overcast cloud base, a shot every 0.2 s from the chase camera and the seat.
+//!   `cloud` climbs through an overcast cloud base, a shot every 0.2 s from the chase camera and the seat,
+//!   and again at night with the headlight on.
+//! - `cruise` drops the ship at the arrival shell over the far side of the home planet, presses the home key
+//!   and shoots the orbital cruise, the glide into the air and its end near the base, with the HUD shown
+//!   (see the `cruise` module). Run it with `SMOKE_SEED=57`.
 //! - `SMOKE_ONLY` and `SMOKE_SKIP`: comma lists of stage names to keep or to leave out.
 //! - `SMOKE_TARGET` and `SMOKE_FLASH`: see the `warp` and `boot` stages.
 //! - `PROBE_JOIN=<address>`: join that server instead of starting a world, with `PROBE_NAME` as the player name
@@ -34,6 +44,10 @@
 //! planes, the fog, the exposure and the visibility ranges. `PROBE_SAVE=<dir>` starts the run from the most
 //! recently played world file in that folder (or in its `worlds` folder), copied to `SMOKE_DIR/probe-save`,
 //! with a `settings.toml` beside it applied to the run (see the `saved` module).
+//!
+//! `PROBE_STAGES=perf` runs the `perf` stages (see the `perf` module): still at the base, walking, boarding,
+//! a low fast flight and a hover in orbit, with a `PROBE perf` line every 30 frames and the render pass costs of
+//! Bevy's render diagnostics. It is left out of a run of all groups.
 //!
 //! `PROBE_STAGES=models` opens the model studio (see the `models` module): the robot and the companion alone.
 //!
@@ -55,7 +69,6 @@ use abstractions::space::{Anchor, Frame, Location, Travel};
 use abstractions::universe::{BodyId, Universe};
 use abstractions::view::{Cut, Heading, ViewMode, ViewPrefs};
 use abstractions::world::globe::Face;
-use abstractions::world::structures::{CELL, Kind, entries, structure_in_cell};
 use abstractions::world::{METER_STEPS, Meter, Planet, Terrain};
 use bevy::ecs::system::RunSystemOnce;
 use bevy::input::ButtonState;
@@ -78,6 +91,7 @@ mod cards_land;
 mod cards_life;
 mod cloud;
 mod coarse;
+mod cruise;
 mod entry;
 mod feel;
 mod foot;
@@ -95,17 +109,20 @@ mod models;
 mod mp;
 mod mpact;
 mod mpspot;
+mod opening;
 mod orbital;
+mod perf;
+mod perfcount;
 mod play;
 mod playbook;
 mod playcarve;
+mod playfeel;
 mod playfight;
 mod playframe;
 mod playherd;
 mod playloot;
 mod playmap;
 mod postcards;
-mod room;
 mod saved;
 mod screens;
 mod seen;
@@ -116,10 +133,10 @@ mod stops;
 mod tour;
 mod trees;
 mod util;
-mod walls;
 mod watch;
 mod water;
 mod wing;
+mod workshop;
 mod zoo;
 
 use air::*;
@@ -134,6 +151,7 @@ use cards_land::*;
 use cards_life::*;
 use cloud::*;
 use coarse::*;
+use cruise::*;
 use entry::*;
 use feel::*;
 use foot::*;
@@ -150,17 +168,19 @@ use meter::*;
 use mp::*;
 use mpact::*;
 use mpspot::*;
+use opening::*;
 use orbital::*;
+use perf::*;
 use play::*;
 use playbook::*;
 use playcarve::*;
+use playfeel::*;
 use playfight::*;
 use playframe::*;
 use playherd::*;
 use playloot::*;
 use playmap::*;
 use postcards::*;
-use room::*;
 use saved::*;
 use screens::*;
 use seen::*;
@@ -171,10 +191,10 @@ use stops::*;
 use tour::*;
 use trees::*;
 use util::*;
-use walls::*;
 use watch::*;
 use water::*;
 use wing::*;
+use workshop::*;
 
 /// Runs the zoo when `PROBE_STAGES` names it, else the tour of the game.
 fn main() -> AppExit {
@@ -190,6 +210,9 @@ fn main() -> AppExit {
         app.set_error_handler(bevy::ecs::error::error);
     }
     app.add_plugins(abstractions::AppPlugin);
+    if list.split(',').any(|g| g == "perf") {
+        app.add_plugins(bevy::render::diagnostic::RenderDiagnosticsPlugin);
+    }
     app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs_f64(
         WALK,
     )));

@@ -1,19 +1,15 @@
-//! The ground under a foot, read from the world: built floors, wet earth, dry land, water to
-//! wade in and the sea floor too deep to stand on.
+//! The ground under a foot, read from the world: wet earth, dry land, water to wade in and the
+//! sea floor too deep to stand on.
 
-use super::ground::{floor, natural};
+use super::ground::{natural, soil};
 use crate::audio::StepSurface;
 use crate::world::Terrain;
-use crate::world::structures::FloorKind;
 
-/// Built floors give their own steps, and wet earth is mud.
+/// Dry earth is soil and wet earth is mud.
 #[test]
-fn floors_map_to_steps() {
-    assert_eq!(floor(FloorKind::Wood, 0.0), StepSurface::Wood);
-    assert_eq!(floor(FloorKind::Stone, 0.0), StepSurface::Rock);
-    assert_eq!(floor(FloorKind::Sand, 0.0), StepSurface::Sand);
-    assert_eq!(floor(FloorKind::Earth, 0.0), StepSurface::Soil);
-    assert_eq!(floor(FloorKind::Earth, 1.0), StepSurface::Mud);
+fn wet_earth_is_mud() {
+    assert_eq!(soil(0.0), StepSurface::Soil);
+    assert_eq!(soil(1.0), StepSurface::Mud);
 }
 
 /// The ground of the home world under the spawn gives a dry step, the sea floor far under the

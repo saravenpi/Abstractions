@@ -76,6 +76,13 @@ impl<T: Value> Follow<T> {
         }
     }
 
+    /// Moves the value and the target it last followed by `by`, its velocity kept: the frame it is
+    /// measured from moved, not the value in it.
+    pub fn shift(&mut self, by: T) {
+        self.at = self.at + by;
+        self.last = self.last + by;
+    }
+
     /// Moves the value toward `target` by `dt` seconds of `spring` and returns it.
     pub fn step(&mut self, spring: &Spring, target: T, dt: f32) -> T {
         if dt <= 0.0 {

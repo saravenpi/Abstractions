@@ -2,8 +2,9 @@
 //! turbulence near the nozzle, one more band for the shock cells or for the ground, the crackle
 //! of a hard burn in air, and the rumble the engine sends through the airframe.
 //!
-//! Nothing here is a tone. The roar swells and sinks with two slow random walks, as the eddies
-//! of a real plume do, so it never sounds like noise through a fixed filter.
+//! Nothing here is a tone. The roar is rough with a fast, shallow random walk, as the many eddies
+//! of a real plume make it, so it never sounds like noise through a fixed filter, and it holds
+//! steady: nothing in it swells at a rate a listener hears as a pulse.
 
 use super::law::{band_gain, loudness, peak_hz};
 use super::tune::{CRACKLE, CRACKLE_SHAPE, EXTRA_Q, FINE, MIX_LEVEL, MIX_Q, RUMBLE, SURGE};
@@ -58,10 +59,10 @@ pub struct Jet {
     bands: [Svf; 4],
     /// Gains of the layers.
     gains: Gains,
-    /// The fast and the slow random walk of the roar.
-    surge: [Lag; 2],
-    /// Coefficient and gain of each random walk.
-    swell: [(f32, f32); 2],
+    /// The random walk of the roar.
+    surge: Lag,
+    /// Coefficient and gain of the random walk.
+    swell: (f32, f32),
     /// The decay of the crackle shocks.
     crack: Lag,
     /// Coefficient of that decay.
@@ -85,8 +86,8 @@ impl Jet {
                 floor: 1.0,
                 ..Gains::default()
             },
-            surge: [Lag::default(); 2],
-            swell: SURGE.map(|(hz, _)| swell(hz, rate)),
+            surge: Lag::default(),
+            swell: swell(SURGE.0, rate),
             crack: Lag::default(),
             snap: pole(CRACKLE_SHAPE.2, rate),
             noise: Noise::new(seed),
@@ -118,10 +119,8 @@ impl Jet {
     /// what it sends through the airframe.
     pub fn frame(&mut self) -> (f32, f32) {
         let white = self.noise.tick();
-        let [(fast, quick), (slow, lazy)] = self.swell;
-        let wobble = self.surge[0].to(self.noise.tick(), fast) * quick * SURGE[0].1
-            + self.surge[1].to(self.noise.tick(), slow) * lazy * SURGE[1].1;
-        let surge = (1.0 + wobble).max(0.0);
+        let (k, gain) = self.swell;
+        let surge = (1.0 + self.surge.to(self.noise.tick(), k) * gain * SURGE.1).max(0.0);
         let gains = self.gains;
         let [mix, fine, extra, rumble] = &mut self.bands;
         let spike = (white - gains.floor).max(0.0) * gains.spike;

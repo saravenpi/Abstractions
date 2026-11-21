@@ -9,8 +9,9 @@
 
 use super::feed::{Ch, HullSound};
 use super::law::spread;
-use super::tune::{BOUNCE, DELAY_GLIDE, MAX_PACE, NEAR, TRAVEL};
+use super::tune::{BOUNCE, DELAY_GLIDE, MAX_PACE, NEAR, RIDE_FOLLOW, TRAVEL};
 use crate::audio::dsp::filter::{Lag, glide, pole};
+use crate::audio::mix::BLOCK;
 use crate::audio::spatial::{Absorb, Ear, Spot, around};
 
 /// Seconds the closing speed of a ship is averaged over. Long, because the delay of a far ship
@@ -48,6 +49,9 @@ pub struct Path {
     dull: Lag,
     /// The two ears.
     ear: Ear,
+    /// The distance to a ship the listener rides along with, followed slowly, and the coefficient
+    /// of one tuning.
+    follow: (Lag, f32),
     /// What all of these move toward.
     goal: Goal,
     /// Coefficient of the delay smoothing.
@@ -67,6 +71,7 @@ impl Path {
             gap: Lag::default(),
             dull: Lag::default(),
             ear: Ear::new(glide(DELAY_GLIDE, rate)),
+            follow: (Lag::default(), glide(RIDE_FOLLOW, rate / BLOCK as f32)),
             goal: Goal {
                 delay: 1.0,
                 gap: 0.0,
@@ -84,9 +89,16 @@ impl Path {
     }
 
     /// Aims the path at where `hull` is for the listener, in air that takes the high end as
-    /// `absorb` says. Call it a few hundred times per second.
+    /// `absorb` says. Call it once a block. The distance to a ship the listener rides along with
+    /// follows slowly, so the sway of the chase camera is heard as neither a pulse nor a Doppler.
     pub fn tune(&mut self, hull: &HullSound, absorb: &Absorb) {
-        let (far, sound) = (hull.at(Ch::Distance), hull.at(Ch::Sound));
+        let ride = if hull.at(Ch::Riding) > 0.5 {
+            self.follow.1
+        } else {
+            1.0
+        };
+        let far = self.follow.0.to(hull.at(Ch::Distance), ride);
+        let sound = hull.at(Ch::Sound);
         let high = hull.at(Ch::Height) + BOUNCE.1;
         let late = 2.0 * BOUNCE.0 * high / (far.max(NEAR.0) * sound);
         let side = hull.at(Ch::Side);
@@ -109,6 +121,7 @@ impl Path {
     /// just got out, while the outside is still silent. Gliding there instead would sweep the
     /// delay through the seat and play the sound on its way at twice its pitch.
     pub fn jump(&mut self, hull: &HullSound, absorb: &Absorb) {
+        self.follow.0 = Lag(hull.at(Ch::Distance));
         self.tune(hull, absorb);
         self.delay = [Lag(self.goal.delay); 2];
         self.slope.0 = Lag::default();

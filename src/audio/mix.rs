@@ -8,9 +8,11 @@ use super::dsp::filter::{Lag, glide};
 use super::master::{Duck, Master, Output};
 use super::music::{Music, MusicCtl};
 use super::planet::class;
+use super::scene::TITLE_SEED;
 use super::shared::{PARAMS, Param, Shared};
 use super::ship::Fleet;
 use super::suit::{Suit, SuitCtl};
+use super::tune::{BED_MUSIC, CUES_GAIN};
 use crate::universe::PlanetClass;
 
 /// Frames between two readings of the shared values.
@@ -130,10 +132,12 @@ impl Mixer {
             self.cues.play(cue);
         }
         let dt = BLOCK as f32 / self.rate;
+        let seed = self.shared.seed();
+        let bed = if seed == TITLE_SEED { 1.0 } else { BED_MUSIC };
         let orders = MusicCtl {
-            seed: self.shared.seed(),
+            seed,
             home: self.targets[Param::Home as usize] > 0.5,
-            level: self.targets[Param::MusicLevel as usize],
+            level: self.targets[Param::MusicLevel as usize] * bed,
             day: self.targets[Param::Day as usize],
             submerged: self.targets[Param::Submerged as usize],
         };
@@ -158,7 +162,7 @@ impl Mixer {
         let air = self.air.frame(&self.air_ctl());
         let gear = self.suit.frame(&self.suit_ctl());
         let ships = self.fleet.frame(self.cloud());
-        let cues = self.cues.frame();
+        let cues = self.cues.frame().map(|side| side * CUES_GAIN);
         let (wide, fx) = (
             self.at(Param::Music) * MUSIC_GAIN,
             self.at(Param::Effects) * EFFECTS_GAIN,

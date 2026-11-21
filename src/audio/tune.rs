@@ -37,7 +37,9 @@ pub const LIMIT_AT: f32 = 0.708;
 /// takes to let go.
 pub const LIMIT_TIMES: (f32, f32) = (0.0004, 0.25);
 
-/// Level of the output the reduced dynamic range pulls toward: -24 dBFS root mean square.
+/// Level of the output the reduced dynamic range pulls toward: -24 dBFS root mean square on
+/// each channel, which is what a mix at -22 LUFS reads, the middle of the targets. Scenes
+/// louder than that come down and quieter ones come up, so the average stays where it is.
 pub const PIVOT: f32 = 0.063;
 
 /// Ratio of the reduced dynamic range: 2 decibels in give 1 out, around the pivot.
@@ -49,8 +51,9 @@ pub const REACH: (f32, f32) = (2.5, 0.4);
 
 /// Seconds the reduced dynamic range takes to hear a rise and a fall of the level, and seconds
 /// its gain takes to follow. Slow, so that it rides the level like a hand on a fader and is
-/// not heard pumping.
-pub const RIDE: (f32, f32, f32) = (0.08, 1.2, 0.6);
+/// not heard pumping, and the same both ways, so that it reads the mean level and not the peaks:
+/// a fast rise read every scene 4 decibels hot and turned all of them down.
+pub const RIDE: (f32, f32, f32) = (0.3, 0.3, 0.6);
 
 /// Levels of the effects, root mean square, between which the music gives way to them, and
 /// the share of its level the music keeps under the loudest: 6 decibels down. An engine at
@@ -59,3 +62,11 @@ pub const DUCK: (f32, f32, f32) = (0.05, 0.25, 0.5);
 
 /// Seconds the music takes to give way and to come back.
 pub const DUCK_TIMES: (f32, f32) = (0.4, 2.0);
+
+/// Level of the music in play against the title screen: 3 decibels down. On the title screen the
+/// music is all there is; in play it is a bed under the world.
+pub const BED_MUSIC: f32 = 0.708;
+
+/// Gain of the one-shot sounds, the interface, the steps, the blows and the voices of the
+/// companion and the animals: 2 decibels up, so that they read over the beds.
+pub const CUES_GAIN: f32 = 1.25;

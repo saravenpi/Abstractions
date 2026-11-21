@@ -11,6 +11,9 @@ use super::meter::{Loudness, measure};
 use super::render::write;
 use super::scenes::{SCENES, Scene};
 use super::{RATE, frames, mixer};
+use crate::audio::cue::AudioCue;
+use crate::audio::hit::{HitSound, Kind};
+use crate::audio::scene::AudioScene;
 use crate::audio::tune::{LOUDEST_MOMENT, TRUE_PEAK, WINDOW};
 use crate::settings::{Audio as Volumes, Range};
 
@@ -119,4 +122,41 @@ fn the_reduced_range_is_narrower() {
             .iter()
             .all(|read| read.true_peak <= f64::from(TRUE_PEAK))
     );
+}
+
+/// The sudden events of the game, each at its hardest and alone in a silent scene, stay under
+/// the loudest a moment may be and under the true-peak ceiling: the boom of a ship, a hard
+/// landing, a blow, near thunder and the warp drive firing.
+#[test]
+fn sudden_events_stay_under_the_cap() {
+    let blow = HitSound {
+        kind: Kind::Clean,
+        level: 1.0,
+        hz: 420.0,
+        hard: 1.0,
+        wet: true,
+        side: 0.0,
+        near: 1.0,
+    };
+    let events = [
+        AudioCue::Boom(1.0),
+        AudioCue::Land(1.0),
+        AudioCue::Hit(blow),
+        AudioCue::Thunder(1.0),
+        AudioCue::WarpEngage,
+    ];
+    for cue in events {
+        let (mut mixer, shared) = mixer(&AudioScene {
+            altitude_fade: 0.0,
+            ..AudioScene::default()
+        });
+        let mut sound = vec![mixer.frame(); frames(1.0)];
+        shared.push(cue);
+        sound.extend((0..frames(5.0)).map(|_| mixer.frame()));
+        let read = measure(&sound);
+        row(&format!("{cue:?}"), LOUDEST_MOMENT, &read);
+        assert!(read.momentary <= f64::from(LOUDEST_MOMENT), "{cue:?}");
+        assert!(read.true_peak <= f64::from(TRUE_PEAK), "{cue:?}");
+        assert!(read.momentary > -45.0, "{cue:?} is not heard");
+    }
 }

@@ -5,20 +5,21 @@ use super::dsp::osc::{Phasor, sine};
 use super::dsp::rand::Noise;
 use super::shore::stereo;
 
-/// Level of the wind at full strength.
-pub const WIND_LEVEL: f32 = 0.4;
+/// Level of the wind at full strength. Measured, a gale and hard rain together sit near
+/// -21 LUFS with it, under a ship at full throttle.
+pub const WIND_LEVEL: f32 = 0.18;
 
 /// Level of the sea wash at the water's edge.
-pub const SEA_LEVEL: f32 = 0.5;
+pub const SEA_LEVEL: f32 = 0.355;
 
 /// Level of the drone under water.
 pub const DEEP_LEVEL: f32 = 0.6;
 
 /// Level of the rain at its hardest, in the open.
-pub const RAIN_LEVEL: f32 = 0.35;
+pub const RAIN_LEVEL: f32 = 0.16;
 
 /// Level of the rain drumming on the hull at its hardest, heard from the cabin.
-pub const HULL_LEVEL: f32 = 0.5;
+pub const HULL_LEVEL: f32 = 0.25;
 
 /// Level of the dust hiss at its thickest.
 pub const DUST_LEVEL: f32 = 0.2;
@@ -166,7 +167,7 @@ impl Air {
     pub fn frame(&mut self, ctl: &AirCtl) -> [f32; 2] {
         let raw = [self.noise[0].tick(), self.noise[1].tick()];
         let drone = self.deep.low(raw[0] + raw[1]) * ctl.submerged * DEEP_LEVEL;
-        let blow = ctl.wind * ctl.wind.sqrt() * WIND_LEVEL;
+        let blow = ctl.wind * ctl.wind.sqrt().sqrt() * WIND_LEVEL;
         let outside = 1.0 - ctl.space;
         let drive = if ctl.molten { MOLTEN_GAIN } else { 1.0 };
         let sea = stereo(ctl.shore_side, ctl.shore * SEA_LEVEL * drive);

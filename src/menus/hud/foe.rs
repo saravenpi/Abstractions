@@ -6,7 +6,7 @@ use bevy::camera::primitives::Aabb;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
-use super::onscreen::place;
+use super::onscreen::place::{self, Frustum};
 use crate::avatar::strike::Mark;
 use crate::fauna::{Beast, Part};
 use crate::render::GameCamera;
@@ -72,12 +72,11 @@ pub(super) fn strip() -> impl Bundle {
 }
 
 /// Returns where the render position `head` shows on a `screen` of interface pixels seen by
-/// `camera` with a vertical field of view of `fov` radians, or nothing when it is behind the camera
-/// or off the screen.
-pub fn over(head: Vec3, camera: &GlobalTransform, (fov, screen): (f32, Vec2)) -> Option<Vec2> {
+/// `camera` through `lens`, or nothing when it is behind the camera or off the screen.
+pub fn over(head: Vec3, camera: &GlobalTransform, (lens, screen): (Frustum, Vec2)) -> Option<Vec2> {
     let dir = camera.affine().inverse().transform_point3(head);
     let whole = Rect::from_corners(Vec2::ZERO, screen);
-    let placed = place::place(dir, fov, screen, whole);
+    let placed = place::place(dir, lens, whole);
     placed.arrow.is_none().then_some(placed.pos)
 }
 
@@ -114,23 +113,35 @@ fn top(root: (Entity, &GlobalTransform), parts: &Bounds) -> Vec3 {
     at + up * (height + HEAD)
 }
 
-/// What the strip reads of the screen: the camera, the window, the scale of the interface and the
-/// field of view in the settings.
+/// The game camera as the rig placed it this frame: its own transform, the body that carries it
+/// and its projection.
+type Camera<'a> = (&'a Transform, Option<&'a ChildOf>, &'a Projection);
+
+/// What the strip reads of the screen: the camera and what carries it, the window, the scale of
+/// the interface and the field of view in the settings.
 type Lens<'w, 's> = (
-    Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
+    (
+        Query<'w, 's, Camera<'static>, With<GameCamera>>,
+        Query<'w, 's, &'static Transform, Without<GameCamera>>,
+    ),
     Query<'w, 's, &'static Window, With<PrimaryWindow>>,
     Option<Res<'w, UiScale>>,
     Res<'w, Persistent<Settings>>,
 );
 
-/// Returns where the head of `root` shows through `lens`, with the screen in interface pixels.
+/// Returns where the head of `root` shows through `lens`, with the screen in interface pixels:
+/// through the camera where the rig put it this frame, with the field of view it has now.
 fn seen(root: (Entity, &GlobalTransform), parts: &Bounds, lens: &Lens) -> Option<(Vec2, Vec2)> {
-    let (camera, window, scale, settings) = lens;
-    let (camera, window) = (camera.single().ok()?, window.single().ok()?);
+    let ((cameras, holders), window, scale, settings) = lens;
+    let ((local, parent, projection), window) = (cameras.single().ok()?, window.single().ok()?);
+    let holder = parent.and_then(|parent| holders.get(parent.parent()).ok());
+    let camera =
+        GlobalTransform::from(holder.map_or(*local, |holder| holder.mul_transform(*local)));
     let scale = scale.as_ref().map_or(1.0, |scale| scale.0).max(0.1);
     let screen = Vec2::new(window.width(), window.height()) / scale;
     let fov = (settings.graphics.fov as f32).to_radians();
-    over(top(root, parts), camera, (fov, screen)).map(|pos| (pos, screen))
+    let frustum = Frustum::of(Some(projection), fov, window, scale);
+    over(top(root, parts), &camera, (frustum, screen)).map(|pos| (pos, screen))
 }
 
 /// The strip, the fill of its bar and its name.

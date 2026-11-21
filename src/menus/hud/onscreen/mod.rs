@@ -31,13 +31,15 @@ mod tests_hidden;
 #[cfg(test)]
 mod tests_overlap;
 #[cfg(test)]
+mod tests_project;
+#[cfg(test)]
 mod tests_rule;
 #[cfg(test)]
 mod tests_zones;
 mod tune;
 mod zones;
 
-use place::{MAX, place};
+use place::{Frustum, MAX, place};
 
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
@@ -46,6 +48,7 @@ use super::compass::{Around, icon};
 use super::context::{Context, Element, Where};
 use super::fade::gate;
 use crate::menus::{Marker, Markers};
+use crate::render::GameCamera;
 use crate::settings::{Persistent, Settings};
 use pick::State;
 use pool::Nodes;
@@ -55,7 +58,7 @@ use rule::Face;
 const FOLLOW: f32 = 25.0;
 
 /// What one frame needs besides the markers: the settings, the scale of the interface, the
-/// time and the window.
+/// time, the window and the projection of the game camera.
 #[derive(bevy::ecs::system::SystemParam)]
 pub(super) struct View<'w, 's> {
     markers: Res<'w, Markers>,
@@ -63,14 +66,15 @@ pub(super) struct View<'w, 's> {
     scale: Option<Res<'w, UiScale>>,
     time: Res<'w, Time>,
     window: Single<'w, 's, &'static Window, With<PrimaryWindow>>,
+    cameras: Query<'w, 's, &'static Projection, With<GameCamera>>,
 }
 
-/// The numbers of one frame: the screen in interface pixels, the field of view, how far an icon
-/// moves toward its target, the rectangle icons stay in and where the player is.
+/// The numbers of one frame: the screen in interface pixels, what the camera sees on it, how
+/// far an icon moves toward its target, the rectangle icons stay in and where the player is.
 #[derive(Debug, Clone, Copy)]
 struct Lens {
     screen: Vec2,
-    fov: f32,
+    frustum: Frustum,
     follow: f32,
     safe: Rect,
     context: Context,
@@ -81,9 +85,11 @@ impl View<'_, '_> {
     fn lens(&self, context: Context) -> Lens {
         let scale = self.scale.as_ref().map_or(1.0, |scale| scale.0).max(0.1);
         let screen = Vec2::new(self.window.width(), self.window.height()) / scale;
+        let fov = (self.settings.graphics.fov as f32).to_radians();
+        let projection = self.cameras.iter().next();
         Lens {
             screen,
-            fov: (self.settings.graphics.fov as f32).to_radians(),
+            frustum: Frustum::of(projection, fov, *self.window, scale),
             follow: 1.0 - (-FOLLOW * self.time.delta_secs()).exp(),
             safe: zones::safe(screen),
             context,
@@ -134,7 +140,7 @@ fn show(
     };
     let marker = &view.markers.0[pick.index];
     let safe = lens.safe.inflate(-state.stickiness(at));
-    let placed = place(pick.dir, lens.fov, lens.screen, safe);
+    let placed = place(pick.dir, lens.frustum, safe);
     let pos = state.settle(at, (marker.kind, pick.index), placed, lens.follow);
     let pos = zones::fit(pos, lens.screen, lens.context.is_ship());
     let look = state.look(at, marker, pick.gap, lens.context);
@@ -189,7 +195,7 @@ fn enabled(now: Res<Where>) -> bool {
 }
 
 /// Registers the markers over the world, drawn after the markers are filled and the compass
-/// read them.
+/// read them, and after the eye of the HUD took the camera the rig moved this frame.
 pub(super) fn plugin(app: &mut App) {
     use super::MarkerSet;
     use crate::screens::{Screen, in_control};
@@ -197,6 +203,7 @@ pub(super) fn plugin(app: &mut App) {
         Update,
         update
             .after(MarkerSet::Fill)
+            .after(super::eye::capture)
             .run_if(in_control)
             .run_if(enabled)
             .run_if(in_state(Screen::Gameplay)),

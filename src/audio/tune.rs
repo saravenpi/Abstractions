@@ -74,3 +74,7 @@ pub const BED_MUSIC: f32 = 0.708;
 /// Gain of the one-shot sounds, the interface, the steps, the blows and the voices of the
 /// companion and the animals: 2 decibels up, so that they read over the beds.
 pub const CUES_GAIN: f32 = 1.25;
+
+/// Level of the voice of the companion against its phrases as written: 4.4 decibels down, so it
+/// speaks under the world rather than over it.
+pub const CHIRP_LEVEL: f32 = 0.6;

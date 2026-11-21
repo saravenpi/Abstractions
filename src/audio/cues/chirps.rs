@@ -42,8 +42,8 @@ const CHIRP_SURPRISED: [Blip; 2] = [
 
 /// Sleepy: two slow, low, falling notes.
 const CHIRP_SLEEPY: [Blip; 2] = [
-    slow(tone(700.0, 430.0, 0.5, 0.0, 0.1)),
-    slow(tone(460.0, 300.0, 0.6, 0.42, 0.08)),
+    slow(tone(700.0, 430.0, 0.36, 0.0, 0.1)),
+    slow(tone(460.0, 300.0, 0.42, 0.3, 0.08)),
 ];
 
 /// Worried: three falling, hurried blips.
@@ -53,21 +53,19 @@ const CHIRP_WORRIED: [Blip; 3] = [
     tone(1250.0, 780.0, 0.14, 0.19, 0.13),
 ];
 
-/// Delight: a bright trill up a major chord that ends on a held note.
-const CHIRP_DELIGHT: [Blip; 5] = [
+/// Delight: a bright trill up a major chord that ends on a short held note.
+const CHIRP_DELIGHT: [Blip; 4] = [
     tone(1318.5, 1318.5, 0.05, 0.0, 0.11),
     tone(1568.0, 1568.0, 0.05, 0.055, 0.11),
     tone(1975.5, 1975.5, 0.05, 0.11, 0.11),
-    tone(2637.0, 2637.0, 0.05, 0.165, 0.11),
-    tone(2637.0, 3136.0, 0.2, 0.22, 0.12),
+    tone(2637.0, 3136.0, 0.14, 0.165, 0.12),
 ];
 
-/// Hum: the first four notes of a small tune, soft and unhurried.
-const CHIRP_HUM: [Blip; 4] = [
-    hummed(tone(523.3, 523.3, 0.22, 0.0, 0.09)),
-    hummed(tone(659.3, 659.3, 0.22, 0.24, 0.09)),
-    hummed(tone(587.3, 587.3, 0.22, 0.48, 0.09)),
-    hummed(tone(784.0, 784.0, 0.34, 0.72, 0.09)),
+/// Hum: the first three notes of a small tune, soft and unhurried.
+const CHIRP_HUM: [Blip; 3] = [
+    hummed(tone(523.3, 523.3, 0.18, 0.0, 0.09)),
+    hummed(tone(659.3, 659.3, 0.18, 0.2, 0.09)),
+    hummed(tone(784.0, 784.0, 0.26, 0.4, 0.09)),
 ];
 
 /// Wake: a low blip, then a quick rise, like eyes snapping open.

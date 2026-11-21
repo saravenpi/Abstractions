@@ -137,9 +137,11 @@ pub fn audio(active: Tab) -> impl Bundle {
         stepper("Dynamic range", Field::Range),
         toggle("Mono", Field::Mono),
     ];
+    let voices = children![stepper("Companion voice", Field::CompanionVoice)];
     let content = children![
         section(Icon::Volume, "Volume", (rows(), volume)),
         section(Icon::Volume, "Output", (rows(), output)),
+        section(Icon::Volume, "Voices", (rows(), voices)),
     ];
     page(Tab::Audio, active, content)
 }

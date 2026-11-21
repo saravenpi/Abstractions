@@ -35,7 +35,7 @@ mod walk;
 #[cfg(test)]
 mod tests;
 
-pub use asks::Intents;
+pub use asks::{Intents, SLING};
 pub use controller::Motion;
 pub use floor::Floor;
 pub use interact::{Interact, Interacting, Offer, Verb, interacting};

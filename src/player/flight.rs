@@ -98,7 +98,7 @@ pub(super) fn aground(rested: u8, mode: Mode, floor: Option<Ground>, speed: f32)
 /// steer button is held; folded it always does.
 pub(super) fn input(motion: &Motion, intent: &Intent, air: &Air, on: (bool, bool)) -> GearInput {
     GearInput {
-        deploy: motion.wings,
+        deploy: motion.wings && motion.sling <= 0.0,
         boost: motion.boots,
         pitch: -intent.forward,
         roll: intent.right,

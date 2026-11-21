@@ -18,7 +18,8 @@
 //!   with a tool drawn (see the `playfeel` module; run it on `SMOKE_SEED=57`).
 //!   The title, loading, boot and wake stages always run.
 //! - `glide` opens the wingsuit from the top of a jump on flat ground, off a cliff at a run, out of a long fall
-//!   and from a jump off the parked ship, three shots each, with `PROBE glide` lines (see the `opening` module).
+//!   and from a jump off the parked ship, three shots each, with `PROBE glide` lines (see the `opening` module), and
+//!   off the cliff with a tool drawn, slung before the wings spread (`open-cliff-armed`).
 //! - `entry` (a fall from a low orbit into the air, from a chase camera and from the seat) and `exit`
 //!   (the climb from the pad to orbit under the autopilot) shoot the heat of an entry and leaving the air.
 //! - `cruise` drops the ship at the arrival shell over the far side of the home planet, presses the home key
@@ -78,6 +79,7 @@ use bevy::time::TimeUpdateStrategy;
 use bevy::window::PrimaryWindow;
 
 mod air;
+mod armed;
 mod base;
 mod boot;
 mod burn;
@@ -137,6 +139,7 @@ mod workshop;
 mod zoo;
 
 use air::*;
+use armed::*;
 use base::*;
 use boot::*;
 use burn::*;

@@ -38,4 +38,7 @@ pub struct Motion {
     /// ground under its soles. Past `flight::WATCH` the body is on the ground, whatever the
     /// gap: no body stays falling on the ground.
     pub aground: u8,
+    /// Seconds left of the sling that puts the tool on the back before the asked wings spread,
+    /// see `asks::SLING`. The gear is told to spread them once it is over.
+    pub sling: f32,
 }

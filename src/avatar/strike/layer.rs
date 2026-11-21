@@ -9,6 +9,7 @@ use super::super::pose::{Core, Limb, Pose};
 use super::act::{Strike, Timing, key};
 use super::feel::bend::Bend;
 use super::feel::body::{phase, stand, still};
+use super::feel::tune::LET_GO;
 use super::held::Held;
 use super::ik::reach;
 use super::key::Key;
@@ -114,8 +115,17 @@ pub fn posed(
     )
 }
 
-/// Lays the strike of every body over its pose: the key of its act with the tool out, nothing with
-/// the tool stowed or gone.
+/// Returns `before` let go a little more after `dt` seconds: the same key at less weight, none
+/// after [`LET_GO`] seconds in all. The hand that put the tool away swings back into the pose.
+fn faded(before: &Layer, dt: f32) -> Layer {
+    match before.weight - dt / LET_GO {
+        weight if weight > 0.0 => Layer { weight, ..*before },
+        _ => Layer::default(),
+    }
+}
+
+/// Lays the strike of every body over its pose: the key of its act with the tool out, the last
+/// key let go over [`LET_GO`] once the tool is stowed, and nothing with the tool gone.
 pub fn lay(
     time: Res<Time>,
     mut bodies: Query<(&mut Layer, &Strike, Option<&Held>, Option<&AvatarPose>)>,
@@ -123,8 +133,9 @@ pub fn lay(
     let dt = time.delta_secs();
     for (mut layer, strike, held, pose) in &mut bodies {
         let pose = pose.copied().unwrap_or_default();
-        let next = match held.filter(|held| held.out) {
-            Some(held) => posed(strike, held, &pose, (&layer, dt)),
+        let next = match held {
+            Some(held) if held.out => posed(strike, held, &pose, (&layer, dt)),
+            Some(_) => faded(&layer, dt),
             None => Layer::default(),
         };
         layer.set_if_neq(next);

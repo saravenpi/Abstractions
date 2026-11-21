@@ -33,23 +33,59 @@ pub fn hold(
 
 /// Views around the ship on the ground, near, and one from 100 m.
 const ROUND: [View; 10] = [
-    ("side", Vec3::new(-5.6, 0.3, -0.2), Vec3::new(0.0, 0.2, -0.2)),
+    (
+        "side",
+        Vec3::new(-5.6, 0.3, -0.2),
+        Vec3::new(0.0, 0.2, -0.2),
+    ),
     ("front", Vec3::new(0.5, 0.2, -8.4), Vec3::new(0.0, 0.1, 0.0)),
-    ("front3q", Vec3::new(-4.4, 1.2, -6.4), Vec3::new(0.0, 0.2, -0.6)),
+    (
+        "front3q",
+        Vec3::new(-4.4, 1.2, -6.4),
+        Vec3::new(0.0, 0.2, -0.6),
+    ),
     ("rear3q", Vec3::new(4.8, 1.9, 7.4), Vec3::new(0.0, 0.3, 0.6)),
     ("above", Vec3::new(0.0, 8.5, 0.4), Vec3::new(0.0, 0.0, 0.0)),
-    ("below", Vec3::new(-3.6, -0.95, -5.2), Vec3::new(0.0, -0.2, 0.0)),
-    ("engines", Vec3::new(0.3, 0.7, 7.0), Vec3::new(0.0, 0.3, 3.4)),
-    ("canopy", Vec3::new(-2.4, 1.5, -3.3), Vec3::new(0.0, 0.6, -1.5)),
+    (
+        "below",
+        Vec3::new(-3.6, -0.95, -5.2),
+        Vec3::new(0.0, -0.2, 0.0),
+    ),
+    (
+        "engines",
+        Vec3::new(0.3, 0.7, 7.0),
+        Vec3::new(0.0, 0.3, 3.4),
+    ),
+    (
+        "canopy",
+        Vec3::new(-2.4, 1.5, -3.3),
+        Vec3::new(0.0, 0.6, -1.5),
+    ),
     ("8m", Vec3::new(-7.5, 2.4, -8.5), Vec3::new(0.0, 0.0, 0.0)),
-    ("far", Vec3::new(-62.0, 14.0, 80.0), Vec3::new(0.0, 0.0, 0.0)),
+    (
+        "far",
+        Vec3::new(-62.0, 14.0, 80.0),
+        Vec3::new(0.0, 0.0, 0.0),
+    ),
 ];
 
 /// Views of the ship with its canopy shut and the robot in the seat.
 const SHUT: [View; 4] = [
-    ("side", Vec3::new(-5.6, 0.3, -0.2), Vec3::new(0.0, 0.2, -0.2)),
-    ("front3q", Vec3::new(-4.4, 1.2, -6.4), Vec3::new(0.0, 0.2, -0.6)),
-    ("canopy", Vec3::new(-2.4, 1.5, -3.3), Vec3::new(0.0, 0.6, -1.5)),
+    (
+        "side",
+        Vec3::new(-5.6, 0.3, -0.2),
+        Vec3::new(0.0, 0.2, -0.2),
+    ),
+    (
+        "front3q",
+        Vec3::new(-4.4, 1.2, -6.4),
+        Vec3::new(0.0, 0.2, -0.6),
+    ),
+    (
+        "canopy",
+        Vec3::new(-2.4, 1.5, -3.3),
+        Vec3::new(0.0, 0.6, -1.5),
+    ),
     ("rear3q", Vec3::new(4.8, 1.9, 7.4), Vec3::new(0.0, 0.3, 0.6)),
 ];
 

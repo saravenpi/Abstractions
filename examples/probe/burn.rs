@@ -89,7 +89,9 @@ pub fn vacuum(world: &mut World, _: &mut Notes, frame: u32) -> Act {
         2..=40 => throttle(world, 1.0),
         41 => {
             throttle(world, 0.0);
-            with_ship(world, |ship| ship.warp = Warp::Spooling { left: SPOOL_TIME });
+            with_ship(world, |ship| {
+                ship.warp = Warp::Spooling { left: SPOOL_TIME }
+            });
         }
         _ => {}
     }

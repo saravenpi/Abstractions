@@ -22,7 +22,9 @@ const LOOKS: [(&str, f32, f32); 7] = [
 /// Returns the views from the eye of the pilot, one for each of [`LOOKS`].
 fn looks() -> Vec<View> {
     let eye = SEAT.as_vec3();
-    let aim = |yaw: f32, pitch: f32| Quat::from_rotation_y(yaw) * Quat::from_rotation_x(pitch) * Vec3::NEG_Z;
+    let aim = |yaw: f32, pitch: f32| {
+        Quat::from_rotation_y(yaw) * Quat::from_rotation_x(pitch) * Vec3::NEG_Z
+    };
     LOOKS
         .iter()
         .map(|&(name, yaw, pitch)| (name, eye, eye + aim(yaw, pitch)))
@@ -33,15 +35,25 @@ fn looks() -> Vec<View> {
 /// and how many of its pixels are lit.
 fn report(world: &mut World) {
     let lines = world.run_system_once(
-        |screens: Query<(&Screen, &Display, &ViewVisibility, &MeshMaterial3d<StandardMaterial>)>,
+        |screens: Query<(
+            &Screen,
+            &Display,
+            &ViewVisibility,
+            &MeshMaterial3d<StandardMaterial>,
+        )>,
          images: Res<Assets<Image>>,
          materials: Res<Assets<StandardMaterial>>| {
             let mut lines = Vec::new();
             for (screen, display, seen, material) in &screens {
-                let lit = images.get(&display.image).and_then(|image| image.data.as_ref());
+                let lit = images
+                    .get(&display.image)
+                    .and_then(|image| image.data.as_ref());
                 let lit = lit.map_or(0, |data| data.chunks(4).filter(|p| p[0] > 60).count());
                 let tone = materials.get(&material.0).map(|m| m.base_color.to_linear());
-                lines.push(format!("{screen:?}: seen {}, tone {tone:?}, {lit} pixels lit", seen.get()));
+                lines.push(format!(
+                    "{screen:?}: seen {}, tone {tone:?}, {lit} pixels lit",
+                    seen.get()
+                ));
             }
             lines
         },
@@ -74,7 +86,11 @@ pub fn night(world: &mut World, _: &mut Notes, frame: u32) -> Act {
     }
     let mut list = looks()[..4].to_vec();
     list.push(("out", Vec3::new(-4.4, 1.2, -6.4), Vec3::new(0.0, 0.2, -0.6)));
-    list.push(("canopy", Vec3::new(-2.4, 1.5, -3.3), Vec3::new(0.0, 0.6, -1.5)));
+    list.push((
+        "canopy",
+        Vec3::new(-2.4, 1.5, -3.3),
+        Vec3::new(0.0, 0.6, -1.5),
+    ));
     if views(world, frame - 59, "33-night", &list) {
         world.resource_mut::<abstractions::space::Clock>().seconds += half;
         return Act::Next;

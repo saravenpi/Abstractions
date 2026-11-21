@@ -11,7 +11,7 @@ use crate::world::blades::tune::PAD_MARGIN;
 use crate::world::canopy::{Canopy, canopy_on};
 use crate::world::globe::ChunkId;
 use crate::world::mesh::{
-    Frame, Lod, chunk_heights, chunk_mesh, chunk_patch, node_frame, node_mesh, subsample,
+    Frame, Lod, cells_of, chunk_heights, chunk_mesh, chunk_patch, node_frame, node_mesh, subsample,
 };
 use crate::world::propmesh::merge_props_on;
 use crate::world::props::{body_collider_on, build_grass_on};
@@ -60,7 +60,7 @@ pub fn terrain_mesh(terrain: &Terrain, coord: IVec2, lod: Lod) -> Mesh {
 pub fn coarse(terrain: &Terrain, id: ChunkId) -> NodeData {
     let (mesh, frame) = (node_mesh(terrain, id), node_frame(terrain, id));
     NodeData {
-        bounds: Bounds::of(id, &mesh, &frame),
+        bounds: Bounds::of((id, cells_of(terrain, id)), &mesh, &frame),
         mesh: render_only(mesh),
         frame,
     }

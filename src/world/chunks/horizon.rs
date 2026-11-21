@@ -49,9 +49,10 @@ impl Bounds {
         radii: (0.0, f64::INFINITY),
     };
 
-    /// Returns the bounds of node `id` whose `mesh` is stored in `frame`, from its vertices,
-    /// skirts included, and from its four corners.
-    pub fn of(id: ChunkId, mesh: &Mesh, frame: &Frame) -> Self {
+    /// Returns the bounds of node `id` cut into `cells` per side, whose `mesh` is stored in
+    /// `frame`, from its vertices, skirts included, and from its four corners. Its lowest point
+    /// is taken lower by how far a cell of the node sags under the sphere of its corners.
+    pub fn of((id, cells): (ChunkId, usize), mesh: &Mesh, frame: &Frame) -> Self {
         let dir = id.dir(0.5, 0.5).normalize();
         let corners = [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)];
         let angle = corners
@@ -63,15 +64,20 @@ impl Bounds {
             .and_then(|values| values.as_float3())
             .unwrap_or(&[]);
         let radius = |p: &[f32; 3]| (frame.origin + frame.rot * Vec3::from(*p).as_dvec3()).length();
-        let radii = points
+        let (low, high) = points
             .iter()
             .map(radius)
-            .fold((f64::INFINITY, 0.0_f64), |(low, high), r| {
+            .fold((f64::INFINITY, 0.0), |(low, high), r| {
                 (low.min(r), high.max(r))
             });
+        let cell = 2.0 * angle / cells.max(1) as f64;
         match points.is_empty() {
             true => Self::WHOLE,
-            false => Self { dir, angle, radii },
+            false => Self {
+                dir,
+                angle,
+                radii: (low * cell.cos(), high),
+            },
         }
     }
 
@@ -108,11 +114,13 @@ pub struct Eye {
     pub floor: f64,
 }
 
-/// Returns the radius under every ground and every sea of `chunks`: the lowest vertex of every
-/// node, and the sea level on a planet with a sea, whose flat sea every node draws.
+/// Returns the radius under every ground and every sea that `chunks` draws: the lowest point of
+/// every node on the draw cut, and the sea level on a planet with a sea, whose flat sea every
+/// node draws. The hidden parents do not count: they draw nothing.
 fn floor(chunks: &Chunks, terrain: &Terrain) -> f64 {
     let globe = terrain.globe();
-    let lowest = chunks.nodes.live.values().map(|node| node.bounds.radii.0);
+    let drawn = chunks.nodes.live.values().filter(|node| node.visible);
+    let lowest = drawn.map(|node| node.bounds.radii.0);
     let low = lowest.fold(f64::INFINITY, f64::min);
     match globe.has_sea() {
         true => low.max(globe.radius() + f64::from(globe.sea_level())),

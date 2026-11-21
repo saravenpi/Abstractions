@@ -165,7 +165,12 @@ pub fn shots() -> Vec<Shot> {
     for (name, mood) in moods {
         for (tag, yaw) in [("front", 0.0), ("front34", 45.0)] {
             let name = format!("buddy-{name}-{tag}");
-            all.push(shot(name, Who::Buddy, (View::Around(yaw), 0.9), (Stance::Idle, mood)));
+            all.push(shot(
+                name,
+                Who::Buddy,
+                (View::Around(yaw), 0.9),
+                (Stance::Idle, mood),
+            ));
         }
     }
     all

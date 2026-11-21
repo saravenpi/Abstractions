@@ -115,13 +115,7 @@ fn ready(
 pub fn studio(app: &mut App) {
     app.init_resource::<CompanionSense>().add_systems(
         Update,
-        (
-            puppet::pose,
-            limbs::limbs,
-            screen::repaint,
-            shine::shine,
-        )
-            .chain(),
+        (puppet::pose, limbs::limbs, screen::repaint, shine::shine).chain(),
     );
 }
 

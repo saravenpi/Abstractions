@@ -78,7 +78,10 @@ fn robot_pose(stance: Stance, frame: f32) -> AvatarPose {
         Stance::Idle | Stance::Tool | Stance::Blade | Stance::Spear => base,
         Stance::Walk => walking(Mode::Walk, 1.6),
         Stance::Run => walking(Mode::Run, 6.5),
-        Stance::Crouch => AvatarPose { crouch: 1.0, ..base },
+        Stance::Crouch => AvatarPose {
+            crouch: 1.0,
+            ..base
+        },
         Stance::Glide => AvatarPose {
             mode: Mode::Glide,
             wings: 1.0,
@@ -88,8 +91,15 @@ fn robot_pose(stance: Stance, frame: f32) -> AvatarPose {
             clearance: 50.0,
             ..base
         },
-        Stance::Seat => AvatarPose { mode: Mode::Seated, ..base },
-        Stance::Swim => AvatarPose { mode: Mode::Swim, speed: 1.0, ..base },
+        Stance::Seat => AvatarPose {
+            mode: Mode::Seated,
+            ..base
+        },
+        Stance::Swim => AvatarPose {
+            mode: Mode::Swim,
+            speed: 1.0,
+            ..base
+        },
     }
 }
 
@@ -121,7 +131,13 @@ fn buddy_pose(mood: Mood) -> (Float, Option<abstractions::companion::Expression>
             },
             None,
         ),
-        Mood::Ride => (Float { seated: true, ..calm }, None),
+        Mood::Ride => (
+            Float {
+                seated: true,
+                ..calm
+            },
+            None,
+        ),
         Mood::Scan => (
             Float {
                 pose: Hover {
@@ -145,7 +161,11 @@ fn camera(shot: &Shot, aim: Vec3) -> Transform {
         }
         View::Top => Vec3::Y,
     };
-    let up = if shot.view == View::Top { Vec3::NEG_Z } else { Vec3::Y };
+    let up = if shot.view == View::Top {
+        Vec3::NEG_Z
+    } else {
+        Vec3::Y
+    };
     Transform::from_translation(aim + eye * shot.dist).looking_at(aim, up)
 }
 

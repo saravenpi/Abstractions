@@ -68,8 +68,14 @@ pub fn discs(soup: &mut Soup, list: &[Disc], detail: Detail) {
 
 /// Adds a ball of `radius` around `at` in the colour `rgb`: five rings of the outline `ring`.
 pub fn orb(soup: &mut Soup, at: Vec3, radius: f32, (ring, rgb): (Ring, Rgb)) {
-    let rings = [(-0.95, 0.3), (-0.6, 0.8), (0.0, 1.0), (0.6, 0.8), (0.95, 0.3)]
-        .map(|(y, r): (f32, f32)| Section::new(y * radius, r * radius, r * radius));
+    let rings = [
+        (-0.95, 0.3),
+        (-0.6, 0.8),
+        (0.0, 1.0),
+        (0.6, 0.8),
+        (0.95, 0.3),
+    ]
+    .map(|(y, r): (f32, f32)| Section::new(y * radius, r * radius, r * radius));
     let mut body = Soup::default();
     loft(&mut body, &rings, ring, |_, _| rgb);
     soup.extend(&body, (at, Quat::IDENTITY));

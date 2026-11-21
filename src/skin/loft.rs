@@ -71,7 +71,9 @@ impl Ring {
                 let all = [(1.0, -z), (1.0, z), (x, 1.0), (-x, 1.0)];
                 let all = all.into_iter().chain(all.map(|(x, z)| (-x, -z)));
                 let step = if cut > 0.0 { 1 } else { 2 };
-                all.step_by(step).map(|(x, z)| section.point(x, z)).collect()
+                all.step_by(step)
+                    .map(|(x, z)| section.point(x, z))
+                    .collect()
             }
         }
     }

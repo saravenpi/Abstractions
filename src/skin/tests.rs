@@ -16,7 +16,12 @@ fn samples(detail: Detail) -> Soup {
     plates(&mut soup, &[plate, block], detail);
     let disc = Disc::new([1.0, 0.0, 0.0], Vec3::X, [0.05, 0.02], GREY);
     discs(&mut soup, &[disc], detail);
-    orb(&mut soup, Vec3::X * 2.0, 0.05, (detail.ring(Ring::Round(8, 2.0)), GREY));
+    orb(
+        &mut soup,
+        Vec3::X * 2.0,
+        0.05,
+        (detail.ring(Ring::Round(8, 2.0)), GREY),
+    );
     let stack = [
         Section::new(3.0, 0.05, 0.04),
         Section::new(3.1, 0.07, 0.06).back(0.01),
@@ -75,6 +80,10 @@ fn overlapping_shapes_are_one_piece() {
     let b = Plate::new([0.15, 0.0, 0.0], [0.1, 0.02, 0.01], [GREY; 2]);
     plates(&mut soup, &[a, b], Detail::Near);
     assert!(floating(&pieces(&soup)).is_empty());
-    plates(&mut soup, &[Plate::new([0.0, 1.0, 0.0], [0.1; 3], [GREY; 2])], Detail::Near);
+    plates(
+        &mut soup,
+        &[Plate::new([0.0, 1.0, 0.0], [0.1; 3], [GREY; 2])],
+        Detail::Near,
+    );
     assert!(!floating(&pieces(&soup)).is_empty());
 }

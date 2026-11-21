@@ -94,7 +94,10 @@ pub fn block(soup: &mut Soup, b: &Block, face: Rgb, edge: Rgb) {
         ];
         soup.quad(quad, b.out(order, [0.0, a, c]), edge);
     }
-    for (x, (y, z)) in SIGNS.into_iter().flat_map(|x| pairs.clone().map(move |p| (x, p))) {
+    for (x, (y, z)) in SIGNS
+        .into_iter()
+        .flat_map(|x| pairs.clone().map(move |p| (x, p)))
+    {
         let tri = [0, 1, 2].map(|on| b.at([0, 1, 2], [x, y, z], on));
         soup.tri(tri, b.out([0, 1, 2], [x, y, z]), edge);
     }

@@ -20,14 +20,21 @@ fn parts(detail: Detail) -> [Soup; 2] {
 /// Every shape is closed and faces outward at both levels, and no triangle is degenerate.
 #[test]
 fn every_shape_is_closed_and_faces_outward() {
-    for (detail, soup) in [Detail::Near, Detail::Far].into_iter().flat_map(|d| parts(d).map(|s| (d, s))) {
+    for (detail, soup) in [Detail::Near, Detail::Far]
+        .into_iter()
+        .flat_map(|d| parts(d).map(|s| (d, s)))
+    {
         for tri in soup.tris() {
             let area = (tri[1] - tri[0]).cross(tri[2] - tri[0]).length();
             assert!(area > 1e-8, "{detail:?}: degenerate {tri:?}");
         }
         for piece in pieces(&soup) {
             assert_eq!(open_edges(&piece), 0, "{detail:?}: open at {:?}", piece[0]);
-            assert!(volume(&piece) > 1e-7, "{detail:?}: inside out at {:?}", piece[0]);
+            assert!(
+                volume(&piece) > 1e-7,
+                "{detail:?}: inside out at {:?}",
+                piece[0]
+            );
         }
     }
 }
@@ -59,14 +66,29 @@ fn triangle_budgets_hold() {
 fn the_glowing_parts_sit_on_the_body() {
     let body = pieces(&shell(Detail::Near));
     let held = |p: Vec3| body.iter().any(|shape| inside(shape, p));
-    for (x, y) in [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0), (0.0, 0.0)] {
+    for (x, y) in [
+        (-1.0, -1.0),
+        (1.0, -1.0),
+        (1.0, 1.0),
+        (-1.0, 1.0),
+        (0.0, 0.0),
+    ] {
         let on = Vec3::new(x * SCREEN.x, y * SCREEN.y, -SCREEN_FRONT);
-        assert!(held(on + Vec3::Z * 0.004) && !held(on), "the screen is off the visor at {on}");
+        assert!(
+            held(on + Vec3::Z * 0.004) && !held(on),
+            "the screen is off the visor at {on}"
+        );
     }
-    assert!(held(ANTENNA_TIP + Vec3::new(0.0, -0.012, -0.03)), "the tip is off the fin");
+    assert!(
+        held(ANTENNA_TIP + Vec3::new(0.0, -0.012, -0.03)),
+        "the tip is off the fin"
+    );
     assert!(held(NOZZLE + Vec3::Y * 0.02) && !held(NOZZLE - Vec3::Y * 0.03));
     let whole = shell(Detail::Near);
     let under = whole.points().filter(|p| p.y < HALF[1]);
     let far = under.map(|p| p.length()).fold(0.0, f32::max);
-    assert!(far < SHELL_RADIUS + 0.01, "the body reaches {far} m from its middle");
+    assert!(
+        far < SHELL_RADIUS + 0.01,
+        "the body reaches {far} m from its middle"
+    );
 }

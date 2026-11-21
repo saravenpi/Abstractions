@@ -41,7 +41,12 @@ const BELL: [Section; 2] = [
 
 /// The visor box, the brow hood, the fin, and the three lames round the lower back.
 const PLATES: [Plate; 6] = [
-    Plate::new([0.0, 0.0, 0.002 - SCREEN_FRONT + VISOR[2]], VISOR, [DARK, DARK]).cut(LARGE),
+    Plate::new(
+        [0.0, 0.0, 0.002 - SCREEN_FRONT + VISOR[2]],
+        VISOR,
+        [DARK, DARK],
+    )
+    .cut(LARGE),
     Plate::new([0.0, 0.092, -0.128], [0.125, 0.012, 0.036], [SHELL, SHELL])
         .turned(0.14, 0.0, 0.0)
         .fine(),
@@ -49,12 +54,20 @@ const PLATES: [Plate; 6] = [
     Plate::new([0.0, -0.085, 0.134], [0.07, 0.045, 0.008], [SHADE, SHADE])
         .turned(-0.3, 0.0, 0.0)
         .fine(),
-    Plate::new([0.118, -0.085, 0.095], [0.055, 0.045, 0.008], [SHADE, SHADE])
-        .turned(-0.3, 0.85, 0.0)
-        .fine(),
-    Plate::new([-0.118, -0.085, 0.095], [0.055, 0.045, 0.008], [SHADE, SHADE])
-        .turned(-0.3, -0.85, 0.0)
-        .fine(),
+    Plate::new(
+        [0.118, -0.085, 0.095],
+        [0.055, 0.045, 0.008],
+        [SHADE, SHADE],
+    )
+    .turned(-0.3, 0.85, 0.0)
+    .fine(),
+    Plate::new(
+        [-0.118, -0.085, 0.095],
+        [0.055, 0.045, 0.008],
+        [SHADE, SHADE],
+    )
+    .turned(-0.3, -0.85, 0.0)
+    .fine(),
 ];
 
 /// On each side the dark ear disc and its accent centre.
@@ -79,7 +92,12 @@ pub fn shell(detail: Detail) -> Soup {
     let mut soup = Soup::default();
     let belly = |span: usize, _| if span == 0 { SHADE } else { SHELL };
     loft(&mut soup, &DOME, detail.ring(Ring::Round(12, 2.6)), belly);
-    loft(&mut soup, &BELL, detail.ring(Ring::Round(10, 2.0)), |_, _| DARK);
+    loft(
+        &mut soup,
+        &BELL,
+        detail.ring(Ring::Round(10, 2.0)),
+        |_, _| DARK,
+    );
     plates(&mut soup, &PLATES, detail);
     discs(&mut soup, &DISCS, detail);
     soup

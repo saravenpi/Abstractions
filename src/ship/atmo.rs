@@ -173,9 +173,6 @@ pub fn step(ship: &mut Ship, controls: &Controls, land: Land, h: f64) -> Report 
     let circular = (planet.mu() / ship.pos.length()).sqrt();
     let lost = (slow(ship.rot, ship.vel, air, h) - ship.vel) / h;
     let hold = (pull + lost, grip, circular, air);
-    if ship.assist && touch.ground && controls.lift <= 0.0 {
-        ship.throttle = 0.0;
-    }
     let held = engines(ship, controls, &touch, hold, h);
     let pushed = deck::buoyed(planet, ship, held, [pull, lost, down - pull]) + touch.accel;
     let coriolis = DQuat::from_rotation_y(-2.0 * spin_rate(planet) * h);

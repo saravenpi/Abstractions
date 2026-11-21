@@ -40,7 +40,7 @@ use bevy::shader::{Shader, load_shader_library};
 pub use cross::{CloudCrossing, depth_at};
 pub(super) use map::toward_second;
 pub(super) use maps::CloudMaps;
-pub use material::{CloudMaterial, CloudUniform};
+pub use material::CloudMaterial;
 
 use super::palette::Palette;
 use super::vantage::{LocalSystem, Vantage};

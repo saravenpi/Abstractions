@@ -21,6 +21,9 @@ pub fn describe(field: Field) -> &'static str {
         Field::Clouds => "Clouds in the sky.",
         Field::CloudShadows => "Clouds shade the ground as they pass over it. Costs little.",
         Field::AutoExposure => "The view adapts to bright and dark as an eye does. Costs nothing.",
+        Field::WhiteBalance => {
+            "The view adapts its white to the colour of the light. Costs nothing."
+        }
         Field::LocalShadows => "The robot lamp casts shadows. Costs a lot. Ultra only.",
         Field::WaterGlint => "Sun and moon glint on the sea, not only the sky. Costs little.",
         _ => "",

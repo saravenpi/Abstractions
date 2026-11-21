@@ -10,7 +10,7 @@ use crate::settings::Settings;
 use crate::ui::theme;
 
 /// Every setting that is not a key.
-const FIELDS: [Field; 29] = [
+const FIELDS: [Field; 30] = [
     Field::RenderDistance,
     Field::LightingQuality,
     Field::Shadows,
@@ -18,6 +18,7 @@ const FIELDS: [Field; 29] = [
     Field::ShadowDistance,
     Field::CloudShadows,
     Field::AutoExposure,
+    Field::WhiteBalance,
     Field::LocalShadows,
     Field::WaterGlint,
     Field::Vsync,

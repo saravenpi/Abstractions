@@ -48,6 +48,8 @@ pub struct Lighting {
     pub cloud_shadows: bool,
     /// Whether the camera exposure follows the light, as an eye adapts. Off keeps one exposure.
     pub auto_exposure: bool,
+    /// Whether the camera adapts its white to the colour of the light, as an eye does.
+    pub white_balance: bool,
     /// Whether the lamp of the robot casts shadows.
     pub local_shadows: bool,
     /// Whether the sea shows the glint of the sun and the moon, not only the sky.
@@ -61,6 +63,7 @@ impl Default for Lighting {
             shadow_reach: ShadowReach::Normal,
             cloud_shadows: true,
             auto_exposure: true,
+            white_balance: true,
             local_shadows: false,
             water_glint: true,
         }
@@ -88,6 +91,7 @@ impl Graphics {
                 shadow_reach: reach,
                 cloud_shadows: high,
                 auto_exposure: quality != Quality::Low,
+                white_balance: quality != Quality::Low,
                 local_shadows: quality == Quality::Ultra,
                 water_glint: quality != Quality::Low,
             },

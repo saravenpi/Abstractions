@@ -29,6 +29,7 @@ pub fn step(g: &mut Graphics, field: Field, dir: i32) {
         Field::ShadowDistance => own.shadow_reach = moved_reach(own.shadow_reach, dir),
         Field::CloudShadows => own.cloud_shadows = !own.cloud_shadows,
         Field::AutoExposure => own.auto_exposure = !own.auto_exposure,
+        Field::WhiteBalance => own.white_balance = !own.white_balance,
         Field::LocalShadows => own.local_shadows = !own.local_shadows,
         Field::WaterGlint => own.water_glint = !own.water_glint,
         _ => {}
@@ -44,6 +45,7 @@ pub fn display(g: &Graphics, field: Field) -> Option<String> {
         Field::ShadowDistance => own.shadow_reach.name().to_string(),
         Field::CloudShadows => on_off(own.cloud_shadows),
         Field::AutoExposure => on_off(own.auto_exposure),
+        Field::WhiteBalance => on_off(own.white_balance),
         Field::LocalShadows => on_off(own.local_shadows),
         Field::WaterGlint => match own.water_glint {
             true => "Sky and sun".to_string(),

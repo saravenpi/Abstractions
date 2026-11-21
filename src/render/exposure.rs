@@ -8,16 +8,20 @@
 //! colours it would not scale: here their colours are lifted by the same gain, so every part of
 //! the picture moves together.
 
+pub mod balance;
 mod tune;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_balance;
 
 use std::f32::consts::PI;
 
 use bevy::camera::Exposure;
 use bevy::prelude::*;
 
+use self::balance::Balanced;
 use self::tune::{BRIGHTEN_LIMIT, DARKEN_LIMIT, FOLLOW, REFERENCE_LUX, STEP, TO_BRIGHT, TO_DARK};
 use super::GameCamera;
 use super::daylight::{PlaceLight, PlaceUniform};
@@ -119,5 +123,9 @@ fn meter(
 pub(super) fn plugin(app: &mut App) {
     let changed = resource_changed::<PlaceLight>.or_else(resource_changed::<Persistent<Settings>>);
     app.init_resource::<Metered>()
-        .add_systems(PostUpdate, meter.run_if(changed).after(super::PlaceLit));
+        .init_resource::<Balanced>()
+        .add_systems(
+            PostUpdate,
+            (meter, balance::run).run_if(changed).after(super::PlaceLit),
+        );
 }

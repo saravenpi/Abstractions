@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::world::Boxes;
-use super::{moment, run, third, first};
+use super::{first, moment, run, third};
 use crate::view::tune::{EASE_SPEED, HEAD_RADIUS, RADIUS, SKIN};
 use crate::view::{Kind, Moment, Rig, ViewPrefs};
 

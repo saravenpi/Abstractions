@@ -1,5 +1,5 @@
-//! The dither of the colour banding: smooth bright gradients do not band into wide rings, and
-//! flat bright colours keep only a faint, irregular grain.
+//! The dither of the colour banding: it only works the seam between two levels, so a flat sky
+//! stays clean, and a smooth bright gradient bands into steps no wider than a level.
 
 /// Returns the value of the constant `name` declared in the shader.
 fn constant(name: &str) -> f32 {
@@ -25,13 +25,18 @@ fn error(p: f32, x: usize, y: usize) -> f32 {
         constant("WHITE_SOFT"),
     );
     let strength = 1.0 + (white - 1.0) * p;
-    let banded = (p * levels + 0.5 + (threshold(x, y) - 0.5) * strength).floor();
-    (banded - p * levels) * (1.0 - soft * p)
+    let scaled = p * levels;
+    let base = scaled.floor();
+    let width = 2.0 * constant("DITHER_BAND") * strength;
+    let share = ((scaled - base - 0.5) / width + 0.5).clamp(0.0, 1.0);
+    let banded = base + f32::from(threshold(x, y) < share);
+    (banded - scaled) * (1.0 - soft * p)
 }
 
 /// The smooth bright gradient of the sea seen from above, averaged over 4 by 4 pixels the way
-/// the eye does, stays within a quarter of a level of the true value: no wide rings. The old
-/// strength of 0.4 swung by half a level.
+/// the eye does, stays within half a level of the true value: no wide rings. The dither of the
+/// whole level swung by a quarter of a level, the seam dither swings as far as plain rounding
+/// does, in return for a sky without grain.
 #[test]
 fn bright_gradients_do_not_band_into_rings() {
     let shade = |x: usize, y: usize| error(0.55 + 0.12 * (x as f32 / 480.0).powi(2), x, y);
@@ -41,7 +46,7 @@ fn bright_gradients_do_not_band_into_rings() {
     });
     let (low, high) = swing.fold((f32::MAX, f32::MIN), |(a, b), e| (a.min(e), b.max(e)));
     assert!(
-        high - low < 0.25,
+        high - low < 0.55,
         "the gradient swings by {} levels",
         high - low
     );
@@ -59,7 +64,7 @@ fn flat_bright_colours_keep_a_faint_grain() {
         (all.iter().map(|e| (e - mean).powi(2)).sum::<f32>() / 1024.0).sqrt()
     };
     let grain = (0..40).map(|k| spread(k as f32 / 40.0)).sum::<f32>() / 40.0;
-    assert!(grain < 0.25, "the grain spreads by {grain} levels");
+    assert!(grain < 0.2, "the grain spreads by {grain} levels");
 }
 
 /// The thresholds fill the unit range evenly: over 64 by 64 texels every sixteenth of it holds

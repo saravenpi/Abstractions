@@ -2,11 +2,13 @@
 
 use avian3d::prelude::*;
 use bevy::ecs::system::SystemParam;
+use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
 use super::budget::{Budget, COVERED, Shares};
 use super::build::{ChunkData, NodeData};
 use super::detail::Detail;
+use super::dither::Shadowless;
 use super::nodes::Node;
 use super::place::{Sited, pose};
 use super::plan::Loaded;
@@ -87,12 +89,18 @@ impl Spawner<'_> {
         commands.spawn((bundle, RigidBody::Static, hidden)).id()
     }
 
-    /// Spawns the hidden entity of a coarse node, or of the far planet, around its mesh.
+    /// Spawns the hidden entity of a coarse node, or of the far planet, around its mesh. It casts
+    /// no shadow: it lies beyond their reach, see [`Shadowless`].
     pub fn coarse(&mut self, commands: &mut Commands, data: NodeData) -> Node {
         let mesh = self.meshes.add(data.mesh);
         let material = MeshMaterial3d(self.assets.material.clone());
         let bundle = (Mesh3d(mesh), material, self.sited(data.frame));
-        let hidden = (Visibility::Hidden, DespawnOnEnter(Screen::Title));
+        let hidden = (
+            Visibility::Hidden,
+            DespawnOnEnter(Screen::Title),
+            NotShadowCaster,
+            Shadowless,
+        );
         Node {
             entity: commands.spawn((bundle, hidden)).id(),
             visible: false,

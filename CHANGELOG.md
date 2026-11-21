@@ -27,6 +27,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Shadows are filled by the blue sky: a shaded face is about a sixth as bright as a sunlit one, as on a clear day, where it was an eleventh and read black.
 - A low star lights a warm band along the horizon on its own side of the sky, brightest under it, and the far hills on that side fade into it. The rest of the horizon stays pale.
 - The undersides of the clouds are grey, no longer sky blue.
+- The far ground no longer draws itself into the shadow maps. It lies beyond the reach of the shadows, so nothing changes on screen, and each frame skips drawing its triangles in the two shadow passes.
 - Cloud shadows are off by default and opt-in: turn them on in Graphics, Sky and sea. No lighting preset turns them on or off any more, so the preset you chose still reads as itself either way. A settings file from an older version starts with them off once, whatever it held; your choice is kept from then on. Off, the ground skips about ten texture reads a pixel.
 - The output is guarded by a limiter that turns the whole mix down for a moment when a sum of sounds would be too loud, in place of a curve that distorted it, and no peak goes over -1 dBTP. The music gives way by up to 6 dB under loud effects such as the engines.
 

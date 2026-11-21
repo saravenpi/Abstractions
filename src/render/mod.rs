@@ -86,6 +86,7 @@ pub use clock::{DayClock, START_PHASE, catch_up};
 pub use clouds::{CloudCrossing, CloudShell};
 pub use cloudshade::CloudShade;
 pub use daylight::{PlaceLight, PlaceLit, PlaceUniform, place_light};
+pub use dome::SkyDome;
 pub use entry::FlightFx;
 pub use fog::{FOG_END, HORIZON_SHARE, OPEN as FOG_OPEN, THIN_AIR};
 pub use heat::{

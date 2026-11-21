@@ -1,6 +1,6 @@
 //! Stages that judge the sky and the light: the same view at several hours of the day.
 
-use abstractions::render::{CloudShell, Palette, Starfield, Vantage};
+use abstractions::render::{CloudShell, Palette, SkyDome, Starfield, Vantage};
 use abstractions::universe::sun;
 
 use super::*;
@@ -104,7 +104,63 @@ pub fn look_stars(world: &mut World, _: &mut Notes, frame: u32) -> Act {
     hour(world, frame, (-0.8, false, 1.0, "L6-night-sky"))
 }
 
-/// Noon with the cloud shell hidden, then the starfield hidden, to find what draws the grain.
+/// Frames each switch of [`look_grain`] gets: the switch is thrown, the picture settles, a shot is
+/// taken and the switch is put back.
+const TURN: u32 = 20;
+
+/// Hides or shows every entity with a visibility that is not the sky dome, the camera or a light.
+fn bare(world: &mut World, hidden: bool) {
+    let mut q = world.query_filtered::<&mut Visibility, (Without<SkyDome>, Without<Camera>)>();
+    q.iter_mut(world)
+        .for_each(|mut v| *v = [Visibility::Inherited, Visibility::Hidden][usize::from(hidden)]);
+}
+
+/// Throws switch `which` off (`off`) or back on, and says what it is.
+fn flip(world: &mut World, which: usize, off: bool) {
+    match which {
+        0 => {
+            let levels =
+                [abstractions::render::Pixelate::default().levels, 4096.0][usize::from(off)];
+            let mut q = world.query::<&mut abstractions::render::Pixelate>();
+            q.iter_mut(world).for_each(|mut p| p.levels = levels);
+        }
+        1 => {
+            let mut settings = world.resource_mut::<Persistent<Settings>>();
+            settings.graphics.lighting.white_balance = !off;
+        }
+        2 => {
+            let mut q = world.query::<(&Starfield, &mut Visibility)>();
+            q.iter_mut(world).for_each(|(_, mut v)| {
+                *v = [Visibility::Inherited, Visibility::Hidden][usize::from(off)]
+            });
+        }
+        3 => {
+            let mut q = world.query_filtered::<Entity, With<CloudShell>>();
+            let shells: Vec<Entity> = q.iter(world).collect();
+            shells.into_iter().for_each(|e| {
+                if off {
+                    world.despawn(e);
+                }
+            });
+        }
+        _ => bare(world, off),
+    }
+}
+
+/// The switches of [`look_grain`], in the order they are thrown: the picture is shot with each one
+/// off alone, then with the clouds gone for good, then with everything but the dome hidden.
+const SWITCHES: [&str; 5] = [
+    "L1-no-dither",
+    "L1-no-balance",
+    "L1-no-stars",
+    "L1-no-clouds",
+    "L1-dome-only",
+];
+
+/// Noon at the shot's own hour: the baseline, then each suspect of the sky grain off alone, one
+/// shot each. The pixelate dither, the white balance, the starfield, the cloud shell (which the
+/// layer shows or hides itself every frame, so it is despawned) and last everything but the dome.
+/// The cloud shell and the dome-only shots are not put back, so they come last.
 pub fn look_grain(world: &mut World, _: &mut Notes, frame: u32) -> Act {
     if frame == 1 {
         gaze(world, 0.3, true);
@@ -117,42 +173,28 @@ pub fn look_grain(world: &mut World, _: &mut Notes, frame: u32) -> Act {
             world.resource::<Vantage>().air
         );
     }
-    let hide = |world: &mut World, clouds: bool, stars: bool| {
-        let mut q = world.query_filtered::<&mut Visibility, With<CloudShell>>();
-        q.iter_mut(world).for_each(|mut v| {
-            *v = [Visibility::Inherited, Visibility::Hidden][usize::from(clouds)]
-        });
-        let mut q = world.query::<(&Starfield, &mut Visibility)>();
-        q.iter_mut(world).for_each(|(_, mut v)| {
-            *v = [Visibility::Inherited, Visibility::Hidden][usize::from(stars)]
-        });
-    };
-    match frame {
-        30 => {
-            shot(world, "L1a-all");
-            Act::Wait
-        }
-        31 => {
-            hide(world, true, false);
-            Act::Wait
-        }
-        60 => {
-            shot(world, "L1b-no-clouds");
-            Act::Wait
-        }
-        61 => {
-            hide(world, false, true);
-            Act::Wait
-        }
-        90 => {
-            shot(world, "L1c-no-stars");
-            Act::Wait
-        }
-        91 => {
-            hide(world, true, true);
-            Act::Wait
-        }
-        120 => Act::Shoot("L1d-neither".into()),
-        _ => Act::Wait,
+    if frame == 30 {
+        shot(world, "L1a-all");
+        return Act::Wait;
     }
+    let step = frame.saturating_sub(31) / (2 * TURN);
+    let at = frame.saturating_sub(31) % (2 * TURN);
+    if frame < 31 || step as usize >= SWITCHES.len() {
+        return Act::Wait;
+    }
+    let last = step as usize == SWITCHES.len() - 1;
+    match at {
+        0 => flip(world, step as usize, true),
+        n if n == TURN - 1 => shot(world, SWITCHES[step as usize]),
+        n if n == TURN => {
+            if step < 3 {
+                flip(world, step as usize, false)
+            }
+        }
+        n if n == 2 * TURN - 1 && last => {
+            return Act::Shoot(format!("{}-end", SWITCHES[step as usize]));
+        }
+        _ => {}
+    }
+    Act::Wait
 }

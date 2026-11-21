@@ -10,6 +10,7 @@ mod colormap;
 pub(crate) mod cpu;
 mod enter;
 mod focus;
+mod footing;
 pub mod globe;
 mod ground;
 mod islands;
@@ -27,11 +28,15 @@ mod solids;
 pub mod structures;
 mod surface;
 mod terrain;
+#[cfg(test)]
+mod tests_enter;
+#[cfg(test)]
+mod tests_footing;
 
 pub use biome::{Biome, ground_rgb};
 pub use blades::{BladeAssets, BladeMaterial, Cropped, TurfUniform, turf_at};
 pub use chunks::{Calm, Chunks, Reach, STEPS as RENDER_STEPS, Sited, dither, leaf_arc};
-pub use enter::enter_planet;
+pub use enter::{Resettled, enter_planet};
 pub use focus::{Link, spin};
 pub use globe::Globe;
 pub use ground::GroundMaterial;
@@ -45,7 +50,7 @@ use std::sync::Arc;
 
 use bevy::prelude::*;
 
-use enter::{ashore, follow_body};
+use enter::{arrive, follow_body};
 
 use crate::home::Base;
 use crate::saves::{ActiveWorld, WorldSave, unplayed};
@@ -119,22 +124,18 @@ fn start(north: &Terrain, save: Option<&WorldSave>) -> (Terrain, Vec3) {
 /// anchor and the readiness flag from the world seed.
 ///
 /// A new world starts on the home planet where its base is looked for. A resumed world starts on the
-/// planet and at the spot its save names, unless that is a body without ground: then it starts
-/// as a new world. The terrain is the chart of the cube face that holds the spawn.
+/// planet and at the spot its save names, unless that is a body without ground, a body that does not
+/// exist or a spot that points nowhere: then it starts as a new world. A spot at a height no body can be
+/// at is put on the ground first. The terrain is the chart of the cube face that holds the spawn.
 fn begin_world(
     mut commands: Commands,
     seed: Option<Res<WorldSeed>>,
     mut active: Option<ResMut<ActiveWorld>>,
 ) {
     let universe = Universe::new(seed.map_or(0, |s| s.0));
-    if let Some(active) = active.as_mut() {
-        ashore(active, |body| {
-            !Globe::of(&universe.planet(body)).has_ground()
-        });
-    }
+    let (body, north) = arrive(&mut commands, &universe, active.as_mut());
     let save = active.as_ref().map(|active| &active.0.save);
-    let body = save.map_or_else(|| universe.home(), |save| save.body(&universe));
-    let (terrain, spawn) = start(&enter_planet(&mut commands, &universe, body), save);
+    let (terrain, spawn) = start(&north, save);
     commands.insert_resource(SpawnPoint(spawn));
     commands.insert_resource(Anchor::surface(body, &terrain, spawn));
     commands.insert_resource(Location {
@@ -153,6 +154,7 @@ fn end_world(mut commands: Commands, mut chunks: ResMut<chunks::Chunks>) {
     commands.remove_resource::<Planet>();
     commands.remove_resource::<SpawnPoint>();
     commands.remove_resource::<WorldReady>();
+    commands.remove_resource::<Resettled>();
     commands.remove_resource::<Universe>();
     commands.remove_resource::<Anchor>();
     commands.remove_resource::<Location>();

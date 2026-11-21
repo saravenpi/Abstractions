@@ -1,12 +1,13 @@
-//! Sectors: the stars of one 10 light-year cube of a galaxy, and the lookups built on them.
+//! Sectors: the stars of one 10 light-year cube of a galaxy, and the lookups built on them,
+//! down to whether a planet or a moon exists.
 
 use bevy::math::{DVec3, IVec3};
 
 use super::galaxy::{self, Shape};
 use super::hash::{self, Rng};
-use super::ids::{GalaxyId, StarId};
+use super::ids::{BodyId, GalaxyId, StarId};
 use super::spec::StarSpec;
-use super::{LY, SECTOR_LY, SECTOR_M, Universe, star};
+use super::{LY, SECTOR_LY, SECTOR_M, Universe, moon, star, system};
 use crate::space::UniPos;
 
 /// Most stars one sector holds.
@@ -38,6 +39,18 @@ pub fn sector_of(pos: DVec3) -> IVec3 {
 }
 
 impl Universe {
+    /// Returns true when the planet or moon `id` exists: its star does, the star has a planet of
+    /// that rank, and the planet a moon of that rank. [`Universe::planet`] answers for any id,
+    /// so ask this first for an id read from a file or sent by a server.
+    pub fn has(&self, id: BodyId) -> bool {
+        let Some(star) = self.star(id.star) else {
+            return false;
+        };
+        let planets = system::planets(&star);
+        let planet = planets.get(usize::from(id.index));
+        planet.is_some_and(|planet| id.moon == 0 || moon::ranked(&star, planet, id.moon).is_some())
+    }
+
     /// Returns one star, or nothing when its galaxy, sector or index does not exist.
     pub fn star(&self, id: StarId) -> Option<StarSpec> {
         let mut stars = self.stars_in_sector(id.galaxy, id.sector);

@@ -105,7 +105,7 @@ fn animate(time: Res<Time>, mut bars: Query<&mut Node, With<Sweep>>) {
 }
 
 /// Moves to gameplay, hidden behind the boot screen, once the world reports it is ready around
-/// the place the body starts at.
+/// the place the body starts at, or is flagged ready because it loaded for too long.
 fn wait_for_world(
     ready: Option<Res<WorldReady>>,
     mut screen: ResMut<NextState<Screen>>,
@@ -119,13 +119,14 @@ fn wait_for_world(
     }
 }
 
-/// Registers the loading screen systems.
+/// Registers the loading screen systems. The world is waited for once the body is where the
+/// game starts, and no longer than the loading screen may last: see [`super::stall`].
 pub(super) fn plugin(app: &mut App) {
+    let started = crate::player::awake.or_else(super::stall::expired);
     app.add_systems(OnEnter(Screen::Loading), enter)
         .add_systems(
             Update,
-            (wait_for_world.run_if(crate::player::awake), animate)
-                .run_if(in_state(Screen::Loading)),
+            (wait_for_world.run_if(started), animate).run_if(in_state(Screen::Loading)),
         );
 }
 

@@ -1,5 +1,6 @@
-//! The room with saving around it: the world goes to disk every 30 seconds, when the last
-//! player leaves, and once more at shutdown, and joins and leaves are logged.
+//! The room with saving around it: the world goes to disk every 30 seconds, whenever a player
+//! leaves with something new to keep, when the last player leaves, and once more at shutdown,
+//! and joins and leaves are logged.
 //!
 //! Writing happens on a saver thread, so a slow disk never holds a tick back.
 
@@ -7,6 +8,8 @@ mod host;
 mod roster;
 mod saver;
 
+#[cfg(test)]
+mod leave_tests;
 #[cfg(test)]
 mod roster_tests;
 
@@ -53,13 +56,15 @@ impl Saving {
         })
     }
 
-    /// Logs who joined or left since the last look, and saves when the last player left.
+    /// Logs who joined or left since the last look, and saves when that left something new to
+    /// keep, such as the last place of a player who left, or when the last player left. A hard
+    /// stop right after a leave then loses nothing of it.
     fn check(&mut self, now: f64) {
         let lines = self.roster.update(self.room.players());
         for line in &lines {
             println!("{line}");
         }
-        if !lines.is_empty() && self.roster.is_empty() {
+        if !lines.is_empty() && (self.roster.is_empty() || self.room.changed()) {
             self.save(now);
         }
     }

@@ -1,11 +1,13 @@
 //! Entering a body: the planet or moon the world streams, swapped in whenever the player reaches another
-//! one, and never a world without ground for a save to resume on.
+//! one, and never a world without ground, a body that does not exist or a place no body can be at for a
+//! save to resume on.
 
 use std::ops::DerefMut;
 use std::sync::Arc;
 
 use bevy::prelude::*;
 
+use super::footing::grounded;
 use super::globe::Face;
 use super::{Globe, Planet, Terrain};
 use crate::life::Life;
@@ -72,6 +74,69 @@ where
         save.position = None;
         save.ship = None;
     }
+}
+
+/// What the player is told when the saved place was put on the ground in the same direction.
+pub const GROUNDED: &str = "Your saved place could not be used. You are on the ground below it.";
+
+/// What the player is told when the saved place was dropped and the world began at the base.
+pub const AT_BASE: &str = "Your saved place could not be used. You are back at the base.";
+
+/// A line to tell the player once play begins: the body is not where the save left it. The loading
+/// screen inserts it too when it had to move the body, and shows it.
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Resettled(pub &'static str);
+
+/// Puts the saved place of `active` at a height a body can be at on `globe`, the ground of its body, and
+/// returns true when it had to move it. A save it keeps is not touched, nor marked changed.
+pub(super) fn settle<A>(active: &mut A, globe: &Globe) -> bool
+where
+    A: DerefMut<Target = ActiveWorld>,
+{
+    let Some(place) = active.0.save.place else {
+        return false;
+    };
+    let sound = grounded(place, globe);
+    if sound == place {
+        return false;
+    }
+    active.0.save.place = Some(sound);
+    true
+}
+
+/// Enters the body a world starts on and returns it with its terrain view on the north face: the body
+/// the save of `active` names, or the home planet. A save on a body without ground, on a body that does
+/// not exist or at a place that points nowhere begins as a new game, see [`ashore`], and a place at a
+/// height no body can be at is put on the ground, see [`settle`]. Either leaves a [`Resettled`] line.
+pub(super) fn arrive<A>(
+    commands: &mut Commands,
+    universe: &Universe,
+    mut active: Option<&mut A>,
+) -> (BodyId, Terrain)
+where
+    A: DerefMut<Target = ActiveWorld>,
+{
+    let mut line = None;
+    if let Some(active) = active.as_mut() {
+        let place = active.0.save.place;
+        let gone = place.is_some_and(|place| !place.pointed() || !universe.has(place.body));
+        ashore(&mut **active, |body| {
+            gone || !Globe::of(&universe.planet(body)).has_ground()
+        });
+        line = gone.then_some(AT_BASE);
+    }
+    let home = || universe.home();
+    let body = active
+        .as_ref()
+        .map_or_else(home, |active| active.0.save.body(universe));
+    let north = enter_planet(commands, universe, body);
+    if active.is_some_and(|active| settle(active, north.globe())) {
+        line = Some(GROUNDED);
+    }
+    if let Some(line) = line {
+        commands.insert_resource(Resettled(line));
+    }
+    (body, north)
 }
 
 #[cfg(test)]

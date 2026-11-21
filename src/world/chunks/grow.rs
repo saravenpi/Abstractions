@@ -42,6 +42,16 @@ impl Chunks {
         fade.is_some() && node.visible
     }
 
+    /// Returns true when the quadtree is as a focus at planet position `at` wants it: the last
+    /// selection was made for that spot, nothing changed since, and it found nothing to split,
+    /// merge or build. The ground under the focus then exists at the level its height needs.
+    pub(super) fn grown_at(&self, at: DVec3) -> bool {
+        let here = (at / STILL).floor().as_ivec3();
+        let fits =
+            |((cell, _), stamp, _): ((IVec3, IVec3), u64, i32)| cell == here && stamp == self.stamp;
+        self.grown.is_some_and(fits) && self.nodes.idle()
+    }
+
     /// Applies a selection: merged nodes lose their children, with their detail and their tasks.
     /// Where `fade` gives the time, the drawn children fade out from then while their parent
     /// fades in; a merge that takes detail chunks away is never faded, the chunks go at once.

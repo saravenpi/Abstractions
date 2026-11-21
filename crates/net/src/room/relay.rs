@@ -6,7 +6,7 @@
 //! records, and batches are built in one reused buffer.
 
 use super::Room;
-use super::conn::HELLO_WAIT;
+use super::conn::{Conn, HELLO_WAIT, SILENT_WAIT};
 use super::seat::{Latest, Recent, Sent};
 use crate::host::{ConnId, DATAGRAM_BUDGET, Outbox};
 use crate::ids::StarId;
@@ -32,15 +32,22 @@ impl Room {
         }
     }
 
-    /// Closes every connection that did not join within [`HELLO_WAIT`] seconds.
+    /// Closes every connection that did not join within [`HELLO_WAIT`] seconds, and every joined
+    /// one not heard for [`SILENT_WAIT`] seconds: its player leaves, and the record they sent
+    /// last stays. Nothing is allocated while no connection is late.
     pub(super) fn expire(&mut self, now: f64, out: &mut Outbox) {
-        self.conns.retain(|conn, open| {
-            let keep = open.seat.is_some() || now - open.opened < HELLO_WAIT;
-            if !keep {
-                out.close(*conn, Reason::Closing);
-            }
-            keep
-        });
+        let late = |open: &Conn| match open.seat {
+            Some(_) => (now - open.heard >= SILENT_WAIT).then_some(Reason::Silent),
+            None => (now - open.opened >= HELLO_WAIT).then_some(Reason::Closing),
+        };
+        let found = self.conns.iter();
+        let gone: Vec<(ConnId, Reason)> = found
+            .filter_map(|(conn, open)| Some((*conn, late(open)?)))
+            .collect();
+        for (conn, reason) in gone {
+            self.forget(conn, out);
+            out.close(conn, reason);
+        }
     }
 
     /// Sends every joined player the records of the others they are due.

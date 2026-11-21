@@ -37,3 +37,17 @@ fn every_reason_has_plain_words() {
     let unknown = CloseReason::Refused(Reason::Outdated).words("x", None);
     assert_eq!(unknown, "This server needs a newer game");
 }
+
+/// A player sent away for joining again or for going silent reads why.
+#[test]
+fn a_seat_taken_away_has_plain_words() {
+    let refused = |reason| CloseReason::Refused(reason).words("home.example", None);
+    assert_eq!(
+        refused(Reason::Replaced),
+        "You joined this server from another game"
+    );
+    assert_eq!(
+        refused(Reason::Silent),
+        "The server stopped hearing from your game"
+    );
+}

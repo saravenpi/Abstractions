@@ -18,6 +18,8 @@ impl Reason {
             Self::Newer => format!("You need {}", named("an older game")),
             Self::Flooding => "The server sent you away for sending too much".to_string(),
             Self::Closing => "The server closed".to_string(),
+            Self::Replaced => "You joined this server from another game".to_string(),
+            Self::Silent => "The server stopped hearing from your game".to_string(),
         }
     }
 }

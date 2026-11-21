@@ -3,6 +3,9 @@
 mod boot;
 mod gameplay;
 mod loading;
+mod stall;
+#[cfg(test)]
+mod stall_tests;
 #[cfg(test)]
 mod tests;
 mod title;
@@ -96,6 +99,7 @@ pub(super) fn plugin(app: &mut App) {
     app.add_plugins((
         title::plugin,
         loading::plugin,
+        stall::plugin,
         boot::plugin,
         gameplay::plugin,
     ));

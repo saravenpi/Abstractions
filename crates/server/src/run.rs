@@ -48,9 +48,10 @@ pub fn run(options: Options) -> Result<(), String> {
     Ok(())
 }
 
-/// Returns the room of the world, named and sized as asked, with its name and seed.
+/// Returns the room of the world, named and sized as asked, with its name and seed. The place
+/// kept of each player is checked first, and every repair is logged.
 fn room(options: &Options) -> Result<(Room, String, u64), String> {
-    let world = world(options)?;
+    let world = checked(world(options)?, &options.data)?;
     let seed = world.seed;
     let name = options.name.clone().unwrap_or_else(|| world.name.clone());
     let config = RoomConfig {
@@ -60,6 +61,20 @@ fn room(options: &Options) -> Result<(Room, String, u64), String> {
         version: VERSION.to_string(),
     };
     Ok((Room::new(config, world, 0.0), name, seed))
+}
+
+/// Returns `world` with the place kept of each player checked. Every repair is logged, and a
+/// repaired world is written to `data` at once, so the same repair is not made at every start.
+fn checked(mut world: World, data: &Path) -> Result<World, String> {
+    let lines = store::place::mend_all(&mut world);
+    for line in &lines {
+        println!("{line}");
+    }
+    if !lines.is_empty() {
+        store::save(data, &world)
+            .map_err(|error| format!("Could not write {}: {error}", data.join(FILE).display()))?;
+    }
+    Ok(world)
 }
 
 /// Prints the banner of the server `name` listening on `port` with the certificate

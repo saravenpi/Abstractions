@@ -24,13 +24,15 @@ impl Room {
     }
 
     /// Lets `conn` in with a welcome and tells the others, or refuses it and closes it. A
-    /// hello on a connection that already joined is ignored.
+    /// hello on a connection that already joined is ignored. A player let in who already holds
+    /// a seat from an older connection takes it over: a key never holds two seats. The record
+    /// kept of the player is checked before it is handed back.
     pub(super) fn hello(&mut self, conn: ConnId, hello: Hello, now: f64, out: &mut Outbox) {
         if self.conns.get(&conn).is_none_or(|open| open.seat.is_some()) {
             return;
         }
         let refusal = self.refusal(&hello);
-        let free = self.seats.iter().position(Option::is_none);
+        let free = self.seat_for(&hello.key, refusal.is_none(), out);
         let Some(slot) = free.filter(|_| refusal.is_none()) else {
             let reason = refusal.unwrap_or(Reason::Full);
             self.conns.remove(&conn);
@@ -38,6 +40,7 @@ impl Room {
             out.close(conn, reason);
             return;
         };
+        self.mend(&hello.key);
         let id = self.id_for(&hello.key);
         let name = Some(clean_name(&hello.name)).filter(|name| !name.is_empty());
         let info = PlayerInfo {
@@ -71,7 +74,7 @@ impl Room {
     }
 
     /// Returns the id of the player with `key`: the one they had this session if nobody holds
-    /// it now, else a new one.
+    /// it now, else a new one. An older seat of the key is freed before, so the id is kept.
     fn id_for(&mut self, key: &[u8; 32]) -> PlayerId {
         let held = |id: PlayerId| self.seats.iter().flatten().any(|seat| seat.info.id == id);
         if let Some(id) = self.ids.get(key).copied().filter(|id| !held(*id)) {

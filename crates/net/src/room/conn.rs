@@ -14,6 +14,11 @@ pub(super) const HUNTS_PER_SECOND: u32 = 30;
 /// Seconds a connection may stay open without joining.
 pub(super) const HELLO_WAIT: f64 = 10.0;
 
+/// Seconds a joined player may send nothing, neither a message nor a state, before the seat is
+/// freed. A game sends a ping every second, so only a game that stopped running is this quiet:
+/// the transport itself already drops a dead connection after 15 seconds.
+pub(super) const SILENT_WAIT: f64 = 60.0;
+
 /// Most open connections from one IP address.
 pub(super) const CONNS_PER_IP: usize = 8;
 
@@ -53,6 +58,8 @@ pub(super) struct Conn {
     pub(super) ip: IpAddr,
     /// Network time the connection opened.
     pub(super) opened: f64,
+    /// Network time the last message or datagram came from it.
+    pub(super) heard: f64,
     /// The seat of the player, once joined.
     pub(super) seat: Option<usize>,
     /// Reliable messages this second.
@@ -69,6 +76,7 @@ impl Conn {
         Self {
             ip,
             opened: now,
+            heard: now,
             seat: None,
             messages: Window::new(now),
             changes: Window::new(now),

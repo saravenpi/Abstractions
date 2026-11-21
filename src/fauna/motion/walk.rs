@@ -10,6 +10,7 @@ use super::ik::unit;
 use super::rig::{Detail, Drive, Motion};
 use super::root::{heading, place, ride, travel};
 use super::stance::{attitude, cap};
+use super::tune::EASE;
 use crate::life::body::Body;
 
 /// Returns what the feet of `m` are asked this step, at velocity `vel`, on legs `leg` long under `gravity`.
@@ -64,9 +65,10 @@ fn plant(
         for foot in &mut m.feet {
             *foot = Foot::new(on(ground, foot.at.x, foot.at.z));
         }
+        m.root.easing = true;
     }
     for foot in &mut m.feet {
-        foot.seat(ground);
+        m.root.easing |= foot.seat(ground);
     }
     let most = (m.feet.len() / 3).max(1);
     let mut up = m.feet.iter().filter(|f| !f.planted).count();
@@ -86,6 +88,23 @@ fn sketch(m: &mut Motion, body: &Body, stride: &Stride, ground: &dyn Fn(Vec2) ->
         let cue = cue(m, body, i, false);
         m.feet[i].sketch(&cue, stride, (ground, dir), length);
     }
+}
+
+/// Returns the height the body of `m` on legs of `body` is held at, held at `hold`, so that every planted
+/// foot stays in reach of its hip. While it eases onto feet set down anew it lowers by no more than
+/// [`EASE`] hip heights a second, and stops easing once in reach; else it drops into reach at once.
+fn reach(m: &mut Motion, body: &Body, hold: Vec3, dt: f32) -> f32 {
+    let leg = body.height.max(0.05);
+    let turn = heading(m) * Quat::from_rotation_x(hold.y) * Quat::from_rotation_z(hold.z);
+    let capped = hold
+        .x
+        .min(cap(&m.feet, hips(m, body), m.root.at, (turn, leg)));
+    let held = match m.root.easing {
+        true => capped.max(hold.x - EASE * leg * dt),
+        false => capped,
+    };
+    m.root.easing &= held > capped;
+    held
 }
 
 /// Walks `m` for `dt` seconds as `drive` asks over `ground`.
@@ -109,10 +128,7 @@ pub fn step(m: &mut Motion, body: &Body, drive: &Drive, ground: &dyn Fn(Vec2) ->
     };
     let mut hold = m.root.hold.step(&m.tune.body(), target, dt);
     if drive.detail == Detail::Full {
-        let turn = heading(m) * Quat::from_rotation_x(hold.y) * Quat::from_rotation_z(hold.z);
-        hold.x = hold
-            .x
-            .min(cap(&m.feet, hips(m, body), m.root.at, (turn, leg)));
+        hold.x = reach(m, body, hold, dt);
         m.root.hold.at.x = hold.x;
     }
     let bob =

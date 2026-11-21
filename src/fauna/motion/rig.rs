@@ -72,6 +72,8 @@ pub struct Root {
     pub hold: Follow<Vec3>,
     /// Height of the drawn ground under the root at the last step, which the hold rides on.
     pub floor: f32,
+    /// Whether the body is still lowering onto the reach of feet set down anew, at [`super::tune::EASE`].
+    pub easing: bool,
     /// Attitude of bodies that tilt into their way.
     pub tilt: Turn,
     /// Drawn place of the root this step.
@@ -136,6 +138,7 @@ impl Root {
             yaw: Follow::new(yaw, 0.0),
             hold: Follow::new(Vec3::new(at.y, 0.0, 0.0), Vec3::ZERO),
             floor: at.y,
+            easing: false,
             tilt: Turn::new(turn),
             place: at,
             turn,

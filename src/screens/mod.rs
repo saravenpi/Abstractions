@@ -5,6 +5,9 @@ mod gameplay;
 #[cfg(test)]
 mod hide_tests;
 mod loading;
+mod slides;
+#[cfg(test)]
+mod slides_tests;
 mod stall;
 #[cfg(test)]
 mod stall_tests;

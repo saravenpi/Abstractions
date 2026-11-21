@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- The title screen is a slideshow of pictures of the game. Each one drifts slowly and the next fades in over it. It opens on a different picture each time.
 - F1 hides the whole interface in the world, and shows it again: a clean view for a screenshot. Menus and the map still open. The key is listed in Settings > Help.
 
 ### Fixed

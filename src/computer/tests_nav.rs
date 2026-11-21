@@ -59,9 +59,9 @@ fn last_planets(board: &Board) -> (usize, usize) {
     (planets[planets.len() - 1], planets[planets.len() - 2])
 }
 
-/// A click on a row of the list selects it and sets no course, and two quick clicks on the mark of a
-/// planet, since the map hides moons until it is zoomed in, that was not selected select it, ease the map onto it and ask to go into its place, still
-/// with no course.
+/// A click on a row of the list selects it and sets no course. Two quick clicks on the mark of a planet
+/// that was not selected, since the map hides moons until it is zoomed in, select it, ease the map onto
+/// it and ask to go into its place, still with no course.
 #[test]
 fn a_click_on_a_row_selects_and_a_double_click_on_a_mark_goes_into_it() {
     let mut app = rig();

@@ -9,6 +9,10 @@ use crate::ui::{
     Cancels, Icon, Scroller, Tone, entry, footer, heading, hints, item, panel, root, theme,
 };
 
+/// Grid columns of the names and of Back: room for a name of the most characters a name may
+/// have, and for the line that says the player is alone, with an icon (320 pixels of the 368).
+const COLUMNS: u32 = 5;
+
 /// Returns the lines of the menu: one name each, or a line saying the player is alone.
 pub(super) fn lines(players: &Players) -> Vec<String> {
     match players.0.is_empty() {
@@ -21,7 +25,7 @@ pub(super) fn lines(players: &Players) -> Vec<String> {
 /// name, and its names scroll, so the heading and Back stay in view.
 fn names() -> impl Bundle {
     let node = Node {
-        width: px(theme::MENU_WIDTH),
+        width: px(theme::span(COLUMNS)),
         flex_direction: FlexDirection::Column,
         row_gap: px(theme::GAP_S),
         min_height: px(0),
@@ -61,7 +65,7 @@ fn back() -> impl Bundle {
         AutoFocus,
     );
     let below = Node {
-        width: px(theme::MENU_WIDTH),
+        width: px(theme::span(COLUMNS)),
         flex_direction: FlexDirection::Column,
         margin: UiRect::top(px(theme::GAP_L)),
         ..default()

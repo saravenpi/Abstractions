@@ -15,6 +15,10 @@ use crate::screens::Screen;
 use crate::ui::{Icon, Tone, column, footer, heading, hints, item, panel, root, theme};
 use crate::world::WorldSeed;
 
+/// Grid columns of the column of entries: room for the longest, "Save and quit the game", with its
+/// icon and its chevron (344 pixels of the 368).
+const COLUMNS: u32 = 5;
+
 /// A pause entry that talks to the network.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Online {
@@ -106,7 +110,7 @@ fn spawn(
         .spawn((panel(), ChildOf(menu), children![heading("Paused")]))
         .id();
     let items = commands
-        .spawn((column(px(theme::MENU_WIDTH), 0.0), ChildOf(card)))
+        .spawn((column(px(theme::span(COLUMNS)), 0.0), ChildOf(card)))
         .id();
     add_entries(&mut commands, items, &session, last.of(Menu::Pause, 0));
 }

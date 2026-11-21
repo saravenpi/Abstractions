@@ -4,7 +4,7 @@
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::fill::{PUFFS, Puff, SPACING, opacity, tint};
+use super::fill::{PUFFS, Puff, SPACING, opacity};
 
 /// Corners of the rim of a disc.
 const SIDES: usize = 6;
@@ -44,16 +44,15 @@ pub fn mesh() -> Mesh {
 }
 
 /// Writes the disc of `puff` as vertex `index` onwards of `positions` and `colours`: facing the
-/// camera along `right` and `up`, `offset` from the camera, in the colour `cloud`.
+/// camera along `right` and `up`, `offset` from the camera, in the linear `colour`.
 fn disc(
     (positions, colours): (&mut [[f32; 3]], &mut [[f32; 4]]),
     (index, puff, offset): (usize, &Puff, Vec3),
     (right, up): (Vec3, Vec3),
-    cloud: Vec3,
+    colour: Vec3,
 ) {
     let size = SPACING as f32 * (SIZE.0 + (SIZE.1 - SIZE.0) * puff.fill);
     let alpha = OPACITY * opacity(puff.fill, offset.length());
-    let colour = tint(cloud, puff.height);
     let first = index * STRIDE;
     positions[first] = offset.to_array();
     colours[first] = colour.extend(alpha).to_array();
@@ -84,17 +83,18 @@ impl Default for Discs {
 }
 
 impl Discs {
-    /// Lays `puffs`, placed from the camera by `render`, facing it along `view`, in `cloud`,
-    /// and clears the discs left over.
+    /// Lays `puffs`, placed from the camera by `render`, facing it along `view`, each in the
+    /// colour `shade` gives it at its offset from the camera, and clears the discs left over.
     pub fn lay(
         &mut self,
         (puffs, render): (&[Puff], &dyn Fn(DVec3) -> Vec3),
         view: (Vec3, Vec3),
-        cloud: Vec3,
+        shade: &dyn Fn(&Puff, Vec3) -> Vec3,
     ) {
         for (index, puff) in puffs.iter().enumerate() {
             let buffers = (&mut self.positions[..], &mut self.colours[..]);
-            disc(buffers, (index, puff, render(puff.at)), view, cloud);
+            let offset = render(puff.at);
+            disc(buffers, (index, puff, offset), view, shade(puff, offset));
         }
         for vertex in puffs.len() * STRIDE..PUFFS * STRIDE {
             (self.positions[vertex], self.colours[vertex]) = ([0.0; 3], [0.0; 4]);

@@ -1,12 +1,14 @@
 //! Tests of the cloud around the camera: its puffs are the drawn field given the depth of the
 //! band, the very volume the whiteout reads, they stay at their places as the camera flies
-//! through, and a puff in daylight is never darker than a set share of the sunlit cloud.
+//! through, a puff in daylight is never darker than a set share of the sunlit cloud, and the
+//! lamps of the ship tint the puffs near them.
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::super::cross::crossing_depth;
 use super::fill::{FLOOR, Layer, PUFFS, REACH, lattice, tint, volume};
+use super::lamps::{Lamp, glow};
 use crate::render::scatter::luminance;
 use crate::weather::density_at;
 
@@ -82,4 +84,31 @@ fn a_puff_is_never_dark_in_daylight() {
         assert!(luminance(tint(cloud, height)) >= FLOOR * luminance(cloud) - 1.0e-6);
     }
     assert_eq!(tint(cloud, 1.0), cloud);
+}
+
+/// A red nav light of 600 lumens tints a puff 3 m away red and one 60 m away barely, by the
+/// square of the distance, and lights nothing past its range; a headlight lights a puff in its
+/// beam and none beside it.
+#[test]
+fn the_lamps_tint_the_puffs_near_them() {
+    let nav = Lamp {
+        at: Vec3::ZERO,
+        power: Vec3::new(1.0, 0.05, 0.05) * 600.0,
+        range: 40.0,
+        cone: None,
+    };
+    let gain = 2.0;
+    let near = glow(&[nav], Vec3::new(3.0, 0.0, 0.0), gain);
+    let far = glow(&[nav], Vec3::new(30.0, 0.0, 0.0), gain);
+    assert!(near.x > near.y * 10.0 && near.x > 0.002, "{near}");
+    assert!((near.x / far.x - 100.0).abs() < 1.0, "{near} {far}");
+    assert_eq!(glow(&[nav], Vec3::new(41.0, 0.0, 0.0), gain), Vec3::ZERO);
+    let beam = Lamp {
+        power: Vec3::splat(40_000.0),
+        range: 200.0,
+        cone: Some((Vec3::NEG_Z, 0.45f32.cos(), 0.3f32.cos())),
+        ..nav
+    };
+    assert!(glow(&[beam], Vec3::new(0.0, 0.0, -30.0), gain).x > 0.0);
+    assert_eq!(glow(&[beam], Vec3::new(30.0, 0.0, 0.0), gain), Vec3::ZERO);
 }

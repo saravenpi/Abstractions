@@ -4,11 +4,13 @@
 //! the ground showing through the gaps. The whiteout of the fog follows the same volume at the
 //! camera, see `CloudCrossing`.
 //!
-//! Cost: about 500 samples of the field and one mesh of 256 discs of 6 triangles rewritten per
-//! frame, one draw, only while the camera is within [`REACH`] metres of the cloud band.
+//! Cost: about 500 samples of the field, one mesh of 256 discs of 6 triangles rewritten per
+//! frame and one draw, plus a sum over the lamps in reach for each disc, only while the camera
+//! is within [`REACH`] metres of the cloud band. The lamps light the puffs without shadows.
 
 mod discs;
 mod fill;
+mod lamps;
 
 #[cfg(test)]
 mod tests;
@@ -19,7 +21,8 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use discs::{Discs, mesh};
-use fill::{Layer, Puff, REACH, lattice};
+use fill::{Layer, Puff, REACH, lattice, tint};
+use lamps::{Lamp, glow};
 
 use super::CloudCover;
 use crate::render::GameCamera;
@@ -93,6 +96,15 @@ type Cover<'w> = (
     Res<'w, Persistent<Settings>>,
 );
 
+/// What the near cloud keeps from frame to frame: the meshes, the puffs, the vertex buffers and
+/// the lamps.
+type Kept<'w, 's> = (
+    ResMut<'w, Assets<Mesh>>,
+    Local<'s, Vec<Puff>>,
+    Local<'s, Discs>,
+    Local<'s, Vec<Lamp>>,
+);
+
 /// The near cloud entity: its pose, whether it shows and its mesh.
 type Near = (
     &'static mut Transform,
@@ -101,18 +113,62 @@ type Near = (
     &'static Mesh3d,
 );
 
-/// Lays the puffs of the field around the camera into the mesh of the near cloud and shows it,
-/// or hides it far from the band.
+/// Returns the broad cover of the sky: the one the probe forces, else the cloud of the weather
+/// at the camera.
+fn cover_of(forced: &CloudCover, weather: Option<&Weather>) -> f32 {
+    forced
+        .0
+        .unwrap_or_else(|| weather.map_or(0.0, |weather| weather.cloud))
+}
+
+/// The point lights and the spot lights of the scene, with whether they shine.
+type Lights<'w, 's> = (
+    Query<
+        'w,
+        's,
+        (
+            &'static GlobalTransform,
+            &'static PointLight,
+            &'static ViewVisibility,
+        ),
+    >,
+    Query<
+        'w,
+        's,
+        (
+            &'static GlobalTransform,
+            &'static SpotLight,
+            &'static ViewVisibility,
+        ),
+    >,
+);
+
+/// Fills `lamps` with the lights that shine and can reach the near cloud around `eye`.
+fn gather((points, spots): &Lights, eye: Vec3, lamps: &mut Vec<Lamp>) {
+    lamps.clear();
+    let shining = points.iter().filter(|(_, _, seen)| seen.get());
+    lamps.extend(shining.map(|(at, light, _)| Lamp::point(at.translation(), light)));
+    let shining = spots.iter().filter(|(_, _, seen)| seen.get());
+    let spot = |(at, light, _): (&GlobalTransform, &SpotLight, &ViewVisibility)| {
+        Lamp::spot(at.translation(), at.forward().as_vec3(), light)
+    };
+    lamps.extend(shining.map(spot));
+    lamps.retain(|lamp| lamp.at.distance(eye) < lamp.range + REACH as f32);
+}
+
+/// Lays the puffs of the field around the camera into the mesh of the near cloud, lit by the
+/// sun and by the lamps near it, and shows it, or hides it far from the band.
 fn draw(
     (vantage, palette, metered, clock): Sky,
     (forced, weather, settings): Cover,
-    camera: Single<&GlobalTransform, (With<GameCamera>, Without<NearCloud>)>,
+    (camera, lights): (
+        Single<&GlobalTransform, (With<GameCamera>, Without<NearCloud>)>,
+        Lights,
+    ),
     mut near: Single<Near, With<NearCloud>>,
-    (mut meshes, mut puffs, mut discs): (ResMut<Assets<Mesh>>, Local<Vec<Puff>>, Local<Discs>),
+    (mut meshes, mut puffs, mut discs, mut lamps): Kept,
 ) {
-    let cover = forced
-        .0
-        .unwrap_or_else(|| weather.as_deref().map_or(0.0, |w| w.cloud));
+    let cover = cover_of(&forced, weather.as_deref());
     let found = layer(&vantage, cover, clock.seconds).filter(|_| settings.graphics.clouds);
     let (transform, global, visibility, handle) = &mut *near;
     let Some(layer) = found else {
@@ -122,21 +178,23 @@ fn draw(
     let observer = &vantage.observer;
     let eye = observer.spin.inverse() * (observer.eye - observer.center);
     lattice(eye, &layer, &mut puffs);
-    let cloud = linear(lifted(palette.cloud, metered.gain())).truncate();
+    let gain = metered.gain();
+    let cloud = linear(lifted(palette.cloud, gain)).truncate();
+    gather(&lights, vantage.camera, &mut lamps);
+    let shade = |puff: &Puff, offset: Vec3| {
+        tint(cloud, puff.height) + glow(&lamps, vantage.camera + offset, gain)
+    };
     let view = (camera.right().as_vec3(), camera.up().as_vec3());
     let render = |at: DVec3| {
         (observer.to_render * (observer.spin * at - (observer.eye - observer.center))).as_vec3()
     };
     let place: &dyn Fn(DVec3) -> Vec3 = &render;
-    discs.lay((puffs.as_slice(), place), view, cloud);
+    discs.lay((puffs.as_slice(), place), view, &shade);
     if let Some(mut mesh) = meshes.get_mut(&handle.0) {
         discs.write(&mut mesh);
     }
-    crate::render::pin(
-        Transform::from_translation(vantage.camera),
-        transform,
-        global,
-    );
+    let pose = Transform::from_translation(vantage.camera);
+    crate::render::pin(pose, transform, global);
     visibility.set_if_neq(Visibility::Visible);
 }
 

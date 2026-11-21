@@ -7,7 +7,7 @@ use bevy::state::app::StatesPlugin;
 
 use super::grid::{COLS, ROWS, cell_of, centre};
 use super::work::offset;
-use super::{BYTES, Rasters, colour};
+use super::{BYTES, Rasters, UNSEEN, colour};
 use crate::computer::{Computer, Lens, SIZE, direction};
 use crate::map::explored::Explored;
 use crate::map::{from_chart, place_words, to_chart};
@@ -91,7 +91,8 @@ fn painter(seen: u32, map: Computer) -> App {
     app
 }
 
-/// A requested picture paints the explored cells on a worker and leaves the rest dark.
+/// A requested picture paints the explored cells on a worker and leaves the rest clear, so the
+/// dim tone of the map shows where nobody has been.
 #[test]
 fn explored_cells_are_painted_and_the_rest_stays_dark() {
     let seen = (COLS * 100 + 7) as u32;
@@ -99,9 +100,9 @@ fn explored_cells_are_painted_and_the_rest_stays_dark() {
     let painted = |world: &World| pixel(world, seen).is_some_and(|pixel| pixel[..3] != [0; 3]);
     wait(&mut app, painted);
     let dark = pixel(app.world(), seen + 1).expect("the picture exists");
-    assert_eq!(dark, [0, 0, 0, u8::MAX]);
+    assert_eq!(dark, UNSEEN);
     let far = pixel(app.world(), (COLS * 100) as u32).expect("the picture exists");
-    assert_eq!(far, [0, 0, 0, u8::MAX]);
+    assert_eq!(far, UNSEEN);
 }
 
 /// Nothing is painted while the map is closed; opening it paints what was explored, and the

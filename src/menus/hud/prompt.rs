@@ -13,7 +13,7 @@ use crate::menus::key_name;
 use crate::settings::{Persistent, Settings};
 use crate::ship::{Hatch, ShipTelemetry};
 use crate::space::{Location, Travel};
-use crate::ui::{Tone, label, text, theme};
+use crate::ui::{KEY_GAP, key_cap, text, theme};
 use crate::universe::Universe;
 
 /// Marks the prompt row.
@@ -76,7 +76,8 @@ pub fn board_prompt(travel: Travel, at_hatch: bool, landed: bool) -> Option<&'st
     }
 }
 
-/// The row of the prompt: a key and its words on a panel, hidden until there is something to say.
+/// The row of the prompt: its words, then the key that does it in the muted tone of a key, on a
+/// panel, hidden until there is something to say.
 fn row() -> impl Bundle {
     (
         Prompt,
@@ -84,18 +85,18 @@ fn row() -> impl Bundle {
         Node {
             display: Display::None,
             align_items: AlignItems::Center,
-            column_gap: px(theme::S2),
+            column_gap: px(KEY_GAP),
             padding: UiRect::axes(px(theme::S3), px(theme::S2)),
             ..default()
         },
         BackgroundColor(theme::PANEL),
         children![
-            (PromptKey, label("", theme::FONT_SMALL, Tone::Plain)),
             (
                 PromptAction,
                 text("", theme::FONT_SMALL, theme::TEXT),
                 TextLayout::no_wrap()
             ),
+            (PromptKey, Node::default(), key_cap("")),
         ],
     )
 }
@@ -191,7 +192,12 @@ type Texts<'w, 's> = (
         (&'static mut Text, &'static mut TextColor),
         (With<PromptAction>, Without<PromptKey>),
     >,
-    Query<'w, 's, &'static mut Text, (With<PromptKey>, Without<PromptAction>)>,
+    Query<
+        'w,
+        's,
+        (&'static mut Text, &'static mut Node),
+        (With<PromptKey>, Without<PromptAction>, Without<Prompt>),
+    >,
 );
 
 /// Shows the row the line chooses, and rewrites it only when it changes.
@@ -217,13 +223,15 @@ pub(super) fn update(
     let Some((key, words)) = wanted else {
         return;
     };
-    let cap = key.map_or(String::new(), |key| format!("[{}]", key_name(key)));
+    let cap = key.map_or(String::new(), key_name);
     let tone = [theme::WARN, theme::TEXT][usize::from(key.is_some())];
     for (mut text, mut color) in &mut actions {
         text.set_if_neq(Text(words.clone()));
         color.set_if_neq(TextColor(tone));
     }
-    for mut text in &mut keys {
+    let display = [Display::Flex, Display::None][usize::from(cap.is_empty())];
+    for (mut text, mut node) in &mut keys {
         text.set_if_neq(Text(cap.clone()));
+        node.display = display;
     }
 }

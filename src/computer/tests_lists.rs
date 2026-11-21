@@ -1,25 +1,47 @@
-//! Computer tests: the favourites and the players of the side panel give way to the search and
-//! the top of the card in a short window.
+//! Computer tests: the part of the side panel that scrolls. The pins and the players are all
+//! listed whatever the window, since they scroll with the facts of the card, and the head of the
+//! card and the keys never give way to them.
 
 use bevy::math::Vec2;
 
-use super::layout::{FACTS, ROW, SMALLEST, fixed, measure};
+use super::layout::{BODY, FIXED, RESULTS, ROW, SMALLEST, measure};
+use crate::settings::InterfaceSize;
+use crate::ui::{theme, ui_scale};
 
-/// At the smallest layout, which a 960 by 540 window shares with 1280 by 720, the search, one
-/// result, the whole card in its compact form and the rows of the lists drawn always fit: the
-/// lists give way to the card, so the smallest layout draws no pins, and a tall window draws
-/// them all. Prints the measures.
+/// The tightest layout the game draws, in logical pixels: a window of 960 by 540 pixels at the
+/// large interface size, which scales by 1.
+pub(super) const TIGHTEST: Vec2 = Vec2::new(960.0, 540.0);
+
+/// Returns the height in pixels the part of the panel that scrolls has in a window of `window`
+/// logical pixels: what the fixed parts and the results drawn leave.
+pub(super) fn body(window: Vec2) -> f32 {
+    window.y - FIXED - measure(window).rows as f32 * ROW
+}
+
+/// Every window and interface size the game supports, as the logical size it lays out at.
+pub(super) fn layouts() -> Vec<Vec2> {
+    let windows = [
+        Vec2::new(960.0, 540.0),
+        Vec2::new(1280.0, 720.0),
+        Vec2::new(1920.0, 1080.0),
+        Vec2::new(2560.0, 1440.0),
+    ];
+    let sized = |window: Vec2| InterfaceSize::ALL.map(|size| window / ui_scale(window, size));
+    windows.into_iter().flat_map(sized).collect()
+}
+
+/// At every window and interface size what never scrolls fits with the results drawn, and the
+/// part that scrolls keeps the height that is left: at least three rows of facts in the tightest
+/// layout, at least its nine rows from the reference layout up.
 #[test]
-fn the_lists_give_way_to_the_card() {
-    for window in [SMALLEST, Vec2::new(1920.0, 1080.0)] {
-        for lists in [(0, 0), (2, 1), (5, 0), (3, 3), (1, 6), (5, 6)] {
-            let fit = measure(window, lists);
-            let used = fixed(fit.lists) - FACTS + fit.rows as f32 * ROW;
-            println!("{window} with {lists:?}: {fit:?}");
-            assert!(used <= window.y, "{window} {lists:?}: {used}");
-            assert!(fit.lists.0 <= lists.0 && fit.lists.1 <= lists.1);
-        }
+fn the_scrolling_part_keeps_its_room_at_every_size() {
+    let sizes = layouts();
+    assert!(sizes.contains(&SMALLEST) && sizes.contains(&TIGHTEST));
+    for window in sizes {
+        let (fit, left) = (measure(window), body(window));
+        println!("{window}: {fit:?}, {left} pixels scroll");
+        assert!((RESULTS.0..=RESULTS.1).contains(&fit.rows), "{window}");
+        assert!(left >= 3.0 * theme::LINE_SMALL, "{window}: {fit:?}");
+        assert!(window.y < SMALLEST.y || left >= BODY, "{window}: {fit:?}");
     }
-    assert_eq!(measure(SMALLEST, (3, 3)).lists, (0, 0));
-    assert_eq!(measure(Vec2::new(1920.0, 1080.0), (5, 3)).lists, (5, 3));
 }

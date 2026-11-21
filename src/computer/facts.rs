@@ -3,12 +3,14 @@
 //! shows in its row of the list, not on its card.
 
 use super::detail::{Row, advice};
-use super::groups::{climate, rarer, size, time, wet_group};
+use super::format::short;
+use super::groups::{climate, fact, rarer, size, time, wet_group};
 use super::route::Target;
 use super::rows::Line;
-use super::words::{flux, temperature};
+use super::words::temperature;
+use crate::ui::Icon;
 use crate::ui::units::distance;
-use crate::universe::{GalaxyId, PlanetSpec, StarId, Universe};
+use crate::universe::{GalaxyId, PlanetSpec, SUN_MASS, StarId, Universe, YEAR};
 
 /// Returns the rows of the record of a planet or a moon whose record is known, against the home
 /// planet `home`: four groups, size and gravity, air and heat, day and year, water and life,
@@ -30,8 +32,18 @@ pub fn uncharted(line: &Line, planet: &PlanetSpec, home: &PlanetSpec) -> Vec<Row
     size(planet, home, false).into_iter().chain(hint).collect()
 }
 
-/// Returns the subtitle and the rows of the star `id`: its heat, light and size, and its planets
-/// once its system is visited.
+/// Returns `value`, a mass or a light output in units of the Sun, with its unit.
+pub fn suns(value: f64) -> String {
+    format!("{} x Sun", short(value.max(0.0)))
+}
+
+/// Returns an age of `seconds` in billions of years.
+pub fn age(seconds: f64) -> String {
+    format!("{} Gyr", short(seconds / YEAR / 1e9))
+}
+
+/// Returns the subtitle and the rows of the star `id`: its heat, light, size, mass and age, and
+/// its planets once its system is visited.
 pub fn star(line: &Line, universe: &Universe, id: StarId) -> (String, Vec<Row>) {
     let galaxy = Target::Galaxy(id.galaxy).name(universe);
     let Some(spec) = universe.star(id) else {
@@ -42,12 +54,18 @@ pub fn star(line: &Line, universe: &Universe, id: StarId) -> (String, Vec<Row>) 
         false => "unknown".to_string(),
     };
     let rows = [
-        Row::Heading("Star"),
-        Row::Fact("Temperature", temperature(spec.temperature)),
-        Row::Fact("Light", flux(spec.luminosity)),
-        Row::Fact("Radius", distance(spec.radius)),
-        Row::Heading("System"),
-        Row::Fact("Planets", planets),
+        Row::Heading(Icon::Star, "Star"),
+        fact(
+            Icon::Temperature,
+            "Temperature",
+            temperature(spec.temperature),
+        ),
+        fact(Icon::Light, "Light", suns(spec.luminosity)),
+        fact(Icon::Radius, "Radius", distance(spec.radius)),
+        fact(Icon::Mass, "Mass", suns(spec.mass / SUN_MASS)),
+        fact(Icon::Age, "Age", age(spec.age)),
+        Row::Heading(Icon::Orbit, "System"),
+        fact(Icon::Planet, "Planets", planets),
     ];
     let hint = advice(line.target, line.visited).map(Row::Note);
     let title = format!("Class {:?} star in {galaxy}", spec.class);
@@ -60,10 +78,10 @@ pub fn galaxy(line: &Line, universe: &Universe, id: GalaxyId) -> (String, Vec<Ro
         return ("Galaxy".to_string(), Vec::new());
     };
     let kind = format!("{:?}", spec.kind);
-    let arms = (spec.arms > 0).then(|| Row::Fact("Arms", spec.arms.to_string()));
+    let arms = (spec.arms > 0).then(|| fact(Icon::Spiral, "Arms", spec.arms.to_string()));
     let size = [
-        Row::Heading("Galaxy"),
-        Row::Fact("Radius", distance(spec.radius)),
+        Row::Heading(Icon::Galaxy, "Galaxy"),
+        fact(Icon::Radius, "Radius", distance(spec.radius)),
     ];
     let hint = advice(line.target, line.visited).map(Row::Note);
     let rows = size.into_iter().chain(arms).chain(hint).collect();

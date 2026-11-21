@@ -5,7 +5,9 @@ use bevy::prelude::*;
 
 use super::{Menu, Nav};
 use crate::net::Players;
-use crate::ui::{Cancels, Icon, Tone, column, entry, footer, heading, item, panel, root, theme};
+use crate::ui::{
+    Cancels, Icon, Tone, column, entry, footer, heading, hints, item, panel, root, theme,
+};
 
 /// Returns the lines of the menu: one name each, or a line saying the player is alone.
 pub(super) fn lines(players: &Players) -> Vec<String> {
@@ -21,7 +23,7 @@ fn spawn(mut commands: Commands, players: Res<Players>) {
         .spawn((
             DespawnOnExit(Menu::Players),
             root(),
-            children![footer("Esc goes back")],
+            children![footer(hints(&[("Back", "Esc")]))],
         ))
         .id();
     let card = commands

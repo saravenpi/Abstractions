@@ -12,7 +12,7 @@ use super::{Menu, Nav};
 use crate::net::{CloseLan, LeaveSession, OpenToLan, Session, in_session};
 use crate::saves::ActiveWorld;
 use crate::screens::Screen;
-use crate::ui::{Icon, Tone, column, footer, heading, item, panel, root, theme};
+use crate::ui::{Icon, Tone, column, footer, heading, hints, item, panel, root, theme};
 use crate::world::WorldSeed;
 
 /// A pause entry that talks to the network.
@@ -95,7 +95,11 @@ fn spawn(
             PauseRoot,
             DespawnOnExit(Menu::Pause),
             root(),
-            children![footer("Esc resumes"), world_corner(corner), saved_label()],
+            children![
+                footer(hints(&[("Resume", "Esc")])),
+                world_corner(corner),
+                saved_label()
+            ],
         ))
         .id();
     let card = commands

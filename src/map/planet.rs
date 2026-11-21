@@ -1,10 +1,10 @@
 //! The planet level of the map: the flat map of one planet on its sheet, its picture tiled so
 //! the map wraps east and west.
 //!
-//! The flat map is the coloured picture of the planet the raster paints, black where nobody
-//! has been, from [`super::raster::Rasters`]. Until a picture is ready a plain dark rectangle
-//! stands in for it. A sentence over the map says why it is dark: the picture is being drawn,
-//! or nothing is explored yet.
+//! The flat map is the coloured picture of the planet the raster paints, from
+//! [`super::raster::Rasters`], clear where nobody has been, so a dim tone of the panel shows
+//! there. Until a picture is ready the same dim tone stands in for it. A sentence over the map
+//! says why it is dim: the picture is being drawn, or nothing is explored yet.
 
 use bevy::prelude::*;
 
@@ -15,8 +15,10 @@ use super::surface::PlanetSheet;
 use crate::computer::ChartLayer;
 use crate::ui::{text, theme};
 
-/// Colour of the flat map while its picture is not painted yet.
-const BLANK: Color = Color::srgb(0.08, 0.09, 0.11);
+/// Tone of the flat map where its picture is clear: while it is not painted yet, and wherever
+/// nobody has been. A faint light on the translucent panel, so the shape of the planet shows
+/// and the blurred game still shows through.
+const BLANK: Color = Color::srgba(1.0, 1.0, 1.0, 0.08);
 
 /// What the map says while its picture is not painted yet.
 pub const DRAWING: &str = "Drawing the map...";

@@ -5,9 +5,9 @@ use std::collections::HashSet;
 
 use abstractions_net::leaves::Leaves;
 
-use super::BYTES;
 use super::paint::colour;
 use super::tile::{SIDE, TileId};
+use super::{BYTES, UNSEEN};
 use crate::map::explored::grid::{centre as leaf_centre, depth_for, leaf_of};
 use crate::world::Globe;
 
@@ -25,7 +25,7 @@ pub fn lit(leaves: &Leaves, id: TileId, radius: f64) -> HashSet<(usize, usize)> 
     held.chain(inside).collect()
 }
 
-/// Paints tile `id` of `globe`: the colour of the ground at the middle of each pixel, black
+/// Paints tile `id` of `globe`: the colour of the ground at the middle of each pixel, clear
 /// where `lit` is given and does not hold the pixel. Returns [`SIDE`] rows of [`SIDE`] pixels
 /// of [`BYTES`] bytes.
 pub fn paint(globe: &Globe, id: TileId, lit: Option<&HashSet<(usize, usize)>>) -> Vec<u8> {
@@ -35,7 +35,7 @@ pub fn paint(globe: &Globe, id: TileId, lit: Option<&HashSet<(usize, usize)>>) -
             let seen = lit.is_none_or(|lit| lit.contains(&(px, py)));
             let pixel = match seen {
                 true => colour(globe, id.direction((px as f64 + 0.5, py as f64 + 0.5))),
-                false => [0, 0, 0, u8::MAX],
+                false => UNSEEN,
             };
             data.extend_from_slice(&pixel);
         }

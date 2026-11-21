@@ -96,33 +96,33 @@ fn gear_text(flight: &Flight) -> Option<&'static str> {
     })
 }
 
-/// Returns the text of the headlight instrument near a planet: on or off with the key that
-/// switches it. Nothing in space, where the lamp lights nothing.
+/// Returns the text of the headlight instrument near a planet: on or off. Its row shows the key
+/// that switches it after it. Nothing in space, where the lamp lights nothing.
 fn headlight_text(flight: &Flight) -> Option<String> {
     let near = matches!(flight.telemetry.frame, Frame::Surface(_));
-    let (on, key) = flight.headlight.as_ref().filter(|_| near)?;
-    Some(format!("{} [{key}]", ["off", "on"][usize::from(*on)]))
+    let (on, _) = flight.headlight.as_ref().filter(|_| near)?;
+    Some(["off", "on"][usize::from(*on)].to_string())
 }
 
 /// Returns the icon of an instrument. The gear shows its state by its icon, down, up or on its
-/// way, and the headlight a sun when it is on and a moon when it is off; the words beside the
-/// icon say the state too.
+/// way, and the headlight a lit lamp or a lamp struck out; the words beside the icon say the
+/// state too.
 pub(super) fn symbol(gauge: Gauge, flight: &Flight) -> Icon {
     match gauge {
-        Gauge::Altitude => Icon::Radius,
-        Gauge::Speed => Icon::ShipFlying,
-        Gauge::Throttle => Icon::Go,
-        Gauge::Assist => Icon::Settings,
-        Gauge::Apoapsis => Icon::Arrow,
-        Gauge::Periapsis => Icon::Planet,
+        Gauge::Altitude => Icon::Altitude,
+        Gauge::Speed => Icon::Speed,
+        Gauge::Throttle => Icon::Throttle,
+        Gauge::Assist => Icon::Assist,
+        Gauge::Apoapsis => Icon::Apoapsis,
+        Gauge::Periapsis => Icon::Periapsis,
         Gauge::Gear => match gear_text(flight) {
-            Some("down") => Icon::ShipParked,
+            Some("down") => Icon::GearDown,
             Some("moving") => Icon::Reload,
-            _ => Icon::Arrow,
+            _ => Icon::GearUp,
         },
         Gauge::Headlight => match flight.headlight {
-            Some((true, _)) => Icon::Sun,
-            _ => Icon::Moon,
+            Some((true, _)) => Icon::HeadlightOn,
+            _ => Icon::HeadlightOff,
         },
     }
 }

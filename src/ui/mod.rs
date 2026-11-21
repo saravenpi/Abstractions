@@ -16,6 +16,9 @@ mod icon;
 #[cfg(test)]
 mod icon_tests;
 mod item;
+mod keys;
+#[cfg(test)]
+mod keys_tests;
 mod list;
 pub mod motion;
 #[cfg(test)]
@@ -35,12 +38,15 @@ mod widgets;
 
 pub use backdrop::{Backdrop, Blurred, backdrop_luminance, contrast, warm_up};
 pub use camera::{MIN_WIDTH, WorldView, ui_scale, ui_scale_for};
-pub use chrome::{action, footer, heading, key_cap, notice, strip};
+pub use chrome::{action, heading, notice, strip};
 pub use focus::move_focus;
 pub use icon::{ICON_FONT, ICONS_VERSION, Icon, icon, icon_sized, icon_slot};
 pub use item::{entry, frame, item, item_with, label, link, step_button};
+pub use keys::{
+    HINT_GAP, HintLabel, KEY_GAP, KeyName, Legend, footer, hints, key_cap, key_hint, legend,
+};
 pub use list::Window;
-pub use scroll::{Scroller, scroller};
+pub use scroll::{BAR, BAR_GAP, ScrollArea, Scroller, Thumb, scroll_area, scroller, thumb};
 pub use sound::Cancels;
 pub use style::{Filled, Look, Selected, Tone};
 pub use table::{cell, head, row_with, table_head, table_row, value_cell};
@@ -89,6 +95,7 @@ pub(super) fn plugin(app: &mut App) {
             (
                 sound::escaped,
                 scroll::wheel,
+                scroll::bars.run_if(any_with_component::<scroll::ScrollArea>),
                 (sound::moved, scroll::follow_focus).run_if(resource_changed::<InputFocus>),
             ),
         );

@@ -63,7 +63,7 @@ pub struct PlayerRow(pub usize);
 #[derive(Component, Debug, Clone, Copy)]
 pub struct PlayerName(pub usize);
 
-/// The colour square of the player at this index.
+/// The icon of the player at this index, in the colour of that player.
 #[derive(Component, Debug, Clone, Copy)]
 pub struct PlayerDot(pub usize);
 
@@ -120,13 +120,15 @@ fn foot() -> impl Bundle {
     };
     let actions = Node {
         display: Display::None,
+        flex_wrap: FlexWrap::Wrap,
         column_gap: px(theme::GAP_S),
+        row_gap: px(theme::GAP_XS),
         ..default()
     };
     let buttons = children![
         go_button(),
-        button(Do::Rename, "Rename [R]", "Type a new name"),
-        button(Do::Remove, "Remove [Del]", "Forget this pin"),
+        button(Do::Rename, ("Rename", "R"), "Type a new name"),
+        button(Do::Remove, ("Remove", "Del"), "Forget this pin"),
     ];
     let said = (PinHint, text("", theme::FONT_SMALL, theme::TEXT_2));
     (node, children![said, (PinActions, actions, buttons)])
@@ -138,27 +140,25 @@ pub fn pins() -> impl Bundle {
     (
         column(percent(100), 0.0),
         children![
-            (heading_row(), children![heading("Pins")]),
+            (heading_row(), children![heading(Icon::MapPin, "Pins")]),
             (column(percent(100), 0.0), rows),
             foot(),
         ],
     )
 }
 
-/// One hidden player: a square of their colour and their name.
+/// One hidden player: the icon of a player in their colour and their name.
 fn player(index: usize) -> impl Bundle {
-    let dot = Node {
-        width: px(theme::GAP_S),
-        height: px(theme::GAP_S),
-        ..default()
-    };
     (
         frame(),
         (PlayerRow(index), RelativeCursorPosition::default()),
         Tip("Look at this player"),
         strip(),
         children![
-            (PlayerDot(index), dot, BackgroundColor(Color::NONE)),
+            (
+                PlayerDot(index),
+                glyph(Icon::User, theme::ICON_SMALL, theme::TEXT)
+            ),
             (PlayerName(index), label("", theme::FONT_SMALL, Tone::Plain)),
         ],
     )
@@ -181,7 +181,7 @@ pub fn players() -> impl Bundle {
         Players,
         block,
         children![
-            (heading_row(), children![heading("Players")]),
+            (heading_row(), children![heading(Icon::Users, "Players")]),
             (
                 NoPlayers,
                 alone,

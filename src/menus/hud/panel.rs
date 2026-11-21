@@ -42,7 +42,8 @@ pub(super) struct SpoolBar;
 #[derive(Component)]
 pub(super) struct Track;
 
-/// One instrument: its icon, its label and its value, hidden until it has something to show.
+/// One instrument: its icon, its label, its value and, after it, the key that switches it if
+/// one does, hidden until it has something to show.
 fn row((gauge, name): (Gauge, &'static str)) -> impl Bundle {
     (
         gauge,
@@ -63,6 +64,7 @@ fn row((gauge, name): (Gauge, &'static str)) -> impl Bundle {
                 text("", theme::FONT_SMALL, theme::TEXT),
                 TextLayout::no_wrap()
             ),
+            super::switch::slot(gauge),
         ],
     )
 }

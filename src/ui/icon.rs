@@ -2,7 +2,9 @@
 //!
 //! The look follows the owner's direction of 2026-11-20: square corners, no borders, no round
 //! caps. The font is a subset of `MaterialSymbolsSharp[FILL,GRAD,opsz,wght].ttf`, instanced at
-//! weight 400, FILL 0, GRAD 0, optical size 24, cut to the glyphs below. The exact commands
+//! weight 400, FILL 0, GRAD 0, optical size 24, cut to the glyphs below. `packaging/icons.py`
+//! builds it and writes `icon/codes.rs` from the list in `icon/names.rs`: to add an icon, add
+//! one line there, its variant and its Material name, and run the script. The source and its commit
 //! are in `packaging/icons.md`. The licence (Apache-2.0) is in `LICENSES/`. Icons are real
 //! pictures with a name on screen somewhere: an icon never stands alone without a text, and
 //! no black box sits behind it. Colour comes from the tokens of `ui::theme`: `ACCENT` for the
@@ -11,12 +13,33 @@
 use bevy::asset::uuid_handle;
 use bevy::prelude::*;
 
-mod codes;
-
-pub use codes::CODEPOINTS;
-
 use super::style::Tone;
 use super::theme;
+
+/// Declares [`Icon`] from a list of `Variant => "material_name",` lines: the enum, whose variants
+/// each carry the Material Symbols Sharp name of their glyph as their doc, and the list of all
+/// of them, which must be as long as the table of codepoints.
+macro_rules! icons {
+    ($($variant:ident => $name:literal,)*) => {
+        /// The icons the game uses. The doc of each is the Material Symbols Sharp name of its
+        /// glyph.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        pub enum Icon {
+            $(#[doc = $name] $variant,)*
+        }
+
+        impl Icon {
+            /// Every icon, in declaration order.
+            pub const ALL: [Icon; super::CODEPOINTS.len()] = [$(Icon::$variant,)*];
+        }
+    };
+}
+
+mod codes;
+mod names;
+
+pub use codes::CODEPOINTS;
+pub use names::Icon;
 
 /// Name of the font instance the embedded file comes from.
 pub const ICONS_VERSION: &str = "Material Symbols Sharp, instance wght 400 FILL 0 opsz 24";
@@ -27,117 +50,6 @@ pub(super) const ICONS_TTF: &[u8] =
 
 /// Handle of the icon font asset, filled at startup.
 pub const ICON_FONT: Handle<Font> = uuid_handle!("6c1f0a52-3d0e-4b6e-9a57-4f1d2c7b8e90");
-
-/// The icons the game uses. Each doc line gives the Material Symbols Sharp name of the glyph.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Icon {
-    /// `play_arrow`
-    Play,
-    /// `pause`
-    Pause,
-    /// `planet`
-    Planet,
-    /// `dark_mode`
-    Moon,
-    /// `sunny`
-    Sun,
-    /// `cyclone`
-    Galaxy,
-    /// `add`
-    Plus,
-    /// `tune`
-    Settings,
-    /// `logout`
-    LogOut,
-    /// `power_settings_new`
-    Power,
-    /// `edit`
-    Pencil,
-    /// `content_copy`
-    Copy,
-    /// `delete`
-    Trash,
-    /// `swap_vert`
-    Sort,
-    /// `arrow_back`
-    Back,
-    /// `check`
-    Check,
-    /// `close`
-    Close,
-    /// `monitor`
-    Monitor,
-    /// `keyboard`
-    Keyboard,
-    /// `volume_up`
-    Volume,
-    /// `info`
-    Info,
-    /// `star`
-    Star,
-    /// `send`
-    Send,
-    /// `location_on`
-    MapPin,
-    /// `shuffle`
-    Shuffle,
-    /// `ink_eraser`
-    Eraser,
-    /// `chevron_left`
-    ChevronLeft,
-    /// `chevron_right`
-    ChevronRight,
-    /// `home`
-    Home,
-    /// `map`
-    Map,
-    /// `group`
-    Users,
-    /// `person`
-    User,
-    /// `dns`
-    Server,
-    /// `wifi`
-    Wifi,
-    /// `refresh`
-    Reload,
-    /// `link`
-    Link,
-    /// `pets`
-    Animal,
-    /// `rocket_launch`
-    Go,
-    /// `stop_circle`
-    Stop,
-    /// `arrow_drop_up`
-    Arrow,
-    /// `straighten`
-    Radius,
-    /// `scale`
-    Gravity,
-    /// `thermostat`
-    Temperature,
-    /// `compress`
-    Pressure,
-    /// `air`
-    Air,
-    /// `wb_twilight`
-    Day,
-    /// `timer`
-    Year,
-    /// `water_drop`
-    Water,
-    /// `eco`
-    Life,
-    /// `rocket`
-    ShipParked,
-    /// `navigation`
-    ShipFlying,
-    /// `fast_forward`
-    ShipWarp,
-    /// `build`
-    ShipDamaged,
-}
 
 impl Icon {
     /// Returns the codepoint of the icon in the icon font.

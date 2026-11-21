@@ -2,7 +2,7 @@
 //! and latitude down from the north pole, one pixel per cell of its own grid.
 //!
 //! Each body asked for keeps its picture. A cell is painted, on a worker thread and once, when
-//! a leaf of the explored ground falls in it. The rest stays plain black.
+//! a leaf of the explored ground falls in it. The rest stays clear.
 //! Painting waits while the map is closed, and the pictures stay painted.
 
 pub mod grid;
@@ -43,6 +43,10 @@ use crate::world::Globe;
 
 /// Bytes of one pixel: red, green, blue and alpha.
 pub const BYTES: usize = 4;
+
+/// A pixel of ground nobody has seen: clear, so the dim tone of the map shows through it and
+/// the unexplored ground reads as a quiet part of the panel, not as a black hole.
+pub const UNSEEN: [u8; BYTES] = [0; BYTES];
 
 /// The pictures of the bodies the map asked for.
 #[derive(Resource, Default)]
@@ -94,14 +98,14 @@ impl Rasters {
     }
 }
 
-/// Returns a picture where nothing is explored: plain black, with no lines.
+/// Returns a picture where nothing is explored: clear everywhere, with no lines.
 fn blank() -> Image {
     let size = Extent3d {
         width: COLS as u32,
         height: ROWS as u32,
         depth_or_array_layers: 1,
     };
-    let pixels = [0, 0, 0, u8::MAX].repeat(COLS * ROWS);
+    let pixels = UNSEEN.repeat(COLS * ROWS);
     let (format, usage) = (TextureFormat::Rgba8UnormSrgb, RenderAssetUsages::default());
     let mut image = Image::new(size, TextureDimension::D2, pixels, format, usage);
     image.sampler = ImageSampler::nearest();

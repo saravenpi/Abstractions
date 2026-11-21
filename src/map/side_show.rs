@@ -12,7 +12,7 @@ use super::side::{
     NoPlayers, PinActions, PinFar, PinGoKey, PinHint, PinName, PinRow, PlayerDot, PlayerName,
     PlayerRow, Players,
 };
-use crate::computer::{Board, Keys, Typing};
+use crate::computer::{Keys, Typing};
 use crate::menus::{Marker, MarkerKind, Markers};
 use crate::net::Link;
 use crate::saves::Pin;
@@ -70,7 +70,7 @@ pub struct Faces<'w, 's> {
     /// The names of the players.
     players: Of<'w, 's, PlayerName, NotPlayer>,
     /// The colours of the players.
-    dots: Query<'w, 's, (&'static PlayerDot, &'static mut BackgroundColor)>,
+    dots: Query<'w, 's, (&'static PlayerDot, &'static mut TextColor)>,
 }
 
 /// The line under the pins, told from the other texts of the lists.
@@ -164,16 +164,15 @@ fn players_text(markers: &[Marker], friends: &[usize], faces: &mut Faces) {
     }
     for (PlayerDot(index), mut fill) in &mut faces.dots {
         if let Some(friend) = friend(*index) {
-            fill.set_if_neq(BackgroundColor(friend.color));
+            fill.set_if_neq(TextColor(friend.color));
         }
     }
 }
 
-/// Writes both lists of the side panel and hides the rows past their ends or past the room of
-/// the window, the buttons of the pin while none is selected, and the players outside a
-/// session.
+/// Writes both lists of the side panel and hides the rows past their ends, the buttons of the
+/// pin while none is selected, and the players outside a session.
 pub(super) fn write(
-    (kept, markers, board): (Kept, Res<Markers>, Res<Board>),
+    (kept, markers): (Kept, Res<Markers>),
     session: Option<Res<Link>>,
     (mut rows, mut faces): (Rows, Faces),
     mut selected: Query<(&PinRow, &mut Selected)>,
@@ -184,8 +183,7 @@ pub(super) fn write(
     let found = found.filter(|(_, marker)| marker.kind == MarkerKind::Friend);
     friends.extend(found.map(|(index, _)| index));
     let places = &kept.0;
-    let room = board.lists.unwrap_or((usize::MAX, usize::MAX));
-    let (saved, met) = (places.pins.len().min(room.0), friends.len().min(room.1));
+    let (saved, met) = (places.pins.len(), friends.len());
     let (session, pinned) = (session.is_some(), places.selected.is_some());
     for (mut node, pin, player, (block, alone, actions)) in &mut rows {
         let on = match (pin, player) {

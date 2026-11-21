@@ -1,7 +1,9 @@
-//! Static layout of the map screen: the map over the whole window but the panel on the right,
-//! with the path of the levels over its top left corner and the progress of the route over its
-//! bottom. The panel holds the search box with its results, the card of the selected result
-//! with its buttons, the pins, the players, and at its foot the keys of the map.
+//! Static layout of the map screen: two translucent panels inside the margins of the screen,
+//! over the blurred game. The panel of the map is on the left, with the path of the levels over
+//! its top left corner and the progress of the route over its bottom. The side panel on the
+//! right holds the search box with its results, the head of the card of the selected result
+//! with its Go button, then what scrolls, the facts, the pins and the players, and at its foot
+//! the keys of the map.
 //!
 //! The game keeps running under the screen. Every button of the screen is for the pointer
 //! only: hovering one lights it and never moves the keyboard focus, which stays on the
@@ -10,13 +12,13 @@
 use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
-use super::layout::{LINE_HEIGHT, MARGIN, PAD, SECTION_GAP, SIDE};
+use super::layout::{BETWEEN, EDGE, LINE_HEIGHT, MARGIN, PAD, SECTION_GAP, SIDE};
 use super::map::field;
 use super::open::Computer;
 use crate::ui::{Blurred, Overlay, text, theme};
 
 /// What the search box says while nothing is typed.
-pub(super) const SEARCH_HINT: &str = "Search (/)";
+pub(super) const SEARCH_HINT: &str = "Search";
 
 /// Marks the whole screen.
 #[derive(Component)]
@@ -65,9 +67,10 @@ pub struct SearchBox;
 #[derive(Component)]
 pub(super) struct SearchText;
 
-/// The panel on the right, sections apart under their headings: the search, the card of the
-/// selected place with its buttons, the pins, the players and the keys. The card gives way
-/// first when the window is short.
+/// The panel on the right, in the order of what matters: the search with its results, the head
+/// of the card with the name of the selected place and its Go button, then what scrolls under
+/// them, the facts, the pins and the players, and at the foot the keys. The search, the head
+/// and the keys always show whole.
 fn side() -> impl Bundle {
     let node = Node {
         width: px(SIDE),
@@ -85,8 +88,7 @@ fn side() -> impl Bundle {
         children![
             super::results::search(),
             super::readout::card(),
-            crate::map::pins(),
-            crate::map::players(),
+            super::section::body(),
             super::section::legend()
         ],
     )
@@ -170,20 +172,24 @@ fn words() -> impl Bundle {
     )
 }
 
-/// The room of the map: the square map in its middle, the veil that fades one level into the
-/// next, and the words over them.
+/// The panel of the map, translucent like the side panel so the blurred game shows through: the
+/// square map in its middle, the veil that fades one level into the next, and the words over
+/// them, inside the padding of the panel.
 fn area() -> impl Bundle {
     (
         Area,
         RelativeCursorPosition::default(),
         Node {
             flex_grow: 1.0,
+            flex_basis: px(0),
+            min_width: px(0),
             height: percent(100),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
             overflow: Overflow::clip(),
             ..default()
         },
+        BackgroundColor(theme::PANEL_BLUR),
         children![field(), crate::map::veil(), words()],
     )
 }
@@ -196,6 +202,8 @@ pub(super) fn spawn(mut commands: Commands, mut board: ResMut<super::board::Boar
         position_type: PositionType::Absolute,
         width: percent(100),
         height: percent(100),
+        column_gap: px(BETWEEN),
+        padding: UiRect::all(px(EDGE)),
         ..default()
     };
     commands.spawn((

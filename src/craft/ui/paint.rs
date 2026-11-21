@@ -11,7 +11,7 @@ use super::layout::{BAR, NAME, SIGNATURE};
 use super::lines::{Line, arrange, lines};
 use super::offer::offer;
 use super::sheet::sheet;
-use super::view::{Facts, Hints, MAKE_HINTS, PACK_HINTS, Rows, TabName, Tally};
+use super::view::{Facts, Hints, Rows, TabName, Tally};
 use crate::craft::matter::Treatment;
 use crate::craft::pack::{Burden, Pack};
 use crate::craft::wield::Held;
@@ -70,12 +70,28 @@ type Texts<'w, 's> = Query<
         &'static mut Text,
         &'static mut TextColor,
         Option<&'static TabName>,
-        Has<Hints>,
     ),
-    Or<(With<TabName>, With<Tally>, With<Hints>)>,
+    Or<(With<TabName>, With<Tally>)>,
 >;
 
-/// Writes the tab names, the count line and the hints.
+/// The columns of the list and of the card, and the key hints of each tab.
+type Columns<'w, 's> = (
+    Query<'w, 's, Entity, With<Rows>>,
+    Query<'w, 's, Entity, With<Facts>>,
+    Query<'w, 's, (&'static Hints, &'static mut Node)>,
+);
+
+/// Shows the key hints of the open tab and hides those of the other.
+fn keys(bench: &Bench, hints: &mut Query<(&Hints, &mut Node)>) {
+    for (Hints(tab), mut node) in hints.iter_mut() {
+        let display = [Display::None, Display::Flex][usize::from(*tab == bench.tab)];
+        if node.display != display {
+            node.display = display;
+        }
+    }
+}
+
+/// Writes the tab names and the count line.
 fn heads(bench: &Bench, count: (usize, usize), burden: &Burden, texts: &mut Texts) {
     let tally = format!(
         "{} of {} entries{} - {} of {} kg{}",
@@ -90,14 +106,13 @@ fn heads(bench: &Bench, count: (usize, usize), burden: &Burden, texts: &mut Text
             (false, true) => String::new(),
         }
     );
-    for (mut words, mut color, tab, hints) in texts.iter_mut() {
-        match (tab, hints) {
-            (Some(tab), _) => {
+    for (mut words, mut color, tab) in texts.iter_mut() {
+        match tab {
+            Some(tab) => {
                 let on = tab.0 == bench.tab;
                 color.set_if_neq(TextColor([theme::TEXT_2, theme::TEXT][usize::from(on)]));
             }
-            (None, true) => words.0 = [PACK_HINTS, MAKE_HINTS][bench.tab as usize].to_string(),
-            (None, false) => words.0 = tally.clone(),
+            None => words.0 = tally.clone(),
         }
     }
 }
@@ -138,16 +153,13 @@ pub(super) fn draw(
     (bench, pack, burden, held): (Res<Bench>, Res<Pack>, Res<Burden>, Res<Held>),
     here: Here,
     mut texts: Texts,
-    columns: (Query<Entity, With<Rows>>, Query<Entity, With<Facts>>),
+    mut columns: Columns,
     mut commands: Commands,
 ) {
     let all = arranged(&bench, &pack, &here);
-    heads(
-        &bench,
-        (all.len(), pack.items.len() + pack.stacks.len()),
-        &burden,
-        &mut texts,
-    );
+    let count = (all.len(), pack.items.len() + pack.stacks.len());
+    heads(&bench, count, &burden, &mut texts);
+    keys(&bench, &mut columns.2);
     let place = here.place();
     let treatments = here.planet().map_or_else(Vec::new, |p| {
         Treatment::ALL

@@ -93,7 +93,12 @@ Players and servers must both run 0.11.0: the multiplayer protocol and the world
 - One formatter writes every distance, speed, time, mass, pull and air pressure: metres, km, AU, light-years, and gravity and air as a multiple of home.
 - The map follows the real scale: a visited system reveals the stars within 10 light-years, and a system chart spaces orbits by the logarithm of the distance.
 - The compass at the top shows icons only, on one row: no names and no distances, which are on the map and on the markers over the world. Marks that would overlap are nudged apart, and friends past a limit fold into the last one with a count. It shows the home mark only on the planet of your base.
-- The planet card fits a 720 pixel window: the facts are compacted and pins yield room.
+- The map is two translucent panels inside the screen margins, so the blurred game shows around and through them. Ground nobody has seen is a dim tone of the panel, not black.
+- Every fact of a place has an icon: a star (temperature, light, radius, mass, age), its system, a planet, a moon and a galaxy. Group headings, search results, pins and players have one too. A star's light and mass are given in units of the Sun.
+- The side panel keeps the search, the name of the place and its Go button in view; the facts, the pins and the players scroll under them with a thin bar. The wheel scrolls the part of the panel under the pointer and zooms only over the map.
+- The field guide shows a silhouette for each species, a question mark for one not seen yet, an icon for every fact, how an animal reacts to you (shy, stands its ground, hunts you) and what it yields. Its card scrolls when it is taller than the window.
+- A key is shown after its label in a dimmer tone, without brackets, in every legend and on every button.
+- The icon font has 132 glyphs, with their own pictures for weather, ship readouts, tools and life forms.
 - The title screen is a slideshow of pictures of the game. Each one drifts slowly and the next fades in over it, and it opens on a different picture each time. The main menu sits on a translucent panel, so the picture shows at full light around it.
 - F1 hides the whole interface in the world and shows it again: a clean view for a screenshot. Menus and the map still open. The key is listed in Options, Help.
 - Options, General, Reduce motion stops the drift of the title pictures and changes them with a short fade.

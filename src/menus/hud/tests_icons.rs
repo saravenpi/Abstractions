@@ -8,6 +8,7 @@ use bevy::prelude::*;
 use super::climate::{WORDS, sky_icon};
 use super::flight::{Flight, Gauge, reading, symbol};
 use super::panel::{LABEL_WIDTH, Symbol, block};
+use super::switch::key;
 use crate::settings::InterfaceSize;
 use crate::ship::ShipTelemetry;
 use crate::space::Frame;
@@ -44,7 +45,7 @@ fn every_readout_row_has_an_icon_and_a_label() {
 }
 
 /// The gear icon differs between down, up and on its way, the headlight icon between on and off,
-/// and the headlight row names its key and shows only near a planet.
+/// and the headlight row says on or off, names its key after it, and shows only near a planet.
 #[test]
 fn the_gear_and_the_headlight_show_their_state() {
     let icons = [1.0, 0.0, 0.5].map(|gear| symbol(Gauge::Gear, &landed(gear, true)));
@@ -57,12 +58,14 @@ fn the_gear_and_the_headlight_show_their_state() {
     );
     assert_eq!(
         reading(Gauge::Headlight, &landed(1.0, true)).as_deref(),
-        Some("on [L]")
+        Some("on")
     );
     assert_eq!(
         reading(Gauge::Headlight, &landed(1.0, false)).as_deref(),
-        Some("off [L]")
+        Some("off")
     );
+    assert_eq!(key(Gauge::Headlight, &landed(1.0, true)), "L");
+    assert_eq!(key(Gauge::Gear, &landed(1.0, true)), "");
     let space = Flight {
         telemetry: ShipTelemetry {
             frame: Frame::System(Default::default()),

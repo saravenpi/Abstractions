@@ -3,12 +3,14 @@
 //!
 //! - [`seen`] keeps which species the player has seen, and marks them from what is near.
 //! - [`book`] lists the species of the planet, plants first, unseen ones as unknown.
-//! - [`card`] and [`relations`] put the facts of one species in words, in groups.
+//! - [`card`] and [`relations`] put the facts of one species in words, in groups; [`temper`]
+//!   says what it does near a robot and what it yields; [`icons`] gives each row its picture.
 //! - [`layout`] measures the guide in a window; [`view`] spawns it and `show` writes it.
 //! - [`open`] opens it on its key, closes it, and moves the selection.
 
 pub mod book;
 pub mod card;
+pub mod icons;
 pub mod layout;
 pub mod open;
 pub mod relations;
@@ -16,6 +18,7 @@ pub mod relations;
 mod rig;
 pub mod seen;
 pub(crate) mod show;
+pub mod temper;
 pub mod view;
 pub mod words;
 
@@ -23,6 +26,8 @@ pub mod words;
 mod tests_book;
 #[cfg(test)]
 mod tests_fit;
+#[cfg(test)]
+mod tests_icons;
 #[cfg(test)]
 mod tests_seen;
 

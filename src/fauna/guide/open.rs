@@ -6,6 +6,7 @@
 
 use bevy::input::mouse::AccumulatedMouseScroll;
 use bevy::prelude::*;
+use bevy::ui::RelativeCursorPosition;
 use bevy::ui_widgets::Activate;
 use bevy::window::PrimaryWindow;
 
@@ -17,7 +18,7 @@ use super::view::{Slot, spawn};
 use crate::audio::AudioCue;
 use crate::computer::Computer;
 use crate::space::{Location, Travel};
-use crate::ui::Window;
+use crate::ui::{Scroller, Window};
 use crate::universe::Universe;
 use crate::world::Terrain;
 
@@ -143,9 +144,14 @@ pub(super) fn step(keys: Res<ButtonInput<KeyCode>>, mut shelf: ResMut<Shelf>) {
     }
 }
 
-/// Scrolls the list with the mouse wheel.
-pub(super) fn wheel(wheel: Res<AccumulatedMouseScroll>, mut shelf: ResMut<Shelf>) {
-    if wheel.delta.y == 0.0 {
+/// Scrolls the list with the mouse wheel, unless the pointer is over the facts of the card,
+/// which the wheel then scrolls.
+pub(super) fn wheel(
+    wheel: Res<AccumulatedMouseScroll>,
+    scrolling: Query<&RelativeCursorPosition, With<Scroller>>,
+    mut shelf: ResMut<Shelf>,
+) {
+    if wheel.delta.y == 0.0 || scrolling.iter().any(|pointer| pointer.cursor_over) {
         return;
     }
     let by = -wheel.delta.y.signum() as isize;

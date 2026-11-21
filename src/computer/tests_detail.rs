@@ -6,9 +6,13 @@ use std::f64::consts::PI;
 use bevy::prelude::*;
 
 use super::chart::{GRID, mark};
-use super::detail::{ROWS, UNCHARTED, brief, card, visible, worlds};
+use super::detail::{UNCHARTED, brief, card, visible, worlds};
 use super::*;
 use crate::universe::{PlanetClass, PlanetRecord, PlanetSpec, StarId, Universe, Water, Zone};
+
+/// Most rows a card shows under its title and its subtitle with its rarer facts folded, its
+/// line on life included.
+pub(super) const ROWS: usize = 17;
 
 /// One hand-built record per class, in the order of `PlanetClass::ALL`, none the home record.
 pub(super) fn records() -> [PlanetRecord; 6] {

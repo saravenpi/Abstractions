@@ -1,7 +1,7 @@
 //! The map of the map screen and the pieces a chart is drawn with: the field, the sheet,
 //! and the marks of a body, the ship, an orbit, a frame and a name.
 //!
-//! The marks are plain squares on a black field, like the rest of the interface. They sit on
+//! The marks are plain squares on the translucent panel of the map, like the rest of the interface. They sit on
 //! a sheet at a share of its width and height, so zooming and panning move and size the
 //! sheet alone and every mark keeps its size in pixels. A planet whose record is known is
 //! drawn as the mark of its class.
@@ -48,7 +48,7 @@ pub struct ChartLayer;
 /// fills the chart. The room around the square cuts what leaves it, so a zoomed chart runs
 /// on to the edges of the screen.
 pub fn field() -> impl Bundle {
-    let side = px(measure(SMALLEST, (0, 0)).map);
+    let side = px(measure(SMALLEST).map);
     let cover = Node {
         position_type: PositionType::Absolute,
         width: percent(100),

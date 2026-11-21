@@ -34,11 +34,6 @@ pub struct Board {
     pub ship: UniPos,
     /// Rows the window has room for, or 0 before the panel was sized.
     pub fit: usize,
-    /// Rows of favourites and of players the window has room for, or nothing before the panel
-    /// was sized.
-    pub lists: Option<(usize, usize)>,
-    /// True when the window has no room for the facts of the card in full.
-    pub compact: bool,
     /// The letters typed to narrow the list to the names that hold them.
     pub filter: String,
     /// How the rows are ordered.
@@ -71,7 +66,6 @@ impl Board {
             tab,
             stale: true,
             fit: self.fit,
-            lists: self.lists,
             sort: self.sort,
             ..default()
         };

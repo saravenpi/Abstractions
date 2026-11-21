@@ -1,9 +1,11 @@
 //! The list of the guide: every species of the planet, plants first by growth architecture, then
 //! animals from the bottom of the food web up. A species not yet seen shows as unknown.
 
+use super::icons::silhouette;
 use super::seen::Seen;
 use super::words::kind;
 use crate::life::{Guild, Life, Species};
+use crate::ui::Icon;
 
 /// What an unseen species is called.
 pub const UNKNOWN: &str = "Unknown species";
@@ -22,6 +24,9 @@ pub struct Entry {
     pub kind: &'static str,
     /// Whether the player has seen it.
     pub seen: bool,
+    /// Its silhouette: its growth for a plant, its body plan for an animal, and a question mark
+    /// while unseen.
+    pub icon: Icon,
 }
 
 /// The list of the planet and how much of it was seen.
@@ -64,6 +69,10 @@ fn entry(species: &Species, seen: &Seen) -> Entry {
             false => "",
         },
         seen: known,
+        icon: match known {
+            true => silhouette(species),
+            false => Icon::Unknown,
+        },
     }
 }
 

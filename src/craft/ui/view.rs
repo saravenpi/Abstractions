@@ -7,15 +7,31 @@ use super::Workshop;
 use super::bench::Tab;
 use super::layout::LIST;
 use crate::fauna::guide::layout::{BETWEEN, CARD, EDGE, FOOT, HEAD};
-use crate::ui::{Blurred, Overlay, text, theme};
+use crate::ui::{Blurred, Overlay, hints, legend, text, theme};
 
-/// What the footer says on the pack tab.
-pub const PACK_HINTS: &str =
-    "Up/Down choose  / search  F2 sort  Enter hold  1-6 slot  X drop  Tab workshop  I close";
+/// The key hints of the pack tab: what each key does, then the key.
+pub const PACK_HINTS: [(&str, &str); 8] = [
+    ("Choose", "Up Down"),
+    ("Search", "/"),
+    ("Sort", "F2"),
+    ("Hold", "Enter"),
+    ("Slot", "1-6"),
+    ("Drop", "X"),
+    ("Workshop", "Tab"),
+    ("Close", "I"),
+];
 
-/// What the footer says on the workshop tab.
-pub const MAKE_HINTS: &str =
-    "Left/Right intent  Up/Down proposal  H head  J shaft  T treat  Enter make  Tab pack  I close";
+/// The key hints of the workshop tab: what each key does, then the key.
+pub const MAKE_HINTS: [(&str, &str); 8] = [
+    ("Intent", "Left Right"),
+    ("Proposal", "Up Down"),
+    ("Head", "H"),
+    ("Shaft", "J"),
+    ("Treat", "T"),
+    ("Make", "Enter"),
+    ("Pack", "Tab"),
+    ("Close", "I"),
+];
 
 /// Marks the name of a tab in the header.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -33,9 +49,9 @@ pub struct Rows;
 #[derive(Component)]
 pub struct Facts;
 
-/// Marks the key hints.
-#[derive(Component)]
-pub struct Hints;
+/// Marks the key hints of a tab, shown while that tab is open.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Hints(pub Tab);
 
 /// Returns the header: the two tab names and the count line.
 fn header() -> impl Bundle {
@@ -102,20 +118,20 @@ pub fn spawn(commands: &mut Commands) {
         ..default()
     };
     let foot = Node {
-        height: px(FOOT),
+        min_height: px(FOOT),
         flex_shrink: 0.0,
-        align_items: AlignItems::FlexEnd,
+        flex_direction: FlexDirection::Column,
+        justify_content: JustifyContent::FlexEnd,
         ..default()
     };
-    let hints = (
-        Hints,
-        text(PACK_HINTS, theme::FONT_SMALL, theme::TEXT_2),
-        TextLayout::no_wrap(),
-    );
+    let keys = children![
+        (Hints(Tab::Pack), legend(hints(&PACK_HINTS))),
+        (Hints(Tab::Make), legend(hints(&MAKE_HINTS)))
+    ];
     let screen = (Overlay, Blurred, root, BackgroundColor(theme::SCRIM));
     commands.spawn((
         DespawnOnExit(Workshop::Open),
         screen,
-        children![header(), body(), (foot, children![hints])],
+        children![header(), body(), (foot, keys)],
     ));
 }

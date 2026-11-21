@@ -54,19 +54,19 @@ pub(super) struct SkyIcon;
 #[cfg(test)]
 pub const WORDS: [&str; 7] = ["clear", "overcast", "rain", "snow", "storm", "wind", "dust"];
 
-/// Returns the icon of a weather `word`, a sun by day and a moon by night for a clear sky. The
-/// icon font has no cloud, snowflake or haze glyph, so overcast, snow and dust use the nearest
-/// ones it has: a low sun, a star and the compressed air.
+/// Returns the icon of a weather `word`: a sun by day and a moon by night for a clear sky, and
+/// for the rest the picture of what falls or blows, a cloud, rain, snow, a thunderstorm, wind
+/// and dust.
 pub fn sky_icon(word: &str, day: bool) -> Option<Icon> {
     Some(match word {
         "clear" if day => Icon::Sun,
-        "clear" => Icon::Moon,
-        "overcast" => Icon::Day,
-        "rain" => Icon::Water,
-        "snow" => Icon::Star,
-        "storm" => Icon::Galaxy,
+        "clear" => Icon::ClearNight,
+        "overcast" => Icon::Cloudy,
+        "rain" => Icon::Rain,
+        "snow" => Icon::Snow,
+        "storm" => Icon::Storm,
         "wind" => Icon::Air,
-        "dust" => Icon::Pressure,
+        "dust" => Icon::Dust,
         _ => return None,
     })
 }
@@ -175,7 +175,7 @@ fn write(parts: &mut Parts, shown: Option<String>, (word, day): (&str, bool)) {
     let Some(shown) = shown else {
         return;
     };
-    let glyph = sky_icon(word, day).unwrap_or(Icon::Day).glyph();
+    let glyph = sky_icon(word, day).unwrap_or(Icon::PartlyCloudy).glyph();
     for mut text in degrees {
         text.set_if_neq(Text(shown.clone()));
     }

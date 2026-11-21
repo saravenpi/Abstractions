@@ -14,13 +14,17 @@ use super::{SettingsTab, Tab, fit, hint, reference};
 use crate::menus::{Menu, Nav};
 use crate::settings::{Persistent, Settings};
 use crate::ui::{
-    Cancels, Icon, Scroller, Selected, Tone, column, entry, footer, heading, item_with, panel,
-    root, scroller, theme,
+    Cancels, Icon, Scroller, Selected, Tone, column, entry, footer, heading, hints, item_with,
+    panel, root, scroller, theme,
 };
 
 /// Key hints shown at the bottom of the screen.
-const HINT: &str =
-    "Up and down move. Left and right change a value. Enter rebinds a key. Esc goes back";
+const HINTS: [(&str, &str); 4] = [
+    ("Move", "Up Down"),
+    ("Change a value", "Left Right"),
+    ("Rebind a key", "Enter"),
+    ("Back", "Esc"),
+];
 
 /// Rows of a page visible at once. A longer page scrolls.
 pub(super) const VISIBLE_ROWS: f32 = 16.0;
@@ -102,7 +106,7 @@ fn spawn(mut commands: Commands, tab: Res<SettingsTab>) {
                 panel(),
                 children![heading("Settings"), body(tab.0), hint::line()]
             ),
-            footer(HINT),
+            footer(hints(&HINTS)),
         ],
     ));
 }

@@ -10,8 +10,8 @@ use crate::menus::Menu;
 use crate::net::{Lobby, RefreshLobby};
 use crate::settings::{Persistent, Settings};
 use crate::ui::{
-    Icon, Tone, caps, cell, column, footer, heading, icon, label, notice, panel, root, scroller,
-    table_row, text, theme,
+    Icon, Tone, caps, cell, column, footer, heading, hints, icon, label, notice, panel, root,
+    scroller, table_row, text, theme,
 };
 
 /// Widths in pixels of the name and the status columns.
@@ -27,7 +27,12 @@ const ROW: f32 = 44.0;
 const LIST_HEIGHT: f32 = 300.0;
 
 /// Key hints shown at the bottom of the screen.
-const HINT: &str = "Up and down select. Enter joins. Tab switches fields. Esc goes back";
+const HINTS: [(&str, &str); 4] = [
+    ("Select", "Up Down"),
+    ("Join", "Enter"),
+    ("Switch fields", "Tab"),
+    ("Back", "Esc"),
+];
 
 /// Marks the column that holds the sections and their rows.
 #[derive(Component)]
@@ -167,7 +172,7 @@ pub(super) fn spawn(
                     bars::bars(),
                 ]
             ),
-            footer(HINT),
+            footer(hints(&HINTS)),
         ],
     ));
 }

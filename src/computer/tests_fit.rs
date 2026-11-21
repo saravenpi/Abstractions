@@ -2,11 +2,10 @@
 //! smallest window, and every sentence of Go fits two lines.
 
 use super::course::hud_line;
-use super::detail::{Card, ROWS, Row, card, visible};
-use super::layout::{COMPACT, GLYPH, LINE_CHARS, LINE_HEIGHT, NAME_CHARS, ROOM};
-use super::readout::drawn;
+use super::detail::{Card, Row, card, visible};
+use super::layout::{GLYPH, LINE_CHARS, NAME_CHARS, ROOM};
 use super::route::Keys;
-use super::tests_detail::{records, world};
+use super::tests_detail::{ROWS, records, world};
 use super::{Atlas, Block, RouteStatus, View};
 use crate::ui::theme;
 use crate::universe::{BodyId, PlanetClass, PlanetSpec, Rings, Universe};
@@ -80,13 +79,15 @@ fn far(universe: &Universe) -> Vec<Card> {
     lines.map(|line| card(&line, None, universe)).collect()
 }
 
-/// Returns true when `row` of a card fits one line of the panel: a fact with its label, a gap
-/// and its value, a stat with its icon, its label, its value and its note column, a heading in
-/// its spaced capitals, a note or a meaning in two lines.
+/// Returns true when `row` of a card fits one line of the panel: a stat with its icon, its
+/// label, its value and its note column, a heading after its icon in its spaced capitals, a
+/// note or a meaning in two lines.
 fn fits(row: &Row) -> bool {
     match row {
-        Row::Heading(name) => name.chars().count() as f32 * (GLYPH + theme::CAPS_SPACING) <= ROOM,
-        Row::Fact(name, value) => name.chars().count() + 1 + value.chars().count() <= LINE_CHARS,
+        Row::Heading(_, name) => {
+            let caps = name.chars().count() as f32 * (GLYPH + theme::CAPS_SPACING);
+            theme::ICON + theme::S2 + caps <= ROOM
+        }
         Row::Note(words) => words.chars().count() <= 2 * LINE_CHARS,
         Row::Meaning(words) => words.chars().count() <= 2 * LINE_CHARS,
         Row::More => true,
@@ -105,7 +106,8 @@ fn fits(row: &Row) -> bool {
 /// six letters: the home star's generated name may be longer, and the panel clips it like any name.
 #[test]
 fn every_card_fits_the_panel() {
-    assert!(NAME_CHARS as f32 * theme::GLYPH_ASPECT * theme::FONT_BODY <= ROOM + 0.01);
+    let name = NAME_CHARS as f32 * theme::GLYPH_ASPECT * theme::FONT_BODY;
+    assert!(theme::ICON + theme::S2 + name <= ROOM + 0.01);
     let universe = Universe::new(7);
     let star = universe.system(universe.home().star).star.name;
     for shown in planets(&universe).into_iter().chain(far(&universe)) {
@@ -179,28 +181,35 @@ fn the_go_sentences_fit_two_lines() {
     }
 }
 
-/// The compact form of every planet card, which a window of 1280 by 720 shows, drops the headings
-/// and the meanings, keeps every stat and the More row, and is no taller than the room that
-/// layout keeps for it.
+/// Every row of every card says what it is with a picture: a heading and a stat carry an icon
+/// that has a glyph, and only sentences, which explain the row above them, and the More row,
+/// which draws its own, go without. The cards of a star and of a galaxy have no bare row.
 #[test]
-fn the_compact_card_fits_its_room() {
+fn every_row_of_every_card_has_an_icon() {
     let universe = Universe::new(7);
-    for shown in planets(&universe) {
-        let rows = drawn(&shown.rows, false, true);
-        assert!(
-            rows.iter()
-                .all(|row| !matches!(row, Row::Heading(_) | Row::Meaning(_))),
-            "{shown:?}"
-        );
-        let height: f32 = rows
+    let cards: Vec<Card> = planets(&universe)
+        .into_iter()
+        .chain(far(&universe))
+        .collect();
+    assert!(cards.len() > 8);
+    let mut seen = 0;
+    for shown in &cards {
+        for row in &shown.rows {
+            let icon = match row {
+                Row::Heading(icon, _) | Row::Stat { icon, .. } => *icon,
+                Row::Note(_) | Row::Meaning(_) | Row::More => continue,
+            };
+            assert!(crate::ui::Icon::ALL.contains(&icon), "{row:?}");
+            seen += 1;
+        }
+    }
+    assert!(seen > 60, "{seen} rows with an icon");
+    for shown in far(&universe) {
+        let bare = shown
+            .rows
             .iter()
-            .map(|row| match row {
-                Row::Stat { .. } => theme::LINE_SMALL,
-                Row::More => theme::ROW_COMPACT,
-                Row::Note(_) => 2.0 * LINE_HEIGHT,
-                _ => LINE_HEIGHT,
-            })
-            .sum();
-        assert!(height <= COMPACT, "{height} for {shown:?}");
+            .filter(|row| !matches!(row, Row::Heading(..) | Row::Stat { .. } | Row::Note(_)));
+        assert_eq!(bare.count(), 0, "{shown:?}");
+        assert!(shown.rows.iter().any(|row| matches!(row, Row::Stat { .. })));
     }
 }

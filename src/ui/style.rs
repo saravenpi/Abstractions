@@ -44,6 +44,8 @@ pub enum Tone {
     Danger,
     /// Hidden until its row is the current one.
     Marker,
+    /// The name of a key: the secondary text colour, whatever the look of its button.
+    Key,
 }
 
 /// Returns the text color of a tone in a given look.
@@ -51,7 +53,7 @@ pub fn tone_color(tone: Tone, look: Look) -> Color {
     match (tone, look) {
         (Tone::Marker, Look::Rest) => Color::NONE,
         (Tone::Marker, _) | (Tone::Accent, _) => theme::ACCENT,
-        (Tone::Muted, Look::Rest) => theme::TEXT_2,
+        (Tone::Muted, Look::Rest) | (Tone::Key, _) => theme::TEXT_2,
         _ => theme::TEXT,
     }
 }

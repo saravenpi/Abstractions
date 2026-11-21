@@ -136,7 +136,9 @@ pub(super) fn plugin(app: &mut App) {
             (
                 aim.run_if(aimed),
                 strike.run_if(resource_exists_and_changed::<Mark>),
-                super::foe::show.run_if(resource_exists_and_changed::<Mark>),
+                super::foe::show
+                    .after(super::eye::capture)
+                    .run_if(resource_exists_and_changed::<Mark>),
             )
                 .in_set(super::Step::Playing),
         );

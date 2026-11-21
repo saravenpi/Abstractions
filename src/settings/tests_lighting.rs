@@ -37,8 +37,8 @@ fn high_is_the_default_and_ultra_adds_reach() {
     let ultra = preset(Quality::Ultra);
     assert_eq!(ultra.lighting.shadow_reach, ShadowReach::Far);
     assert!(ultra.lighting.local_shadows && ultra.ambient_occlusion);
-    assert_eq!(ultra.lighting.shadow_reach.cascades(), 3);
-    assert_eq!(preset(Quality::High).lighting.shadow_reach.cascades(), 2);
+    assert_eq!(ultra.lighting.shadow_reach.cascades(), 4);
+    assert_eq!(preset(Quality::High).lighting.shadow_reach.cascades(), 3);
     assert_eq!(ShadowDetail::Low.map_size(), 1024);
     assert_eq!(ShadowDetail::High.map_size(), 2048);
     let reach = [ShadowReach::Near, ShadowReach::Normal, ShadowReach::Far];

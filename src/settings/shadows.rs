@@ -48,11 +48,15 @@ impl ShadowReach {
         }
     }
 
-    /// Returns the number of shadow cascades: a third one carries the far reach.
+    /// Returns the number of shadow cascades. The first always ends 12 m from the camera, so the
+    /// robot and the companion cast sharp shadows; the others carry the reach, each one about three
+    /// times as far as the one before: 12 and 55 m near, 12, 36 and 110 m normal, 12, 32, 84 and
+    /// 220 m far. The near cascade draws only what stands within its 12 m.
     pub fn cascades(self) -> usize {
         match self {
-            ShadowReach::Far => 3,
-            _ => 2,
+            ShadowReach::Near => 2,
+            ShadowReach::Normal => 3,
+            ShadowReach::Far => 4,
         }
     }
 

@@ -3,8 +3,12 @@
 /// Lowest height of a light above the horizon, as a sine, at which its shadows are cast.
 pub const SHADOW_HEIGHT: f32 = 0.02;
 
-/// Share of the shadow reach at which the first shadow cascade ends: 28 m of 110 m. A share of 1.
-pub const FIRST_SHARE: f32 = 28.0 / 110.0;
+/// Distance from the camera in metres at which the first shadow cascade ends, whatever the reach.
+/// It holds the robot and the companion in third person: at 12 m one texel of a 2048 map is under
+/// 2 cm, so a leg 10 cm wide is five texels and the 5 by 5 filter of the shadow keeps its shape.
+/// The first cascade used to end at a quarter of the reach, 28 m: 4.3 cm texels, which the filter
+/// smeared over 20 cm, more than a limb, so the robot cast a blob. Unit: metres.
+pub const FIRST_BOUND: f32 = 12.0;
 
 /// Share of a cascade that overlaps the next, so the cascades blend. A share of 1.
 pub const OVERLAP: f32 = 0.2;

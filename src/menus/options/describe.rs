@@ -15,7 +15,7 @@ pub fn describe(field: Field) -> &'static str {
         }
         Field::Shadows => "Sun and moon shadows. Costs a lot. Every light stays on without them.",
         Field::ShadowDetail => "How sharp shadows are. Low uses a quarter of the memory.",
-        Field::ShadowDistance => "How far shadows reach. Longer costs more, 220 m adds a pass.",
+        Field::ShadowDistance => "How far shadows reach. Each step out adds a shadow pass.",
         Field::AmbientOcclusion => "Darkens creases and corners near the ground. Costs a lot.",
         Field::Bloom => "A soft glow round very bright lights. Costs little.",
         Field::Clouds => "Clouds in the sky.",

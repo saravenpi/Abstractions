@@ -58,14 +58,18 @@ const PANEL: i32 = 12;
 /// there and along the strip ahead. The body is put back at the end: while the ground streams
 /// in it falls, for as many frames as the load of the machine decides.
 fn over_the_start(game: &mut Game, watch: &mut Watch, feet: DVec3) {
-    let anchor = game.get::<Anchor>();
-    let spot = anchor.to_render(feet);
-    let vertical = up(&anchor, spot);
-    let away = (spot - game.hull()).reject_from(vertical).normalize();
+    let line = |game: &mut Game| {
+        let anchor = game.get::<Anchor>();
+        let spot = anchor.to_render(feet);
+        let vertical = up(&anchor, spot);
+        let away = (spot - game.hull()).reject_from(vertical).normalize();
+        (spot, vertical, away)
+    };
+    let (spot, vertical, away) = line(game);
     crate::player::place(game.app.world_mut(), spot + vertical * 1.5, away);
     let start = std::time::Instant::now();
     loop {
-        let here = game.get::<Anchor>().to_render(feet);
+        let (here, _, away) = line(game);
         let bare: Vec<i32> = (0..=PANEL)
             .filter(|step| !game.has_ground(here + away * (step * 5) as f32))
             .collect();
@@ -81,7 +85,7 @@ fn over_the_start(game: &mut Game, watch: &mut Watch, feet: DVec3) {
         game.step(1);
         std::thread::sleep(std::time::Duration::from_millis(2));
     }
-    let spot = game.get::<Anchor>().to_render(feet);
+    let (spot, vertical, away) = line(game);
     crate::player::place(game.app.world_mut(), spot + vertical * 1.5, away);
     watch.cut();
 }

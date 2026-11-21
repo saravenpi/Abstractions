@@ -81,13 +81,14 @@ impl Game {
     pub fn has_ground(&mut self, at: Vec3) -> bool {
         let anchor = self.get::<Anchor>();
         let up = crate::space::up(&anchor, at);
-        let probe = move |query: SpatialQuery, ships: Query<Entity, With<Ship>>| {
-            let filter = SpatialQueryFilter::from_excluded_entities(ships.iter());
-            let down = Dir3::new(-up).expect("a vertical");
-            query
-                .cast_ray(at + up * Self::PROBE.0, down, Self::PROBE.1, true, &filter)
-                .is_some()
-        };
+        let probe =
+            move |query: SpatialQuery, excluded: Query<Entity, Or<(With<Ship>, With<Player>)>>| {
+                let filter = SpatialQueryFilter::from_excluded_entities(excluded.iter());
+                let down = Dir3::new(-up).expect("a vertical");
+                query
+                    .cast_ray(at + up * Self::PROBE.0, down, Self::PROBE.1, true, &filter)
+                    .is_some()
+            };
         let found = self.app.world_mut().run_system_once(probe);
         found.expect("the probe runs")
     }

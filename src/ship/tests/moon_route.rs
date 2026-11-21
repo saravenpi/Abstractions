@@ -58,9 +58,13 @@ fn frame(ship: &mut Ship, helm: &mut Helm, wells: &[Well]) {
             drop_out(ship, wells);
         }
     }
+    let warping = matches!(ship.warp, Warp::Active { .. });
     advance(ship, wells, CRUISE_CAP, DT);
     if matches!(ship.warp, Warp::Active { .. }) {
         return rotate(ship, helm.controls.turn, DVec3::ZERO, DT);
+    }
+    if warping {
+        return;
     }
     for sub in 0..4 {
         let scene = Scene {
@@ -95,6 +99,10 @@ pub(super) fn voyage(system: &SystemSpec, goal: &Goal, ship: &mut Ship) -> (f64,
         hold(ship, &mut helm, &wells, (to, goal.lock));
         frame(ship, &mut helm, &wells);
         spools += u32::from(idle && matches!(ship.warp, Warp::Spooling { .. }));
+        if beyond.reached(ship.pos, time) {
+            drop_out(ship, &wells);
+            return (time, spools);
+        }
         time += DT;
     }
     panic!("the route to the moon never arrived");

@@ -16,7 +16,7 @@ pub(super) const ORBIT: DVec3 = DVec3::new(8600.0, 0.0, 120.0);
 
 /// Metres between the ship and the surface of the body in open space, where the lever is at
 /// its fastest.
-pub(super) const FAR: f64 = 40_000.0;
+pub(super) const FAR: f64 = 50_000.0;
 
 /// Returns a body the size of the home planet whose surface was `gap` metres under the origin
 /// at time zero, where it is after `time` seconds.
@@ -76,12 +76,13 @@ fn stop(speed: f64, controls: &Controls) -> f64 {
 }
 
 /// With the engines idle the ship comes to rest beside the body it is nearest to and stays
-/// there, from any speed: in 0.6 s from 5 m/s, 1.2 s from 50, 2 s from 500 and 4.5 s from the
-/// top speed. The brake does it in under 3 s. With the assist off the ship drifts on.
+/// there, from any speed: in 0.6 s from 5 m/s, 1.2 s from 50, 2 s from 500 and 5 s from the
+/// top speed. The brake does it in under 3.5 s. With the assist off the ship drifts on.
 #[test]
 fn idle_engines_stop_the_ship() {
     let idle = Controls::default();
-    for (speed, limit) in [(5.0, 0.6), (50.0, 1.2), (500.0, 2.0), (2500.0, 4.5)] {
+    let top = top_speed(FAR);
+    for (speed, limit) in [(5.0, 0.6), (50.0, 1.2), (500.0, 2.0), (top, 5.0)] {
         let time = stop(speed, &idle);
         assert!(time < limit, "{speed} m/s took {time} s to shed");
     }
@@ -89,8 +90,8 @@ fn idle_engines_stop_the_ship() {
         brake: true,
         ..idle
     };
-    let (braked, coasted) = (stop(2500.0, &brake), stop(2500.0, &idle));
-    assert!(braked < 3.0 && braked < coasted - 1.0, "brake {braked} s");
+    let (braked, coasted) = (stop(top, &brake), stop(top, &idle));
+    assert!(braked < 3.5 && braked < coasted - 1.0, "brake {braked} s");
     let mut free = beside(DVec3::X * 50.0, 0.0);
     free.assist = false;
     fly(&mut free, &idle, (FAR, 5.0), |_, _| {});

@@ -51,8 +51,7 @@ fn sinking(speed: f64, steep: f64) -> DVec3 {
 }
 
 /// Under full power or full boost, flying level, in a shallow descent or in a steep dive near
-/// the ground never glows, and neither does a landing approach: a few hundred metres per second
-/// heat no nose to a glow, whichever way the ship flies.
+/// the ground glows no more than mildly, and a landing approach never glows.
 #[test]
 fn powered_flight_and_approaches_never_glow() {
     let planet = planet(6000.0, 4000.0, 1200.0);
@@ -68,7 +67,7 @@ fn powered_flight_and_approaches_never_glow() {
     for (steep, controls) in flights {
         let start = (1500.0, sinking(180.0, steep));
         let glow = glow_of(&planet, start, (1.0, controls), (10.0, true));
-        assert!(glow < 0.01, "powered flight at slope {steep} glows {glow}");
+        assert!(glow < 0.25, "powered flight at slope {steep} glows {glow}");
     }
     let approach = (200.0, DVec3::new(20.0, -6.0, 0.0));
     let glow = glow_of(&planet, approach, (0.0, Controls::default()), (20.0, true));

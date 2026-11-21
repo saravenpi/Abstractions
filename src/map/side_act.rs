@@ -13,8 +13,26 @@ use super::side::{Do, PinButton, PinRow, PlayerRow};
 use super::surface::Surface;
 use crate::computer::{Board, Computer, Destination, Engage, RouteStatus, Target, Typing};
 use crate::menus::{MarkerKind, MarkerPlace, Markers};
+use crate::saves::Pin;
 use crate::space::{Anchor, Frame};
 use crate::universe::BodyId;
+
+/// Commits Go on `pin`, the pin at `index`, for a player on the planet `here`: on the planet of the pin it is
+/// the active pin, which the compass leads to and which counts as reached on landing near it; from
+/// anywhere else the course is the planet, and no pin is active, so that the course is done once the ship
+/// is in orbit and never waits for a spot on the surface. Returns the course to set.
+fn commit(
+    places: &mut Places,
+    (index, pin): (usize, &Pin),
+    here: Option<BodyId>,
+) -> Option<Target> {
+    if here == Some(pin.body) {
+        places.set_active(Some(index));
+        return None;
+    }
+    places.set_active(None);
+    Some(Target::Body(pin.body))
+}
 
 /// What the buttons of the panel change.
 #[derive(SystemParam)]
@@ -52,8 +70,8 @@ impl Desk<'_, '_> {
         self.look(pin.body, DVec3::from_array(pin.dir));
     }
 
-    /// Makes the selected pin the active one and closes the map. A pin on another planet also
-    /// sets the course to that planet, handed to the autopilot when it can take it.
+    /// Goes to the selected pin and closes the map, see [`commit`]: a pin on another planet sets the course to
+    /// that planet, handed to the autopilot when it can take it.
     fn go(&mut self) {
         let Some(index) = self.places.selected else {
             return;
@@ -61,10 +79,8 @@ impl Desk<'_, '_> {
         let Some(pin) = self.places.pins.get(index).cloned() else {
             return;
         };
-        self.places.set_active(Some(index));
         let here = self.world.2.spot().map(|(body, _)| body);
-        if here != Some(pin.body) {
-            let target = Target::Body(pin.body);
+        if let Some(target) = commit(&mut self.places, (index, &pin), here) {
             self.course.0.0 = Some(target);
             if self.course.1.as_deref() == Some(&RouteStatus::Idle) {
                 self.screen.1.trigger(Engage(target));
@@ -149,3 +165,6 @@ pub(super) fn pin_keys(keys: Res<ButtonInput<KeyCode>>, mut desk: Desk) {
         desk.pin(Do::Remove);
     }
 }
+
+#[cfg(test)]
+mod tests_commit;

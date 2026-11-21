@@ -185,12 +185,12 @@ fn touch(ship: &Ship, rig: &Rig, (p, share): (&Point, f64), motion: &Motion, out
 }
 
 /// Returns how still a ship moving as `motion` is, from 0 at the speed or the spin over which it
-/// cannot come to rest to 1 at a standstill. The feet hold the weight along the ground by this
-/// share: a ship that still slides or tumbles is braked as before, and one that settles is held
-/// more the slower it goes, so it stops instead of creeping down a slope.
+/// cannot come to rest to 1 at half of them and under. The feet hold the weight along the
+/// ground by this share: a ship that still slides or tumbles is braked as before, and one that
+/// settles is held in full well before it rests, so it stops instead of creeping down a slope.
 fn still(motion: &Motion) -> f64 {
-    let slow = 1.0 - motion.vel.length() / REST_SPEED;
-    let steady = 1.0 - motion.spin.length() / REST_SPIN;
+    let slow = 2.0 * (1.0 - motion.vel.length() / REST_SPEED);
+    let steady = 2.0 * (1.0 - motion.spin.length() / REST_SPIN);
     slow.clamp(0.0, 1.0) * steady.clamp(0.0, 1.0)
 }
 

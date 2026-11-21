@@ -60,6 +60,8 @@ mod tests_fresnel;
 #[cfg(test)]
 mod tests_glare;
 #[cfg(test)]
+mod tests_glare_band;
+#[cfg(test)]
 mod tests_lens;
 #[cfg(test)]
 mod tests_lowres;

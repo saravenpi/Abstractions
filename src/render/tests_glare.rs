@@ -1,5 +1,5 @@
 //! Tests of the glare of the star under no air: it is light that fades into black space with no
-//! edge, nothing grows darker along a ray from the star out, for a star or for the band, it is
+//! edge, nothing grows darker along a ray from the star out past a star it outshines, it is
 //! gone under a whole sky and in the shadow of the planet, and the shaders draw it by this rule.
 
 use super::glare::{GLOW_CORE, GLOW_PEAK, glow, outshone, strength};
@@ -36,15 +36,14 @@ fn the_glow_fades_into_black_space() {
     assert!(GLOW_CORE < 2.0_f32.to_radians());
 }
 
-/// Along a ray from the star out, the glow and the light of a star or of the band it leaves
-/// never dip under what lies farther out: no darker ring between the glow and the field, for
-/// every star from the faintest to the brightest, a dim or a bright band, at any strength.
+/// Along a ray from the star out, the glow and the light of a star it leaves never dip under
+/// what lies farther out: no darker ring between the glow and the field, for every star from the
+/// faintest to the brightest, at any strength. The band has its own rule, see `tests_glare_band`.
 #[test]
 fn nothing_grows_darker_toward_the_star() {
     let stars = [-4.6_f32, -3.0, -1.0, 0.0, 1.0, 2.0].map(|flux| shine(flux).1);
-    let bands = [0.002_f32, 0.02, 0.2];
     for power in [0.05_f32, 0.5, 1.0, 2.0] {
-        for light in stars.iter().chain(&bands) {
+        for light in &stars {
             let ray = along(power, *light);
             let rising = ray.windows(2).find(|pair| pair[1] > pair[0] + 1.0e-5);
             assert!(rising.is_none(), "{power} {light}: {rising:?}");
@@ -79,7 +78,7 @@ fn the_glow_needs_open_space_and_the_light_of_the_star() {
     assert!(strength(1.0, 0.3, 1.0) > strength(1.0, 0.6, 1.0));
 }
 
-/// Both shaders draw and outshine by the rule tested here.
+/// Both shaders draw the glow by the rule tested here, and the star shader outshines by it.
 #[test]
 fn the_shaders_have_the_glow_of_the_rule() {
     let triple = format!("vec3<f32>({:?}, {:?}, {:?})", LUMA.x, LUMA.y, LUMA.z);
@@ -89,7 +88,6 @@ fn the_shaders_have_the_glow_of_the_rule() {
         format!("const GLOW_CORE: f32 = {GLOW_CORE:?};"),
         "/ (GLOW_CORE * GLOW_CORE);".to_string(),
         "/ pow(1.0 + spread, 1.5);".to_string(),
-        "return clamp(1.0 - max(glow, 0.0) / max(light, 0.000001), 0.0, 1.0);".to_string(),
     ];
     let sky = include_str!("sky.wesl");
     let stars = include_str!("starfield.wesl");
@@ -100,6 +98,6 @@ fn the_shaders_have_the_glow_of_the_rule() {
             "starfield.wesl lacks `{line}`"
         );
     }
-    assert!(sky.contains("col = col + band * outshone(dot(band, LUMA), glare);"));
+    assert!(stars.contains("return clamp(1.0 - max(glow, 0.0) / max(light, 0.000001), 0.0, 1.0);"));
     assert!(stars.contains("let kept = outshone(dot(light, LUMA), halo(seen.dir));"));
 }

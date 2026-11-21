@@ -25,7 +25,8 @@ pub struct Bind {
     pub code: KeyCode,
 }
 
-/// The actions of the pack pane, on the selected entry: X drops a material, never a tool.
+/// The actions of the pack pane, on the selected entry: X puts the tool or the stack down on the
+/// ground, where it waits to be taken back, Shift X half the stack.
 pub const PACK_BINDS: [Bind; 2] = [
     Bind {
         press: Press::Hold,
@@ -37,7 +38,7 @@ pub const PACK_BINDS: [Bind; 2] = [
     Bind {
         press: Press::Drop,
         icon: Some(Icon::Trash),
-        label: "Drop material",
+        label: "Drop",
         key: "X",
         code: KeyCode::KeyX,
     },
@@ -76,8 +77,12 @@ pub const MAKE_BINDS: [Bind; 4] = [
 ];
 
 /// The moves of the pack pane, as the legend shows them: what each key does, then the key.
-pub const PACK_LEGEND: [(&str, &str); 3] =
-    [("Workshop", "Tab"), ("Choose", "Up Down"), ("Slot", "1-6")];
+pub const PACK_LEGEND: [(&str, &str); 4] = [
+    ("Workshop", "Tab"),
+    ("Choose", "Up Down"),
+    ("Slot", "1-6"),
+    ("Half", "Shift X"),
+];
 
 /// The moves of the workshop pane, as the legend shows them.
 pub const MAKE_LEGEND: [(&str, &str); 4] = [

@@ -1,16 +1,18 @@
 //! Stopping a world open to LAN: on Close LAN, on quitting to the title and on quitting the
-//! game. The room's log is merged back and the world is saved as in single player.
+//! game. The room's log and ground are merged back and the world is saved as in single player.
 
+use abstractions_net::ground::Pile;
 use abstractions_net::store::World;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::Hosted;
 use crate::computer::Atlas;
+use crate::craft::ground::Ground;
 use crate::net::join::{merge, shut};
 use crate::net::link::Link;
 use crate::net::{CloseLan, Players, Session};
-use crate::saves::Snapshot;
+use crate::saves::{ActiveWorld, Snapshot};
 use crate::sim::Changes;
 
 /// What stopping to host changes.
@@ -28,6 +30,10 @@ pub struct Closing<'w, 's> {
     atlas: Option<ResMut<'w, Atlas>>,
     /// The players of the session, forgotten.
     players: ResMut<'w, Players>,
+    /// The things on the ground, as the room kept them.
+    ground: Option<ResMut<'w, Ground>>,
+    /// The world being played, saved right after.
+    active: Option<ResMut<'w, ActiveWorld>>,
 }
 
 impl Closing<'_, '_> {
@@ -50,9 +56,21 @@ impl Closing<'_, '_> {
         self.players.0.clear();
     }
 
+    /// Takes the ground of `world` as it lies, into the game and the world being played.
+    fn lay(&mut self, world: &World) {
+        let pile = Pile::new(world.ground.clone());
+        if let Some(active) = self.active.as_deref_mut() {
+            active.0.save.ground = pile.clone();
+        }
+        if let Some(ground) = self.ground.as_deref_mut() {
+            ground.pile = pile;
+        }
+    }
+
     /// Appends each change of `world` the log does not hold yet, and adds every visited body
-    /// to the atlas.
+    /// to the atlas, and takes its ground.
     fn adopt(&mut self, world: &World) {
+        self.lay(world);
         let Some(changes) = self.changes.as_deref_mut() else {
             return;
         };

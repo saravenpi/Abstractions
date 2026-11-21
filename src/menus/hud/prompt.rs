@@ -1,8 +1,7 @@
-//! The one prompt line: a key and what it does, bottom centre above the hotbar. Exactly one
-//! row, the highest priority wins: a warning or block sentence, what was just picked up, a course
-//! or an orbital cruise that runs, a course or a cruise ready to go, the action a key does right now to what the robot looks at or
-//! stands by ([`crate::player::Interact`]: pull a spear, cut a part, board, leave, break stone off,
-//! mend), or nothing.
+//! The one prompt line, bottom centre above the hotbar: a key and what it does. One row, the
+//! highest wins: a warning or block sentence, what was just picked up, a running course or orbital
+//! cruise, one ready to go, the action a key does now to what the robot looks at or stands by
+//! ([`crate::player::Interact`]: pull, cut, take, board, leave, break stone, mend), or nothing.
 
 use bevy::prelude::*;
 
@@ -72,10 +71,11 @@ pub fn choose(state: &State) -> Option<(Option<KeyCode>, String)> {
 /// Returns the key that does the action of `offer` under the bindings `keys`, and the words that
 /// name it and what it acts on.
 pub fn offered(offer: Offer, keys: &Keymap) -> (KeyCode, String) {
-    let thing = offer.thing;
+    let (thing, weight) = (offer.thing, offer.weight());
     match offer.verb {
         Verb::Pull => (keys.ship.board, format!("Pull the {thing}")),
         Verb::Carve => (keys.ship.board, format!("Cut the {thing}")),
+        Verb::Take => (keys.ship.board, format!("Take the {thing}{weight}")),
         Verb::Board => (keys.ship.board, "Board".to_string()),
         Verb::Leave => (keys.ship.board, "Leave the ship".to_string()),
         Verb::Stone => (PICK_KEY, "Break stone off".to_string()),

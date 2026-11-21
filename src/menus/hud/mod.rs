@@ -232,6 +232,7 @@ pub(super) fn plugin(app: &mut App) {
     reticle::plugin(app);
     hurt(app);
     app.init_resource::<banner::Banner>()
+        .add_message::<crate::craft::ground::Note>()
         .init_resource::<context::Where>()
         .add_plugins((minimap::plugin, onscreen::plugin))
         .add_systems(OnEnter(Screen::Gameplay), spawn);

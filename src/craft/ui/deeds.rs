@@ -1,5 +1,6 @@
 //! The deeds of the screen, one place for the keys and the pointer: choosing a row, an intent or a
-//! card, holding and slotting a tool, and dropping a material from the pack. Making and treating are in `make`.
+//! card, holding and slotting a tool, and putting a tool or a stack of the pack down on the ground.
+//! Making and treating are in `make`.
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
@@ -9,6 +10,7 @@ use super::bench::{Bench, Pane};
 use super::click::Press;
 use super::here::Here;
 use super::lines::{Line, What, lines};
+use crate::craft::ground::{Shed, shed_item, shed_stack};
 use crate::craft::pack::Pack;
 
 /// What a deed reads and changes: the pack, the bench, the world underfoot and the screen state.
@@ -22,6 +24,10 @@ pub struct Deed<'w> {
     pub here: Here<'w>,
     /// Where the screen goes next.
     next: ResMut<'w, NextState<Workshop>>,
+    /// What the pack lets go of, to be put down on the ground.
+    shed: ResMut<'w, Shed>,
+    /// The keys held, for Shift.
+    keys: Res<'w, ButtonInput<KeyCode>>,
 }
 
 impl Deed<'_> {
@@ -71,13 +77,20 @@ impl Deed<'_> {
         }
     }
 
-    /// Drops the selected material, and keeps the cursor on the list. A tool is never dropped: it
-    /// would be gone for good.
+    /// Puts the selected tool or stack down on the ground, half the stack with Shift held, and keeps
+    /// the cursor on the list. Nothing is lost: a tool lies on the ground until it is taken back.
     fn drop_selected(&mut self) {
-        let Some(What::Stack(at)) = self.selected() else {
-            return;
-        };
-        self.pack.stacks.remove(at);
+        let half = self
+            .keys
+            .any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
+        match self.selected() {
+            Some(What::Item(id)) => shed_item(&mut self.pack, &mut self.shed, id),
+            Some(What::Stack(at)) => {
+                let share = [1.0, 0.5][usize::from(half)];
+                shed_stack(&mut self.pack, &mut self.shed, at, share);
+            }
+            None => return,
+        }
         let last = self.lines().len().saturating_sub(1);
         self.bench.cursor = self.bench.cursor.min(last);
     }

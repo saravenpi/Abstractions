@@ -3,9 +3,10 @@
 //!
 //! The file is TOML at `world.toml` in the server's data folder. [`save`] writes it whole
 //! through a temporary file, so a crash leaves either the old file or the new one, and keeps
-//! the last three copies. The explored ground goes beside it in `explored3.bin` and the hunt in
-//! `hunt3.bin`, written the same safe way. [`import`] reads a single-player world of the game.
-//! [`place`] checks the place kept of each player.
+//! the last three copies. The explored ground goes beside it in `explored3.bin`, the hunt in
+//! `hunt3.bin` and the things on the ground in `ground3.bin`, written the same safe way.
+//! [`import`] reads a single-player world of the game. [`place`] checks the place kept of each
+//! player.
 
 mod explored;
 mod file;
@@ -18,13 +19,15 @@ mod explored_tests;
 #[cfg(test)]
 mod file_tests;
 #[cfg(test)]
+mod ground_tests;
+#[cfg(test)]
 mod import_tests;
 #[cfg(test)]
 mod place_tests;
 
 pub use explored::EXPLORED_FILE;
 pub use file::{FILE, load_or_create, save};
-pub use hunt::HUNT_FILE;
+pub use hunt::{GROUND_FILE, HUNT_FILE};
 pub use import::import;
 
 use std::collections::BTreeMap;
@@ -34,7 +37,7 @@ use serde::{Deserialize, Serialize};
 use crate::ids::BodyId;
 use crate::leaves::Run;
 use crate::log::Changes;
-use crate::wire::{HuntWorld, PlayerRecord};
+use crate::wire::{HuntWorld, Lying, PlayerRecord};
 
 /// What the server keeps of one player between sessions.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -97,6 +100,9 @@ pub struct World {
     /// holds no item of a player.
     #[serde(skip)]
     pub hunt: HuntWorld,
+    /// The things players put on the ground. It lives in [`GROUND_FILE`], not in the world file.
+    #[serde(skip)]
+    pub ground: Vec<Lying>,
 }
 
 impl Default for World {
@@ -112,6 +118,7 @@ impl Default for World {
             players: BTreeMap::new(),
             explored: Vec::new(),
             hunt: HuntWorld::default(),
+            ground: Vec::new(),
         }
     }
 }

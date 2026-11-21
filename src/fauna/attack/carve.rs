@@ -9,7 +9,7 @@ use super::aim::{Carcasses, Parts, Target, named, target};
 use super::slay::Carved;
 use super::tune::CARVE;
 use crate::audio::{Body, Impact};
-use crate::craft::harvest::{Cut, Harvest};
+use crate::craft::harvest::{Claims, Cut, Harvest};
 use crate::craft::matter::Grade;
 use crate::fauna::beast::Beast;
 use crate::fauna::bleed::impact;
@@ -64,6 +64,15 @@ fn cut_of(herds: &Herds, beast: &Beast, index: usize) -> Cut {
     }
 }
 
+/// Returns the cut to harvest now: at once alone, or nothing in a session, where it waits in
+/// `claims` for the server to give the part `index` of the carcass `lead` to this player.
+fn claim(claims: Option<&mut Claims>, lead: Lead, (index, cut): (usize, Cut)) -> Option<Cut> {
+    let (Some(claims), Lead::Carcass { key, .. }) = (claims, lead) else {
+        return Some(cut);
+    };
+    claims.claim((key, index as u8), cut)
+}
+
 /// Returns the sound of the flint knife cutting part `index` of the carcass of `species` at `at`.
 fn knife(species: &Species, index: usize, at: Vec3) -> Impact {
     let edge = Body {
@@ -74,10 +83,11 @@ fn knife(species: &Species, index: usize, at: Vec3) -> Impact {
 }
 
 /// Offers to cut the part of the carcass the robot looks at, and cuts it when the interact key goes
-/// down while the prompt names that cut.
+/// down while the prompt names that cut. The part leaves the body at once; in a session its tissue
+/// enters the pack once the server gives it to this player.
 pub fn carve(
     mut eyes: Eyes,
-    (mut herds, terrain): (ResMut<Herds>, Res<Terrain>),
+    (mut herds, terrain, mut claims): (ResMut<Herds>, Res<Terrain>, Option<ResMut<Claims>>),
     (mut commands, mut asks, mut sounds): (Commands, MessageWriter<Harvest>, MessageWriter<Impact>),
     (mut dead, parts): (Carcasses, Parts),
 ) {
@@ -103,7 +113,10 @@ pub fn carve(
         .get(part)
         .map_or(eye.translation(), |p| p.1.translation());
     sounds.write(knife(species, index, at));
-    asks.write(Harvest(cut_of(&herds, &beast, index)));
+    let cut = (index, cut_of(&herds, &beast, index));
+    if let Some(cut) = claim(claims.as_deref_mut(), beast.lead, cut) {
+        asks.write(Harvest(cut));
+    }
     note(&mut herds, beast.lead, index);
     commands.entity(part).despawn();
     beast.parts[index] = None;

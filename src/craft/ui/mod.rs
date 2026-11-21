@@ -38,6 +38,8 @@ mod tune;
 mod view;
 
 #[cfg(test)]
+mod tests_drop;
+#[cfg(test)]
 mod tests_fit;
 #[cfg(test)]
 mod tests_icons;

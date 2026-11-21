@@ -1,8 +1,8 @@
 #!/bin/sh
 # Phase game, the checks: what each of two real clients logged and shot of the other.
 # The phases of the script are 0 and 1 crouch, 2 and 3 walk, 4 and 5 board, 6 and 7 throttle; a acts in the
-# even ones and b in the odd ones. Takes 25 to 60 minutes with gamerun.sh: the loading on the CPU renderer,
-# then 8 phases of 60 seconds.
+# even ones and b in the odd ones. Then a puts a stone down and b takes it (mp-share). Takes 25 to 60 minutes
+# with gamerun.sh: the loading on the CPU renderer, then 8 phases of 60 seconds and up to 2 minutes of sharing.
 
 # Prints the lines the viewer VIEWER logged in the phases PHASES while ACTS said who acts.
 phase_lines() {

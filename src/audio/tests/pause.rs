@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use super::rig::{parked, rms};
-use super::{RATE, frames, mixer};
+use super::{frames, mixer};
 use crate::audio::cue::{AudioCue, StepSurface};
 use crate::audio::mix::Mixer;
 use crate::audio::scene::AudioScene;

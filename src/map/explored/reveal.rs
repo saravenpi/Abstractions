@@ -94,3 +94,7 @@ pub fn plugin(app: &mut App) {
         )
         .add_systems(OnEnter(Screen::Title), forget);
 }
+
+#[cfg(test)]
+#[path = "start_tests.rs"]
+mod start_tests;

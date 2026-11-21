@@ -7,16 +7,19 @@ use bevy::prelude::*;
 
 use super::geo::to_chart;
 use super::me::Me;
-use crate::computer::{Board, Lens, MAX_ZOOM, Tab};
+use crate::computer::{Board, Lens, Tab};
 use crate::universe::BodyId;
 
 /// Side in pixels of the square map in a 1280 by 720 window, which the closest zoom is set for.
 pub(super) const REFERENCE_MAP: f32 = 720.0;
 
-/// Closest zoom of the flat map, the closest of the board computer: the tiles of the planet
-/// keep it sharp, a pixel of the finest tile being then under two pixels of the map of a 1280
-/// by 720 window.
-pub(super) const CLOSEST: f32 = MAX_ZOOM;
+/// Closest zoom of the flat map: the map then spans one part in 8192 of the way around the
+/// planet, about 5 km on a planet the size of Earth, so the ground a player uncovers on foot,
+/// 300 m around them, and the 2 km around the home base fill it instead of hiding under their
+/// marker. The tiles of the planet keep it sharp, a pixel of the finest tile being then under
+/// two pixels of the map of a 1280 by 720 window. The charts of the board computer stop at
+/// their own `MAX_ZOOM`.
+pub(super) const CLOSEST: f32 = 8192.0;
 
 /// Zoom of the flat map the screen opens at on the ground: the land around the player, as close
 /// as the map goes.

@@ -13,8 +13,9 @@ use crate::map::level::REFERENCE_MAP;
 /// Pixels along one side of a tile.
 pub const SIDE: usize = 256;
 
-/// Deepest level of the pyramid: a pixel then spans about 2.4 km on an Earth.
-pub const LEVEL_MAX: u8 = 5;
+/// Deepest level of the pyramid: a pixel then spans about 10 m on an Earth, which the closest
+/// zoom of the flat map draws on under two pixels.
+pub const LEVEL_MAX: u8 = 13;
 
 /// Zoom of the flat map from which tiles are drawn over the picture.
 pub const ZOOM_FROM: f32 = 3.0;

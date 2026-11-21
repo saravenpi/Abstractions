@@ -11,6 +11,11 @@ use crate::map::me::Me;
 use crate::map::roam::{scaled, slid};
 use crate::map::surface::Surface;
 
+/// Notches of a chart that one notch of the wheel is worth on the flat map. Its zoom runs from
+/// the whole planet to the ground, three times as many notches of a chart, so each notch takes
+/// three and the way from the ground to the whole planet stays about twenty notches.
+const DEEP: f32 = 3.0;
+
 /// What the wheel reads: the scroll and the pinch.
 type Scroll<'w> = (Res<'w, AccumulatedMouseScroll>, Res<'w, Hand>);
 
@@ -19,7 +24,7 @@ type Scroll<'w> = (Res<'w, AccumulatedMouseScroll>, Res<'w, Hand>);
 pub(crate) fn wheel((scroll, hand): Scroll, mut surface: ResMut<Surface>) {
     let notches = hand.notches(turn(&scroll) * f32::from(u8::from(surface.over)));
     if surface.over && notches != 0.0 {
-        surface.goal = scaled(surface.goal, surface.at, ZOOM_STEP.powf(notches));
+        surface.goal = scaled(surface.goal, surface.at, ZOOM_STEP.powf(notches * DEEP));
     }
 }
 

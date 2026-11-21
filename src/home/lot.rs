@@ -12,6 +12,22 @@ use crate::world::{Globe, Terrain};
 /// Passes that walk a point of the flat frame onto the ground along the local vertical.
 const PASSES: u32 = 3;
 
+/// Metres around a point within which [`Lot::crest`] reads the ground, so a crease of the 2 m terrain mesh between
+/// two points of a flat piece does not rise through it.
+const REACH: f32 = 0.9;
+
+/// Directions around a point at which [`Lot::crest`] reads the ground, besides the point itself.
+const SPREAD: [[f32; 2]; 8] = [
+    [1.0, 0.0],
+    [-1.0, 0.0],
+    [0.0, 1.0],
+    [0.0, -1.0],
+    [1.0, 1.0],
+    [-1.0, 1.0],
+    [1.0, -1.0],
+    [-1.0, -1.0],
+];
+
 /// Returns the view of `globe` through the chart of the cube face that holds the planet position
 /// `pos`, rooted near it: the grid of that chart is the one the chunk meshes the game draws there
 /// are built on.
@@ -73,6 +89,15 @@ impl Lot {
             let at = drawn.locate(p);
             y + drawn.mesh_height(at.x, at.z) - at.y
         })
+    }
+
+    /// Returns the height in the frame of the highest drawn ground within [`REACH`] of the frame point `(x, z)`:
+    /// what a flat piece laid there must clear. The deck of the pad and the test of what is solid read it alike.
+    pub fn crest(&self, x: f32, z: f32) -> f32 {
+        SPREAD
+            .iter()
+            .map(|d| self.ground(x + d[0] * REACH, z + d[1] * REACH))
+            .fold(self.ground(x, z), f32::max)
     }
 
     /// Returns the pose in the frame of a piece standing at `spot`: level, with its origin

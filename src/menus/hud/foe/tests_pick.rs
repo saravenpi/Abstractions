@@ -41,7 +41,7 @@ fn never_more_than_two_strips() {
         [Some(animal(1)), None]
     );
     assert_eq!(shown.len(), SLOTS);
-    assert!(SLOTS <= 2);
+    const { assert!(SLOTS <= 2) };
 }
 
 /// A strip fades in over the fade time, keeps its animal while it fades out, and lets it go once

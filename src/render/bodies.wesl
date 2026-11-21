@@ -1,7 +1,7 @@
 import bevy_pbr::render::forward_io::VertexOutput;
 import bevy_pbr::render::mesh_view_bindings::view;
 import bevy_pbr::render::pbr_types::pbr_input_new;
-import package::render::cloud_field::{broad_cover, day_side, dither, puff, shade};
+import package::render::cloud_field::{broad_cover, day_side, dither, lone, puff, shade};
 import package::render::daylight::{Place, light_at, sky_response, sun_response};
 import package::render::season::{Season, look_at, tinted};
 
@@ -84,7 +84,7 @@ fn clouds(n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, texel: vec2<f32>) -> vec3<f3
     let cover = broad_cover(cover_map, cover_sampler, dir, body.cloud.w);
     let spot = dir * body.map.w + body.drift.xyz;
     let cloud = puff(spot, to_fixed * l, dot(n, v), cover);
-    if (cloud.thick * body.sun.w * body.map.z <= dither(texel)) {
+    if (cloud.thick * lone(cloud) * body.sun.w * body.map.z <= dither(texel)) {
         discard;
     }
     return shade(day_side(body.cloud.rgb, n, l), cloud, true);

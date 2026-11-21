@@ -3,6 +3,7 @@ const THRESHOLD: vec2<f32> = vec2<f32>(0.72, 0.4);
 const OCTAVE_SCALE: f32 = 2.03;
 const OCTAVE_SHIFT: vec3<f32> = vec3<f32>(17.1, 9.2, 4.7);
 const OCTAVES: i32 = 4;
+const LONE: vec2<f32> = vec2<f32>(0.05, 0.4);
 const NIGHT_SIDE: f32 = 0.04;
 const GRAZE: f32 = 0.08;
 const LIMB: f32 = 0.3;
@@ -80,6 +81,10 @@ fn puff(spot: vec3<f32>, sunward: vec3<f32>, facing: f32, cover: f32) -> Puff {
     let thick = 1.0 - pow(1.0 - dense, 1.0 / max(abs(facing), GRAZE));
     let relief = clamp(0.6 + (here - toward_light * 1.25) * 8.0, 0.0, 1.0);
     return Puff(dense, thick, relief);
+}
+
+fn lone(cloud: Puff) -> f32 {
+    return smoothstep(LONE.x, LONE.y, cloud.density);
 }
 
 fn day_side(color: vec3<f32>, n: vec3<f32>, light: vec3<f32>) -> vec3<f32> {

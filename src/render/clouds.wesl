@@ -1,6 +1,6 @@
 import bevy_pbr::render::forward_io::VertexOutput;
 import bevy_pbr::render::mesh_view_bindings::view;
-import package::render::cloud_field::{broad_cover, day_side, dither, puff, shade};
+import package::render::cloud_field::{broad_cover, day_side, dither, lone, puff, shade};
 
 struct Clouds {
     light: vec4<f32>,
@@ -34,7 +34,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let facing = dot(n, to_eye / max(dist, 0.001));
     let cloud = puff(spot, to_fixed * light, facing, cover);
     let far = smoothstep(0.35, 1.0, dist / max(clouds.params.y, 1.0));
-    let alpha = max(cloud.thick * (1.0 - 0.75 * far * air), whiteout);
+    let alpha = max(cloud.thick * lone(cloud) * (1.0 - 0.75 * far * air), whiteout);
     if (alpha <= dither(in.position.xy)) {
         discard;
     }

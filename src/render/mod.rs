@@ -54,6 +54,8 @@ mod tests_air;
 #[cfg(test)]
 mod tests_dither;
 #[cfg(test)]
+mod tests_flight;
+#[cfg(test)]
 mod tests_fog;
 #[cfg(test)]
 mod tests_fresnel;

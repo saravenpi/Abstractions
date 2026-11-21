@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 use super::embed::Embedding;
 use crate::world::Terrain;
+use crate::world::blades::tune::PAD_MARGIN;
 use crate::world::canopy::{Canopy, canopy_on};
 use crate::world::globe::ChunkId;
 use crate::world::mesh::{
@@ -97,6 +98,7 @@ fn clear(scatter: &mut Scatter, terrain: &Terrain, coord: IVec2, warp: &Embeddin
         let planet = frame.origin + frame.rot * at.as_dvec3();
         taken.iter().all(|o| o.distance(at) > CLEARING)
             && kept.is_none_or(|reserve| !reserve.covers(planet, RESERVE_CLEARING))
+            && !terrain.globe().on_pad(planet, PAD_MARGIN)
     };
     scatter.props.retain(free);
     scatter.grass.retain(free);
@@ -104,7 +106,7 @@ fn clear(scatter: &mut Scatter, terrain: &Terrain, coord: IVec2, warp: &Embeddin
 
 /// Returns the scatter of chunk `coord` over its `heights`, cleared around structures and the
 /// reserved ground and left without the rocks of `taken`, and the embedding that places it.
-fn planted(
+pub(in crate::world) fn planted(
     terrain: &Terrain,
     coord: IVec2,
     heights: &[Vec<f32>],

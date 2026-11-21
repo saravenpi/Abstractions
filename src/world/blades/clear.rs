@@ -5,10 +5,10 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::Cropped;
-use super::tune::{ROOM, TILE};
-use crate::world::CHUNK_SIZE;
+use super::tune::{PAD_MARGIN, ROOM, TILE};
 use crate::world::canopy::Canopy;
 use crate::world::chunks::Sited;
+use crate::world::{CHUNK_SIZE, Globe};
 
 /// Returns true when planet position `p` stands on ground a prop of `near` or a cropped patch of `cropped`
 /// takes: within the footprint of a trunk, a stem or a rock, or within a grazed patch.
@@ -20,6 +20,12 @@ pub fn taken(p: DVec3, near: &[(DVec3, f32)], cropped: &Cropped, radius: f64) ->
             .0
             .iter()
             .any(|(dir, r)| dir.distance(up) * radius < f64::from(*r))
+}
+
+/// Returns true when no blade may stand at planet position `p` of `globe`: on ground a prop or a cropped patch
+/// takes, or over the landing pad of the base grown by [`PAD_MARGIN`].
+pub fn blocked(p: DVec3, (near, cropped): (&[(DVec3, f32)], &Cropped), globe: &Globe) -> bool {
+    taken(p, near, cropped, globe.radius()) || globe.on_pad(p, PAD_MARGIN)
 }
 
 /// Returns the footprints of `near` that can take ground inside `sphere`, a centre and a radius in metres

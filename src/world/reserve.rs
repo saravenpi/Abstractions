@@ -4,9 +4,8 @@ use std::sync::Arc;
 
 use bevy::prelude::*;
 
-use super::globe::Reserve;
 use super::{Planet, Terrain};
-use crate::home::{Base, FOOTPRINT};
+use crate::home::Base;
 use crate::universe::Universe;
 
 /// Swaps in a globe that reserves the footprint of the base, once per visit of its planet. The
@@ -21,11 +20,7 @@ pub fn keep_base(
     let Some(base) = base.filter(on_planet) else {
         return;
     };
-    let reserve = Reserve {
-        centre: base.centre,
-        up: base.up,
-        radius: FOOTPRINT,
-    };
+    let reserve = base.reserve();
     let globe = Arc::new(planet.globe.as_ref().clone().reserving(reserve));
     commands.insert_resource(Terrain::on(globe.clone(), terrain.chart()));
     commands.insert_resource(Planet {

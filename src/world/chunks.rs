@@ -64,6 +64,7 @@ use bevy::tasks::Task;
 
 pub use self::budget::{Budget, follow_setting, set_budget};
 use self::build::ChunkData;
+pub(in crate::world) use self::build::planted;
 pub use self::calm::{Calm, watch_calm};
 pub use self::cut::show;
 pub use self::detail::refine;

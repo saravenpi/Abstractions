@@ -65,7 +65,7 @@ pub use drainage::Drainage;
 pub use grain::Grain;
 pub use id::ChunkId;
 pub use plates::{Boundary, Crust, Interior, Plates, Sample as PlateSample};
-pub use reserve::Reserve;
+pub use reserve::{Pad, Reserve};
 pub use season::MEAN_SEASON;
 pub(in crate::world) use site::Site;
 pub use tangent::Tangent;

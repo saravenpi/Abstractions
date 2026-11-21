@@ -24,6 +24,7 @@ mod wing;
 
 use bevy::prelude::*;
 
+pub use dome::glass;
 pub use levers::{lever_mesh, stick_mesh};
 pub use lod::{FAR, far_mesh};
 pub use looks::{Looks, dress};

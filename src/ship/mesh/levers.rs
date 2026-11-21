@@ -22,17 +22,13 @@ pub fn stick_mesh() -> Mesh {
         &[(0.05, 0.018), (0.0, 0.03)],
         (SIDES, 3),
     );
-    column(
-        &mut stick,
-        Vec3::ZERO,
-        &[(0.15, 0.011), (0.03, 0.011)],
-        (SIDES, 3),
-    );
+    let shaft = [(top - 0.09, 0.011), (0.03, 0.011)];
+    column(&mut stick, Vec3::ZERO, &shaft, (SIDES, 3));
     let grip = [
         (top, 0.017),
         (top - 0.02, 0.024),
-        (0.16, 0.026),
-        (0.14, 0.015),
+        (top - 0.08, 0.026),
+        (top - 0.1, 0.015),
     ];
     column(&mut stick, Vec3::ZERO, &grip, (SIDES, 0));
     stick.set_tone(3);

@@ -14,33 +14,35 @@ pub const PAN: f32 = 0.06;
 /// Where the front of the backrest and of the headrest is along z: the back of the pilot.
 pub const BACK: f32 = -0.975;
 
-/// Where the side stick hinges, on the armrest of the right console beside the thigh: the grip
-/// is 0.39 m from the shoulder of the pilot, inside the 0.485 m an arm reaches at any tilt.
-pub const STICK: Vec3 = Vec3::new(0.28, 0.31, -1.48);
+/// Where the side stick hinges, on a pedestal that stands in from the right console beside the
+/// knee. The grip is 0.22 m under the shoulder of the pilot and 2 cm outboard of it, so the bent
+/// elbow stays inside the tub: the widest point of the body is 0.343 m from the middle.
+pub const STICK: Vec3 = Vec3::new(0.23, 0.24, -1.5);
 
 /// Length of the stick from its hinge to the top of its grip, and how far under the top the
-/// hand holds it, in metres.
-pub const STICK_LENGTH: (f32, f32) = (0.24, 0.045);
+/// hand holds it, in metres: a short side stick, so a tilt moves the hand little.
+pub const STICK_LENGTH: (f32, f32) = (0.16, 0.04);
 
-/// Tilt of the stick at full pitch or roll, and its twist at full yaw, in radians.
-pub const STICK_REACH: (f32, f32) = (0.18, 0.3);
+/// Tilt of the stick at full pitch or roll, and its twist at full yaw, in radians. The hand
+/// moves 4 cm either way.
+pub const STICK_REACH: (f32, f32) = (0.36, 0.3);
 
-/// Where the throttle lever hinges, on the armrest of the left console, across from the stick:
-/// pushed full forward its handle is 0.45 m from the shoulder of the pilot.
-pub const LEVER: Vec3 = Vec3::new(-0.28, 0.31, -1.48);
+/// Where the throttle lever hinges, on the pedestal of the left console, across from the stick.
+pub const LEVER: Vec3 = Vec3::new(-0.23, 0.24, -1.5);
 
 /// Length of the throttle lever from its hinge to the top of its handle, and how far under the
 /// top the hand holds it, in metres.
-pub const LEVER_LENGTH: (f32, f32) = (0.2, 0.025);
+pub const LEVER_LENGTH: (f32, f32) = (0.145, 0.025);
 
-/// Tilt of the lever from upright, in radians: back by that much at idle, forward at full.
-pub const LEVER_SWING: f32 = 0.35;
+/// Tilt of the lever from upright, in radians: back by that much at idle, forward at full. The
+/// hand moves 10 cm from idle to full.
+pub const LEVER_SWING: f32 = 0.46;
 
-/// Where the gear lever hinges, on the low front of the right console, ahead of the stick.
-pub const GEAR_LEVER: Vec3 = Vec3::new(0.31, 0.25, -1.66);
+/// Where the gear lever hinges, on the high front of the right console, ahead of the stick.
+pub const GEAR_LEVER: Vec3 = Vec3::new(0.31, 0.28, -1.66);
 
-/// Where the warp switch hinges, on the low front of the right console, ahead of the gear lever.
-pub const WARP_SWITCH: Vec3 = Vec3::new(0.31, 0.25, -1.78);
+/// Where the warp switch hinges, on the high front of the right console, ahead of the gear lever.
+pub const WARP_SWITCH: Vec3 = Vec3::new(0.31, 0.28, -1.78);
 
 /// Tilt of the gear lever and of the warp switch from upright, in radians: back when the gear
 /// is up and the drive off, forward when the gear is down and the drive engaged.

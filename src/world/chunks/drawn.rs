@@ -47,6 +47,25 @@ impl Drawn {
             step: CHUNK_SIZE * chunks / node_cells(above) as f32,
         }
     }
+
+    /// Returns the height the triangles of this grid draw at chart position `at` of `terrain`: the
+    /// heights of the three corners of the triangle under it, interpolated.
+    pub fn height(&self, terrain: &Terrain, at: Vec2) -> f32 {
+        let cell = (at - self.origin) / self.step;
+        let (i, j) = (cell.x.floor(), cell.y.floor());
+        let (u, v) = (cell.x - i, cell.y - j);
+        let h = |a: f32, b: f32| {
+            let corner = self.origin + Vec2::new(i + a, j + b) * self.step;
+            terrain.height(corner.x, corner.y)
+        };
+        if u + v <= 1.0 {
+            h(0.0, 0.0) + u * (h(1.0, 0.0) - h(0.0, 0.0)) + v * (h(0.0, 1.0) - h(0.0, 0.0))
+        } else {
+            h(1.0, 1.0)
+                + (1.0 - u) * (h(0.0, 1.0) - h(1.0, 1.0))
+                + (1.0 - v) * (h(1.0, 0.0) - h(1.0, 1.0))
+        }
+    }
 }
 
 impl Chunks {

@@ -78,6 +78,10 @@ pub const CUES_GAIN: f32 = 1.25;
 /// in about 0.3 seconds, with no click.
 pub const VIEW_FADE: f32 = 0.1;
 
+/// Seconds the sounds of the world take to cover 63 percent of a pause or a resume: silent within
+/// 0.25 seconds of the pause, back within about 0.2 seconds of the resume, never a click.
+pub const PAUSE_FADE: f32 = 0.035;
+
 /// Level of the voice of the companion against its phrases as written: 4.4 decibels down, so it
 /// speaks under the world rather than over it.
 pub const CHIRP_LEVEL: f32 = 0.6;

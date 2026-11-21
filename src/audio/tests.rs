@@ -13,6 +13,7 @@ mod meter;
 mod meter_checks;
 mod mix;
 mod music;
+mod pause;
 mod planet;
 mod render;
 mod render_fauna;

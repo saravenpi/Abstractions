@@ -140,6 +140,14 @@ impl AudioCue {
         plain.into_iter().chain(chirps)
     }
 
+    /// Returns true for a sound of the interface, which plays on while the game is paused.
+    pub fn is_interface(self) -> bool {
+        matches!(
+            self,
+            AudioCue::UiMove | AudioCue::UiConfirm | AudioCue::UiCancel
+        )
+    }
+
     /// Packs the cue into one non-zero word, so that it can cross to the audio thread without a lock.
     pub(super) fn encode(self) -> u64 {
         let strength = |level: f32| (level.clamp(0.0, 1.0) * STRENGTH_STEPS) as u64;

@@ -82,6 +82,8 @@ pub struct Voice {
     live: bool,
     /// The two ears: where the sound comes from.
     pub ear: Ear,
+    /// Whether it is a sound of the interface, which plays on while the game is paused.
+    pub ui: bool,
 }
 
 impl Voice {
@@ -99,6 +101,7 @@ impl Voice {
             noise: Noise::new(seed),
             live: false,
             ear: Ear::new(1.0),
+            ui: false,
         }
     }
 

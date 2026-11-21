@@ -2,6 +2,7 @@
 //! ship becomes cues of the cabin, and what the companion says comes from where it floats. The
 //! voice of the ship itself follows what the ship module writes into the scene.
 
+use avian3d::prelude::{Physics, PhysicsTime};
 use bevy::prelude::*;
 
 use super::cue::AudioCue;
@@ -60,6 +61,15 @@ pub fn cabin(listener: &Listener, at: Option<Vec3>) -> Origin {
     }
 }
 
+/// Writes into the scene whether the world stands still: the pause menu freezes physics out of a
+/// session. In a session the world goes on behind the menu, and so do its sounds.
+fn follow_pause(time: Option<Res<Time<Physics>>>, mut scene: ResMut<AudioScene>) {
+    let paused = time.is_some_and(|time| time.is_paused());
+    if scene.paused != paused {
+        scene.paused = paused;
+    }
+}
+
 /// Turns what happened to the ship into sounds of its cabin, and what the companion said into
 /// sounds from where it floats: flat when it floats nowhere.
 fn relay(
@@ -91,7 +101,7 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(
             Update,
             (
-                follow_ship
+                (follow_ship, follow_pause)
                     .after(super::Sensing)
                     .run_if(in_state(Screen::Gameplay)),
                 relay,

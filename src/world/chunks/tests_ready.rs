@@ -69,3 +69,18 @@ fn a_focus_at_the_edge_of_the_detail_gets_ready() {
         assert!(around.near.iter().filter(held).all(solid), "{lift}");
     }
 }
+
+/// A body that starts in orbit, and one that starts just past where the planet stops being
+/// drawn, which is where a seated player in open space or in a warp loads, both get ready.
+#[test]
+fn a_focus_in_orbit_and_beyond_gets_ready() {
+    for share in [0.2, 0.505] {
+        let mut app = world();
+        let ground = spawn(&app);
+        let radius = app.world().resource::<Terrain>().globe().radius();
+        let lift = radius * share;
+        let high = ground.normalize() * (radius + lift);
+        go(&mut app, Some(high), "a place in space", ready);
+        assert!(app.world().resource::<Chunks>().loaded.is_empty(), "{lift}");
+    }
+}

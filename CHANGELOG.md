@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Leaving in orbit brings you back in orbit. A ship beside a planet or a moon is saved against that body, so it comes back on the same orbit with the same velocity wherever the body has gone while you were away, also on a server whose clock kept running. Seated in the ship, your place is the place of the ship, in the air, in orbit or in open space, and no longer the last spot you flew over. When a world starts, the ship is checked against the universe: seated inside a planet, under the deck of a gas giant or too close to a star, it is put on a circular orbit just above the air, or outside the warp lock of the star, in the same direction from the centre, and the banner says so. A ship left without you that cannot come back, or that is not on the body you stand on, is landed beside you. On foot you are never left in space or falling where there is no air to glide in: you start on the ground below.
+
 ## [0.11.0] - 2026-11-21
 
 Players and servers must both run 0.11.0: the multiplayer protocol and the world format changed. A 0.10 game cannot join a 0.11 server. Worlds from 0.10 open with 0.10 only.

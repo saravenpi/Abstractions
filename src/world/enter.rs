@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use bevy::prelude::*;
 
-use super::footing::grounded;
+use super::footing::{aboard, grounded};
 use super::globe::Face;
 use super::{Globe, Planet, Terrain};
 use crate::life::Life;
@@ -87,27 +87,34 @@ pub const AT_BASE: &str = "Your saved place could not be used. You are back at t
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Resettled(pub &'static str);
 
-/// Puts the saved place of `active` at a height a body can be at on `globe`, the ground of its body, and
-/// returns true when it had to move it. A save it keeps is not touched, nor marked changed.
-pub(super) fn settle<A>(active: &mut A, globe: &Globe) -> bool
+/// Puts the saved place of `active` at a height a body can be at on `globe`, the ground of its body, whose
+/// air ends `air` metres up, and returns true when it had to move a body on foot. A body seated in the
+/// ship is where the ship is: its place only says where the world loads, and is moved without a word. A
+/// save it keeps is not touched, nor marked changed.
+pub(super) fn settle<A>(active: &mut A, globe: &Globe, air: f64) -> bool
 where
     A: DerefMut<Target = ActiveWorld>,
 {
     let Some(place) = active.0.save.place else {
         return false;
     };
-    let sound = grounded(place, globe);
+    let seated = active.0.save.seated();
+    let sound = match seated {
+        true => aboard(place, globe),
+        false => grounded(place, globe, air),
+    };
     if sound == place {
         return false;
     }
     active.0.save.place = Some(sound);
-    true
+    !seated
 }
 
 /// Enters the body a world starts on and returns it with its terrain view on the north face: the body
-/// the save of `active` names, or the home planet. A save on a body without ground, on a body that does
-/// not exist or at a place that points nowhere begins as a new game, see [`ashore`], and a place at a
-/// height no body can be at is put on the ground, see [`settle`]. Either leaves a [`Resettled`] line.
+/// the save of `active` names, or the home planet. A save on foot on a body without ground, or on a body
+/// that does not exist or at a place that points nowhere, begins as a new game, see [`ashore`], and a
+/// place at a height no body on foot can be at is put on the ground, see [`settle`]. Either leaves a
+/// [`Resettled`] line. A save seated in the ship keeps its body, ground or not: the ship is over it.
 pub(super) fn arrive<A>(
     commands: &mut Commands,
     universe: &Universe,
@@ -118,11 +125,10 @@ where
 {
     let mut line = None;
     if let Some(active) = active.as_mut() {
-        let place = active.0.save.place;
+        let (place, seated) = (active.0.save.place, active.0.save.seated());
         let gone = place.is_some_and(|place| !place.pointed() || !universe.has(place.body));
-        ashore(&mut **active, |body| {
-            gone || !Globe::of(&universe.planet(body)).has_ground()
-        });
+        let deck = |body| !seated && !Globe::of(&universe.planet(body)).has_ground();
+        ashore(&mut **active, |body| gone || deck(body));
         line = gone.then_some(AT_BASE);
     }
     let home = || universe.home();
@@ -130,7 +136,8 @@ where
         .as_ref()
         .map_or_else(home, |active| active.0.save.body(universe));
     let north = enter_planet(commands, universe, body);
-    if active.is_some_and(|active| settle(active, north.globe())) {
+    let air = universe.planet(body).atmosphere_height;
+    if active.is_some_and(|active| settle(active, north.globe(), air)) {
         line = Some(GROUNDED);
     }
     if let Some(line) = line {

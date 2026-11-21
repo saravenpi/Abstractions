@@ -14,6 +14,8 @@ mod model;
 mod moon_tests;
 #[cfg(test)]
 mod old_tests;
+#[cfg(test)]
+mod orbit_tests;
 mod resume;
 mod snapshot;
 mod sound;

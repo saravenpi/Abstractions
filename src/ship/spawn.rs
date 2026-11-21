@@ -11,13 +11,23 @@ use super::gear::infer;
 use super::glow::Engine;
 use super::landing::GEAR_DROP;
 use super::mesh::{Looks, Skin, dress, hulls, material};
+use super::restore::{Restored, Sky, restore};
 use super::save::saved;
 use crate::home::Base;
 use crate::render::Warm;
 use crate::saves::ActiveWorld;
 use crate::screens::Screen;
-use crate::space::{Frame, Location, Placed, Travel};
-use crate::world::{SpawnPoint, Terrain};
+use crate::space::{Clock, Frame, Location, Placed, Travel};
+use crate::universe::Universe;
+use crate::world::{Resettled, SpawnPoint, Terrain};
+
+/// What the player is told when the ship came back inside a planet, a moon or a star and was
+/// put on an orbit around it.
+pub const IN_ORBIT: &str = "Your ship could not come back where it was. It is in orbit instead.";
+
+/// What the player is told when the ship was not where the player is, or could not come back
+/// where it was, and was landed beside the player.
+pub const BROUGHT: &str = "Your ship could not come back where it was. It is landed beside you.";
 
 /// Where a new world puts the player, and the save it may come from.
 #[derive(SystemParam)]
@@ -30,6 +40,10 @@ pub struct Start<'w> {
     location: ResMut<'w, Location>,
     /// The world being played, with its saved ship.
     active: Option<Res<'w, ActiveWorld>>,
+    /// The universe the saved ship is checked against.
+    universe: Option<Res<'w, Universe>>,
+    /// Universe time, which says where the bodies are now.
+    clock: Option<Res<'w, Clock>>,
 }
 
 impl Start<'_> {
@@ -55,23 +69,43 @@ impl Start<'_> {
         ship.pos.length() - globe.radius() - f64::from(floor) - GEAR_DROP
     }
 
-    /// Returns the ship a world starts with: the saved one exactly where it was, landed, flying
-    /// or in space, else the ship of a new game. A record that does not hold the gear gets the
-    /// gear its height implies. A player saved in the seat starts seated.
-    fn ship(&mut self) -> Ship {
-        let state = saved(self.active.as_deref());
-        let kept = state.and_then(|state| Some((Ship::from_state(&state)?, state.seated)));
-        let Some((mut ship, seated)) = kept else {
-            return self.fresh();
+    /// Returns the ship a world starts with, and a line for the player when it is not where the
+    /// save left it. The saved ship comes back exactly where it was, landed, flying or in orbit,
+    /// beside the body it was beside, and a player saved in the seat starts seated. A ship that
+    /// would come back inside a body with the player in it is on a safe orbit instead. A ship
+    /// without the player that is lost, inside a body or not on the body the player stands on
+    /// is landed beside the player, as the ship of a new game is: no start leaves the player
+    /// without a ship. A record that does not hold the gear gets the gear its height implies.
+    fn ship(&mut self) -> (Ship, Option<&'static str>) {
+        let here = Frame::Surface(self.location.body);
+        let time = self.clock.as_deref().map_or(0.0, |clock| clock.seconds);
+        let land = (self.location.body, self.terrain.globe().as_ref());
+        let known = self.universe.as_deref().zip(saved(self.active.as_deref()));
+        let back = known.map(|(universe, state)| {
+            restore(
+                state,
+                &Sky {
+                    universe,
+                    time,
+                    land,
+                },
+            )
+        });
+        let (mut ship, seated, line) = match back {
+            Some(Restored::Kept(ship, seat)) if seat || ship.frame == here => (ship, seat, None),
+            Some(Restored::Orbit(ship)) => (ship, true, Some(IN_ORBIT)),
+            Some(_) => return (self.fresh(), Some(BROUGHT)),
+            None => return (self.fresh(), None),
         };
-        if state.is_some_and(|state| state.gear.is_none()) {
+        let old = saved(self.active.as_deref()).is_some_and(|state| state.gear.is_none());
+        if old && line.is_none() {
             let radar = self.radar(&ship);
             infer(&mut ship, radar);
         }
         if seated {
             self.location.travel = Travel::InShip;
         }
-        ship
+        (ship, line)
     }
 }
 
@@ -147,7 +181,8 @@ pub fn airframe() -> Collider {
 }
 
 /// Spawns the ship with its parts once the spawn point exists, and resets the flight state. Its
-/// engine glow is the one material of its own: its colour follows its own engine.
+/// engine glow is the one material of its own: its colour follows its own engine. A ship that
+/// is not where the save left it leaves a line for the player.
 pub fn spawn(
     mut commands: Commands,
     mut start: Start,
@@ -157,7 +192,10 @@ pub fn spawn(
     if !existing.is_empty() {
         return;
     }
-    let ship = start.ship();
+    let (ship, line) = start.ship();
+    if let Some(line) = line {
+        commands.insert_resource(Resettled(line));
+    }
     let looks = yard.looks(&mut commands);
     let glow = yard.materials.add(material(Skin::Glow));
     let root = (

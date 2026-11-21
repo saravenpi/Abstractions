@@ -28,7 +28,7 @@ fn read(text: &str) -> (f64, Vec<f64>) {
 fn a_sound_place_stays() {
     assert_eq!(repaired(""), None);
     assert_eq!(repaired("  \n"), None);
-    for altitude in ["2.0", "6560.18", "-300.0", "2"] {
+    for altitude in ["2.0", "6560.18", "-300.0", "2", "2.0e6", "4.0e11"] {
         assert_eq!(repaired(&place(altitude)), None, "{altitude}");
     }
     assert_eq!(repaired(&place(&format!("{LOWEST:?}"))), None);
@@ -39,7 +39,7 @@ fn a_sound_place_stays() {
 /// as the ground, and the direction and the body are kept. The repaired place is sound.
 #[test]
 fn a_bad_height_is_grounded_in_the_same_direction() {
-    for altitude in ["nan", "inf", "-inf", "1.0e9", "-1.0e9"] {
+    for altitude in ["nan", "inf", "-inf", "1.0e18", "-1.0e9"] {
         let fixed = repaired(&place(altitude)).expect(altitude);
         assert_eq!(read(&fixed), (LOWEST, vec![0.6, 0.0, -0.8]), "{altitude}");
         assert!(fixed.contains("sector = [35, 0, -44]"), "{fixed}");

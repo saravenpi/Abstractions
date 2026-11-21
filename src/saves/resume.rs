@@ -14,6 +14,14 @@ impl WorldSave {
             .map_or_else(|| universe.home(), |place| place.body)
     }
 
+    /// Returns true when the player was seated in the ship when the save was taken. The ship
+    /// writes its own record; this reads the one key of it that says where the player is, so
+    /// that the world knows the place of a seated player is the place of the ship.
+    pub fn seated(&self) -> bool {
+        let seat = self.ship.as_ref().and_then(|ship| ship.get("seated"));
+        seat.and_then(toml::Value::as_bool).unwrap_or(false)
+    }
+
     /// Returns the chart position where the player starts on `terrain`: the saved spot, or the
     /// terrain spawn when there is none.
     ///

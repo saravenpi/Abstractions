@@ -65,6 +65,10 @@ const FLAT: f32 = 0.001;
 const GLOW_EDGE: vec2<f32> = vec2<f32>(-0.15, 0.05);
 const GLOW_NEAR: vec2<f32> = vec2<f32>(45.0, 0.55);
 const GLOW_WIDE: vec2<f32> = vec2<f32>(6.0, 0.18);
+const SUNSET_SPREAD: f32 = 3.0;
+const SUNSET_RISE: f32 = 10.0;
+const SUNSET_GAIN: f32 = 0.45;
+const SUNSET_HIGH: f32 = 0.35;
 
 struct Shadow {
     share: f32,
@@ -373,16 +377,33 @@ fn air_between(place: Place, world: vec3<f32>) -> vec3<f32> {
     return gas + low + vec3<f32>(fog.directional_light_exponent);
 }
 
+fn sunset_band(v: vec3<f32>, sun: vec3<f32>, up: vec3<f32>, over: f32) -> f32 {
+    let rise = dot(sun, up);
+    let flat_v = v - up * dot(v, up);
+    let flat_sun = sun - up * rise;
+    let lengths = vec2<f32>(length(flat_v), length(flat_sun));
+    if (min(lengths.x, lengths.y) < 0.0001) {
+        return 0.0;
+    }
+    let across = 1.0 - dot(flat_v / lengths.x, flat_sun / lengths.y);
+    let low = 1.0 - smoothstep(0.0, SUNSET_HIGH, rise);
+    return SUNSET_GAIN * low * exp(-across * SUNSET_SPREAD) * exp(-max(over, 0.0) * SUNSET_RISE);
+}
+
 fn star_glow(place: Place, toward: vec3<f32>) -> vec3<f32> {
     if (place.air.z <= 0.0) {
         return vec3<f32>(0.0);
     }
     let at = height_at(place, view.world_position);
-    let day = daylight(at.x + horizon_dip(at.y, place.centre.w), place.colour.rgb, place.star.w);
+    let dip = horizon_dip(at.y, place.centre.w);
+    let day = daylight(at.x + dip, place.colour.rgb, place.star.w);
     let lit = smoothstep(GLOW_EDGE.x, GLOW_EDGE.y, at.x) * air(at.y, place.air.x) * place.colour.w;
     let off = 1.0 - dot(toward, place.star.xyz);
     let lobes = exp(-off * GLOW_NEAR.x) * GLOW_NEAR.y + exp(-off * GLOW_WIDE.x) * GLOW_WIDE.y;
-    return to_linear(day.tint) * (lobes * lit);
+    let tint = to_linear(day.tint);
+    let up = place.upward.xyz;
+    let band = sunset_band(toward, place.star.xyz, up, dot(toward, up) + dip);
+    return (tint * lobes + tint * tint * band) * lit;
 }
 
 fn aerial(color: vec4<f32>, world: vec3<f32>, place: Place) -> vec4<f32> {

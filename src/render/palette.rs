@@ -64,6 +64,11 @@ const NIGHT_CLOUD: Vec3 = Vec3::new(0.12, 0.14, 0.24);
 /// scattered every colour.
 const HAZE: f32 = 0.6;
 
+/// Power of the reddening of the light of the star that tints the whole horizon, 1 for as red as
+/// the direct light. Low, the horizon away from a setting star stays pale, and the orange is the
+/// band the dome and the haze draw on the side of the star (`sunset_band` in `sky.wesl`). A power.
+const HORIZON_WARMTH: f32 = 0.45;
+
 impl Palette {
     /// Illuminance in lux of a full moon as large as the old painted one when it stands high.
     pub const MOON_LUX: f32 = 350.0;
@@ -110,8 +115,8 @@ impl Palette {
         let dusk = smoothstep(-0.2, 0.1, height);
         let white = HAZE + (1.0 - HAZE) * (1.0 - 1.0 / depth);
         let blue = scattered(star).lerp(peak(star), 0.1) * peak(transmit(height, 0.2 * depth));
-        let haze =
-            scattered(star).lerp(peak(star), white) * peak(transmit(height, depth)).powf(0.7);
+        let haze = scattered(star).lerp(peak(star), white)
+            * peak(transmit(height, depth)).powf(HORIZON_WARMTH);
         let zenith = air.stain(NIGHT_ZENITH.lerp(blue * 0.92, day), star);
         let horizon = air.stain(NIGHT_HORIZON.lerp(haze * 0.95, dusk), star);
         let sky = peak(zenith + horizon).lerp(Vec3::ONE, 0.4);

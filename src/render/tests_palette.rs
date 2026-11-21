@@ -37,14 +37,15 @@ fn noon_and_midnight_differ() {
     assert!(red.sun_color.z < 0.4 && red.zenith.z < noon.zenith.z);
 }
 
-/// The palette as it was computed before planets had a record, kept here word for word.
+/// The palette as it was computed before planets had a record, kept here word for word but for
+/// the warmth of the horizon, lowered from a power of 0.7 to 0.45 when the dome got its sunset band.
 fn frozen(height: f32, star: Vec3) -> Palette {
     let through = star * transmit(height, 1.0);
     let tint = peak(through);
     let day = smoothstep(-0.12, 0.25, height);
     let dusk = smoothstep(-0.2, 0.1, height);
     let blue = scattered(star).lerp(peak(star), 0.1) * peak(star * transmit(height, 0.2));
-    let haze = scattered(star).lerp(peak(star), 0.6) * tint.powf(0.7);
+    let haze = scattered(star).lerp(peak(star), 0.6) * tint.powf(0.45);
     let zenith = Vec3::new(0.015, 0.025, 0.08).lerp(blue * 0.92, day);
     let horizon = Vec3::new(0.05, 0.08, 0.18).lerp(haze * 0.95, dusk);
     let sky = peak(zenith + horizon).lerp(Vec3::ONE, 0.4);

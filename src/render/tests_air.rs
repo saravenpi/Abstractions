@@ -5,8 +5,9 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::aerial::Haze;
+use super::aerial::cull_distance;
 use super::air::Air;
-use super::fog::{cull_distance, extinction};
+use super::fog::extinction;
 use super::observer::Observer;
 use super::vantage::{LocalSystem, Nearby, Vantage};
 use super::weather::WeatherLook;
@@ -156,6 +157,6 @@ fn fog_follows_the_pressure() {
         sights.windows(2).all(|pair| pair[1] > pair[0]),
         "{sights:?}"
     );
-    assert!((30_000.0..120_000.0).contains(&sights[2]), "{sights:?}");
-    assert!(sights[0] > 10_000.0 && sights[7] > 1.0e8);
+    assert!((10_000.0..60_000.0).contains(&sights[2]), "{sights:?}");
+    assert!(sights[0] > 4_000.0 && sights[7] > 1.0e8);
 }

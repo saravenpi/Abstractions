@@ -84,12 +84,17 @@ impl Air {
     /// Clean air leaves it alone. Coloured air is dust: it swaps the blue for its own tint at
     /// the same brightness, the more so the stronger the tint.
     pub fn stain(&self, base: Vec3, star: Vec3) -> Vec3 {
-        let pale = self.tint.min_element() / self.tint.max_element().max(1.0e-6);
-        let dust = ((1.0 - pale) * DUST).clamp(0.0, 1.0);
         base.lerp(
             self.tint * peak(star) * (luminance(base) * DUST_LEVEL),
-            dust,
+            self.dust(),
         )
+    }
+
+    /// Returns how dusty this air is, from 0 for clean air to 1: the stronger the tint of the air,
+    /// the more dust it carries. The dust stains the sky and hazes the distance.
+    pub fn dust(&self) -> f32 {
+        let pale = self.tint.min_element() / self.tint.max_element().max(1.0e-6);
+        ((1.0 - pale) * DUST).clamp(0.0, 1.0)
     }
 
     /// Returns the linear colour of the sunlit clouds seen from space: white in clean air, and

@@ -15,12 +15,13 @@ mod tests;
 
 use bevy::prelude::*;
 
-pub use self::tune::CONTRAST;
-use self::tune::{AEROSOL, AEROSOL_SCALE, FLAT, HOME_SCALE, LEFT};
+pub use self::tune::{AEROSOL, CONTRAST};
+use self::tune::{AEROSOL_SCALE, DUST_AIR, FLAT, HOME_SCALE, LEFT};
 use super::air::Air;
 use super::scatter::DEPTH;
 use super::vantage::Vantage;
 use super::weather::{LocalWeather, WeatherLook};
+use crate::world::globe::far::SIGHT;
 
 /// Scale heights between the sea level and the top of the air, as the universe has it.
 const TOP_SCALES: f32 = crate::universe::TOP_SCALES as f32;
@@ -50,7 +51,9 @@ impl Haze {
     };
 
     /// Returns the haze of `air` that ends `atmosphere` metres up, under the weather `look`:
-    /// rain and dust thicken the aerosols by what they take from the sight.
+    /// rain, dust and damp air thicken the aerosols by what they take from the sight. The gas thins
+    /// with the pressure. The aerosols thin with its square root only, since thin air still carries
+    /// dust and ice, and dusty air carries more: a thin dry air keeps some depth, a vacuum has none.
     pub fn of(air: &Air, atmosphere: f32, look: &WeatherLook) -> Self {
         let scale = atmosphere.max(0.0) / TOP_SCALES;
         let dense = air.share() * air.depth();
@@ -61,9 +64,10 @@ impl Haze {
                 scale: 0.0,
             };
         }
+        let load = air.share().sqrt() * air.depth() * (1.0 + DUST_AIR * air.dust());
         Self {
             gas: DEPTH * (dense / scale),
-            aerosol: AEROSOL * (dense / look.sight().max(1.0e-3)),
+            aerosol: AEROSOL * (load / look.sight().max(1.0e-3)),
             scale,
         }
     }
@@ -74,6 +78,15 @@ impl Haze {
     pub fn seen(vantage: &Vantage, air: &Air, sky: Option<&LocalWeather>, radius: f32) -> Vec3 {
         let haze = Self::of(air, vantage.atmosphere, &WeatherLook::of(sky));
         haze.toward(vantage.altitude, radius - vantage.radius)
+    }
+
+    /// Returns what the ground shader works the air out from at every point it draws, so a valley
+    /// fills with haze and a peak stands clear of it: the gas per metre at sea level as a multiple
+    /// of the optical depth [`DEPTH`], the aerosols as a multiple of [`AEROSOL`], and the scale
+    /// height in metres. `aerial` in `daylight.wesl` reads them and holds the two constants under
+    /// the same names.
+    pub fn layers(&self) -> Vec3 {
+        Vec3::new(self.gas.y / DEPTH.y, self.aerosol.y / AEROSOL.y, self.scale)
     }
 
     /// Returns the share of red, green and blue light the air takes per metre, on average, along a
@@ -109,6 +122,17 @@ pub fn sight(extinction: Vec3) -> f32 {
         return f32::INFINITY;
     }
     -LEFT.ln() / least
+}
+
+/// Distance in metres the camera culls at least, as Bevy does by default.
+const NEAR_FAR: f32 = 1000.0;
+
+/// Returns the distance in metres a camera culls at over a planet of `radius` metres when the
+/// air takes `extinction` per metre: where the air has hidden everything, at most
+/// [`SIGHT`] planet radii, where nothing of the world is drawn any more, and no closer than
+/// Bevy's default. The depth of the camera has no far plane, so this only culls.
+pub fn cull_distance(extinction: Vec3, radius: f32) -> f32 {
+    sight(extinction).min(SIGHT as f32 * radius).max(NEAR_FAR)
 }
 
 /// Returns the share of red, green and blue light left after `distance` metres of air that

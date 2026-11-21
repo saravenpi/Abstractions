@@ -134,6 +134,7 @@ fn spawn(mut commands: Commands) {
             minimap::frame(),
             onscreen::layer(),
             reticle::layer(),
+            foe::layer(),
             snow::screen()
         ],
     ));
@@ -233,6 +234,7 @@ pub(super) fn plugin(app: &mut App) {
     eye::plugin(app);
     compass::plugin(app);
     reticle::plugin(app);
+    foe::plugin(app);
     hurt(app);
     app.init_resource::<banner::Banner>()
         .add_message::<crate::craft::ground::Note>()

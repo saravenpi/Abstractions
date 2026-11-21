@@ -22,12 +22,13 @@ fn a_step_packs_into_a_word() {
         lift: 0.3,
         depth: 0.21,
         left: true,
+        cold: true,
         ..Step::on(StepSurface::Hull)
     };
     let back = Step::unpack(step.pack()).expect("a step");
     assert_eq!(
-        (back.surface, back.contact, back.left),
-        (step.surface, step.contact, step.left)
+        (back.surface, back.contact, back.left, back.cold),
+        (step.surface, step.contact, step.left, step.cold)
     );
     let near = |a: f32, b: f32, unit: f32| (a - b).abs() <= 0.5 * unit + 1e-5;
     assert!(near(back.force, step.force, 1.0 / 63.0) && near(back.load, step.load, 0.25));

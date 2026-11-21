@@ -42,15 +42,18 @@ pub enum Element {
     Markers,
     /// Herd markers, on a living planet near the ground.
     Herds,
-    /// The reticle around the crosshair, the hit mark and the animal fought: on foot only, where the
-    /// robot swings a tool.
+    /// The reticle around the crosshair and the hit mark: on foot only, where the robot swings a
+    /// tool.
     Reticle,
+    /// The names and health of the animal fought and the one looked at, over their heads: on foot,
+    /// with or without a tool.
+    Labels,
 }
 
 impl Element {
     /// Every element.
     #[cfg(test)]
-    pub const ALL: [Element; 19] = [
+    pub const ALL: [Element; 20] = [
         Element::Compass,
         Element::Cardinals,
         Element::Minimap,
@@ -70,6 +73,7 @@ impl Element {
         Element::Markers,
         Element::Herds,
         Element::Reticle,
+        Element::Labels,
     ];
 }
 
@@ -132,7 +136,7 @@ const HELM: Set = Set::of(&[
 pub const fn shown(context: Context) -> Set {
     let (base, extra): (Set, &[Element]) = match context {
         Context::Menu => return Set(0),
-        Context::OnFoot => (GROUND, &[Element::Herds, Element::Reticle]),
+        Context::OnFoot => (GROUND, &[Element::Herds, Element::Reticle, Element::Labels]),
         Context::Swimming => (GROUND, &[]),
         Context::Gliding => (GROUND, &[Element::Altitude, Element::Speed, Element::Herds]),
         Context::ShipLanded => (Set(GROUND.0 | HELM.0), &[Element::Gear, Element::Headlight]),

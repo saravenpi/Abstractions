@@ -27,21 +27,22 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let whiteout = clouds.haze.w;
 
     let dir = to_fixed * n;
-    let cover = broad_cover(cover_map, cover_sampler, dir, clouds.color.w);
+    let mapped = broad_cover(cover_map, cover_sampler, dir, clouds.color.w);
+    let cover = select(mapped, clouds.params.w, clouds.params.z > 0.5);
     let spot = dir * clouds.params.x + clouds.drift.xyz;
     let to_eye = view.world_position - in.world_position.xyz;
     let dist = length(to_eye);
     let facing = dot(n, to_eye / max(dist, 0.001));
     let cloud = puff(spot, to_fixed * light, facing, cover);
     let far = smoothstep(0.35, 1.0, dist / max(clouds.params.y, 1.0));
-    let alpha = max(cloud.thick * lone(cloud) * (1.0 - 0.75 * far * air), whiteout);
+    let alpha = max(cloud.thick * lone(cloud), whiteout);
     if (alpha <= dither(in.position.xy)) {
         discard;
     }
 
     let base = mix(day_side(clouds.space.rgb, n, light), clouds.color.rgb, air);
     var col = shade(base, cloud, facing > 0.0);
-    col = mix(col, clouds.haze.rgb, far * air * 0.8);
+    col = mix(col, clouds.haze.rgb, far * air);
     col = mix(col, clouds.color.rgb, whiteout);
     return vec4<f32>(col, 1.0);
 }

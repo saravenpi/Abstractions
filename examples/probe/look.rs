@@ -1,6 +1,6 @@
 //! Stages that judge the sky and the light: the same view at several hours of the day.
 
-use abstractions::render::{CloudShell, Palette, SkyDome, Starfield, Vantage};
+use abstractions::render::{CloudCover, CloudShell, Palette, SkyDome, Starfield, Vantage};
 use abstractions::universe::sun;
 
 use super::*;
@@ -193,6 +193,40 @@ pub fn look_grain(world: &mut World, _: &mut Notes, frame: u32) -> Act {
         }
         n if n == 2 * TURN - 1 && last => {
             return Act::Shoot(format!("{}-end", SWITCHES[step as usize]));
+        }
+        _ => {}
+    }
+    Act::Wait
+}
+
+/// Forces the cover the cloud shell is drawn with, or gives it back to the weather.
+fn cover(world: &mut World, value: Option<f32>) {
+    world.resource_mut::<CloudCover>().0 = value;
+}
+
+/// A clear, a broken and an overcast sky by day from the ground, then a clear night: the cover
+/// is forced, since the weather of the seed cannot be asked for. Shots `L7-clear-day`,
+/// `L7-broken`, `L7-overcast` and `L7-clear-night`.
+pub fn look_cover(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    match frame {
+        1 => {
+            gaze(world, 0.25, true);
+            cover(world, Some(0.0));
+        }
+        30 => shot(world, "L7-clear-day"),
+        31 => cover(world, Some(0.45)),
+        60 => shot(world, "L7-broken"),
+        61 => cover(world, Some(0.9)),
+        90 => shot(world, "L7-overcast"),
+        91 => {
+            cover(world, Some(0.0));
+            clock_at(world, -0.8, false);
+            pace(world, ADAPT);
+        }
+        n if n == 91 + SETTLE => pace(world, WALK),
+        n if n == 95 + SETTLE => {
+            cover(world, None);
+            return Act::Shoot("L7-clear-night".into());
         }
         _ => {}
     }

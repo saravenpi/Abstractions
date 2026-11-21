@@ -46,6 +46,11 @@ use crate::weather::{Field, Weather, density_at, drift as drifted};
 #[derive(Component, Debug, Clone, Copy)]
 pub struct CloudShell;
 
+/// A cover the cloud shell is drawn with in place of the broad cover of the weather, from 0 to 1,
+/// for the probe to look at a clear, a broken and an overcast sky. Nothing sets it in the game.
+#[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
+pub struct CloudCover(pub Option<f32>);
+
 /// Spawns the hidden shell when the world starts loading.
 fn spawn_shell(
     mut commands: Commands,
@@ -81,6 +86,8 @@ pub(super) struct CloudInputs<'w> {
     time: Res<'w, Time>,
     /// The weather at the camera, whose cloud is the broad cover of the field there.
     weather: Option<Res<'w, Weather>>,
+    /// The cover the probe forces, when it does.
+    forced: Res<'w, CloudCover>,
     /// The cover maps, which the shell asks for the map of the planet below.
     maps: ResMut<'w, CloudMaps>,
 }
@@ -113,7 +120,10 @@ impl CloudInputs<'_> {
     /// Returns how much cloud the field holds where the camera is, on a shell of `radius`
     /// metres: the puff the shader draws there, under the broad cover the weather reads.
     fn density(&self, radius: f32) -> f32 {
-        let cover = self.weather.as_deref().map_or(0.0, |weather| weather.cloud);
+        let cover = self
+            .forced
+            .0
+            .unwrap_or_else(|| self.weather.as_deref().map_or(0.0, |weather| weather.cloud));
         let dir = (self.fixed() * self.vantage.up).as_dvec3();
         density_at(dir, radius / CELL, self.clock.seconds, cover)
     }
@@ -133,7 +143,12 @@ impl CloudInputs<'_> {
                 .truncate()
                 .extend(toward_second(seconds)),
             haze: linear(self.palette.horizon).truncate().extend(depth),
-            params: Vec4::new(radius / CELL, rim, 0.0, 0.0),
+            params: Vec4::new(
+                radius / CELL,
+                rim,
+                f32::from(u8::from(self.forced.0.is_some())),
+                self.forced.0.unwrap_or(0.0),
+            ),
             space: air.clouds_from_space().extend(0.0),
             drift: drifted(seconds).extend(0.0),
             fixed_x: fixed.x_axis.extend(0.0),
@@ -206,6 +221,7 @@ pub(super) fn plugin(app: &mut App) {
     app.add_plugins(MaterialPlugin::<CloudMaterial>::default())
         .init_resource::<CloudCrossing>()
         .init_resource::<CloudMaps>()
+        .init_resource::<CloudCover>()
         .add_systems(OnEnter(Screen::Loading), spawn_shell)
         .add_systems(OnEnter(Screen::Title), maps::clear)
         .add_systems(

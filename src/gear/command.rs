@@ -2,10 +2,12 @@
 //!
 //! The keys fly the wings as a pilot flies them, in the frame of the body. The roll keys roll
 //! it on round its nose (see `roll`), the pitch keys pull toward its back or push toward its
-//! belly as hard as the wing may (see `aim`), and the yaw keys turn the path flat. Nothing
+//! belly as hard as the wing may (see `aim`), and the yaw keys turn the path round its back,
+//! which is a flat turn with the wings level. Nothing
 //! limits the attitude: held, they roll the body over and loop it. Let go, the wings come
 //! level and the flight path eases back to the best glide, and near the stall the nose goes
-//! down. While the steer button is held the view asks for an attitude inside fixed limits.
+//! down. While the steer button is held the view asks for an attitude inside fixed limits,
+//! however the body and the view are read (see `path::sighted`).
 
 use bevy::prelude::*;
 
@@ -13,7 +15,7 @@ use super::aero::bite;
 use super::aim::wrap;
 use super::assist::flare;
 use super::input::GearInput;
-use super::path::{bounded, climb, mirrored, path_offset};
+use super::path::{bounded, climb, mirrored, path_offset, sighted};
 use super::servo::ease;
 use super::state::FlightState;
 use super::tune::{
@@ -50,7 +52,7 @@ pub(super) fn safe(state: &FlightState) -> f32 {
 /// it there too.
 fn wanted(state: &FlightState, input: &GearInput) -> f32 {
     let trim = best_glide().lerp(0.0, state.power());
-    let base = input.aim.map_or(trim, |aim| aim.y);
+    let base = sighted(state, input).map_or(trim, |aim| aim.y);
     let base = base.clamp(DIVE_LIMIT, CLIMB_LIMIT);
     let ceiling = STALL_PITCH.lerp(CLIMB_LIMIT, safe(state));
     mirrored(
@@ -96,13 +98,12 @@ pub(super) fn command(state: &FlightState, input: &GearInput, h: f32) -> f32 {
     path.lerp(asked + wrap(goal - asked) * ease(rate, h), state.spread())
 }
 
-/// Returns the bank a view that steers asks for, positive with the right wing down: toward the
-/// side it looks to, at most [`BANK_LIMIT`], and near the stall [`STALL_BANK`] of that.
+/// Returns the bank a view that steers asks for, counted from the level bank and positive with
+/// the right wing down: toward the side it looks to, at most [`BANK_LIMIT`], and near the stall
+/// [`STALL_BANK`] of that. None while the view steers nothing.
 pub(super) fn bank(state: &FlightState, input: &GearInput) -> f32 {
     let limit = BANK_LIMIT * STALL_BANK.lerp(1.0, safe(state));
-    let view = input
-        .aim
-        .map_or(0.0, |aim| BANK_GAIN * path_offset(state, aim.x));
+    let view = sighted(state, input).map_or(0.0, |aim| BANK_GAIN * path_offset(state, aim.x));
     view.clamp(-limit, limit)
 }
 
@@ -110,17 +111,19 @@ pub(super) fn bank(state: &FlightState, input: &GearInput) -> f32 {
 /// the nose heading for a path that has none.
 pub(super) fn course(state: &FlightState, input: &GearInput) -> f32 {
     let yaw = state.servo.yaw;
-    input
-        .aim
-        .map_or_else(|| yaw + path_offset(state, yaw), |aim| aim.x)
+    sighted(state, input).map_or_else(|| yaw + path_offset(state, yaw), |aim| aim.x)
 }
 
-/// Returns the velocity of `state` turned flat around the local up by the yaw stick for `h`
-/// seconds, at up to [`YAW_TURN`]. The flight path turns, and the nose follows it. Only spread
-/// wings at flying speed in air turn it, and the speed is kept.
+/// Returns the velocity of `state` turned by the yaw stick for `h` seconds, at up to
+/// [`YAW_TURN`], toward the right wing for a stick to the right.
+///
+/// The turn is round the dorsal axis of the body, as every key works in the frame of the body:
+/// flat with the wings level, and toward the same wing on its back, on edge and with the nose
+/// straight up or down. The flight path turns, and the nose follows it. Only spread wings at
+/// flying speed in air turn it, and the speed is kept.
 pub(super) fn yawed(state: &FlightState, input: &GearInput, h: f32) -> Vec3 {
     let speed = state.velocity.length();
     let grip = state.spread() * smooth(BANK_SPEED.0, BANK_SPEED.1, speed) * bite(input).min(1.0);
     let rate = -input.yaw.clamp(-1.0, 1.0) * YAW_TURN * grip;
-    Quat::from_rotation_y(rate * h) * state.velocity
+    Quat::from_axis_angle(state.frame() * Vec3::Y, rate * h) * state.velocity
 }

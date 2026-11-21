@@ -23,7 +23,8 @@ pub struct GearInput {
     /// Roll stick from -1 (left) to 1 (right): on the wings a roll rate. With the boots alone it
     /// strafes.
     pub roll: f32,
-    /// Yaw stick from -1 (left) to 1 (right): a flat turn on the wings.
+    /// Yaw stick from -1 (toward the left wing) to 1 (toward the right wing): on the wings a turn
+    /// of the flight path round the back of the body, flat with the wings level.
     pub yaw: f32,
     /// Unit direction the camera looks along. With the wings folded the body faces its heading
     /// and the boots drift along it. Zero keeps the current heading and a level nose.

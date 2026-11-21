@@ -34,7 +34,8 @@ pub(super) fn kind(state: &FlightState) -> Kind {
 
 /// Turns the view of the local body on its wings: a chase view.
 ///
-/// The mouse looks around freely, read on the rolled screen, see [`on_screen`]. With the steer
+/// The mouse looks around freely, read on the rolled screen and the right way round on a view
+/// that went over the top of a loop, see [`on_screen`]. With the steer
 /// button up the view also turns with the body, by as much as its nose heading and pitch turned
 /// since the last frame, over the top of a loop too, and once left alone it drifts back behind
 /// the body. A view on its back behind a body
@@ -63,6 +64,7 @@ pub(super) fn steer(
         on_screen(
             Vec2::new(look.yaw_delta, look.pitch_delta),
             rig.map_or(0.0, |rig| rig.roll()),
+            heading.pitch,
         ),
     );
     let carry = carried(&mut wing, body, before) * f32::from(u8::from(!held));

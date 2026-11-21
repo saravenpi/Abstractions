@@ -9,6 +9,7 @@ use std::f32::consts::PI;
 use bevy::prelude::*;
 
 use super::aim::wrap;
+use super::input::GearInput;
 use super::state::FlightState;
 use super::tune::MAX_PITCH;
 use crate::render::smoothstep as smooth;
@@ -56,6 +57,26 @@ pub(super) fn climb(state: &FlightState) -> f32 {
         false => v.with_y(0.0).length() * state.pitch.cos().signum(),
     };
     state.pitch + wrap(v.y.atan2(flat) - state.pitch)
+}
+
+/// Returns the heading and the angle above the horizon of the view that steers `state`, or
+/// nothing while the view of `input` steers nothing.
+///
+/// This is the one place where a view becomes a command. A view is a heading and a pitch, and
+/// so is the body, and each may read past the vertical, where its heading runs a half turn
+/// round. The heading is returned the way the body is read, so it compares with the nose
+/// heading and with [`path_offset`] whatever the two readings are. The angle is the plain one
+/// above the horizon, for [`mirrored`].
+pub(super) fn sighted(state: &FlightState, input: &GearInput) -> Option<Vec2> {
+    let aim = input.aim?;
+    let over = aim.y.cos() < 0.0;
+    let across = over != (state.pitch.cos() < 0.0);
+    let rise = match over {
+        true => PI.copysign(aim.y) - aim.y,
+        false => aim.y,
+    };
+    let turned = PI * f32::from(u8::from(across));
+    Some(Vec2::new(aim.x + turned, rise))
 }
 
 /// Returns `angle` mirrored across the vertical when the pitch of `state` reads past it, else

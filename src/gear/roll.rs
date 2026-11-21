@@ -52,15 +52,13 @@ pub(super) fn facing(state: &FlightState) -> f32 {
 /// Let go of every key, the wings roll back toward the nearest level bank by [`LEVEL`] of the
 /// way, never faster than a held key rolls them, so the body never stays on its back. A held
 /// pitch key keeps the bank, so a roll into a bank and a pull flies a turn. While the view
-/// steers they bank toward it instead, see [`bank`]. Rolls need air: slow, the keys lose their
+/// steers they bank from level toward it instead, see [`bank`]. Rolls need air: slow, the keys lose their
 /// grip and the wings level.
 pub(super) fn roll(state: &FlightState, input: &GearInput) -> f32 {
     let speed = state.velocity.length();
     let grip = state.spread() * smooth(BANK_SPEED.0, BANK_SPEED.1, speed);
     let stick = input.roll.clamp(-1.0, 1.0) * grip;
-    let rest = input
-        .aim
-        .map_or_else(|| level(state), |_| bank(state, input) * grip);
+    let rest = level(state) + bank(state, input) * grip;
     let strength = 1.0 - state.spread() * (1.0 - LEVEL);
     let upright = smooth(LEVELS.0, LEVELS.1, state.pitch.cos().abs());
     let pulled = input.pitch.clamp(-1.0, 1.0) * state.spread();

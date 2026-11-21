@@ -16,6 +16,8 @@
 //! - `PROBE_SOFT`: when set, a system whose parameters fail validation is logged and skipped instead of
 //!   stopping the game, so one run lists every such system.
 //!
+//! `PROBE_STAGES=models` opens the model studio (see the `models` module): the robot and the companion alone.
+//!
 //! `PROBE_STAGES=zoo` does not tour the game. It shows every animal of the seed's home planet walking in a
 //! line on flat ground (see the `zoo` module); with `SMOKE_DIR` set it saves a shot of each gait and exits,
 //! and `ZOO_FIND=<count>` prints the life of the home planet of seeds 0 to `count` instead.
@@ -59,6 +61,7 @@ mod hull;
 mod launch;
 mod look;
 mod meter;
+mod models;
 mod mp;
 mod orbital;
 mod room;
@@ -107,6 +110,9 @@ use water::*;
 /// Runs the zoo when `PROBE_STAGES` names it, else the tour of the game.
 fn main() -> AppExit {
     let list = std::env::var("PROBE_STAGES").unwrap_or_default();
+    if list.split(',').any(|g| g == "models") {
+        return models::run();
+    }
     if list.split(',').any(|g| g == "zoo") {
         return zoo::run();
     }

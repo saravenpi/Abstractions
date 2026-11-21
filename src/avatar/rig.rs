@@ -66,11 +66,6 @@ impl Seg {
         Seg::BootR,
     ];
 
-    /// Returns the side of a limb segment, 0 for left and 1 for right, or nothing for the trunk.
-    pub fn side(self) -> Option<usize> {
-        (self as usize).checked_sub(3).map(|limb| limb % 2)
-    }
-
     /// Returns the segment this one hangs from, or nothing for the pelvis.
     pub fn parent(self) -> Option<Seg> {
         let index = self as usize;

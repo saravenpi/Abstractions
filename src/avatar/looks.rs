@@ -1,21 +1,24 @@
 //! The shared look of the robot: one handle per mesh and per material that every body wears.
 //!
 //! They are created once and cloned into each body, so sixteen robots cost sixteen sets of
-//! entities and one set of assets. Only what a body changes by itself is its own: the picture
+//! entities and one set of assets. Every segment has two meshes: the rich one a body wears
+//! near the camera and the light one it wears from afar. Only what a body changes by itself is its own: the picture
 //! and the tint of its screen, the glow of its nozzles, and the three fabric meshes it drapes.
 
 use bevy::material::OpaqueRendererMethod;
 use bevy::prelude::*;
 
-use super::mesh::{glow, screen, segment};
+use super::mesh::{Detail, build, glow, screen};
 use super::rig::{SEGS, Seg};
 use super::tune::ACCENT;
 
 /// The meshes and materials every body shares.
 #[derive(Resource, Debug, Clone)]
 pub struct Looks {
-    /// The mesh of every segment, in the order of [`Seg::ALL`]. Left and right share one.
+    /// The mesh of every segment as seen up close, in the order of [`Seg::ALL`].
     pub segments: [Handle<Mesh>; SEGS],
+    /// The mesh of every segment as seen from afar: the same shapes, a quarter of the triangles.
+    pub far: [Handle<Mesh>; SEGS],
     /// The matte shell, coloured by the vertex colours.
     pub shell: Handle<StandardMaterial>,
     /// The screen on the head.
@@ -54,16 +57,12 @@ pub fn sheet(accent: Color) -> StandardMaterial {
 impl Looks {
     /// Builds the shared meshes and materials.
     pub fn new(meshes: &mut Assets<Mesh>, materials: &mut Assets<StandardMaterial>) -> Self {
-        let mut segments: [Handle<Mesh>; SEGS] = default();
-        for seg in Seg::ALL {
-            segments[seg as usize] = match seg.side() {
-                Some(1) => segments[seg as usize - 1].clone(),
-                _ => meshes.add(segment(seg).into_mesh()),
-            };
-        }
+        let mut level = |detail| Seg::ALL.map(|seg| meshes.add(build(seg, detail).into_mesh()));
+        let (segments, far) = (level(Detail::Near), level(Detail::Far));
         let accent = Color::srgb(ACCENT[0], ACCENT[1], ACCENT[2]);
         Self {
             segments,
+            far,
             shell: materials.add(paint(Color::WHITE, true, None)),
             screen: meshes.add(screen()),
             disc: meshes.add(glow(0.0)),

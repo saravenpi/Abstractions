@@ -49,7 +49,7 @@ pub use looks::Looks;
 pub use marks::{Marked, Marks};
 pub use own::Own;
 pub use show::Shown;
-pub use spawn::{Stock, puppet};
+pub use spawn::{Stock, puppet, studio};
 
 use bevy::prelude::*;
 

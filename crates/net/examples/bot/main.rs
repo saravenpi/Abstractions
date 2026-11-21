@@ -7,8 +7,12 @@
 //!
 //! A server takes at most 8 connections per IP address. Give several addresses of the same
 //! server, separated by commas, to spread more bots: `127.0.0.1,192.168.1.20`.
+//!
+//! Environment: `BOT_PROTOCOL` (the protocol to speak), `BOT_KEY`, `BOT_KEY_FILE`,
+//! `BOT_PLACE_FILE` and `BOT_SHIP_FILE`, see the `keep` module.
 
 mod args;
+mod keep;
 mod player;
 
 use std::thread;

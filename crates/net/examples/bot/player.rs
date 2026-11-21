@@ -5,15 +5,17 @@ use std::path::Path;
 use std::time::Duration;
 
 use abstractions_net::ids::BodyId;
-use abstractions_net::io::{Client, ClientEvent, ConnectOpts};
+use abstractions_net::io::{Client, ClientEvent, CloseReason, ConnectOpts};
 use abstractions_net::log::PlayerId;
 use abstractions_net::wire::{
-    Body, ClientMsg, Frame, Head, Hello, Kind, PROTOCOL, Record, RobotBody, ServerMsg,
+    Body, ClientMsg, Frame, Head, Hello, Kind, PROTOCOL, PlayerRecord, Reason, Record, RobotBody,
+    ServerMsg,
 };
 use abstractions_net::wire::{push, records};
 use glam::{DVec3, Vec3};
 
 use super::args::Args;
+use super::keep;
 
 /// Radius of the walk in metres.
 const RADIUS: f64 = 20.0;
@@ -61,6 +63,10 @@ pub struct Player {
     welcome: Option<(f64, f64, PlayerId)>,
     /// Time the connection ended, to connect again after [`RETRY`].
     ended: Option<Duration>,
+    /// True once the server sent the bot away for a reason that asking again does not change.
+    gave_up: bool,
+    /// The record to send once welcomed, taken from the environment.
+    keep: Option<PlayerRecord>,
     /// The datagram being written, reused.
     batch: Vec<u8>,
     /// The body being written, reused.
@@ -70,9 +76,7 @@ pub struct Player {
 impl Player {
     /// Returns bot number `index`, already connecting.
     pub fn new(index: usize, args: &Args, known: &Path) -> Self {
-        let mut key = [0xb0; 32];
-        key[..4].copy_from_slice(&(index as u32).to_le_bytes());
-        key[4..8].copy_from_slice(&std::process::id().to_le_bytes());
+        let key = keep::key(index);
         let hello = Hello {
             protocol: std::env::var("BOT_PROTOCOL")
                 .ok()
@@ -95,6 +99,8 @@ impl Player {
             phase: TAU * index as f64 / args.count as f64,
             welcome: None,
             ended: None,
+            gave_up: false,
+            keep: None,
             batch: Vec::with_capacity(128),
             body: Vec::with_capacity(64),
         }
@@ -108,7 +114,7 @@ impl Player {
     /// Reads what arrived, then sends a record, and a ping on each new `second`. At `now`.
     pub fn step(&mut self, now: Duration, second: bool, tally: &mut Tally) {
         let Some(mut client) = self.client.take() else {
-            if self.ended.is_some_and(|ended| now >= ended + RETRY) {
+            if !self.gave_up && self.ended.is_some_and(|ended| now >= ended + RETRY) {
                 self.client = Some(Client::connect(&self.address, self.opts.clone()));
                 self.ended = None;
             }
@@ -120,6 +126,9 @@ impl Player {
                 self.welcome = None;
                 return;
             }
+        }
+        if let Some(record) = self.keep.take() {
+            client.send(ClientMsg::Record(record));
         }
         if let Some((clock, at, you)) = self.welcome {
             self.walk(&client, you, clock + now.as_secs_f64() - at);
@@ -139,13 +148,26 @@ impl Player {
     fn read(&mut self, event: ClientEvent, now: Duration, tally: &mut Tally) -> bool {
         match event {
             ClientEvent::Message(ServerMsg::Welcome(welcome)) => {
+                println!(
+                    "{} {}",
+                    self.opts.hello.name,
+                    keep::said(welcome.record.as_ref())
+                );
                 self.welcome = Some((welcome.clock, now.as_secs_f64(), welcome.you));
+                self.keep = keep::record();
             }
             ClientEvent::Datagram(bytes) => tally.records += records(&bytes).count(),
             ClientEvent::Closed(reason) => {
+                let words = reason.words(&self.address, None);
                 eprintln!(
-                    "{} ({}) closed: {reason:?}",
+                    "{} ({}) closed: {words} [{reason:?}]",
                     self.opts.hello.name, self.address
+                );
+                self.gave_up = matches!(
+                    reason,
+                    CloseReason::Refused(
+                        Reason::Replaced | Reason::WrongPassword | Reason::Outdated | Reason::Newer
+                    )
                 );
                 return false;
             }

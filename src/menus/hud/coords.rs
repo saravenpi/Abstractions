@@ -25,8 +25,7 @@ pub(super) fn corner() -> impl Bundle {
             top: px(theme::EDGE),
             left: px(theme::EDGE),
             flex_direction: FlexDirection::Column,
-            align_items: AlignItems::FlexStart,
-            row_gap: px(theme::S1),
+            align_items: AlignItems::Stretch,
             ..default()
         },
         Pickable::IGNORE,

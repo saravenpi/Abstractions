@@ -1,5 +1,5 @@
-//! The hotbar: six small slots at the bottom centre of the game, black and white, the held one
-//! lit, each with its number, the silhouette of its tool and a thin wear bar.
+//! The hotbar: six slots at the bottom centre of the game, black and white, the held one
+//! lit and marked by the accent bar along its foot, each with its number, the silhouette of its tool and a thin wear bar.
 
 use bevy::prelude::*;
 
@@ -10,8 +10,11 @@ use crate::screens::{Screen, in_control};
 use crate::space::on_foot;
 use crate::ui::{text, theme};
 
-/// Side in pixels of one slot.
-const SIDE: f32 = 44.0;
+/// Side in pixels of one slot, which is also the height of the hotbar the prompt line stands above.
+pub const SIDE: f32 = 56.0;
+
+/// Height in pixels of the accent bar that marks the held slot.
+const MARK: f32 = theme::S1;
 
 /// Width in pixels of the wear bar of a slot.
 const BAR: f32 = 32.0;
@@ -24,10 +27,10 @@ struct Hotbar;
 fn spawn(mut commands: Commands) {
     let node = Node {
         position_type: PositionType::Absolute,
-        bottom: px(theme::GAP_M),
+        bottom: px(theme::EDGE),
         width: percent(100),
         justify_content: JustifyContent::Center,
-        column_gap: px(theme::GAP_XS),
+        column_gap: px(theme::S2),
         ..default()
     };
     commands.spawn((
@@ -42,6 +45,21 @@ fn spawn(mut commands: Commands) {
 /// The silhouette of a tool: shaft length, head size and form, if its build is whole.
 type Shape = Option<(f32, f32, crate::craft::build::Form)>;
 
+/// Returns the bar along the foot of a slot: the accent while `held`, else clear.
+fn accent(held: bool) -> impl Bundle {
+    (
+        Node {
+            position_type: PositionType::Absolute,
+            left: px(0),
+            bottom: px(0),
+            width: percent(100),
+            height: px(MARK),
+            ..default()
+        },
+        BackgroundColor([Color::NONE, theme::ACCENT][usize::from(held)]),
+    )
+}
+
 /// Returns one slot: its number, the silhouette of its tool and the wear left, lit when `held`.
 fn slot(at: usize, tool: Option<(Shape, f32)>, held: bool) -> impl Bundle {
     let node = Node {
@@ -50,7 +68,7 @@ fn slot(at: usize, tool: Option<(Shape, f32)>, held: bool) -> impl Bundle {
         flex_direction: FlexDirection::Column,
         align_items: AlignItems::Center,
         justify_content: JustifyContent::SpaceBetween,
-        padding: UiRect::all(px(theme::GAP_XS)),
+        padding: UiRect::axes(px(theme::S1), px(theme::S2)),
         ..default()
     };
     let back = [theme::PANEL, theme::SELECT][usize::from(held)];
@@ -67,6 +85,7 @@ fn slot(at: usize, tool: Option<(Shape, f32)>, held: bool) -> impl Bundle {
             text(format!("{}", at + 1), theme::FONT_SMALL, ink),
             (silhouette(shape), drawn),
             (wear_bar(BAR, worn), drawn),
+            accent(held),
         ],
     )
 }

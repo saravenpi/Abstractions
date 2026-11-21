@@ -24,7 +24,7 @@ fn shown(kind: Kind, value: &str, focused: bool) -> (String, Color) {
         (true, _, _) => (name::with_caret(value), theme::INK),
         (false, false, _) => (value.to_string(), theme::TEXT),
         (false, true, Kind::Name) => ("name your world".to_string(), theme::TEXT_2),
-        (false, true, Kind::Seed) => ("leave empty for a random world".to_string(), theme::TEXT_2),
+        (false, true, Kind::Seed) => ("Empty means random".to_string(), theme::TEXT_2),
     }
 }
 

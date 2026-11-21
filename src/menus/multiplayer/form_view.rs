@@ -5,7 +5,7 @@ use bevy::prelude::*;
 
 use super::{Field, Form, FormKind, Mode, Pane};
 use crate::menus::name::with_caret;
-use crate::ui::{caps, column, hairline, text, theme};
+use crate::ui::{caps, column, text, theme};
 
 /// Marks the line that says what the form asks for.
 #[derive(Component)]
@@ -69,12 +69,11 @@ fn field(pane: Pane, label: &str, kind: Field) -> impl Bundle {
                     height: px(theme::GAP_XL),
                     align_items: AlignItems::Center,
                     padding: UiRect::horizontal(px(theme::GAP_S)),
-                    border: UiRect::bottom(px(theme::LINE)),
                     margin: UiRect::bottom(px(theme::GAP_M)),
                     overflow: Overflow::clip(),
                     ..default()
                 },
-                hairline(),
+                BackgroundColor(theme::HOVER),
                 children![(
                     text("", theme::FONT_BODY, theme::TEXT),
                     TextLayout::no_wrap(),

@@ -9,8 +9,8 @@ use super::{Action, Kind, NewWorld};
 use crate::menus::slots::Slot;
 use crate::menus::{Menu, Nav};
 use crate::ui::{
-    Cancels, Icon, Look, Tone, caps, column, entry, footer, hairline, heading, item, item_with,
-    link, panel, root, text, theme,
+    Cancels, Filled, Icon, Look, Tone, caps, column, entry, footer, heading, item, item_with, link,
+    panel, root, text, theme,
 };
 
 /// Width of a text field in pixels: wide enough for the longest name and seed.
@@ -27,7 +27,7 @@ fn field_name(content: &str) -> impl Bundle {
     )
 }
 
-/// Underlined row that holds one text field. It takes focus but does not press like a button.
+/// Filled row that holds one text field. It takes focus but does not press like a button.
 fn field(kind: Kind, slot: usize) -> impl Bundle {
     (
         Node {
@@ -37,13 +37,12 @@ fn field(kind: Kind, slot: usize) -> impl Bundle {
             align_items: AlignItems::Center,
             justify_content: JustifyContent::SpaceBetween,
             padding: UiRect::horizontal(px(theme::GAP_S)),
-            border: UiRect::bottom(px(theme::LINE)),
             margin: UiRect::bottom(px(theme::GAP_L)),
             overflow: Overflow::clip(),
             ..default()
         },
-        hairline(),
         Look::default(),
+        Filled,
         Hovered::default(),
         BackgroundColor(Color::NONE),
         TabIndex(0),

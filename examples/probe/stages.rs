@@ -3,7 +3,7 @@
 use super::*;
 
 /// The stages in order: name, group and function. The `core` stages always run.
-pub const STAGES: [(&str, &str, Stage); 92] = [
+pub const STAGES: [(&str, &str, Stage); 101] = [
     ("menus", "ui", menus),
     ("title", "core", title),
     ("loading", "core", loading),
@@ -37,6 +37,14 @@ pub const STAGES: [(&str, &str, Stage); 92] = [
     ("sky", "fauna", sky_flyer),
     ("swarm", "fauna", swarm_near),
     ("night", "fauna", night_glow),
+    ("play-map", "play", play_map),
+    ("play-loot", "play", play_loot),
+    ("play-herd", "play", play_herd),
+    ("play-fight", "play", play_fight),
+    ("play-carve", "play", play_carve),
+    ("play-frame", "play", play_frame),
+    ("play-pack", "play", play_pack),
+    ("play-guide", "play", play_guide),
     ("base", "tour", base_view),
     ("pad", "tour", pad_view),
     ("ship-round", "tour", round),
@@ -96,4 +104,5 @@ pub const STAGES: [(&str, &str, Stage); 92] = [
     ("land", "tour", land),
     ("step-out", "tour", step_out),
     ("pause", "ui", pause),
+    ("play-pause", "play", play_pause),
 ];

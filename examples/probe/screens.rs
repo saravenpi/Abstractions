@@ -1,14 +1,14 @@
 //! Stages that open the screens of the interface: the menus on the title screen, the pause menu, the
 //! map at each level, the field guide and the pack, one shot each.
 
-use abstractions::computer::{Board, Computer, Tab};
+use abstractions::computer::{Board, Computer, MapView};
 use abstractions::map::Places;
 use abstractions::menus::{Menu, SettingsPage, SettingsTab};
 
 use super::*;
 
 /// Presses and releases `code` over two frames, the first being `frame`.
-fn tap(world: &mut World, code: KeyCode, frame: u32, at: u32) {
+pub fn tap(world: &mut World, code: KeyCode, frame: u32, at: u32) {
     if frame == at {
         key(world, code, true);
     }
@@ -80,56 +80,92 @@ fn keys(world: &World) -> (KeyCode, KeyCode) {
     )
 }
 
-/// The map at the level of the ship, then of the system, the galaxy and the universe.
+/// The map as it opens on the ground, at the closest zoom on the player, then one level out for
+/// each Backspace, the key that leaves a level: the system, the galaxy and the universe.
 pub fn map_levels(world: &mut World, _: &mut Notes, frame: u32) -> Act {
-    let levels = [
-        (Tab::System, "c1-map-system"),
-        (Tab::Galaxy, "c2-map-galaxy"),
-        (Tab::Universe, "c3-map-universe"),
-    ];
-    let at = frame.saturating_sub(21) / 40;
-    match (frame, frame.saturating_sub(21) % 40) {
-        (1, _) => map(world, true),
-        (20, _) => shot(world, "c0-map-open"),
-        (f, 0) if f > 20 && at < 3 => world.resource_mut::<Board>().show(levels[at as usize].0),
-        (f, 30) if f > 20 && at < 3 => shot(world, levels[at as usize].1),
-        (150, _) => map(world, false),
-        (170, _) => return Act::Next,
-        _ => {}
-    }
-    Act::Wait
-}
-
-/// The map with a planet selected: the card with its Go button and the facts.
-pub fn map_card(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let levels = ["c1-map-system", "c2-map-galaxy", "c3-map-universe"];
     match frame {
         1 => map(world, true),
-        20 | 24 => key(world, KeyCode::ArrowDown, true),
-        21 | 25 => key(world, KeyCode::ArrowDown, false),
-        60 => shot(world, "c4-map-card"),
-        61 => world.resource_mut::<Board>().step(3),
-        100 => shot(world, "c5-map-card-last"),
-        101 => map(world, false),
-        120 => return Act::Next,
+        90 => shot(world, "c0-map-open"),
+        100..250 => {
+            let at = (frame - 100) / 50;
+            tap(world, KeyCode::Backspace, frame, 100 + at * 50);
+            if (frame - 100) % 50 == 40 {
+                shot(world, levels[at as usize]);
+            }
+        }
+        250 => map(world, false),
+        270 => return Act::Next,
         _ => {}
     }
     Act::Wait
 }
 
-/// The map with a pin dropped and selected.
+/// Selects the first row of the list of the map that `want` takes, given the planet underfoot,
+/// the way a key or a click on the row does: the cursor goes to it and it is picked. The
+/// arrows cannot do it here, since the pointer of the probe rests on the map, where they pan.
+pub fn choose_row(world: &mut World, shot: &str, want: impl Fn(Target, BodyId) -> bool) {
+    let here = world.resource::<Location>().body;
+    let mut board = world.resource_mut::<Board>();
+    let Some(row) = board.lines.iter().position(|l| want(l.target, here)) else {
+        eprintln!(
+            "PROBE {shot}: no row of the list fits, {} rows",
+            board.lines.len()
+        );
+        return;
+    };
+    let by = row as isize - board.cursor as isize;
+    board.step(by);
+    let title = board.lines[row].title.clone();
+    world.resource_mut::<MapView>().picked = true;
+    eprintln!("PROBE {shot}: selected the row of {title}");
+}
+
+/// The map with a planet selected: the card of another planet of the system with its Go button
+/// and its facts, then the card of the planet underfoot.
+pub fn map_card(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let other = |target: Target, here: BodyId| matches!(target, Target::Body(body) if body != here && body.moon == 0);
+    match frame {
+        1 => map(world, true),
+        30 => choose_row(world, "c4-map-card", other),
+        80 => shot(world, "c4-map-card"),
+        81 => choose_row(world, "c5-map-card-last", |target, here| {
+            target == Target::Body(here)
+        }),
+        130 => shot(world, "c5-map-card-last"),
+        131 => map(world, false),
+        150 => return Act::Next,
+        _ => {}
+    }
+    Act::Wait
+}
+
+/// Drops a pin `metres` from the wake point of the base along its first axis, on the ground,
+/// the way a right click on the map does, and returns its index.
+pub fn pin_near_base(world: &mut World, metres: f64) -> Option<usize> {
+    let base = world.get_resource::<Base>().copied()?;
+    let at = ground(world, base.wake + base.east * metres, 0.0);
+    world
+        .resource_mut::<Places>()
+        .drop(base.body, at.normalize())
+}
+
+/// The map with a pin dropped 400 m from the base and selected. The pin is selected once the
+/// map is open: opening the map lets go of the selection.
 pub fn map_pin(world: &mut World, _: &mut Notes, frame: u32) -> Act {
     match frame {
         1 => {
-            let body = world.resource::<Location>().body;
-            let at = world.resource::<Base>().wake;
-            let mut places = world.resource_mut::<Places>();
-            places.drop(body, at.normalize());
-            places.selected = Some(0);
+            let dropped = pin_near_base(world, 400.0);
+            eprintln!("PROBE c6-map-pin: dropped pin {dropped:?}");
             map(world, true);
         }
-        50 => shot(world, "c6-map-pin"),
-        51 => map(world, false),
-        70 => return Act::Next,
+        15 => {
+            let mut places = world.resource_mut::<Places>();
+            places.selected = places.pins.len().checked_sub(1);
+        }
+        90 => shot(world, "c6-map-pin"),
+        91 => map(world, false),
+        110 => return Act::Next,
         _ => {}
     }
     Act::Wait

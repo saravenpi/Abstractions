@@ -37,6 +37,8 @@ pub struct Notes {
     pub animal: Option<(Entity, DVec3)>,
     /// The frame at which a stage took its last shot from a held camera: it ends on the next.
     pub shot_at: Option<u32>,
+    /// What the play stage under way keeps between frames.
+    pub play: Play,
 }
 
 /// One stage of the tour.

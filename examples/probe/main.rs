@@ -8,6 +8,9 @@
 //! - `SMOKE_SEED`: the world seed, default 7.
 //! - `PROBE_STAGES`: comma list of stage groups, default all. Groups: `water` (lens tour and room walls),
 //!   `grass` (turf and trees), `ground` (one patch of grass from the horizon and from 2 m to 30 km), `fauna` (animals), `tour` (base, village, flight, orbit, warp) and `zoo`.
+//!   `ui` (the menus, the map at each level, the guide, the pack and the pause menu) and `play` (the game
+//!   being played: the map of explored ground, stones picked and a tool made, a herd stalked, a fight, a
+//!   kill carved, the robot hurt and mended, the pack and the guide after the hunt; see the `play` module).
 //!   The title, loading, boot and wake stages always run.
 //! - `SMOKE_ONLY` and `SMOKE_SKIP`: comma lists of stage names to keep or to leave out.
 //! - `SMOKE_TARGET` and `SMOKE_FLASH`: see the `warp` and `boot` stages.
@@ -68,6 +71,14 @@ mod mp;
 mod mpact;
 mod mpspot;
 mod orbital;
+mod play;
+mod playbook;
+mod playcarve;
+mod playfight;
+mod playframe;
+mod playherd;
+mod playloot;
+mod playmap;
 mod room;
 mod screens;
 mod seen;
@@ -101,6 +112,14 @@ use mp::*;
 use mpact::*;
 use mpspot::*;
 use orbital::*;
+use play::*;
+use playbook::*;
+use playcarve::*;
+use playfight::*;
+use playframe::*;
+use playherd::*;
+use playloot::*;
+use playmap::*;
 use room::*;
 use screens::*;
 use seen::*;

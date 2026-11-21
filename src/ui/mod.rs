@@ -17,6 +17,8 @@ mod icon;
 mod icon_tests;
 mod item;
 mod keys;
+#[cfg(test)]
+mod keys_tests;
 mod list;
 pub mod motion;
 #[cfg(test)]

@@ -1,5 +1,6 @@
 //! Tests of fight or flight: grazers flee a robot, big animals and those guarding young stand,
-//! hungry hunters go for a smaller robot but not in the grace after a landing.
+//! hungry hunters go for a smaller robot but not in the grace after a landing, and a provoked defender
+//! goes for the robot that hurt it.
 
 use super::stance::{Foe, Me, Stance, choose};
 use super::tune::ROBOT_KG;
@@ -15,6 +16,7 @@ fn me(guild: Guild, mass: f32) -> Me {
         cornered: false,
         guarding: false,
         grace: false,
+        provoked: false,
     }
 }
 
@@ -87,4 +89,30 @@ fn hungry_hunters_attack_robots() {
     assert_eq!(choose(1.0, &small, &ROBOT), Stance::Flee);
     let fed = me(Guild::Hunter, 200.0);
     assert_eq!(choose(1.0, &fed, &ROBOT), Stance::Threaten);
+}
+
+/// A defender that would stand its ground goes for a robot that hurt it while its grudge lasts, but not
+/// for another animal; a provoked plant eater the robot outweighs still flees.
+#[test]
+fn a_provoked_defender_goes_for_the_robot() {
+    let guard = Me {
+        guarding: true,
+        ..me(Guild::Grazer, 300.0)
+    };
+    assert_eq!(choose(1.0, &guard, &ROBOT), Stance::Threaten);
+    let hurt = Me {
+        provoked: true,
+        ..guard
+    };
+    assert_eq!(choose(1.0, &hurt, &ROBOT), Stance::Attack);
+    let beast = Foe {
+        robot: false,
+        ..ROBOT
+    };
+    assert_eq!(choose(1.0, &hurt, &beast), Stance::Threaten);
+    let small = Me {
+        provoked: true,
+        ..me(Guild::Grazer, 20.0)
+    };
+    assert_eq!(choose(1.0, &small, &ROBOT), Stance::Flee);
 }

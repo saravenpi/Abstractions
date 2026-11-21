@@ -59,6 +59,8 @@ mod tests_ik;
 #[cfg(test)]
 mod tests_plans;
 #[cfg(test)]
+mod tests_pursuit;
+#[cfg(test)]
 mod tests_size;
 #[cfg(test)]
 mod tests_song;
@@ -66,3 +68,5 @@ mod tests_song;
 mod tests_spring;
 #[cfg(test)]
 mod tests_walk;
+#[cfg(test)]
+mod tests_wall;

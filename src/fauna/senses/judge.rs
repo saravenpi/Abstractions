@@ -39,8 +39,14 @@ pub struct Ctx<'a> {
     pub heights: &'a Heights,
 }
 
-/// Returns what an animal of `species` in `herd` at `slot` weighs about itself, `health` left.
-fn me(species: &Species, (herd, slot): (Option<&Herd>, u8), health: f32, grace: bool) -> Me {
+/// Returns what an animal of `species` in `herd` at `slot` weighs about itself, `health` left, in the
+/// grace after a landing or not, provoked by a robot that hurt it or not.
+fn me(
+    species: &Species,
+    (herd, slot): (Option<&Herd>, u8),
+    health: f32,
+    (grace, provoked): (bool, bool),
+) -> Me {
     let rested = |h: &Herd| {
         matches!(
             h.state,
@@ -56,6 +62,7 @@ fn me(species: &Species, (herd, slot): (Option<&Herd>, u8), health: f32, grace: 
         cornered: false,
         guarding: tends && herd.is_some_and(|h| h.young > 0 && slot >= h.young),
         grace,
+        provoked,
     }
 }
 
@@ -152,7 +159,8 @@ pub fn judge(
         dt: ctx.dt,
     };
     let best = perceive(&mut beast.wits.meter, &senser, ctx.threats, &air);
-    let me = me(species, (herd, slot), beast.wits.health.share(), ctx.grace);
+    let moods = (ctx.grace, beast.wits.provoked > 0.0);
+    let me = me(species, (herd, slot), beast.wits.health.share(), moods);
     let weighed = weigh(ctx, (&senser, me, species.body.height), best, &ground);
     let (stance, focus) = alarmed(ctx, own, beast, weighed);
     if let Some(f) = weighed.1.filter(|_| watch && weighed.0 == Stance::Flee) {
@@ -162,14 +170,15 @@ pub fn judge(
     wound(ctx, (beast, species), herd, blood);
 }
 
-/// Points a wounded `beast` of `species` at the den of `herd` nearest it, or the herd's home, and
-/// lets it bleed; an unhurt one keeps no den.
+/// Wears down the grudge of `beast`, points it, wounded, at the den of `herd` nearest it, or the herd's
+/// home, and lets it bleed; an unhurt one keeps no den.
 fn wound(
     ctx: &Ctx,
     (beast, species): (&mut Beast, &Species),
     herd: Option<&Herd>,
     blood: &mut Blood,
 ) {
+    beast.wits.provoked = (beast.wits.provoked - ctx.dt).max(0.0);
     if !beast.wits.health.wounded() {
         beast.wits.den = None;
         return;

@@ -10,6 +10,7 @@
 mod attack;
 mod beast;
 pub mod bleed;
+mod bulk;
 mod fade;
 mod gate;
 mod glow;
@@ -29,6 +30,7 @@ mod roll;
 mod scan;
 pub mod senses;
 mod shore;
+mod shove;
 mod signs;
 mod site;
 mod slant;
@@ -39,6 +41,8 @@ mod steer;
 mod sunk;
 #[cfg(test)]
 mod tests_ground;
+#[cfg(test)]
+mod tests_handover;
 #[cfg(test)]
 mod tests_hunt;
 #[cfg(test)]
@@ -60,6 +64,7 @@ mod tests_walk;
 pub mod tune;
 mod walk;
 mod want;
+mod wing;
 
 use std::time::Duration;
 
@@ -68,6 +73,7 @@ use bevy::time::common_conditions::on_timer;
 
 pub use attack::{Attacking, Broken, Carved, Dead, Kind, slay};
 pub use beast::{Beast, Part};
+pub use bulk::{bulk, capsule};
 pub use herds::Herds;
 pub use near::{Nearby, Sighting};
 pub use want::{Lead, carcass_key};
@@ -125,5 +131,5 @@ pub(super) fn plugin(app: &mut App) {
         .add_plugins((senses::plugin, signs::plugin, attack::plugin, bleed::plugin));
     #[cfg(feature = "dev")]
     app.add_plugins(sunk::plugin);
-    app.add_plugins(guide::plugin);
+    app.add_plugins((guide::plugin, bulk::plugin, near::plugin, wing::plugin));
 }

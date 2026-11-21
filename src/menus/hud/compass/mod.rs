@@ -44,13 +44,20 @@ use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
 use super::MarkerSet;
-use super::context::Element;
+use super::context::{Element, Where};
 use super::fade::gate;
 use super::needle::WIDTH;
+use crate::fauna::Nearby;
 use crate::menus::MarkerKind;
 use crate::screens::Screen;
 use crate::ship::ShipSet;
 use crate::ui::{ICON_FONT, text, theme};
+
+/// Run condition: the herds drawn moved, or where the player is changed what the HUD shows: the herd
+/// markers follow the animals every frame they move.
+fn live(nearby: Option<Res<Nearby>>, now: Option<Res<Where>>) -> bool {
+    nearby.is_some_and(|n| n.is_changed()) || now.is_some_and(|w| w.is_changed())
+}
 
 /// Width in pixels of the room of the north mark, which is centred on its place on the bar.
 const ROOM: f32 = 24.0;
@@ -215,7 +222,7 @@ pub(super) fn plugin(app: &mut App) {
         Update,
         (
             (beacons::home, beacons::ship).after(ShipSet::Place),
-            herds::herds.run_if(on_timer(Duration::from_secs_f32(herds::EVERY))),
+            herds::herds.run_if(live),
             tools::tools.run_if(on_timer(Duration::from_secs_f32(herds::EVERY))),
             beacons::course.after(super::eye::capture),
         )

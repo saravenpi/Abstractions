@@ -1,6 +1,6 @@
-//! Tests of the herd markers: a herd the robot has seen gets a marker on the planet the robot stands
-//! on, named "Herd" until its species is in the field guide, fading out with the time since it was
-//! seen.
+//! Tests of the herd markers: a herd drawn near the robot gets a marker on the planet the robot stands
+//! on, at the middle of its animals and at full strength, named "Herd" until its species is in the
+//! field guide.
 
 use bevy::ecs::system::RunSystemOnce;
 use bevy::math::{DQuat, DVec3};
@@ -8,7 +8,6 @@ use bevy::prelude::*;
 
 use super::herds::herds;
 use crate::fauna::guide::Seen;
-use crate::fauna::tune::MEMORY;
 use crate::fauna::{Nearby, Sighting};
 use crate::life::SpeciesId;
 use crate::menus::hud::context::{Context, Where};
@@ -40,7 +39,7 @@ fn marks(nearby: Nearby, seen: Seen) -> Vec<crate::menus::Marker> {
         .collect()
 }
 
-/// A herd seen 200 m away on the robot's planet is marked as a herd, then by its name once in the
+/// A herd drawn 200 m away on the robot's planet is marked as a herd, then by its name once in the
 /// field guide; a herd on another planet is not marked.
 #[test]
 fn a_near_herd_is_marked() {
@@ -55,7 +54,6 @@ fn a_near_herd_is_marked() {
         species,
         name: "Kruseth".into(),
         metres: 200.0,
-        seen: 0.0,
     };
     let nearby = |body| Nearby {
         body,
@@ -71,9 +69,10 @@ fn a_near_herd_is_marked() {
     assert!(marks(nearby(None), Seen::default()).is_empty());
 }
 
-/// A herd seen half its memory ago is marked at half the strength of a fresh one.
+/// A herd's marker stands where its drawn animals are, at full strength whenever it is marked: there
+/// is no fading memory of a herd that is not drawn.
 #[test]
-fn an_old_sighting_fades() {
+fn a_marker_stands_on_the_animals() {
     let home = Universe::new(1).home();
     let sighting = Sighting {
         id: 9,
@@ -84,13 +83,8 @@ fn an_old_sighting_fades() {
         },
         name: "Kruseth".into(),
         metres: 200.0,
-        seen: 0.0,
     };
-    let fresh = super::herds::mark(&sighting, home, (false, 0.0))
-        .color
-        .alpha();
-    let half = super::herds::mark(&sighting, home, (false, MEMORY * 0.5))
-        .color
-        .alpha();
-    assert!((half - 0.5 * fresh).abs() < 1e-4, "{half} of {fresh}");
+    let marker = super::herds::mark(&sighting, home, false);
+    assert_eq!(marker.place, MarkerPlace::Body(home, sighting.at));
+    assert_eq!(marker.color, super::herds::HERD);
 }

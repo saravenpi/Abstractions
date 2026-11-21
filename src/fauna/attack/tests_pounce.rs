@@ -15,6 +15,8 @@ use super::{Attacking, Dead};
 use crate::audio::Impact;
 use crate::avatar::blow::Blow;
 use crate::avatar::{Avatar, AvatarPose};
+use crate::condition::tune::{BLUNT, CUT, PLATE};
+use crate::condition::{Condition, Part};
 use crate::fauna::beast::Beast;
 use crate::fauna::rig::app_of;
 use crate::fauna::senses::{Focus, Stance};
@@ -97,5 +99,34 @@ fn an_animal_strikes_the_local_robot_with_another_player_near() {
     for blow in &blows {
         assert!(blow.joules > 0.0 && blow.momentum > 0.0, "{blow:?}");
         assert!(blow.at.distance(target) <= SPREAD + 0.05, "{blow:?}");
+    }
+}
+
+/// A blow that lands lowers the robot's frame where it strikes by its energy over the plate of that part,
+/// as `crate::avatar::hurt` applies it: the torso of a fresh robot loses that share for every blow of a
+/// biting animal.
+#[test]
+fn a_landed_blow_lowers_the_frame() {
+    let (mut app, _) = app_of(true, bites);
+    app.add_message::<Blow>().add_message::<Impact>();
+    run(&mut app, 3.0, 1.0 / 30.0);
+    let (target, _) = provoke(&mut app).expect("a living animal that bites");
+    let anchor = *app.world().resource::<Anchor>();
+    put(&mut app, anchor.to_frame(target));
+    fight(&mut app, 4.0);
+    let blows: Vec<Blow> = app
+        .world_mut()
+        .resource_mut::<Messages<Blow>>()
+        .drain()
+        .collect();
+    assert!(!blows.is_empty(), "no blow landed");
+    for blow in &blows {
+        let mut frame = Condition::default();
+        let lost = frame.hurt(Part::Torso, blow.joules, blow.cut);
+        let reach = if blow.cut { CUT } else { BLUNT };
+        let expected = (blow.joules * reach / PLATE[Part::Torso as usize]).min(1.0);
+        assert!((lost - expected).abs() < 1e-6, "{lost} lost for {blow:?}");
+        assert!((frame.of(Part::Torso) - (1.0 - expected)).abs() < 1e-6);
+        assert!(lost > 0.0, "a bite took nothing of the torso");
     }
 }

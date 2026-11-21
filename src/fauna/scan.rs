@@ -12,15 +12,14 @@ use super::fade::leave;
 use super::gate::{Spec, footing};
 use super::herds::Herds;
 use super::looks::Looks;
-use super::near::{Eye, Nearby, remember};
 use super::place::Spot;
 use super::steer::cruise;
 use super::tune::{MOST, REACH};
-use super::want::{From, Lead, Want, members, visitors};
+use super::want::{From, Lead, Want, lingers, members, visitors};
 use crate::life::Life;
 use crate::life::body::Locomotion;
+use crate::life::herd::floor;
 use crate::player::Player;
-use crate::render::GameCamera;
 use crate::space::{Anchor, Clock};
 use crate::universe::Universe;
 use crate::world::{Globe, Terrain};
@@ -35,7 +34,6 @@ pub struct Scan<'w, 's> {
     anchor: Res<'w, Anchor>,
     universe: Option<Res<'w, Universe>>,
     herds: ResMut<'w, Herds>,
-    nearby: ResMut<'w, Nearby>,
     spec: ResMut<'w, Spec>,
     looks: ResMut<'w, Looks>,
     stores: (
@@ -43,7 +41,6 @@ pub struct Scan<'w, 's> {
         ResMut<'w, Assets<StandardMaterial>>,
     ),
     robot: Query<'w, 's, &'static Transform, With<Player>>,
-    camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
     beasts: Query<'w, 's, (Entity, &'static mut Beast)>,
 }
 
@@ -55,26 +52,16 @@ pub fn scan(mut s: Scan, mut wants: Local<Vec<Want>>) {
     let Some(life) = globe.life() else {
         return;
     };
-    if let Some(eye) = eye(&s) {
-        let body = footing(&s.anchor);
-        remember(
-            &mut s.nearby,
-            (life, &globe, body),
-            &s.herds.herds,
-            (eye, from.time),
-        );
-    }
     members(life, (&s.herds.herds, &s.herds.ledger), from, &mut wants);
     visitors(life, &s.herds.carcasses, from, &mut wants);
     visitors(life, &s.herds.slain, from, &mut wants);
-    let mut room = MOST.saturating_sub(keep(&mut s, &wants));
+    let mut room = MOST.saturating_sub(keep(&mut s, &wants, from));
     let now = s.time.elapsed_secs();
     for want in wants.iter().filter(|w| w.metres <= REACH) {
         if room == 0 {
             break;
         }
-        if !drawn(&s, want.lead) {
-            born(&mut s, (life, globe.seed()), want, now);
+        if !drawn(&s, want.lead) && born(&mut s, (life, globe.seed()), want, now) {
             room -= 1;
         }
     }
@@ -104,31 +91,21 @@ fn look(s: &mut Scan) -> Option<(Arc<Globe>, From)> {
     ))
 }
 
-/// Returns where the local robot looks from in the turning frame of the planet: the game camera, or
-/// the robot's own eyes 1.6 m up when there is no camera.
-fn eye(s: &Scan) -> Option<Eye> {
-    let (at, ahead) = match s.camera.iter().next() {
-        Some(camera) => (camera.translation(), camera.forward().as_vec3()),
-        None => {
-            let robot = s.robot.single().ok()?;
-            (robot.translation + Vec3::Y * 1.6, robot.forward().as_vec3())
-        }
-    };
-    let eye = s.anchor.to_frame(at);
-    let ahead = (s.anchor.to_frame(at + ahead) - eye).normalize_or_zero();
-    Some(Eye { at: eye, ahead })
-}
-
-/// Fades out every drawn animal no longer wanted, and returns how many stay.
-fn keep(s: &mut Scan, wants: &[Want]) -> usize {
+/// Fades out every drawn animal that is neither wanted nor a living herd member within [`REACH`] and
+/// [`SLACK`](super::tune::SLACK) of the robot of `from`, and returns how many stay. A member is kept
+/// while it is near, wherever its place in its herd went, so one that flees away from its herd's place
+/// fades out only once it leaves the drawn ring, never in front of the player.
+fn keep(s: &mut Scan, wants: &[Want], from: From) -> usize {
     let now = s.time.elapsed_secs();
     let mut kept = 0;
     for (_, mut beast) in &mut s.beasts {
         if beast.fade.leaving() {
             continue;
         }
-        let rank = wants.iter().position(|w| w.lead.key() == beast.lead.key());
-        if rank.is_some() && kept < MOST {
+        let wanted = wants.iter().any(|w| w.lead.key() == beast.lead.key());
+        let here = beast.spot.planet(beast.motion.root.at).normalize();
+        let stays = wanted || lingers(beast.lead, here, from, &s.herds.ledger);
+        if stays && kept < MOST {
             kept += 1;
         } else {
             leave(&mut s.commands, &mut beast, now);
@@ -143,11 +120,17 @@ fn drawn(s: &Scan, lead: Lead) -> bool {
 }
 
 /// Spawns the animal `want` of `life` on the planet of seed `planet`, on the ground where it stands,
-/// facing its herd's way, at `now` game seconds.
-fn born(s: &mut Scan, (life, planet): (&Life, u64), want: &Want, now: f32) {
+/// facing its herd's way, at `now` game seconds, and returns true; or returns false and spawns nothing
+/// where its place lies under water deeper than its body wades, see [`floor`]: a land animal is never
+/// drawn standing on the bed of the sea or of a pond.
+fn born(s: &mut Scan, (life, planet): (&Life, u64), want: &Want, now: f32) -> bool {
     let Some(species) = life.species.get(usize::from(want.species)) else {
-        return;
+        return false;
     };
+    let globe = s.terrain.globe();
+    if globe.has_sea() && globe.height(want.dir) < floor(species) {
+        return false;
+    }
     let spot = Spot::at(want.dir, s.terrain.globe().radius());
     let lift = match species.body.locomotion {
         Locomotion::Fly | Locomotion::Swarm => cruise(&species.body),
@@ -168,6 +151,7 @@ fn born(s: &mut Scan, (life, planet): (&Life, u64), want: &Want, now: f32) {
         now,
     };
     spawn(&mut s.commands, birth, &meshes, &skins);
+    true
 }
 
 /// Returns the way `want` faces in the frame `spot`: its herd's heading, or towards the carcass it

@@ -29,6 +29,9 @@ pub enum Act {
 pub struct Temper {
     /// Seconds the alarm takes to fall away once the threat is gone.
     pub calm: f32,
+    /// Seconds an animal the robot hurt keeps going for it, when it is one that stands its ground: bold
+    /// guilds hold a grudge longer than shy ones.
+    pub grudge: f32,
 }
 
 /// The alarm of one animal.
@@ -62,10 +65,11 @@ impl Temper {
     }
 
     /// Returns the temper of a species of `guild`: shy plant eaters stay alarmed longer than bold
-    /// hunters.
+    /// hunters, and bold hunters hold a grudge longer than shy plant eaters.
     pub fn new(guild: Guild) -> Self {
         Self {
             calm: 6.0 + 10.0 * wariness(guild),
+            grudge: 10.0 + 20.0 * (1.0 - wariness(guild)),
         }
     }
 }

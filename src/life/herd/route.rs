@@ -77,20 +77,26 @@ pub(super) fn draw(
     (roam.fallback, sample(roam.fallback))
 }
 
-/// Returns the steepest slope in radians the body of `species` walks, and the lowest ground in metres
-/// it walks on: none for swimmers and flyers, wading depth for the shore, sea level for the land.
-fn footing(species: &Species) -> (f32, f32) {
+/// Returns the lowest ground in metres above sea level the body of `species` walks on, the deepest
+/// water it wades: none for swimmers and flyers, its legs for the shore, sea level for the land. The
+/// herds keep to it far from the player, and the drawn animals near.
+pub fn floor(species: &Species) -> f32 {
     let free = matches!(
         species.body.locomotion,
         Locomotion::Swim | Locomotion::Fly | Locomotion::Swarm
     );
-    let floor = match species.role.habitat {
+    match species.role.habitat {
         Habitat::Water => f32::NEG_INFINITY,
         _ if free => f32::NEG_INFINITY,
         Habitat::Shore => -species.body.height.max(0.1),
         Habitat::Ground | Habitat::Air => 0.0,
-    };
-    (slope(&species.body), floor)
+    }
+}
+
+/// Returns the steepest slope in radians the body of `species` walks, and the lowest ground in metres
+/// it walks on, see [`floor`].
+fn footing(species: &Species) -> (f32, f32) {
+    (slope(&species.body), floor(species))
 }
 
 /// Returns the way `roam` of `species` walks leg `leg` from waypoint `from` to waypoint `to`, read by

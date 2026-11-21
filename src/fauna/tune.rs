@@ -15,17 +15,6 @@ pub const MOST: usize = 48;
 /// foot, leg solvers and chains.
 pub const NEAR: f32 = 40.0;
 
-/// Metres from the eyes of the local robot within which it sees a herd it looks at: the reach animals
-/// are drawn within, so a herd is never marked from animals the player could not see.
-pub const SIGHT: f64 = REACH;
-
-/// Half the angle of view in radians within which the robot sees a herd, about the field of view of
-/// the camera.
-pub const VIEW: f64 = 0.9;
-
-/// Seconds a herd stays marked at the place it was last seen, fading out.
-pub const MEMORY: f64 = 180.0;
-
 /// Most herds marked at once.
 pub const MARKS: usize = 3;
 
@@ -36,9 +25,9 @@ pub const MARK_SIZE: f32 = 0.4;
 /// Metres under which a herd is left unmarked beside a nearer marked one.
 pub const MARK_APART: f64 = 60.0;
 
-/// Metres along the ground of the search radius of a watch: twice [`SIGHT`], past [`REACH`] and
-/// [`SLACK`], plus the room the robot walks before the watch is rolled again.
-pub const WATCH_RADIUS: f64 = 2.0 * SIGHT + WATCH_MOVE;
+/// Metres along the ground of the search radius of a watch: twice [`REACH`], past [`SLACK`], plus the
+/// room the robot walks before the watch is rolled again.
+pub const WATCH_RADIUS: f64 = 2.0 * REACH + WATCH_MOVE;
 
 /// Metres the robot walks from the search point of a watch before it is rolled again.
 pub const WATCH_MOVE: f64 = 90.0;
@@ -107,6 +96,10 @@ pub const STRIKE_SHARE: f32 = 0.8;
 /// Metres from a threat within which an attacker runs at its top speed instead of stalking.
 pub const RUSH: f32 = 12.0;
 
+/// Metres per second per metre still to go at which an attacker closes on its strike: it slows over the
+/// last metres and stops where its blow reaches.
+pub const BRAKE: f32 = 3.0;
+
 /// Metres past its strike within which an animal that stands its ground goes for a threat.
 pub const GUARD: f32 = 3.0;
 
@@ -114,6 +107,22 @@ pub const GUARD: f32 = 3.0;
 /// a body running at full speed stops on the shore and not in the water.
 pub const SHORE_AHEAD: f32 = 0.5;
 
+/// Share of its speed a body on the ground loses wading in water as deep as its hips: the water drags it,
+/// so no land animal runs through water.
+pub const WADE: f32 = 0.75;
+
 /// Metres under the drawn ground past which the sunk check of a dev build logs a foot of an animal.
 #[cfg(feature = "dev")]
 pub const SUNK: f32 = 0.05;
+
+/// Metres per second at which the robot standing in the body of a lighter animal pushes it aside.
+pub const SHOVE: f32 = 2.0;
+
+/// Metres from the robot within which a drawn living animal has a body the player meets.
+pub const BULK_NEAR: f64 = 30.0;
+
+/// Seconds of its speed ahead a flyer looks for a collider in its way.
+pub const LOOK: f32 = 1.0;
+
+/// Metres per second a flyer rises at before a collider right ahead of it.
+pub const RISE: f32 = 2.0;

@@ -1,6 +1,7 @@
 //! Player tests on a sphere: walking around the planet, rebasing the view, and the ship hand-over.
 
 mod airframe;
+mod animals;
 mod basin;
 mod climbing;
 mod crouching;

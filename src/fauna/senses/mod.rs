@@ -68,6 +68,8 @@ pub struct Wits {
     pub leaking: bool,
     /// The parts of its body that are broken.
     pub broken: Broken,
+    /// Seconds it still goes for the robot that hurt it, when it is one that stands its ground.
+    pub provoked: f32,
 }
 
 impl Wits {
@@ -82,6 +84,7 @@ impl Wits {
             bled: None,
             leaking: false,
             broken: Broken::default(),
+            provoked: 0.0,
         }
     }
 }

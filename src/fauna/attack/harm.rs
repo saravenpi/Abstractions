@@ -129,6 +129,7 @@ pub fn harm(
             let broke = (&mut *beast, species);
             snap(&mut commands, (hit, now), broke, (part, &mut asks));
         }
+        beast.wits.provoked = beast.temper.grudge;
         if beast.wits.health.hurt(hit.blow.energy * hit.outcome.harm()) {
             let (herds, kill) = (&mut *ctx.herds, Grade::of(now.hits, now.blunt));
             let dead = (hit.victim, &mut *beast);

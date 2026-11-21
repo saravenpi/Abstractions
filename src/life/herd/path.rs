@@ -6,11 +6,12 @@ use bevy::math::DVec3;
 
 use super::sphere::{arc, bearing, slerp};
 
-/// Metres between two height samples along a path.
-const STEP: f64 = 32.0;
+/// Metres between two height samples along a path: under the width of the smallest pond, so a herd
+/// never walks through one between two samples.
+const STEP: f64 = 12.0;
 
-/// Most height samples along one path.
-const SAMPLES: usize = 32;
+/// Most height samples along one path: a path of up to 768 m is read every [`STEP`].
+const SAMPLES: usize = 64;
 
 /// Returns true when the ground along the great circle from `a` to `b`, on a planet of `radius`
 /// metres, read by `height`, never rises or falls more steeply than `slope` radians between two

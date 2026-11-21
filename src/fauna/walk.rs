@@ -12,6 +12,7 @@ use super::ground::Heights;
 use super::herds::{Herds, Land};
 use super::lead::goal;
 use super::motion::{Detail, Motion};
+use super::senses::tune::ROBOT_KG;
 use super::steer::{Aim, Pace, cruise, drive};
 use super::tune::{DRIFT, MAX_STEP, NEAR, STAND_OFF, STRIKE_SHARE};
 use super::want::Lead;
@@ -154,6 +155,7 @@ fn pace(ctx: &Ctx, beast: &Beast, species: &Species) -> Pace {
         detail: if near { Detail::Full } else { Detail::Cheap },
         strike: strike(beast, species),
         sea: sea(ctx, beast),
+        robot: (beast.spot.local(ctx.robot), species.history.mass < ROBOT_KG),
     }
 }
 
@@ -162,10 +164,8 @@ fn pace(ctx: &Ctx, beast: &Beast, species: &Species) -> Pace {
 fn sea(ctx: &Ctx, beast: &Beast) -> f32 {
     let globe = ctx.terrain.globe();
     let level = globe.radius() + f64::from(globe.sea_level());
-    match globe.has_sea() {
-        true => beast.spot.rise(beast.motion.root.at.xz(), level),
-        false => f32::NEG_INFINITY,
-    }
+    let rise = beast.spot.rise(beast.motion.root.at.xz(), level);
+    [f32::NEG_INFINITY, rise][usize::from(globe.has_sea())]
 }
 
 /// Returns the metres from its root within which `beast` of `species` strikes what it goes for:

@@ -1,6 +1,6 @@
 //! The hotbar: six slots at the bottom centre of the game, black and white, the held one
-//! lit and marked by the accent bar along its foot, each with its number, the silhouette of its
-//! tool and a thin wear bar. The slots keep a very light fill, so a full slot and an empty one
+//! lit and marked by the accent bar along its foot, each with its number in its top left corner,
+//! the 24 pixel icon of its tool in its middle and a thin wear bar under the icon. The slots keep a very light fill, so a full slot and an empty one
 //! read apart; the numbers carry the HUD shadow.
 
 use bevy::prelude::*;
@@ -20,7 +20,13 @@ pub const SIDE: f32 = 56.0;
 const MARK: f32 = theme::S1;
 
 /// Width in pixels of the wear bar of a slot.
-const BAR: f32 = 32.0;
+pub const BAR: f32 = 32.0;
+
+/// Pixels between the icon of a slot and its wear bar.
+pub const GAP: f32 = theme::S1;
+
+/// Distance in pixels of the number of a slot from its top left corner.
+pub const NUMBER: f32 = theme::S1;
 
 /// Marks the row of slots.
 #[derive(Component)]
@@ -49,6 +55,17 @@ fn spawn(mut commands: Commands) {
 /// The look of a tool, which its icon is drawn from.
 type Shape = Option<crate::craft::build::Look>;
 
+/// Returns the place of the number of a slot: in its top left corner, out of the way of the icon
+/// centred under it.
+fn corner() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: px(NUMBER),
+        top: px(NUMBER),
+        ..default()
+    }
+}
+
 /// Returns the bar along the foot of a slot: the accent while `held`, else clear.
 fn accent(held: bool) -> impl Bundle {
     (
@@ -64,7 +81,7 @@ fn accent(held: bool) -> impl Bundle {
     )
 }
 
-/// Returns one slot: its number, the silhouette of its tool and the wear left, marked when `held`
+/// Returns one slot: its number, the icon of its tool and the wear left, marked when `held`
 /// and lit while its tool is `drawn` in the hands; a held tool slung over the back stays dim.
 fn slot(at: usize, tool: Option<(Shape, f32)>, (held, drawn): (bool, bool)) -> impl Bundle {
     let node = Node {
@@ -72,8 +89,8 @@ fn slot(at: usize, tool: Option<(Shape, f32)>, (held, drawn): (bool, bool)) -> i
         height: px(SIDE),
         flex_direction: FlexDirection::Column,
         align_items: AlignItems::Center,
-        justify_content: JustifyContent::SpaceBetween,
-        padding: UiRect::axes(px(theme::S1), px(theme::S2)),
+        justify_content: JustifyContent::Center,
+        row_gap: px(GAP),
         ..default()
     };
     let back = match tool.is_some() {
@@ -82,15 +99,15 @@ fn slot(at: usize, tool: Option<(Shape, f32)>, (held, drawn): (bool, bool)) -> i
     };
     let ink = [theme::TEXT_2, theme::TEXT][usize::from(held && drawn)];
     let (shape, worn) = tool.unwrap_or((None, 1.0));
-    let shown = match tool.is_some() {
-        true => Visibility::Inherited,
-        false => Visibility::Hidden,
-    };
+    let shown = [Visibility::Hidden, Visibility::Inherited][usize::from(tool.is_some())];
     (
         node,
         BackgroundColor(back),
         children![
-            text(format!("{}", at + 1), theme::FONT_SMALL, ink),
+            (
+                text(format!("{}", at + 1), theme::FONT_SMALL, ink),
+                corner()
+            ),
             (silhouette(shape), shown),
             (wear_bar(BAR, worn), shown),
             accent(held),

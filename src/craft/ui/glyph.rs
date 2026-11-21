@@ -22,8 +22,8 @@ use super::raster::{raster, shade};
 use crate::craft::build::Look;
 use crate::ui::{Icon, Tone, icon_sized, meter, reach};
 
-/// Logical size of the icon of a tool in a slot of the hotbar of the game, under its number.
-pub const HUD: f32 = 16.0;
+/// Logical size of the icon of a tool in a slot of the hotbar of the game, the icon slot size.
+pub const HUD: f32 = 24.0;
 
 /// Logical size of the icon of a tool or a material in a row of the pack, and in a slot of the
 /// hotbar of the pack screen: the icon slot of every row.

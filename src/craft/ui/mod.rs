@@ -43,6 +43,8 @@ mod tests_drop;
 #[cfg(test)]
 mod tests_fit;
 #[cfg(test)]
+mod tests_hotbar;
+#[cfg(test)]
 mod tests_icons;
 #[cfg(test)]
 mod tests_keys;

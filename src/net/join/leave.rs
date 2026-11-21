@@ -1,4 +1,4 @@
-//! What the server keeps of the player: the place and the ship, sent every 30 seconds, on
+//! What the server keeps of the player: the place and the ship, sent every 10 seconds, on
 //! leaving and on quitting the game, and the goodbye itself.
 
 use abstractions_net::wire::ClientMsg;

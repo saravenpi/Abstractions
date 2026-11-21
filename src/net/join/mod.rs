@@ -22,8 +22,9 @@ use bevy::prelude::*;
 use super::clock::{NetStats, SessionClock};
 use super::link::{FreshKey, Inbox, Link};
 
-/// Time between two records of the player's place and ship sent to the server.
-pub const RECORD_EVERY: Duration = Duration::from_secs(30);
+/// Time between two records of the player's place and ship sent to the server. It is the most
+/// the server's copy is behind when the game ends without a goodbye.
+pub const RECORD_EVERY: Duration = Duration::from_secs(10);
 
 /// Inserts `link` and the resources that live as long as it.
 pub fn open(commands: &mut Commands, link: Link) {

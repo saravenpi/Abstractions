@@ -12,6 +12,8 @@ mod tests;
 #[cfg(test)]
 mod tests_coast;
 #[cfg(test)]
+mod tests_ground;
+#[cfg(test)]
 mod tests_sea;
 #[cfg(test)]
 mod tests_tile;

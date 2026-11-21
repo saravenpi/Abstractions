@@ -6,6 +6,7 @@ use super::relations;
 use super::seen::{SIGHT, Seen};
 use super::words::{active, climate, diet, habitat, kind, limbs, moves, plan};
 use crate::life::{Guild, Life, Species};
+use crate::ui::units::fixed;
 
 /// One row of a card.
 #[derive(Debug, Clone, PartialEq)]
@@ -41,7 +42,11 @@ fn body(species: &Species) -> Vec<Row> {
         Row::Heading("Body"),
         Row::Fact(
             "Size",
-            format!("{:.1} m long, {:.1} m tall", body.length, body.height),
+            format!(
+                "{} m long, {} m tall",
+                fixed(body.length, 1),
+                fixed(body.height, 1)
+            ),
         ),
         Row::Fact("Weight", weight(species.history.mass)),
         Row::Fact("Plan", plan(species.plan).to_string()),
@@ -134,7 +139,8 @@ pub fn card(life: Option<&Life>, index: Option<u16>, seen: &Seen) -> Card {
             title: UNKNOWN.to_string(),
             subtitle: "Not seen yet".to_string(),
             rows: vec![Row::Note(format!(
-                "Come within {SIGHT:.0} m of one to learn about it."
+                "Come within {} m of one to learn about it.",
+                fixed(SIGHT, 0)
             ))],
         },
     }

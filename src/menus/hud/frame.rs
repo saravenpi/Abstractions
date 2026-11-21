@@ -1,6 +1,7 @@
 //! The frame rows: the integrity of the whole body and one line for each part that is hurt.
 //! They sit in the bottom-left stack, under the instrument block, so the two never overlap.
-//! Nothing shows while the body is whole.
+//! Nothing shows while the body is whole. Each row has the colour of what it reads: the warning
+//! colour under half, the danger colour under a quarter, where a part is broken.
 
 use bevy::ecs::spawn::SpawnIter;
 use bevy::prelude::*;
@@ -65,14 +66,27 @@ pub fn lines(condition: &Condition) -> Vec<String> {
     lines
 }
 
-/// Returns the colour of the frame rows for a body of `integrity`: the warning colour under half
-/// and the danger colour under a quarter.
-pub fn tone(integrity: f32) -> Color {
-    match integrity {
+/// Returns the colour of a frame row that reads `health`, the integrity of the frame or the
+/// health of one part: the warning colour under half and the danger colour under a quarter.
+pub fn tone(health: f32) -> Color {
+    match health {
         low if low < 0.25 => theme::DANGER,
         mid if mid < 0.5 => theme::WARN,
         _ => theme::TEXT,
     }
+}
+
+/// Returns the colour of each line of [`lines`] for `condition`: the first by the integrity of
+/// the whole frame, each part by its own health, so a broken part reads as danger while the
+/// rest of the frame is sound.
+pub fn tones(condition: &Condition) -> Vec<Color> {
+    let hurt = condition.damaged();
+    if hurt.is_empty() {
+        return Vec::new();
+    }
+    let mut tones = vec![tone(condition.integrity())];
+    tones.extend(hurt.into_iter().map(|part| tone(condition.of(part))));
+    tones
 }
 
 /// Writes the lines of the corner when the condition of the body changes.
@@ -80,13 +94,12 @@ pub(super) fn update(
     condition: Res<Condition>,
     mut rows: Query<(&Row, &mut Node, &mut Text, &mut TextColor)>,
 ) {
-    let lines = lines(&condition);
-    let tone = tone(condition.integrity());
+    let (lines, tones) = (lines(&condition), tones(&condition));
     for (Row(at), mut node, mut text, mut color) in &mut rows {
-        color.set_if_neq(TextColor(tone));
         let display = match lines.get(*at) {
             Some(line) => {
                 text.set_if_neq(Text(line.clone()));
+                color.set_if_neq(TextColor(tones.get(*at).copied().unwrap_or(theme::TEXT)));
                 Display::Flex
             }
             None => Display::None,

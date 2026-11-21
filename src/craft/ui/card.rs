@@ -9,6 +9,7 @@ use crate::craft::build::{Place, Stock, Why};
 use crate::craft::matter::Treatment;
 use crate::craft::pack::{Burden, Pack};
 use crate::fauna::guide::card::{Card, Row};
+use crate::ui::units::fixed;
 
 /// What the card is drawn from.
 pub struct Shown<'a> {
@@ -32,9 +33,13 @@ fn load(burden: &Burden) -> [Row; 3] {
         Row::Heading("Load"),
         Row::Fact(
             "Carried",
-            format!("{:.1} of {:.1} kg", burden.load, burden.capacity),
+            format!(
+                "{} of {} kg",
+                fixed(burden.load, 1),
+                fixed(burden.capacity, 1)
+            ),
         ),
-        Row::Fact("Pace", format!("{:.0} %", burden.pace * 100.0)),
+        Row::Fact("Pace", format!("{} %", fixed(burden.pace * 100.0, 0))),
     ]
 }
 
@@ -68,13 +73,13 @@ pub fn pack_card(line: Option<&Line>, shown: &Shown) -> Card {
             rows,
         };
     };
-    let mut rows = vec![Row::Fact("Mass", format!("{:.2} kg", line.mass))];
+    let mut rows = vec![Row::Fact("Mass", format!("{} kg", fixed(line.mass, 2)))];
     if let What::Item(id) = line.what {
         let item = shown.pack.item(id);
         let build = item.and_then(|item| item.build().map(|b| (item, b)));
         if let Some((item, build)) = build {
             let (worn, joint) = item.worn(&shown.place);
-            rows.push(Row::Fact("Wear", format!("{:.0} %", worn * 100.0)));
+            rows.push(Row::Fact("Wear", format!("{} %", fixed(worn * 100.0, 0))));
             rows.push(Row::Note(Why::WeakestJoint(joint).to_string()));
             rows.extend(numbers(&sheet(&build, item.intent(), &shown.place), None));
         }
@@ -103,7 +108,7 @@ fn three(bench: &Bench, offer: &Offer, stock: &[Stock]) -> Vec<Row> {
     for (at, proposal) in offer.three.iter().enumerate() {
         let mark = if at == bench.pick { "> " } else { "" };
         let mass = crate::craft::build::mass(&proposal.build.pieces());
-        let words = format!("{mark}{} {mass:.2} kg", title(proposal, stock));
+        let words = format!("{mark}{} {} kg", title(proposal, stock), fixed(mass, 2));
         rows.push(Row::Fact(KINDS[at], words));
     }
     rows

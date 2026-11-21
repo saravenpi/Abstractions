@@ -23,6 +23,8 @@ mod view;
 mod tests_lines;
 #[cfg(test)]
 mod tests_offer;
+#[cfg(test)]
+mod tests_zero;
 
 pub use bench::{Bench, Sort, Tab};
 

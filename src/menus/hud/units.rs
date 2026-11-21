@@ -1,7 +1,7 @@
 //! Units of the flight instruments: heights, speeds and levers as short readable text.
 
-use crate::ui::units::distance;
 pub use crate::ui::units::speed;
+use crate::ui::units::{distance, fixed};
 
 /// Formats a height in metres as a distance. A height below the reference keeps its sign.
 pub fn height(metres: f64) -> String {
@@ -14,5 +14,5 @@ pub fn height(metres: f64) -> String {
 
 /// Formats a fraction as a whole percentage: 0.654 reads "65 %".
 pub fn percent(fraction: f64) -> String {
-    format!("{:.0} %", fraction * 100.0)
+    format!("{} %", fixed(fraction * 100.0, 0))
 }

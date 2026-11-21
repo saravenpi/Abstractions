@@ -12,6 +12,7 @@ use super::tile_paint::lit;
 use crate::computer::Lens;
 use crate::map::explored::grid::{depth_for, leaf_of};
 use crate::map::lat_lon;
+use crate::map::level::CLOSEST;
 
 /// Returns the tile of `level` that holds unit direction `dir`.
 pub(super) fn tile_at(dir: DVec3, level: u8) -> TileId {
@@ -46,12 +47,14 @@ fn a_pixel_holds_its_own_middle() {
 #[test]
 fn a_lens_looks_at_a_few_tiles_that_hold_its_centre() {
     assert!((1..=LEVEL_MAX).contains(&level_for(3.0)));
-    assert_eq!(level_for(32.0), LEVEL_MAX);
+    assert_eq!(level_for(32.0), 5);
+    assert_eq!(level_for(CLOSEST), LEVEL_MAX);
     assert!(level_for(6.0) <= level_for(12.0));
     let lenses = [
         (3.0, Vec2::ZERO),
         (9.0, Vec2::new(0.3, 0.2)),
         (32.0, Vec2::new(0.99, -0.4)),
+        (CLOSEST, Vec2::new(-0.37, 0.21)),
     ];
     for (zoom, centre) in lenses {
         let tiles = visible(Lens { zoom, centre }, level_for(zoom));
@@ -74,16 +77,17 @@ fn a_lens_at_the_seam_wraps_its_tiles() {
     assert!(seam.iter().any(|(col, id)| *col >= cols && id.col < 2));
 }
 
-/// The explored leaves light the pixel they fall in and no pixel far from it.
+/// The explored leaves light the pixel their centre falls in and the few pixels whose middle
+/// they hold, and no pixel far from them.
 #[test]
 fn leaves_light_their_own_pixels() {
     let dir = DVec3::new(0.6, 0.3, -0.7).normalize();
     let mut leaves = Leaves::default();
     leaves.insert(leaf_of(dir, depth_for(6.371e6)));
     let id = tile_at(dir, 8);
-    let lit = lit(&leaves, id);
+    let lit = lit(&leaves, id, 6.371e6);
     let (x, y) = id.pixel(dir).expect("inside its tile");
-    assert_eq!(lit.len(), 1);
+    assert!((1..=6).contains(&lit.len()), "{} pixels", lit.len());
     assert!(
         lit.iter()
             .all(|(a, b)| a.abs_diff(x) <= 2 && b.abs_diff(y) <= 2)

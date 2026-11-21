@@ -17,6 +17,7 @@ use crate::craft::pack::{Burden, Pack};
 use crate::craft::wield::Held;
 use crate::fauna::guide::card::Card;
 use crate::fauna::guide::show::{clip, rows};
+use crate::ui::units::fixed;
 use crate::ui::{Selected, Tone, frame, label, text, theme};
 
 /// Returns the rows of the pack as the bench filters and orders them.
@@ -46,7 +47,7 @@ fn row(line: &Line, chosen: bool) -> impl Bundle {
     let small = |words: String| label(words, theme::FONT_SMALL, Tone::Muted);
     let name = label(clip(&line.name, NAME), theme::FONT_BODY, Tone::Plain);
     let sign = small(clip(&line.signature, SIGNATURE));
-    let mass = small(format!("{:.2} kg", line.mass));
+    let mass = small(format!("{} kg", fixed(line.mass, 2)));
     (
         frame(),
         Selected(chosen),
@@ -77,12 +78,12 @@ type Texts<'w, 's> = Query<
 /// Writes the tab names, the count line and the hints.
 fn heads(bench: &Bench, count: (usize, usize), burden: &Burden, texts: &mut Texts) {
     let tally = format!(
-        "{} of {} entries{} - {:.1} of {:.1} kg{}",
+        "{} of {} entries{} - {} of {} kg{}",
         count.0,
         count.1,
         bench.sort.label(),
-        burden.load,
-        burden.capacity,
+        fixed(burden.load, 1),
+        fixed(burden.capacity, 1),
         match (bench.typing, bench.filter.is_empty()) {
             (true, _) => format!(" - search: {}_", bench.filter),
             (false, false) => format!(" - \"{}\"", bench.filter),

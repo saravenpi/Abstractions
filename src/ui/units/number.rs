@@ -1,5 +1,18 @@
 //! Numbers as people read them: three significant digits at most, a space between thousands,
-//! never scientific notation and no trailing zeros.
+//! never scientific notation and no trailing zeros. [`fixed`] is the one place a number is
+//! rounded to decimals, so no quantity is ever written as a negative zero.
+
+/// Returns `value` with exactly `decimals` decimals. A value that rounds to zero is written
+/// without a sign: "0.0", never "-0.0", whether it was a negative zero or a small negative
+/// number.
+pub fn fixed(value: impl Into<f64>, decimals: usize) -> String {
+    let value = value.into();
+    let text = format!("{value:.decimals$}");
+    match text.strip_prefix('-') {
+        Some(rest) if rest.bytes().all(|b| b == b'0' || b == b'.') => rest.to_string(),
+        _ => text,
+    }
+}
 
 /// Returns `value` with three significant digits, a space between groups of thousands and no
 /// zeros at the end of its decimals.
@@ -13,7 +26,7 @@ pub fn plain(value: f64) -> String {
         v if v < 10.0 => 2,
         _ => 1,
     };
-    let text = format!("{value:.decimals$}");
+    let text = fixed(value, decimals);
     text.trim_end_matches('0').trim_end_matches('.').to_string()
 }
 

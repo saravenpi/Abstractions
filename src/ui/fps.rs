@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use super::theme;
+use super::units::fixed;
 use crate::settings::{Persistent, Settings};
 
 /// Seconds between two updates of the text.
@@ -21,9 +22,9 @@ pub(super) struct FpsText {
 /// Formats a frame time in seconds as "60 fps  16.6 ms".
 fn readout(frame: f32) -> String {
     format!(
-        "{:.0} fps  {:.1} ms",
-        1.0 / frame.max(f32::EPSILON),
-        frame * 1000.0
+        "{} fps  {} ms",
+        fixed(1.0 / frame.max(f32::EPSILON), 0),
+        fixed(frame * 1000.0, 1)
     )
 }
 

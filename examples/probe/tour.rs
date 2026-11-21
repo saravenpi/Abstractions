@@ -43,6 +43,8 @@ pub struct Notes {
     pub berth: Option<(DVec3, DQuat)>,
     /// Planet positions a postcard found on its first frame and uses on the next ones.
     pub spots: Vec<DVec3>,
+    /// What the play stage under way keeps between frames.
+    pub play: Play,
 }
 
 /// One stage of the tour.

@@ -1,5 +1,6 @@
 //! The words of the update entries and screens. Pure text, so it is tested without an app.
 
+use crate::ui::units::fixed;
 use crate::update::{Outcome, Release, Stage, Status};
 
 /// Bytes in the megabyte the sizes are shown in.
@@ -10,7 +11,7 @@ pub const LABEL_CHARS: usize = 18;
 
 /// Formats a size in megabytes with one decimal: `84.2 MB`.
 pub fn megabytes(bytes: u64) -> String {
-    format!("{:.1} MB", bytes as f64 / MEGABYTE)
+    format!("{} MB", fixed(bytes as f64 / MEGABYTE, 1))
 }
 
 /// Returns how much of `total` is `done`, in whole percent from 0 to 100.

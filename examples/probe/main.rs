@@ -48,11 +48,14 @@ use bevy::window::PrimaryWindow;
 mod air;
 mod base;
 mod boot;
+mod burn;
+mod cabin;
 mod camera;
 mod foot;
 mod grass;
 mod ground;
 mod herd;
+mod hull;
 mod launch;
 mod look;
 mod meter;
@@ -75,11 +78,14 @@ mod zoo;
 use air::*;
 use base::*;
 use boot::*;
+use burn::*;
+use cabin::*;
 use camera::*;
 use foot::*;
 use grass::*;
 use ground::*;
 use herd::*;
+use hull::*;
 use launch::*;
 use look::*;
 use meter::*;
@@ -121,6 +127,12 @@ fn main() -> AppExit {
     app.add_systems(Update, (mark::<1>, run));
     app.add_systems(PostUpdate, mark::<2>);
     app.init_resource::<Lower>();
+    app.init_resource::<Eye>();
+    app.add_systems(
+        PostUpdate,
+        hold.after(bevy::transform::TransformSystems::Propagate)
+            .after(lower),
+    );
     app.add_systems(
         PostUpdate,
         lower.after(bevy::transform::TransformSystems::Propagate),

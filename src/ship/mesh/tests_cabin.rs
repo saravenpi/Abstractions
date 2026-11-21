@@ -3,17 +3,17 @@
 
 use bevy::prelude::*;
 
-use super::bars::frame;
-use super::fittings::{faces, furniture, seat};
-use super::frame::{CANOPY, canopy, fuselage};
-use super::shell::{HALF, MOUTH, arch, glass, hull, lip, mouth, station};
+use super::dome::{arch, canopy, glass};
+use super::fittings::{accents, furniture, plates};
+use super::frame::{CANOPY, FUSELAGE, GLAZED, fuselage};
+use super::shell::{HALF, MOUTH, hull, lip, mouth, station};
 use super::tests_fit::{corners, crosses, inside, positions};
 use super::tub::tub;
-use super::{bar_mesh, cabin_meshes, faces_mesh, lever_mesh, stick_mesh, tub_mesh};
-use crate::ship::cockpit::{Dial, LEVER, Levers, STICK};
+use super::{cabin_meshes, lever_mesh, stick_mesh, tub_mesh};
+use crate::ship::cockpit::{LEVER, Levers, STICK};
 
 /// Returns the corners of the closed outlines: the two halves of the fuselage and the canopy.
-fn outlines() -> Vec<Vec<Vec3>> {
+pub(super) fn outlines() -> Vec<Vec<Vec3>> {
     let closed = fuselage().into_iter().chain([canopy()]);
     closed.map(corners).collect()
 }
@@ -46,8 +46,9 @@ fn tub_half(z: f32) -> f32 {
 fn the_drawn_hull_is_the_outline_with_a_mouth() {
     let outline = &outlines()[..2];
     let drawn: Vec<Vec3> = hull().into_iter().flat_map(corners).collect();
+    let (first, last) = (FUSELAGE[0][0], FUSELAGE[FUSELAGE.len() - 1][0]);
     for corner in &drawn {
-        let spoke = *corner - Vec3::new(0.0, station(corner.z.clamp(-3.95, 3.2))[3], corner.z);
+        let spoke = *corner - Vec3::new(0.0, station(corner.z.clamp(first, last))[3], corner.z);
         let way = if spoke.length() > 0.03 {
             -spoke.normalize()
         } else {
@@ -74,8 +75,8 @@ fn the_drawn_hull_is_the_outline_with_a_mouth() {
     assert!(drawn.chunks(3).any(|tri| crosses(tri, behind, Vec3::Y)));
 }
 
-/// The glass covers the whole mouth and goes under the skin of the hull outside the walls of
-/// the tub: no gap between the two, and no pane inside the cockpit.
+/// The glass covers the whole mouth and its feet go under the skin of the hull outside the
+/// walls of the tub: no gap between the two, and no pane inside the cockpit.
 #[test]
 fn the_glass_closes_on_the_hull_around_the_mouth() {
     let all = outlines();
@@ -85,41 +86,38 @@ fn the_glass_closes_on_the_hull_around_the_mouth() {
             assert!(within(bubble, at), "the lip {at} is outside the glass");
         }
     }
-    for station in CANOPY {
-        let points = arch(station);
-        for rim in [points[0], points[5]] {
+    for station in &CANOPY[..GLAZED] {
+        let points = arch(*station);
+        for foot in [points[0], points[3]] {
             assert!(
-                within(hull, rim),
-                "the rim {rim} of the glass is in the air"
+                within(hull, foot),
+                "the foot {foot} of the glass is in the air"
             );
-            assert!(rim.x.abs() > tub_half(rim.z) + 0.01, "{rim} is in the tub");
+            assert!(
+                foot.x.abs() > tub_half(foot.z) + 0.01,
+                "{foot} is in the tub"
+            );
         }
     }
     let panes = corners(glass());
     assert!(panes.iter().all(|p| held(&all, *p)));
-    assert_eq!(panes.len() / 3, 20);
+    assert_eq!(panes.len() / 3, 15);
 }
 
-/// The tub, the furniture, the seat, the frame of the canopy and the faces of the
-/// instruments are inside the hull or under the glass, and the whole cabin is a few hundred
-/// triangles, none of them degenerate.
+/// The tub, the frame of the furniture, its plates and its accents are inside the hull or
+/// under the glass, and the whole cabin is under two thousand triangles, none of them
+/// degenerate.
 #[test]
 fn the_cabin_fits_inside_the_hull() {
     let all = outlines();
-    let parts = [tub(), furniture(), seat(), frame(), faces()];
+    let parts = [tub(), furniture(), plates(), accents()];
     for (index, part) in parts.into_iter().enumerate() {
         for corner in corners(part) {
             assert!(held(&all, corner), "part {index}: {corner} sticks out");
         }
     }
     let fixed = cabin_meshes().map(|(_, mesh)| mesh);
-    let meshes = [
-        tub_mesh(),
-        faces_mesh(),
-        stick_mesh(),
-        lever_mesh(),
-        bar_mesh(),
-    ];
+    let meshes = [tub_mesh(), stick_mesh(), lever_mesh()];
     let mut triangles = 0;
     for mesh in fixed.iter().chain(&meshes) {
         let points = positions(mesh);
@@ -129,11 +127,10 @@ fn the_cabin_fits_inside_the_hull() {
             assert!(area > 1.0e-7, "{tri:?}");
         }
     }
-    assert!(triangles > 200 && triangles < 1000, "{triangles} triangles");
+    assert!(triangles > 400 && triangles < 2000, "{triangles} triangles");
 }
 
-/// The stick and the lever stay inside the cockpit wherever the input puts them, and every
-/// lit instrument stays on the black face of its pod.
+/// The stick and the lever stay inside the cockpit wherever the input puts them.
 #[test]
 fn the_moving_parts_stay_inside() {
     let all = outlines();
@@ -152,18 +149,6 @@ fn the_moving_parts_stay_inside() {
         for point in &lever {
             let at = LEVER + held_at.lever_turn() * *point;
             assert!(within(&all, at), "the lever leaves the cockpit at {at}");
-        }
-    }
-    let panel = corners(faces());
-    let bar = positions(&bar_mesh());
-    for dial in Dial::ALL {
-        for corner in bar.iter().map(|p| dial.place(Some(1.0)) * *p) {
-            let from = corner + Vec3::Z * 0.001;
-            let on = panel.chunks(3).any(|tri| crosses(tri, from, Vec3::NEG_Z));
-            assert!(
-                on && corner.z > panel[0].z,
-                "{dial:?} is off its face at {corner}"
-            );
         }
     }
 }

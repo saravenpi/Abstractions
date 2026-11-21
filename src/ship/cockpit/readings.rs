@@ -3,6 +3,7 @@
 
 use bevy::prelude::*;
 
+use super::pixels::Ink;
 use super::tune::ALTITUDE_SPAN;
 use crate::ship::cruise::top_speed;
 use crate::ship::telemetry::{ShipTelemetry, WarpState};
@@ -70,6 +71,21 @@ impl Lamp {
         Lamp::Frame,
         Lamp::Failing,
     ];
+
+    /// Returns the legend of the lamp on the status display.
+    pub fn legend(self) -> &'static str {
+        ["STB", "LND", "CLS", "HOT", "FRM", "ERR"][self as usize]
+    }
+
+    /// Returns the ink the lamp is lit in: the lamps of the state of the ship are white, a
+    /// warning is amber, a danger is red.
+    pub fn ink(self) -> Ink {
+        match self {
+            Lamp::Assist | Lamp::Landed => Ink::Lit,
+            Lamp::Close | Lamp::Hot | Lamp::Frame => Ink::Amber,
+            Lamp::Failing => Ink::Red,
+        }
+    }
 }
 
 /// Everything the instruments of one ship measure right now.

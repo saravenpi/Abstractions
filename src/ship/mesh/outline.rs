@@ -7,7 +7,8 @@
 use bevy::prelude::*;
 
 use super::blade::{self, FIN, WINGLET};
-use super::frame::{CANOPY, CANOPY_ENDS, CANOPY_SIDES, FUSELAGE, SIDES, SPINE, ring};
+use super::dome;
+use super::frame::{FUSELAGE, SIDES, SPINE, rim};
 use super::outside::SHIELD;
 use super::struts::{self, MAIN, NOSE};
 use super::tail::{self, ENGINES};
@@ -16,8 +17,8 @@ use super::wing;
 /// Returns the corner points of each convex part of the airframe in ship-root space.
 pub fn hulls() -> Vec<Vec<Vec3>> {
     let mut parts = vec![
-        lathed(&FUSELAGE, (SPINE[0], SPINE[2]), SIDES),
-        lathed(&CANOPY, CANOPY_ENDS, CANOPY_SIDES),
+        fuselage(),
+        dome::corners(),
         blade::corners(0.0, &FIN),
         shield(),
         struts::corners(0.0, &NOSE),
@@ -47,10 +48,10 @@ fn engine(at: Vec2) -> Vec<Vec3> {
     points
 }
 
-/// Returns the corners of a body lathed through `stations` with `sides` sides, and its two `ends`.
-fn lathed(stations: &[[f32; 4]], ends: (Vec3, Vec3), sides: u32) -> Vec<Vec3> {
-    let rings = stations
+/// Returns the corners of every station of the fuselage, and its two ends.
+fn fuselage() -> Vec<Vec3> {
+    let rings = FUSELAGE
         .iter()
-        .flat_map(|&station| (0..sides).map(move |i| ring(station, i, sides)));
-    rings.chain([ends.0, ends.1]).collect()
+        .flat_map(|&station| (0..SIDES).map(move |i| rim(station, i)));
+    rings.chain([SPINE[0], SPINE[2]]).collect()
 }

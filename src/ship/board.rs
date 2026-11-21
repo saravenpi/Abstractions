@@ -21,8 +21,9 @@ use crate::world::{Chunks, Planet};
 /// Distance in metres from the hull centre within which the player can board.
 const BOARD_RANGE: f32 = 7.0;
 
-/// Where the player steps out in body axes: left of the cockpit, in front of the wing.
-const HATCH: DVec3 = DVec3::new(-2.0, 0.0, -1.8);
+/// Where the player steps out in body axes: beside the cockpit, in front of the wing, where
+/// the open canopy is within reach.
+const HATCH: DVec3 = DVec3::new(-1.6, 0.0, -1.5);
 
 /// Filter of the player body, which is not the camera.
 type OnlyBody = (With<Player>, Without<GameCamera>);

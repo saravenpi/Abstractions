@@ -30,8 +30,12 @@ fn triangles(mesh: &Mesh) -> usize {
     points.len() / 3
 }
 
-/// The detailed ship is between 1,200 and 3,600 triangles with its three legs, the far mesh is
-/// under half of that, and every mesh is made of real triangles.
+/// Most triangles the far mesh may have: what it had before the hull was redesigned.
+const FAR_BUDGET: usize = 970;
+
+/// The detailed ship is between 2,000 and 9,000 triangles with its three legs, the far mesh is
+/// within its old budget and under half of the detailed one, and every mesh is made of real
+/// triangles.
 #[test]
 fn ship_is_low_poly_and_has_a_cheap_far_mesh() {
     let (lamps, leg) = (lamp_meshes(), leg_mesh());
@@ -39,12 +43,12 @@ fn ship_is_low_poly_and_has_a_cheap_far_mesh() {
     let rest: usize = lamps.iter().map(triangles).sum::<usize>() + 3 * triangles(&leg);
     let far = triangles(&far_mesh());
     assert!(
-        hull + rest > 1200 && hull + rest < 3600,
+        hull + rest > 2000 && hull + rest < 9000,
         "{} triangles",
         hull + rest
     );
     assert!(
-        far * 2 < hull + rest,
+        far <= FAR_BUDGET && far * 2 < hull + rest,
         "{far} far triangles of {}",
         hull + rest
     );

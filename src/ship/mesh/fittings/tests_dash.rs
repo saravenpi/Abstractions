@@ -1,11 +1,12 @@
-//! Dashboard tests: the displays and the lamps stand on the black faces of the dashboard, and
+//! Dashboard tests: the displays stand on the panel of the dashboard, inside their bezels, and
 //! the controls of the right console and the pedals stand inside the cockpit.
 
 use bevy::prelude::*;
 
-use super::faces;
-use crate::ship::cockpit::{GEAR_LEVER, Lamp, PEDAL, Screen, WARP_SWITCH};
-use crate::ship::mesh::frame::{canopy, fuselage};
+use super::dash::{bezels, dash};
+use crate::ship::cockpit::{GEAR_LEVER, PEDAL, Screen, WARP_SWITCH};
+use crate::ship::mesh::dome::canopy;
+use crate::ship::mesh::frame::fuselage;
 use crate::ship::mesh::tests_fit::{corners, crosses, inside};
 
 /// Returns true when `point` is inside the hull or the glass.
@@ -14,24 +15,38 @@ fn within(point: Vec3) -> bool {
     closed.map(corners).any(|outline| inside(&outline, point))
 }
 
-/// The displays and the lamps stand on the black faces of the dashboard, a hair above them and
-/// parallel to them, so no instrument floats in the air or sinks into the console.
+/// The displays stand on the panel of the dashboard, a hair above its face and parallel to it,
+/// so no display floats in the air or sinks into the panel, and no bezel covers a display.
 #[test]
-fn the_displays_and_the_lamps_stand_on_their_faces() {
-    let panel = corners(faces());
-    let unit = [(-0.5, -0.5), (0.5, -0.5), (0.5, 0.5), (-0.5, 0.5)];
-    let lamps = Lamp::ALL.map(|lamp| lamp.place(true));
-    let screens = Screen::ALL.map(|screen| screen.placed());
-    for placed in lamps.into_iter().chain(screens) {
+fn the_displays_stand_on_the_panel() {
+    let (panel, frames) = (corners(dash()), corners(bezels()));
+    let unit = [
+        (-0.5, -0.5),
+        (0.5, -0.5),
+        (0.5, 0.5),
+        (-0.5, 0.5),
+        (0.0, 0.0),
+    ];
+    for placed in Screen::ALL.map(|screen| screen.placed()) {
         let normal = placed.rotation * Vec3::Z;
         for (x, y) in unit {
-            let corner = placed * Vec3::new(x, y, 0.0);
-            let on = panel
-                .chunks(3)
-                .any(|tri| crosses(tri, corner + normal * 0.002, -normal));
-            assert!(on, "an instrument sticks out of its face at {corner}");
+            let corner = placed * Vec3::new(x * 0.98, y * 0.98, 0.0);
+            let from = corner + normal * 0.05;
+            let on = panel.chunks(3).any(|tri| crosses(tri, from, -normal));
+            assert!(on, "a display sticks out of the panel at {corner}");
+            let covered = frames.chunks(3).any(|tri| crosses(tri, from, -normal));
+            assert!(!covered, "a bezel covers a display at {corner}");
+            assert!(
+                !within_panel(&panel, corner),
+                "a display is sunk at {corner}"
+            );
         }
     }
+}
+
+/// Returns true when `point` is inside the closed panel whose triangles have the corners `panel`.
+fn within_panel(panel: &[Vec3], point: Vec3) -> bool {
+    inside(&panel[..36], point)
 }
 
 /// The controls of the right console and the pedals stand inside the cockpit, on the console

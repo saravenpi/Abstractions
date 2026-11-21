@@ -31,12 +31,14 @@ fn over_the_mouth(corner: &Vec3) -> bool {
     corner.x.abs() < 1e-4 && corner.y > 0.3 && corner.z > MOUTH.0 && corner.z < MOUTH.1
 }
 
-/// The corners and the middle of every triangle drawn, but for the antenna, are inside the
-/// colliders or within [`TOLERANCE`] of them: whatever the eye sees, the hull meets.
+/// The corners and the middle of every triangle drawn, but for the aerial and the rung, which
+/// are thinner than a hand, are inside the colliders or within [`TOLERANCE`] of them: whatever
+/// the eye sees, the hull meets.
 #[test]
 fn what_is_drawn_collides() {
     let colliders = colliders();
-    for part in parts().iter().filter(|part| part.group != "mast") {
+    let thin = |group: &str| group == "mast" || group == "rung";
+    for part in parts().iter().filter(|part| !thin(part.group)) {
         for tri in &part.solid.tris {
             let middle = (tri[0] + tri[1] + tri[2]) / 3.0;
             for point in tri.iter().copied().chain([middle]) {
@@ -48,7 +50,7 @@ fn what_is_drawn_collides() {
 }
 
 /// Every corner of a collider is within [`TOLERANCE`] of a corner that is drawn: the colliders are
-/// no bigger than the ship. The canopy bubble, whose lower half is inside the hull, and the roof
+/// no bigger than the ship. The canopy and the spine, whose feet are inside the hull, and the roof
 /// of the fuselage over the open mouth of the cockpit, which is not drawn, are left out.
 #[test]
 fn colliders_are_no_bigger_than_the_ship() {

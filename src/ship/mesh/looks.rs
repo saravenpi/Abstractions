@@ -116,6 +116,9 @@ pub fn dress(entity: &mut EntityCommands, looks: &Looks, glow: Handle<StandardMa
         entity.with_child((Leg, leg, Transform::from_translation(hinge), near()));
     }
     for (index, mesh) in looks.hull.iter().enumerate() {
+        if index == Skin::Glass as usize {
+            continue;
+        }
         let skin = match index == Skin::Glow as usize {
             true => glow.clone(),
             false => looks.skins[index].clone(),

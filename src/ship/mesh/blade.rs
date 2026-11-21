@@ -7,22 +7,23 @@ use super::loft::{Section, solid};
 use crate::ship::solid::Solid;
 
 /// Stations of the tail fin from its root up: height, z of the leading edge and of the trailing
-/// edge, and half thickness. The root is inside the fuselage, and thick, so that the fin grows
-/// out of the roof; the tip is 1.9 m up.
+/// edge, and half thickness. The root is inside the fuselage and the spine, and thick, so that
+/// the fin grows out of the back. The leading edge is swept 56 degrees and cranked, and the tip,
+/// 2 m up, is raked back past the nozzles.
 pub(super) const FIN: [[f32; 4]; 4] = [
-    [0.45, 1.4, 3.15, 0.17],
-    [0.78, 1.55, 3.2, 0.085],
-    [1.25, 1.95, 3.3, 0.07],
-    [1.9, 2.7, 3.4, 0.04],
+    [0.45, 1.1, 3.05, 0.16],
+    [0.85, 1.55, 3.4, 0.09],
+    [1.35, 2.35, 3.62, 0.06],
+    [2.0, 3.25, 3.95, 0.035],
 ];
 
-/// Stations of the fin at a wing tip, like [`FIN`]: the fin starts under the wing end and
-/// stands 0.56 m above the top of it, well over the 0.35 m a body steps up, so it stops a body
-/// on the wing.
+/// Stations of the blade at a wing tip, like [`FIN`]: it starts under the wing end, holds it,
+/// and stands 0.66 m above the top of it, well over the 0.35 m a body steps up, so it stops a
+/// body on the wing.
 pub(super) const WINGLET: [[f32; 4]; 3] = [
-    [-0.32, 0.85, 2.25, 0.05],
-    [-0.035, 1.075, 2.325, 0.05],
-    [0.4, 1.4, 2.45, 0.04],
+    [-0.36, 1.62, 2.4, 0.04],
+    [-0.1, 1.58, 2.5, 0.055],
+    [0.5, 2.25, 2.85, 0.03],
 ];
 
 /// The section of a blade: the share of the chord from the leading edge, and the share of the
@@ -57,4 +58,27 @@ pub fn blade(x: f32, stations: &[[f32; 4]]) -> Solid {
 /// Returns the corner points of the blade of `stations` at `x`, for its collider.
 pub fn corners(x: f32, stations: &[[f32; 4]]) -> Vec<Vec3> {
     stations.iter().flat_map(|&at| section(x, at)).collect()
+}
+
+/// How far a band stops short of the leading and of the trailing edge of its blade, in metres.
+const SHORT: f32 = 0.05;
+
+/// Returns a band on the two faces of the blade of `stations` at `x`, from the height `from` up
+/// to `to`: a sleeve that stands `out` metres off the faces and stops short of the edges, for a
+/// stripe.
+pub fn band(x: f32, stations: &[[f32; 4]], (from, to): (f32, f32), out: f32) -> Solid {
+    let at = |y: f32| {
+        let i = stations
+            .iter()
+            .rposition(|s| s[0] <= y)
+            .unwrap_or(0)
+            .min(stations.len() - 2);
+        let (a, b) = (stations[i], stations[i + 1]);
+        let t = (y - a[0]) / (b[0] - a[0]);
+        let [_, front, back, half] = std::array::from_fn(|k| a[k] + (b[k] - a[k]) * t);
+        section(x, [y, front + SHORT, back - SHORT, half + out])
+    };
+    let mut band = Solid::default();
+    solid(&mut band, &[at(from), at(to)], |_, _| 0);
+    band
 }

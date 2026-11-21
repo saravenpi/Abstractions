@@ -22,7 +22,7 @@ pub fn board(world: &mut World, _: &mut Notes, frame: u32) -> Act {
     let key_board = bound(world, |s| s.controls.keys.ship.board);
     match frame {
         1 => {
-            let beside = hull.pos + hull.rot * DVec3::new(-2.6, -1.2, -1.8);
+            let beside = hull.pos + hull.rot * DVec3::new(-1.7, -1.2, -1.5);
             stand(world, beside, hull.pos, 0.0);
             Act::Wait
         }

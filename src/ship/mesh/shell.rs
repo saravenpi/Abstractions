@@ -1,11 +1,9 @@
-//! The hull and the glass as they are drawn: the outline of `frame`, open over the cockpit so
-//! that the tub, the seat and the pilot inside are seen from outside and from the seat.
+//! The hull as it is drawn: the outline of `frame`, open over the cockpit so that the tub, the
+//! seat and the pilot inside are seen from outside and from the seat.
 
 use bevy::prelude::*;
 
-use super::frame::{
-    CANOPY, CANOPY_ENDS, CANOPY_SIDES, FUSELAGE, JOINT, POST, PRE, SIDES, SPINE, ring,
-};
+use super::frame::{FUSELAGE, JOINT, POST, PRE, SIDES, SPINE, rim};
 use super::plating::{cone, plating};
 use crate::ship::solid::Solid;
 
@@ -15,11 +13,7 @@ pub const MOUTH: (f32, f32) = (-2.2, -0.9);
 
 /// Half width of the mouth at its front, at the joint and at its back. It stays inside the
 /// foot of the canopy, so the glass covers all of it.
-pub const HALF: [f32; 3] = [0.26, 0.36, 0.36];
-
-/// How far down its lower side faces the glass goes: just under the skin of the hull and
-/// outside the walls of the tub, so that no pane hangs inside the cockpit.
-const RIM: f32 = 0.58;
+pub const HALF: [f32; 3] = [0.33, 0.38, 0.38];
 
 /// Returns the station of the fuselage at `z`, between the two stations around it.
 pub fn station(z: f32) -> [f32; 4] {
@@ -37,7 +31,7 @@ pub fn mouth() -> [[f32; 4]; 3] {
 /// Returns the point of the roof of the hull at `station` that is `half` metres to the right
 /// of the middle, or to the left for a negative `half`: the lip of the mouth.
 pub fn lip(station: [f32; 4], half: f32) -> Vec3 {
-    let (top, corner) = (ring(station, 2, SIDES), ring(station, 1, SIDES));
+    let (top, corner) = (rim(station, 2), rim(station, 1));
     let at = top.lerp(corner, half.abs() / corner.x);
     Vec3::new(at.x * half.signum(), at.y, at.z)
 }
@@ -53,18 +47,15 @@ fn band(
 ) {
     for i in 0..SIDES {
         solid.set_tone(tones[i as usize]);
-        let out = ring([0.0, 1.0, 1.0, 0.0], i, SIDES) + ring([0.0, 1.0, 1.0, 0.0], i + 1, SIDES);
-        let (from, to) = (ring(a, i, SIDES), ring(b, i, SIDES));
+        let out = rim([0.0, 1.0, 1.0, 0.0], i) + rim([0.0, 1.0, 1.0, 0.0], i + 1);
+        let (from, to) = (rim(a, i), rim(b, i));
         match halves.filter(|_| i == 1 || i == 2) {
-            None => solid.quad(
-                [from, ring(a, i + 1, SIDES), ring(b, i + 1, SIDES), to],
-                out,
-            ),
+            None => solid.quad([from, rim(a, i + 1), rim(b, i + 1), to], out),
             Some((wa, wb)) => {
                 let (edge, side) = if i == 1 { (1, 1.0) } else { (3, -1.0) };
                 let (lips, ends) = (
                     (lip(a, wa * side), lip(b, wb * side)),
-                    (ring(a, edge, SIDES), ring(b, edge, SIDES)),
+                    (rim(a, edge), rim(b, edge)),
                 );
                 solid.quad([ends.0, lips.0, lips.1, ends.1], out);
             }
@@ -77,10 +68,7 @@ fn band(
 fn cap(solid: &mut Solid, end: Vec3, (station, out): ([f32; 4], Vec3), tones: [u8; 8]) {
     for i in 0..SIDES {
         solid.set_tone(tones[i as usize]);
-        solid.tri(
-            [end, ring(station, i, SIDES), ring(station, i + 1, SIDES)],
-            out,
-        );
+        solid.tri([end, rim(station, i), rim(station, i + 1)], out);
     }
 }
 
@@ -95,51 +83,23 @@ pub fn hull() -> [Solid; 2] {
     for (k, pair) in FUSELAGE[..=PRE].windows(2).enumerate() {
         band(&mut nose, (pair[0], pair[1]), None, cone(k));
     }
-    band(&mut nose, (FUSELAGE[PRE], front), None, plating(PRE));
+    band(&mut nose, (FUSELAGE[PRE], front), None, plating());
     band(
         &mut nose,
         (front, joint),
         Some((HALF[0], HALF[1])),
-        plating(JOINT),
+        plating(),
     );
     band(
         &mut body,
         (joint, back),
         Some((HALF[1], HALF[2])),
-        plating(JOINT + 1),
+        plating(),
     );
-    band(&mut body, (back, FUSELAGE[POST]), None, plating(POST));
-    for (k, pair) in FUSELAGE[POST..].windows(2).enumerate() {
-        band(&mut body, (pair[0], pair[1]), None, plating(POST + 1 + k));
+    band(&mut body, (back, FUSELAGE[POST]), None, plating());
+    for pair in FUSELAGE[POST..].windows(2) {
+        band(&mut body, (pair[0], pair[1]), None, plating());
     }
-    cap(&mut body, SPINE[2], (last, Vec3::Z), plating(0));
+    cap(&mut body, SPINE[2], (last, Vec3::Z), plating());
     [body, nose]
-}
-
-/// Returns the six points of the glass at a station of the canopy, from its right rim over
-/// the roof to its left rim.
-pub fn arch(station: [f32; 4]) -> [Vec3; 6] {
-    let at = |i: u32| ring(station, i, CANOPY_SIDES);
-    [
-        at(0).lerp(at(5), RIM),
-        at(0),
-        at(1),
-        at(2),
-        at(3),
-        at(3).lerp(at(4), RIM),
-    ]
-}
-
-/// Returns the canopy glass: the part of the bubble above the hull, open underneath.
-pub fn glass() -> Solid {
-    let mut glass = Solid::default();
-    let (front, back) = (arch(CANOPY[0]), arch(CANOPY[1]));
-    let middle = Vec3::new(0.0, 0.5, 0.5 * (CANOPY[0][0] + CANOPY[1][0]));
-    for i in 0..5 {
-        let pane = [front[i], front[i + 1], back[i + 1], back[i]];
-        glass.quad(pane, (pane[0] + pane[2]) * 0.5 - middle);
-        glass.tri([CANOPY_ENDS.0, front[i], front[i + 1]], Vec3::NEG_Z);
-        glass.tri([CANOPY_ENDS.1, back[i], back[i + 1]], Vec3::Z);
-    }
-    glass
 }

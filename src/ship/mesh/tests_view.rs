@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::bars::frame;
-use super::fittings::{faces, furniture, seat};
+use super::fittings::{accents, furniture, plates};
 use super::shell::hull;
 use super::tests_fit::{corners, crosses};
 use super::tub::tub;
@@ -14,12 +14,12 @@ use crate::ship::SEAT;
 const HALF_VIEW: f32 = 0.767_327;
 
 /// Seen from the eyes of the pilot looking level, at the default field of view, nothing of
-/// the hull or the cockpit ahead reaches into the upper two thirds of the screen except the
-/// thin frame of the canopy, and the nose shows between the instrument pods.
+/// the hull or the cockpit ahead reaches into the upper two thirds of the screen, no bar of the
+/// canopy frame crosses the view ahead, and the nose shows over the dashboard.
 #[test]
 fn the_dashboard_leaves_the_horizon_free() {
     let eye = SEAT.as_vec3();
-    let mut solid = vec![tub(), furniture(), seat(), faces()];
+    let mut solid = vec![tub(), furniture(), plates(), accents()];
     solid.extend(hull());
     let ahead: Vec<Vec3> = solid.into_iter().flat_map(corners).collect();
     for corner in ahead.iter().filter(|p| p.z < eye.z - 0.05) {
@@ -31,8 +31,8 @@ fn the_dashboard_leaves_the_horizon_free() {
     }
     let bars = corners(frame());
     let above = bars.iter().filter(|p| p.z < eye.z - 0.05 && p.y > eye.y);
-    assert!(above.count() > 20, "no frame around the view");
-    let cabin: Vec<Vec3> = [furniture(), faces(), seat()]
+    assert_eq!(above.count(), 0, "a bar crosses the view ahead");
+    let cabin: Vec<Vec3> = [furniture(), plates(), accents()]
         .into_iter()
         .flat_map(corners)
         .collect();
@@ -47,7 +47,7 @@ fn the_dashboard_leaves_the_horizon_free() {
 /// The interior is the same on both sides, but for the throttle on the left console.
 #[test]
 fn the_cabin_is_the_same_on_both_sides() {
-    for part in [tub(), furniture(), seat(), frame(), faces()] {
+    for part in [tub(), furniture(), plates(), accents(), frame()] {
         let points = corners(part);
         for point in &points {
             let mirror = Vec3::new(-point.x, point.y, point.z);

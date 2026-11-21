@@ -18,6 +18,7 @@ mod eye;
 mod fade;
 mod flight;
 mod frame;
+mod glide;
 mod hints;
 mod markers;
 mod minimap;
@@ -41,6 +42,8 @@ mod tests_coords;
 mod tests_deck;
 #[cfg(test)]
 mod tests_frame;
+#[cfg(test)]
+mod tests_glide;
 #[cfg(test)]
 mod tests_hints;
 #[cfg(test)]

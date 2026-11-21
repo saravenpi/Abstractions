@@ -44,7 +44,7 @@ fn fixed(key: &str, action: &str) -> impl Bundle {
 const FOOT_FIXED: [(&str, &str); 5] = [
     ("Mouse", "Look around"),
     ("Wheel", "Zoom camera"),
-    ("Jump in air", "Wings out or in"),
+    ("Jump in air", "Spread or fold"),
     ("Sprint, fall", "Boots brake"),
     ("Sprint, wings", "Boost"),
 ];

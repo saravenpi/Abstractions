@@ -100,6 +100,7 @@ pub fn general(active: Tab) -> impl Bundle {
             stepper("Hitstop", Field::Hitstop),
             toggle("Markers over the world", Field::WorldMarkers),
             toggle("Blood", Field::Blood),
+            toggle("Reduce motion", Field::ReduceMotion),
         ],
     )
 }

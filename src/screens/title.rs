@@ -85,20 +85,19 @@ fn layer() -> impl Bundle {
     (empty, node, ImageNode::default(), UiTransform::IDENTITY)
 }
 
-/// The version label in the bottom-right corner.
+/// The version label in the bottom-right corner, on a strip so it reads over any picture.
 fn version() -> impl Bundle {
+    let label = format!("v{}", env!("CARGO_PKG_VERSION"));
     (
-        text(
-            format!("v{}", env!("CARGO_PKG_VERSION")),
-            theme::FONT_SMALL,
-            theme::TEXT_2,
-        ),
         Node {
             position_type: PositionType::Absolute,
             right: px(theme::EDGE),
             bottom: px(theme::EDGE),
+            padding: UiRect::axes(px(theme::S2), px(theme::S1)),
             ..default()
         },
+        BackgroundColor(theme::PANEL),
+        children![text(label, theme::FONT_SMALL, theme::TEXT_2)],
     )
 }
 

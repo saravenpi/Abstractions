@@ -15,6 +15,9 @@ pub struct Gameplay {
     /// True to show the blood of a wound: the spurts and the stains. The bleeding itself goes on
     /// either way.
     pub blood: bool,
+    /// True to calm the interface: the pictures of the title screen do not drift and change
+    /// with a short fade.
+    pub reduce_motion: bool,
 }
 
 impl Default for Gameplay {
@@ -23,6 +26,7 @@ impl Default for Gameplay {
             hitstop: 1.0,
             world_markers: true,
             blood: true,
+            reduce_motion: false,
         }
     }
 }

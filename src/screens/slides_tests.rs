@@ -1,44 +1,15 @@
-//! Tests of the title slideshow: it advances after the slide time, the two pictures always share
-//! the whole view, it wraps after the last, it drifts without ever uncovering the window, and
-//! nothing of it is left once the game is played.
+//! Tests of the title slideshow as numbers: it advances after the slide time, the two pictures
+//! always share the whole view, it wraps after the last, and it drifts without ever uncovering
+//! the window.
 
-use std::time::Duration;
+use bevy::math::Vec2;
 
-use bevy::asset::AssetPlugin;
-use bevy::prelude::*;
-use bevy::state::app::StatesPlugin;
-use bevy::time::TimeUpdateStrategy;
-
-use super::Screen;
-use super::slides::{Slideshow, zoom};
-use super::title::{Incoming, Picture, SLIDES, cover};
-use crate::menus::Menu;
-use crate::ui::motion::{SLIDE, SLIDE_DRIFT, SLIDE_FADE};
+use super::slides::Slideshow;
+use super::title::cover;
+use crate::ui::motion::{LEVEL_FADE, SLIDE, SLIDE_DRIFT, SLIDE_FADE};
 
 /// Seconds of one step of the tests.
 const STEP: f32 = 0.25;
-
-/// Returns a headless app on the title screen, with images but no renderer, that moves a
-/// quarter of a second each frame.
-fn app() -> App {
-    let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default(), StatesPlugin))
-        .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs_f32(
-            STEP,
-        )))
-        .init_asset::<Image>()
-        .init_state::<Screen>()
-        .init_state::<Menu>()
-        .add_plugins(super::title::plugin);
-    app
-}
-
-/// Returns how many layers of the slideshow exist, and how many images are in memory.
-fn held(app: &mut App) -> (usize, usize) {
-    let mut layers = app.world_mut().query::<&Picture>();
-    let count = layers.iter(app.world()).count();
-    (count, app.world().resource::<Assets<Image>>().len())
-}
 
 /// A picture stays for the slide time, then the next one is shown, and the clock starts again.
 #[test]
@@ -125,45 +96,30 @@ fn a_picture_drifts_and_never_jumps() {
         );
         before = now;
     }
-    assert_eq!(zoom(0, 0.0), 1.0);
-    assert!((zoom(1, 0.0) - 1.0 - SLIDE_DRIFT).abs() < 1.0e-6);
+    let fresh = Slideshow::starting(0, 3).zooms();
+    assert!((fresh.1 - 1.0 - SLIDE_DRIFT).abs() < 1.0e-6 && fresh.0 < fresh.1);
 }
 
-/// On the title screen the slideshow moves on by itself with two layers, the back one opaque,
-/// and at most two pictures in memory. Once the game is played no layer, no state and no
-/// picture of it is left.
+/// With "Reduce motion" a picture never drifts, the fade is short, and the two pictures
+/// still share the whole view.
 #[test]
-fn nothing_of_the_slideshow_exists_in_gameplay() {
-    let mut app = app();
-    app.update();
-    let first = app.world().resource::<Slideshow>().slide;
-    let mut frames = 0;
-    while app.world().resource::<Slideshow>().turn == 0 && frames < 200 {
-        app.update();
-        frames += 1;
-        let (layers, images) = held(&mut app);
-        assert!(
-            layers == 2 && (1..=2).contains(&images),
-            "{layers} {images}"
+fn reduced_motion_stops_the_drift_and_shortens_the_fade() {
+    let mut show = Slideshow::starting(0, 3);
+    show.calm = true;
+    while show.turn < 2 {
+        let (shown, next) = show.weights();
+        assert_eq!(show.zooms(), (1.0, 1.0));
+        assert!((shown + next - 1.0).abs() < 1.0e-6, "{shown} {next}");
+        assert_eq!(
+            next > 0.0,
+            show.clock > SLIDE - LEVEL_FADE,
+            "{}",
+            show.clock
         );
+        assert_eq!(show.fading(), show.clock >= SLIDE - LEVEL_FADE);
+        show.tick(0.01, 3);
     }
-    let steps = (SLIDE / STEP) as i32;
-    assert!((frames - steps).abs() <= 2, "{frames} frames");
-    let show = *app.world().resource::<Slideshow>();
-    assert_eq!(show.slide, (first + 1) % SLIDES.len());
-    let mut back = app
-        .world_mut()
-        .query_filtered::<(&Picture, &ImageNode), Without<Incoming>>();
-    let (picture, node) = back.single(app.world()).unwrap();
-    assert_eq!((picture.slide, node.color.alpha()), (show.slide, 1.0));
-    app.world_mut()
-        .resource_mut::<NextState<Screen>>()
-        .set(Screen::Gameplay);
-    for _ in 0..3 {
-        app.update();
-    }
-    assert!(!app.world().contains_resource::<Slideshow>());
-    assert_eq!(held(&mut app), (0, 0));
+    assert!(show.calm && show.slide == 2);
 }
 
 /// Every picture of the set covers every window the title tests check, at every scale of its

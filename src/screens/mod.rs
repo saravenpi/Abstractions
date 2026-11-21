@@ -7,6 +7,8 @@ mod hide_tests;
 mod loading;
 mod slides;
 #[cfg(test)]
+mod slides_app_tests;
+#[cfg(test)]
 mod slides_tests;
 mod stall;
 #[cfg(test)]

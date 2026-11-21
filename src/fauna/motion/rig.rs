@@ -20,6 +20,16 @@ use super::tune::Tune;
 use super::turn::Turn;
 use super::{plans, settle, walk};
 use crate::life::body::{Body, Locomotion};
+use crate::universe::hash::{Rng, child};
+
+/// Salt of the seeded phase of the plan's cycle of an individual.
+const CYCLE_KEY: u64 = 0xC1C1;
+
+/// Salt of the seeded phase of the stride of an individual.
+const STRIDE_KEY: u64 = 0x57D;
+
+/// Salt of the seeded start of the rig's own clock of an individual.
+const TIME_KEY: u64 = 0x71E;
 
 /// Seconds after which the rig's own clock wraps, a whole number of turns of every timed wave.
 const WRAP: f32 = 200.0 * std::f32::consts::PI;
@@ -130,10 +140,11 @@ impl Root {
 }
 
 impl Beat {
-    /// Returns the clocks of the individual of `seed`, at rest.
+    /// Returns the clocks of the individual of `seed`, at rest, its cycle at a seeded phase so that a
+    /// flock, a bloom or a herd spawned together never beats in step.
     fn new(seed: u64) -> Self {
         Self {
-            cycle: 0.0,
+            cycle: Rng::new(child(seed, CYCLE_KEY)).unit() as f32,
             roll: 0.0,
             wing: 0.0,
             squash: Vec3::ONE,
@@ -153,6 +164,7 @@ impl Motion {
         let strands = chains(body).into_iter();
         let strands = strands.map(|(kind, c)| Strand::new(kind, frame.joints(c, place)));
         let clock = Clock {
+            phase: Rng::new(child(seed, STRIDE_KEY)).unit() as f32,
             duty: 0.7,
             stride: body.height.max(0.05),
             ..Clock::default()
@@ -170,7 +182,7 @@ impl Motion {
             brace: Brace::default(),
             tune: Tune::of_body(body),
             detail: None,
-            time: 0.0,
+            time: Rng::new(child(seed, TIME_KEY)).unit() as f32 * WRAP,
         }
     }
 
@@ -182,7 +194,8 @@ impl Motion {
         }
         let ground: &dyn Fn(Vec2) -> f32 = ground;
         self.time = (self.time + dt).rem_euclid(WRAP);
-        self.idle.step(&self.tune, drive.excite, dt);
+        self.idle
+            .step(&self.tune, (drive.excite, self.work(body, drive)), dt);
         if let Some(song) = self.song.as_mut() {
             song.age += dt;
         }
@@ -200,6 +213,16 @@ impl Motion {
         self.detail = Some(drive.detail);
         settle::attend(self, drive.look, dt);
         settle::bend(self, body, ground, dt);
+    }
+
+    /// Returns how hard the body of `body` works now under `drive`, 0 at rest to 1: its speed against a
+    /// run, a Froude number of 1 on its legs, or the alarm it is in when that is more.
+    fn work(&self, body: &Body, drive: &Drive) -> f32 {
+        let run = (drive.gravity.max(0.1) * body.height.max(0.05)).sqrt();
+        drive
+            .excite
+            .max(self.velocity().length() / run)
+            .clamp(0.0, 1.0)
     }
 
     /// Returns the velocity of the body in the local frame.

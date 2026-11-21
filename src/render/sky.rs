@@ -13,6 +13,7 @@ use bevy::shader::ShaderRef;
 
 use super::celestial::smoothstep;
 use super::palette::Palette;
+use super::skylight;
 
 /// Uniform block read by `sky.wesl`. Every field is a `vec4` so the layout never needs padding.
 #[derive(Clone, Copy, Debug, Default, ShaderType)]
@@ -96,7 +97,7 @@ impl SkyUniform {
             up: look.up.extend(look.dip),
             rim: linear(look.rim) * dry,
             galaxy: Vec4::new(
-                palette.stars * dry,
+                skylight::band_of(palette.zenith, palette.horizon) * dry,
                 f32::from(u8::from(look.mapped)),
                 0.0,
                 0.0,

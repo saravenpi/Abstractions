@@ -33,6 +33,7 @@ mod season;
 mod seasons;
 mod shade;
 mod sky;
+mod skylight;
 mod starfield;
 mod sun;
 mod tune;
@@ -73,6 +74,8 @@ mod tests_season;
 mod tests_seasons;
 #[cfg(test)]
 mod tests_sky;
+#[cfg(test)]
+mod tests_skylight;
 #[cfg(test)]
 mod tests_weather;
 

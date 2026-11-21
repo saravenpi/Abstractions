@@ -1,6 +1,6 @@
 //! Stages that judge the sky and the light: the same view at several hours of the day.
 
-use abstractions::render::{CloudShell, Starfield};
+use abstractions::render::{CloudShell, Palette, Starfield, Vantage};
 use abstractions::world::spin;
 
 use super::*;
@@ -27,6 +27,12 @@ pub fn clock_at(world: &mut World, height: f64, rising: bool) {
     let here = robot(world).normalize();
     let now = world.resource::<abstractions::space::Clock>().seconds;
     let step = day / 720.0;
+    let (low, high) = (0..720)
+        .map(|k| star_height(world, here, now + step * f64::from(k)))
+        .fold((f64::MAX, f64::MIN), |(low, high), h| {
+            (low.min(h), high.max(h))
+        });
+    eprintln!("PROBE day {day:.0} s, star height over a day {low:.2} to {high:.2}");
     let found = (0..720)
         .map(|k| now + step * f64::from(k))
         .find(|t| {
@@ -103,6 +109,14 @@ pub fn look_stars(world: &mut World, _: &mut Notes, frame: u32) -> Act {
 pub fn look_grain(world: &mut World, _: &mut Notes, frame: u32) -> Act {
     if frame == 1 {
         gaze(world, 0.3, true);
+        let palette = world.resource::<Palette>();
+        eprintln!(
+            "PROBE sky stars {:.2} zenith {:?} horizon {:?} air {:.2}",
+            palette.stars,
+            palette.zenith,
+            palette.horizon,
+            world.resource::<Vantage>().air
+        );
     }
     let hide = |world: &mut World, clouds: bool, stars: bool| {
         let mut q = world.query_filtered::<&mut Visibility, With<CloudShell>>();

@@ -20,7 +20,7 @@ use bevy::render::view::ColorGrading;
 use super::scene_lux;
 use super::tune::{ADAPT_SECONDS, MEAN_ALBEDO, SUN_LIGHT, SURROUND, WHITE_STEP};
 use crate::render::GameCamera;
-use crate::render::daylight::{PlaceLight, PlaceUniform};
+use crate::render::daylight::PlaceLight;
 use crate::render::palette::Palette;
 use crate::settings::{Persistent, Settings};
 
@@ -84,38 +84,15 @@ pub fn eased(white: Vec2, target: Vec2, dt: f32) -> Vec2 {
     white.lerp(target, 1.0 - (-dt.max(0.0) / ADAPT_SECONDS).exp())
 }
 
-/// Returns the linear colour of the light that reaches the camera under `place`: the direct light
-/// plus the sky, as the exposure meter counts them.
-fn incoming(place: &PlaceUniform) -> Vec3 {
-    place.eye_sun.truncate() + PI * place.eye_sky.truncate()
-}
-
-/// Adapts the white of the camera to the colour of the light and writes it as the colour grading
-/// white balance, slowly. Without a place, or with the setting off, the white is D65 at once.
-pub(super) fn run(
-    (time, place, palette): (Res<Time>, Res<PlaceLight>, Res<Palette>),
-    settings: Res<Persistent<Settings>>,
-    mut balanced: ResMut<Balanced>,
-    mut cameras: Query<(Entity, Option<&mut ColorGrading>), With<GameCamera>>,
-    mut commands: Commands,
+/// Writes the white balance `white` to the colour grading of the camera, and adds the grading
+/// when the camera has none. A change under [`WHITE_STEP`] is not written.
+fn apply(
+    white: Vec2,
+    cameras: &mut Query<(Entity, Option<&mut ColorGrading>), With<GameCamera>>,
+    commands: &mut Commands,
 ) {
-    let live = place.0.air.z > 0.0 && settings.graphics.lighting.white_balance;
-    let lux = scene_lux(&place.0, palette.moon_lux);
-    let target = match live {
-        true => adapted(incoming(&place.0), lux),
-        false => D65,
-    };
-    let white = match balanced.set && live {
-        true => eased(balanced.white, target, time.delta_secs()),
-        false => target,
-    };
-    let next = Balanced {
-        white,
-        set: live || balanced.set,
-    };
-    balanced.set_if_neq(next);
-    let (temperature, tint) = grading(balanced.white);
-    for (camera, grade) in &mut cameras {
+    let (temperature, tint) = grading(white);
+    for (camera, grade) in cameras {
         match grade {
             Some(mut grade)
                 if (grade.global.temperature - temperature)
@@ -135,4 +112,29 @@ pub(super) fn run(
             _ => {}
         }
     }
+}
+
+/// Adapts the white of the camera to the colour of the light and writes it as the colour grading
+/// white balance, slowly. Without a place, or with the setting off, the white is D65 at once.
+pub(super) fn run(
+    (time, place, palette): (Res<Time>, Res<PlaceLight>, Res<Palette>),
+    settings: Res<Persistent<Settings>>,
+    mut balanced: ResMut<Balanced>,
+    mut cameras: Query<(Entity, Option<&mut ColorGrading>), With<GameCamera>>,
+    mut commands: Commands,
+) {
+    let live = place.0.air.z > 0.0 && settings.graphics.lighting.white_balance;
+    let lux = scene_lux(&place.0, palette.moon_lux);
+    let light = place.0.eye_sun.truncate() + PI * place.0.eye_sky.truncate();
+    let target = match live {
+        true => adapted(light, lux),
+        false => D65,
+    };
+    let white = match balanced.set && live {
+        true => eased(balanced.white, target, time.delta_secs()),
+        false => target,
+    };
+    let set = live || balanced.set;
+    balanced.set_if_neq(Balanced { white, set });
+    apply(balanced.white, &mut cameras, &mut commands);
 }

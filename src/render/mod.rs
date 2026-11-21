@@ -29,6 +29,7 @@ mod nearby;
 mod observer;
 mod palette;
 mod pixelate;
+pub mod ranges;
 mod scatter;
 mod season;
 mod seasons;
@@ -177,5 +178,11 @@ const UPLOAD_BYTES: usize = 16 << 20;
 /// Registers the render plugins.
 pub(super) fn plugin(app: &mut App) {
     app.insert_resource(RenderAssetBytesPerFrame::new(UPLOAD_BYTES))
-        .add_plugins((pixelate::plugin, murk::pass, lowres::plugin, sky));
+        .add_plugins((
+            pixelate::plugin,
+            murk::pass,
+            lowres::plugin,
+            ranges::plugin,
+            sky,
+        ));
 }

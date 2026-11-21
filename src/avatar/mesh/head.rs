@@ -27,23 +27,42 @@ const DOME: [Section; 6] = [
 ];
 
 /// Half extents of a blade of the brow wing, and how far it rolls up and sweeps back, in radians.
-const BLADE: ([f32; 3], f32, f32) = ([0.115, 0.015, 0.042], 0.24, 0.2);
+/// The wing is as wide as a run banked into a turn leaves room for inside the player collider.
+const BLADE: ([f32; 3], f32, f32) = ([0.108, 0.015, 0.042], 0.24, 0.2);
 
 /// The visor box, the two blades of the brow wing with their accent tips, and the slate hatch
 /// with its two dark vents on the back of the helmet.
 const PLATES: [Plate; 8] = [
-    Plate::new([0.0, MID, 0.002 - SCREEN_FRONT + VISOR[2]], VISOR, [DARK, DARK]).cut(LARGE),
-    Plate::new([0.128, MID + 0.112, -0.118], BLADE.0, [SHELL, SHELL]).turned(0.1, -BLADE.2, BLADE.1),
-    Plate::new([-0.128, MID + 0.112, -0.118], BLADE.0, [SHELL, SHELL]).turned(0.1, BLADE.2, -BLADE.1),
-    Plate::new([0.226, MID + 0.136, -0.098], [0.02, 0.019, 0.046], [ACCENT, ACCENT])
-        .turned(0.1, -BLADE.2, BLADE.1)
-        .cut(0.0),
-    Plate::new([-0.226, MID + 0.136, -0.098], [0.02, 0.019, 0.046], [ACCENT, ACCENT])
-        .turned(0.1, BLADE.2, -BLADE.1)
-        .cut(0.0),
-    Plate::new([0.0, MID + 0.015, 0.143], [0.075, 0.055, 0.01], [SHADE, SHADE])
-        .cut(0.0)
-        .fine(),
+    Plate::new(
+        [0.0, MID, 0.002 - SCREEN_FRONT + VISOR[2]],
+        VISOR,
+        [DARK, DARK],
+    )
+    .cut(LARGE),
+    Plate::new([0.121, MID + 0.11, -0.119], BLADE.0, [SHELL, SHELL]).turned(0.1, -BLADE.2, BLADE.1),
+    Plate::new([-0.121, MID + 0.11, -0.119], BLADE.0, [SHELL, SHELL])
+        .turned(0.1, BLADE.2, -BLADE.1),
+    Plate::new(
+        [0.212, MID + 0.133, -0.101],
+        [0.02, 0.019, 0.046],
+        [ACCENT, ACCENT],
+    )
+    .turned(0.1, -BLADE.2, BLADE.1)
+    .cut(0.0),
+    Plate::new(
+        [-0.212, MID + 0.133, -0.101],
+        [0.02, 0.019, 0.046],
+        [ACCENT, ACCENT],
+    )
+    .turned(0.1, BLADE.2, -BLADE.1)
+    .cut(0.0),
+    Plate::new(
+        [0.0, MID + 0.015, 0.143],
+        [0.075, 0.055, 0.01],
+        [SHADE, SHADE],
+    )
+    .cut(0.0)
+    .fine(),
     Plate::new([0.0, MID + 0.035, 0.15], [0.05, 0.008, 0.005], [DARK, DARK])
         .cut(0.0)
         .fine(),

@@ -67,13 +67,13 @@ pub const ALL: [Plate; PLATES] = [
     plate(
         Part::WingL,
         Seg::Torso,
-        [-0.064, 0.225, 0.103],
+        [-0.064, 0.225, 0.094],
         [0.064, 0.105, 0.03],
     ),
     plate(
         Part::WingR,
         Seg::Torso,
-        [0.064, 0.225, 0.103],
+        [0.064, 0.225, 0.094],
         [0.064, 0.105, 0.03],
     ),
     limb(Part::ArmL, Seg::UpperArmL, 0),

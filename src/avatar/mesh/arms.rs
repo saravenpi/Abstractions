@@ -34,10 +34,11 @@ const SHORT: [Plate; 1] = [
 ];
 
 /// The shoulder plate of the left arm, written on the right: the block and a slate lame under
-/// it, edged in the accent. It is the one difference between the two sides.
+/// it, edged in the accent. It is the one difference between the two sides. The lame is short, so
+/// the arm that holds the throttle stays inside the tub of the cockpit.
 const LONG: [Plate; 2] = [
     SHORT[0],
-    Plate::new([0.064, -0.16, 0.0], [0.012, 0.05, 0.068], [SHADE, ACCENT]).turned(0.0, 0.0, 0.05),
+    Plate::new([0.062, -0.152, 0.0], [0.012, 0.042, 0.068], [SHADE, ACCENT]).turned(0.0, 0.0, 0.05),
 ];
 
 /// The frame of the forearm, from inside the elbow into the gauntlet.
@@ -73,7 +74,12 @@ const HAND: [Plate; 4] = [
 /// when `long`.
 pub fn upper_arm(detail: Detail, long: bool) -> Soup {
     let mut soup = Soup::default();
-    loft(&mut soup, &UPPER, detail.ring(Ring::Round(8, 2.0)), |_, _| DARK);
+    loft(
+        &mut soup,
+        &UPPER,
+        detail.ring(Ring::Round(8, 2.0)),
+        |_, _| DARK,
+    );
     discs(&mut soup, &JOINTS, detail);
     let plate: &[Plate] = if long { &LONG } else { &SHORT };
     plates(&mut soup, plate, detail);

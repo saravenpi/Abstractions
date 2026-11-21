@@ -86,3 +86,21 @@ fn coarse_nodes_are_drawn_on_their_grid() {
         }
     }
 }
+
+/// The finest grid draws the height of the finest mesh, and a coarser grid draws the ground at its
+/// own vertices.
+#[test]
+fn a_grid_draws_the_height_of_its_triangles() {
+    let terrain = view();
+    for at in [Vec2::new(13.3, -41.7), Vec2::new(-90.1, 7.9)] {
+        let fine = Drawn::FINE.height(&terrain, at);
+        assert!(
+            (fine - terrain.mesh_height(at.x, at.y)).abs() < 1e-3,
+            "{at}"
+        );
+    }
+    let grid = Drawn::chunk(IVec2::new(3, -5), 4);
+    let corner = grid.origin + Vec2::new(2.0, 3.0) * grid.step;
+    let drawn = grid.height(&terrain, corner);
+    assert!((drawn - terrain.height(corner.x, corner.y)).abs() < 1e-3);
+}

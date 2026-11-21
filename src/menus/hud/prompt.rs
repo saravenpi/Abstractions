@@ -73,7 +73,7 @@ pub fn choose(state: &State) -> Option<(Option<KeyCode>, String)> {
 pub fn offered(offer: Offer, keys: &Keymap) -> (KeyCode, String) {
     let (thing, weight) = (offer.thing, offer.weight());
     match offer.verb {
-        Verb::Pull => (keys.ship.board, format!("Pull the {thing}")),
+        Verb::Pull => (keys.ship.board, format!("Pull out the {thing}")),
         Verb::Carve => (keys.ship.board, format!("Cut the {thing}")),
         Verb::Take => (keys.ship.board, format!("Take the {thing}{weight}")),
         Verb::Board => (keys.ship.board, "Board".to_string()),

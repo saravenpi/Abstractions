@@ -9,7 +9,9 @@ use super::super::act::{Act, Strike};
 use super::super::held::Held;
 use super::super::hit::{Bounds, enter};
 use super::super::input::Robot;
+use super::super::javelin::{Planet, far};
 use super::super::sense::Parts;
+use super::super::solid::Land;
 use super::bend::shoulder;
 use super::tune::{AIM_PAD, AIM_SIGHT, GROUND_CLEAR, LUNGE};
 use crate::fauna::Live;
@@ -80,12 +82,34 @@ fn aiming(act: Act) -> bool {
     )
 }
 
+/// Returns the point a strike of `held` in `act` aims at, in the frame of the body placed at
+/// `placed`: for a javelin drawn back, the point the crosshair ray from `ray` meets on the drawn
+/// `land` or the animal `metres` along it; for any other blow, `point`, never into the ground.
+fn aimed(
+    (held, act): (&Held, Act),
+    placed: &GlobalTransform,
+    (ray, metres, point): ((Vec3, Vec3), Option<f32>, Vec3),
+    (anchor, terrain, chunks): &Land,
+) -> Vec3 {
+    let to_body = placed.affine().inverse();
+    if held.thrown() && matches!(act, Act::Draw(_)) {
+        let ground = anchor
+            .as_deref()
+            .zip(terrain.as_deref())
+            .map(|(anchor, terrain)| Planet::new(anchor, terrain, chunks.as_deref()));
+        return to_body.transform_point3(far(ground.as_ref(), ray, metres));
+    }
+    let local = to_body.transform_point3(point);
+    local.with_y(local.y.max(SOLE_Y + GROUND_CLEAR))
+}
+
 /// Reads where the crosshair of the local robot points: the animal under it, whether the held tool
 /// reaches it, and the point a strike aims at, which the strike of the robot takes until its blow
 /// is under way. With no animal in reach the aim runs along the view to the edge of the reach, so
-/// a strike follows the pitch of the camera; it never aims into the ground.
+/// a strike follows the pitch of the camera; it never aims into the ground. A javelin drawn back
+/// aims as far as the crosshair sees.
 pub fn look(
-    (robot, camera): (Robot, Query<&GlobalTransform, With<GameCamera>>),
+    (robot, camera, land): (Robot, Query<&GlobalTransform, With<GameCamera>>, Land),
     (parts, creatures): (Parts, Query<(), Live>),
     mut bodies: Query<(&GlobalTransform, &mut Strike, &Held)>,
     mut sight: ResMut<Sight>,
@@ -109,7 +133,7 @@ pub fn look(
         point: Some(point),
     });
     if held.out && aiming(strike.act) {
-        let local = placed.affine().inverse().transform_point3(point);
-        strike.aim = Some(local.with_y(local.y.max(SOLE_Y + GROUND_CLEAR)));
+        let ray = ((origin, dir), target.map(|(_, _, metres)| metres), point);
+        strike.aim = Some(aimed((held, strike.act), placed, ray, &land));
     }
 }

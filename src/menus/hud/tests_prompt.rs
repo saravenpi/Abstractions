@@ -94,8 +94,12 @@ fn every_offered_action_names_its_key_and_its_thing() {
         row(KeyCode::KeyT, "Cut the thigh")
     );
     assert_eq!(
-        said(Verb::Pull, "spear"),
-        row(KeyCode::KeyT, "Pull the spear")
+        said(Verb::Pull, "flint javelin"),
+        row(KeyCode::KeyT, "Pull out the flint javelin")
+    );
+    assert_eq!(
+        said(Verb::Take, "flint javelin"),
+        row(KeyCode::KeyT, "Take the flint javelin")
     );
     assert_eq!(said(Verb::Board, ""), row(KeyCode::KeyT, "Board"));
     assert_eq!(said(Verb::Leave, ""), row(KeyCode::KeyT, "Leave the ship"));

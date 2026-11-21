@@ -13,7 +13,7 @@ use super::canvas::{material, mesh, write};
 use super::held::Held;
 use super::show::HEAD;
 use super::trail::{ROWS, Trail};
-use super::tune::{TRAIL_LIFE, TRAIL_PEAK, TRAIL_TINT};
+use super::tune::{TRAIL_PEAK, TRAIL_TINT};
 
 /// Share of the opacity the edge nearer the grip keeps: the ribbon fades toward the hand.
 const INNER: f32 = 0.25;
@@ -35,20 +35,21 @@ pub fn tint() -> Vec3 {
     Vec3::ONE.lerp(Vec3::new(head.red, head.green, head.blue), TRAIL_TINT)
 }
 
-/// Writes the ribbon of `trail` into `positions` and `colours`, two slots a row, newest row first.
-/// Rows the trail has not laid yet fold onto its oldest and are clear.
-pub fn fill(trail: &Trail, positions: &mut [[f32; 3]], colours: &mut [[f32; 4]]) {
-    let tint = tint();
+/// Writes the ribbon of `trail` into `positions` and `colours`, two slots a row, newest row first,
+/// at the opacity `look` gives: its brightest, and the share of it the first edge keeps. Rows the
+/// trail has not laid yet fold onto its oldest and are clear.
+pub fn fill(trail: &Trail, look: [f32; 2], positions: &mut [[f32; 3]], colours: &mut [[f32; 4]]) {
+    let (tint, [peak, inner]) = (tint(), look);
     let last = trail.row(trail.len().saturating_sub(1)).unwrap_or_default();
     for index in 0..ROWS {
         let row = trail.row(index).unwrap_or(last);
-        let young = (1.0 - row.age / TRAIL_LIFE).clamp(0.0, 1.0);
+        let young = (1.0 - row.age / trail.life()).clamp(0.0, 1.0);
         let alpha = if index < trail.len() {
-            TRAIL_PEAK * row.glow * young * young
+            peak * row.glow * young * young
         } else {
             0.0
         };
-        for (side, share) in [(0, INNER), (1, 1.0)] {
+        for (side, share) in [(0, inner), (1, 1.0)] {
             positions[index * 2 + side] = row.edge[side].to_array();
             colours[index * 2 + side] = tint.extend(alpha * share).to_array();
         }
@@ -119,7 +120,7 @@ pub fn trace(
             Visibility::Inherited
         });
         if let (false, Some(mut mesh)) = (empty, meshes.get_mut(&handle.0)) {
-            write(&mut mesh, &ribbon.trail);
+            write(&mut mesh, &ribbon.trail, [TRAIL_PEAK, INNER]);
         }
     }
 }

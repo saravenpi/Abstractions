@@ -18,7 +18,7 @@ const VERBS: usize = 7;
 /// An action a key does to what the robot looks at or stands by.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Verb {
-    /// Pull a spear out of the animal it stands in, or pick a spear up off the ground it fell on.
+    /// Pull a spear out of the animal or the ground it stands in.
     Pull,
     /// Cut a part off a carcass.
     Carve,

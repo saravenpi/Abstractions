@@ -59,7 +59,11 @@ pub(super) fn take(
     let grams = (lies.mass * 1e3).round() as u32;
     hands.interact.weighed(Verb::Take, lies.name, Some(grams));
     let key = hands.settings.controls.keys.ship.board;
-    if !hands.interact.pressed(Verb::Take, &hands.keys, key) {
+    let named = hands
+        .interact
+        .chosen()
+        .is_some_and(|o| o.thing == lies.name);
+    if !named || !hands.interact.pressed(Verb::Take, &hands.keys, key) {
         return;
     }
     let into = (&mut *pack, &mut *shed);

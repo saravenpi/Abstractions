@@ -23,8 +23,15 @@ pub const LIGHT: f32 = 0.5;
 /// Share of the mass in the head above which a build chops or smashes overhead, unitless.
 pub const HEAVY_HEAD: f32 = 0.6;
 
-/// Least seconds from the end of a swing back to carrying the tool.
-pub const RECOVER: f32 = 0.25;
+/// Least seconds from the end of a swing back to carrying the tool: 0.25 in 0.11.0.
+pub const RECOVER: f32 = 0.2;
+
+/// Least seconds to cock any tool back before a blow: an arm does not wind up faster.
+pub const WINDUP_FLOOR: f32 = 0.08;
+
+/// How many times its length a thrust takes to cock at its thrust speed, unitless: the arm draws
+/// the tool back over the length of the stab before it drives it home.
+pub const COCK: f32 = 2.0;
 
 /// Share of its wind-up that the arm takes to stop the tool after a swing, unitless: the arm that
 /// gave the tool its speed in the wind-up takes as long to take it away, so a heavy or badly held
@@ -50,6 +57,9 @@ pub const DRAW: f32 = 0.8;
 
 /// Share of a full draw under which a release throws nothing, unitless.
 pub const LEAST_DRAW: f32 = 0.25;
+
+/// Seconds the hands stagger back off the ground, a rock or a wall a blow met.
+pub const STAGGER: f32 = 0.15;
 
 /// Longest kickback stun after a blow that gave none of its energy, in seconds.
 pub const KICK: f32 = 0.1;
@@ -94,23 +104,14 @@ pub const CAMERA_SHAKE: f32 = 0.012;
 /// loose soil, our estimate.
 pub const GROUND: (f32, f32) = (0.05, 500.0);
 
-/// Pressure soil puts against a point driven into it, in pascals.
-pub const SOIL: f32 = 1.0e6;
-
 /// Least depth a spear must reach in the ground to stand in it, in metres.
 pub const STICK: f32 = 0.05;
 
-/// Share of its speed a spear keeps when it bounces, unitless.
+/// Share of its speed into a surface a spear keeps back out of it when it glances, unitless.
 pub const RESTITUTION: f32 = 0.3;
 
 /// Speed under which a bouncing spear comes to rest, in metres per second.
 pub const REST_SPEED: f32 = 1.0;
-
-/// Distance within which the robot picks a lying spear up, in metres.
-pub const PICK: f32 = 1.5;
-
-/// Upward tilt of a throw over the view, in radians.
-pub const LOFT: f32 = 0.08;
 
 /// Metres from the robot within which a spear stuck in an animal can be pulled out.
 pub const PULL: f32 = 3.0;
@@ -140,7 +141,7 @@ pub const GLANCE: f32 = 0.35;
 
 /// How much longer the recovery takes after a swing that met nothing: no target braked the tool, so
 /// the arm has to, unitless.
-pub const MISS_RECOVER: f32 = 1.5;
+pub const MISS_RECOVER: f32 = 1.2;
 
 /// Share of the path a tool rebounds along after a blunt blow that the body took, for the most
 /// elastic contact, unitless.

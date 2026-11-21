@@ -113,3 +113,12 @@ pub const TONES: [[f32; 3]; 5] = [
 
 /// Linear RGB of a spark, above 1 so it glows: hot metal or flint.
 pub const SPARK: [f32; 3] = [6.0, 2.6, 0.7];
+
+/// Metres past the tip a held tool keeps clear of the world: it rises before it touches a wall.
+pub const MARGIN: f32 = 0.1;
+
+/// Seconds a held tool raised out of the way of a wall takes to come back down once it is clear.
+pub const CRAMP_EASE: f32 = 0.15;
+
+/// Halvings of the raise that keeps a held tool clear: 2⁻⁶ of the way up.
+pub const CRAMP_HALVES: usize = 6;

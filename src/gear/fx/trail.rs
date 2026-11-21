@@ -32,13 +32,13 @@ pub struct Sample {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Trail {
     /// The ring of points.
-    ring: [Sample; POINTS],
+    pub(super) ring: [Sample; POINTS],
     /// Index of the newest point.
-    head: usize,
+    pub(super) head: usize,
     /// Number of points laid, at most [`POINTS`].
-    len: usize,
+    pub(super) len: usize,
     /// The emitter right now: the start of the ribbon, ahead of the newest point.
-    tip: Sample,
+    pub(super) tip: Sample,
 }
 
 impl Default for Trail {
@@ -85,36 +85,15 @@ impl Trail {
     }
 
     /// Lays one point at the head of the ring.
-    fn push(&mut self, sample: Sample) {
+    pub(super) fn push(&mut self, sample: Sample) {
         self.head = (self.head + 1) % POINTS;
         self.ring[self.head] = sample;
         self.len = (self.len + 1).min(POINTS);
     }
 
-    /// Moves the emitter to `at` after `dt` seconds, glowing at `heat`.
-    ///
-    /// Every point ages. New points are laid every [`SPACING`] metres along the straight line
-    /// from the newest point to the emitter, however long the frame was, so the spacing does
-    /// not depend on the frame rate. A jump longer than [`BREAK`] starts the trail over.
+    /// Moves the emitter to `at` after `dt` seconds, glowing at `heat`, with the spacing and the
+    /// break of a body on foot or on the wing: [`SPACING`] and [`BREAK`].
     pub fn feed(&mut self, at: DVec3, heat: f32, dt: f32) {
-        for sample in &mut self.ring {
-            sample.age += dt;
-        }
-        let from = self.point(0);
-        self.tip = Sample { at, age: 0.0, heat };
-        let gap = from.at.distance(at);
-        if self.is_empty() || gap > BREAK {
-            self.len = 0;
-            self.push(self.tip);
-            return;
-        }
-        for step in 1..=(gap / SPACING) as usize {
-            let along = (step as f64 * SPACING / gap) as f32;
-            self.push(Sample {
-                at: from.at.lerp(at, f64::from(along)),
-                age: dt * (1.0 - along),
-                heat: from.heat + (heat - from.heat) * along,
-            });
-        }
+        self.feed_by(at, heat, dt, (SPACING, BREAK));
     }
 }

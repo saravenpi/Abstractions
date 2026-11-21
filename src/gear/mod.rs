@@ -45,7 +45,7 @@ mod tests;
 
 pub use boots::descent_target;
 pub use contact::{deflect, slid};
-pub use fx::{FlightFx, GearSet, Wake};
+pub use fx::{FlightFx, GearSet, Kit, Look, Strip, Trail, Wake, ribbon_mesh, show, trace};
 pub use input::{GearInput, air_density};
 pub use jet::{boot_power, hull_drag, jet, jetting, liquid_density, pump};
 pub use mode::Mode;

@@ -12,6 +12,7 @@ mod anatomy;
 mod brace;
 mod carve;
 mod foe;
+mod force;
 mod fracture;
 mod gesture;
 mod harm;
@@ -28,6 +29,8 @@ pub mod tune;
 
 #[cfg(test)]
 mod tests_attack;
+#[cfg(test)]
+mod tests_blow;
 #[cfg(test)]
 mod tests_brace;
 #[cfg(test)]

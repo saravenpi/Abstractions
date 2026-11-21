@@ -38,7 +38,12 @@ pub const SLACK: f32 = 1.15;
 /// Metres past the body a bite reaches.
 pub const MOUTH: f32 = 0.5;
 
-/// Share of the mass that moves with a bite, a lunge, a swipe, a sweep, a charge and a trample.
+/// Share of the weight of a running body its feet can push with on soil, unitless: the friction of
+/// a hoof or a claw on turf, 0.5 to 0.7. It bounds how fast a charge is after a given run from rest.
+pub const GRIP: f32 = 0.6;
+
+/// Share of the mass that moves with each attack, in the order of [`super::kinds::Kind`]: a charge,
+/// a sweep, a lunge, a swipe, a bite and a trample.
 pub const SHARE: [f32; 6] = [0.5, 0.08, 0.06, 0.1, 0.03, 1.0];
 
 /// Stiffness in gigapascals and mass in kilograms of the plate of the robot that a blow rings: an

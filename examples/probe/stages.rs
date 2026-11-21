@@ -91,6 +91,7 @@ pub const STAGES: [(&str, &str, Stage); 139] = [
     ("exit", "exit", exit),
     ("cloud", "cloud", cloud),
     ("cloud-seat", "cloud", cloud_seat),
+    ("cloud-night", "cloud", cloud_night),
     ("stop-2m", "tour", stop_2m),
     ("stop-10km", "tour", stop_10km),
     ("stop-100km", "tour", stop_100km),

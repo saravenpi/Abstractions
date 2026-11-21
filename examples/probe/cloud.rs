@@ -1,7 +1,8 @@
 //! Flying through a cloud: the ship climbs through the base of an overcast cloud band at 150 m/s,
-//! seen from the chase camera and from the seat, with a shot every 0.2 s of the game. The puffs
-//! should stream past at their places, thicken to a lit white-grey inside, and open with gaps on
-//! the way, and nothing should go dark.
+//! seen from the chase camera and from the seat, with a shot every 0.2 s of the game, then again
+//! at night. The puffs should stream past at their places, thicken to a lit white-grey inside and
+//! open with gaps on the way; drops gather on the canopy and stream back; nothing goes dark by
+//! day, and at night the lamps of the ship light the mist near it.
 
 use abstractions::render::{CloudCover, CloudCrossing};
 use abstractions::ship::SEAT;
@@ -35,18 +36,21 @@ fn fly(world: &mut World, t: u32) -> f64 {
 }
 
 /// Climbs through the cloud with the camera at `eye` in hull axes, from outside when `out`,
-/// shooting `name` every 0.2 s.
+/// shooting `name` every 0.2 s: by day, or at night with the headlight on when `night`.
 fn through(
     world: &mut World,
     notes: &mut Notes,
     frame: u32,
-    (eye, out, name): ((Vec3, Vec3), bool, &str),
+    ((eye, out, name), night): (((Vec3, Vec3), bool, &str), bool),
 ) -> Act {
     let Some(t) = card_ready(world, notes, frame, true) else {
         return card_wait(frame);
     };
     if t == 1 {
-        noon(world);
+        match night && nightfall(world, notes) {
+            true => with_ship(world, |ship| ship.headlight = true),
+            false => noon(world),
+        }
         world.resource_mut::<Eye>().0 = Some(eye);
         view(
             world,
@@ -67,6 +71,8 @@ fn through(
     match above > SPAN.1 {
         true => {
             world.resource_mut::<CloudCover>().0 = None;
+            with_ship(world, |ship| ship.headlight = false);
+            daybreak(world, notes);
             landed(world, notes)
         }
         false => Act::Wait,
@@ -75,12 +81,18 @@ fn through(
 
 /// The climb through the cloud from the chase camera.
 pub fn cloud(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
-    through(world, notes, frame, (CHASE, true, "C-chase"))
+    through(world, notes, frame, ((CHASE, true, "C-chase"), false))
 }
 
 /// The climb through the cloud from the seat, looking ahead through the canopy.
 pub fn cloud_seat(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
     let eye = SEAT.as_vec3();
     let ahead = (eye, eye + Quat::from_rotation_x(-0.1) * Vec3::NEG_Z);
-    through(world, notes, frame, (ahead, false, "C-seat"))
+    through(world, notes, frame, ((ahead, false, "C-seat"), false))
+}
+
+/// The climb through the cloud at night with the headlight on, from the chase camera: the nav
+/// lights, the strobes and the beam should light the puffs near the ship.
+pub fn cloud_night(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
+    through(world, notes, frame, ((CHASE, true, "C-night"), true))
 }

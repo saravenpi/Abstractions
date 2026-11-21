@@ -95,7 +95,7 @@ pub fn floor(species: &Species) -> f32 {
 
 /// Returns the steepest slope in radians the body of `species` walks, and the lowest ground in metres
 /// it walks on, see [`floor`].
-pub(super) fn footing(species: &Species) -> (f32, f32) {
+pub(in crate::life) fn footing(species: &Species) -> (f32, f32) {
     (slope(&species.body), floor(species))
 }
 

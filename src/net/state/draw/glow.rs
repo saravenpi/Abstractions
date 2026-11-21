@@ -126,8 +126,8 @@ pub fn glows(
         let (Ok(at), Ok(handle)) = (puppets.get(puppet), auras.get(aura)) else {
             continue;
         };
-        if let Some(material) = materials.get_mut(&handle.0) {
-            shape((at, material), (heat, size), gas);
+        if let Some(mut material) = materials.get_mut(&handle.0) {
+            shape((at, &mut material), (heat, size), gas);
         }
     }
     retire(&mut commands, made, lit);

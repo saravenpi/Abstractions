@@ -16,7 +16,7 @@ const SAMPLES: usize = 64;
 /// Returns true when the ground along the great circle from `a` to `b`, on a planet of `radius`
 /// metres, read by `height`, never rises or falls more steeply than `slope` radians between two
 /// samples, nor dips under `floor` metres, the deepest water the body wades.
-pub(super) fn walkable(
+pub(in crate::life) fn walkable(
     height: &dyn Fn(DVec3) -> f32,
     (a, b): (DVec3, DVec3),
     radius: f64,

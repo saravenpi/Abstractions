@@ -72,7 +72,7 @@ pub fn herd_of(
 /// Returns the terrain view and the anchor around unit direction `dir` of `globe`, and the render
 /// position of the ground there.
 pub fn view(globe: &Arc<Globe>, body: BodyId, dir: DVec3) -> (Terrain, Anchor, Vec3) {
-    let chart = globe.face_chart(Face::locate(dir).0);
+    let chart = globe.face_chart(Face::locate(dir).0).near(dir);
     let at = chart.locate(dir);
     let terrain = Terrain::on(globe.clone(), chart).around(at.x, at.y);
     let ground = Vec3::new(at.x, terrain.mesh_height(at.x, at.y), at.y);

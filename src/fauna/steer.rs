@@ -116,15 +116,19 @@ fn gradient(ground: &dyn Fn(Vec2) -> f32, p: Vec2, span: f32) -> Vec2 {
 fn hold(velocity: Vec3, at: Vec3, body: &Body, ground: &dyn Fn(Vec2) -> f32) -> Vec3 {
     let limit = slope(body).tan();
     let flat = velocity.xz();
-    if !limit.is_finite() || flat.length() < 1e-4 {
+    if !limit.is_finite() || limit <= 0.0 || flat.length() < 1e-4 {
         return velocity;
     }
     let reach = body.height.max(0.1);
     let here = gradient(ground, at.xz(), 0.5 * reach);
     let ahead = gradient(ground, at.xz() + flat.normalize() * reach, 0.5 * reach);
     let kept = match (here.length() > limit, ahead.length() > limit) {
-        (true, _) => flat - here.normalize() * flat.dot(here.normalize()).max(0.0),
-        (false, true) => flat - ahead.normalize() * flat.dot(ahead.normalize()),
+        (true, _) => here
+            .try_normalize()
+            .map_or(flat, |up| flat - up * flat.dot(up).max(0.0)),
+        (false, true) => ahead
+            .try_normalize()
+            .map_or(flat, |up| flat - up * flat.dot(up)),
         (false, false) => flat,
     };
     Vec3::new(kept.x, velocity.y, kept.y)

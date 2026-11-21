@@ -122,6 +122,7 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         Update,
         clear
+            .in_set(super::Posed)
             .after(walk::walk)
             .before(near::mark)
             .before(super::bulk::bulk_up)

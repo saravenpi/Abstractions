@@ -91,8 +91,9 @@ fn sketch(m: &mut Motion, body: &Body, stride: &Stride, ground: &dyn Fn(Vec2) ->
 }
 
 /// Returns the height the body of `m` on legs of `body` is held at, held at `hold`, so that every planted
-/// foot stays in reach of its hip. While it eases onto feet set down anew it lowers by no more than
-/// [`EASE`] hip heights a second, and stops easing once in reach; else it drops into reach at once.
+/// foot stays in reach of its hip, and clamps the hold spring's position and upward velocity when it
+/// lowers the body. While it eases onto feet set down anew it lowers by no more than [`EASE`] hip heights
+/// a second, and stops easing once in reach; else it drops into reach at once.
 fn reach(m: &mut Motion, body: &Body, hold: Vec3, dt: f32) -> f32 {
     let leg = body.height.max(0.05);
     let turn = heading(m) * Quat::from_rotation_x(hold.y) * Quat::from_rotation_z(hold.z);
@@ -104,6 +105,10 @@ fn reach(m: &mut Motion, body: &Body, hold: Vec3, dt: f32) -> f32 {
         false => capped,
     };
     m.root.easing &= held > capped;
+    if held < hold.x {
+        m.root.hold.vel.x = m.root.hold.vel.x.min(0.0);
+    }
+    m.root.hold.at.x = held;
     held
 }
 
@@ -129,7 +134,6 @@ pub fn step(m: &mut Motion, body: &Body, drive: &Drive, ground: &dyn Fn(Vec2) ->
     let mut hold = m.root.hold.step(&m.tune.body(), target, dt);
     if drive.detail == Detail::Full {
         hold.x = reach(m, body, hold, dt);
-        m.root.hold.at.x = hold.x;
     }
     let bob =
         -leg * (0.015 + 0.03 * m.clock.mix.trot) * walking * (2.0 * TAU * m.clock.phase).cos();

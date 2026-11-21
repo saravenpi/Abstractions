@@ -3,17 +3,16 @@
 //!
 //! The path aims at a point [`END`] short of the target and above the ground, at most
 //! [`GLIDE_ANGLE`] under the horizon, and flattens over the last [`FLARE`] metres. The speed is
-//! the bound from physics: just under the speed at which the nose would glow in the air of the
-//! height ([`cool_speed`], the same bound the climb to orbit keeps under). The autopilot holds
-//! the boost, so in the low air the engines hold that speed against the drag.
+//! the bound of the assist in air, [`heat_cap`]: 1.4 times the speed at which the nose starts
+//! to glow at the height, a mild orange glow, the same bound the climb to orbit flies at. The
+//! autopilot holds the boost, so in the low air the engines hold that speed against the drag.
 
 use bevy::math::DVec3;
 
-use super::tune::{COOL_SHARE, DONE, END, FLARE, GLIDE_ANGLE, GLIDE_MOST};
-use crate::render::cool_speed;
+use super::tune::{DONE, END, FLARE, GLIDE_ANGLE, GLIDE_MOST};
 use crate::ship::assist::NEUTRAL;
 use crate::ship::cruise::{BOOST_SPEED, top_speed_at};
-use crate::ship::drag::{density, terminal};
+use crate::ship::drag::{density, heat_cap, terminal};
 use crate::ship::flight::BOOST;
 use crate::universe::PlanetSpec;
 
@@ -37,11 +36,11 @@ pub fn remaining(up: DVec3, goal: DVec3, radius: f64, height: f64) -> f64 {
 }
 
 /// Returns the speed in metres per second the glide asks for `height` metres above sea level:
-/// [`COOL_SHARE`] of the speed at which the nose glows there, and above the air the one at its
-/// top, which the ship is about to enter, at most [`GLIDE_MOST`] over a body with no air.
+/// the [`heat_cap`] there, a mild glow, and above the air the one at its top, which the ship is
+/// about to enter, at most [`GLIDE_MOST`] over a body with no air.
 pub fn speed(planet: &PlanetSpec, height: f64) -> f64 {
     let sample = height.min(planet.atmosphere_height - 1.0).max(0.0);
-    (COOL_SHARE * cool_speed(density(planet, sample))).min(GLIDE_MOST)
+    heat_cap(density(planet, sample)).min(GLIDE_MOST)
 }
 
 /// Returns a rough time in seconds of the glide from `height` metres above sea level over

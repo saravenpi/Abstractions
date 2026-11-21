@@ -32,6 +32,7 @@ mod restore;
 mod resume;
 mod retarget;
 mod rig;
+mod rule;
 mod saved_frame;
 mod space;
 mod steady;

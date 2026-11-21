@@ -6,12 +6,11 @@
 use bevy::math::DVec3;
 
 use super::handoff::reached;
-use super::tune::{CLIMB_STICK, LOCK_MARGIN};
+use super::tune::LOCK_MARGIN;
 use crate::computer::Target;
-use crate::render::cool_speed;
 use crate::ship::body::Ship;
 use crate::ship::cruise::top_speed_at;
-use crate::ship::drag::density;
+use crate::ship::drag::{density, heat_cap, terminal};
 use crate::ship::flight::Controls;
 use crate::ship::frames::spin_rate;
 use crate::ship::helm::Helm;
@@ -74,9 +73,10 @@ pub(in crate::ship) fn climbs(ship: &Ship) -> bool {
 /// The speed hold flies the velocity the climb wants: up at a speed that closes the gap to the
 /// orbit in [`CLIMB_TIME`] seconds, and along the equator at the speed of a circular orbit,
 /// which it reaches at the share [`ORBIT_RAMP`] of the height. The sideways speed grows with the
-/// square of the height, so the ship climbs through the air and turns over above it. Through
-/// the air the speed is held under the one at which the nose would start to glow, as a real
-/// ascent is slow where the air is thick and fast only where it is thin.
+/// square of the height, so the ship climbs through the air and turns over above it. It flies
+/// as fast as the pilot could, under the one speed rule, the drag of the air and [`heat_cap`]:
+/// a real ascent is slow where the air is thick and fast only where it is thin, its nose
+/// glowing mildly.
 pub(in crate::ship) fn order(fix: &Fix, planet: &PlanetSpec, goal: f64) -> Order {
     let radius = fix.pos.length();
     let up = fix.pos / radius;
@@ -88,15 +88,18 @@ pub(in crate::ship) fn order(fix: &Fix, planet: &PlanetSpec, goal: f64) -> Order
         .unwrap_or_else(|| up.any_orthonormal_vector());
     let share = (height / (goal * ORBIT_RAMP)).clamp(0.0, 1.0);
     let wish = up * ((goal - height) / CLIMB_TIME) + east * (circular * share * share);
-    let ask = (wish - fix.frame).clamp_length_max(cool_speed(density(planet, height)));
-    let top = top_speed_at(height, circular);
+    let air = density(planet, height);
+    let most = top_speed_at(height, circular)
+        .min(terminal(air, 1.0))
+        .min(heat_cap(air));
+    let ask = (wish - fix.frame).clamp_length_max(most);
     let target = planet.radius + goal;
     let done = apsides(fix.pos, fix.vel, planet.mu()).is_some_and(|(far, near)| {
         (far - target).abs().max((near - target).abs()) < ORBIT_TOLERANCE
     });
     Order {
         aim: ask.try_normalize().unwrap_or(up),
-        throttle: (ask.length() / top).min(1.0),
+        throttle: (ask.length() / most.max(1.0)).min(1.0),
         done,
     }
 }
@@ -159,7 +162,7 @@ fn steer_up(
         return Some(true);
     }
     helm.controls = Controls {
-        turn: aim(ship.rot, order.aim).clamp_length_max(CLIMB_STICK),
+        turn: aim(ship.rot, order.aim),
         ..Controls::default()
     };
     (ship.throttle, ship.assist) = (order.throttle, true);

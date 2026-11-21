@@ -11,7 +11,9 @@
 //!   `ui` (the menus, the map at each level, the guide, the pack and the pause menu) and `play` (the game
 //!   being played: the map of explored ground, stones picked and a tool made, a herd stalked, a fight, a
 //!   kill carved, the robot hurt and mended, the pack and the guide after the hunt; see the `play` module).
-//!   `stars` shoots the star field in space and in orbit (see the `stars` module).
+//!   `stars` shoots the star field in space and in orbit (see the `stars` module). `feel` shoots swings at
+//!   a small and a large animal in third and first person, a rock struck with H and the wingsuit opened
+//!   with a tool drawn (see the `playfeel` module; run it on `SMOKE_SEED=57`).
 //!   The title, loading, boot and wake stages always run.
 //! - `SMOKE_ONLY` and `SMOKE_SKIP`: comma lists of stage names to keep or to leave out.
 //! - `SMOKE_TARGET` and `SMOKE_FLASH`: see the `warp` and `boot` stages.
@@ -94,6 +96,7 @@ mod orbital;
 mod play;
 mod playbook;
 mod playcarve;
+mod playfeel;
 mod playfight;
 mod playframe;
 mod playherd;
@@ -147,6 +150,7 @@ use orbital::*;
 use play::*;
 use playbook::*;
 use playcarve::*;
+use playfeel::*;
 use playfight::*;
 use playframe::*;
 use playherd::*;

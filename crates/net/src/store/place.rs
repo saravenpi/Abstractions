@@ -16,9 +16,10 @@ use crate::ids::BodyId;
 /// A place at this height means the ground in its direction.
 pub const LOWEST: f64 = -20_000.0;
 
-/// Highest height above sea level a stored place may have, in metres: above the air of any
-/// planet a body can be saved on.
-pub const HIGHEST: f64 = 1_000_000.0;
+/// Highest height above sea level a stored place may have, in metres. A player seated in a ship
+/// is stored against the nearest planet at any height, in orbit and in the open space of a
+/// system, so this is wider than any star system.
+pub const HIGHEST: f64 = 1.0e15;
 
 /// Shortest direction that still points somewhere.
 const DIR_MIN: f64 = 1.0e-6;

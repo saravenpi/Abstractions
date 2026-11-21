@@ -48,7 +48,7 @@ fn place_of(stored: &str) -> (String, bool) {
 fn an_invalid_stored_place_is_repaired_on_join() {
     let grounded = place_text(&format!("{LOWEST:?}"));
     let read = |text: &str| toml::from_str::<toml::Table>(text).expect("a place");
-    let (high, changed) = place_of(&place_text("1.0e9"));
+    let (high, changed) = place_of(&place_text("1.0e18"));
     assert_eq!((read(&high), changed), (read(&grounded), true));
     let (nan, _) = place_of(&place_text("nan"));
     assert_eq!(read(&nan), read(&grounded));

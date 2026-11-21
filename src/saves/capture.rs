@@ -8,8 +8,8 @@ use crate::computer::Atlas;
 use crate::map::explored::Explored;
 use crate::sim::Changes;
 use crate::space::{Anchor, Clock, Frame, Location, Travel};
-use crate::universe::EARTH_RADIUS;
-use crate::world::Terrain;
+use crate::universe::{BodyId, EARTH_RADIUS, Universe};
+use crate::world::{Link, Planet, Terrain};
 
 /// Returns the spot of render position `at` on the planet the anchor is fixed to.
 ///
@@ -20,6 +20,29 @@ pub(super) fn place(anchor: &Anchor, radius: f64, at: Vec3) -> Option<Place> {
     };
     let pos = anchor.to_frame(at);
     let dir = pos.try_normalize().filter(|_| !anchor.flat)?;
+    Some(Place {
+        body,
+        dir: dir.to_array(),
+        altitude: pos.length() - radius,
+    })
+}
+
+/// Returns the spot of render position `at` against the planet `body` of sea level `radius`, for an
+/// anchor in the frame of its star: `link` goes from the frame of the planet to that of the anchor.
+/// The spot turns with the planet and its height is any number of metres, as in orbit.
+///
+/// Returns nothing on a surface, where [`place`] reads the spot, and between the stars.
+pub(super) fn beside(
+    anchor: &Anchor,
+    link: &Link,
+    (body, radius): (BodyId, f64),
+    at: Vec3,
+) -> Option<Place> {
+    let Frame::System(_) = anchor.frame else {
+        return None;
+    };
+    let pos = link.to_planet(anchor.to_frame(at));
+    let dir = pos.try_normalize()?;
     Some(Place {
         body,
         dir: dir.to_array(),
@@ -52,6 +75,10 @@ pub(super) struct Site<'w> {
     changes: Option<Res<'w, Changes>>,
     /// The ground uncovered on each body.
     explored: Option<Res<'w, Explored>>,
+    /// The planet the world streams: the nearest one while in space.
+    planet: Option<Res<'w, Planet>>,
+    /// Where the planets are.
+    universe: Option<Res<'w, Universe>>,
 }
 
 impl Site<'_> {
@@ -83,11 +110,25 @@ impl Site<'_> {
     }
 
     /// Writes where the player body at render position `at` stands. A seated body sits in
-    /// the ship, so near a planet this is the place of the ship, and in space the last place
-    /// on a planet is kept.
+    /// the ship, so this is the place of the ship: over a planet, and in the space of a system
+    /// its spot against the nearest planet, however high. Only between the stars is the last
+    /// place kept; the record of the ship then says where the player is.
     pub(super) fn stand(&self, save: &mut WorldSave, at: Vec3) {
         let terrain = self.terrain.as_deref();
         let radius = terrain.map_or(EARTH_RADIUS, |terrain| terrain.globe().radius());
         stand(save, self.anchor.as_deref(), radius, at);
+        if let Some(place) = self.orbiting(at) {
+            save.place = Some(place);
+        }
+    }
+
+    /// Returns the spot of render position `at` against the streamed planet while the anchor is
+    /// in the frame of its star.
+    fn orbiting(&self, at: Vec3) -> Option<Place> {
+        let (anchor, planet) = (self.anchor.as_deref()?, self.planet.as_deref()?);
+        let universe = self.universe.as_deref()?;
+        let link = Link::between(anchor.frame, planet, universe, self.clock.seconds)?;
+        let body = (planet.body, planet.globe.radius());
+        beside(anchor, &link, body, at)
     }
 }

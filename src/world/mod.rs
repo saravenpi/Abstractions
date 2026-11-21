@@ -29,6 +29,8 @@ pub mod structures;
 mod surface;
 mod terrain;
 #[cfg(test)]
+mod tests_aboard;
+#[cfg(test)]
 mod tests_enter;
 #[cfg(test)]
 mod tests_footing;

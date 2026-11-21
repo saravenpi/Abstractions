@@ -9,8 +9,10 @@
 
 use super::temperature;
 use super::tune::{
-    AMBIENT, EMISSIVITY, HEATING, RED, SKIN_CAPACITY, SKIN_GLOW, SKIN_STEP, STEFAN_BOLTZMANN,
+    AMBIENT, EMISSIVITY, HEATING, RED, SKIN_CAPACITY, SKIN_DECADES, SKIN_GLOW, SKIN_STEP,
+    STEFAN_BOLTZMANN,
 };
+use crate::render::celestial::smoothstep;
 
 /// Returns the temperature in kelvin of a skin at `kelvin` after `dt` seconds under the heat
 /// flux `flux` in watts per square metre. A skin at 0 is cold and dark: it starts from
@@ -39,17 +41,19 @@ pub fn warmed(kelvin: f32, flux: f32, dt: f32) -> f32 {
     }
 }
 
-/// Returns how strongly a skin at `kelvin` glows, from 0 under the Draper point to 1 at the
-/// full glow and above: its radiance in the red of [`RED`] against the one at the full glow, by
-/// Planck's law. It falls steeply as the skin cools, so a skin that is still hot to the touch is
-/// soon dark to the eye.
+/// Returns how strongly a skin at `kelvin` glows, from 0 to 1 at the full glow and above: its
+/// radiance in the red of [`RED`] against the one at the full glow, by Planck's law, taken on a
+/// scale of decades as the eye takes light, so the glow fades in smoothly over the last
+/// [`SKIN_DECADES`] decades. Radiance falls steeply as the skin cools, so a skin that is still
+/// hot to the touch is soon dark to the eye.
 pub fn glowing(kelvin: f32) -> f32 {
     if kelvin < SKIN_GLOW.0 {
         return 0.0;
     }
     let band = 1.438_777e-2 / RED;
     let full = (band / SKIN_GLOW.1).exp() - 1.0;
-    (full / ((band / kelvin).exp() - 1.0)).min(1.0)
+    let decades = (full / ((band / kelvin).exp() - 1.0)).log10();
+    smoothstep(-SKIN_DECADES, 0.0, decades)
 }
 
 /// Returns the temperature in kelvin of the skin of a craft whose records carry only the heat

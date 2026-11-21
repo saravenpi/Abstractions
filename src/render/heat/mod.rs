@@ -53,6 +53,9 @@ pub struct Glow {
     /// Temperature of the skin of the nose and the leading edges in kelvin, 0 while it is cold
     /// and dark.
     pub kelvin: f32,
+    /// How strongly the hot skin glows as it is drawn, from 0 to 1: its glow at its temperature,
+    /// faded in no faster than [`tune::SKIN_RISE`].
+    pub shine: f32,
 }
 
 impl Glow {
@@ -63,22 +66,19 @@ impl Glow {
         color: Vec3::ZERO,
         flux: 0.0,
         kelvin: 0.0,
+        shine: 0.0,
     };
 
     /// Returns the glow `dt` seconds after this one when the craft now makes `next`: the plasma
-    /// and the pressure follow `next` at the rate of [`tune::PLASMA_EASE`], the colour of the gas
-    /// follows it while there is a glow to colour, and the skin warms or cools from its own
-    /// temperature under the flux of `next`.
+    /// and the pressure follow `next` no faster than [`tune::PLASMA_RATE`], the colour of the gas
+    /// follows it while there is a glow to colour, the skin warms or cools from its own
+    /// temperature under the flux of `next`, and its glow fades in no faster than
+    /// [`tune::SKIN_RISE`].
     pub fn follow(self, next: Self, dt: f32) -> Self {
-        let keep = (-tune::PLASMA_EASE * dt).exp();
-        let rate = |now: f32, to: f32| {
-            let eased = to + (now - to) * keep;
-            if to == 0.0 && eased < 1.0e-3 {
-                0.0
-            } else {
-                eased
-            }
-        };
+        let (up, down) = tune::PLASMA_RATE;
+        let rate = |now: f32, to: f32| now + (to - now).clamp(-down * dt, up * dt);
+        let kelvin = skin::warmed(self.kelvin, next.flux, dt);
+        let lit = skin::glowing(kelvin);
         let hue = 1.0 - (-tune::HUE_RATE * dt).exp();
         let color = match (self.heat > 0.0, next.heat > 0.0) {
             (_, false) => self.color,
@@ -90,7 +90,8 @@ impl Glow {
             pressure: rate(self.pressure, next.pressure),
             color,
             flux: next.flux,
-            kelvin: skin::warmed(self.kelvin, next.flux, dt),
+            kelvin,
+            shine: lit.min(self.shine + tune::SKIN_RISE * dt),
         }
     }
 }
@@ -151,6 +152,7 @@ pub fn entry(density: f64, speed: f64, gas: Gas) -> Glow {
         color: gas.color(heat),
         flux: heating as f32,
         kelvin: temperature(heating) as f32,
+        shine: skin::glowing(temperature(heating) as f32),
     }
 }
 

@@ -24,10 +24,20 @@ pub const STEFAN_BOLTZMANN: f64 = 5.670_374e-8;
 /// they are full.
 pub const PRESSURE: (f64, f64) = (2.0e3, 6.0e4);
 
-/// Rate per second at which the glow of the shock follows the heat flux of this moment, up and
-/// down alike: fast, since the plasma lives as long as the air flows through the shock, and
-/// smooth, so that it never steps from one frame to the next.
-pub const PLASMA_EASE: f32 = 4.0;
+/// Fastest the glow of the shock rises and falls, as a share of its full strength per second:
+/// it follows the heat flux of this moment, but fades in from nothing over a few seconds as the
+/// air thickens on the way in, and out over about two seconds on the way out, never stepping
+/// more than a percent from one frame to the next.
+pub const PLASMA_RATE: (f32, f32) = (0.3, 0.6);
+
+/// Fastest the glow of the hot skin rises, as a share of its full glow per second: a faint
+/// orange tinge at the nose first, growing over a few seconds. It falls as fast as the skin
+/// cools.
+pub const SKIN_RISE: f32 = 0.4;
+
+/// Decades of red radiance under that of the full glow over which the glow of the skin fades in
+/// from nothing to full: below them it is lost in daylight.
+pub const SKIN_DECADES: f32 = 2.2;
 
 /// Heat capacity of the skin of the nose and the leading edges per square metre, in joules per
 /// kelvin: half a millimetre of nickel alloy, 8,000 kg/m3 times 450 J/(kg K) times 0.0005 m,

@@ -86,6 +86,7 @@ fn shape(
         color: gas.color(heat),
         flux: 0.0,
         kelvin: kelvin_of(heat),
+        shine: heat,
     };
     material.sheath = craft.sheath(&glow);
 }

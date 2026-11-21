@@ -22,7 +22,6 @@ use bevy::render::render_resource::{
 };
 use bevy::shader::ShaderRef;
 
-use super::skin::glowing;
 use super::state::{Heat, HeatSet};
 use crate::screens::Screen;
 
@@ -126,7 +125,7 @@ fn follow(
     mut materials: ResMut<Assets<SheathMaterial>>,
 ) {
     let (craft, glow) = (heat.craft, heat.glow);
-    let shown = glow.heat > 0.0 || glowing(glow.kelvin) > 0.0;
+    let shown = glow.heat > 0.0 || glow.shine > 0.0;
     let sight = [Visibility::Hidden, Visibility::Visible][usize::from(shown)];
     for (mut transform, mut global, mut visibility, handle) in &mut sheaths {
         visibility.set_if_neq(sight);

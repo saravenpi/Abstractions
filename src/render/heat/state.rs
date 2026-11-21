@@ -6,7 +6,6 @@ use bevy::prelude::*;
 use super::Glow;
 use super::gas::incandescence;
 use super::sheath::SheathUniform;
-use super::skin::glowing;
 use super::tune::SHEATH_BOUND;
 
 /// Where the glowing craft is, in render space.
@@ -40,7 +39,7 @@ impl Craft {
             axis: self.heading.extend(0.0),
             roof: self.roof.extend(glow.pressure),
             glow: glow.color.extend(glow.heat),
-            skin: incandescence(glow.kelvin).extend(glowing(glow.kelvin)),
+            skin: incandescence(glow.kelvin).extend(glow.shine),
         }
     }
 }

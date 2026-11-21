@@ -24,6 +24,8 @@ mod goal_tests;
 mod handoff;
 #[cfg(test)]
 mod loop_tests;
+#[cfg(test)]
+mod lost_tests;
 pub(super) mod shell;
 #[cfg(test)]
 mod shell_tests;
@@ -43,7 +45,7 @@ use block::{aligned, blocker};
 pub(super) use cancel::{halt, halting, on_cancel};
 pub(super) use done::finish;
 pub(super) use goal::ARRIVAL;
-use steer::{arrive, climbing, mark, steer};
+use steer::{arrive, climbing, mark, recover, steer};
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -135,17 +137,17 @@ pub(super) fn hold(
 /// Flies the route: stops a drive still running on another course and waits for the drop-out,
 /// then steers onto the course, asks for the warp drive and ends the route on arrival.
 pub fn fly(
-    cosmos: Cosmos,
+    (cosmos, time): (Cosmos, Res<Time>),
     mut autopilot: ResMut<Autopilot>,
     mut skies: ResMut<Skies>,
     mut helm: ResMut<Helm>,
     mut ship: Single<&mut Ship>,
 ) {
-    let (universe, time) = (&cosmos.universe, cosmos.clock.seconds);
+    let (universe, dt, time) = (&cosmos.universe, time.delta_secs(), cosmos.clock.seconds);
     (skies.beacon, skies.arrive) = (None, None);
     let held = autopilot.tier;
     let Some(target) = autopilot.target else {
-        return;
+        return recover(&mut autopilot, (&ship, &helm), dt);
     };
     if climbing(&mut autopilot, &ship, &skies, target) {
         return climb(&mut autopilot, &mut ship, &mut helm, &skies, target);

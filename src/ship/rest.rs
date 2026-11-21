@@ -67,3 +67,18 @@ pub fn settle(ship: &mut Ship, contact: &Contact, controls: &Controls, h: f64) -
     }
     if landing { contact.impact } else { 0.0 }
 }
+
+/// Metres per second a ship touches down at and rebounds at, at most, that the time it takes to come back
+/// down is worked out from.
+const REBOUND: f64 = 2.0;
+
+/// Metres above the ground within which a ship that touched it is taken to be rebounding.
+pub(super) const REBOUND_HEIGHT: f64 = 4.0;
+
+/// Returns the seconds after a touch of the gear in which a ship with the stick released is still being
+/// set down, under the pull of `gravity` metres per second squared: the time a rebound at [`REBOUND`] takes
+/// to rise and fall, between half a second and six. In the weak gravity of a moon a bounce is long, and an
+/// assist that took hold of the ship in the air again would hop it up each time it touched.
+pub(super) fn bounce_time(gravity: f64) -> f64 {
+    (2.0 * REBOUND / gravity.max(0.1)).clamp(0.5, 6.0)
+}

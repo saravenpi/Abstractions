@@ -24,45 +24,55 @@ fn moon() -> PlanetSpec {
     }
 }
 
+/// What a ship did from its first touch: when it touched, when it rested, and the highest it rose after.
+struct Set {
+    /// Seconds into the flight of the first touch.
+    touched: f64,
+    /// Seconds into the flight of the rest.
+    rested: f64,
+    /// Highest height of the hull centre over the ground after the touch, in metres.
+    highest: f64,
+}
+
+/// Sinks a ship with the stick held to the ground of `moon`, lets go at the first touch and flies 30 seconds.
+fn sets_down(moon: &PlanetSpec) -> Option<Set> {
+    let ground = |_: DVec3| 0.0;
+    let scene = Scene {
+        planet: Some(moon),
+        ground: &ground,
+        wells: &[],
+        elapsed: 0.0,
+    };
+    let mut ship = assisted(moon, GEAR_DROP + 3.0);
+    let (mut touched, mut highest, mut rested) = (None, 0.0f64, None);
+    for index in 0..(30.0 / STEP) as usize {
+        let time = index as f64 * STEP;
+        let controls = touched.map_or_else(|| stick(-1.0), |_| Controls::default());
+        let report = step(&mut ship, &controls, &scene, STEP);
+        touched = touched.or((report.impact > 0.0).then_some(time));
+        highest =
+            highest.max(ship.pos.length() - moon.radius) * f64::from(u8::from(touched.is_some()));
+        rested = rested.or(ship.landed.then_some(time));
+    }
+    Some(Set {
+        touched: touched?,
+        rested: rested?,
+        highest,
+    })
+}
+
 /// A ship that sinks with the stick held and lets go at the first touch, in the gravity of a moon, rests on
 /// the ground within [`SETTLE`] seconds of the touch and never climbs more than [`HOP`] above where it
 /// touched.
 #[test]
 fn a_released_ship_settles_on_a_moon() {
-    let moon = moon();
-    let ground = |_: DVec3| 0.0;
-    let scene = Scene {
-        planet: Some(&moon),
-        ground: &ground,
-        wells: &[],
-        elapsed: 0.0,
-    };
-    let mut ship = assisted(&moon, GEAR_DROP + 3.0);
-    let (mut touched, mut highest, mut rested) = (None::<f64>, 0.0f64, None::<f64>);
-    for step_index in 0..(30.0 / STEP) as usize {
-        let time = step_index as f64 * STEP;
-        let controls = match touched {
-            None => stick(-1.0),
-            Some(_) => Controls::default(),
-        };
-        let report = step(&mut ship, &controls, &scene, STEP);
-        if report.impact > 0.0 && touched.is_none() {
-            touched = Some(time);
-        }
-        if touched.is_some() {
-            highest = highest.max(ship.pos.length() - moon.radius);
-        }
-        if ship.landed && rested.is_none() {
-            rested = Some(time);
-        }
-    }
-    let (touch, rest) = (touched.expect("a touch"), rested.expect("a rest"));
+    let set = sets_down(&moon()).expect("a touch and a rest");
+    let took = set.rested - set.touched;
+    assert!(took < SETTLE, "rested {took} s after the touch");
+    let hopped = set.highest >= GEAR_DROP + HOP;
     assert!(
-        rest - touch < SETTLE,
-        "rested {} s after the touch",
-        rest - touch
+        !hopped,
+        "the ship hopped to {} m over the ground",
+        set.highest
     );
-    let hopped = highest >= GEAR_DROP + HOP;
-    assert!(!hopped, "the ship hopped to {highest} m over the ground");
-    assert!(ship.landed, "the ship is not landed");
 }

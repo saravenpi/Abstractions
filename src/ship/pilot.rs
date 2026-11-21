@@ -111,6 +111,8 @@ pub struct Autopilot {
     pub(super) progress: Progress,
     /// Whether the route was dropped for spooling again and again without coming nearer.
     pub(super) lost: bool,
+    /// Seconds the route has read as lost.
+    pub(super) lost_for: f32,
 }
 
 impl Autopilot {
@@ -129,6 +131,7 @@ impl Autopilot {
             spools: 0,
         },
         lost: false,
+        lost_for: 0.0,
     };
 
     /// Starts a route to `target`: a planet, a moon, a star or a galaxy. The route already

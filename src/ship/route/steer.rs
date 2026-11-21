@@ -99,3 +99,23 @@ pub(super) fn climbing(
     }
     autopilot.phase == Phase::Climbing || climbs(ship) || autopilot.leaving.is_some()
 }
+
+/// Seconds a route that was dropped reads as lost before the line is let go.
+pub(in crate::ship) const LOST_SHOWN: f32 = 8.0;
+
+/// Lets go of the lost reading of a dropped route once the pilot has moved on: the ship lands, the
+/// lever or the stick moves, or [`LOST_SHOWN`] seconds have passed. Pressing Go again, picking another
+/// target or stopping the route clears it by themselves.
+pub(super) fn recover(autopilot: &mut Autopilot, (ship, helm): (&Ship, &Helm), dt: f32) {
+    if !autopilot.lost {
+        return;
+    }
+    autopilot.lost_for += dt;
+    let manual = helm.controls != Controls::default() || ship.throttle > MANUAL_LEVER;
+    if manual || ship.landed || autopilot.lost_for > LOST_SHOWN {
+        (autopilot.lost, autopilot.lost_for) = (false, 0.0);
+    }
+}
+
+/// Lever above which the pilot is taken to fly the ship.
+const MANUAL_LEVER: f64 = 0.05;

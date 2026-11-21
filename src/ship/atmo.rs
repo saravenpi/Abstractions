@@ -12,7 +12,7 @@ use super::drag::{density, pressure, slow, stability};
 use super::flight::{Controls, Report, rotate, thrusters};
 use super::frames::spin_rate;
 use super::landing::Contact;
-use super::rest::{settle, wakes};
+use super::rest::{REBOUND_HEIGHT, bounce_time, settle, wakes};
 use crate::universe::PlanetSpec;
 use crate::wind::thickness;
 
@@ -24,21 +24,6 @@ fn weight(planet: &PlanetSpec, pos: DVec3) -> DVec3 {
     let omega = spin_rate(planet);
     let outward = DVec3::new(pos.x, 0.0, pos.z) * (omega * omega);
     outward - pos * (planet.mu() / pos.length().powi(3))
-}
-
-/// Metres per second a ship touches down at and rebounds at, at most, that the time it takes to come back
-/// down is worked out from.
-const REBOUND: f64 = 2.0;
-
-/// Metres above the ground within which a ship that touched it is taken to be rebounding.
-const REBOUND_HEIGHT: f64 = 4.0;
-
-/// Returns the seconds after a touch of the gear in which a ship with the stick released is still being
-/// set down, under the pull of `gravity` metres per second squared: the time a rebound at [`REBOUND`] takes
-/// to rise and fall, between half a second and six. In the weak gravity of a moon a bounce is long, and an
-/// assist that took hold of the ship in the air again would hop it up each time it touched.
-fn bounce_time(gravity: f64) -> f64 {
-    (2.0 * REBOUND / gravity.max(0.1)).clamp(0.5, 6.0)
 }
 
 /// Returns the acceleration of the engines in frame axes over a step of `h` seconds, where

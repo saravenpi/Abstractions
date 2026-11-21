@@ -11,12 +11,12 @@ use super::cabin::Cabin;
 use super::drive::Drive;
 use super::feed::{CHANNELS, Ch, HullSound};
 use super::jet::{Jet, JetCtl};
-use super::law::{ground, lobe, pressure};
+use super::law::pressure;
 use super::path::Path;
 use super::pump::Pump;
 use super::tune::{
-    AIR_CAP, CANOPY_HZ, DIAMETERS, FULL_THRUST, IDLE_THRUST, IMPINGE, LEAK, LIFT_BODY, LIFT_FEED,
-    LIFT_LOBE, LIGHT, OUTRUN, PUMP_IDLE, SHOCK, SHOCK_NOISE, TRANSONIC,
+    AIR_CAP, CANOPY_HZ, DIAMETERS, FULL_THRUST, LEAK, LIFT_BODY, LIFT_FEED, LIGHT, OUTRUN,
+    PUMP_IDLE, TRANSONIC,
 };
 use super::works::Works;
 use crate::audio::dsp::filter::{Lag, glide, pole};
@@ -119,28 +119,10 @@ impl Hull {
     }
 
     /// Aims the two kinds of jet: the main engines by where the listener stands around the
-    /// exhaust, with the noise of their shock cells in air, and the lift nozzles by the ground.
+    /// exhaust, and the lift nozzles by the ground or the sea under them.
     fn aim(&mut self, hull: &HullSound, lit: f32) {
-        let (air, sound) = (hull.at(Ch::Air), hull.at(Ch::Sound));
-        let toward = lobe(hull.at(Ch::Aspect));
-        let shock = smoothstep(SHOCK.0, SHOCK.1, air) * (1.0 - SHOCK_NOISE.2 * toward);
-        self.main.tune(&JetCtl {
-            level: hull.at(Ch::Thrust).max(IDLE_THRUST * lit),
-            air,
-            sound,
-            lobe: toward,
-            extra_hz: SHOCK_NOISE.0 * sound / DIAMETERS.0,
-            extra: shock * SHOCK_NOISE.1,
-        });
-        let near = ground(hull.at(Ch::Height));
-        self.lift.tune(&JetCtl {
-            level: hull.at(Ch::Lift),
-            air,
-            sound,
-            lobe: LIFT_LOBE * (1.0 + IMPINGE.0 * near),
-            extra_hz: IMPINGE.1,
-            extra: near * IMPINGE.2,
-        });
+        self.main.tune(&JetCtl::main(hull, lit));
+        self.lift.tune(&JetCtl::lift(hull));
     }
 
     /// Sets what the air does to the airframe and to the cabin: the wind and the buffet, rougher

@@ -225,3 +225,8 @@ pub const WHOOSH_LEVEL: f32 = 0.19;
 /// 63 percent of a change. The camera sways on its spring behind the ship; the ship does not come
 /// and go, so the sway must not pulse its level or bend its pitch.
 pub const RIDE_FOLLOW: f32 = 2.0;
+
+/// The spray the lift nozzles blow off the sea under them: the centre of its hiss in hertz when
+/// the ship is high, and at the surface, its resonance, broad so it hisses and never whistles, and
+/// its level at full lift on the water. It replaces the harsh band of the plumes on hard ground.
+pub const SPRAY: (f32, f32, f32, f32) = (1800.0, 4000.0, 0.6, 0.16);

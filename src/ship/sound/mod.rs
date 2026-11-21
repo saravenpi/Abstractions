@@ -22,6 +22,7 @@ use crate::audio::{AudioScene, Ch, EARSHOT, HULLS, HullSound, Listener, Sound};
 use crate::render::{GameCamera, Heat};
 use crate::space::{Anchor, Frame, Location, Placed, Travel};
 use crate::speed::sound_at;
+use crate::world::Terrain;
 
 /// Returns what a ship sounds like from its exhaust and its cockpit alone, wherever it is: its
 /// engines run while someone is aboard or while it flies.
@@ -66,6 +67,8 @@ pub struct Ears<'w, 's> {
     camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
     /// The canopy of every ship.
     canopies: Query<'w, 's, (&'static ChildOf, &'static Canopy)>,
+    /// The ground and the sea under the ships.
+    terrain: Option<Res<'w, Terrain>>,
 }
 
 impl Ears<'_, '_> {
@@ -102,6 +105,15 @@ impl Ears<'_, '_> {
         };
         let at = self.anchor.to_render(placed.pos);
         let rear = self.anchor.rotation_to_render(placed.rot) * Vec3::Z;
+        let surface = matches!(self.anchor.frame, Frame::Surface(_));
+        let wet = self
+            .terrain
+            .as_deref()
+            .filter(|_| surface)
+            .is_some_and(|terrain| {
+                let chart = terrain.locate(placed.pos);
+                terrain.height(chart.x, chart.z) < terrain.globe().sea_level()
+            });
         let to = ear - at;
         let toward = to.normalize_or_zero();
         hull.with(Ch::Present, f32::from(u8::from(to.length() <= EARSHOT)))
@@ -110,6 +122,7 @@ impl Ears<'_, '_> {
             .with(Ch::Front, toward.dot(turn * Vec3::Z))
             .with(Ch::Aspect, rear.dot(toward))
             .with(Ch::Sound, self.sound(placed))
+            .with(Ch::Wet, f32::from(u8::from(wet)))
     }
 
     /// Returns how far the canopy of the ship `hull` is open, from 0 to 1.

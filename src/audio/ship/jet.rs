@@ -6,8 +6,12 @@
 //! of a real plume make it, so it never sounds like noise through a fixed filter, and it holds
 //! steady: nothing in it swells at a rate a listener hears as a pulse.
 
-use super::law::{band_gain, loudness, peak_hz};
-use super::tune::{CRACKLE, CRACKLE_SHAPE, EXTRA_Q, FINE, MIX_LEVEL, MIX_Q, RUMBLE, SURGE};
+use super::feed::{Ch, HullSound};
+use super::law::{band_gain, ground, lobe, loudness, peak_hz};
+use super::tune::{
+    CRACKLE, CRACKLE_SHAPE, DIAMETERS, EXTRA_Q, FINE, IDLE_THRUST, IMPINGE, LIFT_LOBE, MIX_LEVEL,
+    MIX_Q, RUMBLE, SHOCK, SHOCK_NOISE, SPRAY, SURGE,
+};
 use crate::audio::dsp::filter::{Lag, Svf, pole};
 use crate::audio::dsp::rand::Noise;
 use crate::render::smoothstep;
@@ -27,6 +31,50 @@ pub struct JetCtl {
     pub extra_hz: f32,
     /// Level of the extra band at full thrust.
     pub extra: f32,
+    /// Resonance of the extra band.
+    pub extra_q: f32,
+    /// Share of the crackle of a hard burn the jet makes: the main engines crackle, the lift
+    /// nozzles, which blow at the ground, do not.
+    pub crackle: f32,
+}
+
+impl JetCtl {
+    /// Returns what the main engines of `hull` follow, `lit` as far as their chambers are: where
+    /// the listener stands around the exhaust, and the noise of their shock cells in air.
+    pub fn main(hull: &HullSound, lit: f32) -> Self {
+        let (air, sound) = (hull.at(Ch::Air), hull.at(Ch::Sound));
+        let toward = lobe(hull.at(Ch::Aspect));
+        let shock = smoothstep(SHOCK.0, SHOCK.1, air) * (1.0 - SHOCK_NOISE.2 * toward);
+        Self {
+            level: hull.at(Ch::Thrust).max(IDLE_THRUST * lit),
+            air,
+            sound,
+            lobe: toward,
+            extra_hz: SHOCK_NOISE.0 * sound / DIAMETERS.0,
+            extra: shock * SHOCK_NOISE.1,
+            extra_q: EXTRA_Q,
+            crackle: 1.0,
+        }
+    }
+
+    /// Returns what the lift nozzles of `hull` follow: the ground under them, which gives back
+    /// their low end and a harsh band where the plumes hit it, or over the sea a broad hiss of
+    /// spray, brighter and louder the closer the sea is.
+    pub fn lift(hull: &HullSound) -> Self {
+        let near = ground(hull.at(Ch::Height));
+        let wet = hull.at(Ch::Wet);
+        let spray = SPRAY.0 + (SPRAY.1 - SPRAY.0) * near;
+        Self {
+            level: hull.at(Ch::Lift),
+            air: hull.at(Ch::Air),
+            sound: hull.at(Ch::Sound),
+            lobe: LIFT_LOBE * (1.0 + IMPINGE.0 * near),
+            extra_hz: IMPINGE.1 + (spray - IMPINGE.1) * wet,
+            extra: near * (IMPINGE.2 + (SPRAY.3 - IMPINGE.2) * wet),
+            extra_q: EXTRA_Q + (SPRAY.2 - EXTRA_Q) * wet,
+            crackle: 0.0,
+        }
+    }
 }
 
 /// The gains of the layers of a jet, set a few hundred times per second.
@@ -101,14 +149,14 @@ impl Jet {
         let peak = peak_hz(ctl.sound, self.diameter, ctl.level);
         let fine = (peak * FINE.0).min(FINE.1);
         let loud = loudness(ctl.level);
-        let hot = smoothstep(CRACKLE.0, CRACKLE.1, ctl.level) * ctl.air.min(1.0);
+        let hot = smoothstep(CRACKLE.0, CRACKLE.1, ctl.level) * ctl.air.min(1.0) * ctl.crackle;
         self.bands[0].tune(peak, MIX_Q, self.rate);
         self.bands[1].tune(fine, FINE.2, self.rate);
-        self.bands[2].tune(ctl.extra_hz, EXTRA_Q, self.rate);
+        self.bands[2].tune(ctl.extra_hz, ctl.extra_q, self.rate);
         self.gains = Gains {
             mix: loud * ctl.lobe * MIX_LEVEL * band_gain(peak, MIX_Q, self.rate),
             fine: loud * (0.5 + 0.5 * ctl.lobe) * FINE.3 * band_gain(fine, FINE.2, self.rate),
-            extra: loud * ctl.extra * band_gain(ctl.extra_hz, EXTRA_Q, self.rate),
+            extra: loud * ctl.extra * band_gain(ctl.extra_hz, ctl.extra_q, self.rate),
             spike: hot * ctl.lobe * CRACKLE_SHAPE.1 / CRACKLE_SHAPE.0,
             floor: 1.0 - CRACKLE_SHAPE.0 * hot,
             rumble: loud * RUMBLE.2 * band_gain(RUMBLE.0, 1.0 / RUMBLE.1, self.rate),

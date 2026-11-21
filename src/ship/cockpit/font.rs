@@ -1,8 +1,9 @@
 //! The pixel font of the displays: the glyphs of Undefined Medium, the font of the game, on its
 //! own grid. The font is drawn on a grid of 100 font units, five columns wide with a column of
 //! space, and seven rows from the baseline up to the capitals with two rows under it, so each
-//! glyph here is that outline sampled at the middle of its cells. The table lists the digits,
-//! the capitals, the small letters and the signs the displays write.
+//! glyph here is that outline sampled at the middle of its cells, from half a cell right of the
+//! origin of the glyph: every row of the table is what the font file gives. The table lists
+//! the digits, the capitals, the small letters and the signs the displays write.
 
 /// Columns of a glyph.
 pub const WIDTH: usize = 5;
@@ -25,11 +26,11 @@ const GLYPHS: [(char, [u8; HEIGHT]); 68] = [
     ('7', [31, 1, 1, 2, 4, 4, 4, 0, 0]),
     ('8', [14, 17, 17, 14, 17, 17, 14, 0, 0]),
     ('9', [14, 17, 17, 17, 15, 1, 14, 0, 0]),
-    ('.', [0, 0, 0, 0, 0, 12, 12, 0, 0]),
+    ('.', [0, 0, 0, 0, 0, 6, 6, 0, 0]),
     ('-', [0, 0, 0, 14, 0, 0, 0, 0, 0]),
     ('/', [1, 2, 2, 4, 4, 8, 8, 16, 16]),
     ('%', [13, 21, 26, 4, 11, 21, 22, 0, 0]),
-    (':', [0, 0, 12, 12, 0, 12, 12, 0, 0]),
+    (':', [0, 0, 6, 6, 0, 6, 6, 0, 0]),
     ('+', [0, 4, 4, 31, 4, 4, 0, 0, 0]),
     ('A', [14, 17, 17, 31, 17, 17, 17, 0, 0]),
     ('B', [30, 17, 17, 30, 17, 17, 30, 0, 0]),
@@ -39,7 +40,7 @@ const GLYPHS: [(char, [u8; HEIGHT]); 68] = [
     ('F', [31, 16, 16, 30, 16, 16, 16, 0, 0]),
     ('G', [14, 17, 16, 19, 17, 17, 14, 0, 0]),
     ('H', [17, 17, 17, 31, 17, 17, 17, 0, 0]),
-    ('I', [30, 4, 4, 4, 4, 4, 30, 0, 0]),
+    ('I', [15, 4, 4, 4, 4, 4, 15, 0, 0]),
     ('J', [1, 1, 1, 1, 17, 17, 14, 0, 0]),
     ('K', [17, 18, 20, 24, 20, 18, 17, 0, 0]),
     ('L', [16, 16, 16, 16, 16, 16, 31, 0, 0]),
@@ -62,13 +63,13 @@ const GLYPHS: [(char, [u8; HEIGHT]); 68] = [
     ('c', [0, 0, 14, 17, 16, 17, 14, 0, 0]),
     ('d', [1, 1, 15, 17, 17, 17, 15, 0, 0]),
     ('e', [0, 0, 14, 17, 31, 16, 14, 0, 0]),
-    ('f', [6, 8, 8, 30, 8, 8, 8, 0, 0]),
+    ('f', [3, 4, 4, 15, 4, 4, 4, 0, 0]),
     ('g', [0, 0, 15, 17, 17, 17, 15, 1, 14]),
     ('h', [16, 16, 30, 17, 17, 17, 17, 0, 0]),
-    ('i', [4, 0, 28, 4, 4, 4, 30, 0, 0]),
+    ('i', [4, 0, 12, 4, 4, 4, 15, 0, 0]),
     ('j', [2, 0, 2, 2, 2, 2, 2, 18, 12]),
     ('k', [16, 16, 18, 20, 28, 18, 17, 0, 0]),
-    ('l', [24, 8, 8, 8, 8, 8, 6, 0, 0]),
+    ('l', [12, 4, 4, 4, 4, 4, 3, 0, 0]),
     ('m', [0, 0, 30, 21, 21, 21, 21, 0, 0]),
     ('n', [0, 0, 30, 17, 17, 17, 17, 0, 0]),
     ('o', [0, 0, 14, 17, 17, 17, 14, 0, 0]),
@@ -76,7 +77,7 @@ const GLYPHS: [(char, [u8; HEIGHT]); 68] = [
     ('q', [0, 0, 15, 17, 17, 17, 15, 1, 1]),
     ('r', [0, 0, 22, 25, 16, 16, 16, 0, 0]),
     ('s', [0, 0, 15, 16, 14, 1, 30, 0, 0]),
-    ('t', [8, 8, 30, 8, 8, 8, 6, 0, 0]),
+    ('t', [4, 4, 15, 4, 4, 4, 3, 0, 0]),
     ('u', [0, 0, 17, 17, 17, 17, 15, 0, 0]),
     ('v', [0, 0, 17, 17, 10, 10, 4, 0, 0]),
     ('w', [0, 0, 17, 17, 21, 21, 10, 0, 0]),

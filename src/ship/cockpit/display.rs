@@ -11,7 +11,10 @@ use super::fit::Lit;
 use super::screens::{Display, Face, Screen};
 use super::state::Cockpit;
 
-/// Builds the image of `screen`, dark: nearest sampling and no mipmaps, so the pixels stay sharp.
+/// Builds the image of `screen`, dark, without mipmaps. A pixel of a display is about one pixel
+/// of the game image from the seat, so the image is sampled linearly: nearest sampling would
+/// drop a row or a column of a glyph wherever a pixel of the display is a little under a pixel
+/// of the screen, and a stroke of the font is one pixel wide.
 pub fn picture(screen: Screen) -> Image {
     let (width, height) = screen.size();
     let size = Extent3d {
@@ -26,7 +29,7 @@ pub fn picture(screen: Screen) -> Image {
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::default(),
     );
-    image.sampler = ImageSampler::nearest();
+    image.sampler = ImageSampler::linear();
     image
 }
 

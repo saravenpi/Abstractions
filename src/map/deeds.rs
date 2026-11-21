@@ -31,6 +31,8 @@ pub struct Button {
     pub stop: bool,
     /// True when pressing the button does something.
     pub enabled: bool,
+    /// True when the button flies home, through the orbital cruise.
+    pub home: bool,
 }
 
 /// What the card offers: its button, if a place is shown, and its sentence.
@@ -58,6 +60,7 @@ pub fn offer(ask: Option<&Ask>) -> Offer {
         button: Some(Button {
             stop,
             enabled: enabled || stop,
+            home: ask.home,
         }),
         sentence,
     }
@@ -81,9 +84,10 @@ pub fn deeds() -> impl Bundle {
 /// Spawns the Go button under `row`: a block with the key at its right end while it works, and
 /// dim words while it cannot.
 fn spawn(row: &mut ChildSpawnerCommands, button: Button, key: &str) {
-    let (icon, words) = match button.stop {
-        true => (Icon::Stop, "Stop"),
-        false => (Icon::Go, "Go"),
+    let (icon, words) = match (button.stop, button.home) {
+        (true, _) => (Icon::Stop, "Stop"),
+        (false, true) => (Icon::Home, "Fly home"),
+        (false, false) => (Icon::Go, "Go"),
     };
     let node = Node {
         width: percent(100),
@@ -172,6 +176,7 @@ impl Source<'_> {
             status: *self.route,
             eta: eta.as_deref(),
             keys: &keys,
+            home: target == Target::Body(universe.home()),
         };
         (offer(Some(&ask)), keys.go)
     }

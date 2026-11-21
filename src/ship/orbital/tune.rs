@@ -1,20 +1,19 @@
 //! Tuning constants of the orbital cruise and of the glide that ends it, each with its unit.
 
-use crate::universe::STANDARD_GRAVITY;
+/// Radians of the planet the full lever sweeps per second in cruise: six degrees. Half a turn
+/// takes 30 s on any planet, 680 km/s over an Earth 111 km up. No thrust holds a circle at that
+/// speed (it would take 7,000 g), so the warp drive carries the ship as it does in warp: no load
+/// on the crew and no velocity of its own past what the drive gives it.
+pub const RATE: f64 = 0.104_719_755;
 
-/// Radians of the planet the full lever sweeps per second in cruise: two degrees. Half a turn
-/// takes 90 s on any planet, 226 km/s over an Earth 111 km up. No thrust holds a circle at that
-/// speed (it would take 790 g), so the warp drive carries the ship as it does in warp: no load on
-/// the crew and no velocity of its own past what the drive gives it.
-pub const RATE: f64 = 0.034_906_585;
+/// Seconds in which the speed of the cruise grows by the factor e from the slowest warp speed,
+/// and falls by it toward the start of the glide: about four seconds to full speed, and four to
+/// slow down.
+pub const SPOOL: f64 = 0.75;
 
-/// Radii under the edge of the lock sphere that the highest cruise keeps, so that it never
+/// Radians under the edge of the lock sphere that the highest cruise keeps, so that it never
 /// leaves the sphere it runs in.
 pub const LOCK_SLACK: f64 = 0.01;
-
-/// Share of the fastest glide that a whole glide averages, for the time to the target the HUD
-/// shows: it slows to the drag of the low air at its end.
-pub const PACE: f64 = 0.6;
 
 /// Share of its height over the cruise floor that the held height moves by per second at full
 /// vertical stick, and the slowest such move in metres per second: from 800 km down to the floor
@@ -24,9 +23,10 @@ pub const CLIMB: (f64, f64) = (0.5, 2000.0);
 /// Radians per second the heading of a manual cruise turns at full yaw.
 pub const TURN: f64 = 0.5;
 
-/// Fastest turn of the ship onto the course of a cruise, in radians per second (40 degrees a
-/// second), and the angular acceleration in radians per second squared it eases in and out with.
-pub const SLEW: (f64, f64) = (0.698_131_7, 1.2);
+/// Fastest turn of the ship onto the course of a cruise, in radians per second (45 degrees a
+/// second), and the angular acceleration in radians per second squared it eases in and out with:
+/// half a turn in 4.5 s.
+pub const SLEW: (f64, f64) = (0.785_398_2, 1.5);
 
 /// Radians between the nose and the course under which the cruise starts to build its speed:
 /// five degrees.
@@ -36,32 +36,27 @@ pub const ALIGNED: f64 = 0.087_266_46;
 /// 38 degrees a second, so it noses down into the glide as a pilot would.
 pub const GLIDE_STICK: f64 = 0.6;
 
-/// Angle in radians below the horizon of the glide into the air: 40 degrees, within the 35 to 45
-/// of the orbital glide of Elite Dangerous.
-pub const GLIDE_ANGLE: f64 = 0.698_131_7;
-
-/// Hardest slowing in metres per second squared the glide asks while it follows the heating
-/// bound down: two gravities. The bound falls as the sixth root of the density, so a glide at
-/// `v` along [`GLIDE_ANGLE`] through air of scale height `H` slows at `v^2 sin(angle) / 6H`.
-pub const GLIDE_PULL: f64 = 2.0 * STANDARD_GRAVITY;
+/// Angle in radians below the horizon of the glide into the air: 65 degrees, the steepest that
+/// still flattens out over the base. The glide starts 58 km short of the target on an Earth.
+pub const GLIDE_ANGLE: f64 = 1.134_464;
 
 /// Share of the speed at which the nose would start to glow that the glide flies at: the speed
-/// hold lags the falling bound by a fraction of a second.
-pub const COOL_SHARE: f64 = 0.9;
+/// hold lags the falling bound by a fraction of a second, two percent of it at the top of the air.
+pub const COOL_SHARE: f64 = 0.95;
 
-/// Slowest glide in metres per second, over a body with no air to set it.
-pub const GLIDE_LEAST: f64 = 500.0;
+/// Fastest glide in metres per second, over a body with no air to set it.
+pub const GLIDE_MOST: f64 = 6000.0;
 
 /// Metres above the ground the glide aims for, and the metres along the ground before the target
-/// it aims at: the glide ends a few kilometres up and a few short, the target ahead.
-pub const END: (f64, f64) = (2000.0, 8000.0);
+/// it aims at: the glide ends about 2 km up and a few kilometres short, the target ahead.
+pub const END: (f64, f64) = (1500.0, 7000.0);
 
 /// Metres over the aim height in which the glide flattens, and the least share of its angle it
-/// keeps there: it ends ten degrees under the horizon, not in a dive.
-pub const FLARE: (f64, f64) = (4000.0, 0.25);
+/// keeps there: it ends under ten degrees from the horizon, not in a dive.
+pub const FLARE: (f64, f64) = (3000.0, 0.1);
 
 /// Metres over the aim height at which the glide hands the ship back to the pilot.
-pub const DONE: f64 = 1000.0;
+pub const DONE: f64 = 400.0;
 
 /// Tilt of the pitch stick toward nose up past which the pilot takes the glide back.
 pub const ABORT: f64 = 0.5;

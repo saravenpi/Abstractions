@@ -3,17 +3,18 @@
 //!
 //! The path aims at a point [`END`] short of the target and above the ground, at most
 //! [`GLIDE_ANGLE`] under the horizon, and flattens over the last [`FLARE`] metres. The speed is
-//! the lower of two bounds from physics: the speed at which the nose would glow in the air of
-//! the height ([`cool_speed`], the same bound the climb to orbit keeps under), and the fastest
-//! speed at which following that bound down asks no more than [`GLIDE_PULL`] of slowing.
+//! the bound from physics: just under the speed at which the nose would glow in the air of the
+//! height ([`cool_speed`], the same bound the climb to orbit keeps under). The autopilot holds
+//! the boost, so in the low air the engines hold that speed against the drag.
 
 use bevy::math::DVec3;
 
-use super::tune::{COOL_SHARE, DONE, END, FLARE, GLIDE_ANGLE, GLIDE_LEAST, GLIDE_PULL};
+use super::tune::{COOL_SHARE, DONE, END, FLARE, GLIDE_ANGLE, GLIDE_MOST};
 use crate::render::cool_speed;
 use crate::ship::assist::NEUTRAL;
-use crate::ship::cruise::top_speed_at;
+use crate::ship::cruise::{BOOST_SPEED, top_speed_at};
 use crate::ship::drag::{density, terminal};
+use crate::ship::flight::BOOST;
 use crate::universe::PlanetSpec;
 
 /// Least lever the glide sets: over the neutral band of the lever, where the speed hold would
@@ -35,22 +36,19 @@ pub fn remaining(up: DVec3, goal: DVec3, radius: f64, height: f64) -> f64 {
     ((arc - handover(height)) * (radius + height) / radius).max(0.0)
 }
 
-/// Returns the fastest glide in metres per second over `planet`: `sqrt(6 H a / sin(angle))`,
-/// with `H` its scale height and `a` the [`GLIDE_PULL`], or [`GLIDE_LEAST`] over a body with
-/// little or no air.
-pub fn top(planet: &PlanetSpec) -> f64 {
-    let scale = planet.scale_height().max(0.0);
-    (6.0 * scale * GLIDE_PULL / GLIDE_ANGLE.sin())
-        .sqrt()
-        .max(GLIDE_LEAST)
-}
-
 /// Returns the speed in metres per second the glide asks for `height` metres above sea level:
-/// under [`COOL_SHARE`] of the speed at which the nose glows there, and above the air under the
-/// one at its top, which the ship is about to enter.
+/// [`COOL_SHARE`] of the speed at which the nose glows there, and above the air the one at its
+/// top, which the ship is about to enter, at most [`GLIDE_MOST`] over a body with no air.
 pub fn speed(planet: &PlanetSpec, height: f64) -> f64 {
     let sample = height.min(planet.atmosphere_height - 1.0).max(0.0);
-    top(planet).min(COOL_SHARE * cool_speed(density(planet, sample)))
+    (COOL_SHARE * cool_speed(density(planet, sample))).min(GLIDE_MOST)
+}
+
+/// Returns a rough time in seconds of the glide from `height` metres above sea level over
+/// `planet`: its path at [`GLIDE_ANGLE`] at the speed it asks for half way down.
+pub fn time(planet: &PlanetSpec, height: f64) -> f64 {
+    let path = (height - END.0).max(0.0) / GLIDE_ANGLE.sin();
+    path / speed(planet, 0.5 * height).max(1.0)
 }
 
 /// Returns the angle in radians under the horizon of the path of a ship `above` metres over the
@@ -89,7 +87,8 @@ pub struct Order {
 
 /// Returns what the glide asks of a ship at `fix` over `planet`: the nose along the path toward
 /// the target at the glide speed against the ground, and the lever for that speed, under the
-/// fastest the engine holds against the drag of the air there, and never idle.
+/// fastest the boosted engine holds against the drag of the air there, and never idle. The
+/// caller holds the boost.
 pub fn order(fix: &Fix, planet: &PlanetSpec) -> Order {
     let radius = fix.pos.length();
     let up = fix.pos / radius;
@@ -103,7 +102,8 @@ pub fn order(fix: &Fix, planet: &PlanetSpec) -> Order {
     let wish = (toward * tilt.cos() - up * tilt.sin()) * speed(planet, height);
     let ask = wish + fix.frame;
     let circular = (planet.mu() / radius).sqrt();
-    let most = top_speed_at(above.max(0.0), circular).min(terminal(density(planet, height), 1.0));
+    let air = density(planet, height);
+    let most = (top_speed_at(above.max(0.0), circular) * BOOST_SPEED).min(terminal(air, BOOST));
     Order {
         aim: ask.try_normalize().unwrap_or(toward),
         throttle: (ask.length() / most.max(1.0)).clamp(LIVE, 1.0),

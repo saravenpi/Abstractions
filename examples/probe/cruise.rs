@@ -1,17 +1,17 @@
 //! Home through the orbital cruise: the ship dropped out of warp at the arrival shell over the far
-//! side of the home planet, the home key pressed, the cruise round the planet, the glide into the
+//! side of the home planet, Fly home pressed as on the map, the cruise round the planet, the glide into the
 //! air and its end near the base, each shot from the seat with the interface shown. Every shot
 //! logs the regime, the height, the speed and what the HUD reads of the target.
 
-use abstractions::computer::{HOME_KEY, Homeward};
+use abstractions::computer::{Go, Homeward};
 use abstractions::screens::HideHud;
 use abstractions::ship::{Orbital, Regime};
 
 use super::*;
 
-/// Frames the stage may run before it ends: two minutes of cruise and four of glide at a tenth
-/// of a second a frame, with room to spare.
-const LONGEST: u32 = 5000;
+/// Frames the stage may run before it ends: under a minute of cruise and a minute and a half of
+/// glide at a tenth of a second a frame, with room to spare.
+const LONGEST: u32 = 3000;
 
 /// Frames between two log lines.
 const EVERY: u32 = 50;
@@ -79,7 +79,7 @@ fn phases(world: &World, notes: &Notes) -> [(u32, bool, &'static str); 5] {
     ]
 }
 
-/// Warps home to the far side, presses the home key and shoots the cruise, the glide and its
+/// Warps home to the far side, presses Fly home as the map does and shoots the cruise, the glide and its
 /// end with the HUD shown. Run it with `PROBE_STAGES=cruise SMOKE_SEED=57`.
 pub fn cruise_home(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
     let Some(t) = card_ready(world, notes, frame, true) else {
@@ -95,11 +95,13 @@ pub fn cruise_home(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
             pace(world, FLIGHT);
         }
         20 => shot(world, "C1-arrived"),
-        21 => key(world, HOME_KEY, true),
-        22 => key(world, HOME_KEY, false),
+        21 => {
+            let flown = world.run_system_once(|mut go: Go| go.home());
+            eprintln!("PROBE cruise: Fly home on the map {flown:?}");
+        }
         40 if world.resource::<Orbital>().regime() == Regime::Off => {
             let home = world.resource::<Universe>().home();
-            eprintln!("PROBE cruise: the home key did not start it, asking directly");
+            eprintln!("PROBE cruise: Fly home did not start it, asking directly");
             world.trigger(Homeward(home));
         }
         _ => {}

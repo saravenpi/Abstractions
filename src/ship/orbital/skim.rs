@@ -3,16 +3,16 @@
 //! with it.
 //!
 //! The speed at full lever is [`RATE`] radians of the planet per second. It rises from the
-//! slowest warp speed by the factor `e` every [`RAMP`] seconds, as the warp drive does, and
-//! toward a target it falls to the distance left over [`RAMP`], so the ship stops where the glide
+//! slowest warp speed by the factor `e` every [`SPOOL`] seconds, as the warp drive does at its own pace, and
+//! toward a target it falls to the distance left over [`SPOOL`], so the ship stops where the glide
 //! begins and never past it.
 
 use bevy::math::{DMat3, DQuat, DVec3};
 
 use super::glide::remaining;
-use super::tune::{CLIMB, LOCK_SLACK, RATE, TURN};
+use super::tune::{CLIMB, LOCK_SLACK, RATE, SPOOL, TURN};
 use crate::ship::route::shell::lock;
-use crate::ship::warp::{FLOOR, RAMP};
+use crate::ship::warp::FLOOR;
 use crate::ship::wells::PLANET_LOCK;
 use crate::universe::PlanetSpec;
 
@@ -110,11 +110,11 @@ fn held(height: f64, band: &Band, ask: &Ask, dt: f64) -> f64 {
 }
 
 /// Returns the speed of the step after `last`, at most `top`, and, with `left` metres to go,
-/// slowing to the distance left over [`RAMP`] and never past it.
+/// slowing to the distance left over [`SPOOL`] and never past it.
 fn pace(last: f64, top: f64, left: Option<f64>, dt: f64) -> f64 {
-    let rise = last.max(FLOOR) * (dt / RAMP).exp();
+    let rise = last.max(FLOOR) * (dt / SPOOL).exp();
     let close = left.map_or(f64::INFINITY, |left| {
-        (left / RAMP).max(FLOOR).min(left / dt.max(1e-9))
+        (left / SPOOL).max(FLOOR).min(left / dt.max(1e-9))
     });
     top.max(0.0).min(rise).min(close)
 }

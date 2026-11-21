@@ -27,18 +27,15 @@
 //!   (the climb from the pad to orbit under the autopilot) shoot the heat of an entry and leaving the air;
 //!   `cloud` climbs through an overcast cloud base, a shot every 0.2 s from the chase camera and the seat,
 //!   and again at night with the headlight on.
-//! - `cruise` drops the ship at the arrival shell over the far side of the home planet, presses the home key
-//!   and shoots the orbital cruise, the glide into the air and its end near the base, with the HUD shown
-//!   (see the `cruise` module). Run it with `SMOKE_SEED=57`.
+//! - `cruise` drops the ship at the arrival shell over the far side of the home planet, presses Fly home as
+//!   the map does and shoots the orbital cruise, the glide into the air and its end near the base, with the
+//!   HUD shown (see the `cruise` module). Run it with `SMOKE_SEED=57`.
 //! - `dust` hovers the ship 5, 15 and 40 m over sand, over grass and over the sea near the base and
 //!   takes off from grass, shot from outside, to see the dust and the spray of its jets (see the
 //!   `dust` module). Run it with `SMOKE_SEED=57`. It is left out of a run of all groups.
 //!   `cloud` climbs through an overcast cloud base, a shot every 0.2 s from the chase camera and the seat.
 //! - `skyfly` holds the ship 3 km, 15 km and 400 km up under a broken cover with the cloud shadows on, a shot
 //!   every second of the game over ten seconds (see the `skyfly` module).
-//! - `cruise` drops the ship at the arrival shell over the far side of the home planet, presses the home key
-//!   and shoots the orbital cruise, the glide into the air and its end near the base, with the HUD shown
-//!   (see the `cruise` module). Run it with `SMOKE_SEED=57`.
 //! - `SMOKE_ONLY` and `SMOKE_SKIP`: comma lists of stage names to keep or to leave out.
 //! - `SMOKE_TARGET` and `SMOKE_FLASH`: see the `warp` and `boot` stages.
 //! - `PROBE_JOIN=<address>`: join that server instead of starting a world, with `PROBE_NAME` as the player name

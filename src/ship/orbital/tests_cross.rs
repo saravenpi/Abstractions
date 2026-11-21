@@ -1,4 +1,4 @@
-//! Tests of the speed of the orbital cruise: half an Earth-size planet in under 100 s at full
+//! Tests of the speed of the orbital cruise: half an Earth-size planet in under 36 s at full
 //! lever, at one height above the air, and a cruise to the far side that stops where the glide
 //! begins.
 
@@ -10,18 +10,18 @@ use super::glide::handover;
 use super::rig::{DT, band, earth, skim_at};
 use super::skim::{Ask, step};
 
-/// Seconds the cruise may take to cross half a planet at full lever: 90 s at full speed, and the
+/// Seconds the cruise may take to cross half a planet at full lever: 30 s at full speed, and the
 /// spool of the drive.
-const LIMIT: f64 = 100.0;
+const LIMIT: f64 = 36.0;
 
 /// Seconds a cruise to a target on the far side may take: the same, and the slowing down to
-/// where the glide begins.
-const TO_TARGET: f64 = 110.0;
+/// where the glide begins, 37 s on an Earth.
+const TO_TARGET: f64 = 42.0;
 
 /// At full lever the cruise sweeps half an Earth-size planet in under [`LIMIT`] seconds, at the
-/// height it started at, above the air, over 200 km/s.
+/// height it started at, above the air, over 600 km/s.
 #[test]
-fn the_cruise_crosses_half_a_planet_in_under_a_hundred_seconds() {
+fn the_cruise_crosses_half_a_planet_in_half_a_minute() {
     let planet = earth();
     let band = band(&planet);
     let mut skim = skim_at(&planet, band.floor);
@@ -40,7 +40,7 @@ fn the_cruise_crosses_half_a_planet_in_under_a_hundred_seconds() {
         time += DT;
     }
     assert!(time < LIMIT, "half a planet took {time} s");
-    assert!(skim.speed > 200_000.0, "only {} m/s", skim.speed);
+    assert!(skim.speed > 600_000.0, "only {} m/s", skim.speed);
 }
 
 /// A cruise to a target on the far side flies straight to it and stops where the glide

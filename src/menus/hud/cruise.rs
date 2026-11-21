@@ -4,7 +4,6 @@
 use bevy::prelude::*;
 
 use super::course::Words;
-use crate::computer::HOME_KEY;
 use crate::home::Base;
 use crate::settings::Keymap;
 use crate::ship::{Note, Orbital, Reading, Regime};
@@ -110,7 +109,7 @@ pub fn lines(said: &Said, keys: &Keymap) -> Lines {
         return noted(note, keys);
     }
     let start = match said.home {
-        true => (HOME_KEY, "Cruise home".to_string()),
+        true => (keys.map, "Fly home from the map".to_string()),
         false => (warp, "Orbital cruise".to_string()),
     };
     Lines {

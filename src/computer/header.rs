@@ -4,9 +4,10 @@
 use bevy::prelude::*;
 
 use super::course::Act;
-use crate::ui::{Icon, KEY_GAP, Tip, Tone, entry, frame, key_cap, theme};
+use crate::ui::{Icon, KEY_GAP, Tip, Tone, entry, frame, theme};
 
-/// The Home control: the way home with its key, which flies the ship home as the key does.
+/// The Home control: a click flies the ship home, as Fly home on the card of the home planet
+/// does with the Go key.
 fn home() -> impl Bundle {
     let node = Node {
         height: px(theme::ROW_COMPACT),
@@ -20,10 +21,7 @@ fn home() -> impl Bundle {
         Act::Home,
         Tip("Fly home"),
         node,
-        children![
-            entry(Icon::Home, "Home", theme::FONT_SMALL, Tone::Plain),
-            key_cap("H")
-        ],
+        children![entry(Icon::Home, "Home", theme::FONT_SMALL, Tone::Plain)],
     )
 }
 

@@ -2,7 +2,6 @@
 //! with the key that does it, and a running cruise takes the line from the course.
 
 use super::cruise::{Said, clock, lines};
-use crate::computer::HOME_KEY;
 use crate::settings::Keymap;
 use crate::ship::{Note, Reading, Regime};
 
@@ -39,8 +38,8 @@ fn a_cruise_home_says_how_far_and_how_long() {
     assert!(shown.taken);
 }
 
-/// Above the air a cruise is ready on the warp key, and on the home key over the planet of the
-/// base, after any course ready to go.
+/// Above the air a cruise is ready on the warp key, and over the planet of the base the line
+/// points to the map, where Fly home is, after any course ready to go.
 #[test]
 fn a_cruise_ready_shows_its_key() {
     let keys = Keymap::default();
@@ -58,7 +57,7 @@ fn a_cruise_ready_shows_its_key() {
         },
         &keys,
     );
-    assert_eq!(home.ready.map(|(key, _)| key), Some(HOME_KEY));
+    assert_eq!(home.ready.map(|(key, _)| key), Some(keys.map));
     assert_eq!(lines(&Said::default(), &keys).ready, None);
 }
 

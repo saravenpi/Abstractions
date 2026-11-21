@@ -1,7 +1,7 @@
 //! Computer tests: the sentences of the Go card, the keys they name, and what a press of Go
 //! does for each state of the route.
 
-use super::course::{Ask, HERE, Press, READY, card_line, hud_line, press};
+use super::course::{Ask, FLY_HOME, HERE, Press, READY, card_line, hud_line, press};
 use super::route::{Block, Keys, RouteStatus, Target};
 use crate::universe::Universe;
 
@@ -25,6 +25,7 @@ fn ask(keys: &Keys) -> Ask<'_> {
         status: RouteStatus::Idle,
         eta: None,
         keys,
+        home: false,
     }
 }
 
@@ -150,4 +151,23 @@ fn a_press_of_go_starts_stops_or_does_nothing() {
     for ((pick, course, status, can), wanted) in cases {
         assert_eq!(press(pick, course, status, can), wanted, "{status:?}");
     }
+}
+
+/// The card of the home planet offers Fly home to a seated player, on the planet itself too, and
+/// asks a player on foot away from it to board first.
+#[test]
+fn the_home_planet_card_flies_home() {
+    let keys = keys();
+    let home = Ask {
+        home: true,
+        here: true,
+        ..ask(&keys)
+    };
+    assert_eq!(card_line(&home), (true, FLY_HOME.to_string()));
+    let on_foot = Ask {
+        seated: false,
+        here: false,
+        ..home
+    };
+    assert!(card_line(&on_foot).1.starts_with("Board your ship first"));
 }

@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
 
 use super::Cropped;
-use super::clear::{footprints, reaching, taken};
+use super::clear::{blocked, footprints, reaching};
 use super::ground::Ground;
 use super::tile::grow;
 use super::tiles::{Grower, Tile, chunk_of};
@@ -42,8 +42,7 @@ fn blades_of(
 ) -> Drawn {
     let ground = Ground::read(terrain, key);
     let near = reaching(near, ground.sphere(terrain));
-    let radius = terrain.globe().radius();
-    let clear = |p| taken(p, &near, cropped, radius);
+    let clear = |p| blocked(p, (&near, cropped), terrain.globe());
     let (blades, frame) = grow((terrain, &ground), key, carpet, full, &clear);
     Some((blades.into_mesh()?, frame))
 }

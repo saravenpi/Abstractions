@@ -140,4 +140,6 @@ pub(super) fn plugin(app: &mut App) {
 }
 
 #[cfg(test)]
+mod tests_pad;
+#[cfg(test)]
 mod tests_tile;

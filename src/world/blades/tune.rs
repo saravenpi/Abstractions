@@ -16,6 +16,9 @@ pub const NEAR: f32 = 15.0;
 /// Radius in metres of the outer ring, past which no blade stands: the `FAR` of `blades.wesl`.
 pub const FAR: f32 = 40.0;
 
+/// Metres the landing pad keeps blade roots off beyond its edge: about one blade length, so none leans over it.
+pub const PAD_MARGIN: f64 = 1.0;
+
 /// Metres past a ring a tile keeps its blades before it is rebuilt or dropped, so a camera that paces a
 /// border builds nothing.
 pub const LINGER: f32 = 4.0;

@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use super::tune::{FOOTPRINT, PAD_HALF};
 use crate::universe::BodyId;
+use crate::world::globe::{Pad, Reserve};
 
 /// The home base: a fixed place on the home planet, the same for a world seed on every load.
 ///
@@ -58,6 +59,22 @@ impl Base {
     pub fn covers(&self, pos: DVec3, margin: f64) -> bool {
         let from = pos - self.centre;
         (from - self.up * from.dot(self.up)).length() <= FOOTPRINT + margin
+    }
+
+    /// Returns the ground the base keeps free: its footprint, and inside it the square of the landing pad where no
+    /// plant of any size stands.
+    pub fn reserve(&self) -> Reserve {
+        Reserve {
+            centre: self.centre,
+            up: self.up,
+            radius: FOOTPRINT,
+            pad: Some(Pad {
+                centre: self.pad,
+                up: self.pad.normalize(),
+                heading: self.heading,
+                half: f64::from(PAD_HALF),
+            }),
+        }
     }
 
     /// Returns true when the planet position `pos` lies over the landing pad.

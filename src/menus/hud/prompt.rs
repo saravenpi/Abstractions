@@ -1,21 +1,23 @@
 //! The one prompt line: a key and what it does, bottom centre above the hotbar. Exactly one
 //! row, the highest priority wins: a warning or block sentence, what was just picked up, a course
-//! that runs, a course ready to go, the action a key does right now to what the robot looks at or
+//! or an orbital cruise that runs, a course or a cruise ready to go, the action a key does right now to what the robot looks at or
 //! stands by ([`crate::player::Interact`]: pull a spear, cut a part, board, leave, break stone off,
 //! mend), or nothing.
 
 use bevy::prelude::*;
 
 use super::context::{Context, Element, Where};
-use super::course::{Course, Words, words};
+use super::course::{Course, words};
+use super::cruise::{merge, read};
 use super::fade::gate;
 use super::glide::{Bodies, mine, spoken};
 use crate::computer::{Destination, Keys, RouteStatus};
 use crate::craft::pack::{Notice, PICK_KEY};
+use crate::home::Base;
 use crate::menus::key_name;
 use crate::player::{Interact, Offer, Verb};
 use crate::settings::{Keymap, Persistent, Settings};
-use crate::ship::Hatch;
+use crate::ship::{Hatch, Orbital};
 use crate::space::{Location, Travel};
 use crate::ui::{KEY_GAP, text, theme};
 use crate::universe::Universe;
@@ -133,6 +135,8 @@ pub(super) struct Reach<'w, 's> {
     air: Option<Res<'w, Thickness>>,
     players: Bodies<'w, 's>,
     notice: Option<Res<'w, Notice>>,
+    orbital: Option<Res<'w, Orbital>>,
+    base: Option<Res<'w, Base>>,
 }
 
 impl Reach<'_, '_> {
@@ -155,7 +159,8 @@ impl Reach<'_, '_> {
     }
 
     /// Returns the state of the line for this frame: empty in a menu, and while gliding only
-    /// why the air cannot carry the wings, see [`spoken`].
+    /// why the air cannot carry the wings, see [`spoken`]. The orbital cruise takes the course rows
+    /// while it runs; a cruise ready to start comes after a course ready to go.
     fn state(&self) -> State {
         let keys = &self.settings.controls.keys;
         let air = self.air.as_deref().map_or(1.0, |air| air.0);
@@ -174,19 +179,17 @@ impl Reach<'_, '_> {
         let told = self
             .course()
             .map(|course| words(&course, seated, &Keys::of(keys)));
-        let Words {
-            block,
-            running,
-            ready,
-        } = told.unwrap_or_default();
+        let found = (self.location.as_deref(), self.base.as_deref());
+        let cruise = read(self.orbital.as_deref(), found, self.destination.0.is_some(), keys);
+        let (block, running, ready) = merge(cruise, told.unwrap_or_default(), keys.engage);
         let waiting = self
             .hatch
             .as_deref()
             .is_some_and(|hatch| hatch.waiting && seated);
         let unready = || waiting.then(|| UNREADY.to_string());
         state.block = state.block.or(block).or_else(unready);
-        state.running = running.map(|words| (keys.engage, words));
-        state.ready = ready.map(|words| (keys.engage, words));
+        state.running = running;
+        state.ready = ready;
         state
     }
 }

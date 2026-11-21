@@ -65,6 +65,11 @@ pub const NOTICE: (f64, f32) = (6.0, 1.2);
 /// grows by beyond, so that it stays a visible dot from the air.
 pub const BEACON_GROWTH: (f32, f32) = (120.0, 24.0);
 
+/// The beacon of the base seen from afar: the radians of the view its dot spans (about 2.5
+/// pixels of a 1080 pixel view 60 degrees high), the share of that size it keeps between two
+/// flashes, and how many times white it glows, so that it blooms over a lit planet.
+pub const FAR_BEACON: (f32, f32, f32) = (2.5e-3, 0.4, 12.0);
+
 /// Where a piece stands on the site: its origin east and south of the base centre, in metres,
 /// and its turn around the vertical in radians.
 #[derive(Debug, Clone, Copy, PartialEq)]

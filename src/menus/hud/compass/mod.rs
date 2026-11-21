@@ -8,13 +8,14 @@
 //! another is left out. Friends past a limit fold into the nearest one with a count. On a planet
 //! an N marks north. The bar shows even while empty. It has no panel: its line and its tick
 //! lie on a dark copy of themselves, the HUD shadow, and its texts carry the shadow of all HUD
-//! text. The ship only shows on the planet
-//! it stands on and while the player is on foot; favourites only nearby. The home mark only
-//! shows on the planet of the home base, on foot or in its air, and nowhere else.
+//! text. The ship only shows on the planet it stands on and while the player is on foot;
+//! favourites only nearby. The home mark shows on the planet of the home base and above it while
+//! the world streams it, even when the planet stands between, and nowhere else.
 
 mod aim;
 mod beacons;
 mod herds;
+mod horizon;
 mod north;
 mod show;
 mod space;
@@ -22,6 +23,8 @@ mod space;
 mod tests_course;
 #[cfg(test)]
 mod tests_herds;
+#[cfg(test)]
+mod tests_horizon;
 #[cfg(test)]
 mod tests_space;
 #[cfg(test)]

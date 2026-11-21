@@ -9,6 +9,7 @@ mod cables;
 mod choose;
 mod container;
 mod draft;
+mod far;
 mod found;
 mod glow;
 mod ground;
@@ -87,6 +88,11 @@ fn systems(app: &mut App) {
             (lights::notice, lights::glow, lights::beacon)
                 .chain()
                 .run_if(raised),
+            (
+                far::raise.run_if(resource_exists::<Base>),
+                far::shine.run_if(any_with_component::<far::Dot>),
+            )
+                .chain(),
         ),
     );
 }

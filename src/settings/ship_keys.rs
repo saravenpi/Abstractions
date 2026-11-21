@@ -31,7 +31,8 @@ pub struct ShipKeys {
     pub assist: KeyCode,
     /// Set the throttle to zero.
     pub cut: KeyCode,
-    /// Spool the warp drive, or drop out of warp.
+    /// Spool the warp drive, or drop out of warp. Above the air of a planet, inside its lock
+    /// sphere, start or stop the orbital cruise instead.
     pub warp: KeyCode,
     /// Interact: board the ship or leave it, cut a part off a carcass, pull a spear out.
     pub board: KeyCode,

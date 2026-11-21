@@ -49,13 +49,14 @@ In the ship:
 | R | Bring the view back to the nose |
 | X | Cut the throttle |
 | Z | Flight assist on or off |
-| J | Warp drive, away from a planet's gravity |
+| J | Warp drive, away from a planet's gravity. Above the air of a planet, where the warp drive is locked, it starts and stops the orbital cruise: a fast flight around the planet at the height you hold. Shift and Ctrl set its speed, Q and E turn, Space and C change the height |
+| H | Fly home. Above the home planet the ship cruises to the base, glides down into the air and hands back to you a few kilometres short of it, for you to land. Pitch up or press J to take the glide back. In the air far from the base it climbs out first; from farther away it sets the course home and cruises on arrival |
 | M or Tab | Map. Wheel to zoom, drag to pan, double click to go in, Back or Backspace to go out. A trackpad scroll and a pinch also zoom; W A S D, and the arrows with the pointer on the map, also pan. 0 recentres. Click selects. The card of the selected place gives its chance of life, or what lives there once you have landed, and its Go button sets the course there and engages the autopilot. Enter also presses Go, and right click opens a menu, on the map or on a search result, pin or player in the side panel. The path under the Back button jumps to any level above. Esc lets go of the selection, then closes the map |
 | G | Go: engage the autopilot on the course. The line at the bottom of the screen says when it cannot, and why |
 | V | First or third person |
 | F | Leave the ship |
 
-The compass at the top of the screen shows north, the home base, the ship, your friends, your pins and the herds you have seen ahead of you, as icons on one row. Names and distances are on the map and on the markers over the world. They fade toward its ends and hide behind you. Pins, the course, home, your ship and your friends also show over the world at their real place, and slide to the screen edge with an arrow when out of view. A marker shrinks, then hides, when you are close to what it marks. The HUD shows only what means something where you are: on foot, in the ship, in orbit, in open space or in warp.
+The compass at the top of the screen shows north, the home base, the ship, your friends, your pins and the herds you have seen ahead of you, as icons on one row. Names and distances are on the map and on the markers over the world. They fade toward its ends and hide behind you. Pins, the course, home, your ship and your friends also show over the world at their real place, and slide to the screen edge with an arrow when out of view. A marker shrinks, then hides, when you are close to what it marks. Home shows from orbit too, with its distance over the ground; when the planet stands between you and the base its marker stays where the base is, faint, and says so. The HUD shows only what means something where you are: on foot, in the ship, in orbit, in open space or in warp.
 
 The map shows each planet flat and in colour, but only the ground someone has explored. On a server, ground one player uncovers is uncovered for everyone. Right click a place on the map to drop a pin there, copy its coordinates or centre the map on it. Right click a planet or a pin to set the course to it or focus the map on it.
 

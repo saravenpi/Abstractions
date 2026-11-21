@@ -67,3 +67,10 @@ pub const ARROW_REACH: f32 = 22.0;
 /// Pixels a marker keeps free on each side of its icon and above it: half its room across, the
 /// arrow above.
 pub const HALF: (f32, f32) = (48.0, 36.0);
+
+/// Share of its opacity the icon of a marker keeps while the planet stands between the eye and
+/// its place: hollow, at its true place, its words saying why.
+pub const HIDDEN_ALPHA: f32 = 0.5;
+
+/// What the words of a marker add while the planet stands between the eye and its place.
+pub const HIDDEN_WORDS: &str = ", behind the planet";

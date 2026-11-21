@@ -31,8 +31,18 @@ pub const OPEN: (f32, f32) = (15.0, 300.0);
 /// Fog reach in horizon distances once open, so the horizon itself shows through light haze.
 pub const HORIZON_SHARE: f32 = 2.5;
 
-/// Share of the fog reach at which the linear fog hides everything.
+/// Density of the fog over the reach: the share of the view the fog takes at a distance `d` is
+/// `1 - exp(-(DENSITY d / reach)^2)`, 1 percent left at [`FOG_END`] of the reach and a third of a
+/// percent at the reach, so the ground fades out smoothly with no wall where it is cut.
+pub const FOG_DENSITY: f32 = 2.4;
+
+/// Share of the fog reach at which the fog hides all but one percent of what is behind it.
 pub const FOG_END: f32 = 0.9;
+
+/// Distance in metres at which the clear home air hides a dark object to the 5 percent contrast
+/// of the eye (Koschmieder, as Bevy's fog takes it): a clear day shows the far coast tens of
+/// kilometres away. The clouds and the sea fade with it, and thicker air divides it.
+pub const AIR_VISIBILITY: f32 = 40_000.0;
 
 /// Distance in metres the camera culls at least, as Bevy does by default.
 const NEAR_FAR: f32 = 1000.0;
@@ -101,9 +111,8 @@ pub fn cull_distance(reach: f32) -> f32 {
 pub(super) fn fog_for(key: FogKey) -> DistanceFog {
     DistanceFog {
         color: srgb(key.color),
-        falloff: FogFalloff::Linear {
-            start: key.reach * 0.35,
-            end: key.reach * FOG_END,
+        falloff: FogFalloff::ExponentialSquared {
+            density: FOG_DENSITY / key.reach.max(1.0),
         },
         ..default()
     }

@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use bevy_persistent::StorageFormat;
 
 use super::cross::{EASE, crossing_depth, eased};
-use super::{CELL, CloudCrossing, CloudMaps, CloudMaterial};
+use super::{CELL, CloudCover, CloudCrossing, CloudMaps, CloudMaterial};
 use crate::render::observer::Observer;
 use crate::render::palette::Palette;
 use crate::render::vantage::{LocalSystem, Nearby, Vantage};
@@ -81,6 +81,7 @@ fn world(name: &str, dir: DVec3, altitude: f64) -> (PlanetSpec, World) {
     });
     world.init_resource::<CloudMaps>();
     world.init_resource::<CloudCrossing>();
+    world.init_resource::<CloudCover>();
     world.init_resource::<Assets<CloudMaterial>>();
     world.init_resource::<Assets<Mesh>>();
     (home, world)

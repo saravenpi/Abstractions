@@ -32,6 +32,7 @@ pub(super) use map::toward_second;
 pub(super) use maps::CloudMaps;
 pub use material::{CloudMaterial, CloudUniform};
 
+use super::fog::AIR_VISIBILITY;
 use super::palette::Palette;
 use super::sky::linear;
 use super::vantage::{LocalSystem, Vantage};
@@ -150,6 +151,9 @@ impl CloudInputs<'_> {
                 self.forced.0.unwrap_or(0.0),
             ),
             space: air.clouds_from_space().extend(0.0),
+            ambient: linear(self.palette.ambient)
+                .truncate()
+                .extend(AIR_VISIBILITY / air.haze().max(1.0)),
             drift: drifted(seconds).extend(0.0),
             fixed_x: fixed.x_axis.extend(0.0),
             fixed_y: fixed.y_axis.extend(0.0),

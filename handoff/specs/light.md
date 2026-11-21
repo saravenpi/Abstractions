@@ -22,3 +22,18 @@ https://outerra.blogspot.com/2012/11/maximizing-depth-buffer-range-and.html
 Unverifiable (404 or off-topic): https://bevy.org/examples/3d-rendering/ssao/ https://www.reedbeta.com/blog/artifacts-in-linear-and-srgb-filtering/ https://www.gamedeveloper.com/programming/a-scalable-planet-renderer https://www.gdcvault.com/play/1017918/Terrain-in-Battlefield-3-A https://ebruneton.github.io/precomputed_atmospheric_scattering/
 ## Screenshot test
 One seed, fixed sun, same ground point, autumn; straight down then tilted at 2 m, 10 km, 100 km, 1,000 km, 20,000 km: mean linear colour of a 64x64 patch within 3% luminance and 0.02 chroma across all five.
+
+## look-sky pass (2026-11-21): sky grain, clouds, fog, white balance
+
+Found
+- The sky grain was the cloud shell, not the stars. `clouds::drift` and `bodies::follow` rewrite their `Visibility` every frame, so the probe cannot hide them: despawn the shell instead. Far clouds had their alpha cut to a quarter in `clouds.wesl` and the screen-door `discard` turned that into flecks, densest at the horizon. Fixed: far clouds keep alpha and fade to the haze colour with a Koschmieder law (`fog::AIR_VISIBILITY`, 40 km over `Air::haze`); `LONE` (0.3, 0.8) in `cloud_field.wesl` and its twin `weather/puff.rs` cut lone tips, so cloud shadows follow the drawn clouds.
+- Stars and the galaxy band keyed on `palette.stars` (`1 - air` on thin air). They now key on the luminance of the sky colour (`render/skylight.rs`, mirrored in `starfield.wesl`).
+- Clouds were blue under the white balance because their colour was a fixed 35 percent white mix. They are now lit by the star colour against the Sun (`scatter::lit_cloud`, SUN_LIGHT is the neutral of the balance) and shaded by the sky ambient (`CloudUniform.ambient`).
+- The camera fog was linear with a wall at 0.9 of the reach and its reach is the streamed ground (`fog_sight`, `Reach::sight`): on foot it exists to hide the chunk edge, it is not air. It is now exponential squared (`FOG_DENSITY` 2.4: 1 percent left at `FOG_END`), and the sea reads the same curve (`water.wesl`, `FOG_SQUARED`).
+- White balance: `render/exposure/balance.rs`, CAT02 degree, 26 s time constant, snaps when switched on.
+
+Not done
+- Terrain `tone` jitter of plus or minus 8 percent per triangle (`src/world/mesh/style.rs:65`, used at `tris.rs:132`) reads as a quilt on flat ground. Belongs to `look-ground`: scale it by slope or distance.
+- Fog colour is still the horizon colour, with no per-channel extinction. Hillaire-style aerial perspective (Bevy 0.20 ships `bevy_pbr::atmosphere` with LUTs, needs compute shaders and its own dome) was judged too large to adopt blind.
+- Far terrain beyond the streamed ground does not exist on foot, so the horizon is still fog.
+- Probe stages: `look-grain`, `look-cover`, `look-vista-light`, `look-vista-height`. On a locked home `clock_at` cannot reach a low star: fly toward the terminator.

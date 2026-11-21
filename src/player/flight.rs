@@ -90,18 +90,21 @@ pub(super) fn aground(rested: u8, mode: Mode, floor: Option<Ground>, speed: f32)
     }
 }
 
-/// Ground speed in metres per second above which a body with its wings folded heads where it
-/// goes rather than where the view looks.
+/// Ground speed in metres per second above which a body with its wings folded that runs away
+/// from the view heads where it goes.
 const HEADED: f32 = 2.0;
 
 /// Returns the heading and pitch that aim the gear of a body moving as `motion`, the view being
-/// `view`. Folded and moving over the ground it heads where it goes, on its feet as in the air,
-/// so the wings open on the way the body runs or falls and never with the nose against it, as
-/// on a run toward the camera; on the wings and when still, it is the view.
+/// `view`. It is the view, so the wings open, and open again in a fall, toward where the player
+/// looks; the path then turns onto it, see `gear::assist`. Only a folded body that moves away
+/// from the view, more than a quarter turn off it, as on a run toward the camera, heads where
+/// it goes: wings opened with the nose against the path would turn it over backward.
 fn aimed(motion: &Motion, view: Vec2) -> Vec2 {
     let flat = motion.velocity.with_y(0.0);
-    match !motion.wings && flat.length() > HEADED {
-        true => Vec2::new((-flat.x).atan2(-flat.z), view.y),
+    let going = (-flat.x).atan2(-flat.z);
+    let away = super::wrap(going - view.x).abs() > std::f32::consts::FRAC_PI_2;
+    match !motion.wings && flat.length() > HEADED && away {
+        true => Vec2::new(going, view.y),
         false => view,
     }
 }

@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use super::aero::{angle_of_attack, bite, slow};
 use super::aim::{STEEP, aim};
+use super::assist::opening;
 use super::boots::push;
 use super::command::{command, yawed};
 use super::input::GearInput;
@@ -77,7 +78,7 @@ pub(super) fn airflow(mode: Mode, input: &GearInput) -> Vec3 {
 fn substep(state: &FlightState, input: &GearInput, h: f32) -> FlightState {
     let mut out = *state;
     out.mode = next(state, input);
-    out.servo.clock = if out.mode == state.mode {
+    out.servo.clock = if out.mode == state.mode || (out.mode.winged() && state.mode.winged()) {
         state.servo.clock + h
     } else {
         0.0
@@ -96,6 +97,7 @@ fn substep(state: &FlightState, input: &GearInput, h: f32) -> FlightState {
     turn(&mut out, &target, h);
     (out.velocity, out.load) = drive(&out, input, h);
     out.velocity = yawed(&out, input, h);
+    out.velocity = opening(&out, input.gravity, h);
     out.airspeed = out.velocity.length();
     out.aoa = angle_of_attack(&out, out.velocity);
     out.velocity += wind;

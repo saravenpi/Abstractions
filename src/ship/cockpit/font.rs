@@ -3,7 +3,9 @@
 //! space, and seven rows from the baseline up to the capitals with two rows under it, so each
 //! glyph here is that outline sampled at the middle of its cells, from half a cell right of the
 //! origin of the glyph: every row of the table is what the font file gives. The table lists
-//! the digits, the capitals, the small letters and the signs the displays write.
+//! the digits, the capitals, the small letters and the signs the displays write. The legends
+//! of the flight display take a smaller font of three by five capitals, so they fit over their
+//! values.
 
 /// Columns of a glyph.
 pub const WIDTH: usize = 5;
@@ -93,4 +95,32 @@ pub fn glyph(c: char) -> [u8; HEIGHT] {
         .iter()
         .find(|(known, _)| *known == c)
         .map_or([0; HEIGHT], |(_, rows)| *rows)
+}
+
+/// Columns of a glyph of the small font of the legends.
+pub const SMALL_WIDTH: usize = 3;
+
+/// Columns of the advance of a small glyph: its columns and one of space.
+pub const SMALL_ADVANCE: usize = SMALL_WIDTH + 1;
+
+/// Rows of a small glyph, all of them capitals.
+pub const SMALL_HEIGHT: usize = 5;
+
+/// The small capitals the legends of the flight display are written in, three pixels by five:
+/// each row holds its three pixels in the low bits, the left one the highest.
+const SMALL: [(char, [u8; SMALL_HEIGHT]); 6] = [
+    ('A', [2, 5, 7, 5, 5]),
+    ('D', [6, 5, 5, 5, 6]),
+    ('L', [4, 4, 4, 4, 7]),
+    ('P', [6, 5, 6, 4, 4]),
+    ('S', [7, 4, 7, 1, 7]),
+    ('T', [7, 2, 2, 2, 2]),
+];
+
+/// Returns the rows of the small glyph of `c`, blank for a character it does not know.
+pub fn small(c: char) -> [u8; SMALL_HEIGHT] {
+    SMALL
+        .iter()
+        .find(|(known, _)| *known == c)
+        .map_or([0; SMALL_HEIGHT], |(_, rows)| *rows)
 }

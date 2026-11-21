@@ -4,7 +4,7 @@
 
 use bevy::math::Vec2;
 
-use super::view::{CHROME, MIN_ROWS, rows_for};
+use super::fit::{CHROME, MIN_ROWS, rows_for};
 use crate::settings::{InterfaceSize, Settings};
 use crate::ui::{MIN_WIDTH, theme, ui_scale};
 

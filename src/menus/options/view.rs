@@ -2,7 +2,6 @@
 
 use bevy::input_focus::AutoFocus;
 use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
 
 use super::actions::SettingsAction;
 use super::binds::conflicted;
@@ -11,7 +10,7 @@ use super::format::display;
 use super::pages::{self, Page, display_for};
 use super::rebind::Rebinding;
 use super::rows::Value;
-use super::{SettingsTab, Tab, hint, reference};
+use super::{SettingsTab, Tab, fit, hint, reference};
 use crate::menus::{Menu, Nav};
 use crate::settings::{Persistent, Settings};
 use crate::ui::{
@@ -24,27 +23,7 @@ const HINT: &str =
     "Up and down move. Left and right change a value. Enter rebinds a key. Esc goes back";
 
 /// Rows of a page visible at once. A longer page scrolls.
-const VISIBLE_ROWS: f32 = 16.0;
-
-/// Fewest rows of a page visible at once, whatever the size of the interface.
-pub const MIN_ROWS: f32 = 6.0;
-
-/// Height in logical pixels of everything in the settings screen but the rows of the page: the
-/// margins, the panel padding, the heading, the line under the rows and the key hints.
-pub const CHROME: f32 = 240.0;
-
-/// Marks the column that scrolls the pages of the settings.
-#[derive(Component)]
-struct Pages;
-
-/// Returns how many rows of a page show at once in a window `height` logical pixels high: as
-/// many as fit, from [`MIN_ROWS`] to [`VISIBLE_ROWS`], so the page scrolls instead of running
-/// off the screen when the interface is large.
-pub fn rows_for(height: f32) -> f32 {
-    ((height - CHROME) / theme::ROW_HEIGHT)
-        .floor()
-        .clamp(MIN_ROWS, VISIBLE_ROWS)
-}
+pub(super) const VISIBLE_ROWS: f32 = 16.0;
 
 /// One tab item in the left column. The open tab is selected, which is not the keyboard focus.
 fn tab_item(tab: Tab, active: Tab) -> impl Bundle {
@@ -98,7 +77,7 @@ fn body(active: Tab) -> impl Bundle {
             (
                 column(px(theme::MENU_WIDTH * 2.0), 0.0),
                 children![(
-                    (Pages, scroller(theme::ROW_HEIGHT * VISIBLE_ROWS)),
+                    (fit::Pages, scroller(theme::ROW_HEIGHT * VISIBLE_ROWS)),
                     children![
                         pages::graphics(active),
                         pages::controls(active),
@@ -148,20 +127,6 @@ fn show_tab(
     }
 }
 
-/// Sets how tall the page column is for the room the window has at the current interface scale.
-fn fit_page(
-    window: Single<&Window, With<PrimaryWindow>>,
-    scale: Res<UiScale>,
-    mut pages: Query<&mut Node, With<Pages>>,
-) {
-    let wanted = px(theme::ROW_HEIGHT * rows_for(window.height() / scale.0.max(f32::EPSILON)));
-    for mut node in &mut pages {
-        if node.max_height != wanted {
-            node.max_height = wanted;
-        }
-    }
-}
-
 /// Writes the current setting values into their texts. A value that is off is dimmed, and a key
 /// in conflict with another is followed by an exclamation mark. Does nothing while nothing changed.
 fn show_values(
@@ -201,7 +166,7 @@ pub(super) fn plugin(app: &mut App) {
         Update,
         (
             show_tab.run_if(resource_changed::<SettingsTab>),
-            (show_values, fit_page),
+            (show_values, fit::fit_page),
         )
             .run_if(in_state(Menu::Settings)),
     );

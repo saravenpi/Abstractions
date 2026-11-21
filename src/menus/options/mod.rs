@@ -4,6 +4,7 @@ mod actions;
 mod binds;
 mod describe;
 mod field;
+mod fit;
 mod format;
 mod hint;
 mod lights;

@@ -52,13 +52,15 @@ pub(super) struct Env<'w, 's> {
 }
 
 impl<'w, 's> Env<'w, 's> {
-    /// Returns the planet's own ground, which bodies stand on where no collider is loaded.
-    fn bare(&self) -> Bare<'_, 'w, 's> {
+    /// Returns the planet's own ground, which a body of `shape` stands on where no collider is
+    /// loaded around it.
+    fn bare<'a>(&'a self, shape: (&'a Collider, Quat)) -> Bare<'a, 'w, 's> {
         Bare {
             anchor: &self.anchor,
             terrain: &self.terrain,
             floor: &self.floor,
-            streamed: self.chunks.is_some(),
+            chunks: self.chunks.as_deref(),
+            shape,
         }
     }
 
@@ -72,7 +74,7 @@ impl<'w, 's> Env<'w, 's> {
         filter: &SpatialQueryFilter,
     ) -> Option<Ground> {
         probe(&self.query, collider, at, tilt, filter)
-            .or_else(|| self.bare().ground(at.translation))
+            .or_else(|| self.bare((collider, at.rotation)).ground(at.translation))
     }
 
     /// Reads the per-frame values of a body at render position `at` that is asked `asks`.
@@ -93,8 +95,7 @@ impl<'w, 's> Env<'w, 's> {
     }
 
     /// Reads the air around a body at `at` whose local down is `down`, with the free height
-    /// under its soles, down to a collider or to the bare ground. That height is only measured
-    /// off the ground, where the gear reads it.
+    /// under its soles. That height is only measured off the ground, where the gear reads it.
     ///
     /// The wind blows along the tangent plane of the anchor in render axes; carried to the
     /// body by the tilt of its vertical, it has the same components in the upright frame.
@@ -107,11 +108,7 @@ impl<'w, 's> Env<'w, 's> {
     ) -> Air {
         let free = match grounded {
             true => 0.0,
-            false => clearance(&self.query, at, down, filter).min(
-                self.bare()
-                    .gap(at)
-                    .map_or(f32::INFINITY, |gap| gap.max(0.0)),
-            ),
+            false => clearance(&self.query, at, down, filter),
         };
         let wind = self.wind.as_deref().map_or(Vec3::ZERO, Wind::velocity);
         Air {
@@ -150,7 +147,8 @@ impl<'w, 's> Env<'w, 's> {
                 MoveAndSlideHitResponse::Accept
             },
         );
-        self.bare().keep(from.translation, &mut out);
+        self.bare((collider, from.rotation))
+            .keep(from.translation, &mut out);
         (out, steep)
     }
 }

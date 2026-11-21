@@ -19,6 +19,7 @@ mod lost;
 mod opener;
 mod respread;
 mod sends;
+mod slopes;
 mod spawn;
 mod stage;
 mod steer;

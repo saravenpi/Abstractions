@@ -45,4 +45,19 @@ impl Floor<'_, '_> {
                 .cast_ray_predicate(start, down, RISE + DEPTH, true, &filter, &fixed)?;
         Some(start + down * hit.distance)
     }
+
+    /// Returns true when a fixed collider lies anywhere `shape`, turned by `turn`, would meet if
+    /// swept down the local up `up` from [`RISE`] above render position `at` to [`DEPTH`] under
+    /// it: the ground beside a body as well as under its centre.
+    pub fn around(&self, (shape, turn): (&Collider, Quat), at: Vec3, up: Vec3) -> bool {
+        let Ok(down) = Dir3::new(-up) else {
+            return false;
+        };
+        let fixed = |entity| self.fixed(entity);
+        let reach = ShapeCastConfig::from_max_distance(RISE + DEPTH);
+        let filter = SpatialQueryFilter::default();
+        self.query
+            .cast_shape_predicate(shape, at + up * RISE, turn, down, &reach, &filter, &fixed)
+            .is_some()
+    }
 }

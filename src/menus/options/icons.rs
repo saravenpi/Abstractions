@@ -17,6 +17,7 @@ pub fn of(field: Field) -> Option<Icon> {
         Field::Bloom => sign::BLOOM,
         Field::Clouds => Icon::Cloudy,
         Field::WaterGlint => Icon::Water,
+        Field::WaterReflections => sign::ON_FOOT,
         Field::ShowFps => sign::FRAME_RATE,
         Field::Sensitivity => Icon::Mouse,
         Field::InvertY => sign::INVERT,

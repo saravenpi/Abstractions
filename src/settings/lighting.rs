@@ -1,5 +1,6 @@
 //! The lighting options of the graphics settings, and the four presets that set them together
-//! with the shadows, the ambient occlusion and the bloom of [`Graphics`].
+//! with the shadows, the ambient occlusion and the bloom of [`Graphics`]. High and Ultra mirror
+//! the actors in calm water, Low and Medium do not.
 //!
 //! Every option only decides how much of the light the game computes. The lights themselves,
 //! the sun, the moon, the lamps and the glow of living things, are always there.
@@ -7,6 +8,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::model::Graphics;
+use super::reflect::{Reflections, Stored};
 use super::shadows::{ShadowDetail, ShadowReach};
 
 /// A lighting preset. `Custom` is what the options read when they match none of the four.
@@ -36,9 +38,10 @@ impl Quality {
     }
 }
 
-/// The lighting options that [`Graphics`] does not already hold.
+/// The lighting options that [`Graphics`] does not already hold. A file is read through
+/// [`Stored`], which gives a file without the water reflections those of its preset.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
-#[serde(default)]
+#[serde(from = "Stored")]
 pub struct Lighting {
     /// Size of the shadow maps.
     pub shadow_detail: ShadowDetail,
@@ -57,6 +60,8 @@ pub struct Lighting {
     pub local_shadows: bool,
     /// Whether the sea shows the glint of the sun and the moon, not only the sky.
     pub water_glint: bool,
+    /// What calm water mirrors besides the sky: nothing, or the actors near it.
+    pub reflections: Reflections,
 }
 
 impl Default for Lighting {
@@ -69,6 +74,7 @@ impl Default for Lighting {
             white_balance: true,
             local_shadows: false,
             water_glint: true,
+            reflections: Reflections::Actors,
         }
     }
 }
@@ -98,6 +104,7 @@ impl Graphics {
                 white_balance: quality != Quality::Low,
                 local_shadows: quality == Quality::Ultra,
                 water_glint: quality != Quality::Low,
+                reflections: Reflections::of(detail),
             },
             ..self.clone()
         }

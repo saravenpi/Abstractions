@@ -58,7 +58,8 @@ pub fn graphics(active: Tab) -> impl Bundle {
     let sky = children![
         toggle("Clouds", Field::Clouds),
         toggle("Cloud shadows", Field::CloudShadows),
-        toggle("Sea reflections", Field::WaterGlint),
+        toggle("Sea glint", Field::WaterGlint),
+        toggle("Water reflections", Field::WaterReflections),
     ];
     let display = children![
         toggle("Vsync", Field::Vsync),

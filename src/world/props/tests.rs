@@ -113,14 +113,20 @@ fn solids_stand_on_the_local_up() {
     }
 }
 
-/// Returns the upright cylinders v0.5 built for the solid props of a chunk, in chunk space.
+/// Returns the cylinders built for the solid props of a chunk in chunk space, upright for plants and
+/// tilted to the ground for stones.
 fn legacy(props: &[Placement]) -> Vec<(Vec3, Quat, Collider)> {
     let solid = props.iter().filter(|p| BODIES[p.plant as usize][0] > 0.0);
     solid
         .map(|p| {
             let [radius, height] = BODIES[p.plant as usize].map(|v| v * p.scale);
-            let at = p.pos + Vec3::Y * height * 0.5;
-            let rot = Quat::from_rotation_y(p.yaw);
+            let tilt = if p.lean == Vec2::ZERO {
+                Quat::IDENTITY
+            } else {
+                Quat::from_rotation_arc(Vec3::Y, Vec3::new(-p.lean.x, 1.0, -p.lean.y).normalize())
+            };
+            let rot = tilt * Quat::from_rotation_y(p.yaw);
+            let at = p.pos + rot * Vec3::Y * (height * 0.5);
             (at, rot, Collider::cylinder(radius, height))
         })
         .collect()

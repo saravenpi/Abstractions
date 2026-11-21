@@ -27,14 +27,14 @@ fn rocks_of(props: &[Placement], key: u64, rig: &Rig, taken: &Taken) -> Vec<Rock
     rocks
         .filter_map(|p| {
             let [radius, height] = extent(p.plant, p.scale);
-            let (at, turn) = rig.frame(p.pos);
+            let (at, rot) = rig.pose(p);
             (radius > 0.0).then(|| Rock {
                 id: id_of(key, p),
                 left: taken.left(id_of(key, p)),
                 plant: p.plant,
                 scale: p.scale,
                 at,
-                mid: at + turn * Vec3::Y * (height * 0.5),
+                mid: at + rot * Vec3::Y * (height * 0.5),
             })
         })
         .collect()

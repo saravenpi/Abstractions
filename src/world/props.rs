@@ -131,9 +131,8 @@ pub fn body_collider_on(props: &[Placement], rig: &Rig) -> Option<Collider> {
             let [radius, height] = BODIES[p.plant as usize];
             let (radius, height) = (radius * p.scale, height * p.scale);
             (radius > 0.0).then(|| {
-                let (origin, turn) = rig.frame(p.pos);
-                let at = origin + turn * Vec3::Y * (height * 0.5);
-                let rot = turn * Quat::from_rotation_y(p.yaw);
+                let (origin, rot) = rig.pose(p);
+                let at = origin + rot * Vec3::Y * (height * 0.5);
                 (at, rot, Collider::cylinder(radius, height))
             })
         })

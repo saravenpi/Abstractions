@@ -20,7 +20,7 @@ use super::state::Exhaust;
 /// padding. The fields are the same, in the same order, as in the shader.
 #[derive(Clone, Copy, Debug, Default, PartialEq, ShaderType)]
 pub struct JetUniform {
-    /// Thrust in x, the air in y, the warp drive in z.
+    /// Brightness in x, the spread of the plume against thick air in y, the warp drive in z.
     pub drive: Vec4,
     /// Linear colour of the core in xyz, the brightness in w.
     pub hot: Vec4,

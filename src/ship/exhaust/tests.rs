@@ -14,11 +14,16 @@ use crate::space::Frame;
 use crate::universe::BodyId;
 
 /// Thick air holds the gas in a narrow, bright jet with shock diamonds; vacuum lets it spread into
-/// a wide, long, faint plume with none.
+/// a wider, long, faint plume with none, whose envelope fades as it widens. Since 0.11.0 the
+/// vacuum plume is 1.8 times as wide as in thick air, down from 2.8: the owner found it far too
+/// wide.
 #[test]
 fn thin_air_widens_and_dims_the_plume() {
     let (thick, vacuum) = (shape(0.3, 1.0, 1.0), shape(0.3, 1.0, 0.0));
-    assert!(vacuum.width > 2.5 * thick.width, "{vacuum:?} {thick:?}");
+    assert!(vacuum.width > 1.5 * thick.width, "{vacuum:?} {thick:?}");
+    assert!(vacuum.width < 2.0 * thick.width, "{vacuum:?} {thick:?}");
+    assert!((vacuum.spread * thick.width - vacuum.width).abs() < 1.0e-6);
+    assert_eq!(thick.spread, 1.0);
     assert!(vacuum.length > 2.0 * thick.length);
     assert!(vacuum.bright < 0.5 * thick.bright);
     assert!(thick.shock > 0.99 && vacuum.shock == 0.0);

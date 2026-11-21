@@ -1,7 +1,8 @@
 //! The shape of an exhaust from what drives it, as pure functions: its length, its width, its
 //! brightness and the shock diamonds in it come from the thrust, the exit of the nozzle and the
 //! pressure of the air around it. Thick air holds the gas in a narrow bright jet; thin air and
-//! vacuum let it expand into a wide, faint plume.
+//! vacuum let it expand into a wider plume whose envelope fades as it widens, while its bright
+//! core stays as wide as the nozzle.
 
 use super::tune::{
     EXHAUST_SPEED, FAINT, LENGTH, OFF, SCROLL, SHOCK, SPOOL_DOWN, SPOOL_UP, WARP_LENGTH, WIDTH,
@@ -12,8 +13,13 @@ use super::tune::{
 pub struct Shape {
     /// Length in metres.
     pub length: f32,
-    /// Radius in metres where the plume leaves the nozzle, from which it swells and narrows.
+    /// Radius in metres where the plume leaves the nozzle, from which it swells and narrows. It
+    /// grows with the root of the thrust up to full throttle and no further: the boost makes the
+    /// plume longer, not wider.
     pub width: f32,
+    /// How many times wider the plume is than in thick air at the same thrust. The mantle and
+    /// the outer glow shine as one over its square: the same gas over a wider section.
+    pub spread: f32,
     /// Brightness, 1 for a main engine at full thrust in thick air.
     pub bright: f32,
     /// How visible the shock diamonds are, from 0 to 1.
@@ -49,9 +55,11 @@ pub fn shape(exit: f32, thrust: f32, air: f32) -> Shape {
     let air = air.clamp(0.0, 1.0);
     let (vacuum, push) = (1.0 - air, thrust.sqrt());
     let length = 2.0 * exit * push * (LENGTH.0 + (LENGTH.1 - LENGTH.0) * vacuum);
+    let spread = 1.0 + (WIDTH.1 / WIDTH.0 - 1.0) * vacuum;
     Shape {
         length,
-        width: exit * push * (WIDTH.0 + (WIDTH.1 - WIDTH.0) * vacuum),
+        width: exit * push.min(1.0) * WIDTH.0 * spread,
+        spread,
         bright: thrust * (1.0 - (1.0 - FAINT) * vacuum),
         shock: smooth(SHOCK.0, SHOCK.1, air) * thrust.min(1.0),
         scroll: (EXHAUST_SPEED / length).min(SCROLL),
@@ -68,6 +76,7 @@ pub fn warp(exit: f32, drive: f32) -> Shape {
     Shape {
         length,
         width: exit * (1.0 - 0.45 * drive),
+        spread: 1.0,
         bright: 1.4 * drive,
         shock: 0.0,
         scroll: SCROLL,

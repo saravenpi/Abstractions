@@ -28,9 +28,13 @@ pub const SCROLL: f32 = 5.0;
 /// vacuum, where the plume runs on much farther.
 pub const LENGTH: (f32, f32) = (3.0, 8.0);
 
-/// Widest radius of the plume of a nozzle at full thrust, in exit radii, in thick air and in
-/// vacuum, where it expands into the lack of pressure around it.
-pub const WIDTH: (f32, f32) = (1.0, 2.8);
+/// Radius of the plume of a nozzle at full thrust where it leaves the nozzle, in exit radii, in
+/// thick air and in vacuum, where it expands into the lack of pressure around it. The mesh swells
+/// to 1.15 times that and its bright core is 0.42 of it, so in vacuum the envelope is 2.1 exit
+/// radii and the core stays inside the exit. A real plume in vacuum spreads much farther, but the
+/// same gas over a wider section shines as one over that section squared: past this the eye sees
+/// nothing, so the envelope stops here and fades as it widens: see `Shape::spread`.
+pub const WIDTH: (f32, f32) = (1.0, 1.8);
 
 /// Share of its brightness a plume keeps in vacuum: the same gas spread over a far larger
 /// volume shines much less.

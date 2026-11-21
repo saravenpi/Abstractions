@@ -22,6 +22,8 @@ mod tests;
 mod tests_jets;
 #[cfg(test)]
 mod tests_lamps;
+#[cfg(test)]
+mod tests_width;
 
 use bevy::prelude::*;
 

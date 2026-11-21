@@ -1,6 +1,7 @@
 //! The rules of one marker over the world, as pure functions: how near its target is for the
-//! thing itself to be the sign, how it fades over a band and comes back farther out, what the
-//! middle of the view does to it and what its icon and its words look like.
+//! thing itself to be the sign, how far a pin is for its marker to be noise, how it fades over
+//! a band and comes back past it, what the middle of the view does to it and what its icon and
+//! its words look like.
 
 use super::tune;
 use crate::menus::hud::context::Context;
@@ -13,6 +14,8 @@ pub struct Sticky {
     pub reduced: bool,
     /// The marker is gone.
     pub hidden: bool,
+    /// The marker is gone past its far limit.
+    pub far: bool,
 }
 
 /// How near a marker is drawn, before the middle of the view and its neighbours have their say.
@@ -33,26 +36,6 @@ pub struct Face {
     pub label: f32,
     /// Whether the icon is drawn small.
     pub small: bool,
-}
-
-/// Returns whether the player follows `marker` on purpose: the course, or their own pin. Such
-/// a marker is never reduced and hides only on arrival.
-pub fn tracked(marker: &Marker) -> bool {
-    marker.kind == MarkerKind::Course || (marker.kind == MarkerKind::Waypoint && marker.owner == 0)
-}
-
-/// Returns the place of `marker` in the order that settles who keeps its room when two
-/// markers meet: the course, the followed pin, friends, home, the ship, pins, herds.
-pub fn rank(marker: &Marker) -> u8 {
-    match marker.kind {
-        MarkerKind::Course => 0,
-        MarkerKind::Waypoint if marker.owner == 0 => 1,
-        MarkerKind::Friend => 2,
-        MarkerKind::Home => 3,
-        MarkerKind::Ship => 4,
-        MarkerKind::Waypoint | MarkerKind::Favourite => 5,
-        MarkerKind::Herd => 6,
-    }
 }
 
 /// Returns the length in metres of what a marker of `kind` stands on, as seen from `context`:
@@ -89,23 +72,50 @@ pub fn fade(gap: f64, inner: f64, stuck: &mut bool) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
+/// Returns how visible something `gap` metres away is when it fades out past `limit` metres:
+/// 1 under the limit, 0 past the band of [`tune::BAND`] beyond it, smooth between. It is
+/// [`fade`] turned around: once it has run to 0, `stuck` moves the band in by [`tune::STICK`]
+/// until the fade is back at 1, so a marker comes back a fifth nearer than it left.
+pub fn beyond(gap: f64, limit: f64, stuck: &mut bool) -> f32 {
+    fade(limit * tune::BAND / gap.max(1.0), 1.0, stuck)
+}
+
+/// Returns the distance in metres past which the marker over the world of `marker` fades out
+/// in `context`: about two minutes of travel for a pin nobody follows, on foot, gliding or in
+/// the ship. The course, the followed pin, friends, home and the ship have none: they show at
+/// any distance.
+pub fn reach(marker: &Marker, context: Context) -> Option<f64> {
+    let pin = matches!(marker.kind, MarkerKind::Waypoint | MarkerKind::Favourite);
+    let far = match context {
+        Context::OnFoot | Context::Swimming => tune::FAR_FOOT,
+        Context::Gliding => tune::FAR_GLIDE,
+        _ => tune::FAR_SHIP,
+    };
+    (pin && !marker.tracked()).then_some(far)
+}
+
 /// Returns how `marker`, `gap` metres away, is drawn in `context`, and updates what it
 /// remembers. A marker the player follows keeps its words and hides only on arrival; the
 /// course, which is never reached on foot, never hides. A friend is never hidden: near, only
-/// the name is left. Any other marker is reduced, then hidden, as its target grows in view.
+/// the name is left. Any other marker is reduced, then hidden, as its target grows in view,
+/// and a pin nobody follows fades out past its [`reach`].
 pub fn look(marker: &Marker, gap: f64, context: Context, sticky: &mut Sticky) -> Look {
-    if tracked(marker) {
+    if marker.tracked() {
         let arrive = [tune::ARRIVE, 0.0][usize::from(marker.kind == MarkerKind::Course)];
         let alpha = fade(gap, arrive, &mut sticky.hidden);
         return Look { alpha, detail: 1.0 };
     }
     let unit = span(marker.kind, context);
     let detail = fade(gap, unit * tune::REDUCE_SPANS, &mut sticky.reduced);
-    let alpha = match marker.kind {
+    let near = match marker.kind {
         MarkerKind::Friend => 1.0,
         _ => fade(gap, unit * tune::HIDE_SPANS, &mut sticky.hidden),
     };
-    Look { alpha, detail }
+    let far = reach(marker, context).map_or(1.0, |limit| beyond(gap, limit, &mut sticky.far));
+    Look {
+        alpha: near * far,
+        detail,
+    }
 }
 
 /// Returns the opacity of a marker drawn on its target `angle` radians from the middle of the

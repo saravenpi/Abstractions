@@ -32,16 +32,16 @@ pub struct Trail {
     head: usize,
     /// Rows laid and still alive.
     len: usize,
+    /// Seconds a row lasts.
+    life: f32,
+    /// Least seconds between two rows.
+    every: f32,
 }
 
 impl Default for Trail {
-    /// An empty trail.
+    /// An empty trail of a swing: rows of [`TRAIL_LIFE`], one every frame.
     fn default() -> Self {
-        Self {
-            rows: [Row::default(); ROWS],
-            head: 0,
-            len: 0,
-        }
+        Self::lasting(TRAIL_LIFE, 0.0)
     }
 }
 
@@ -52,6 +52,22 @@ pub fn glow(speed: f32) -> f32 {
 }
 
 impl Trail {
+    /// Returns an empty trail whose rows last `life` seconds, laid no closer than `every` seconds.
+    pub fn lasting(life: f32, every: f32) -> Self {
+        Self {
+            rows: [Row::default(); ROWS],
+            head: 0,
+            len: 0,
+            life,
+            every,
+        }
+    }
+
+    /// Returns the seconds a row lasts.
+    pub fn life(&self) -> f32 {
+        self.life
+    }
+
     /// Returns the number of rows alive.
     pub fn len(&self) -> usize {
         self.len
@@ -67,20 +83,22 @@ impl Trail {
         (index < self.len).then(|| self.rows[(self.head + ROWS - index) % ROWS])
     }
 
-    /// Ages every row by `dt` seconds, drops the ones past [`TRAIL_LIFE`], and lays a row of `edge` when
-    /// the tip moves at `speed` metres per second, fast enough to glow.
+    /// Ages every row by `dt` seconds, drops the ones past the life of the trail, and lays a row of
+    /// `edge` when the tip moves at `speed` metres per second, fast enough to glow, and the newest
+    /// row is old enough.
     pub fn feed(&mut self, edge: [Vec3; 2], speed: f32, dt: f32) {
         for row in &mut self.rows {
             row.age += dt;
         }
         while self
             .row(self.len.saturating_sub(1))
-            .is_some_and(|r| r.age > TRAIL_LIFE)
+            .is_some_and(|r| r.age > self.life)
         {
             self.len -= 1;
         }
         let glow = glow(speed);
-        if glow > 0.0 {
+        let spaced = self.row(0).is_none_or(|r| r.age >= self.every);
+        if glow > 0.0 && spaced {
             self.head = (self.head + 1) % ROWS;
             self.rows[self.head] = Row {
                 edge,

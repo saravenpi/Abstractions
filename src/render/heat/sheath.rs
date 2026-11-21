@@ -1,5 +1,14 @@
-//! The sheath: the glowing shock around the nose of a craft in an entry, with plasma streaming
-//! back along the hull, embers peeling off and a short tail, seen from outside the craft.
+//! The sheath: the glowing shock layer of an entry around a craft, seen from outside and through
+//! the canopy alike. A bow shock wraps the nose, the stagnation point and the leading edges of
+//! the wings burn hottest in the colour of their temperature, streamers peel off the wing tips
+//! and the tail, and a long faint wake of ionised air trails behind. The plasma fades with the
+//! flux; the hot skin of the nose and the edges cools after it.
+//!
+//! The shader integrates the light of the glowing gas along each view ray in closed form and
+//! stops the ray at the depth of the scene, so the hull and the ground hide what lies behind
+//! them and nothing is drawn in specks. Cost: one sphere of 512 triangles, one fragment per
+//! pixel it covers with about fifteen line integrals of glowing tubes each, only while the craft
+//! glows. The hot nose and leading edges are lines along the hull, never spots.
 
 use bevy::asset::embedded_asset;
 use bevy::camera::visibility::NoFrustumCulling;
@@ -8,18 +17,13 @@ use bevy::mesh::MeshVertexBufferLayoutRef;
 use bevy::pbr::{Material, MaterialPipeline, MaterialPipelineKey, MaterialPlugin};
 use bevy::prelude::*;
 use bevy::render::render_resource::{
-    AsBindGroup, RenderPipelineDescriptor, ShaderType, SpecializedMeshPipelineError,
+    AsBindGroup, CompareFunction, Face, RenderPipelineDescriptor, ShaderType,
+    SpecializedMeshPipelineError,
 };
 use bevy::shader::ShaderRef;
 
 use super::state::{Heat, HeatSet};
-use super::tune::{SHEATH_FROM, SHEATH_REACH};
-use crate::render::Vantage;
 use crate::screens::Screen;
-
-/// Share of the radius of the craft the camera must be farther than for the sheath to show: from
-/// inside the craft, the glass of the cockpit glows instead.
-const OUTSIDE: f32 = 1.5;
 
 /// Uniform block read by `sheath.wesl`. Every field is a `vec4` so the layout never needs padding.
 #[derive(Clone, Copy, Debug, Default, ShaderType)]
@@ -28,10 +32,12 @@ pub struct SheathUniform {
     pub centre: Vec4,
     /// Unit vector of its flight in xyz.
     pub axis: Vec4,
-    /// Linear colour of the glow in xyz and its strength in w.
+    /// Unit vector out of its roof in xyz and the share of the full pressure of the air in w.
+    pub roof: Vec4,
+    /// Linear colour of the glowing gas in xyz and the strength of the plasma in w.
     pub glow: Vec4,
-    /// Share of the full pressure of the air in x.
-    pub load: Vec4,
+    /// Linear colour of the hot skin in xyz and the strength of its glow in w.
+    pub skin: Vec4,
 }
 
 /// Material of the sheath.
@@ -53,7 +59,7 @@ impl Material for SheathMaterial {
         AlphaMode::Add
     }
 
-    /// The sheath stays out of the depth prepass.
+    /// The sheath stays out of the depth prepass, which its shader reads.
     fn enable_prepass() -> bool {
         false
     }
@@ -63,14 +69,20 @@ impl Material for SheathMaterial {
         false
     }
 
-    /// Draws both faces, so the sheath shows whichever side the camera is on.
+    /// Draws the far side of the sphere, which every view ray through it meets once whether
+    /// the camera is inside or outside, and skips the depth test: the far side lies behind the
+    /// hull, and the shader stops each ray at the depth of the scene itself.
     fn specialize(
         _pipeline: &MaterialPipeline,
         descriptor: &mut RenderPipelineDescriptor,
         _layout: &MeshVertexBufferLayoutRef,
         _key: MaterialPipelineKey<Self>,
     ) -> Result<(), SpecializedMeshPipelineError> {
-        descriptor.primitive.cull_mode = None;
+        descriptor.primitive.cull_mode = Some(Face::Front);
+        if let Some(depth) = descriptor.depth_stencil.as_mut() {
+            depth.depth_write_enabled = Some(false);
+            depth.depth_compare = Some(CompareFunction::Always);
+        }
         Ok(())
     }
 }
@@ -97,10 +109,10 @@ fn spawn(
     ));
 }
 
-/// Moves the sheath to the craft and shows it while the craft glows and the camera is outside it.
+/// Moves the sheath to the craft and shows it while its plasma or its skin glows at all: it
+/// fades in and out with them and never pops.
 fn follow(
     heat: Res<Heat>,
-    vantage: Res<Vantage>,
     mut sheaths: Query<
         (
             &mut Transform,
@@ -112,27 +124,17 @@ fn follow(
     >,
     mut materials: ResMut<Assets<SheathMaterial>>,
 ) {
-    let craft = heat.craft;
-    let away = vantage.camera.distance(craft.centre) > craft.radius * OUTSIDE;
-    let shown = heat.glow.heat > SHEATH_FROM && away;
-    let pose = Transform::from_translation(craft.centre)
-        .with_scale(Vec3::splat(craft.radius * SHEATH_REACH));
+    let (craft, glow) = (heat.craft, heat.glow);
+    let shown = glow.heat > 0.0 || glow.shine > 0.0;
+    let sight = [Visibility::Hidden, Visibility::Visible][usize::from(shown)];
     for (mut transform, mut global, mut visibility, handle) in &mut sheaths {
-        visibility.set_if_neq(match shown {
-            true => Visibility::Visible,
-            false => Visibility::Hidden,
-        });
+        visibility.set_if_neq(sight);
         if !shown {
             continue;
         }
-        crate::render::pin(pose, &mut transform, &mut global);
+        crate::render::pin(craft.bound(), &mut transform, &mut global);
         if let Some(mut material) = materials.get_mut(&handle.0) {
-            material.sheath = SheathUniform {
-                centre: craft.centre.extend(craft.radius),
-                axis: craft.heading.extend(0.0),
-                glow: heat.glow.color.extend(heat.glow.heat),
-                load: Vec4::new(heat.glow.pressure, 0.0, 0.0, 0.0),
-            };
+            material.sheath = craft.sheath(&glow);
         }
     }
 }

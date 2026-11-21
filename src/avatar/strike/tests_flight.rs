@@ -1,8 +1,9 @@
-//! Tests of the thrown spear: ballistic flight, drag, standing in the ground and bouncing.
+//! Tests of the thrown spear: ballistic flight, drag, driving into soil and glancing.
 
 use bevy::prelude::*;
 
-use super::flight::{bounce, depth, fly, stands};
+use super::flight::{depth, fly, glance};
+use super::javelin::tune::{DEEPEST, SKID, SOILS};
 use super::stage::spear;
 use super::tune::{RESTITUTION, STICK};
 
@@ -16,7 +17,7 @@ fn a_spear_flies_under_gravity_and_drag() {
         (at, v) = fly(at, v, g, 0.0, dt);
     }
     assert!(
-        (at.x - 20.0).abs() < 0.01 && (at.y - (20.0 - 0.5 * 9.81 * 4.0)).abs() < 0.2,
+        (at.x - 20.0).abs() < 0.01 && (at.y - (20.0 - 0.5 * 9.81 * 4.0)).abs() < 0.01,
         "{at}"
     );
     let (mut at, mut v) = (Vec3::ZERO, Vec3::new(30.0, 0.0, 0.0));
@@ -30,21 +31,24 @@ fn a_spear_flies_under_gravity_and_drag() {
     );
 }
 
-/// A point arriving fast stands in the ground, a slow or tumbling one does not.
+/// A full throw drives the point of a spear into earth deeper than it needs to stand, a slow one
+/// does not, and soft snow takes it deeper than earth.
 #[test]
-fn a_fast_point_stands() {
+fn a_fast_point_drives_in() {
     let held = spear();
     let area = held.build.head.area();
     let fast = 0.5 * held.throw.mass * held.throw.launch * held.throw.launch;
-    assert!(depth(fast, area) >= STICK);
-    assert!(stands(true, fast, area));
-    assert!(!stands(false, fast, area));
-    assert!(!stands(true, 0.01, area));
+    let [earth, .., snow] = SOILS;
+    assert!(depth(fast, area, earth) >= STICK);
+    assert!(depth(0.01, area, earth) < STICK);
+    assert!(depth(fast, area, snow) > depth(fast, area, earth));
+    const { assert!(DEEPEST > STICK) };
 }
 
-/// A bounce reflects the velocity off the surface and keeps a share of the speed.
+/// A glance sends back a share of the speed into the surface and keeps a share of the speed along it.
 #[test]
-fn a_bounce_reflects() {
-    let after = bounce(Vec3::new(3.0, -4.0, 0.0), Vec3::Y);
-    assert!(after.distance(Vec3::new(3.0, 4.0, 0.0) * RESTITUTION) < 1e-5);
+fn a_glance_reflects_and_skids() {
+    let after = glance(Vec3::new(3.0, -4.0, 0.0), Vec3::Y);
+    let wanted = Vec3::new(3.0 * SKID, 4.0 * RESTITUTION, 0.0);
+    assert!(after.distance(wanted) < 1e-5, "{after} {wanted}");
 }

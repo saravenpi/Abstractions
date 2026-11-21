@@ -12,16 +12,21 @@ mod crouch;
 mod dive;
 mod eyes;
 mod flight;
+mod floor;
 mod ground;
 mod intent;
 mod interact;
 mod jet;
 mod keys;
 mod lead;
+mod lost;
+mod motion;
 mod sea;
 mod seat;
 mod spawn;
+mod spread;
 mod steer;
+mod surface;
 mod swim;
 mod upright;
 mod wake;
@@ -30,11 +35,14 @@ mod walk;
 #[cfg(test)]
 mod tests;
 
-pub use asks::Intents;
+pub use asks::{Intents, SLING};
 pub use controller::Motion;
+pub use floor::Floor;
 pub use interact::{Interact, Interacting, Offer, Verb, interacting};
+pub use keys::Squared;
 pub use sea::above_sea;
 pub use seat::{place, seat};
+pub use spread::Spread;
 pub(crate) use steer::wrap;
 pub use steer::{Lead, Steer, Turn};
 pub use wake::{awake, land};
@@ -90,7 +98,8 @@ pub fn local<T>(players: impl IntoIterator<Item = (PlayerId, T)>) -> Option<T> {
 /// Registers the player systems.
 pub(super) fn plugin(app: &mut App) {
     interacting(app);
-    app.init_resource::<crate::view::Heading>()
+    app.init_resource::<keys::Squared>()
+        .init_resource::<crate::view::Heading>()
         .init_resource::<crate::view::Look>()
         .init_resource::<crate::view::ViewPrefs>()
         .add_message::<crate::view::Cut>()

@@ -26,6 +26,7 @@ pub fn title(world: &mut World, _: &mut Notes, frame: u32) -> Act {
             Act::Wait
         }
         30 if std::env::var("PROBE_JOIN").is_ok() => join(world),
+        30 if std::env::var("PROBE_SAVE").is_ok() => resume(world),
         30 => {
             let cards = std::env::var("PROBE_STAGES")
                 .is_ok_and(|l| l.split(',').any(|g| g == "postcards" || g == "look"));

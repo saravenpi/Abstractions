@@ -3,12 +3,15 @@
 use bevy::prelude::*;
 
 use super::dir::Dir;
+use super::feel::tune::STOW;
 use super::held::Held;
 use super::hurt::Hurt;
-use super::key::{Key, carry, drawn, guard};
+use super::key::{Key, carry, drawn, guard, slung};
 use super::outcome::Outcome;
 use super::path::Path;
-use super::tune::{BRAKE, COAST, DRAW, GUARD_IN, LEAST_DRAW, OVERSHOOT, RECOVER};
+use super::tune::{
+    BRAKE, COAST, COCK, DRAW, GUARD_IN, LEAST_DRAW, OVERSHOOT, RECOVER, WINDUP_FLOOR,
+};
 
 /// What the hands are doing. Every time is seconds since the act began.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -28,6 +31,8 @@ pub enum Act {
     Draw(f32),
     /// Shaken by the kickback of a blow: seconds left, and the share of the path where it landed.
     Stun(f32, f32),
+    /// Slinging the tool over the back, before the wingsuit opens or the robot boards.
+    Stow(f32),
 }
 
 /// The strike state of a body, on its root beside [`Held`].
@@ -47,6 +52,9 @@ pub struct Strike {
     pub sounded: bool,
     /// What the swing under way came to, a miss until it meets something.
     pub result: Outcome,
+    /// The point the strike aims at, in the frame of the body: where the crosshair points, within
+    /// the reach of the tool. Nothing aims straight ahead at the height of the chest.
+    pub aim: Option<Vec3>,
 }
 
 impl Strike {
@@ -62,12 +70,14 @@ impl Strike {
     }
 }
 
-/// What the buttons ask this frame.
+/// What the buttons and the throw key ask this frame.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Ask {
-    /// The primary button went down.
+    /// The primary button went down: a swing, or a stab with a spear.
     pub strike: bool,
-    /// The primary button is held.
+    /// The throw key went down: a spear in hand starts its draw.
+    pub throw: bool,
+    /// The throw key is held: the draw goes on, and its release throws.
     pub holding: bool,
     /// The secondary button is held.
     pub guard: bool,
@@ -90,15 +100,19 @@ pub struct Timing {
 }
 
 impl Timing {
-    /// Returns the timing of `held` along `path`: a swing turns at the build's spin, a thrust moves
-    /// at its thrust speed.
+    /// Returns the timing of `held` along `path`: a swing turns at the build's spin after a wind-up
+    /// of 2·arc / ω, a thrust moves at its thrust speed after cocking back over [`COCK`] times its
+    /// length; no wind-up is shorter than [`WINDUP_FLOOR`].
     pub fn of(held: &Held, path: &Path) -> Self {
-        let speed = match path {
-            Path::Sweep { .. } => held.swing.spin,
-            Path::Line { .. } => held.swing.thrust,
+        let (speed, windup) = match path {
+            Path::Sweep { .. } => (held.swing.spin, held.swing.windup),
+            Path::Line { .. } => {
+                let thrust = held.swing.thrust.max(f32::EPSILON);
+                (thrust, COCK * path.length() / thrust)
+            }
         };
         Self {
-            windup: held.swing.windup,
+            windup: windup.max(WINDUP_FLOOR),
             swing: path.length() / speed.max(f32::EPSILON),
             recover: RECOVER.max(BRAKE * held.swing.windup),
             over: OVERSHOOT * held.swing.inertia / (held.swing.inertia + COAST),
@@ -106,13 +120,13 @@ impl Timing {
     }
 }
 
-/// Returns the act that follows a ready body asked `ask`: a guard, a draw for a thrown tool, else a
-/// wind-up.
+/// Returns the act that follows a ready body asked `ask`: a guard, a draw when the throw key goes
+/// down on a tool made to be thrown, else a wind-up on a click, a spear stabbing.
 fn ready(ask: &Ask, thrown: bool) -> Act {
-    match (ask.guard, ask.strike, thrown) {
+    match (ask.guard, ask.throw && thrown, ask.strike) {
         (true, _, _) => Act::Guard(0.0),
-        (false, true, true) => Act::Draw(0.0),
-        (false, true, false) => Act::Windup(0.0),
+        (false, true, _) => Act::Draw(0.0),
+        (false, false, true) => Act::Windup(0.0),
         _ => Act::Ready,
     }
 }
@@ -126,24 +140,26 @@ fn timed(t: f32, dt: f32, length: f32, (then, same): (Act, fn(f32) -> Act)) -> A
 }
 
 /// Returns the act after `act` has run `dt` more seconds under `ask`, and the share of a full draw
-/// when a spear is let go this step.
+/// when a spear is let go this step. A click while the tool comes back starts the next blow.
 pub fn next(act: Act, ask: &Ask, timing: &Timing, thrown: bool, dt: f32) -> (Act, Option<f32>) {
     let act = match act {
         Act::Ready => ready(ask, thrown),
         Act::Windup(t) => timed(t, dt, timing.windup, (Act::Swing(0.0), Act::Windup)),
         Act::Swing(t) => timed(t, dt, timing.swing, (Act::Recover(0.0), Act::Swing)),
+        Act::Recover(_) if ask.strike => Act::Windup(0.0),
         Act::Recover(t) => timed(t, dt, timing.recover, (Act::Ready, Act::Recover)),
         Act::Stun(left, _) if left <= dt => Act::Recover(0.0),
         Act::Stun(left, at) => Act::Stun(left - dt, at),
         Act::Guard(t) if ask.guard => Act::Guard(t + dt),
         Act::Guard(_) => Act::Ready,
+        Act::Stow(t) => timed(t, dt, STOW, (Act::Ready, Act::Stow)),
         Act::Draw(t) => return draw(t, ask, dt),
     };
     (act, None)
 }
 
 /// Returns the act of a spear drawn for `t` seconds under `ask`: cancelled by the guard, thrown on
-/// release when drawn far enough.
+/// release of the throw key when drawn far enough.
 fn draw(t: f32, ask: &Ask, dt: f32) -> (Act, Option<f32>) {
     let share = (t / DRAW).min(1.0);
     match (ask.guard, ask.holding) {
@@ -169,5 +185,6 @@ pub fn key(act: Act, path: &Path, timing: &Timing, dir: Dir) -> Key {
         Act::Guard(t) => carry().toward(&guard(dir), share(t, GUARD_IN)),
         Act::Draw(t) => carry().toward(&drawn(), share(t, DRAW)),
         Act::Stun(_, at) => path.at(at),
+        Act::Stow(t) => carry().toward(&slung(), share(t, STOW)),
     }
 }

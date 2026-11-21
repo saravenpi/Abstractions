@@ -151,7 +151,8 @@ fn update_fog(
     let (air, look) = (depths.local.air_below(&vantage), depths.weather.look());
     let haze = Haze::of(&air, vantage.atmosphere, &look);
     let cloud = depths.crossing.depth;
-    let color = depths.colour(&air, &look).lerp(palette.cloud, cloud);
+    let lit = lifted(palette.cloud, depths.metered.gain());
+    let color = depths.colour(&air, &look).lerp(lit, cloud);
     for (at, mut fog, mut projection) in &mut cameras {
         let clearance = depths.clearance(at.translation(), vantage.altitude);
         depths.aloft.set_if_neq(Clearance(clearance));

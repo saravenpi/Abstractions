@@ -5,6 +5,8 @@ use bevy::prelude::*;
 
 use super::flight::{Rest, Spear};
 use super::hit::{Hit, Tip};
+use super::javelin::Soil;
+use super::javelin::tune::ROCK;
 use super::outcome::Outcome;
 use super::tune::GROUND;
 use crate::audio::{Body, Impact, Outer};
@@ -39,9 +41,13 @@ pub fn steady(spear: &Spear, now: Vec3) -> bool {
     spear.rest == Rest::Flying && now.distance(spear.was) <= spear.velocity.length() * 0.2 + 1.0
 }
 
-/// Returns the impact of `spear` arriving at `point` in the ground: its energy on soil, which gives
-/// way far more than any animal.
-pub fn grounded(spear: &Spear, point: Vec3) -> Impact {
+/// Returns the impact of `spear` arriving at `point` on ground of `soil`: its energy on soil, which
+/// gives way far more than any animal and thuds, or on rock, which clacks.
+pub fn grounded(spear: &Spear, point: Vec3, soil: Soil) -> Impact {
+    let (stiffness, mass) = match soil {
+        Soil::Soft(_) => GROUND,
+        Soil::Hard => ROCK,
+    };
     let speed = spear.velocity.length();
     let head = &spear.item.build.head;
     Impact {
@@ -49,10 +55,7 @@ pub fn grounded(spear: &Spear, point: Vec3) -> Impact {
         joules: 0.5 * spear.item.throw.mass * speed * speed,
         cut: false,
         outer: Outer::Ground,
-        struck: Body {
-            stiffness: GROUND.0,
-            mass: GROUND.1,
-        },
+        struck: Body { stiffness, mass },
         tool: Body {
             stiffness: head.material.stiffness,
             mass: head.mass,

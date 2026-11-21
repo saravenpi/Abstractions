@@ -74,3 +74,61 @@ The owner missed the distance fog: at 54 km of clear-day sight the haze was invi
 - `AEROSOL` now gives 23 km on an ordinary dry day (the standard rural air of the aerosol models), about 10 km in the damp air under a whole cover of cloud (`WeatherLook.damp`, `DAMP_FOG`), 3 km in heavy rain, 800 m in a dust storm. Dusty air (`Air::dust`, the tint that stains the sky) doubles the aerosols. The aerosols thin with the square root of the pressure, the gas with the pressure.
 - The ground shader works the haze out per point (`aerial` in `daylight.wesl`): the mean of the gas and aerosol layers between the height of the camera and the height of the point, so valleys and the sea fill and peaks stand clear. It reads the layers from `fog.directional_light_color.rgb` (gas, aerosol, scale height) and `fog.directional_light_exponent` (cloud whiteout), which Bevy leaves unread while the alpha is 0. Standard materials, the grass and the sea keep Bevy's uniform fog at the mean between the camera and the ground under it.
 - The haze takes the glow of the dome around the star (`star_glow`, the two lobes of `sky.wesl`), so ridges under a low star fade warm.
+
+## light3 pass (2026-11-21): golden light, fill, sunset band, cheaper shadows
+
+Found from the rel-haze57 shots
+- Sunset and dusk skies and clouds were green: the white balance adapted (CAT02, degree near 1) to the light at the camera, which a low star reddens. Dividing the beige horizon by that orange light gives teal-green; adapting to the blue night ambient gives grey-green dusks.
+- Shadowed faces were black: day sky 350 against a 12,000 lux sun is 11 to 1 on level ground.
+- The whole horizon turned orange at sunset, the anti-sun side too.
+- Cloud undersides took the saturated sky colour and read blue.
+
+Changed
+- `exposure/balance.rs`: the white is `PlaceUniform::noon()`, the light of the place with the star overhead, at every hour. Noon looks as before; sunrise and sunset stay warm; night stays blue.
+- `Palette::DAY_AMBIENT` 350 to 650 (6 to 1), `REFERENCE_LUX` 13,000 to 14,000.
+- `palette.rs` `HORIZON_WARMTH` 0.45 (was a power of 0.7) and `sunset_band` in `sky.wesl` and in `star_glow` of `daylight.wesl` (same function, test `tests_sunset`): a warm band on the horizon under a low star, gone above a sine of 0.35.
+- `clouds.wesl`: undersides `mix(white, sky, 0.45)` at 0.62 of the lit side.
+- Cloud shadows opt-in (`Lighting::cloud_shade`, old key `cloud_shadows` dropped once), outside the presets.
+- Coarse nodes and the far planet are `NotShadowCaster` and `Shadowless` (`world/chunks/dither.rs`).
+
+Not done
+- The fog knobs still ride in `fog.directional_light_color` and its exponent (`fog_for`).
+- The low sun stays bright (54 percent of noon at 3 degrees): `transmit` has no aerosol term.
+- Tonemapper: TonyMcMapface desaturates mid tones; an A/B against AcesFitted or AgX is worth one build.
+- Shadows end at 110 m; ridges cast no long shadows at golden hour.
+
+## clouds-fix pass (2026-11-21): puff size, the limb, the drift and the shadows
+
+Found
+- Far puffs shrank: `fbm_seen` faded every octave to its mean, the first one too. The mean (0.469) is under the cut of a broken sky (0.58 at cover 0.3), so past about 30 km on the ground (fp 0.3 cells a pixel) the cover fell to nothing, and over cover 0.6 it went to a solid sheet.
+- The limb jumped: `LIMB` lifted the noise by 0.3 at grazing views and `thick` raised the density to 1/facing, so the cover went from 0 at 40 km to 1 at 80 km on a sky of cover 0.3.
+- The drift was a translation of the 3D noise along fixed axes: east motion where the shell is normal to Y, boiling in place where it is normal to X, apart from the broad cover that turns round Y, and it started over every 131,072 s.
+- The shadows were a 32 by 32 grid of 250 m texels centred on the camera, worked out once a second from the weather cover, not the cover the shell reads.
+
+Changed
+- `weather/puff` (folder): the first octave is always read; the finer ones fade at 2 to 4 pixels a cell and the spread is stretched back (`sqrt(full / kept)`). The cover holds within 2 percent at any distance (numpy twin of the field, 200,000 points).
+- Grazing cover (`graze`, Rust twin in `weather/puff/graze.rs`, test only): a sight crosses `1 + TALL cot` puffs; the noise is lifted by the spreads that give `1 - clear^crossed`, through a logistic-with-cubic fit of the noise tail (`TAIL`). `SPREAD` 0.1065 and the tail were measured over a million points.
+- Drift: `weather::drift(seconds, cells)` is the cosine and sine of the turn round the spin axis of the broad octave and of the finer ones (`SHEAR` 0.25 faster), at `WIND` 4 m/s, the speed of the broad cover. Angles in f64 round the circle. The shaders call `spot_at`.
+- Shadows: `cloud_shade` in `daylight.wesl` intersects the sun ray with the shell per pixel and calls `overhead`, the drawn field seen from overhead. The light block holds five texels. `CloudShade::eye` reads the same rule on the CPU each frame.
+- Probe: `PROBE_STAGES=skyfly` (`sky-3km`, `sky-15km`, `sky-orbit`), eleven shots one second of the game apart.
+
+Cost
+- Shell: 4 + 2 octaves of noise per pixel as before, fewer far away (faded octaves are skipped), plus about 20 ALU ops for the grazing cover.
+- Shadows on: one ray and up to 4 octaves per ground and grass pixel, against a texture fetch before; off: nothing. CPU: the 1,024 field samples per second are gone.
+
+Not done
+- A puff whose first octave is under a pixel (orbit past about 250 km, the last degrees above the horizon) is point sampled: its cover is right on average, it reads as a stipple. The far ball dithers the same way.
+- The shell is still one surface at mid band. Puffs have no height of their own except through the grazing cover.
+
+Sources
+- Castaño, Computing alpha mipmaps: http://www.ludicon.com/castano/blog/articles/computing-alpha-mipmaps/ (alpha-tested detail vanishes with distance unless the coverage is kept per level; the stretch of the spread does that for the noise).
+- Schneider, The real-time volumetric cloudscapes of Horizon Zero Dawn, SIGGRAPH 2015: https://advances.realtimerendering.com/s2015/The%20Real-time%20Volumetric%20Cloudscapes%20of%20Horizon%20-%20Zero%20Dawn%20-%20ARTR.pdf and https://www.guerrilla-games.com/read/the-real-time-volumetric-cloudscapes-of-horizon-zero-dawn (the PDF could not be read here: what it says about wind offsets is from memory).
+- Hillaire, Physically based sky, atmosphere and cloud rendering in Frostbite, SIGGRAPH 2016: https://media.contentapi.ea.com/content/dam/eacom/frostbite/files/s2016_pbs_frostbite_sky_clouds.pdf (found, not read).
+- Lague, Coding Adventure: Clouds: https://www.youtube.com/watch?v=4QOcCGI6xOU (found, not watched).
+- Unverifiable: https://bgolus.medium.com/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f (403).
+
+## clouds-fix pass 2 (2026-11-21): slices with depth
+
+- The owner saw the fly-through and whiteout start well above and under the drawn cloud: the layer was one shell at mid band, the volume the whole band. The band is now `weather::SLICES` (3) shells at the base, the middle and the top, sharing one mesh, each reading the field on the mid-band shell. A column of body `b` reaches `2 b - 1` of the band and a slice draws the columns that reach it (`clouds.wesl`: `body - 0.5 * slice`). `weather::volume` is 1 from the base to the highest slice a column reaches, eased over `SOFT` (2 percent of the band), and the whiteout (`clouds::crossing`) and the fly-through puffs (`near::fill::volume`) read it.
+- Far look (rel-boot6 11-tp-stand: rows of regular streaks in an overcast sky): the noise lattice lay on the planet axes, so its planes across the spin axis ran along circles of latitude. `SKEW` turns the lattice 0.9 rad about (1, 2, 3).
+- Cost: one draw of the shell per slice. The base slice reads 4 octaves and 2 toward the star (6 lookups); the upper slices read 3 octaves and no relief (`RELIEF_TOP`), so at most 12 lookups per pixel, today plus one pass.

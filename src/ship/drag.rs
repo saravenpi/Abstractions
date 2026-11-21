@@ -3,7 +3,8 @@
 use bevy::math::{DQuat, DVec3};
 
 use super::deck::{DEEPEST, giant};
-use super::tune::MAIN_ACCEL;
+use super::tune::{HEAT, MAIN_ACCEL};
+use crate::render::cool_speed;
 use crate::universe::PlanetSpec;
 use crate::wind::thickness;
 
@@ -23,13 +24,18 @@ const STABILITY: f64 = 2.5e-4;
 /// Largest angular acceleration the airflow gives, in radians per second squared.
 const STABILITY_LIMIT: f64 = 4.0;
 
+/// Scale heights under the top of the air over which its density eases on to zero.
+pub const TOP_FADE: f64 = 2.0;
+
 /// Spin damping per unit of density times speed.
 const SPIN_DRAG: f64 = 0.0125;
 
 /// Returns the air density in kilograms per cubic metre `altitude` metres above the sea of a planet.
 ///
 /// `density = rho0 * thickness * exp(-altitude / scale_height)` below the top of the atmosphere,
-/// zero above it. The scale height is the physical one of the planet, see
+/// zero above it. A real air has no top, so over the last [`TOP_FADE`] scale heights under it
+/// the density eases on to zero, and nothing that reads it, the drag, the heat of an entry or
+/// the wind, jumps as a ship crosses the top. The scale height is the physical one of the planet, see
 /// [`PlanetSpec::scale_height`], and the thickness is the density of its air at sea level
 /// against the home planet, so thin air drags less, thick air more, and a planet without air
 /// has no density at any height.
@@ -41,7 +47,9 @@ pub fn density(planet: &PlanetSpec, altitude: f64) -> f64 {
     }
     let scale = planet.scale_height();
     let low = if giant(planet) { -DEEPEST * scale } else { 0.0 };
-    SEA_DENSITY * thickness(&planet.record) * (-altitude.max(low) / scale).exp()
+    let under = ((planet.atmosphere_height - altitude) / (TOP_FADE * scale)).clamp(0.0, 1.0);
+    let fade = under * under * (3.0 - 2.0 * under);
+    SEA_DENSITY * thickness(&planet.record) * (-altitude.max(low) / scale).exp() * fade
 }
 
 /// Returns the dynamic pressure in pascals at a density and an airspeed.
@@ -54,6 +62,13 @@ pub fn pressure(density: f64, speed: f64) -> f64 {
 /// drag `DRAG.z * density * v^2` equals the thrust. Without air there is no such limit.
 pub fn terminal(density: f64, boost: f64) -> f64 {
     (MAIN_ACCEL * boost / (DRAG.z * density.max(0.0))).sqrt()
+}
+
+/// Returns the fastest speed in metres per second the assist and the autopilot fly through air
+/// of `density` kilograms per cubic metre: [`HEAT`] times the speed at which the nose starts to
+/// glow there, a mild glow. Without air there is no bound.
+pub fn heat_cap(density: f64) -> f64 {
+    HEAT * cool_speed(density)
 }
 
 /// Returns the velocity after `h` seconds of drag in air of `density`, for a ship with orientation `rot`.

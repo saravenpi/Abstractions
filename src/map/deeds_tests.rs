@@ -30,11 +30,13 @@ fn base(keys: &Keys) -> Ask<'_> {
         status: RouteStatus::Idle,
         eta: Some("about 4 min"),
         keys,
+        home: false,
     }
 }
 
 /// Without a place the card says how to pick one and has no button. With one it has a button
-/// that works while the player sits in the ship and the route is idle.
+/// that works while the player sits in the ship and the route is idle, and says to take off
+/// while the ship stands on the ground.
 #[test]
 fn the_offer_without_a_place_and_for_a_ready_ship() {
     let keys = keys();
@@ -46,12 +48,18 @@ fn the_offer_without_a_place_and_for_a_ready_ship() {
     let go = Button {
         stop: false,
         enabled: true,
+        home: false,
     };
     let ready = offer(Some(&base(&keys)));
     assert_eq!(
         (ready.button, ready.sentence.as_str()),
         (Some(go), "About 4 min.")
     );
+    let landed = Ask {
+        status: RouteStatus::Blocked(Block::Landed),
+        ..base(&keys)
+    };
+    assert_eq!(offer(Some(&landed)).sentence, "Take off first: hold Space.");
 }
 
 /// The button reads Stop while the route to the place is flown, and is dim, with its reason,
@@ -67,6 +75,7 @@ fn the_offer_stops_a_flown_route_and_explains_a_blocked_one() {
     let stop = Button {
         stop: true,
         enabled: true,
+        home: false,
     };
     let warp = offer(Some(&flown));
     assert_eq!(warp.button, Some(stop));
@@ -78,15 +87,11 @@ fn the_offer_stops_a_flown_route_and_explains_a_blocked_one() {
     let dim = Button {
         stop: false,
         enabled: false,
+        home: false,
     };
     let foot = offer(Some(&on_foot));
     assert_eq!(foot.button, Some(dim));
     assert!(foot.sentence.starts_with("Board your ship first"));
-    let landed = Ask {
-        status: RouteStatus::Blocked(Block::Landed),
-        ..base(&keys)
-    };
-    assert_eq!(offer(Some(&landed)).sentence, "Take off first: hold Space.");
 }
 
 /// Returns an app with a table of one planet, the player seated, the route idle, and the card.

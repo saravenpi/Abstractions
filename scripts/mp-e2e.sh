@@ -3,7 +3,7 @@
 # Usage (from the worktree): scripts/mp-e2e.sh [phase ...]    Phases, in the order "all" runs them:
 #   proto    refusals, same key twice, full server, kill -STOP; bots only; about 3 minutes
 #   persist  records, restart, damaged place; bots only; about 2 minutes
-#   game     two clients meet and act, 8 minutes of script after the loading; 25 to 60 minutes
+#   game     two clients meet, act and share a stone, 10 minutes of script after the loading; 25 to 60 minutes
 #   rejoin   the world of game restarted, player b joins again; 10 to 25 minutes (needs game)
 #   edit     a ship saved inside the planet and an airborne place; 15 to 30 minutes (needs game)
 #   soak     8 bots for 10 minutes, then a save and a reload; about 12 minutes
@@ -37,7 +37,7 @@ CPID=""
 GOT=""
 mkdir -p "$OUT"
 
-for lib in lib server client proto persist game gamerun restart soak; do
+for lib in lib server client proto persist game share gamerun restart soak; do
   . "$DIR/mp/$lib.sh"
 done
 trap stop_all EXIT

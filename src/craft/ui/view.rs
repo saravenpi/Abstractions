@@ -1,137 +1,175 @@
-//! The static layout of the pack screen over the blurred game: the tabs and the count line, the
-//! list on the left, the card on the right and the key hints under them. `paint` fills them.
+//! The skeleton of the open screen over the blurred game, on the shared page: the title and the
+//! load in the heading zone; the pack on the left and the workshop on the right in the content
+//! zone, the hotbar under both; Close and the key legend in the footer. `paint` fills the holders.
+//!
+//! ```text
+//! Pack and workshop                                   4.2 of 29.7 kg carried, pace 100 %
+//!
+//! [b] PACK                      [w] WORKSHOP
+//!     [~] STONE                 [ Cut   ][ Pierce ][ Crush  ][ Throw  ]
+//!     [ flint        ]          Slash with a hard edge of flint, obsidian or bone.
+//!     [ 1.50 kg      ]          [ picture | Flint knife .. Lightest | Reach ### ]
+//!                               [ picture | Bone axe ..... Hardest  | ...       ]
+//!                               Make Enter   Other head H   Other shaft J   Treat T
+//! [ 1 Flint knife ][ 2 Empty ][ 3 Empty ][ 4 Empty ][ 5 Empty ][ 6 Empty ]
+//! Close Esc      Workshop Tab   Choose Up Down   Slot 1-6   Half Shift X
+//! ```
 
 use bevy::prelude::*;
 
 use super::Workshop;
-use super::bench::Tab;
-use super::layout::LIST;
-use crate::fauna::guide::layout::{BETWEEN, CARD, EDGE, FOOT, HEAD};
-use crate::ui::{Blurred, Overlay, hints, legend, text, theme};
+use super::click::Press;
+use crate::ui::{
+    Icon, back, page, page_body, page_foot, page_head, page_status, page_title, scroll_area,
+    section_title, strip, text, theme,
+};
 
-/// The key hints of the pack tab: what each key does, then the key.
-pub const PACK_HINTS: [(&str, &str); 8] = [
-    ("Choose", "Up Down"),
-    ("Search", "/"),
-    ("Sort", "F2"),
-    ("Hold", "Enter"),
-    ("Slot", "1-6"),
-    ("Drop", "X"),
-    ("Workshop", "Tab"),
-    ("Close", "I"),
-];
+/// Width in pixels of the pack pane: four columns of the grid.
+pub const PACK: f32 = theme::span(4);
 
-/// The key hints of the workshop tab: what each key does, then the key.
-pub const MAKE_HINTS: [(&str, &str); 8] = [
-    ("Intent", "Left Right"),
-    ("Proposal", "Up Down"),
-    ("Head", "H"),
-    ("Shaft", "J"),
-    ("Treat", "T"),
-    ("Make", "Enter"),
-    ("Pack", "Tab"),
-    ("Close", "I"),
-];
-
-/// Marks the name of a tab in the header.
+/// The holders `paint` fills again when what they show changes.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct TabName(pub Tab);
+pub enum Holder {
+    /// The groups of rows of the pack.
+    List,
+    /// The actions under the pack.
+    PackDeeds,
+    /// The four intent tiles.
+    Intents,
+    /// The tool cards, or what is missing.
+    Cards,
+    /// The actions under the cards.
+    Deeds,
+    /// The six hotbar slots.
+    Slots,
+    /// The key legend of the pane the keys drive.
+    Legend,
+}
 
-/// Marks the count line under the tabs.
-#[derive(Component)]
-pub struct Tally;
-
-/// Marks the column the rows of the list are drawn in.
-#[derive(Component)]
-pub struct Rows;
-
-/// Marks the column the card is drawn in.
-#[derive(Component)]
-pub struct Facts;
-
-/// Marks the key hints of a tab, shown while that tab is open.
+/// The texts `paint` writes again.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Hints(pub Tab);
+pub enum Words {
+    /// The load, at the right of the heading zone.
+    Status,
+    /// The line that explains the chosen intent.
+    Explain,
+}
 
-/// Returns the header: the two tab names and the count line.
-fn header() -> impl Bundle {
+/// Returns the pack pane: its title, then its rows in a scroll area.
+fn pack_pane() -> impl Bundle {
     let node = Node {
-        height: px(HEAD),
+        width: px(PACK),
         flex_shrink: 0.0,
         flex_direction: FlexDirection::Column,
+        row_gap: px(theme::TITLE_BELOW),
         ..default()
     };
-    let tabs = Node {
-        column_gap: px(theme::GAP_L),
-        ..default()
-    };
-    let tab =
-        |tab: Tab, name: &'static str| (TabName(tab), text(name, theme::FONT_HEADING, theme::TEXT));
     (
         node,
         children![
-            (
-                tabs,
-                children![tab(Tab::Pack, "Pack"), tab(Tab::Make, "Workshop")]
-            ),
-            (
-                Tally,
-                text("", theme::FONT_SMALL, theme::TEXT_2),
-                TextLayout::no_wrap()
-            ),
+            section_title(Icon::Pack, "Pack"),
+            scroll_area(Holder::List),
+            (Holder::PackDeeds, strip())
         ],
     )
 }
 
-/// Returns the list beside the card.
-fn body() -> impl Bundle {
+/// Returns the row of the four intent tiles, under the title of the workshop.
+fn intent_row() -> impl Bundle {
+    let node = Node {
+        height: px(theme::ROW_TALL),
+        flex_shrink: 0.0,
+        column_gap: px(theme::S2),
+        margin: UiRect::top(px(theme::TITLE_BELOW)),
+        ..default()
+    };
+    (Holder::Intents, node)
+}
+
+/// Returns the line that explains the chosen intent, on the label line of the tiles.
+fn explain_line() -> impl Bundle {
+    let node = Node {
+        min_height: px(theme::LINE_SMALL),
+        margin: UiRect::new(px(theme::INSET), px(0), px(theme::S2), px(0)),
+        flex_shrink: 0.0,
+        ..default()
+    };
+    (
+        Words::Explain,
+        text("", theme::FONT_SMALL, theme::TEXT_2),
+        TextLayout::no_wrap(),
+        node,
+    )
+}
+
+/// Returns the room of the tool cards: it takes the height the pane has left, and scrolls.
+fn cards_area() -> impl Bundle {
     let node = Node {
         flex_grow: 1.0,
+        flex_basis: px(0),
         min_height: px(0),
-        column_gap: px(BETWEEN),
-        overflow: Overflow::clip(),
+        flex_direction: FlexDirection::Column,
+        margin: UiRect::top(px(theme::S3)),
         ..default()
     };
-    let list = Node {
-        width: px(LIST),
+    (node, children![scroll_area(Holder::Cards)])
+}
+
+/// Returns the workshop pane: its title, the intent tiles, the line on the chosen intent, the tool
+/// cards in a scroll area and the actions under them.
+fn workshop_pane() -> impl Bundle {
+    let node = Node {
+        flex_grow: 1.0,
+        min_width: px(0),
+        flex_direction: FlexDirection::Column,
+        ..default()
+    };
+    (
+        node,
+        children![
+            section_title(Icon::Workshop, "Workshop"),
+            intent_row(),
+            explain_line(),
+            cards_area(),
+            (Holder::Deeds, strip()),
+        ],
+    )
+}
+
+/// Returns the content zone: the two panes side by side, the hotbar under them.
+fn body() -> impl Bundle {
+    let panes = Node {
+        flex_grow: 1.0,
+        flex_basis: px(0),
+        min_height: px(0),
+        column_gap: px(theme::GUTTER),
+        ..default()
+    };
+    let slots = Node {
+        height: px(theme::ROW_TALL),
         flex_shrink: 0.0,
-        flex_direction: FlexDirection::Column,
+        column_gap: px(theme::S2),
+        margin: UiRect::top(px(theme::S4)),
         ..default()
     };
-    let card = Node {
-        width: px(CARD),
-        max_width: percent(100),
-        flex_direction: FlexDirection::Column,
-        overflow: Overflow::clip(),
-        ..default()
-    };
-    (node, children![(Rows, list), (Facts, card)])
+    (
+        page_body(FlexDirection::Column),
+        children![
+            (panes, children![pack_pane(), workshop_pane()]),
+            (Holder::Slots, slots)
+        ],
+    )
 }
 
 /// Spawns the empty screen.
 pub fn spawn(commands: &mut Commands) {
-    let root = Node {
-        width: percent(100),
-        height: percent(100),
-        flex_direction: FlexDirection::Column,
-        padding: UiRect::all(px(EDGE)),
-        ..default()
-    };
-    let foot = Node {
-        min_height: px(FOOT),
-        flex_shrink: 0.0,
-        flex_direction: FlexDirection::Column,
-        justify_content: JustifyContent::FlexEnd,
-        ..default()
-    };
-    let keys = children![
-        (Hints(Tab::Pack), legend(hints(&PACK_HINTS))),
-        (Hints(Tab::Make), legend(hints(&MAKE_HINTS)))
-    ];
-    let screen = (Overlay, Blurred, root, BackgroundColor(theme::SCRIM));
-    commands.spawn((
-        DespawnOnExit(Workshop::Open),
-        screen,
-        children![header(), body(), (foot, keys)],
-    ));
+    let head = page_head(children![
+        page_title("Pack and workshop"),
+        (Words::Status, page_status(""))
+    ]);
+    let foot = page_foot(children![
+        (Press::Close, back("Close")),
+        (Holder::Legend, Node::default())
+    ]);
+    commands.spawn((DespawnOnExit(Workshop::Open), page(head, body(), foot)));
 }

@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use super::pages;
 use super::parts::WIDTH;
 use crate::menus::Menu;
-use crate::ui::{column, footer, heading, hints, panel, root, theme};
+use crate::ui::{footer, heading, hints, panel, root, theme, yielding};
 use crate::update::{Outcome, Plan, Stage, Updates};
 
 /// Key hints shown at the bottom of the screen.
@@ -65,7 +65,7 @@ pub(super) fn spawn(mut commands: Commands) {
                 panel(),
                 children![
                     heading("Update"),
-                    (Body::default(), column(px(WIDTH), theme::GAP_M))
+                    (Body::default(), yielding(px(WIDTH), theme::GAP_M))
                 ]
             ),
             footer(hints(&HINTS)),

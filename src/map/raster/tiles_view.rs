@@ -1,11 +1,19 @@
-//! Showing the tiles on the sheet of the flat map, over the picture of the planet.
+//! Showing the tiles over the picture of the planet. Each tile is laid in the frame of the map
+//! itself, from the gap of its corners to the centre of the view worked out in f64, never in the
+//! frame of the sheet: at the closest zoom the sheet is tens of millions of pixels wide, and a
+//! place on it in f32 is off by pixels.
 
+use bevy::math::DVec2;
 use bevy::prelude::*;
 
+use super::cover::Ready;
 use super::tile::TileId;
 use super::tiles::Tiles;
+use crate::computer::SIZE;
+use crate::map::Surface;
+use crate::map::sight::Sight;
 
-/// Marks the layer of the sheet that holds the tiles, laid over the picture.
+/// Marks the layer of the map that holds the tiles, laid over the picture.
 #[derive(Component)]
 pub struct TileLayer;
 
@@ -13,65 +21,93 @@ pub struct TileLayer;
 #[derive(Component)]
 pub(super) struct Shown(i64, TileId, Handle<Image>);
 
-/// Returns the layer that holds the tiles: as large as the picture and moving as its copy under
-/// the lens does.
+/// Returns the layer that holds the tiles: the size of the map, over the sheet of the picture.
 pub fn tile_layer() -> impl Bundle {
     let node = Node {
         position_type: PositionType::Absolute,
-        top: percent(25),
         width: percent(100),
-        height: percent(50),
+        height: percent(100),
         ..default()
     };
-    (TileLayer, crate::map::planet::Tile(0), node)
+    (TileLayer, node)
 }
 
-/// Returns the node of one tile, laid on its place in the picture.
-fn node(column: i64, id: TileId) -> Node {
-    let (cols, rows) = (TileId::cols(id.level) as f32, TileId::rows(id.level) as f32);
+/// Returns the chart point of the north-west corner of the tile in `column`, counted without
+/// wrapping, and `row` of `level`.
+pub fn corner(level: u8, column: i64, row: u32) -> DVec2 {
+    let (cols, rows) = (
+        f64::from(TileId::cols(level)),
+        f64::from(TileId::rows(level)),
+    );
+    DVec2::new(
+        column as f64 / cols * 2.0 - 1.0,
+        0.5 - f64::from(row) / rows,
+    )
+}
+
+/// Returns the node of one tile, laid where `lens` draws its place on the map.
+pub fn node(column: i64, id: TileId, lens: Sight) -> Node {
+    let west = lens.to_map(corner(id.level, column, id.row)) / SIZE * 100.0;
+    let east = lens.to_map(corner(id.level, column + 1, id.row + 1)) / SIZE * 100.0;
     Node {
         position_type: PositionType::Absolute,
-        left: percent(column as f32 / cols * 100.0),
-        top: percent(id.row as f32 / rows * 100.0),
-        width: percent(100.0 / cols),
-        height: percent(100.0 / rows),
+        left: percent(west.x),
+        top: percent(west.y),
+        width: percent(east.x - west.x),
+        height: percent(east.y - west.y),
         ..default()
     }
 }
 
-/// Shows the tiles that are ready and hides the others.
-pub(super) fn show(
-    tiles: Res<Tiles>,
-    layers: Query<Entity, With<TileLayer>>,
-    shown: Query<(Entity, &Shown)>,
-    mut commands: Commands,
+/// Returns true when `tile` shows the tile `ready`.
+fn same((col, id, image): &Ready, tile: &Shown) -> bool {
+    (*col, *id, image) == (tile.0, tile.1, &tile.2)
+}
+
+/// Moves every tile shown to where `lens` draws it, and despawns those no longer `ready`.
+fn follow(
+    ready: &[Ready],
+    lens: Sight,
+    shown: &mut Query<(Entity, &Shown, &mut Node)>,
+    commands: &mut Commands,
 ) {
-    if !tiles.is_changed() {
-        return;
-    }
-    let ready = tiles.ready();
-    let wanted = |shown: &Shown| {
-        ready
-            .iter()
-            .any(|(col, id, image)| (*col, *id, image) == (shown.0, shown.1, &shown.2))
-    };
-    for (entity, tile) in &shown {
-        if !wanted(tile) {
+    for (entity, tile, mut place) in shown.iter_mut() {
+        if !ready.iter().any(|ready| same(ready, tile)) {
             commands.entity(entity).despawn();
+            continue;
+        }
+        let wanted = node(tile.0, tile.1, lens);
+        if *place != wanted {
+            *place = wanted;
         }
     }
-    let held: Vec<&Shown> = shown.iter().map(|(_, tile)| tile).collect();
+}
+
+/// Shows the tiles that cover the view where the lens draws them, each finer level over the
+/// coarser ones, moves them with the lens, and hides the others.
+pub(super) fn show(
+    (tiles, surface): (Res<Tiles>, Res<Surface>),
+    layers: Query<Entity, With<TileLayer>>,
+    mut shown: Query<(Entity, &Shown, &mut Node)>,
+    mut commands: Commands,
+) {
+    if !(tiles.is_changed() || surface.is_changed()) {
+        return;
+    }
+    let lens = surface.lens;
+    let (ready, _) = tiles.ready(lens);
+    follow(&ready, lens, &mut shown, &mut commands);
+    let missing: Vec<&Ready> = ready
+        .iter()
+        .filter(|ready| !shown.iter().any(|(_, tile, _)| same(ready, tile)))
+        .collect();
     for layer in &layers {
-        for (col, id, image) in &ready {
-            let drawn = held
-                .iter()
-                .any(|tile| (tile.0, tile.1, &tile.2) == (*col, *id, image));
-            if !drawn {
-                let tile = (Shown(*col, *id, image.clone()), node(*col, *id));
-                commands
-                    .entity(layer)
-                    .with_child((tile, ImageNode::new(image.clone())));
-            }
+        for (col, id, image) in missing.iter().copied() {
+            let tile = (Shown(*col, *id, image.clone()), node(*col, *id, lens));
+            let above = ZIndex(i32::from(id.level));
+            commands
+                .entity(layer)
+                .with_child((tile, above, ImageNode::new(image.clone())));
         }
     }
 }

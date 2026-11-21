@@ -13,10 +13,11 @@ use bevy::prelude::*;
 use super::follow::{Charted, slide};
 use super::orbit::{Scene, scene, signature};
 use super::pose::Reader;
+use super::rings::{self, Orbits};
 use super::widget::{Caption, Chart, MARK, Needle, STEP};
 use crate::computer::{
-    Atlas, Destination, Dot, HOME_LABEL, View, arrow, bearing, body, frame, is_moon, ring,
-    satellites, seen, ship_position, side, spot,
+    Atlas, Destination, Dot, HOME_LABEL, View, arrow, bearing, body, frame, satellites, seen,
+    ship_position, side, spot,
 };
 use crate::space::{Clock, Frame, UniPos};
 use crate::ui::theme;
@@ -83,6 +84,10 @@ pub struct Canvas<'w, 's> {
     fresh: Query<'w, 's, (), Added<Chart>>,
     /// The text in the corner.
     captions: Query<'w, 's, &'static mut Text, With<Caption>>,
+    /// What hangs under each sheet.
+    children: Query<'w, 's, &'static Children, With<Chart>>,
+    /// The layers of the orbit rings.
+    orbits: Query<'w, 's, (), With<Orbits>>,
     /// The chart as it was last looked at, kept for the system that follows the ship.
     charted: ResMut<'w, Charted>,
 }
@@ -102,17 +107,17 @@ fn course(sheet: &mut ChildSpawnerCommands, scene: &Scene) {
     frame(sheet, to, (CHOSEN, theme::TEXT));
 }
 
-/// Spawns the chart: the orbits, the moons and rings of the planets, the course, the star,
-/// the planets and the moons that the zoom parts from their planet, then the ship over them.
-fn draw(sheet: &mut ChildSpawnerCommands, scene: &Scene) {
+/// Spawns the chart: the orbits unless `kept` says their layer still stands, the moons and
+/// rings of the planets, the course, the star, the planets and the moons that the zoom parts
+/// from their planet, then the ship over them.
+fn draw(sheet: &mut ChildSpawnerCommands, scene: &Scene, kept: bool) {
     let (lines, zoom) = (scene.lines.as_slice(), scene.lens.zoom);
     let rows = scene.dots.iter().filter_map(|(dot, at)| match dot {
         Dot::Row(index) => Some((*index, *at)),
         _ => None,
     });
-    let planet = |index: usize| index > 0 && !is_moon(lines[index].target);
-    for (_, at) in rows.clone().filter(|(index, _)| planet(*index)) {
-        sheet.spawn(ring(at.length()));
+    if !kept {
+        rings::spawn(sheet, scene);
     }
     satellites(sheet, (&scene.dots, lines, &scene.worlds), zoom);
     course(sheet, scene);
@@ -160,14 +165,24 @@ pub fn steer(reader: Reader, mut needles: Query<&mut UiTransform, With<Needle>>)
 }
 
 /// Draws the system chart again: clears it on a planet, says so in the corner where there is
-/// no system, and spawns every mark of `scene` otherwise.
-fn redraw(commands: &mut Commands, canvas: &mut Canvas, scene: Option<&Scene>, grounded: bool) {
+/// no system, and spawns every mark of `scene` otherwise. The layer of the orbit rings stays
+/// when `kept` says the rings have not changed.
+fn redraw(
+    commands: &mut Commands,
+    canvas: &mut Canvas,
+    scene: Option<&Scene>,
+    (grounded, kept): (bool, bool),
+) {
     for (sheet, mut node) in &mut canvas.sheets {
         slide(&mut node, scene);
-        let mut sheet = commands.entity(sheet);
-        sheet.despawn_related::<Children>();
+        let kids = canvas.children.get(sheet).into_iter().flatten().copied();
+        for kid in kids.filter(|kid| !(kept && canvas.orbits.contains(*kid))) {
+            commands.entity(kid).despawn();
+        }
         if let Some(scene) = scene {
-            sheet.with_children(|sheet| draw(sheet, scene));
+            commands
+                .entity(sheet)
+                .with_children(|sheet| draw(sheet, scene, kept));
         }
     }
     for mut text in canvas.captions.iter_mut().filter(|_| !grounded) {
@@ -184,7 +199,7 @@ pub fn chart(
     reader: Reader,
     sky: Sky,
     mut canvas: Canvas,
-    mut last: Local<Vec<IVec2>>,
+    mut last: Local<(Vec<IVec2>, Option<Vec<i32>>)>,
 ) {
     let grounded = reader.pose().is_some();
     let place = reader.place().filter(|_| !grounded);
@@ -192,9 +207,12 @@ pub fn chart(
     let scene = star.zip(place).and_then(|(star, at)| sky.scene(star, at));
     let state = vec![IVec2::new(i32::from(grounded), 0)];
     let key = scene.as_ref().map_or(state, signature);
-    if *last != key || !canvas.fresh.is_empty() {
-        *last = key;
-        redraw(&mut commands, &mut canvas, scene.as_ref(), grounded);
+    let fresh = !canvas.fresh.is_empty();
+    if last.0 != key || fresh {
+        let orbits = scene.as_ref().map(rings::key);
+        let kept = !fresh && orbits.is_some() && last.1 == orbits;
+        *last = (key, orbits);
+        redraw(&mut commands, &mut canvas, scene.as_ref(), (grounded, kept));
     }
     canvas.charted.scene = scene;
 }

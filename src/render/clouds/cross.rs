@@ -1,14 +1,15 @@
-//! How deep the camera is inside real cloud: its height in the cloud band times the cloud the
-//! field holds at that very place, eased so that the edge of a puff is a soft change.
+//! How deep the camera is inside real cloud: the volume of the drawn slices at its height over the
+//! cloud the field holds at that very place, eased so that the edge of a puff is a soft change.
 
 use bevy::prelude::*;
 
-use crate::render::celestial::smoothstep;
+use crate::weather::volume;
 
 /// Seconds over which the cloud around the camera eases in and out.
 pub const EASE: f32 = 0.3;
 
-/// How deep the camera is in cloud: 0 in clear air, 1 inside a puff in the middle of the band.
+/// How deep the camera is in cloud: 0 in clear air, 1 inside a puff between the base of the band
+/// and the highest slice drawn over it.
 ///
 /// The whiteout, the fog, the ship and the companion read it. It stays 0 while clouds are
 /// switched off, on a planet without clouds, and in the cloud band wherever the sky is clear.
@@ -18,14 +19,17 @@ pub struct CloudCrossing {
     pub depth: f32,
 }
 
-/// Returns how deep `altitude` is in the band from `base` to `top`: 0 below the base and above
-/// the top, 1 in the middle, smooth in between.
-pub fn crossing_depth(altitude: f32, base: f32, top: f32) -> f32 {
-    if top <= base {
-        return 0.0;
-    }
-    let along = (altitude - base) / (top - base);
-    smoothstep(0.0, 1.0, 1.0 - (2.0 * along - 1.0).abs())
+/// Returns the height of `altitude` in the band from `base` to `top`, from 0 at the base to 1 at
+/// the top, or nothing when the sky has no band.
+fn band_share(altitude: f32, base: f32, top: f32) -> Option<f32> {
+    (top > base).then(|| (altitude - base) / (top - base))
+}
+
+/// Returns how much of the cloud volume is at `altitude` in the band from `base` to `top` over a
+/// column of body `body`, as the slices of the layer draw it: see [`volume`]. 0 outside the band,
+/// over the highest slice the column reaches and in a gap.
+pub fn depth_at(altitude: f32, (base, top): (f32, f32), body: f32) -> f32 {
+    band_share(altitude, base, top).map_or(0.0, |share| volume(share, body))
 }
 
 /// Returns the cloud around the camera `seconds` after it was `around`, with `density` of

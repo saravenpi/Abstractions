@@ -148,7 +148,7 @@ fn a_trail_through_the_eye_never_veils_the_view() {
 
 /// Every effect material blends over the scene: Bevy keeps such a material out of the depth,
 /// normal, motion and deferred prepasses and draws it without depth write, so no effect can
-/// hide the ground or change what ambient occlusion and the sea read. Flames, trails, streaks
+/// hide the ground or change what ambient occlusion and the sea read. Flames, trails
 /// and sparks only add light; dust and spray are the two that veil.
 #[test]
 fn effects_blend_and_never_write_depth() {
@@ -158,7 +158,7 @@ fn effects_blend_and_never_write_depth() {
     world.run_system_once(build).expect("the kit builds");
     let kit = world.resource::<Kit>().clone();
     let materials = world.resource::<Assets<StandardMaterial>>();
-    let light = [&kit.glow, &kit.streak, &kit.spark, &kit.flare];
+    let light = [&kit.glow, &kit.spark, &kit.flare];
     let veil = [&kit.dust, &kit.spray];
     for (handle, mode) in light
         .map(|handle| (handle, AlphaMode::Add))

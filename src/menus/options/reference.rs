@@ -10,10 +10,6 @@ use super::pages::page;
 use super::rows::value;
 use crate::ui::{Icon, Tone, cell, entry, rows, section, sign, text, theme};
 
-/// Most characters an action of the reference may have to stay on one line.
-#[cfg(test)]
-pub const ACTION_CHARS: usize = 15;
-
 /// One line: what is done, and the key that does it.
 fn line(key: impl Bundle, action: &str) -> impl Bundle {
     let node = Node {
@@ -41,16 +37,19 @@ fn fixed(key: &str, action: &str) -> impl Bundle {
 }
 
 /// What the mouse and held keys do on foot, which no row can rebind.
-const FOOT_FIXED: [(&str, &str); 5] = [
+const FOOT_FIXED: [(&str, &str); 7] = [
     ("Mouse", "Look around"),
+    ("Left mouse", "Swing, stab"),
+    ("Right mouse", "Guard"),
     ("Wheel", "Zoom camera"),
-    ("Jump in air", "Wings out or in"),
+    ("Jump in air", "Spread or fold"),
     ("Sprint, fall", "Boots brake"),
     ("Sprint, wings", "Boost"),
 ];
 
 /// What the mouse does in the ship.
-const SHIP_FIXED: [(&str, &str); 2] = [("Mouse", "Look around"), ("Wheel", "Zoom camera")];
+pub(super) const SHIP_FIXED: [(&str, &str); 2] =
+    [("Mouse", "Look around"), ("Wheel", "Zoom camera")];
 
 /// The lines of one half of the reference: the fixed lines, the rebindable ones, then the two
 /// keys that work everywhere.

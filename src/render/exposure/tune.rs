@@ -1,9 +1,9 @@
 //! Tuning constants of the metered exposure.
 
 /// Illuminance in lux of a full day under the home star, in the game scale: the sun at its
-/// zenith plus the day sky. At it the camera keeps the reference exposure the whole game was
-/// tuned at. Unit: lux.
-pub const REFERENCE_LUX: f32 = 13_000.0;
+/// zenith, 12,000, plus pi times the day sky of 650. At it the camera keeps the reference exposure
+/// the whole game was tuned at. Unit: lux.
+pub const REFERENCE_LUX: f32 = 14_000.0;
 
 /// Stops of exposure the camera moves per stop of light that changes. A real eye would follow
 /// every stop; the game already compresses its night to about a fortieth of its day, and the

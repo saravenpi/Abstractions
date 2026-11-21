@@ -115,6 +115,7 @@ fn grip(stance: Stance) -> Option<Layer> {
         weight: 1.0,
         trunk: [0.0, 0.0],
         arms,
+        ..Layer::default()
     })
 }
 

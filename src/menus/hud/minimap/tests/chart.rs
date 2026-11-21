@@ -5,6 +5,7 @@ use bevy::math::{DVec3, Vec2};
 
 use crate::computer::{Atlas, Dot, Lens, SIZE, Target, View, ship_position};
 use crate::menus::hud::minimap::orbit::{CLOSEST, Scene, lens, scene, signature};
+use crate::menus::hud::minimap::rings;
 use crate::space::Frame;
 use crate::universe::{BodyId, Universe};
 
@@ -98,4 +99,24 @@ fn the_chart_keeps_the_destination_in_sight() {
     assert!(in_sight(bound.lens, goal.unwrap()) && in_sight(bound.lens, ship.unwrap()));
     let plain = charted(&universe, &atlas, 5.0e4, None);
     assert_ne!(signature(&bound), signature(&plain));
+}
+
+/// Planets that move along their orbits change the marks of the chart but not its rings, so the
+/// chart is drawn again without spawning the hundreds of nodes of the rings anew.
+#[test]
+fn the_rings_stay_while_the_planets_move_along_them() {
+    let universe = Universe::new(7);
+    let plain = charted(&universe, &Atlas::new(&universe), 5.0e4, None);
+    let mut moved = plain.clone();
+    for (dot, at) in &mut moved.dots {
+        if matches!(dot, Dot::Row(index) if *index > 0) {
+            *at = Vec2::new(-at.y, at.x);
+        }
+    }
+    assert!(!rings::key(&plain).is_empty());
+    assert_eq!(rings::key(&plain), rings::key(&moved));
+    assert_ne!(signature(&plain), signature(&moved));
+    let mut zoomed = plain.clone();
+    zoomed.lens.zoom *= 4.0;
+    assert_ne!(rings::key(&plain), rings::key(&zoomed));
 }

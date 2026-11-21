@@ -6,14 +6,17 @@
 //! its rank, which the shader keeps or drops it by with the distance, a seed for its height and sway, and
 //! the share of the second species and the speckle of the carpet under it, baked once per blade.
 
+use std::ops::Range;
+
 use bevy::asset::RenderAssetUsages;
+use bevy::camera::primitives::Aabb;
 use bevy::math::DVec3;
 use bevy::mesh::PrimitiveTopology;
 use bevy::prelude::*;
 
 use super::colour::tint;
 use super::ground::{CELLS, Ground};
-use super::tune::{DENSE, SPARSE, TILE};
+use super::tune::{DENSE, RISE, TILE};
 use crate::universe::hash::mix;
 use crate::world::mesh::{Frame, wrap};
 use crate::world::scatter::Carpet;
@@ -59,6 +62,19 @@ impl Blades {
         &self.positions
     }
 
+    /// Returns the box that holds every blade grown from these roots, in the frame of the tile: the roots, and
+    /// [`RISE`] up and to every side for the height and the lean of the blades.
+    pub fn bounds(&self) -> Aabb {
+        let (low, high) = self
+            .positions
+            .iter()
+            .map(|p| Vec3::from_array(*p))
+            .fold((Vec3::MAX, Vec3::MIN), |(low, high), p| {
+                (low.min(p), high.max(p))
+            });
+        Aabb::from_min_max(low - Vec3::new(RISE, 0.0, RISE), high + Vec3::splat(RISE))
+    }
+
     /// Converts the blades into a mesh, or none when there is no blade.
     pub fn into_mesh(self) -> Option<Mesh> {
         (self.len() > 0).then(|| {
@@ -92,23 +108,23 @@ fn unit(x: u64) -> f32 {
     (x >> 40) as f32 / (1u64 << 24) as f32
 }
 
-/// Returns the blades of tile `key` of `terrain` on `ground`, at the dense count when `full` and the sparse
-/// one otherwise, in the tangent frame at its middle, with that frame. A blade stands where `carpet` grows
-/// on open grass above the sea, and not where `clear` says the ground is taken.
+/// Returns the blades of tile `key` of `terrain` on `ground` whose rank lies within `ranks`, shares from 0 to 1
+/// of the dense blades, in the tangent frame at its middle, with that frame. A blade stands where `carpet`
+/// grows on open grass above the sea, and not where `clear` says the ground is taken.
 pub fn grow(
     (terrain, ground): (&Terrain, &Ground),
     key: IVec2,
     carpet: &Carpet,
-    full: bool,
+    ranks: Range<f32>,
     clear: &dyn Fn(DVec3) -> bool,
 ) -> (Blades, Frame) {
     let frame = Frame::at(terrain, ground.corner + Vec2::splat(TILE * 0.5));
     let most = TILE * TILE * DENSE;
-    let count = (TILE * TILE * if full { DENSE } else { SPARSE }) as usize;
+    let count = |share: f32| (share * most).round() as usize;
     let id = key + terrain.shift(TILE);
     let salt = mix(((id.x as u32 as u64) << 32) | id.y as u32 as u64);
     let mut blades = Blades::default();
-    for n in 0..count {
+    for n in count(ranks.start)..count(ranks.end) {
         let h = mix(salt ^ (n as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
         let u = Vec2::new(unit(h), unit(mix(h)));
         let w = ground.corner + u * TILE;

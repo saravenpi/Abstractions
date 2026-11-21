@@ -119,14 +119,11 @@ pub const TEXT_2: Color = Color::srgba(1.0, 1.0, 1.0, 0.72);
 pub const TEXT_OFF: Color = Color::srgba(1.0, 1.0, 1.0, 0.45);
 /// Text on an accent fill.
 pub const INK: Color = Color::srgb(0.02, 0.03, 0.04);
-/// Fill of every HUD panel and strip over the live world: a light dark tint at 62 percent. Over a
-/// pure white sky, the worst case, `TEXT` keeps 5.8 to 1, `TEXT_2` 3.9 to 1, `PIN` 4.3 to 1 and
-/// `ACCENT` 3.2 to 1. Text in `WARN` and `DANGER` does not reach 3 to 1 on it: rows that can
-/// hold it sit on [`PANEL_DEEP`].
+/// Fill of a panel over the live world outside the HUD: the main menu, the title, a tooltip, a
+/// note on the map. A light dark tint at 62 percent: over a pure white sky, the worst case,
+/// `TEXT` keeps 5.8 to 1, `TEXT_2` 3.9 to 1, `PIN` 4.3 to 1 and `ACCENT` 3.2 to 1. The in-game
+/// HUD has no panel: its text carries [`HUD_SHADOW`].
 pub const PANEL: Color = Color::srgba(0.02, 0.025, 0.035, 0.62);
-/// Fill of the rows that can hold `WARN` or `DANGER` text over the live world: the darker tint
-/// that keeps `DANGER` at 5 to 1 over a white sky and 7 to 1 over a black one.
-pub const PANEL_DEEP: Color = Color::srgba(0.02, 0.025, 0.035, 0.84);
 /// Fill of a big blurred panel, laid over the `Blurred` backdrop.
 pub const PANEL_BLUR: Color = Color::srgba(0.04, 0.05, 0.07, 0.55);
 /// Row under the pointer or the keyboard focus.
@@ -147,5 +144,37 @@ pub const HAIRLINE: Color = Color::srgba(1.0, 1.0, 1.0, 0.25);
 /// Crosshair dot.
 pub const CROSSHAIR: Color = Color::srgba(1.0, 1.0, 1.0, 0.8);
 
+/// Shadow of every text and icon of the in-game HUD, which has no panel: the dark tint of the
+/// panels at 50 percent, [`HUD_SHADOW_REACH`] physical pixel down and to the right of each glyph.
+/// Its dark pixels beside each stroke are the backdrop of the text there. Over a sky of 0.8,
+/// the brightest the tonemapper gave in the shots so far, `TEXT` keeps 5.4 to 1, `PIN` 4 to 1
+/// and `ACCENT` 3 to 1; over a pure white sky `TEXT` keeps 3.8 to 1 and over black 20 to 1.
+/// `TEXT_2` would keep only 3.7 to 1 at 0.8, so HUD text is `TEXT`.
+pub const HUD_SHADOW: Color = Color::srgba(0.02, 0.025, 0.035, 0.5);
+/// Shadow of HUD text in `WARN` or `DANGER`: the same tint at 70 percent, since a light colour
+/// gains little from a faint dark edge. Over a sky of 0.8 `WARN` keeps 4.7 to 1 and `DANGER`
+/// 3.5 to 1; over a pure white sky 3.7 and 2.7 to 1. On [`HUD_SHADOW`] `DANGER` would keep 1.9.
+pub const HUD_SHADOW_WARN: Color = Color::srgba(0.02, 0.025, 0.035, 0.7);
+/// Physical pixels the HUD shadow lies down and to the right of its glyph per logical pixel of
+/// the interface, rounded down: one at the 720 pixel reference and at 1080, two from 1440.
+pub const HUD_SHADOW_REACH: f32 = 1.0;
+/// Most physical pixels the HUD shadow ever lies from its glyph, at any window and scale.
+pub const HUD_SHADOW_MOST: f32 = 2.0;
+/// Fill of a hotbar slot that holds a tool: a very light dark tint, so the white silhouette of
+/// the tool reads and the bar does not take the player out of the game.
+pub const SLOT_FULL: Color = Color::srgba(0.02, 0.025, 0.035, 0.24);
+/// Fill of a hotbar slot that holds nothing: half the tint of a full one.
+pub const SLOT_EMPTY: Color = Color::srgba(0.02, 0.025, 0.035, 0.12);
+
 /// Every translucent backdrop that lets the game show through.
-pub const TRANSLUCENT: [Color; 6] = [SCRIM, PANEL, PANEL_DEEP, PANEL_BLUR, HOVER, SELECT];
+pub const TRANSLUCENT: [Color; 9] = [
+    SCRIM,
+    PANEL,
+    PANEL_BLUR,
+    HOVER,
+    SELECT,
+    HUD_SHADOW,
+    HUD_SHADOW_WARN,
+    SLOT_FULL,
+    SLOT_EMPTY,
+];

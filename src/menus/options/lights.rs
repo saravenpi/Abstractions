@@ -19,19 +19,20 @@ fn moved_reach(reach: ShadowReach, dir: i32) -> ShadowReach {
     all[(at + dir).clamp(0, 2) as usize]
 }
 
-/// Steps a lighting setting by `dir`: the preset walks, toggles flip, the others move on their
-/// own steps. Any other field is left alone.
+/// Steps a lighting setting by `dir`: the preset walks, toggles flip, the water reflections
+/// cycle, the others move on their own steps. Any other field is left alone.
 pub fn step(g: &mut Graphics, field: Field, dir: i32) {
     let own = &mut g.lighting;
     match field {
         Field::LightingQuality => g.step_quality(dir),
         Field::ShadowDetail => own.shadow_detail = other_detail(own.shadow_detail),
         Field::ShadowDistance => own.shadow_reach = moved_reach(own.shadow_reach, dir),
-        Field::CloudShadows => own.cloud_shadows = !own.cloud_shadows,
+        Field::CloudShadows => own.cloud_shade = !own.cloud_shade,
         Field::AutoExposure => own.auto_exposure = !own.auto_exposure,
         Field::WhiteBalance => own.white_balance = !own.white_balance,
         Field::LocalShadows => own.local_shadows = !own.local_shadows,
         Field::WaterGlint => own.water_glint = !own.water_glint,
+        Field::WaterReflections => own.reflections = own.reflections.next(),
         _ => {}
     }
 }
@@ -43,7 +44,7 @@ pub fn display(g: &Graphics, field: Field) -> Option<String> {
         Field::LightingQuality => g.quality().name().to_string(),
         Field::ShadowDetail => own.shadow_detail.name().to_string(),
         Field::ShadowDistance => own.shadow_reach.name().to_string(),
-        Field::CloudShadows => on_off(own.cloud_shadows),
+        Field::CloudShadows => on_off(own.cloud_shade),
         Field::AutoExposure => on_off(own.auto_exposure),
         Field::WhiteBalance => on_off(own.white_balance),
         Field::LocalShadows => on_off(own.local_shadows),
@@ -51,6 +52,7 @@ pub fn display(g: &Graphics, field: Field) -> Option<String> {
             true => "Sky and sun".to_string(),
             false => "Sky only".to_string(),
         },
+        Field::WaterReflections => own.reflections.name().to_string(),
         _ => return None,
     };
     Some(text)

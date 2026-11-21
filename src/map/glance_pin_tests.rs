@@ -1,7 +1,7 @@
 //! Map tests: a right click on bare ground of the flat map drops a pin, and the marker a click
 //! selects is the pin whose card shows.
 
-use bevy::math::DVec3;
+use bevy::math::{DVec2, DVec3};
 use bevy::prelude::*;
 
 use super::{drop_click, pick};
@@ -17,11 +17,11 @@ use crate::universe::BodyId;
 fn pins() -> Pins {
     Pins(vec![
         Pin {
-            at: Vec2::new(0.3, 0.1),
+            at: DVec2::new(0.3, 0.1),
             marker: Some(0),
         },
         Pin {
-            at: Vec2::new(-0.2, 0.0),
+            at: DVec2::new(-0.2, 0.0),
             marker: Some(1),
         },
     ])

@@ -41,10 +41,14 @@ pub enum Zone {
 
 /// The root of a page on `fill`: the full screen, padded by the screen edge on every side, its
 /// zones stacked from the top. Escape pressed while it exists is a cancel.
+///
+/// It is sized in window units, not in shares: Bevy puts every root in a grid row of auto
+/// height, where a share of the height grows with the content, so a long page pushed its
+/// footer and its last rows below the window.
 pub fn page_frame(fill: Color) -> impl Bundle {
     let node = Node {
-        width: percent(100),
-        height: percent(100),
+        width: vw(100),
+        height: vh(100),
         flex_direction: FlexDirection::Column,
         padding: UiRect::all(px(theme::EDGE)),
         ..default()

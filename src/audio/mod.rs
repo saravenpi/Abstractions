@@ -1,7 +1,9 @@
 //! Sound: procedural music, ambience and effects, all synthesised in code.
 //!
-//! Other modules talk to this one through two things only: they write [`AudioCue`] messages for
-//! one-shot sounds and they set fields of the [`AudioScene`] resource for continuous ones. The
+//! Other modules talk to this one through messages and one resource: they write [`Sound`] messages for
+//! one-shot sounds of the world, placed where they start, [`AudioCue`] messages for the flat ones
+//! of the interface and the cabin, and they set fields of the [`AudioScene`] resource for
+//! continuous ones. Every sound of the world reaches the ears through [`spatial`]. The
 //! ship and the companion need neither: `wire` reads their instruments and messages.
 
 mod ambience;
@@ -23,10 +25,13 @@ mod ship;
 mod shore;
 mod sky;
 mod source;
-mod steps;
+pub mod spatial;
+mod step;
 mod suit;
 #[cfg(test)]
 mod tests_speed;
+mod throat;
+mod tread;
 pub mod tune;
 mod wire;
 
@@ -40,6 +45,8 @@ pub use hit::{Body, Impact, Outer, Whoosh};
 pub use scene::{AudioScene, altitude_fade};
 pub use ship::feed::{Ch, HULLS, HullSound};
 pub use ship::tune::EARSHOT;
+pub use spatial::{Listener, Origin, Sound};
+pub use step::{Contact, Step};
 
 use bevy::audio::AddAudioSource;
 use bevy::prelude::*;
@@ -60,7 +67,7 @@ pub(super) fn plugin(app: &mut App) {
             hit::plugin,
             sense::plugin,
             sky::plugin,
-            steps::plugin,
+            spatial::plugin,
             wire::plugin,
         ));
 }

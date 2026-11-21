@@ -1,5 +1,6 @@
 //! Tests of the body. The shared helpers build the states and instants the poses are sampled at.
 
+mod aloft;
 mod app;
 mod blending;
 mod bodies;
@@ -12,15 +13,19 @@ mod face;
 mod falls;
 mod filling;
 mod flown;
+mod folding;
 mod gait;
 mod hands;
+mod hunch;
 mod jetting;
 mod landing;
 mod life;
 mod loops;
 mod neck;
+mod opening;
 mod poses;
 mod rolls;
+mod shadows;
 mod skids;
 mod stage;
 mod steps;
@@ -62,6 +67,7 @@ pub fn scene(mode: Mode, k: f32) -> AvatarPose {
         crouch: 0.0,
         prone: 1.0,
         load: 1.0,
+        attitude: None,
     }
 }
 

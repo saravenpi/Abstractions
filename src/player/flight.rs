@@ -62,12 +62,32 @@ pub(super) fn clearance(
         .map_or(f32::INFINITY, |hit| (hit.distance - half).max(0.0))
 }
 
-/// Returns true when the flight gear should treat `floor` as ground under a body in `mode`.
+/// Frames in a row a body the gear carries may rest on walkable ground, slower than [`STILL`],
+/// before it counts as landed whatever the gap under it: a tenth of a second.
+pub(super) const WATCH: u8 = 6;
+
+/// Speed in metres per second under which a body the gear carries over walkable ground is at
+/// rest on it rather than skimming it, as a take-off run does.
+pub(super) const STILL: f32 = 3.0;
+
+/// Returns true when the flight gear should treat `floor` as ground under a body in `mode`
+/// that has rested `rested` frames on it, see [`aground`].
 ///
-/// A body the gear carries through the air lands only once it really touches. One that
-/// walks, slides or rolls is on the ground wherever the walking snap holds it.
-pub(super) fn touching(mode: Mode, floor: Option<Ground>) -> bool {
-    floor.is_some_and(|ground| !mode.airborne() || ground.gap <= TOUCH)
+/// A body the gear carries through the air lands once it really touches, or once it has rested
+/// on the ground for [`WATCH`] frames: no state stays falling on the ground. One that walks,
+/// slides or rolls is on the ground wherever the walking snap holds it.
+pub(super) fn touching(mode: Mode, floor: Option<Ground>, rested: u8) -> bool {
+    floor.is_some_and(|ground| !mode.airborne() || ground.gap <= TOUCH || rested >= WATCH)
+}
+
+/// Returns the frames a body has rested on the ground in the air, `rested` before this one:
+/// one more while the gear carries it in `mode` over walkable `floor` slower than [`STILL`]
+/// metres per second, else none.
+pub(super) fn aground(rested: u8, mode: Mode, floor: Option<Ground>, speed: f32) -> u8 {
+    match mode.airborne() && floor.is_some() && speed < STILL {
+        true => rested.saturating_add(1),
+        false => 0,
+    }
 }
 
 /// Returns what the gear is told this frame.
@@ -78,8 +98,8 @@ pub(super) fn touching(mode: Mode, floor: Option<Ground>) -> bool {
 /// steer button is held; folded it always does.
 pub(super) fn input(motion: &Motion, intent: &Intent, air: &Air, on: (bool, bool)) -> GearInput {
     GearInput {
-        deploy: motion.wings,
-        boost: motion.boots || (motion.wings && intent.sprint),
+        deploy: motion.wings && motion.sling <= 0.0,
+        boost: motion.boots,
         pitch: -intent.forward,
         roll: intent.right,
         yaw: intent.yaw,

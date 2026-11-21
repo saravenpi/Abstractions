@@ -31,6 +31,7 @@ struct Water {
     blend: vec4<f32>,
     eye: vec4<f32>,
     upward: vec4<f32>,
+    mirror: vec4<f32>,
     wake: SeaWakes,
 }
 
@@ -44,6 +45,7 @@ struct SeaVertex {
 @group(constants::MATERIAL_BIND_GROUP) @binding(1) var floor_map: texture_2d<f32>;
 @group(constants::MATERIAL_BIND_GROUP) @binding(2) var floor_sampler: sampler;
 @group(constants::MATERIAL_BIND_GROUP) @binding(3) var<uniform> place: Place;
+@group(constants::MATERIAL_BIND_GROUP) @binding(4) var mirror_map: texture_2d<f32>;
 
 const GRAVITY: f32 = 9.81;
 const WAKE_CELL: f32 = 2.0;
@@ -88,6 +90,7 @@ const MAP_HIGH: f32 = 120.0;
 const COARSE_ROUGHNESS: f32 = 0.95;
 const COARSE_REFLECTANCE: f32 = 0.05;
 const WATER_F0: f32 = 0.02;
+const MIRROR_MAX: f32 = 64.0;
 const DAY_EDGE: vec2<f32> = vec2<f32>(-0.1, 0.3);
 const SUN_UP_EDGE: vec2<f32> = vec2<f32>(-0.05, 0.12);
 
@@ -205,6 +208,19 @@ fn surface_slope(p: vec2<f32>, t: f32, wind: f32, foot: f32) -> vec2<f32> {
 
 fn sky_color(rise: f32) -> vec3<f32> {
     return mix(water.horizon.rgb, water.zenith.rgb, pow(clamp(rise, 0.0, 1.0), 0.5));
+}
+
+fn mirrored(world: vec3<f32>, n: vec3<f32>, up: vec3<f32>, dist: f32) -> vec4<f32> {
+    let tilt = n - up * dot(n, up);
+    let clip = position_world_to_clip(world + tilt * water.mirror.w);
+    let ndc = clip.xy / clip.w;
+    let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+    let size = vec2<i32>(textureDimensions(mirror_map));
+    let texel = clamp(vec2<i32>(uv * vec2<f32>(size)), vec2<i32>(0), size - vec2<i32>(1));
+    let seen = textureLoad(mirror_map, texel, 0);
+    let fade = 1.0 - smoothstep(water.mirror.y, water.mirror.z, dist);
+    let bright = clamp(seen.rgb, vec3<f32>(0.0), vec3<f32>(MIRROR_MAX));
+    return vec4<f32>(bright, saturate(seen.a) * fade * saturate(water.mirror.x));
 }
 
 fn glitter(r: vec3<f32>, light: vec3<f32>, cell: vec2<f32>, t: f32) -> f32 {
@@ -394,7 +410,12 @@ fn fragment(in: SeaVertex) -> @location(0) vec4<f32> {
             let ndv = max(dot(n, v), 0.0);
             let fresnel = (WATER_F0 + (1.0 - WATER_F0) * pow(1.0 - ndv, 5.0)) * water.deep.w;
             let r = reflect(-v, n);
-            var color = mix(body, sky_color(dot(r, up)) * time.z, fresnel);
+            var sky = sky_color(dot(r, up)) * time.z;
+            if (water.mirror.x > 0.0) {
+                let seen = mirrored(world, n, up, dist);
+                sky = mix(sky, seen.rgb, seen.a);
+            }
+            var color = mix(body, sky, fresnel);
             let sun_glint = glitter(r, water.sun.xyz, cell, t) * time.y * place.eye_sun.w;
             let moon_glint = glitter(r, water.moon.xyz, cell, t) * water.moon.w * 0.5 * place.eye_sun.w;
             color = color + (water.sun_color.rgb * sun_glint + MOON_COLOR * moon_glint) * fine * water.deep.w;

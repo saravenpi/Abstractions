@@ -92,6 +92,24 @@ impl PlaceUniform {
         ]
     }
 
+    /// Returns the linear light, direct and ambient, that level ground at sea level under the air
+    /// and the star of this block gets with the star straight overhead, by the rule of
+    /// [`Sky::light`]. The white balance keeps it as its white at every hour: at noon it is the
+    /// light the camera gets.
+    pub fn noon(&self) -> Vec3 {
+        let sky = Sky {
+            star: self.colour.truncate(),
+            depth: self.star.w,
+            share: self.colour.w,
+            radius: self.centre.w,
+            atmosphere: self.air.x,
+            starlight: self.air.y,
+            day: self.day.truncate(),
+        };
+        let light = sky.light(1.0, 0.0);
+        light.sun + std::f32::consts::PI * light.sky
+    }
+
     /// Returns this block measuring heights from a camera at render position `eye`, where `up` points away
     /// from the planet centre in render axes, `high` metres above the sea level of the block.
     pub fn seen_from(self, eye: Vec3, up: Vec3, high: f64) -> Self {

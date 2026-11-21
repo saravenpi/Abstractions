@@ -73,7 +73,3 @@ pub const TIP_LIGHT: f32 = 600.0;
 /// space: under the first the lift nozzles carry the ship, over the second they are shut. The
 /// wing of the ship carries its weight from about 25 metres per second in air at sea level.
 pub const CARRY: (f64, f64) = (20.0, 40.0);
-
-/// Height in metres under which the lift nozzles raise dust, and the dust of a nozzle at full
-/// thrust on the ground, in puffs per second.
-pub const DUST: (f32, f32) = (14.0, 9.0);

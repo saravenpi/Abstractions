@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use super::aerial::cull_distance;
 use super::atmosphere::{air, horizon_dip, shadow};
 use super::clock::{catch_up, solar_day};
-use super::clouds::crossing_depth;
+use super::clouds::depth_at;
 use super::observer::Observer;
 use super::sun::SunDir;
 use crate::space::{Anchor, Frame};
@@ -148,20 +148,21 @@ fn air_thins_with_height() {
     assert_eq!(shadow(DVec3::new(-7000.0, 6500.0, 0.0), sun, radius), 1.0);
 }
 
-/// The crossing depth is zero below the base and above the top and one in the middle of the band.
+/// The depth in cloud is zero under the base, over the highest slice a column reaches and over
+/// the top, one between the base and that slice, and zero without a band.
 #[test]
-fn cloud_crossing_peaks_mid_band() {
-    let (base, top) = (900.0, 1500.0);
-    for outside in [-50.0, 0.0, 899.0, 900.0, 1500.0, 1501.0, 9000.0] {
-        assert_eq!(crossing_depth(outside, base, top), 0.0, "{outside}");
+fn cloud_crossing_fills_the_drawn_slices() {
+    let band = (900.0, 1500.0);
+    for outside in [-50.0, 0.0, 880.0, 1520.0, 9000.0] {
+        assert_eq!(depth_at(outside, band, 1.0), 0.0, "{outside}");
     }
-    assert_eq!(crossing_depth(1200.0, base, top), 1.0);
-    let rising: Vec<f32> = (0..=30)
-        .map(|i| crossing_depth(900.0 + i as f32 * 10.0, base, top))
-        .collect();
-    assert!(rising.windows(2).all(|pair| pair[1] > pair[0]));
-    assert!((crossing_depth(1000.0, base, top) - crossing_depth(1400.0, base, top)).abs() < 1e-5);
-    assert_eq!(crossing_depth(1200.0, 1500.0, 1500.0), 0.0);
+    for inside in [905.0, 1200.0, 1495.0] {
+        assert_eq!(depth_at(inside, band, 1.0), 1.0, "{inside}");
+    }
+    assert_eq!(depth_at(1000.0, band, 0.8), 1.0);
+    assert_eq!(depth_at(1250.0, band, 0.8), 0.0);
+    assert_eq!(depth_at(1000.0, band, 0.4), 0.0);
+    assert_eq!(depth_at(1200.0, (1500.0, 1500.0), 1.0), 0.0);
 }
 
 /// A far body is drawn where it truly is: its position in 32 bits keeps its direction and its

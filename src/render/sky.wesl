@@ -31,16 +31,36 @@ const LEAST_DARK: f32 = 0.001;
 const BEAM: f32 = 1.5;
 const BEAM_LEAST: f32 = 0.08;
 const BEAM_MOST: f32 = 3.0;
-const GLARE_OUT: f32 = 0.94;
-const GLARE_IN: f32 = 0.996;
-const GLARE_SKY: f32 = 3.0;
-const BAND_FULL: f32 = 0.004;
-const BAND_GONE: f32 = 0.03;
+const LUMA: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
+const GLOW_PEAK: f32 = 40.0;
+const GLOW_CORE: f32 = 0.01;
+const BAND_HOLD: f32 = 0.03;
+const SUNSET_SPREAD: f32 = 3.0;
+const SUNSET_RISE: f32 = 10.0;
+const SUNSET_GAIN: f32 = 0.45;
+const SUNSET_HIGH: f32 = 0.35;
 
-fn unglared(v: vec3<f32>) -> f32 {
-    let toward = clamp((dot(v, sky.sun.xyz) - GLARE_OUT) / (GLARE_IN - GLARE_OUT), 0.0, 1.0);
-    let glare = GLARE_SKY * clamp(sky.galaxy.z, 0.0, 1.0) * toward * toward;
-    return 1.0 - smoothstep(BAND_FULL, BAND_GONE, glare);
+fn halo(v: vec3<f32>) -> f32 {
+    let spread = max(2.0 * (1.0 - dot(v, sky.sun.xyz)), 0.0) / (GLOW_CORE * GLOW_CORE);
+    return GLOW_PEAK * max(sky.galaxy.z, 0.0) / pow(1.0 + spread, 1.5);
+}
+
+fn washed(light: f32, glow: f32) -> f32 {
+    let hold = max(light, BAND_HOLD);
+    return hold / (hold + max(glow, 0.0));
+}
+
+fn sunset_band(v: vec3<f32>, sun: vec3<f32>, up: vec3<f32>, over: f32) -> f32 {
+    let rise = dot(sun, up);
+    let flat_v = v - up * dot(v, up);
+    let flat_sun = sun - up * rise;
+    let lengths = vec2<f32>(length(flat_v), length(flat_sun));
+    if (min(lengths.x, lengths.y) < 0.0001) {
+        return 0.0;
+    }
+    let across = 1.0 - dot(flat_v / lengths.x, flat_sun / lengths.y);
+    let low = 1.0 - smoothstep(0.0, SUNSET_HIGH, rise);
+    return SUNSET_GAIN * low * exp(-across * SUNSET_SPREAD) * exp(-max(over, 0.0) * SUNSET_RISE);
 }
 
 fn galaxy_light(v: vec3<f32>) -> vec3<f32> {
@@ -73,13 +93,17 @@ fn fragment(in: VertexOutput) -> SkyOut {
 
     var col = mix(sky.horizon.rgb, sky.zenith.rgb, pow(clamp(height, 0.0, 1.0), 0.5));
     col = col + sky.rim.rgb * exp(-abs(over_limb) * RIM_SHARPNESS);
-    col = col + warped_band(v) * (above_horizon * unglared(v));
+    let glare = halo(v);
+    let band = warped_band(v) * above_horizon;
+    col = col + band * washed(dot(band, LUMA), glare);
+    col = col + sky.glow.rgb * (glare / max(dot(sky.glow.rgb, LUMA), 0.0001));
 
     let sun_visible = sky.sun.w * above_horizon;
     let sun_col = sky.glow.rgb;
     let sun_dist = 1.0 - dot(v, sun_dir);
     let sun_glow = exp(-sun_dist * 45.0) * 0.55 + exp(-sun_dist * 6.0) * 0.18;
     col = col + sun_col * sun_glow * sun_visible;
+    col = col + sun_col * sun_col * (sunset_band(v, sun_dir, sky.up.xyz, over_limb) * sky.sun.w);
 
     col = mix(col, sky.cloud.rgb, sky.cloud.w);
     return SkyOut(vec4<f32>(col, 1.0), 0.0);

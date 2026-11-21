@@ -31,3 +31,11 @@ pub const SPARE: f32 = 2.0;
 /// How many times finer than needed the mesh may get before it is built again, so a camera
 /// that climbs away does not keep a mesh much finer than it needs. Unit: factor.
 pub const COARSEN: f32 = 4.0;
+
+/// Octaves of the noise the base slice of the cloud band reads: all of those of the field.
+pub const BASE_OCTAVES: f32 = 4.0;
+
+/// Octaves of the noise the upper slices read: their finest octave, 215 m cells, is left to the
+/// base slice, which is the one seen from under the band, so the layer costs two shells and not
+/// three. Unit: octaves.
+pub const UPPER_OCTAVES: f32 = 3.0;

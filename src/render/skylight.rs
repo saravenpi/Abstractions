@@ -11,8 +11,8 @@
 //!
 //! Under the air a sunlit scene hides them too, as the day sky does, see [`veil`]. Under no air
 //! the game draws the sky as a dark adapted eye sees it: in space, or on a world without air, the
-//! stars show past a sunlit hull, a sunlit cockpit or a sunlit ground. Only the glare of the star
-//! of the system hides the stars and the band around its disc, see [`glare`].
+//! stars show past a sunlit hull, a sunlit cockpit or a sunlit ground. Near the star of the system its
+//! glare, drawn as light, outshines them: see `glare`.
 
 use bevy::prelude::*;
 
@@ -24,9 +24,12 @@ use super::starfield::DAY_FLUX;
 pub const DAY: f32 = 0.3;
 
 /// Luminance in linear light on the screen of mean ground in the reference day, at the reference
-/// exposure: 13,000 lux on a ground that sends a fifth of it back. A scene this bright under a
-/// whole home sky hides the stars as the day sky does. Unit: linear light.
-pub const FIELD_DAY: f32 = 0.8;
+/// exposure: 14,000 lux on a ground that sends a fifth of it back, 0.89 at EV100 9.7. The brighter
+/// day sky of 0.11 raised it from 0.83: the camera keeps its noon exposure, so the unlit sky, fog
+/// and clouds keep their tuned colours, and sunlit ground takes the extra sky light as it does
+/// on the Earth. A scene this bright under a whole home sky hides the stars as the day sky does.
+/// Unit: linear light.
+pub const FIELD_DAY: f32 = 0.89;
 
 /// Steps of star flux gained for each decade the luminance of the sky falls under [`DAY`]. The
 /// palette keeps the night sky about two decades under the day one, and the stars of the field
@@ -53,26 +56,6 @@ pub fn veil(field: f32, air: f32) -> f32 {
     DAY * share * share * air.clamp(0.0, 1.0)
 }
 
-/// Cosines of the angle from the star of the system at which its glare starts, 20 degrees out,
-/// and at which it is whole, 5 degrees out, on the edge of its disc. `starfield.wesl` and
-/// `sky.wesl` have the same.
-#[cfg(test)]
-pub const GLARE: (f32, f32) = (0.94, 0.996);
-
-/// Luminance in linear light the glare of the star in full light adds to the sky at the heart
-/// of its cone: ten clear noon skies, so no star of the field shows there.
-#[cfg(test)]
-pub const GLARE_SKY: f32 = 3.0;
-
-/// Returns the luminance of the sky that hides as much as the glare of the star does at the
-/// cosine `cos` of the angle from it, when the share `lit` of its light reaches the camera. It
-/// grows as the square of the way into the cone, so the brightest stars show closest to the star.
-#[cfg(test)]
-pub fn glare(cos: f32, lit: f32) -> f32 {
-    let toward = ((cos - GLARE.0) / (GLARE.1 - GLARE.0)).clamp(0.0, 1.0);
-    GLARE_SKY * lit.clamp(0.0, 1.0) * toward * toward
-}
-
 /// Returns the luminance in linear light of the sRGB colour `srgb`.
 pub fn luminance(srgb: Vec3) -> f32 {
     let linear = Color::srgb(srgb.x, srgb.y, srgb.z).to_linear();
@@ -95,7 +78,6 @@ pub fn shown(flux: f32, sky: f32) -> f32 {
 }
 
 /// Returns how far the band of the galaxy shows through a sky of luminance `sky`, from 0 to 1.
-/// `sky.wesl` has the same rule for the glare of the star.
 pub fn band(sky: f32) -> f32 {
     let t = ((sky - BAND.0) / (BAND.1 - BAND.0)).clamp(0.0, 1.0);
     1.0 - t * t * (3.0 - 2.0 * t)

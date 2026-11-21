@@ -9,6 +9,7 @@ use bevy::prelude::*;
 
 use super::Cropped;
 use super::clear::blocked;
+use super::fade::ALL;
 use super::ground::Ground;
 use super::tile::grow;
 use super::tune::{PAD_MARGIN, TILE};
@@ -87,7 +88,7 @@ fn count(globe: &Arc<Globe>, base: &Base, terrain: &Terrain) -> [usize; 5] {
         };
         n[0] += 1;
         let ground = Ground::read(terrain, key);
-        let (blades, frame) = grow((terrain, &ground), key, &carpet, true, &clear);
+        let (blades, frame) = grow((terrain, &ground), key, &carpet, ALL, &clear);
         for root in blades.roots().iter().step_by(3) {
             let at = frame.origin + frame.rot * Vec3::from_array(*root).as_dvec3();
             n[2] += 1;

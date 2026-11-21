@@ -1,5 +1,6 @@
 //! The on-disk record of one world.
 
+use abstractions_net::ground::Pile;
 use abstractions_net::leaves::Run;
 use bevy::math::DVec3;
 use serde::{Deserialize, Serialize};
@@ -114,6 +115,9 @@ pub struct WorldSave {
     /// The species the player has seen in this world. A file from before the field guide has none.
     #[serde(default)]
     pub seen: Vec<SpeciesId>,
+    /// The tools and heaps put down on the ground of the world. A file from before 0.11 has none.
+    #[serde(default)]
+    pub ground: Pile,
 }
 
 /// The ground uncovered on one body: runs of the leaves of its quadtree on the cube-sphere.
@@ -176,6 +180,7 @@ impl Default for WorldSave {
             health: None,
             cache: None,
             seen: Vec::new(),
+            ground: Pile::default(),
         }
     }
 }

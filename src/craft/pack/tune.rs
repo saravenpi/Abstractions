@@ -31,3 +31,31 @@ pub const SIGHT: f32 = 12.0;
 
 /// The key that picks a stone up off the ground.
 pub const PICK_KEY: bevy::input::keyboard::KeyCode = bevy::input::keyboard::KeyCode::KeyH;
+
+/// Linear RGB of each stone, in the order of [`crate::craft::matter::Mineral::ALL`]: dark basalt,
+/// black obsidian, grey-brown flint and pale ice.
+pub const STONE_TONES: [[f32; 3]; 4] = [
+    [0.10, 0.10, 0.11],
+    [0.03, 0.03, 0.04],
+    [0.30, 0.27, 0.23],
+    [0.70, 0.80, 0.88],
+];
+
+/// Seconds a notice of what the robot picked up shows on the prompt line.
+pub const NOTICE: f32 = 2.5;
+
+/// Energy of a blow of the bare fist on a rock, in joules: a hard punch.
+pub const FIST_JOULES: f32 = 30.0;
+
+/// Young's modulus of the plate of the robot's hand, in gigapascals: an aluminium alloy.
+pub const FIST_STIFFNESS: f32 = 70.0;
+
+/// Mass of the robot's fist that rings against a rock, in kilograms.
+pub const FIST_MASS: f32 = 0.5;
+
+/// Speed a piece broken off a rock flies off at, in metres per second.
+pub const PIECE_SPEED: f32 = 2.5;
+
+/// Kilograms of each stone underfoot the workshop may draw on to make the kit, more than any of its
+/// tools weighs. The kit takes nothing from the pack: the robot wakes with its tools made.
+pub const KIT_STONE: f32 = 10.0;

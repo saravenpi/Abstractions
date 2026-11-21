@@ -9,6 +9,7 @@ use super::cue::AudioCue;
 use super::scene::AudioScene;
 use super::shared::Shared;
 use super::source::Synth;
+use super::spatial::{Ground, Listener, Sound, Spot, spot};
 use crate::settings::{Persistent, Settings};
 
 /// The game side of the bridge to the audio thread.
@@ -42,10 +43,21 @@ fn publish(scene: Res<AudioScene>, settings: Res<Persistent<Settings>>, bridge: 
     bridge.0.publish(&scene, &settings.audio);
 }
 
-/// Queues the cues written this frame.
-fn forward(mut cues: MessageReader<AudioCue>, bridge: Res<Bridge>) {
+/// Queues the cues written this frame: the flat ones as they are, and each sound of the world
+/// with how it reaches the listener from where it starts.
+fn forward(
+    (mut cues, mut sounds): (MessageReader<AudioCue>, MessageReader<Sound>),
+    (listener, ground): (Res<Listener>, Ground),
+    bridge: Res<Bridge>,
+) {
     for cue in cues.read() {
-        bridge.0.push(*cue);
+        bridge.0.push(*cue, &Spot::FLAT);
+    }
+    for sound in sounds.read() {
+        let between = ground.between(&listener, sound.from);
+        bridge
+            .0
+            .push(sound.cue, &spot(&listener, sound.from, between));
     }
 }
 

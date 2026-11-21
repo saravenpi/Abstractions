@@ -18,8 +18,10 @@ mod entry;
 mod exposure;
 mod fog;
 mod galaxy_light;
+mod glare;
 mod glow;
 mod heat;
+mod layers;
 mod lighting;
 mod lowres;
 mod moonlight;
@@ -29,6 +31,7 @@ mod nearby;
 mod observer;
 mod palette;
 mod pixelate;
+pub mod ranges;
 mod scatter;
 mod season;
 mod seasons;
@@ -52,11 +55,19 @@ mod tests_air;
 #[cfg(test)]
 mod tests_dither;
 #[cfg(test)]
+mod tests_flight;
+#[cfg(test)]
 mod tests_fog;
 #[cfg(test)]
 mod tests_fresnel;
 #[cfg(test)]
+mod tests_glare;
+#[cfg(test)]
+mod tests_glare_band;
+#[cfg(test)]
 mod tests_lens;
+#[cfg(test)]
+mod tests_lod;
 #[cfg(test)]
 mod tests_lowres;
 #[cfg(test)]
@@ -78,6 +89,8 @@ mod tests_sky;
 #[cfg(test)]
 mod tests_skylight;
 #[cfg(test)]
+mod tests_sunset;
+#[cfg(test)]
 mod tests_weather;
 
 pub use aerial::{Haze, sight};
@@ -92,9 +105,9 @@ pub use dome::SkyDome;
 pub use entry::FlightFx;
 pub use exposure::scene_lux;
 pub use heat::{
-    Craft, Gas, Glow, Heat, MIN_SPEED, SHEATH_FROM, SHEATH_REACH, SheathMaterial, SheathUniform,
-    descent, entry,
+    Craft, Gas, Glow, Heat, MIN_SPEED, SheathMaterial, SheathUniform, cool_speed, entry, kelvin_of,
 };
+pub use layers::{REFLECTED, mirror_only, reflected, seen_only};
 pub use lighting::{Moon, Sun, reach};
 pub use lowres::{Fit, LowRes, window_changed};
 pub use murk::{Murk, Swell, Waterline, murk};
@@ -177,5 +190,11 @@ const UPLOAD_BYTES: usize = 16 << 20;
 /// Registers the render plugins.
 pub(super) fn plugin(app: &mut App) {
     app.insert_resource(RenderAssetBytesPerFrame::new(UPLOAD_BYTES))
-        .add_plugins((pixelate::plugin, murk::pass, lowres::plugin, sky));
+        .add_plugins((
+            pixelate::plugin,
+            murk::pass,
+            lowres::plugin,
+            ranges::plugin,
+            sky,
+        ));
 }

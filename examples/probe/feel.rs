@@ -102,7 +102,7 @@ pub fn dash(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
         _ => {}
     }
     throttle(world, 1.0);
-    if frame % 20 == 0 {
+    if frame.is_multiple_of(20) {
         info!(
             "SMOKE dash: {:.0} m/s at {:.0} m over the ground",
             seen.surface_speed, seen.altitude_ground

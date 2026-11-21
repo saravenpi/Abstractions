@@ -60,9 +60,11 @@ pub const CRACKLE_SHAPE: (f32, f32, f32) = (0.004, 0.35, 3500.0);
 /// full thrust.
 pub const RUMBLE: (f32, f32, f32) = (85.0, 0.8, 0.1);
 
-/// Rates of the fast and the slow swell of a jet, from the eddies that pass, and the depth of
-/// each as a root mean square share of the level.
-pub const SURGE: [(f32, f32); 2] = [(11.0, 0.3), (1.3, 0.22)];
+/// Corner in hertz of the swell of a jet, from the eddies that pass, and its depth as a root mean
+/// square share of the level. A listener hears many eddies at once, so the roar is steady: the
+/// swell is fast and shallow, a roughness of the roar, with under a third of a decibel of it below
+/// 5 Hz. In 0.11.0 a second swell at 1.3 Hz and 22 percent was heard as a puff in a loop.
+pub const SURGE: (f32, f32) = (25.0, 0.08);
 
 /// Share of the lobe a listener gets of the lift nozzles, which point at the ground.
 pub const LIFT_LOBE: f32 = 0.6;
@@ -87,8 +89,9 @@ pub const PUMP_LAG: (f32, f32) = (0.9, 2.2);
 /// Level of the second and third shaft orders against the first, and the blade count.
 pub const ORDERS: (f32, f32, f32) = (0.35, 0.2, 6.0);
 
-/// Speed of the second pump against the first: two rotors never turn alike, so they beat.
-pub const TWIN: f32 = 1.007;
+/// Speed of the second pump against the first: two rotors never turn quite alike, so they beat,
+/// but slowly: at full speed once every 12 seconds. At 1.007 they beat three times a second.
+pub const TWIN: f32 = 1.0002;
 
 /// Level of one shaft order through the airframe and of the blade whine in the air, at full speed.
 pub const PUMP_LEVEL: (f32, f32) = (0.045, 0.02);
@@ -102,27 +105,7 @@ pub const LIGHT: (f32, f32) = (0.18, 0.3);
 /// Share of the thrust of the lift nozzles the pumps feed as they feed the main engines.
 pub const LIFT_FEED: f32 = 0.6;
 
-/// Centre of the wind over the canopy at rest, what each metre per second adds, and its top.
-pub const WIND_HZ: (f32, f32, f32) = (220.0, 5.0, 2600.0);
-
-/// Resonance of the wind band and its level at the full dynamic pressure.
-pub const WIND: (f32, f32) = (0.6, 0.12);
-
-/// Dynamic pressure in pascals at which the wind over the canopy is at its level.
-pub const FULL_PRESSURE: f32 = 7.5e4;
-
-/// Corner of the thuds of the buffet and their level in the roughest air.
-pub const BUFFET: (f32, f32) = (45.0, 0.22);
-
-/// Centre and resonance of the rattle of the airframe, the share of the samples that carry a
-/// knock, and the peak of a knock in the roughest air.
-pub const RATTLE: (f32, f32, f32, f32) = (1700.0, 6.0, 0.002, 0.05);
-
-/// Rate of the gusts on the canopy and their depth.
-pub const GUST: (f32, f32) = (0.8, 0.35);
-
-/// How rough the passage of the speed of sound is in thick air, and the width of the band
-/// around Mach 1 it is felt in.
+/// How rough the passage of Mach 1 is in thick air, and the width of the band it is felt in.
 pub const TRANSONIC: (f32, f32) = (0.55, 0.08);
 
 /// Mach numbers between which the cabin outruns the sound of its own engines in the air.
@@ -220,15 +203,6 @@ pub const LIFT_BODY: f32 = 1.9;
 /// Distance in metres past which a ship is not heard.
 pub const EARSHOT: f32 = 2000.0;
 
-/// Corner of the air over one kilometre at sea level at home: absorption reaches 3 decibels there.
-pub const ABSORB_HZ: f32 = 1370.0;
-
-/// Lowest and highest corner the air between a ship and the listener makes.
-pub const DULLEST_HZ: f32 = 180.0;
-
-/// Corner of air that absorbs nothing audible.
-pub const OPEN_HZ: f32 = 18_000.0;
-
 /// Seconds of sound a ship keeps on its way to the listener: earshot at 330 metres per second.
 pub const TRAVEL: f32 = 6.2;
 
@@ -246,3 +220,8 @@ pub const BUS_CEILING: f32 = 0.5;
 
 /// Level of the whoosh in the middle of a cloud.
 pub const WHOOSH_LEVEL: f32 = 0.19;
+
+/// Seconds the distance to a ship the listener rides along with, in the chase view, takes to cover
+/// 63 percent of a change. The camera sways on its spring behind the ship; the ship does not come
+/// and go, so the sway must not pulse its level or bend its pitch.
+pub const RIDE_FOLLOW: f32 = 2.0;

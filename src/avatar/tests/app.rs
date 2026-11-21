@@ -3,6 +3,8 @@
 
 use std::time::Duration;
 
+use bevy::app::Propagate;
+use bevy::camera::visibility::RenderLayers;
 use bevy::prelude::*;
 use bevy::time::TimeUpdateStrategy;
 
@@ -94,14 +96,20 @@ fn assert_whole(app: &mut App, what: &str) {
     assert_eq!(seen, SEGS, "{what}");
 }
 
-/// Returns the segments and other parts of the body that are switched off themselves.
+/// Returns the segments and other parts of the body that the game camera does not see: switched
+/// off themselves, or a segment put on the water mirror layer alone.
 fn hidden(app: &mut App) -> (Vec<Seg>, usize, bool) {
-    let mut bones = app.world_mut().query::<(&Bone, &Visibility)>();
+    let mut bones = app
+        .world_mut()
+        .query::<(&Bone, &Visibility, Option<&Propagate<RenderLayers>>)>();
     let off = |v: &Visibility| *v == Visibility::Hidden;
+    let seen = RenderLayers::layer(0);
+    let unseen =
+        |layers: Option<&Propagate<RenderLayers>>| layers.is_some_and(|l| !l.0.intersects(&seen));
     let segs = bones
         .iter(app.world())
-        .filter(|(_, v)| off(v))
-        .map(|(bone, _)| bone.0)
+        .filter(|(_, v, layers)| off(v) || unseen(*layers))
+        .map(|(bone, ..)| bone.0)
         .collect();
     let mut rest = app
         .world_mut()
@@ -176,8 +184,9 @@ fn body_follows_the_player_and_leaves_with_it() {
     );
 }
 
-/// The first person view hides the head and nothing else, the full view hides nothing, and the
-/// hidden view switches the whole body off at its root.
+/// The first person view hides the head from the game camera and nothing else, the full view
+/// hides nothing, and the hidden view switches the whole body off at its root. The first person
+/// head is on the water mirror layer alone, so it still shows in calm water.
 #[test]
 fn first_person_hides_exactly_the_head() {
     let (mut app, _) = world();
@@ -185,6 +194,14 @@ fn first_person_hides_exactly_the_head() {
     (0..30).for_each(|_| app.update());
     assert_eq!(*app.world().resource::<Shown>(), Shown::FirstPerson);
     assert_eq!(hidden(&mut app), (vec![Seg::Head], 0, false));
+    let mut heads = app
+        .world_mut()
+        .query::<(&Bone, &Visibility, Has<Propagate<RenderLayers>>)>();
+    let head = heads
+        .iter(app.world())
+        .find(|(bone, ..)| bone.0 == Seg::Head)
+        .map(|(_, shown, mirrored)| (*shown, mirrored));
+    assert_eq!(head, Some((Visibility::Inherited, true)));
     app.insert_resource(Shown::Full);
     app.update();
     assert_eq!(hidden(&mut app), (vec![], 0, false));

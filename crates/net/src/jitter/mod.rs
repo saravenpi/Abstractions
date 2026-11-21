@@ -15,6 +15,8 @@
 mod buffer;
 #[cfg(test)]
 mod buffer_tests;
+#[cfg(test)]
+mod cruise_tests;
 mod frame;
 #[cfg(test)]
 mod frame_tests;

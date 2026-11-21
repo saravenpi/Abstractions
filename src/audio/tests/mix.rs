@@ -6,6 +6,7 @@ use crate::audio::cue::AudioCue;
 use crate::audio::dsp::limit::CEILING;
 use crate::audio::scene::AudioScene;
 use crate::audio::ship::feed::{Ch, HULLS, HullSound};
+use crate::audio::spatial::Spot;
 use crate::settings::Audio as Volumes;
 
 /// Returns a ship with everything it has at its loudest, beside the listener.
@@ -55,7 +56,7 @@ fn output_never_exceeds_full_scale() {
         let (mut mixer, shared) = mixer(&scene);
         for _ in 0..20 {
             AudioCue::all().for_each(|cue| {
-                shared.push(cue);
+                shared.push(cue, &Spot::FLAT);
             });
             let stats = listen(&mut mixer, 0.5);
             assert!(

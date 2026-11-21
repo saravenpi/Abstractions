@@ -1,6 +1,6 @@
 //! Words for the pack: the plain names of materials and of tool shapes.
 
-use crate::craft::build::Intent;
+use crate::craft::build::{Figure, Intent};
 use crate::craft::matter::{Mineral, Stuff};
 
 /// Returns the plain name of what `stuff` is.
@@ -16,13 +16,5 @@ pub fn called(stuff: &Stuff) -> &'static str {
 
 /// Returns the word for a tool of `intent` whose head holds `share` of its mass, `reach` metres long.
 pub fn noun(intent: Intent, share: f32, reach: f32) -> &'static str {
-    match intent {
-        Intent::Cut if share > 0.6 => "axe",
-        Intent::Cut if reach < 0.5 => "knife",
-        Intent::Cut => "blade",
-        Intent::Pierce => "spear",
-        Intent::Crush if share > 0.6 => "hammer",
-        Intent::Crush => "club",
-        Intent::Throw => "javelin",
-    }
+    Figure::of(intent, share, reach).word()
 }

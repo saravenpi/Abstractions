@@ -24,19 +24,19 @@ fn run_up(gap: f64, throttle: f64, boost: bool, seconds: f64) -> (f64, f64) {
 }
 
 /// The lever sets a speed: 40 m/s at a surface, 0.625 m/s more with every metre of clearance
-/// (0.25 before 0.11.0, when the top speed was half), 2,500 m/s in open space from 3.9 km and
-/// twice that with the boost. The ship reaches it within 4.5 seconds and never flies faster
-/// than asked.
+/// (0.25 before 0.11.0, when the top speed was half), 30 km/s in open space from 48 km (2,500
+/// m/s from 3.9 km before the one speed rule) and twice that with the boost. The ship reaches
+/// it within 4.5 seconds and never flies faster than asked.
 #[test]
 fn the_lever_sets_a_speed_that_grows_with_the_clearance() {
     let tops = [0.0, 100.0, 1000.0, 4000.0, 9840.0, 1e9].map(top_speed);
-    assert_eq!((tops[0], tops[5]), (40.0, 2500.0));
+    assert_eq!((tops[0], tops[5]), (40.0, 30_000.0));
     assert!(tops.windows(2).all(|pair| pair[0] <= pair[1]), "{tops:?}");
-    assert_eq!((tops[1], tops[2], tops[3]), (102.5, 665.0, 2500.0));
+    assert_eq!((tops[1], tops[2], tops[3]), (102.5, 665.0, 2540.0));
     for (throttle, boost, asked) in [
-        (1.0, false, 2500.0),
-        (0.5, false, 1250.0),
-        (1.0, true, 5000.0),
+        (1.0, false, 30_000.0),
+        (0.5, false, 15_000.0),
+        (1.0, true, 60_000.0),
     ] {
         let (speed, fastest) = run_up(FAR, throttle, boost, 4.5);
         assert!((speed / asked - 1.0).abs() < 1e-3, "{speed} for {asked}");

@@ -3,6 +3,7 @@
 use crate::audio::dsp::filter::Svf;
 use crate::audio::dsp::osc::{Phasor, sine};
 use crate::audio::dsp::rand::Noise;
+use crate::audio::spatial::Ear;
 
 /// What a blip is made of.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -79,8 +80,10 @@ pub struct Voice {
     noise: Noise,
     /// Whether the voice is sounding or waiting to.
     live: bool,
-    /// Left and right gains: where the sound comes from.
-    pub sides: [f32; 2],
+    /// The two ears: where the sound comes from.
+    pub ear: Ear,
+    /// Whether it is a sound of the interface, which plays on while the game is paused.
+    pub ui: bool,
 }
 
 impl Voice {
@@ -97,7 +100,8 @@ impl Voice {
             filter: Svf::default(),
             noise: Noise::new(seed),
             live: false,
-            sides: [1.0; 2],
+            ear: Ear::new(1.0),
+            ui: false,
         }
     }
 

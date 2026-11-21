@@ -8,7 +8,7 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 use bevy_persistent::StorageFormat;
 
-use super::cross::{EASE, crossing_depth, eased};
+use super::cross::{EASE, depth_at, eased};
 use super::{CELL, CloudCover, CloudCrossing, CloudMaps, CloudMaterial};
 use crate::render::observer::Observer;
 use crate::render::palette::Palette;
@@ -26,7 +26,7 @@ const SECOND: f64 = 5000.0;
 /// second without a flash at any frame rate, and out of the band nothing lingers.
 #[test]
 fn the_whiteout_needs_a_real_cloud() {
-    let band = crossing_depth(1200.0, 900.0, 1500.0);
+    let band = depth_at(1200.0, (900.0, 1500.0), 1.0);
     assert_eq!(band, 1.0);
     assert_eq!(band * eased(0.0, 0.0, band, 0.016), 0.0);
     for rate in [30.0_f32, 60.0, 144.0] {
@@ -115,7 +115,12 @@ fn the_layer_whites_out_inside_a_puff_and_not_in_a_gap() {
     for (dir, altitude, off, wanted) in [
         (puff, mid, false, 0.95..=1.0),
         (gap, mid, false, 0.0..=0.0),
-        (puff, home.cloud_top + 50.0, false, 0.0..=0.0),
+        (
+            puff,
+            home.cloud_top + 0.05 * (home.cloud_top - home.cloud_base),
+            false,
+            0.0..=0.0,
+        ),
         (puff, mid, true, 0.0..=0.0),
     ] {
         let (_, mut world) = world("layer", dir, altitude);

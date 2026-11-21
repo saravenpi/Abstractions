@@ -32,6 +32,7 @@ mod sights;
 mod soar;
 mod solid;
 mod spawn;
+mod speech;
 mod spot;
 mod spring;
 mod tail;
@@ -71,9 +72,13 @@ mod tests_perch;
 #[cfg(test)]
 mod tests_place;
 #[cfg(test)]
+mod tests_shadow;
+#[cfg(test)]
 mod tests_soar;
 #[cfg(test)]
 mod tests_solid;
+#[cfg(test)]
+mod tests_speech;
 #[cfg(test)]
 mod tests_tour;
 #[cfg(test)]
@@ -121,8 +126,10 @@ pub fn studio(app: &mut App) {
     );
 }
 
-/// Registers the companion: its inputs, its chirps, its spawn and the systems that run it.
+/// Registers the companion, which calm water mirrors: its inputs, its chirps, its spawn and the
+/// systems that run it.
 pub(super) fn plugin(app: &mut App) {
+    app.register_required_components::<Companion, crate::world::Reflected>();
     let rendered = resource_exists::<Warm>.and_then(resource_exists::<Assets<Image>>);
     app.init_resource::<CompanionSense>()
         .add_systems(Startup, spawn::warm.run_if(rendered))

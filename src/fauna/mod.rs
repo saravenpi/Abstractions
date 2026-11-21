@@ -28,14 +28,21 @@ mod rig;
 mod roll;
 mod scan;
 pub mod senses;
+mod shore;
 mod signs;
 mod site;
 mod slant;
 #[cfg(test)]
 mod stage;
 mod steer;
+#[cfg(any(test, feature = "dev"))]
+mod sunk;
+#[cfg(test)]
+mod tests_ground;
 #[cfg(test)]
 mod tests_hunt;
+#[cfg(test)]
+mod tests_live;
 #[cfg(test)]
 mod tests_meet;
 #[cfg(test)]
@@ -87,8 +94,9 @@ pub type Live = (With<Creature>, Without<Dead>);
 pub struct Frozen;
 
 /// Registers the fauna systems: the forgetting of animals when the planet under the anchor changes,
-/// then, on a living planet in play, the scan, the walk and the fades.
+/// then, on a living planet in play, the scan, the walk and the fades. Calm water mirrors the animals.
 pub(super) fn plugin(app: &mut App) {
+    app.register_required_components::<Creature, crate::world::Reflected>();
     let scan = scan::scan.run_if(on_timer(Duration::from_secs_f32(tune::SCAN)));
     let shine = glow::shine.run_if(on_timer(Duration::from_secs_f32(tune::SCAN)));
     app.init_resource::<herds::Herds>()
@@ -115,5 +123,7 @@ pub(super) fn plugin(app: &mut App) {
                 .after(crate::effects::Sight),
         )
         .add_plugins((senses::plugin, signs::plugin, attack::plugin, bleed::plugin));
+    #[cfg(feature = "dev")]
+    app.add_plugins(sunk::plugin);
     app.add_plugins(guide::plugin);
 }

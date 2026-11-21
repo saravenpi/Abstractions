@@ -1,6 +1,6 @@
-//! Laying the trails of every ship: each hull gets four ribbons, two wing tip vortices and two
-//! lamp streaks, fed from where the hull is drawn and written through the strip of the wingsuit
-//! trails.
+//! Laying the trails of every ship: each hull gets five ribbons, two wing tip vortices, two
+//! lamp streaks and a contrail, fed from where the hull is drawn and written through the strip of
+//! the wingsuit trails.
 
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::light::NotShadowCaster;
@@ -11,6 +11,7 @@ use super::field::Field;
 use super::{Air, Flown};
 use crate::gear::{Kit, Strip, Trail, ribbon_mesh, show, trace};
 use crate::screens::Screen;
+use crate::ship::Engine;
 use crate::ship::exhaust::{Exhaust, HullLamp, lamp_place};
 use crate::space::{Anchor, Placed};
 
@@ -29,6 +30,15 @@ const SPACING: (f64, f64, f64) = (2.5, 2.0, 120.0);
 /// 160 m.
 const ROOM: f64 = 60.0;
 
+/// Metres between two points of a contrail, so that its ribbon holds seven kilometres, and the
+/// jump in metres over which it starts over: a climb to orbit covers up to a kilometre in a
+/// long frame.
+const CONTRAIL_SPACING: (f64, f64) = (120.0, 1500.0);
+
+/// Where the contrail starts behind the nozzles, in hull axes: the plume has mixed with enough
+/// air there for its water to freeze.
+const CONTRAIL_START: Vec3 = Vec3::new(0.0, 0.1, 12.0);
+
 /// What lays a ribbon.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Source {
@@ -36,6 +46,8 @@ pub enum Source {
     Vortex(usize),
     /// The navigation lamp of a winglet: 0 for the left, 1 for the right.
     Lamp(usize),
+    /// The contrail behind the main engines.
+    Contrail,
 }
 
 /// One ribbon of a ship.
@@ -60,10 +72,11 @@ pub fn emitter(source: Source) -> Vec3 {
             WING_TIP.z,
         ),
         Source::Lamp(side) => lamp_place(HullLamp::Tip(side)),
+        Source::Contrail => CONTRAIL_START,
     }
 }
 
-/// Gives every ship that has none its four ribbons, and takes away the ribbons of the ships that
+/// Gives every ship that has none its five ribbons, and takes away the ribbons of the ships that
 /// are gone.
 pub fn spawn(
     mut commands: Commands,
@@ -83,7 +96,8 @@ pub fn spawn(
     for ship in &new {
         commands.entity(ship).insert(Flown::default());
         let sides = [0, 1].into_iter();
-        for source in sides.flat_map(|side| [Source::Vortex(side), Source::Lamp(side)]) {
+        let pairs = sides.flat_map(|side| [Source::Vortex(side), Source::Lamp(side)]);
+        for source in pairs.chain([Source::Contrail]) {
             commands.spawn((
                 Streak {
                     source,
@@ -117,6 +131,7 @@ type Hulls<'w, 's> = Query<
         &'static Placed,
         &'static Visibility,
         &'static mut Flown,
+        Option<&'static Engine>,
     ),
 >;
 
@@ -132,7 +147,7 @@ type Flight = (Entity, Placed, Air);
 /// the whole life of the ribbon fits in [`ROOM`] points.
 fn spacing(source: Source, speed: f32, life: f32) -> f64 {
     let least = match source {
-        Source::Vortex(_) => SPACING.0,
+        Source::Vortex(_) | Source::Contrail => SPACING.0,
         Source::Lamp(_) => SPACING.1,
     };
     least.max(f64::from(speed * life) / ROOM)
@@ -143,14 +158,22 @@ pub fn tip(placed: &Placed, source: Source) -> DVec3 {
     placed.pos + placed.rot * emitter(source).as_dvec3()
 }
 
-/// Reads the flight of every ship from its pose. A hidden ship flies in no air, so it lays
-/// nothing.
+/// Reads the flight of every ship from its pose and its engines, and keeps it on the ship for
+/// its cone. A hidden ship flies in no air, so it lays nothing.
 fn observe(field: &Field, anchor: &Anchor, hulls: &mut Hulls, flights: &mut Vec<Flight>) {
     flights.clear();
-    for (ship, placed, shown, mut flown) in hulls.iter_mut() {
-        let air = field.read(anchor, placed.pos, &mut flown);
-        let seen = *shown != Visibility::Hidden;
-        flights.push((ship, *placed, if seen { air } else { Air::default() }));
+    for (ship, placed, shown, mut flown, engine) in hulls.iter_mut() {
+        let read = Air {
+            engine: engine.map_or(0.0, |engine| engine.level),
+            ..field.read(anchor, placed.pos, &mut flown)
+        };
+        let air = if *shown != Visibility::Hidden {
+            read
+        } else {
+            Air::default()
+        };
+        flown.air = air;
+        flights.push((ship, *placed, air));
     }
 }
 
@@ -173,10 +196,13 @@ pub fn draw(
             continue;
         };
         let (heat, look) = field.style(streak.source, air, eye);
-        let gap = spacing(streak.source, air.speed, look.life);
+        let spacing = match streak.source {
+            Source::Contrail => CONTRAIL_SPACING,
+            source => (spacing(source, air.speed, look.life), SPACING.2),
+        };
         let streak = &mut *streak;
         let point = tip(placed, streak.source);
-        streak.trail.feed_by(point, heat, dt, (gap, SPACING.2));
+        streak.trail.feed_by(point, heat, dt, spacing);
         if let Some(head) = trace(&streak.trail, &mut streak.drawn, (look, anchor), &mut strip) {
             show(head, (handle, &mut transform), &strip, &mut meshes);
         }

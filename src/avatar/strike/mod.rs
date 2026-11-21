@@ -7,19 +7,26 @@
 //! over the grip budget, the swing turns at ω, then the hands recover. After the transforms are
 //! propagated the head is swept against the bounds of the parts of the animals and the first one
 //! it meets takes a [`Hit`]; a [`Hitstop`] freezes both for a few frames and shakes the animal.
+//! The strike aims where the crosshair points, with the whole body behind it, and every contact
+//! reads on screen, as the `feel` module lays out.
 
 mod act;
+mod bump;
 mod canvas;
+mod cramp;
 mod dir;
+mod feel;
 mod flight;
 mod held;
 mod hit;
 mod hurt;
 mod ik;
 mod input;
+mod javelin;
 mod key;
 mod landing;
 mod layer;
+mod loose;
 mod outcome;
 mod path;
 mod pull;
@@ -27,6 +34,7 @@ mod recoil;
 mod ribbon;
 mod sense;
 mod show;
+mod solid;
 #[cfg(feature = "dev")]
 mod starter;
 #[cfg(any(test, feature = "dev"))]
@@ -45,9 +53,15 @@ mod stage;
 #[cfg(test)]
 mod tests_act;
 #[cfg(test)]
+mod tests_bump;
+#[cfg(test)]
 mod tests_cost;
 #[cfg(test)]
+mod tests_cramp;
+#[cfg(test)]
 mod tests_flight;
+#[cfg(test)]
+mod tests_ground;
 #[cfg(test)]
 mod tests_hit;
 #[cfg(test)]
@@ -57,9 +71,15 @@ mod tests_ik;
 #[cfg(test)]
 mod tests_outcome;
 #[cfg(test)]
+mod tests_pace;
+#[cfg(test)]
+mod tests_stab;
+#[cfg(test)]
 mod tests_stock;
 #[cfg(test)]
 mod tests_stray;
+#[cfg(test)]
+mod tests_take;
 #[cfg(test)]
 mod tests_throw;
 #[cfg(test)]
@@ -67,6 +87,9 @@ mod tests_trail;
 
 pub use act::{Act, Strike};
 pub use dir::Dir;
+pub use feel::knap::Knap;
+pub use feel::mark::Mark;
+pub use feel::sight::Sight;
 pub use flight::{Rest, Spear};
 pub use held::{Held, Style};
 pub use hit::{Hit, Tip};
@@ -74,7 +97,7 @@ pub use hurt::Hurt;
 pub use layer::Layer;
 pub use outcome::Outcome;
 pub use sense::landed;
-pub use show::{Kit, kit, tool};
+pub use show::{Kit, blocks, kit, tool};
 pub use stop::Hitstop;
 pub use swish::Missed;
 
@@ -86,8 +109,8 @@ use crate::screens::{in_control, playing};
 use crate::view::ViewSet;
 use show::Wielded;
 
-/// A body with a tool in its hands or on show.
-type Drawn = Or<(With<Held>, With<Wielded>)>;
+/// A body with a tool in its hands or on show, or whose hand still whips through a throw.
+type Drawn = Or<(With<Held>, With<Wielded>, With<javelin::Release>)>;
 
 /// Run condition: some body holds a tool or still has one drawn.
 fn armed(held: Query<(), Drawn>) -> bool {
@@ -114,6 +137,10 @@ fn update(app: &mut App) {
             show::place
                 .after(AvatarSet::Animate)
                 .run_if(any_with_component::<Wielded>),
+            cramp::cramp
+                .after(show::place)
+                .run_if(any_with_component::<Held>)
+                .run_if(resource_exists::<avian3d::collider_tree::ColliderTrees>),
             spears.after(input::ask),
             sync::sync
                 .run_if(sync::stale)
@@ -134,6 +161,7 @@ fn update(app: &mut App) {
 fn hands() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
     (
         hurt::feel,
+        feel::sight::look.run_if(in_control),
         input::ask.run_if(in_control),
         layer::lay,
         show::wield.run_if(armed),
@@ -141,11 +169,16 @@ fn hands() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
         .chain()
 }
 
-/// Returns the systems of the spears: thrown, then flown and picked up.
+/// Returns the systems of the spears: thrown, flown, shaken and trailed, then taken again.
 fn spears() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
     (
-        throw::loose.run_if(on_message::<input::Loose>),
-        (throw::soar, throw::pick).run_if(any_with_component::<Spear>),
+        loose::loose.run_if(on_message::<input::Loose>),
+        throw::soar.run_if(any_with_component::<Spear>),
+        (
+            javelin::quiver.run_if(any_with_component::<javelin::Quiver>),
+            javelin::rig.run_if(javelin::bare),
+            javelin::trace.run_if(any_with_component::<javelin::Streak>),
+        ),
         pull::pull
             .run_if(any_with_component::<Spear>)
             .run_if(crate::screens::in_control.and_then(crate::space::on_foot)),
@@ -182,12 +215,17 @@ pub(super) fn plugin(app: &mut App) {
             PostUpdate,
             (
                 sense::sense.run_if(sense::swinging),
+                bump::block
+                    .after(sense::sense)
+                    .run_if(sense::swinging)
+                    .run_if(resource_exists::<avian3d::collider_tree::ColliderTrees>),
                 throw::pierce.run_if(any_with_component::<Spear>),
             )
                 .after(TransformSystems::Propagate)
                 .run_if(playing),
         );
     update(app);
+    feel::plugin(app);
     app.add_systems(Update, swings());
     #[cfg(feature = "dev")]
     app.add_systems(Update, starter::give.run_if(in_control).before(input::ask));

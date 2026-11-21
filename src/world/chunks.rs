@@ -1,5 +1,5 @@
 //! Chunk streaming: a quadtree of coarse terrain nodes over the whole planet, and detail chunks
-//! with props, structures and colliders built off-thread around the focus.
+//! with props and colliders built off-thread around the focus.
 
 mod budget;
 mod build;
@@ -7,11 +7,13 @@ mod calm;
 mod cut;
 mod detail;
 pub mod dither;
+mod drawn;
 mod embed;
 mod face;
 mod fade;
 mod far;
 mod grow;
+mod horizon;
 mod lane;
 mod mend;
 mod motion;
@@ -34,6 +36,8 @@ mod tests_bodies;
 #[cfg(test)]
 mod tests_caps;
 #[cfg(test)]
+mod tests_drawn;
+#[cfg(test)]
 mod tests_embed;
 #[cfg(test)]
 mod tests_fade;
@@ -42,7 +46,11 @@ mod tests_fly;
 #[cfg(test)]
 mod tests_grow;
 #[cfg(test)]
+mod tests_horizon;
+#[cfg(test)]
 mod tests_lane;
+#[cfg(test)]
+mod tests_ranges;
 #[cfg(test)]
 mod tests_reach;
 #[cfg(test)]
@@ -69,11 +77,13 @@ pub(in crate::world) use self::build::planted;
 pub use self::calm::{Calm, watch_calm};
 pub use self::cut::show;
 pub use self::detail::refine;
+pub use self::drawn::Drawn;
 pub use self::face::{follow_face, rehome};
 use self::fade::Fades;
 use self::far::FarView;
 pub use self::far::watch_far;
 pub use self::grow::grow;
+pub use self::horizon::horizon;
 use self::lane::Lane;
 pub use self::mend::{mend, mending, note};
 use self::motion::Motion;

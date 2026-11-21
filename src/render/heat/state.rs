@@ -1,19 +1,47 @@
 //! The heat of the craft of the player as the rest of the game reads it: written by the ship and
-//! the gear, eased here, read by the view, the sheath, the shake and the roar.
+//! the gear, eased here, read by the sheath, the hull light, the cabin, the shake and the roar.
 
 use bevy::prelude::*;
 
 use super::Glow;
+use super::gas::incandescence;
+use super::sheath::SheathUniform;
+use super::tune::SHEATH_BOUND;
 
 /// Where the glowing craft is, in render space.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Craft {
     /// Centre of the craft.
     pub centre: Vec3,
-    /// Unit vector along its flight, away from the tail.
+    /// Unit vector along its nose, away from the tail: the glow sits on the hull, and the
+    /// airflow turns the nose into the flight.
     pub heading: Vec3,
     /// Radius in metres of the sphere that holds the craft.
     pub radius: f32,
+    /// Unit vector out of its roof, which sets where its wings lie across the flight.
+    pub roof: Vec3,
+}
+
+impl Craft {
+    /// Returns the pose of the unit sphere that holds the sheath of this craft: centred behind
+    /// it along its flight, from just ahead of the bow shock to the end of the wake.
+    pub fn bound(&self) -> Transform {
+        let (back, size) = SHEATH_BOUND;
+        Transform::from_translation(self.centre - self.heading * (back * self.radius))
+            .with_scale(Vec3::splat(size * self.radius))
+    }
+
+    /// Returns the values the shader draws this craft with when it glows with `glow`: the
+    /// plasma in the colour of the gas, and the skin in the colour of its temperature.
+    pub fn sheath(&self, glow: &Glow) -> SheathUniform {
+        SheathUniform {
+            centre: self.centre.extend(self.radius),
+            axis: self.heading.extend(0.0),
+            roof: self.roof.extend(glow.pressure),
+            glow: glow.color.extend(glow.heat),
+            skin: incandescence(glow.kelvin).extend(glow.shine),
+        }
+    }
 }
 
 /// The glow of the craft of the player, zero while nothing flies fast in thick air.
@@ -32,9 +60,11 @@ impl Heat {
         self.offered = Some((glow, craft));
     }
 
-    /// Returns true while the glow shows or an offer waits: the systems that read it run then.
+    /// Returns true while the plasma glows, the air presses, the skin is hot or an offer waits:
+    /// the systems that read it run then.
     pub fn live(&self) -> bool {
-        self.offered.is_some() || self.glow.heat > 0.0 || self.glow.pressure > 0.0
+        let glow = self.glow;
+        self.offered.is_some() || glow.heat > 0.0 || glow.pressure > 0.0 || glow.kelvin > 0.0
     }
 }
 

@@ -23,12 +23,6 @@ pub enum Act {
 /// Facts found on the way and reused by later stages.
 #[derive(Default)]
 pub struct Notes {
-    /// Planet position of the nearest village origin.
-    pub village: Option<DVec3>,
-    /// Planet position of the middle of that room on its floor.
-    pub room: Option<DVec3>,
-    /// Planet position of the threshold of its door, and the unit direction out of it.
-    pub door: Option<(DVec3, DVec3)>,
     /// Planet position of a shore point near the base.
     pub shore: Option<DVec3>,
     /// The planet the ship warps to.
@@ -76,12 +70,17 @@ impl Tour {
 }
 
 /// Returns whether the stage `name` of `group` runs: `core` stages always do, the others when `PROBE_STAGES`
-/// names their group (all groups but `zoo` and `postcards` when it is empty or `all`), unless `SMOKE_ONLY` leaves the stage out
+/// names their group (all groups but `zoo`, `postcards`, `long`, `perf`, `dust` and `reflect` when it is empty or `all`), unless `SMOKE_ONLY` leaves the stage out
 /// or `SMOKE_SKIP` lists it.
 fn wanted(group: &str, name: &str) -> bool {
     let list = std::env::var("PROBE_STAGES").unwrap_or_default();
     let groups = |g: &str| list.split(',').any(|x| x == g);
-    let own = |g: &str| g == "zoo" || g == "postcards";
+    let own = |g: &str| {
+        matches!(
+            g,
+            "zoo" | "postcards" | "long" | "perf" | "dust" | "reflect"
+        )
+    };
     let by_group =
         group == "core" || groups(group) || (!own(group) && (list.is_empty() || groups("all")));
     let only = std::env::var("SMOKE_ONLY").unwrap_or_default();

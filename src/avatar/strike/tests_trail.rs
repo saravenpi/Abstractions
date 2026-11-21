@@ -5,7 +5,7 @@ use bevy::prelude::*;
 
 use super::ribbon::{edge, fill};
 use super::trail::{ROWS, Trail, glow};
-use super::tune::{TRAIL_LIFE, TRAIL_SPEED};
+use super::tune::{TRAIL_LIFE, TRAIL_PEAK, TRAIL_SPEED};
 
 /// Seconds in a frame at sixty frames per second.
 const FRAME: f32 = 1.0 / 60.0;
@@ -56,7 +56,7 @@ fn the_edge_lies_on_the_blade() {
     let mut trail = Trail::default();
     trail.feed([lo, tip], 10.0, FRAME);
     let (mut positions, mut colours) = ([[0.0; 3]; ROWS * 2], [[0.0; 4]; ROWS * 2]);
-    fill(&trail, &mut positions, &mut colours);
+    fill(&trail, [TRAIL_PEAK, 0.25], &mut positions, &mut colours);
     assert_eq!(positions[1], tip.to_array());
     assert!(colours[1][3] > colours[0][3] && colours[3][3] == 0.0);
 }

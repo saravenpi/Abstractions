@@ -103,12 +103,46 @@ fn attach(
     }
 }
 
+/// Builds the blur again when the game image is made anew, as when the window changes size or
+/// its scale factor arrives. A material binds the texture it was built with and does not follow
+/// its image, so the menus over the game kept blurring the last frame of the old texture: a
+/// still picture of another moment in place of the game behind them.
+fn rebind(
+    mut events: MessageReader<AssetEvent<Image>>,
+    low: Option<Res<LowRes>>,
+    backdrop: Res<Backdrop>,
+    materials: Option<ResMut<Assets<BlurMaterial>>>,
+) {
+    let Some(low) = low else {
+        return;
+    };
+    let renewed = events
+        .read()
+        .filter(|event| event.is_modified(&low.0))
+        .count()
+        > 0;
+    let (Some(handle), Some(mut materials)) = (backdrop.0.as_ref(), materials) else {
+        return;
+    };
+    if let Some(mut material) = materials.get_mut(handle).filter(|_| renewed) {
+        material.world = low.0.clone();
+    }
+}
+
 /// Embeds the shader and registers the material where UI is rendered, and the systems everywhere.
 pub(super) fn plugin(app: &mut App) {
-    app.init_resource::<Backdrop>();
+    app.init_resource::<Backdrop>()
+        .add_message::<AssetEvent<Image>>();
     if app.is_plugin_added::<bevy::ui_render::UiRenderPlugin>() {
         embedded_asset!(app, "backdrop.wesl");
         app.add_plugins(UiMaterialPlugin::<BlurMaterial>::default());
     }
-    app.add_systems(Startup, build).add_systems(Update, attach);
+    app.add_systems(Startup, build).add_systems(
+        Update,
+        (attach, rebind.run_if(on_message::<AssetEvent<Image>>)),
+    );
 }
+
+#[cfg(test)]
+#[path = "backdrop_tests.rs"]
+mod tests;

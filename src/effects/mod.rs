@@ -4,6 +4,7 @@
 //! the local vertical through the anchor, never from render `y`, and the pooled entities are
 //! marked `Rebased` so an anchor rebase leaves them where they were on the planet.
 
+mod disc;
 mod eye;
 mod fleck;
 mod ground;
@@ -33,6 +34,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
+pub use disc::soft_disc;
 pub use fleck::{Fling, Landed};
 pub use water::Churn;
 

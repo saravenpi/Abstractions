@@ -4,19 +4,19 @@
 use bevy::light::{CascadeShadowConfig, CascadeShadowConfigBuilder, DirectionalLightShadowMap};
 use bevy::prelude::*;
 
-use super::tune::{FIRST_SHARE, OVERLAP};
+use super::tune::{FIRST_BOUND, OVERLAP};
 use super::{Moon, Sun};
 use crate::settings::{Persistent, Settings, ShadowReach};
 
-/// Returns the cascade setup for a shadow `reach`: two cascades out to its distance, three for the
-/// far reach, the first ending at the same share of it. The ground shader fades the last fifth of
-/// the last cascade out, so the end of the reach shows no line.
+/// Returns the cascade setup for a shadow `reach`: [`ShadowReach::cascades`] cascades out to its
+/// distance, the first ending at [`FIRST_BOUND`] and the others spaced by a constant ratio. The
+/// ground shader fades the last fifth of the last cascade out, so the end of the reach shows no line.
 pub fn cascades(reach: ShadowReach) -> CascadeShadowConfig {
     let far = reach.metres();
     CascadeShadowConfigBuilder {
         num_cascades: reach.cascades(),
         minimum_distance: 0.1,
-        first_cascade_far_bound: far * FIRST_SHARE,
+        first_cascade_far_bound: FIRST_BOUND,
         maximum_distance: far,
         overlap_proportion: OVERLAP,
     }

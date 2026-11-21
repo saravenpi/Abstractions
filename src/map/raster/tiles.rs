@@ -1,7 +1,8 @@
-//! The cache of tiles: the tiles the lens looks at are painted on workers, kept while they are
-//! used and dropped when the cache is full.
+//! The cache of tiles: the tiles the lens looks at are painted on workers, those never painted
+//! before those that show older ground, kept while they are used and dropped, the farthest
+//! from the view first, when the cache is full. A tile asked for is never dropped.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use abstractions_net::leaves::Leaves;
@@ -12,10 +13,14 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
 
+#[cfg(test)]
+use super::BYTES;
 use super::Rasters;
-use super::tile::{SIDE, TileId, ZOOM_FROM, level_for, visible};
+use super::cover::{Ready, asked, shown};
+use super::tile::{SIDE, TileId, ZOOM_FROM, away};
 use super::tile_paint::{lit, paint};
 use crate::map::explored::Explored;
+use crate::map::sight::Sight;
 use crate::map::{Level, Surface};
 use crate::universe::BodyId;
 use crate::world::Globe;
@@ -23,8 +28,12 @@ use crate::world::Globe;
 /// Most tiles painted at once.
 const JOBS: usize = 2;
 
-/// Most tiles kept: about 25 MB of pictures.
-const KEPT: usize = 96;
+/// Most tiles kept, of every body and level together: about 25 MB of pictures, see [`KEPT_BYTES`].
+pub const KEPT: usize = 96;
+
+/// Bytes the pictures of the tiles kept take at most.
+#[cfg(test)]
+pub const KEPT_BYTES: usize = KEPT * SIDE * SIDE * BYTES;
 
 /// One tile of the cache.
 #[derive(Default)]
@@ -35,8 +44,6 @@ struct Slot {
     seen: u64,
     /// The worker painting it, with the version of the ground it reads.
     job: Option<(Task<Vec<u8>>, u64)>,
-    /// The frame the tile was last asked for.
-    used: u64,
 }
 
 /// The tiles of the body the map shows.
@@ -47,41 +54,42 @@ pub struct Tiles {
     /// The body shown and the tiles asked for now, each with its column counted without
     /// wrapping.
     wanted: (Option<BodyId>, Vec<(i64, TileId)>),
-    /// Counts frames.
-    frame: u64,
 }
 
 impl Tiles {
-    /// Returns the tiles asked for now that need a worker, at most as many as the free workers.
+    /// Returns the tiles asked for now that need a worker, at most as many as the free workers:
+    /// those never painted first, then those that show older ground, each in the order asked.
     fn todo(&self, body: BodyId, version: u64) -> Vec<TileId> {
         let running = self
             .slots
             .values()
             .filter(|slot| slot.job.is_some())
             .count();
-        self.wanted
+        let slot = |id: &TileId| self.slots.get(&(body, *id));
+        let mut todo: Vec<TileId> = self
+            .wanted
             .1
             .iter()
             .map(|(_, id)| *id)
             .filter(|id| {
-                self.slots.get(&(body, *id)).is_some_and(|slot| {
+                slot(id).is_some_and(|slot| {
                     slot.job.is_none() && !(slot.image.is_some() && slot.seen == version)
                 })
             })
-            .take(JOBS.saturating_sub(running))
-            .collect()
+            .collect();
+        todo.sort_by_key(|id| slot(id).is_some_and(|slot| slot.image.is_some()));
+        todo.truncate(JOBS.saturating_sub(running));
+        todo
     }
 
-    /// Returns the tiles asked for now whose picture is ready, with the picture.
-    pub fn ready(&self) -> Vec<(i64, TileId, Handle<Image>)> {
-        let Some(body) = self.wanted.0 else {
-            return Vec::new();
+    /// Returns the tiles to draw for `lens`, coarsest first, and whether they cover the whole
+    /// view: for each tile in view the finest painted tile that holds it. Nothing is drawn while
+    /// the map is zoomed out under [`ZOOM_FROM`].
+    pub fn ready(&self, lens: Sight) -> (Vec<Ready>, bool) {
+        let Some(body) = self.wanted.0.filter(|_| lens.zoom >= ZOOM_FROM) else {
+            return (Vec::new(), false);
         };
-        let slot = |id: &TileId| self.slots.get(&(body, *id))?.image.clone();
-        let ready = self.wanted.1.iter();
-        ready
-            .filter_map(|(col, id)| Some((*col, *id, slot(id)?)))
-            .collect()
+        shown(lens, |id| self.slots.get(&(body, id))?.image.clone())
     }
 }
 
@@ -98,25 +106,24 @@ fn picture(data: Vec<u8>) -> Image {
     image
 }
 
-/// Asks for the tiles the lens looks at, or for none while the map is zoomed out.
+/// Asks for the tiles the lens looks at, after the coarser ones that cover its view, or for
+/// none while the map is zoomed out.
 pub(super) fn want(level: Res<Level>, surface: Res<Surface>, mut tiles: ResMut<Tiles>) {
     let Level::Planet(body) = *level else {
         return;
     };
     let lens = surface.lens;
-    let asked = match lens.zoom >= ZOOM_FROM {
-        true => visible(lens, level_for(lens.zoom)),
+    let wanted = match lens.zoom >= ZOOM_FROM {
+        true => asked(lens),
         false => Vec::new(),
     };
-    if tiles.wanted.0 == Some(body) && tiles.wanted.1 == asked {
+    if tiles.wanted.0 == Some(body) && tiles.wanted.1 == wanted {
         return;
     }
-    tiles.frame += 1;
-    let frame = tiles.frame;
-    for (_, id) in &asked {
-        tiles.slots.entry((body, *id)).or_default().used = frame;
+    for (_, id) in &wanted {
+        tiles.slots.entry((body, *id)).or_default();
     }
-    tiles.wanted = (Some(body), asked);
+    tiles.wanted = (Some(body), wanted);
 }
 
 /// Starts workers for the tiles asked for that are not painted, or show older ground.
@@ -170,19 +177,37 @@ pub(super) fn collect(mut tiles: ResMut<Tiles>, images: Option<ResMut<Assets<Ima
     }
 }
 
-/// Drops the tiles asked for longest ago once more than [`KEPT`] are kept.
-pub(super) fn trim(mut tiles: ResMut<Tiles>) {
+/// Drops the tiles farthest from what the map shows once more than [`KEPT`] are kept: those of
+/// another body first, then those not asked for now, then those of the levels farthest from the
+/// one shown, then those farthest from the centre of the view. The tiles asked for now are
+/// never dropped, and no level is ever kept whole.
+pub(super) fn trim(mut tiles: ResMut<Tiles>, surface: Res<Surface>) {
     if tiles.slots.len() <= KEPT {
         return;
     }
-    let mut order: Vec<((BodyId, TileId), u64)> = tiles
-        .slots
-        .iter()
-        .map(|(key, slot)| (*key, slot.used))
-        .collect();
-    order.sort_by_key(|(_, used)| *used);
+    let shown = tiles.wanted.0;
+    let wanted: HashSet<TileId> = tiles.wanted.1.iter().map(|(_, id)| *id).collect();
+    let far = |(body, id): &(BodyId, TileId)| {
+        let (levels, gap) = away(*id, surface.lens);
+        (Some(*body) != shown, !wanted.contains(id), levels, gap)
+    };
+    let mut order: Vec<(BodyId, TileId)> = tiles.slots.keys().copied().collect();
+    order.sort_by(|a, b| {
+        let (a, b) = (far(a), far(b));
+        (b.0, b.1, b.2)
+            .cmp(&(a.0, a.1, a.2))
+            .then(b.3.total_cmp(&a.3))
+    });
     let surplus = tiles.slots.len() - KEPT;
-    for (key, _) in order.into_iter().take(surplus) {
+    for key in order.into_iter().take(surplus) {
         tiles.slots.remove(&key);
     }
 }
+
+#[cfg(test)]
+#[path = "tests_cache.rs"]
+mod tests;
+
+#[cfg(test)]
+#[path = "tests_cover.rs"]
+mod cover_tests;

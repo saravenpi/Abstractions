@@ -1,7 +1,7 @@
 //! The strokes the displays of the dashboard are painted with: words in the pixel font, a bar,
 //! and the steps a value is shown in, so a display repaints only when its picture changes.
 
-use super::font::{ADVANCE, HEIGHT, WIDTH, glyph};
+use super::font::{ADVANCE, HEIGHT, SMALL_ADVANCE, SMALL_HEIGHT, SMALL_WIDTH, WIDTH, glyph, small};
 use super::pixels::{Ink, Pixels};
 use super::tune::TEXT_STEPS;
 use crate::ui::units::distance_short;
@@ -52,6 +52,24 @@ pub fn write(pixels: &mut Pixels, words: &str, (x, y): (i32, i32), ink: Ink) {
         for (row, bits) in glyph(c).into_iter().enumerate().take(HEIGHT) {
             for column in (0..WIDTH).filter(|column| (bits >> (WIDTH - 1 - column)) & 1 == 1) {
                 pixels.put(x + (place * ADVANCE + column) as i32, y + row as i32, ink);
+            }
+        }
+    }
+}
+
+/// Paints `words` in the small font of the legends in `ink`, with its top left corner at column
+/// `x` and row `y`.
+pub fn label(pixels: &mut Pixels, words: &str, (x, y): (i32, i32), ink: Ink) {
+    for (place, c) in words.chars().enumerate() {
+        for (row, bits) in small(c).into_iter().enumerate().take(SMALL_HEIGHT) {
+            let lit =
+                (0..SMALL_WIDTH).filter(|column| (bits >> (SMALL_WIDTH - 1 - column)) & 1 == 1);
+            for column in lit {
+                pixels.put(
+                    x + (place * SMALL_ADVANCE + column) as i32,
+                    y + row as i32,
+                    ink,
+                );
             }
         }
     }

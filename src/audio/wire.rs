@@ -1,12 +1,16 @@
-//! Wiring to the rest of the game: the warp of the ship silences the music, and what happens
-//! to the ship and what the companion says become cues. The voice of the ship itself follows
-//! what the ship module writes into the scene.
+//! Wiring to the rest of the game: the warp of the ship silences the music, what happens to the
+//! ship becomes cues of the cabin, and what the companion says comes from where it floats. The
+//! voice of the ship itself follows what the ship module writes into the scene.
 
+use avian3d::prelude::{Physics, PhysicsTime};
 use bevy::prelude::*;
 
 use super::cue::AudioCue;
 use super::scene::AudioScene;
-use crate::companion::CompanionChirp;
+use super::spatial::tune::{BUDDY, CABIN_REACH, PANEL};
+use super::spatial::{Listener, Origin, Sound};
+use crate::companion::{Companion, CompanionChirp};
+use crate::net::Remote;
 use crate::screens::Screen;
 use crate::ship::{ShipEvent, ShipTelemetry, WarpState};
 
@@ -45,14 +49,48 @@ fn follow_ship(telemetry: Option<Res<ShipTelemetry>>, mut scene: ResMut<AudioSce
     }
 }
 
-/// Turns what happened to the ship and what the companion said into cues.
+/// Returns where a sound of the cabin of the ship starts for `listener`: from the panel ahead of
+/// the seat while the ears are in the cabin, which rings with it, from the cockpit `at` through
+/// the hull while they are outside, and flat when no cockpit is known.
+pub fn cabin(listener: &Listener, at: Option<Vec3>) -> Origin {
+    let (panel, reach) = PANEL;
+    match (listener.cabin, at) {
+        (true, _) => Origin::At(listener.at + listener.turn * Vec3::from(panel), reach),
+        (false, Some(at)) => Origin::At(at, CABIN_REACH),
+        (false, None) => Origin::Flat,
+    }
+}
+
+/// Writes into the scene whether the world stands still: the pause menu freezes physics out of a
+/// session. In a session the world goes on behind the menu, and so do its sounds.
+fn follow_pause(time: Option<Res<Time<Physics>>>, mut scene: ResMut<AudioScene>) {
+    let paused = time.is_some_and(|time| time.is_paused());
+    if scene.paused != paused {
+        scene.paused = paused;
+    }
+}
+
+/// Turns what happened to the ship into sounds of its cabin, and what the companion said into
+/// sounds from where it floats: flat when it floats nowhere.
 fn relay(
-    mut ship: MessageReader<ShipEvent>,
-    mut chirps: MessageReader<CompanionChirp>,
-    mut cues: MessageWriter<AudioCue>,
+    (mut ship, mut chirps): (MessageReader<ShipEvent>, MessageReader<CompanionChirp>),
+    companion: Query<&GlobalTransform, (With<Companion>, Without<Remote>)>,
+    (listener, scene): (Res<Listener>, Res<AudioScene>),
+    mut sounds: MessageWriter<Sound>,
 ) {
-    cues.write_batch(ship.read().filter_map(ship_cue));
-    cues.write_batch(chirps.read().map(|chirp| AudioCue::Chirp(chirp.0)));
+    let inside = cabin(&listener, scene.cockpit);
+    sounds.write_batch(
+        ship.read()
+            .filter_map(ship_cue)
+            .map(|cue| Sound { cue, from: inside }),
+    );
+    let from = companion
+        .single()
+        .map_or(Origin::Flat, |at| Origin::At(at.translation(), BUDDY));
+    sounds.write_batch(chirps.read().map(|chirp| Sound {
+        cue: AudioCue::Chirp(chirp.0),
+        from,
+    }));
 }
 
 /// Registers the wiring. The scene fields are written after the audio module has sensed the
@@ -63,7 +101,7 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(
             Update,
             (
-                follow_ship
+                (follow_ship, follow_pause)
                     .after(super::Sensing)
                     .run_if(in_state(Screen::Gameplay)),
                 relay,

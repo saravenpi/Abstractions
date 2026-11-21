@@ -17,6 +17,18 @@ pub const BAND: f64 = 1.25;
 /// stands on a limit sees no flicker: the marker comes back a fifth farther than it left.
 pub const STICK: f64 = 1.2;
 
+/// Metres past which the marker of a pin nobody follows fades out on foot or swimming: two
+/// minutes at a sprint of 8.5 m/s (`player/walk.rs`). Farther, it is noise over the world.
+pub const FAR_FOOT: f64 = 1000.0;
+
+/// Metres past which the marker of a pin nobody follows fades out while gliding: two minutes at
+/// about 45 m/s.
+pub const FAR_GLIDE: f64 = 5000.0;
+
+/// Metres past which the marker of a pin nobody follows fades out in the ship, landed or in
+/// flight: two minutes at 140 m/s, the top speed 400 m over the ground (`ship/cruise.rs`).
+pub const FAR_SHIP: f64 = 15000.0;
+
 /// Metres from a pin the player follows under which it has been reached and its marker hides.
 pub const ARRIVE: f64 = 8.0;
 
@@ -55,3 +67,10 @@ pub const ARROW_REACH: f32 = 22.0;
 /// Pixels a marker keeps free on each side of its icon and above it: half its room across, the
 /// arrow above.
 pub const HALF: (f32, f32) = (48.0, 36.0);
+
+/// Share of its opacity the icon of a marker keeps while the planet stands between the eye and
+/// its place: hollow, at its true place, its words saying why.
+pub const HIDDEN_ALPHA: f32 = 0.5;
+
+/// What the words of a marker add while the planet stands between the eye and its place.
+pub const HIDDEN_WORDS: &str = ", behind the planet";

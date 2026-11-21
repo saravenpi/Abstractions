@@ -4,9 +4,14 @@
 use bevy::math::Vec3;
 
 use super::puff::{
-    EDGE, LONE, OCTAVE_SCALE, OCTAVE_SHIFT, OCTAVES, THRESHOLD, density, fbm, hash31, space_noise,
-    threshold,
+    CLAMP, CUT, EDGE, GRAZE, LONE, MEAN, OCTAVE_SCALE, OCTAVE_SHIFT, OCTAVES, SHARP, SKEW, SPREAD,
+    Spot, TAIL, TALL, THRESHOLD, density, fbm_seen, hash31, space_noise, threshold,
 };
+
+/// Returns all the octaves of the noise at `p` of a field that has not moved.
+fn fbm(p: Vec3, octaves: u32) -> f32 {
+    fbm_seen(Spot::same(p), octaves, 0.0)
+}
 
 /// The text of the shader module both cloud shells import.
 const SHADER: &str = include_str!("../render/cloud_field.wesl");
@@ -55,6 +60,7 @@ fn the_noise_and_the_puffs_match_the_shader() {
     assert!(near(fbm(a, 4), 0.405_665));
     assert!(near(fbm(b, 4), 0.525_343_83));
     assert!(near(fbm(c, 4), 0.554_901_6));
+    let (a, b, c) = (Spot::same(a), Spot::same(b), Spot::same(c));
     assert_eq!(density(a, 0.5), 0.0);
     assert_eq!(density(b, 0.9), 1.0);
     assert!((density(b, 0.5) - 0.131_544).abs() < 1.0e-3);
@@ -71,6 +77,15 @@ fn the_constants_match_the_shader() {
     assert_eq!(constant("OCTAVE_SCALE"), [OCTAVE_SCALE]);
     assert_eq!(constant("OCTAVE_SHIFT"), OCTAVE_SHIFT.to_array());
     assert_eq!(constant("OCTAVES"), [OCTAVES as f32]);
+    assert_eq!(constant("SHARP"), [SHARP.0, SHARP.1]);
+    assert_eq!(constant("MEAN"), [MEAN]);
+    assert_eq!(constant("SPREAD"), [SPREAD]);
+    assert_eq!(constant("TAIL"), [TAIL.0, TAIL.1]);
+    assert_eq!(constant("CUT"), [CUT]);
+    assert_eq!(constant("TALL"), [TALL]);
+    assert_eq!(constant("GRAZE"), [GRAZE]);
+    assert_eq!(constant("CLAMP"), [CLAMP]);
+    assert_eq!(constant("SKEW"), SKEW.to_cols_array());
 }
 
 /// More cover means more cloud at every point, and a clear sky still holds a few thin puffs.
@@ -79,7 +94,7 @@ fn more_cover_means_more_cloud() {
     let points = (0..400).map(|i| Vec3::new(0.37, 0.91, -0.53) * i as f32);
     let (mut thin, mut full) = (0.0, 0.0);
     for point in points {
-        let levels = [0.0, 0.25, 0.5, 0.75, 1.0].map(|cover| density(point, cover));
+        let levels = [0.0, 0.25, 0.5, 0.75, 1.0].map(|cover| density(Spot::same(point), cover));
         assert!(levels.windows(2).all(|pair| pair[0] <= pair[1]), "{point}");
         (thin, full) = (thin + levels[0], full + levels[4]);
     }

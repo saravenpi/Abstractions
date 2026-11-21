@@ -58,7 +58,8 @@ pub fn graphics(active: Tab) -> impl Bundle {
     let sky = children![
         toggle("Clouds", Field::Clouds),
         toggle("Cloud shadows", Field::CloudShadows),
-        toggle("Sea reflections", Field::WaterGlint),
+        toggle("Sea glint", Field::WaterGlint),
+        toggle("Water reflections", Field::WaterReflections),
     ];
     let display = children![
         toggle("Vsync", Field::Vsync),
@@ -137,9 +138,11 @@ pub fn audio(active: Tab) -> impl Bundle {
         stepper("Dynamic range", Field::Range),
         toggle("Mono", Field::Mono),
     ];
+    let voices = children![stepper("Companion voice", Field::CompanionVoice)];
     let content = children![
         section(Icon::Volume, "Volume", (rows(), volume)),
         section(Icon::Volume, "Output", (rows(), output)),
+        section(Icon::Volume, "Voices", (rows(), voices)),
     ];
     page(Tab::Audio, active, content)
 }

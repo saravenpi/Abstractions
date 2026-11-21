@@ -45,6 +45,12 @@ pub struct Destination(pub Option<Target>);
 #[derive(Event, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Engage(pub Target);
 
+/// Triggered when the player asks to fly home while seated on or above the home planet `0`: the
+/// ship cruises over it to the base, or climbs out of the air first. Away from it, Fly home
+/// also sets the course to the planet, and the cruise follows the arrival.
+#[derive(Event, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Homeward(pub BodyId);
+
 /// Triggered when the player stops the route the autopilot flies: the drive drops out and the
 /// ship is the pilot's again.
 #[derive(Event, Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -66,6 +72,8 @@ pub enum Block {
         /// Radii from the centre the ship is at now, in tenths.
         tenths: u32,
     },
+    /// The autopilot dropped the course after spooling the drive again and again without coming nearer.
+    Lost,
 }
 
 /// The names of the keys the sentences of the computer tell the player to press.
@@ -99,6 +107,10 @@ impl Block {
                 keys.board
             ),
             Block::Landed => format!("Take off first: hold {}.", keys.rise),
+            Block::Lost => format!(
+                "The course came no nearer and was dropped: press {} to try again.",
+                keys.go
+            ),
             Block::Inside { star, .. } => {
                 let body = ["planet", "star"][usize::from(star)];
                 format!(

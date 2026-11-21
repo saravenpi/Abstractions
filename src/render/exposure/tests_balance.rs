@@ -1,10 +1,13 @@
 //! Tests of the white balance: white light changes nothing, a red light moves the white partly
-//! toward it, the degree follows CAT02, and the balance eases slowly.
+//! toward it, the degree follows CAT02, the balance eases slowly, and the white is the one of
+//! noon at every hour.
 
 use bevy::prelude::*;
 
 use super::balance::{D65, adapted, chromaticity, degree, eased, grading};
 use super::tune::SUN_LIGHT;
+use crate::render::air::Air;
+use crate::render::daylight::Sky;
 
 /// The light of the Sun is the neutral light of the game: the balance is the identity.
 #[test]
@@ -47,4 +50,20 @@ fn the_balance_eases_in_about_a_minute() {
         assert!(white.x <= target.x);
     }
     assert!((target.x - white.x) < 0.1 * (target.x - D65.x));
+}
+
+/// The white is the light of noon at every hour: at noon it is the light the camera gets, so the
+/// noon picture is as it was, and a low star, whose light is redder, keeps its gold against it.
+#[test]
+fn the_white_is_the_light_of_noon() {
+    let star = Vec3::new(1.0, 0.96, 0.88);
+    let sky = Sky::of(star, &Air::HOME, (6.371e6, 96_000.0), 60.0);
+    let place = |height: f32| sky.uniform(Vec3::ZERO, Vec3::Y, (height, 0.0));
+    let at_noon = place(1.0);
+    let camera = at_noon.eye_sun.truncate() + std::f32::consts::PI * at_noon.eye_sky.truncate();
+    assert!((at_noon.noon() - camera).abs().max_element() < 1.0e-2 * camera.max_element());
+    let low = place(0.05);
+    assert_eq!(low.noon(), at_noon.noon());
+    let gold = chromaticity(low.eye_sun.truncate());
+    assert!(gold.x > chromaticity(low.noon()).x + 0.03, "{gold}");
 }

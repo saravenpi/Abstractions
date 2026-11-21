@@ -4,9 +4,9 @@
 use bevy::math::DVec3;
 
 use super::assist::NEUTRAL;
-use super::drag::terminal;
+use super::drag::{heat_cap, terminal};
 use super::flight::BOOST;
-use super::tune::ORBIT_CAP;
+use super::tune::{ORBIT_CAP, SPACE_CAP};
 
 /// Speed in metres per second the full lever asks for at a surface, and the seconds the
 /// clearance lasts at the speed it adds: the top speed is `SLOW.0 + clearance / SLOW.1`, so the
@@ -20,13 +20,8 @@ const SLOW: (f64, f64) = (40.0, 1.6);
 /// as slow as before the top speed was raised.
 const REACH: f64 = 4.0;
 
-/// Top speed in metres per second in open space away from big bodies, reached 3.9 km from the
-/// nearest surface. Near a body whose circular orbit is faster than half of it the top speed is
-/// [`ORBIT_CAP`] times that orbit speed, see [`top_speed_at`].
-const FAST: f64 = 2500.0;
-
 /// How many times faster the full lever is with the boost.
-const BOOST_SPEED: f64 = 2.0;
+pub(in crate::ship) const BOOST_SPEED: f64 = 2.0;
 
 /// Share of the top speed the vertical thrusters give at full stick.
 const CLIMB_SHARE: f64 = 0.3;
@@ -80,10 +75,12 @@ pub fn top_speed(clearance: f64) -> f64 {
 
 /// Returns the speed in metres per second the full lever asks for `clearance` metres from the
 /// nearest surface of a body whose circular orbit at the ship runs at `orbital` metres per
-/// second: as [`top_speed`], but the open space cap is [`ORBIT_CAP`] times that speed where it
-/// is more than the fixed one, so that a ship can reach the orbit of a big planet.
+/// second: the one speed rule of the ship, for the pilot and the autopilot alike. It grows
+/// smoothly with the clearance up to [`SPACE_CAP`], reached 48 km out, or up to [`ORBIT_CAP`]
+/// times the orbit speed where that is faster, near a giant, so that a ship can leave it. The
+/// boost doubles it.
 pub fn top_speed_at(clearance: f64, orbital: f64) -> f64 {
-    (SLOW.0 + clearance.max(0.0) / SLOW.1).min(FAST.max(ORBIT_CAP * orbital))
+    (SLOW.0 + clearance.max(0.0) / SLOW.1).min(SPACE_CAP.max(ORBIT_CAP * orbital))
 }
 
 /// Returns the fastest descent in metres per second the assist flies `clearance` metres above
@@ -160,7 +157,9 @@ impl Cruise {
     }
 
     /// Returns the velocity the pilot asks for: the lever along the nose and the vertical
-    /// stick along `rise`, never faster than the engine holds against the drag of the air.
+    /// stick along `rise`, never faster than the engine holds against the drag of the air, and
+    /// never pushed past [`heat_cap`], a mild glow of the nose in that air: a ship already
+    /// faster, falling in from orbit, keeps its speed and is left to the air to slow.
     /// Toward the ground it is never faster than a descent the gear can take, and a hovering
     /// ship that is not sunk keeps its gear [`FLOOR`] above the ground.
     pub fn target(&self) -> DVec3 {
@@ -169,8 +168,10 @@ impl Cruise {
         } else {
             (1.0, 1.0)
         };
-        let top =
-            (top_speed_at(self.clearance, self.orbital) * boost).min(terminal(self.air, push));
+        let cool = heat_cap(self.air).max(self.vel.length());
+        let top = (top_speed_at(self.clearance, self.orbital) * boost)
+            .min(terminal(self.air, push))
+            .min(cool);
         let ahead = if self.idle() { 0.0 } else { self.throttle };
         let asked = self.nose * (ahead * top) + self.rise * self.climb(top);
         let sink = -asked.dot(self.up) - descent(self.clearance);

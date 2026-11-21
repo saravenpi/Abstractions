@@ -32,6 +32,7 @@ pub fn shape(kind: MarkerKind) -> Option<(f32, bool)> {
         MarkerKind::Waypoint => Some((9.0, true)),
         MarkerKind::Favourite => Some((6.0, false)),
         MarkerKind::Herd => Some((5.0, false)),
+        MarkerKind::Tool => Some((7.0, true)),
         MarkerKind::Course => None,
         MarkerKind::Home | MarkerKind::Ship => None,
     }

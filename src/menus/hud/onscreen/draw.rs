@@ -120,10 +120,10 @@ pub fn say(words: &mut String, (name, gap): Said) {
     }
 }
 
-/// Writes the words of slot `at` at opacity `alpha`, on their strip, or hides them when they
-/// are empty or not to be seen.
+/// Writes the words of slot `at` at opacity `alpha`, or hides them when they are empty or not
+/// to be seen.
 pub fn label(nodes: &mut Nodes, at: usize, words: &str, alpha: f32) {
-    for (label, mut text, mut paint, mut strip, mut node) in &mut nodes.3 {
+    for (label, mut text, mut paint, mut node) in &mut nodes.3 {
         if label.0 != at {
             continue;
         }
@@ -136,7 +136,5 @@ pub fn label(nodes: &mut Nodes, at: usize, words: &str, alpha: f32) {
             words.clone_into(&mut text.0);
         }
         paint.set_if_neq(TextColor(theme::TEXT.with_alpha(alpha)));
-        let fill = theme::PANEL.with_alpha(theme::PANEL.alpha() * alpha);
-        strip.set_if_neq(BackgroundColor(fill));
     }
 }

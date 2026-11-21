@@ -1,10 +1,10 @@
 //! The recipe of every cue: a few blips each.
 
 use super::chirps::chirp;
-use super::steps::step;
 use super::voice::{Blip, Wave};
 use crate::audio::cue::AudioCue;
 use crate::audio::dsp::rand::Rand;
+use crate::audio::tune::CHIRP_LEVEL;
 
 /// Builds a pitched blip gliding from `from` to `to` hertz.
 pub(super) const fn tone(from: f32, to: f32, seconds: f32, delay: f32, gain: f32) -> Blip {
@@ -120,21 +120,18 @@ const PUMP: [Blip; 2] = [
 
 /// Returns the blips of a cue with the pitch factor and the level to play them at.
 ///
-/// Footsteps and chirps vary a little each time so that they never sound stamped. The steps of
-/// a machine vary less than those of a walker would.
+/// Chirps vary a little each time so that they never sound stamped. Footsteps are not blips:
+/// the treads play them.
 pub fn recipe(cue: AudioCue, rand: &mut Rand) -> (&'static [Blip], f32, f32) {
     match cue {
         AudioCue::UiMove => (&UI_MOVE, 1.0, 1.0),
         AudioCue::UiConfirm => (&UI_CONFIRM, 1.0, 1.0),
         AudioCue::UiCancel => (&UI_CANCEL, 1.0, 1.0),
-        AudioCue::Footstep(surface) => {
-            (step(surface), rand.range(0.94, 1.06), rand.range(0.75, 1.0))
-        }
         AudioCue::Land(strength) => (&LAND, 1.0, 0.25 + 0.75 * strength.clamp(0.0, 1.0)),
         AudioCue::WarpSpool => (&WARP_SPOOL, 1.0, 1.0),
         AudioCue::WarpEngage => (&WARP_ENGAGE, 1.0, 1.0),
         AudioCue::WarpExit => (&WARP_EXIT, 1.0, 1.0),
-        AudioCue::Chirp(kind) => (chirp(kind), rand.range(0.95, 1.06), 1.0),
+        AudioCue::Chirp(kind) => (chirp(kind), rand.range(0.95, 1.06), CHIRP_LEVEL),
         AudioCue::Thunder(level) => (&THUNDER, rand.range(0.85, 1.1), level.clamp(0.0, 1.0)),
         AudioCue::Pump(strength) => (
             &PUMP,
@@ -143,6 +140,6 @@ pub fn recipe(cue: AudioCue, rand: &mut Rand) -> (&'static [Blip], f32, f32) {
         ),
         AudioCue::Switch => (&SWITCH, rand.range(0.96, 1.04), 1.0),
         AudioCue::Boom(level) => (&BOOM, rand.range(0.9, 1.1), level.clamp(0.0, 1.0)),
-        AudioCue::Call(_) | AudioCue::Hit(_) => (&[], 1.0, 0.0),
+        AudioCue::Call(_) | AudioCue::Hit(_) | AudioCue::Footstep(_) => (&[], 1.0, 0.0),
     }
 }

@@ -66,7 +66,7 @@ pub struct BodyUniform {
     pub fixed_y: Vec4,
     /// Third column of that rotation.
     pub fixed_z: Vec4,
-    /// Cells of the noise the puffs of the clouds have drifted by, as `weather::drift` gives them.
+    /// The turn of the puffs of the clouds round the spin axis, as `weather::drift` gives it.
     pub drift: Vec4,
 }
 

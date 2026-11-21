@@ -27,7 +27,8 @@ fn destroyed(condition: Res<Condition>) -> bool {
 }
 
 /// Puts everything `pack` holds into the cache `left` at `at`, in the frame of `body`, with what it
-/// already held. The tools that are out in the world stay where they are, and stay the robot's.
+/// already held. The tools that are out in the world stay where they are, and stay the robot's, and
+/// the spare body gets no second kit: the first waits in the cache.
 pub fn leave(left: &mut Left, pack: &mut Pack, (body, at): (crate::universe::BodyId, DVec3)) {
     let mut cache = left.0.take().unwrap_or(Cache {
         body,
@@ -35,7 +36,7 @@ pub fn leave(left: &mut Left, pack: &mut Pack, (body, at): (crate::universe::Bod
         pack: Pack::default(),
     });
     let mut kit = std::mem::take(pack);
-    (pack.out, pack.next) = (std::mem::take(&mut kit.out), kit.next);
+    (pack.out, pack.next, pack.kitted) = (std::mem::take(&mut kit.out), kit.next, kit.kitted);
     for stack in kit.stacks {
         cache.pack.stow(stack, f32::MAX);
     }

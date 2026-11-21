@@ -6,12 +6,14 @@ use bevy::math::{Quat, Vec2, Vec3};
 
 use super::super::gait::ramp;
 use super::super::rig::{Drive, Motion};
-use super::super::root::{heading, place, slope, travel};
+use super::super::root::{heading, place, ride, slope, travel};
 use crate::life::body::Body;
 
-/// Moves the root of `m` level over `ground` and holds it on the slope there; returns the speed.
+/// Moves the root of `m` level over `ground` and holds it on the slope there, riding the ground under
+/// it; returns the speed.
 fn creep(m: &mut Motion, body: &Body, drive: &Drive, ground: &dyn Fn(Vec2) -> f32, dt: f32) -> f32 {
     let speed = travel(m, drive, true, dt).length();
+    ride(m, ground);
     let under = slope(ground, m.root.at, heading(m), 0.25 * body.length.max(0.1));
     m.root.hold.step(&m.tune.body(), under, dt);
     speed

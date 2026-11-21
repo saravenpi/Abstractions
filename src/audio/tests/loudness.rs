@@ -14,6 +14,7 @@ use super::{RATE, frames, mixer};
 use crate::audio::cue::AudioCue;
 use crate::audio::hit::{HitSound, Kind};
 use crate::audio::scene::AudioScene;
+use crate::audio::spatial::Spot;
 use crate::audio::tune::{LOUDEST_MOMENT, PASS_MARGIN, TRUE_PEAK, WINDOW};
 use crate::settings::{Audio as Volumes, Range};
 
@@ -31,8 +32,8 @@ fn record((_, seconds, _, at, cues): &Scene, volumes: &Volumes) -> Vec<[f32; 2]>
     for i in 0..total {
         if i % GAME_FRAME == 0 {
             shared.publish(&at((i as f32 / RATE - LEAD).max(0.0)), volumes);
-            if let Some(cue) = cues(i / GAME_FRAME) {
-                shared.push(cue);
+            if let Some((cue, spot)) = cues(i / GAME_FRAME) {
+                shared.push(cue, &spot);
             }
         }
         sound.push(mixer.frame());
@@ -135,8 +136,6 @@ fn sudden_events_stay_under_the_cap() {
         hz: 420.0,
         hard: 1.0,
         wet: true,
-        side: 0.0,
-        near: 1.0,
     };
     let events = [
         AudioCue::Boom(1.0),
@@ -151,7 +150,7 @@ fn sudden_events_stay_under_the_cap() {
             ..AudioScene::default()
         });
         let mut sound = vec![mixer.frame(); frames(1.0)];
-        shared.push(cue);
+        shared.push(cue, &Spot::FLAT);
         sound.extend((0..frames(5.0)).map(|_| mixer.frame()));
         let read = measure(&sound);
         row(&format!("{cue:?}"), LOUDEST_MOMENT, &read);

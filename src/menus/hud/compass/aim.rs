@@ -2,8 +2,9 @@
 //! distance, in the frame of the eye of this frame.
 //!
 //! A marker on the planet the player stands on, or given in the anchor frame, is aimed at
-//! directly. The home base away from its planet gives the next place on the way home. Any
-//! other marker on another body is aimed at through the centre of that body plus its offset.
+//! directly. The home base is aimed at from above its planet too, turned with the planet; away
+//! from it, the next place on the way home stands for it. Any other marker on another body is
+//! aimed at through the centre of that body plus its offset.
 
 use bevy::ecs::system::SystemParam;
 use bevy::math::{DQuat, DVec3};
@@ -21,19 +22,19 @@ use crate::world::{Planet, spin};
 const HERE: f64 = 12.0;
 
 /// Distance in metres past which a favourite leaves the compass.
-pub const FAVOURITE_REACH: f64 = 2000.0;
+const FAVOURITE_REACH: f64 = 2000.0;
 
 /// What the compass reads to aim at markers.
 #[derive(SystemParam)]
 pub struct Around<'w> {
     /// The eye of the HUD for this frame.
-    eye: Res<'w, HudPose>,
+    pub(super) eye: Res<'w, HudPose>,
     /// Where the player is.
     location: Option<Res<'w, Location>>,
     /// The universe and its time, which say where far places are.
-    sky: Option<(Res<'w, Universe>, Res<'w, Clock>)>,
+    pub(super) sky: Option<(Res<'w, Universe>, Res<'w, Clock>)>,
     /// The planet the player is on, whose spin turns the sky.
-    planet: Option<Res<'w, Planet>>,
+    pub(super) planet: Option<Res<'w, Planet>>,
 }
 
 impl Around<'_> {
@@ -113,7 +114,9 @@ impl Around<'_> {
             MarkerPlace::Anchor(at) => at,
             MarkerPlace::Body(body, at) if Some(body) == ground => at,
             MarkerPlace::Body(..) if marker.kind == MarkerKind::Ship => return None,
-            MarkerPlace::Body(..) if marker.kind == MarkerKind::Home => return None,
+            MarkerPlace::Body(body, at) if marker.kind == MarkerKind::Home => {
+                return self.orbiting(eye, body, at);
+            }
             MarkerPlace::Body(body, at) => return self.remote(eye, body, at),
         };
         let offset = at - eye.at;

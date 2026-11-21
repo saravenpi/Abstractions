@@ -2,10 +2,11 @@
 //!
 //! A patch is fixed to the planet and wider than the view, so walking and turning only move
 //! and turn the image. A new patch is painted when the player nears the edge of the one shown
-//! or when the range changes. It is laid out on a metric chart around its middle, where
-//! distances and bearings are true.
+//! or when the range changes, see [`super::ahead`]. It is laid out on a metric chart around its
+//! middle, where distances and bearings are true. A patch moved by whole texels takes most of
+//! its texels from the one before.
 
-use bevy::math::{DVec2, DVec3, Vec2};
+use bevy::math::{DVec2, DVec3, IVec2, Vec2};
 
 use crate::world::globe::Tangent;
 
@@ -79,14 +80,32 @@ impl Patch {
         let chart = Tangent::new(middle, self.chart.east, self.chart.radius, DVec2::ZERO);
         Patch { chart, ..*self }
     }
-}
 
-/// Returns the patch to paint for a player in the unit direction `dir` of a planet of `radius`
-/// metres and a map of `range` metres, or nothing while the patch `shown` still serves.
-pub fn next(shown: Option<Patch>, dir: DVec3, radius: f64, range: f32) -> Option<Patch> {
-    let Some(patch) = shown.filter(|patch| patch.range == range) else {
-        return Some(Patch::around(dir, radius, range));
-    };
-    let at = patch.locate(dir);
-    patch.stale(at, range).then(|| patch.moved(at))
+    /// Returns how many texels east and south of its own place each texel of this patch lies
+    /// in the image of `old`, when this patch is `old` moved by whole texels and the ground is
+    /// flat enough at this scale that the corners of the two images still meet within a tenth
+    /// of a texel. Nothing when the two do not overlap or do not match.
+    pub fn texels_in(&self, old: &Patch) -> Option<IVec2> {
+        if self.range != old.range {
+            return None;
+        }
+        let texel = self.half() * 2.0 / TEXELS as f32;
+        let moved = old.locate(self.chart.origin) / texel;
+        let shift = IVec2::new(moved.x.round() as i32, -moved.y.round() as i32);
+        if shift.abs().max_element() >= TEXELS as i32 {
+            return None;
+        }
+        let last = TEXELS - 1;
+        let meets = |(x, y): (usize, usize)| {
+            let wanted = Vec2::new(
+                (x as f32 + shift.x as f32 + 0.5) * texel - self.half(),
+                self.half() - (y as f32 + shift.y as f32 + 0.5) * texel,
+            );
+            old.locate(self.dir(x, y)).distance(wanted) < 0.1 * texel
+        };
+        [(0, 0), (last, 0), (0, last), (last, last)]
+            .into_iter()
+            .all(meets)
+            .then_some(shift)
+    }
 }

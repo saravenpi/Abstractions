@@ -8,7 +8,7 @@ use bevy::state::app::StatesPlugin;
 use super::grid::{COLS, ROWS, cell_of, centre};
 use super::work::offset;
 use super::{BYTES, Rasters, UNSEEN, colour};
-use crate::computer::{Computer, Lens, SIZE, direction};
+use crate::computer::{Computer, SIZE, direction};
 use crate::map::explored::Explored;
 use crate::map::{from_chart, place_words, to_chart};
 use crate::screens::Screen;
@@ -134,7 +134,7 @@ fn a_closed_map_paints_nothing() {
 /// `planet_layer` lays it out.
 #[test]
 fn the_picture_lies_under_the_pointer_as_the_map_reads_it() {
-    let lens = Lens::default();
+    let lens = crate::map::sight::Sight::default();
     let spots = [(12.4, 103.2), (-60.0, 300.0), (0.3, 0.3), (80.0, 200.0)];
     for (lat, lon) in spots {
         let dir = direction(f64::to_radians(lon), f64::to_radians(lat));

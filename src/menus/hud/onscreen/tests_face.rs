@@ -2,11 +2,11 @@
 //! icon, the near distance follows how the player travels, the middle of the view dims and
 //! markers rank from the course down.
 
-use super::rule::{Sticky, centre, face, look, rank, span};
+use super::rule::{Sticky, centre, face, look, span};
 use super::tests_rule::marker;
 use super::tune::HOME_SPAN;
-use crate::menus::MarkerKind;
 use crate::menus::hud::context::Context;
+use crate::menus::{Marker, MarkerKind};
 
 /// A friend is never hidden: near and in view only the name is left, on the border the icon
 /// stays, far away the icon and the words are whole.
@@ -57,7 +57,7 @@ fn the_near_distance_follows_how_the_player_travels() {
 fn the_middle_of_the_view_dims() {
     assert!((centre(0.0) - 0.35).abs() < 1e-6);
     assert!((centre(20.0_f32.to_radians()) - 1.0).abs() < 1e-6);
-    let mut last = 0.0;
+    let mut last = centre(0.0);
     for tenth in 0..200 {
         let now = centre((tenth as f32 * 0.1).to_radians());
         assert!(now >= last && now - last < 0.05, "{tenth}");
@@ -77,7 +77,7 @@ fn markers_rank_from_the_course_down() {
         marker(MarkerKind::Favourite, 0),
         marker(MarkerKind::Herd, 0),
     ];
-    let ranks: Vec<u8> = order.iter().map(rank).collect();
+    let ranks: Vec<u8> = order.iter().map(Marker::rank).collect();
     assert!(ranks.windows(2).all(|pair| pair[0] < pair[1]), "{ranks:?}");
-    assert_eq!(rank(&marker(MarkerKind::Waypoint, 7)), rank(&order[5]));
+    assert_eq!(marker(MarkerKind::Waypoint, 7).rank(), order[5].rank());
 }

@@ -1,14 +1,12 @@
-//! Tests of the pure parts of the wind, rush, nozzle and particle effects, and of what lies
+//! Tests of the pure parts of the wingtip, nozzle and particle effects, and of what lies
 //! under the boots.
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::flare::pose;
-use super::haze::scale;
 use super::motes::{PUFF_HEIGHT, rates};
 use super::scene::Scene;
-use super::streaks::{SPEED, noise, strength};
 use super::trail::Trail;
 use super::trails::tip_heat;
 use super::under::under;
@@ -37,17 +35,6 @@ pub(super) fn scene(mode: Mode, airspeed: f32, load: f32) -> Scene {
     }
 }
 
-/// No speed lines below 15 m/s, more with speed, none in vacuum.
-#[test]
-fn speed_lines_scale_with_airspeed() {
-    assert_eq!(strength(SPEED.0, 1.0), 0.0);
-    assert_eq!(strength(8.0, 1.0), 0.0);
-    assert!(strength(30.0, 1.0) > 0.0 && strength(30.0, 1.0) < strength(50.0, 1.0));
-    assert_eq!(strength(80.0, 1.0), 1.0);
-    assert_eq!(strength(80.0, 0.0), 0.0);
-    assert!((0..64).all(|slot| (0.0..1.0).contains(&noise(slot, 3))));
-}
-
 /// The wingtips glow plainly in steady flight and brighter under load and in dives, and not
 /// at all folded, slow or on the ground.
 #[test]
@@ -59,18 +46,6 @@ fn wingtips_glow_under_load() {
     assert_eq!(tip_heat(&scene(Mode::Glide, 12.0, 1.0)), 0.0);
     assert_eq!(tip_heat(&scene(Mode::Fall, 60.0, 1.0)), 0.0);
     assert_eq!(tip_heat(&scene(Mode::Slide, 45.0, 1.0)), 0.0);
-}
-
-/// The rush ring is out of sight at rest and inside the view at full rush, at any aspect.
-#[test]
-fn rush_ring_closes_in() {
-    for aspect in [1.0, 16.0 / 9.0, 21.0 / 9.0] {
-        let (idle, full) = (scale(1.2, aspect, 0.0), scale(1.2, aspect, 1.0));
-        let half = (0.6_f32).tan() * 0.4;
-        assert!(idle.y / half > std::f32::consts::SQRT_2, "visible at rest");
-        assert!(full.y / half < 1.0 && full.x < idle.x);
-        assert!((idle.x / idle.y - aspect).abs() < 1e-4);
-    }
 }
 
 /// Sparks need a braked fall, puffs need a surface close below, and neither needs the other.

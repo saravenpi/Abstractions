@@ -8,18 +8,24 @@
 //! constants. The audio thread never allocates and never locks here: a voice costs about 700
 //! floating point operations per sample while its ship is in earshot, and nothing otherwise.
 
+pub(super) mod air_tune;
 mod airframe;
+#[cfg(test)]
+mod airframe_tests;
 mod cabin;
 mod drive;
 pub(super) mod feed;
+#[cfg(test)]
+mod flow_tests;
 pub(super) mod hull;
 mod jet;
 pub(super) mod law;
 mod motor;
 pub(super) mod path;
 pub(super) mod pump;
-mod ring;
+pub(super) mod ring;
 pub(super) mod tune;
+mod whirl;
 mod works;
 
 use feed::{Deck, HULLS};
@@ -29,6 +35,7 @@ use tune::{BUS_CEILING, WHOOSH_LEVEL};
 use super::cue::AudioCue;
 use super::dsp::filter::Svf;
 use super::dsp::rand::Noise;
+use super::spatial::Absorb;
 
 /// Every ship voice and the whoosh of the clouds.
 #[derive(Debug, Clone)]
@@ -39,6 +46,8 @@ pub struct Fleet {
     whoosh: Svf,
     /// Noise source of the whoosh.
     noise: Noise,
+    /// How deep the listener is in the cloud layer, as last tuned.
+    cloud: f32,
     /// Sample rate in hertz.
     rate: f32,
 }
@@ -55,18 +64,20 @@ impl Fleet {
             hulls: std::array::from_fn(|slot| Hull::new(rate, slot as u32 + 1, dt)),
             whoosh: Svf::default(),
             noise: Noise::new(0x51A7_E0B3),
+            cloud: 0.0,
             rate,
         }
     }
 
     /// Reads what the game says of every ship and retunes the voices, `dt` seconds after the
-    /// last call, for a listener `cloud` deep in the cloud layer. Call it a few hundred times
-    /// per second.
-    pub fn tune(&mut self, deck: &Deck, cloud: f32, dt: f32) {
+    /// last call, for a listener `cloud` deep in the cloud layer whose air takes the high end as
+    /// `absorb` says. Call it a few hundred times per second.
+    pub fn tune(&mut self, deck: &Deck, (cloud, absorb): (f32, Absorb), dt: f32) {
         for (slot, hull) in self.hulls.iter_mut().enumerate() {
-            hull.tune(deck.read(slot), dt);
+            hull.tune(deck.read(slot), &absorb, dt);
         }
         self.whoosh.tune(800.0 + 1700.0 * cloud, 0.6, self.rate);
+        self.cloud = cloud;
     }
 
     /// Lets the ship this machine flies answer a cue: its gear takes a landing.
@@ -76,9 +87,10 @@ impl Fleet {
         }
     }
 
-    /// Renders one stereo frame, for a listener `cloud` deep in the cloud layer of a planet.
-    pub fn frame(&mut self, cloud: f32) -> [f32; 2] {
-        let whoosh = self.whoosh.band(self.noise.tick()) * cloud * WHOOSH_LEVEL;
+    /// Renders one stereo frame, for a listener as deep in the cloud layer of a planet as the
+    /// last tuning said.
+    pub fn frame(&mut self) -> [f32; 2] {
+        let whoosh = self.whoosh.band(self.noise.tick()) * self.cloud * WHOOSH_LEVEL;
         let mut sum = [0.0; 2];
         for hull in &mut self.hulls {
             let [left, right] = hull.frame();

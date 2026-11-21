@@ -13,10 +13,10 @@ game_run() {
   BOTS=$!
   track "$BOTS"
   wait_for "$SLOG" "Bot 2 joined" 30
-  client a "$DISPLAY_A" game mp-meet,mp-act,mp-leave || return 1
+  client a "$DISPLAY_A" game mp-meet,mp-act,mp-share,mp-leave || return 1
   PA=$CPID
   XA=$XVPID
-  client b "$DISPLAY_B" game mp-meet,mp-act,mp-leave || return 1
+  client b "$DISPLAY_B" game mp-meet,mp-act,mp-share,mp-leave || return 1
   PB=$CPID
   XB=$XVPID
   wait_ready "$PA" "$PB" "$READY_WAIT"
@@ -73,6 +73,7 @@ phase_game() {
   game_run
   game_meet
   game_acts
+  game_share
   game_clean
   game_record
   kill "$BOTS" 2>/dev/null

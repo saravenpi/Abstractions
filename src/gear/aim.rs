@@ -15,8 +15,8 @@ use super::path::{bounded, climb, path_offset, sighted};
 use super::roll::{facing, roll, sense};
 use super::state::FlightState;
 use super::tune::{
-    AOA_MAX, AOA_MIN, FOLLOW_SPEED, LIMIT_SPEED, MAX_LOAD, PATH_TIME, PRONE_SPEED, PULL_OUT,
-    PULL_TURN, TRIM_LOAD, TRIM_MAX,
+    AOA_MAX, AOA_MIN, FALL_ARCH, FOLLOW_SPEED, LIMIT_SPEED, MAX_LOAD, PATH_TIME, PRONE_SPEED,
+    PULL_OUT, PULL_TURN, TRIM_LOAD, TRIM_MAX,
 };
 use crate::render::smoothstep as smooth;
 
@@ -91,7 +91,7 @@ fn lead(state: &FlightState, input: &GearInput) -> f32 {
     let stall = AOA_MAX.min(MAX_LOAD * input.gravity / slope.max(1e-3));
     let held = input.pitch.abs().max(input.roll.abs()).min(1.0);
     let under = (state.servo.climb - climb(state)) * sense(state);
-    let dive = smooth(0.0, PULL_OUT, under) * safe(state);
+    let dive = smooth(0.0, PULL_OUT, under) * safe(state, input);
     let calm = (1.0 - held) * state.spread() * (1.0 - state.power()) * (1.0 - dive);
     stall.lerp(stall.min(best_aoa()), calm)
 }
@@ -151,8 +151,8 @@ fn pitch(state: &FlightState, input: &GearInput, pull: f32) -> f32 {
 ///
 /// With the wings folded it is upright along the asked heading. As they spread and the airspeed
 /// builds, the nose heading follows the flight path, the roll keys roll the wings and the view
-/// banks them, the banked lift turns the path, and the body lies prone: at any speed on its
-/// back or with the nose near the vertical. In a fall the gear took over the heading follows
+/// banks them, the banked lift turns the path, and the body lies prone as far as they spread,
+/// see [`lain`]. In a fall the gear took over the heading follows
 /// the path too, so spreading the wings again turns nothing, and the body lies flat across the
 /// fall as fast as on the wings: folded from a glide it stays prone, belly to the air.
 pub(super) fn aim(state: &FlightState, input: &GearInput) -> Aim {
@@ -165,13 +165,28 @@ pub(super) fn aim(state: &FlightState, input: &GearInput) -> Aim {
     let pull = pull(state, input);
     let pitch = pitch(state, input, pull);
     let lag = (pitch - state.pitch).clamp(-LAG, LAG) * sense(state);
-    let steep = 1.0 - smooth(STEEP.0, STEEP.1, state.pitch.cos());
-    let flat = smooth(PRONE_SPEED.0, PRONE_SPEED.1, speed).max(steep);
     Aim {
         pull: pull + lag * spread,
         yaw: heading + follow * offset,
         pitch,
         bank: roll(state, input),
-        prone: along * flat.max(1.0 - smooth(CARRY.0, CARRY.1, facing(state))),
+        prone: lain(state, input, (along, speed)),
     }
+}
+
+/// Returns how prone the body is asked to lie, for a body `along` its path by that share at
+/// `speed` metres per second.
+///
+/// Spread, the wings lay it prone along the flight frame as far as they are spread, whatever
+/// its speed: a glide starts chest down with the arms and legs out. A body the gear took over
+/// lies prone as its speed builds, at any speed on its back or with the nose near the vertical.
+/// A body that falls with no gear in use lies in the belly-down arch of a fast fall, see
+/// [`FALL_ARCH`], so the wings open from the arch it is drawn in.
+fn lain(state: &FlightState, input: &GearInput, (along, speed): (f32, f32)) -> f32 {
+    let steep = 1.0 - smooth(STEEP.0, STEEP.1, state.pitch.cos());
+    let flat = smooth(PRONE_SPEED.0, PRONE_SPEED.1, speed).max(steep);
+    let carried = along * flat.max(1.0 - smooth(CARRY.0, CARRY.1, facing(state)));
+    let loose = state.mode == Mode::Off && !input.grounded && !input.in_water;
+    let arch = smooth(FALL_ARCH.0, FALL_ARCH.1, -state.velocity.y) * f32::from(u8::from(loose));
+    carried.max(state.spread()).max(arch)
 }

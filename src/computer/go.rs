@@ -1,6 +1,6 @@
 //! Go: the one command that sends the ship to a place. It sets the course, hands it to the
 //! autopilot and closes the map, or stops the route that is flown. The Go key, Enter, the
-//! button of the card and the home key all end here.
+//! button of the card and the Home control all end here.
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use super::course::{Press, press};
 use super::locate::here;
 use super::open::Computer;
-use super::route::{Cancel, Destination, Engage, RouteStatus, Target};
+use super::route::{Cancel, Destination, Engage, Homeward, RouteStatus, Target};
 use crate::space::{Anchor, Location, Travel};
 use crate::universe::Universe;
 
@@ -49,8 +49,18 @@ impl Go<'_, '_> {
         }
     }
 
+    /// Returns the home planet as a place to go to.
+    fn home_planet(&self) -> Option<Target> {
+        self.world
+            .as_ref()
+            .map(|(universe, _)| Target::Body(universe.home()))
+    }
+
     /// Presses Go on the place `pick`, or on the course when nothing is picked: sends the ship
-    /// there, or stops the route that already flies there.
+    /// there, or stops the route that already flies there. On the home planet, seated, it also
+    /// asks the ship to fly home to the base: through the orbital cruise above the planet, where
+    /// the ship drops the course it no longer needs, after a climb from its air, or on arrival
+    /// from afar.
     pub fn press(&mut self, pick: Option<Target>) {
         let target = pick.or(self.destination.0);
         let can = self.seated() && !target.is_some_and(|target| self.at(target));
@@ -60,17 +70,22 @@ impl Go<'_, '_> {
                 self.commands.trigger(Engage(target));
                 self.close();
             }
-            Press::Stop => self.commands.trigger(Cancel),
+            Press::Stop => {
+                self.commands.trigger(Cancel);
+                return;
+            }
             Press::Nothing => {}
+        }
+        let home = target.filter(|target| Some(*target) == self.home_planet());
+        if let Some(Target::Body(body)) = home.filter(|_| self.seated()) {
+            self.commands.trigger(Homeward(body));
+            self.close();
         }
     }
 
     /// Presses Go on the home planet: one command, whatever galaxy the ship is in.
     pub fn home(&mut self) {
-        let home = self
-            .world
-            .as_ref()
-            .map(|(universe, _)| Target::Body(universe.home()));
+        let home = self.home_planet();
         self.press(home);
     }
 }

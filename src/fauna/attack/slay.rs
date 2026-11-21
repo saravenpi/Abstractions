@@ -32,15 +32,16 @@ fn fall(beast: &Beast, species: &Species, (key, ground): (u64, f32)) -> Slump {
         .with_y(0.0)
         .normalize_or(Vec3::NEG_Z);
     let body = &species.body;
+    let pivot = Vec3::new(root.at.x, root.place.y.max(ground), root.at.z);
     Slump {
-        pivot: root.at,
+        pivot,
         axis: if key & 1 == 0 { ahead } else { -ahead },
         side: (0.3 * body.height).max(0.05),
         length: 2.0 * body.height,
         angle: LEAN.0,
         rate: LEAN.1,
         rest: std::f32::consts::FRAC_PI_2,
-        air: (root.at.y - ground).max(0.0),
+        air: pivot.y - ground,
         fell: 0.0,
         sink: 0.0,
     }

@@ -45,9 +45,15 @@ mod tests_chain;
 #[cfg(test)]
 mod tests_cost;
 #[cfg(test)]
+mod tests_flee;
+#[cfg(test)]
 mod tests_gait;
 #[cfg(test)]
+mod tests_ground;
+#[cfg(test)]
 mod tests_hill;
+#[cfg(test)]
+mod tests_idle;
 #[cfg(test)]
 mod tests_ik;
 #[cfg(test)]

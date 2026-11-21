@@ -21,3 +21,15 @@ pub const ROCK_ANGLE: f32 = 45.0;
 /// Width in degrees of the band around [`ROCK_ANGLE`] over which a coarse cell turns from ground to rock by
 /// a smooth step, so a hillside of small cliffs reads as a rock-tinted slope from afar and not as grass.
 pub const ROCK_BAND: f32 = 20.0;
+
+/// Levels above the leaves from which a coarse node has half and a quarter of the cells per side.
+/// A node of the quadtree lies 2 to 4.8 of its widths from the eye, so a cell of 32 per side
+/// covers 2 to 4 pixels of the 360 rows of the game image whatever the level. Four levels up a
+/// node is about 1 km wide and 2 km away or more, where the air has taken a third of its colour,
+/// and gets 16 cells of 3.6 to 9 pixels; seven levels up, 16 km away or more, the air has taken
+/// nine tenths, and it gets 8. Unit: quadtree levels.
+pub const SPARSE_LEVELS: (u8, u8) = (4, 7);
+
+/// Metres the skirts of a coarse node hang below the deepest gap a coarser neighbour can leave,
+/// for the sag of its triangles and the rounding of the heights. Unit: metres.
+pub const SKIRT_FLOOR: f32 = 3.0;

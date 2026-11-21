@@ -1,5 +1,5 @@
-//! The sound of a blow, boiled down to what crosses to the audio thread: how loud, how high, how
-//! bright, and from where.
+//! The sound of a blow, boiled down to what crosses to the audio thread: how loud, how high and how
+//! bright. Where it is travels with it as a [`crate::audio::Sound`].
 
 use super::impact::{Impact, Whoosh};
 use super::tune::{BRIGHT, FAST, HEAVY, JOULES_MAX, RING, RING_HZ, WHOOSH_HZ};
@@ -15,7 +15,7 @@ pub enum Kind {
     Whoosh,
 }
 
-/// One sound of a blow, positioned for the listener.
+/// One sound of a blow.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HitSound {
     /// Which sound.
@@ -28,10 +28,6 @@ pub struct HitSound {
     pub hard: f32,
     /// True when a short wet noise goes with it.
     pub wet: bool,
-    /// Where it is: -1 at the listener's left to 1 at the right.
-    pub side: f32,
-    /// How near, 0 out of earshot to 1 beside the head.
-    pub near: f32,
 }
 
 /// Returns the loudness, 0 to 1, of a blow of `joules`: the logarithm of the energy over that of
@@ -46,10 +42,10 @@ pub fn contact(a: f32, b: f32) -> f32 {
     1.0 / (1.0 / a.max(1e-3) + 1.0 / b.max(1e-3))
 }
 
-/// Returns the sound of `impact` heard from `side` and `near`: loud with the logarithm of the energy,
+/// Returns the sound of `impact`: loud with the logarithm of the energy,
 /// ringing at a pitch that follows the square root of the contact stiffness over the cube root of the
 /// mass struck, brighter the stiffer the contact, wet only when the blow cut.
-pub fn of_impact(impact: &Impact, (side, near): (f32, f32)) -> HitSound {
+pub fn of_impact(impact: &Impact) -> HitSound {
     let eff = contact(impact.struck.stiffness, impact.tool.stiffness);
     let hz = RING_HZ * (eff / 10.0).sqrt() / impact.struck.mass.max(0.01).cbrt();
     let scale = (eff / BRIGHT[0]).ln() / (BRIGHT[1] / BRIGHT[0]).ln();
@@ -63,14 +59,12 @@ pub fn of_impact(impact: &Impact, (side, near): (f32, f32)) -> HitSound {
         hz: hz.clamp(RING[0], RING[1]),
         hard: scale.clamp(0.0, 1.0),
         wet: impact.cut && !impact.deflected,
-        side,
-        near,
     }
 }
 
-/// Returns the whoosh of `swing` heard from `side` and `near`: louder with the tip speed and the
-/// inertia of the tool, and lower the heavier the tool is.
-pub fn of_whoosh(swing: &Whoosh, (side, near): (f32, f32)) -> HitSound {
+/// Returns the whoosh of `swing`: louder with the tip speed and the inertia of the tool, and lower
+/// the heavier the tool is.
+pub fn of_whoosh(swing: &Whoosh) -> HitSound {
     let fast = (swing.speed / FAST).clamp(0.0, 1.0);
     let heavy = swing.inertia / (swing.inertia + HEAVY);
     HitSound {
@@ -79,7 +73,5 @@ pub fn of_whoosh(swing: &Whoosh, (side, near): (f32, f32)) -> HitSound {
         hz: WHOOSH_HZ * (1.0 - 0.7 * heavy) * (0.6 + 0.4 * fast),
         hard: 0.0,
         wet: false,
-        side,
-        near,
     }
 }

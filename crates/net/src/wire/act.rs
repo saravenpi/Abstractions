@@ -1,9 +1,11 @@
 //! The hunting acts of a player and the events of a server: what travels on the reliable stream
-//! about animals, spears, blows on robots, wounds, impacts, attacks and rocks.
+//! about animals, spears, blows on robots, wounds, impacts, attacks, rocks and the things players put
+//! on the ground.
 
 use serde::{Deserialize, Serialize};
 
 use super::field::{Attack, Blow, Impact, Opened, Rock, Wound};
+use super::ground::Lying;
 use super::hunt::{AnimalKey, Carcass, Hit, Kill, Spear, SpearKey};
 use crate::log::PlayerId;
 
@@ -56,6 +58,15 @@ pub enum Act {
     Attack(Attack),
     /// A rock was taken.
     Rock(Rock),
+    /// The player puts a thing on the ground. The server gives it its id and tells everyone.
+    Drop(Lying),
+    /// The player asks to take a thing off the ground. The first to ask gets it.
+    Take {
+        /// The thing.
+        id: u64,
+        /// Most kilograms of a heap the player can carry; a tool is taken whole.
+        mass: f32,
+    },
 }
 
 /// Everything about hunting a player needs when joining.
@@ -146,4 +157,31 @@ pub enum Event {
     Attack(Attack),
     /// A rock was taken.
     Rock(Rock),
+    /// A thing lies on the ground: put down, grown by a heap that joined it, or left smaller by a
+    /// take. Everyone gets it, the player who put it down too.
+    Lies(Lying),
+    /// A thing left the ground, taken whole.
+    Gone {
+        /// The thing.
+        id: u64,
+        /// The player who took it.
+        by: PlayerId,
+    },
+    /// The thing the player asked for is theirs: the whole of it, or the part of a heap asked.
+    Granted(Lying),
+    /// The thing the player asked for is gone: another player took it first.
+    Denied(u64),
+    /// The ground could not take the drop with this tag, so the thing stays the player's.
+    Kept(u32),
+    /// Things that lie on the ground, after joining, a part of them in each message.
+    Ground(Vec<Lying>),
+    /// The answer to a cut of this player: the part is theirs, or another player cut it first.
+    Cut {
+        /// The animal it was.
+        animal: AnimalKey,
+        /// Index of the part.
+        part: u8,
+        /// True when the part is this player's.
+        granted: bool,
+    },
 }

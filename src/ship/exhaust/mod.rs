@@ -1,6 +1,6 @@
 //! The exhaust of a ship, as the real exhaust of its engines: the plumes of the main engines,
 //! the lift nozzles and the attitude jets, the heat of the nozzles, the lights they cast, and
-//! the dust the lift nozzles blow off the ground. Everything is driven by the real state of the
+//! the dust the jets blow off the ground. Everything is driven by the real state of the
 //! ship, its thrust and the air around it, and every ship has it, the one this machine flies
 //! and the puppets of other players, from the thrust the records carry.
 //!
@@ -65,9 +65,9 @@ pub(super) fn plugin(app: &mut App) {
         drive::paint,
         drive::stretch,
         lights::glare,
-        dust::raise.run_if(dust::blowing),
+        dust::raise.run_if(dust::ready.and_then(dust::blowing)),
         dust::drift
-            .run_if(dust::drifting)
+            .run_if(dust::ready.and_then(dust::drifting))
             .run_if(any_with_component::<GameCamera>),
     );
     let run = (plume::equip.run_if(plume::bare), state::feed, drawn);

@@ -7,6 +7,7 @@ use std::path::Path;
 use serde::Deserialize;
 
 use super::World;
+use crate::ground::Pile;
 use crate::log::Changes;
 
 /// The keys of the game's world file a server needs. Every other key is ignored, and a
@@ -24,10 +25,13 @@ struct GameWorld {
     atlas: Option<toml::Table>,
     /// What the player changed, oldest first.
     changes: Changes,
+    /// The things on the ground of the world.
+    ground: Pile,
 }
 
-/// Returns the server world held in the game's world file at `path`. The atlas comes back as
-/// TOML text, or empty when the file has none, so the first player builds a new one.
+/// Returns the server world held in the game's world file at `path`, with the things on its
+/// ground. The atlas comes back as TOML text, or empty when the file has none, so the first player
+/// builds a new one.
 pub fn import(path: &Path) -> io::Result<World> {
     let text = fs::read_to_string(path)?;
     let game: GameWorld =
@@ -42,6 +46,7 @@ pub fn import(path: &Path) -> io::Result<World> {
         clock: game.clock_seconds,
         changes: game.changes,
         atlas,
+        ground: game.ground.lying,
         ..World::default()
     })
 }

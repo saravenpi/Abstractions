@@ -32,8 +32,9 @@ pub fn mesh() -> Mesh {
     .with_inserted_indices(Indices::U32(indices()))
 }
 
-/// Writes the ribbon of `trail` into the vertex buffers of `mesh` without changing their size.
-pub fn write(mesh: &mut Mesh, trail: &Trail) {
+/// Writes the ribbon of `trail` into the vertex buffers of `mesh` without changing their size, at
+/// the opacity `look` gives, as [`fill`] reads it.
+pub fn write(mesh: &mut Mesh, trail: &Trail, look: [f32; 2]) {
     let (
         Some(VertexAttributeValues::Float32x3(positions)),
         Some(VertexAttributeValues::Float32x4(colours)),
@@ -45,7 +46,7 @@ pub fn write(mesh: &mut Mesh, trail: &Trail) {
         return;
     };
     let (mut positions, mut colours) = (positions, colours);
-    fill(trail, &mut positions, &mut colours);
+    fill(trail, look, &mut positions, &mut colours);
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colours);
 }

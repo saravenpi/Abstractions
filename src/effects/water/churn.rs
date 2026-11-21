@@ -12,11 +12,11 @@ use super::super::rng::Rng;
 use super::drops::{Drop, Drops};
 use super::foam::{Foam, FoamMesh};
 use super::throw::{Hand, Mark, Spot, ring, wake};
-use super::trail;
 use super::tune::{
     BUBBLES_PER_METRE, BUBBLES_PER_SECOND, JUMP, RIPPLE_PERIOD, SPRAY_PER_METRE, SPRAY_PER_SECOND,
 };
 use super::wash::{Flow, flow, ripple_speed, skim, thrown};
+use super::{trail, wet};
 use crate::render::smoothstep;
 use crate::space::{Anchor, Clock, altitude, up};
 use crate::world::wake::Wakes;
@@ -200,7 +200,8 @@ impl Work<'_, '_, '_> {
     }
 }
 
-/// Churns the sea under every source: spray, bubbles, wakes and ripple rings.
+/// Churns the sea under every source: spray, bubbles, wakes and ripple rings. A source over dry
+/// land churns nothing: its flow meets the ground, which raises dust or nothing, never spray.
 pub fn churn(
     mut sea: Sea,
     mut sources: Query<(&mut Churn, &Transform), Without<Drop>>,
@@ -231,6 +232,9 @@ pub fn churn(
         let (velocity, metres) = churn.trace.travel(work.anchor, at.translation, dt);
         let found = spot(work.anchor, sea.terrain.globe(), (at.translation, velocity));
         let size = churn.size;
-        work.tend(churn, &Spot { size, now, ..found }, metres);
+        match wet(&sea.terrain, work.anchor, at.translation) {
+            true => work.tend(churn, &Spot { size, now, ..found }, metres),
+            false => churn.trace.mark = None,
+        }
     }
 }

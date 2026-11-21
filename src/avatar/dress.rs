@@ -29,13 +29,15 @@ const SHOW_HEAD: f32 = 0.5;
 const ROLL_HARD: f32 = 0.7;
 
 /// Returns the mode of a body the filler put in `filled`, whose gear is in `state` and takes a
-/// touchdown as `touched`, `deep` under the sea or not.
+/// touchdown as `touched`, `deep` under the sea or not. A body the gear lays prone that rises
+/// with its wings folded, as out of a climb, falls in the arch, never stands up in the rise of a
+/// jump.
 pub fn mode(filled: Mode, state: &FlightState, touched: Touch, deep: bool) -> Mode {
     match state.mode {
         Flight::BootFall => Mode::BootFall,
         Flight::Glide => Mode::Glide,
         Flight::Fly => Mode::Fly,
-        Flight::Fall if state.velocity.y > 0.5 => Mode::Jump,
+        Flight::Fall if state.velocity.y > 0.5 && state.prone < 0.5 => Mode::Jump,
         Flight::Fall => Mode::Fall,
         Flight::Roll | Flight::Slide => touched.mode(),
         Flight::Off if filled == Mode::Swim && deep => Mode::Dive,
@@ -111,9 +113,25 @@ pub struct Worn<'w, 's> {
     terrain: Res<'w, Terrain>,
 }
 
+/// Returns the attitude of the gear in `state` in the frame of a player entity turned to `yaw`,
+/// and keeps it in `held` while the gear carries the body through the air. On the ground it is
+/// the one held from the last moment in the air, the attitude the flight poses blend out of
+/// as the body lands, whichever way the entity turns meanwhile.
+pub fn attitude(state: &FlightState, yaw: f32, held: &mut Quat) -> Quat {
+    if state.mode.airborne() && state.attitude.is_finite() {
+        *held = state.attitude;
+    }
+    Quat::from_rotation_y(-yaw) * *held
+}
+
 /// Dresses the pose input of the body at this machine from its gear and the view, and chooses
 /// what is drawn of it.
-pub fn wear(worn: Worn, mut poses: Query<&mut AvatarPose>, mut drawn: ResMut<Shown>) {
+pub fn wear(
+    worn: Worn,
+    mut poses: Query<&mut AvatarPose>,
+    mut drawn: ResMut<Shown>,
+    mut held: Local<Quat>,
+) {
     let Some((player, body)) = worn.own.body() else {
         return;
     };
@@ -132,6 +150,7 @@ pub fn wear(worn: Worn, mut poses: Query<&mut AvatarPose>, mut drawn: ResMut<Sho
         false => looked(&worn.heading, motion.yaw),
     };
     dress(&mut pose, &gear.state, look, height < DIVE_BELOW);
+    pose.attitude = Some(attitude(&gear.state, motion.yaw, &mut held));
     pose.clearance = match motion.grounded {
         true => 0.0,
         false => gear.input.clearance,

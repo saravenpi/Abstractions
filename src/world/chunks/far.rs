@@ -5,6 +5,7 @@ use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::po
 
 use super::Chunks;
 use super::build::{NodeData, render_only};
+use super::horizon::Bounds;
 use super::nodes::Node;
 use super::scene::Scene;
 use super::spawn::Spawner;
@@ -47,7 +48,15 @@ impl FarView {
             .get_or_insert_with(|| pool.spawn(async move { render_only(bake(&globe)) }));
         if let Some(mesh) = block_on(poll_once(task)) {
             let frame = Frame::PLANET;
-            self.node = Some(spawner.coarse(commands, NodeData { mesh, frame }));
+            let bounds = Bounds::WHOLE;
+            self.node = Some(spawner.coarse(
+                commands,
+                NodeData {
+                    mesh,
+                    frame,
+                    bounds,
+                },
+            ));
             self.task = None;
         }
     }

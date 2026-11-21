@@ -12,11 +12,14 @@ use bevy::prelude::*;
 use super::asks::{Intents, ask, gather};
 use super::climb::{Reach, ease};
 use super::flight::{Air, clearance, density, settle};
-use super::ground::{MIN_GROUND_NORMAL, probe};
+use super::floor::Floor;
+use super::ground::{Ground, MIN_GROUND_NORMAL, probe};
 use super::keys::send;
 use super::lead::lead;
+pub use super::motion::Motion;
 use super::sea::above_sea;
-use super::steer::{Steer, Turn};
+use super::spread::{Spread, tell};
+use super::surface::Bare;
 use super::upright::{facing, tilt};
 use super::walk::{Step, velocity};
 use super::{Player, PlayerSet};
@@ -27,42 +30,10 @@ use crate::sim::IntentOf;
 use crate::space::{Anchor, altitude, local_gravity, on_foot, up};
 use crate::view::ViewSet;
 use crate::wind::{Thickness, Wind};
-use crate::world::Terrain;
+use crate::world::{Chunks, Terrain};
 
 /// Longest simulated frame, to survive hitches.
 const MAX_DT: f32 = 0.05;
-
-/// Movement state owned by the controller.
-#[derive(Component, Debug, Default, Clone, Copy)]
-pub struct Motion {
-    /// Current velocity in the upright frame of the body: +Y is the local up.
-    pub velocity: Vec3,
-    /// Heading of the body in radians around the local up. The body orientation follows it. In
-    /// first person it is the heading of the view; in third person the body turns to where it goes.
-    pub yaw: f32,
-    /// Whether walkable ground was touched on the last step.
-    pub grounded: bool,
-    /// Remaining seconds in which a jump is still allowed.
-    pub coyote: f32,
-    /// Whether the body is swimming instead of walking.
-    pub swimming: bool,
-    /// How far the body is crouched, from 0 (standing) to 1 (fully down).
-    pub crouch: f32,
-    /// Whether the wingsuit is asked open. Only the air keeps it: landing and water fold it.
-    pub wings: bool,
-    /// Whether the boots are fired: the run key is held in the air, pressed there, on the wings
-    /// or in a fast fall. A run that only carries on through a jump never fires them.
-    pub boots: bool,
-    /// Whether the held jump key already worked the gear in the air, and so starts no jump
-    /// until let go.
-    pub spent: bool,
-    /// The heading the movement keys are read against.
-    pub steer: Steer,
-    /// How the body turns to its heading.
-    pub turn: Turn,
-    /// How far the eyes trail the body after a step-up, in the upright frame. It fades away.
-    pub lag: Vec3,
-}
 
 /// Services the controller needs besides the player query.
 #[derive(SystemParam)]
@@ -76,9 +47,36 @@ pub(super) struct Env<'w, 's> {
     body: Option<Res<'w, Condition>>,
     slide: MoveAndSlide<'w, 's>,
     query: SpatialQuery<'w, 's>,
+    floor: Floor<'w, 's>,
+    chunks: Option<Res<'w, Chunks>>,
 }
 
-impl Env<'_, '_> {
+impl<'w, 's> Env<'w, 's> {
+    /// Returns the planet's own ground, which a body of `shape` stands on where no collider is
+    /// loaded around it.
+    fn bare<'a>(&'a self, shape: (&'a Collider, Quat)) -> Bare<'a, 'w, 's> {
+        Bare {
+            anchor: &self.anchor,
+            terrain: &self.terrain,
+            floor: &self.floor,
+            chunks: self.chunks.as_deref(),
+            shape,
+        }
+    }
+
+    /// Returns the ground under a body: the colliders a downward cast of its `collider` meets
+    /// from `at`, turned by `tilt` from its upright frame, or where none is loaded the ground
+    /// the terrain draws.
+    fn ground(
+        &self,
+        (collider, at): (&Collider, &Transform),
+        tilt: Quat,
+        filter: &SpatialQueryFilter,
+    ) -> Option<Ground> {
+        probe(&self.query, collider, at, tilt, filter)
+            .or_else(|| self.bare((collider, at.rotation)).ground(at.translation))
+    }
+
     /// Reads the per-frame values of a body at render position `at` that is asked `asks`.
     fn step(&self, at: Vec3, asks: &Intents) -> Step {
         let globe = self.terrain.globe();
@@ -125,7 +123,8 @@ impl Env<'_, '_> {
     }
 
     /// Moves a body at `from` by `velocity`, given in render axes, for `dt` seconds, sliding
-    /// along what it meets. Also returns whether it met something too steep to stand on.
+    /// along what it meets, and over bare ground never under it. Also returns whether it met
+    /// something too steep to stand on.
     fn moved(
         &self,
         (collider, from): (&Collider, &Transform),
@@ -135,7 +134,7 @@ impl Env<'_, '_> {
     ) -> (MoveAndSlideOutput, bool) {
         let up = from.rotation * Vec3::Y;
         let mut steep = false;
-        let out = self.slide.move_and_slide(
+        let mut out = self.slide.move_and_slide(
             collider,
             from.translation,
             from.rotation,
@@ -148,6 +147,8 @@ impl Env<'_, '_> {
                 MoveAndSlideHitResponse::Accept
             },
         );
+        self.bare((collider, from.rotation))
+            .keep(from.translation, &mut out);
         (out, steep)
     }
 }
@@ -162,14 +163,21 @@ type Body = (
     &'static Intents,
 );
 
-/// Moves every player body by the intents of its player.
-pub(super) fn drive(env: Env, mut players: Query<Body, With<Player>>) {
+/// Moves every player body by the intents of its player, and tells when its wings change.
+pub(super) fn drive(
+    env: Env,
+    mut players: Query<Body, With<Player>>,
+    mut spread: Option<ResMut<Messages<Spread>>>,
+) {
     for body in &mut players {
-        step_body(&env, body);
+        let (entity, was) = (body.0, body.2.wings);
+        let now = step_body(&env, body);
+        tell(spread.as_deref_mut(), entity, (was, now));
     }
 }
 
-/// Runs one step of intents, ground detection, flight gear and collision-aware movement.
+/// Runs one step of intents, ground detection, flight gear and collision-aware movement, and
+/// returns whether the wings are asked open after it.
 ///
 /// A body on foot that move and slide stops against a steep contact climbs a low step.
 fn step_body(
@@ -182,12 +190,12 @@ fn step_body(
         Mut<Gear>,
         &Intents,
     ),
-) {
+) -> bool {
     let step = env.step(transform.translation, asks);
     let to_render = tilt(up(&env.anchor, transform.translation));
     let intent = ask(&mut motion, asks, &step);
     let filter = SpatialQueryFilter::from_excluded_entities([entity]);
-    let floor = probe(&env.query, collider, &transform, to_render, &filter);
+    let floor = env.ground((collider, &transform), to_render, &filter);
     let down = (transform.translation, to_render * Vec3::NEG_Y);
     let air = env.air(down, motion.grounded, &filter, &step);
     let wanted = velocity((&mut motion, &mut gear), &intent, floor, &air, &step);
@@ -210,6 +218,7 @@ fn step_body(
     body.yaw = body.turn.step(body.yaw, toward, step.dt);
     transform.translation = at;
     transform.rotation = facing(up(&env.anchor, at), motion.yaw);
+    motion.wings
 }
 
 /// Registers the controller: the local intents are sent after the mouse is read, then every
@@ -217,6 +226,7 @@ fn step_body(
 /// gathered on every frame, so the step before the body takes over is never stale.
 pub(super) fn plugin(app: &mut App) {
     app.add_message::<IntentOf>()
+        .add_message::<Spread>()
         .configure_sets(
             Update,
             (PlayerSet::Intend, PlayerSet::Move)

@@ -29,9 +29,6 @@ const LOAD_RATE: f32 = 8.0;
 /// Airspeeds between which the cloth starts to flutter and flutters fully.
 const FLUTTER_SPEED: (f32, f32) = (10.0, 60.0);
 
-/// Airspeeds between which the rush of air closes in on the view.
-const RUSH_SPEED: (f32, f32) = (55.0, 110.0);
-
 /// Where the gear sits on the body as it is drawn, in render space. Left comes first.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Limbs {
@@ -208,7 +205,6 @@ fn publish(scene: &Scene, last: &FlightFx) -> FlightFx {
         wings: state.spread(),
         mode: state.mode,
         flutter: taut * air * (0.6 + 0.4 * (state.load / 2.0).min(1.0)),
-        rush: smooth(RUSH_SPEED.0, RUSH_SPEED.1, state.airspeed) * air,
         pressure,
         buffet: felt(last.buffet, buffet(pressure), scene.dt),
         thinning: 1.0 - scene.sigma.min(1.0),

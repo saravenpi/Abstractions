@@ -15,8 +15,10 @@ mod rate;
 mod rolls;
 mod sense;
 mod sighted;
+mod slip;
 mod spread;
 mod stall;
+mod start;
 mod transitions;
 mod turn;
 mod vacuum;
@@ -43,12 +45,14 @@ pub(super) struct Flight {
 }
 
 impl Flight {
-    /// Returns a body in `mode` moving at `velocity`, with the spool and wings already settled.
+    /// Returns a body in `mode` moving at `velocity`, with the spool and wings already settled:
+    /// on the wings it lies prone along them, as a settled glide does.
     pub(super) fn new(mode: Mode, velocity: Vec3) -> Self {
         let state = FlightState {
             mode,
             velocity,
             wings: f32::from(u8::from(mode.winged())),
+            prone: f32::from(u8::from(mode.winged())),
             thrust: f32::from(u8::from(matches!(mode, Mode::Fly | Mode::BootFall))),
             ..FlightState::default()
         };
@@ -69,7 +73,7 @@ impl Flight {
             .max((self.state.velocity - before.velocity).length());
         self.twist = self
             .twist
-            .max(self.state.attitude.angle_between(before.attitude));
+            .max(self.state.attitude.angle_between(before.pose()));
         self.pos += self.state.velocity.as_dvec3() * f64::from(dt);
     }
 

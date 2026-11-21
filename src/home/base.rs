@@ -64,7 +64,7 @@ impl Base {
     }
 
     /// Returns true when the planet position `pos` lies over the footprint of the base grown by
-    /// `margin` metres. Props and structure sites keep out of it.
+    /// `margin` metres. Props keep out of it.
     pub fn covers(&self, pos: DVec3, margin: f64) -> bool {
         let from = pos - self.centre;
         (from - self.up * from.dot(self.up)).length() <= FOOTPRINT + margin

@@ -1,6 +1,6 @@
 //! The game camera look: render target, graphics options and projection.
 
-use bevy::camera::{Hdr, RenderTarget};
+use bevy::camera::{Hdr, RenderTarget, ShadowLodOrigin};
 use bevy::core_pipeline::prepass::{DepthPrepass, NormalPrepass};
 use bevy::ecs::system::SystemParam;
 use bevy::pbr::ScreenSpaceAmbientOcclusion;
@@ -70,6 +70,12 @@ struct Look<'w> {
 
 /// Gives the first-person camera its post-process, fog, field of view and effects. Without the
 /// low-resolution game view, as in a run without a window, the camera keeps its own target.
+///
+/// The camera is the [`ShadowLodOrigin`]: Bevy picks the level of detail a mesh casts its shadow
+/// with from that origin, and without one it takes the camera that draws to the window, the one
+/// that shows the low-resolution picture, far from the world. The robot, the companion and the
+/// ship then cast with no level at all: the camera kept their near mesh on the CPU and the GPU
+/// culled it for being far from that other camera, so they had no shadow.
 fn setup_camera(
     add: On<Add<GameCamera>>,
     mut commands: Commands,
@@ -89,7 +95,7 @@ fn setup_camera(
     let key = FogKey::home(look.palette.horizon);
     commands
         .entity(add.entity)
-        .insert((fog_for(key), Murk::default()));
+        .insert((fog_for(key), Murk::default(), ShadowLodOrigin));
 }
 
 /// Registers the camera setup.

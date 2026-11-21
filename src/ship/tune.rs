@@ -36,6 +36,17 @@ pub const ORBIT_RAMP: f64 = 0.8;
 /// climbing from a planet has to reach the speed of its orbit, and escapes it at 1.41 times that.
 pub const ORBIT_CAP: f64 = 2.0;
 
+/// Top speed in metres per second of the speed hold in open space, the one cap of the speed
+/// rule: reached 48 km from the nearest surface, so a low orbit already flies at orbital speeds
+/// and nothing jumps between flight near a planet and open space.
+pub const SPACE_CAP: f64 = 30_000.0;
+
+/// Times the speed at which the nose starts to glow that the assist and the autopilot fly in
+/// air: the air is the brake, and heat is what it costs. At 1.4 times the onset the heating is
+/// 2.7 times its first bound, a mild orange glow on the nose and the leading edges, as a real
+/// return from orbit shows. A ship falling in faster keeps its speed and glows more.
+pub const HEAT: f64 = 1.4;
+
 /// Share of the Hill radius of a planet or a moon inside which it is the body the world streams.
 pub const BODY_SWITCH: f64 = 0.1;
 

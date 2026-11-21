@@ -9,6 +9,7 @@
 mod quality;
 mod reach;
 mod tune;
+mod twin;
 
 #[cfg(test)]
 mod tests;
@@ -167,15 +168,17 @@ fn update_lights(
     }
 }
 
-/// Registers the lights and their update, which runs after the place light is worked out and
-/// before the shadow cascades are built from the pose of the lights.
+/// Registers the lights, their twins on the water mirror layer and their update, which runs after
+/// the place light is worked out and before the shadow cascades are built from the pose of the
+/// lights.
 pub(super) fn plugin(app: &mut App) {
     app.add_plugins(quality::plugin)
         .init_resource::<DirectionalLightShadowMap>()
-        .add_systems(OnEnter(Screen::Loading), spawn_lights)
+        .add_systems(OnEnter(Screen::Loading), (spawn_lights, twin::spawn))
         .add_systems(
             PostUpdate,
-            update_lights
+            (update_lights, twin::follow)
+                .chain()
                 .after(PlaceLit)
                 .before(SimulationLightSystems::UpdateDirectionalLightCascades),
         );

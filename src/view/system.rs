@@ -8,7 +8,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::io::{BodyFade, CameraPose, Heading, Look, Moment, Occluder, Target};
-use super::keys::{read_look, toggle};
+use super::keys::{read_look, recentre, toggle};
 use super::mode::ViewPrefs;
 use super::occlude;
 use super::rig::Rig;
@@ -18,6 +18,8 @@ use crate::render::{GameCamera, Waterline};
 use crate::screens::{in_control, shown};
 use crate::settings::{Persistent, Settings};
 use crate::ship::Ship;
+use crate::space::Anchor;
+use crate::world::Terrain;
 
 /// Whether the rig drives the game camera. Off by default.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -62,10 +64,28 @@ struct Sight<'w, 's> {
     hidden: Query<'w, 's, (), Hidden>,
     /// The camera sphere.
     ball: Res<'w, Ball>,
+    /// The terrain, whose drawn ground stops the camera where no collider is loaded.
+    terrain: Option<Res<'w, Terrain>>,
+    /// The render anchor.
+    anchor: Option<Res<'w, Anchor>>,
 }
 
 impl Occluder for Sight<'_, '_> {
     fn cast(&self, origin: Vec3, direction: Vec3, max: f32, radius: f32) -> Option<f32> {
+        let hit = self.collide(origin, direction, max, radius);
+        let (Some(terrain), Some(anchor)) = (self.terrain.as_deref(), self.anchor.as_deref())
+        else {
+            return hit;
+        };
+        let reach = hit.unwrap_or(max);
+        super::ground::drawn((terrain, anchor), (origin, direction), reach, radius).or(hit)
+    }
+}
+
+impl Sight<'_, '_> {
+    /// Returns how far a sphere of `radius` travels from `origin` along `direction` before it
+    /// touches a collider the camera does not look through, within `max` metres.
+    fn collide(&self, origin: Vec3, direction: Vec3, max: f32, radius: f32) -> Option<f32> {
         let dir = Dir3::new(direction).ok()?;
         let filter = SpatialQueryFilter::default();
         let seen = |entity: Entity| !self.hidden.contains(entity);
@@ -199,7 +219,8 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(
             Update,
             (
-                (read_look, toggle)
+                (read_look, toggle, recentre)
+                    .chain()
                     .run_if(in_control)
                     .in_set(ViewSet::Input),
                 (drive, apply).chain().in_set(ViewSet::Rig),

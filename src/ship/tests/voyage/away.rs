@@ -6,7 +6,10 @@ use bevy::prelude::*;
 use super::{flight, here, key};
 use crate::audio::{AudioCue, ChirpKind};
 use crate::companion::CompanionChirp;
-use crate::computer::{Atlas, Engage, RouteStatus, Target, ship_position, target_position};
+use crate::computer::{
+    Atlas, Destination, Engage, RouteStatus, Target, ship_position, target_position,
+};
+use crate::player::{Interact, Verb};
 use crate::render::FlightFx;
 use crate::ship::berth::landing_spot;
 use crate::ship::landing::GEAR_DROP;
@@ -52,6 +55,7 @@ fn order<T: PartialEq + std::fmt::Debug>(seen: &[T], wanted: &[T]) -> Vec<usize>
 /// the ship out at the lock distance of that planet, which becomes the planet the world streams.
 pub fn warps_to_another_planet(game: &mut Game, home: BodyId) -> BodyId {
     let far = neighbour(game, home);
+    game.app.world_mut().resource_mut::<Destination>().0 = Some(Target::Body(far));
     game.app.world_mut().trigger(Engage(Target::Body(far)));
     game.until("the drive to spool", 3000, |game| {
         game.get::<Autopilot>().phase() == Phase::Spooling
@@ -135,7 +139,7 @@ pub fn lands(game: &mut Game, far: BodyId) {
     );
     let before = game.get::<Log>().ship.len();
     game.press(key(game, |keys| keys.ship.sink));
-    game.until("the ship to land", 900, |game| game.ship().landed);
+    flight::until_landed(game);
     game.release(key(game, |keys| keys.ship.sink));
     game.step(2);
     let (log, telemetry) = (game.get::<Log>(), game.get::<ShipTelemetry>());
@@ -156,6 +160,8 @@ pub fn steps_out(game: &mut Game, far: BodyId) {
     game.pace(FRAME);
     let seat = game.walker().feet;
     game.wait("the ground under the ship", |game| game.has_ground(seat));
+    let offered = |game: &mut Game| game.get::<Interact>().is(Verb::Leave);
+    game.wait("leaving to be offered", offered);
     game.press(key(game, |keys| keys.ship.board));
     game.step(1);
     game.release(key(game, |keys| keys.ship.board));

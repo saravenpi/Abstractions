@@ -22,14 +22,17 @@ pub const STARTER: KeyCode = KeyCode::F8;
 
 /// A rock near the robot: its identity, the planet position of its middle, and the planet
 /// position on the ground where the robot stands to break it.
-struct Found {
-    id: RockId,
-    mid: DVec3,
-    feet: DVec3,
+pub struct Found {
+    /// The identity of the rock.
+    pub id: RockId,
+    /// Planet position of its middle.
+    pub mid: DVec3,
+    /// Planet position on the ground where the robot stands to break it.
+    pub feet: DVec3,
 }
 
 /// What the scan for a rock reads: the physics world, the loaded chunks and where things are.
-type Scan<'w, 's> = (
+pub type Scan<'w, 's> = (
     SpatialQuery<'w, 's>,
     Res<'w, Chunks>,
     Query<'w, 's, &'static GlobalTransform>,
@@ -40,7 +43,7 @@ type Scan<'w, 's> = (
 /// Finds the rock nearest the robot, from 2.5 m to 30 m off, by casting rays down on a grid
 /// around it and asking the loaded chunks which hits are rocks, as the pick key does for the
 /// one ray of the crosshair.
-fn scan((space, chunks, placed, anchor, players): Scan) -> Option<Found> {
+pub fn scan((space, chunks, placed, anchor, players): Scan) -> Option<Found> {
     let me = players.iter().next()?.translation();
     let up = abstractions::space::up(&anchor, me);
     let east = up.any_orthonormal_vector();
@@ -173,8 +176,8 @@ pub fn offer_words(world: &World) -> String {
         Err(why) => format!("no proposal: {why}"),
     };
     format!(
-        "workshop tab {:?}, intent {:?}, pick {}, {said}; note \"{}\"",
-        bench.tab, bench.intent, bench.pick, bench.note
+        "workshop pane {:?}, intent {:?}, pick {}, {said}; note \"{}\"",
+        bench.pane, bench.intent, bench.pick, bench.note
     )
 }
 

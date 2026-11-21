@@ -1,25 +1,21 @@
-//! One-shot sounds: a fixed pool of blip voices fed by cues.
+//! One-shot sounds: a fixed pool of blip voices fed by cues, and the voices of the animals, each
+//! heard through its own ears from where its cue starts.
 
-pub(super) mod calls;
 mod chirps;
 mod hits;
 pub(super) mod sounds;
-mod steps;
 pub(super) mod voice;
 
-use voice::Voice;
+use voice::{Blip, Voice};
 
-use super::call::Call;
 use super::cue::AudioCue;
 use super::dsp::rand::Rand;
-use super::hit::HitSound;
-use super::shore::stereo;
+use super::spatial::Spot;
+use super::throat::Throats;
+use super::throat::tune::BUDDY_UNDER;
 
 /// Blips that can sound at once. A cue that finds no free voice loses the blips that do not fit.
 const VOICES: usize = 16;
-
-/// Voices a call of an animal leaves free for every other cue.
-const CALL_SPARE: usize = 6;
 
 /// Voices a blow leaves free for every other cue: with 16 voices, blows hold 10 at most, about three
 /// of them at once.
@@ -37,8 +33,10 @@ pub struct Pool {
     rand: Rand,
     /// Sample rate in hertz.
     rate: f32,
-    /// Left and right gains of what the companion says, from where it floats.
-    buddy: [f32; 2],
+    /// What the last frame sent the cabin around ears in the seat, and what of it was the interface.
+    sent: (f32, [f32; 2]),
+    /// The voices of the animals.
+    throats: Throats,
 }
 
 impl Pool {
@@ -48,87 +46,89 @@ impl Pool {
             voices: std::array::from_fn(|i| Voice::new(0x9E37_79B9_u32.wrapping_mul(i as u32 + 1))),
             rand: Rand::new(VARIATION_SEED, 0),
             rate,
-            buddy: [1.0; 2],
+            sent: (0.0, [0.0; 2]),
+            throats: Throats::new(rate),
         }
     }
 
-    /// Places the voice of the companion: on `side` from -1 (left) to 1 (right), `near` from 0
-    /// (out of earshot) to 1 (beside the head). A chirp keeps the place it started at.
-    pub fn locate(&mut self, side: f32, near: f32) {
-        self.buddy = stereo(side, near);
-    }
-
-    /// Starts every blip of `cue` on free voices.
-    pub fn play(&mut self, cue: AudioCue) {
+    /// Starts `cue` heard as `spot` says: an animal call on the voices of the animals, a blow only
+    /// when it leaves voices free for the rest, anything else on free blip voices. A cue under the
+    /// floor of hearing takes no voice. The companion speaks under a calling animal.
+    pub fn play(&mut self, cue: AudioCue, spot: &Spot) {
+        if !spot.heard() {
+            return;
+        }
         match cue {
-            AudioCue::Call(call) => return self.call(call),
-            AudioCue::Hit(sound) => return self.hit(sound),
-            _ => {}
+            AudioCue::Call(call) => self.throats.play(call, spot),
+            AudioCue::Hit(sound) => {
+                let (blips, count) = hits::hit(&sound, &mut self.rand);
+                let free = self.voices.iter().filter(|voice| voice.idle()).count();
+                if free >= count + HIT_SPARE {
+                    self.start(&blips[..count], (1.0, 1.0, false), spot);
+                }
+            }
+            _ => {
+                let (blips, pitch, gain) = sounds::recipe(cue, &mut self.rand);
+                let busy = matches!(cue, AudioCue::Chirp(_)) && self.throats.busy();
+                let under = if busy { BUDDY_UNDER } else { 1.0 };
+                self.start(blips, (pitch, gain * under, cue.is_interface()), spot);
+            }
         }
-        let (blips, pitch, gain) = sounds::recipe(cue, &mut self.rand);
+    }
+
+    /// Starts `blips` on free voices at a pitch factor and a level, as sounds of the interface or
+    /// not, late by the delay of `spot` and heard from it.
+    fn start(&mut self, blips: &[Blip], (pitch, gain, ui): (f32, f32, bool), spot: &Spot) {
+        let rate = self.rate;
         let free = self.voices.iter_mut().filter(|voice| voice.idle());
-        let sides = match cue {
-            AudioCue::Chirp(_) => self.buddy,
-            _ => [1.0; 2],
-        };
         for (voice, blip) in free.zip(blips) {
-            voice.start(*blip, pitch, gain, self.rate);
-            voice.sides = sides;
+            let late = Blip {
+                delay: blip.delay + spot.delay,
+                ..*blip
+            };
+            voice.start(late, pitch, gain, rate);
+            voice.ear.place(spot, rate);
+            voice.ui = ui;
         }
     }
 
-    /// Starts the blips of the animal `call` from where it is, only when [`CALL_SPARE`] voices stay free
-    /// for the rest.
-    fn call(&mut self, call: Call) {
-        let (blips, count) = calls::call(&call, &mut self.rand);
-        let free = self.voices.iter().filter(|voice| voice.idle()).count();
-        if free < count + CALL_SPARE {
-            return;
-        }
-        let sides = stereo(call.side, call.near);
-        let idle = self.voices.iter_mut().filter(|voice| voice.idle());
-        for (voice, blip) in idle.zip(&blips[..count]) {
-            voice.start(*blip, 1.0, 1.0, self.rate);
-            voice.sides = sides;
-        }
-    }
-
-    /// Starts the blips of a blow or a swing from where it is, only when [`HIT_SPARE`] voices stay free
-    /// for the rest: at most three blips for a blow.
-    fn hit(&mut self, sound: HitSound) {
-        let (blips, count) = hits::hit(&sound, &mut self.rand);
-        let free = self.voices.iter().filter(|voice| voice.idle()).count();
-        if free < count + HIT_SPARE {
-            return;
-        }
-        let sides = stereo(sound.side, sound.near);
-        let idle = self.voices.iter_mut().filter(|voice| voice.idle());
-        for (voice, blip) in idle.zip(&blips[..count]) {
-            voice.start(*blip, 1.0, 1.0, self.rate);
-            voice.sides = sides;
-        }
-    }
-
-    /// Returns how many voices are free.
+    /// Returns how many blip voices are free.
     #[cfg(test)]
     pub fn free(&self) -> usize {
         self.voices.iter().filter(|voice| voice.idle()).count()
     }
 
-    /// Returns true while any blip is sounding or waiting to.
+    /// Returns true while any blip or animal is sounding or waiting to.
     #[cfg(test)]
     pub fn busy(&self) -> bool {
-        self.voices.iter().any(|voice| !voice.idle())
+        self.voices.iter().any(|voice| !voice.idle()) || self.throats.busy()
+    }
+
+    /// Returns the voices of the animals.
+    #[cfg(test)]
+    pub fn throats(&self) -> &Throats {
+        &self.throats
+    }
+
+    /// Returns what the last frame sent the cabin, for its reflections, and what of it was the
+    /// interface, which plays on while the game is paused.
+    pub fn sent(&self) -> (f32, [f32; 2]) {
+        self.sent
     }
 
     /// Renders one stereo frame.
     pub fn frame(&mut self) -> [f32; 2] {
-        self.voices.iter_mut().fold([0.0; 2], |sum, voice| {
+        let (mut sum, mut sent, mut ui) = (self.throats.frame(), 0.0, [0.0; 2]);
+        for voice in self.voices.iter_mut().filter(|voice| !voice.idle()) {
             let sample = voice.frame();
-            [
-                sum[0] + sample * voice.sides[0],
-                sum[1] + sample * voice.sides[1],
-            ]
-        })
+            let [left, right] = voice.ear.frame(sample, sample);
+            sum = [sum[0] + left, sum[1] + right];
+            sent += 0.5 * (left + right) * voice.ear.room();
+            if voice.ui {
+                ui = [ui[0] + left, ui[1] + right];
+            }
+        }
+        self.sent = (sent, ui);
+        sum
     }
 }

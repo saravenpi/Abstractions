@@ -9,6 +9,7 @@ use crate::audio::cue::AudioCue;
 use crate::audio::mix::BLOCK;
 use crate::audio::ship::Fleet;
 use crate::audio::ship::feed::{Ch, Deck, HULLS, HullSound};
+use crate::audio::spatial::{Air, Spot};
 use crate::settings::Audio as Volumes;
 
 /// Largest step between two samples the seat may hear when the state of the ship jumps. The
@@ -34,14 +35,17 @@ fn jumps() -> [HullSound; 6] {
 
 /// The state of the ship may jump from any value to any other between two frames: every value
 /// is smoothed, so the seat hears no step, and neither does a listener who stands 60 metres off
-/// or one who gets in and out.
+/// or one who gets in and out. The listener stays in the seat the round after a burn: one who
+/// gets out of a burn hears its roar 60 metres off, whose own noise moves more than a step per
+/// sample. [`getting_out_of_a_burn_sweeps_nothing`] holds that case.
 #[test]
 fn a_jump_of_the_state_makes_no_step() {
     let (mut mixer, shared) = mixer(&alone(seated(parked())));
     let steady = listen(&mut mixer, 3.0);
     assert!(steady.jump < STEP, "steady {}", steady.jump);
     for (round, hull) in jumps().into_iter().cycle().take(18).enumerate() {
-        let hull = if round % 5 < 3 { seated(hull) } else { hull };
+        let seat = round % 5 < 3 || round % 6 == 1;
+        let hull = if seat { seated(hull) } else { hull };
         shared.publish(&alone(hull), &Volumes::default());
         let stats = listen(&mut mixer, 0.7);
         assert!(
@@ -50,6 +54,29 @@ fn a_jump_of_the_state_makes_no_step() {
             stats.jump
         );
     }
+}
+
+/// A listener who gets out of a ship in the middle of a burn hears the roar on its way from
+/// where they stand, no rougher than that burn heard there all along. A delay that glided from
+/// the seat out to them would play it at up to twice its pitch, which is rougher.
+#[test]
+fn getting_out_of_a_burn_sweeps_nothing() {
+    let burn = parked().with(Ch::Thrust, 0.55).with(Ch::Lift, 1.0);
+    let (mut there, _) = mixer(&alone(burn));
+    listen(&mut there, 3.0);
+    let steady = listen(&mut there, 2.0);
+    let (mut pilot, shared) = mixer(&alone(parked()));
+    listen(&mut pilot, 3.0);
+    shared.publish(&alone(seated(burn)), &Volumes::default());
+    listen(&mut pilot, 2.0);
+    shared.publish(&alone(parked()), &Volumes::default());
+    let out = listen(&mut pilot, 0.7);
+    assert!(
+        !out.broken && out.jump < steady.jump,
+        "{} {}",
+        out.jump,
+        steady.jump
+    );
 }
 
 /// The same scene renders the same samples every time: every random number is seeded.
@@ -87,7 +114,7 @@ fn locks_and_landings_thump() {
     let landing = |strength: f32| {
         let (mut mixer, shared) = mixer(&alone(seated(parked().with(Ch::Power, 0.0))));
         listen(&mut mixer, 6.0);
-        shared.push(AudioCue::Land(strength));
+        shared.push(AudioCue::Land(strength), &Spot::FLAT);
         listen(&mut mixer, 1.0).peak
     };
     assert!(landing(1.0) > landing(0.1));
@@ -104,14 +131,15 @@ fn the_ships_cost_little() {
     deck.publish(&[seated(loud).with(Ch::Warp, 1.0), loud, loud]);
     let dt = BLOCK as f32 / RATE;
     let mut fleet = Fleet::new(RATE, dt);
+    let absorb = Air::home().absorb;
     let seconds = 4.0;
     let clock = Instant::now();
     let mut peak = 0.0_f32;
     for i in 0..frames(seconds) {
         if i % BLOCK as usize == 0 {
-            fleet.tune(&deck, 0.0, dt);
+            fleet.tune(&deck, (0.0, absorb), dt);
         }
-        peak = peak.max(fleet.frame(0.0)[0].abs());
+        peak = peak.max(fleet.frame()[0].abs());
     }
     let spent = clock.elapsed().as_secs_f32();
     println!("{HULLS} ships: {:.1} times real time", seconds / spent);

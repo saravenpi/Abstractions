@@ -6,7 +6,7 @@
 
 use bevy::prelude::*;
 
-use super::paint::{MARGIN, bar, flush, write};
+use super::paint::{MARGIN, bar, flush, label, write};
 use super::pixels::{Ink, Pixels};
 use super::readings::{LAMPS, Lamp};
 use super::tune::ANGLE_STEP;
@@ -18,11 +18,18 @@ pub const SIDE: (usize, usize) = (32, 72);
 pub const FLIGHT: (usize, usize) = (72, 72);
 
 /// Centre of the attitude ball in the flight display, its radius, and the pixels a radian of
-/// pitch moves its horizon.
-pub const BALL: (IVec2, f32, f32) = (IVec2::new(36, 50), 18.0, 14.0);
+/// pitch moves its horizon: under the two figures, within the margin.
+pub const BALL: (IVec2, f32, f32) = (IVec2::new(36, 56), 13.0, 10.0);
 
 /// Radius in pixels of the area of the ball the marks of the course and of the body move in.
-pub const REACH: f32 = 15.0;
+pub const REACH: f32 = 11.0;
+
+/// Rows of a figure of the flight display, from its top: the small legend, the value under it,
+/// and the gauge under the value.
+pub const FIGURE: (i32, i32, i32) = (0, 6, 16);
+
+/// Rows of the tops of the two figures of the flight display.
+pub const FIGURES: [i32; 2] = [2, 21];
 
 /// A figure of the flight display: its words and the step of the gauge under them.
 pub type Figure<'a> = (Option<&'a str>, Option<u8>);
@@ -41,18 +48,18 @@ pub fn drive(bars: [Option<u8>; 3]) -> Pixels {
     pixels
 }
 
-/// Paints one figure of the flight display from row `y`: the `legend`, the words against the
-/// right edge, and the gauge under them. A legend the words would run into is left out.
+/// Paints one figure of the flight display from row `y`: the `legend` in the small font, the
+/// words under it against the right edge, and the gauge under them. The legend has its own row,
+/// so it shows whatever the length of the words.
 fn line(pixels: &mut Pixels, y: i32, legend: &str, (words, gauge): Figure) {
+    let (top, value, under) = FIGURE;
     if let Some(words) = words {
         let x = flush(pixels, words.chars().count());
-        if x > MARGIN + 20 {
-            write(pixels, legend, (MARGIN, y), Ink::Dim);
-        }
-        write(pixels, words, (x.max(MARGIN), y), Ink::Lit);
+        label(pixels, legend, (MARGIN, y + top), Ink::Dim);
+        write(pixels, words, (x.max(MARGIN), y + value), Ink::Lit);
     }
     if let Some(step) = gauge {
-        bar(pixels, (y + 10, 2), step);
+        bar(pixels, (y + under, 2), step);
     }
 }
 
@@ -119,8 +126,8 @@ fn marks(pixels: &mut Pixels, [course, body]: [Option<IVec2>; 2]) {
 /// has a horizon or a mark, and with nothing to show the display is dark.
 pub fn flight(figures: [Figure; 2], level: Option<IVec2>, shown: [Option<IVec2>; 2]) -> Pixels {
     let mut pixels = Pixels::dark(FLIGHT.0, FLIGHT.1);
-    line(&mut pixels, 3, "SPD", figures[0]);
-    line(&mut pixels, 19, "ALT", figures[1]);
+    line(&mut pixels, FIGURES[0], "SPD", figures[0]);
+    line(&mut pixels, FIGURES[1], "ALT", figures[1]);
     if level.is_some() || shown.iter().any(Option::is_some) {
         ball(&mut pixels, level);
         marks(&mut pixels, shown);

@@ -28,6 +28,9 @@ pub const NO_PLACE: &str = "Click a place to see how to get there.";
 /// What the card says when the place is where the player is.
 pub const HERE: &str = "You are here.";
 
+/// What the card of the home planet says while the player sits in the ship.
+pub const FLY_HOME: &str = "The ship flies to the base and glides down near it.";
+
 /// What the card says when the autopilot can take the course but no time can be told yet.
 pub const READY: &str = "The autopilot flies there.";
 
@@ -71,6 +74,21 @@ pub fn hud_line(name: &str, status: RouteStatus, keys: &Keys) -> String {
     }
 }
 
+/// Returns what the ship does on the route in the state `status` to `name`, as a status line with
+/// no key in it: it says what is happening, never what a key does. Empty while the route is idle
+/// or blocked, since the prompt line says why a course cannot go.
+pub fn status_line(name: &str, status: RouteStatus) -> String {
+    match status {
+        RouteStatus::Idle | RouteStatus::Blocked(_) => String::new(),
+        RouteStatus::Climbing => "Climbing out of the air".to_string(),
+        RouteStatus::Dropping => "Slowing down".to_string(),
+        RouteStatus::Aligning(_) => format!("Turning toward {name}"),
+        RouteStatus::Spooling => "Charging the warp drive".to_string(),
+        RouteStatus::InWarp => format!("In warp to {name}"),
+        RouteStatus::Arrived => format!("Arrived at {name}"),
+    }
+}
+
 /// What the card of a place needs to say what Go does there.
 #[derive(Debug, Clone, Copy)]
 pub struct Ask<'a> {
@@ -88,6 +106,9 @@ pub struct Ask<'a> {
     pub eta: Option<&'a str>,
     /// The names of the keys the sentences mention.
     pub keys: &'a Keys,
+    /// Whether the place is the home planet: Go flies home through the orbital cruise, from
+    /// anywhere, its own air and orbit included.
+    pub home: bool,
 }
 
 /// Returns `words` with its first letter in capitals and a full stop at its end.
@@ -107,6 +128,9 @@ pub fn card_line(ask: &Ask) -> (bool, String) {
     if ask.ours && flown {
         return (false, hud_line(ask.name, ask.status, ask.keys));
     }
+    if ask.home && ask.seated {
+        return (true, FLY_HOME.to_string());
+    }
     if ask.here {
         return (false, HERE.to_string());
     }
@@ -114,7 +138,7 @@ pub fn card_line(ask: &Ask) -> (bool, String) {
         return (false, Block::OnFoot.words(ask.keys));
     }
     match ask.status {
-        RouteStatus::Blocked(block) => (false, block.words(ask.keys)),
+        RouteStatus::Blocked(block) if block != Block::Lost => (false, block.words(ask.keys)),
         _ => (true, ask.eta.map_or(READY.to_string(), sentence)),
     }
 }
@@ -144,7 +168,9 @@ pub fn press(
     };
     match (running(status), course == Some(target)) {
         (true, true) => Press::Stop,
-        _ if !can || matches!(status, RouteStatus::Blocked(_)) => Press::Nothing,
+        _ if !can || matches!(status, RouteStatus::Blocked(b) if b != Block::Lost) => {
+            Press::Nothing
+        }
         _ => Press::Go(target),
     }
 }

@@ -23,8 +23,8 @@ pub struct Scene {
     pub camera: Vec3,
     /// Unit view direction of the camera.
     pub view: Vec3,
-    /// The ship, the door of the home base and the nearest structure, when each is close.
-    pub sights: [Option<Vec3>; 3],
+    /// The ship and the door of the home base, when each is close.
+    pub sights: [Option<Vec3>; 2],
 }
 
 impl Scene {

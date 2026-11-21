@@ -92,9 +92,9 @@ fn on_the_ground() -> Ship {
 fn the_manual_ship_is_bit_identical() {
     let seen = [in_the_air(), in_space(), on_the_ground()].map(|ship| digest(&ship));
     let frozen = [
-        5_056_145_825_944_329_500,
+        16_125_447_917_601_301_813,
         15_576_487_431_479_213_754,
-        10_027_318_458_121_415_745,
+        5_513_272_306_115_299_292,
     ];
     assert_eq!(seen, frozen);
 }

@@ -40,9 +40,8 @@ pub struct ViewPrefs {
     pub auto_follow: bool,
     /// Third person zoom, as a multiple of the boom of the rig. The wheel changes it.
     pub zoom: f32,
-    /// Strength of the speed effects, from 0 (off) to 1 (full): the widening of the view, the
-    /// shake of the air and the streaks of the wind. At 0 the view keeps the field of view that
-    /// was set and nothing shakes.
+    /// Strength of the speed effects, from 0 (off) to 1 (full): the widening of the view and the
+    /// shake of the air. At 0 the view keeps the field of view that was set and nothing shakes.
     pub speed_fx: f32,
 }
 
@@ -76,9 +75,11 @@ impl ViewPrefs {
         }
     }
 
-    /// Zooms by `notches` wheel notches, positive toward the body, within the limits.
+    /// Zooms by `notches` wheel notches, positive toward the body, within the limits. A wheel that
+    /// reads NaN leaves the zoom as it was, and a NaN zoom comes back as the nearest limit.
     pub fn zoom_by(&mut self, notches: f32) {
-        let zoom = self.zoom * ZOOM_STEP.powf(notches);
-        self.zoom = zoom.clamp(ZOOM_RANGE.0, ZOOM_RANGE.1);
+        let step = if notches.is_finite() { notches } else { 0.0 };
+        let zoom = self.zoom * ZOOM_STEP.powf(step);
+        self.zoom = zoom.max(ZOOM_RANGE.0).min(ZOOM_RANGE.1);
     }
 }

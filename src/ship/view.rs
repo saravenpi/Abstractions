@@ -1,17 +1,16 @@
-//! The ship as the camera rig sees it: the seat the body sits in, the target the rig follows,
-//! and the shake of rough air on top of the view the rig made.
+//! The ship as the camera rig sees it: the seat the body sits in and the target the rig
+//! follows. The shake of the view is in `brace`.
 
 use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::body::Ship;
-use super::shake::{Buffet, JOLT, shake};
 use super::telemetry::{ShipTelemetry, WarpState};
 use crate::player::Player;
 use crate::render::{GameCamera, smoothstep};
 use crate::space::{Anchor, Frame, Location, Placed, Travel, up};
-use crate::view::{Kind, Target, ViewPrefs};
+use crate::view::{Kind, Target};
 
 /// Eye point of the pilot in body axes, under the canopy. The body of the player sits there.
 pub const SEAT: DVec3 = DVec3::new(0.0, 0.9, -1.3);
@@ -90,23 +89,4 @@ pub fn carry(
         kind: Kind::Ship,
         ..Target::default()
     };
-}
-
-/// Shakes the view the rig made in rough air and after a crash: an offset and a tilt on top of
-/// it, scaled by the "Speed effects" setting. The rig writes the whole camera pose every frame,
-/// so the shake never adds up.
-pub fn buffet(
-    time: Res<Time>,
-    level: Res<Buffet>,
-    prefs: Res<ViewPrefs>,
-    mut eyes: Single<&mut Transform, With<GameCamera>>,
-) {
-    let strength = (level.level + level.jolt * JOLT.0) * prefs.speed_fx.clamp(0.0, 1.0);
-    if strength <= 0.0 {
-        return;
-    }
-    let (offset, tilt) = shake(time.elapsed_secs_wrapped(), strength);
-    let turned = eyes.rotation * offset;
-    eyes.translation += turned;
-    eyes.rotation = (eyes.rotation * tilt).normalize();
 }

@@ -3,7 +3,7 @@
 use bevy::math::DVec3;
 
 use super::align;
-use super::goal::abroad;
+use super::goal::between_galaxies;
 use crate::ship::body::Ship;
 use crate::ship::pilot::Goal;
 use crate::ship::warp::{Tier, Warp};
@@ -25,7 +25,10 @@ pub(super) fn plan(
     (to, held): (DVec3, Tier),
 ) -> (Tier, DVec3) {
     let tier = match ship.warp {
-        Warp::Off => Tier::of(to.length(), abroad(ship.frame, goal.target)),
+        Warp::Off => Tier::of(
+            to.length(),
+            between_galaxies(universe, ship.frame, (goal.target, to.length())),
+        ),
         _ => held,
     };
     let drift = ship.vel * align::spool(ship.warp);

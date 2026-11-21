@@ -31,9 +31,9 @@ fn the_gear_touches_down_on_contact_and_slides_along_the_ground() {
         gap: 0.3,
     };
     let on = Ground { gap: 0.02, ..near };
-    assert!(!touching(Mode::Fly, Some(near)) && touching(Mode::Fly, Some(on)));
-    assert!(touching(Mode::Slide, Some(near)) && touching(Mode::Off, Some(near)));
-    assert!(!touching(Mode::Off, None));
+    assert!(!touching(Mode::Fly, Some(near), 0) && touching(Mode::Fly, Some(on), 0));
+    assert!(touching(Mode::Slide, Some(near), 0) && touching(Mode::Off, Some(near), 0));
+    assert!(!touching(Mode::Off, None, 0));
     let fast = Vec3::new(0.0, -2.0, -12.0);
     assert_eq!(carried(&gear(Mode::Off, fast), Some(on), 0.016), None);
     assert_eq!(
@@ -73,8 +73,9 @@ fn held() -> Intent {
     }
 }
 
-/// Fired boots reach the gear, the sprint key alone only with the wingsuit asked open, the
-/// forward key pushes the nose down and the yaw keys turn.
+/// Fired boots reach the gear, the sprint key alone never, the wingsuit asked open or not: the
+/// boots are fired by a press in the air, see `asks::ask`. The forward key pushes the nose down
+/// and the yaw keys turn.
 #[test]
 fn keys_map_to_the_gear() {
     let (air, mut intent) = (air(), held());
@@ -84,7 +85,7 @@ fn keys_map_to_the_gear() {
     assert_eq!((told.pitch, told.roll, told.wind), (-1.0, -1.0, Vec3::X));
     assert_eq!(told.yaw, 0.5);
     motion.wings = true;
-    assert!(input(&motion, &intent, &air, (false, false)).boost);
+    assert!(!input(&motion, &intent, &air, (false, false)).boost);
     (motion.wings, intent.sprint, motion.boots) = (false, false, true);
     let told = input(&motion, &intent, &air, (true, true));
     assert!(told.boost && told.grounded && told.in_water);

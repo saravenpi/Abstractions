@@ -2,7 +2,7 @@
 
 use bevy::prelude::KeyCode;
 
-use super::course::{Course, words};
+use super::course::{CANCEL, Course, words};
 use super::prompt::{State, choose, offered};
 use crate::computer::{Block, Keys, RouteStatus};
 use crate::player::{Offer, Verb};
@@ -12,20 +12,25 @@ use crate::settings::Keymap;
 fn full() -> State {
     State {
         block: Some("Take off first.".to_string()),
+        notice: Some((KeyCode::KeyH, "Flint 1.2 kg".to_string())),
         running: Some((KeyCode::KeyG, "Warping to Mars".to_string())),
         ready: Some((KeyCode::KeyG, "Go to Mars".to_string())),
         act: Some((KeyCode::KeyF, "Board".to_string())),
-        hint: Some((KeyCode::KeyM, "Open the map")),
     }
 }
 
-/// A block beats a running course, which beats a course ready, which beats the action of a key, which
-/// beats a hint; with nothing, there is no row.
+/// A block beats the notice of what was just picked up, which beats a running course, which beats a
+/// course ready, which beats the action of a key; with nothing, there is no row.
 #[test]
 fn the_priority_order_holds() {
     let mut state = full();
     assert_eq!(choose(&state), Some((None, "Take off first.".to_string())));
     state.block = None;
+    assert_eq!(
+        choose(&state),
+        Some((Some(KeyCode::KeyH), "Flint 1.2 kg".to_string()))
+    );
+    state.notice = None;
     assert_eq!(
         choose(&state),
         Some((Some(KeyCode::KeyG), "Warping to Mars".to_string()))
@@ -41,11 +46,6 @@ fn the_priority_order_holds() {
         Some((Some(KeyCode::KeyF), "Board".to_string()))
     );
     state.act = None;
-    assert_eq!(
-        choose(&state),
-        Some((Some(KeyCode::KeyM), "Open the map".to_string()))
-    );
-    state.hint = None;
     assert_eq!(choose(&state), None);
 }
 
@@ -65,9 +65,9 @@ fn the_course_words_follow_the_route() {
     let ready = words(&course(RouteStatus::Idle), true, key);
     assert_eq!(ready.ready.as_deref(), Some("Go to Mars"));
     let warp = words(&course(RouteStatus::InWarp), true, key);
-    assert_eq!(warp.running.as_deref(), Some("Warping to Mars"));
+    assert_eq!(warp.running.as_deref(), Some(CANCEL));
     let spool = words(&course(RouteStatus::Spooling), true, key);
-    assert_eq!(spool.running.as_deref(), Some("Charging the warp drive."));
+    assert_eq!(spool.running.as_deref(), Some(CANCEL));
     let stuck = words(&course(RouteStatus::Blocked(Block::Landed)), true, key);
     assert!(stuck.block.is_some() && stuck.running.is_none());
     let walking = words(&course(RouteStatus::Idle), false, key);
@@ -78,21 +78,28 @@ fn the_course_words_follow_the_route() {
 }
 
 /// Every action a key does names itself and what it acts on, with the key bound to it: the
-/// interact key for the four that share it, the pick key for stone, the mend key for a patch.
+/// interact key for the five that share it, the pick key for stone, the mend key for a patch.
 #[test]
 fn every_offered_action_names_its_key_and_its_thing() {
     let mut keys = Keymap::default();
     keys.ship.board = KeyCode::KeyT;
     keys.mend = KeyCode::KeyY;
-    let said = |verb, thing| offered(Offer { verb, thing }, &keys);
+    let said = |verb, thing| {
+        let grams = None;
+        offered(Offer { verb, thing, grams }, &keys)
+    };
     let row = |key, words: &str| (key, words.to_string());
     assert_eq!(
         said(Verb::Carve, "thigh"),
         row(KeyCode::KeyT, "Cut the thigh")
     );
     assert_eq!(
-        said(Verb::Pull, "spear"),
-        row(KeyCode::KeyT, "Pull the spear")
+        said(Verb::Pull, "flint javelin"),
+        row(KeyCode::KeyT, "Pull out the flint javelin")
+    );
+    assert_eq!(
+        said(Verb::Take, "flint javelin"),
+        row(KeyCode::KeyT, "Take the flint javelin")
     );
     assert_eq!(said(Verb::Board, ""), row(KeyCode::KeyT, "Board"));
     assert_eq!(said(Verb::Leave, ""), row(KeyCode::KeyT, "Leave the ship"));
@@ -101,4 +108,29 @@ fn every_offered_action_names_its_key_and_its_thing() {
         said(Verb::Mend, "Left arm"),
         row(KeyCode::KeyY, "Mend the left arm")
     );
+}
+
+/// A take names what it takes and its mass, in kilograms or in grams, on the interact key.
+#[test]
+fn a_take_names_the_thing_and_its_mass() {
+    let mut keys = Keymap::default();
+    keys.ship.board = KeyCode::KeyT;
+    let flint = Offer {
+        verb: Verb::Take,
+        thing: "flint",
+        grams: Some(1_200),
+    };
+    let said = |offer| offered(offer, &keys).1;
+    assert_eq!(offered(flint, &keys).0, KeyCode::KeyT);
+    assert_eq!(said(flint), "Take the flint 1.2 kg");
+    let light = Offer {
+        grams: Some(300),
+        ..flint
+    };
+    assert_eq!(said(light), "Take the flint 300 g");
+    let unweighed = Offer {
+        grams: None,
+        ..flint
+    };
+    assert_eq!(said(unweighed), "Take the flint");
 }

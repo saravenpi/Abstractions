@@ -12,7 +12,7 @@ use super::drag::{density, pressure, slow, stability};
 use super::flight::{Controls, Report, rotate, thrusters};
 use super::frames::spin_rate;
 use super::landing::Contact;
-use super::rest::{settle, wakes};
+use super::rest::{REBOUND_HEIGHT, bounce_time, settle, wakes};
 use crate::universe::PlanetSpec;
 use crate::wind::thickness;
 
@@ -47,7 +47,8 @@ fn engines(
     if !ship.assist {
         return thrusters(ship, controls);
     }
-    let set_down = (touch.ground || touch.wet) && controls.lift <= 0.0;
+    let bounce = ship.since < bounce_time(hold.0.length()) && touch.radar < REBOUND_HEIGHT;
+    let set_down = (touch.ground || touch.wet || bounce) && controls.lift <= 0.0;
     if set_down && ship.throttle < NEUTRAL {
         return DVec3::ZERO;
     }

@@ -9,6 +9,7 @@
 
 use super::tune::{HISS_Q, KNEE, WET_Q};
 use crate::audio::cue::StepSurface;
+use crate::audio::step::Step;
 
 /// The answer of one kind of ground.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -28,6 +29,10 @@ pub struct Material {
     /// resonance of its band.
     pub wet: (f32, f32, f32, f32, f32, f32),
 }
+
+/// The squeak of packed snow on a cold world: the ice crystals rub as the sole presses them, a
+/// short chirp near 1.8 kHz that each grain sets off and that dies within a few milliseconds.
+const SQUEAK: (f32, f32, f32, f32) = (1800.0, 6.0, 0.0, 0.15);
 
 /// Ground with no ring: loose or soft ground swallows the sole.
 const DEAD: (f32, f32, f32, f32) = (500.0, 4.0, 0.0, 0.0);
@@ -76,10 +81,10 @@ const GROUNDS: [Material; 10] = [
         wet: DRY,
     },
     Material {
-        thud: (60.0, 1.3, 0.0465),
-        click: (500.0, 0.6, 0.02, 0.0124),
-        grain: (900.0, 3200.0, 2.5, 800.0, 0.2, 0.0775),
-        ring: (1300.0, 22.0, 0.0, 0.4),
+        thud: (90.0, 0.9, 0.16),
+        click: (700.0, 0.6, 0.015, 0.008),
+        grain: (500.0, 2000.0, 0.8, 1500.0, 0.12, 0.05),
+        ring: DEAD,
         wet: DRY,
     },
     Material {
@@ -117,11 +122,16 @@ pub const fn of(surface: StepSurface) -> Material {
     GROUNDS[surface as usize]
 }
 
-/// Returns the answer of `surface` under a foot in water `depth` metres deep: only water wades.
-pub fn ground(surface: StepSurface, depth: f32) -> Material {
-    match surface {
-        StepSurface::Water => wading(of(surface), depth),
-        _ => of(surface),
+/// Returns the answer of the ground under `step`: water wades by its depth, and packed snow on a
+/// cold world squeaks.
+pub fn ground(step: &Step) -> Material {
+    match step.surface {
+        StepSurface::Water => wading(of(step.surface), step.depth),
+        StepSurface::Snow if step.cold => Material {
+            ring: SQUEAK,
+            ..of(step.surface)
+        },
+        surface => of(surface),
     }
 }
 

@@ -45,5 +45,8 @@ pub const RIVER: f32 = 0.2;
 /// Slope under which the rock of high land lies as loose stones.
 pub const GRAVEL_SLOPE: f32 = 0.35;
 
+/// Temperature in kelvin under which packed snow squeaks under a foot: -10 degrees.
+pub const SQUEAK: f64 = 263.15;
+
 /// Rain, from 0 to 1, over which soil and paths are mud.
 pub const MUDDY: f32 = 0.4;

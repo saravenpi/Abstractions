@@ -1,6 +1,7 @@
 //! The tooltip: the name of an icon control, shown on a panel under it after the pointer rested
 //! on it for [`motion::TOOLTIP_DELAY`] seconds, faded in over [`motion::FADE`]. Put a [`Tip`]
-//! next to the `Hovered` of a button to give it one.
+//! next to the `Hovered` of a button to give it one. The panel stays inside the window: it moves
+//! in at a side edge, and goes above the control when there is no room under it.
 
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
@@ -46,7 +47,6 @@ pub(super) fn spawn(mut commands: Commands) {
             padding: UiRect::axes(px(theme::S3), px(theme::S2)),
             ..default()
         },
-        UiTransform::from_translation(Val2::percent(-50.0, 0.0)),
         BackgroundColor(Color::NONE),
         GlobalZIndex(i32::MAX - 1),
         Pickable::IGNORE,
@@ -70,6 +70,8 @@ pub type Parts<'w, 's> = (
             &'static mut Node,
             &'static mut BackgroundColor,
             &'static mut Visibility,
+            &'static ComputedNode,
+            &'static ComputedUiRenderTargetInfo,
         ),
         With<Bubble>,
     >,
@@ -92,16 +94,33 @@ fn said<'a>(tip: Option<&'a Tip>, text: Option<&'a TipText>) -> &'a str {
     fixed.or(text.map(|text| text.0.as_str())).unwrap_or("")
 }
 
-/// Puts the panel under the control the words `tip` belong to and writes them.
+/// Returns the top left corner of a tooltip `bubble` large for the control that spans `control`,
+/// in a window `screen` large: centred under the control, moved in at a side edge so it keeps
+/// [`theme::S2`] from it, and above the control when there is no room under it. All in logical
+/// pixels.
+fn place(control: Rect, bubble: Vec2, screen: Vec2) -> Vec2 {
+    let centred = control.center().x - bubble.x * 0.5;
+    let left = centred.min(screen.x - theme::S2 - bubble.x).max(theme::S2);
+    let under = control.max.y + theme::S1;
+    let top = match under + bubble.y > screen.y - theme::S2 {
+        true => (control.min.y - theme::S1 - bubble.y).max(0.0),
+        false => under,
+    };
+    Vec2::new(left, top)
+}
+
+/// Puts the panel by the control the words `tip` belong to, inside the window, and writes them.
 fn move_under(
     (tip, size, at): (&str, &ComputedNode, &UiGlobalTransform),
     (panel, words): &mut Parts,
 ) {
     let scale = size.inverse_scale_factor;
-    let below = (at.translation.y + size.size.y * 0.5) * scale + theme::S1;
-    if let Ok((mut node, ..)) = panel.single_mut() {
-        node.left = px(at.translation.x * scale);
-        node.top = px(below);
+    let control = Rect::from_center_size(at.translation * scale, size.size * scale);
+    if let Ok((mut node, _, _, bubble, target)) = panel.single_mut() {
+        let screen = target.physical_size().as_vec2() * scale;
+        let corner = place(control, bubble.size * bubble.inverse_scale_factor, screen);
+        node.left = px(corner.x);
+        node.top = px(corner.y);
     }
     if let Ok((mut text, _)) = words.single_mut() {
         text.set_if_neq(Text(tip.to_string()));
@@ -111,7 +130,7 @@ fn move_under(
 /// Fades the panel to `alpha`, eased.
 fn tint(alpha: f32, (panel, words): &mut Parts) {
     let eased = motion::ease_out(alpha);
-    if let Ok((_, mut fill, mut visibility)) = panel.single_mut() {
+    if let Ok((_, mut fill, mut visibility, ..)) = panel.single_mut() {
         visibility
             .set_if_neq([Visibility::Hidden, Visibility::Inherited][usize::from(alpha > 0.0)]);
         fill.set_if_neq(BackgroundColor(
@@ -150,3 +169,7 @@ pub(super) fn update(
     }
     tint(alpha, &mut parts);
 }
+
+#[cfg(test)]
+#[path = "tooltip_tests.rs"]
+mod tests;

@@ -60,7 +60,6 @@ fn glyph(at: usize) -> impl Bundle {
         TextFont::from_font_size(theme::ICON).with_font(ICON_FONT),
         TextLayout::no_wrap(),
         TextColor(Color::WHITE),
-        TextShadow::default(),
     )
 }
 
@@ -72,7 +71,6 @@ fn arrow(at: usize) -> impl Bundle {
         TextFont::from_font_size(theme::ICON).with_font(ICON_FONT),
         TextLayout::no_wrap(),
         TextColor(Color::WHITE),
-        TextShadow::default(),
         Node {
             display: Display::None,
             position_type: PositionType::Absolute,
@@ -90,7 +88,6 @@ fn label(at: usize) -> impl Bundle {
         Label(at),
         text("", theme::FONT_SMALL, theme::TEXT),
         TextLayout::no_wrap(),
-        TextShadow::default(),
         Node {
             padding: UiRect::horizontal(px(theme::S1)),
             ..default()

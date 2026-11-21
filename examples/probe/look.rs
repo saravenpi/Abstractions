@@ -1,7 +1,7 @@
 //! Stages that judge the sky and the light: the same view at several hours of the day.
 
 use abstractions::render::{CloudShell, Palette, Starfield, Vantage};
-use abstractions::world::spin;
+use abstractions::universe::sun;
 
 use super::*;
 
@@ -15,8 +15,7 @@ const SETTLE: u32 = 90;
 fn star_height(world: &World, here: DVec3, time: f64) -> f64 {
     let body = world.resource::<Planet>().body;
     let spec = world.resource::<Universe>().planet(body);
-    let toward = -spec.position(time).normalize_or(DVec3::X);
-    here.dot(spin(spec.day_seconds, time).inverse() * toward)
+    here.dot(sun(&spec, time))
 }
 
 /// Moves the clock to the next moment in the day the star stands at the sine `height` over the

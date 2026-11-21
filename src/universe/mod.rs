@@ -5,6 +5,7 @@
 mod air;
 mod class;
 mod climate;
+mod daystar;
 mod density;
 mod dust;
 mod galaxy;
@@ -67,6 +68,7 @@ mod volatiles_tests;
 
 pub use air::{GAS_CONSTANT, Gas, Mix, NO_AIR, Part, TOP_SCALES, dense, heights};
 pub use class::{MOLTEN, VOLCANIC};
+pub use daystar::{Daystar, solar_day, sun, turn};
 pub use density::Parts;
 pub use galaxy::{ARMS, CENTER_SPAN, RADIUS_LY};
 pub use giant::{GIANT_MASS, GIANT_RADIUS};

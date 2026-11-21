@@ -9,6 +9,7 @@ pub fn title(world: &mut World, _: &mut Notes, frame: u32) -> Act {
             shot(world, "00-title");
             Act::Wait
         }
+        30 if std::env::var("PROBE_JOIN").is_ok() => join(world),
         30 => {
             let seed = std::env::var("SMOKE_SEED")
                 .ok()
@@ -25,6 +26,22 @@ pub fn title(world: &mut World, _: &mut Notes, frame: u32) -> Act {
         }
         _ => Act::Wait,
     }
+}
+
+/// Joins the server `PROBE_JOIN` names, the way the multiplayer menu does: a `JoinServer` message
+/// for the driver, with the password of `PROBE_PASSWORD` and the player name of `PROBE_NAME`.
+fn join(world: &mut World) -> Act {
+    let address = std::env::var("PROBE_JOIN").unwrap_or_default();
+    if let Ok(name) = std::env::var("PROBE_NAME") {
+        world.resource_mut::<Persistent<Settings>>().player_name = name;
+    }
+    let password = std::env::var("PROBE_PASSWORD").ok();
+    world.write_message(JoinServer {
+        address,
+        expected_key: None,
+        password,
+    });
+    Act::Next
 }
 
 /// The loading screen, until the world is played.

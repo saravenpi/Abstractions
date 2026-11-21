@@ -11,6 +11,8 @@
 //!   The title, loading, boot and wake stages always run.
 //! - `SMOKE_ONLY` and `SMOKE_SKIP`: comma lists of stage names to keep or to leave out.
 //! - `SMOKE_TARGET` and `SMOKE_FLASH`: see the `warp` and `boot` stages.
+//! - `PROBE_JOIN=<address>`: join that server instead of starting a world, with `PROBE_NAME` as the player name
+//!   and `PROBE_PASSWORD`. The `mp` stages then meet the other players (see the `mp` module).
 //! - `PROBE_SOFT`: when set, a system whose parameters fail validation is logged and skipped instead of
 //!   stopping the game, so one run lists every such system.
 //!
@@ -22,6 +24,7 @@ use std::time::{Duration, Instant};
 
 use abstractions::computer::{Engage, Target};
 use abstractions::home::Base;
+use abstractions::net::JoinServer;
 use abstractions::player::{Motion, Player, place};
 use abstractions::saves::{SaveDir, Starter, new_entry};
 use abstractions::screens::{Screen, WarmUp};
@@ -51,6 +54,7 @@ mod grass;
 mod herd;
 mod launch;
 mod meter;
+mod mp;
 mod orbital;
 mod room;
 mod seen;
@@ -74,6 +78,7 @@ use grass::*;
 use herd::*;
 use launch::*;
 use meter::*;
+use mp::*;
 use orbital::*;
 use room::*;
 use seen::*;

@@ -17,10 +17,11 @@ use crate::home::Base;
 use crate::universe::Universe;
 use crate::world::chunks::planted;
 use crate::world::globe::{Pad, Reserve};
+use crate::world::lands::Verdure;
 use crate::world::mesh::chunk_heights;
 use crate::world::rocks::Taken;
-use crate::world::scatter::Carpet;
 use crate::world::scatter::zones::hold;
+use crate::world::scatter::{Carpet, Flora, turf_of};
 use crate::world::{CHUNK_SIZE, Globe, Terrain};
 
 /// Metres from the middle of the pad within which tiles and chunks are checked: past its corner and its margin.
@@ -62,6 +63,12 @@ fn no_blade_stands_on_the_pad() {
     let (mut turfed, mut bare) = (0, 0);
     for seed in 0..10 {
         let (globe, base, terrain) = base_of(seed);
+        let at = terrain.locate(base.pad);
+        let seen = Verdure::of(&terrain, Vec2::new(at.x, at.z));
+        let colours = Flora::of(&terrain, Vec2::new(at.x, at.z))
+            .and_then(|flora| turf_of(&flora))
+            .map(|turf| turf.colours);
+        println!("PAD seed {seed}: turf colours {colours:?}, baked mean {seen:?}");
         let none = Cropped::default();
         let clear = |p: DVec3| blocked(p, (&[], &none), &globe);
         for key in cells_near(&terrain, base.pad, TILE) {

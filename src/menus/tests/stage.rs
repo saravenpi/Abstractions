@@ -61,6 +61,14 @@ pub fn narrowest() -> f32 {
     each.fold(f32::INFINITY, f32::min)
 }
 
+/// Returns the shortest height any window of [`windows`] gives a page at any interface size.
+pub fn shortest() -> f32 {
+    let each = windows()
+        .into_iter()
+        .flat_map(|window| InterfaceSize::ALL.map(|size| layout(window, size).y));
+    each.fold(f32::INFINITY, f32::min)
+}
+
 /// Returns the lines that items `widths` wide take, `gap` apart, in lines `room` wide, laid out as
 /// a wrapping row or a wrapping text lays them: an item goes to the next line when it does not fit
 /// after the ones before it.

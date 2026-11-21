@@ -78,7 +78,7 @@ pub use style::{Filled, Look, Selected, Tone};
 pub use table::{cell, head, row_with, table_head, table_row, value_cell};
 pub use tile::{TallRow, Tile, card, line, row_tall};
 pub use tooltip::{Tip, TipText};
-pub use widgets::{Overlay, caps, column, panel, root, root_on, rule, text};
+pub use widgets::{Overlay, caps, column, panel, root, root_on, rule, text, yielding};
 
 use bevy::input_focus::InputFocus;
 use bevy::prelude::*;

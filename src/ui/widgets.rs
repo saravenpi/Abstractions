@@ -10,13 +10,14 @@ use super::theme;
 #[derive(Component, Debug, Clone, Copy, Default)]
 pub struct Overlay;
 
-/// Full-screen column with margins on the given background, filled from `justify`.
+/// Full-screen column with margins on the given background, filled from `justify`. It is sized in
+/// window units, as a page is (see `ui::page_frame`), so a long screen cannot grow past the window.
 pub fn root_on(background: Color, justify: JustifyContent) -> impl Bundle {
     (
         Overlay,
         Node {
-            width: percent(100),
-            height: percent(100),
+            width: vw(100),
+            height: vh(100),
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::FlexStart,
             justify_content: justify,
@@ -34,13 +35,28 @@ pub fn root() -> impl Bundle {
 }
 
 /// The content of a screen: a plain column that never grows past the screen. It has no
-/// background and no border.
+/// background and no border. It keeps clear of the key legend at the bottom of the screen, and
+/// when the screen is too short a [`yielding`] column inside it gives up its height first.
 pub fn panel() -> impl Bundle {
     Node {
         flex_direction: FlexDirection::Column,
         max_width: percent(100),
         max_height: percent(100),
+        margin: UiRect::bottom(px(theme::S5)),
         overflow: Overflow::clip(),
+        ..default()
+    }
+}
+
+/// A column `width` wide with its children `gap` apart, which gives up its height first when the
+/// screen is too short for everything around it, so the rest stays in view. A list that scrolls
+/// inside it then scrolls in less room.
+pub fn yielding(width: Val, gap: f32) -> impl Bundle {
+    Node {
+        width,
+        flex_direction: FlexDirection::Column,
+        row_gap: px(gap),
+        min_height: px(0),
         ..default()
     }
 }

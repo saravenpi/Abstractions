@@ -3,6 +3,7 @@
 
 mod computer;
 mod fit;
+mod fit_screens;
 mod flow;
 mod heard;
 mod kept;
@@ -17,6 +18,7 @@ mod schedules;
 mod session;
 mod settings;
 pub(super) mod stage;
+mod tall_rig;
 mod update;
 mod worlds;
 

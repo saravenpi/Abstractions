@@ -104,7 +104,7 @@ fn step(strike: &mut Strike, held: &Held, ask: &Ask, dt: f32) -> Option<f32> {
 }
 
 /// Reads the mouse and the keys into the strike of the local robot. The strike stands still
-/// during a hitstop it is in.
+/// during a hitstop it is in, and a tool slung over the back is stowed once the stow ends.
 pub fn ask(
     (time, buttons, keys): (
         Res<Time>,
@@ -139,7 +139,11 @@ pub fn ask(
     } else {
         time.delta_secs()
     };
+    let stowing = matches!(strike.act, Act::Stow(_));
     if let Some(share) = step(&mut strike, &held, &ask, dt) {
         loose.write(Loose { body, share });
+    }
+    if stowing && !matches!(strike.act, Act::Stow(_)) {
+        held.out = false;
     }
 }

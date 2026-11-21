@@ -30,31 +30,45 @@ pub struct Fleck {
 pub struct Flecks {
     /// Unit sphere, a metre across.
     mesh: Handle<Mesh>,
-    /// The material of each colour, in 8 bits a channel, wet or not.
-    looks: Vec<([u8; 3], bool, Handle<StandardMaterial>)>,
+    /// The material of each colour, in 8 bits a channel, wet or not, glowing or not.
+    looks: Vec<([u8; 3], bool, bool, Handle<StandardMaterial>)>,
     /// Flecks that fly now.
     pub live: usize,
 }
 
 impl Flecks {
     /// Returns the material of `colour` (linear RGB), made on first use: one for each colour in 8
-    /// bits, so a planet whose animals bleed alike makes a few.
+    /// bits, so a planet whose animals bleed alike makes a few. A colour brighter than 1 glows, as a
+    /// spark does: its material emits it.
     pub fn look(
         &mut self,
         materials: &mut Assets<StandardMaterial>,
         colour: [f32; 3],
         wet: bool,
     ) -> Handle<StandardMaterial> {
-        let key = colour.map(|c| (c.clamp(0.0, 1.0) * 255.0).round() as u8);
-        if let Some((_, _, handle)) = self.looks.iter().find(|(k, w, _)| *k == key && *w == wet) {
+        let peak = colour.into_iter().fold(1.0_f32, f32::max);
+        let key = colour
+            .map(|c| (c / peak).clamp(0.0, 1.0) * 255.0)
+            .map(|c| c.round() as u8);
+        let glow = peak > 1.0;
+        let found = self
+            .looks
+            .iter()
+            .find(|(k, w, g, _)| *k == key && *w == wet && *g == glow);
+        if let Some((.., handle)) = found {
             return handle.clone();
         }
+        let emissive = match glow {
+            true => LinearRgba::rgb(colour[0], colour[1], colour[2]),
+            false => LinearRgba::BLACK,
+        };
         let handle = materials.add(StandardMaterial {
-            base_color: Color::linear_rgb(colour[0], colour[1], colour[2]),
+            base_color: Color::linear_rgb(colour[0] / peak, colour[1] / peak, colour[2] / peak),
             perceptual_roughness: if wet { WET } else { 1.0 },
+            emissive,
             ..default()
         });
-        self.looks.push((key, wet, handle.clone()));
+        self.looks.push((key, wet, glow, handle.clone()));
         handle
     }
 }

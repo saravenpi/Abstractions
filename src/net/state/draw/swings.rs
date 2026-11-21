@@ -1,5 +1,5 @@
 //! The hands of the robots of the other players: the strike state of each puppet that holds a
-//! tool is the one its records say, which the hands pose, swing and guard from.
+//! tool is the one its records say, which the hands pose, swing, guard, aim and stow from.
 
 use bevy::prelude::*;
 
@@ -18,9 +18,10 @@ pub fn swings(remotes: Res<Remotes>, mut hands: Query<&mut Strike, With<Remote>>
             continue;
         };
         let next = unpack(track.latest.swing, track.latest.phase);
-        if strike.act != next.act || strike.dir != next.dir {
+        if strike.act != next.act || strike.dir != next.dir || strike.aim != next.aim {
             strike.act = next.act;
             strike.dir = next.dir;
+            strike.aim = next.aim;
         }
     }
 }

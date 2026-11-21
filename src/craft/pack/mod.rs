@@ -10,6 +10,7 @@ mod kit;
 mod lend;
 mod load;
 mod make;
+mod notice;
 mod pick;
 mod save;
 mod slots;
@@ -21,6 +22,8 @@ mod tests;
 #[cfg(test)]
 mod tests_kit;
 #[cfg(test)]
+mod tests_knock;
+#[cfg(test)]
 mod tests_lend;
 #[cfg(test)]
 mod tests_pick;
@@ -31,8 +34,10 @@ pub(crate) use kit::{kit, unkitted};
 pub use lend::{Lent, Out};
 pub use load::{Burden, capacity, pace};
 pub use make::cost;
-pub(crate) use pick::gather;
-pub use pick::stones;
+pub use notice::Notice;
+pub(crate) use notice::{fade, fading};
+pub use pick::{Knock, Knocked, stones};
+pub(crate) use pick::{gather, split};
 pub(crate) use save::{load, store, weigh};
 pub use tune::PICK_KEY;
 pub use words::{called, noun};

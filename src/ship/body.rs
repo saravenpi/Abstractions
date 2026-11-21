@@ -9,6 +9,9 @@ use crate::effects::Churn;
 use crate::space::Frame;
 use crate::universe::BodyId;
 
+/// Seconds since a touch that a ship that never touched the ground is taken to have.
+const FAR: f64 = 1.0e3;
+
 /// The player's ship: a rigid body simulated in 64 bits.
 ///
 /// Body axes follow Bevy: the nose points along -Z, the roof along +Y and the right wing along +X.
@@ -41,6 +44,8 @@ pub struct Ship {
     pub stowed: bool,
     /// Whether any contact point touched the ground on the last step.
     pub touching: bool,
+    /// Seconds since the gear last touched the ground or the sea, large once the ship has flown clear.
+    pub since: f64,
     /// Seconds the ship has been slow and held by the ground or the sea, before it comes to rest.
     pub calm: f64,
     /// Whether the hull met a built solid on the last step.
@@ -66,6 +71,7 @@ impl Ship {
             gear: 1.0,
             stowed: false,
             touching: false,
+            since: FAR,
             calm: 0.0,
             scraped: false,
             headlight: false,

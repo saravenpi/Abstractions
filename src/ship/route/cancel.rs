@@ -14,6 +14,7 @@ impl Autopilot {
     /// Drops the route and drops out of the warp it was flying, as the stop key does.
     pub fn stop(&mut self) {
         let flying = self.target.is_some();
+        (self.lost, self.lost_for) = (false, 0.0);
         self.cancel();
         self.halt = flying;
     }

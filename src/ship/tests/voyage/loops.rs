@@ -3,7 +3,7 @@
 //! way, and the route arrives.
 
 use super::pick::{neighbour, other_star};
-use super::place::{into_low_orbit, into_orbit};
+use super::place::{beside, into_low_orbit, into_orbit};
 use super::{ground, key, lifts_off};
 use crate::computer::{Destination, Engage, Target};
 use crate::ship::tests::rig::{Game, Log};
@@ -110,4 +110,28 @@ fn a_course_from_a_low_orbit_takes_few_spools() {
     let spooled = goes(game, Target::Body(far));
     assert!(spooled <= SPOOLS, "{spooled} spools");
     assert_eq!(game.get::<Location>().body, far);
+}
+
+/// From beside another planet of the system, a course to the home planet arrives at it with at most [`SPOOLS`]
+/// spools, none of them after the last leg began to close in: the arrival point is anywhere on the shell
+/// the ship crosses, so the drive is never asked again once the ship is at the planet.
+#[test]
+fn a_course_to_a_planet_arrives_without_a_new_spool() {
+    let mut game = Game::full("loops-arrive");
+    let game = &mut game;
+    takes_off(game, "Loops arrive");
+    let home = game.get::<Universe>().home();
+    let from = neighbour(game);
+    beside(game, from);
+    let before = spools(game);
+    let spooled = goes(game, Target::Body(home));
+    assert!(spooled <= SPOOLS, "{spooled} spools");
+    assert_eq!(game.get::<Location>().body, home);
+    game.step(300);
+    println!("loops: {:?}", game.get::<Autopilot>());
+    assert_eq!(
+        spools(game) - before,
+        spooled,
+        "the drive spooled again after the arrival"
+    );
 }

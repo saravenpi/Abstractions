@@ -23,6 +23,7 @@ mod leaving;
 mod lever;
 mod lost;
 mod manual;
+mod moon;
 mod moon_route;
 mod moons;
 mod reach;

@@ -138,7 +138,7 @@ pub fn card_line(ask: &Ask) -> (bool, String) {
         return (false, Block::OnFoot.words(ask.keys));
     }
     match ask.status {
-        RouteStatus::Blocked(block) => (false, block.words(ask.keys)),
+        RouteStatus::Blocked(block) if block != Block::Lost => (false, block.words(ask.keys)),
         _ => (true, ask.eta.map_or(READY.to_string(), sentence)),
     }
 }
@@ -168,7 +168,9 @@ pub fn press(
     };
     match (running(status), course == Some(target)) {
         (true, true) => Press::Stop,
-        _ if !can || matches!(status, RouteStatus::Blocked(_)) => Press::Nothing,
+        _ if !can || matches!(status, RouteStatus::Blocked(b) if b != Block::Lost) => {
+            Press::Nothing
+        }
         _ => Press::Go(target),
     }
 }

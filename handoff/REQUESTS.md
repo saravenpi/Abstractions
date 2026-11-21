@@ -89,7 +89,9 @@ Things to fix:
 
 | Question | Default if no answer |
 | --- | --- |
-| Exclude tidally locked planets (one side in permanent night) from the home choice? One line in `landable` (`src/universe/home.rs`), but it is a special case | Leave the rule as is, say it in the changelog. One test depends on it: `computer::tests_climate::the_card_writes_the_span_of_temperatures` |
+| Exclude tidally locked planets from the home choice? | DECIDED 2026-11-20 night: no, they stay ("I want realism"). About 6 homes in 10 are locked worlds of red dwarfs, and more once the thermostat is physical |
+| The climate thermostat warms far planets beyond the habitable zone (up to 3 times the steady greenhouse) | DECIDED 2026-11-20 night: realism. Cap it by physics (no liquid water beyond the outer edge of the zone). Agent `home-life` |
+| The old world of the public server `space.facile.studio` | DECIDED 2026-11-20 night: it may be overwritten at the update |
 | Harvest tool: pick the best tool in the pack, or use the one in hand? | Keep the one in hand |
 | Carry limit: 25 kg at 9.81 m/s² | Keep |
 | Wake V floored at 4 degrees (physical wedge at flight speed: 1 to 2 degrees) | Keep |

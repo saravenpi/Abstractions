@@ -16,6 +16,7 @@ mod sampler;
 mod shelf;
 mod sow;
 mod spacing;
+mod spread;
 mod stand;
 mod table;
 #[cfg(test)]
@@ -72,8 +73,9 @@ use super::{SEA_LEVEL, Surface};
 
 pub use self::grow::Flora;
 pub use self::rig::Rig;
+pub use self::spread::Spread;
 pub use self::table::plants_for;
-pub use self::turf::{Carpet, Spread, Turf, turf_of};
+pub use self::turf::{Carpet, Turf, turf_of};
 
 /// Most big props on one chunk of `CHUNK_SIZE` metres, sea floor ones included.
 const BIG_CAP: usize = 55;

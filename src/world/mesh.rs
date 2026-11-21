@@ -15,6 +15,8 @@ mod style;
 #[cfg(test)]
 mod tests_bands;
 #[cfg(test)]
+mod tests_cost;
+#[cfg(test)]
 mod tests_edges;
 #[cfg(test)]
 mod tests_globe;
@@ -37,7 +39,7 @@ use self::tris::{Cell, fill};
 use self::tune::COARSE;
 use super::globe::Chart;
 use super::lands::{Reading, Verdure};
-use super::scatter::Carpet;
+use super::scatter::{Carpet, Spread};
 use super::shapes::FlatMesh;
 use super::{CHUNK_SIZE, Terrain};
 
@@ -97,6 +99,24 @@ pub fn chunk_patch(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>]) -> Pat
     patch_above(terrain, coord, heights, f32::NEG_INFINITY)
 }
 
+/// Points along one side of the lattice on which a distant chunk reads how thick its turf grows.
+const FAR_LATTICE: usize = 3;
+
+/// Returns the turf of chunk `coord` as `lod` reads it: the carpet of the chunk, or for a distant chunk, whose
+/// ground has no turf of its own, a lattice of its thickness that costs a few reads and not a climate grid.
+fn turf_cover(
+    terrain: &Terrain,
+    coord: IVec2,
+    span: &Span,
+    lod: Lod,
+) -> (Option<Carpet>, Option<Spread>) {
+    if lod != Lod::Distant {
+        return (Carpet::of(terrain, coord), None);
+    }
+    let corners = (span.chart(0, 0, 0.0), span.chart(span.n, span.n, 0.0));
+    (None, Spread::over(terrain, corners, FAR_LATTICE))
+}
+
 /// Builds the mesh of chunk `coord` from `heights` sampled at the stride of `lod`, with a per-triangle biome dither.
 /// The distant level draws a flat sea over the sea bed, like a coarse node.
 pub fn chunk_mesh(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>], lod: Lod) -> Mesh {
@@ -109,8 +129,8 @@ pub fn chunk_mesh(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>], lod: Lo
     let style = style.grown(span.step(), Verdure::of(terrain, span.center()));
     let patch = patch_above(terrain, coord, heights, style.floor);
     let mut mesh = FlatMesh::default();
-    let carpet = Carpet::of(terrain, coord);
-    let seen = (lod != Lod::Distant).then_some(carpet.as_ref()).flatten();
+    let (carpet, spread) = turf_cover(terrain, coord, &span, lod);
+    let seen = carpet.as_ref();
     let chart = &span;
     let turf = seen.map(|carpet| {
         move |i: usize, j: usize| {
@@ -122,8 +142,12 @@ pub fn chunk_mesh(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>], lod: Lo
     let turf = turf
         .as_ref()
         .map(|t| t as &dyn Fn(usize, usize) -> [f32; 3]);
-    let thick = carpet.as_ref().map(|carpet| move |w: Vec2| carpet.at(w));
-    let thick = thick.as_ref().map(|t| t as &dyn Fn(Vec2) -> f32);
+    let read = |w: Vec2| match (&carpet, &spread) {
+        (Some(carpet), _) => carpet.at(w),
+        (None, Some(spread)) => spread.at(w),
+        (None, None) => 0.0,
+    };
+    let thick = (carpet.is_some() || spread.is_some()).then_some(&read as &dyn Fn(Vec2) -> f32);
     fill(&mut mesh, &patch, (style, turf), &|i, j| {
         dithered(terrain, &span, (i, j), thick)
     });

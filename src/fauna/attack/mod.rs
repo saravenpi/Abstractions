@@ -7,6 +7,7 @@
 //! their size ([`timing`], [`gesture`]) and send a [`crate::avatar::blow::Blow`] when it lands
 //! ([`pounce`]).
 
+mod aim;
 mod anatomy;
 mod brace;
 mod carve;
@@ -50,6 +51,7 @@ use crate::screens::{in_control, playing};
 pub(super) fn plugin(app: &mut App) {
     let scan = super::scan::scan;
     let walk = super::walk::walk;
+    crate::player::interacting(app);
     app.add_systems(
         Update,
         (
@@ -68,7 +70,9 @@ pub(super) fn plugin(app: &mut App) {
             slump::slump
                 .after(walk)
                 .run_if(any_with_component::<slump::Slump>),
-            carve::carve.run_if(in_control),
+            carve::carve
+                .run_if(in_control.and_then(crate::space::on_foot))
+                .run_if(any_with_component::<harm::Dead>),
             startle::startle.run_if(on_message::<crate::avatar::strike::Missed>),
         )
             .run_if(playing),

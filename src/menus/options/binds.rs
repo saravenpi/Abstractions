@@ -14,7 +14,7 @@ const LABELS: [&str; 32] = [
     "Sprint / boots",
     "Crouch (hold)",
     "Wings (toggle)",
-    "Board, leave",
+    "Interact, board",
     "Throttle up",
     "Throttle down",
     "Turn left",

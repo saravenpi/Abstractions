@@ -1,5 +1,5 @@
 //! Pulling: the interact key draws a spear out of the animal or the carcass it is stuck in, when the
-//! robot stands within reach of it with empty hands.
+//! robot stands within reach of it with empty hands and the prompt names the pull.
 
 use bevy::prelude::*;
 
@@ -9,7 +9,7 @@ use super::input::Robot;
 use super::tune::PULL;
 use crate::craft::Pack;
 use crate::fauna::Creature;
-use crate::player::Player;
+use crate::player::{Interact, Player, Verb};
 use crate::settings::{Persistent, Settings};
 
 /// What the robot's reach reads: the players, the hands that are full and the animals.
@@ -19,25 +19,24 @@ pub type Reach<'w, 's> = (
     Query<'w, 's, (), With<Creature>>,
 );
 
-/// What a pull reads and writes: the keys, the settings that bind them and the pack.
+/// What a pull reads and writes: the keys, the settings that bind them, the pack and the action the
+/// interact key does.
 type Hand<'w> = (
     Res<'w, ButtonInput<KeyCode>>,
     Res<'w, Persistent<Settings>>,
     Option<ResMut<'w, Pack>>,
+    ResMut<'w, Interact>,
 );
 
-/// Gives the nearest spear stuck in an animal back to the local robot when the interact key goes
-/// down and its hands are empty.
+/// Offers to pull the nearest spear stuck in an animal within reach of the local robot while its
+/// hands are empty, and gives it back when the interact key goes down while the prompt names the pull.
 pub fn pull(
     mut commands: Commands,
-    (keys, settings, mut pack): Hand,
+    (keys, settings, mut pack, mut interact): Hand,
     robot: Robot,
     spears: Query<(Entity, &Spear, &GlobalTransform, &ChildOf)>,
     (players, full, creatures): Reach,
 ) {
-    if !keys.just_pressed(settings.controls.keys.ship.board) {
-        return;
-    }
     let Some((body, player)) = robot.pair() else {
         return;
     };
@@ -50,7 +49,11 @@ pub fn pull(
             && creatures.contains(of.parent())
             && placed.translation().distance(at.translation) < PULL
     };
-    if let Some((entity, spear, _, _)) = spears.iter().find(reach) {
+    let Some((entity, spear, _, _)) = spears.iter().find(reach) else {
+        return;
+    };
+    interact.offer(Verb::Pull, "spear");
+    if interact.pressed(Verb::Pull, &keys, settings.controls.keys.ship.board) {
         take(&mut commands, body, spear, pack.as_deref_mut());
         commands.entity(entity).despawn();
     }

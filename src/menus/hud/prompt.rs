@@ -1,6 +1,8 @@
 //! The one prompt line: a key and what it does, bottom centre above the hotbar. Exactly one
 //! row, the highest priority wins: a warning or block sentence, a course that runs, a course
-//! ready to go, the board key, a first-time hint, nothing.
+//! ready to go, the action a key does right now to what the robot looks at or stands by
+//! ([`crate::player::Interact`]: pull a spear, cut a part, board, leave, break stone off, mend), a
+//! first-time hint, nothing.
 
 use bevy::prelude::*;
 
@@ -9,9 +11,10 @@ use super::course::{Course, Words, words};
 use super::fade::gate;
 use super::hints::{Hint, Hinted};
 use crate::computer::{Destination, Keys, RouteStatus};
+use crate::craft::pack::PICK_KEY;
 use crate::menus::key_name;
-use crate::settings::{Persistent, Settings};
-use crate::ship::{Hatch, ShipTelemetry};
+use crate::player::{Interact, Offer, Verb};
+use crate::settings::{Keymap, Persistent, Settings};
 use crate::space::{Location, Travel};
 use crate::ui::{Tone, label, text, theme};
 use crate::universe::Universe;
@@ -37,15 +40,15 @@ pub struct State {
     pub running: Option<(KeyCode, String)>,
     /// A course ready to go: its key and what it will do.
     pub ready: Option<(KeyCode, String)>,
-    /// The board key and its action.
-    pub board: Option<(KeyCode, &'static str)>,
+    /// The action a key does right now: its key and its words.
+    pub act: Option<(KeyCode, String)>,
     /// A first-time hint: its key and its words.
     pub hint: Option<(KeyCode, &'static str)>,
 }
 
 /// Returns the one row the line shows: its key, if it has one, and its words. A block beats a
-/// running course, which beats a course ready to go, which beats the board key, which beats a
-/// hint.
+/// running course, which beats a course ready to go, which beats the action of a key, which beats
+/// a hint.
 pub fn choose(state: &State) -> Option<(Option<KeyCode>, String)> {
     let key = |(key, words): &(KeyCode, String)| (Some(*key), words.clone());
     state
@@ -54,11 +57,7 @@ pub fn choose(state: &State) -> Option<(Option<KeyCode>, String)> {
         .map(|sentence| (None, sentence.clone()))
         .or_else(|| state.running.as_ref().map(key))
         .or_else(|| state.ready.as_ref().map(key))
-        .or_else(|| {
-            state
-                .board
-                .map(|(key, words)| (Some(key), words.to_string()))
-        })
+        .or_else(|| state.act.as_ref().map(key))
         .or_else(|| {
             state
                 .hint
@@ -66,13 +65,17 @@ pub fn choose(state: &State) -> Option<(Option<KeyCode>, String)> {
         })
 }
 
-/// Returns what the board key does right now, or nothing when it does nothing: boarding from
-/// the hatch of the landed ship, or leaving the landed ship.
-pub fn board_prompt(travel: Travel, at_hatch: bool, landed: bool) -> Option<&'static str> {
-    match travel {
-        Travel::OnFoot if at_hatch => Some("Board"),
-        Travel::InShip if landed => Some("Leave the ship"),
-        _ => None,
+/// Returns the key that does the action of `offer` under the bindings `keys`, and the words that
+/// name it and what it acts on.
+pub fn offered(offer: Offer, keys: &Keymap) -> (KeyCode, String) {
+    let thing = offer.thing;
+    match offer.verb {
+        Verb::Pull => (keys.ship.board, format!("Pull the {thing}")),
+        Verb::Carve => (keys.ship.board, format!("Cut the {thing}")),
+        Verb::Board => (keys.ship.board, "Board".to_string()),
+        Verb::Leave => (keys.ship.board, "Leave the ship".to_string()),
+        Verb::Stone => (PICK_KEY, "Break stone off".to_string()),
+        Verb::Mend => (keys.mend, format!("Mend the {}", thing.to_lowercase())),
     }
 }
 
@@ -119,8 +122,7 @@ pub(super) fn line() -> impl Bundle {
 #[derive(bevy::ecs::system::SystemParam)]
 pub(super) struct Reach<'w> {
     location: Option<Res<'w, Location>>,
-    hatch: Option<Res<'w, Hatch>>,
-    telemetry: Option<Res<'w, ShipTelemetry>>,
+    interact: Option<Res<'w, Interact>>,
     settings: Res<'w, Persistent<Settings>>,
     destination: Res<'w, Destination>,
     route: Res<'w, RouteStatus>,
@@ -143,19 +145,16 @@ impl Reach<'_> {
         })
     }
 
-    /// Returns the board row and the hint row: what the board key does and the hint in turn.
-    fn keys(&self, travel: Option<Travel>) -> (Keyed, Keyed) {
+    /// Returns the action row and the hint row: what a key does right now and the hint in turn.
+    fn keys(&self) -> (Option<(KeyCode, String)>, Keyed) {
         let keys = &self.settings.controls.keys;
-        let at_hatch = self.hatch.as_deref().is_some_and(|hatch| hatch.near);
-        let landed = self.telemetry.as_deref().is_some_and(|ship| ship.landed);
-        let board = travel
-            .and_then(|travel| board_prompt(travel, at_hatch, landed))
-            .map(|action| (keys.ship.board, action));
+        let chosen = self.interact.as_deref().and_then(Interact::chosen);
+        let act = chosen.map(|offer| offered(offer, keys));
         let hint = self
             .hinted
             .0
             .map(|hint: Hint| (hint.key(keys), hint.words()));
-        (board, hint)
+        (act, hint)
     }
 
     /// Returns the state of the line for this frame: empty while gliding or in a menu.
@@ -165,7 +164,7 @@ impl Reach<'_> {
         if matches!(self.now.0, Context::Gliding | Context::Menu) {
             return state;
         }
-        (state.board, state.hint) = self.keys(travel);
+        (state.act, state.hint) = self.keys();
         let keys = &self.settings.controls.keys;
         let seated = travel == Some(Travel::InShip);
         let said = self

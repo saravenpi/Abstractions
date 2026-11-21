@@ -33,7 +33,7 @@ pub struct ShipKeys {
     pub cut: KeyCode,
     /// Spool the warp drive, or drop out of warp.
     pub warp: KeyCode,
-    /// Board the ship, or leave it.
+    /// Interact: board the ship or leave it, cut a part off a carcass, pull a spear out.
     pub board: KeyCode,
     /// Switch the headlight in the nose on or off.
     pub headlight: KeyCode,

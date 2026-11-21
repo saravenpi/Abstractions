@@ -8,7 +8,7 @@ mod field;
 mod tests;
 pub mod tune;
 
-pub use field::{patch, supply};
+pub use field::{patch, supply, worst};
 
 use bevy::prelude::*;
 

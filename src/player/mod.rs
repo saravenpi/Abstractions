@@ -14,6 +14,7 @@ mod eyes;
 mod flight;
 mod ground;
 mod intent;
+mod interact;
 mod jet;
 mod keys;
 mod lead;
@@ -31,6 +32,7 @@ mod tests;
 
 pub use asks::Intents;
 pub use controller::Motion;
+pub use interact::{Interact, Interacting, Offer, Verb, interacting};
 pub use sea::above_sea;
 pub use seat::{place, seat};
 pub(crate) use steer::wrap;
@@ -80,6 +82,7 @@ pub fn local<T>(players: impl IntoIterator<Item = (PlayerId, T)>) -> Option<T> {
 
 /// Registers the player systems.
 pub(super) fn plugin(app: &mut App) {
+    interacting(app);
     app.init_resource::<crate::view::Heading>()
         .init_resource::<crate::view::Look>()
         .init_resource::<crate::view::ViewPrefs>()

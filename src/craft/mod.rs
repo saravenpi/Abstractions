@@ -18,13 +18,14 @@ pub mod wield;
 
 use bevy::prelude::*;
 
-pub use pack::{Burden, Lent, Pack};
+pub use pack::{Burden, Lent, Out, Pack};
 pub use wield::{Held, Hold, Worn};
 
 /// Registers the crafting area: the pack and its save, the held tool and its wear, harvesting and
 /// the screens.
 pub(super) fn plugin(app: &mut App) {
     let changed = resource_changed::<Pack>.or_else(resource_changed::<crate::condition::Condition>);
+    crate::player::interacting(app);
     app.init_resource::<Pack>()
         .init_resource::<Burden>()
         .init_resource::<crate::condition::Condition>()

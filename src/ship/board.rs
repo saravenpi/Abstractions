@@ -12,7 +12,7 @@ use super::hold::{idle, release};
 use super::pilot::Autopilot;
 use super::sky::Skies;
 use crate::computer::Computer;
-use crate::player::{EYE_OFFSET, Player, place, seat};
+use crate::player::{EYE_OFFSET, Interact, Player, Verb, place, seat};
 use crate::render::GameCamera;
 use crate::settings::{Persistent, Settings};
 use crate::space::{Anchor, Location, Placed, Travel};
@@ -60,6 +60,8 @@ pub struct Dock<'w, 's> {
     time: Res<'w, Time>,
     /// The seconds the pilot has been held in the seat since the board key was pressed.
     held: Local<'s, Option<f32>>,
+    /// The action the interact key does this frame, which boarding and leaving are offered to.
+    interact: ResMut<'w, Interact>,
 }
 
 impl Dock<'_, '_> {
@@ -123,8 +125,9 @@ pub fn reseat(
     }
 }
 
-/// Seats the player near the landed ship on the board key, and on the same key puts the player
-/// back on the ground beside the hatch, with the motors stopped and the autopilot off. The key
+/// Seats the player near the landed ship on the interact key, and on the same key puts the player
+/// back on the ground beside the hatch, with the motors stopped and the autopilot off. Both are
+/// offered to the interact key, which does them only while the prompt names them. The key
 /// does nothing while the board computer is open, and nothing over a gas giant, where there is
 /// no ground to step out on. Only a landed ship can be left, so it stays where it stands. The pilot
 /// stays in the seat until the ground beside the hatch is solid, see [`hold`].
@@ -138,15 +141,19 @@ pub fn board(
     let (mut ship, placed) = ship.into_inner();
     let near = in_reach(&dock, &ship, placed, player.translation);
     dock.hatch.set_if_neq(Hatch { near });
-    let pressed = dock
-        .keys
-        .just_pressed(dock.settings.controls.keys.ship.board);
     let docked = ship.landed && grounded(dock.skies.planet());
     if dock.busy() || !docked || dock.anchor.frame != ship.frame {
         *dock.held = None;
         return;
     }
-    if dock.location.travel == Travel::OnFoot {
+    let on_foot = dock.location.travel == Travel::OnFoot;
+    let verb = [Verb::Leave, Verb::Board][usize::from(on_foot)];
+    if near || !on_foot {
+        dock.interact.offer(verb, "");
+    }
+    let key = dock.settings.controls.keys.ship.board;
+    let pressed = dock.interact.pressed(verb, &dock.keys, key);
+    if on_foot {
         if pressed && near {
             dock.location.travel = Travel::InShip;
             commands.queue(|world: &mut World| seat(world, true));

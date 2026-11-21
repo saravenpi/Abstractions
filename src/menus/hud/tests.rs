@@ -2,7 +2,6 @@
 
 use super::banner::opacity;
 use super::flight::{Flight, Gauge, reading};
-use super::prompt::board_prompt;
 use super::units::{height, percent, speed};
 use crate::ship::ShipTelemetry;
 use crate::space::{Frame, Travel};
@@ -97,18 +96,6 @@ fn instruments_follow_the_frame() {
     assert_eq!(reading(Gauge::Speed, &space).unwrap(), "7.8 km/s orbital");
     assert_eq!(reading(Gauge::Apoapsis, &space).unwrap(), "52 km");
     assert_eq!(reading(Gauge::Periapsis, &space).unwrap(), "-1.2 km");
-}
-
-/// The prompt shows at the hatch of the landed ship and inside it, and nowhere else.
-#[test]
-fn the_board_prompt_needs_the_hatch_or_a_landed_ship() {
-    assert_eq!(board_prompt(Travel::OnFoot, true, true), Some("Board"));
-    assert_eq!(board_prompt(Travel::OnFoot, false, true), None);
-    assert_eq!(
-        board_prompt(Travel::InShip, false, true),
-        Some("Leave the ship")
-    );
-    assert_eq!(board_prompt(Travel::InShip, true, false), None);
 }
 
 /// The banner fades in, holds at full opacity and fades out to nothing.

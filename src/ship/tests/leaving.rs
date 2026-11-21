@@ -15,7 +15,7 @@ use crate::space::{Anchor, Location, Placed, Travel};
 use crate::universe::Universe;
 
 /// Taps the board key, which also leaves the seat, and runs two frames more.
-fn tap_board(game: &mut Game) {
+pub(super) fn tap_board(game: &mut Game) {
     let key = game
         .app
         .world()
@@ -31,7 +31,7 @@ fn tap_board(game: &mut Game) {
 }
 
 /// Stands the player beside the hatch of the landed ship and takes the seat.
-fn boards(game: &mut Game) {
+pub(super) fn boards(game: &mut Game) {
     let anchor = game.get::<Anchor>();
     let world = game.app.world_mut();
     let mut ships = world.query_filtered::<&Placed, With<crate::ship::Ship>>();

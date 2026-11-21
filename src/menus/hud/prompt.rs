@@ -15,9 +15,14 @@ use crate::craft::pack::PICK_KEY;
 use crate::menus::key_name;
 use crate::player::{Interact, Offer, Verb};
 use crate::settings::{Keymap, Persistent, Settings};
+use crate::ship::Hatch;
 use crate::space::{Location, Travel};
 use crate::ui::{KEY_GAP, key_cap, text, theme};
 use crate::universe::Universe;
+
+/// What the line says while the pilot of a landed ship cannot step out yet: the ground beside
+/// the hatch has no collider.
+pub const UNREADY: &str = "Ground not ready.";
 
 /// Marks the prompt row.
 #[derive(Component)]
@@ -124,6 +129,7 @@ pub(super) fn line() -> impl Bundle {
 pub(super) struct Reach<'w> {
     location: Option<Res<'w, Location>>,
     interact: Option<Res<'w, Interact>>,
+    hatch: Option<Res<'w, Hatch>>,
     settings: Res<'w, Persistent<Settings>>,
     destination: Res<'w, Destination>,
     route: Res<'w, RouteStatus>,
@@ -176,7 +182,11 @@ impl Reach<'_> {
             running,
             ready,
         } = said.unwrap_or_default();
-        state.block = block;
+        let waiting = self
+            .hatch
+            .as_deref()
+            .is_some_and(|hatch| hatch.waiting && seated);
+        state.block = block.or_else(|| waiting.then(|| UNREADY.to_string()));
         state.running = running.map(|words| (keys.engage, words));
         state.ready = ready.map(|words| (keys.engage, words));
         state

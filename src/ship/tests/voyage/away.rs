@@ -7,6 +7,7 @@ use super::{flight, here, key};
 use crate::audio::{AudioCue, ChirpKind};
 use crate::companion::CompanionChirp;
 use crate::computer::{Atlas, Engage, RouteStatus, Target, ship_position, target_position};
+use crate::player::{Interact, Verb};
 use crate::render::FlightFx;
 use crate::ship::berth::landing_spot;
 use crate::ship::landing::GEAR_DROP;
@@ -156,6 +157,8 @@ pub fn steps_out(game: &mut Game, far: BodyId) {
     game.pace(FRAME);
     let seat = game.walker().feet;
     game.wait("the ground under the ship", |game| game.has_ground(seat));
+    let offered = |game: &mut Game| game.get::<Interact>().is(Verb::Leave);
+    game.wait("leaving to be offered", offered);
     game.press(key(game, |keys| keys.ship.board));
     game.step(1);
     game.release(key(game, |keys| keys.ship.board));

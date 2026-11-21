@@ -24,7 +24,7 @@ impl Pile {
         let near = |l: &Lying| apart(l, heap) < MERGE || (anywhere && cell(l) == cell(heap));
         let found = self.lying.iter().enumerate().filter(|(_, l)| same(l));
         found
-            .filter(|(_, l)| near(*l))
+            .filter(|(_, l)| near(l))
             .min_by(|a, b| apart(a.1, heap).total_cmp(&apart(b.1, heap)))
             .map(|(at, _)| at)
     }

@@ -10,6 +10,7 @@
 
 pub mod balance;
 mod field;
+mod gate;
 mod tune;
 
 pub use field::Field;
@@ -125,13 +126,24 @@ fn meter(
     }
 }
 
-/// Registers the metered exposure, which runs when the light of the place or the settings change.
+/// Registers the metered exposure, which runs when the light or settings change or while easing.
 pub(super) fn plugin(app: &mut App) {
-    let changed = resource_changed::<PlaceLight>.or_else(resource_changed::<Persistent<Settings>>);
     app.init_resource::<Metered>()
         .init_resource::<Balanced>()
         .add_systems(
             PostUpdate,
-            (meter, balance::run).run_if(changed).after(super::PlaceLit),
+            (
+                meter.run_if(
+                    resource_changed::<PlaceLight>
+                        .or_else(resource_changed::<Persistent<Settings>>)
+                        .or_else(gate::exposure),
+                ),
+                balance::run.run_if(
+                    resource_changed::<PlaceLight>
+                        .or_else(resource_changed::<Persistent<Settings>>)
+                        .or_else(gate::balance),
+                ),
+            )
+                .after(super::PlaceLit),
         );
 }

@@ -25,7 +25,13 @@ pub const EXIT: f32 = 0.3;
 const SIDES: u32 = 10;
 
 /// Stations of a pod from its front, inside the tail cone, to its end: z and radius.
-const POD: [(f32, f32); 4] = [(2.2, 0.28), (2.6, 0.4), (3.1, 0.46), (3.52, 0.36)];
+const POD: [(f32, f32); 5] = [
+    (1.5, 0.2),
+    (2.1, 0.4),
+    (3.0, 0.46),
+    (3.4, 0.43),
+    (3.52, 0.36),
+];
 
 /// The inner wall of a bell from the chamber face to the exit: z and radius.
 const BELL: [(f32, f32); 4] = [(3.42, 0.17), (3.52, 0.22), (3.62, 0.265), (NOZZLE_Z, EXIT)];
@@ -57,7 +63,7 @@ pub fn motor(at: Vec2) -> Motor {
         .map(|&(z, r)| station(at, (z, r + WALL)))
         .collect();
     let (mut pod, mut bell, mut face) = (Solid::default(), Solid::default(), Solid::default());
-    skin(&mut pod, &sections, false, |_, _| 1);
+    skin(&mut pod, &sections, false, |_, _| 0);
     cap(&mut pod, &sections[0], Vec3::NEG_Z);
     annulus(&mut pod, &sections[sections.len() - 1], &outer[0], Vec3::Z);
     skin(&mut bell, &outer, false, |_, _| 0);
@@ -70,6 +76,17 @@ pub fn motor(at: Vec2) -> Motor {
     skin(&mut bell, &inner, true, |_, _| 0);
     cap(&mut face, &inner[0], Vec3::Z);
     Motor { pod, bell, face }
+}
+
+/// Returns the radius of the pod `z` metres along the ship, between its stations.
+pub fn ring_radius(z: f32) -> f32 {
+    let i = POD
+        .iter()
+        .rposition(|s| s.0 <= z)
+        .unwrap_or(0)
+        .min(POD.len() - 2);
+    let (a, b) = (POD[i], POD[i + 1]);
+    a.1 + (b.1 - a.1) * ((z - a.0) / (b.0 - a.0)).clamp(0.0, 1.0)
 }
 
 /// Returns the corner points of the pod on the axis `at`, for its collider.

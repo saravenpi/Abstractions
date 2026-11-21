@@ -1,16 +1,16 @@
 //! The tones a triangle of a ship mesh can be painted in: a colour multiplier over the colour of
 //! the material, so one material shows plating in several tones.
 
-/// Linear colour multipliers of the tones: plain, a lighter plate, the grey of the underside,
-/// the charcoal of the heat shield, the black of bays and ports, and the orange of the trim on
-/// the grey of the hull.
+/// Linear colour multipliers of the tones over the bone of the hull: plain, the slate of the
+/// second plates, the grey of the undersides, the charcoal of the frame and of the heat shield,
+/// the black of bays and ports, and the accent colour.
 const TONES: [[f32; 4]; 6] = [
     [1.0, 1.0, 1.0, 1.0],
-    [0.88, 0.9, 0.93, 1.0],
-    [0.62, 0.64, 0.68, 1.0],
-    [0.22, 0.23, 0.26, 1.0],
-    [0.1, 0.1, 0.12, 1.0],
-    [1.18, 0.56, 0.15, 1.0],
+    [0.26, 0.38, 0.57, 1.0],
+    [0.16, 0.2, 0.27, 1.0],
+    [0.045, 0.048, 0.058, 1.0],
+    [0.012, 0.012, 0.015, 1.0],
+    [1.2, 0.27, 0.03, 1.0],
 ];
 
 /// The last tone of the palette.

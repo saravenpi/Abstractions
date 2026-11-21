@@ -23,6 +23,7 @@ pub mod screens;
 pub mod settings;
 pub mod ship;
 pub mod sim;
+pub mod skin;
 pub mod space;
 pub mod speed;
 pub mod ui;

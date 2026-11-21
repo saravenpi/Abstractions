@@ -6,16 +6,13 @@
 use bevy::material::OpaqueRendererMethod;
 use bevy::prelude::*;
 
-use super::body::body;
+use super::body::{mitt, shell};
 use super::orb::{orb, screen};
 use super::tail;
-use super::tune::HALF;
+use crate::skin::Detail;
 
-/// Radius of the shared orb in meters: the antenna tip as it is, the hands and the thruster scaled from it.
+/// Radius of the shared orb in meters: the antenna tip as it is, the thruster scaled from it.
 const ORB_RADIUS: f32 = 0.03;
-
-/// Where the antenna ends, above and slightly behind the top of the head.
-pub const ANTENNA_TIP: Vec3 = Vec3::new(0.0, HALF[1] + 0.11, 0.025);
 
 /// Returns an unlit forward material, which shows its base colour as it is and so can glow through bloom.
 pub fn unlit(picture: Option<Handle<Image>>) -> StandardMaterial {
@@ -42,11 +39,13 @@ fn matte() -> StandardMaterial {
 /// The meshes and materials every companion shares, built once.
 #[derive(Resource, Debug, Clone)]
 pub struct Shapes {
-    /// The shell of the head-body with its antenna.
-    pub body: Handle<Mesh>,
+    /// The head-body as seen up close, then from afar.
+    pub body: [Handle<Mesh>; 2],
+    /// A hand as seen up close, then from afar.
+    pub hand: [Handle<Mesh>; 2],
     /// The screen.
     pub screen: Handle<Mesh>,
-    /// The orb the antenna tip, the hands and the thruster are scaled from.
+    /// The orb the antenna tip and the thruster are scaled from.
     pub orb: Handle<Mesh>,
     /// The matte shell.
     pub shell: Handle<StandardMaterial>,
@@ -57,8 +56,10 @@ pub struct Shapes {
 impl Shapes {
     /// Builds the shared meshes and materials.
     pub fn new(meshes: &mut Assets<Mesh>, materials: &mut Assets<StandardMaterial>) -> Self {
+        let levels = [Detail::Near, Detail::Far];
         Self {
-            body: meshes.add(body(ANTENNA_TIP)),
+            body: levels.map(|detail| meshes.add(shell(detail).into_mesh())),
+            hand: levels.map(|detail| meshes.add(mitt(detail).into_mesh())),
             screen: meshes.add(screen()),
             orb: meshes.add(orb(ORB_RADIUS)),
             shell: materials.add(matte()),

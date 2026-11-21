@@ -51,16 +51,13 @@ pub const SHOCK: (f32, f32) = (0.1, 0.6);
 /// Thrust level under which a jet is not drawn.
 pub const OFF: f32 = 0.02;
 
-/// Light of a main engine at full thrust, in lumens, and its range in metres.
-pub const MAIN_LIGHT: (f32, f32) = (90_000.0, 45.0);
-
-/// Light of the four lift nozzles together at full thrust, in lumens, and their range in metres.
-pub const LIFT_LIGHT: (f32, f32) = (60_000.0, 30.0);
-
-/// Light of the landing lamp, in lumens, its range in metres and the half angle of its beam in
-/// radians.
-pub const LANDING_LIGHT: (f32, f32, f32) = (400_000.0, 60.0, 0.5);
-
+/// Light of a main engine at full thrust, in lumens. Its range is what
+/// [`reach`](crate::render::reach) gives it.
+pub const MAIN_LIGHT: f32 = 90_000.0;
+/// Light of the four lift nozzles together at full thrust, in lumens.
+pub const LIFT_LIGHT: f32 = 60_000.0;
+/// Light of the landing lamp, in lumens, and the half angle of its beam in radians.
+pub const LANDING_LIGHT: (f32, f32) = (400_000.0, 0.5);
 /// Dynamic pressure in pascals, 25 metres per second in air at sea level, above which the lift
 /// thrusters are taken to be shut, the ship flying on its wings and its main engines.
 pub const HOVER_PRESSURE: f64 = 400.0;

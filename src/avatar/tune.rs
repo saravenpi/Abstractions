@@ -35,23 +35,17 @@ pub const UPPER_ARM: f32 = 0.23;
 /// Length of the forearm, elbow to wrist.
 pub const FOREARM: f32 = 0.21;
 
-/// Centre of the rounded head above the neck joint, and its half extents.
-pub const HEAD: (f32, [f32; 3]) = (0.19, [0.155, 0.145, 0.15]);
+/// Centre of the helmet above the neck joint, and its half extents.
+pub const HEAD: (f32, [f32; 3]) = (0.19, [0.175, 0.16, 0.15]);
 
-/// Centre of the torso above the waist joint, and its half extents.
+/// Centre of the chest above the waist joint, and its half extents: where the wingsuit takes root.
 pub const CHEST: (f32, [f32; 3]) = (0.185, [0.17, 0.215, 0.115]);
 
-/// Half extents of the pelvis block.
+/// Half extents of the pelvis core.
 pub const HIPS: [f32; 3] = [0.135, 0.075, 0.1];
 
-/// Centre of a boot relative to its ankle, and its half extents: slightly oversized.
-pub const BOOT: ([f32; 3], [f32; 3]) = ([0.0, -0.045, -0.035], [0.075, 0.065, 0.13]);
-
-/// Radii of the limbs: upper arm, forearm, thigh and shin.
-pub const LIMB_RADIUS: [f32; 4] = [0.04, 0.036, 0.055, 0.046];
-
-/// Radius of the joint caps: shoulder, elbow, wrist, hip, knee and ankle.
-pub const CAP_RADIUS: [f32; 6] = [0.052, 0.046, 0.04, 0.066, 0.06, 0.052];
+/// Centre of a boot relative to its ankle, and its half extents: a big block at the end of the leg.
+pub const BOOT: ([f32; 3], [f32; 3]) = ([0.0, -0.045, -0.035], [0.085, 0.065, 0.13]);
 
 /// Half width and half height of the lit screen on the head. The picture is twice as wide as tall.
 pub const SCREEN: [f32; 2] = [0.116, 0.058];
@@ -59,13 +53,14 @@ pub const SCREEN: [f32; 2] = [0.116, 0.058];
 /// Radius of the booster nozzle in each sole, and where its axis crosses the sole behind the ankle.
 pub const NOZZLE: (f32, f32) = (0.045, 0.015);
 
-/// sRGB colour of the shell: soft off-white, like the companion.
-pub const SHELL: [f32; 3] = [0.93, 0.93, 0.9];
+/// sRGB colour of the armour plates: bone, like the companion.
+pub const SHELL: [f32; 3] = [0.93, 0.91, 0.85];
 
-/// sRGB colour of the shaded shell parts: the companion's blue-grey.
-pub const SHADE: [f32; 3] = [0.7, 0.78, 0.86];
+/// sRGB colour of the secondary plates: the companion's slate, dark enough to part from the
+/// bone at eight meters.
+pub const SHADE: [f32; 3] = [0.47, 0.56, 0.64];
 
-/// sRGB colour of the joints, the bezel and the nozzles.
+/// sRGB colour of the frame: the limbs, the joints, the visor box and the soles.
 pub const DARK: [f32; 3] = [0.09, 0.1, 0.13];
 
 /// sRGB accent colour: the orange of the ship trim.

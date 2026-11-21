@@ -1,12 +1,21 @@
-//! The meshes of the body, built in code: one per kind of segment, and the few parts that glow or stretch.
+//! The meshes of the body, built in code: one per segment at each level of detail, and the few
+//! parts that glow or stretch.
 
-mod limbs;
-mod shapes;
-mod soup;
-mod trunk;
+mod arms;
+mod chest;
+mod head;
+mod hips;
+mod legs;
 
-pub use soup::Soup;
-pub use trunk::SCREEN_FRONT;
+#[cfg(test)]
+mod tests_fit;
+#[cfg(test)]
+mod tests_piece;
+
+pub use crate::skin::{Detail, Soup};
+pub use head::SCREEN_FRONT;
+#[cfg(test)]
+pub use tests_piece::held;
 
 use std::f32::consts::TAU;
 
@@ -23,19 +32,27 @@ use super::wing::RIM;
 #[cfg(test)]
 pub const EXTRA_TRIANGLES: usize = 2 + 2 * 6 + 2 * 6 + 3 * RIM;
 
-/// Builds the triangles of a segment in its own frame. Left and right share their shape.
-pub fn segment(seg: Seg) -> Soup {
+/// Builds the triangles of a segment in its own frame at the level `detail`. The limbs are
+/// written for the right side; the left side mirrors them where they differ.
+pub fn build(seg: Seg, detail: Detail) -> Soup {
     match seg {
-        Seg::Pelvis => trunk::pelvis(),
-        Seg::Torso => trunk::torso(),
-        Seg::Head => trunk::head(),
-        Seg::UpperArmL | Seg::UpperArmR => limbs::upper_arm(),
-        Seg::ForearmL | Seg::ForearmR => limbs::forearm(),
-        Seg::HandL | Seg::HandR => limbs::hand(),
-        Seg::ThighL | Seg::ThighR => limbs::thigh(),
-        Seg::ShinL | Seg::ShinR => limbs::shin(),
-        Seg::BootL | Seg::BootR => limbs::boot(),
+        Seg::Pelvis => hips::pelvis(detail),
+        Seg::Torso => chest::torso(detail),
+        Seg::Head => head::head(detail),
+        Seg::UpperArmL => arms::upper_arm(detail, true).mirrored(),
+        Seg::UpperArmR => arms::upper_arm(detail, false),
+        Seg::ForearmL | Seg::ForearmR => arms::forearm(detail),
+        Seg::HandL | Seg::HandR => arms::hand(detail),
+        Seg::ThighL => legs::thigh(detail).mirrored(),
+        Seg::ThighR => legs::thigh(detail),
+        Seg::ShinL | Seg::ShinR => legs::shin(detail),
+        Seg::BootL | Seg::BootR => legs::boot(detail),
     }
+}
+
+/// Builds the triangles of a segment as seen up close.
+pub fn segment(seg: Seg) -> Soup {
+    build(seg, Detail::Near)
 }
 
 /// Builds a mesh of loose triangles from positions, normals and picture coordinates.

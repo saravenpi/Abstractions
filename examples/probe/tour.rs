@@ -35,6 +35,8 @@ pub struct Notes {
     pub far: Option<BodyId>,
     /// The animal looked at, and where the robot stands to look at it.
     pub animal: Option<(Entity, DVec3)>,
+    /// The frame at which a stage took its last shot from a held camera: it ends on the next.
+    pub shot_at: Option<u32>,
 }
 
 /// One stage of the tour.

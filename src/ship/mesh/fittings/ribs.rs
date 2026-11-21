@@ -4,7 +4,6 @@
 
 use bevy::prelude::*;
 
-use super::pair;
 use crate::ship::cockpit::FLOOR;
 use crate::ship::mesh::shell::{HALF, MOUTH, lip, mouth, station};
 use crate::ship::solid::Solid;
@@ -34,11 +33,10 @@ pub fn ribs() -> Solid {
         let z = MOUTH.0 + (MOUTH.1 - MOUTH.0) * i as f32 / (COUNT + 1) as f32;
         let half = half_at(z);
         let top = lip(station(z), half).y - BELOW;
-        pair(
-            &mut ribs,
+        ribs.slab(
             Vec3::new(half - RIB.1, FLOOR, z - RIB.0 * 0.5),
             Vec3::new(half + RIB.2, top, z + RIB.0 * 0.5),
         );
     }
-    ribs
+    ribs.mirrored()
 }

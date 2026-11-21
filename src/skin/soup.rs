@@ -1,4 +1,4 @@
-//! A flat-shaded triangle soup with one colour per triangle: what every part of the body is built from.
+//! A flat-shaded triangle soup with one colour per triangle: what every part of a body is built from.
 
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
@@ -39,10 +39,37 @@ impl Soup {
         self.positions.len() / 3
     }
 
+    /// Returns every triangle as its three corners.
+    #[cfg(test)]
+    pub fn tris(&self) -> impl Iterator<Item = [Vec3; 3]> + '_ {
+        self.positions
+            .chunks(3)
+            .map(|c| [c[0], c[1], c[2]].map(Vec3::from_array))
+    }
+
+    /// Adds every triangle of `other`, turned by `turn` and then moved by `at`.
+    pub fn extend(&mut self, other: &Soup, (at, turn): (Vec3, Quat)) {
+        let place = |p: &[f32; 3]| (turn * Vec3::from_array(*p) + at).to_array();
+        self.positions.extend(other.positions.iter().map(place));
+        let aim = |n: &[f32; 3]| (turn * Vec3::from_array(*n)).to_array();
+        self.normals.extend(other.normals.iter().map(aim));
+        self.colors.extend(&other.colors);
+    }
+
     /// Returns every corner position.
     #[cfg(test)]
     pub fn points(&self) -> impl Iterator<Item = Vec3> + '_ {
         self.positions.iter().map(|p| Vec3::from_array(*p))
+    }
+
+    /// Returns the soup mirrored across the plane X = 0, still facing outward.
+    pub fn mirrored(mut self) -> Self {
+        let flip = |v: &mut [f32; 3]| v[0] = -v[0];
+        self.positions.iter_mut().for_each(flip);
+        self.normals.iter_mut().for_each(flip);
+        let (triangles, _) = self.positions.as_chunks_mut::<3>();
+        triangles.iter_mut().for_each(|tri| tri.swap(1, 2));
+        self
     }
 
     /// Converts the triangles into a mesh with vertex colours.

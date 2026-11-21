@@ -82,7 +82,9 @@ fn on_the_ground() -> Ship {
 /// 0.9, when a touchdown above the safe speed, as this 7 m/s drop is, stopped bouncing. All three
 /// were taken again in 0.11, with the standard gravity and the new thrust. The air and the ground
 /// were taken again with the temperate reference air that `planet` gives, so that the number does
-/// not move with what the seed makes of the home planet.
+/// not move with what the seed makes of the home planet. The ground changes again with the look
+/// of the ship: the feet now hold the weight of a ship that settles on a slope, so it stops
+/// where it stands instead of creeping down the 10 degree slope until the ground holds it.
 #[test]
 fn the_manual_ship_is_bit_identical() {
     let seen = [in_the_air(), in_space(), on_the_ground()].map(|ship| digest(&ship));

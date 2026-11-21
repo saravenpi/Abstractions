@@ -16,6 +16,8 @@
 //! - `PROBE_SOFT`: when set, a system whose parameters fail validation is logged and skipped instead of
 //!   stopping the game, so one run lists every such system.
 //!
+//! `PROBE_STAGES=models` opens the model studio (see the `models` module): the robot and the companion alone.
+//!
 //! `PROBE_STAGES=zoo` does not tour the game. It shows every animal of the seed's home planet walking in a
 //! line on flat ground (see the `zoo` module); with `SMOKE_DIR` set it saves a shot of each gait and exits,
 //! and `ZOO_FIND=<count>` prints the life of the home planet of seeds 0 to `count` instead.
@@ -48,14 +50,18 @@ use bevy::window::PrimaryWindow;
 mod air;
 mod base;
 mod boot;
+mod burn;
+mod cabin;
 mod camera;
 mod foot;
 mod grass;
 mod ground;
 mod herd;
+mod hull;
 mod launch;
 mod look;
 mod meter;
+mod models;
 mod mp;
 mod orbital;
 mod room;
@@ -75,11 +81,14 @@ mod zoo;
 use air::*;
 use base::*;
 use boot::*;
+use burn::*;
+use cabin::*;
 use camera::*;
 use foot::*;
 use grass::*;
 use ground::*;
 use herd::*;
+use hull::*;
 use launch::*;
 use look::*;
 use meter::*;
@@ -101,6 +110,9 @@ use water::*;
 /// Runs the zoo when `PROBE_STAGES` names it, else the tour of the game.
 fn main() -> AppExit {
     let list = std::env::var("PROBE_STAGES").unwrap_or_default();
+    if list.split(',').any(|g| g == "models") {
+        return models::run();
+    }
     if list.split(',').any(|g| g == "zoo") {
         return zoo::run();
     }
@@ -121,6 +133,12 @@ fn main() -> AppExit {
     app.add_systems(Update, (mark::<1>, run));
     app.add_systems(PostUpdate, mark::<2>);
     app.init_resource::<Lower>();
+    app.init_resource::<Eye>();
+    app.add_systems(
+        PostUpdate,
+        hold.after(bevy::transform::TransformSystems::Propagate)
+            .after(lower),
+    );
     app.add_systems(
         PostUpdate,
         lower.after(bevy::transform::TransformSystems::Propagate),

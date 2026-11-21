@@ -1,10 +1,11 @@
-//! What is fixed to the outside of the hull: the heat shield plate under the belly, the boarding
-//! hatch on the left flank, the antenna mast and the lights. Every part is sunk into the skin.
+//! What is fixed to the outside of the hull: the heat shield plate under the belly, the service
+//! panel and the kick steps of the left flank, the studs of the nose and the lights. Every part
+//! is sunk into the skin.
 
 use bevy::prelude::*;
 
-use super::frame::ring;
-use super::loft::{Section, column, solid};
+use super::frame::rim;
+use super::loft::{Section, solid};
 use super::shell::station;
 use crate::ship::solid::Solid;
 
@@ -16,14 +17,22 @@ pub(super) const SHIELD: [[f32; 4]; 7] = [
     [-2.2, 0.3, -0.25, -0.5],
     [-1.0, 0.5, -0.25, -0.62],
     [0.4, 0.62, -0.25, -0.65],
-    [1.5, 0.62, -0.25, -0.65],
-    [2.2, 0.55, -0.25, -0.58],
-    [2.7, 0.3, -0.2, -0.34],
+    [1.5, 0.62, -0.2, -0.58],
+    [2.2, 0.5, -0.1, -0.4],
+    [2.7, 0.3, 0.0, -0.2],
 ];
 
-/// Where the hatch is on the left flank along z, and how far across the flank its door reaches,
-/// from the chine up and down.
-const HATCH: (f32, f32, f32) = (-2.25, -1.45, 0.95);
+/// Where the service panel is on the left flank of the nose along z, and how far up the flank
+/// from the chine it starts and ends.
+const PANEL: (f32, f32, (f32, f32)) = (-2.95, -2.5, (0.2, 0.75));
+
+/// Where the two kick steps are on the left flank under the sill of the canopy along z, and how
+/// far up the flank from the chine each starts and ends.
+const STEPS: (f32, f32, [(f32, f32); 2]) = (-1.74, -1.46, [(0.14, 0.3), (0.5, 0.66)]);
+
+/// Stations of the aerial on the spine, like the stations of a blade: height, z of the leading
+/// edge and of the trailing edge, and half thickness. Its foot is inside the spine.
+pub(super) const AERIAL: [[f32; 4]; 2] = [[1.0, -0.14, 0.2, 0.02], [1.38, 0.2, 0.36, 0.012]];
 
 /// Returns the section of the heat shield at a station: a box with chamfered edges.
 fn box_section([z, half, top, bottom]: [f32; 4]) -> Section {
@@ -54,10 +63,7 @@ pub fn shield() -> Solid {
 /// of the flank there.
 fn flank(z: f32, across: f32) -> (Vec3, Vec3) {
     let at = station(z);
-    let (edge, chine) = (
-        ring(at, if across > 0.0 { 3 } else { 5 }, 8),
-        ring(at, 4, 8),
-    );
+    let (edge, chine) = (rim(at, if across > 0.0 { 3 } else { 5 }), rim(at, 4));
     let normal = (edge - chine).cross(Vec3::Z).normalize();
     (
         chine.lerp(edge, across.abs()),
@@ -65,9 +71,14 @@ fn flank(z: f32, across: f32) -> (Vec3, Vec3) {
     )
 }
 
-/// Adds one layer of the hatch over the part of the flank `from..to` across and `front..back`
-/// along z: a box sunk 2 cm in the skin that stands `lift` metres out of it.
-fn layer(solid: &mut Solid, (front, back): (f32, f32), (from, to): (f32, f32), lift: f32) {
+/// Adds one layer over the part of the flank `from..to` across and `front..back` along z: a box
+/// sunk 2 cm in the skin that stands `lift` metres out of it.
+pub(super) fn layer(
+    solid: &mut Solid,
+    (front, back): (f32, f32),
+    (from, to): (f32, f32),
+    lift: f32,
+) {
     let corner = |z: f32, across: f32| {
         let (at, normal) = flank(z, across);
         (at - normal * 0.02, normal * (0.02 + lift))
@@ -77,38 +88,48 @@ fn layer(solid: &mut Solid, (front, back): (f32, f32), (from, to): (f32, f32), l
     solid.plate(base, (a.1 + b.1) * 0.5);
 }
 
-/// Returns the boarding hatch on the left flank, where the robot steps out: a light frame, the
-/// dark door in it, and the handle, over the upper and the lower face of the flank.
-pub fn hatch() -> Solid {
-    let (front, back, reach) = HATCH;
-    let mut hatch = Solid::default();
-    for (from, to) in [(0.0, reach), (-reach, 0.0)] {
-        hatch.set_tone(1);
-        layer(&mut hatch, (front, back), (from, to), 0.03);
-        hatch.set_tone(4);
-        let (inner, scale) = ((front + 0.1, back - 0.1), 0.88);
-        layer(&mut hatch, inner, (from * scale, to * scale), 0.05);
+/// Returns the fittings of the left flank, which the right flank does not have: the service
+/// panel of the nose, a slate frame with a dark cover, and the two dark kick steps under the sill
+/// of the canopy.
+pub fn left_side() -> Solid {
+    let (front, back, across) = PANEL;
+    let mut panel = Solid::default();
+    panel.set_tone(1);
+    layer(&mut panel, (front, back), across, 0.012);
+    panel.set_tone(3);
+    let cover = (across.0 + 0.06, across.1 - 0.06);
+    layer(&mut panel, (front + 0.05, back - 0.05), cover, 0.02);
+    panel.set_tone(4);
+    for step in STEPS.2 {
+        layer(&mut panel, (STEPS.0, STEPS.1), step, 0.008);
     }
-    hatch.set_tone(1);
-    let chine = flank(-1.65, 0.0).0;
-    hatch.slab(
-        chine + Vec3::new(-0.08, -0.04, -0.05),
-        chine + Vec3::new(0.0, 0.06, 0.05),
-    );
-    hatch
+    panel
 }
 
-/// Returns the antenna: a mast on the spine behind the canopy with a crossbar at its top.
-pub fn mast() -> Solid {
-    let mut mast = Solid::default();
-    column(
-        &mut mast,
-        Vec3::new(0.0, 0.0, 0.95),
-        &[(1.12, 0.015), (0.7, 0.025)],
-        (6, 0),
+/// Returns the rung under the left chine, by which the kick steps are reached from the ground:
+/// two hangers out of the flank and a bar between them.
+pub fn rung() -> Solid {
+    let (front, back, _) = STEPS;
+    let mut rung = Solid::default();
+    for z in [front, back - 0.03] {
+        rung.slab(Vec3::new(-0.8, -0.52, z), Vec3::new(-0.77, -0.02, z + 0.03));
+    }
+    rung.slab(
+        Vec3::new(-0.86, -0.52, front),
+        Vec3::new(-0.74, -0.49, back),
     );
-    mast.slab(Vec3::new(-0.1, 1.1, 0.93), Vec3::new(0.1, 1.13, 0.97));
-    mast
+    rung
+}
+
+/// Returns the studs: a row of three dark squares on each upper flank of the nose.
+pub fn studs() -> Solid {
+    let mut studs = Solid::default();
+    studs.set_tone(3);
+    for k in 0..3 {
+        let front = -2.3 + 0.11 * k as f32;
+        layer(&mut studs, (front, front + 0.06), (0.42, 0.52), 0.012);
+    }
+    studs.mirrored()
 }
 
 /// Returns the lights of the hull: the red lamp on the left wing tip, the green one on the
@@ -119,7 +140,7 @@ pub fn lamps() -> [Solid; 3] {
         lamp.slab(lo, hi);
         lamp
     };
-    let mut white = lamp(Vec3::new(-0.012, 1.7, 3.33), Vec3::new(0.012, 1.78, 3.43));
+    let mut white = lamp(Vec3::new(-0.012, 1.9, 3.86), Vec3::new(0.012, 1.97, 3.98));
     white.merge(
         &lamp(
             Vec3::new(-0.05, -0.35, -3.42),

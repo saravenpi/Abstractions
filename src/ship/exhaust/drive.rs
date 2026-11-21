@@ -47,11 +47,14 @@ fn form(jet: &Jet, exhaust: &Exhaust) -> Shape {
     }
 }
 
-/// Returns the uniform of the material of `kind`: the shape of its plumes and its colours.
+/// Returns the uniform of the material of `kind`: the shape of its plumes and its colours. The
+/// core of a main plume is the linear colour of the chamber face at full throttle, and the core
+/// of a lift plume is close to it: both are far over the bloom threshold of 2.5 at full thrust
+/// in air, so the fire blooms against a day sky.
 fn uniform(kind: Kind, shape: Shape, exhaust: &Exhaust) -> JetUniform {
     let (hot, cool) = match kind {
-        Kind::Main => (Vec3::new(1.8, 3.6, 6.5), Vec3::new(0.35, 0.8, 2.4)),
-        Kind::Lift => (Vec3::new(2.4, 3.4, 5.0), Vec3::new(0.5, 0.9, 2.0)),
+        Kind::Main => (Vec3::new(2.2, 5.6, 9.5), Vec3::new(0.35, 0.8, 2.4)),
+        Kind::Lift => (Vec3::new(3.2, 4.8, 7.0), Vec3::new(0.5, 0.9, 2.0)),
         Kind::Rcs => (Vec3::new(1.2, 1.6, 2.4), Vec3::new(0.4, 0.6, 1.2)),
     };
     let warp = if kind == Kind::Main {

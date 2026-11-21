@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use super::frame::{SIDES, ring};
+use super::frame::rim;
 use super::shell::{HALF, lip, mouth};
 use crate::ship::cockpit::FLOOR;
 use crate::ship::solid::Solid;
@@ -16,7 +16,7 @@ fn foot(station: [f32; 4], half: f32) -> Vec3 {
 /// Adds the wall that closes the tub across the hull at `station`, from the roof line down to
 /// the floor, facing `out`.
 fn wall(solid: &mut Solid, station: [f32; 4], half: f32, out: Vec3) {
-    let ridge = ring(station, 2, SIDES);
+    let ridge = rim(station, 2);
     let (left, right) = (lip(station, -half), lip(station, half));
     let (low_left, low_right) = (foot(station, -half), foot(station, half));
     solid.tri([ridge, right, low_right], out);

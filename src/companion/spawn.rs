@@ -1,21 +1,22 @@
 //! Spawning the companion beside the player: its meshes, materials, picture and parts.
 
+use bevy::camera::visibility::VisibilityRange;
 use bevy::ecs::system::SystemParam;
 use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
 use super::Companion;
-use super::body::SCREEN_FRONT;
+use super::body::{ANTENNA_TIP, NOZZLE, SCREEN_FRONT};
 use super::brain::Brain;
 use super::face::Frame;
 use super::face::machine::Face;
-use super::limbs::{HAND, Hand, THRUSTER, Thruster};
+use super::limbs::{Hand, THRUSTER, Thruster};
 use super::motion::{Float, Head, Rig};
 use super::puppet::{Parts, Tracked};
 use super::screen::{Display, picture};
-use super::shapes::{ANTENNA_TIP, Shapes, unlit};
+use super::shapes::{Shapes, unlit};
 use super::shine::Lamp;
-use super::tune::{HALF, LIGHT_RANGE, SIDE};
+use super::tune::{LIGHT_RANGE, SIDE};
 use super::{ribbon, tail};
 use crate::render::{GameCamera, Warm};
 use crate::screens::Screen;
@@ -23,6 +24,19 @@ use crate::space::Rebased;
 
 /// How far in front of the screen the light sits, in meters, so it does not burn a spot on the bezel.
 const LAMP_REACH: f32 = 0.16;
+
+/// Distance from the camera, in meters, at which a companion changes between its rich meshes
+/// and its light ones: there it is under ten game pixels wide.
+const SWAP: f32 = 12.0;
+
+/// Returns the range of distances from the camera at which the rich mesh shows, then the
+/// light one.
+fn levels() -> [VisibilityRange; 2] {
+    [
+        VisibilityRange::abrupt(0.0, SWAP),
+        VisibilityRange::abrupt(SWAP, f32::INFINITY),
+    ]
+}
 
 /// The asset stores the companion's parts are created in, and the clock that seeds it.
 #[derive(SystemParam)]
@@ -68,33 +82,40 @@ fn glows(head: &mut ChildSpawnerCommands, ball: Mesh3d, display: &Display) {
     head.spawn((Lamp, light, front));
 }
 
-/// Spawns everything visible as children of the rig: the head with its shell, screen and
-/// glowing parts, and on the body the hands and the thruster. Returns the head.
-fn dress(rig: &mut ChildSpawnerCommands, shapes: &Shapes, display: &Display) -> Entity {
+/// Spawns the two floating hands on the rig, each with its light mesh as a child.
+fn hands(rig: &mut ChildSpawnerCommands, shapes: &Shapes) {
     let shell = MeshMaterial3d(shapes.shell.clone());
-    let ball = Mesh3d(shapes.orb.clone());
-    let head = rig
-        .spawn((Head, Transform::default(), Visibility::default()))
-        .with_children(|head| {
-            head.spawn((Mesh3d(shapes.body.clone()), shell.clone()));
-            let face = MeshMaterial3d(display.face.clone());
-            head.spawn((Mesh3d(shapes.screen.clone()), face, NotShadowCaster));
-            glows(head, ball.clone(), display);
-        })
-        .id();
+    let [near, far] = levels();
     for side in [1.0, -1.0] {
         let hand = Hand {
             side,
             lag: Vec3::ZERO,
         };
-        rig.spawn((
-            hand,
-            ball.clone(),
-            shell.clone(),
-            Transform::from_scale(HAND),
-        ));
+        let rich = (Mesh3d(shapes.hand[0].clone()), shell.clone(), near.clone());
+        let light = (Mesh3d(shapes.hand[1].clone()), shell.clone(), far.clone());
+        rig.spawn((hand, rich, Transform::default()))
+            .with_child(light);
     }
-    let under = Transform::from_xyz(0.0, -HALF[1] - 0.03, 0.0).with_scale(THRUSTER);
+}
+
+/// Spawns everything visible as children of the rig: the head with its shell, screen and
+/// glowing parts, and on the body the hands and the thruster. Returns the head.
+fn dress(rig: &mut ChildSpawnerCommands, shapes: &Shapes, display: &Display) -> Entity {
+    let shell = MeshMaterial3d(shapes.shell.clone());
+    let ball = Mesh3d(shapes.orb.clone());
+    let [near, far] = levels();
+    let head = rig
+        .spawn((Head, Transform::default(), Visibility::default()))
+        .with_children(|head| {
+            head.spawn((Mesh3d(shapes.body[0].clone()), shell.clone(), near));
+            head.spawn((Mesh3d(shapes.body[1].clone()), shell.clone(), far));
+            let face = MeshMaterial3d(display.face.clone());
+            head.spawn((Mesh3d(shapes.screen.clone()), face, NotShadowCaster));
+            glows(head, ball.clone(), display);
+        })
+        .id();
+    hands(rig, shapes);
+    let under = Transform::from_translation(NOZZLE).with_scale(THRUSTER);
     let glow = MeshMaterial3d(display.glow.clone());
     rig.spawn((Thruster, ball, glow, under, NotShadowCaster));
     head
@@ -137,7 +158,7 @@ pub fn look(commands: &mut Commands, stock: &mut Stock, at: Transform) -> Entity
 pub fn warm(mut warm: ResMut<Warm>, mut stock: Stock) {
     let display = display(&mut stock);
     let shapes = Shapes::new(&mut stock.meshes, &mut stock.materials);
-    warm.add(shapes.body.clone(), shapes.shell.clone());
+    warm.add(shapes.body[0].clone(), shapes.shell.clone());
     warm.add(shapes.screen.clone(), display.face);
     warm.add(shapes.orb.clone(), display.glow);
     warm.add(stock.meshes.add(ribbon::mesh()), shapes.trail.clone());

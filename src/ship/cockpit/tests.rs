@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::Levers;
-use super::tune::{LEVER, LEVER_SWING, PEDAL_REACH, STICK, STICK_REACH, THROW};
+use super::tune::{LEVER, LEVER_SWING, PEDAL_REACH, STICK, STICK_LENGTH, STICK_REACH, THROW};
 
 /// Returns the controls with the stick at `stick` and the lever at `throttle`.
 pub(super) fn levers(stick: [f32; 3], throttle: f32) -> Levers {
@@ -20,16 +20,19 @@ fn angle(turn: Quat) -> f32 {
     turn.angle_between(Quat::IDENTITY)
 }
 
-/// The grip of the stick comes back for pitch up and goes left for a roll to the left; a yaw
-/// twists the stick in place; the handle of the lever goes forward with the throttle.
+/// At rest the hand holds the side stick straight over its hinge, under the top of the grip. The
+/// grip comes back for pitch up and goes left for a roll to the left; a yaw twists the stick in
+/// place; the handle of the lever goes forward with the throttle.
 #[test]
 fn the_stick_and_the_lever_follow_the_input() {
     let rest = levers([0.0; 3], 0.0).grips();
     let grip = |stick: [f32; 3]| levers(stick, 0.0).grips()[1];
-    assert!(rest[1].distance(STICK + Vec3::Y * 0.3) < 1.0e-5);
+    let held = STICK_LENGTH.0 - STICK_LENGTH.1;
+    assert!(rest[1].distance(STICK + Vec3::Y * held) < 1.0e-5);
     let (back, ahead) = (grip([1.0, 0.0, 0.0]).z, grip([-1.0, 0.0, 0.0]).z);
     assert!(back > rest[1].z + 0.04 && ahead < rest[1].z - 0.04);
-    assert!(grip([0.0, 0.0, 1.0]).x < -0.04 && grip([0.0, 0.0, -1.0]).x > 0.04);
+    let (left, right) = (grip([0.0, 0.0, 1.0]).x, grip([0.0, 0.0, -1.0]).x);
+    assert!(left < rest[1].x - 0.04 && right > rest[1].x + 0.04);
     assert!(grip([0.0, 1.0, 0.0]).distance(rest[1]) < 1.0e-5);
     let twist = levers([0.0, 1.0, 0.0], 0.0).stick_turn();
     assert!((twist.to_scaled_axis() - Vec3::Y * STICK_REACH.1).length() < 1.0e-5);

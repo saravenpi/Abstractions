@@ -5,7 +5,8 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 
-use super::frame::{canopy, fuselage};
+use super::dome::canopy;
+use super::frame::fuselage;
 use super::parts::Part;
 use super::tests_fit::{corners, inside};
 

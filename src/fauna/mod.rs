@@ -99,6 +99,11 @@ pub type Live = (With<Creature>, Without<Dead>);
 #[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Frozen;
 
+/// The set of the walk, which poses every drawn animal and its parts for the frame: what reads
+/// where an animal is drawn this frame runs after it.
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Posed;
+
 /// Registers the fauna systems: the forgetting of animals when the planet under the anchor changes,
 /// then, on a living planet in play, the scan, the walk and the fades. Calm water mirrors the animals.
 pub(super) fn plugin(app: &mut App) {
@@ -117,7 +122,7 @@ pub(super) fn plugin(app: &mut App) {
                     scan,
                     senses::sense,
                     signs::sing.run_if(signs::sounding),
-                    walk::walk,
+                    walk::walk.in_set(Posed),
                     fade::fade,
                     shine,
                 )

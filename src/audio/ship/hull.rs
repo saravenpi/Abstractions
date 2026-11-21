@@ -161,10 +161,16 @@ impl Hull {
 
     /// Takes what the game says of the ship and retunes every layer, `dt` seconds after the
     /// last call. Call it a few hundred times per second.
+    ///
+    /// The way to a listener outside follows where the game puts them, not the smoothed place,
+    /// and only while they are outside: one who gets in hears the outside fade from where they
+    /// stood, and one who gets out is heard at once from where they stand, while the outside
+    /// is still silent. The seat sits at no distance, so a smoothed place would sweep the delay
+    /// through it.
     pub fn tune(&mut self, goal: HullSound, dt: f32) {
-        let was = self.goal.at(Ch::Present) > 0.5;
+        let was = self.goal;
         self.goal = goal;
-        if !was && goal.at(Ch::Present) > 0.5 {
+        if was.at(Ch::Present) <= 0.5 && goal.at(Ch::Present) > 0.5 {
             self.wake();
         }
         if !self.live() {
@@ -179,7 +185,11 @@ impl Hull {
         self.ride(&hull, lit);
         self.drive.tune();
         self.works.tune(&hull, lit, dt);
-        self.path.tune(&hull);
+        match (goal.at(Ch::Inside) > 0.5, was.at(Ch::Inside) > 0.5) {
+            (true, _) => {}
+            (false, true) => self.path.jump(&goal),
+            (false, false) => self.path.tune(&goal),
+        }
     }
 
     /// Renders one sample of what a listener in the seat hears: the `air` outside through the

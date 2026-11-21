@@ -34,14 +34,17 @@ fn jumps() -> [HullSound; 6] {
 
 /// The state of the ship may jump from any value to any other between two frames: every value
 /// is smoothed, so the seat hears no step, and neither does a listener who stands 60 metres off
-/// or one who gets in and out.
+/// or one who gets in and out. The listener stays in the seat the round after a burn: one who
+/// gets out of a burn hears its roar 60 metres off, whose own noise moves more than a step per
+/// sample. [`getting_out_of_a_burn_sweeps_nothing`] holds that case.
 #[test]
 fn a_jump_of_the_state_makes_no_step() {
     let (mut mixer, shared) = mixer(&alone(seated(parked())));
     let steady = listen(&mut mixer, 3.0);
     assert!(steady.jump < STEP, "steady {}", steady.jump);
     for (round, hull) in jumps().into_iter().cycle().take(18).enumerate() {
-        let hull = if round % 5 < 3 { seated(hull) } else { hull };
+        let seat = round % 5 < 3 || round % 6 == 1;
+        let hull = if seat { seated(hull) } else { hull };
         shared.publish(&alone(hull), &Volumes::default());
         let stats = listen(&mut mixer, 0.7);
         assert!(
@@ -50,6 +53,29 @@ fn a_jump_of_the_state_makes_no_step() {
             stats.jump
         );
     }
+}
+
+/// A listener who gets out of a ship in the middle of a burn hears the roar on its way from
+/// where they stand, no rougher than that burn heard there all along. A delay that glided from
+/// the seat out to them would play it at up to twice its pitch, which is rougher.
+#[test]
+fn getting_out_of_a_burn_sweeps_nothing() {
+    let burn = parked().with(Ch::Thrust, 0.55).with(Ch::Lift, 1.0);
+    let (mut there, _) = mixer(&alone(burn));
+    listen(&mut there, 3.0);
+    let steady = listen(&mut there, 2.0);
+    let (mut pilot, shared) = mixer(&alone(parked()));
+    listen(&mut pilot, 3.0);
+    shared.publish(&alone(seated(burn)), &Volumes::default());
+    listen(&mut pilot, 2.0);
+    shared.publish(&alone(parked()), &Volumes::default());
+    let out = listen(&mut pilot, 0.7);
+    assert!(
+        !out.broken && out.jump < steady.jump,
+        "{} {}",
+        out.jump,
+        steady.jump
+    );
 }
 
 /// The same scene renders the same samples every time: every random number is seeded.

@@ -24,6 +24,8 @@ mod tests_grid;
 #[cfg(test)]
 mod tests_ground;
 #[cfg(test)]
+mod tests_layer;
+#[cfg(test)]
 mod tests_puff;
 #[cfg(test)]
 mod tests_seen;
@@ -33,7 +35,9 @@ mod tests_time;
 pub use feed::{seen, word};
 pub use field::Field;
 pub use grid::{FACE, Patch, SNAPSHOT, TEXELS, face_dir, moment, texel};
-pub use puff::{CELL, density_at, drift};
+pub use puff::{CELL, SLICES, density_at, drift, slice, volume};
+#[cfg(test)]
+pub use puff::{drawn_at, reached};
 pub use rules::{THUNDER_SECONDS, Weather, thunder};
 pub use wet::wet;
 

@@ -126,3 +126,9 @@ Sources
 - Hillaire, Physically based sky, atmosphere and cloud rendering in Frostbite, SIGGRAPH 2016: https://media.contentapi.ea.com/content/dam/eacom/frostbite/files/s2016_pbs_frostbite_sky_clouds.pdf (found, not read).
 - Lague, Coding Adventure: Clouds: https://www.youtube.com/watch?v=4QOcCGI6xOU (found, not watched).
 - Unverifiable: https://bgolus.medium.com/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f (403).
+
+## clouds-fix pass 2 (2026-11-21): slices with depth
+
+- The owner saw the fly-through and whiteout start well above and under the drawn cloud: the layer was one shell at mid band, the volume the whole band. The band is now `weather::SLICES` (3) shells at the base, the middle and the top, sharing one mesh, each reading the field on the mid-band shell. A column of body `b` reaches `2 b - 1` of the band and a slice draws the columns that reach it (`clouds.wesl`: `body - 0.5 * slice`). `weather::volume` is 1 from the base to the highest slice a column reaches, eased over `SOFT` (2 percent of the band), and the whiteout (`clouds::crossing`) and the fly-through puffs (`near::fill::volume`) read it.
+- Far look (rel-boot6 11-tp-stand: rows of regular streaks in an overcast sky): the noise lattice lay on the planet axes, so its planes across the spin axis ran along circles of latitude. `SKEW` turns the lattice 0.9 rad about (1, 2, 3).
+- Cost: one draw of the shell per slice. The base slice reads 4 octaves and 2 toward the star (6 lookups); the upper slices read 3 octaves and no relief (`RELIEF_TOP`), so at most 12 lookups per pixel, today plus one pass.

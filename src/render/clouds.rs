@@ -1,7 +1,14 @@
-//! The cloud layer: a shell around the planet that draws the cloud field of that planet, and
-//! how deep the camera is inside a real cloud of it.
+//! The cloud layer: a few shells around the planet, stacked from the base of the cloud band to
+//! its top, that draw the cloud field of that planet with its depth, and how deep the camera is
+//! inside a real cloud of it. The slices, the whiteout and the fly-through puffs read one
+//! volume, `weather::volume`.
+//!
+//! Cost: one draw of the shell mesh per slice. The base slice reads four octaves of the noise
+//! and two more toward the star; the upper ones read three and no relief, so the layer costs
+//! twelve noise lookups per pixel at most where one shell cost six.
 
 mod cross;
+mod inputs;
 mod map;
 mod maps;
 mod material;
@@ -30,48 +37,53 @@ use bevy::pbr::MaterialPlugin;
 use bevy::prelude::*;
 use bevy::shader::{Shader, load_shader_library};
 
-pub use cross::{CloudCrossing, crossing_depth};
+pub use cross::{CloudCrossing, depth_at};
 pub(super) use map::toward_second;
 pub(super) use maps::CloudMaps;
 pub use material::{CloudMaterial, CloudUniform};
 
-use super::aerial::Haze;
 use super::palette::Palette;
-use super::sky::linear;
 use super::vantage::{LocalSystem, Vantage};
 use super::weather::LocalWeather;
 use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
 use crate::space::Clock;
-use crate::universe::BodyId;
 pub(super) use crate::weather::CELL;
-use crate::weather::{Field, Weather, density_at, drift as drifted};
+use crate::weather::{SLICES, Weather, slice};
 
 /// Marks the cloud shell.
 #[derive(Component, Debug, Clone, Copy)]
 pub struct CloudShell;
+
+/// The slice of the cloud band a shell draws, counted from the base.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct CloudSlice(pub u32);
 
 /// A cover the cloud shell is drawn with in place of the broad cover of the weather, from 0 to 1,
 /// for the probe to look at a clear, a broken and an overcast sky. Nothing sets it in the game.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq)]
 pub struct CloudCover(pub Option<f32>);
 
-/// Spawns the hidden shell when the world starts loading.
+/// Spawns the hidden shells of the slices when the world starts loading: one mesh, scaled to the
+/// radius of each slice, and a material each.
 fn spawn_shell(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<CloudMaterial>>,
 ) {
-    commands.spawn((
-        CloudShell,
-        Mesh3d(meshes.add(super::shell(false))),
-        MeshMaterial3d(materials.add(CloudMaterial::default())),
-        Transform::default(),
-        Visibility::Hidden,
-        NotShadowCaster,
-        NoFrustumCulling,
-        DespawnOnEnter(Screen::Title),
-    ));
+    let mesh = meshes.add(super::shell(false));
+    for k in 0..SLICES {
+        commands.spawn((
+            (CloudShell, CloudSlice(k)),
+            Mesh3d(mesh.clone()),
+            MeshMaterial3d(materials.add(CloudMaterial::default())),
+            Transform::default(),
+            Visibility::Hidden,
+            NotShadowCaster,
+            NoFrustumCulling,
+            DespawnOnEnter(Screen::Title),
+        ));
+    }
 }
 
 /// Everything the cloud layer is computed from.
@@ -99,77 +111,9 @@ pub(super) struct CloudInputs<'w> {
     maps: ResMut<'w, CloudMaps>,
 }
 
-impl CloudInputs<'_> {
-    /// Returns the planet or moon under the camera when its sky has a deck of clouds and
-    /// clouds are switched on.
-    fn cloudy(&self) -> Option<BodyId> {
-        let vantage = &*self.vantage;
-        let near = self.local.0.as_ref()?;
-        let body = near.body(u8::try_from(vantage.body).ok()?, vantage.moon)?;
-        let on = self.settings.graphics.clouds && Field::of(body, false).deck;
-        on.then_some(body.id)
-    }
-
-    /// Returns true while the camera is nearer the body than its hand-over, past which the far
-    /// body draws the clouds.
-    fn within(&self, vantage: &Vantage) -> bool {
-        let limit = self.local.0.as_ref().map(|near| near.handover(vantage));
-        limit.is_none_or(|limit| vantage.observer.altitude(0.0) < limit)
-    }
-
-    /// Returns the rotation from render axes to the axes fixed to the planet under the camera,
-    /// which the cloud field is laid in: the clouds turn with the ground below them.
-    fn fixed(&self) -> Mat3 {
-        let observer = &self.vantage.observer;
-        Mat3::from_quat((observer.to_render * observer.spin).inverse().as_quat())
-    }
-
-    /// Returns how much cloud the field holds where the camera is, on a shell of `radius`
-    /// metres: the puff the shader draws there, under the broad cover the weather reads.
-    fn density(&self, radius: f32) -> f32 {
-        let cover = self
-            .forced
-            .0
-            .unwrap_or_else(|| self.weather.as_deref().map_or(0.0, |weather| weather.cloud));
-        let dir = (self.fixed() * self.vantage.up).as_dvec3();
-        density_at(dir, radius / CELL, self.clock.seconds, cover)
-    }
-
-    /// Returns the shader values for a shell of `radius` metres and a camera `depth` deep in cloud.
-    fn uniform(&self, radius: f32, depth: f32) -> CloudUniform {
-        let vantage = &*self.vantage;
-        let distance = vantage.radius + vantage.altitude;
-        let ground = vantage.radius * vantage.radius;
-        let rim =
-            (distance * distance - ground).max(0.0).sqrt() + (radius * radius - ground).sqrt();
-        let (fixed, seconds) = (self.fixed(), self.clock.seconds);
-        let air = self.local.air_below(vantage);
-        CloudUniform {
-            light: self.palette.sun_dir.extend(vantage.air),
-            color: linear(self.palette.cloud)
-                .truncate()
-                .extend(toward_second(seconds)),
-            haze: linear(self.palette.horizon).truncate().extend(depth),
-            params: Vec4::new(
-                radius / CELL,
-                rim,
-                f32::from(u8::from(self.forced.0.is_some())),
-                self.forced.0.unwrap_or(0.0),
-            ),
-            space: air.clouds_from_space().extend(0.0),
-            ambient: linear(self.palette.ambient).truncate().extend(0.0),
-            fade: Haze::seen(vantage, &air, self.sky.as_deref(), radius).extend(0.0),
-            drift: drifted(seconds, radius / CELL),
-            fixed_x: fixed.x_axis.extend(0.0),
-            fixed_y: fixed.y_axis.extend(0.0),
-            fixed_z: fixed.z_axis.extend(0.0),
-            eye: (fixed * vantage.up * (radius / CELL)).extend(CELL),
-        }
-    }
-}
-
-/// The transforms, visibility and material of the cloud shell.
+/// The slice, transforms, visibility and material of a cloud shell.
 type ShellParts = (
+    &'static CloudSlice,
     &'static Mesh3d,
     &'static mut Transform,
     &'static mut GlobalTransform,
@@ -177,45 +121,57 @@ type ShellParts = (
     &'static MeshMaterial3d<CloudMaterial>,
 );
 
-/// Measures how deep the camera is in real cloud, wraps the shell around the planet halfway up
-/// the cloud band, at a radius that never changes, and refreshes the shader values. The mesh of
-/// the shell is a cube sphere within [`shell::TOLERANCE`] metres of the true sphere near it, and
-/// within a hundredth of the distance to it from afar, built over what the camera can see off
-/// the main thread. The shell shows once the cover map of the planet is ready and its mesh is
-/// built. A sky without clouds has no shell and no crossing, and past the hand-over the far
-/// body draws the same clouds from the same map.
+/// Returns how deep the camera of `inputs` is in real cloud, eased from `around` over the frame:
+/// the volume of the slices at its height over the cloud the field holds under it.
+fn crossing(inputs: &CloudInputs, around: &mut f32, mid: f32, cloudy: bool) -> f32 {
+    let vantage = &*inputs.vantage;
+    let band = (vantage.cloud_base, vantage.cloud_top);
+    let column = |body: f32| depth_at(vantage.altitude, band, body);
+    let (inside, here) = match cloudy {
+        true => (column(1.0), column(inputs.density(mid))),
+        false => (0.0, 0.0),
+    };
+    *around = cross::eased(*around, here, inside, inputs.time.delta_secs());
+    *around
+}
+
+/// Measures how deep the camera is in real cloud, wraps the slices around the planet from the
+/// base of the cloud band to its top, at radii that never change, and refreshes their shader
+/// values. The one mesh of the shells is a cube sphere within [`shell::TOLERANCE`] metres of the
+/// true sphere near it, and within a hundredth of the distance to it from afar, built over what
+/// the camera can see of the highest slice off the main thread. The shells show once the cover
+/// map of the planet is ready and their mesh is built. A sky without clouds has no shell and no
+/// crossing, and past the hand-over the far body draws the same clouds from the same map.
 pub(super) fn drift(
     mut inputs: CloudInputs,
     mut around: Local<f32>,
-    mut crossing: ResMut<CloudCrossing>,
+    mut crossing_now: ResMut<CloudCrossing>,
     mut shells: Query<ShellParts, With<CloudShell>>,
     mut assets: mesh::Shell,
 ) {
     let vantage = *inputs.vantage;
     let body = inputs.cloudy();
-    let radius = vantage.radius + 0.5 * (vantage.cloud_base + vantage.cloud_top);
-    let band = body.map_or(0.0, |_| {
-        crossing_depth(vantage.altitude, vantage.cloud_base, vantage.cloud_top)
-    });
-    let seconds = inputs.time.delta_secs();
-    *around = cross::eased(*around, inputs.density(radius), band, seconds);
-    let depth = band * *around;
-    crossing.set_if_neq(CloudCrossing { depth });
+    let (base, top) = (vantage.cloud_base, vantage.cloud_top);
+    let at = |share: f32| vantage.radius + base + share * (top - base);
+    let mid = at(0.5);
+    let depth = crossing(&inputs, &mut around, mid, body.is_some());
+    crossing_now.set_if_neq(CloudCrossing { depth });
     let map = body.and_then(|id| inputs.maps.want(id));
     let wanted = map.is_some() && inputs.within(&vantage);
-    let observer = vantage.observer;
-    let center = observer.place(observer.center, vantage.camera);
-    let pose = Transform::from_translation(center).with_scale(Vec3::splat(radius));
-    for (mesh, mut transform, mut global, mut visibility, handle) in &mut shells {
-        let sight = (vantage.radius, vantage.altitude, radius);
-        let shown = wanted && assets.remesh(&mesh.0, sight, vantage.up);
+    let center = vantage
+        .observer
+        .place(vantage.observer.center, vantage.camera);
+    let mut ready = None;
+    for (k, mesh, mut transform, mut global, mut visibility, handle) in &mut shells {
+        let sight = (vantage.radius, vantage.altitude, at(1.0));
+        let shown =
+            *ready.get_or_insert_with(|| wanted && assets.remesh(&mesh.0, sight, vantage.up));
+        let radius = at(slice(k.0));
+        let pose = Transform::from_translation(center).with_scale(Vec3::splat(radius));
         super::pin(pose, &mut transform, &mut global);
-        visibility.set_if_neq(match shown {
-            true => Visibility::Visible,
-            false => Visibility::Hidden,
-        });
+        visibility.set_if_neq([Visibility::Hidden, Visibility::Visible][usize::from(shown)]);
         if shown {
-            assets.paint(&handle.0, inputs.uniform(radius, depth), &map);
+            assets.paint(&handle.0, inputs.uniform(mid, (k.0, radius), depth), &map);
         }
     }
 }

@@ -13,6 +13,7 @@
 
 #[cfg(test)]
 mod graze;
+mod layer;
 mod seen;
 
 use bevy::math::{Mat3, Vec3, Vec4};

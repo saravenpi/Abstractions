@@ -13,6 +13,7 @@ const CUT: f32 = 0.066;
 const TALL: f32 = 1.0;
 const GRAZE: f32 = 0.02;
 const CLAMP: f32 = 9.0;
+const RELIEF_TOP: f32 = 0.85;
 const SKEW: mat3x3<f32> = mat3x3<f32>(0.648638, 0.682114, -0.337622, -0.574003, 0.729721, 0.37152, 0.499789, -0.047186, 0.864861);
 const IGN: vec3<f32> = vec3<f32>(0.06711056, 0.00583715, 52.9829189);
 const IGN_SHIFT: vec2<f32> = vec2<f32>(17.0, 31.0);
@@ -66,7 +67,7 @@ fn spot_at(p: vec3<f32>, drift: vec4<f32>) -> Spot {
     return Spot(SKEW * turned(p, drift.x, drift.y), SKEW * turned(p, drift.z, drift.w));
 }
 
-fn fbm_seen(spot: Spot, octaves: i32, footprint: f32) -> f32 {
+fn fbm_part(spot: Spot, octaves: i32, read: i32, footprint: f32) -> f32 {
     var total = 0.5 * (space_noise(spot.base) - 0.5);
     var full = 0.25;
     var kept = 0.25;
@@ -74,7 +75,7 @@ fn fbm_seen(spot: Spot, octaves: i32, footprint: f32) -> f32 {
     var scale = OCTAVE_SCALE;
     var q = spot.fine * OCTAVE_SCALE + OCTAVE_SHIFT;
     for (var i = 1; i < octaves; i = i + 1) {
-        let keep = 1.0 - smoothstep(SHARP.x, SHARP.y, footprint * scale);
+        let keep = select(0.0, 1.0 - smoothstep(SHARP.x, SHARP.y, footprint * scale), i < read);
         if (keep > 0.0) {
             total = total + amplitude * keep * (space_noise(q) - 0.5);
         }
@@ -85,6 +86,10 @@ fn fbm_seen(spot: Spot, octaves: i32, footprint: f32) -> f32 {
         scale = scale * OCTAVE_SCALE;
     }
     return 0.5 - pow(0.5, f32(octaves + 1)) + total * sqrt(full / kept);
+}
+
+fn fbm_seen(spot: Spot, octaves: i32, footprint: f32) -> f32 {
+    return fbm_part(spot, octaves, octaves, footprint);
 }
 
 fn threshold(cover: f32) -> f32 {
@@ -126,11 +131,14 @@ fn broad_cover(map: texture_cube<f32>, map_sampler: sampler, dir: vec3<f32>, tow
     return mix(held.r, held.g, toward_second);
 }
 
-fn puff(p: vec3<f32>, drift: vec4<f32>, sunward: vec3<f32>, facing: f32, cover: f32, footprint: f32) -> Puff {
-    let here = fbm_seen(spot_at(p, drift), OCTAVES, footprint);
-    let toward_light = fbm_seen(spot_at(p + sunward * 0.3, drift), 2, footprint);
+fn puff(p: vec3<f32>, drift: vec4<f32>, sunward: vec3<f32>, facing: f32, cover: f32, footprint: f32, read: i32) -> Puff {
+    let here = fbm_part(spot_at(p, drift), OCTAVES, read, footprint);
     let dense = density(here + graze(cover, facing), cover);
-    let relief = clamp(0.6 + (here - toward_light * 1.25) * 8.0, 0.0, 1.0);
+    var relief = RELIEF_TOP;
+    if (read >= OCTAVES) {
+        let toward_light = fbm_seen(spot_at(p + sunward * 0.3, drift), 2, footprint);
+        relief = clamp(0.6 + (here - toward_light * 1.25) * 8.0, 0.0, 1.0);
+    }
     return Puff(dense, relief);
 }
 

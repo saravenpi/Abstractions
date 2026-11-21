@@ -36,6 +36,8 @@ pub use cue::{AudioCue, ChirpKind, StepSurface};
 pub(crate) use dsp::rand::Rand;
 pub use hit::{Body, Impact, Outer, Whoosh};
 pub use scene::{AudioScene, altitude_fade};
+pub use ship::feed::{Ch, HULLS, HullSound};
+pub use ship::tune::EARSHOT;
 
 use bevy::audio::AddAudioSource;
 use bevy::prelude::*;

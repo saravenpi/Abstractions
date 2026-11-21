@@ -69,11 +69,26 @@ const LAND: [Blip; 2] = [
     noise(190.0, 0.22, 0.006, 0.0, 0.16),
 ];
 
-/// Warp charging: three tones rising for three seconds.
+/// Warp charging: the contactor of the drive closes with a clunk, and the capacitors take
+/// their first charge. The rising tone of the spool is part of the voice of the ship.
 const WARP_SPOOL: [Blip; 3] = [
-    swelling(tone(70.0, 520.0, 3.2, 0.0, 0.22)),
-    swelling(tone(105.4, 783.0, 3.2, 0.0, 0.1)),
-    swelling(tone(140.0, 1040.0, 3.2, 0.0, 0.06)),
+    deep(tone(120.0, 62.0, 0.16, 0.0, 0.2)),
+    noise(1400.0, 0.03, 0.001, 0.0, 0.07),
+    swelling(tone(180.0, 420.0, 0.45, 0.02, 0.05)),
+];
+
+/// A relay of the cockpit: the click of its contact and the knock of its armature.
+const SWITCH: [Blip; 2] = [
+    noise(2600.0, 0.012, 0.0005, 0.0, 0.07),
+    deep(tone(210.0, 140.0, 0.035, 0.0, 0.08)),
+];
+
+/// A sonic boom: the two shocks of the wave, a tenth of a second apart, and the rumble after.
+const BOOM: [Blip; 4] = [
+    deep(tone(95.0, 38.0, 0.3, 0.0, 0.42)),
+    deep(tone(80.0, 34.0, 0.34, 0.09, 0.36)),
+    noise(240.0, 0.12, 0.002, 0.0, 0.14),
+    noise(90.0, 1.4, 0.05, 0.1, 0.16),
 ];
 
 /// Warp firing: a soft boom and a falling tone.
@@ -126,6 +141,8 @@ pub fn recipe(cue: AudioCue, rand: &mut Rand) -> (&'static [Blip], f32, f32) {
             0.8 + 0.4 * strength.clamp(0.0, 1.0),
             0.4 + 0.6 * strength.clamp(0.0, 1.0),
         ),
+        AudioCue::Switch => (&SWITCH, rand.range(0.96, 1.04), 1.0),
+        AudioCue::Boom(level) => (&BOOM, rand.range(0.9, 1.1), level.clamp(0.0, 1.0)),
         AudioCue::Call(_) | AudioCue::Hit(_) => (&[], 1.0, 0.0),
     }
 }

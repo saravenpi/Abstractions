@@ -10,8 +10,15 @@ mod harmony;
 mod mix;
 mod music;
 mod planet;
+mod render;
+mod rig;
 mod scene;
 mod sensing;
+mod ship;
+mod ship_law;
+mod ship_mix;
+mod takes;
+mod takes_ground;
 mod weather;
 mod wire;
 

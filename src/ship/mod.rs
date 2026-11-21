@@ -45,6 +45,7 @@ mod shake;
 mod sim;
 mod sky;
 mod solid;
+mod sound;
 mod spawn;
 mod steer;
 mod strike;
@@ -246,4 +247,5 @@ pub(super) fn plugin(app: &mut App) {
     vapour::plugin(app);
     exhaust::plugin(app);
     wake::plugin(app);
+    sound::plugin(app);
 }

@@ -55,7 +55,8 @@ pub enum AudioCue {
     Footstep(StepSurface),
     /// The ship touched the ground. The strength runs from 0 (feather) to 1 (hard).
     Land(f32),
-    /// The warp drive starts charging: a tone that rises for about three seconds.
+    /// The warp drive starts charging: its contactor closes. The rising tone of the spool
+    /// itself is part of the voice of the ship.
     WarpSpool,
     /// The warp drive fires: a soft boom.
     WarpEngage,
@@ -71,6 +72,11 @@ pub enum AudioCue {
     Pump(f32),
     /// A blow, a glance or a swing, placed for the listener.
     Hit(HitSound),
+    /// A switch of the cockpit is thrown: a relay clicks.
+    Switch,
+    /// The shock wave of a ship faster than sound passes the listener. The strength runs from 0
+    /// (far off) to 1 (overhead).
+    Boom(f32),
 }
 
 /// Every surface, in code order.
@@ -99,7 +105,8 @@ const STRENGTH_STEPS: f32 = 1000.0;
 
 impl AudioCue {
     /// Returns every cue the player sets off once, landing at full strength. Thunder comes from
-    /// the weather and the pump from the boots; both are auditioned on their own. Used to audition and to test.
+    /// the weather, the pump from the boots and the boom from a ship; they are auditioned on their
+    /// own. Used to audition and to test.
     pub fn all() -> impl Iterator<Item = AudioCue> {
         let plain = [
             AudioCue::UiMove,
@@ -109,6 +116,7 @@ impl AudioCue {
             AudioCue::WarpSpool,
             AudioCue::WarpEngage,
             AudioCue::WarpExit,
+            AudioCue::Switch,
         ];
         let steps = SURFACES.into_iter().map(AudioCue::Footstep);
         let chirps = CHIRPS.into_iter().map(AudioCue::Chirp);
@@ -131,6 +139,8 @@ impl AudioCue {
             AudioCue::Call(call) => (11, call.pack()),
             AudioCue::Pump(strength) => (12, (strength.clamp(0.0, 1.0) * STRENGTH_STEPS) as u32),
             AudioCue::Hit(sound) => (13, sound.pack()),
+            AudioCue::Switch => (14, 0),
+            AudioCue::Boom(level) => (15, (level.clamp(0.0, 1.0) * STRENGTH_STEPS) as u32),
         };
         kind | (arg << 8)
     }
@@ -152,6 +162,8 @@ impl AudioCue {
             11 => Call::unpack(arg as u32).map(AudioCue::Call),
             12 => Some(AudioCue::Pump(arg as f32 / STRENGTH_STEPS)),
             13 => HitSound::unpack(arg as u32).map(AudioCue::Hit),
+            14 => Some(AudioCue::Switch),
+            15 => Some(AudioCue::Boom(arg as f32 / STRENGTH_STEPS)),
             _ => None,
         }
     }

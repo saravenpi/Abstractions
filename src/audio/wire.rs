@@ -1,5 +1,6 @@
-//! Wiring to the rest of the game: the ship drives the engine, the rumble and the warp, and
-//! what happens to the ship and what the companion says become cues.
+//! Wiring to the rest of the game: the warp of the ship silences the music, and what happens
+//! to the ship and what the companion says become cues. The voice of the ship itself follows
+//! what the ship module writes into the scene.
 
 use bevy::prelude::*;
 
@@ -9,22 +10,12 @@ use crate::companion::CompanionChirp;
 use crate::screens::Screen;
 use crate::ship::{ShipEvent, ShipTelemetry, WarpState};
 
-/// Dynamic pressure in pascals that counts as the strongest buffeting: a ship under full boost
-/// in thick air settles near it.
-pub const FULL_PRESSURE: f64 = 7.5e4;
-
 /// Touchdown speed in metres per second that counts as a hard landing.
 pub const HARD_LANDING: f64 = 12.0;
 
-/// Returns the engine throttle, the buffeting and whether the ship is in warp, as the scene
-/// holds them, from the instruments of the ship.
-pub fn ship_scene(telemetry: &ShipTelemetry) -> (f32, f32, bool) {
-    let pressure = (telemetry.dynamic_pressure / FULL_PRESSURE).clamp(0.0, 1.0);
-    (
-        telemetry.throttle.abs().min(1.0) as f32,
-        pressure as f32,
-        matches!(telemetry.warp, WarpState::Active(_)),
-    )
+/// Returns whether the ship is in warp, from its instruments.
+pub fn warping(telemetry: &ShipTelemetry) -> bool {
+    matches!(telemetry.warp, WarpState::Active(_))
 }
 
 /// Returns the cue for something that happened to the ship, if it makes a sound.
@@ -37,25 +28,21 @@ pub fn ship_cue(event: &ShipEvent) -> Option<AudioCue> {
         ShipEvent::WarpEngaged => Some(AudioCue::WarpEngage),
         ShipEvent::WarpDropped => Some(AudioCue::WarpExit),
         ShipEvent::WarpRefused => Some(AudioCue::UiCancel),
-        ShipEvent::Headlight(_) => Some(AudioCue::UiMove),
+        ShipEvent::Headlight(_) => Some(AudioCue::Switch),
         ShipEvent::Liftoff | ShipEvent::Boarded | ShipEvent::Left => None,
     }
 }
 
-/// Writes the throttle, the buffeting and the warp of the ship into the scene. The cabin is
-/// already sensed from where the player is.
+/// Writes the warp of the ship into the scene. The cabin is already sensed from where the
+/// player is.
 fn follow_ship(telemetry: Option<Res<ShipTelemetry>>, mut scene: ResMut<AudioScene>) {
     let Some(telemetry) = telemetry else {
         return;
     };
-    let (throttle, pressure, warping) = ship_scene(&telemetry);
-    let next = AudioScene {
-        throttle,
-        dynamic_pressure: pressure,
-        warping,
-        ..*scene
-    };
-    scene.set_if_neq(next);
+    let warping = warping(&telemetry);
+    if scene.warping != warping {
+        scene.warping = warping;
+    }
 }
 
 /// Turns what happened to the ship and what the companion said into cues.

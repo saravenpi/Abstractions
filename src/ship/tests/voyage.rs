@@ -9,6 +9,7 @@ mod galaxy;
 mod ground;
 mod loops;
 mod pick;
+mod place;
 mod stranded;
 
 use bevy::prelude::*;

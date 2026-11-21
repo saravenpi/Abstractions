@@ -3,6 +3,7 @@
 
 use bevy::math::DVec3;
 
+use super::ascent::{climbs, departure};
 use super::{beacon, hold};
 use crate::computer::Target;
 use crate::ship::body::Ship;
@@ -10,7 +11,11 @@ use crate::ship::flight::Controls;
 use crate::ship::helm::Helm;
 use crate::ship::pilot::{Autopilot, Goal, Phase, Settle};
 use crate::ship::sky::Skies;
+use crate::ship::tune::ORBIT_TOLERANCE;
 use crate::ship::warp::{Tier, Warp};
+use crate::ship::wells::Well;
+use crate::space::Frame;
+use crate::universe::{BodyId, PlanetSpec};
 
 /// Ends the route at its destination: the drive that runs is asked to stop.
 pub(super) fn arrive(autopilot: &mut Autopilot, helm: &mut Helm, ship: &Ship) {
@@ -61,4 +66,35 @@ fn lose(autopilot: &mut Autopilot, helm: &mut Helm) {
     autopilot.lost = true;
     helm.warp = false;
     helm.controls = Controls::default();
+}
+
+/// Returns the planet whose departure orbit a ship in the frame of a star is under, or nothing: such a
+/// ship is in the lock sphere of the planet, or between it and the drop-out margin, where the drive
+/// refuses or drops itself, and a route to anywhere but that planet climbs to the departure orbit
+/// first, as it does from the air. A ship in the orbit itself, within two orbit tolerances of it, is
+/// not under it.
+fn lingers(ship: &Ship, skies: &Skies, target: Target) -> Option<BodyId> {
+    if !matches!(ship.frame, Frame::System(_)) {
+        return None;
+    }
+    let planets = skies.spec()?.planets.iter().zip(skies.wells.get(1..)?);
+    let under = |(planet, well): &(&PlanetSpec, &Well)| {
+        let floor = planet.radius + departure(planet) - 2.0 * ORBIT_TOLERANCE;
+        Target::Body(planet.id) != target && well.pos.distance(ship.pos) < floor
+    };
+    planets.filter(under).map(|(planet, _)| planet.id).next()
+}
+
+/// Returns whether the route climbs this frame: it is in the air of a planet, in a climb already, or
+/// under the departure orbit of a planet it does not go to, in which case it sets the climb off.
+pub(super) fn climbing(
+    autopilot: &mut Autopilot,
+    ship: &Ship,
+    skies: &Skies,
+    target: Target,
+) -> bool {
+    if !climbs(ship) {
+        autopilot.leaving = lingers(ship, skies, target).or(autopilot.leaving);
+    }
+    autopilot.phase == Phase::Climbing || climbs(ship) || autopilot.leaving.is_some()
 }

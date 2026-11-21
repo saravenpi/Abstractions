@@ -38,12 +38,12 @@ mod tune;
 
 #[cfg(test)]
 pub(super) use align::{led, spool};
-use ascent::{climb, climbs};
+use ascent::climb;
 use block::{aligned, blocker};
 pub(super) use cancel::{halt, halting, on_cancel};
 pub(super) use done::finish;
 pub(super) use goal::ARRIVAL;
-use steer::{arrive, mark, steer};
+use steer::{arrive, climbing, mark, steer};
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -147,7 +147,7 @@ pub fn fly(
     let Some(target) = autopilot.target else {
         return;
     };
-    if autopilot.phase == Phase::Climbing || climbs(&ship) {
+    if climbing(&mut autopilot, &ship, &skies, target) {
         return climb(&mut autopilot, &mut ship, &mut helm, &skies, target);
     }
     let goal = autopilot

@@ -188,14 +188,17 @@ fn gather(
     }));
 }
 
+/// The last blow, the animals, the terrain and the anchor the labels read.
+type Struck<'w, 's> = (
+    Res<'w, Mark>,
+    Animals<'w, 's>,
+    Option<Res<'w, Terrain>>,
+    Option<Res<'w, Anchor>>,
+);
+
 /// Labels every living animal in view within [`FAR`] metres over its head.
 pub(super) fn show(
-    (mark, beasts, terrain, anchor): (
-        Res<Mark>,
-        Animals,
-        Option<Res<Terrain>>,
-        Option<Res<Anchor>>,
-    ),
+    (mark, beasts, terrain, anchor): Struck,
     (parts, lens): (Bounds, Lens),
     mut strips: Strips,
     mut scratch: Local<Scratch>,

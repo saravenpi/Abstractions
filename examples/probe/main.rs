@@ -21,9 +21,21 @@
 //!   tool at the wall of the base, raised out of it and swung into it (see the `playwall` module).
 //!   The title, loading, boot and wake stages always run.
 //! - `glide` opens the wingsuit from the top of a jump on flat ground, off a cliff at a run, out of a long fall
-//!   and from a jump off the parked ship, three shots each, with `PROBE glide` lines (see the `opening` module).
+//!   and from a jump off the parked ship, three shots each, with `PROBE glide` lines (see the `opening` module), and
+//!   off the cliff with a tool drawn, slung before the wings spread (`open-cliff-armed`).
 //! - `entry` (a fall from a low orbit into the air, from a chase camera and from the seat) and `exit`
-//!   (the climb from the pad to orbit under the autopilot) shoot the heat of an entry and leaving the air.
+//!   (the climb from the pad to orbit under the autopilot) shoot the heat of an entry and leaving the air;
+//!   `cloud` climbs through an overcast cloud base, a shot every 0.2 s from the chase camera and the seat,
+//!   and again at night with the headlight on.
+//! - `cruise` drops the ship at the arrival shell over the far side of the home planet, presses the home key
+//!   and shoots the orbital cruise, the glide into the air and its end near the base, with the HUD shown
+//!   (see the `cruise` module). Run it with `SMOKE_SEED=57`.
+//! - `dust` hovers the ship 5, 15 and 40 m over sand, over grass and over the sea near the base and
+//!   takes off from grass, shot from outside, to see the dust and the spray of its jets (see the
+//!   `dust` module). Run it with `SMOKE_SEED=57`. It is left out of a run of all groups.
+//!   `cloud` climbs through an overcast cloud base, a shot every 0.2 s from the chase camera and the seat.
+//! - `skyfly` holds the ship 3 km, 15 km and 400 km up under a broken cover with the cloud shadows on, a shot
+//!   every second of the game over ten seconds (see the `skyfly` module).
 //! - `cruise` drops the ship at the arrival shell over the far side of the home planet, presses the home key
 //!   and shoots the orbital cruise, the glide into the air and its end near the base, with the HUD shown
 //!   (see the `cruise` module). Run it with `SMOKE_SEED=57`.
@@ -49,6 +61,11 @@
 //! `PROBE_STAGES=perf` runs the `perf` stages (see the `perf` module): still at the base, walking, boarding,
 //! a low fast flight and a hover in orbit, with a `PROBE perf` line every 30 frames and the render pass costs of
 //! Bevy's render diagnostics. It is left out of a run of all groups.
+//!
+//! `PROBE_STAGES=reflect` runs the `reflect` stage (see the `mirror` module): the robot at a lake shore near the
+//! base and the ship hovering low over the water, from behind the robot, from just above the water and looking
+//! down in first person, each with the water reflections on and off, with a `PROBE reflect` line per shot. Run it
+//! with `SMOKE_SEED=57`. It is left out of a run of all groups.
 //!
 //! `PROBE_STAGES=models` opens the model studio (see the `models` module): the robot and the companion alone.
 //!
@@ -81,6 +98,7 @@ use bevy::time::TimeUpdateStrategy;
 use bevy::window::PrimaryWindow;
 
 mod air;
+mod armed;
 mod base;
 mod boot;
 mod burn;
@@ -90,8 +108,10 @@ mod cards_air;
 mod cards_foot;
 mod cards_land;
 mod cards_life;
+mod cloud;
 mod coarse;
 mod cruise;
+mod dust;
 mod entry;
 mod feel;
 mod foot;
@@ -105,9 +125,11 @@ mod long;
 mod longlog;
 mod look;
 mod meter;
+mod mirror;
 mod models;
 mod mp;
 mod mpact;
+mod mpshare;
 mod mpspot;
 mod opening;
 mod orbital;
@@ -129,6 +151,7 @@ mod saved;
 mod screens;
 mod seen;
 mod shots;
+mod skyfly;
 mod stages;
 mod stars;
 mod stops;
@@ -142,6 +165,7 @@ mod workshop;
 mod zoo;
 
 use air::*;
+use armed::*;
 use base::*;
 use boot::*;
 use burn::*;
@@ -151,8 +175,10 @@ use cards_air::*;
 use cards_foot::*;
 use cards_land::*;
 use cards_life::*;
+use cloud::*;
 use coarse::*;
 use cruise::*;
+use dust::*;
 use entry::*;
 use feel::*;
 use foot::*;
@@ -166,8 +192,10 @@ use long::*;
 use longlog::*;
 use look::*;
 use meter::*;
+use mirror::*;
 use mp::*;
 use mpact::*;
+use mpshare::*;
 use mpspot::*;
 use opening::*;
 use orbital::*;
@@ -188,6 +216,7 @@ use saved::*;
 use screens::*;
 use seen::*;
 use shots::*;
+use skyfly::*;
 use stages::STAGES;
 use stars::*;
 use stops::*;

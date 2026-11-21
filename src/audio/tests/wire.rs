@@ -1,12 +1,15 @@
 //! The wiring: the instruments of the ship fill the scene, and what happens to the ship and what
-//! the companion says come out as cues.
+//! the companion says come out as sounds: the ship's from its cabin, the companion's from where it
+//! floats.
 
 use bevy::ecs::message::Messages;
 use bevy::prelude::*;
 
 use super::app::{app, enter_world};
+use crate::audio::spatial::{Between, spot};
+use crate::audio::wire::cabin;
 use crate::audio::wire::{HARD_LANDING, ship_cue, warping};
-use crate::audio::{AudioCue, AudioScene, ChirpKind};
+use crate::audio::{AudioCue, AudioScene, ChirpKind, Listener, Origin, Sound};
 use crate::companion::CompanionChirp;
 use crate::ship::{ShipEvent, ShipTelemetry, WarpState};
 
@@ -68,7 +71,7 @@ fn ship_events_map_to_cues() {
     }
 }
 
-/// Inside the app, what happens to the ship and every chirp of the companion come out as cues,
+/// Inside the app, what happens to the ship and every chirp of the companion come out as sounds,
 /// in the order they were sent, and every chirp has a sound.
 #[test]
 fn ship_events_and_chirps_become_cues() {
@@ -81,8 +84,8 @@ fn ship_events_and_chirps_become_cues() {
         world.write_message(CompanionChirp(kind));
     }
     app.update();
-    let mut cues = app.world_mut().resource_mut::<Messages<AudioCue>>();
-    let heard: Vec<AudioCue> = cues.drain().collect();
+    let mut sounds = app.world_mut().resource_mut::<Messages<Sound>>();
+    let heard: Vec<AudioCue> = sounds.drain().map(|sound| sound.cue).collect();
     assert_eq!(heard[..2], [AudioCue::WarpEngage, AudioCue::WarpExit]);
     let said: Vec<AudioCue> = CHIRPS.into_iter().map(AudioCue::Chirp).collect();
     assert_eq!(heard[2..], said);
@@ -90,4 +93,26 @@ fn ship_events_and_chirps_become_cues() {
         said.iter()
             .all(|cue| AudioCue::all().any(|known| known == *cue))
     );
+}
+
+/// The sounds of the cabin come from the panel while the ears are in it, at their level and
+/// ringing in the cabin, from the cockpit through the hull while they are outside, faint, and
+/// flat when no cockpit is known.
+#[test]
+fn cabin_sounds_follow_the_ears() {
+    let at = Vec3::new(0.0, 2.0, -12.0);
+    let outside = Listener::default();
+    let inside = Listener {
+        cabin: true,
+        ..outside
+    };
+    let near = spot(&inside, cabin(&inside, Some(at)), Between::default());
+    assert!(
+        (near.air - 1.0).abs() < 1.0e-5 && near.room == 1.0,
+        "{near:?}"
+    );
+    assert!(matches!(cabin(&outside, Some(at)), Origin::At(from, _) if from == at));
+    let far = spot(&outside, cabin(&outside, Some(at)), Between::default());
+    assert!(far.air < 0.05 && far.room == 0.0, "{far:?}");
+    assert_eq!(cabin(&outside, None), Origin::Flat);
 }

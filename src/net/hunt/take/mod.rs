@@ -52,6 +52,9 @@ pub fn receive(
         let ServerMsg::Hunt(event) = msg else {
             continue;
         };
+        if crate::net::ground::grounded(event) || super::claim::is_answer(event) {
+            continue;
+        }
         match event.clone() {
             Told::Blow { by, blow } => keep(&mut echoes.blows, (by, blow)),
             Told::Wound { animal, wound } => keep(&mut echoes.wounds, (animal, wound)),
@@ -112,12 +115,7 @@ fn route(land: &mut Land, location: &Location, event: Told) {
         Told::Held { by, item: None } => {
             land.hunted.holding.remove(&by);
         }
-        Told::Blow { .. }
-        | Told::Wound { .. }
-        | Told::Plug { .. }
-        | Told::Impact(_)
-        | Told::Attack(_)
-        | Told::Rock(_) => {}
+        _ => {}
     }
 }
 

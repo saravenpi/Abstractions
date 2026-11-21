@@ -1,6 +1,6 @@
 //! The way from a ship to a listener outside it: the sound takes `distance / c` seconds to
-//! arrive, spreads as `1 / r`, loses its high end to the air, meets its own reflection off the
-//! ground, and comes from one side.
+//! arrive, spreads as `1 / r`, loses its high end to the air of the planet, meets its own
+//! reflection off the ground, and reaches the two ears through the shared [`Ear`].
 //!
 //! The delay is a real delay line read at a moving point. A ship that closes in shortens it,
 //! so its sound is played faster: that is the Doppler shift. What is heard now left the ship
@@ -8,17 +8,17 @@
 //! the speed the ship closes in at: a tone is raised by `c / (c - v)`.
 
 use super::feed::{Ch, HullSound};
-use super::law::{absorb_hz, spread};
+use super::law::spread;
 use super::tune::{BOUNCE, DELAY_GLIDE, MAX_PACE, NEAR, TRAVEL};
 use crate::audio::dsp::filter::{Lag, glide, pole};
-use crate::audio::shore::stereo;
+use crate::audio::spatial::{Absorb, Ear, Spot, around};
 
 /// Seconds the closing speed of a ship is averaged over. Long, because the delay of a far ship
 /// is large and any ripple of its speed would shake it.
 const SPEED_GLIDE: f32 = 0.5;
 
 /// What the path is on its way to.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct Goal {
     /// Delay of the direct sound in samples.
     delay: f32,
@@ -26,8 +26,8 @@ struct Goal {
     gap: f32,
     /// Coefficient of the low-pass of the air.
     dull: f32,
-    /// Left and right gains.
-    sides: [f32; 2],
+    /// How the sound reaches the ears, but for the delay and the air the path makes itself.
+    spot: Spot,
 }
 
 /// The path of the sound of one ship through the air.
@@ -46,8 +46,8 @@ pub struct Path {
     gap: Lag,
     /// The low-pass of the air.
     dull: Lag,
-    /// Left and right gains.
-    sides: [Lag; 2],
+    /// The two ears.
+    ear: Ear,
     /// What all of these move toward.
     goal: Goal,
     /// Coefficient of the delay smoothing.
@@ -66,8 +66,13 @@ impl Path {
             slope: (Lag::default(), glide(SPEED_GLIDE, rate)),
             gap: Lag::default(),
             dull: Lag::default(),
-            sides: [Lag::default(); 2],
-            goal: Goal::default(),
+            ear: Ear::new(glide(DELAY_GLIDE, rate)),
+            goal: Goal {
+                delay: 1.0,
+                gap: 0.0,
+                dull: 0.0,
+                spot: Spot::FLAT,
+            },
             k: glide(DELAY_GLIDE, rate),
             rate,
         }
@@ -78,34 +83,43 @@ impl Path {
         (self.line.len() - 3) as f32
     }
 
-    /// Aims the path at where `hull` is for the listener. Call it a few hundred times per second.
-    pub fn tune(&mut self, hull: &HullSound) {
+    /// Aims the path at where `hull` is for the listener, in air that takes the high end as
+    /// `absorb` says. Call it a few hundred times per second.
+    pub fn tune(&mut self, hull: &HullSound, absorb: &Absorb) {
         let (far, sound) = (hull.at(Ch::Distance), hull.at(Ch::Sound));
         let high = hull.at(Ch::Height) + BOUNCE.1;
         let late = 2.0 * BOUNCE.0 * high / (far.max(NEAR.0) * sound);
+        let side = hull.at(Ch::Side);
         self.goal = Goal {
             delay: (far / sound * self.rate).clamp(1.0, self.most()),
             gap: (late * self.rate).min(0.05 * self.rate),
-            dull: pole(absorb_hz(far, hull.at(Ch::Air)), self.rate),
-            sides: stereo(hull.at(Ch::Side), spread(far)),
+            dull: pole(absorb.corner(far), self.rate),
+            spot: Spot {
+                air: spread(far),
+                side,
+                front: hull.at(Ch::Front),
+                gap: around(side, sound),
+                ..Spot::FLAT
+            },
         };
+        self.ear.aim(&self.goal.spot, self.rate);
     }
 
     /// Jumps to where `hull` is and keeps the sound already on its way: for a listener who has
     /// just got out, while the outside is still silent. Gliding there instead would sweep the
     /// delay through the seat and play the sound on its way at twice its pitch.
-    pub fn jump(&mut self, hull: &HullSound) {
-        self.tune(hull);
+    pub fn jump(&mut self, hull: &HullSound, absorb: &Absorb) {
+        self.tune(hull, absorb);
         self.delay = [Lag(self.goal.delay); 2];
         self.slope.0 = Lag::default();
         self.gap = Lag(self.goal.gap);
-        self.sides = self.goal.sides.map(Lag);
+        self.ear.place(&self.goal.spot, self.rate);
     }
 
     /// Empties the line and jumps to where `hull` is: for a ship that has just appeared.
-    pub fn clear(&mut self, hull: &HullSound) {
+    pub fn clear(&mut self, hull: &HullSound, absorb: &Absorb) {
         self.line.fill(0.0);
-        self.jump(hull);
+        self.jump(hull, absorb);
         self.dull = Lag::default();
     }
 
@@ -139,8 +153,6 @@ impl Path {
         let late = (delay + gap).min(self.most());
         let heard = self.tap(delay) + BOUNCE.2 * self.tap(late);
         let soft = self.dull.to(heard, self.goal.dull);
-        let goal = self.goal.sides;
-        let k = self.k;
-        [0, 1].map(|side| soft * self.sides[side].to(goal[side], k))
+        self.ear.frame(soft, 0.0)
     }
 }

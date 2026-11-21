@@ -11,6 +11,7 @@ mod height;
 mod liquid;
 mod material;
 mod mesh;
+mod mirror;
 mod order;
 mod seat;
 mod swell;
@@ -36,6 +37,7 @@ mod tests_swell;
 pub use self::ember::ember as sea_glow;
 pub use self::follow::follow_focus;
 pub use self::liquid::Liquid;
+pub use self::mirror::Reflected;
 
 use bevy::asset::AssetEventSystems;
 use bevy::camera::visibility::NoFrustumCulling;
@@ -97,7 +99,8 @@ impl SeaInputs<'_, '_> {
     }
 }
 
-/// Spawns the sea when the world starts loading, seated under the focus of the streamed planet.
+/// Spawns the sea when the world starts loading, seated under the focus of the streamed planet,
+/// with the camera of its mirror.
 ///
 /// The mesh and the material are built once. From then on only the pose and the shader values
 /// change, also when the anchor is rebased.
@@ -118,6 +121,7 @@ pub fn spawn_sea(
         water: inputs.uniform(Quat::IDENTITY),
         floor: floor.image(),
         place: default(),
+        mirror: mirror::spawn(&mut commands, &mut images),
     }));
     let placed = Placed {
         pos: DVec3::ZERO,
@@ -133,11 +137,11 @@ pub fn spawn_sea(
     ));
 }
 
-/// Registers the water material and the system that keeps the seat and the sea floor map under
-/// the focus, before the planet-fixed poses are written so that a new seat is placed at once,
+/// Registers the water material, its mirror and the system that keeps the seat and the sea floor
+/// map under the focus, before the planet-fixed poses are written so that a new seat is placed at once,
 /// and hands the sea the light of the planet once the camera is tracked.
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins((material::plugin, wake::plugin))
+    app.add_plugins((material::plugin, wake::plugin, mirror::plugin))
         .add_systems(Update, follow::refresh.before(super::chunks::place))
         .add_systems(Update, ember::kindle)
         .add_systems(

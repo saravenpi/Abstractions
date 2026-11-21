@@ -21,6 +21,7 @@ mod galaxy_light;
 mod glare;
 mod glow;
 mod heat;
+mod layers;
 mod lighting;
 mod lowres;
 mod moonlight;
@@ -54,6 +55,8 @@ mod tests_air;
 #[cfg(test)]
 mod tests_dither;
 #[cfg(test)]
+mod tests_flight;
+#[cfg(test)]
 mod tests_fog;
 #[cfg(test)]
 mod tests_fresnel;
@@ -63,6 +66,8 @@ mod tests_glare;
 mod tests_glare_band;
 #[cfg(test)]
 mod tests_lens;
+#[cfg(test)]
+mod tests_lod;
 #[cfg(test)]
 mod tests_lowres;
 #[cfg(test)]
@@ -100,9 +105,9 @@ pub use dome::SkyDome;
 pub use entry::FlightFx;
 pub use exposure::scene_lux;
 pub use heat::{
-    Craft, Gas, Glow, Heat, MIN_SPEED, SHEATH_FROM, SheathMaterial, SheathUniform, cool_speed,
-    entry, skin,
+    Craft, Gas, Glow, Heat, MIN_SPEED, SheathMaterial, SheathUniform, cool_speed, entry, kelvin_of,
 };
+pub use layers::{REFLECTED, mirror_only, reflected, seen_only};
 pub use lighting::{Moon, Sun, reach};
 pub use lowres::{Fit, LowRes, window_changed};
 pub use murk::{Murk, Swell, Waterline, murk};

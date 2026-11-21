@@ -10,6 +10,7 @@ mod atmo;
 mod berth;
 mod board;
 mod body;
+mod brace;
 mod churn;
 mod clear;
 pub mod cockpit;
@@ -183,14 +184,14 @@ fn display(app: &mut App) {
         (
             place.chain().in_set(ShipSet::Place),
             report.in_set(ShipSet::Report),
-            view::buffet.after(ViewSet::Rig).run_if(seated),
         ),
     )
     .configure_sets(Update, ViewSet::Rig.after(ShipSet::Place));
 }
 
-/// Registers the ship resources, messages and systems.
+/// Registers the ship resources, messages and systems. Calm water mirrors the ship.
 pub(super) fn plugin(app: &mut App) {
+    app.register_required_components::<Ship, crate::world::Reflected>();
     let stages = (
         ShipSet::Input,
         ShipSet::Flight,
@@ -218,5 +219,6 @@ pub(super) fn plugin(app: &mut App) {
     cockpit::plugin(app);
     exhaust::plugin(app);
     wake::plugin(app);
+    brace::plugin(app);
     sound::plugin(app);
 }

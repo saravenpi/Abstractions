@@ -1,5 +1,5 @@
 //! The recipe of one call, worked out once when it starts: the organ, the pitch, the notes, the
-//! formants of the tract, the colour of the voice print and the way to the ear.
+//! formants of the tract and the colour of the voice print. The way to the ear is the spatial path's.
 //!
 //! Every species sounds its own: the voice print picks its vowel, its vibrato, whether it trills or
 //! biphonates, the melody of a song. Every animal sounds a little its own: its byte in the herd moves
@@ -7,7 +7,6 @@
 
 use super::notes::{NOTES, Note, notes};
 use super::shape::{Source, lowered, mood, organ};
-use super::tract::air;
 use super::tune::{LEVEL, MUFFLE};
 use crate::audio::call::Call;
 use crate::audio::dsp::rand::Rand;
@@ -47,8 +46,6 @@ pub struct Plan {
     pub teeth: (f32, f32),
     /// Peak level.
     pub gain: f32,
-    /// Corner in hertz of the low-pass of the air on the way.
-    pub air: f32,
     /// True when heard through the surface of the water.
     pub muffled: bool,
 }
@@ -138,8 +135,7 @@ pub fn plan(call: &Call, rand: &mut Rand) -> Plan {
         trill,
         second,
         teeth: file(voice.timbre, voice.print, hz),
-        gain: LEVEL * call.near.clamp(0.0, 1.0) * mood.gain * muffle,
-        air: air(call.metres),
+        gain: LEVEL * mood.gain * muffle,
         muffled: voice.muffled,
     }
 }
@@ -158,7 +154,6 @@ impl Plan {
         second: 0.0,
         teeth: (100.0, 3.0),
         gain: 0.0,
-        air: 8000.0,
         muffled: false,
     };
 

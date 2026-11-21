@@ -63,6 +63,10 @@ pub struct WaterUniform {
     /// Unit vector away from the planet centre at the focus, in render axes, in xyz, and in w the height `a`
     /// of the focus folded with the radius `R` as `a * a + 2 * R * a`, worked out in 64 bits.
     pub upward: Vec4,
+    /// The water mirror: 1 in x when the mirror image holds the actors this frame, else 0, the
+    /// distances in metres from the camera at which it starts and ends fading in y and z, and in
+    /// w the metres the waves move it per unit of slope.
+    pub mirror: Vec4,
     /// The wakes that stir the sea, see [`SeaWakes`].
     pub wake: SeaWakes,
 }

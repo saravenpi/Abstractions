@@ -94,7 +94,8 @@ pub struct Opening<'w, 's> {
 
 impl Opening<'_, '_> {
     /// Returns the server's world of the world being played: its name, seed, universe time,
-    /// log, atlas and explored ground, with no player records. Nothing without a world.
+    /// log, atlas, explored ground and the things on the ground, with no player records. Nothing
+    /// without a world.
     fn world(&self) -> Option<World> {
         let save = &self.active.as_deref()?.0.save;
         let atlas = self
@@ -115,6 +116,7 @@ impl Opening<'_, '_> {
             explored: explored
                 .map(|(body, leaves)| (body, leaves.runs()))
                 .collect(),
+            ground: save.ground.lying.clone(),
             ..World::default()
         })
     }

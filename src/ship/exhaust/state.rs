@@ -9,6 +9,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::dust::JETS;
 use super::plume::ExhaustMaterial;
 use super::shape::{ease, spool};
 use super::tune::{CARRY, HEAT_DOWN, HEAT_UP, RCS_SPOOL};
@@ -44,8 +45,8 @@ pub struct Exhaust {
     pub rcs: Vec3,
     /// The air around the ship as a share of the air at sea level at home.
     pub air: f32,
-    /// Puffs of dust the lift nozzles owe the ground.
-    pub dust: f32,
+    /// Puffs of dust each jet owes the ground: the four lift nozzles, then the two main engines.
+    pub dust: [f32; JETS],
     /// The materials of the plumes: the main engines, the lift nozzles and the attitude jets.
     pub jets: [Handle<ExhaustMaterial>; 3],
 }

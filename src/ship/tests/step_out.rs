@@ -109,11 +109,11 @@ fn loosen(game: &mut Game) -> Vec<Entity> {
     found
 }
 
-/// While the ground beside the hatch has no collider, leaving is not offered, the hatch says
-/// the pilot waits, and the key keeps the pilot seated. Once the collider is back, leaving is
-/// offered and the press steps out onto it.
+/// While the ground beside the hatch has no collider yet, leaving is still offered: the press
+/// steps out onto the ground the terrain mesh draws, the body stands on it and does not fall,
+/// and once the collider is back the feet rest on it.
 #[test]
-fn the_pilot_stays_seated_until_the_ground_has_a_collider() {
+fn the_pilot_steps_out_onto_the_drawn_ground_before_its_collider() {
     let mut game = Game::full("step-out-wait");
     game.start("StepOutWait", None);
     game.until("the player to stand", 300, |game| game.walker().grounded);
@@ -121,23 +121,23 @@ fn the_pilot_stays_seated_until_the_ground_has_a_collider() {
     game.wait("leaving to be offered", offered);
     let loose = loosen(&mut game);
     game.step(2);
-    for _ in 0..30 {
-        assert!(!offered(&mut game) && game.get::<Hatch>().waiting);
-        tap(&mut game);
-        assert_eq!(game.get::<Location>().travel, Travel::InShip);
-        assert!(game.walker().seated);
-    }
+    game.wait("leaving to be offered over the drawn ground", offered);
+    assert!(!game.get::<Hatch>().waiting);
+    tap(&mut game);
+    assert_eq!(game.get::<Location>().travel, Travel::OnFoot);
+    game.step(60);
+    let drawn = game.walker().gap;
+    assert!(
+        (-0.3..0.5).contains(&drawn),
+        "feet {drawn} m from the drawn ground"
+    );
     for entity in &loose {
         game.app
             .world_mut()
             .entity_mut(*entity)
             .remove::<ColliderDisabled>();
     }
-    game.wait("leaving to be offered", offered);
-    assert!(!game.get::<Hatch>().waiting);
-    tap(&mut game);
-    assert_eq!(game.get::<Location>().travel, Travel::OnFoot);
-    game.step(1);
+    game.step(10);
     let gap = gap(&mut game).expect("a collider under the feet");
     assert!((-0.05..0.3).contains(&gap), "feet {gap} m over the ground");
 }

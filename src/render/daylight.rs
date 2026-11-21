@@ -23,6 +23,8 @@ mod tests_altitude;
 #[cfg(test)]
 mod tests_ambient;
 #[cfg(test)]
+mod tests_cloud;
+#[cfg(test)]
 mod tests_place;
 
 pub use place::{PlaceUniform, Sky};

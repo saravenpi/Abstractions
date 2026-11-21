@@ -11,15 +11,12 @@ use crate::life::herd::fixtures::{role, species};
 use crate::life::signs::calls::{Cry, TIMBRES, Timbre, voice};
 use crate::life::{Activity, Guild, Habitat, Rung};
 
-/// Returns the call of `cry` of `species`, from ten metres ahead at full level.
+/// Returns the call of `cry` of `species`.
 fn heard(species: &Species, cry: Cry) -> Call {
     Call {
         voice: voice(species, Rung::Skeletal),
         cry,
         one: 0,
-        side: 0.0,
-        near: 1.0,
-        metres: 10.0,
     }
 }
 

@@ -1,5 +1,5 @@
-//! The call of an animal as a one-shot cue: its voice, why it calls, who calls and where it is for
-//! the listener.
+//! The call of an animal as a one-shot cue: its voice, why it calls and who calls. Where it is
+//! travels with it as a [`super::Sound`].
 
 use crate::life::signs::calls::{CRIES, Cry, TIMBRES, Voice};
 
@@ -15,13 +15,7 @@ const BASE_FORMANT: f32 = 50.0;
 /// Formant steps per octave in a packed call.
 const FORMANT_STEPS: f32 = 8.0;
 
-/// Steps per octave of the distance in a packed call, from one metre.
-const METRE_STEPS: f32 = 3.0;
-
-/// Levels of the side and of the nearness in a packed call.
-const LEVELS: f32 = 15.0;
-
-/// One animal call, positioned for the listener.
+/// One animal call.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Call {
     /// The voice of the species.
@@ -30,12 +24,6 @@ pub struct Call {
     pub cry: Cry,
     /// Who calls in its herd, a byte that shifts its pitch and its pace a little.
     pub one: u8,
-    /// Where it is: -1 at the listener's left to 1 at the right.
-    pub side: f32,
-    /// How loud it arrives, 0 out of earshot to 1 beside the head.
-    pub near: f32,
-    /// How far it is in metres, which takes the highs the air absorbs on the way.
-    pub metres: f32,
 }
 
 /// Returns `value` as the whole number of `steps` per octave over `base`, at most `top`.
@@ -44,9 +32,8 @@ fn octaves(value: f32, base: f32, steps: f32, top: u64) -> u64 {
 }
 
 impl Call {
-    /// Packs the call into 51 bits: pitch 7, timbre 3, notes 2, cry 3, muffled 1, formant 6, print 8,
-    /// individual 8, then side 4, nearness 4 and distance 5. The pitch is rounded to a sixteenth of an
-    /// octave, the formants to an eighth, the distance to a third, the side and nearness to fifteenths.
+    /// Packs the call into 38 bits: pitch 7, timbre 3, notes 2, cry 3, muffled 1, formant 6, print 8
+    /// and individual 8. The pitch is rounded to a sixteenth of an octave, the formants to an eighth.
     pub(super) fn pack(self) -> u64 {
         let v = self.voice;
         let timbre = TIMBRES.iter().position(|t| *t == v.timbre).unwrap_or(0) as u64;
@@ -59,14 +46,6 @@ impl Call {
             | octaves(v.formant, BASE_FORMANT, FORMANT_STEPS, 63) << 16
             | u64::from(v.print) << 22
             | u64::from(self.one) << 30
-            | self.place() << 38
-    }
-
-    /// Packs where the call is: side 4 bits, nearness 4 and distance 5.
-    fn place(self) -> u64 {
-        let side = ((self.side.clamp(-1.0, 1.0) + 1.0) * 0.5 * LEVELS).round() as u64;
-        let near = (self.near.clamp(0.0, 1.0) * LEVELS).round() as u64;
-        side | near << 4 | octaves(self.metres, 1.0, METRE_STEPS, 31) << 8
     }
 
     /// Unpacks a call packed by [`Call::pack`], or nothing when the bits hold none.
@@ -84,9 +63,6 @@ impl Call {
             voice,
             cry: *CRIES.get(field(12, 3))?,
             one: field(30, 8) as u8,
-            side: field(38, 4) as f32 / LEVELS * 2.0 - 1.0,
-            near: field(42, 4) as f32 / LEVELS,
-            metres: (field(46, 5) as f32 / METRE_STEPS).exp2(),
         })
     }
 }

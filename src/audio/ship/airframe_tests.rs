@@ -4,14 +4,14 @@
 use super::airframe::{Airframe, Flow};
 
 /// Sample rate of the tests, in hertz.
-const RATE: f32 = 48_000.0;
+pub(super) const RATE: f32 = 48_000.0;
 
-/// Returns the root mean square of a second of the airframe in `flow`, after a tenth of a second
-/// to settle.
-fn loudness(flow: Flow) -> f32 {
+/// Returns the root mean square of a second of the airframe in `flow`, after half a second to
+/// settle.
+pub(super) fn loudness(flow: Flow) -> f32 {
     let mut frame = Airframe::new(RATE, 7);
     frame.tune(&flow);
-    let settle = (RATE * 0.1) as usize;
+    let settle = (RATE * 0.5) as usize;
     let samples: Vec<f32> = (0..settle + RATE as usize).map(|_| frame.frame()).collect();
     let tail = &samples[settle..];
     (tail.iter().map(|x| x * x).sum::<f32>() / tail.len() as f32).sqrt()
@@ -23,9 +23,7 @@ fn loudness(flow: Flow) -> f32 {
 fn the_roar_follows_the_heat_and_thin_air_is_silent() {
     let thin = Flow {
         speed: 7000.0,
-        pressure: 0.0,
-        rough: 0.0,
-        roar: 0.0,
+        ..Flow::STILL
     };
     assert_eq!(loudness(thin), 0.0);
     let warm = loudness(Flow { roar: 0.3, ..thin });

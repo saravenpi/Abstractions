@@ -3,6 +3,7 @@
 //! listener. All of it is read from the real state of the hull, the one this machine flies and
 //! the puppets of the other players alike, and written into the audio scene every frame.
 
+mod flow;
 mod near;
 #[cfg(test)]
 mod tests;
@@ -17,21 +18,10 @@ use super::cockpit::{CANOPY_OPEN, Canopy, Cockpit, Lamp};
 use super::exhaust::Exhaust;
 use super::shake::Buffet;
 use super::sky::Skies;
-use crate::audio::{AudioCue, AudioScene, Ch, EARSHOT, HULLS, HullSound};
+use crate::audio::{AudioScene, Ch, EARSHOT, HULLS, HullSound, Listener, Sound};
 use crate::render::{GameCamera, Heat};
 use crate::space::{Anchor, Frame, Location, Placed, Travel};
-use crate::speed::{sound_speed, temperature_at};
-use crate::universe::{PlanetSpec, heights};
-
-/// Returns the speed of sound in metres per second `height` metres over the sea of `planet`,
-/// from the gas of its air and its temperature at that height.
-pub fn sound_at(planet: &PlanetSpec, height: f64) -> f32 {
-    let record = &planet.record;
-    let top = heights(record, planet.gravity, planet.radius)[2];
-    let layer = (planet.scale_height(), top);
-    let cold = temperature_at(record.temperature, record.mix.kappa(), layer, height);
-    sound_speed(cold, &record.mix)
-}
+use crate::speed::sound_at;
 
 /// Returns what a ship sounds like from its exhaust and its cockpit alone, wherever it is: its
 /// engines run while someone is aboard or while it flies.
@@ -70,7 +60,9 @@ pub struct Ears<'w, 's> {
     buffet: Res<'w, Buffet>,
     /// The heat of an entry, when the sky is drawn.
     heat: Option<Res<'w, Heat>>,
-    /// The ears: the game camera.
+    /// The ears of the player, where the audio has them.
+    listener: Option<Res<'w, Listener>>,
+    /// The game camera: the ears where the audio has none.
     camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
     /// The canopy of every ship.
     canopies: Query<'w, 's, (&'static ChildOf, &'static Canopy)>,
@@ -88,20 +80,34 @@ impl Ears<'_, '_> {
         }
     }
 
-    /// Returns `hull` placed for the listener: how far the ship at `placed` is, on which side,
-    /// and where the listener stands around its exhaust. A ship out of earshot, or a world
-    /// without a camera, gives a ship that is not there.
+    /// Returns where the ears are and which way they face: the listener of the audio, or the
+    /// camera without one.
+    fn ears(&self) -> Option<(Vec3, Quat)> {
+        match self.listener.as_deref() {
+            Some(ear) => Some((ear.at, ear.turn)),
+            None => self
+                .camera
+                .single()
+                .ok()
+                .map(|c| (c.translation(), c.rotation())),
+        }
+    }
+
+    /// Returns `hull` placed for the listener: how far the ship at `placed` is, its bearing, and
+    /// where the listener stands around its exhaust. A ship out of earshot, or a world without
+    /// ears, gives a ship that is not there.
     fn place(&self, hull: HullSound, placed: &Placed) -> HullSound {
-        let Ok(camera) = self.camera.single() else {
+        let Some((ear, turn)) = self.ears() else {
             return hull.with(Ch::Present, 0.0);
         };
         let at = self.anchor.to_render(placed.pos);
         let rear = self.anchor.rotation_to_render(placed.rot) * Vec3::Z;
-        let to = camera.translation() - at;
+        let to = ear - at;
         let toward = to.normalize_or_zero();
         hull.with(Ch::Present, f32::from(u8::from(to.length() <= EARSHOT)))
             .with(Ch::Distance, to.length())
-            .with(Ch::Side, -toward.dot(camera.right().as_vec3()))
+            .with(Ch::Side, -toward.dot(turn * Vec3::X))
+            .with(Ch::Front, toward.dot(turn * Vec3::Z))
             .with(Ch::Aspect, rear.dot(toward))
             .with(Ch::Sound, self.sound(placed))
     }
@@ -123,6 +129,7 @@ impl Ears<'_, '_> {
             .with(Ch::Inside, 1.0)
             .with(Ch::Distance, 0.0)
             .with(Ch::Side, 0.0)
+            .with(Ch::Front, 0.0)
             .with(Ch::Aspect, -1.0)
             .with(Ch::Rough, self.buffet.level.max(heat))
             .with(Ch::Roar, heat)
@@ -130,38 +137,47 @@ impl Ears<'_, '_> {
 }
 
 /// Writes what every ship in earshot sounds like into the audio scene: first the ship this
-/// machine flies, then the nearest of the others. A ship faster than sound booms as its shock
-/// wave passes the listener.
+/// machine flies, then the nearest of the others. The ship the player sits in is heard from the
+/// seat while the ears are in its cabin, and from the chase view riding along otherwise. A ship
+/// faster than sound booms from where it is as its shock wave passes the listener.
 pub fn feed(
     ears: Ears,
-    ships: Query<(Entity, &Exhaust, &Cockpit, &Placed, Has<Ship>)>,
+    ships: Query<(Entity, &Exhaust, &Cockpit, &Placed, Option<&Ship>)>,
     mut scene: ResMut<AudioScene>,
-    mut cues: ResMut<Messages<AudioCue>>,
+    mut sounds: ResMut<Messages<Sound>>,
     mut last: Local<[(f32, f32); HULLS]>,
 ) {
     let seated = ears.location.travel == Travel::InShip;
-    let mut hulls = [HullSound::default(); HULLS];
-    for (entity, exhaust, cockpit, placed, own) in &ships {
-        let open = ears.canopy(entity);
+    let cabin = seated && ears.listener.as_deref().is_none_or(|ear| ear.cabin);
+    let (mut hulls, mut seat) = ([HullSound::default(); HULLS], None);
+    for (entity, exhaust, cockpit, placed, body) in &ships {
         let hull = ears.place(engines(exhaust, cockpit), placed);
-        let hull = hull.with(Ch::Canopy, open);
-        match (own, seated) {
+        let hull = hull.with(Ch::Canopy, ears.canopy(entity));
+        let (own, hull) = match body {
+            Some(ship) => (true, flow::flow(hull, ship)),
+            None => (false, hull),
+        };
+        seat = if own {
+            Some(ears.anchor.to_render(placed.pos))
+        } else {
+            seat
+        };
+        match (own, cabin) {
             (true, true) => hulls[0] = ears.board(hull),
-            (true, false) => hulls[0] = hull,
+            (true, false) => hulls[0] = hull.with(Ch::Riding, f32::from(u8::from(seated))),
             (false, _) => near::admit(&mut hulls[1..], hull),
         }
     }
-    for strength in near::booms(&hulls, &mut last, ears.time.delta_secs()) {
-        cues.write(AudioCue::Boom(strength));
-    }
-    if scene.hulls != hulls {
-        scene.hulls = hulls;
+    let dt = ears.time.delta_secs();
+    near::sonic((ears.ears(), &hulls), &mut last, dt, &mut sounds);
+    if (scene.hulls, scene.cockpit) != (hulls, seat) {
+        (scene.hulls, scene.cockpit) = (hulls, seat);
     }
 }
 
 /// Registers the feed, which runs with the other reports of the ship where the audio exists.
 pub(super) fn plugin(app: &mut App) {
-    let heard = resource_exists::<AudioScene>.and_then(resource_exists::<Messages<AudioCue>>);
+    let heard = resource_exists::<AudioScene>.and_then(resource_exists::<Messages<Sound>>);
     app.add_systems(Update, feed.in_set(ShipSet::Report).run_if(heard))
         .add_systems(
             Update,

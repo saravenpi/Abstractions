@@ -62,8 +62,14 @@ pub const COUNTER: [[f32; 3]; 3] = [[0.9, 0.25, 0.5], [0.15, 0.12, 0.5], [-0.35,
 /// Rate at which the legs and the free arm follow the strike, per second.
 pub const EASE: f32 = 30.0;
 
-/// Seconds to sling the tool over the back before the wingsuit opens or the robot boards.
-pub const STOW: f32 = 0.35;
+/// Seconds to sling the tool over the back before the wingsuit opens or the robot boards: a frame
+/// at sixty a second less than the wings wait for the hand, `player::SLING`, so the hand has
+/// always let go when the arms start to spread, whatever the frame rate rounds.
+pub const STOW: f32 = crate::player::SLING - 1.0 / 60.0;
+
+/// Seconds the arm that slung a tool takes to leave the key of the sling for the pose of the
+/// body, so it swings out into the spread wings instead of jumping there.
+pub const LET_GO: f32 = 0.15;
 
 /// Where the grip of a slung tool sits in the frame of the torso: behind the right hip.
 pub const SLING: [f32; 3] = [0.12, -0.05, 0.15];

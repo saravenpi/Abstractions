@@ -70,12 +70,17 @@ impl Tour {
 }
 
 /// Returns whether the stage `name` of `group` runs: `core` stages always do, the others when `PROBE_STAGES`
-/// names their group (all groups but `zoo`, `postcards`, `long` and `perf` when it is empty or `all`), unless `SMOKE_ONLY` leaves the stage out
+/// names their group (all groups but `zoo`, `postcards`, `long`, `perf`, `dust` and `reflect` when it is empty or `all`), unless `SMOKE_ONLY` leaves the stage out
 /// or `SMOKE_SKIP` lists it.
 fn wanted(group: &str, name: &str) -> bool {
     let list = std::env::var("PROBE_STAGES").unwrap_or_default();
     let groups = |g: &str| list.split(',').any(|x| x == g);
-    let own = |g: &str| matches!(g, "zoo" | "postcards" | "long" | "perf");
+    let own = |g: &str| {
+        matches!(
+            g,
+            "zoo" | "postcards" | "long" | "perf" | "dust" | "reflect"
+        )
+    };
     let by_group =
         group == "core" || groups(group) || (!own(group) && (list.is_empty() || groups("all")));
     let only = std::env::var("SMOKE_ONLY").unwrap_or_default();

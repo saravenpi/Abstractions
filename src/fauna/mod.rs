@@ -93,8 +93,9 @@ pub type Live = (With<Creature>, Without<Dead>);
 pub struct Frozen;
 
 /// Registers the fauna systems: the forgetting of animals when the planet under the anchor changes,
-/// then, on a living planet in play, the scan, the walk and the fades.
+/// then, on a living planet in play, the scan, the walk and the fades. Calm water mirrors the animals.
 pub(super) fn plugin(app: &mut App) {
+    app.register_required_components::<Creature, crate::world::Reflected>();
     let scan = scan::scan.run_if(on_timer(Duration::from_secs_f32(tune::SCAN)));
     let shine = glow::shine.run_if(on_timer(Duration::from_secs_f32(tune::SCAN)));
     app.init_resource::<herds::Herds>()

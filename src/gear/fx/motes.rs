@@ -8,11 +8,21 @@ use bevy::prelude::*;
 
 use super::kit::Kit;
 use super::scene::{SOLES, Scene};
-use super::streaks::noise;
 use crate::gear::Mode;
 use crate::render::smoothstep as smooth;
 use crate::screens::Screen;
 use crate::space::Rebased;
+
+/// Returns a fixed number in `[0, 1)` for `slot` and `salt`: the same on every run.
+pub fn noise(slot: u32, salt: u32) -> f32 {
+    let mut x = slot.wrapping_mul(0x9E37_79B9) ^ salt.wrapping_mul(0x85EB_CA6B);
+    x ^= x >> 16;
+    x = x.wrapping_mul(0x7feb_352d);
+    x ^= x >> 15;
+    x = x.wrapping_mul(0x846c_a68b);
+    x ^= x >> 16;
+    (x >> 8) as f32 / 16_777_216.0
+}
 
 /// Number of particles, created once.
 pub const COUNT: usize = 40;

@@ -48,6 +48,7 @@ mod wing;
 #[cfg(test)]
 mod tests;
 
+pub use dust::{Soil, soil};
 pub use input::AvatarPose;
 pub use looks::Looks;
 pub use marks::{Marked, Marks};
@@ -183,10 +184,11 @@ fn systems(app: &mut App) {
     hurt::plugin(app);
 }
 
-/// Registers the avatar: its input, its visibility setting and the systems that run it while
-/// the world is shown, behind the boot screen too. The pose is filled once the controller moved
+/// Registers the avatar, which calm water mirrors: its input, its visibility setting and the
+/// systems that run it while the world is shown, behind the boot screen too. The pose is filled once the controller moved
 /// the body, then dressed with the gear and the view once the camera rig ran.
 pub(super) fn plugin(app: &mut App) {
+    app.register_required_components::<Avatar, crate::world::Reflected>();
     systems(app);
     tread::plugin(app);
     app.add_message::<blow::Blow>();

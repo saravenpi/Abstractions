@@ -1,7 +1,7 @@
-//! The tract and the way to the ear: three formants of the vocal tract, then the highs the air takes
-//! on the way and, from under water, the surface.
+//! The tract of a calling animal: three formants of the vocal tract, then, for an animal that calls
+//! from under water, the surface it crosses. The air on the way is the spatial path's.
 
-use super::tune::{AIR, AIR_CORNER_DB, AIR_TOP, MUFFLE};
+use super::tune::MUFFLE;
 use crate::audio::dsp::filter::Svf;
 
 /// Resonance of the first, second and third formant.
@@ -13,37 +13,24 @@ const FORMANT_GAIN: [f32; 3] = [1.0, 0.6, 0.35];
 /// Share of the source that passes the formants untouched: the body of the sound.
 const DIRECT: f32 = 0.15;
 
-/// Resonance of the low-passes of the air and of the water: no peak.
+/// Resonance of the low-pass of the water: no peak.
 const FLAT_Q: f32 = 0.707;
 
-/// Returns the corner in hertz of the low-pass that stands for `metres` of air: where the air takes
-/// [`AIR_CORNER_DB`] decibels, from an absorption that grows as a power of the frequency.
-pub fn air(metres: f32) -> f32 {
-    let (at_khz, power) = AIR;
-    let khz = (AIR_CORNER_DB / (at_khz * metres.max(1.0))).powf(1.0 / power);
-    (1000.0 * khz).min(AIR_TOP)
-}
-
-/// The tract of one calling animal and the way from it to the ear.
+/// The tract of one calling animal, and the surface of the water over one that calls from under it.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Tract {
     /// The three formants.
     formants: [Svf; 3],
-    /// Two low-passes in a row: the air, and the air again or the water.
-    way: [Svf; 2],
+    /// The low-pass of the surface of the water, when the call crosses it.
+    water: Option<Svf>,
     /// True when the source passes the formants untouched: a syrinx tunes its tract to its note.
     open: bool,
 }
 
 impl Tract {
-    /// Tunes the tract to `formants` in hertz, or opens it for a source that needs none, and the way
-    /// to a low-pass at `air` hertz, muffled by the water when `muffled`.
-    pub fn tune(
-        &mut self,
-        (formants, open): ([f32; 3], bool),
-        (air, muffled): (f32, bool),
-        rate: f32,
-    ) {
+    /// Tunes the tract to `formants` in hertz, or opens it for a source that needs none, muffled
+    /// by the surface of the water when `muffled`.
+    pub fn tune(&mut self, (formants, open): ([f32; 3], bool), muffled: bool, rate: f32) {
         *self = Self {
             open,
             ..Self::default()
@@ -51,9 +38,11 @@ impl Tract {
         for ((filter, hz), q) in self.formants.iter_mut().zip(formants).zip(FORMANT_Q) {
             filter.tune(hz, q, rate);
         }
-        let water = if muffled { air.min(MUFFLE.0) } else { air };
-        self.way[0].tune(air, FLAT_Q, rate);
-        self.way[1].tune(water, FLAT_Q, rate);
+        self.water = muffled.then(|| {
+            let mut surface = Svf::default();
+            surface.tune(MUFFLE.0, FLAT_Q, rate);
+            surface
+        });
     }
 
     /// Runs one sample of the source through the formants.
@@ -69,9 +58,11 @@ impl Tract {
         rung + DIRECT * x
     }
 
-    /// Runs one sample of the shaped voice along the way to the ear.
+    /// Runs one sample of the shaped voice through the surface of the water, if it crosses one.
     pub fn carry(&mut self, x: f32) -> f32 {
-        let [first, second] = &mut self.way;
-        second.low(first.low(x))
+        match &mut self.water {
+            Some(surface) => surface.low(x),
+            None => x,
+        }
     }
 }

@@ -21,6 +21,7 @@ pub enum Field {
     WhiteBalance,
     LocalShadows,
     WaterGlint,
+    WaterReflections,
     Vsync,
     Fullscreen,
     AmbientOcclusion,

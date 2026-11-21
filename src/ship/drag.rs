@@ -23,13 +23,18 @@ const STABILITY: f64 = 2.5e-4;
 /// Largest angular acceleration the airflow gives, in radians per second squared.
 const STABILITY_LIMIT: f64 = 4.0;
 
+/// Scale heights under the top of the air over which its density eases on to zero.
+pub const TOP_FADE: f64 = 2.0;
+
 /// Spin damping per unit of density times speed.
 const SPIN_DRAG: f64 = 0.0125;
 
 /// Returns the air density in kilograms per cubic metre `altitude` metres above the sea of a planet.
 ///
 /// `density = rho0 * thickness * exp(-altitude / scale_height)` below the top of the atmosphere,
-/// zero above it. The scale height is the physical one of the planet, see
+/// zero above it. A real air has no top, so over the last [`TOP_FADE`] scale heights under it
+/// the density eases on to zero, and nothing that reads it, the drag, the heat of an entry or
+/// the wind, jumps as a ship crosses the top. The scale height is the physical one of the planet, see
 /// [`PlanetSpec::scale_height`], and the thickness is the density of its air at sea level
 /// against the home planet, so thin air drags less, thick air more, and a planet without air
 /// has no density at any height.
@@ -41,7 +46,9 @@ pub fn density(planet: &PlanetSpec, altitude: f64) -> f64 {
     }
     let scale = planet.scale_height();
     let low = if giant(planet) { -DEEPEST * scale } else { 0.0 };
-    SEA_DENSITY * thickness(&planet.record) * (-altitude.max(low) / scale).exp()
+    let under = ((planet.atmosphere_height - altitude) / (TOP_FADE * scale)).clamp(0.0, 1.0);
+    let fade = under * under * (3.0 - 2.0 * under);
+    SEA_DENSITY * thickness(&planet.record) * (-altitude.max(low) / scale).exp() * fade
 }
 
 /// Returns the dynamic pressure in pascals at a density and an airspeed.

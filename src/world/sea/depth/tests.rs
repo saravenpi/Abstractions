@@ -93,3 +93,12 @@ fn texels_tell_sea_from_land_and_ponds() {
         .find(|t| terrain.height(t.x as f32 * TEXEL, 0.0) < -10.0);
     assert!(sea.is_some_and(|t| depth_of(sample(&terrain, t)) > 10.0));
 }
+
+/// A texel is wet where its bed lies under the sea and dry at the waterline and above it; a
+/// texel still waiting for its sample reads as deep water.
+#[test]
+fn wet_texels_lie_under_the_sea() {
+    assert!(wet(&encode(0.01, false)) && wet(&encode(9.0, true)) && wet(&BLANK));
+    assert!(!wet(&encode(0.0, false)) && !wet(&encode(-2.0, false)));
+    assert!(!wet(&[]));
+}

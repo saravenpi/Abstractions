@@ -1,8 +1,7 @@
-//! The one prompt line: a key and what it does, bottom centre above the hotbar. Exactly one
-//! row, the highest priority wins: a warning or block sentence, what was just picked up, a course
-//! or an orbital cruise that runs, a course or a cruise ready to go, the action a key does right now to what the robot looks at or
-//! stands by ([`crate::player::Interact`]: pull a spear out, cut a part, take a thing, board, leave, break stone off,
-//! mend), or nothing.
+//! The one prompt line, bottom centre above the hotbar: a key and what it does. One row, the
+//! highest wins: a warning or block sentence, what was just picked up, a running course or orbital
+//! cruise, one ready to go, the action a key does now to what the robot looks at or stands by
+//! ([`crate::player::Interact`]: pull, cut, take, board, leave, break stone, mend), or nothing.
 
 use bevy::prelude::*;
 
@@ -72,11 +71,11 @@ pub fn choose(state: &State) -> Option<(Option<KeyCode>, String)> {
 /// Returns the key that does the action of `offer` under the bindings `keys`, and the words that
 /// name it and what it acts on.
 pub fn offered(offer: Offer, keys: &Keymap) -> (KeyCode, String) {
-    let thing = offer.thing;
+    let (thing, weight) = (offer.thing, offer.weight());
     match offer.verb {
         Verb::Pull => (keys.ship.board, format!("Pull out the {thing}")),
         Verb::Carve => (keys.ship.board, format!("Cut the {thing}")),
-        Verb::Take => (keys.ship.board, format!("Take the {thing}")),
+        Verb::Take => (keys.ship.board, format!("Take the {thing}{weight}")),
         Verb::Board => (keys.ship.board, "Board".to_string()),
         Verb::Leave => (keys.ship.board, "Leave the ship".to_string()),
         Verb::Stone => (PICK_KEY, "Break stone off".to_string()),
@@ -151,29 +150,30 @@ impl Reach<'_, '_> {
         })
     }
 
-    /// Returns the action a key does right now: its key and its words. In a fall the key that
-    /// spreads the wings, `wings`, comes before any other action.
-    fn act(&self, wings: Option<(KeyCode, String)>) -> Option<(KeyCode, String)> {
-        let keys = &self.settings.controls.keys;
-        let chosen = self.interact.as_deref().and_then(Interact::chosen);
-        wings.or_else(|| chosen.map(|offer| offered(offer, keys)))
-    }
-
-    /// Returns the state of the line for this frame: empty in a menu, and while gliding only
-    /// why the air cannot carry the wings, see [`spoken`]. The orbital cruise takes the course rows
-    /// while it runs; a cruise ready to start comes after a course ready to go.
-    fn state(&self) -> State {
+    /// Returns the rows of the wings and of the action key, see [`spoken`]: in a fall the key
+    /// that spreads the wings comes before any other action.
+    fn act(&self) -> State {
         let keys = &self.settings.controls.keys;
         let air = self.air.as_deref().map_or(1.0, |air| air.0);
         let (block, wings) = spoken(mine(&self.players), air, keys.jump, self.now.0);
-        let mut state = State {
+        let chosen = self.interact.as_deref().and_then(Interact::chosen);
+        let act = wings.or_else(|| chosen.map(|offer| offered(offer, keys)));
+        State {
             block,
+            act,
             ..State::default()
-        };
+        }
+    }
+
+    /// Returns the state of the line: empty in a menu, the wings alone while gliding. The cruise
+    /// takes the course rows while it runs; one ready to start comes after a course ready to go.
+    fn state(&self) -> State {
+        let mut state = self.act();
         if matches!(self.now.0, Context::Gliding | Context::Menu) {
+            state.act = None;
             return state;
         }
-        state.act = self.act(wings);
+        let keys = &self.settings.controls.keys;
         let picked = self.notice.as_deref().and_then(Notice::shown);
         state.notice = picked.map(|words| (PICK_KEY, words.to_string()));
         let seated = self.location.as_deref().map(|at| at.travel) == Some(Travel::InShip);
@@ -181,12 +181,8 @@ impl Reach<'_, '_> {
             .course()
             .map(|course| words(&course, seated, &Keys::of(keys)));
         let found = (self.location.as_deref(), self.base.as_deref());
-        let cruise = read(
-            self.orbital.as_deref(),
-            found,
-            self.destination.0.is_some(),
-            keys,
-        );
+        let set = self.destination.0.is_some();
+        let cruise = read(self.orbital.as_deref(), found, set, keys);
         let (block, running, ready) = merge(cruise, told.unwrap_or_default(), keys.engage);
         let waiting = self
             .hatch
@@ -194,8 +190,7 @@ impl Reach<'_, '_> {
             .is_some_and(|hatch| hatch.waiting && seated);
         let unready = || waiting.then(|| UNREADY.to_string());
         state.block = state.block.or(block).or_else(unready);
-        state.running = running;
-        state.ready = ready;
+        (state.running, state.ready) = (running, ready);
         state
     }
 }

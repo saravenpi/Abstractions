@@ -3,6 +3,7 @@
 //! side at three moments after the jump key is pressed again, the spread, the middle of the lie
 //! and the glide, with a `PROBE glide` line of the airspeed, the sink and the pitch.
 
+use abstractions::craft::Held;
 use abstractions::gear::Gear;
 
 use super::*;
@@ -23,9 +24,14 @@ fn log(world: &mut World, case: &str, moment: &str) {
     let Some((state, wings)) = found else {
         return;
     };
+    let held = world
+        .query::<&Held>()
+        .iter(world)
+        .next()
+        .map(|held| held.0.is_some());
     eprintln!(
         "PROBE glide {case} {moment}: mode {:?} wings {wings} spread {:.2} prone {:.2} airspeed {:.1} m/s \
-         sink {:.1} m/s pitch {:.1} deg clearance {:.1} m",
+         sink {:.1} m/s pitch {:.1} deg clearance {:.1} m tool in hand {held:?}",
         state.mode,
         state.spread(),
         state.prone,
@@ -37,7 +43,7 @@ fn log(world: &mut World, case: &str, moment: &str) {
 }
 
 /// Follows the robot from its right side, looking along `heading`.
-fn beside(world: &mut World, heading: DVec3) {
+pub fn stand_beside(world: &mut World, heading: DVec3) {
     *world.resource_mut::<Tripod>() = Tripod::Follow {
         robot: true,
         heading: heading.normalize_or(DVec3::X),
@@ -48,7 +54,7 @@ fn beside(world: &mut World, heading: DVec3) {
 
 /// Runs frame `frame` of the opening of `case` whose jump key is pressed again at frame
 /// `press`: the press, then the three shots with their lines, then the next stage.
-fn opening(world: &mut World, frame: u32, (case, press): (&str, u32)) -> Act {
+pub fn opening(world: &mut World, frame: u32, (case, press): (&str, u32)) -> Act {
     let jump = bound(world, |s| s.controls.keys.jump);
     if frame == press {
         key(world, jump, true);
@@ -70,7 +76,7 @@ fn opening(world: &mut World, frame: u32, (case, press): (&str, u32)) -> Act {
 }
 
 /// Returns the home base and a direction along the ground from it, or a failure.
-fn site(world: &World) -> Result<(DVec3, DVec3), Act> {
+pub fn open_site(world: &World) -> Result<(DVec3, DVec3), Act> {
     let base = world
         .get_resource::<Base>()
         .copied()
@@ -94,7 +100,7 @@ pub fn open_jump(world: &mut World, _: &mut Notes, frame: u32) -> Act {
         1 => {
             view(world, ViewMode::Third, ViewMode::First);
             stand(world, ground(world, base.wake, 0.0), base.pad, -0.1);
-            beside(world, base.pad - base.wake);
+            stand_beside(world, base.pad - base.wake);
         }
         20 => key(world, jump, true),
         22 => key(world, jump, false),
@@ -106,7 +112,7 @@ pub fn open_jump(world: &mut World, _: &mut Notes, frame: u32) -> Act {
 /// A run off a cliff: the robot 160 m over the ground running at 8.5 m/s, the jump key pressed
 /// at once, as it would be one step past the edge.
 pub fn open_cliff(world: &mut World, _: &mut Notes, frame: u32) -> Act {
-    let (centre, side) = match site(world) {
+    let (centre, side) = match open_site(world) {
         Ok(found) => found,
         Err(failed) => return failed,
     };
@@ -118,7 +124,7 @@ pub fn open_cliff(world: &mut World, _: &mut Notes, frame: u32) -> Act {
             ground(world, centre, 160.0),
             -0.2,
         );
-        beside(world, side);
+        stand_beside(world, side);
     }
     if frame == 3 {
         for mut motion in world
@@ -133,7 +139,7 @@ pub fn open_cliff(world: &mut World, _: &mut Notes, frame: u32) -> Act {
 
 /// A fall of two and a half seconds from 300 m over the ground, then the press.
 pub fn open_fall(world: &mut World, _: &mut Notes, frame: u32) -> Act {
-    let (centre, side) = match site(world) {
+    let (centre, side) = match open_site(world) {
         Ok(found) => found,
         Err(failed) => return failed,
     };
@@ -145,7 +151,7 @@ pub fn open_fall(world: &mut World, _: &mut Notes, frame: u32) -> Act {
             ground(world, centre, 300.0),
             -0.3,
         );
-        beside(world, -side);
+        stand_beside(world, -side);
     }
     opening(world, frame, ("fall", 76))
 }
@@ -162,7 +168,7 @@ pub fn open_ship(world: &mut World, _: &mut Notes, frame: u32) -> Act {
             view(world, ViewMode::Third, ViewMode::First);
             let top = hull.pos + hull.pos.normalize() * 2.5;
             stand(world, top, top + ahead * 10.0, -0.1);
-            beside(world, ahead);
+            stand_beside(world, ahead);
         }
         20 => key(world, jump, true),
         22 => key(world, jump, false),

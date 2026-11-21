@@ -1,11 +1,12 @@
 //! What a ship sounds like is read from its real state, the nearest ships are the ones heard,
 //! and a ship faster than sound booms once, as its shock wave passes.
 
+use super::engines;
 use super::near::{admit, booms, closing};
-use super::{engines, sound_at};
 use crate::audio::{Ch, HULLS, HullSound};
 use crate::ship::cockpit::{Cockpit, Lamp};
 use crate::ship::exhaust::Exhaust;
+use crate::speed::sound_at;
 use crate::universe::Universe;
 
 /// Returns a ship in air, `distance` metres from the listener, at `speed` metres per second.

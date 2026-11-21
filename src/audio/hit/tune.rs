@@ -15,9 +15,6 @@ pub const BRIGHT: [f32; 2] = [0.05, 20.0];
 /// Lowest and highest ring in hertz.
 pub const RING: [f32; 2] = [60.0, 4000.0];
 
-/// Metres at which a blow is half as loud as beside the head.
-pub const HEARD: f32 = 10.0;
-
 /// Tip speed in metres per second at which a swing whooshes at its loudest.
 pub const FAST: f32 = 15.0;
 

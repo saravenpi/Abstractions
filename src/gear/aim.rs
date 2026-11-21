@@ -91,7 +91,7 @@ fn lead(state: &FlightState, input: &GearInput) -> f32 {
     let stall = AOA_MAX.min(MAX_LOAD * input.gravity / slope.max(1e-3));
     let held = input.pitch.abs().max(input.roll.abs()).min(1.0);
     let under = (state.servo.climb - climb(state)) * sense(state);
-    let dive = smooth(0.0, PULL_OUT, under) * safe(state);
+    let dive = smooth(0.0, PULL_OUT, under) * safe(state, input);
     let calm = (1.0 - held) * state.spread() * (1.0 - state.power()) * (1.0 - dive);
     stall.lerp(stall.min(best_aoa()), calm)
 }

@@ -10,6 +10,7 @@ mod lighting;
 mod markers;
 mod model;
 mod prefs;
+mod reflect;
 mod servers;
 mod shadows;
 mod ship_keys;
@@ -23,6 +24,8 @@ mod tests_lighting;
 mod tests_markers;
 #[cfg(test)]
 mod tests_prefs;
+#[cfg(test)]
+mod tests_reflect;
 #[cfg(test)]
 mod tests_removed;
 #[cfg(test)]
@@ -38,6 +41,7 @@ pub use gameplay::{Gameplay, InterfaceSize};
 pub use lighting::{Lighting, Quality};
 pub use markers::WorldMarkers;
 pub use model::{Controls, Graphics, Keymap, Settings, WorldPrefs, render_step};
+pub use reflect::Reflections;
 pub use servers::{SavedServer, default_servers};
 pub use shadows::{ShadowDetail, ShadowReach};
 pub use ship_keys::ShipKeys;

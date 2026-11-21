@@ -6,7 +6,7 @@
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::controller::Motion;
+use super::controller::{Motion, drive};
 use super::floor::Floor;
 use super::spawn::{Home, rescue};
 use super::{BODY_LENGTH, BODY_RADIUS, Player, PlayerSet};
@@ -93,8 +93,9 @@ fn strand(commands: &mut Commands, entity: Entity, left: Option<Stranded>) {
     }
 }
 
-/// Puts every lost player back: once, at rest, the flight gear folded, on the collider under the
-/// place [`rescue`] gives, or held there until that collider loads. A place that is not a finite
+/// Puts every lost player back: once, at rest on its feet, the flight gear folded, on the
+/// collider under the place [`rescue`] gives, or held there until that collider loads. It stands
+/// there as on any ground: grounded, with no speed, nothing left of a fall or a glide. A place that is not a finite
 /// position is never written: it would break the physics of the body. The camera of the local body
 /// cuts when it is moved there and when it stands.
 pub(super) fn recover(
@@ -117,6 +118,7 @@ pub(super) fn recover(
         transform.translation = stood.unwrap_or(back);
         *motion = Motion {
             yaw: motion.yaw,
+            grounded: true,
             ..default()
         };
         *gear = Gear::default();
@@ -130,13 +132,16 @@ pub(super) fn recover(
     }
 }
 
-/// Registers the rescue, after the controller moved the bodies and before the camera rig.
+/// Registers the rescue, right after the controller moved the bodies and before the camera
+/// rig, inside [`PlayerSet::Move`] so that whatever reads a body after it, as its pose does,
+/// reads the body put back.
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<Rescues>().add_systems(
         Update,
         recover
             .run_if(on_foot)
-            .after(PlayerSet::Move)
+            .in_set(PlayerSet::Move)
+            .after(drive)
             .before(ViewSet::Rig),
     );
 }

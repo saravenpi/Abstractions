@@ -2,15 +2,18 @@
 //! take turns in a chorus without holding back an alarm, and lose level and highs under water and
 //! with distance.
 
+use bevy::prelude::*;
+
 use super::rig::{band, rms};
 use super::{RATE, frames};
 use crate::audio::call::Call;
 use crate::audio::cue::AudioCue;
 use crate::audio::cues::Pool;
+use crate::audio::spatial::{Between, Listener, Origin, Spot, spot};
 use crate::audio::throat::tune::CHORUS;
 use crate::life::signs::calls::{CRIES, Cry, TIMBRES, Timbre, Voice};
 
-/// Returns a call of `timbre` at `hz`, from straight ahead at full level, ten metres away.
+/// Returns a call of `timbre` at `hz`.
 pub(super) fn calling(timbre: Timbre, hz: f32, cry: Cry) -> Call {
     Call {
         voice: Voice {
@@ -23,16 +26,13 @@ pub(super) fn calling(timbre: Timbre, hz: f32, cry: Cry) -> Call {
         },
         cry,
         one: 7,
-        side: 0.0,
-        near: 1.0,
-        metres: 10.0,
     }
 }
 
-/// Returns the left channel of `seconds` of `call` played alone.
+/// Returns the left channel of `seconds` of `call` played alone, from straight ahead at its level.
 pub(super) fn render(call: Call, seconds: f32) -> Vec<f32> {
     let mut pool = Pool::new(RATE);
-    pool.play(AudioCue::Call(call));
+    pool.play(AudioCue::Call(call), &Spot::FLAT);
     (0..frames(seconds)).map(|_| pool.frame()[0]).collect()
 }
 
@@ -45,8 +45,8 @@ fn crossed(sent: Call) -> Call {
 }
 
 /// A call packed into a cue comes back with its pitch within a sixteenth of an octave, its formants
-/// within an eighth, its distance within a third, its place within a fifteenth, and every cry, print,
-/// individual and the muffling whole.
+/// within an eighth, and every cry, print, individual and the muffling whole. Where it is travels in
+/// its spot, not in the call.
 #[test]
 fn calls_cross_whole() {
     let voices = [
@@ -57,9 +57,6 @@ fn calls_cross_whole() {
     let octave = |a: f32, b: f32| (a / b).log2().abs();
     for ((t, hz), cry) in voices.into_iter().cycle().zip(CRIES) {
         let mut sent = Call {
-            side: -0.6,
-            near: 0.4,
-            metres: 80.0,
             one: 200,
             ..calling(t, hz, cry)
         };
@@ -67,10 +64,9 @@ fn calls_cross_whole() {
         let got = crossed(sent);
         let v = got.voice;
         assert!(octave(v.hz, hz) < 0.035, "{hz} Hz came back {}", v.hz);
-        assert!(octave(v.formant, 900.0) < 0.07 && octave(got.metres, 80.0) < 0.17);
+        assert!(octave(v.formant, 900.0) < 0.07);
         assert_eq!((v.timbre, v.notes, v.muffled), (t, 3, sent.voice.muffled));
         assert_eq!((got.cry, v.print, got.one), (cry, 0x5A, 200));
-        assert!((got.side + 0.6).abs() < 0.07 && (got.near - 0.4).abs() < 0.04);
     }
 }
 
@@ -80,7 +76,7 @@ fn every_call_renders() {
     for t in TIMBRES {
         for cry in CRIES {
             let mut pool = Pool::new(RATE);
-            pool.play(AudioCue::Call(calling(t, 220.0, cry)));
+            pool.play(AudioCue::Call(calling(t, 220.0, cry)), &Spot::FLAT);
             let buffer: Vec<f32> = (0..frames(8.0)).map(|_| pool.frame()[0]).collect();
             let peak = buffer.iter().fold(0.0_f32, |p, x| p.max(x.abs()));
             let jump = buffer
@@ -102,20 +98,26 @@ fn a_chorus_takes_turns() {
     for k in 0..20_u8 {
         let mut call = calling(TIMBRES[usize::from(k) % 4], 300.0, Cry::Contact);
         call.voice.print = k;
-        pool.play(AudioCue::Call(call));
+        pool.play(AudioCue::Call(call), &Spot::FLAT);
     }
     let chorus = pool.throats().sounding();
     assert!((2..=CHORUS).contains(&chorus), "{chorus} calls at once");
     let mut same = Pool::new(RATE);
     for _ in 0..5 {
-        same.play(AudioCue::Call(calling(Timbre::Hoot, 300.0, Cry::Contact)));
+        same.play(
+            AudioCue::Call(calling(Timbre::Hoot, 300.0, Cry::Contact)),
+            &Spot::FLAT,
+        );
     }
     assert_eq!(same.throats().sounding(), 1);
     for _ in 0..8 {
-        pool.play(AudioCue::Call(calling(Timbre::Growl, 120.0, Cry::Alarm)));
+        pool.play(
+            AudioCue::Call(calling(Timbre::Growl, 120.0, Cry::Alarm)),
+            &Spot::FLAT,
+        );
     }
     assert!(pool.throats().sounding() > chorus);
-    pool.play(AudioCue::UiConfirm);
+    pool.play(AudioCue::UiConfirm, &Spot::FLAT);
     assert!(
         pool.free() < 16,
         "the interface lost its voice to the animals"
@@ -137,13 +139,22 @@ fn muffled_calls_are_quieter_and_duller() {
 /// The same call from far off has lost more of its highs to the air than from near.
 #[test]
 fn far_calls_lose_their_highs() {
-    let near = calling(Timbre::Growl, 150.0, Cry::Threat);
-    let far = Call {
-        metres: 240.0,
-        ..near
+    let call = calling(Timbre::Growl, 150.0, Cry::Threat);
+    let ear = Listener::default();
+    let heard = |metres: f32| {
+        let spot = spot(
+            &ear,
+            Origin::At(Vec3::NEG_Z * metres, 7.0),
+            Between::default(),
+        );
+        let mut pool = Pool::new(RATE);
+        pool.play(AudioCue::Call(call), &spot);
+        (0..frames(4.0))
+            .map(|_| pool.frame()[0])
+            .collect::<Vec<f32>>()
     };
     let bright = |s: &[f32]| band(s, 5000.0) / rms(s).max(1e-9);
-    let (a, b) = (render(near, 4.0), render(far, 4.0));
+    let (a, b) = (heard(10.0), heard(240.0));
     assert!(
         bright(&b) < 0.7 * bright(&a),
         "{} {}",

@@ -14,6 +14,7 @@ use super::tune::{BODY_RMS, FOLLOW, RETUNE};
 use crate::audio::dsp::filter::glide;
 use crate::audio::dsp::osc::{Phasor, sine};
 use crate::audio::dsp::rand::Noise;
+use crate::audio::spatial::{Ear, Spot};
 
 /// Lowest root mean square the level follower divides by.
 const FLOOR: f32 = 1e-3;
@@ -46,8 +47,8 @@ pub struct Throat {
     noise: Noise,
     /// Mean square of the shaped source, followed.
     power: f32,
-    /// Left and right gains: where the call comes from.
-    pub sides: [f32; 2],
+    /// The two ears: where the call comes from.
+    pub ear: Ear,
     /// Samples since the start, to retune now and then.
     tick: u32,
 }
@@ -67,7 +68,7 @@ impl Throat {
             tract: Tract::default(),
             noise: Noise::new(seed),
             power: 0.0,
-            sides: [1.0; 2],
+            ear: Ear::new(1.0),
             tick: 0,
         }
     }
@@ -77,15 +78,16 @@ impl Throat {
         !self.live
     }
 
-    /// Starts `plan`, heard with the gains `sides`, its chaos seeded by `seed`, 0 to 1.
-    pub fn start(&mut self, plan: Plan, sides: [f32; 2], seed: f32) {
+    /// Starts `plan`, heard as `spot` says and as late, its chaos seeded by `seed`, 0 to 1.
+    pub fn start(&mut self, plan: Plan, spot: &Spot, seed: f32) {
         let open = plan.source == Source::Syrinx;
         self.tract
-            .tune((plan.formants, open), (plan.air, plan.muffled), self.rate);
+            .tune((plan.formants, open), plan.muffled, self.rate);
         self.pulses.reset(plan.hz, plan.teeth.1, self.rate);
         self.folds = Folds::new(seed);
-        (self.plan, self.sides, self.live) = (plan, sides, true);
-        (self.at, self.power, self.tick) = (0.0, 0.0, 0);
+        self.ear.place(spot, self.rate);
+        (self.plan, self.live) = (plan, true);
+        (self.at, self.power, self.tick) = (-spot.delay, 0.0, 0);
     }
 
     /// Returns the pitch factor of the vibrato now.

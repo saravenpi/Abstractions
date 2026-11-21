@@ -20,11 +20,13 @@ mod jet;
 mod keys;
 mod lead;
 mod lost;
+mod motion;
 mod sea;
 mod seat;
 mod spawn;
 mod spread;
 mod steer;
+mod surface;
 mod swim;
 mod upright;
 mod wake;
@@ -33,7 +35,7 @@ mod walk;
 #[cfg(test)]
 mod tests;
 
-pub use asks::Intents;
+pub use asks::{Intents, SLING};
 pub use controller::Motion;
 pub use floor::Floor;
 pub use interact::{Interact, Interacting, Offer, Verb, interacting};

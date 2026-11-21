@@ -18,7 +18,7 @@ use crate::settings::Settings;
 use crate::ui::{text_width, theme};
 
 /// Every setting that is not a key.
-const FIELDS: [Field; 35] = [
+const FIELDS: [Field; 36] = [
     Field::RenderDistance,
     Field::LightingQuality,
     Field::Shadows,
@@ -29,6 +29,7 @@ const FIELDS: [Field; 35] = [
     Field::WhiteBalance,
     Field::LocalShadows,
     Field::WaterGlint,
+    Field::WaterReflections,
     Field::Vsync,
     Field::Fullscreen,
     Field::AmbientOcclusion,

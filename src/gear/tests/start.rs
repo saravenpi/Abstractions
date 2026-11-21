@@ -18,8 +18,9 @@ const FORWARD: f32 = 50.0;
 const RATIO: f32 = 3.5;
 
 /// Seconds after the wings are asked open by which the glide is flyable, and the seconds it is
-/// then watched for, one second at a time.
-const SETTLE: (f32, u32) = (10.0, 15);
+/// then watched for, one second at a time. A glide at the edge of the rule of a home flies 1.4
+/// times as fast and settles that much slower than at home.
+const SETTLE: (f32, u32) = (12.0, 15);
 
 /// The worlds of the test: a name, the gravity in metres per second squared and the thickness
 /// of the air against home. Home air under standard gravity; and the edge of the rule of a home,
@@ -86,7 +87,7 @@ fn opened(velocity: Vec3, world: (f32, f32)) -> Vec<(f32, f32)> {
 }
 
 /// At home and at the edge of the rule of a home, a glide opened from a jump, off a cliff and
-/// out of a fall is flyable within ten seconds and stays so: every second after it sinks under
+/// out of a fall is flyable within twelve seconds and stays so: every second after it sinks under
 /// 11 m/s, flies forward under 50 m/s and glides at least 3.5 to one. The air carries it there,
 /// see `gear::glides`.
 #[test]
@@ -110,7 +111,7 @@ fn every_start_reaches_a_flyable_glide_and_keeps_it() {
 }
 
 /// On a world of 0.02 bar the air does not carry the wings, which the interface then says,
-/// and the glide falls: ten seconds after the wings opened from every start it still sinks
+/// and the glide falls: twelve seconds after the wings opened from every start it still sinks
 /// faster than any glide, under the gravity of home.
 #[test]
 fn a_thin_world_cannot_glide() {

@@ -12,6 +12,7 @@ use super::act::{Strike, Timing, key};
 use super::cramp::{Cramped, ease};
 use super::feel::bend::Bend;
 use super::feel::body::{phase, stand, still};
+use super::feel::tune::LET_GO;
 use super::held::Held;
 use super::ik::reach;
 use super::javelin::{Release, draw, drawing, released};
@@ -154,9 +155,19 @@ fn holding(
     }
 }
 
+/// Returns `before` let go a little more after `dt` seconds: the same key at less weight, none
+/// after [`LET_GO`] seconds in all. The hand that put the tool away swings back into the pose.
+fn faded(before: &Layer, dt: f32) -> Layer {
+    match before.weight - dt / LET_GO {
+        weight if weight > 0.0 => Layer { weight, ..*before },
+        _ => Layer::default(),
+    }
+}
+
 /// Lays the strike of every body over its pose: the key of its act with the tool out, a javelin
-/// drawn back along the aim, the whip of one just let go, and nothing with the tool stowed or gone.
-/// The local body in first person holds a drawn javelin where its eyes see it.
+/// drawn back along the aim, the last key let go over [`LET_GO`] once the tool is stowed, the whip
+/// of a javelin just let go, and nothing with the tool gone. The local body in first person holds a
+/// drawn javelin where its eyes see it.
 pub fn lay(
     mut commands: Commands,
     (time, shown, own): (Res<Time>, Option<Res<Shown>>, Own),
@@ -178,8 +189,9 @@ pub fn lay(
             }
             whip
         });
-        let next = match held.filter(|held| held.out) {
-            Some(held) => holding(strike, held, &pose, (&before, dt, first)),
+        let next = match held {
+            Some(held) if held.out => holding(strike, held, &pose, (&before, dt, first)),
+            Some(_) => faded(&layer, dt),
             None => thrown.unwrap_or_default(),
         };
         layer.set_if_neq(next);

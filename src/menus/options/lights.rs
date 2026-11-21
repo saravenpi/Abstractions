@@ -19,8 +19,8 @@ fn moved_reach(reach: ShadowReach, dir: i32) -> ShadowReach {
     all[(at + dir).clamp(0, 2) as usize]
 }
 
-/// Steps a lighting setting by `dir`: the preset walks, toggles flip, the others move on their
-/// own steps. Any other field is left alone.
+/// Steps a lighting setting by `dir`: the preset walks, toggles flip, the water reflections
+/// cycle, the others move on their own steps. Any other field is left alone.
 pub fn step(g: &mut Graphics, field: Field, dir: i32) {
     let own = &mut g.lighting;
     match field {
@@ -32,6 +32,7 @@ pub fn step(g: &mut Graphics, field: Field, dir: i32) {
         Field::WhiteBalance => own.white_balance = !own.white_balance,
         Field::LocalShadows => own.local_shadows = !own.local_shadows,
         Field::WaterGlint => own.water_glint = !own.water_glint,
+        Field::WaterReflections => own.reflections = own.reflections.next(),
         _ => {}
     }
 }
@@ -51,6 +52,7 @@ pub fn display(g: &Graphics, field: Field) -> Option<String> {
             true => "Sky and sun".to_string(),
             false => "Sky only".to_string(),
         },
+        Field::WaterReflections => own.reflections.name().to_string(),
         _ => return None,
     };
     Some(text)

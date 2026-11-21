@@ -14,6 +14,7 @@ use bevy::prelude::*;
 use super::aero::bite;
 use super::aim::wrap;
 use super::assist::flare;
+use super::carry::stall_scale;
 use super::input::GearInput;
 use super::path::{bounded, climb, mirrored, path_offset, sighted};
 use super::servo::ease;
@@ -37,10 +38,16 @@ fn best_glide() -> f32 {
     -ratio.recip().atan()
 }
 
-/// Returns how clear of the stall the wings fly, from 0 at the stall speed to 1 clear of it.
-/// Under power the boots carry the body, and the protection lets go with their spool.
-pub(super) fn safe(state: &FlightState) -> f32 {
-    let speed = state.velocity.length();
+/// Returns how clear of the stall the wings fly in the air of `input`, from 0 at the stall
+/// speed to 1 clear of it. Under power the boots carry the body, and the protection lets go with
+/// their spool.
+///
+/// [`STALL_SPEED`] is quoted at home: the wing carries the weight at a speed that grows as
+/// `sqrt(g / g0 / bite)`, so in thinner air or under a stronger pull it stalls faster, and the
+/// protection comes in that much sooner. At the edge of the rule of a home it is 1.4 times the
+/// home speed, at home exactly the home speed.
+pub(super) fn safe(state: &FlightState, input: &GearInput) -> f32 {
+    let speed = state.velocity.length() / stall_scale(input);
     smooth(STALL_SPEED.0, STALL_SPEED.1, speed).max(state.power())
 }
 
@@ -54,7 +61,7 @@ fn wanted(state: &FlightState, input: &GearInput) -> f32 {
     let trim = best_glide().lerp(0.0, state.power());
     let base = sighted(state, input).map_or(trim, |aim| aim.y);
     let base = base.clamp(DIVE_LIMIT, CLIMB_LIMIT);
-    let ceiling = STALL_PITCH.lerp(CLIMB_LIMIT, safe(state));
+    let ceiling = STALL_PITCH.lerp(CLIMB_LIMIT, safe(state, input));
     mirrored(
         state,
         (base.min(ceiling) + flare(state, input)).min(CLIMB_LIMIT),
@@ -64,8 +71,8 @@ fn wanted(state: &FlightState, input: &GearInput) -> f32 {
 /// Returns the share of the self-level the flight path angle gets: [`LEVEL_PITCH`] clear of
 /// the stall, where let go the wings fly on along the path the keys left, and all of it at the
 /// stall, where the nose comes down.
-fn held(state: &FlightState) -> f32 {
-    LEVEL_PITCH.lerp(1.0, 1.0 - safe(state))
+fn held(state: &FlightState, input: &GearInput) -> f32 {
+    LEVEL_PITCH.lerp(1.0, 1.0 - safe(state, input))
 }
 
 /// Returns the asked flight path angle after `h` seconds.
@@ -91,7 +98,7 @@ pub(super) fn command(state: &FlightState, input: &GearInput, h: f32) -> f32 {
             wanted(state, input),
             input
                 .aim
-                .map_or(COMMAND_RATE * LEVEL * held(state), |_| COMMAND_RATE),
+                .map_or(COMMAND_RATE * LEVEL * held(state, input), |_| COMMAND_RATE),
         ),
     };
     let asked = state.servo.climb;
@@ -102,7 +109,7 @@ pub(super) fn command(state: &FlightState, input: &GearInput, h: f32) -> f32 {
 /// the right wing down: toward the side it looks to, at most [`BANK_LIMIT`], and near the stall
 /// [`STALL_BANK`] of that. None while the view steers nothing.
 pub(super) fn bank(state: &FlightState, input: &GearInput) -> f32 {
-    let limit = BANK_LIMIT * STALL_BANK.lerp(1.0, safe(state));
+    let limit = BANK_LIMIT * STALL_BANK.lerp(1.0, safe(state, input));
     let view = sighted(state, input).map_or(0.0, |aim| BANK_GAIN * path_offset(state, aim.x));
     view.clamp(-limit, limit)
 }

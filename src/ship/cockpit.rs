@@ -15,6 +15,7 @@ mod attitude;
 mod canopy;
 mod controls;
 mod display;
+mod drops;
 mod faces;
 mod fit;
 mod font;
@@ -32,6 +33,7 @@ mod sources;
 mod state;
 mod strap;
 mod tune;
+mod wet;
 mod work;
 
 #[cfg(test)]
@@ -43,11 +45,15 @@ mod tests_app;
 #[cfg(test)]
 mod tests_dark;
 #[cfg(test)]
+mod tests_drops;
+#[cfg(test)]
 mod tests_horizon;
 #[cfg(test)]
 mod tests_life;
 #[cfg(test)]
 mod tests_paint;
+#[cfg(test)]
+mod tests_shadow;
 
 use bevy::prelude::*;
 
@@ -68,7 +74,8 @@ pub use tune::{
 
 /// Registers the systems of the cockpit: the local ship is fed from its helm and its
 /// instruments, the displays are fitted and the lights rigged, then the parts of every cockpit
-/// are moved, the displays repainted, the lights set and the glowing faces dimmed.
+/// are moved, the displays repainted, the lights set and the glowing faces dimmed; the canopy
+/// of the ship this machine flies gets its drops, which wet and dry with the air.
 pub(super) fn plugin(app: &mut App) {
     let run = (
         sources::feed,
@@ -83,4 +90,9 @@ pub(super) fn plugin(app: &mut App) {
         .chain();
     let run = run.run_if(any_with_component::<Cockpit>);
     app.add_systems(Update, run.in_set(super::ShipSet::Place));
+    let wet = (
+        drops::spawn.run_if(any_with_component::<Canopy>),
+        drops::drip.run_if(any_with_component::<drops::Drops>),
+    );
+    app.add_systems(Update, wet.chain().in_set(super::ShipSet::Report));
 }

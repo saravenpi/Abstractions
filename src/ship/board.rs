@@ -16,6 +16,7 @@ use crate::player::{EYE_OFFSET, Floor, Interact, Player, Verb, place, seat};
 use crate::render::GameCamera;
 use crate::settings::{Persistent, Settings};
 use crate::space::{Anchor, Location, Placed, Travel, up};
+use crate::world::Terrain;
 
 /// Distance in metres from the hull centre within which the player can board.
 const BOARD_RANGE: f32 = 7.0;
@@ -58,17 +59,22 @@ pub struct Dock<'w, 's> {
     spot: Local<'s, Option<DVec3>>,
     /// The action the interact key does this frame, which boarding and leaving are offered to.
     interact: ResMut<'w, Interact>,
+    /// The terrain of the planet, whose drawn ground the feet go down on before its collider loads.
+    terrain: Option<Res<'w, Terrain>>,
 }
 
 impl Dock<'_, '_> {
     /// Returns the render position the feet go down on beside the hatch of a ship with pose
-    /// `at`: the top of the ground collider there, or the sea over it. Nothing while no collider
-    /// is loaded beside the hatch over dry ground: a body put there would fall through.
+    /// `at`: the top of the ground collider there, or the ground the terrain mesh draws while no
+    /// collider is loaded yet, which a body stands on as on a collider, or the sea over it.
     fn step_out(&self, at: &Placed) -> Option<Vec3> {
         let hatch = at.pos + at.rot * HATCH;
         let render = self.anchor.to_render(hatch);
         let vertical = up(&self.anchor, render);
-        let ground = self.floor.under(render, vertical);
+        let ground = self
+            .floor
+            .under(render, vertical)
+            .or_else(|| self.drawn(render, vertical));
         if self.skies.height(hatch) >= self.skies.sea() {
             return ground;
         }
@@ -81,6 +87,20 @@ impl Dock<'_, '_> {
             .to_render(hatch.normalize_or(DVec3::Y) * (radius + self.skies.sea()));
         let higher = |feet: Vec3| [sea, feet][usize::from((feet - sea).dot(vertical) > 0.0)];
         Some(ground.map_or(sea, higher))
+    }
+}
+
+impl Dock<'_, '_> {
+    /// Returns the render position of the ground the terrain mesh draws under `render`, along
+    /// the local up `vertical`, on a planet with ground.
+    fn drawn(&self, render: Vec3, vertical: Vec3) -> Option<Vec3> {
+        let terrain = self.terrain.as_deref()?;
+        if !terrain.globe().has_ground() {
+            return None;
+        }
+        let chart = terrain.locate(self.anchor.to_frame(render));
+        let below = chart.y - terrain.mesh_height(chart.x, chart.z);
+        Some(render - vertical * below)
     }
 }
 

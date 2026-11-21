@@ -25,13 +25,13 @@ On foot:
 | N | Minimap range, then off |
 | B | Drop a pin where you stand, or remove the pin within 10 m. On the map, a pin under the pointer. You keep up to eight |
 | K | Field guide: the species of the planet underfoot |
-| I | Pack and workshop: what you carry on the left, the tools you can make for an intent on the right. The robot wakes with a stone spear in slot 1 and a stone knife in slot 2, empty-handed. Tab moves between the two |
+| I | Pack and workshop: what you carry on the left, the tools you can make for an intent on the right. The robot wakes with a stone spear in slot 1 and a stone knife in slot 2, empty-handed. Tab moves between the two. X puts the chosen tool or stack down on the ground, Shift X half the stack |
 | 1 to 6 | Hold the tool in that hotbar slot; the key of the held slot stows or draws it |
 | Left mouse, right mouse | Swing the held tool or stab with a spear, guard |
 | T held | Draw the spear in hand back; let go to throw it. A thrown spear is marked on the compass, the map and over the world until you pick it up |
 | H | Break a piece off the rock you look at |
 | U | Patch the worst hurt part of the robot with what you carry. Near the base every part mends itself |
-| F | Board the ship. Cut a part off the carcass you look at, or pull out a stuck spear |
+| F | Board the ship. Cut a part off the carcass you look at, pull out a stuck spear, or take the tool or stone you look at off the ground |
 | Look down + W | Dive while swimming |
 | F1 | Hide the interface, and show it again: a clean view for a screenshot. It works in the ship too |
 | Esc | Pause menu, or back |
@@ -78,7 +78,7 @@ Saves are one small file per world:
 
 ## Play together
 
-Players share one universe: the same seed, the same clock and the same discoveries. A server takes 16 players by default, and up to 1000 when its owner says so. Each player keeps their own robot, ship and companion.
+Players share one universe: the same seed, the same clock and the same discoveries. A server takes 16 players by default, and up to 1000 when its owner says so. Each player keeps their own robot, ship and companion. What one player puts on the ground lies there for everyone until someone takes it, and the parts of a carcass go to whoever cuts them first.
 
 - **On your network:** in a world, pause and pick Open to LAN. Friends on the same network see the world under Multiplayer, On your network, and join with one click. Close LAN saves the world as usual.
 - **On a server:** Multiplayer lists your servers with their players and ping. Space (`space.facile.studio`) is there from the start. Add a server by its address, such as `play.example.com` or `203.0.113.4:24650`. Direct connect joins one without saving it.

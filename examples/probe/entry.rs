@@ -3,7 +3,7 @@
 //! above the pad to orbit under the autopilot, seen from the chase camera. The interface is
 //! hidden; every shot logs the height, the speed and the glow.
 
-use abstractions::render::Heat;
+use abstractions::render::{CloudCrossing, Heat};
 use abstractions::ship::SEAT;
 use abstractions::speed::{sound_speed, temperature_at};
 use abstractions::universe::{TOP_SCALES, heights};
@@ -12,14 +12,14 @@ use super::*;
 
 /// The chase camera of both flights, in hull axes: behind the left wing and above it, looking
 /// at the nose.
-const CHASE: (Vec3, Vec3) = (Vec3::new(-14.0, 5.0, 16.0), Vec3::new(0.0, 0.0, -3.0));
+pub const CHASE: (Vec3, Vec3) = (Vec3::new(-14.0, 5.0, 16.0), Vec3::new(0.0, 0.0, -3.0));
 
 /// Frames between two shots while the ship glows, three seconds of the game, and between two
 /// shots while it does not.
 const EVERY: (u32, u32) = (30, 100);
 
 /// Frames a flight may run before it ends.
-const LONGEST: u32 = 2500;
+const LONGEST: u32 = 4000;
 
 /// Path angle in radians below the horizon of the fall from orbit: four degrees.
 const SLOPE: f64 = 0.07;
@@ -62,14 +62,28 @@ fn record(world: &mut World, t: u32, name: &str) {
     shot(world, &format!("{name}-{t:04}"));
 }
 
+/// Takes the shot `name` once, the first time the camera is well inside a real cloud: the view
+/// should white out as thickly as the cloud field is there, with no lines on it.
+fn cloudy(world: &mut World, notes: &mut Notes, name: &str) {
+    let depth = world
+        .get_resource::<CloudCrossing>()
+        .map_or(0.0, |cloud| cloud.depth);
+    let mark = DVec3::splat(-1.0);
+    if depth > 0.3 && !notes.spots.contains(&mark) {
+        notes.spots.push(mark);
+        eprintln!("PROBE {name} in cloud {depth:.2}");
+        shot(world, name);
+    }
+}
+
 /// Gives the camera back to the game and ends a flight stage.
-fn landed(world: &mut World, notes: &mut Notes) -> Act {
+pub fn landed(world: &mut World, notes: &mut Notes) -> Act {
     pace(world, WALK);
     inside(world, notes)
 }
 
 /// Falls from orbit with the camera at `eye` in hull axes, seen from outside when `out`, and
-/// shoots the flight down to 15 km.
+/// shoots the flight down through the cloud layer to 1.5 km.
 fn fall(
     world: &mut World,
     notes: &mut Notes,
@@ -85,12 +99,14 @@ fn fall(
         let seen = [ViewMode::First, ViewMode::Third][usize::from(out)];
         view(world, ViewMode::First, seen);
         from_orbit(world);
+        notes.spots.clear();
         pace(world, FLIGHT);
         return Act::Wait;
     }
     record(world, t, name);
+    cloudy(world, notes, &format!("{name}-cloud"));
     let height = world.resource::<ShipTelemetry>().altitude_sea;
-    match t > LONGEST || height < 15_000.0 {
+    match t > LONGEST || height < 1500.0 {
         true => landed(world, notes),
         false => Act::Wait,
     }
@@ -124,8 +140,8 @@ fn mach(world: &World, body: BodyId) -> f64 {
 }
 
 /// Climbs from 40 m over the pad to orbit under the autopilot, from the chase camera: a shot as
-/// the ship passes Mach 1, one at 9 km where contrails form, one at the edge of space, and one
-/// every ten seconds besides.
+/// the ship passes Mach 1, one at 9 km where contrails form, one at the edge of space, one every
+/// ten seconds besides, and one every five seconds for thirty seconds above the air.
 pub fn exit(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
     let Some(t) = card_ready(world, notes, frame, true) else {
         return card_wait(frame);
@@ -171,10 +187,33 @@ pub fn exit(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
             shot(world, name);
         }
     }
+    cloudy(world, notes, "X-cloud");
     if t % EVERY.1 == 0 {
         record(world, t, "X-climb");
     }
-    match t > LONGEST || height > 1.2 * top {
+    above(world, notes, (t, height > top))
+}
+
+/// Seconds of the game, in frames, the climb goes on above the air: the plasma should fade and
+/// the skin cool from orange to dark red, with no pop.
+const SPACE: u32 = 300;
+
+/// Follows the climb into space once the ship is `out` of the air at frame `t`: a shot every
+/// five seconds for [`SPACE`] frames, then the end of the stage.
+fn above(world: &mut World, notes: &mut Notes, (t, out): (u32, bool)) -> Act {
+    if out && notes.shot_at.is_none() {
+        notes.shot_at = Some(t);
+    }
+    let since = notes.shot_at.map(|left| t - left);
+    if let Some(since) = since.filter(|since| since % 50 == 0) {
+        let glow = world.resource::<Heat>().glow;
+        eprintln!(
+            "PROBE exit {since} frames out of the air: plasma {:.3}, skin {:.0} K",
+            glow.heat, glow.kelvin
+        );
+        shot(world, &format!("X-space-{since:03}"));
+    }
+    match t > LONGEST || since.is_some_and(|since| since > SPACE) {
         true => landed(world, notes),
         false => Act::Wait,
     }

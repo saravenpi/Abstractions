@@ -6,23 +6,18 @@ use bevy::prelude::*;
 use super::planet::{Surf, loudness, surf, wind as heard};
 use super::scene::{AudioScene, altitude_fade};
 use super::shore::{CEILING, ShoreRead, closeness};
-use crate::companion::Companion;
 use crate::gear::{FlightFx, GearSet};
-use crate::net::Remote;
 use crate::player::above_sea;
 use crate::render::{CloudCrossing, DayClock, GameCamera, daylight, smoothstep};
 use crate::screens::Screen;
 use crate::ship::ShipSet;
-use crate::space::{Anchor, Frame, Location, Travel, altitude};
+use crate::space::{Anchor, Frame, Location, altitude};
 use crate::universe::{PlanetSpec, Universe};
 use crate::wind::Wind;
 use crate::world::Terrain;
 
 /// Depth in metres of the head under the sea surface at which the sound is fully muffled.
 const HEAD_DEPTH: f32 = 0.35;
-
-/// Distance in metres at which the voice of the companion has lost half its level.
-const EARSHOT: f32 = 6.0;
 
 /// The planet the listener is at, kept so that its description is not rebuilt every frame.
 #[derive(Resource, Debug, Default)]
@@ -65,9 +60,9 @@ fn sense_place(
     scene.class = record.map_or(scene.class, |record| record.class);
     scene.home = location.body == universe.home();
     scene.in_space = !matches!(anchor.frame, Frame::Surface(_));
-    scene.cabin = f32::from(u8::from(location.travel == Travel::InShip));
     scene.daylight = daylight(clock.phase);
     scene.wind = record.map_or(wind.strength, |record| heard(&record, wind.strength));
+    scene.air = record.map_or(1.0, |record| loudness(&record));
 }
 
 /// Returns the side a sound at render position `from` is on for the `listener`: -1 at its
@@ -75,20 +70,6 @@ fn sense_place(
 fn side(listener: &GlobalTransform, from: Vec3) -> f32 {
     let toward = (from - listener.translation()).normalize_or_zero();
     toward.dot(listener.right().as_vec3())
-}
-
-/// Writes where the companion is for the listener, so its voice comes from where it floats.
-fn sense_companion(
-    camera: Query<&GlobalTransform, With<GameCamera>>,
-    companion: Query<&GlobalTransform, (With<Companion>, Without<Remote>)>,
-    mut scene: ResMut<AudioScene>,
-) {
-    let (Ok(camera), Ok(companion)) = (camera.single(), companion.single()) else {
-        return;
-    };
-    let from = companion.translation();
-    let far = from.distance(camera.translation());
-    scene.companion = Vec2::new(side(camera, from), 1.0 / (1.0 + far / EARSHOT));
 }
 
 /// Writes the altitude fade, the water and the clouds into the scene from the camera.
@@ -192,10 +173,10 @@ pub(super) fn plugin(app: &mut App) {
             Update,
             (
                 sense_place,
+                super::spatial::listen::listen,
                 sense_listener,
                 sense_shore,
                 sense_flight,
-                sense_companion,
             )
                 .chain()
                 .in_set(super::Sensing)

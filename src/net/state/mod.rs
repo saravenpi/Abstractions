@@ -69,8 +69,10 @@ fn frame(app: &mut App) {
 }
 
 /// Registers the state of the players: what arrives, what is drawn and what is sent. Every
-/// system waits for a link, so single player runs none but the one that forgets puppets.
+/// system waits for a link, so single player runs none but the one that forgets puppets. Calm
+/// water mirrors the puppets.
 pub fn plugin(app: &mut App) {
+    app.register_required_components::<Remote, crate::world::Reflected>();
     app.init_resource::<track::Remotes>()
         .init_resource::<send::Outbox>()
         .init_resource::<bodies::Bodies>()

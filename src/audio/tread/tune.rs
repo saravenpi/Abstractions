@@ -29,26 +29,14 @@ pub const ROLL_STRAY: f32 = 0.15;
 /// own feet are heard, and how far apart their levels are: no two legs are built alike.
 pub const FEET: (f32, f32, f32) = (0.03, 0.06, 0.08);
 
-/// Height of the ears over the soles: the distance the listener hears their own feet from,
-/// and the distance under which a step of someone else gets no louder.
-pub const EAR: f32 = 1.7;
-
-/// Distance past which a step is not heard.
-pub const EARSHOT: f32 = 60.0;
-
-/// Speed of sound in the air of home, which carries the steps of others to the listener.
-pub const SOUND: f32 = 343.0;
-
-/// Share of the thud and of the ring of the listener's own step that comes through the body,
-/// which is all of it that is heard in a vacuum.
-pub const BODY: f32 = 0.5;
-
 /// Share of a step the heel strikes with, and the share the toe lands with after the roll.
 pub const HEEL_TOE: (f32, f32) = (0.6, 0.4);
 
 /// The armour of the robot on a hard landing: the force it starts to tick at, its tone, its
-/// resonance and its level at the hardest landing. Faint: a robot is not a bell.
-pub const TICK: (f32, f32, f32, f32) = (0.45, 3900.0, 60.0, 0.06);
+/// resonance, and its level against the strike of the landing at the hardest one. A harder landing
+/// rings the plates harder: at the hardest the tick peaks about 9 dB under the thud of the landing,
+/// faint but heard, for a robot is not a bell.
+pub const TICK: (f32, f32, f32, f32) = (0.45, 3900.0, 60.0, 0.05);
 
 /// Seconds the scrape of one stretch of a slide takes to die, and how many more grains a
 /// slide breaks than a step.

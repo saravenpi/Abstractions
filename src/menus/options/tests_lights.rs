@@ -53,3 +53,23 @@ fn the_lighting_rows_show_their_values() {
     }
     assert!(COSTS.contains("shadows") && graphics_line(4).is_empty());
 }
+
+/// The water reflections row reads Actors on the default High preset, cycles to Off, which reads
+/// as a custom preset, and back; Low turns it off and Ultra on.
+#[test]
+fn the_water_reflections_row_cycles_and_follows_the_preset() {
+    let mut s = Settings::default();
+    assert_eq!(display(&s, Field::WaterReflections), "Actors");
+    step(&mut s, Field::WaterReflections, 1);
+    assert_eq!(display(&s, Field::WaterReflections), "Off");
+    assert_eq!(display(&s, Field::LightingQuality), "Custom");
+    step(&mut s, Field::WaterReflections, -1);
+    assert_eq!(display(&s, Field::WaterReflections), "Actors");
+    assert_eq!(display(&s, Field::LightingQuality), "High");
+    (0..3).for_each(|_| step(&mut s, Field::LightingQuality, -1));
+    assert_eq!(display(&s, Field::WaterReflections), "Off");
+    (0..3).for_each(|_| step(&mut s, Field::LightingQuality, 1));
+    assert_eq!(display(&s, Field::WaterReflections), "Actors");
+    assert!(!describe(Field::WaterReflections).is_empty());
+    assert!(describe(Field::WaterReflections).len() <= 80);
+}

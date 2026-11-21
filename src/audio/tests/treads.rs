@@ -2,21 +2,29 @@
 //! others, no two steps are the same sound, and a harder and heavier step is louder.
 
 use super::rig::{band, rms};
+use super::takes_steps::heard;
 use super::{RATE, frames};
 use crate::audio::cue::StepSurface;
+use crate::audio::spatial::{Air, Spot};
 use crate::audio::step::Step;
 use crate::audio::tread::Treads;
 
 /// Seconds between two steps the tests play.
 const GAP: f32 = 0.4;
 
-/// Plays `count` copies of `step` one after the other, [`GAP`] seconds apart, and returns the
-/// stereo sound.
+/// Plays `count` copies of the listener's own `step` one after the other, [`GAP`] seconds apart,
+/// in the air of home, and returns the stereo sound.
 pub(super) fn trod(step: Step, count: usize) -> Vec<[f32; 2]> {
+    trod_at(step, heard(0.0, 0.0, Air::home()), count)
+}
+
+/// Plays `count` copies of `step` heard as `spot` says, [`GAP`] seconds apart, and returns the
+/// stereo sound.
+pub(super) fn trod_at(step: Step, spot: Spot, count: usize) -> Vec<[f32; 2]> {
     let mut pool = Treads::new(RATE);
     let mut out = Vec::with_capacity(count * frames(GAP));
     for _ in 0..count {
-        pool.play(&step);
+        pool.play(&step, &spot);
         out.extend((0..frames(GAP)).map(|_| pool.frame()));
     }
     out

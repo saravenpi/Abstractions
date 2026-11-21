@@ -5,17 +5,22 @@
 //! The heating of the nose is the convective rate of Sutton and Graves,
 //! `q = k * sqrt(rho / r) * v^3`, with `rho` the density of the air, `v` the speed through it
 //! and `r` the radius of the nose (<https://en.wikipedia.org/wiki/Atmospheric_entry>). It is
-//! the same on the way down and on the way up: only the air and the speed count. The ship and
-//! the gear write what they fly through into [`Heat`]; the sheath, the hull light, the cabin,
-//! the shake and the roar read it back.
+//! the same on the way down and on the way up: only the air and the speed count. Two things
+//! glow: the plasma of the shock, which follows the flux of this moment and so fades within
+//! seconds as the air thins, and the skin of the nose, which the flux heats over seconds and
+//! radiation cools over tens of seconds after, see `skin`. The ship and the gear write what they
+//! fly through into [`Heat`]; the sheath, the cabin, the shake and the roar read it back.
 
 mod gas;
 mod sheath;
+mod skin;
 mod state;
 mod tune;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_cool;
 #[cfg(test)]
 mod tests_path;
 #[cfg(test)]
@@ -24,42 +29,50 @@ mod tests_skin;
 use bevy::prelude::*;
 
 pub use gas::Gas;
+#[cfg(test)]
+pub use gas::incandescence;
 pub use sheath::{SheathMaterial, SheathUniform};
+pub use skin::kelvin_of;
 pub use state::{Craft, Heat};
-pub use tune::{MIN_SPEED, SHEATH_FROM};
+pub use tune::MIN_SPEED;
 
 use super::celestial::smoothstep;
-use gas::incandescence;
 
 /// How hot the nose of a craft glows and how hard the air presses on it.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Glow {
-    /// Strength of the glow from 0 to 1: 0 below the heating that shows.
+    /// Strength of the glow of the plasma of the shock from 0 to 1: 0 below the heating that
+    /// shows.
     pub heat: f32,
     /// Strength of the roar and the shake from 0 to 1, from the dynamic pressure.
     pub pressure: f32,
     /// Linear colour of the glowing gas of the shock.
     pub color: Vec3,
-    /// Linear colour of the hot skin of the nose and the leading edges, from its temperature.
-    pub skin: Vec3,
+    /// Heat flux of the air on the nose in watts per square metre.
+    pub flux: f32,
+    /// Temperature of the skin of the nose and the leading edges in kelvin, 0 while it is cold
+    /// and dark.
+    pub kelvin: f32,
 }
 
 impl Glow {
-    /// No glow, no pressure.
+    /// No glow, no pressure, no heat.
     pub const NONE: Self = Self {
         heat: 0.0,
         pressure: 0.0,
         color: Vec3::ZERO,
-        skin: Vec3::ZERO,
+        flux: 0.0,
+        kelvin: 0.0,
     };
 
-    /// Returns the glow `dt` seconds after this one when the craft now makes `next`: the
-    /// strength rises and falls at the rates of [`tune::EASE`], and the colours follow `next`
-    /// while there is a glow to colour.
+    /// Returns the glow `dt` seconds after this one when the craft now makes `next`: the plasma
+    /// and the pressure follow `next` at the rate of [`tune::PLASMA_EASE`], the colour of the gas
+    /// follows it while there is a glow to colour, and the skin warms or cools from its own
+    /// temperature under the flux of `next`.
     pub fn follow(self, next: Self, dt: f32) -> Self {
+        let keep = (-tune::PLASMA_EASE * dt).exp();
         let rate = |now: f32, to: f32| {
-            let speed = if to > now { tune::EASE.0 } else { tune::EASE.1 };
-            let eased = now + (to - now) * (1.0 - (-speed * dt).exp());
+            let eased = to + (now - to) * keep;
             if to == 0.0 && eased < 1.0e-3 {
                 0.0
             } else {
@@ -67,16 +80,17 @@ impl Glow {
             }
         };
         let hue = 1.0 - (-tune::HUE_RATE * dt).exp();
-        let tint = |now: Vec3, to: Vec3| match (self.heat > 0.0, next.heat > 0.0) {
-            (_, false) => now,
-            (false, true) => to,
-            (true, true) => now.lerp(to, hue),
+        let color = match (self.heat > 0.0, next.heat > 0.0) {
+            (_, false) => self.color,
+            (false, true) => next.color,
+            (true, true) => self.color.lerp(next.color, hue),
         };
         Self {
             heat: rate(self.heat, next.heat),
             pressure: rate(self.pressure, next.pressure),
-            color: tint(self.color, next.color),
-            skin: tint(self.skin, next.skin),
+            color,
+            flux: next.flux,
+            kelvin: skin::warmed(self.kelvin, next.flux, dt),
         }
     }
 }
@@ -118,21 +132,13 @@ fn share(flux: f64) -> f32 {
     smoothstep(low.log10() as f32, full.log10() as f32, flux.log10() as f32)
 }
 
-/// Returns the linear colour of the hot skin of a nose that makes the heat share `heat`, for a
-/// craft whose records carry only that share: the flux is read back along the logarithm of the
-/// bounds of [`tune::HEATING`], and its [`temperature`] gives the colour.
-pub fn skin(heat: f32) -> Vec3 {
-    let (low, full) = tune::HEATING;
-    let log = low.log10() + f64::from(heat.clamp(0.0, 1.0)) * (full.log10() - low.log10());
-    incandescence(temperature(10f64.powf(log)) as f32)
-}
-
 /// Returns the glow of a craft flying at `speed` metres per second through air of `density`
 /// kilograms per cubic metre made of `gas`, whichever way it flies.
 ///
-/// The strength comes from the flux of [`flux`], the colour of the shock from the gas, the
-/// colour of the skin from the [`temperature`] the flux gives, and the pressure is the dynamic
-/// pressure `rho * v^2 / 2` between the bounds of [`tune::PRESSURE`].
+/// The strength comes from the flux of [`flux`], a smooth function of it that reaches 0
+/// continuously, the colour of the shock from the gas, the temperature of the skin is the one
+/// that radiates the flux away, which a skin only reaches over time (see [`Glow::follow`]), and
+/// the pressure is the dynamic pressure `rho * v^2 / 2` between the bounds of [`tune::PRESSURE`].
 pub fn entry(density: f64, speed: f64, gas: Gas) -> Glow {
     let (density, speed) = (density.max(0.0), speed.max(0.0));
     let heating = flux(density, speed);
@@ -143,7 +149,8 @@ pub fn entry(density: f64, speed: f64, gas: Gas) -> Glow {
         heat,
         pressure: smoothstep(from as f32, to as f32, load as f32),
         color: gas.color(heat),
-        skin: incandescence(temperature(heating) as f32),
+        flux: heating as f32,
+        kelvin: temperature(heating) as f32,
     }
 }
 

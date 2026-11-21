@@ -6,12 +6,18 @@
 //! hands, ruins three quarters and leaves the rest poor.
 //!
 //! Another system sends a [`Harvest`] message for a part of a carcass; [`reap`] answers it from the
-//! life underfoot and the held tool, into the pack.
+//! life underfoot and the held tool, into the pack. In a session a cut first waits in [`Claims`] for
+//! the server to say the part is this player's.
 
+mod claim;
 mod tune;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_claim;
+
+pub use claim::Claims;
 
 use bevy::prelude::*;
 

@@ -114,7 +114,8 @@ pub fn pull(
         return;
     };
     let name = named(&mut names, spear);
-    interact.offer(verb, name);
+    let grams = (verb == Verb::Take).then(|| (spear.item.throw.mass * 1e3).round() as u32);
+    interact.weighed(verb, name, grams);
     let mine = interact.chosen().is_some_and(|offer| offer.thing == name);
     if mine && interact.pressed(verb, &keys, settings.controls.keys.ship.board) {
         take(&mut commands, body, spear, pack.as_deref_mut());

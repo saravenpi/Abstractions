@@ -84,7 +84,10 @@ fn every_offered_action_names_its_key_and_its_thing() {
     let mut keys = Keymap::default();
     keys.ship.board = KeyCode::KeyT;
     keys.mend = KeyCode::KeyY;
-    let said = |verb, thing| offered(Offer { verb, thing }, &keys);
+    let said = |verb, thing| {
+        let grams = None;
+        offered(Offer { verb, thing, grams }, &keys)
+    };
     let row = |key, words: &str| (key, words.to_string());
     assert_eq!(
         said(Verb::Carve, "thigh"),
@@ -105,4 +108,29 @@ fn every_offered_action_names_its_key_and_its_thing() {
         said(Verb::Mend, "Left arm"),
         row(KeyCode::KeyY, "Mend the left arm")
     );
+}
+
+/// A take names what it takes and its mass, in kilograms or in grams, on the interact key.
+#[test]
+fn a_take_names_the_thing_and_its_mass() {
+    let mut keys = Keymap::default();
+    keys.ship.board = KeyCode::KeyT;
+    let flint = Offer {
+        verb: Verb::Take,
+        thing: "flint",
+        grams: Some(1_200),
+    };
+    let said = |offer| offered(offer, &keys).1;
+    assert_eq!(offered(flint, &keys).0, KeyCode::KeyT);
+    assert_eq!(said(flint), "Take the flint 1.2 kg");
+    let light = Offer {
+        grams: Some(300),
+        ..flint
+    };
+    assert_eq!(said(light), "Take the flint 300 g");
+    let unweighed = Offer {
+        grams: None,
+        ..flint
+    };
+    assert_eq!(said(unweighed), "Take the flint");
 }

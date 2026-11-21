@@ -2,7 +2,7 @@
 //! the colour of its temperature, and under the cool speed of an air nothing glows.
 
 use super::tune::HEATING;
-use super::{Gas, cool_speed, entry, flux, incandescence, skin, temperature};
+use super::{Gas, cool_speed, entry, flux, incandescence, kelvin_of, temperature};
 
 /// Density of the air of the home planet at sea level in kilograms per cubic metre.
 const HOME: f64 = 1.2;
@@ -14,7 +14,8 @@ const THIN: f64 = 0.12;
 const THICK: f64 = 3.6;
 
 /// The skin of a nose that starts to glow sits near 1,200 K and shows a dull red; at the full
-/// glow it sits near 2,550 K and shows orange; the colour read back from a heat share matches.
+/// glow it sits near 2,550 K and shows orange; the temperature read back from a heat share
+/// matches.
 #[test]
 fn the_skin_glows_in_the_colour_of_its_temperature() {
     let (low, full) = HEATING;
@@ -28,16 +29,17 @@ fn the_skin_glows_in_the_colour_of_its_temperature() {
         "{}",
         temperature(full)
     );
-    let dull = entry(HOME, 730.0, Gas::NitrogenOxygen).skin;
-    let bright = entry(HOME, 2000.0, Gas::NitrogenOxygen).skin;
+    let dull = incandescence(entry(HOME, 730.0, Gas::NitrogenOxygen).kelvin);
+    let bright = incandescence(entry(HOME, 2000.0, Gas::NitrogenOxygen).kelvin);
     assert_eq!(dull.x, 1.0);
     assert!(dull.y < 0.3 && dull.z < 0.05, "{dull}");
     assert!(
         bright.y > 0.5 && bright.z > 0.1 && bright.z < bright.y,
         "{bright}"
     );
-    assert!(skin(0.0).distance(incandescence(temperature(low) as f32)) < 1.0e-3);
-    assert!(skin(1.0).y > 0.5);
+    assert_eq!(kelvin_of(0.0), 0.0);
+    assert!((kelvin_of(1.0) - temperature(full) as f32).abs() < 1.0);
+    assert!((kelvin_of(1.0e-6) - temperature(low) as f32).abs() < 1.0);
 }
 
 /// Up to the speed that keeps the nose dark the air makes no glow, and that speed has no bound

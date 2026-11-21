@@ -114,9 +114,16 @@ impl FlightState {
 
     /// Returns the orientation of the body model: upright on its heading while not prone, flat
     /// along the flight frame when fully prone, turning from one to the other in between.
+    ///
+    /// In between it turns each angle of the frame by the share it lies prone: the pitch, the
+    /// bank and the pull, the last less the quarter turn that lays the body flat. So a body
+    /// lying toward a frame that points straight down turns forward, the way it lies, and never
+    /// flips round the far side as the shortest turn would once the frame is half a turn away.
     pub fn pose(&self) -> Quat {
-        let upright = Quat::from_rotation_y(self.servo.yaw);
-        let flat = self.frame() * Quat::from_rotation_x(-FRAC_PI_2);
-        upright.slerp(flat, self.prone).normalize()
+        let lie = self.prone.clamp(0.0, 1.0);
+        let pitch = Quat::from_rotation_x(self.pitch * lie);
+        let bank = Quat::from_rotation_z(-self.bank * lie);
+        let pull = Quat::from_rotation_x((self.servo.pull - FRAC_PI_2) * lie);
+        (Quat::from_rotation_y(self.servo.yaw) * pitch * bank * pull).normalize()
     }
 }

@@ -64,13 +64,19 @@ fn weather_top(record: &PlanetRecord, scale: f64) -> f64 {
 /// `vapour * dew^2 / scale`: the cloud base is where they meet.
 fn condensation(record: &PlanetRecord, scale: f64) -> f64 {
     let (heat, vapour) = (record.temperature, vapour(record));
-    let humidity = HUMIDITY.0 + (HUMIDITY.1 - HUMIDITY.0) * record.ocean.clamp(0.0, 1.0);
-    let dew = 1.0 / (1.0 / heat - vapour * humidity.ln());
+    let dew = 1.0 / (1.0 / heat - vapour * humidity(record).ln());
     let closing = record.mix.kappa() * heat - vapour * dew * dew;
     match closing > 0.0 {
         true => scale * (heat - dew) / closing,
         false => f64::INFINITY,
     }
+}
+
+/// Returns the relative humidity of the air at the ground of a planet, from 0 to 1: it grows with
+/// the share of the surface under liquid, from [`HUMIDITY`] on a dry world to its top on a world
+/// all under liquid.
+pub fn humidity(record: &PlanetRecord) -> f64 {
+    HUMIDITY.0 + (HUMIDITY.1 - HUMIDITY.0) * record.ocean.clamp(0.0, 1.0)
 }
 
 /// Returns the gas constant over the heat of vaporisation of what makes the clouds of a

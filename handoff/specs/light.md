@@ -96,3 +96,33 @@ Not done
 - The low sun stays bright (54 percent of noon at 3 degrees): `transmit` has no aerosol term.
 - Tonemapper: TonyMcMapface desaturates mid tones; an A/B against AcesFitted or AgX is worth one build.
 - Shadows end at 110 m; ridges cast no long shadows at golden hour.
+
+## clouds-fix pass (2026-11-21): puff size, the limb, the drift and the shadows
+
+Found
+- Far puffs shrank: `fbm_seen` faded every octave to its mean, the first one too. The mean (0.469) is under the cut of a broken sky (0.58 at cover 0.3), so past about 30 km on the ground (fp 0.3 cells a pixel) the cover fell to nothing, and over cover 0.6 it went to a solid sheet.
+- The limb jumped: `LIMB` lifted the noise by 0.3 at grazing views and `thick` raised the density to 1/facing, so the cover went from 0 at 40 km to 1 at 80 km on a sky of cover 0.3.
+- The drift was a translation of the 3D noise along fixed axes: east motion where the shell is normal to Y, boiling in place where it is normal to X, apart from the broad cover that turns round Y, and it started over every 131,072 s.
+- The shadows were a 32 by 32 grid of 250 m texels centred on the camera, worked out once a second from the weather cover, not the cover the shell reads.
+
+Changed
+- `weather/puff` (folder): the first octave is always read; the finer ones fade at 2 to 4 pixels a cell and the spread is stretched back (`sqrt(full / kept)`). The cover holds within 2 percent at any distance (numpy twin of the field, 200,000 points).
+- Grazing cover (`graze`, Rust twin in `weather/puff/graze.rs`, test only): a sight crosses `1 + TALL cot` puffs; the noise is lifted by the spreads that give `1 - clear^crossed`, through a logistic-with-cubic fit of the noise tail (`TAIL`). `SPREAD` 0.1065 and the tail were measured over a million points.
+- Drift: `weather::drift(seconds, cells)` is the cosine and sine of the turn round the spin axis of the broad octave and of the finer ones (`SHEAR` 0.25 faster), at `WIND` 4 m/s, the speed of the broad cover. Angles in f64 round the circle. The shaders call `spot_at`.
+- Shadows: `cloud_shade` in `daylight.wesl` intersects the sun ray with the shell per pixel and calls `overhead`, the drawn field seen from overhead. The light block holds five texels. `CloudShade::eye` reads the same rule on the CPU each frame.
+- Probe: `PROBE_STAGES=skyfly` (`sky-3km`, `sky-15km`, `sky-orbit`), eleven shots one second of the game apart.
+
+Cost
+- Shell: 4 + 2 octaves of noise per pixel as before, fewer far away (faded octaves are skipped), plus about 20 ALU ops for the grazing cover.
+- Shadows on: one ray and up to 4 octaves per ground and grass pixel, against a texture fetch before; off: nothing. CPU: the 1,024 field samples per second are gone.
+
+Not done
+- A puff whose first octave is under a pixel (orbit past about 250 km, the last degrees above the horizon) is point sampled: its cover is right on average, it reads as a stipple. The far ball dithers the same way.
+- The shell is still one surface at mid band. Puffs have no height of their own except through the grazing cover.
+
+Sources
+- Castaño, Computing alpha mipmaps: http://www.ludicon.com/castano/blog/articles/computing-alpha-mipmaps/ (alpha-tested detail vanishes with distance unless the coverage is kept per level; the stretch of the spread does that for the noise).
+- Schneider, The real-time volumetric cloudscapes of Horizon Zero Dawn, SIGGRAPH 2015: https://advances.realtimerendering.com/s2015/The%20Real-time%20Volumetric%20Cloudscapes%20of%20Horizon%20-%20Zero%20Dawn%20-%20ARTR.pdf and https://www.guerrilla-games.com/read/the-real-time-volumetric-cloudscapes-of-horizon-zero-dawn (the PDF could not be read here: what it says about wind offsets is from memory).
+- Hillaire, Physically based sky, atmosphere and cloud rendering in Frostbite, SIGGRAPH 2016: https://media.contentapi.ea.com/content/dam/eacom/frostbite/files/s2016_pbs_frostbite_sky_clouds.pdf (found, not read).
+- Lague, Coding Adventure: Clouds: https://www.youtube.com/watch?v=4QOcCGI6xOU (found, not watched).
+- Unverifiable: https://bgolus.medium.com/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f (403).

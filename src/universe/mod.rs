@@ -68,7 +68,7 @@ mod tests;
 #[cfg(test)]
 mod volatiles_tests;
 
-pub use air::{GAS_CONSTANT, Gas, Mix, NO_AIR, Part, TOP_SCALES, dense, heights};
+pub use air::{GAS_CONSTANT, Gas, Mix, NO_AIR, Part, TOP_SCALES, dense, heights, humidity};
 pub use class::{MOLTEN, VOLCANIC};
 pub use daystar::{Daystar, solar_day, sun, turn};
 pub use density::Parts;

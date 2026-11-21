@@ -9,6 +9,7 @@ use crate::audio::mix::Mixer;
 use crate::audio::scene::AudioScene;
 use crate::audio::shared::Shared;
 use crate::audio::sky::{LastSlot, clap};
+use crate::audio::spatial::{Listener, Sound, Spot};
 use crate::settings::Audio as Volumes;
 use crate::weather::Weather;
 
@@ -97,7 +98,7 @@ fn thunder_claps_once_per_slot_in_a_storm() {
 #[test]
 fn thunder_rolls_cleanly() {
     let mut pool = Pool::new(RATE);
-    pool.play(AudioCue::Thunder(1.0));
+    pool.play(AudioCue::Thunder(1.0), &Spot::FLAT);
     let buffer: Vec<f32> = (0..frames(5.0)).map(|_| pool.frame()[0]).collect();
     let peak = buffer.iter().fold(0.0_f32, |peak, x| peak.max(x.abs()));
     let jump = buffer
@@ -109,8 +110,8 @@ fn thunder_rolls_cleanly() {
         "{jump}"
     );
     let shared = Shared::default();
-    assert!(shared.push(AudioCue::Thunder(0.5)));
-    assert_eq!(shared.pop(), Some(AudioCue::Thunder(0.5)));
+    assert!(shared.push(AudioCue::Thunder(0.5), &Spot::FLAT));
+    assert_eq!(shared.pop(), Some((AudioCue::Thunder(0.5), Spot::FLAT)));
 }
 
 /// The thunder slot last listened to is forgotten when the world is left: the next world
@@ -126,7 +127,8 @@ fn leaving_the_world_forgets_the_thunder_slot() {
         .init_state::<Screen>()
         .init_resource::<AudioScene>()
         .init_resource::<Weather>()
-        .add_message::<AudioCue>()
+        .init_resource::<Listener>()
+        .add_message::<Sound>()
         .insert_resource(crate::space::Clock { seconds: 950.0 });
     let go = |app: &mut App, screen: Screen| {
         app.world_mut()

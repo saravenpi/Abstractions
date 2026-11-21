@@ -12,7 +12,7 @@
 //!                               [ picture | Bone axe ..... Hardest  | ...       ]
 //!                               Make Enter   Other head H   Other shaft J   Treat T
 //! [ 1 Flint knife ][ 2 Empty ][ 3 Empty ][ 4 Empty ][ 5 Empty ][ 6 Empty ]
-//! Close Esc      Workshop Tab   Choose Up Down   Hold Enter   Slot 1-6   Drop X
+//! Close Esc      Workshop Tab   Choose Up Down   Slot 1-6   Half Shift X
 //! ```
 
 use bevy::prelude::*;

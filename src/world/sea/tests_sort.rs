@@ -34,6 +34,7 @@ fn the_sea_draws_before_every_trail() {
         water: default(),
         floor: Handle::default(),
         place: default(),
+        mirror: Handle::default(),
     };
     let bias = sea.depth_bias();
     let eyes = [

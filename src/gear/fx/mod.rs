@@ -1,8 +1,7 @@
 //! Flight effects and the values other modules read.
 //!
 //! Everything drawn here is pooled: the entities, meshes and materials are made once and only
-//! moved afterwards. Free entities are `Rebased`, the rush ring is a child of the camera, and
-//! the trail ribbons keep their points in the planet frame, so an anchor rebase leaves nothing
+//! moved afterwards. Free entities are `Rebased`, and the trail ribbons keep their points in the planet frame, so an anchor rebase leaves nothing
 //! behind. The wingtip trails and the boot exhaust leave from the limbs of the drawn body
 //! ([`crate::avatar::Marks`]); the rest is placed from the gear's own attitude. Every other
 //! body marked with a [`Wake`] lays trails of its own the same way.
@@ -11,7 +10,6 @@ mod air;
 mod buffet;
 mod churn;
 mod flare;
-mod haze;
 mod heat;
 mod kit;
 mod lay;
@@ -20,7 +18,6 @@ mod pump;
 mod ribbon;
 mod scene;
 mod spaced;
-mod streaks;
 mod trail;
 mod trails;
 mod under;
@@ -47,7 +44,7 @@ pub use trail::Trail;
 pub use wakes::Wake;
 
 use super::mode::Mode;
-use crate::audio::AudioCue;
+use crate::audio::Sound;
 use crate::screens::{Screen, WarmUp, playing};
 
 /// When the gear systems run, in `Update`.
@@ -76,8 +73,6 @@ pub struct FlightFx {
     pub mode: Mode,
     /// How hard the cloth of the wingsuit flutters, from 0 to 1.
     pub flutter: f32,
-    /// How far the rush of air closes in on the view at very high speed, from 0 to 1.
-    pub rush: f32,
     /// Dynamic pressure `1/2 rho v^2` of the air on the body in pascals, zero on the ground and in
     /// a vacuum.
     pub pressure: f32,
@@ -122,12 +117,12 @@ pub(super) fn plugin(app: &mut App) {
 fn systems(app: &mut App) {
     app.add_systems(
         OnEnter(Screen::Gameplay),
-        (trails::spawn, streaks::spawn, motes::spawn, flare::spawn),
+        (trails::spawn, motes::spawn, flare::spawn),
     )
     .add_systems(
         Update,
         (
-            (flare::equip, haze::fit),
+            flare::equip,
             (live.pipe(scene::observe), heat::offer.run_if(heat::fast)).chain(),
         )
             .in_set(GearSet::Publish),
@@ -137,13 +132,11 @@ fn systems(app: &mut App) {
         (
             trails::draw,
             (wakes::spawn, wakes::draw).chain(),
-            streaks::draw,
-            haze::draw,
             buffet::tremble.run_if(buffet::buffeted),
             flare::draw,
             motes::step,
             churn::feed,
-            pump::pump.run_if(resource_exists::<Messages<AudioCue>>),
+            pump::pump.run_if(resource_exists::<Messages<Sound>>),
         )
             .in_set(GearSet::Draw)
             .run_if(playing),

@@ -5,16 +5,25 @@ const OCTAVE_SHIFT: vec3<f32> = vec3<f32>(17.1, 9.2, 4.7);
 const OCTAVES: i32 = 4;
 const LONE: vec2<f32> = vec2<f32>(0.3, 0.8);
 const NIGHT_SIDE: f32 = 0.04;
-const GRAZE: f32 = 0.08;
-const LIMB: f32 = 0.3;
 const SHARP: vec2<f32> = vec2<f32>(0.25, 0.5);
+const MEAN: f32 = 0.46875;
+const SPREAD: f32 = 0.1065;
+const TAIL: vec2<f32> = vec2<f32>(1.469, 0.1396);
+const CUT: f32 = 0.066;
+const TALL: f32 = 1.0;
+const GRAZE: f32 = 0.02;
+const CLAMP: f32 = 9.0;
 const IGN: vec3<f32> = vec3<f32>(0.06711056, 0.00583715, 52.9829189);
 const IGN_SHIFT: vec2<f32> = vec2<f32>(17.0, 31.0);
 
 struct Puff {
     density: f32,
-    thick: f32,
     relief: f32,
+}
+
+struct Spot {
+    base: vec3<f32>,
+    fine: vec3<f32>,
 }
 
 fn dither(texel: vec2<f32>) -> f32 {
@@ -48,35 +57,62 @@ fn space_noise(p: vec3<f32>) -> f32 {
     return mix(low, high, u.z);
 }
 
-fn fbm(p: vec3<f32>, octaves: i32) -> f32 {
-    var total = 0.0;
-    var amplitude = 0.5;
-    var q = p;
-    for (var i = 0; i < octaves; i = i + 1) {
-        total = total + amplitude * space_noise(q);
-        q = q * OCTAVE_SCALE + OCTAVE_SHIFT;
-        amplitude = amplitude * 0.5;
-    }
-    return total;
+fn turned(v: vec3<f32>, c: f32, s: f32) -> vec3<f32> {
+    return vec3<f32>(v.x * c - v.z * s, v.y, v.x * s + v.z * c);
 }
 
-fn fbm_seen(p: vec3<f32>, octaves: i32, footprint: f32) -> f32 {
-    var total = 0.0;
-    var amplitude = 0.5;
-    var scale = 1.0;
-    var q = p;
-    for (var i = 0; i < octaves; i = i + 1) {
+fn spot_at(p: vec3<f32>, drift: vec4<f32>) -> Spot {
+    return Spot(turned(p, drift.x, drift.y), turned(p, drift.z, drift.w));
+}
+
+fn fbm_seen(spot: Spot, octaves: i32, footprint: f32) -> f32 {
+    var total = 0.5 * (space_noise(spot.base) - 0.5);
+    var full = 0.25;
+    var kept = 0.25;
+    var amplitude = 0.25;
+    var scale = OCTAVE_SCALE;
+    var q = spot.fine * OCTAVE_SCALE + OCTAVE_SHIFT;
+    for (var i = 1; i < octaves; i = i + 1) {
         let keep = 1.0 - smoothstep(SHARP.x, SHARP.y, footprint * scale);
-        total = total + amplitude * mix(0.5, space_noise(q), keep);
+        if (keep > 0.0) {
+            total = total + amplitude * keep * (space_noise(q) - 0.5);
+        }
+        full = full + amplitude * amplitude;
+        kept = kept + amplitude * amplitude * keep * keep;
         q = q * OCTAVE_SCALE + OCTAVE_SHIFT;
         amplitude = amplitude * 0.5;
         scale = scale * OCTAVE_SCALE;
     }
-    return total;
+    return 0.5 - pow(0.5, f32(octaves + 1)) + total * sqrt(full / kept);
 }
 
 fn threshold(cover: f32) -> f32 {
     return mix(THRESHOLD.x, THRESHOLD.y, cover);
+}
+
+fn lean(z: f32) -> f32 {
+    return TAIL.x * z + TAIL.y * z * z * z;
+}
+
+fn cube_root(x: f32) -> f32 {
+    return sign(x) * pow(max(abs(x), 1e-12), 1.0 / 3.0);
+}
+
+fn unlean(y: f32) -> f32 {
+    let half = y / (2.0 * TAIL.y);
+    let third = TAIL.x / (3.0 * TAIL.y);
+    let root = sqrt(half * half + third * third * third);
+    return cube_root(half + root) + cube_root(half - root);
+}
+
+fn graze(cover: f32, facing: f32) -> f32 {
+    let f = clamp(abs(facing), GRAZE, 1.0);
+    let crossed = 1.0 + TALL * sqrt(1.0 - f * f) / f;
+    let z = (threshold(cover) + CUT - MEAN) / SPREAD;
+    let y = clamp(lean(z), -CLAMP, CLAMP);
+    let clear = -crossed * log(1.0 + exp(-y));
+    let seen = clamp(clear - log(max(1.0 - exp(clear), 1e-6)), -CLAMP, CLAMP);
+    return (unlean(y) - unlean(seen)) * SPREAD;
 }
 
 fn density(noise: f32, cover: f32) -> f32 {
@@ -89,18 +125,21 @@ fn broad_cover(map: texture_cube<f32>, map_sampler: sampler, dir: vec3<f32>, tow
     return mix(held.r, held.g, toward_second);
 }
 
-fn puff(spot: vec3<f32>, sunward: vec3<f32>, facing: f32, cover: f32, footprint: f32) -> Puff {
-    let here = fbm_seen(spot, OCTAVES, footprint);
-    let toward_light = fbm_seen(spot + sunward * 0.3, 2, footprint);
-    let limb = LIMB * pow(1.0 - abs(facing), 4.0);
-    let dense = density(here + limb, cover);
-    let thick = 1.0 - pow(1.0 - dense, 1.0 / max(abs(facing), GRAZE));
+fn puff(p: vec3<f32>, drift: vec4<f32>, sunward: vec3<f32>, facing: f32, cover: f32, footprint: f32) -> Puff {
+    let here = fbm_seen(spot_at(p, drift), OCTAVES, footprint);
+    let toward_light = fbm_seen(spot_at(p + sunward * 0.3, drift), 2, footprint);
+    let dense = density(here + graze(cover, facing), cover);
     let relief = clamp(0.6 + (here - toward_light * 1.25) * 8.0, 0.0, 1.0);
-    return Puff(dense, thick, relief);
+    return Puff(dense, relief);
 }
 
 fn lone(cloud: Puff, cover: f32) -> f32 {
     return mix(smoothstep(LONE.x, LONE.y, cloud.density), 1.0, clamp(cover, 0.0, 1.0));
+}
+
+fn overhead(p: vec3<f32>, drift: vec4<f32>, cover: f32, footprint: f32) -> f32 {
+    let dense = density(fbm_seen(spot_at(p, drift), OCTAVES, footprint), cover);
+    return dense * lone(Puff(dense, 0.0), cover);
 }
 
 fn day_side(color: vec3<f32>, n: vec3<f32>, light: vec3<f32>) -> vec3<f32> {

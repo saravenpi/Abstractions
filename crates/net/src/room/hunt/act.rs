@@ -37,6 +37,8 @@ impl Room {
             Act::Impact(impact) => self.impact(conn, impact, out),
             Act::Attack(attack) => self.attack(conn, attack, out),
             Act::Rock(rock) => self.rock(conn, rock, out),
+            Act::Drop(lying) => self.dropped(conn, (me, clock), lying, out),
+            Act::Take { id, mass } => self.picked(conn, me, (id, mass), out),
         }
     }
 
@@ -84,8 +86,8 @@ impl Room {
         self.broadcast(&ServerMsg::Hunt(Event::Killed(carcass)), out);
     }
 
-    /// Takes `part` off the carcass of `animal` for `by` and tells the others, when it was
-    /// still there.
+    /// Takes `part` off the carcass of `animal` for `by` and tells the others, when it was still
+    /// there. The cutter hears whether the part is theirs: the first cut of a part wins it.
     fn carved(
         &mut self,
         conn: ConnId,
@@ -93,7 +95,14 @@ impl Room {
         (animal, part): (AnimalKey, u8),
         out: &mut Outbox,
     ) {
-        if part < PARTS_MAX && self.hunting.carve(animal, part) {
+        let granted = part < PARTS_MAX && self.hunting.carve(animal, part);
+        let answer = Event::Cut {
+            animal,
+            part,
+            granted,
+        };
+        out.send(conn, ServerMsg::Hunt(answer));
+        if granted {
             self.dirty = true;
             let msg = ServerMsg::Hunt(Event::Carved { animal, part, by });
             self.send_others(conn, &msg, out);

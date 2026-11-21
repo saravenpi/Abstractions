@@ -5,10 +5,8 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::flare::Flare;
-use super::haze::Haze;
 use super::motes::Mote;
 use super::ribbon::{Look, Strip, fill, write};
-use super::streaks::Streak;
 use super::trail::Trail;
 use super::trails::Ribbon;
 use crate::render::GameCamera;
@@ -20,7 +18,7 @@ const SPECK: f32 = 0.002;
 const AHEAD: f32 = 2.0;
 
 /// Every pooled effect entity that is not a ribbon.
-type Pooled = Or<(With<Streak>, With<Mote>, With<Flare>, With<Haze>)>;
+type Pooled = Or<(With<Mote>, With<Flare>)>;
 
 /// Returns a speck of ribbon just in front of a camera at `eye` looking along `forward`.
 fn speck(eye: Vec3, forward: Vec3) -> Strip {

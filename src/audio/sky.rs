@@ -1,11 +1,15 @@
-//! The weather in the scene: rain and dust as continuous sounds, far thunder as cues.
+//! The weather in the scene: rain and dust as continuous sounds, far thunder as sounds from a
+//! bearing of its own a kilometre off, late by the time sound takes to cross it.
 
 use bevy::prelude::*;
 
 use super::cue::AudioCue;
 use super::scene::AudioScene;
+use super::spatial::tune::{THUNDER, THUNDER_RISE};
+use super::spatial::{Listener, Origin, Sound};
 use crate::screens::Screen;
 use crate::space::Clock;
+use crate::universe::hash::child;
 use crate::weather::{Forecast, THUNDER_SECONDS, Weather, thunder};
 
 /// Writes the rain and the dust of the weather at the camera into the scene.
@@ -17,8 +21,8 @@ fn sense_weather(weather: Option<Res<Weather>>, mut scene: ResMut<AudioScene>) {
 }
 
 /// Returns the thunder cue of the slot that `seconds` of universe time falls in, when `last`
-/// was another slot: none for the first slot heard, none twice in one slot. The clap thins
-/// with the air left around the listener.
+/// was another slot: none for the first slot heard, none twice in one slot. How the air carries
+/// the clap is the work of the spatial path.
 pub fn clap(
     last: &mut Option<i64>,
     seconds: f64,
@@ -29,20 +33,29 @@ pub fn clap(
     let before = last.replace(slot);
     let level = thunder(scene.planet_seed, slot, weather)?;
     (before.is_some_and(|before| before != slot) && !scene.in_space)
-        .then_some(AudioCue::Thunder(level * scene.altitude_fade))
+        .then_some(AudioCue::Thunder(level))
 }
 
 /// The thunder slot last listened to, nothing until one was heard in the world being played.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct LastSlot(pub Option<i64>);
 
+/// Returns where the clap of `slot` on the planet of `seed` rolls from for `listener`: a bearing
+/// of its own, [`THUNDER`] metres off, up in the clouds.
+pub fn bolt(listener: &Listener, seed: u64, slot: i64) -> Vec3 {
+    let turn =
+        (child(seed, slot as u64) >> 40) as f32 / (1_u64 << 24) as f32 * std::f32::consts::TAU;
+    let flat = listener.up.any_orthonormal_vector();
+    let away = Quat::from_axis_angle(listener.up, turn) * flat;
+    listener.at + (away + listener.up * THUNDER_RISE) * THUNDER
+}
+
 /// Rolls far thunder in a storm, at most once per slot of [`THUNDER_SECONDS`].
 fn rumble(
-    clock: Option<Res<Clock>>,
-    weather: Option<Res<Weather>>,
-    scene: Res<AudioScene>,
+    (clock, weather): (Option<Res<Clock>>, Option<Res<Weather>>),
+    (scene, listener): (Res<AudioScene>, Res<Listener>),
     mut last: ResMut<LastSlot>,
-    mut cues: MessageWriter<AudioCue>,
+    mut sounds: MessageWriter<Sound>,
 ) {
     let (Some(clock), Some(weather)) = (clock, weather) else {
         return;
@@ -50,8 +63,12 @@ fn rumble(
     let mut slot = last.0;
     let cue = clap(&mut slot, clock.seconds, &weather, &scene);
     last.set_if_neq(LastSlot(slot));
-    if let Some(cue) = cue {
-        cues.write(cue);
+    if let (Some(cue), Some(slot)) = (cue, slot) {
+        let at = bolt(&listener, scene.planet_seed, slot);
+        sounds.write(Sound {
+            cue,
+            from: Origin::At(at, THUNDER),
+        });
     }
 }
 

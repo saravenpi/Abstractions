@@ -25,6 +25,7 @@ mod neck;
 mod opening;
 mod poses;
 mod rolls;
+mod shadows;
 mod skids;
 mod stage;
 mod steps;

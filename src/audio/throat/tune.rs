@@ -1,5 +1,5 @@
-//! Tuning of the voices of animals: levels, how many sound at once, the shapes of the glottal pulse,
-//! the absorption of the air and the muffling of the water.
+//! Tuning of the voices of animals: levels, how many sound at once, the shapes of the glottal pulse
+//! and the muffling of the water. The air on the way is the spatial path's.
 
 /// Voices of animals that can sound at once.
 pub const THROATS: usize = 6;
@@ -38,16 +38,6 @@ pub const BIPHONIC: f32 = 0.3;
 
 /// Samples between two retunings of the filters that follow the pitch.
 pub const RETUNE: u32 = 32;
-
-/// Absorption of the air in decibels per metre at 1 kHz, and the exponent of the frequency in it:
-/// about 0.005 dB/m at 1 kHz and 0.1 dB/m at 8 kHz at 20 degrees and half humidity (ISO 9613-1).
-pub const AIR: (f32, f32) = (0.005, 1.5);
-
-/// Decibels the air may take at the corner of the low-pass that stands for it.
-pub const AIR_CORNER_DB: f32 = 3.0;
-
-/// Highest corner in hertz of the low-pass of the air, beside the head.
-pub const AIR_TOP: f32 = 12_000.0;
 
 /// Corner in hertz of the low-pass of a call heard through the surface of the water, and the share
 /// of the level it keeps.

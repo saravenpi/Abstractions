@@ -24,9 +24,12 @@ use super::starfield::DAY_FLUX;
 pub const DAY: f32 = 0.3;
 
 /// Luminance in linear light on the screen of mean ground in the reference day, at the reference
-/// exposure: 13,000 lux on a ground that sends a fifth of it back. A scene this bright under a
-/// whole home sky hides the stars as the day sky does. Unit: linear light.
-pub const FIELD_DAY: f32 = 0.8;
+/// exposure: 14,000 lux on a ground that sends a fifth of it back, 0.89 at EV100 9.7. The brighter
+/// day sky of 0.11 raised it from 0.83: the camera keeps its noon exposure, so the unlit sky, fog
+/// and clouds keep their tuned colours, and sunlit ground takes the extra sky light as it does
+/// on the Earth. A scene this bright under a whole home sky hides the stars as the day sky does.
+/// Unit: linear light.
+pub const FIELD_DAY: f32 = 0.89;
 
 /// Steps of star flux gained for each decade the luminance of the sky falls under [`DAY`]. The
 /// palette keeps the night sky about two decades under the day one, and the stars of the field

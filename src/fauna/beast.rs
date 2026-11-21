@@ -83,7 +83,7 @@ pub(super) fn lay(
     };
     let placed = Placed {
         pos: spot.planet(at + Vec3::Y * side),
-        rot: spot.rot * turn.as_dquat(),
+        rot: (spot.rot * turn.as_dquat()).normalize(),
     };
     (placed, Some(lain))
 }

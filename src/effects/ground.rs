@@ -13,7 +13,8 @@ use crate::world::Terrain;
 /// nothing here.
 #[derive(Clone, Copy)]
 pub struct Ground<'a> {
-    anchor: &'a Anchor,
+    /// The active frame anchor, mapping between frame coordinates and render space.
+    pub anchor: &'a Anchor,
     terrain: &'a Terrain,
     /// The camera this frame. Its local frame, +Y up, is the one headings and offsets use.
     pub eye: &'a Eye,

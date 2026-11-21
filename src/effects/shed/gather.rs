@@ -5,18 +5,23 @@ use bevy::prelude::*;
 use super::{MARGIN, SLOTS, Source};
 use crate::effects::eye::Eye;
 use crate::effects::pool::{ABOVE, BELOW, HALF_WIDTH, Pool};
+use crate::space::Anchor;
 use crate::world::CHUNK_SIZE;
 use crate::world::canopy::Canopy;
 
-/// Returns the plant of `crown` at render position `foot` as the eye sees it, when its crown reaches
-/// into the particle box.
-fn seen(eye: &Eye, foot: Vec3, crown: &crate::world::canopy::Crown) -> Option<Source> {
+/// Returns the plant of `crown` at render position `foot`, stored in the frame of `anchor`, when its
+/// crown reaches into the particle box around `eye`.
+fn seen(
+    (eye, anchor): (&Eye, &Anchor),
+    foot: Vec3,
+    crown: &crate::world::canopy::Crown,
+) -> Option<Source> {
     let shed = crown.shed?;
-    let at = eye.tilt.inverse() * (foot - eye.at);
-    let wide = at.x.abs().max(at.z.abs()) < HALF_WIDTH + crown.reach;
-    let tall = at.y + crown.height > -BELOW && at.y < ABOVE;
+    let local = eye.tilt.inverse() * (foot - eye.at);
+    let wide = local.x.abs().max(local.z.abs()) < HALF_WIDTH + crown.reach;
+    let tall = local.y + crown.height > -BELOW && local.y < ABOVE;
     (wide && tall).then_some(Source {
-        at,
+        at: anchor.to_frame(foot),
         height: crown.height,
         reach: crown.reach,
         shed,
@@ -45,7 +50,7 @@ fn tint(
 /// Reads the plants within reach of the particle box from the canopy of the chunks near the eye, keeps the
 /// nearest [`SLOTS`], and paints the leaf and petal material of each slot in the colours of its plant.
 pub fn gather(
-    eye: Res<Eye>,
+    (eye, anchor): (Res<Eye>, Res<Anchor>),
     chunks: Query<(&Canopy, &GlobalTransform)>,
     pool: Res<Pool>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -59,13 +64,14 @@ pub fn gather(
             continue;
         }
         let crowns = canopy.0.iter();
-        shed.extend(crowns.filter_map(|c| seen(&eye, place.transform_point(c.at), c)));
+        shed.extend(crowns.filter_map(|c| seen((&eye, &anchor), place.transform_point(c.at), c)));
     }
-    shed.sort_by(|a, b| {
-        a.at.xz()
+    let dist = |s: &Source| {
+        (eye.tilt.inverse() * (anchor.to_render(s.at) - eye.at))
+            .xz()
             .length_squared()
-            .total_cmp(&b.at.xz().length_squared())
-    });
+    };
+    shed.sort_by(|a, b| dist(a).total_cmp(&dist(b)));
     shed.truncate(SLOTS);
     for (i, source) in shed.iter().enumerate() {
         if let Some(leaf) = source.shed.leaf {

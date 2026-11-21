@@ -2,7 +2,9 @@
 
 use bevy::math::{DVec3, IVec3};
 
+use super::Ground;
 use super::cells::Grid;
+use super::route::floor;
 use super::sphere::arc;
 use crate::life::census::{self, Site};
 use crate::life::hunt::TERRITORY;
@@ -28,8 +30,6 @@ pub(in crate::life) struct Roam {
     pub young: u8,
     /// Centre of its home range, a unit direction.
     pub home: DVec3,
-    /// Where it goes when no waypoint suits it: a unit direction known to suit it.
-    pub fallback: DVec3,
     /// Radius in metres of the disc around `home` its waypoints fall in.
     pub reach: f64,
 }
@@ -46,7 +46,7 @@ pub(super) fn around(
     life: &Life,
     grid: &Grid,
     (at, reach): (DVec3, f64),
-    sample: &dyn Fn(DVec3) -> Site,
+    ground: &Ground,
     hunters: bool,
 ) -> Vec<Roam> {
     let planet = life.species.first().map_or(0, |s| s.id.planet);
@@ -64,8 +64,8 @@ pub(super) fn around(
             let may = kinds
                 .iter()
                 .any(|s| rolled(seed, s, census::most(s) * grid.area()) > 0);
-            let site = may.then(|| sample(grid.spot(c, 0.5, 0.5)));
-            site.map(|site| in_cell(&kinds, grid, (c, seed), &site))
+            let site = may.then(|| (ground.sample)(grid.spot(c, 0.5, 0.5)));
+            site.map(|site| in_cell(&kinds, grid, (c, seed), &site, ground.height))
                 .unwrap_or_default()
         })
         .collect()
@@ -76,8 +76,15 @@ fn rolled(seed: u64, species: &Species, expected: f32) -> u64 {
     (f64::from(expected) + Rng::new(child(seed, u64::from(species.id.index))).unit()).floor() as u64
 }
 
-/// Returns the herds of `kinds` in cell `at` with `seed` of `grid`, whose centre has `site`.
-fn in_cell(kinds: &[&Species], grid: &Grid, (at, seed): (IVec3, u64), site: &Site) -> Vec<Roam> {
+/// Returns the herds of `kinds` in cell `at` with `seed` of `grid`, whose centre has `site`, keeping
+/// every herd home at or above its species' [`floor`] read by `height`.
+fn in_cell(
+    kinds: &[&Species],
+    grid: &Grid,
+    (at, seed): (IVec3, u64),
+    site: &Site,
+    height: &dyn Fn(DVec3) -> f32,
+) -> Vec<Roam> {
     let centre = grid.spot(at, 0.5, 0.5);
     let mut herds = Vec::new();
     for species in kinds {
@@ -85,18 +92,19 @@ fn in_cell(kinds: &[&Species], grid: &Grid, (at, seed): (IVec3, u64), site: &Sit
         let seed = child(seed, u64::from(species.id.index));
         let most = if hunts(species) { TERRITORY } else { MAX_ROAM };
         let reach = f64::from(species.history.range).min(most);
+        let min = floor(species);
         herds.extend((1..=n).map(|k| {
             let mut rng = Rng::new(child(seed, k));
-            let home = grid.spot(at, rng.range(0.1, 0.9), rng.range(0.1, 0.9));
-            roam(species, child(seed, k), (home, centre), reach)
+            let drawn = grid.spot(at, rng.range(0.1, 0.9), rng.range(0.1, 0.9));
+            let home = if height(drawn) >= min { drawn } else { centre };
+            roam(species, child(seed, k), home, reach)
         }));
     }
     herds
 }
 
-/// Returns the herd of `species` with `seed`, living at `home` and falling back to `fallback`, within
-/// `reach`.
-fn roam(species: &Species, seed: u64, (home, fallback): (DVec3, DVec3), reach: f64) -> Roam {
+/// Returns the herd of `species` with `seed`, living at `home` within `reach`.
+fn roam(species: &Species, seed: u64, home: DVec3, reach: f64) -> Roam {
     let mut rng = Rng::new(mix(seed));
     let history = &species.history;
     let spread = u32::from(history.group_max.saturating_sub(history.group_min)) + 1;
@@ -112,7 +120,6 @@ fn roam(species: &Species, seed: u64, (home, fallback): (DVec3, DVec3), reach: f
         count,
         young,
         home,
-        fallback,
         reach,
     }
 }

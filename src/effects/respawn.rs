@@ -9,7 +9,7 @@ use super::kind::{Ambient, Kind};
 use super::planet::{drift, seen};
 use super::pool::{ABOVE, BELOW, HALF_WIDTH, Particle, Pool};
 use super::rng::Rng;
-use super::shed::{Shedding, Source, start};
+use super::shed::{Shedding, start};
 use super::sky::{Sky, fall};
 use super::tune::{HEAD_ON, HEAD_ON_SHARE};
 use crate::render::smoothstep;
@@ -90,26 +90,24 @@ impl Spawn<'_> {
         (eye - BELOW + (BELOW + ABOVE) * rise).max(floor + 0.3)
     }
 
-    /// Puts a visible particle of `kind` in the box, or in the crown of `source` when it comes from a
-    /// plant, and returns the height it dies at. This is the one terrain lookup of a respawn.
+    /// Puts a visible particle of `kind` in the box, or at `local` when it comes from a plant, and
+    /// returns the height it dies at. This is the one terrain lookup of a respawn.
     fn settle(
         &mut self,
         kind: Kind,
         primed: bool,
-        source: Option<&Source>,
+        local: Option<Vec3>,
         transform: &mut Transform,
     ) -> f32 {
-        let local = match source {
-            Some(source) => start(source, kind, self.rng),
-            None => self.offset(primed).extend(0.0).xzy(),
-        };
+        let from_plant = local.is_some();
+        let local = local.unwrap_or_else(|| self.offset(primed).extend(0.0).xzy());
         let spot = self.ground.eye.at + self.ground.turn(Vec3::new(local.x, 0.0, local.z));
         let bed = self.ground.height(spot);
-        let level = match source {
-            Some(_) => {
+        let level = match from_plant {
+            true => {
                 (self.ground.eye.altitude + local.y).max(bed.max(self.ground.sea_level()) + 0.3)
             }
-            None => self.height(kind, bed),
+            false => self.height(kind, bed),
         };
         transform.translation = self.ground.raised(spot, level);
         match kind.is_submerged() {
@@ -133,16 +131,24 @@ fn pick(spawn: &mut Spawn) -> Kind {
     weather.unwrap_or_else(|| drift(&spawn.record, &spawn.ambient, spawn.rng.next()))
 }
 
-/// Returns the kind of a respawning particle and the plant it comes from: a leaf, petal or pollen
-/// speck with no plant to shed it stays hidden.
-fn sourced(spawn: &mut Spawn) -> (Kind, Option<usize>) {
+/// Returns the kind of a respawning particle, the plant it comes from and where in the box it starts:
+/// a leaf, petal or pollen speck with no plant in the box to shed it stays hidden.
+fn sourced(spawn: &mut Spawn) -> (Kind, Option<usize>, Option<Vec3>) {
     let kind = pick(spawn);
     if !kind.is_shed() {
-        return (kind, None);
+        return (kind, None, None);
     }
-    match spawn.shed.choose(kind, spawn.rng.next()) {
-        Some(i) => (kind, Some(i)),
-        None => (Kind::Hidden, None),
+    let Some(i) = spawn.shed.choose(kind, spawn.rng.next()) else {
+        return (Kind::Hidden, None, None);
+    };
+    let source = spawn.shed.sources[i];
+    let foot = spawn.ground.span(
+        spawn.ground.eye.at,
+        spawn.ground.anchor.to_render(source.at),
+    );
+    match start(&source, foot, kind, spawn.rng) {
+        Some(at) => (kind, Some(i), Some(at)),
+        None => (Kind::Hidden, None, None),
     }
 }
 
@@ -176,7 +182,7 @@ pub fn respawn(
     look: (&mut Mesh3d, &mut MeshMaterial3d<StandardMaterial>),
     spawn: &mut Spawn,
 ) {
-    let (kind, from) = sourced(spawn);
+    let (kind, from, spot) = sourced(spawn);
     let source = from.and_then(|i| spawn.shed.sources.get(i)).copied();
     let motion = kind.motion();
     transform.scale = Vec3::ZERO;
@@ -192,6 +198,6 @@ pub fn respawn(
     if kind == Kind::Hidden {
         return;
     }
-    particle.floor = spawn.settle(kind, primed, source.as_ref(), transform);
+    particle.floor = spawn.settle(kind, primed, spot, transform);
     dress(look, kind, from, spawn);
 }

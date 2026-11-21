@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 use super::Dead;
 use super::tune::FLINCH;
+use crate::fauna::Frozen;
 use crate::fauna::beast::{Beast, Part};
 
 /// A part that was hit: pushed by `push` in the frame of the animal, springing back over [`FLINCH`]
@@ -30,7 +31,7 @@ type Limbs<'w, 's> = Query<'w, 's, &'static mut Transform, With<Part>>;
 pub fn gesture(
     mut commands: Commands,
     time: Res<Time>,
-    mut beasts: Query<(Entity, &Beast, &mut Flinch, Has<Dead>)>,
+    mut beasts: Query<(Entity, &Beast, &mut Flinch, Has<Dead>), Without<Frozen>>,
     mut parts: Limbs,
 ) {
     for (entity, beast, mut flinch, dead) in &mut beasts {

@@ -3,6 +3,7 @@
 
 mod gather;
 
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::kind::Kind;
@@ -22,8 +23,8 @@ pub(super) const MARGIN: f32 = 12.0;
 /// One plant within reach of the particle box.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Source {
-    /// Where its stem meets the ground, in the local frame of the eye: `y` is up.
-    pub at: Vec3,
+    /// Where its stem meets the ground, in the anchor's frame.
+    pub at: DVec3,
     /// Height of the plant in metres.
     pub height: f32,
     /// Radius of its crown in metres.
@@ -88,9 +89,10 @@ impl Shedding {
     }
 }
 
-/// Returns where a particle of `kind` from `source` starts, in the local frame of the eye: in its crown
-/// for a leaf or a petal and low around it for pollen, kept inside the particle box.
-pub fn start(source: &Source, kind: Kind, rng: &mut Rng) -> Vec3 {
+/// Returns where a particle of `kind` from `source` starts, in the local frame of the eye, when its
+/// stem stands at `foot` in that frame: in its crown for a leaf or a petal and low around it for
+/// pollen, or nothing when that point falls outside the particle box.
+pub fn start(source: &Source, foot: Vec3, kind: Kind, rng: &mut Rng) -> Option<Vec3> {
     let angle = rng.range(0.0, std::f32::consts::TAU);
     let spread = match kind {
         Kind::Pollen => 1.5,
@@ -101,13 +103,10 @@ pub fn start(source: &Source, kind: Kind, rng: &mut Rng) -> Vec3 {
         Kind::Pollen => rng.range(0.2, 0.6 + source.height),
         _ => source.height * rng.range(0.45, 1.0),
     };
-    let at = source.at + Vec3::new(angle.cos() * out, rise, angle.sin() * out);
+    let at = foot + Vec3::new(angle.cos() * out, rise, angle.sin() * out);
     let edge = HALF_WIDTH * 0.95;
-    Vec3::new(
-        at.x.clamp(-edge, edge),
-        at.y.clamp(-BELOW, ABOVE),
-        at.z.clamp(-edge, edge),
-    )
+    let inside = at.x.abs() <= edge && at.z.abs() <= edge && (-BELOW..=ABOVE).contains(&at.y);
+    inside.then_some(at)
 }
 
 #[cfg(test)]

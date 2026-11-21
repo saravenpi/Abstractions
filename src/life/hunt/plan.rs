@@ -8,7 +8,7 @@ use bevy::math::DVec3;
 
 use super::prey;
 use super::{AMBUSH_REACH, HUNT_REACH, Hunt, Outcome, TERRITORY};
-use crate::life::herd::{Roam, Scene, hunts, open};
+use crate::life::herd::{Roam, Scene, footing, hunts, open, walkable};
 use crate::life::{Guild, Species};
 use crate::universe::hash::{Rng, child};
 
@@ -62,15 +62,24 @@ fn of_herd(scene: &Scene, roam: &Roam, species: &Species, (from, to): (f64, f64)
         .collect()
 }
 
+/// Returns true when the ground between the hunter's route and the chase end of `hunt` stays walkable
+/// for `species` at the start, outcome, middle and end of the hunt.
+fn clear(scene: &Scene, roam: &Roam, species: &Species, hunt: &Hunt) -> bool {
+    let foot = footing(species);
+    let check = |at| walkable(scene.ground.height, (at, hunt.to), scene.planet, foot);
+    let mid = 0.5 * (hunt.start + hunt.end());
+    let times = [hunt.start, hunt.outcome_time(), mid, hunt.end()];
+    times
+        .into_iter()
+        .all(|t| scene.pose(roam, t).is_some_and(|p| check(p.centre)))
+}
+
 /// Returns hunt `index` of `roam` of `species`, hunting every `every` seconds, if it hunts then.
 fn one(scene: &Scene, roam: &Roam, species: &Species, index: i64, every: f64) -> Option<Hunt> {
     let mut rng = Rng::new(child(roam.id ^ HUNTS, index as u64));
     let start = (index as f64 + 0.1 + 0.5 * rng.unit()) * every;
-    let (active, _) = open(
-        species.role.activity,
-        (scene.ground.light)(roam.home, start),
-    );
-    if !active {
+    let light = (scene.ground.light)(roam.home, start);
+    if !open(species.role.activity, light).0 {
         return None;
     }
     let ambush = species.role.guild == Guild::Ambusher;
@@ -92,7 +101,8 @@ fn one(scene: &Scene, roam: &Roam, species: &Species, index: i64, every: f64) ->
         from,
         to: seen,
     };
-    prey::strike(scene, hunt, (species, prey), &mut rng, (distance, every))
+    let hunt = prey::strike(scene, hunt, (species, prey), &mut rng, (distance, every))?;
+    clear(scene, roam, species, &hunt).then_some(hunt)
 }
 
 /// Returns the seconds of the chase of a hunter of `species` from `distance` metres, hunting every

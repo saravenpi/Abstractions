@@ -74,7 +74,7 @@ pub(super) fn draw(
             return (dir, site);
         }
     }
-    (roam.fallback, sample(roam.fallback))
+    (roam.home, sample(roam.home))
 }
 
 /// Returns the lowest ground in metres above sea level the body of `species` walks on, the deepest
@@ -95,7 +95,7 @@ pub fn floor(species: &Species) -> f32 {
 
 /// Returns the steepest slope in radians the body of `species` walks, and the lowest ground in metres
 /// it walks on, see [`floor`].
-fn footing(species: &Species) -> (f32, f32) {
+pub(super) fn footing(species: &Species) -> (f32, f32) {
     (slope(&species.body), floor(species))
 }
 
@@ -118,8 +118,7 @@ pub(super) fn way(
 /// Returns where `roam` of `species` is on its route in `scene` at `time`.
 pub(super) fn pose(scene: &Scene, roam: &Roam, species: &Species, time: f64) -> Pose {
     let walk = cruise(species);
-    let slack = roam.reach + roam.home.distance(roam.fallback) * scene.planet;
-    let period = 2.0 * slack / walk + DWELL;
+    let period = 2.0 * roam.reach / walk + DWELL;
     let x = time / period + Rng::new(child(roam.id, PHASE)).unit();
     let leg = x.floor();
     let into = (x - leg) * period;

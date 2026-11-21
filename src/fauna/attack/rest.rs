@@ -47,7 +47,7 @@ impl Lain {
         let land = Vec3::new(self.at.x, height, self.at.y) + normal * self.side;
         Placed {
             pos: spot.planet(land - turn * self.pivot),
-            rot: spot.rot * turn.as_dquat(),
+            rot: (spot.rot * turn.as_dquat()).normalize(),
         }
     }
 

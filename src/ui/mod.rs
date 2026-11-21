@@ -48,8 +48,8 @@ pub use widgets::{Overlay, caps, column, panel, root, root_on, rule, text};
 use bevy::input_focus::InputFocus;
 use bevy::prelude::*;
 
-use crate::render::window_changed;
 use crate::settings::{Persistent, Settings};
+use bevy::window::PrimaryWindow;
 
 /// Registers the camera, the fonts and the overlays that draw above the game.
 fn overlay(app: &mut App) {
@@ -65,11 +65,7 @@ fn overlay(app: &mut App) {
             ),
         )
         .add_systems(Update, (fps::update, camera::sync_output, tooltip::update))
-        .add_systems(
-            Update,
-            camera::frame_view
-                .run_if(window_changed.or(resource_exists_and_changed::<Persistent<Settings>>)),
-        );
+        .add_systems(Update, camera::frame_view.run_if(resized));
 }
 
 /// Registers the UI camera, the fonts, the backdrop, the widget looks and the interface sounds.
@@ -94,4 +90,12 @@ pub(super) fn plugin(app: &mut App) {
                 (sound::moved, scroll::follow_focus).run_if(resource_changed::<InputFocus>),
             ),
         );
+}
+
+/// Whether the interface must be sized again: the primary window changed, or the settings did.
+fn resized(
+    windows: Query<(), (With<PrimaryWindow>, Changed<bevy::window::Window>)>,
+    settings: Option<Res<Persistent<Settings>>>,
+) -> bool {
+    !windows.is_empty() || settings.is_some_and(|settings| settings.is_changed())
 }

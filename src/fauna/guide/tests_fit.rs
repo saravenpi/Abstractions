@@ -17,7 +17,7 @@ const WINDOWS: [Vec2; 2] = [Vec2::new(960.0, 540.0), Vec2::new(1280.0, 720.0)];
 /// facts beside the list.
 #[test]
 fn the_guide_fits_both_windows() {
-    for window in WINDOWS.map(logical) {
+    for window in WINDOWS.map(|window| logical(window, crate::ui::ui_scale_for(window.y))) {
         let fit = measure(window);
         let tall = 2.0 * EDGE + HEAD + fit.rows as f32 * ROW + FOOT;
         assert!(tall <= window.y, "{window}: {fit:?}");

@@ -92,10 +92,10 @@ pub const CARD_HEAD: f32 = HEADING
     + SENTENCE_LINES as f32 * LINE_HEIGHT
     + theme::GAP_S;
 
-/// Height in pixels of the facts of the card at their longest, with the room over each heading
-/// of a group.
+/// Height in pixels of the facts of the card at their longest: every row at the height of a
+/// stat, with the room over each heading of a group but the first.
 pub const FACTS: f32 =
-    super::detail::ROWS as f32 * LINE_HEIGHT + super::detail::GROUPS as f32 * theme::GAP_S;
+    super::detail::ROWS as f32 * theme::LINE_SMALL + (super::detail::GROUPS - 1) as f32 * theme::S3;
 
 /// Height in pixels of the foot of the pins: a line that says what the selected pin does, and
 /// under it the row of its three buttons. With no pin selected the same room holds the empty

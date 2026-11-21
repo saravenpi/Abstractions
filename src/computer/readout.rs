@@ -113,7 +113,7 @@ fn fact(parent: &mut ChildSpawnerCommands, name: &str, value: &str) {
 fn row(parent: &mut ChildSpawnerCommands, row: &Row, (first, open): (bool, bool)) {
     match row {
         Row::Heading(name) => {
-            let gap = [theme::S4, 0.0][usize::from(first)];
+            let gap = [theme::S3, 0.0][usize::from(first)];
             let node = Node {
                 margin: UiRect::top(px(gap)),
                 ..default()

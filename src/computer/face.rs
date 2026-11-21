@@ -26,7 +26,7 @@ pub(super) fn stat(
 ) {
     let line = Node {
         width: percent(100),
-        height: px(theme::ROW_COMPACT),
+        height: px(theme::LINE_SMALL),
         align_items: AlignItems::Center,
         column_gap: px(theme::S2),
         overflow: Overflow::clip(),

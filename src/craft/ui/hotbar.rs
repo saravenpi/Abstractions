@@ -1,5 +1,6 @@
 //! The hotbar: six slots at the bottom centre of the game, black and white, the held one
-//! lit and marked by the accent bar along its foot, each with its number, the silhouette of its tool and a thin wear bar.
+//! lit and marked by the accent bar along its foot, each with its number, the silhouette of its
+//! tool and a thin wear bar.
 
 use bevy::prelude::*;
 

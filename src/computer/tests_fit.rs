@@ -2,8 +2,9 @@
 //! smallest window, and every sentence of Go fits two lines.
 
 use super::course::hud_line;
-use super::detail::{Card, ROWS, Row, card, compacted, visible};
+use super::detail::{Card, ROWS, Row, card, visible};
 use super::layout::{COMPACT, GLYPH, LINE_CHARS, LINE_HEIGHT, NAME_CHARS, ROOM};
+use super::readout::drawn;
 use super::route::Keys;
 use super::tests_detail::{records, world};
 use super::{Atlas, Block, RouteStatus, View};
@@ -185,7 +186,7 @@ fn the_go_sentences_fit_two_lines() {
 fn the_compact_card_fits_its_room() {
     let universe = Universe::new(7);
     for shown in planets(&universe) {
-        let rows = compacted(&shown.rows, false);
+        let rows = drawn(&shown.rows, false, true);
         assert!(
             rows.iter()
                 .all(|row| !matches!(row, Row::Heading(_) | Row::Meaning(_))),

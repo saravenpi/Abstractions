@@ -57,13 +57,6 @@ pub fn visible(rows: &[Row], open: bool) -> &[Row] {
     }
 }
 
-/// Returns the rows of a card in its compact form: the rows of [`visible`] without the headings
-/// and the meanings of the groups, so a short window shows every stat.
-pub fn compacted(rows: &[Row], open: bool) -> Vec<&Row> {
-    let drop = |row: &&Row| !matches!(row, Row::Heading(_) | Row::Meaning(_));
-    visible(rows, open).iter().filter(drop).collect()
-}
-
 /// The card of a place: its name, one line on what it is and where, and its rows.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Card {

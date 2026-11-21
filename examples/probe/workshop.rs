@@ -81,7 +81,7 @@ fn intents(world: &mut World, frame: u32) {
         "f5-workshop-throw",
     ];
     let at = ((frame - 120) / 30) as usize;
-    if (frame - 120) % 30 == 0 {
+    if (frame - 120).is_multiple_of(30) {
         shoot(world, names[at]);
     }
     if at < 3 {

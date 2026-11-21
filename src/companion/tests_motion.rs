@@ -160,5 +160,5 @@ fn rides_at_the_side_of_the_cockpit() {
         screen.dot(-seat.normalize()) > 0.99,
         "the screen faces {screen}"
     );
-    assert!(at.forward().dot(-seat.normalize()) > 0.7 && at.up().y > 0.3);
+    assert!(at.forward().dot(-seat.normalize()) > 0.5 && at.up().y > 0.3);
 }

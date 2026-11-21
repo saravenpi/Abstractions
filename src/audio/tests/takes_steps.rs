@@ -27,7 +27,7 @@ pub(super) type Take = (
 );
 
 /// Returns a walk at the walking speed of the game.
-fn walk(_: f32) -> AvatarPose {
+pub(super) fn walk(_: f32) -> AvatarPose {
     moving(Mode::Walk, 5.0, 0.0)
 }
 
@@ -46,7 +46,7 @@ fn jumps(t: f32) -> AvatarPose {
 }
 
 /// Returns a glide that touches down at 1.5 seconds and slides for a second as it slows.
-fn slide(t: f32) -> AvatarPose {
+pub(super) fn slide(t: f32) -> AvatarPose {
     match t {
         _ if t < 1.5 => AvatarPose {
             vertical_speed: -3.0,

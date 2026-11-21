@@ -4,7 +4,6 @@
 
 use std::f32::consts::PI;
 
-use super::tune::WET_Q;
 use crate::audio::dsp::filter::Svf;
 use crate::audio::dsp::rand::Noise;
 use crate::audio::ship::law::band_gain;
@@ -25,15 +24,25 @@ pub struct Sweep {
     ends: (f32, f32),
     /// Its level, and the gain of the band now that brings noise to a level of 1.
     level: (f32, f32),
+    /// The resonance of the band.
+    q: f32,
 }
 
 impl Sweep {
-    /// Starts a sweep from `from` to `to` hertz over `seconds` at a peak `level`.
-    pub fn start(&mut self, (from, to): (f32, f32), seconds: f32, level: f32, rate: f32) {
+    /// Starts a sweep from `from` to `to` hertz over `seconds` at a peak `level`, through a band of
+    /// resonance `q`.
+    pub fn start(
+        &mut self,
+        (from, to): (f32, f32),
+        (seconds, q): (f32, f32),
+        level: f32,
+        rate: f32,
+    ) {
         *self = Self {
             ends: (from, to),
             span: (seconds * rate).max(1.0) as u32,
             level: (level, 0.0),
+            q,
             ..Self::default()
         };
         self.retune(rate);
@@ -43,8 +52,8 @@ impl Sweep {
     fn retune(&mut self, rate: f32) {
         let (from, to) = self.ends;
         let hz = from * (to / from).powf(self.at as f32 / self.span as f32);
-        self.band.tune(hz, WET_Q, rate);
-        self.level.1 = band_gain(hz, WET_Q, rate);
+        self.band.tune(hz, self.q, rate);
+        self.level.1 = band_gain(hz, self.q, rate);
     }
 
     /// Renders one sample from `noise`.

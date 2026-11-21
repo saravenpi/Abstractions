@@ -4,9 +4,9 @@
 //! to the ears, and the thud and the ring of the listener's own step come through the body too.
 
 use super::grain::Grains;
-use super::material::{Material, of};
+use super::material::{Material, ground, of};
 use super::sweep::Sweep;
-use super::tune::{HEEL_TOE, SCRAPE, TAIL, TICK};
+use super::tune::{HEEL_TOE, HISS_Q, SCRAPE, TAIL, TICK};
 use crate::audio::cue::StepSurface;
 use crate::audio::dsp::filter::Svf;
 use crate::audio::dsp::rand::Noise;
@@ -98,20 +98,15 @@ impl Tread {
 
     /// Starts `step` with what the pool worked out of it.
     pub fn start(&mut self, step: &Step, shape: Shape) {
-        let (stuff, rate) = (of(step.surface), self.rate);
+        let (stuff, rate) = (ground(step.surface, step.depth), self.rate);
         let ((pitch, thud), click) = (shape.pitch, stuff.click);
         self.solid[0].tune(stuff.thud.0 * thud, stuff.thud.1, rate);
         self.solid[1].tune(stuff.ring.0 * pitch, stuff.ring.1, rate);
         self.solid[2].tune(TICK.1 * pitch, TICK.2, rate);
         self.band = Svf::default();
         self.band.tune(click.0 * pitch, click.1, rate);
-        let scrape = if step.contact == Contact::Skid {
-            SCRAPE.0
-        } else {
-            click.2
-        };
         let loud = band_gain(click.0 * pitch, click.1, rate) * click.3 * shape.push;
-        self.snap = (0.0, (-1.0 / (scrape * rate)).exp(), loud);
+        self.snap = (0.0, (-1.0 / (click.2 * rate)).exp(), loud);
         self.grains
             .tune(&stuff, (shape.spread, pitch), shape.grains, rate);
         self.wet = Sweep::default();
@@ -137,7 +132,8 @@ impl Tread {
         if stuff.wet.3 > 0.0 {
             let ends = (stuff.wet.0 * pitch, stuff.wet.1 * pitch);
             let level = stuff.wet.3 * self.shape.push;
-            self.wet.start(ends, stuff.wet.2, level, self.rate);
+            self.wet
+                .start(ends, (stuff.wet.2, stuff.wet.5), level, self.rate);
         }
         match contact {
             Contact::Stride => self.strike(HEEL_TOE.0),
@@ -146,20 +142,25 @@ impl Tread {
                 self.solid[2].strike(self.shape.tick);
             }
             Contact::Skid => {
-                self.snap.0 = self.snap.2;
+                let hz = stuff.grain.0 * pitch;
+                let level = self.shape.push;
+                self.wet
+                    .start((hz, 0.8 * hz), (SCRAPE.0, HISS_Q), level, self.rate);
                 self.grains.hold(SCRAPE.0, self.rate);
-                self.grains.kick(1.0);
+                self.grains.kick(SCRAPE.1);
             }
         }
     }
 
-    /// Lifts the foot out of the ground: in mud it sucks, in water it drips.
+    /// Lifts the foot out of the ground: in mud it sucks, in water it drips. A slide lifts no foot.
     fn lift(&mut self) {
         let (stuff, pitch) = (self.stuff, self.shape.pitch.0);
-        if stuff.wet.4 > 0.0 {
+        let stepped = self.step.is_some_and(|step| step.contact != Contact::Skid);
+        if stuff.wet.4 > 0.0 && stepped {
             let ends = (stuff.wet.1 * pitch, stuff.wet.0 * pitch);
+            let level = stuff.wet.4 * self.shape.push;
             self.wet
-                .start(ends, stuff.wet.2, stuff.wet.4 * self.shape.push, self.rate);
+                .start(ends, (stuff.wet.2, stuff.wet.5), level, self.rate);
         }
     }
 

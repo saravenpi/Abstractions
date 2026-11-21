@@ -15,7 +15,9 @@ mod sweep;
 pub(super) mod tune;
 mod voice;
 
-use tune::{FEET, FORCE_REF, GROWTH, LOAD_REF, MASS_REF, ROLL_STRAY, STRAY, TICK, WADE};
+use tune::{
+    FEET, FORCE_REF, GROWTH, LOAD_REF, MASS_REF, PUSH_MAX, ROLL_STRAY, SCRAPE, STRAY, TICK, WADE,
+};
 use voice::{Shape, Tread};
 
 use super::cue::{AudioCue, StepSurface};
@@ -57,7 +59,10 @@ impl Treads {
             Contact::Stride => (roll * self.rate) as u32 + 1,
             _ => 0,
         };
-        let late = step.lift.max(roll).max(material::of(step.surface).wet.2);
+        let late = step
+            .lift
+            .max(roll)
+            .max(material::ground(step.surface, step.depth).wet.2);
         let lift = (late * self.rate) as u32 + 1;
         ((delay * self.rate) as u32 + 1, toe, lift)
     }
@@ -75,7 +80,10 @@ impl Treads {
             _ => 1.0,
         };
         let hard = ((step.force - TICK.0) / (1.0 - TICK.0)).clamp(0.0, 1.0);
-        let push = force * level * wade;
+        let push = match step.contact {
+            Contact::Skid => SCRAPE.2 * (step.force / SCRAPE.3).clamp(0.0, 1.0).sqrt() * level,
+            _ => (force * level * wade).min(PUSH_MAX),
+        };
         let own = if spot.body > 0.0 { FEET.1 * foot } else { 0.0 };
         Shape {
             pitch: (pitch, pitch * (MASS_REF / step.mass.max(1.0)).sqrt()),

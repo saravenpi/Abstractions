@@ -36,6 +36,10 @@ pub const SIZE: (f32, f32) = (1.2, 1.3);
 /// Shortest and longest seconds a puff lasts.
 pub const LIFE: (f32, f32) = (2.5, 4.5);
 
+/// Share of the puffs of loose soil that bare rock and gravel give, as a thin grey grit, and that
+/// the landing pad gives, as a light grit of what the wind laid on it.
+pub const GRIT: (f32, f32) = (0.35, 0.2);
+
 /// Least air, as a share of the air at sea level at home, that holds a cloud of dust up. In
 /// thinner air the dust flies off as grit and is not drawn.
 pub const THIN: f32 = 0.05;
@@ -49,10 +53,12 @@ pub const REREAD: f64 = 3.0;
 
 /// Speed at which a puff of each soil settles through still air under standard gravity: the
 /// Stokes speed of its grains, fine silt and clay for earth, fine sand, the dust of bare ground,
-/// and powder snow. It grows with gravity and does not depend on how thick the air is.
-pub const SETTLE: [(Soil, f32); 4] = [
+/// powder snow, and the coarser grit off rock. It grows with gravity and does not depend on how
+/// thick the air is.
+pub const SETTLE: [(Soil, f32); 5] = [
     (Soil::Earth, 0.15),
     (Soil::Land, 0.25),
     (Soil::Sand, 0.4),
     (Soil::Snow, 0.5),
+    (Soil::Rock, 0.5),
 ];

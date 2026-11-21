@@ -9,9 +9,9 @@ use super::super::Exhaust;
 use super::Cloud;
 use super::jet::{Hit, impinge, jets};
 use super::look::recolour;
-use super::puff::{Mote, fling, pose, reread, step};
+use super::puff::{Mote, fling, noise, pose, reread, step};
 use super::soil::{loose, settle};
-use super::tune::{OWED, RATE, REREAD, THIN};
+use super::tune::{GRIT, OWED, RATE, REREAD, THIN};
 use crate::avatar::Soil;
 use crate::home::Base;
 use crate::render::GameCamera;
@@ -63,15 +63,15 @@ impl Field<'_> {
         self.pad(dir * ground).map_or(ground, |pad| ground.max(pad))
     }
 
-    /// Returns the soil the ground at the planet position `at` gives as dust and the speed at
-    /// which it settles: none on the landing pad.
-    fn dust(&self, at: DVec3) -> Option<(Soil, f32)> {
-        if self.pad(at).is_some() {
-            return None;
-        }
+    /// Returns the soil the ground at the planet position `at` gives as dust, the share of a full
+    /// cloud it gives and the speed at which it settles: a light grit on the landing pad.
+    fn dust(&self, at: DVec3) -> Option<(Soil, f32, f32)> {
         let (globe, dir) = (self.terrain.globe(), at.normalize_or_zero());
-        let soil = loose(globe.record().class, globe.surface(dir), globe.height(dir))?;
-        Some((soil, settle(soil, globe.gravity() as f32)))
+        let (soil, share) = match self.pad(at) {
+            Some(_) => (Soil::Rock, GRIT.1),
+            None => loose(globe.record().class, globe.surface(dir), globe.height(dir))?,
+        };
+        Some((soil, share, settle(soil, globe.gravity() as f32)))
     }
 
     /// Returns the wind in frame axes.
@@ -90,26 +90,26 @@ type Pool<'w, 's> = Query<
     ),
 >;
 
-/// Throws the whole puffs a jet owes from `hit` into parked puffs, and returns what it still owes:
-/// nothing when the ground there gives no dust or the pool is full.
-fn throw(
-    field: &Field,
-    (hit, owed): (&Hit, f32),
-    (pool, cloud, serial): (&mut Pool, &mut Cloud, &mut u32),
-) -> f32 {
-    let Some((soil, speed)) = field.dust(hit.at) else {
+/// Throws the whole puffs a jet owes from `hit` into parked puffs, as many of them as the share
+/// the ground gives, and returns what it still owes: nothing when the ground there gives no dust or
+/// the pool is full.
+fn throw(field: &Field, (hit, owed): (&Hit, f32), (pool, cloud): (&mut Pool, &mut Cloud)) -> f32 {
+    let Some((soil, share, speed)) = field.dust(hit.at) else {
         return 0.0;
     };
     let mut owed = owed;
     while owed >= 1.0 {
+        owed -= 1.0;
+        cloud.serial = cloud.serial.wrapping_add(1);
+        if noise(cloud.serial, 6) >= share {
+            continue;
+        }
         let Some((mut mote, mut paint)) = pool.iter_mut().find(|(mote, _)| mote.life <= 0.0) else {
             return 0.0;
         };
-        *serial = serial.wrapping_add(1);
-        *mote = fling(hit.at, (*serial, hit.strength), speed);
+        *mote = fling(hit.at, (cloud.serial, hit.strength), speed);
         paint.set_if_neq(MeshMaterial3d(cloud.soils[soil as usize].clone()));
         cloud.live += 1;
-        owed -= 1.0;
     }
     owed
 }
@@ -121,7 +121,6 @@ pub fn raise(
     mut ships: Query<(&Placed, &mut Exhaust)>,
     mut pool: Pool,
     (mut cloud, mut materials): (ResMut<Cloud>, ResMut<Assets<StandardMaterial>>),
-    mut serial: Local<u32>,
 ) {
     if !field.round() {
         return;
@@ -139,7 +138,7 @@ pub fn raise(
             exhaust.dust[k] = match hit {
                 Some(hit) => {
                     let owed = (exhaust.dust[k] + RATE * hit.strength * dt).min(OWED);
-                    throw(&field, (&hit, owed), (&mut pool, &mut cloud, &mut serial))
+                    throw(&field, (&hit, owed), (&mut pool, &mut cloud))
                 }
                 None => 0.0,
             };

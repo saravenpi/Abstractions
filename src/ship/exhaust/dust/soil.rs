@@ -1,21 +1,22 @@
 //! What the ground a jet meets is made of, and whether it gives dust.
 
-use super::tune::SETTLE;
+use super::tune::{GRIT, SETTLE};
 use crate::avatar::{Soil, soil};
 use crate::universe::{PlanetClass, STANDARD_GRAVITY};
 use crate::world::{SEA_LEVEL, Surface};
 
-/// Returns what a jet raises from ground of `surface`, `height` metres above sea level, on a
-/// planet of `class`: sand, the earth under grass, powder snow and the dust of a world without
-/// life. Rock gives none, nor does water, which throws spray instead, nor ice, the snow of a
-/// frozen sea, nor the cloud deck of a gas giant.
-pub fn loose(class: PlanetClass, surface: Surface, height: f32) -> Option<Soil> {
+/// Returns what a jet raises from dry ground of `surface`, `height` metres above sea level, on a
+/// planet of `class`, and the share of a full cloud it gives: all of it from sand, the earth under
+/// grass, powder snow and the dust of a world without life; a thin grit from rock and gravel, and
+/// from the ice of a frozen sea. Water gives none, it throws spray instead, nor does the cloud
+/// deck of a gas giant.
+pub fn loose(class: PlanetClass, surface: Surface, height: f32) -> Option<(Soil, f32)> {
     match (surface, soil(class, surface)) {
         _ if class == PlanetClass::GasGiant => None,
-        (Surface::Rock, _) => None,
-        (Surface::Snow, _) if height <= SEA_LEVEL => None,
-        (_, Soil::Rock | Soil::Splash | Soil::Air) => None,
-        (_, loose) => Some(loose),
+        (Surface::Rock, kind) => Some((kind, GRIT.0)),
+        (Surface::Snow, kind) if height <= SEA_LEVEL => Some((kind, GRIT.0)),
+        (_, Soil::Splash | Soil::Air) => None,
+        (_, kind) => Some((kind, 1.0)),
     }
 }
 

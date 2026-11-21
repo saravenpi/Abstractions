@@ -1,14 +1,21 @@
-//! Width tests: the widest value of every setting fits the fixed value column, so none wraps.
+//! Width tests, measured with the interface font: every value a setting can show fits the value
+//! column, every key name fits it with its conflict mark, and every line under the rows wraps in
+//! the lines the page keeps for it.
 
+use bevy::input::keyboard::NativeKeyCode;
 use bevy::prelude::KeyCode;
 
 use super::binds::Bind;
-use super::field::{Field, step};
-use super::format::{KEY_CHARS, display, key_name};
-use super::reference::ACTION_CHARS;
+use super::describe::{COSTS, describe, describe_general};
+use super::field::{Field, set_key, step};
+use super::format::display;
+use super::hint::{conflict_line, graphics_line};
+use super::names::{ELLIPSIS, KEY_CHARS, key_label, key_name};
+use super::tests_size::HINT_LINES;
 use super::view::ROWS;
+use crate::menus::tests::stage::lines;
 use crate::settings::Settings;
-use crate::ui::theme;
+use crate::ui::{text_width, theme};
 
 /// Every setting that is not a key.
 const FIELDS: [Field; 34] = [
@@ -48,85 +55,134 @@ const FIELDS: [Field; 34] = [
     Field::ReduceMotion,
 ];
 
-/// Keys with long names, among them the widest ones a keyboard has.
-const LONG_KEYS: [KeyCode; 12] = [
-    KeyCode::ControlLeft,
-    KeyCode::ControlRight,
+/// Keys with long names: the ones the settings name in words, and the widest a keyboard has,
+/// up to a key the system does not know.
+const LONG_KEYS: [KeyCode; 18] = [
     KeyCode::ShiftRight,
+    KeyCode::ControlRight,
+    KeyCode::SuperRight,
+    KeyCode::PageDown,
+    KeyCode::PrintScreen,
+    KeyCode::ScrollLock,
     KeyCode::NumpadEnter,
-    KeyCode::NumpadSubtract,
     KeyCode::NumpadParenRight,
+    KeyCode::NumpadBackspace,
     KeyCode::NumpadMemorySubtract,
+    KeyCode::NumpadClearEntry,
     KeyCode::BracketRight,
     KeyCode::AudioVolumeDown,
     KeyCode::BrowserFavorites,
+    KeyCode::MediaTrackPrevious,
     KeyCode::IntlBackslash,
-    KeyCode::ScrollLock,
+    KeyCode::LaunchApp1,
+    KeyCode::Unidentified(NativeKeyCode::MacOS(65535)),
 ];
-
-/// The longest name a settings row shows.
-const LONGEST: &str = "Markers over the world";
 
 /// The names planned for the render distance steps, which the column must also hold.
 const PLANNED: [&str; 5] = ["Low", "Medium", "High", "Ultra", "Extreme"];
 
-/// Returns the most characters `field` shows over its whole range.
-fn widest(field: Field) -> usize {
+/// Returns the width of `words` in body text.
+fn body(words: &str) -> f32 {
+    text_width(words, theme::FONT_BODY, 0.0)
+}
+
+/// Returns every text `field` shows over its whole range.
+fn shown(field: Field) -> Vec<String> {
     let mut settings = Settings::default();
-    let mut most = 0;
+    let mut seen = Vec::new();
     for dir in [-1, 1] {
         for _ in 0..300 {
-            most = most.max(display(&settings, field).chars().count());
+            seen.push(display(&settings, field));
             step(&mut settings, field, dir);
         }
     }
-    most
+    seen
 }
 
-/// The widest value of every setting, every long key name and every planned step name fits the
-/// character budget of the value column.
+/// The rig reads the font as the game draws it: a letter of body text advances 12 pixels, a
+/// fraction twice that, and spacing adds after each glyph.
+#[test]
+fn the_rig_measures_the_interface_font() {
+    assert_eq!(body("Left Shift"), 120.0);
+    assert_eq!(body("\u{bd}"), 24.0);
+    let spaced = text_width("AB", theme::FONT_SMALL, theme::CAPS_SPACING);
+    assert!(
+        (spaced - 2.0 * (9.6 + theme::CAPS_SPACING)).abs() < 1e-3,
+        "{spaced}"
+    );
+}
+
+/// Every value of every setting over its whole range, and every planned step name, fits the
+/// value column.
 #[test]
 fn every_value_fits_the_value_column() {
     for field in FIELDS {
-        assert!(widest(field) <= theme::VALUE_CHARS, "{field:?}");
+        for text in shown(field) {
+            assert!(body(&text) <= theme::VALUE_WIDTH, "{field:?}: {text}");
+        }
     }
-    assert_eq!(widest(Field::Fov), "110 deg".len());
+    assert_eq!(
+        shown(Field::Fov)
+            .iter()
+            .map(|text| body(text))
+            .fold(0.0, f32::max),
+        body("110 deg")
+    );
+    for name in PLANNED {
+        assert!(body(name) <= theme::VALUE_WIDTH, "{name}");
+    }
+}
+
+/// Every key name fits the value column with the mark of a conflict after it. A name too long
+/// for it keeps its start and ends with an ellipsis, and the full name stays for the tooltip.
+#[test]
+fn every_key_name_fits_with_its_conflict_mark() {
     for key in LONG_KEYS {
-        let name = key_name(key);
-        assert!(name.chars().count() <= KEY_CHARS, "{name}");
+        let (name, full) = (key_name(key), key_label(key));
+        assert!(body(&format!("{name} !")) <= theme::VALUE_WIDTH, "{name}");
+        if full.chars().count() <= KEY_CHARS {
+            assert_eq!(name, full);
+            continue;
+        }
+        let kept = name.strip_suffix(ELLIPSIS).expect("an ellipsis");
+        assert!(full.starts_with(kept), "{name} cuts {full}");
     }
-    assert!(PLANNED.iter().all(|name| name.len() <= theme::VALUE_CHARS));
     assert_eq!(key_name(KeyCode::ControlLeft), "Left Ctrl");
+    assert_eq!(key_name(KeyCode::PageDown), "Page Down");
+    assert_eq!(
+        key_label(KeyCode::NumpadMemorySubtract),
+        "Num MemorySubtract"
+    );
 }
 
-/// The value column is wide enough for its character budget in body text, and a settings row
-/// with the longest name still fits the page: its icon, its name and its value zone, inside the
-/// padding of the row.
+/// Every line under the rows wraps in the lines the page keeps for it: each description, the
+/// render distance note after its description, what costs most, and a conflict of two long
+/// action names on a key with a long name.
 #[test]
-fn the_value_column_holds_its_budget_and_the_longest_row_fits() {
-    let glyph = theme::GLYPH_ASPECT * theme::FONT_BODY;
-    assert!(theme::VALUE_CHARS as f32 * glyph <= theme::VALUE_WIDTH);
-    assert_eq!(theme::VALUE_CLUSTER, theme::span(3) + theme::S3);
-    let name = theme::ICON + theme::ICON_GAP + LONGEST.len() as f32 * glyph;
-    let row = name + theme::S3 + theme::VALUE_CLUSTER + 2.0 * theme::INSET;
-    assert!(row <= theme::span(ROWS), "{row}");
-}
-
-/// A line of the reference fits the page too: an action, then a key of the widest name.
-#[test]
-fn a_reference_line_fits_the_page() {
-    let glyph = theme::GLYPH_ASPECT * theme::FONT_SMALL;
-    assert!(KEY_CHARS as f32 * glyph <= theme::VALUE_CLUSTER);
-    let action = theme::ICON + theme::ICON_GAP + ACTION_CHARS as f32 * glyph;
-    let line = action + theme::S3 + theme::VALUE_CLUSTER + 2.0 * theme::INSET;
-    assert!(line <= theme::span(ROWS), "{line}");
-}
-
-/// Every action of the controls reference stays on one line.
-#[test]
-fn reference_actions_fit_one_line() {
-    let binds = Bind::FOOT.into_iter().chain(Bind::SHIP);
-    for bind in binds {
-        assert!(bind.label().len() <= ACTION_CHARS, "{}", bind.label());
+fn every_line_under_the_rows_wraps_in_its_lines() {
+    let mut said: Vec<String> = FIELDS
+        .into_iter()
+        .flat_map(|field| [describe(field), describe_general(field)])
+        .map(str::to_string)
+        .collect();
+    said.push(COSTS.to_string());
+    said.push(format!(
+        "{} {}",
+        describe(Field::RenderDistance),
+        graphics_line(24)
+    ));
+    let mut settings = Settings::default();
+    set_key(&mut settings, Bind::Sprint, KeyCode::NumpadMemorySubtract);
+    set_key(&mut settings, Bind::Board, KeyCode::NumpadMemorySubtract);
+    said.push(conflict_line(&settings.controls.keys));
+    let room = theme::span(ROWS) - theme::INSET;
+    let space = text_width(" ", theme::FONT_SMALL, 0.0);
+    for line in said {
+        let words: Vec<f32> = line
+            .split_whitespace()
+            .map(|word| text_width(word, theme::FONT_SMALL, 0.0))
+            .collect();
+        let taken = lines(&words, space, room);
+        assert!(taken <= HINT_LINES, "{taken} lines: {line}");
     }
 }

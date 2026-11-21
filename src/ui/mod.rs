@@ -20,6 +20,8 @@ mod keys;
 #[cfg(test)]
 mod keys_tests;
 mod list;
+#[cfg(test)]
+mod measure_rig;
 pub mod motion;
 mod page;
 #[cfg(test)]
@@ -53,6 +55,8 @@ pub use keys::{
     HINT_GAP, HintLabel, KEY_GAP, KeyName, Legend, footer, hints, key_cap, key_hint, legend,
 };
 pub use list::Window;
+#[cfg(test)]
+pub use measure_rig::text_width;
 pub use page::{
     PAGE_FOOT, PAGE_HEAD, Page, Zone, page, page_body, page_foot, page_frame, page_head,
     page_status, page_title,
@@ -68,7 +72,7 @@ pub use sound::Cancels;
 pub use state::{EmptyState, NoticeRow, empty_state, notice_row};
 pub use style::{Filled, Look, Selected, Tone};
 pub use table::{cell, head, row_with, table_head, table_row, value_cell};
-pub use tooltip::Tip;
+pub use tooltip::{Tip, TipText};
 pub use widgets::{Overlay, caps, column, panel, root, root_on, rule, text};
 
 use bevy::input_focus::InputFocus;

@@ -12,6 +12,11 @@ use super::theme;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Tip(pub &'static str);
 
+/// The text of the tooltip of a control whose words change, such as a value cut short. A control
+/// whose text is empty shows no tooltip.
+#[derive(Component, Debug, Clone, PartialEq, Eq, Default)]
+pub struct TipText(pub String);
+
 /// Marks the one tooltip panel.
 #[derive(Component)]
 pub struct Bubble;
@@ -71,9 +76,25 @@ pub type Parts<'w, 's> = (
     Query<'w, 's, (&'static mut Text, &'static mut TextColor), (With<Words>, Without<Bubble>)>,
 );
 
-/// Puts the panel under the control `tip` belongs to and writes its text.
+/// A control that may show a tooltip: its hover state, its words and where it is.
+type Tipped = (
+    Entity,
+    &'static Hovered,
+    Option<&'static Tip>,
+    Option<&'static TipText>,
+    &'static ComputedNode,
+    &'static UiGlobalTransform,
+);
+
+/// Returns the words of a tooltip: the fixed tip of the control, else its changing text.
+fn said<'a>(tip: Option<&'a Tip>, text: Option<&'a TipText>) -> &'a str {
+    let fixed: Option<&'a str> = tip.map(|tip| tip.0);
+    fixed.or(text.map(|text| text.0.as_str())).unwrap_or("")
+}
+
+/// Puts the panel under the control the words `tip` belong to and writes them.
 fn move_under(
-    (tip, size, at): (&Tip, &ComputedNode, &UiGlobalTransform),
+    (tip, size, at): (&str, &ComputedNode, &UiGlobalTransform),
     (panel, words): &mut Parts,
 ) {
     let scale = size.inverse_scale_factor;
@@ -83,7 +104,7 @@ fn move_under(
         node.top = px(below);
     }
     if let Ok((mut text, _)) = words.single_mut() {
-        text.set_if_neq(Text(tip.0.to_string()));
+        text.set_if_neq(Text(tip.to_string()));
     }
 }
 
@@ -106,11 +127,13 @@ fn tint(alpha: f32, (panel, words): &mut Parts) {
 /// fades it away when the pointer leaves.
 pub(super) fn update(
     time: Res<Time>,
-    tips: Query<(Entity, &Hovered, &Tip, &ComputedNode, &UiGlobalTransform)>,
+    tips: Query<Tipped, Or<(With<Tip>, With<TipText>)>>,
     mut parts: Parts,
     mut rest: Local<Rest>,
 ) {
-    let over = tips.iter().find(|(_, hovered, ..)| hovered.get());
+    let over = tips
+        .iter()
+        .find(|(_, hovered, tip, text, ..)| hovered.get() && !said(*tip, *text).is_empty());
     let entity = over.map(|(entity, ..)| entity);
     if entity != rest.over {
         (rest.over, rest.seconds) = (entity, 0.0);
@@ -122,8 +145,8 @@ pub(super) fn update(
         return;
     }
     rest.alpha = alpha;
-    if let Some((_, _, tip, size, at)) = over.filter(|_| shown) {
-        move_under((tip, size, at), &mut parts);
+    if let Some((_, _, tip, text, size, at)) = over.filter(|_| shown) {
+        move_under((said(tip, text), size, at), &mut parts);
     }
     tint(alpha, &mut parts);
 }

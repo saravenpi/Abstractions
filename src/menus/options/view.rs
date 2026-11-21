@@ -7,6 +7,7 @@ use super::actions::SettingsAction;
 use super::binds::conflicted;
 use super::field::Field;
 use super::format::display;
+use super::names::{key_label, key_name};
 use super::pages::{self, Page, display_for};
 use super::rebind::Rebinding;
 use super::rows::Value;
@@ -14,8 +15,8 @@ use super::{SettingsTab, Tab, hint, reference};
 use crate::menus::{Menu, Nav};
 use crate::settings::{Persistent, Settings};
 use crate::ui::{
-    Cancels, Scroller, Selected, Tone, back, entry, hints, item_with, legend, page, page_body,
-    page_foot, page_head, page_title, scroll_area, theme,
+    Cancels, Scroller, Selected, TipText, Tone, back, entry, hints, item_with, legend, page,
+    page_body, page_foot, page_head, page_title, scroll_area, theme,
 };
 
 /// Key hints shown in the footer, after the back action.
@@ -61,11 +62,12 @@ fn sidebar(active: Tab) -> impl Bundle {
 }
 
 /// The pages in one scrolling column that takes the height the window has, over the line that
-/// describes the focused row.
+/// describes the focused row. It is [`ROWS`] columns wide at most and narrower when the window
+/// has less room, so it never reaches past the window.
 fn sheet(active: Tab) -> impl Bundle {
     let node = Node {
         width: px(theme::span(ROWS)),
-        flex_shrink: 0.0,
+        min_width: px(0),
         flex_direction: FlexDirection::Column,
         ..default()
     };
@@ -149,6 +151,26 @@ fn show_values(
     }
 }
 
+/// Names the key of each key row in full in its tooltip while the row shows it cut short, and
+/// gives the other key rows no tooltip. Does nothing while nothing changed.
+fn tip_keys(settings: Res<Persistent<Settings>>, mut rows: Query<(&SettingsAction, &mut TipText)>) {
+    for (action, mut tip) in &mut rows {
+        let SettingsAction::Rebind(bind) = action else {
+            continue;
+        };
+        if !(settings.is_changed() || tip.is_added()) {
+            continue;
+        }
+        let key = bind.key(&settings.controls.keys);
+        let full = key_label(key);
+        let wanted = match key_name(key) == full {
+            true => String::new(),
+            false => full,
+        };
+        tip.set_if_neq(TipText(wanted));
+    }
+}
+
 /// Registers the settings menu view systems.
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Menu::Settings), spawn).add_systems(
@@ -156,6 +178,7 @@ pub(super) fn plugin(app: &mut App) {
         (
             show_tab.run_if(resource_changed::<SettingsTab>),
             show_values,
+            tip_keys,
         )
             .run_if(in_state(Menu::Settings)),
     );

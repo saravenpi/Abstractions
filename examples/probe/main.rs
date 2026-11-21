@@ -14,7 +14,8 @@
 //!   `stars` shoots the star field in space and in orbit (see the `stars` module).
 //!   The title, loading, boot and wake stages always run.
 //! - `entry` (a fall from a low orbit into the air, from a chase camera and from the seat) and `exit`
-//!   (the climb from the pad to orbit under the autopilot) shoot the heat of an entry and leaving the air.
+//!   (the climb from the pad to orbit under the autopilot) shoot the heat of an entry and leaving the air;
+//!   `cloud` climbs through an overcast cloud base, a shot every 0.2 s from the chase camera and the seat.
 //! - `SMOKE_ONLY` and `SMOKE_SKIP`: comma lists of stage names to keep or to leave out.
 //! - `SMOKE_TARGET` and `SMOKE_FLASH`: see the `warp` and `boot` stages.
 //! - `PROBE_JOIN=<address>`: join that server instead of starting a world, with `PROBE_NAME` as the player name
@@ -75,6 +76,7 @@ mod cards_air;
 mod cards_foot;
 mod cards_land;
 mod cards_life;
+mod cloud;
 mod coarse;
 mod entry;
 mod feel;
@@ -130,6 +132,7 @@ use cards_air::*;
 use cards_foot::*;
 use cards_land::*;
 use cards_life::*;
+use cloud::*;
 use coarse::*;
 use entry::*;
 use feel::*;

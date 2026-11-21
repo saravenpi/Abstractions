@@ -12,7 +12,7 @@ use super::*;
 
 /// The chase camera of both flights, in hull axes: behind the left wing and above it, looking
 /// at the nose.
-const CHASE: (Vec3, Vec3) = (Vec3::new(-14.0, 5.0, 16.0), Vec3::new(0.0, 0.0, -3.0));
+pub const CHASE: (Vec3, Vec3) = (Vec3::new(-14.0, 5.0, 16.0), Vec3::new(0.0, 0.0, -3.0));
 
 /// Frames between two shots while the ship glows, three seconds of the game, and between two
 /// shots while it does not.
@@ -77,7 +77,7 @@ fn cloudy(world: &mut World, notes: &mut Notes, name: &str) {
 }
 
 /// Gives the camera back to the game and ends a flight stage.
-fn landed(world: &mut World, notes: &mut Notes) -> Act {
+pub fn landed(world: &mut World, notes: &mut Notes) -> Act {
     pace(world, WALK);
     inside(world, notes)
 }

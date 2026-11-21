@@ -10,7 +10,7 @@ use crate::climate::{self, Climate, Spot};
 use crate::home::Base;
 use crate::life::flora::KELP;
 use crate::life::{self, Guild, Life, Species};
-use crate::universe::{AU, PlanetClass, PlanetSpec, StarSpec, Universe, Water, Zone};
+use crate::universe::{AU, Daystar, PlanetClass, PlanetSpec, StarSpec, Universe, Water, Zone};
 use crate::world::globe::MEAN_SEASON;
 use crate::world::{Biome, Globe};
 
@@ -28,6 +28,8 @@ pub struct Row {
     pub span: (f32, f32),
     /// Annual mean climate at the spawn.
     pub spawn: Climate,
+    /// Sine of the greatest height the star reaches over a day at the spawn.
+    pub noon: f64,
     /// Biome at the spawn.
     pub biome: Biome,
     /// Shares of the land.
@@ -62,6 +64,7 @@ pub fn measure(seed: u64) -> Row {
         seed,
         span: (at(DVec3::X), at(DVec3::Y)),
         spawn: climate_at(&globe, dir),
+        noon: Daystar::of(&planet).peak(dir),
         biome: globe.biome(dir),
         shares: shares(&globe),
         herd: walks,

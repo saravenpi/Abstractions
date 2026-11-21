@@ -7,19 +7,12 @@ use bevy::math::DVec3;
 
 use crate::life::census::Site;
 use crate::render::smoothstep;
-use crate::universe::PlanetSpec;
-use crate::world::{Globe, Surface, spin};
+use crate::universe::{PlanetSpec, sun};
+use crate::world::{Globe, Surface};
 
 /// Heights of the star, as the sine of its angle above the horizon, between which the day comes up:
 /// the edges of `crate::render::daylight`.
 const DAWN: (f32, f32) = (-0.12, 0.25);
-
-/// Returns the unit direction from the centre of `planet` to its star at universe `time`, in the
-/// axes of the planet, which turn with it.
-pub fn sun(planet: &PlanetSpec, time: f64) -> DVec3 {
-    let toward = -planet.position(time).normalize_or(DVec3::X);
-    spin(planet.day_seconds, time).inverse() * toward
-}
 
 /// Returns the daylight, 0 at night to 1 by day, at unit direction `dir` on `planet` at universe
 /// `time`.

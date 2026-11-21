@@ -1,8 +1,6 @@
 //! The point chunks stream around: the anchor entity, or the spawn point before it exists, seen
 //! from the planet.
 
-use std::f64::consts::TAU;
-
 use bevy::ecs::system::SystemParam;
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
@@ -11,12 +9,7 @@ use super::{Planet, SpawnPoint, StreamAnchor};
 use crate::space::{Anchor, Clock, Frame};
 use crate::universe::{PlanetSpec, Universe};
 
-/// Returns the rotation from the axes of a planet to the axes of its system at `time` seconds.
-///
-/// A planet turns around its own +Y, from west to east, once every `day_seconds`.
-pub fn spin(day_seconds: f64, time: f64) -> DQuat {
-    DQuat::from_rotation_y(TAU * time / day_seconds)
-}
+pub use crate::universe::turn as spin;
 
 /// How the planet frame sits in the frame of the anchor: `anchor = offset + turn * planet`.
 #[derive(Debug, Clone, Copy, PartialEq)]

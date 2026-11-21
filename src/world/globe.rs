@@ -26,6 +26,7 @@ mod scale;
 mod season;
 mod site;
 mod sphere;
+mod star;
 #[cfg(test)]
 mod tally;
 mod tangent;
@@ -58,6 +59,8 @@ mod tests_record;
 mod tests_relief;
 #[cfg(test)]
 mod tests_scales;
+#[cfg(test)]
+mod tests_star;
 
 pub use chart::{BLOCK, Chart};
 pub use cube::Face;
@@ -80,7 +83,7 @@ use super::biome::Climate;
 use super::islands::Shape;
 use super::lands::Lands;
 use crate::climate::Setting;
-use crate::universe::{PlanetRecord, PlanetSpec};
+use crate::universe::{Daystar, PlanetRecord, PlanetSpec};
 
 /// A planet: its size, its pull, its record and the noise fields that shape its ground.
 ///
@@ -102,6 +105,8 @@ pub struct Globe {
     lands: Lands,
     /// The planet as its climate sees it.
     setting: Setting,
+    /// Where the star stands over one day in the frame of the planet.
+    star: Daystar,
     /// How far round its orbit the planet is now, for the climate of the moment.
     season: Season,
     /// The coarse cells of the sphere, their height grids and their flows, shared by every copy.
@@ -128,6 +133,7 @@ impl Globe {
             relief: Relief::of(seed, [radius, gravity], &record, None),
             lands: Lands::of(&record),
             setting: climate::setting(seed, radius, gravity),
+            star: Daystar::default(),
             season: Season::default(),
             atlas: Arc::new(Atlas::new(0, 1)),
             life: None,
@@ -139,6 +145,7 @@ impl Globe {
     pub fn of(spec: &PlanetSpec) -> Self {
         Self {
             setting: Setting::of(spec),
+            star: Daystar::of(spec),
             ..Self::new(spec.seed, spec.radius, spec.gravity).with_record(spec.record)
         }
         .charted()

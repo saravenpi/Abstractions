@@ -6,13 +6,16 @@ use std::f64::consts::FRAC_PI_2;
 use bevy::math::DVec3;
 
 use super::Drainage;
-use super::tune::{APART, BISECT, LATITUDE, MOUTH, STARTS, TRIES};
+use super::tune::{APART, BISECT, DIM, LATITUDE, MOUTH, STARTS, TRIES, UNFAIR};
+use crate::climate::Fair;
 use crate::world::globe::Globe;
 use crate::world::globe::roll::roll;
 
-/// Returns the cells of land at a mild latitude, the best first: the shore before the inland, a river mouth
-/// before a plain shore, and among equals the order the `seed` rolls.
-fn ranked(drain: &Drainage, seed: u64) -> Vec<usize> {
+/// Returns the cells of land at a mild latitude, the best first: the fair ones before the others, see
+/// [`unfair`], then the shore before the inland, a river mouth before a plain shore, and among equals the
+/// order the seed of `globe` rolls.
+fn ranked(globe: &Globe, drain: &Drainage) -> Vec<usize> {
+    let (seed, fair) = (globe.seed(), globe.fair());
     let mild = |cell: usize| {
         let degrees = drain.dir(cell).y.asin().to_degrees().abs();
         (LATITUDE.0..=LATITUDE.1).contains(&degrees)
@@ -21,7 +24,8 @@ fn ranked(drain: &Drainage, seed: u64) -> Vec<usize> {
         let coast = drain.sea_beside(cell).is_some();
         let mouth = coast && drain.is_river(cell);
         let rolled = roll(seed, [cell as i64, 0, 0], 0);
-        rolled * if mouth { 1.0 - MOUTH } else { 1.0 } + if coast { 0.0 } else { 1.0 }
+        let base = rolled * if mouth { 1.0 - MOUTH } else { 1.0 } + if coast { 0.0 } else { 1.0 };
+        base + unfair(&fair, drain.dir(cell))
     };
     let mut cells: Vec<(f32, usize)> = (0..drain.grid.len())
         .filter(|&cell| drain.is_land(cell) && mild(cell))
@@ -29,6 +33,15 @@ fn ranked(drain: &Drainage, seed: u64) -> Vec<usize> {
         .collect();
     cells.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
     cells.into_iter().map(|(_, cell)| cell).collect()
+}
+
+/// Returns what the score of a start in unit direction `dir` gives up for the light and the warmth it lacks:
+/// nothing at a fair place, where the star climbs high over a day and the mean air is mild, and
+/// [`UNFAIR`] for each step of [`DIM`] it lacks, so that no shore or river mouth makes up for a step. On a
+/// planet locked to its star this keeps the starts on the day side, and where its mild ground lies only in the
+/// dusk it takes the places with the highest star first.
+fn unfair(fair: &Fair, dir: DVec3) -> f32 {
+    (fair.lack(dir) / DIM).ceil() * UNFAIR
 }
 
 /// Returns the point of the real ground on the shore of drainage cell `cell`, on the land side: the land
@@ -59,7 +72,8 @@ fn shore(globe: &Globe, drain: &Drainage, cell: usize) -> Option<DVec3> {
 
 impl Globe {
     /// Returns the unit directions of up to [`STARTS`] places a new game may start at, the best first: shores
-    /// of land at a mild latitude, far apart, taken from the drainage grid. A dry or a groundless planet
+    /// of land at a mild latitude, far apart, taken from the drainage grid, those where the star climbs high
+    /// over a day and the mean air is mild before any other. A dry or a groundless planet
     /// gives none or inland ones. The same planet always gives the same places.
     pub fn landfalls(&self) -> Vec<DVec3> {
         if !self.has_ground() {
@@ -75,7 +89,7 @@ fn picked(globe: &Globe, drain: &Drainage) -> Vec<DVec3> {
     let apart = APART * FRAC_PI_2 / f64::from(drain.grid.n);
     let mut picked: Vec<(usize, DVec3)> = Vec::new();
     let mut tried = 0;
-    for cell in ranked(drain, globe.seed()) {
+    for cell in ranked(globe, drain) {
         let far =
             |(other, _): &(usize, DVec3)| drain.dir(*other).angle_between(drain.dir(cell)) > apart;
         if picked.len() == STARTS || tried == TRIES {

@@ -164,10 +164,7 @@ pub fn noon(world: &mut World) {
     let spec = world.resource::<Universe>().planet(body);
     let here = robot(world).normalize();
     let now = world.resource::<abstractions::space::Clock>().seconds;
-    let high = |t: f64| {
-        let toward = -spec.position(t).normalize_or(DVec3::X);
-        here.dot(abstractions::world::spin(spec.day_seconds, t).inverse() * toward)
-    };
+    let high = |t: f64| here.dot(abstractions::universe::sun(&spec, t));
     let best = (0..96)
         .map(|k| now + spec.day_seconds * f64::from(k) / 96.0)
         .find(|t| high(*t) > 0.6)

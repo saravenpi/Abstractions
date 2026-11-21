@@ -5,6 +5,7 @@
 mod air;
 mod class;
 mod climate;
+mod daystar;
 mod density;
 mod dust;
 mod galaxy;
@@ -39,6 +40,8 @@ mod class_tests;
 #[cfg(test)]
 mod climate_tests;
 #[cfg(test)]
+mod daystar_tests;
+#[cfg(test)]
 mod earth_tests;
 #[cfg(test)]
 mod giant_tests;
@@ -67,12 +70,13 @@ mod volatiles_tests;
 
 pub use air::{GAS_CONSTANT, Gas, Mix, NO_AIR, Part, TOP_SCALES, dense, heights};
 pub use class::{MOLTEN, VOLCANIC};
+pub use daystar::{Daystar, solar_day, sun, turn};
 pub use density::Parts;
 pub use galaxy::{ARMS, CENTER_SPAN, RADIUS_LY};
 pub use giant::{GIANT_MASS, GIANT_RADIUS};
 pub use glow::Glow;
 pub use hill::{CAPTURED_RADIUS, IMPACT_RADIUS, REGULAR_RADIUS};
-pub use home::{COMFORT, MILD, landable};
+pub use home::{COMFORT, LIT, MILD, landable};
 pub use ids::{BodyId, GalaxyId, StarId};
 pub use look::Look;
 pub use planet::{PLANET_RADIUS, ROCK, gravity, orbit_seconds};

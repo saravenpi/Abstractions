@@ -82,7 +82,7 @@ mod tests_weather;
 pub use air::Air;
 pub use camera::{configure_camera, set_fov};
 pub use celestial::{daylight, smoothstep, sun_direction};
-pub use clock::DayClock;
+pub use clock::{DayClock, START_PHASE, catch_up};
 pub use clouds::{CloudCrossing, CloudShell};
 pub use cloudshade::CloudShade;
 pub use daylight::{PlaceLight, PlaceLit, PlaceUniform, place_light};

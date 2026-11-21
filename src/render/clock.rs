@@ -6,6 +6,8 @@ use crate::saves::ActiveWorld;
 use crate::screens::Screen;
 use crate::universe::PlanetSpec;
 
+pub use crate::universe::solar_day;
+
 /// Phase at the start of a new game, early morning.
 pub const START_PHASE: f32 = 0.08;
 
@@ -30,21 +32,6 @@ impl Default for DayClock {
     fn default() -> Self {
         Self { phase: START_PHASE }
     }
-}
-
-/// Returns the seconds from one noon to the next on a planet or moon, from its physical spin
-/// and its orbit alone: nothing sets the length of a day.
-///
-/// A body turns the same way round as it goes round its star, so each turn the star has moved
-/// on a little and noon comes later: the rate of noons is the rate of turns less the rate of
-/// years, `1 / (1 / spin - 1 / year)`. A moon goes round the star with its planet, so its year
-/// is its planet's. A planet that tides locked to its star has no noon: the result is infinite.
-/// A body that turns slower than its year sees the star go backwards: the result is negative.
-pub fn solar_day(planet: &PlanetSpec) -> f64 {
-    let year = planet
-        .host
-        .map_or(planet.orbit_seconds, |host| host.seconds);
-    1.0 / (1.0 / planet.day_seconds - 1.0 / year)
 }
 
 /// Returns the seconds universe time must move forward for the phase `now` to become `wanted`.

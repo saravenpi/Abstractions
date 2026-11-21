@@ -7,8 +7,7 @@ use bevy::math::DVec3;
 use super::Globe;
 use crate::climate::{self, Climate, Spot};
 
-/// The season of the annual mean, when the tilt warms neither hemisphere: what the ground is shaped by.
-pub const MEAN_SEASON: f32 = 0.25;
+pub use crate::climate::MEAN_SEASON;
 
 /// The current season, from 0 to 1, stored so that a shared globe can be told it without a lock.
 #[derive(Debug)]

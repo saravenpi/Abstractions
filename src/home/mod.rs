@@ -40,6 +40,8 @@ mod tests_ground;
 mod tests_points;
 #[cfg(test)]
 mod tests_solid;
+#[cfg(test)]
+mod tests_sun;
 
 pub use base::Base;
 pub use tune::{FOOTPRINT, PAD_HALF, PAD_LIFT};

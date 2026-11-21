@@ -7,7 +7,7 @@ mod shares;
 
 use row::{Row, measure};
 
-use crate::universe::{COMFORT, EARTH_RADIUS, PlanetClass, SUN_MASS};
+use crate::universe::{COMFORT, EARTH_RADIUS, LIT, MILD, PlanetClass, SUN_MASS};
 
 /// Seeds the survey looks at.
 const SEEDS: u64 = 100;
@@ -42,7 +42,8 @@ fn show(r: &Row) {
     let rung = r.life.as_ref().map(|l| (l.rung, l.chemistry.solvent));
     let land = &r.shares;
     println!(
-        "{} life {:?} plants{} walkers{} desert{:.2} grass{:.2} forest{:.2} snow{:.2} spawn{:.0}K {:?} herd{}",
+        "{} life {:?} plants{} walkers{} desert{:.2} grass{:.2} forest{:.2} snow{:.2} spawn{:.0}K {:?} herd{} \
+         star{:.0}deg",
         planet(r),
         rung,
         plants,
@@ -54,6 +55,7 @@ fn show(r: &Row) {
         r.spawn.temperature,
         r.biome,
         u8::from(r.herd),
+        r.noon.min(1.0).asin().to_degrees(),
     );
 }
 
@@ -91,13 +93,36 @@ fn tally(rows: &[Row]) -> usize {
     good
 }
 
+/// Checks that every home wakes in daylight: over a day the star climbs to [`LIT`] at the spawn, less the
+/// hundredth of sine a spawn may lose to the shore it was looked for around. Checks that nearly every home
+/// wakes in mild mean air, within the 3 K the slow warp of the latitudes moves it by. Prints the seeds that
+/// do not, with the lowest star of all.
+fn fair(rows: &[Row]) {
+    let lit = LIT.to_radians().sin() - 0.01;
+    let mild = MILD.0 as f32 - 3.0..=MILD.1 as f32 + 3.0;
+    let seeds = |f: &dyn Fn(&Row) -> bool| -> Vec<u64> {
+        let kept = rows.iter().filter(|r| f(r));
+        kept.map(|r| r.seed).collect()
+    };
+    let dark = seeds(&|r| r.noon < lit);
+    let harsh = seeds(&|r| !mild.contains(&r.spawn.temperature));
+    let lowest = rows.iter().map(|r| r.noon).fold(f64::MAX, f64::min);
+    println!("lowest star {:.1} degrees", lowest.asin().to_degrees());
+    println!("spawn the star stays low over {dark:?}");
+    println!("spawn out of the mild air {harsh:?}");
+    assert!(dark.is_empty(), "the star stays low over {dark:?}");
+    assert!(harsh.len() * 20 <= rows.len(), "not mild: {harsh:?}");
+}
+
 /// Surveys the homes of the first seeds, prints them and the distribution, and asserts that nearly
 /// all of them are worlds a new player wakes on with life around: liquid water, plants at the
-/// spawn, a walking species and a mean air of 0 to 40 C there, and a herd within a walk of it.
+/// spawn, a walking species and a mean air of 0 to 40 C there, and a herd within a walk of it. Every
+/// one of them wakes in daylight, see [`fair`].
 #[test]
 fn homes_have_life_to_see() {
     let rows: Vec<Row> = (0..SEEDS).map(measure).collect();
     rows.iter().for_each(show);
+    fair(&rows);
     let good = tally(&rows);
     let herds = rows.iter().filter(|r| r.herd).count();
     let (low, high) = COMFORT;

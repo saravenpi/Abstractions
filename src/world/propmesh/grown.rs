@@ -88,7 +88,7 @@ pub fn habit(arch: u8) -> Habit {
 }
 
 /// Returns true when `variant` names a page of the book rather than a shared mesh of home.
-pub fn grown(variant: u8) -> bool {
+pub fn grown(variant: u16) -> bool {
     usize::from(variant) >= VARIANTS
 }
 

@@ -53,7 +53,7 @@ pub struct Grower {
     /// Where in the patch noise of its group it grows best, 0 to 1.
     pub niche: f32,
     /// Placement variant of its look at each age.
-    pub looks: [u8; AGES],
+    pub looks: [u16; AGES],
 }
 
 impl Grower {

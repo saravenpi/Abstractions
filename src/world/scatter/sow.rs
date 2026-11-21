@@ -99,7 +99,7 @@ fn scale(g: &Grower, rng: &mut ChaCha8Rng, depth: f32, age: usize) -> Option<f32
 }
 
 /// What a stone lays: its plant, scale, variant and the grade it is tilted to.
-type Laid = (Plant, f32, u8, Vec2);
+type Laid = (Plant, f32, u16, Vec2);
 
 /// Returns the stone a table pick of `plant` lays at chart position `w` over `at`, `depth` metres under
 /// the liquid (negative on land), with its scale and variant drawn from `rng`, or nothing where it could
@@ -113,7 +113,7 @@ fn stone(
 ) -> Option<Laid> {
     let (plant, lean) = ctx.settle(rng, w, plant)?;
     let scale = size(rng, plant, at.surface, at.height);
-    let variant = rng.random_range(0..VARIANTS) as u8;
+    let variant = rng.random_range(0..VARIANTS) as u16;
     (depth <= 0.0 || depth >= plant.draft() * scale).then_some((plant, scale, variant, lean))
 }
 

@@ -11,8 +11,9 @@ use super::{Look, build};
 use crate::world::propmesh::VARIANTS;
 use crate::world::propmesh::merge::Soup;
 
-/// Pages the book holds: every variant past the shared meshes of home.
-pub const PAGES: usize = 256 - VARIANTS;
+/// Pages the book holds: room for many full floras past the shared meshes of home so active stages
+/// never write over pages still in use.
+pub const PAGES: usize = 4096;
 
 /// One page: a look and its mesh.
 struct Page {
@@ -40,11 +41,11 @@ static BOOK: RwLock<Book> = RwLock::new(Book {
 });
 
 /// Returns the placement variant of `look`, writing it into the book with its mesh when it is new.
-pub fn page(look: Look) -> u8 {
+pub fn page(look: Look) -> u16 {
     let found = |book: &Book| book.pages.iter().position(|p| p.look == look);
     let read = BOOK.read().unwrap_or_else(PoisonError::into_inner);
     if let Some(i) = found(&read) {
-        return (i + VARIANTS) as u8;
+        return (i + VARIANTS) as u16;
     }
     drop(read);
     let soup = Arc::new(Soup::of(&build(&look).into_mesh()));
@@ -63,25 +64,25 @@ pub fn page(look: Look) -> u8 {
             i
         }
     };
-    (i + VARIANTS) as u8
+    (i + VARIANTS) as u16
 }
 
 /// Returns the mesh of the look of placement variant `variant`, or nothing for a shared mesh of home.
-pub(in crate::world::propmesh) fn soup(variant: u8) -> Option<Arc<Soup>> {
+pub(in crate::world::propmesh) fn soup(variant: u16) -> Option<Arc<Soup>> {
     let i = usize::from(variant).checked_sub(VARIANTS)?;
     let book = BOOK.read().unwrap_or_else(PoisonError::into_inner);
     book.pages.get(i).map(|p| p.soup.clone())
 }
 
 /// Returns the look of placement variant `variant`, or nothing for a shared mesh of home.
-pub fn look(variant: u8) -> Option<Look> {
+pub fn look(variant: u16) -> Option<Look> {
     let i = usize::from(variant).checked_sub(VARIANTS)?;
     let book = BOOK.read().unwrap_or_else(PoisonError::into_inner);
     book.pages.get(i).map(|p| p.look)
 }
 
 /// Returns how many triangles the look of placement variant `variant` has, 0 for one not in the book.
-pub fn tris(variant: u8) -> usize {
+pub fn tris(variant: u16) -> usize {
     soup(variant).map_or(0, |s| s.positions.len() / 3)
 }
 

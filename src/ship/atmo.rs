@@ -36,7 +36,9 @@ fn weight(planet: &PlanetSpec, pos: DVec3) -> DVec3 {
 /// hangs still and a ship under way flies the speed asked for in any air. The lift of the deep
 /// air of a giant is not in `hold.0`: the assist leaves it to float the ship back up. A ship
 /// that touches the ground or the sea with idle engines is left to settle on it, unless the
-/// stick asks to rise.
+/// stick asks to rise. A ship whose gear is on the ground with no rise asked is set down whatever
+/// the lever was: the lever is put back to idle, since a lever left up would hold the engines on
+/// and keep the ship from ever resting.
 fn engines(
     ship: &Ship,
     controls: &Controls,
@@ -171,6 +173,9 @@ pub fn step(ship: &mut Ship, controls: &Controls, land: Land, h: f64) -> Report 
     let circular = (planet.mu() / ship.pos.length()).sqrt();
     let lost = (slow(ship.rot, ship.vel, air, h) - ship.vel) / h;
     let hold = (pull + lost, grip, circular, air);
+    if ship.assist && touch.ground && controls.lift <= 0.0 {
+        ship.throttle = 0.0;
+    }
     let held = engines(ship, controls, &touch, hold, h);
     let pushed = deck::buoyed(planet, ship, held, [pull, lost, down - pull]) + touch.accel;
     let coriolis = DQuat::from_rotation_y(-2.0 * spin_rate(planet) * h);

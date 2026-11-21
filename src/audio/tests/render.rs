@@ -85,7 +85,7 @@ fn record((_, seconds, seat, (at, cues)): &Take) -> Vec<[f32; 2]> {
 }
 
 /// Writes `sound` as a stereo WAV file of 16-bit samples at the synthesiser rate.
-fn write(path: &Path, sound: &[[f32; 2]]) -> Result<()> {
+pub(super) fn write(path: &Path, sound: &[[f32; 2]]) -> Result<()> {
     let bytes = (sound.len() * 4) as u32;
     let rate = RATE as u32;
     let mut file = std::io::BufWriter::new(std::fs::File::create(path)?);

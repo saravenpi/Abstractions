@@ -12,6 +12,7 @@ mod dsp;
 mod feed;
 mod flight;
 mod hit;
+mod master;
 mod mix;
 mod music;
 mod planet;
@@ -26,6 +27,7 @@ mod steps;
 mod suit;
 #[cfg(test)]
 mod tests_speed;
+pub mod tune;
 mod wire;
 
 #[cfg(test)]

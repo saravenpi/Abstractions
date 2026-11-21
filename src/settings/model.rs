@@ -4,6 +4,7 @@ use abstractions_net::wire::MAX_PLAYERS_DEFAULT;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use super::audio::Audio;
 use super::gameplay::Gameplay;
 use super::servers::{SavedServer, default_servers};
 use super::ship_keys::ShipKeys;
@@ -215,28 +216,6 @@ impl Default for Keymap {
             pack: KeyCode::KeyI,
             mend: KeyCode::KeyU,
             ship: ShipKeys::default(),
-        }
-    }
-}
-
-/// Volume options, each from 0.0 to 1.0.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[serde(default)]
-pub struct Audio {
-    /// Global volume.
-    pub master: f32,
-    /// Music volume.
-    pub music: f32,
-    /// Sound effects volume.
-    pub effects: f32,
-}
-
-impl Default for Audio {
-    fn default() -> Self {
-        Self {
-            master: 1.0,
-            music: 0.8,
-            effects: 0.8,
         }
     }
 }

@@ -4,6 +4,7 @@
 //! `ResMut<Persistent<Settings>>` and call `persist()` to save.
 
 mod apply;
+mod audio;
 mod gameplay;
 mod lighting;
 mod model;
@@ -24,10 +25,11 @@ mod tests_ship_keys;
 #[cfg(test)]
 mod tests_view;
 
+pub use audio::{Audio, Range};
 pub use bevy_persistent::Persistent;
 pub use gameplay::{Gameplay, InterfaceSize};
 pub use lighting::{Lighting, Quality};
-pub use model::{Audio, Controls, Graphics, Keymap, Settings, WorldPrefs, render_step};
+pub use model::{Controls, Graphics, Keymap, Settings, WorldPrefs, render_step};
 pub use servers::{SavedServer, default_servers};
 pub use shadows::{ShadowDetail, ShadowReach};
 pub use ship_keys::ShipKeys;

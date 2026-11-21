@@ -6,7 +6,7 @@ use super::cue::AudioCue;
 use super::planet::code;
 use super::scene::AudioScene;
 use super::ship::feed::Deck;
-use crate::settings::Audio as Volumes;
+use crate::settings::{Audio as Volumes, Range};
 
 /// A live value read by the audio thread.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -57,10 +57,14 @@ pub enum Param {
     Rain,
     /// How much dust blows past the listener.
     Dust,
+    /// Whether the dynamic range is reduced.
+    Reduced,
+    /// Whether both ears get the same sound.
+    Mono,
 }
 
 /// Number of [`Param`] values.
-pub const PARAMS: usize = 23;
+pub const PARAMS: usize = 25;
 
 impl Param {
     /// Every parameter, in index order.
@@ -88,6 +92,8 @@ impl Param {
         Param::Class,
         Param::Rain,
         Param::Dust,
+        Param::Reduced,
+        Param::Mono,
     ];
 }
 
@@ -160,6 +166,8 @@ impl Shared {
         self.set(Param::Master, unit(volumes.master));
         self.set(Param::Music, unit(volumes.music));
         self.set(Param::Effects, unit(volumes.effects));
+        self.set(Param::Reduced, flag(volumes.range == Range::Reduced));
+        self.set(Param::Mono, flag(volumes.mono));
         self.set(Param::MusicLevel, unit(scene.music_level()));
         self.set(Param::Day, unit(scene.daylight));
         self.set(Param::Submerged, unit(scene.submerged));

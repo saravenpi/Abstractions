@@ -74,7 +74,8 @@ fn on_grid(value: Val) -> bool {
 }
 
 /// Every padding, margin and gap is on the spacing scale, every position and size on the 4
-/// pixel grid, and no node has a border, a rounded corner, an outline or a shadow.
+/// pixel grid, and no node has a border, a rounded corner, an outline or a shadow: a page keeps
+/// its panel, and the HUD shadow is for the in-game HUD alone.
 #[test]
 fn every_node_is_on_the_scale_and_plain() {
     each_page("scale", |world, found, menu| {

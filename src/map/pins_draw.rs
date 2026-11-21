@@ -38,6 +38,7 @@ pub fn shape(kind: MarkerKind) -> (Icon, &'static str) {
         MarkerKind::Home => (Icon::Home, "Home"),
         MarkerKind::Ship => (Icon::ShipParked, "Ship"),
         MarkerKind::Herd => (Icon::Animal, "Herd"),
+        MarkerKind::Tool => (Icon::Pack, "Tool"),
         MarkerKind::Course => (Icon::Go, "Course"),
     }
 }

@@ -36,11 +36,6 @@ impl Embedding {
         self.frame
     }
 
-    /// Returns the chart position of the middle of the chunk.
-    pub fn center(&self) -> Vec2 {
-        self.center
-    }
-
     /// Returns the chunk frame position of chunk space point `p`.
     pub fn point(&self, p: Vec3) -> Vec3 {
         let at = self.center + Vec2::new(p.x, p.z);

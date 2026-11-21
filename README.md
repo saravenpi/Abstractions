@@ -25,9 +25,10 @@ On foot:
 | N | Minimap range, then off |
 | B | Drop a pin where you stand, or remove the pin within 10 m. On the map, a pin under the pointer. You keep up to eight |
 | K | Field guide: the species of the planet underfoot |
-| I | Pack: what you carry. The robot wakes with a stone spear in slot 1 and a stone knife in slot 2. Tab opens the workshop, where you make a tool for an intent |
+| I | Pack: what you carry. The robot wakes with a stone spear in slot 1 and a stone knife in slot 2, empty-handed. Tab opens the workshop, where you make a tool for an intent |
 | 1 to 6 | Hold the tool in that hotbar slot; the key of the held slot stows or draws it |
-| Left mouse, right mouse | Swing or throw the held tool, guard |
+| Left mouse, right mouse | Swing the held tool or stab with a spear, guard |
+| T held | Draw the spear in hand back; let go to throw it. A thrown spear is marked on the compass, the map and over the world until you pick it up |
 | H | Break a piece off the rock you look at |
 | U | Patch the worst hurt part of the robot with what you carry. Near the base every part mends itself |
 | F | Board the ship. Cut a part off the carcass you look at, or pull out a stuck spear |
@@ -44,7 +45,8 @@ In the ship:
 | Q E | Turn left, turn right |
 | Shift, Ctrl | Throttle up, throttle down. Shift held at full throttle boosts. Ctrl held at idle brakes in space |
 | Space, C | Vertical thrusters up and down |
-| Mouse | Look around. The view comes back to the nose by itself |
+| Mouse | Look around. With "Camera auto-follow" on, the view comes back to the nose by itself; off, it stays where you leave it |
+| R | Bring the view back to the nose |
 | X | Cut the throttle |
 | Z | Flight assist on or off |
 | J | Warp drive, away from a planet's gravity |
@@ -216,7 +218,7 @@ A missing or broken file is replaced by the defaults.
 - `src/life`, `src/fauna`: whether a planet lives, its species and food web, and the herds, hunts and calls drawn around you.
 - `src/craft`, `src/condition`: the pack, tools and the workshop, and the health of each part of the robot.
 - `src/space`: frames of reference, the floating origin and the clock.
-- `src/world`: planets as spheres, terrain, chunk streaming, plants, structures and sea.
+- `src/world`: planets as spheres, terrain, chunk streaming, plants and sea.
 - `src/home`: the base on the home planet.
 - `src/player`, `src/avatar`, `src/gear`, `src/view`: movement, the robot body, the wingsuit and boots, the camera.
 - `src/ship`, `src/computer`: the ship, its autopilot, its course and the charts.

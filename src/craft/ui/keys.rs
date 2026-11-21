@@ -98,7 +98,8 @@ pub(super) fn step(
     }
 }
 
-/// Holds, slots or drops the selected entry of the pack.
+/// Holds or slots the selected tool of the pack, or drops the selected material. A tool is never
+/// dropped: it would be gone for good.
 fn pack_keys(keys: &ButtonInput<KeyCode>, pack: &mut Pack, here: &Here, bench: &mut Bench) {
     let all = arranged(bench, pack, here);
     let Some(line) = all.get(bench.window.cursor) else {
@@ -108,10 +109,6 @@ fn pack_keys(keys: &ButtonInput<KeyCode>, pack: &mut Pack, here: &Here, bench: &
         What::Item(id) if keys.just_pressed(KeyCode::Enter) => {
             let slot = pack.bar.held;
             pack.bar.put(slot, id);
-        }
-        What::Item(id) if keys.just_pressed(KeyCode::KeyX) => {
-            pack.bar.forget(id);
-            pack.items.retain(|item| item.id != id);
         }
         What::Item(id) => {
             if let Some(slot) = pressed(keys) {

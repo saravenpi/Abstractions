@@ -62,12 +62,14 @@ impl Strike {
     }
 }
 
-/// What the buttons ask this frame.
+/// What the buttons and the throw key ask this frame.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Ask {
-    /// The primary button went down.
+    /// The primary button went down: a swing, or a stab with a spear.
     pub strike: bool,
-    /// The primary button is held.
+    /// The throw key went down: a spear in hand starts its draw.
+    pub throw: bool,
+    /// The throw key is held: the draw goes on, and its release throws.
     pub holding: bool,
     /// The secondary button is held.
     pub guard: bool,
@@ -106,13 +108,13 @@ impl Timing {
     }
 }
 
-/// Returns the act that follows a ready body asked `ask`: a guard, a draw for a thrown tool, else a
-/// wind-up.
+/// Returns the act that follows a ready body asked `ask`: a guard, a draw when the throw key goes
+/// down on a tool made to be thrown, else a wind-up on a click, a spear stabbing.
 fn ready(ask: &Ask, thrown: bool) -> Act {
-    match (ask.guard, ask.strike, thrown) {
+    match (ask.guard, ask.throw && thrown, ask.strike) {
         (true, _, _) => Act::Guard(0.0),
-        (false, true, true) => Act::Draw(0.0),
-        (false, true, false) => Act::Windup(0.0),
+        (false, true, _) => Act::Draw(0.0),
+        (false, false, true) => Act::Windup(0.0),
         _ => Act::Ready,
     }
 }
@@ -143,7 +145,7 @@ pub fn next(act: Act, ask: &Ask, timing: &Timing, thrown: bool, dt: f32) -> (Act
 }
 
 /// Returns the act of a spear drawn for `t` seconds under `ask`: cancelled by the guard, thrown on
-/// release when drawn far enough.
+/// release of the throw key when drawn far enough.
 fn draw(t: f32, ask: &Ask, dt: f32) -> (Act, Option<f32>) {
     let share = (t / DRAW).min(1.0);
     match (ask.guard, ask.holding) {

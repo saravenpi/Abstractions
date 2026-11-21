@@ -3,7 +3,8 @@
 use std::time::Duration;
 
 use avian3d::prelude::*;
-use bevy::input::InputPlugin;
+use bevy::input::keyboard::{Key, KeyboardInput, NativeKey};
+use bevy::input::{ButtonState, InputPlugin};
 use bevy::prelude::*;
 use bevy::state::app::StatesPlugin;
 use bevy::time::TimeUpdateStrategy;
@@ -15,7 +16,7 @@ use crate::player::Player;
 use crate::render::GameCamera;
 use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
-use crate::view::{BodyFade, CameraPose, Cut, Enabled, Heading, Target, ViewPrefs};
+use crate::view::{BodyFade, CameraPose, Cut, Enabled, Heading, Kind, Target, ViewPrefs};
 
 /// Returns default settings stored in a scratch file of their own.
 fn settings() -> Persistent<Settings> {
@@ -117,4 +118,39 @@ fn systems_drive_the_game_camera() {
     app.update();
     assert_eq!(*app.world().resource::<Heading>(), heading);
     assert_eq!(app.world().resource::<ViewPrefs>().zoom, 1.0);
+}
+
+/// In the ship with auto-follow off, a press of the recentre key of the settings reaches the rig
+/// and brings the look back to the nose on that frame.
+#[test]
+fn the_recentre_key_reaches_the_rig() {
+    let (mut app, _) = game();
+    app.insert_resource(Enabled(true));
+    app.world_mut().resource_mut::<ViewPrefs>().auto_follow = false;
+    let mut target = app.world_mut().resource_mut::<Target>();
+    (target.kind, target.radius) = (Kind::Ship, 4.5);
+    play(&mut app, 5);
+    let heading = Some(Heading {
+        yaw: 1.0,
+        pitch: -0.2,
+    });
+    app.world_mut().write_message(Cut { heading });
+    play(&mut app, 10);
+    assert_eq!(app.world().resource::<Heading>().yaw, 1.0);
+    let key_code = app
+        .world()
+        .resource::<Persistent<Settings>>()
+        .controls
+        .keys
+        .recentre;
+    app.world_mut().write_message(KeyboardInput {
+        key_code,
+        logical_key: Key::Unidentified(NativeKey::Unidentified),
+        state: ButtonState::Pressed,
+        text: None,
+        repeat: false,
+        window: Entity::PLACEHOLDER,
+    });
+    app.update();
+    assert_eq!(*app.world().resource::<Heading>(), Heading::default());
 }

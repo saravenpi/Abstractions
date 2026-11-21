@@ -62,7 +62,7 @@ impl Watch {
             course: course(drift, up),
             camera,
             view,
-            sights: [None; 3],
+            sights: [None; 2],
         }
     }
 

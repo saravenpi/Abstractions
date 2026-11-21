@@ -99,7 +99,7 @@ fn desert_and_ice_grow_their_own_sparse_plants() {
     }
 }
 
-/// A dry world of any class has no sea life, no wreck, no shore prop and no pond plant, on chunks that
+/// A dry world of any class has no sea life, no shore prop and no pond plant, on chunks that
 /// are coast and sea at home.
 #[test]
 fn a_dry_world_has_no_sea_life() {

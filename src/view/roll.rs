@@ -4,7 +4,8 @@
 //! its own roof through every turn of the view, so the view passing straight up over the top of a
 //! loop, where its heading turns a half turn at once, does not swing the camera. Only the roll the
 //! body itself makes is eased. A third person view only leans with the body; the first person
-//! view rolls all the way, and the mouse is read on the rolled screen, see [`on_screen`].
+//! view rolls all the way, and the mouse is read on the rolled screen, the right way round for a
+//! view on its back too, see [`on_screen`].
 
 use std::f32::consts::{PI, TAU};
 
@@ -64,10 +65,16 @@ fn roof(look: Quat, up: Vec3) -> Option<f32> {
 }
 
 /// Returns the mouse turn `asked`, a turn to the left and one upward as read on the screen, as
-/// the turn of a view that is not rolled, for a camera rolled by `roll`. Moved toward the right
-/// edge of a screen rolled a quarter turn, the mouse turns the view down toward that edge.
-pub fn on_screen(asked: Vec2, roll: f32) -> Vec2 {
+/// the turn of the heading and the pitch of a view pitched by `pitch`, for a camera rolled by
+/// `roll`. Moved toward the right edge of a screen rolled a quarter turn, the mouse turns the
+/// view down toward that edge.
+///
+/// The heading turns round the up of the target and the screen stands along the roof of the
+/// view. A view pitched past the vertical is on its back, its roof against that up, so there
+/// the heading turns the other way to move the picture the same way.
+pub fn on_screen(asked: Vec2, roll: f32, pitch: f32) -> Vec2 {
     let (right, up) = (-asked.x, asked.y);
     let (sin, cos) = roll.sin_cos();
-    Vec2::new(-(right * cos + up * sin), up * cos - right * sin)
+    let roofed = pitch.cos().signum();
+    Vec2::new(-(right * cos + up * sin) * roofed, up * cos - right * sin)
 }

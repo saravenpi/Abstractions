@@ -11,7 +11,7 @@ use super::aero::{best_aoa, bite, lift_slope};
 use super::command::{course, safe};
 use super::input::GearInput;
 use super::mode::Mode;
-use super::path::{bounded, climb, path_offset};
+use super::path::{bounded, climb, path_offset, sighted};
 use super::roll::{facing, roll, sense};
 use super::state::FlightState;
 use super::tune::{
@@ -73,8 +73,7 @@ pub(super) fn asked(state: &FlightState, input: &GearInput) -> Vec2 {
         return Vec2::new(course(state, input), state.servo.climb);
     }
     let level = look_yaw(input.look, state.servo.yaw);
-    input
-        .aim
+    sighted(state, input)
         .unwrap_or_else(|| Vec2::new(level, input.look.normalize_or_zero().y.asin()))
 }
 

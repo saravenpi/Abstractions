@@ -14,7 +14,8 @@
 //!
 //! On the wings the keys ask for rates in the frame of the body, not an attitude (see
 //! `command`): the roll keys roll it on round its nose, the pitch keys pull toward its back or
-//! push toward its belly as hard as the wing may, and the yaw keys turn the path flat. Held,
+//! push toward its belly as hard as the wing may, and the yaw keys turn the path round its
+//! back, flat with the wings level. Held,
 //! they roll the body over and loop it when it has the speed for it. Let go, the wings come
 //! level on the best glide. The view steers inside fixed attitude limits while the steer
 //! button is held. Folded, the body faces the view on foot and its flight path in a fall.

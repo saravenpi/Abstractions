@@ -13,6 +13,8 @@ mod measure;
 mod pilot;
 mod rate;
 mod rolls;
+mod sense;
+mod sighted;
 mod spread;
 mod stall;
 mod transitions;

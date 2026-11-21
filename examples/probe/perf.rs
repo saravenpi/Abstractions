@@ -25,7 +25,7 @@ fn watch(world: &mut World, phase: &str, frame: u32) -> Act {
     }
     note_frame(world);
     if frame.is_multiple_of(EVERY) {
-        log_perf(world, phase, frame);
+        log_perf(world, phase, (frame, frame >= LENGTH));
     }
     match frame >= LENGTH {
         true => Act::Shoot(format!("perf-{phase}")),

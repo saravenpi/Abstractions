@@ -121,8 +121,35 @@ fn passes(store: &DiagnosticsStore, field: &str, top: usize) -> String {
     )
 }
 
-/// Logs the counts of `phase` at `frame` and starts the next window.
-pub fn log_perf(world: &mut World, phase: &str, frame: u32) {
+/// Returns the most coarse triangles in view and the most interface writes per 30 frames that
+/// `phase` may show: the far terrain under 250,000 triangles on the ground and 150,000 in orbit,
+/// and next to no writes while the player stands or hovers still.
+fn limits(phase: &str) -> (usize, Option<usize>) {
+    match phase {
+        "orbit" => (150_000, Some(30)),
+        "base" => (250_000, Some(30)),
+        _ => (250_000, None),
+    }
+}
+
+/// Logs whether `phase` met its [`limits`] with `coarse` triangles in view and `writes` of
+/// texts and nodes in the last 30 frames.
+fn check(phase: &str, coarse: usize, writes: (usize, usize)) {
+    let (most, still) = limits(phase);
+    let terrain = ["FAIL", "PASS"][usize::from(coarse <= most)];
+    let quiet = still.map_or("PASS", |still| {
+        ["FAIL", "PASS"][usize::from(writes.0 + writes.1 <= still)]
+    });
+    info!(
+        "PROBE perf {phase} check: coarse {coarse} triangles of at most {most}: {terrain}; ui {} text and {} node writes \
+         of at most {still:?}: {quiet}",
+        writes.0, writes.1
+    );
+}
+
+/// Logs the counts of `phase` at `frame` and starts the next window. On the `last` line of the
+/// phase it also logs whether the counts meet [`limits`].
+pub fn log_perf(world: &mut World, phase: &str, (frame, last): (u32, bool)) {
     let perf = std::mem::take(&mut world.resource_mut::<Perf>().frames);
     let mean = perf.iter().sum::<f32>() / perf.len().max(1) as f32;
     let max = perf.iter().copied().fold(0.0, f32::max);
@@ -161,6 +188,9 @@ pub fn log_perf(world: &mut World, phase: &str, frame: u32) {
         grass.count,
         grass.triangles,
     );
+    if last {
+        check(phase, coarse.triangles, (written, moved));
+    }
     if let Some(store) = world.get_resource::<DiagnosticsStore>() {
         info!(
             "PROBE perf {phase} f{frame} passes: cpu ms {}; gpu ms {}; vertices {}; primitives {}; fragments {}",

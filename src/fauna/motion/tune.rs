@@ -6,6 +6,16 @@ use crate::life::body::Body;
 /// Mass of one cubic metre of body, in kilograms, times the share of its box an ellipsoid fills.
 const DENSITY: f32 = 1000.0 * std::f32::consts::FRAC_PI_6;
 
+/// Share of its rest distance a neck drawn back a full radian brings its tip nearer its root.
+pub const DRAW_IN: f32 = 0.35;
+
+/// Distance a neck thrown out all the way reaches for, in lengths of the neck: past its reach, so it
+/// straightens.
+pub const THROW: f32 = 1.2;
+
+/// Drop of the way a neck is thrown out, in metres per metre ahead: a little down, toward the target.
+pub const THROW_DIP: f32 = 0.25;
+
 /// How a species moves, from its mass.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Tune {

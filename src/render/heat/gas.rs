@@ -69,6 +69,30 @@ fn black_body(heat: f32) -> Vec3 {
     }
 }
 
+/// Second radiation constant of Planck's law, `h c / k`, in metre kelvin.
+const PLANCK_C2: f64 = 1.438_777e-2;
+
+/// Wavelengths in metres the red, green and blue of the screen stand for.
+const PRIMARIES: [f64; 3] = [610.0e-9, 550.0e-9, 465.0e-9];
+
+/// Returns the linear colour of a hot surface at `kelvin`, brightest channel 1: the radiance of
+/// Planck's law at the wavelengths of [`PRIMARIES`], dull red at 1,200 K, orange at 2,500 K and
+/// near white past 6,000 K. Nothing below 300 K.
+pub fn incandescence(kelvin: f32) -> Vec3 {
+    if kelvin < 300.0 {
+        return Vec3::ZERO;
+    }
+    let radiance =
+        |wave: f64| 1.0 / (wave.powi(5) * ((PLANCK_C2 / (wave * f64::from(kelvin))).exp() - 1.0));
+    let [red, green, blue] = PRIMARIES.map(radiance);
+    let top = red.max(green).max(blue);
+    Vec3::new(
+        (red / top) as f32,
+        (green / top) as f32,
+        (blue / top) as f32,
+    )
+}
+
 impl LocalSystem {
     /// Returns the gas of the air under the camera of `vantage`, [`Gas::Unknown`] outside a world.
     ///

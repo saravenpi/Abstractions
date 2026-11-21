@@ -108,7 +108,7 @@ pub struct Shared {
     /// Seed of the planet whose piece plays.
     seed: AtomicU64,
     /// Ring of encoded cues, 0 meaning empty.
-    cues: [AtomicU32; QUEUE],
+    cues: [AtomicU64; QUEUE],
     /// Slots written so far.
     head: AtomicUsize,
     /// Slots read so far.
@@ -123,7 +123,7 @@ impl Default for Shared {
         let shared = Self {
             params: std::array::from_fn(|_| AtomicU32::new(0)),
             seed: AtomicU64::new(0),
-            cues: std::array::from_fn(|_| AtomicU32::new(0)),
+            cues: std::array::from_fn(|_| AtomicU64::new(0)),
             head: AtomicUsize::new(0),
             tail: AtomicUsize::new(0),
             hulls: Deck::default(),

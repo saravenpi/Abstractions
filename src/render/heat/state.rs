@@ -1,9 +1,11 @@
 //! The heat of the craft of the player as the rest of the game reads it: written by the ship and
-//! the gear, eased here, read by the view, the sheath, the shake and the roar.
+//! the gear, eased here, read by the sheath, the hull light, the cabin, the shake and the roar.
 
 use bevy::prelude::*;
 
 use super::Glow;
+use super::sheath::SheathUniform;
+use super::tune::SHEATH_BOUND;
 
 /// Where the glowing craft is, in render space.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -14,6 +16,29 @@ pub struct Craft {
     pub heading: Vec3,
     /// Radius in metres of the sphere that holds the craft.
     pub radius: f32,
+    /// Unit vector out of its roof, which sets where its wings lie across the flight.
+    pub roof: Vec3,
+}
+
+impl Craft {
+    /// Returns the pose of the unit sphere that holds the sheath of this craft: centred behind
+    /// it along its flight, from just ahead of the bow shock to the end of the wake.
+    pub fn bound(&self) -> Transform {
+        let (back, size) = SHEATH_BOUND;
+        Transform::from_translation(self.centre - self.heading * (back * self.radius))
+            .with_scale(Vec3::splat(size * self.radius))
+    }
+
+    /// Returns the values the shader draws this craft with when it glows with `glow`.
+    pub fn sheath(&self, glow: &Glow) -> SheathUniform {
+        SheathUniform {
+            centre: self.centre.extend(self.radius),
+            axis: self.heading.extend(0.0),
+            roof: self.roof.extend(0.0),
+            glow: glow.color.extend(glow.heat),
+            skin: glow.skin.extend(glow.pressure),
+        }
+    }
 }
 
 /// The glow of the craft of the player, zero while nothing flies fast in thick air.

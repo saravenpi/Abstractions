@@ -31,16 +31,17 @@ const LEAST_DARK: f32 = 0.001;
 const BEAM: f32 = 1.5;
 const BEAM_LEAST: f32 = 0.08;
 const BEAM_MOST: f32 = 3.0;
-const GLARE_OUT: f32 = 0.94;
-const GLARE_IN: f32 = 0.996;
-const GLARE_SKY: f32 = 3.0;
-const BAND_FULL: f32 = 0.004;
-const BAND_GONE: f32 = 0.03;
+const LUMA: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
+const GLOW_PEAK: f32 = 40.0;
+const GLOW_CORE: f32 = 0.01;
 
-fn unglared(v: vec3<f32>) -> f32 {
-    let toward = clamp((dot(v, sky.sun.xyz) - GLARE_OUT) / (GLARE_IN - GLARE_OUT), 0.0, 1.0);
-    let glare = GLARE_SKY * clamp(sky.galaxy.z, 0.0, 1.0) * toward * toward;
-    return 1.0 - smoothstep(BAND_FULL, BAND_GONE, glare);
+fn halo(v: vec3<f32>) -> f32 {
+    let spread = max(2.0 * (1.0 - dot(v, sky.sun.xyz)), 0.0) / (GLOW_CORE * GLOW_CORE);
+    return GLOW_PEAK * max(sky.galaxy.z, 0.0) / pow(1.0 + spread, 1.5);
+}
+
+fn outshone(light: f32, glow: f32) -> f32 {
+    return clamp(1.0 - max(glow, 0.0) / max(light, 0.000001), 0.0, 1.0);
 }
 
 fn galaxy_light(v: vec3<f32>) -> vec3<f32> {
@@ -73,7 +74,10 @@ fn fragment(in: VertexOutput) -> SkyOut {
 
     var col = mix(sky.horizon.rgb, sky.zenith.rgb, pow(clamp(height, 0.0, 1.0), 0.5));
     col = col + sky.rim.rgb * exp(-abs(over_limb) * RIM_SHARPNESS);
-    col = col + warped_band(v) * (above_horizon * unglared(v));
+    let glare = halo(v);
+    let band = warped_band(v) * above_horizon;
+    col = col + band * outshone(dot(band, LUMA), glare);
+    col = col + sky.glow.rgb * (glare / max(dot(sky.glow.rgb, LUMA), 0.0001));
 
     let sun_visible = sky.sun.w * above_horizon;
     let sun_col = sky.glow.rgb;

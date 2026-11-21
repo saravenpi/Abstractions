@@ -4,7 +4,6 @@ pub(super) mod calls;
 mod chirps;
 mod hits;
 pub(super) mod sounds;
-mod steps;
 pub(super) mod voice;
 
 use voice::Voice;

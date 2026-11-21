@@ -1,12 +1,10 @@
 //! Every cue renders a short, clean, audible sound, and the queue to the audio thread holds.
 
 use super::{CLICK, RATE, frames, listen, mixer};
-use crate::audio::cue::{AudioCue, ChirpKind, StepSurface};
+use crate::audio::cue::{AudioCue, ChirpKind};
 use crate::audio::cues::Pool;
 use crate::audio::scene::AudioScene;
 use crate::audio::shared::Shared;
-use crate::audio::steps::step_surface;
-use crate::world::Surface;
 
 /// A scene with no music and no ambience, so that only cues sound.
 fn quiet() -> AudioScene {
@@ -77,17 +75,7 @@ fn cues_round_trip() {
         assert_eq!(shared.pop(), Some(*cue));
     }
     assert_eq!(shared.pop(), None);
-    assert_eq!(AudioCue::all().count(), 20);
+    assert_eq!(AudioCue::all().count(), 16);
     assert!(cues.contains(&AudioCue::Switch));
     assert!(cues.contains(&AudioCue::Chirp(ChirpKind::Sleepy)));
-}
-
-/// Ground covers map to footstep sounds, and sea floors to none.
-#[test]
-fn surfaces_map_to_steps() {
-    assert_eq!(step_surface(Surface::Sand), Some(StepSurface::Sand));
-    assert_eq!(step_surface(Surface::Grass), Some(StepSurface::Grass));
-    assert_eq!(step_surface(Surface::Rock), Some(StepSurface::Rock));
-    assert_eq!(step_surface(Surface::Snow), Some(StepSurface::Snow));
-    assert_eq!(step_surface(Surface::Water), None);
 }

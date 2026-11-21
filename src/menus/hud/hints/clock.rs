@@ -17,7 +17,7 @@ pub struct Clock {
     /// Seconds on the ground, on foot or seated.
     pub afoot: f32,
     /// Seconds each hint has been on the line this session, in all, by the rank of its bit.
-    pub shown: [f32; 4],
+    pub shown: [f32; 5],
     /// Bits of the hints given up for this session.
     pub hushed: u8,
 }

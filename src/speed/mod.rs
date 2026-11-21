@@ -20,4 +20,4 @@ mod tests_air;
 mod tests_cues;
 
 pub use air::{dynamic_pressure, mach, sound_speed, temperature_at};
-pub use cues::{buffet, condensation, cone, moisture, vortex};
+pub use cues::{buffet, condensation, cone, contrail, moisture, persistence, saturation, vortex};

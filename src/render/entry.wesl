@@ -3,7 +3,6 @@ import bevy_pbr::render::mesh_view_bindings::view;
 
 struct Fx {
     heading: vec4<f32>,
-    glow: vec4<f32>,
     core: vec4<f32>,
     wisp: vec4<f32>,
     params: vec4<f32>,
@@ -13,7 +12,6 @@ struct Fx {
 
 const TAU: f32 = 6.2831853;
 const WISP_LANES: f32 = 22.0;
-const PLASMA_LANES: f32 = 34.0;
 const CORE_TIGHT: f32 = 60.0;
 const CORE_WIDE: f32 = 5.0;
 const FLASH_WIDE: f32 = 1.5;
@@ -40,7 +38,6 @@ fn lanes(turn: f32, along: f32, count: f32, width: f32, travel: f32) -> f32 {
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let v = normalize(in.world_position.xyz - view.world_position);
-    let forward = -normalize(view.world_from_view[2].xyz);
     let axis = fx.heading.xyz;
     let time = fx.params.x;
 
@@ -55,19 +52,11 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let wisps = lanes(turn, along, WISP_LANES, 0.5, time * fx.params.z) * open;
 
-    let edge = smoothstep(0.42, 0.95, 1.0 - dot(v, forward));
-    let flicker = 0.8 + 0.2 * hash11(floor(turn * 40.0) + floor(time * 12.0) * 57.0);
-    let heat = edge * flicker;
-
     let off = 1.0 - along;
     let ahead = 0.6 * exp(-off * CORE_TIGHT) + 0.4 * exp(-off * CORE_WIDE);
     let flash = fx.params.y * exp(-off * FLASH_WIDE);
 
-    let plasma = lanes(turn, along, PLASMA_LANES, 0.3, time * fx.params.z * 3.0) * open;
-    let streaming = fx.glow.w * smoothstep(0.15, 0.7, fx.glow.w);
-
-    var col = fx.glow.rgb * (fx.glow.w * heat + streaming * plasma);
-    col = col + fx.core.rgb * (fx.core.w * ahead + flash);
+    var col = fx.core.rgb * (fx.core.w * ahead + flash);
     col = col + fx.wisp.rgb * (fx.wisp.w * wisps);
     return vec4<f32>(col, 0.0);
 }

@@ -62,7 +62,7 @@ pub fn pulse(m: &mut Motion, body: &Body, drive: &Drive, ground: &dyn Fn(Vec2) -
 pub fn swim(m: &mut Motion, body: &Body, drive: &Drive, ground: &dyn Fn(Vec2) -> f32, dt: f32) {
     let length = body.length.max(0.1);
     let vel = travel(m, drive, false, dt);
-    m.root.at = above(m.root.at, ground, 0.3 * body.height.max(0.05));
+    m.root.at = above(m.root.at, ground, 0.6 * body.height.max(0.05));
     let speed = vel.length();
     m.beat.cycle = (m.beat.cycle + (0.5 + 1.4 * speed / length) * dt).rem_euclid(1.0);
     let pitch = vel.y.atan2(vel.with_y(0.0).length()).clamp(-0.8, 0.8) * ramp(0.05, 0.3, speed);

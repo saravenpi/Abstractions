@@ -72,7 +72,12 @@ impl Game {
         }
     }
 
-    /// Returns true when a collider of the world lies within 30 m under render position `at`.
+    /// Metres above a point the probe for the ground starts, and metres it reaches down from there: hills and
+    /// valleys of 60 m around the point still show their ground, where a short probe starts inside a rise or
+    /// ends above a drop.
+    const PROBE: (f32, f32) = (60.0, 160.0);
+
+    /// Returns true when a collider of the world lies within [`PROBE`] of the height of render position `at`.
     pub fn has_ground(&mut self, at: Vec3) -> bool {
         let anchor = self.get::<Anchor>();
         let up = crate::space::up(&anchor, at);
@@ -80,7 +85,7 @@ impl Game {
             let filter = SpatialQueryFilter::from_excluded_entities(ships.iter());
             let down = Dir3::new(-up).expect("a vertical");
             query
-                .cast_ray(at + up * 10.0, down, 40.0, true, &filter)
+                .cast_ray(at + up * PROBE.0, down, PROBE.1, true, &filter)
                 .is_some()
         };
         let found = self.app.world_mut().run_system_once(probe);

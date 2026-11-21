@@ -21,10 +21,14 @@ mod keys;
 mod keys_tests;
 mod list;
 pub mod motion;
+mod page;
 #[cfg(test)]
 mod rules_tests;
 mod scroll;
+mod section;
+pub mod sign;
 mod sound;
+mod state;
 mod style;
 mod table;
 #[cfg(test)]
@@ -38,7 +42,7 @@ mod widgets;
 
 pub use backdrop::{Backdrop, Blurred, backdrop_luminance, contrast, warm_up};
 pub use camera::{MIN_WIDTH, WorldView, ui_scale, ui_scale_for};
-pub use chrome::{action, heading, notice, strip};
+pub use chrome::{action, back, heading, notice, strip};
 pub use focus::move_focus;
 pub use icon::{ICON_FONT, ICONS_VERSION, Icon, icon, icon_sized, icon_slot};
 pub use item::{entry, frame, item, item_with, label, link, step_button};
@@ -46,8 +50,16 @@ pub use keys::{
     HINT_GAP, HintLabel, KEY_GAP, KeyName, Legend, footer, hints, key_cap, key_hint, legend,
 };
 pub use list::Window;
+pub use page::{
+    PAGE_FOOT, PAGE_HEAD, Page, Zone, page, page_body, page_foot, page_frame, page_head,
+    page_status, page_title,
+};
 pub use scroll::{BAR, BAR_GAP, ScrollArea, Scroller, Thumb, scroll_area, scroller, thumb};
+pub use section::{
+    Section, SectionTitle, Sections, groups, rows, section, section_title, sections,
+};
 pub use sound::Cancels;
+pub use state::{EmptyState, NoticeRow, empty_state, notice_row};
 pub use style::{Filled, Look, Selected, Tone};
 pub use table::{cell, head, row_with, table_head, table_row, value_cell};
 pub use tooltip::Tip;

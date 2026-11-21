@@ -23,7 +23,7 @@ use crate::ui::Window;
 use ops::SortBy;
 
 /// Number of world rows drawn at once. A longer list scrolls through them.
-const VISIBLE_ROWS: usize = 6;
+const VISIBLE_ROWS: usize = 5;
 
 /// One saved world with what the table shows besides the save itself.
 #[derive(Debug, Clone, PartialEq)]

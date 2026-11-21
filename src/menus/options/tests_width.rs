@@ -6,6 +6,7 @@ use super::binds::Bind;
 use super::field::{Field, step};
 use super::format::{KEY_CHARS, display, key_name};
 use super::reference::ACTION_CHARS;
+use super::view::ROWS;
 use crate::settings::Settings;
 use crate::ui::theme;
 
@@ -61,6 +62,9 @@ const LONG_KEYS: [KeyCode; 12] = [
     KeyCode::ScrollLock,
 ];
 
+/// The longest name a settings row shows.
+const LONGEST: &str = "Markers over the world";
+
 /// The names planned for the render distance steps, which the column must also hold.
 const PLANNED: [&str; 5] = ["Low", "Medium", "High", "Ultra", "Extreme"];
 
@@ -94,21 +98,26 @@ fn every_value_fits_the_value_column() {
 }
 
 /// The value column is wide enough for its character budget in body text, and a settings row
-/// with the longest name still fits the page at the smallest supported window.
+/// with the longest name still fits the page: its icon, its name and its value zone, inside the
+/// padding of the row.
 #[test]
-fn the_value_column_holds_its_budget_at_the_smallest_window() {
+fn the_value_column_holds_its_budget_and_the_longest_row_fits() {
     let glyph = theme::GLYPH_ASPECT * theme::FONT_BODY;
     assert!(theme::VALUE_CHARS as f32 * glyph <= theme::VALUE_WIDTH);
-    let stepper = theme::VALUE_WIDTH + 2.0 * (theme::GAP_L + theme::GAP_XS);
-    let name = "Camera auto-follow".len() as f32 * glyph;
-    let page = theme::MENU_WIDTH * 2.0;
-    assert!(name + theme::GAP_M + stepper + 2.0 * theme::GAP_S <= page);
-    let sidebar = theme::MENU_WIDTH * 0.6 + theme::GAP_XL;
-    let panel = 2.0 * (theme::GAP_M + theme::LINE);
-    assert!(
-        sidebar + page + panel <= 960.0 * 0.9,
-        "the menu fits a 960 pixel window"
-    );
+    assert_eq!(theme::VALUE_CLUSTER, theme::span(3) + theme::S3);
+    let name = theme::ICON + theme::ICON_GAP + LONGEST.len() as f32 * glyph;
+    let row = name + theme::S3 + theme::VALUE_CLUSTER + 2.0 * theme::INSET;
+    assert!(row <= theme::span(ROWS), "{row}");
+}
+
+/// A line of the reference fits the page too: an action, then a key of the widest name.
+#[test]
+fn a_reference_line_fits_the_page() {
+    let glyph = theme::GLYPH_ASPECT * theme::FONT_SMALL;
+    assert!(KEY_CHARS as f32 * glyph <= theme::VALUE_CLUSTER);
+    let action = theme::ICON + theme::ICON_GAP + ACTION_CHARS as f32 * glyph;
+    let line = action + theme::S3 + theme::VALUE_CLUSTER + 2.0 * theme::INSET;
+    assert!(line <= theme::span(ROWS), "{line}");
 }
 
 /// Every action of the controls reference stays on one line.

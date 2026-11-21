@@ -18,7 +18,7 @@ use crate::ui::{
 const WIDTHS: [f32; 2] = [420.0, 150.0];
 
 /// Width of the list and the form.
-const WIDTH: f32 = theme::ICON + WIDTHS[0] + WIDTHS[1] + theme::GAP_M * 3.0;
+const WIDTH: f32 = theme::ICON + WIDTHS[0] + WIDTHS[1] + 2.0 * (theme::GUTTER + theme::INSET);
 
 /// Height of one server row in pixels: a name with the address under it.
 const ROW: f32 = 44.0;

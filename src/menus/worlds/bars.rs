@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use super::Mode;
 use super::act::Act;
 use crate::menus::{Menu, Nav};
-use crate::ui::{Cancels, Icon, Selected, Tone, action, column, strip};
+use crate::ui::{Icon, Selected, Tone, action, column, strip};
 
 /// A bar of actions, shown in one mode only.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -36,10 +36,9 @@ impl Bar {
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct Choice(pub bool);
 
-/// The actions on the selected world, creating a world and going back.
+/// The actions on the selected world and creating a world. Going back is in the footer.
 fn browse() -> impl Bundle {
-    let new_world = action(Icon::Plus, "New world", "N", Tone::Plain);
-    let back = action(Icon::Back, "Back", "Esc", Tone::Muted);
+    let new_world = action(Icon::Plus, "New", "N", Tone::Plain);
     (
         Bar::Browse,
         strip(),
@@ -49,17 +48,13 @@ fn browse() -> impl Bundle {
                 action(Icon::Pencil, "Rename", "R", Tone::Plain),
                 Act::Rename
             ),
-            (
-                action(Icon::Copy, "Duplicate", "C", Tone::Plain),
-                Act::Duplicate
-            ),
+            (action(Icon::Copy, "Copy", "C", Tone::Plain), Act::Duplicate),
             (
                 action(Icon::Trash, "Delete", "Del", Tone::Danger),
                 Act::Delete
             ),
             (action(Icon::Sort, "Sort", "T", Tone::Plain), Act::Sort),
             (new_world, Nav::To(Menu::NewGame)),
-            (back, Nav::Back, Cancels),
         ],
     )
 }

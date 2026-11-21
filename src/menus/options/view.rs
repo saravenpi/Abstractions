@@ -10,24 +10,26 @@ use super::format::display;
 use super::pages::{self, Page, display_for};
 use super::rebind::Rebinding;
 use super::rows::Value;
-use super::{SettingsTab, Tab, fit, hint, reference};
+use super::{SettingsTab, Tab, hint, reference};
 use crate::menus::{Menu, Nav};
 use crate::settings::{Persistent, Settings};
 use crate::ui::{
-    Cancels, Icon, Scroller, Selected, Tone, column, entry, footer, heading, hints, item_with,
-    panel, root, scroller, theme,
+    Cancels, Scroller, Selected, Tone, back, entry, hints, item_with, legend, page, page_body,
+    page_foot, page_head, page_title, scroll_area, theme,
 };
 
-/// Key hints shown at the bottom of the screen.
-const HINTS: [(&str, &str); 4] = [
+/// Key hints shown in the footer, after the back action.
+const HINTS: [(&str, &str); 3] = [
     ("Move", "Up Down"),
     ("Change a value", "Left Right"),
     ("Rebind a key", "Enter"),
-    ("Back", "Esc"),
 ];
 
-/// Rows of a page visible at once. A longer page scrolls.
-pub(super) const VISIBLE_ROWS: f32 = 16.0;
+/// Columns of the alignment grid the tabs take.
+pub(super) const TABS: u32 = 3;
+
+/// Columns of the alignment grid the page of a tab takes.
+pub(super) const ROWS: u32 = 8;
 
 /// One tab item in the left column. The open tab is selected, which is not the keyboard focus.
 fn tab_item(tab: Tab, active: Tab) -> impl Bundle {
@@ -39,7 +41,7 @@ fn tab_item(tab: Tab, active: Tab) -> impl Bundle {
     )
 }
 
-/// Left column with the tabs on top and Back at the bottom.
+/// Left column with the tabs. The open one takes the focus.
 fn sidebar(active: Tab) -> impl Bundle {
     let tabs = SpawnWith(move |parent: &mut ChildSpawner| {
         for tab in Tab::ALL {
@@ -49,65 +51,48 @@ fn sidebar(active: Tab) -> impl Bundle {
             }
         }
     });
-    (
-        Node {
-            width: px(theme::MENU_WIDTH * 0.6),
-            flex_shrink: 0.0,
-            flex_direction: FlexDirection::Column,
-            justify_content: JustifyContent::SpaceBetween,
-            row_gap: px(theme::GAP_M),
-            ..default()
-        },
-        children![
-            (column(percent(100), 0.0), Children::spawn(tabs)),
-            (
-                item_with(2, entry(Icon::Back, "Back", theme::FONT_BODY, Tone::Plain)),
-                Nav::Back,
-                Cancels
-            ),
-        ],
-    )
+    let node = Node {
+        width: px(theme::span(TABS)),
+        flex_shrink: 0.0,
+        flex_direction: FlexDirection::Column,
+        ..default()
+    };
+    (node, Children::spawn(tabs))
 }
 
-/// Sidebar and the pages side by side. The pages share one scrolling column.
-fn body(active: Tab) -> impl Bundle {
-    (
-        Node {
-            column_gap: px(theme::GAP_XL),
-            ..default()
-        },
-        children![
-            sidebar(active),
-            (
-                column(px(theme::MENU_WIDTH * 2.0), 0.0),
-                children![(
-                    (fit::Pages, scroller(theme::ROW_HEIGHT * VISIBLE_ROWS)),
-                    children![
-                        pages::graphics(active),
-                        pages::controls(active),
-                        pages::ship(active),
-                        pages::audio(active),
-                        pages::general(active),
-                        reference::help(active),
-                    ]
-                )]
-            ),
-        ],
-    )
+/// The pages in one scrolling column that takes the height the window has, over the line that
+/// describes the focused row.
+fn sheet(active: Tab) -> impl Bundle {
+    let node = Node {
+        width: px(theme::span(ROWS)),
+        flex_shrink: 0.0,
+        flex_direction: FlexDirection::Column,
+        ..default()
+    };
+    let all = children![
+        pages::graphics(active),
+        pages::controls(active),
+        pages::ship(active),
+        pages::audio(active),
+        pages::general(active),
+        reference::help(active),
+    ];
+    (node, children![scroll_area(all), hint::line()])
 }
 
 /// Spawns the whole settings menu on the tab used last.
 fn spawn(mut commands: Commands, tab: Res<SettingsTab>) {
+    let body = (
+        page_body(FlexDirection::Row),
+        children![sidebar(tab.0), sheet(tab.0)],
+    );
+    let foot = page_foot(children![
+        (back("Back"), Nav::Back, Cancels),
+        legend(hints(&HINTS))
+    ]);
     commands.spawn((
         DespawnOnExit(Menu::Settings),
-        root(),
-        children![
-            (
-                panel(),
-                children![heading("Settings"), body(tab.0), hint::line()]
-            ),
-            footer(hints(&HINTS)),
-        ],
+        page(page_head(children![page_title("Settings")]), body, foot),
     ));
 }
 
@@ -170,7 +155,7 @@ pub(super) fn plugin(app: &mut App) {
         Update,
         (
             show_tab.run_if(resource_changed::<SettingsTab>),
-            (show_values, fit::fit_page),
+            show_values,
         )
             .run_if(in_state(Menu::Settings)),
     );

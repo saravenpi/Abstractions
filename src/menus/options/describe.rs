@@ -33,6 +33,7 @@ pub fn describe(field: Field) -> &'static str {
 /// Returns the description of a setting of the general tab, or an empty line for one that has none.
 pub fn describe_general(field: Field) -> &'static str {
     match field {
+        Field::CheckUpdates => "Looks for a newer release each time the game starts.",
         Field::Interface => "Size of the HUD and the menus together. It applies at once.",
         _ => "",
     }

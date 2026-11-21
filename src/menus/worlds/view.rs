@@ -7,23 +7,28 @@ use super::{Mode, Notice, VISIBLE_ROWS, Worlds, bars, ops};
 use crate::menus::{Menu, Nav};
 use crate::saves::SaveDir;
 use crate::ui::{
-    Icon, Selected, Tone, cell, column, footer, head, heading, hints, item, label, notice, panel,
-    root, table_head, table_row, text, theme,
+    Cancels, Icon, Selected, Tone, back, cell, column, empty_state, head, hints, item, label,
+    legend, notice, page, page_body, page_foot, page_head, page_status, page_title, table_head,
+    table_row, theme,
 };
 
-/// Widths in pixels of the world, seed, play time and last played columns.
-const WIDTHS: [f32; 4] = [270.0, 165.0, 110.0, 160.0];
+/// Columns of the alignment grid the world, seed, play time and last seen columns take.
+const SPANS: [u32; 4] = [4, 3, 2, 2];
 
-/// Height of one world row in pixels: a name with the place under it.
-const ROW: f32 = 44.0;
-
-/// Key hints shown at the bottom of the screen.
-const HINTS: [(&str, &str); 4] = [
+/// Key hints shown in the footer, after the back action.
+const HINTS: [(&str, &str); 3] = [
     ("Select", "Up Down"),
     ("Play", "Enter"),
     ("Choose while deleting", "Left Right"),
-    ("Apply", "Enter"),
 ];
+
+/// Why the list is empty, and what to do about it.
+const WHY: &str = "Every world is a whole universe grown from one seed. Create one to wake up on your home planet.";
+
+/// Returns the width in pixels of column `at` of the table.
+fn width(at: usize) -> f32 {
+    theme::span(SPANS[at])
+}
 
 /// Marks the line that counts the worlds and names their order.
 #[derive(Component)]
@@ -58,51 +63,45 @@ fn row(slot: usize) -> impl Bundle {
             small(Part::Place)
         ],
     );
+    let cells = children![
+        cell(width(0), name),
+        cell(width(1), small(Part::Seed)),
+        cell(width(2), small(Part::Played)),
+        cell(width(3), small(Part::Last)),
+    ];
     (
-        table_row(
-            0,
-            ROW,
-            children![
-                cell(WIDTHS[0], name),
-                cell(WIDTHS[1], small(Part::Seed)),
-                cell(WIDTHS[2], small(Part::Played)),
-                cell(WIDTHS[3], small(Part::Last)),
-            ],
-        ),
+        table_row(0, theme::ROW_TALL, cells),
         Row(slot),
         Selected(false),
     )
 }
 
-/// The column names and the pool of rows.
+/// The column names and the pool of rows, as wide as its columns, their gutters and the inset
+/// of a row on both sides.
 fn table() -> impl Bundle {
+    let all: u32 = SPANS.iter().sum();
     (
         Listing,
-        column(px(WIDTHS.iter().sum::<f32>() + theme::GAP_M * 4.0), 0.0),
+        column(px(theme::span(all) + 2.0 * theme::INSET), 0.0),
         Children::spawn((
             Spawn(table_head(children![
-                head(WIDTHS[0], "World"),
-                head(WIDTHS[1], "Seed"),
-                head(WIDTHS[2], "Played"),
-                head(WIDTHS[3], "Last played"),
+                head(width(0), "World"),
+                head(width(1), "Seed"),
+                head(width(2), "Played"),
+                head(width(3), "Last seen"),
             ])),
             SpawnIter((0..VISIBLE_ROWS).map(row)),
         )),
     )
 }
 
-/// The invitation shown when there is no world yet.
+/// The empty state shown when there is no world yet, and the action that makes the first one.
 fn empty() -> impl Bundle {
     (
         Empty,
-        column(px(theme::MENU_WIDTH * 1.4), theme::GAP_S),
+        column(px(theme::span(6)), theme::S3),
         children![
-            text("No worlds yet", theme::FONT_HEADING, theme::TEXT),
-            text(
-                "Every world is a whole universe grown from one seed. Create one to wake up on your home planet.",
-                theme::FONT_SMALL,
-                theme::TEXT_2
-            ),
+            empty_state(Icon::Planet, "No worlds yet", WHY),
             (
                 item(Icon::Plus, "Create a world", Tone::Accent),
                 Nav::To(Menu::NewGame),
@@ -118,22 +117,14 @@ pub(super) fn spawn(mut commands: Commands, dir: Res<SaveDir>, mut worlds: ResMu
     worlds.fill(ops::load(&dir.0), None);
     commands.insert_resource(Mode::Browse);
     commands.insert_resource(Notice::default());
-    commands.spawn((
-        DespawnOnExit(Menu::Worlds),
-        root(),
-        children![
-            (
-                panel(),
-                children![
-                    heading("Worlds"),
-                    table(),
-                    empty(),
-                    (Summary, text("", theme::FONT_SMALL, theme::TEXT_2)),
-                    (Hint, notice()),
-                    bars::bars(),
-                ]
-            ),
-            footer(hints(&HINTS)),
-        ],
-    ));
+    let head = page_head(children![page_title("Worlds"), (Summary, page_status(""))]);
+    let body = (
+        page_body(FlexDirection::Column),
+        children![table(), empty(), (Hint, notice()), bars::bars()],
+    );
+    let foot = page_foot(children![
+        (back("Back"), Nav::Back, Cancels),
+        legend(hints(&HINTS))
+    ]);
+    commands.spawn((DespawnOnExit(Menu::Worlds), page(head, body, foot)));
 }

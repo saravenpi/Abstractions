@@ -99,7 +99,39 @@ Three boxes bound the armour. They were checked by hand against the poses; the t
 | --- | --- | --- |
 | Player collider, 0.35 m radius | The gauntlet in the braced landing; the knee of a running leg; the brow wing in a banked run | 3 mm, 5 mm, 13 mm |
 | Backrest of the seat | The vents of the back plate and the rear plate of the pelvis | 2 mm |
-| Tub of the cockpit, 0.72 m wide | The left gauntlet on the throttle | 6 mm |
+| Tub of the cockpit, 0.72 m wide | The arms on the controls | See "Seat fit": it depends on where the controls are |
+
+## Seat fit
+
+State on `staging-models`, 2026-11-21: `avatar::seated::tests::the_pilot_sits_in_the_seat` fails with the seated body from x = -0.42 to 0.44 (limit 0.36). The armour is not the cause. The controls are.
+
+Facts, from the rig and the seated arm solver (`src/avatar/seated.rs`, `reach`), with the stick and the throttle hinged at x = 0.28, y = 0.31, z = -1.48 and held 0.195 m and 0.175 m above the hinge:
+
+| What | x from the middle |
+| --- | --- |
+| Shoulder joint | 0.212, at y = 0.58, z = -1.13 |
+| Grip of the stick | 0.28 to 0.315, at y = 0.50 |
+| Elbow joint centre, no mesh at all | up to 0.407 |
+| Elbow housing, shoulder block, gauntlet | up to 0.46 |
+| Wall of the tub (outer face of the consoles) | 0.39 |
+
+Why: the arm has no twist joint. The shoulder, the elbow and the hand lie in a plane that holds the forward axis through the shoulder, tilted outward by `atan2(sideways, drop)` from the shoulder to the grip. The grips are only 8 cm under the shoulders and 7 to 10 cm outboard, so the plane tilts 45 to 70 degrees and the bent elbow goes sideways through the wall. The old thin arm would fail as well: its elbow centre is in the same place.
+
+What makes it fit, armour unchanged, over the full sweep of the stick and the throttle, with the palms exactly on the grips:
+
+| Hinge x | Grip height (hull y) | Hinge z | Grip above hinge | Widest point of the body |
+| --- | --- | --- | --- | --- |
+| 0.25 | 0.36 | -1.44 to -1.52 | 0.10 | 0.340 |
+| 0.25 | 0.39 | -1.44 to -1.52 | 0.10 | 0.346 to 0.348 |
+| 0.26 | 0.36 | -1.44 to -1.52 | 0.10 | 0.351 to 0.353 |
+| 0.25 | 0.42 | -1.52 | 0.10 | 0.355 |
+| 0.28 | 0.41 | -1.52 | 0.10 | 0.387 (over the limit, under the wall by 3 mm) |
+
+The rule for the ship: put each grip at least 0.19 m under the shoulder (hull y of 0.39 or less) and at most 0.05 m outboard of it (x of 0.26 or less), with a short grip of about 0.10 m so a tilt moves the hand little. An armrest top at y = 0.26 to 0.29 does that; the thighs and their tassets end at x = 0.19 and y = 0.20, so the inner face of a console can come in to x = 0.22. The limit of 0.36 in the test is right: the wall is at 0.39 and the gauntlets need the 3 cm.
+
+The robot side stays as it is. Narrowing the gauntlets by a centimetre would buy a centimetre; the pose is 8 cm out.
+
+The numbers come from a Python port of the rig and the meshes, `~/.cache/abstractions-targets/lm-check/fit.py` and `grid.py`. For the staging controls it gives -0.424 and 0.463 over the sweep; the Rust test printed -0.423 and 0.445 at its first step.
 
 ## Companion (0.34 wide, 0.32 high, 0.29 deep)
 

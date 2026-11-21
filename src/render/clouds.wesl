@@ -50,7 +50,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let facing = dot(n, to_eye / max(dist, 0.001));
     let cloud = puff(spot, to_fixed * light, facing, cover);
     let far = 1.0 - exp(-KOSCHMIEDER * dist / max(clouds.ambient.w, 1.0));
-    let alpha = max(cloud.thick * lone(cloud), whiteout);
+    let alpha = max(cloud.thick * lone(cloud, cover), whiteout);
     if (alpha <= dither(in.position.xy)) {
         discard;
     }

@@ -83,8 +83,8 @@ fn puff(spot: vec3<f32>, sunward: vec3<f32>, facing: f32, cover: f32) -> Puff {
     return Puff(dense, thick, relief);
 }
 
-fn lone(cloud: Puff) -> f32 {
-    return smoothstep(LONE.x, LONE.y, cloud.density);
+fn lone(cloud: Puff, cover: f32) -> f32 {
+    return mix(smoothstep(LONE.x, LONE.y, cloud.density), 1.0, clamp(cover, 0.0, 1.0));
 }
 
 fn day_side(color: vec3<f32>, n: vec3<f32>, light: vec3<f32>) -> vec3<f32> {

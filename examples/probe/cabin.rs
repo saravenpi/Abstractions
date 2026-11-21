@@ -19,16 +19,57 @@ const LOOKS: [(&str, f32, f32); 7] = [
     ("back", 2.5, -0.1),
 ];
 
-/// Returns the views from the eye of the pilot, one for each of [`LOOKS`].
-fn looks() -> Vec<View> {
+/// Where the pilot looks to see the hands on the controls: down at both, down to the left at
+/// the throttle and down to the right at the stick.
+const HANDS: [(&str, f32, f32); 3] = [
+    ("both", 0.0, -1.0),
+    ("throttle", 0.8, -0.95),
+    ("stick", -0.8, -0.95),
+];
+
+/// Returns the views from the eye of the pilot, one for each look of `list`.
+fn aimed(list: &[(&'static str, f32, f32)]) -> Vec<View> {
     let eye = SEAT.as_vec3();
     let aim = |yaw: f32, pitch: f32| {
         Quat::from_rotation_y(yaw) * Quat::from_rotation_x(pitch) * Vec3::NEG_Z
     };
-    LOOKS
-        .iter()
+    list.iter()
         .map(|&(name, yaw, pitch)| (name, eye, eye + aim(yaw, pitch)))
         .collect()
+}
+
+/// Returns the views from the eye of the pilot, one for each of [`LOOKS`].
+fn looks() -> Vec<View> {
+    aimed(&LOOKS)
+}
+
+/// The hands on the controls in first person, by day: at rest, then with the stick rolled full
+/// right and twisted full left and the throttle full forward. The ship stays on the ground: it
+/// turns on the spot, and the camera turns with it.
+pub fn hands(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    let held = [
+        bound(world, |s| s.controls.keys.ship.bank_right),
+        bound(world, |s| s.controls.keys.ship.turn_left),
+    ];
+    let list = aimed(&HANDS);
+    if frame <= 50 {
+        views(world, frame, "37-hands-rest", &list);
+        return Act::Wait;
+    }
+    if frame == 51 {
+        for code in held {
+            key(world, code, true);
+        }
+    }
+    with_ship(world, |ship| ship.throttle = 1.0);
+    if frame < 80 || !views(world, frame - 79, "37-hands-full", &list) {
+        return Act::Wait;
+    }
+    for code in held {
+        key(world, code, false);
+    }
+    with_ship(world, |ship| ship.throttle = 0.0);
+    Act::Next
 }
 
 /// Logs, for each display of the cockpit, whether it is in view, how bright its material is

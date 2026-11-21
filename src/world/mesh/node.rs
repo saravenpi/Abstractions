@@ -39,14 +39,16 @@ pub fn fill_node(
     let terrain = &terrain.spaced(spacing(terrain, id, n));
     let span = Span::node(terrain, id, n);
     let coarse = Style::coarse(span.step(), terrain.globe().lands());
+    let skirt = |relief: f32| [0.0, skirt_depth(terrain, node, relief)][usize::from(skirts)];
+    if !terrain.globe().has_ground() {
+        return bands::fill(mesh, &span, frame, skirt(0.0));
+    }
+    let heights = span.heights();
     let style = Style {
-        skirt: [0.0, skirt_depth(terrain, id, n)][usize::from(skirts)],
+        skirt: skirt(relief(&heights, coarse.floor)),
         ..coarse.grown(span.step(), Verdure::of(terrain, span.center()))
     };
-    if !terrain.globe().has_ground() {
-        return bands::fill(mesh, &span, frame, style.skirt);
-    }
-    let patch = Patch::new(&span, frame, &span.heights(), style.floor);
+    let patch = Patch::new(&span, frame, &heights, style.floor);
     let spread = Spread::over(
         terrain,
         (span.chart(0, 0, 0.0), span.chart(span.n, span.n, 0.0)),
@@ -66,18 +68,30 @@ fn spacing(terrain: &Terrain, id: ChunkId, n: usize) -> f32 {
     (terrain.globe().radius() * FRAC_PI_2 / across) as f32
 }
 
-/// Returns how deep in metres the skirts of node `id`, cut into `n` cells per side, hang: a cell
-/// of the coarsest neighbour it can have, a node one or two levels up with its own cells, and
-/// [`SKIRT_FLOOR`] more. Where a coarse edge cuts a hill that the finer edge follows, the gap is
-/// never deeper than the cell of the coarse edge, so the skirt of the higher side always closes it.
-pub fn skirt_depth(terrain: &Terrain, id: ChunkId, n: usize) -> f32 {
+/// Returns how deep in metres the skirts of node `id`, cut into `n` cells per side, whose drawn
+/// heights span `relief` metres, hang. A gap along an edge is never deeper than the cell of the
+/// coarsest neighbour the node can have, a node one or two levels up with its own cells, nor
+/// deeper than the relief of the node and half its cell, since the neighbour's edge runs between
+/// heights of the same ground; the skirt takes the lesser and [`SKIRT_FLOOR`] more. A node of an
+/// orbit view, hundreds of kilometres wide, then hangs a skirt as deep as its hills, not its cells.
+pub fn skirt_depth(terrain: &Terrain, (id, n): (ChunkId, usize), relief: f32) -> f32 {
     let leaf = terrain.globe().leaf_level();
     let up = |rise: u8| {
         let level = id.level.saturating_sub(rise);
         let node = ChunkId { level, ..id };
         spacing(terrain, node, node_cells(leaf.saturating_sub(level)))
     };
-    SKIRT_FLOOR + spacing(terrain, id, n).max(up(1)).max(up(2))
+    let own = spacing(terrain, id, n);
+    SKIRT_FLOOR + own.max(up(1)).max(up(2)).min(relief + own * 0.5)
+}
+
+/// Returns how many metres the drawn `heights` of a node span, none lower than `floor`.
+fn relief(heights: &[Vec<f32>], floor: f32) -> f32 {
+    let drawn = heights.iter().flatten().map(|h| h.max(floor));
+    let (low, high) = drawn.fold((f32::INFINITY, f32::NEG_INFINITY), |(low, high), h| {
+        (low.min(h), high.max(h))
+    });
+    (high - low).max(0.0)
 }
 
 /// Returns the frame the mesh of quadtree node `id` is stored in: the tangent frame at its middle.

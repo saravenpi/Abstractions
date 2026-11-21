@@ -1,4 +1,5 @@
-//! Waking at the home base: where a new game puts the player once the base is found.
+//! Waking at the home base: where a new game puts the player once the base is found, and standing
+//! a body on the ground under it when the place it was saved at does not load.
 
 use bevy::prelude::*;
 
@@ -7,8 +8,9 @@ use super::seat::place;
 use crate::home::{Base, Works};
 use crate::saves::{ActiveWorld, unplayed};
 use crate::screens::Screen;
-use crate::space::{Anchor, Frame};
-use crate::world::WorldReady;
+use crate::sim::PlayerId;
+use crate::space::{Anchor, Frame, altitude, up};
+use crate::world::{Terrain, WorldReady};
 
 /// Marks a body that already woke at the home base.
 #[derive(Component, Debug, Clone, Copy)]
@@ -51,6 +53,31 @@ fn wake_at_base(
     let feet = anchor.to_render(base.wake);
     let toward = (anchor.rotation * base.look()).as_vec3();
     commands.queue(move |world: &mut World| place(world, feet, toward));
+}
+
+/// Stands the body of the local player on the ground under it, or on the sea where the ground is
+/// under the sea, looking the way it looked. Does nothing without a world or a body.
+///
+/// The loading screen queues it for a body whose place did not get ready in time, with
+/// `commands.queue(land)`. The body is then where the ground is asked for at its finest.
+pub fn land(world: &mut World) {
+    let anchor = world.get_resource::<Anchor>().copied();
+    let terrain = world.get_resource::<Terrain>().cloned();
+    let (Some(anchor), Some(terrain)) = (anchor, terrain) else {
+        return;
+    };
+    let mut bodies = world.query_filtered::<(&PlayerId, &Transform), With<Player>>();
+    let mine = bodies.iter(world).find(|(id, _)| **id == PlayerId::LOCAL);
+    let Some(at) = mine.map(|(_, at)| *at) else {
+        return;
+    };
+    let chart = terrain.locate(anchor.to_frame(at.translation));
+    let floor = terrain
+        .height(chart.x, chart.z)
+        .max(terrain.globe().sea_level());
+    let height = altitude(&anchor, terrain.globe(), at.translation);
+    let feet = at.translation + up(&anchor, at.translation) * (floor - height);
+    place(world, feet, at.forward().as_vec3());
 }
 
 /// Registers the wake, which only runs while a new game loads and its base exists.

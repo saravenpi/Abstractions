@@ -35,7 +35,7 @@ pub use sea::above_sea;
 pub use seat::{place, seat};
 pub(crate) use steer::wrap;
 pub use steer::{Lead, Steer, Turn};
-pub use wake::awake;
+pub use wake::{awake, land};
 
 use bevy::prelude::*;
 

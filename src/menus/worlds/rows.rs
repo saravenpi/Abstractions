@@ -4,7 +4,7 @@ use bevy::input_focus::{FocusCause, InputFocus};
 use bevy::prelude::*;
 
 use super::bars::{Bar, Choice};
-use super::view::{Empty, Hint, Invite, Summary};
+use super::view::{Empty, Hint, Invite, Listing, Summary};
 use super::when::relative;
 use super::{Listed, Mode, Notice, VISIBLE_ROWS, Worlds};
 use crate::menus::name::with_caret;
@@ -141,11 +141,12 @@ fn display(shown: bool) -> Display {
 }
 
 /// Shows the bar of actions that fits the mode, and the invitation to create a world, which
-/// takes the focus, when there is none.
+/// takes the focus, when there is none. The table and its column names show only when there
+/// is a world to list.
 pub(super) fn show_bars(
     (worlds, mode): Source,
-    mut bars: Query<(&Bar, &mut Node), Without<Empty>>,
-    mut blocks: Query<&mut Node, With<Empty>>,
+    mut bars: Query<(&Bar, &mut Node), (Without<Empty>, Without<Listing>)>,
+    mut blocks: Query<(&mut Node, Has<Empty>), Or<(With<Empty>, With<Listing>)>>,
     invites: Query<Entity, With<Invite>>,
     mut focus: ResMut<InputFocus>,
 ) {
@@ -159,9 +160,10 @@ pub(super) fn show_bars(
             node.display = wanted;
         }
     }
-    for mut node in &mut blocks {
-        if node.display != display(empty) {
-            node.display = display(empty);
+    for (mut node, invitation) in &mut blocks {
+        let wanted = display(invitation == empty);
+        if node.display != wanted {
+            node.display = wanted;
         }
     }
     let invite = invites.iter().next().filter(|_| empty);

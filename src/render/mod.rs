@@ -83,11 +83,12 @@ pub use air::Air;
 pub use camera::{configure_camera, set_fov};
 pub use celestial::{daylight, smoothstep, sun_direction};
 pub use clock::{DayClock, START_PHASE, catch_up};
-pub use clouds::{CloudCrossing, CloudShell};
+pub use clouds::{CloudCover, CloudCrossing, CloudShell};
 pub use cloudshade::CloudShade;
 pub use daylight::{PlaceLight, PlaceLit, PlaceUniform, place_light};
 pub use dome::SkyDome;
 pub use entry::FlightFx;
+pub use exposure::scene_lux;
 pub use fog::{FOG_END, HORIZON_SHARE, OPEN as FOG_OPEN, THIN_AIR};
 pub use heat::{
     Craft, Gas, Glow, Heat, MIN_SPEED, SHEATH_FROM, SHEATH_REACH, SheathMaterial, SheathUniform,

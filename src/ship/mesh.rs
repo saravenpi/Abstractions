@@ -28,6 +28,7 @@ pub use levers::{lever_mesh, stick_mesh};
 pub use lod::{FAR, far_mesh};
 pub use looks::{Looks, dress};
 pub use outline::hulls;
+pub use outside::{HEAD_LAMP, TIP_LAMPS};
 pub use ports::{LIFT, LIFT_AT, Port, ports};
 pub use tail::{ENGINES, EXIT, NOZZLE_Z};
 
@@ -141,8 +142,8 @@ pub fn material(skin: Skin) -> StandardMaterial {
         Skin::Glass => StandardMaterial {
             base_color: Color::srgba(0.42, 0.6, 0.72, 0.16),
             alpha_mode: AlphaMode::Blend,
-            perceptual_roughness: 0.05,
-            reflectance: 0.5,
+            perceptual_roughness: 0.3,
+            reflectance: 0.3,
             double_sided: true,
             cull_mode: None,
             ..default()

@@ -63,11 +63,35 @@ The canopy opens: hinged across the top of its rear hoop, it lifts at the front 
 
 - The tub is 0.76 m wide and 1.3 m long under the canopy. The floor is 0.4 m under the seat pan.
 - Seat: a dark shell with a headrest and low side wings that stop 0.42 m up, under the shoulder blocks of the robot; three stacked back pads like lames; a pan pad 0.27 m wide between two thigh bolsters, so the plates that hang outside the thighs hang beside the pad; an accent harness.
-- Dashboard: under the rim of the hull so the nose stays in view. One panel faces the eye, 0.62 m wide and 0.34 m tall, under a thin hood whose rear edge is behind and over the top of the panel, so the whole of every display shows from the eye (a test casts the rays). Every display keeps a margin of 2 pixels on its four edges, and a value too long for it loses the space between its thousands instead of being cut. Three displays, each in a bone bezel: the drive on the left (throttle, warp, gear as bars), the flight in the centre (speed, height, the attitude ball with the course and the nearby body marked on it), the status on the right (six lamps with legends). The top third of the panel, with the speed and the height, shows when the pilot looks level; the rest when the pilot looks down.
+- Dashboard: under the rim of the hull so the nose stays in view. One panel faces the eye, 0.62 m wide and 0.34 m tall, under a thin hood whose rear edge is behind and over the top of the panel, so the whole of every display shows from the eye (a test casts the rays). Every display keeps a margin of 2 pixels on its four edges, and a value too long for it loses the space between its thousands instead of being cut. Three displays, each in a bone bezel: the drive on the left (throttle, warp, gear as bars), the flight in the centre (speed, height, the attitude ball with the course and the nearby body marked on it), the status on the right (seven lamps with legends, the last one LGT for the headlight). The top third of the panel, with the speed and the height, shows when the pilot looks level; the rest when the pilot looks down.
 - Text: Undefined Medium is drawn on a grid of 100 font units, five columns by seven rows, with a side bearing of half a cell. A display pixel is 4 mm, about one pixel of the 360-row game image from the seat, so each display paints the font one grid cell to one pixel: the exact glyphs of the game font at their native size (the 68 glyphs of `cockpit/font.rs` were compared with the outlines of `assets/fonts/undefined-medium.otf`, cell by cell). The images are sampled linearly, because nearest sampling at one to one drops a stroke wherever a display pixel is a little smaller than a screen pixel. A UI camera rendering into a texture would add a render pass per ship and resample the same glyphs at this size.
 - Each side console is high at the front, where the gear lever and the warp switch are on the right, and low beside the seat. A pedestal stands in from each console beside the knee and carries a short side stick on the right and the throttle on the left, hinged 0.23 m from the middle (the stick inside its pedestal, 6 cm under the top) and held at a height of 0.36 m: 0.22 m under the shoulders and in line with them, so the elbows stay inside the tub (the widest point of the seated robot is 0.344 m from the middle, the limit is 0.36 m and the wall is at 0.39 m; checked with the Python port of the rig in `~/.cache/abstractions-targets/lm-check`). The hand moves 4 cm either way on the stick and 10 cm on the throttle. Two pedals. The hands are below the view when the pilot looks level and show when the pilot looks down or to a side.
 - Walls: ribs, a cable run along each side under the sill, a heel plate on the floor.
-- Light: the displays glow; a cool panel light and a warm cabin light, both without shadows.
+- Light: the displays glow; a cool panel light and a warm cabin light, both without shadows. Every ship has them, also the ship of another player.
+
+## Lights and trails
+
+| Thing | Where | Rule |
+| --- | --- | --- |
+| Navigation lamps | A housing at the top rear tip of each winglet, red on the left and green on the right, with a real 600 lm light in it | Always on. They show from the front, the side and the rear. |
+| Headlight | A lens under the nose, with a 40,000 lm spot aimed forward and a little down, 24 m of range by the inverse square law | The pilot switches it with L. Off by default, never automatic. Saved with the ship. It casts shadows for the ship you fly when the lighting setting lets the lamp of the robot cast them. |
+| Wing tip vortex | A pale ribbon from the trailing edge of each wing tip | Strength = speed (30 to 70 m/s) x thickness of the air x load on the wing x wetness. None in a vacuum, none at rest, none on a ballistic arc. |
+| Lamp streak | A thin ribbon of the colour of the lamp behind each winglet tip | Length follows the speed. It lasts 0.6 s in thick air and 0.12 s in a vacuum, where nothing scatters the light, and is 70 percent fainter by day. |
+
+The trails use the ribbon of the wingsuit trails (`gear::Trail`, one strip, one material). The speed and the load are read from how the hull moves from frame to frame, so the ship you fly and the ship of another player go through the same code and the ship record carries nothing for them.
+
+What another player sees of a ship, and where it comes from:
+
+| Thing | From |
+| --- | --- |
+| Gear, throttle, exhaust plumes, warp, displays | The ship record, as before |
+| Headlight on or off | Bit 2 of the state byte of the ship record (new) |
+| Canopy open or shut | Bit 4 of the state byte of the ship record (new) |
+| Landed lamp, cabin light | The landed bit of the record and the seat of the pilot's robot |
+| Navigation lamps and their lights | Always on |
+| Vortex trails and lamp streaks | Derived from the drawn motion of the hull and the air at that place |
+
+A record written before the two new bits reads with the headlight off and the canopy shut.
 
 ## Budgets
 

@@ -43,11 +43,15 @@ mod tests_frame;
 #[cfg(test)]
 mod tests_hints;
 #[cfg(test)]
+mod tests_icons;
+#[cfg(test)]
 mod tests_prompt;
 #[cfg(test)]
 mod tests_rows;
 #[cfg(test)]
 mod tests_shown;
+#[cfg(test)]
+mod tests_size;
 mod units;
 
 pub use climate::HudWeather;

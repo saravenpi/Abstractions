@@ -1,14 +1,14 @@
 //! The pictures of the three displays of the dashboard: the drive on the left, with the
 //! throttle, the warp drive and the gear as bars; the flight in the middle, with the speed, the
 //! height and the attitude ball, on which the course and the body nearby are marked; and the
-//! status on the right, six lamps with their legends. Each painter is a pure function of the
+//! status on the right, seven lamps with their legends. Each painter is a pure function of the
 //! steps it shows.
 
 use bevy::prelude::*;
 
 use super::paint::{MARGIN, bar, flush, write};
 use super::pixels::{Ink, Pixels};
-use super::readings::Lamp;
+use super::readings::{LAMPS, Lamp};
 use super::tune::ANGLE_STEP;
 
 /// Size in pixels of the drive display and of the status display.
@@ -128,13 +128,16 @@ pub fn flight(figures: [Figure; 2], level: Option<IVec2>, shown: [Option<IVec2>;
     pixels
 }
 
+/// Rows between the tops of two lamps of the status display, and the row of the first.
+pub const LAMP_ROWS: (i32, i32) = (10, 2);
+
 /// Paints the status display: a lamp and its legend for each of `lamps`, in the order of
 /// [`Lamp::ALL`]. A lamp that is out is a grey outline, and one that is lit is filled in its
 /// colour, with its legend.
-pub fn status(lamps: [bool; 6]) -> Pixels {
+pub fn status(lamps: [bool; LAMPS]) -> Pixels {
     let mut pixels = Pixels::dark(SIDE.0, SIDE.1);
     for (i, (lamp, lit)) in Lamp::ALL.into_iter().zip(lamps).enumerate() {
-        let row = 4 + 11 * i as i32;
+        let row = LAMP_ROWS.1 + LAMP_ROWS.0 * i as i32;
         let ink = if lit { lamp.ink() } else { Ink::Dim };
         for (dx, dy) in (0..7).flat_map(|dy| (0..7).map(move |dx| (dx, dy))) {
             let edge = dx == 0 || dy == 0 || dx == 6 || dy == 6;

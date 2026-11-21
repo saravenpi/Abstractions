@@ -4,17 +4,20 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::context::{Context, Element, Where};
-use super::flight::{Flight, Gauge, reading};
+use super::flight::{Flight, Gauge, reading, symbol};
 use crate::gear::Gear;
+use crate::menus::key_name;
 use crate::player::Player;
+use crate::settings::{Persistent, Settings};
 use crate::ship::{Ship, ShipTelemetry, WarpState};
 use crate::space::{Anchor, Frame, altitude};
-use crate::ui::{cell, text, theme};
+use crate::ui::{Icon, Tone, cell, icon_sized, text, theme};
 use crate::universe::{PlanetClass, Universe};
 use crate::world::Planet;
 
-/// Width of the label column of the instruments, in pixels: the longest label, "Stabiliser".
-const LABEL_WIDTH: f32 = 112.0;
+/// Width of the label column of the instruments, in pixels: the longest label, "Stabiliser" or
+/// "Highest point".
+pub(super) const LABEL_WIDTH: f32 = 112.0;
 
 /// Width of the bar that fills while the warp drive spools, in pixels.
 const BAR_WIDTH: f32 = 160.0;
@@ -27,6 +30,10 @@ pub(super) struct Instruments;
 #[derive(Component, Debug, Clone, Copy)]
 pub(super) struct Reading(Gauge);
 
+/// Marks the icon of an instrument.
+#[derive(Component, Debug, Clone, Copy)]
+pub(super) struct Symbol(Gauge);
+
 /// Marks the bar that fills while the warp drive spools.
 #[derive(Component)]
 pub(super) struct SpoolBar;
@@ -35,16 +42,21 @@ pub(super) struct SpoolBar;
 #[derive(Component)]
 pub(super) struct Track;
 
-/// One instrument: its label and its value, hidden until it has something to show.
+/// One instrument: its icon, its label and its value, hidden until it has something to show.
 fn row((gauge, name): (Gauge, &'static str)) -> impl Bundle {
     (
         gauge,
         Node {
             display: Display::None,
+            align_items: AlignItems::Center,
             column_gap: px(theme::S2),
             ..default()
         },
         children![
+            (
+                Symbol(gauge),
+                icon_sized(Icon::Radius, Tone::Muted, theme::ICON_SMALL)
+            ),
             cell(LABEL_WIDTH, text(name, theme::FONT_SMALL, theme::TEXT_2)),
             (
                 Reading(gauge),
@@ -103,6 +115,7 @@ pub(super) struct Source<'w, 's> {
     universe: Option<Res<'w, Universe>>,
     ships: Query<'w, 's, &'static Ship>,
     glider: Glider<'w, 's>,
+    settings: Option<Res<'w, Persistent<Settings>>>,
 }
 
 /// What the instruments read while the player glides on foot.
@@ -145,6 +158,14 @@ impl Source<'_, '_> {
             giant,
             glide: self.glider.reading(),
             gear: self.ships.iter().next().map(|ship| ship.gear),
+            headlight: self.ships.iter().next().zip(self.settings.as_deref()).map(
+                |(ship, settings)| {
+                    (
+                        ship.headlight,
+                        key_name(settings.controls.keys.ship.headlight),
+                    )
+                },
+            ),
         }
     }
 }
@@ -154,7 +175,8 @@ impl Source<'_, '_> {
 pub(super) fn refresh(
     (source, now): (Source, Res<Where>),
     mut rows: Query<(&Gauge, &mut Node), Without<Instruments>>,
-    mut texts: Query<(&Reading, &mut Text)>,
+    mut texts: Query<(&Reading, &mut Text), Without<Symbol>>,
+    mut symbols: Query<(&Symbol, &mut Text), Without<Reading>>,
     mut blocks: Query<&mut Node, (With<Instruments>, Without<Gauge>)>,
 ) {
     let flight = source.flight();
@@ -173,6 +195,9 @@ pub(super) fn refresh(
         if node.display != display {
             node.display = display;
         }
+    }
+    for (Symbol(gauge), mut text) in &mut symbols {
+        text.set_if_neq(Text(symbol(*gauge, &flight).glyph()));
     }
     for (Reading(gauge), mut text) in &mut texts {
         if let Some(shown) = reading(*gauge, &flight) {

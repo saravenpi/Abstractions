@@ -42,6 +42,7 @@ pub enum Field {
     Hitstop,
     WorldMarkers,
     Blood,
+    Interface,
     ReduceMotion,
     Key(Bind),
 }
@@ -121,6 +122,7 @@ pub fn step(settings: &mut Settings, field: Field, dir: i32) {
         Field::CheckUpdates => updates.check_at_launch = !updates.check_at_launch,
         Field::WorldMarkers => play.world_markers = !play.world_markers,
         Field::Blood => play.blood = !play.blood,
+        Field::Interface => play.interface = play.interface.moved(dir),
         Field::ReduceMotion => play.reduce_motion = !play.reduce_motion,
         Field::Hitstop => play.hitstop = bump_tenths(play.hitstop, dir, 0.0, 1.0),
         Field::SpeedFx => {

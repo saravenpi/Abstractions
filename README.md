@@ -53,7 +53,7 @@ In the ship:
 | V | First or third person |
 | F | Leave the ship |
 
-The compass at the top of the screen shows north, the home base, the ship, your friends, your pins and the herds you have seen ahead of you. They fade toward its ends and hide behind you. Pins, the course, home, your ship and your friends also show over the world at their real place, and slide to the screen edge with an arrow when out of view. The HUD shows only what means something where you are: on foot, in the ship, in orbit, in open space or in warp.
+The compass at the top of the screen shows north, the home base, the ship, your friends, your pins and the herds you have seen ahead of you, as icons on one row. Names and distances are on the map and on the markers over the world. They fade toward its ends and hide behind you. Pins, the course, home, your ship and your friends also show over the world at their real place, and slide to the screen edge with an arrow when out of view. The HUD shows only what means something where you are: on foot, in the ship, in orbit, in open space or in warp.
 
 The map shows each planet flat and in colour, but only the ground someone has explored. On a server, ground one player uncovers is uncovered for everyone. Right click a place on the map to drop a pin there, copy its coordinates or centre the map on it. Right click a planet or a pin to set the course to it or focus the map on it.
 

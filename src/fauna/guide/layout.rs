@@ -44,10 +44,10 @@ pub struct Measures {
     pub card: f32,
 }
 
-/// Returns the size in logical pixels of a window of `window` pixels: the interface scales with
-/// the window height, so a 960 by 540 window is laid out as 1280 by 720.
-pub fn logical(window: Vec2) -> Vec2 {
-    window / crate::ui::ui_scale_for(window.y)
+/// Returns the size in logical pixels of a window of `window` pixels at the interface scale
+/// `scale`: at the usual size a 960 by 540 window is laid out as 1280 by 720.
+pub fn logical(window: Vec2, scale: f32) -> Vec2 {
+    window / scale
 }
 
 /// Returns the measures of the guide in a window of `window` logical pixels.

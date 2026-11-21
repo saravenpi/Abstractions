@@ -13,12 +13,43 @@ use crate::space::Anchor;
 /// What a trail is drawn against: the flight that feeds it, the render anchor and the sky.
 pub type Against<'a> = (&'a Scene, &'a Anchor, Option<&'a Palette>);
 
+/// Fills `strip` with the ribbon of `trail` around the head of the trail, drawn as `style`,
+/// whose eye is in render space. Returns the render position of that head, or nothing when
+/// there is nothing to write.
+///
+/// A trail with nothing left to show is written once more, to clear it, and then left alone:
+/// `drawn` remembers whether the mesh shows anything. Every trail of the game is drawn through
+/// here, whatever lays it.
+pub fn trace(
+    trail: &Trail,
+    drawn: &mut bool,
+    (style, anchor): (Look, &Anchor),
+    strip: &mut Strip,
+) -> Option<Vec3> {
+    let live = trail.live(style.life);
+    if !live && !*drawn {
+        return None;
+    }
+    *drawn = live;
+    let head = anchor.to_render(trail.tip().at);
+    let around = Look {
+        eye: style.eye - head,
+        ..style
+    };
+    fill(
+        trail,
+        &around,
+        |point| anchor.to_render(point) - head,
+        strip,
+    );
+    Some(head)
+}
+
 /// Feeds `ribbon` from its emitter and fills `strip` with it around the head of its trail.
 /// Returns the render position of that head, or nothing when there is nothing to write.
 ///
 /// A trail nobody feeds, with the player in the ship or gone, is emptied: left as it was it
 /// would hang where it was last drawn and, fed again from another place, run straight there.
-/// A trail with nothing left to show is written once more, to clear it, and then left alone.
 fn lay(ribbon: &mut Ribbon, (scene, anchor, palette): Against, strip: &mut Strip) -> Option<Vec3> {
     match scene.active {
         true => {
@@ -28,23 +59,20 @@ fn lay(ribbon: &mut Ribbon, (scene, anchor, palette): Against, strip: &mut Strip
         false => ribbon.trail = Trail::default(),
     }
     let style = look(ribbon.source, scene.eye, palette);
-    let live = ribbon.trail.live(style.life);
-    if !live && !ribbon.drawn {
-        return None;
+    trace(&ribbon.trail, &mut ribbon.drawn, (style, anchor), strip)
+}
+
+/// Moves the entity of a ribbon to the `head` of its trail and writes `strip` into its mesh.
+pub fn show(
+    head: Vec3,
+    (handle, transform): (&Mesh3d, &mut Transform),
+    strip: &Strip,
+    meshes: &mut Assets<Mesh>,
+) {
+    transform.translation = head;
+    if let Some(mut mesh) = meshes.get_mut(&handle.0) {
+        write(&mut mesh, strip);
     }
-    ribbon.drawn = live;
-    let head = anchor.to_render(ribbon.trail.tip().at);
-    let around = Look {
-        eye: style.eye - head,
-        ..style
-    };
-    fill(
-        &ribbon.trail,
-        &around,
-        |point| anchor.to_render(point) - head,
-        strip,
-    );
-    Some(head)
 }
 
 /// Feeds the trail of `ribbon`, moves its entity to the head of the trail and rewrites its
@@ -55,11 +83,7 @@ pub fn redraw(
     strip: &mut Strip,
     meshes: &mut Assets<Mesh>,
 ) {
-    let Some(head) = lay(ribbon, against, strip) else {
-        return;
-    };
-    transform.translation = head;
-    if let Some(mut mesh) = meshes.get_mut(&handle.0) {
-        write(&mut mesh, strip);
+    if let Some(head) = lay(ribbon, against, strip) {
+        show(head, (handle, transform), strip, meshes);
     }
 }

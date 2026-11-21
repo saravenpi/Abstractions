@@ -46,6 +46,8 @@ mod order_tests;
 mod record_tests;
 #[cfg(test)]
 mod stream_tests;
+#[cfg(test)]
+mod switch_tests;
 
 pub use act::{Act, Event, HuntWorld};
 pub use body::{BODY_MAX, Body};

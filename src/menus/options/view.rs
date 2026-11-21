@@ -10,7 +10,7 @@ use super::format::display;
 use super::pages::{self, Page, display_for};
 use super::rebind::Rebinding;
 use super::rows::Value;
-use super::{SettingsTab, Tab, hint, reference};
+use super::{SettingsTab, Tab, fit, hint, reference};
 use crate::menus::{Menu, Nav};
 use crate::settings::{Persistent, Settings};
 use crate::ui::{
@@ -23,7 +23,7 @@ const HINT: &str =
     "Up and down move. Left and right change a value. Enter rebinds a key. Esc goes back";
 
 /// Rows of a page visible at once. A longer page scrolls.
-const VISIBLE_ROWS: f32 = 16.0;
+pub(super) const VISIBLE_ROWS: f32 = 16.0;
 
 /// One tab item in the left column. The open tab is selected, which is not the keyboard focus.
 fn tab_item(tab: Tab, active: Tab) -> impl Bundle {
@@ -77,7 +77,7 @@ fn body(active: Tab) -> impl Bundle {
             (
                 column(px(theme::MENU_WIDTH * 2.0), 0.0),
                 children![(
-                    scroller(theme::ROW_HEIGHT * VISIBLE_ROWS),
+                    (fit::Pages, scroller(theme::ROW_HEIGHT * VISIBLE_ROWS)),
                     children![
                         pages::graphics(active),
                         pages::controls(active),
@@ -166,7 +166,7 @@ pub(super) fn plugin(app: &mut App) {
         Update,
         (
             show_tab.run_if(resource_changed::<SettingsTab>),
-            show_values,
+            (show_values, fit::fit_page),
         )
             .run_if(in_state(Menu::Settings)),
     );

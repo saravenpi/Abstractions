@@ -22,7 +22,7 @@ use crate::condition::Condition;
 use crate::net::link::Link;
 use crate::player::{Motion, Player};
 use crate::render::Heat;
-use crate::ship::{Helm, Ship, ShipTelemetry, WarpState};
+use crate::ship::{Hatch, Helm, Ship, ShipTelemetry, WarpState};
 use crate::sim::PlayerId;
 use crate::space::{Anchor, Clock, Location, Placed, Travel};
 use crate::universe::{StarId, Universe};
@@ -102,6 +102,8 @@ pub struct Scene<'w> {
     heat: Option<Res<'w, Heat>>,
     /// How whole each part of the robot is.
     condition: Option<Res<'w, Condition>>,
+    /// Whether the player stands at the hatch of the ship, where its canopy opens.
+    hatch: Option<Res<'w, Hatch>>,
 }
 
 /// The things of this machine that are sent.
@@ -159,9 +161,11 @@ impl Scene<'_> {
     /// Returns what the pilot of the ship of this machine holds: the stick, pitch up then roll
     /// left, and the boost.
     fn pilot(&self) -> Pilot {
-        self.helm.as_deref().map_or(([0.0; 2], 0.0), |helm| {
+        let open = self.hatch.as_deref().is_some_and(|hatch| hatch.near);
+        self.helm.as_deref().map_or(([0.0; 2], 0.0, open), |helm| {
             let turn = helm.controls.turn.as_vec3();
-            ([turn.x, turn.z], f32::from(u8::from(helm.controls.boost)))
+            let boost = f32::from(u8::from(helm.controls.boost));
+            ([turn.x, turn.z], boost, open)
         })
     }
 

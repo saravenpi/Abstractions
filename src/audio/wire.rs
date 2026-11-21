@@ -37,6 +37,7 @@ pub fn ship_cue(event: &ShipEvent) -> Option<AudioCue> {
         ShipEvent::WarpEngaged => Some(AudioCue::WarpEngage),
         ShipEvent::WarpDropped => Some(AudioCue::WarpExit),
         ShipEvent::WarpRefused => Some(AudioCue::UiCancel),
+        ShipEvent::Headlight(_) => Some(AudioCue::UiMove),
         ShipEvent::Liftoff | ShipEvent::Boarded | ShipEvent::Left => None,
     }
 }

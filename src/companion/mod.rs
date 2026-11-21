@@ -55,6 +55,8 @@ mod tests_gaze;
 #[cfg(test)]
 mod tests_idle;
 #[cfg(test)]
+mod tests_lamp;
+#[cfg(test)]
 mod tests_loop;
 #[cfg(test)]
 mod tests_motion;

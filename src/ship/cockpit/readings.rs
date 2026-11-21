@@ -14,7 +14,7 @@ use crate::space::Frame;
 pub const BARS: usize = 5;
 
 /// Number of lamps on the dashboard.
-pub const LAMPS: usize = 6;
+pub const LAMPS: usize = 7;
 
 /// A bar of the dashboard. Each one shows one real number of the ship as a lit strip, in the
 /// order of [`Readings::bars`].
@@ -59,6 +59,8 @@ pub enum Lamp {
     Frame,
     /// The frame is under a quarter of its integrity.
     Failing,
+    /// The headlight in the nose is on.
+    Light,
 }
 
 impl Lamp {
@@ -70,18 +72,19 @@ impl Lamp {
         Lamp::Hot,
         Lamp::Frame,
         Lamp::Failing,
+        Lamp::Light,
     ];
 
     /// Returns the legend of the lamp on the status display.
     pub fn legend(self) -> &'static str {
-        ["STB", "LND", "CLS", "HOT", "FRM", "ERR"][self as usize]
+        ["STB", "LND", "CLS", "HOT", "FRM", "ERR", "LGT"][self as usize]
     }
 
     /// Returns the ink the lamp is lit in: the lamps of the state of the ship are white, a
     /// warning is amber, a danger is red.
     pub fn ink(self) -> Ink {
         match self {
-            Lamp::Assist | Lamp::Landed => Ink::Lit,
+            Lamp::Assist | Lamp::Landed | Lamp::Light => Ink::Lit,
             Lamp::Close | Lamp::Hot | Lamp::Frame => Ink::Amber,
             Lamp::Failing => Ink::Red,
         }

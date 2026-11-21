@@ -1,71 +1,89 @@
 #!/bin/sh
-# End-to-end multiplayer check: a dedicated server, bots, two real game clients (probe, headless).
-# Usage (from the worktree): scripts/mp-e2e.sh [out-dir] [lead-seconds]
+# End-to-end multiplayer check on real processes: the dedicated server, bots and two real game clients.
+# Usage (from the worktree): scripts/mp-e2e.sh [phase ...]    Phases, in the order "all" runs them:
+#   proto    refusals, same key twice, full server, kill -STOP; bots only; about 3 minutes
+#   persist  records, restart, damaged place; bots only; about 2 minutes
+#   game     two clients meet and act, 8 minutes of script after the loading; 25 to 60 minutes
+#   rejoin   the world of game restarted, player b joins again; 10 to 25 minutes (needs game)
+#   edit     a ship saved inside the planet and an airborne place; 15 to 30 minutes (needs game)
+#   soak     8 bots for 10 minutes, then a save and a reload; about 12 minutes
+#   quick    proto and persist, about 5 minutes and no graphics
 # Build first, with CARGO_TARGET_DIR set:
-#   cargo build --features dev --example probe
-#   cargo build -p abstractions-server
+#   cargo build --features dev --example probe && cargo build -p abstractions-server &&
 #   cargo build -p abstractions-net --example bot
-# Displays 106 and 107. Stops only the processes it started, by pid.
+# Environment: MP_OUT (folder of logs and shots), MP_PORT (UDP, default 24733, never 24650), MP_DISPLAY_A and
+# MP_DISPLAY_B (virtual displays 106 and 107), MP_LP_THREADS (renderer threads per client, default 3, so two clients
+# and the bots stay near 8 cores), MP_CPUS_A and MP_CPUS_B (taskset core lists), MP_READY_WAIT (seconds to load, 2400).
+# It starts only processes of its own, stops only their pids, and never touches docker or the public server.
 set -u
 : "${CARGO_TARGET_DIR:?set CARGO_TARGET_DIR}"
-OUT="${1:-$HOME/.cache/abstractions-targets/mp-logs/e2e}"
-LEAD="${2:-1500}"
-PORT=24733
-L="$HOME/.cache/abstractions-targets/lvp"
+DIR=$(cd "$(dirname "$0")" && pwd)
+OUT="${MP_OUT:-$HOME/.cache/abstractions-targets/mp-logs/e2e}"
+PORT="${MP_PORT:-24733}"
+DISPLAY_A="${MP_DISPLAY_A:-106}"
+DISPLAY_B="${MP_DISPLAY_B:-107}"
 T="$CARGO_TARGET_DIR/debug"
-mkdir -p "$OUT"
+SRV="$T/abstractions-server"
+BOT="$T/examples/bot"
+PROBE="$T/examples/probe"
+ADDR="127.0.0.1:$PORT"
 PIDS=""
-stop() { for p in $PIDS; do kill "$p" 2>/dev/null; done; }
-trap stop EXIT
+BOTS=""
+SLOG=""
+SDIR=""
+SPID=""
+XVPID=""
+CPID=""
+GOT=""
+mkdir -p "$OUT"
 
-rm -rf "$OUT/server" "$OUT/a" "$OUT/b"
-mkdir -p "$OUT/server" "$OUT/a/shots" "$OUT/a/data" "$OUT/b/shots" "$OUT/b/data"
+for lib in lib server client proto persist game gamerun restart soak; do
+  . "$DIR/mp/$lib.sh"
+done
+trap stop_all EXIT
+trap 'stop_all; exit 1' INT TERM
 
-"$T/abstractions-server" --port $PORT --data "$OUT/server" --name check >"$OUT/server.log" 2>&1 &
-PIDS="$PIDS $!"
-sleep 3
-head -3 "$OUT/server.log"
-
-"$T/examples/bot" "127.0.0.1:$PORT" --count 2 --seconds 36000 >"$OUT/bots.log" 2>&1 &
-PIDS="$PIDS $!"
-
-BOT_PROTOCOL=2 "$T/examples/bot" "127.0.0.1:$PORT" --count 1 --seconds 5 >"$OUT/old-protocol.log" 2>&1
-echo "old protocol bot said:"
-head -5 "$OUT/old-protocol.log"
-
-T0=$(( $(date +%s) + LEAD ))
-echo "$T0" >"$OUT/t0"
-run() {
-  N=$1; ROLE=$2; D="$OUT/$ROLE"
-  Xvfb ":$N" -screen 0 1280x720x24 >/dev/null 2>&1 &
-  XV=$!
-  sleep 10
-  DISPLAY=":$N" \
-  VK_ICD_FILENAMES="$L/libs/usr/share/vulkan/icd.d/lvp_icd.json" \
-  LD_LIBRARY_PATH="$L/libs/usr/lib/x86_64-linux-gnu:$T/deps:$HOME/.rustup/toolchains/1.98.1-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/lib" \
-  ALSA_CONFIG_PATH="$L/asound.conf" XDG_DATA_HOME="$D/data" SMOKE_DIR="$D/shots" \
-  PROBE_SOFT=1 SMOKE_SEED=7 SMOKE_ONLY=mp-meet,mp-act,mp-leave \
-  PROBE_JOIN="127.0.0.1:$PORT" PROBE_NAME="Player-$ROLE" PROBE_ROLE="$ROLE" PROBE_T0="$T0" \
-  "$T/examples/probe" >"$D/log.txt" 2>&1
-  echo "client $ROLE exit $?"
-  kill "$XV" 2>/dev/null
+# Stops unless the three programs exist and the port is free.
+preflight() {
+  for bin in "$SRV" "$BOT" "$PROBE"; do
+    [ -x "$bin" ] || { echo "missing $bin: build first, see the top of this script" >&2; return 1; }
+  done
+  free_port
 }
-run 106 a &
-A=$!
-run 107 b &
-B=$!
-wait $A $B
 
-sleep 2
-echo "--- errors"
-for f in "$OUT/server.log" "$OUT/bots.log" "$OUT/a/log.txt" "$OUT/b/log.txt"; do
-  echo "== $f"
-  sed 's/\x1b\[[0-9;]*m//g' "$f" | grep -aiE "panic|failed validation|decode|error|disconnect|refused" | grep -av rodio | head -20
+# Runs one phase by name and says how long it took.
+run_phase() {
+  START=$(date +%s)
+  echo "=== phase $1"
+  "phase_$1"
+  stop_all
+  echo "=== phase $1 took $(( $(date +%s) - START )) s"
+}
+
+# Prints every verdict again, then the count, and returns 1 when one failed.
+summary() {
+  echo
+  echo "=== summary ($OUT/results.txt)"
+  awk -F'|' '{ printf "%-5s %s\n", $1, $2 }' "$OUT/results.txt"
+  FAILS=$(grep -c '^FAIL|' "$OUT/results.txt")
+  PASSES=$(grep -c '^PASS|' "$OUT/results.txt")
+  echo "$PASSES passed, $FAILS failed, $(grep -c '^SKIP|' "$OUT/results.txt") skipped"
+  [ "$FAILS" = 0 ]
+}
+
+# Writes the verdict that waits for the headlight bit of the ship record to be merged.
+placeholder() {
+  verdict SKIP "the second client sees the first one's headlight" \
+    "placeholder: merge look-ship, write the act in examples/probe/mpact.rs, run PROBE with SMOKE_ONLY=mp-lights"
+}
+
+preflight || exit 2
+: >"$OUT/results.txt"
+PHASES="${*:-all}"
+[ "$PHASES" != all ] || PHASES="proto persist game rejoin edit soak"
+[ "$PHASES" != quick ] || PHASES="proto persist"
+for phase in $PHASES; do
+  run_phase "$phase"
 done
-echo "--- MP lines"
-for r in a b; do
-  sed 's/\x1b\[[0-9;]*m//g' "$OUT/$r/log.txt" | grep -a "MP " | cut -c1-260 | awk 'NR%4==1' | head -60
-done
-ls "$OUT/a/shots" "$OUT/b/shots"
-echo "--- server files"
-ls -l "$OUT/server"
+placeholder
+summary

@@ -137,6 +137,13 @@ The numbers come from a Python port of the rig and the meshes, `~/.cache/abstrac
 
 The companion is the robot's helmet flying on its own: the same dome, the same dark visor box, the same ear discs, here with an orange centre. Its own signature is a low crest: a fairing that starts inside the crown, as wide as the crown is there, and tapers up and back to the glowing antenna tip, 6 cm over the crown and 11 cm behind the middle, half the reach of the fin it replaces (owner, 2026-11-21: the fin was too long and stuck on). It keeps one crest on top and gets no side vanes, because its hands float where vanes would be and would cut them. A small bone peak sits over the visor. Under the dome a dark nozzle bell holds the thruster glow. Three slate lames hang round the lower back as a neck guard: its coat. The hands are two small gauntlets with the orange stripe and a dark cuff. It stays round and friendly: nothing points at the player.
 
+### Its lamp and its place in the cockpit (2026-11-21)
+
+- The lamp in front of its screen is 850 lm at full size, the power of the robot's lamp, with the range `render::reach` gives it (3.5 m). It has no shadows.
+- It is a lamp for the dark. Its power follows the light of the place the exposure is metered from (`render::scene_lux`): full under 400 lux (a night is about 310), off over 2,000 lux (a day is 13,000), even steps per doubling in between. With no place, as in space, it is on.
+- Its power goes with the square of its size and its range with its size. In the cockpit it is a third of its size: 93 lm and 1.2 m.
+- Seated, it hovers over the high front of the left console, which carries no lever: 0.30 m left of the eye, 0.545 m under it, 0.42 m ahead (hull x = -0.30, y = 0.355, z = -1.72). That is inside the wall of the tub, ahead of the hand on the throttle, 17 degrees clear of the left display and under the picture when the pilot looks level. The pilot sees it by looking down to the left. It moves again when it gets a seat of its own.
+
 ## Budgets
 
 | Model | Before | Near | Far |

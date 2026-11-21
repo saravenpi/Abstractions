@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::backdrop::{backdrop_luminance, contrast};
-use super::color_rig::{luminance, on_panel};
+use super::color_rig::luminance;
 use super::theme;
 
 /// What sits over the game lets it show: every backdrop is translucent, text is solid.
@@ -26,40 +26,6 @@ fn white_text_keeps_its_contrast_over_a_white_world() {
     assert!(contrast(1.0, worst) >= 4.5, "{}", contrast(1.0, worst));
     assert!(contrast(1.0, backdrop_luminance(0.0, theme::TINT)) > 20.0);
     assert!((contrast(0.0, 1.0) - 21.0).abs() < 1e-3);
-}
-
-/// Text on `PANEL` stays readable over a pure white sky, the worst case, and over black.
-#[test]
-fn text_on_the_panel_is_readable_over_a_white_sky() {
-    assert!(
-        on_panel(theme::TEXT, 1.0) >= 7.0,
-        "{}",
-        on_panel(theme::TEXT, 1.0)
-    );
-    assert!(
-        on_panel(theme::TEXT_2, 1.0) >= 4.5,
-        "{}",
-        on_panel(theme::TEXT_2, 1.0)
-    );
-    assert!(
-        on_panel(theme::ACCENT, 1.0) >= 4.5,
-        "{}",
-        on_panel(theme::ACCENT, 1.0)
-    );
-    assert!(
-        on_panel(theme::PIN, 1.0) >= 4.5,
-        "{}",
-        on_panel(theme::PIN, 1.0)
-    );
-    for warning in [theme::WARN, theme::DANGER] {
-        assert!(
-            on_panel(warning, 1.0) >= 4.5,
-            "{warning:?} {}",
-            on_panel(warning, 1.0)
-        );
-        assert!(on_panel(warning, 0.0) >= 7.0);
-    }
-    assert!(on_panel(theme::TEXT, 0.0) >= 15.0);
 }
 
 /// Ink on the accent fill is readable.

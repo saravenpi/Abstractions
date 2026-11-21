@@ -4,9 +4,8 @@
 
 use bevy::prelude::*;
 
+use super::state::Cockpit;
 use super::tune::CANOPY_OPEN;
-use crate::ship::board::Hatch;
-use crate::ship::body::Ship;
 
 /// The hinge of the canopy of one ship, a child of the ship. The glass and the frame hang
 /// from it, so turning it opens both.
@@ -23,18 +22,18 @@ pub fn swung(now: f32, open: bool, dt: f32) -> f32 {
     now + (wanted - now).clamp(-step, step)
 }
 
-/// Swings the canopy of the ship the player flies open while the player stands at its hatch,
-/// and shuts it otherwise. The canopy of any other ship stays shut. A canopy at rest writes
-/// nothing.
+/// Swings the canopy of every ship toward what its cockpit asks: open while the owner of the
+/// ship stands at its hatch, shut otherwise. The ship the player flies is asked by its hatch,
+/// the ship of another player by its record. A canopy at rest writes nothing.
 pub fn swing(
     time: Res<Time>,
-    hatch: Option<Res<Hatch>>,
-    ships: Query<(), With<Ship>>,
+    cockpits: Query<&Cockpit>,
     mut hinges: Query<(&ChildOf, &mut Canopy, &mut Transform)>,
 ) {
-    let near = hatch.is_some_and(|hatch| hatch.near);
     for (parent, mut canopy, mut transform) in &mut hinges {
-        let open = near && ships.contains(parent.parent());
+        let open = cockpits
+            .get(parent.parent())
+            .is_ok_and(|cockpit| cockpit.open);
         let angle = swung(canopy.angle, open, time.delta_secs());
         if angle != canopy.angle {
             canopy.angle = angle;

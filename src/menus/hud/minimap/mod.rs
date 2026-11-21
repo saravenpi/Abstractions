@@ -22,7 +22,7 @@ mod space;
 #[cfg(test)]
 mod tests;
 mod view;
-mod widget;
+pub(in crate::menus::hud) mod widget;
 
 pub(super) use pose::Reader;
 pub(super) use widget::frame;

@@ -1,54 +1,73 @@
 //! Two games on one server: each meets the other, acts in turn and shoots what it sees of the
 //! other. Needs `PROBE_JOIN`; without it every stage ends at once.
 //!
-//! `PROBE_ROLE` is `a` or `b`. `PROBE_T0` is a Unix time in seconds, the same for both games:
-//! the acts run in phases of [`PHASE`] seconds from it, so two games that load at different
-//! speeds still look at each other doing the same thing.
+//! `PROBE_ROLE` is `a` or `b`. `PROBE_SYNC` is a folder both games share. Each writes
+//! `ready-<role>` there once it has met the other, and waits for the file `t0` the script writes
+//! when both are ready: a Unix time in seconds. The acts run in phases of [`PHASE`] seconds from
+//! it, so two games that load at different speeds still look at each other doing the same thing.
+//! `PROBE_T0`, a Unix time, stands in for the file.
 
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::AtomicU32;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use abstractions::avatar::AvatarPose;
 use abstractions::net::{LeaveSession, Players, Remote, Session};
+use abstractions::ship::Engine;
+use abstractions::ship::cockpit::Canopy;
 
 use super::*;
 
 /// Seconds of one phase.
-const PHASE: f64 = 60.0;
+pub const PHASE: f64 = 60.0;
 
 /// Phases of the script.
-const PHASES: u32 = 6;
+pub const PHASES: u32 = 8;
 
 /// Distance in metres at which the second player stands from the first.
 const APART: f64 = 5.0;
 
 /// The shots taken, one bit per phase and mark.
-static SHOT: AtomicU32 = AtomicU32::new(0);
+pub static SHOT: AtomicU32 = AtomicU32::new(0);
+
+/// The keys held down by the script, one bit per key.
+pub static HELD: AtomicU32 = AtomicU32::new(0);
+
+/// The two-second tick of the last report of the acts.
+pub static TICK: AtomicU32 = AtomicU32::new(u32::MAX);
 
 /// Returns true when this game joined a server.
-fn joined() -> bool {
+pub fn joined() -> bool {
     std::env::var("PROBE_JOIN").is_ok()
 }
 
 /// Returns true when this game plays the role `b`.
-fn second() -> bool {
+pub fn second() -> bool {
     std::env::var("PROBE_ROLE").is_ok_and(|role| role == "b")
 }
 
-/// Returns the seconds since `PROBE_T0`.
-fn since() -> f64 {
-    let t0 = std::env::var("PROBE_T0")
+/// Returns the folder the two games share.
+pub fn sync() -> std::path::PathBuf {
+    std::path::PathBuf::from(std::env::var("PROBE_SYNC").unwrap_or_else(|_| ".".into()))
+}
+
+/// Returns the start of the script: the file `t0` of the shared folder, else `PROBE_T0`.
+pub fn start() -> Option<f64> {
+    let text = std::fs::read_to_string(sync().join("t0"))
         .ok()
-        .and_then(|t| t.parse::<f64>().ok())
-        .unwrap_or(0.0);
+        .or_else(|| std::env::var("PROBE_T0").ok())?;
+    text.trim().parse().ok()
+}
+
+/// Returns the seconds since the start of the script, or nothing while it has no start.
+pub fn since() -> Option<f64> {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0.0, |d| d.as_secs_f64());
-    now - t0
+    Some(now - start()?)
 }
 
 /// Returns the planet position and the pose of the first other robot drawn.
-fn remote(world: &mut World) -> Option<(DVec3, AvatarPose)> {
+pub fn remote(world: &mut World) -> Option<(DVec3, AvatarPose)> {
     let anchor = *world.get_resource::<Anchor>()?;
     let (at, pose) = world
         .query_filtered::<(&GlobalTransform, &AvatarPose), With<Remote>>()
@@ -57,8 +76,47 @@ fn remote(world: &mut World) -> Option<(DVec3, AvatarPose)> {
     Some((anchor.to_frame(at.translation()), *pose))
 }
 
+/// Returns the highest engine level shown on the ships of the other players.
+fn exhaust(world: &mut World) -> f32 {
+    let mut engines = world.query_filtered::<&Engine, With<Remote>>();
+    engines
+        .iter(world)
+        .map(|engine| engine.level)
+        .fold(0.0, f32::max)
+}
+
+/// Returns the widest opening of a canopy in the world, in radians.
+fn canopy(world: &mut World) -> f32 {
+    let mut hinges = world.query::<&Canopy>();
+    hinges
+        .iter(world)
+        .map(|hinge| hinge.angle)
+        .fold(0.0, f32::max)
+}
+
+/// Logs where the player stands and what the ship is, one line a check can compare.
+pub fn spot(world: &mut World, label: &str) {
+    let me = robot(world);
+    let radius = world
+        .get_resource::<Planet>()
+        .map_or(0.0, |planet| planet.globe.radius());
+    let travel = world
+        .get_resource::<Location>()
+        .map(|location| location.travel);
+    let hull = ship(world).map_or("none".to_string(), |hull| {
+        format!("frame {:?} landed {}", hull.frame, hull.landed)
+    });
+    info!(
+        "MP spot {label}: pos {:.1} {:.1} {:.1} altitude {:.1} travel {travel:?} ship {hull}",
+        me.x,
+        me.y,
+        me.z,
+        me.length() - radius
+    );
+}
+
 /// Logs what the game sees of the others.
-fn report(world: &mut World, label: &str) {
+pub fn mp_report(world: &mut World, label: &str) {
     if world.get_resource::<Anchor>().is_none() {
         info!("MP {label}: no anchor yet");
         return;
@@ -66,20 +124,27 @@ fn report(world: &mut World, label: &str) {
     let me = robot(world);
     let session = world.resource::<Session>().clone();
     let players = world.resource::<Players>().0.clone();
+    let (travel, lift, open) = (
+        world.resource::<Location>().travel,
+        exhaust(world),
+        canopy(world),
+    );
+    let mine = format!("me {travel:?} exhaust {lift:.2} canopy {open:.2}");
     match remote(world) {
         Some((at, pose)) => info!(
-            "MP {label}: {session:?} players {players:?}; remote {:.2} m away, mode {:?} speed {:.2} wings {:.2}",
+            "MP {label}: {session:?} players {players:?}; remote {:.2} m away, mode {:?} speed {:.2} crouch {:.2} wings {:.2}; {mine}",
             at.distance(me),
             pose.mode,
             pose.speed,
+            pose.crouch,
             pose.wings
         ),
-        None => info!("MP {label}: {session:?} players {players:?}; no remote robot drawn"),
+        None => info!("MP {label}: {session:?} players {players:?}; no remote robot drawn; {mine}"),
     }
 }
 
 /// Turns the player toward the other robot, where it stands.
-fn face(world: &mut World) {
+pub fn face(world: &mut World) {
     if let Some((at, _)) = remote(world) {
         let me = robot(world);
         let up = me.normalize();
@@ -99,7 +164,7 @@ pub fn mp_meet(world: &mut World, _: &mut Notes, frame: u32) -> Act {
         view(world, ViewMode::Third, ViewMode::Third);
     }
     if frame.is_multiple_of(40) {
-        report(world, &format!("meet frame {frame}"));
+        mp_report(world, &format!("meet frame {frame}"));
     }
     if remote(world).is_none() {
         return match frame {
@@ -119,83 +184,18 @@ pub fn mp_meet(world: &mut World, _: &mut Notes, frame: u32) -> Act {
         face(world);
     }
     match frame {
-        f if f > 200 => Act::Shoot(format!("20-mp-meet-{}", role())),
+        f if f > 200 => {
+            let _ = std::fs::write(sync().join(format!("ready-{}", role())), "ready");
+            info!("MP ready: {} met the other player", role());
+            Act::Shoot(format!("20-mp-meet-{}", role()))
+        }
         _ => Act::Wait,
     }
 }
 
 /// Returns the role as a letter.
-fn role() -> &'static str {
+pub fn role() -> &'static str {
     ["a", "b"][usize::from(second())]
-}
-
-/// The script: in each phase one player acts and the other looks. Shots at 12 s and 30 s into
-/// each phase, named by phase and role.
-pub fn mp_act(world: &mut World, _: &mut Notes, frame: u32) -> Act {
-    if !joined() {
-        return Act::Next;
-    }
-    let seconds = since();
-    if seconds < 0.0 {
-        return Act::Wait;
-    }
-    let phase = (seconds / PHASE).floor().max(0.0) as u32;
-    if phase >= PHASES {
-        return Act::Next;
-    }
-    let into = seconds - f64::from(phase) * PHASE;
-    let acts = (phase % 2 == 1) == second();
-    let forward = bound(world, |s| s.controls.keys.forward);
-    let crouch = bound(world, |s| s.controls.keys.crouch);
-    let board = bound(world, |s| s.controls.keys.ship.board);
-    let action = phase / 2;
-    if frame.is_multiple_of(40) {
-        report(world, &format!("phase {phase} {into:.0}s acts {acts}"));
-    }
-    if acts && frame.is_multiple_of(4) {
-        match (action, into) {
-            (0, t) if t < 40.0 => key(world, crouch, true),
-            (0, _) => key(world, crouch, false),
-            (1, t) if t < 20.0 => key(world, forward, true),
-            (1, _) => key(world, forward, false),
-            (2, t) if (2.0..2.6).contains(&t) => beside_hatch(world),
-            _ => {}
-        }
-    }
-    if acts && action == 2 && (6.0..7.0).contains(&into) && frame.is_multiple_of(2) {
-        key(world, board, into < 6.5);
-    }
-    if !acts && frame.is_multiple_of(60) {
-        face(world);
-    }
-    let marks = [12.0, 30.0];
-    let i = marks.iter().rposition(|m| into >= *m);
-    let name = |i: usize| {
-        format!(
-            "3{phase}-{i}-{}-{}",
-            role(),
-            ["acts", "sees"][usize::from(!acts)]
-        )
-    };
-    match i {
-        Some(i)
-            if SHOT.fetch_or(1 << (phase * 2 + i as u32), Ordering::Relaxed)
-                & (1 << (phase * 2 + i as u32))
-                == 0 =>
-        {
-            shot(world, &name(i));
-            Act::Wait
-        }
-        _ => Act::Wait,
-    }
-}
-
-/// Stands beside the hatch of the ship.
-fn beside_hatch(world: &mut World) {
-    if let Some(hull) = ship(world) {
-        let beside = hull.pos + hull.rot * DVec3::new(-2.6, -1.2, -1.8);
-        stand(world, beside, hull.pos, 0.0);
-    }
 }
 
 /// Reports the last view, leaves the server and shoots the title it returns to.
@@ -205,12 +205,13 @@ pub fn mp_leave(world: &mut World, _: &mut Notes, frame: u32) -> Act {
     }
     match frame {
         1 => {
-            report(world, "end");
+            mp_report(world, "end");
+            spot(world, "before leaving");
             world.write_message(LeaveSession);
             Act::Wait
         }
         60 => {
-            report(world, "after leaving");
+            mp_report(world, "after leaving");
             Act::Shoot(format!("39-mp-left-{}", role()))
         }
         _ => Act::Wait,

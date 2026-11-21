@@ -20,11 +20,13 @@ mod tune;
 mod tests;
 #[cfg(test)]
 mod tests_jets;
+#[cfg(test)]
+mod tests_lamps;
 
 use bevy::prelude::*;
 
 pub use jets::fit as fit_plumes;
-pub use lights::fit as fit_lights;
+pub use lights::{Lamp as HullLamp, TIP_COLORS, fit as fit_lights, place as lamp_place};
 pub use shells::jet_mesh;
 pub use state::Exhaust;
 

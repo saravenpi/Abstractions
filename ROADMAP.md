@@ -32,7 +32,7 @@ The order from 0.12 on was set on 2026-11-20 from a study of what other explorat
 
 ## The setting
 
-You are a human who never leaves a control container on the planet Kodya, in the Vereya system. From there you drive a robot over an instant quantum link. A smaller floating robot travels with you. Everything you see is generated from one seed.
+You are a human who never leaves a control container on your home planet. From there you drive a robot over an instant quantum link. A smaller floating robot travels with you. Everything you see is generated from one seed.
 
 ## Rules that hold in every version
 
@@ -126,7 +126,7 @@ Planets and the galaxy at their real size, each living planet with life that bel
 
 - Real scale: planets, stars, orbits and galaxies at their true sizes, gravity from mass and radius (9.81 m/s² on an Earth-like planet), days from each planet's own spin, and warp speeds to match.
 - Continents from tectonic plates, mountain ranges where plates meet, and rivers that drain each planet; real air with its own gases and scale height, and moons that form the way real moons do.
-- Home is chosen by one rule: a planet where life climbed to skeletons, with seas and land, a mild mean temperature and gravity between 0.7 and 1.3 times 9.81 m/s². You wake on a shore with plants and herds around you. A tidally locked home is allowed.
+- Home is chosen by one rule: a planet where life climbed to skeletons, with seas and land, a mild mean temperature and gravity between 0.7 and 1.3 times 9.81 m/s². You wake on a shore in daylight, with plants and herds around you. A tidally locked home is allowed.
 - Life chosen by physics: whether a planet lives and how far life has come, its chemistry, and plants shaped by its climate and its star's light.
 - A food web per planet: grazers, hunters and scavengers, with herds, tracks, calls, nests and carcasses. Animals act from their needs: they graze, hunt, flee and flock.
 - Tracks and calls lead you to animals, and a field guide on K fills in as you watch.
@@ -134,6 +134,7 @@ Planets and the galaxy at their real size, each living planet with life that bel
 - A redesigned ship with a working cockpit and real exhaust, a redesigned robot and companion, entry heat, and speed you can feel.
 - Light that adapts: exposure and white balance follow the light of the star, one ground colour at every range, and a Lighting quality setting.
 - A reworked interface: one Go command, pins in place of waypoints and favourites, a HUD that shows only what applies, and markers on screen.
+- A saved place that is never lost: one seat per player on a server, orbits that come back, and a loading screen that always ends.
 - Multiplayer protocol 3, save format 3. Worlds made with 0.10 keep opening with 0.10. A 0.10 game cannot join a 0.11 server, and the public server started a new world.
 
 ## 0.12: places worth the trip

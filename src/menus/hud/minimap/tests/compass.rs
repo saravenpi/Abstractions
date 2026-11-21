@@ -39,18 +39,19 @@ fn friend(app: &App, name: &str, at: DVec3) -> Marker {
     }
 }
 
-/// Returns the place and row of every shown mark of `kind`, sorted by row.
-fn shown(app: &mut App, kind: MarkerKind) -> Vec<(f32, f32)> {
+/// Returns the place in pixels along the bar of every shown mark of `kind`, in ascending order.
+/// A mark sets only its `left`: every mark is on the one row of the bar, so its `top` stays auto.
+fn shown(app: &mut App, kind: MarkerKind) -> Vec<f32> {
     let mut pins = app.world_mut().query::<(&Pin, &Node)>();
-    let mut found: Vec<(f32, f32)> = pins
+    let mut found: Vec<f32> = pins
         .iter(app.world())
         .filter(|(pin, node)| pin.kind == Some(kind) && node.display == Display::Flex)
         .map(|(_, node)| match (node.left, node.top) {
-            (Val::Px(left), Val::Px(top)) => (left, top),
+            (Val::Px(left), Val::Auto) => left,
             other => panic!("placed with {other:?}"),
         })
         .collect();
-    found.sort_by(|a, b| a.1.total_cmp(&b.1));
+    found.sort_by(f32::total_cmp);
     found
 }
 
@@ -71,12 +72,9 @@ fn the_compass_spaces_friends_ahead_on_one_row() {
     }
     let found = shown(&mut app, MarkerKind::Friend);
     assert_eq!(found.len(), 5, "{found:?}");
-    assert!(found.iter().all(|(_, top)| *top == 0.0), "{found:?}");
-    let mut lefts: Vec<f32> = found.iter().map(|(left, _)| *left).collect();
-    lefts.sort_by(f32::total_cmp);
     assert!(
-        lefts.windows(2).all(|pair| pair[1] - pair[0] >= 31.99),
-        "{lefts:?}"
+        found.windows(2).all(|pair| pair[1] - pair[0] >= 31.99),
+        "{found:?}"
     );
     let mut words = app.world_mut().query::<&Text>();
     let spoken: Vec<&str> = words
@@ -133,7 +131,7 @@ fn rebase(app: &mut App, at: DVec3, toward: DVec3) {
 
 /// Returns the place in pixels along the bar of the home mark.
 fn home_left(app: &mut App) -> f32 {
-    shown(app, MarkerKind::Home)[0].0
+    shown(app, MarkerKind::Home)[0]
 }
 
 /// A rebase in the frame keeps the centre of the minimap on the true place of the player

@@ -122,6 +122,7 @@ fn a_ship_body_comes_back() {
         stick: [0.5, -1.0],
         boost: 0.75,
         heat: 0.5,
+        ..ShipBody::default()
     };
     let mut bytes = Vec::new();
     sent.encode(&frame, &mut bytes);

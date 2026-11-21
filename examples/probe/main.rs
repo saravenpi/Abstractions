@@ -13,6 +13,8 @@
 //! - `SMOKE_TARGET` and `SMOKE_FLASH`: see the `warp` and `boot` stages.
 //! - `PROBE_JOIN=<address>`: join that server instead of starting a world, with `PROBE_NAME` as the player name
 //!   and `PROBE_PASSWORD`. The `mp` stages then meet the other players (see the `mp` module).
+//! - `PROBE_UI_SIZE`: `small` or `large` sets the interface size of the run (the Interface size setting),
+//!   to shoot `wake` and `menus` at each step.
 //! - `PROBE_SOFT`: when set, a system whose parameters fail validation is logged and skipped instead of
 //!   stopping the game, so one run lists every such system.
 //!
@@ -71,6 +73,8 @@ mod look;
 mod meter;
 mod models;
 mod mp;
+mod mpact;
+mod mpspot;
 mod orbital;
 mod postcards;
 mod room;
@@ -85,6 +89,7 @@ mod util;
 mod walls;
 mod watch;
 mod water;
+mod wing;
 mod zoo;
 
 use air::*;
@@ -106,6 +111,8 @@ use launch::*;
 use look::*;
 use meter::*;
 use mp::*;
+use mpact::*;
+use mpspot::*;
 use orbital::*;
 use postcards::*;
 use room::*;
@@ -120,6 +127,7 @@ use util::*;
 use walls::*;
 use watch::*;
 use water::*;
+use wing::*;
 
 /// Runs the zoo when `PROBE_STAGES` names it, else the tour of the game.
 fn main() -> AppExit {

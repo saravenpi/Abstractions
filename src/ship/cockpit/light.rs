@@ -1,16 +1,16 @@
 //! The light of the cockpit: a glow of the panel that is on while the pilot sits, a cabin
 //! light that is on while the ship is landed and the hatch is in use, and the warm light of
 //! an entry that comes through the glass. The lit faces of the instruments are dimmed by day
-//! so they do not wash out. No cockpit light casts a shadow, and only the ship the player
-//! flies has lights: the others show emissive faces alone.
+//! so they do not wash out. No cockpit light casts a shadow. Every ship has them, and they
+//! answer to its own cockpit, so the ship of another player is lit as its owner sees it.
 
 use bevy::prelude::*;
 
 use super::fit::Lit;
+use super::readings::Lamp;
 use super::state::Cockpit;
 use super::tune::{DAY_DIM, LUMENS, SCREEN_GLOW};
 use crate::render::{DayClock, Heat, daylight, reach};
-use crate::ship::board::Hatch;
 use crate::ship::body::Ship;
 
 /// A light of the cockpit.
@@ -64,11 +64,11 @@ pub fn glow(day: f32) -> f32 {
 #[derive(Component, Debug, Clone, Copy)]
 pub struct Wired;
 
-/// The ship the player flies, while its cockpit has no lights yet.
-type Unwired = (With<Cockpit>, With<Ship>, Without<Wired>);
+/// A ship whose cockpit has no lights yet.
+type Unwired = (With<Cockpit>, Without<Wired>);
 
-/// Adds the lights to the ship the player flies, once: the glow of the panel above the dashboard
-/// and the cabin light over the seat.
+/// Adds the lights to every ship, once: the glow of the panel above the dashboard and the
+/// cabin light over the seat.
 pub fn rig(mut commands: Commands, ships: Query<Entity, Unwired>) {
     for ship in &ships {
         commands.entity(ship).insert(Wired);
@@ -93,31 +93,29 @@ pub fn rig(mut commands: Commands, ships: Query<Entity, Unwired>) {
 }
 
 /// What the lights read besides the cockpit.
-type Sky<'w> = (
-    Option<Res<'w, DayClock>>,
-    Option<Res<'w, Heat>>,
-    Option<Res<'w, Hatch>>,
-);
+type Sky<'w> = (Option<Res<'w, DayClock>>, Option<Res<'w, Heat>>);
 
-/// Sets the colour and the power of the lights from the state of the ship, the time of day, the
-/// heat of the entry and the hatch. A light that did not change is not written.
+/// Sets the colour and the power of the lights of every ship from its cockpit: whether a pilot
+/// sits in it, whether it is landed and whether its canopy is asked open, with the time of day.
+/// The heat of an entry lights the ship the player flies only. A light that did not change is
+/// not written.
 pub fn shine(
-    (clock, heat, hatch): Sky,
-    ships: Query<(&Ship, &Cockpit)>,
+    (clock, heat): Sky,
+    ships: Query<(&Cockpit, Has<Ship>)>,
     mut lights: Query<(&Beam, &ChildOf, &mut PointLight)>,
 ) {
     let day = clock.map_or(1.0, |clock| daylight(clock.phase));
     let entry = heat.map_or((0.0, Vec3::ZERO), |heat| (heat.glow.heat, heat.glow.color));
     for (kind, parent, mut light) in &mut lights {
-        let Ok((ship, cockpit)) = ships.get(parent.parent()) else {
+        let Ok((cockpit, own)) = ships.get(parent.parent()) else {
             continue;
         };
         let mood = Mood {
             day,
             seated: cockpit.pilot.is_some(),
-            landed: ship.landed,
-            hatch: hatch.as_ref().is_some_and(|hatch| hatch.near),
-            heat: entry,
+            landed: cockpit.read.lamps[Lamp::Landed as usize],
+            hatch: cockpit.open,
+            heat: if own { entry } else { (0.0, Vec3::ZERO) },
         };
         let (color, power) = beam(*kind, &mood);
         if light.intensity != power {
@@ -150,7 +148,7 @@ pub fn dim(
     }
 }
 
-/// Run condition: the ship the player flies has a cockpit without lights. It asks what is
+/// Run condition: a ship has a cockpit without lights. It asks what is
 /// there, not what was just added, because a condition is evaluated while its set does not run.
 pub fn fitting(cockpits: Query<(), Unwired>) -> bool {
     !cockpits.is_empty()

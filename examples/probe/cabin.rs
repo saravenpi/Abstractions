@@ -115,30 +115,60 @@ pub fn cockpit(world: &mut World, _: &mut Notes, frame: u32) -> Act {
     }
 }
 
-/// The views of the landed ship from outside, at night.
-const OUT: [View; 2] = [
+/// The views of the landed ship from outside, at night: the lamps at the tips of the winglets
+/// show from the front, the side and the rear.
+const OUT: [View; 5] = [
     ("out", Vec3::new(-4.4, 1.2, -6.4), Vec3::new(0.0, 0.2, -0.6)),
     (
         "canopy",
         Vec3::new(-2.4, 1.5, -3.3),
         Vec3::new(0.0, 0.6, -1.5),
     ),
+    ("front", Vec3::new(0.5, 0.6, -9.0), Vec3::new(0.0, 0.2, 0.0)),
+    ("side", Vec3::new(-7.5, 0.6, 1.5), Vec3::new(0.0, 0.2, 1.5)),
+    ("rear", Vec3::new(1.0, 1.4, 9.5), Vec3::new(0.0, 0.3, 2.0)),
 ];
 
-/// Half a day later: the landed ship from outside, with the whole pilot in the seat, and the
-/// cockpit from the seat, at night. The clock is then put on by another half day.
+/// The views of the landed ship with its headlight on, from outside.
+const LIT: [View; 2] = [
+    (
+        "light-out",
+        Vec3::new(-4.4, 1.2, -6.4),
+        Vec3::new(0.0, 0.2, -0.6),
+    ),
+    (
+        "light-side",
+        Vec3::new(-7.5, 1.0, -5.0),
+        Vec3::new(0.0, -0.6, -8.0),
+    ),
+];
+
+/// Half a day later: the landed ship from outside, with the whole pilot in the seat, the
+/// cockpit from the seat, then the headlight switched on with its key, from the seat and from
+/// outside, and switched off again. The clock is then put on by another half day.
 pub fn night(world: &mut World, _: &mut Notes, frame: u32) -> Act {
     let half = world.resource::<Planet>().day_seconds * 0.5;
+    let switch = bound(world, |s| s.controls.keys.ship.headlight);
     match frame {
         1 => {
             world.resource_mut::<abstractions::space::Clock>().seconds += half;
             view(world, ViewMode::First, ViewMode::Third);
         }
-        60..=99 => {
+        60..=135 => {
             views(world, frame - 59, "33-night", &OUT);
         }
-        100 => view(world, ViewMode::First, ViewMode::First),
-        140.. if views(world, frame - 139, "33-night", &looks()[..4]) => {
+        136 => view(world, ViewMode::First, ViewMode::First),
+        170..=229 => {
+            views(world, frame - 169, "33-night", &looks()[..4]);
+        }
+        230 | 231 => key(world, switch, frame == 230),
+        240..=253 => {
+            views(world, frame - 239, "33-night-light", &looks()[..1]);
+        }
+        254 => view(world, ViewMode::First, ViewMode::Third),
+        270.. if views(world, frame - 269, "33-night", &LIT) => {
+            with_ship(world, |ship| ship.headlight = false);
+            view(world, ViewMode::First, ViewMode::First);
             world.resource_mut::<abstractions::space::Clock>().seconds += half;
             return Act::Next;
         }

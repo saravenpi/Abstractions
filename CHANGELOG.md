@@ -7,7 +7,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- The robot wakes with a kit: a stone spear in hotbar slot 1, held, and a stone knife in slot 2, knapped from the stone of the home planet. They are the lightest tools the workshop proposes, with their real mass and wear, so the first animal that goes for you can be fought and every tool you make after is better. A first-time hint on the ground points to the pack (I). A world saved before gets the kit once on its next load, when its pack holds no tool. In a session every player gets their own.
+- The robot wakes with a kit: a stone spear in hotbar slot 1 and a stone knife in slot 2, knapped from the stone of the home planet, and nothing in its hands: press 1 to draw the spear. They are the lightest tools the workshop proposes, with their real mass and wear, so the first animal that goes for you can be fought and every tool you make after is better. A world saved before gets the kit once on its next load, when its pack holds no tool. In a session every player gets their own.
+
+### Removed
+
+- The first-time hints are gone: the prompt line no longer suggests opening the map, dropping a pin, the minimap range or the stabiliser. It shows only what a key does right now. Every key stays on the controls page and in the menus, and a settings file that kept the hints done still loads.
 
 ### Changed
 
@@ -47,7 +51,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A herd no longer moves in lockstep. Each animal starts its stride, its tail swish, its wing beat or pulse and its weight shift at its own phase, so a herd spawned together no longer breathes and swishes as one. Each breath is a little longer or shorter than the last, a heavy animal breathes slower than a light one (about 15 a minute at 70 kg, 9 at 600 kg), and an animal that ran or fought pants and calms down over about 20 s. A herd cry reaches each member up to 0.4 s apart, so a herd calls as a ragged chorus instead of pumping every chest at once.
 - An attack of an animal bends its body instead of sliding its parts. The head no longer sinks into the torso and the neck no longer vanishes: in the wind-up the neck draws the head back while the body crouches, then it throws the head out along its reach; a forefoot lifts and strikes, a trample lifts the forefeet and stamps, a tail cocks and sweeps. The neck and the tail now stay on the body when it crouches or rears, and the jaw opens before a bite.
 - A pin lies on the ground where you drop it. It was kept at sea level under that place, so a pin dropped at your feet on ground 600 m high showed 600 m away, and you never arrived at it. Pins of older worlds and the pins of your friends find their ground when you reach their planet.
-- The "Drop a pin" hint stops showing once you have a pin, dropped with B, from the map or kept in the world, and never comes back. Opening and closing the map no longer gives it ten more seconds each time.
 
 ## [0.11.0] - 2026-11-21
 

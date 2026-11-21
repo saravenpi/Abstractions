@@ -36,8 +36,6 @@ pub struct Settings {
     pub servers: Vec<SavedServer>,
     /// Most players a world opened to LAN takes, the host included.
     pub host_max_players: u16,
-    /// The first-time hints already done, one bit each. See `menus::hud` hints.
-    pub hints: u8,
 }
 
 impl Default for Settings {
@@ -53,7 +51,6 @@ impl Default for Settings {
             player_name: String::new(),
             servers: default_servers(),
             host_max_players: MAX_PLAYERS_DEFAULT,
-            hints: 0,
         }
     }
 }

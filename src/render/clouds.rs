@@ -160,6 +160,7 @@ impl CloudInputs<'_> {
             fixed_x: fixed.x_axis.extend(0.0),
             fixed_y: fixed.y_axis.extend(0.0),
             fixed_z: fixed.z_axis.extend(0.0),
+            eye: (fixed * vantage.up * (radius / CELL) + drifted(seconds)).extend(CELL),
         }
     }
 }

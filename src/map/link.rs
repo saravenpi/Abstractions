@@ -56,6 +56,7 @@ pub fn from_wire(wire: &Wire) -> Option<Pin> {
         name: wire.name.clone(),
         body: wire.body,
         dir: dir.to_array(),
+        height: None,
     })
 }
 

@@ -44,6 +44,8 @@ mod tests_grow;
 #[cfg(test)]
 mod tests_lane;
 #[cfg(test)]
+mod tests_ranges;
+#[cfg(test)]
 mod tests_reach;
 #[cfg(test)]
 mod tests_ready;

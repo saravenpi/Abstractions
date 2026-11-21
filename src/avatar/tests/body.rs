@@ -20,7 +20,7 @@ const SLACK: f32 = 0.002;
 const GROUND: [Mode; 4] = [Mode::Idle, Mode::Walk, Mode::Run, Mode::Land];
 
 /// Returns the lowest and highest corner of the box around every vertex of the body in `pose`.
-fn bounds(pose: &Pose) -> (Vec3, Vec3) {
+pub fn bounds(pose: &Pose) -> (Vec3, Vec3) {
     let frames = globals(pose);
     let points = Seg::ALL.into_iter().flat_map(|seg| {
         segment(seg)

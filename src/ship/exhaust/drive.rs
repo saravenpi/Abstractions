@@ -63,7 +63,7 @@ fn uniform(kind: Kind, shape: Shape, exhaust: &Exhaust) -> JetUniform {
         0.0
     };
     JetUniform {
-        drive: Vec4::new(shape.bright, exhaust.air, warp, 0.0),
+        drive: Vec4::new(shape.bright, shape.spread, warp, 0.0),
         hot: hot.extend(shape.bright),
         cool: cool.extend(shape.scroll),
         form: Vec4::new(shape.length, shape.shock, 0.0, 0.0),

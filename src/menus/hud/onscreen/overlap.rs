@@ -1,12 +1,14 @@
 //! Markers that meet on the screen: the one that ranks first keeps its room, the next is
-//! reduced to a small icon without words, and one that would still print over another is left
-//! out. Markers are asked in rank order, so the course always wins, then friends, home, the
-//! ship and pins.
+//! reduced to a small icon without words, and one whose small icon would still print over
+//! another is drawn behind it at [`BEHIND`] of its opacity, as on the compass. Markers are asked
+//! in rank order, so the course always wins, then friends, home, the ship and pins. The pool
+//! draws its first slot in front.
 
 use bevy::prelude::*;
 
 use super::rule::Face;
 use super::tune::REDUCED_ALPHA;
+use crate::menus::hud::compass::BEHIND;
 use crate::ui::theme;
 
 /// Half the width and the height in pixels of a whole marker, icon over words, with the gap
@@ -40,16 +42,18 @@ fn reduced(face: Face) -> Face {
 
 /// Returns how the marker that wants to be drawn as `face` at `pos` is drawn beside the rooms
 /// `taken` by the markers that rank before it, and takes its own room: whole when it is free,
-/// reduced when it would meet one, nothing when even its small icon would. A marker that is
-/// not drawn takes no room.
+/// reduced when it would meet one, a small icon behind at [`BEHIND`] of its opacity when even
+/// that would, and never with words over another. A marker with nothing to draw takes no room.
 pub fn settle(face: Face, pos: Vec2, taken: &mut Vec<Rect>) -> Option<Face> {
-    if face.glyph <= 0.0 && face.label <= 0.0 {
-        return None;
-    }
-    let small = reduced(face);
     let shows = |face: &Face| face.glyph > 0.0 || face.label > 0.0;
+    let small = reduced(face);
+    let behind = Face {
+        glyph: face.glyph * BEHIND,
+        ..small
+    };
     let fits = |face: &Face| shows(face) && !meets(room(pos, *face), taken);
-    let drawn = [face, small].into_iter().find(fits)?;
+    let drawn = [face, small].into_iter().find(fits).unwrap_or(behind);
+    let drawn = shows(&drawn).then_some(drawn)?;
     taken.push(room(pos, drawn));
     Some(drawn)
 }

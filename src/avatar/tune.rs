@@ -213,11 +213,17 @@ pub const DIP_SPEED: (f32, f32) = (0.3, 2.5);
 /// Spring rate of the body pitching along its way through the water, per second.
 pub const DIP_RATE: f32 = 4.0;
 
-/// How far a fully crouched body sinks its pelvis, in meters.
-pub const SQUAT: f32 = 0.36;
+/// How far a fully crouched body sinks its pelvis, in meters. Deeper pushes the knees out of the
+/// front of the player collider.
+pub const SQUAT: f32 = 0.22;
 
-/// Forward lean of the whole body and bend of the torso over the pelvis when fully crouched, in radians.
-pub const HUNCH: (f32, f32) = (0.35, 0.3);
+/// Forward lean of the whole body and bend of the torso over the pelvis when fully crouched, in
+/// radians: 13 degrees in all, a lean for balance. The neck takes the sum back, so the head stays level.
+pub const HUNCH: (f32, f32) = (0.15, 0.08);
+
+/// How far behind the hips a fully crouched body sets its feet, in meters: the hips sit back over
+/// the heels, which keeps the bent knees inside the player collider.
+pub const HEELS: f32 = 0.06;
 
 /// Share of the step height and reach a fully crouched stride keeps: the steps are short.
 pub const SHORT_STEP: f32 = 0.6;

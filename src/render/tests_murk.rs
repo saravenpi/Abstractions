@@ -44,6 +44,7 @@ fn dome(murk: Option<Vec3>) -> SkyUniform {
         up: Vec3::Y,
         dip: 0.0,
         sun_height: 1.0,
+        halo: 1.0,
         air: 1.0,
         whiteout: 0.0,
         rim: Vec3::splat(0.2),

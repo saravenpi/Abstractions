@@ -7,7 +7,12 @@
 //! A sky at the luminance [`DAY`] is the clear home noon sky, which hides every star fainter than
 //! [`DAY_FLUX`]. Each decade of luminance below it lets stars [`SPAN`] steps of flux fainter
 //! show, so the brightest stars come out first at dusk, as they do in the real twilight, and the
-//! faintest ones need the dark of night. A lit scene hides them too, see [`veil`].
+//! faintest ones need the dark of night.
+//!
+//! Under the air a sunlit scene hides them too, as the day sky does, see [`veil`]. Under no air
+//! the game draws the sky as a dark adapted eye sees it: in space, or on a world without air, the
+//! stars show past a sunlit hull, a sunlit cockpit or a sunlit ground. Near the star of the system its
+//! glare, drawn as light, outshines them: see `glare`.
 
 use bevy::prelude::*;
 
@@ -19,8 +24,8 @@ use super::starfield::DAY_FLUX;
 pub const DAY: f32 = 0.3;
 
 /// Luminance in linear light on the screen of mean ground in the reference day, at the reference
-/// exposure: 13,000 lux on a ground that sends a fifth of it back. A scene this bright hides the
-/// stars as the day sky does. Unit: linear light.
+/// exposure: 13,000 lux on a ground that sends a fifth of it back. A scene this bright under a
+/// whole home sky hides the stars as the day sky does. Unit: linear light.
 pub const FIELD_DAY: f32 = 0.8;
 
 /// Steps of star flux gained for each decade the luminance of the sky falls under [`DAY`]. The
@@ -38,13 +43,14 @@ pub const LEAST: f32 = 0.0001;
 pub const BAND: (f32, f32) = (0.004, 0.03);
 
 /// Returns the luminance of the sky that hides as much as a lit scene does when its mean ground
-/// shows at the luminance `field` on the screen: [`DAY`] at [`FIELD_DAY`], falling as the square
-/// of the field, so the dim ground of a night, a twentieth of the day, hides nothing the night sky
-/// shows. The stars and the band are hidden by the brighter of this and the sky behind them: a
-/// camera exposed for a sunlit ground under a black sky does not register them.
-pub fn veil(field: f32) -> f32 {
+/// shows at the luminance `field` on the screen, under the share `air` of a home atmosphere over
+/// the camera: [`DAY`] at [`FIELD_DAY`] under a whole sky, falling as the square of the field, so
+/// the dim ground of a night, a twentieth of the day, hides nothing the night sky shows, and as
+/// the air thins, so in space and on a world without air a sunlit hull or ground hides nothing.
+/// The stars and the band are hidden by the brighter of this and the sky behind them.
+pub fn veil(field: f32, air: f32) -> f32 {
     let share = field.max(0.0) / FIELD_DAY;
-    DAY * share * share
+    DAY * share * share * air.clamp(0.0, 1.0)
 }
 
 /// Returns the luminance in linear light of the sRGB colour `srgb`.

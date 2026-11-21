@@ -109,7 +109,7 @@ pub fn words(count: usize, picked: Option<(&str, Option<f64>)>) -> String {
 fn away(pin: &Pin, here: Option<(BodyId, DVec3)>, universe: &Universe) -> Option<f64> {
     let (body, at) = here.filter(|(body, _)| *body == pin.body)?;
     let radius = universe.planet(body).radius;
-    Some((DVec3::from_array(pin.dir) * radius - at).length())
+    Some((pin.point(radius) - at).length())
 }
 
 /// What the pins are written from: the pins, the name typed, and where the player is.

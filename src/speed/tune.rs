@@ -30,3 +30,33 @@ pub const CONE_AIR: (f32, f32) = (0.05, 0.4);
 
 /// Highest alpha of the vapour cone.
 pub const CONE_ALPHA: f32 = 0.35;
+
+/// Metres of height per kelvin by which the dew point of rising air falls behind its
+/// temperature: the cloud base sits about 125 m higher for each kelvin between the two at the
+/// ground (<https://en.wikipedia.org/wiki/Cloud_base>).
+pub const DEW_SPREAD: f32 = 125.0;
+
+/// Kelvin between the temperature and the dew point under which the low pressure of a
+/// transonic hull or a wing tip still cools the air to its dew point and condenses it, and at
+/// which it condenses fully.
+pub const COOLING: (f32, f32) = (4.0, 0.5);
+
+/// Slope of the mixing line of the exhaust with the air, in pascals per kelvin, for each pascal
+/// of the pressure of the air: `cp EI / (eps Q (1 - eta))`, with the water the burning gives off,
+/// 1.25 kilograms per kilogram of a kerosene that holds 43.2 MJ per kilogram, at a propulsive
+/// efficiency of 0.3. It is 1.67 Pa/K at 250 hPa
+/// (<https://www.satcorps.smce.nasa.gov/site/doc-library/148-Duda_Minnis.JAMC.I.09.pdf>).
+pub const MIXING: f64 = 6.67e-5;
+
+/// Kelvin under the Schmidt-Appleman threshold at which a contrail is full: just under it the
+/// plume only just condenses.
+pub const CONTRAIL_DEPTH: f32 = 3.0;
+
+/// Air density as a share of the home sea level density under which a contrail is too thin to
+/// see, and at which it is full: a rocket trail fades out above 40 km on the Earth.
+pub const CONTRAIL_AIR: (f32, f32) = (0.002, 0.02);
+
+/// Seconds a contrail lasts in dry air and in air as wet as a covered sky: in dry air the ice
+/// sublimates within seconds, in air saturated over ice it spreads and stays for many minutes,
+/// of which the ribbon keeps the first.
+pub const CONTRAIL_LIFE: (f32, f32) = (4.0, 45.0);

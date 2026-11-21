@@ -1,11 +1,13 @@
 //! Tests of markers that meet on the screen: the pool takes them by rank, the first in rank
-//! keeps its room, the next is reduced, and one that would still print over another is left out.
+//! keeps its room, the next is reduced, and one that would still print over another is drawn
+//! behind it, dimmed, without words.
 
 use bevy::prelude::*;
 
 use super::overlap::settle;
 use super::place::{MAX, choose};
 use super::rule::Face;
+use crate::menus::hud::compass::BEHIND;
 
 /// A whole marker: its icon and its words.
 const WHOLE: Face = Face {
@@ -36,23 +38,31 @@ fn the_first_in_rank_keeps_its_room() {
     assert_eq!(taken.len(), 2);
 }
 
-/// A marker whose small icon would still sit on another is not drawn and takes no room.
+/// A marker whose small icon would still sit on another is drawn behind it: a small icon at
+/// the reduced opacity, without words, and it takes its room.
 #[test]
-fn a_marker_right_on_another_is_left_out() {
+fn a_marker_right_on_another_is_dimmed_behind() {
     let mut taken = Vec::new();
     settle(WHOLE, Vec2::new(300.0, 300.0), &mut taken);
-    assert_eq!(settle(WHOLE, Vec2::new(304.0, 302.0), &mut taken), None);
-    assert_eq!(taken.len(), 1);
+    let back = settle(WHOLE, Vec2::new(304.0, 302.0), &mut taken).expect("a dimmed icon");
+    assert_eq!((back.glyph, back.label, back.small), (BEHIND, 0.0, true));
+    assert_eq!(taken.len(), 2);
 }
 
-/// Three markers in one place: one whole, the others left out, whatever their number.
+/// Three markers in one place: the first whole, the others small and dimmed behind it, none of
+/// them with words, whatever their number.
 #[test]
 fn a_crowd_leaves_one_whole() {
     let mut taken = Vec::new();
     let drawn: Vec<Option<Face>> = (0..3)
         .map(|_| settle(WHOLE, Vec2::new(500.0, 400.0), &mut taken))
         .collect();
-    assert_eq!(drawn, [Some(WHOLE), None, None]);
+    let back = Face {
+        glyph: BEHIND,
+        label: 0.0,
+        small: true,
+    };
+    assert_eq!(drawn, [Some(WHOLE), Some(back), Some(back)]);
 }
 
 /// A marker that is not drawn, hidden by nearness, takes no room from the next.

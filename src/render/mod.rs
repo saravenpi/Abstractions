@@ -18,6 +18,7 @@ mod entry;
 mod exposure;
 mod fog;
 mod galaxy_light;
+mod glare;
 mod glow;
 mod heat;
 mod lighting;
@@ -29,6 +30,7 @@ mod nearby;
 mod observer;
 mod palette;
 mod pixelate;
+pub mod ranges;
 mod scatter;
 mod season;
 mod seasons;
@@ -55,6 +57,8 @@ mod tests_dither;
 mod tests_fog;
 #[cfg(test)]
 mod tests_fresnel;
+#[cfg(test)]
+mod tests_glare;
 #[cfg(test)]
 mod tests_lens;
 #[cfg(test)]
@@ -92,8 +96,8 @@ pub use dome::SkyDome;
 pub use entry::FlightFx;
 pub use exposure::scene_lux;
 pub use heat::{
-    Craft, Gas, Glow, Heat, MIN_SPEED, SHEATH_FROM, SHEATH_REACH, SheathMaterial, SheathUniform,
-    descent, entry,
+    Craft, Gas, Glow, Heat, MIN_SPEED, SHEATH_FROM, SheathMaterial, SheathUniform, cool_speed,
+    entry, skin,
 };
 pub use lighting::{Moon, Sun, reach};
 pub use lowres::{Fit, LowRes, window_changed};
@@ -177,5 +181,11 @@ const UPLOAD_BYTES: usize = 16 << 20;
 /// Registers the render plugins.
 pub(super) fn plugin(app: &mut App) {
     app.insert_resource(RenderAssetBytesPerFrame::new(UPLOAD_BYTES))
-        .add_plugins((pixelate::plugin, murk::pass, lowres::plugin, sky));
+        .add_plugins((
+            pixelate::plugin,
+            murk::pass,
+            lowres::plugin,
+            ranges::plugin,
+            sky,
+        ));
 }

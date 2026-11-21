@@ -1,6 +1,6 @@
 //! Laying the compass out every frame: which markers it shows, where and how faded, written
 //! into a pool of marks that grows when more markers show than it holds. Every mark is an icon
-//! on the one row of the bar.
+//! on the row of the bar with its distance on the line under it.
 
 use std::fmt::Write;
 
@@ -8,12 +8,13 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::aim::Around;
-use super::space::{BASE, space};
-use super::{Bar, Count, Glyph, Pin, pin};
+use super::space::space;
+use super::{Bar, Count, Far, Glyph, LANE, Pin, pin};
 use crate::menus::hud::context::{Where, marker_shown};
 use crate::menus::hud::needle::{WIDTH, fade, slot};
 use crate::menus::{Marker, MarkerKind, Markers};
-use crate::ui::Icon;
+use crate::ui::units::distance_short;
+use crate::ui::{Icon, theme};
 
 /// One marker the compass shows this frame.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -22,12 +23,16 @@ pub struct Seen {
     pub index: usize,
     /// Its place in pixels along the bar.
     pub at: f32,
-    /// How opaque it is, from 0 to 1.
+    /// How opaque it is, from 0 to 1: faded toward the ends of the bar, dimmed behind another.
     pub alpha: f32,
     /// Its distance in metres.
     pub gap: f64,
     /// How many friends past the limit of the bar fold into it.
     pub more: usize,
+    /// Width in pixels of its distance on the bar, with the gap that keeps two apart.
+    pub wide: f32,
+    /// Whether its distance is written under it: not when it would print over another.
+    pub said: bool,
 }
 
 /// Returns the icon of a marker of `kind`.
@@ -46,6 +51,12 @@ pub fn icon(kind: MarkerKind) -> Icon {
 /// The count of a mark: its slot, its words and their colour.
 type Words = (&'static Count, &'static mut Text, &'static mut TextColor);
 
+/// The distance under a mark: its slot, its words and their colour.
+type Distances = (&'static Far, &'static mut Text, &'static mut TextColor);
+
+/// The parts of a mark's icon that a frame writes.
+type GlyphParts = (&'static Glyph, &'static mut Text, &'static mut TextColor);
+
 /// The nodes of the compass.
 #[derive(SystemParam)]
 pub struct Pins<'w, 's> {
@@ -56,10 +67,11 @@ pub struct Pins<'w, 's> {
     /// The marks of the pool.
     pins: Query<'w, 's, (&'static mut Pin, &'static mut Node), Without<Bar>>,
     /// The icons of the marks.
-    glyphs:
-        Query<'w, 's, (&'static Glyph, &'static mut Text, &'static mut TextColor), Without<Count>>,
+    glyphs: Query<'w, 's, GlyphParts, (Without<Count>, Without<Far>)>,
     /// The counts of the marks.
-    words: Query<'w, 's, Words, Without<Glyph>>,
+    words: Query<'w, 's, Words, (Without<Glyph>, Without<Far>)>,
+    /// The distances under the marks.
+    far: Query<'w, 's, Distances, (Without<Glyph>, Without<Count>)>,
 }
 
 impl Pins<'_, '_> {
@@ -81,7 +93,7 @@ impl Pins<'_, '_> {
             let kind = mark.map(|mark| markers[mark.index].kind);
             pin.set_if_neq(Pin { kind, ..*pin });
             let display = mark.map_or(Display::None, |_| Display::Flex);
-            let left = mark.map_or(node.left, |mark| px(mark.at - BASE * 0.5));
+            let left = mark.map_or(node.left, |mark| px(mark.at - LANE * 0.5));
             if (node.display, node.left) != (display, left) {
                 (node.display, node.left) = (display, left);
             }
@@ -121,10 +133,29 @@ impl Pins<'_, '_> {
             color.set_if_neq(TextColor(tint.with_alpha(tint.alpha() * mark.alpha)));
         }
     }
+
+    /// Writes the distance under every shown mark, short, in the secondary tone and faded with
+    /// its mark, and nothing under a mark whose distance would print over another.
+    fn say(&mut self, seen: &[Seen], words: &mut String) {
+        for (far, mut text, mut color) in &mut self.far {
+            let Some(mark) = seen.get(far.0) else {
+                continue;
+            };
+            words.clear();
+            if mark.said {
+                words.push_str(&distance_short(mark.gap));
+            }
+            if text.0 != *words {
+                text.0.clone_from(words);
+            }
+            let tone = theme::TEXT_2;
+            color.set_if_neq(TextColor(tone.with_alpha(tone.alpha() * mark.alpha)));
+        }
+    }
 }
 
 /// Shows every marker that lies inside the span of the bar where it lies, faded toward the
-/// ends, all on one row. The bar shows even while empty.
+/// ends, each with its distance under it. The bar shows even while empty.
 pub fn update(
     around: Around,
     (markers, now): (Res<Markers>, Res<Where>),
@@ -148,6 +179,8 @@ pub fn update(
                 alpha,
                 gap,
                 more: 0,
+                wide: 0.0,
+                said: true,
             });
         }
     }
@@ -156,4 +189,5 @@ pub fn update(
     pins.place(&seen, &markers.0);
     pins.paint(&seen, &markers.0);
     pins.count(&seen, &markers.0, &mut words);
+    pins.say(&seen, &mut words);
 }

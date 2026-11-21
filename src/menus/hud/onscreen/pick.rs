@@ -4,8 +4,8 @@ use bevy::prelude::*;
 
 use super::place::{MAX, Placed, choose};
 use super::rule::{self, Look, Sticky};
-use super::tune::FRIEND_LIFT;
-use crate::menus::hud::compass::{Around, FAVOURITE_REACH};
+use super::tune::{BAND, FRIEND_LIFT};
+use crate::menus::hud::compass::Around;
 use crate::menus::hud::context::{Context, marker_shown};
 use crate::menus::{Marker, MarkerKind, Markers};
 use crate::settings::WorldMarkers;
@@ -38,16 +38,14 @@ pub struct Memory {
     pub sticky: Sticky,
 }
 
-/// Returns whether `marker` at `gap` metres is one the player asked to see at `level`, within
-/// reach: at Minimal only what they follow and friends, and a pin they do not follow only
-/// while it is close enough to walk to.
-fn wanted(marker: &Marker, gap: f64, level: WorldMarkers) -> bool {
-    let pin = matches!(marker.kind, MarkerKind::Waypoint | MarkerKind::Favourite);
-    let kept = rule::tracked(marker) || marker.kind == MarkerKind::Friend;
+/// Returns whether `marker` at `gap` metres is one the player asked to see at `level` in
+/// `context`: at Minimal only what they follow and friends, at All every marker but a pin
+/// nobody follows past the end of the fade of its [`rule::reach`].
+fn wanted(marker: &Marker, gap: f64, (context, level): (Context, WorldMarkers)) -> bool {
     match level {
         WorldMarkers::Off => false,
-        WorldMarkers::Minimal => kept,
-        WorldMarkers::All => kept || !pin || gap <= FAVOURITE_REACH,
+        WorldMarkers::Minimal => marker.tracked() || marker.kind == MarkerKind::Friend,
+        WorldMarkers::All => rule::reach(marker, context).is_none_or(|far| gap < far * BAND),
     }
 }
 
@@ -95,10 +93,10 @@ impl State {
             let Some((dir, gap)) = around.seen(marker).filter(|_| shown) else {
                 continue;
             };
-            if wanted(marker, gap, level) {
+            if wanted(marker, gap, (context, level)) {
                 let dir = lifted(marker.kind, dir, gap);
                 self.picks.push(Pick { index, dir, gap });
-                self.items.push((rule::rank(marker), gap));
+                self.items.push((marker.rank(), gap));
             }
         }
         choose(&self.items, &mut self.order);

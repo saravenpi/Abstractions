@@ -110,16 +110,17 @@ fn plugin_runs_without_a_world() {
     assert_eq!(speakers.iter(app.world()).count(), 1);
 }
 
-/// Walking on the ground writes footsteps, and the scene describes the home planet at ground level.
+/// Walking on the ground keeps the scene on the home planet at ground level. The footsteps come
+/// from the feet of the body, which this app has none of: `avatar::tread::tests` hears them.
 #[test]
-fn walking_fills_the_scene_and_makes_footsteps() {
+fn walking_fills_the_scene() {
     let mut app = app("walk");
     let player = enter_world(&mut app);
     let cues = walk(&mut app, player, 150);
     let steps = cues
         .iter()
         .filter(|cue| matches!(cue, AudioCue::Footstep(_)));
-    assert!((3..=8).contains(&steps.count()), "cues {cues:?}");
+    assert_eq!(steps.count(), 0, "cues {cues:?}");
     let (scene, universe) = (*app.world().resource::<AudioScene>(), Universe::new(7));
     assert_eq!(scene.planet_seed, universe.planet(universe.home()).seed);
     assert!(scene.home && !scene.in_space && scene.cabin == 0.0);

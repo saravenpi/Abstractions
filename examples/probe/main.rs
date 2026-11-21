@@ -12,7 +12,10 @@
 //!   being played: the map of explored ground, stones picked and a tool made, a herd stalked, a fight, a
 //!   kill carved, the robot hurt and mended, the pack and the guide after the hunt; see the `play` module).
 //!   `far-bodies` (planets and moons seen from afar, see the `farbody` module) runs only when named.
+//!   `stars` shoots the star field in space and in orbit (see the `stars` module).
 //!   The title, loading, boot and wake stages always run.
+//! - `entry` (a fall from a low orbit into the air, from a chase camera and from the seat) and `exit`
+//!   (the climb from the pad to orbit under the autopilot) shoot the heat of an entry and leaving the air.
 //! - `SMOKE_ONLY` and `SMOKE_SKIP`: comma lists of stage names to keep or to leave out.
 //! - `SMOKE_TARGET` and `SMOKE_FLASH`: see the `warp` and `boot` stages.
 //! - `PROBE_JOIN=<address>`: join that server instead of starting a world, with `PROBE_NAME` as the player name
@@ -25,6 +28,12 @@
 //! `PROBE_STAGES=postcards` takes the clean pictures for the website and the title screen, stages `p01-home`
 //! to `p22-river` (see the `postcards` module). It is left out of a run of all groups. Without `SMOKE_SEED` it
 //! plays seed 57. `PROBE_SIZE=1920x1080` sets the window size and `POSTCARD_SETTLE` the frames a card waits.
+//!
+//! `PROBE_STAGES=long` runs the `long-play` stage (see the `long` module): the universe clock days to ten years
+//! ahead and a fast flight from 50 m to 30 km, with `PROBE long` lines on the clock, the anchor, the camera
+//! planes, the fog, the exposure and the visibility ranges. `PROBE_SAVE=<dir>` starts the run from the most
+//! recently played world file in that folder (or in its `worlds` folder), copied to `SMOKE_DIR/probe-save`,
+//! with a `settings.toml` beside it applied to the run (see the `saved` module).
 //!
 //! `PROBE_STAGES=models` opens the model studio (see the `models` module): the robot and the companion alone.
 //!
@@ -68,8 +77,10 @@ mod cards_foot;
 mod cards_land;
 mod cards_life;
 mod coarse;
+mod entry;
 mod farbody;
 mod farshots;
+mod feel;
 mod foot;
 mod grass;
 mod ground;
@@ -77,6 +88,8 @@ mod herd;
 mod hull;
 mod isolate;
 mod launch;
+mod long;
+mod longlog;
 mod look;
 mod meter;
 mod models;
@@ -94,10 +107,12 @@ mod playloot;
 mod playmap;
 mod postcards;
 mod room;
+mod saved;
 mod screens;
 mod seen;
 mod shots;
 mod stages;
+mod stars;
 mod stops;
 mod tour;
 mod trees;
@@ -119,8 +134,10 @@ use cards_foot::*;
 use cards_land::*;
 use cards_life::*;
 use coarse::*;
+use entry::*;
 use farbody::*;
 use farshots::*;
+use feel::*;
 use foot::*;
 use grass::*;
 use ground::*;
@@ -128,6 +145,8 @@ use herd::*;
 use hull::*;
 use isolate::*;
 use launch::*;
+use long::*;
+use longlog::*;
 use look::*;
 use meter::*;
 use mp::*;
@@ -144,10 +163,12 @@ use playloot::*;
 use playmap::*;
 use postcards::*;
 use room::*;
+use saved::*;
 use screens::*;
 use seen::*;
 use shots::*;
 use stages::STAGES;
+use stars::*;
 use stops::*;
 use tour::*;
 use trees::*;
@@ -202,6 +223,7 @@ fn main() -> AppExit {
             .after(hold),
     );
     app.init_resource::<Tris>();
-    app.add_systems(Last, (measure, count_tris, probe));
+    app.init_resource::<RangeTally>();
+    app.add_systems(Last, (measure, count_tris, probe, tally));
     app.run()
 }

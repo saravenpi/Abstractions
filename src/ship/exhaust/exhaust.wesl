@@ -37,7 +37,7 @@ fn noise(turn: f32, along: f32) -> f32 {
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
-    let air = jet.drive.y;
+    let thin = 1.0 / max(jet.drive.y * jet.drive.y, 1.0);
     let warp = jet.drive.z;
     let bright = jet.hot.w;
     let scroll = jet.cool.w;
@@ -63,8 +63,8 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let beat = 0.5 + 0.5 * cos(along * TAU * 5.0 - 0.6);
     let diamonds = pow(beat, 6.0) * (1.0 - along) * shock;
     let kernel = core_w * (pow(face, 3.0) * fade * (0.7 + 0.5 * grain) + diamonds * 1.6);
-    let mantle = mid_w * pow(face, 1.6) * fade * (0.55 + 0.9 * grain_b);
-    let halo = out_w * pow(face, 0.9) * pow(1.0 - along, 0.8) * (0.25 + 0.5 * grain) * (1.5 - air);
+    let mantle = mid_w * pow(face, 1.6) * fade * (0.55 + 0.9 * grain_b) * thin;
+    let halo = out_w * pow(face, 0.9) * pow(1.0 - along, 0.8) * (0.25 + 0.5 * grain) * thin;
     let streaks = warp * (core_w + mid_w) * lines * 1.5;
 
     let hot_rgb = mix(jet.hot.rgb, WARP_HOT, warp);

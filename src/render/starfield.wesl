@@ -9,6 +9,7 @@ struct Stars {
     flow: vec4<f32>,
     dome: vec4<f32>,
     base: vec4<f32>,
+    sun: vec4<f32>,
 }
 
 struct StarVertex {
@@ -57,6 +58,18 @@ const DAY_FLUX: f32 = 1.0;
 const SKY_DAY: f32 = 0.3;
 const SKY_SPAN: f32 = 3.0;
 const SKY_LEAST: f32 = 0.0001;
+const LUMA: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
+const GLOW_PEAK: f32 = 40.0;
+const GLOW_CORE: f32 = 0.01;
+
+fn halo(dir: vec3<f32>) -> f32 {
+    let spread = max(2.0 * (1.0 - dot(dir, stars.sun.xyz)), 0.0) / (GLOW_CORE * GLOW_CORE);
+    return GLOW_PEAK * max(stars.sun.w, 0.0) / pow(1.0 + spread, 1.5);
+}
+
+fn outshone(light: f32, glow: f32) -> f32 {
+    return clamp(1.0 - max(glow, 0.0) / max(light, 0.000001), 0.0, 1.0);
+}
 
 fn lit_by_night(flux: f32, dir: vec3<f32>) -> f32 {
     let height = clamp(dot(dir, stars.dome.xyz), 0.0, 1.0);
@@ -155,8 +168,9 @@ fn star(vertex: UncompressedVertex, world_from_local: mat4x4<f32>, corner: vec2<
     let share = stars.params.z * near;
     let day = smoothstep(DAY_FLUX, DAY_FLUX + 1.0, flux);
     let sky = max(day, lit_by_night(flux, seen.dir));
-    let glow = vertex.color.rgb * (sized.y * sky * share) * beamed(seen.factor, reach / size);
-    return emit(seen, corner, size, reach, vec4<f32>(glow, vertex.color.a));
+    let light = vertex.color.rgb * (sized.y * sky * share) * beamed(seen.factor, reach / size);
+    let kept = outshone(dot(light, LUMA), halo(seen.dir));
+    return emit(seen, corner, size, reach, vec4<f32>(light * kept, vertex.color.a));
 }
 
 fn dust(vertex: UncompressedVertex, corner: vec2<f32>) -> StarVertex {

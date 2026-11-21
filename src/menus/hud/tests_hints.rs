@@ -38,7 +38,11 @@ fn the_pin_hint_needs_the_map_first() {
     assert_ne!(due(0, &clock, Context::OnFoot), Some(Hint::Pin));
     let seen = with(0, Hint::Map);
     assert_eq!(
-        due(with(seen, Hint::Minimap), &clock, Context::OnFoot),
+        due(
+            with(with(seen, Hint::Minimap), Hint::Kit),
+            &clock,
+            Context::OnFoot
+        ),
         Some(Hint::Pin)
     );
 }
@@ -51,6 +55,19 @@ fn a_hushed_hint_gives_way_to_the_next() {
     assert_eq!(due(0, &clock, Context::ShipLanded), Some(Hint::Map));
     clock.hushed = Hint::Map.bit();
     assert_eq!(due(0, &clock, Context::ShipLanded), Some(Hint::Assist));
+}
+
+/// The kit hint shows first on the ground, after a few seconds, and the pack key finishes it.
+#[test]
+fn the_kit_hint_shows_first_on_foot() {
+    assert_eq!(due(0, &waited(0.0, 2.0), Context::OnFoot), None);
+    assert_eq!(due(0, &waited(0.0, 30.0), Context::OnFoot), Some(Hint::Kit));
+    assert_ne!(
+        due(Hint::Kit.bit(), &waited(0.0, 30.0), Context::OnFoot),
+        Some(Hint::Kit)
+    );
+    let keys = Keymap::default();
+    assert_eq!(finished(&keys, |key| key == keys.pack), Some(Hint::Kit));
 }
 
 /// The key of a hint finishes it, and the computer key finishes the map hint.
@@ -76,10 +93,10 @@ fn hint_bits_survive_a_settings_round_trip() {
     assert_eq!(old.hints, 0);
 }
 
-/// There are at most four hints, each with its own bit.
+/// There are at most five hints, each with its own bit.
 #[test]
-fn there_are_four_hints_with_distinct_bits() {
+fn there_are_five_hints_with_distinct_bits() {
     let all = Hint::ALL.iter().fold(0, |bits, hint| bits | hint.bit());
-    assert_eq!(Hint::ALL.len(), 4);
-    assert_eq!(all.count_ones(), 4);
+    assert_eq!(Hint::ALL.len(), 5);
+    assert_eq!(all.count_ones(), 5);
 }

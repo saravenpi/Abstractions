@@ -1,6 +1,13 @@
-//! Which ships of other players are heard, and when a ship faster than sound booms.
+//! Which ships of other players are heard, when a ship faster than sound booms, and where the
+//! robots can stand on a ship and hear their feet on its wing.
 
+use bevy::prelude::*;
+
+use super::super::exhaust::Exhaust;
+use super::super::mesh::hulls;
 use crate::audio::{Ch, HULLS, HullSound};
+use crate::avatar::tread::Hulls;
+use crate::space::Placed;
 
 /// Distance in metres at which the boom of a ship is at its full strength.
 const BOOM_REACH: f32 = 150.0;
@@ -55,4 +62,24 @@ pub fn booms<'a>(
             *last = (hull.at(Ch::Distance), now);
             (passed && outside).then(|| (BOOM_REACH / hull.at(Ch::Distance).max(1.0)).min(1.0))
         })
+}
+
+/// Writes where every ship is for the feet of the robots: the centre of its hull, and the reach
+/// of its airframe, the farthest corner of its parts from that centre, worked out once.
+pub fn decks(
+    ships: Query<&Placed, With<Exhaust>>,
+    mut decks: ResMut<Hulls>,
+    mut reach: Local<f32>,
+) {
+    if *reach <= 0.0 {
+        *reach = hulls()
+            .iter()
+            .flatten()
+            .map(|corner| corner.length())
+            .fold(0.0, f32::max);
+    }
+    decks.0.clear();
+    decks
+        .0
+        .extend(ships.iter().map(|placed| (placed.pos, *reach)));
 }

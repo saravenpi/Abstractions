@@ -5,13 +5,16 @@ use bevy::math::{DVec3, Vec2};
 
 use super::herds::member;
 use super::place::{beside, east};
-use super::tune::{RING, SOAR_LOOP, SOAR_SPEED};
+use super::tune::{GRAZE_EVERY, GRAZE_REACH, RING, SOAR_LOOP, SOAR_SPEED};
 use super::want::Lead;
 use crate::life::Species;
 use crate::life::body::Locomotion;
 use crate::life::herd::{Herd, HerdState};
 use crate::life::hunt::{Hunt, Outcome};
 use crate::universe::hash::{Rng, child};
+
+/// Salt of the beats of the grazing steps, so they draw apart from the other rolls of a herd.
+const GRAZE_KEY: u64 = 0x6752_415A;
 
 /// Where an animal should be, and how its group moves.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -41,10 +44,28 @@ fn hunted(hunt: &Hunt, (id, slot): (u64, u8), time: f64) -> Option<f64> {
     on.then(|| ((time - from) / hunt.chase.max(1e-3)).clamp(0.0, 1.0))
 }
 
+/// Returns the offset in metres, x east and y north, at which grazing member `slot` of herd `id`
+/// crops at universe `time`, around its place in a herd `spacing` metres apart: a new patch every
+/// [`GRAZE_EVERY`] seconds, each member on its own beat, within [`GRAZE_REACH`] spacings of its place,
+/// so a grazing herd steps about as it feeds.
+fn grazing((id, slot): (u64, u8), spacing: f32, time: f64) -> Vec2 {
+    let key = child(id ^ GRAZE_KEY, u64::from(slot));
+    let beat = time / GRAZE_EVERY + Rng::new(key).unit();
+    let mut rng = Rng::new(child(key, beat.max(0.0).floor() as u64));
+    let angle = rng.unit() * std::f64::consts::TAU;
+    let metres = f64::from(spacing * GRAZE_REACH) * rng.unit().sqrt();
+    Vec2::new((metres * angle.cos()) as f32, (metres * angle.sin()) as f32)
+}
+
 /// Returns the goal of member `slot` of `herd` at `time` on a planet of `radius` metres: its place in
-/// the herd, or the way to the kill point while hunters run it down.
+/// the herd, the patch it crops while the herd grazes, or the way to the kill point while hunters run
+/// it down.
 pub fn in_herd(herd: &Herd, slot: u8, hunts: &[Hunt], time: f64, radius: f64) -> Option<Goal> {
     let (_, place) = member(herd, slot, time, radius)?;
+    let place = match herd.state {
+        HerdState::Graze => beside(place, grazing((herd.id, slot), herd.spacing, time), radius),
+        _ => place,
+    };
     let chase = hunts
         .iter()
         .find_map(|h| hunted(h, (herd.id, slot), time).map(|u| (h.to, u)));

@@ -6,16 +6,13 @@ use bevy::prelude::*;
 
 use super::rig::app;
 use crate::menus::MarkerKind;
-use crate::menus::hud::compass::Pin;
+use crate::menus::hud::compass::{LANE, Pin};
 use crate::render::GameCamera;
 use crate::space::{Anchor, Frame};
 use crate::universe::{BodyId, LY, Universe};
 
-/// Half the width in pixels of the room of a mark, which is centred on its place on the bar.
-const HALF_ROOM: f32 = 16.0;
-
 /// Turns the camera to look along `toward` with +Y up, runs three frames, and returns where
-/// along the bar the home mark is, in pixels, when it is shown, with the words under the bar.
+/// along the bar the home mark is, in pixels, when it is shown, with the distance under it.
 fn home_mark(app: &mut App, toward: Vec3) -> (Option<f32>, Vec<String>) {
     let pose = Transform::default().looking_to(toward, Vec3::Y);
     let mut cameras = app
@@ -35,7 +32,7 @@ fn home_mark(app: &mut App, toward: Vec3) -> (Option<f32>, Vec<String>) {
         return (None, Vec::new());
     };
     let left = match (node.display, node.left) {
-        (Display::Flex, Val::Px(left)) => Some(left + HALF_ROOM),
+        (Display::Flex, Val::Px(left)) => Some(left + LANE * 0.5),
         _ => None,
     };
     let words = children

@@ -27,11 +27,13 @@ pub(super) enum Gauge {
     Gear,
     /// The headlight in the nose.
     Headlight,
+    /// What the ship does on the course that is set: charging, in warp, arriving.
+    Course,
 }
 
 impl Gauge {
     /// Every instrument, in display order, with its label.
-    pub(super) const ALL: [(Gauge, &'static str); 8] = [
+    pub(super) const ALL: [(Gauge, &'static str); 9] = [
         (Gauge::Altitude, "Altitude"),
         (Gauge::Speed, "Speed"),
         (Gauge::Throttle, "Throttle"),
@@ -40,6 +42,7 @@ impl Gauge {
         (Gauge::Periapsis, "Lowest point"),
         (Gauge::Gear, "Gear"),
         (Gauge::Headlight, "Headlight"),
+        (Gauge::Course, "Course"),
     ];
 
     /// Returns the HUD element this instrument belongs to.
@@ -52,6 +55,7 @@ impl Gauge {
             Gauge::Apoapsis | Gauge::Periapsis => Element::Apsides,
             Gauge::Gear => Element::Gear,
             Gauge::Headlight => Element::Headlight,
+            Gauge::Course => Element::Speed,
         }
     }
 }
@@ -70,6 +74,8 @@ pub struct Flight {
     pub gear: Option<f64>,
     /// Whether the headlight is on and the name of the key that switches it, with a ship.
     pub headlight: Option<(bool, String)>,
+    /// What the ship does on the course that is set, while a course is flown.
+    pub course: Option<String>,
 }
 
 /// Returns the text of the speed instrument: the warp speed in warp, the speed over the surface
@@ -124,6 +130,7 @@ pub(super) fn symbol(gauge: Gauge, flight: &Flight) -> Icon {
             Some((true, _)) => Icon::HeadlightOn,
             _ => Icon::HeadlightOff,
         },
+        Gauge::Course => Icon::Speed,
     }
 }
 
@@ -147,6 +154,7 @@ pub fn reading(gauge: Gauge, flight: &Flight) -> Option<String> {
         Gauge::Periapsis => t.periapsis.filter(|_| in_orbit).map(height),
         Gauge::Gear => gear_text(flight).map(str::to_string),
         Gauge::Headlight => headlight_text(flight),
+        Gauge::Course => flight.course.clone(),
     }
 }
 

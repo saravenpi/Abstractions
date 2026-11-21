@@ -45,12 +45,25 @@ pub fn level(age: f32) -> u8 {
     ((age / FADE_SECONDS).clamp(0.0, 1.0) * f32::from(LEVELS)) as u8
 }
 
+/// Largest power of two a margin is rounded up to, so that it stays a finite `f32`.
+const WIDEST: f64 = 126.0;
+
 /// Returns the width in metres of the margin of a fade seen from `altitude` metres over a planet
 /// of `radius` metres: [`SPAN`] or, when the planet is big, [`SPAN_SHARE`] times the farthest
-/// point of it from the camera, which is its width and the camera's altitude away.
+/// point of it from the camera, which is its width and the camera's altitude away, rounded up to
+/// a power of two.
+///
+/// Bevy keeps one GPU slot for every distinct visibility range it has ever seen and never frees
+/// one: past 65,535 every new range shares slot 0, and chunks blink and vanish. A margin that
+/// followed the altitude metre by metre made new ranges on every frame of a flight. Rounded to a
+/// power of two, a flight from the ground to the far hand-over uses a handful of margins.
 pub fn span(altitude: f64, radius: f64) -> f32 {
     let farthest = 2.0 * radius + altitude.max(0.0);
-    SPAN.max(SPAN_SHARE * farthest as f32)
+    let wide = f64::from(SPAN_SHARE) * farthest;
+    if wide.is_nan() || wide <= f64::from(SPAN) {
+        return SPAN;
+    }
+    wide.log2().ceil().min(WIDEST).exp2() as f32
 }
 
 /// Returns the visibility range that draws `level` sixteenths of what fades in, or hides that

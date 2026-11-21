@@ -91,15 +91,22 @@ impl Path {
         };
     }
 
-    /// Empties the line and jumps to where `hull` is: for a ship that has just appeared.
-    pub fn clear(&mut self, hull: &HullSound) {
-        self.line.fill(0.0);
+    /// Jumps to where `hull` is and keeps the sound already on its way: for a listener who has
+    /// just got out, while the outside is still silent. Gliding there instead would sweep the
+    /// delay through the seat and play the sound on its way at twice its pitch.
+    pub fn jump(&mut self, hull: &HullSound) {
         self.tune(hull);
         self.delay = [Lag(self.goal.delay); 2];
         self.slope.0 = Lag::default();
         self.gap = Lag(self.goal.gap);
-        self.dull = Lag::default();
         self.sides = self.goal.sides.map(Lag);
+    }
+
+    /// Empties the line and jumps to where `hull` is: for a ship that has just appeared.
+    pub fn clear(&mut self, hull: &HullSound) {
+        self.line.fill(0.0);
+        self.jump(hull);
+        self.dull = Lag::default();
     }
 
     /// Sends one sample of the ship on its way.

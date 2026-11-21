@@ -1,12 +1,13 @@
 //! Markers over the world: the course, the pin the player follows, friends, home, the ship on
-//! foot and the pins within reach, drawn where they really are. In view, the icon sits at the
-//! projected place of the target with its name and its distance under it. Out of view, it
-//! slides to the border of the safe rectangle with an arrow toward it.
+//! foot and the pins within reach of how the player travels, drawn where they really are. In
+//! view, the icon sits at the projected place of the target with its name and its distance
+//! under it. Out of view, it slides to the border of the safe rectangle with an arrow toward it.
 //!
 //! One rule set, written down with its numbers and sources in `handoff/specs/markers.md`: a
-//! marker whose target is near is reduced, then hidden, because the thing is its own sign
-//! ([`rule`]); it fades in the middle of the view; it keeps out of the room of the rest of the
-//! HUD ([`zones`]); and two that meet are settled by rank ([`overlap`]).
+//! marker whose target is near is reduced, then hidden, because the thing is its own sign, and
+//! a pin nobody follows fades out far away, where it is noise ([`rule`]); it fades in the middle
+//! of the view; it keeps out of the room of the rest of the HUD ([`zones`]); and two that meet
+//! are settled by rank, the one behind dimmed ([`overlap`]).
 //!
 //! One source of truth: the shared [`Markers`] list the compass and the minimap read. A pool of
 //! [`MAX`] nodes is spawned once and refilled every frame without allocating. Nothing shows in
@@ -22,6 +23,8 @@ mod rule;
 mod tests;
 #[cfg(test)]
 mod tests_face;
+#[cfg(test)]
+mod tests_far;
 #[cfg(test)]
 mod tests_overlap;
 #[cfg(test)]

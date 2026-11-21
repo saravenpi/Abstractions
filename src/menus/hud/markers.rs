@@ -52,6 +52,29 @@ pub struct Marker {
     pub owner: u32,
 }
 
+impl Marker {
+    /// Returns whether the player follows this marker on purpose: the course, or their own pin.
+    /// Such a marker is never reduced, hides only on arrival and shows at any distance.
+    pub fn tracked(&self) -> bool {
+        self.kind == MarkerKind::Course || (self.kind == MarkerKind::Waypoint && self.owner == 0)
+    }
+
+    /// Returns the place of this marker in the order that settles who is drawn in front when
+    /// two meet, over the world and on the compass: the course, the followed pin, friends, home,
+    /// the ship, pins, herds.
+    pub fn rank(&self) -> u8 {
+        match self.kind {
+            MarkerKind::Course => 0,
+            MarkerKind::Waypoint if self.owner == 0 => 1,
+            MarkerKind::Friend => 2,
+            MarkerKind::Home => 3,
+            MarkerKind::Ship => 4,
+            MarkerKind::Waypoint | MarkerKind::Favourite => 5,
+            MarkerKind::Herd => 6,
+        }
+    }
+}
+
 /// Every marker of this frame.
 #[derive(Resource, Debug, Default, Clone)]
 pub struct Markers(pub Vec<Marker>);

@@ -19,6 +19,7 @@ fn spot() -> Pin {
         name: "Camp".to_string(),
         body: Universe::new(3).home(),
         dir: DVec3::X.to_array(),
+        height: None,
     }
 }
 

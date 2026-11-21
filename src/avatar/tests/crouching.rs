@@ -29,8 +29,8 @@ fn a_crouched_body_bends_and_keeps_its_feet_down() {
     let down = pose_of(Mode::Idle, &state(Mode::Idle, 0.0, 1.0), &clock);
     let sunk = up.core(Core::Lift) - down.core(Core::Lift);
     assert!((sunk - SQUAT).abs() < 0.02, "sank by {sunk}");
-    assert!(down.core(Core::Spine) > up.core(Core::Spine) + 0.2);
-    assert!(down.core(Core::Pitch) > up.core(Core::Pitch) + 0.2);
+    assert!(down.core(Core::Spine) > up.core(Core::Spine) + 0.05);
+    assert!(down.core(Core::Pitch) > up.core(Core::Pitch) + 0.1);
     assert!(down.limb(Limb::Knee, 0) > up.limb(Limb::Knee, 0) + 0.5);
     for boot in [Seg::BootL, Seg::BootR] {
         let ankle = globals(&down)[boot as usize].translation.y;

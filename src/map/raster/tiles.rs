@@ -1,5 +1,5 @@
 //! The cache of tiles: the tiles the lens looks at are painted on workers, kept while they are
-//! used and dropped when the cache is full.
+//! used and dropped, the farthest from the view first, when the cache is full.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -12,8 +12,10 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
 
+#[cfg(test)]
+use super::BYTES;
 use super::Rasters;
-use super::tile::{SIDE, TileId, ZOOM_FROM, level_for, visible};
+use super::tile::{SIDE, TileId, ZOOM_FROM, away, level_for, visible};
 use super::tile_paint::{lit, paint};
 use crate::map::explored::Explored;
 use crate::map::{Level, Surface};
@@ -23,8 +25,12 @@ use crate::world::Globe;
 /// Most tiles painted at once.
 const JOBS: usize = 2;
 
-/// Most tiles kept: about 25 MB of pictures.
-const KEPT: usize = 96;
+/// Most tiles kept, of every body and level together: about 25 MB of pictures, see [`KEPT_BYTES`].
+pub const KEPT: usize = 96;
+
+/// Bytes the pictures of the tiles kept take at most.
+#[cfg(test)]
+pub const KEPT_BYTES: usize = KEPT * SIDE * SIDE * BYTES;
 
 /// One tile of the cache.
 #[derive(Default)]
@@ -35,8 +41,6 @@ struct Slot {
     seen: u64,
     /// The worker painting it, with the version of the ground it reads.
     job: Option<(Task<Vec<u8>>, u64)>,
-    /// The frame the tile was last asked for.
-    used: u64,
 }
 
 /// The tiles of the body the map shows.
@@ -47,8 +51,6 @@ pub struct Tiles {
     /// The body shown and the tiles asked for now, each with its column counted without
     /// wrapping.
     wanted: (Option<BodyId>, Vec<(i64, TileId)>),
-    /// Counts frames.
-    frame: u64,
 }
 
 impl Tiles {
@@ -111,10 +113,8 @@ pub(super) fn want(level: Res<Level>, surface: Res<Surface>, mut tiles: ResMut<T
     if tiles.wanted.0 == Some(body) && tiles.wanted.1 == asked {
         return;
     }
-    tiles.frame += 1;
-    let frame = tiles.frame;
     for (_, id) in &asked {
-        tiles.slots.entry((body, *id)).or_default().used = frame;
+        tiles.slots.entry((body, *id)).or_default();
     }
     tiles.wanted = (Some(body), asked);
 }
@@ -170,19 +170,30 @@ pub(super) fn collect(mut tiles: ResMut<Tiles>, images: Option<ResMut<Assets<Ima
     }
 }
 
-/// Drops the tiles asked for longest ago once more than [`KEPT`] are kept.
-pub(super) fn trim(mut tiles: ResMut<Tiles>) {
+/// Drops the tiles farthest from what the map shows once more than [`KEPT`] are kept: those of
+/// another body first, then those of the levels farthest from the one shown, then those farthest
+/// from the centre of the view. The tiles asked for now are the nearest, so they stay, and no
+/// level is ever kept whole.
+pub(super) fn trim(mut tiles: ResMut<Tiles>, surface: Res<Surface>) {
     if tiles.slots.len() <= KEPT {
         return;
     }
-    let mut order: Vec<((BodyId, TileId), u64)> = tiles
-        .slots
-        .iter()
-        .map(|(key, slot)| (*key, slot.used))
-        .collect();
-    order.sort_by_key(|(_, used)| *used);
+    let shown = tiles.wanted.0;
+    let far = |(body, id): &(BodyId, TileId)| {
+        let (levels, gap) = away(*id, surface.lens);
+        (Some(*body) != shown, levels, gap)
+    };
+    let mut order: Vec<(BodyId, TileId)> = tiles.slots.keys().copied().collect();
+    order.sort_by(|a, b| {
+        let (a, b) = (far(a), far(b));
+        (b.0, b.1).cmp(&(a.0, a.1)).then(b.2.total_cmp(&a.2))
+    });
     let surplus = tiles.slots.len() - KEPT;
-    for (key, _) in order.into_iter().take(surplus) {
+    for key in order.into_iter().take(surplus) {
         tiles.slots.remove(&key);
     }
 }
+
+#[cfg(test)]
+#[path = "tests_cache.rs"]
+mod tests;

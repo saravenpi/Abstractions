@@ -43,6 +43,7 @@ mod side_buttons;
 mod side_show;
 #[cfg(test)]
 mod side_tests;
+mod sight;
 mod spots;
 mod surface;
 #[cfg(test)]
@@ -138,6 +139,7 @@ pub(super) fn plugin(app: &mut App) {
                 (places::load, places::store).chain(),
                 places::fill.in_set(MarkerSet::Fill),
                 places::drop_key.run_if(playing),
+                places::settled(),
                 places::arrive.run_if(playing).run_if(places::leading),
                 (places::name_keys, side_act::pin_keys).chain().run_if(open),
                 action::go.run_if(in_control),

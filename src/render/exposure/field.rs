@@ -31,8 +31,9 @@ pub struct Field<'w> {
 }
 
 impl Field<'_> {
-    /// Returns the luminance on the screen of the mean ground around the camera, 0 away from a
-    /// lit planet, as in open space, where nothing around the camera is lit but the ship.
+    /// Returns the luminance on the screen of mean ground lit as level ground at the camera is,
+    /// 0 outside a star system. In sunlit space it is a full day: what the sunlit hull shows, which
+    /// `skylight::veil` weighs by the air over the camera.
     pub fn luminance(&self) -> f32 {
         let (Some(place), Some(metered)) = (self.place.as_deref(), self.metered.as_deref()) else {
             return 0.0;
@@ -41,5 +42,10 @@ impl Field<'_> {
             return 0.0;
         }
         shown(scene_lux(&place.0, self.palette.moon_lux), metered.ev)
+    }
+
+    /// Returns how many times brighter than the reference exposure the camera draws the picture.
+    pub fn gain(&self) -> f32 {
+        self.metered.as_deref().map_or(1.0, Metered::gain)
     }
 }

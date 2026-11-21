@@ -5,7 +5,7 @@
 use bevy::math::DVec3;
 
 use super::tests_tile::tile_at;
-use super::tile::{LEVEL_MAX, SIDE, TileId, level_for};
+use super::tile::{SIDE, TileId, level_for};
 use super::tile_paint::lit;
 use crate::map::explored::{Explored, REACH_CAP};
 use crate::map::level::{GROUND, first};
@@ -25,7 +25,7 @@ fn share(explored: &Explored, (id, dir): (TileId, DVec3), metres: f64) -> f64 {
     shown as f64 / inside.len().max(1) as f64
 }
 
-/// The map opens as close as it goes on the player, and the tile under them at that zoom shows
+/// The map opens on the player at the ground zoom, and the tile under them at that zoom shows
 /// the ground explored around the base as a filled disc: every pixel within 1.5 km is lit.
 #[test]
 fn the_map_opens_on_the_ground_explored_around_the_base() {
@@ -34,8 +34,8 @@ fn the_map_opens_on_the_ground_explored_around_the_base() {
     let body = BodyId::default();
     explored.reveal(body, dir, REACH_CAP / EARTH_RADIUS, EARTH_RADIUS);
     let lens = first(None, Some(dir * EARTH_RADIUS));
-    assert_eq!((lens.zoom, level_for(lens.zoom)), (GROUND, LEVEL_MAX));
-    let id = tile_at(dir, LEVEL_MAX);
+    assert_eq!(lens.zoom, GROUND);
+    let id = tile_at(dir, level_for(lens.zoom));
     assert!(id.pixel(dir).is_some());
     let filled = share(&explored, (id, dir), 1500.0);
     assert!(
@@ -56,7 +56,7 @@ fn the_ground_map_spans_what_a_player_explores() {
     let dir = DVec3::new(0.5, 0.4, -0.76).normalize();
     let mut explored = Explored::default();
     explored.reveal(BodyId::default(), dir, 300.0 / EARTH_RADIUS, EARTH_RADIUS);
-    let id = tile_at(dir, LEVEL_MAX);
+    let id = tile_at(dir, level_for(GROUND));
     let all = share(&explored, (id, dir), 1.0e9);
     assert!(
         all > 0.0 && all < 0.5,

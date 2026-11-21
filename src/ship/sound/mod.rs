@@ -125,6 +125,7 @@ impl Ears<'_, '_> {
             .with(Ch::Side, 0.0)
             .with(Ch::Aspect, -1.0)
             .with(Ch::Rough, self.buffet.level.max(heat))
+            .with(Ch::Roar, heat)
     }
 }
 
@@ -161,5 +162,11 @@ pub fn feed(
 /// Registers the feed, which runs with the other reports of the ship where the audio exists.
 pub(super) fn plugin(app: &mut App) {
     let heard = resource_exists::<AudioScene>.and_then(resource_exists::<Messages<AudioCue>>);
-    app.add_systems(Update, feed.in_set(ShipSet::Report).run_if(heard));
+    app.add_systems(Update, feed.in_set(ShipSet::Report).run_if(heard))
+        .add_systems(
+            Update,
+            near::decks
+                .in_set(ShipSet::Report)
+                .run_if(resource_exists::<crate::avatar::tread::Hulls>),
+        );
 }

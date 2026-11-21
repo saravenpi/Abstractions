@@ -71,6 +71,21 @@ pub fn hud_line(name: &str, status: RouteStatus, keys: &Keys) -> String {
     }
 }
 
+/// Returns what the ship does on the route in the state `status` to `name`, as a status line with
+/// no key in it: it says what is happening, never what a key does. Empty while the route is idle
+/// or blocked, since the prompt line says why a course cannot go.
+pub fn status_line(name: &str, status: RouteStatus) -> String {
+    match status {
+        RouteStatus::Idle | RouteStatus::Blocked(_) => String::new(),
+        RouteStatus::Climbing => "Climbing out of the air".to_string(),
+        RouteStatus::Dropping => "Slowing down".to_string(),
+        RouteStatus::Aligning(_) => format!("Turning toward {name}"),
+        RouteStatus::Spooling => "Charging the warp drive".to_string(),
+        RouteStatus::InWarp => format!("In warp to {name}"),
+        RouteStatus::Arrived => format!("Arrived at {name}"),
+    }
+}
+
 /// What the card of a place needs to say what Go does there.
 #[derive(Debug, Clone, Copy)]
 pub struct Ask<'a> {

@@ -8,6 +8,7 @@
 //! local one. [`Hunted`] remembers what was sent or taken, so nothing is sent back.
 
 mod blows;
+mod claim;
 mod field;
 mod held;
 pub mod hooks;
@@ -107,7 +108,7 @@ pub fn plugin(app: &mut App) {
             Update,
             reset.before(take::receive).run_if(resource_added::<Link>),
         )
-        .add_plugins((takes, sends, field::plugin));
+        .add_plugins((takes, sends, field::plugin, claim::plugin));
 }
 
 /// Registers what is taken of the hunt of the others: the server's events, applied once the world

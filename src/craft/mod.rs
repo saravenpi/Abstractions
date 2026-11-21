@@ -34,6 +34,7 @@ pub(super) fn plugin(app: &mut App) {
         .init_resource::<Burden>()
         .init_resource::<crate::condition::Condition>()
         .init_resource::<Held>()
+        .init_resource::<harvest::Claims>()
         .add_message::<Worn>()
         .add_message::<harvest::Harvest>()
         .init_resource::<pack::Notice>()

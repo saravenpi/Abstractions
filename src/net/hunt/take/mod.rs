@@ -52,7 +52,7 @@ pub fn receive(
         let ServerMsg::Hunt(event) = msg else {
             continue;
         };
-        if crate::net::ground::grounded(event) {
+        if crate::net::ground::grounded(event) || super::claim::is_answer(event) {
             continue;
         }
         match event.clone() {

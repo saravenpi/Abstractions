@@ -175,4 +175,13 @@ pub enum Event {
     Kept(u32),
     /// Things that lie on the ground, after joining, a part of them in each message.
     Ground(Vec<Lying>),
+    /// The answer to a cut of this player: the part is theirs, or another player cut it first.
+    Cut {
+        /// The animal it was.
+        animal: AnimalKey,
+        /// Index of the part.
+        part: u8,
+        /// True when the part is this player's.
+        granted: bool,
+    },
 }

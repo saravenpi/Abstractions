@@ -66,7 +66,8 @@ fn a_kill_far_from_the_clock_is_taken_at_the_clock() {
     assert_eq!(carcass.since, 5_010.0);
 }
 
-/// A part is taken from a carcass once, and the others hear it once.
+/// A part is taken from a carcass once: two players cut it at once, the first is granted it, the
+/// second is refused, and the others hear the cut once.
 #[test]
 fn a_part_is_taken_once() {
     let (mut room, ada, bob, mut out) = pair();
@@ -83,8 +84,13 @@ fn a_part_is_taken_once() {
         part: 4,
         by: PlayerId(1),
     };
-    assert_eq!(events(&out, bob), [carved]);
-    assert!(events(&out, ada).is_empty());
+    let answer = |granted| Event::Cut {
+        animal: animal(0),
+        part: 4,
+        granted,
+    };
+    assert_eq!(events(&out, bob), [carved, answer(false)]);
+    assert_eq!(events(&out, ada), [answer(true)]);
 }
 
 /// A player who joins later is told the carcass with its taken parts, the spears that stand

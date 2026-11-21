@@ -34,7 +34,8 @@ fn every_ground_message_comes_back() {
     size(&ServerMsg::Hunt(Event::Ground(vec![biggest(); 3])));
 }
 
-/// The acts and events of the ground come after the old ones, whose numbers stay.
+/// The acts and events of the ground, then the answer to a cut, come after the old ones, whose
+/// numbers stay, and the answer comes back.
 #[test]
 fn old_numbers_stay() {
     let first = |bytes: Vec<u8>| bytes[0];
@@ -57,6 +58,13 @@ fn old_numbers_stay() {
     assert_eq!(event(&Event::Rock(rock)), 13);
     assert_eq!(event(&Event::Lies(thing(TOOL, 1, 1.0, 0.0))), 14);
     assert_eq!(event(&Event::Ground(Vec::new())), 19);
+    let cut = Event::Cut {
+        animal: super::hunt_tests::animal(),
+        part: 4,
+        granted: true,
+    };
+    assert_eq!(event(&cut), 20);
+    size(&ServerMsg::Hunt(cut));
 }
 
 /// A thing written in the text of a world file shows its bytes in hexadecimal and reads back

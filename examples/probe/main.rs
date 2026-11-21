@@ -39,6 +39,9 @@
 //!   `cloud` climbs through an overcast cloud base, a shot every 0.2 s from the chase camera and the seat.
 //! - `skyfly` holds the ship 3 km, 15 km and 400 km up under a broken cover with the cloud shadows on, a shot
 //!   every second of the game over ten seconds (see the `skyfly` module).
+//! - `stones` finds the nearest rock of every kind around the wake point and shoots each from 2.5 m and 8 m,
+//!   then the steepest slope and the highest top near the base (see the `stones` module). Run it with
+//!   `SMOKE_SEED=57` and `SMOKE_SEED=7`. It is left out of a run of all groups.
 //! - `SMOKE_ONLY` and `SMOKE_SKIP`: comma lists of stage names to keep or to leave out.
 //! - `SMOKE_TARGET` and `SMOKE_FLASH`: see the `warp` and `boot` stages.
 //! - `PROBE_JOIN=<address>`: join that server instead of starting a world, with `PROBE_NAME` as the player name
@@ -155,6 +158,7 @@ mod shots;
 mod skyfly;
 mod stages;
 mod stars;
+mod stones;
 mod stops;
 mod tour;
 mod trees;
@@ -221,6 +225,7 @@ use shots::*;
 use skyfly::*;
 use stages::STAGES;
 use stars::*;
+use stones::*;
 use stops::*;
 use tour::*;
 use trees::*;

@@ -67,7 +67,8 @@ fn take_back(mut claims: ResMut<Claims>, mut asks: MessageWriter<Harvest>) {
     }
 }
 
-/// Registers the answers to the cuts. Every system waits for a link, or for its end.
+/// Registers the answers to the cuts. Every system waits for a link, or for its end, and for the
+/// pack, which a world with no crafting has not.
 pub(super) fn plugin(app: &mut App) {
     let ready = resource_exists::<Herds>.and_then(resource_exists::<Location>);
     app.init_resource::<Claims>();
@@ -82,6 +83,7 @@ pub(super) fn plugin(app: &mut App) {
                 .run_if(ready),
             take_back.run_if(resource_removed::<Link>),
         )
-            .chain(),
+            .chain()
+            .run_if(resource_exists::<crate::craft::Pack>),
     );
 }

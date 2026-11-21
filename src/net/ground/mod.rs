@@ -106,7 +106,7 @@ fn take_back(mut ground: ResMut<Ground>, mut pack: ResMut<Pack>) {
 }
 
 /// Registers the ground of a session. Every system waits for a link, so single player runs none,
-/// and for the ground, which a world with no pack has not.
+/// and for the pack, which a world with no crafting has not.
 pub(super) fn plugin(app: &mut App) {
     let linked = resource_exists::<Link>;
     app.init_resource::<Ground>().init_resource::<Shed>();
@@ -119,11 +119,9 @@ pub(super) fn plugin(app: &mut App) {
                 .run_if(linked)
                 .run_if(on_message::<FromServer>),
             send.run_if(linked).run_if(asking),
-            take_back
-                .run_if(resource_removed::<Link>)
-                .run_if(resource_exists::<Pack>),
+            take_back.run_if(resource_removed::<Link>),
         )
             .chain()
-            .run_if(resource_exists::<Ground>),
+            .run_if(resource_exists::<Pack>),
     );
 }

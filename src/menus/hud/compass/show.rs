@@ -6,7 +6,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::aim::Around;
-use super::stack::{phrase, stack, width};
+use super::stack::{extra, phrase, stack, width};
 use super::{Bar, Far, Glyph, HEIGHT, Pin, pin};
 use crate::menus::hud::context::{Where, marker_shown};
 use crate::menus::hud::needle::{WIDTH, fade, slot};
@@ -28,6 +28,8 @@ pub struct Seen {
     pub row: usize,
     /// Its width in pixels, icon and words in their strip.
     pub wide: f32,
+    /// How many marks that found no row hide behind it.
+    pub more: usize,
 }
 
 /// Returns the icon of a marker of `kind`.
@@ -144,6 +146,9 @@ impl Pins<'_, '_> {
             };
             let marker = &markers[mark.index];
             phrase(marker, mark.gap, words);
+            if mark.more > 0 {
+                words.push_str(&extra(mark.more));
+            }
             if text.0 != *words {
                 text.0.clone_from(words);
             }
@@ -184,6 +189,7 @@ pub fn update(
                 gap,
                 row: 0,
                 wide,
+                more: 0,
             });
         }
     }

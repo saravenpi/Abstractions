@@ -54,10 +54,11 @@ fn shown(app: &mut App, kind: MarkerKind) -> Vec<(f32, f32)> {
     found
 }
 
-/// Five friends 300 m ahead show as five marks on one level over the same place, and a sixth
-/// one behind the player shows nowhere.
+/// Five friends 300 m ahead stack in the three rows of the compass over the same place, nearest
+/// first, and the third row says "+2" for the two that find no row. A sixth one behind the
+/// player shows nowhere.
 #[test]
-fn the_compass_shows_every_friend_ahead() {
+fn the_compass_stacks_friends_ahead_and_counts_the_rest() {
     let mut app = app("friends");
     let ahead = ground(300.0, 0.0);
     let mut marks: Vec<Marker> = (0..5)
@@ -69,13 +70,15 @@ fn the_compass_shows_every_friend_ahead() {
         app.update();
     }
     let found = shown(&mut app, MarkerKind::Friend);
-    assert_eq!(found.len(), 5, "{found:?}");
-    assert!(
-        found
-            .iter()
-            .all(|(left, _)| (left - found[0].0).abs() < 0.01)
-    );
-    assert!(found.iter().all(|(_, top)| *top == 0.0), "{found:?}");
+    assert_eq!(found.len(), 3, "{found:?}");
+    let rows: Vec<f32> = found.iter().map(|(_, top)| *top).collect();
+    assert_eq!(rows, [0.0, 32.0, 64.0], "{found:?}");
+    let mut words = app.world_mut().query::<&Text>();
+    let counted = words
+        .iter(app.world())
+        .filter(|text| text.0.ends_with("+2"))
+        .count();
+    assert_eq!(counted, 1);
 }
 
 /// Moves the anchor 500 m along the planet and the camera with it in one frame, leaving a

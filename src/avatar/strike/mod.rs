@@ -32,6 +32,7 @@ mod starter;
 #[cfg(any(test, feature = "dev"))]
 mod stock;
 mod stop;
+mod stray;
 mod swish;
 mod sync;
 mod throw;
@@ -57,6 +58,8 @@ mod tests_ik;
 mod tests_outcome;
 #[cfg(test)]
 mod tests_stock;
+#[cfg(test)]
+mod tests_stray;
 #[cfg(test)]
 mod tests_throw;
 #[cfg(test)]
@@ -145,7 +148,12 @@ fn spears() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
         (throw::soar, throw::pick).run_if(any_with_component::<Spear>),
         pull::pull
             .run_if(any_with_component::<Spear>)
-            .run_if(crate::screens::in_control),
+            .run_if(crate::screens::in_control.and_then(crate::space::on_foot)),
+        (stray::note, stray::ground)
+            .chain()
+            .run_if(stray::astray)
+            .run_if(resource_exists::<crate::space::Anchor>)
+            .run_if(resource_exists::<crate::world::Terrain>),
     )
         .chain()
 }
@@ -164,6 +172,7 @@ fn swings() -> impl IntoScheduleConfigs<bevy::ecs::system::ScheduleSystem, ()> {
 /// Registers the strikes: the frame systems, and the blows sensed once the transforms are
 /// propagated.
 pub(super) fn plugin(app: &mut App) {
+    crate::player::interacting(app);
     app.add_message::<Hit>()
         .add_message::<Missed>()
         .add_message::<input::Loose>()

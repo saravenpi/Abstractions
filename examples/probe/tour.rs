@@ -39,6 +39,8 @@ pub struct Notes {
     pub shot_at: Option<u32>,
     /// The universe time a night stage left, which it goes back to when it ends.
     pub day: Option<f64>,
+    /// What the play stage under way keeps between frames.
+    pub play: Play,
     /// The frame of a postcard before the one at which the robot was on foot or seated as it wants.
     pub ready: Option<u32>,
     /// Position and orientation of the ship parked on the landing pad.

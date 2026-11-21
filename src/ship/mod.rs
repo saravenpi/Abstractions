@@ -153,6 +153,7 @@ fn reset(commands: &mut Commands) {
 
 /// Registers the flight resources and the ship messages.
 fn resources(app: &mut App) {
+    crate::player::interacting(app);
     app.init_resource::<helm::Helm>()
         .init_resource::<sky::Skies>()
         .init_resource::<sim::Pace>()

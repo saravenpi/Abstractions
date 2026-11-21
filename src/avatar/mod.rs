@@ -194,7 +194,8 @@ pub enum AvatarSet {
     Animate,
 }
 
-/// Marker for the root of the body, a child of the player entity. There is only ever one.
+/// Marker for the root of a robot body. The body of the player at this machine is a child of the
+/// player entity. The robot of another player in a session is a puppet with no parent player.
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct Avatar;
 

@@ -110,6 +110,7 @@ pub const STAGES: [(&str, &str, Stage); 129] = [
     ("land", "tour", land),
     ("step-out", "tour", step_out),
     ("pause", "ui", pause),
+    ("play-pause", "play", play_pause),
     ("p01-home", "postcards", card_home),
     ("p02-pair", "postcards", card_pair),
     ("p03-walk", "postcards", card_walk),
@@ -132,5 +133,4 @@ pub const STAGES: [(&str, &str, Stage); 129] = [
     ("p20-twilight", "postcards", card_twilight),
     ("p21-noon", "postcards", card_noon),
     ("p22-river", "postcards", card_river),
-    ("play-pause", "play", play_pause),
 ];

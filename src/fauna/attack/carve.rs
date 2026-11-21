@@ -1,21 +1,22 @@
-//! Carving: the interact key cuts the part of a carcass the robot looks at. The tool rule of the
-//! harvest decides what it gives, and the part is gone from the body for everyone who sees it.
+//! Carving: the interact key cuts the part of a carcass the robot looks at, when the prompt names
+//! that cut. The tool rule of the harvest decides what it gives, and the part is gone from the body
+//! for everyone who sees it.
 
-use bevy::camera::primitives::Aabb;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use super::Dead;
+use super::aim::{Carcasses, Parts, Target, named, target};
 use super::slay::Carved;
-use super::tune::{CARVE, CUT_RANGE, CUT_SLACK};
+use super::tune::CARVE;
 use crate::audio::{Body, Impact};
 use crate::craft::harvest::{Cut, Harvest};
-use crate::craft::matter::{Class, Grade};
-use crate::fauna::beast::{Beast, Part};
+use crate::craft::matter::Grade;
+use crate::fauna::beast::Beast;
 use crate::fauna::bleed::impact;
 use crate::fauna::herds::Herds;
 use crate::fauna::want::Lead;
 use crate::life::Species;
+use crate::player::{Interact, Verb};
 use crate::render::GameCamera;
 use crate::settings::{Persistent, Settings};
 use crate::world::Terrain;
@@ -26,39 +27,7 @@ pub struct Eyes<'w, 's> {
     camera: Query<'w, 's, &'static GlobalTransform, With<GameCamera>>,
     keys: Res<'w, ButtonInput<KeyCode>>,
     settings: Res<'w, Persistent<Settings>>,
-}
-
-/// The parts of the animals as the cut sees them.
-type Parts<'w, 's> = Query<
-    'w,
-    's,
-    (
-        Entity,
-        &'static GlobalTransform,
-        &'static Aabb,
-        &'static ChildOf,
-    ),
-    With<Part>,
->;
-
-/// Returns the part of a body among `parts` that the line from `from` along `ahead` passes closest
-/// to, within [`CUT_RANGE`], when `dead` says its animal is dead: the part and its animal.
-fn aimed(
-    parts: &Parts,
-    dead: &Query<&mut Beast, With<Dead>>,
-    (from, ahead): (Vec3, Vec3),
-) -> Option<(Entity, Entity)> {
-    let near = parts.iter().filter_map(|(part, placed, aabb, of)| {
-        dead.contains(of.parent()).then_some(())?;
-        let rel = placed.transform_point(Vec3::from(aabb.center)) - from;
-        let along = rel.dot(ahead);
-        let off = (rel - ahead * along).length();
-        let size = Vec3::from(aabb.half_extents).length() * placed.scale().max_element();
-        let seen = (0.0..=CUT_RANGE).contains(&along) && off <= size + CUT_SLACK;
-        seen.then_some((off, part, of.parent()))
-    });
-    near.min_by(|a, b| a.0.total_cmp(&b.0))
-        .map(|(_, p, b)| (p, b))
+    interact: ResMut<'w, Interact>,
 }
 
 /// Returns the grade of the kill of the carcass `lead` of `herds`, poor when it is not recorded.
@@ -86,13 +55,6 @@ fn note(herds: &mut Herds, lead: Lead, index: usize) {
         .for_each(mark);
 }
 
-/// Returns true when part `index` of `species` has tissue worth taking.
-fn worth(species: &Species, index: usize) -> bool {
-    let part = species.body.parts.get(index);
-    let tissue = part.and_then(|p| species.tissues.get(usize::from(p.tissue)).map(|t| (t, p)));
-    tissue.is_some_and(|(t, p)| Class::of(t.kind, p.kind).is_some())
-}
-
 /// Returns the cut of part `index` of the carcass `beast`, graded by how it was killed.
 fn cut_of(herds: &Herds, beast: &Beast, index: usize) -> Cut {
     Cut {
@@ -111,39 +73,38 @@ fn knife(species: &Species, index: usize, at: Vec3) -> Impact {
     impact(species, index, (at, CARVE.0, true), edge)
 }
 
-/// Cuts the part of the carcass the robot looks at when the interact key goes down.
+/// Offers to cut the part of the carcass the robot looks at, and cuts it when the interact key goes
+/// down while the prompt names that cut.
 pub fn carve(
-    eyes: Eyes,
+    mut eyes: Eyes,
     (mut herds, terrain): (ResMut<Herds>, Res<Terrain>),
     (mut commands, mut asks, mut sounds): (Commands, MessageWriter<Harvest>, MessageWriter<Impact>),
-    (mut dead, parts): (Query<&mut Beast, With<Dead>>, Parts),
+    (mut dead, parts): (Carcasses, Parts),
 ) {
-    let key = eyes.settings.controls.keys.ship.board;
-    let (Ok(eye), true) = (eyes.camera.single(), eyes.keys.just_pressed(key)) else {
+    let globe = terrain.globe().clone();
+    let (Ok(eye), Some(life)) = (eyes.camera.single().copied(), globe.life()) else {
         return;
     };
-    let ahead = eye.forward().as_vec3();
-    let Some((part, body)) = aimed(&parts, &dead, (eye.translation(), ahead)) else {
+    let Some(Target { part, body, index }) = target(&eye, (&parts, &dead), life) else {
         return;
     };
     let Ok(mut beast) = dead.get_mut(body) else {
         return;
     };
-    let globe = terrain.globe().clone();
-    let species = globe
-        .life()
-        .and_then(|l| l.species.get(usize::from(beast.index)));
-    let index = beast.parts.iter().position(|p| *p == Some(part));
-    if let (Some(species), Some(index)) = (species, index)
-        && worth(species, index)
-    {
-        let at = parts
-            .get(part)
-            .map_or(eye.translation(), |(_, p, _, _)| p.translation());
-        sounds.write(knife(species, index, at));
-        asks.write(Harvest(cut_of(&herds, &beast, index)));
-        note(&mut herds, beast.lead, index);
-        commands.entity(part).despawn();
-        beast.parts[index] = None;
+    let Some(species) = life.species.get(usize::from(beast.index)) else {
+        return;
+    };
+    eyes.interact.offer(Verb::Carve, named(species, index));
+    let key = eyes.settings.controls.keys.ship.board;
+    if !eyes.interact.pressed(Verb::Carve, &eyes.keys, key) {
+        return;
     }
+    let at = parts
+        .get(part)
+        .map_or(eye.translation(), |p| p.1.translation());
+    sounds.write(knife(species, index, at));
+    asks.write(Harvest(cut_of(&herds, &beast, index)));
+    note(&mut herds, beast.lead, index);
+    commands.entity(part).despawn();
+    beast.parts[index] = None;
 }

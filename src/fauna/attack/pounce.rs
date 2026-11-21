@@ -9,9 +9,10 @@ use bevy::prelude::*;
 use super::Dead;
 use super::brace::hold;
 use super::foe::{Foe, foe_of};
+use super::force::{contact, joules, meets};
 use super::kinds::Kind;
 use super::ring::heard;
-use super::timing::{Attacking, joules};
+use super::timing::Attacking;
 use super::tune::{SLACK, SPREAD, STRIKE};
 use crate::audio::Impact;
 use crate::avatar::blow::Blow;
@@ -66,11 +67,14 @@ fn height(kind: Kind, height: f32) -> f32 {
     }
 }
 
-/// Returns the blow of an attack of `kind` by an animal of `species` on `foe`.
-fn landing(kind: Kind, species: &Species, foe: &Foe) -> Blow {
-    let body = &species.body;
+/// Returns the blow of `attack` by an animal of `species` on `foe` under `gravity`. A dash arrives at
+/// the speed its run so far allows, the other attacks at the speed their part is thrown at. The
+/// energy and the momentum are those the robot takes as a free body: see [`joules`].
+fn landing(attack: &Attacking, species: &Species, foe: &Foe, gravity: f32) -> Blow {
+    let (kind, body) = (attack.kind, &species.body);
     let speed = if kind.dashes() {
-        species.history.speed
+        let run = species.history.speed * (attack.t - attack.wind).max(0.0);
+        contact(kind, (species.history.speed, run), (body.length, gravity))
     } else {
         kind.reach(body) / STRIKE
     };
@@ -80,7 +84,7 @@ fn landing(kind: Kind, species: &Species, foe: &Foe) -> Blow {
         joules: joules(kind, species.history.mass, speed),
         cut: kind.cuts(),
         dir: foe.away,
-        momentum: species.history.mass * kind.share() * speed,
+        momentum: meets(kind, species.history.mass) * speed,
     }
 }
 
@@ -110,11 +114,12 @@ fn reaches(kind: Kind, (beast, species): (&Beast, &Species), foe: &Foe) -> bool 
     gap.length() <= kind.reach(&species.body) * SLACK
 }
 
-/// Moves the attack on `dt` seconds: a dash carries the body forward, and the blow lands once.
+/// Moves the attack on `dt` seconds under `gravity`: a dash carries the body forward, and the blow
+/// lands once.
 fn advance(
     (beast, attack): (&mut Beast, &mut Attacking),
     species: &Species,
-    (foe, dt): (&Foe, f32),
+    (foe, dt, gravity): (&Foe, f32, f32),
     (blows, sounds): (&mut MessageWriter<Blow>, &mut MessageWriter<Impact>),
 ) {
     attack.t += dt;
@@ -128,7 +133,7 @@ fn advance(
     }
     if !attack.struck && reaches(attack.kind, (beast, species), foe) {
         attack.struck = true;
-        let blow = landing(attack.kind, species, foe);
+        let blow = landing(attack, species, foe, gravity);
         sounds.write(heard(attack.kind, species, &blow));
         blows.write(blow);
     }
@@ -158,7 +163,7 @@ pub fn attack(
             }
             Some(mut a) => {
                 let out = (&mut f.blows, &mut f.sounds);
-                advance((&mut *beast, &mut *a), species, (&foe, dt), out);
+                advance((&mut *beast, &mut *a), species, (&foe, dt, gravity), out);
                 hold(&mut beast, Some(&a), length);
             }
             None => {

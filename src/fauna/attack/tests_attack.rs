@@ -1,9 +1,10 @@
 //! Tests of the beat of an attack, the fall of a body that died and the attacks bodies have.
 
+use super::force::joules;
 use super::kinds::Kind;
 use super::limbs::Broken;
 use super::slump::{plunge, tip};
-use super::timing::{Attacking, joules, wind};
+use super::timing::{Attacking, wind};
 use super::tune::{LEAN, STRIKE};
 use crate::fauna::rig::planet;
 

@@ -3,8 +3,10 @@
 use bevy::prelude::KeyCode;
 
 use super::course::{Course, words};
-use super::prompt::{State, choose};
+use super::prompt::{State, choose, offered};
 use crate::computer::{Block, Keys, RouteStatus};
+use crate::player::{Offer, Verb};
+use crate::settings::Keymap;
 
 /// A state with every field set, to take away one at a time.
 fn full() -> State {
@@ -12,12 +14,12 @@ fn full() -> State {
         block: Some("Take off first.".to_string()),
         running: Some((KeyCode::KeyG, "Warping to Mars".to_string())),
         ready: Some((KeyCode::KeyG, "Go to Mars".to_string())),
-        board: Some((KeyCode::KeyF, "Board")),
+        act: Some((KeyCode::KeyF, "Board".to_string())),
         hint: Some((KeyCode::KeyM, "Open the map")),
     }
 }
 
-/// A block beats a running course, which beats a course ready, which beats the board key, which
+/// A block beats a running course, which beats a course ready, which beats the action of a key, which
 /// beats a hint; with nothing, there is no row.
 #[test]
 fn the_priority_order_holds() {
@@ -38,7 +40,7 @@ fn the_priority_order_holds() {
         choose(&state),
         Some((Some(KeyCode::KeyF), "Board".to_string()))
     );
-    state.board = None;
+    state.act = None;
     assert_eq!(
         choose(&state),
         Some((Some(KeyCode::KeyM), "Open the map".to_string()))
@@ -72,5 +74,31 @@ fn the_course_words_follow_the_route() {
     assert_eq!(
         walking.block.as_deref(),
         Some("Board your ship first: walk to the hatch and press F.")
+    );
+}
+
+/// Every action a key does names itself and what it acts on, with the key bound to it: the
+/// interact key for the four that share it, the pick key for stone, the mend key for a patch.
+#[test]
+fn every_offered_action_names_its_key_and_its_thing() {
+    let mut keys = Keymap::default();
+    keys.ship.board = KeyCode::KeyT;
+    keys.mend = KeyCode::KeyY;
+    let said = |verb, thing| offered(Offer { verb, thing }, &keys);
+    let row = |key, words: &str| (key, words.to_string());
+    assert_eq!(
+        said(Verb::Carve, "thigh"),
+        row(KeyCode::KeyT, "Cut the thigh")
+    );
+    assert_eq!(
+        said(Verb::Pull, "spear"),
+        row(KeyCode::KeyT, "Pull the spear")
+    );
+    assert_eq!(said(Verb::Board, ""), row(KeyCode::KeyT, "Board"));
+    assert_eq!(said(Verb::Leave, ""), row(KeyCode::KeyT, "Leave the ship"));
+    assert_eq!(said(Verb::Stone, ""), row(KeyCode::KeyH, "Break stone off"));
+    assert_eq!(
+        said(Verb::Mend, "Left arm"),
+        row(KeyCode::KeyY, "Mend the left arm")
     );
 }

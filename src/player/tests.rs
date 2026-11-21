@@ -9,6 +9,7 @@ mod eyes;
 mod flight;
 mod glider;
 mod intents;
+mod interact;
 mod jet;
 mod jumps;
 mod lead;

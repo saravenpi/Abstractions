@@ -25,12 +25,6 @@ pub fn wind(length: f32, gravity: f32) -> f32 {
     WIND_BASE + WIND_FROUDE * (length.max(0.0) / gravity.max(1e-3)).sqrt()
 }
 
-/// Returns the energy in joules of a blow of `kind` from a body of `mass` kilograms whose striking
-/// part moves at `speed` metres per second.
-pub fn joules(kind: Kind, mass: f32, speed: f32) -> f32 {
-    0.5 * mass * kind.share() * speed * speed
-}
-
 impl Attacking {
     /// Returns an attack of `kind` that just began on a body `length` metres long under `gravity`.
     pub fn begin(kind: Kind, length: f32, gravity: f32) -> Self {

@@ -7,6 +7,7 @@ use super::tune::{BIND_MASS, HARD, PATCH, PATCH_CAP, PLATE_MASS};
 use crate::condition::{Condition, Part};
 use crate::craft::matter::{Class, Stuff};
 use crate::craft::pack::{Pack, Stack};
+use crate::player::{Interact, Verb};
 use crate::settings::{Persistent, Settings};
 
 /// Returns true when `stack` binds a joint: sinew or resin.
@@ -44,30 +45,41 @@ pub fn supply(pack: &Pack, joint: bool) -> Option<(Stuff, f32)> {
         .map(|heap| (heap.stuff, mass))
 }
 
+/// Returns the part a patch would mend now, with the heap it takes and its mass: the worst part
+/// under [`PATCH_CAP`] that `pack` can supply.
+pub fn worst(condition: &Condition, pack: &Pack) -> Option<(Part, Stuff, f32)> {
+    condition
+        .damaged()
+        .into_iter()
+        .filter(|part| condition.of(*part) < PATCH_CAP)
+        .find_map(|part| supply(pack, part.joint()).map(|(stuff, mass)| (part, stuff, mass)))
+}
+
 /// Mends the worst part the pack can supply and returns it: a patch costs [`PLATE_MASS`] or
 /// [`BIND_MASS`] of material and gives back [`PATCH`] of health up to [`PATCH_CAP`].
 pub fn patch(condition: &mut Condition, pack: &mut Pack) -> Option<Part> {
-    for part in condition.damaged() {
-        if condition.of(part) >= PATCH_CAP {
-            continue;
-        }
-        let Some((stuff, mass)) = supply(pack, part.joint()) else {
-            continue;
-        };
-        if pack.take(&stuff, mass) {
-            condition.mend(part, PATCH, PATCH_CAP);
-            return Some(part);
-        }
-    }
-    None
+    let (part, stuff, mass) = worst(condition, pack)?;
+    pack.take(&stuff, mass).then_some(())?;
+    condition.mend(part, PATCH, PATCH_CAP);
+    Some(part)
 }
 
-/// Patches the worst part of the robot when the mend key is pressed.
+/// Offers to patch the worst part of the robot while the pack can supply it, and patches it when the
+/// mend key is pressed. The part is looked for again only when the robot or the pack changed.
 pub fn press(
     (keys, settings): (Res<ButtonInput<KeyCode>>, Res<Persistent<Settings>>),
     (mut condition, mut pack): (ResMut<Condition>, ResMut<Pack>),
+    mut interact: ResMut<Interact>,
+    mut found: Local<Option<Part>>,
 ) {
-    if keys.just_pressed(settings.controls.keys.mend) && !condition.intact() {
+    if condition.is_changed() || pack.is_changed() {
+        *found = worst(&condition, &pack).map(|(part, ..)| part);
+    }
+    let Some(part) = *found else {
+        return;
+    };
+    interact.offer(Verb::Mend, part.name());
+    if keys.just_pressed(settings.controls.keys.mend) {
         patch(&mut condition, &mut pack);
     }
 }

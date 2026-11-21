@@ -24,12 +24,13 @@ mod tests_pick;
 
 pub use bar::{Bar, SLOTS};
 pub use item::Item;
-pub use lend::Lent;
+pub use lend::{Lent, Out};
 pub use load::{Burden, capacity, pace};
 pub use make::cost;
 pub(crate) use pick::gather;
 pub use pick::stones;
 pub(crate) use save::{load, store, weigh};
+pub use tune::PICK_KEY;
 pub use words::{called, noun};
 
 use bevy::prelude::*;
@@ -62,6 +63,8 @@ pub struct Pack {
     pub bar: Bar,
     /// The id the next made tool gets.
     pub next: u32,
+    /// The tools that are out in the world: thrown and not picked up yet. They weigh nothing here.
+    pub out: Vec<Out>,
 }
 
 impl Pack {

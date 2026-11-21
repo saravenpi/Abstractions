@@ -6,6 +6,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use crate::avatar::strike::{Held, Kit, Rest, Spear, kit, tool};
+use crate::craft::Pack;
 use crate::fauna::Creature;
 use crate::net::hunt::{Hunted, item};
 use crate::net::state::Remotes;
@@ -26,6 +27,21 @@ pub struct Stage<'w, 's> {
     location: Res<'w, Location>,
     /// The puppets of the others, whose spears these are.
     remotes: Res<'w, Remotes>,
+    /// The pack of this robot, which forgets a tool of its own that another player drew out.
+    pack: Option<ResMut<'w, Pack>>,
+    /// The spears drawn here.
+    spears: Query<'w, 's, &'static Spear>,
+}
+
+impl Stage<'_, '_> {
+    /// Takes the tool of the spear `entity` off the tools of the pack that are out, when it was lent
+    /// from it: another player drew the spear out, so the tool is theirs now.
+    fn forfeit(&mut self, entity: Entity) {
+        let lent = self.spears.get(entity).ok().and_then(|s| s.lent.as_ref());
+        if let (Some((item, _)), Some(pack)) = (lent, self.pack.as_mut()) {
+            pack.out.retain(|out| out.item.id != item.id);
+        }
+    }
 }
 
 /// Returns a new kit of drawn tools and keeps it as a resource.
@@ -54,6 +70,7 @@ pub fn plant(
         let at = stage.hunted.planted.iter().find(|(_, (k, _))| *k == key);
         if let Some(entity) = at.map(|(entity, _)| *entity) {
             stage.hunted.planted.remove(&entity);
+            stage.forfeit(entity);
             stage.commands.entity(entity).despawn();
         }
         stage.hunted.stuck.retain(|spear| spear.key != key);

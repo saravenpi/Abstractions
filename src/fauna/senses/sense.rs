@@ -36,7 +36,7 @@ pub struct Sense<'w, 's> {
     herds: Res<'w, Herds>,
     blood: ResMut<'w, Blood>,
     robot: Query<'w, 's, (Entity, &'static Transform), With<Player>>,
-    pose: Query<'w, 's, &'static AvatarPose, (With<Avatar>, With<ChildOf>)>,
+    pose: Query<'w, 's, (&'static ChildOf, &'static AvatarPose), With<Avatar>>,
     remotes: Remotes<'w, 's>,
     beasts: Query<'w, 's, (Entity, &'static mut Beast)>,
 }
@@ -169,9 +169,11 @@ fn robot(key: Entity, pos: DVec3, pose: Option<&AvatarPose>) -> Threat {
 }
 
 /// Adds the local robot `me` at planet position `at` and the robots of the other players to
-/// `threats`.
+/// `threats`. The pose of the local robot is the one of the body that hangs from `me`: the robot of
+/// another player seated in its ship hangs from a seat, and is not it.
 fn robots(s: &Sense, threats: &mut Vec<Threat>, (me, at): (Entity, DVec3)) {
-    threats.push(robot(me, at, s.pose.iter().next()));
+    let mine = s.pose.iter().find(|(of, _)| of.parent() == me);
+    threats.push(robot(me, at, mine.map(|(_, pose)| pose)));
     for (key, t, pose) in &s.remotes {
         threats.push(robot(key, s.anchor.to_frame(t.translation), pose));
     }

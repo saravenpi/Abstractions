@@ -11,6 +11,7 @@ use self::aim::Aim;
 use super::tune::{HANDFUL, PICK_KEY};
 use super::{Burden, Pack, Stack};
 use crate::craft::matter::{Mineral, Stuff};
+use crate::player::{Interact, Verb};
 use crate::space::Location;
 use crate::universe::PlanetRecord;
 use crate::world::Terrain;
@@ -58,19 +59,27 @@ pub(super) fn take(
     Some((rock.id, kept))
 }
 
-/// Breaks a piece off the rock under the crosshair when the pick key goes down, and says so.
+/// Offers to break a piece off the rock under the crosshair, and breaks it off when the pick key goes
+/// down, and says so.
 pub(crate) fn gather(
     (keys, aim): (Res<ButtonInput<KeyCode>>, Aim),
     (terrain, burden, location): (Res<Terrain>, Res<Burden>, Res<Location>),
-    (mut pack, mut taken): (ResMut<Pack>, ResMut<Taken>),
+    (mut pack, mut taken, mut interact): (ResMut<Pack>, ResMut<Taken>, ResMut<Interact>),
     mut told: MessageWriter<RockTaken>,
 ) {
+    let record = terrain.globe().record();
+    let rock = aim
+        .rock()
+        .filter(|rock| stone_of(record, rock.id).is_some());
+    if rock.is_none() {
+        return;
+    }
+    interact.offer(Verb::Stone, "");
     if !keys.just_pressed(PICK_KEY) {
         return;
     }
-    let record = terrain.globe().record();
     let tools = (&mut *pack, &mut *taken);
-    if let Some((id, kilograms)) = take(aim.rock(), (record, burden.room()), tools) {
+    if let Some((id, kilograms)) = take(rock, (record, burden.room()), tools) {
         told.write(RockTaken {
             planet: location.body,
             id,

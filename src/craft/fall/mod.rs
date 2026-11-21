@@ -27,14 +27,15 @@ fn destroyed(condition: Res<Condition>) -> bool {
 }
 
 /// Puts everything `pack` holds into the cache `left` at `at`, in the frame of `body`, with what it
-/// already held.
+/// already held. The tools that are out in the world stay where they are, and stay the robot's.
 pub fn leave(left: &mut Left, pack: &mut Pack, (body, at): (crate::universe::BodyId, DVec3)) {
     let mut cache = left.0.take().unwrap_or(Cache {
         body,
         at: at.to_array(),
         pack: Pack::default(),
     });
-    let kit = std::mem::take(pack);
+    let mut kit = std::mem::take(pack);
+    (pack.out, pack.next) = (std::mem::take(&mut kit.out), kit.next);
     for stack in kit.stacks {
         cache.pack.stow(stack, f32::MAX);
     }
@@ -47,7 +48,7 @@ pub fn leave(left: &mut Left, pack: &mut Pack, (body, at): (crate::universe::Bod
 /// Replaces a destroyed robot with a spare one: the gear it carried goes into the cache where it
 /// fell, every part is whole again, and the body stands at the wake point of the base when the
 /// planet it fell on is the one the base stands on.
-fn wake(
+pub(crate) fn wake(
     mut commands: Commands,
     (mut condition, mut pack, mut left): (ResMut<Condition>, ResMut<Pack>, ResMut<Left>),
     (anchor, base): (Res<Anchor>, Option<Res<Base>>),

@@ -13,6 +13,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A thrown spear leaves along the view. It left turned by the heading of the body a second time, so it flew true only when the robot faced north.
 - No number in the interface reads "-0.0". An empty pack said "-0.0 of 29.7 kg".
 - Each frame row of the HUD has the colour of its own part: a broken part is in the danger colour and a part under half in the warning colour, also while the frame as a whole is sound.
+- One press of the interact key (F) does one thing, the thing the prompt line names. Next to a carcass with a spear in it beside the ship, one press cut a part, pulled the spear and could board. Now the spear comes out first, then the cut, then the ship, and each shows on the prompt line before the press.
+- The prompt line shows the key of four more actions when they are possible: "Cut the thigh" and "Pull the spear" (F), "Break stone off" (H) and "Mend the left arm" (U). The controls page names the F key "Interact, board".
+- A thrown spear is never lost. When the animal it stands in leaves the world, or the world is closed and opened again, the spear falls to the ground where it last was and waits there. The pack keeps it in the save. A robot that is destroyed keeps the spears it has out.
+- A blow of a big animal throws the robot more than it crushes it. The robot is a free body of 80 kg, so a blow lands with at most that mass, and a charge is as fast as its run-up allows, not at top speed from a standstill. A 300 kg animal that charges from 4 m leaves 1.2 kJ where it left 19 kJ: it breaks an arm and knocks the robot down, and no longer destroys a whole robot in one blow. A long charge of a 600 kg animal still does. A trample breaks the leg it lands on.
+- An animal reads the pose of the robot of this machine, never the pose of another player seated in a ship.
 
 ## [0.11.0] - 2026-11-21
 

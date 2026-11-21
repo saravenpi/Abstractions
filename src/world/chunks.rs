@@ -7,6 +7,7 @@ mod calm;
 mod cut;
 mod detail;
 pub mod dither;
+mod drawn;
 mod embed;
 mod face;
 mod fade;
@@ -33,6 +34,8 @@ mod tests;
 mod tests_bodies;
 #[cfg(test)]
 mod tests_caps;
+#[cfg(test)]
+mod tests_drawn;
 #[cfg(test)]
 mod tests_embed;
 #[cfg(test)]
@@ -71,6 +74,7 @@ pub(in crate::world) use self::build::planted;
 pub use self::calm::{Calm, watch_calm};
 pub use self::cut::show;
 pub use self::detail::refine;
+pub use self::drawn::Drawn;
 pub use self::face::{follow_face, rehome};
 use self::fade::Fades;
 use self::far::FarView;

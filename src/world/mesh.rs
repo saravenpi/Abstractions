@@ -30,11 +30,11 @@ use bevy::prelude::*;
 
 pub use self::frame::Frame;
 pub use self::lod::{Lod, ring_distance, subsample};
-pub use self::node::{fill_node, node_frame, node_mesh};
+pub use self::node::{fill_node, node_cells, node_frame, node_mesh};
 pub use self::patch::Patch;
 use self::read::scale;
 pub use self::rings::Rings;
-pub use self::span::{Span, leaf_coord};
+pub use self::span::{Span, leaf_coord, leaf_node};
 use self::style::{Style, tone};
 use self::tris::{Cell, fill};
 use self::tune::COARSE;

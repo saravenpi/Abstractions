@@ -12,6 +12,7 @@ use bevy::prelude::*;
 
 use crate::computer::{Computer, Lens, Tab, Target};
 use crate::map::level::Level;
+use crate::map::sight::Sight;
 use crate::universe::{BodyId, GalaxyId, StarId, Universe};
 
 /// Seconds the map eases onto a place before it goes into it.
@@ -85,13 +86,23 @@ impl Place {
     }
 }
 
+/// How a level was looked at: a chart through its lens, the flat map of a planet through its
+/// sight.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Look {
+    /// A chart of the board computer.
+    Chart(Lens),
+    /// The flat map of a planet.
+    Planet(Sight),
+}
+
 /// A level once shown, and how it was looked at, or nothing for the way it opens.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Stop {
     /// The level.
     pub place: Place,
-    /// The lens it was looked through.
-    pub lens: Option<Lens>,
+    /// How it was looked at.
+    pub lens: Option<Look>,
 }
 
 /// The levels shown before the one shown now, the last one last, and a place the map eases

@@ -8,7 +8,7 @@
 
 use std::f64::consts::{FRAC_PI_2, PI, TAU};
 
-use bevy::math::{DVec3, Vec2};
+use bevy::math::{DVec2, DVec3};
 
 use crate::computer::direction;
 use crate::ui::units::fixed;
@@ -24,27 +24,27 @@ pub fn lat_lon(dir: DVec3) -> (f64, f64) {
 }
 
 /// Returns the chart point the direction `dir` is drawn at on the flat map.
-pub fn to_chart(dir: DVec3) -> Vec2 {
+pub fn to_chart(dir: DVec3) -> DVec2 {
     let (lat, lon) = lat_lon(dir);
-    Vec2::new((lon / PI - 1.0) as f32, (lat / PI) as f32)
+    DVec2::new(lon / PI - 1.0, lat / PI)
 }
 
 /// Returns the chart point `at` moved by whole turns of longitude into the flat map, from -1
 /// to 1 across, for a point of a map that wraps east and west.
-pub fn wrapped(at: Vec2) -> Vec2 {
-    Vec2::new((at.x + 1.0).rem_euclid(2.0) - 1.0, at.y)
+pub fn wrapped(at: DVec2) -> DVec2 {
+    DVec2::new((at.x + 1.0).rem_euclid(2.0) - 1.0, at.y)
 }
 
 /// Returns the copy of the chart point `at`, whole turns of longitude east or west, nearest to
 /// the longitude `x` the lens looks at.
-pub fn copy_near(at: Vec2, x: f32) -> Vec2 {
-    Vec2::new(at.x + 2.0 * ((x - at.x) * 0.5).round(), at.y)
+pub fn copy_near(at: DVec2, x: f64) -> DVec2 {
+    DVec2::new(at.x + 2.0 * ((x - at.x) * 0.5).round(), at.y)
 }
 
 /// Returns the direction drawn at the chart point `at`, or nothing off the flat map.
-pub fn from_chart(at: Vec2) -> Option<DVec3> {
+pub fn from_chart(at: DVec2) -> Option<DVec3> {
     let inside = at.x.abs() <= 1.0 && at.y.abs() <= 0.5;
-    inside.then(|| direction((f64::from(at.x) + 1.0) * PI, f64::from(at.y) * PI))
+    inside.then(|| direction((at.x + 1.0) * PI, at.y * PI))
 }
 
 /// Returns the latitude and the longitude of `dir` in words, as `12.4° N  103.2° E`: the

@@ -6,16 +6,17 @@
 use std::f64::consts::TAU;
 use std::sync::Arc;
 
-use bevy::math::{DVec3, Vec2};
+use bevy::math::{DVec2, DVec3};
 use bevy::prelude::*;
 
 use super::{floor, ground, settle};
-use crate::computer::{Lens, SIZE};
+use crate::computer::SIZE;
 use crate::map::geo::{from_chart, to_chart, wrapped};
 use crate::map::level::{CLOSEST, REFERENCE_MAP};
 use crate::map::link::{marks_of, marks_text};
 use crate::map::places::keys::press;
 use crate::map::places::{Places, fill};
+use crate::map::sight::Sight;
 use crate::menus::{MarkerKind, MarkerPlace, Markers};
 use crate::saves::WorldSave;
 use crate::universe::{BodyId, EARTH_RADIUS, STANDARD_GRAVITY, Universe};
@@ -83,9 +84,9 @@ fn the_pin_key_drops_on_the_ground_at_the_feet() {
 /// Returns the direction a right click picks on the flat map looked at through `zoom`, with the
 /// pointer on the window pixel nearest to where `dir` is drawn, off the middle of the map.
 fn clicked(dir: DVec3, zoom: f32) -> DVec3 {
-    let lens = Lens {
+    let lens = Sight {
         zoom,
-        centre: to_chart(dir) + Vec2::new(0.31, -0.27) / zoom,
+        centre: to_chart(dir) + DVec2::new(0.31, -0.27) / f64::from(zoom),
     };
     let scale = REFERENCE_MAP / SIZE;
     let pixel = (lens.to_map(to_chart(dir)) * scale).round() / scale;
@@ -93,7 +94,8 @@ fn clicked(dir: DVec3, zoom: f32) -> DVec3 {
 }
 
 /// A right click on the map at the closest zoom and at a middle zoom drops the pin on the ground
-/// under the pointer, within the ground one window pixel of the map covers.
+/// under the pointer: the place it marks is within the ground one window pixel of the map covers,
+/// and it lies on the ground there.
 #[test]
 fn a_click_on_the_map_drops_on_the_ground_under_the_pointer() {
     let (globe, body) = (
@@ -103,12 +105,14 @@ fn a_click_on_the_map_drops_on_the_ground_under_the_pointer() {
     for zoom in [CLOSEST, 512.0] {
         let pixel = TAU * EARTH_RADIUS / f64::from(zoom * REFERENCE_MAP);
         for dir in spots() {
-            let soil = dir * (EARTH_RADIUS + floor(&globe, dir));
+            let picked = clicked(dir, zoom);
+            let soil = picked * (EARTH_RADIUS + floor(&globe, picked));
             let mut places = Places::default();
-            places.drop(body, clicked(dir, zoom));
+            places.drop(body, picked);
             ground(&mut places, body, &globe);
-            let off = (places.pins[0].point(EARTH_RADIUS) - soil).length();
+            let off = picked.angle_between(dir) * EARTH_RADIUS;
             assert!(off < pixel, "{dir} at {zoom}: {off} m, a pixel {pixel} m");
+            assert!((places.pins[0].point(EARTH_RADIUS) - soil).length() < 0.5);
         }
     }
 }

@@ -43,6 +43,7 @@ mod side_buttons;
 mod side_show;
 #[cfg(test)]
 mod side_tests;
+mod sight;
 mod spots;
 mod surface;
 #[cfg(test)]

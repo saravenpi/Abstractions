@@ -39,7 +39,8 @@ const WRAP: f32 = 200.0 * std::f32::consts::PI;
 pub enum Detail {
     /// Near: the ground under every foot, leg solvers and chains.
     Full,
-    /// Far: gait phases over the ground under the root only.
+    /// Far: gait phases with each foot on the ground under it and the body tilted to their plane, no
+    /// leg solver over the steps.
     Cheap,
 }
 
@@ -69,6 +70,8 @@ pub struct Root {
     pub yaw: Follow<f32>,
     /// Height of the ground under the body, pitch and roll, held over the feet.
     pub hold: Follow<Vec3>,
+    /// Height of the drawn ground under the root at the last step, which the hold rides on.
+    pub floor: f32,
     /// Attitude of bodies that tilt into their way.
     pub tilt: Turn,
     /// Drawn place of the root this step.
@@ -132,6 +135,7 @@ impl Root {
             vel: Follow::new(Vec3::ZERO, Vec3::ZERO),
             yaw: Follow::new(yaw, 0.0),
             hold: Follow::new(Vec3::new(at.y, 0.0, 0.0), Vec3::ZERO),
+            floor: at.y,
             tilt: Turn::new(turn),
             place: at,
             turn,

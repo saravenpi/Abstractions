@@ -38,6 +38,17 @@ pub fn travel(m: &mut Motion, drive: &Drive, flat: bool, dt: f32) -> Vec3 {
     vel
 }
 
+/// Carries the hold of `m` with the ground under its root and returns the height of that ground: the
+/// held height moves by as much as the ground under the root moved since the last step, so the spring
+/// that holds the body lags only on what its feet add to the ground, never on the slope or the bump it
+/// crosses, at any speed.
+pub fn ride(m: &mut Motion, ground: &dyn Fn(Vec2) -> f32) -> f32 {
+    let base = ground(Vec2::new(m.root.at.x, m.root.at.z));
+    m.root.hold.shift(Vec3::X * (base - m.root.floor));
+    m.root.floor = base;
+    base
+}
+
 /// Returns the heading of `m` as a rotation about +Y.
 pub fn heading(m: &Motion) -> Quat {
     Quat::from_rotation_y(m.root.yaw.at)

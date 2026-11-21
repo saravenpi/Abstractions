@@ -36,7 +36,7 @@ mod tests_footing;
 
 pub use biome::{Biome, ground_rgb};
 pub use blades::{BladeAssets, BladeMaterial, Cropped, TurfUniform, turf_at};
-pub use chunks::{Calm, Chunks, Reach, STEPS as RENDER_STEPS, Sited, dither, leaf_arc};
+pub use chunks::{Calm, Chunks, Drawn, Reach, STEPS as RENDER_STEPS, Sited, dither, leaf_arc};
 pub use enter::{Resettled, enter_planet};
 pub use focus::{Link, spin};
 pub use globe::Globe;

@@ -2,6 +2,7 @@
 
 use super::climate::{FREEZING, settle, spread, state};
 use super::range_tests::sample;
+use super::zone::outer;
 use super::*;
 
 /// Each class of star has the surface temperatures astronomers give it, within the fit of the
@@ -105,22 +106,23 @@ fn water_state_follows_heat_and_pressure() {
 /// thermostat that keeps a cold planet warm needs both water and carbon.
 #[test]
 fn climate_settles_like_the_earth() {
-    let cold = |wet: f64, carbon: f64| settle(0.4, 1.0, wet, carbon);
+    let sun_edge = outer(5780.0);
+    let cold = |wet: f64, carbon: f64| settle(0.4, sun_edge, 1.0, wet, carbon);
     assert_eq!(cold(0.3, 0.5).water, Water::Liquid);
     assert_eq!(cold(0.3, 0.0).water, Water::Ice);
     assert!(cold(0.3, 0.5).greenhouse > 2.0 * cold(0.3, 0.0).greenhouse);
     assert_eq!(cold(0.05, 0.5).greenhouse, air::greenhouse(1.0));
-    let home = settle(1.0, 1.0, 0.3, 0.5);
+    let home = settle(1.0, sun_edge, 1.0, 0.3, 0.5);
     assert_eq!(home.water, Water::Liquid);
     assert!((0.2..0.4).contains(&home.albedo), "{home:?}");
     assert!((280.0..296.0).contains(&home.temperature), "{home:?}");
     let sum = 278.5 * (1.0 - home.albedo).powf(0.25) + home.greenhouse;
     assert_eq!(home.temperature, sum);
-    assert_eq!(home, settle(1.0, 1.0, 0.3, 0.5));
-    let far = settle(0.02, 1.0, 0.3, 0.5);
+    assert_eq!(home, settle(1.0, sun_edge, 1.0, 0.3, 0.5));
+    let far = settle(0.02, sun_edge, 1.0, 0.3, 0.5);
     assert_eq!(far.water, Water::Ice);
     assert!(far.albedo > home.albedo && far.temperature < FREEZING);
-    let near = settle(40.0, 1.0, 0.3, 0.5);
+    let near = settle(40.0, sun_edge, 1.0, 0.3, 0.5);
     assert_eq!(near.water, Water::Steam);
     assert!(near.greenhouse > 10.0 * home.greenhouse);
 }

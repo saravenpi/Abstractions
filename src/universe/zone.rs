@@ -31,6 +31,13 @@ fn edge(fit: &[f64; 5], star_temperature: f64) -> f64 {
     fit.iter().rev().fold(0.0, |sum, k| sum * t + k)
 }
 
+/// Returns the flux at the outer edge of the habitable zone of a star at `star_temperature` kelvin,
+/// the maximum greenhouse limit: farther out, the strongest greenhouse an air can build no longer
+/// thaws water.
+pub fn outer(star_temperature: f64) -> f64 {
+    edge(&OUTER, star_temperature)
+}
+
 /// Returns where an orbit receiving `flux` lies against the habitable zone of its star.
 ///
 /// The edges are the runaway greenhouse and maximum greenhouse limits of Kopparapu et al. 2013,

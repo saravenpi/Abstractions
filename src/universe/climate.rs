@@ -32,11 +32,12 @@ const DRY: f64 = 0.1;
 /// Water stock, from 0 to 1, from which the sea drowns nearly all the land.
 const DROWNED: f64 = 0.55;
 
-/// Kelvin the air of a cold planet builds up to hold, as far as [`THERMOSTAT`] lets it.
+/// Kelvin the air of a cold planet builds up to hold, as far as [`thaw`] lets it.
 const THAW: f64 = 280.0;
 
-/// Most a cold planet multiplies its greenhouse by: the maximum greenhouse.
-const THERMOSTAT: f64 = 3.0;
+/// Share of the starlight an Earth sends back: the reference albedo the maximum greenhouse is
+/// measured with, see [`thaw`].
+const EARTH_ALBEDO: f64 = 0.3;
 
 /// Carbon supply, from 0 to 1, from which a planet has all the carbon its thermostat can use.
 const CARBON_FULL: f64 = 0.3;
@@ -88,6 +89,19 @@ pub fn state(temperature: f64, pressure: f64, wet: f64) -> Water {
     }
 }
 
+/// Returns the most in kelvin that the carbon cycle can add to the greenhouse of a cold wet rock,
+/// for a star whose habitable zone ends at the flux `outer`.
+///
+/// The outer edge is by definition where the strongest greenhouse an air can build only just
+/// brings water to freezing. So the cap is what a world of the albedo of the Earth needs there:
+/// `273 K - 278.5 K * (outer * (1 - 0.3))^0.25`, 78 K for the Sun, whose edge is at a flux of
+/// 0.344. A world farther out gets no more, and freezes. It never exceeds what the thickest air,
+/// at the pressure cap, warms by in the grey model: [`air::greenhouse`] at 5 atmospheres, 109 K.
+fn thaw(outer: f64) -> f64 {
+    let edge = BLACK_BODY * (outer * (1.0 - EARTH_ALBEDO)).powf(0.25);
+    (FREEZING - edge).min(air::greenhouse(air::PRESSURE_CAP))
+}
+
 /// Returns the albedo of a planet from what covered it one round before.
 ///
 /// The ground is ice at 0.55, bare rock at 0.2, or seas at 0.08 between rock. Clouds at 0.6
@@ -113,16 +127,23 @@ fn albedo(pressure: f64, wet: f64, was: &Climate) -> f64 {
 /// Runs one round of the feedback: cover gives albedo, albedo and air give heat, heat gives water.
 ///
 /// The temperature is `278.5 K * (flux * (1 - albedo))^0.25` plus the greenhouse. The air of a
-/// cold planet thickens in heat-trapping gas until the ground reaches 280 K, up to 3 times its
-/// steady greenhouse: this is what holds seas liquid out to the far edge of the habitable zone.
-/// That thermostat is the cycle of carbon between air, water and rock, so it needs water and
-/// works in proportion to the carbon supply `carbon`, in full from 0.3: a dry or carbon-poor
-/// planet keeps its steady greenhouse. A planet whose sea has boiled gets the runaway greenhouse,
+/// cold planet thickens in heat-trapping gas until the ground reaches 280 K, up to [`thaw`]: this
+/// is what holds seas liquid out to the far edge of the habitable zone and not beyond it, where
+/// no air warms more than that maximum greenhouse, not even a steady one. That thermostat is
+/// the cycle of carbon between air, water and rock, so it needs water and works in proportion to the carbon supply `carbon`, in full from 0.3: a dry or carbon-poor
+/// planet keeps its steady greenhouse. `flux` is the starlight and the flux at the outer edge of
+/// the zone of the star. A planet whose sea has boiled gets the runaway greenhouse,
 /// see [`air::runaway`].
-fn step(flux: f64, pressure: f64, (wet, carbon): (f64, f64), was: &Climate) -> Climate {
+fn step(flux: (f64, f64), pressure: f64, (wet, carbon): (f64, f64), was: &Climate) -> Climate {
+    let (flux, outer) = flux;
     let albedo = albedo(pressure, wet, was);
     let bare = BLACK_BODY * (flux * (1.0 - albedo)).powf(0.25);
     let steady = air::greenhouse(pressure);
+    let steady = if flux < outer {
+        steady.min(thaw(outer))
+    } else {
+        steady
+    };
     let cycle = if wet >= DRY {
         (carbon / CARBON_FULL).clamp(0.0, 1.0)
     } else {
@@ -131,7 +152,8 @@ fn step(flux: f64, pressure: f64, (wet, carbon): (f64, f64), was: &Climate) -> C
     let greenhouse = if was.water == Water::Steam {
         air::runaway(pressure)
     } else {
-        (THAW - bare).clamp(steady, steady * (1.0 + (THERMOSTAT - 1.0) * cycle))
+        let top = steady + (thaw(outer) - steady).max(0.0) * cycle;
+        (THAW - bare).clamp(steady, top)
     };
     let temperature = bare + greenhouse;
     Climate {
@@ -142,19 +164,22 @@ fn step(flux: f64, pressure: f64, (wet, carbon): (f64, f64), was: &Climate) -> C
     }
 }
 
-/// Returns the climate of a planet receiving `flux` under `pressure`, for a water stock `wet`
+/// Returns the climate of a planet receiving `flux` under `pressure`, around a star whose zone ends
+/// at the flux `outer`, for a water stock `wet`
 /// and a carbon supply `carbon`, both from 0 to 1.
 ///
 /// It starts from bare rock and runs the ice and albedo feedback 4 times, a fixed count, so the
 /// same planet always settles on the same climate.
-pub fn settle(flux: f64, pressure: f64, wet: f64, carbon: f64) -> Climate {
+pub fn settle(flux: f64, outer: f64, pressure: f64, wet: f64, carbon: f64) -> Climate {
     let bare = Climate {
         albedo: ROCK,
         greenhouse: 0.0,
         temperature: 0.0,
         water: Water::None,
     };
-    (0..ROUNDS).fold(bare, |was, _| step(flux, pressure, (wet, carbon), &was))
+    (0..ROUNDS).fold(bare, |was, _| {
+        step((flux, outer), pressure, (wet, carbon), &was)
+    })
 }
 
 /// Returns the climate at the cloud deck of a gas giant receiving `flux`, for a water stock `wet`.

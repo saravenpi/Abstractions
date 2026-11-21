@@ -7,7 +7,7 @@ mod shares;
 
 use row::{Row, measure};
 
-use crate::universe::{EARTH_RADIUS, PlanetClass, SUN_MASS};
+use crate::universe::{COMFORT, EARTH_RADIUS, PlanetClass, SUN_MASS};
 
 /// Seeds the survey looks at.
 const SEEDS: u64 = 100;
@@ -74,6 +74,20 @@ fn tally(rows: &[Row]) -> usize {
     println!("no herd within walk {}", count(&|r| !r.herd));
     println!("hot spawn {}", count(&|r| r.spawn.temperature > 313.15));
     println!("cold spawn {}", count(&|r| r.spawn.temperature < 273.15));
+    let pull = rows.iter().map(|r| r.planet.gravity);
+    let (low, high) = (
+        pull.clone().fold(f64::MAX, f64::min),
+        pull.fold(0.0, f64::max),
+    );
+    println!("gravity {low:.2} to {high:.2} m/s2");
+    println!(
+        "day under 10 h {}",
+        count(&|r| r.planet.day_seconds < 36_000.0)
+    );
+    println!(
+        "day over 100 h {}",
+        count(&|r| r.planet.day_seconds > 360_000.0)
+    );
     good
 }
 
@@ -86,6 +100,11 @@ fn homes_have_life_to_see() {
     rows.iter().for_each(show);
     let good = tally(&rows);
     let herds = rows.iter().filter(|r| r.herd).count();
+    let (low, high) = COMFORT;
+    assert!(
+        rows.iter()
+            .all(|r| (low..=high).contains(&r.planet.gravity))
+    );
     assert!(good * 100 >= 95 * rows.len(), "{good} of {}", rows.len());
     assert!(herds * 10 >= 9 * rows.len(), "herds near on {herds}");
 }

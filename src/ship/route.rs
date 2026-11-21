@@ -21,6 +21,8 @@ mod goal;
 mod goal_tests;
 mod handoff;
 #[cfg(test)]
+mod spool_tests;
+#[cfg(test)]
 mod stop_tests;
 mod tune;
 

@@ -18,6 +18,7 @@ use crate::ship::pilot::{Autopilot, Phase};
 use crate::ship::sky::Skies;
 use crate::ship::steer::aim;
 use crate::ship::tune::{CLIMB_TIME, ORBIT_ALTITUDE, ORBIT_RAMP, ORBIT_TOLERANCE};
+use crate::ship::warp::DROP_MARGIN;
 use crate::ship::wells::{PLANET_LOCK, Well};
 use crate::space::Frame;
 use crate::universe::{BodyId, PlanetSpec};
@@ -54,9 +55,11 @@ pub(in crate::ship) fn altitude(planet: &PlanetSpec) -> f64 {
 
 /// Returns the height in metres above sea level of the orbit a route to another place leaves
 /// `planet` from: the orbit of [`altitude`], or higher when the lock sphere of the planet is
-/// wider, by [`LOCK_MARGIN`].
+/// wider, by [`LOCK_MARGIN`]. The orbit lies past the lock sphere and the drop-out margin around it,
+/// [`DROP_MARGIN`]: a drive that spools inside the margin drops out on the first step toward the planet.
 pub(in crate::ship) fn departure(planet: &PlanetSpec) -> f64 {
-    altitude(planet).max(planet.radius * (PLANET_LOCK - 1.0) * LOCK_MARGIN)
+    let clear = PLANET_LOCK * (1.0 + DROP_MARGIN) - 1.0;
+    altitude(planet).max(planet.radius * clear * LOCK_MARGIN)
 }
 
 /// Returns true when a route is a climb: the ship is in the air of a planet and off the ground.

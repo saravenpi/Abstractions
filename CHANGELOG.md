@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - The robot wakes with a kit: a stone spear in hotbar slot 1 and a stone knife in slot 2, knapped from the stone of the home planet, and nothing in its hands: press 1 to draw the spear. They are the lightest tools the workshop proposes, with their real mass and wear, so the first animal that goes for you can be fought and every tool you make after is better. A world saved before gets the kit once on its next load, when its pack holds no tool. In a session every player gets their own.
+- Calm water mirrors you. The robot, the companion, the ship, other players and nearby animals show in the sea, lakes and ponds, upside down under where they stand, bent by the waves and the ripples, strong at a grazing angle and faint looking straight down, and fading out over 150 to 300 m. In first person your own head shows in the water too. Settings > Graphics > Sky and sea > Water reflections: Actors on the High and Ultra presets, Off on Low and Medium. It costs one small extra pass that draws only those actors, and only while water and an actor near it are in view; off, it costs nothing. A settings file from before keeps the preset it was on. The old "Sea reflections" row, sun and moon glint on or off, is now called "Sea glint".
 - A thrown tool is marked: a spear out in the world shows as "Your" and its name on the compass, the minimap, the map and over the world, where it came to rest, also in an animal that carries it off, until it is back in the pack.
 
 ### Removed

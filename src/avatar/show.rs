@@ -1,5 +1,7 @@
 //! Visibility: how much of the body is drawn in each view.
 
+use bevy::app::Propagate;
+use bevy::camera::visibility::RenderLayers;
 use bevy::prelude::*;
 
 use super::animate::{Bone, Skeleton};
@@ -7,6 +9,7 @@ use super::own::Own;
 use super::rig::Seg;
 use super::strike::{Act, Strike};
 use super::{Avatar, AvatarPose};
+use crate::render::mirror_only;
 
 /// How much of the body is drawn. Hidden parts cast no shadow either.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -71,15 +74,50 @@ fn arm(seg: Seg) -> bool {
     )
 }
 
+/// A bone of the body: its segment, its visibility and whether only the water mirror draws it.
+type BoneParts = (
+    &'static Bone,
+    &'static mut Visibility,
+    Option<&'static Propagate<RenderLayers>>,
+);
+
+/// Shows the bone `entity`, whose visibility is `visibility` and which is on the mirror layer
+/// alone when `own` holds, as `want`; or, where the `body` is drawn and only the camera at the
+/// eyes must not see it, on the mirror layer alone: the head of a first person view still shows
+/// in calm water. A part on the mirror layer alone casts no shadow, as a hidden one.
+fn part(
+    commands: &mut Commands,
+    (entity, mut visibility, own): (Entity, Mut<Visibility>, bool),
+    want: Visibility,
+    body: Visibility,
+) {
+    let mirrored = want == Visibility::Hidden && body != Visibility::Hidden;
+    let shown = if mirrored {
+        Visibility::Inherited
+    } else {
+        want
+    };
+    visibility.set_if_neq(shown);
+    match (mirrored, own) {
+        (true, false) => {
+            commands.entity(entity).insert(Propagate(mirror_only()));
+        }
+        (false, true) => {
+            commands.entity(entity).remove::<Propagate<RenderLayers>>();
+        }
+        _ => {}
+    }
+}
+
 /// Applies the visibility setting to the body at this machine: its root, its head and its
 /// arms, which stay in a first person view that looks up while they strike. Any other body is
-/// drawn whole.
+/// drawn whole. What the camera at the eyes must not see stays in the water mirror.
 pub fn show(
-    shown: Res<Shown>,
-    own: Own,
+    (shown, own): (Res<Shown>, Own),
+    mut commands: Commands,
     bodies: Query<(&AvatarPose, &Skeleton, Option<&Strike>)>,
     mut roots: Query<&mut Visibility, (With<Avatar>, Without<Bone>)>,
-    mut bones: Query<(&Bone, &mut Visibility), Without<Avatar>>,
+    mut bones: Query<(Entity, BoneParts), Without<Avatar>>,
 ) {
     let Some((_, body)) = own.body() else {
         return;
@@ -93,13 +131,19 @@ pub fn show(
     root.set_if_neq(parts.body);
     let mut bones = bones.iter_many_mut(skeleton.0);
     while let Some(found) = bones.fetch_next() {
-        let Ok((bone, mut visibility)) = found else {
+        let Ok((entity, (bone, visibility, layers))) = found else {
             continue;
         };
-        match bone.0 {
-            Seg::Head => visibility.set_if_neq(parts.head),
-            seg if arm(seg) => visibility.set_if_neq(parts.arms),
-            _ => false,
+        let want = match bone.0 {
+            Seg::Head => parts.head,
+            seg if arm(seg) => parts.arms,
+            _ => continue,
         };
+        part(
+            &mut commands,
+            (entity, visibility, layers.is_some()),
+            want,
+            parts.body,
+        );
     }
 }

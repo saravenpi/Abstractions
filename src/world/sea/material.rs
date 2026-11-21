@@ -1,4 +1,5 @@
-//! The water material: an alpha blended shader with vertex waves, foam and sky reflections.
+//! The water material: an alpha blended shader with vertex waves, foam, and reflections of the
+//! sky and of the actors.
 
 use bevy::asset::embedded_asset;
 use bevy::mesh::MeshVertexBufferLayoutRef;
@@ -26,6 +27,10 @@ pub struct WaterMaterial {
     /// The light of the planet under the camera, so that sea seen from far is lit as its place is.
     #[uniform(3)]
     pub place: PlaceUniform,
+    /// The actors the mirror camera drew under the water, lined up with the game view.
+    #[texture(4)]
+    #[sampler(5)]
+    pub mirror: Handle<Image>,
 }
 
 impl Material for WaterMaterial {

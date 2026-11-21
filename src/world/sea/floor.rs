@@ -20,6 +20,9 @@ pub struct SeaFloor {
     centre: Option<IVec2>,
     /// Chart texels inside the map that still hold no sample.
     pending: VecDeque<IVec2>,
+    /// Texels of the image that hold water, a texel waiting for its sample included: whether
+    /// there is water near the focus for the mirror to show.
+    pub(super) wet: u32,
 }
 
 impl SeaFloor {
@@ -29,6 +32,7 @@ impl SeaFloor {
             image: images.add(blank()),
             centre: None,
             pending: VecDeque::new(),
+            wet: (depth::SIZE * depth::SIZE) as u32,
         }
     }
 
@@ -60,11 +64,15 @@ impl SeaFloor {
         self.centre = Some(centre);
     }
 
-    /// Samples the next queued texels into the image bytes and blanks the ones still waiting.
+    /// Samples the next queued texels into the image bytes and blanks the ones still waiting,
+    /// keeping the count of the wet texels.
     fn drain(&mut self, bed: &impl Bed, data: &mut [u8]) {
+        let wet = &mut self.wet;
         let mut write = |texel: IVec2, bytes: [u8; 4]| {
             let at = depth::offset(texel);
+            let was = u32::from(depth::wet(&data[at..at + bytes.len()]));
             data[at..at + bytes.len()].copy_from_slice(&bytes);
+            *wet = (*wet + u32::from(depth::wet(&bytes))).saturating_sub(was);
         };
         let count = BUDGET.min(self.pending.len());
         for texel in self.pending.drain(..count) {
@@ -111,6 +119,11 @@ mod tests {
             frames += 1;
         }
         assert_eq!(frames, (depth::SIZE * depth::SIZE) as usize / BUDGET);
+        let counted = data
+            .chunks(depth::BLANK.len())
+            .filter(|t| depth::wet(t))
+            .count();
+        assert_eq!(floor.wet as usize, counted);
         let at = depth::offset(centre);
         assert_eq!(data[at..at + 4], depth::sample(&terrain, centre));
         floor.retarget(centre + IVec2::Y);

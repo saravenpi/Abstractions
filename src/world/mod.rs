@@ -43,7 +43,7 @@ pub use globe::Globe;
 pub use ground::GroundMaterial;
 pub use lands::Reading;
 pub use meter::{Cost, Meter, STEPS as METER_STEPS};
-pub use sea::{Liquid, wake};
+pub use sea::{Liquid, Reflected, wake};
 pub use surface::Surface;
 pub use terrain::Terrain;
 

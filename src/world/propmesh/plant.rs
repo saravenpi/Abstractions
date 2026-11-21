@@ -37,18 +37,22 @@ pub enum Plant {
     DeadBush,
     /// Fallen log.
     Log,
-    /// Grey rock.
+    /// Dark basalt: a few blocky columns with flat faces.
     Rock,
-    /// Pale ice-grey rock.
+    /// Angular block of blue-white ice.
     IceRock,
-    /// Orange sandstone rock.
+    /// Rounded boulder of layered orange sandstone.
     Sandstone,
     /// Smooth sandy-grey stones of the shallows.
     SmoothRock,
-    /// Big dark boulder of the deep sea floor.
+    /// Big basalt block of the deep sea floor.
     Boulder,
     /// Weathered branch lying in the shallows.
     Driftwood,
+    /// A few small flint nodules: a pale rind broken by dark glassy facets.
+    Flint,
+    /// Black glassy obsidian shards jutting from a low lump.
+    Obsidian,
     /// Grass tuft.
     Grass,
     /// Tall reed with a brown head.

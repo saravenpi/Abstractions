@@ -1,4 +1,5 @@
-//! The plant vocabulary and the meshes of the solid props: trees, cacti, rocks, corals and sea life.
+//! The plant vocabulary and the meshes of the solid props: trees, cacti, rocks, corals and sea life. Each kind
+//! of stone has its own builder, so a rock shows the stone it is made of.
 
 pub(in crate::world) mod grown;
 mod land;
@@ -7,10 +8,13 @@ mod plant;
 mod rigid;
 mod sea;
 mod small;
+mod stones;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tests_rigid;
+#[cfg(test)]
+mod tests_stones;
 
 use std::ops::{Range, RangeInclusive};
 
@@ -29,7 +33,7 @@ pub use rigid::merge_parts_on;
 pub const VARIANTS: usize = 3;
 
 /// Number of big plants, which come first in [`Plant`]; the ground cover follows.
-pub const BIG: usize = Plant::Driftwood as usize + 1;
+pub const BIG: usize = Plant::Obsidian as usize + 1;
 
 /// Number of tree kinds, which come first in [`Plant`].
 pub const TREES: usize = Plant::Willow as usize + 1;
@@ -74,13 +78,14 @@ impl Part {
     }
 }
 
-/// Returns the parts of solid plant number `kind`, an index into [`Plant`].
+/// Returns the parts of solid plant number `kind`, an index into [`Plant`]: none for a stone, which
+/// [`stones`] builds.
 fn spec(kind: usize) -> &'static [Part] {
     let land = land::SPECS.len();
     if kind < land {
         land::SPECS[kind]
     } else if kind < BIG {
-        sea::SPECS[kind - land]
+        sea::SPECS.get(kind - land).copied().unwrap_or_default()
     } else {
         small::SPECS[kind - PARTS.start]
     }
@@ -88,7 +93,7 @@ fn spec(kind: usize) -> &'static [Part] {
 
 /// Returns how many triangles solid plant `kind` has.
 pub fn solid_tris(kind: usize) -> usize {
-    spec(kind).iter().map(Part::tris).sum()
+    stones::tris(kind).unwrap_or_else(|| spec(kind).iter().map(Part::tris).sum())
 }
 
 /// Rotates the color channels by `variant` for corals, and leaves other colors alone.
@@ -139,6 +144,9 @@ fn add_part(m: &mut FlatMesh, kind: usize, variant: usize, i: usize) {
 
 /// Builds the mesh of solid plant number `kind` (an index into [`Plant`]), variant `variant`, base at the origin.
 pub fn big_mesh(kind: usize, variant: usize) -> Mesh {
+    if let Some(stone) = stones::mesh(kind, variant) {
+        return stone.into_mesh();
+    }
     let mut m = FlatMesh::default();
     for i in 0..spec(kind).len() {
         add_part(&mut m, kind, variant, i);

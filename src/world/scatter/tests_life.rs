@@ -23,7 +23,7 @@ fn tiles(gravity: f64, life: Option<Life>) -> Vec<Tile> {
 fn stone(p: &Placement) -> bool {
     matches!(
         p.plant,
-        Rock | IceRock | Sandstone | Pebbles | SmoothRock | Boulder
+        Rock | IceRock | Sandstone | Flint | Obsidian | Pebbles | SmoothRock | Boulder
     ) && !grown(p.variant)
 }
 

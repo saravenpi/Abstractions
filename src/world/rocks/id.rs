@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::{RockId, Taken};
+use super::{RockId, Taken, mineral_of};
 use crate::world::globe::Chart;
 use crate::world::propmesh::Plant;
 use crate::world::scatter::Placement;
@@ -46,13 +46,10 @@ pub fn id_of(key: u64, p: &Placement) -> RockId {
     RockId(parts.into_iter().fold(key, mix))
 }
 
-/// Returns true for the kinds of prop the robot can break up: the stones that stand on land and on
-/// the deep floor. The smooth stones of the shallows have no body to aim at.
+/// Returns true for the kinds of prop the robot can break up: the rocks whose look names a stone,
+/// on land and on the deep floor.
 pub fn is_rock(plant: Plant) -> bool {
-    matches!(
-        plant,
-        Plant::Rock | Plant::IceRock | Plant::Sandstone | Plant::Boulder
-    )
+    mineral_of(plant).is_some()
 }
 
 /// Takes the rocks of `taken` out of `props`, for the chunk with key `key`, and shrinks the ones that

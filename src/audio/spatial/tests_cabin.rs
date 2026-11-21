@@ -3,9 +3,10 @@
 
 use bevy::prelude::*;
 
+use super::air::Air;
 use super::listen::Listener;
 use super::spot::{Between, Origin, spot};
-use super::tune::HULL;
+use super::tune::{HULL, PANEL};
 
 /// Ears in the seat hear a source outside the cabin through the closed hull: 10 dB down and
 /// nothing over its corner, and the cabin rings with it. A source inside the cabin is untouched.
@@ -31,4 +32,21 @@ fn the_cockpit_takes_the_highs_of_the_world() {
         spot(&seat, beside, Between::default()).air,
         spot(&open, beside, Between::default()).air
     );
+}
+
+/// Ears in the seat still hear cockpit cues in a vacuum, while sources outside the hull stay
+/// silent.
+#[test]
+fn the_cockpit_still_sounds_in_a_vacuum() {
+    let seat = Listener {
+        cabin: true,
+        air: Air::VACUUM,
+        ..Listener::default()
+    };
+    let panel = Origin::At(Vec3::from_array(PANEL.0), PANEL.1);
+    let inside = spot(&seat, panel, Between::default());
+    assert!(inside.heard() && inside.air > 0.5);
+    let far = Origin::At(Vec3::new(5.0, 0.0, -19.0), 1.0);
+    let outside = spot(&seat, far, Between::default());
+    assert!(!outside.heard() && outside.air == 0.0);
 }

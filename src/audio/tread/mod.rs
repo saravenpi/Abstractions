@@ -28,6 +28,23 @@ use super::step::{Contact, Step};
 /// Footfalls that can sound at once. One more takes the voice nearest its end.
 const VOICES: usize = 8;
 
+/// Returns the strike push and grain peak of `step` at random `level`.
+fn effort(step: &Step, level: f32) -> (f32, f32) {
+    if step.contact == Contact::Skid {
+        let skid = (step.force / SCRAPE.3).clamp(0.0, 1.0).sqrt() * level;
+        return (SCRAPE.2 * skid, SCRAPE.1 * skid);
+    }
+    let force = (step.force.max(0.0) / FORCE_REF).powf(GROWTH);
+    let wade = match step.surface {
+        StepSurface::Water => (step.depth / WADE.0).clamp(WADE.1, WADE.2),
+        _ => 1.0,
+    };
+    (
+        (force * level * wade).min(PUSH_MAX),
+        force.sqrt() * level * wade,
+    )
+}
+
 /// The pool of footfall voices.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Treads {
@@ -71,21 +88,13 @@ impl Treads {
         let foot = if step.left { -1.0 } else { 1.0 };
         let pitch = self.rand.range(1.0 - STRAY.0, 1.0 + STRAY.0) * (1.0 + FEET.0 * foot);
         let level = self.rand.range(STRAY.1, 1.0) * (1.0 + FEET.2 * foot);
-        let force = (step.force.max(0.0) / FORCE_REF).powf(GROWTH);
-        let wade = match step.surface {
-            StepSurface::Water => (step.depth / WADE.0).clamp(WADE.1, WADE.2),
-            _ => 1.0,
-        };
         let hard = ((step.force - TICK.0) / (1.0 - TICK.0)).clamp(0.0, 1.0);
-        let push = match step.contact {
-            Contact::Skid => SCRAPE.2 * (step.force / SCRAPE.3).clamp(0.0, 1.0).sqrt() * level,
-            _ => (force * level * wade).min(PUSH_MAX),
-        };
+        let (push, peak) = effort(step, level);
         let own = if spot.body > 0.0 { FEET.1 * foot } else { 0.0 };
         Shape {
             pitch: (pitch, pitch * (MASS_REF / step.mass.max(1.0)).sqrt()),
             push,
-            grains: (step.load.max(0.0) / LOAD_REF, force.sqrt() * level * wade),
+            grains: (step.load.max(0.0) / LOAD_REF, peak),
             spread: self.rand.unit(),
             times: self.times(step, spot.delay),
             spot: Spot {

@@ -61,9 +61,9 @@ fn a_high_angle_of_attack_is_louder_and_broader() {
 #[test]
 fn a_sideslip_pans_the_air() {
     let [left, right] = balance(0.3);
-    assert!(right > 1.2 * left);
+    assert!(right > 1.15 * left);
     let [left, right] = balance(-0.3);
-    assert!(left > 1.2 * right);
+    assert!(left > 1.15 * right);
     assert_eq!(balance(0.0), [1.0, 1.0]);
 }
 

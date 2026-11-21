@@ -12,7 +12,7 @@ use crate::space::{Anchor, Frame};
 use crate::universe::{BodyId, LY, Universe};
 
 /// Half the width in pixels of the room of a mark, which is centred on its place on the bar.
-const HALF_ROOM: f32 = 48.0;
+const HALF_ROOM: f32 = 16.0;
 
 /// Turns the camera to look along `toward` with +Y up, runs three frames, and returns where
 /// along the bar the home mark is, in pixels, when it is shown, with the words under the bar.

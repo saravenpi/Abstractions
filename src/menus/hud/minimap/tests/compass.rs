@@ -54,14 +54,14 @@ fn shown(app: &mut App, kind: MarkerKind) -> Vec<(f32, f32)> {
     found
 }
 
-/// Five friends 300 m ahead stack in the three rows of the compass over the same place, nearest
-/// first, and the third row says "+2" for the two that find no row. A sixth one behind the
-/// player shows nowhere.
+/// Eight friends 300 m ahead show as five icons on one row, no two closer than a mark's room and
+/// in bearing order, none of them with a name or a distance; the three past the limit fold into
+/// the last one as "+3". A ninth one behind the player shows nowhere.
 #[test]
-fn the_compass_stacks_friends_ahead_and_counts_the_rest() {
+fn the_compass_spaces_friends_ahead_on_one_row() {
     let mut app = app("friends");
     let ahead = ground(300.0, 0.0);
-    let mut marks: Vec<Marker> = (0..5)
+    let mut marks: Vec<Marker> = (0..8)
         .map(|i| friend(&app, &format!("f{i}"), ahead))
         .collect();
     marks.push(friend(&app, "behind", ground(-300.0, 0.0)));
@@ -70,15 +70,46 @@ fn the_compass_stacks_friends_ahead_and_counts_the_rest() {
         app.update();
     }
     let found = shown(&mut app, MarkerKind::Friend);
-    assert_eq!(found.len(), 3, "{found:?}");
-    let rows: Vec<f32> = found.iter().map(|(_, top)| *top).collect();
-    assert_eq!(rows, [0.0, 32.0, 64.0], "{found:?}");
+    assert_eq!(found.len(), 5, "{found:?}");
+    assert!(found.iter().all(|(_, top)| *top == 0.0), "{found:?}");
+    let mut lefts: Vec<f32> = found.iter().map(|(left, _)| *left).collect();
+    lefts.sort_by(f32::total_cmp);
+    assert!(
+        lefts.windows(2).all(|pair| pair[1] - pair[0] >= 31.99),
+        "{lefts:?}"
+    );
     let mut words = app.world_mut().query::<&Text>();
-    let counted = words
+    let spoken: Vec<&str> = words
         .iter(app.world())
-        .filter(|text| text.0.ends_with("+2"))
-        .count();
-    assert_eq!(counted, 1);
+        .map(|text| text.0.as_str())
+        .filter(|words| words.starts_with('+'))
+        .collect();
+    assert_eq!(spoken, ["+3"]);
+}
+
+/// A mark is an icon: under it there is no text but its count, empty unless friends fold into it.
+#[test]
+fn a_mark_holds_an_icon_and_no_name() {
+    let mut app = app("icons");
+    let marks = vec![friend(&app, "Ada", ground(300.0, 0.0))];
+    app.world_mut().resource_mut::<Markers>().0.extend(marks);
+    for _ in 0..4 {
+        app.update();
+    }
+    let mut pins = app.world_mut().query::<(&Pin, &Children)>();
+    let held = pins
+        .iter(app.world())
+        .find(|(pin, _)| pin.kind == Some(MarkerKind::Friend))
+        .map(|(_, children)| children.to_vec())
+        .unwrap();
+    let words: Vec<String> = held
+        .iter()
+        .filter_map(|child| app.world().get::<Text>(*child))
+        .map(|text| text.0.clone())
+        .collect();
+    assert_eq!(words.len(), 2, "{words:?}");
+    assert!(words.iter().skip(1).all(String::is_empty), "{words:?}");
+    assert!(words.iter().all(|word| !word.contains("Ada")), "{words:?}");
 }
 
 /// Moves the anchor 500 m along the planet and the camera with it in one frame, leaving a

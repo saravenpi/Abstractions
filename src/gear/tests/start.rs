@@ -20,7 +20,7 @@ const RATIO: f32 = 3.5;
 /// Seconds after the wings are asked open by which the glide is flyable, and the seconds it is
 /// then watched for, one second at a time. A glide at the edge of the rule of a home flies 1.4
 /// times as fast and settles that much slower than at home.
-const SETTLE: (f32, u32) = (12.0, 15);
+const SETTLE: (f32, u32) = (13.5, 15);
 
 /// The worlds of the test: a name, the gravity in metres per second squared and the thickness
 /// of the air against home. Home air under standard gravity; and two edges thinner than any

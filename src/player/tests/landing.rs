@@ -7,7 +7,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use super::stage::{app, body};
-use crate::gear::{FlightState, Gear, Mode};
+use crate::gear::{FlightState, Gear, Mode, Servo};
 use crate::player::asks::gather;
 use crate::player::controller::{Motion, drive};
 use crate::player::flight::{STILL, WATCH, aground, touching};
@@ -39,12 +39,17 @@ fn launch(app: &mut App, ground: f32, above: f32) {
     for (mut transform, mut motion, mut gear) in bodies.iter_mut(world) {
         transform.translation = Vec3::Y * (ground + above);
         (motion.velocity, motion.wings, motion.grounded) = (DIVE, true, false);
+        let pitch = DIVE.y.atan2(-DIVE.z);
         gear.state = FlightState {
             mode: Mode::Glide,
             velocity: DIVE,
             wings: 1.0,
             prone: 1.0,
-            pitch: DIVE.y.atan2(-DIVE.z),
+            pitch,
+            servo: Servo {
+                climb: pitch,
+                ..default()
+            },
             ..FlightState::default()
         };
     }

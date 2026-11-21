@@ -2,6 +2,8 @@
 
 mod boot;
 mod gameplay;
+#[cfg(test)]
+mod hide_tests;
 mod loading;
 mod stall;
 #[cfg(test)]
@@ -14,6 +16,8 @@ mod title_tests;
 mod wake;
 
 use bevy::prelude::*;
+
+pub use gameplay::{HIDE_KEY, HideHud};
 
 use crate::computer::Computer;
 use crate::fauna::guide::Guide;

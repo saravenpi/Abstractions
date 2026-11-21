@@ -32,6 +32,7 @@ On foot:
 | U | Patch the worst hurt part of the robot with what you carry. Near the base every part mends itself |
 | F | Board the ship. Cut a part off the carcass you look at, or pull out a stuck spear |
 | Look down + W | Dive while swimming |
+| F1 | Hide the interface, and show it again: a clean view for a screenshot. It works in the ship too |
 | Esc | Pause menu, or back |
 
 In the ship:

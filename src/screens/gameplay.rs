@@ -1,4 +1,4 @@
-//! Gameplay screen: crosshair and the pause key.
+//! Gameplay screen: crosshair, the pause key and the key that hides the interface.
 
 use bevy::prelude::*;
 
@@ -6,7 +6,7 @@ use super::{Screen, in_control, playing};
 use crate::computer::Computer;
 use crate::menus::Menu;
 use crate::space::{Location, Travel};
-use crate::ui::theme;
+use crate::ui::{WorldView, theme};
 
 /// Marks the crosshair dot.
 #[derive(Component)]
@@ -64,12 +64,56 @@ fn crosshair_visibility(
     }
 }
 
+/// The key that hides the interface and shows it again, for a clean view or a screenshot.
+pub const HIDE_KEY: KeyCode = KeyCode::F1;
+
+/// Whether the player hid the interface. It is the one switch for every interface layer: the
+/// HUD, the markers over the world, the prompts, the hotbar, the crosshair, the frame rate and
+/// the tooltips. Menus and the map still show: it acts only while the player controls the game.
+#[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct HideHud(pub bool);
+
+/// Hides the interface, or shows it again, on [`HIDE_KEY`].
+fn toggle_interface(keys: Res<ButtonInput<KeyCode>>, mut hidden: ResMut<HideHud>) {
+    if keys.just_pressed(HIDE_KEY) {
+        hidden.0 = !hidden.0;
+    }
+}
+
+/// Draws the game image over every interface layer while the interface is hidden and the
+/// player controls the game, and under them all otherwise.
+fn veil(
+    In(control): In<bool>,
+    hidden: Res<HideHud>,
+    mut views: Query<&mut GlobalZIndex, With<WorldView>>,
+) {
+    let wanted = match control && hidden.0 {
+        true => GlobalZIndex(i32::MAX),
+        false => GlobalZIndex(i32::MIN),
+    };
+    for mut layer in &mut views {
+        layer.set_if_neq(wanted);
+    }
+}
+
+/// Shows the interface again when the world is left, so the next one starts with it.
+fn reveal(mut hidden: ResMut<HideHud>, mut views: Query<&mut GlobalZIndex, With<WorldView>>) {
+    hidden.0 = false;
+    for mut layer in &mut views {
+        layer.set_if_neq(GlobalZIndex(i32::MIN));
+    }
+}
+
 /// Registers the gameplay screen systems.
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(OnEnter(Screen::Gameplay), enter)
+    app.init_resource::<HideHud>()
+        .add_systems(OnEnter(Screen::Gameplay), enter)
+        .add_systems(OnExit(Screen::Gameplay), reveal)
         .add_systems(
             Update,
             (
+                toggle_interface.run_if(in_control),
+                in_control.pipe(veil).run_if(in_state(Screen::Gameplay)),
                 open_pause
                     .run_if(playing)
                     .run_if(in_state(Computer::Closed))

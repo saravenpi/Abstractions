@@ -66,6 +66,7 @@ fn half(
             Spawn(caps(title)),
             SpawnIter(lines.iter().map(|(key, action)| fixed(key, action))),
             SpawnIter(binds.iter().copied().map(bound)),
+            Spawn(fixed("F1", "Hide interface")),
             Spawn(fixed("Esc", "Pause, go back")),
         )),
     )

@@ -10,7 +10,7 @@ pub fn open_cliff_armed(world: &mut World, _: &mut Notes, frame: u32) -> Act {
     let Some(slot) = slot_for(world, false).or_else(|| slot_for(world, true)) else {
         return Act::Fail("no tool in the hotbar: run it after the play stages".into());
     };
-    let (centre, side) = match site(world) {
+    let (centre, side) = match open_site(world) {
         Ok(found) => found,
         Err(failed) => return failed,
     };
@@ -24,7 +24,7 @@ pub fn open_cliff_armed(world: &mut World, _: &mut Notes, frame: u32) -> Act {
             ground(world, to, 160.0),
             -0.2,
         );
-        beside(world, side);
+        stand_beside(world, side);
     }
     if frame == 5 {
         let mut bodies = world.query_filtered::<&mut Motion, With<Player>>();

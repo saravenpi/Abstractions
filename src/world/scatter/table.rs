@@ -6,17 +6,17 @@ use crate::world::propmesh::Plant;
 use crate::world::{Biome, Surface};
 
 /// Boulders on bare rock.
-const ROCKY: &[(Plant, f32)] = &[(Rock, 0.12)];
+const ROCKY: &[(Plant, f32)] = &[(Rock, 0.24)];
 
 /// Ice-grey stones on snow.
-const SNOWY: &[(Plant, f32)] = &[(IceRock, 0.06)];
+const SNOWY: &[(Plant, f32)] = &[(IceRock, 0.12)];
 
 /// Kelp forests and boulders on the deep sea floor.
-const DEEP: &[(Plant, f32)] = &[(Kelp, 0.25), (Boulder, 0.012)];
+const DEEP: &[(Plant, f32)] = &[(Kelp, 0.25), (Boulder, 0.024)];
 
 /// Seagrass, shells, starfish, smooth rocks and driftwood on the pale shelf.
 const SHALLOWS: &[(Plant, f32)] = &[
-    (SmoothRock, 0.012),
+    (SmoothRock, 0.024),
     (Driftwood, 0.006),
     (Seagrass, 0.22),
     (Shell, 0.06),
@@ -26,7 +26,7 @@ const SHALLOWS: &[(Plant, f32)] = &[
 
 /// Corals, anemones, sponges and clams on the reef.
 const REEF: &[(Plant, f32)] = &[
-    (SmoothRock, 0.01),
+    (SmoothRock, 0.02),
     (BranchCoral, 0.035),
     (BrainCoral, 0.035),
     (FanCoral, 0.03),
@@ -49,10 +49,10 @@ const POND: &[(Plant, f32)] = &[
 ];
 
 /// Cobbles and pebbles in a river bed, where the water leaves the stones it rolled down.
-const RIVER: &[(Plant, f32)] = &[(Rock, 0.05), (Pebbles, 0.04)];
+const RIVER: &[(Plant, f32)] = &[(Rock, 0.1), (Pebbles, 0.04)];
 
 /// Ice and pebbles in the bed of a frozen river.
-const FROZEN_RIVER: &[(Plant, f32)] = &[(IceRock, 0.04), (Pebbles, 0.03)];
+const FROZEN_RIVER: &[(Plant, f32)] = &[(IceRock, 0.08), (Pebbles, 0.03)];
 
 /// Only a few reeds in a frozen pond.
 const FROZEN_POND: &[(Plant, f32)] = &[(Reed, 0.03)];
@@ -61,32 +61,32 @@ const FROZEN_POND: &[(Plant, f32)] = &[(Reed, 0.03)];
 /// grass, rock, snow.
 #[rustfmt::skip]
 const TABLE: [[&[(Plant, f32)]; 8]; 6] = [
-    [DEEP, SHALLOWS, REEF, POND, &[(Willow, 0.1), (Rock, 0.03), (Grass, 0.08), (Pebbles, 0.04)],
-        &[(Willow, 0.15), (Oak, 0.08), (GreatOak, 0.015), (Birch, 0.04), (Bush, 0.06), (BerryBush, 0.02), (Rock, 0.01),
+    [DEEP, SHALLOWS, REEF, POND, &[(Willow, 0.1), (Rock, 0.06), (Grass, 0.08), (Pebbles, 0.04)],
+        &[(Willow, 0.15), (Oak, 0.08), (GreatOak, 0.015), (Birch, 0.04), (Bush, 0.06), (BerryBush, 0.02), (Rock, 0.02),
         (Grass, 0.35), (TallGrass, 0.12), (Poppy, 0.12), (Daisy, 0.12), (Buttercup, 0.1), (Bluebell, 0.1)],
         ROCKY, SNOWY],
-    [DEEP, SHALLOWS, REEF, POND, &[(Willow, 0.1), (Rock, 0.03), (Fern, 0.05), (Pebbles, 0.03)],
+    [DEEP, SHALLOWS, REEF, POND, &[(Willow, 0.1), (Rock, 0.06), (Fern, 0.05), (Pebbles, 0.03)],
         &[(Willow, 0.15), (Oak, 0.22), (Pine, 0.2), (Birch, 0.1), (GreatOak, 0.03), (Bush, 0.04), (BerryBush, 0.02),
-        (Log, 0.03), (Rock, 0.01), (Grass, 0.25), (Fern, 0.12), (Mushroom, 0.04), (MushroomRing, 0.004), (Leaves, 0.1),
+        (Log, 0.03), (Rock, 0.02), (Grass, 0.25), (Fern, 0.12), (Mushroom, 0.04), (MushroomRing, 0.004), (Leaves, 0.1),
         (TallGrass, 0.05), (Daisy, 0.02)],
         ROCKY, SNOWY],
-    [DEEP, SHALLOWS, REEF, POND, &[(Willow, 0.1), (Rock, 0.03), (Grass, 0.08), (Pebbles, 0.03)],
-        &[(Willow, 0.15), (Cherry, 0.2), (Oak, 0.02), (Birch, 0.03), (Bush, 0.04), (BerryBush, 0.015), (Rock, 0.01),
+    [DEEP, SHALLOWS, REEF, POND, &[(Willow, 0.1), (Rock, 0.06), (Grass, 0.08), (Pebbles, 0.03)],
+        &[(Willow, 0.15), (Cherry, 0.2), (Oak, 0.02), (Birch, 0.03), (Bush, 0.04), (BerryBush, 0.015), (Rock, 0.02),
         (Grass, 0.3), (TallGrass, 0.08), (Pink, 0.2), (Daisy, 0.12)],
         ROCKY, SNOWY],
     [DEEP, SHALLOWS, REEF, POND,
-        &[(Saguaro, 0.05), (RoundCactus, 0.06), (DeadBush, 0.06), (DeadTree, 0.01), (Sandstone, 0.04),
+        &[(Saguaro, 0.05), (RoundCactus, 0.06), (DeadBush, 0.06), (DeadTree, 0.01), (Sandstone, 0.08),
         (Grass, 0.02), (Pebbles, 0.02)],
-        &[(Saguaro, 0.04), (RoundCactus, 0.05), (DeadBush, 0.05), (DeadTree, 0.01), (Sandstone, 0.03),
+        &[(Saguaro, 0.04), (RoundCactus, 0.05), (DeadBush, 0.05), (DeadTree, 0.01), (Sandstone, 0.06),
         (Grass, 0.03)],
-        &[(Sandstone, 0.09), (Rock, 0.04)], SNOWY],
-    [DEEP, SHALLOWS, REEF, FROZEN_POND, &[(IceRock, 0.04), (Pebbles, 0.03)],
-        &[(SnowPine, 0.28), (Pine, 0.08), (DeadTree, 0.03), (DeadBush, 0.04), (IceRock, 0.03),
+        &[(Sandstone, 0.18), (Rock, 0.08)], SNOWY],
+    [DEEP, SHALLOWS, REEF, FROZEN_POND, &[(IceRock, 0.08), (Pebbles, 0.03)],
+        &[(SnowPine, 0.28), (Pine, 0.08), (DeadTree, 0.03), (DeadBush, 0.04), (IceRock, 0.06),
         (Grass, 0.12), (Fern, 0.03)],
-        &[(IceRock, 0.12)], &[(SnowPine, 0.2), (DeadTree, 0.02), (IceRock, 0.04)]],
+        &[(IceRock, 0.24)], &[(SnowPine, 0.2), (DeadTree, 0.02), (IceRock, 0.08)]],
     [DEEP, SHALLOWS, REEF, POND,
-        &[(Willow, 0.1), (Palm, 0.14), (Rock, 0.02), (Reed, 0.2), (Orchid, 0.02), (Pebbles, 0.03)],
-        &[(Willow, 0.15), (Palm, 0.12), (Bamboo, 0.06), (Bush, 0.06), (BerryBush, 0.02), (Rock, 0.01), (Jungle, 0.1),
+        &[(Willow, 0.1), (Palm, 0.14), (Rock, 0.04), (Reed, 0.2), (Orchid, 0.02), (Pebbles, 0.03)],
+        &[(Willow, 0.15), (Palm, 0.12), (Bamboo, 0.06), (Bush, 0.06), (BerryBush, 0.02), (Rock, 0.02), (Jungle, 0.1),
         (Grass, 0.25), (TallGrass, 0.05), (Orchid, 0.12), (Poppy, 0.08), (Buttercup, 0.08), (Reed, 0.03)],
         ROCKY, SNOWY],
 ];

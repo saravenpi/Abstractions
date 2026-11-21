@@ -57,8 +57,15 @@ fn flat_output_is_frozen() {
         (5, 0x1C59_CD13_0833_DDAF),
         (42, 0xC579_A252_59BB_C1AE),
     ];
-    for (seed, want) in frozen {
-        let got = digest(seed);
-        assert_eq!(got, want, "seed {seed} now gives {got:#018X}");
-    }
+    let got: Vec<(u64, u64)> = frozen
+        .iter()
+        .map(|&(seed, _)| (seed, digest(seed)))
+        .collect();
+    let changed: Vec<String> = frozen
+        .iter()
+        .zip(&got)
+        .filter(|((_, want), (_, got))| got != want)
+        .map(|((seed, want), (_, got))| format!("seed {seed}: got {got:#018X}, want {want:#018X}"))
+        .collect();
+    assert!(changed.is_empty(), "{}", changed.join("\n"));
 }

@@ -5,7 +5,7 @@ use bevy::prelude::KeyCode;
 use crate::settings::{Keymap, ShipKeys};
 
 /// The name of each action, in the order of [`Bind`].
-const LABELS: [&str; 33] = [
+const LABELS: [&str; 34] = [
     "Forward",
     "Back",
     "Left",

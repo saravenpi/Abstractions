@@ -2,6 +2,8 @@
 //! the nose, the bow shock stands off it by the 0.14 nose radii of a blunt body, nothing of the
 //! sheath is centred ahead of the nose, and no lamp lights the hull from in front of it.
 
+use bevy::prelude::*;
+
 use super::frame::FUSELAGE;
 use crate::ship::HULL_RADIUS;
 
@@ -51,4 +53,54 @@ fn the_nose_glow_sits_on_the_nose() {
         !SHEATH.contains("PointLight"),
         "a lamp lights the hull from the shock"
     );
+}
+
+/// Returns the light a ray from `o` along the unit `d` gathers from a glowing tube from `a` to
+/// `b` whose width runs from `width.0` to `width.1`: the `tube` of the shader of the sheath.
+fn tube(o: Vec3, d: Vec3, (a, b): (Vec3, Vec3), width: (f32, f32)) -> f32 {
+    let axis = b - a;
+    let span = axis.length();
+    let u = axis / span;
+    let w = o - a;
+    let dd = d.dot(u);
+    let denom = (1.0 - dd * dd).max(1.0e-4);
+    let s = ((u.dot(w) - dd * d.dot(w)) / denom / span).clamp(0.0, 1.0);
+    let at = a + axis * s;
+    let off = o + d * (at - o).dot(d) - at;
+    let sigma = width.0 + (width.1 - width.0) * s;
+    1.772_454 * sigma * (-off.length_squared() / (sigma * sigma)).exp() / denom.sqrt().max(0.25)
+}
+
+/// Returns the vector constant `name` of the shader of the sheath.
+fn point(name: &str) -> Vec3 {
+    let head = format!("const {name}: vec3<f32> = vec3<f32>(");
+    let line = SHADER
+        .lines()
+        .find(|line| line.starts_with(&head))
+        .expect("the constant");
+    let numbers: Vec<f32> = line[head.len()..]
+        .trim_end_matches(");")
+        .split(',')
+        .map(|n| n.trim().parse().expect("a number"))
+        .collect();
+    Vec3::new(numbers[0], numbers[1], numbers[2])
+}
+
+/// The heat of the edges is one glowing line along each leading edge, not a row of spots: no
+/// spot is drawn anywhere, and seen square on from above, the glow along the span has no gap
+/// and changes by under five percent between neighbours a hundredth of the span apart.
+#[test]
+fn the_edge_glow_runs_along_the_span() {
+    assert!(!SHADER.contains("blob("), "the sheath draws spots");
+    assert!(SHADER.contains("tube(ray, WING_ROOT + lead, WING_TIP + lead"));
+    let (root, tip) = (point("WING_ROOT"), point("WING_TIP"));
+    let seen = |share: f32| {
+        let at = root.lerp(tip, share);
+        tube(at + Vec3::Z * 3.0, Vec3::NEG_Z, (root, tip), (0.035, 0.025))
+    };
+    let along: Vec<f32> = (0..=100).map(|k| seen(k as f32 / 100.0)).collect();
+    assert!(along.iter().all(|glow| *glow > 0.03), "{along:?}");
+    for pair in along.windows(2) {
+        assert!((pair[1] / pair[0] - 1.0).abs() < 0.05, "{pair:?}");
+    }
 }

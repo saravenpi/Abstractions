@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-use super::{braced, felt};
+use super::{braced, eye_world, felt};
 use crate::ship::shake::JOLT;
 
 /// Angle in radians of one pixel of the 640 by 360 picture under a vertical field of view of
@@ -30,7 +30,7 @@ fn the_cockpit_holds_still_while_the_world_shakes() {
             let (offset, tilt) = felt(frame as f32 / 60.0, strength, true);
             assert_eq!(offset, Vec3::ZERO);
             let shaken = rotation * tilt;
-            let turn = shaken * tilt * shaken.inverse();
+            let turn = rotation * tilt * rotation.inverse();
             let hull = braced(Transform::from_translation(panel), eye, turn).translation;
             let drift = seen(shaken, eye, hull).angle_between(seen(rotation, eye, panel));
             assert!(
@@ -46,5 +46,44 @@ fn the_cockpit_holds_still_while_the_world_shakes() {
         if strength == 1.0 {
             assert!(moved < 0.5f32.to_radians(), "the world moved {moved} rad");
         }
+    }
+}
+
+/// A camera that rides the body of the pilot keeps its eye where it is when the body is turned
+/// about that eye, and looks along the shaken view.
+#[test]
+fn a_riding_camera_keeps_its_eye() {
+    let body = Transform::from_xyz(2.0, 1.0, -3.0).with_rotation(Quat::from_rotation_y(0.7));
+    let local = Transform::from_xyz(0.0, 0.6, -0.1).with_rotation(Quat::from_rotation_x(-0.2));
+    let world = eye_world(&local, Some(&body));
+    let (_, tilt) = felt(0.37, 1.0, true);
+    let turn = world.rotation * tilt * world.rotation.inverse();
+    let moved = eye_world(&local, Some(&braced(body, world.translation, turn)));
+    assert!(moved.translation.distance(world.translation) < 1.0e-5);
+    assert!(moved.rotation.angle_between(world.rotation * tilt) < 1.0e-5);
+    assert_eq!(eye_world(&local, None), local);
+}
+
+/// With a menu over the world the view takes none of the shake: under the hardest buffet the
+/// tilt is none at every moment, so the camera and the hull keep their calm pose frame to frame.
+#[test]
+fn a_menu_holds_the_view_still() {
+    use crate::ship::shake::{Buffet, Steady};
+    use crate::view::ViewPrefs;
+    let hard = Buffet {
+        level: 1.0,
+        jolt: 1.0,
+    };
+    let prefs = ViewPrefs::default();
+    assert!(super::strength(&hard, &prefs, &Steady::default()) > 1.0);
+    let held = super::strength(&hard, &prefs, &Steady(0.0));
+    assert_eq!(held, 0.0);
+    let pose = Transform::from_xyz(1.0, 2.0, 3.0).with_rotation(Quat::from_rotation_y(0.3));
+    for frame in 0..120 {
+        let (offset, tilt) = felt(frame as f32 / 60.0, held, true);
+        assert_eq!((offset, tilt), (Vec3::ZERO, Quat::IDENTITY));
+        let kept = braced(pose, Vec3::new(0.5, 1.0, 0.0), tilt);
+        assert!(kept.translation.distance(pose.translation) < 1.0e-6);
+        assert!(kept.rotation.angle_between(pose.rotation) < 1.0e-5);
     }
 }

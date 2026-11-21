@@ -33,11 +33,22 @@ const TAIL: f32 = -0.75;
 const FLOW: f32 = 3.0;
 const CANOPY: f32 = 1.5;
 
-fn blob(ray: Ray, c: vec3<f32>, sigma: f32) -> f32 {
-    let t = dot(c - ray.o, ray.d);
-    let off = ray.o + ray.d * t - c;
+fn tube(ray: Ray, a: vec3<f32>, b: vec3<f32>, width: vec2<f32>) -> vec2<f32> {
+    let axis = b - a;
+    let span = max(length(axis), 1.0e-4);
+    let u = axis / span;
+    let w = ray.o - a;
+    let dd = dot(ray.d, u);
+    let denom = max(1.0 - dd * dd, 1.0e-4);
+    let along = (dot(u, w) - dd * dot(ray.d, w)) / denom;
+    let s = clamp(along / span, 0.0, 1.0);
+    let at = a + axis * s;
+    let t = dot(at - ray.o, ray.d);
+    let off = ray.o + ray.d * t - at;
+    let sigma = mix(width.x, width.y, s);
     let seen = clamp((ray.far - t) / sigma + 0.5, 0.0, 1.0) * clamp((t - ray.near) / sigma + 0.5, 0.0, 1.0);
-    return ROOT_PI * sigma * exp(-dot(off, off) / (sigma * sigma)) * seen;
+    let glow = ROOT_PI * sigma * exp(-dot(off, off) / (sigma * sigma)) / max(sqrt(denom), 0.25);
+    return vec2<f32>(glow * seen, s);
 }
 
 fn sheet(ray: Ray, t: f32, time: f32) -> f32 {
@@ -70,45 +81,28 @@ fn shock(ray: Ray, time: f32) -> f32 {
 }
 
 fn stagnation(ray: Ray) -> f32 {
-    let tip = 12.0 * blob(ray, vec3<f32>(NOSE, 0.0, 0.0), 0.012);
-    let spear = 8.0 * blob(ray, vec3<f32>(NOSE - 0.035, 0.0, 0.0), 0.016);
-    return tip + spear + 5.0 * blob(ray, vec3<f32>(NOSE - 0.085, 0.0, 0.0), 0.022);
+    let tip = vec3<f32>(NOSE, 0.0, 0.0);
+    return 10.0 * tube(ray, tip, tip - vec3<f32>(0.09, 0.0, 0.0), vec2<f32>(0.012, 0.022)).x;
 }
 
 fn edges(ray: Ray) -> f32 {
-    var sum = 0.0;
-    for (var k = 0; k < 4; k++) {
-        let along = mix(WING_ROOT, WING_TIP, f32(k) / 3.0) + vec3<f32>(0.01, 0.0, 0.0);
-        sum += 2.0 * (blob(ray, along, 0.035) + blob(ray, along * vec3<f32>(1.0, -1.0, 1.0), 0.035));
-    }
-    return sum;
+    let lead = vec3<f32>(0.01, 0.0, 0.0);
+    let mirror = vec3<f32>(1.0, -1.0, 1.0);
+    let width = vec2<f32>(0.035, 0.025);
+    let right = tube(ray, WING_ROOT + lead, WING_TIP + lead, width).x;
+    let left = tube(ray, (WING_ROOT + lead) * mirror, (WING_TIP + lead) * mirror, width).x;
+    return 2.0 * (right + left);
 }
 
 fn envelope(ray: Ray) -> f32 {
-    var stations = array<vec2<f32>, 5>(
-        vec2<f32>(0.71, 0.127),
-        vec2<f32>(0.4, 0.22),
-        vec2<f32>(-0.09, 0.255),
-        vec2<f32>(-0.33, 0.255),
-        vec2<f32>(-0.53, 0.23),
-    );
-    var sum = 0.0;
-    for (var k = 0; k < 5; k++) {
-        let station = stations[k];
-        sum += blob(ray, vec3<f32>(station.x, 0.0, 0.0), station.y) * mix(1.0, 0.4, f32(k) / 4.0);
-    }
-    return sum;
+    let body = tube(ray, vec3<f32>(0.71, 0.0, 0.0), vec3<f32>(-0.53, 0.0, 0.0), vec2<f32>(0.127, 0.23));
+    return 0.7 * body.x * mix(1.0, 0.5, body.y);
 }
 
 fn wake(ray: Ray, time: f32) -> f32 {
-    var sum = 0.0;
-    for (var k = 0; k < 8; k++) {
-        let i = f32(k);
-        let sway = vec3<f32>(0.0, sin(time * 1.3 + i), cos(time * 1.1 + i * 1.7)) * 0.05 * i;
-        let at = vec3<f32>(TAIL - i * 1.1, 0.0, 0.0) + sway;
-        sum += blob(ray, at, 0.25 + 0.12 * i) * 0.9 * exp(-i * 0.35);
-    }
-    return sum;
+    let sway = vec3<f32>(0.0, sin(time * 1.3), cos(time * 1.1)) * 0.2;
+    let trail = tube(ray, vec3<f32>(TAIL, 0.0, 0.0), vec3<f32>(TAIL - 8.0, 0.0, 0.0) + sway, vec2<f32>(0.25, 1.1));
+    return 0.6 * trail.x * exp(-2.5 * trail.y);
 }
 
 fn streamers(ray: Ray, time: f32, rough: f32) -> f32 {
@@ -121,12 +115,13 @@ fn streamers(ray: Ray, time: f32, rough: f32) -> f32 {
     for (var j = 0; j < 3; j++) {
         let seed = f32(j);
         let phase = fract(time * FLOW + seed * 0.37);
-        for (var k = 0; k < 5; k++) {
-            let age = f32(k) + phase;
+        for (var k = 0; k < 3; k++) {
+            let age = f32(k) * 1.6 + phase;
             let wobble = vec3<f32>(0.0, sin(time * 2.3 + age * 1.7 + seed * 2.0), cos(time * 1.9 + age * 1.3 + seed));
-            let at = sources[j] - vec3<f32>(age * 0.9, 0.0, 0.0) + wobble * (0.04 * age * (0.5 + rough));
+            let head = sources[j] - vec3<f32>(age * 0.9, 0.0, 0.0) + wobble * (0.04 * age * (0.5 + rough));
+            let streak = tube(ray, head, head - vec3<f32>(0.6, 0.0, 0.0), vec2<f32>(0.05, 0.08)).x;
             let life = smoothstep(0.0, 0.6, age) * (1.0 - age / 5.0);
-            sum += blob(ray, at, 0.1 + 0.06 * age) * life * (0.7 + 0.3 * sin(time * 11.0 + seed * 2.1 + age));
+            sum += streak * life * (0.7 + 0.3 * sin(time * 11.0 + seed * 2.1 + age));
         }
     }
     return sum;

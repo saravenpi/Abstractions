@@ -49,12 +49,12 @@ fn the_marks_point_at_the_course() {
     let centre = BALL.0;
     assert_eq!(project(Vec3::NEG_Z, REACH), IVec2::ZERO);
     let up = project(Vec3::Y, REACH);
-    assert_eq!(up, IVec2::new(0, 8));
+    assert_eq!(up, IVec2::new(0, 6));
     let ahead = ball(None, [Some(IVec2::ZERO), None]);
     assert!(ahead.is_lit(centre.x, centre.y - 2) && ahead.is_lit(centre.x + 2, centre.y));
     assert!(!ahead.is_lit(centre.x + 1, centre.y + 9));
     let high = ball(None, [Some(up), None]);
-    assert!(high.is_lit(centre.x + 1, centre.y - 8) && !high.is_lit(centre.x + 1, centre.y + 8));
+    assert!(high.is_lit(centre.x + 1, centre.y - 6) && !high.is_lit(centre.x + 1, centre.y + 6));
     let body = ball(None, [None, Some(up)]);
-    assert!(body.is_lit(centre.x + 2, centre.y - 8) && !body.is_lit(centre.x, centre.y - 8));
+    assert!(body.is_lit(centre.x + 2, centre.y - 6) && !body.is_lit(centre.x, centre.y - 6));
 }

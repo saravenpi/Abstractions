@@ -47,6 +47,8 @@ mod tests_dark;
 #[cfg(test)]
 mod tests_drops;
 #[cfg(test)]
+mod tests_fit;
+#[cfg(test)]
 mod tests_horizon;
 #[cfg(test)]
 mod tests_life;

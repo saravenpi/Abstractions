@@ -5,9 +5,9 @@
 //! A mark slides along the bar as the player turns, fades out toward the ends of the bar and
 //! hides past them. Marks that would overlap are nudged apart sideways by the least that clears
 //! them, the nearest in front, and friends past a limit fold into the last one with a count. On
-//! a planet an N marks north. The bar shows even while empty. The ship only shows on the planet it stands on and
-//! while the player is on foot; favourites only nearby. The home mark only shows on the planet of the home base, on foot or in
-//! its air, and nowhere else.
+//! a planet an N marks north. The bar shows even while empty. The ship only shows on the planet
+//! it stands on and while the player is on foot; favourites only nearby. The home mark only
+//! shows on the planet of the home base, on foot or in its air, and nowhere else.
 
 mod aim;
 mod beacons;

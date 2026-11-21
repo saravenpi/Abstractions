@@ -10,7 +10,7 @@ use super::zones::{Tile, Zone, chunks, hold};
 use super::*;
 use crate::life::flora::fixture::garden;
 use crate::world::globe::Globe;
-use crate::world::propmesh::grown::grown;
+use crate::world::propmesh::grown::{edition, grown};
 
 /// Grown plants the eight test planets placed on their test chunks before the cover, big ones and in all.
 const BEFORE: (usize, usize) = (513, 3942);
@@ -31,6 +31,30 @@ fn covered(t: &Tile) -> f32 {
     grid.filter(|&w| cover.at(w)[0] > 0.5).count() as f32 / 64.0
 }
 
+/// Returns the architecture and look of every grown plant of `tile`, read again when another test wrote over
+/// a page of the book meanwhile: the variants of a flora name pages that a full book hands to other looks.
+fn kinds_of(tile: &Tile) -> Vec<(u8, u8)> {
+    loop {
+        let before = edition();
+        let flora = Flora::of(&tile.terrain, chunk_center(tile.coord)).expect("a flora");
+        let found: Vec<Option<(u8, u8)>> = tile
+            .scatter()
+            .into_iter()
+            .filter(|(p, _)| grown(p.variant))
+            .map(|(p, _)| {
+                let group = flora.growers.iter().find(|g| g.looks.contains(&p.variant));
+                group.map(|g| (g.arch, p.variant))
+            })
+            .collect();
+        if edition() == before {
+            return found
+                .into_iter()
+                .map(|k| k.expect("a species of the flora"))
+                .collect();
+        }
+    }
+}
+
 /// Each architecture a planet grows shows at least five distinct looks: two or three species at four ages.
 #[test]
 fn every_architecture_shows_many_looks() {
@@ -38,11 +62,8 @@ fn every_architecture_shows_many_looks() {
     let mut looks: HashMap<u8, HashSet<u8>> = HashMap::new();
     for seed in [1, 5, 8] {
         for tile in planet(seed, 8) {
-            let flora = Flora::of(&tile.terrain, chunk_center(tile.coord)).expect("a flora");
-            for (p, _) in tile.scatter().into_iter().filter(|(p, _)| grown(p.variant)) {
-                let group = flora.growers.iter().find(|g| g.looks.contains(&p.variant));
-                let arch = group.expect("a species of the flora").arch;
-                looks.entry(arch).or_default().insert(p.variant);
+            for (arch, variant) in kinds_of(&tile) {
+                looks.entry(arch).or_default().insert(variant);
             }
         }
     }

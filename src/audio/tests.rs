@@ -14,6 +14,7 @@ mod mix;
 mod music;
 mod planet;
 mod render;
+mod render_fauna;
 mod rig;
 mod scene;
 mod scenes;
@@ -23,6 +24,7 @@ mod ship_law;
 mod ship_mix;
 mod takes;
 mod takes_ground;
+mod voices;
 mod weather;
 mod wire;
 

@@ -27,6 +27,7 @@ mod steps;
 mod suit;
 #[cfg(test)]
 mod tests_speed;
+mod throat;
 pub mod tune;
 mod wire;
 

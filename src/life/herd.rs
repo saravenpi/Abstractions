@@ -11,7 +11,7 @@
 
 mod cells;
 #[cfg(test)]
-pub(super) mod fixtures;
+pub(crate) mod fixtures;
 mod ledger;
 mod path;
 mod roles;

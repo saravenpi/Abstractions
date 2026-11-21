@@ -36,7 +36,7 @@ pub enum ChirpKind {
     Worried,
     /// A discovery: a bright rising trill.
     Delight,
-    /// The start of a hummed tune: four soft notes.
+    /// The start of a hummed tune: three soft notes.
     Hum,
     /// Waking up: a low blip, then a quick rise.
     Wake,
@@ -124,42 +124,42 @@ impl AudioCue {
     }
 
     /// Packs the cue into one non-zero word, so that it can cross to the audio thread without a lock.
-    pub(super) fn encode(self) -> u32 {
+    pub(super) fn encode(self) -> u64 {
         let (kind, arg) = match self {
             AudioCue::UiMove => (1, 0),
             AudioCue::UiConfirm => (2, 0),
             AudioCue::UiCancel => (3, 0),
-            AudioCue::Footstep(surface) => (4, surface as u32),
-            AudioCue::Land(strength) => (5, (strength.clamp(0.0, 1.0) * STRENGTH_STEPS) as u32),
+            AudioCue::Footstep(surface) => (4, surface as u64),
+            AudioCue::Land(strength) => (5, (strength.clamp(0.0, 1.0) * STRENGTH_STEPS) as u64),
             AudioCue::WarpSpool => (6, 0),
             AudioCue::WarpEngage => (7, 0),
             AudioCue::WarpExit => (8, 0),
-            AudioCue::Chirp(kind) => (9, kind as u32),
-            AudioCue::Thunder(level) => (10, (level.clamp(0.0, 1.0) * STRENGTH_STEPS) as u32),
+            AudioCue::Chirp(kind) => (9, kind as u64),
+            AudioCue::Thunder(level) => (10, (level.clamp(0.0, 1.0) * STRENGTH_STEPS) as u64),
             AudioCue::Call(call) => (11, call.pack()),
-            AudioCue::Pump(strength) => (12, (strength.clamp(0.0, 1.0) * STRENGTH_STEPS) as u32),
-            AudioCue::Hit(sound) => (13, sound.pack()),
+            AudioCue::Pump(strength) => (12, (strength.clamp(0.0, 1.0) * STRENGTH_STEPS) as u64),
+            AudioCue::Hit(sound) => (13, u64::from(sound.pack())),
             AudioCue::Switch => (14, 0),
-            AudioCue::Boom(level) => (15, (level.clamp(0.0, 1.0) * STRENGTH_STEPS) as u32),
+            AudioCue::Boom(level) => (15, (level.clamp(0.0, 1.0) * STRENGTH_STEPS) as u64),
         };
         kind | (arg << 8)
     }
 
     /// Unpacks a word written by [`AudioCue::encode`], or nothing when the word is not a cue.
-    pub(super) fn decode(word: u32) -> Option<Self> {
-        let arg = (word >> 8) as usize;
+    pub(super) fn decode(word: u64) -> Option<Self> {
+        let arg = word >> 8;
         match word & 0xFF {
             1 => Some(AudioCue::UiMove),
             2 => Some(AudioCue::UiConfirm),
             3 => Some(AudioCue::UiCancel),
-            4 => SURFACES.get(arg).copied().map(AudioCue::Footstep),
+            4 => SURFACES.get(arg as usize).copied().map(AudioCue::Footstep),
             5 => Some(AudioCue::Land(arg as f32 / STRENGTH_STEPS)),
             6 => Some(AudioCue::WarpSpool),
             7 => Some(AudioCue::WarpEngage),
             8 => Some(AudioCue::WarpExit),
-            9 => CHIRPS.get(arg).copied().map(AudioCue::Chirp),
+            9 => CHIRPS.get(arg as usize).copied().map(AudioCue::Chirp),
             10 => Some(AudioCue::Thunder(arg as f32 / STRENGTH_STEPS)),
-            11 => Call::unpack(arg as u32).map(AudioCue::Call),
+            11 => Call::unpack(arg).map(AudioCue::Call),
             12 => Some(AudioCue::Pump(arg as f32 / STRENGTH_STEPS)),
             13 => HitSound::unpack(arg as u32).map(AudioCue::Hit),
             14 => Some(AudioCue::Switch),

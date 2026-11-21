@@ -1,6 +1,7 @@
 //! Scenes of the whole mix for the loudness table: what a player hears in a kind of moment,
 //! music, weather, ship and cues together, with the loudness that kind of moment aims at.
 
+use super::calls::calling;
 use super::planet;
 use super::rig::{parked, seated};
 use super::takes::{flyby, throttle, warp};
@@ -11,6 +12,7 @@ use crate::audio::hit::{HitSound, Kind};
 use crate::audio::scene::AudioScene;
 use crate::audio::ship::feed::{Ch, HullSound};
 use crate::audio::tune::{BUSY, CALM, LOUD, TITLE};
+use crate::life::signs::calls::{Cry, Timbre};
 
 /// One scene: its name, its length in seconds, the integrated loudness it aims at in LUFS, the
 /// scene at each moment, and the cue of each frame of the game, sixty per second.
@@ -83,11 +85,45 @@ fn fight(frame: usize) -> Option<AudioCue> {
         near: 1.0,
     };
     match (frame % 120, frame % 32) {
-        (60, _) => Call::unpack(24 | 1 << 9 | 10 << 14 | 13 << 18).map(AudioCue::Call),
+        (60, _) => Some(AudioCue::Call(Call {
+            side: 0.33,
+            near: 0.87,
+            metres: 4.0,
+            ..calling(Timbre::Low, 320.0, Cry::Contact)
+        })),
         (_, 0) => Some(AudioCue::Hit(blow(Kind::Clean, 1.0))),
         (_, 16) => Some(AudioCue::Hit(blow(Kind::Whoosh, 0.7))),
         _ => None,
     }
+}
+
+/// The timbres and pitches of the seven species of the chorus at dusk.
+const CHORUS_VOICES: [(Timbre, f32); 7] = [
+    (Timbre::Whistle, 2400.0),
+    (Timbre::Whistle, 1700.0),
+    (Timbre::Low, 140.0),
+    (Timbre::Hoot, 320.0),
+    (Timbre::Click, 4000.0),
+    (Timbre::Whistle, 3100.0),
+    (Timbre::Croak, 260.0),
+];
+
+/// Returns the calls of a chorus at dusk: once a second an animal of one of seven species keeps in
+/// touch, from 15 to 200 metres away, birds and crickets among them.
+pub(super) fn dusk(frame: usize) -> Option<AudioCue> {
+    if frame % 60 != 30 {
+        return None;
+    }
+    let k = frame / 60;
+    let (timbre, hz) = CHORUS_VOICES[k * 3 % CHORUS_VOICES.len()];
+    let metres = 15.0 + (k * 53 % 186) as f32;
+    let mut call = calling(timbre, hz, Cry::Contact);
+    call.voice.print = (k * 3 % CHORUS_VOICES.len()) as u8 * 37;
+    call.one = (k * 11) as u8;
+    call.side = ((k * 7 % 9) as f32 / 4.0) - 1.0;
+    call.near = 37.0 / (37.0 + metres);
+    call.metres = metres;
+    Some(AudioCue::Call(call))
 }
 
 /// Returns the cues of a warp: the drive starts to spool, engages and drops out.
@@ -101,7 +137,7 @@ fn jump(frame: usize) -> Option<AudioCue> {
 }
 
 /// Every scene of the table.
-pub(super) const SCENES: [Scene; 10] = [
+pub(super) const SCENES: [Scene; 11] = [
     ("title", 30.0, TITLE, |_| AudioScene::default(), |_| None),
     ("base_calm", 30.0, CALM, |_| fair(), |_| None),
     ("walking", 30.0, CALM, |_| fair(), walk),
@@ -117,6 +153,16 @@ pub(super) const SCENES: [Scene; 10] = [
         thunder,
     ),
     ("fight", 20.0, BUSY, |_| fair(), fight),
+    (
+        "dusk_chorus",
+        30.0,
+        CALM,
+        |_| AudioScene {
+            daylight: 0.5,
+            ..fair()
+        },
+        dusk,
+    ),
     (
         "liftoff_inside",
         13.0,

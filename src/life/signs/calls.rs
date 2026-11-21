@@ -59,16 +59,19 @@ pub enum Cry {
     Threat,
     /// A young keeping in touch with its parents.
     Young,
+    /// The last cry of an animal as it dies: a falling, breaking call and a last breath.
+    Death,
 }
 
 /// Every cry, in code order.
-pub const CRIES: [Cry; 6] = [
+pub const CRIES: [Cry; 7] = [
     Cry::Contact,
     Cry::Alarm,
     Cry::Chase,
     Cry::Distress,
     Cry::Threat,
     Cry::Young,
+    Cry::Death,
 ];
 
 /// One call: who calls, why, and the universe time it starts.

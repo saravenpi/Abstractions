@@ -8,8 +8,6 @@ Written 2026-11-20 by `speed`. Every cue follows a real quantity. Nothing fakes 
 | --- | --- | --- |
 | Glider, boots | View widens (`view/sway.rs` `rush`, `shot.widen`) and the boom stretches (`shot.pull`) | speed over the ground, saturating at 30 m/s |
 | Glider | Camera lag spring and look-ahead toward the flight path (`sway.rs` `trail`, `ahead`) | velocity |
-| Glider | Speed lines in a tube around the body (`gear/fx/streaks.rs`) | airspeed 15 to 55 m/s, air grip |
-| Glider | Rush ring at the screen edge (`haze.rs`) | airspeed 55 to 110 m/s, air |
 | Glider | Wingtip trails (`trails.rs`), boot exhaust | airspeed, load, air |
 | Glider | Cloth flutter (`avatar/wing.rs`), pose buffet (`avatar/flight.rs`) | airspeed |
 | Glider | Wind rush sound (`audio/suit.rs`) | airspeed 6 to 75 m/s, planet air |
@@ -25,7 +23,7 @@ Written 2026-11-20 by `speed`. Every cue follows a real quantity. Nothing fakes 
 
 | Cue | Driving quantity | Maximum |
 | --- | --- | --- |
-| "Speed effects" slider (`ViewPrefs.speed_fx`, 0 to 1, default 1, Controls tab) | none | 0 turns off widening, boom stretch, shake, speed lines, rush ring |
+| "Speed effects" slider (`ViewPrefs.speed_fx`, 0 to 1, default 1, Controls tab) | none | 0 turns off widening, boom stretch and shake |
 | Glider camera buffet (`gear/fx/buffet.rs`) | `q = 1/2 rho v^2`, 300 to 6000 Pa | 6 mm and 0.1 degree |
 | Wingtip condensation (`trails.rs`, `speed::vortex`) | wetness: cloud depth times cover, or rain | trail 1.8 times brighter |
 | Vapour cone (`ship/vapour.rs`) | Mach from `sqrt(gamma R T / M)` with T cooled by the dry adiabat, density, wetness | alpha 0.35, 0.85 to 1.25 Mach |

@@ -86,11 +86,6 @@ pub const VISITORS: u8 = 3;
 /// Seconds after the kill before the first scavenger comes, and between two of them.
 pub const VISIT_DELAY: f64 = 25.0;
 
-/// Highest Froude number, `v^2 / (g * leg)`, a walker is driven at: a full gallop, past which its
-/// feet could no longer keep up with its body (Alexander and Jayes 1983, "A dynamic similarity
-/// hypothesis for the gaits of quadrupedal mammals", Journal of Zoology 201, 135-152).
-pub const FROUDE_TOP: f32 = 3.5;
-
 /// Longest step in seconds an animal takes in one frame.
 pub const MAX_STEP: f32 = 0.1;
 

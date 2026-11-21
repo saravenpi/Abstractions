@@ -57,11 +57,6 @@ impl Flecks {
         self.looks.push((key, wet, handle.clone()));
         handle
     }
-
-    /// Returns the shared mesh.
-    pub fn mesh(&self) -> &Handle<Mesh> {
-        &self.mesh
-    }
 }
 
 /// Run condition: some fleck flies.

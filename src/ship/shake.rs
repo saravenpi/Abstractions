@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 
-pub use crate::speed::shake::{REACH, shake};
+pub use crate::speed::shake::shake;
 
 use crate::render::smoothstep;
 

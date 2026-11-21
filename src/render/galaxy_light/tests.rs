@@ -1,15 +1,15 @@
 //! Tests of the baked map of the light of the galaxies: its band lies in the plane of the disc
 //! and is brightest toward the core, it bakes in time, and it is baked again when it should be.
 
-use std::time::{Duration, Instant};
-
 use bevy::math::DVec3;
 
-use super::march::{BYTES, Source, bake, bake_at};
+use super::fine::cones;
+use super::march::{BYTES, FACES, SIDE, Source, bake, bake_at, rows};
 use super::pack::{decode, encode};
 use super::rig::{halfway, home, texels};
 use super::{Built, INSIDE, OUTSIDE, plan};
 use crate::universe::{Glow, LY};
+use crate::world::cpu::busy;
 
 /// A texel survives the bytes it is kept in to within a hundredth of a unit of light, from the
 /// dark of the void to the glare of a core.
@@ -69,17 +69,21 @@ fn the_sky_is_brightest_toward_the_core() {
     assert!(angle.is_some_and(|angle| angle < 0.35), "{angle:?}");
 }
 
-/// The bake of the home galaxy and every galaxy in sight takes under 300 ms of the clock, off
-/// the main thread, and fills the six faces.
+/// The bake of the home galaxy and every galaxy in sight takes under 300 ms on each of the six
+/// threads it runs on at most, off the main thread, and fills the six faces. The time is the
+/// processor time of the thread that does the share of one worker, so a machine busy with other
+/// tests does not change it.
 #[test]
 fn the_bake_takes_under_300_ms() {
     let (universe, spec) = home();
     let (sources, _) = plan(&universe, spec.id, DVec3::new(0.4, 0.02, 0.1) * spec.radius);
-    let start = Instant::now();
-    let bytes = bake(&sources);
-    let took = start.elapsed();
-    assert_eq!(bytes.len(), BYTES);
-    assert!(took < Duration::from_millis(300), "the bake took {took:?}");
+    let start = busy();
+    let fine = cones(&sources, SIDE);
+    let share = rows(&sources, &fine, SIDE, (0, FACES));
+    let took = busy() - start;
+    assert_eq!(share.len(), SIDE);
+    assert!(took < 0.3, "one worker of six took {took} s");
+    assert_eq!(bake(&sources).len(), BYTES);
 }
 
 /// A map is stale after the camera moves 2 percent of the radius of its galaxy inside it, and

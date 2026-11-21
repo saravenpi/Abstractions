@@ -57,8 +57,10 @@ fn glare(bytes: &[u8]) -> f64 {
 }
 
 /// Along a warp from three radii out to half a radius from the centre of the galaxy, past its
-/// edge, the light of the whole sky changes by less than 5 percent between two steps a tiny
-/// bit of the way apart, and grows as the camera comes in.
+/// edge, the light of the whole sky grows by less than 8 percent between two steps a tiny bit of
+/// the way apart, and the rate of its growth never jumps: no step grows by more than a point and
+/// a half over the mean of the two steps beside it, which a line of sight sampled too coarsely
+/// does as the camera crosses the edge of the galaxy. The whole sky is brighter inside.
 #[test]
 fn the_light_changes_without_a_jump_from_outside_to_inside() {
     let (_, spec) = home();
@@ -68,9 +70,16 @@ fn the_light_changes_without_a_jump_from_outside_to_inside() {
     let lights: Vec<f64> = (0..=steps)
         .map(|k| glare(&bake_at(&[lone(&spec, at(k))], SIDE)))
         .collect();
-    for (k, pair) in lights.windows(2).enumerate() {
-        let change = (pair[1] / pair[0] - 1.0).abs();
-        assert!(change < 0.05, "step {k}: {} to {}", pair[0], pair[1]);
+    let growth: Vec<f64> = lights
+        .windows(2)
+        .map(|pair| (pair[1] / pair[0]).ln())
+        .collect();
+    for (k, rate) in growth.iter().enumerate() {
+        assert!(rate.abs() < 0.08, "step {k}: {rate}");
+    }
+    for (k, trio) in growth.windows(3).enumerate() {
+        let jump = (trio[1] - 0.5 * (trio[0] + trio[2])).abs();
+        assert!(jump < 0.015, "step {}: the growth jumps by {jump}", k + 1);
     }
     assert!(lights[steps] > 2.0 * lights[0]);
 }

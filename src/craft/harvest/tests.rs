@@ -47,7 +47,7 @@ fn cut(species: usize, part: usize) -> Cut {
 }
 
 /// Every part of every animal of a real planet that gives a class gives a positive mass of it,
-/// the right tool, harder than any tissue (Mohs 10 is the cap, so 11), four times what bare hands
+/// the right tool, as hard as Mohs allows (10), four times what bare hands
 /// give; a part that is not there gives nothing.
 #[test]
 fn real_parts_give_tissue() {
@@ -64,7 +64,7 @@ fn real_parts_give_tissue() {
             };
             let right = Tool {
                 intent: need(class),
-                hardness: 11.0,
+                hardness: 10.0,
             };
             let whole = harvest(&life, seed, cut, Some(right)).expect("same part");
             assert!(bare.mass > 0.0 && (whole.mass / bare.mass - 4.0).abs() < 1e-3);

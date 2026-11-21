@@ -32,7 +32,7 @@ fn depth(glow: &Glow, from: DVec3, to: DVec3) -> f64 {
     let steps = 4_000;
     let step = (to - from) / steps as f64;
     let sum: f64 = (0..steps)
-        .map(|k| glow.dust(from + step * (k as f64 + 0.5)))
+        .map(|k| glow.at(from + step * (k as f64 + 0.5)).1)
         .sum();
     sum * step.length() / LY
 }

@@ -48,10 +48,13 @@ pub(super) fn texels(bytes: &[u8], side: usize) -> Vec<(DVec3, f32, f32)> {
     .collect()
 }
 
-/// Returns the texels of the map seen from a place 0.4 radii out along the x axis of the home
-/// galaxy, in its disc, where the real core lies along the negative x axis.
+/// Returns the texels of the map of the home galaxy alone seen from a place 0.4 radii out along
+/// the x axis of it, in its disc, where the real core lies along the negative x axis. The
+/// galaxies far outside are left out: a core far away is as bright on the sky, a point at a time,
+/// as the core of the galaxy the camera is in.
 pub(super) fn halfway() -> Vec<(DVec3, f32, f32)> {
     let (universe, spec) = home();
-    let (sources, _) = plan(&universe, spec.id, DVec3::X * 0.4 * spec.radius);
+    let (mut sources, _) = plan(&universe, spec.id, DVec3::X * 0.4 * spec.radius);
+    sources.retain(|source| source.inside);
     texels(&bake(&sources), SIDE)
 }

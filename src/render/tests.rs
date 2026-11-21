@@ -172,15 +172,18 @@ fn cloud_crossing_peaks_mid_band() {
 
 /// A far body is drawn where it truly is: its position in 32 bits keeps its direction and its
 /// angular size at every distance up to the width of a galaxy, so nothing is pulled in or shrunk.
+/// The length is taken after dividing by the largest component, since the square of 1e21 does not
+/// fit 32 bits. The game only draws a body within the reach of its system, where it does.
 #[test]
 fn far_bodies_keep_direction_and_size() {
     let toward = DVec3::new(0.36, -0.48, 0.8);
     let radius = 6.0e6;
     for distance in [10.0, 9.0e5, 1.0e7, 1.2e8, 4.0e8, 3.0e11, 1.0e16, 1.0e21] {
         let at = (toward * distance).as_vec3();
-        let reach = at.length();
+        let widest = at.abs().max_element();
+        let reach = widest * (at / widest).length();
         assert!(
-            (at / reach - toward.as_vec3()).length() < 1e-5,
+            (at / widest / (at / widest).length() - toward.as_vec3()).length() < 1e-5,
             "{distance}"
         );
         let (seen, truth) = (f64::from(radius as f32 / reach), radius / distance);

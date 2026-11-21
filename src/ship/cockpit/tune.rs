@@ -48,8 +48,9 @@ pub const THROW: (f32, f32) = (0.4, 0.45);
 pub const THROW_LENGTH: (f32, f32) = (0.16, 0.07);
 
 /// Where the heel of each rudder pedal hinges: x of the right pedal, height and z. The left
-/// pedal mirrors it. The soles of the seated body stand on them.
-pub const PEDAL: Vec3 = Vec3::new(0.095, -0.344, -1.58);
+/// pedal mirrors it. The soles of the seated body stand on them, and the hinge is under the ankle
+/// of the seated body, so that a boot and its pedal turn about the same axis.
+pub const PEDAL: Vec3 = Vec3::new(0.095, -0.347, -1.62);
 
 /// Length of a pedal from its heel to its toe, in metres.
 pub const PEDAL_LENGTH: f32 = 0.26;

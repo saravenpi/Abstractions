@@ -163,7 +163,10 @@ pub fn update(
     if let Some(fix) = fix(&ship, &skies, pace.lag) {
         let path = apsides(fix.pos, fix.orbital, fix.mu).filter(|_| !ship.landed);
         next.altitude_sea = fix.pos.length() - fix.radius;
-        next.altitude_ground = pace.report.radar.min(next.altitude_sea);
+        next.altitude_ground = match pace.report.radar.is_finite() {
+            true => pace.report.radar,
+            false => next.altitude_sea,
+        };
         next.surface_speed = fix.ground.length();
         next.orbital_speed = fix.orbital.length();
         next.apoapsis = path.map(|(apo, _)| apo - fix.radius);

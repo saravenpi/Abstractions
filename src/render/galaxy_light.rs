@@ -1,8 +1,11 @@
 //! The light of the galaxies: one cube map of the starlight of every galaxy in sight, baked off
 //! the main thread. Each line of sight is integrated through the real star density of the galaxy
 //! it crosses, with the dust of that galaxy absorbing, so the band of the home galaxy, the lanes
-//! in it and the galaxies far outside it are one model. The sky shader reads the map.
+//! in it and the galaxies far outside it are one model. A line of sight is cut by one rule for a
+//! camera inside a galaxy and outside it, see [`steps`], and a new map fades in over the one on
+//! show, see [`fade`]. The sky shader reads the map.
 
+mod fade;
 mod fine;
 mod image;
 mod march;
@@ -12,6 +15,8 @@ mod rig;
 mod steps;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_fade;
 #[cfg(test)]
 mod tests_far;
 #[cfg(test)]
@@ -28,6 +33,7 @@ use bevy::tasks::{
     AsyncComputeTaskPool, Task, TaskPool, block_on, futures_lite::future::poll_once,
 };
 
+use self::fade::Fade;
 use self::image::{blank, write};
 use self::march::{Source, bake};
 use self::tune::MIN_GAP;
@@ -73,6 +79,8 @@ pub struct GalaxyLight {
     image: Handle<Image>,
     /// The place the texture was last baked for, once it holds a map.
     built: Option<Built>,
+    /// The map on show and the fade of it to the last bake.
+    fade: Fade,
     /// The bake in progress.
     task: Option<Task<(Built, Vec<u8>)>>,
     /// Seconds of the app clock at which the last bake was taken into the texture.
@@ -80,15 +88,19 @@ pub struct GalaxyLight {
 }
 
 impl GalaxyLight {
-    /// Takes a finished bake, if there is one, into the texture, at `now` seconds of the app clock.
+    /// Takes a finished bake, if there is one, into the fade, and writes the fade to the texture,
+    /// at `now` seconds of the app clock.
     fn land(&mut self, images: &mut Assets<Image>, now: f64) {
         let done = self
             .task
             .as_mut()
             .and_then(|task| block_on(poll_once(task)));
         if let Some((built, bytes)) = done {
-            write(images, &self.image, &bytes);
+            self.fade.begin(bytes, now);
             (self.built, self.task, self.finished) = (Some(built), None, Some(now));
+        }
+        if let Some(bytes) = self.fade.step(now) {
+            write(images, &self.image, bytes);
         }
     }
 
@@ -135,7 +147,7 @@ fn start(mut light: ResMut<GalaxyLight>, mut images: ResMut<Assets<Image>>) {
     };
 }
 
-/// Takes a finished bake into the texture, and starts the next one when the camera has moved
+/// Takes a finished bake into the fade of the texture, and starts the next one when the camera has moved
 /// far enough from the place of the last and the last bake is at least [`MIN_GAP`] seconds old,
 /// unless one is already running. Waits for the star system of the world to be known, so a stale
 /// place is never baked for.

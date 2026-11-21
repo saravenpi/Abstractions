@@ -8,14 +8,15 @@ use bevy::prelude::*;
 use super::ShipEvent;
 use super::body::Ship;
 use super::deck::grounded;
+use super::hold::{idle, release};
 use super::pilot::Autopilot;
 use super::sky::Skies;
-use super::warp::Warp;
 use crate::computer::Computer;
 use crate::player::{EYE_OFFSET, Player, place, seat};
 use crate::render::GameCamera;
 use crate::settings::{Persistent, Settings};
 use crate::space::{Anchor, Location, Placed, Travel};
+use crate::world::{Chunks, Planet};
 
 /// Distance in metres from the hull centre within which the player can board.
 const BOARD_RANGE: f32 = 7.0;
@@ -31,7 +32,7 @@ type OnlyEyes = (With<GameCamera>, Without<Player>);
 
 /// What boarding reads and writes besides the bodies.
 #[derive(SystemParam)]
-pub struct Dock<'w> {
+pub struct Dock<'w, 's> {
     /// Keyboard state.
     keys: Res<'w, ButtonInput<KeyCode>>,
     /// Bindings.
@@ -50,14 +51,32 @@ pub struct Dock<'w> {
     computer: Option<Res<'w, State<Computer>>>,
     /// The route the ship flies, dropped when the pilot leaves.
     autopilot: ResMut<'w, Autopilot>,
+    /// The detail chunks of the streamed planet, when a world runs.
+    chunks: Option<Res<'w, Chunks>>,
+    /// The streamed planet, when a world runs.
+    planet: Option<Res<'w, Planet>>,
+    /// The frame time.
+    time: Res<'w, Time>,
+    /// The seconds the pilot has been held in the seat since the board key was pressed.
+    held: Local<'s, Option<f32>>,
 }
 
-impl Dock<'_> {
+impl Dock<'_, '_> {
     /// Returns true while the board computer is open and owns the keyboard.
     fn busy(&self) -> bool {
         self.computer
             .as_deref()
             .is_some_and(|state| *state.get() == Computer::Open)
+    }
+
+    /// Returns true when the ground beside the hatch of a ship with pose `at` is solid, or when no world
+    /// streams chunks.
+    fn solid_beside(&self, at: &Placed) -> bool {
+        let (Some(chunks), Some(planet)) = (&self.chunks, &self.planet) else {
+            return true;
+        };
+        let hatch = at.pos + at.rot * HATCH;
+        chunks.solid_under(&planet.globe, hatch.normalize_or(DVec3::Y))
     }
 
     /// Returns the render position of the ground or the sea beside the hatch of a ship with pose
@@ -78,15 +97,6 @@ fn in_reach(dock: &Dock, ship: &Ship, placed: &Placed, body: Vec3) -> bool {
     let here = dock.anchor.frame == ship.frame;
     let near = body.distance(dock.anchor.to_render(placed.pos)) < BOARD_RANGE;
     ship.landed && here && near && dock.location.travel == Travel::OnFoot
-}
-
-/// Stops the motors of a ship its pilot leaves: the throttle to idle and a spooling warp drive
-/// off. The boost and the vertical thrusters are held keys the helm lets go of on foot.
-fn idle(ship: &mut Ship) {
-    ship.throttle = 0.0;
-    if matches!(ship.warp, Warp::Spooling { .. }) {
-        ship.warp = Warp::Off;
-    }
 }
 
 /// Whether the player on foot stands at the hatch of the landed ship, where the board key
@@ -115,7 +125,8 @@ pub fn reseat(
 /// Seats the player near the landed ship on the board key, and on the same key puts the player
 /// back on the ground beside the hatch, with the motors stopped and the autopilot off. The key
 /// does nothing while the board computer is open, and nothing over a gas giant, where there is
-/// no ground to step out on. Only a landed ship can be left, so it stays where it stands.
+/// no ground to step out on. Only a landed ship can be left, so it stays where it stands. The pilot
+/// stays in the seat until the ground beside the hatch is solid, see [`hold`].
 pub fn board(
     mut dock: Dock,
     mut commands: Commands,
@@ -130,24 +141,40 @@ pub fn board(
         .keys
         .just_pressed(dock.settings.controls.keys.ship.board);
     let docked = ship.landed && grounded(dock.skies.planet());
-    if !pressed || dock.busy() || !docked || dock.anchor.frame != ship.frame {
+    if dock.busy() || !docked || dock.anchor.frame != ship.frame {
+        *dock.held = None;
         return;
     }
-    if dock.location.travel == Travel::InShip {
-        let feet = dock.step_out(placed);
-        let toward = dock.anchor.rotation_to_render(placed.rot) * Vec3::NEG_Z;
-        dock.location.travel = Travel::OnFoot;
-        idle(&mut ship);
-        dock.autopilot.cancel();
-        **eyes = Transform::from_xyz(0.0, EYE_OFFSET, 0.0);
-        commands.queue(move |world: &mut World| {
-            place(world, feet, toward);
-            seat(world, false);
-        });
-        dock.events.write(ShipEvent::Left);
-    } else if near {
-        dock.location.travel = Travel::InShip;
-        commands.queue(|world: &mut World| seat(world, true));
-        dock.events.write(ShipEvent::Boarded);
+    if dock.location.travel == Travel::OnFoot {
+        if pressed && near {
+            dock.location.travel = Travel::InShip;
+            commands.queue(|world: &mut World| seat(world, true));
+            dock.events.write(ShipEvent::Boarded);
+        }
+        return;
     }
+    let (solid, dt) = (dock.solid_beside(placed), dock.time.delta_secs());
+    if release(&mut dock.held, pressed, solid, dt) {
+        leave(&mut dock, &mut commands, (&mut ship, placed), &mut eyes);
+    }
+}
+
+/// Puts the player on the ground beside the hatch with the motors stopped and the autopilot off.
+fn leave(
+    dock: &mut Dock,
+    commands: &mut Commands,
+    (ship, placed): (&mut Ship, &Placed),
+    eyes: &mut Transform,
+) {
+    let feet = dock.step_out(placed);
+    let toward = dock.anchor.rotation_to_render(placed.rot) * Vec3::NEG_Z;
+    dock.location.travel = Travel::OnFoot;
+    idle(ship);
+    dock.autopilot.cancel();
+    *eyes = Transform::from_xyz(0.0, EYE_OFFSET, 0.0);
+    commands.queue(move |world: &mut World| {
+        place(world, feet, toward);
+        seat(world, false);
+    });
+    dock.events.write(ShipEvent::Left);
 }

@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::world::Boxes;
-use super::{FOV, moment, run, third, first};
+use super::{FOV, first, moment, run, third};
 use crate::view::tune::{PITCH_LIMIT, RADIANS_PER_PIXEL, ZOOM_RANGE};
 use crate::view::{Heading, Kind, Look, Rig, Shown, ViewMode, ViewPrefs};
 

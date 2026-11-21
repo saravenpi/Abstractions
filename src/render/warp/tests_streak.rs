@@ -87,9 +87,10 @@ fn the_sky_is_drawn_at_the_speed_of_the_drive() {
     let speeds: Vec<f32> = (0..=100)
         .map(|i| cruising(i as f32 / 100.0).speed())
         .collect();
+    let step = (SPEEDS.1 / SPEEDS.0).powf(0.01);
     for pair in speeds.windows(2) {
         let ratio = pair[1] / pair[0];
-        assert!(ratio > 1.26 && ratio < 1.28, "{ratio}");
+        assert!((ratio / step - 1.0).abs() < 2e-3, "{ratio} against {step}");
     }
     assert_eq!(cruising(0.6).streak(), cruising(0.6).speed() * EXPOSURE);
 }

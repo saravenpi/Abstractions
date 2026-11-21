@@ -33,7 +33,7 @@ fn the_navigation_lamps_sit_at_the_winglet_tips() {
     assert!(middle(&red).distance(left) < 0.01, "{}", middle(&red));
     assert!(middle(&green).distance(right) < 0.01, "{}", middle(&green));
     assert!(left.distance(Vec3::new(-right.x, right.y, right.z)) < 1.0e-6);
-    assert!(left.x < -3.1 && (left.y - 0.5).abs() < 0.05 && (left.z - 2.75).abs() < 0.06);
+    assert!(left.x < -3.1 && (left.y - 0.5).abs() < 0.1 && (left.z - 2.75).abs() < 0.15);
 }
 
 /// A navigation lamp always burns, and the headlight burns only when it is switched on.

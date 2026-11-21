@@ -5,6 +5,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Orbital cruise: home is a few minutes away again, wherever on the planet the warp drops you. Above the air of a planet, inside its lock sphere where the warp drive cannot run, J starts an orbital cruise: the drive carries the ship around the planet at the height it holds, just outside the air, at two degrees of the planet a second at full lever. Half of an Earth-size planet takes about 100 s, at 226 km/s. The drive carries the ship as it does in warp, so the crew feels no load. Shift and Ctrl set the speed, Q and E turn, Space and C (or the nose keys) change the height, J stops it. The cruise never goes into the air: held down at its floor, the drive stops the ship at rest over the ground first, at a speed no entry can heat.
+- H flies home through it. Above the home planet the ship cruises along the great circle to the base and stops where a 40 degree glide begins, about 140 km out on an Earth. The autopilot then glides it down into the air at a speed that keeps the nose dark: 1.2 km/s high up, slower as the air thickens, flattening out over the last kilometres. It hands the ship back 3 km up and a few kilometres short of the base, the base ahead: the landing is yours. Pitch up or press J to take the glide back at any time. In the air far from the base, H climbs out of the air first; from another planet or star it sets the course home and cruises on arrival. The prompt line shows "Home 2,340 km, 1 min 20 s - glide in 2,210 km" while it runs.
+- Home is always on the HUD over its planet. The home marker and its compass mark show from orbit and from anywhere in the air of the home planet, with the distance over the ground. When the planet stands between you and the base, the marker stays at its true place, faint, and says "behind the planet".
+- The beacon on the mast of the base shows from orbit. The same flashing lamp is drawn as a small bright dot from any distance over the planet, by day and by night, so you can see where home is before the glide starts.
+
 ### Changed
 
 - The ship flies twice as fast low over a planet. Its nose is clean, a quarter of the drag it had, so its engines hold 275 m/s in air at sea level instead of 137, and more in thinner air higher up. With the stabiliser the full lever asks for 219 m/s at 286 m over the ground, where it asked for 112, and the speed still drops near the ground: take-off, hover and landing are as before. In thick air the ship flies no faster than its engines can push against the drag.

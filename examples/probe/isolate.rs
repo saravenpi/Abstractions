@@ -181,10 +181,10 @@ fn restore(world: &mut World) {
     }
     world.resource_mut::<CloudCover>().0 = Some(COVER);
     let graphics = &world.resource::<Persistent<Settings>>().graphics;
-    if !graphics.clouds || !graphics.lighting.cloud_shadows {
+    if !graphics.clouds || !graphics.lighting.cloud_shade {
         let mut settings = world.resource_mut::<Persistent<Settings>>();
         settings.graphics.clouds = true;
-        settings.graphics.lighting.cloud_shadows = true;
+        settings.graphics.lighting.cloud_shade = true;
     }
     gaze(world, PITCH, true);
     eprintln!("PROBE isolate: restored {back} meshes");
@@ -201,7 +201,7 @@ fn apply(world: &mut World, change: Change) {
         Change::Keep(parts) => hide(world, |kind| !parts.iter().any(|part| kind.contains(part))),
         Change::NoShade => {
             let mut settings = world.resource_mut::<Persistent<Settings>>();
-            settings.graphics.lighting.cloud_shadows = false;
+            settings.graphics.lighting.cloud_shade = false;
         }
         Change::Pitch(pitch) => gaze(world, pitch, true),
         Change::Despawn => {

@@ -36,7 +36,9 @@ fn the_ball_shows_the_horizon() {
     let climbing = ball(Some(IVec2::new(20, 0)), [None; 2]);
     assert!(!climbing.is_lit(centre.x + 1, centre.y + 9));
     let banked = ball(Some(IVec2::new(0, 10)), [None; 2]);
-    assert!(banked.is_lit(centre.x + 10, centre.y + 2) && !banked.is_lit(centre.x - 10, centre.y - 2));
+    assert!(
+        banked.is_lit(centre.x + 10, centre.y + 2) && !banked.is_lit(centre.x - 10, centre.y - 2)
+    );
     assert_eq!(ball(None, [None; 2]).count(), 0);
 }
 

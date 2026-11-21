@@ -64,7 +64,11 @@ fn ball(pixels: &mut Pixels, level: Option<IVec2>) {
     let reach = round.ceil() as i32;
     let tilt = level.map(|at| {
         let (sin, cos) = (at.y as f32 * ANGLE_STEP).sin_cos();
-        (sin, cos, (at.x as f32 * ANGLE_STEP).clamp(-1.2, 1.2) * per_radian)
+        (
+            sin,
+            cos,
+            (at.x as f32 * ANGLE_STEP).clamp(-1.2, 1.2) * per_radian,
+        )
     });
     for (dx, dy) in (-reach..=reach).flat_map(|dy| (-reach..=reach).map(move |dx| (dx, dy))) {
         let (px, py) = (dx as f32, -dy as f32);
@@ -89,7 +93,16 @@ fn ball(pixels: &mut Pixels, level: Option<IVec2>) {
 fn marks(pixels: &mut Pixels, [course, body]: [Option<IVec2>; 2]) {
     let at = |mark: IVec2| BALL.0 + IVec2::new(mark.x, -mark.y);
     if let Some(ring) = body.map(at) {
-        for (dx, dy) in [(-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, -1), (-1, 1), (1, 1)] {
+        for (dx, dy) in [
+            (-2, 0),
+            (2, 0),
+            (0, -2),
+            (0, 2),
+            (-1, -1),
+            (1, -1),
+            (-1, 1),
+            (1, 1),
+        ] {
             pixels.put(ring.x + dx, ring.y + dy, Ink::Lit);
         }
     }

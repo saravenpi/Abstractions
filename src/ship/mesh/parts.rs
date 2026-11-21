@@ -73,7 +73,12 @@ fn hull() -> Vec<Part> {
         part("spine", Paint::Hull, true, dome::spine()),
         part("shield", Paint::Hull, false, shield()),
         part("fin", Paint::Hull, true, blade(0.0, &FIN)),
-        part("marks", Paint::Trim, true, band(0.0, &FIN, (1.48, 1.66), 0.012)),
+        part(
+            "marks",
+            Paint::Trim,
+            true,
+            band(0.0, &FIN, (1.48, 1.66), 0.012),
+        ),
         part("mast", Paint::Dark, false, blade(0.0, &AERIAL)),
         part("panel", Paint::Hull, false, left_side()),
         part("rung", Paint::Dark, false, rung()),

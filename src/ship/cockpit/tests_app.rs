@@ -4,9 +4,9 @@
 use avian3d::prelude::Collider;
 use bevy::prelude::*;
 
+use super::pixels::Ink;
 use super::stage::{Puppet, app, bytes, count, edit, lit, part, state};
 use super::tests::levers;
-use super::pixels::Ink;
 use super::{Cockpit, Dial, Display, Lamp, Levers, Part, Readings, Screen};
 use crate::ship::body::Ship;
 use crate::ship::mesh::Looks;

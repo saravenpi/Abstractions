@@ -25,7 +25,13 @@ pub const EXIT: f32 = 0.3;
 const SIDES: u32 = 10;
 
 /// Stations of a pod from its front, inside the tail cone, to its end: z and radius.
-const POD: [(f32, f32); 5] = [(1.5, 0.2), (2.1, 0.4), (3.0, 0.46), (3.4, 0.43), (3.52, 0.36)];
+const POD: [(f32, f32); 5] = [
+    (1.5, 0.2),
+    (2.1, 0.4),
+    (3.0, 0.46),
+    (3.4, 0.43),
+    (3.52, 0.36),
+];
 
 /// The inner wall of a bell from the chamber face to the exit: z and radius.
 const BELL: [(f32, f32); 4] = [(3.42, 0.17), (3.52, 0.22), (3.62, 0.265), (NOZZLE_Z, EXIT)];

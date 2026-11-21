@@ -66,7 +66,11 @@ pub fn rig(mut commands: Commands, ships: Query<Entity, (Added<Cockpit>, With<Sh
     for ship in &ships {
         for (kind, at, range) in [
             (Beam::Panel, Vec3::new(0.0, 0.62, -1.75), reach(LUMENS.0)),
-            (Beam::Cabin, Vec3::new(0.0, 0.85, -1.2), reach(LUMENS.1 + LUMENS.2)),
+            (
+                Beam::Cabin,
+                Vec3::new(0.0, 0.85, -1.2),
+                reach(LUMENS.1 + LUMENS.2),
+            ),
         ] {
             let light = PointLight {
                 intensity: 0.0,

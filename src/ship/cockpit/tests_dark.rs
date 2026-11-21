@@ -133,7 +133,10 @@ fn a_text_display_shows_its_value_in_steps() {
 /// the bars of the throttle, of the warp drive and of the gear.
 #[test]
 fn the_side_displays_show_the_lamps_and_the_bars() {
-    let mut cockpit = seen(Readings::of(&aloft(100.0, 800.0, WarpState::Spooling(0.5)), 1.0));
+    let mut cockpit = seen(Readings::of(
+        &aloft(100.0, 800.0, WarpState::Spooling(0.5)),
+        1.0,
+    ));
     cockpit.read.lamps[Lamp::Hot as usize] = true;
     cockpit.gauges = cockpit.read.bars;
     let Face::Status(lamps) = Screen::Status.face(&cockpit) else {

@@ -73,7 +73,8 @@ pub(super) const GLAZED: usize = 3;
 
 /// Where the canopy and the spine end in the hull: the foot of the windscreen, and the end of the
 /// spine in the root of the fin.
-pub(super) const CANOPY_ENDS: (Vec3, Vec3) = (Vec3::new(0.0, 0.27, -3.0), Vec3::new(0.0, 0.85, 2.3));
+pub(super) const CANOPY_ENDS: (Vec3, Vec3) =
+    (Vec3::new(0.0, 0.27, -3.0), Vec3::new(0.0, 0.85, 2.3));
 
 /// How far under the skin of the hull the foot of the canopy and of the spine goes, in metres.
 pub(super) const SUNK: f32 = 0.025;
@@ -98,11 +99,19 @@ pub fn lathe(
     let unit = [0.0, 1.0, 1.0, 0.0];
     for i in 0..sides {
         let out = corner(unit, i) + corner(unit, i + 1);
-        solid.tri([ends.0, corner(first, i), corner(first, i + 1)], Vec3::NEG_Z);
+        solid.tri(
+            [ends.0, corner(first, i), corner(first, i + 1)],
+            Vec3::NEG_Z,
+        );
         solid.tri([ends.1, corner(last, i), corner(last, i + 1)], Vec3::Z);
         for pair in stations.windows(2) {
             let (a, b) = (pair[0], pair[1]);
-            let corners = [corner(a, i), corner(a, i + 1), corner(b, i + 1), corner(b, i)];
+            let corners = [
+                corner(a, i),
+                corner(a, i + 1),
+                corner(b, i + 1),
+                corner(b, i),
+            ];
             solid.quad(corners, out);
         }
     }

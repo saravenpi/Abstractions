@@ -23,15 +23,24 @@ const STRAP: f32 = 0.008;
 /// Returns the dark shell of the seat: the foot on the floor, the pan with its thigh bolsters,
 /// the back with its side wings, and the headrest.
 pub fn shell() -> Solid {
-    let mut shell = Solid::default();
     let v = Vec3::new;
-    beam(&mut shell, (v(-0.15, FLOOR, -1.32), v(0.15, -0.02, -1.0)), 0.015, 0);
-    beam(&mut shell, (v(-HALF.0, -0.03, -1.44), v(HALF.0, 0.02, REAR)), 0.015, 0);
-    beam(&mut shell, (v(-HALF.0, 0.0, BACK + 0.04), v(HALF.0, 0.7, REAR)), 0.015, 0);
-    beam(&mut shell, (v(-0.13, 0.68, BACK + 0.03), v(0.13, 1.02, REAR)), 0.015, 0);
-    let mut wings = Solid::default();
-    beam(&mut wings, (v(HALF.1, 0.0, -1.42), v(HALF.0, 0.13, BACK)), 0.015, 0);
-    beam(&mut wings, (v(HALF.1, 0.1, BACK - 0.09), v(HALF.0, 0.62, BACK + 0.04)), 0.015, 0);
+    let middle = [
+        (v(-0.15, FLOOR, -1.32), v(0.15, -0.02, -1.0)),
+        (v(-HALF.0, -0.03, -1.44), v(HALF.0, 0.02, REAR)),
+        (v(-HALF.0, 0.0, BACK + 0.04), v(HALF.0, 0.7, REAR)),
+        (v(-0.13, 0.68, BACK + 0.03), v(0.13, 1.02, REAR)),
+    ];
+    let sides = [
+        (v(HALF.1, 0.0, -1.42), v(HALF.0, 0.13, BACK)),
+        (v(HALF.1, 0.1, BACK - 0.09), v(HALF.0, 0.62, BACK + 0.04)),
+    ];
+    let (mut shell, mut wings) = (Solid::default(), Solid::default());
+    for ends in middle {
+        beam(&mut shell, ends, 0.015, 0);
+    }
+    for ends in sides {
+        beam(&mut wings, ends, 0.015, 0);
+    }
     shell.merge(&wings.mirrored(), Vec3::ZERO);
     shell
 }
@@ -40,12 +49,27 @@ pub fn shell() -> Solid {
 pub fn pads() -> Solid {
     let mut pads = Solid::default();
     let v = Vec3::new;
-    beam(&mut pads, (v(-HALF.1, 0.01, -1.42), v(HALF.1, PAN, BACK)), 0.006, 1);
+    beam(
+        &mut pads,
+        (v(-HALF.1, 0.01, -1.42), v(HALF.1, PAN, BACK)),
+        0.006,
+        1,
+    );
     for (k, (from, to)) in PADS.into_iter().enumerate() {
         let back = BACK + 0.012 * (2 - k) as f32;
-        beam(&mut pads, (v(-HALF.1, from, back), v(HALF.1, to, BACK + 0.05)), 0.006, 1);
+        beam(
+            &mut pads,
+            (v(-HALF.1, from, back), v(HALF.1, to, BACK + 0.05)),
+            0.006,
+            1,
+        );
     }
-    beam(&mut pads, (v(-0.1, 0.74, BACK), v(0.1, 0.98, BACK + 0.04)), 0.006, 1);
+    beam(
+        &mut pads,
+        (v(-0.1, 0.74, BACK), v(0.1, 0.98, BACK + 0.04)),
+        0.006,
+        1,
+    );
     pads
 }
 
@@ -55,7 +79,10 @@ pub fn harness() -> Solid {
     let mut harness = Solid::default();
     let v = Vec3::new;
     for middle in [-0.08, 0.08] {
-        let (lo, hi) = (v(middle - 0.02, 0.14, BACK - STRAP), v(middle + 0.02, 0.7, BACK + 0.01));
+        let (lo, hi) = (
+            v(middle - 0.02, 0.14, BACK - STRAP),
+            v(middle + 0.02, 0.7, BACK + 0.01),
+        );
         harness.slab(lo, hi);
     }
     harness.slab(v(-HALF.1, PAN - 0.01, -1.12), v(HALF.1, PAN + STRAP, -1.07));

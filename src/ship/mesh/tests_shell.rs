@@ -63,10 +63,14 @@ fn the_cabin_has_no_hole_seen_from_the_eye() {
         assert!(closed, "a hole toward {target}: {seen:?}");
     }
     for (yaw, pitch) in (0..60).flat_map(|i| (-17..17).map(move |j| (i, j))) {
-        let turn = Quat::from_rotation_y(yaw as f32 * 0.105) * Quat::from_rotation_x(pitch as f32 * 0.09);
+        let turn =
+            Quat::from_rotation_y(yaw as f32 * 0.105) * Quat::from_rotation_x(pitch as f32 * 0.09);
         let dir = turn * Vec3::NEG_Z;
         let seen = first(&shell, eye, dir);
-        assert!(seen.is_none_or(|(_, front)| front), "a back face along {dir}");
+        assert!(
+            seen.is_none_or(|(_, front)| front),
+            "a back face along {dir}"
+        );
         assert!(dir.y > -0.77 || seen.is_some(), "nothing along {dir}");
     }
 }
@@ -91,6 +95,9 @@ fn the_canopy_stays_attached_open_and_shut() {
     let hull = &outlines()[..2];
     let feet = corners(glass()).into_iter().filter(|p| p.y < 0.6);
     for foot in feet {
-        assert!(hull.iter().any(|part| inside(part, foot)), "{foot} is in the air");
+        assert!(
+            hull.iter().any(|part| inside(part, foot)),
+            "{foot} is in the air"
+        );
     }
 }

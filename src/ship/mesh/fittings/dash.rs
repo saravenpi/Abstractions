@@ -13,7 +13,8 @@ const PANEL: (f32, f32, f32) = (0.04, 0.012, 0.014);
 
 /// The hood: where its rear and its front edge are along z, their half widths, the height of
 /// their top, and its thickness.
-const HOOD: ((f32, f32), (f32, f32), (f32, f32), f32) = ((-2.12, -2.45), (0.33, 0.2), (0.535, 0.47), 0.12);
+const HOOD: ((f32, f32), (f32, f32), (f32, f32), f32) =
+    ((-2.12, -2.45), (0.33, 0.2), (0.535, 0.47), 0.12);
 
 /// Returns the point of the raked panel `across` metres from its middle and `along` metres up
 /// its slope, lifted `lift` metres off its face.
@@ -39,7 +40,10 @@ fn bay(index: usize) -> (Vec2, Vec2) {
 pub fn dash() -> Solid {
     let mut dash = Solid::default();
     let whole = face(Vec2::ZERO, Vec2::new(RAKE.1, RAKE.2), 0.0);
-    dash.plate(whole, Quat::from_rotation_x(-RAKE_TILT) * Vec3::NEG_Z * PANEL.0);
+    dash.plate(
+        whole,
+        Quat::from_rotation_x(-RAKE_TILT) * Vec3::NEG_Z * PANEL.0,
+    );
     let ((rear, front), (wide, narrow), (high, low), thick) = HOOD;
     let top = [
         Vec3::new(-wide, high, rear),
@@ -61,7 +65,11 @@ pub fn bezels() -> Solid {
         let (grown, bar) = (half + Vec2::splat(width), Vec2::splat(width * 0.5));
         for (dx, dy) in [(1.0, 0.0), (-1.0, 0.0), (0.0, 1.0), (0.0, -1.0)] {
             let at = centre + Vec2::new(dx * (half.x + bar.x), dy * (half.y + bar.y));
-            let size = if dx != 0.0 { Vec2::new(bar.x, grown.y) } else { Vec2::new(grown.x, bar.y) };
+            let size = if dx != 0.0 {
+                Vec2::new(bar.x, grown.y)
+            } else {
+                Vec2::new(grown.x, bar.y)
+            };
             bezels.plate(face(at, size, -0.004), out);
         }
     }

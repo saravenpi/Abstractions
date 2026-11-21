@@ -48,14 +48,22 @@ pub fn spine() -> Solid {
         .map(|&at| arch(at).into())
         .collect();
     let mut spine = Solid::default();
-    skin(&mut spine, &sections, false, |span, _| if span == 0 { 3 } else { 0 });
+    skin(
+        &mut spine,
+        &sections,
+        false,
+        |span, _| if span == 0 { 3 } else { 0 },
+    );
     spine.set_tone(3);
     cap(&mut spine, &sections[0], Vec3::NEG_Z);
     spine.set_tone(0);
     let last = &sections[sections.len() - 1];
     for i in 0..last.len() {
         let side = [CANOPY_ENDS.1, last[i], last[(i + 1) % last.len()]];
-        spine.tri(side, (side[1] + side[2]) * 0.5 - super::loft::centre(last) + Vec3::Z);
+        spine.tri(
+            side,
+            (side[1] + side[2]) * 0.5 - super::loft::centre(last) + Vec3::Z,
+        );
     }
     spine
 }
@@ -70,10 +78,7 @@ pub fn corners() -> Vec<Vec3> {
 /// across the hoop: what the tests hold the lips of the mouth and the cabin against.
 #[cfg(test)]
 pub fn canopy() -> Solid {
-    let sections: Vec<Section> = CANOPY[..GLAZED]
-        .iter()
-        .map(|&at| arch(at).into())
-        .collect();
+    let sections: Vec<Section> = CANOPY[..GLAZED].iter().map(|&at| arch(at).into()).collect();
     let mut closed = Solid::default();
     skin(&mut closed, &sections, false, |_, _| 0);
     cap(&mut closed, &sections[GLAZED - 1], Vec3::Z);

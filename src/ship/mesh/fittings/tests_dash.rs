@@ -20,7 +20,13 @@ fn within(point: Vec3) -> bool {
 #[test]
 fn the_displays_stand_on_the_panel() {
     let (panel, frames) = (corners(dash()), corners(bezels()));
-    let unit = [(-0.5, -0.5), (0.5, -0.5), (0.5, 0.5), (-0.5, 0.5), (0.0, 0.0)];
+    let unit = [
+        (-0.5, -0.5),
+        (0.5, -0.5),
+        (0.5, 0.5),
+        (-0.5, 0.5),
+        (0.0, 0.0),
+    ];
     for placed in Screen::ALL.map(|screen| screen.placed()) {
         let normal = placed.rotation * Vec3::Z;
         for (x, y) in unit {
@@ -30,7 +36,10 @@ fn the_displays_stand_on_the_panel() {
             assert!(on, "a display sticks out of the panel at {corner}");
             let covered = frames.chunks(3).any(|tri| crosses(tri, from, -normal));
             assert!(!covered, "a bezel covers a display at {corner}");
-            assert!(!within_panel(&panel, corner), "a display is sunk at {corner}");
+            assert!(
+                !within_panel(&panel, corner),
+                "a display is sunk at {corner}"
+            );
         }
     }
 }

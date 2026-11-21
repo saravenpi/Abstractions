@@ -63,10 +63,7 @@ pub fn shield() -> Solid {
 /// of the flank there.
 fn flank(z: f32, across: f32) -> (Vec3, Vec3) {
     let at = station(z);
-    let (edge, chine) = (
-        rim(at, if across > 0.0 { 3 } else { 5 }),
-        rim(at, 4),
-    );
+    let (edge, chine) = (rim(at, if across > 0.0 { 3 } else { 5 }), rim(at, 4));
     let normal = (edge - chine).cross(Vec3::Z).normalize();
     (
         chine.lerp(edge, across.abs()),
@@ -74,7 +71,8 @@ fn flank(z: f32, across: f32) -> (Vec3, Vec3) {
     )
 }
 
-/// Adds one layer over the part of the flank `from..to` across and `front..back` along z: a box sunk 2 cm in the skin that stands `lift` metres out of it.
+/// Adds one layer over the part of the flank `from..to` across and `front..back` along z: a box
+/// sunk 2 cm in the skin that stands `lift` metres out of it.
 pub(super) fn layer(
     solid: &mut Solid,
     (front, back): (f32, f32),
@@ -116,7 +114,10 @@ pub fn rung() -> Solid {
     for z in [front, back - 0.03] {
         rung.slab(Vec3::new(-0.8, -0.52, z), Vec3::new(-0.77, -0.02, z + 0.03));
     }
-    rung.slab(Vec3::new(-0.86, -0.52, front), Vec3::new(-0.74, -0.49, back));
+    rung.slab(
+        Vec3::new(-0.86, -0.52, front),
+        Vec3::new(-0.74, -0.49, back),
+    );
     rung
 }
 

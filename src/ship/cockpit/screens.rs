@@ -67,7 +67,8 @@ fn flown(cockpit: &Cockpit) -> Face {
         IVec2::new(step(a.x), step(a.y))
     });
     let marks = [read.course, read.body].map(|to| to.map(|to| project(to, REACH)));
-    let nothing = figures == [None; 2] && gauges == [None; 2] && level.is_none() && marks == [None; 2];
+    let nothing =
+        figures == [None; 2] && gauges == [None; 2] && level.is_none() && marks == [None; 2];
     match nothing {
         true => Face::Dark,
         false => Face::Flight(figures, gauges, level, marks),
@@ -107,7 +108,10 @@ impl Screen {
             (Screen::Flight, Face::Flight([speed, height], gauges, level, marks)) => {
                 let speed = speed.map(|at| words(at, true));
                 let height = height.map(|at| words(at, false));
-                let figures = [(speed.as_deref(), gauges[0]), (height.as_deref(), gauges[1])];
+                let figures = [
+                    (speed.as_deref(), gauges[0]),
+                    (height.as_deref(), gauges[1]),
+                ];
                 flight(figures, level, marks)
             }
             (Screen::Status, Face::Status(lamps)) => status(lamps),

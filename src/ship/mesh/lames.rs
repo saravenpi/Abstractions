@@ -41,8 +41,13 @@ fn on_top(x: f32, share: f32) -> Vec3 {
 /// Adds a plate on the top of the right wing between the spans `x` and the chord shares `chord`,
 /// sunk into the wing and standing `lift` metres over it.
 fn tile(solid: &mut Solid, x: (f32, f32), chord: (f32, f32), lift: f32) {
-    let base = [(x.0, chord.0), (x.1, chord.0), (x.1, chord.1), (x.0, chord.1)]
-        .map(|(x, share)| on_top(x, share) - Vec3::Y * SEAT.0);
+    let base = [
+        (x.0, chord.0),
+        (x.1, chord.0),
+        (x.1, chord.1),
+        (x.0, chord.1),
+    ]
+    .map(|(x, share)| on_top(x, share) - Vec3::Y * SEAT.0);
     solid.plate(base, Vec3::Y * (SEAT.0 + lift));
 }
 

@@ -106,7 +106,10 @@ fn foot() -> Solid {
     ];
     let mut foot = Solid::default();
     solid(&mut foot, &sections, |_, _| 0);
-    foot.slab(Vec3::new(-0.07, low + 0.05, -0.1), Vec3::new(0.07, low + 0.16, 0.1));
+    foot.slab(
+        Vec3::new(-0.07, low + 0.05, -0.1),
+        Vec3::new(0.07, low + 0.16, 0.1),
+    );
     foot
 }
 

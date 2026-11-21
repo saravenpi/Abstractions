@@ -74,3 +74,25 @@ The owner missed the distance fog: at 54 km of clear-day sight the haze was invi
 - `AEROSOL` now gives 23 km on an ordinary dry day (the standard rural air of the aerosol models), about 10 km in the damp air under a whole cover of cloud (`WeatherLook.damp`, `DAMP_FOG`), 3 km in heavy rain, 800 m in a dust storm. Dusty air (`Air::dust`, the tint that stains the sky) doubles the aerosols. The aerosols thin with the square root of the pressure, the gas with the pressure.
 - The ground shader works the haze out per point (`aerial` in `daylight.wesl`): the mean of the gas and aerosol layers between the height of the camera and the height of the point, so valleys and the sea fill and peaks stand clear. It reads the layers from `fog.directional_light_color.rgb` (gas, aerosol, scale height) and `fog.directional_light_exponent` (cloud whiteout), which Bevy leaves unread while the alpha is 0. Standard materials, the grass and the sea keep Bevy's uniform fog at the mean between the camera and the ground under it.
 - The haze takes the glow of the dome around the star (`star_glow`, the two lobes of `sky.wesl`), so ridges under a low star fade warm.
+
+## light3 pass (2026-11-21): golden light, fill, sunset band, cheaper shadows
+
+Found from the rel-haze57 shots
+- Sunset and dusk skies and clouds were green: the white balance adapted (CAT02, degree near 1) to the light at the camera, which a low star reddens. Dividing the beige horizon by that orange light gives teal-green; adapting to the blue night ambient gives grey-green dusks.
+- Shadowed faces were black: day sky 350 against a 12,000 lux sun is 11 to 1 on level ground.
+- The whole horizon turned orange at sunset, the anti-sun side too.
+- Cloud undersides took the saturated sky colour and read blue.
+
+Changed
+- `exposure/balance.rs`: the white is `PlaceUniform::noon()`, the light of the place with the star overhead, at every hour. Noon looks as before; sunrise and sunset stay warm; night stays blue.
+- `Palette::DAY_AMBIENT` 350 to 650 (6 to 1), `REFERENCE_LUX` 13,000 to 14,000.
+- `palette.rs` `HORIZON_WARMTH` 0.45 (was a power of 0.7) and `sunset_band` in `sky.wesl` and in `star_glow` of `daylight.wesl` (same function, test `tests_sunset`): a warm band on the horizon under a low star, gone above a sine of 0.35.
+- `clouds.wesl`: undersides `mix(white, sky, 0.45)` at 0.62 of the lit side.
+- Cloud shadows opt-in (`Lighting::cloud_shade`, old key `cloud_shadows` dropped once), outside the presets.
+- Coarse nodes and the far planet are `NotShadowCaster` and `Shadowless` (`world/chunks/dither.rs`).
+
+Not done
+- The fog knobs still ride in `fog.directional_light_color` and its exponent (`fog_for`).
+- The low sun stays bright (54 percent of noon at 3 degrees): `transmit` has no aerosol term.
+- Tonemapper: TonyMcMapface desaturates mid tones; an A/B against AcesFitted or AgX is worth one build.
+- Shadows end at 110 m; ridges cast no long shadows at golden hour.

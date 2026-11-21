@@ -40,6 +40,13 @@ impl FlatMesh {
         normal
     }
 
+    /// Gives the last two triangles added the normal `normal` at every corner, so they are lit
+    /// like the ground they hang from rather than by their own slant.
+    pub fn relight(&mut self, normal: Vec3) {
+        let from = self.normals.len().saturating_sub(6);
+        self.normals[from..].fill(normal.to_array());
+    }
+
     /// Gives the next triangle added the turf coordinates `uvs` of its three corners: the second uv set
     /// the ground shader reads its carpet from. Triangles added without any read as bare.
     pub fn turf(&mut self, uvs: [[f32; 2]; 3]) {

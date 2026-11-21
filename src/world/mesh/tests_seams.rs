@@ -35,9 +35,13 @@ fn open_gap(terrain: &Terrain, fine: ChunkId) -> f32 {
         ..fine
     };
     let ((near, n_fine), (far, n_coarse)) = (heights(terrain, fine), heights(terrain, coarse));
+    let relief = |rows: &[Vec<f32>]| {
+        let all = rows.iter().flatten();
+        all.clone().fold(f32::MIN, |a, b| a.max(*b)) - all.fold(f32::MAX, |a, b| a.min(*b))
+    };
     let skirts = (
-        skirt_depth(terrain, fine, n_fine),
-        skirt_depth(terrain, coarse, n_coarse),
+        skirt_depth(terrain, (fine, n_fine), relief(&near)),
+        skirt_depth(terrain, (coarse, n_coarse), relief(&far)),
     );
     let half = f32::from(u8::from(fine.y % 2 == 1)) * 0.5;
     (0..=n_fine)

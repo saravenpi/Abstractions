@@ -4,7 +4,9 @@ use bevy::prelude::*;
 
 use crate::world::shapes::FlatMesh;
 
-/// Adds one wall from the edge `top` down to `bottom`, facing `out`, in `color`.
+/// Adds one wall from the edge `top` down to `bottom`, facing `out`, in `color`, lit as the
+/// ground at its top is: a wall seen through a crack or at a grazing angle shows the tone of the
+/// ground around it, not a dark side.
 fn wall(mesh: &mut FlatMesh, top: [Vec3; 2], bottom: [Vec3; 2], color: [f32; 4], out: Vec3) {
     let ([a, b], [a2, b2]) = (top, bottom);
     if (b - a).cross(b2 - a).dot(out) > 0.0 {
@@ -14,6 +16,7 @@ fn wall(mesh: &mut FlatMesh, top: [Vec3; 2], bottom: [Vec3; 2], color: [f32; 4],
         mesh.tri(a, b2, b, color);
         mesh.tri(a, a2, b2, color);
     }
+    mesh.relight((a - a2).normalize_or(Vec3::Y));
 }
 
 /// Adds the four skirts of a grid of `n` by `n` cells.

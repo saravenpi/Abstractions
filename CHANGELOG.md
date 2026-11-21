@@ -86,6 +86,9 @@ Players and servers must both run 0.11.0: the multiplayer protocol and the world
 - The map follows the real scale: a visited system reveals the stars within 10 light-years, and a system chart spaces orbits by the logarithm of the distance.
 - The compass at the top shows icons only, on one row: no names and no distances, which are on the map and on the markers over the world. Marks that would overlap are nudged apart, and friends past a limit fold into the last one with a count. It shows the home mark only on the planet of your base.
 - The planet card fits a 720 pixel window: the facts are compacted and pins yield room.
+- The title screen is a slideshow of pictures of the game. Each one drifts slowly and the next fades in over it, and it opens on a different picture each time. The main menu sits on a translucent panel, so the picture shows at full light around it.
+- F1 hides the whole interface in the world and shows it again: a clean view for a screenshot. Menus and the map still open. The key is listed in Options, Help.
+- Options, General, Reduce motion stops the drift of the title pictures and changes them with a short fade.
 
 ### Multiplayer
 

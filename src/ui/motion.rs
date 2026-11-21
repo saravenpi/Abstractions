@@ -1,6 +1,7 @@
 //! Durations of every interface animation, in seconds.
 //!
 //! Rules: ease-out only, no bounce, no overshoot, no looping pulse except the warp spool bar.
+//! The title slideshow loops, but it is a slow drift and a cross-fade, never a pulse.
 
 /// Fade of hints, banners, tooltips and HUD elements that change context.
 pub const FADE: f32 = 0.12;
@@ -12,6 +13,13 @@ pub const PANEL_SLIDE: f32 = 8.0;
 pub const LEVEL_FADE: f32 = 0.20;
 /// Time the pointer rests on an icon before its tooltip shows.
 pub const TOOLTIP_DELAY: f32 = 0.4;
+/// Seconds from one picture of the title slideshow to the next, the cross-fade included.
+pub const SLIDE: f32 = 12.0;
+/// Seconds of the cross-fade between two pictures of the title slideshow, at the end of [`SLIDE`].
+pub const SLIDE_FADE: f32 = 1.5;
+/// Share of its size a picture of the title slideshow grows or shrinks by while it shows, a
+/// ratio: the slow drift that keeps it from ever standing still.
+pub const SLIDE_DRIFT: f32 = 0.04;
 
 /// Returns `t` eased out: fast at the start, slow at the end. `t` is clamped to 0 to 1.
 pub fn ease_out(t: f32) -> f32 {

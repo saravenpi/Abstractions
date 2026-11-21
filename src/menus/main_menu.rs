@@ -8,7 +8,7 @@ use super::recall::{Entry, LastEntry};
 use super::update::{check_item, offer};
 use super::{Menu, Nav};
 use crate::saves::{SaveDir, Starter, WorldEntry, list};
-use crate::ui::{Icon, Tone, column, icon, item, item_with, label, root, rule, text, theme};
+use crate::ui::{Icon, Tone, column, icon, item, item_with, label, root_on, rule, text, theme};
 
 /// Resumes the world stored in this component.
 #[derive(Component)]
@@ -46,11 +46,32 @@ fn continue_item(name: &str) -> impl Bundle {
     )
 }
 
-/// The overlay root with the title and a rule.
+/// Marks the panel of the main menu: the one translucent column the name of the game, the
+/// update line and the entries sit on, so they read over any picture of the title screen.
+#[derive(Component)]
+pub struct Board;
+
+/// The overlay root. It has no veil: the title picture behind it shows at full light.
 fn frame() -> impl Bundle {
     (
         DespawnOnExit(Menu::Main),
-        root(),
+        root_on(Color::NONE, JustifyContent::FlexStart),
+    )
+}
+
+/// The panel with the name of the game and a rule. It pads its content and reaches out by the
+/// same amount, so the name stands where the heading of every other menu stands.
+fn board() -> impl Bundle {
+    (
+        Board,
+        Node {
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::FlexStart,
+            padding: UiRect::all(px(theme::S4)),
+            margin: UiRect::all(px(-theme::S4)),
+            ..default()
+        },
+        BackgroundColor(theme::PANEL),
         children![text("Abstractions", theme::FONT_TITLE, theme::TEXT), rule()],
     )
 }
@@ -66,12 +87,13 @@ fn add(
     (index, spawned.id())
 }
 
-/// Spawns the title, a rule and the menu items, and focuses the entry used last. The line about
+/// Spawns the panel with the title, a rule and the menu items, and focuses the entry used last. The line about
 /// a newer release sits above the items, hidden until there is one, and never takes the focus.
 fn spawn(mut commands: Commands, dir: Res<SaveDir>, last: Res<LastEntry>) {
     let menu = commands.spawn(frame()).id();
+    let board = commands.spawn((board(), ChildOf(menu))).id();
     let items = commands
-        .spawn((column(px(theme::MENU_WIDTH), 0.0), ChildOf(menu)))
+        .spawn((column(px(theme::MENU_WIDTH), 0.0), ChildOf(board)))
         .id();
     commands.spawn((offer(), ChildOf(items)));
     let mut entries = Vec::new();

@@ -34,7 +34,7 @@ pub mod units;
 mod widgets;
 
 pub use backdrop::{Backdrop, Blurred, backdrop_luminance, contrast, warm_up};
-pub use camera::{MIN_WIDTH, ui_scale, ui_scale_for};
+pub use camera::{MIN_WIDTH, WorldView, ui_scale, ui_scale_for};
 pub use chrome::{action, footer, heading, key_cap, notice, strip};
 pub use focus::move_focus;
 pub use icon::{ICON_FONT, ICONS_VERSION, Icon, icon, icon_sized, icon_slot};

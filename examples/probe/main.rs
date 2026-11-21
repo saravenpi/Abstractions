@@ -18,6 +18,10 @@
 //! - `PROBE_SOFT`: when set, a system whose parameters fail validation is logged and skipped instead of
 //!   stopping the game, so one run lists every such system.
 //!
+//! `PROBE_STAGES=postcards` takes the clean pictures for the website and the title screen, stages `p01-home`
+//! to `p22-river` (see the `postcards` module). It is left out of a run of all groups. Without `SMOKE_SEED` it
+//! plays seed 18. `PROBE_SIZE=1920x1080` sets the window size and `POSTCARD_SETTLE` the frames a card waits.
+//!
 //! `PROBE_STAGES=models` opens the model studio (see the `models` module): the robot and the companion alone.
 //!
 //! `PROBE_STAGES=zoo` does not tour the game. It shows every animal of the seed's home planet walking in a
@@ -55,6 +59,10 @@ mod boot;
 mod burn;
 mod cabin;
 mod camera;
+mod cards_air;
+mod cards_foot;
+mod cards_land;
+mod cards_life;
 mod foot;
 mod grass;
 mod ground;
@@ -68,6 +76,7 @@ mod mp;
 mod mpact;
 mod mpspot;
 mod orbital;
+mod postcards;
 mod room;
 mod screens;
 mod seen;
@@ -89,6 +98,10 @@ use boot::*;
 use burn::*;
 use cabin::*;
 use camera::*;
+use cards_air::*;
+use cards_foot::*;
+use cards_land::*;
+use cards_life::*;
 use foot::*;
 use grass::*;
 use ground::*;
@@ -101,6 +114,7 @@ use mp::*;
 use mpact::*;
 use mpspot::*;
 use orbital::*;
+use postcards::*;
 use room::*;
 use screens::*;
 use seen::*;
@@ -150,6 +164,14 @@ fn main() -> AppExit {
     app.add_systems(
         PostUpdate,
         lower.after(bevy::transform::TransformSystems::Propagate),
+    );
+    app.init_resource::<Tripod>();
+    app.add_systems(Startup, size_window);
+    app.add_systems(
+        PostUpdate,
+        tripod
+            .after(bevy::transform::TransformSystems::Propagate)
+            .after(hold),
     );
     app.init_resource::<Tris>();
     app.add_systems(Last, (measure, count_tris, probe));

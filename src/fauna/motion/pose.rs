@@ -7,6 +7,7 @@
 
 use bevy::math::{Quat, Vec2, Vec3};
 
+use super::brace::{held, pawed};
 use super::frame::Role;
 use super::ik::{three_bone, two_bone, unit};
 use super::look::tilt;
@@ -33,9 +34,7 @@ impl Motion {
     /// Returns the place, rotation and scale of every part of `body`, in the order of its parts,
     /// all in the local frame. `body` must be the body the motion was made for.
     pub fn pose(&self, body: &Body) -> Vec<Placed> {
-        let raise = self.sung().map_or(0.0, |s| s.raise(body.height));
-        let held = (self.root.place + Vec3::Y * raise, self.root.turn);
-        let root = self.brace.placed(held, body.height);
+        let root = held(self, body);
         let mut placed: Vec<Placed> = Vec::with_capacity(body.parts.len());
         let mut stack = [[Vec3::ZERO; 4]; ON_STACK];
         let mut heap = Vec::new();
@@ -91,7 +90,10 @@ impl Motion {
         let song = self.sung();
         match role {
             Role::Head => tilt(self.look.at + Vec2::Y * song.map_or(0.0, Song::pitch), turn),
-            Role::Jaw => Quat::from_axis_angle(turn * Vec3::X, -JAW * song.map_or(0.0, Song::open)),
+            Role::Jaw => {
+                let open = song.map_or(0.0, Song::open).max(self.brace.gape);
+                Quat::from_axis_angle(turn * Vec3::X, -JAW * open)
+            }
             Role::Wing(side) => {
                 Quat::from_axis_angle(turn * Vec3::Z, self.beat.wing * f32::from(side))
             }
@@ -137,9 +139,9 @@ impl Motion {
     /// joints repeated for a shorter leg.
     fn limb(&self, body: &Body, i: usize, hip: Vec3) -> [Vec3; 4] {
         let leg = &body.legs[i];
-        let foot = self.feet.get(i).map_or(hip, |f| f.at);
         let turn = self.root.turn;
         let reach: f32 = leg.lengths.iter().sum();
+        let foot = pawed(self, leg, self.feet.get(i).map_or(hip, |f| f.at), reach);
         let bend = match leg.knee {
             Knee::Forward => turn * Vec3::NEG_Z,
             Knee::Back => turn * Vec3::Z,

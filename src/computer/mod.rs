@@ -128,7 +128,9 @@ pub use atlas::Atlas;
 pub use board::{Board, VISIBLE_ROWS};
 pub use chart::{Dot, FILL, GRID, chart, hit, mark, span};
 pub use coast::keyed;
-pub use course::{Act, Ask, HERE, NO_PLACE, Press, arrival, card_line, hud_line, press, running};
+pub use course::{
+    Act, Ask, HERE, NO_PLACE, Press, arrival, card_line, hud_line, press, running, status_line,
+};
 pub use draw::side;
 pub use go::Go;
 pub use hand::{Hand, to_map, turn};

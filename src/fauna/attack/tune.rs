@@ -103,3 +103,18 @@ pub const OFF_BALANCE: f32 = 0.2;
 /// Commitment of each attack, in the order of [`super::kinds::Kind`]: how much of its body goes into
 /// it, from 0 to 1. A charge throws the whole weight, a bite only the head.
 pub const COMMIT: [f32; 6] = [1.0, 0.3, 0.6, 0.5, 0.4, 0.8];
+
+/// Radians a bite or a lunge draws the neck back about its root in the wind-up, head up and back.
+pub const DRAW_BACK: f32 = 0.4;
+
+/// Radians a charge drops the head about the root of the neck, horns forward.
+pub const HEAD_DOWN: f32 = 0.35;
+
+/// How high a swipe lifts the forefoot and how far ahead it strikes, as shares of the leg.
+pub const PAW: [f32; 2] = [0.45, 0.8];
+
+/// How high a trample lifts the forefeet and how far ahead it stamps them down, as shares of the leg.
+pub const STAMP: [f32; 2] = [0.5, 0.25];
+
+/// Radians a tail sweep cocks the tail to one side in the wind-up and sweeps it through to the other.
+pub const LASH: f32 = 0.45;

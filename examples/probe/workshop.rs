@@ -55,12 +55,16 @@ fn shoot(world: &mut World, name: &str) {
     shot(world, name);
 }
 
-/// Empties the pack and the bench, and opens the screen on `pack_key`.
+/// Empties the pack, marked kitted so the starting kit does not fill it again, and the bench, and
+/// opens the screen on `pack_key`.
 fn start(world: &mut World, pack_key: KeyCode, frame: u32) {
     if frame == 1 {
         tidy(world);
         view(world, ViewMode::First, ViewMode::First);
-        *world.resource_mut::<Pack>() = Pack::default();
+        *world.resource_mut::<Pack>() = Pack {
+            kitted: true,
+            ..Pack::default()
+        };
         *world.resource_mut::<Bench>() = Bench::default();
     }
     tap(world, pack_key, frame, 10);

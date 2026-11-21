@@ -55,6 +55,8 @@ mod tests_rows;
 mod tests_shown;
 #[cfg(test)]
 mod tests_size;
+#[cfg(test)]
+mod tests_status;
 mod units;
 
 pub use climate::HudWeather;

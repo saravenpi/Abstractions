@@ -1,13 +1,14 @@
 //! The flat map of a planet as it is looked at: its lens and what the pointer does on it, the
 //! lens easing to its goal, and the sheet the planet is drawn on following the lens.
 
-use bevy::math::DVec3;
+use bevy::math::{DVec2, DVec3};
 use bevy::prelude::*;
 
 use super::level::{Level, first};
 use super::me::Me;
 use super::planet::Tile;
-use crate::computer::{Hand, Lens, SIZE};
+use super::sight::Sight;
+use crate::computer::{Hand, SIZE};
 
 /// How fast the lens closes the gap to its goal, per second, as on the charts.
 const EASE: f32 = 12.0;
@@ -16,9 +17,9 @@ const EASE: f32 = 12.0;
 #[derive(Resource, Debug, Clone, Default, PartialEq)]
 pub struct Surface {
     /// The zoom and the centre of the map as it is drawn.
-    pub lens: Lens,
+    pub lens: Sight,
     /// The zoom and the centre the map eases to.
-    pub goal: Lens,
+    pub goal: Sight,
     /// True while the pointer is over the map.
     pub over: bool,
     /// The pixel of the map the pointer is at, counted as the lens counts them.
@@ -40,7 +41,7 @@ pub struct Surface {
     /// The selected marker, by its place in the list of drawn markers.
     pub chosen: Option<usize>,
     /// The lens the next planet opened is looked through, when Back returns to it.
-    pub again: Option<Lens>,
+    pub again: Option<Sight>,
 }
 
 /// Marks the sheet the flat map is drawn on, which the lens moves and sizes.
@@ -88,7 +89,7 @@ pub(super) fn slide(
     mut sheets: Query<&mut Node, With<PlanetSheet>>,
     mut tiles: Query<(&Tile, &mut Node), Without<PlanetSheet>>,
 ) {
-    let corner = surface.lens.to_map(Vec2::new(-1.0, 1.0)) / SIZE * 100.0;
+    let corner = surface.lens.to_map(DVec2::new(-1.0, 1.0)) / SIZE * 100.0;
     let side = percent(surface.lens.zoom * 100.0);
     let wanted = (percent(corner.x), percent(corner.y), side, side);
     for mut node in &mut sheets {
@@ -96,7 +97,7 @@ pub(super) fn slide(
             (node.left, node.top, node.width, node.height) = wanted;
         }
     }
-    let turn = (surface.lens.centre.x * 0.5).round();
+    let turn = (surface.lens.centre.x * 0.5).round() as f32;
     for (Tile(east), mut node) in &mut tiles {
         let left = percent((turn + f32::from(*east)) * 100.0);
         if node.left != left {

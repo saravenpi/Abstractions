@@ -2,6 +2,7 @@
 //! pointer from the whole planet to the ground, panning, and looking at the player again.
 
 use bevy::input::mouse::AccumulatedMouseScroll;
+use bevy::math::DVec2;
 use bevy::prelude::*;
 
 use crate::computer::{Hand, RESET_KEY, Typing, ZOOM_STEP, keyed, turn};
@@ -42,7 +43,7 @@ pub(crate) fn recentre(
     }
     let here = me.spot().filter(|(on, _)| *on == body);
     let x = surface.goal.centre.x;
-    surface.goal.centre = here.map_or(Vec2::ZERO, |(_, at)| copy_near(to_chart(at), x));
+    surface.goal.centre = here.map_or(DVec2::ZERO, |(_, at)| copy_near(to_chart(at), x));
     surface.goal = framed(surface.goal);
 }
 

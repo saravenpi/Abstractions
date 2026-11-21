@@ -48,6 +48,7 @@ mod wing;
 #[cfg(test)]
 mod tests;
 
+pub use dust::{Soil, soil};
 pub use input::AvatarPose;
 pub use looks::Looks;
 pub use marks::{Marked, Marks};

@@ -27,6 +27,9 @@
 //! - `cruise` drops the ship at the arrival shell over the far side of the home planet, presses the home key
 //!   and shoots the orbital cruise, the glide into the air and its end near the base, with the HUD shown
 //!   (see the `cruise` module). Run it with `SMOKE_SEED=57`.
+//! - `dust` hovers the ship 5, 15 and 40 m over sand, over grass and over the sea near the base and
+//!   takes off from grass, shot from outside, to see the dust and the spray of its jets (see the
+//!   `dust` module). Run it with `SMOKE_SEED=57`. It is left out of a run of all groups.
 //! - `SMOKE_ONLY` and `SMOKE_SKIP`: comma lists of stage names to keep or to leave out.
 //! - `SMOKE_TARGET` and `SMOKE_FLASH`: see the `warp` and `boot` stages.
 //! - `PROBE_JOIN=<address>`: join that server instead of starting a world, with `PROBE_NAME` as the player name
@@ -94,6 +97,7 @@ mod cards_life;
 mod cloud;
 mod coarse;
 mod cruise;
+mod dust;
 mod entry;
 mod feel;
 mod foot;
@@ -156,6 +160,7 @@ use cards_life::*;
 use cloud::*;
 use coarse::*;
 use cruise::*;
+use dust::*;
 use entry::*;
 use feel::*;
 use foot::*;

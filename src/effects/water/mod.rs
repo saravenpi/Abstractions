@@ -25,6 +25,7 @@ pub use churn::Churn;
 use super::eye::grounded;
 use crate::render::warm_material;
 use crate::screens::{Screen, playing};
+use crate::space::Anchor;
 use crate::world::{Liquid, Terrain};
 
 /// Run condition: some drop may still fly.
@@ -35,6 +36,13 @@ fn awake(drops: Res<drops::Drops>) -> bool {
 /// Run condition: the planet under the anchor has a sea.
 fn has_sea(terrain: Option<Res<Terrain>>) -> bool {
     terrain.is_some_and(|terrain| Liquid::of(terrain.globe()).shown)
+}
+
+/// Returns true when the ground under render position `at` lies below the sea, so that what
+/// blows on it from above meets water and not dry land.
+fn wet(terrain: &Terrain, anchor: &Anchor, at: Vec3) -> bool {
+    let chart = terrain.locate(anchor.to_frame(at));
+    terrain.height(chart.x, chart.z) < terrain.globe().sea_level()
 }
 
 /// Registers the pooled drops and foam and the systems that churn the sea.

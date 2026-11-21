@@ -4,6 +4,7 @@ use bevy::light::NotShadowCaster;
 use bevy::material::OpaqueRendererMethod;
 use bevy::prelude::*;
 
+use super::disc::soft_disc;
 use super::kind::Kind;
 use super::shed::SLOTS;
 use crate::screens::Screen;
@@ -64,6 +65,8 @@ pub struct Pool {
     pub quad: Handle<Mesh>,
     /// Diamond mesh for leaves and petals.
     pub diamond: Handle<Mesh>,
+    /// Soft round disc for the drops of spray and the bubbles: see [`soft_disc`].
+    pub disc: Handle<Mesh>,
     /// Material for each look.
     pub looks: Vec<(Kind, Handle<StandardMaterial>)>,
     /// Leaf material of each slot of the plants nearby, in the colour of the plant of the slot.
@@ -127,6 +130,7 @@ pub fn build(
     commands.insert_resource(Pool {
         quad: meshes.add(Rectangle::new(1.0, 1.0)),
         diamond: meshes.add(RegularPolygon::new(0.5, 4)),
+        disc: meshes.add(soft_disc()),
         looks,
         leaves,
         petals,

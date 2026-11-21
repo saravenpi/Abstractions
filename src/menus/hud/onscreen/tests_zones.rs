@@ -4,7 +4,7 @@
 
 use bevy::prelude::*;
 
-use super::place::place;
+use super::place::{Frustum, place};
 use super::tune::HALF;
 use super::zones::{fit, safe};
 use crate::craft::ui::hotbar::SIDE;
@@ -68,7 +68,11 @@ fn directions() -> Vec<Vec3> {
 /// Returns where a marker for a target in `dir` is drawn on `screen`, with its neighbours of
 /// the HUD taken into account.
 fn drawn(dir: Vec3, screen: Vec2, seated: bool) -> Vec2 {
-    fit(place(dir, FOV, screen, safe(screen)).pos, screen, seated)
+    fit(
+        place(dir, Frustum::whole(FOV, screen), safe(screen)).pos,
+        screen,
+        seated,
+    )
 }
 
 /// Asserts that on `screen`, `seated` or not, no marker covers another element of the HUD or

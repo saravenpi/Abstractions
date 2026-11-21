@@ -168,7 +168,7 @@ pub(super) fn show(
     mut strips: Strips,
     mut fades: Local<[Fade; SLOTS]>,
 ) {
-    let Some((camera, screen, fov)) = sight(&lens) else {
+    let Some((camera, screen, frustum)) = sight(&lens) else {
         return;
     };
     let (eye, dir) = (camera.translation(), camera.forward().as_vec3());
@@ -191,7 +191,7 @@ pub(super) fn show(
         let shown = fades[slot].animal.and_then(|animal| {
             let (_, beast, placed) = beasts.get(animal).ok()?;
             let name = &life?.species.get(usize::from(beast.index))?.name;
-            let pos = over(top((animal, placed), &parts), camera, (fov, screen))?;
+            let pos = over(top((animal, placed), &parts), &camera, (frustum, screen))?;
             Some((beast.wits.health.share(), name.as_str(), hung(pos, screen)))
         });
         draw(&mut strips, slot, shown, fades[slot].alpha);

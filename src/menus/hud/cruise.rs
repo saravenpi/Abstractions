@@ -25,6 +25,8 @@ pub struct Said {
     pub note: Option<Note>,
     /// Whether the home base stands on the planet below.
     pub home: bool,
+    /// Height in metres above sea level the cruise holds.
+    pub held: f64,
 }
 
 /// What the cruise puts on the prompt line, each with the key that does it. `taken` is true when
@@ -51,8 +53,9 @@ pub fn clock(seconds: f64) -> String {
     }
 }
 
-/// Returns the line of a cruise or a glide under way, as `reading` says.
-fn under_way(regime: Regime, reading: Option<Reading>) -> String {
+/// Returns the line of a cruise or a glide under way, as `reading` says, or of a cruise with no
+/// target `held` metres up.
+fn under_way(regime: Regime, reading: Option<Reading>, held: f64) -> String {
     match (regime, reading) {
         (Regime::Glide, Some(read)) => format!("Gliding down to Home - {}", distance(read.arc)),
         (_, Some(read)) => {
@@ -61,7 +64,7 @@ fn under_way(regime: Regime, reading: Option<Reading>) -> String {
             });
             format!("Home {}, {}{glide}", distance(read.arc), clock(read.eta))
         }
-        _ => "Orbital cruise".to_string(),
+        _ => format!("Orbital cruise - {} up", distance(held)),
     }
 }
 
@@ -90,7 +93,7 @@ fn noted(note: Note, keys: &Keymap) -> Lines {
 pub fn lines(said: &Said, keys: &Keymap) -> Lines {
     let warp = keys.ship.warp;
     if said.regime != Regime::Off {
-        let running = Some((warp, under_way(said.regime, said.reading)));
+        let running = Some((warp, under_way(said.regime, said.reading, said.held)));
         return Lines {
             running,
             taken: true,
@@ -138,6 +141,7 @@ pub fn read(
         reading: orbital.reading(),
         note: orbital.note(),
         home: base.zip(at).is_some_and(|(base, at)| base.body == at.body),
+        held: orbital.height(),
     };
     lines(&said, keys)
 }

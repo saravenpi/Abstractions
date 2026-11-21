@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::place::place;
+use super::place::{Frustum, place};
 
 /// The screen the cases use, in pixels, and the rectangle icons stay in.
 const SCREEN: Vec2 = Vec2::new(1280.0, 720.0);
@@ -15,7 +15,7 @@ const FOV: f32 = 1.3;
 /// A target straight ahead lands at the centre of the screen with no arrow.
 #[test]
 fn ahead_lands_at_the_centre() {
-    let at = place(Vec3::NEG_Z, FOV, SCREEN, SAFE);
+    let at = place(Vec3::NEG_Z, Frustum::whole(FOV, SCREEN), SAFE);
     assert!((at.pos - SCREEN * 0.5).length() < 1e-3);
     assert_eq!(at.arrow, None);
 }
@@ -24,7 +24,7 @@ fn ahead_lands_at_the_centre() {
 /// with the arrow pointing left.
 #[test]
 fn left_lands_on_the_left_edge() {
-    let at = place(Vec3::NEG_X, FOV, SCREEN, SAFE);
+    let at = place(Vec3::NEG_X, Frustum::whole(FOV, SCREEN), SAFE);
     assert!((at.pos.x - SAFE.min.x).abs() < 1e-3, "{:?}", at.pos);
     assert!((at.pos.y - SCREEN.y * 0.5).abs() < 1e-2);
     let arrow = at.arrow.expect("an arrow");
@@ -39,7 +39,11 @@ fn left_lands_on_the_left_edge() {
 #[test]
 fn behind_lands_on_the_bottom_edge() {
     for up in [0.0, 0.1, 0.4] {
-        let at = place(Vec3::new(0.0, up, 1.0).normalize(), FOV, SCREEN, SAFE);
+        let at = place(
+            Vec3::new(0.0, up, 1.0).normalize(),
+            Frustum::whole(FOV, SCREEN),
+            SAFE,
+        );
         assert!(at.arrow.is_some());
         assert!((at.pos.y - SAFE.max.y).abs() < 1e-2, "{up}: {:?}", at.pos);
         assert!((at.pos.x - SCREEN.x * 0.5).abs() < 1e-2, "{up}");
@@ -49,7 +53,11 @@ fn behind_lands_on_the_bottom_edge() {
 /// A target behind and below sits on the bottom edge.
 #[test]
 fn behind_and_down_lands_on_the_bottom_edge() {
-    let at = place(Vec3::new(0.0, -0.4, 1.0).normalize(), FOV, SCREEN, SAFE);
+    let at = place(
+        Vec3::new(0.0, -0.4, 1.0).normalize(),
+        Frustum::whole(FOV, SCREEN),
+        SAFE,
+    );
     assert!((at.pos.y - SAFE.max.y).abs() < 1e-2, "{:?}", at.pos);
 }
 
@@ -57,7 +65,11 @@ fn behind_and_down_lands_on_the_bottom_edge() {
 #[test]
 fn behind_keeps_its_side() {
     for side in [-1.0_f32, 1.0] {
-        let at = place(Vec3::new(side, 0.0, 1.0).normalize(), FOV, SCREEN, SAFE);
+        let at = place(
+            Vec3::new(side, 0.0, 1.0).normalize(),
+            Frustum::whole(FOV, SCREEN),
+            SAFE,
+        );
         assert_eq!((at.pos.x - SCREEN.x * 0.5).signum(), side, "{:?}", at.pos);
         assert!(at.pos.y > SCREEN.y * 0.5, "{:?}", at.pos);
     }
@@ -66,15 +78,23 @@ fn behind_keeps_its_side() {
 /// A target straight overhead, neither ahead nor behind, sits on the top edge: look up.
 #[test]
 fn overhead_lands_on_the_top_edge() {
-    let at = place(Vec3::Y, FOV, SCREEN, SAFE);
+    let at = place(Vec3::Y, Frustum::whole(FOV, SCREEN), SAFE);
     assert!((at.pos.y - SAFE.min.y).abs() < 1e-2, "{:?}", at.pos);
 }
 
 /// The place along the border does not jump as a target passes from ahead to behind.
 #[test]
 fn the_border_is_continuous_across_the_side() {
-    let ahead = place(Vec3::new(1.0, 0.2, -0.01).normalize(), FOV, SCREEN, SAFE);
-    let behind = place(Vec3::new(1.0, 0.2, 0.01).normalize(), FOV, SCREEN, SAFE);
+    let ahead = place(
+        Vec3::new(1.0, 0.2, -0.01).normalize(),
+        Frustum::whole(FOV, SCREEN),
+        SAFE,
+    );
+    let behind = place(
+        Vec3::new(1.0, 0.2, 0.01).normalize(),
+        Frustum::whole(FOV, SCREEN),
+        SAFE,
+    );
     assert!(
         ahead.pos.distance(behind.pos) < 12.0,
         "{ahead:?} {behind:?}"
@@ -94,7 +114,7 @@ fn positions_stay_inside_the_safe_rect() {
                 pitch.sin(),
                 -yaw.cos() * pitch.cos(),
             );
-            let at = place(dir, FOV, SCREEN, SAFE);
+            let at = place(dir, Frustum::whole(FOV, SCREEN), SAFE);
             assert!(SAFE.inflate(1e-2).contains(at.pos), "{dir:?}: {:?}", at.pos);
         }
     }

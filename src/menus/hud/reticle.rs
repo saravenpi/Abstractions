@@ -133,7 +133,9 @@ pub(super) fn plugin(app: &mut App) {
             (
                 aim.run_if(aimed),
                 strike.run_if(resource_exists_and_changed::<Mark>),
-                super::foe::show.run_if(any_with_component::<crate::fauna::Beast>),
+                super::foe::show
+                    .after(super::eye::capture)
+                    .run_if(any_with_component::<crate::fauna::Beast>),
             )
                 .in_set(super::Step::Playing),
         );

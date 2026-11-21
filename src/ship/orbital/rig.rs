@@ -28,6 +28,7 @@ pub fn skim_at(planet: &PlanetSpec, height: f64) -> Skim {
         heading: DVec3::NEG_Z,
         speed: 0.0,
         height,
+        rise: 0.0,
     }
 }
 

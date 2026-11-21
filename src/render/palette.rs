@@ -71,8 +71,11 @@ impl Palette {
     /// Ambient brightness at night, low enough that torches and lamps make visible pools of light.
     pub const NIGHT_AMBIENT: f32 = 40.0;
 
-    /// Ambient brightness of the full day.
-    pub const DAY_AMBIENT: f32 = 350.0;
+    /// Ambient brightness of the full day: the light of the blue sky, which fills the shadows. Under
+    /// it level ground gets pi times as much, about 2,000 lux against the 12,000 of the star, a key
+    /// to fill of 6 to 1, where a clear day on the Earth gives 4 to 8 to 1. At 350 the shadows were
+    /// 11 times darker than the sunlit ground and read black.
+    pub const DAY_AMBIENT: f32 = 650.0;
 
     /// Illuminance in lux of the star in open space, and straight overhead through the air.
     pub const SPACE_LUX: f32 = 12_000.0;

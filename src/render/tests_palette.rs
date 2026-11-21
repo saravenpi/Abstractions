@@ -22,7 +22,10 @@ fn noon_and_midnight_differ() {
     let night = Palette::at(0.75);
     assert!(noon.sun_lux > 10_000.0 && noon.moon_lux < 1.0);
     assert!(night.sun_lux < 1.0 && (250.0..=450.0).contains(&night.moon_lux));
-    assert!(night.ambient_brightness <= 45.0 && (noon.ambient_brightness - 350.0).abs() < 1.0);
+    assert!(
+        night.ambient_brightness <= 45.0
+            && (noon.ambient_brightness - Palette::DAY_AMBIENT).abs() < 1.0
+    );
     assert!(noon.horizon.length() > night.horizon.length() * 3.0);
     assert!(night.stars > 0.99 && noon.stars < 0.01);
     let (noon, low) = (Palette::lit(0.9, Vec3::ONE), Palette::lit(0.02, Vec3::ONE));
@@ -50,7 +53,7 @@ fn frozen(height: f32, star: Vec3) -> Palette {
         zenith,
         horizon,
         ambient: Vec3::new(0.35, 0.45, 0.9).lerp(sky, day),
-        ambient_brightness: 40.0 + (350.0 - 40.0) * day,
+        ambient_brightness: 40.0 + (Palette::DAY_AMBIENT - 40.0) * day,
         sun_color: tint,
         sun_lux: 12_000.0 * (luminance(through) / full).min(1.0) * smoothstep(-0.06, 0.03, height),
         moon_lux: 350.0 * smoothstep(-0.02, 0.3, -height),

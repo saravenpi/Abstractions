@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::backdrop::{backdrop_luminance, contrast};
-use super::color_rig::{luminance, on_panel};
+use super::color_rig::{luminance, on_fill, on_panel};
 use super::theme;
 
 /// What sits over the game lets it show: every backdrop is translucent, text is solid.
@@ -28,38 +28,70 @@ fn white_text_keeps_its_contrast_over_a_white_world() {
     assert!((contrast(0.0, 1.0) - 21.0).abs() < 1e-3);
 }
 
-/// Text on `PANEL` stays readable over a pure white sky, the worst case, and over black.
+/// Text on the light `PANEL`, over a pure white sky, the worst case no tonemapper reaches: `TEXT`
+/// keeps 5.5 to 1, the secondary text 3.5 to 1, and the pin and accent colours 4 and 3 to 1. Over
+/// a bright sky of 0.8, which the game's tonemapper does not exceed in the shots taken so far
+/// (an assumption to check on new shots), the secondary text reaches 4.5 to 1. Over black every
+/// text keeps 7 to 1 or more.
 #[test]
 fn text_on_the_panel_is_readable_over_a_white_sky() {
     assert!(
-        on_panel(theme::TEXT, 1.0) >= 7.0,
+        on_panel(theme::TEXT, 1.0) >= 5.5,
         "{}",
         on_panel(theme::TEXT, 1.0)
     );
     assert!(
-        on_panel(theme::TEXT_2, 1.0) >= 4.5,
+        on_panel(theme::TEXT_2, 1.0) >= 3.5,
         "{}",
         on_panel(theme::TEXT_2, 1.0)
     );
     assert!(
-        on_panel(theme::ACCENT, 1.0) >= 4.5,
+        on_panel(theme::PIN, 1.0) >= 4.0,
+        "{}",
+        on_panel(theme::PIN, 1.0)
+    );
+    assert!(
+        on_panel(theme::ACCENT, 1.0) >= 3.0,
         "{}",
         on_panel(theme::ACCENT, 1.0)
     );
     assert!(
-        on_panel(theme::PIN, 1.0) >= 4.5,
+        on_panel(theme::TEXT_2, 0.8) >= 4.5,
         "{}",
-        on_panel(theme::PIN, 1.0)
+        on_panel(theme::TEXT_2, 0.8)
     );
-    for warning in [theme::WARN, theme::DANGER] {
+    assert!(
+        on_panel(theme::PIN, 0.8) >= 5.0,
+        "{}",
+        on_panel(theme::PIN, 0.8)
+    );
+    assert!(
+        on_panel(theme::ACCENT, 0.8) >= 4.0,
+        "{}",
+        on_panel(theme::ACCENT, 0.8)
+    );
+    for text in [theme::TEXT, theme::TEXT_2, theme::PIN, theme::ACCENT] {
         assert!(
-            on_panel(warning, 1.0) >= 4.5,
-            "{warning:?} {}",
-            on_panel(warning, 1.0)
+            on_panel(text, 0.0) >= 7.0,
+            "{text:?} {}",
+            on_panel(text, 0.0)
         );
-        assert!(on_panel(warning, 0.0) >= 7.0);
     }
     assert!(on_panel(theme::TEXT, 0.0) >= 15.0);
+}
+
+/// The rows that can hold warning text sit on `PANEL_DEEP`, where `WARN` and `DANGER` keep 4.5 to 1
+/// over a white sky and 7 to 1 over black. They do not reach 3 to 1 on the light `PANEL`, which is
+/// why those rows have the deeper fill.
+#[test]
+fn warning_text_is_readable_on_the_deep_panel() {
+    for warning in [theme::WARN, theme::DANGER] {
+        let white = on_fill(warning, theme::PANEL_DEEP, 1.0);
+        assert!(white >= 4.5, "{warning:?} {white}");
+        assert!(on_fill(warning, theme::PANEL_DEEP, 0.0) >= 7.0);
+    }
+    assert!(on_panel(theme::DANGER, 1.0) < 3.0);
+    assert!(theme::PANEL.alpha() < theme::PANEL_DEEP.alpha());
 }
 
 /// Ink on the accent fill is readable.

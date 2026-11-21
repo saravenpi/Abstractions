@@ -90,9 +90,14 @@ pub const TEXT_2: Color = Color::srgba(1.0, 1.0, 1.0, 0.72);
 pub const TEXT_OFF: Color = Color::srgba(1.0, 1.0, 1.0, 0.45);
 /// Text on an accent fill.
 pub const INK: Color = Color::srgb(0.02, 0.03, 0.04);
-/// Fill of every HUD panel and strip over the live world. At 84 percent over a darker tint, the
-/// weakest text, DANGER, keeps 4.7 to 1 over a white sky and 7.1 to 1 over a black one.
-pub const PANEL: Color = Color::srgba(0.02, 0.025, 0.035, 0.84);
+/// Fill of every HUD panel and strip over the live world: a light dark tint at 62 percent. Over a
+/// pure white sky, the worst case, `TEXT` keeps 5.8 to 1, `TEXT_2` 3.9 to 1, `PIN` 4.3 to 1 and
+/// `ACCENT` 3.2 to 1. Text in `WARN` and `DANGER` does not reach 3 to 1 on it: rows that can
+/// hold it sit on [`PANEL_DEEP`].
+pub const PANEL: Color = Color::srgba(0.02, 0.025, 0.035, 0.62);
+/// Fill of the rows that can hold `WARN` or `DANGER` text over the live world: the darker tint
+/// that keeps `DANGER` at 5 to 1 over a white sky and 7 to 1 over a black one.
+pub const PANEL_DEEP: Color = Color::srgba(0.02, 0.025, 0.035, 0.84);
 /// Fill of a big blurred panel, laid over the `Blurred` backdrop.
 pub const PANEL_BLUR: Color = Color::srgba(0.04, 0.05, 0.07, 0.55);
 /// Row under the pointer or the keyboard focus.
@@ -114,4 +119,4 @@ pub const HAIRLINE: Color = Color::srgba(1.0, 1.0, 1.0, 0.25);
 pub const CROSSHAIR: Color = Color::srgba(1.0, 1.0, 1.0, 0.8);
 
 /// Every translucent backdrop that lets the game show through.
-pub const TRANSLUCENT: [Color; 5] = [SCRIM, PANEL, PANEL_BLUR, HOVER, SELECT];
+pub const TRANSLUCENT: [Color; 6] = [SCRIM, PANEL, PANEL_DEEP, PANEL_BLUR, HOVER, SELECT];

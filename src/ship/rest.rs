@@ -7,10 +7,10 @@ use super::landing::{Contact, FRICTION};
 use bevy::math::DVec3;
 
 /// Speed in metres per second under which a ship on its gear comes to rest.
-const REST_SPEED: f64 = 0.6;
+pub(super) const REST_SPEED: f64 = 0.6;
 
 /// Spin in radians per second under which a ship on its gear comes to rest.
-const REST_SPIN: f64 = 0.2;
+pub(super) const REST_SPIN: f64 = 0.2;
 
 /// Share of the friction limit a slope may reach for the ship to rest on it.
 const REST_SLOPE: f64 = 0.9;

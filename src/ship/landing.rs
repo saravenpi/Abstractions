@@ -8,6 +8,7 @@ use bevy::math::DVec3;
 
 use super::body::Ship;
 use super::gear::{feet, locked};
+use super::rest::{REST_SPEED, REST_SPIN};
 use super::strike::{Motion, absorb, note};
 use crate::universe::PlanetSpec;
 
@@ -150,13 +151,14 @@ fn points(ship: &Ship, rig: &Rig) -> [Point; 9] {
 }
 
 /// Adds to `out` what the ground and the sea do to the point `p` of a ship moving as `motion`,
-/// which carries the `share` of the weight that each point on the ground carries. The springs
+/// which holds the `share` of the weight along the ground: what each point on the ground
+/// carries, by how still the ship is. The springs
 /// press with the depth the point keeps once the ship is set back by `out.sunk`: the depth a
 /// fast ship had when its hit was seen is not theirs to give back.
 ///
 /// The friction brakes the slip of the point and holds its share of the pull of gravity along
-/// the ground, up to the friction limit of what presses it: under that limit a ship on a slope
-/// stands still, and over it the ship slides.
+/// the ground, up to the friction limit of what presses it: under that limit a ship that has
+/// settled on a slope stands still, and over it the ship slides.
 fn touch(ship: &Ship, rig: &Rig, (p, share): (&Point, f64), motion: &Motion, out: &mut Contact) {
     let arm = ship.rot * p.body;
     let vel = motion.at(ship, p.body);
@@ -182,6 +184,16 @@ fn touch(ship: &Ship, rig: &Rig, (p, share): (&Point, f64), motion: &Motion, out
     out.torque += ship.rot.inverse() * arm.cross(accel) / super::strike::GYRATION;
 }
 
+/// Returns how still a ship moving as `motion` is, from 0 at the speed or the spin over which it
+/// cannot come to rest to 1 at a standstill. The feet hold the weight along the ground by this
+/// share: a ship that still slides or tumbles is braked as before, and one that settles is held
+/// more the slower it goes, so it stops instead of creeping down a slope.
+fn still(motion: &Motion) -> f64 {
+    let slow = 1.0 - motion.vel.length() / REST_SPEED;
+    let steady = 1.0 - motion.spin.length() / REST_SPIN;
+    slow.clamp(0.0, 1.0) * steady.clamp(0.0, 1.0)
+}
+
 /// Books on `out` what the ground and the sea of `rig` do to `ship` during one step: the hits
 /// first, then the springs, the grip and the water on what the hits left.
 fn press(ship: &Ship, rig: &Rig, out: &mut Contact) {
@@ -192,7 +204,7 @@ fn press(ship: &Ship, rig: &Rig, out: &mut Contact) {
     points.iter().for_each(|p| note(ship, rig, p, out));
     out.sunk = absorb(ship, rig, &points, &mut motion);
     let pressed = points.iter().filter(|p| p.depth > out.sunk).count();
-    let share = 1.0 / pressed.max(1) as f64;
+    let share = still(&motion) / pressed.max(1) as f64;
     points
         .iter()
         .for_each(|p| touch(ship, rig, (p, share), &motion, out));

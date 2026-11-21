@@ -1,5 +1,6 @@
 //! Tests of the landing pad of the home base: no blade, tuft or prop stands over its square, a margin of one
-//! blade past its edge, while the grass around it keeps growing.
+//! blade past its edge, while the grass around it keeps growing. The blades of the home planets may be few or
+//! none, so a lush test planet proves that blades are built and kept outside the square.
 
 use std::sync::Arc;
 
@@ -9,14 +10,17 @@ use bevy::prelude::*;
 use super::Cropped;
 use super::clear::blocked;
 use super::ground::Ground;
+use super::tests_tile::{turfed, view};
 use super::tile::grow;
 use super::tune::{PAD_MARGIN, TILE};
 use crate::home::Base;
 use crate::universe::Universe;
 use crate::world::chunks::planted;
+use crate::world::globe::{Pad, Reserve};
 use crate::world::mesh::chunk_heights;
 use crate::world::rocks::Taken;
 use crate::world::scatter::Carpet;
+use crate::world::scatter::zones::hold;
 use crate::world::{CHUNK_SIZE, Globe, Terrain};
 
 /// Metres from the middle of the pad within which tiles and chunks are checked: past its corner and its margin.
@@ -54,7 +58,7 @@ fn cells_near(terrain: &Terrain, pad: DVec3, size: f32) -> Vec<IVec2> {
 /// the margin, and blades still stand within three metres outside it.
 #[test]
 fn no_blade_stands_on_the_pad() {
-    let (mut inside, mut outside) = (0, 0);
+    let (mut inside, mut outside, mut total) = (0, 0, 0);
     for seed in 0..10 {
         let (globe, base, terrain) = base_of(seed);
         let none = Cropped::default();
@@ -68,6 +72,7 @@ fn no_blade_stands_on_the_pad() {
             let (blades, frame) = grow((&terrain, &ground), key, &carpet, true, &clear);
             for root in blades.roots().iter().step_by(3) {
                 let at = frame.origin + frame.rot * Vec3::from_array(*root).as_dvec3();
+                total += 1;
                 inside += usize::from(globe.on_pad(at, PAD_MARGIN));
                 outside += usize::from(globe.on_pad(at, PAD_MARGIN + BEYOND));
             }

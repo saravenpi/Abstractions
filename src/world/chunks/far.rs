@@ -5,6 +5,7 @@ use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::po
 
 use super::Chunks;
 use super::build::{NodeData, render_only};
+use super::dither::Way;
 use super::nodes::Node;
 use super::scene::Scene;
 use super::spawn::Spawner;
@@ -73,6 +74,28 @@ fn covered(chunks: &Chunks) -> bool {
     })
 }
 
+/// Drops the quadtree and the detail chunks at the hand-over, and lets the nodes on the screen
+/// dither out over a fade instead of vanishing on one frame: the sky draws the ball of the planet
+/// under them, sunk just under the sea, so the ground of the world melts into it. Hidden nodes go
+/// at once. `now` is the time of the fades in seconds.
+fn hand_over(chunks: &mut Chunks, commands: &mut Commands, now: f64) {
+    let live = std::mem::take(&mut chunks.nodes.live);
+    let span = chunks.fades.span;
+    chunks.drop_near(commands);
+    chunks.fades.span = span;
+    for node in live.into_values() {
+        match node.visible {
+            true => {
+                let at = (Way::Leave, now);
+                chunks
+                    .fades
+                    .begin(commands, node.entity, vec![node.entity], at);
+            }
+            false => commands.entity(node.entity).try_despawn(),
+        }
+    }
+}
+
 /// Drops the quadtree beyond the hand-over of a radius and a half, where the sky draws the planet,
 /// and streams it again under a radius and two fifths. The baked planet only stands in while the
 /// quadtree has not covered the globe yet: in between the sky draws its sharper ball.
@@ -97,7 +120,7 @@ pub fn watch_far(
     let seen = at.map_or(Range::Beyond, |at| seen(globe, at, chunks.far.active));
     let far = seen != Range::Near && chunks.far.node.is_some();
     if far && !chunks.far.active {
-        chunks.drop_near(&mut commands);
+        hand_over(chunks, &mut commands, scene.now());
     }
     chunks.far.active = far;
     let visible = seen == Range::Near && !covered(chunks);

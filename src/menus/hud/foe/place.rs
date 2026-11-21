@@ -67,30 +67,38 @@ pub fn rooted(
     }
 }
 
-/// Returns the top of an animal whose root is at `root` this frame, from the places on it and the
-/// bounds of its parts `limbs`, raised by [`HEAD`] along its up: the top of a floating body as
-/// much as the head of a walker.
-pub fn crown(root: &Transform, limbs: impl Iterator<Item = (Transform, Aabb)>) -> Vec3 {
+/// Returns the top of an animal whose root is at `root` this frame and whose body sits at `base`
+/// in that root's frame, from the places on it and the bounds of its parts `limbs`, raised by
+/// [`HEAD`] along its up: the top of a floating body as much as the head of a walker.
+pub fn crown(root: &Transform, base: Vec3, limbs: impl Iterator<Item = (Transform, Aabb)>) -> Vec3 {
     let up = root.rotation * Vec3::Y;
+    let foot = root.transform_point(base);
     let height = limbs
         .map(|(local, aabb)| {
             let centre = root.transform_point(local.transform_point(Vec3::from(aabb.center)));
             let scale = (root.scale * local.scale).abs();
-            up.dot(centre - root.translation)
-                + (Vec3::from(aabb.half_extents) * scale).max_element()
+            up.dot(centre - foot) + (Vec3::from(aabb.half_extents) * scale).max_element()
         })
         .fold(0.0_f32, f32::max);
-    root.translation + up * (height + HEAD)
+    foot + up * (height + HEAD)
 }
 
-/// Returns the top of an animal at `root` this frame whose drawn parts are `limbs`, read from
-/// `parts`: only the parts of its own body.
-pub(super) fn top(root: &Transform, limbs: &[Option<Entity>], parts: &Bounds) -> Vec3 {
+/// Returns the foot and the top of an animal at `root` this frame whose body sits at `base` in
+/// that root's frame and whose drawn parts are `limbs`, read from `parts`: only the parts of its
+/// own body.
+pub(super) fn top(
+    root: &Transform,
+    base: Vec3,
+    limbs: &[Option<Entity>],
+    parts: &Bounds,
+) -> (Vec3, Vec3) {
     let found = limbs
         .iter()
         .flatten()
         .filter_map(|limb| parts.get(*limb).ok());
-    crown(root, found.map(|(local, aabb)| (*local, *aabb)))
+    let foot = root.transform_point(base);
+    let head = crown(root, base, found.map(|(local, aabb)| (*local, *aabb)));
+    (foot, head)
 }
 
 /// The game camera as the rig placed it this frame: its own transform, the body that carries it

@@ -17,9 +17,10 @@ const LENS: (f32, Vec2) = (1.2, Vec2::new(1280.0, 720.0));
 /// Seconds in a frame at sixty frames per second.
 const FRAME: f32 = 1.0 / 60.0;
 
-/// Returns the frame position of the running animal `n` frames in: 12 m ahead, crossing at 8 m/s.
-fn running(n: u32) -> DVec3 {
-    DVec3::new(-6.0 + 8.0 * f64::from(n as f32 * FRAME), 0.0, -12.0)
+/// Returns the body position of the running animal in its root frame `n` frames in: crossing at
+/// 8 m/s while its root stays at the spawn origin.
+fn running(n: u32) -> Vec3 {
+    Vec3::new(-6.0 + 8.0 * (n as f32 * FRAME), 0.0, 0.0)
 }
 
 /// Returns the camera `n` frames in: at the eyes, turning to the right at half a radian a second.
@@ -47,28 +48,29 @@ fn anchor() -> Anchor {
     }
 }
 
-/// Returns the one part of the running animal: a block 60 cm across, its middle 60 cm up.
-fn body() -> (Transform, Aabb) {
+/// Returns the one part of an animal standing at `base` in its root frame: a block 60 cm across,
+/// its middle 60 cm above `base`.
+fn body(base: Vec3) -> (Transform, Aabb) {
     let bounds = Aabb::from_min_max(Vec3::splat(-0.3), Vec3::splat(0.3));
-    (Transform::from_xyz(0.0, 0.6, 0.0), bounds)
+    (Transform::from_translation(base + Vec3::Y * 0.6), bounds)
 }
 
 /// Each frame the label of the running animal is centred within 2 px of its head as that frame's
-/// pose places it, and the label of last frame's pose trails it by more than that.
+/// `motion.root.place` places it, while its root `Placed` stays at the spawn origin, and the label
+/// of last frame's body place trails it by more than that.
 #[test]
 fn a_label_tracks_a_running_animal() {
-    let (anchor, body) = (anchor(), body());
-    let (fov, screen) = LENS;
+    let (anchor, (fov, screen)) = (anchor(), LENS);
+    let placed = Placed {
+        pos: DVec3::new(0.0, 0.0, -12.0),
+        rot: DQuat::IDENTITY,
+    };
+    let root = rooted(Some(&anchor), &Transform::default(), Some(&placed));
     let mut trailed = 0.0_f32;
     for n in 1..40 {
-        let placed = Placed {
-            pos: running(n),
-            rot: DQuat::IDENTITY,
-        };
-        let stale = Transform::from_translation(running(n - 1).as_vec3());
-        let root = rooted(Some(&anchor), &stale, Some(&placed));
-        let head = crown(&root, [body].into_iter());
-        let truth = running(n).as_vec3() + Vec3::Y * (0.9 + HEAD);
+        let base = running(n);
+        let head = crown(&root, base, [body(base)].into_iter());
+        let truth = root.transform_point(base) + Vec3::Y * (0.9 + HEAD);
         let eye = camera(n);
         let wanted = over(truth, &eye, (Frustum::whole(fov, screen), screen))
             .expect("in view")
@@ -78,11 +80,34 @@ fn a_label_tracks_a_running_animal() {
             (shown - wanted).abs() <= 2.0,
             "frame {n}: {shown} for {wanted}"
         );
-        let late = crown(&stale, [body].into_iter());
+        let prev = running(n - 1);
+        let late = crown(&root, prev, [body(prev)].into_iter());
         trailed = trailed.max(label(late, &eye).map_or(0.0, |late| (late - wanted).abs()));
     }
     assert!(
         trailed > 2.0,
         "last frame's pose trails by only {trailed} px"
     );
+}
+
+/// An animal walking downhill below its spawn origin keeps its label over its head, not clamped at
+/// the height of its spawn origin.
+#[test]
+fn a_label_stays_over_an_animal_walking_downhill() {
+    let (anchor, (fov, screen)) = (anchor(), LENS);
+    let placed = Placed {
+        pos: DVec3::new(0.0, 0.0, -12.0),
+        rot: DQuat::IDENTITY,
+    };
+    let root = rooted(Some(&anchor), &Transform::default(), Some(&placed));
+    let base = Vec3::new(3.0, -5.0, 0.0);
+    let head = crown(&root, base, [body(base)].into_iter());
+    let truth = root.transform_point(base) + Vec3::Y * (0.9 + HEAD);
+    assert!((head - truth).length() < 1e-4, "{head} for {truth}");
+    assert!(head.y < root.translation.y, "{head} stayed at spawn height");
+    let eye = GlobalTransform::from(Transform::from_xyz(0.0, 1.6, 0.0).looking_at(truth, Vec3::Y));
+    let lens = (Frustum::whole(fov, screen), screen);
+    let wanted = over(truth, &eye, lens).expect("in view");
+    let shown = over(head, &eye, lens).expect("labelled");
+    assert!((shown - wanted).length() <= 1.0, "{shown} for {wanted}");
 }

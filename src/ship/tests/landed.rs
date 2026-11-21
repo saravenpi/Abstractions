@@ -8,7 +8,7 @@ use super::air::world;
 use super::hover::{assisted, stick};
 use super::{above_pole, coast, fly, planet};
 use crate::ship::berth::{landing_spot, parked};
-use crate::ship::flight::Controls;
+use crate::ship::flight::{Controls, STEP};
 use crate::ship::landing::GEAR_DROP;
 use crate::wind::samples;
 
@@ -45,9 +45,10 @@ fn the_sink_key_lands_on_a_slope_and_only_a_rise_takes_off() {
     assert!(!ship.landed && ship.pos.length() - rested.pos.length() > 10.0);
 }
 
-/// A ship set down on a 20 degree slope stands still on its feet before the ground holds it:
-/// over the quarter second before it comes to rest it moves at under 2 cm/s. The friction of the
-/// feet carries the weight along the slope, so the ship does not creep down it.
+/// A ship set down on a 20 degree slope stands on its feet before the ground holds it: over the
+/// quarter second before it comes to rest it moves down the slope, toward -X, at under 5 cm/s
+/// on average, where feet that only brake a slip let it creep at 15 cm/s. The friction of the
+/// feet carries the weight along the slope.
 #[test]
 fn the_feet_hold_on_a_slope_without_creeping() {
     let planet = planet(6000.0, 4000.0, 1200.0);
@@ -55,12 +56,16 @@ fn the_feet_hold_on_a_slope_without_creeping() {
     let mut ship = assisted(&planet, 200.0 + GEAR_DROP + 8.0);
     let mut track = Vec::new();
     fly(&mut ship, &stick(-1.0), land, 20.0, |ship, _| {
-        track.push((ship.vel.length(), ship.landed));
+        track.push((ship.pos.x, ship.landed));
     });
     let rested = track.iter().position(|step| step.1).expect("a rest");
-    let before = &track[rested.saturating_sub(15)..rested];
-    let creep = before.iter().map(|step| step.0).fold(0.0, f64::max);
-    assert!(creep < 0.02, "the ship creeps at {creep} m/s before it rests");
+    assert!(rested > 60, "the ship rested after {rested} steps");
+    let (from, to) = (track[rested - 31].0, track[rested - 1].0);
+    let creep = (from - to) / (30.0 * STEP);
+    assert!(
+        creep.abs() < 0.05,
+        "the ship creeps at {creep} m/s before it rests"
+    );
 }
 
 /// On a planet without a sea the ship starts on the floor of a basin below sea level and

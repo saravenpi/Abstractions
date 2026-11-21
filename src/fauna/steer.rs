@@ -6,7 +6,8 @@ use bevy::math::{Vec2, Vec3, Vec3Swizzles};
 use super::motion::{Detail, Drive, Motion};
 use super::react::{Act, Mood};
 use super::shore::shore;
-use super::tune::{APPROACH_SPEED, FLEE_SPEED, GUARD, PULL, RUSH, SETTLE};
+use super::shove::aside;
+use super::tune::{APPROACH_SPEED, BRAKE, FLEE_SPEED, GUARD, PULL, RUSH, SETTLE};
 use crate::life::body::{Body, Locomotion, slope};
 
 /// Where an animal should be and how fast its herd goes, in the animal's frame.
@@ -35,6 +36,9 @@ pub struct Pace {
     /// Height in its frame of the sea surface where it stands, which a body on the ground keeps out of;
     /// minus infinity on a world without a sea.
     pub sea: f32,
+    /// Where the local robot stands in its frame, and whether the animal is lighter than it, so that
+    /// the robot pushes it aside when it walks into it.
+    pub robot: (Vec3, bool),
 }
 
 /// Returns the height in metres a flyer or a swarm of `body` cruises at above the ground: swarms
@@ -64,14 +68,16 @@ fn graze(motion: &Motion, body: &Body, ground: &dyn Fn(Vec2) -> f32) -> Vec3 {
 
 /// Returns the velocity that takes a body going as `pace` allows from a threat `gap` away, flat in
 /// its frame, to within its strike: a stalking walk while far, a run once within [`RUSH`] metres,
-/// and a stop where its attack reaches.
+/// slowing by [`BRAKE`] over the last metres so that it stops where its attack reaches instead of
+/// running through the robot.
 fn close(gap: Vec3, pace: &Pace) -> Vec3 {
     let metres = gap.length();
     if metres <= pace.strike {
         return Vec3::ZERO;
     }
     let share = if metres < RUSH { 1.0 } else { APPROACH_SPEED };
-    gap.normalize_or_zero() * pace.top * share
+    let speed = (pace.top * share).min(BRAKE * (metres - pace.strike));
+    gap.normalize_or_zero() * speed
 }
 
 /// Returns the velocity and the look of `motion` for `body` doing what `mood` calls for, `towards`
@@ -139,14 +145,10 @@ pub fn drive(
         Locomotion::Fly | Locomotion::Swarm => ground(at.xz()) + cruise(body) - at.y,
         _ => 0.0,
     };
+    let held = hold(velocity.with_y(climb), at, body, ground);
+    let kept = shore(held, at, body, ground, pace.sea);
     Drive {
-        velocity: shore(
-            hold(velocity.with_y(climb), at, body, ground),
-            at,
-            body,
-            ground,
-            pace.sea,
-        ),
+        velocity: aside(kept, at, pace.robot, body),
         look,
         gravity: pace.gravity,
         excite: mood.alarm.max(aim.excite),

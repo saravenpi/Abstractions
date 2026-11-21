@@ -51,6 +51,7 @@ const HUNTER: Me = Me {
     cornered: false,
     guarding: false,
     grace: false,
+    provoked: false,
 };
 
 /// One animal sensing four robots spread around it over rolling ground costs under the budget.

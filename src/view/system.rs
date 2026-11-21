@@ -19,7 +19,7 @@ use crate::screens::{in_control, shown};
 use crate::settings::{Persistent, Settings};
 use crate::ship::Ship;
 use crate::space::Anchor;
-use crate::world::Terrain;
+use crate::world::{NOT_ANIMALS, Terrain};
 
 /// Whether the rig drives the game camera. Off by default.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -84,10 +84,11 @@ impl Occluder for Sight<'_, '_> {
 
 impl Sight<'_, '_> {
     /// Returns how far a sphere of `radius` travels from `origin` along `direction` before it
-    /// touches a collider the camera does not look through, within `max` metres.
+    /// touches a collider the camera does not look through, within `max` metres. The camera looks
+    /// through the bodies of the animals.
     fn collide(&self, origin: Vec3, direction: Vec3, max: f32, radius: f32) -> Option<f32> {
         let dir = Dir3::new(direction).ok()?;
-        let filter = SpatialQueryFilter::default();
+        let filter = SpatialQueryFilter::from_mask(NOT_ANIMALS);
         let seen = |entity: Entity| !self.hidden.contains(entity);
         if radius <= 0.0 {
             let hit = self

@@ -30,6 +30,7 @@ fn walk(body: &Body, goal: Vec3, ground: &dyn Fn(Vec2) -> f32, detail: Detail) -
         detail,
         strike: 2.0,
         sea: f32::NEG_INFINITY,
+        robot: (Vec3::splat(1e4), false),
     };
     let mood = Mood::default();
     (0..(SECONDS / DT) as usize)

@@ -107,6 +107,10 @@ pub const STRIKE_SHARE: f32 = 0.8;
 /// Metres from a threat within which an attacker runs at its top speed instead of stalking.
 pub const RUSH: f32 = 12.0;
 
+/// Metres per second per metre still to go at which an attacker closes on its strike: it slows over the
+/// last metres and stops where its blow reaches.
+pub const BRAKE: f32 = 3.0;
+
 /// Metres past its strike within which an animal that stands its ground goes for a threat.
 pub const GUARD: f32 = 3.0;
 
@@ -121,3 +125,9 @@ pub const WADE: f32 = 0.75;
 /// Metres under the drawn ground past which the sunk check of a dev build logs a foot of an animal.
 #[cfg(feature = "dev")]
 pub const SUNK: f32 = 0.05;
+
+/// Metres per second at which the robot standing in the body of a lighter animal pushes it aside.
+pub const SHOVE: f32 = 2.0;
+
+/// Metres from the robot within which a drawn living animal has a body the player meets.
+pub const BULK_NEAR: f64 = 30.0;

@@ -3,7 +3,8 @@
 //! An animal fights when it outweighs the threat enough, `own mass × health / threat mass` above
 //! [`FIGHT`], when it is cornered, or when it guards young; plant eaters flee anything over
 //! [`PREY_SHARE`] of their size; hungry hunters go for a robot they outweigh, never in the
-//! [`super::tune::GRACE`] after a landing.
+//! [`super::tune::GRACE`] after a landing. One that would stand its ground goes for a robot that hurt
+//! it instead, for the grudge of its temper (`crate::fauna::react::Temper::grudge`).
 
 use super::tune::{ALARM, FIGHT, PREY_SHARE, WARY};
 use crate::life::Guild;
@@ -42,6 +43,8 @@ pub struct Me {
     pub guarding: bool,
     /// True in the grace after a landing.
     pub grace: bool,
+    /// True while it goes for the robot that hurt it.
+    pub provoked: bool,
 }
 
 /// What an animal weighs about the threat.
@@ -80,7 +83,10 @@ pub fn choose(aware: f32, me: &Me, foe: &Foe) -> Stance {
     } else if aware < ALARM {
         Stance::Wary
     } else {
-        fight_or_flight(me, foe)
+        match fight_or_flight(me, foe) {
+            Stance::Threaten if me.provoked && foe.robot => Stance::Attack,
+            stance => stance,
+        }
     }
 }
 

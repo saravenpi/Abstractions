@@ -7,7 +7,7 @@ use bevy::prelude::*;
 
 use super::javelin::{Ground, Planet, Soil, cross};
 use crate::space::Anchor;
-use crate::world::{Chunks, Terrain};
+use crate::world::{Chunks, NOT_ANIMALS, Terrain};
 
 /// Metres from the drawn ground within which a collider counts as the ground itself.
 const ON_GROUND: f32 = 0.5;
@@ -39,7 +39,8 @@ pub trait Meets {
     fn meet(&self, from: Vec3, to: Vec3) -> Option<Touch>;
 }
 
-/// The world a tool moves through: the colliders but those of its own body, and the drawn ground.
+/// The world a tool moves through: the colliders but those of its own body and of the animals, whose
+/// parts a blow reaches by its own aim, and the drawn ground.
 pub struct Solids<'a, 'w, 's> {
     /// The colliders.
     world: &'a SpatialQuery<'w, 's>,
@@ -57,7 +58,7 @@ impl<'a, 'w, 's> Solids<'a, 'w, 's> {
             .as_deref()
             .zip(terrain.as_deref())
             .map(|(anchor, terrain)| Planet::new(anchor, terrain, chunks.as_deref()));
-        let filter = SpatialQueryFilter::default().with_excluded_entities([own]);
+        let filter = SpatialQueryFilter::from_mask(NOT_ANIMALS).with_excluded_entities([own]);
         Self {
             world,
             ground,

@@ -10,6 +10,7 @@
 mod attack;
 mod beast;
 pub mod bleed;
+mod bulk;
 mod fade;
 mod gate;
 mod glow;
@@ -29,6 +30,7 @@ mod roll;
 mod scan;
 pub mod senses;
 mod shore;
+mod shove;
 mod signs;
 mod site;
 mod slant;
@@ -70,6 +72,7 @@ use bevy::time::common_conditions::on_timer;
 
 pub use attack::{Attacking, Broken, Carved, Dead, Kind, slay};
 pub use beast::{Beast, Part};
+pub use bulk::{bulk, capsule};
 pub use herds::Herds;
 pub use near::{Nearby, Sighting};
 pub use want::{Lead, carcass_key};
@@ -127,5 +130,5 @@ pub(super) fn plugin(app: &mut App) {
         .add_plugins((senses::plugin, signs::plugin, attack::plugin, bleed::plugin));
     #[cfg(feature = "dev")]
     app.add_plugins(sunk::plugin);
-    app.add_plugins(guide::plugin);
+    app.add_plugins((guide::plugin, bulk::plugin));
 }

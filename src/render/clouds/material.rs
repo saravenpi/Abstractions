@@ -22,8 +22,7 @@ pub struct CloudUniform {
     pub params: Vec4,
     /// Linear colour of the sunlit clouds seen from space.
     pub space: Vec4,
-    /// Linear colour of the sky light on the shaded side of a cloud in xyz, and in w the
-    /// distance in metres at which the air hides a cloud to the contrast of the eye.
+    /// Linear colour of the sky light on the shaded side of a cloud in xyz.
     pub ambient: Vec4,
     /// Cells of the noise the puffs have drifted by, as `weather::drift` gives them.
     pub drift: Vec4,
@@ -33,6 +32,9 @@ pub struct CloudUniform {
     pub fixed_y: Vec4,
     /// Third column of that rotation.
     pub fixed_z: Vec4,
+    /// Share of red, green and blue light the air takes per metre between the camera and the
+    /// shell, in xyz: the aerial perspective that fades a far cloud into the horizon.
+    pub fade: Vec4,
 }
 
 /// Material of the cloud shell.

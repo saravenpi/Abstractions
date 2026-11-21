@@ -37,3 +37,17 @@ Not done
 - Fog colour is still the horizon colour, with no per-channel extinction. Hillaire-style aerial perspective (Bevy 0.20 ships `bevy_pbr::atmosphere` with LUTs, needs compute shaders and its own dome) was judged too large to adopt blind.
 - Far terrain beyond the streamed ground does not exist on foot, so the horizon is still fog.
 - Probe stages: `look-grain`, `look-cover`, `look-vista-light`, `look-vista-height`. On a locked home `clock_at` cannot reach a low star: fly toward the terminator.
+
+## light2 pass (2026-11-21): aerial perspective
+
+Changed
+- The camera fog is `FogFalloff::Atmospheric` fed by `render/aerial.rs` (`Haze`): gas extinction `scatter::DEPTH * depth * share / (atmosphere / 12)` per channel, aerosols `AEROSOL` in a layer 0.15 scale heights thick, thickened by `WeatherLook::sight`. `fog::extinction` takes the mean density between the camera and the ground under it, so it is exact for the ground seen from any height on a flat approximation. The fog colour is the horizon of the sky at the ground under the camera, whatever the height of the camera.
+- `fog_sight`, the fog `Height`, `OPEN`, `HORIZON_SHARE`, `FOG_DENSITY`, `FOG_END`, `AIR_VISIBILITY` and `THIN_AIR` are gone. The camera `far` is where 1 percent of red light is left (about 86 km in clear home air), capped at 100 radii.
+- `world/chunks/sight.rs`: `Eye::of` sees as far as the clear air does, so every node swap in view fades. `veil` is kept for the flight tests only.
+- `water.wesl` and `clouds.wesl` read Bevy's `fog` uniform for the colour; the clouds get their own extinction (`CloudUniform.fade`) to their height.
+
+Not done
+- The glow around a low star is on the dome only: the fog has no directional term yet, so far ridges under the star fade to the plain horizon colour.
+- Props end at the detail radius (256 m at Medium) and now show it. Coarse terrain is what the horizon is made of and smears at speed.
+- `WaterUniform.params.zw` and `FogLook.start/end` are no longer read by the shader.
+- Probe: `look-isolate` hides by taking `Mesh3d` off. Never hide through `Visibility`.

@@ -86,7 +86,7 @@ fn setup_camera(
     if let Ok(mut projection) = projections.get_mut(add.entity) {
         set_fov(&mut projection, graphics.fov);
     }
-    let key = FogKey::ground(look.palette.horizon, graphics.render_distance);
+    let key = FogKey::home(look.palette.horizon);
     commands
         .entity(add.entity)
         .insert((fog_for(key), Murk::default()));

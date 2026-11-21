@@ -22,11 +22,13 @@ const RAIN_DARK: f32 = 0.55;
 /// Share of the sky colour a full storm turns grey at the same brightness.
 const RAIN_GREY: f32 = 0.5;
 
-/// How many more times the fog closes in under full dust.
-const DUST_FOG: f32 = 3.0;
+/// How many more times than clear air the aerosols take the light under full dust: a dust storm
+/// shows about 800 m where the clear day shows 54 km.
+const DUST_FOG: f32 = 80.0;
 
-/// How many more times the fog closes in under a full storm.
-const RAIN_FOG: f32 = 1.0;
+/// How many more times than clear air the aerosols take the light under a full storm: heavy rain
+/// shows about 3 km.
+const RAIN_FOG: f32 = 20.0;
 
 /// What the weather at the camera does to the sky, each value from 0 to 1.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -44,7 +46,12 @@ impl WeatherLook {
         dust: 0.0,
     };
 
-    /// Returns the share of the clear sight the fog still leaves under this weather.
+    /// Returns the weather to draw from the report `sky`, calm without a report.
+    pub fn of(sky: Option<&LocalWeather>) -> Self {
+        sky.map_or(Self::CALM, LocalWeather::look)
+    }
+
+    /// Returns the share of the clear sight the aerosols still leave under this weather.
     pub fn sight(&self) -> f32 {
         1.0 / (1.0 + DUST_FOG * self.dust + RAIN_FOG * self.haze)
     }

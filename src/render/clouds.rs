@@ -32,10 +32,11 @@ pub(super) use map::toward_second;
 pub(super) use maps::CloudMaps;
 pub use material::{CloudMaterial, CloudUniform};
 
-use super::fog::AIR_VISIBILITY;
+use super::aerial::Haze;
 use super::palette::Palette;
 use super::sky::linear;
 use super::vantage::{LocalSystem, Vantage};
+use super::weather::LocalWeather;
 use crate::screens::Screen;
 use crate::settings::{Persistent, Settings};
 use crate::space::Clock;
@@ -89,6 +90,8 @@ pub(super) struct CloudInputs<'w> {
     weather: Option<Res<'w, Weather>>,
     /// The cover the probe forces, when it does.
     forced: Res<'w, CloudCover>,
+    /// The weather at the camera, whose rain and dust fade the far clouds sooner.
+    sky: Option<Res<'w, LocalWeather>>,
     /// The cover maps, which the shell asks for the map of the planet below.
     maps: ResMut<'w, CloudMaps>,
 }
@@ -151,9 +154,8 @@ impl CloudInputs<'_> {
                 self.forced.0.unwrap_or(0.0),
             ),
             space: air.clouds_from_space().extend(0.0),
-            ambient: linear(self.palette.ambient)
-                .truncate()
-                .extend(AIR_VISIBILITY / air.haze().max(1.0)),
+            ambient: linear(self.palette.ambient).truncate().extend(0.0),
+            fade: Haze::seen(vantage, &air, self.sky.as_deref(), radius).extend(0.0),
             drift: drifted(seconds).extend(0.0),
             fixed_x: fixed.x_axis.extend(0.0),
             fixed_y: fixed.y_axis.extend(0.0),

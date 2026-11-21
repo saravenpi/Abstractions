@@ -1,6 +1,7 @@
 //! Stages that judge the sky and the light: the same view at several hours of the day.
 
 use abstractions::render::{CloudCover, CloudShell, Palette, SkyDome, Starfield, Vantage};
+use abstractions::screens::HideHud;
 use abstractions::universe::sun;
 
 use super::*;
@@ -234,7 +235,7 @@ pub fn look_cover(world: &mut World, _: &mut Notes, frame: u32) -> Act {
 }
 
 /// Frames each shot of a vista gets: the clock and the place are set, the eye adapts, then it shoots.
-const VISTA: u32 = 130;
+const VISTA: u32 = 320;
 
 /// One shot of a vista: its name, the height of the star to move the clock to (a sine, rising or
 /// not) when the clock is to move, the cloud cover to force (`None` is no shell at all), and the
@@ -248,6 +249,8 @@ struct View {
     cover: Option<f32>,
     /// Metres over the ground.
     high: f64,
+    /// Radians the view is turned from the star, about the vertical: 0 looks at the star.
+    turn: f64,
 }
 
 /// Runs the views one after the other, `VISTA` frames each, and ends on the last shot.
@@ -259,20 +262,32 @@ fn vista(world: &mut World, frame: u32, views: &[View]) -> Act {
     };
     match at {
         0 => {
-            if let Some((height, rising)) = view.star {
-                clock_at(world, height, rising);
-            }
+            world.resource_mut::<HideHud>().0 = true;
+            let feet = match view.star {
+                Some((height, rising)) => site(world, height, rising),
+                None => player_at(world),
+            };
             world.resource_mut::<Persistent<Settings>>().graphics.clouds = view.cover.is_some();
             cover(world, view.cover);
-            let feet = player_at(world);
             let up = feet.normalize();
-            let east = up.cross(DVec3::Y).normalize_or(DVec3::X);
+            let toward = DQuat::from_axis_angle(up, view.turn) * sunward(world, feet);
+            let height = up.dot(star(world));
+            eprintln!(
+                "PROBE vista {}: at {:?} km, star height {height:.2}",
+                view.name,
+                (feet / 1000.0).round()
+            );
             match view.high > 0.0 {
                 true => {
                     let radius = world.resource::<Planet>().globe.radius();
-                    hover(world, up, feet.length() - radius + view.high, (east, 0.12));
+                    hover(
+                        world,
+                        up,
+                        feet.length() - radius + view.high,
+                        (toward, 0.12),
+                    );
                 }
-                false => gaze(world, 0.08, true),
+                false => stand(world, feet, feet + toward * 100.0, 0.08),
             }
             pace(world, ADAPT);
         }
@@ -291,24 +306,59 @@ fn vista(world: &mut World, frame: u32, views: &[View]) -> Act {
     Act::Wait
 }
 
-/// The light of a day from the ground, with broken cloud: noon, a low star near 8 degrees, the
-/// star on the horizon, twilight and night. On a turning home the clock moves to each height. On
-/// a locked home it cannot, so fly to the terminator first. Shots `V1-noon` to `V1-night`.
-pub fn look_vista_light(world: &mut World, _: &mut Notes, frame: u32) -> Act {
-    let view = |name, height, rising| View {
-        name,
-        star: Some((height, rising)),
-        cover: Some(0.45),
-        high: 0.0,
-    };
-    let views = [
-        view("V1-noon", 0.8, true),
-        view("V1-low-star", 0.14, false),
-        view("V1-horizon", 0.0, false),
-        view("V1-twilight", -0.12, false),
-        view("V1-night", -0.8, false),
+/// Radians a side-lit view is turned from the star: the star stands to the side and a little behind
+/// the camera, so slopes show a lit and a shaded face and shadows run across the picture.
+const SIDE: f64 = 2.0;
+
+/// Returns the five views of a day from the ground under a broken sky, turned `turn` radians from
+/// the star: noon, the star 8 degrees up, on the horizon, twilight and night. Their names start
+/// with `prefix`.
+fn day(prefix: &str, turn: f64) -> [View; 5] {
+    let names: &'static [[&'static str; 5]; 2] = &[
+        [
+            "V1-noon",
+            "V1-low-star",
+            "V1-horizon",
+            "V1-twilight",
+            "V1-night",
+        ],
+        [
+            "V3-noon",
+            "V3-low-star",
+            "V3-horizon",
+            "V3-twilight",
+            "V3-night",
+        ],
     ];
-    vista(world, frame, &views)
+    let names = names[usize::from(prefix == "V3")];
+    let stars = [
+        (0.8, true),
+        (0.14, false),
+        (0.0, false),
+        (-0.12, false),
+        (-0.8, false),
+    ];
+    std::array::from_fn(|k| View {
+        name: names[k],
+        star: Some(stars[k]),
+        cover: Some(0.3),
+        high: 0.0,
+        turn,
+    })
+}
+
+/// The same five hours as [`look_vista_light`] with the star to the side and behind: the lit
+/// landscape, where the key, the fill and the long shadows show. Shots `V3-noon` to `V3-night`.
+pub fn look_vista_side(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    vista(world, frame, &day("V3", SIDE))
+}
+
+/// The light of a day from the ground, with broken cloud: noon, a low star near 8 degrees, the
+/// star on the horizon, twilight and night, looking at the star. On a turning home the clock moves to
+/// each height. On a locked home the view goes where the star stands at that height, toward the
+/// terminator and past it. Shots `V1-noon` to `V1-night`.
+pub fn look_vista_light(world: &mut World, _: &mut Notes, frame: u32) -> Act {
+    vista(world, frame, &day("V1", 0.0))
 }
 
 /// The same place from the ground and from 300 m, 3 km and 30 km up, at the hour it is, each
@@ -319,6 +369,7 @@ pub fn look_vista_height(world: &mut World, _: &mut Notes, frame: u32) -> Act {
         star: None,
         cover,
         high,
+        turn: SIDE,
     };
     let views = [
         view("V2-ground-clear", Some(0.0), 0.0),

@@ -9,14 +9,18 @@
 //! the picture moves together.
 
 pub mod balance;
+mod field;
 mod tune;
 
+pub use field::Field;
 pub use tune::SUN_LIGHT;
 
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tests_balance;
+#[cfg(test)]
+mod tests_field;
 
 use std::f32::consts::PI;
 

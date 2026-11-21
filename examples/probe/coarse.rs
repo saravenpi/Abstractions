@@ -12,6 +12,7 @@ const SHOTS: (u32, u32) = (30, 420);
 fn held(world: &mut World, frame: u32, (high, pitch, name): (f64, f64, &str)) -> Act {
     match frame {
         1 => {
+            world.resource_mut::<abstractions::screens::HideHud>().0 = true;
             let at = player_at(world);
             let up = at.normalize();
             let east = up.cross(DVec3::Y).normalize_or(DVec3::X);

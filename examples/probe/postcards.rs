@@ -5,8 +5,9 @@
 //! Selected with `PROBE_STAGES=postcards`; `SMOKE_ONLY` keeps a subset, each card sets itself up
 //! from any state. The interface is hidden with the game's own switch, `HideHud`.
 //! `POSTCARD_SETTLE` is the frames a card waits for the chunks, the grass and the far ground,
-//! default 150. `PROBE_SIZE=1920x1080` sets the window size. `SMOKE_SEED` picks the world, 18
-//! by default for this group: a home that turns under a Sun-like star, so the star can be low.
+//! default 150. `PROBE_SIZE=1920x1080` sets the window size. `SMOKE_SEED` picks the world, 57
+//! by default for this group and for `look`: a home that turns under a Sun-like star with air like the
+//! Earth's, so the star can be low and the sky is blue. Seed 18 turns too but has almost no air.
 //!
 //! Most cards are shot in golden light, the star 8 degrees up ([`GOLD`]), from the side or
 //! three quarters from behind. On a planet locked to its star the clock cannot bring that light

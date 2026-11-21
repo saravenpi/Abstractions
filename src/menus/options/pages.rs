@@ -133,6 +133,13 @@ pub fn audio(active: Tab) -> impl Bundle {
         stepper("Music", Field::Music),
         stepper("Effects", Field::Effects),
     ];
-    let content = children![section(Icon::Volume, "Volume", (rows(), volume))];
+    let output = children![
+        stepper("Dynamic range", Field::Range),
+        toggle("Mono", Field::Mono),
+    ];
+    let content = children![
+        section(Icon::Volume, "Volume", (rows(), volume)),
+        section(Icon::Volume, "Output", (rows(), output)),
+    ];
     page(Tab::Audio, active, content)
 }

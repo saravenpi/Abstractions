@@ -142,6 +142,7 @@ fn volumes_are_live_and_smooth() {
             master,
             music,
             effects,
+            ..Volumes::default()
         };
         shared.publish(&scene, &volumes);
         let stats = listen(&mut mixer, 1.0);

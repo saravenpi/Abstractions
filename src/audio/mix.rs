@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use super::ambience::{Air, AirCtl};
 use super::cues::Pool;
-use super::dsp::filter::{Lag, glide, pole};
-use super::dsp::limit::{DcBlock, limit};
+use super::dsp::filter::{Lag, glide};
+use super::master::{Duck, Master, Output};
 use super::music::{Music, MusicCtl};
 use super::planet::class;
 use super::shared::{PARAMS, Param, Shared};
@@ -24,9 +24,6 @@ pub const MUSIC_GAIN: f32 = 1.0;
 
 /// Level of the ambience, ship and cue bus at full effects volume.
 pub const EFFECTS_GAIN: f32 = 1.0;
-
-/// Corner in hertz of the filter that removes any constant offset.
-const DC_HZ: f32 = 12.0;
 
 /// The whole synthesiser. Rendering a frame never allocates and never locks.
 #[derive(Debug)]
@@ -49,14 +46,14 @@ pub struct Mixer {
     suit: Suit,
     /// One-shot voices.
     cues: Pool,
-    /// Offset removal, left and right.
-    dc: [DcBlock; 2],
+    /// How the music gives way to the effects.
+    duck: Duck,
+    /// The master bus.
+    master: Master,
     /// Frames rendered in the current block.
     count: u32,
     /// Per-sample coefficient of the value smoothing.
     k: f32,
-    /// Pole of the offset removal.
-    r: f32,
 }
 
 impl Mixer {
@@ -75,10 +72,10 @@ impl Mixer {
             fleet: Fleet::new(rate, BLOCK as f32 / rate),
             suit: Suit::new(rate),
             cues: Pool::new(rate),
-            dc: [DcBlock::default(); 2],
+            duck: Duck::new(rate),
+            master: Master::new(rate),
             count: 0,
             k: glide(SMOOTH_SECONDS, rate),
-            r: 1.0 - pole(DC_HZ, rate),
         }
     }
 
@@ -145,6 +142,7 @@ impl Mixer {
         self.air.tune(&self.air_ctl(), dt);
         self.fleet.tune(&self.shared.hulls, self.cloud(), dt);
         self.suit.tune(&self.suit_ctl());
+        self.master.tune();
     }
 
     /// Renders one stereo frame, always within full scale.
@@ -165,10 +163,14 @@ impl Mixer {
             self.at(Param::Music) * MUSIC_GAIN,
             self.at(Param::Effects) * EFFECTS_GAIN,
         );
-        let (master, r) = (self.at(Param::Master), self.r);
-        [0, 1].map(|i| {
-            let sum = music[i] * wide + (air[i] + gear + ships[i] + cues[i]) * fx;
-            limit(self.dc[i].run(sum * master, r))
-        })
+        let effects = [0, 1].map(|i| (air[i] + gear + ships[i] + cues[i]) * fx);
+        let under = self.duck.gain(effects) * wide;
+        let output = Output {
+            volume: self.at(Param::Master),
+            reduced: self.at(Param::Reduced),
+            mono: self.at(Param::Mono),
+        };
+        self.master
+            .run([0, 1].map(|i| music[i] * under + effects[i]), &output)
     }
 }

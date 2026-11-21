@@ -4,8 +4,8 @@
 //! - The Pack tab lists what the robot carries, grouped by kind, each row with its
 //!   mass and the wear of a tool.
 //! - The Workshop tab asks for an intent and shows the solver's three proposals as
-//!   tool cards: a silhouette, the one reason that matters, what it takes from the pack, which the
-//!   pack pane lights, and its numbers as bars. Make takes the focused one.
+//!   tool cards: its icon, the one reason that matters, what it takes from the pack, and its
+//!   numbers as bars. Make takes the focused one.
 //! - The hotbar runs under both tabs, so a made tool is seen going into its slot.
 //! - [`hotbar`] draws the six slots at the bottom of the game while the screen is closed.
 //! - Every tool has one icon, drawn from its parts and kept as an image, in all these places;

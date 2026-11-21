@@ -4,6 +4,7 @@ mod actions;
 mod binds;
 mod describe;
 mod field;
+mod fit;
 mod format;
 mod hint;
 mod lights;
@@ -17,6 +18,8 @@ mod tests;
 mod tests_binds;
 #[cfg(test)]
 mod tests_lights;
+#[cfg(test)]
+mod tests_size;
 #[cfg(test)]
 mod tests_width;
 mod view;

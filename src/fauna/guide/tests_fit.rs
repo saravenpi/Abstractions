@@ -34,7 +34,7 @@ fn the_guide_fits_both_windows() {
 /// smallest window leaves.
 #[test]
 fn every_card_fits_the_smallest_window() {
-    let room = measure(logical(WINDOWS[0])).room;
+    let room = measure(logical(WINDOWS[0], crate::ui::ui_scale_for(WINDOWS[0].y))).room;
     let mut tallest = 0.0f32;
     for life in lives(40) {
         let mut seen = Seen::default();

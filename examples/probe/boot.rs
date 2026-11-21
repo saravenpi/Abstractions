@@ -1,10 +1,26 @@
 //! The title screen, the loading screen and the first frames of a new world.
 
+use abstractions::settings::InterfaceSize;
+
 use super::*;
 
 /// The title screen, then a new world.
 pub fn title(world: &mut World, _: &mut Notes, frame: u32) -> Act {
     match frame {
+        1 => {
+            let size = match std::env::var("PROBE_UI_SIZE").as_deref() {
+                Ok("small") => Some(InterfaceSize::Small),
+                Ok("large") => Some(InterfaceSize::Large),
+                _ => None,
+            };
+            if let Some(size) = size {
+                world
+                    .resource_mut::<Persistent<Settings>>()
+                    .gameplay
+                    .interface = size;
+            }
+            Act::Wait
+        }
         20 => {
             shot(world, "00-title");
             Act::Wait

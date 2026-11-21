@@ -32,7 +32,7 @@ pub mod units;
 mod widgets;
 
 pub use backdrop::{Backdrop, Blurred, backdrop_luminance, contrast, warm_up};
-pub use camera::ui_scale_for;
+pub use camera::{MIN_WIDTH, ui_scale, ui_scale_for};
 pub use chrome::{action, footer, heading, key_cap, notice, strip};
 pub use focus::move_focus;
 pub use icon::{ICON_FONT, ICONS_VERSION, Icon, icon, icon_sized, icon_slot};
@@ -49,6 +49,7 @@ use bevy::input_focus::InputFocus;
 use bevy::prelude::*;
 
 use crate::render::window_changed;
+use crate::settings::{Persistent, Settings};
 
 /// Registers the camera, the fonts and the overlays that draw above the game.
 fn overlay(app: &mut App) {
@@ -64,7 +65,11 @@ fn overlay(app: &mut App) {
             ),
         )
         .add_systems(Update, (fps::update, camera::sync_output, tooltip::update))
-        .add_systems(Update, camera::frame_view.run_if(window_changed));
+        .add_systems(
+            Update,
+            camera::frame_view
+                .run_if(window_changed.or(resource_exists_and_changed::<Persistent<Settings>>)),
+        );
 }
 
 /// Registers the UI camera, the fonts, the backdrop, the widget looks and the interface sounds.

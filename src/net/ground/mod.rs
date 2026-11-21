@@ -109,6 +109,7 @@ fn take_back(mut ground: ResMut<Ground>, mut pack: ResMut<Pack>) {
 /// and for the ground, which a world with no pack has not.
 pub(super) fn plugin(app: &mut App) {
     let linked = resource_exists::<Link>;
+    app.init_resource::<Ground>().init_resource::<Shed>();
     app.add_systems(
         Update,
         (
@@ -118,7 +119,9 @@ pub(super) fn plugin(app: &mut App) {
                 .run_if(linked)
                 .run_if(on_message::<FromServer>),
             send.run_if(linked).run_if(asking),
-            take_back.run_if(resource_removed::<Link>),
+            take_back
+                .run_if(resource_removed::<Link>)
+                .run_if(resource_exists::<Pack>),
         )
             .chain()
             .run_if(resource_exists::<Ground>),

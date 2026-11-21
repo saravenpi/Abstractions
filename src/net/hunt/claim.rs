@@ -70,6 +70,7 @@ fn take_back(mut claims: ResMut<Claims>, mut asks: MessageWriter<Harvest>) {
 /// Registers the answers to the cuts. Every system waits for a link, or for its end.
 pub(super) fn plugin(app: &mut App) {
     let ready = resource_exists::<Herds>.and_then(resource_exists::<Location>);
+    app.init_resource::<Claims>();
     app.add_systems(
         Update,
         (

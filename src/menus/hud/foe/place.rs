@@ -11,12 +11,13 @@ use super::{BAR, STRIP};
 use crate::fauna::Part;
 use crate::render::GameCamera;
 use crate::settings::{Persistent, Settings};
+use crate::space::{Anchor, Placed};
 
 /// Pixels between the top of the head on screen and the bottom of the strip.
 const LIFT: f32 = 8.0;
 
 /// Metres above the top of the animal the strip is anchored at.
-const HEAD: f32 = 0.15;
+pub(super) const HEAD: f32 = 0.15;
 
 /// Half the side of the square around the crosshair the strip keeps out of, in pixels: past the
 /// ticks at their widest.
@@ -32,36 +33,64 @@ pub fn over(head: Vec3, camera: &GlobalTransform, (lens, screen): (Frustum, Vec2
 }
 
 /// Returns the left and the bottom of the strip from the centre of a `screen` for a head at `pos`:
-/// centred over it, [`LIFT`] above it, lifted clear of the crosshair, on whole steps of 4 pixels.
+/// centred over it, [`LIFT`] above it, lifted clear of the crosshair, on whole pixels so it moves
+/// with its animal without steps.
 pub fn hung(pos: Vec2, screen: Vec2) -> (f32, f32) {
     let left = pos.x - screen.x / 2.0 - BAR.0;
     let bottom = screen.y / 2.0 - pos.y + LIFT;
     let across = left < CLEAR && left + 2.0 * BAR.0 > -CLEAR;
     let crossed = across && bottom < CLEAR && bottom + STRIP > -CLEAR;
     let bottom = if crossed { CLEAR } else { bottom };
-    let step = |v: f32| (v / 4.0).round() * 4.0;
+    let step = |v: f32| v.round();
     (step(left), step(bottom))
 }
 
-/// The placed bounds of the parts of the animals.
-pub(super) type Bounds<'w, 's> =
-    Query<'w, 's, (&'static GlobalTransform, &'static Aabb), With<Part>>;
+/// The parts of the animals: their places on their animal, which the walk wrote this frame, and
+/// their bounds.
+pub(super) type Bounds<'w, 's> = Query<'w, 's, (&'static Transform, &'static Aabb), With<Part>>;
 
-/// Returns the top of an animal placed at `placed` whose parts are `limbs`, from their bounds in
-/// `parts`, raised by [`HEAD`] along its up. Only its own parts are read.
-pub(super) fn top(placed: &GlobalTransform, limbs: &[Option<Entity>], parts: &Bounds) -> Vec3 {
-    let (at, up) = (placed.translation(), placed.up().as_vec3());
+/// Returns the render place of an animal this frame: from its pose in the frame, `placed`, through
+/// `anchor`, as the frame upkeep will copy it before the transforms propagate, or `transform`
+/// with no pose or no anchor. Last frame's global transform would trail a running animal.
+pub fn rooted(
+    anchor: Option<&Anchor>,
+    transform: &Transform,
+    placed: Option<&Placed>,
+) -> Transform {
+    let (Some(anchor), Some(placed)) = (anchor, placed) else {
+        return *transform;
+    };
+    Transform {
+        translation: anchor.to_render(placed.pos),
+        rotation: anchor.rotation_to_render(placed.rot),
+        scale: transform.scale,
+    }
+}
+
+/// Returns the top of an animal whose root is at `root` this frame, from the places on it and the
+/// bounds of its parts `limbs`, raised by [`HEAD`] along its up: the top of a floating body as
+/// much as the head of a walker.
+pub fn crown(root: &Transform, limbs: impl Iterator<Item = (Transform, Aabb)>) -> Vec3 {
+    let up = root.rotation * Vec3::Y;
     let height = limbs
-        .iter()
-        .flatten()
-        .filter_map(|limb| parts.get(*limb).ok())
-        .map(|(part, aabb)| {
-            let centre = part.transform_point(Vec3::from(aabb.center));
-            let reach = (Vec3::from(aabb.half_extents) * part.scale().abs()).max_element();
-            up.dot(centre - at) + reach
+        .map(|(local, aabb)| {
+            let centre = root.transform_point(local.transform_point(Vec3::from(aabb.center)));
+            let scale = (root.scale * local.scale).abs();
+            up.dot(centre - root.translation)
+                + (Vec3::from(aabb.half_extents) * scale).max_element()
         })
         .fold(0.0_f32, f32::max);
-    at + up * (height + HEAD)
+    root.translation + up * (height + HEAD)
+}
+
+/// Returns the top of an animal at `root` this frame whose drawn parts are `limbs`, read from
+/// `parts`: only the parts of its own body.
+pub(super) fn top(root: &Transform, limbs: &[Option<Entity>], parts: &Bounds) -> Vec3 {
+    let found = limbs
+        .iter()
+        .flatten()
+        .filter_map(|limb| parts.get(*limb).ok());
+    crown(root, found.map(|(local, aabb)| (*local, *aabb)))
 }
 
 /// The game camera as the rig placed it this frame: its own transform, the body that carries it

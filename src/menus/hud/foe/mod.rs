@@ -21,6 +21,8 @@ mod tests_lay;
 mod tests_pick;
 #[cfg(test)]
 mod tests_shown;
+#[cfg(test)]
+mod tests_track;
 
 pub use lay::{FAR, Found, Label, lay};
 pub use pick::looked;
@@ -35,10 +37,11 @@ use super::fade::gate;
 use super::onscreen::place::Frustum;
 use crate::avatar::strike::Mark;
 use crate::fauna::{Beast, Live};
+use crate::space::{Anchor, Placed};
 use crate::ui::{OverWorld, text, theme};
 use crate::world::Terrain;
 use draw::{Strips, write};
-use place::{Bounds, Lens, sight, top};
+use place::{Bounds, Lens, rooted, sight, top};
 
 /// Width of the health bar and its height, in pixels.
 const BAR: (f32, f32) = (64.0, 4.0);
@@ -132,46 +135,67 @@ pub(super) struct Scratch {
     labels: Vec<Option<Label>>,
 }
 
-/// The living animals with their root and place.
-type Animals<'w, 's> = Query<'w, 's, (Entity, &'static Beast, &'static GlobalTransform), Live>;
+/// The living animals with their pose and their render place.
+type Animals<'w, 's> = Query<
+    'w,
+    's,
+    (
+        Entity,
+        &'static Beast,
+        &'static Transform,
+        Option<&'static Placed>,
+    ),
+    Live,
+>;
 
-/// Fills `found` with every animal of `beasts` within [`FAR`] metres that shows on screen through
-/// `sight`, its head from the bounds of its parts in `parts`, the one `fought` and the one looked
-/// at marked keen.
+/// What the labels read of the animals: the living ones, the parts of their bodies and where
+/// render space sits.
+type Herd<'a, 'w, 's> = (&'a Animals<'w, 's>, &'a Bounds<'w, 's>, Option<&'a Anchor>);
+
+/// Fills `found` with every animal of the herd within [`FAR`] metres that shows on screen through
+/// `sight`, its head from this frame's pose of its root and its parts, the one `fought` and the one
+/// looked at marked keen.
 fn gather(
     found: &mut Vec<Found>,
     sight: (&GlobalTransform, Vec2, Frustum),
-    (beasts, parts): (&Animals, &Bounds),
+    (beasts, parts, anchor): Herd,
     fought: Option<Entity>,
 ) {
     let (camera, screen, frustum) = sight;
     let (eye, dir) = (camera.translation(), camera.forward().as_vec3());
-    let near = |p: &GlobalTransform| p.translation().distance(eye) <= FAR;
-    let head = |b: &Beast, p: &GlobalTransform| top(p, &b.parts, parts);
-    let body = |b: &Beast, p: &GlobalTransform| (p.translation() + head(b, p)) / 2.0;
-    let seen = beasts.iter().filter(|(_, _, p)| near(p));
-    let keen = looked(seen.map(|(a, b, p)| (a, body(b, p))), (eye, dir));
-    found.clear();
-    found.extend(
+    let heads = || {
         beasts
             .iter()
-            .filter(|(_, _, p)| near(p))
-            .filter_map(|(animal, beast, p)| {
-                let at = head(beast, p);
-                Some(Found {
-                    species: beast.index,
-                    health: beast.wits.health.share(),
-                    pos: over(at, camera, (frustum, screen))?,
-                    distance: eye.distance(at),
-                    keen: Some(animal) == keen || Some(animal) == fought,
-                })
-            }),
+            .filter_map(move |(animal, beast, transform, placed)| {
+                let root = rooted(anchor, transform, placed);
+                let head = top(&root, &beast.parts, parts);
+                (head.distance(eye) <= FAR).then_some((animal, beast, root.translation, head))
+            })
+    };
+    let keen = looked(
+        heads().map(|(a, _, root, head)| (a, (root + head) / 2.0)),
+        (eye, dir),
     );
+    found.clear();
+    found.extend(heads().filter_map(|(animal, beast, _, head)| {
+        Some(Found {
+            species: beast.index,
+            health: beast.wits.health.share(),
+            pos: over(head, camera, (frustum, screen))?,
+            distance: eye.distance(head),
+            keen: Some(animal) == keen || Some(animal) == fought,
+        })
+    }));
 }
 
 /// Labels every living animal in view within [`FAR`] metres over its head.
 pub(super) fn show(
-    (mark, beasts, terrain): (Res<Mark>, Animals, Option<Res<Terrain>>),
+    (mark, beasts, terrain, anchor): (
+        Res<Mark>,
+        Animals,
+        Option<Res<Terrain>>,
+        Option<Res<Anchor>>,
+    ),
     (parts, lens): (Bounds, Lens),
     mut strips: Strips,
     mut scratch: Local<Scratch>,
@@ -206,6 +230,7 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         Update,
         show.after(super::eye::capture)
+            .after(crate::fauna::Posed)
             .run_if(any_with_component::<Beast>)
             .in_set(super::Step::Playing),
     );

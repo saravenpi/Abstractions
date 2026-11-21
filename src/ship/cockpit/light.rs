@@ -60,10 +60,18 @@ pub fn glow(day: f32) -> f32 {
     SCREEN_GLOW.1 + (SCREEN_GLOW.0 - SCREEN_GLOW.1) * day.clamp(0.0, 1.0)
 }
 
-/// Adds the lights to the ship the player flies when its cockpit is fitted: the glow of the
-/// panel above the dashboard and the cabin light over the seat.
-pub fn rig(mut commands: Commands, ships: Query<Entity, (Added<Cockpit>, With<Ship>)>) {
+/// Marks a ship whose cockpit has its lights.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct Wired;
+
+/// The ship the player flies, while its cockpit has no lights yet.
+type Unwired = (With<Cockpit>, With<Ship>, Without<Wired>);
+
+/// Adds the lights to the ship the player flies, once: the glow of the panel above the dashboard
+/// and the cabin light over the seat.
+pub fn rig(mut commands: Commands, ships: Query<Entity, Unwired>) {
     for ship in &ships {
+        commands.entity(ship).insert(Wired);
         for (kind, at, range) in [
             (Beam::Panel, Vec3::new(0.0, 0.62, -1.75), reach(LUMENS.0)),
             (
@@ -142,7 +150,8 @@ pub fn dim(
     }
 }
 
-/// Run condition: the cockpit of the ship the player flies was just fitted.
-pub fn fitting(cockpits: Query<(), (Added<Cockpit>, With<Ship>)>) -> bool {
+/// Run condition: the ship the player flies has a cockpit without lights. It asks what is
+/// there, not what was just added, because a condition is evaluated while its set does not run.
+pub fn fitting(cockpits: Query<(), Unwired>) -> bool {
     !cockpits.is_empty()
 }

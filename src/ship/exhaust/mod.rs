@@ -62,11 +62,7 @@ pub(super) fn plugin(app: &mut App) {
             .run_if(dust::drifting)
             .run_if(any_with_component::<GameCamera>),
     );
-    let run = (
-        plume::equip.run_if(any_match_filter::<Added<Exhaust>>),
-        state::feed,
-        drawn,
-    );
+    let run = (plume::equip.run_if(plume::bare), state::feed, drawn);
     app.add_systems(OnEnter(Screen::Gameplay), dust::spawn)
         .add_systems(
             Update,

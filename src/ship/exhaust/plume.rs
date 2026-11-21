@@ -71,21 +71,33 @@ impl Material for ExhaustMaterial {
     }
 }
 
-/// Gives every new ship its three materials, and every plume of it the material of its kind.
+/// The plumes that have no material yet.
+type Bare = Without<MeshMaterial3d<ExhaustMaterial>>;
+
+/// Run condition: a plume has no material yet. It asks what is there, not what was just added:
+/// a condition is evaluated on every frame, also while its set does not run, so a ship dressed
+/// before the game plays would be seen as new once, too early, and its plumes never be drawn.
+pub fn bare(plumes: Query<(), (With<Plume>, Bare)>) -> bool {
+    !plumes.is_empty()
+}
+
+/// Gives every plume without a material the material of its kind, and its ship its three
+/// materials the first time.
 pub fn equip(
     mut commands: Commands,
     mut materials: ResMut<Assets<ExhaustMaterial>>,
-    mut ships: Query<(Entity, &mut Exhaust), Added<Exhaust>>,
-    plumes: Query<(Entity, &ChildOf, &Plume), Without<MeshMaterial3d<ExhaustMaterial>>>,
+    mut ships: Query<&mut Exhaust>,
+    plumes: Query<(Entity, &ChildOf, &Plume), Bare>,
 ) {
-    for (ship, mut exhaust) in &mut ships {
-        exhaust.jets = [0, 1, 2].map(|_| materials.add(ExhaustMaterial::default()));
-        for (plume, parent, Plume(jet)) in &plumes {
-            if parent.parent() == ship {
-                let material = exhaust.jets[jet.kind as usize].clone();
-                commands.entity(plume).insert(MeshMaterial3d(material));
-            }
+    for (plume, parent, Plume(jet)) in &plumes {
+        let Ok(mut exhaust) = ships.get_mut(parent.parent()) else {
+            continue;
+        };
+        if exhaust.jets[0] == Handle::default() {
+            exhaust.jets = [0, 1, 2].map(|_| materials.add(ExhaustMaterial::default()));
         }
+        let material = exhaust.jets[jet.kind as usize].clone();
+        commands.entity(plume).insert(MeshMaterial3d(material));
     }
 }
 

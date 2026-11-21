@@ -89,7 +89,9 @@ Things to fix:
 
 | Question | Default if no answer |
 | --- | --- |
-| Exclude tidally locked planets (one side in permanent night) from the home choice? One line in `landable` (`src/universe/home.rs`), but it is a special case | Leave the rule as is, say it in the changelog. One test depends on it: `computer::tests_climate::the_card_writes_the_span_of_temperatures` |
+| Exclude tidally locked planets from the home choice? | DECIDED 2026-11-20 night: no, they stay ("I want realism"). About 6 homes in 10 are locked worlds of red dwarfs, and more once the thermostat is physical |
+| The climate thermostat warms far planets beyond the habitable zone (up to 3 times the steady greenhouse) | DECIDED 2026-11-20 night: realism. Cap it by physics (no liquid water beyond the outer edge of the zone). Agent `home-life` |
+| The old world of the public server `space.facile.studio` | DECIDED 2026-11-20 night: it may be overwritten at the update |
 | Harvest tool: pick the best tool in the pack, or use the one in hand? | Keep the one in hand |
 | Carry limit: 25 kg at 9.81 m/s² | Keep |
 | Wake V floored at 4 degrees (physical wedge at flight speed: 1 to 2 degrees) | Keep |
@@ -167,6 +169,10 @@ Second run (ground shader fixed, shots in `~/.cache/abstractions-targets/shots2/
 ## 6e. Final instruction before the owner slept (2026-11-20, about 22:00)
 
 "Add that to the next release, review well, polish well, and release the new version as soon as you have finished everything. Review everything properly so it is clean, polished, optimised and beautiful. Tomorrow morning I want to be able to play and everything must be clean." The redesign of the robot, the companion and the ship (request 25) is part of this release. The lead ships when done, without asking again.
+
+## 6f. Multiplayer must be ready in the morning (owner, 2026-11-20 night)
+
+The owner told friends the new version is out tomorrow morning and that they will play together. So the release includes: multiplayer proven with real processes (agent `mp-check`: dedicated server plus bot plus two real clients, hosting from the game, everything of request 14 seen on both screens, a soak with 8 bots, the server starting on a 0.10 world file), and after the tag the public server redeployed on the new image. The public server is the Dokploy compose "Space server" (raw compose pinned to `ghcr.io/saravenpi/abstractions-server:0.10.0`, world in the named volume `space-data`, UDP 24650, `space.facile.studio`): after the release, set the tag to the new version and deploy, keep the volume (losing it changes the server key and every player's game then refuses the server), then check from outside that it answers. 0.10 clients cannot join a 0.11 server: friends must update.
 
 ## 7. Order of the remaining work
 

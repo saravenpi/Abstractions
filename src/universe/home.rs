@@ -1,6 +1,6 @@
 //! The home planet: where every new game starts. It is chosen, not made: every planet comes
 //! from the same rules, and the home is the nearest one to a Sun-like point of the central
-//! galaxy that a robot can land on and that holds life.
+//! galaxy that a robot can land on and that a new player can wake to life on, see [`homely`].
 //!
 //! The point is 0.52 radii out in the plane of the disc, see [`shells::sun_point`]. The centre
 //! of a galaxy cannot serve: at real scale it is a void hundreds of light-years wide inside a
@@ -10,10 +10,10 @@ use bevy::math::{DVec3, IVec3};
 
 use super::galaxy;
 use super::ids::{BodyId, GalaxyId, StarId};
-use super::record::PlanetClass;
+use super::record::{PlanetClass, Water};
 use super::spec::{PlanetSpec, StarSpec};
 use super::{LY, SECTOR_LY, shells, system};
-use crate::life::{World, odds};
+use crate::life::{Rung, Solvent, World, chem, odds};
 
 /// Grid cell of the home galaxy, the one cell that always holds a galaxy: the centre of the
 /// universe.
@@ -44,13 +44,33 @@ pub fn landable(planet: &PlanetSpec) -> bool {
     )
 }
 
-/// Returns the living planet of `planets`, the planets of `star`, a new game would start on:
-/// the landable one whose life climbed highest under the normal odds, the inner one of two
-/// alike, or nothing when none lives.
-fn living(star: &StarSpec, planets: &[PlanetSpec]) -> Option<BodyId> {
+/// Coldest and warmest mean surface temperature in kelvin of a home: freezing to 35 C, so that
+/// some latitude of the planet, or some longitude of a locked one, is walkable all year.
+pub const MILD: (f64, f64) = (273.15, 308.15);
+
+/// Returns true when a new player can wake on `planet`, around `star`, and find life to see.
+///
+/// Every planet gets the same test, on what is true of it: its life climbed to the skeletal
+/// rung or higher, where plants stand in layered forests and animals walk in herds, that life
+/// is built on water, the planet has seas and land in balance, water is liquid at the surface,
+/// and the mean temperature is between 0 and 35 C.
+pub(super) fn homely(planet: &PlanetSpec, rung: Rung, world: &World) -> bool {
+    let record = &planet.record;
+    let water = chem::solvent(world).is_some_and(|(solvent, _)| solvent == Solvent::Water);
+    let mild = (MILD.0..=MILD.1).contains(&record.temperature);
+    let seas = record.class == PlanetClass::Island && record.water == Water::Liquid;
+    rung >= Rung::Skeletal && water && mild && seas
+}
+
+/// Returns the planet of `planets`, the planets of `star`, a new game would start on: the landable
+/// one whose life climbed highest under the normal odds, the inner one of two alike, or nothing
+/// when none lives. With `welcome` only those that pass [`homely`] count.
+fn living(star: &StarSpec, planets: &[PlanetSpec], welcome: bool) -> Option<BodyId> {
     let alive = |p: &PlanetSpec| {
-        let rung = odds::rung(&World::of(p, star), p.seed)?;
-        landable(p).then_some((rung as u8, p.id))
+        let world = World::of(p, star);
+        let rung = odds::rung(&world, p.seed)?;
+        let fits = landable(p) && (!welcome || homely(p, rung, &world));
+        fits.then_some((rung as u8, p.id))
     };
     let best = planets.iter().rev().filter_map(alive);
     best.max_by_key(|(rung, _)| *rung).map(|(_, id)| id)
@@ -69,7 +89,9 @@ fn suited(star: &StarSpec, planets: &[PlanetSpec]) -> Option<(f32, BodyId)> {
 struct Found {
     /// The point the search goes out from, in metres from the galaxy centre.
     from: DVec3,
-    /// The nearest living planet and the metres from the search point to its star.
+    /// The nearest homely planet and the metres from the search point to its star.
+    home: Option<(f64, BodyId)>,
+    /// The nearest living planet, homely or not, and the metres to its star.
     living: Option<(f64, BodyId)>,
     /// The planet most likely to hold life and that chance.
     spare: Option<(f32, BodyId)>,
@@ -78,15 +100,20 @@ struct Found {
 }
 
 impl Found {
-    /// Looks at the system of `star`, unless a living planet nearer than it is already known.
+    /// Looks at the system of `star`, unless a homely planet nearer than it is already known.
     fn look(&mut self, star: &StarSpec) {
         let out = star.pos.distance(self.from);
-        if self.living.is_some_and(|(nearest, _)| out >= nearest) {
+        if self.home.is_some_and(|(nearest, _)| out >= nearest) {
             return;
         }
         let planets = system::planets(star);
         self.seen += 1;
-        self.living = living(star, &planets).map(|id| (out, id)).or(self.living);
+        self.home = living(star, &planets, true)
+            .map(|id| (out, id))
+            .or(self.home);
+        if self.living.is_none() {
+            self.living = living(star, &planets, false).map(|id| (out, id));
+        }
         let spare = suited(star, &planets);
         if spare.is_some_and(|(chance, _)| self.spare.is_none_or(|(best, _)| chance > best)) {
             self.spare = spare;
@@ -94,20 +121,21 @@ impl Found {
     }
 
     /// Returns true when no shell from `low` light-years out can change the answer: the
-    /// nearest living planet is closer than any star left, or enough systems had none.
+    /// nearest homely planet is closer than any star left, or enough systems had none.
     fn settled(&self, low: f64) -> bool {
         let slack = 0.5 * 3f64.sqrt() * SECTOR_LY;
         let nearer = |(out, _): (f64, BodyId)| out < (low - slack) * LY;
-        self.living.map_or(self.seen >= SEARCH, nearer)
+        self.home.map_or(self.seen >= SEARCH, nearer)
     }
 }
 
 /// Returns the home planet of a universe: the nearest planet to the Sun-like point of the home
-/// galaxy that is solid, landable and alive under the normal odds of life.
+/// galaxy that is solid, landable, alive under the normal odds of life and [`homely`].
 ///
 /// The search goes through the stars shell by shell from that point. When the nearest
-/// [`SEARCH`] systems hold no living planet it takes the landable planet most likely to hold
-/// life among them. The same seed always gives the same home.
+/// [`SEARCH`] systems hold no homely planet it takes the nearest living one, and failing that
+/// the landable planet most likely to hold life among them. The same seed always gives the same
+/// home.
 pub(super) fn choose(universe: u64) -> BodyId {
     let Some(shape) = galaxy::shape(universe, HOME_GALAXY) else {
         return NOWHERE;
@@ -126,6 +154,6 @@ pub(super) fn choose(universe: u64) -> BodyId {
         let stars = shells::shell(&shape, HOME_GALAXY, from, (low, SHELL));
         stars.iter().for_each(|star| found.look(star));
     }
-    let chosen = found.living.map(|(_, id)| id);
+    let chosen = found.home.or(found.living).map(|(_, id)| id);
     chosen.or(found.spare.map(|(_, id)| id)).unwrap_or(NOWHERE)
 }

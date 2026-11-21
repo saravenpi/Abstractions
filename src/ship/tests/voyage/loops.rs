@@ -2,17 +2,13 @@
 //! open space, one command takes the ship to another planet or star, the drive spools at most three times on the
 //! way, and the route arrives.
 
-use bevy::math::{DQuat, DVec3};
-
 use super::pick::{neighbour, other_star};
+use super::place::{into_low_orbit, into_orbit};
 use super::{ground, key, lifts_off};
 use crate::computer::{Destination, Engage, Target};
-use crate::ship::frames::planet_velocity;
 use crate::ship::tests::rig::{Game, Log};
-use crate::ship::warp::Warp;
 use crate::ship::{Autopilot, Phase, ShipEvent};
-use crate::space::{Clock, Frame, Location};
-use crate::universe::Universe;
+use crate::space::Location;
 
 /// Frames a course may take, at a tenth of a second each.
 const FRAMES: usize = 12_000;
@@ -20,9 +16,6 @@ const FRAMES: usize = 12_000;
 /// Most spools of the drive a course may take: two legs round the home planet when it lies in the way,
 /// and the leg to the place. A loop spools again and again.
 const SPOOLS: usize = 3;
-
-/// Radii from the centre of the home planet the ship is put at, outside its lock sphere.
-const ORBIT: f64 = 3.0;
 
 /// Takes the ship off the pad and lets go of the levers, so that the autopilot flies it.
 fn takes_off(game: &mut Game, tag: &str) {
@@ -36,24 +29,6 @@ fn takes_off(game: &mut Game, tag: &str) {
     ] {
         game.release(lever);
     }
-}
-
-/// Puts the ship at rest beside the home planet, [`ORBIT`] radii out, in the frame of the star.
-fn into_orbit(game: &mut Game) {
-    let (universe, time) = (game.get::<Universe>(), game.get::<Clock>().seconds);
-    let planet = universe.planet(universe.home());
-    let up = DVec3::X;
-    let pos = planet.position(time) + up * planet.radius * ORBIT;
-    let frame = Frame::System(universe.home().star);
-    game.with_ship(|ship| {
-        ship.frame = frame;
-        ship.pos = pos;
-        ship.rot = DQuat::from_rotation_arc(DVec3::NEG_Z, up);
-        ship.vel = planet_velocity(&planet, time);
-        (ship.spin, ship.throttle, ship.landed) = (DVec3::ZERO, 0.0, false);
-        ship.warp = Warp::Off;
-    });
-    game.step(5);
 }
 
 /// Counts the spools of the drive so far.
@@ -120,4 +95,19 @@ fn a_course_to_a_star_takes_few_spools() {
     into_orbit(game);
     let spooled = goes(game, Target::Star(other_star(game)));
     assert!(spooled <= SPOOLS, "{spooled} spools");
+}
+
+/// From a circular orbit inside the lock sphere, at orbital speed, as after a climb to orbit, one command to
+/// another planet climbs out of the lock first and spools at most [`SPOOLS`] times, where a spool that is
+/// refused as the ship crosses the lock edge would start again and again.
+#[test]
+fn a_course_from_a_low_orbit_takes_few_spools() {
+    let mut game = Game::full("loops-low");
+    let game = &mut game;
+    takes_off(game, "Loops low");
+    into_low_orbit(game);
+    let far = neighbour(game);
+    let spooled = goes(game, Target::Body(far));
+    assert!(spooled <= SPOOLS, "{spooled} spools");
+    assert_eq!(game.get::<Location>().body, far);
 }

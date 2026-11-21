@@ -1,8 +1,9 @@
-//! The cost of a strike: posing a swing and sweeping its head against two hundred parts stays under
-//! 0.1 ms a frame.
+//! The cost of a strike: posing a swing bent to a low aim, with the body behind it, and sweeping its
+//! blade against two hundred parts stays under 0.1 ms a frame.
 
 use bevy::prelude::*;
 
+use super::super::AvatarPose;
 use super::super::pose::Pose;
 use super::act::{Act, Strike};
 use super::dir::Dir;
@@ -11,7 +12,8 @@ use super::layer::{Layer, posed};
 use super::stage::club;
 use crate::world::cpu::busy;
 
-/// A swing posed and swept against 200 placed parts costs less than 0.1 ms of processor time per frame.
+/// A swing posed toward a low aim and swept against 200 placed parts costs less than 0.1 ms of
+/// processor time per frame.
 #[test]
 fn a_swing_and_its_hit_test_are_cheap() {
     let held = club();
@@ -29,11 +31,18 @@ fn a_swing_and_its_hit_test_are_cheap() {
         let strike = Strike {
             act: Act::Swing(frame as f32 * 0.0005),
             dir: Dir::Right,
+            aim: Some(Vec3::new(0.1, -0.7, -0.9)),
             ..default()
         };
-        let key = posed(&strike, &held);
-        let pose = Layer::of(&key, held.build.hands).apply(Pose::default());
-        let now = [key.grip, key.grip + key.axis * held.build.reach()];
+        let layer = posed(
+            &strike,
+            &held,
+            &AvatarPose::default(),
+            (&Layer::default(), 0.016),
+        );
+        let pose = layer.apply(Pose::default());
+        let grip = Vec3::new(0.3, 0.2, -0.3);
+        let now = [grip, grip + layer.axis * held.build.reach()];
         let was = [now[0], now[1] - Vec3::X * 0.1];
         touched += parts
             .iter()

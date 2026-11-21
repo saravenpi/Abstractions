@@ -9,7 +9,7 @@ use super::held::Held;
 use super::hit::{Bounds, Hit, Tip, radius, sweet, touch};
 use super::outcome::{Contact, Outcome, after, classify, rebound};
 use super::path::Path;
-use super::tune::KICK;
+use super::tune::{KICK, REACH_PAD};
 use crate::craft::build::{Blow, Mode, blow, reference, strike as through};
 use crate::fauna::Beast;
 use crate::fauna::bleed::{refused, stiffness};
@@ -136,7 +136,7 @@ pub fn sense(
         }
         let world = |pair: [Vec3; 2]| pair.map(|p| placed.transform_point(p));
         let (now, was) = (world(strike.blade[0]), world(strike.blade[1]));
-        let pad = held.build.head.size() / 2.0;
+        let pad = (held.build.head.size() / 2.0).max(REACH_PAD);
         let Some((part, victim, at)) = first(&parts, &creatures, (was, now), pad) else {
             continue;
         };

@@ -1,13 +1,16 @@
 //! The tool drawn in the hands: plain blocks sized from the build, the grip in the right hand and
-//! the shaft along the axis of the strike.
+//! the shaft along the axis of the strike, or slung over the back while stowed.
 
 use bevy::prelude::*;
 
 use super::super::animate::Anim;
+use super::super::own::Own;
 use super::super::rig::{Seg, globals};
+use super::super::show::Shown;
 use super::act::Strike;
+use super::feel::tune::{SLING, SLING_AXIS};
 use super::held::Held;
-use super::layer::posed;
+use super::layer::Layer;
 use super::tune::HAND_GRIP;
 use crate::craft::build::{Build, Form};
 
@@ -144,26 +147,45 @@ fn kit_new(
     made
 }
 
-/// Puts the drawn tool of every body in its right hand along the axis of its strike, hidden while
-/// stowed, and keeps the grip and the tip of this frame and the last in its strike.
+/// Returns where the grip of a tool is and which way it points in the frame of the body, from the
+/// bones `bones` of the body: in the right hand along the axis of the `layer` while `out`, else
+/// slung over the back.
+fn grip(bones: &[Transform], layer: &Layer, out: bool) -> (Vec3, Vec3) {
+    let (torso, hand) = (bones[Seg::Torso as usize], bones[Seg::HandR as usize]);
+    match out {
+        true => (
+            hand.transform_point(Vec3::new(0.0, -HAND_GRIP, 0.0)),
+            (torso.rotation * layer.axis).normalize_or(Vec3::NEG_Z),
+        ),
+        false => (
+            torso.transform_point(Vec3::from_array(SLING)),
+            (torso.rotation * Vec3::from_array(SLING_AXIS)).normalize_or(Vec3::Y),
+        ),
+    }
+}
+
+/// Puts the drawn tool of every body in its right hand along the axis of its strike, or slung over
+/// its back while stowed, and keeps the grip and the tip of this frame and the last in its strike.
+/// A tool slung on the local body is hidden in first person, where it would fill the view.
 pub fn place(
-    mut bodies: Query<(&Anim, &mut Strike, &Held, &Wielded)>,
+    mut bodies: Query<(Entity, &Anim, &mut Strike, &Held, &Wielded, &Layer)>,
     mut tools: Query<(&mut Transform, &mut Visibility)>,
+    (shown, own): (Res<Shown>, Own),
 ) {
-    for (anim, mut strike, held, wielded) in &mut bodies {
+    let mine = own.body().map(|(_, body)| body);
+    for (body, anim, mut strike, held, wielded, layer) in &mut bodies {
         let bones = globals(&anim.pose);
-        let (torso, hand) = (bones[Seg::Torso as usize], bones[Seg::HandR as usize]);
-        let grip = hand.transform_point(Vec3::new(0.0, -HAND_GRIP, 0.0));
-        let axis = (torso.rotation * posed(&strike, held).axis).normalize_or(Vec3::NEG_Z);
+        let (grip, axis) = grip(&bones, layer, held.out);
         strike.blade = [[grip, grip + axis * held.build.reach()], strike.blade[0]];
-        let Ok((mut transform, mut shown)) = tools.get_mut(wielded.0) else {
+        let Ok((mut transform, mut drawn)) = tools.get_mut(wielded.0) else {
             continue;
         };
         *transform =
             Transform::from_translation(grip).with_rotation(Quat::from_rotation_arc(Vec3::Y, axis));
-        shown.set_if_neq(match held.out {
-            true => Visibility::Inherited,
-            false => Visibility::Hidden,
+        let hidden = !held.out && mine == Some(body) && *shown != Shown::Full;
+        drawn.set_if_neq(match hidden {
+            false => Visibility::Inherited,
+            true => Visibility::Hidden,
         });
     }
 }

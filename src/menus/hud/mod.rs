@@ -25,6 +25,7 @@ mod needle;
 mod onscreen;
 mod panel;
 mod prompt;
+mod reticle;
 mod snow;
 mod switch;
 #[cfg(test)]
@@ -125,6 +126,7 @@ fn spawn(mut commands: Commands) {
             coords::corner(),
             minimap::frame(),
             onscreen::layer(),
+            reticle::layer(),
             snow::screen()
         ],
     ));
@@ -224,6 +226,7 @@ pub(super) fn plugin(app: &mut App) {
     markers::plugin(app);
     eye::plugin(app);
     compass::plugin(app);
+    reticle::plugin(app);
     hurt(app);
     app.init_resource::<banner::Banner>()
         .init_resource::<context::Where>()

@@ -1,6 +1,6 @@
 //! The one prompt line: a key and what it does, bottom centre above the hotbar. Exactly one
-//! row, the highest priority wins: a warning or block sentence, a course that runs, a course
-//! ready to go, the action a key does right now to what the robot looks at or stands by
+//! row, the highest priority wins: a warning or block sentence, what was just picked up, a course
+//! that runs, a course ready to go, the action a key does right now to what the robot looks at or stands by
 //! ([`crate::player::Interact`]: pull a spear, cut a part, board, leave, break stone off, mend), a
 //! first-time hint, nothing.
 
@@ -11,7 +11,7 @@ use super::course::{Course, Words, words};
 use super::fade::gate;
 use super::hints::{Hint, Hinted};
 use crate::computer::{Destination, Keys, RouteStatus};
-use crate::craft::pack::PICK_KEY;
+use crate::craft::pack::{Notice, PICK_KEY};
 use crate::menus::key_name;
 use crate::player::{Interact, Offer, Verb};
 use crate::settings::{Keymap, Persistent, Settings};
@@ -36,6 +36,8 @@ pub(super) struct PromptKey;
 pub struct State {
     /// A warning or block sentence, with no key.
     pub block: Option<String>,
+    /// What the robot just picked up, with the key that picked it.
+    pub notice: Option<(KeyCode, String)>,
     /// A course that runs: its key and what it is doing.
     pub running: Option<(KeyCode, String)>,
     /// A course ready to go: its key and what it will do.
@@ -46,15 +48,16 @@ pub struct State {
     pub hint: Option<(KeyCode, &'static str)>,
 }
 
-/// Returns the one row the line shows: its key, if it has one, and its words. A block beats a
-/// running course, which beats a course ready to go, which beats the action of a key, which beats
-/// a hint.
+/// Returns the one row the line shows: its key, if it has one, and its words. A block beats the
+/// notice of what was just picked up, which beats a running course, which beats a course ready to
+/// go, which beats the action of a key, which beats a hint.
 pub fn choose(state: &State) -> Option<(Option<KeyCode>, String)> {
     let key = |(key, words): &(KeyCode, String)| (Some(*key), words.clone());
     state
         .block
         .as_ref()
         .map(|sentence| (None, sentence.clone()))
+        .or_else(|| state.notice.as_ref().map(key))
         .or_else(|| state.running.as_ref().map(key))
         .or_else(|| state.ready.as_ref().map(key))
         .or_else(|| state.act.as_ref().map(key))
@@ -130,6 +133,7 @@ pub(super) struct Reach<'w> {
     universe: Option<Res<'w, Universe>>,
     hinted: Res<'w, Hinted>,
     now: Res<'w, Where>,
+    notice: Option<Res<'w, Notice>>,
 }
 
 /// A key with the words of what it does.
@@ -166,6 +170,8 @@ impl Reach<'_> {
             return state;
         }
         (state.act, state.hint) = self.keys();
+        let picked = self.notice.as_deref().and_then(Notice::shown);
+        state.notice = picked.map(|words| (PICK_KEY, words.to_string()));
         let keys = &self.settings.controls.keys;
         let seated = travel == Some(Travel::InShip);
         let said = self

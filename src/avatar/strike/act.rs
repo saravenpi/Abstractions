@@ -3,9 +3,10 @@
 use bevy::prelude::*;
 
 use super::dir::Dir;
+use super::feel::tune::STOW;
 use super::held::Held;
 use super::hurt::Hurt;
-use super::key::{Key, carry, drawn, guard};
+use super::key::{Key, carry, drawn, guard, slung};
 use super::outcome::Outcome;
 use super::path::Path;
 use super::tune::{BRAKE, COAST, DRAW, GUARD_IN, LEAST_DRAW, OVERSHOOT, RECOVER};
@@ -28,6 +29,8 @@ pub enum Act {
     Draw(f32),
     /// Shaken by the kickback of a blow: seconds left, and the share of the path where it landed.
     Stun(f32, f32),
+    /// Slinging the tool over the back, before the wingsuit opens or the robot boards.
+    Stow(f32),
 }
 
 /// The strike state of a body, on its root beside [`Held`].
@@ -47,6 +50,9 @@ pub struct Strike {
     pub sounded: bool,
     /// What the swing under way came to, a miss until it meets something.
     pub result: Outcome,
+    /// The point the strike aims at, in the frame of the body: where the crosshair points, within
+    /// the reach of the tool. Nothing aims straight ahead at the height of the chest.
+    pub aim: Option<Vec3>,
 }
 
 impl Strike {
@@ -137,6 +143,7 @@ pub fn next(act: Act, ask: &Ask, timing: &Timing, thrown: bool, dt: f32) -> (Act
         Act::Stun(left, at) => Act::Stun(left - dt, at),
         Act::Guard(t) if ask.guard => Act::Guard(t + dt),
         Act::Guard(_) => Act::Ready,
+        Act::Stow(t) => timed(t, dt, STOW, (Act::Ready, Act::Stow)),
         Act::Draw(t) => return draw(t, ask, dt),
     };
     (act, None)
@@ -169,5 +176,6 @@ pub fn key(act: Act, path: &Path, timing: &Timing, dir: Dir) -> Key {
         Act::Guard(t) => carry().toward(&guard(dir), share(t, GUARD_IN)),
         Act::Draw(t) => carry().toward(&drawn(), share(t, DRAW)),
         Act::Stun(_, at) => path.at(at),
+        Act::Stow(t) => carry().toward(&slung(), share(t, STOW)),
     }
 }

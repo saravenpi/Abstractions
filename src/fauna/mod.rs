@@ -40,6 +40,8 @@ mod sunk;
 #[cfg(test)]
 mod tests_ground;
 #[cfg(test)]
+mod tests_handover;
+#[cfg(test)]
 mod tests_hunt;
 #[cfg(test)]
 mod tests_live;

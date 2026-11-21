@@ -2,7 +2,7 @@
 //! 2 m grid of the near chunks to the 16 m grid of sparse coarse nodes, near the robot then far from it,
 //! with its feet and its body on the drawn ground all the way; and a fleeing walker stops on the shore.
 
-use bevy::math::{Vec2, Vec3};
+use bevy::math::{Vec2, Vec3, Vec3Swizzles};
 
 use super::fixtures::quadruped_with;
 use super::rig::{Detail, Drive, Motion};
@@ -109,4 +109,41 @@ fn a_fleeing_walker_stops_on_the_shore() {
     );
     let dry = shore(way, m.root.at, &body, &beach, f32::NEG_INFINITY);
     assert_eq!(dry, way, "a world without a sea has no shore");
+}
+
+/// A walker fleeing at full speed straight at a lake 24 m wide, from three sides, stops on its shore:
+/// the ground under it never goes 5 cm under the water. One already standing in the water as deep as
+/// its hips wades at no more than a quarter of the speed it is asked for.
+#[test]
+fn a_fleeing_walker_stays_out_of_a_lake() {
+    let body = quadruped_with(1, 0.4);
+    let centre = Vec2::new(30.0, 0.0);
+    let lake = |p: Vec2| 1.5 - 3.0 * (-(p - centre).length_squared() / 200.0).exp();
+    for side in [Vec2::NEG_X, Vec2::Y, Vec2::new(-1.0, -1.0).normalize()] {
+        let start = centre + side * 30.0;
+        let at = Vec3::new(start.x, lake(start), start.y);
+        let mut m = Motion::new(&body, at, (-side).extend(0.0).xzy(), 19);
+        let way = (-side * 8.0).extend(0.0).xzy();
+        for frame in 0..240 {
+            let velocity = shore(way, m.root.at, &body, &lake, 0.0);
+            m.step(&body, &fleeing(velocity, Detail::Full), &lake, DT);
+            let under = lake(Vec2::new(m.root.at.x, m.root.at.z));
+            assert!(
+                under > -0.05,
+                "from {side}, frame {frame}: ran {under} m into the lake"
+            );
+        }
+    }
+    let wading = shore(
+        Vec3::X * 6.0,
+        Vec3::ZERO,
+        &body,
+        &|_: Vec2| -body.height,
+        0.0,
+    );
+    assert!(
+        wading.length() <= 1.5 + 1e-4,
+        "waded at {} m/s",
+        wading.length()
+    );
 }

@@ -29,6 +29,8 @@ mod tests_path;
 mod tests_real;
 #[cfg(test)]
 mod tests_roles;
+#[cfg(test)]
+mod tests_water;
 mod watch;
 
 use bevy::math::{DVec3, Vec2};
@@ -40,6 +42,7 @@ use crate::universe::hash::{Rng, child};
 pub use ledger::{Kill, Ledger};
 pub use roles::lookout;
 pub(super) use roll::{Roam, hunts};
+pub use route::floor;
 pub(super) use route::{Pose, open};
 pub(super) use scene::{Scene, Store};
 pub(super) use sphere::{arc, bearing, east, slerp};

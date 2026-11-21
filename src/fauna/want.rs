@@ -158,3 +158,14 @@ fn push(out: &mut Vec<Want>, (lead, species, dir): (Lead, u16, DVec3), from: Fro
         });
     }
 }
+
+/// Returns true when a drawn animal led by `lead`, standing at unit direction `here`, stays drawn though
+/// it is not wanted: a herd member living by `ledger` within [`REACH`] and [`SLACK`] of the robot of
+/// `from`, wherever its place in its herd went.
+pub fn lingers(lead: Lead, here: DVec3, from: From, ledger: &Ledger) -> bool {
+    let near = herd_arc(here, from.robot) * from.radius <= REACH + SLACK;
+    match lead {
+        Lead::Herd { id, slot } => near && !ledger.dead(id, slot, from.time),
+        _ => false,
+    }
+}

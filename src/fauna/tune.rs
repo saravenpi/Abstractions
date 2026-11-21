@@ -114,6 +114,10 @@ pub const GUARD: f32 = 3.0;
 /// a body running at full speed stops on the shore and not in the water.
 pub const SHORE_AHEAD: f32 = 0.5;
 
+/// Share of its speed a body on the ground loses wading in water as deep as its hips: the water drags it,
+/// so no land animal runs through water.
+pub const WADE: f32 = 0.75;
+
 /// Metres under the drawn ground past which the sunk check of a dev build logs a foot of an animal.
 #[cfg(feature = "dev")]
 pub const SUNK: f32 = 0.05;

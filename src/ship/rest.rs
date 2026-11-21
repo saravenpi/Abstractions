@@ -47,8 +47,8 @@ fn rests(ship: &Ship, contact: &Contact, controls: &Controls) -> bool {
 /// Books a step of contact on the ship and returns the touchdown speed, zero without a new touchdown.
 ///
 /// A ship on its gear with no rise asked has its lever put back to idle: a lever left up would keep the
-/// engines on and the ship from ever resting. A touchdown above the safe speed adds damage. A ship that stays slow and held for half a
-/// second stops dead.
+/// engines on and the ship from ever resting. A touchdown above the safe speed adds damage. A ship that
+/// stays slow and held for half a second stops dead.
 pub fn settle(ship: &mut Ship, contact: &Contact, controls: &Controls, h: f64) -> f64 {
     let landing = contact.ground && !ship.touching;
     ship.touching = contact.ground;

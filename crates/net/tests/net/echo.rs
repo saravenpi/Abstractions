@@ -80,6 +80,7 @@ fn welcome(conn: ConnId, now: f64) -> Welcome {
     Welcome {
         you: PlayerId(conn.0 as u32),
         seed: 7,
+        home: abstractions_net::store::HOME_RULE,
         clock: now,
         changes: Changes::default(),
         atlas: String::new(),

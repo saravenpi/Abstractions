@@ -70,9 +70,8 @@ pub use scroll::{BAR, BAR_GAP, ScrollArea, Scroller, Thumb, scroll_area, scrolle
 pub use section::{
     Section, SectionTitle, Sections, groups, rows, section, section_title, sections,
 };
-pub use shade::{OverWorld, Unshaded};
-#[cfg(test)]
-pub use shade::{hud_shadow, reach};
+pub use shade::hud_shadow;
+pub use shade::{OverWorld, Unshaded, reach};
 pub use sound::Cancels;
 pub use state::{EmptyState, NoticeRow, empty_state, notice_row};
 pub use style::{Filled, Look, Selected, Tone};

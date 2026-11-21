@@ -101,7 +101,7 @@ pub fn raster(look: &Look, pixels: u32) -> Vec<u8> {
     };
     let unit = 1.0 / side as f32;
     let half = (side as f32 / 12.0).round().max(1.0) * unit * 0.5;
-    for (at, pixel) in out.chunks_exact_mut(BYTES).enumerate() {
+    for (at, pixel) in out.as_chunks_mut::<BYTES>().0.iter_mut().enumerate() {
         let x = ((at % side) as f32 + 0.5) * unit - TIP.0;
         let y = ((at / side) as f32 + 0.5) * unit - TIP.1;
         let spot = Spot {

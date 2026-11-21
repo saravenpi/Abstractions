@@ -121,13 +121,12 @@ fn tool(proposal: &Proposal, at: usize, focused: bool, stock: &[Stock], place: &
     }
 }
 
+/// The cards a bench offers, or why it offers none, and what the focused card takes from the pack.
+type Offer = (Result<Vec<Tool>, String>, Vec<(usize, f32)>);
+
 /// Returns the three cards for the bench and what the focused one takes from `stock`, or what the
 /// pack lacks.
-fn tools(
-    bench: &Bench,
-    stock: &[Stock],
-    place: &Place,
-) -> (Result<Vec<Tool>, String>, Vec<(usize, f32)>) {
+fn tools(bench: &Bench, stock: &[Stock], place: &Place) -> Offer {
     let Ok(offered) = offer(bench, stock, place) else {
         return (Err(missing(bench.intent, stock)), Vec::new());
     };

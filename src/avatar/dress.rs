@@ -148,7 +148,7 @@ pub fn wear(
         false => looked(&worn.heading, motion.yaw),
     };
     dress(&mut pose, &gear.state, look, height < DIVE_BELOW);
-    pose.attitude = Some(attitude(&gear.state, motion.yaw, &mut *held));
+    pose.attitude = Some(attitude(&gear.state, motion.yaw, &mut held));
     pose.clearance = match motion.grounded {
         true => 0.0,
         false => gear.input.clearance,

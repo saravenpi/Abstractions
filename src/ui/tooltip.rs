@@ -123,11 +123,14 @@ fn tint(alpha: f32, (panel, words): &mut Parts) {
     }
 }
 
+/// A control that carries a fixed or a changing tip.
+type Tipping = Or<(With<Tip>, With<TipText>)>;
+
 /// Moves the tooltip under the control the pointer rests on, once it rested long enough, and
 /// fades it away when the pointer leaves.
 pub(super) fn update(
     time: Res<Time>,
-    tips: Query<Tipped, Or<(With<Tip>, With<TipText>)>>,
+    tips: Query<Tipped, Tipping>,
     mut parts: Parts,
     mut rest: Local<Rest>,
 ) {

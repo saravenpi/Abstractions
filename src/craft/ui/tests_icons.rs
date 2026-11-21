@@ -27,7 +27,9 @@ fn drawn(figure: Figure) -> Look {
 /// Returns how many pixels of `picture` have the opacity `alpha`.
 fn count(picture: &[u8], alpha: u8) -> usize {
     picture
-        .chunks_exact(BYTES)
+        .as_chunks::<BYTES>()
+        .0
+        .iter()
         .filter(|pixel| pixel[3] == alpha)
         .count()
 }
@@ -133,8 +135,10 @@ fn the_hud_shadow_sits_beside_the_drawing() {
     let mut dark = plain.clone();
     shade(&mut dark, 32, 1);
     let added = dark
-        .chunks_exact(BYTES)
-        .zip(plain.chunks_exact(BYTES))
+        .as_chunks::<BYTES>()
+        .0
+        .iter()
+        .zip(plain.as_chunks::<BYTES>().0.iter())
         .filter(|(a, b)| a != b);
     let added: Vec<_> = added.collect();
     assert!(!added.is_empty());

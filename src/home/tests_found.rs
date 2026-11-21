@@ -31,6 +31,32 @@ fn latitude(at: DVec3) -> f64 {
     at.normalize().y.asin().to_degrees()
 }
 
+/// Checks that a new game lands on dry ground off the poles, within reach of `found`, out of a harsh heart
+/// that the landing itself is not in.
+fn lands_well(seed: u64, found: &Base, globe: &Arc<Globe>) {
+    let landing = Base::landing(globe);
+    assert!(
+        latitude(landing).abs() < 60.0,
+        "seed {seed}: lands near a pole"
+    );
+    assert!(
+        globe.height(landing.normalize()) > globe.sea_level(),
+        "seed {seed}: lands at sea"
+    );
+    assert!(
+        landing.distance(found.centre) < globe.radius(),
+        "seed {seed}: lands far from the base"
+    );
+    let lot = found.lot(globe);
+    assert!(firm(lot.view(), Vec2::ZERO), "seed {seed}: soft ground");
+    let view = Terrain::near(globe, landing);
+    let there = view.locate(landing);
+    assert!(
+        !harsh(lot.view(), Vec2::ZERO) || harsh(&view, Vec2::new(there.x, there.z)),
+        "seed {seed}: in a harsh heart, off a landing that is not"
+    );
+}
+
 /// On seeds 0 to 50 the base stands on firm ground out of the heart of a taiga or a desert, off
 /// the polar cap, and a new game lands on dry ground off the poles within reach of it. The test prints
 /// how many bases left the place the search of 0.8 gave them.
@@ -39,27 +65,7 @@ fn every_seed_founds_its_base_on_good_ground() {
     let mut moved = Vec::new();
     for seed in 0..=50 {
         let (found, globe) = base(seed);
-        let landing = Base::landing(&globe);
-        assert!(
-            latitude(landing).abs() < 60.0,
-            "seed {seed}: lands near a pole"
-        );
-        assert!(
-            globe.height(landing.normalize()) > globe.sea_level(),
-            "seed {seed}: lands at sea"
-        );
-        assert!(
-            landing.distance(found.centre) < globe.radius(),
-            "seed {seed}: lands far from the base"
-        );
-        let lot = found.lot(&globe);
-        assert!(firm(lot.view(), Vec2::ZERO), "seed {seed}: soft ground");
-        let view = Terrain::near(&globe, landing);
-        let there = view.locate(landing);
-        assert!(
-            !harsh(lot.view(), Vec2::ZERO) || harsh(&view, Vec2::new(there.x, there.z)),
-            "seed {seed}: in a harsh heart, off a landing that is not"
-        );
+        lands_well(seed, &found, &globe);
         let at = latitude(found.up);
         assert!(at.abs() < 75.0, "seed {seed}: base at {at} degrees");
         if polar(seed).is_none_or(|old| old.centre.distance(found.centre) > 1.0) {

@@ -96,7 +96,7 @@ pub fn resumes_in_flight(game: &mut Game, far: BodyId) {
     at_planet(game, &entry, far);
     let (saved, ship) = (record(&entry), game.ship());
     assert!(saved.seated && !saved.landed);
-    assert_eq!(saved.frame, Frame::Surface(far).into());
+    assert_eq!(saved.frame, Frame::Surface(far));
     assert_eq!(game.get::<Location>().travel, Travel::InShip);
     assert!(game.walker().seated, "the body is not in the seat");
     let flown = (game.get::<Clock>().seconds - entry.save.clock_seconds).max(FLIGHT);

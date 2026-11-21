@@ -1,4 +1,7 @@
 //! The legacy plane is frozen: its heights, biomes, surfaces, ponds and spawns never change by a bit.
+//!
+//! The spawns of seeds 2 and 42 moved once on purpose, when the search for a spawn put its points 33 m apart
+//! instead of 16 m: with the old spacing the old digests came out again bit for bit, so the ground did not move.
 
 use crate::world::Terrain;
 
@@ -35,8 +38,8 @@ fn flat_path_is_frozen() {
         got,
         [
             0xA6DD_372B_E9AA_7ACF,
-            0x82B4_2CD6_90ED_85FA,
-            0xB8EC_22AE_8742_BA68
+            0x7E16_5A96_552C_B604,
+            0x96A7_60FD_7F63_7E51
         ]
     );
 }

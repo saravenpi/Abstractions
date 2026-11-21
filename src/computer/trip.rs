@@ -9,12 +9,8 @@
 //! owner wants, 1 to 2 minutes to the nearest star and 15 minutes to the next galaxy.
 
 use super::route::Target;
-use crate::ship::{CRUISE_CAP, GALAXY_CAP, JUMP_CAP, RAMP, SPOOL_TIME};
-use crate::universe::{LY, ORBIT, SUN_RADIUS};
-
-/// Farthest trip in metres inside one galaxy that flies at the cruise cap. A longer one flies
-/// at the jump cap. It is the jump distance of the autopilot, 50 light-years.
-pub const CRUISE_RANGE: f64 = 50.0 * LY;
+use crate::ship::{CRUISE_CAP, GALAXY_CAP, JUMP_CAP, JUMP_DISTANCE, RAMP, SPOOL_TIME};
+use crate::universe::{ORBIT, SUN_RADIUS};
 
 /// Clearance in metres from which a trip starts: the widest orbit of a planet, 40 AU, where a
 /// ship leaving a system has left its planets behind.
@@ -25,9 +21,9 @@ pub const LEAVE_CLEARANCE: f64 = ORBIT.1;
 pub const ARRIVE_CLEARANCE: f64 = 0.5 * SUN_RADIUS;
 
 /// Returns the cap in metres per second of the tier a trip of `gap` metres flies at: the
-/// galaxy cap between galaxies, the cruise cap up to [`CRUISE_RANGE`] and the jump cap beyond.
+/// galaxy cap between galaxies, the cruise cap up to [`JUMP_DISTANCE`] and the jump cap beyond.
 fn cap(gap: f64, same_galaxy: bool) -> f64 {
-    match (same_galaxy, gap > CRUISE_RANGE) {
+    match (same_galaxy, gap > JUMP_DISTANCE) {
         (false, _) => GALAXY_CAP,
         (true, true) => JUMP_CAP,
         (true, false) => CRUISE_CAP,

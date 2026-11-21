@@ -9,8 +9,8 @@
 //!
 //! | Tier | Used when | Cap | In c | Trip |
 //! | --- | --- | --- | --- | --- |
-//! | cruise | same galaxy, up to 50 ly | 0.15 ly/s | 4.7e6 c | nearest star (3.5 ly) in 60 s, 10 ly in 104 s |
-//! | jump | same galaxy, over 50 ly | 190 ly/s | 6.0e9 c | 100,000 ly in 592 s |
+//! | cruise | same galaxy, up to 13 ly | 0.15 ly/s | 4.7e6 c | nearest star (3.5 ly) in 60 s, 10 ly in 104 s |
+//! | jump | same galaxy, over 13 ly | 190 ly/s | 6.0e9 c | 100,000 ly in 592 s |
 //! | galaxy | another galaxy | 3,600 ly/s | 1.1e11 c | 3 million ly in 911 s |
 
 use crate::universe::LY;
@@ -28,5 +28,6 @@ pub const JUMP_CAP: f64 = 190.0 * LY;
 pub const GALAXY_CAP: f64 = 3600.0 * LY;
 
 /// Distance in metres beyond which a route inside a galaxy is a long jump: faster, and blind to
-/// the stars on the way. It is 50 light-years.
-pub const JUMP_DISTANCE: f64 = 50.0 * LY;
+/// the stars on the way. It is 13 light-years. The autopilot flies to it, and the trip times of the
+/// computer card read it from here.
+pub const JUMP_DISTANCE: f64 = 13.0 * LY;

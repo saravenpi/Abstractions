@@ -23,18 +23,24 @@ fn key(height: f32) -> u32 {
     }
 }
 
+/// Returns which cells of `height` the flood starts from: those at or under `sea`, or the lowest when none is.
+fn wet(height: &[f32], sea: f32) -> Vec<bool> {
+    let mut seen: Vec<bool> = height.iter().map(|h| *h <= sea).collect();
+    if !seen.contains(&true) {
+        let low = (0..height.len()).min_by(|a, b| height[*a].total_cmp(&height[*b]));
+        low.into_iter().for_each(|k| seen[k] = true);
+    }
+    seen
+}
+
 /// Floods the grid `grid` of `height`, from every cell at or under `sea`, or from the lowest when none is,
 /// always spreading from the lowest water level: each cell drains into the cell it was reached from, so
 /// every path ends in the sea or a basin, and a pit is filled to its lowest rim.
 pub fn flood(grid: Grid, height: &[f32], sea: f32) -> Flood {
     let mut next: Vec<u32> = (0..height.len() as u32).collect();
-    let mut seen: Vec<bool> = height.iter().map(|h| *h <= sea).collect();
+    let mut seen = wet(height, sea);
     let mut level = height.to_vec();
     let mut order = Vec::with_capacity(height.len());
-    if !seen.contains(&true) {
-        let low = (0..height.len()).min_by(|a, b| height[*a].total_cmp(&height[*b]));
-        low.into_iter().for_each(|k| seen[k] = true);
-    }
     let packed = |level: f32, k: usize| Reverse((u64::from(key(level)) << 32) | k as u64);
     let seeds: Vec<_> = (0..height.len())
         .filter(|k| seen[*k])

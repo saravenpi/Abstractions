@@ -17,6 +17,21 @@ pub const PRONE_RATE: f32 = 6.0;
 /// fast, under 5 degrees a frame at sixty frames a second.
 pub const BODY_RATE: f32 = 5.0;
 
+/// Fastest the path over the ground turns onto the heading the wings open on, in radians per
+/// second, and the largest load in g that turn may take: a quarter turn in 0.4 s when slow, at
+/// most 3 g across the path when fast. The wings open toward the view, not along the path the
+/// body had.
+pub const OPEN_TURN: (f32, f32) = (4.0, 3.0);
+
+/// Most seconds after the wings are asked open during which the nose holds the heading they open
+/// on and the path turns onto it, before the nose follows the path again: long enough for a
+/// quarter turn at 30 m/s under [`OPEN_TURN`].
+pub const OPEN_HOLD: f32 = 2.0;
+
+/// Radians between the path and the heading the wings open on at which the path is on it and the
+/// nose follows the path again.
+pub const OPEN_DONE: f32 = 0.02;
+
 /// Airspeeds in metres per second between which a body the gear took over turns from upright
 /// to prone with the wings folded. Spread, the wings lay it prone at once, see
 /// `aim::lain`.

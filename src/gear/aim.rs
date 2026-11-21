@@ -8,6 +8,7 @@ use std::f32::consts::{PI, TAU};
 use bevy::prelude::*;
 
 use super::aero::{best_aoa, bite, lift_slope};
+use super::assist::opens;
 use super::command::{course, safe};
 use super::input::GearInput;
 use super::mode::Mode;
@@ -152,16 +153,23 @@ fn pitch(state: &FlightState, input: &GearInput, pull: f32) -> f32 {
 /// With the wings folded it is upright along the asked heading. As they spread and the airspeed
 /// builds, the nose heading follows the flight path, the roll keys roll the wings and the view
 /// banks them, the banked lift turns the path, and the body lies prone as far as they spread,
-/// see [`lain`]. In a fall the gear took over the heading follows
-/// the path too, so spreading the wings again turns nothing, and the body lies flat across the
-/// fall as fast as on the wings: folded from a glide it stays prone, belly to the air.
+/// see [`lain`]. In a fall the gear took over the body lies flat across the fall as fast as on
+/// the wings, folded from a glide it stays prone, belly to the air, and it heads where the
+/// view aims it, not along the path it had: the wings open again toward the view. While they
+/// open the nose holds the heading they open on and the path turns onto it, see
+/// [`opens`]; then the nose follows the path again.
 pub(super) fn aim(state: &FlightState, input: &GearInput) -> Aim {
     let (spread, speed) = (state.spread(), state.velocity.length());
-    let heading = asked(state, input).x;
+    let opening = opens(state);
+    let heading = match opening {
+        true => state.servo.yaw,
+        false => asked(state, input).x,
+    };
     let offset = path_offset(state, heading);
     let flat = state.velocity.with_y(0.0).length();
     let along = spread.max(f32::from(u8::from(state.mode == Mode::Fall)));
-    let follow = along * smooth(FOLLOW_SPEED.0, FOLLOW_SPEED.1, flat);
+    let follow =
+        spread * smooth(FOLLOW_SPEED.0, FOLLOW_SPEED.1, flat) * f32::from(u8::from(!opening));
     let pull = pull(state, input);
     let pitch = pitch(state, input, pull);
     let lag = (pitch - state.pitch).clamp(-LAG, LAG) * sense(state);

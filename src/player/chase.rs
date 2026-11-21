@@ -23,6 +23,11 @@ const RETURN: f32 = 4.0;
 /// steadily instead of whipping a third person camera across.
 const SWING: f32 = 2.5;
 
+/// Largest turn in radians, of the heading and of the pitch each, the view is carried by in one
+/// frame: the most a body turns in a frame at 30 frames a second. A reading that jumps, as the
+/// heading of a body falling straight down, never whips the camera round.
+pub(super) const CARRY: f32 = 0.2;
+
 /// Gap in radians, heading and pitch together, at which a view that rights itself is upright.
 const RIGHTED: f32 = 0.05;
 
@@ -66,14 +71,16 @@ fn read(body: Vec2, flip: bool) -> Vec2 {
 
 /// Returns how far the body turned since the last frame as the view at `view` sees it, and
 /// keeps `body` for the next frame. Both frames are read the way the body is read nearest the
-/// view, so the turn stays small however the gear reads the body.
+/// view, so the turn stays small however the gear reads the body, and never more than
+/// [`CARRY`].
 pub(super) fn carried(wing: &mut WingView, body: Vec2, view: Vec2) -> Vec2 {
     let Some(last) = wing.last.replace(body) else {
         return Vec2::ZERO;
     };
     wing.over = flipped(body, view);
     let (now, was) = (read(body, wing.over), read(last, wing.over));
-    Vec2::new(wrap(now.x - was.x), wrap(now.y - was.y))
+    let turn = Vec2::new(wrap(now.x - was.x), wrap(now.y - was.y));
+    turn.clamp(Vec2::splat(-CARRY), Vec2::splat(CARRY))
 }
 
 /// Returns the reading of a body in `state`, read `body` by the gear, that the view at `view`

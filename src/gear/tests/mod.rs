@@ -27,6 +27,7 @@ mod vacuum;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::tune::OPEN_HOLD;
 use super::{FlightState, GearInput, Mode, step};
 
 /// Frame time of the test flights in seconds.
@@ -47,9 +48,9 @@ pub(super) struct Flight {
 
 impl Flight {
     /// Returns a body in `mode` moving at `velocity`, with the spool and wings already settled:
-    /// on the wings it lies prone along them, as a settled glide does.
+    /// on the wings it lies prone along them and has long since opened them, as a settled glide.
     pub(super) fn new(mode: Mode, velocity: Vec3) -> Self {
-        let state = FlightState {
+        let mut state = FlightState {
             mode,
             velocity,
             wings: f32::from(u8::from(mode.winged())),
@@ -57,6 +58,7 @@ impl Flight {
             thrust: f32::from(u8::from(matches!(mode, Mode::Fly | Mode::BootFall))),
             ..FlightState::default()
         };
+        state.servo.clock = OPEN_HOLD * f32::from(u8::from(mode.winged()));
         Self {
             state,
             pos: DVec3::ZERO,

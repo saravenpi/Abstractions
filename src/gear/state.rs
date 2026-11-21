@@ -22,7 +22,8 @@ pub struct Servo {
     /// folded, so that letting go or spreading them flies on where the body was going, and
     /// eases from there toward the best glide or what the view asks.
     pub climb: f32,
-    /// Seconds spent in the current mode.
+    /// Seconds spent in the current mode, on the wings with or without the boots alike: since
+    /// the wings were asked open.
     pub clock: f32,
     /// Speed lost into the last surface hit, in metres per second, until a touchdown reads it.
     pub impact: f32,

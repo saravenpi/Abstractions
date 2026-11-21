@@ -15,35 +15,42 @@ use crate::sim::{Intent, PlayerId};
 /// spread, in metres per second: about 4 g, what the wings may pull.
 const KICK: f32 = 3.0;
 
-/// Gliding east with the view north, the wings folded at speed and spread again a second
-/// later: the nose heading starts on the flight path and stays within 5 degrees of it, the path
-/// keeps heading east, and the velocity never jumps.
+/// Gliding east by north-east with the view north, 70 degrees off, the wings folded at speed
+/// and spread again a second later: folded, the body turns to the view; spread again, the wings
+/// open toward the view and the path turns onto it within two seconds, the nose never swinging
+/// back, and once the path is north it stays north. The velocity never jumps. Before, the wings
+/// opened again along the old path, whatever the view.
 #[test]
-fn spreading_again_flies_on_where_the_body_goes() {
-    let mut app = launch(Vec3::new(30.0, -7.0, 0.0), 2.0);
-    let east = heading(&body(&mut app, PlayerId::LOCAL).2);
+fn spreading_again_opens_toward_the_view() {
+    let mut app = launch(Vec3::new(30.0, -7.0, -11.0), 2.0);
     let mut last = body(&mut app, PlayerId::LOCAL).2.state.velocity;
-    let mut kick = 0.0_f32;
+    let (mut kick, mut reached) = (0.0_f32, None);
     for frame in 0..120 {
-        let asked: &[Intent] = match frame {
-            0 | 30 => &[Intent::Wings],
-            _ => &[],
+        let asked: &[Intent] = if frame % 30 == 0 && frame < 60 {
+            &[Intent::Wings]
+        } else {
+            &[]
         };
         let (_, gear, _) = hold(&mut app, 1, asked);
         kick = kick.max((gear.state.velocity - last).length());
         last = gear.state.velocity;
-        let off = wrap(gear.state.servo.yaw - heading(&gear)).to_degrees();
+        let (nose, path) = (wrap(gear.state.servo.yaw), wrap(heading(&gear)));
+        let what = format!("frame {frame}: nose {nose}, path {path}");
         assert!(
-            off.abs() < 5.0,
-            "frame {frame}: the nose is {off} degrees off the path"
+            frame < 36 || nose.abs() < 0.2,
+            "{what}: the nose swung away"
         );
+        reached = reached.or((frame > 30 && path.abs() < 0.1).then_some(frame));
         assert!(
-            wrap(heading(&gear) - east).abs() < 0.09,
-            "frame {frame}: turned away"
+            reached.is_none() || path.abs() < 0.15,
+            "{what}: the path went back"
         );
     }
-    let gear = body(&mut app, PlayerId::LOCAL).2;
-    assert_eq!(gear.state.mode, Mode::Glide);
+    assert!(
+        reached.is_some_and(|frame| frame <= 90),
+        "reached the view at {reached:?}"
+    );
+    assert_eq!(body(&mut app, PlayerId::LOCAL).2.state.mode, Mode::Glide);
     assert!(kick < KICK, "the velocity jumped by {kick} m/s in a frame");
 }
 

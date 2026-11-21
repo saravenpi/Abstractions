@@ -17,6 +17,11 @@ use crate::render::smoothstep as smooth;
 /// Shares of the speed that is ground speed between which the flight path has a heading.
 const STEEP: (f32, f32) = (0.2, 0.5);
 
+/// Cosine of the pitch above which the flight path is read on the side of the vertical the pitch
+/// reads on, however the nose heading lies: 60 degrees from the horizon. Only a nose nearer the
+/// vertical, where a loop passes over the top, reads a path that runs against the heading.
+const LEVELISH: f32 = 0.5;
+
 /// Cosines of the angle between the nose and the velocity between which the body flies nose
 /// first: from across the air, where it only falls, to 60 degrees off, a deep stall.
 const NOSE_FIRST: (f32, f32) = (0.0, 0.5);
@@ -43,16 +48,20 @@ pub(super) fn path_offset(state: &FlightState, yaw: f32) -> f32 {
 /// Returns the angle of the flight path of `state` above the horizon, on the turn nearest its
 /// pitch, or the pitch itself at rest.
 ///
-/// On the wings the ground speed counts along the nose heading, negative when the body flies
-/// backward over the top of a loop, so the angle runs on smoothly through the vertical on
-/// either side. Folded, the heading follows the view and not the path: the ground speed is
+/// On the wings, with the nose within [`LEVELISH`] of the vertical, the ground speed counts
+/// along the nose heading, negative when the body flies backward over the top of a loop, so the
+/// angle runs on smoothly through the vertical on either side. Nearer the horizon it is read the
+/// way the pitch reads: a body whose heading is off its path, as when the wings open on a run
+/// that goes another way than the view, is not read as flying backward over a loop it never
+/// flew, which would turn it over backward. Folded, the heading follows the view and not the path: the ground speed is
 /// read forward while the pitch reads upright and backward while it reads past the vertical.
 pub(super) fn climb(state: &FlightState) -> f32 {
     let (v, yaw) = (state.velocity, state.servo.yaw);
     if v.length_squared() < 1e-6 {
         return state.pitch;
     }
-    let flat = match state.mode.winged() {
+    let level = state.pitch.cos().abs() > LEVELISH;
+    let flat = match state.mode.winged() && !level {
         true => v.dot(Vec3::new(-yaw.sin(), 0.0, -yaw.cos())),
         false => v.with_y(0.0).length() * state.pitch.cos().signum(),
     };

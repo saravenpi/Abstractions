@@ -55,6 +55,9 @@ type Words = (&'static Count, &'static mut Text, &'static mut TextColor);
 type Distances = (&'static Far, &'static mut Text, &'static mut TextColor);
 
 /// The nodes of the compass.
+/// The parts of a mark's icon that a frame writes.
+type GlyphParts = (&'static Glyph, &'static mut Text, &'static mut TextColor);
+
 #[derive(SystemParam)]
 pub struct Pins<'w, 's> {
     /// Spawns marks when the pool is too small.
@@ -64,12 +67,7 @@ pub struct Pins<'w, 's> {
     /// The marks of the pool.
     pins: Query<'w, 's, (&'static mut Pin, &'static mut Node), Without<Bar>>,
     /// The icons of the marks.
-    glyphs: Query<
-        'w,
-        's,
-        (&'static Glyph, &'static mut Text, &'static mut TextColor),
-        (Without<Count>, Without<Far>),
-    >,
+    glyphs: Query<'w, 's, GlyphParts, (Without<Count>, Without<Far>)>,
     /// The counts of the marks.
     words: Query<'w, 's, Words, (Without<Glyph>, Without<Far>)>,
     /// The distances under the marks.

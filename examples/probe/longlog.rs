@@ -26,18 +26,18 @@ pub fn long_report(world: &mut World, frame: u32) {
     scene_line(world);
 }
 
+/// What the probe reads of the game camera: its place, projection, fog and exposure.
+type CameraParts = (
+    &'static GlobalTransform,
+    &'static Projection,
+    Option<&'static DistanceFog>,
+    Option<&'static Exposure>,
+);
+
 /// Logs the planes, the fog and the exposure of the game camera, with a check for NaN.
 fn camera_line(world: &mut World) {
     let read = world.run_system_once(
-        |cameras: Query<
-            (
-                &GlobalTransform,
-                &Projection,
-                Option<&DistanceFog>,
-                Option<&Exposure>,
-            ),
-            With<abstractions::render::GameCamera>,
-        >| {
+        |cameras: Query<CameraParts, With<abstractions::render::GameCamera>>| {
             cameras
                 .iter()
                 .map(|(at, projection, fog, exposure)| camera_text(at, projection, fog, exposure))

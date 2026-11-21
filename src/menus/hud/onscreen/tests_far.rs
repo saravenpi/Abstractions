@@ -18,7 +18,7 @@ fn the_far_limit_follows_how_the_player_travels() {
     assert_eq!(reach(&pin, Context::Gliding), Some(FAR_GLIDE));
     assert_eq!(reach(&pin, Context::ShipLanded), Some(FAR_SHIP));
     assert_eq!(reach(&pin, Context::ShipAir), Some(FAR_SHIP));
-    assert!(FAR_FOOT < FAR_GLIDE && FAR_GLIDE < FAR_SHIP);
+    const { assert!(FAR_FOOT < FAR_GLIDE && FAR_GLIDE < FAR_SHIP) };
     let theirs = marker(MarkerKind::Waypoint, 7);
     assert_eq!(reach(&theirs, Context::OnFoot), Some(FAR_FOOT));
 }

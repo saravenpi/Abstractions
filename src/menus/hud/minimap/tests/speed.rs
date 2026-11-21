@@ -62,7 +62,11 @@ fn complete(app: &App) -> bool {
     let data = images.get(&handle).and_then(|image| image.data.as_ref());
     data.is_some_and(|data| {
         data.len() == TEXELS * TEXELS * BYTES
-            && data.chunks_exact(BYTES).all(|texel| texel[3] == u8::MAX)
+            && data
+                .as_chunks::<BYTES>()
+                .0
+                .iter()
+                .all(|texel| texel[3] == u8::MAX)
     })
 }
 

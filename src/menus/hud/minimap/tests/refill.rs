@@ -133,8 +133,10 @@ fn a_moved_patch_samples_only_its_new_edge() {
     let rows = 7 * TEXELS * BYTES;
     assert_eq!(edge[..rows], whole[..rows]);
     let same = edge
-        .chunks_exact(BYTES)
-        .zip(whole.chunks_exact(BYTES))
+        .as_chunks::<BYTES>()
+        .0
+        .iter()
+        .zip(whole.as_chunks::<BYTES>().0.iter())
         .filter(|(a, b)| a == b)
         .count();
     assert!(same * 100 >= TEXELS * TEXELS * 99, "{same} texels match");

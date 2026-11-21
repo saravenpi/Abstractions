@@ -1,0 +1,123 @@
+//! Courses picked on the map never loop: from the air of the home planet, from orbit above it and from
+//! open space, one command takes the ship to another planet or star, the drive spools at most three times on the
+//! way, and the route arrives.
+
+use bevy::math::{DQuat, DVec3};
+
+use super::pick::{neighbour, other_star};
+use super::{ground, key, lifts_off};
+use crate::computer::{Destination, Engage, Target};
+use crate::ship::frames::planet_velocity;
+use crate::ship::tests::rig::{Game, Log};
+use crate::ship::warp::Warp;
+use crate::ship::{Autopilot, Phase, ShipEvent};
+use crate::space::{Clock, Frame, Location};
+use crate::universe::Universe;
+
+/// Frames a course may take, at a tenth of a second each.
+const FRAMES: usize = 12_000;
+
+/// Most spools of the drive a course may take: two legs round the home planet when it lies in the way,
+/// and the leg to the place. A loop spools again and again.
+const SPOOLS: usize = 3;
+
+/// Radii from the centre of the home planet the ship is put at, outside its lock sphere.
+const ORBIT: f64 = 3.0;
+
+/// Takes the ship off the pad and lets go of the levers, so that the autopilot flies it.
+fn takes_off(game: &mut Game, tag: &str) {
+    game.start(tag, None);
+    ground::stands_on_home(game);
+    ground::boards(game);
+    lifts_off(game);
+    for lever in [
+        key(game, |keys| keys.ship.rise),
+        key(game, |keys| keys.ship.throttle_up),
+    ] {
+        game.release(lever);
+    }
+}
+
+/// Puts the ship at rest beside the home planet, [`ORBIT`] radii out, in the frame of the star.
+fn into_orbit(game: &mut Game) {
+    let (universe, time) = (game.get::<Universe>(), game.get::<Clock>().seconds);
+    let planet = universe.planet(universe.home());
+    let up = DVec3::X;
+    let pos = planet.position(time) + up * planet.radius * ORBIT;
+    let frame = Frame::System(universe.home().star);
+    game.with_ship(|ship| {
+        ship.frame = frame;
+        ship.pos = pos;
+        ship.rot = DQuat::from_rotation_arc(DVec3::NEG_Z, up);
+        ship.vel = planet_velocity(&planet, time);
+        (ship.spin, ship.throttle, ship.landed) = (DVec3::ZERO, 0.0, false);
+        ship.warp = Warp::Off;
+    });
+    game.step(5);
+}
+
+/// Counts the spools of the drive so far.
+fn spools(game: &Game) -> usize {
+    let log = game.get::<Log>();
+    let spooled = |event: &&ShipEvent| **event == ShipEvent::WarpSpooling;
+    log.ship.iter().filter(spooled).count()
+}
+
+/// Sets the course to `target` as the Go key does, flies it, and returns the spools it took.
+fn goes(game: &mut Game, target: Target) -> usize {
+    let before = spools(game);
+    game.app.world_mut().resource_mut::<Destination>().0 = Some(target);
+    game.app.world_mut().trigger(Engage(target));
+    for frame in 0..FRAMES {
+        if game.get::<Autopilot>().phase() == Phase::Arrived {
+            game.step(3);
+            return spools(game) - before;
+        }
+        game.step(1);
+        if frame % 2_000 == 1_999 {
+            println!("loops: {:?}", game.get::<Autopilot>());
+        }
+    }
+    let pilot = game.get::<Autopilot>();
+    panic!(
+        "the course never arrived after {} spools: {pilot:?}",
+        spools(game) - before
+    );
+}
+
+/// From the air of the home planet, one command to the nearest other planet of the system arrives with
+/// at most [`SPOOLS`] spools and puts the player at that planet.
+#[test]
+fn a_course_from_the_air_takes_few_spools() {
+    let mut game = Game::full("loops-air");
+    let game = &mut game;
+    takes_off(game, "Loops air");
+    let far = neighbour(game);
+    let spooled = goes(game, Target::Body(far));
+    assert!(spooled <= SPOOLS, "{spooled} spools");
+    assert_eq!(game.get::<Location>().body, far);
+}
+
+/// From orbit above the home planet, the same.
+#[test]
+fn a_course_from_orbit_takes_few_spools() {
+    let mut game = Game::full("loops-orbit");
+    let game = &mut game;
+    takes_off(game, "Loops orbit");
+    into_orbit(game);
+    let far = neighbour(game);
+    let spooled = goes(game, Target::Body(far));
+    assert!(spooled <= SPOOLS, "{spooled} spools");
+    assert_eq!(game.get::<Location>().body, far);
+}
+
+/// From open space, a star of another system is flown to with at most [`SPOOLS`] spools.
+#[test]
+fn a_course_to_a_star_takes_few_spools() {
+    let mut game = Game::full("loops-star");
+    let game = &mut game;
+    takes_off(game, "Loops star");
+    into_orbit(game);
+    let spooled = goes(game, Target::Star(other_star(game)));
+    assert!(spooled <= SPOOLS, "{spooled} spools");
+}

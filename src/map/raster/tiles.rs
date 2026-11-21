@@ -1,7 +1,8 @@
-//! The cache of tiles: the tiles the lens looks at are painted on workers, kept while they are
-//! used and dropped, the farthest from the view first, when the cache is full.
+//! The cache of tiles: the tiles the lens looks at are painted on workers, those never painted
+//! before those that show older ground, kept while they are used and dropped, the farthest
+//! from the view first, when the cache is full. A tile asked for is never dropped.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use abstractions_net::leaves::Leaves;
@@ -15,9 +16,11 @@ use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::po
 #[cfg(test)]
 use super::BYTES;
 use super::Rasters;
-use super::tile::{SIDE, TileId, ZOOM_FROM, away, level_for, visible};
+use super::cover::{Ready, asked, shown};
+use super::tile::{SIDE, TileId, ZOOM_FROM, away};
 use super::tile_paint::{lit, paint};
 use crate::map::explored::Explored;
+use crate::map::sight::Sight;
 use crate::map::{Level, Surface};
 use crate::universe::BodyId;
 use crate::world::Globe;
@@ -54,36 +57,39 @@ pub struct Tiles {
 }
 
 impl Tiles {
-    /// Returns the tiles asked for now that need a worker, at most as many as the free workers.
+    /// Returns the tiles asked for now that need a worker, at most as many as the free workers:
+    /// those never painted first, then those that show older ground, each in the order asked.
     fn todo(&self, body: BodyId, version: u64) -> Vec<TileId> {
         let running = self
             .slots
             .values()
             .filter(|slot| slot.job.is_some())
             .count();
-        self.wanted
+        let slot = |id: &TileId| self.slots.get(&(body, *id));
+        let mut todo: Vec<TileId> = self
+            .wanted
             .1
             .iter()
             .map(|(_, id)| *id)
             .filter(|id| {
-                self.slots.get(&(body, *id)).is_some_and(|slot| {
+                slot(id).is_some_and(|slot| {
                     slot.job.is_none() && !(slot.image.is_some() && slot.seen == version)
                 })
             })
-            .take(JOBS.saturating_sub(running))
-            .collect()
+            .collect();
+        todo.sort_by_key(|id| slot(id).is_some_and(|slot| slot.image.is_some()));
+        todo.truncate(JOBS.saturating_sub(running));
+        todo
     }
 
-    /// Returns the tiles asked for now whose picture is ready, with the picture.
-    pub fn ready(&self) -> Vec<(i64, TileId, Handle<Image>)> {
-        let Some(body) = self.wanted.0 else {
-            return Vec::new();
+    /// Returns the tiles to draw for `lens`, coarsest first, and whether they cover the whole
+    /// view: for each tile in view the finest painted tile that holds it. Nothing is drawn while
+    /// the map is zoomed out under [`ZOOM_FROM`].
+    pub fn ready(&self, lens: Sight) -> (Vec<Ready>, bool) {
+        let Some(body) = self.wanted.0.filter(|_| lens.zoom >= ZOOM_FROM) else {
+            return (Vec::new(), false);
         };
-        let slot = |id: &TileId| self.slots.get(&(body, *id))?.image.clone();
-        let ready = self.wanted.1.iter();
-        ready
-            .filter_map(|(col, id)| Some((*col, *id, slot(id)?)))
-            .collect()
+        shown(lens, |id| self.slots.get(&(body, id))?.image.clone())
     }
 }
 
@@ -100,23 +106,24 @@ fn picture(data: Vec<u8>) -> Image {
     image
 }
 
-/// Asks for the tiles the lens looks at, or for none while the map is zoomed out.
+/// Asks for the tiles the lens looks at, after the coarser ones that cover its view, or for
+/// none while the map is zoomed out.
 pub(super) fn want(level: Res<Level>, surface: Res<Surface>, mut tiles: ResMut<Tiles>) {
     let Level::Planet(body) = *level else {
         return;
     };
     let lens = surface.lens;
-    let asked = match lens.zoom >= ZOOM_FROM {
-        true => visible(lens, level_for(lens.zoom)),
+    let wanted = match lens.zoom >= ZOOM_FROM {
+        true => asked(lens),
         false => Vec::new(),
     };
-    if tiles.wanted.0 == Some(body) && tiles.wanted.1 == asked {
+    if tiles.wanted.0 == Some(body) && tiles.wanted.1 == wanted {
         return;
     }
-    for (_, id) in &asked {
+    for (_, id) in &wanted {
         tiles.slots.entry((body, *id)).or_default();
     }
-    tiles.wanted = (Some(body), asked);
+    tiles.wanted = (Some(body), wanted);
 }
 
 /// Starts workers for the tiles asked for that are not painted, or show older ground.
@@ -171,22 +178,25 @@ pub(super) fn collect(mut tiles: ResMut<Tiles>, images: Option<ResMut<Assets<Ima
 }
 
 /// Drops the tiles farthest from what the map shows once more than [`KEPT`] are kept: those of
-/// another body first, then those of the levels farthest from the one shown, then those farthest
-/// from the centre of the view. The tiles asked for now are the nearest, so they stay, and no
-/// level is ever kept whole.
+/// another body first, then those not asked for now, then those of the levels farthest from the
+/// one shown, then those farthest from the centre of the view. The tiles asked for now are
+/// never dropped, and no level is ever kept whole.
 pub(super) fn trim(mut tiles: ResMut<Tiles>, surface: Res<Surface>) {
     if tiles.slots.len() <= KEPT {
         return;
     }
     let shown = tiles.wanted.0;
+    let wanted: HashSet<TileId> = tiles.wanted.1.iter().map(|(_, id)| *id).collect();
     let far = |(body, id): &(BodyId, TileId)| {
         let (levels, gap) = away(*id, surface.lens);
-        (Some(*body) != shown, levels, gap)
+        (Some(*body) != shown, !wanted.contains(id), levels, gap)
     };
     let mut order: Vec<(BodyId, TileId)> = tiles.slots.keys().copied().collect();
     order.sort_by(|a, b| {
         let (a, b) = (far(a), far(b));
-        (b.0, b.1).cmp(&(a.0, a.1)).then(b.2.total_cmp(&a.2))
+        (b.0, b.1, b.2)
+            .cmp(&(a.0, a.1, a.2))
+            .then(b.3.total_cmp(&a.3))
     });
     let surplus = tiles.slots.len() - KEPT;
     for key in order.into_iter().take(surplus) {
@@ -197,3 +207,7 @@ pub(super) fn trim(mut tiles: ResMut<Tiles>, surface: Res<Surface>) {
 #[cfg(test)]
 #[path = "tests_cache.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "tests_cover.rs"]
+mod cover_tests;

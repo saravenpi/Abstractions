@@ -4,14 +4,15 @@
 //! The flat map is the coloured picture of the planet the raster paints, from
 //! [`super::raster::Rasters`], clear where nobody has been, so a dim tone of the panel shows
 //! there. Until a picture is ready the same dim tone stands in for it. A sentence over the map
-//! says why it is dim: the picture is being drawn, or nothing is explored yet.
+//! says why it is dim: the picture is being drawn, or nothing is explored yet. Zoomed in, the
+//! tiles lie over the picture, which hides once they cover the view.
 
 use bevy::prelude::*;
 
 use super::explored::Explored;
 use super::level::Level;
-use super::raster::{Rasters, tile_layer};
-use super::surface::PlanetSheet;
+use super::raster::{Rasters, Tiles, tile_layer};
+use super::surface::{PlanetSheet, Surface};
 use crate::computer::ChartLayer;
 use crate::ui::{text, theme};
 
@@ -166,6 +167,26 @@ pub(super) fn picture(
                 commands.entity(entity).remove::<ImageNode>();
             }
             (None, None) => {}
+        }
+    }
+}
+
+/// Hides the picture of the planet while the tiles cover the whole view, so its cells, each
+/// tens of kilometres wide on a planet of real size, never show as flat squares through the
+/// ground the tiles leave clear, and shows it again while they do not.
+pub(super) fn veil(
+    (tiles, surface): (Res<Tiles>, Res<Surface>),
+    mut pictures: Query<&mut ImageNode, With<Picture>>,
+) {
+    let fresh = pictures.iter_mut().any(|node| node.is_changed());
+    if !(tiles.is_changed() || surface.is_changed() || fresh) {
+        return;
+    }
+    let covered = tiles.ready(surface.lens).1;
+    let color = [Color::WHITE, Color::NONE][usize::from(covered)];
+    for mut node in &mut pictures {
+        if node.color != color {
+            node.color = color;
         }
     }
 }

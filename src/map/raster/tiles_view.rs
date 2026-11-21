@@ -6,6 +6,7 @@
 use bevy::math::DVec2;
 use bevy::prelude::*;
 
+use super::cover::Ready;
 use super::tile::TileId;
 use super::tiles::Tiles;
 use crate::computer::SIZE;
@@ -58,9 +59,6 @@ pub fn node(column: i64, id: TileId, lens: Sight) -> Node {
     }
 }
 
-/// A tile ready to show: its column counted without wrapping, the tile and its picture.
-type Ready = (i64, TileId, Handle<Image>);
-
 /// Returns true when `tile` shows the tile `ready`.
 fn same((col, id, image): &Ready, tile: &Shown) -> bool {
     (*col, *id, image) == (tile.0, tile.1, &tile.2)
@@ -85,8 +83,8 @@ fn follow(
     }
 }
 
-/// Shows the tiles that are ready where the lens draws them, moves them with the lens, and hides
-/// the others.
+/// Shows the tiles that cover the view where the lens draws them, each finer level over the
+/// coarser ones, moves them with the lens, and hides the others.
 pub(super) fn show(
     (tiles, surface): (Res<Tiles>, Res<Surface>),
     layers: Query<Entity, With<TileLayer>>,
@@ -96,7 +94,8 @@ pub(super) fn show(
     if !(tiles.is_changed() || surface.is_changed()) {
         return;
     }
-    let (ready, lens) = (tiles.ready(), surface.lens);
+    let lens = surface.lens;
+    let (ready, _) = tiles.ready(lens);
     follow(&ready, lens, &mut shown, &mut commands);
     let missing: Vec<&Ready> = ready
         .iter()
@@ -105,9 +104,10 @@ pub(super) fn show(
     for layer in &layers {
         for (col, id, image) in missing.iter().copied() {
             let tile = (Shown(*col, *id, image.clone()), node(*col, *id, lens));
+            let above = ZIndex(i32::from(id.level));
             commands
                 .entity(layer)
-                .with_child((tile, ImageNode::new(image.clone())));
+                .with_child((tile, above, ImageNode::new(image.clone())));
         }
     }
 }

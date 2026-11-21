@@ -13,12 +13,16 @@
 
 #[cfg(test)]
 mod graze;
+mod layer;
 mod seen;
 
-use bevy::math::{Vec3, Vec4};
+use bevy::math::{Mat3, Vec3, Vec4};
 
 #[cfg(test)]
 pub use graze::{CLAMP, CUT, GRAZE, MEAN, SPREAD, TAIL, TALL, drawn};
+pub use layer::{SLICES, slice, volume};
+#[cfg(test)]
+pub use layer::{SOFT, drawn_at, reached};
 pub use seen::density_at;
 #[cfg(test)]
 pub use seen::{SHARP, density, fbm_seen};
@@ -58,6 +62,16 @@ pub const OCTAVE_SHIFT: Vec3 = Vec3::new(17.1, 9.2, 4.7);
 
 /// Octaves of the noise a puff is cut from.
 pub const OCTAVES: u32 = 4;
+
+/// A fixed turn of the noise lattice off the planet axes, columns first: 0.9 radians round the
+/// axis (1, 2, 3). Laid on the planet axes, the lattice planes across the spin axis run along
+/// the circles of latitude, and a low view toward a pole saw the rows of noise cells as regular
+/// streaks along the horizon.
+pub const SKEW: Mat3 = Mat3::from_cols(
+    Vec3::new(0.648_638, 0.682_114, -0.337_622),
+    Vec3::new(-0.574_003, 0.729_721, 0.371_52),
+    Vec3::new(0.499_789, -0.047_186, 0.864_861),
+);
 
 /// A point of the noise of the puffs: where the broad octave reads it, and where the finer
 /// octaves do, which have slid on by [`SHEAR`].
@@ -131,10 +145,10 @@ pub fn turned(v: Vec3, c: f32, s: f32) -> Vec3 {
 }
 
 /// Returns the spot of the noise over the planet-fixed point `p` of the shell, in cells, under
-/// the turn `drift`. Twin of `spot_at`.
+/// the turn `drift`, in the lattice turned by [`SKEW`]. Twin of `spot_at`.
 pub fn spot_at(p: Vec3, drift: Vec4) -> Spot {
     Spot {
-        base: turned(p, drift.x, drift.y),
-        fine: turned(p, drift.z, drift.w),
+        base: SKEW * turned(p, drift.x, drift.y),
+        fine: SKEW * turned(p, drift.z, drift.w),
     }
 }

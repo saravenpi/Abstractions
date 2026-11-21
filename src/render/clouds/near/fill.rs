@@ -5,7 +5,7 @@
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::super::cross::crossing_depth;
+use super::super::cross::depth_at;
 use crate::render::celestial::smoothstep;
 use crate::weather::density_at;
 
@@ -56,15 +56,12 @@ pub struct Puff {
 }
 
 /// Returns how much cloud there is at the planet-fixed unit direction `dir` and `altitude`
-/// metres above the sea: the field the shell draws there, times how deep the height is in the
-/// band. It is what the camera whites out by, see `CloudCrossing`.
+/// metres above the sea: the volume of the slices the layer draws over the field there, from the
+/// base of the band to the highest slice the column reaches. It is what the camera whites out
+/// by, see `CloudCrossing`, so no puff is where no slice is drawn.
 pub fn volume(dir: DVec3, altitude: f32, layer: &Layer) -> f32 {
-    let (base, top) = layer.band;
-    let band = crossing_depth(altitude, base, top);
-    if band <= 0.0 {
-        return 0.0;
-    }
-    band * density_at(dir, layer.cells, layer.seconds, layer.cover)
+    let body = density_at(dir, layer.cells, layer.seconds, layer.cover);
+    depth_at(altitude, layer.band, body)
 }
 
 /// Returns a fixed offset in `[-0.3, 0.3)` lattice steps for the point `cell` on each axis, so

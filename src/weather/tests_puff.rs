@@ -4,8 +4,8 @@
 use bevy::math::Vec3;
 
 use super::puff::{
-    CLAMP, CUT, EDGE, GRAZE, LONE, MEAN, OCTAVE_SCALE, OCTAVE_SHIFT, OCTAVES, SHARP, SPREAD, Spot,
-    TAIL, TALL, THRESHOLD, density, fbm_seen, hash31, space_noise, threshold,
+    CLAMP, CUT, EDGE, GRAZE, LONE, MEAN, OCTAVE_SCALE, OCTAVE_SHIFT, OCTAVES, SHARP, SKEW, SPREAD,
+    Spot, TAIL, TALL, THRESHOLD, density, fbm_seen, hash31, space_noise, threshold,
 };
 
 /// Returns all the octaves of the noise at `p` of a field that has not moved.
@@ -85,6 +85,7 @@ fn the_constants_match_the_shader() {
     assert_eq!(constant("TALL"), [TALL]);
     assert_eq!(constant("GRAZE"), [GRAZE]);
     assert_eq!(constant("CLAMP"), [CLAMP]);
+    assert_eq!(constant("SKEW"), SKEW.to_cols_array());
 }
 
 /// More cover means more cloud at every point, and a clear sky still holds a few thin puffs.

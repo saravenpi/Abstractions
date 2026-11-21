@@ -6,11 +6,10 @@
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::super::cross::crossing_depth;
 use super::fill::{FLOOR, Layer, PUFFS, REACH, lattice, tint, volume};
 use super::lamps::{Lamp, glow};
 use crate::render::scatter::luminance;
-use crate::weather::density_at;
+use crate::weather::{density_at, reached};
 
 /// A temperate cloud band over an Earth, under a broken sky.
 const LAYER: Layer = Layer {
@@ -21,26 +20,32 @@ const LAYER: Layer = Layer {
     cover: 0.6,
 };
 
-/// Returns a planet-fixed direction under a thick part of the field.
+/// Returns a planet-fixed direction under a towering part of the field, whose column reaches
+/// the middle slice of the band.
 fn cloudy() -> DVec3 {
     (0..4000)
         .map(|k| DVec3::new((k as f64 * 0.7).sin(), 0.3, (k as f64 * 0.7).cos()).normalize())
-        .find(|dir| density_at(*dir, LAYER.cells, LAYER.seconds, LAYER.cover) > 0.4)
-        .expect("a thick puff somewhere")
+        .find(|dir| density_at(*dir, LAYER.cells, LAYER.seconds, LAYER.cover) > 0.8)
+        .expect("a towering puff somewhere")
 }
 
-/// The volume is the drawn field times the depth in the band: nothing under the base, over the
-/// top or in a clear gap, and it rises as a camera climbs from the base into the puff.
+/// The volume is the drawn slices over the field: cloud from the base of the band up to the
+/// highest slice the column reaches, nothing under the base, over that slice, over the top or in
+/// a clear gap, so no puff floats where no slice is drawn.
 #[test]
 fn the_volume_is_the_drawn_cloud_at_its_height() {
     let dir = cloudy();
-    let field = density_at(dir, LAYER.cells, LAYER.seconds, LAYER.cover);
-    for altitude in [1500.0, 2050.0, 2600.0] {
-        let want = crossing_depth(altitude, 1100.0, 3000.0) * field;
-        assert!((volume(dir, altitude, &LAYER) - want).abs() < 1.0e-6);
+    let body = density_at(dir, LAYER.cells, LAYER.seconds, LAYER.cover);
+    let (base, top) = LAYER.band;
+    let highest = reached(body).expect("the base slice draws this puff");
+    for share in [0.01, 0.5 * highest, highest - 0.01] {
+        let altitude = base + share * (top - base);
+        assert_eq!(volume(dir, altitude, &LAYER), 1.0, "{share} of the band");
     }
-    assert_eq!(volume(dir, 900.0, &LAYER), 0.0);
-    assert_eq!(volume(dir, 3100.0, &LAYER), 0.0);
+    let over = base + (highest + 0.05) * (top - base);
+    assert_eq!(volume(dir, over, &LAYER), 0.0);
+    assert_eq!(volume(dir, base - 50.0, &LAYER), 0.0);
+    assert_eq!(volume(dir, top + 100.0, &LAYER), 0.0);
     let clear = Layer {
         cover: 0.0,
         ..LAYER
@@ -49,11 +54,6 @@ fn the_volume_is_the_drawn_cloud_at_its_height() {
     assert!(
         gaps.into_iter()
             .any(|dir| volume(dir, 2050.0, &clear) == 0.0)
-    );
-    let rising = [1150.0, 1400.0, 1700.0, 2050.0].map(|altitude| volume(dir, altitude, &LAYER));
-    assert!(
-        rising.windows(2).all(|pair| pair[1] > pair[0]),
-        "{rising:?}"
     );
 }
 

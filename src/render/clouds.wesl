@@ -15,6 +15,7 @@ struct Clouds {
     fixed_z: vec4<f32>,
     fade: vec4<f32>,
     eye: vec4<f32>,
+    slice: vec4<f32>,
 }
 
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> clouds: Clouds;
@@ -64,9 +65,9 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let dist = length(to_eye);
     let facing = dot(n, to_eye / max(dist, 0.001));
     let footprint = max(length(dpdx(spot)), length(dpdy(spot)));
-    let cloud = puff(spot, clouds.drift, to_fixed * light, facing, cover, footprint);
+    let cloud = puff(spot, clouds.drift, to_fixed * light, facing, cover, footprint, i32(clouds.slice.y));
     let through = exp(-clouds.fade.xyz * dist);
-    let body = cloud.density * lone(cloud, cover);
+    let body = cloud.density * lone(cloud, cover) - 0.5 * clouds.slice.x;
     let edge = clamp(0.5 + (body - 0.5) / max(fwidth(body) * EDGE_PIXELS, 0.0001), 0.0, 1.0);
     let alpha = max(edge, whiteout);
     if (alpha <= dither(in.position.xy)) {

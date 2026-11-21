@@ -2,7 +2,7 @@
 //! thick air glowing earlier than thin air, a colour for each gas, and a glow that eases and
 //! costs nothing while the craft is slow.
 
-use super::{Craft, Gas, Glow, Heat, descent, entry, flux};
+use super::{Craft, Gas, Glow, Heat, entry, flux};
 use crate::universe::{self as air, Mix};
 
 /// Density of the air of the home planet at sea level in kilograms per cubic metre.
@@ -32,20 +32,20 @@ fn the_flux_follows_the_cube_of_the_speed() {
 }
 
 /// At the same speed thick air glows harder than home air and home air harder than thin air, until
-/// both glow in full, and a slow craft glows in none of them.
+/// both glow in full, and a craft at the speed of a jet glows in none of them.
 #[test]
 fn thick_air_glows_earlier_than_thin() {
     let at = |density: f64, speed: f64| entry(density, speed, Gas::NitrogenOxygen).heat;
-    for speed in [120.0, 160.0] {
+    for speed in [900.0, 1300.0] {
         assert!(at(THICK, speed) > at(HOME, speed), "{speed}");
         assert!(at(HOME, speed) > at(THIN, speed), "{speed}");
     }
-    assert_eq!((at(THICK, 240.0), at(HOME, 240.0)), (1.0, 1.0));
-    assert!(at(HOME, 240.0) > at(THIN, 240.0));
+    assert_eq!((at(THICK, 2000.0), at(HOME, 2000.0)), (1.0, 1.0));
+    assert!(at(HOME, 2000.0) > at(THIN, 2000.0));
     for density in [THIN, HOME, THICK] {
-        assert_eq!(at(density, 20.0), 0.0, "{density}");
+        assert_eq!(at(density, 300.0), 0.0, "{density}");
     }
-    assert!(at(THIN, 240.0) < 0.6 && at(THICK, 240.0) > 0.95);
+    assert!(at(THIN, 2000.0) < 0.8 && at(THIN, 2000.0) > 0.3);
 }
 
 /// Every gas glows in a colour of its own, and a glow that heats up changes its colour.
@@ -67,21 +67,10 @@ fn colours_differ_by_gas() {
     }
 }
 
-/// Level flight and a landing approach show nothing, a dive shows all of it.
-#[test]
-fn only_a_fall_counts_as_an_entry() {
-    assert_eq!(descent(0.0), 0.0);
-    assert_eq!(descent(18.0), 0.0);
-    assert_eq!(descent(110.0), 1.0);
-    let glow = entry(HOME, 240.0, Gas::Unknown);
-    assert_eq!(glow.scaled(0.0).heat, 0.0);
-    assert_eq!(glow.scaled(1.0), glow);
-}
-
 /// The glow rises and cools at bounded rates and is exactly zero once it has cooled.
 #[test]
 fn the_glow_eases_and_cools() {
-    let hot = entry(THICK, 240.0, Gas::CarbonDioxide);
+    let hot = entry(THICK, 2000.0, Gas::CarbonDioxide);
     let rising = Glow::NONE.follow(hot, 0.1);
     assert!(rising.heat > 0.0 && rising.heat < hot.heat);
     assert_eq!(rising.color, hot.color);
@@ -97,7 +86,7 @@ fn the_glow_eases_and_cools() {
 fn an_idle_heat_does_no_work() {
     let mut heat = Heat::default();
     assert!(!heat.live());
-    heat.offer(entry(HOME, 240.0, Gas::NitrogenOxygen), Craft::default());
+    heat.offer(entry(HOME, 2000.0, Gas::NitrogenOxygen), Craft::default());
     assert!(heat.live());
 }
 

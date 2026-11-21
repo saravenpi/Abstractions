@@ -12,6 +12,8 @@
 //!   being played: the map of explored ground, stones picked and a tool made, a herd stalked, a fight, a
 //!   kill carved, the robot hurt and mended, the pack and the guide after the hunt; see the `play` module).
 //!   `stars` shoots the star field in space and in orbit (see the `stars` module).
+//!   `craft` shoots the pack and the workshop on a staged pack: empty, stones and a hide, each intent,
+//!   a card focused and a tool made (see the `workshop` module).
 //!   The title, loading, boot and wake stages always run.
 //! - `SMOKE_ONLY` and `SMOKE_SKIP`: comma lists of stage names to keep or to leave out.
 //! - `SMOKE_TARGET` and `SMOKE_FLASH`: see the `warp` and `boot` stages.
@@ -115,6 +117,7 @@ mod walls;
 mod watch;
 mod water;
 mod wing;
+mod workshop;
 mod zoo;
 
 use air::*;
@@ -168,6 +171,7 @@ use walls::*;
 use watch::*;
 use water::*;
 use wing::*;
+use workshop::*;
 
 /// Runs the zoo when `PROBE_STAGES` names it, else the tour of the game.
 fn main() -> AppExit {

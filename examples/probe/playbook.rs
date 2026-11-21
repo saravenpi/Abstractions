@@ -1,7 +1,7 @@
 //! The screens after the hunt: the pack with what was taken, the workshop with it, the field
 //! guide with the species met, and the pause menu: shots `e70` to `e80`.
 
-use abstractions::craft::ui::{Bench, Tab as BenchTab, Workshop};
+use abstractions::craft::ui::{Bench, Pane, Workshop};
 use abstractions::fauna::guide::open::Shelf;
 use abstractions::fauna::guide::{Guide, Seen};
 use abstractions::life::Guild;
@@ -19,7 +19,7 @@ pub fn play_pack(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
     }
     let pack_key = bound(world, |s| s.controls.keys.pack);
     let open = *world.resource::<State<Workshop>>().get() == Workshop::Open;
-    let making = world.resource::<Bench>().tab == BenchTab::Make;
+    let making = world.resource::<Bench>().pane == Pane::Workshop;
     match frame {
         10 | 11 => tap(world, pack_key, frame, 10),
         30 if making => key(world, KeyCode::Tab, true),

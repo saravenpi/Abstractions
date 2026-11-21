@@ -6,6 +6,7 @@
 use std::collections::BTreeMap;
 
 use abstractions::render::{CloudCover, CloudMaterial, CloudShell, Palette, Vantage};
+use abstractions::weather::Weather;
 use bevy::camera::visibility::{NoFrustumCulling, RenderLayers};
 use bevy::light::NotShadowCaster;
 use bevy::pbr::Material;
@@ -17,6 +18,10 @@ const TURN: u32 = 45;
 
 /// Pitch in radians every shot looks at unless it changes the pitch: the one of `L1a-all`.
 const PITCH: f32 = 0.3;
+
+/// Cover every shot forces unless it changes the cover: a light cover, the kind the flecks came from. The
+/// cover of the weather moves with the time of the run, so a shot under it proves nothing about another.
+const COVER: f32 = 0.3;
 
 /// What the stage took off the world and must put back before the next shot.
 #[derive(Resource, Default)]
@@ -30,8 +35,10 @@ pub struct Isolated {
 /// The one thing a shot changes.
 #[derive(Debug, Clone, Copy)]
 enum Change {
-    /// Nothing: the baseline.
+    /// Nothing: the baseline under the forced reference cover.
     Nothing,
+    /// The cover is given back to the weather.
+    Weather,
     /// The cover of the cloud shell is forced to this value.
     Cover(f32),
     /// The cloud shell is drawn as its bare mesh in flat red of this opacity, by a standard unlit material.
@@ -51,7 +58,8 @@ enum Change {
 }
 
 /// The shots in order: name and change.
-const STEPS: [(&str, Change); 21] = [
+const STEPS: [(&str, Change); 22] = [
+    ("I00-weather-cover", Change::Weather),
     ("I00-baseline", Change::Nothing),
     ("I01-cover-0", Change::Cover(0.0)),
     ("I02-cover-045", Change::Cover(0.45)),
@@ -154,7 +162,7 @@ fn twin(world: &mut World, alpha: f32) {
     );
 }
 
-/// Puts back every mesh taken off, removes the red twin, gives the cover back to the weather, switches
+/// Puts back every mesh taken off, removes the red twin, forces the reference cover, switches
 /// the clouds and their shadows on, and looks toward the star at [`PITCH`] from the ground.
 fn restore(world: &mut World) {
     let mut state = std::mem::take(&mut *world.resource_mut::<Isolated>());
@@ -171,7 +179,7 @@ fn restore(world: &mut World) {
     {
         found.despawn();
     }
-    world.resource_mut::<CloudCover>().0 = None;
+    world.resource_mut::<CloudCover>().0 = Some(COVER);
     let graphics = &world.resource::<Persistent<Settings>>().graphics;
     if !graphics.clouds || !graphics.lighting.cloud_shadows {
         let mut settings = world.resource_mut::<Persistent<Settings>>();
@@ -186,6 +194,7 @@ fn restore(world: &mut World) {
 fn apply(world: &mut World, change: Change) {
     match change {
         Change::Nothing | Change::High(_) => {}
+        Change::Weather => world.resource_mut::<CloudCover>().0 = None,
         Change::Cover(value) => world.resource_mut::<CloudCover>().0 = Some(value),
         Change::Twin(alpha) => twin(world, alpha),
         Change::Hide(part) => hide(world, |kind| kind.contains(part)),
@@ -232,8 +241,9 @@ type ShellRow = (
 fn report(world: &mut World, name: &str) {
     let (vantage, palette) = (*world.resource::<Vantage>(), *world.resource::<Palette>());
     let cover = world.resource::<CloudCover>().0;
+    let weather = world.get_resource::<Weather>().map(|weather| weather.cloud);
     eprintln!(
-        "PROBE isolate {name}: altitude {:.0} m, air {:.3}, cloud band {:.0} to {:.0} m, forced cover {cover:?}, \
+        "PROBE isolate {name}: altitude {:.0} m, air {:.3}, cloud band {:.0} to {:.0} m, forced cover {cover:?}, weather cover {weather:?}, \
          cloud {:?}, horizon {:?}, zenith {:?}",
         vantage.altitude,
         vantage.air,

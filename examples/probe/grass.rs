@@ -124,7 +124,7 @@ pub fn grass_walk(world: &mut World, notes: &mut Notes, frame: u32) -> Act {
     let terrain = world.resource::<Terrain>().clone();
     let east = spot.normalize().cross(DVec3::Y).normalize_or(DVec3::X);
     let walked = f64::from(frame.saturating_sub(FILL)) * PACE;
-    if frame >= FILL && (frame - FILL) % 30 == 0 {
+    if frame >= FILL && (frame - FILL).is_multiple_of(30) {
         let (all, seen) = blade_count(world);
         info!("SMOKE grass walk {walked:.0} m: {all} blade bands, {seen} in view");
     }

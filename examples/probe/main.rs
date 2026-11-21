@@ -11,6 +11,9 @@
 //!   `ui` (the menus, the map at each level, the guide, the pack and the pause menu) and `play` (the game
 //!   being played: the map of explored ground, stones picked and a tool made, a herd stalked, a fight, a
 //!   kill carved, the robot hurt and mended, the pack and the guide after the hunt; see the `play` module).
+//!   `mapzoom` opens the map of the home planet on the explored ground and shoots it from the closest zoom
+//!   out to the first zoom with tiles, then two pans at the closest zoom, early and baked (see the
+//!   `playzoom` module).
 //!   `craft` shoots the pack and the workshop on a staged pack: empty, stones and a hide, each intent,
 //!   a card focused and a tool made (see the `workshop` module).
 //!   `stars` shoots the star field in space and in orbit (see the `stars` module). `feel` shoots swings at
@@ -146,6 +149,7 @@ mod playloot;
 mod playmap;
 mod playthrow;
 mod playwall;
+mod playzoom;
 mod postcards;
 mod saved;
 mod screens;
@@ -211,6 +215,7 @@ use playloot::*;
 use playmap::*;
 use playthrow::*;
 use playwall::*;
+use playzoom::*;
 use postcards::*;
 use saved::*;
 use screens::*;

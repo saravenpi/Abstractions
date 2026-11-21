@@ -36,7 +36,7 @@ fn shore_way(world: &World, base: &Base) -> (DVec3, Option<f64>) {
 /// Uncovers the ground a flight 200 m up would: a loop 3 km around the base and a leg to the
 /// nearest shore, through the function that uncovers the ground under the player. Returns what
 /// it did in words, or nothing without a base.
-fn explore(world: &mut World) -> Option<String> {
+pub fn explore(world: &mut World) -> Option<String> {
     let base = world.get_resource::<Base>().copied()?;
     let radius = world.resource::<Planet>().globe.radius();
     let (way, shore) = shore_way(world, &base);
@@ -69,7 +69,7 @@ fn explore(world: &mut World) -> Option<String> {
 
 /// Returns true once the open map has had `frames` frames and `seconds` of the wall clock to
 /// paint its picture on its workers, or 900 frames whatever the clock says.
-fn settled(world: &World, play: &Play, frame: u32, (frames, seconds): (u32, f32)) -> bool {
+pub fn settled(world: &World, play: &Play, frame: u32, (frames, seconds): (u32, f32)) -> bool {
     let open = *world.resource::<State<Computer>>().get() == Computer::Open;
     let held = play.held(frame);
     open && ((held >= frames && play.waited() >= seconds) || held >= 900)
@@ -77,7 +77,7 @@ fn settled(world: &World, play: &Play, frame: u32, (frames, seconds): (u32, f32)
 
 /// Returns what the open map shows, in words: its level, its zoom, whether its picture is ready,
 /// the explored cells and the markers.
-fn map_words(world: &World) -> String {
+pub fn map_words(world: &World) -> String {
     let level = *world.resource::<Level>();
     let surface = world.resource::<Surface>();
     let body = world.resource::<Location>().body;

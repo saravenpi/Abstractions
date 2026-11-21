@@ -14,13 +14,16 @@ pub const FULL: f32 = 9.0;
 pub const END: f32 = 50.0;
 
 /// Metres before [`END`] over which every blade shrinks to nothing: the `FADE` of `blades.wesl`.
+#[cfg(test)]
 pub const FADE: f32 = 12.0;
 
 /// Share of its keep, 0 to 1, over which a blade the distance thins out shrinks away instead of vanishing: the
 /// `SOFT` of `blades.wesl`.
+#[cfg(test)]
 pub const SOFT: f32 = 0.3;
 
 /// Height of the farthest blades as a share of the nearest, 0 to 1: the `SHORT` of `blades.wesl`.
+#[cfg(test)]
 pub const SHORT: f32 = 0.6;
 
 /// The highest rank, 0 to 1, of the blades of each band of a tile, the farthest band first. A band holds the

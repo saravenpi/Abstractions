@@ -7,12 +7,16 @@
 
 use std::ops::Range;
 
-use super::tune::{BANDS, END, FADE, FULL, SHORT, SOFT};
+use super::tune::{BANDS, END, FULL};
+#[cfg(test)]
+use super::tune::{FADE, SHORT, SOFT};
 
 /// Every rank: the blades of every band at once.
+#[cfg(test)]
 pub const ALL: Range<f32> = 0.0..1.0;
 
 /// Returns the smooth step from 0 at `low` to 1 at `high` of `x`, as the shader's `smoothstep`.
+#[cfg(test)]
 fn smooth(low: f32, high: f32, x: f32) -> f32 {
     let t = ((x - low) / (high - low)).clamp(0.0, 1.0);
     t * t * (3.0 - 2.0 * t)
@@ -20,6 +24,7 @@ fn smooth(low: f32, high: f32, x: f32) -> f32 {
 
 /// Returns the share of the blades, 0 to 1, that stands `distance` metres from the camera on fully covered
 /// ground: all within [`FULL`], then falling with the square of the distance.
+#[cfg(test)]
 pub fn kept(distance: f32) -> f32 {
     let r = FULL / distance.max(FULL);
     r * r
@@ -28,6 +33,7 @@ pub fn kept(distance: f32) -> f32 {
 /// Returns the height of the blade of `rank` that stands `distance` metres from the camera on ground covered
 /// `thick`, as a share of its full height: 0 where it does not stand, shrinking as the distance thins it out,
 /// as it nears [`END`] and towards the [`SHORT`] far blades.
+#[cfg(test)]
 pub fn grown(rank: f32, distance: f32, thick: f32) -> f32 {
     let keep = kept(distance) * thick;
     if rank >= keep {

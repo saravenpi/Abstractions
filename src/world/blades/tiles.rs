@@ -12,7 +12,9 @@ use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-pub use self::plan::{Eye, within};
+pub use self::plan::Eye;
+#[cfg(test)]
+pub use self::plan::within;
 use super::flight::{Flight, fly, land};
 use super::tune::TILE;
 use super::{BladeAssets, Cropped};
@@ -162,14 +164,13 @@ pub fn seen(
     Some(terrain.locate(anchor.to_frame(pose.translation())))
 }
 
+/// The bands wanted, nearest first, and the bands to drop, kept between frames.
+type Lists<'s> = (Local<'s, Vec<(f32, Spot)>>, Local<'s, Vec<Entity>>);
+
 /// Keeps the bands of blades around the camera: drops them all when the camera changed cube face, marks
 /// those under a changed cropped patch, drops those past their reach, lands the bands that finished building,
 /// then starts building the nearest that want it.
-pub fn tend(
-    mut g: Grower,
-    (mut wanted, mut gone): (Local<Vec<(f32, Spot)>>, Local<Vec<Entity>>),
-    mut near: Local<Vec<(DVec3, f32)>>,
-) {
+pub fn tend(mut g: Grower, (mut wanted, mut gone): Lists, mut near: Local<Vec<(DVec3, f32)>>) {
     let view = (g.terrain.globe().seed(), g.terrain.chart());
     let camera = g.camera.single().ok();
     let Some(at) = camera.and_then(|c| seen(&g.terrain, &g.anchor, &g.transforms, c)) else {

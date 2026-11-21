@@ -3,7 +3,7 @@
 
 use bevy::math::{DQuat, DVec3};
 
-use super::steer::{LOST_SHOWN, recover};
+use super::steer::recover;
 use crate::computer::{Block, Press, RouteStatus, Target, press};
 use crate::ship::body::Ship;
 use crate::ship::flight::Controls;

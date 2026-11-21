@@ -9,6 +9,7 @@ use crate::computer::{Destination, Engage, Target};
 use crate::ship::tests::rig::{Game, Log};
 use crate::ship::{Autopilot, Phase, ShipEvent};
 use crate::space::Location;
+use crate::universe::Universe;
 
 /// Frames a course may take, at a tenth of a second each.
 const FRAMES: usize = 12_000;

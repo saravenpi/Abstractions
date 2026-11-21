@@ -101,7 +101,7 @@ fn the_retired_hint_survives_a_new_session() {
     };
     assert_eq!(
         due(
-            stored(&dir).hints | Hint::Map.bit() | Hint::Minimap.bit(),
+            stored(&dir).hints | Hint::Map.bit() | Hint::Minimap.bit() | Hint::Kit.bit(),
             &clock,
             Context::OnFoot
         ),
@@ -113,7 +113,7 @@ fn the_retired_hint_survives_a_new_session() {
 /// closing it again does not give it ten more.
 #[test]
 fn the_hint_time_adds_up_across_the_map() {
-    let bits = with(with(0, Hint::Map), Hint::Minimap);
+    let bits = with(with(with(0, Hint::Map), Hint::Minimap), Hint::Kit);
     let mut clock = Clock {
         afoot: 120.0,
         ..Clock::default()

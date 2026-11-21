@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- The robot wakes with a kit: a stone spear in hotbar slot 1, held, and a stone knife in slot 2, knapped from the stone of the home planet. They are the lightest tools the workshop proposes, with their real mass and wear, so the first animal that goes for you can be fought and every tool you make after is better. A first-time hint on the ground points to the pack (I). A world saved before gets the kit once on its next load, when its pack holds no tool. In a session every player gets their own.
+
 ### Changed
 
 - The ship sounds like a ship. Its engines roar with the noise of a real jet: a low broad roar that deepens as the throttle opens, the hiss of the nozzle, the crackle of a hard burn in air, and the whine of the pumps, which lags the lever and winds down after a shutdown. The lift nozzles have their own higher voice and grow harsh near the ground. The gear whirs and locks with a thump, the canopy latches and seals, the stabiliser hisses, hot nozzles tick as they cool, and the cabin hums. The warp drive spools as rising, beating tones and cruises on a bed of its own.

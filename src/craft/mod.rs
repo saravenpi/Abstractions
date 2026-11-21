@@ -38,6 +38,7 @@ pub(super) fn plugin(app: &mut App) {
             Update,
             (
                 pack::load,
+                pack::kit.run_if(crate::screens::in_control.and_then(pack::unkitted)),
                 pack::gather.run_if(crate::screens::in_control.and_then(crate::space::on_foot)),
                 harvest::reap.run_if(on_message::<harvest::Harvest>),
                 wield::wear.run_if(on_message::<Worn>),

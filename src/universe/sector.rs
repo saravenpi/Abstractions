@@ -7,7 +7,7 @@ use super::galaxy::{self, Shape};
 use super::hash::{self, Rng};
 use super::ids::{BodyId, GalaxyId, StarId};
 use super::spec::StarSpec;
-use super::{LY, SECTOR_LY, SECTOR_M, Universe, moon, star, system};
+use super::{LY, SECTOR_LY, SECTOR_M, Universe, moon, star};
 use crate::space::UniPos;
 
 /// Most stars one sector holds.
@@ -46,7 +46,7 @@ impl Universe {
         let Some(star) = self.star(id.star) else {
             return false;
         };
-        let planets = system::planets(&star);
+        let planets = self.planets_of(&star);
         let planet = planets.get(usize::from(id.index));
         planet.is_some_and(|planet| id.moon == 0 || moon::ranked(&star, planet, id.moon).is_some())
     }

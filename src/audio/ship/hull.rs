@@ -14,8 +14,8 @@ use super::law::{ground, lobe, pressure};
 use super::path::Path;
 use super::pump::Pump;
 use super::tune::{
-    AIR_CAP, CANOPY_HZ, DIAMETERS, FULL_THRUST, IDLE_THRUST, IMPINGE, LEAK, LIFT_FEED, LIFT_LOBE,
-    LIGHT, OUTRUN, PUMP_IDLE, SHOCK, SHOCK_NOISE, TRANSONIC,
+    AIR_CAP, CANOPY_HZ, DIAMETERS, FULL_THRUST, IDLE_THRUST, IMPINGE, LEAK, LIFT_BODY, LIFT_FEED,
+    LIFT_LOBE, LIGHT, OUTRUN, PUMP_IDLE, SHOCK, SHOCK_NOISE, TRANSONIC,
 };
 use super::works::Works;
 use crate::audio::dsp::filter::{Lag, glide, pole};
@@ -208,7 +208,7 @@ impl Hull {
         self.path.write(air);
         let inside = hull.at(Ch::Inside);
         let seat = match inside > 0.0 {
-            true => self.seat(&hull, air, roar + shake + shaft + knocks),
+            true => self.seat(&hull, air, roar + LIFT_BODY * shake + shaft + knocks),
             false => 0.0,
         };
         let outside = match inside < 1.0 {

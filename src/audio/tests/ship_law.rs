@@ -7,7 +7,7 @@ use crate::audio::ship::feed::{Ch, HullSound};
 use crate::audio::ship::law::{absorb_hz, lobe, peak_hz, spread};
 use crate::audio::ship::path::Path;
 use crate::audio::ship::pump::Pump;
-use crate::audio::ship::tune::{EARSHOT, HELMHOLTZ, LOBE_FLOOR, NEAR, PUMP_IDLE};
+use crate::audio::ship::tune::{EARSHOT, HELMHOLTZ, LOBE_FLOOR, NEAR, PUMP_IDLE, ROLLOFF};
 
 /// The roar peaks where the Helmholtz number says, lower for a wider nozzle and in slower air,
 /// and a jet is loudest at an angle behind its nozzle, weakest ahead of the nose.
@@ -21,12 +21,12 @@ fn a_jet_follows_its_size_and_its_angle() {
     assert!((lobe(0.64) - 1.0).abs() < 1.0e-5 && lobe(-1.0) >= LOBE_FLOOR);
 }
 
-/// Sound spreads as the inverse of the distance and is gone at the edge of earshot, and the air
+/// Sound falls with the distance by the power the mix gives it and is gone at the edge of earshot, and the air
 /// takes more of the high end the farther and the thinner it is.
 #[test]
 fn distance_and_air_follow_their_laws() {
     assert!((spread(NEAR.1) - 1.0).abs() < 1.0e-3);
-    assert!((spread(200.0) / spread(400.0) - 2.0).abs() < 0.02);
+    assert!((spread(200.0) / spread(400.0) - 2.0_f32.powf(ROLLOFF)).abs() < 0.02);
     assert_eq!(spread(EARSHOT), 0.0);
     assert_eq!(spread(0.0), spread(NEAR.0));
     assert!(absorb_hz(100.0, 1.0) > absorb_hz(1000.0, 1.0));

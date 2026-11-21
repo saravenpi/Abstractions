@@ -6,7 +6,7 @@ use std::f32::consts::PI;
 
 use super::tune::{
     ABSORB_HZ, DULLEST_HZ, EARSHOT, GROUND_REACH, HELMHOLTZ, LOBE, LOBE_FLOOR, NEAR, OPEN_HZ,
-    SEA_AIR, THROTTLE_FLOOR,
+    ROLLOFF, SEA_AIR, THROTTLE_FLOOR,
 };
 
 /// Returns the frequency in hertz at which the mixing noise of a supersonic jet peaks, for a
@@ -39,10 +39,11 @@ pub fn lobe(aspect: f32) -> f32 {
 }
 
 /// Returns the pressure of a sound `distance` metres away against what it is at the reference
-/// distance: it spreads over a sphere and falls as `1 / r`, and is gone at the edge of earshot.
+/// distance: it spreads and falls with the distance to the power [`ROLLOFF`], and is gone at
+/// the edge of earshot.
 pub fn spread(distance: f32) -> f32 {
     let edge = 1.0 - (distance / EARSHOT).clamp(0.0, 1.0).powi(4);
-    NEAR.1 / distance.max(NEAR.0) * edge
+    (NEAR.1 / distance.max(NEAR.0)).powf(ROLLOFF) * edge
 }
 
 /// Returns the corner in hertz of the low-pass that `distance` metres of air of density `air`

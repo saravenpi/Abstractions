@@ -123,8 +123,9 @@ pub fn chase(
     }
 }
 
-/// Rides in the cockpit: a spring toward the seat in the space of the pilot seat, looking at
-/// `look` in that space, shrunk to its cockpit size.
+/// Rides in the cockpit: a spring toward the seat in the space of the pilot seat, shrunk to its
+/// cockpit size. Its head turns to `look`, a point in that space, and its body follows the head
+/// as far as it stays upright, so the screen faces what it looks at from under the pilot too.
 pub fn ride(look: Vec3, at: &mut Transform, float: &mut Float, dt: f32) {
     let seat = Vec3::from_array(SEAT);
     let (offset, vel) = step(at.translation - seat, float.vel, SEAT_RATE, dt);

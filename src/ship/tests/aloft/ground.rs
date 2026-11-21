@@ -10,7 +10,7 @@ use crate::avatar::Mode as Pose;
 use crate::gear::Mode;
 use crate::space::{Anchor, up};
 use crate::view::{ViewMode, ViewPrefs};
-use crate::world::Planet;
+use crate::world::{Planet, WorldReady};
 
 /// Spreads the wings of the body and sends it gliding at `speed` along its heading, sinking at
 /// `sink` metres per second, the wings asked to fly on along that path.
@@ -47,6 +47,9 @@ pub fn jumps(game: &mut Game, watch: &mut Watch) -> DVec3 {
     feet
 }
 
+/// Wall time in which the ground under the strip must stream in.
+const STREAM: std::time::Duration = std::time::Duration::from_secs(60);
+
 /// Length of the ground that must be solid ahead of a landing before it starts, in steps of 5 m.
 const PANEL: i32 = 12;
 
@@ -59,10 +62,24 @@ fn over_the_start(game: &mut Game, watch: &mut Watch, feet: DVec3) {
     let vertical = up(&anchor, spot);
     let away = (spot - game.hull()).reject_from(vertical).normalize();
     crate::player::place(game.app.world_mut(), spot + vertical * 1.5, away);
-    game.wait("the ground to stream in", |game| {
+    let start = std::time::Instant::now();
+    loop {
         let here = game.get::<Anchor>().to_render(feet);
-        (0..=PANEL).all(|step| game.has_ground(here + away * (step * 5) as f32))
-    });
+        let bare: Vec<i32> = (0..=PANEL)
+            .filter(|step| !game.has_ground(here + away * (step * 5) as f32))
+            .collect();
+        if bare.is_empty() {
+            break;
+        }
+        let ready = game.get::<WorldReady>().0;
+        assert!(
+            start.elapsed() < STREAM,
+            "the ground to stream in: none under steps {bare:?} of {PANEL}, ready {ready}, body {:?}",
+            game.walker()
+        );
+        game.step(1);
+        std::thread::sleep(std::time::Duration::from_millis(2));
+    }
     let spot = game.get::<Anchor>().to_render(feet);
     crate::player::place(game.app.world_mut(), spot + vertical * 1.5, away);
     watch.cut();

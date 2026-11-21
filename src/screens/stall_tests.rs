@@ -50,7 +50,7 @@ fn the_wait_ends_in_two_steps() {
     assert_eq!(steps[0], (239, Step::Land));
     assert_eq!(steps[1], (479, Step::Start));
     assert_eq!(steps[2..], [(480, Step::Start)]);
-    assert!(LAND_AFTER < START_AFTER);
+    const { assert!(LAND_AFTER < START_AFTER) };
 }
 
 /// A world that never gets ready is flagged ready once the time is up, so the loading screen

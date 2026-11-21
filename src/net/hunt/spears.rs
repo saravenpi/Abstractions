@@ -48,7 +48,9 @@ pub fn sticks(
     }
 }
 
-/// Tells the server of each spear drawn out of an animal that still stands.
+/// Tells the server of each spear drawn out of an animal that still stands, and of each spear of
+/// this robot whose animal is gone from the world: that spear fell to the ground, where it is this
+/// robot's again, so it stands in no animal for anyone.
 pub fn pulls(
     (mut link, mut hunted): (ResMut<Link>, ResMut<Hunted>),
     mut gone: RemovedComponents<Spear>,
@@ -58,7 +60,7 @@ pub fn pulls(
         let Some((key, animal)) = hunted.planted.remove(&entity) else {
             continue;
         };
-        if animals.contains(animal) {
+        if animals.contains(animal) || Some(key.owner) == link.you {
             link.send(ClientMsg::Hunt(Act::Pull(key)));
         }
     }

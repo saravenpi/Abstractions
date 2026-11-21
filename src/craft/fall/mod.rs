@@ -27,14 +27,15 @@ fn destroyed(condition: Res<Condition>) -> bool {
 }
 
 /// Puts everything `pack` holds into the cache `left` at `at`, in the frame of `body`, with what it
-/// already held.
+/// already held. The tools that are out in the world stay where they are, and stay the robot's.
 pub fn leave(left: &mut Left, pack: &mut Pack, (body, at): (crate::universe::BodyId, DVec3)) {
     let mut cache = left.0.take().unwrap_or(Cache {
         body,
         at: at.to_array(),
         pack: Pack::default(),
     });
-    let kit = std::mem::take(pack);
+    let mut kit = std::mem::take(pack);
+    (pack.out, pack.next) = (std::mem::take(&mut kit.out), kit.next);
     for stack in kit.stacks {
         cache.pack.stow(stack, f32::MAX);
     }

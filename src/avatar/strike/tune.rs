@@ -158,3 +158,14 @@ pub const MISS_RANGE: f32 = 4.0;
 /// Awareness, 0 to 1, that a swing that passes at the tip adds to an animal: it falls to nothing at
 /// [`MISS_RANGE`].
 pub const MISS_ALERT: f32 = 0.5;
+
+/// Metres a resting spear moves before the pack notes its new place: a spear in an animal that
+/// walks is noted every few steps, not every frame.
+pub const STRAY_SLACK: f64 = 0.5;
+
+/// Metres from the robot within which a tool that is out and has no spear is put back in the
+/// world. The ground is solid that near, so the spear lands on it.
+pub const STRAY_NEAR: f32 = 60.0;
+
+/// Metres above its noted place a tool put back in the world falls from.
+pub const STRAY_LIFT: f32 = 1.0;

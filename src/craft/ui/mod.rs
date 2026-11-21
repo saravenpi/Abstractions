@@ -1,11 +1,12 @@
 //! The pack and the workshop: one screen over the blurred game, opened on its key on foot.
 //!
-//! - The pack pane on the left lists what the robot carries, grouped by kind, each row with its
+//! - Two tabs, Pack and Workshop, show one pane at a time; the inventory key opens the Pack tab.
+//! - The Pack tab lists what the robot carries, grouped by kind, each row with its
 //!   mass and the wear of a tool.
-//! - The workshop pane on the right asks for an intent and shows the solver's three proposals as
+//! - The Workshop tab asks for an intent and shows the solver's three proposals as
 //!   tool cards: a silhouette, the one reason that matters, what it takes from the pack, which the
 //!   pack pane lights, and its numbers as bars. Make takes the focused one.
-//! - The hotbar runs under both panes, so a made tool is seen going into its slot.
+//! - The hotbar runs under both tabs, so a made tool is seen going into its slot.
 //! - [`hotbar`] draws the six slots at the bottom of the game while the screen is closed.
 //! - Every tool has one icon, drawn from its parts and kept as an image, in all these places;
 //!   every material has the icon of what it is.
@@ -87,7 +88,7 @@ fn screen(app: &mut App) {
             (
                 crate::screens::playing.pipe(open::toggle),
                 (keys::step, keys::act).run_if(in_state(Workshop::Open)),
-                paint::draw.run_if(in_state(Workshop::Open).and_then(changed)),
+                (paint::draw, paint::show_tab).run_if(in_state(Workshop::Open).and_then(changed)),
             )
                 .chain()
                 .run_if(in_state(crate::screens::Screen::Gameplay).or_else(shown)),

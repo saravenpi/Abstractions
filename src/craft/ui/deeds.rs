@@ -45,6 +45,7 @@ impl Deed<'_> {
     pub fn press(&mut self, press: Press) {
         let (intent, pick) = (self.bench.intent, self.bench.pick);
         match press {
+            Press::Pane(pane) => self.bench.pane = pane,
             Press::Row(at) => (self.bench.pane, self.bench.cursor) = (Pane::Pack, at),
             Press::Intent(intent) => self.ask(intent, pick),
             Press::Card(at) => self.ask(intent, at),

@@ -1,13 +1,15 @@
-//! The intent tiles of the workshop pane drawn: four tiles side by side, each with the icon of its
-//! intent, its name and what its head must be, the chosen one lit.
+//! The tabs of the heading zone and the intent tiles of the workshop drawn. The two tabs, Pack and
+//! Workshop, are words of the page title size, the open one lit, then the Tab key that switches
+//! them. The four tiles sit side by side, each with the icon of its intent, its name and what its
+//! head must be, the chosen one lit.
 
 use bevy::prelude::*;
 
-use super::bench::INTENTS;
+use super::bench::{INTENTS, Pane};
 use super::click::Press;
 use super::intent;
 use crate::craft::build::Intent;
-use crate::ui::{Selected, Tone, frame, icon_slot, label, theme};
+use crate::ui::{Selected, Tone, frame, icon_slot, key_cap, label, theme};
 
 /// Returns the node of a tile: a share of the row, the icon and the words on the icon line.
 fn node() -> Node {
@@ -49,4 +51,28 @@ pub fn intents(parent: &mut ChildSpawnerCommands, chosen: Intent) {
     for one in INTENTS {
         parent.spawn(tile(one, one == chosen));
     }
+}
+
+/// Returns the tab of `pane` named `name`, lit when `open`.
+fn tab(pane: Pane, name: &str, open: bool) -> impl Bundle {
+    let node = Node {
+        height: px(theme::LINE_HEADING),
+        align_items: AlignItems::Center,
+        padding: UiRect::horizontal(px(theme::INSET)),
+        ..default()
+    };
+    (
+        Press::Pane(pane),
+        frame(),
+        Selected(open),
+        node,
+        children![label(name, theme::FONT_HEADING, Tone::Muted)],
+    )
+}
+
+/// Spawns the two tabs under `parent`, `open` lit, and the key that switches them.
+pub fn tabs(parent: &mut ChildSpawnerCommands, open: Pane) {
+    parent.spawn(tab(Pane::Pack, "Pack", open == Pane::Pack));
+    parent.spawn(tab(Pane::Workshop, "Workshop", open == Pane::Workshop));
+    parent.spawn(key_cap("Tab"));
 }

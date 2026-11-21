@@ -32,6 +32,10 @@
 //! recently played world file in that folder (or in its `worlds` folder), copied to `SMOKE_DIR/probe-save`,
 //! with a `settings.toml` beside it applied to the run (see the `saved` module).
 //!
+//! `PROBE_STAGES=perf` runs the `perf` stages (see the `perf` module): still at the base, walking, boarding,
+//! a low fast flight and a hover in orbit, with a `PROBE perf` line every 30 frames and the render pass costs of
+//! Bevy's render diagnostics. It is left out of a run of all groups.
+//!
 //! `PROBE_STAGES=models` opens the model studio (see the `models` module): the robot and the companion alone.
 //!
 //! `PROBE_STAGES=zoo` does not tour the game. It shows every animal of the seed's home planet walking in a
@@ -91,6 +95,8 @@ mod mp;
 mod mpact;
 mod mpspot;
 mod orbital;
+mod perf;
+mod perfcount;
 mod play;
 mod playbook;
 mod playcarve;
@@ -144,6 +150,8 @@ use mp::*;
 use mpact::*;
 use mpspot::*;
 use orbital::*;
+use perf::*;
+use perfcount::*;
 use play::*;
 use playbook::*;
 use playcarve::*;
@@ -183,6 +191,9 @@ fn main() -> AppExit {
         app.set_error_handler(bevy::ecs::error::error);
     }
     app.add_plugins(abstractions::AppPlugin);
+    if list.split(',').any(|g| g == "perf") {
+        app.add_plugins(bevy::render::diagnostic::RenderDiagnosticsPlugin);
+    }
     app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs_f64(
         WALK,
     )));

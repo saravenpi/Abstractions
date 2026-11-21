@@ -56,9 +56,10 @@ fn the_noise_and_the_puffs_match_the_shader() {
     assert!(near(fbm(b, 4), 0.525_343_83));
     assert!(near(fbm(c, 4), 0.554_901_6));
     assert_eq!(density(a, 0.5), 0.0);
-    assert!((density(b, 0.9) - 0.873_890_4).abs() < 1.0e-3);
+    assert_eq!(density(b, 0.9), 1.0);
+    assert!((density(b, 0.5) - 0.131_544).abs() < 1.0e-3);
     assert_eq!((density(c, 1.0), density(c, 0.0)), (1.0, 0.0));
-    assert!(near(threshold(0.0), 0.72) && near(threshold(1.0), 0.4));
+    assert!(near(threshold(0.0), 0.72) && near(threshold(1.0), 0.25));
 }
 
 /// The constants both sides share carry the same name and the same value.

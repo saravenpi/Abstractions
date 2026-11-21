@@ -1,5 +1,5 @@
 const EDGE: f32 = 0.12;
-const THRESHOLD: vec2<f32> = vec2<f32>(0.72, 0.4);
+const THRESHOLD: vec2<f32> = vec2<f32>(0.72, 0.25);
 const OCTAVE_SCALE: f32 = 2.03;
 const OCTAVE_SHIFT: vec3<f32> = vec3<f32>(17.1, 9.2, 4.7);
 const OCTAVES: i32 = 4;
@@ -7,6 +7,7 @@ const LONE: vec2<f32> = vec2<f32>(0.3, 0.8);
 const NIGHT_SIDE: f32 = 0.04;
 const GRAZE: f32 = 0.08;
 const LIMB: f32 = 0.3;
+const SHARP: vec2<f32> = vec2<f32>(0.25, 0.5);
 const IGN: vec3<f32> = vec3<f32>(0.06711056, 0.00583715, 52.9829189);
 const IGN_SHIFT: vec2<f32> = vec2<f32>(17.0, 31.0);
 
@@ -59,6 +60,21 @@ fn fbm(p: vec3<f32>, octaves: i32) -> f32 {
     return total;
 }
 
+fn fbm_seen(p: vec3<f32>, octaves: i32, footprint: f32) -> f32 {
+    var total = 0.0;
+    var amplitude = 0.5;
+    var scale = 1.0;
+    var q = p;
+    for (var i = 0; i < octaves; i = i + 1) {
+        let keep = 1.0 - smoothstep(SHARP.x, SHARP.y, footprint * scale);
+        total = total + amplitude * mix(0.5, space_noise(q), keep);
+        q = q * OCTAVE_SCALE + OCTAVE_SHIFT;
+        amplitude = amplitude * 0.5;
+        scale = scale * OCTAVE_SCALE;
+    }
+    return total;
+}
+
 fn threshold(cover: f32) -> f32 {
     return mix(THRESHOLD.x, THRESHOLD.y, cover);
 }
@@ -73,9 +89,9 @@ fn broad_cover(map: texture_cube<f32>, map_sampler: sampler, dir: vec3<f32>, tow
     return mix(held.r, held.g, toward_second);
 }
 
-fn puff(spot: vec3<f32>, sunward: vec3<f32>, facing: f32, cover: f32) -> Puff {
-    let here = fbm(spot, OCTAVES);
-    let toward_light = fbm(spot + sunward * 0.3, 2);
+fn puff(spot: vec3<f32>, sunward: vec3<f32>, facing: f32, cover: f32, footprint: f32) -> Puff {
+    let here = fbm_seen(spot, OCTAVES, footprint);
+    let toward_light = fbm_seen(spot + sunward * 0.3, 2, footprint);
     let limb = LIMB * pow(1.0 - abs(facing), 4.0);
     let dense = density(here + limb, cover);
     let thick = 1.0 - pow(1.0 - dense, 1.0 / max(abs(facing), GRAZE));

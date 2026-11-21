@@ -12,6 +12,10 @@ use bevy::math::{Vec2, Vec3};
 
 use super::gait::ramp;
 
+/// Metres a planted foot must move when seated again for the ground under it to count as drawn anew,
+/// over the rounding of reading the same ground through another chart slant.
+const SEATED: f32 = 1e-3;
+
 /// One foot of a leg.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Foot {
@@ -139,13 +143,17 @@ impl Foot {
         self.at = path.with_y(path.y.max(floor) + lift * (PI * self.t).sin());
     }
 
-    /// Sets a planted foot back on `ground` where it stands: the drawn ground under it may have
-    /// changed level as the chunks streamed. A swinging foot lands on the ground of its own.
-    pub fn seat(&mut self, ground: &dyn Fn(Vec2) -> f32) {
-        if self.planted {
-            self.at = on(ground, self.at.x, self.at.z);
-            self.to = self.at;
+    /// Sets a planted foot back on `ground` where it stands, and returns true when that moved it by
+    /// more than [`SEATED`] metres: the drawn ground under it changed level as the chunks streamed. A
+    /// swinging foot lands on the ground of its own.
+    pub fn seat(&mut self, ground: &dyn Fn(Vec2) -> f32) -> bool {
+        if !self.planted {
+            return false;
         }
+        let was = self.at.y;
+        self.at = on(ground, self.at.x, self.at.z);
+        self.to = self.at;
+        (self.at.y - was).abs() > SEATED
     }
 
     /// Puts the foot where the phase alone says, on `ground` under where it is, moving along `dir`

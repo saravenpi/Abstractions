@@ -87,3 +87,9 @@ impl Tune {
         (0.75 * self.mass.powf(-0.26)).clamp(0.1, 3.0)
     }
 }
+
+/// Hip heights per second a body lowers at onto the reach of its legs once its feet were set down
+/// anew: when it comes near and its sketched feet turn into planted ones, or when the ground under
+/// them is drawn again at another level. Its legs stretch for those few frames instead of the body
+/// dropping at once.
+pub const EASE: f32 = 1.0;

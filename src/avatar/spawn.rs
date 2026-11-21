@@ -5,11 +5,11 @@ use bevy::ecs::system::SystemParam;
 use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
-use super::animate::{Anim, Bone, Skeleton};
+use super::animate::{Anim, Bone, Skeleton, animate};
 use super::face::Frame;
 use super::face::machine::Visor;
 use super::face::paint::picture;
-use super::fx::plume_color;
+use super::fx::{boots, face, plume_color, wings};
 use super::kick::Kick;
 use super::looks::{Looks, paint};
 use super::mesh::{SCREEN_FRONT, fabric};
@@ -212,4 +212,10 @@ pub fn spawn(
         puppet(&mut commands, &mut stock, &looks, Some(player));
     }
     commands.insert_resource(looks);
+}
+
+/// Registers only what poses and paints the bodies, for a studio with no game around it: the probe
+/// uses it to look at the robot alone.
+pub fn studio(app: &mut App) {
+    app.add_systems(Update, (animate, wings, boots, face).chain());
 }

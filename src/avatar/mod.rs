@@ -49,7 +49,7 @@ pub use looks::Looks;
 pub use marks::{Marked, Marks};
 pub use own::Own;
 pub use show::Shown;
-pub use spawn::{Stock, puppet};
+pub use spawn::{Stock, puppet, studio};
 
 use bevy::prelude::*;
 
@@ -226,15 +226,6 @@ fn systems(app: &mut App) {
     seated::systems(app);
     strike::plugin(app);
     hurt::plugin(app);
-}
-
-/// Registers only what poses and paints the bodies, for a studio with no game around it: the probe
-/// uses it to look at the robot alone.
-pub fn studio(app: &mut App) {
-    app.add_systems(
-        Update,
-        (animate::animate, fx::wings, fx::boots, fx::face).chain(),
-    );
 }
 
 /// Registers the avatar: its input, its visibility setting and the systems that run it while

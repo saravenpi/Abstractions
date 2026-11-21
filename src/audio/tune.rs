@@ -23,6 +23,10 @@ pub const BUSY: f32 = -21.0;
 /// Integrated loudness of the loudest sustained play, in LUFS: a lift-off, full throttle.
 pub const LOUD: f32 = -17.0;
 
+/// How far over the integrated loudness of a calm day the loudest moment of a ship passing
+/// 100 metres away must rise, in LU: the pass is an event in a calm scene, and it must be one.
+pub const PASS_MARGIN: f32 = 4.0;
+
 /// How far the integrated loudness of a scene may sit from its target, in LU, either way.
 pub const WINDOW: f32 = 3.0;
 

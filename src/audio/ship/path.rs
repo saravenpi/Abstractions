@@ -3,13 +3,19 @@
 //! ground, and comes from one side.
 //!
 //! The delay is a real delay line read at a moving point. A ship that closes in shortens it,
-//! so its sound is played faster: the Doppler shift needs nothing more.
+//! so its sound is played faster: that is the Doppler shift. What is heard now left the ship
+//! where it was then, not where it is now, so the delay is the distance over `c - v`, with `v`
+//! the speed the ship closes in at: a tone is raised by `c / (c - v)`.
 
 use super::feed::{Ch, HullSound};
 use super::law::{absorb_hz, spread};
 use super::tune::{BOUNCE, DELAY_GLIDE, MAX_PACE, NEAR, TRAVEL};
 use crate::audio::dsp::filter::{Lag, glide, pole};
 use crate::audio::shore::stereo;
+
+/// Seconds the closing speed of a ship is averaged over. Long, because the delay of a far ship
+/// is large and any ripple of its speed would shake it.
+const SPEED_GLIDE: f32 = 0.5;
 
 /// What the path is on its way to.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -33,6 +39,9 @@ pub struct Path {
     at: usize,
     /// The delay, through two stages of smoothing.
     delay: [Lag; 2],
+    /// How fast the delay of the distance changes, in samples per sample: minus the closing
+    /// speed over the speed of sound, and its coefficient.
+    slope: (Lag, f32),
     /// The lateness of the reflection.
     gap: Lag,
     /// The low-pass of the air.
@@ -54,6 +63,7 @@ impl Path {
             line: vec![0.0; (TRAVEL * rate) as usize + 4],
             at: 0,
             delay: [Lag(1.0); 2],
+            slope: (Lag::default(), glide(SPEED_GLIDE, rate)),
             gap: Lag::default(),
             dull: Lag::default(),
             sides: [Lag::default(); 2],
@@ -86,6 +96,7 @@ impl Path {
         self.line.fill(0.0);
         self.tune(hull);
         self.delay = [Lag(self.goal.delay); 2];
+        self.slope.0 = Lag::default();
         self.gap = Lag(self.goal.gap);
         self.dull = Lag::default();
         self.sides = self.goal.sides.map(Lag);
@@ -109,9 +120,12 @@ impl Path {
 
     /// Renders one stereo frame of what arrives at the listener now.
     pub fn read(&mut self) -> [f32; 2] {
+        let was = self.delay[0].0;
         let first = self.delay[0].to(self.goal.delay, self.k);
+        let slope = self.slope.0.to(first - was, self.slope.1);
+        let then = first / (1.0 + slope.clamp(-MAX_PACE, MAX_PACE));
         let before = self.delay[1].0;
-        let wanted = self.delay[1].to(first, self.k);
+        let wanted = self.delay[1].to(then.min(self.most()), self.k);
         let delay = wanted.clamp(before - MAX_PACE, before + MAX_PACE).max(1.0);
         self.delay[1].0 = delay;
         let gap = self.gap.to(self.goal.gap, self.k);

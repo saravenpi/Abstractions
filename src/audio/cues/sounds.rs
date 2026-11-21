@@ -93,16 +93,16 @@ const BOOM: [Blip; 4] = [
 
 /// Warp firing: a soft boom and a falling tone.
 const WARP_ENGAGE: [Blip; 3] = [
-    deep(tone(72.0, 30.0, 1.7, 0.0, 0.32)),
-    noise(130.0, 1.2, 0.02, 0.0, 0.18),
+    deep(tone(72.0, 30.0, 1.7, 0.0, 0.2)),
+    noise(130.0, 1.2, 0.02, 0.0, 0.11),
     deep(tone(880.0, 220.0, 0.6, 0.0, 0.05)),
 ];
 
 /// Leaving warp: a smaller boom and a tone falling back to rest.
 const WARP_EXIT: [Blip; 3] = [
-    deep(tone(58.0, 34.0, 1.2, 0.0, 0.26)),
+    deep(tone(58.0, 34.0, 1.2, 0.0, 0.18)),
     deep(tone(620.0, 92.0, 0.9, 0.0, 0.07)),
-    noise(210.0, 0.5, 0.02, 0.0, 0.12),
+    noise(210.0, 0.5, 0.02, 0.0, 0.09),
 ];
 
 /// Far thunder: a long low roll that swells in, with a rumble of noise trailing it.

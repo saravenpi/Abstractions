@@ -134,7 +134,7 @@ pub(super) const SCENES: [Scene; 10] = [
     (
         "flyby_outside",
         8.0,
-        BUSY,
+        CALM,
         |t| with_ship(flyby(t), false),
         |_| None,
     ),

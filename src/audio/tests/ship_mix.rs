@@ -16,18 +16,19 @@ use crate::settings::Audio as Volumes;
 const STEP: f32 = 0.12;
 
 /// States a ship can jump between from one frame to the next, as far apart as they get below
-/// the thrust where a jet crackles.
+/// the thrust where a jet crackles. The canopy opens from idle, as it does in the game: opened
+/// in the middle of a burn it lets the roar in, which is loud and is not a step.
 fn jumps() -> [HullSound; 6] {
     let idle = parked();
     [
         idle.with(Ch::Thrust, 0.55).with(Ch::Lift, 1.0),
+        idle,
         idle.with(Ch::Gear, 0.0).with(Ch::Canopy, 1.0),
         idle.with(Ch::Power, 0.0).with(Ch::Air, 0.0),
         idle.with(Ch::Warp, 1.0)
             .with(Ch::Rcs, 1.0)
             .with(Ch::Glow, 1.0),
         idle.with(Ch::Speed, 120.0).with(Ch::Rough, 1.0),
-        idle,
     ]
 }
 

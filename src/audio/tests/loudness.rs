@@ -14,7 +14,7 @@ use super::{RATE, frames, mixer};
 use crate::audio::cue::AudioCue;
 use crate::audio::hit::{HitSound, Kind};
 use crate::audio::scene::AudioScene;
-use crate::audio::tune::{LOUDEST_MOMENT, TRUE_PEAK, WINDOW};
+use crate::audio::tune::{LOUDEST_MOMENT, PASS_MARGIN, TRUE_PEAK, WINDOW};
 use crate::settings::{Audio as Volumes, Range};
 
 /// Frames between two frames of the game.
@@ -159,4 +159,21 @@ fn sudden_events_stay_under_the_cap() {
         assert!(read.true_peak <= f64::from(TRUE_PEAK), "{cue:?}");
         assert!(read.momentary > -45.0, "{cue:?} is not heard");
     }
+}
+
+/// A ship that passes 100 metres away is an event in a calm scene: the integrated loudness of
+/// the scene stays calm, which the table checks, and the loudest 0.4 seconds of the pass rise
+/// at least [`PASS_MARGIN`] LU over the integrated loudness of the same day without the ship.
+#[test]
+fn a_passing_ship_rises_over_a_calm_day() {
+    let read = |name: &str| {
+        let scene = SCENES.iter().find(|scene| scene.0 == name);
+        let sound = record(scene.expect("the scene exists"), &Volumes::default());
+        measure(&sound[frames(LEAD)..])
+    };
+    let rise = read("flyby_outside").momentary - read("base_calm").integrated;
+    assert!(
+        rise >= f64::from(PASS_MARGIN),
+        "the pass rises {rise:.1} LU"
+    );
 }

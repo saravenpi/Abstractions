@@ -33,8 +33,8 @@ pub struct Pool {
     rand: Rand,
     /// Sample rate in hertz.
     rate: f32,
-    /// What the last frame sent the cabin around ears in the seat.
-    sent: f32,
+    /// What the last frame sent the cabin around ears in the seat, and what of it was the interface.
+    sent: (f32, [f32; 2]),
     /// The voices of the animals.
     throats: Throats,
 }
@@ -46,7 +46,7 @@ impl Pool {
             voices: std::array::from_fn(|i| Voice::new(0x9E37_79B9_u32.wrapping_mul(i as u32 + 1))),
             rand: Rand::new(VARIATION_SEED, 0),
             rate,
-            sent: 0.0,
+            sent: (0.0, [0.0; 2]),
             throats: Throats::new(rate),
         }
     }
@@ -64,21 +64,21 @@ impl Pool {
                 let (blips, count) = hits::hit(&sound, &mut self.rand);
                 let free = self.voices.iter().filter(|voice| voice.idle()).count();
                 if free >= count + HIT_SPARE {
-                    self.start(&blips[..count], (1.0, 1.0), spot);
+                    self.start(&blips[..count], (1.0, 1.0, false), spot);
                 }
             }
             _ => {
                 let (blips, pitch, gain) = sounds::recipe(cue, &mut self.rand);
                 let busy = matches!(cue, AudioCue::Chirp(_)) && self.throats.busy();
                 let under = if busy { BUDDY_UNDER } else { 1.0 };
-                self.start(blips, (pitch, gain * under), spot);
+                self.start(blips, (pitch, gain * under, cue.is_interface()), spot);
             }
         }
     }
 
-    /// Starts `blips` on free voices at a pitch factor and a level, late by the delay of `spot`
-    /// and heard from it.
-    fn start(&mut self, blips: &[Blip], (pitch, gain): (f32, f32), spot: &Spot) {
+    /// Starts `blips` on free voices at a pitch factor and a level, as sounds of the interface or
+    /// not, late by the delay of `spot` and heard from it.
+    fn start(&mut self, blips: &[Blip], (pitch, gain, ui): (f32, f32, bool), spot: &Spot) {
         let rate = self.rate;
         let free = self.voices.iter_mut().filter(|voice| voice.idle());
         for (voice, blip) in free.zip(blips) {
@@ -88,6 +88,7 @@ impl Pool {
             };
             voice.start(late, pitch, gain, rate);
             voice.ear.place(spot, rate);
+            voice.ui = ui;
         }
     }
 
@@ -109,21 +110,25 @@ impl Pool {
         &self.throats
     }
 
-    /// Returns what the last frame sent the cabin, for its reflections.
-    pub fn sent(&self) -> f32 {
+    /// Returns what the last frame sent the cabin, for its reflections, and what of it was the
+    /// interface, which plays on while the game is paused.
+    pub fn sent(&self) -> (f32, [f32; 2]) {
         self.sent
     }
 
     /// Renders one stereo frame.
     pub fn frame(&mut self) -> [f32; 2] {
-        let (mut sum, mut sent) = (self.throats.frame(), 0.0);
+        let (mut sum, mut sent, mut ui) = (self.throats.frame(), 0.0, [0.0; 2]);
         for voice in self.voices.iter_mut().filter(|voice| !voice.idle()) {
             let sample = voice.frame();
             let [left, right] = voice.ear.frame(sample, sample);
             sum = [sum[0] + left, sum[1] + right];
             sent += 0.5 * (left + right) * voice.ear.room();
+            if voice.ui {
+                ui = [ui[0] + left, ui[1] + right];
+            }
         }
-        self.sent = sent;
+        self.sent = (sent, ui);
         sum
     }
 }

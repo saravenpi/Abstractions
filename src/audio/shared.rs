@@ -62,10 +62,12 @@ pub enum Param {
     Reduced,
     /// Whether both ears get the same sound.
     Mono,
+    /// Level of the sounds of the world: 0 while the game is paused, 1 otherwise.
+    World,
 }
 
 /// Number of [`Param`] values.
-pub const PARAMS: usize = 25;
+pub const PARAMS: usize = 26;
 
 impl Param {
     /// Every parameter, in index order.
@@ -95,6 +97,7 @@ impl Param {
         Param::Dust,
         Param::Reduced,
         Param::Mono,
+        Param::World,
     ];
 }
 
@@ -172,6 +175,7 @@ impl Shared {
         self.set(Param::Effects, unit(volumes.effects));
         self.set(Param::Reduced, flag(volumes.range == Range::Reduced));
         self.set(Param::Mono, flag(volumes.mono));
+        self.set(Param::World, flag(!scene.paused));
         self.set(Param::MusicLevel, unit(scene.music_level()));
         self.set(Param::Day, unit(scene.daylight));
         self.set(Param::Submerged, unit(scene.submerged));

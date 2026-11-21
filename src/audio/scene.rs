@@ -67,6 +67,9 @@ pub struct AudioScene {
     /// What every ship in earshot sounds like: first the ship this machine flies, then the
     /// nearest of the others.
     pub hulls: [HullSound; HULLS],
+    /// Whether the world stands still: the game is paused out of a session. Every sound of the
+    /// world fades out and holds silent; the music and the interface play on.
+    pub paused: bool,
     /// Where the cabin of the ship this machine flies is, in render space, when there is one: its
     /// relays and chimes are heard from there through the hull by ears outside it.
     pub cockpit: Option<Vec3>,
@@ -100,6 +103,7 @@ impl Default for AudioScene {
             dust: 0.0,
             hulls: [HullSound::default(); HULLS],
             cockpit: None,
+            paused: false,
         }
     }
 }

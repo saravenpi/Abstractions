@@ -14,7 +14,7 @@ use super::ship::Fleet;
 use super::spatial::{Absorb, Seat};
 use super::suit::{Suit, SuitCtl};
 use super::tread::Treads;
-use super::tune::{BED_MUSIC, CUES_GAIN, VIEW_FADE};
+use super::tune::{BED_MUSIC, CUES_GAIN, PAUSE_FADE, VIEW_FADE};
 use crate::universe::PlanetClass;
 
 /// Frames between two readings of the shared values.
@@ -88,6 +88,7 @@ impl Mixer {
             count: 0,
             k: Param::ALL.map(|param| match param {
                 Param::Cabin => glide(VIEW_FADE, rate),
+                Param::World => glide(PAUSE_FADE, rate),
                 _ => glide(SMOOTH_SECONDS, rate),
             }),
         }
@@ -135,15 +136,22 @@ impl Mixer {
     }
 
     /// Renders one stereo frame of every effect at the effects volume: the ambience, the flight
-    /// gear, the ships from the seat or outside, the one-shot sounds and the steps.
+    /// gear, the ships from the seat or outside, the one-shot sounds and the steps, all of them at
+    /// the level of the world, which a pause takes to silence, but for the interface.
     fn effects(&mut self) -> [f32; 2] {
         let air = self.air.frame(&self.air_ctl());
         let gear = self.suit.frame(&self.suit_ctl());
         let (blips, steps) = (self.cues.frame(), self.treads.frame());
-        let (ships, sent, cabin) = (self.fleet.frame(), self.cues.sent(), self.at(Param::Cabin));
-        let ships = self.seat.frame(ships, sent, cabin);
-        let fx = self.at(Param::Effects) * EFFECTS_GAIN;
-        [0, 1].map(|i| (air[i] + gear + ships[i] + (blips[i] + steps[i]) * CUES_GAIN) * fx)
+        let ((sent, ui), cabin) = (self.cues.sent(), self.at(Param::Cabin));
+        let ships = self.seat.frame(self.fleet.frame(), sent, cabin);
+        let (fx, world) = (
+            self.at(Param::Effects) * EFFECTS_GAIN,
+            self.at(Param::World),
+        );
+        [0, 1].map(|i| {
+            let sounds = air[i] + gear + ships[i] + (blips[i] - ui[i] + steps[i]) * CUES_GAIN;
+            (sounds * world + ui[i] * CUES_GAIN) * fx
+        })
     }
 
     /// Reads the shared values, starts waiting cues and retunes every filter.
@@ -151,7 +159,11 @@ impl Mixer {
         for param in Param::ALL {
             self.targets[param as usize] = self.shared.get(param);
         }
+        let still = self.targets[Param::World as usize] < 0.5;
         while let Some((cue, spot)) = self.shared.pop() {
+            if still && !cue.is_interface() {
+                continue;
+            }
             self.fleet.hear(cue);
             self.treads.hear(cue, &spot);
             self.cues.play(cue, &spot);

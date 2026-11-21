@@ -52,6 +52,19 @@ pub fn block(sky: &Sky, vantage: &Vantage, sun: &SunDir) -> PlaceUniform {
     place.seen_from(vantage.camera, vantage.up, high)
 }
 
+/// Returns the share of the sun that reaches a camera `altitude` metres up, where `cast` is the
+/// share the cloud field lets through to the ground under it and the band of the clouds runs
+/// from `band.0` to `band.1` metres: all of the shadow under the band, none above it, and in
+/// between as much as there is band above the camera. A camera over a cloud is not in its
+/// shadow, and one inside a sunlit cloud keeps the light it scatters from above.
+pub fn sun_share(cast: f32, altitude: f32, band: (f32, f32)) -> f32 {
+    let above = match band.1 > band.0 {
+        true => crate::render::smoothstep(band.0, band.1, altitude),
+        false => 0.0,
+    };
+    cast + (1.0 - cast) * above
+}
+
 /// Works out the light of the planet under the camera for this frame, once the camera, the star
 /// and the moon are tracked.
 pub fn place_light(
@@ -60,7 +73,9 @@ pub fn place_light(
     mut light: ResMut<PlaceLight>,
 ) {
     let (vantage, local, sun) = place;
-    let cloud = shade.eye(fixed(&vantage) * vantage.up);
+    let cast = shade.eye(fixed(&vantage) * vantage.up);
+    let band = (vantage.cloud_base, vantage.cloud_top);
+    let cloud = sun_share(cast, vantage.altitude, band);
     let sky = sky_below(&vantage, &local, &moon);
     let ground = local
         .below(&vantage)

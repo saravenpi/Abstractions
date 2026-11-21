@@ -1,14 +1,13 @@
 //! The sheath: the glowing shock layer of an entry around a craft, seen from outside and through
 //! the canopy alike. A bow shock wraps the nose, the stagnation point and the leading edges of
 //! the wings burn hottest in the colour of their temperature, streamers peel off the wing tips
-//! and the tail, and a long faint wake of ionised air trails behind. The shock also lights the
-//! hull from the nose.
+//! and the tail, and a long faint wake of ionised air trails behind. The plasma fades with the
+//! flux; the hot skin of the nose and the edges cools after it.
 //!
 //! The shader integrates the light of the glowing gas along each view ray in closed form and
 //! stops the ray at the depth of the scene, so the hull and the ground hide what lies behind
 //! them and nothing is drawn in specks. Cost: one sphere of 512 triangles, one fragment per
-//! pixel it covers with about forty Gaussian line integrals each, and one point light without
-//! shadows, all only while the craft glows.
+//! pixel it covers with about forty Gaussian line integrals each, only while the craft glows.
 
 use bevy::asset::embedded_asset;
 use bevy::camera::visibility::NoFrustumCulling;
@@ -22,9 +21,8 @@ use bevy::render::render_resource::{
 };
 use bevy::shader::ShaderRef;
 
+use super::skin::glowing;
 use super::state::{Heat, HeatSet};
-use super::tune::{HULL_LUMENS, SHEATH_FROM};
-use crate::render::reach;
 use crate::screens::Screen;
 
 /// Uniform block read by `sheath.wesl`. Every field is a `vec4` so the layout never needs padding.
@@ -34,11 +32,11 @@ pub struct SheathUniform {
     pub centre: Vec4,
     /// Unit vector of its flight in xyz.
     pub axis: Vec4,
-    /// Unit vector out of its roof in xyz.
+    /// Unit vector out of its roof in xyz and the share of the full pressure of the air in w.
     pub roof: Vec4,
-    /// Linear colour of the glowing gas in xyz and the strength of the glow in w.
+    /// Linear colour of the glowing gas in xyz and the strength of the plasma in w.
     pub glow: Vec4,
-    /// Linear colour of the hot skin in xyz and the share of the full pressure of the air in w.
+    /// Linear colour of the hot skin in xyz and the strength of its glow in w.
     pub skin: Vec4,
 }
 
@@ -93,11 +91,7 @@ impl Material for SheathMaterial {
 #[derive(Component, Debug, Clone, Copy)]
 pub struct Sheath;
 
-/// Marks the light the shock casts on the hull from the nose.
-#[derive(Component, Debug, Clone, Copy)]
-pub struct HullLight;
-
-/// Spawns the hidden sheath and its dark light when the world starts loading.
+/// Spawns the hidden sheath when the world starts loading.
 fn spawn(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -113,39 +107,27 @@ fn spawn(
         NoFrustumCulling,
         DespawnOnEnter(Screen::Title),
     ));
-    let light = PointLight {
-        intensity: 0.0,
-        range: reach(HULL_LUMENS),
-        radius: 0.5,
-        shadow_maps_enabled: false,
-        ..default()
-    };
-    let hidden = (Transform::default(), Visibility::Hidden);
-    commands.spawn((HullLight, light, hidden, DespawnOnEnter(Screen::Title)));
 }
 
-/// The sheath and the hull light, each with its pose and whether it shows.
-type Posed = (
-    &'static mut Transform,
-    &'static mut GlobalTransform,
-    &'static mut Visibility,
-);
-
-/// Filter of the light ahead of the nose, apart from the sheath.
-type HullOnly = (With<HullLight>, Without<Sheath>);
-
-/// Moves the sheath to the craft and shows it while the craft glows, and lights the hull from
-/// just ahead of the nose with the colour and the strength of the glow.
+/// Moves the sheath to the craft and shows it while its plasma or its skin glows at all: it
+/// fades in and out with them and never pops.
 fn follow(
     heat: Res<Heat>,
-    mut sheaths: Query<(Posed, &MeshMaterial3d<SheathMaterial>), With<Sheath>>,
-    mut lights: Query<(Posed, &mut PointLight), HullOnly>,
+    mut sheaths: Query<
+        (
+            &mut Transform,
+            &mut GlobalTransform,
+            &mut Visibility,
+            &MeshMaterial3d<SheathMaterial>,
+        ),
+        With<Sheath>,
+    >,
     mut materials: ResMut<Assets<SheathMaterial>>,
 ) {
     let (craft, glow) = (heat.craft, heat.glow);
-    let shown = glow.heat > SHEATH_FROM;
+    let shown = glow.heat > 0.0 || glowing(glow.kelvin) > 0.0;
     let sight = [Visibility::Hidden, Visibility::Visible][usize::from(shown)];
-    for ((mut transform, mut global, mut visibility), handle) in &mut sheaths {
+    for (mut transform, mut global, mut visibility, handle) in &mut sheaths {
         visibility.set_if_neq(sight);
         if !shown {
             continue;
@@ -154,14 +136,6 @@ fn follow(
         if let Some(mut material) = materials.get_mut(&handle.0) {
             material.sheath = craft.sheath(&glow);
         }
-    }
-    let nose = Transform::from_translation(craft.centre + craft.heading * (craft.radius * 1.2));
-    let tint = glow.color.lerp(glow.skin, 0.5);
-    for ((mut transform, mut global, mut visibility), mut light) in &mut lights {
-        visibility.set_if_neq(sight);
-        crate::render::pin(nose, &mut transform, &mut global);
-        light.intensity = HULL_LUMENS * glow.heat * f32::from(u8::from(shown));
-        light.color = Color::linear_rgb(tint.x, tint.y, tint.z);
     }
 }
 

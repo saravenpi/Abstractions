@@ -21,7 +21,9 @@
 //!   and from a jump off the parked ship, three shots each, with `PROBE glide` lines (see the `opening` module), and
 //!   off the cliff with a tool drawn, slung before the wings spread (`open-cliff-armed`).
 //! - `entry` (a fall from a low orbit into the air, from a chase camera and from the seat) and `exit`
-//!   (the climb from the pad to orbit under the autopilot) shoot the heat of an entry and leaving the air.
+//!   (the climb from the pad to orbit under the autopilot) shoot the heat of an entry and leaving the air;
+//!   `cloud` climbs through an overcast cloud base, a shot every 0.2 s from the chase camera and the seat,
+//!   and again at night with the headlight on.
 //! - `cruise` drops the ship at the arrival shell over the far side of the home planet, presses the home key
 //!   and shoots the orbital cruise, the glide into the air and its end near the base, with the HUD shown
 //!   (see the `cruise` module). Run it with `SMOKE_SEED=57`.
@@ -89,6 +91,7 @@ mod cards_air;
 mod cards_foot;
 mod cards_land;
 mod cards_life;
+mod cloud;
 mod coarse;
 mod cruise;
 mod entry;
@@ -150,6 +153,7 @@ use cards_air::*;
 use cards_foot::*;
 use cards_land::*;
 use cards_life::*;
+use cloud::*;
 use coarse::*;
 use cruise::*;
 use entry::*;

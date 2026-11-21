@@ -1,10 +1,13 @@
-//! Flight effects around the view: the light ahead and the flash of a warp (the stars themselves
-//! streak, the camera rig opens the view), and cloud wisps streaking past inside the cloud layer.
-//! The glow of an atmospheric entry is the sheath of `heat`, seen through the canopy as it is.
+//! What the flight effects read, and the light of a warp around the view: the light ahead and
+//! the flash of its drop-out (the stars themselves streak, the camera rig opens the view).
+//!
+//! Nothing of flight through air is drawn around the camera: the glow of an entry is the sheath
+//! of `heat` at the craft, a cloud is the whiteout of the fog from the cloud field at the camera,
+//! and speed shows in the ground, the clouds, the rain and the dust passing at their places, in
+//! the shake and in the field of view.
 
 use bevy::asset::embedded_asset;
 use bevy::camera::visibility::NoFrustumCulling;
-use bevy::ecs::system::SystemParam;
 use bevy::light::NotShadowCaster;
 use bevy::pbr::{Material, MaterialPlugin};
 use bevy::prelude::*;
@@ -12,20 +15,13 @@ use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
 
 use super::GameCamera;
-use super::celestial::smoothstep;
-use super::clouds::CloudCrossing;
 use super::glow::stream_heading;
-use super::palette::Palette;
-use super::sky::linear;
 use super::vantage::Vantage;
 use super::warp::Lens;
 use crate::screens::Screen;
 
 /// Radius in metres of the shell the effects are drawn on, around the camera and the ship.
 const SHELL_RADIUS: f32 = 60.0;
-
-/// Speed in metres per second at which cloud wisps start to streak and at which they are full.
-const WISP_SPEED: (f32, f32) = (8.0, 80.0);
 
 /// Linear colour of the light ahead in a warp and of the flash of its drop-out: blue-white.
 const CORE_COLOR: Vec3 = Vec3::new(0.8, 0.9, 1.3);
@@ -48,16 +44,30 @@ pub struct FlightFx {
 }
 
 /// Uniform block read by `entry.wesl`. Every field is a `vec4` so the layout never needs padding.
-#[derive(Clone, Copy, Debug, Default, ShaderType)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, ShaderType)]
 pub struct FxUniform {
     /// Unit vector of the direction of travel, in render axes.
     pub heading: Vec4,
     /// Linear colour of the light ahead in a warp in xyz and its strength in w.
     pub core: Vec4,
-    /// Linear wisp colour in xyz and its strength in w.
-    pub wisp: Vec4,
-    /// Time in seconds, the strength of the flash of a warp drop-out and the wisp rate.
-    pub params: Vec4,
+    /// Strength of the flash of a warp drop-out in x.
+    pub flash: Vec4,
+}
+
+impl FxUniform {
+    /// Returns the light of a warp for `lens`, streaming along `heading`.
+    pub fn of(lens: &Lens, heading: Vec3) -> Self {
+        Self {
+            heading: heading.extend(0.0),
+            core: CORE_COLOR.extend(lens.core),
+            flash: Vec4::new(lens.flash, 0.0, 0.0, 0.0),
+        }
+    }
+
+    /// Returns true while there is a warp light to draw: never in flight through air.
+    pub fn lit(&self) -> bool {
+        self.core.w + self.flash.x > 0.0
+    }
 }
 
 /// Material of the effect shell.
@@ -107,53 +117,11 @@ fn spawn(
     ));
 }
 
-/// Everything the effect values are computed from.
-#[derive(SystemParam)]
-struct FxInputs<'w, 's> {
-    flight: Res<'w, FlightFx>,
-    vantage: Res<'w, Vantage>,
-    crossing: Res<'w, CloudCrossing>,
-    palette: Res<'w, Palette>,
-    lens: Res<'w, Lens>,
-    time: Res<'w, Time>,
-    cameras: Query<'w, 's, &'static GlobalTransform, (With<GameCamera>, Without<FxShell>)>,
-}
-
-impl FxInputs<'_, '_> {
-    /// Returns the shader values: the light ahead and the flash come from the warp lens and the
-    /// wisps grow with the depth in the clouds and the speed, all streaming from
-    /// [`stream_heading`].
-    fn uniform(&self) -> FxUniform {
-        let flight = *self.flight;
-        let velocity = self.vantage.velocity;
-        let speed = if flight.speed > 0.0 {
-            flight.speed
-        } else {
-            velocity.length()
-        };
-        let seen = self.cameras.iter().next();
-        let lens = *self.lens;
-        let looking = seen.map_or(Vec3::NEG_Z, |camera| *camera.forward());
-        let nose = flight.nose.try_normalize().unwrap_or(looking);
-        let ahead = if lens.level > 0.0 { lens.heading } else { nose };
-        let wisps = self.crossing.depth * smoothstep(WISP_SPEED.0, WISP_SPEED.1, speed);
-        FxUniform {
-            heading: stream_heading(velocity, ahead, lens.level).extend(0.0),
-            core: CORE_COLOR.extend(lens.core),
-            wisp: (linear(self.palette.cloud).truncate() * 0.6).extend(wisps),
-            params: Vec4::new(
-                self.time.elapsed_secs(),
-                lens.flash,
-                (speed / 40.0).clamp(0.5, 6.0),
-                0.0,
-            ),
-        }
-    }
-}
-
-/// Keeps the shell around the camera and shows it only while an effect is on.
+/// Keeps the shell around the camera and shows it only while a warp lights it, streaming from
+/// the nose of the ship or from where the camera looks.
 fn follow(
-    inputs: FxInputs,
+    (flight, vantage, lens): (Res<FlightFx>, Res<Vantage>, Res<Lens>),
+    cameras: Query<&GlobalTransform, (With<GameCamera>, Without<FxShell>)>,
     mut shells: Query<
         (
             &mut Transform,
@@ -165,10 +133,15 @@ fn follow(
     >,
     mut materials: ResMut<Assets<FxMaterial>>,
 ) {
-    let fx = inputs.uniform();
-    let shown = fx.core.w + fx.wisp.w + fx.params.y > 0.0;
-    let pose =
-        Transform::from_translation(inputs.vantage.camera).with_scale(Vec3::splat(SHELL_RADIUS));
+    let looking = cameras
+        .iter()
+        .next()
+        .map_or(Vec3::NEG_Z, |camera| *camera.forward());
+    let nose = flight.nose.try_normalize().unwrap_or(looking);
+    let ahead = if lens.level > 0.0 { lens.heading } else { nose };
+    let fx = FxUniform::of(&lens, stream_heading(vantage.velocity, ahead, lens.level));
+    let shown = fx.lit();
+    let pose = Transform::from_translation(vantage.camera).with_scale(Vec3::splat(SHELL_RADIUS));
     for (mut transform, mut global, mut visibility, handle) in &mut shells {
         super::pin(pose, &mut transform, &mut global);
         visibility.set_if_neq(match shown {
@@ -181,14 +154,11 @@ fn follow(
     }
 }
 
-/// Embeds the shader, registers the material and runs the effects once the clouds are known.
+/// Embeds the shader, registers the material and lights the shell once the warp is known.
 pub(super) fn plugin(app: &mut App) {
     embedded_asset!(app, "entry.wesl");
     app.add_plugins((MaterialPlugin::<FxMaterial>::default(), super::heat::plugin))
         .init_resource::<FlightFx>()
         .add_systems(OnEnter(Screen::Loading), spawn)
-        .add_systems(
-            PostUpdate,
-            follow.after(super::clouds::drift).after(super::warp::run),
-        );
+        .add_systems(PostUpdate, follow.after(super::warp::run));
 }

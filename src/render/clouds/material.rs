@@ -35,6 +35,10 @@ pub struct CloudUniform {
     /// Share of red, green and blue light the air takes per metre between the camera and the
     /// shell, in xyz: the aerial perspective that fades a far cloud into the horizon.
     pub fade: Vec4,
+    /// Spot of the noise of the field under the camera, in planet-fixed noise cells, in xyz,
+    /// and the metres of one noise cell in w: inside the cloud the whiteout is read from the
+    /// field along each view ray from there.
+    pub eye: Vec4,
 }
 
 /// Material of the cloud shell.

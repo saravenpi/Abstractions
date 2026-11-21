@@ -7,6 +7,7 @@ use super::assist::NEUTRAL;
 use super::drag::terminal;
 use super::flight::BOOST;
 use super::tune::ORBIT_CAP;
+use crate::render::cool_speed;
 
 /// Speed in metres per second the full lever asks for at a surface, and the seconds the
 /// clearance lasts at the speed it adds: the top speed is `SLOW.0 + clearance / SLOW.1`, so the
@@ -160,7 +161,9 @@ impl Cruise {
     }
 
     /// Returns the velocity the pilot asks for: the lever along the nose and the vertical
-    /// stick along `rise`, never faster than the engine holds against the drag of the air.
+    /// stick along `rise`, never faster than the engine holds against the drag of the air, and
+    /// never pushed past the speed at which the nose would start to glow in that air: a ship
+    /// already faster, falling in from orbit, keeps its speed and is left to the air to slow.
     /// Toward the ground it is never faster than a descent the gear can take, and a hovering
     /// ship that is not sunk keeps its gear [`FLOOR`] above the ground.
     pub fn target(&self) -> DVec3 {
@@ -169,8 +172,10 @@ impl Cruise {
         } else {
             (1.0, 1.0)
         };
-        let top =
-            (top_speed_at(self.clearance, self.orbital) * boost).min(terminal(self.air, push));
+        let cool = cool_speed(self.air).max(self.vel.length());
+        let top = (top_speed_at(self.clearance, self.orbital) * boost)
+            .min(terminal(self.air, push))
+            .min(cool);
         let ahead = if self.idle() { 0.0 } else { self.throttle };
         let asked = self.nose * (ahead * top) + self.rise * self.climb(top);
         let sink = -asked.dot(self.up) - descent(self.clearance);

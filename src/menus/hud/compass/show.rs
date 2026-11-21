@@ -13,7 +13,7 @@ use super::{Bar, Count, Glyph, Pin, pin};
 use crate::menus::hud::context::{Where, marker_shown};
 use crate::menus::hud::needle::{WIDTH, fade, slot};
 use crate::menus::{Marker, MarkerKind, Markers};
-use crate::ui::{Icon, theme};
+use crate::ui::Icon;
 
 /// One marker the compass shows this frame.
 #[derive(Debug, Clone, Copy, PartialEq)]

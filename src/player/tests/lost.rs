@@ -1,6 +1,8 @@
 //! The rescue of a body under the ground: once, onto the collider, and held still where no
 //! collider is loaded yet, never falling and coming back in a loop.
 
+use std::sync::Arc;
+
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
@@ -12,12 +14,23 @@ use crate::player::spawn::Home;
 use crate::player::{BODY_LENGTH, BODY_RADIUS, Player, PlayerSet};
 use crate::sim::PlayerId;
 use crate::space::{Anchor, Location, Travel};
-use crate::universe::BodyId;
+use crate::universe::{BodyId, PlanetClass, PlanetRecord, STANDARD_GRAVITY, Water};
 use crate::view::Cut;
-use crate::world::Terrain;
+use crate::world::globe::Face;
+use crate::world::{Globe, Terrain};
 
-/// Returns a stage whose flat ground stands at the height the planet gives under the body, with
-/// the controller and the rescue on, and that height, run for a few frames so the ground's
+/// A dry world, so the ground under the body is never under a sea it would swim in.
+const DESERT: PlanetRecord = PlanetRecord {
+    class: PlanetClass::Desert,
+    pressure: 0.4,
+    water: Water::None,
+    ocean: 0.0,
+    ..PlanetRecord::TEMPERATE
+};
+
+/// Returns a stage on a dry world, on the chart of the face that holds the body, with the
+/// controller and the rescue on, and the height the planet gives under the body. The flat
+/// ground stands at that height and the body on it, and a few frames have run so the ground's
 /// collider is where it was moved. The app is already finished, so the rescue is added by its
 /// function, not as a plugin.
 fn stage() -> (App, f32) {
@@ -30,7 +43,9 @@ fn stage() -> (App, f32) {
         .add_systems(Update, (gather, drive).chain().in_set(PlayerSet::Move));
     plugin(&mut app);
     let anchor = *app.world().resource::<Anchor>();
-    let terrain = app.world().resource::<Terrain>().clone();
+    let globe = Arc::new(Globe::new(4, 3000.0, STANDARD_GRAVITY).with_record(DESERT));
+    let terrain = Terrain::on(globe.clone(), globe.face_chart(Face::PosY));
+    app.insert_resource(terrain.clone());
     let chart = terrain.locate(anchor.to_frame(Vec3::ZERO));
     let height = terrain.height(chart.x, chart.z);
     let world = app.world_mut();

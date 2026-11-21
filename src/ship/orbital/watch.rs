@@ -10,7 +10,7 @@ use bevy::prelude::*;
 use super::glide::{Fix, order};
 use super::home::{Move, answer, apply, spot};
 use super::near::{Over, free, over};
-use super::tune::ABORT;
+use super::tune::{ABORT, GLIDE_STICK};
 use super::{Note, Orbital, Reading, Regime};
 use crate::computer::Destination;
 use crate::ship::body::Ship;
@@ -120,7 +120,7 @@ fn glide(deck: &mut Deck, orbital: &mut Orbital, ship: &mut Ship, over: Option<&
         return orbital.off(Some(Note::Arrived));
     }
     deck.helm.controls = Controls {
-        turn: aim(ship.rot, order.aim),
+        turn: aim(ship.rot, order.aim).clamp_length_max(GLIDE_STICK),
         ..Controls::default()
     };
     (ship.throttle, ship.assist) = (order.throttle, true);

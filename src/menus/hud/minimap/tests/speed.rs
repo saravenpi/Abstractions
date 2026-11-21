@@ -2,7 +2,7 @@
 //! that speed, and in every frame it shows a whole image that reaches past every corner of the
 //! view, swaps only to whole images, and never hides its ground.
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -29,9 +29,6 @@ const CRUISE: f64 = 60.0;
 
 /// Seconds of one frame of the rig.
 const FRAME: f64 = 0.016;
-
-/// Least wall time of one frame, so the game runs at most twice as fast as the workers paint.
-const PACE: Duration = Duration::from_millis(8);
 
 /// Returns the metres flown north after `seconds`: a steady speed-up, then [`SPEED`].
 fn flown(seconds: f64) -> f64 {
@@ -99,6 +96,20 @@ fn fly(app: &mut App, seconds: f64, shown: &mut Option<Patch>) -> (bool, f32) {
     (swapped, radius)
 }
 
+/// Waits for any running worker job to finish so the next frame collects it deterministically
+/// regardless of CPU load.
+fn finish(app: &App) {
+    while app
+        .world()
+        .resource::<Scope>()
+        .job
+        .as_ref()
+        .is_some_and(|(_, task)| !task.is_finished())
+    {
+        std::thread::sleep(Duration::from_millis(1));
+    }
+}
+
 /// At 300 m/s for a minute the minimap image has no empty texel in any frame: the view never
 /// reaches past the image shown, every image swapped in is whole, and the ground never hides.
 /// The range stays wide once the flight is steady.
@@ -110,14 +121,13 @@ fn a_fast_flight_never_shows_an_empty_texel() {
     let (mut swaps, mut narrowest) = (0, f32::MAX);
     let mut shown = app.world().resource::<Scope>().patch;
     for frame in 1..=frames {
-        let started = Instant::now();
         let seconds = frame as f64 * FRAME;
         let (swapped, radius) = fly(&mut app, seconds, &mut shown);
         swaps += usize::from(swapped);
         if seconds > RAMP + 10.0 {
             narrowest = narrowest.min(radius);
         }
-        std::thread::sleep(PACE.saturating_sub(started.elapsed()));
+        finish(&app);
     }
     println!("fast flight: {swaps} images, narrowest range {narrowest} m");
     assert!(swaps > 10, "{swaps} images");

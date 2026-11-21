@@ -1,10 +1,10 @@
 //! What speed does to the picture and the sound, each a pure function of a real quantity.
 
+use super::smoothstep;
 use super::tune::{
     BUFFET, CONDENSE_GAIN, CONE_AIR, CONE_BAND, CONE_PEAK, CONTRAIL_AIR, CONTRAIL_DEPTH,
     CONTRAIL_LIFE, COOLING, DEW_SPREAD, MIXING, MOIST,
 };
-use crate::render::smoothstep;
 
 /// Returns how hard the air shakes a body in flight, from 0 to 1, for a dynamic pressure in pascals.
 ///

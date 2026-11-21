@@ -32,7 +32,7 @@ pub use place::over;
 
 use bevy::prelude::*;
 
-use super::context::Element;
+use super::context::{Element, Where};
 use super::fade::gate;
 use super::onscreen::place::Frustum;
 use crate::avatar::strike::Mark;
@@ -168,12 +168,12 @@ fn gather(
             .iter()
             .filter_map(move |(animal, beast, transform, placed)| {
                 let root = rooted(anchor, transform, placed);
-                let head = top(&root, &beast.parts, parts);
-                (head.distance(eye) <= FAR).then_some((animal, beast, root.translation, head))
+                let (foot, head) = top(&root, beast.motion.root.place, &beast.parts, parts);
+                (foot.distance(eye) <= FAR).then_some((animal, beast, foot, head))
             })
     };
     let keen = looked(
-        heads().map(|(a, _, root, head)| (a, (root + head) / 2.0)),
+        heads().map(|(a, _, foot, head)| (a, (foot + head) / 2.0)),
         (eye, dir),
     );
     found.clear();
@@ -227,6 +227,11 @@ pub(super) fn show(
     write(&mut strips, labels, life);
 }
 
+/// Run condition: animal labels mean something where the player is.
+fn enabled(now: Res<Where>) -> bool {
+    now.has(Element::Labels)
+}
+
 /// Registers the strips: they follow the animals every frame while the player controls the game,
 /// after the eye of the HUD is captured.
 pub(super) fn plugin(app: &mut App) {
@@ -234,7 +239,7 @@ pub(super) fn plugin(app: &mut App) {
         Update,
         show.after(super::eye::capture)
             .after(crate::fauna::Posed)
-            .run_if(any_with_component::<Beast>)
+            .run_if(enabled)
             .in_set(super::Step::Playing),
     );
 }

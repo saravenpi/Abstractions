@@ -21,9 +21,9 @@ const UNITS: [&str; 8] = [" km", " m\"", " m/s", " ly", " AU", "GLY", " gly", " 
 /// a file and the text of the line.
 const ALLOWED: [(&str, &str); 4] = [
     ("src/fauna/guide/card.rs", "m long"),
-    ("src/craft/ui/card.rs", " kg"),
+    ("src/craft/ui/sheet.rs", " m\""),
     ("src/craft/ui/paint.rs", " kg"),
-    ("src/craft/ui/card.rs", " m/s"),
+    ("src/craft/ui/sheet.rs", " m/s"),
 ];
 
 /// Pushes every Rust file under `dir` that is not a test file or this module into `found`.

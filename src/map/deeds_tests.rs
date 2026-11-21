@@ -94,10 +94,17 @@ fn the_offer_stops_a_flown_route_and_explains_a_blocked_one() {
     assert!(foot.sentence.starts_with("Board your ship first"));
 }
 
-/// Returns an app with a table of one planet, the player seated, the route idle, and the card.
+/// Returns an app with a table of one non-home planet, the player seated, the route idle, and the
+/// card.
 fn rig() -> (App, Target) {
     let universe = Universe::new(7);
-    let planet = Target::Body(universe.home());
+    let home = universe.home();
+    let planet = universe
+        .system(home.star)
+        .planets
+        .into_iter()
+        .find(|planet| planet.id != home)
+        .map_or(Target::Star(home.star), |planet| Target::Body(planet.id));
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .init_resource::<Board>()
@@ -105,7 +112,7 @@ fn rig() -> (App, Target) {
         .init_resource::<Destination>()
         .init_resource::<RouteStatus>()
         .insert_resource(Location {
-            body: universe.home(),
+            body: home,
             travel: Travel::InShip,
         })
         .insert_resource(universe);

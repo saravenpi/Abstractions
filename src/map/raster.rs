@@ -140,6 +140,8 @@ pub(super) fn plugin(app: &mut App) {
                 tiles_view::show,
             )
                 .chain()
+                .after(super::surface::slide)
+                .before(super::planet::veil)
                 .run_if(super::on_planet)
                 .run_if(super::open),
         )

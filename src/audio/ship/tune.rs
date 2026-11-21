@@ -138,13 +138,13 @@ pub const WARP_BEAT: (f32, f32) = (0.7, 6.0);
 pub const WARP_PARTIALS: [(f32, f32); 3] = [(1.0, 1.0), (1.5, 0.5), (2.01, 0.3)];
 
 /// Level of the lowest partial of the drive fully spooled.
-pub const WARP_LEVEL: f32 = 0.06;
+pub const WARP_LEVEL: f32 = 0.07;
 
 /// Spool shares between which the bed of the cruise fades in.
 pub const CRUISE: (f32, f32) = (0.9, 1.0);
 
 /// Centre of the bed of the cruise, its resonance, how far it wanders and its level.
-pub const BED: (f32, f32, f32, f32) = (420.0, 4.0, 0.3, 0.032);
+pub const BED: (f32, f32, f32, f32) = (420.0, 4.0, 0.3, 0.038);
 
 /// Travel in shares per second under which a mechanism counts as stopped.
 pub const MOTOR_PACE: f32 = 0.05;
@@ -214,10 +214,10 @@ pub const NEAR: (f32, f32) = (6.0, 20.0);
 
 /// Power of the distance the level of a ship falls with: 1 in free air, compressed here so
 /// that a ship passing 100 metres away is still the loudest thing around.
-pub const ROLLOFF: f32 = 0.75;
+pub const ROLLOFF: f32 = 0.4;
 
 /// Gain of the rumble of the lift nozzles in the seat: they sit in the belly under the cabin.
-pub const LIFT_BODY: f32 = 1.6;
+pub const LIFT_BODY: f32 = 1.9;
 
 /// Distance in metres past which a ship is not heard.
 pub const EARSHOT: f32 = 2000.0;

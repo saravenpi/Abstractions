@@ -53,10 +53,17 @@ pub(super) fn rms(samples: &[f32]) -> f64 {
     (energy / samples.len().max(1) as f64).sqrt()
 }
 
-/// Returns the level of `samples` in a narrow band around `hz`.
+/// Returns the level of `samples` in a narrow band around `hz`, through two filters in a row,
+/// so that a strong low end does not leak into the reading of a weak high one.
 pub(super) fn band(samples: &[f32], hz: f32) -> f64 {
-    let mut filter = Svf::default();
-    filter.tune(hz, 3.0, super::RATE);
-    let passed: Vec<f32> = samples.iter().map(|x| filter.band(*x)).collect();
+    let mut filters = [Svf::default(); 2];
+    for filter in &mut filters {
+        filter.tune(hz, 3.0, super::RATE);
+    }
+    let [first, second] = &mut filters;
+    let passed: Vec<f32> = samples
+        .iter()
+        .map(|x| second.band(first.band(*x)))
+        .collect();
     rms(&passed)
 }

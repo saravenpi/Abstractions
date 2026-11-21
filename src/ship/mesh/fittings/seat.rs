@@ -1,5 +1,6 @@
-//! The seat: a dark shell with side wings and a headrest on a foot, three stacked back pads like
-//! the lames of the hull, a pan pad with thigh bolsters, and a harness.
+//! The seat: a dark shell with low side wings and a headrest on a foot, three stacked back pads
+//! like the lames of the hull, a narrow pan pad between two thigh bolsters, and a harness. It is
+//! cut to the armour of the pilot: see "Seat fit" in `handoff/specs/robot-design.md`.
 
 use bevy::prelude::*;
 
@@ -10,8 +11,16 @@ use crate::ship::solid::Solid;
 /// Where the back of the shell is along z: the rear wall of the tub.
 const REAR: f32 = -0.9;
 
-/// Half width of the shell and of the pads, in metres.
+/// Half width of the shell and of the back pads, in metres.
 const HALF: (f32, f32) = (0.25, 0.2);
+
+/// Half width of the pan pad, in metres: the thighs of the pilot lie on it and the plates that
+/// hang outside the thighs, which reach 4 cm under the top of the pad, hang beside it.
+const PAD: f32 = 0.135;
+
+/// Height of the top of the side wings of the back, in metres: under the shoulder blocks of the
+/// pilot, which start 0.44 m over the floor of the pan.
+const WINGS: f32 = 0.42;
 
 /// The back pads from the lowest up: the heights each starts and ends at. Each overlaps the one
 /// under it and stands a little further back.
@@ -26,13 +35,13 @@ pub fn shell() -> Solid {
     let v = Vec3::new;
     let middle = [
         (v(-0.15, FLOOR, -1.32), v(0.15, -0.02, -1.0)),
-        (v(-HALF.0, -0.03, -1.44), v(HALF.0, 0.02, REAR)),
+        (v(-HALF.0, -0.03, -1.44), v(HALF.0, 0.0, REAR)),
         (v(-HALF.0, 0.0, BACK + 0.04), v(HALF.0, 0.7, REAR)),
         (v(-0.13, 0.68, BACK + 0.03), v(0.13, 1.02, REAR)),
     ];
     let sides = [
         (v(HALF.1, 0.0, -1.42), v(HALF.0, 0.13, BACK)),
-        (v(HALF.1, 0.1, BACK - 0.09), v(HALF.0, 0.62, BACK + 0.04)),
+        (v(HALF.1, 0.1, BACK - 0.09), v(HALF.0, WINGS, BACK + 0.04)),
     ];
     let (mut shell, mut wings) = (Solid::default(), Solid::default());
     for ends in middle {
@@ -51,7 +60,7 @@ pub fn pads() -> Solid {
     let v = Vec3::new;
     beam(
         &mut pads,
-        (v(-HALF.1, 0.01, -1.42), v(HALF.1, PAN, BACK)),
+        (v(-PAD, -0.01, -1.42), v(PAD, PAN, BACK)),
         0.006,
         1,
     );
@@ -85,7 +94,7 @@ pub fn harness() -> Solid {
         );
         harness.slab(lo, hi);
     }
-    harness.slab(v(-HALF.1, PAN - 0.01, -1.12), v(HALF.1, PAN + STRAP, -1.07));
+    harness.slab(v(-PAD, PAN - 0.01, -1.12), v(PAD, PAN + STRAP, -1.07));
     harness.set_tone(3);
     harness.slab(v(-0.035, PAN, -1.135), v(0.035, PAN + 0.02, -1.055));
     harness
